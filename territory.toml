@@ -1062,10 +1062,3 @@ issues = ["286"]
 files = ["hw/xbox/nv2a/pgraph/pgraph.h", "docs/testing/predictions/aasample-*.json", "docs/lanes/aasample/**"]
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 210 (job.board, 2026-09-25T23:55:00Z) for #286's class A (PR #328 folded, docs/lanes/cloud-286/NOTES.md sec 3): our AA-surface path is not transparent -- silicon's CENTER_CORNER_2 is byte-identical to a non-AA draw on the 48 inert captures, ours moves 517,872 px; pgraph_apply_anti_aliasing_factor (pgraph.h:572) is width*=2 and nothing else. ~242k px net recoverable (Quads loses 17.8k). LOCATE-FIRST for the consumers: vk/draw.c is lane.vtxarr262's (PR #264) and vk/surface.c is [free] but ungranted; the lane names the hunks and asks. Reads #282's NOTES for the tie rule. Brief: briefs/aasample.md."
-
-
-[lane.cloud-audit2-290]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-290, audit pass 2 of PR #290 on branch lane/vshr12280, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 290` removes this row when the unit ends."
