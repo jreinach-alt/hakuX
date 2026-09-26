@@ -151,6 +151,10 @@ a_ref `6550967a5e` (origin/master at the merge), b_ref `e603fb3540` (merge + RTZ
 instead of `Stencil/*`, and `ZetaIntoColor*` as before. The five bands are still judged by
 reading.
 
+**Status (2026-09-26):** waiting for arm 2's `[job.arms]` verdict and CI. PR #364
+stays in draft until then. On resume: check scores1.tsv status and PARTIAL COVERAGE,
+judge the bands, then mark ready.
+
 ## Do not repeat
 
 - `git apply` of the zdepth272 patch fails on master after #321. Place hunk 2 by
