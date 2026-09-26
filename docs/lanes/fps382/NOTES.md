@@ -203,8 +203,13 @@ What the failed legs say:
   viewport commits only). The perflog build adds work rather than removing
   it. Device state is the remaining candidate: the titlebench runs came late
   in an overnight batch of 20 titles, and this one followed a 20-minute arm.
-  A rerun on the same ref without perflog is queued
-  (`1790417886-fps382-3356323`) to separate the build from the device.
+  A rerun on the same ref without perflog (`1790417886-fps382-3356323`)
+  was meant to separate the build from the device. **It never ran.** At
+  04:17 the dispatcher returned `title not on device:
+  /storage/E6C6-D7AA/Games/XBox/56550042-50_Cent_Bulletproof.xiso.iso`,
+  although the same path had served the perflog run at 03:12. So the
+  10.5-vs-16 question is open until the title is back on a handheld. It
+  does not bear on the verdict.
 - **Nothing else moved.** The slow-store rate, the sd rate, vCPU saturation
   and an idle renderer are the same in both runs. At 16 fps the movie is
   still about half its native 30, with the guest CPU saturated and the
