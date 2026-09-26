@@ -399,6 +399,88 @@ PR #260, decision #257 option 3.
   `draft-strand-runs` line in `$WORK/logs/handback/tick.log` is that
   instance.
 
+- **The live instance, found 2026-09-26.** `#317` (fmv303) was resumed on
+  `draft-strand-runs` at 20:28:38 PDT on 2026-09-25. Its last run,
+  `1790389079-fmv303-1248256`, wrote DONE at 19:55:38 PDT, before #333
+  folded (20:10:27 PDT). The 20:12 and 20:22 ticks still logged the old
+  "only quiet" line. So this shows the cause firing on real data, on the
+  first tick observed to run the new code. It cannot show the one-tick
+  latency, because the fix was not deployed when the run finished.
+
+## Defect 25: a lane waiting on its own background task was stranded
+
+- **The shape, read from `logs/handback/tick.log`.** titlerun (#307),
+  sweepcover (#298) and blankrule297 (#335) were all drafts. Each was
+  resumed ONCE on `draft-strand-quiet`: #298 at 17:20 PDT, #307 at 17:30 and
+  #335 at 20:12. Each session ended again "waiting for my background task",
+  without pushing. The quiet marker is `draft-strand-quiet-<pr>-<head>`, so
+  with the head unmoved, the cause at that head was spent for good. The
+  quiet clock also restarts on any PR activity (`updatedAt`): #307's went
+  from 4017 s to 119 s at 15:15 on someone else's comment.
+- **(a) The rule, in `roles/lane.md` item 5.** Never end a session waiting on
+  your own background task. Run it in the foreground in chunks, or detach it
+  with `setsid nohup` and poll it. A `waiting:` comment names something
+  outside the session. It also says what `handback.sh` now does.
+- **(b) The idle cause, in `handback.sh`.**
+  - `draft-strand-idle` takes a row only the quiet clock holds. It is keyed
+    on the lane's LAST SESSION END (the stamp of its newest
+    `logs/lane/<name>.<stamp>.json`), not on the head, so a session that ends
+    again is a new cause.
+  - It fires when nothing of the lane's is queued or running, CI on the head
+    is settled (not PENDING), the session ended `IDLE_GRACE_SECS` (2400)
+    ago, and the lane did not say it was waiting. The grace is longer than
+    one arms tick (30 min), so a prediction just pushed and not yet queued
+    is not "nothing".
+  - "Said it was waiting" means either of two things: the session's `result`
+    text contains `[lane.<name>] waiting:` or `blocked:`, or the lane's
+    newest `[lane.<name>]` comment on the PR is one, newer than this job's
+    last `Resumed` comment.
+  - It spends neither an attempt nor `DRAFT_STRAND_MAX`, because a busy lane
+    ends many sessions on one PR. Its own bound is `IDLE_MAX=3` idle resumes
+    at one head (`$H/idle/<name>-<head>`). After that the quiet clock and the
+    strand cap take over.
+  - `idle-no-pr` covers the other half of the status page's "idle, no
+    work". The pickup is board lanes (read through `board_files`, or
+    `HAKUX_TERRITORY`) that have a worktree and a brief and no open or merged
+    PR on `lane/<name>`. It skips standing and remote lanes, `xbox`, and any
+    lane whose issue has `decision-needed`, which is how `status.sh` decides.
+    It has no PR to comment on, so the tick log is its record. A running unit
+    is skipped silently.
+  - The brief addendum (`idle_text`) carries the host's
+    `host-tools/bg-addendum.md` guidance, so the repo does not depend on a
+    host file.
+- **Proof.** The fragment is `99-handback-idle.sh`, with 26 checks.
+  - Draft legs: (0) inside the grace, no resume. (a) Resumed on the idle
+    cause, with the brief text and the comment, and the strand count and
+    attempts unchanged. (b) Same session, no resume. (c) A new session end
+    at the SAME head is a new cause (blankrule297's shape). (d) The session
+    said waiting, honoured. (e) The PR's newest word is waiting, honoured.
+    (f) A request is queued, no resume. (g) CI is PENDING, no resume. (h)
+    CI is RED, resumed. (i) A fourth idle session at one head, stopped by
+    IDLE_MAX. (j) A new head resets that bound.
+  - No-PR legs, with four board lanes: merged, no PR (ours), standing, and
+    the draft lane. Only ours is resumed, with no comment. The same session
+    is not resumed twice. A `decision-needed` issue holds it, and so does a
+    running unit.
+  - Five mutants, each red: key on the head (fails c); no grace (fails 0);
+    ignore the session's waiting (fails d); no IDLE_MAX (fails i); treat a
+    merged PR as absent (the merged lane is resumed).
+  - **Falsification:** `origin/master`'s `handback.sh` was run in a scratch
+    copy (`.lanework/quick.py old:jobs/handback.sh=origin/master`). It failed
+    (a) with its brief and comment lines, (c), (h), (j) and all three no-PR
+    resume lines, plus the five mutant anchors: 15 FAIL, for the reason this
+    exists.
+  - `99-handback-runs.sh` holds the idle cause off
+    (`IDLE_GRACE_SECS=999999`). Its leg (0) lane ended a session an hour ago
+    with nothing in flight, which is now correctly idle, and that leg asks
+    only whether an old run is news.
+- **Live read, 22:18 PDT 2026-09-25, `handback.sh list` on the host.**
+  #335 (blankrule297) and #354 (statuspage) classify as
+  `draft-strand-idle`. Both units were running again at that moment, so
+  neither would have been acted on. The no-PR pickup read
+  `origin/board` and emitted no row. That is correct: every non-standing
+  board lane has an open or merged PR (checked lane by lane).
+
 ## Defect 22: blocked on a lent file
 
 The queue priority field, `request.sh --priority`, and the hold `yield` file
