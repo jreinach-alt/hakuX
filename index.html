@@ -1,0 +1,207 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="refresh" content="60">
+<meta name="color-scheme" content="light dark">
+<title>hakuX harness status</title><style>
+:root{--bg:#fff;--fg:#1b1f24;--mut:#59636e;--card:#f6f8fa;--line:#d1d9e0;--red:#cf222e;--redbg:#ffebe9;--grn:#1a7f37;--grnbg:#dafbe1;--amb:#9a6700;--ambbg:#fff8c5;--link:#0969da}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--mut:#9198a1;--card:#151b23;--line:#3d444d;--red:#ff7b72;--redbg:#3c1618;--grn:#3fb950;--grnbg:#12261e;--amb:#d29922;--ambbg:#2e2410;--link:#4493f8}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+main{max-width:980px;margin:0 auto;padding:10px 12px 40px}
+a{color:var(--link)}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin-bottom:8px}
+header h1{font-size:18px;margin:0}
+#age{color:var(--mut);font-size:13px}
+#age.stale{color:var(--red);font-weight:600}
+.strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-bottom:10px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:5px 8px;min-width:0}
+.tile .k{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+.tile .v{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .d{font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile.run .v{color:var(--grn)} .tile.held .v{color:var(--amb)}
+.att{border:2px solid var(--red);background:var(--redbg);border-radius:8px;padding:6px 10px;margin-bottom:10px}
+.att h2{color:var(--red);font-size:15px;margin:0 0 4px;letter-spacing:.04em}
+.att ul{margin:0;padding-left:18px} .att li{margin:2px 0}
+.att .kind{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--red);margin-right:4px}
+.ok{border:1px solid var(--grn);background:var(--grnbg);color:var(--grn);border-radius:8px;padding:6px 10px;margin-bottom:10px;font-weight:600}
+.rel{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:6px 10px;margin-bottom:10px;font-size:14px}
+.rel b.block{color:var(--red)}
+.fold{border-top:1px dashed var(--line);margin:18px 0 6px;color:var(--mut);font-size:12px;text-align:center}
+section.md h3{font-size:16px;margin:18px 0 6px;border-bottom:1px solid var(--line);padding-bottom:2px}
+section.md h4{font-size:14px;margin:12px 0 4px}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;font-size:13px;min-width:100%}
+th,td{border:1px solid var(--line);padding:3px 6px;text-align:left;vertical-align:top;min-width:4.5em}
+td:last-child{min-width:18em}
+th{background:var(--card)}
+pre{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:6px 8px;overflow-x:auto;font-size:12px;line-height:1.3}
+code{font:12px/1.3 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--card);padding:0 3px;border-radius:3px;overflow-wrap:anywhere}
+pre code{background:none;padding:0}
+blockquote{margin:6px 0;padding:4px 10px;border-left:4px solid var(--amb);background:var(--ambbg)}
+blockquote.warn{border-color:var(--red);background:var(--redbg)}
+section.md ul{padding-left:20px;margin:4px 0} section.md li{margin:2px 0;overflow-wrap:anywhere}
+section.md p{margin:6px 0;overflow-wrap:anywhere}
+footer{color:var(--mut);font-size:12px;margin-top:20px}
+</style></head><body><main>
+<header><h1>hakuX harness</h1><span id="age" data-t="1790456465" data-stale="4200" data-at="2026-09-26 14:01 PDT">updated 2026-09-26 14:01 PDT</span></header>
+<div class="strip">
+<div class="tile run"><div class="k">Thor</div><div class="v" title="running">running</div><div class="d" title="arms-yuv10-fix: 1790451286-arms-yuv10-fix-2402902">arms-yuv10-fix: 1790451286-arms-yuv10-fix-2402902</div></div>
+<div class="tile run"><div class="k">Nova</div><div class="v" title="running">running</div><div class="d" title="buildflags427: 1790455170-buildflags427-4117276">buildflags427: 1790455170-buildflags427-4117276</div></div>
+<div class="tile "><div class="k">Console</div><div class="v" title="ON, 66.1 W">ON, 66.1 W</div><div class="d" title="plug meter, read 48s ago">plug meter, read 48s ago</div></div>
+<div class="tile "><div class="k">Queue</div><div class="v" title="12 queued">12 queued</div><div class="d" title="2 running, +99 idle-tier">2 running, +99 idle-tier</div></div>
+<div class="tile run"><div class="k">Lanes</div><div class="v" title="5 of 24 running">5 of 24 running</div></div>
+<div class="tile "><div class="k">Last fold</div><div class="v" title="14:00 PDT (56s ago)">14:00 PDT (56s ago)</div><div class="d" title="PR #418 lane/forza414 -- lane.forza414: #414 Forza race decay and hang gaps">PR #418 lane/forza414 -- lane.forza414: #414 Forza race decay and hang gaps</div></div>
+</div>
+<div class="ok">Nothing needs attention.</div>
+<div class="rel"><b>Release 0.5 gate:</b> Ghoulies median &gt;= 25 gfps over a 240 s soak on the candidate APK, both handhelds<br>Candidate: none cut yet<br>Open blockers: none labelled <code>release-blocker</code></div>
+<div class="fold">details</div>
+<section class="md"><h4>Lanes running (cap 24)</h4>
+<div class="tw"><table><tr><th>lane</th><th>issue</th><th>attempt</th><th>model</th><th>running for</th><th>PR</th></tr><tr><td>cloud-audit1-395</td><td>#395</td><td>1</td><td>claude-opus-5-5</td><td>54s ago</td><td></td></tr><tr><td>cloud-remediate-420</td><td>#420</td><td>1</td><td>claude-opus-5-5</td><td>23m ago</td><td></td></tr><tr><td>doa413b</td><td>#413</td><td>1</td><td>claude-opus-5-5</td><td>8m ago</td><td>#440 draft</td></tr><tr><td>pri432</td><td>#432</td><td>2</td><td>claude-opus-5-5</td><td>11m ago</td><td>#438 draft</td></tr><tr><td>vcpuprime428</td><td>#428</td><td>1</td><td>claude-opus-5-5</td><td>40m ago</td><td>#437 draft</td></tr></table></div>
+<h4>Lanes: every row on the board (PDT)</h4>
+<div class="tw"><table><tr><th>lane</th><th>state</th><th>issue</th><th>PR</th><th>last session ended</th><th>it said</th></tr><tr><td>arms</td><td>job (hakux-arms.timer)</td><td></td><td>none</td><td>never</td><td></td></tr><tr><td>aufire412</td><td>waiting on device (0 running, 2 queued)</td><td>#412</td><td>#416 draft</td><td>09-26 13:15</td><td>Using the vk/shaders.c grant, I wrote the fix for Agent Under Fire's flat ~16 fps and queu...</td></tr><tr><td>blinx372d</td><td>PR in audit (1)</td><td>#372</td><td>#396 open</td><td>09-26 13:12</td><td>PR #396 is marked ready for review. Two things are still outstanding: CI on the new head `...</td></tr><tr><td>buildflags427</td><td>waiting on device (1 running, 5 queued)</td><td>#427</td><td>#435 draft</td><td>09-26 13:41</td><td>The build flags are in and verified in the symbol table, but the before/after fps number d...</td></tr><tr><td>cloud-audit1-395</td><td>running</td><td></td><td>none</td><td>never</td><td></td></tr><tr><td>cloud-remediate-420</td><td>running</td><td></td><td>none</td><td>never</td><td></td></tr><tr><td>doa413b</td><td>running</td><td>#413</td><td>#440 draft</td><td>never</td><td></td></tr><tr><td>flatlm13</td><td>PR in audit (1)</td><td>#13</td><td>#401 open</td><td>09-26 13:18</td><td>PR #401 is now marked ready. The arm passed, and the magnitude check matched the offline p...</td></tr><tr><td>fold</td><td>job (hakux-fold.timer)</td><td></td><td>none</td><td>never</td><td></td></tr><tr><td>forza414</td><td>folded (row not yet retired)</td><td>#414</td><td>#418 merged</td><td>09-26 13:53</td><td>PR #418 is marked ready. It carries analysis only: no code change, and no prediction becau...</td></tr><tr><td>pilotgate</td><td>PR needs remediation</td><td></td><td>#420 open</td><td>09-26 13:01</td><td>The pilot gate is in place: <code>docs/testing/request.sh</code> now refuses to queue a request that ...</td></tr><tr><td>pri432</td><td>running</td><td>#432</td><td>#438 draft</td><td>never</td><td></td></tr><tr><td>ring53impl</td><td>PR in audit (1)</td><td>#53</td><td>#395 open</td><td>09-26 13:48</td><td>PR #395 is done and marked ready. The device test (the "arm") comparing the ring against c...</td></tr><tr><td>tbchurn424</td><td>waiting on device (0 running, 2 queued)</td><td>#424</td><td>#434 draft</td><td>09-26 13:37</td><td>I've written and queued the fix for #424, but nothing is measured on a device yet: ten Tho...</td></tr><tr><td>toolsmith</td><td>folded (row not yet retired)</td><td>#94 #95</td><td>#361 merged</td><td>09-26 04:27</td><td>I fixed defect 27 in PR #386, which is marked ready and labelled <code>needs-audit-1</code>. Defect 2...</td></tr><tr><td>triage</td><td>standing, nothing in flight</td><td></td><td>none</td><td>never</td><td></td></tr><tr><td>vcpuprime428</td><td>running</td><td>#428</td><td>#437 draft</td><td>never</td><td></td></tr><tr><td>yuv10</td><td>waiting on device (1 running, 0 queued)</td><td>#10</td><td>#419 draft</td><td>09-26 12:25</td><td>I've implemented SET_CONTROL0's colour-space conversion in draft PR #419, but it hasn't be...</td></tr><tr><td>vshcpu345</td><td>retired 09-26 13:40</td><td></td><td>#402 merged</td><td>09-26 12:45</td><td>The patched vector-shader evaluator now matches the Xbox console on every row it targets, ...</td></tr><tr><td>doa413</td><td>retired 09-26 13:40</td><td></td><td>#417 merged</td><td>09-26 13:09</td><td>PR #417 is now ready for review. It separates the two problems in #413, but proposes no fi...</td></tr><tr><td>cull13</td><td>retired 09-26 13:40</td><td></td><td>#403 merged</td><td>09-26 13:04</td><td>PR #403 is marked ready and goes to audit because it touches <code>hw/</code>. The device test of the...</td></tr><tr><td>foldcancel</td><td>retired 09-26 13:15</td><td></td><td>#415 merged</td><td>09-26 12:26</td><td>I've pushed the fix as PR #415 and marked it ready for review. A fold tick whose final tru...</td></tr><tr><td>titleplay</td><td>retired 09-26 12:35</td><td></td><td>#399 merged</td><td>09-26 12:10</td><td>PR #399 is marked ready for review. It's pushed at <code>08ad953514</code> with <code>origin/master</code> merge...</td></tr><tr><td>fmv303b</td><td>retired 09-26 11:50</td><td></td><td>#398 merged</td><td>09-26 10:45</td><td>Turning the tier1 JIT tier off does not change Spikeout's FMV green, so tier1 is not the c...</td></tr><tr><td>armsscope</td><td>retired 09-26 11:20</td><td></td><td>#409 merged</td><td>09-26 10:59</td><td>The fix is in and PR #409 is marked ready: <code>arms.sh</code> now counts only a PR's own prediction...</td></tr><tr><td>boardpushgate</td><td>retired 09-26 10:58</td><td></td><td>#408 merged</td><td>09-26 10:43</td><td>The board push gate is built and PR #408 is out of draft. The jobs selftest passed (1827 c...</td></tr><tr><td>pshaniso284</td><td>retired 09-26 10:40</td><td>#284 #315</td><td>#393 merged</td><td>09-26 07:20</td><td>PR #393 has both fixes, both device tests passed, CI is green on the current head (329df5e...</td></tr><tr><td>surfwatch382</td><td>retired 09-26 07:14</td><td>#382</td><td>#387 merged</td><td>09-26 05:34</td><td>The fix works: with it, 50 Cent: Bulletproof's intro movies play at full speed on the Nova...</td></tr><tr><td>fmv303</td><td>retired 09-26 07:14</td><td>#303</td><td>#317 merged</td><td>09-25 20:31</td><td>PR #317 is now marked ready. It ends as an analysis-only outcome: the green is in the game...</td></tr><tr><td>zrtz272</td><td>retired 09-26 06:50</td><td>#272 #275</td><td>#364 merged</td><td>09-26 04:36</td><td>Arm 3 passed and PR #364 is ready for review.</td></tr><tr><td>ring53</td><td>retired 09-26 06:50</td><td>#53</td><td>#391 merged</td><td>09-26 06:08</td><td>Lane ring53 is finished but blocked: no emulator code landed. PR #391 is now ready (analys...</td></tr><tr><td>dpforce345</td><td>retired 09-26 06:50</td><td>#345</td><td>#383 merged</td><td>09-26 04:47</td><td>PR #383 is now marked ready. The re-registered prediction passes on the device: all 291 ch...</td></tr><tr><td>blinx372c</td><td>retired 09-26 06:50</td><td>#372</td><td>#388 merged</td><td>09-26 05:40</td><td>I found the site behind Blinx's two surface-download waits per frame in the attract demo, ...</td></tr><tr><td>y16bump10</td><td>retired 09-26 04:40</td><td>#10</td><td>#367 merged</td><td>09-26 04:11</td><td>PR #367 is finished and I made no new commits this session. The previous session did get t...</td></tr></table></div>
+<p><i>48 more rows retired in the last 24 h are not listed.</i></p>
+<ul>
+<li><b>lane.xbox</b> (interactive session; the console): last <code>[lane.xbox]</code> comment 09-26 13:25 on #431: <b>Plan, before any title is recorded.</b>; host answered 09-26 13:57. Device requests: none queued or running. console meter: ON, 66.1 W (read 48s ago).</li>
+<li><b>lane.remote</b> (cloud session, one-way): last <code>`[lane.remote]`</code> comment 09-26 13:34 on #426: **#426 stage 0 on desktop: the full per-draw snapshot is too expensive to hand over, and the drain points are ...; host answered 09-26 13:57.</li>
+<li><b>host ops tick</b> (<code>hakux-hostops.timer</code>, every 20 min): last tick 09-26 13:08: ne unanswered. The file was unclaimed, so I granted it and resumed the lane.</li>
+</ul>
+<h4>Window budget (the account's five-hour and weekly windows)</h4>
+<ul>
+<li>dispatching normally. Lanes and audits start as work allows; expanding is the default.</li>
+<li>week from 2026-09-20 17:00 PDT (84% elapsed, reserve from 2026-09-26 07:24 PDT), 532 run(s), spend 1077.5 of no declared budget, 0 usage-limit hit(s) this week (0 in the reserve); the weekly reserve is NOT armed: there is no declared WEEK_SPEND_BUDGET in $WORK/limits.env, and this fleet has been refused 0 time(s) since the reserve began (2 arms it).</li>
+<li>no session has ever been refused by the account's window on this host. That is the only first-hand evidence of a closed window there is: <b>the remaining five-hour and weekly balance cannot be queried from here</b>, so the weekly reserve arms on that evidence, or on <code>WEEK_SPEND_BUDGET</code> if the owner declares one in <code>$WORK/limits.env</code>. Unknown means open, by design.</li>
+</ul>
+<h4>Lane sessions finished (last 24h)</h4>
+<div class="tw"><table><tr><th>when (PDT)</th><th>lane</th><th>model</th><th>turns</th><th>min</th><th>result</th><th>PR</th><th>said</th></tr><tr><td>09-26 12:45</td><td>vshcpu345</td><td>opus-5-5</td><td>35</td><td>2</td><td>ok</td><td>#402 merged</td><td>The patched vector-shader evaluator now matches the Xbox console on every row it targets,</td></tr><tr><td>09-26 12:56</td><td>aufire412</td><td>opus-5-5</td><td>48</td><td>4</td><td>ok</td><td>#416 draft</td><td>I've found why Agent Under Fire runs at 15-16 fps, but haven't fixed it yet: the fix is in</td></tr><tr><td>09-26 13:01</td><td>pilotgate</td><td>opus-5-5</td><td>64</td><td>39</td><td>ok</td><td>#420 open</td><td>The pilot gate is in place: <code>docs/testing/request.sh</code> now refuses to queue a request that</td></tr><tr><td>09-26 13:04</td><td>cull13</td><td>opus-5-5</td><td>26</td><td>1</td><td>ok</td><td>#403 merged</td><td>PR #403 is marked ready and goes to audit because it touches <code>hw/</code>. The device test of the</td></tr><tr><td>09-26 13:09</td><td>doa413</td><td>opus-5-5</td><td>41</td><td>3</td><td>ok</td><td>#417 merged</td><td>PR #417 is now ready for review. It separates the two problems in #413, but proposes no fi</td></tr><tr><td>09-26 13:12</td><td>blinx372d</td><td>opus-5-5</td><td>25</td><td>1</td><td>ok</td><td>#396 open</td><td>PR #396 is marked ready for review. Two things are still outstanding: CI on the new head `</td></tr><tr><td>09-26 13:15</td><td>aufire412</td><td>opus-5-5</td><td>66</td><td>4</td><td>ok</td><td>#416 draft</td><td>Using the vk/shaders.c grant, I wrote the fix for Agent Under Fire's flat ~16 fps and queu</td></tr><tr><td>09-26 13:18</td><td>flatlm13</td><td>opus-5-5</td><td>26</td><td>2</td><td>ok</td><td>#401 open</td><td>PR #401 is now marked ready. The arm passed, and the magnitude check matched the offline p</td></tr><tr><td>09-26 13:37</td><td>tbchurn424</td><td>opus-5-5</td><td>106</td><td>15</td><td>ok</td><td>#434 draft</td><td>I've written and queued the fix for #424, but nothing is measured on a device yet: ten Tho</td></tr><tr><td>09-26 13:41</td><td>buildflags427</td><td>opus-5-5</td><td>103</td><td>19</td><td>ok</td><td>#435 draft</td><td>The build flags are in and verified in the symbol table, but the before/after fps number d</td></tr><tr><td>09-26 13:48</td><td>ring53impl</td><td>opus-5-5</td><td>33</td><td>2</td><td>ok</td><td>#395 open</td><td>PR #395 is done and marked ready. The device test (the "arm") comparing the ring against c</td></tr><tr><td>09-26 13:53</td><td>forza414</td><td>opus-5-5</td><td>27</td><td>2</td><td>ok</td><td>#418 merged</td><td>PR #418 is marked ready. It carries analysis only: no code change, and no prediction becau</td></tr></table></div>
+<p><i>result: ok = ended on its own; MAXTURNS = cut at the turn cap, work kept; ERR = the session errored. A lane that ended without a ready PR is resumed by the board (attempts 1-3 on claude-opus-5-5, then claude-fable-5-1, then decision-needed).</i></p>
+<h4>Cloud-class sessions (hourly, on the host; last 24h from their <code>[job.cloud]</code> comments)</h4>
+<ul>
+<li>09-25 14:05 #279  claimed as a cloud-class lane on the host (unit hakux-lane-cloud-issue-279, branch <code>lane/cloud-279</code>, model c</li>
+<li>09-25 14:13 #278  #278 is derived (analysis in PR #319): silicon applies the INF special value everywhere except in the four e</li>
+<li>09-25 14:13 #279  Derived the DOT_ZW rule from the golden: silicon writes the depth word floor(dot1/dot2), 99.79% exact and 10</li>
+<li>09-25 14:28 #260  remediation of pass-1 M1 pushed as b544236c90; label moves to needs-audit-2.</li>
+<li>09-25 14:37 #260  claimed for audit2 (unit hakux-lane-cloud-audit2-260, model claude-opus-5-5, attempt 1 of 4).</li>
+<li>09-25 15:17 #288  claimed for audit1 (unit hakux-lane-cloud-audit1-288, model claude-opus-5-5, attempt 1 of 4).</li>
+<li>09-25 15:17 #325  claimed for audit1 (unit hakux-lane-cloud-audit1-325, model claude-opus-5-5, attempt 1 of 4).</li>
+<li>09-25 15:18 #327  claimed for audit1 (unit hakux-lane-cloud-audit1-327, model claude-opus-5-5, attempt 1 of 4).</li>
+<li>09-25 15:18 #286  claimed as a cloud-class lane on the host (unit hakux-lane-cloud-issue-286, branch <code>lane/cloud-286</code>, model c</li>
+<li>09-25 15:22 #288  claimed for audit2 (unit hakux-lane-cloud-audit2-288, model claude-opus-5-5, attempt 1 of 4).</li>
+<li>running now: </li>
+</ul>
+<pre><code>09-26 13:08 cloud-audit1-403 claude-opus-5-5 turns=17 126s ok I finished pass 1 of the audit on PR #403 and found no HIGH or MEDIUM problems, 
+09-26 13:15 cloud-audit2-405 claude-opus-5-5 turns=29 136s ok Audit pass 2 of PR #405 is clean, and the PR is now labelled `fold-ready`.
+09-26 13:15 cloud-audit2-403 claude-opus-5-5 turns=15 183s ok Audit pass 2 of PR #403 (lane.cull13) came back clean, and the PR is now labelle
+09-26 13:16 cloud-audit1-420 claude-opus-5-5 turns=22 168s ok I finished the pass-1 audit of PR #420 and found two MEDIUM issues, so it&#x27;s labe</code></pre>
+<h4>Board job (every 20 min)</h4>
+<pre><code>  FAIL: lane.ring53impl&#x27;s PR #395 is ready (out of draft, CI green, unit gone) and its row still holds 6 file(s) it has not released. Add them to `released` on 
+2026-09-26 14:01:00 PDT capacity: 5/24 lanes running and 4 startable issue(s):
+  #397 [game] 1.0 playable list: gameplay FPS per title with scripted input (Thor/Nova)  [0.5]
+  #425 [game] Performance: fewer jump-cache flushes and an inline indirect-branch probe  [0.5]
+  #429 [game] Performance: smaller translation blocks on often-rewritten pages  [0.5]
+  #433 [impact 0 px, measured] 0.5 release: the first tested-titles list for the Thor and Nova (target 2026-09-28)  [0.5]</code></pre>
+<p>last model ticks:</p>
+<pre><code>09-26 12:57 board claude-sonnet-5 turns=30 144s ok This tick pushed two board edits and dispatched no lanes, because nothing on the
+09-26 13:21 board claude-sonnet-5 turns=65 293s ok Tick complete. The board push passed the gate (`898f5f73ae`) before any outward 
+09-26 13:43 board claude-sonnet-5 turns=58 240s ok Pushed to `board` and dispatched two lanes; the third slot stayed empty. The boa</code></pre>
+<p>board branch: 445b6ea3d3 2 minutes ago -- cloud: add territory row for lane.cloud-audit1-395 (jobs/cloud.sh)</p>
+<h4>Handhelds and arms</h4>
+<ul>
+<li>adb: bdc158a5(device) ee317437(device) </li>
+<li>dispatcher: active, workers: 4</li>
+<li>queue: 12 waiting, 99 idle-tier z-* behind them, 2 running; holds: nova nova.winddown thor thor.winddown </li>
+<li style="margin-left:16px">running: arms-yuv10-fix b4850a34eb -- FIX arm #10 lane.yuv10 at b4850a34eb, queued by the arms job from lane/yuv10:docs/testing/</li>
+<li style="margin-left:16px">running: buildflags427 15d9406b81 -- #427 Crimson soak A1</li>
+<li>dispatcher last line: <code>09-26 14:00:18 request 1790455170-buildflags427-4117276 from buildflags427: #427 Crimson soak A1 (ref=15d9406b81 arm=company runs=1)</code></li>
+<li>affinity: lanes serving <code>desktop nova thor</code> -- an A/B pair queued now is pinned to one of them</li>
+<li>affinity notes, last 24h (a pair named here may span two devices and cannot isolate run-to-run variation):</li>
+<li style="margin-left:16px"><code>1790451286-arms-yuv10-fix-2402902</code>: no poolable device lane is registered in ~/hakux-work/dispatch/lanes, so 545e0dc3c56cdd87376ab26047a42f812b561eff8f7e71d149511722f9730db2.json could not be pinned at all; if this is one arm of an A/B its partn</li>
+<li style="margin-left:16px"><code>1790451286-arms-yuv10-base-2402243</code>: no poolable device lane is registered in ~/hakux-work/dispatch/lanes, so 545e0dc3c56cdd87376ab26047a42f812b561eff8f7e71d149511722f9730db2.json could not be pinned at all; if this is one arm of an A/B its partn</li>
+<li style="margin-left:16px"><code>1790443805-arms-ring53impl-fix-121839</code>: no poolable device lane is registered in ~/hakux-work/dispatch/lanes, so 3e0a694efea662de50f4245c70b9ecade8ab6ccb037baaaab55dd1445a0099e6.json could not be pinned at all; if this is one arm of an A/B its partn</li>
+<li style="margin-left:16px"><code>1790443804-arms-ring53impl-base-121583</code>: no poolable device lane is registered in ~/hakux-work/dispatch/lanes, so 3e0a694efea662de50f4245c70b9ecade8ab6ccb037baaaab55dd1445a0099e6.json could not be pinned at all; if this is one arm of an A/B its partn</li>
+<li style="margin-left:16px"><code>1790435594-arms-vshcpu345-fix-2960842</code>: no poolable device lane is registered in ~/hakux-work/dispatch/lanes, so 26925a6561ba2a0296c39fbce1f3a7b50105f26dcf56b41d07c6ab3433586bdb.json could not be pinned at all; if this is one arm of an A/B its partn</li>
+<li>arms job: 69 pair(s) queued or running and not yet judged; 68 judged; 41 skipped (see <code>arms.sh list</code>); watermark 2026-09-18 13:00 PDT (stored as <code>2026-09-18T20:00:00Z</code>: arms.sh compares that UTC string to registered_utc, so the file stays UTC and only this rendering is local)</li>
+</ul>
+<p>last verdicts:</p>
+<ul>
+<li><code>f34d19d9b3</code> lane/flatlm13:docs/testing/predictions/flatlm13-orient.json: VERDICT: PASS -- all 417 registered checks hold.</li>
+<li><code>b002f5ac0b</code> lane/blinx372d:docs/testing/predictions/blinx372d-mnm2.json: VERDICT: PASS -- all 102 registered checks hold.</li>
+<li><code>999fe80a7c</code> lane/cull13:docs/testing/predictions/cull13-linemode-cull.json: VERDICT: PASS -- all 147 registered checks hold.</li>
+<li><code>26925a6561</code> lane/vshcpu345:docs/testing/predictions/vshcpu345-must-not-move.json: VERDICT: PASS -- all 411 registered checks hold.</li>
+<li><code>724d32f028</code> lane/cloud-271:docs/testing/predictions/cloud-271-x1a7-read.json: VERDICT: FAIL -- 1 of 36 checks violated:</li>
+</ul>
+<pre><code>2026-09-26 13:41:01 PDT   queued base 1790455260-arms-buildflags427-base-4129766 fix 1790455261-arms-buildflags427-fix-4129802
+2026-09-26 13:41:02 PDT pair cap 2 reached this tick; lane/tbchurn424:docs/testing/predictions/tbchurn424-pixels-inert.json waits
+2026-09-26 13:41:25 PDT judged b002f5ac0b2b5dc2f01f1430ead0946475c27c7061f868c8e11e1aafee6eadf2: VERDICT: PASS -- all 102 registered checks hold. (lane/blinx372
+2026-09-26 13:41:35 PDT judged f34d19d9b3175d22fc6c7956a61300c348fb19fbed048e911a76d67f11fde273: VERDICT: PASS -- all 417 registered checks hold. (lane/flatlm13</code></pre>
+<p>last refusals, in full (a refusal is recorded once; delete the file under <code>$WORK/arms/skipped/</code> to retry):</p>
+<ul>
+<li><code>5a46024659</code> lane/fmv303b:docs/testing/predictions/fmv303b-tier1-ab.json: a_ref == b_ref, nothing to compare</li>
+</ul>
+<p>told=2026-09-26T18:02:23Z</p>
+<ul>
+<li><code>427f96bff6</code> lane/blinx372d:docs/testing/predictions/blinx372d-demo-ab.json: soak predictions (title=4D530013-Blinx_The_Time_Sweeper.xiso.iso) are hand-read; queue with request.sh --title yourself</li>
+</ul>
+<p>told=2026-09-26T14:54:42Z</p>
+<ul>
+<li><code>5e10fe5695</code> claude/docs-tooling-agentic-coding-u152m1:docs/testing/predictions/remote-274-sfp-guard-surf1.json: soak predictions (title=desktop Vulkan A/B -- hand-queue only, see the prediction text) are hand-read; queue with request.sh --title yourself</li>
+</ul>
+<p>told=2026-09-26T12:46:42Z</p>
+<h4>Fold job (every 30 min)</h4>
+<ul>
+<li>fold-ready: ; needs-rebase: ; needs-remediation: #420</li>
+<li>awaiting audit: needs-audit-1 #401 #396 #395; needs-audit-2 </li>
+</ul>
+<pre><code>2026-09-26 14:00:48 PDT   deleted origin&#x27;s lane/forza414 @ bc37468ac6 (every commit is on HEAD) and its tracking ref
+2026-09-26 14:00:48 PDT   local refs/heads/lane/forza414 KEPT: error: cannot delete branch &#x27;lane/forza414&#x27; used by worktree at &#x27;~/hakux-work/wt/forza
+2026-09-26 14:00:48 PDT     (if that lane is finished: lane.sh rm forza414)
+2026-09-26 14:00:48 PDT tick: repaired none; folded #418; handed back none; waiting none</code></pre>
+<ul>
+<li>master: f63be3d4ab 2 minutes ago -- fold: PR #418 lane/forza414 -- lane.forza414: #414 Forza race decay and hang gaps</li>
+</ul>
+<h4>Open lane PRs</h4>
+<ul>
+<li>#440 (draft) <code>lane/doa413b</code> lane.doa413b: #413 price and cut DOA2U surface_update cost -- labels: none</li>
+<li>#439 (draft) <code>lane/fmv303c</code> lane.fmv303c: #303 surface write-back probe for Spikeout's FMV green -- labels: none</li>
+<li>#438 (draft) <code>lane/pri432</code> lane.pri432: 0.5 issues first in dispatch order, and a 0.5 status panel (#432) -- labels: none</li>
+<li>#437 (draft) <code>lane/vcpuprime428</code> lane.vcpuprime428: #428 vCPU thread on the prime core, Crimson gameplay A/B -- labels: none</li>
+<li>#436 (draft) <code>lane/visual404</code> lane.visual404: #404 reference-free visual scoring of scripted-play frames -- labels: none</li>
+<li>#435 (draft) <code>lane/buildflags427</code> Performance: native TLS, inline LSE atomics and no intra-library PLT for libxemu -- labels: none</li>
+<li>#434 (draft) <code>lane/tbchurn424</code> lane.tbchurn424: #424 translation-cache code-write invalidation and dirty re-arm -- labels: none</li>
+<li>#420 <code>lane/pilotgate</code> pilotgate: refuse a device batch over 30 min without a reviewed pilot -- labels: claimed:cloud, needs-remediation</li>
+<li>#419 (draft) <code>lane/yuv10</code> lane.yuv10: #10 SET_CONTROL0 colour-space conversion as silicon measured it -- labels: none</li>
+<li>#416 (draft) <code>lane/aufire412</code> lane.aufire412: #412 Agent Under Fire flat 16 fps split -- labels: none</li>
+<li>#401 <code>lane/flatlm13</code> lane.flatlm13: #13 class C, one flat colour per line-mode quad/polygon -- labels: needs-audit-1, verified</li>
+<li>#396 <code>lane/blinx372d</code> lane.blinx372d: #372 remove the two synchronous surface downloads in the Blinx d -- labels: needs-audit-1, verified</li>
+<li>#395 <code>lane/ring53impl</code> #53: six-entry ring of stale FF lighting inputs under a lit vertex program -- labels: claimed:cloud, needs-audit-1</li>
+</ul>
+<h4>Job errors (last 24h, from the units' logs)</h4>
+<ul>
+<li><b>board</b> (<code>~/hakux-work/logs/board/systemd.log</code>):</li>
+</ul>
+<pre><code>509:python3: can&#x27;t open file &#x27;~/hakux-work/board-wt/docs/testing/jobs/summarise_run.py&#x27;: [Errno 2] No such file or directory
+555:python3: can&#x27;t open file &#x27;~/hakux-work/board-wt/docs/testing/jobs/summarise_run.py&#x27;: [Errno 2] No such file or directory
+846:python3: can&#x27;t open file &#x27;~/hakux-work/board-wt/docs/testing/jobs/summarise_run.py&#x27;: [Errno 2] No such file or directory</code></pre>
+<ul>
+<li><b>arms</b> (<code>~/hakux-work/logs/arms/systemd.log</code>):</li>
+</ul>
+<pre><code>3:2026-09-19T02:56:34Z   skip e7d2d7398fa68af98650c6b1514d29fcda61b6a112336558f20fe7d37100d218: lane/blitsafe:docs/testing/predictions/issue89-clear-pad-alpha-shape.json: request.sh refused the base a</code></pre>
+<ul>
+<li><b>fold</b> (<code>~/hakux-work/logs/fold/systemd.log</code>):</li>
+</ul>
+<pre><code>2418:2026-09-26 13:27:10 PDT   local refs/heads/lane/cull13 KEPT: error: cannot delete branch &#x27;lane/cull13&#x27; used by worktree at &#x27;~/hakux-work/wt/cull13&#x27;
+2423:2026-09-26 13:27:46 PDT   local refs/heads/lane/doa413 KEPT: error: cannot delete branch &#x27;lane/doa413&#x27; used by worktree at &#x27;~/hakux-work/wt/doa413&#x27;
+2444:2026-09-26 14:00:48 PDT   local refs/heads/lane/forza414 KEPT: error: cannot delete branch &#x27;lane/forza414&#x27; used by worktree at &#x27;~/hakux-work/wt/forza414&#x27;</code></pre>
+<h4>Host</h4>
+<ul>
+<li>checkout <code>~/hakuX</code> on master, 63 behind origin/master (jobs run the fetched trunk regardless)</li>
+<li>timers: manifest next 14:15:00 PDT; status next 14:10:52 PDT</li>
+<li>attempts: aasample=3 armlabel=1 armpin=1 armsscope=1 armsskip=3 aufire412=2 backlogstate=3 blankrule297=2 blendarm50=1 blendrace50=2 blinx372=1 blinx372b=1 blinx372c=2 blinx372d=1 blit83b=1 blit84=1 blitsafe=2 boardgate=4 boardprio=3 boardpushgate=1 branchprune=2 brdf315=1 brdf315b=1 buildflags427=1 ciskip=1 cloud-audit1-181=1 cloud-audit1-395=1 cloud-audit2-163=1 cloud-audit2-308=2 cloud-issue-10=1 cloud-issue-111=1 cloud-issue-112=1 cloud-issue-13=1 cloud-issue-188=3 cloud-issue-189=1 cloud-issue-200=2 cloud-issue-271=2 cloud-issue-278=1 cloud-issue-279=1 cloud-issue-282=3 cloud-issue-283=1 cloud-issue-284=4 cloud-issue-286=1 cloud-issue-297=1 cloud-issue-34=1 cloud-remediate-420=1 cloud190=1 cloudclaim=1 cloudtail=1 cloudterritory=1 clrpad164=2 clrsurf91=3 clrvk184=1 clrwb91=4 clrwin88=1 cull13=1 cullnf276=2 desktopchannel=2 diagdump77=2 diagsoak77=1 dmasurf277=1 doa413=1 doa413b=1 dpforce345=2 draftstrand=3 drvab77=1 fix311=1 flatlm13=1 fleetreg=2 fmv303=1 fmv303b=2 fmv303c=1 fog278=1 foldcancel=1 foldci=3 foldflow=2 foldindex=1 foldregress=2 forza414=1 fps382=1 fulldisc50=1 g8b8285=1 gamecheck=1 ghoul311=4 glchannel=1 glerr86=1 goldencorr287=1 goldovr287=1 handback=3 handbackresolved=1 handbackstrand=1 hilodot10=1 indexcheck=1 indexloc=2 laneshape=1 linecap13=2 localtime=1 nanattr281=1 nanfix281=1 nightlynotes=3 nightlytrunk=1 notespath=1 perfarch=2 perfbase=1 pilotgate=1 pmc188=3 pri432=2 primpv13=4 pshaniso284=2 pshqueue=3 regs200=1 remotechannel=1 ring53=1 ring53impl=3 selftest86=1 selftestsplit=2 shade224=1 shadeflat224=4 shadetie224=1 shadetie224b=2 sphere273fix=1 spheremap273=1 stalecheck=2 statusdash=1 statusfresh=1 statuspage=1 surfwatch382=1 swatchorder50=1 sweepcover=2 sweepremote=1 sweeps=1 swizzle87=1 tbchurn424=1 tcgchurn=2 texvol283=1 tie282c=1 tiecode282=2 titleplay=1 titlerun=3 toolsmith=3 turncap=1 turnipfork=2 vblank65=1 vcpuprime428=1 visual404=1 vklayer34=1 vkpointsize34=4 vol283r=1 vshconst=3 vshcpu345=1 vshnobegin242=2 vshr12280=1 vshsubneg255=1 vtxarr262=1 wbuf31fix=3 wbuf31sel=1 wbufclip=2 wbufdepth24=1 windowbudget=2 wparam223=1 wparamclip223=2 wparamcode223=1 wparamff223=1 wparamgeom223=1 x1a7271=1 y16bump10=2 yuv10=1 zclamp276=1 zdepth272=1 zetaswap275=1 zrtz272=4 </li>
+</ul></section>
+<footer>Written by <code>docs/testing/jobs/status.sh</code> on the host every job tick and every 30 min; republished when the content changes (at most every 10 min) and at least every 30 min. Every time here is PDT. Next tick due by 2026-09-26 14:31 PDT.</footer>
+<script>
+(function(){var e=document.getElementById('age');if(!e)return;var t=+e.dataset.t,st=+e.dataset.stale;
+function f(){var s=Math.max(0,Math.floor(Date.now()/1000-t)),m=Math.floor(s/60),x;
+x=m<1?'just now':m<120?m+' min ago':Math.floor(m/60)+'h '+(m%60)+'m ago';
+e.textContent='updated '+x+' ('+e.dataset.at+')'+(s>st?' -- STALE: the host has stopped publishing':'');
+e.className=s>st?'stale':''}f();setInterval(f,30000)})();
+</script></main></body></html>
