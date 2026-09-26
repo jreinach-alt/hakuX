@@ -147,3 +147,79 @@ case "$SCMR" in UNCHANGED) bad "MUTANT wide-glob: the sed matched nothing" ;;
                 *"| 2/4 · 26 · 2 void |"*) bad "MUTANT wide-glob: the check stayed green ($SCMR)" ;;
                 *"| 3/5 "*) ok "MUTANT wide-glob goes red: $SCMR" ;;
                 *) bad "MUTANT wide-glob: unexpected row '$SCMR'" ;; esac
+
+# ------------------------------------------- the unscoreable list (#295/#296)
+echo "== sweep cover: an unscoreable golden is out of the denominator, by name"
+# Fog gains a tenth golden, `zz`, that the fixture list calls unscoreable.
+# The cell's goldens figure must be 9 (+1 unscoreable), not 10.
+: > "$SC/goldens/Fog/zz.png"
+printf '{"unscoreable":{"Fog":{"tests":["zz"],"reason":"fixture"}},"not_captured_by_design":{"Nothing_saved":{"tests":3,"reason":"fixture"}}}\n' > "$SC/unscoreable.json"
+sc_un() { python3 "$1" --run "fix=$SC/board/fix" --goldens "$SC/goldens" --unscoreable "$SC/unscoreable.json" --md "$SC/un.md" >/dev/null 2>&1; sc_row "$SC/un.md"; }
+SCU=$(sc_un "$TESTING/scoreboard.py")
+case "$SCU" in *"| 9 (+1 unscoreable) |"*) ok "goldens is 9 (+1 unscoreable): $SCU" ;;
+               *) bad "the unscoreable golden is still in the denominator: '$SCU'" ;; esac
+check "the not-captured-by-design suite is named" grep -q 'not captured by design: `Nothing_saved` (3 tests)' "$SC/un.md"
+SCM=$(sc_mut ignore-list 's|^                dead = unscoreable.get(s, set())|                dead = set()|')
+if [ -z "$SCM" ]; then bad "MUTANT ignore-unscoreable: the sed matched nothing"
+else
+    SCMR=$(sc_un "$SCM")
+    case "$SCMR" in *"| 10 |"*) ok "MUTANT ignore-unscoreable goes red: $SCMR" ;;
+                    *) bad "MUTANT ignore-unscoreable: expected goldens 10, got '$SCMR'" ;; esac
+fi
+rm -f "$SC/goldens/Fog/zz.png"
+# The committed list: 20 goldens (#295) and two by-design suites (#296).
+SCN=$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(sum(len(e["tests"]) for e in d["unscoreable"].values()), sorted(d["not_captured_by_design"]))' "$TESTING/unscoreable_goldens.json" 2>&1)
+check "unscoreable_goldens.json holds the 20 goldens and Clipping_precision, PVIDEO ($SCN)" \
+    [ "$SCN" = "20 ['Clipping_precision', 'PVIDEO']" ]
+
+# ---------------------------------------------------- queue_full_sweep.sh
+echo "== sweep cover: queue_full_sweep resolves a tag to a commit and queues its legs apart"
+SQ="$SC/q"
+mkdir -p "$SQ/repo" "$SQ/goldens/Fog" "$SQ/goldens/Texture_render_target"
+: > "$SQ/depth.iso"; : > "$SQ/inter.iso"; : > "$SQ/base6743.iso"
+git -C "$SQ/repo" init -q && git -C "$SQ/repo" -c user.name=t -c user.email=t@t commit -q --allow-empty -m one \
+    && git -C "$SQ/repo" -c user.name=t -c user.email=t@t tag -a v1 -m tag
+SQC=$(git -C "$SQ/repo" rev-parse --short 'v1^{commit}' 2>/dev/null)
+SQT=$(git -C "$SQ/repo" rev-parse --short v1 2>/dev/null)
+check "fixture: the annotated tag's object differs from its commit ($SQT vs $SQC)" \
+    bash -c '[ -n "$1" ] && [ "$1" != "$2" ]' _ "$SQC" "$SQT"
+sq_run() {  # sq_run SCRIPT DISPATCH_DIR ARGS... (in the fixture repo)
+    local s=$1 d=$2; shift 2
+    (cd "$SQ/repo" && DISPATCH_DIR="$d" GOLDENS="$SQ/goldens" DEPTH2025_ISO="$SQ/depth.iso" \
+        INTERACTIVE_ISO="$SQ/inter.iso" bash "$s" "$@") 2>&1
+}
+sq_ref() { python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["ref"])' "$1" 2>/dev/null; }
+sq_leg() {  # sq_leg FILE -> "suite|only|base_iso|arm"
+    python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); print("|".join([",".join(r["suites"]), ",".join(r.get("only_tests") or []), r.get("base_iso",""), r["arm"]]))' "$1" 2>&1
+}
+sq_run "$TESTING/queue_full_sweep.sh" "$SQ/d1" --with-depth-2025 --with-blend-interactive --with-rtloop v1 fix >/dev/null
+check "main sweep queued one request per golden suite" \
+    bash -c '[ -f "$1/z-fix-001-Fog.req" ] && [ -f "$1/z-fix-002-Texture_render_target.req" ]' _ "$SQ/d1/queue"
+check "the request's ref is the tag's COMMIT ($SQC), not the tag object ($SQT)" \
+    [ "$(sq_ref "$SQ/d1/queue/z-fix-001-Fog.req")" = "$SQC" ]
+check "depth leg: Depth buffer on the v2025-03-14 disc, its own label" \
+    [ "$(sq_leg "$SQ/d1/queue/z-fix.depth2025-001-Depth_buffer.req")" = "Depth buffer||$SQ/depth.iso|fix.depth2025" ]
+check "blend leg: Blend tests on the interactive disc, its own label" \
+    [ "$(sq_leg "$SQ/d1/queue/z-fix.blend-interactive-001-Blend_tests.req")" = "Blend tests||$SQ/inter.iso|fix.blend-interactive" ]
+check "rtloop leg: only RenderTextureLoop, stock disc, its own label" \
+    [ "$(sq_leg "$SQ/d1/queue/z-fix.rtloop-001-Texture_render_target.req")" = "Texture render target|Texture render target::RenderTextureLoop||fix.rtloop" ]
+sq_run "$TESTING/queue_full_sweep.sh" "$SQ/d2" v1 fix >/dev/null
+check "without flags: exactly the 2 main requests, no leg" [ "$(ls "$SQ/d2/queue" | wc -l)" = 2 ]
+sq_run "$TESTING/queue_full_sweep.sh" "$SQ/d3" --base-iso "$SQ/base6743.iso" v1 >/dev/null
+check "--base-iso: the main request names the disc, and so does the default label" \
+    [ "$(sq_leg "$SQ/d3/queue/z-$SQC-iso-base6743-001-Fog.req")" = "Fog||$SQ/base6743.iso|$SQC-iso-base6743" ]
+sq_run "$TESTING/queue_full_sweep.sh" "$SQ/d4" --base-iso "$SQ/nope.iso" v1 fix >/dev/null
+check "--base-iso on a missing disc is refused and queues nothing" [ ! -d "$SQ/d4/queue" ]
+sq_run "$TESTING/queue_full_sweep.sh" "$SQ/d5" v1 fix.leg >/dev/null
+check "a '.' in a label is refused (reserved for legs)" [ ! -d "$SQ/d5/queue" ]
+# MUTANT: the bare ref, as before defect 12b moved here.
+mkdir -p "$SQ/mut"
+sed 's|"\$REF^{commit}"|"$REF"|' "$TESTING/queue_full_sweep.sh" > "$SQ/mut/queue_full_sweep.sh"
+if cmp -s "$TESTING/queue_full_sweep.sh" "$SQ/mut/queue_full_sweep.sh"; then bad "MUTANT bare-ref: the sed matched nothing"
+else
+    sq_run "$SQ/mut/queue_full_sweep.sh" "$SQ/dm" v1 fix >/dev/null
+    SQM=$(sq_ref "$SQ/dm/queue/z-fix-001-Fog.req")
+    case "$SQM" in "$SQC") bad "MUTANT bare-ref: still the commit ($SQM); the check cannot go red" ;;
+                   "$SQT") ok "MUTANT bare-ref goes red: the request names the tag object $SQM" ;;
+                   *) bad "MUTANT bare-ref: unexpected ref '$SQM'" ;; esac
+fi

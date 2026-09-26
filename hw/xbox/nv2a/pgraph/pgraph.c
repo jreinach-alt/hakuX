@@ -3237,12 +3237,20 @@ static unsigned int kelvin_map_texgen(uint32_t parameter, unsigned int channel)
      * Sphere mapping exists for S and T; reflection and normal mapping for
      * S, T and R. A guest can still ask for them on the other channels --
      * `Texgen with texture matrix` does -- and this used to abort the
-     * emulator on the spot. What the hardware does with the request is not
-     * known; treating the channel as disabled draws a frame to measure
+     * emulator on the spot. What the hardware does with any of them on Q is
+     * not known; treating the channel as disabled draws a frame to measure
      * against the goldens, which an abort never can (issue #28).
      */
     case NV097_SET_TEXGEN_S_SPHERE_MAP:
-        if (channel >= 2) {
+        /* Sphere mapping on R gives the reflection vector's z, the value
+         * reflection mapping puts there: Texgen with texture matrix
+         * SphereMap_RotateX reads it as t and SphereMap_Arbitrary as q, and
+         * both goldens match r.z to 1 LSB over the whole quad (#273). Q has
+         * no evidence yet. */
+        if (channel == 2) {
+            texgen = NV_PGRAPH_CSV1_A_T0_S_REFLECTION_MAP; break;
+        }
+        if (channel >= 3) {
             NV2A_UNIMPLEMENTED("texgen SPHERE_MAP on channel %u", channel);
             texgen = NV_PGRAPH_CSV1_A_T0_S_DISABLE; break;
         }

@@ -1804,7 +1804,9 @@ A local instrument, never committed, logged the mismatched-pitch shortcut only
 there: twice inside Center1, and zero times on disc109, Clear and surf1.
 CenterCorner2 and SquareOffset4 never take the shortcut, because their
 AA-scaled surfaces fail the extent test. They read 0 each when run alone and
-78,496 after Center1, because they reuse the binding it leaves.
+78,496 after Center1. Their own binds re-uploaded the right texels, but the
+push descriptor still named the surface view Center1 had bound directly (see
+the next section; this sentence first said they reused Center1's binding).
 
 **The fix** (`2c94b7ed`) is GL's condition, added to Vulkan's check for colour
 surfaces only. It sits after the zeta return, because nothing measured says
@@ -1836,7 +1838,9 @@ files, each differing from its posted draft only in `b_ref` and
 **Not covered.**
 - Zeta surfaces are unchanged.
 - `GPUAAWriteAfterCPUWrite`'s carry-over from the FBSurface tests: 2,540 px in
-  sequence, Vulkan only (GL reads 134).
+  sequence, Vulkan only (GL reads 134). The mechanism is a stale uniform block
+  on `create_pipeline()`'s early return (5840601274). `vk/draw.c` passes to
+  this lane when lane.vtxarr262's PR #264 folds (5841098119).
 - Device runs. The code is the same on Android, but no device ran it.
 
 **Re-run it.** Build the disc from the stock image with `make_test_iso.py
@@ -1844,3 +1848,98 @@ files, each differing from its posted draft only in `b_ref` and
 --progress-log --shutdown-on-completion`. Run each binary under `renderer =
 'VULKAN'`, `surface_scale = 1`, from a fresh HDD with the shader caches
 cleared. Judge each arm pair with `ab_compare.py --expect` on its prediction.
+
+## #274, continued: a slot kept pushing a view its state no longer named (2026-09-26)
+
+**Where it started.** #327's audit LOW-1 said CenterCorner2 and SquareOffset4
+picked up Center1's error through the texture cache. I measured it on the
+#327-off build (5840823864), and it was not the cache. Their first bind hit
+Center1's node, found it dirty (hash 0 from the shortcut against VRAM's
+`8d3a3564…`) and re-uploaded the right texels. But Center1 had bound the
+surface's own view directly, and `pgraph_vk_bind_textures()` rebuilt the push
+infos only when a slot's node changed. The node was the same, so every draw in
+both tests kept pushing Center1's surface view. A one-line refresh took both
+from 78,496 to 0. The host approved the fix as this lane's next change
+(5841098119, board wave 209), with the retired-view case as the priority.
+
+**What else the code did.**
+- `create_texture()` clears `tex_surface_direct[]` on entry, and can rebuild a
+  node's image in place. Either changes what a slot samples without changing
+  its node.
+- `pgraph_vk_texture_surface_view_retired()` dropped a retired view only from
+  slots still flagged direct. A slot that had left direct mode kept the view in
+  `push_tex_infos`, and every new command buffer re-pushes those infos as they
+  stand. That is a use-after-free once the view is destroyed (by reading).
+- `pgraph_vk_bind_textures()` clears `texture_bindings_changed` on entry, so a
+  rebuild the hook requested between draws could be dropped.
+
+**Measured before any code** (local detectors, never committed). The main one
+compares, at every texture push, the view, layout and sampler each slot pushes
+with the ones its state names.
+
+| build | discs | push-time mismatches | slot left direct mode on its node | retired view missed |
+|---|---|---:|---:|---:|
+| #327's condition off | aacs | 3 + 3 (CenterCorner2, SquareOffset4) | 1 | 0 |
+| master `c6d14cad` | aacs, AA+DMA, Clear, disc109, surf1 (359 captures) | 0 | 0 | 0 |
+| `3940c764`, no push-time check | full stock suite, 2,436 tests in 94 suites, stopped inside W buffering | n/a | 0 | 0 |
+
+On master a retired view was still in the push infos twice, once on disc109 and
+once on surf1, both on slot 0 and still flagged direct. The existing branch
+handled both, and the view was never pushed afterwards. After #327 nothing
+scanned reaches the missed case: this is hardening.
+
+**The fix** (`bcb7433f`, `vk/texture.c` only):
+1. The bind loop compares the slot's effective view, layout and sampler across
+   `create_texture()`, on both exits, not only its node.
+2. The retire hook acts on any slot whose push info names the retired view,
+   flagged direct or not. It points that slot at the dummy texture until its
+   rebuild, marks it dirty, and requests the rebuild three ways: the flag, a
+   dirty pipeline state (both fast paths in `vk/draw.c` require it clean, so the
+   next draw goes through `pgraph_vk_update_descriptor_sets()`), and a pending
+   request `pgraph_vk_bind_textures()` starts from instead of dropping. A slot
+   the flag test missed also bumps `texture_state_gen`.
+
+**Registered before the code** (#274, 5841797279): four guards, `a_ref`
+`c6d14cad`, every capture bit-identical, better 0, worse 0. `4acd68a6` commits
+them with `b_ref` `bcb7433f`; each differs from its posted draft only in
+`b_ref` and `registered_utc`. aacs is not registered separately: its three
+tests run in the same order inside Antialiasing + DMA. All ran on desktop
+Vulkan on llvmpipe, `surface_scale = 1`, 3 runs per arm, alternating, with
+the arms started at 01:10:58Z, after the registrations were committed.
+
+| registration | disc | verdict |
+|---|---|---|
+| `remote-274-vk-push-refresh-aadma.json` | Antialiasing + DMA, 14 captures | **PASS, 16 of 16** |
+| `remote-274-vk-push-refresh-clear.json` | Clear + Pixel shader, 33 | **PASS, 35 of 35** |
+| `remote-274-vk-push-refresh-disc109.json` | disc109, 73 | **PASS, 75 of 75** |
+| `remote-274-vk-push-refresh-surf1.json` | surf1, 236 | **PASS, 238 of 238** |
+
+Every capture on all four discs is byte-identical between the arms. Both
+handled retirements, where the new hook code runs, fall inside disc109 and
+surf1.
+
+**Shown locally, never committed and not an arm.** `bcb7433f` with #327's
+condition switched off reads Center1 78,496 (the shortcut itself), and
+CenterCorner2 and SquareOffset4 0 each, with 0 push-time mismatches. Without
+the fix, the same build read 78,496 on all three, with 3 + 3 mismatches.
+
+**Re-run it.** Build each disc from the stock image with `make_test_iso.py
+--progress-log --shutdown-on-completion` and its suites (listed in each
+registration's `disc`). Run each binary under `renderer = 'VULKAN'` and
+`surface_scale = 1`, from a fresh HDD with the shader caches cleared. Judge each
+arm pair with `ab_compare.py --expect` on its prediction.
+
+**Not covered.**
+- **A node that was only ever bound directly has no texels of its own.**
+  `bind_surface_as_texture()` fills nothing, and the node's image stays in
+  `VK_IMAGE_LAYOUT_UNDEFINED`. When such a slot leaves direct mode, both A and
+  B rely on `create_texture()` uploading from VRAM before the node's view is
+  sampled. It did in the one transition measured (CenterCorner2 on the
+  #327-off build). A transition with clean VRAM would not upload, and B would
+  then push the unfilled image where A pushed the stale surface view. This is
+  by reading; nothing scanned reaches it. The next step would be a detector for
+  a non-shortcut hit on a node still in `UNDEFINED` layout.
+- **The non-push descriptor path** is covered by reading only. llvmpipe uses
+  push descriptors.
+- **The suites after W buffering** were not scanned.
+- **Device runs.** The code is the same on Android, but no device ran it.
