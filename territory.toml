@@ -1169,8 +1169,10 @@ note = "DISPATCHED AT TERRITORY WAVE 237 (job.board, 2026-09-26): #315 second pa
 [lane.y16bump10]
 issues = ["10"]
 files = ["docs/testing/predictions/y16bump10-*.json", "docs/lanes/y16bump10/**"]
+released = ["docs/testing/predictions/y16bump10-*.json", "docs/lanes/y16bump10/**"]
+released_at_ready = 367
 standing = false
-note = "BRIEFED AT WAVE 232 (job.board, 2026-09-26T06:15Z), STARTED BY THE HOST (draft PR #367) for #10's Y16 class, on lane.xbox's silicon measurements (PR #359 low byte feeds an offset; PR #363 the HORIZONTAL offset reads the low byte, the vertical offset shows no sweep). glsl/psh.c is LENT from lane.pshqueue for the Y16 bump read only (append_bump_channel, ~:1725-1830), disjoint from its fog/DOT_ZW/G8B8/BRDF hunks; it stays on pshqueue's row. YUV and Y8/AY8/A8Y8 have no mechanism and are not touched. Brief: briefs/y16bump10.md."
+note = "RELEASED AT READY (hostops 2026-09-26T08:22Z): PR #367 is out of draft, CI green, MERGEABLE; labelled needs-audit-1 (touches glsl/psh.c). Files stay listed for audit and fold. BRIEFED AT WAVE 232 (job.board, 2026-09-26T06:15Z), STARTED BY THE HOST (draft PR #367) for #10's Y16 class, on lane.xbox's silicon measurements (PR #359 low byte feeds an offset; PR #363 the HORIZONTAL offset reads the low byte, the vertical offset shows no sweep). glsl/psh.c is LENT from lane.pshqueue for the Y16 bump read only (append_bump_channel, ~:1725-1830), disjoint from its fog/DOT_ZW/G8B8/BRDF hunks; it stays on pshqueue's row. YUV and Y8/AY8/A8Y8 have no mechanism and are not touched. Brief: briefs/y16bump10.md."
 
 
 [lane.vkpointsize34]
