@@ -3,7 +3,63 @@
 Base: master @ a5b5b628f2. Continues lane.ring53 (`docs/lanes/ring53/NOTES.md`),
 with the console weights of PR #394 (`docs/testing/xbox-ringw-2026-09-26.md`).
 
-## 0. Outcome (read first): blocked on one measurement
+## 0. Outcome (read first): exact held out; prediction registered
+
+**Attempt 3 (2026-09-26).** The boundary run on silicon (PR #406,
+`docs/testing/xbox-ringw-boundary-2026-09-26.md`) weighed every candidate
+at 0: `WAIT_FOR_IDLE`, `SET_CONTEXT_DMA_COLOR`, `SET_TRANSFORM_EXECUTION_MODE`,
+`_PROGRAM_CXT_WRITE_EN`, `_PROGRAM_LOAD`, `_PROGRAM_START` and `_CONSTANT_LOAD`.
+That leaves the flip pair (`FLIP_INCREMENT_WRITE`, `FLIP_STALL`) as the sole
+unweighed member of the boundary set, and it carries the default +1 each.
+- **The +2 is derived, not fitted.** The pair is the only unmeasured
+  member left, and the old residual was exactly −2.
+- **Only the pair's sum is visible.** Every boundary issues both methods once,
+  and nothing else issues either.
+- **The per-name label fills are accounted for.** The desktop runs the same XBE,
+  so each test's printed name emits the same `pb_fill`s. The first-draw starts
+  that vary by name (ringw2 N0 0, N1 3, N4 0, N6 2) come out equal to silicon's.
+
+Re-priced on the merged tree (`b4fd40a16e`; nothing fitted on any row):
+
+| set | rows | exact |
+|---|---:|---:|
+| ringw (`starts.py`, console 2026-09-26) | 15 cases × 6 draws | 15 |
+| ringw2 (boundary methods) | 8 cases × 6 draws | 8 |
+| Specular `ControlFlags_VS` ring-visible quads (`ring53_price.py`) | 9 | 9 (code and start) |
+| Specular_back, same | 9 | 9 |
+
+Pixel price, desktop GL (`pxprice.py`). The first figure counts pixels with
+any channel off; `>1` counts those off by more than one step:
+
+| capture | ring off | ring on | floor |
+|---|---:|---:|---:|
+| Specular/ControlFlags_VS | 76,531 (>1: 58,629) | 26,724 (>1: 909) | ControlFlags_FF >1: 882 |
+| Specular_back/ControlFlags_VS | 89,143 (>1: 72,970) | 40,424 (>1: 8,809) | ControlFlagsNoLight_VS >1: 8,808 |
+
+- **Every other Specular and Specular_back capture has the same count ring
+  on and off.**
+- **All 233 captures of 12 guard suites are byte-identical ring on vs off**
+  (`onoff.py g3off g3on`). The suites: Lighting range, accumulation, control,
+  spotlight, normals and Two Sided; Material color, color source and alpha;
+  Fog gen, vsh and carryover.
+- **How "off" was built:** the same tree with `reads_ring` forced false in
+  `vsh.c`, then reverted and rebuilt.
+
+Prediction: `docs/testing/predictions/ring53impl-ring.json`
+(a `504aeee4d4` = master, b `b4fd40a16e`).
+- **Movers:** `better=2`, `worse=0` over the disc.
+- **Must-not-move:** the other captures, by glob.
+
+Exact device values are not predicted: the desktop channel is GL on llvmpipe,
+and its floors differ from the device's.
+
+**Why attempt 2 did not finish.** It applied the boundary weights (`ef22e2a037`)
+and re-derived all 33 rows exact. Then its session ended in the middle of the
+guard-suite runs (`on-*`, 08:23). Those commits, and the master merge, were
+left unpushed, and the prediction was never registered. The PR sat at
+`fb06644cb1`.
+
+### Attempt 2's blocker (superseded; kept for the record)
 
 **Blocked, as the brief directs for a table that fails held out.** The
 mechanism is implemented and validated end to end on the desktop channel.
@@ -74,7 +130,14 @@ mapped to the words pgraph sees:
 | one `pb_fill` | 2 headers, 5 words: CLEAR_RECT_HORIZONTAL, _VERTICAL; ZSTENCIL_CLEAR_VALUE, COLOR_CLEAR_VALUE, CLEAR_SURFACE (nxdk `pbkit_draw.c:51-59`) | 5 ≡ −1 | 5 words at +1 |
 | MATERIAL_ALPHA_BACK + 6 SPECULAR_PARAMS_BACK (B3) | 7 headers, 7 words (`ringweights.patch`: seven `PushF`) | 7 ≡ +1 | 7 words at +1 |
 | a vertex | counted at the draw's END | +1 each | `pgraph_glsl_ring_fill` returns the count |
-| SET_TRANSFORM_CONSTANT_LOAD (not a console row) | 1 word, 0x1EA4 | 0 | M7's first-draw start; the one method M7's setup adds to M0's (s0) |
+| SET_TRANSFORM_CONSTANT_LOAD | 1 word, 0x1EA4 | 0 | inferred from M7; confirmed on silicon (ringw2 N7) |
+| WAIT_FOR_IDLE | 1 word, 0x0110 | 0 | ringw2 N1 |
+| SET_TRANSFORM_EXECUTION_MODE | 1 word | 0 | ringw2 N2 |
+| SET_TRANSFORM_PROGRAM_CXT_WRITE_EN | 1 word | 0 | ringw2 N3 |
+| SET_TRANSFORM_PROGRAM_LOAD | 1 word | 0 | ringw2 N4 |
+| SET_TRANSFORM_PROGRAM_START | 1 word | 0 | ringw2 N5 |
+| SET_CONTEXT_DMA_COLOR | 1 word | 0 | ringw2 N6 |
+| FLIP_INCREMENT_WRITE + FLIP_STALL | 2 words | +2 together (default +1 each) | the boundary residual, once every other member was measured; only the sum is visible |
 
 **Why methods, and not headers or words.**
 - If each header weighed +1, a `pb_fill` (two headers) would weigh 2. It weighs 5.
@@ -217,3 +280,10 @@ suites (`LHHLLH`, `HLLHHL`).
 - `dc_run.py`: runs a suite (or another ISO) on it and extracts the captures.
 - `between.py`: the FF→VS gaps' weighed words from a traced run.
 - `trace.patch`: the env-gated `RING53`/`RING53M` stderr trace.
+- `runall.sh <prefix>`: Specular, Specular back, ringw and ringw2 in parallel.
+- `starts.py <silicon console dir> <ours out dir>`: per-case window starts,
+  read with `ringw_score.py`. The silicon dir is `.../console-run/console`;
+  `console-run` itself reads 0 of 0.
+- `runsuites.sh <prefix> 'Suite' ...`: whole suites, four at a time.
+- `pxprice.py <tag> ...`: per-capture price against the goldens.
+- `onoff.py <prefixA> <prefixB>`: a byte-level diff of two `runsuites.sh` sets.
