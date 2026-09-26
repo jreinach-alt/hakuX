@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 228
-updated_utc = "2026-09-26T05:10:00Z"
+wave = 229
+updated_utc = "2026-09-26T05:40:00Z"
 
 
 [retired.hilodot10]
@@ -215,6 +215,12 @@ issues = []
 files = ["docs/testing/nv2a_index.py", "docs/testing/nv2a_index.json", ".github/workflows/nv2a-index.yml", "docs/lanes/indexloc/**"]
 note = "STARTED (host session, 2026-09-26T05:25Z), briefs/indexloc.md: root cause of the 2026-09-26 fold jam -- the index stores sites as file:LINE, so every hot-file edit rewrites ~100+ index lines and any two PRs on one file conflict in the index; check must tolerate line drift (anchor by content), build keeps fresh lines at fold. nv2a_index.py from [free]; the json and the CI workflow were unclaimed."
 
+[lane.zrtz272]
+issues = ["272", "275"]
+files = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/zrtz272-*.json", "docs/lanes/zrtz272/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 229 (job.board, 2026-09-26T05:40Z) for #272 (275k px) and #275's Swap (165k px, same defect): apply docs/lanes/zdepth272/vsh-ff-zrtz.patch (fixed-function screen z, every step rounded toward zero; vsh-ff.c only) on the tip that carries #321, register the NOTES arm after the last rebase, run it. vsh-ff.c came from lane.wparamcode223 (PR #321 folded 4bc77c3171). Brief: briefs/zrtz272.md."
+
 [lane.foldflow]
 issues = []
 files = ["docs/testing/jobs/fold.sh", "docs/lanes/foldflow/**"]
@@ -362,6 +368,7 @@ files = []
 note = "RETIRED AT WAVE 97: #99 was closed 2026-09-19T00:20Z as a duplicate of #75 (itself a duplicate of #39). The lane held no files and produced no commits, so there is nothing to fold and nothing to release; the row was the only thing left asserting coverage that does not exist. ORIGINAL NOTE: #99, dispatched ANALYSIS-ONLY and with a WARNING ATTACHED, because the issue is a title with an empty body and no tracker entry: three Stencil ZERO captures reading 0 -> 100,000 px between 2501f35211 and 0026f00534. #79 SAYS NINE OF SIXTEEN STENCIL CAPTURES CHANGE VALUE BETWEEN RUNS ON ONE BUILD, so a two-sha delta over that suite is not evidence of a regression until the three are shown to be outside #79's nine -- that separation is the first step and it is offline. Then date the goldens and the captures against both shas before attributing anything to code: a golden newer than the run, or a capture older than the fix, reads exactly like a live defect and has cost this project a suite twice. It writes the tracker entry the issue never got. No files, no arm; if a bisect is warranted it comes back and asks for one."
 
 [free]
+# RELEASED (job.board wave 229) by retiring lane.wparamcode223 (PR #321 folded 4bc77c3171): glsl/geom.c. (vsh-ff.c went to lane.zrtz272; glsl/psh.c to lane.pshqueue.)
 # RELEASED (job.board wave 219) by retiring lane.perfbase (PR #310 folded bc6b93495a): hw/xbox/nv2a/pgraph/profile.c, docs/testing/perf/{run_perf,bench_ff,fps_target,profile_guest,loadsample}.sh, docs/testing/perf/summarise.py.
 # RELEASED (job.board wave 218) by retiring lane.fix311 (PR #334 folded c0abc2b1e6): vk/surface.c.
 # RELEASED (job.board wave 216) by retiring lane.texvol283 (PR #289 folded): glsl/psh.h, gl/texture.c, pgraph/texture.c.
@@ -542,6 +549,7 @@ note = "RETIRED AT WAVE 97: #99 was closed 2026-09-19T00:20Z as a duplicate of #
 files = ["hw/xbox/nv2a/pgraph/gl/texture.c", "hw/xbox/nv2a/pgraph/texture.c", 
 # RELEASED AT WAVE 158 by retiring lane.cloud190: PR #211 folded as f2e8ef8ba8 (#190 fixed).
     "hw/xbox/nv2a/pmc.c",
+    "hw/xbox/nv2a/pgraph/glsl/geom.c",
 # RELEASED AT WAVE 147 (host session): vk/draw.c + vk/surface.c by retiring lane.clrsurf91
 # (PR #148 closed, #207); the other paths were dropped by 19f97aa4 into NEITHER a row nor
 # [free] (lane.remote, #184 comment 5762957253).
@@ -916,11 +924,12 @@ standing = false
 retired_utc = "2026-09-25T22:10:00Z"
 note = "HOSTOPS 2026-09-26T02:35Z: PR #332 (pgraph.h helper + analysis) is ready in the audit pipeline (needs-audit-1). vk/draw.c is PROMISED here when PR #264 folds, ahead of lane.remote's #274 hunk (impact-first: 258k vs 2.5k px). Then: apply draw-c-viewport.patch on a fresh branch off master, register the NOTES s4 arm first, then build. RETIRED (job.board, board tick 2026-09-25T22:10:00Z): PR #267 MERGED 2026-09-25T21:25:34Z (fold 6341ee6aa5), no open PR on lane/gamecheck. docs/lanes/gamecheck/** RELEASED to [free]. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 185 (host session, 2026-09-25 11:55 PDT) on the owner's go-ahead: re-check Retro Tech Dad's hakuX 0.3.1 glitch list (#265) on today's build, on the Nova only -- hands-off soaks through the dispatcher, then bounded (<= 60 min) holds with evdev input for scenes a soak cannot reach. Measures and reports; no code. Brief: briefs/gamecheck.md."
 
-[lane.wbufdepth24]
-issues = ["266"]
-files = ["docs/lanes/wbufdepth24/**", "docs/testing/predictions/wbufdepth24-*.json", "hw/xbox/nv2a/pgraph/glsl/psh.c"]
+[retired.wbufdepth24]
+issues = []
+files = []
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 185 (host session, 2026-09-25 11:55 PDT) on the owner's question about the unowned 1.85 M W-buffering residual: #266, 24-bit depth on the FloorQuad family (~1.5 M structural px; ZBuf24D 0/16 exact; two blank WBuf24D captures). Re-measure on both handhelds, classify, price mechanisms offline, then request code files through the board. Brief: briefs/wbufdepth24.md. WAVE 188 (host session): + glsl/psh.c, the D24 gl_FragDepth write only (case DEPTH_FORMAT_D24, near line 3647), granted on the lane's request (#266 comment 5838034022). Do not touch the slope-offset code or #31's rule; the file returns to lane.wbuf31sel when this PR folds. PASS-ON ORDER (host session, 2026-09-25T21:02:11Z): when this lane's #266 PR folds, psh.c goes to lane.texvol283 (#283, PR #289, disjoint hunks at ~:510/~:3380), then back to lane.wbuf31sel (#244). QUEUE (host session, 2026-09-25T22:15:39Z, impact-first): psh.c after this lane's #266 PR folds: lane.texvol283 (#283, its hunk ready) -> lane.zclamp276 (#276, 129k px; also needs pgraph.c and psh.h) -> lane.wbuf31sel (#244, 0 scored px). Supersedes the wave-200 order. WAVE 214 (job.board): lane.wbuf31sel folded (PR #244), so the last leg (back to wbuf31sel) is void and lane.zclamp276 folded (PR #323); psh.c order is now lane.texvol283 (PR #289) -> lane.pshqueue (briefs/pshqueue.md: #278, #279, #285, #315, #271 hunks). WAVE 222 (job.board): PR #268 passed its arm (530/530) and sat in draft (blocked:needs-owner after three strand resumes); marked ready + needs-audit-1 this tick. psh.c is now LENT to lane.pshqueue for hunks disjoint from the D24 write rather than queued behind the fold."
+retired_utc = "2026-09-26T05:40:00Z"
+note = "RETIRED (job.board, board tick 2026-09-26T05:40:00Z): PR #268 MERGED (fold d3e3e0bf7c: #266 D24 saturate + FloorQuad triage), labelled folded, no open PR on lane/wbufdepth24. glsl/psh.c passes to lane.pshqueue, which was already editing it under the lend (its PR #347 carries the psh.c hunks); lane.zclamp276's request for psh.c (with pgraph.c, psh.h) follows pshqueue's fold. The #266 mechanism-B residual is #272's (fixed-function z rounding), not this row's."
 
 
 [retired.vshsubneg255]
@@ -1058,11 +1067,12 @@ files = []
 retired_utc = "2026-09-26T00:35:00Z"
 note = "RETIRED (job.board, wave 213): PR #318 MERGED 2026-09-26T00:01:03Z (fold ab1b915a9c), unit gone, no open PR on lane/turnipfork. Gate 0 report delivered (docs/investigations/adreno-driver-feasibility.md, posted on #68); tools/turnip/build.sh builds; the Gate 1 control run needs a driver swap a lane cannot make. #68 stays upstream. Files RELEASED."
 
-[lane.wparamcode223]
-issues = ["223"]
-files = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "hw/xbox/nv2a/pgraph/glsl/geom.c", "docs/testing/predictions/wparamcode223-*.json", "docs/lanes/wparamcode223/**"]
+[retired.wparamcode223]
+issues = []
+files = []
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 202 (job.board, 2026-09-25T21:40Z) for #223, on PR #304's fold (8af1bbb18e): build hunk (A) (vsh-ff.c position tail: nv2a 0*x=0 multiply + homogeneous carry past 2^19, priced ff bitri 1,601 / ff quad 2,126 coverage px) and hunk (B) (geom.c append_wedge: a one-negative zero-grid-area triangle draws nothing), together, with the must-not-move gate over w_gaps* first. Brief: briefs/wparamcode223.md. QUEUE (host session, 2026-09-25T22:15:39Z, impact-first): vsh-ff.c after PR #321 folds: lane.zdepth272 (#272, 275k px, round-toward-zero fixed-function screen z; hunk ready on PR #322)."
+retired_utc = "2026-09-26T05:40:00Z"
+note = "RETIRED (job.board, board tick 2026-09-26T05:40:00Z): PR #321 MERGED (fold 4bc77c3171: #223 hunk A vsh-ff.c position tail + hunk B geom.c zero-area wedge), labelled folded, no open PR on lane/wparamcode223. vsh-ff.c passes to lane.zrtz272 (queue recorded 2026-09-25T22:15Z); geom.c RELEASED to [free]. #223's residual stays with the tracker row."
 
 
 [retired.fix311]
@@ -1105,7 +1115,7 @@ note = "DISPATCHED AT TERRITORY WAVE 215 (job.board, 2026-09-26T01:00:00Z) for #
 
 [lane.pshqueue]
 issues = ["278", "279", "285", "315"]
-files = ["hw/xbox/nv2a/pgraph/glsl/psh.h", "docs/testing/predictions/pshqueue-*.json", "docs/lanes/pshqueue/**"]
+files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/psh.h", "docs/testing/predictions/pshqueue-*.json", "docs/lanes/pshqueue/**"]
 standing = false
 note = "DISPATCHED AT WAVE 222 (job.board, 2026-09-26T03:30Z). Four already-written glsl/psh.c hunks, one commit and one arm each: #278 fog INF (85k px), #279 DOT_ZW (65k), #285 G8B8 (32k), #315 BRDF (1.8k); #271's read side is skipped while vk/texture.c is lane.remote's. glsl/psh.c is LENT, not transferred: it stays lane.wbufdepth24's for its D24 write (case DEPTH_FORMAT_D24, ~:3698, PR #268, arm PASS 530/530, marked ready this tick); pshqueue's hunks are disjoint from it (~:1891, the DOT_ZW case, get_sampler_type), the wave-200 lend to texvol283 precedent. Granted with it: glsl/psh.h (free since texvol283 folded). psh.c is not on the Files line because check_territory allows one holder per file; the lend is this note. Brief: briefs/pshqueue.md. (hostops, 2026-09-26T03:35Z): psh.h dropped from [free] (it was granted here). #278 decision: glsl/vsh.c passes to this lane when PR #336 (lane.nanfix281) folds; #278 lands both halves (psh.c exemption + vsh.c flag) as one commit then. Not routed to nanfix281, whose PR is already in audit. #271 still waits for vk/texture.c. TICK 2026-09-26T05:20Z (job.board): [job.arms] VERDICT for #315 (pshqueue-315-brdf.json) is FAIL -- 1 of 30 checks violated; #279 and #285 PASS. PR #347 is `regressed` + `blocked:needs-owner` (handback DRAFT_STRAND_MAX spent while the lane waited on the arm; those resumes did not spend attempts). The lane's own stated plan for a FAIL stands: revert e3b13f5b45 in a new commit, record the Texture_BRDF figures, mark ready -- so the lane is resumed with the verdict (brief addendum), not escalated. #278 still waits for PR #336."
 
