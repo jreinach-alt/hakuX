@@ -1,11 +1,12 @@
 # lane cloud-271: #271, X1A7R8G8B8's 7-bit alpha (2026-09-26)
 
-Analysis-only, no `hw/` file. It builds on lane x1a7271's analysis
-(PR #306, folded, `docs/lanes/x1a7271/`). This lane re-derives the rule by a
-second, independent method, re-prices it against the two newest device
-captures, rebases the hunks onto master `71188b079b`, and re-maps them to
-today's holders. **The code is not compiled**: this host has no desktop
-build tree.
+Two sessions. The first (PR #365, folded) was analysis only: it re-derived
+#306's rule by a second, independent method, re-priced it against the two
+newest device captures, and regenerated the hunks on master. The second
+(this PR) **lands the read side** in `glsl/psh.c`, `glsl/psh.h` and
+`vk/texture.c` and registers its arm (section 6). The code is type-checked
+against the NDK compile line, not built: this host has no desktop build tree,
+and the arm's APK is the dispatcher's.
 
     python3 docs/lanes/cloud-271/invert_x1a7.py          # the rule, by inversion
     python3 docs/lanes/x1a7271/derive_x1a7.py --capture <run>/captures1   # the price
@@ -100,12 +101,11 @@ lane.remote takes the `vk/texture.c` hunk**, or the board grants one of them
 all three for one PR. The arm needs all three in one b_ref, because the
 `psh.c` uniform is inert until `vk/texture.c` sets it.
 
-## 4. The arm (legs written, not registered)
+## 4. The arm's legs
 
-It is not registered because its b_ref needs the three files above, and
-this lane holds none of them. A prediction file committed here would name
-refs with no code, and the arms job would run it anyway. Whoever lands the
-diff: merge master, then register the legs below after the last rebase.
+Registered in the second session as
+`docs/testing/predictions/cloud-271-x1a7-read.json` (section 6). The legs as
+first written:
 
 - **must_move** (key, base -> predicted, differing):
   - `Blend_surface/DstAlpha_XA_Z1A7RGB8`: 65,536 -> 16,384
@@ -163,6 +163,82 @@ whether `upload_pending` can serve as the gate: log, per X1A7 bind, whether
 the source surface was uploaded since its last full clear. Nothing in this
 lane changes that analysis.
 
+## 6. Landed, and the arm registered (second session, master `02374a6847`)
+
+**What landed.** `x1a7-read-side.diff` applied to master `02374a6847`: the
+`psh.c` and `vk/texture.c` hunks at an offset, the `psh.h` hunk with one
+line of context relaxed, because #347 has since folded `surfaceBSwap` into
+`PSH_UNIFORM_DECL_X` above `texScale`. The applied hunks are the diff's, byte
+for byte. `nv2a_index.json` is regenerated for the two new `case` sites
+against the fold pins (tests `6743b6ab`, the committed provenance): 104
+suites, 2,884 sites, `check` clean.
+
+**Checked offline.**
+
+- `typecheck.py` compiles `glsl/psh.c`, `vk/texture.c`, `vk/shaders.c` and
+  `gl/shaders.c` with the dispatcher build tree's NDK clang line, pointed at
+  this worktree. All four exit 0. The only warnings are on unchanged lines.
+  `vk/texture.c` reaches `psh.h` through `renderer.h` -> `glsl/shaders.h`.
+- `preflight.sh --allow-tracker`: psh_differ builds and reports, aci_vmstate,
+  territory, coverage and board files are ok. The nv2a index gate was the one
+  failure, and the regeneration above fixes it.
+- A test merge with PR #393 (lane.pshaniso284, unfolded, also `psh.c`/`psh.h`
+  /`vk/texture.c`) is clean on all three sources. Only the generated index
+  conflicts. #393's hunks are the anisotropy probe loop and BRDF, and none is
+  in the fetch block this rule sits in.
+- The VRAM path does not double-apply the rule. A surface downloaded to VRAM
+  keeps the host's 8-bit alpha (no X1A7 conversion on download), so a texture
+  uploaded from those bytes carries `h`, and the rule converts it once.
+
+**What the gate cannot see (not a defect today, recorded).** The mode is
+staged when `create_texture()` runs. `pgraph_vk_bind_textures()` skips that
+call for a slot whose registers are unchanged, and the stage then keeps the
+last staged value. This is the same staleness `pad_alpha_override` has, since
+that is baked into the view at the same point. A surface that changes drawn
+format (for example 0x06 to 0x04) at the same address and extent, with no
+texture register write in between, would keep the old mode. No golden
+exercises that sequence.
+
+**The arm.** `docs/testing/predictions/cloud-271-x1a7-read.json`,
+`02374a6847 -> 81e74b9ac9`, disc `Blend surface, Clear, Surface format`,
+written by `register.sh` here. Its legs are section 4's, with these changes:
+
+- `Fmt_R5G6B5` (0 today) is added to must-not-move. It is a 2-byte surface,
+  like X1R5G5B5.
+- `XA_{Z,O}1A7RGB8_Add_SrcA_DstA` (37,007 each) and `Fmt_X1A7R8G8B8_Z`
+  (32,743) are must-not-regress.
+- `{R5G6B5,X_Z1RGB5,X_O1RGB5}_Add_SrcA_*` are left unguarded.
+  `R5G6B5_Add_SrcA_DstA` read 14,833 and then 11,964 on two runs of one
+  binary (`pshqueue-base`).
+- **`Fmt_X1A7R8G8B8_O1A7R8G8B8` is registered at its base value, 16,383, as
+  a leg that is expected to fail.** `expect` is exact-only, so its failure
+  line reports the measured cost. So the verdict this arm should get is
+  **FAIL on exactly that one leg**. Any other failure line is a real finding.
+
+Base values were checked on the newest runs before registering. The Blend
+and Surface_format rows are from `1790394110-arms-pshqueue-base` (both runs
+agree, except the unguarded R5G6B5 row). The Clear rows, 65,568 and 65,472,
+are from `1790417358-arms-zrtz272-base`/`-fix` and `vkpointsize34`. The older
+solo-Clear `z-b-v040j1` reads 98,208, but it is an older APK.
+
+**The net, and who accepts the regression.** The predicted gains are
+229,376 structural px across the four Blend rows (294,912 -> 65,536
+differing) and 131,040 on Clear. The declared loss is at least 58,754 on one
+Surface_format capture, which is a clear net gain. It is still a capture
+that gets worse, and the brief says an accepted regression is the owner's.
+It is put to the owner on #271, not accepted here. The alternative is the
+per-surface gate (section 5), which needs `vk/surface.c` and the probe.
+
+**Status at the end of the second session: waiting, PR #405 in draft.**
+It waits on three things outside the session: the arms job's `[job.arms]`
+verdict on #405, CI on the head, and the owner's decision on #271 (accept
+the `Fmt_X1A7R8G8B8_O` regression, or hold for the per-surface gate). The
+resumed session should do the following. Read the verdict, and check
+`status` and coverage on every row. If the only failure is the declared leg
+and the owner accepts, merge master. If master moved any of the three
+sources, re-register on the new refs. Then mark the PR ready. If the owner
+declines, the PR waits for the section 5 probe.
+
 ## What the next lane should not repeat
 
 - Do not invert the top half's alpha alone. It is quadratic in `s` and
@@ -172,3 +248,9 @@ lane changes that analysis.
   X1R5G5B5 is not, so read the base run's `scores1.tsv`.
 - Do not apply #306's original diff to a branch carrying #347. Use the
   regenerated one here; its `psh.h` context is current.
+- Do not expect `ab_compare.py --register` to write `must_not_regress`: it
+  has no flag for it. `register.sh` adds it to the JSON before the commit.
+- Do not repoint every `-I<build tree>` path at a worktree for a type check.
+  The build tree also holds glib's install and generated headers. Repoint
+  only the paths that exist in the worktree, and the bare root, which the
+  `hw/xbox/...` includes resolve through (`typecheck.py`).

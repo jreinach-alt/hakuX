@@ -1,0 +1,43 @@
+# The first pass over a title with no route of its own (lane.titleplay).
+#
+# generic.route's input, plus a frame at every step of the way in: the
+# boot, each START/A round of the menus, and every play cycle. The frames
+# are what the second pass writes a title's own route from -- which screen
+# the title stopped on, and what it asked for -- so the menu phase that
+# generic.route plays blind is photographed here. A screencap every ~10 s
+# in the menus costs nothing scored; in play it is one per ~23 s.
+#
+# Like generic.route it never writes `mark gameplay`: it cannot know it got
+# there, and a reviewer decides from the frames (gameplay_by: review).
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+mark booted
+repeat 14 {
+    press START
+    wait 5
+    shot menu-start
+    press A
+    wait 5
+    shot menu-a
+}
+mark play
+repeat forever {
+    repeat 2 {
+        axis LY min
+        press A
+        wait 3
+        press A
+        wait 3
+        press A
+        wait 3
+        axis RX max
+        wait 0.5
+        axis RX mid
+        axis LY mid
+        wait 1
+    }
+    shot play
+}
