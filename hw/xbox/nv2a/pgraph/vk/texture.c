@@ -1775,6 +1775,13 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
     uint32_t max_anisotropy =
         1 << (GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_TEXCTL0_0 + texture_idx*4),
                        NV_PGRAPH_TEXCTL0_0_MAX_ANISOTROPY));
+    /* A stage whose anisotropic probes the pixel shader takes (#284) gets
+     * no host anisotropy on top of them, which would filter twice on a
+     * driver that honours it under NEAREST.  Every other stage keeps it.
+     * In the key, so the two samplers are separate cache nodes. */
+    if (pgraph_glsl_tex_aniso_probes(pg, texture_idx) > 1) {
+        max_anisotropy = 1;
+    }
 
     TextureKey key;
     memset(&key, 0, sizeof(key));

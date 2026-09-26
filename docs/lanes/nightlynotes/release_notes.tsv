@@ -1,0 +1,36 @@
+# Release-note lines for nightly_build.sh, one per merged PR: PR<TAB>category<TAB>line.
+# category: performance, stability, rendering, other, or none (left out: no player-visible effect).
+# A PR merged after 2026-09-26 should carry `Release note: <line>` in its own body instead;
+# a row here overrides that, so this is also where a published line is corrected.
+194	rendering	Triangle fans now take their flat-shaded colour from the right vertex (#13).
+211	other	More GPU status registers now read back as the console's do (#190).
+222	rendering	W-buffered depth now lines up with the console's where a window clip cuts a triangle (#31).
+234	stability	Games whose vertex programs write to constant registers no longer abort, and get the values the console computes (#233).
+235	rendering	Flat-shaded quads now split along the console's diagonal, so the textures on them no longer shift (#224).
+236	other	The GPU's engine-enable register now reads back what the game wrote, as on the console (#188).
+237	rendering	Vulkan: depth written over a colour surface now keeps the right values (#91).
+244	none
+245	other	A vertex sent outside a draw now runs its vertex program, as on the console (#242).
+247	rendering	OpenGL: swizzled surfaces with an unusual row pitch no longer corrupt when read back (#109).
+250	rendering	Triangles with one vertex behind the camera now draw the way the console draws them (#223).
+253	rendering	Vulkan: when colour and depth share the same memory, colour now wins, as on the console (#88).
+256	rendering	Vulkan: a texture sampling a surface that is cleared or drawn to is refreshed instead of showing the old image (#184).
+263	rendering	Fixed-function lighting now uses the console's arithmetic, fixing small shading differences (#224).
+264	rendering	Vulkan: geometry a game updates by rendering into its own vertex memory no longer draws stale (#262).
+268	rendering	The far part of floors and walls drawn with a 24-bit depth buffer no longer goes missing (#266).
+269	rendering	Vulkan: swizzled surfaces with an unusual row pitch no longer corrupt when copied to or from memory (#109).
+288	rendering	Tiny negative vertex inputs now keep their sign, as on the console (#255).
+289	rendering	Point-sampled Y16 and R16B16 textures now pass their colours through as the console does (#283).
+290	rendering	Vertex programs that write the position and a temporary in one instruction now compute the right colours (#280).
+308	none
+309	none
+310	none
+317	none
+321	rendering	Fixed-function geometry with vertices at extreme or infinite positions now draws as on the console (#223).
+327	rendering	Vulkan: a surface is no longer sampled directly as a texture when their row layouts differ (#274).
+330	rendering	Sphere-mapped textures on the R coordinate now render correctly (#273).
+332	none
+334	performance	Grabbed by the Ghoulies no longer slows to 2 fps after a few minutes; it holds about 29 fps on handhelds (#311).
+336	rendering	Vertex colours that compute to NaN now draw as the console draws them (#281).
+343	rendering	Vulkan: a texture no longer keeps showing a previous surface's image after the surface it samples changes (#274).
+347	rendering	Pixel shaders using the DOT_ZW depth mode, and G8B8 surfaces, now render with the right depth and byte order (#279, #285).

@@ -690,6 +690,11 @@ void pgraph_gl_bind_textures(NV2AState *d)
         uint32_t max_anisotropy =
             1 << (GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_TEXCTL0_0 + i*4),
                            NV_PGRAPH_TEXCTL0_0_MAX_ANISOTROPY));
+        /* The pixel shader takes this stage's anisotropic probes (#284):
+         * no host anisotropy on top of them.  Every other stage keeps it. */
+        if (pgraph_glsl_tex_aniso_probes(pg, i) > 1) {
+            max_anisotropy = 1;
+        }
 
         /* Check for unsupported features */
         if (filter & NV_PGRAPH_TEXFILTER0_ASIGNED) NV2A_UNIMPLEMENTED("NV_PGRAPH_TEXFILTER0_ASIGNED");

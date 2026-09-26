@@ -494,3 +494,92 @@ a published release is outward-facing and not in this brief.
   that line naming the trunk sha.
 - The fallback only fires on a repo with no ancestor `nightly-*` tag. On the
   real trunk that is never true now. It exists for fixtures and fresh clones.
+
+## 5. Third brief (2026-09-26): one player-facing line per merged change
+
+### The defect
+
+`nightly-2026-09-26` was built right (`6550967a5e`, the trunk's tip, APK
+attached). Its notes listed **commits**: 54 lane commits touching emulator
+code, including a diagnostic trace marked not for merge, arm scaffolding,
+audit remediations, an instrumentation ref and its revert, and the #315 BRDF
+commit and its revert. Then capped harness and docs sections with
+"…and 158 more" / "…and 335 more", and "563 commit(s) did the work". A
+player learns nothing from that, and it is our process in a public body.
+The published body is kept as `nightly-2026-09-26.before.md`.
+
+### What changed
+
+- **The unit is the merged PR.** The generator walks the trunk's
+  first-parent line over the same ancestry range (`<previous nightly>..HEAD`)
+  with `--diff-merges=first-parent`, so each fold is judged by its **net**
+  diff against the trunk it landed on. A PR whose commits add a change and
+  revert it has no emulator diff, so it is not an emulator change (this is
+  how #326/#315 drops out). A `fold: revert #N` (or `Revert "fold: PR #N`)
+  on the first-parent line cancels fold #N in the same window, and neither
+  is listed.
+- **Emulator paths** are `hw/ target/ accel/ android/ tcg/ ui/` (the brief)
+  plus `audio/` (every other gate's set).
+- **Each line comes from, in order:** a row in
+  `docs/lanes/nightlynotes/release_notes.tsv` (`PR<TAB>category<TAB>line`);
+  a `Release note (<category>): <line>` line in the PR body (fetched with
+  `gh api`); the PR title minus its lane prefix and anything after ` -- `,
+  with a guessed category. `none` leaves the change out (off-by-default
+  instrumentation).
+- **A line that still reads as process** (arm, lane, audit, remediate,
+  diagnostic, probe, scaffolding, instrumentation, not for merge, hunk,
+  triage, analysis, investigating, priced, golden, selftest) is logged and
+  the change is named only as `Further emulator changes: #N.` under Other.
+- **Sections:** Performance, Stability, Rendering fixes, Other. The
+  harness/docs sections and the tally are gone; any non-emulator change in
+  the window gives exactly one line, "Plus internal test-harness work."
+  Kept: the "Automated nightly. built from ..." line, the install line, the
+  ES-DE line. New last line: `_Notes updated YYYY-MM-DD HH:MM UTC._`.
+- The build half (gate, gradle, APK, tag, `gh release create`) is untouched.
+
+### nightly-2026-09-26, regenerated and applied
+
+120 first-parent commits since `nightly-2026-09-25`; 32 folds changed
+emulator code. 26 lines; 6 left out on purpose: #308, #309, #310 and #317
+(off-by-default prototypes, instruments and a probe), #332 (a helper nothing
+calls yet), and #244 (a follow-up to #222, whose one line covers both). The
+lines were written by hand from each PR's body and issue into
+`release_notes.tsv`, because none of those PRs carries a `Release note:`
+line. The body is `nightly-2026-09-26.notes.md`. It was applied with a REST
+PATCH on release 397141061 and read back identical (bar the trailing newline
+`--jq` adds). The first line is the build-time one ("the tip of
+`origin/master`"), since a notes run today sees the trunk 200 commits on.
+
+Without the map (`NIGHTLY_NOTES_MAP=/nonexistent`) the same window gives
+titles such as `nv2a/vsh: R12 reads the original oPos after a paired MAC+ILU
+write (#280)`. That is correct and carries no process words, but it is not
+player language. **So lines are only as good as their source.** Going
+forward, a PR that changes emulator code should carry `Release note
+(<category>): <line>` in its body. AGENTS.md should say so, and that is not
+in this lane's Files. Until it does, a row in `release_notes.tsv` is how to
+correct a line before or after it publishes.
+
+### Proof
+
+- `selftest.d/86-nightly-notes.sh` rewritten around a fixture with every
+  shape from the brief: a lane's trace/scaffolding/remediation commits under
+  a fold with a `Release note`; a change and its revert inside one PR; a
+  fold reverted by fold.sh; a jargon title corrected by a map row; an
+  investigation; a `none` row; a both-sides commit; a harness fold and 45
+  harness commits. 51 checks, all passing.
+- Falsification 3 runs the replaced per-commit listing over that fixture. It
+  lists the trace and the in-PR BRDF revert, and fails the no-process-words
+  check that the new notes pass.
+- Five mutants of the new script, each tripping at least one check: no
+  first-parent (15 checks fail), no revert filter (3), no map (4), no
+  process-word filter (2), no title cleaning (5).
+
+### For the next lane
+
+- `section_of` in 86 anchors on the four `### ` headings. Rename a heading
+  and change both.
+- Direct (non-fold) emulator commits on the trunk are still listed by
+  subject. 87-nightly-trunk.sh relies on that, and on the real trunk they
+  are rare. One with a process word is dropped, not listed by number.
+- The category guess is a keyword list. It is a fallback; the map and the
+  body line are what make a line right.
