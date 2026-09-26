@@ -2691,6 +2691,16 @@ DEF_METHOD(NV097, SET_CONTROL0)
     PG_SET_MASK(NV_PGRAPH_CONTROL_0,
              NV_PGRAPH_CONTROL_0_TEXTUREPERSPECTIVE,
              texture_perspective);
+
+    /* The colour-space field converts every texture stage's output after
+     * the texture shader (#10, docs/testing/xbox-csc-2026-09-26.md); psh.c
+     * reads it back. CONTROL_0 is a shader register, so the write marks the
+     * shader state dirty. The register field holds two bits; an undefined
+     * method value (above 3) is stored as 3, which psh.c reports as
+     * unimplemented and passes through. */
+    uint32_t csc = GET_MASK(parameter, NV097_SET_CONTROL0_COLOR_SPACE_CONVERT);
+    PG_SET_MASK(NV_PGRAPH_CONTROL_0, NV_PGRAPH_CONTROL_0_CSCONVERT,
+                csc > 3 ? 3 : csc);
 }
 
 DEF_METHOD(NV097, SET_LIGHT_CONTROL)
