@@ -19,6 +19,7 @@ docs/testing/pgraph-harness.md for the measurement side.
 Usage:
     nv2a_index.py build [--tests DIR]      regenerate nv2a_index.json
     nv2a_index.py check [--tests DIR]      fail if the committed index is stale
+                                           (line drift alone passes; --exact fails it)
     nv2a_index.py query symbol NV097_...   definition, sites, suites, issues
     nv2a_index.py query suite "Bump map"   what it exercises and where
     nv2a_index.py query file PATH[:LINE]   what lives here and who tests it
@@ -1062,15 +1063,129 @@ def cmd_blast(index, files):
             print("  ... and %d more" % (len(weak) - 18))
 
 
-def cmd_check(repo, tests_root, support_dirs=None):
+def site_anchor(site):
+    """What identifies a site, apart from the line it happens to sit on.
+
+    The file, the role and the matched line's own text (whitespace-collapsed).
+    The hardware symbol is the key the site is filed under, so a site is
+    anchored by (symbol, file, role, text). A line number is not identity:
+    four lines inserted near the top of psh.c moved 125 recorded sites and
+    changed none of them.
+    """
+    path = site.get("loc", "").rsplit(":", 1)[0]
+    return (path, site.get("role"), " ".join(site.get("text", "").split()))
+
+
+def symbol_anchor(meta):
+    """A symbol's definition with the line number of `defined_at` dropped."""
+    out = dict(meta)
+    out["defined_at"] = out.get("defined_at", "").rsplit(":", 1)[0]
+    return out
+
+
+def anchored_drift(part, committed, fresh):
+    """Split a symbols/sites disagreement into real changes and line drift.
+
+    Returns (real, drifted): `real` lists one human line per change the index
+    must be rebuilt and committed for -- a symbol added or removed, a site
+    added or removed, a site whose file changed, a site whose anchor text is
+    no longer found. `drifted` names the keys whose entries differ ONLY in
+    line numbers of entries whose anchors all still match.
+
+    Sites are compared as a multiset of anchors per symbol, so two identical
+    lines in one file count twice and losing one of them is a real change,
+    and reordering (moving a function within its file) is drift.
+    """
+    real, drifted = [], []
+    c, f = committed or {}, fresh or {}
+    for k in sorted(set(f) - set(c)):
+        real.append("%s: new %s" % (k, "symbol" if part == "symbols" else
+                                     "symbol with sites"))
+    for k in sorted(set(c) - set(f)):
+        real.append("%s: gone (%s)" % (k, "symbol" if part == "symbols" else
+                                       "no site remains"))
+    for k in sorted(set(c) & set(f)):
+        if c[k] == f[k]:
+            continue
+        if part == "symbols":
+            if symbol_anchor(c[k]) == symbol_anchor(f[k]):
+                drifted.append(k)
+            else:
+                real.append("%s: definition changed (%s -> %s)" % (
+                    k, json.dumps(c[k], sort_keys=True),
+                    json.dumps(f[k], sort_keys=True)))
+            continue
+        ca = {}
+        for s in c[k]:
+            ca[site_anchor(s)] = ca.get(site_anchor(s), 0) + 1
+        fa = {}
+        for s in f[k]:
+            fa[site_anchor(s)] = fa.get(site_anchor(s), 0) + 1
+        if ca == fa:
+            drifted.append(k)
+            continue
+        gone = sorted(a for a in ca for _ in range(ca[a] - fa.get(a, 0)))
+        came = sorted(a for a in fa for _ in range(fa[a] - ca.get(a, 0)))
+        for a in gone:
+            # the same role and text now in a DIFFERENT file: a move across
+            # files is a real change, and is named as one
+            other = next((b for b in came if b[1:] == a[1:]), None)
+            if other is not None:
+                came.remove(other)
+                real.append("%s: %s site moved to another file: %s -> %s  [%s]"
+                            % (k, a[1], a[0], other[0], a[2][:70]))
+            else:
+                real.append("%s: %s site in %s: anchor no longer found  [%s]"
+                            % (k, a[1], a[0], a[2][:70]))
+        for a in came:
+            real.append("%s: new %s site in %s  [%s]" % (k, a[1], a[0], a[2][:70]))
+    return real, drifted
+
+
+def cmd_check(repo, tests_root, support_dirs=None, exact=False):
+    """Fail if the committed index no longer describes the tree.
+
+    LINE DRIFT IS NOT STALENESS, unless --exact. The index records every site
+    as file:LINE, so a lane inserting four lines at the top of psh.c used to
+    have to commit a 125-line index rewrite, and any two open PRs touching one
+    source file then conflicted in the index even when their code never met.
+    GitHub runs no CI on a conflicting PR, so on 2026-09-26 four PRs froze
+    behind that and fold.sh waited on them forever. So by default a site
+    whose anchor (file, role, line text; see site_anchor) still matches may
+    sit on another line: that is reported as INFO and passes. A site added,
+    removed, moved to another file, or whose anchor text is gone still fails,
+    as do the suite, provenance and tracker checks, exactly as before.
+
+    `build` still writes current line numbers, and --exact restores the byte
+    comparison, which is what the fold's regeneration on master asks so that
+    master's line numbers stay fresh for `query` and `blast`.
+    """
     if not os.path.exists(INDEX_PATH):
         sys.exit("FAIL: no committed index at %s" % INDEX_PATH)
     with open(INDEX_PATH) as fh:
         committed = json.load(fh)
     fresh = build_index(repo, tests_root, support_dirs)
     problems = []
+    info = []
     for part in ("symbols", "sites"):
-        if committed.get(part) != fresh.get(part):
+        if committed.get(part) == fresh.get(part):
+            continue
+        real, drifted = anchored_drift(part, committed.get(part),
+                                       fresh.get(part))
+        if not real and not exact:
+            info.append("%s: %d %s at new line numbers, anchors unchanged "
+                        "(%s)" % (part, len(drifted),
+                                  "symbol(s)" if part == "symbols" else
+                                  "symbol(s) with sites",
+                                  name_list(drifted, 6)))
+            continue
+        if real:
+            problems.append("%s: %d real change(s) -- the index must be rebuilt "
+                            "and committed:\n      %s%s" % (
+                                part, len(real), "\n      ".join(real[:12]),
+                                "\n      ... and %d more" % (len(real) - 12)
+                                if len(real) > 12 else ""))
+        if exact:
             c, f = committed.get(part, {}), fresh.get(part, {})
             added = sorted(set(f) - set(c))[:10]
             removed = sorted(set(c) - set(f))[:10]
@@ -1201,10 +1316,15 @@ def cmd_check(repo, tests_root, support_dirs=None):
         print(stale_headline(tree_is_short) + "\n")
         for p in problems:
             print("  " + p)
+        for i in info:
+            print("  INFO " + i)
         return 1
     print("index matches the tree (%d symbols, %d sites, %d suites)"
           % (len(fresh["symbols"]), sum(len(v) for v in fresh["sites"].values()),
              len(fresh["suites"])))
+    for i in info:
+        print("  INFO line drift only, not a failure -- do NOT commit a rebuild "
+              "for it; the fold refreshes line numbers on master:\n    " + i)
     return 0
 
 
@@ -1231,6 +1351,9 @@ def main():
     c = sub.add_parser("check", help="fail if the committed index is stale")
     c.add_argument("--tests", help="path to an nxdk_pgraph_tests checkout")
     c.add_argument("--support", action="append", default=[])
+    c.add_argument("--exact", action="store_true",
+                   help="also fail on pure line drift (the fold uses this "
+                        "to keep master's line numbers current)")
 
     q = sub.add_parser("query", help="look something up")
     q.add_argument("kind",
@@ -1265,7 +1388,7 @@ def main():
             print("  NOTE: no --tests given, so the suite half is empty.")
         return 0
     if args.cmd == "check":
-        return cmd_check(REPO, tests, support)
+        return cmd_check(REPO, tests, support, exact=args.exact)
     if args.cmd == "blast":
         return cmd_blast(load_index(), args.files)
 
