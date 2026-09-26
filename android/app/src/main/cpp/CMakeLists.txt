@@ -5,6 +5,13 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_OBJECT_PATH_MAX 180)
 
+# LSE atomics inline. Without a -march the NDK emits every atomic as a call to
+# a runtime-dispatched __aarch64_* helper. Every supported SoC (SD 865 and up)
+# is ARMv8.2. Set before any target, fetched ones included, and repeated in
+# the glib cross file below (#427).
+set(XEMU_ARCH_FLAGS "-march=armv8.2-a")
+add_compile_options(${XEMU_ARCH_FLAGS})
+
 include(FetchContent)
 include(ExternalProject)
 
@@ -371,8 +378,8 @@ file(WRITE "${GLIB_CROSS_FILE}"
 "[properties]\n"
 "needs_exe_wrapper = true\n"
 "sys_root = '${NDK_PATH}/toolchains/llvm/prebuilt/${NDK_HOST_TAG}/sysroot'\n"
-"c_args = ['--target=${ANDROID_TRIPLE}', '-I${CMAKE_CURRENT_LIST_DIR}/iconv_stub']\n"
-"cpp_args = ['--target=${ANDROID_TRIPLE}', '-I${CMAKE_CURRENT_LIST_DIR}/iconv_stub']\n"
+"c_args = ['--target=${ANDROID_TRIPLE}', '${XEMU_ARCH_FLAGS}', '-I${CMAKE_CURRENT_LIST_DIR}/iconv_stub']\n"
+"cpp_args = ['--target=${ANDROID_TRIPLE}', '${XEMU_ARCH_FLAGS}', '-I${CMAKE_CURRENT_LIST_DIR}/iconv_stub']\n"
 "c_link_args = ['--target=${ANDROID_TRIPLE}', '-L${ICONV_STUB_DIR}', '-liconv']\n"
 "cpp_link_args = ['--target=${ANDROID_TRIPLE}', '-L${ICONV_STUB_DIR}', '-liconv']\n"
 )
@@ -1118,6 +1125,12 @@ endif()
 if(TARGET SDL2::SDL2)
   target_link_libraries(xemu PRIVATE SDL2::SDL2)
 endif()
+
+# Bind calls between functions inside libxemu.so directly instead of through
+# the PLT. Everything is default visibility, so without this each such call
+# goes via a stub and a GOT load. The exported table is unchanged, so JNI and
+# SDL's dlsym still find their symbols (#427).
+target_link_options(xemu PRIVATE -Wl,-Bsymbolic)
 
 target_link_libraries(xemu PRIVATE
   xemu_core

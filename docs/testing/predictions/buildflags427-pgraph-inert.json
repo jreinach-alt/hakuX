@@ -1,0 +1,44 @@
+{
+  "registered_utc": "2026-09-26T20:38:21Z",
+  "who": "lane.buildflags427",
+  "issue": "427",
+  "prediction": "#427 host build flags: minSdk 26->29 (native ELF TLS), -march=armv8.2-a (inline LSE atomics) and -Wl,-Bsymbolic on libxemu.so. The refs differ only in android/app/build.gradle.kts and android/app/src/main/cpp/CMakeLists.txt (plus a lane script). None of the three changes what the guest computes: TLS and atomics change how a variable is reached, not its value, and -Bsymbolic changes only how a call is bound. armv8.2-a without +fp16 adds no floating-point instructions clang would use for scalar float code, and FP contraction is unchanged, so the CPU-side paths (vertex attribute conversion, nv2a_vsh_cpu, texture swizzle and DXT decode) produce the same bits. Every capture in these 12 suites is identical between arms. A moved capture refutes that and is a codegen difference to find, not noise to wave through: rerun that suite once before reading it.",
+  "a_ref": "15d9406b81",
+  "b_ref": "6cd1a58b64",
+  "must_not_move": [
+    "3D_primitive/*",
+    "Blend_tests/*",
+    "Depth_buffer/*",
+    "Texture_format/*",
+    "Texture_DXT/*",
+    "Surface_clip/*",
+    "Fog_gen/*",
+    "Specular/*",
+    "Vertex_shader_rounding_tests/*",
+    "Attrib_float/*",
+    "Texture_CPU_Update/*",
+    "Lighting_spotlight/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "3D_primitive",
+      "Attrib_float",
+      "Blend_tests",
+      "Depth_buffer",
+      "Fog_gen",
+      "Lighting_spotlight",
+      "Specular",
+      "Surface_clip",
+      "Texture_CPU_Update",
+      "Texture_DXT",
+      "Texture_format",
+      "Vertex_shader_rounding_tests"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

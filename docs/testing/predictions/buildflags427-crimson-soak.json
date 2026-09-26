@@ -1,0 +1,30 @@
+{
+  "registered_utc": "2026-09-26T20:39:15Z",
+  "who": "lane.buildflags427",
+  "issue": "427",
+  "title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso",
+  "device": "thor",
+  "seconds": 240,
+  "route": "crimson-skies",
+  "frames_every": 0,
+  "runs_per_arm": 2,
+  "a_ref": "15d9406b81bd0b11d33f66d6b71bcba3c87566ea",
+  "b_ref": "6cd1a58b6478329d921bbdfc63a82b643f50ab6c",
+  "queue_order": "A1 B1 A2 B2, each a separate request.sh --title soak, --device thor, --route crimson-skies, --seconds 240, --expect this file",
+  "judge": "python3 docs/lanes/ghoul311/gfps.py --from 110 --to 240 <A1> <B1> <A2> <B2>; python3 docs/lanes/buildflags427/symcheck.py $DISPATCH_DIR/builds/<a_ref10>.apk $DISPATCH_DIR/builds/<b_ref10>.apk",
+  "prediction": "#427, lever 4 of docs/investigations/perf-architecture.md: native ELF TLS (minSdk 29), inline LSE atomics (-march=armv8.2-a) and no intra-library PLT (-Wl,-Bsymbolic). The lever's size is a BOUND, not a measured gain: in the dated 09-11 Crimson simpleperf capture, 4.40% of vCPU-thread samples and 3.73% of PFIFO-thread samples were in emutls, outline atomics, PLT stubs and pthread TLS. Removing all of it saves at most that share of vCPU time; Crimson is vCPU-bound (busy 41.5 of a 50.2 ms frame), so frame time can fall by at most ~4.4% and gfps can rise by at most ~4.6%. Crimson's run-to-run spread on the Thor is of that order (titleplay p1: 110-240 s median 26, range 14-29, gfps capped at 30), so this A/B may not resolve the gain. That outcome is reported as BELOW RESOLUTION, with the bound as the lever's size.",
+  "legs": {
+    "M0 (instrument)": "Every run has >= 30 hakuX-perf lines between 110 and 240 s and its route reached 'mark gameplay'. A run without them is VOID, not zero, and is rerun once.",
+    "F0 (falsifier, the counter in the binary)": "symcheck.py on the dispatcher-built APKs. A: emutls_calls >= 1000, outline_calls >= 1000, plt_internal >= 5000 (local build of master aaf01a1cef: 1828, 1599, 8753). B: tls_segment true, plt_internal == 0, emutls_calls <= 10 and outline_calls <= 400 with every remaining caller in the NDK's prebuilt libc++ (std::__ndk1 locale setup, __cxxabiv1 thread_atexit); local build of b_ref: 6, 289, 0. FAILS in the world where the dispatcher's build does not carry the flags (a cached CMake configure, or an ANDROID_PLATFORM that does not follow minSdk). Then no soak reading is attributable, and the lever is reported INERT HERE until the binary is right.",
+    "F1 (falsifier, the counter in the profile; needs a host simpleperf capture)": "A 30 s simpleperf cpu-clock capture of Crimson gameplay on each APK, vCPU thread, counted per sample with docs/lanes/perfarch/profile_categories.py. A: samples in __emutls_get_address + __aarch64_{cas,swp,ld*} + pthread_getspecific >= 1.0% of vCPU samples. B: samples in __emutls_get_address + __aarch64_* == 0 on the vCPU thread. PLT-stub samples inside libxemu.so in B <= 50% of A's (the 635 PLT entries left in B call other libraries; the split of the 1.08% between internal and external targets is not known, so 50% is a guess and is labelled as one). FAILS if B still samples the helpers: then something on the vCPU path is not built with these flags.",
+    "P1 (fps, the number that counts)": "median over runs of each run's median gfps in 110-240 s: B / A within [0.98, 1.08]. Below 0.98 FAILS as a regression. Above 1.08 FAILS: the change exceeds the bound, so something besides these three mechanisms moved and the gain is not attributable to them.",
+    "P2 (resolution)": "If |B - A| (median gfps) is not larger than the larger within-arm difference (|A1 - A2|, |B1 - B2|), the A/B is BELOW RESOLUTION. P1 is then read only as 'no regression', and the reported gain is the F1 bound, not a measured fps change."
+  },
+  "must_not_move": [
+    "pgraph: docs/testing/predictions/buildflags427-pgraph-inert.json (12 suites, identical captures, same refs)",
+    "no crash, no tombstone in logcat -b crash on any B run; gfps lines still printed at 240 s"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures, so there is no golden key for ab_compare to judge. The legs are read off the gfps lines, symcheck.py and the host's simpleperf captures; the content hash recorded at queue time is what makes a widened leg detectable."
+}
