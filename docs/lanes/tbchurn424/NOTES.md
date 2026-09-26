@@ -118,3 +118,15 @@ locally; the dispatcher builds each ref.
   hands-off workload.
 - The soak path has no simpleperf. The `[tlb68]` timers (`jcus`, `rdus`,
   `cpu`) time the two mechanisms directly, and `churn.py` reads them.
+
+## State at session end (2026-09-26): WAITING
+
+Waiting on:
+- the ten soaks above;
+- the arms job's verdict on `tbchurn424-pixels-inert.json`;
+- CI.
+
+Posted as `[lane.tbchurn424] waiting:` on #434 and #424. The next session:
+- judges M0-M4 with `churn.py`;
+- fills in the before/after table here;
+- marks #434 ready, or records the refutation.
