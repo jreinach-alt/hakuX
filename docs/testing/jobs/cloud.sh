@@ -425,6 +425,18 @@ if [ "$n" -gt "$LANE_MAX_ATTEMPTS" ]; then
     exit 0
 fi
 [ "$mode" = list ] && { echo "would claim $kind #$num ${head:+($head) }$title -- attempt $n on $MODEL"; exit 0; }
+# A CLAIM THAT NEVER STARTED A SESSION IS NOT AN ATTEMPT, so the count is
+# given back on EVERY exit between this write and a unit that started -- by a
+# trap, not by a rollback at each exit. Measured 2026-09-26: three ticks for
+# issue #271 each died on `worktree add -b` (a folded lane/cloud-271 was still
+# a local branch) and exited 5 through a path that had no rollback; the
+# counter went 1 -> 4 on one real session and the next `list` said REFUSE.
+# Five exits sit between here and systemd-run; a rollback per exit is a list
+# the next exit added will not be on. The trap is cleared once the unit starts.
+# It restores what was THERE, not n-1: an absent file stays absent.
+att_prev=$(cat "$att" 2>/dev/null); att_had=0; [ -e "$att" ] && att_had=1
+give_back() { if [ "$att_had" = 1 ]; then printf '%s\n' "$att_prev" > "$att"; else rm -f "$att"; fi; }
+trap give_back EXIT
 echo "$n" > "$att"
 
 # --------------------------------------------- the unit's scripts, snapshotted
@@ -475,9 +487,9 @@ rm -rf "$SNAP"
 # copy, not just the files.
 mkdir -p "$SNAP" && cp -a "$JOBS" "$SNAP/jobs" && cp -a "$T/lane.sh" "$SNAP/lane.sh" || {
     say "cannot snapshot $JOBS into $SNAP; NOT claiming $kind #$num, because the unit's tail would then depend on a worktree another job moves out from under it"
-    # No session ran, so no attempt was spent. Give the count back: a host
-    # that is out of disk must not also walk the PR towards blocked:needs-owner.
-    echo "$(( n - 1 ))" > "$att"
+    # No session ran, so no attempt was spent; the EXIT trap gives the count
+    # back. A host that is out of disk must not also walk the PR towards
+    # blocked:needs-owner.
     exit 6
 }
 SJOBS="$SNAP/jobs"
@@ -493,6 +505,34 @@ case "$kind" in
             git -C "$REPO" fetch -q origin "$branch" && git -C "$REPO" worktree add --quiet "$wt" -B "$branch" "origin/$branch" \
                 || { say "cannot create $wt for issue #$num on $branch; not claiming"; exit 5; }
         else
+            # A LOCAL $branch LEFT BY A FOLDED SESSION. The fold deletes the
+            # remote branch, not the host's local one, so `-b` then fails
+            # "a branch named ... already exists" on every tick -- measured
+            # 2026-09-26 on #271 (a9f64b930c, an ancestor of origin/master),
+            # cleared by hand per the runbook. It is deleted here only when it
+            # can hold nothing: checked out in no worktree, absent on origin,
+            # and an ancestor of origin/$TIP. Anything else may be unpushed
+            # work, so the claim is refused, with the reason.
+            if git -C "$REPO" rev-parse -q --verify "refs/heads/$branch" >/dev/null; then
+                stale_why=""
+                if git -C "$REPO" worktree list --porcelain | grep -qFx "branch refs/heads/$branch"; then
+                    stale_why="it is checked out in a worktree"
+                else
+                    git -C "$REPO" ls-remote --exit-code -q origin "refs/heads/$branch" >/dev/null 2>&1; lr=$?
+                    if [ "$lr" = 0 ]; then stale_why="origin has it too"
+                    elif [ "$lr" != 2 ]; then stale_why="origin could not be asked whether it has it (ls-remote exit $lr)"
+                    elif ! git -C "$REPO" merge-base --is-ancestor "refs/heads/$branch" "origin/$TIP" 2>/dev/null; then
+                        stale_why="it holds $(git -C "$REPO" rev-list --count "origin/$TIP..refs/heads/$branch" 2>/dev/null || echo '?') commit(s) not on origin/$TIP, which may be unpushed work"
+                    fi
+                fi
+                if [ -n "$stale_why" ]; then
+                    say "local $branch already exists and is kept: $stale_why; not claiming issue #$num"
+                    exit 5
+                fi
+                say "deleting local $branch at $(git -C "$REPO" rev-parse --short "refs/heads/$branch"): a folded session's leftover (on origin/$TIP, not on origin, in no worktree)"
+                git -C "$REPO" branch -q -D "$branch" \
+                    || { say "cannot delete local $branch; not claiming issue #$num"; exit 5; }
+            fi
             git -C "$REPO" worktree add --quiet "$wt" -b "$branch" "origin/$TIP" \
                 || { say "cannot create $wt for issue #$num on a new $branch; not claiming"; exit 5; }
         fi
@@ -644,7 +684,7 @@ systemd-run --user --unit "$unit" --collect \
     --setenv=JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}" \
     --working-directory="$wt" \
     bash -c "claude -p \"\$(cat '$brief')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$SJOBS/roles/cloud.md' --allowedTools \"\$(cat '$SJOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$SJOBS/summarise_run.py' '$log' $name '$MODEL' >> '$WORK/logs/cloud/index.tsv'; exit \$rc" \
-    && say "started $unit: $kind #$num on $branch ($MODEL, attempt $n); log $log; scripts snapshotted at $SNAP" || {
+    && { trap - EXIT; say "started $unit: $kind #$num on $branch ($MODEL, attempt $n); log $log; scripts snapshotted at $SNAP"; } || {
         # NO SESSION, NO CLAIM. The unit's tail is what undoes the claim, so a
         # unit that never started would leave the whole of it behind for good:
         # a row that is coverage which does not exist and which nothing fails
@@ -655,7 +695,8 @@ systemd-run --user --unit "$unit" --collect \
         #
         # The STATE label stays: the session never ran, so the PR still needs
         # what it was claimed for, and the next tick should pick it up. The
-        # attempt is given back for the same reason.
+        # attempt is given back for the same reason, by the EXIT trap, which
+        # only a started unit clears.
         say "systemd-run failed for $unit; dropping the claim so the next tick can pick #$num up again"
         territory_row rm "$name" '[]' '[]' ''
         # if/else, not `A && x || y`: label_rm returning 1 on the issue path
@@ -665,7 +706,6 @@ systemd-run --user --unit "$unit" --collect \
         else
             label_rm "$num" claimed:cloud
         fi
-        echo "$(( n - 1 ))" > "$att"
         rm -rf "$SNAP"
     }
 [ -x "$JOBS/status.sh" ] && bash "$JOBS/status.sh" >/dev/null 2>&1

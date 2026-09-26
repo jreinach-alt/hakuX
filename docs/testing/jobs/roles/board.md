@@ -26,6 +26,31 @@ So, every tick, in this order:
    line. The next tick is twenty minutes away and starts from what you
    pushed.
 
+## The push gate refuses a red board
+
+Edit the board in `.boardtree` (`board.sh` creates it). A push to `board`
+from there runs `docs/testing/jobs/board-push-gate.sh` as a `pre-push` hook:
+`check_territory.py` and `check_coverage.py` against the commit you are
+pushing. If either fails, the push is refused and the hook prints each FAIL
+line with the rows under it. A red `origin/board` turns preflight red for
+every lane, and no lane can fix it; that happened twice on 2026-09-26.
+
+When a push is refused:
+
+1. Read the FAIL lines. Each names an issue or a lane row and what does not
+   hold (`done` on an open row, a blocker naming a retired lane, and so on).
+2. Repair those rows, and only those, in `.boardtree`. Commit.
+3. Re-run the gate yourself before pushing again:
+   `bash docs/testing/jobs/board-push-gate.sh .boardtree` checks the working
+   tree, and `--rev HEAD` checks the commit.
+4. Push when it says PASS.
+
+Never push past it (`--no-verify`, another tree, another ref spelling), and
+never retry the same push unchanged. If a row cannot be repaired by rule,
+revert your edit to it and open a `decision-needed` issue. After every tick,
+`board.sh` re-checks `origin/board` and logs a `BOARD RED` line if it is red,
+whoever pushed it.
+
 ## What you own
 
 - Dispatch **up to three lanes per tick**. `LANE_MAX` is the only capacity

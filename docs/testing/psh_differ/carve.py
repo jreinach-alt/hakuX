@@ -27,6 +27,8 @@ CARVE = {
     "psh.c": (
         "static uint32_t get_color_key_mask_for_texture(PGRAPHState *pg, int i)",
         "bool pgraph_glsl_polygon_stipple_enabled(PGRAPHState *pg)",
+        "static bool tex_split_bytes16(unsigned int color_format, uint32_t filter)",
+        "int pgraph_glsl_tex_aniso_probes(PGRAPHState *pg, int i)",
         "int pgraph_glsl_window_clip_count(PGRAPHState *pg)",
         "void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)",
         "void pgraph_glsl_set_psh_uniform_values(PGRAPHState *pg,",

@@ -155,6 +155,7 @@ static const Field fields[] = {
      * it is only looked at for a stage whose dot mapping is HILO_1 with a
      * sign flag on the half it feeds, and no baseline wires that up. */
     F4(tex_hilo16,  K_BOOL, 0, 1),
+    F4(tex_aniso,   K_INT, 1, 8),
     F4(tex_signed,  K_INT, 0, 15),
     F4x4(compare_mode),
     F4(alphakill,   K_BOOL, 0, 1),
@@ -182,6 +183,7 @@ static const Field fields[] = {
     F(window_clip_count,     K_INT, 0, 8),
 
     F(smooth_shading, K_BOOL, 0, 1),
+    F(fixed_function, K_BOOL, 0, 1),
     F(depth_clipping, K_BOOL, 0, 1),
     F(z_perspective,  K_BOOL, 0, 1),
     F(noperspective,  K_BOOL, 0, 1),

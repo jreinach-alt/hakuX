@@ -972,6 +972,8 @@ static SetupFiles SyncSetupFiles() {
                       "submit frames: %d", submit_frames);
 
   int tier1_threshold = GetPrefInt(env, activity, "tier1_threshold", 64);
+  const char *t1env = getenv("HAKUX_TIER1_THRESHOLD");
+  if (t1env && *t1env) tier1_threshold = atoi(t1env);
   xemu_set_tier1_threshold(tier1_threshold);
   __android_log_print(ANDROID_LOG_INFO, "hakuX",
                       "tier1 threshold: %d", tier1_threshold);
