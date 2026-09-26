@@ -25,6 +25,11 @@ BOOLPREFS="${BOOLPREFS:-}"
 INTPREFS="${INTPREFS:-}"
 BOOT=${BOOT_S:-75}
 SETTLE=${SETTLE_S:-12}
+# OUT is where this run's logs go; the helpers (pad.sh, loadsample.sh) stay
+# in $W. Keep a dated directory per campaign so a later run cannot overwrite
+# the raw logs a write-up cites.
+OUT="${OUT:-$W}"
+mkdir -p "$OUT"
 
 adb -s $S shell am force-stop $PKG
 command sleep 2
@@ -32,6 +37,15 @@ command sleep 2
 # surface_scale lives in the app's prefs, which a debuggable build lets us
 # write directly. Read-modify-write so nothing else in the file is lost.
 adb -s $S exec-out run-as $PKG cat shared_prefs/x1box_prefs.xml > $W/prefs-cur.xml
+# The prefs as found are put back at the end, and read back, so a run never
+# leaves the device measuring something else for the next person.
+cp $W/prefs-cur.xml "$OUT/${TAG}-prefs-before.xml"
+# Validation layers cost more than anything this script measures; a timing
+# taken under them is void (the Nova ran them for two hours on 2026-09-25).
+if grep -q 'name="validation_layers" value="true"' $W/prefs-cur.xml; then
+    echo "[$TAG] validation_layers is on in the app prefs; refusing to measure"
+    exit 1
+fi
 python3 - "$SCALE" "$ENVV" "$BOOLPREFS" "$INTPREFS" <<'PY'
 import re, sys
 from xml.sax.saxutils import escape
@@ -61,6 +75,24 @@ adb -s $S push -q $W/prefs-new.xml /data/local/tmp/p.xml >/dev/null 2>&1 \
     || adb -s $S push $W/prefs-new.xml /data/local/tmp/p.xml >/dev/null
 adb -s $S shell "run-as $PKG cp /data/local/tmp/p.xml shared_prefs/x1box_prefs.xml"
 adb -s $S shell rm -f /data/local/tmp/p.xml
+cp $W/prefs-new.xml "$OUT/${TAG}-prefs-run.xml"
+
+restore_prefs() {
+    adb -s $S shell am force-stop $PKG
+    adb -s $S push "$OUT/${TAG}-prefs-before.xml" /data/local/tmp/p.xml >/dev/null
+    adb -s $S shell "run-as $PKG cp /data/local/tmp/p.xml shared_prefs/x1box_prefs.xml"
+    adb -s $S shell rm -f /data/local/tmp/p.xml
+    adb -s $S exec-out run-as $PKG cat shared_prefs/x1box_prefs.xml > $W/prefs-back.xml
+    if cmp -s $W/prefs-back.xml "$OUT/${TAG}-prefs-before.xml"; then
+        echo "[$TAG] prefs restored (read back identical)"
+    else
+        echo "[$TAG] PREFS NOT RESTORED: read-back differs from $OUT/${TAG}-prefs-before.xml"
+        # An EXIT trap keeps the script's status unless it exits itself, so
+        # a wrapper would otherwise see success with the run prefs left on.
+        exit 3
+    fi
+}
+trap restore_prefs EXIT
 
 adb -s $S shell input keyevent KEYCODE_WAKEUP
 adb -s $S logcat -c
@@ -74,16 +106,21 @@ echo "[$TAG] advancing through intro"
 bash $W/pad.sh ${MASH:-mash 12 1.5} >/dev/null 2>&1
 command sleep $SETTLE
 
-adb -s $S exec-out screencap -p > $W/${TAG}-start.png 2>/dev/null
+adb -s $S exec-out screencap -p > "$OUT/${TAG}-start.png" 2>/dev/null
 echo "[$TAG] measuring ${MEASURE}s"
+# hakuX-build prints once, on the first flip, so it has to be kept before
+# the clear below or the log carries no build identity.
+adb -s $S logcat -d -v threadtime -s hakuX-build > "$OUT/${TAG}-build.txt" 2>/dev/null
 adb -s $S logcat -c
-bash $W/loadsample.sh "$MEASURE" 2 "$W/${TAG}-load.txt" &
+bash $W/loadsample.sh "$MEASURE" 2 "$OUT/${TAG}-load.txt" &
 LOADPID=$!
 command sleep $MEASURE
 wait $LOADPID 2>/dev/null
-adb -s $S logcat -d -s hakuX-perf hakuX-phase xemu-gpu xemu-work hakuX-cpu > $W/${TAG}.log 2>/dev/null
-adb -s $S exec-out screencap -p > $W/${TAG}-end.png 2>/dev/null
+adb -s $S logcat -d -v threadtime -s hakuX-perf hakuX-pace hakuX-pages hakuX-phase \
+    xemu-gpu xemu-work hakuX-cpu > "$OUT/${TAG}.log" 2>/dev/null
+adb -s $S exec-out screencap -p > "$OUT/${TAG}-end.png" 2>/dev/null
 adb -s $S shell am force-stop $PKG
 
-echo "[$TAG] scale=$SCALE  $(grep -c 'hakuX-perf' $W/${TAG}.log) perf lines"
-grep "hakuX-perf" $W/${TAG}.log | tail -3
+echo "[$TAG] scale=$SCALE  $(grep -c 'hakuX-perf' "$OUT/${TAG}.log") perf lines," \
+     "$(grep -c 'hakuX-pace' "$OUT/${TAG}.log") pace lines"
+grep "hakuX-perf" "$OUT/${TAG}.log" | tail -3

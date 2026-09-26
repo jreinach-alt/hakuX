@@ -1,0 +1,33 @@
+{
+  "registered_utc": "2026-09-25T23:20:00Z",
+  "who": "lane.tcgchurn",
+  "issue": "311",
+  "title": "Grabbed by the Ghoulies (USA) (En,Fr,De,Es,It).xiso.iso",
+  "device": "thor",
+  "seconds": 240,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "arms": {
+    "A": "709cfb13aa (master 94394f1062 + [tlb68] counters; both #311 defines 0, RD/JC env off)",
+    "Ba": "ea1e9f5a0d (A + HAKUX_TCG311_KEEP_ARMED=1, hunk a)",
+    "Bb": "1ce8693eb1 (A + HAKUX_TCG311_TLB_BOUND=1, hunk b)"
+  },
+  "a_ref": "709cfb13aa",
+  "b_ref": "ea1e9f5a0d",
+  "b_ref_2": "1ce8693eb1",
+  "legs": {
+    "M0 (instrument)": "Every arm prints a [tlb68] line in >= 90% of its 2 s windows from 20 s on. A run without them is VOID, not zero.",
+    "M1 (model, arm A)": "ghoul311's model (#311 comment 5839584187): in A, tw/rdc (entries walked per arming walk) at ~120 s is >= 8x its ~20 s value, and tn at 120 s is >= 8x tn at 20 s, while gfps falls. REFUTED if tw/rdc stays within 2x of its 20 s value while gfps collapses: then the walk's unit cost is not what grows.",
+    "Ma (must-move, hunk a)": "Ba: median gfps over 90-240 s >= 25. And rdc (arming walks per window) in Ba is <= 10% of A's over the same span, with kafb <= 0.1 * ka. FAILS if gfps < 25; if rdc fell and gfps did not rise, the arming walk is not the collapse.",
+    "Mb (must-move, hunk b)": "Bb: median gfps over 90-240 s >= 25, tn <= 8192 at every line, and tw/rdc at 120 s within 2x of its 20 s value. FAILS if gfps < 25 with tn capped: the walk's size is not the collapse.",
+    "Rival": "Nothing in either patch forces its gfps leg true: (a) only removes the re-arm walk and (b) only caps its size. If both fail, the model (the arming walk grows into the frame) is refuted, and the collapse lies elsewhere (ghoul311's bisect decides)."
+  },
+  "must_not_move": [
+    "pgraph must-not-move per hunk: tcgchurn-311a-pixels-inert.json, tcgchurn-311b-pixels-inert.json (8 suites, identical captures)",
+    "Crimson Skies and JSRF 240 s soaks on each hunk's ref: no crash, no hang (frames still counted at 240 s), no tombstone in logcat -b crash",
+    "the refs differ from 709cfb13aa by exactly one #define line in include/accel/tcg/hakux-tlb68.h"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures, so there is no golden key for ab_compare to judge. The legs are read by hand off the gfps and [tlb68] lines; the content hash recorded at queue time is what makes a widened leg detectable."
+}

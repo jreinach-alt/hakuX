@@ -1,0 +1,26 @@
+{
+  "registered_utc": "2026-09-25T20:32:08Z",
+  "who": "perfbase",
+  "issue": "68",
+  "prediction": "PACE LINE, arm B only (b_ref 5c50884181 = master 724a0dd868 + the hakuX-pace line + tooling). Crimson Skies on the Nova, hand-run with docs/testing/perf/run_perf.sh 1 <tag> 120 (surface_scale 1, scripted A-mash into the first flying section), logcat captured with -s hakuX-perf hakuX-pace. Judge: python3 docs/testing/perf/pace_check.py <log> --nominal 2 --judge, first line of each process excluded. P1: consecutive hakuX-pace lines are exactly 60 frames apart. P2: v0+v1+v2+v3+v4 == 60 on every line. P3: run mean of vb/60 within 5% of run mean of hakuX-perf Vpf. THE BRIEF ASKED FOR 'late-frame share matches Vpf within 5%'; those are different quantities (Vpf is a mean VBLANKs per flip, the late share is a fraction of flips above nominal), so the leg is registered on the commensurable one, mean VBLANKs per flip. Vpf is an EMA of the SAME per-flip count, so P3 checks windowing and printing, not an independent measurement. P4 (THE IMPOSSIBLE ROW, and the only leg with independent sources): no window reports more VBLANKs than its wall time holds, vb * 16.667 ms <= 1.05 * ms; VBLANKs come from the vblank timer and ms from the flip clock. Fails if the VBLANK delta is taken from the wrong counter or the window is mis-reset. P5: run mean of window fps 60/(ms/1000) within 5% of run mean of hakuX-perf gfps (the per-second flip counter, a separate count). Arm A (a_ref, master) carries no hakuX-pace print by construction and is not run; this is a single-arm instrument check, not an A/B.",
+  "a_ref": "724a0dd868",
+  "b_ref": "5c50884181",
+  "superseded_by": "perfbase-pace-2.json: never run on these refs; the same legs were re-registered on the refs attempt 2 ran (a_ref 90a8dc1c1a, b_ref 20a1a20eec)",
+  "must_not_move": [
+    "hakuX-perf line text unchanged: git diff a_ref..b_ref shows no edit to the hakuX-perf __android_log_print or to nv2a_profile_get_pacing_str"
+  ],
+  "expect": {
+    "P1/pace_bad_steps_max": 0,
+    "P2/pace_windows_not_60_max": 0,
+    "P3/vb_mean_vs_vpf_mean_pct_max": 5,
+    "P4/windows_vb_exceeds_wall_max": 0,
+    "P5/winfps_mean_vs_gfps_mean_pct_max": 5
+  },
+  "expect_counts": {},
+  "must_not_regress": [],
+  "title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso",
+  "device": "nova",
+  "seconds": 120,
+  "runs_per_arm": 2,
+  "judge": "python3 docs/testing/perf/pace_check.py <log> --nominal 2 --judge"
+}

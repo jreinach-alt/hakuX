@@ -1,0 +1,35 @@
+{
+  "registered_utc": "2026-09-25T18:29:54Z",
+  "who": "lane.vtxarr262",
+  "issue": "262",
+  "prediction": "MECHANISM: the vertex sync (vk/draw.c sync_vertex_ram_buffer) copies a range only when DIRTY_MEMORY_NV2A is set over it; a GPU draw/clear into a surface never sets that bit (surface downloads mark VGA and NV2A_TEX only), and the surface download for a vertex range lives inside pgraph_vk_update_vertex_ram_buffer, which the clean bit gates off. So Surface as vertex array::DynamicUpdateLoop keeps pass 1's red for all four quads. The change re-fetches a range that overlaps a surface still draw_dirty or whose draw_generation moved since the range's last copy. MUST MOVE, HAND-SCORED because the suite has no published golden and the dispatcher scores one golden root: score both arms' Surface_as_vertex_array captures with score_sweep.py --goldens /home/justin/hakux-work/hardware/runs/2026-09-25-refs6743/console-run/console. Arm A: DynamicUpdateLoop 96,000 px (red x4, as hakuX 84a67b9cf8). Arm B: 0 px (red, green, blue, yellow). LinearDiffuseArray, MultiStream, SwizzledDiffuseArray stay 0; RenderScalePattern stays 18,136 at max delta 1 (#38's class). FAILS IF: arm B's DynamicUpdateLoop still reads red in quads 2-4, i.e. still 96,000 (the generation/draw_dirty test never fires, or the download does not precede the copy); a partial number (32,000 or 64,000) would mean one pass boundary is caught and another is not. MUST NOT MOVE (machine legs): the blast set of vk/draw.c that has goldens, since the change can only alter a draw whose vertex range overlaps a surface; and worse=0 over the arm.",
+  "a_ref": "342d21c43f",
+  "b_ref": "74ac01608d",
+  "must_not_move": [
+    "Blend_surface/*",
+    "Clear/*",
+    "Attrib_setter/*",
+    "Degenerate_begin_end/*",
+    "Inline_array_size_mismatch/*",
+    "Overlapping_draw_modes/*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Attrib setter",
+      "Blend surface",
+      "Clear",
+      "Degenerate begin end",
+      "Inline array size mismatch",
+      "Overlapping draw modes",
+      "Surface as vertex array"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
