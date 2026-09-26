@@ -575,7 +575,7 @@ note = "RETIRED (hostops 2026-09-26 13:15 PDT): PR #415 MERGED, no open PR on la
 # CLAIMED (hostops, 2026-09-26 3:10 PM PDT): docs/testing/jobs/cloud.sh and selftest.d/73-cloud-claim.sh -> lane.claimrace (outlet double-claim).
 # CLAIMED (hostops, 2026-09-26 3:00 PM PDT): docs/testing/titles/** -> lane.titlestate (runbook 6n).
 # CLAIMED (hostops, 2026-09-26 6:45 AM PDT): gl/texture.c -> lane.pshaniso284 (granted 6:40 AM; [free] still listed it, failing check_territory).
-files = ["docs/testing/jobs/roles/lane.md", "AGENTS.md", "docs/testing/jobs/selftest.d/99-pilot-gate.sh", "docs/lanes/pilotgate/**", "docs/testing/jobs/selftest.d/99-visual-score.sh", "docs/lanes/visual404/**", "docs/testing/predictions/visual404-*.json", "docs/testing/jobs/fold.sh", "docs/testing/jobs/selftest.d/74-fold-multi.sh", "docs/lanes/foldcancel/NOTES.md", "docs/testing/title_verdict.py", "docs/lanes/titleplay/**", "docs/lanes/cloudclaim/**", "docs/testing/nightly_build.sh", "docs/testing/jobs/selftest.d/86-nightly-notes.sh", "docs/lanes/nightlynotes/**", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**", "tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "docs/testing/predictions/doa413-*.json", "docs/lanes/doa413/**", "hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/glsl/geom.h", "hw/xbox/nv2a/pgraph/vk/renderer.c", "docs/testing/predictions/cull13-*.json", "docs/lanes/cull13/**", "subprojects/nv2a_vsh_cpu.wrap", "subprojects/packagefiles/nv2a_vsh_cpu/**", "docs/testing/predictions/vshcpu345-*.json", "docs/lanes/vshcpu345/**", 
+files = ["docs/testing/titles/**", "docs/lanes/titlestate/**", "docs/testing/jobs/selftest.d/99-title-state.sh", "docs/testing/jobs/roles/lane.md", "AGENTS.md", "docs/testing/jobs/selftest.d/99-pilot-gate.sh", "docs/lanes/pilotgate/**", "docs/testing/jobs/selftest.d/99-visual-score.sh", "docs/lanes/visual404/**", "docs/testing/predictions/visual404-*.json", "docs/testing/jobs/fold.sh", "docs/testing/jobs/selftest.d/74-fold-multi.sh", "docs/lanes/foldcancel/NOTES.md", "docs/testing/title_verdict.py", "docs/lanes/titleplay/**", "docs/lanes/cloudclaim/**", "docs/testing/nightly_build.sh", "docs/testing/jobs/selftest.d/86-nightly-notes.sh", "docs/lanes/nightlynotes/**", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**", "tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "docs/testing/predictions/doa413-*.json", "docs/lanes/doa413/**", "hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/glsl/geom.h", "hw/xbox/nv2a/pgraph/vk/renderer.c", "docs/testing/predictions/cull13-*.json", "docs/lanes/cull13/**", "subprojects/nv2a_vsh_cpu.wrap", "subprojects/packagefiles/nv2a_vsh_cpu/**", "docs/testing/predictions/vshcpu345-*.json", "docs/lanes/vshcpu345/**", 
 # RELEASED AT WAVE 158 by retiring lane.cloud190: PR #211 folded as f2e8ef8ba8 (#190 fixed).
     "hw/xbox/nv2a/pmc.c",
 # RELEASED (job.board wave 249) by retiring lane.fmv303 (PR #317 folded bb1f437bb7): vk/display.c.
@@ -1279,11 +1279,12 @@ files = ["docs/testing/soak_title.sh", "docs/testing/devices.sh", "docs/lanes/pe
 standing = false
 note = "STARTED (hostops 2026-09-26 15:00 PDT, runbook 6n one-shot), briefs/perfregimen.md: harness, serves 0.5 (#433). Gameplay (title) soaks at max performance and fan, REST restored on every exit path. devices.sh LENT from [lane.toolsmith]. Short HELD device sessions granted by the owner (under 30 min, above 30% battery, pilot first): the host runs them."
 
-[lane.titlestate]
-issues = ["397"]
-files = ["docs/testing/titles/**", "docs/lanes/titlestate/**", "docs/testing/jobs/selftest.d/99-title-state.sh"]
+[retired.titlestate]
+issues = []
+files = []
 standing = false
-note = "STARTED (hostops 2026-09-26 15:00 PDT, runbook 6n one-shot), briefs/titlestate.md: #397's routes, per-device title state and a navigating agent; serves 0.5 (#433). docs/testing/titles/** taken from [free] (released by lane.titleplay and lane.visual404). dispatcher.sh / affinity.py are NOT this lane's: board request. #397's OWNER STOP on the parked pass-1 requests stands."
+retired_utc = "2026-09-26T23:55:00Z"
+note = "RETIRED (hostops 2026-09-26 16:55 PDT): PR #442 MERGED (d0e30924f8), unit gone. Files RELEASED to [free]: docs/testing/titles/**, docs/lanes/titlestate/**, docs/testing/jobs/selftest.d/99-title-state.sh. #397's OWNER STOP on the parked pass-1 requests (dispatch/parked/titleplay-p1-20260926) still stands."
 
 [lane.jcache425]
 issues = ["425"]
