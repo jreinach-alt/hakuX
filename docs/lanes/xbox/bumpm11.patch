@@ -1,0 +1,66 @@
+From a452e38826edbf340ad847c6286dbf7a88d51b51 Mon Sep 17 00:00:00 2001
+From: t <t@t>
+Date: Fri, 25 Sep 2026 20:36:58 -0700
+Subject: [PATCH] hakuX #10: Bump map Y16/Y8 variants with the vertical
+ bump-env term at 5.0 (_m11x10)
+
+---
+ src/tests/bump_map_tests.cpp | 14 ++++++++++++--
+ src/tests/bump_map_tests.h   |  2 +-
+ 2 files changed, 13 insertions(+), 3 deletions(-)
+
+diff --git a/src/tests/bump_map_tests.cpp b/src/tests/bump_map_tests.cpp
+index 9be03aa..2bfb641 100644
+--- a/src/tests/bump_map_tests.cpp
++++ b/src/tests/bump_map_tests.cpp
+@@ -53,6 +53,16 @@ BumpMapTests::BumpMapTests(TestHost &host, std::string output_dir, const Config
+     }
+   }
+ 
++  // hakuX #10: the same draw with the vertical bump-env term at 5.0, this file's own
++  // commented alternative, for the Y16 formats and their Y8 counterparts.
++  for (auto xbox_format :
++       {NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16, NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16,
++        NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y8, NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y8}) {
++    auto &m11_format = GetTextureFormatInfo(xbox_format);
++    std::string name = MakeTestName(m11_format, false, false) + "_m11x10";
++    tests_[name] = [this, m11_format]() { Test(m11_format, false, false, 5.0f); };
++  }
++
+   auto &format16 = GetTextureFormatInfo(NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16);
+ 
+   for (auto cross_on_blue : {false, true}) {
+@@ -63,7 +73,7 @@ BumpMapTests::BumpMapTests(TestHost &host, std::string output_dir, const Config
+ 
+ void BumpMapTests::Initialize() { TestSuite::Initialize(); }
+ 
+-void BumpMapTests::Test(const TextureFormatInfo &texture_format, bool cross_on_blue, bool rotate90) {
++void BumpMapTests::Test(const TextureFormatInfo &texture_format, bool cross_on_blue, bool rotate90, float mat11) {
+   auto shader = std::make_shared<PassthroughVertexShader>();
+   host_.SetVertexShaderProgram(shader);
+ 
+@@ -108,7 +118,7 @@ void BumpMapTests::Test(const TextureFormatInfo &texture_format, bool cross_on_b
+     if (rotate90) {
+       stage.SetBumpEnv(0.0, -0.1, 0.3, 0.0, 0.0, 0.0);
+     } else {
+-      stage.SetBumpEnv(0.3, 0.0, 0.0, 0.5, 0.0, 0.0);
++      stage.SetBumpEnv(0.3, 0.0, 0.0, mat11, 0.0, 0.0);
+       // stage.SetBumpEnv(0.3, 0.0, 0.0, 5.0, 0.0, 0.0);
+     }
+   }
+diff --git a/src/tests/bump_map_tests.h b/src/tests/bump_map_tests.h
+index 5da2038..e8ce12c 100644
+--- a/src/tests/bump_map_tests.h
++++ b/src/tests/bump_map_tests.h
+@@ -19,7 +19,7 @@ class BumpMapTests : public TestSuite {
+  private:
+   void DrawRectangles(const TextureFormatInfo &texture_format, char x_channel, char y_channel, bool cross_on_blue,
+                       bool rotate90, const std::function<void(float, float, float, float)> &draw);
+-  void Test(const TextureFormatInfo &texture_format, bool cross_on_blue, bool rotate90);
++  void Test(const TextureFormatInfo &texture_format, bool cross_on_blue, bool rotate90, float mat11 = 0.5f);
+   void Test16bit(const TextureFormatInfo &texture_format, bool cross_on_blue);
+   static std::string MakeTestName(const TextureFormatInfo &texture_format, bool cross_on_blue, bool rotate90);
+ };
+-- 
+2.43.0
+
