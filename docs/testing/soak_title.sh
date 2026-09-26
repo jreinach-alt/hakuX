@@ -113,25 +113,37 @@ if [ -n "$CAPTURE_LOG" ]; then
     #
     # And respawned: one WSL `UtilAcceptVsock` failure ends the stream, and on
     # 2026-09-26 that left a 783 s Nova soak with an empty logcat.txt and no
-    # verdict. A restart asks for `-T 1` (the newest line, then the stream)
-    # rather than the whole ring again, which would count every hakuX-perf
-    # window twice; the cost is the lines emitted during the gap, and each gap
-    # is written to run.log so the verdict's reader can see it.
+    # verdict. A restart asks the ring for everything from the last captured
+    # line's stamp (`-T '<stamp>'`), so the lines the device logged during the
+    # drop are read back while the ring still holds them. That replay reprints
+    # the line the capture ended on, and title_verdict.py reads an exact
+    # duplicate once. Each break is written INTO the capture as a
+    # `# hakuX-capture: stream ended` line: a restart whose replay does not
+    # overlap the last line lost something, and the verdict takes that span
+    # (in device time, from the lines either side) out of its windows and its
+    # hang gaps rather than scoring it as a guest with no flips.
     : >"$CAPTURE_LOG"
     (
         child=""
         trap '[ -n "$child" ] && kill "$child" 2>/dev/null; exit 0' TERM
-        n=0
+        n=0; last=""
         while [ "$n" -le "${LOGCAT_RESTARTS:-30}" ]; do
+            # No stamp yet means nothing was captured, and the whole ring
+            # then duplicates nothing.
             # shellcheck disable=SC2086
-            if [ "$n" = 0 ]; then
+            if [ "$n" = 0 ] || [ -z "$last" ]; then
                 adb -s "$SERIAL" logcat -v time $LOGCAT_SPEC >>"$CAPTURE_LOG" 2>/dev/null &
             else
-                adb -s "$SERIAL" logcat -v time -T 1 $LOGCAT_SPEC >>"$CAPTURE_LOG" 2>/dev/null &
+                # adb joins its arguments into one device shell command, so
+                # the stamp's space needs the inner quotes.
+                adb -s "$SERIAL" logcat -v time -T "'$last'" $LOGCAT_SPEC >>"$CAPTURE_LOG" 2>/dev/null &
             fi
             child=$!
             wait "$child"
             n=$((n+1))
+            # `-v time`: "09-25 13:31:41.662 I/tag( pid): msg"
+            last=$(tail -n 200 "$CAPTURE_LOG" | grep -oE '^[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}' | tail -1)
+            echo "# hakuX-capture: stream ended after ${last:-no line}; restart $n" >>"$CAPTURE_LOG"
             echo "LOGCAT: stream ended at $(date +%H:%M:%S); restart $n"
             sleep "${LOGCAT_RESTART_S:-2}"
         done

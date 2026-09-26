@@ -35,6 +35,16 @@ HANG: no hakuX-perf line for more than 10 s after the mark while the process
 lived -- i.e. fewer than 60 guest flips in 10 s. The trailing gap (last line
 to `soak end`) counts too, unless the process died, which is a crash.
 
+CAPTURE GAPS. soak_title.sh restarts a dropped logcat stream and writes a
+CAPTURE_BREAK line into logcat.txt where it did. The restart asks the ring for
+everything from the last captured stamp, so a restart that reprints the last
+line before the break lost nothing (the ring evicts oldest first); one that
+does not is a gap, from the last line before the break to the first after,
+in device time. Nothing is known about the guest inside a gap, so a gap is
+neither a hang nor slow frames: a window spanning one is not scored, and a
+hang gap is measured with the capture gap subtracted. Exact duplicate lines
+(the replayed overlap) are read once. The gaps are reported, never judged.
+
 AUDIO: the APU's `starve:` lines (hakuX-audiocap) each carry the callbacks
 and the short callbacks since the previous line. The share is short/total
 over lines stamped more than 10 s after the mark. No starve line there at
@@ -62,6 +72,7 @@ LINE = re.compile(r"^(\d\d-\d\d \d\d:\d\d:\d\d\.\d{3})\s+([VDIWEF])/([^(\s]+)\s*
 PERF = re.compile(r"gfps=(\d+)\s+G:([\d.]+)\(([\d.]+)-([\d.]+)\)")
 STARVE = re.compile(r"starve: (\d+)/(\d+) callbacks short \((\d+) empty\)")
 SCALE = re.compile(r"surface_scale=(\d+)")
+CAPTURE_BREAK = "# hakuX-capture: stream ended"   # soak_title.sh writes it
 
 FRAMES_PER_LINE = 60          # profile.c: frame_count % 60
 HANG_S = 10.0
@@ -102,16 +113,41 @@ def find_title(targets, iso):
 
 
 def parse_logcat(path):
-    out = []
+    """(lines, capture gaps). See CAPTURE GAPS above."""
+    out, gaps, seen = [], [], set()
+    last_t = pending = None
+    overlap = False
     try:
         with open(path, errors="replace") as f:
             for raw in f:
-                m = LINE.match(raw.rstrip("\n"))
-                if m:
-                    out.append((ts(m.group(1)), m.group(2), m.group(3), m.group(4)))
+                raw = raw.rstrip("\n")
+                if raw.startswith(CAPTURE_BREAK):
+                    if pending is None:
+                        pending, overlap = last_t, False
+                    continue
+                m = LINE.match(raw)
+                if not m:
+                    continue
+                if raw in seen:
+                    if pending is not None:
+                        overlap = True
+                    continue
+                seen.add(raw)
+                t = ts(m.group(1))
+                if pending is not None:
+                    if not overlap and t > pending:
+                        gaps.append((pending, t))
+                    pending = None
+                out.append((t, m.group(2), m.group(3), m.group(4)))
+                last_t = t
     except OSError:
         pass
-    return out
+    return out, gaps
+
+
+def lost_in(a, b, gaps):
+    """Seconds of (a, b) that fall inside a capture gap."""
+    return sum(max(0.0, min(b, g1) - max(a, g0)) for g0, g1 in gaps)
 
 
 def contact_sheet(rdir, out_png):
@@ -171,9 +207,10 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
     never = "guest never appeared" in runlog
     exited = re.search(r"^guest exited after (\d+)s", runlog, re.M)
     route_not_played = re.search(r"^ROUTE NOT PLAYED: (.*)$", runlog, re.M)
-    route_marks_host = re.findall(r"^ROUTE \S+ mark (\S+)", runlog, re.M)
+    route_marks_host = re.findall(r"^ROUTE \S+ mark ([A-Za-z0-9_.-]+)$", runlog, re.M)
+    route_marks_failed = re.findall(r"^ROUTE \S+ mark ([A-Za-z0-9_.-]+): logcat write FAILED$", runlog, re.M)
 
-    lc = parse_logcat(os.path.join(rdir, "logcat.txt"))
+    lc, cap_gaps = parse_logcat(os.path.join(rdir, "logcat.txt"))
     perf = [(t, PERF.search(msg)) for t, lv, tag, msg in lc if tag == "hakuX-perf"]
     perf = [(t, p) for t, p in perf if p]
     marks = [(t, msg[5:].strip()) for t, lv, tag, msg in lc
@@ -227,22 +264,29 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
 
     # Windows: consecutive perf lines BOTH inside the scored window. The line
     # that straddles the mark belongs to pre-mark play and is not counted.
+    # A window that spans a capture gap is not a measurement of the guest.
     windows = []
     for (t0, p0), (t1, p1) in zip(after, after[1:]):
         dt_s = t1 - t0
-        if dt_s > 0:
+        if dt_s > 0 and not lost_in(t0, t1, cap_gaps):
             windows.append((dt_s, FRAMES_PER_LINE / dt_s, float(p1.group(2)), int(p1.group(1))))
     gameplay_s = (end_t - mark_t) if (mark_t is not None and end_t is not None) else 0.0
     v["gameplay_s"] = round(gameplay_s, 1)
+    in_play = [(a, b) for a, b in cap_gaps
+               if mark_t is not None and end_t is not None and b > mark_t and a < end_t]
+    v["capture_gaps_s"] = [round(b - a, 1) for a, b in in_play][:20]
+    v["capture_lost_s"] = round(sum(b - a for a, b in in_play), 1)
 
     hang_gaps = []
     if mark_t is not None and flipped_after:
         pts = [mark_t] + [t for t, _ in after]
         if not died and end_t is not None:
             pts.append(end_t)
-        hang_gaps = [round(b - a, 1) for a, b in zip(pts, pts[1:]) if b - a > HANG_S]
-    elif mark_t is not None and not died and end_t is not None and end_t - mark_t > HANG_S:
-        hang_gaps = [round(end_t - mark_t, 1)]
+        seen_s = [(b - a) - lost_in(a, b, cap_gaps) for a, b in zip(pts, pts[1:])]
+        hang_gaps = [round(g, 1) for g in seen_s if g > HANG_S]
+    elif mark_t is not None and not died and end_t is not None \
+            and (end_t - mark_t) - lost_in(mark_t, end_t, cap_gaps) > HANG_S:
+        hang_gaps = [round((end_t - mark_t) - lost_in(mark_t, end_t, cap_gaps), 1)]
     v["hang"] = bool(hang_gaps)
     v["hang_gaps_s"] = hang_gaps[:10]
 
@@ -317,8 +361,12 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
                       "then rerun with --reviewed-gameplay yes|no")
     elif not v["reached_gameplay"]:
         why = "no `mark gameplay` in logcat"
+        lost = [lab for lab in route_marks_failed if lab not in {x for _, x in marks}]
         if route_not_played:
             why += " (route not played: %s)" % route_not_played.group(1)
+        elif lost:
+            why += " (the route played `mark %s`, but its logcat write FAILED after its "\
+                   "retries: see run.log)" % ",".join(lost)
         elif route_marks_host and not marks:
             why += " (the route marked %s in run.log, but logcat has no hakuX-route line: "\
                    "the LOGCAT_SPEC dropped the tag)" % ",".join(route_marks_host)
@@ -374,11 +422,12 @@ def main(argv=None):
         json.dump(v, f, indent=2)
     json.load(open(tmp))
     os.replace(tmp, os.path.join(a.rdir, "verdict.json"))
-    print("VERDICT %s %s %s gameplay=%ss fps_ok=%s crash=%s hang=%s audio_short=%s%s" % (
+    print("VERDICT %s %s %s gameplay=%ss fps_ok=%s crash=%s hang=%s audio_short=%s%s%s" % (
         v["name"] or v["title"] or "?", v["device"] or "?",
         ("PASS " + str(v["rating_candidate"])) if v["pass"] else "FAIL(%s)" % v["failing"],
         v["gameplay_s"], v["fps_ok_share"], v["crash"], v["hang"], v["audio_starve_share"],
-        " below_own_target" if v["below_own_target"] else ""))
+        " below_own_target" if v["below_own_target"] else "",
+        (" capture_lost=%ss" % v["capture_lost_s"]) if v["capture_lost_s"] else ""))
     return 0
 
 

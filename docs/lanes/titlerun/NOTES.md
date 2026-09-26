@@ -247,3 +247,23 @@ The contact sheet shows the plane in flight, with the HUD, from the
   one press. The Crimson route mashes A 12 times for that reason.
 - A detached helper started from a lane session dies with the session's
   unit, `setsid` or not. Stay in the foreground and poll.
+
+## Audit pass 1 remediation (2026-09-26)
+
+- **M1, capture gaps.** A logcat restart now asks the ring for everything
+  from the last captured stamp (`-T '<stamp>'`), and writes a
+  `# hakuX-capture: stream ended` line into logcat.txt. `title_verdict.py`
+  reads an exact duplicate line once. A restart whose replay does not reprint
+  the last line is a gap. A window that spans a gap is not scored, and a hang
+  gap is measured with the capture gap subtracted. The verdict reports
+  `capture_gaps_s` and `capture_lost_s`. Fixture `capgap` is the audit's
+  falsifier (12 s once, 5 s eight times, one replayed restart). It passes,
+  with no hang and fps share 1.0. Three mutants must be caught by it.
+- **M2, the mark.** route.sh retries the mark write three times, 2 s apart.
+  Output on a zero exit also counts as a failure. After the third failure it
+  logs `mark <x>: logcat write FAILED`, and the verdict names that as the
+  reason whether or not other marks reached logcat. Fixture `lostmark`
+  covers it. A fake-adb check covers the retry: fail, then noisy, then ok is
+  three writes and no FAILED.
+- The LOWs are not changed here. L2 (`fps_tolerance = 0.95`) is a policy
+  value for the owner.

@@ -29,7 +29,7 @@ def stamp(t):
     return "09-25 %02d:%02d:%06.3f" % (t // 3600, (t % 3600) // 60, t % 60)
 
 def make(name, *, mark=True, gap_at=None, crash_at=None, fps=30.0, g_ms=33.3,
-         runlog_extra="", exited=None, end=760.0):
+         runlog_extra="", exited=None, end=760.0, breaks=(), marks=()):
     d = os.path.join(root, name); os.makedirs(d)
     L = [(1.0, "I", "hakuX", "surface_scale=1 (override=)"),
          (2.0, "I", "hakuX-route", "soak start")]
@@ -37,6 +37,8 @@ def make(name, *, mark=True, gap_at=None, crash_at=None, fps=30.0, g_ms=33.3,
     while t < 100.0:                      # loading at 10 fps, before the mark
         L.append((t, "I", "hakuX-perf", "gfps=10 G:100.0(90.0-110.0) D:16.7"))
         t += 6.0
+    for mt, lab in marks:
+        L.append((mt, "I", "hakuX-route", "mark " + lab))
     if mark:
         L.append((100.0, "I", "hakuX-route", "mark gameplay"))
     # hakuX-pace (profile.c): a pre-mark window and a process's first window
@@ -67,9 +69,26 @@ def make(name, *, mark=True, gap_at=None, crash_at=None, fps=30.0, g_ms=33.3,
     else:
         L.append((end, "I", "hakuX-route", "soak end"))
     L.sort(key=lambda x: x[0])
+    # Capture breaks, as soak_title.sh writes them: (start, length, replayed).
+    # A lost break drops every line inside it; a replayed one reprints the
+    # last three lines before it, as a `-T '<stamp>'` restart does.
+    for b0, bl, rp in breaks:
+        if not rp:
+            L = [x for x in L if not (b0 < x[0] < b0 + bl)]
+    fmt = lambda x: "%s %s/%s( 4242): %s\n" % (stamp(x[0]), x[1], x[2], x[3])
+    todo = sorted(breaks)
     with open(os.path.join(d, "logcat.txt"), "w") as f:
-        for t, lv, tag, msg in L:
-            f.write("%s %s/%s( 4242): %s\n" % (stamp(t), lv, tag, msg))
+        done = []
+        for x in L:
+            while todo and x[0] > todo[0][0]:
+                f.write("# hakuX-capture: stream ended after X; restart 1\n")
+                if todo[0][2]:
+                    f.writelines(fmt(y) for y in done[-3:])
+                todo.pop(0)
+            f.write(fmt(x))
+            done.append(x)
+    json.dump({"pace_lines": sum(1 for x in L if x[2] == "hakuX-pace" and x[0] >= 100.0)},
+              open(os.path.join(d, "expect.json"), "w"))
     with open(os.path.join(d, "run.log"), "w") as f:
         f.write("ROUTE 13:00:00.000 start r.route serial=x\n")
         f.write(runlog_extra)
@@ -92,6 +111,20 @@ make("below", fps=20.0, g_ms=33.3)
 make("adbfail", runlog_extra="".join(
     "ADB: liveness probe failed (try %d/3): UtilAcceptVsock:271: accept4 failed 110\n" % k
     for k in (1, 2, 3)))
+# Audit #307 M1: a guest at a steady 30 fps whose CAPTURE lost 12 s once and
+# 5 s eight times, plus one restart whose replay overlapped (a hakuX-pace
+# line among the reprinted three). Not a hang, not slow, pace read once.
+make("capgap", breaks=[(200.0, 12.0, False)] + [(300.0 + 40 * k, 5.0, False) for k in range(8)]
+     + [(650.0, 0.0, True)])
+# Audit #307 M2: `mark booted` reached logcat, `mark gameplay` did not, and
+# route.sh said so in run.log.
+make("lostmark", mark=False, marks=[(60.0, "booted")], runlog_extra=
+     "ROUTE 13:01:00.000 mark booted\n"
+     "ROUTE 13:01:40.000 mark gameplay\n"
+     "ROUTE 13:01:40.100 mark gameplay: logcat write failed (try 1/3): UtilAcceptVsock\n"
+     "ROUTE 13:01:42.100 mark gameplay: logcat write failed (try 2/3): UtilAcceptVsock\n"
+     "ROUTE 13:01:44.100 mark gameplay: logcat write failed (try 3/3): UtilAcceptVsock\n"
+     "ROUTE 13:01:44.100 mark gameplay: logcat write FAILED\n")
 PY
 
 # verdict_expect <title_verdict.py> -> prints one "FAIL <why>" line per unmet
@@ -99,7 +132,7 @@ PY
 # bad) and for every mutant (at least one line is the mutant being caught).
 verdict_expect() {
     local vpy="$1" f
-    for f in pass crash hang nomark below adbfail; do
+    for f in pass crash hang nomark below adbfail capgap lostmark; do
         rm -f "$TV/$f/verdict.json"
         python3 "$vpy" "$TV/$f" --targets "$TESTING/titles/targets.toml" >/dev/null 2>&1 \
             || { echo "FAIL $f: title_verdict exited non-zero"; continue; }
@@ -126,6 +159,12 @@ exp = {
                          and x.get("fps_ok_share") is not None and x["fps_ok_share"] < 0.9,
     "adbfail": lambda x: x.get("pass") is True and x.get("crash") is False
                          and x.get("adb_failures") == 3,
+    "capgap":  lambda x: x.get("pass") is True and x.get("hang") is False
+                         and x.get("fps_ok_share") == 1.0 and len(x.get("capture_gaps_s") or []) == 9
+                         and (x.get("pace") or {}).get("lines")
+                             == json.load(open(os.path.join(root, "capgap", "expect.json")))["pace_lines"],
+    "lostmark": lambda x: x.get("pass") is False and x.get("reached_gameplay") is False
+                         and "logcat write FAILED" in (x.get("failing") or ""),
 }
 for n, ok in exp.items():
     x = v(n)
@@ -136,7 +175,7 @@ PY
 }
 
 out=$(verdict_expect "$TESTING/title_verdict.py")
-for f in pass crash hang nomark below adbfail; do
+for f in pass crash hang nomark below adbfail capgap lostmark; do
     case "$out" in
         *"FAIL $f:"*) bad "verdict on the '$f' fixture: $(printf '%s\n' "$out" | grep "FAIL $f:")" ;;
         *) ok "verdict on the '$f' fixture is what it should be" ;;
@@ -183,6 +222,18 @@ tv_mutant "count pre-mark windows" pass \
 tv_mutant "drop the hang check" hang \
     'v["hang"] = bool(hang_gaps)' \
     'v["hang"] = False'
+tv_mutant "score windows across a capture gap" capgap \
+    'if dt_s > 0 and not lost_in(t0, t1, cap_gaps):' \
+    'if dt_s > 0:'
+tv_mutant "count a capture gap as a hang" capgap \
+    'seen_s = [(b - a) - lost_in(a, b, cap_gaps) for' \
+    'seen_s = [(b - a) for'
+tv_mutant "read a replayed line twice" capgap \
+    '                if raw in seen:' \
+    '                if False:'
+tv_mutant "ignore route.sh's failed mark write" lostmark \
+    '        elif lost:' \
+    '        elif False:'
 
 echo "== soak_title.sh: one failed adb probe is not a guest exit"
 # A fake adb that answers the soak's calls. `ps` answers in the order the
@@ -204,9 +255,10 @@ case "$*" in
         esac ;;
     *"logcat -c"*) exit 0 ;;
     # The first stream prints the ring and dies (a vsock drop); a restart
-    # with -T 1 prints one new line and keeps streaming.
-    *"logcat -v time -T 1"*) echo "I/hakuX-perf( 1): after-restart"; exec sleep 30 ;;
-    *"logcat -v time"*) echo "I/hakuX-perf( 1): ring-line"; exit 1 ;;
+    # with -T '<stamp>' replays from that line, as the ring does, then streams.
+    *"logcat -v time -T"*) echo "09-25 13:00:01.000 I/hakuX-perf( 1): ring-line"
+                           echo "09-25 13:00:03.000 I/hakuX-perf( 1): after-restart"; exec sleep 30 ;;
+    *"logcat -v time"*) echo "09-25 13:00:01.000 I/hakuX-perf( 1): ring-line"; exit 1 ;;
     *) exit 0 ;;
 esac
 EOF
@@ -239,7 +291,7 @@ case "$log3" in *"guest exited"*) bad "three failed probes read as an exit (shou
                 *"adb_failures=3"*) ok "three failed probes are unknown, counted, and keep holding";;
                 *) bad "three failed probes: $(printf '%s' "$log3" | grep -E 'adb_failures|ADB' | head -3)";; esac
 
-echo "== soak_title.sh: a dropped logcat stream is restarted, without re-reading the ring"
+echo "== soak_title.sh: a dropped logcat stream is restarted from its last stamp"
 logcat_run() {   # <soak_title.sh> -> run.log on stdout; capture in $SK/logcat.txt
     rm -f "$SK/logcat.txt"
     CAPTURE_LOG="$SK/logcat.txt" LOGCAT_RESTART_S=0.1 soak_run "$1" up
@@ -249,8 +301,15 @@ case "$log4" in *"LOGCAT: stream ended"*"restart 1"*) ok "the dropped stream is 
                 *) bad "no LOGCAT restart line in run.log";; esac
 if grep -q after-restart "$SK/logcat.txt" 2>/dev/null; then ok "the capture continues after the drop"
 else bad "the capture stopped at the drop: $(cat "$SK/logcat.txt" 2>/dev/null | tr '\n' '|')"; fi
-if [ "$(grep -c ring-line "$SK/logcat.txt" 2>/dev/null)" = 1 ]; then ok "the restart did not re-read the ring"
-else bad "the ring was read $(grep -c ring-line "$SK/logcat.txt" 2>/dev/null) times"; fi
+if grep -qF "logcat -v time -T '09-25 13:00:01.000'" "$SK/calls" 2>/dev/null; then
+    ok "the restart asked the ring from the last captured stamp"
+else bad "the restart did not ask from the last stamp: $(grep 'logcat -v time' "$SK/calls" 2>/dev/null | tr '\n' '|')"; fi
+if grep -q '^# hakuX-capture: stream ended after 09-25 13:00:01.000; restart 1' "$SK/logcat.txt" 2>/dev/null; then
+    ok "the break is written into the capture"
+else bad "no capture-break line in logcat.txt: $(tr '\n' '|' < "$SK/logcat.txt" 2>/dev/null)"; fi
+check "the verdict reads the replayed line once and finds no gap in an overlapping restart" \
+    python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import title_verdict as t; l, g = t.parse_logcat(sys.argv[2]); assert [m for *_, m in l].count("ring-line") == 1 and g == [], (l, g)' \
+    "$TESTING" "$SK/logcat.txt"
 
 echo "== soak_title.sh mutant: treat one adb failure as an exit"
 SM="$T/soak-mutant"; rm -rf "$SM"; mkdir -p "$SM"
@@ -291,6 +350,43 @@ else
 fi
 rm -rf "$SM"
 
+echo "== route.sh: the mark's logcat write is retried, and a lost one is said"
+# A fake adb whose `log` answers from a scenario: fail (exit 1), noisy (exit 0
+# with a vsock error on stdout -- still a failure), ok (silent exit 0).
+RB="$T/routemark"; rm -rf "$RB"; mkdir -p "$RB/bin"
+cat > "$RB/bin/adb" <<'EOF'
+#!/usr/bin/env bash
+[ "$1" = -s ] && shift 2
+case "$*" in
+    *"log -t hakuX-route"*)
+        n=$(cat "$RB_FAKE/n" 2>/dev/null || echo 0); n=$((n+1)); echo "$n" > "$RB_FAKE/n"
+        a=$(sed -n "${n}p" "$RB_FAKE/scenario"); [ -n "$a" ] || a=$(tail -1 "$RB_FAKE/scenario")
+        case "$a" in
+            fail)  echo "UtilAcceptVsock:271: accept4 failed 110" >&2; exit 1 ;;
+            noisy) echo "UtilAcceptVsock:271: accept4 failed 110"; exit 0 ;;
+            ok)    exit 0 ;;
+        esac ;;
+    *) exit 0 ;;
+esac
+EOF
+chmod +x "$RB/bin/adb"
+printf 'mark gameplay\n' > "$RB/m.route"
+routemark_run() {   # <scenario words...> -> route.sh stdout
+    rm -f "$RB/n"; printf '%s\n' "$@" > "$RB/scenario"
+    PATH="$RB/bin:$PATH" RB_FAKE="$RB" SERIAL=x PAD_DEV=/dev/input/event9 ROUTE_RETRY_S=0.1 \
+        ROUTE_FRAMES="$RB/frames" timeout 30 bash "$TESTING/titles/route.sh" "$RB/m.route" 2>&1
+}
+rm1=$(routemark_run fail noisy ok)
+case "$rm1" in *"logcat write FAILED"*) bad "a mark that got through on its third try was reported FAILED";;
+               *"try 2/3"*) ok "a failed and a noisy mark write are retried until one works";;
+               *) bad "the mark write was not retried: $(printf '%s' "$rm1" | grep mark | tr '\n' '|')";; esac
+[ "$(cat "$RB/n" 2>/dev/null)" = 3 ] && ok "the mark was written three times, no more" \
+    || bad "the mark was written $(cat "$RB/n" 2>/dev/null) times, not 3"
+case "$(routemark_run fail)" in
+    *"mark gameplay: logcat write FAILED"*) ok "three failed mark writes are named FAILED in run.log" ;;
+    *) bad "three failed mark writes were not named FAILED" ;; esac
+rm -rf "$RB"
+
 echo "== route.sh: a route is refused before anything is played"
 printf 'wait 1\npress Q\n' > "$SK/bad.route"
 check "route.sh --check refuses an unknown button" \
@@ -317,4 +413,4 @@ case "$(rq --suites "Blend tests" --route crimson-skies 2>&1)" in
 case "$(rq --title a.iso --route no-such-route 2>&1)" in
     *"no route 'no-such-route'"*) ok "request.sh refuses a route that does not exist" ;;
     *) bad "request.sh did not refuse a missing route" ;; esac
-unset TV SK SM RQ log1 log2 log3 out
+unset TV SK SM RQ RB log1 log2 log3 rm1 out

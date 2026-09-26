@@ -137,6 +137,23 @@ shot() {
     log "shot $1 -> $(basename "$f")"
 }
 
+# The mark is the line the whole scored window hangs on, so it is retried as
+# soak_title.sh retries its liveness probe: three tries, 2 s apart. `log`
+# prints nothing when it works, so output on a zero exit (a WSL vsock error
+# text) is a failure too. The last line is what title_verdict.py reads.
+mark_logcat() {
+    local try out
+    for try in 1 2 3; do
+        if out=$(timeout 20 adb -s "$SERIAL" shell log -t hakuX-route "'mark $1'" 2>&1) && [ -z "$out" ]; then
+            return 0
+        fi
+        log "mark $1: logcat write failed (try $try/3): $(printf '%s' "$out" | head -1)"
+        [ "$try" = 3 ] || nap "${ROUTE_RETRY_S:-2}"
+    done
+    log "mark $1: logcat write FAILED"
+    return 1
+}
+
 run() {   # run <first line> <end line, exclusive>
     local i=$1 end=$2 w j k n
     while [ "$i" -lt "$end" ]; do
@@ -152,10 +169,7 @@ run() {   # run <first line> <end line, exclusive>
             mash)  log "mash ${w[1]} ${w[2]} ${w[3]}"
                    for ((k = 0; k < w[2]; k++)); do pad press "${w[1]}"; nap "${w[3]}"; done ;;
             mark)  log "mark ${w[1]}"
-                   if [ -z "${ROUTE_DRY:-}" ]; then
-                       timeout 20 adb -s "$SERIAL" shell log -t hakuX-route "'mark ${w[1]}'" >/dev/null 2>&1 \
-                           || log "mark ${w[1]}: logcat write FAILED"
-                   fi
+                   [ -n "${ROUTE_DRY:-}" ] || mark_logcat "${w[1]}"
                    shot "${w[1]}" ;;
             shot)  shot "${w[1]}" ;;
             repeat) j=$(close_of "$i")
