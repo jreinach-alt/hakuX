@@ -1164,8 +1164,10 @@ note = "RETIRED (job.board wave 248): PR #391 MERGED 2026-09-26T13:35:27Z, no op
 [lane.ring53impl]
 issues = ["53"]
 files = ["hw/xbox/nv2a/pgraph/pgraph.h", "hw/xbox/nv2a/pgraph/glsl/vsh.h", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/ring53impl-*.json", "docs/lanes/ring53impl/**"]
+released = ["hw/xbox/nv2a/pgraph/pgraph.h", "hw/xbox/nv2a/pgraph/glsl/vsh.h", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/ring53impl-*.json", "docs/lanes/ring53impl/**"]
+released_at_ready = 395
 standing = false
-note = "LENT (hostops 2026-09-26 12:14 PM PDT): hw/xbox/nv2a/pgraph/pgraph.c to [lane.yuv10] for ONE hunk, the SET_CONTROL0 handler only (ring53impl's hunks are in the reg-category table, method paths and SET_BEGIN_END; disjoint); it RETURNS when PR yuv10 is ready. STARTED, PR #395 draft (job.board 2026-09-26T17:45Z): the lane is waiting on the arms verdict (arm requests queued behind the Thor sweep). PRIOR: BRIEFED, NOT STARTED (job.board wave 248): `docs/testing/lane.sh start` needs an approval the non-interactive board session cannot get (same as wave 247 for ring53); the HOST runs `docs/testing/lane.sh start ring53impl briefs/ring53impl.md 53` and labels #53 lane:ring53impl. BRIEFED AT TERRITORY WAVE 248 (job.board, 2026-09-26T13:50:00Z), briefs/ring53impl.md: #53 ring implementation. The console run that pins the per-method ring weights landed (PR #394, lane/xbox-ringw, CI green, fold-ready); lane.ring53's NOTES s2 names the hunks and board-requests/ring53.md item 2 said a fresh lane gets pgraph.h, glsl/vsh.h, glsl/vsh.c and pgraph.c once the run lands. All five were unclaimed (checked against every open PR's files); vsh-ff.c released by lane.zrtz272 (PR #364 merged). vsh-prog.c is free and needs no hunk."
+note = "READY, PR #395 (job.board 2026-09-26T21:10Z): out of draft, CI green, unit gone; files released at ready. PRIOR: LENT (hostops 2026-09-26 12:14 PM PDT): hw/xbox/nv2a/pgraph/pgraph.c to [lane.yuv10] for ONE hunk, the SET_CONTROL0 handler only (ring53impl's hunks are in the reg-category table, method paths and SET_BEGIN_END; disjoint); it RETURNS when PR yuv10 is ready. STARTED, PR #395 draft (job.board 2026-09-26T17:45Z): the lane is waiting on the arms verdict (arm requests queued behind the Thor sweep). PRIOR: BRIEFED, NOT STARTED (job.board wave 248): `docs/testing/lane.sh start` needs an approval the non-interactive board session cannot get (same as wave 247 for ring53); the HOST runs `docs/testing/lane.sh start ring53impl briefs/ring53impl.md 53` and labels #53 lane:ring53impl. BRIEFED AT TERRITORY WAVE 248 (job.board, 2026-09-26T13:50:00Z), briefs/ring53impl.md: #53 ring implementation. The console run that pins the per-method ring weights landed (PR #394, lane/xbox-ringw, CI green, fold-ready); lane.ring53's NOTES s2 names the hunks and board-requests/ring53.md item 2 said a fresh lane gets pgraph.h, glsl/vsh.h, glsl/vsh.c and pgraph.c once the run lands. All five were unclaimed (checked against every open PR's files); vsh-ff.c released by lane.zrtz272 (PR #364 merged). vsh-prog.c is free and needs no hunk."
 
 [retired.fmv303b]
 issues = []
@@ -1183,8 +1185,10 @@ note = "STARTED (hostops 2026-09-26 12:14 PM PDT, on lane.xbox's board request o
 [lane.pilotgate]
 issues = []
 files = ["docs/testing/request.sh", "docs/testing/jobs/roles/lane.md", "AGENTS.md", "docs/testing/jobs/selftest.d/99-pilot-gate.sh", "docs/lanes/pilotgate/**"]
+released = ["docs/testing/request.sh", "docs/testing/jobs/roles/lane.md", "AGENTS.md", "docs/testing/jobs/selftest.d/99-pilot-gate.sh", "docs/lanes/pilotgate/**"]
+released_at_ready = 420
 standing = false
-note = "STARTED (hostops 2026-09-26 12:18 PDT, runbook 6m one-shot), briefs/pilotgate.md: harness defect, no tracker issue. The owner's pilot rule (2026-09-26): a requester's queued device time over 30 min is refused at enqueue unless dispatch/pilots/<requester>.ok is fresh. request.sh LENT from [lane.toolsmith]; roles/lane.md and AGENTS.md unclaimed; the selftest is new."
+note = "READY, PR #420 (job.board 2026-09-26T21:10Z): out of draft, CI green, unit gone; files released at ready. PRIOR: STARTED (hostops 2026-09-26 12:18 PDT, runbook 6m one-shot), briefs/pilotgate.md: harness defect, no tracker issue. The owner's pilot rule (2026-09-26): a requester's queued device time over 30 min is refused at enqueue unless dispatch/pilots/<requester>.ok is fresh. request.sh LENT from [lane.toolsmith]; roles/lane.md and AGENTS.md unclaimed; the selftest is new."
 
 [lane.blinx372d]
 issues = ["372"]
