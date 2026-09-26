@@ -537,7 +537,8 @@ note = "RETIRED (job.board wave 245): PR #385 MERGED, no open PR on lane/fps382,
 # state: a lane row whose agent has finished asserts coverage that does not
 # exist, and check_coverage.py cannot tell the difference.
 # CLAIMED (hostops, 2026-09-26T03:35Z): glsl/psh.h -> lane.pshqueue (granted at wave 222; [free] still listed it, failing check_territory).
-files = ["hw/xbox/nv2a/pgraph/gl/texture.c", "hw/xbox/nv2a/pgraph/texture.c", 
+# CLAIMED (hostops, 2026-09-26 6:45 AM PDT): gl/texture.c -> lane.pshaniso284 (granted 6:40 AM; [free] still listed it, failing check_territory).
+files = ["hw/xbox/nv2a/pgraph/texture.c", 
 # RELEASED AT WAVE 158 by retiring lane.cloud190: PR #211 folded as f2e8ef8ba8 (#190 fixed).
     "hw/xbox/nv2a/pmc.c",
     # RELEASED AT WAVE 147 (host session): vk/draw.c + vk/surface.c by retiring lane.clrsurf91
