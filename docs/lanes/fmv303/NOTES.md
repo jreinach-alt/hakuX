@@ -167,3 +167,50 @@ buffer**, with the same predicate as `green_cells.py`
 
 No fix exists, so no prediction is registered. The brief's fix file
 (`vk/display.c`) is refuted as the fix site by the path table above.
+
+## 5. Attempt 4 (2026-09-26): probe v2 read. The green is in guest RAM
+
+Attempt 3 ended correctly, while waiting. Probe v2 (`1790389079-…`) was
+queued and unclaimed. It has since run: Thor, apk `d8a9fc20c655`, ref
+`de1c93d244`, 150 s, frames every 2 s.
+
+Sanity check first: a black frame reads `rgb=0.0,0.0,0.0` (f=14), so the
+byte order is right and the counts are valid.
+
+| same run, same predicate | frames (lit >= 100) | green > 10% | clean (0) | > 90% | mean |
+|---|---|---|---|---|---|
+| guest ARGB buffer (`guest_tint.py`, tint lines, macroblocks) | 435 | 374 | 32 | 142 | **0.66** |
+| screen (`green_cells.py`, f13-f52, 32 px cells) | 40 | 36 | 3 | 9 | **0.63** |
+
+The guest buffer is green as often, and as much, as the screen. It also
+switches between clean and tinted within a shot, 63 times over the run.
+Frame-level readings go as far as 920/920 macroblocks with
+`rgb=0.0,118.1,0.0`. **The green is already in guest RAM before the GPU
+samples it.** The display path (`vk/display.c`), the texture upload and
+PVIDEO are all exonerated. No texture.c hunk is implicated, so there is no
+grant to ask texvol283 for.
+
+### Conclusion for #303
+
+- Path: CPU-written linear A8R8G8B8 texture on stage 0 (section 4). The game
+  does YUV->RGB itself. No GPU YUV path is involved.
+- "The missing write": this is not a missed GPU-side write or upload. The
+  guest's own RGB output already carries the chroma loss, in macroblock cells,
+  and whether it appears depends on timing. What produces it is emulated
+  guest code (Sofdec's decoder/converter on the CPU), or an emulated write
+  that clobbers its chroma planes between decode and conversion.
+- No fix is in this lane's files, so no prediction is registered. The probe in
+  `vk/display.c` is gated on `HAKUX_FMV303_PROBE=1` and does nothing by
+  default. It is kept so the next lane can reuse the `tint` line as a
+  per-frame guest-side meter that needs no screen capture.
+
+### Next lane (CPU side), and what not to repeat
+
+- First discriminator: the same soak with tier1 off (A/B on the JIT tier), metered by
+  `guest_tint.py`. If the tint mean stays about 0.6 with tier1 off, the JIT
+  tier is not the cause. Then look for a DMA or surface write-back that lands
+  in the decoder's planar buffers. If it drops to 0, bisect the tier1 MMX/SSE
+  saturating ops (packuswb, paddsw, pmulhw) used in IDCT/colour conversion.
+- Do not repeat: the "Y=U=V=0 through our YUV path" premise (refuted twice:
+  colours in section 1, registers in section 4); the upload/missed-dirty
+  hypothesis (refuted by this table); the Nova validation-layer soak's timing.
