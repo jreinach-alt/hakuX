@@ -233,6 +233,24 @@ Nothing failed.
   2. Read `white-content` rows as unreadable.
   3. Then `gh pr ready 396`.
 
+### Why attempt 2 did not finish, and attempt 3 (2026-09-26, 13:15 PDT)
+
+Attempt 2 also ended on a `waiting:` comment, for the mnm2 verdict. Nothing
+failed. At 20:10Z handback resumed the lane, before the arms job had posted
+mnm2's verdict (the `verified` label was the first arm's). Both mnm2 arms
+(`1790451284-arms-blinx372d-base-2400235`, `-fix-2400543`) were DONE, so the
+verdict was computed here with `ab_compare.py --expect` on the arms job's
+expect file:
+
+| arm | result | reading |
+|---|---|---|
+| must-not-move on the merge (`blinx372d-mnm2.json`, A 9f5a3dfc98, B 790dc14730) | VERDICT: PASS, 102/102 byte-identical, exact 34 -> 34; B logcat has 5 `handoffs=` lines with a nonzero count | PASS, exercised |
+
+Master has moved 11 commits since the merge, to aaf01a1cef. None of them
+touches `hw/` (they are fold.sh and titleplay docs), and the PR is MERGEABLE.
+So the merge was not repeated. A re-run on those refs would build the same
+emulator code.
+
 ## 5. The demo's case: a same-pitch size flip (next lane, not this PR)
 
 Not implemented here. The resume brief said not to extend this PR, and #303
