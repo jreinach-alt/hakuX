@@ -352,6 +352,8 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
     state->other_stage_input = pgraph_reg_r(pg, NV_PGRAPH_SHADERCTL);
     state->final_inputs_0 = pgraph_reg_r(pg, NV_PGRAPH_COMBINESPECFOG0);
     state->final_inputs_1 = pgraph_reg_r(pg, NV_PGRAPH_COMBINESPECFOG1);
+    state->color_space_convert = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0),
+                                          NV_PGRAPH_CONTROL_0_CSCONVERT);
 
     state->alpha_test = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) &
                         NV_PGRAPH_CONTROL_0_ALPHATESTENABLE;
@@ -1875,6 +1877,14 @@ static void define_colorkey_comparator(MString *preflight)
  * channels are rebuilt from a gather of the signed texels; that path
  * filters at the base level only.
  */
+/* SET_CONTROL0's colour-space field asks for CRYCB_TO_RGB, the one value
+ * measured on silicon (#10). */
+static bool csc_crycb(const struct PixelShader *ps)
+{
+    return ps->state->color_space_convert ==
+           NV097_SET_CONTROL0_COLOR_SPACE_CONVERT_CRYCB_TO_RGB;
+}
+
 static void append_bump_channel(const struct PixelShader *ps, MString *vars,
                                 int i, int k, int comp, uint32_t flag_bit,
                                 bool luminance, const char *name,
@@ -3266,6 +3276,7 @@ static MString* psh_convert(struct PixelShader *ps)
 
     bool color_key_comparator_defined = false;
     bool hilo16_emitted[4] = { false, false, false, false };
+    bool stage_fetched[4] = { false, false, false, false };
 
     for (int i = 0; i < 4; i++) {
 
@@ -3499,6 +3510,14 @@ static MString* psh_convert(struct PixelShader *ps)
              * luminance does to the colour. */
             mstring_append_fmt(vars, "t%d.rgb *= bumpScale[%d] * dsdtl%d.p + bumpOffset[%d];\n",
                 i, i, i, i);
+            /* Silicon truncates the product to a byte (Lum_Off and Lum_On,
+             * docs/testing/xbox-csc-2026-09-26.md). Applied only where the
+             * colour-space converter reads it, which takes whole bytes; the
+             * rest of the Bump env lum goldens sit at their floor rounding. */
+            if (csc_crycb(ps)) {
+                mstring_append_fmt(vars,
+                    "t%d.rgb = floor(t%d.rgb * 255.0 + 1e-4) / 255.0;\n", i, i);
+            }
             break;
         case PS_TEXTUREMODES_BRDF:
             /* Stages i-2 and i-1 are ordinary reads whose texels carry the
@@ -3751,6 +3770,7 @@ static MString* psh_convert(struct PixelShader *ps)
         }
 
         if (sampler_type != NULL) {
+            stage_fetched[i] = true;
             if (ps->opts.vulkan) {
                 mstring_append_fmt(preflight, "layout(binding = %d) ",
                                    ps->opts.tex_binding + i);
@@ -3865,6 +3885,40 @@ static MString* psh_convert(struct PixelShader *ps)
                 i, i);
             }
         }
+    }
+
+    /*
+     * SET_CONTROL0's colour-space field, measured on the console
+     * (docs/testing/xbox-csc-2026-09-26.md, #10). CRYCB_TO_RGB converts
+     * every stage that fetched, whatever its format, and only after the
+     * whole texture shader: the bump offsets, the luminance and the dot
+     * products above all read the unconverted t%d, so the conversion runs
+     * here, once every stage has been emitted. The converter is util.h's
+     * convert_ycbcr_to_rgb() with Y from R, Cb from G, Cr from B and the red
+     * term's rounding constant at 128 (exact on 256 of 256 palette cells;
+     * 127 gives 241). Alpha passes unchanged.
+     */
+    if (csc_crycb(ps)) {
+        mstring_append(preflight,
+            "vec4 crycb_to_rgb(vec4 t) {\n"
+            "    ivec3 v = ivec3(round(clamp(t.rgb, 0.0, 1.0) * 255.0));\n"
+            "    int c = v.r - 16, d = v.g - 128, e = v.b - 128;\n"
+            "    int luma = (298 * c - 96) >> 8;\n"
+            "    ivec3 rgb = ivec3(luma + 2 * ((409 * e + 128) >> 9),\n"
+            "                      luma + 2 * ((-50 * d + 254) >> 8) +\n"
+            "                          2 * ((-104 * e + 248) >> 8) + 1,\n"
+            "                      luma + ((516 * d) >> 8));\n"
+            "    return vec4(vec3(clamp(rgb, 0, 255)) / 255.0, t.a);\n"
+            "}\n");
+        for (int i = 0; i < 4; i++) {
+            if (stage_fetched[i]) {
+                mstring_append_fmt(vars, "t%d = crycb_to_rgb(t%d);\n", i, i);
+            }
+        }
+    } else if (ps->state->color_space_convert !=
+               NV097_SET_CONTROL0_COLOR_SPACE_CONVERT_PASS) {
+        NV2A_UNIMPLEMENTED("SET_CONTROL0 colour-space conversion %u",
+                           ps->state->color_space_convert);
     }
 
     for (int i = 0; i < ps->num_stages; i++) {
