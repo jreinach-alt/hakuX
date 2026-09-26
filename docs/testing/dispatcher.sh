@@ -112,17 +112,19 @@ REPO="${DISPATCH_REPO:-$TREE}"
 BUILD_TREE="${DISPATCH_BUILD_TREE:-$D/build-tree}"
 snapshot_scripts() {
     mkdir -p "$SNAP"
-    local p f SRC0="$SRC" SNAP0="$SNAP"
-    for p in dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
+    local f SRC0="$SRC" SNAP0="$SNAP"
+    for f in dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
              affinity.py captures.py make_test_iso.py extract_results.py \
              sweep_queue.sh make_isolation_discs.py vsh_score.py \
              titles/route.sh perf/pad.sh; do
         # Two of these live in subdirectories. Each file is resolved against
         # its own directory, so the write-beside-and-rename below stays in one
-        # directory, and cp gets a directory that exists.
-        local SRC="$SRC0" SNAP="$SNAP0"; f="$p"
-        if [ "${p%/*}" != "$p" ]; then
-            SRC="$SRC0/${p%/*}"; SNAP="$SNAP0/${p%/*}"; f="${p##*/}"
+        # directory, and cp gets a directory that exists. (Reassigning $f
+        # does not disturb the loop; `for f in` stays, as 97-dispatch-deploy
+        # parses this list.)
+        local SRC="$SRC0" SNAP="$SNAP0"
+        if [ "${f%/*}" != "$f" ]; then
+            SRC="$SRC0/${f%/*}"; SNAP="$SNAP0/${f%/*}"; f="${f##*/}"
         fi
         [ -f "$SRC/$f" ] || continue
         mkdir -p "$SNAP" 2>/dev/null
