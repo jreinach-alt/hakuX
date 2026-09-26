@@ -78,3 +78,13 @@ above its ceiling refutes that hunk's model and is reported, not tuned.
 - `--register` cannot set runs_per_arm. Add it to the JSON before committing.
 - `latest_scores.py SUITE_DIR ...` prints the newest scored rows on disk per
   result directory, which is enough to date a baseline before registering.
+
+## State at end of session 1 (2026-09-25): waiting on three arms
+
+Waiting on the arms job's `[job.arms]` verdicts for pshqueue-279-dotzw.json,
+pshqueue-285-g8b8.json and pshqueue-315-brdf.json on PR #347, and on CI for
+the head. On resume: read each verdict's magnitudes against the ceilings above,
+drop any hunk whose arm refutes it (by revert commit, not rebase), cite the
+verdicts in the PR body, then mark the PR ready. A board request
+(board-requests/pshqueue.md) asks for vsh.c for #278 and for the [free] psh.h
+entry that fails check_territory.
