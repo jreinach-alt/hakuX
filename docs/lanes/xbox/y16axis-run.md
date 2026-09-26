@@ -5,6 +5,11 @@ committed and pushed before the emulator dry run and before the console run.
 The branch was cut fresh from `origin/master` (`9743f78f38`), and nothing is
 rebased after this commit. The host routed it on #112 at 05:31Z.
 
+**Result (2026-09-26):** X by 88 px. The horizontal axis is LOW and SWEEP:
+the horizontal offset reads the low byte. The vertical axis's M is 2,088 px,
+just over HIGH's 2,000. See
+[`xbox-y16axis-2026-09-26.md`](../../testing/xbox-y16axis-2026-09-26.md).
+
 ## Why
 
 PR #359 measured on silicon that a Y16 bump texel's **low byte feeds one
