@@ -1,0 +1,26 @@
+{
+  "registered_utc": "2026-09-26T12:20:00Z",
+  "who": "lane.blinx372c",
+  "issue": "372",
+  "title": "4D530013-Blinx_The_Time_Sweeper.xiso.iso",
+  "device": "thor",
+  "seconds": 240,
+  "frames_every": 30,
+  "perflog": true,
+  "runs_per_arm": 1,
+  "ref": "6c25a829ef",
+  "a_ref": "6c25a829ef",
+  "prediction": "ONE ARM, a hands-off 240 s perflog soak of Blinx's attract demo on master 6c25a829ef (Thor). Registered before the soak and before any hakuX-stall line has been read: none exists on disk, because the live dispatcher (/home/justin/hakuX at c4d541bd72, 52 behind) still drops the tag. A run whose result.json logcat.spec lacks hakuX-stall is VOID and must not be queued. Judge: python3 docs/lanes/blinx372c/stallread.py <logcat> --window 135,265 --spec <result.json> --prediction docs/testing/predictions/blinx372c-demo-soak.json. Each leg names the world in which it fails. M0 instrument: the spec carries hakuX-stall, >= 10 stall lines fall in the window, and every line has pres+flip == 60 (the reset cadence in vk/draw.c:opt_stats_log_and_reset). Otherwise VOID, never 'no downloads'. P1 is the impossible row: Finish sd == dl + cDef + pDl + dDl on every line. It fails if a fifth SURFACE_DOWN site is live, which voids the site split. P2 is the rate: sd per presented frame is between 1.2 and 2.0 (xemu-work samples gave 22 x 2 + 7 x 0 over 29 frames, 1.52). It fails if the demo's download pattern differs from lane.blinx372's run. P3: one site carries >= 80% of sd. It fails if the two waits come from two sites, and then the lane names both and no single hunk. P4 is a guess and is labelled as one: the top site is cDef, i.e. deferred downloads from the texture range path (dif oth, texture.c:texture_bind's pgraph_vk_download_surfaces_in_range_if_dirty call), completed when the renderer needs them. The rival is pDl, which the predecessor ruled out as display-only: process_pending_downloads is also what surface_access_callback (the CPU-access watch) waits on, so the guest CPU touching a draw-dirty surface counts as pDl on an AHB device too. The third candidate is dl via texture.c's incompatible-shape branch (printed as dif tex). P5: the demo fps (gfps-line cadence over 135-265 s) is between 12 and 20. Outside that range, rerun once before reading. How each site maps onto the brief's falsifier: pDl means the guest CPU accesses a surface the GPU drew, so it is the demo's own readback if the access is a read (not removable), or a conservative flush before a CPU write (removable only with a read/write split that this line does not carry). cDef or dl-tex means the GPU samples, through VRAM, something the GPU drew. That is a conservative flush with no guest read in it, and it is removable by sampling the VkImage. dDl is a guest-wide flush, also removable.",
+  "expect": {
+    "M0/spec_has_stall_is": true,
+    "M0/stall_lines_min": 10,
+    "M0/window_intact_is": true,
+    "P1/sum_mismatch_lines_max": 0,
+    "P2/sd_per_frame_range": [1.2, 2.0],
+    "P3/top_site_share_min": 0.8,
+    "P4/top_site_is": "cDef",
+    "P5/demo_fps_range": [12, 20]
+  },
+  "expect_counts": {},
+  "expect_note": "These are named rules read by docs/lanes/blinx372c/stallread.py, not golden keys. A soak writes no captures, and arms.sh skips soaks structurally."
+}

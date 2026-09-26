@@ -457,3 +457,23 @@ its own report and the mutant passed. Order the writes with sync files, and
 check that the mutant is red before trusting the green. The brief's list of
 "same class" scripts came from a grep for `/tmp`. Read each hit: most were
 the deliberately shared device lease or device-side `/data/local/tmp`.
+
+## 2026-09-26 (attempt 3 of this resume): dispatch-hardening defect 27
+
+**Why the previous attempt did not finish, in this lane's terms.** It did
+finish. PR #384 (defect 26) was marked ready and folded as `c4d541bd72`
+at 10:10Z. The board later found that #367's refusal persisted after the
+fold, so it was not this race (see #367). This resume came from the host
+adding defect 27, not from a failure.
+
+**This PR is defect 27**, on its own branch `lane/toolsmith-armsdisc` from
+`origin/master` @ 605443e4df. The record is under "Defect 27" in
+`docs/lanes/dispatch-hardening/NOTES.md`. Next in the order is defect 22,
+the request.sh/affinity.py half.
+
+**Do not repeat.** A mutant arms.sh copied alone into a temp directory
+cannot queue: arms.sh finds request.sh at `jobs/..`, and request.sh finds
+the repository at `$0/../..`. Every row reads UNQUEUED, which looks like
+a fixture fault. Build the mutant inside a symlink tree of `docs/testing`,
+with the repository's `.git` linked two levels up.
+

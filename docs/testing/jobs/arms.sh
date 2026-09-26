@@ -375,6 +375,25 @@ print(",".join(ok))
 PY
 }
 
+# The other two composition axes, `disc.skip_tests` and `disc.only_tests`,
+# comma-joined as request.sh takes them (a list or a comma string, like
+# suites). ab_compare checks all three axes against the request.json each arm
+# ran on, so an arm queued with the suites alone is a disc the prediction can
+# never be judged on: tiecode282-binade.json was REFUSED for exactly that on
+# #379, its `Texture render target::RenderTextureLoop` skip dropped here. Not
+# filtered against the goldens: request.sh refuses a skip or an allow-list
+# whose suite is not run, and that refusal reaches the lane.
+disc_list() {   # <prediction> skip_tests|only_tests
+    python3 - "$1" "$2" <<'PY'
+import json, sys
+disc = json.load(open(sys.argv[1])).get("disc") or {}
+v = disc.get(sys.argv[2]) if isinstance(disc, dict) else None
+if isinstance(v, str):
+    v = v.split(",")
+print(",".join(t.strip() for t in (v or []) if isinstance(t, str) and t.strip()))
+PY
+}
+
 field() { python3 -c "import json,sys;v=json.load(open(sys.argv[1])).get(sys.argv[2],'');print(v if not isinstance(v,(list,dict)) else json.dumps(v))" "$1" "$2"; }
 
 # The PR a verdict belongs on: the open PR whose head is the branch the
@@ -780,8 +799,12 @@ while read -r sha path src; do
     fi
     suites=$(suites_for "$path")
     [ -n "$suites" ] || { skip "$sha" "$path" "$src" "no suite with goldens in its keys or disc"; continue; }
+    skips=$(disc_list "$path" skip_tests); onlys=$(disc_list "$path" only_tests)
+    narrow=(); comp=""
+    [ -z "$skips" ] || { narrow+=(--skip-tests "$skips"); comp+=" skip=[$skips]"; }
+    [ -z "$onlys" ] || { narrow+=(--only-tests "$onlys"); comp+=" only=[$onlys]"; }
     if [ "$mode" = list ]; then
-        echo "WOULD QUEUE $sha $src who=$who issue=#$issue a=$a b=$b suites=[$suites]"; continue
+        echo "WOULD QUEUE $sha $src who=$who issue=#$issue a=$a b=$b suites=[$suites]$comp"; continue
     fi
     [ "$queued" -lt "$MAX_PAIRS" ] || { say "pair cap $MAX_PAIRS reached this tick; $src waits"; continue; }
     [ "$waiting" -lt "$QUEUE_MAX" ] || { say "queue has $waiting waiting ahead of the idle tier, $idle_tier idle-tier z-* behind it (ARMS_QUEUE_MAX=$QUEUE_MAX counts the first); $src waits"; continue; }
@@ -791,11 +814,11 @@ while read -r sha path src; do
     # --runs "" and its JSON writer died on int(""): the very first arm the
     # job ever queued (#89, 02:56Z) was refused for that and nothing else.
     runs=$(field "$path" runs_per_arm); [[ "$runs" =~ ^[0-9]+$ ]] && [ "$runs" -ge 1 ] || runs=1
-    say "queue $src: $name #$issue a=$a b=$b suites=[$suites] runs=$runs"
-    qa=$(cd "$REPO" && DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-base" --ref "$a" --suites "$suites" --runs "$runs" \
+    say "queue $src: $name #$issue a=$a b=$b suites=[$suites]$comp runs=$runs"
+    qa=$(cd "$REPO" && DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-base" --ref "$a" --suites "$suites" ${narrow[@]+"${narrow[@]}"} --runs "$runs" \
             --expect "$path" --purpose "BASE arm ${issue:+#$issue }$who at $a, queued by the arms job from $src" 2>"$A/log/$sha.base.err") \
         || { refused "$sha" "$src" "$issue" base "$A/log/$sha.base.err"; continue; }
-    qb=$(cd "$REPO" && DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-fix" --ref "$b" --suites "$suites" --runs "$runs" \
+    qb=$(cd "$REPO" && DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-fix" --ref "$b" --suites "$suites" ${narrow[@]+"${narrow[@]}"} --runs "$runs" \
             --expect "$path" --purpose "FIX arm ${issue:+#$issue }$who at $b, queued by the arms job from $src" 2>"$A/log/$sha.fix.err") \
         || { refused "$sha" "$src" "$issue" "fix (the base arm ${qa##* } is queued and will run unpaired)" "$A/log/$sha.fix.err"; continue; }
     ida="${qa##* }"; idb="${qb##* }"

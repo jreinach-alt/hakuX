@@ -766,6 +766,84 @@ GLSL_DEFINE(texPlaneR3, GLSL_C(NV_IGRAPH_XF_XFCTX_TG3MAT + 2))
 GLSL_DEFINE(texPlaneQ3, GLSL_C(NV_IGRAPH_XF_XFCTX_TG3MAT + 3))
 );
 
+    /*
+     * The fixed-function screen z truncates. Silicon's z/w is every step
+     * rounded toward zero: the z-column products, their sums, w, the
+     * reciprocal of w (24 bits) and the final multiply. Derived from the
+     * Depth buffer fixed function goldens (#272), where the XDK composite's z
+     * column has one live product, z*C22 + C32 with C32 = 6*C22 + 4: at the
+     * near plane z*C22 is an exact float32 tie, round-to-nearest gives
+     * z_clip 0 and truncation 8, and silicon stores 8. Held out, it lands
+     * Color zeta overlap Swap (w 187) and ZetaIntoColor (w 199) on silicon's
+     * words, 4 and 3 below round-to-nearest. RCP(1) is exactly 1 on silicon
+     * (nxdk_vsh_tests ILU_RCP), which a constant reciprocal deficit breaks;
+     * silicon's reciprocal does sit up to ~0.3 ulp low elsewhere, which
+     * this does not model. docs/lanes/zdepth272/NOTES.md.
+     *
+     * The host rounds to nearest, so each step is taken exactly (Dekker's
+     * product, Knuth's sum -- no fma, as psh.c's depth floor already
+     * assumes) and stepped one ulp toward zero when the exact result lies
+     * nearer zero. The reciprocal is corrected to the largest r with
+     * |w|*r <= 1, which tolerates a host 1/w up to 2 ulp either way.
+     */
+    mstring_append(header,
+"float ffRtz(float r, float e) {\n"
+"  return (r != 0.0 && !isinf(r) && e != 0.0 && (e < 0.0) != (r < 0.0))\n"
+"      ? uintBitsToFloat(floatBitsToUint(r) - 1u) : r;\n"
+"}\n"
+"vec2 ffTwoProd(float a, float b) {\n"
+"  precise float p = a * b;\n"
+"  precise float ca = 4097.0 * a;\n"
+"  precise float ah = ca - (ca - a);\n"
+"  precise float al = a - ah;\n"
+"  precise float cb = 4097.0 * b;\n"
+"  precise float bh = cb - (cb - b);\n"
+"  precise float bl = b - bh;\n"
+"  precise float e = (((ah * bh - p) + ah * bl) + al * bh) + al * bl;\n"
+"  return vec2(p, e);\n"
+"}\n"
+"float ffMulRtz(float a, float b) {\n"
+"  if (!(abs(a) < 1e34 && abs(b) < 1e34)) { return a * b; }\n"
+"  vec2 pe = ffTwoProd(a, b);\n"
+"  return ffRtz(pe.x, pe.y);\n"
+"}\n"
+"float ffAddRtz(float a, float b) {\n"
+"  precise float s = a + b;\n"
+"  precise float bb = s - a;\n"
+"  precise float e = (a - (s - bb)) + (b - bb);\n"
+"  return ffRtz(s, e);\n"
+"}\n"
+"float ffDotRtz(vec4 v, vec4 m) {\n"
+"  float acc = ffMulRtz(v.x, m.x);\n"
+"  acc = ffAddRtz(acc, ffMulRtz(v.y, m.y));\n"
+"  acc = ffAddRtz(acc, ffMulRtz(v.z, m.z));\n"
+"  return ffAddRtz(acc, ffMulRtz(v.w, m.w));\n"
+"}\n"
+"bool ffAboveOne(float w, float r) {\n"
+"  vec2 pe = ffTwoProd(w, r);\n"
+"  return pe.x > 1.0 || (pe.x == 1.0 && pe.y > 0.0);\n"
+"}\n"
+"float ffRcpRtz(float w) {\n"
+"  float aw = abs(w);\n"
+"  precise float r = 1.0 / aw;\n"
+"  if (aw > 1e-34 && aw < 1e34) {\n"
+"    for (int i = 0; i < 3; i++) {\n"
+"      if (ffAboveOne(aw, r)) { r = uintBitsToFloat(floatBitsToUint(r) - 1u); }\n"
+"    }\n"
+"    for (int i = 0; i < 3; i++) {\n"
+"      float rn = uintBitsToFloat(floatBitsToUint(r) + 1u);\n"
+"      if (!ffAboveOne(aw, rn)) { r = rn; }\n"
+"    }\n"
+"  }\n"
+"  return w < 0.0 ? -r : r;\n"
+"}\n"
+"float ffScreenZ(vec4 p) {\n"
+"  mat4 cm = compositeMat;\n"
+"  float w = clampAwayZeroInf(ffDotRtz(p, cm[3]));\n"
+"  return ffMulRtz(ffDotRtz(p, cm[2]), ffRcpRtz(w));\n"
+"}\n"
+"\n");
+
     append_lighting_header(header);
 
     unsigned int count;
@@ -1036,6 +1114,21 @@ GLSL_DEFINE(texPlaneQ3, GLSL_C(NV_IGRAPH_XF_XFCTX_TG3MAT + 3))
     "      + (2.0 * c[" stringify(NV_IGRAPH_XF_XFCTX_VPOFF) "].xy / surfaceSize - 1.0) * oPos.w,\n"
     "      carry);\n"
     );
+
+    /* The depth the rasteriser interpolates, in silicon's arithmetic (see
+     * ffScreenZ above). Only vtxPos.z: w, and so W buffering and the
+     * perspective-correct varyings, are untouched, as is the GL clip z.
+     *
+     * Not on F24 (clipRange.y is f24_max there). Its near-plane vertex z is
+     * exactly 0 under RTZ, so it passes the depth clip, and our rasteriser
+     * then draws zero-depth edges that silicon does not. That took the 20
+     * z24 FZy Depth buffer fixed function captures from 24 px to 403-406
+     * each. docs/lanes/zrtz272/NOTES.md. */
+    mstring_append(body,
+    "  if (clipRange.y <= 16777216.0\n"
+    "      && !(any(isinf(tPosition)) || any(isnan(tPosition)))) {\n"
+    "    vtxPos.z = ffScreenZ(tPosition);\n"
+    "  }\n");
 
     if (state->point_params_enable) {
         mstring_append(

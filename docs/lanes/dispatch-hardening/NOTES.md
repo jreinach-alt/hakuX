@@ -607,6 +607,45 @@ on the device, one per `adb -s` serial, used under that device's lease.
 hand-run tool. None of these is two host processes sharing one path by
 accident, so nothing else was changed.
 
+## Defect 27: arms.sh queued the suites and dropped the rest of the disc
+
+lane.tiecode282's arm 1 for `tiecode282-binade.json` was REFUSED on #379:
+the queued disc did not match the registered composition. The prediction's
+`disc` names 24 suites and `skip_tests: ["Texture render target::RenderTextureLoop"]`.
+`suites_for()` read `disc.suites` only and both `request.sh` calls passed
+`--suites` only, so both arms ran a disc WITH the loop test. `ab_compare`
+compares all three axes (`COMPOSITION_AXES`) and has an `expect` absolute
+here, so it refuses. request.sh already took `--skip-tests` and
+`--only-tests`; nothing in arms.sh passed them.
+
+**Fix.** `disc_list()` reads `disc.skip_tests` and `disc.only_tests` (a list
+or a comma string, as suites) and both request.sh calls pass whichever is
+non-empty. The list and queue log lines name them (`skip=[...]`,
+`only=[...]`) only when present, so the existing `suites=[...]` greps are
+unchanged. The skip list is not filtered against the goldens: a skip whose
+suite is not run is refused by request.sh, and that refusal reaches the lane.
+Run on the real file, `disc_list` gives `skip=[Texture render
+target::RenderTextureLoop] only=[]`.
+
+**Proof, `selftest.d/94-arms-disc-narrow.sh`:** three predictions, the plain
+one in the middle: a skip list, a plain disc, an allow-list written as a
+comma string. It reads both queued `.req` files for each and calls
+`ab_compare.composition_notes` on the pair. Every prediction has an `expect`
+leg, so a mismatch dies instead of downgrading.
+
+| prediction | this branch | mutant (`--suites` only) | master @ 605443e4df |
+|---|---|---|---|
+| skip list | both arms carry it, composition ok | composition REFUSED | no skip on either arm; composition check red |
+| plain | no flag, composition ok | composition ok | ok |
+| only (string) | both arms carry it, composition ok | composition REFUSED | no allow-list; composition check red |
+
+The mutant runs inside a symlink tree of `docs/testing`, with `.git` linked
+two levels up, because request.sh resolves `--ref` through `$0/../..`. A
+mutant copied alone into a temp directory queued nothing (`cannot resolve
+--ref`), and it looked like the plain row going wrong. The master column is
+master's arms.sh, copied byte-identical into a scratch worktree at
+origin/master that has only this fragment under `selftest.d/`.
+
 ## For the next lane
 
 - Do not match the WSL interop signature on a call's stderr; it bypasses
