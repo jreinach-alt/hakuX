@@ -7,4 +7,4 @@ W=/home/justin/hakux-work/perf
 export GAME='/storage/E6C6-D7AA/Games/XBox/Fuzion Frenzy (USA).xiso.iso'
 export MASH="startmash 5 1.2"
 export BOOT_S=70 SETTLE_S=3
-bash $W/run_perf.sh "${1:-1}" "${2:-ff}" "${3:-40}"
+bash "$(dirname "$0")/run_perf.sh" "${1:-1}" "${2:-ff}" "${3:-40}"

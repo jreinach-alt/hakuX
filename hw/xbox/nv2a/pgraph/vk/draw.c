@@ -5655,9 +5655,113 @@ static void snapshot_push_constants(PGRAPHState *pg, ReorderWindowEntry *e)
     }
 }
 
+/*
+ * #262: a vertex array over memory the GPU has rendered into since the vertex
+ * buffer last copied it.
+ *
+ * The vertex sync copies a range only when DIRTY_MEMORY_NV2A is set over it,
+ * and that bit is set by GUEST stores (and by blits). A draw or clear into a
+ * surface writes the VkImage; the download that later brings it back to
+ * d->vram_ptr marks VGA and NV2A_TEX but not NV2A, and the download for a
+ * vertex range is itself inside pgraph_vk_update_vertex_ram_buffer, which the
+ * clean bit gates off. So a surface rendered, drawn from as a vertex array,
+ * rendered again and drawn again (Surface as vertex array::DynamicUpdateLoop)
+ * keeps the first pass's contents for every later pass.
+ *
+ * Setting DIRTY_MEMORY_NV2A from the draw would be read-only-wrong elsewhere:
+ * update_surface_part test-and-clears it as "the guest overwrote this
+ * surface" when !tcg_enabled(), and would upload stale VRAM over the render.
+ * So the GPU side is tracked here instead, read-only: a range must be
+ * re-fetched when it overlaps a surface that is still draw_dirty (its data
+ * is only in the image; the re-fetch downloads it first) or whose
+ * draw_generation moved since this range was last copied (it was downloaded
+ * by someone else, e.g. the flip, after the copy). The generation each
+ * surface was last copied at lives in a small table keyed by the binding
+ * pointer; a pointer is only compared, never dereferenced, and a miss just
+ * costs one extra copy.
+ */
+#define VTX_SURF_GEN_SLOTS 64
+static struct {
+    const SurfaceBinding *s;
+    uint32_t gen;
+} vtx_surf_gen[VTX_SURF_GEN_SLOTS];
+static unsigned int vtx_surf_gen_next;
+
+static int vtx_surf_gen_find(const SurfaceBinding *s)
+{
+    for (int i = 0; i < VTX_SURF_GEN_SLOTS; i++) {
+        if (vtx_surf_gen[i].s == s) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+static inline bool vtx_surface_overlaps(const SurfaceBinding *s, hwaddr addr,
+                                        hwaddr size)
+{
+    return s->width && s->height && s->vram_addr < addr + size &&
+           addr < s->vram_addr + s->size;
+}
+
+static bool vtx_surface_stale(const SurfaceBinding *s)
+{
+    if (s->draw_dirty) {
+        return true;
+    }
+    int i = vtx_surf_gen_find(s);
+    return i < 0 || vtx_surf_gen[i].gen != s->draw_generation;
+}
+
+static void vtx_surface_record(const SurfaceBinding *s)
+{
+    int i = vtx_surf_gen_find(s);
+    if (i < 0) {
+        i = vtx_surf_gen_next++ % VTX_SURF_GEN_SLOTS;
+        vtx_surf_gen[i].s = s;
+    }
+    vtx_surf_gen[i].gen = s->draw_generation;
+}
+
+/*
+ * Does [addr, addr + size) overlap GPU-written data the vertex buffer has not
+ * copied? With record set, instead note every overlapping surface as copied
+ * at its current generation (call after the copy) and return false.
+ */
+static bool vertex_range_gpu_stale(PGRAPHVkState *r, hwaddr addr, hwaddr size,
+                                   bool record)
+{
+    SurfaceBinding *firsts[] = {
+        QTAILQ_FIRST(&r->surfaces),
+        QTAILQ_FIRST(&r->shelved_surfaces),
+        QTAILQ_FIRST(&r->invalid_surfaces),
+    };
+    for (int l = 0; l < ARRAY_SIZE(firsts); l++) {
+        for (SurfaceBinding *s = firsts[l]; s; s = QTAILQ_NEXT(s, entry)) {
+            if (!vtx_surface_overlaps(s, addr, size)) {
+                continue;
+            }
+            if (record) {
+                vtx_surface_record(s);
+            } else if (vtx_surface_stale(s)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 static inline bool has_dirty_vertex_pages(PGRAPHVkState *r)
 {
     ram_addr_t ram_base = r->vram_ram_addr;
+
+    for (int i = 0; i < r->num_vertex_ram_buffer_syncs; i++) {
+        if (vertex_range_gpu_stale(r, r->vertex_ram_buffer_syncs[i].addr,
+                                   r->vertex_ram_buffer_syncs[i].size,
+                                   false)) {
+            return true;
+        }
+    }
 
     RCU_READ_LOCK_GUARD();
     DirtyMemoryBlocks *blocks =
@@ -6671,7 +6775,9 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
             ram_addr_t start = ram_base + addr;
             unsigned long page = start >> TARGET_PAGE_BITS;
             unsigned long end_page = (start + size) >> TARGET_PAGE_BITS;
-            bool dirty = false;
+            /* #262: GPU writes the bitmap below cannot see */
+            bool gpu_stale = vertex_range_gpu_stale(r, addr, size, false);
+            bool dirty = gpu_stale;
 
             while (page < end_page) {
                 unsigned long idx = page / DIRTY_MEMORY_BLOCK_SIZE;
@@ -6683,6 +6789,11 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
                 page += num;
             }
 
+            if (gpu_stale) {
+                NV2A_VK_DPRINTF("Range overlaps GPU-written surface data. "
+                                "Re-fetching...");
+            }
+
             if (dirty) {
                 NV2A_VK_DPRINTF("Memory dirty. Synchronizing...");
                 physical_memory_dirty_bits_cleared(start, size);
@@ -6690,6 +6801,8 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
                 vw->bytes_copied += size;
                 pgraph_vk_update_vertex_ram_buffer(pg, addr,
                                                    d->vram_ptr + addr, size);
+                /* the update downloaded any draw_dirty overlap first */
+                vertex_range_gpu_stale(r, addr, size, true);
 #if HAKUX_VRAM_RACE_PROBE
                 /*
                  * #54 probe. The bits for this range were consumed by the
