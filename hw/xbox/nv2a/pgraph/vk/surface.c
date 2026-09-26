@@ -1994,10 +1994,49 @@ static void surface_access_callback(void *opaque, MemoryRegion *mr, hwaddr addr,
     }
 }
 
+/*
+ * #311: live CPU access watches this file holds (inserts minus removes),
+ * logged every 5 s with the process-wide cb_count beside it. A watch that
+ * outlives its access_cb pointer can never be removed, and every guest TLB
+ * fill walks all of them (mem_access_callback_address_matches), so a count
+ * that climbs without bound is the leak and a flat one rules it out.
+ */
+extern volatile int32_t *xbox_ram_fp_cb_count_ptr;   /* tcg/tcg.c */
+static long surface_live_watches;
+static unsigned long surface_watch_inserts;
+
+static void surface_watch_log_periodic(PGRAPHVkState *r)
+{
+    static int64_t next_ns;
+    int64_t now = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+    if (now < next_ns) {
+        return;
+    }
+    next_ns = now + 5 * NANOSECONDS_PER_SECOND;
+
+    int shelved = 0, invalid = 0, active = 0;
+    SurfaceBinding *s;
+    QTAILQ_FOREACH(s, &r->surfaces, entry) {
+        active++;
+    }
+    QTAILQ_FOREACH(s, &r->shelved_surfaces, entry) {
+        shelved++;
+    }
+    QTAILQ_FOREACH(s, &r->invalid_surfaces, entry) {
+        invalid++;
+    }
+    SURF92_LOG("[watch311] live=%ld inserts=%lu cb_count=%d "
+               "active=%d shelved=%d invalid=%d",
+               surface_live_watches, surface_watch_inserts,
+               xbox_ram_fp_cb_count_ptr ? *xbox_ram_fp_cb_count_ptr : -1,
+               active, shelved, invalid);
+}
+
 static void unregister_cpu_access_callback(SurfaceBinding *surface)
 {
     if (tcg_enabled() && surface->access_cb) {
         mem_access_callback_remove_by_ref(qemu_get_cpu(0), surface->access_cb);
+        surface_live_watches--;
     }
     /* Clearing this is what makes register/unregister safe to call in any
      * order: a surface can now be retired with its watch still up, and both
@@ -2016,6 +2055,8 @@ static void register_cpu_access_callback(NV2AState *d, SurfaceBinding *surface)
             surface->access_cb = mem_access_callback_insert(
                 qemu_get_cpu(0), d->vram, surface->vram_addr, surface->size,
                 &surface_access_callback, d);
+            surface_live_watches++;
+            surface_watch_inserts++;
         }
     }
 }
@@ -3892,6 +3933,7 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
         prune_invalid_surfaces(r, num_invalid_surfaces_to_keep);
         SURF_TIMER_ACC(expire_ns, _se0);
     }
+    surface_watch_log_periodic(r);
 
     NV2A_PHASE_TIMER_END_EXCL(surface_update);
 }
