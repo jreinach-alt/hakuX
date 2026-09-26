@@ -155,6 +155,16 @@ reading.
 stays in draft until then. On resume: check scores1.tsv status and PARTIAL COVERAGE,
 judge the bands, then mark ready.
 
+## Why attempt 2 did not finish
+
+It judged arm 1, pushed the F24 gate and registered arm 2 (`18b0df7f8d`), then ended on a
+`waiting:` comment for arm 2's verdict and CI. Both are outside the session. `handback.sh`
+resumed the lane (attempt 3) 242 s after that push. The trigger was the unsuperseded arm-1
+`regressed` label and a draft PR, not a new verdict. At that point arm 2 had no request or
+result dir under `dispatch/`, and CI on `18b0df7f8d` was still pending (build ×2). Nothing
+had resolved. Attempt 3 records this and waits again. The PR stays in draft until arm 2 is
+judged: the label still reads arm 1's FAIL, and the F24 gate is unmeasured.
+
 ## Do not repeat
 
 - `git apply` of the zdepth272 patch fails on master after #321. Place hunk 2 by
