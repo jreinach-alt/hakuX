@@ -80,7 +80,10 @@ progress log shows the four `Lighting priming` tests ran **before**
 - **What stays the same:** the legs and thresholds. The dry run is repeated
   with this selection before the console runs anything.
 - **Recorded from dry run 1:** hakuX draws every lit shader corner at red
-  255. Its passthrough colour is white, so hakuX ignores the lighting there.
-  On silicon, a corner at 255 would fail M1 in either reading: its own
-  normal lit, or its passthrough colour. The two are told apart by green and
-  blue, which the write-up will report.
+  255. On silicon, a corner at 255 would fail M1. **Corrected after the
+  run:** green and blue show hakuX's corners are (255, 8, 8), not white. So
+  hakuX lights each vertex with its **own** normal (N·L = 1, plus ambient 8),
+  and does not ignore the lighting as this note first said.
+
+**Result (2026-09-25):** every leg held on silicon. See
+[`xbox-litprime-2026-09-25.md`](../../testing/xbox-litprime-2026-09-25.md).
