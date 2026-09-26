@@ -32,10 +32,10 @@ index 1dfd467..9cb3056 100644
    REG_TEST(AttributeExplicitSetterTests)
 diff --git a/src/tests/color_space_conversion_tests.cpp b/src/tests/color_space_conversion_tests.cpp
 new file mode 100644
-index 0000000..abc7bca
+index 0000000..a8c22c8
 --- /dev/null
 +++ b/src/tests/color_space_conversion_tests.cpp
-@@ -0,0 +1,286 @@
+@@ -0,0 +1,293 @@
 +#include "color_space_conversion_tests.h"
 +
 +#include <SDL.h>
@@ -292,7 +292,14 @@ index 0000000..abc7bca
 +  int err = host_.SetTexture(surface, 1);
 +  SDL_FreeSurface(surface);
 +  ASSERT(!err && "Failed to set ramp texture");
-+  host_.GetTextureStage(1).SetBumpEnv(kBumpMat, 0.f, 0.f, kBumpMat);
++  // One matrix word per axis, so each ramp reads one offset. The method's words land as s += w0 * dS + w3 * dT and
++  // t += w1 * dS + w2 * dT (pgraph.c's SET_TEXTURE_SET_BUMP_ENV_MAT swizzle; the G8B8 _R90 goldens favour it):
++  // BumpS uses w0 (dS along s), BumpT uses w2 (dT along t).
++  if (vertical) {
++    host_.GetTextureStage(1).SetBumpEnv(0.f, 0.f, kBumpMat, 0.f);
++  } else {
++    host_.GetTextureStage(1).SetBumpEnv(kBumpMat, 0.f, 0.f, 0.f);
++  }
 +  host_.SetFinalCombiner0Just(TestHost::SRC_TEX1);
 +  host_.SetFinalCombiner1Just(TestHost::SRC_TEX1, true);
 +
@@ -324,10 +331,10 @@ index 0000000..abc7bca
 +}
 diff --git a/src/tests/color_space_conversion_tests.h b/src/tests/color_space_conversion_tests.h
 new file mode 100644
-index 0000000..7fd5569
+index 0000000..7f2370c
 --- /dev/null
 +++ b/src/tests/color_space_conversion_tests.h
-@@ -0,0 +1,47 @@
+@@ -0,0 +1,48 @@
 +#ifndef NXDK_PGRAPH_TESTS_COLOR_SPACE_CONVERSION_TESTS_H
 +#define NXDK_PGRAPH_TESTS_COLOR_SPACE_CONVERSION_TESTS_H
 +
@@ -347,8 +354,9 @@ index 0000000..7fd5569
 + *   Palette   one stage, 256 designed A8R8G8B8 texels (16 x 16 cells): the converter applied to RGB data.
 + *   Stages    four stages, each a mirrored copy of the palette; the final combiner selects TEX0, TEX1 or TEX3.
 + *   YUY2/UYVY designed raw bytes (32 cells): which byte lands in which channel with the field off.
-+ *   BumpS/T   a uniform A8R8G8B8 bump source and a ramp in stage 1, drawn once without and once with BUMPENVMAP:
-+ *             the displacement read from the ramp says whether the offsets come from raw or converted bytes.
++ *   BumpS/T   a uniform A8R8G8B8 bump source and a ramp in stage 1, drawn once without and once with BUMPENVMAP
++ *             (one matrix word per axis): the displacement read from the ramp says whether the offsets come from
++ *             raw or converted bytes.
 + *   Lum       BUMPENVMAP_LUMINANCE with a zero matrix over the palette: the luminance source, and the order of the
 + *             luminance multiply against the conversion.
 + *
