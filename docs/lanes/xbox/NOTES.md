@@ -68,3 +68,15 @@ owner if the console stops answering.
   `docs/testing/xbox-refs6743-2026-09-25.md`. `Clipping precision` is
   interactive-only and saves nothing. `PVIDEO` writes `NV_PMC_ENABLE` and
   waits for the power switch.
+- 2026-09-25. Complete silicon reference set at `6743b6a`: 2,951 tests, one
+  751 s console run. 3,367 of 3,380 golden-backed captures are bit-identical
+  to the published goldens.
+  - `Clear` (8 captures) has **stale goldens**: upstream `9037f2f` added a
+    checkerboard.
+  - `Color zeta overlap` (2) is silicon noise.
+  - 3 are known golden-versus-console differences (#287 among them).
+  - The 16 new tests now have references, and `RenderTextureLoop` matches.
+  - W buffering is about 10 s a test on the emulator: split it under the
+    1800 s disc timeout.
+
+  `docs/testing/xbox-full6743-2026-09-25.md`.
