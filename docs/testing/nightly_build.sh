@@ -177,37 +177,48 @@ fi
 
 # ------------------------------------------------------------ the day's work
 #
-# Subjects only -- bodies are long here -- GROUPED BY AREA, not truncated by
-# recency.
+# ONE LINE PER MERGED CHANGE, in a player's words, grouped by what it does for
+# a player. The release body is the only artefact most people read, and it is
+# public: it carries no process commentary (owner, 2026-09-25, AGENTS.md
+# PR #239).
 #
-# WHY. This was `git log --since="$SINCE" --format='- %s' | head -40`. git log
-# is reverse-chronological, so that is not a sample of the day: it is the most
-# recent forty commits, whatever churned last. On 2026-09-18 a burst of
-# harness folds in the hours before 00:30 took all forty slots, and the
-# 2026-09-19 release notes named 0 emulator commits -- every one of them was
-# in the "…and N more commits" tail. The owner read the notes and asked
-# whether any emulator work had happened at all.
+# WHY. Until 2026-09-26 this listed COMMITS: every lane commit that touched an
+# emulator directory, then capped "Harness and tooling" and "Docs and the
+# rest" sections, then a tally. nightly-2026-09-26 listed 54 emulator commits
+# and counted 563 in all. A lane's commits are its working notes -- a
+# diagnostic trace marked not for merge, the scaffolding for a comparison, a
+# change and its own revert, "fix the two MEDIUMs from pass 1" -- so the list
+# told a player nothing and showed everyone our internals. (Before that it was
+# `git log --since=... | head -40`, which on 2026-09-19 named no emulator work
+# at all; docs/lanes/nightlynotes has both histories.)
 #
-# (How many were in that window depends on when you ask, because a lane
-# branch folds after 00:30 and joins the window retroactively: the nightly
-# logged 239 commits, a reconstruction at 06:40 the same morning found 310.
-# The time-invariant fact is the one above -- 0 of the 40 listed touched an
-# emulator directory, on every reconstruction. docs/lanes/nightlynotes.)
+# So the unit is the MERGE, not the commit: the fold commits on the trunk's
+# first-parent line, each judged by its NET diff against the trunk it landed
+# on. A PR whose commits add a change and then revert it has no net diff
+# there, and a fold that fold.sh later reverts in the same window cancels
+# with its revert, so neither reaches the notes.
 #
-# It was not a one-off. The harness folds on a 30-minute timer, so the busier
-# a day is the more completely it erases the emulator work from the record,
-# and the release notes are the only artefact most people read. ROADMAP.md is
-# explicit that passing the tests is not the goal; notes that cannot show a
-# target/i386 FIST rounding fix are reporting against the wrong thing.
+# Each change's line comes from, in order:
+#   1. $MAP, one `PR<TAB>category<TAB>line` per row -- the curated lines for
+#      PRs merged before (2) existed, and the way to correct one afterwards;
+#   2. a `Release note: <line>` or `Release note (<category>): <line>` line in
+#      the PR's own body -- the author says what it does for a player;
+#   3. the PR title, stripped of its lane prefix and of anything after " -- ",
+#      with a category guessed from its words.
+# A line of `none` in (1) or (2) leaves the change out: instrumentation that is
+# off by default changes nothing a player can see. Categories: performance,
+# stability, rendering, other.
 #
-# The areas are the ones every brief and gate already uses -- emulator is
-# hw/ target/ accel/ ui/ audio/, harness is docs/testing/ and .github/, and
-# the patterns in the loop below are the only definition of that. A commit
-# touching both sides counts as emulator: that is the side a reader cares
-# about.
-EMU_CAP=60          # a high cap: this is the point of the project
-HARN_CAP=8          # a handful, then a count
-OTHER_CAP=8
+# A line that still reads as process after all that -- it names an arm, a
+# lane, an audit, a probe -- is not printed. It is logged, and the change is
+# named by number only at the end of "Other". Harness, docs and every other
+# non-emulator change are one sentence, not a list.
+#
+# Emulator code is the directories the brief named: hw/ target/ accel/
+# android/ tcg/ ui/, plus audio/, which every other gate already counts.
+EMU_RE='^(hw|target|accel|android|tcg|ui|audio)/'
+MAP="${NIGHTLY_NOTES_MAP:-$TREE/docs/lanes/nightlynotes/release_notes.tsv}"
+INTERNAL_RE='\b(arms?|a_ref|b_ref|lanes?|audit(s|ed)?|remediat[a-z]*|diagnos[a-z]*|probes?|scaffold[a-z]*|instrument[a-z]*|not for merge|hunks?|triage|analysis|investigat[a-z]*|priced|goldens?|selftest)\b'
 
 # Deliberately bare `date`, i.e. host-local, and NOT one of localtime.sh's
 # helpers: this window has to line up with the timer that started the run, and
@@ -253,89 +264,182 @@ else
     say "WARNING: no nightly-* tag is an ancestor of HEAD; falling back to commits dated since $SINCE"
 fi
 
-# --no-merges. A `fold: PR #131 lane/notespath -- ...` subject describes the
-# lane, not the change, and the commits it folds are listed anyway -- so a
-# merge adds a line that says nothing and hides one that does. Merges are
-# still counted, and the footer says how many were left out.
-SUB_EMU=(); SUB_HARN=(); SUB_OTHER=()
-N_EMU=0; N_HARN=0; N_OTHER=0
-cur_subject=""; cur_area=""
-flush_commit() {
-    [ -n "$cur_area" ] || return 0
-    case "$cur_area" in
-        emu)  N_EMU=$((N_EMU+1))
-              [ "${#SUB_EMU[@]}"   -lt "$EMU_CAP" ]   && SUB_EMU+=("- $cur_subject") ;;
-        harn) N_HARN=$((N_HARN+1))
-              [ "${#SUB_HARN[@]}"  -lt "$HARN_CAP" ]  && SUB_HARN+=("- $cur_subject") ;;
-        *)    N_OTHER=$((N_OTHER+1))
-              [ "${#SUB_OTHER[@]}" -lt "$OTHER_CAP" ] && SUB_OTHER+=("- $cur_subject") ;;
+# One `git log` over the first-parent line: \x01 marks a commit's subject,
+# every other non-blank line is a path its merge (or it) changed against the
+# trunk commit before it. --diff-merges=first-parent is what makes a fold's
+# paths its net change rather than nothing.
+declare -A REVERTED=() REVERT_EMU=()
+CH_PR=(); CH_TITLE=()
+N_INTERNAL=0
+cur_sub=""; cur_emu=0; have=0
+flush_change() {
+    [ "$have" = 1 ] || return 0
+    local pr="" title=$cur_sub
+    case "$cur_sub" in
+        "fold: revert #"*|'Revert "fold: PR #'*)
+            pr=${cur_sub#*#}; pr=${pr%%[!0-9]*}
+            if [ -n "$pr" ]; then
+                REVERTED[$pr]=1
+                [ "$cur_emu" = 1 ] && REVERT_EMU[$pr]=1
+            fi
+            return 0 ;;
+        "fold: PR #"*)
+            pr=${cur_sub#fold: PR #}; pr=${pr%%[!0-9]*}
+            case "$cur_sub" in *" -- "*) title=${cur_sub#* -- } ;; esac ;;
     esac
+    if [ "$cur_emu" = 1 ]; then
+        CH_PR+=("$pr"); CH_TITLE+=("$title")
+    else
+        N_INTERNAL=$((N_INTERNAL+1))
+    fi
     return 0
 }
-# One `git log` for the whole window: \x01 marks a subject, every other
-# non-blank line is a path of the commit above it.
-while IFS= read -r line; do
-    case "$line" in
-        $'\x01'*) flush_commit; cur_subject="${line#$'\x01'}"; cur_area=other ;;
-        '')       ;;
-        hw/*|target/*|accel/*|ui/*|audio/*)   cur_area=emu ;;
-        docs/testing/*|.github/*)  [ "$cur_area" = emu ] || cur_area=harn ;;
-    esac
 #
 # BOTH logs name HEAD explicitly, and HEAD is the ref the gate above just
 # checked and the ref ./gradlew will build. That is the whole point: on
 # 2026-09-20 the notes said "No commits in the last day" about a 34-hour-old
 # checkout while 89 commits landed on the trunk. The range and the binary must
 # be answers about the same ref, so neither may be implicit.
-done < <(git log --no-merges --format=$'\x01%s' --name-only "${RANGE[@]}" 2>/dev/null)
-flush_commit
+while IFS= read -r line; do
+    case "$line" in
+        $'\x01'*) flush_change; cur_sub=${line#$'\x01'}; cur_emu=0; have=1 ;;
+        '')       ;;
+        *)        [[ $line =~ $EMU_RE ]] && cur_emu=1 ;;
+    esac
+done < <(git log --first-parent --diff-merges=first-parent --format=$'\x01%s' --name-only "${RANGE[@]}" 2>/dev/null)
+flush_change
+TOTAL=$(git log --first-parent --oneline "${RANGE[@]}" 2>/dev/null | wc -l)
 
-N_WORK=$((N_EMU + N_HARN + N_OTHER))
-TOTAL=$(git log --oneline "${RANGE[@]}" 2>/dev/null | wc -l)
-N_MERGE=$((TOTAL - N_WORK))
-say "$TOTAL commit(s) $WINDOW: $N_EMU emulator, $N_HARN harness, $N_OTHER other, $N_MERGE merge(s)"
+map_line() {   # <pr> -> "category<TAB>line" from $MAP
+    [ -n "$1" ] && [ -f "$MAP" ] || return 1
+    awk -F'\t' -v pr="$1" '$1 == pr { print $2 "\t" $3; found = 1; exit }
+                           END { exit !found }' "$MAP"
+}
+body_line() {   # <pr> -> "category<TAB>line" from the PR body's `Release note:` line
+    local body
+    if [ -n "${NIGHTLY_PR_BODIES:-}" ]; then
+        body=$(cat "$NIGHTLY_PR_BODIES/$1.md" 2>/dev/null)
+    else
+        body=$(gh api "repos/$REPO/pulls/$1" --jq .body 2>/dev/null)
+    fi
+    printf '%s\n' "$body" | tr -d '\r' | sed -nE \
+        's/^[[:space:]]*[Rr]elease[ -][Nn]otes?( \(([A-Za-z ]+)\))?:[[:space:]]*(.*[^[:space:]])[[:space:]]*$/\2\t\3/p' \
+        | head -1
+}
+norm_cat() {   # <word> -> performance|stability|rendering|other|none, or empty
+    case "${1,,}" in
+        '')                   ;;
+        none|skip)            echo none ;;
+        perf*|speed*)         echo performance ;;
+        stab*|crash*)         echo stability ;;
+        render*|graphic*)     echo rendering ;;
+        *)                    echo other ;;
+    esac
+}
+guess_cat() {   # <line> -> a category from its words
+    if grep -qiE '\b(fps|slow(s|er|down)?|stutter[a-z]*|faster|speed[a-z]*|frame ?rate|latency|performance)\b' <<<"$1"; then
+        echo performance
+    elif grep -qiE '\b(crash[a-z]*|hangs?|freez[a-z]*|abort[a-z]*|deadlock[a-z]*|segfault[a-z]*|leak[a-z]*)\b' <<<"$1"; then
+        echo stability
+    elif grep -qiE 'nv2a|pgraph|render|textur|surface|shader|depth|blend|colou?r|fog|vertex|pixel|clip|draw|vsh|psh|glsl|\bvk\b|\bgl\b' <<<"$1"; then
+        echo rendering
+    else
+        echo other
+    fi
+}
+# The "(analysis)" and "(investigating)" a title ends with are kept: they are
+# how an inert study PR says so, and $INTERNAL_RE then lists it by number.
+clean_title() {   # <PR title> -> the title without its lane prefix or its tail
+    sed -E 's#^(docs/)?lanes?[./][A-Za-z0-9_-]+: *##
+            s# -- .*$##' <<<"$1"
+}
+
+L_PERF=(); L_STAB=(); L_REND=(); L_OTHER=(); BY_NUMBER=()
+N_EMU=${#CH_PR[@]}; N_DROPPED=0
+for i in "${!CH_PR[@]}"; do
+    pr=${CH_PR[$i]}
+    if [ -n "$pr" ] && [ -n "${REVERTED[$pr]:-}" ]; then
+        say "notes: #$pr was folded and reverted in this window; neither is listed"
+        unset "REVERTED[$pr]"; N_DROPPED=$((N_DROPPED+1)); continue
+    fi
+    r=""
+    r=$(map_line "$pr") || { [ -n "$pr" ] && r=$(body_line "$pr"); }
+    cat=$(norm_cat "${r%%$'\t'*}"); text=""
+    [ -n "$r" ] && text=${r#*$'\t'}
+    [ "${text,,}" = none ] && cat=none
+    if [ "$cat" = none ]; then
+        N_DROPPED=$((N_DROPPED+1)); N_INTERNAL=$((N_INTERNAL+1)); continue
+    fi
+    [ -n "$text" ] || text=$(clean_title "${CH_TITLE[$i]}")
+    [ -n "$cat" ] || cat=$(guess_cat "$text")
+    [ -n "$pr" ] && ! [[ $text =~ \#[0-9] ]] && text="$text (#$pr)"
+    if grep -qiE "$INTERNAL_RE" <<<"$text"; then
+        who="a direct commit"; [ -n "$pr" ] && who="#$pr"
+        say "notes: the line for $who reads as process, so it is listed by number only: $text"
+        if [ -n "$pr" ]; then BY_NUMBER+=("#$pr"); else N_DROPPED=$((N_DROPPED+1)); fi
+        continue
+    fi
+    case "$cat" in
+        performance) L_PERF+=("- $text") ;;
+        stability)   L_STAB+=("- $text") ;;
+        rendering)   L_REND+=("- $text") ;;
+        *)           L_OTHER+=("- $text") ;;
+    esac
+done
+# A revert whose fold is not in this window withdraws something an earlier
+# nightly shipped, and a player may notice that.
+for pr in "${!REVERTED[@]}"; do
+    [ -n "${REVERT_EMU[$pr]:-}" ] && L_OTHER+=("- An earlier change (#$pr) was withdrawn.")
+done
+if [ "${#BY_NUMBER[@]}" -gt 0 ]; then
+    L_OTHER+=("- Further emulator changes: $(printf '%s, ' "${BY_NUMBER[@]}" | sed 's/, $//').")
+fi
+N_LISTED=$(( ${#L_PERF[@]} + ${#L_STAB[@]} + ${#L_REND[@]} + ${#L_OTHER[@]} ))
+say "$TOTAL commit(s) $WINDOW: $N_EMU emulator change(s), $N_LISTED line(s), $N_DROPPED left out, $N_INTERNAL internal"
 
 BODY="$OUT/$DAY.notes.md"
-# A capped section says how many it left out, per section, so the counts in
-# the notes always add up to the counts in the log line above.
-section() {   # <heading> <total in this area> <subject...>
-    local heading=$1 n=$2; shift 2
-    [ "$n" -gt 0 ] || return 0
+section() {   # <heading> <line...>
+    local heading=$1; shift
+    [ "$#" -gt 0 ] || return 0
     echo "### $heading"; echo
-    [ "$#" -gt 0 ] && printf '%s\n' "$@"
-    [ "$n" -gt "$#" ] && { echo; echo "_…and $((n - $#)) more._"; }
+    printf '%s\n' "$@"
     echo
-    return 0
 }
-TALLY="$N_WORK commit(s) did the work: $N_EMU emulator, $N_HARN harness, $N_OTHER other."
-[ "$N_MERGE" -gt 0 ] && TALLY="$TALLY $N_MERGE merge commit(s) are not listed."
 {
     echo "Automated nightly. $PROV."
     echo
-    if [ "$N_WORK" -gt 0 ]; then
-        section "Emulator"            "$N_EMU"   ${SUB_EMU[@]+"${SUB_EMU[@]}"}
-        section "Harness and tooling" "$N_HARN"  ${SUB_HARN[@]+"${SUB_HARN[@]}"}
-        section "Docs and the rest"   "$N_OTHER" ${SUB_OTHER[@]+"${SUB_OTHER[@]}"}
-        echo "_${TALLY}_"
-    else
+    if [ "$TOTAL" -eq 0 ]; then
         # A tree that is not the trunk never reaches publish (exit 5 or 8
         # above), so this sentence is only ever published about the trunk.
         echo "$NONE_LINE"
+        echo
+    else
+        section "Performance"     ${L_PERF[@]+"${L_PERF[@]}"}
+        section "Stability"       ${L_STAB[@]+"${L_STAB[@]}"}
+        section "Rendering fixes" ${L_REND[@]+"${L_REND[@]}"}
+        section "Other"           ${L_OTHER[@]+"${L_OTHER[@]}"}
+        if [ "$N_LISTED" -eq 0 ]; then
+            echo "No player-facing changes in this build."
+            echo
+        fi
+        if [ "$N_INTERNAL" -gt 0 ]; then
+            echo "Plus internal test-harness work."
+            echo
+        fi
     fi
-    echo
     echo "Installs alongside an official hakuX build and upgrades a previous fork build in place."
     echo "Launching from ES-DE needs the two files in \`docs/es-de/\`."
+    echo
+    echo "_Notes updated $(date -u '+%F %H:%M') UTC._"
 } > "$BODY"
 
-# The post-condition this whole section exists for: a window that contains
-# emulator work must produce notes that NAME some of it. Asserted against the
-# written file rather than the variables, so an edit to the block above trips
-# it too. It warns rather than exits: a nightly with imperfect notes still
-# beats no nightly, and the warning lands in the log the owner reads.
-if [ "$N_EMU" -gt 0 ]; then
-    if [ "${#SUB_EMU[@]}" -eq 0 ] || ! grep -qxF -- "${SUB_EMU[0]}" "$BODY"; then
-        say "WARNING: $N_EMU emulator commit(s) in the window and the notes name none"
-    fi
+# The post-condition: a window with emulator changes that were not all left
+# out on purpose must produce notes that list something. Asserted against the
+# written file, so an edit to the block above trips it too. It warns rather
+# than exits: a nightly with imperfect notes still beats no nightly, and the
+# warning lands in the log the owner reads.
+if [ "$N_EMU" -gt "$N_DROPPED" ] && ! grep -q '^- ' "$BODY"; then
+    say "WARNING: $((N_EMU - N_DROPPED)) emulator change(s) in the window and the notes list none"
 fi
 
 if [ "$MODE" = notes ]; then

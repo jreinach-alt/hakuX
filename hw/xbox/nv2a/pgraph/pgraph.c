@@ -557,8 +557,9 @@ static const MethodFastPath method_fast[0x800] = {
     /* SET_COMBINER_CONTROL  0x1E60 */
     [MI(0x1E60)] = MF_DIRECT(NV_PGRAPH_COMBINECTL),
 
-    /* SET_SHADER_STAGE_PROGRAM  0x1E70 */
-    [MI(0x1E70)] = MF_DIRECT(NV_PGRAPH_SHADERPROG),
+    /* SET_SHADER_STAGE_PROGRAM  0x1E70: not here.  A stage's mode decides
+     * its sampler's anisotropy (pgraph_glsl_tex_aniso_probes), so the slow
+     * path marks the slots whose mode changed dirty. */
 
     /* --- Category B: Masked register writes --- */
 
@@ -5061,6 +5062,16 @@ DEF_METHOD(NV097, SET_SHADOW_DEPTH_FUNC)
 
 DEF_METHOD(NV097, SET_SHADER_STAGE_PROGRAM)
 {
+    /* The binders rebuild a slot only when it is dirty, and whether the
+     * pixel shader takes a stage's anisotropic probes -- so whether its
+     * sampler keeps host anisotropy -- depends on the stage's mode (#284,
+     * pgraph_glsl_tex_aniso_probes). */
+    uint32_t changed = pgraph_reg_r(pg, NV_PGRAPH_SHADERPROG) ^ parameter;
+    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        if ((changed >> (i * 5)) & 0x1F) {
+            pg->texture_dirty[i] = true;
+        }
+    }
     pgraph_reg_w(pg, NV_PGRAPH_SHADERPROG, parameter);
 }
 

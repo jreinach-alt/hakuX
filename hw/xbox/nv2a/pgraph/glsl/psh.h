@@ -60,6 +60,9 @@ typedef struct PshState {
     /* SZ_Y16 or LU_IMAGE_Y16: a bump stage reading it takes the horizontal
      * offset from the filtered value's low byte (#10). */
     bool tex_y16[4];
+    /* 1 << TEXCTL0 MAX_ANISOTROPY for a point-sampled LOD0 stage, else 1:
+     * the probe count the shader's anisotropic loop is capped at (#284). */
+    int tex_aniso[4];
     uint32_t tex_signed[4]; /* NV_PGRAPH_TEXFILTER0_[ARGB]SIGNED bits */
     bool compare_mode[4][4];
     bool alphakill[4];
@@ -127,6 +130,9 @@ typedef struct PshState {
 int pgraph_glsl_window_clip_count(PGRAPHState *pg);
 bool pgraph_glsl_polygon_stipple_enabled(PGRAPHState *pg);
 void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state);
+/* 1 << MAX_ANISOTROPY when the pixel shader takes stage i's anisotropic
+ * probes, else 1; the samplers drop host anisotropy on exactly these (#284). */
+int pgraph_glsl_tex_aniso_probes(PGRAPHState *pg, int i);
 
 /*
  * Issue #59, the write side of the Z/O pad bits.
