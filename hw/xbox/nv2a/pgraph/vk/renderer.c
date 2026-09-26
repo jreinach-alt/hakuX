@@ -63,8 +63,11 @@ typedef struct {
  * startup (geom.c's default: assert), so builds on either side of it must
  * see different versions and wipe the cache rather than regenerate it.
  * 3 is VshState/GeomState.aa_offset_x (#286): a key stored without it would
- * regenerate as a non-CC2 shader for a CC2 draw. */
-#define SHADER_STATE_LAYOUT_VERSION 3
+ * regenerate as a non-CC2 shader for a CC2 draw.
+ * 4 is GenGeomGlslOptions.no_point_size (#34), which sits in padding: a key
+ * persisted before it reads as 0 and would regenerate a geometry shader
+ * that writes gl_PointSize on a device without the feature. */
+#define SHADER_STATE_LAYOUT_VERSION 4
 
 static void remove_directory_recursive(const char *path)
 {

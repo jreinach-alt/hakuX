@@ -41,6 +41,10 @@ typedef struct {
 typedef struct GenGeomGlslOptions {
     bool vulkan;
     bool gles;
+    /* Vulkan without shaderTessellationAndGeometryPointSize: the GS must not
+     * write gl_PointSize (VUID-VkShaderModuleCreateInfo-pCode-08740, #34).
+     * Zero keeps the write, so GL and a zeroed key are unchanged. */
+    bool no_point_size;
     int gles_version;
 } GenGeomGlslOptions;
 
