@@ -363,6 +363,13 @@ issues = ["13"]
 files = ["hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/glsl/geom.h", "hw/xbox/nv2a/pgraph/vk/renderer.c", "docs/testing/predictions/cull13-*.json", "docs/lanes/cull13/**"]
 note = "DISPATCHED (hostops 2026-09-26T14:52Z): #13 class A of PR #370 (line-mode triangles not culled, 31,152 px). geom.c from lane.tiecode282 (retired this tick, PR #379 folded 07:41 PDT); geom.h and renderer.c were in no row (renderer.c for SHADER_STATE_LAYOUT_VERSION only). Brief: briefs/cull13.md."
 
+
+[lane.foldcancel]
+issues = []
+files = ["docs/testing/jobs/fold.sh", "docs/testing/jobs/selftest.d/74-fold-multi.sh", "docs/lanes/foldcancel/NOTES.md"]
+standing = false
+note = "STARTED (hostops 2026-09-26 11:55 AM PDT): harness defect, no tracker issue. fold.sh attribute_multi waits for trunk CI on a multi-fold tip sha, but android/desktop runs are cancelled by concurrency when a later fold pushes, so trunk_ci says NONE forever and folds stay throttled to one per tick (993c5fe4b5 04:10, 7039df1d24 05:46-11:52 PDT; both marked done by hand). fold.sh and 74-fold-multi.sh were in no row. Brief: briefs/foldcancel.md."
+
 [free]
 # RELEASED (hostops 2026-09-26T18:20Z) by retiring lane.armsscope (PR #409 merged): selftest.d/94-arms-verdict-scope.sh, docs/lanes/armsscope/NOTES.md; arms.sh returned to lane.toolsmith.
 # RELEASED (hostops 2026-09-26T18:20Z) by lane.remote on #343 option (a): hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/shaders.c.
