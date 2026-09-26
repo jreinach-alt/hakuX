@@ -87,12 +87,37 @@ name from a full-suite arm, because a glob cannot exclude the four.
   arm as the four captures, and Texture_format's two, going far worse.
 - **Desktop not built** (see AGENTS.md). Android builds on the arm.
 
-## Waiting (2026-09-26)
+## Arm verdict (2026-09-26): PASS
 
-- **What resolves it.** The arms job's `[job.arms]` verdict for
-  `yuv10-csc.json` on PR #419, and CI for the head. Then merge origin/master,
-  re-run preflight and mark the PR ready.
-- **Files beyond the brief.** `docs/testing/nv2a_index.json` is on the Files
-  line although the brief did not list it: preflight requires the rebuild for
-  the new symbols. `docs/lanes/yuv10/register.py` is on it too; it generates
-  the prediction.
+The arms job queued `1790451286-arms-yuv10-base` / `-fix` on thor
+(apk dc5889ad39b0 vs a5e4c5242591, disc Bump env lum, Bump map, Texture
+format, all 122 captures with progress-log proof). `ab_compare.py --expect
+yuv10-csc.json` over the two result dirs: **PASS, all 84 registered checks
+hold.**
+
+| capture | A | B |
+|---|---:|---:|
+| BumpMap_YUY2_L | 111,496 | 1,576 |
+| BumpMap_UYVY_L | 111,496 | 1,576 |
+| BumpEnvLum_YUY2_L | 111,496 | 1,576 |
+| BumpEnvLum_UYVY_L | 111,496 | 1,576 |
+| TexFmt_YUY2_L / TexFmt_UYVY_L | 0 | 0 |
+| the other 80 Bump captures | same differing count, each | |
+
+The figure is exactly the predicted 1,576 floor. That is one run per arm, but
+a miss of 109,920 px on four captures cannot come from device noise.
+
+## Why attempt 1 did not finish
+
+Attempt 1 ended correctly, waiting on the arm (see the `waiting:` comment on
+#419). The arm ran, but no `[job.arms]` comment reached the PR, so the
+handback resume saw `arm=none`. Attempt 2 read the result dirs directly under
+`dispatch/results/`, ran the judge by hand, merged origin/master (the only
+conflict was the generated `nv2a_index.json`, rebuilt against the pinned tests
+commit 6743b6ab16), and marked the PR ready.
+
+## Files beyond the brief
+
+`docs/testing/nv2a_index.json` is on the Files line although the brief did not
+list it, because preflight requires the rebuild for the new symbols.
+`docs/lanes/yuv10/register.py` is on it too; it generates the prediction.
