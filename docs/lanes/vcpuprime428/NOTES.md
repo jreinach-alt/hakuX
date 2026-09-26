@@ -112,6 +112,18 @@ was nothing to judge. Attempt 1 resumed at 21:48 UTC with A1 running on the
 Thor and B1 at the head of the queue. It merged origin/master (e08c1c0165).
 The runs still use ref 15d9406b81, which is the prediction's a_ref/b_ref.
 
+## Why attempt 1 did not finish
+
+It ended correctly on a wait outside the session: the pilot review. Hostops
+accepted the pilot at 22:31 UTC (PR #437 comment, `[job.deliver]`), wrote
+`dispatch/pilots/vcpuprime428.ok` and restored A2 B2 A3 B3. Attempt 2 resumed
+at 22:32 UTC with A2 running on the Thor.
+
+The arms job refused `vcpuprime428-soak.json` with "a_ref == b_ref, nothing to
+compare". That is expected for an env-var A/B on one binary: the arms job
+cannot run it, so the runs are queued by hand (`queue.sh`) and judged with
+`vcpu_judge.py`. The refusal does not affect the verdict.
+
 ## Do not repeat
 
 - Do not queue over 30 minutes of device time without a reviewed pilot.
