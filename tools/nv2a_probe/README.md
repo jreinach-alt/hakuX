@@ -327,11 +327,21 @@ handler, not a verdict.
 
 ## Networking
 
-The console is at `192.168.50.1` static; this host is `192.168.50.2` on the
-same link (`eth2`). WSL is in `networkingMode=mirrored`, so the host holds a
+Since 2026-09-26 the console is wired to the home LAN (`192.168.4.0/22`,
+gateway `192.168.4.1`). Its address is the one line in
+`~/hakux-work/hardware/console.addr` (`192.168.4.57` that day), which
+`host/supervisor.py` reads. This host is on the same segment (`192.168.4.56`
+on `eth1` that day). WSL is in `networkingMode=mirrored`, so the host holds a
 real address on that segment and the console's dial-out reaches it directly —
 there is no NAT between them in this direction. If the probe never appears,
 suspect the Windows firewall on that interface before suspecting the probe.
+
+**The probe's own settings still describe the old direct link** (console
+`192.168.50.1` static, this host `192.168.50.2` on `eth2`): the compiled
+defaults in the table above, and `D:\nv2a_probe.cfg` if the console still has
+one. Neither has run on the new network. Before the probe runs again, its cfg
+needs `host=` set to this host's current address, and either `dhcp=on` or
+`ip`, `mask` (`255.255.252.0`) and `gw` (`192.168.4.1`) for this segment.
 
 Journals, sweep results and poison lists live under `~/hakux-work/` and stay
 out of git.

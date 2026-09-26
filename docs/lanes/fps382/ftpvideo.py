@@ -11,13 +11,24 @@ PAUSE/STOP files live in /mnt/d/hakux-staging/xiso/.
 import ftplib
 import sys
 
-HOST = "192.168.50.1"
+CONSOLE_ADDR = "/home/justin/hakux-work/hardware/console.addr"
+
+
+def console_addr(path=CONSOLE_ADDR):
+    """The console's address, from the one file a re-IP edits (2026-09-26)."""
+    try:
+        with open(path) as fh:
+            return fh.read().split()[0]
+    except (OSError, IndexError):
+        sys.exit("ftpvideo.py: no console address in %s" % path)
+
+
 VIDEO = (".bik", ".sfd", ".xmv", ".wmv", ".m2v", ".mpg", ".vid", ".avi", ".usm", ".pss")
 
 
 def conn():
     f = ftplib.FTP(encoding="latin-1")
-    f.connect(HOST, 21, timeout=30)
+    f.connect(console_addr(), 21, timeout=30)
     f.login("xbox", "xbox")
     f.set_pasv(True)
     return f
