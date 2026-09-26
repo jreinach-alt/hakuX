@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 248
-updated_utc = "2026-09-26T13:50:00Z"
+wave = 249
+updated_utc = "2026-09-26T14:14:00Z"
 
 [retired.hilodot10]
 issues = ["10"]
@@ -541,6 +541,8 @@ note = "RETIRED (job.board wave 245): PR #385 MERGED, no open PR on lane/fps382,
 files = ["hw/xbox/nv2a/pgraph/texture.c", 
 # RELEASED AT WAVE 158 by retiring lane.cloud190: PR #211 folded as f2e8ef8ba8 (#190 fixed).
     "hw/xbox/nv2a/pmc.c",
+# RELEASED (job.board wave 249) by retiring lane.fmv303 (PR #317 folded bb1f437bb7): vk/display.c.
+    "hw/xbox/nv2a/pgraph/vk/display.c",
     # RELEASED AT WAVE 147 (host session): vk/draw.c + vk/surface.c by retiring lane.clrsurf91
 # (PR #148 closed, #207); the other paths were dropped by 19f97aa4 into NEITHER a row nor
 # [free] (lane.remote, #184 comment 5762957253).
@@ -980,11 +982,12 @@ standing = false
 retired_utc = "2026-09-26T03:00:00Z"
 note = "RETIRED (job.board, board tick 2026-09-26T03:00Z): PR #309 MERGED 2026-09-26T02:40:27Z (fold ab39609a2d, pass 2 clean), no open PR on lane/tcgchurn, unit gone. accel/tcg/{cputlb,tb-maint,translate-all,cpu-exec}.c, target/i386/helper.c, target/i386/tcg/**, docs/lanes/tcgchurn/** and predictions/tcgchurn-*.json RELEASED to [free]. #68 stays open (lane.perfarch also holds it; the fix arm is that lane's or a follow-up). PRIOR NOTE: DISPATCHED AT THIS WAVE (host session, 2026-09-25T20:25:20Z) for #68 (and #73): ~35-40% of the guest thread is translation-cache bookkeeping in the 09-11 Crimson profile (tlb_reset_dirty 10.7%, tcg_flush_jmp_cache 8.4%, lookups ~11%). Counters first (full-TLB-flush triggers by cause; tlb_reset_dirty callers and walk lengths), mechanism per trigger, then a fix with a soak arm. accel/tcg/*.c were in [free]; target/i386/helper.c and target/i386/tcg/** sit under the [free] glob target/**. #68's held range test 937848c9e7 is a candidate. Brief: briefs/tcgchurn.md."
 
-[lane.fmv303]
+[retired.fmv303]
 issues = ["303"]
-files = ["hw/xbox/nv2a/pgraph/vk/display.c", "docs/testing/predictions/fmv303-*.json", "docs/lanes/fmv303/**"]
+files = []
 standing = false
-note = "STARTED at wave 197 (job.board, 2026-09-25T20:56Z; the wave-195 start had hit an approval prompt, no attempt was spent). DISPATCHED WAVE 195 (job.board), briefs/fmv303.md: #303, Spikeout's FMV covered in green columns (Y=U=V=0 through the YUV path, pattern differs per pass -> suspect a missed write/dirty before sample, family of #262/#184). vk/display.c is free; vk/texture.c, gl/texture.c, pgraph/texture.c are lane.texvol283's and are named-not-edited."
+retired_utc = "2026-09-26T14:14:00Z"
+note = "RETIRED (job.board wave 249): PR #317 MERGED 2026-09-26T05:51:16Z, no open PR on the branch, unit gone. vk/display.c released to [free]; its env-gated probe stays in master. PRIOR NOTE: STARTED at wave 197 (job.board, 2026-09-25T20:56Z; the wave-195 start had hit an approval prompt, no attempt was spent). DISPATCHED WAVE 195 (job.board), briefs/fmv303.md: #303, Spikeout's FMV covered in green columns (Y=U=V=0 through the YUV path, pattern differs per pass -> suspect a missed write/dirty before sample, family of #262/#184). vk/display.c is free; vk/texture.c, gl/texture.c, pgraph/texture.c are lane.texvol283's and are named-not-edited."
 
 [retired.ghoul311]
 issues = ["311"]
@@ -1102,12 +1105,12 @@ standing = false
 retired_utc = "2026-09-26T09:10:00Z"
 note = "RETIRED (job.board wave 240): PR #377 MERGED 2026-09-26T08:26:18Z, no open PR on lane/regs200, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 238 (job.board, 2026-09-26): #200 local, desktop-only analysis (the cloud outlet had not claimed the cloud-labelled issue; label removed on dispatch). BRIEF briefs/regs200.md: per-register table of unnamed bits and which the renderer reads, docs/lanes/regs200/** only; hw/ hunks named, not edited."
 
-[lane.surfwatch382]
+[retired.surfwatch382]
 issues = ["382"]
-files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/testing/predictions/surfwatch382-*.json", "docs/lanes/surfwatch382/**"]
-released = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/testing/predictions/surfwatch382-*.json", "docs/lanes/surfwatch382/**"]
+files = []
 standing = false
-note = "RELEASED AT READY (hostops, 2026-09-26 5:54 AM PDT): CI green on #387's head (needs-audit-1). PR #387 READY (job.board wave 247, 2026-09-26T12:40Z): out of draft, MERGEABLE, unit finished; labelled needs-audit-1 (touches vk/surface.c). CI build still IN_PROGRESS on the head, so files are NOT yet released at ready; release them on the tick that sees CI green. PRIOR: STARTED (hostops, 2026-09-26T11:51:37Z = 4:51 AM PDT): unit hakux-lane-surfwatch382, attempt 1. PRIOR: BRIEFED AT TERRITORY WAVE 245, NOT STARTED (job.board, 2026-09-26T11:40Z; `lane.sh start` needs an approval the non-interactive board session cannot get, so the HOST runs `docs/testing/lane.sh start surfwatch382 briefs/surfwatch382.md 382`), briefs/surfwatch382.md: #382's code half. lane.fps382 (PR #385, folded) measured it: 50 Cent's boot movies are vCPU-bound (97% busy, renderer 4%), 2.5M trapped stores/s on the CPU-access watch over the movie's colour surface. Hunk named in docs/lanes/fps382/NOTES.md sec 2c: suspend the watch after the first write to a surface that owes no download, re-arm before upload / GPU draw. vk/surface.c was in [free] (released by lane.remote 2026-09-25T23:34Z). Arm: slow stores <= 50k/s and >= 1.5x fps, same-session A/B on the Nova."
+retired_utc = "2026-09-26T14:14:00Z"
+note = "RETIRED (job.board wave 249): PR #387 MERGED 2026-09-26T14:00:39Z, no open PR on the branch, unit gone. vk/surface.c passes to lane.blinx372d (#372). PRIOR NOTE: RELEASED AT READY (hostops, 2026-09-26 5:54 AM PDT): CI green on #387's head (needs-audit-1). PR #387 READY (job.board wave 247, 2026-09-26T12:40Z): out of draft, MERGEABLE, unit finished; labelled needs-audit-1 (touches vk/surface.c). CI build still IN_PROGRESS on the head, so files are NOT yet released at ready; release them on the tick that sees CI green. PRIOR: STARTED (hostops, 2026-09-26T11:51:37Z = 4:51 AM PDT): unit hakux-lane-surfwatch382, attempt 1. PRIOR: BRIEFED AT TERRITORY WAVE 245, NOT STARTED (job.board, 2026-09-26T11:40Z; `lane.sh start` needs an approval the non-interactive board session cannot get, so the HOST runs `docs/testing/lane.sh start surfwatch382 briefs/surfwatch382.md 382`), briefs/surfwatch382.md: #382's code half. lane.fps382 (PR #385, folded) measured it: 50 Cent's boot movies are vCPU-bound (97% busy, renderer 4%), 2.5M trapped stores/s on the CPU-access watch over the movie's colour surface. Hunk named in docs/lanes/fps382/NOTES.md sec 2c: suspend the watch after the first write to a surface that owes no download, re-arm before upload / GPU draw. vk/surface.c was in [free] (released by lane.remote 2026-09-25T23:34Z). Arm: slow stores <= 50k/s and >= 1.5x fps, same-session A/B on the Nova."
 
 [retired.blinx372c]
 issues = ["372"]
@@ -1134,3 +1137,15 @@ issues = ["53"]
 files = ["hw/xbox/nv2a/pgraph/pgraph.h", "hw/xbox/nv2a/pgraph/pgraph.c", "hw/xbox/nv2a/pgraph/glsl/vsh.h", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/ring53impl-*.json", "docs/lanes/ring53impl/**"]
 standing = false
 note = "BRIEFED, NOT STARTED (job.board wave 248): `docs/testing/lane.sh start` needs an approval the non-interactive board session cannot get (same as wave 247 for ring53); the HOST runs `docs/testing/lane.sh start ring53impl briefs/ring53impl.md 53` and labels #53 lane:ring53impl. BRIEFED AT TERRITORY WAVE 248 (job.board, 2026-09-26T13:50:00Z), briefs/ring53impl.md: #53 ring implementation. The console run that pins the per-method ring weights landed (PR #394, lane/xbox-ringw, CI green, fold-ready); lane.ring53's NOTES s2 names the hunks and board-requests/ring53.md item 2 said a fresh lane gets pgraph.h, glsl/vsh.h, glsl/vsh.c and pgraph.c once the run lands. All five were unclaimed (checked against every open PR's files); vsh-ff.c released by lane.zrtz272 (PR #364 merged). vsh-prog.c is free and needs no hunk."
+
+[lane.fmv303b]
+issues = ["303"]
+files = ["docs/lanes/fmv303b/**", "docs/testing/predictions/fmv303b-*.json"]
+standing = false
+note = "BRIEFED AT TERRITORY WAVE 249, NOT STARTED (job.board, 2026-09-26T14:14:00Z; `lane.sh start` needs an approval the non-interactive board session cannot get, so the HOST runs `docs/testing/lane.sh start fmv303b briefs/fmv303b.md 303`), briefs/fmv303b.md: #303's CPU-side half. PR #317 (lane.fmv303, folded) showed the green is already in the guest's ARGB buffer (guest 0.66 vs screen 0.63), so display/upload/PVIDEO are exonerated; its NOTES s5 names the first discriminator, the same Thor soak with tier1 off metered by docs/lanes/fmv303/guest_tint.py. No hw/ file is held: a hunk is named and board-requested, not edited."
+
+[lane.blinx372d]
+issues = ["372"]
+files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/testing/predictions/blinx372d-*.json", "docs/lanes/blinx372d/**"]
+standing = false
+note = "BRIEFED AT TERRITORY WAVE 249, NOT STARTED (job.board, 2026-09-26T14:14:00Z; `lane.sh start` needs an approval the non-interactive board session cannot get, so the HOST runs `docs/testing/lane.sh start blinx372d briefs/blinx372d.md 372`), briefs/blinx372d.md: #372's code half. lane.blinx372c (PR #388, folded) named the site: the incompatible-binding eviction in vk/surface.c update_surface_part does two synchronous pgraph_vk_finish(SURFACE_DOWN) per frame (Sub 34.5 ms of a 64-70 ms frame); the hunk is a GPU-side image->buffer->image copy. vk/surface.c was released by lane.surfwatch382 (PR #387 folded a5b5b628f2), which the hunk depends on (its CPU-access watch becomes the only guard against a stale CPU read)."
