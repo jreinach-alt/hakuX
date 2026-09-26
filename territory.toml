@@ -375,6 +375,7 @@ files = []
 note = "RETIRED AT WAVE 97: #99 was closed 2026-09-19T00:20Z as a duplicate of #75 (itself a duplicate of #39). The lane held no files and produced no commits, so there is nothing to fold and nothing to release; the row was the only thing left asserting coverage that does not exist. ORIGINAL NOTE: #99, dispatched ANALYSIS-ONLY and with a WARNING ATTACHED, because the issue is a title with an empty body and no tracker entry: three Stencil ZERO captures reading 0 -> 100,000 px between 2501f35211 and 0026f00534. #79 SAYS NINE OF SIXTEEN STENCIL CAPTURES CHANGE VALUE BETWEEN RUNS ON ONE BUILD, so a two-sha delta over that suite is not evidence of a regression until the three are shown to be outside #79's nine -- that separation is the first step and it is offline. Then date the goldens and the captures against both shas before attributing anything to code: a golden newer than the run, or a capture older than the fix, reads exactly like a live defect and has cost this project a suite twice. It writes the tracker entry the issue never got. No files, no arm; if a bisect is warranted it comes back and asks for one."
 
 [free]
+# RELEASED (job.board wave 239) by retiring lane.sweepcover (PRs #298/#299 folded): docs/testing/scoreboard.py, collect_sweep.sh, queue_full_sweep.sh, selftest.d/88-sweep-cover.sh.
 # CLAIMED (hostops 2026-09-26T06:40Z): glsl/geom.c dropped from this list; lane.vkpointsize34 claimed it at wave 233.
 # RELEASED (job.board wave 232) by retiring lane.sphere273fix (PR #330 folded): hw/xbox/nv2a/pgraph/pgraph.c; CLAIMED the same wave by lane.cullnf276 (with nv2a_regs.h).
 # RELEASED (job.board wave 229) by retiring lane.wparamcode223 (PR #321 folded 4bc77c3171): glsl/geom.c. (vsh-ff.c went to lane.zrtz272; glsl/psh.c to lane.pshqueue.)
@@ -974,12 +975,12 @@ standing = false
 retired_utc = "2026-09-26T07:30:00Z"
 note = "RETIRED (job.board wave 236): PR #336 MERGED 2026-09-26T06:08:32Z, no open PR on lane/nanfix281, unit gone. glsl/vsh.c passes to lane.fog278 (#278 INF fogSpecial hunk, vsh.c:944-949, disjoint from NaNToOne); glsl/vsh-prog.c and predictions/nanfix281-*.json, docs/lanes/nanfix281/** RELEASED to [free]. #281 stays open until the PR #336 arm verdict is read. PRIOR NOTE: DISPATCHED AT WAVE 216 (job.board, 2026-09-26T01:40:00Z) for #281's code half: PR #302 (lane.nanattr281) merged analysis only -- silicon clamps a NaN colour by its sign bit (-NaN -> 0, +NaN -> 1, drawn as the ordinary ramp, not culled), and we map every NaN to 1 in NaNToOne (glsl/vsh.c) plus _MUL in glsl/vsh-prog.c must yield +NaN. vsh-prog.c arrives from lane.vshr12280 (retired this wave, per the wave-194 pass-on); glsl/vsh.c was unclaimed. Brief: briefs/nanfix281.md. Reads docs/lanes/nanattr281/NOTES.md first. Do not touch the R12/oPos define (#280, landed) or vsh-ff.c (lane.wparamcode223). PASS-ON (hostops, 2026-09-26T03:35Z): when PR #336 folds, glsl/vsh.c goes to lane.pshqueue for #278's INF fogSpecial = 2.0 flag hunk (vsh.c:944-949, disjoint from NaNToOne); not lent concurrently, since #336 is in audit."
 
-[lane.sweepcover]
+[retired.sweepcover]
 issues = ["291", "292", "293", "294", "295", "296"]
-files = ["docs/testing/scoreboard.py", "docs/testing/collect_sweep.sh", "docs/testing/queue_full_sweep.sh", "docs/testing/jobs/selftest.d/88-sweep-cover.sh", "docs/lanes/sweepcover/**"]
+files = []
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 189 (host session, 2026-09-25 13:10 PDT) from the tests-that-never-run inventory: URGENT first -- scoreboard.py and collect_sweep.sh count an unreadable row as exact, and the two running sweeps (z-a-now-2b04d4d422, z-b-v040j1) are the evidence for the owner's score table and the 0.5 release; then queue_full_sweep.sh legs for the unscored goldens (#291 depth-2025, #292 Blend interactive, #294 RenderTextureLoop), the 6743b6a base-iso option (#293), and the unscoreable list (#295, #296). Brief: briefs/sweepcover.md."
-
+retired_utc = "2026-09-26T08:45:00Z"
+note = "RETIRED (job.board wave 239): PR #298 (status column) MERGED 2026-09-26T05:35Z and PR #299 (sweep legs + unscoreable list) MERGED 2026-09-26T05:58Z, no open PR on lane/sweepcover, unit gone. #295 and #296 closed as fixed by #299. #291/#292/#294 keep fixed-part: the legs exist, the sweep that runs them is the host's. #293 waits on lane.toolsmith for dispatcher.sh and arms.sh (NOTES at docs/lanes/sweepcover/NOTES.md). scoreboard.py, collect_sweep.sh, queue_full_sweep.sh, selftest.d/88-sweep-cover.sh and docs/lanes/sweepcover/** RELEASED to [free]."
 
 [retired.goldencorr287]
 issues = []
