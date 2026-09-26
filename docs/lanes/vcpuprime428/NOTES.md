@@ -66,6 +66,14 @@ reviewed (hostops writes `dispatch/pilots/<lane>.ok`) before the rest runs.
 A1 and B1 are the pilot. The rule is in `docs/lanes/titleplay/NOTES.md`.
 I queued all six without reading it.
 
+## Why attempt 0 did not finish
+
+The session ended with A1 and B1 (the pilot) still queued behind other
+device work and the other four runs parked. No run had finished, so there
+was nothing to judge. Attempt 1 resumed at 21:48 UTC with A1 running on the
+Thor and B1 at the head of the queue. It merged origin/master (e08c1c0165).
+The runs still use ref 15d9406b81, which is the prediction's a_ref/b_ref.
+
 ## Do not repeat
 
 - Do not queue over 30 minutes of device time without a reviewed pilot.
