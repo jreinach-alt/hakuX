@@ -140,6 +140,20 @@ Thor), in which I run `nav.py` with `SERIAL` set. Plus, for the dispatcher
 (not my files): `hddPath` per title run + titles-disk push, and the flush
 before force-stop.
 
+## Attempt 2 (resumed 2026-09-26 ~15:30 PDT)
+
+Why attempt 1 did not finish: it did finish what it could. Phase 1 was done
+and posted, and phase 2 needed a device grant that did not exist yet, so the
+session stopped on a `waiting:` for the board request. The grant came at
+15:38 PDT (Thor, one HELD session under 30 min, after lane.perfregimen's Nova
+hold lifts), plus the #431 targets delivery.
+
+- #431 targets landed in `targets.toml` (7d398d5625): 60 for Agent Under
+  Fire, 25 to Life, DOA1 Ultimate, Burnout 3, Burnout Revenge and (low
+  confidence, lane.xbox's recommendation) DOAX; 30 with a source for Blinx,
+  Forza, CoD3. Left at the default as #431 says: Blinx 2, 50 Cent, Black,
+  Bruce Lee, Galleon.
+
 ## Do not repeat
 
 - Do not `request.sh --pull` anything under `x1box/`: it deletes the file.
