@@ -1169,3 +1169,10 @@ issues = []
 files = ["docs/testing/jobs/arms.sh", "docs/testing/jobs/selftest.d/94-arms-verdict-scope.sh", "docs/lanes/armsscope/NOTES.md"]
 standing = false
 note = "STARTED (hostops 2026-09-26 10:42 PDT): harness defect, no tracker issue. arms.sh LABEL_INDEX keys verdicts by branch name, so a reused branch (lane.remote's) inherits folded PRs' PASS/FAIL verdicts (#274 comment 2026-09-26T17:27:30Z, PR #389). arms.sh lent from [lane.toolsmith]; returns there on fold. Brief: briefs/armsscope.md. Retire on fold."
+
+
+[lane.cloud-audit2-389]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-389, audit pass 2 of PR #389 on branch claude/docs-tooling-agentic-coding-u152m1, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 389` removes this row when the unit ends."
