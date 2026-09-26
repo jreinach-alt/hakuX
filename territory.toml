@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 233
+wave = 234
 updated_utc = "2026-09-26T06:35:00Z"
 
 
@@ -373,6 +373,7 @@ files = []
 note = "RETIRED AT WAVE 97: #99 was closed 2026-09-19T00:20Z as a duplicate of #75 (itself a duplicate of #39). The lane held no files and produced no commits, so there is nothing to fold and nothing to release; the row was the only thing left asserting coverage that does not exist. ORIGINAL NOTE: #99, dispatched ANALYSIS-ONLY and with a WARNING ATTACHED, because the issue is a title with an empty body and no tracker entry: three Stencil ZERO captures reading 0 -> 100,000 px between 2501f35211 and 0026f00534. #79 SAYS NINE OF SIXTEEN STENCIL CAPTURES CHANGE VALUE BETWEEN RUNS ON ONE BUILD, so a two-sha delta over that suite is not evidence of a regression until the three are shown to be outside #79's nine -- that separation is the first step and it is offline. Then date the goldens and the captures against both shas before attributing anything to code: a golden newer than the run, or a capture older than the fix, reads exactly like a live defect and has cost this project a suite twice. It writes the tracker entry the issue never got. No files, no arm; if a bisect is warranted it comes back and asks for one."
 
 [free]
+# CLAIMED (hostops 2026-09-26T06:40Z): glsl/geom.c dropped from this list; lane.vkpointsize34 claimed it at wave 233.
 # RELEASED (job.board wave 232) by retiring lane.sphere273fix (PR #330 folded): hw/xbox/nv2a/pgraph/pgraph.c; CLAIMED the same wave by lane.cullnf276 (with nv2a_regs.h).
 # RELEASED (job.board wave 229) by retiring lane.wparamcode223 (PR #321 folded 4bc77c3171): glsl/geom.c. (vsh-ff.c went to lane.zrtz272; glsl/psh.c to lane.pshqueue.)
 # RELEASED (job.board wave 219) by retiring lane.perfbase (PR #310 folded bc6b93495a): hw/xbox/nv2a/pgraph/profile.c, docs/testing/perf/{run_perf,bench_ff,fps_target,profile_guest,loadsample}.sh, docs/testing/perf/summarise.py.
@@ -555,8 +556,7 @@ note = "RETIRED AT WAVE 97: #99 was closed 2026-09-19T00:20Z as a duplicate of #
 files = ["hw/xbox/nv2a/pgraph/gl/texture.c", "hw/xbox/nv2a/pgraph/texture.c", 
 # RELEASED AT WAVE 158 by retiring lane.cloud190: PR #211 folded as f2e8ef8ba8 (#190 fixed).
     "hw/xbox/nv2a/pmc.c",
-    "hw/xbox/nv2a/pgraph/glsl/geom.c",
-# RELEASED AT WAVE 147 (host session): vk/draw.c + vk/surface.c by retiring lane.clrsurf91
+    # RELEASED AT WAVE 147 (host session): vk/draw.c + vk/surface.c by retiring lane.clrsurf91
 # (PR #148 closed, #207); the other paths were dropped by 19f97aa4 into NEITHER a row nor
 # [free] (lane.remote, #184 comment 5762957253).
 # TAKEN 2026-09-25 by [lane.clrwb91] (#91 write-back): vk/surface.c.
