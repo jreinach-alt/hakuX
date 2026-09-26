@@ -120,3 +120,21 @@ Merged origin/master at b1bf2135f2 (no rebase; the arm refs are still
 ancestors). The only conflict was the generated nv2a_index.json, so I took
 master's and regenerated over the fold pins (tests 6743b6a, the provenance
 master's index was built from).
+
+## Attempt 2 (2026-09-26 04:32Z): why it had not finished, and where it stops
+
+The previous sessions ended on a wait, not on a failure. The #315 arm
+(`pshqueue-315-brdf.json`, pair ids 1790395945-arms-pshqueue-{base,fix}-*)
+was queued at 04:12:25Z. A device arm takes about 90 minutes, so it could
+not be judged in either session. The arms job has judged #279 and #285
+(both PASS) and labelled the PR `verified` on those two. CI on 564584686e
+is green: Desktop build, Android build and check all pass.
+
+The PR stays in draft until the #315 verdict posts. Marking it ready now
+would let the fold take e3b13f5b45 before its arm is judged. When the
+`[job.arms]` comment for `pshqueue-315-brdf.json` arrives:
+- on PASS, cite it in the PR body and run `gh pr ready 347`.
+- on FAIL, revert e3b13f5b45 (a new commit, no history rewrite), name the
+  measured Texture_BRDF figures here and in the body, then mark it ready.
+Master was not merged in this attempt: the PR is MERGEABLE/CLEAN, and a
+merge would only restart CI.
