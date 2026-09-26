@@ -136,6 +136,24 @@ Branch `lane/sweepcover-legs`, stacked on #298.
   `queue_full_sweep.sh --with-depth-2025 --with-blend-interactive
   --with-rtloop <ref>`.
 
+### #299 brought current (attempt 2, 2026-09-26)
+
+Merged #298's head (`84638df6bb`, which carries master) into
+`lane/sweepcover-legs`. Three conflicts:
+
+- `collect_sweep.sh`: took #298's `{0,z}-<label>-NNN-*` loop header, as
+  planned above. The NNN it carries is what keeps a leg out of its column.
+- `queue_full_sweep.sh`: toolsmith's defect 12b landed on master first
+  (`8655834510`, `git rev-parse --short --verify "$REF^{commit}"`), so master's
+  line and comment were kept over this branch's copy. The bare-ref mutant's sed
+  still matches it and still goes red.
+- Fragment 88: kept #298's glob mutants and this branch's unscoreable and
+  queue sections. Dropped this branch's one-sheet collect check, because #298's
+  fixture (a `0-` sheet and a `z-` sheet, plus the `fix-now`, `fix.depth2025`
+  and `void-z-` decoys) covers the same thing and made that check's count of 1
+  wrong. The unscoreable check now expects `9 (+1 unscoreable)` against 10,
+  because #298's fixture has 9 Fog goldens, not 6.
+
 ## What lane.toolsmith needs for #293 (the 6743b6a disc)
 
 `queue_full_sweep.sh --base-iso <6743b6a disc>` queues the main sweep on that

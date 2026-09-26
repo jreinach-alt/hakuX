@@ -1,0 +1,23 @@
+== 1790373098-brdf315-964945
+rows: old 3, new 3
+recorded TSV vs old-scorer re-run, status mismatches: 0
+rows differing in any non-status column: 0
+Texture_BRDF/BRDF_e0_l0                                 blank  -> ok     differing=614 max_rgb=228 max_a=1
+Texture_BRDF/BRDF_e0_l1                                 blank  -> ok     differing=614 max_rgb=228 max_a=1
+Texture_BRDF/BRDF_e1_l0                                 blank  -> ok     differing=614 max_rgb=228 max_a=1
+status changes: 3
+== 0-a-now-8e683b3a26-023-Depth_buffer_fixed_function
+rows: old 80, new 80
+recorded TSV vs old-scorer re-run, status mismatches: 0
+rows differing in any non-status column: 0
+Depth_buffer_fixed_function/z24_Cn_FZy_M000003          blank  -> ok     differing=24 max_rgb=128 max_a=0
+Depth_buffer_fixed_function/z24_Cn_FZy_M3fc002          blank  -> ok     differing=24 max_rgb=128 max_a=0
+Depth_buffer_fixed_function/z24_Cn_FZy_M7f8001          blank  -> ok     differing=24 max_rgb=128 max_a=0
+Depth_buffer_fixed_function/z24_Cn_FZy_Mbf4000          blank  -> ok     differing=24 max_rgb=128 max_a=0
+Depth_buffer_fixed_function/z24_Cn_FZy_Mfeffff          blank  -> ok     differing=24 max_rgb=128 max_a=0
+Depth_buffer_fixed_function/z24_Cy_FZy_M000003          blank  -> ok     differing=24 max_rgb=128 max_a=0
+Depth_buffer_fixed_function/z24_Cy_FZy_M3fc002          blank  -> ok     differing=24 max_rgb=128 max_a=0
+Depth_buffer_fixed_function/z24_Cy_FZy_M7f8001          blank  -> ok     differing=24 max_rgb=128 max_a=0
+Depth_buffer_fixed_function/z24_Cy_FZy_Mbf4000          blank  -> ok     differing=24 max_rgb=128 max_a=0
+Depth_buffer_fixed_function/z24_Cy_FZy_Mfeffff          blank  -> ok     differing=24 max_rgb=128 max_a=0
+status changes: 10

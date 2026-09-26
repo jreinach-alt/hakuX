@@ -36,7 +36,7 @@ that only our own driver can deliver. What was measured, and how:
   `request.sh` has no driver field, and `swap_driver.sh` is raw adb.
 - `--runs N` on a `--title` soak is refused. Queue N requests.
 
-## Gate 1: in progress
+## Gate 1
 
 ### No-build A/Bs on stock T30 (queued 2026-09-25, Nova, ref a7f7c8bda9)
 
@@ -106,3 +106,51 @@ committed the script, and posted the question as a `blocked:` comment.
 
 The control against T30 needs our package installed on a device. That is a
 driver swap, which a lane cannot do (see "Do not repeat"). Asked on #68.
+
+### Why the attempt 2 session did not finish (written on the 09-26 resume)
+
+It ended correctly, as a wait. The control needed a driver swap that no lane
+could make, and the `blocked:` comment said so. PR #318 was then marked ready,
+and it folded at 00:15Z with the Gate 0 report and the build. The host
+answered the blocker at 04:23Z, which was after the session had ended:
+- It ran the control through `host-tools/turnip_control.sh`.
+- It opened a `[lane.turnipfork] driver-run:` channel on #68.
+
+One loose end in the worktree: `build.sh` and `compare_pkg.sh` had lost
+their exec bits, uncommitted, for an unknown reason. The resume restored them
+from HEAD. This session is on a new branch head and a new PR, because #318 is
+merged.
+
+## Gate 1 step 2: ended with no prototype (2026-09-26)
+
+The numbers are in the report's "Gate 1 results" section.
+
+- **Control:** passed, 220 of 220 identical to T30 (host run
+  `0-0-0-turnipctl-ours-1790395957`).
+- **(g)** Device-wide RNE is worse: 21 rows better, 127 worse, and
+  +17,994 differing pixels. Only 3D textures prefer it. A 3D-only policy
+  is worth at most 8,140 of 1,408,643 pixels. `TPL1_MODE_CNTL` is a
+  per-device static register (`tu6_init_static_regs`), so that policy needs
+  a patch, and it does not pay for a bundled driver plus a fallback.
+- **(f)** Flat. autotune, sysmem and gmem all give a median of 29 gfps with
+  a 33.3 ms guest frame, 2 replicates each. Crimson hands-off is at its
+  30 Hz cap, so this can only show a cost, and there is none.
+- Therefore **no T1 prototype, no prediction, and no driver-run.** The
+  brief's exit clause applies: Gate 0 bounds the driver at 7.2% of the
+  renderer thread (about 2 ms per frame), and the two measured surveys gave
+  nothing a driver alone can deliver.
+
+**Do not repeat:**
+- Do not re-run (g) device-wide. Its sign is settled.
+- If 3D-texture rounding matters, try the T0 route first. That is a
+  half-subtexel bias on 3D coordinates in the pgraph shader, which is a
+  hypothesis: it differs from RNE only at exact ties.
+- Do not read (f)'s flatness as "GMEM does not matter" on an uncapped title.
+  The instrument could not see a gain here.
+- The (g) RNE run moving pixels proves that `request.sh --env` reaches T30's
+  driconf. A null result from an env-var survey on T30 is therefore a real
+  null.
+
+**Reopen when:** a profile puts GPU time or driver time on the critical path
+of an uncapped title. The build (`tools/turnip/build.sh`) and the swap
+(`host-tools/turnip_control.sh`) are ready for that.

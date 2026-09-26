@@ -105,3 +105,42 @@ owner if the console stops answering.
   - The `SUBNORM_MAC` repeat on silicon is bit-identical.
 
   `docs/testing/xbox-special-raw-2026-09-25.md`.
+- 2026-09-25. #112 item 2 / #41 on silicon (PR #346):
+  - Under a vertex program, RADIAL fog reads **six per-vertex slots**. They
+    hold the preceding FF draw's last two quads, and a vertex's slot is fixed
+    by its quad's draw index mod 6.
+  - The phase moves between tests, deterministically. A second session
+    reproduced all 11 priming captures bit for bit.
+  - hakuX's single scalar is exact on the corpus goldens.
+  - V3 (the six radial goldens) holds only with Fog gen's FF tests first. A
+    reproduce-the-golden gate needs the golden's composition.
+
+  `docs/testing/xbox-fogprime-2026-09-25.md` and `xbox-fogprime-repeat-2026-09-25.md`.
+- 2026-09-25. The first test after an XBE launch renders planar fog with
+  **half** its coordinate (PR #348, three registered sessions). A non-fog test
+  first absorbs it. **Rule: every session starts with a non-fog test**
+  (`Alpha func::AlphaFuncAlways_Disabled`). No earlier reference is affected.
+  `docs/testing/xbox-fogfirst-2026-09-25.md`.
+- 2026-09-25. #10's m11 cut (PR #350):
+  - COLLAPSE by the letter.
+  - But at m11 = 5.0 every quad renders as horizontal stripes, which cannot
+    show #10's horizontal parity flip.
+  - #10's own `BumpEnvLum_Y16` control is striped the same way, so the
+    low-byte rival is alive again.
+  - Check a variant's seam band for single-colour rows before reading a zero.
+
+  `docs/testing/xbox-bumpm11-2026-09-25.md`.
+- 2026-09-25. #53 (PR #351, from existing captures): lit vertex-program
+  colours read the same six-slot ring as #41.
+  - All 16 lit `ControlFlags_VS` quads fit the word predicted from
+    `ControlFlags_FF`'s last six vertices.
+  - Each quad draw steps +4.
+  - So #53's "four distinct normals" test would be blind. Prime the FF draw
+    instead.
+
+  `docs/testing/xbox-cf53-slots-2026-09-25.md`.
+- 2026-09-26. The Kasa plug is in circuit but **cannot power the console on**
+  (the SMC waits for the button). It is a power meter only: about 60 W on,
+  about 1.2 W standby. Never `off` or `cycle` it; read `status --no-find` at
+  most once a minute. Writes that stop the CPU still need a button press:
+  the NV2A is the northbridge, as NV_PMC_ENABLE = 0 showed.
