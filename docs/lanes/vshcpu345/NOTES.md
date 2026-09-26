@@ -135,6 +135,24 @@ fog and NaN suite in the vshconst and dpforce345 arms.
 GeometrySuperscreen_* is left out because it drifts on its own. The arms job
 queues it.
 
+## Status (2026-09-26)
+
+**Waiting**, on things outside this session:
+
+- the two vsh requests above, with 76 requests ahead of them in the queue
+  when they were queued;
+- the arms job's `[job.arms]` verdict on the pgraph prediction;
+- the fix APK's build log, `dispatch/logs/build-a3baa35286*.log`, to grep for
+  the CMake patch line.
+
+preflight.sh passed on `29d006df02`. On resume:
+
+1. Score both runs with the reference named above.
+2. Check the prediction line by line.
+3. Grep the build log.
+4. Update the PR body with the before/after.
+5. Mark the PR ready. It goes to audit, because it touches `android/`.
+
 ## Do not repeat
 
 - Do not use `git apply` in a CMake or other build step inside this
