@@ -164,16 +164,35 @@ pwrlevel 4, exactly as the Nova does at 0). Its write proof and the Blinx
 pilot (`perfregimen-pilot-thor.json`, fan MAX now 5) remain to run:
 `launch_session.sh thor <dir>`.
 
-**Waiting (2026-09-26 16:20 PDT):** at session end, the Thor was held by
-lane.titlestate until 16:41 at the latest, after sitting at 43% under
-load. The Nova was held by the host (buildflags427 profile). On resume:
-- If the Thor is unheld, idle and at 50% or more, hold it, run
-  `bash docs/lanes/perfregimen/launch_session.sh thor .scratch/thor-session`,
-  TERM the running soak by PID at hold+30 min (`term_at.py`), lift the
-  hold, then judge with `judge.py .scratch/thor-session --prediction docs/testing/predictions/perfregimen-pilot-thor.json`.
-- If not, mark the PR ready anyway. The regimen is proven on the Nova, and
-  after the fold every Thor title soak's `perf_regimen.json` records its
-  read-back. Leave the Thor pilot as a named follow-up.
+**Why attempt 1 did not finish.** It ended at 16:20 PDT with the PR still in
+draft, "waiting" for the Thor to be unheld, idle and at 50% or more. Nothing
+could wake it for that: the Thor serves the 0.5 queue on a 500 mA port, and
+its battery falls under load (43%, then 34% at 16:44, 33% at 17:1x). The
+wait named a condition, not a signal, and the condition does not happen by
+itself. It should have marked the PR ready then, as its own second bullet
+said to. hostops' 16:45 addendum made that decision: the Thor pilot no
+longer gates the PR.
+
+### 5c. Attempt 2: the Thor pilot goes through the queue
+
+- **A queued soak can choose its arm.** `request.sh --env PERF_REGIMEN=rest`.
+  The dispatcher does not pass a request's env to soak_title.sh. It writes
+  the env to the app's `env_vars` pref, where an unknown name does nothing.
+  So soak_title.sh reads `PERF_REGIMEN` from the request the dispatcher is
+  serving, at `$D/running/<id>.req`, found from `CAPTURE_LOG`
+  (`$D/results/<id>/logcat.txt`). The shell's `PERF_REGIMEN` wins. Absent
+  or unknown values mean max. Two selftest legs cover it (19/19): the rest
+  request starts the title at 0/4, and a request with other env starts it at
+  2/5.
+- **The pair**, registered as `perfregimen-pilot-thor-queued.json` before
+  either arm runs. REST and then MAX, Blinx, 300 s each, the same `--ref`
+  (master at the fold). The exact `request.sh` lines are in its `requests`
+  field. Judge: `judge_queued.py <REST result dir> <MAX result dir>`.
+  Smoke-tested on the Nova session-3 arms, where it reproduces 5a's verdict
+  (P5 PASS, P6 FAIL at 1.000). The host queues the pair when #444 folds.
+- **The Thor write proof** (no title, idle probe only):
+  `BATT_MIN=30 ARMS=' ' bash held_session.sh thor <dir>`, under a hold.
+  The result is below (5d) if it ran.
 
 ## For the host: REST values for host-tools/device_rest.conf
 

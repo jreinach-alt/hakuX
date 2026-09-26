@@ -161,4 +161,5 @@ def main():
         print("VERDICT: %s" % ("PASS" if not bad else "FAIL " + ",".join(bad)))
 
 
-main()
+if __name__ == "__main__":
+    main()

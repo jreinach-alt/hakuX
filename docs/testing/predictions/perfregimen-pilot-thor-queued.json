@@ -1,0 +1,32 @@
+{
+  "registered_utc": "2026-09-27T00:20:00Z",
+  "who": "lane.perfregimen",
+  "issue": "none (harness; PR #444)",
+  "title": "4D530013-Blinx_The_Time_Sweeper.xiso.iso",
+  "device": "thor",
+  "seconds": 300,
+  "frames_every": 0,
+  "perflog": false,
+  "runs_per_arm": 1,
+  "arms": [
+    "rest",
+    "max"
+  ],
+  "ref": "master at the #444 fold, the same --ref in both requests",
+  "requests": [
+    "bash docs/testing/request.sh --who lane.perfregimen --purpose 'perfregimen Thor pilot arm 1 REST' --device thor --title 4D530013-Blinx_The_Time_Sweeper.xiso.iso --seconds 300 --ref <fold sha> --env PERF_REGIMEN=rest",
+    "bash docs/testing/request.sh --who lane.perfregimen --purpose 'perfregimen Thor pilot arm 2 MAX' --device thor --title 4D530013-Blinx_The_Time_Sweeper.xiso.iso --seconds 300 --ref <fold sha> --env PERF_REGIMEN=max"
+  ],
+  "prediction": "The Thor half of the regimen pilot, queued through the dispatcher after #444 folds instead of run in a held session (hostops addendum 2026-09-26 16:45 PDT: the Thor stays under 50% while it serves the 0.5 queue). Supersedes the arm legs of perfregimen-pilot-thor.json, which never ran. Its idle legs P1/P2 belong to the separate held write proof. Two hands-off 300 s Blinx soaks on the Thor, back to back, REST (0/4) first and then MAX (2/5), with the same --ref and so the same APK. The request's env chooses the arm: soak_title.sh reads PERF_REGIMEN from the running request (the selftest.d/84 'request env' legs). There is no REST-after arm, so drift across the pair (heat, battery) cannot be separated from the mode's effect. Running REST first makes drift work against MAX, not for it. Judge: python3 docs/lanes/perfregimen/judge_queued.py <results/REST id> <results/MAX id> --prediction docs/testing/predictions/perfregimen-pilot-thor-queued.json (fps = the median gfps=N value, 135-245 s from the arm's first hakuX line). The legs, each with the world in which it fails: M0: each arm's result is device_label thor, and its perf_regimen.json names the requested regimen, reads back the requested modes and has perf_restored true, with >= 15 gfps lines in the window. Both arms share an apk_sha. M0 fails if the request env does not reach soak_title.sh, if the Thor ignores the writes, or if the title never reaches gameplay. Then the pair is VOID, not a result. P5, non-inferiority: MAX fps >= 0.97 x REST. It fails if MAX costs frame rate, for example if a fixed CPU floor takes thermal headroom from the GPU. P6 is a GUESS, labelled as one: MAX >= 1.05 x REST. #372 measured 14.8 fps at REST before blinx372d removed two surface-download finish waits per frame. If the demo is still latency-bound rather than clock-bound, P6 fails while P5 passes, and the regimen is still sound.",
+  "expect": {
+    "rest_perf": 0,
+    "rest_fan": 4,
+    "max_perf": 2,
+    "max_fan": 5,
+    "M0/gfps_lines_min": 15,
+    "P5/max_over_rest_min": 0.97,
+    "P6/max_over_rest_guess": 1.05
+  },
+  "expect_counts": {},
+  "expect_note": "Named rules read by docs/lanes/perfregimen/judge_queued.py, not golden keys: a soak writes no captures and arms.sh skips soaks."
+}

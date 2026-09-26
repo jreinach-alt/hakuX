@@ -36,7 +36,8 @@ for f in "$D"/running/*.owner; do
 done
 batt() { a shell dumpsys battery | tr -d '\r' | sed -n 's/^ *level: //p'; }
 b=$(batt); log "battery $b%"
-[ "${b:-0}" -ge 50 ] || { log "REFUSED: battery $b% < 50%"; exit 2; }
+# BATT_MIN=30 for the no-title write proof (the owner's floor, hostops 09-26).
+[ "${b:-0}" -ge "${BATT_MIN:-50}" ] || { log "REFUSED: battery $b% < ${BATT_MIN:-50}%"; exit 2; }
 
 rest() {
     local got; got=$(device_perf_set "$PREST" "$FREST")
