@@ -73,6 +73,13 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
     val driverOverride = getSharedPreferences("x1box_prefs", MODE_PRIVATE)
       .getString(PerGameSettingsManager.runtimeKey("gpu_driver"), null)
 
+    // lane.vklayer34 instrumentation ref, reverted in the next commit: an
+    // adrenotools driver bypasses the loader, and with it every layer.
+    android.util.Log.i("hakuX-lane",
+      "vkval GPU driver: forced system driver (override=$driverOverride, " +
+        "installed=${GpuDriverHelper.getInstalledDriverLibrary()})")
+    if (true) return
+
     if (driverOverride == "system") {
       android.util.Log.i("MainActivity", "GPU driver: per-game override forces system driver")
       return

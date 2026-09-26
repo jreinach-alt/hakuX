@@ -82,7 +82,10 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
         prio = ANDROID_LOG_WARN;
     else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
         prio = ANDROID_LOG_INFO;
-    __android_log_print(prio, "xemu-vk-validation", "%s",
+    /* lane.vklayer34 instrumentation ref, reverted in the next commit. */
+    __android_log_print(prio, "hakuX-lane", "vkval id=%s | %s",
+                        pCallbackData->pMessageIdName ?
+                            pCallbackData->pMessageIdName : "(none)",
                         pCallbackData->pMessage);
 #else
     fprintf(stderr, "[vk] %s\n", pCallbackData->pMessage);
@@ -182,6 +185,31 @@ add_optional_instance_extension_names(PGRAPHState *pg,
         g_config.display.vulkan.validation_layers &&
         add_extension_if_available(available_extensions, enabled_extension_names,
                                    VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+#ifdef __ANDROID__
+    /*
+     * lane.vklayer34: the Android loader lists only driver extensions for
+     * pLayerName == NULL, so debug_utils may come from the layer alone.
+     */
+    if (g_config.display.vulkan.validation_layers &&
+        !r->debug_utils_extension_enabled && check_validation_layer_support()) {
+        uint32_t n = 0;
+        vkEnumerateInstanceExtensionProperties(validation_layers[0], &n, NULL);
+        VkExtensionProperties *ep = g_malloc_n(n ? n : 1, sizeof(*ep));
+        vkEnumerateInstanceExtensionProperties(validation_layers[0], &n, ep);
+        for (uint32_t i = 0; i < n; i++) {
+            if (!strcmp(ep[i].extensionName, VK_EXT_DEBUG_UTILS_EXTENSION_NAME)) {
+                const char *name = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+                g_array_append_val(enabled_extension_names, name);
+                r->debug_utils_extension_enabled = true;
+                break;
+            }
+        }
+        g_free(ep);
+    }
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-lane",
+                        "vkval debug_utils enabled = %d",
+                        r->debug_utils_extension_enabled ? 1 : 0);
+#endif
 }
 
 static bool create_instance(PGRAPHState *pg, Error **errp)
@@ -265,18 +293,18 @@ static bool create_instance(PGRAPHState *pg, Error **errp)
     enable_validation = g_config.display.vulkan.validation_layers;
 
 #ifdef __ANDROID__
-    __android_log_print(ANDROID_LOG_INFO, "xemu-vk-validation",
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-lane",
                         "validation_layers config = %d", enable_validation ? 1 : 0);
     {
         uint32_t n = 0;
         vkEnumerateInstanceLayerProperties(&n, NULL);
-        __android_log_print(ANDROID_LOG_INFO, "xemu-vk-validation",
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-lane",
                             "Available instance layers: %u", n);
         if (n > 0) {
             VkLayerProperties *lp = g_malloc_n(n, sizeof(VkLayerProperties));
             vkEnumerateInstanceLayerProperties(&n, lp);
             for (uint32_t i = 0; i < n; i++) {
-                __android_log_print(ANDROID_LOG_INFO, "xemu-vk-validation",
+                __android_log_print(ANDROID_LOG_INFO, "hakuX-lane",
                                     "  layer[%u]: %s", i, lp[i].layerName);
             }
             g_free(lp);
@@ -285,7 +313,7 @@ static bool create_instance(PGRAPHState *pg, Error **errp)
     {
         uint32_t n = 0;
         vkEnumerateInstanceExtensionProperties(NULL, &n, NULL);
-        __android_log_print(ANDROID_LOG_INFO, "xemu-vk-validation",
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-lane",
                             "Available instance extensions: %u", n);
     }
 #endif
@@ -344,7 +372,7 @@ static bool create_instance(PGRAPHState *pg, Error **errp)
             fprintf(stderr, "Warning: Validation layers enabled. Expect "
                             "performance impact.\n");
 #ifdef __ANDROID__
-            __android_log_print(ANDROID_LOG_WARN, "xemu-vk-validation",
+            __android_log_print(ANDROID_LOG_WARN, "hakuX-lane",
                                 "Validation layers ENABLED — expect performance impact");
 #endif
             for (int i = 0; i < ARRAY_SIZE(validation_layers); i++) {
@@ -354,7 +382,7 @@ static bool create_instance(PGRAPHState *pg, Error **errp)
         } else {
             fprintf(stderr, "Warning: validation layers not available\n");
 #ifdef __ANDROID__
-            __android_log_print(ANDROID_LOG_ERROR, "xemu-vk-validation",
+            __android_log_print(ANDROID_LOG_ERROR, "hakuX-lane",
                                 "Validation layers requested but NOT AVAILABLE — "
                                 "push the layer .so via adb");
 #endif
