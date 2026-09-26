@@ -52,7 +52,7 @@ echo "   attempts: $(for f in "$WORK"/attempts/*; do [ -e "$f" ] && printf '%s=%
 
 echo "== dispatcher"
 systemctl --user is-active hakux-dispatcher.service 2>/dev/null | sed 's/^/   service: /'
-echo "   queue: $(ls "$D"/queue/*.req 2>/dev/null | wc -l) waiting, running: $(ls "$D"/running/*.req 2>/dev/null | wc -l), results: $(ls -d "$D"/results/*/ 2>/dev/null | wc -l)"
+echo "   queue: $(ls "$D"/queue/*.req 2>/dev/null | grep -vc '/z-[^/]*$') waiting + $(ls "$D"/queue/z-*.req 2>/dev/null | wc -l) idle-tier z-*, running: $(ls "$D"/running/*.req 2>/dev/null | wc -l), results: $(ls -d "$D"/results/*/ 2>/dev/null | wc -l)"
 [ -f "$D/logs/dispatcher.log" ] && echo "   last line: $(tail -1 "$D/logs/dispatcher.log")"
 holds=$(ls "$D"/hold 2>/dev/null | grep -v '\.why$' | grep -v '^lifted$' | tr '\n' ' ')
 echo "   holds: ${holds:-none}"
