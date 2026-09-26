@@ -1004,14 +1004,37 @@ GLSL_DEFINE(texPlaneQ3, GLSL_C(NV_IGRAPH_XF_XFCTX_TG3MAT + 3))
 
     mstring_append(body,
     "  oPos = tPosition * compositeMat;\n"
+    /* nv2a's multiply gives 0 for 0 * anything (vsh-prog.c _MUL); GLSL's
+     * gives NaN for 0 * inf, which a w of +-inf puts in x, y and z.  Only
+     * taken for a non-finite input, so finite vertices are bit-identical.
+     * compositeMat is a mat4(...) constructor macro, hence cm. */
+    "  if (any(isinf(tPosition)) || any(isnan(tPosition))) {\n"
+    "    mat4 cm = compositeMat;\n"
+    "    for (int j = 0; j < 4; j++) {\n"
+    "      vec4 p = tPosition * cm[j];\n"
+    "      for (int i = 0; i < 4; i++) {\n"
+    "        if (tPosition[i] == 0.0 || cm[j][i] == 0.0) { p[i] = 0.0; }\n"
+    "      }\n"
+    "      oPos[j] = p.x + p.y + p.z + p.w;\n"
+    "    }\n"
+    "  }\n"
     "  oPos.w = clampAwayZeroInf(oPos.w);\n"
-    "  oPos.xy /= oPos.w;\n"
-    "  oPos.xy += c[" stringify(NV_IGRAPH_XF_XFCTX_VPOFF) "].xy;\n"
-    "  oPos.xy = roundScreenCoords(oPos.xy);\n"
+    "  vec2 hPos = oPos.xy;\n"
+    "  vec2 scrPos = oPos.xy / oPos.w + c[" stringify(NV_IGRAPH_XF_XFCTX_VPOFF) "].xy;\n"
+    "  oPos.xy = roundScreenCoords(scrPos);\n"
     "  vec4 vtxPos = vec4(oPos.xy, oPos.z / oPos.w, oPos.w);\n"
     "  oPos.z = oPos.z / clipRange.y;\n"
     "  oPos.xy = (2.0 * oPos.xy - surfaceSize) / surfaceSize;\n"
     "  oPos.xy *= oPos.w;\n"
+    /* roundScreenCoords is the identity for |pos| >= 2^19, and pos * 16
+     * overflows past 2^124 (W_param ff_w_zero_inf, #223): there, carry the
+     * position homogeneously, as the rasteriser receives it, instead of
+     * through the divide.  The bvec mix is a select, so the unselected
+     * operand may be inf or NaN. */
+    "  bvec2 carry = not(lessThan(abs(scrPos), vec2(524288.0)));\n"
+    "  oPos.xy = mix(oPos.xy, 2.0 * hPos / surfaceSize\n"
+    "      + (2.0 * c[" stringify(NV_IGRAPH_XF_XFCTX_VPOFF) "].xy / surfaceSize - 1.0) * oPos.w,\n"
+    "      carry);\n"
     );
 
     if (state->point_params_enable) {
