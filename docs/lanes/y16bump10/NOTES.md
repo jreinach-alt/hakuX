@@ -54,3 +54,14 @@ The file is committed, so the arms job queues it. I did not queue arms by hand.
   offset. It is stripes.
 - Do not tune the low-byte expression to the arm's number if the Y16 leg
   lands elsewhere. Report it, and treat the model as refuted.
+
+## State at session end (2026-09-25)
+
+Waiting on two signals:
+
+- the arms job verdict for `y16bump10-y16.json` (a 081dcf4a38, b 50b46b0495),
+  which will arrive as a `[job.arms]` comment on PR #367;
+- CI on the head.
+
+Once the verdict is in, cite it in the PR and mark the PR ready. On a FAIL,
+name each refuted leg with its figure and take its hunk out.
