@@ -31,8 +31,8 @@ So, every tick, in this order:
 - Dispatch **up to three lanes per tick**. `LANE_MAX` is the only capacity
   cap: the owner lifted the budget throttle on 2026-09-25 ("there's no limits
   on [capacity] now"). Take the startable issues **in the order the capacity
-  list prints them**, skipping any whose files are not free or that has a
-  blocker: that list is sorted by expected improvement (game-visible first,
+  list prints them**, skipping any whose files are not free (a file released
+  at ready is free, see below) or that has a blocker: that list is sorted by expected improvement (game-visible first,
   then `impact_px + impact_onestep_px // 4` descending, then rows with no
   estimate or an unreadable one, then measured zeros, then issues with no
   tracker row, oldest first inside each), and each line carries the key it
@@ -63,6 +63,32 @@ So, every tick, in this order:
   `board` branch as usual; the session reads the issue and the brief. Do not
   label `cloud` an issue that needs a handheld to make progress; a device run
   is the host's.
+- **Release a lane's files when its PR is ready, not when it folds** (owner,
+  2026-09-26). A lane PR that is out of draft, CI green on its head, and
+  whose unit is inactive is finished writing; audit and the one-at-a-time
+  fold take hours more. On 2026-09-26 nine hot files were held that way and
+  31 dispatchable issues waited behind them. So when `fleet.py` names such a
+  PR, add the row's files to `released = [...]` on its territory row and set
+  `released_at_ready = <pr>`. Keep them in `files`: the audit and the fold
+  still read what the PR touches. A released file is **free** for the
+  dispatch rule above, and the capacity section lists each one as AVAILABLE
+  or as taken. The next lane branches from master, and its brief names the
+  ready PR on the same file and says: before marking your own PR ready, merge
+  master (or that PR's branch, if it has not folded) and re-run your arm.
+  Overlapping edits meet at fold time, and a real conflict goes back to the
+  later lane through `handback.sh`. `check_territory.py` allows one more
+  unreleased holder of a released file, and no second one. A PR sent back to
+  remediation after an audit re-acquires its files (drop them from
+  `released`) **only if no other lane has started on them**. Otherwise they
+  stay released and its remediation merges master first.
+- **A `fold-ready` PR that is not folding is a FAIL line, never a reason to
+  wait silently.** `fleet.py` names it with its reason. It flags a
+  CONFLICTING PR at once, and one stuck for over 60 min on red CI or on CI
+  that never ran. Put each in the tick summary with who fixes it. An
+  index-only conflict goes to `host-tools/unjam_index.sh`, until lane.foldflow
+  ships its fold.sh change. Any other conflict, and red CI, go to
+  `handback.sh`, which resumes the lane. CI that never ran is usually a
+  conflict, so check mergeability first.
 - Grants: a lane blocked on a file nobody holds gets it now. Edit the lane
   PR's `Files:` line, comment `[job.board] granted <path>`, remove `blocked`.
   "Ask and I will grant it" is a deadlock; grant.
