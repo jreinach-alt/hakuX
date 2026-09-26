@@ -1,6 +1,7 @@
 # lane.zrtz272 -- round-toward-zero fixed-function screen z (#272, #275 Swap)
 
-Base: origin/master @ 24208f15cb (#321's position tail already in).
+Base: origin/master @ 24208f15cb (#321's position tail already in); merged
+origin/master @ 6550967a5e on 2026-09-26 for arm 2.
 Analysis, pricing and "Do not repeat": `docs/lanes/zdepth272/NOTES.md`. This lane
 lands its hunk (`docs/lanes/zdepth272/vsh-ff-zrtz.patch`) and registers its arm.
 
@@ -74,11 +75,81 @@ a range:
 | `z24_C?_FZn_M400002_ZB` | 1,506 | 113 .. 145 |
 | `z16_C?_FZn_M00ffff_ZB` | 2,840 | 424 .. 456 |
 
-## Status
+## Why attempt 1 did not finish
 
-Waiting for the arms job's `[job.arms]` verdict on PR #364. Before believing any
-`=0`, read `scores1.tsv` `status` for `unreadable` and the run log for PARTIAL
-COVERAGE.
+It ended its session on a `waiting:` comment for the `[job.arms]` verdict. That was
+correct: the wait was on something outside the session. The arm then judged FAIL at
+00:22 PDT and marked the PR `regressed`, but nothing resumed the lane until hostops did
+at 12:33 AM. Attempt 2 (this one) judges the arm and carries the PR.
+
+## Arm 1 verdict: FAIL, 48 of 1263 checks (`zrtz272-rtz.json`)
+
+Results `1790402845-arms-zrtz272-base-1549230` and `-fix-1549317`, one run each, 983
+captures each. Neither log has `UtilAcceptVsock`. PARTIAL COVERAGE is the known
+Depth_buffer 144/784 and ZPass 72/78 floor, the same in both arms. No row is
+`unreadable`.
+
+**Landed as predicted:**
+
+| capture (×2, Cn and Cy) | A | B | predicted |
+|---|---:|---:|---|
+| `Color_zeta_overlap/Swap` (#275) | 165,447 | **0** | 0 |
+| `z24_C?_FZn_Mffffff_ZB` | 144,566 | 47,935 | 47,935 .. 53,852 |
+| `z24_C?_FZn_Mc00000_ZB` | 4,834 | 989 | 989 .. 1,037 |
+| `z24_C?_FZn_M800001_ZB` | 2,868 | 520 | 520 .. 568 |
+| `z24_C?_FZn_M400002_ZB` | 1,506 | 113 | 113 .. 145 |
+| `z16_C?_FZn_M00ffff_ZB` | 2,840 | 424 | 424 .. 456 |
+| `z24_C?_FZn_M000003` and `_ZB` | 24 | 0 | 0 |
+| `z16_C?_FZn_M00{4002,8001,c000}_ZB` | 16/32/32 | 0 | 0 |
+| `z16_C?_FZy_M008001_ZB` | 13 | 0 | 0 |
+
+Every band landed on its pure-replay edge exactly. Unpredicted gains:
+`W_buffering/ZBuf24D_FloorQuad_V0_*_Z` 161,700 → 15,530 and 153,860 → 59,873;
+`ZBuf24F_FloorQuad_V0_*_Z` −980 to −1,698.
+
+**Refuted, with the measured figure:**
+
+- `z24_C?_FZy_M*` (F24, 10 colour and 10 `_ZB`): 24 → **406** colour and **403** `_ZB`.
+  The model predicted 3 and 0. Pixels: 0x300 is the F24 clear. Silicon draws a
+  zero-depth vertical line at x=136 and a short horizontal one at y=53. RTZ makes the
+  near-plane vertex z exactly 0, which passes the depth clip (`zvalue < clipRange.z`),
+  so we draw y=53 as silicon does. We also draw a horizontal line at y=56, a diagonal,
+  and a 373-px vertical line at x=502, none of which silicon has. The model had the
+  vertex z right (0) and did not model which of those zero-depth edges the rasteriser
+  keeps. **Hunk out for F24** (see below).
+- `z16_C?_FZy_M00c000_ZB`: 34 → 1 (predicted 0). `z16_C?_FZy_M00ffff_ZB`: 495 → 393
+  (predicted 392). Each is 1 px from the model, and each is a large improvement. They
+  are left in, and arm 2 registers the measured figures as a replication.
+
+**Not attributable to the hunk (noise), from other runs on disk:**
+
+- `Blend_surface/R5G6B5_Add_SrcA_DstA` 11,964 → 14,833. 14,833 is the value in every
+  one of about 40 other scored runs, so the base arm was the outlier.
+- `Stencil/Stencil_ZERO`, `_ST_DT`, `_ST_DT_ZB` 0 → 40,000/30,000. The Stencil_ZERO*
+  family reads 0, 5,050, 20,000, 30,000 or 40,000 between runs, including between two
+  runs of the same apk (`a7b9d28e6b84`: region200 dryrun vs full6743 dry2). Arm 2
+  guards `Stencil/Stencil_REPLACE*` only.
+
+## The F24 gate (`e603fb3540`)
+
+`vtxPos.z = ffScreenZ(...)` now also requires `clipRange.y <= 16777216.0`. clipRange.y
+is f24_max (1e30) on F24 and at most 2^24 on D24, D16 and F16
+(`common.c pgraph_glsl_set_clip_range_uniform_value`). It is a uniform, so the shader
+key and the cache are unchanged. Compiled: `check_rtz.py` passes 8/8 and rejects all 3
+mutants. The emitted body contains the gate.
+
+What it gives up: arm 1's `ZBuf24F_FloorQuad_V0_*_Z` gains (−4,638 px over 4
+captures) go back, against 20 × ~380 px refuted on DBFF. F24 near-plane RTZ needs the
+rasteriser's zero-depth edge rule first. That is a separate issue, not this hunk.
+
+## Arm 2 (`zrtz272-rtz2.json`)
+
+a_ref `6550967a5e` (origin/master at the merge), b_ref `e603fb3540` (merge + RTZ hunk
++ F24 gate). The disc is arm 1's. It has the same legs, with these changes:
+`z24_C?_FZy_M*` and `_ZB` `=24` (unchanged from master); `z16 FZy M00c000_ZB=1` and
+`M00ffff_ZB=393` (arm 1's measured figures); `must_not_regress` has `Stencil_REPLACE*`
+instead of `Stencil/*`, and `ZetaIntoColor*` as before. The five bands are still judged by
+reading.
 
 ## Do not repeat
 
@@ -86,3 +157,7 @@ COVERAGE.
   anchoring on the `carry);` block. Do not re-derive the hunk.
 - The Bash tool rejects heredocs that contain quoted braces. Write scratch
   scripts to files.
+- Do not put RTZ back on F24 as it stands. Arm 1 measured 24 → 403..406 on all 20
+  z24 FZy captures, from zero-depth edges passing the clip.
+- Do not debug `Stencil_ZERO*` or `Blend_surface/R5G6B5_Add_SrcA_DstA` movement from
+  a single-run arm. Both move between runs of one apk.
