@@ -10,6 +10,9 @@ dry run showed the bump tests' matrix was degenerate. BumpS and BumpT now use
 one matrix word each, and the build changed. Every leg and prediction is
 unchanged.
 
+**Result (2026-09-26, 11:53 PDT):** every leg held. The rules are in
+[`xbox-csc-2026-09-26.md`](../../testing/xbox-csc-2026-09-26.md).
+
 ## Why
 
 #10's YUV class is `BumpMap_YUY2_L`, `_UYVY_L`, `BumpEnvLum_YUY2_L` and
