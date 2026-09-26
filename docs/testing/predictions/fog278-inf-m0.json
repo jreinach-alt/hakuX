@@ -1,0 +1,36 @@
+{
+  "registered_utc": "2026-09-26T07:37:49Z",
+  "who": "lane.fog278",
+  "issue": "278",
+  "prediction": "#278 (docs/lanes/cloud-278/NOTES.md): in the exp modes an infinite fog coordinate with fogParam.y == 0 is 0 * INF = 0 and runs the ordinary formula on x = bias - 1.5; every other cell keeps the special value, NaN stays special, linear keeps its special value at m = 0. MUST MOVE, structural (differing minus off-by-one): INF-FogExc-exp-* 9,029 -> 837 each and INF-FogExc-{exp_abs,exp2,exp2_abs}-* 4,096 -> 18 each, 85,268 -> 3,564 over the 16. The judge classes on differing, which counts one-step pixels, so the classes are NOT all better: the bias-1/m0 quad (f = 2^-8 exactly) becomes one-step in all 16 (our exp path rounds, silicon truncates; FogZeroBias quad 0 shows the same today). For exp that quad was structural, so the 4 exp captures go better (differing drops by the 4,096-px bias -1/m0 quad plus the rest of the structural). For exp_abs, exp2, exp2_abs that quad is exact today only because the special value 0 matches, so it turns 4,096 px one-step while the bias-1.5/m0 quad goes 4,096 structural -> 18: differing rises by about 18 and the 12 class worse. That is the predicted shape: better=4, worse=12, and the magnitude leg is read off the structural column. A worse capture with structural not falling by ~4,078, or an exp capture not near 837 structural, refutes the model; name the mode x abs cell. MUST NOT MOVE, with what would move each: NaN-FogExc-* (all six modes) move if NaN were treated like INF; INF-FogExc-linear-* and -linear_abs-* move if the exemption leaked to linear; FogExc-* and RCP-FogExc-* have m != 0 on every draw, so they move only if the m test is wrong; Fog_param/* and Fog/* have finite coordinates (flag stays 0.0); Fog_inf_coord/* uses the Fog base draw with density 0.025, m != 0.",
+  "a_ref": "6550967a5e",
+  "b_ref": "eb6ce3a908",
+  "must_not_move": [
+    "Fog_exceptional_value/NaN-FogExc-*",
+    "Fog_exceptional_value/INF-FogExc-linear-*",
+    "Fog_exceptional_value/INF-FogExc-linear_abs-*",
+    "Fog_exceptional_value/FogExc-*",
+    "Fog_exceptional_value/RCP-FogExc-*",
+    "Fog_param/*",
+    "Fog/*",
+    "Fog_inf_coord/*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "better": 4,
+    "worse": 12
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Fog",
+      "Fog exceptional value",
+      "Fog inf coord",
+      "Fog param"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "runs_per_arm": 2
+}

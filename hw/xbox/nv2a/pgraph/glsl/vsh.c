@@ -950,9 +950,18 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
                 mstring_append(body, "  float fogDistance = oFog.x;\n");
             }
         }
+        /*
+         * #278: an infinite coordinate is flagged 2.0 rather than 1.0, because
+         * in the exp modes a zero multiplier turns it into 0 * INF = 0 and the
+         * ordinary formula runs (psh.c append_fog_factor). NaN stays special
+         * in every mode, since 0 * NaN is still NaN.
+         */
         mstring_append(body,
-                       "  if (isinf(fogDistance) || isnan(fogDistance)) {\n"
+                       "  if (isnan(fogDistance)) {\n"
                        "    fogSpecial = 1.0;\n"
+                       "    oFog = vec4(0.0);\n"
+                       "  } else if (isinf(fogDistance)) {\n"
+                       "    fogSpecial = 2.0;\n"
                        "    oFog = vec4(0.0);\n"
                        "  } else {\n"
                        "    oFog = vec4(fogDistance);\n"
