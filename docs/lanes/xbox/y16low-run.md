@@ -3,6 +3,9 @@
 **Status: PRE-REGISTERED.** This file, its scorer and the tests patch were
 committed and pushed before the emulator dry run and before the console run.
 
+**Result (2026-09-25):** every gate held, and M is LOW: `_lo00` against Y8
+is 28,336 px. See [`xbox-y16low-2026-09-25.md`](../../testing/xbox-y16low-2026-09-25.md).
+
 ## Why
 
 PR #350 found that #10's own control (`BumpEnvLum_Y16`) is blind, so the rival
