@@ -2160,16 +2160,16 @@ static void create_pipeline(PGRAPHState *pg)
     }
     OPT_STAT_INC(pipeline_early_misses);
 
-    NV2A_PHASE_TIMER_BEGIN(pipe_bind_tex);
+    NV2A_PHASE_TIMER_BEGIN_EXCL(pipe_bind_tex);
     if (pg->texture_state_gen != r->last_texture_state_gen ||
         r->texture_vram_gen != r->last_texture_vram_gen) {
         pgraph_vk_bind_textures(d);
         r->last_texture_state_gen = pg->texture_state_gen;
         r->last_texture_vram_gen = r->texture_vram_gen;
     }
-    NV2A_PHASE_TIMER_END(pipe_bind_tex);
+    NV2A_PHASE_TIMER_END_EXCL(pipe_bind_tex);
 
-    NV2A_PHASE_TIMER_BEGIN(pipe_bind_shd);
+    NV2A_PHASE_TIMER_BEGIN_EXCL(pipe_bind_shd);
 #if OPT_VALIDATE_GEN_COUNTERS
     if (!pg->program_data_dirty && r->shader_binding &&
         pg->shader_state_gen == r->last_shader_state_gen &&
@@ -2186,9 +2186,9 @@ static void create_pipeline(PGRAPHState *pg)
     } else {
         pgraph_vk_update_shader_uniforms(pg);
     }
-    NV2A_PHASE_TIMER_END(pipe_bind_shd);
+    NV2A_PHASE_TIMER_END_EXCL(pipe_bind_shd);
 
-    NV2A_PHASE_TIMER_BEGIN(pipe_lookup);
+    NV2A_PHASE_TIMER_BEGIN_EXCL(pipe_lookup);
     // FIXME: If nothing was dirty, don't even try creating the key or hashing.
     //        Just use the same pipeline.
     bool pipeline_dirty = check_pipeline_dirty(pg);
@@ -2202,7 +2202,7 @@ static void create_pipeline(PGRAPHState *pg)
 
     if (r->pipeline_binding && !pipeline_dirty) {
         NV2A_VK_DPRINTF("Cache hit");
-        NV2A_PHASE_TIMER_END(pipe_lookup);
+        NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
         NV2A_VK_DGROUP_END();
         return;
     }
@@ -2214,7 +2214,7 @@ static void create_pipeline(PGRAPHState *pg)
         memcmp(&key, &r->pipeline_binding->key, sizeof(key)) == 0) {
         NV2A_VK_DPRINTF("Cache hit (same binding)");
         g_nv2a_stats.shader_stats.pipeline_cache_hits++;
-        NV2A_PHASE_TIMER_END(pipe_lookup);
+        NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
         NV2A_VK_DGROUP_END();
         return;
     }
@@ -2224,7 +2224,7 @@ static void create_pipeline(PGRAPHState *pg)
     LruNode *node = lru_lookup(&r->pipeline_cache, hash, &key);
     if (!node) {
         /* Cache full — all entries in use by current command buffer */
-        NV2A_PHASE_TIMER_END(pipe_lookup);
+        NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
         NV2A_VK_DGROUP_END();
         return;
     }
@@ -2234,7 +2234,7 @@ static void create_pipeline(PGRAPHState *pg)
     if (snode->pending) {
         r->pipeline_binding = snode;
         r->pipeline_binding_changed = true;
-        NV2A_PHASE_TIMER_END(pipe_lookup);
+        NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
         NV2A_VK_DGROUP_END();
         return;
     }
@@ -2245,11 +2245,11 @@ static void create_pipeline(PGRAPHState *pg)
         g_nv2a_stats.shader_stats.pipeline_cache_hits++;
         r->pipeline_binding_changed = r->pipeline_binding != snode;
         r->pipeline_binding = snode;
-        NV2A_PHASE_TIMER_END(pipe_lookup);
+        NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
         NV2A_VK_DGROUP_END();
         return;
     }
-    NV2A_PHASE_TIMER_END(pipe_lookup);
+    NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
 
     NV2A_VK_DPRINTF("Cache miss");
 
@@ -2264,7 +2264,7 @@ static void create_pipeline(PGRAPHState *pg)
 
     nv2a_profile_inc_counter(NV2A_PROF_PIPELINE_GEN);
     g_nv2a_stats.shader_stats.pipeline_cache_misses++;
-    NV2A_PHASE_TIMER_BEGIN(shader_compile);
+    NV2A_PHASE_TIMER_BEGIN_EXCL(shader_compile);
 
     memcpy(&snode->key, &key, sizeof(key));
 
@@ -2287,7 +2287,7 @@ static void create_pipeline(PGRAPHState *pg)
     if (!r->shader_binding ||
         !r->shader_binding->vsh.module_info ||
         !r->shader_binding->psh.module_info) {
-        NV2A_PHASE_TIMER_END(shader_compile);
+        NV2A_PHASE_TIMER_END_EXCL(shader_compile);
         NV2A_VK_DGROUP_END();
         return;
     }
@@ -2753,7 +2753,7 @@ static void create_pipeline(PGRAPHState *pg)
 
         pgraph_vk_compile_worker_enqueue(r, job);
 
-        NV2A_PHASE_TIMER_END(shader_compile);
+        NV2A_PHASE_TIMER_END_EXCL(shader_compile);
         NV2A_VK_DGROUP_END();
         return;
     }
@@ -2789,7 +2789,7 @@ static void create_pipeline(PGRAPHState *pg)
     r->pipeline_binding_changed = true;
 
     maybe_save_pipeline_cache(r);
-    NV2A_PHASE_TIMER_END(shader_compile);
+    NV2A_PHASE_TIMER_END_EXCL(shader_compile);
     NV2A_VK_DGROUP_END();
 }
 
@@ -4255,7 +4255,7 @@ mfp_miss: (void)0;
         g_vaf_stats.full_path_vag_same++;
     }
 
-    NV2A_PHASE_TIMER_BEGIN(draw_pipeline);
+    NV2A_PHASE_TIMER_BEGIN_EXCL(draw_pipeline);
     if (pg->clearing) {
         create_clear_pipeline(pg);
     } else {
@@ -4264,7 +4264,7 @@ mfp_miss: (void)0;
     r->pipeline_vertex_attr_gen = pg->vertex_attr_gen;
     r->pipeline_num_active_attr_descs = r->num_active_vertex_attribute_descriptions;
     r->pipeline_num_active_bind_descs = r->num_active_vertex_binding_descriptions;
-    NV2A_PHASE_TIMER_END(draw_pipeline);
+    NV2A_PHASE_TIMER_END_EXCL(draw_pipeline);
 
 #if OPT_ASYNC_COMPILE
     r->async_draw_skip = false;
@@ -4299,7 +4299,7 @@ mfp_miss: (void)0;
 #endif
 
     {
-        NV2A_PHASE_TIMER_BEGIN(draw_setup);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_setup);
         bool render_pass_dirty = r->pipeline_binding->render_pass != r->render_pass;
 
         if (r->framebuffer_dirty || render_pass_dirty) {
@@ -4313,23 +4313,23 @@ mfp_miss: (void)0;
             create_frame_buffer(pg);
             r->framebuffer_dirty = false;
         }
-        NV2A_PHASE_TIMER_END(draw_setup);
+        NV2A_PHASE_TIMER_END_EXCL(draw_setup);
     }
 
-    NV2A_PHASE_TIMER_BEGIN(draw_desc_set);
+    NV2A_PHASE_TIMER_BEGIN_EXCL(draw_desc_set);
     if (!pg->clearing) {
         pgraph_vk_update_descriptor_sets(pg);
     }
-    NV2A_PHASE_TIMER_END(draw_desc_set);
+    NV2A_PHASE_TIMER_END_EXCL(draw_desc_set);
 
     {
-        NV2A_PHASE_TIMER_BEGIN(draw_setup);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_setup);
         if (r->framebuffer_index == 0) {
             create_frame_buffer(pg);
         }
 
         pgraph_vk_ensure_command_buffer(pg);
-        NV2A_PHASE_TIMER_END(draw_setup);
+        NV2A_PHASE_TIMER_END_EXCL(draw_setup);
     }
 }
 
@@ -7337,6 +7337,8 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
     /* Fall through: partial color clear or not in a suitable render pass.
      * Uses the full pipeline-based clear with render pass breaks. */
     OPT_STAT_INC(inline_clear_misses);
+    /* Timed as Draw, whose children begin_pre_draw() adds to */
+    NV2A_PHASE_TIMER_BEGIN_EXCL(draw_dispatch);
     begin_pre_draw(pg);
     pgraph_vk_begin_debug_marker(r, r->command_buffer,
         RGBA_BLUE, "Clear %08" HWADDR_PRIx,
@@ -7426,6 +7428,7 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
 
     pgraph_vk_set_surface_dirty(pg, write_color, write_zeta);
     mark_clear_drawn(pg, write_color, write_zeta);
+    NV2A_PHASE_TIMER_END_EXCL(draw_dispatch);
 
     NV2A_VK_DGROUP_END();
 }
@@ -7742,7 +7745,7 @@ static void flush_draw_one_pass(NV2AState *d)
         assert(pg->inline_buffer_length == 0);
         assert(pg->inline_array_length == 0);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_vtx_attr);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_vtx_attr);
         pgraph_vk_bind_vertex_attributes(d, pg->draw_arrays_min_start,
                                          pg->draw_arrays_max_count - 1, false,
                                          0, pg->draw_arrays_max_count - 1);
@@ -7752,9 +7755,9 @@ static void flush_draw_one_pass(NV2AState *d)
             min_element = MIN(pg->draw_arrays_start[i], min_element);
             max_element = MAX(max_element, pg->draw_arrays_start[i] + pg->draw_arrays_count[i]);
         }
-        NV2A_PHASE_TIMER_END(draw_vtx_attr);
+        NV2A_PHASE_TIMER_END_EXCL(draw_vtx_attr);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_vtx_sync);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_vtx_sync);
 #if OPT_SYNC_RANGE_SKIP
         if (sync_range_covers(r, pg->vertex_attr_gen, min_element, max_element) &&
             !has_dirty_vertex_pages(r)) {
@@ -7768,9 +7771,9 @@ static void flush_draw_one_pass(NV2AState *d)
         sync_vertex_ram_buffer(pg);
 #endif
         VertexBufferRemap remap = remap_unaligned_attributes(pg, max_element);
-        NV2A_PHASE_TIMER_END(draw_vtx_sync);
+        NV2A_PHASE_TIMER_END_EXCL(draw_vtx_sync);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_prim_rw);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_prim_rw);
         PrimRewrite prim_rw = pgraph_prim_rewrite_ranges(
             &r->prim_rewrite_buf, assembly,
             pg->draw_arrays_start, pg->draw_arrays_count,
@@ -7785,21 +7788,21 @@ static void flush_draw_one_pass(NV2AState *d)
                 pg->draw_arrays_length * sizeof(VkDrawIndirectCommand);
             ensure_buffer_space(pg, BUFFER_INDEX_STAGING, indirect_size);
         }
-        NV2A_PHASE_TIMER_END(draw_prim_rw);
+        NV2A_PHASE_TIMER_END_EXCL(draw_prim_rw);
 
         begin_pre_draw(pg);
 #if OPT_ASYNC_COMPILE
         if (r->async_draw_skip) goto draw_arrays_done;
 #endif
-        NV2A_PHASE_TIMER_BEGIN(draw_setup);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_setup);
         copy_remapped_attributes_to_inline_buffer(pg, remap, 0, max_element);
         pgraph_vk_begin_debug_marker(r, r->command_buffer, RGBA_BLUE,
                                      "Draw Arrays");
         begin_draw(pg);
         bind_vertex_buffer(pg, remap.attributes, 0);
-        NV2A_PHASE_TIMER_END(draw_setup);
+        NV2A_PHASE_TIMER_END_EXCL(draw_setup);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_vk_cmd);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_vk_cmd);
         if (prim_rw.num_indices > 0) {
             size_t rewrite_size = prim_rw.num_indices * sizeof(uint32_t);
             VkDeviceSize buffer_offset = pgraph_vk_update_index_buffer(
@@ -7840,7 +7843,7 @@ static void flush_draw_one_pass(NV2AState *d)
 
         end_draw(pg);
         pgraph_vk_end_debug_marker(r, r->command_buffer);
-        NV2A_PHASE_TIMER_END(draw_vk_cmd);
+        NV2A_PHASE_TIMER_END_EXCL(draw_vk_cmd);
 
         nv2a_diag_log_draw_call(d, pg, "draw_arrays", max_element);
 draw_arrays_done:
@@ -7853,7 +7856,7 @@ draw_arrays_done:
 
         nv2a_profile_inc_counter(NV2A_PROF_INLINE_ELEMENTS);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_prim_rw);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_prim_rw);
         uint32_t *draw_indices = pg->inline_elements;
         unsigned int draw_index_count = pg->inline_elements_length;
         PrimRewrite prim_rw = pgraph_prim_rewrite_indexed(
@@ -7866,9 +7869,9 @@ draw_arrays_done:
 
         size_t index_data_size = draw_index_count * sizeof(uint32_t);
         ensure_buffer_space(pg, BUFFER_INDEX_STAGING, index_data_size);
-        NV2A_PHASE_TIMER_END(draw_prim_rw);
+        NV2A_PHASE_TIMER_END_EXCL(draw_prim_rw);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_vtx_attr);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_vtx_attr);
         uint32_t min_element = (uint32_t)-1;
         uint32_t max_element = 0;
         for (unsigned int i = 0; i < draw_index_count; i++) {
@@ -7878,9 +7881,9 @@ draw_arrays_done:
         pgraph_vk_bind_vertex_attributes(
             d, min_element, max_element, false, 0,
             draw_indices[draw_index_count - 1]);
-        NV2A_PHASE_TIMER_END(draw_vtx_attr);
+        NV2A_PHASE_TIMER_END_EXCL(draw_vtx_attr);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_vtx_sync);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_vtx_sync);
 #if OPT_SYNC_RANGE_SKIP
         if (sync_range_covers(r, pg->vertex_attr_gen, min_element, max_element) &&
             !has_dirty_vertex_pages(r)) {
@@ -7894,13 +7897,13 @@ draw_arrays_done:
         sync_vertex_ram_buffer(pg);
 #endif
         VertexBufferRemap remap = remap_unaligned_attributes(pg, max_element + 1);
-        NV2A_PHASE_TIMER_END(draw_vtx_sync);
+        NV2A_PHASE_TIMER_END_EXCL(draw_vtx_sync);
 
         begin_pre_draw(pg);
 #if OPT_ASYNC_COMPILE
         if (r->async_draw_skip) goto inline_elements_done;
 #endif
-        NV2A_PHASE_TIMER_BEGIN(draw_setup);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_setup);
         copy_remapped_attributes_to_inline_buffer(pg, remap, 0, max_element + 1);
         VkDeviceSize buffer_offset = pgraph_vk_update_index_buffer(
             pg, draw_indices, index_data_size);
@@ -7908,16 +7911,16 @@ draw_arrays_done:
                                      "Inline Elements");
         begin_draw(pg);
         bind_vertex_buffer(pg, remap.attributes, 0);
-        NV2A_PHASE_TIMER_END(draw_setup);
+        NV2A_PHASE_TIMER_END_EXCL(draw_setup);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_vk_cmd);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_vk_cmd);
         vkCmdBindIndexBuffer(r->command_buffer,
                              r->storage_buffers[BUFFER_INDEX].buffer,
                              buffer_offset, VK_INDEX_TYPE_UINT32);
         vkCmdDrawIndexed(r->command_buffer, draw_index_count, 1, 0, 0, 0);
         end_draw(pg);
         pgraph_vk_end_debug_marker(r, r->command_buffer);
-        NV2A_PHASE_TIMER_END(draw_vk_cmd);
+        NV2A_PHASE_TIMER_END_EXCL(draw_vk_cmd);
 
         nv2a_diag_log_draw_call(d, pg, "inline_elements", draw_index_count);
 inline_elements_done:
@@ -7928,7 +7931,7 @@ inline_elements_done:
         nv2a_profile_inc_counter(NV2A_PROF_INLINE_BUFFERS);
         assert(pg->inline_array_length == 0);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_vtx_attr);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_vtx_attr);
         size_t vertex_data_size = pg->inline_buffer_length * sizeof(float) * 4;
         void *data[NV2A_VERTEXSHADER_ATTRIBUTES];
         size_t sizes[NV2A_VERTEXSHADER_ATTRIBUTES];
@@ -7947,9 +7950,9 @@ inline_elements_done:
             attr->inline_buffer_populated = false;
             offset += vertex_data_size;
         }
-        NV2A_PHASE_TIMER_END(draw_vtx_attr);
+        NV2A_PHASE_TIMER_END_EXCL(draw_vtx_attr);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_prim_rw);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_prim_rw);
         PrimRewrite prim_rw = pgraph_prim_rewrite_sequential(
             &r->prim_rewrite_buf, assembly, 0, pg->inline_buffer_length);
 
@@ -7958,22 +7961,22 @@ inline_elements_done:
             size_t rewrite_size = prim_rw.num_indices * sizeof(uint32_t);
             ensure_buffer_space(pg, BUFFER_INDEX_STAGING, rewrite_size);
         }
-        NV2A_PHASE_TIMER_END(draw_prim_rw);
+        NV2A_PHASE_TIMER_END_EXCL(draw_prim_rw);
 
         begin_pre_draw(pg);
 #if OPT_ASYNC_COMPILE
         if (r->async_draw_skip) goto inline_buffer_done;
 #endif
-        NV2A_PHASE_TIMER_BEGIN(draw_setup);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_setup);
         VkDeviceSize buffer_offset = pgraph_vk_update_vertex_inline_buffer(
             pg, data, sizes, r->num_active_vertex_attribute_descriptions);
         pgraph_vk_begin_debug_marker(r, r->command_buffer, RGBA_BLUE,
                                      "Inline Buffer");
         begin_draw(pg);
         bind_inline_vertex_buffer(pg, buffer_offset);
-        NV2A_PHASE_TIMER_END(draw_setup);
+        NV2A_PHASE_TIMER_END_EXCL(draw_setup);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_vk_cmd);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_vk_cmd);
         if (prim_rw.num_indices > 0) {
             size_t rewrite_size = prim_rw.num_indices * sizeof(uint32_t);
             VkDeviceSize idx_offset = pgraph_vk_update_index_buffer(
@@ -7989,7 +7992,7 @@ inline_elements_done:
 
         end_draw(pg);
         pgraph_vk_end_debug_marker(r, r->command_buffer);
-        NV2A_PHASE_TIMER_END(draw_vk_cmd);
+        NV2A_PHASE_TIMER_END_EXCL(draw_vk_cmd);
 
         nv2a_diag_log_draw_call(d, pg, "inline_buffer",
                                 pg->inline_buffer_length);
@@ -8000,7 +8003,7 @@ inline_buffer_done:
         NV2A_VK_DGROUP_BEGIN("Inline Array");
         nv2a_profile_inc_counter(NV2A_PROF_INLINE_ARRAYS);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_vtx_attr);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_vtx_attr);
         VkDeviceSize inline_array_data_size = pg->inline_array_length * 4;
         ensure_buffer_space(pg, BUFFER_VERTEX_INLINE_STAGING,
                                inline_array_data_size);
@@ -8027,9 +8030,9 @@ inline_buffer_done:
         NV2A_DPRINTF("draw inline array %d, %d\n", vertex_size, index_count);
         pgraph_vk_bind_vertex_attributes(d, 0, index_count - 1, true,
                                          vertex_size, index_count - 1);
-        NV2A_PHASE_TIMER_END(draw_vtx_attr);
+        NV2A_PHASE_TIMER_END_EXCL(draw_vtx_attr);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_prim_rw);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_prim_rw);
         PrimRewrite prim_rw = pgraph_prim_rewrite_sequential(
             &r->prim_rewrite_buf, assembly, 0, index_count);
 
@@ -8037,13 +8040,13 @@ inline_buffer_done:
             size_t rewrite_size = prim_rw.num_indices * sizeof(uint32_t);
             ensure_buffer_space(pg, BUFFER_INDEX_STAGING, rewrite_size);
         }
-        NV2A_PHASE_TIMER_END(draw_prim_rw);
+        NV2A_PHASE_TIMER_END_EXCL(draw_prim_rw);
 
         begin_pre_draw(pg);
 #if OPT_ASYNC_COMPILE
         if (r->async_draw_skip) goto inline_array_done;
 #endif
-        NV2A_PHASE_TIMER_BEGIN(draw_setup);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_setup);
         void *inline_array_data = pg->inline_array;
         VkDeviceSize buffer_offset = pgraph_vk_update_vertex_inline_buffer(
             pg, &inline_array_data, &inline_array_data_size, 1);
@@ -8051,9 +8054,9 @@ inline_buffer_done:
                                      "Inline Array");
         begin_draw(pg);
         bind_inline_vertex_buffer(pg, buffer_offset);
-        NV2A_PHASE_TIMER_END(draw_setup);
+        NV2A_PHASE_TIMER_END_EXCL(draw_setup);
 
-        NV2A_PHASE_TIMER_BEGIN(draw_vk_cmd);
+        NV2A_PHASE_TIMER_BEGIN_EXCL(draw_vk_cmd);
         if (prim_rw.num_indices > 0) {
             size_t rewrite_size = prim_rw.num_indices * sizeof(uint32_t);
             VkDeviceSize idx_offset = pgraph_vk_update_index_buffer(
@@ -8069,7 +8072,7 @@ inline_buffer_done:
 
         end_draw(pg);
         pgraph_vk_end_debug_marker(r, r->command_buffer);
-        NV2A_PHASE_TIMER_END(draw_vk_cmd);
+        NV2A_PHASE_TIMER_END_EXCL(draw_vk_cmd);
 
         nv2a_diag_log_draw_call(d, pg, "inline_array", index_count);
 inline_array_done:

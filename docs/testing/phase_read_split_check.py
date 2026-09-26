@@ -3,9 +3,12 @@
 Check the parse of `hakuX-phase` against the emitter's own identities, before
 any number derived from it is believed.
 
-  I1  Pipe == Tx + Sh + Lu + Shd                 (create_pipeline sub-phases;
+  I1  Pipe >= Tx + Sh + Lu + Shd                 (create_pipeline sub-phases;
                                                   shader_compile is timed only
-                                                  inside it)
+                                                  inside it. Not an identity:
+                                                  create_clear_pipeline() and
+                                                  the pipeline-cache save sit
+                                                  in Pipe with no child span)
   I2  Tot  == Surf + Tex + Shd + Draw + Fin
               + Flip + Idle                      (profile.c total_ms)
   I3  Draw >= Vtx+Syn+Prw+Pipe+Desc+Setup+Cmd    (sub-phases do not cover all
@@ -17,8 +20,15 @@ any number derived from it is believed.
                                                   carry Sfp/Mfp/FTx/TxH only)
 
 Every field is printed to one decimal, so an identity can only be expected to
-hold to the rounding of its terms. I1/I2/I4 are exact identities in the source;
-a residual larger than the rounding bound is a PARSE fault, not noise.
+hold to the rounding of its terms. I2/I4 are exact identities in the source;
+a residual larger than the rounding bound is a PARSE fault, not noise. I1, I3
+and I5 are inequalities: a child may not exceed its parent beyond rounding.
+
+Since #426's instrument fix every child of Draw and of Pipe is exclusive of
+finish, as Draw is, and the fall-through clear is timed as Draw, whose
+children it adds to. On an older line a finish nested in a child is counted
+there and again in Fin, and a clear's children fall outside Draw, so I1 and
+I3 can fail on an older line by design.
 """
 import re, sys
 
@@ -54,9 +64,6 @@ for p in sys.argv[1:]:
         n += 1
         checks = {
             # terms, rounding bound = 0.05 * number of terms summed
-            "I1 Pipe=Tx+Sh+Lu+Shd":
-                (g(d, "Pipe"),
-                 g(d, "Tx") + g(d, "Sh") + g(d, "Lu") + g(d, "Shd"), 5),
             "I2 Tot=Surf+Tex+Shd+Draw+Fin+Flip+Idle":
                 (g(d, "Tot"),
                  g(d, "Surf") + g(d, "Tex") + g(d, "Shd") + g(d, "Draw")
@@ -73,6 +80,16 @@ for p in sys.argv[1:]:
                 print("FAIL %-40s lhs=%.2f rhs=%.2f resid=%.2f > %.2f"
                       % (name, lhs, rhs, resid, bound))
                 print("   ", d["_raw"][:150])
+        # I1 is an inequality: create_pipeline's sub-phases must not EXCEED
+        # draw_pipeline, which also holds work that has no child span
+        kids = g(d, "Tx") + g(d, "Sh") + g(d, "Lu") + g(d, "Shd")
+        if kids > g(d, "Pipe") + 0.25:
+            fails += 1
+            print("FAIL I1 Pipe sub-phases exceed Pipe: %.2f > %.2f"
+                  % (kids, g(d, "Pipe")))
+        worst["I1 Pipe-kids (unattributed in Pipe)"] = max(
+            worst.get("I1 Pipe-kids (unattributed in Pipe)", 0.0),
+            g(d, "Pipe") - kids)
         # I3 is an inequality: sub-phases must not EXCEED draw_dispatch
         sub = sum(g(d, k) for k in
                   ["Vtx", "Syn", "Prw", "Pipe", "Desc", "Setup", "Cmd",

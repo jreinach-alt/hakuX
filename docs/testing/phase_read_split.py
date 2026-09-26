@@ -9,7 +9,9 @@ Decomposition, derived from the source and verified by an exact identity:
     BUSY  = Surf + Draw + Fin
     Draw  = Vtx + Syn + Prw + Pipe + Desc + Setup + Cmd
             + Sfp + Mfp + FTx + unclassified
-    Pipe  = Tx + Sh + Lu + Shd          (Shd/shader_compile nests here)
+    Pipe  = Tx + Sh + Lu + Shd + rest   (Shd/shader_compile nests here; rest
+                                         is create_clear_pipeline() and the
+                                         pipeline-cache save, no child span)
 
   `Tex` and `Shd` are ALSO printed as top-level terms and `Tot` adds them a
   second time, so Tot double-counts them; BUSY above avoids that. `TxH` is
@@ -20,13 +22,18 @@ Decomposition, derived from the source and verified by an exact identity:
     Tx   pipe_bind_tex            fast_hash(vram) + get_texture_layout(vram)
     FTx  the fast paths' pgraph_vk_bind_textures, the same reads as Tx
     Surf surface_update           pgraph_vk_upload_surface_data reads guest mem
-  POST  (no guest read): Sh, Lu, Shd, Desc, Setup, Cmd, Fin, Sfp, Mfp
+  POST  (no guest read): Sh, Lu, Shd, Desc, Setup, Cmd, Fin, Sfp, Mfp,
+        Pipe's rest
     Sfp, Mfp  the super-fast and medium-fast paths, hit or miss, less FTx
   UNCLASSIFIED: draw_dispatch time inside no sub-phase.
 
   Sfp, Mfp, FTx and TxH are printed only by builds from #426's instrument
   fix onward. On an older line they are absent: the fast paths' time is then
   inside UNCLASSIFIED, and FTx's reads with it. The reader says which it saw.
+  The same fix made every child of Draw and Pipe exclusive of finish, and
+  timed the fall-through clear as Draw. On an older line a finish nested in a
+  child is counted there and again in Fin, and a clear's children sit outside
+  Draw, so UNCLASSIFIED can go negative there.
 
   TEXTURE BINDS (new lines only): Tx + FTx is every pgraph_vk_bind_textures
   call, and the only route to a texture upload or content hash. So
@@ -105,7 +112,8 @@ def analyse(name, rows):
         u = d["Draw"] - sub
         rg = sum(d[k] for k in READ_CORE)
         rc = rg + sum(d[k] for k in READ_AMBIG)
-        p = sum(d[k] for k in POST)
+        pipe_rest = d["Pipe"] - (d["Tx"] + d["Sh"] + d["Lu"] + d["Shd"])
+        p = sum(d[k] for k in POST) + pipe_rest
         busy.append(b); read_c.append(rc); read_g.append(rg)
         post.append(p); unc.append(u); idle.append(d["Idle"])
         ident.append(abs((rc + p + u) - b))

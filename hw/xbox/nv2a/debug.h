@@ -474,8 +474,10 @@ static inline void nv2a_profile_inc_counter(enum NV2A_PROF_COUNTERS_ENUM cnt)
 /*
  * Exclusive phase timer: like NV2A_PHASE_TIMER but subtracts any
  * pgraph_vk_finish() time that occurs while the parent phase is active.
- * Use for top-level phases (surface_update, draw_dispatch, texture_upload)
- * that can call finish internally, so Tot doesn't double-count.
+ * Use for every phase that can call finish internally, top-level
+ * (surface_update, draw_dispatch, texture_upload) or nested (draw_dispatch's
+ * and draw_pipeline's children), so finish is counted once, in Fin: a plain
+ * child of an exclusive parent could otherwise exceed it.
  */
 #define NV2A_PHASE_TIMER_BEGIN_EXCL(phase) \
     int64_t _phase_t0_##phase = nv2a_clock_ns(); \
