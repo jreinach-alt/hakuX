@@ -3378,9 +3378,9 @@ no_suites = "a PMC register, not a pgraph draw path -- no framebuffer golden can
 status = "open"
 blocker_tested = "CONFIRMED BY READING 2026-09-25 (host session): PR #236's body -- 'Gates nothing ... The bit->engine map is unmeasured (#203)' and its own bits-16/20/24 falsifier ('on silicon, write 0x13101113 ... and read it back') -- and master's pmc.c write arm, which states the same."
 blocker_falsifier = "if the remaining work did not need the console, PR #236 would have modelled the gating or the bits 16/20/24 behaviour from a measurement, and its body would not name a console write/read-back as the falsifier for the choice it made."
-dispatch_state = ""
+dispatch_state = "blocked"
 status_note = "OWNER 2026-09-25 10:50 PDT: the networked power switch was delayed and is expected TODAY; lane.xbox runs item A when the owner confirms it is installed. BLOCKED ON THE OWNER 2026-09-25 07:40 PDT (host session): the console measurements need the networked power switch confirmed first (lane.xbox's safeguard). PRIOR: BLOCKED ON SILICON 2026-09-25 07:25 PDT (host session): storage folded in PR #236 (458bd186c4); what remains is two console measurements, routed to lane.xbox on #112; the cloud label is removed so the audit outlet does not claim it again. PRIOR: UNPARKED 2026-09-25 01:36 PDT: PR #211 folded (f2e8ef8ba8), so pmc.c and the pmc selftest are free (lane.cloud190 retired); the brief (briefs/188.md) was already rewritten from PR #203's measurement. `cloud` label restored for the audit outlet. || BRIEF REWRITTEN 2026-09-25 from PR #203's measurement (implemented bits 0,1,4,8,12,16,20,24,25,28; idle 0x01110000; after pbkit's all-ones write 0x13111113; which engine any bit gates UNKNOWN; the halt was a write of 0 = NV_PMC_ENABLE_ALL_DISABLE). || Filed 2026-09-20 from PR #191's read-only PMC sweep (tools/nv2a_probe), two independent runs with a reboot between them, 1,024/1,024 identical. NV_PMC_ENABLE (0x200) falls to default: in both pmc_read and pmc_write (hw/xbox/nv2a/pmc.c), so reads return 0 and writes are dropped; silicon reads 0x01110000. MEASURED HAZARD, NOT HYPOTHETICAL: writing 0 to this register on real hardware halted the console outright (no ICMP afterwards, power cycle required) -- do not register a falsifier that writes to it, on real silicon or in a form that could be mistaken for real silicon. Header bit positions (NV_PMC_ENABLE_PFIFO bit 8, NV_PMC_ENABLE_PGRAPH bit 12, nv2a_regs.h:73-74) do NOT match the measured value's set bits (16, 20, 24) and are explicitly NOT asserted by the filer -- an envytools cross-reference is wanted before any write-side semantics are chosen. The narrow, unblocked step is read-side and storage: give pmc.c a stored register (hw/xbox/nv2a/nv2a_int.h's `pmc` struct has pending_interrupts/enabled_interrupts already) initialised to the measured 0x01110000, returned by pmc_read and updated verbatim by pmc_write with no bit interpretation -- that models what is measured without asserting what is not. Cross-reference #189, #190, #112. DISPATCHED WAVE 135 (job.board) as lane.pmc188, files = [\"hw/xbox/nv2a/pmc.c\", \"hw/xbox/nv2a/nv2a_regs.h\"]. REPORTED, NOT FOLDED (job.board, board tick 2026-09-20): PR #198 open, not draft, CI green (build/Android, build/Desktop, NV2A index all SUCCESS), labelled needs-audit-1 -- the audit outlet's, not re-dispatched here. dispatch_state cleared to stop this row re-reporting as available while the PR is live; both files stay held by lane.pmc188 until it folds or is released."
-blocked_on = "OWNER, set 2026-09-25 07:40 PDT (host session): both remaining measurements (#112 item A) write NV_PMC_ENABLE on the console, and A(2) halts it by design. The owner's standing safeguard for lane.xbox is no register writes from probes, and never NV_PMC_ENABLE, until the owner confirms the networked power switch is installed (lane.xbox, 07:37 PDT) -- without it a halted console cannot be power-cycled remotely. Unblocks on that confirmation; lane.xbox then runs item A: (1) write 0x13101113 and read back, bits 16/20/24 storage vs hardwired 1; (2) the bit->engine map, one bit at a time."
+blocked_on = "PARKED until after 0.5 (owner 2026-09-26: not on the 0.5 critical path; labelled blocked:after-0.5). PRIOR: OWNER, set 2026-09-25 07:40 PDT (host session): both remaining measurements (#112 item A) write NV_PMC_ENABLE on the console, and A(2) halts it by design. The owner's standing safeguard for lane.xbox is no register writes from probes, and never NV_PMC_ENABLE, until the owner confirms the networked power switch is installed (lane.xbox, 07:37 PDT) -- without it a halted console cannot be power-cycled remotely. Unblocks on that confirmation; lane.xbox then runs item A: (1) write 0x13101113 and read back, bits 16/20/24 storage vs hardwired 1; (2) the bit->engine map, one bit at a time."
 
 [issue.189]
 title = "No model for NV_PMC_BOOT_1 (0x004): hardware honours the MMIO endian switch, we do not model the register at all"
@@ -4085,3 +4085,153 @@ impact_px = 0
 impact_onestep_px = 0
 game_visible = false
 impact_basis = "2026-09-26: 0 scored px; the capture is off the golden disc. Low priority."
+
+[issue.424]
+title = "Performance: stop the translation cache's code-write invalidation and dirty re-arm churn"
+component = "tcg"
+disposition = "feature"
+suites = []
+no_suites = "performance: gameplay frame rate, not a pgraph measurement; the pgraph suites are its regression gate"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-26T20:17Z by the host for 0.5 (tracking #433), from perf-architecture.md's ranked levers."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "0.5 performance lever: up to 26% of the emulated CPU thread"
+
+[issue.425]
+title = "Performance: fewer jump-cache flushes and an inline indirect-branch probe"
+component = "tcg"
+disposition = "feature"
+suites = []
+no_suites = "performance: gameplay frame rate, not a pgraph measurement; the pgraph suites are its regression gate"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-26T20:17Z by the host for 0.5 (tracking #433), from perf-architecture.md's ranked levers."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "0.5 performance lever: up to 13.6% of the emulated CPU thread"
+
+[issue.426]
+title = "Performance: split renderer command capture from Vulkan translation"
+component = "renderer"
+disposition = "feature"
+suites = []
+no_suites = "performance: gameplay frame rate, not a pgraph measurement; the pgraph suites are its regression gate"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-26T20:17Z by the host for 0.5 (tracking #433), from perf-architecture.md's ranked levers."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "0.5 performance lever: +21% fps measured on Crimson Skies"
+
+[issue.427]
+title = "Performance: build with native TLS, inline LSE atomics and no intra-library PLT calls"
+component = "build"
+disposition = "feature"
+suites = []
+no_suites = "performance: gameplay frame rate, not a pgraph measurement; the pgraph suites are its regression gate"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-26T20:17Z by the host for 0.5 (tracking #433), from perf-architecture.md's ranked levers."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "0.5 performance lever: up to 4.4% of the emulated CPU thread"
+
+[issue.428]
+title = "Performance: run the emulated CPU thread on the prime core"
+component = "host"
+disposition = "feature"
+suites = []
+no_suites = "performance: gameplay frame rate, not a pgraph measurement; the pgraph suites are its regression gate"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-26T20:17Z by the host for 0.5 (tracking #433), from perf-architecture.md's ranked levers."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "0.5 performance lever: 3-9% of the emulated CPU thread"
+
+[issue.429]
+title = "Performance: smaller translation blocks on often-rewritten pages"
+component = "tcg"
+disposition = "feature"
+suites = []
+no_suites = "performance: gameplay frame rate, not a pgraph measurement; the pgraph suites are its regression gate"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-26T20:17Z by the host for 0.5 (tracking #433), from perf-architecture.md's ranked levers."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "0.5 performance lever: about 4 ms per frame"
+
+[issue.430]
+title = "Copy the next Playable-or-better titles from the console to the handhelds"
+component = "games"
+disposition = "feature"
+suites = []
+no_suites = "title supply for the 0.5 list, not a pgraph measurement"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-26T20:17Z by the host for 0.5 (tracking #433). Console work: lane.xbox (label lane:xbox)."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "0.5: each title copied can be tested"
+
+[issue.431]
+title = "Measure each title's native frame rate on an original Xbox"
+component = "games"
+disposition = "feature"
+suites = []
+no_suites = "a per-title reference measurement on the original hardware, not a pgraph measurement"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-26T20:17Z by the host for 0.5 (tracking #433). Console work: lane.xbox (label lane:xbox)."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "0.5: correct ratings for 30 and 60 fps titles"
+
+[issue.432]
+title = "Harness: dispatch 0.5 work first and show 0.5 progress on the status page"
+component = "tooling"
+disposition = "feature"
+suites = []
+no_suites = "harness dispatch order and status page, not a pgraph measurement"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-26T20:17Z by the host for 0.5 (tracking #433)."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = false
+impact_basis = "0.5: dispatch order"
+
+[issue.433]
+title = "0.5 release: the first tested-titles list for the Thor and Nova (target 2026-09-28)"
+component = "release"
+disposition = "feature"
+suites = []
+no_suites = "a release tracking issue"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "Not actionable as work: the 0.5 tracking issue. Its workstreams are separate issues, each dispatched on its own."
+status_note = "FILED 2026-09-26T20:17Z by the host (owner 2026-09-26: ship 0.5 around 2026-09-28 as the first honest tested-titles list; Turnip and #188 parked)."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = false
+impact_basis = "tracking"
