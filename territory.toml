@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 243
-updated_utc = "2026-09-26T10:15:00Z"
+wave = 245
+updated_utc = "2026-09-26T11:40:00Z"
 
 
 [retired.hilodot10]
@@ -332,13 +332,12 @@ files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/geom.c", "d
 standing = false
 note = "STARTED BY THE HOST (seen by job.board wave 243, 2026-09-26T10:15Z): draft PR #379 on lane/tiecode282, mergeable state CONFLICTING against master (handback owns the resume; not a board action). PRIOR: BRIEFED AT TERRITORY WAVE 240, NOT STARTED (job.board, 2026-09-26; `lane.sh start` was refused approval in the board session, so the HOST runs `docs/testing/lane.sh start tiecode282 briefs/tiecode282.md 282`): the code half of #282/#283. The weight-binade tie rule now holds on three geometries (PR #314 checkerboard, PR #376 Texture_render_target row 240: 6,108/6,108, PR #378 Volume texture: 6,496/6,496) and no lane implements it. Brief briefs/tiecode282.md. psh.c is released at ready by lane.fog278 (PR #373) and touched by PR #367: the brief says merge master or those branches and re-run the arm before marking ready. geom.c released by lane.vkpointsize34 (PR #371)."
 
-[lane.blinx372b]
+[retired.blinx372b]
 issues = ["372"]
-files = ["docs/testing/dispatcher.sh", "docs/lanes/blinx372b/**", "docs/testing/predictions/blinx372b-*.json"]
-released = ["docs/testing/dispatcher.sh", "docs/lanes/blinx372b/**", "docs/testing/predictions/blinx372b-*.json"]
-released_at_ready = 381
+files = []
 standing = false
-note = "RELEASED AT READY (job.board wave 242, 2026-09-26): PR #381 is out of draft, CI green, unit gone, labelled needs-audit-1. Files stay listed for audit and fold. PRIOR NOTE: BRIEFED AT TERRITORY WAVE 240, NOT STARTED (job.board, 2026-09-26; `lane.sh start` was refused approval in the board session, so the HOST runs `docs/testing/lane.sh start blinx372b briefs/blinx372b.md 372`): #372 second pass. lane.blinx372 (PR #374) split the attract-demo frame: renderer thread 96-98% busy, 32 ms of a 68 ms guest frame is two synchronous GPU-completion waits in pgraph_vk_finish (Sd2 St1), ceiling ~27 fps if both go. Its lever is unnamed because dispatcher.sh:1356's logcat allow-list drops hakuX-stall and hakuX-pace. This lane fixes the allow-list, runs one perflog soak, names the SURFACE_DOWN site, and names (does not edit) a vk hunk. Brief briefs/blinx372b.md. dispatcher.sh released at ready by lane.titlerun (retired this wave)."
+retired_utc = "2026-09-26T11:40:00Z"
+note = "RETIRED (job.board wave 245): PR #381 MERGED, no open PR on lane/blinx372b, unit gone; dispatcher.sh allow-list landed; #372 continues as lane.blinx372c. Every file this row held is RELEASED to [free] (files another lane has since taken stay with that lane). PRIOR NOTE: RELEASED AT READY (job.board wave 242, 2026-09-26): PR #381 is out of draft, CI green, unit gone, labelled needs-audit-1. Files stay listed for audit and fold. PRIOR NOTE: BRIEFED AT TERRITORY WAVE 240, NOT STARTED (job.board, 2026-09-26; `lane.sh start` was refused approval in the board session, so the HOST runs `docs/testing/lane.sh start blinx372b briefs/blinx372b.md 372`): #372 second pass. lane.blinx372 (PR #374) split the attract-demo frame: renderer thread 96-98% busy, 32 ms of a 68 ms guest frame is two synchronous GPU-completion waits in pgraph_vk_finish (Sd2 St1), ceiling ~27 fps if both go. Its lever is unnamed because dispatcher.sh:1356's logcat allow-list drops hakuX-stall and hakuX-pace. This lane fixes the allow-list, runs one perflog soak, names the SURFACE_DOWN site, and names (does not edit) a vk hunk. Brief briefs/blinx372b.md. dispatcher.sh released at ready by lane.titlerun (retired this wave)."
 
 [lane.dpforce345]
 issues = ["345"]
@@ -346,12 +345,12 @@ files = ["hw/xbox/nv2a/pgraph/glsl/vsh-prog.c", "docs/lanes/dpforce345/**", "doc
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 241 (job.board, 2026-09-26T09:40Z), briefs/dpforce345.md: #345 half 1 -- _DP3/_DP4/_DPH in glsl/vsh-prog.c take _MUL's per-product zero-forcing (silicon, PR #344: (0,1,2).(inf,1,1) = 3). vsh-prog.c was unclaimed after lane.nanfix281 retired (wave 236). Half 2 (the nv2a_vsh_cpu constant-writeback library: wrap/CMake/pgraph.c) is NOT in this row; the lane sizes the call-site fix in NOTES.md and the board decides."
 
-[lane.fps382]
+[retired.fps382]
 issues = ["382"]
-files = ["docs/lanes/fps382/**", "docs/testing/predictions/fps382-*.json"]
+files = []
 standing = false
-released = ["docs/lanes/fps382/**", "docs/testing/predictions/fps382-*.json"]
-note = "STARTED BY THE HOST (seen by job.board wave 243, 2026-09-26T10:15Z): draft PR #385 on lane/fps382, unit active; issue #382 labelled lane:fps382. PRIOR: BRIEFED AT TERRITORY WAVE 242, NOT STARTED (job.board, 2026-09-26; `lane.sh start` was refused approval in the board session, so the HOST runs `docs/testing/lane.sh start fps382 briefs/fps382.md 382`), briefs/fps382.md: #382 50 Cent: Bulletproof intro FMV ~14 fps on the Nova (9 fps for 120 s, 29 fps after). Separate content pacing from emulator cost, name the resource that differs between the 9 and 29 fps windows. No hw/ file granted; reuses lane.blinx372/blinx372b perflog tooling."
+retired_utc = "2026-09-26T11:40:00Z"
+note = "RETIRED (job.board wave 245): PR #385 MERGED, no open PR on lane/fps382, unit gone; #382 cause named (CPU-access watch traps); code half continues as lane.surfwatch382. Every file this row held is RELEASED to [free] (files another lane has since taken stay with that lane). PRIOR NOTE: STARTED BY THE HOST (seen by job.board wave 243, 2026-09-26T10:15Z): draft PR #385 on lane/fps382, unit active; issue #382 labelled lane:fps382. PRIOR: BRIEFED AT TERRITORY WAVE 242, NOT STARTED (job.board, 2026-09-26; `lane.sh start` was refused approval in the board session, so the HOST runs `docs/testing/lane.sh start fps382 briefs/fps382.md 382`), briefs/fps382.md: #382 50 Cent: Bulletproof intro FMV ~14 fps on the Nova (9 fps for 120 s, 29 fps after). Separate content pacing from emulator cost, name the resource that differs between the 9 and 29 fps windows. No hw/ file granted; reuses lane.blinx372/blinx372b perflog tooling."
 
 [free]
 # RELEASED (job.board wave 240) by retiring lanes boardprio (PR #358), indexloc (#360), foldflow (#356), statuspage (#354), titlerun (#307), cullnf276 (#368), blinx372 (#374), brdf315b (#375), tie282c (#376), regs200 (#377), vol283r (#378): every file each row held. CLAIMED the same wave: psh.c + geom.c -> lane.tiecode282; dispatcher.sh -> lane.blinx372b.
@@ -1025,13 +1024,12 @@ issues = ["315"]
 files = []
 retired_utc = "2026-09-26T00:35:00Z"
 note = "RETIRED (job.board, wave 213): PR #326 MERGED 2026-09-26T00:10:26Z (fold f1a9634729), unit gone, no open PR on lane/brdf315. Analysis plus a named hunk (docs/lanes/brdf315/brdf315-psh.diff: BRDF case in get_sampler_type, dots_needed 0, texture(texSamp2, vec3(t0.r, t1.r, fract(t1.g - t0.g))); fits 605/610 px). #315 stays open; the code waits on psh.c (queued in briefs/pshqueue.md). No file held."
-[lane.aasample]
+[retired.aasample]
 issues = ["286"]
-files = ["hw/xbox/nv2a/pgraph/pgraph.h", "hw/xbox/nv2a/pgraph/vk/draw.c", "docs/testing/predictions/aasample-*.json", "docs/lanes/aasample/**"]
-released = ["hw/xbox/nv2a/pgraph/pgraph.h", "hw/xbox/nv2a/pgraph/vk/draw.c", "docs/testing/predictions/aasample-*.json", "docs/lanes/aasample/**"]
-released_at_ready = 366
+files = []
 standing = false
-note = "RELEASED AT READY (job.board wave 237, 2026-09-26): PR #366 is out of draft, CI green, unit gone (needs-audit-1); files stay listed for audit and fold, and are free for the next lane. lane.remote takes vk/draw.c for #274 GPUAA next; its brief names PR #366 and says merge master (or lane/aasample) and re-run its arm before marking ready. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 210 (job.board, 2026-09-25T23:55:00Z) for #286's class A (PR #328 folded, docs/lanes/cloud-286/NOTES.md sec 3): our AA-surface path is not transparent -- silicon's CENTER_CORNER_2 is byte-identical to a non-AA draw on the 48 inert captures, ours moves 517,872 px; pgraph_apply_anti_aliasing_factor (pgraph.h:572) is width*=2 and nothing else. ~242k px net recoverable (Quads loses 17.8k). LOCATE-FIRST for the consumers: vk/draw.c is lane.vtxarr262's (PR #264) and vk/surface.c is [free] but ungranted; the lane names the hunks and asks. Reads #282's NOTES for the tie rule. WAVE 223 (job.board, 2026-09-26T03:40Z): + hw/xbox/nv2a/pgraph/vk/draw.c GRANTED -- PR #264 folded (72e479ec59) and released it. Apply draw-c-viewport.patch on a fresh branch off master, register the NOTES s4 arm first, then build; lane.remote takes draw.c after this fold (#274 GPUAA). Brief: briefs/aasample.md."
+retired_utc = "2026-09-26T11:40:00Z"
+note = "RETIRED (job.board wave 245): PR #366 MERGED, no open PR on lane/aasample, unit gone; #286 stays open; PR #366 folded. Every file this row held is RELEASED to [free] (files another lane has since taken stay with that lane). PRIOR NOTE: RELEASED AT READY (job.board wave 237, 2026-09-26): PR #366 is out of draft, CI green, unit gone (needs-audit-1); files stay listed for audit and fold, and are free for the next lane. lane.remote takes vk/draw.c for #274 GPUAA next; its brief names PR #366 and says merge master (or lane/aasample) and re-run its arm before marking ready. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 210 (job.board, 2026-09-25T23:55:00Z) for #286's class A (PR #328 folded, docs/lanes/cloud-286/NOTES.md sec 3): our AA-surface path is not transparent -- silicon's CENTER_CORNER_2 is byte-identical to a non-AA draw on the 48 inert captures, ours moves 517,872 px; pgraph_apply_anti_aliasing_factor (pgraph.h:572) is width*=2 and nothing else. ~242k px net recoverable (Quads loses 17.8k). LOCATE-FIRST for the consumers: vk/draw.c is lane.vtxarr262's (PR #264) and vk/surface.c is [free] but ungranted; the lane names the hunks and asks. Reads #282's NOTES for the tie rule. WAVE 223 (job.board, 2026-09-26T03:40Z): + hw/xbox/nv2a/pgraph/vk/draw.c GRANTED -- PR #264 folded (72e479ec59) and released it. Apply draw-c-viewport.patch on a fresh branch off master, register the NOTES s4 arm first, then build; lane.remote takes draw.c after this fold (#274 GPUAA). Brief: briefs/aasample.md."
 [retired.blankrule297]
 issues = []
 files = []
@@ -1062,29 +1060,26 @@ files = []
 standing = false
 retired_utc = "2026-09-26T09:10:00Z"
 note = "RETIRED (job.board wave 240): PR #375 MERGED 2026-09-26T08:00:27Z, no open PR on lane/brdf315b, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 237 (job.board, 2026-09-26): #315 second pass. lane.brdf315's BRDF rule fitted 605/610 px offline (PR #326) but the hunk was arm-refuted in PR #347 (614 -> 614 x3, moved not toward the golden). This lane finds which assumption in the fit the emitted shader breaks: per-pixel diff of the arm's capture, then the corrected rule or 'coincidence'. glsl/psh.c is NOT granted (lane.fog278 holds it, lent to lane.y16bump10); a hunk is a patch and a board-request. Brief: briefs/brdf315b.md."
-[lane.y16bump10]
+[retired.y16bump10]
 issues = ["10"]
-files = ["docs/testing/predictions/y16bump10-*.json", "docs/lanes/y16bump10/**"]
-released = ["docs/testing/predictions/y16bump10-*.json", "docs/lanes/y16bump10/**"]
-released_at_ready = 367
+files = []
 standing = false
-note = "WAVE 244 (job.board 2026-09-26T10:40Z): PR #367 fold-ready but the fold refuses it on preflight psh_differ (every baseline does not generate) on the merged tree with master @ e673558587; #384 folded and it recurred, so not the /tmp race; lane resumed to reproduce and fix. RELEASED AT READY (hostops 2026-09-26T08:22Z): PR #367 is out of draft, CI green, MERGEABLE; labelled needs-audit-1 (touches glsl/psh.c). Files stay listed for audit and fold. BRIEFED AT WAVE 232 (job.board, 2026-09-26T06:15Z), STARTED BY THE HOST (draft PR #367) for #10's Y16 class, on lane.xbox's silicon measurements (PR #359 low byte feeds an offset; PR #363 the HORIZONTAL offset reads the low byte, the vertical offset shows no sweep). glsl/psh.c is LENT from lane.pshqueue for the Y16 bump read only (append_bump_channel, ~:1725-1830), disjoint from its fog/DOT_ZW/G8B8/BRDF hunks; it stays on pshqueue's row. YUV and Y8/AY8/A8Y8 have no mechanism and are not touched. Brief: briefs/y16bump10.md."
+retired_utc = "2026-09-26T11:40:00Z"
+note = "RETIRED (job.board wave 245): PR #367 MERGED, no open PR on lane/y16bump10, unit gone; #10 stays open (fixed-part). Every file this row held is RELEASED to [free] (files another lane has since taken stay with that lane). PRIOR NOTE: WAVE 244 (job.board 2026-09-26T10:40Z): PR #367 fold-ready but the fold refuses it on preflight psh_differ (every baseline does not generate) on the merged tree with master @ e673558587; #384 folded and it recurred, so not the /tmp race; lane resumed to reproduce and fix. RELEASED AT READY (hostops 2026-09-26T08:22Z): PR #367 is out of draft, CI green, MERGEABLE; labelled needs-audit-1 (touches glsl/psh.c). Files stay listed for audit and fold. BRIEFED AT WAVE 232 (job.board, 2026-09-26T06:15Z), STARTED BY THE HOST (draft PR #367) for #10's Y16 class, on lane.xbox's silicon measurements (PR #359 low byte feeds an offset; PR #363 the HORIZONTAL offset reads the low byte, the vertical offset shows no sweep). glsl/psh.c is LENT from lane.pshqueue for the Y16 bump read only (append_bump_channel, ~:1725-1830), disjoint from its fog/DOT_ZW/G8B8/BRDF hunks; it stays on pshqueue's row. YUV and Y8/AY8/A8Y8 have no mechanism and are not touched. Brief: briefs/y16bump10.md."
 
-[lane.vkpointsize34]
+[retired.vkpointsize34]
 issues = ["34"]
-files = ["hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/glsl/geom.h", "hw/xbox/nv2a/pgraph/vk/shaders.c", "hw/xbox/nv2a/pgraph/vk/renderer.c", "docs/testing/predictions/vkpointsize34-*.json", "docs/lanes/vkpointsize34/**"]
-released = ["hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/glsl/geom.h", "hw/xbox/nv2a/pgraph/vk/shaders.c", "hw/xbox/nv2a/pgraph/vk/renderer.c", "docs/testing/predictions/vkpointsize34-*.json", "docs/lanes/vkpointsize34/**"]
-released_at_ready = 371
+files = []
 standing = false
-note = "RELEASED AT READY (hostops, 2026-09-26T08:30Z): PR #371 out of draft, CI green, arms PASS 78/78 byte-identical, unit gone; all six files free for the next lane (lane.remote's deferred #343 LOW-1/2 needs vk/shaders.c). PRIOR: GRANTED (hostops, 2026-09-26T07:10Z) on the lane's #371 ask (06:56Z): + hw/xbox/nv2a/pgraph/vk/shaders.c (from [free]; set no_point_size in shader_binding_build_module_keys) and hw/xbox/nv2a/pgraph/vk/renderer.c (unclaimed; SHADER_STATE_LAYOUT_VERSION 2 -> 3 so persisted GS keys regenerate). vk/instance.c RELEASED to [free] at the lane's word. lane.remote's deferred #343 LOW-1/2 (needs vk/shaders.c) waits for this row to release it. PRIOR: BRIEFED AT WAVE 233, NOT STARTED (job.board, 2026-09-26T06:40Z; `lane.sh start` needs approval the non-interactive board session cannot get -- the HOST runs `docs/testing/lane.sh start vkpointsize34 briefs/vkpointsize34.md 34`; the row holds its files meanwhile) for #34's one Adreno VUID (pCode-08740, GeometryPointSize without shaderTessellationAndGeometryPointSize): gate the three gl_PointSize writes in glsl/geom.c on the enabled feature. geom.c and vk/instance.c came free when lane.wparamclip223 (PR #250) folded. Findings 1-4 of the issue body are not in this lane. Brief: briefs/vkpointsize34.md."
+retired_utc = "2026-09-26T11:40:00Z"
+note = "RETIRED (job.board wave 245): PR #371 MERGED, no open PR on lane/vkpointsize34, unit gone; #34 stays open for findings 1-4. Every file this row held is RELEASED to [free] (files another lane has since taken stay with that lane). PRIOR NOTE: RELEASED AT READY (hostops, 2026-09-26T08:30Z): PR #371 out of draft, CI green, arms PASS 78/78 byte-identical, unit gone; all six files free for the next lane (lane.remote's deferred #343 LOW-1/2 needs vk/shaders.c). PRIOR: GRANTED (hostops, 2026-09-26T07:10Z) on the lane's #371 ask (06:56Z): + hw/xbox/nv2a/pgraph/vk/shaders.c (from [free]; set no_point_size in shader_binding_build_module_keys) and hw/xbox/nv2a/pgraph/vk/renderer.c (unclaimed; SHADER_STATE_LAYOUT_VERSION 2 -> 3 so persisted GS keys regenerate). vk/instance.c RELEASED to [free] at the lane's word. lane.remote's deferred #343 LOW-1/2 (needs vk/shaders.c) waits for this row to release it. PRIOR: BRIEFED AT WAVE 233, NOT STARTED (job.board, 2026-09-26T06:40Z; `lane.sh start` needs approval the non-interactive board session cannot get -- the HOST runs `docs/testing/lane.sh start vkpointsize34 briefs/vkpointsize34.md 34`; the row holds its files meanwhile) for #34's one Adreno VUID (pCode-08740, GeometryPointSize without shaderTessellationAndGeometryPointSize): gate the three gl_PointSize writes in glsl/geom.c on the enabled feature. geom.c and vk/instance.c came free when lane.wparamclip223 (PR #250) folded. Findings 1-4 of the issue body are not in this lane. Brief: briefs/vkpointsize34.md."
 
-[lane.fog278]
+[retired.fog278]
 issues = ["278"]
-files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "docs/testing/predictions/fog278-*.json", "docs/lanes/fog278/**"]
-released = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "docs/testing/predictions/fog278-*.json", "docs/lanes/fog278/**"]
-released_at_ready = 373
+files = []
 standing = false
-note = "RELEASED AT READY (job.board wave 239, 2026-09-26T08:45Z): PR #373 is out of draft, CI green on its head (Android, Desktop build, NV2A index), MERGEABLE, arm verified, unit gone; labelled needs-audit-1 (touches hw/). psh.c and vsh.c are free for the next lane, whose brief names PR #373 and says to merge master (or lane/fog278 if unfolded) and re-run its arm before marking ready. PRIOR: DISPATCH ATTEMPTED AT WAVE 236 (job.board, 2026-09-26T07:30Z) for #278's code half: INF fog coordinate, exp and exp2 come out opposite to silicon (85,268 px, 16 captures). The hunk is named in docs/lanes/cloud-278/NOTES.md (vsh.c:944-949 fogSpecial = 2.0 for INF, psh.c:1905-1912 exemption); PR #319 analysis folded, PR #347 (pshqueue) and #336 (nanfix281) both folded, so psh.c and vsh.c are free. glsl/psh.c is LENT alongside lane.cullnf276 and lane.y16bump10 (their hunks are elsewhere in the file: fog278's is append_fog_factor ~:1905). Brief: briefs/fog278.md."
+retired_utc = "2026-09-26T11:40:00Z"
+note = "RETIRED (job.board wave 245): PR #373 MERGED, no open PR on lane/fog278, unit gone; #278 code half landed. Every file this row held is RELEASED to [free] (files another lane has since taken stay with that lane). PRIOR NOTE: RELEASED AT READY (job.board wave 239, 2026-09-26T08:45Z): PR #373 is out of draft, CI green on its head (Android, Desktop build, NV2A index), MERGEABLE, arm verified, unit gone; labelled needs-audit-1 (touches hw/). psh.c and vsh.c are free for the next lane, whose brief names PR #373 and says to merge master (or lane/fog278 if unfolded) and re-run its arm before marking ready. PRIOR: DISPATCH ATTEMPTED AT WAVE 236 (job.board, 2026-09-26T07:30Z) for #278's code half: INF fog coordinate, exp and exp2 come out opposite to silicon (85,268 px, 16 captures). The hunk is named in docs/lanes/cloud-278/NOTES.md (vsh.c:944-949 fogSpecial = 2.0 for INF, psh.c:1905-1912 exemption); PR #319 analysis folded, PR #347 (pshqueue) and #336 (nanfix281) both folded, so psh.c and vsh.c are free. glsl/psh.c is LENT alongside lane.cullnf276 and lane.y16bump10 (their hunks are elsewhere in the file: fog278's is append_fog_factor ~:1905). Brief: briefs/fog278.md."
 [retired.tie282c]
 issues = ["282"]
 files = []
@@ -1103,3 +1098,21 @@ files = []
 standing = false
 retired_utc = "2026-09-26T09:10:00Z"
 note = "RETIRED (job.board wave 240): PR #377 MERGED 2026-09-26T08:26:18Z, no open PR on lane/regs200, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 238 (job.board, 2026-09-26): #200 local, desktop-only analysis (the cloud outlet had not claimed the cloud-labelled issue; label removed on dispatch). BRIEF briefs/regs200.md: per-register table of unnamed bits and which the renderer reads, docs/lanes/regs200/** only; hw/ hunks named, not edited."
+
+[lane.surfwatch382]
+issues = ["382"]
+files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/testing/predictions/surfwatch382-*.json", "docs/lanes/surfwatch382/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 245 (job.board, 2026-09-26T11:40Z), briefs/surfwatch382.md: #382's code half. lane.fps382 (PR #385, folded) measured it: 50 Cent's boot movies are vCPU-bound (97% busy, renderer 4%), 2.5M trapped stores/s on the CPU-access watch over the movie's colour surface. Hunk named in docs/lanes/fps382/NOTES.md sec 2c: suspend the watch after the first write to a surface that owes no download, re-arm before upload / GPU draw. vk/surface.c was in [free] (released by lane.remote 2026-09-25T23:34Z). Arm: slow stores <= 50k/s and >= 1.5x fps, same-session A/B on the Nova."
+
+[lane.blinx372c]
+issues = ["372"]
+files = ["docs/testing/predictions/blinx372c-*.json", "docs/lanes/blinx372c/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 245 (job.board, 2026-09-26T11:40Z), briefs/blinx372c.md: #372 third pass. PR #381 folded the dispatcher allow-list (hakuX-stall etc.); this lane runs the one perflog soak on the Thor, names the site behind Sd2/St1 and prices a hunk. No hw/ file granted. Checks first that the live dispatcher snapshot carries the tag (a merged dispatcher fix is not live until the tree is updated)."
+
+[lane.pshaniso284]
+issues = ["284", "315"]
+files = ["docs/testing/predictions/pshaniso284-*.json", "docs/lanes/pshaniso284/**"]
+standing = false
+note = "BRIEFED AT TERRITORY WAVE 245, NOT STARTABLE (job.board, 2026-09-26T11:40Z), briefs/pshaniso284.md: one lane for #284's anisotropy probe-loop (docs/lanes/cloud-284/NOTES.md, host decision 2026-09-26 02:54 PDT: brief an implementation lane) and #315's BRDF hunk (docs/lanes/brdf315b/brdf315b-psh.diff). Both need glsl/psh.c, which lane.tiecode282 holds (PR #379 draft); hw/ files are NOT in this row until psh.c is free or released-at-ready -- add glsl/psh.c, vk/texture.c and gl/texture.c at dispatch."
