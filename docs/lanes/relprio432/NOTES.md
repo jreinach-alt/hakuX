@@ -105,6 +105,11 @@ request.sh --who relprio-dry-base --ref c3e13f09a2 --suites 'Blend surface' --ru
 request.sh --who relprio-dry-fix  --ref 5f89032611 --suites 'Blend surface' --runs 1 \
 ```
 
+**After merging master with lane.pilotgate's #420 folded** (its pilot gate is
+in request.sh now): the fragment passes 9 of 9 again. The gate selects
+requests by the JSON `requester`, never by the id, and it exempts
+`arms-*` requesters.
+
 ## Every code that reads a request id: does a `1-` prefix break it?
 
 Each row was evaluated on `1-1790462491-lane-foo-12345`. No code in either tree
