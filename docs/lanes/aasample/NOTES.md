@@ -184,3 +184,33 @@ Folding it is safe: the helper is unused, so no binary changes. The arm in
 section 4 is owed by whoever applies `draw-c-viewport.patch`: this lane with
 the grant, or lane.vtxarr262 carrying it in PR #264. Register it after that
 commit, on those refs.
+
+## Session 3 (2026-09-26, resumed by host: `vk/draw.c` granted at wave 223)
+
+**Why session 2 did not finish the fix.** It could not: `vk/draw.c` was still
+lane.vtxarr262's until PR #264 folded (72e479ec59). Session 2 finished what it
+held. PR #332 (helper and analysis) was marked ready and folded as b9a1e501f1.
+
+**This session.**
+
+- Merged `origin/master` (18a0ab9387, which contains the #332 fold). The tree
+  was identical to master afterwards.
+- Applied `draw-c-viewport.patch` unchanged. It applied cleanly at the same
+  lines (`vk/draw.c:4497` pipeline bind, `:5624` reorder-window snapshot, which
+  is replayed at `vkCmdSetViewport` `:6100`). Commit `57e46af766`.
+- Before registering, I re-read the Antialiasing_tests source. It confirms
+  section 3's must-not-move reasoning. `CreateSurfaceWithCenterCorner2` only
+  NoOpDraws in CC2, then draws into the non-AA framebuffer.
+  `FramebufferNotModifiedBySurfaceState` draws a triangle into CC2 at 256 px,
+  but a CPU write replaces the displayed framebuffer. The
+  `SQUARE_OFFSET_4` tests get offset 0.
+- Registered `docs/testing/predictions/aasample-cc2-viewport.json` with
+  `register_arm.py` (a_ref 18a0ab9387, b_ref 57e46af766, disc
+  `3D primitive` + `Antialiasing tests`). It has 50 must-not-move keys: the 40
+  plain 3D_primitive captures and 10 Antialiasing_tests captures. The movers
+  and the named Quads/Lines loss are bound in prose, from section 3.
+- The viewport is only re-set under `must_bind_pipeline`. A surface change
+  begins a new render pass, which forces that path, so the offset follows the
+  surface exactly as the width already does.
+
+After this PR folds, `vk/draw.c` passes to lane.remote (#274 GPUAA).
