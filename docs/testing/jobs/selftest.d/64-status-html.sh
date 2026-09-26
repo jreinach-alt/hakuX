@@ -96,7 +96,14 @@ echo 5738613782 > "$HAKUX_WORK/status/comment-id"
 # go under this fake host when it runs on the real one -- a real change, and
 # so a republish, which is right on the host and noise here. Pin it.
 printf '#!/usr/bin/env bash\necho 0\n' > "$T/bin/pgrep"; chmod +x "$T/bin/pgrep"
-sh_tick() { STATUS_PAGES_REMOTE="$SH_BARE" SELFTEST_GH_LOG="$SH_LOG" bash "$HERE/status.sh" "$@" 2>&1; }
+# The board and the title staging dir are pinned for the same reason. Unpinned,
+# the lane block reads origin/board of the checkout, which CI fetches too, so the
+# live board's blocked lanes became attention rows. On 2026-09-26 eleven of them
+# pushed this fixture's queue line past the ten the page shows, and "the
+# republished page carries the change" went red on master's own code.
+SH_NOBOARD="$T/status-dash-noboard"; mkdir -p "$SH_NOBOARD"
+sh_tick() { STATUS_BOARD_DIR="$SH_NOBOARD" HAKUX_XISO_DIR="$T/status-dash-noxiso" \
+    STATUS_PAGES_REMOTE="$SH_BARE" SELFTEST_GH_LOG="$SH_LOG" bash "$HERE/status.sh" "$@" 2>&1; }
 : > "$SH_LOG"; sout=$(sh_tick)
 check "the first tick publishes gh-pages" grep -q '^pages: published' <<< "$sout"
 check "gh-pages holds index.html" bash -c 'git --git-dir="$1" cat-file -e gh-pages:index.html' _ "$SH_BARE"
@@ -150,6 +157,56 @@ check "a CONFLICTING fold-ready PR is named in NEEDS ATTENTION" \
 sout=$(SELFTEST_FOLDREADY=MERGEABLE SELFTEST_GH_LOG="$SH_LOG" bash "$HERE/status.sh" --print 2>&1)
 check "a mergeable one with no CI run says CI never ran" \
     python3 -c 'import json,sys; a=json.load(open(sys.argv[1]))["attention"]; sys.exit(0 if any("PR #900" in x["text"] and "CI never ran" in x["text"] for x in a) else 1)' "$HAKUX_WORK/status/status.json"
+
+# ---- 6. the 0.5 panel (#432): counts from their files, the Ghoulies gate
+#   thor g-old  Ghoulies, perf lines: 100 outside 90-240 s, t/10 inside
+#               (9..24, sixteen lines) -> median 16.5; a window read wrong
+#               or a mean would not give it
+#   thor g-new  Ghoulies, NEWER, no perf lines -> passed over, counted
+#   thor x      not Ghoulies, newest of all, perf 50 -> never read
+#   nova        no soak -> named as missing, and the gate is NOT MET
+#   verdicts    A passes Playable on both, B on thor only -> tested 2,
+#               Playable 1; titles json lists 3; no xiso manifest
+SP="$T/status-panel"; rm -rf "$SP"; mkdir -p "$SP/res" "$SP/titles"
+echo '["a", "b", "c"]' > "$SP/titles/already-on-handhelds.json"
+sp_soak() {   # <id> <device> <title> <perf: yes|no|flat> <mtime>
+    mkdir -p "$SP/res/$1"
+    printf '{"title": "%s", "device": "%s", "ref": "abcdef0123456"}\n' "$3" "$2" > "$SP/res/$1/request.json"
+    python3 - "$SP/res/$1/logcat.txt" "$4" <<'PY'
+import sys
+out = ["--------- beginning of main"]
+for t in range(0, 300, 10):
+    g = 50 if sys.argv[2] == "flat" else (t // 10 if 90 <= t <= 240 else 100)
+    line = "09-26 10:%02d:%02d.000 I/hakuX-perf( 1): gfps=%d G:33" % (t // 60, t % 60, g)
+    out.append(line if sys.argv[2] != "no" else "09-26 10:00:00.000 I/hakuX   ( 1): frame")
+open(sys.argv[1], "w").write("\n".join(out) + "\n")
+PY
+    touch -d "$5" "$SP/res/$1/DONE"
+}
+sp_soak g-old thor "Grabbed by the Ghoulies (USA).xiso.iso" yes "2 hours ago"
+sp_soak g-new thor "Grabbed by the Ghoulies (USA).xiso.iso" no "1 hour ago"
+sp_soak x     thor "Blinx (USA).xiso.iso" flat "10 minutes ago"
+sp_verdict() { mkdir -p "$SP/res/$1"; printf '{"name": "%s", "device": "%s", "pass": %s, "rating_candidate": "Playable", "judged_utc": "2026-09-26T10:00:00Z"}\n' "$2" "$3" "$4" > "$SP/res/$1/verdict.json"; }
+sp_verdict v1 A thor true; sp_verdict v2 A nova true; sp_verdict v3 B thor true; sp_verdict v4 B nova false
+python3 "$SH_PY" release05 --titles "$SP/titles" --results "$SP/res" --xiso "$SP/no-xiso" > "$SP/facts.tsv"
+sp_has() { grep -qxF -- "$(printf "$1")" "$SP/facts.tsv"; }
+check "panel: titles on the handhelds are counted from the json" sp_has 'r05\tcopied\t3'
+check "panel: a missing staging manifest is 'no source', naming the file" sp_has 'r05\tstaged\tno source: <xiso dir>/manifest.csv'
+check "panel: a title with a verdict on either handheld is tested" sp_has 'r05\ttested\t2'
+check "panel: Playable needs a pass on every handheld tested" sp_has 'r05\tplayable\t1'
+check "panel: the gate reads the newest Ghoulies soak WITH gfps, median over 90-240 s, and counts the newer one passed over" \
+    bash -c 'grep -qP "^r05gate\tthor\t16.5\t16\tg-old\tabcdef0123\t[0-9]+\t1$" "$1"' _ "$SP/facts.tsv"
+check "panel: a handheld with no soak has an empty row" sp_has 'r05gate\tnova\t\t0\t\t\t\t0'
+printf 'release_name\t0.5\nrelease_titles_target\t145\nr05issues_known\nr05issue\t424\tlane.x\tPerformance\n' >> "$SP/facts.tsv"
+echo '{}' > "$SP/lanes.json"; : > "$SP/md"
+python3 "$SH_PY" build --facts "$SP/facts.tsv" --lanes "$SP/lanes.json" --md "$SP/md" --json "$SP/s.json" --html "$SP/i.html"
+sp_text=$(python3 "$SH_PY" panel "$SP/s.json")
+check "panel: counts print against the target" grep -qF 'Playable (latest verdict passes on every handheld tested): 1 of 145' <<< "$sp_text"
+check "panel: one handheld with no readable soak is NOT MET, and says which" \
+    grep -qF 'NOT MET -- thor 16.5 (n=16; g-old' <<< "$sp_text"
+check "panel: ...and names the soak it passed over" grep -qF '1 newer soak logged no gfps in 90-240 s' <<< "$sp_text"
+check "panel: the lane on each 0.5 issue" grep -qF '#424 lane.x -- Performance' <<< "$sp_text"
+check "panel: the page carries it, below the gate" grep -qF 'Release 0.5: titles and the Ghoulies gate' "$SP/i.html"
 
 # ---- restore selftest.sh's own shim and state for any later fragment.
 rm -f "$T/bin/pgrep" "$HAKUX_WORK/status/comment-id" "$HAKUX_WORK/status/issue-pointer" "$HAKUX_WORK/status/pages-state"
