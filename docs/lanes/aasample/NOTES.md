@@ -1,13 +1,15 @@
 # lane.aasample -- #286 class A: our CENTER_CORNER_2 path is not transparent
 
 **Outcome.** The mechanism is measured on silicon, not assumed from the mode
-name. The fix is a half-AA-pixel x offset on the host viewport. Priced over
-the 120 AA captures, it is **+258,221 structural px net**. The 48 inert
-captures go from 517,872 px moved to 24. The helper is in `pgraph.h` (this
-lane's file). **It does nothing until two viewport initialisers in
-`vk/draw.c` call it.** That file is lane.vtxarr262's (PR #264), so the hunk is
-in `draw-c-viewport.patch` and the grant is requested. There is no arm yet: an
-arm on the `pgraph.h` commit alone would measure a no-op.
+name. The fix is a half-AA-pixel x shift of every vertex on a CC2 surface.
+Priced over the 120 AA captures, it is **+258,221 structural px net**, and the
+viewport form of it measured -258,224 (session 4). **Since the 2026-09-26
+remediation the shift is applied in clip space** (`glsl/vsh.c`
+`gl_Position`, `glsl/geom.c` `line_clip`), not by moving the Vulkan viewport:
+the viewport form moved the clip volume's left edge off the surface and lost
+host column 0 at `surface_scale >= 2` (audit pass 1, MEDIUM-1). See the
+remediation section at the end; sections 2-4 below it describe the viewport
+form as it was measured.
 
 ## Data, dated
 
@@ -63,19 +65,27 @@ resolve), the mean sample is (x+0.25, y+0.5) after the change and
 (x+0.25, y+0.25) on silicon. Today it is (x+0.5, y+0.5). The change is right in
 x for any resolve, not just this test's point sample.
 
-| consumer | file:line | holder | changes? |
-|---|---|---|---|
-| `pgraph_anti_aliasing_viewport_offset_x` (new) | `pgraph/pgraph.h:609` | **lane.aasample** | added, unused until the next two rows |
-| Vulkan viewport, pipeline bind | `vk/draw.c:4496` | lane.vtxarr262 (PR #264) | **yes: `.x = offset * surface_scale_factor`** |
-| Vulkan viewport, reorder-window snapshot | `vk/draw.c:5621` (replayed at `:5992`) | lane.vtxarr262 | **yes, same line; the two must agree** |
-| vertex `surfaceSize` (guest to NDC scale) | `glsl/vsh.c:1160` | lane.wparam223 | no: the width stays 640, and the offset is the viewport's |
-| geometry-stage line NDC scale | `vk/draw.c:2765` | lane.vtxarr262 | no: widening is in guest px before the viewport, so the shift applies to it too |
-| scissor (x2, reorder x2) | `vk/draw.c:4512, 5630, 7058, 7143` | lane.vtxarr262 | no: integer AA-px rectangle, and the guest pixel edge is still at 2x |
-| window clip / `surfaceScale` | `glsl/psh.c:4033, 4052` | lane.wbufdepth24 | no: `gl_FragCoord` is per AA pixel and unchanged |
-| surface allocation | `vk/surface.c:3399` | lane.fix311 | no: size only |
-| clear | `vkCmdClearAttachments` rects | -- | no: clears ignore the viewport |
-| resolve | the guest's own textured quad | -- | no: it samples the AA surface as a texture, and the fix is in what is written there |
-| GL renderer viewport | `gl/draw.c:689` | [free] or unclaimed | **not changed**: `glViewport` takes ints, and GL is not the Android renderer; it would need `glViewportIndexedf`. Named, not done. |
+**This table is the remediated head's (2026-09-26).** The viewport form it
+replaced is described in the sessions below; its two `vk/draw.c` hunks are
+gone.
+
+| consumer | file:line | changes? |
+|---|---|---|
+| `pgraph_anti_aliasing_sample_offset_x` | `pgraph/pgraph.h:619` | **yes: now 0.25 guest px (half an AA px) for CC2, 0 otherwise; renamed from `_viewport_offset_x`** |
+| `VshState.aa_offset_x`, set per draw | `glsl/vsh.h:83`, `glsl/vsh.c:116` | **added: part of the shader key** |
+| vertex `gl_Position` (Vulkan) | `glsl/vsh.c:1012` | **yes: `+= 2 * aa_offset_x / surfaceSize.x * w`; no text emitted at 0** |
+| `GeomState.aa_offset_x`, wide-line rebuild | `glsl/geom.h:36`, `glsl/geom.c:48`, `line_clip` `:636`, `line_clip_lerp` `:685` | **yes: `aaScreen(screen)` adds the same 0.25 in guest px, because the footprint is rebuilt from `v_vtxPos`, which is taken before the shift** |
+| shader dirty check | `glsl/shaders.c:128` | **yes: compares the offset** |
+| `SET_SURFACE_FORMAT` | `pgraph.c:2517` | **yes: an AA-mode change bumps `shader_state_gen`, as zeta's does, so the cached-state path in `pgraph_vk_bind_shaders()` cannot reuse a stale key** |
+| persisted shader-key cache | `vk/renderer.c:67` | **yes: `SHADER_STATE_LAYOUT_VERSION` 2 -> 3** |
+| **view-volume clipping** (x/y clip to the viewport, not optional in Vulkan) | the viewport, `vk/draw.c:4496, 5621` | **no, and this is the point: the viewport stays at `.x = 0`, so the clip volume's left edge is the surface's left edge at every scale. Any future offset (SQUARE_OFFSET_4's x and y) must also go in clip space, or it loses a column and a row.** |
+| vertex `surfaceSize` (guest to NDC scale) | `glsl/vsh.c:1180` | no: read, not changed |
+| geometry-stage `lineNdcScale` | `vk/draw.c:2760` | no |
+| scissor (bind, reorder snapshot) | `vk/draw.c:4518, 5634` | no: integer AA-px rectangle, and the guest pixel edge is still at 2x |
+| window clip / `surfaceScale` | `glsl/psh.c` | no: `gl_FragCoord` is per AA pixel and unchanged |
+| clear | `vkCmdClearAttachments` rects, `vk/draw.c:7176, 7262` | no: clears ignore the viewport |
+| resolve | the guest's own textured quad | no: it samples the AA surface as a texture |
+| GL renderer | `glsl/vsh.c` non-Vulkan branch, `geom.c` (`widen_lines` is Vulkan-only) | **not changed**: the shift is emitted for Vulkan only. GL is not the Android renderer and nothing measured it. Named, not done. |
 
 `SQUARE_OFFSET_4` is left at 0. No capture on disk shows its sample layout.
 
@@ -282,3 +292,66 @@ drops the pbkitplusplus tables. After the rebuild the index differs from
 master's only in `draw.c` line numbers and `emulator_commit`, and `check`
 passes. Master also changed `vk/draw.c`; both hunks (`:4497`, `:5624`)
 merged cleanly.
+
+## Remediation (2026-09-26, cloud, after audit pass 1)
+
+Audit `docs/audits/2026-09-26-aasample-pass1.md` raised one MEDIUM and two
+LOWs.
+
+**MEDIUM-1 (column 0 lost at `surface_scale >= 2`). Fixed with the audit's
+remedy (a).** Vulkan clips x/y to the viewport, so the viewport at
+`.x = 0.5 * sf` put the clip volume's left edge at host x = 0.5 sf, and every
+host column centred left of it produced no fragments (column 0 at sf 2,
+columns 0-1 at sf 4). Remedy (b), a widened viewport, also needs the NDC scale
+compensated in `glsl/vsh.c`, so both options leave this lane's files; (a) is
+the smaller and exact one. The two `vk/draw.c` hunks are reverted. The shift
+is now added to the vertices in clip space, where it does not move the clip
+volume:
+
+| sf | viewport `.x` | clip volume, host x | host columns lost |
+|---|---|---|---|
+| 1 | 0 | [0, W] | none |
+| 2 | 0 | [0, 2W] | none |
+| 4 | 0 | [0, 4W] | none |
+
+Geometry whose guest x reaches [-0.25, 0) now fills host column 0 at every
+scale, as silicon's corner sample at (0, y) is covered.
+
+Equivalence with the measured viewport form at sf = 1: the viewport moved
+window x by 0.5 sf host px. The vertex shader adds 2 * 0.25 / surfaceSize.x
+NDC, with surfaceSize.x = W_aa / 2 guest px, which is 1 / W_aa NDC, which the
+viewport maps to W_aa * sf / 2 * (1 / W_aa) = 0.5 sf host px. The geometry
+stage adds 0.25 guest px before `lineNdcScale = 2 / (W_aa / 2)`, the same
+1 / W_aa. Depth and 1/w are untouched, so every interpolant sees the same
+affine window shift as before. What can differ is float rounding: the
+viewport added an exact 0.5; the vertex shader adds an inexact NDC term. Its
+error is about one ulp of NDC, roughly 4e-5 guest px at 640, against a
+rasteriser grid of 1/16 px or finer, and vertices sit on the 1/16 grid, so
+snapping takes them to the same point.
+
+Two things the viewport got for free and the shader form had to add. The
+shader key now carries the offset (`VshState` / `GeomState.aa_offset_x`), so
+a CC2 draw and a CENTER_1 draw get different shaders; non-CC2 shader text is
+byte-identical to master's, because nothing is emitted at 0. And an AA-mode
+change must invalidate the bound shader: `SET_SURFACE_FORMAT` now bumps
+`shader_state_gen` on it and the dirty check compares the offset.
+`SHADER_STATE_LAYOUT_VERSION` is bumped so a persisted key cache from either
+side of this change is wiped, not regenerated.
+
+**LOW-1 (stale line numbers).** Section 2's table is rewritten for this head.
+
+**LOW-2 (no clip-volume row).** Added to the table, with the SQUARE_OFFSET_4
+consequence named.
+
+**Arm.** `aasample-cc2-clip.json`: a_ref is the fold base, b_ref the
+remediated head, and the prediction, must-not-move list and disc are session
+4's, because at sf = 1 the two forms place every sample identically. The
+viewport arm's verdict (PASS, -258,224 structural) is the number this one must
+reproduce.
+
+**Gap: no sf = 2 arm.** `ab_compare.py --register` has no render-scale
+setting, and the dispatcher runs at scale 1, so no registered arm can read
+host column 0 at scale 2. The table above is the argument for sf >= 2, not a
+measurement. The run that would settle it: one CC2 capture at scale 2 whose
+geometry crosses guest x = 0 (any `3D_primitive/*-ls` background), reading
+host AA column 0 in the raw surface.

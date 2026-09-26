@@ -4494,8 +4494,6 @@ static void begin_draw(PGRAPHState *pg)
         pgraph_apply_scaling_factor(pg, &vp_width, &vp_height);
 
         VkViewport viewport = {
-            .x = pgraph_anti_aliasing_viewport_offset_x(pg) *
-                 pg->surface_scale_factor,
             .width = vp_width,
             .height = vp_height,
             .minDepth = 0.0,
@@ -5621,8 +5619,6 @@ static void snapshot_dynamic_state(PGRAPHState *pg, ReorderWindowEntry *e)
                  vp_height = pg->surface_binding_dim.height;
     pgraph_apply_scaling_factor(pg, &vp_width, &vp_height);
     e->viewport = (VkViewport){
-        .x = pgraph_anti_aliasing_viewport_offset_x(pg) *
-             pg->surface_scale_factor,
         .width = vp_width, .height = vp_height,
         .minDepth = 0.0, .maxDepth = 1.0,
     };
