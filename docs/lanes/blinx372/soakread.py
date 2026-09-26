@@ -65,6 +65,19 @@ def med(xs):
     return xs[len(xs) // 2] if xs else float("nan")
 
 
+def line_fps(rows):
+    """The gfps line is printed every 60th guest frame (profile.c:614), so
+    consecutive lines 60 frames apart give frames over wall time: the
+    time-weighted rate, with no hakuX-pace line needed. A gap over 30 s is a
+    lost log, not a frame, and ends the run of lines."""
+    fr, sp = 0, 0.0
+    for a, b in zip(rows, rows[1:]):
+        if 0 < b[0] - a[0] < 30:
+            fr += 60
+            sp += b[0] - a[0]
+    return fr / sp if sp else float("nan")
+
+
 def tw_fps(rows):
     """Frames over wall time: 60 frames per pace window / its ms span."""
     fr = sum(60 for r in rows if r[9] > 0)
@@ -74,15 +87,15 @@ def tw_fps(rows):
 
 print("pace windows %d, perf lines %d, phase lines %d, pages lines %d" %
       (len(pace), len(perf), len(phase), len(pages)))
-print("%5s %5s %6s %6s %6s %6s %6s %5s" %
-      ("t", "n", "twfps", "G", "Ri", "Tq", "Vpf", "vmax"))
+print("%5s %5s %6s %6s %6s %6s %6s %6s %5s" %
+      ("t", "n", "twfps", "lfps", "G", "Ri", "Tq", "Vpf", "vmax"))
 end = max([r[0] for r in pace] + [r[0] for r in perf] + [0])
 b = 0.0
 while b <= end:
     pr = [r for r in pace if b <= r[0] < b + 30]
     fr = [r for r in perf if b <= r[0] < b + 30]
-    print("%5.0f %5d %6.1f %6.1f %6.1f %6.0f %6.2f %5.0f" % (
-        b, len(pr), tw_fps(pr), med([r[2] for r in fr]), med([r[9] for r in fr]),
+    print("%5.0f %5d %6.1f %6.1f %6.1f %6.1f %6.0f %6.2f %5.0f" % (
+        b, len(pr), tw_fps(pr), line_fps(fr), med([r[2] for r in fr]), med([r[9] for r in fr]),
         med([r[10] for r in fr]), med([r[8] for r in fr]),
         max([r[8] for r in pr] + [0])))
     b += 30
@@ -98,6 +111,7 @@ if W:
     print("  flips per VBLANK v0..v4: %s (of %d flips); worst flip gap %.1f ms" % (
         vb, sum(vb), max(r[8] for r in W)))
 if F:
+    print("  time-weighted fps from gfps-line cadence %.1f over %d lines" % (line_fps(F), len(F)))
     G = [r[2] for r in F]
     Ri = [r[9] for r in F]
     print("  G median %.1f ms; Ri median %.1f ms -> renderer busy %.0f%% of a guest frame" % (
