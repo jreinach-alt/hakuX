@@ -62,8 +62,16 @@ detect() {
         printf 'dev=/dev/input/event-dry\nABS_X=-32767,32767\nABS_Y=-32767,32767\nABS_Z=-32767,32767\nABS_RZ=-32767,32767\n'
         return 0
     fi
-    out=$(timeout "${ADB_TIMEOUT:-20}" adb -s "$S" shell getevent -pl 2>/dev/null | tr -d '\r')
-    [ -n "$out" ] || { echo "pad.sh: getevent -pl returned nothing on $S" >&2; return 1; }
+    # Three tries, 2 s apart: one WSL `UtilAcceptVsock` failure returns nothing,
+    # and on 2026-09-26 that alone left a 13-minute Nova run with no input.
+    local try
+    for try in 1 2 3; do
+        out=$(timeout "${ADB_TIMEOUT:-20}" adb -s "$S" shell getevent -pl 2>/dev/null | tr -d '\r')
+        [ -n "$out" ] && break
+        echo "pad.sh: getevent -pl returned nothing on $S (try $try/3)" >&2
+        [ "$try" = 3 ] || sleep "${PAD_RETRY_S:-2}"
+    done
+    [ -n "$out" ] || return 1
     printf '%s\n' "$out" | python3 -c '
 import re, sys
 blocks, cur = [], None
