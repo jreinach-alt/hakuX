@@ -220,3 +220,65 @@ for the arms job's `[job.arms]` verdict on `aasample-cc2-viewport.json`. The PR
 stays in draft until the verdict. If it matches, mark it ready. If a
 must-not-move row moves, diagnose it first. Do not re-register or rebase: the
 refs are live.
+
+## Session 4 (2026-09-26, resumed by host after the verdict)
+
+**Why session 3 did not finish.** It was not stuck. It ended waiting for two
+things outside the session: CI on `4b27c52b0f` and the arms job's verdict. It
+posted `[lane.aasample] waiting:` on #366, which was correct, but the PR was
+still in draft. CI came back green and the verdict was PASS. After that, only
+this resume could mark it ready.
+
+**Arm verdict: PASS, all 50 registered checks hold.** Prediction sha256
+`0e52f821fa1a`. The runs were `1790403104-arms-aasample-{base-1752501,fix-1752631}` on nova,
+171 of 171 captures in each arm, with no unreadable rows. The full text is in
+`$WORK/arms/pairs/0e52f821...verdict.txt`.
+
+| | priced (sec 3) | measured |
+|---|---|---|
+| structural px, both suites | -258,221 | **-258,224** (676,578 -> 418,354) |
+| differing px | | -230,092 (3,504,926 -> 3,274,834) |
+| better / worse / same | | 89 / 24 / 58 (171) |
+| exact | | 13 -> 13, 0 regressed from exact |
+| 40 plain 3D_primitive + 10 other Antialiasing_tests | must not move | none moved |
+| `Antialiasing_tests/FBSurfaceWithCenterCorner2` | better | 352 -> 256 differing |
+
+Per primitive, differing px on one capture, grouped by variant. Each
+primitive has 12 captures, 4 draw paths x 3 variants.
+
+| primitive | -ls | -ps and -ls-ps |
+|---|---|---|
+| TriStrip | 43,876 -> 31,168 | 44,467 -> 32,104 |
+| TriFan | 34,191 -> 29,515 | 34,743 -> 30,334 |
+| QuadStrip | 72,989 -> 69,158 | 73,579 -> 69,888 |
+| Polygon | 39,065 -> 35,644 | 39,780 -> 36,580 |
+| Triangles | 9,517 -> 8,411 | 10,411 -> 9,471 |
+| Points | 7 -> 4 | 7 -> 4 |
+| **Quads (named loss, owner #38)** | 14,858 -> 20,499 | 15,981 -> 21,675 |
+| LineLoop (owner #13) | 4,678 -> 4,662 | -ps 1,215 -> 1,418 |
+| LineStrip (owner #13) | 4,120 -> 4,099 | -ps 1,052 -> 1,228 |
+| Lines (owner #13) | 2,332 -> 2,332 (pixels moved) | -ps 671 -> 795 |
+
+The byte check found 8 `Lines-*-ls*` captures whose score held while their
+pixels moved. That is expected: the offset moves every CC2 draw. The arm had
+one run per side, so these 8 are not attributable on their own. They are not
+a registered leg.
+
+**Flake to know about (relayed from lane.remote, #274).** On desktop Vulkan,
+`Antialiasing_tests/FramebufferNotModifiedBySurfaceState` is flaky. In 2 of
+19 runs, pixels (0,0) and (1,0) keep the 0x050505 clear where the CPU
+checkerboard wrote 0x222222. That is a race between the CPU write and the
+surface write-back. It is on this arm's must-not-move list and did not move
+on the device. If a future re-run trips it, read it as that race, not as this
+hunk. On desktop, lane.remote also saw this hunk move exactly one AA-suite
+capture, `FBSurfaceWithCenterCorner2` 352 -> 256 (2 of 2 runs), which
+matches the device.
+
+**This session.** I merged `origin/master` (8afcc8d404) with no rebase, so
+the registered refs stay live. The merge conflicted only in the generated
+`nv2a_index.json`. I rebuilt it with `build --tests fold-pins/nxdk_pgraph_tests
+(6743b6ab16) --support fold-pins/pbkitplusplus`. Leaving out `--support`
+drops the pbkitplusplus tables. After the rebuild the index differs from
+master's only in `draw.c` line numbers and `emulator_commit`, and `check`
+passes. Master also changed `vk/draw.c`; both hunks (`:4497`, `:5624`)
+merged cleanly.

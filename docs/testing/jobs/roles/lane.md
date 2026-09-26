@@ -75,6 +75,22 @@ A path you edit that is not on that line is a collision nothing can see.
    costs you no part of the escalation budget. It resumes once per head sha
    per cause, and it will never mark your PR ready for you: nothing but you
    can check items 1-4.
+
+   **Never end a session waiting on your own background task.** You are a
+   headless `claude -p` session: when your turn ends, every
+   `run_in_background` command and every Monitor you started ends with it,
+   and the notification you are waiting for never comes. On 2026-09-25 three
+   lanes (titlerun, sweepcover, blankrule297) sat idle for 3 to 8 hours that
+   way. Run long work in the foreground, in chunks under the Bash tool's
+   10-minute limit, or detach it with
+   `setsid nohup <cmd> > <log in your worktree> 2>&1 < /dev/null &` and poll
+   that log until it is done, all in this session. A `waiting:` comment names
+   something OUTSIDE your session: a dispatch request id, a PR check, a board
+   grant, another PR's fold. It never names your own task. `handback.sh`
+   honours a `waiting:` or `blocked:` as your newest word. With neither, and
+   nothing of yours on a device, it resumes an idle lane about 40 minutes
+   after its session ended, once per session end, whether its PR is a draft
+   or absent.
 6. If the brief cannot be done as written, say so in your `NOTES.md` and in a
    PR comment starting `[lane.<name>] blocked:`, with the measurement or
    decision that would unblock it. That is a finished outcome.

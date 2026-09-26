@@ -11,7 +11,8 @@ candidate has a measured gain that only our own driver can deliver. The large
 costs we have measured sit in our own code and in plain-Vulkan choices, not
 in the driver. A driver fork is worth building as an instrument: a
 reproducible build we can symbolize, patch and bisect. It is not yet worth
-building as a product.
+building as a product. Gate 1 (below) measured the two remaining
+candidates, (f) and (g), and neither changes that.
 
 Sources: Mesa `main` pinned at `4c18636110f0ef2e1d4cecdbfbf4b7126c1d22cc`
 (26.3.0-devel, the same series as T30; cloned outside the repo at
@@ -65,8 +66,8 @@ Evidence grades: **measured** (a device run or profile on disk),
 | c | Depth formats and precision (Z16, Z24, float Z, #266) | **T0** (already done) / **T3** for native NV2A float depth | Z16 maps to D16 (`surface.c:3961`). Z24 is exact through D32F plus shader quantisation (`hw/.../glsl/psh.c:3642-3697`). No format carries NV2A F16/F24 depth. `RB_DEPTH_CNTL` has no rounding control (`a6xx.xml:2461-2474`). Varyings are fp32 in silicon, so a driver cannot change the slope interpolation #266 points at. Cost side: a shader that writes depth turns LRZ/early-Z off unless it declares a depth layout (`tu_lrz.cc:1238-1260`, `tu_shader.cc:3741-3752`). | none | **None from a driver.** A T0 `DepthGreater`/`DepthLess` layout where our depth is monotone might restore LRZ (hypothesis). |
 | d | Register-combiner compile stutter and bind cost | **T0** | Measured: ir3/NIR compile is **3 of 11,129** samples on the renderer thread in 20 s of Crimson Skies gameplay (profile below). In steady play, compiling is invisible. Stutter is episodic, and this profile did not capture a first encounter. Emulator: async compile exists but **defaults off** (`hw/.../vk/draw.c:33`, `SettingsActivity.kt:69`). The VkPipelineCache is saved to disk (`draw.c:1356-1373`), and Turnip serialises ir3 binaries into it. Turnip implements GPL with fast-link (`tu_device.cc:349`, `tu_pipeline.cc:1752-2133`). **Pipeline derivatives do nothing on Turnip**: `src/freedreno/vulkan` never reads `DERIVATIVE` or `basePipeline` (0 hits). | T0, settings or emulator | Ranked: (1) async compile on by default, (2) GPL for the combiner FS, (3) ubershader (costs FS ALU on every fragment). A driver adds nothing Turnip lacks. **Stutter is unmeasured**: needs a cold-cache trace. |
 | e | Driver CPU cost | **T1** to make leaner, and **not worth it** | **Measured**, below: Turnip is **7.2%** (inclusive) of the renderer thread, about **2 ms per emulator-bound frame**. Our own `fast_hash` (22.3%) and `tlb_reset_dirty` (21.6%) on the same thread are each 3x the whole driver. | n/a | **Bounded: at most about 2 ms per frame** of renderer time, and the renderer is not the critical path. The guest is blocked on the renderer 8.7 ms per frame (`frame-pacing-and-parallelism.md`, "Step 1"). |
-| f | GMEM / tiling control | **T0** partly (load/store ops, pass boundaries). A hakuX autotune policy is **T1** | Turnip picks sysmem or GMEM per render pass through `tu_autotune` (in the profile: `process_entries`, `on_submit`, `find_rp_history`). Driconf `tu_autotune_algorithm` exists, and DXVK is pinned to `prefer_sysmem` (`00-turnip-defaults.conf:36-40`). `TU_DEBUG=sysmem` / `gmem` are parsed by T30 (strings present). The app sets `env_vars` before the driver loads (`xemu_android.cpp:796-809`, called at `:1239`, driver at `:1784`). **So this A/B needs no build**: `request.sh --env TU_DEBUG=sysmem`. | T0 measurement now; T1 policy only if it pays | **Hypothesis.** GPU time has never been shown to be on the critical path; no GPU-busy figure exists. |
-| g *(added)* | Texel-coordinate rounding mode (`TPL1_MODE_CNTL.TEXCOORDROUNDMODE`: truncate or round-to-nearest-even) | **T0 on Turnip** (driconf through env). A per-draw choice is **T1** | `tu_cmd_buffer.cc:2290-2296` programs it from driconf `tu_use_tex_coord_round_nearest_even_mode`, default truncate ("Vulkan requires truncation, D3D rounds to nearest even", `00-turnip-defaults.conf:19-24`). Driconf defaults are overridden by the environment (`util/xmlconfig.c:424-439`), which Android reads with `getenv` first (`util/os_misc.c:238`). T30 has the option (string present). `NEARESTMIPSNAP` is next to it (`a6xx.xml:4474-4493`). | T0 today; bundled per-draw only if texture suites split | **Hypothesis**: this is the one silicon control found that is *about* texel addressing, which is where NV2A's own rules live. It is a pgraph A/B with no build. |
+| f | GMEM / tiling control | **T0** partly (load/store ops, pass boundaries). A hakuX autotune policy is **T1** | Turnip picks sysmem or GMEM per render pass through `tu_autotune` (in the profile: `process_entries`, `on_submit`, `find_rp_history`). Driconf `tu_autotune_algorithm` exists, and DXVK is pinned to `prefer_sysmem` (`00-turnip-defaults.conf:36-40`). `TU_DEBUG=sysmem` / `gmem` are parsed by T30 (strings present). The app sets `env_vars` before the driver loads (`xemu_android.cpp:796-809`, called at `:1239`, driver at `:1784`). **So this A/B needs no build**: `request.sh --env TU_DEBUG=sysmem`. | T0 measurement now; T1 policy only if it pays | **Measured, flat** (Gate 1 results below): autotune, forced sysmem and forced GMEM all run Crimson Skies at a median 29 gfps, guest frame 33.3 ms, 2 replicates each. The title sits at its 30 Hz cap, so this rules out a cost and cannot show a gain. |
+| g *(added)* | Texel-coordinate rounding mode (`TPL1_MODE_CNTL.TEXCOORDROUNDMODE`: truncate or round-to-nearest-even) | **T0 on Turnip** (driconf through env). A per-draw choice is **T1** | `tu_cmd_buffer.cc:2290-2296` programs it from driconf `tu_use_tex_coord_round_nearest_even_mode`, default truncate ("Vulkan requires truncation, D3D rounds to nearest even", `00-turnip-defaults.conf:19-24`). Driconf defaults are overridden by the environment (`util/xmlconfig.c:424-439`), which Android reads with `getenv` first (`util/os_misc.c:238`). T30 has the option (string present). `NEARESTMIPSNAP` is next to it (`a6xx.xml:4474-4493`). | T0 today; bundled per-draw only if texture suites split | **Measured** (Gate 1 results below): device-wide RNE is worse (127 rows worse, 21 better). A 3D-only policy would gain 8,140 of 1,408,643 differing pixels. The register is written once per device (`tu6_init_static_regs`, `tu_cmd_buffer.cc:2166,2290`), so per-texture needs a patch: **T1, not worth building**. |
 | h *(added)* | GPU power constraint (a clock *request*, not control) | **T1**, and a **hypothesis** that the kernel honours it | KGSL has per-context and per-submission `PWR_CONSTRAINT` (`msm_kgsl.h:51,103,336,1234-1252`). Turnip never sets it (`tu_knl_kgsl.cc:54-56`). The governor may ignore it. Clock or governor *control* is **T2**. | bundled | **Hypothesis**; low value unless the GPU is shown to be the bound. |
 | i *(added)* | Native combiners, W-buffer, swizzle, palette, float depth, NV2A clip and raster rules | **T3** | Limit 1 above | none | none |
 | j *(added)* | Clocks, governors, protected registers, SQE/GMU firmware | **T2 / T3** | Limit 2 above | none | none |
@@ -135,6 +136,80 @@ been re-measured. `tools/turnip/driver_share.py` re-runs on any new
    and the NOTES will say so. The performance program's measured levers are
    ours: `fast_hash` and `tlb_reset_dirty` on the renderer thread, and TCG on
    the guest thread.
+
+## Gate 1 results (2026-09-26): no T1 candidate is worth building
+
+**Control: passed.** Our unmodified build (`turnip_hakux_4c18636110f0_none`,
+`vulkan.hakux.so` sha256 `f94a1acc…`) renders the 12 texture suites
+pixel-identical to T30: 220 of 220 captures, and every scores row matches.
+The run was made by the host (#68 comment 5843130427). adrenotools loads it
+by path, so the soname difference does not matter.
+
+**(g) texel-coordinate rounding, measured.** Both runs were on the Nova,
+with T30, ref `a7f7c8bda9`, apk `9395b70d7cf1`, and the same 220 captures.
+The base run is `1790370789-turnipfork-3702404`. The RNE run is
+`1790370791-turnipfork-3706030`, with
+`tu_use_tex_coord_round_nearest_even_mode=true` set through the environment.
+That the RNE run moved pixels proves the variable reached T30's driconf.
+
+| suite | rows | base differing px | RNE differing px | rows better / worse |
+|---|---:|---:|---:|---|
+| Volume_texture | 20 | 144,715 | 139,612 | 16 / 1 |
+| Texture_3D_as_2D | 2 | 3,037 | **0** | 2 / 0 |
+| Bump_map | 40 | 365,126 | 371,745 | 3 / 35 |
+| Texture_cubemap | 72 | 2,287 | 15,993 | 0 / 72 |
+| Texture_Matrix | 11 | 326 | 3,133 | 0 / 7 |
+| Texture_border | 18 | 4,600 | 7,087 | 0 / 6 |
+| Texgen, Texture_perspective(+enable) | 15 | 746,764 | 747,279 | 0 / 6 |
+| Texture_format, LOD_Bias, WrapMode | 42 | 141,788 | 141,788 | 0 / 0 |
+| **total** | 220 | 1,408,643 | 1,426,637 | 21 / 127 |
+
+Truncation, which is Vulkan's rule and T30's default, is the better
+device-wide choice. Only 3D textures prefer RNE. A driver policy of "RNE when
+a 3D view is bound" would move at most 8,140 differing pixels (0.58% of these
+suites), and would take 2 rows to exact. That is the ceiling. Several things
+would sit against it:
+- A patched `tu6_init_static_regs`, plus per-draw state tracking.
+- A 13 MB driver bundled in the APK.
+- A plain-Vulkan fallback for Mali and Xclipse.
+
+**Hypothesis, unmeasured:** the same rows might be reachable at T0 with a
+half-subtexel bias on 3D coordinates in our shader. That would differ from
+RNE only at exact ties. It is an `hw/` change for a pgraph lane, not a driver
+change.
+
+**(f) GMEM policy, measured flat.** All runs were on the Nova, T30, Crimson
+Skies, 240 s hands-off, 2 replicates per arm, with the first 10 s dropped.
+
+| arm | runs | median gfps | mean gfps | median guest frame (ms) |
+|---|---|---:|---:|---:|
+| autotune (default) | `…3734492`, `…3734624` | 29.0, 29.0 | 29.01, 29.05 | 33.3, 33.3 |
+| `TU_DEBUG=sysmem` | `…3734531`, `…3734656` | 29.0, 29.0 | 29.18, 29.27 | 33.3, 33.3 |
+| `TU_DEBUG=gmem` | `…3734588`, `…3734707` | 29.0, 29.0 | 29.07, 29.04 | 33.3, 33.3 |
+
+The game frame is two vblanks in every arm. What this can see is a cost:
+neither forced mode costs a frame. What it cannot see is a gain: at the cap,
+GPU time saved does not show in gfps. Nothing we have measured puts GPU time
+on the critical path. So a hakuX autotune policy has no measured target.
+
+**Conclusion.** Each T1 item, and what stands against building it:
+
+| item | what stands against it |
+|---|---|
+| (a) | a near-zero ceiling after PR #250 |
+| (e) | at most about 2 ms per frame of a thread that is not the critical path |
+| (f) | flat |
+| (g) | 0.58% of one suite family's pixels, with a T0 route |
+| (h) | the GPU is not shown to be the bound |
+
+None is worth prototyping, so the lane ends without a prototype. The fork
+remains as an instrument:
+- `tools/turnip/build.sh` gives a pinned, symbolized build.
+- The control shows it is interchangeable with T30.
+- `host-tools/turnip_control.sh` is the path to run it.
+
+It is worth reopening if a profile shows the GPU, or the driver, on the
+critical path.
 
 User delivery, for any T1 item that survives: bundle it in the APK and
 select it by default on Adreno 6xx/7xx only, with the menu as the override

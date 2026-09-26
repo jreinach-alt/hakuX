@@ -482,6 +482,162 @@ def lane_prs(remote=None):
     return out
 
 
+def pr_state(n):
+    """(head sha, mergeable, ci) for one PR, or None if gh could not answer.
+
+    `mergeable` is GitHub's: True, False (CONFLICTING) or None (not computed
+    yet). `ci` is one word about the check runs on the head: "green", "red:
+    <names>", "running", or "never ran". A PR with no check run at all has no
+    verdict, and that is not the same as a green one: a merge conflict creates
+    no workflow run (AGENTS.md), and neither did the retired skip-ci marker.
+    """
+    pr, err = gh_rest._api("repos/%s/pulls/%d" % (REPO, n))
+    if err or not isinstance(pr, dict):
+        return None
+    if pr.get("mergeable") is None:
+        # GitHub computes mergeability lazily: the first GET after the base
+        # moves answers null and starts the job. Measured on #321, the PR
+        # this rule was written about: null on the first ask.
+        time.sleep(float(os.environ.get("FLEET_MERGEABLE_WAIT", "3")))
+        again, err = gh_rest._api("repos/%s/pulls/%d" % (REPO, n))
+        if not err and isinstance(again, dict):
+            pr = again
+    sha = (pr.get("head") or {}).get("sha") or ""
+    runs, err = gh_rest._api("repos/%s/commits/%s/check-runs?per_page=100"
+                             % (REPO, sha))
+    if err or not isinstance(runs, dict):
+        return None
+    runs = runs.get("check_runs") or []
+    red = sorted({r.get("name") or "?" for r in runs
+                  if r.get("conclusion") in ("failure", "cancelled",
+                                             "timed_out", "action_required")})
+    if not runs:
+        ci = "never ran"
+    elif red:
+        ci = "red: " + ", ".join(red)
+    elif any(r.get("status") != "completed" for r in runs):
+        ci = "running"
+    else:
+        ci = "green"
+    return sha, pr.get("mergeable"), ci
+
+
+def labelled_at(n, label):
+    """When `label` was last added to PR/issue n, as a UTC datetime, or None."""
+    rows, err = gh_rest._paged(REPO, "issues/%d/events" % n, "")
+    if err:
+        return None
+    when = None
+    for e in rows:
+        if e.get("event") == "labeled" and \
+                (e.get("label") or {}).get("name") == label:
+            when = e.get("created_at") or when
+    if not when:
+        return None
+    return datetime.datetime.strptime(when, "%Y-%m-%dT%H:%M:%SZ") \
+                   .replace(tzinfo=datetime.timezone.utc)
+
+
+FOLD_STUCK_S = 3600
+
+
+def fold_watch(prs, terr, units, now=None):
+    """What the fold pipeline is waiting on, from each PR's live state.
+
+    -> (release, stuck, unread)
+
+      release  [(lane, pr, [files])]  a READY lane PR -- out of draft, CI
+               green on its head, its unit gone -- whose territory row still
+               holds files it has not released. roles/board.md: those files go
+               in `released = [...]` on the row, and the next lane may take
+               them. The row keeps them in `files`, for the audit and the fold.
+      stuck    [(pr, lane, age_s or None, reason, fixer)]  a `fold-ready` PR
+               that is CONFLICTING (at once: it cannot fold until someone
+               merges), or that has carried the label for FOLD_STUCK_S with
+               anything else in the way.
+      unread   int  PRs whose state gh would not give; said, never guessed.
+
+    WHY RELEASE AT READY. On 2026-09-26 this report counted 31 dispatchable
+    issues, 4 lanes running under a cap of 24, and every board tick said
+    "every issue needs a file another lane holds". Nine hot files were held
+    by lanes whose code was finished and waiting for two audits and the
+    one-at-a-time fold -- hours per PR, serialising the whole backlog.
+    """
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    rows = terr.get("lane") or {}
+    release, stuck, unread = [], [], 0
+    for p in prs:
+        if p.get("isDraft"):
+            continue
+        n = p["number"]
+        folding = "fold-ready" in p["labelset"]
+        meta = rows.get(p["lane"]) or {}
+        todo = [f for f in meta.get("files", [])
+                if f not in meta.get("released", [])]
+        # A remote lane's liveness is not a local unit, so "its unit is gone"
+        # is never known of it; its files are released by hand, if at all.
+        # And units=None (FLEET-BLIND) means no lane is known to have stopped.
+        cand = (todo and not p.get("remote") and units is not None
+                and p["lane"] not in units)
+        if not (folding or cand):
+            continue
+        st = pr_state(n)
+        if st is None:
+            unread += 1
+            continue
+        sha, mergeable, ci = st
+        if cand and ci == "green":
+            release.append((p["lane"], n, todo))
+        if not folding:
+            continue
+        since = labelled_at(n, "fold-ready")
+        age = (now - since).total_seconds() if since else None
+        if mergeable is False:
+            stuck.append((n, p["lane"], age, "CONFLICTING with master",
+                          "host-tools/unjam_index.sh if only the nv2a index "
+                          "conflicts, else handback.sh sends it back to the "
+                          "lane to merge master"))
+            continue
+        if age is None or age < FOLD_STUCK_S:
+            continue
+        if ci == "never ran":
+            why = "CI never ran on %s" % sha[:10]
+            fix = ("check mergeability first (no run is what a conflict "
+                   "leaves); else the lane pushes an empty commit "
+                   "'ci: build this head'")
+        elif ci.startswith("red"):
+            why = "CI %s on %s" % (ci, sha[:10])
+            fix = "handback.sh resumes the lane; read the failing check's date first"
+        elif ci == "running":
+            why = "CI still running on %s" % sha[:10]
+            fix = "wait for it; if it never settles, re-run it"
+        elif mergeable is None:
+            why = "GitHub has not computed mergeability"
+            fix = "the next fold tick asks again"
+        else:
+            why = "CI green and mergeable, and fold.sh has not taken it"
+            fix = "read $WORK/fold.log for why fold.sh skipped it"
+        stuck.append((n, p["lane"], age, why, fix))
+    return release, stuck, unread
+
+
+def released_files(terr):
+    """[(file, released_by, taken_by or None)] -- files freed at PR-ready.
+
+    A released file is AVAILABLE: the next lane may claim it. `taken_by` is
+    the row that has since claimed it without releasing it (check_territory.py
+    allows exactly one such row).
+    """
+    rows = terr.get("lane") or {}
+    out = []
+    for lane, meta in sorted(rows.items()):
+        for f in meta.get("released", []):
+            taken = [l for l, m in rows.items() if l != lane
+                     and f in m.get("files", []) and f not in m.get("released", [])]
+            out.append((f, lane, taken[0] if taken else None))
+    return out
+
+
 def main():
     fleet = load_fleet()
     # The board lives on the `board` branch when it exists, and in the tree
@@ -853,6 +1009,30 @@ def main():
             where = "unit up" if p["lane"] in units else "finished"
         print("  %-12s #%-5d %-9s %s"
               % (p["lane"], p["number"], where, (p.get("title") or "")[:60]))
+    # RELEASED AT READY. Available files: the board may start the next lane
+    # on one (roles/board.md), with a brief naming the ready PR it overlaps.
+    if pr_blind:
+        release, stuck, unread = [], [], 0
+    else:
+        release, stuck, unread = fold_watch(prs, terr,
+                                            None if fleet_blind else units)
+    freed = released_files(terr)
+    print("\n=== RELEASED AT READY -- available to the next lane (%d)"
+          % sum(1 for _, _, t in freed if not t))
+    for f, by, taken in freed:
+        print("  %-44s released by %-12s %s"
+              % (f, by, ("taken by " + taken) if taken else "AVAILABLE"))
+    if release:
+        print("  Ready PRs whose files are not released yet:")
+        for lane, n, files in release:
+            print("    %-12s #%-5d %s" % (lane, n, ", ".join(files)))
+    print("\n=== FOLD-READY, NOT FOLDING (%d)%s"
+          % (len(stuck), "  -- NOT COMPUTED, see PR-BLIND above" if pr_blind else ""))
+    for n, lane, age, why, fix in stuck:
+        print("  #%-5d %-12s %-7s %s" % (n, lane, age_s(age) if age else "?", why))
+    if unread:
+        print("  (%d PR(s) whose head, CI or label history gh would not give; "
+              "not judged)" % unread)
     print("\n=== BLOCKED (labelled `blocked`) (%d)" % len(waiting))
     for p in waiting:
         print("  %-12s #%-5d %s" % (p["lane"], p["number"], (p.get("title") or "")[:70]))
@@ -960,6 +1140,21 @@ def main():
               "A ready PR with no needs-audit-*/needs-remediation/fold-ready/"
               "folded label is stalled -- nothing else will pick it up."
               % (len(unfolded), ", ".join("#%d" % p["number"] for p in unfolded)),
+              file=sys.stderr)
+        rc = 1
+    # THE BOARD RELEASES, AND ONLY THE BOARD: territory.toml has one writer.
+    # Each line names the row and the files, so the edit is mechanical.
+    for lane, n, files in release:
+        print("FAIL: lane.%s's PR #%d is ready (out of draft, CI green, unit "
+              "gone) and its row still holds %d file(s) it has not released. "
+              "Add them to `released` on [lane.%s] (roles/board.md: release at "
+              "ready) so the next lane can start: %s"
+              % (lane, n, len(files), lane, ", ".join(files)), file=sys.stderr)
+        rc = 1
+    # A fold-ready PR that cannot fold is never a reason to wait silently.
+    for n, lane, age, why, fix in stuck:
+        print("FAIL: fold-ready PR #%d (lane.%s) is not folding%s: %s. Fix: %s."
+              % (n, lane, (" after " + age_s(age)) if age else "", why, fix),
               file=sys.stderr)
         rc = 1
     # NON-ZERO, LIKE THE OTHERS. `ghost` is printed and deliberately does not

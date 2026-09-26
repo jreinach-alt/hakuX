@@ -1,0 +1,245 @@
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 91453be..8eb4769 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -265,6 +265,7 @@ add_executable(
+         tests/lighting_control_tests.cpp
+         tests/lighting_control_tests.h
+         tests/lighting_normal_tests.cpp
++        tests/lighting_priming_tests.cpp
+         tests/lighting_normal_tests.h
+         tests/lighting_range_tests.cpp
+         tests/lighting_range_tests.h
+diff --git a/src/main.cpp b/src/main.cpp
+index 1dfd467..4f44155 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -73,6 +73,7 @@
+ #include "tests/lighting_accumulation_tests.h"
+ #include "tests/lighting_control_tests.h"
+ #include "tests/lighting_normal_tests.h"
++#include "tests/lighting_priming_tests.h"
+ #include "tests/lighting_range_tests.h"
+ #include "tests/lighting_spotlight_tests.h"
+ #include "tests/lighting_two_sided_tests.h"
+@@ -468,6 +469,7 @@ static void RegisterSuites(TestHost& host, RuntimeConfig& runtime_config,
+   // LightingNormalTests must be the first suite run for valid results. The first test in the suite depends on having a
+   // clean initial state.
+   REG_TEST(LightingNormalTests)
++  REG_TEST(LightingPrimingTests)
+ 
+   // Remaining tests should be alphabetized.
+   // -- Begin REG_TEST --
+diff --git a/src/tests/lighting_priming_tests.cpp b/src/tests/lighting_priming_tests.cpp
+new file mode 100644
+index 0000000..c88f425
+--- /dev/null
++++ b/src/tests/lighting_priming_tests.cpp
+@@ -0,0 +1,168 @@
++#include "lighting_priming_tests.h"
++
++#include <light.h>
++#include <pbkit/pbkit.h>
++#include <shaders/perspective_vertex_shader.h>
++#include <xbox_math_vector.h>
++
++#include <cmath>
++#include <utility>
++
++#include "shaders/perspective_vertex_shader_no_lighting.h"
++#include "test_host.h"
++
++static constexpr char kSuiteName[] = "Lighting priming";
++
++// hakuX #53. Tests run in name order, so each priming test runs immediately before the lit shader test after it.
++static constexpr char kTestPrimeDraws[] = "L0_FF";
++static constexpr char kTestLitDraws[] = "L0_VSdraws";
++static constexpr char kTestPrimeSingle[] = "L1_FF";
++static constexpr char kTestLitSingle[] = "L1_VSsingle";
++
++static constexpr vector_t kSceneAmbientColor{0.031373f, 0.031373f, 0.031373f, 0.f};
++
++// Pointing into the screen, so N.L for a normal tilted theta away from the camera is cos(theta).
++static constexpr vector_t kLightDir{0.f, 0.f, 1.f, 1.f};
++
++// cos(theta) of the eight priming vertices in draw order: P1 UL, UR, LR, LL, then P2 UL, UR, LR, LL.
++// Eight distinct values 0.1 apart, in no monotone order, so a corner's value names its source vertex.
++static constexpr float kPrimeCos[8] = {0.90f, 0.30f, 0.60f, 0.80f, 0.40f, 0.70f, 0.50f, 0.20f};
++
++// The lit shader quads' own normal faces the camera: N.L = 1, a value no priming vertex carries.
++static constexpr float kShaderQuadCos = 1.0f;
++
++LightingPrimingTests::LightingPrimingTests(TestHost& host, std::string output_dir, const Config& config)
++    : TestSuite(host, std::move(output_dir), kSuiteName, config) {
++  tests_[kTestPrimeDraws] = [this]() { TestPriming(kTestPrimeDraws); };
++  tests_[kTestLitDraws] = [this]() { TestLitShader(kTestLitDraws, false); };
++  tests_[kTestPrimeSingle] = [this]() { TestPriming(kTestPrimeSingle); };
++  tests_[kTestLitSingle] = [this]() { TestLitShader(kTestLitSingle, true); };
++}
++
++void LightingPrimingTests::Initialize() {
++  TestSuite::Initialize();
++
++  Pushbuffer::Begin();
++  Pushbuffer::Push(NV097_SET_LIGHTING_ENABLE, false);
++  Pushbuffer::Push3F(NV097_SET_SCENE_AMBIENT_COLOR, kSceneAmbientColor);
++  Pushbuffer::Push(NV097_SET_COLOR_MATERIAL, NV097_SET_COLOR_MATERIAL_ALL_FROM_MATERIAL);
++  Pushbuffer::Push(NV097_SET_MATERIAL_EMISSION, 0x0, 0x0, 0x0);
++  Pushbuffer::PushF(NV097_SET_MATERIAL_ALPHA, 1.0f);
++  Pushbuffer::Push(NV097_SET_SPECULAR_ENABLE, false);
++  Pushbuffer::Push(NV097_SET_LIGHT_CONTROL, NV097_SET_LIGHT_CONTROL_V_SEPARATE_SPECULAR);
++  Pushbuffer::End();
++
++  // The output is the diffuse colour alone.
++  host_.SetCombinerControl(1);
++  host_.SetInputColorCombiner(0, TestHost::SRC_DIFFUSE, false, TestHost::MAP_UNSIGNED_IDENTITY, TestHost::SRC_ZERO,
++                              false, TestHost::MAP_UNSIGNED_INVERT);
++  host_.SetInputAlphaCombiner(0, TestHost::SRC_DIFFUSE, true, TestHost::MAP_UNSIGNED_IDENTITY, TestHost::SRC_ZERO,
++                              false, TestHost::MAP_UNSIGNED_INVERT);
++  host_.SetOutputColorCombiner(0, TestHost::DST_DISCARD, TestHost::DST_DISCARD, TestHost::DST_R0);
++  host_.SetOutputAlphaCombiner(0, TestHost::DST_DISCARD, TestHost::DST_DISCARD, TestHost::DST_R0);
++  host_.SetFinalCombiner0Just(TestHost::SRC_R0);
++  host_.SetFinalCombiner1(TestHost::SRC_ZERO, false, false, TestHost::SRC_ZERO, false, false, TestHost::SRC_R0, true,
++                          false, false, false, true);
++}
++
++void LightingPrimingTests::SetupLight() {
++  auto light = DirectionalLight(0, kLightDir);
++  light.SetAmbient(0.f, 0.f, 0.f);
++  light.SetDiffuse(1.f, 0.f, 0.f);
++  light.SetSpecular(0.f, 0.f, 0.f);
++
++  vector_t eye{0.0f, 0.0f, -7.0f, 1.0f};
++  vector_t at{0.0f, 0.0f, 0.0f, 1.0f};
++  vector_t look_dir{0.f, 0.f, 0.f, 1.f};
++  VectorSubtractVector(at, eye, look_dir);
++  VectorNormalize(look_dir);
++  light.Commit(host_, look_dir);
++
++  Pushbuffer::Begin();
++  Pushbuffer::Push(NV097_SET_LIGHTING_ENABLE, true);
++  Pushbuffer::Push(NV097_SET_LIGHT_ENABLE_MASK, light.light_enable_mask());
++  Pushbuffer::End();
++}
++
++static void SetTiltedNormal(TestHost& host, float cos_theta) {
++  const float sin_theta = sqrtf(1.f - cos_theta * cos_theta);
++  host.SetNormal(sin_theta, 0.f, -cos_theta);
++}
++
++void LightingPrimingTests::TestPriming(const std::string& name) {
++  host_.SetXDKDefaultViewportAndFixedFunctionMatrices();
++  host_.SetVertexShaderProgram(nullptr);
++  host_.PrepareDraw(0xFE000000);
++  SetupLight();
++
++  // Two lit fixed function quads, each its own draw, whose eight vertices carry kPrimeCos in draw order.
++  static constexpr float kW = 160.f, kH = 120.f, kTop = 180.f;
++  const float lefts[2] = {80.f, 400.f};
++  vector_t world_point{0.f, 0.f, 0.f, 1.f};
++  for (int q = 0; q < 2; ++q) {
++    const float left = lefts[q], right = left + kW, bottom = kTop + kH;
++    const float xs[4] = {left, right, right, left};
++    const float ys[4] = {kTop, kTop, bottom, bottom};
++    host_.Begin(TestHost::PRIMITIVE_QUADS);
++    for (int v = 0; v < 4; ++v) {
++      SetTiltedNormal(host_, kPrimeCos[q * 4 + v]);
++      vector_t screen_point{xs[v], ys[v], 1.f, 1.f};
++      host_.UnprojectPoint(world_point, screen_point);
++      host_.SetVertex(world_point);
++    }
++    host_.End();
++    host_.PBKitBusyWait();
++  }
++
++  pb_print("%s\n", name.c_str());
++  pb_draw_text_screen();
++  FinishDraw(name);
++}
++
++void LightingPrimingTests::TestLitShader(const std::string& name, bool single_draw) {
++  host_.SetXDKDefaultViewportAndFixedFunctionMatrices();
++  float depth_buffer_max_value = host_.GetMaxDepthBufferValue();
++  auto shader = std::make_shared<PerspectiveVertexShaderNoLighting>(
++      host_.GetFramebufferWidth(), host_.GetFramebufferHeight(), 0.0f, depth_buffer_max_value, M_PI * 0.25f, 1.0f,
++      200.0f);
++  vector_t camera_position = {0.0f, 0.0f, -7.0f, 1.0f};
++  vector_t camera_look_at = {0.0f, 0.0f, 0.0f, 1.0f};
++  shader->LookAt(camera_position, camera_look_at);
++  host_.SetVertexShaderProgram(shader);
++
++  host_.PrepareDraw(0xFE000000);
++  SetupLight();
++
++  // Six lit quads under the vertex program, as six draws or as one.
++  static constexpr float kSize = 96.f, kPitch = 104.f, kLeft0 = 16.f, kTop = 192.f;
++  vector_t world_point{0.f, 0.f, 0.f, 1.f};
++  if (single_draw) {
++    host_.Begin(TestHost::PRIMITIVE_QUADS);
++  }
++  for (int q = 0; q < 6; ++q) {
++    const float left = kLeft0 + kPitch * q, right = left + kSize, bottom = kTop + kSize;
++    const float xs[4] = {left, right, right, left};
++    const float ys[4] = {kTop, kTop, bottom, bottom};
++    if (!single_draw) {
++      host_.Begin(TestHost::PRIMITIVE_QUADS);
++    }
++    for (int v = 0; v < 4; ++v) {
++      SetTiltedNormal(host_, kShaderQuadCos);
++      vector_t screen_point{xs[v], ys[v], 1.f, 1.f};
++      shader->UnprojectPoint(world_point, screen_point);
++      host_.SetVertex(world_point);
++    }
++    if (!single_draw) {
++      host_.End();
++      host_.PBKitBusyWait();
++    }
++  }
++  if (single_draw) {
++    host_.End();
++    host_.PBKitBusyWait();
++  }
++
++  pb_print("%s\n", name.c_str());
++  pb_draw_text_screen();
++  FinishDraw(name);
++}
+diff --git a/src/tests/lighting_priming_tests.h b/src/tests/lighting_priming_tests.h
+new file mode 100644
+index 0000000..98dfa7f
+--- /dev/null
++++ b/src/tests/lighting_priming_tests.h
+@@ -0,0 +1,33 @@
++#ifndef NXDK_PGRAPH_TESTS_LIGHTING_PRIMING_TESTS_H
++#define NXDK_PGRAPH_TESTS_LIGHTING_PRIMING_TESTS_H
++
++#include <string>
++
++#include "test_suite.h"
++
++class TestHost;
++
++namespace PBKitPlusPlus {}
++using namespace PBKitPlusPlus;
++
++/**
++ * hakuX #53: does a vertex program with LIGHTING_ENABLE read the fixed function lighting results of the
++ * preceding fixed function draw's final vertices, rather than its own?
++ *
++ * A priming test draws two lit fixed function quads whose eight vertices carry eight distinct N.L values.
++ * The test after it draws six lit quads under a vertex program, with a normal no priming vertex carries,
++ * either as six draws or as one.
++ */
++class LightingPrimingTests : public TestSuite {
++ public:
++  LightingPrimingTests(TestHost& host, std::string output_dir, const Config& config);
++
++  void Initialize() override;
++
++ private:
++  void TestPriming(const std::string& name);
++  void TestLitShader(const std::string& name, bool single_draw);
++  void SetupLight();
++};
++
++#endif  // NXDK_PGRAPH_TESTS_LIGHTING_PRIMING_TESTS_H
