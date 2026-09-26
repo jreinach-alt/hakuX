@@ -1,0 +1,151 @@
+== goldens vs models (24 quads per capture; rows bias -1,1,1.5,1k; cols m Lin,Exp,Exp2,1,0,-1k) ==
+INF linear     planar     golden uuuuuu uuuuuu uuuuuu uuuuuu  current 24/24  rule278 24/24
+INF linear     abs_planar golden uuuuuu uuuuuu uuuuuu uuuuuu  current 24/24  rule278 24/24
+INF linear     fog_x      golden uuuuuu uuuuuu uuuuuu uuuuuu  current 24/24  rule278 24/24
+INF linear     spec_alpha golden uuuuuu uuuuuu uuuuuu uuuuuu  current 24/24  rule278 24/24
+INF linear_abs planar     golden uuuuuu uuuuuu uuuuuu uuuuuu  current 24/24  rule278 24/24
+INF linear_abs abs_planar golden uuuuuu uuuuuu uuuuuu uuuuuu  current 24/24  rule278 24/24
+INF linear_abs fog_x      golden uuuuuu uuuuuu uuuuuu uuuuuu  current 24/24  rule278 24/24
+INF linear_abs spec_alpha golden uuuuuu uuuuuu uuuuuu uuuuuu  current 24/24  rule278 24/24
+INF exp        planar     golden uuuuFu uuuuFu uuuuuu uuuuuu  current 22/24  rule278 24/24
+INF exp        abs_planar golden uuuuFu uuuuFu uuuuuu uuuuuu  current 22/24  rule278 24/24
+INF exp        fog_x      golden uuuuFu uuuuFu uuuuuu uuuuuu  current 22/24  rule278 24/24
+INF exp        spec_alpha golden uuuuFu uuuuFu uuuuuu uuuuuu  current 22/24  rule278 24/24
+INF exp_abs    planar     golden FFFFFF FFFFFF FFFFuF FFFFFF  current 23/24  rule278 24/24
+INF exp_abs    abs_planar golden FFFFFF FFFFFF FFFFuF FFFFFF  current 23/24  rule278 24/24
+INF exp_abs    fog_x      golden FFFFFF FFFFFF FFFFuF FFFFFF  current 23/24  rule278 24/24
+INF exp_abs    spec_alpha golden FFFFFF FFFFFF FFFFuF FFFFFF  current 23/24  rule278 24/24
+INF exp2       planar     golden FFFFFF FFFFFF FFFFuF FFFFFF  current 23/24  rule278 24/24
+INF exp2       abs_planar golden FFFFFF FFFFFF FFFFuF FFFFFF  current 23/24  rule278 24/24
+INF exp2       fog_x      golden FFFFFF FFFFFF FFFFuF FFFFFF  current 23/24  rule278 24/24
+INF exp2       spec_alpha golden FFFFFF FFFFFF FFFFuF FFFFFF  current 23/24  rule278 24/24
+INF exp2_abs   planar     golden FFFFFF FFFFFF FFFFuF FFFFFF  current 23/24  rule278 24/24
+INF exp2_abs   abs_planar golden FFFFFF FFFFFF FFFFuF FFFFFF  current 23/24  rule278 24/24
+INF exp2_abs   fog_x      golden FFFFFF FFFFFF FFFFuF FFFFFF  current 23/24  rule278 24/24
+INF exp2_abs   spec_alpha golden FFFFFF FFFFFF FFFFuF FFFFFF  current 23/24  rule278 24/24
+NaN linear     planar     golden uuuuuu uuuuuu uuuuuu uuuuuu  current 24/24  rule278 24/24
+NaN linear     abs_planar golden uuuuuu uuuuuu uuuuuu uuuuuu  current 24/24  rule278 24/24
+NaN linear     fog_x      golden uuuuuu uuuuuu uuuuuu uuuuuu  current 24/24  rule278 24/24
+NaN linear     spec_alpha golden uuuuuu uuuuuu uuuuuu uuuuuu  current 24/24  rule278 24/24
+NaN linear_abs planar     golden uuuuuu uuuuuu uuuuuu uuuuuu  current 24/24  rule278 24/24
+NaN linear_abs abs_planar golden uuuuuu uuuuuu uuuuuu uuuuuu  current 24/24  rule278 24/24
+NaN linear_abs fog_x      golden uuuuuu uuuuuu uuuuuu uuuuuu  current 24/24  rule278 24/24
+NaN linear_abs spec_alpha golden uuuuuu uuuuuu uuuuuu uuuuuu  current 24/24  rule278 24/24
+NaN exp        planar     golden uuuuuu uuuuuu uuuuuu uuuuuu  current 24/24  rule278 24/24
+NaN exp        abs_planar golden uuuuuu uuuuuu uuuuuu uuuuuu  current 24/24  rule278 24/24
+NaN exp        fog_x      golden uuuuuu uuuuuu uuuuuu uuuuuu  current 24/24  rule278 24/24
+NaN exp        spec_alpha golden uuuuuu uuuuuu uuuuuu uuuuuu  current 24/24  rule278 24/24
+NaN exp_abs    planar     golden FFFFFF FFFFFF FFFFFF FFFFFF  current 24/24  rule278 24/24
+NaN exp_abs    abs_planar golden FFFFFF FFFFFF FFFFFF FFFFFF  current 24/24  rule278 24/24
+NaN exp_abs    fog_x      golden FFFFFF FFFFFF FFFFFF FFFFFF  current 24/24  rule278 24/24
+NaN exp_abs    spec_alpha golden FFFFFF FFFFFF FFFFFF FFFFFF  current 24/24  rule278 24/24
+NaN exp2       planar     golden FFFFFF FFFFFF FFFFFF FFFFFF  current 24/24  rule278 24/24
+NaN exp2       abs_planar golden FFFFFF FFFFFF FFFFFF FFFFFF  current 24/24  rule278 24/24
+NaN exp2       fog_x      golden FFFFFF FFFFFF FFFFFF FFFFFF  current 24/24  rule278 24/24
+NaN exp2       spec_alpha golden FFFFFF FFFFFF FFFFFF FFFFFF  current 24/24  rule278 24/24
+NaN exp2_abs   planar     golden FFFFFF FFFFFF FFFFFF FFFFFF  current 24/24  rule278 24/24
+NaN exp2_abs   abs_planar golden FFFFFF FFFFFF FFFFFF FFFFFF  current 24/24  rule278 24/24
+NaN exp2_abs   fog_x      golden FFFFFF FFFFFF FFFFFF FFFFFF  current 24/24  rule278 24/24
+NaN exp2_abs   spec_alpha golden FFFFFF FFFFFF FFFFFF FFFFFF  current 24/24  rule278 24/24
+
+== captures: /home/justin/hakux-work/dispatch/results/z-c866527e03-029-Fog_exceptional_value/captures1 ==
+INF linear     planar     structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+INF linear     abs_planar structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+INF linear     fog_x      structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+INF linear     spec_alpha structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+INF linear_abs planar     structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+INF linear_abs abs_planar structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+INF linear_abs fog_x      structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+INF linear_abs spec_alpha structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+INF exp        planar     structural   9029  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: b-1/m0:4096 b1/m0:4096  residual 837
+INF exp        abs_planar structural   9029  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: b-1/m0:4096 b1/m0:4096  residual 837
+INF exp        fog_x      structural   9029  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: b-1/m0:4096 b1/m0:4096  residual 837
+INF exp        spec_alpha structural   9029  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: b-1/m0:4096 b1/m0:4096  residual 837
+INF exp_abs    planar     structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+INF exp_abs    abs_planar structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+INF exp_abs    fog_x      structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+INF exp_abs    spec_alpha structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+INF exp2       planar     structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+INF exp2       abs_planar structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+INF exp2       fog_x      structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+INF exp2       spec_alpha structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+INF exp2_abs   planar     structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+INF exp2_abs   abs_planar structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+INF exp2_abs   fog_x      structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+INF exp2_abs   spec_alpha structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+NaN linear     planar     structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN linear     abs_planar structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN linear     fog_x      structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN linear     spec_alpha structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN linear_abs planar     structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN linear_abs abs_planar structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN linear_abs fog_x      structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN linear_abs spec_alpha structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN exp        planar     structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN exp        abs_planar structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN exp        fog_x      structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN exp        spec_alpha structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN exp_abs    planar     structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+NaN exp_abs    abs_planar structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+NaN exp_abs    fog_x      structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+NaN exp_abs    spec_alpha structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+NaN exp2       planar     structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+NaN exp2       abs_planar structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+NaN exp2       fog_x      structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+NaN exp2       spec_alpha structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+NaN exp2_abs   planar     structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+NaN exp2_abs   abs_planar structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+NaN exp2_abs   fog_x      structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+NaN exp2_abs   spec_alpha structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+INF exp-family: structural 85268, inside rule278's flipped quads 81920, residual 3348
+
+== captures: /home/justin/hakux-work/dispatch/results/1790359589-xbox-full6743-dry3-2802696/captures1 ==
+INF linear     planar     structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+INF linear     abs_planar structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+INF linear     fog_x      structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+INF linear     spec_alpha structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+INF linear_abs planar     structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+INF linear_abs abs_planar structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+INF linear_abs fog_x      structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+INF linear_abs spec_alpha structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+INF exp        planar     structural   9029  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: b-1/m0:4096 b1/m0:4096  residual 837
+INF exp        abs_planar structural   9029  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: b-1/m0:4096 b1/m0:4096  residual 837
+INF exp        fog_x      structural   9029  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: b-1/m0:4096 b1/m0:4096  residual 837
+INF exp        spec_alpha structural   9029  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: b-1/m0:4096 b1/m0:4096  residual 837
+INF exp_abs    planar     structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+INF exp_abs    abs_planar structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+INF exp_abs    fog_x      structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+INF exp_abs    spec_alpha structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+INF exp2       planar     structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+INF exp2       abs_planar structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+INF exp2       fog_x      structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+INF exp2       spec_alpha structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+INF exp2_abs   planar     structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+INF exp2_abs   abs_planar structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+INF exp2_abs   fog_x      structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+INF exp2_abs   spec_alpha structural   4096  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: b1.5/m0:4096  residual 0
+NaN linear     planar     structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN linear     abs_planar structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN linear     fog_x      structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN linear     spec_alpha structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN linear_abs planar     structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN linear_abs abs_planar structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN linear_abs fog_x      structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN linear_abs spec_alpha structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN exp        planar     structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN exp        abs_planar structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN exp        fog_x      structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN exp        spec_alpha structural    860  ours uuuuuu uuuuuu uuuuuu uuuuuu (==current model 24/24)  flipped: -  residual 860
+NaN exp_abs    planar     structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+NaN exp_abs    abs_planar structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+NaN exp_abs    fog_x      structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+NaN exp_abs    spec_alpha structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+NaN exp2       planar     structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+NaN exp2       abs_planar structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+NaN exp2       fog_x      structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+NaN exp2       spec_alpha structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+NaN exp2_abs   planar     structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+NaN exp2_abs   abs_planar structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+NaN exp2_abs   fog_x      structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+NaN exp2_abs   spec_alpha structural      0  ours FFFFFF FFFFFF FFFFFF FFFFFF (==current model 24/24)  flipped: -  residual 0
+INF exp-family: structural 85268, inside rule278's flipped quads 81920, residual 3348

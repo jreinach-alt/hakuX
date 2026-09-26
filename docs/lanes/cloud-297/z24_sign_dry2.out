@@ -1,0 +1,46 @@
+z24_Cn_FZn_M400002_ZB: 1522 px written on both sides
+  golden z in [       0,    65536): n     37  ours-golden min  -8 median  -8.0 max  -8  low     37 high      0
+  golden z in [   65536,  1048576): n    329  ours-golden min  -8 median  -7.0 max  -6  low    329 high      0
+  golden z in [ 1048576,  4194304): n   1156  ours-golden min  -8 median  -6.0 max   0  low   1140 high      0
+z24_Cn_FZn_M800001_ZB: 2916 px written on both sides
+  golden z in [       0,    65536): n     37  ours-golden min  -8 median  -8.0 max  -8  low     37 high      0
+  golden z in [   65536,  1048576): n    329  ours-golden min  -8 median  -7.0 max  -6  low    329 high      0
+  golden z in [ 1048576,  4194304): n   1156  ours-golden min  -8 median  -6.0 max   0  low   1140 high      0
+  golden z in [ 4194304,  8388608): n   1394  ours-golden min  -6 median  -4.0 max   0  low   1362 high      0
+z24_Cn_FZn_Mc00000_ZB: 5094 px written on both sides
+  golden z in [       0,    65536): n     37  ours-golden min  -8 median  -8.0 max  -8  low     37 high      0
+  golden z in [   65536,  1048576): n    329  ours-golden min  -8 median  -7.0 max  -6  low    329 high      0
+  golden z in [ 1048576,  4194304): n   1156  ours-golden min  -8 median  -6.0 max   0  low   1140 high      0
+  golden z in [ 4194304,  8388608): n   1394  ours-golden min  -6 median  -4.0 max   0  low   1362 high      0
+  golden z in [ 8388608, 12582912): n   2178  ours-golden min  -4 median  -1.0 max   2  low   1254 high    712
+z24_Cn_FZn_Mffffff_ZB: 147456 px written on both sides
+  golden z in [       0,    65536): n     37  ours-golden min  -8 median  -8.0 max  -8  low     37 high      0
+  golden z in [   65536,  1048576): n    329  ours-golden min  -8 median  -7.0 max  -6  low    329 high      0
+  golden z in [ 1048576,  4194304): n   1156  ours-golden min  -8 median  -6.0 max   0  low   1140 high      0
+  golden z in [ 4194304,  8388608): n   1394  ours-golden min  -6 median  -4.0 max   0  low   1362 high      0
+  golden z in [ 8388608, 12582912): n   2178  ours-golden min  -4 median  -1.0 max   2  low   1254 high    712
+  golden z in [12582912, 15728640): n   5516  ours-golden min  -1 median   1.0 max   4  low    110 high   4024
+  golden z in [15728640, 16777216): n 136846  ours-golden min  -1 median   4.0 max   6  low    160 high 135438
+z24_Cy_FZn_M400002_ZB: 1522 px written on both sides
+  golden z in [       0,    65536): n     37  ours-golden min  -8 median  -8.0 max  -8  low     37 high      0
+  golden z in [   65536,  1048576): n    329  ours-golden min  -8 median  -7.0 max  -6  low    329 high      0
+  golden z in [ 1048576,  4194304): n   1156  ours-golden min  -8 median  -6.0 max   0  low   1140 high      0
+z24_Cy_FZn_M800001_ZB: 2916 px written on both sides
+  golden z in [       0,    65536): n     37  ours-golden min  -8 median  -8.0 max  -8  low     37 high      0
+  golden z in [   65536,  1048576): n    329  ours-golden min  -8 median  -7.0 max  -6  low    329 high      0
+  golden z in [ 1048576,  4194304): n   1156  ours-golden min  -8 median  -6.0 max   0  low   1140 high      0
+  golden z in [ 4194304,  8388608): n   1394  ours-golden min  -6 median  -4.0 max   0  low   1362 high      0
+z24_Cy_FZn_Mc00000_ZB: 5094 px written on both sides
+  golden z in [       0,    65536): n     37  ours-golden min  -8 median  -8.0 max  -8  low     37 high      0
+  golden z in [   65536,  1048576): n    329  ours-golden min  -8 median  -7.0 max  -6  low    329 high      0
+  golden z in [ 1048576,  4194304): n   1156  ours-golden min  -8 median  -6.0 max   0  low   1140 high      0
+  golden z in [ 4194304,  8388608): n   1394  ours-golden min  -6 median  -4.0 max   0  low   1362 high      0
+  golden z in [ 8388608, 12582912): n   2178  ours-golden min  -4 median  -1.0 max   2  low   1254 high    712
+z24_Cy_FZn_Mffffff_ZB: 147456 px written on both sides
+  golden z in [       0,    65536): n     37  ours-golden min  -8 median  -8.0 max  -8  low     37 high      0
+  golden z in [   65536,  1048576): n    329  ours-golden min  -8 median  -7.0 max  -6  low    329 high      0
+  golden z in [ 1048576,  4194304): n   1156  ours-golden min  -8 median  -6.0 max   0  low   1140 high      0
+  golden z in [ 4194304,  8388608): n   1394  ours-golden min  -6 median  -4.0 max   0  low   1362 high      0
+  golden z in [ 8388608, 12582912): n   2178  ours-golden min  -4 median  -1.0 max   2  low   1254 high    712
+  golden z in [12582912, 15728640): n   5516  ours-golden min  -1 median   1.0 max   4  low    110 high   4024
+  golden z in [15728640, 16777216): n 136846  ours-golden min  -1 median   4.0 max   6  low    160 high 135438

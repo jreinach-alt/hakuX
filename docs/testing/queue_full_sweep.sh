@@ -75,7 +75,10 @@ LABEL="${2:-}"
 D="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}"
 GOLDENS="${GOLDENS:-/home/justin/goldens/results}"
 
-SHA=$(git rev-parse --short "$REF") || { echo "cannot resolve $REF" >&2; exit 2; }
+# Peel to the commit: an annotated tag resolves to its TAG OBJECT otherwise,
+# and every result row and "behind" count then names a sha that is not a
+# commit (v0.4.0-j1 wrote df3978f7b9, the tag, into 100 requests on 09-25).
+SHA=$(git rev-parse --short --verify "$REF^{commit}") || { echo "cannot resolve $REF" >&2; exit 2; }
 [ "$SHA" = "$REF" ] || echo "resolved $REF to $SHA" >&2
 
 # A LABEL MUST DESCRIBE THE CONTENT, NOT THE INTENT. An aspirational label is
