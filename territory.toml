@@ -1263,3 +1263,10 @@ issues = ["413"]
 files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/testing/dispatcher.sh", "docs/lanes/doa413b/**", "docs/testing/predictions/doa413b-*.json"]
 standing = false
 note = "STARTED (hostops 2026-09-26 14:10 PDT), briefs/doa413b.md: #413 (0.5) step 2 after PR #417: add xemu-surf:I to the soak logcat, pilot one Nova soak, price surface_update's sub-split (33-52 ms/frame in the fight) and cut it. vk/surface.c taken from lane.blinx372d's released-at-ready list (PR #396): merge that branch or master and re-run the arm before ready. dispatcher.sh is the serve path: needs audit and the host's update window."
+
+
+[lane.cloud-audit1-395]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit1-395, audit pass 1 of PR #395 on branch lane/ring53impl, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit1 395` removes this row when the unit ends."
