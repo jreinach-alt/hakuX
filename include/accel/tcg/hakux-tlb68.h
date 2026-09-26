@@ -24,7 +24,7 @@
 #define HAKUX_TCG311_KEEP_ARMED 0
 #endif
 #ifndef HAKUX_TCG311_TLB_BOUND
-#define HAKUX_TCG311_TLB_BOUND 1
+#define HAKUX_TCG311_TLB_BOUND 0
 #endif
 #if HAKUX_TCG311_KEEP_ARMED && HAKUX_TCG311_TLB_BOUND
 #error "#311: one fix hunk per binary; turn one of the two off"
