@@ -1106,4 +1106,4 @@ note = "DISPATCHED AT WAVE 222 (job.board, 2026-09-26T03:30Z). Four already-writ
 issues = []
 files = []
 standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-308, audit pass 2 of PR #308 on branch lane/perfarch, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 308` removes this row when the unit ends."
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-308, audit pass 2 of PR #308 on branch lane/perfarch, attempt 3 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 308` removes this row when the unit ends."
