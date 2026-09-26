@@ -2174,6 +2174,131 @@ extern volatile int32_t *xbox_ram_fp_cb_count_ptr;   /* tcg/tcg.c */
 static long surface_live_watches;
 static unsigned long surface_watch_inserts;
 
+/*
+ * #372: which part of the compatibility test an incompatible eviction in
+ * update_surface_part() failed. The eviction of a draw-dirty binding is a
+ * deferred download completed by a synchronous finish in the same
+ * surface_update, and the partner unshelved stale re-uploads it. Whether a
+ * GPU-side copy can replace that round trip depends on the failing field:
+ * a pitch or size mismatch between one host format is a copy, a role or
+ * format change is a conversion. Each bit is tested on its own, so a mask
+ * with several bits set means several fields differ, not a first failure.
+ */
+enum {
+    EVICT_WHY_ROLE = 1 << 0,     /* colour vs zeta                       */
+    EVICT_WHY_FORMAT = 1 << 1,   /* host vk_format                       */
+    EVICT_WHY_PITCH = 1 << 2,
+    EVICT_WHY_SMALL = 1 << 3,    /* held binding narrower or shorter     */
+    EVICT_WHY_SWIZZLE = 1 << 4,  /* swizzle differs, no clear rescued it */
+    EVICT_WHY_OVERLAP = 1 << 5,  /* colour would overlap the zeta range  */
+    EVICT_WHY_ZDIM = 1 << 6,     /* zeta dims differ from colour's       */
+    EVICT_WHY_BINS = 1 << 7,
+};
+
+typedef struct EvictSide {
+    bool color, swizzle;
+    int vk_format;
+    unsigned int pitch, width, height, bpp;
+} EvictSide;
+
+#define EVICT_PAIRS 8
+
+static struct {
+    unsigned long dirty[EVICT_WHY_BINS];  /* draw-dirty: took the download */
+    unsigned long clean[EVICT_WHY_BINS];
+    struct {
+        EvictSide from, to;
+        unsigned int why;
+        unsigned long n;
+    } pair[EVICT_PAIRS];
+    unsigned long pair_overflow;
+} g_evict372;
+
+static void evict372_side(EvictSide *e, SurfaceBinding const *s)
+{
+    /* Compared with memcmp, so the padding is zeroed first. */
+    memset(e, 0, sizeof(*e));
+    e->color = s->color;
+    e->swizzle = s->swizzle;
+    e->vk_format = s->host_fmt.vk_format;
+    e->pitch = s->pitch;
+    e->width = s->width;
+    e->height = s->height;
+    e->bpp = s->fmt.bytes_per_pixel;
+}
+
+static void evict372_record(SurfaceBinding const *held,
+                            SurfaceBinding const *target, unsigned int why)
+{
+    why &= EVICT_WHY_BINS - 1;
+    if (!held->draw_dirty) {
+        g_evict372.clean[why]++;
+        return;
+    }
+    g_evict372.dirty[why]++;
+
+    EvictSide from, to;
+    evict372_side(&from, held);
+    evict372_side(&to, target);
+    /*
+     * A full table replaces its least-counted pair, so pairs from the boot
+     * movies give way to the ones a later scene repeats every frame. n then
+     * counts from the replacement, and overflow counts replacements.
+     */
+    int victim = 0;
+    for (int i = 0; i < EVICT_PAIRS; i++) {
+        if (g_evict372.pair[i].n == 0) {
+            victim = i;
+            break;
+        }
+        if (!memcmp(&g_evict372.pair[i].from, &from, sizeof(from)) &&
+            !memcmp(&g_evict372.pair[i].to, &to, sizeof(to)) &&
+            g_evict372.pair[i].why == why) {
+            g_evict372.pair[i].n++;
+            return;
+        }
+        if (g_evict372.pair[i].n < g_evict372.pair[victim].n) {
+            victim = i;
+        }
+    }
+    if (g_evict372.pair[victim].n) {
+        g_evict372.pair_overflow++;
+    }
+    g_evict372.pair[victim].from = from;
+    g_evict372.pair[victim].to = to;
+    g_evict372.pair[victim].why = why;
+    g_evict372.pair[victim].n = 1;
+}
+
+static void evict372_log(void)
+{
+    char masks[512];
+    int len = 0;
+    masks[0] = '\0';
+    for (int m = 0; m < EVICT_WHY_BINS && len < (int)sizeof(masks) - 48; m++) {
+        if (g_evict372.dirty[m] || g_evict372.clean[m]) {
+            len += snprintf(masks + len, sizeof(masks) - len,
+                            " m%02x:%lu/%lu", m, g_evict372.dirty[m],
+                            g_evict372.clean[m]);
+        }
+    }
+    SURF92_LOG("[evict372] dirty/clean by mask (1role 2fmt 4pitch 8small "
+               "10swz 20ovl 40zdim):%s overflow=%lu",
+               masks, g_evict372.pair_overflow);
+    for (int i = 0; i < EVICT_PAIRS && g_evict372.pair[i].n; i++) {
+        EvictSide const *f = &g_evict372.pair[i].from;
+        EvictSide const *t = &g_evict372.pair[i].to;
+        SURF92_LOG("[evict372] pair%d n=%lu m%02x %c f%d %s p%u %ux%u b%u -> "
+                   "%c f%d %s p%u %ux%u b%u",
+                   i, g_evict372.pair[i].n, g_evict372.pair[i].why,
+                   f->color ? 'C' : 'Z', f->vk_format,
+                   f->swizzle ? "sz" : "ln", f->pitch, f->width, f->height,
+                   f->bpp, t->color ? 'C' : 'Z', t->vk_format,
+                   t->swizzle ? "sz" : "ln", t->pitch, t->width, t->height,
+                   t->bpp);
+    }
+}
+
 static void surface_watch_log_periodic(PGRAPHVkState *r)
 {
     static int64_t next_ns;
@@ -2207,6 +2332,7 @@ static void surface_watch_log_periodic(PGRAPHVkState *r)
                surface_watch_suspends, surface_watch_rearms,
                surface_watch_gap_writes, surface_watch_lost_writes);
     qemu_rec_mutex_unlock(&surface_watch_lock);
+    evict372_log();
 }
 
 static void unregister_cpu_access_callback(SurfaceBinding *surface)
@@ -3777,6 +3903,14 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
         if (surface != NULL) {
             bool is_compatible =
                 check_surface_compatibility(surface, &target, false);
+            unsigned int evict_why =
+                (surface->color != target.color ? EVICT_WHY_ROLE : 0) |
+                (surface->host_fmt.vk_format != target.host_fmt.vk_format ?
+                     EVICT_WHY_FORMAT : 0) |
+                (surface->pitch != target.pitch ? EVICT_WHY_PITCH : 0) |
+                (surface->width < target.width ||
+                         surface->height < target.height ?
+                     EVICT_WHY_SMALL : 0);
 
             void (*trace_fn)(uint32_t addr, uint32_t width, uint32_t height,
                              const char *layout, uint32_t anti_aliasing,
@@ -3801,8 +3935,10 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                 // destined to be cleared and (2) a fully cleared linear surface
                 // to be marked swizzled. Strictly match size to avoid
                 // pathological cases.
-                is_compatible &= (pg->clearing || surface->cleared) &&
+                bool rescued = (pg->clearing || surface->cleared) &&
                     check_surface_compatibility(surface, &target, true);
+                is_compatible &= rescued;
+                evict_why |= rescued ? 0 : EVICT_WHY_SWIZZLE;
                 if (is_compatible) {
                     trace_nv2a_pgraph_surface_migrate_type(
                         target.swizzle ? "swizzled" : "linear");
@@ -3818,11 +3954,13 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                 hwaddr zeta_end = zeta_entry.vram_addr + zeta_entry.size;
                 is_compatible &= surface->vram_addr >= zeta_end ||
                                  zeta_entry.vram_addr >= color_end;
+                evict_why |= is_compatible ? 0 : EVICT_WHY_OVERLAP;
             }
 
             if (is_compatible && !color && r->color_binding) {
                 is_compatible &= (surface->width == r->color_binding->width) &&
                                  (surface->height == r->color_binding->height);
+                evict_why |= is_compatible ? 0 : EVICT_WHY_ZDIM;
             }
 
             if (is_compatible) {
@@ -3886,6 +4024,7 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                 trace_nv2a_pgraph_surface_evict_reason(
                     "incompatible", surface->vram_addr);
                 compare_surfaces(surface, &target);
+                evict372_record(surface, &target, evict_why);
                 /*
                  * Same contract as invalidate_overlapping_surfaces(): the
                  * binding that replaces this one uploads from VRAM in this
