@@ -3,8 +3,10 @@
 # The fold job. Runs from hakux-fold.timer every 30 minutes; a script, no
 # model session.
 #
-#   fold.sh          fold the oldest fold-ready PR whose CI is green
-#   fold.sh list     what it would fold, and why the rest waits
+#   fold.sh          repair or hand back every conflicting PR in the pipeline,
+#                    then fold up to FOLD_MAX_PER_TICK fold-ready PRs whose CI
+#                    is green and whose files are disjoint
+#   fold.sh list     what it would do, and why the rest waits
 #   fold.sh prune    what the one-time sweep WOULD delete (a dry run)
 #   fold.sh prune --apply
 #                    sweep every lane ref already fully merged into the trunk
@@ -27,8 +29,9 @@
 # keeps its sha and every prediction's b_ref stays an ancestor forever
 # (docs/ORCHESTRATION-DESIGN.md §8.1). It happens in a private worktree that
 # nothing else touches; the owner's checkout is never dirtied and never
-# detached. One fold per tick: each fold is a new tree and runs CI on master,
-# and two folds ten seconds apart cannot be told apart in that run.
+# detached. Up to three folds per tick, and only of PRs whose files are
+# disjoint -- see "more than one fold per tick" below for why, and for what
+# happens when master's CI goes red after such a tick.
 #
 # WHAT MAKES A PR FOLD-READY is the label, and the label is set by the
 # auditor (pass 2 clean) or by the board (a docs/NOTES-only PR needs no
@@ -133,6 +136,7 @@ hand_back() {   # <pr> <branch> <head> <files> -> the lane's PR labelled needs-r
     printf 'label=needs-rebase\nbranch=%s\nhead=%s\nfiles=%s\nat=%s\n' \
         "$branch" "$head" "$files" "$(date -u '+%FT%TZ')" > "$WORK/handback/cause/$pr-$head"
     label_rm "$pr" fold-ready; label_add "$pr" needs-rebase || say "  WARNING: could not label #$pr needs-rebase"
+    T_HANDED+=("#$pr")
 }
 
 # ------------------------------------------ the second: the generated index
@@ -209,8 +213,8 @@ resolve_index_only() {   # <worktree> -> 0 when the merge is left fully staged w
     git -C "$wt" checkout --ours -- "$INDEX" && git -C "$wt" add -- "$INDEX" || { WHY="could not stage master's index"; return 1; }
     [ -z "$(git -C "$wt" diff --name-only --diff-filter=U)" ] || return 1
 }
-regen_index() {   # <wt> <pr> -> 0 index checks (committed on top if rebuilt); 2 cannot pin; 1 refused
-    local wt=$1 pr=$2 tc have n p
+regen_index() {   # <wt> <pr> [commit message] -> 0 index checks (committed on top if rebuilt); 2 cannot pin; 1 refused
+    local wt=$1 pr=$2 msg="${3:-nv2a index: regenerate after folding #$2}" tc have n p
     WHY=""
     git -C "$wt" cat-file -e "HEAD:$INDEX" 2>/dev/null || { WHY="no $INDEX in the merged tree"; return 2; }
     tc=$(tests_commit_of "$wt" HEAD)
@@ -227,7 +231,7 @@ regen_index() {   # <wt> <pr> -> 0 index checks (committed on top if rebuilt); 2
         n=$(suites_of "$wt" "$p"); [ -n "$n" ] || continue
         [ "$have" -ge "$n" ] || { WHY="the rebuilt index has $have suites, $p's has $n"; return 1; }
     done
-    git -C "$wt" add -- "$INDEX" && git -C "$wt" commit -q -m "nv2a index: regenerate after folding #$pr" \
+    git -C "$wt" add -- "$INDEX" && git -C "$wt" commit -q -m "$msg" \
         || { WHY="the rebuilt index would not commit"; return 1; }
 }
 INDEX_PY=docs/testing/nv2a_index.py
@@ -452,24 +456,213 @@ board_gate_report() {   # <pr> <head> <gates>
 It has now been failing for more than $((BOARD_GATE_STUCK_SECS / 3600))h, which is far longer than the board takes to repair itself, so it wants a person: run \`python3 docs/testing/check_coverage.py\` and \`python3 docs/testing/check_territory.py\` against \`origin/master\` with \`origin/board\` fetched. This is the only comment this job will make about this head."
 }
 
+# ------------------------------------------------ what this tick did, in one place
+# Every tick ends with ONE summary line in tick.log naming each PR it touched
+# and what became of it: repaired, folded, handed back, or waiting and on
+# what. The per-PR lines above it stay; this is the line a person reads first.
+T_REPAIRED=(); T_FOLDED=(); T_HANDED=(); T_WAITING=()
+tick_summary() {
+    local j; j() { local IFS=' '; printf '%s' "${*:-none}"; }
+    say "tick: repaired $(j "${T_REPAIRED[@]}"); folded $(j "${T_FOLDED[@]}"); handed back $(j "${T_HANDED[@]}"); waiting $(j "${T_WAITING[@]}")"
+}
+
+# ------------------------------------------ a conflict is not a CI wait
+# GITHUB RUNS NO CI ON A PULL REQUEST THAT DOES NOT MERGE. So the CI gate below
+# read a conflicting PR as `NONE`, logged "CI is NONE on <sha>; waiting" every
+# tick and waited forever: the conflict path is only reached after a GREEN.
+# On 2026-09-26 four PRs holding the hot pgraph files -- #268 (psh.c), #321
+# (vsh-ff.c, geom.c), #330 (pgraph.c), #332 (vk/draw.c) -- conflicted with
+# master in the generated index and nothing else, and every issue that needed
+# one of those files waited behind them: 31 dispatchable issues, 4 lanes
+# running. The host repaired all four by hand in five minutes. This is that
+# repair, as the first thing every tick does.
+#
+# IT COVERS THE WHOLE PIPELINE, NOT ONLY fold-ready. A lane holds its files
+# until its PR folds, so a PR in audit that conflicts holds them exactly as
+# long as a fold-ready one does. Every open, non-draft PR carrying one of
+# $PIPELINE_LABELS is asked.
+#
+# WHETHER IT CONFLICTS is GitHub's `mergeable` (the list API says UNKNOWN until
+# something asks, so an UNKNOWN is asked again per PR) and WHERE is `git
+# merge-tree` against a fresh fetch of the trunk. merge-tree has the last word:
+# a CONFLICTING that merge-tree reads clean is a stale answer, and waits.
+#
+#   the index alone      repaired ON THE LANE BRANCH: master merged in, the
+#                        index resolved and regenerated over the pins exactly
+#                        as a fold does, then a fast-forward push. Refused
+#                        when the lane's unit is running (it will do this
+#                        itself), when its branch moved during the repair,
+#                        and wherever the resolver refuses -- two
+#                        tests_commits, no pins. A MERGE, never a rebase: the
+#                        lane's commits keep their shas, so every registered
+#                        prediction's refs stay ancestors.
+#   anything else        handed back THIS tick: needs-rebase, the cause file
+#                        naming the files, and handback.sh -- called at the
+#                        end of this tick -- resumes the lane with them. A lane
+#                        that has spent its attempts is not resumed into a
+#                        refusal; the PR gets a decision-needed comment.
+#
+# Each PR is acted on once per head: a lane that pushes produces a new head
+# and a new answer, an unchanged branch does not produce a second comment.
+PIPELINE_LABELS="fold-ready needs-audit-1 needs-audit-2 needs-rebase"
+LANE_MAX_ATTEMPTS="${LANE_MAX_ATTEMPTS:-$(sed -n 's/^LANE_MAX_ATTEMPTS=\([0-9][0-9]*\).*/\1/p' "$(dirname "${BASH_SOURCE[0]}")/models.env" 2>/dev/null)}"
+LANE_MAX_ATTEMPTS="${LANE_MAX_ATTEMPTS:-4}"
+
+CX_TIP=""
+cx_tip() {   # -> 0 with CX_TIP the trunk head on a fresh fetch, once per tick
+    [ -n "$CX_TIP" ] && return 0
+    git -C "$REPO" fetch -q origin "+refs/heads/$TIP:refs/remotes/origin/$TIP" 2>/dev/null || return 1
+    CX_TIP=$(git -C "$REPO" rev-parse -q --verify "refs/remotes/origin/$TIP^{commit}" 2>/dev/null)
+    [ -n "$CX_TIP" ]
+}
+CX_FILES=""
+merge_conflicts() {   # <branch> <head> -> 0 clean; 1 conflict, CX_FILES "a b "; 2 cannot tell
+    CX_FILES=""
+    cx_tip || return 2
+    git -C "$REPO" cat-file -e "$2^{commit}" 2>/dev/null \
+        || git -C "$REPO" fetch -q origin "+refs/heads/$1:refs/remotes/origin/$1" 2>/dev/null
+    git -C "$REPO" cat-file -e "$2^{commit}" 2>/dev/null || return 2
+    local out rc
+    out=$(git -C "$REPO" merge-tree --write-tree --name-only --no-messages "$CX_TIP" "$2" 2>/dev/null); rc=$?
+    case $rc in
+    0) return 0 ;;
+    1) CX_FILES=$(printf '%s\n' "$out" | sed 1d | grep . | sort -u | tr '\n' ' ')
+       [ -n "$CX_FILES" ] && return 1 ;;
+    esac
+    return 2
+}
+lane_of() {   # <branch> -> the lane name, for lane/<name> with no further slash
+    local b="${1#lane/}"
+    [ "$b" != "$1" ] && [[ "$b" =~ ^[A-Za-z0-9._-]+$ ]] && printf '%s\n' "$b"
+}
+unit_active() { systemctl --user is-active --quiet "hakux-lane-$1" 2>/dev/null; }
+
+REPAIRED_SHA=""
+repair_index_conflict() {   # <pr> <branch> <head> -> 0 pushed; 1 refused, hand it back; 3 wait (WHY either way)
+    local pr=$1 branch=$2 head=$3 name live rc pins
+    WHY=""; REPAIRED_SHA=""
+    name=$(lane_of "$branch") || { WHY="\`$branch\` is not a lane/<name> branch, so no lane unit can be checked before pushing to it"; return 1; }
+    if is_remote_branch "$branch" 2>/dev/null; then
+        WHY="\`$branch\` is a remote lane's branch; a session this host cannot see pushes to it"; return 1
+    fi
+    unit_active "$name" && { WHY="lane.$name's unit is running; it brings $TIP in itself"; return 3; }
+    if [ ! -e "$WT/.git" ]; then
+        git -C "$REPO" fetch -q origin "$TIP" && git -C "$REPO" worktree add --quiet --detach "$WT" FETCH_HEAD \
+            || { WHY="cannot create $WT"; return 3; }
+    fi
+    git -C "$WT" fetch -q origin "+refs/heads/$TIP:refs/remotes/origin/$TIP" "+refs/heads/$branch:refs/remotes/origin/$branch" 2>/dev/null \
+        || { WHY="fetch failed"; return 3; }
+    live=$(git -C "$WT" rev-parse -q --verify "refs/remotes/origin/$branch^{commit}" 2>/dev/null)
+    [ "$live" = "$head" ] || { WHY="$branch moved (${head:0:10} -> ${live:0:10}) since the PR was read"; return 3; }
+    git -C "$WT" reset -q --hard && git -C "$WT" clean -qfd && git -C "$WT" checkout -q --detach "refs/remotes/origin/$TIP" \
+        || { WHY="cannot reset $WT"; return 3; }
+    # 1. the trunk's tree, with the lane merged into it and nothing committed
+    if git -C "$WT" merge --no-ff --no-commit "$head" >"$F/repair.log" 2>&1; then
+        git -C "$WT" merge --abort 2>/dev/null
+        WHY="it merges cleanly into $TIP now"; return 3
+    fi
+    # 2. the resolver the fold uses, unchanged: master's index staged
+    if ! resolve_index_only "$WT"; then
+        live=$(git -C "$WT" diff --name-only --diff-filter=U | tr '\n' ' ')
+        [ -n "$WHY" ] || WHY="the conflict is not the index alone: $live"
+        git -C "$WT" merge --abort 2>/dev/null; return 1
+    fi
+    pins="nxdk_pgraph_tests @ $(git -C "$PIN_TESTS" rev-parse --short=12 HEAD) and pbkitplusplus @ $(git -C "$PIN_SUPPORT" rev-parse --short=12 HEAD)"
+    git -C "$WT" commit -q -m "Merge $TIP into $branch: only $INDEX conflicted (fold job)" \
+        -m "The fold job's repair of PR #$pr: $TIP's copy of the index was taken and is regenerated over $pins in the next commit if it is stale. Nothing in it was hand-merged, and nothing else conflicted." \
+        || { git -C "$WT" merge --abort 2>/dev/null; WHY="the resolved merge would not commit"; return 1; }
+    # 3 and 4. regenerate over the pins; regen_index runs the check itself
+    regen_index "$WT" "$pr" "nv2a index: regenerate after merging $TIP into $branch (#$pr)"; rc=$?
+    [ "$rc" = 0 ] || { WHY="the index did not regenerate: $WHY"; return 1; }
+    # 5. the lane's head is an ancestor, and origin still holds it
+    git -C "$WT" merge-base --is-ancestor "$head" HEAD \
+        || { WHY="the repaired commit does not descend from ${head:0:10}"; return 1; }
+    live=$(git -C "$WT" ls-remote origin "refs/heads/$branch" 2>/dev/null | cut -f1)
+    [ "$live" = "$head" ] || { WHY="$branch moved during the repair (now ${live:0:10})"; return 3; }
+    unit_active "$name" && { WHY="lane.$name's unit started during the repair"; return 3; }
+    # Never forced: a push that is not a fast-forward of $head is rejected by
+    # origin, which is the last guard against a lane that pushed just now.
+    git -C "$WT" push -q origin "HEAD:refs/heads/$branch" 2>"$F/push.log" \
+        || { WHY="push rejected: $(tail -1 "$F/push.log")"; return 3; }
+    REPAIRED_SHA=$(git -C "$WT" rev-parse HEAD)
+    REPAIR_PINS="$pins"
+}
+
+conflict_handback() {   # <pr> <branch> <head> <files> [why]
+    local pr=$1 branch=$2 head=$3 files=$4 why="${5:-}" m="$F/failed/$1-$3-conflict" name n
+    if [ -f "$m" ]; then
+        T_WAITING+=("#$pr(handed-back:lane)"); return 0
+    fi
+    name=$(lane_of "$branch"); n=0
+    [ -n "$name" ] && n=$(cat "$WORK/attempts/$name" 2>/dev/null || echo 0)
+    [[ "$n" =~ ^[0-9]+$ ]] || n=0
+    if [ -n "$name" ] && [ "$n" -ge "$LANE_MAX_ATTEMPTS" ]; then
+        echo "decision-needed $CX_TIP" > "$m"
+        say "#$pr $branch: CONFLICT in $files; lane.$name has used $n of $LANE_MAX_ATTEMPTS attempts, so decision-needed, not handed back"
+        T_WAITING+=("#$pr(decision-needed)")
+        comment "$pr" "[job.fold] decision-needed: merging \`$branch\` into \`$TIP\` at \`${CX_TIP:0:10}\` conflicts in \`$files\`${why:+ ($why)}, and lane \`$name\` has used $n of its $LANE_MAX_ATTEMPTS attempts, so a resume would be refused. The owner decides whether to reset its attempts (\`lane.sh reset $name\`) or resolve this by hand. This is the only comment this job will make about this head."
+        return 0
+    fi
+    echo "handed-back $CX_TIP" > "$m"
+    say "#$pr $branch: CONFLICT in $files${why:+($why)}; handed back this tick"
+    hand_back "$pr" "$branch" "$head" "$files"
+    comment "$pr" "[job.fold] Not folded: merging \`$branch\` into \`$TIP\` at \`${CX_TIP:0:10}\` conflicts in: \`$files\`${why:+ -- $why}. GitHub runs no CI on a PR that does not merge, so this would otherwise wait on \`CI NONE\` forever. The fold job resolves only the generated index; this needs the lane. Merge \`origin/$TIP\` into the lane branch (merge, never rebase), resolve, push, then re-apply \`fold-ready\`."
+}
+
+declare -A CX_SEEN=()   # PRs the conflict pass answered for this tick; the CI gate skips them
+conflict_pass() {
+    local rows pr branch head draft mg labels rc l inpipe
+    rows=$(gh pr list --repo "$GH_REPO" --state open --limit 200 --json number,headRefName,headRefOid,isDraft,mergeable,labels \
+               --jq 'sort_by(.number)[] | "\(.number)\t\(.headRefName)\t\(.headRefOid)\t\(.isDraft)\t\(.mergeable)\t\([.labels[].name] | join(","))"' 2>/dev/null)
+    while IFS=$'\t' read -r pr branch head draft mg labels; do
+        [[ "$pr" =~ ^[0-9]+$ ]] && [[ "$head" =~ ^[0-9a-f]{40}$ ]] && [ "$draft" = false ] || continue
+        inpipe=""
+        for l in $PIPELINE_LABELS; do has_label "$labels" "$l" && inpipe=1; done
+        [ -n "$inpipe" ] || continue
+        [ "$mg" = UNKNOWN ] && mg=$(gh pr view "$pr" --repo "$GH_REPO" --json mergeable --jq .mergeable 2>/dev/null)
+        [ "$mg" = CONFLICTING ] || [ "$mg" = UNKNOWN ] || continue
+        merge_conflicts "$branch" "$head"; rc=$?
+        if [ "$rc" = 0 ]; then
+            [ "$mg" = CONFLICTING ] && say "#$pr $branch: GitHub says CONFLICTING, but it merges cleanly into $TIP ${CX_TIP:0:10}; GitHub's answer is stale, next tick"
+            continue
+        fi
+        if [ "$rc" = 2 ]; then
+            [ "$mg" = CONFLICTING ] && CX_SEEN[$pr]=1
+            [ "$mg" = CONFLICTING ] && { say "#$pr $branch: CONFLICTING, and this host cannot read where (no fetch or no object)"; T_WAITING+=("#$pr(conflict:unread)"); }
+            continue
+        fi
+        CX_SEEN[$pr]=1
+        if [ "$CX_FILES" = "$INDEX " ]; then
+            if [ "$mode" = list ]; then echo "#$pr $branch @ ${head:0:10}: CONFLICTS in $INDEX alone; WOULD REPAIR on the lane branch"; continue; fi
+            if [ -f "$F/failed/$pr-$head-conflict" ]; then T_WAITING+=("#$pr(handed-back:lane)"); continue; fi
+            say "#$pr $branch @ ${head:0:10}: conflicts with $TIP ${CX_TIP:0:10} in $INDEX alone; repairing on the lane branch"
+            repair_index_conflict "$pr" "$branch" "$head"; rc=$?
+            case $rc in
+            0)  say "  repaired #$pr: $branch ${head:0:10} -> ${REPAIRED_SHA:0:10} ($TIP merged in, index regenerated over $REPAIR_PINS)"
+                T_REPAIRED+=("#$pr")
+                comment "$pr" "[job.fold] Repaired: \`$branch\` conflicted with \`$TIP\` only in \`$INDEX\`, so the fold job merged \`$TIP\` @ \`${CX_TIP:0:10}\` into it and regenerated the index over $REPAIR_PINS (\`${head:0:10}\` -> \`${REPAIRED_SHA:0:10}\`, a fast-forward: no commit of yours changed sha). Pull before you next push: \`git pull --ff-only\`." ;;
+            3)  say "  #$pr not repaired this tick: $WHY"; T_WAITING+=("#$pr(repair-deferred)") ;;
+            *)  say "  #$pr not repaired: $WHY"
+                conflict_handback "$pr" "$branch" "$head" "$INDEX " "$WHY" ;;
+            esac
+            continue
+        fi
+        # A code conflict. A PR that already carries needs-rebase is handback.sh's.
+        if has_label "$labels" needs-rebase; then
+            [ "$mode" = list ] || T_WAITING+=("#$pr(needs-rebase:lane)")
+            continue
+        fi
+        if [ "$mode" = list ]; then echo "#$pr $branch @ ${head:0:10}: CONFLICTS in $CX_FILES; WOULD HAND BACK"; continue; fi
+        conflict_handback "$pr" "$branch" "$head" "$CX_FILES"
+    done <<< "$rows"
+}
+
 # ------------------------------------------------------------ candidates
 # `labels` rides along on the one list call this job makes, and the title stays
 # LAST: it is the only free-text field, and the read below gives the last
 # variable everything after its own tab, so free text in any other position
 # would end up inside a field a gate keys on.
-cands=$(gh pr list --repo "$GH_REPO" --state open --label fold-ready --json number,title,headRefName,headRefOid,isDraft,labels \
-            --jq 'sort_by(.number)[] | "\(.number)\t\(.headRefName)\t\(.headRefOid)\t\(.isDraft)\t\([.labels[].name] | join(","))\t\(.title)"' 2>/dev/null)
-# NOTHING TO FOLD IS NOT NOTHING TO DO. This used to `exit 0` here, which also
-# skipped the `handback.sh` tail call at the bottom of this file -- and none of
-# handback's causes is the `fold-ready` label. A PR handed back carries
-# `needs-rebase` and has had `fold-ready` REMOVED; a lane stranded in draft
-# never had it. So the one state in which nothing folds -- every open PR is
-# handed back, or waiting, or a draft nobody will touch -- was exactly the
-# state in which the actor for all of them did not run either. Fall through:
-# the loop below reads an empty `$cands` as zero candidates and the tail runs.
-if [ -z "$cands" ]; then
-    [ "$mode" = list ] && echo "nothing labelled fold-ready"
-fi
+# (read below, after the conflict pass: a repair moves a head)
 
 ci_green() {   # <pr> -> 0 when every check on the head has concluded SUCCESS (or was skipped)
     gh pr view "$1" --repo "$GH_REPO" --json statusCheckRollup --jq '
@@ -779,7 +972,330 @@ Remove \`$bad\` when you add it. This is the only comment this job will make abo
     comment "$pr" "$body"
 }
 
-folded=0
+# ------------------------------------------------ more than one fold per tick
+# ONE FOLD PER TICK WAS THE BACKLOG'S CLOCK. A lane holds its files until its
+# PR folds, and nearly every accuracy fix touches one of about nine hot pgraph
+# files, so every fold-ready PR queued behind the one before it at one per
+# 30-minute tick ("#350 waits: one fold per tick") while issues needing those
+# files could not be dispatched at all.
+#
+# So a tick folds up to $FOLD_MAX_PER_TICK, sequentially, each on the trunk
+# the previous one pushed and through every gate a single fold passes -- CI
+# green on its head, the merge, the index, preflight on the merged tree, the
+# push. Only PRs whose diffs touch DISJOINT files share a tick; the generated
+# index is not counted, since it is regenerated on every fold and never
+# merged. A PR whose files cannot be read folds only as a tick's first.
+#
+# THE ORDER is how many dispatchable issues wait on the PR's files: for each
+# issue the board marks `dispatch_state = "available"` and no lane row claims,
+# its files are the ones nv2a_index.json places its suites' registers in, and
+# a PR scores one per such issue its diff touches. It is a proxy -- the index
+# knows registers, not the fix an issue will need -- and ties keep PR order.
+#
+# TWO PRS GREEN APART CAN BE RED TOGETHER. Each PR's CI ran on its own head,
+# not on the trunk with the other folds of its tick in it. So a tick that
+# folds more than one records them in $F/multi/<the trunk head it left>, and
+# each later tick reads master's CI on that head:
+#   GREEN        done.
+#   pending      at most ONE fold this tick, so the attribution below still
+#                has a tick to attribute.
+#   RED          and the trunk before the tick was not already red: the LAST
+#                fold of the tick is reverted first, and nothing folds until
+#                the revert's CI answers. GREEN names that PR, red together
+#                with the others, and hands it back; RED re-lands it and
+#                names the others as the suspects, for a person.
+FOLD_MAX_PER_TICK="${FOLD_MAX_PER_TICK:-3}"
+MULTI="$F/multi"; mkdir -p "$MULTI"
+HOLD=""    # "" | one | all: what attribute_multi leaves this tick allowed to fold
+
+# CANCELLED is dropped, not counted red: a newer push cancelling an older run
+# is concurrency, not a verdict about this commit. Any failure is RED even
+# while other runs are still going. In a variable so the self-test runs this
+# exact text through the real jq; its gh shim never would.
+TRUNK_CI_JQ='[.check_runs[]? | if .status != "completed" then "PENDING" else ((.conclusion // "") | ascii_upcase) end
+         | select(. != "CANCELLED")] as $c
+        | if ($c | length) == 0 then "NONE"
+          elif ($c | any(. == "FAILURE" or . == "TIMED_OUT" or . == "STARTUP_FAILURE" or . == "ACTION_REQUIRED")) then "RED"
+          elif ($c | all(. == "SUCCESS" or . == "SKIPPED" or . == "NEUTRAL")) then "GREEN"
+          else "PENDING" end'
+trunk_ci() {   # <sha> -> GREEN|RED|PENDING|NONE for the push runs on a trunk commit
+    gh api "repos/$GH_REPO/commits/$1/check-runs" --jq "$TRUNK_CI_JQ" 2>/dev/null
+}
+
+trunk_wt() {   # -> 0 with $WT clean and detached at a fresh origin/$TIP
+    if [ ! -e "$WT/.git" ]; then
+        git -C "$REPO" fetch -q origin "$TIP" && git -C "$REPO" worktree add --quiet --detach "$WT" FETCH_HEAD || return 1
+    fi
+    git -C "$WT" fetch -q origin "+refs/heads/$TIP:refs/remotes/origin/$TIP" 2>/dev/null || return 1
+    git -C "$WT" reset -q --hard && git -C "$WT" clean -qfd && git -C "$WT" checkout -q --detach "refs/remotes/origin/$TIP"
+}
+REVERT_SHA=""
+REVERT_BEFORE=""
+revert_range() {   # <pr> <before> <after> <subject> <body> -> 0 with the revert pushed to $TIP as REVERT_SHA
+    local pr=$1 before=$2 after=$3 c rc
+    REVERT_SHA=""; REVERT_BEFORE=""; WHY=""
+    trunk_wt || { WHY="cannot prepare $WT"; return 1; }
+    REVERT_BEFORE=$(git -C "$WT" rev-parse HEAD)
+    # Newest first, first-parent only: the fold's merge and the index commit
+    # on top of it, and nothing the lane brought with it separately.
+    for c in $(git -C "$WT" rev-list --first-parent "$before..$after"); do
+        if git -C "$WT" rev-parse -q --verify "$c^2" >/dev/null 2>&1; then
+            git -C "$WT" revert --no-commit -m 1 "$c" >>"$F/revert.log" 2>&1
+        else
+            git -C "$WT" revert --no-commit "$c" >>"$F/revert.log" 2>&1
+        fi || { git -C "$WT" revert --abort 2>/dev/null; git -C "$WT" reset -q --hard; WHY="the revert of ${c:0:10} does not apply to $TIP"; return 1; }
+    done
+    git -C "$WT" commit -q -m "$4" -m "$5" || { WHY="the revert would not commit"; return 1; }
+    regen_index "$WT" "$pr" "nv2a index: regenerate after reverting #$pr"; rc=$?
+    [ "$rc" = 1 ] && { WHY="the index did not regenerate after the revert: $WHY"; return 1; }
+    git -C "$WT" push -q origin "HEAD:$TIP" 2>"$F/push.log" || { WHY="push rejected: $(tail -1 "$F/push.log")"; return 1; }
+    REVERT_SHA=$(git -C "$WT" rev-parse HEAD)
+}
+
+attribute_multi() {
+    local rec sha st base pr branch before after others rpr rv rvb rest p
+    for rec in "$MULTI"/*; do
+        [ -f "$rec" ] || continue
+        grep -q '^done' "$rec" && continue
+        sha=${rec##*/}
+        others=$(awk '$1=="fold"{printf "#%s ", $2}' "$rec"); others="${others% }"
+        read -r _ pr branch before after <<< "$(grep '^fold ' "$rec" | tail -1)"
+        if ! grep -q '^reverted ' "$rec"; then
+            st=$(trunk_ci "$sha")
+            case "$st" in
+            GREEN)
+                echo "done green" >> "$rec"
+                say "master CI GREEN on ${sha:0:10} after folding $others in one tick" ;;
+            RED)
+                base=$(awk '$1=="base"{print $2}' "$rec")
+                if [ "$(trunk_ci "$base")" = RED ]; then
+                    echo "done base-red" >> "$rec"
+                    say "master CI RED on ${sha:0:10} after folding $others, but it was already red at ${base:0:10} before that tick; not attributed to the tick"
+                    continue
+                fi
+                HOLD=all
+                say "master CI RED on ${sha:0:10} after folding $others in one tick; reverting the last, #$pr, to attribute it"
+                if ! revert_range "$pr" "$before" "$after" "fold: revert #$pr to attribute master's red at ${sha:0:10}" \
+                     "master's CI went red on ${sha:0:10}, the tip after one tick folded $others. Each was green on its own head; the last fold of the tick is reverted first and the next CI run says whether it was this one."; then
+                    echo "done revert-failed" >> "$rec"
+                    say "  could not revert #$pr: $WHY. Needs a person: master is red after folding $others"
+                    continue
+                fi
+                echo "reverted $pr $REVERT_SHA $REVERT_BEFORE" >> "$rec"
+                say "  reverted #$pr as ${REVERT_SHA:0:10}; nothing folds until its CI answers"
+                comment "$pr" "[job.fold] Reverted from \`$TIP\` as \`${REVERT_SHA:0:10}\`: master's CI went red on \`${sha:0:10}\`, the tip after one tick folded $others. This was the last fold of that tick, so it is reverted first to attribute the red; master's next CI run says whether it was this PR. Nothing needs doing yet." ;;
+            *)
+                [ -n "$HOLD" ] || HOLD=one
+                say "master CI ${st:-UNREAD} on ${sha:0:10} after folding $others in one tick; at most one fold until it reports" ;;
+            esac
+            continue
+        fi
+        read -r _ rpr rv rvb <<< "$(grep '^reverted ' "$rec" | tail -1)"
+        rest=$(printf '%s\n' $others | grep -vx "#$rpr" | tr '\n' ' '); rest="${rest% }"
+        st=$(trunk_ci "$rv")
+        case "$st" in
+        GREEN)
+            echo "done culprit $rpr" >> "$rec"
+            say "master CI GREEN on the revert ${rv:0:10}: #$rpr is red together with $rest (each green apart); handed back"
+            label_rm "$rpr" folded
+            hand_back "$rpr" "$branch" "$after" "none: reverted from $TIP, red together with $rest "
+            comment "$rpr" "[job.fold] **Attributed: this PR is red together with $rest.** Each was green on its own head, and one tick folded them all; master's CI went red on \`${sha:0:10}\`, and reverting this PR (\`${rv:0:10}\`) turned it green again. So the red is the combination, not this PR alone and not the others alone.
+
+To re-land it, on the lane branch:
+
+\`\`\`
+git fetch origin $TIP && git merge origin/$TIP   # brings in the revert; merge, never rebase
+git revert ${rv:0:10}                              # restores this PR's changes
+# fix the interaction with $rest, push, and re-apply fold-ready once CI is green
+\`\`\`" ;;
+        RED)
+            echo "done not $rpr" >> "$rec"
+            say "master CI still RED on the revert ${rv:0:10}: the red after folding $others is not #$rpr's alone; re-landing it"
+            if revert_range "$rpr" "$rvb" "$rv" \
+                   "fold: re-land #$rpr; reverting it did not turn master green" "Reverting #$rpr (${rv:0:10}) left master red, so the red after the tick that folded $others is not its alone."; then
+                say "  re-landed #$rpr as ${REVERT_SHA:0:10}; suspects: $rest, or the trunk itself. Needs a person."
+            else
+                say "  could not re-land #$rpr: $WHY. Needs a person."
+            fi
+            comment "$rpr" "[job.fold] Not this PR: reverting it (\`${rv:0:10}\`) left master red, so the red after the tick that folded $others is not its alone. ${REVERT_SHA:+It is re-landed as \`${REVERT_SHA:0:10}\`.}${REVERT_SHA:-The re-land did not apply; the revert stands until a person re-lands it.}"
+            for p in $rest; do
+                comment "${p#\#}" "[job.fold] master's CI went red on \`${sha:0:10}\` after one tick folded $others, and reverting #$rpr did not turn it green. This PR is one of the remaining suspects ($rest, or the trunk itself); a person decides."
+            done ;;
+        *)
+            HOLD=all
+            say "master CI ${st:-UNREAD} on the revert ${rv:0:10} of #$rpr; nothing folds until it answers" ;;
+        esac
+    done
+}
+
+fold_priority() {   # stdin "pr<TAB>file file ..." -> stdout "pr<TAB>score", same order
+    python3 -c '
+import json, subprocess, sys
+sys.path.insert(0, sys.argv[1])
+rows = [l.rstrip("\n").split("\t", 1) for l in sys.stdin if l.strip()]
+score = {r[0]: 0 for r in rows}
+try:
+    from board_files import load
+    issues = load("nv2a_issues.toml").get("issue", {})
+    terr = load("territory.toml")
+    claimed = {str(i) for row in (terr.get("lane") or {}).values() for i in (row.get("issues") or [])}
+    idx = json.loads(subprocess.run(["git", "-C", sys.argv[2], "show", sys.argv[3] + ":docs/testing/nv2a_index.json"],
+                                    capture_output=True, check=True).stdout)
+    for n, e in issues.items():
+        if (e.get("dispatch_state") or "") != "available" or n in claimed:
+            continue
+        fs = set()
+        for s in (idx.get("issues", {}).get(n) or e).get("suites") or []:
+            for sym in (idx.get("suites", {}).get(s) or {}).get("symbols") or []:
+                for site in idx.get("sites", {}).get(sym) or []:
+                    fs.add(site["loc"].rsplit(":", 1)[0])
+        for r in rows:
+            if len(r) > 1 and fs & set(r[1].split()):
+                score[r[0]] += 1
+except Exception:
+    pass
+for r in rows:
+    print("%s\t%d" % (r[0], score[r[0]]))
+' "$T" "$REPO" "refs/remotes/origin/$TIP" 2>/dev/null
+}
+
+pr_files() {   # <branch> -> the files the PR changes against the trunk, the index excepted; non-zero when unreadable
+    git -C "$REPO" fetch -q origin "+refs/heads/$TIP:refs/remotes/origin/$TIP" "+refs/heads/$1:refs/remotes/origin/$1" 2>/dev/null || return 1
+    local out; out=$(git -C "$REPO" diff --name-only "refs/remotes/origin/$TIP...refs/remotes/origin/$1" 2>/dev/null) || return 1
+    printf '%s\n' "$out" | grep -vxF "$INDEX" | grep . | tr '\n' ' '
+    return 0
+}
+
+FOLD_BEFORE=""; FOLD_AFTER=""; tick_tip=""
+fold_one() {   # <pr> <branch> <head> <accepted|-> <title> -> 0 folded and pushed, FOLD_BEFORE/FOLD_AFTER set
+    local pr=$1 branch=$2 head=$3 accepted=$4 title=$5 notes_moved index_taken files rc gates merge_sha
+    [ "$accepted" = - ] && accepted=""
+    FOLD_BEFORE=""; FOLD_AFTER=""
+    # ---------------------------------------------------------- the fold
+    say "folding #$pr $branch @ ${head:0:10}: $title"
+    [ -n "$accepted" ] && say "  it is labelled regressed; folding on regression-accepted:#$accepted"
+    if [ ! -e "$WT/.git" ]; then
+        git -C "$REPO" fetch -q origin "$TIP" && git -C "$REPO" worktree add --quiet --detach "$WT" FETCH_HEAD || { say "cannot create $WT"; return 1; }
+    fi
+    git -C "$WT" fetch -q origin "$TIP" "$branch" || { say "fetch failed"; return 1; }
+    git -C "$WT" reset -q --hard && git -C "$WT" clean -qfd && git -C "$WT" checkout -q --detach "origin/$TIP"
+    FOLD_BEFORE=$(git -C "$WT" rev-parse HEAD)
+    notes_moved=""; index_taken=""
+    if ! git -C "$WT" merge --no-ff --no-edit -m "fold: PR #$pr $branch -- $title" "origin/$branch" >"$F/merge.log" 2>&1; then
+        files=$(git -C "$WT" diff --name-only --diff-filter=U | tr '\n' ' ')
+        if resolve_root_notes "$WT" "$branch"; then
+            notes_moved=$(notes_path "$branch")
+            git -C "$WT" commit -q -m "fold: PR #$pr $branch -- $title" \
+                -m "The lane's root NOTES.md conflicted with master's and nothing else did; its copy is at $notes_moved (roles/lane.md item 3). No content was merged or dropped." \
+                || { git -C "$WT" merge --abort 2>/dev/null; say "#$pr NOTES.md resolved but the merge would not commit"; return 1; }
+            say "  only root NOTES.md conflicted; the lane's copy is at $notes_moved"
+        elif resolve_index_only "$WT"; then
+            index_taken=1
+            git -C "$WT" commit -q -m "fold: PR #$pr $branch -- $title" \
+                -m "$INDEX conflicted with master's and nothing else did. master's copy was taken, and the index gate below checks it over nxdk_pgraph_tests @ $(git -C "$PIN_TESTS" rev-parse --short=12 HEAD) and pbkitplusplus @ $(git -C "$PIN_SUPPORT" rev-parse --short=12 HEAD) and regenerates it on top if it is stale. Nothing in it was hand-merged." \
+                || { git -C "$WT" merge --abort 2>/dev/null; say "#$pr index resolved but the merge would not commit"; return 1; }
+            say "  only $INDEX conflicted; master's copy taken, to be regenerated over the pinned trees"
+        else
+            [ -n "$WHY" ] && say "  $INDEX is the only conflict, but not resolved here: $WHY"
+            git -C "$WT" merge --abort 2>/dev/null
+            say "#$pr CONFLICT in: $files"
+            # RECORD THE CAUSE; DO NOT ACT ON IT. `needs-rebase` was set by this
+            # job, shown by status.sh, and acted on by nothing -- the lane it hands
+            # the PR back to is a transient unit that exited with its session. The
+            # actor is jobs/handback.sh, called at the end of this tick. This job
+            # knows the conflicting files and nothing downstream does, so it writes
+            # them down here; handback.sh works without the file (a PR labelled by
+            # hand, or by a fold from before this line existed) and quotes it when
+            # it is there. Keyed on the head sha, so a lane that pushes produces a
+            # new cause and an unchanged branch does not.
+            hand_back "$pr" "$branch" "$head" "$files"
+            comment "$pr" "[job.fold] Not folded: merging \`$branch\` into \`$TIP\` conflicts in: \`$files\`. The fold job resolves nothing (a merge it does not understand is how a fix was reverted on 09-12). Merge \`origin/$TIP\` into the lane branch, resolve there, push, then re-apply \`fold-ready\`."
+            return 1
+        fi
+    fi
+    # The index: regenerate if the merge moved it, never hand-merge it, and
+    # only over the pinned trees (see resolve_index_only). A clean merge that
+    # cannot pin skips the gate, as a host without the sources always has; an
+    # index conflict that was resolved above may not, since its copy is known
+    # to be master's and not this merge's.
+    regen_index "$WT" "$pr"; rc=$?
+    if [ "$rc" = 2 ] && [ -z "$index_taken" ]; then
+        say "  note: $WHY; index gate skipped (CI runs it on master)"
+    elif [ "$rc" != 0 ]; then
+        echo "index regeneration failed: $WHY" > "$F/failed/$pr-$head"; say "  index regeneration FAILED: $WHY"
+        if [ -n "$index_taken" ]; then
+            hand_back "$pr" "$branch" "$head" "$INDEX "
+            comment "$pr" "[job.fold] Not folded: the nv2a index did not regenerate cleanly after the merge (see the host's \$WORK/fold/index.log): $WHY. It was the only conflicting file, so master's copy was taken to be rebuilt over the pinned trees, and that rebuild is what failed. Merge \`origin/$TIP\` into the lane branch, regenerate the index there, push, then re-apply \`fold-ready\`."
+        else
+            comment "$pr" "[job.fold] Not folded: the nv2a index did not regenerate cleanly after the merge (see the host's \$WORK/fold/index.log). Needs a person."
+        fi
+        return 1
+    fi
+    # The fast local gates. The tracker gate is the board's, not this PR's.
+    if ! (cd "$WT" && bash docs/testing/preflight.sh --allow-tracker >"$F/preflight.log" 2>&1); then
+        gates=$(preflight_failed_gates "$F/preflight.log" | tr '\n' ' '); gates="${gates% }"
+        # The second half of "the PR's own tree cannot cause it": board_files
+        # PREFERS `origin/board` and FALLS BACK to the worktree copy, so for as
+        # long as that transition lasts a PR that edits those two files could
+        # in fact fail these gates by itself. It is barred from editing them
+        # and --allow-tracker has already stopped asking -- so ask here, where
+        # the answer decides whether a head is written off forever.
+        if preflight_board_only "$F/preflight.log" \
+           && [ -z "$(git -C "$WT" diff --name-only "origin/$TIP...origin/$branch" -- $TRACKER_FILES 2>/dev/null)" ]; then
+            say "  preflight: only the board's own gates failed ($gates); NOT marking this head, retrying next tick"
+            board_gate_report "$pr" "$head" "$gates"
+            return 1
+        fi
+        echo "preflight failed${gates:+: $gates}" > "$F/failed/$pr-$head"
+        say "  preflight FAILED: $(grep -m3 FAILED "$F/preflight.log" | tr '\n' ' ')"
+        comment "$pr" "[job.fold] Not folded: preflight fails on the merged tree:
+\`\`\`
+$(grep -B1 -A3 FAILED "$F/preflight.log" | head -30)
+\`\`\`
+Fix on the lane branch and push; the next green head is re-tried."
+        return 1
+    fi
+    if ! git -C "$WT" push -q origin "HEAD:$TIP" 2>"$F/push.log"; then
+        say "  push to $TIP rejected (it moved?): $(tail -1 "$F/push.log"); next tick retries"
+        return 1
+    fi
+    merge_sha=$(git -C "$WT" rev-parse --short HEAD)
+    git -C "$REPO" fetch -q origin "$TIP" 2>/dev/null
+    label_rm "$pr" fold-ready; label_add "$pr" folded || say "  WARNING: #$pr is folded but could not be labelled folded; remove fold-ready by hand or the next tick folds it again"
+    comment "$pr" "[job.fold] Folded as \`$merge_sha\` on \`$TIP\` (--no-ff; every commit keeps its sha, so registered refs stay bound). CI now runs on $TIP; the arms job picks up any prediction this PR carries.${accepted:+
+
+This PR is labelled \`regressed\`, and it folded **because the regression is accepted on #$accepted** -- a \`regression-accepted\` label naming that issue -- and not because the gate missed it. The failing verdict above stands as measured; #$accepted is where the trade it is part of is argued.}${notes_moved:+
+
+Your branch's root \`NOTES.md\` conflicted with the one already on \`$TIP\` and nothing else did, so it was moved to \`$notes_moved\` rather than merged -- both lanes' records are on $TIP, each at its own path. That is where \`roles/lane.md\` item 3 now asks for it; write it there next time and no fold has to touch it.}"
+    say "  folded #$pr as $merge_sha"
+    # HEAD is the commit the push above just put on $TIP, so it IS the trunk's
+    # tip -- a stronger proof than origin/$TIP, which is one fetch stale here.
+    # Only reached after that push succeeded: a branch deleted on a fold that
+    # failed to push is work destroyed.
+    prune_branch "$WT" "$branch" HEAD
+    FOLD_AFTER=$(git -C "$WT" rev-parse HEAD)
+    return 0
+}
+
+# ------------------------------------------------------------------ the tick
+[ "$mode" = list ] || attribute_multi
+conflict_pass
+
+cands=$(gh pr list --repo "$GH_REPO" --state open --label fold-ready --json number,title,headRefName,headRefOid,isDraft,labels \
+            --jq 'sort_by(.number)[] | "\(.number)\t\(.headRefName)\t\(.headRefOid)\t\(.isDraft)\t\([.labels[].name] | join(","))\t\(.title)"' 2>/dev/null)
+# NOTHING TO FOLD IS NOT NOTHING TO DO. This used to `exit 0` here, which also
+# skipped the `handback.sh` tail call at the bottom of this file -- and none of
+# handback's causes is the `fold-ready` label. A PR handed back carries
+# `needs-rebase` and has had `fold-ready` REMOVED; a lane stranded in draft
+# never had it. So the one state in which nothing folds -- every open PR is
+# handed back, or waiting, or a draft nobody will touch -- was exactly the
+# state in which the actor for all of them did not run either. Fall through:
+# the loop below reads an empty `$cands` as zero candidates and the tail runs.
+if [ -z "$cands" ]; then
+    [ "$mode" = list ] && echo "nothing labelled fold-ready"
+fi
+
+READY=()
 while IFS=$'\t' read -r pr branch head draft labels title; do
     [ -n "$pr" ] || continue
     if [ "$draft" = true ]; then
@@ -787,6 +1303,24 @@ while IFS=$'\t' read -r pr branch head draft labels title; do
         [ "$mode" = list ] && { echo "#$pr $branch: DRAFT"; continue; }
         label_rm "$pr" fold-ready || say "  WARNING: could not remove fold-ready from #$pr; it will be re-tried every tick"
         comment "$pr" "[job.fold] Not folded: the PR is still a draft. Mark it ready (\`gh pr ready $pr\`) and re-apply \`fold-ready\`."
+        continue
+    fi
+    # A PR the conflict pass answered for this tick -- repaired onto a head
+    # with no CI yet, handed back, or deferred -- would read here as CI NONE,
+    # and NONE's comment blames a skip marker. The conflict pass has said what
+    # is true about it already.
+    [ -n "${CX_SEEN[$pr]:-}" ] && continue
+    # STILL IN AUDIT IS NOT FOLD-READY, whatever else the PR carries. A PR in
+    # audit that conflicts is handed back above with its audit label kept, and
+    # handback.sh relabels a resolved needs-rebase as fold-ready without
+    # asking about audit; the audit label is the truth. Nothing is removed:
+    # the audit that clears its label leaves the fold-ready it finds.
+    inaudit=""
+    for l in needs-audit-1 needs-audit-2 needs-remediation; do has_label "$labels" "$l" && inaudit=$l; done
+    if [ -n "$inaudit" ]; then
+        [ "$mode" = list ] && { echo "#$pr $branch: still in audit ($inaudit)"; continue; }
+        say "#$pr $branch: carries $inaudit as well as fold-ready; waits for the audit"
+        T_WAITING+=("#$pr(audit:$inaudit)")
         continue
     fi
     # The regression gate, before the CI call: it costs nothing (the labels
@@ -819,6 +1353,7 @@ while IFS=$'\t' read -r pr branch head draft labels title; do
         fi
         [ "$mode" = list ] && echo "#$pr $branch: CI $ci"
         say "#$pr $branch: CI is $ci on $head; waiting"
+        T_WAITING+=("#$pr(CI:$ci)")
         ci_report "$pr" "$head" "$ci"
         continue
     fi
@@ -826,112 +1361,73 @@ while IFS=$'\t' read -r pr branch head draft labels title; do
         [ "$mode" = list ] && echo "#$pr $branch: failed before on this head ($(cat "$F/failed/$pr-$head"))"
         continue
     fi
-    if [ "$mode" = list ]; then echo "#$pr $branch @ ${head:0:10}: WOULD FOLD${accepted:+ (regression accepted on #$accepted)}"; continue; fi
-    [ "$folded" -eq 0 ] || { say "#$pr waits: one fold per tick"; continue; }
-
-    # ---------------------------------------------------------- the fold
-    say "folding #$pr $branch @ ${head:0:10}: $title"
-    [ -n "$accepted" ] && say "  it is labelled regressed; folding on regression-accepted:#$accepted"
-    if [ ! -e "$WT/.git" ]; then
-        git -C "$REPO" fetch -q origin "$TIP" && git -C "$REPO" worktree add --quiet --detach "$WT" FETCH_HEAD || { say "cannot create $WT"; exit 1; }
-    fi
-    git -C "$WT" fetch -q origin "$TIP" "$branch" || { say "fetch failed"; continue; }
-    git -C "$WT" reset -q --hard && git -C "$WT" clean -qfd && git -C "$WT" checkout -q --detach "origin/$TIP"
-    notes_moved=""; index_taken=""
-    if ! git -C "$WT" merge --no-ff --no-edit -m "fold: PR #$pr $branch -- $title" "origin/$branch" >"$F/merge.log" 2>&1; then
-        files=$(git -C "$WT" diff --name-only --diff-filter=U | tr '\n' ' ')
-        if resolve_root_notes "$WT" "$branch"; then
-            notes_moved=$(notes_path "$branch")
-            git -C "$WT" commit -q -m "fold: PR #$pr $branch -- $title" \
-                -m "The lane's root NOTES.md conflicted with master's and nothing else did; its copy is at $notes_moved (roles/lane.md item 3). No content was merged or dropped." \
-                || { git -C "$WT" merge --abort 2>/dev/null; say "#$pr NOTES.md resolved but the merge would not commit"; continue; }
-            say "  only root NOTES.md conflicted; the lane's copy is at $notes_moved"
-        elif resolve_index_only "$WT"; then
-            index_taken=1
-            git -C "$WT" commit -q -m "fold: PR #$pr $branch -- $title" \
-                -m "$INDEX conflicted with master's and nothing else did. master's copy was taken, and the index gate below checks it over nxdk_pgraph_tests @ $(git -C "$PIN_TESTS" rev-parse --short=12 HEAD) and pbkitplusplus @ $(git -C "$PIN_SUPPORT" rev-parse --short=12 HEAD) and regenerates it on top if it is stale. Nothing in it was hand-merged." \
-                || { git -C "$WT" merge --abort 2>/dev/null; say "#$pr index resolved but the merge would not commit"; continue; }
-            say "  only $INDEX conflicted; master's copy taken, to be regenerated over the pinned trees"
-        else
-            [ -n "$WHY" ] && say "  $INDEX is the only conflict, but not resolved here: $WHY"
-            git -C "$WT" merge --abort 2>/dev/null
-            say "#$pr CONFLICT in: $files"
-            # RECORD THE CAUSE; DO NOT ACT ON IT. `needs-rebase` was set by this
-            # job, shown by status.sh, and acted on by nothing -- the lane it hands
-            # the PR back to is a transient unit that exited with its session. The
-            # actor is jobs/handback.sh, called at the end of this tick. This job
-            # knows the conflicting files and nothing downstream does, so it writes
-            # them down here; handback.sh works without the file (a PR labelled by
-            # hand, or by a fold from before this line existed) and quotes it when
-            # it is there. Keyed on the head sha, so a lane that pushes produces a
-            # new cause and an unchanged branch does not.
-            hand_back "$pr" "$branch" "$head" "$files"
-            comment "$pr" "[job.fold] Not folded: merging \`$branch\` into \`$TIP\` conflicts in: \`$files\`. The fold job resolves nothing (a merge it does not understand is how a fix was reverted on 09-12). Merge \`origin/$TIP\` into the lane branch, resolve there, push, then re-apply \`fold-ready\`."
-            continue
-        fi
-    fi
-    # The index: regenerate if the merge moved it, never hand-merge it, and
-    # only over the pinned trees (see resolve_index_only). A clean merge that
-    # cannot pin skips the gate, as a host without the sources always has; an
-    # index conflict that was resolved above may not, since its copy is known
-    # to be master's and not this merge's.
-    regen_index "$WT" "$pr"; rc=$?
-    if [ "$rc" = 2 ] && [ -z "$index_taken" ]; then
-        say "  note: $WHY; index gate skipped (CI runs it on master)"
-    elif [ "$rc" != 0 ]; then
-        echo "index regeneration failed: $WHY" > "$F/failed/$pr-$head"; say "  index regeneration FAILED: $WHY"
-        if [ -n "$index_taken" ]; then
-            hand_back "$pr" "$branch" "$head" "$INDEX "
-            comment "$pr" "[job.fold] Not folded: the nv2a index did not regenerate cleanly after the merge (see the host's \$WORK/fold/index.log): $WHY. It was the only conflicting file, so master's copy was taken to be rebuilt over the pinned trees, and that rebuild is what failed. Merge \`origin/$TIP\` into the lane branch, regenerate the index there, push, then re-apply \`fold-ready\`."
-        else
-            comment "$pr" "[job.fold] Not folded: the nv2a index did not regenerate cleanly after the merge (see the host's \$WORK/fold/index.log). Needs a person."
-        fi
-        continue
-    fi
-    # The fast local gates. The tracker gate is the board's, not this PR's.
-    if ! (cd "$WT" && bash docs/testing/preflight.sh --allow-tracker >"$F/preflight.log" 2>&1); then
-        gates=$(preflight_failed_gates "$F/preflight.log" | tr '\n' ' '); gates="${gates% }"
-        # The second half of "the PR's own tree cannot cause it": board_files
-        # PREFERS `origin/board` and FALLS BACK to the worktree copy, so for as
-        # long as that transition lasts a PR that edits those two files could
-        # in fact fail these gates by itself. It is barred from editing them
-        # and --allow-tracker has already stopped asking -- so ask here, where
-        # the answer decides whether a head is written off forever.
-        if preflight_board_only "$F/preflight.log" \
-           && [ -z "$(git -C "$WT" diff --name-only "origin/$TIP...origin/$branch" -- $TRACKER_FILES 2>/dev/null)" ]; then
-            say "  preflight: only the board's own gates failed ($gates); NOT marking this head, retrying next tick"
-            board_gate_report "$pr" "$head" "$gates"
-            continue
-        fi
-        echo "preflight failed${gates:+: $gates}" > "$F/failed/$pr-$head"
-        say "  preflight FAILED: $(grep -m3 FAILED "$F/preflight.log" | tr '\n' ' ')"
-        comment "$pr" "[job.fold] Not folded: preflight fails on the merged tree:
-\`\`\`
-$(grep -B1 -A3 FAILED "$F/preflight.log" | head -30)
-\`\`\`
-Fix on the lane branch and push; the next green head is re-tried."
-        continue
-    fi
-    if ! git -C "$WT" push -q origin "HEAD:$TIP" 2>"$F/push.log"; then
-        say "  push to $TIP rejected (it moved?): $(tail -1 "$F/push.log"); next tick retries"
-        continue
-    fi
-    merge_sha=$(git -C "$WT" rev-parse --short HEAD)
-    git -C "$REPO" fetch -q origin "$TIP" 2>/dev/null
-    label_rm "$pr" fold-ready; label_add "$pr" folded || say "  WARNING: #$pr is folded but could not be labelled folded; remove fold-ready by hand or the next tick folds it again"
-    comment "$pr" "[job.fold] Folded as \`$merge_sha\` on \`$TIP\` (--no-ff; every commit keeps its sha, so registered refs stay bound). CI now runs on $TIP; the arms job picks up any prediction this PR carries.${accepted:+
-
-This PR is labelled \`regressed\`, and it folded **because the regression is accepted on #$accepted** -- a \`regression-accepted\` label naming that issue -- and not because the gate missed it. The failing verdict above stands as measured; #$accepted is where the trade it is part of is argued.}${notes_moved:+
-
-Your branch's root \`NOTES.md\` conflicted with the one already on \`$TIP\` and nothing else did, so it was moved to \`$notes_moved\` rather than merged -- both lanes' records are on $TIP, each at its own path. That is where \`roles/lane.md\` item 3 now asks for it; write it there next time and no fold has to touch it.}"
-    say "  folded #$pr as $merge_sha"
-    # HEAD is the commit the push above just put on $TIP, so it IS the trunk's
-    # tip -- a stronger proof than origin/$TIP, which is one fetch stale here.
-    # Only reached after that push succeeded: a branch deleted on a fold that
-    # failed to push is work destroyed.
-    prune_branch "$WT" "$branch" HEAD
-    folded=1
+    READY+=("$pr"$'\t'"$branch"$'\t'"$head"$'\t'"${accepted:--}"$'\t'"$title")
 done <<< "$cands"
+
+# ------------------------------------------------ fold what is ready, in order
+max=$FOLD_MAX_PER_TICK
+case "$HOLD" in one) max=1 ;; all) max=0 ;; esac
+declare -A PFILES=()
+prio_in=""
+for row in "${READY[@]}"; do
+    IFS=$'\t' read -r pr branch _ <<< "$row"
+    if f=$(pr_files "$branch"); then PFILES[$pr]="$f"; else PFILES[$pr]="?"; fi
+    prio_in+="$pr"$'\t'"${PFILES[$pr]}"$'\n'
+done
+declare -A PSCORE=()
+if [ "${#READY[@]}" -gt 1 ]; then
+    while IFS=$'\t' read -r pr sc; do [ -n "$pr" ] && PSCORE[$pr]=$sc; done <<< "$(printf '%s' "$prio_in" | fold_priority)"
+fi
+# Highest score first; `sort -s` keeps the PR order the candidate list had for ties.
+ORDERED=()
+while IFS= read -r row; do [ -n "$row" ] && ORDERED+=("${row#*$'\t'}"); done <<< "$(
+    for row in "${READY[@]}"; do printf '%s\t%s\n' "${PSCORE[${row%%$'\t'*}]:-0}" "$row"; done | sort -s -t $'\t' -k1,1nr)"
+
+folded=0; FOLDED_FILES=" "; tick_base=""; tick_rec=""
+for row in "${ORDERED[@]}"; do
+    IFS=$'\t' read -r pr branch head accepted title <<< "$row"
+    files="${PFILES[$pr]:-?}"; why=""
+    if [ "$folded" -ge "$max" ]; then
+        case "$HOLD" in
+            all) why="master's CI after a multi-fold tick is being attributed" ;;
+            one) why="master's CI after a multi-fold tick has not reported; one fold this tick" ;;
+            *)   why="$max folds this tick" ;;
+        esac
+    elif [ "$folded" -gt 0 ]; then
+        if [ "$files" = "?" ]; then
+            why="its files could not be read, so it folds only first in a tick"
+        else
+            for f in $files; do
+                case "$FOLDED_FILES" in *" $f "*) why="it shares $f with a PR folded this tick"; break ;; esac
+            done
+        fi
+    fi
+    if [ -n "$why" ]; then
+        [ "$mode" = list ] && { echo "#$pr $branch: WOULD WAIT: $why"; continue; }
+        say "#$pr waits: $why"
+        T_WAITING+=("#$pr(next-tick)")
+        continue
+    fi
+    if [ "$mode" = list ]; then
+        acc="${accepted#-}"
+        echo "#$pr $branch @ ${head:0:10}: WOULD FOLD (score ${PSCORE[$pr]:-0})${acc:+ (regression accepted on #$acc)}"
+        folded=$((folded+1)); FOLDED_FILES+="$files "; continue
+    fi
+    if fold_one "$pr" "$branch" "$head" "$accepted" "$title"; then
+        folded=$((folded+1)); FOLDED_FILES+="$files "
+        T_FOLDED+=("#$pr")
+        [ -n "$tick_base" ] || tick_base=$FOLD_BEFORE
+        tick_rec+="fold $pr $branch $FOLD_BEFORE $FOLD_AFTER"$'\n'
+        tick_tip=$FOLD_AFTER
+    else
+        T_WAITING+=("#$pr(fold-refused)")
+    fi
+done
+if [ "$folded" -ge 2 ] && [ "$mode" != list ]; then
+    { echo "base $tick_base"; printf '%s' "$tick_rec"; } > "$MULTI/$tick_tip"
+    say "folded $folded PRs in one tick; master's CI on ${tick_tip:0:10} is read next tick to attribute any red"
+fi
+[ "$mode" = list ] || tick_summary
 
 # The handed-back PRs get their actor, on this tick's timer. It is a separate
 # script on purpose: THIS job merges and must never start a model session, and
