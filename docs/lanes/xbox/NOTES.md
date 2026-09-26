@@ -1,9 +1,10 @@
 # lane.xbox -- the project console as an instrument
 
-Standing lane (board wave 148). It owns the console (192.168.50.1, GPU rev
-163 / MCP rev 212, V1.1) and the issues that need silicon: #31, #109, #110,
-#112. Operating knowledge is in `docs/testing/handoff-on-hardware.md`
-(PR #216); read its four config traps before writing a config.
+Standing lane (board wave 148). It owns the console (GPU rev 163 / MCP rev
+212, V1.1; its address is the one line in `~/hakux-work/hardware/console.addr`)
+and the issues that need silicon: #31, #109, #110, #112. Operating knowledge
+is in `docs/testing/handoff-on-hardware.md` (PR #216); read its four config
+traps before writing a config.
 
 ## Where things live, outside this repository
 
@@ -14,12 +15,15 @@ Standing lane (board wave 148). It owns the console (192.168.50.1, GPU rev
 | XBE toolchain | `PATH=$HOME/.local/nv2a-venv/bin:$HOME/.local/nxdk-tools/bin:$PATH` (the venv has cmake 4.4.3 and `nv2avsh`; without it the build stops at step 1 with `nv2avsh: not found`) |
 | console runs | `~/hakux-work/hardware/runs/<date>-<name>/`, captures and logs, never committed |
 
-## Until the owner's networked power switch is in (expected 2026-09-25)
+## The console cannot be power-cycled from here
 
-A wedged or powered-off console stays that way. So: no register writes,
-`enable_shutdown_on_completion` false, every new XBE through the desktop
-channel first, a timeout on every FTP poll, and one plain-text line to the
-owner if the console stops answering.
+The Kasa plug in its circuit is a power meter only (log, 2026-09-26), so a
+wedged or powered-off console stays that way until someone presses the button.
+So: no register writes, `enable_shutdown_on_completion` false, every new XBE or
+config dry-run on a handheld through the dispatcher and scored with the full
+judge before any console time, a timeout on every FTP poll, the title pipeline
+PAUSEd before any XBE launch (it shares the console's FTP), and one plain-text
+line to the owner if the console stops answering.
 
 ## Log
 
@@ -144,3 +148,9 @@ owner if the console stops answering.
   about 1.2 W standby. Never `off` or `cycle` it; read `status --no-find` at
   most once a minute. Writes that stop the CPU still need a button press:
   the NV2A is the northbridge, as NV_PMC_ENABLE = 0 showed.
+- 2026-09-26. The console moved from its direct link (static `192.168.50.1`)
+  to wired on the home LAN: `192.168.4.57`, confirmed read-only at 14:49 PDT
+  (ping, then an FTP login and logout). The address now lives only in
+  `~/hakux-work/hardware/console.addr`; the title scripts, `pgraph_run.py` and
+  the probe supervisor read it. The probe's own cfg still targets the old link
+  (`tools/nv2a_probe/README.md`, Networking).
