@@ -230,8 +230,13 @@ M1 (no grow lines in B), as the judge should say for a B without the code.
 
 ## Status
 
-Waiting on the two soak arms (queued with request.sh; ids on the PR) and the
-golden arm (the arms job queues it from the committed prediction).
+Waiting on the two soak arms, `1790453714-aufire412-3780657` (A, be41e81662)
+and `1790453716-aufire412-3780798` (B, 1b557ff6a4). Both are Nova, perflog,
+survey route, 480 s, bound to `aufire412-uboring-soak.json` @ 08a83ac7. Also
+waiting on the golden arm, which the arms job queues from the committed
+`aufire412-uboring-goldens.json` @ 267b4c57. On resume: run `splitread.py
+--judge <A logcat> <B logcat> docs/testing/predictions/aufire412-uboring-soak.json`,
+read the `[job.arms]` verdict, merge master, and mark #416 ready.
 
 Do not repeat: the non-perflog titleplay run cannot split Sub/Fen (no phase
 line). A 1,024-set ring looks like a pool-size question, but raising
