@@ -87,7 +87,21 @@ STAMP="$S/last-run"
 prev_run=$(cat "$STAMP" 2>/dev/null); case "${prev_run:-}" in ''|*[!0-9]*) prev_run=0 ;; esac
 lapse=0
 [ "$prev_run" -gt 0 ] && [ $(( now - prev_run )) -gt $(( FLOOR * 2 )) ] && lapse=$(( now - prev_run ))
-due=$(date -u -d "@$(( now + FLOOR ))" '+%F %H:%M UTC' 2>/dev/null)
+# DISPLAY, so the display zone: this deadline is printed in the body and the
+# comment and compared by nothing but a reader's eye.
+due=$(local_ts "@$(( now + FLOOR ))")
+# The window module's facts and reasons carry UTC instants ("2026-09-21T00:00Z")
+# because window.sh compares them; this renders each one in the display zone
+# at the point of printing and leaves the variables themselves untouched.
+local_instants() {
+    local s=$1 m
+    while [[ "$s" =~ ([0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}(:[0-9]{2})?Z) ]]; do
+        m=${BASH_REMATCH[1]}
+        s=${s//"$m"/$(local_ts "$m")}
+        [[ "$(local_ts "$m")" == "$m" ]] && break     # unparsed: stop rather than loop on it
+    done
+    printf '%s' "$s"
+}
 
 # ---- the one-glance summary, for the title and the body header.
 #
@@ -114,7 +128,7 @@ echo "_Next roll-up due by $due. A clock older than that means \`status.sh\` has
 echo
 if [ "$lapse" -gt 0 ]; then
     echo "> [!WARNING]"
-    echo "> **The roll-up lapsed for $(ago "$prev_run" | sed 's/ ago$//') before this one** -- previous tick $(date -u -d "@$prev_run" '+%F %H:%M UTC' 2>/dev/null), this tick $(date -u '+%F %H:%M UTC'). Nothing was observed across that window, so a lane or an arm that started and finished inside it has no row below. The state here is current; the history is not."
+    echo "> **The roll-up lapsed for $(ago "$prev_run" | sed 's/ ago$//') before this one** -- previous tick $(local_ts "@$prev_run"), this tick $(say_time). Nothing was observed across that window, so a lane or an arm that started and finished inside it has no row below. The state here is current; the history is not."
     echo
 fi
 
@@ -139,6 +153,250 @@ else
 fi
 echo
 
+# ------------------------------------------------------------- every lane
+#
+# "Lanes running" above lists live units and nothing else, so a lane that had
+# stopped with a draft PR and nothing on a device -- idle, with no actor that
+# would ever wake it -- appeared nowhere, and so did lane.xbox (an interactive
+# session) and lane.remote (a cloud session), which never have a unit at all.
+# The owner found each of those by hand (2026-09-26). This table starts from
+# the board's claim list instead, territory.toml on origin/board, so a lane is
+# on the page for as long as it holds a row, whatever it is doing.
+#
+# The console meter is read here, once, because it takes the plug's lock and
+# the plug must not be polled more than once a minute: every job tick ends in
+# this script, so the reading is cached for 60 s under $S.
+KASA="$WORK/host-tools/kasa_console.py"
+meter="console meter: not available"
+if [ -x "$KASA" ]; then
+    mc="$S/console-meter"; mt=$(stat -c %Y "$mc" 2>/dev/null || echo 0)
+    if [ $(( now - mt )) -ge 60 ]; then
+        # "plug KP115 <mac> (Xbox) at <ip>: ON, 66.1 W" -- the reading is the part after the last ": "
+        r=$(timeout 75 "$KASA" status --no-find 2>&1 | tail -1 | sed 's/.*: //' | cut -c1-80)
+        printf '%s\n' "${r:-no answer}" > "$mc"
+    fi
+    ma=$(( now - $(stat -c %Y "$mc" 2>/dev/null || echo "$now") )); [ "$ma" -ge 0 ] || ma=0
+    meter="console meter: $(cat "$mc" 2>/dev/null) (read ${ma}s ago)"
+fi
+echo "### Lanes: every row on the board ($(tz_abbr))"
+echo
+STATUS_METER="$meter" WORK="$WORK" D="$D" REPO="$REPO" GH_REPO="$GH_REPO" J="$J" S="$S" \
+HAVE_GH=$have_gh HAVE_SD=$have_sd UNITS="$units" python3 - <<'PY' 2>&1 || echo "(the lane table could not be computed)"
+# Everything here fails soft, row by row: a source that cannot be read says so
+# and the rest of the table still renders.
+import datetime, glob, json, os, re, subprocess, sys
+sys.path.insert(0, os.environ["J"])
+try:
+    import localtime
+    def hm(iso):
+        s = localtime.local_ts(iso)
+        return s[5:16] if s != iso else iso           # "09-25 21:08": the header names the zone
+except Exception:
+    def hm(iso): return iso
+E = os.environ
+W, D, REPO, GH_REPO, S = E["WORK"], E["D"], E["REPO"], E["GH_REPO"], E["S"]
+have_gh, have_sd = E.get("HAVE_GH") == "1", E.get("HAVE_SD") == "1"
+now = datetime.datetime.now(datetime.timezone.utc)
+
+def run(*cmd, timeout=60):
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        return p.stdout if p.returncode == 0 else ""
+    except Exception:
+        return ""
+
+def cell(s, n=90):
+    s = " ".join(str(s or "").split())
+    return (s[:n] + "...").replace("|", "\\|") if len(s) > n else s.replace("|", "\\|")
+
+def toml_on_board(name):
+    try:
+        import tomllib
+        bd = E.get("STATUS_BOARD_DIR")                  # a fixture's board files; the host reads origin/board
+        t = open(os.path.join(bd, name)).read() if bd else run("git", "-C", REPO, "show", "origin/board:" + name)
+        return tomllib.loads(t) if t else None
+    except Exception:
+        return None
+
+terr = toml_on_board("territory.toml")
+issues = (toml_on_board("nv2a_issues.toml") or {}).get("issue", {})
+units = {u[len("hakux-lane-"):-len(".service")] for u in E.get("UNITS", "").split() if u.startswith("hakux-lane-")}
+timers = set()
+if have_sd:
+    for l in run("systemctl", "--user", "list-timers", "hakux-*", "--no-legend", "--plain").splitlines():
+        m = re.search(r"hakux-([\w.-]+)\.timer", l)
+        if m: timers.add(m.group(1))
+
+# the last session of each lane, from the index every lane run appends to
+last = {}
+try:
+    for l in open(os.path.join(W, "logs/lane/index.tsv"), encoding="utf-8", errors="replace"):
+        f = l.rstrip("\n").split("\t")
+        if len(f) >= 8 and f[1].startswith("lane-"):
+            last[f[1][5:]] = (f[0], f[-1])
+except OSError:
+    pass
+
+# device requests, queued and running, by requester
+reqs = []
+for state in ("queue", "running"):
+    for p in glob.glob(os.path.join(D, state, "*.req")):
+        try:
+            r = json.load(open(p))
+            reqs.append((state, r.get("id") or os.path.basename(p)[:-4], r.get("requester") or ""))
+        except Exception:
+            reqs.append((state, os.path.basename(p)[:-4], ""))
+def reqs_of(name):
+    pat = re.compile(r"^(lane[.-])?%s$|^arms-%s-" % (re.escape(name), re.escape(name)))
+    return [r for r in reqs if pat.search(r[2])]
+
+prs, decision = {}, set()
+if have_gh:
+    try:
+        for p in json.loads(run("gh", "pr", "list", "--repo", GH_REPO, "--state", "all", "--limit", "300",
+                                "--json", "number,state,isDraft,headRefName,labels") or "[]"):
+            prs.setdefault(p["headRefName"], p)                 # newest first: keep the latest per branch
+    except Exception:
+        pass
+    try:
+        decision = {str(i["number"]) for i in json.loads(run("gh", "issue", "list", "--repo", GH_REPO, "--state", "open",
+                    "--label", "decision-needed", "--json", "number") or "[]")}
+    except Exception:
+        pass
+
+def state_of(name, row, standing):
+    p = prs.get("lane/" + name)
+    labels = {l["name"] for l in (p or {}).get("labels", [])}
+    if name in units: return "running"
+    rq = reqs_of(name)
+    if rq:
+        return "waiting on device (%d running, %d queued)" % (sum(r[0] == "running" for r in rq), sum(r[0] == "queue" for r in rq))
+    iss = [str(i) for i in row.get("issues", [])]
+    dn = [i for i in iss if i in decision] + (["PR"] if "decision-needed" in labels else [])
+    if dn: return "blocked: decision-needed on " + ", ".join(("#" + i) if i != "PR" else "its PR" for i in dn)
+    if p and p["state"] == "OPEN" and not p.get("isDraft"):
+        for lab, say in (("fold-ready", "fold-ready"), ("needs-remediation", "PR needs remediation"),
+                         ("needs-rebase", "PR needs rebase"), ("needs-audit-2", "PR in audit (2)"), ("needs-audit-1", "PR in audit (1)")):
+            if lab in labels: return say
+        return "PR ready, awaiting a label"
+    bl = [i for i in iss if issues.get(i, {}).get("status") == "open" and issues.get(i, {}).get("blocked_on")]
+    if bl: return "blocked: #%s %s" % (bl[0], cell(issues[bl[0]]["blocked_on"], 50))
+    if p and p["state"] == "MERGED": return "folded (row not yet retired)"
+    if name in timers: return "job (hakux-%s.timer)" % name
+    if standing: return "standing, nothing in flight"
+    return "IDLE"
+
+lanes = (terr or {}).get("lane", {})
+rows, idle = [], []
+for name, row in sorted(lanes.items()):
+    if name in ("xbox", "remote"):
+        continue                                        # their own rows below: no unit, a comment channel instead
+    st = state_of(name, row, row.get("standing", False))
+    p = prs.get("lane/" + name)
+    prs_s = ("#%d %s" % (p["number"], "draft" if p.get("isDraft") and p["state"] == "OPEN" else p["state"].lower())) if p else "none"
+    ts, said = last.get(name, ("", ""))
+    if st == "IDLE":
+        idle.append(name)
+        st = "**:warning: IDLE, NO WORK**"
+    rows.append((0 if "IDLE" in st else 1, name, st, " ".join("#" + str(i) for i in row.get("issues", [])), prs_s, hm(ts) if ts else "never", cell(said)))
+# a unit running with no row at all is exactly the claim check_territory.py cannot see
+for name in sorted(units - set(lanes)):
+    ts, said = last.get(name, ("", ""))
+    rows.append((1, name, "running, **no territory row**", "", "", hm(ts) if ts else "never", cell(said)))
+# retired in the last day, newest first, so a lane that just finished does not vanish mid-conversation
+retired = []
+for name, row in (terr or {}).get("retired", {}).items():
+    ru = row.get("retired_utc", "")
+    try:
+        age = now - datetime.datetime.strptime(ru, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
+    except (ValueError, TypeError):
+        continue
+    if age.days >= 1 or name in lanes:
+        continue
+    p = prs.get("lane/" + name)
+    ts, said = last.get(name, ("", ""))
+    retired.append((ru, (2, name, "retired %s" % hm(ru), " ".join("#" + str(i) for i in row.get("issues", [])),
+                     ("#%d %s" % (p["number"], p["state"].lower())) if p else "none", hm(ts) if ts else "never", cell(said))))
+retired.sort(reverse=True)
+rows += [r for _, r in retired[:16]]
+
+if terr is None:
+    print("(territory.toml on origin/board could not be read from `%s`; only running units are listed)" % REPO)
+    print()
+if idle:
+    print("> [!WARNING]")
+    print("> **%d lane%s idle with no work:** %s. Unit stopped, nothing queued or running on a device, and its PR is a draft or absent -- nothing will wake it." % (
+        len(idle), "" if len(idle) == 1 else "s", ", ".join(idle)))
+    print()
+print("| lane | state | issue | PR | last session ended | it said |")
+print("|---|---|---|---|---|---|")
+for r in sorted(rows, key=lambda r: (r[0], r[1] if r[0] < 2 else "")):       # retired rows keep newest-first
+    print("| %s |" % " | ".join(r[1:]))
+if len(retired) > 16:
+    print()
+    print("_%d more rows retired in the last 24 h are not listed._" % (len(retired) - 16))
+
+# ---- the two lanes with a comment channel instead of a unit, and the host tick
+comments = []
+if have_gh:
+    since = (now - datetime.timedelta(hours=48)).strftime("%Y-%m-%dT%H:%M:%SZ")      # data: the API's since=, UTC
+    for l in run("gh", "api", "repos/%s/issues/comments?since=%s&per_page=100" % (GH_REPO, since), "--paginate",
+                 "--jq", '.[] | {c: .created_at, i: (.issue_url | split("/") | last), b: .body}', timeout=120).splitlines():
+        try: comments.append(json.loads(l))
+        except Exception: pass
+comments.sort(key=lambda c: c.get("c", ""))
+def is_other(b):
+    return b.startswith("[job.") or re.match(r"^`?\[host\]", b) is not None
+def last_word(pred):
+    m = [c for c in comments if pred(c.get("b") or "")]
+    return m[-1] if m else None
+def first_line(b):
+    return cell(re.sub(r"^`?\[lane\.\w+\]`?\s*[-—:]*\s*", "", (b or "").strip().split("\n")[0]), 110)
+def answered_after(marker, t):
+    a = [c for c in comments if c.get("c", "") > t and (
+        (c.get("b") or "").startswith("[job.deliver] " + marker) or
+        (re.match(r"^`?\[host\]", c.get("b") or "") and marker in (c.get("b") or "")))]
+    return a[-1] if a else None
+
+print()
+if not have_gh:
+    print("- **lane.xbox**, **lane.remote**: (gh not available here)")
+else:
+    xb = last_word(lambda b: not is_other(b) and "[lane.xbox]" in b)
+    xr = [r for r in reqs if "xbox" in r[1]]
+    print("- **lane.xbox** (interactive session; the console): last `[lane.xbox]` comment %s; %s. Device requests: %s. %s." % (
+        ("%s on #%s: %s" % (hm(xb["c"]), xb["i"], first_line(xb["b"]))) if xb else "none in 48h",
+        ("host answered %s" % hm(answered_after("lane.xbox", xb["c"])["c"])) if xb and answered_after("lane.xbox", xb["c"]) else "**no host answer after it**" if xb else "",
+        ("%d running, %d queued (%s)" % (sum(r[0] == "running" for r in xr), sum(r[0] == "queue" for r in xr), ", ".join(r[1] for r in xr[:4]))) if xr else "none queued or running",
+        E.get("STATUS_METER", "console meter: not available")))
+    rm = last_word(lambda b: not is_other(b) and "`[lane.remote]`" in b)
+    ans = answered_after("lane.remote", rm["c"]) if rm else None
+    print("- **lane.remote** (cloud session, one-way): last `` `[lane.remote]` `` comment %s; %s." % (
+        ("%s on #%s: %s" % (hm(rm["c"]), rm["i"], first_line(rm["b"]))) if rm else "none in 48h",
+        ("host answered %s" % hm(ans["c"])) if ans else ("**NOT ANSWERED YET** -- it cannot hear anything else" if rm else "nothing to answer")))
+
+# ---- the host ops tick: its digest header is "=== <UTC stamp>.json rc=..."
+dg = os.path.join(W, "logs/hostops/digest.log")
+try:
+    txt = open(dg, encoding="utf-8", errors="replace").read()
+    blocks = re.split(r"(?m)^=== ", txt)
+    blk = blocks[-1] if len(blocks) > 1 else ""
+    head, _, body = blk.partition("\n")
+    m = re.match(r"(\d{8}T\d{6}Z)", head)
+    t = datetime.datetime.strptime(m.group(1), "%Y%m%dT%H%M%SZ").strftime("%Y-%m-%dT%H:%M:%SZ") if m else ""
+    fl = next((l for l in body.splitlines() if l.strip()), "")
+    print("- **host ops tick** (`hakux-hostops.timer`, every 20 min): last tick %s: %s" % (hm(t) if t else "unknown", cell(fl, 140)))
+except OSError:
+    print("- **host ops tick**: not available on this host (`$WORK/logs/hostops/digest.log`)")
+
+try:
+    with open(os.path.join(S, "idle-lanes"), "w") as f:
+        f.write(", ".join(idle) + ("\n" if idle else ""))
+except OSError:
+    pass
+PY
+echo
+
 # ------------------------------------------------- the account's windows
 #
 # A FLEET THAT GOES QUIET FOR BUDGET REASONS LOOKS EXACTLY LIKE A FLEET THAT
@@ -154,18 +412,20 @@ if declare -f window_check >/dev/null 2>&1; then
     if [ "${WINDOW_DEFER:-0}" = 1 ]; then
         # The resume time is the one line on this page a person acts on, and the
         # header above promises every time here is the display zone -- so it is
-        # converted. The UTC instants inside $WINDOW_WHY/$WINDOW_FACTS keep their
-        # `Z` and are left as data; local_ts falls back to UTC (and then to its
-        # own argument) when the zone or the parse is unavailable.
-        echo "- **dispatch DEFERRED until $(local_ts "$WINDOW_UNTIL")** -- $WINDOW_WHY."
+        # converted. So are the UTC instants inside $WINDOW_WHY/$WINDOW_FACTS,
+        # by local_instants() at the point of printing: window.sh keeps them
+        # UTC for its own comparisons and nothing here writes them back.
+        # local_ts falls back to UTC (and then to its own argument) when the
+        # zone or the parse is unavailable.
+        echo "- **dispatch DEFERRED until $(local_ts "$WINDOW_UNTIL")** -- $(local_instants "$WINDOW_WHY")."
         echo "- This is a budget decision, not a failure. Folds, arms, labels, sessions already running and this page continue; no lane attempt is counted; nothing here needs investigating."
     else
         echo "- dispatching normally. Lanes and audits start as work allows; expanding is the default."
     fi
-    echo "- $WINDOW_FACTS."
+    echo "- $(local_instants "$WINDOW_FACTS")."
     if [ -s "$WORK/window/limits.tsv" ]; then
         echo "- usage-limit refusals recorded (\`\$WORK/window/limits.tsv\`), most recent last:"
-        echo '```'; tail -5 "$WORK/window/limits.tsv"; echo '```'
+        echo '```'; tail -5 "$WORK/window/limits.tsv" | while IFS= read -r l; do local_instants "$l"; echo; done; echo '```'
     else
         echo "- no session has ever been refused by the account's window on this host. That is the only first-hand evidence of a closed window there is: **the remaining five-hour and weekly balance cannot be queried from here**, so the weekly reserve arms on that evidence, or on \`WEEK_SPEND_BUDGET\` if the owner declares one in \`\$WORK/limits.env\`. Unknown means open, by design."
     fi
@@ -283,7 +543,7 @@ fi
 A="$WORK/arms"
 if [ -d "$A" ]; then
     pend=0; for p in "$A"/pairs/*.json; do [ -f "$p" ] || continue; sha=$(basename "$p" .json); [ -f "$A/judged/$sha" ] || pend=$((pend+1)); done
-    echo "- arms job: $pend pair(s) queued or running and not yet judged; $(ls "$A"/judged 2>/dev/null | wc -l) judged; $(ls "$A"/skipped 2>/dev/null | wc -l) skipped (see \`arms.sh list\`); watermark \`$(cat "$A/since" 2>/dev/null)\` (UTC -- arms.sh compares it to registered_utc as a string, so it is not shown in local time)"
+    echo "- arms job: $pend pair(s) queued or running and not yet judged; $(ls "$A"/judged 2>/dev/null | wc -l) judged; $(ls "$A"/skipped 2>/dev/null | wc -l) skipped (see \`arms.sh list\`); watermark $(local_ts "$(cat "$A/since" 2>/dev/null)") (stored as \`$(cat "$A/since" 2>/dev/null)\`: arms.sh compares that UTC string to registered_utc, so the file stays UTC and only this rendering is local)"
     v=$(ls -t "$A"/judged/* 2>/dev/null | head -5)
     if [ -n "$v" ]; then
         echo; echo "last verdicts:"; echo
@@ -334,7 +594,7 @@ echo
 echo "### Host"
 echo
 echo "- checkout \`$REPO\` on $(git -C "$REPO" rev-parse --abbrev-ref HEAD 2>/dev/null), $(git -C "$REPO" rev-list --count HEAD..origin/master 2>/dev/null || echo '?') behind origin/master (jobs run the fetched trunk regardless)"
-[ $have_sd = 1 ] && echo "- timers: $(systemctl --user list-timers 'hakux-*' --no-legend --plain 2>/dev/null | awk '{printf "%s next %s %s; ", $NF, $1, $2}' | sed 's/.service//g; s/hakux-//g' | cut -c1-300)"
+[ $have_sd = 1 ] && echo "- timers: $(systemctl --user list-timers 'hakux-*' --no-legend --plain 2>/dev/null | awk '{printf "%s next %s; ", $NF, ($1 == "-" ? "-" : $3 " " $4)}' | sed 's/.service//g; s/hakux-//g' | cut -c1-300)"
 echo "- attempts: $(for f in "$WORK"/attempts/*; do [ -e "$f" ] && printf '%s=%s ' "$(basename "$f")" "$(cat "$f")"; done)"
 } > "$OUT" 2>/dev/null
 
@@ -383,13 +643,16 @@ HDR="$S/HEADER.md"
 {
 echo "## hakuX harness -- live status"
 echo
-echo "**Written $(date -u '+%F %H:%M UTC').** $summary."
+echo "**Written $(say_time).** $summary."
+# The condition the owner kept finding by hand, lifted from the lane table
+# below (lanes_section writes it) to the first thing the page shows.
+[ -s "$S/idle-lanes" ] && { echo; echo "**Idle with no work:** $(cat "$S/idle-lanes") -- unit stopped, nothing on a device, PR draft or none. See the lane table in the comment."; }
 echo
 echo "Next roll-up due by **$due** ($(( FLOOR / 60 ))-minute floor, plus one at the end of every job tick). If the clock above is older than that, \`status.sh\` itself has stopped -- the page cannot report its own silence, so judge it by this line."
 if [ "$lapse" -gt 0 ]; then
     echo
     echo "> [!WARNING]"
-    echo "> **The roll-up lapsed for $(ago "$prev_run" | sed 's/ ago$//') before this one** (previous tick $(date -u -d "@$prev_run" '+%F %H:%M UTC' 2>/dev/null)). The state below is current; nothing was observed across that window."
+    echo "> **The roll-up lapsed for $(ago "$prev_run" | sed 's/ ago$//') before this one** (previous tick $(local_ts "@$prev_run")). The state below is current; nothing was observed across that window."
 fi
 echo
 [ -n "$cid" ] && echo "The full roll-up is [in the comment below](https://github.com/$GH_REPO/issues/$issue#issuecomment-$cid), rewritten in place every tick."
@@ -410,8 +673,13 @@ gh api -X PATCH "repos/$GH_REPO/issues/$issue" -F body=@"$HDR" --silent >/dev/nu
 # claim to be fresher than the timer that writes it. Reading the stamped time
 # as exact therefore errs towards "staler than it is", which is the safe way
 # round for the question this page answers.
+#
+# The clock is the display zone's ("21:00 PDT+"). $q is still quantised in
+# epoch seconds, so a whole-hour offset keeps the same boundaries; the one
+# rename this costs is the tick after the zone change lands.
 q=$(( now - now % FLOOR ))
-want="harness: live status -- $(date -u -d "@$q" '+%H:%M')Z+, $summary"
+qt=$(local_ts "@$q")
+want="harness: live status -- ${qt#* }+, $summary"
 if [ "$want" != "$cur_title" ]; then
     gh api -X PATCH "repos/$GH_REPO/issues/$issue" -f title="$want" --silent >/dev/null 2>&1 \
         && echo "renamed #$issue: $want"
