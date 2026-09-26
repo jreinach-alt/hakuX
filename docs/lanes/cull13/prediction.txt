@@ -1,0 +1,33 @@
+MECHANISM (#13 class A, docs/lanes/cloud-13/NOTES.md section A).  One hunk,
+a_ref = master 02374a6847, b_ref = d750443b2a (master + the hunk).
+glsl/geom.c: a TRIANGLES draw under POLY_MODE_LINE with CULLENABLE returns
+from the geometry shader before emitting its three edges when the source
+triangle's face (edge cross product of v_vtxPos, the truncated guest screen
+position) is culled under SETUPRASTER CULLCTRL / FRONTFACE.  Zero area takes
+the counter-clockwise face.  Every other draw's GeomState carries 0 in the
+new fields and generates the same GLSL text as before.
+
+MUST MOVE (bounds from cloud-13's attribution, not values; prose):
+  Front_face/FrontFace_LM_*_CF_FaB (4): 3,911 structural px -> <= 20 each.
+    Nothing but culling gets there: this is the leg that shows the hunk ran.
+  the other 8 FrontFace_LM_* (4 at 3,030, 4 at 2,258) -> <= 720 each
+    (tie strokes B 678 + extent D 18-20 remain; the hunk touches neither).
+Machine legs: better = 12 exactly, worse = 0, over the whole disc.
+
+MUST NOT MOVE, bit-identical:
+  Front_face/FrontFace_FM_*   fill mode, not widened, cull fields 0.
+  Shade_model/ProgLM_*        line-mode triangles with cull on, every one
+    front-facing on silicon; a wrong sign culls whole triangles and wrong
+    strip parity culls half of ProgLM_TriStrip_*.  ProgLM_Quad/QuadStrip/Poly
+    arrive as PRIM_TYPE_LINES and cannot be reached.
+  Line_width/*                Tri/TFan blocks under line mode, suite default
+    cull (back, front CW), all drawn on silicon.  Same sign check.
+  3D_primitive/Lines*, LineStrip*, LineLoop*   line primitives: cull fields 0.
+
+WORLD IN WHICH THIS FAILS: CF_FaB stays at ~3,911 -> the shader is not the
+one drawing (key not taken, or the draw is not PRIM_TYPE_TRIANGLES here):
+refuted as implemented.  CF_FaB drops but CW_CF_B / CCW_CF_F go UP ->
+the sign is inverted: every non-FaB row culls the wrong quad.  Zero-area
+strokes at x=133/507 remain where the quad is culled -> the zero-area rule is
+the other face.  Shade_model/ProgLM_* or Line_width move worse -> sign wrong
+on front-facing geometry, or odd strip triangles wind opposite.

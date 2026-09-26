@@ -57,11 +57,16 @@ whoever pushed it.
   cap: the owner lifted the budget throttle on 2026-09-25 ("there's no limits
   on [capacity] now"). Take the startable issues **in the order the capacity
   list prints them**, skipping any whose files are not free (a file released
-  at ready is free, see below) or that has a blocker: that list is sorted by expected improvement (game-visible first,
+  at ready is free, see below) or that has a blocker: that list puts every
+  issue labelled `0.5` (the release in flight, #433) ahead of every issue
+  that is not, key tagged `[0.5]`, and inside each group sorts by expected improvement (game-visible first,
   then `impact_px + impact_onestep_px // 4` descending, then rows with no
   estimate or an unreadable one, then measured zeros, then issues with no
   tracker row, oldest first inside each), and each line carries the key it
-  was sorted on. Write impact values as numbers (int or float); a string
+  was sorted on. When `BOARD_FOCUS_LABEL` is set in `$WORK/limits.env`
+  (`0.5` while #433 is open), the list offers ONLY issues carrying that
+  label and one line says how many startable issues outside the focus it
+  left out: start no lane on those. Write impact values as numbers (int or float); a string
   prints as `[impact unreadable]`. For EACH one: write its brief to
   `briefs/<lane>.md` on the `board` branch, write and push its row, start it
   with `docs/testing/lane.sh start <name> <brief> <issue>`, and label

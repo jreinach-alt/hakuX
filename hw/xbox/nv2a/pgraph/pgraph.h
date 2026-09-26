@@ -356,6 +356,34 @@ typedef struct PGRAPHState {
      */
     float last_ff_radial_fog_coord;
 
+    /*
+     * #53: the lighting unit's six-entry ring of vertex inputs. A lit vertex
+     * program does not light its own vertex: silicon runs the fixed-function
+     * light loop on a slot of this ring, which still holds the inputs of the
+     * last fixed-function lit vertices written to it (PR #355, PR #351).
+     *
+     * ff_lit_ring[slot][k] holds attribute RING_ATTRS[k] (glsl/vsh.c) of the
+     * vertex written to that slot. ring_pos is the slot the next vertex
+     * takes, kept in 0..5 (a free-running 32-bit count would shift the phase
+     * when it wrapped, 2^32 not being a multiple of 6). Every vertex advances it by one, and so does most of the
+     * command stream between draws; the per-method weights were measured on
+     * the console (docs/testing/xbox-ringw-2026-09-26.md) and are applied in
+     * pgraph.c's pgraph_ring_weigh.
+     */
+    float ff_lit_ring[6][6][4];
+    uint32_t ring_pos;
+    /*
+     * ring_gen moves whenever ff_lit_ring is written. ring_upload_phase and
+     * ring_upload_gen are the ringPhase and ring_gen the last lit-program
+     * uniform block was built from (glsl/vsh.c): the ring moves no register
+     * generation or dirty flag, so a renderer that reuses a uniform block
+     * across draws compares these to know the block is stale
+     * (pgraph_glsl_ring_uniforms_stale).
+     */
+    uint32_t ring_gen;
+    float ring_upload_phase;
+    uint32_t ring_upload_gen;
+
     const PGRAPHRenderer *renderer;
     union {
         PGRAPHNullState *null_renderer_state;

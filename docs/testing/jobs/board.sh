@@ -106,6 +106,23 @@ GH_REPO="${GH_REPO:-jreinach-alt/hakuX}"
 #      an unestimated row, which may be large)
 #   5. an issue with no tracker row at all, oldest first [no tracker row]
 #
+# ABOVE ALL FIVE, THE RELEASE. An issue labelled `0.5` (#432, tracking #433)
+# sorts ahead of every issue that is not, and the five tiers order each group
+# on their own; such a line's key starts `[0.5]`. The labels are the ones gh
+# already listed for the SKIP filter. A row whose label list cannot be read as
+# a list of names is still printed, ranked with the non-release group and
+# tagged `[labels unreadable]`: one malformed row must neither empty the list
+# nor jump the release queue.
+#
+# AND A FOCUS THAT EXCLUDES. Sorting still offered #303 on 2026-09-26 and a
+# lane was started on it against the owner's 0.5-first policy (#433: no new
+# lane on a non-0.5 issue). BOARD_FOCUS_LABEL in $WORK/limits.env (unset =
+# no focus) drops every startable issue without that label from the list,
+# and board_filter says how many it dropped in one `FOCUS:` line, which the
+# gate splits off: the count is news, not work, and must not wake a tick on
+# its own when every focus issue is taken. A row whose labels cannot be read
+# cannot be shown to carry the focus label, so it is dropped with the rest.
+#
 # Ties inside a tier go to the oldest issue. The tracker is read through
 # board_files.load, as every other board tool reads it, so this sees
 # origin/board and not a fold-lagged copy. If it cannot be read the list is
@@ -113,8 +130,8 @@ GH_REPO="${GH_REPO:-jreinach-alt/hakuX}"
 # the defect this gate exists to end -- every line says so, and the order is
 # oldest first.
 board_filter() {   # <issues|prs> <the JSON array gh printed>
-    python3 - "$1" "$2" "$SELF/.." <<'PY'
-import json, math, sys
+    BOARD_FOCUS_LABEL="${BOARD_FOCUS_LABEL:-}" python3 - "$1" "$2" "$SELF/.." <<'PY'
+import json, math, os, sys
 mode = sys.argv[1]
 # An issue no lane may be started on. Everything else open is startable.
 SKIP = {"claimed:cloud", "decision-needed", "upstream", "unmodellable",
@@ -125,15 +142,36 @@ SKIP_PREFIX = ("lane:", "blocked:")
 # with no audit label still needs needs-audit-1.
 STATE = {"needs-audit-1", "needs-audit-2", "needs-remediation",
          "fold-ready", "folded", "needs-rebase"}
+# The release in flight (#433). Its issues dispatch ahead of every other.
+RELEASE_LABEL = "0.5"
+# The focus, if the host set one: only its issues are offered at all.
+FOCUS = os.environ.get("BOARD_FOCUS_LABEL", "").strip()
+dropped = 0
 try:
     rows = json.loads(sys.argv[2] or "[]") or []
 except Exception:
     sys.exit(0)
+def label_names(r):
+    """The row's label names, or None when gh's list cannot be read as one."""
+    ls = r.get("labels")
+    if not isinstance(ls, list) or not all(
+            isinstance(l, dict) and isinstance(l.get("name", ""), str)
+            for l in ls):
+        return None
+    return [l.get("name", "") for l in ls]
+
 out = []
 for r in rows:
-    names = [l.get("name", "") for l in (r.get("labels") or [])]
+    if not isinstance(r, dict):
+        continue
+    names = label_names(r)
+    r["_labels_read"] = names is not None
+    names = names or []
     if mode == "issues":
         if any(n in SKIP or n.startswith(SKIP_PREFIX) for n in names):
+            continue
+        if FOCUS and FOCUS not in names:
+            dropped += 1
             continue
     else:
         if r.get("isDraft"):
@@ -146,6 +184,9 @@ if mode != "issues":
     for r, text in out:
         print("#%s %s" % (r.get("number"), text))
     sys.exit(0)
+if dropped:
+    print("FOCUS: %d startable issue(s) outside the %s focus are not offered "
+          "(BOARD_FOCUS_LABEL=%s in limits.env)" % (dropped, FOCUS, FOCUS))
 
 tracker = None
 try:
@@ -204,7 +245,19 @@ def rank(r):
         return (1, -score, n), "[%s]" % size
     return (2, 0, n), "[no impact estimate]"
 
-ranked = sorted((rank(r) + (r, text) for r, text in out), key=lambda t: t[0])
+def release(r):
+    """0 for an issue labelled 0.5, 1 otherwise; and the tag that says so."""
+    if not r["_labels_read"]:
+        return 1, "[labels unreadable] "
+    names = [l.get("name") for l in r["labels"]]
+    return (0, "[0.5] ") if RELEASE_LABEL in names else (1, "")
+
+def key(r):
+    group, tag = release(r)
+    (tier, size, n), k = rank(r)
+    return (group, tier, size, n), tag + k
+
+ranked = sorted((key(r) + (r, text) for r, text in out), key=lambda t: t[0])
 for _, key, r, text in ranked:
     print("#%s %s %s" % (r.get("number"), key, text))
 PY
@@ -280,7 +333,7 @@ sweep_gate() {
     SWEEP_HASH="$h"
 }
 
-capacity=""; unlabelled=""; lanes=0
+capacity=""; unlabelled=""; lanes=0; focus_note=""
 positive_gate() {
     # The cap, read and never raised. lane.sh's default is 2 and
     # $WORK/limits.env overrides it without a commit (it is 4 on the host).
@@ -316,6 +369,10 @@ positive_gate() {
     if [ "$lanes" -lt "${LANE_MAX:-2}" ] && [ "${WINDOW_DEFER:-0}" != 1 ]; then
         capacity=$(board_filter issues "$(timeout 60 gh issue list --repo "$GH_REPO" \
             --state open --limit 200 --json number,title,labels 2>/dev/null)")
+        # The focus count is a note, not a startable issue (see board_filter).
+        focus_note=$(printf '%s\n' "$capacity" | sed -n 's/^FOCUS: //p')
+        capacity=$(printf '%s\n' "$capacity" | grep -v '^FOCUS: ')
+        [ -n "$focus_note" ] && say "$focus_note"
     fi
     unlabelled=$(board_filter prs "$(timeout 60 gh pr list --repo "$GH_REPO" \
         --state open --limit 100 --json number,title,isDraft,labels 2>/dev/null)")
@@ -551,6 +608,7 @@ brief="$WORK/briefs/board.$(date -u +%Y%m%dT%H%M%SZ).md"
     [ "${WINDOW_DEFER:-0}" = 1 ] && { echo "**START NO LANE AND CLAIM NO AUDIT THIS TICK.** $WINDOW_WHY. Dispatch resumes at $WINDOW_UNTIL and the list below is deliberately empty; do not go looking for startable issues yourself. Everything else in this brief is still yours: labels, the coverage gate, comments, briefs. This is a budget decision, not a failure -- do not open a decision-needed issue about it. ($WINDOW_FACTS)"; echo; }
     echo "$lanes of ${LANE_MAX:-2} lanes are running. Every issue below is open, carries no \`lane:\` label, no \`claimed:cloud\`, and none of \`blocked:*\`, \`decision-needed\`, \`upstream\`, \`unmodellable\`, \`xbox-hardware\`, \`harness-status\` -- so a lane could be started on it. They are NOT all \`dispatchable\`; deciding that is your job (files free, no blocker), and only you may apply the label. Dispatch UP TO THREE this tick (roles/board.md), in the order listed (it is sorted by expected improvement: game-visible, then recoverable px, and each line shows its key), each on files that are free with no blocker, and label \`cloud\` the ones that need no device so the hourly cloud session takes the overflow. If \`lane.sh\` prints REFUSED you are at the cap: stop, do not retry."
     echo
+    [ -n "$focus_note" ] && { echo "$focus_note. The release focus is the owner's: start no lane on an issue outside it, and do not go looking for one yourself."; echo; }
     printf '%s\n' "${capacity:-none}"
     echo
     echo "### files released at ready -- free for the rule above"

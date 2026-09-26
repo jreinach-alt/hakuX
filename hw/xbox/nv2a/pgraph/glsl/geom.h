@@ -36,6 +36,12 @@ typedef struct {
     float aa_offset_x;
     /* NV_PGRAPH_TEXADDRESSn cylinder-wrap bits per stage: 1 U, 2 V, 4 P, 8 Q */
     uint8_t cylinder_wrap[4];
+    /* Face culling of a TRIANGLES draw under POLY_MODE_LINE, done in the
+     * geometry stage (#13): NV_PGRAPH_SETUPRASTER_CULLCTRL when CULLENABLE
+     * is set, else 0, and SETUPRASTER_FRONTFACE.  Both stay 0 for every
+     * other draw, so no other shader key changes. */
+    uint8_t line_cull_face;
+    bool line_front_ccw;
 } GeomState;
 
 typedef struct GenGeomGlslOptions {

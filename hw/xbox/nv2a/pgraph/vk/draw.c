@@ -3914,6 +3914,11 @@ static void begin_pre_draw_inner(PGRAPHState *pg)
         else if (pg->non_dynamic_reg_gen != r->last_non_dynamic_reg_gen) { OPT_STAT_INC(sfp_miss_reg_gen); sfp_ok = false; }
         else if (pg->primitive_mode != r->shader_binding->state.geom.primitive_mode) { OPT_STAT_INC(sfp_miss_prim_mode); sfp_ok = false; }
         else if (pg->program_data_dirty) { OPT_STAT_INC(sfp_miss_prog_dirty); sfp_ok = false; }
+        /* #53: a lit program's ringPhase and ringInput move with the command
+         * stream, not with any flag or generation tested above, so two lit
+         * program inline draws with nothing between them would otherwise
+         * share the first one's phase. */
+        else if (pgraph_glsl_ring_uniforms_stale(pg, &r->shader_binding->state.vsh)) { OPT_STAT_INC(sfp_miss_uniforms); sfp_ok = false; }
 
         if (sfp_ok) {
             bool tex_vram_clean = (r->texture_vram_gen == r->last_texture_vram_gen);
