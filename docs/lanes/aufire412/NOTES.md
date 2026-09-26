@@ -228,18 +228,118 @@ P3 mover play fps +2 and in 17-26, P4 pause-menu window +2, P5 GPU ratio
 legs read 15.2 fps, ds 39, Fin 22.2 ms and GPU 40.1 ms, and the verdict is VOID on
 M1 (no grow lines in B), as the judge should say for a B without the code.
 
+## 6. The arms (attempt 4, 2026-09-26)
+
+**Why attempt 3 did not finish:** it landed the hunk, registered both
+predictions and queued the soak A/B. Then it ended, correctly, with a
+`waiting:` comment on those device requests and the arms job's golden arm.
+All of them finished while no session was running.
+
+Arm A's first run, `1790453714-aufire412-3780657`, had 20 adb failures from a
+WSL interop fault (`UtilAcceptVsock`), so route input was lost for part of
+play. hostops reran it as `0-0-x-1790453714-aufire412-rerunA` (0 adb
+failures), and that rerun is the A arm judged here. The first run is kept as
+a replicate: its phase medians agree with the rerun's.
+
+### Soak: the mechanism moved, fps did not. The mover is refuted
+
+`splitread.py --judge <rerunA> <B> aufire412-uboring-soak.json`:
+
+| leg | A | B | |
+|---|---|---|---|
+| M0 instrument (phase/buf lines) | 17/43/62 | 17/44/88 | ok |
+| M1 grow lines (A 0, B >= 1) | 0 | 21 | ok |
+| P1 `buf_detail ds` median | 39 | 0 | ok |
+| P2 Fin(Sub), B <= 0.5 x A | 22.9 ms | 2.2 ms | ok |
+| **P3 play fps +2, in 17-26** | 15.1 | 15.5 | **FAIL** |
+| **P4 pause-menu fps +2** | 15.0 | 15.7 | **FAIL** |
+| **P5 GPU ratio 0.75-1.25** | 40.3 ms | 28.3 ms | **FAIL** (0.70) |
+| P6 (guess) pools <= 2 | | 1 | ok |
+
+Mission play, 299-483 s, medians in ms per frame (`splitread.py --window`):
+
+| arm | fps | G | Tot | Idle | Surf | Draw (Pipe, Tx) | Desc | Fin (Sub) | GPU (GRP, GPre) | Finish / RPBreaks / fin_buf per 60 flips | renderer CPU (Tot-Idle-Fin) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| A rerun | 15.08 | 66.7 | 61.8 | 8.9 | 17.2 | 13.2 (4.2, 0.2) | 22.2 | 22.2 (21.9) | 40.0 (8, 7.1) | 99 / 207 / 39 | 30.6 |
+| A first (adb faults) | 15.14 | 63.3 | 58.2 | 8.8 | 12.0 | 12.7 (4.1, 0.2) | 17.9 | 18.6 (17.6) | 37.5 (8, 5.8) | 99 / 209 / 39 | 30.8 |
+| **B** | **15.48** | 63.5 | 56.7 | **12.7** | **24.3** | 15.7 (6.9, **3.2**) | 0.6 | **2.2 (0.2)** | **28.3 (4, 1.5)** | **60 / 127 / 0** | **41.8** |
+
+Pause menu over the scene, 220-285 s: A rerun 14.96 fps, A first 15.87,
+B 15.70. In that window B's Surf is 10.4 ms and its Pipe is 12.3 ms, of which
+Tx is 8.2. The two A runs are 0.9 fps apart in this window, so B's +0.7 is
+inside the A-to-A spread.
+
+What this says:
+
+- **The hunk does what it was written to do.** The ring never finishes in B
+  (fin_buf 39 -> 0 per 60 flips), and one overflow pool is ever held. The
+  Sub wait goes from 22 ms to 0.2 ms. Finish falls 99 -> 60 and render-pass
+  breaks fall 207 -> 127, so the GPU does 12 ms less per frame: 40 -> 28 ms,
+  with GRP 8 -> 4 and GPre 7.1 -> 1.5.
+- **None of it reaches the frame rate.** G (frame interval) stays at
+  63-67 ms. The renderer's CPU time rises by the wait it lost: 30.6 -> 41.8
+  ms, mostly in `Surf` (+7 ms) and in `Pipe`/`Tx` (+3 in play, +8 in the
+  menu window). The renderer also idles more, 8.9 -> 12.7 ms, waiting for
+  work. This is section 4's floor case. The wait reappears as time inside
+  other renderer phases, and the frame's pace is set somewhere else.
+- **So the premise "the mid-frame finish is in series with the frame" is
+  wrong.** Something outside the renderer paces the frame at ~63 ms. The
+  renderer, now 79% busy with more Idle, is no longer the side that decides
+  the frame time. Section 1 found the vCPU busy ~97% in every span, and
+  nothing in this arm changes that.
+- **`Surf` and `Tx` growing when a wait is removed looks like a hidden wait.**
+  `Surf` (EXCL, ~4,700 calls per frame) and `Tx` should cost the same CPU in
+  both arms. B has the same draws per frame (2,368) and the same SBnd (1,924),
+  but its Surf+Tx is 10 ms higher. Either those phases hold a wait of their
+  own (a fence or lock the finish used to satisfy), or the time is
+  contention with the vCPU thread. This arm cannot tell which.
+
+### Goldens: inert, as predicted
+
+`1790455259-arms-aufire412-base-4129567` (be41e81662, **Thor**) and
+`1790455259-arms-aufire412-fix-4129623` (1b557ff6a4, **Nova**): 99 captures
+each, and every (suite, test) row is identical on status, differing,
+max_rgb and max_a. Both have 31 exact and 531,347 px. Status is `ok` or
+`white-content` on every row, with none unreadable. Neither logcat has a
+`ubo_ring_grow` line, so the grow was not reached in any golden (inert by
+construction, as section 4 said). The two arms ran on different devices
+([[thor-nova-agree-per-capture]]). No `[job.arms]` verdict had been posted
+when this was read. This is my own row-by-row diff.
+
+### Decision: keep the hunk; the fps claim is withdrawn
+
+The hunk stays on the PR. It changes no pixels, it cuts GPU time by 30% and
+removes 39 full finishes per 60 flips, and its growth is capped at 16 pools
+(1 was used). It does **not** fix #412. On this scene it is worth
++0.4 fps, which is inside the noise, and the PR says so. It is a
+precondition for a fix, not the fix: whatever paces the frame next will meet
+a renderer that no longer serialises against the GPU mid-frame.
+
+### Next for #412 (not in this PR)
+
+The counter that separates it now is **the vCPU thread's own time per guest
+frame in mission play**: a simpleperf profile of the vCPU thread
+(`report-sample` counts, [[simpleperf-rounding-inflates-jit]]) over the
+pause-menu-over-scene window on B's build. The CPU line cannot separate it
+because its only vCPU measure is saturated (~97% in every span). A second,
+cheaper question comes before any new hunk: whether `Surf`/`Tx` hold a wait.
+Time `pgraph_vk_surface_update` and the texture bind with a wait-excluded
+timer on B, and see whether the 10 ms follows the removed finish. Files:
+`hw/xbox/nv2a/pgraph/vk/surface.c` (PR #396's; do not touch until it folds)
+and `vk/texture.c`, and the vCPU side under `target/i386/tcg` / `hw/xbox`.
+
 ## Status
 
-Waiting on the two soak arms, `1790453714-aufire412-3780657` (A, be41e81662)
-and `1790453716-aufire412-3780798` (B, 1b557ff6a4). Both are Nova, perflog,
-survey route, 480 s, bound to `aufire412-uboring-soak.json` @ 08a83ac7. Also
-waiting on the golden arm, which the arms job queues from the committed
-`aufire412-uboring-goldens.json` @ 267b4c57. On resume: run `splitread.py
---judge <A logcat> <B logcat> docs/testing/predictions/aufire412-uboring-soak.json`,
-read the `[job.arms]` verdict, merge master, and mark #416 ready.
+Done. The soak and golden arms are read (section 6), master is merged
+(25c3b53d82), and the predictions are unchanged. Their refs (be41e81662,
+1b557ff6a4) are ancestors of the merge. There was no rebase, so they stay
+valid.
 
 Do not repeat: the non-perflog titleplay run cannot split Sub/Fen (no phase
 line). A 1,024-set ring looks like a pool-size question, but raising
 `NUM_UBO_SETS` only moves the threshold, because the scene takes ~1,950
 sets per frame. The overflow pools are the mechanism the code already
-intends.
+intends. Do not price a wait by removing it from the phase line: a 22 ms
+`Sub` that looks serial came back as `Surf`/`Tx`/Idle time with G
+unchanged (section 6). Check that G moves with the phase before
+predicting fps from it.
