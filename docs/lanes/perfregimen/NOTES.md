@@ -164,6 +164,17 @@ pwrlevel 4, exactly as the Nova does at 0). Its write proof and the Blinx
 pilot (`perfregimen-pilot-thor.json`, fan MAX now 5) remain to run:
 `launch_session.sh thor <dir>`.
 
+**Waiting (2026-09-26 16:20 PDT):** at session end, the Thor was held by
+lane.titlestate until 16:41 at the latest, after sitting at 43% under
+load. The Nova was held by the host (buildflags427 profile). On resume:
+- If the Thor is unheld, idle and at 50% or more, hold it, run
+  `bash docs/lanes/perfregimen/launch_session.sh thor .scratch/thor-session`,
+  TERM the running soak by PID at hold+30 min (`term_at.py`), lift the
+  hold, then judge with `judge.py .scratch/thor-session --prediction docs/testing/predictions/perfregimen-pilot-thor.json`.
+- If not, mark the PR ready anyway. The regimen is proven on the Nova, and
+  after the fold every Thor title soak's `perf_regimen.json` records its
+  read-back. Leave the Thor pilot as a named follow-up.
+
 ## For the host: REST values for host-tools/device_rest.conf
 
     thor performance_mode=0 fan_mode=4
