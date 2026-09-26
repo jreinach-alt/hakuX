@@ -41,7 +41,14 @@ disc `Texgen,Texgen with texture matrix`.
   when PR #288 folded. Lanes may not edit that file. CI does not run this gate.
   Everything else passes.
 
-## Attempt 2 (2026-09-26): why attempt 1 did not finish
+## Why attempts 1 and 2 did not finish
+
+Neither failed. Each ended because the lane was waiting on the arm, and a draft
+PR cannot be marked ready before its verdict. Attempt 2 ended at 02:23Z with the
+pair still queued behind lane.xbox and wbufdepth24 on the Thor. The verdict
+posted at 03:07Z, and handback resumed the lane at 03:10Z to judge it.
+
+## Attempt 2 (2026-09-26): merge and re-preflight
 
 Attempt 1 did everything it could before the arm. It ended waiting on the arm,
 with the PR still in draft. Handback resumed this lane at 02:22Z (CI GREEN on
@@ -57,9 +64,32 @@ pgraph.c hunk merged without a conflict. With `--allow-tracker`, preflight now
 passes on every gate, `coverage` included: hostops had cleared #273's stale
 blocker on origin/board.
 
+## Arm verdict (2026-09-26)
+
+`[job.arms]` posted PASS at 03:07Z, all 71 checks holding, and labelled the PR
+`verified`. The arms were base `1790377428-arms-sphere273fix-base-4068139` (Thor,
+apk d1fe979c229e) and fix `-fix-4068550` (apk 6f66158e0d63), on the same disc
+(`2-suites:e1ca4c30`). I judged the legs by hand from each arm's `scores1.tsv`:
+
+| capture | base differing / max_rgb | fix differing / max_rgb | off_by_one (fix) |
+|---|---|---|---|
+| SphereMap_RotateX | 131,495 / 235 | 126 / 1 | 126 |
+| SphereMap_Arbitrary | 131,495 / 43 | 125 / 1 | 125 |
+
+- must_move holds: <= 1,000 differing and max_rgb <= 2, with every remaining
+  pixel 1 LSB out.
+- must_not_move is byte-identical. ab_compare hashed all 71 shared captures, and
+  exactly 2 differ byte for byte: the two movers. counts: better 2, worse 0,
+  same 69, noise 0.
+- Every row has status `ok`, so none is `unreadable`. Neither logcat contains
+  `UtilAcceptVsock` or `PARTIAL`.
+
+A single run per arm cannot, on its own, tell a change from device
+nondeterminism. Here that does not matter: the 69 captures the hunk cannot reach
+hashed identical, and the two it can reach moved by 131,369 px.
+
 ## State
 
-Waiting on the arm. The arms job queues it from the committed prediction and
-posts a `[job.arms]` verdict on PR #330. When it lands, judge the two must-move
-legs by hand (<= 1,000 differing, max_rgb <= 2), read the status column for
-`unreadable`, then mark the PR ready.
+Done. The PR is marked ready. It merges cleanly with origin/master @ 28 commits
+past the last merge (`git merge-tree`), so I did not merge again. A new merge
+would only move the head away from the verified refs.
