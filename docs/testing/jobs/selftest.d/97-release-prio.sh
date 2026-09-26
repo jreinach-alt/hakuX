@@ -36,7 +36,8 @@ check "request.sh with HAKUX_RELEASE_PRIO=1 names 1-<epoch>-relprio-<pid>" \
 # -- the dispatcher's glob order, under both collations it can run in --------
 # The literal ladder from pri432.md, plus the two ids request.sh just wrote.
 for n in 0-0-x-9 0-probe 1-1759000500-b 1759000000-a z-sweep-x; do echo '{}' > "$RP/d/queue/$n.req"; done
-rp_want="0-0-x-9 0-probe $rp_prio 1-1759000500-b 1759000000-a $rp_plain z-sweep-x"
+# Within a tier, arrival: the literal 1-1759000500 is older than request.sh's.
+rp_want="0-0-x-9 0-probe 1-1759000500-b $rp_prio 1759000000-a $rp_plain z-sweep-x"
 for loc in C C.UTF-8; do
     # bash globs exactly as dispatcher.sh's `queue/*.req` does
     got=$(cd "$RP/d/queue" && LC_ALL=$loc bash -c 'for f in *.req; do printf "%s " "${f%.req}"; done')
