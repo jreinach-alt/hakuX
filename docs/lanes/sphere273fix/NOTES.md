@@ -41,6 +41,20 @@ disc `Texgen,Texgen with texture matrix`.
   when PR #288 folded. Lanes may not edit that file. CI does not run this gate.
   Everything else passes.
 
+## Attempt 2 (2026-09-26): why attempt 1 did not finish
+
+Attempt 1 did everything it could before the arm. It ended waiting on the arm,
+with the PR still in draft. Handback resumed this lane at 02:22Z (CI GREEN on
+a3f2437ccf). Both arm requests
+(`1790377428-arms-sphere273fix-{base,fix}`) were still in the device queue then,
+and no `[job.arms]` verdict had posted, so the arm leg is still open.
+
+Master had moved 128 commits in the meantime, and the PR had become unmergeable
+(`dirty`) on `docs/testing/nv2a_index.json`. I merged origin/master in, without a
+rebase, so a_ref and b_ref are still ancestors. I took master's index and rebuilt
+it over the fold-pins trees (tests_commit 6743b6ab), and `check` matches. The
+pgraph.c hunk merged without a conflict.
+
 ## State
 
 Waiting on the arm. The arms job queues it from the committed prediction and

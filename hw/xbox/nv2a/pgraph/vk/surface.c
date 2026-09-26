@@ -1994,10 +1994,49 @@ static void surface_access_callback(void *opaque, MemoryRegion *mr, hwaddr addr,
     }
 }
 
+/*
+ * #311: live CPU access watches this file holds (inserts minus removes),
+ * logged every 5 s with the process-wide cb_count beside it. A watch that
+ * outlives its access_cb pointer can never be removed, and every guest TLB
+ * fill walks all of them (mem_access_callback_address_matches), so a count
+ * that climbs without bound is the leak and a flat one rules it out.
+ */
+extern volatile int32_t *xbox_ram_fp_cb_count_ptr;   /* tcg/tcg.c */
+static long surface_live_watches;
+static unsigned long surface_watch_inserts;
+
+static void surface_watch_log_periodic(PGRAPHVkState *r)
+{
+    static int64_t next_ns;
+    int64_t now = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+    if (now < next_ns) {
+        return;
+    }
+    next_ns = now + 5 * NANOSECONDS_PER_SECOND;
+
+    int shelved = 0, invalid = 0, active = 0;
+    SurfaceBinding *s;
+    QTAILQ_FOREACH(s, &r->surfaces, entry) {
+        active++;
+    }
+    QTAILQ_FOREACH(s, &r->shelved_surfaces, entry) {
+        shelved++;
+    }
+    QTAILQ_FOREACH(s, &r->invalid_surfaces, entry) {
+        invalid++;
+    }
+    SURF92_LOG("[watch311] live=%ld inserts=%lu cb_count=%d "
+               "active=%d shelved=%d invalid=%d",
+               surface_live_watches, surface_watch_inserts,
+               xbox_ram_fp_cb_count_ptr ? *xbox_ram_fp_cb_count_ptr : -1,
+               active, shelved, invalid);
+}
+
 static void unregister_cpu_access_callback(SurfaceBinding *surface)
 {
     if (tcg_enabled() && surface->access_cb) {
         mem_access_callback_remove_by_ref(qemu_get_cpu(0), surface->access_cb);
+        surface_live_watches--;
     }
     /* Clearing this is what makes register/unregister safe to call in any
      * order: a surface can now be retired with its watch still up, and both
@@ -2016,6 +2055,8 @@ static void register_cpu_access_callback(NV2AState *d, SurfaceBinding *surface)
             surface->access_cb = mem_access_callback_insert(
                 qemu_get_cpu(0), d->vram, surface->vram_addr, surface->size,
                 &surface_access_callback, d);
+            surface_live_watches++;
+            surface_watch_inserts++;
         }
     }
 }
@@ -3697,12 +3738,26 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                 if (surface) {
                     migrate_surface_image(&target, surface);
                 } else {
-                    surface = g_malloc(sizeof(SurfaceBinding));
+                    surface = g_malloc0(sizeof(SurfaceBinding));
                     create_surface_image(pg, &target);
                 }
             }
             SURF_TIMER_ACC(create_ns, _gt2);
 
+            /*
+             * A slot retired dirty kept its watch (see
+             * unregister_cpu_access_callback_if_clean), and the assignment
+             * below drops the only pointer to it; surface_put's own
+             * unregister then sees NULL, and the watch outlives the process.
+             * One leaked per reuse, and every guest TLB fill walks them all:
+             * Ghoulies fell from 29 to 1-2 fps within a minute (#311).
+             * Releasing it here loses nothing. The watch exists so a guest
+             * write can cancel the writeback a retired surface still owes,
+             * and that handler only walks the shelved and invalid lists,
+             * which this slot has just left; the assignment replaces its
+             * address and draw_dirty, so the old writeback is gone anyway.
+             */
+            unregister_cpu_access_callback(surface);
             *surface = target;
             set_surface_label(pg, surface);
 
@@ -3892,6 +3947,7 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
         prune_invalid_surfaces(r, num_invalid_surfaces_to_keep);
         SURF_TIMER_ACC(expire_ns, _se0);
     }
+    surface_watch_log_periodic(r);
 
     NV2A_PHASE_TIMER_END_EXCL(surface_update);
 }
