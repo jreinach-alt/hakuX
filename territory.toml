@@ -332,13 +332,6 @@ retired_utc = "2026-09-19T01:05:00Z"
 files = []
 note = "RETIRED AT WAVE 97: #99 was closed 2026-09-19T00:20Z as a duplicate of #75 (itself a duplicate of #39). The lane held no files and produced no commits, so there is nothing to fold and nothing to release; the row was the only thing left asserting coverage that does not exist. ORIGINAL NOTE: #99, dispatched ANALYSIS-ONLY and with a WARNING ATTACHED, because the issue is a title with an empty body and no tracker entry: three Stencil ZERO captures reading 0 -> 100,000 px between 2501f35211 and 0026f00534. #79 SAYS NINE OF SIXTEEN STENCIL CAPTURES CHANGE VALUE BETWEEN RUNS ON ONE BUILD, so a two-sha delta over that suite is not evidence of a regression until the three are shown to be outside #79's nine -- that separation is the first step and it is offline. Then date the goldens and the captures against both shas before attributing anything to code: a golden newer than the run, or a capture older than the fix, reads exactly like a live defect and has cost this project a suite twice. It writes the tracker entry the issue never got. No files, no arm; if a bisect is warranted it comes back and asks for one."
 
-[lane.tiecode282]
-issues = ["282", "283"]
-files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/geom.c", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**"]
-released = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/geom.c", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**"]
-standing = false
-note = "STARTED BY THE HOST (seen by job.board wave 243, 2026-09-26T10:15Z): draft PR #379 on lane/tiecode282, mergeable state CONFLICTING against master (handback owns the resume; not a board action). PRIOR: BRIEFED AT TERRITORY WAVE 240, NOT STARTED (job.board, 2026-09-26; `lane.sh start` was refused approval in the board session, so the HOST runs `docs/testing/lane.sh start tiecode282 briefs/tiecode282.md 282`): the code half of #282/#283. The weight-binade tie rule now holds on three geometries (PR #314 checkerboard, PR #376 Texture_render_target row 240: 6,108/6,108, PR #378 Volume texture: 6,496/6,496) and no lane implements it. Brief briefs/tiecode282.md. psh.c is released at ready by lane.fog278 (PR #373) and touched by PR #367: the brief says merge master or those branches and re-run the arm before marking ready. geom.c released by lane.vkpointsize34 (PR #371)."
-
 [retired.blinx372b]
 issues = ["372"]
 files = []
@@ -375,7 +368,13 @@ issues = ["94"]
 files = ["docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/73-cloud-claim.sh", "docs/lanes/cloudclaim/**"]
 note = "DISPATCHED (hostops 2026-09-26T14:47Z): cloud.sh spent 3 attempts on #271 claims that never started (stale folded local lane/cloud-271); fix the counter rollback and clear an ancestor branch. cloud.sh was in no row. Brief: briefs/cloudclaim.md."
 
+[lane.cull13]
+issues = ["13"]
+files = ["hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/glsl/geom.h", "hw/xbox/nv2a/pgraph/vk/renderer.c", "docs/testing/predictions/cull13-*.json", "docs/lanes/cull13/**"]
+note = "DISPATCHED (hostops 2026-09-26T14:52Z): #13 class A of PR #370 (line-mode triangles not culled, 31,152 px). geom.c from lane.tiecode282 (retired this tick, PR #379 folded 07:41 PDT); geom.h and renderer.c were in no row (renderer.c for SHADER_STATE_LAYOUT_VERSION only). Brief: briefs/cull13.md."
+
 [free]
+# RELEASED (hostops 2026-09-26T14:52Z) by retiring lane.tiecode282 (PR #379 folded; glsl/psh.c stays lane.pshaniso284's): its predictions and lane dir; glsl/geom.c CLAIMED the same tick by lane.cull13.
 # RELEASED (hostops 2026-09-26T14:50Z) by retiring lane.turnipfork (PR #353 merged) and lane.perfarch (PR #308 merged): every file each row held.
 # RELEASED (job.board wave 240) by retiring lanes boardprio (PR #358), indexloc (#360), foldflow (#356), statuspage (#354), titlerun (#307), cullnf276 (#368), blinx372 (#374), brdf315b (#375), tie282c (#376), regs200 (#377), vol283r (#378): every file each row held. CLAIMED the same wave: psh.c + geom.c -> lane.tiecode282; dispatcher.sh -> lane.blinx372b.
 # RELEASED (job.board wave 239) by retiring lane.sweepcover (PRs #298/#299 folded): docs/testing/scoreboard.py, collect_sweep.sh, queue_full_sweep.sh, selftest.d/88-sweep-cover.sh.
@@ -560,7 +559,7 @@ note = "DISPATCHED (hostops 2026-09-26T14:47Z): cloud.sh spent 3 attempts on #27
 # exist, and check_coverage.py cannot tell the difference.
 # CLAIMED (hostops, 2026-09-26T03:35Z): glsl/psh.h -> lane.pshqueue (granted at wave 222; [free] still listed it, failing check_territory).
 # CLAIMED (hostops, 2026-09-26 6:45 AM PDT): gl/texture.c -> lane.pshaniso284 (granted 6:40 AM; [free] still listed it, failing check_territory).
-files = ["tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "android/app/build.gradle.kts", "hw/xbox/nv2a/pgraph/texture.c", 
+files = ["docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**", "tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "android/app/build.gradle.kts", "hw/xbox/nv2a/pgraph/texture.c", 
 # RELEASED AT WAVE 158 by retiring lane.cloud190: PR #211 folded as f2e8ef8ba8 (#190 fixed).
     "hw/xbox/nv2a/pmc.c",
 # RELEASED (job.board wave 249) by retiring lane.fmv303 (PR #317 folded bb1f437bb7): vk/display.c.
