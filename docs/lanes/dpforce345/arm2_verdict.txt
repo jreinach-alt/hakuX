@@ -1,0 +1,72 @@
+==============================================================================
+A/B comparison, per capture
+==============================================================================
+A (baseline)  1790419343-arms-dpforce345-base-4176529
+    ref 2dc2b5c49a   apk cb97387981aa   classifier 37a5cc7ff3
+    1 run(s), 300 captures, progress-log proof yes
+B (candidate)  1790419343-arms-dpforce345-fix-4176905
+    ref 74a238a614   apk 41ffc776e4d7   classifier 37a5cc7ff3
+    1 run(s), 300 captures, progress-log proof yes
+disc  13-suites:b74d8c50:Attrib_float,Fog_exceptional_value,Fog_i
+      identical in both arms, so the arms are comparable
+
+------------------------------------------------------------------------------
+movers
+------------------------------------------------------------------------------
+  worse  Vertex_shader_rounding_tests GeometrySuperscreen_0.5000             0 ->       800        +800  <<< WAS EXACT
+  better Vertex_shader_rounding_tests GeometrySuperscreen_0.4999           800 ->         0        -800  <<< now exact
+  better Vertex_shader_rounding_tests GeometrySuperscreen_0.5624           400 ->         0        -400  <<< now exact
+  better Vertex_shader_rounding_tests GeometrySuperscreen_0.5626           570 ->         0        -570  <<< now exact
+  better Vertex_shader_rounding_tests GeometrySuperscreen_1.0000           570 ->         0        -570  <<< now exact
+
+------------------------------------------------------------------------------
+counts, per capture -- the only valid unit
+------------------------------------------------------------------------------
+  better 4     worse 1     same 295   noise 0       (300 compared)
+  exact  104   ->    107    (+3)
+  regressed from exact 1        repaired to exact 4  
+  REGRESSED FROM EXACT: Vertex_shader_rounding_tests/GeometrySuperscreen_0.5000
+
+------------------------------------------------------------------------------
+byte-level check -- what a score count cannot see
+------------------------------------------------------------------------------
+  hashed 300 of 300 shared captures (1 run-dir(s) A, 1 B)
+  5 capture(s) differ BYTE FOR BYTE between the arms.
+
+  NOT ATTRIBUTABLE: one run per arm cannot tell a change from device
+  nondeterminism -- both have this signature. Requeue with --runs 3 to
+  separate them; sweep_agreement.py measures the same thing within one ref.
+
+------------------------------------------------------------------------------
+per suite
+------------------------------------------------------------------------------
+  suite                       caps better worse  same noise  differing A  differing B
+  Attrib_float                  12      0     0    12     0      186,745      186,745
+  Fog_exceptional_value         96      0     0    96     0    2,742,012    2,742,012
+  Fog_inf_coord                  6      0     0     6     0           18           18
+  Fog_vsh                        6      0     0     6     0       56,754       56,754
+  Lighting_Two_Sided             1      0     0     1     0            0            0
+  Lighting_accumulation         10      0     0    10     0       32,412       32,412
+  Lighting_control              32      0     0    32     0       56,804       56,804
+  Lighting_normals              28      0     0    28     0      127,440      127,440
+  Lighting_range                 3      0     0     3     0        9,968        9,968
+  Lighting_spotlight            24      0     0    24     0      166,198      166,198
+  Vertex_shader_independence_tests     2      0     0     2     0            0            0
+  Vertex_shader_rounding_tests    51      4     1    46     0        3,638        2,098
+  Vertex_shader_swizzle_tests    29      0     0    29     0            0            0
+
+------------------------------------------------------------------------------
+totals -- ADVISORY ONLY: a total can hide a regression
+------------------------------------------------------------------------------
+  differing       3,381,989 ->      3,380,449  (-1,540)
+  structural        262,621 ->        261,081  (-1,540)
+  structural is differing minus off-by-one; the two never overlap, so the subtraction is safe.
+
+==============================================================================
+PRE-REGISTERED: arm B was queued at 2026-09-26T10:42:23Z naming /home/justin/hakux-work/arms/expect/c269a5c22ca35eca751c24ae093ce8cf211e988499733d3f074ec3d7daf533eb.json, and its content still hashes to the sha recorded then. The prediction existed before the device ran and has not been edited since.
+  bound sha256 c269a5c22ca35eca751c24ae093ce8cf211e988499733d3f074ec3d7daf533eb
+  verify with: sha256sum /home/justin/hakux-work/arms/expect/c269a5c22ca35eca751c24ae093ce8cf211e988499733d3f074ec3d7daf533eb.json
+prediction (registered 2026-09-26T10:31:56Z): #345 half 1: glsl/vsh-prog.c _DP3/_DPH/_DP4 force each 0 x inf and 0 x NaN product to 0 (the _MUL rule), matching silicon's (0,1,2).(inf,1,1) = 3 (PR #344, docs/testing/xbox-special-raw-2026-09-25.md). THE HUNK IS NaN-GATED: d = dot(); if isnan(d), d = sum of _MUL products. A zero factor can only change a dot's value through a 0 x inf or 0 x NaN term, and every such term makes dot() NaN, so for every dot whose plain result is not NaN the generated value is dot()'s, bit for bit. docs/lanes/dpforce345/dp_model.py reproduces all 5 silicon DP rows (3 moved from NaN, 2 unchanged). NO MUST_MOVE LEG: no golden in this disc is known to feed a DP a 0 x inf/NaN term. nxdk_vsh_tests CPU Shader Tests (vsh_score.py) is NOT an instrument for this hunk: its values come from the nv2a_vsh_cpu evaluator via LAUNCH_TRANSFORM_PROGRAM / constant writeback in pgraph.c, which never runs this GLSL (#281's prediction says the same of Exceptional Float). EVERY LEG IS MUST_NOT_MOVE, and what would move each: (1) any capture in any suite blanks or moves by its full geometry if the new helper fails to compile (it calls _MUL and isnan, both already used in this prelude); (2) Lighting_* (6 suites, a DP on every lit programmable path) and Vertex_shader_independence/rounding/swizzle move only if a DP in them is NaN today, i.e. one of their inputs is inf/NaN meeting a zero -- a move there toward the golden would be this defect showing, and is reported as an unpredicted finding, not claimed; (3) Attrib_float/* (the #281 NaN captures: MOV and MUL x NaN constant columns) moves only if its program has a DP over a NaN attribute; its NaN sign rule (_PosNaN) is untouched; (4) Fog_vsh, Fog_exceptional_value, Fog_inf_coord feed inf/NaN through vertex programs and move only if one of them reaches a DP with a zero factor. W_param is omitted: its prog_ captures run passthrough.vsh (mov only) and rcc_clamp_test.vsh (mul, rcc), no DP (docs/lanes/wparam223/NOTES.md). RE-REGISTERED 2026-09-26 on the same refs after arm 1 (Nova, 1 run/arm) FAILed only on Vertex_shader_rounding_tests/GeometrySuperscreen_*: 3 better, 3 worse, 294 same. Those nine captures are NOT guarded here, decided from runs without this hunk: in the 21 result dirs holding them, off-modal images occur only in the vshnobegin242 arms (Thor, base and fix) and in arm 1, whose BASE arm at master 2dc2b5c49a was itself off the modal image on 4 of 9 (0.5624, 0.5626, 0.9990 and 1.0000). The fix arm matched the modal image on 0.5624 and 0.9990 (docs/lanes/dpforce345/superscreen_hashes.py). The flip goes both ways, so the captures are unguarded, not must_not_regress. Every other rounding capture stays guarded (legs [!G]*, Geometry_* and GeometrySubscreen_*). A worse move on any remaining leg refutes the claim that the hunk is inert on finite dots.
+VERDICT: PASS -- all 291 registered checks hold.
+    Note: 1 capture(s) worse and 1 regressed from exact. The prediction allowed for them; the regressions are still real.
+==============================================================================

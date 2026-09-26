@@ -131,6 +131,46 @@ capture stays guarded through the legs `[!G]*`, `Geometry_*` and
 291/291. That is not the verdict: the file postdates arm 1, so the verdict
 has to come from a fresh arm.
 
+## Arm 2 (Nova, 1 run per arm): PASS, 291/291
+
+Result dirs: `dispatch/results/1790419343-arms-dpforce345-{base-4176529,fix-4176905}`.
+This arm was queued at 10:42:23Z against the re-registered prediction
+(sha256 `c269a5c22ca3...`), and the file hashed the same when the arm ran.
+The host had not yet judged it, so I judged it locally with `ab_compare.py
+--expect` on the host's bound expect file. The full output is in
+`arm2_verdict.txt`.
+
+- **VERDICT: PASS -- all 291 registered checks hold.**
+- 295 of 300 captures are the same. The 5 movers are all
+  GeometrySuperscreen_* (unguarded): 0.4999, 0.5624, 0.5626 and 1.0000 got
+  better (to exact), and 0.5000 got worse (0 -> 800).
+
+`superscreen_hashes_arm2.txt` settles the superscreen question. The two base
+runs of the **same master apk** `cb97387981` came back off the modal image on
+different sets:
+
+- arm 1 base: {0.5624, 0.5626, 0.9990, 1.0000};
+- arm 2 base: {0.0010, 0.4999, 0.5624, 0.5626, 1.0000}.
+
+One binary produced two image sets, so this is the suite's own
+nondeterminism.
+
+One capture repeats: `0.5000` is off in both fix runs and in neither
+dpforce345 base run. It was also off in both vshnobegin242 base arms (Thor),
+which do not carry this hunk. So going off-modal on 0.5000 needs no DP
+change, and 2 of 2 runs is not a rate. The hunk cannot reach it anyway,
+because it is NaN-gated and a superscreen vertex carries no inf/NaN.
+
+## Why attempt 2 did not finish
+
+Attempt 2 re-registered the prediction and ended with a `waiting:` comment
+naming the `[job.arms]` verdict. The arms job ran the second arm, and the
+arm reached DONE, but the job never judged it. What *was* posted
+(10:42:33Z) was the verdict for the **old** prediction sha `6c5e4695c2ef`
+against arm 1. That comment is where the PR's `regressed` label comes from,
+even though the prediction has been superseded. The handback resumed this
+lane on that label.
+
 ## Why attempt 1 did not finish
 
 It ended correctly with a `waiting:` comment on arm 1 and CI. CI went green,
@@ -138,7 +178,14 @@ and arm 1 finished at about 10:12Z. Its verdict was never posted as a
 `[job.arms]` comment. The bg-addendum resume that started attempt 2
 misread the wait as a wait on a background task.
 
-## Status (2026-09-26, attempt 2)
+## Status (2026-09-26, attempt 3)
+
+Done. Arm 2 PASSes 291/291 on the current prediction. CI is green on
+320205ca51. The branch merges cleanly with origin/master, and master has not
+touched `vsh-prog.c` since the base, so no merge was made (the prediction's
+refs are unchanged). The PR is marked ready.
+
+## Status (2026-09-26, attempt 2, superseded)
 
 Arm 1 was judged locally, as above. The re-registered prediction is pushed.
 
