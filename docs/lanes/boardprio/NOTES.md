@@ -243,3 +243,17 @@ Items 1-4 of the definition of done are met: pushed, preflight passes,
 Waiting on CI (build, selftest) on the head carrying this note. The full
 selftest totals come from that run. When CI is green: put the totals in the
 PR body and `gh pr ready 358`.
+
+## Attempt 7 (2026-09-26): finish at ready
+
+**Why attempt 6 did not finish:** it ended "waiting on CI" with #358 in
+draft, expecting handback to resume it when CI finished. Nothing resumes a
+lane on CI completion (lane.toolsmith's defect 23), so the lane sat idle.
+Don't end a session waiting on CI: watch it in the foreground
+(`gh pr checks <n> --watch`) and finish in the same session.
+
+CI on 0c53fffba2 was green: build x2 pass, and the full jobs selftest
+**1492 passed, 0 failed**. Attempt 7 merged origin/master (42 commits; the only
+jobs/ changes are selftest fragments 83 and 88, both about the scoreboard, and
+neither touches a file this PR edits). It watched CI on the merged head and
+then marked #358 ready.
