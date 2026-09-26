@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 212
-updated_utc = "2026-09-25T23:55:00Z"
+wave = 213
+updated_utc = "2026-09-26T00:35:00Z"
 
 
 [retired.hilodot10]
@@ -1023,12 +1023,11 @@ standing = false
 note = "vk/surface.c MOVED to lane.fix311 (host, 2026-09-26T00:20Z): ghoul311 is at attempt 4 and a message to its running session was held for approval, so the fix arm got its own lane. ghoul311 keeps the diagnosis. GRANTED hw/xbox/nv2a/pgraph/vk/surface.c from [free] (host session, 2026-09-26T00:05Z): the #311 code review (bisect311/code-review.md) names 21cacb354a -- a retired dirty surface keeps its guest-memory access watch and update_surface_part's `*surface = target` overwrites it, so watches leak one per reuse and every TLB fill walks the list. The fix arm unregisters the watch in get_shelved_surface()/get_any_compatible_invalid_surface(). PRIOR NOTE: STARTED at wave 197 (job.board, 2026-09-25T20:56Z; the wave-195 start had hit an approval prompt, no attempt was spent). DISPATCHED WAVE 195 (job.board), briefs/ghoul311.md: #311, Grabbed by the Ghoulies decays 29 -> 1-2 fps hands-off. Diagnosis first (simpleperf at 20 s / 120 s, hakuX-pages counters, bisect v0.3.1 / v0.4.0-j1 only if needed); no source claimed, a fix hunk is named on #311 for a grant. Coordinates with lane.perfbase/tcgchurn/perfarch (#68), whose files it does not touch."
 
 
-[lane.turnipfork]
+[retired.turnipfork]
 issues = ["68"]
-files = ["tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json"]
-standing = false
-note = "DISPATCHED AT THIS WAVE (host session, 2026-09-25T20:57:51Z), on the owner's request: a hakuX-built Adreno driver (a Turnip fork loaded through the existing libadrenotools picker or bundled in the APK). ENGINEERING PERSONA (principal GPU driver engineer). GATE 0 FIRST, no build work before it: classify every candidate as T0 plain Vulkan / T1 our Turnip, no root / T2 needs root or custom kernel / T3 impossible (silicon, signed firmware), with evidence, and post it on #68. The owner asked to know up front if anything needs deeper access than a menu-loaded driver; T2/T3 are dropped, not built. The host relays Gate 0 to the owner. Candidates: hardware clip/viewport controls vs the #223 geometry-shader wedge; zero-copy guest RAM (#184/#262 class); NV2A depth formats (#266); combiner compile stutter; driver CPU share; GMEM. Mesa tree outside the repo (~/hakux-work/mesa-turnipfork). No hw/ or android/ edits before Gate 1 (board grant). Driver prefs are device config: set under a hold, restore T30, read back. Brief: briefs/turnipfork.md."
-
+files = []
+retired_utc = "2026-09-26T00:35:00Z"
+note = "RETIRED (job.board, wave 213): PR #318 MERGED 2026-09-26T00:01:03Z (fold ab1b915a9c), unit gone, no open PR on lane/turnipfork. Gate 0 report delivered (docs/investigations/adreno-driver-feasibility.md, posted on #68); tools/turnip/build.sh builds; the Gate 1 control run needs a driver swap a lane cannot make. #68 stays upstream. Files RELEASED."
 
 [lane.wparamcode223]
 issues = ["223"]
@@ -1044,19 +1043,17 @@ standing = false
 note = "DISPATCHED AT TERRITORY WAVE 203 (job.board, 2026-09-25T21:50Z) for #277: xemuReadFromFileIntoSurface, 90,912 px, a file read into a bound surface keeps the old colour. LOCATE-FIRST: the issue's guess vk/surface.c:3406-3422 is lane.remote's; vk/draw.c is lane.vtxarr262's; the lane names the hunk and asks. Read #262/#184 NOTES first (same family). Brief: briefs/dmasurf277.md."
 
 
-[lane.g8b8285]
+[retired.g8b8285]
 issues = ["285"]
-files = ["docs/testing/predictions/g8b8285-*.json", "docs/lanes/g8b8285/**"]
-standing = false
-note = "DISPATCHED AT TERRITORY WAVE 203 (job.board, 2026-09-25T21:50Z) for #285: Fmt_G8B8, 31,820 px, no mechanism named. Classify first (defect / stale capture / golden), date every capture against #271/#184's folds; code files are named-not-edited (vk/surface.c lane.remote, vk/draw.c lane.vtxarr262, psh.c lane.wbufdepth24). Brief: briefs/g8b8285.md."
+files = []
+retired_utc = "2026-09-26T00:35:00Z"
+note = "RETIRED (job.board, wave 213): PR #324 MERGED 2026-09-26T00:01:03Z (fold 21b8c6a80e), unit gone, no open PR on lane/g8b8285. Analysis plus a named hunk (docs/lanes/g8b8285/g8b8-bswap.diff: uniform-gated fragColor.rb = fragColor.br at the end of psh_convert, plus one DECL in psh.h). #285 stays open, a live defect; the code waits on psh.c/psh.h (queued in briefs/pshqueue.md). No file held."
 
-
-[lane.brdf315]
+[retired.brdf315]
 issues = ["315"]
-files = ["docs/testing/predictions/brdf315-*.json", "docs/lanes/brdf315/**"]
-standing = false
-note = "DISPATCHED AT TERRITORY WAVE 203 (job.board, 2026-09-25T21:50Z) for #315: PS_TEXTUREMODES_BRDF unimplemented plus a 614-px wedge silicon draws and we do not. Discriminating run first (pixel 639,479 at a ref containing 8e683b3a26), then fit the BRDF rule and name the psh.c hunk (psh.c is held; named-not-edited). Brief: briefs/brdf315.md."
-
+files = []
+retired_utc = "2026-09-26T00:35:00Z"
+note = "RETIRED (job.board, wave 213): PR #326 MERGED 2026-09-26T00:10:26Z (fold f1a9634729), unit gone, no open PR on lane/brdf315. Analysis plus a named hunk (docs/lanes/brdf315/brdf315-psh.diff: BRDF case in get_sampler_type, dots_needed 0, texture(texSamp2, vec3(t0.r, t1.r, fract(t1.g - t0.g))); fits 605/610 px). #315 stays open; the code waits on psh.c (queued in briefs/pshqueue.md). No file held."
 
 [lane.aasample]
 issues = ["286"]

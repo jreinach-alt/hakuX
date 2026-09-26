@@ -3746,7 +3746,7 @@ suites = ["Surface format"]
 status = "open"
 dispatch_state = "available"
 blocked_on = ""
-status_note = "BOARD 2026-09-25T21:50Z: lane.g8b8285 dispatched (classify first: defect / stale capture / golden; no mechanism named; briefs/g8b8285.md). PRIOR: FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
+status_note = "BOARD 2026-09-26T00:35Z: lane.g8b8285 REPORTED (PR #324 folded): live defect, the stored B byte comes from src.r where silicon uses src.b (15 px vs 16,399 offline). Hunk docs/lanes/g8b8285/g8b8-bswap.diff (passes -fsyntax-only); queued in briefs/pshqueue.md, dispatch when PR #268 folds. PRIOR: BOARD 2026-09-25T21:50Z: lane.g8b8285 dispatched (classify first: defect / stale capture / golden; no mechanism named; briefs/g8b8285.md). PRIOR: FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
 impact_px = 3182
 impact_onestep_px = 0
 impact_basis = "2026-09-25 inventory (host session): low: 0-31,820; one capture, no mechanism named; expected 10% of the ceiling"
@@ -3923,7 +3923,7 @@ suites = ["Texture BRDF"]
 status = "open"
 dispatch_state = "available"
 blocked_on = ""
-status_note = "BOARD 2026-09-25T21:50Z: lane.brdf315 dispatched (discriminating run at a ref containing 8e683b3a26 first, then fit the BRDF rule and name the psh.c hunk; briefs/brdf315.md). PRIOR: FILED 2026-09-25 by lane cloud-297 (PR #313, docs/lanes/cloud-297/NOTES.md section 2). 3 captures x 614 px, deterministic (7 of 7 runs 09-13..09-25). psh.c:3123 emits t2 = vec4(0). The wedge (x 579..639, y 460..479) is the clear colour on ours, not (0,0,0,0), so it is not rasterised either. Neither cube appears on silicon. Pixel (639,479) on a post-8e683b3a26 capture decides whether #223's wedge covers the geometry half. FILES: defect 1 needs glsl/psh.c, which is lane.wbufdepth24's; a lane on this claims it by board request or after that lane retires."
+status_note = "BOARD 2026-09-26T00:35Z: lane.brdf315 REPORTED (PR #326 folded): the wedge is ordinary geometry (both cubes off screen, only draw 0 clips into the corner; #223 is not the mechanism), BRDF rule fitted (605/610 px exact). Only the psh.c hunk remains (docs/lanes/brdf315/brdf315-psh.diff, uncompiled); queued in briefs/pshqueue.md, dispatch when PR #268 folds. PRIOR: BOARD 2026-09-25T21:50Z: lane.brdf315 dispatched (discriminating run at a ref containing 8e683b3a26 first, then fit the BRDF rule and name the psh.c hunk; briefs/brdf315.md). PRIOR: FILED 2026-09-25 by lane cloud-297 (PR #313, docs/lanes/cloud-297/NOTES.md section 2). 3 captures x 614 px, deterministic (7 of 7 runs 09-13..09-25). psh.c:3123 emits t2 = vec4(0). The wedge (x 579..639, y 460..479) is the clear colour on ours, not (0,0,0,0), so it is not rasterised either. Neither cube appears on silicon. Pixel (639,479) on a post-8e683b3a26 capture decides whether #223's wedge covers the geometry half. FILES: defect 1 needs glsl/psh.c, which is lane.wbufdepth24's; a lane on this claims it by board request or after that lane retires."
 impact_px = 1842
 impact_onestep_px = 0
 impact_basis = "2026-09-25 (lane cloud-297): 3 captures x 614 px; games: low, BRDF texture mode is rare in shipped titles"
