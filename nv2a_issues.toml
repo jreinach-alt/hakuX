@@ -3942,3 +3942,18 @@ status_note = "FILED (host session, 2026-09-26T02:35Z) from lane.xbox's #112 ite
 impact_px = "0"
 impact_onestep_px = "0"
 impact_basis = "2026-09-26 (lane.xbox, PR #344): silicon rows only, no pgraph capture moves; games: unmeasured -- a DP whose zero component meets inf/NaN (e.g. after RSQ of 0) yields NaN instead of a finite value, visible when it reaches a position or colour"
+
+[issue.372]
+title = "Blinx: The Time Sweeper: ~16 fps in the attract demo on the Thor"
+component = "games"
+disposition = "defect"
+suites = []
+no_suites = "A PERFORMANCE DEFECT IN A COMMERCIAL TITLE (Blinx: The Time Sweeper's in-engine attract demo). No pgraph suite measures frame rate, so none is named."
+status = "open"
+status_note = "FILED 2026-09-26 (hostops) from the overnight title batch: soak 0-0-y-1790405024-titlebench-2, Thor, ref 6561442869, 240 s hands-off. Time-weighted median gfps over 90-240 s = 16 (59 through the menus, 10-22 from ~116 s when 'Demo play' starts). No crash lines; renders correctly. Unattended run, attract demo not gameplay."
+dispatch_state = "available"
+blocked_on = ""
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "game-visible (hostops, 2026-09-26): a commercial title under the owner's 20 fps floor for the whole in-engine demo; no golden, so no px figure"
