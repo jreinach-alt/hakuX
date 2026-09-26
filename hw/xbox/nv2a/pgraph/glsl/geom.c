@@ -45,6 +45,7 @@ void pgraph_glsl_set_geom_state(PGRAPHState *pg, GeomState *state)
                            NV_PGRAPH_CONTROL_0_Z_PERSPECTIVE_ENABLE;
     state->noperspective = !(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) &
                              NV_PGRAPH_CONTROL_0_TEXTUREPERSPECTIVE);
+    state->aa_offset_x = pgraph_anti_aliasing_sample_offset_x(pg);
     for (int i = 0; i < 4; i++) {
         /* The bit only takes effect on an axis in WRAP address mode:
          * TextureWrapMode's CYLWRAP tile wraps U (WRAP) and leaves V
@@ -614,11 +615,26 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
          * z and w come from the source vertex unchanged: the widening is a
          * pure screen-space displacement, and a line's depth does not vary
          * across its width.
+         *
+         * aaScreen(s) is the anti-aliasing sample shift (pgraph.h) that
+         * vsh.c adds to gl_Position: screen came from v_vtxPos, which is
+         * taken before that shift, so a footprint rebuilt from it must add
+         * it again or a CC2 line would sit a quarter pixel left of the
+         * triangles around it.  Added in guest px, before the map, where it
+         * is exact on the 1/16 grid.  The identity at 0.
          */
+        if (state->aa_offset_x != 0.0f) {
+            mstring_append_fmt(output,
+                       "#define aaScreen(s) ((s) + vec2(%f, 0.0))\n",
+                       state->aa_offset_x);
+        } else {
+            mstring_append(output, "#define aaScreen(s) (s)\n");
+        }
         mstring_append(output,
                        "vec4 line_clip(int index, vec2 screen) {\n"
                        "  vec4 p = gl_in[index].gl_Position;\n"
-                       "  return vec4((screen * lineNdcScale - 1.0) * p.w,\n"
+                       "  return vec4((aaScreen(screen) * lineNdcScale - 1.0)"
+                       " * p.w,\n"
                        "              p.z, p.w);\n"
                        "}\n");
         /*
@@ -666,7 +682,8 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
                        "  float q = mix(ia, ib, t);\n"
                        "  float w = 1.0 / q;\n"
                        "  float z = mix(pa.z * ia, pb.z * ib, t) * w;\n"
-                       "  return vec4((screen * lineNdcScale - 1.0) * w,\n"
+                       "  return vec4((aaScreen(screen) * lineNdcScale - 1.0)"
+                       " * w,\n"
                        "              z, w);\n"
                        "}\n"
                        "\n");

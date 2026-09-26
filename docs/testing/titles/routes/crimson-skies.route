@@ -1,0 +1,19 @@
+# Crimson Skies: High Road to Revenge (4D530021), from perf/run_perf.sh:
+# boot 75 s, A x12 at 1.5 s through the intro and the first tutorial
+# prompts, settle 12 s. That sequence exposed the crash fixed in fe418afedf
+# and is what the Galleon-era perf runs measured against.
+#
+# The game paces itself to 30. With the sticks centred the plane flies
+# level; an A every 20 s dismisses any tutorial prompt that comes up later.
+wait 75
+mark booted
+mash A 12 1.5
+wait 12
+mark gameplay
+repeat forever {
+    repeat 6 {
+        wait 20
+        press A
+    }
+    shot play
+}

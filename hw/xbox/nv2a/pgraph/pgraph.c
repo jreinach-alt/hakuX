@@ -2509,8 +2509,19 @@ DEF_METHOD(NV097, SET_SURFACE_FORMAT)
         pg->non_dynamic_reg_gen++;
         pg->any_reg_gen++;
     }
+    /*
+     * The vertex and geometry shaders carry the mode's sample shift
+     * (pgraph_anti_aliasing_sample_offset_x), so a change must reach
+     * pgraph_vk_bind_shaders()'s cached-state path the way zeta's does.
+     */
+    uint32_t old_anti_aliasing = pg->surface_shape.anti_aliasing;
     pg->surface_shape.anti_aliasing =
         GET_MASK(parameter, NV097_SET_SURFACE_FORMAT_ANTI_ALIASING);
+    if (pg->surface_shape.anti_aliasing != old_anti_aliasing) {
+        pg->shader_state_gen++;
+        pg->non_dynamic_reg_gen++;
+        pg->any_reg_gen++;
+    }
     pg->surface_shape.log_width =
         GET_MASK(parameter, NV097_SET_SURFACE_FORMAT_WIDTH);
     pg->surface_shape.log_height =
@@ -4870,6 +4881,11 @@ DEF_METHOD(NV097, BACK_END_WRITE_SEMAPHORE_RELEASE)
 
 DEF_METHOD(NV097, SET_ZMIN_MAX_CONTROL)
 {
+    /* #276: kept at the method's own bit position, next to ZCLAMP_EN. */
+    PG_SET_MASK(NV_PGRAPH_ZCOMPRESSOCCLUDE,
+                NV_PGRAPH_ZCOMPRESSOCCLUDE_CULL_NEAR_FAR_EN,
+                GET_MASK(parameter, NV097_SET_ZMIN_MAX_CONTROL_CULL_NEAR_FAR_EN)
+                    != 0);
     switch (GET_MASK(parameter, NV097_SET_ZMIN_MAX_CONTROL_ZCLAMP_EN)) {
     case NV097_SET_ZMIN_MAX_CONTROL_ZCLAMP_EN_CULL:
         PG_SET_MASK(NV_PGRAPH_ZCOMPRESSOCCLUDE,

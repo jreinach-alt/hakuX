@@ -417,3 +417,25 @@ and 14-21 are untouched.
 Bash call, and this sandbox refuses `setsid`. A `run_in_background` task is
 fine as long as the session polls it to the end. What must never happen is
 ending the session while it is still pending, which is defect 25 itself.
+
+## 2026-09-26 (attempt 1 of this resume): dispatch-hardening defect 15
+
+**Why the previous attempt did not finish, in this lane's terms.** It did
+finish. PR #361 (defect 25) was ready and green when this session started,
+and it folded as `dc64822787` at 06:17Z during the session. The resume came
+from the host's queue order, not from a failure.
+
+**Order taken.** 25 and 23 are folded. 22 and 24 need `dispatcher.sh` and
+`request.sh`, which are still lent to lane.titlerun (#307 is an open draft),
+so neither was started. 14 is `dispatcher.sh` too. 15 lives in `run_disc.sh`
+and `extract_results.py`, both this lane's, so this PR is defect 15, on its
+own branch `lane/toolsmith-pullverify` so that #361 did not move.
+
+**The brief's premise was wrong.** The damaged captures were a hole in the
+pulled image, not a truncation, and the check that sees it is a device-side
+md5. The measurement is in `docs/lanes/dispatch-hardening/NOTES.md` under
+"Defect 15".
+
+**Do not repeat.** `ran Ns` in run_disc's log is a poll count, not a
+duration. Read the logcat's first and last timestamps before concluding
+that a run was cut short.

@@ -1,0 +1,85 @@
+ROUTE started pid 414795 from /home/justin/hakux-work/titlerun/runs/1790400553-titlerun-crimson/route.txt
+ROUTE 22:29:16.112 start route.txt serial=ee317437
+ROUTE 22:29:16.594 pad /dev/input/event7
+ROUTE 22:29:16.607 wait 75
+ROUTE 22:30:38.792 mark booted
+ROUTE 22:30:39.738 shot booted -> 223039-booted.png
+ROUTE 22:30:39.748 mash A 12 1.5
+<3>WSL (460978 - ) ERROR: UtilAcceptVsock:271: accept4 failed 110
+ADB: liveness probe failed (try 1/3): <3>WSL (461587 - ) ERROR: UtilAcceptVsock:271: accept4 failed 110
+<3>WSL (470456 - ) ERROR: UtilAcceptVsock:271: accept4 failed 110
+ROUTE 22:31:13.381 pad.sh press A failed (rc 1)
+ADB: liveness probe failed (try 1/3): <3>WSL (471101 - ) ERROR: UtilAcceptVsock:271: accept4 failed 110
+<3>WSL (479168 - ) ERROR: UtilAcceptVsock:271: accept4 failed 110
+ADB: liveness probe failed (try 1/3): <3>WSL (479545 - ) ERROR: UtilAcceptVsock:271: accept4 failed 110
+ROUTE 22:31:37.978 wait 12
+ROUTE 22:31:52.330 mark gameplay
+ROUTE 22:31:53.322 shot gameplay -> 223152-gameplay.png
+ROUTE 22:31:53.356 wait 20
+ROUTE 22:32:13.386 press A 
+ROUTE 22:32:14.050 wait 20
+ROUTE 22:32:36.490 press A 
+ROUTE 22:32:37.000 wait 20
+ROUTE 22:32:59.113 press A 
+ROUTE 22:32:59.910 wait 20
+ROUTE 22:33:19.939 press A 
+ROUTE 22:33:20.533 wait 20
+ROUTE 22:33:43.149 press A 
+ROUTE 22:33:43.996 wait 20
+ROUTE 22:34:05.198 press A 
+ROUTE 22:34:06.597 shot play -> 223405-play.png
+ROUTE 22:34:06.628 wait 20
+ROUTE 22:34:26.651 press A 
+ROUTE 22:34:27.253 wait 20
+ROUTE 22:34:49.362 press A 
+ROUTE 22:34:50.019 wait 20
+ROUTE 22:35:12.321 press A 
+ROUTE 22:35:12.862 wait 20
+ROUTE 22:35:32.880 press A 
+ROUTE 22:35:33.524 wait 20
+ROUTE 22:35:55.776 press A 
+ROUTE 22:35:56.205 wait 20
+ROUTE 22:36:16.216 press A 
+ROUTE 22:36:17.293 shot play -> 223616-play.png
+ROUTE 22:36:17.298 wait 20
+ADB: liveness probe failed (try 1/3): <3>WSL (608443 - ) ERROR: UtilAcceptVsock:271: accept4 failed 110
+ROUTE 22:36:39.686 press A 
+ADB: liveness probe failed (try 2/3): <3>WSL (622380 - ) ERROR: UtilAcceptVsock:271: accept4 failed 110
+<3>WSL (627120 - ) ERROR: UtilAcceptVsock:271: accept4 failed 110
+ADB: liveness probe failed (try 3/3): <3>WSL (636813 - ) ERROR: UtilAcceptVsock:271: accept4 failed 110
+<3>WSL (639294 - ) ERROR: UtilAcceptVsock:271: accept4 failed 110
+ROUTE 22:37:01.995 pad.sh press A failed (rc 1)
+ROUTE 22:37:01.998 wait 20
+ROUTE 22:37:22.004 press A 
+ROUTE 22:37:22.453 wait 20
+ROUTE 22:37:44.684 press A 
+ROUTE 22:37:45.041 wait 20
+ROUTE 22:38:07.561 press A 
+ROUTE 22:38:07.988 wait 20
+ROUTE 22:38:27.998 press A 
+ROUTE 22:38:28.389 wait 20
+ROUTE 22:38:50.202 press A 
+ROUTE 22:38:51.111 shot play -> 223850-play.png
+ROUTE 22:38:51.115 wait 20
+ROUTE 22:39:13.303 press A 
+ROUTE 22:39:13.728 wait 20
+ROUTE 22:39:33.734 press A 
+ROUTE 22:39:34.173 wait 20
+ROUTE 22:39:56.259 press A 
+ROUTE 22:39:56.623 wait 20
+ROUTE 22:40:16.630 press A 
+ROUTE 22:40:17.278 wait 20
+ROUTE 22:40:39.414 press A 
+ROUTE 22:40:39.864 wait 20
+ROUTE 22:41:01.996 press A 
+ROUTE 22:41:02.959 shot play -> 224102-play.png
+ROUTE 22:41:02.963 wait 20
+ROUTE 22:41:22.968 press A 
+ROUTE 22:41:23.363 wait 20
+ROUTE 22:41:45.486 press A 
+ROUTE 22:41:45.866 wait 20
+ROUTE 22:42:08.025 press A 
+ROUTE 22:42:09.233 wait 20
+ROUTE 22:42:17.125 end
+adb_failures=6
+held Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso for 780s

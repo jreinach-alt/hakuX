@@ -590,27 +590,37 @@ static inline void pgraph_apply_anti_aliasing_factor(PGRAPHState *pg,
 }
 
 /*
- * Where the host viewport must put guest x = 0 on an anti-aliased surface, in
- * that surface's own (unscaled) pixels.  The factor above only widens the
- * grid, so without this AA column k is shaded at guest x = k/2 + 0.25: 2x at
- * x+0.25 and 2x+1 at x+0.75, and neither is the pixel centre.
+ * How far right every vertex must move on an anti-aliased surface, in GUEST
+ * pixels, for the AA grid's samples to land where silicon's do.  The factor
+ * above only widens the grid, so without this AA column k is shaded at guest
+ * x = k/2 + 0.25: 2x at x+0.25 and 2x+1 at x+0.75, and neither is the pixel
+ * centre.
  *
  * CENTER_CORNER_2, read off silicon (Antialiasing_tests'
  * FBSurfaceWithCenterCorner2 displays the raw surface): column 2x+1 is the
  * pixel centre (x+0.5, y+0.5) with 0 of 131,200 px mismatched, and column 2x
- * the corner (x, y).  Shifting by half an AA pixel puts 2x+1 exactly on the
- * centre, which is what makes a guest resolve that samples 2x+1 (u = 2x+1,
- * a texel tie our sampler rounds up) byte-identical to a non-AA draw, as
- * silicon's is.  2x lands on (x, y+0.5): the corner's y needs a per-column
- * sample offset that a viewport cannot express.
+ * the corner (x, y).  Half an AA pixel, a quarter of a guest pixel, puts
+ * 2x+1 exactly on the centre, which is what makes a guest resolve that
+ * samples 2x+1 (u = 2x+1, a texel tie our sampler rounds up) byte-identical
+ * to a non-AA draw, as silicon's is.  2x lands on (x, y+0.5): the corner's y
+ * needs a per-column sample offset that a uniform shift cannot express.
+ *
+ * APPLIED IN CLIP SPACE, NOT BY MOVING THE VIEWPORT (vsh.c's gl_Position,
+ * geom.c's line_clip).  Vulkan clips x/y to the viewport unconditionally, so
+ * a viewport at .x = 0.5 * surface_scale_factor leaves every host column
+ * whose centre is left of that edge unrasterised: none at scale 1, where
+ * column 0's centre sits on the inclusive edge, but column 0 at scale 2 and
+ * columns 0-1 at scale 4 (audit 2026-09-26, MEDIUM-1).  Shifting the vertices
+ * keeps the clip volume on the surface, so geometry from guest x < 0 covers
+ * that strip as it does on silicon.
  *
  * SQUARE_OFFSET_4 is left at 0: nothing on disk measures its sample layout.
  */
-static inline float pgraph_anti_aliasing_viewport_offset_x(PGRAPHState *pg)
+static inline float pgraph_anti_aliasing_sample_offset_x(PGRAPHState *pg)
 {
     return pg->surface_shape.anti_aliasing ==
                    NV097_SET_SURFACE_FORMAT_ANTI_ALIASING_CENTER_CORNER_2 ?
-               0.5f :
+               0.25f :
                0.0f;
 }
 

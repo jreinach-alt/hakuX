@@ -113,6 +113,7 @@ void pgraph_glsl_set_vsh_state(PGRAPHState *pg, VshState *vsh)
                          NV_PGRAPH_CONTROL_0_Z_PERSPECTIVE_ENABLE;
     vsh->noperspective = !(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) &
                            NV_PGRAPH_CONTROL_0_TEXTUREPERSPECTIVE);
+    vsh->aa_offset_x = pgraph_anti_aliasing_sample_offset_x(pg);
 
     vsh->point_params_enable = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_D),
                                         NV_PGRAPH_CSV0_D_POINTPARAMSENABLE);
@@ -998,6 +999,19 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
         mstring_append(body,
                    "  gl_Position = oPos;\n"
         );
+        /*
+         * The anti-aliasing sample shift (pgraph.h), in clip space so the
+         * clip volume stays on the surface.  surfaceSize is in guest px, so
+         * aa_offset_x guest px is 2 * aa_offset_x / surfaceSize.x in NDC.
+         * Omitted at 0, which leaves every non-CC2 shader's text unchanged.
+         * geom.c's line_clip() adds the same shift to the lines it rebuilds
+         * from screen space.
+         */
+        if (state->aa_offset_x != 0.0f) {
+            mstring_append_fmt(body,
+                   "  gl_Position.x += (2.0 * %f / surfaceSize.x) * oPos.w;\n",
+                   state->aa_offset_x);
+        }
     } else {
         mstring_append(body,
                    "  gl_Position = vec4(oPos.x, oPos.y, 2.0*oPos.z - oPos.w, oPos.w);\n"

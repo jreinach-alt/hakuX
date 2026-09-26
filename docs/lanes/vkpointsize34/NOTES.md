@@ -128,3 +128,22 @@ The prediction was committed at 07:34Z, before either arm ran.
 
 Both legs pass: VUID 1 -> 0 on the system driver (survey above), and no pixel
 moves on the fleet driver, which has the feature.
+
+## Why attempt 3 did not finish (and did not need to)
+It finished: verdict recorded, PR #371 marked ready, audited (`verified`).
+The fold then failed on 2026-09-26 02:20 PDT because master had moved
+under it: `vk/renderer.c` conflicted at `SHADER_STATE_LAYOUT_VERSION`.
+Attempt 4 is the merge only.
+
+## Attempt 4 (2026-09-26): merge origin/master, resolve the version bump
+- Conflict: both sides bumped `SHADER_STATE_LAYOUT_VERSION` 2 -> 3. Master's
+  3 is `aa_offset_x` (#286, PR fold after this branch's merge base); this
+  branch's 3 was `no_point_size`.
+- Resolution: keep both comment entries, master's field stays 3, ours becomes
+  **4**. A cache written by a master build at version 3 has `aa_offset_x` but
+  reads `no_point_size` as 0 (padding), which is exactly the trap the bump
+  exists to avoid, so the merged tree must not share master's number.
+- `cc_check.py` on renderer.c, shaders.c, geom.c after the merge: rc=0.
+- `git merge`, not rebase: the registered prediction's refs (6550967a5e,
+  97f221cac0) stay ancestors. Nothing was re-measured; the arm's shas are
+  unchanged and the only new hunk is a comment plus an integer.
