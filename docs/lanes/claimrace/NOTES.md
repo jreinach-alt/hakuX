@@ -80,3 +80,27 @@ jobs selftest result is in the PR body.
   incident was sequential, not concurrent, so f covers it.
 - Do not bring back `head -1` on the list functions. With it, one held
   candidate at the head of a queue hides every candidate behind it.
+
+## Attempt 2 (2026-09-26): why attempt 1 did not finish
+
+Attempt 1 pushed the change and opened PR #446 as a draft, then started the full
+jobs selftest as a `run_in_background` task and ended its turn waiting for it.
+That task died with the session, so no result was ever posted and the PR stayed
+in draft. The suite takes longer than one 10-minute tool call (a foreground run
+timed out at 590 s partway through the dispatch-hardening fragments), and it has
+no per-fragment entry point. Attempt 2 merged origin/master, ran it in a
+detached `systemd-run --user` unit writing `selftest.out`/`selftest.exit` in the
+worktree, and polled that log in the same session.
+
+The first full run on the merged tree gave 1886 passed, 2 failed:
+
+- `72-cloud-tail.sh`: "a dispatch that never starts drops the claim as well
+  as the row". That check anchors on the ONE line `say "systemd-run failed`,
+  and the collision message began with the same words. So `grep -n` returned
+  two line numbers and the extent went empty. The collision line now reads
+  `say "$unit was not started, and ... is running: this is a collision, not a
+  failed start ..."`. Leg g in 73 still matches it. Do not start another
+  message in that branch with "systemd-run failed".
+- `64-status-html.sh`: "the republished page carries the change". `status.sh`
+  never runs `cloud.sh`, and master's CI passes this check. It depends on the
+  host's environment, not on this diff. CI is the gate of record for it.

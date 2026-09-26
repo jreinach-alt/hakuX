@@ -748,7 +748,7 @@ systemd-run --user --unit "$unit" --collect \
         # the running unit's tail executes from.
         busy=$(unit_busy "$num")
         if [ -n "$busy" ]; then
-            say "systemd-run failed for $unit, and $(echo $busy) is running: this is a collision, not a failed start; the claim, row and snapshot are the running session's, so nothing is undone"
+            say "$unit was not started, and $(echo $busy) is running: this is a collision, not a failed start; the claim, row and snapshot are the running session's, so nothing is undone"
             exit 0
         fi
         say "systemd-run failed for $unit; dropping the claim so the next tick can pick #$num up again"
