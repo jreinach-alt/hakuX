@@ -149,3 +149,44 @@ no `.verdict.txt` yet. Hostops reported the base arm on a device at 04:29Z,
 with the fix arm queued after it, so the verdict is due around 06:00Z. The
 PR is MERGEABLE/CLEAN. Nothing else changed, and the plan in "Attempt 2"
 stands unchanged.
+
+## Attempt 3 (2026-09-26 05:55Z): #315 refuted and reverted; PR ready
+
+Why attempt 2 and resume 3 did not finish: both stopped, correctly, to wait
+on the #315 arm. After the third resume the handback job hit
+DRAFT_STRAND_MAX. The verdict posted at 05:14Z, and the host cleared the
+strand and resumed this attempt.
+
+**#315 arm: FAIL, 1 of 30 checks** (`pshqueue-315-brdf.json`,
+a389648b0b..e3b13f5b45, result ids 1790395945-arms-pshqueue-{base-1882405,
+fix-1882785}). The violated leg is `predicted better = 3, measured 0`.
+
+| capture | A | B | predicted B | bytes |
+|---|---|---|---|---|
+| Texture_BRDF/BRDF_e0_l0 | 614 | 614 | <= 30 | moved |
+| Texture_BRDF/BRDF_e0_l1 | 614 | 614 | <= 30 | moved |
+| Texture_BRDF/BRDF_e1_l0 | 614 | 614 | <= 30 | moved |
+
+All 28 must_not_move legs held (Pixel_shader 102,866 and Volume_texture
+34,727 differing px, unchanged). Each arm ran twice and was byte-identical
+with itself, so the hunk moved the three BRDF images, but none moved
+toward the golden: same score, different pixels. The two arms ran on
+different devices (A nova, B thor), and ab_compare says a failing leg on a
+cross-device pair is not attributable. That does not rescue the hunk. The
+failed leg is a missing improvement, not a regression, and a device
+difference cannot hold three images at exactly 614 while their bytes change.
+Per the brief, the hunk was not re-measured or tuned. It was reverted in
+65a5a65ae4, a new commit. The pshqueue-315-brdf.json prediction stays
+committed as the record of the refuted arm.
+
+For the next lane on #315: the sampler3D + (t[i-2].r, t[i-1].r,
+fract(t[i-1].g - t[i-2].g)) model changes what the stage samples but not
+the 614 px that differ from the golden. Diff the B capture against the
+golden before proposing a coordinate change: `diff_specimen.py` on
+BRDF_e0_l0, plus the brdf315 value falsifier (pixel (639,479) should read
+(198,246,222,255)). Those show whether the residual is in the coordinate or
+somewhere else (filtering, the combiner, the wedge region).
+
+Kept: #279 (PASS 9/9, DotZW 65,536 -> 165) and #285 (PASS 89/89, Fmt_G8B8
+32,552 -> 0, Fmt_B8 16,144 -> 0). Master merged at b3f717e77d (index
+conflict only, regenerated over the fold pins).
