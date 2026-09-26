@@ -1,0 +1,26 @@
+{
+  "registered_utc": "2026-09-25T20:45:00Z",
+  "who": "perfarch",
+  "issue": "68",
+  "title": "Galleon (USA).xiso.iso",
+  "device": "nova",
+  "seconds": 240,
+  "a_ref": "9181cb4c136876c5bcb65caccfb16da86341e708",
+  "b_ref": "9181cb4c136876c5bcb65caccfb16da86341e708",
+  "a_env": [],
+  "b_env": ["HAKUX_TCG_TSO=rcpc"],
+  "runs_per_arm": 2,
+  "queue_order": "A1 B1 A2 B2, each a separate request.sh --title soak, all --device nova, --ref 9181cb4c13",
+  "judge": "tools/bench/tso_judge.py --expect docs/testing/predictions/perfarch-tso-rcpc-cost.json --a A1 A2 --b B1 B2",
+  "prediction": "THE PRICE OF x86-TSO BY CONSTRUCTION ON THIS SILICON. One binary (9181cb4c13), two envs: arm A is the shipped regime (every guest barrier elided, #54); arm B sets HAKUX_TCG_TSO=rcpc, which emits every guest load as LDAPR and every guest store as STLR, elides every per-access tcg_gen_req_mo barrier, and keeps only barriers that request ST_LD (MFENCE). Same title, device, soak length and method as tcg-barriers-elided.md, which priced the two existing options on Galleon/Nova: full DMB revert +34.1% game frame time (52.50 -> 70.40 ms), store-store-only DMBs +4.6%. That split says the LOAD-side barrier (DMB ISHLD before every load) carried ~29 of the 34 points. The model this arm tests: LDAPR costs about what LDR costs on Cortex-X3 (RCpc exists so an acquire need not wait for earlier release stores), STLR costs no more than the DMB ISH + STR the store-store variant paid and blocks no later load, and the extra ADD per access (LDAPR/STLR take only [Xn]) is small against a thread whose JIT code is ~29% of its self time (09-11 Crimson profile, 'unknown' DSO 29.39%). POINT PREDICTION: +4% game frame time. T0 (did it execute): every B run logs 'tso mode=rcpc requested lrcpc=1 -> ON' and a 'tso rcpc emitted' line with ld+st >= 65536; no A run logs either. A B arm without T0 measured nothing. T1a (the headline claim): cost < 34.1%, i.e. strictly cheaper than the only correct option we have today. FAILS if not: then RCpc is not the cheap TSO on this core and the sync-point design is the only candidate. T1b (the model): cost within [+1%, +12%]. Above +12% means LDAPR or STLR is materially more expensive than the model says, and the hostbench per-core numbers (HAKUX_HOSTBENCH survey, same ref) say which; below +1% means STLR is effectively free on this core, which is a finding, not a pass. T1c (noise): the between-arm delta of median G exceeds the within-arm spread; Galleon's A arms agreed to 1.00 ms on 52 ms in #54's measurement. T2 (correctness smoke, not proof): B logs no more crash lines than A and lives at least 90% as many pacing windows. T3 (report only): hakuX-pages mb total on B (MFENCE sites) against 347,473 for the full revert. WHAT THIS ARM CANNOT SEE: whether any race defect changes. #54's full revert left #44 at 6/10, so TSO is not expected to retire a measured defect; its value is latent correctness (upstream's own warning about i/o threads), and that is argued in perf-architecture.md, not measured here.",
+  "must_not_move": [],
+  "expect": {
+    "V_min_windows": 20,
+    "T0_min_emitted": 65536,
+    "T1a_cost_max_vs_full_revert": 0.341,
+    "T1b_cost_min": 0.01,
+    "T1b_cost_max": 0.12,
+    "T2_min_life_frac": 0.9
+  },
+  "expect_counts": {}
+}

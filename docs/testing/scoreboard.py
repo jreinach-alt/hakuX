@@ -45,7 +45,8 @@ CATEGORIES = {
         "Texture_CPU_Update", "Texture_BRDF", "Color_key"],
     "Render to texture": ["Texture_render_target", "Texture_Framebuffer_Blit",
         "Texture_render_update_in_place", "Surface_format", "Surface_pitch",
-        "Null_surface", "Color_zeta_overlap", "Color_Zeta_Disable"],
+        "Null_surface", "Color_zeta_overlap", "Color_Zeta_Disable",
+        "Surface_as_vertex_array"],
     "Shadow / projective": ["Texture_shadow_comparator"],
     "Lighting": ["Lighting_spotlight", "Lighting_accumulation",
         "Lighting_range", "Lighting_control", "Lighting_Two_Sided",
@@ -54,8 +55,8 @@ CATEGORIES = {
         "Specular", "Specular_back"],
     "Bump mapping": ["Bump_map", "Bump_env_lum"],
     "Fog": ["Fog", "Fog_gen", "Fog_param", "Fog_carryover", "Fog_vsh",
-        "Fog_exceptional_value", "Fog_coord_vec4", "Fog_multiple_vertices",
-        "Fog_inf_coord"],
+        "Fog_exceptional_value", "Fog_coord_vec4", "Fog_inf_coord",
+        "Fog_planar_vsh"],
     "Blend": ["Blend_tests", "Blend_surface", "Color_mask_blend",
         "Alpha_func"],
     "Depth / stencil": ["Depth_buffer", "Depth_buffer_fixed_function",
@@ -76,6 +77,22 @@ CATEGORIES = {
     "2D / blit": ["Image_blit", "DMA_corruption_around_surfaces",
         "Context_switch"],
 }
+
+# The statuses whose `differing` is a measurement. Every other status --
+# `unreadable`, `size`, `no-golden`, or none at all -- writes 0 there because
+# there is no number, and this file used to read that 0 as an exact capture.
+# That is the false win PR #249 removed from arm verdicts, still live in the
+# sweep columns: a WSL-interop pull that truncates 56 W_param PNGs would have
+# scored them 56 exact. Such a row is VOID -- not exact, not structural px, not
+# a capture -- and is counted per category so a column says how much of it was
+# unmeasured. Keep equal to score_sweep.py's SCORED_STATUSES; selftest
+# fragment 88-sweep-cover.sh fails if they drift. A copy rather than an import
+# because score_sweep.py needs numpy and this must run without it.
+SCORED_STATUSES = ("ok", "blank", "label-differs", "white-content")
+
+
+def is_scored(r):
+    return (r.get("status") or "") in SCORED_STATUSES
 
 
 def load_run(d):
@@ -102,21 +119,31 @@ def load_run(d):
 
 
 def summarise(rows, goldens):
-    """Per category: captures, exact, one-step px, structural px, coverage."""
+    """Per category: captures, exact, one-step px, structural px, void, coverage.
+
+    `n` counts SCORED captures only; a void row lands in `void` (and
+    `void_by`, by status) and nowhere else, so exact/captures, the pixel
+    figures and the coverage floor are all computed over what was measured.
+    """
     cat_of = {s: c for c, ss in CATEGORIES.items() for s in ss}
     agg = collections.defaultdict(
-        lambda: dict(n=0, exact=0, one=0, px=0, suites=set(),
+        lambda: dict(n=0, exact=0, one=0, px=0, void=0,
+                     void_by=collections.Counter(), suites=set(),
                      no_one_step=False))
     for r in rows:
         c = cat_of.get(r["suite"])
         if c is None:
             c = "(uncategorised)"
         a = agg[c]
+        a["suites"].add(r["suite"])
+        if not is_scored(r):
+            a["void"] += 1
+            a["void_by"][r.get("status") or "(no status)"] += 1
+            continue
         d = int(r.get("differing") or 0)
         a["n"] += 1
         a["px"] += d
         a["exact"] += (d == 0)
-        a["suites"].add(r["suite"])
         # The 2026-09-08 baseline predates the off_by_one column, so for that
         # run the structural share is not knowable -- differing pixels are all
         # we have. Report that rather than passing the total off as structural,
@@ -137,12 +164,15 @@ def summarise(rows, goldens):
 
 
 def cell(a):
-    if a is None or a["n"] == 0:
+    if a is None or (a["n"] == 0 and not a.get("void")):
         return "—"
+    void = f" · {a['void']} void" if a.get("void") else ""
+    if a["n"] == 0:
+        return f"0/0{void}"
     if a.get("no_one_step"):
-        return f"{a['exact']}/{a['n']} · {a['px']:,} diff†"
+        return f"{a['exact']}/{a['n']} · {a['px']:,} diff†{void}"
     struct = a["px"] - a["one"]
-    return f"{a['exact']}/{a['n']} · {struct:,}"
+    return f"{a['exact']}/{a['n']} · {struct:,}{void}"
 
 
 def main():
@@ -181,11 +211,14 @@ def main():
     out.append("# Accuracy scoreboard\n")
     out.append("Each cell is **exact/captures · structural px** — structural "
                "being differing pixels that are not one step out, which is the "
-               "part that is a rule rather than a rounding floor.\n")
+               "part that is a rule rather than a rounding floor. **n void** "
+               "counts rows whose status is not a measurement (`unreadable`, "
+               "`size`, `no-golden`): they are in neither figure, because a "
+               "capture that could not be read is not an exact one.\n")
 
     # Provenance first. A column built from mixed binaries is not a column.
-    out.append("| run | binaries | built | hw commits behind tip | discs | captures | rescored |")
-    out.append("|---|---|---|---:|---:|---:|---:|")
+    out.append("| run | binaries | built | hw commits behind tip | discs | devices | captures | void | rescored |")
+    out.append("|---|---|---|---:|---:|---|---:|---:|---:|")
     for r in runs:
         shas = ", ".join(sorted(r["shas"])) or "—"
         warn = " ⚠️ mixed" if len(r["shas"]) > 1 else ""
@@ -200,8 +233,19 @@ def main():
             age = "0"
         else:
             age = f"{behind} ⚠️"
+        vb = collections.Counter(r2.get("status") or "(no status)"
+                                 for r2 in r["rows"] if not is_scored(r2))
+        void = (f"{sum(vb.values())} ⚠️ (" + ", ".join(
+            f"{k} {v}" for k, v in sorted(vb.items())) + ")") if vb else "0"
+        scored = len(r["rows"]) - sum(vb.values())
+        # Rows per device, from the column collect_sweep.sh adds. A mix is
+        # allowed (the handhelds agree per capture) but is shown, not hidden;
+        # columns collected before that column existed read "—".
+        dv = collections.Counter(r2["device_label"] for r2 in r["rows"]
+                                 if r2.get("device_label"))
+        devices = ", ".join(f"{k} {v}" for k, v in sorted(dv.items())) or "—"
         out.append(f"| `{r['label']}` | {shas}{warn} | {built} | {age} | "
-                   f"{len(r['discs'])} | {len(r['rows'])} | {dup} |")
+                   f"{len(r['discs'])} | {devices} | {scored} | {void} | {dup} |")
     out.append("")
 
     cats = [c for c in CATEGORIES] + ["(uncategorised)"]
@@ -210,11 +254,11 @@ def main():
     out.append("|---|---:|" + "---|" * len(runs))
     for c in cats:
         present = [r["agg"].get(c) for r in runs]
-        if not any(a and a["n"] for a in present):
+        if not any(a and (a["n"] or a["void"]) for a in present):
             continue
         g = next((a["goldens"] for a in present if a), 0)
         cov = ""
-        first = next((a for a in present if a and a["n"]), None)
+        first = next((a for a in present if a and (a["n"] or a["void"])), None)
         if first and g and first["n"] < g:
             cov = f" ⚠️{100.0 * first['n'] / g:.0f}%"
         out.append(f"| {c}{cov} | {g} | " +
