@@ -335,8 +335,10 @@ note = "BRIEFED AT TERRITORY WAVE 240, NOT STARTED (job.board, 2026-09-26; `lane
 [lane.blinx372b]
 issues = ["372"]
 files = ["docs/testing/dispatcher.sh", "docs/lanes/blinx372b/**", "docs/testing/predictions/blinx372b-*.json"]
+released = ["docs/testing/dispatcher.sh", "docs/lanes/blinx372b/**", "docs/testing/predictions/blinx372b-*.json"]
+released_at_ready = 381
 standing = false
-note = "BRIEFED AT TERRITORY WAVE 240, NOT STARTED (job.board, 2026-09-26; `lane.sh start` was refused approval in the board session, so the HOST runs `docs/testing/lane.sh start blinx372b briefs/blinx372b.md 372`): #372 second pass. lane.blinx372 (PR #374) split the attract-demo frame: renderer thread 96-98% busy, 32 ms of a 68 ms guest frame is two synchronous GPU-completion waits in pgraph_vk_finish (Sd2 St1), ceiling ~27 fps if both go. Its lever is unnamed because dispatcher.sh:1356's logcat allow-list drops hakuX-stall and hakuX-pace. This lane fixes the allow-list, runs one perflog soak, names the SURFACE_DOWN site, and names (does not edit) a vk hunk. Brief briefs/blinx372b.md. dispatcher.sh released at ready by lane.titlerun (retired this wave)."
+note = "RELEASED AT READY (job.board wave 242, 2026-09-26): PR #381 is out of draft, CI green, unit gone, labelled needs-audit-1. Files stay listed for audit and fold. PRIOR NOTE: BRIEFED AT TERRITORY WAVE 240, NOT STARTED (job.board, 2026-09-26; `lane.sh start` was refused approval in the board session, so the HOST runs `docs/testing/lane.sh start blinx372b briefs/blinx372b.md 372`): #372 second pass. lane.blinx372 (PR #374) split the attract-demo frame: renderer thread 96-98% busy, 32 ms of a 68 ms guest frame is two synchronous GPU-completion waits in pgraph_vk_finish (Sd2 St1), ceiling ~27 fps if both go. Its lever is unnamed because dispatcher.sh:1356's logcat allow-list drops hakuX-stall and hakuX-pace. This lane fixes the allow-list, runs one perflog soak, names the SURFACE_DOWN site, and names (does not edit) a vk hunk. Brief briefs/blinx372b.md. dispatcher.sh released at ready by lane.titlerun (retired this wave)."
 
 [lane.dpforce345]
 issues = ["345"]
