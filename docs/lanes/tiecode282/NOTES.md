@@ -302,6 +302,32 @@ not hand-queue it: the job's dedupe reads only its own `pairs/` markers, so a
 hand copy could run the ~90-minute arm twice. Master has not moved since
 adb573c270 (0 commits), so the refs are still current.
 
+## 8b. Arm 3 result: PASS (2026-09-26, final session)
+
+The previous session did not finish because it stopped on a correct
+`waiting:` for arm 3. The arms job queued it at 1790426794
+(`1790426794-arms-tiecode282-base-2480106` / `-fix-2480146`). Both were DONE
+by 13:10Z. At that point no `[job.arms]` verdict had been posted, so I judged
+the pair by hand:
+
+`ab_compare.py --expect docs/testing/predictions/tiecode282-merge.json`:
+**PASS, 375 of 375 checks.**
+
+| | arm 2 | arm 3 (merge) |
+|---|---|---|
+| better / worse / same | 139 / 0 / 225 | 139 / 0 / 225 |
+| exact | 110 -> 166 | 110 -> 166 |
+| regressed from exact | 0 | 0 |
+| Pixel_shader, Texture_3D_as_2D | unchanged | unchanged (102,866; 3,037) |
+| Volume_texture | 34,727 -> 0 | 34,727 -> 0 |
+| Texture_palette | 10,488 -> 0 | 10,488 -> 0 |
+
+With the TRT pair (8a, 68 of 68), the merge left every leg where arm 2 put
+it. Master has moved 35 commits since adb573c270. None of them touch psh.c,
+psh.h, geom.c or nv2a_index.json, and `git merge-tree` against origin/master
+is clean, so I did not merge again. The PR is marked ready, which releases
+psh.c and psh.h. #315 (brdf315b) can take psh.c next.
+
 ## Waiting (2026-09-26, attempt 3, superseded by 8a for the TRT pair)
 
 On things outside this session: the `[job.arms]` verdict for
