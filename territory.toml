@@ -216,10 +216,6 @@ issues = ["397"]
 files = ["docs/testing/titles/routes/**", "docs/testing/titles/targets.toml", "docs/testing/title_verdict.py", "docs/testing/titles/table.py", "docs/lanes/titleplay/**"]
 note = "STARTED (host session, 2026-09-26 07:40 PDT), briefs/titleplay.md: owner -- gameplay FPS with scripted input, not boot/menus. Generic-route pass over the 20 staged titles, frame review, title routes for the rest (3 passes), verdicts on #397; <20 fps gameplay / crash / won't load -> issues. Files were unclaimed."
 
-[lane.turnipfork]
-issues = ["68"]
-files = ["tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json"]
-note = "RESUMED for Gate 1 step 2 (host session, 2026-09-26T04:35Z): the Gate 1 control was run by the host (our unmodified Turnip 220/220 pixel-identical to T30 on the (g) texture suites; #68 comment 5843130427). Driver runs go through host-tools/turnip_control.sh via '[lane.turnipfork] driver-run:' comments on #68 until toolsmith defect 24 lands."
 [retired.statuspage]
 issues = []
 files = []
@@ -365,6 +361,7 @@ retired_utc = "2026-09-26T11:40:00Z"
 note = "RETIRED (job.board wave 245): PR #385 MERGED, no open PR on lane/fps382, unit gone; #382 cause named (CPU-access watch traps); code half continues as lane.surfwatch382. Every file this row held is RELEASED to [free] (files another lane has since taken stay with that lane). PRIOR NOTE: STARTED BY THE HOST (seen by job.board wave 243, 2026-09-26T10:15Z): draft PR #385 on lane/fps382, unit active; issue #382 labelled lane:fps382. PRIOR: BRIEFED AT TERRITORY WAVE 242, NOT STARTED (job.board, 2026-09-26; `lane.sh start` was refused approval in the board session, so the HOST runs `docs/testing/lane.sh start fps382 briefs/fps382.md 382`), briefs/fps382.md: #382 50 Cent: Bulletproof intro FMV ~14 fps on the Nova (9 fps for 120 s, 29 fps after). Separate content pacing from emulator cost, name the resource that differs between the 9 and 29 fps windows. No hw/ file granted; reuses lane.blinx372/blinx372b perflog tooling."
 
 [free]
+# RELEASED (hostops 2026-09-26T14:50Z) by retiring lane.turnipfork (PR #353 merged) and lane.perfarch (PR #308 merged): every file each row held.
 # RELEASED (job.board wave 240) by retiring lanes boardprio (PR #358), indexloc (#360), foldflow (#356), statuspage (#354), titlerun (#307), cullnf276 (#368), blinx372 (#374), brdf315b (#375), tie282c (#376), regs200 (#377), vol283r (#378): every file each row held. CLAIMED the same wave: psh.c + geom.c -> lane.tiecode282; dispatcher.sh -> lane.blinx372b.
 # RELEASED (job.board wave 239) by retiring lane.sweepcover (PRs #298/#299 folded): docs/testing/scoreboard.py, collect_sweep.sh, queue_full_sweep.sh, selftest.d/88-sweep-cover.sh.
 # CLAIMED (hostops 2026-09-26T06:40Z): glsl/geom.c dropped from this list; lane.vkpointsize34 claimed it at wave 233.
@@ -548,7 +545,7 @@ note = "RETIRED (job.board wave 245): PR #385 MERGED, no open PR on lane/fps382,
 # exist, and check_coverage.py cannot tell the difference.
 # CLAIMED (hostops, 2026-09-26T03:35Z): glsl/psh.h -> lane.pshqueue (granted at wave 222; [free] still listed it, failing check_territory).
 # CLAIMED (hostops, 2026-09-26 6:45 AM PDT): gl/texture.c -> lane.pshaniso284 (granted 6:40 AM; [free] still listed it, failing check_territory).
-files = ["hw/xbox/nv2a/pgraph/texture.c", 
+files = ["tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "android/app/build.gradle.kts", "android/app/src/main/cpp/CMakeLists.txt", "hw/xbox/nv2a/pgraph/texture.c", 
 # RELEASED AT WAVE 158 by retiring lane.cloud190: PR #211 folded as f2e8ef8ba8 (#190 fixed).
     "hw/xbox/nv2a/pmc.c",
 # RELEASED (job.board wave 249) by retiring lane.fmv303 (PR #317 folded bb1f437bb7): vk/display.c.
@@ -979,11 +976,6 @@ files = []
 standing = false
 retired_utc = "2026-09-26T02:40:00Z"
 note = "RETIRED (job.board, board tick 2026-09-26T02:40Z): PR #310 MERGED (fold bc6b93495a, pass 2 clean), no open PR on lane/perfbase, unit gone. hw/xbox/nv2a/pgraph/profile.c, docs/testing/perf/{run_perf,bench_ff,fps_target,profile_guest,loadsample}.sh, summarise.py, docs/investigations/perf-baseline-2026-09.md, docs/lanes/perfbase/** and predictions/perfbase-*.json RELEASED to [free]. #68 stays open (upstream). PRIOR NOTE: DISPATCHED AT THIS WAVE (host session, 2026-09-25T20:25:20Z): the performance baseline at master (no perf run exists after the accuracy fixes): a hakuX-pace line every 60 flips in profile.c (flip intervals at 1/2/3/4+ VBLANKs, worst stall), and fresh guest-thread profiles of Crimson Skies heavy flying, Fuzion Frenzy 4P and Galleon gameplay on the Nova (Thor after the 0.5 sweeps), two runs each. Names the top three guest-thread costs per title; answers lane.tcgchurn's question (what triggers full TLB flushes). profile.c was in [free]; the perf scripts were unlisted (tcg_pages.py stays toolsmith's, pad.sh is titlerun's). Brief: briefs/perfbase.md."
-[lane.perfarch]
-issues = ["68"]
-files = ["tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "android/app/build.gradle.kts", "android/app/src/main/cpp/CMakeLists.txt"]
-standing = false
-note = "DISPATCHED AT THIS WAVE (host session, 2026-09-25T20:25:20Z), the owner's pitch: an engineering-persona lane (principal performance engineer) that designs hakuX for the Snapdragon 8 Gen 2 / Adreno 740 and makes the Xbox's CPU/GPU concurrency a strength rather than a defect source: x86 TSO via RCpc (LDAPR/STLR) or ordering at MMIO doorbells instead of today's elide-everything (tcg_gen_mb under XBOX; full DMBs cost +34%), CTR_EL0 DIC/IDC cache maintenance, AArch64 codegen, big.LITTLE placement and thermals, Adreno/Turnip tiling and CPU-side draw cost, 'speculate then validate' run-ahead. Deliverables: docs/investigations/perf-architecture.md (ranked, evidence-graded) and flagged prototypes with arms. tcg/** and util/cacheflush.c were unlisted. Brief: briefs/perfarch.md. GRANTED (host session, 2026-09-25T21:03:27Z, owner-delegated) on the lane's #68 request: android/app/build.gradle.kts and android/app/src/main/cpp/CMakeLists.txt (both unlisted) for three measured build changes ONLY: minSdk 26 -> 29 (native TLS; drops Android 8/9, which no hakuX-capable Snapdragon still ships), -march=armv8.2-a (inline LSE atomics), -fvisibility=hidden. Each change is A/B'd separately. The PR touches android/, so it needs audit. The files return to [free] when that PR folds; lane.turnipfork will want CMakeLists.txt later to bundle a driver."
 [retired.tcgchurn]
 issues = ["68"]
 files = []
