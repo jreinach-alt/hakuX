@@ -41,7 +41,9 @@ for ln in open(a.plan):
 ts = int(time.time())
 stage = tempfile.mkdtemp(prefix="titleplay-q-")
 for dev, iso, route, label in rows:
-    env = dict(os.environ, DISPATCH_DIR=stage)
+    # The pilot gate counts the REAL queue and reads the real pilots/, not the
+    # staging dir, or every invocation would start the count at zero.
+    env = dict(os.environ, DISPATCH_DIR=stage, PILOT_DISPATCH_DIR=D)
     p = subprocess.run(
         ["bash", REQ, "--who", "titleplay", "--ref", a.ref,
          "--purpose", f"#397 gameplay fps, {a.tag}: {label} on the {route} route",
