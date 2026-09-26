@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 240
-updated_utc = "2026-09-26T09:10:00Z"
+wave = 241
+updated_utc = "2026-09-26T09:40:00Z"
 
 
 [retired.hilodot10]
@@ -337,6 +337,12 @@ issues = ["372"]
 files = ["docs/testing/dispatcher.sh", "docs/lanes/blinx372b/**", "docs/testing/predictions/blinx372b-*.json"]
 standing = false
 note = "BRIEFED AT TERRITORY WAVE 240, NOT STARTED (job.board, 2026-09-26; `lane.sh start` was refused approval in the board session, so the HOST runs `docs/testing/lane.sh start blinx372b briefs/blinx372b.md 372`): #372 second pass. lane.blinx372 (PR #374) split the attract-demo frame: renderer thread 96-98% busy, 32 ms of a 68 ms guest frame is two synchronous GPU-completion waits in pgraph_vk_finish (Sd2 St1), ceiling ~27 fps if both go. Its lever is unnamed because dispatcher.sh:1356's logcat allow-list drops hakuX-stall and hakuX-pace. This lane fixes the allow-list, runs one perflog soak, names the SURFACE_DOWN site, and names (does not edit) a vk hunk. Brief briefs/blinx372b.md. dispatcher.sh released at ready by lane.titlerun (retired this wave)."
+
+[lane.dpforce345]
+issues = ["345"]
+files = ["hw/xbox/nv2a/pgraph/glsl/vsh-prog.c", "docs/lanes/dpforce345/**", "docs/testing/predictions/dpforce345-*.json"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 241 (job.board, 2026-09-26T09:40Z), briefs/dpforce345.md: #345 half 1 -- _DP3/_DP4/_DPH in glsl/vsh-prog.c take _MUL's per-product zero-forcing (silicon, PR #344: (0,1,2).(inf,1,1) = 3). vsh-prog.c was unclaimed after lane.nanfix281 retired (wave 236). Half 2 (the nv2a_vsh_cpu constant-writeback library: wrap/CMake/pgraph.c) is NOT in this row; the lane sizes the call-site fix in NOTES.md and the board decides."
 
 [free]
 # RELEASED (job.board wave 240) by retiring lanes boardprio (PR #358), indexloc (#360), foldflow (#356), statuspage (#354), titlerun (#307), cullnf276 (#368), blinx372 (#374), brdf315b (#375), tie282c (#376), regs200 (#377), vol283r (#378): every file each row held. CLAIMED the same wave: psh.c + geom.c -> lane.tiecode282; dispatcher.sh -> lane.blinx372b.
