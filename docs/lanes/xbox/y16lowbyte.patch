@@ -1,0 +1,84 @@
+diff --git a/src/tests/bump_map_tests.cpp b/src/tests/bump_map_tests.cpp
+index 9be03aa..27db338 100644
+--- a/src/tests/bump_map_tests.cpp
++++ b/src/tests/bump_map_tests.cpp
+@@ -53,6 +53,16 @@ BumpMapTests::BumpMapTests(TestHost &host, std::string output_dir, const Config
+     }
+   }
+ 
++  // hakuX #10: the Y16 draw with the bump texels' low bytes rewritten after upload.
++  {
++    auto &y16 = GetTextureFormatInfo(NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16);
++    const std::string base = MakeTestName(y16, false, false);
++    tests_[base + "_patchSame"] = [this, y16]() { Test(y16, false, false, 256); };
++    tests_[base + "_lo00"] = [this, y16]() { Test(y16, false, false, 0x00); };
++    tests_[base + "_lo80"] = [this, y16]() { Test(y16, false, false, 0x80); };
++    tests_[base + "_zero"] = [this, y16]() { Test(y16, false, false, 512); };
++  }
++
+   auto &format16 = GetTextureFormatInfo(NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16);
+ 
+   for (auto cross_on_blue : {false, true}) {
+@@ -63,7 +73,8 @@ BumpMapTests::BumpMapTests(TestHost &host, std::string output_dir, const Config
+ 
+ void BumpMapTests::Initialize() { TestSuite::Initialize(); }
+ 
+-void BumpMapTests::Test(const TextureFormatInfo &texture_format, bool cross_on_blue, bool rotate90) {
++void BumpMapTests::Test(const TextureFormatInfo &texture_format, bool cross_on_blue, bool rotate90, int low_byte) {
++  name_suffix_ = low_byte < 0 ? "" : low_byte == 512 ? "_zero" : low_byte == 256 ? "_patchSame" : low_byte == 0 ? "_lo00" : "_lo80";
+   auto shader = std::make_shared<PassthroughVertexShader>();
+   host_.SetVertexShaderProgram(shader);
+ 
+@@ -88,6 +99,18 @@ void BumpMapTests::Test(const TextureFormatInfo &texture_format, bool cross_on_b
+   SDL_FreeSurface(texture_surface);
+   ASSERT(!update_texture_result && "Failed to bump map texture");
+ 
++  if (low_byte >= 0) {
++    // Y16 texels are stored little endian: the low byte is at the even offset.
++    uint8_t *texels = host_.GetTextureMemoryForStage(0);
++    const uint32_t bytes = host_.GetMaxTextureWidth() * host_.GetMaxTextureHeight() * 2;
++    for (uint32_t i = 0; i < bytes; i += 2) {
++      if (low_byte == 512) {
++        texels[i + 1] = 0;  // the must-move control: both bytes zero
++      }
++      texels[i] = low_byte == 512 ? 0 : low_byte == 256 ? texels[i + 1] : static_cast<uint8_t>(low_byte);
++    }
++  }
++
+   update_texture_result = GenerateCheckerboardSurface(&texture_surface, (int)host_.GetMaxTextureWidth(),
+                                                       (int)host_.GetMaxTextureHeight(), 0xFF0000FE, 0x7F202122);
+   ASSERT(!update_texture_result && "Failed to generate SDL surface");
+@@ -204,11 +227,12 @@ void BumpMapTests::DrawRectangles(const TextureFormatInfo &texture_format, char
+   pb_print("Rot90: %d\n", rotate90);
+   pb_draw_text_screen();
+ 
+-  std::string test_name = MakeTestName(texture_format, cross_on_blue, rotate90);
++  std::string test_name = MakeTestName(texture_format, cross_on_blue, rotate90) + name_suffix_;
+   FinishDraw(test_name);
+ }
+ 
+ void BumpMapTests::Test16bit(const TextureFormatInfo &texture_format, bool cross_on_blue) {
++  name_suffix_.clear();
+   auto shader = std::make_shared<PassthroughVertexShader>();
+   host_.SetVertexShaderProgram(shader);
+ 
+diff --git a/src/tests/bump_map_tests.h b/src/tests/bump_map_tests.h
+index 5da2038..d5741ab 100644
+--- a/src/tests/bump_map_tests.h
++++ b/src/tests/bump_map_tests.h
+@@ -19,9 +19,14 @@ class BumpMapTests : public TestSuite {
+  private:
+   void DrawRectangles(const TextureFormatInfo &texture_format, char x_channel, char y_channel, bool cross_on_blue,
+                       bool rotate90, const std::function<void(float, float, float, float)> &draw);
+-  void Test(const TextureFormatInfo &texture_format, bool cross_on_blue, bool rotate90);
++  // hakuX #10: low_byte < 0 leaves the bump texture alone; 256 rewrites each Y16 texel's low byte with its high
++  // byte (inert on byte-replicated data); 0..255 forces every low byte to that value; 512 zeroes both bytes.
++  void Test(const TextureFormatInfo &texture_format, bool cross_on_blue, bool rotate90, int low_byte = -1);
+   void Test16bit(const TextureFormatInfo &texture_format, bool cross_on_blue);
+   static std::string MakeTestName(const TextureFormatInfo &texture_format, bool cross_on_blue, bool rotate90);
++
++  // hakuX #10: appended to the saved capture's name, so a variant does not overwrite its base test.
++  std::string name_suffix_;
+ };
+ 
+ #endif  // NXDK_PGRAPH_TESTS_BUMP_MAP_TESTS_H

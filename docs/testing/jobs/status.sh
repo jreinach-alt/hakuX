@@ -250,12 +250,13 @@ def reqs_of(name):
     pat = re.compile(r"^(lane[.-])?%s$|^arms-%s-" % (re.escape(name), re.escape(name)))
     return [r for r in reqs if pat.search(r[2])]
 
-prs, decision = {}, set()
+prs, decision, prs_ok = {}, set(), False
 if have_gh:
     try:
         for p in json.loads(run("gh", "pr", "list", "--repo", GH_REPO, "--state", "all", "--limit", "300",
-                                "--json", "number,state,isDraft,headRefName,labels") or "[]"):
+                                "--json", "number,state,isDraft,headRefName,labels")):
             prs.setdefault(p["headRefName"], p)                 # newest first: keep the latest per branch
+        prs_ok = True
     except Exception:
         pass
     try:
@@ -284,7 +285,9 @@ def state_of(name, row, standing):
     if p and p["state"] == "MERGED": return "folded (row not yet retired)"
     if name in timers: return "job (hakux-%s.timer)" % name
     if standing: return "standing, nothing in flight"
-    return "IDLE"
+    # Without the PR list, "no PR" is not known -- and a failed query must not
+    # flag every lane idle in the issue body.
+    return "IDLE" if prs_ok else "not running, nothing on a device (PR state unknown: the PR list could not be read)"
 
 lanes = (terr or {}).get("lane", {})
 rows, idle = [], []
