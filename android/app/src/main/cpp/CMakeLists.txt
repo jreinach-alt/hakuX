@@ -83,8 +83,8 @@ FetchContent_MakeAvailable(tomlplusplus)
 set(NV2A_VSH_CPU_GIT_REV "1115255708c10c4841b65dcd2223262e7a316598")
 set(NV2A_VSH_CPU_LOCAL "${REPO_ROOT}/subprojects/nv2a_vsh_cpu")
 if(EXISTS "${NV2A_VSH_CPU_LOCAL}/src/nv2a_vsh_cpu.c")
-  set(NV2A_VSH_CPU_DIR "${NV2A_VSH_CPU_LOCAL}")
-  message(STATUS "Using local nv2a_vsh_cpu at ${NV2A_VSH_CPU_DIR}")
+  set(NV2A_VSH_CPU_SRC "${NV2A_VSH_CPU_LOCAL}")
+  message(STATUS "Using local nv2a_vsh_cpu at ${NV2A_VSH_CPU_SRC}")
 else()
   FetchContent_Declare(
     nv2a_vsh_cpu
@@ -102,9 +102,55 @@ else()
       cmake_policy(POP)
     endif()
   endif()
-  set(NV2A_VSH_CPU_DIR "${nv2a_vsh_cpu_SOURCE_DIR}")
-  message(STATUS "Fetched nv2a_vsh_cpu to ${NV2A_VSH_CPU_DIR}")
+  set(NV2A_VSH_CPU_SRC "${nv2a_vsh_cpu_SOURCE_DIR}")
+  message(STATUS "Fetched nv2a_vsh_cpu to ${NV2A_VSH_CPU_SRC}")
 endif()
+
+# The wrap applies subprojects/packagefiles/nv2a_vsh_cpu/*.patch through
+# diff_files; this build applies the same file (#345: silicon arithmetic in
+# the constant-writeback evaluator). It patches a copy in the build tree, so
+# the local checkout and the FetchContent clone stay pristine, and a checkout
+# meson already patched is recognised by the patch's own marker and copied as
+# is. `git apply` run anywhere inside the hakuX tree -- which this build tree
+# is -- resolves the patch's paths against the hakuX root, skips them and
+# exits 0; GIT_CEILING_DIRECTORIES stops that search, and the marker check
+# after it refuses a copy that is still unpatched.
+set(NV2A_VSH_CPU_PATCH
+  "${REPO_ROOT}/subprojects/packagefiles/nv2a_vsh_cpu/0001-silicon-arithmetic.patch")
+set(NV2A_VSH_CPU_MARKER "hakuX #345")
+set(NV2A_VSH_CPU_STAGE "${CMAKE_BINARY_DIR}/nv2a_vsh_cpu-stage")
+set(NV2A_VSH_CPU_DIR "${CMAKE_BINARY_DIR}/nv2a_vsh_cpu-patched")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${NV2A_VSH_CPU_PATCH}")
+file(REMOVE_RECURSE "${NV2A_VSH_CPU_STAGE}")
+file(COPY "${NV2A_VSH_CPU_SRC}/src" DESTINATION "${NV2A_VSH_CPU_STAGE}")
+file(READ "${NV2A_VSH_CPU_STAGE}/src/nv2a_vsh_cpu.c" NV2A_VSH_CPU_TEXT)
+string(FIND "${NV2A_VSH_CPU_TEXT}" "${NV2A_VSH_CPU_MARKER}" NV2A_VSH_CPU_HAS_MARKER)
+if(NV2A_VSH_CPU_HAS_MARKER GREATER -1)
+  message(STATUS "nv2a_vsh_cpu: ${NV2A_VSH_CPU_SRC} already carries 0001-silicon-arithmetic.patch")
+else()
+  find_package(Git REQUIRED)
+  execute_process(
+    COMMAND "${CMAKE_COMMAND}" -E env "GIT_CEILING_DIRECTORIES=${CMAKE_BINARY_DIR}"
+            "${GIT_EXECUTABLE}" apply "${NV2A_VSH_CPU_PATCH}"
+    WORKING_DIRECTORY "${NV2A_VSH_CPU_STAGE}"
+    RESULT_VARIABLE NV2A_VSH_CPU_APPLY_RC
+    ERROR_VARIABLE NV2A_VSH_CPU_APPLY_ERR)
+  file(READ "${NV2A_VSH_CPU_STAGE}/src/nv2a_vsh_cpu.c" NV2A_VSH_CPU_TEXT)
+  string(FIND "${NV2A_VSH_CPU_TEXT}" "${NV2A_VSH_CPU_MARKER}" NV2A_VSH_CPU_HAS_MARKER)
+  if(NOT NV2A_VSH_CPU_APPLY_RC EQUAL 0 OR NV2A_VSH_CPU_HAS_MARKER EQUAL -1)
+    message(FATAL_ERROR "nv2a_vsh_cpu: 0001-silicon-arithmetic.patch did not apply to "
+                        "${NV2A_VSH_CPU_SRC} (rc ${NV2A_VSH_CPU_APPLY_RC}): ${NV2A_VSH_CPU_APPLY_ERR}")
+  endif()
+  message(STATUS "nv2a_vsh_cpu: applied 0001-silicon-arithmetic.patch to ${NV2A_VSH_CPU_DIR}")
+endif()
+# Copied only where a file differs, so a reconfigure does not touch the
+# patched sources' timestamps and rebuild them.
+file(MAKE_DIRECTORY "${NV2A_VSH_CPU_DIR}/src")
+file(GLOB NV2A_VSH_CPU_STAGED RELATIVE "${NV2A_VSH_CPU_STAGE}/src" "${NV2A_VSH_CPU_STAGE}/src/*")
+foreach(f IN LISTS NV2A_VSH_CPU_STAGED)
+  file(COPY_FILE "${NV2A_VSH_CPU_STAGE}/src/${f}" "${NV2A_VSH_CPU_DIR}/src/${f}"
+       ONLY_IF_DIFFERENT)
+endforeach()
 
 # --- libslirp (user-mode NAT networking) ---
 set(LIBSLIRP_GIT_REV "26be815b86e8d49add8c9a8b320239b9594ff03d")

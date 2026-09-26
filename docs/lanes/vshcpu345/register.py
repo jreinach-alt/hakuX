@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+"""Register lane.vshcpu345's pgraph arm (run from the worktree root).
+
+    register.py A_REF B_REF [--force]
+"""
+import subprocess
+import sys
+
+LEGS = [
+    "Vertex_shader_independence_tests/*",
+    "Vertex_shader_rounding_tests/[!G]*",
+    "Vertex_shader_rounding_tests/Geometry_*",
+    "Vertex_shader_rounding_tests/GeometrySubscreen_*",
+    "Vertex_shader_swizzle_tests/*",
+    "W_param/*",
+    "Fog_coord_vec4/*",
+    "Fog_vsh/*",
+    "Fog_gen/*",
+    "SetVertexData/*",
+    "Attrib_float/*",
+    "Fog_exceptional_value/*",
+    "Fog_inf_coord/*",
+]
+SUITES = sorted({l.split("/")[0] for l in LEGS})
+
+PROSE = (
+    "#345 half 2: subprojects/packagefiles/nv2a_vsh_cpu/0001-silicon-arithmetic.patch, applied by "
+    "the wrap (diff_files) and by the Android CMake build, changes the nv2a_vsh_cpu CPU evaluator "
+    "only. That evaluator runs in three places in pgraph.c and nowhere in the GLSL renderer: "
+    "LAUNCH_TRANSFORM_PROGRAM (XVSS state programs), pgraph_vsh_writeback_constants (a bound "
+    "program that writes c[]), and the #242 no-Begin vertex. What it changes, from "
+    "docs/lanes/vshcpu345/cpu_rows.py (host, 200000 finite inputs per op): MUL/MAD with a +-0 "
+    "operand give +0 where they gave -0 (the only finite MUL/MAD change); DP3/DPH/DP4 change only "
+    "when the plain sum is NaN (0 of 600000 finite inputs moved); RCC results in "
+    "[5.42101e-20, 2^-64) and (2^64, 1.884467e19] now clamp to exactly 2^-64 / 2^64, and "
+    "RCC(+-inf) gets +-2^-64; RCP/RCC/RSQ of NaN give 0x7FFFFFFF. EVERY LEG IS MUST_NOT_MOVE. "
+    "What would move each: (1) Vertex_shader_* , W_param, Fog_vsh, Fog_coord_vec4 and the Fog_gen "
+    "VS captures are vertex-program draws; they move only if the evaluator runs for them (a "
+    "constant write or a state program) AND it meets one of the inputs above, and the constant it "
+    "writes back then feeds the next draw; W_param's rcc_clamp_test.vsh runs RCC in GLSL, not in "
+    "this evaluator, so a move there means the evaluator reached it. (2) Attrib_float, "
+    "Fog_exceptional_value and Fog_inf_coord put inf/NaN through vertex programs; they move only "
+    "through the same writeback path with a zero x inf/NaN or an ILU NaN. (3) Fog_gen FF captures "
+    "and SetVertexData are fixed-function / inline draws that never call the evaluator; a move "
+    "there means the build itself changed something else. Vertex_shader_rounding_tests/"
+    "GeometrySuperscreen_* is not guarded: it drifts between runs of one binary "
+    "(docs/lanes/dpforce345/NOTES.md, arms 1 and 2). The value check for this patch is not this "
+    "arm but nxdk_vsh_tests CPU Shader Tests on the handheld, scored by vsh_score.py against the "
+    "console's SPECIAL_raw.txt and SUBNORM_MAC_raw.txt (docs/lanes/vshcpu345/NOTES.md). A MOVE ON "
+    "ANY LEG REFUTES THE CLAIM THAT NO CAPTURE ON THIS DISC REACHES THE CHANGED ARITHMETIC."
+)
+
+
+def main():
+    a, b = sys.argv[1], sys.argv[2]
+    cmd = ["python3", "docs/testing/ab_compare.py",
+           "--register", "docs/testing/predictions/vshcpu345-must-not-move.json",
+           "--a-ref", a, "--b-ref", b, "--who", "lane.vshcpu345", "--issue", "345",
+           "--prediction", PROSE, "--disc-suites", ",".join(SUITES)]
+    for l in LEGS:
+        cmd += ["--must-not-move", l]
+    if "--force" in sys.argv:
+        cmd.append("--force")
+    return subprocess.run(cmd).returncode
+
+
+if __name__ == "__main__":
+    sys.exit(main())

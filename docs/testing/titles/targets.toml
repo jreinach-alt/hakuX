@@ -75,8 +75,109 @@ iso = { nova = "RalliSport Challenge 2 (Japan, Europe).iso" }
 
 [titles."53450029"]
 name = "Spikeout: Battle Street"
-iso = { nova = "Spikeout - Battle Street (Europe).iso" }
+iso = { nova = "Spikeout - Battle Street (Europe).iso", thor = "Spikeout - Battle Street (Europe).iso" }
 
 [titles."55530040"]
 name = "Tork: Prehistoric Punk"
 iso = { nova = "Tork - Prehistoric Punk (USA).iso" }
+
+# Population 1 of #397 (lane.titleplay): the 20 titles staged on 2026-09-26.
+[titles."4541000D"]
+name = "007: Agent Under Fire"
+iso = { nova = "4541000D-007_Agent_Under_Fire.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."4D530013"]
+name = "Blinx: The Time Sweeper"
+iso = { thor = "4D530013-Blinx_The_Time_Sweeper.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."54430007"]
+name = "Dead or Alive Xtreme Beach Volleyball"
+iso = { nova = "54430007-Dead_or_Alive_Xtreme_Beach_Volleyball.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."45410083"]
+name = "Black"
+iso = { thor = "45410083-Black.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."45410026"]
+name = "007: Nightfire"
+iso = { nova = "45410026-007_Nightfire.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."4D530003"]
+name = "Project Gotham Racing"
+iso = { thor = "4D530003-Project_Gotham_Racing.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."4541005D"]
+name = "GoldenEye: Rogue Agent"
+iso = { nova = "4541005D-GoldenEye_Rogue_Agent.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."4D53006E"]
+name = "Forza Motorsport"
+iso = { thor = "4D53006E-Forza_Motorsport.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."56550042"]
+name = "50 Cent: Bulletproof"
+iso = { nova = "56550042-50_Cent_Bulletproof.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."45530018"]
+name = "25 to Life"
+iso = { thor = "45530018-25_to_Life.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."5451000D"]
+name = "WWE Raw 2"
+iso = { nova = "5451000D-WWE_Raw_2.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."4541005B"]
+name = "Burnout 3: Takedown"
+iso = { thor = "4541005B-Burnout_3_Takedown.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."4156005D"]
+name = "Call of Duty 3"
+iso = { nova = "4156005D-Call_of_Duty_3.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."4D53004B"]
+name = "Project Gotham Racing 2"
+iso = { thor = "4D53004B-Project_Gotham_Racing_2.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."45410076"]
+name = "Burnout Revenge"
+iso = { nova = "45410076-Burnout_Revenge.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."4D530065"]
+name = "Blinx 2: Battle of Time & Space ~ Blinx 2: Masters of Time & Space"
+iso = { thor = "4D530065-Blinx_2_Battle_of_Time_Space_Blinx_2_Masters_of_Time_Space.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."54430006"]
+name = "Dead or Alive 1 Ultimate"
+iso = { nova = "54430006-Dead_or_Alive_1_Ultimate.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."56550016"]
+name = "Bruce Lee: Quest of the Dragon"
+iso = { thor = "56550016-Bruce_Lee_Quest_of_the_Dragon.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."54540079"]
+name = "Midnight Club 3: DUB Edition"
+iso = { nova = "54540079-Midnight_Club_3_DUB_Edition.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."56550036"]
+name = "Crash Twinsanity"
+iso = { thor = "56550036-Crash_Twinsanity.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
