@@ -1179,8 +1179,10 @@ note = "RETIRED (job.board 2026-09-26): PR #398 MERGED 2026-09-26T18:36:26Z, uni
 [lane.yuv10]
 issues = ["10"]
 files = ["hw/xbox/nv2a/pgraph/pgraph.c", "hw/xbox/nv2a/nv2a_regs.h", "hw/xbox/nv2a/pgraph/texture.c", "hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/psh.h", "docs/testing/predictions/yuv10-*.json", "docs/lanes/yuv10/**"]
+released = ["hw/xbox/nv2a/pgraph/pgraph.c", "hw/xbox/nv2a/nv2a_regs.h", "hw/xbox/nv2a/pgraph/texture.c", "hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/psh.h", "docs/testing/predictions/yuv10-*.json", "docs/lanes/yuv10/**"]
+released_at_ready = 419
 standing = false
-note = "STARTED (hostops 2026-09-26 12:14 PM PDT, on lane.xbox's board request of 11:59 PDT), briefs/yuv10.md: #10 YUV class fix. lane.xbox measured SET_CONTROL0's CRYCB_TO_RGB field on silicon (PR #411, #10 comment 5848958489): every stage converted after the texture shader, YUY2/UYVY fetched raw, kr=128; model takes the four YUV captures 111,496 -> 1,688 px each. texture.c from [free]; nv2a_regs.h, glsl/psh.c, glsl/psh.h unclaimed; pgraph.c LENT from [lane.ring53impl] for the SET_CONTROL0 handler only, returned at ready."
+note = "READY, PR #419 (job.board 2026-09-26T22:00Z): out of draft, CI green, unit gone, labelled needs-audit-1; files released at ready. PRIOR: STARTED (hostops 2026-09-26 12:14 PM PDT, on lane.xbox's board request of 11:59 PDT), briefs/yuv10.md: #10 YUV class fix. lane.xbox measured SET_CONTROL0's CRYCB_TO_RGB field on silicon (PR #411, #10 comment 5848958489): every stage converted after the texture shader, YUY2/UYVY fetched raw, kr=128; model takes the four YUV captures 111,496 -> 1,688 px each. texture.c from [free]; nv2a_regs.h, glsl/psh.c, glsl/psh.h unclaimed; pgraph.c LENT from [lane.ring53impl] for the SET_CONTROL0 handler only, returned at ready."
 
 [lane.pilotgate]
 issues = []
