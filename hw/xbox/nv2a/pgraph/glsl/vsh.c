@@ -407,6 +407,89 @@ static float ff_radial_fog_coord(PGRAPHState *pg)
     return sqrtf(eye[0] * eye[0] + eye[1] * eye[1] + eye[2] * eye[2]);
 }
 
+/*
+ * #53: the attributes a ring slot carries, in ff_lit_ring's second index:
+ * position, normal, diffuse, specular, back diffuse, back specular. The
+ * lighting unit reads the first four; the back colours ride along because
+ * they are lighting inputs too, and nothing reads them yet.
+ */
+static const int RING_ATTRS[6] = {
+    NV2A_VERTEX_ATTR_POSITION,      NV2A_VERTEX_ATTR_NORMAL,
+    NV2A_VERTEX_ATTR_DIFFUSE,       NV2A_VERTEX_ATTR_SPECULAR,
+    NV2A_VERTEX_ATTR_BACK_DIFFUSE,  NV2A_VERTEX_ATTR_BACK_SPECULAR,
+};
+
+static unsigned int ring_draw_vertex_count(PGRAPHState *pg)
+{
+    if (pg->inline_buffer_length) {
+        return pg->inline_buffer_length;
+    }
+    if (pg->inline_elements_length) {
+        return pg->inline_elements_length;
+    }
+    if (pg->draw_arrays_length) {
+        unsigned int n = 0;
+        for (unsigned int i = 0; i < pg->draw_arrays_length; i++) {
+            n += pg->draw_arrays_count[i];
+        }
+        return n;
+    }
+    if (pg->inline_array_length) {
+        /* The same packing the renderers bind the inline array with. */
+        unsigned int offset = 0;
+        for (int i = 0; i < NV2A_VERTEXSHADER_ATTRIBUTES; i++) {
+            VertexAttribute *attr = &pg->vertex_attributes[i];
+            if (attr->count == 0) {
+                continue;
+            }
+            offset = ROUND_UP(offset, attr->size);
+            offset += attr->size * attr->count;
+            offset = ROUND_UP(offset, attr->size);
+        }
+        return offset ? pg->inline_array_length * 4 / offset : 0;
+    }
+    return 0;
+}
+
+/*
+ * #53: the fill. Vertex i of a draw takes slot (ring_pos + i) % 6, so the
+ * draw's last six vertices are the ones still in the ring when it ends.
+ *
+ * Only an inline-buffer draw is written: it is the one whose every vertex
+ * the CPU still holds here (an array draw has only inline_value, the limit
+ * #41's hook documents). Other lit fixed-function draws advance the ring
+ * without writing it, so the slots keep what they held. Skinning is left
+ * out as #41 leaves it out: the slot would need the blended transform.
+ *
+ * Called before the renderer's draw_end, which clears the inline buffer's
+ * populated flags as it uploads it.
+ */
+unsigned int pgraph_glsl_ring_fill(PGRAPHState *pg)
+{
+    unsigned int n = ring_draw_vertex_count(pg);
+    uint32_t csv0_c = pgraph_reg_r(pg, NV_PGRAPH_CSV0_C);
+    uint32_t csv0_d = pgraph_reg_r(pg, NV_PGRAPH_CSV0_D);
+
+    if (!pg->inline_buffer_length ||
+        GET_MASK(csv0_d, NV_PGRAPH_CSV0_D_MODE) != 0 ||
+        !GET_MASK(csv0_c, NV_PGRAPH_CSV0_C_LIGHTING) ||
+        GET_MASK(csv0_d, NV_PGRAPH_CSV0_D_SKIN) != SKINNING_OFF) {
+        return n;
+    }
+
+    for (unsigned int i = n > 6 ? n - 6 : 0; i < n; i++) {
+        float (*slot)[4] = pg->ff_lit_ring[(pg->ring_pos + i) % 6];
+        for (int k = 0; k < 6; k++) {
+            VertexAttribute *attr = &pg->vertex_attributes[RING_ATTRS[k]];
+            const float *v = attr->inline_buffer_populated ?
+                                 &attr->inline_buffer[i * 4] :
+                                 attr->inline_value;
+            memcpy(slot[k], v, sizeof(slot[k]));
+        }
+    }
+    return n;
+}
+
 MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
 {
     MString *uniforms = mstring_new();
@@ -655,6 +738,9 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
         }
     
         if (state->lighting) {
+            mstring_append(header, opts.vulkan ?
+                                       "#define ringVertexIndex gl_VertexIndex\n" :
+                                       "#define ringVertexIndex gl_VertexID\n");
             pgraph_glsl_append_vsh_prog_lighting(state, header, body);
         }
     }
@@ -1161,6 +1247,33 @@ void pgraph_glsl_set_vsh_uniform_values(PGRAPHState *pg, const VshState *state,
              */
             values->carriedFogCoord[0] = 0.0f;
         }
+    }
+
+    /*
+     * #53: a lit program draw lights vertex i with ring slot
+     * (ringPhase + i) % 6 (vsh-ff.c). The shader takes i from
+     * gl_VertexIndex, which is the vertex's index within the draw only for
+     * an inline buffer or inline array, both drawn from vertex 0; an array
+     * or element draw indexes the guest's arrays, so it keeps its own
+     * vertex's inputs (ringPhase -1). Both uniforms get a defined value on
+     * every draw so neither churns the upload hash.
+     */
+    if (locs[VshUniform_ringInput] != -1) {
+        QEMU_BUILD_BUG_MSG(sizeof(values->ringInput) !=
+                               sizeof(pg->ff_lit_ring),
+                           "Uniform value size inconsistency");
+        bool reads_ring = !state->is_fixed_function && state->lighting;
+        if (reads_ring) {
+            memcpy(values->ringInput, pg->ff_lit_ring,
+                   sizeof(pg->ff_lit_ring));
+        } else {
+            memset(values->ringInput, 0, sizeof(values->ringInput));
+        }
+    }
+    if (locs[VshUniform_ringPhase] != -1) {
+        bool reads_ring = !state->is_fixed_function && state->lighting &&
+                          (pg->inline_buffer_length || pg->inline_array_length);
+        values->ringPhase[0] = reads_ring ? (float)(pg->ring_pos % 6) : -1.0f;
     }
 
     if (locs[VshUniform_clipRange] != -1) {
