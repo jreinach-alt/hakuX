@@ -1,0 +1,23 @@
+{
+  "registered_utc": "2026-09-26T08:02:53Z",
+  "who": "lane.remote",
+  "issue": "274",
+  "title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso",
+  "device": "thor and nova, one pair each",
+  "seconds": 240,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "6550967a5e",
+  "b_ref": "4a369ed1ee",
+  "judge": "by hand from each result's logcat.txt: hakuX-perf lines (gfps=, Ri:, Vpf:), 90-240 s from the first hakuX-perf line. Not an ab_compare golden arm: a title soak has no capture keys.",
+  "prediction": "#274 GPUAA -- DEVICE COST LEG (host 02:30Z, 5842390350; perf-leg terms 02:50Z, 5842521546). B adds one pgraph_vk_update_shader_uniforms(pg) call to create_pipeline()'s early-return branch in vk/draw.c; A is the master it sits on, and the two refs differ by that one line. The call recomputes both uniform blocks and hashes them (fast_hash over each layout) on every draw that takes the full path and hits the early return. The SFP never reaches create_pipeline() and the MFP already refreshes on every draw it takes, so no other draw pays. On the four desktop discs the early return fires at most once per disc (local probe, 5842494980); its rate on a title is unmeasured, which is what this leg is for. hakuX-perf lines only: soaks do not capture hakuX-pace (dispatcher.sh LOGCAT_SPEC). Crimson Skies paces at a median of 29 gfps over 90-240 s on both handhelds at current master (fix311 arm B, Thor and Nova: 29 and 29; tcgchurn: 29, n=75), with the guest thread busy about 1,950 ms of every 2,000 ms, so a cost on the pgraph thread shows in gfps only once it makes that thread the slower side. C1 (NO COST, the leg): on each device, arm B's median hakuX-perf gfps over 90-240 s is >= arm A's median over the same span minus 1. C2 (STAYS UP): every B run holds to 240 s with hakuX-perf lines to the end, and logcat has no F/ line and no crash tag. REPORTED, NOT JUDGED (no run-to-run band on these titles is on file for them): the medians of Ri (renderer idle ms, the pgraph thread's slack, which is where this cost lands first) and Vpf over 90-240 s, A vs B per device. VOID, NOT FAILED: a run with no hakuX-perf line after 60 s, or one the soak script read as exited while logcat shows the process still logging (soak_title.sh's alive() probe after 'UtilAcceptVsock: accept4 failed 110', docs/lanes/tcgchurn/NOTES.md). It is re-queued once and reported either way. UNCOMFORTABLE OUTCOME, named now: C1 failing on one device only. That is a FAIL as registered; the next step would be a new registration with two runs per arm, not a re-reading of this one.",
+  "must_not_move": [
+    "the two refs differ by one line in hw/xbox/nv2a/pgraph/vk/draw.c",
+    "device_label identical between the two arms on each device"
+  ],
+  "expect": {
+    "C1/arm_b_minus_arm_a_gfps_median_90_240_min": -1
+  },
+  "expect_counts": {},
+  "expect_note": "The legs are read by hand off the hakuX-perf lines; a soak writes no captures, so there is no golden key for ab_compare to judge."
+}
