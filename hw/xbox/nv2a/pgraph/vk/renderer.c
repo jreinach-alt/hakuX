@@ -61,8 +61,11 @@ typedef struct {
  * enum VALUE counts: 2 is PRIM_TYPE_TRIANGLES_ADJACENCY (#224). Persisted
  * geometry-shader keys carrying it abort any build without the case at
  * startup (geom.c's default: assert), so builds on either side of it must
- * see different versions and wipe the cache rather than regenerate it. */
-#define SHADER_STATE_LAYOUT_VERSION 2
+ * see different versions and wipe the cache rather than regenerate it.
+ * 3 is GenGeomGlslOptions.no_point_size (#34), which sits in padding: a key
+ * persisted before it reads as 0 and would regenerate a geometry shader
+ * that writes gl_PointSize on a device without the feature. */
+#define SHADER_STATE_LAYOUT_VERSION 3
 
 static void remove_directory_recursive(const char *path)
 {
