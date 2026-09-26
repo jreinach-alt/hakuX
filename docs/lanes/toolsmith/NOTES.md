@@ -397,3 +397,23 @@ Kiritimati, UTC, Los_Angeles and GMT+12.
 **Do not repeat.** A fixture that names a day must take it from the same clock
 as the script under test. Test the fixture under a far-east TZ, which puts a
 local run in CI's bad window.
+
+## 2026-09-26 (attempt 4): dispatch-hardening defect 25 (idle lanes)
+
+**Why the previous attempt did not finish, in this lane's terms.** It did
+finish: attempt 3 fixed the clock bug, #333 went green and folded as
+`336b0728f2` at 03:10Z. This resume was counted as attempt 3 because
+`lane.sh` counts dispatches, not failures. The host's 22:00 PDT note says
+"none of defects 22-25 was started". Defect 23 was in fact #333; 22, 24 and
+25 were not started. The branch was 83 commits behind master with nothing
+of its own, so it fast-forwarded.
+
+**This PR is defect 25**, the first item in the host's order. The record is
+under "Defect 25" in `docs/lanes/dispatch-hardening/NOTES.md`. Defect 22 is
+still blocked on the lent `dispatcher.sh`/`request.sh` (#307 is open). 24
+and 14-21 are untouched.
+
+**Do not repeat.** The full `selftest.sh` takes longer than one 10-minute
+Bash call, and this sandbox refuses `setsid`. A `run_in_background` task is
+fine as long as the session polls it to the end. What must never happen is
+ending the session while it is still pending, which is defect 25 itself.
