@@ -3197,7 +3197,15 @@ static MString* psh_convert(struct PixelShader *ps)
             mstring_append_fmt(vars, "float dot%d = dot(pT%d.xyz, %s(%s));\n",
                 i, i, dotmap_func, dot_src);
             mstring_append_fmt(vars, "vec4 t%d = vec4(0.0);\n", i);
-            // FIXME: mstring_append_fmt(vars, "gl_FragDepth = t%d.x;\n", i);
+            if (ps->state->depth_needed) {
+                /* texm3x2depth: the depth word is dot(i-1)/dot(i), in the
+                 * surface's own units, floored like the fixed-point path.
+                 * #279. */
+                mstring_append_fmt(vars,
+                    "zvalue = dot%d / dot%d;\n"
+                    "zfloor = clamp(floor(zvalue), 0.0, clipRange.y);\n",
+                    i - 1, i);
+            }
             break;
         case PS_TEXTUREMODES_DOT_RFLCT_DIFF:
             if (!stage_consistent(ps, vars, i, 2, 2, 1, "PS_TEXTUREMODES_DOT_RFLCT_DIFF")) break;
@@ -3662,6 +3670,20 @@ static MString* psh_convert(struct PixelShader *ps)
             "}\n");
     }
 
+    /*
+     * #285: B8 and G8B8 keep B in byte 0, and their host formats (R8_UNORM,
+     * R8G8_UNORM) put channel R there. Silicon stores the combiner's b in
+     * that byte and its g in byte 1, so route b to the host R. Last, after
+     * the alpha test, the fold and the #59 copy, because it is where the
+     * pixel lands, not what it is. Emitted unconditionally and gated on a
+     * uniform for the #59 reason: nothing invalidates a shader on a surface
+     * format change.
+     */
+    mstring_append(ps->code,
+                   "if (surfaceBSwap != 0) {\n"
+                   "    fragColor.rb = fragColor.br;\n"
+                   "}\n");
+
     for (int i = 0; i < ps->num_var_refs; i++) {
         mstring_append_fmt(vars, "vec4 %s = vec4(0);\n", ps->var_refs[i]);
         if (strcmp(ps->var_refs[i], "r0") == 0) {
@@ -3953,6 +3975,13 @@ void pgraph_glsl_set_psh_uniform_values(PGRAPHState *pg,
                 pgraph_glsl_surface_pad_alpha_mode(
                     pg->surface_shape.color_format) :
                 PSH_PAD_ALPHA_NONE;
+    }
+    if (locs[PshUniform_surfaceBSwap] != -1) {
+        /* #285. The live guest format, staged every draw, as padAlphaMode. */
+        unsigned int fmt = pg->surface_shape.color_format;
+        values->surfaceBSwap[0] =
+            fmt == NV097_SET_SURFACE_FORMAT_COLOR_LE_B8 ||
+            fmt == NV097_SET_SURFACE_FORMAT_COLOR_LE_G8B8;
     }
     if (locs[PshUniform_consts] != -1) {
         for (int i = 0; i < 9; i++) {

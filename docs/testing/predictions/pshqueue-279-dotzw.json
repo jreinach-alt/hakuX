@@ -1,0 +1,32 @@
+{
+  "registered_utc": "2026-09-26T03:21:25Z",
+  "who": "lane.pshqueue",
+  "issue": "279",
+  "prediction": "#279 (docs/lanes/cloud-279/NOTES.md): DOT_ZW (texm3x2depth) overrides the fragment depth with dot(i-1)/dot(i) in depth-word units, floored and clamped to clipRange.y, emitted only where depth_needed is set (non-GL path; the handheld arm runs Vulkan). MUST MOVE: Pixel_shader/DotZW 65,536 -> at most ~137 px (the rule fits 65,399 of 65,536 px exact offline; the misses sit within 0.0093 of an integer z/w, float-divide precision). Machine-checked as better=1, worse=0; the magnitude is read off the verdict, and a DotZW that moves but lands far above ~137 refutes the model (report it, do not tune). MUST NOT MOVE, with what would move each: Pixel_shader/DotST shares DotZW's stage setup and dot1/dot2 and is 0 px today, its shader text is byte-identical under the hunk, so a move means the edit leaked outside the DOT_ZW case; the other six Pixel_shader captures set no DOT_ZW stage (only pixel_shader_tests.cpp names DOT_ZW, per docs/lanes/pshqueue/mode_users.py), so a move is a shader-cache or build artefact, not the rule.",
+  "a_ref": "5d23f1fec8",
+  "b_ref": "24546d197b",
+  "must_not_move": [
+    "Pixel_shader/BumpEnvMap",
+    "Pixel_shader/BumpEnvMapLuminance",
+    "Pixel_shader/ClipPlane",
+    "Pixel_shader/DotST",
+    "Pixel_shader/Passthru",
+    "Pixel_shader/StageDependentAlphaRed",
+    "Pixel_shader/StageDependentGreenBlue"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "better": 1,
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Pixel shader"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "runs_per_arm": 2
+}

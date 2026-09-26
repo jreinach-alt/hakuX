@@ -65,3 +65,40 @@ Waiting on two signals:
 
 Once the verdict is in, cite it in the PR and mark the PR ready. On a FAIL,
 name each refuted leg with its figure and take its hunk out.
+
+## Why attempt 1 did not finish
+
+It ended waiting, correctly, but on a head GitHub could not build: the PR
+had gone CONFLICTING with master (`docs/testing/nv2a_index.json`, the
+generated index), so no CI run existed and none ever would. A `waiting:`
+on CI needs a mergeability check first.
+
+## Verdict (2026-09-26, `[job.arms]` on PR #367): PASS
+
+a 081dcf4a38 → b 50b46b0495, one run per arm, 141 captures, disc
+identical in both arms, prediction bound before the run
+(sha256 e992390a…613b5c).
+
+| capture | A | B |
+|---|---:|---:|
+| BumpMap_Y16 | 22,374 | 3,490 |
+| BumpMap_Y16_L | 22,374 | 3,490 |
+
+better 2, worse 0, same 139, exact 57 → 57. BumpEnvLum_Y16/_Y16_L did not
+move, as registered. Only the two Y16 Bump_map captures differ byte for byte.
+
+The residual is 3,490 px, 1,914 above the 1,576 floor. It is under the
+6,000 bound, and it fits the vertical source being the open leg. PR #363's
+m11-only run moved silicon 2,088 px, where hakuX with the full value moved
+770. A next lane can test the high-byte vertical reading against this
+residual. It should do that as its own arm, not by tuning this one.
+
+## Attempt 2
+
+Merged origin/master in, which conflicted only in the generated index.
+I rebuilt the index from the fold-pins trees (`--tests
+fold-pins/nxdk_pgraph_tests --support fold-pins/pbkitplusplus`, tests commit
+6743b6ab, the same as master's provenance), and `check` passes. Building
+against `~/nxdk_pgraph_tests` without `--support` loses the resolved table,
+so do not use it. The prediction's refs are still ancestors of the head;
+nothing was rebased.

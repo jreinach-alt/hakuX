@@ -1,0 +1,34 @@
+{
+  "registered_utc": "2026-09-26T03:21:25Z",
+  "who": "lane.pshqueue",
+  "issue": "285",
+  "prediction": "#285 (docs/lanes/g8b8285/NOTES.md): on a B8 or G8B8 surface, a uniform gated on the live guest colour format swaps fragColor.rb after the #59 pad block, so the host R channel (byte 0) stores the combiner's b as silicon does. MUST MOVE (better=2, worse=0): Surface_format/Fmt_G8B8 32,552 -> at most ~100 px (bottom half to 0 by the model, top half by argument), and Surface_format/Fmt_B8 16,144 (label-differs, scored) down by its quad pixels; B8 not moving would refute the B8 half of the gate. MUST NOT MOVE, with what would move each: Surface_format/Fmt_R5G6B5 is the discriminating leg, 0 today and the next test after G8B8 in std::map order, so a stale uniform reaching a non-B8/G8B8 draw moves it first; the other Surface_format rows and Blend_surface/* likewise move only on a gate leak. Surface_clip/*_B8 and *_G8B8 are an inert control, not a measurement: they draw only r == b colours, so the swap cannot change them; they move only if clipping leaks. The rest of Surface_clip draws non-B8 formats (leak guard).",
+  "a_ref": "24546d197b",
+  "b_ref": "a389648b0b",
+  "must_not_move": [
+    "Surface_format/Fmt_A8R8G8B8",
+    "Surface_format/Fmt_R5G6B5",
+    "Surface_format/Fmt_X1A7R8G8B8_*",
+    "Surface_format/Fmt_X1R5G5B5_*",
+    "Surface_format/Fmt_X8R8G8B8_*",
+    "Surface_clip/*",
+    "Blend_surface/*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "better": 2,
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Blend surface",
+      "Surface clip",
+      "Surface format"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "runs_per_arm": 2
+}
