@@ -1886,12 +1886,16 @@ static void define_colorkey_comparator(MString *preflight)
  * channels are rebuilt from a gather of the signed texels; that path
  * filters at the base level only.
  */
-/* SET_CONTROL0's colour-space field asks for CRYCB_TO_RGB, the one value
- * measured on silicon (#10). */
+/* SET_CONTROL0's colour-space field asks for a conversion. CRYCB_TO_RGB is
+ * the one value measured on silicon (#10). SCRYSCB_TO_RGB is unmeasured and
+ * converts the same way: YUY2/UYVY upload raw, so passing it through would
+ * show raw YCbCr where the pre-#10 upload decoded the texel to RGB. */
 static bool csc_crycb(const struct PixelShader *ps)
 {
     return ps->state->color_space_convert ==
-           NV097_SET_CONTROL0_COLOR_SPACE_CONVERT_CRYCB_TO_RGB;
+               NV097_SET_CONTROL0_COLOR_SPACE_CONVERT_CRYCB_TO_RGB ||
+           ps->state->color_space_convert ==
+               NV097_SET_CONTROL0_COLOR_SPACE_CONVERT_SCRYSCB_TO_RGB;
 }
 
 static void append_bump_channel(const struct PixelShader *ps, MString *vars,
@@ -3918,8 +3922,16 @@ static MString* psh_convert(struct PixelShader *ps)
      * here, once every stage has been emitted. The converter is util.h's
      * convert_ycbcr_to_rgb() with Y from R, Cb from G, Cr from B and the red
      * term's rounding constant at 128 (exact on 256 of 256 palette cells;
-     * 127 gives 241). Alpha passes unchanged.
+     * 127 gives 241). Alpha passes unchanged. SCRYSCB_TO_RGB takes the
+     * same converter until it is measured.
      */
+    if (ps->state->color_space_convert !=
+            NV097_SET_CONTROL0_COLOR_SPACE_CONVERT_PASS &&
+        ps->state->color_space_convert !=
+            NV097_SET_CONTROL0_COLOR_SPACE_CONVERT_CRYCB_TO_RGB) {
+        NV2A_UNIMPLEMENTED("SET_CONTROL0 colour-space conversion %u",
+                           ps->state->color_space_convert);
+    }
     if (csc_crycb(ps)) {
         mstring_append(preflight,
             "vec4 crycb_to_rgb(vec4 t) {\n"
@@ -3937,10 +3949,6 @@ static MString* psh_convert(struct PixelShader *ps)
                 mstring_append_fmt(vars, "t%d = crycb_to_rgb(t%d);\n", i, i);
             }
         }
-    } else if (ps->state->color_space_convert !=
-               NV097_SET_CONTROL0_COLOR_SPACE_CONVERT_PASS) {
-        NV2A_UNIMPLEMENTED("SET_CONTROL0 colour-space conversion %u",
-                           ps->state->color_space_convert);
     }
 
     for (int i = 0; i < ps->num_stages; i++) {

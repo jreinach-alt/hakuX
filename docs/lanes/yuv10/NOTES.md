@@ -23,8 +23,8 @@ edit.
   shader-dirty register list.
 - **pgraph.c** (the SET_CONTROL0 handler only). The handler stores the field
   and touches nothing else in the file.
-- **psh.h / psh.c.** `PshState.color_space_convert` is a `uint32_t` at the
-  front of the struct. A uint32 changes `sizeof(PshState)`, so the persisted
+- **psh.h / psh.c.** `PshState.color_space_convert` is a `uint32_t` after
+  `final_inputs_1`. A uint32 changes `sizeof(PshState)`, so the persisted
   Vulkan shader cache is wiped (`vk/renderer.c`) without a
   `SHADER_STATE_LAYOUT_VERSION` bump in a file this lane does not own.
   - Under CRYCB_TO_RGB, `crycb_to_rgb()` converts every stage that fetched
@@ -35,7 +35,22 @@ edit.
     `298*c` needs more than 16 bits.
   - Stages that do not fetch (NONE, PASSTHRU, CLIPPLANE, DOTPRODUCT) are not
     converted. Silicon was not measured on them.
-  - SCRYSCB_TO_RGB logs `NV2A_UNIMPLEMENTED` and passes through.
+  - SCRYSCB_TO_RGB (value 2) is unmeasured. It logs `NV2A_UNIMPLEMENTED` and
+    converts as CRYCB_TO_RGB does (audit pass 1, MEDIUM-1). YUY2/UYVY now
+    upload raw, so a pass-through would show raw YCbCr where the pre-#10
+    upload decoded to RGB. The converter applies to every fetching stage,
+    not only YUV ones; that is unmeasured under value 2 as well. No golden
+    writes value 2, so no arm covers it.
+  - The handler stores a method value above 3 as 3, which logs
+    `NV2A_UNIMPLEMENTED` and passes through (audit LOW-1). Before, the value
+    was masked, so 4 read as PASS and 5 as CRYCB_TO_RGB.
+  - Unmeasured (audit LOW-2): colour key and alphakill run in the stage loop,
+    before the converter. For a YUV texture they now compare the raw
+    (Y, Cb, Cr, A) fetch, not decoded RGB. Hardware plausibly keys in the
+    texture unit, before the converter too. Left as is until measured.
+  - Unmeasured (audit LOW-3): `crycb_to_rgb()` clamps its input to [0, 1], so
+    a signed or SNORM stage loses its negative values before conversion.
+    No known workload does this.
 - **Luminance truncation (brief item 4).** PR #168 (`c5f7169e70`) was
   docs-only, so no truncation existed in psh.c. The BUMPENVMAP_LUM product is
   still a float that the framebuffer rounds. It is now floored to a byte
