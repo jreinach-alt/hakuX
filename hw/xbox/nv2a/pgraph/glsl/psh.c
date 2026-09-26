@@ -490,6 +490,9 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
             color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8 ||
             color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16 ||
             color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16;
+        state->tex_y16[i] =
+            color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16 ||
+            color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16;
         state->shadow_map[i] = f.depth;
 
         uint32_t filter = pgraph_reg_r(pg, NV_PGRAPH_TEXFILTER0 + i * 4);
@@ -1783,6 +1786,27 @@ static void append_bump_channel(const struct PixelShader *ps, MString *vars,
     if (comp == 0 && ps->state->tex_comp0_const[k]) {
         flagged = false;
         snorm = false;
+    }
+
+    /*
+     * A Y16 texel's horizontal offset (component 2, the one m00 scales) is
+     * the LOW byte of the filtered 16-bit value, read as two's complement.
+     * Measured on the console (docs/testing/xbox-y16axis-2026-09-26.md):
+     * with only m00 live, forcing the low bytes to 0x00 moves 42,508 px
+     * against Y8, and across a byte-replicated 0x5252/0x5353 seam the
+     * horizontal lookup sweeps with the low byte of the blend (26,254 px);
+     * with only m11 live there is no sweep.  The vertical offset
+     * (component 1) keeps the full value, rounded to a byte as before.
+     *
+     * The sign flags are not applied: a per-texel sign of the low bytes
+     * (0x52, 0x53) would remove the sweep, and silicon's four
+     * flag-combination quads differ on every Y16 capture only by the
+     * positional floor A8 shows, so the sweep is there in all four.
+     */
+    if (comp == 2 && ps->state->tex_y16[k]) {
+        mstring_append_fmt(vars, "float %s = bump_signed(float(uint(round(t%d.%c * 65535.0)) & 255u) / 255.0);\n",
+                           name, k, *c);
+        return;
     }
 
     if (flagged && snorm) {
