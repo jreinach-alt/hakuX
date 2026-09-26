@@ -128,7 +128,7 @@ forever. `titlestate_selftest.py` checks it with `NAV_DRY=1`.
 Includes must-move checks (a changed byte fails `verify`; a rejected save
 moves the choice to the other device, then to first-run).
 
-## Phase 2: waiting on a device grant (board request filed)
+## Phase 2: device grant (attempt 1 waited for it; granted 15:38 PDT)
 
 Phase 1 was posted on #397 at 15:20 PDT (comment 5850399550). The board
 request is `dispatch/board-requests/titlestate.md` (15:18 PDT). The PR stays
@@ -154,10 +154,53 @@ hold lifts), plus the #431 targets delivery.
   Forza, CoD3. Left at the default as #431 says: Blinx 2, 50 Cent, Black,
   Bruce Lee, Galleon.
 
+### Phase 2 pilot: HELD Thor, 16:13:44-16:36:56 PDT (23 min)
+
+Battery 38% -> 36%. Released at rest: app stopped, perf 0 / fan 4, asleep.
+Frames: `~/hakux-work/nav/<session>/` (not committed).
+
+| title | what nav.py saw | reached | route |
+|---|---|---|---|
+| Burnout 3 | the Thor's hdd.img ALREADY holds profile "BURNOUT" (9/26/2026): pass 1's NO/"Autosave disabled" loop still saved it. LOAD PROFILE -> Load successful -> World Tour -> USA -> Silver Lake -> Race -> Compact 1 -> RACE TRAINING video (~110 s, neither A nor START skips) -> rolling start | **gameplay**: RT raised speed 41 -> 50 mph; LX min/max yawed the car opposite ways | `burnout3.returning.route`, played; replayed twice with identical screens |
+| Black | START -> credits FMV (~2 min) -> story FMV (START skips) -> main menu with NO name keyboard (pass 1's profile found) -> NORMAL -> mission cutscene (one START did not skip it in 25 s) | not gameplay (cutscene) | `black.returning.route`, draft up to the cutscene |
+
+Registry: `titlestate.py record` on the Thor for both titles, `observed
+loaded`, origin `found`. So both titles choose `returning` on the Thor, and
+neither `first-run` draft has been played: no clean disk was available.
+
+**Flush before force-stop works.** A HOME intent gave `deferred
+bdrv_flush_all completed` within ~1 s both times (16:31:18, 16:36:54). That
+is the ask in board request item 3.
+
+**EEPROM md5:** Thor `f52cf53a866814e402fbd48aa23af522` (256 B, 09-06). Nova
+not read: it was under a foreign hold (buildflags427) all session.
+
+**What killed the pilot three times (harness defect, not mine to fix).**
+`docs/testing/stop-emulator.sh`, the Stop hook of EVERY Claude session in
+this repo, force-stops hakuX on every attached handheld unless that device's
+LEASE (`/tmp/hakux-device-lease.<label>`) was touched in the last 90 s. It
+never reads `dispatch/hold/<label>`. So a HELD interactive session is killed
+whenever any other lane's turn ends: 16:18:38 (lane-perfregimen ended
+16:18:37) and 16:24:24 (lane-aufire412 ended 16:24:23), each time mid-run,
+the second seconds after the race started. The workaround that worked:
+touch the lease on every nav.py call (`scratch/n.sh`) and keep calls under
+90 s apart. The fix is for stop-emulator.sh to skip a device whose
+`dispatch/hold/<label>` exists (the same test device_reality.sh uses); filed
+in the board request.
+
+Also seen: one `pad.sh` press lost to `UtilAcceptVsock accept4 failed`
+(rc 1). nav.py logs the rc; a lost press shifts a replay by one screen.
+
 ## Do not repeat
 
 - Do not `request.sh --pull` anything under `x1box/`: it deletes the file.
 - Do not move a device's `hdd.img` to carry a profile: 4.8 GB and it carries
   every nxdk result with it. Move the save.
+- Do not run a HELD device session without keeping its lease fresh
+  (`touch /tmp/hakux-device-lease.<label>` at least every 90 s) until
+  stop-emulator.sh honours holds: another lane's turn end kills the app.
+- Do not assume a title's disk is clean because a script "chose NO": check
+  the registry, or boot it once and look. Pass 1 left profiles for both
+  Burnout 3 and Black on the Thor.
 - Do not trust a save written in a soak until the disk it is on has been
   pulled and `saves.py verify`'d: soaks end with SIGKILL and no flush.
