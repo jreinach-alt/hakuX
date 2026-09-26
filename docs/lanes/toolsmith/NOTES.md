@@ -355,3 +355,26 @@ section was left uncommitted, with two placeholder lines. Defects 12 and 13
 were added to the brief after that session ended. Nothing was lost:
 attempt 2 re-ran the falsification from the same scratch worktree, and CI
 was green on the attempt-1 head `20255263bc`.
+
+## 2026-09-26: dispatch-hardening defect 23 (handback wakes a lane whose runs finished)
+
+**Why the previous attempt did not finish, in this lane's terms.** It did
+finish: PR #260 (defects 11-13) was audited twice and folded as
+`3b73e87fae` at 22:15Z on 2026-09-25. The resume that started this session
+was written at 19:35Z from a snapshot in which #260 was still a draft, so its
+"mark #260 ready" instruction was stale by the time the session ran. The
+local branch also still pointed at the pre-fold head, and
+`origin/lane/toolsmith` had been deleted by the fold. This session reset the
+branch to `origin/master` and started the next item.
+
+**Order taken.** The brief puts 22 and 23 first. Defect 22 needs
+`dispatcher.sh` and `request.sh`, which are lent to lane.titlerun until #307
+folds (it is still open), so it is blocked. Defect 23 is `handback.sh`, which
+is in `[free]`, so this PR is defect 23 alone. The record is under "Defect 23"
+in `docs/lanes/dispatch-hardening/NOTES.md`. Defects 14-21 are untouched.
+
+**Do not repeat.** This sandbox refuses `cp -r`, `find -delete`, an env
+prefix on a command (`X=1 cmd`), and `$VAR` inside some compound commands.
+`.lanework/quick.py` runs chosen fragments over a scratch copy of
+`docs/testing`, with `old:<rel>=<ref>` to swap in an old file for a
+falsification run. It never touches the real path.

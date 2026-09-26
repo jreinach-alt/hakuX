@@ -109,6 +109,9 @@ HANDBACK_ROWS=(
 #
 #   draft-strand-arm    the arm this lane was waiting for has been judged
 #                       (`arms.sh` labels the PR `verified` or `regressed`)
+#   draft-strand-runs   every device request of the lane's has finished, at
+#                       least one since its last session ended (see
+#                       lane_requests_of below; keyed on that set of runs)
 #   draft-strand-quiet  nothing has happened on the PR for DRAFT_STRAND_SECS
 #
 # Two keys, not one, on purpose: a verdict that lands AFTER a quiet resume is
@@ -166,36 +169,145 @@ PY
 )
     VKEY=$(sed -n 1p <<< "$out"); VSET=$(sed -n 2p <<< "$out")
 }
-# THE LANE'S OWN ARM, STILL ON ITS WAY. A request is the branch's when its
-# expect_sha is one of the branch's registered predictions (how `arms.sh`
-# queues one), when its purpose names the branch as its source, or when its
-# requester is the lane's own `ab_run.sh --who <name>` pair.
-INFLIGHT=""
-inflight_of() {   # <branch> <lane name> -> INFLIGHT="<queue|running>/<request id>", or ""
-    INFLIGHT=$(python3 - "$ARMS_DIR" "$DISPATCH_DIR" "$1" "$2" <<'PY'
-import glob, json, os, sys
-A, D, branch, name = sys.argv[1:5]
-shas = set()
+# THE LANE'S OWN DEVICE WORK: STILL ON ITS WAY, OR FINISHED SINCE IT LAST RAN.
+#
+# In flight: the lane is waiting, and rightly, so no strand cause resumes it.
+# Finished: the third strand cause, `draft-strand-runs` (defect 23 of the
+# dispatch-hardening brief). A lane ends its session while its soak or study
+# waits on a device -- correctly -- and until 2026-09-25 this job resumed it
+# only on a JUDGED ARM or on the two-hour quiet clock, so a lane whose soak
+# finished at minute ten sat on its own result for up to two hours. On
+# 2026-09-25 23:45Z the Nova had 23 lane requests waiting, perfarch's nine
+# soaks among them at ~180 min; each one that finished woke nobody.
+#
+# WHOSE REQUEST IS IT. First rule that answers wins, most specific first:
+#   1. its `lane` field;
+#   2. its expect_sha is a registered prediction (arms/pairs): that pair's
+#      branch -- how `arms.sh` queues an arm;
+#   3. its purpose names a branch, " from lane/<b>:" -- also `arms.sh`'s;
+#   4. its requester (or, with none, the owner field of its id,
+#      `<epoch>-<who>-<pid>`), less a leading `lane.` or `arms-`: the lane
+#      whose name it equals, or the LONGEST known lane it starts with plus
+#      `-` (`xbox-subnorm-dry2` is lane.xbox's; `selftesths-x-fix` is
+#      lane.selftesths-x's and not lane.selftesths's when both are known).
+# An arm (rules 2-3, or `<name>-base`/`-fix` from `ab_run.sh --who`) is
+# reported as kind `arm`; anything else as `run`.
+#
+# WHICH FINISHED RUNS ARE NEW. Those whose DONE/ERROR marker is newer than the
+# end of the lane's last session: the mtime of its newest
+# `$WORK/logs/lane/<name>.<stamp>.json`, which `lane.sh` has `claude -p` write
+# on exit. A run the lane saw finish while it was still running is older than
+# that and is not news. With no session log there is no line to draw, and
+# nothing counts as new: a lane this host never ran has no result waiting.
+# A result whose expect_sha is a registered prediction is left out: the arms
+# job judges it, and the verdict -- not the raw run -- is the arm cause's news.
+#
+# ONE READ, not two: the in-flight gate and the finished set are the same
+# question about the same files, and a second reader could attribute them
+# differently.
+INFLIGHT=""; INFLIGHT_KIND=""; RKEY=""; RSET=""; RLIST=""
+lane_requests_of() {   # <branch> <lane name> -> INFLIGHT, INFLIGHT_KIND, RKEY (hash), RSET (short), RLIST (rows)
+    local out
+    out=$(python3 - "$ARMS_DIR" "$DISPATCH_DIR" "$WORK" "$1" "$2" <<'PY'
+import glob, hashlib, json, os, re, sys
+A, D, W, branch, name = sys.argv[1:6]
+pair_branch = {}
 for pj in glob.glob(os.path.join(A, "pairs", "*.json")):
+    if pj.endswith(".verdict.json"):
+        continue
     try:
         p = json.load(open(pj))
     except Exception:
         continue
-    if str(p.get("source") or "").partition(":")[0] == branch and p.get("sha"):
-        shas.add(p["sha"])
-who = {name + "-base", name + "-fix", "arms-" + name + "-base", "arms-" + name + "-fix"}
+    b = str(p.get("source") or "").partition(":")[0]
+    if p.get("sha") and b:
+        pair_branch[p["sha"]] = b
+known = set()
+try:
+    known |= {d for d in os.listdir(os.path.join(W, "wt")) if os.path.isdir(os.path.join(W, "wt", d))}
+except OSError:
+    pass
+known |= {b[5:] for b in pair_branch.values() if b.startswith("lane/")}
+known.add(name)
+arm_who = {name + "-base", name + "-fix", "arms-" + name + "-base", "arms-" + name + "-fix"}
+from_re = re.compile(r" from (lane/[^:\s]+):")
+id_re = re.compile(r"(?:^|-)\d{9,}-(.+)-\d+$")
+
+def owner(r, rid):
+    """-> (lane or None, kind)"""
+    if r.get("lane"):
+        return str(r["lane"]).removeprefix("lane."), "run"
+    es = r.get("expect_sha")
+    if es and es in pair_branch:
+        return pair_branch[es].removeprefix("lane/"), "arm"
+    m = from_re.search(str(r.get("purpose") or ""))
+    if m:
+        return m.group(1).removeprefix("lane/"), "arm"
+    who = str(r.get("requester") or "")
+    if not who:
+        m = id_re.search(rid)
+        who = m.group(1) if m else ""
+    kind = "arm" if who in arm_who else "run"
+    for pre in ("lane.", "arms-"):
+        who = who.removeprefix(pre)
+    if not who:
+        return None, kind
+    if who in known:
+        return who, kind
+    hits = [k for k in known if who.startswith(k + "-")]
+    return (max(hits, key=len) if hits else None), kind
+
+def load(p):
+    try:
+        return json.load(open(p))
+    except Exception:
+        return {}
+
 for d in ("running", "queue"):
     for rq in sorted(glob.glob(os.path.join(D, d, "*.req"))):
-        try:
-            r = json.load(open(rq))
-        except Exception:
-            continue
-        if (r.get("expect_sha") in shas or r.get("requester") in who
-                or (" from %s:" % branch) in str(r.get("purpose") or "")):
-            print("%s/%s" % (d, r.get("id") or os.path.basename(rq)[:-4]))
+        rid = os.path.basename(rq)[:-4]
+        r = load(rq)
+        lane, kind = owner(r, str(r.get("id") or rid))
+        if lane == name:
+            print("INFLIGHT\t%s\t%s/%s" % (kind, d, r.get("id") or rid))
             sys.exit(0)
+
+logs = glob.glob(os.path.join(W, "logs", "lane", name + ".[0-9]*.json"))
+if not logs:
+    sys.exit(0)
+ended = max(os.path.getmtime(p) for p in logs)
+got = []
+for res in glob.glob(os.path.join(D, "results", "*")):
+    t, state = None, None
+    for s in ("DONE", "ERROR"):
+        try:
+            m = os.path.getmtime(os.path.join(res, s))
+        except OSError:
+            continue
+        t = m if t is None else max(t, m)
+        state = s if state is None or s == "ERROR" else state   # ERROR wins
+    if t is None or t <= ended:
+        continue
+    rid = os.path.basename(res)
+    r = load(os.path.join(res, "request.json"))
+    if r.get("expect_sha") and r["expect_sha"] in pair_branch:
+        continue                                                # the arm cause's
+    lane, _ = owner(r, str(r.get("id") or rid))
+    if lane == name:
+        got.append((rid, state, res))
+got.sort()
+if got:
+    print("RKEY\t" + hashlib.sha256("\n".join("%s %s" % g[:2] for g in got).encode()).hexdigest()[:16])
+    print("RSET\t" + " ".join("%s=%s" % g[:2] for g in got[:6]) + (" (+%d more)" % (len(got) - 6) if len(got) > 6 else ""))
+    for g in got:
+        print("RUN\t%s\t%s\t%s" % g)
 PY
 )
+    INFLIGHT=$(awk -F'\t' '$1=="INFLIGHT"{print $3}' <<< "$out")
+    INFLIGHT_KIND=$(awk -F'\t' '$1=="INFLIGHT"{print $2}' <<< "$out")
+    RKEY=$(awk -F'\t' '$1=="RKEY"{print $2}' <<< "$out")
+    RSET=$(awk -F'\t' '$1=="RSET"{print $2}' <<< "$out")
+    RLIST=$(awk -F'\t' '$1=="RUN"{print $2"\t"$3"\t"$4}' <<< "$out")
 }
 #
 # The stale set is wider than `needs-rebase`'s because every one of these
@@ -364,6 +476,26 @@ no runner never concludes by itself.
 EOF
         ;;
     esac
+    # THE RUNS CAUSE NAMES ITS RESULT DIRS, because they are the whole of the
+    # news: a lane told "your runs finished" without where to read them goes
+    # looking in the queue it left, and the requests are not there any more.
+    [ -z "${RUNS_BRIEF:-}" ] || {
+        cat <<EOF
+
+**Your device requests have all finished** since your last session ended, and
+none of yours is still queued or running. Read these before anything else:
+
+| request | state | result dir |
+|---|---|---|
+EOF
+        while IFS=$'\t' read -r rid st dir; do
+            [ -n "$rid" ] && printf '| `%s` | %s | `%s` |\n' "$rid" "$st" "$dir"
+        done <<< "$RUNS_BRIEF"
+        cat <<EOF
+
+An \`ERROR\` is a result too: read its \`run.log\`/\`run1.log\` before re-queueing.
+EOF
+    }
     [ "$arm" = none ] || cat <<EOF
 
 Your arm has been judged: the arms job labelled this PR \`$arm\` and posted the
@@ -383,8 +515,9 @@ say it where a reader can see it: a PR comment starting \`[lane.$4] waiting:\`
 naming what you are waiting for and what will resolve it. If it is an arm --
 a replicate you registered, say -- this job does not resume you while that arm
 is queued or running, and resumes you once when its verdict is judged; a push
-of your own is not a verdict. Anything else, it finds you again on the quiet
-clock.
+of your own is not a verdict. If it is any other device request of yours (a
+soak, a study), it resumes you once when the last of them has finished.
+Anything else, it finds you again on the quiet clock.
 EOF
 }
 
@@ -719,6 +852,23 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
             verdicts_of "$branch"
             [ -z "$VKEY" ] || { marker="$H/done/$label-$pr-v$VKEY"; keyed="on verdicts $VSET"; }
         fi
+        # THE RUNS CAUSE is found here, not in the pickup: it is a question
+        # about the dispatch dir, not about GitHub. It takes a row the quiet
+        # clock would otherwise hold, or an arm row whose verdict was already
+        # actioned -- a judged verdict that is news still goes first, because
+        # it is the more specific answer. Keyed on the SET of finished runs, so
+        # a push is not a new cause and a second soak finishing is.
+        INFLIGHT=""; INFLIGHT_KIND=""; RKEY=""; RSET=""; RLIST=""; RUNS_BRIEF=""
+        case "$label" in draft-strand-*)
+            lane_requests_of "$branch" "$name"
+            if [ -z "$INFLIGHT" ] && [ -n "$RKEY" ] \
+               && { [ "$label" = draft-strand-quiet ] || [ -f "$marker" ]; } \
+               && [ ! -f "$H/done/draft-strand-runs-$pr-r$RKEY" ]; then
+                label=draft-strand-runs
+                marker="$H/done/$label-$pr-r$RKEY"; keyed="on finished runs $RSET"
+                RUNS_BRIEF="$RLIST"
+            fi ;;
+        esac
         if [ -f "$marker" ]; then
             [ "$mode" = list ] && echo "#$pr $branch: $label already actioned $keyed ($(head -1 "$marker"))"
             continue
@@ -736,7 +886,8 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
                 *,regressed,*) arm=regressed ;;
                 *,verified,*)  arm=verified ;;
             esac
-            cause="${extra#isDraft=* } arm=$arm" ;;
+            cause="${extra#isDraft=* } arm=$arm"
+            [ -z "$RUNS_BRIEF" ] || cause+=" runs=$(grep -c . <<< "$RUNS_BRIEF")" ;;
         *)
             # `files=` is what fold.sh's conflict branch has always written;
             # `detail=` is the general field a newer cause uses. Either is the
@@ -794,13 +945,17 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
             # it already knew and spends one of DRAFT_STRAND_MAX on it. #245
             # was capped exactly so. No marker for the cause -- the verdict has
             # not landed -- and one log line per request, not one per tick.
-            inflight_of "$branch" "$name"
+            # ANY DEVICE REQUEST OF ITS OWN, not only an arm: a lane whose soak
+            # is queued is waiting just as rightly, and its finishing is the
+            # runs cause's news. INFLIGHT was read with the runs set, above.
             if [ -n "$INFLIGHT" ]; then
-                [ "$mode" = list ] && { echo "#$pr $branch: draft, lane $name not running, but its arm is in flight ($INFLIGHT); waiting on it"; continue; }
+                what="its arm is in flight"; until="it is judged"
+                [ "$INFLIGHT_KIND" = arm ] || { what="its device request is in flight"; until="its requests have finished"; }
+                [ "$mode" = list ] && { echo "#$pr $branch: draft, lane $name not running, but $what ($INFLIGHT); waiting on it"; continue; }
                 inflight_marker="$H/done/inflight-$pr-${INFLIGHT#*/}"
                 if [ ! -f "$inflight_marker" ]; then
                     echo "$INFLIGHT" > "$inflight_marker"
-                    say "#$pr: lane $name is stranded in draft but its arm is in flight ($INFLIGHT); not resuming until it is judged"
+                    say "#$pr: lane $name is stranded in draft but $what ($INFLIGHT); not resuming until $until"
                 fi
                 continue
             fi
@@ -823,7 +978,16 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
             # end this, and something must. A lane handed the resolved state
             # DRAFT_STRAND_MAX times and still in draft is not waiting on
             # anything this job can see; that is a person's question.
+            #
+            # EXCEPT THE RUNS CAUSE, which neither counts nor is capped. It is
+            # bounded by its own events: it fires only on a run that finished
+            # after the lane's last session ENDED, and the resume starts a new
+            # session, so it cannot recur until the lane queues more device
+            # work -- which is the lane making progress, not looping. Counted,
+            # a lane with four soaks in a row would be labelled
+            # `blocked:needs-owner` for waiting on its own results.
             nstrand=$(cat "$H/strand/$name" 2>/dev/null || echo 0)
+            [ "$label" = draft-strand-runs ] && nstrand=-1
             if [ "$nstrand" -ge "$DRAFT_STRAND_MAX" ]; then
                 [ "$mode" = list ] && { echo "#$pr $branch: draft, lane $name not running, but already strand-resumed $nstrand times (DRAFT_STRAND_MAX=$DRAFT_STRAND_MAX)"; continue; }
                 if [ ! -f "$H/done/strandmax-$pr" ]; then
@@ -869,12 +1033,13 @@ It wants a person now. Either the lane is waiting on something this job cannot s
         [ "$rc" -eq 0 ] || truncate -s "$size" "$WORK/briefs/$name.md"
         if [ "$rc" -eq 0 ] && [ -n "$uncounted" ]; then
             printf '%s\n' "$attempts_before" > "$WORK/attempts/$name"
-            printf '%s\n' "$(( $(cat "$H/strand/$name" 2>/dev/null || echo 0) + 1 ))" > "$H/strand/$name"
+            [ "$label" = draft-strand-runs ] \
+                || printf '%s\n' "$(( $(cat "$H/strand/$name" 2>/dev/null || echo 0) + 1 ))" > "$H/strand/$name"
             echo "resumed (strand, attempt not counted): $out" > "$marker"
             say "#$pr: resumed lane.$name on $label -- $out"
             comment "$pr" "[job.handback] Resumed \`lane.$name\`: $said, so nothing else could act on it -- \`board.sh\`, \`fleet.py\` and \`fold.sh\` all skip drafts, and that is right while a lane is working.
 
-The resolved state went into its brief (\`${head:0:10}\`: \`$cause\`), because a lane resumed with no new information repeats what it did before. **This did not spend one of the lane's attempts**: waiting on a ten-minute CI run or a ninety-minute arm is not a failed pass, and the escalation policy is for failed passes. It is bounded instead at \`DRAFT_STRAND_MAX=$DRAFT_STRAND_MAX\` per lane, at once per head sha for the quiet clock, and at once per new judged verdict for an arm -- pushing in answer to a verdict does not bring you back here, and nor does waiting on an arm that is still queued.
+The resolved state went into its brief (\`${head:0:10}\`: \`$cause\`), because a lane resumed with no new information repeats what it did before. **This did not spend one of the lane's attempts**: waiting on a ten-minute CI run or a ninety-minute arm is not a failed pass, and the escalation policy is for failed passes. It is bounded instead at \`DRAFT_STRAND_MAX=$DRAFT_STRAND_MAX\` per lane, at once per head sha for the quiet clock, at once per new judged verdict for an arm, and at once per new set of finished device runs -- pushing in answer to a verdict does not bring you back here, and nor does waiting on a request that is still queued.${RUNS_BRIEF:+ Finished runs this time: \`$RSET\`.}
 
 This job does **not** mark a PR ready: the definition of done includes \`NOTES.md\`, the \`Files:\` line and the prediction refs, none of which a script can check. That call stays with the lane."
             resumed=1
@@ -926,6 +1091,6 @@ done <<< "$rows"
 # in $WORK/logs/handback/tick.log that somebody reads at a distance. It names
 # every cause it looked for, including the two that are not labels -- otherwise
 # a draft pickup that silently stopped working reads exactly like a quiet day.
-CAUSES="${HANDBACK_ROWS[*]%% *} draft-strand-arm draft-strand-quiet"
+CAUSES="${HANDBACK_ROWS[*]%% *} draft-strand-arm draft-strand-runs draft-strand-quiet"
 [ "$seen" -eq 0 ] && { [ "$mode" = list ] && echo "nothing handed back ($CAUSES)" || say "nothing handed back ($CAUSES)"; }
 exit 0
