@@ -178,8 +178,16 @@ marked ready) and stopped before doing it: #298 was still a draft with the
 body "In progress" when handback resumed the lane again at 00:20Z. The
 sentence was written ahead of the action it described. It also never answered
 the host's 20:01Z delivery on #298, which asked for two more changes in scope
-(below). The 00:20Z resume made those changes, then fixed the body and marked
-the PR ready.
+(below). The 00:20Z resume made those changes and committed them
+(`c60a5ddcf1`, on top of a master merge), but the session ended before the
+push: the branch on origin stayed at `d9b37c18c9`, #298 stayed a draft with
+the "In progress" body, and nothing outside the session could see the work.
+
+## Attempt 2 (resumed by the host, 2026-09-26)
+
+Found `c60a5ddcf1` local-only, 148 commits behind master. Merged
+`origin/master` (clean), re-ran fragment 88 and the full selftest, pushed,
+rewrote the PR body through the REST API, then marked #298 ready.
 
 ## Host delivery 2026-09-25 20:01Z: `0-` prefix and device_label (in #298)
 
@@ -209,6 +217,7 @@ the PR ready.
 - Do not end a session on a draft PR without a `waiting:` comment: nothing
   but the handback job can find it.
 - Do not record an action in NOTES before it has happened ("marked ready").
+- Push before the session can end: a local commit is as invisible as a draft.
 - On resume, read the PR thread (`deliver.sh inbox sweepcover`) before
   finishing: a host delivery there is part of the brief.
 
