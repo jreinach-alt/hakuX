@@ -145,3 +145,12 @@ previous-nightly tag range), not this lane's code: the fixture named
 241e720324 ("name the fixture's yesterday by the script's clock"), so this
 lane edits nothing there; merging master (ff14a4580c) brings the fix in.
 The selftest was re-run under `TZ=UTC` on the merged tree to confirm.
+
+## Attempt 6 (2026-09-26): release files at PR-ready
+
+**Why attempt 5 did not finish:** it did. Attempt 5 pushed the merge,
+CI went green, and #270 folded at 2026-09-26T04:30:55Z (a97c049f2e). The
+branch was pruned after the fold. This resume carries a new addendum
+(the owner said "Yes, brief it"): release a lane's files when its PR is ready,
+not when it folds. It is new work on a new PR, branched from master at
+8552e1ff89 (a fast-forward: the old branch had no commits master lacked).
