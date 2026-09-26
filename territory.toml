@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 211
+wave = 212
 updated_utc = "2026-09-25T23:55:00Z"
 
 
@@ -1011,11 +1011,16 @@ standing = false
 note = "STARTED at wave 197 (job.board, 2026-09-25T20:56Z; the wave-195 start had hit an approval prompt, no attempt was spent). DISPATCHED WAVE 195 (job.board), briefs/fmv303.md: #303, Spikeout's FMV covered in green columns (Y=U=V=0 through the YUV path, pattern differs per pass -> suspect a missed write/dirty before sample, family of #262/#184). vk/display.c is free; vk/texture.c, gl/texture.c, pgraph/texture.c are lane.texvol283's and are named-not-edited."
 
 
+[lane.fix311]
+issues = ["311"]
+files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/testing/predictions/fix311-*.json", "docs/lanes/fix311/**"]
+note = "STARTED (host session, 2026-09-26T00:20Z), briefs/fix311.md: #311 (0.5 RELEASE BLOCKER). Test and fix the surface-watch leak the code review names in 21cacb354a (update_surface_part overwrites a live access_cb on slot reuse; watches leak one per reuse; every TLB fill walks the list). Live-watch counter + one-hunk fix; 240 s Ghoulies soak pairs master vs master+fix on both handhelds with 0-0- ids; prediction fix >= 25 fps over 90-240 s. vk/surface.c moved here from lane.ghoul311 (wave 211 grant)."
+
 [lane.ghoul311]
 issues = ["311"]
-files = ["docs/testing/predictions/ghoul311-*.json", "docs/lanes/ghoul311/**", "hw/xbox/nv2a/pgraph/vk/surface.c"]
+files = ["docs/testing/predictions/ghoul311-*.json", "docs/lanes/ghoul311/**"]
 standing = false
-note = "GRANTED hw/xbox/nv2a/pgraph/vk/surface.c from [free] (host session, 2026-09-26T00:05Z): the #311 code review (bisect311/code-review.md) names 21cacb354a -- a retired dirty surface keeps its guest-memory access watch and update_surface_part's `*surface = target` overwrites it, so watches leak one per reuse and every TLB fill walks the list. The fix arm unregisters the watch in get_shelved_surface()/get_any_compatible_invalid_surface(). PRIOR NOTE: STARTED at wave 197 (job.board, 2026-09-25T20:56Z; the wave-195 start had hit an approval prompt, no attempt was spent). DISPATCHED WAVE 195 (job.board), briefs/ghoul311.md: #311, Grabbed by the Ghoulies decays 29 -> 1-2 fps hands-off. Diagnosis first (simpleperf at 20 s / 120 s, hakuX-pages counters, bisect v0.3.1 / v0.4.0-j1 only if needed); no source claimed, a fix hunk is named on #311 for a grant. Coordinates with lane.perfbase/tcgchurn/perfarch (#68), whose files it does not touch."
+note = "vk/surface.c MOVED to lane.fix311 (host, 2026-09-26T00:20Z): ghoul311 is at attempt 4 and a message to its running session was held for approval, so the fix arm got its own lane. ghoul311 keeps the diagnosis. GRANTED hw/xbox/nv2a/pgraph/vk/surface.c from [free] (host session, 2026-09-26T00:05Z): the #311 code review (bisect311/code-review.md) names 21cacb354a -- a retired dirty surface keeps its guest-memory access watch and update_surface_part's `*surface = target` overwrites it, so watches leak one per reuse and every TLB fill walks the list. The fix arm unregisters the watch in get_shelved_surface()/get_any_compatible_invalid_surface(). PRIOR NOTE: STARTED at wave 197 (job.board, 2026-09-25T20:56Z; the wave-195 start had hit an approval prompt, no attempt was spent). DISPATCHED WAVE 195 (job.board), briefs/ghoul311.md: #311, Grabbed by the Ghoulies decays 29 -> 1-2 fps hands-off. Diagnosis first (simpleperf at 20 s / 120 s, hakuX-pages counters, bisect v0.3.1 / v0.4.0-j1 only if needed); no source claimed, a fix hunk is named on #311 for a grant. Coordinates with lane.perfbase/tcgchurn/perfarch (#68), whose files it does not touch."
 
 
 [lane.turnipfork]
