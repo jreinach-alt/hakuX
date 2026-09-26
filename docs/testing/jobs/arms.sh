@@ -71,7 +71,7 @@ LOG="$WORK/logs/arms/tick.log"
 say() { echo "$(say_time_s) $*" | tee -a "$LOG"; }
 [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
 MAX_PAIRS="${ARMS_MAX_PAIRS_PER_TICK:-2}"   # pairs queued per tick; both handhelds busy is the goal, a 40-deep queue is not
-QUEUE_MAX="${ARMS_QUEUE_MAX:-4}"            # do not queue when this many requests already wait
+QUEUE_MAX="${ARMS_QUEUE_MAX:-4}"            # do not queue when this many requests already wait ahead of the z-* idle tier
 # Default watermark: two days back, not "now". Seeded at "now" on the first
 # install, it made every prediction the lanes had pushed THAT DAY read as
 # history, and the first tick queued nothing while PR #102's live arm sat
@@ -530,7 +530,7 @@ skip() {   # <sha> <expect-path> <source> <reason>
 # predictions -- bc7ccef95d took two quadratics out of this file and the tick
 # is 11s.
 LABEL_INDEX="$A/log/label-index.tsv"
-build_label_index() {   # sha, branch, issue, prediction, registered, queued
+build_label_index() {   # sha, branch, issue, prediction, registered, queued, a_ref, b_ref
     python3 - "$A" > "$LABEL_INDEX" <<'PY'
 import glob, json, os, sys
 A = sys.argv[1]
@@ -556,13 +556,87 @@ for pj in sorted(glob.glob(os.path.join(A, "pairs", "*.json"))):
         pass                               # a host registration may be overwritten
     q = str(p.get("queued_utc") or "")
     print("\t".join([sha, branch, str(p.get("issue") or "").strip(),
-                     pred or src, reg or q, q]))
+                     pred or src, reg or q, q,
+                     str(p.get("a_ref") or ""), str(p.get("b_ref") or "")]))
 PY
 }
+# ------------------------------------------- a FAIL whose code is gone
+#
+# A REFUTED CANDIDATE IS REVERTED, AND THEN ITS FAIL IS ABOUT NOTHING. A lane
+# whose arm FAILS does the right thing by taking the code back out. What is
+# left is a docs-only branch, which builds master's binary, so no arm on it can
+# ever supersede the FAIL: the PR was `regressed` forever. PR #252 (#224 family
+# B) sat exactly there on 2026-09-25, and the only exits were an owner override
+# that recorded an acceptance that was not one (#257, option 1) or re-landing
+# the docs from a fresh branch with no prediction (option 2, PR #259).
+#
+# So a FAIL is WITHDRAWN when the branch's diff against $TIP no longer touches
+# ANY file outside docs/ that the arm's b_ref changed against its a_ref. It
+# then neither counts nor supersedes anything -- an older verdict on the same
+# issue is live again, which is right, because it may still be about code on
+# the branch -- and it is listed as `withdrawn <prediction>` so the record
+# stays visible. The verdict comment is not touched.
+#
+# WHY docs/ IS OUTSIDE THE SET. A lane that reverts its code keeps its NOTES
+# and its prediction, and both are in b_ref's diff; counting them would keep
+# every reverted FAIL alive on the lane's own write-up.
+#
+# WHY ANY SURVIVING FILE KEEPS IT. A partial revert is not a withdrawal: the
+# arm measured the files together, and nothing has measured the half that is
+# left.
+#
+# EVERYTHING THAT CANNOT BE ANSWERED KEEPS THE FAIL. A ref that does not
+# resolve, a branch head this object store does not have, an arm that changed
+# no code at all (the empty set would be withdrawn vacuously): all regressed,
+# as before. `state` stays offline -- it reads the refs the last tick fetched.
+withdrawn_refs_for() {   # <branch> -> the head ref to diff, or nothing
+    local b=$1 n r
+    for r in "refs/remotes/origin/$b" "refs/heads/$b"; do
+        git -C "$REPO" rev-parse -q --verify "$r^{commit}" >/dev/null 2>&1 && { echo "$r"; return; }
+    done
+    n=$(awk -F'\t' -v b="$b" '$1 == b { print $2; exit }' "$PR_TSV" 2>/dev/null)
+    [ -n "$n" ] && git -C "$REPO" rev-parse -q --verify "refs/remotes/pr/$n^{commit}" >/dev/null 2>&1 && echo "refs/remotes/pr/$n"
+}
+withdrawn_base() {
+    local r
+    for r in "refs/remotes/origin/$TIP" "refs/heads/$TIP"; do
+        git -C "$REPO" rev-parse -q --verify "$r^{commit}" >/dev/null 2>&1 && { echo "$r"; return; }
+    done
+}
 label_decide() {   # <branch> [<sha being judged> <its verdict>] -> STATE=... then markdown
-    python3 - "$A" "$LABEL_INDEX" "$1" "${2:-}" "${3:-}" <<'PY'
-import os, sys
-A, index, branch, ovr_sha, ovr_verdict = sys.argv[1:6]
+    python3 - "$A" "$LABEL_INDEX" "$1" "${2:-}" "${3:-}" "$REPO" "$(withdrawn_base)" "$(withdrawn_refs_for "$1")" <<'PY'
+import os, subprocess, sys
+A, index, branch, ovr_sha, ovr_verdict, repo, base, head = sys.argv[1:9]
+
+def names(*args):                         # git diff --name-only, or None when git cannot say
+    # --no-renames: porcelain diff detects renames by default, and a renamed file
+    # would then list only its NEW path -- a `git mv` of refuted code would read
+    # as the code being gone (PR #260 audit M1). Delete+add keeps the old path.
+    try:
+        out = subprocess.run(["git", "-C", repo, "diff", "--no-renames", "--name-only"] + list(args),
+                             capture_output=True, text=True, timeout=60)
+    except Exception:
+        return None
+    return set(out.stdout.split("\n")) - {""} if out.returncode == 0 else None
+
+_branch_files = []
+def branch_files():                       # what the branch still changes against the trunk
+    if not _branch_files:
+        _branch_files.append(names(base + "..." + head) if base and head else None)
+    return _branch_files[0]
+
+def withdrawn(r):                         # the arm's code files, none of them left -> the files it changed
+    if r["cls"] != "FAIL" or not r["a"] or not r["b"]:
+        return None
+    code = names(r["a"], r["b"])
+    if not code:
+        return None                       # unresolvable, or an arm that changed nothing to take back
+    code = {f for f in code if not f.startswith("docs/")}
+    have = branch_files()
+    if not code or have is None or code & have:
+        return None
+    return sorted(code)
+
 rows = []
 try:
     lines = open(index).read().splitlines()
@@ -570,9 +644,9 @@ except Exception:
     lines = []
 for line in lines:
     f = line.split("\t")
-    if len(f) != 6:
+    if len(f) != 8:
         continue
-    sha, br, issue, pred, when, queued = f
+    sha, br, issue, pred, when, queued, a_ref, b_ref = f
     if br != branch:
         continue
     if sha == ovr_sha:
@@ -593,7 +667,16 @@ for line in lines:
     if cls is None:
         continue
     rows.append({"sha": sha, "issue": issue, "pred": pred, "when": when,
-                 "queued": queued, "cls": cls})
+                 "queued": queued, "cls": cls, "a": a_ref, "b": b_ref})
+
+# A withdrawn FAIL leaves the decision entirely: it neither counts nor
+# supersedes, so an older verdict on its issue is live again.
+gone = []
+for r in rows:
+    r["gone"] = withdrawn(r)
+    if r["gone"]:
+        gone.append(r)
+rows = [r for r in rows if not r["gone"]]
 
 groups = {}
 for r in rows:
@@ -612,11 +695,24 @@ for key, rs in groups.items():
 fails = [r for r in rows if r["live"] and r["cls"] == "FAIL"]
 state = "regressed" if fails else ("verified" if rows else "none")
 print("STATE=" + state)
-if state == "none":
-    sys.exit(0)                            # nothing judged on this branch
 
 def name(r):
     return os.path.basename(r["pred"]) or r["pred"]
+
+# `withdrawn <prediction>`, one per line, straight after STATE= so a caller can
+# grep it; then the same in prose inside the markdown below.
+for r in sorted(gone, key=lambda r: (r["when"], r["sha"])):
+    print("withdrawn %s" % name(r))
+wd = ["- `%s` FAILED, and is **withdrawn**: `%s` no longer changes %s against `%s`, the code "
+      "its b_ref `%s` changed against its a_ref `%s`. The code the arm refuted is gone from the "
+      "branch, so the FAIL is about nothing on it. The verdict comment stands as measured."
+      % (name(r), branch, ", ".join("`%s`" % f for f in r["gone"]), base.split("/")[-1] or "the trunk",
+         r["b"], r["a"]) for r in sorted(gone, key=lambda r: (r["when"], r["sha"]))]
+if state == "none":
+    if wd:
+        print("\n".join(["**PR label: no verdict counts** -- every judged verdict on `%s` is withdrawn." % branch, ""]
+                        + wd + ["", "Recompute from the verdicts on disk with `arms.sh state %s`." % branch]))
+    sys.exit(0)                            # nothing judged on this branch that still counts
 
 out = []
 if state == "regressed":
@@ -641,6 +737,8 @@ if cleared:
         out.append("- `%s` FAILED, and does not count: `%s` was registered later against the same "
                    "%s and supersedes it." % (name(r), name(r["by"]),
                                               "issue (%s)" % r["key"] if r["issue"] else "prediction"))
+if wd:
+    out += [""] + wd
 out += ["", "Recompute from the verdicts on disk with `arms.sh state %s`." % branch]
 print("\n".join(out))
 PY
@@ -654,7 +752,13 @@ fi
 
 # ------------------------------------------------------------------- queue
 queued=0
-waiting=$(ls "$D"/queue/*.req 2>/dev/null | wc -l)
+# BACKPRESSURE COUNTS ONLY WHAT AN ARM WOULD WAIT BEHIND. The workers serve
+# queue/ in glob order, and `z-*` is the idle tier (the full-corpus sweep, one
+# request per suite): every arm sorts ahead of it. Counting it too let a queued
+# ~100-suite sweep hold `waiting` over ARMS_QUEUE_MAX for hours, so the most
+# urgent work starved behind the least (dispatch-hardening defect 12).
+waiting=$(ls "$D"/queue/*.req 2>/dev/null | grep -vc '/z-[^/]*$')
+idle_tier=$(ls "$D"/queue/z-*.req 2>/dev/null | wc -l)
 while read -r sha path src; do
     [ -n "$sha" ] || continue
     # A marker already on the host may predate tell_skip; announce it once.
@@ -680,7 +784,7 @@ while read -r sha path src; do
         echo "WOULD QUEUE $sha $src who=$who issue=#$issue a=$a b=$b suites=[$suites]"; continue
     fi
     [ "$queued" -lt "$MAX_PAIRS" ] || { say "pair cap $MAX_PAIRS reached this tick; $src waits"; continue; }
-    [ "$waiting" -lt "$QUEUE_MAX" ] || { say "queue has $waiting waiting (ARMS_QUEUE_MAX=$QUEUE_MAX); $src waits"; continue; }
+    [ "$waiting" -lt "$QUEUE_MAX" ] || { say "queue has $waiting waiting ahead of the idle tier, $idle_tier idle-tier z-* behind it (ARMS_QUEUE_MAX=$QUEUE_MAX counts the first); $src waits"; continue; }
     name=$(echo "${who:-arm}" | sed 's/^lane\.//; s/[^A-Za-z0-9_-]/_/g' | cut -c1-24)
     # runs_per_arm is optional. The first version tested "${runs:-1}" and never
     # assigned it, so a prediction without the field handed request.sh
@@ -775,7 +879,7 @@ for pair in "$A"/pairs/*.json; do
         echo "| suites | $(field "$pair" suites) |"
         echo "| judged | $(say_time_s) by ab_compare.py on the host; full text in \`\$WORK/arms/pairs/$sha.verdict.txt\` |"
         if [ -n "$incomplete" ]; then echo; echo "$note"; fi
-        if [ -n "$pr" ] && [ "${state:-none}" != none ]; then echo; sed 1d "$dec"; fi
+        if [ -n "$pr" ] && [ "${state:-none}" != none ]; then echo; sed '1d; /^withdrawn /d' "$dec"; fi
         echo
         echo "<details><summary>ab_compare output (first 80 lines)</summary>"
         echo; echo '```'; head -80 "$out"; echo '```'; echo "</details>"
@@ -798,6 +902,34 @@ for pair in "$A"/pairs/*.json; do
         fi
     fi
     echo "$verdict" > "$A/judged/$sha"; say "judged $sha: $verdict ($src${pr:+, PR #$pr -> ${state:-no label}})"
+done
+
+# ------------------------------------------- a withdrawn FAIL takes its label
+# The judge loop moves a label only when it judges an arm, and a branch whose
+# refuted code was reverted will never be judged again -- its head builds
+# master's binary. So `regressed` would stay on it, and fold.sh reads the label.
+# For each open PR with a withdrawn FAIL and nothing else outstanding, take
+# `regressed` off, once per set of withdrawn verdicts, and say so on the PR.
+# `verified` is not added: a withdrawal is the absence of a measurement.
+mkdir -p "$A/withdrawn"
+cut -f2 "$LABEL_INDEX" 2>/dev/null | sort -u | while read -r br; do
+    [ -n "$br" ] || continue
+    pr=$(awk -F'\t' -v b="$br" '$1 == b { print $2; exit }' "$PR_TSV" 2>/dev/null)
+    [ -n "$pr" ] || continue                      # open PRs only: the map, no extra gh call per branch
+    dec=$(label_decide "$br")
+    grep -q '^withdrawn ' <<< "$dec" || continue
+    state=$(sed -n '1s/^STATE=//p' <<< "$dec")
+    [ "$state" = regressed ] && continue
+    m="$A/withdrawn/$pr-$(grep '^withdrawn ' <<< "$dec" | md5sum | cut -c1-12)"
+    [ -f "$m" ] && continue
+    label_rm "$pr" regressed || { say "  WARNING: #$pr's FAIL is withdrawn but regressed could not be removed; will try again next tick"; continue; }
+    body="$m.md"
+    {
+        echo "[job.arms] WITHDRAWN: the FAIL on \`$br\` no longer counts, so \`regressed\` is off this PR."
+        echo; sed '1d; /^withdrawn /d' <<< "$dec"
+    } > "$body"
+    post "$pr" "" "$body" || say "  could not post the withdrawal for #$pr"
+    : > "$m"; say "withdrawn: #$pr ($br) -> $state; regressed removed"
 done
 
 [ -x "$T/jobs/status.sh" ] && bash "$T/jobs/status.sh" >/dev/null 2>&1

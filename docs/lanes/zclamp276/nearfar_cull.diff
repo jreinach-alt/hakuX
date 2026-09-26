@@ -1,0 +1,88 @@
+diff --git a/hw/xbox/nv2a/nv2a_regs.h b/hw/xbox/nv2a/nv2a_regs.h
+--- a/hw/xbox/nv2a/nv2a_regs.h
++++ b/hw/xbox/nv2a/nv2a_regs.h
+@@ -660,6 +660,7 @@
+ #define NV_PGRAPH_WINDOWCLIPY6                           0x00001A7C
+ #define NV_PGRAPH_WINDOWCLIPY7                           0x00001A80
+ #define NV_PGRAPH_ZCOMPRESSOCCLUDE                       0x00001A84
++#   define NV_PGRAPH_ZCOMPRESSOCCLUDE_CULL_NEAR_FAR_EN          (1 << 0)
+ #   define NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN                 (1 << 4)
+ #       define NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN_CULL            0
+ #       define NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN_CLAMP           1
+@@ -1376,6 +1377,7 @@
+ #   define NV097_SET_SEMAPHORE_OFFSET                         0x00001D6C
+ #   define NV097_BACK_END_WRITE_SEMAPHORE_RELEASE             0x00001D70
+ #   define NV097_SET_ZMIN_MAX_CONTROL                         0x00001D78
++#       define NV097_SET_ZMIN_MAX_CONTROL_CULL_NEAR_FAR_EN        0x0000000F
+ #       define NV097_SET_ZMIN_MAX_CONTROL_ZCLAMP_EN               0x000000F0
+ #       define NV097_SET_ZMIN_MAX_CONTROL_ZCLAMP_EN_CULL              0
+ #       define NV097_SET_ZMIN_MAX_CONTROL_ZCLAMP_EN_CLAMP             1
+diff --git a/hw/xbox/nv2a/pgraph/pgraph.c b/hw/xbox/nv2a/pgraph/pgraph.c
+--- a/hw/xbox/nv2a/pgraph/pgraph.c
++++ b/hw/xbox/nv2a/pgraph/pgraph.c
+@@ -4811,6 +4811,11 @@
+ 
+ DEF_METHOD(NV097, SET_ZMIN_MAX_CONTROL)
+ {
++    /* #276: kept at the method's own bit position, next to ZCLAMP_EN. */
++    PG_SET_MASK(NV_PGRAPH_ZCOMPRESSOCCLUDE,
++                NV_PGRAPH_ZCOMPRESSOCCLUDE_CULL_NEAR_FAR_EN,
++                GET_MASK(parameter, NV097_SET_ZMIN_MAX_CONTROL_CULL_NEAR_FAR_EN)
++                    != 0);
+     switch (GET_MASK(parameter, NV097_SET_ZMIN_MAX_CONTROL_ZCLAMP_EN)) {
+     case NV097_SET_ZMIN_MAX_CONTROL_ZCLAMP_EN_CULL:
+         PG_SET_MASK(NV_PGRAPH_ZCOMPRESSOCCLUDE,
+diff --git a/hw/xbox/nv2a/pgraph/glsl/psh.h b/hw/xbox/nv2a/pgraph/glsl/psh.h
+--- a/hw/xbox/nv2a/pgraph/glsl/psh.h
++++ b/hw/xbox/nv2a/pgraph/glsl/psh.h
+@@ -106,6 +106,7 @@
+     bool fog_enable;
+     enum VshFogMode fog_mode;
+     bool depth_clipping;
++    bool cull_near_far; /* reject a primitive wholly outside CLIP_MIN/MAX */
+     bool z_perspective;
+     bool noperspective; /* SET_CONTROL0 texture perspective off */
+     bool depth_needed;
+diff --git a/hw/xbox/nv2a/pgraph/glsl/psh.c b/hw/xbox/nv2a/pgraph/glsl/psh.c
+--- a/hw/xbox/nv2a/pgraph/glsl/psh.c
++++ b/hw/xbox/nv2a/pgraph/glsl/psh.c
+@@ -309,6 +309,8 @@
+         GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_ZCOMPRESSOCCLUDE),
+                  NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN) ==
+         NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN_CULL;
++    state->cull_near_far = pgraph_reg_r(pg, NV_PGRAPH_ZCOMPRESSOCCLUDE) &
++                           NV_PGRAPH_ZCOMPRESSOCCLUDE_CULL_NEAR_FAR_EN;
+ 
+     /* Depth needed flag — used by VK for depth output in fragment shader.
+      * GL handles depth via fixed-function pipeline. */
+@@ -2553,6 +2555,30 @@
+                                  "  discard;\n"
+                                  "}\n");
+         }
++    }
++
++    /*
++     * ZMIN_MAX_CONTROL CULL_NEAR_FAR_EN: silicon rejects a primitive whole
++     * when every vertex's screen z is below CLIP_MIN, or every one above
++     * CLIP_MAX, whatever ZCLAMP_EN says and on a w-buffered surface too --
++     * the test is on z, never on w. ZMinMaxControl's goldens show it on all
++     * 12 captures that can: in each Z=Inc block quads 0-1 (z <= 6.4) and
++     * 28-39 (z >= 102.4) go, quad 2 (7.3..10.06) and quad 27 (98.8..101.5)
++     * stay, and every Z=N->F quad (8..120) stays (docs/lanes/zclamp276).
++     * Where the per-pixel clip below already discards every pixel of such a
++     * primitive -- ZCLAMP_EN_CULL on a z-buffer -- nothing is emitted, so
++     * those shaders are unchanged. Issue #276.
++     */
++    if (ps->state->cull_near_far &&
++        (!ps->state->depth_clipping || ps->state->z_perspective)) {
++        mstring_append(
++            clip,
++            "if ((vtxPos0.z < clipRange.z && vtxPos1.z < clipRange.z &&\n"
++            "     vtxPos2.z < clipRange.z) ||\n"
++            "    (vtxPos0.z > clipRange.w && vtxPos1.z > clipRange.w &&\n"
++            "     vtxPos2.z > clipRange.w)) {\n"
++            "  discard;\n"
++            "}\n");
+     }
+ 
+     if (ps->state->depth_needed) {
