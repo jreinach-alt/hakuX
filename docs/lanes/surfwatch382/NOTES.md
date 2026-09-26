@@ -143,7 +143,26 @@ What this says:
 
 ### Texture must-not-move
 
-(pending: `1790425272-surfwatch382-870923` A, `1790425272-surfwatch382-871201` B)
+Registered as `surfwatch382-texcpu.json` (dd3a8f0c...) and queued by this
+lane (the arms job had not picked it up yet):
+- A `1790425272-surfwatch382-870923`: 6c25a829ef.
+- B `1790425272-surfwatch382-871201`: 568332c8d2, apk 4effc515d372.
+
+`ab_compare`: **PASS**. 3 of 3 captures are byte-identical, and all 3 are
+exact in both arms (Texture_CPU_Update 2, Texture_render_update_in_place 1).
+
+**The guard was not inert.** B's `[surfwatch382]` line at 05:31:03 reads
+suspends 8, rearms 4, **gap_writes 1**, lost_writes 0. The suites suspend
+watches, and once a guest write landed in the async re-arm gap. The hash
+check caught it and re-uploaded, and the captures stayed exact. Without the
+check that write would have been missed, and whether a capture showed it
+would have depended on timing. So the race in sec 2 is not only theoretical:
+this disc hits it. The run ended about 10 s after that print, so the
+counters are not read at the very end of the run.
+
+What the texture arm does not cover: three captures is a small set. A
+full-corpus sweep of B is the wider guard, and the fold's CI and sweeps
+will run it.
 
 ## Do not repeat
 
