@@ -176,8 +176,7 @@ cross-device pair is not attributable. That does not rescue the hunk. The
 failed leg is a missing improvement, not a regression, and a device
 difference cannot hold three images at exactly 614 while their bytes change.
 Per the brief, the hunk was not re-measured or tuned. It was reverted in
-65a5a65ae4, a new commit. The pshqueue-315-brdf.json prediction stays
-committed as the record of the refuted arm.
+65a5a65ae4, a new commit.
 
 For the next lane on #315: the sampler3D + (t[i-2].r, t[i-1].r,
 fract(t[i-1].g - t[i-2].g)) model changes what the stage samples but not
@@ -190,3 +189,25 @@ somewhere else (filtering, the combiner, the wedge region).
 Kept: #279 (PASS 9/9, DotZW 65,536 -> 165) and #285 (PASS 89/89, Fmt_G8B8
 32,552 -> 0, Fmt_B8 16,144 -> 0). Master merged at b3f717e77d (index
 conflict only, regenerated over the fold pins).
+
+## Attempt 3, continued (host resume): the #315 prediction leaves with its hunk
+
+Why the previous turn did not finish: it reverted #315 and marked the PR
+ready, but left `pshqueue-315-brdf.json` committed. The arms job withdraws a
+FAIL only when the branch touches no file the failed arm changed
+(arms.sh:573-590). #279 and #285 are in the same psh.c, so while the file
+stayed, #347 kept `regressed` with no way out.
+
+Removed `docs/testing/predictions/pshqueue-315-brdf.json`. The record:
+
+| | |
+|---|---|
+| sha256 | f007be72da4837fb20b607111233c291f6082bf73777e8c68b62613e9381b490 |
+| refs | a389648b0b..e3b13f5b45 |
+| arm id | 1790395945-arms-pshqueue-fix-1882785 (base 1790395945-arms-pshqueue-base-1882405) |
+| result | FAIL, 1 of 30: BRDF_e0_l0 / e0_l1 / e1_l0 614 -> 614 each, predicted <= 30 |
+| why withdrawn | the model was refuted (pixels moved, but none toward the golden), and the hunk was reverted in 65a5a65ae4 |
+
+The `[job.arms]` verdict comment on #347 stays as the public record. Master
+merged again at 1e90c44672. As before, only the index conflicted, and it was
+rebuilt over the fold pins.
