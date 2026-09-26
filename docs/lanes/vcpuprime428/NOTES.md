@@ -58,3 +58,18 @@ the same arguments). Poll with `waitruns.py`.
 | B2 | 1790454371-vcpuprime428-3939754 | HAKUX_TOPO=200,10 HAKUX_PLACE_VCPU=prime |
 | A3 | 1790454371-vcpuprime428-3939794 | HAKUX_TOPO=200,10 |
 | B3 | 1790454372-vcpuprime428-3939872 | HAKUX_TOPO=200,10 HAKUX_PLACE_VCPU=prime |
+
+At 20:37 UTC the host parked A2 B2 A3 B3 in
+`dispatch/parked/vcpuprime428-20260926T203745Z` under the owner's 09-26 rule:
+a device batch over 30 minutes runs a short pilot first, and the pilot is
+reviewed (hostops writes `dispatch/pilots/<lane>.ok`) before the rest runs.
+A1 and B1 are the pilot. The rule is in `docs/lanes/titleplay/NOTES.md`.
+I queued all six without reading it.
+
+## Do not repeat
+
+- Do not queue over 30 minutes of device time without a reviewed pilot.
+  Queue one run per arm, review it, and ask hostops for the rest.
+- In a titleplay `route`, `hakuX-route` `mark gameplay` is the start of the
+  gameplay window. perfarch's "drop the first quarter" still counts boot on a
+  route with a 105 s lead-in.
