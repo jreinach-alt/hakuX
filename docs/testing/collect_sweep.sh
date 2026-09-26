@@ -22,7 +22,11 @@ set -u
 HERE_PROV="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LABEL="${1:?usage: collect_sweep.sh <label> [dispatch-dir]}"
 D="${2:-/home/justin/hakux-work/dispatch}"
-OUT="/home/justin/hakux-work/scoreboard/$LABEL"
+# Overridable so the selftest (88-sweep-cover.sh) can run this whole script
+# on a fixture without writing a column into the live board or SCOREBOARD.md.
+SB_ROOT="${SCOREBOARD_ROOT:-/home/justin/hakux-work/scoreboard}"
+SB_GOLDENS="${SCOREBOARD_GOLDENS:-/home/justin/goldens/results}"
+OUT="$SB_ROOT/$LABEL"
 # The request prefix, which is not always the column name: the first
 # full-corpus sweep was queued as `z-sweep-*` before queue_full_sweep.sh
 # existed, and its column is named for the binary it measured.
@@ -32,7 +36,7 @@ case "$LABEL" in pre-fixes-*) SWEEP_LABEL=sweep ;; esac
 mkdir -p "$OUT"
 rm -f "$OUT"/*.tsv "$OUT/.refs"
 
-taken=0 skipped_noproof=0 skipped_empty=0
+taken=0 skipped_noproof=0 skipped_empty=0 void_rows=0 void_sheets=0
 seen_dirs=""
 # Collect the label that was asked for. This globbed `z-sweep-*` regardless of
 # the LABEL argument, which worked only while every sweep was called "sweep" --
@@ -45,7 +49,14 @@ seen_dirs=""
 # provenance record exists to catch, reintroduced while fixing something else.
 # A label with no results is an empty column and says so; that is the right
 # failure.
-for rdir in "$D"/results/z-"$SWEEP_LABEL"-*/; do
+#
+# `0-` as well as `z-`: a sweep promoted to priority is renamed `0-<label>-...`
+# mid-flight (a-now-2b04d4d422 and b-v040j1 on 2026-09-25), so one column holds
+# both prefixes. The NNN keeps a longer label (`fix-now`) or a leg
+# (`fix.depth2025`) out of the `fix` column, and a result the host voided by
+# renaming it `void-z-...` matches neither prefix.
+for rdir in "$D"/results/0-"$SWEEP_LABEL"-[0-9][0-9][0-9]-*/ \
+            "$D"/results/z-"$SWEEP_LABEL"-[0-9][0-9][0-9]-*/; do
     [ -d "$rdir" ] || continue
     case " $seen_dirs " in *" $rdir "*) continue;; esac
     seen_dirs="$seen_dirs $rdir"
@@ -67,7 +78,38 @@ except Exception:
         echo "  skipped (no progress-log proof): $(basename "$rdir")"
         continue
     fi
-    cp "$tsv" "$OUT/$(basename "$rdir").tsv"
+    # Copied with the result's device_label as a column. A column may mix
+    # devices per suite (a-now's suite 004 ran on the Nova, the rest on the
+    # Thor), which is allowed -- 3,040 captures scored on both at one apk_sha
+    # disagreed 0 times -- but a reader must be able to see it.
+    python3 -c "
+import csv,json,sys
+try: dev=json.load(open(sys.argv[2])).get('device_label') or 'unknown'
+except Exception: dev='unknown'
+rd=csv.DictReader(open(sys.argv[1]), delimiter='\t')
+f=list(rd.fieldnames or [])
+if 'device_label' not in f: f.append('device_label')
+w=csv.DictWriter(open(sys.argv[3],'w',newline=''), f, delimiter='\t', lineterminator='\n')
+w.writeheader()
+for r in rd:
+    r['device_label'] = r.get('device_label') or dev
+    w.writerow(r)" "$tsv" "$rdir/result.json" "$OUT/$(basename "$rdir").tsv" \
+        || cp "$tsv" "$OUT/$(basename "$rdir").tsv"
+    # Void rows are TAKEN, not skipped: scoreboard.py counts them as void, so
+    # the column says how much of it was unmeasured. Named here per sheet
+    # because a sheet with 56 unreadable rows passed the proof gate above --
+    # the tests ran; the pull truncated their PNGs -- and read as 56 exact.
+    v=$(python3 -c "
+import csv,sys
+sys.path.insert(0, sys.argv[2])
+from scoreboard import is_scored
+rows=[r for r in csv.DictReader(open(sys.argv[1]), delimiter='\t') if r.get('suite')]
+print(sum(not is_scored(r) for r in rows))" "$tsv" "$HERE_PROV" 2>/dev/null)
+    case "$v" in ''|*[!0-9]*) v=0; echo "  could not read statuses: $(basename "$rdir")" ;; esac
+    if [ "$v" -gt 0 ]; then
+        void_rows=$((void_rows+v)); void_sheets=$((void_sheets+1))
+        echo "  $v void row(s) (status not scored): $(basename "$rdir")"
+    fi
     python3 -c "
 import json,sys
 try: print(json.load(open(sys.argv[1])).get('ref') or '')
@@ -94,17 +136,18 @@ rm -f "$OUT/.refs"
 echo "collected $taken sheets into $OUT"
 [ "$skipped_noproof" -gt 0 ] && echo "  $skipped_noproof skipped for missing progress-log proof"
 [ "$skipped_empty" -gt 0 ] && echo "  $skipped_empty skipped as empty or unscored"
+[ "$void_rows" -gt 0 ] && echo "  $void_rows VOID row(s) in $void_sheets sheet(s): not exact, not scored -- see the column's void count"
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUNS=()
-for d in /home/justin/hakux-work/scoreboard/*/; do
+for d in "$SB_ROOT"/*/; do
     [ -n "$(ls -A "$d"/*.tsv 2>/dev/null)" ] || continue
     RUNS+=(--run "$(basename "$d")=$d")
 done
 
 python3 "$HERE/scoreboard.py" "${RUNS[@]}" \
-    --goldens /home/justin/goldens/results \
-    --md "$HERE/SCOREBOARD.md"
+    --goldens "$SB_GOLDENS" \
+    --md "${SCOREBOARD_MD:-$HERE/SCOREBOARD.md}"
 
 # NAME THE GATE AT THE POINT SOMEONE IS ABOUT TO NEED IT.
 #
@@ -119,7 +162,7 @@ python3 "$HERE/scoreboard.py" "${RUNS[@]}" \
 # nobody here can make. Naming the command with the arguments filled in is the
 # most this can honestly do -- and it is what the rule in AGENTS.md asks for,
 # at the moment the reader is looking.
-OTHERS=$(for d in /home/justin/hakux-work/scoreboard/*/; do
+OTHERS=$(for d in "$SB_ROOT"/*/; do
              b=$(basename "$d"); [ "$b" = "$LABEL" ] || printf '%s ' "$b"
          done)
 if [ -n "$OTHERS" ]; then

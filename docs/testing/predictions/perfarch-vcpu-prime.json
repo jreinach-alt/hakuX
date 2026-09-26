@@ -1,0 +1,26 @@
+{
+  "registered_utc": "2026-09-25T21:00:00Z",
+  "who": "perfarch",
+  "issue": "68",
+  "title": "Galleon (USA).xiso.iso",
+  "device": "nova",
+  "seconds": 240,
+  "a_ref": "5f4abcc368e183b6c28282321d1afc03c58ef79b",
+  "b_ref": "5f4abcc368e183b6c28282321d1afc03c58ef79b",
+  "a_env": ["HAKUX_TOPO=200,10"],
+  "b_env": ["HAKUX_TOPO=200,10", "HAKUX_PLACE_VCPU=prime"],
+  "runs_per_arm": 2,
+  "queue_order": "A1 B1 A2 B2, each a separate request.sh --title soak, all --device nova, --ref 5f4abcc368",
+  "judge": "tools/bench/place_judge.py --expect docs/testing/predictions/perfarch-vcpu-prime.json --a A1 A2 --b B1 B2",
+  "prediction": "PUT THE CRITICAL PATH ON THE BIG CORE. The guest CPU thread bounds the frame (frame-pacing-and-parallelism.md: busy 41.5 of a 50.2 ms Crimson frame), yet in the 09-11 Crimson simpleperf capture (perf.data, 15,608 vCPU samples) it ran on the Cortex-X3 (cpu7) for only 15.2% of its samples, on the 2.8 GHz A715/A710 cores (cpu3-6) for 84.6%, and changed core between ~123 consecutive 1 ms samples a second. The fork's affinity code (XEMU_OPT_THREAD_AFFINITY) is compiled out. Arm B pins only the vCPU thread (the thread that generates code) to the CPUs with the highest cpuinfo_max_freq; both arms run the HAKUX_TOPO sampler at 200 ms so placement is measured on both sides, and the sampler runs on cpu0-2. MODEL: X3 at 3.19 GHz does ~1.4x the work of an A715/A710 at 2.8 GHz on this branchy, cache-heavy code (clock 1.14x times IPC ~1.25x; the HAKUX_HOSTBENCH survey at 9181cb4c13 measures the per-core ALU/load ratio on the same device). With 85% of vCPU time moved, vCPU work shrinks by ~26%; Galleon is guest-bound (renderer idle ~27 ms of a 52 ms frame in #54's arms) so most of that reaches frame time. POINT PREDICTION: game frame time -18%. P0 (did it execute): every B run logs 'place vcpu ... -> PINNED' and the vCPU tid spends >= 90% of its time on cpu7 by the sampler; every A run logs '-> NOT PINNED' and <= 50% on cpu7. P1: median game frame time changes by a value within [-35%, -5%]. A change above -5% (smaller gain, or a loss) FAILS and refutes the model: then either the X3 is not faster on this code, or the pinned core is thermally capped, and P3 and the p7 clock in the judge's table say which. Below -35% also FAILS: it would mean something other than core speed moved (migration cost larger than modelled). P2: between-arm delta exceeds within-arm spread. P3 (sustain, and the reason this is not free on a handheld): B's late-half median G is at most +10% over its early half. 240 s does not reach thermal equilibrium on a handheld; a pass here is necessary, not sufficient, and a 20-minute soak is the follow-up if P1 passes. P4: worst-run gfps p90 of B >= worst-run gfps p90 of A.",
+  "must_not_move": [],
+  "expect": {
+    "V_min_windows": 20,
+    "P0_b_min_on_prime_pct": 90,
+    "P0_a_max_on_prime_pct": 50,
+    "P1_change_min": -0.35,
+    "P1_change_max": -0.05,
+    "P3_late_half_slowdown_max": 0.10
+  },
+  "expect_counts": {}
+}
