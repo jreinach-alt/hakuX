@@ -2463,6 +2463,13 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
     }
     uint32_t sampler_max_anisotropy =
         MIN(r->device_props.limits.maxSamplerAnisotropy, max_anisotropy);
+    /* A point-sampled LOD0 stage takes its anisotropic probes in the pixel
+     * shader (PshState tex_aniso, #284); the host filter on top of them
+     * would filter twice on a driver that honours it under NEAREST. */
+    if (min_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_LOD0 &&
+        mag_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_LOD0) {
+        sampler_max_anisotropy = 1;
+    }
 
     VkSamplerCreateInfo sampler_create_info = {
         .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
