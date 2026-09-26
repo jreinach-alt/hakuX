@@ -1,0 +1,177 @@
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 91453be..34dcef9 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -195,6 +195,7 @@ add_dependencies(
+ add_executable(
+         nxdk_pgraph_tests
+         tests/alpha_func_tests.cpp
++        tests/pair_selector_tests.cpp
+         tests/alpha_func_tests.h
+         tests/antialiasing_tests.cpp
+         tests/antialiasing_tests.h
+diff --git a/src/main.cpp b/src/main.cpp
+index 1dfd467..5d21182 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -38,6 +38,7 @@
+ #include "test_driver.h"
+ #include "test_host.h"
+ #include "tests/alpha_func_tests.h"
++#include "tests/pair_selector_tests.h"
+ #include "tests/antialiasing_tests.h"
+ #include "tests/attribute_carryover_tests.h"
+ #include "tests/attribute_explicit_setter_tests.h"
+@@ -473,6 +474,7 @@ static void RegisterSuites(TestHost& host, RuntimeConfig& runtime_config,
+   // -- Begin REG_TEST --
+ 
+   REG_TEST(AlphaFuncTests)
++  REG_TEST(PairSelectorTests)
+   REG_TEST(AntialiasingTests)
+   REG_TEST(AttributeCarryoverTests)
+   REG_TEST(AttributeExplicitSetterTests)
+diff --git a/src/tests/pair_selector_tests.cpp b/src/tests/pair_selector_tests.cpp
+new file mode 100644
+index 0000000..da9a046
+--- /dev/null
++++ b/src/tests/pair_selector_tests.cpp
+@@ -0,0 +1,100 @@
++#include "pair_selector_tests.h"
++
++#include <memory>
++
++#include "shaders/passthrough_vertex_shader.h"
++
++static constexpr char kSuiteName[] = "Pair selector";
++
++PairSelectorTests::PairSelectorTests(TestHost &host, std::string output_dir, const Config &config)
++    : TestSuite(host, std::move(output_dir), kSuiteName, config) {
++  for (auto width : {512, 384, 256, 128}) {
++    for (auto vertex4f : {true, false}) {
++      std::string name = "PairSel_W" + std::to_string(width) + (vertex4f ? "_V4F" : "_V3F");
++      tests_[name] = [this, name, width, vertex4f]() { Test(name, static_cast<float>(width), vertex4f); };
++    }
++  }
++}
++
++// As AlphaFuncTests::Initialize.
++void PairSelectorTests::Initialize() {
++  TestSuite::Initialize();
++  auto shader = std::make_shared<PassthroughVertexShader>();
++  host_.SetVertexShaderProgram(shader);
++
++  Pushbuffer::Begin();
++  Pushbuffer::Push(NV097_SET_DEPTH_TEST_ENABLE, false);
++  Pushbuffer::Push(NV097_SET_DEPTH_MASK, false);
++  Pushbuffer::Push(NV097_SET_STENCIL_TEST_ENABLE, false);
++  Pushbuffer::Push(NV097_SET_STENCIL_MASK, false);
++  Pushbuffer::End();
++}
++
++// As AlphaFuncTests::Test with NV097_SET_ALPHA_FUNC_V_ALWAYS and the alpha test disabled, the bands W px wide.
++void PairSelectorTests::Test(const std::string &name, float width, bool vertex4f) {
++  const auto kFBHeight = host_.GetFramebufferHeightF();
++  const auto kTop = (kFBHeight - 256.f) / 3.f * 2.f;
++  host_.PrepareDraw(0xFF222322);
++
++  host_.SetAlphaReference(0x7F);
++  host_.SetAlphaFunc(false, NV097_SET_ALPHA_FUNC_V_ALWAYS);
++
++  auto top = kTop;
++  auto bottom = top + 64.f;
++  Draw(width, vertex4f, 1.0f, 0.0f, 0.0f, 0.0f, 1.0f, top, bottom);
++
++  top = bottom;
++  bottom += 64.f;
++  Draw(width, vertex4f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, top, bottom);
++
++  top = bottom;
++  bottom += 64.f;
++  Draw(width, vertex4f, 0.0f, 1.0f, 0.0f, 0.495f, 0.505f, top, bottom);
++
++  top = bottom;
++  bottom += 32.f;
++  {
++    const auto kFBWidth = host_.GetFramebufferWidthF();
++    host_.Begin(TestHost::PRIMITIVE_QUADS);
++    host_.SetDiffuse(0x7FFFFFFF);
++    host_.SetVertex(0.f, top, 0.1f, 1.0f);
++    host_.SetVertex(kFBWidth, top, 0.1f, 1.0f);
++    host_.SetVertex(kFBWidth, bottom, 0.1f, 1.0f);
++    host_.SetVertex(0.f, bottom, 0.1f, 1.0f);
++    host_.End();
++  }
++
++  host_.WaitForGPU();
++
++  pb_print("%s\n", name.c_str());
++  pb_print("Bands %d px, SET_VERTEX%s\n", static_cast<int>(width), vertex4f ? "4F" : "3F");
++  pb_draw_text_screen();
++
++  FinishDraw(name);
++}
++
++void PairSelectorTests::Draw(float width, bool vertex4f, float red, float green, float blue, float left_alpha,
++                             float right_alpha, float top, float bottom) const {
++  const auto kFBWidth = host_.GetFramebufferWidthF();
++  const auto kLeft = (kFBWidth - width) / 2.f;
++  const auto kRight = kLeft + width;
++
++  auto vertex = [this, vertex4f](float x, float y) {
++    if (vertex4f) {
++      host_.SetVertex(x, y, 0.1f, 1.0f);
++    } else {
++      host_.SetVertex(x, y, 0.1f);
++    }
++  };
++
++  host_.Begin(TestHost::PRIMITIVE_QUADS);
++  host_.SetDiffuse(red, green, blue, left_alpha);
++  vertex(kLeft, top);
++  host_.SetDiffuse(red, green, blue, right_alpha);
++  vertex(kRight, top);
++  host_.SetDiffuse(red, green, blue, right_alpha);
++  vertex(kRight, bottom);
++  host_.SetDiffuse(red, green, blue, left_alpha);
++  vertex(kLeft, bottom);
++  host_.End();
++}
+diff --git a/src/tests/pair_selector_tests.h b/src/tests/pair_selector_tests.h
+new file mode 100644
+index 0000000..9e1ba49
+--- /dev/null
++++ b/src/tests/pair_selector_tests.h
+@@ -0,0 +1,33 @@
++#ifndef NXDK_PGRAPH_TESTS_PAIR_SELECTOR_TESTS_H
++#define NXDK_PGRAPH_TESTS_PAIR_SELECTOR_TESTS_H
++
++#include <string>
++
++#include "test_suite.h"
++
++class TestHost;
++
++/**
++ * hakuX #38, mechanism 2: which draws does silicon's even-aligned pixel-pair colour quantisation select?
++ *
++ * The corpus leaves a two-way tie: immediate mode with w = 1, AND EITHER the primitive is >= 512 px wide OR its
++ * vertices arrive by SET_VERTEX4F. Every paired capture on disk is wide and 4F, every unpaired class member narrow
++ * and 3F (docs/investigations/issue38-mech2-blocker-audit.md).
++ *
++ * Every test here is Alpha func's AlphaFuncAlways_Disabled (the paired control on disk), with its three gradient
++ * bands drawn W px wide and centred, their vertices submitted by SET_VERTEX4F (as Alpha func does) or SET_VERTEX3F.
++ * The full-width white rectangle stays as Alpha func draws it. So PairSel_W512_V4F is Alpha func's image.
++ */
++class PairSelectorTests : public TestSuite {
++ public:
++  PairSelectorTests(TestHost &host, std::string output_dir, const Config &config);
++
++  void Initialize() override;
++
++ private:
++  void Test(const std::string &name, float width, bool vertex4f);
++  void Draw(float width, bool vertex4f, float red, float green, float blue, float left_alpha, float right_alpha,
++            float top, float bottom) const;
++};
++
++#endif  // NXDK_PGRAPH_TESTS_PAIR_SELECTOR_TESTS_H
