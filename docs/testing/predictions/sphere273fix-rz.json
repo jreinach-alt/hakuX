@@ -1,0 +1,37 @@
+{
+  "registered_utc": "2026-09-25T22:49:30Z",
+  "who": "lane.sphere273fix",
+  "issue": "273",
+  "prediction": "MECHANISM (#273, docs/lanes/spheremap273/NOTES.md sections 2-4). kelvin_map_texgen mapped SPHERE_MAP on channel >= 2 to DISABLE, so oT0.z = 0. The hunk maps (SPHERE_MAP, channel 2) to REFLECTION_MAP, whose vsh-ff.c case already emits oT.z = r.z for j == 2; channel 3 (Q) stays DISABLE + UNIMPLEMENTED. No other (mode, channel) pair changes.\n\nMUST MOVE, better, judged BY HAND (ab_compare's expect is exact equality and 'differing' counts 1-LSB pixels, which the other nine SphereMap captures carry at 56-603 px on the c866527e03 baseline, so an exact 0 would be a wrong leg):\n  Texgen_with_texture_matrix/SphereMap_RotateX   131,495 -> <= 1,000 differing, max_rgb <= 2\n  Texgen_with_texture_matrix/SphereMap_Arbitrary 131,495 -> <= 1,000 differing, max_rgb <= 2\nprice.py prices both at max 1 LSB against the golden over the whole quad. Machine-checked: expect_counts better=2, worse=0 over the disc.\n\nMUST NOT MOVE, bit-identical, and the patch change that would move each:\n  - SphereMap_{Double,Half,Identity,RotateY,RotateZ,Shift*}: they DO take the new path (R is set to SPHERE_MAP with S and T) but their matrices do not route R into s, t or q (RotateY's s' = -R clamps to texel 0 for either R). They move only if the patch also changed S or T, i.e. the channel < 2 path, or if the matrix table in NOTES section 1 is wrong.\n  - Disabled_*, EyeLinear_*, ObjectLinear_*, NormalMap_*, ReflectionMap_*: never send SPHERE_MAP; they move only if another case of the switch changed.\n  - Texgen/*: texgen_tests.cpp keeps TG_SPHERE_MAP commented out; moves only if another case changed.\n\nWORLD IN WHICH MUST MOVE FAILS: silicon's R under sphere mapping is not r.z on these quads (-u.z would NOT refute it: with n = (0,0,1), r.z = -u.z exactly, so this quad cannot separate them). Then the two move but not onto the golden: report the residual, do not refit. If they do not move at all, the new shader is not reaching the device (stale shader-key cache or wrong apk) -- a wiring failure, not a refutation. Before trusting either arm: status column for 'unreadable', run1.log for PARTIAL COVERAGE and UtilAcceptVsock.\n\nNO EVIDENCE YET for: Q under any of sphere/normal/reflection mapping, and a tilted-normal test that would separate r.z from -u.z (on this quad n = (0,0,1) and every vertex is at one eye depth).",
+  "a_ref": "90a8dc1c1a",
+  "b_ref": "0965b30a26",
+  "must_not_move": [
+    "Texgen_with_texture_matrix/Disabled_*",
+    "Texgen_with_texture_matrix/EyeLinear_*",
+    "Texgen_with_texture_matrix/ObjectLinear_*",
+    "Texgen_with_texture_matrix/NormalMap_*",
+    "Texgen_with_texture_matrix/ReflectionMap_*",
+    "Texgen_with_texture_matrix/SphereMap_Double",
+    "Texgen_with_texture_matrix/SphereMap_Half",
+    "Texgen_with_texture_matrix/SphereMap_Identity",
+    "Texgen_with_texture_matrix/SphereMap_RotateY",
+    "Texgen_with_texture_matrix/SphereMap_RotateZ",
+    "Texgen_with_texture_matrix/SphereMap_Shift*",
+    "Texgen/*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "better": 2,
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Texgen",
+      "Texgen with texture matrix"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
