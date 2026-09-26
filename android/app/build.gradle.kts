@@ -27,7 +27,10 @@ android {
 
   defaultConfig {
     applicationId = "com.jreinach.hakux"
-    minSdk = 26
+    // 29 is the first API with native ELF TLS; below it every __thread access
+    // (tcg_ctx, current_cpu) is a call to __emutls_get_address. It also sets
+    // ANDROID_PLATFORM, which the glib cross build reads (#427).
+    minSdk = 29
     targetSdk = 36
 
     versionCode = 8
