@@ -1,0 +1,26 @@
+{
+  "registered_utc": "2026-09-26T10:37:55Z",
+  "who": "lane.tiecode282",
+  "issue": "282",
+  "prediction": "#282 row 240 of Texture render target's BiTri (285.625 px legs, not a power of two, so the narrowed rule applies): TexFmt_A8R8G8B8's 71 row-240 tie px go to 0 and no TexFmt_* capture gets worse. Queued by hand with request.sh --skip-tests, because arms.sh does not carry skip_tests; kept out of docs/testing/predictions so the arms job does not queue it on the poisoned composition.",
+  "a_ref": "e673558587",
+  "b_ref": "1462da29d2",
+  "must_not_move": [],
+  "expect": {
+    "Texture_render_target/TexFmt_A8R8G8B8": 0
+  },
+  "expect_counts": {},
+  "must_not_regress": [
+    "Texture_render_target/*"
+  ],
+  "disc": {
+    "suites": [
+      "Texture render target"
+    ],
+    "skip_tests": [
+      "Texture render target::RenderTextureLoop"
+    ],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
