@@ -1,0 +1,44 @@
+{
+  "registered_utc": "2026-09-26T17:27:25Z",
+  "who": "lane.ring53impl",
+  "issue": "53",
+  "prediction": "#53: under a lit vertex program, the FF lighting unit lights vertex i with the inputs of ring slot (phase + i) mod 6 of the last six FF-lit vertices, the phase advanced per method seen by pgraph with the silicon-measured weights (xbox-ringw-2026-09-26.md, xbox-ringw-boundary-2026-09-26.md). Held out on the desktop channel, nothing fitted: all 15 ringw and 8 ringw2 console cases read silicon's window start draw for draw, and all 18 Specular / Specular_back ControlFlags_VS ring-visible quads read the golden's code and start. MUST MOVE (expect_counts): exactly two captures better on the whole disc, Specular/ControlFlags_VS and Specular_back/ControlFlags_VS, and none worse. On desktop their px off by more than one step fell 58,629 -> 909 (ControlFlags_FF's floor 882) and 72,970 -> 8,809 (ControlFlagsNoLight_VS's floor 8,808); any-channel counts 76,531 -> 26,724 and 89,143 -> 40,424. This leg fails if the ring is inert on the device path (neither moves) or if the phase is wrong there (a start off by one reads 0 of 9 quads right, worse than today's 2 and 1). MUST NOT MOVE: every other Specular and Specular_back capture (FF draws never read the ring; NoLight/LightDisable VS draws read it but take ALL_FROM_MATERIAL, so ltDiffuse/ltSpecular/tNormal are unread), and Lighting range, Lighting accumulation, Lighting control, Material color source and Fog gen (#41's RADIAL captures; carriedFogCoord untouched). On desktop all 233 captures of 12 guard suites are byte-identical ring on vs off. Only a leak in vsh.c's is_fixed_function/lighting gate, or a colour-material source naming a vertex colour, would move them.",
+  "a_ref": "504aeee4d4",
+  "b_ref": "b4fd40a16e",
+  "must_not_move": [
+    "Specular/ControlFlags_FF",
+    "Specular/ControlFlagsNoLight_*",
+    "Specular/ControlFlagsLightDisable_*",
+    "Specular/NonUnitNormal_*",
+    "Specular/SpecParams_*",
+    "Specular_back/ControlFlags_FF",
+    "Specular_back/ControlFlagsNoLight_*",
+    "Specular_back/ControlFlagsLightDisable_*",
+    "Specular_back/SpecParams_*",
+    "Lighting_range/*",
+    "Lighting_accumulation/*",
+    "Lighting_control/*",
+    "Material_color_source/*",
+    "Fog_gen/*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "better": 2,
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Fog gen",
+      "Lighting accumulation",
+      "Lighting control",
+      "Lighting range",
+      "Material color source",
+      "Specular",
+      "Specular back"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
