@@ -176,40 +176,92 @@ else
     echo "ran ${s}s"
 fi
 
-# The image is ~1.5GB; allow generously for it but never indefinitely.
-ADB_TIMEOUT="${PULL_TIMEOUT:-600}" \
-    a pull /storage/emulated/0/Android/data/"$PKG"/files/x1box/hdd.img "$HDD" \
-    >/dev/null 2>&1 || { echo "pull failed or timed out"; exit 1; }
-# A pull can exit 0 and still leave nothing behind -- two runs sharing this one
-# fixed path is enough to do it, and the only symptom was a FileNotFoundError
-# from the extractor thirty lines further down, which reads as "the extractor is
-# broken". Check for the file instead of trusting the exit status.
-[ -s "$HDD" ] || { echo "pull reported success but $HDD is missing or empty"; exit 1; }
-rm -rf "$RESULTS"
-# PROGRAM=vsh: nxdk_vsh_tests. From DVD it always writes e:\nxdk_vsh_tests (the
-# dispatcher passes that as GUEST_DIR), so every earlier run's files are still
-# there beside this one's. The manifest carries each file's guest-clock times,
-# which is what lets vsh_score.py refuse a file older than this run's log.
+# THE PULL IS CHECKED AGAINST THE DEVICE, NOT TRUSTED. On 09-25 two arms
+# (shadeflat224-fix, wparamclip223-base) scored 56 and 51 W_param captures
+# that were each exactly 16384 bytes: one FATX cluster, with the PNG header
+# intact and the rest of the file gone. Both guests had exited cleanly
+# ("QEMU cleanup complete") after normal wall time, and both runs logged
+# UtilAcceptVsock. The image is qcow2, and a TRUNCATED qcow2 cannot do that:
+# the extractor raises "short read" on the first cluster past the end. A hole
+# can. A write that never landed in the host's copy leaves zeroes where a
+# table was, a zero FAT entry ends a chain, and every file behind it stops
+# after its first cluster. The size is right and the pull exited 0.
 #
-# That guard trusts log.txt to be THIS run's, and on its own it is not: main.cpp
-# replaces the log only once it runs, so a run that dies before main() (an apk
-# that aborts on boot, an XBE that fails to load) leaves the previous run's log
-# and files on the image, and they scored as a complete, identical run (audit
-# M1, PR #229). So the host keeps, per device, the created time of the last
-# log.txt it extracted from that device's image. A log with that same created
-# time is the one we already saw: this run never replaced it. No guest/host
-# clock comparison is involved, which is the point -- the guest clock's offset
-# from the host's is unknown. The record is written to the results dir as
-# .previous_log_created for vsh_score.py, which then refuses every file.
-EXTRACT_EXTRA=()
-VSH_LEDGER="${VSH_LOG_LEDGER:-$HOME/hakux-work/vsh-last-log-${DEVICE_LABEL:-${SERIAL:-x}}}"
-if [ "${PROGRAM:-pgraph}" = vsh ]; then
-    mkdir -p "$RESULTS"
-    EXTRACT_EXTRA=(--manifest "$RESULTS/.fatx_times.json")
-    [ -s "$VSH_LEDGER" ] && cp "$VSH_LEDGER" "$RESULTS/.previous_log_created"
-fi
-python3 "$HERE/extract_results.py" "$HDD" -d "$GUEST_DIR" -o "$RESULTS" \
-    ${EXTRACT_EXTRA[@]+"${EXTRACT_EXTRA[@]}"} | tail -1
+# So: take the device's md5 of its image once (the guest has exited, so the
+# file is still), pull, compare, and pull again on a mismatch, up to
+# PULL_TRIES pulls. A device that gives no md5 leaves the extractor's SHORT
+# count as the only check. SHORT files are then re-pulled too. SHORT files
+# from a pull that matches the device are the device's own image, and a
+# re-pull cannot mend those.
+DEVHDD=/storage/emulated/0/Android/data/"$PKG"/files/x1box/hdd.img
+DEV_MD5=$(a shell "md5sum '$DEVHDD'" 2>/dev/null | tr -d '\r' | awk 'NR==1{print $1}')
+[[ "$DEV_MD5" =~ ^[0-9a-f]{32}$ ]] || DEV_MD5=""
+PULL_TRIES="${PULL_TRIES:-3}"
+pull_try=0
+while :; do
+    pull_try=$((pull_try + 1))
+    rm -f "$HDD"
+    # The image is ~1.5GB; allow generously for it but never indefinitely.
+    ADB_TIMEOUT="${PULL_TIMEOUT:-600}" \
+        a pull "$DEVHDD" "$HDD" \
+        >/dev/null 2>&1 || { echo "pull failed or timed out"; exit 1; }
+    # A pull can exit 0 and still leave nothing behind -- two runs sharing this one
+    # fixed path is enough to do it, and the only symptom was a FileNotFoundError
+    # from the extractor thirty lines further down, which reads as "the extractor is
+    # broken". Check for the file instead of trusting the exit status.
+    [ -s "$HDD" ] || { echo "pull reported success but $HDD is missing or empty"; exit 1; }
+    PULL_CHECK=none
+    if [ -n "$DEV_MD5" ]; then
+        host_md5=$(md5sum "$HDD" | cut -d' ' -f1)
+        if [ "$host_md5" = "$DEV_MD5" ]; then
+            PULL_CHECK=match
+        else
+            echo "pull $pull_try: the image is not the device's (md5 $host_md5 here, $DEV_MD5 on the device)"
+            if [ "$pull_try" -lt "$PULL_TRIES" ]; then continue; fi
+            echo "pull: $pull_try pulls, none matched the device's image; not extracting a damaged copy"
+            rm -f "$HDD"
+            exit 1
+        fi
+    fi
+    rm -rf "$RESULTS"
+    # PROGRAM=vsh: nxdk_vsh_tests. From DVD it always writes e:\nxdk_vsh_tests (the
+    # dispatcher passes that as GUEST_DIR), so every earlier run's files are still
+    # there beside this one's. The manifest carries each file's guest-clock times,
+    # which is what lets vsh_score.py refuse a file older than this run's log.
+    #
+    # That guard trusts log.txt to be THIS run's, and on its own it is not: main.cpp
+    # replaces the log only once it runs, so a run that dies before main() (an apk
+    # that aborts on boot, an XBE that fails to load) leaves the previous run's log
+    # and files on the image, and they scored as a complete, identical run (audit
+    # M1, PR #229). So the host keeps, per device, the created time of the last
+    # log.txt it extracted from that device's image. A log with that same created
+    # time is the one we already saw: this run never replaced it. No guest/host
+    # clock comparison is involved, which is the point -- the guest clock's offset
+    # from the host's is unknown. The record is written to the results dir as
+    # .previous_log_created for vsh_score.py, which then refuses every file.
+    EXTRACT_EXTRA=()
+    VSH_LEDGER="${VSH_LOG_LEDGER:-$HOME/hakux-work/vsh-last-log-${DEVICE_LABEL:-${SERIAL:-x}}}"
+    if [ "${PROGRAM:-pgraph}" = vsh ]; then
+        mkdir -p "$RESULTS"
+        EXTRACT_EXTRA=(--manifest "$RESULTS/.fatx_times.json")
+        [ -s "$VSH_LEDGER" ] && cp "$VSH_LEDGER" "$RESULTS/.previous_log_created"
+    fi
+    extracted=$(python3 "$HERE/extract_results.py" "$HDD" -d "$GUEST_DIR" -o "$RESULTS" \
+        ${EXTRACT_EXTRA[@]+"${EXTRACT_EXTRA[@]}"} | tail -1)
+    echo "$extracted"
+    case "$extracted" in *" SHORT: "*) ;; *) break ;; esac
+    if [ "$PULL_CHECK" = match ]; then
+        echo "  ^ this pull matches the device's md5: the image on the device is itself"
+        echo "    inconsistent, and pulling it again cannot mend it"
+        break
+    fi
+    [ "$pull_try" -lt "$PULL_TRIES" ] || break
+    echo "pull $pull_try: SHORT files and no device md5 to check the pull against; pulling again"
+done
+case "$PULL_CHECK" in
+    match) echo "pull: md5 matches the device's image (pull $pull_try of at most $PULL_TRIES)" ;;
+    *)     echo "pull: NOT VERIFIED -- the device gave no md5 for its image (pull $pull_try)" ;;
+esac
 VSH_LOG_CREATED=""
 if [ "${PROGRAM:-pgraph}" = vsh ]; then
     VSH_LOG_CREATED=$(python3 -c 'import json,sys
