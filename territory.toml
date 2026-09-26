@@ -358,6 +358,8 @@ note = "DISPATCHED (hostops 2026-09-26T14:55Z): #13 class C of PR #370's attribu
 [lane.vshcpu345]
 issues = ["345"]
 files = ["subprojects/nv2a_vsh_cpu.wrap", "subprojects/packagefiles/nv2a_vsh_cpu/**", "android/app/src/main/cpp/CMakeLists.txt", "docs/testing/predictions/vshcpu345-*.json", "docs/lanes/vshcpu345/**"]
+released = ["subprojects/nv2a_vsh_cpu.wrap", "subprojects/packagefiles/nv2a_vsh_cpu/**", "android/app/src/main/cpp/CMakeLists.txt", "docs/testing/predictions/vshcpu345-*.json", "docs/lanes/vshcpu345/**"]
+released_at_ready = 402
 note = "DISPATCHED (hostops 2026-09-26T14:55Z): #345 half 2, the nv2a_vsh_cpu constant-writeback evaluator (PR #344 silicon rows; docs/lanes/dpforce345/NOTES.md 'Half 2'). CMakeLists.txt from [free] (released by lane.perfarch this tick); the wrap and packagefiles were in no row. Brief: briefs/vshcpu345.md. Touches android/: its PR needs audit."
 
 [lane.cull13]
