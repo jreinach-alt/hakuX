@@ -49,10 +49,17 @@ before any device run (`register.sh`, prose in `prediction.txt`).
 `check.sh` builds `cull_dump.c` against `docs/testing/geom_dump`'s objects and
 compiles all 32 variants (Vulkan and GL, cull 0-3, CW/CCW, flat/smooth) with
 the NDK's glslc: 32 of 32 compile.  No desktop build (known gap, AGENTS.md).
+`preflight.sh --allow-tracker` passes; the nv2a index was regenerated against
+the fold-pins test trees (the provenance master uses), and only this hunk's
+sites changed.
 
 ## Arm
 
-Pending: queued by the arms job from the committed prediction.
+Waiting (2026-09-26): the arms job queues the committed prediction
+(refs 02374a6847 / d750443b2a) and posts a `[job.arms]` verdict on PR #403.
+On resume: cite that verdict here and in the PR, then mark ready if it holds;
+if it fails, read which leg (see "WORLD IN WHICH THIS FAILS" in
+`prediction.txt`) before touching the sign.
 
 ## Do not repeat
 
