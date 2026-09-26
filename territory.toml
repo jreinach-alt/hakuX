@@ -1310,10 +1310,3 @@ issues = []
 files = ["docs/testing/stop-emulator.sh", "docs/testing/jobs/selftest.d/79-stop-hook-hold.sh", "docs/lanes/holdlease/NOTES.md"]
 standing = false
 note = "STARTED (hostops 2026-09-26 16:37 PDT), briefs/holdlease.md: harness defect, no tracker issue (toolsmith defect 21 of 2026-09-25, never landed). stop-emulator.sh, every session's Stop hook, ignores dispatch/hold/<label>, so a HELD handheld's app is force-stopped at any other session's turn end: it killed buildflags427's profile arm B on the held Nova at 16:24:25 PDT and voided perfregimen's first Nova pilot. Interim: host-only hakux-holdlease.service keeps a held device's per-device lease fresh (battery holds excluded); it retires when this lands. stop-emulator.sh was on no row."
-
-
-[lane.cloud-audit2-447]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-447, audit pass 2 of PR #447 on branch lane/relprio432, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 447` removes this row when the unit ends."
