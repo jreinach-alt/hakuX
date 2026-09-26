@@ -198,8 +198,9 @@ note = "RETIRED (job.board wave 240): PR #360 MERGED 2026-09-26T06:20:49Z, no op
 [lane.zrtz272]
 issues = ["272", "275"]
 files = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/zrtz272-*.json", "docs/lanes/zrtz272/**"]
+released = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/zrtz272-*.json", "docs/lanes/zrtz272/**"]
 standing = false
-note = "STARTED (hostops tick, 2026-09-26T05:53:15Z = 22:53 PDT): host ran `lane.sh start zrtz272 briefs/zrtz272.md 272`, unit hakux-lane-zrtz272, attempt 1. STILL NOT STARTED AT WAVE 231 (job.board, 2026-09-26T05:45Z): `lane.sh start zrtz272` was refused approval in the board session a SECOND tick running, so no unit exists; the HOST must run `docs/testing/lane.sh start zrtz272 briefs/zrtz272.md 272` (routed on #272). The row keeps holding vsh-ff.c. PRIOR: BRIEFED AT TERRITORY WAVE 229, NOT YET STARTED (job.board, 2026-09-26T05:40Z; `lane.sh start` was refused approval in the board session, so no unit exists -- the next tick or the host starts it from briefs/zrtz272.md; the row holds vsh-ff.c meanwhile) for #272 (275k px) and #275's Swap (165k px, same defect): apply docs/lanes/zdepth272/vsh-ff-zrtz.patch (fixed-function screen z, every step rounded toward zero; vsh-ff.c only) on the tip that carries #321, register the NOTES arm after the last rebase, run it. vsh-ff.c came from lane.wparamcode223 (PR #321 folded 4bc77c3171). Brief: briefs/zrtz272.md."
+note = "PR #364 READY and verified (arm 3 PASS 1253/1253, pair 6a2077be38c7); labelled needs-audit-1 by hostops 2026-09-26 04:5x PDT; files released at ready (roles/board.md). PRIOR: STARTED (hostops tick, 2026-09-26T05:53:15Z = 22:53 PDT): host ran `lane.sh start zrtz272 briefs/zrtz272.md 272`, unit hakux-lane-zrtz272, attempt 1. STILL NOT STARTED AT WAVE 231 (job.board, 2026-09-26T05:45Z): `lane.sh start zrtz272` was refused approval in the board session a SECOND tick running, so no unit exists; the HOST must run `docs/testing/lane.sh start zrtz272 briefs/zrtz272.md 272` (routed on #272). The row keeps holding vsh-ff.c. PRIOR: BRIEFED AT TERRITORY WAVE 229, NOT YET STARTED (job.board, 2026-09-26T05:40Z; `lane.sh start` was refused approval in the board session, so no unit exists -- the next tick or the host starts it from briefs/zrtz272.md; the row holds vsh-ff.c meanwhile) for #272 (275k px) and #275's Swap (165k px, same defect): apply docs/lanes/zdepth272/vsh-ff-zrtz.patch (fixed-function screen z, every step rounded toward zero; vsh-ff.c only) on the tip that carries #321, register the NOTES arm after the last rebase, run it. vsh-ff.c came from lane.wparamcode223 (PR #321 folded 4bc77c3171). Brief: briefs/zrtz272.md."
 [retired.foldflow]
 issues = []
 files = []
@@ -342,8 +343,9 @@ note = "RETIRED (job.board wave 245): PR #381 MERGED, no open PR on lane/blinx37
 [lane.dpforce345]
 issues = ["345"]
 files = ["hw/xbox/nv2a/pgraph/glsl/vsh-prog.c", "docs/lanes/dpforce345/**", "docs/testing/predictions/dpforce345-*.json"]
+released = ["hw/xbox/nv2a/pgraph/glsl/vsh-prog.c", "docs/lanes/dpforce345/**", "docs/testing/predictions/dpforce345-*.json"]
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 241 (job.board, 2026-09-26T09:40Z), briefs/dpforce345.md: #345 half 1 -- _DP3/_DP4/_DPH in glsl/vsh-prog.c take _MUL's per-product zero-forcing (silicon, PR #344: (0,1,2).(inf,1,1) = 3). vsh-prog.c was unclaimed after lane.nanfix281 retired (wave 236). Half 2 (the nv2a_vsh_cpu constant-writeback library: wrap/CMake/pgraph.c) is NOT in this row; the lane sizes the call-site fix in NOTES.md and the board decides."
+note = "PR #383 READY and verified (arm 2 PASS 291/291, pair c269a5c22ca3); labelled needs-audit-1 by hostops 2026-09-26 04:5x PDT; files released at ready (roles/board.md). PRIOR: DISPATCHED AT TERRITORY WAVE 241 (job.board, 2026-09-26T09:40Z), briefs/dpforce345.md: #345 half 1 -- _DP3/_DP4/_DPH in glsl/vsh-prog.c take _MUL's per-product zero-forcing (silicon, PR #344: (0,1,2).(inf,1,1) = 3). vsh-prog.c was unclaimed after lane.nanfix281 retired (wave 236). Half 2 (the nv2a_vsh_cpu constant-writeback library: wrap/CMake/pgraph.c) is NOT in this row; the lane sizes the call-site fix in NOTES.md and the board decides."
 
 [retired.fps382]
 issues = ["382"]
