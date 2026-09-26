@@ -3928,3 +3928,17 @@ impact_px = 1842
 impact_onestep_px = 0
 impact_basis = "2026-09-25 (lane cloud-297): 3 captures x 614 px; games: low, BRDF texture mode is rare in shipped titles"
 game_visible = false
+
+[issue.345]
+title = "vsh: DP3/DP4/DPH do not force 0*inf and 0*NaN products to 0 as silicon does; the CPU constant-writeback evaluator also diverges (no MUL/MAD/DP forcing, RCC(+inf) sign, inexact 2^-64 clamp)"
+component = "pgraph"
+disposition = "defect"
+suites = []
+no_suites = "no nxdk_pgraph_tests suite feeds a zero component against inf/NaN into DP3/DP4/DPH or evaluates a constant-writeback program with those operands; the exercising program is nxdk_vsh_tests' CPU Shader Tests, scored by vsh_score.py against the console text (PR #344)"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED (host session, 2026-09-26T02:35Z) from lane.xbox's #112 item 4 silicon run (PR #344). Two halves: (1) GLSL _DP3/_DP4/_DPH in glsl/vsh-prog.c need _MUL's per-product zero-forcing; (2) the nv2a_vsh_cpu library (meson wrap + Android CMake fetch) used by pgraph_vsh_writeback_constants lacks MUL/MAD/DP forcing, returns RCC(+inf) with the wrong sign, and clamps with a decimal 2^-64. FILES: vsh-prog.c/vsh.c are lane.nanfix281's (#281, NaN attributes, same helpers) -- sequence after it or fold in; pgraph.c is queued behind lane.sphere273fix. Test: the PR #344 rows."
+impact_px = "0"
+impact_onestep_px = "0"
+impact_basis = "2026-09-26 (lane.xbox, PR #344): silicon rows only, no pgraph capture moves; games: unmeasured -- a DP whose zero component meets inf/NaN (e.g. after RSQ of 0) yields NaN instead of a finite value, visible when it reaches a position or colour"
