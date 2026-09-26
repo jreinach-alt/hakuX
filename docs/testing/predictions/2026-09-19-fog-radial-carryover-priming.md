@@ -232,7 +232,24 @@ the progress log does.
 
 ## 8. Outcome
 
-Not run. No hardware, no disc, no emulator run. This section is left for
+**Run 2026-09-25** by lane.xbox, on the project console and on hakuX
+`84a67b9cf8`, and scored against §2, §3 and §6 as written. The results are in
+[`xbox-fogprime-2026-09-25.md`](../xbox-fogprime-2026-09-25.md).
+
+- **The gates.** V0 and V1 hold. V2 fails: each VS capture carries 2–5
+  adjacent f8 values. V3 failed because the run was composed without Fog
+  gen's FF tests first, which is the runner's registration error.
+- **The models.** No model is confirmed, so the outcome is **X**. It is the
+  unnamed-vertex-slot form of §3.
+- **Refuted, whether or not the reading is single-valued:** H, T and
+  S-first.
+- **What silicon does.** It carries **six slots** of values from the
+  priming draw's last two quads, read per vertex by quad draw index mod 6.
+  The phase persists across tests; the values do not change.
+- **E1 and E2** were stale when registered: #41's carry, `906ab0395f`, is
+  in `01047cf32c`. E3 holds.
+
+This section was left for
 whoever runs it, and the rule that applies is the one that applies to every
 prediction here: score against §2 and §3 rather than rewriting them to match
 what came back.

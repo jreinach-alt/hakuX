@@ -1,0 +1,307 @@
+From a65ac0b3be9c06200d4abdeb5a850bac04f9c197 Mon Sep 17 00:00:00 2001
+From: t <t@t>
+Date: Fri, 25 Sep 2026 19:14:06 -0700
+Subject: [PATCH] hakuX #112 item 2 / #41: Fog radial priming suite
+
+FogGenTests' scene drawn fixed-function in a rotated quad order, each
+followed by the same scene under a vertex program with RADIAL exp fog
+(bias 1.5, multiplier -0.000875). Variants A0-A4 per hakuX's
+docs/testing/predictions/2026-09-19-fog-radial-carryover-priming.md:
+rotations 0/188/21, the label moved to y=400 for A3, and an intervening
+programmable draw for A4.
+---
+ src/CMakeLists.txt                     |   2 +
+ src/main.cpp                           |   2 +
+ src/tests/fog_radial_priming_tests.cpp | 210 +++++++++++++++++++++++++
+ src/tests/fog_radial_priming_tests.h   |  29 ++++
+ 4 files changed, 243 insertions(+)
+ create mode 100644 src/tests/fog_radial_priming_tests.cpp
+ create mode 100644 src/tests/fog_radial_priming_tests.h
+
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 91453be..17ef49d 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -248,6 +248,8 @@ add_executable(
+         tests/fog_exceptional_value_tests.h
+         tests/fog_gen_tests.cpp
+         tests/fog_gen_tests.h
++        tests/fog_radial_priming_tests.cpp
++        tests/fog_radial_priming_tests.h
+         tests/fog_param_tests.cpp
+         tests/fog_param_tests.h
+         tests/fog_tests.cpp
+diff --git a/src/main.cpp b/src/main.cpp
+index 1dfd467..3bfb54e 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -64,6 +64,7 @@
+ #include "tests/fog_carryover_tests.h"
+ #include "tests/fog_exceptional_value_tests.h"
+ #include "tests/fog_gen_tests.h"
++#include "tests/fog_radial_priming_tests.h"
+ #include "tests/fog_param_tests.h"
+ #include "tests/fog_tests.h"
+ #include "tests/front_face_tests.h"
+@@ -500,6 +501,7 @@ static void RegisterSuites(TestHost& host, RuntimeConfig& runtime_config,
+   REG_TEST(FogCustomShaderTests)
+   REG_TEST(FogExceptionalValueTests)
+   REG_TEST(FogGenTests)
++  REG_TEST(FogRadialPrimingTests)
+   REG_TEST(FogInfiniteFogCoordinateTests)
+   REG_TEST(FogParamTests)
+   REG_TEST(FogPlanarVertexShaderTests)
+diff --git a/src/tests/fog_radial_priming_tests.cpp b/src/tests/fog_radial_priming_tests.cpp
+new file mode 100644
+index 0000000..473bb53
+--- /dev/null
++++ b/src/tests/fog_radial_priming_tests.cpp
+@@ -0,0 +1,210 @@
++#include "fog_radial_priming_tests.h"
++
++#include <pbkit/pbkit.h>
++
++#include <vector>
++
++#include "debug_output.h"
++#include "shaders/perspective_vertex_shader_no_lighting.h"
++#include "test_host.h"
++
++// clang-format off
++static constexpr uint32_t kVertexShader[] = {
++#include "projection_vertex_shader_no_lighting_explicit_fog.vshinc"
++};
++// clang-format on
++
++// Identical to fog_gen_tests.cpp: fog red, diffuse blue, the same specular.
++static constexpr uint32_t kFogColor = 0xDD0000FF;
++static constexpr vector_t kDiffuse{0.f, 0.f, 1.f, 1.f};
++static constexpr vector_t kSpecularUL{0.f, 0.f, 0.f, 0.f};
++static constexpr vector_t kSpecularUR{0.f, 0.f, 0.f, 1.f};
++static constexpr vector_t kSpecularLR{0.f, 0.f, 0.f, 0.75f};
++static constexpr vector_t kSpecularLL{0.f, 0.f, 0.f, 0.25f};
++
++// docs/testing/predictions/2026-09-19-fog-radial-carryover-priming.md section 1
++// (hakuX): the suite's own -0.00225 puts the incumbent case in the exp unit's
++// unmodelled tail; -0.000875 spans f8 30..227 with headroom at both ends.
++static constexpr float kFogBias = 1.5f;
++static constexpr float kFogMultiplier = -0.000875f;
++
++struct PrimingVariant {
++  const char* name;
++  bool fixed_function;
++  uint32_t rotation;
++  int label_row;  // 0: pb_print at the top (label A); 15: pb_printat(15, 0), y = 400 (label B)
++};
++
++static constexpr PrimingVariant kVariants[] = {
++    {"A0far_FF", true, 0, 0},        {"A0far_VS", false, 0, 0},
++    {"A1mid_FF", true, 188, 0},      {"A1mid_VS", false, 0, 0},
++    {"A2near_FF", true, 21, 0},      {"A2near_VS", false, 0, 0},
++    {"A3farLabel_FF", true, 0, 15},  {"A3farLabel_VS", false, 0, 0},
++    {"A4near_FF", true, 21, 0},      {"A4pad_VS", false, 0, 0},
++    {"A4radial_VS", false, 0, 0},
++};
++
++FogRadialPrimingTests::FogRadialPrimingTests(TestHost& host, std::string output_dir, const Config& config)
++    : TestSuite(host, std::move(output_dir), "Fog radial priming", config) {
++  for (const auto& v : kVariants) {
++    std::string name = v.name;
++    bool ff = v.fixed_function;
++    uint32_t rotation = v.rotation;
++    int label_row = v.label_row;
++    tests_[name] = [this, name, ff, rotation, label_row]() { Draw(name, ff, rotation, label_row); };
++  }
++}
++
++void FogRadialPrimingTests::Initialize() {
++  TestSuite::Initialize();
++
++  {
++    Pushbuffer::Begin();
++    Pushbuffer::Push(NV097_SET_FOG_ENABLE, true);
++    Pushbuffer::Push(NV097_SET_SPECULAR_ENABLE, true);
++    Pushbuffer::Push(NV097_SET_LIGHT_CONTROL, NV097_SET_LIGHT_CONTROL_V_SEPARATE_SPECULAR);
++    Pushbuffer::End();
++  }
++
++  host_.SetFinalCombiner0(TestHost::SRC_FOG, true, false, TestHost::SRC_DIFFUSE, false, false, TestHost::SRC_FOG, false,
++                          false);
++  host_.SetFinalCombiner1(TestHost::SRC_ZERO, false, false, TestHost::SRC_ZERO, false, false, TestHost::SRC_DIFFUSE,
++                          true, false, /*specular_add_invert_r0*/ false, /* specular_add_invert_v1*/ false,
++                          /* specular_clamp */ true);
++}
++
++static std::shared_ptr<PerspectiveVertexShader> SetupVertexShader(TestHost& host) {
++  float depth_buffer_max_value = host.GetMaxDepthBufferValue();
++  auto shader =
++      std::make_shared<PerspectiveVertexShaderNoLighting>(host.GetFramebufferWidth(), host.GetFramebufferHeight(), 0.0f,
++                                                          depth_buffer_max_value, M_PI * 0.25f, 1.0f, 200.0f);
++  shader->SetShader(kVertexShader, sizeof(kVertexShader));
++  shader->SetTransposeOnUpload();
++  vector_t camera_position = {0.0f, 0.0f, -7.0f, 1.0f};
++  vector_t camera_look_at = {0.0f, 0.0f, 0.0f, 1.0f};
++  shader->LookAt(camera_position, camera_look_at);
++
++  host.SetVertexShaderProgram(shader);
++
++  return shader;
++}
++
++static void SetupFogParams() {
++  Pushbuffer::Begin();
++  Pushbuffer::Push(NV097_SET_FOG_COLOR, kFogColor);
++  Pushbuffer::Push(NV097_SET_FOG_GEN_MODE, NV097_SET_FOG_GEN_MODE_V_RADIAL);
++  Pushbuffer::Push(NV097_SET_FOG_MODE, NV097_SET_FOG_MODE_V_EXP);
++  Pushbuffer::PushF(NV097_SET_FOG_PLANE, 0.f, 0.f, 2.f, 0.f);
++  Pushbuffer::PushF(NV097_SET_FOG_PARAMS, kFogBias, kFogMultiplier, 0.f);
++  Pushbuffer::End();
++}
++
++void FogRadialPrimingTests::Draw(const std::string& name, bool use_fixed_function, uint32_t rotation,
++                                 int label_row) {
++  host_.SetXDKDefaultViewportAndFixedFunctionMatrices();
++
++  std::shared_ptr<PerspectiveVertexShader> shader;
++  if (use_fixed_function) {
++    host_.SetVertexShaderProgram(nullptr);
++  } else {
++    shader = SetupVertexShader(host_);
++  }
++  static constexpr auto kFogValueIndex = 120 - PerspectiveVertexShader::kShaderUserConstantOffset;
++
++  SetupFogParams();
++
++  static constexpr uint32_t kBackgroundColor = 0xFF232623;
++  host_.PrepareDraw(kBackgroundColor);
++
++  static constexpr float kQuadWidth = 22.f;
++  static constexpr float kQuadHeight = 22.f;
++  static constexpr float kQuadZRightInc = 1.f;
++
++  auto unproject = [this, shader, use_fixed_function](vector_t& world_point, float x, float y, float z) {
++    vector_t screen_point{x, y, z, 1.f};
++    if (use_fixed_function) {
++      host_.UnprojectPoint(world_point, screen_point, z);
++    } else {
++      shader->UnprojectPoint(world_point, screen_point, z);
++    }
++  };
++
++  auto draw_quad = [this, unproject](float left, float top, float z) {
++    const auto right = left + kQuadWidth;
++    const auto bottom = top + kQuadHeight;
++
++    host_.Begin(TestHost::PRIMITIVE_QUADS);
++
++    vector_t world_point{0.f, 0.f, 0.f, 1.f};
++    host_.SetNormal(0.f, 0.f, -1.f);
++    host_.SetDiffuse(kDiffuse);
++
++    host_.SetSpecular(kSpecularUL);
++    unproject(world_point, left, top, z);
++    host_.SetVertex(world_point);
++
++    host_.SetSpecular(kSpecularUR);
++    unproject(world_point, right, top, z + kQuadZRightInc);
++    host_.SetVertex(world_point);
++
++    host_.SetSpecular(kSpecularLR);
++    unproject(world_point, right, bottom, z + kQuadZRightInc);
++    host_.SetVertex(world_point);
++
++    host_.SetSpecular(kSpecularLL);
++    unproject(world_point, left, bottom, z);
++    host_.SetVertex(world_point);
++
++    host_.End();
++  };
++
++  // The quads exactly as FogGenTests lays them out, computed first so that
++  // the draw ORDER can be rotated without moving any quad.
++  struct Quad {
++    float left, top, z, fog_x;
++  };
++  std::vector<Quad> quads;
++  {
++    static constexpr float kTopPadding = 70.f;
++    static constexpr float kSidePadding = 48.f;
++    static constexpr float kQuadSpacingH = 2.f;
++    static constexpr float kQuadSpacingV = 2.f;
++    const float right = host_.GetFramebufferWidthF() - (kSidePadding + kQuadWidth);
++    const float bottom = host_.GetFramebufferHeightF() - kQuadHeight;
++    float left = kSidePadding;
++    float top = kTopPadding;
++    float z = -6.f;
++    float fog_x = 50.f;
++    while (top < bottom) {
++      quads.push_back({left, top, z, fog_x});
++      left += kQuadWidth + kQuadSpacingH;
++      if (left >= right) {
++        left = kSidePadding;
++        top += kQuadHeight + kQuadSpacingV;
++      }
++      z += 0.5f;
++      fog_x -= 0.2f;
++    }
++  }
++
++  const size_t n = quads.size();
++  for (size_t i = 0; i < n; ++i) {
++    const Quad& q = quads[(rotation + i) % n];
++    if (use_fixed_function) {
++      host_.SetFogCoord(q.fog_x);
++    } else {
++      shader->SetUniformF(kFogValueIndex, q.fog_x, 0.f, 0.f, 0.f);
++      shader->PrepareDraw();
++    }
++    draw_quad(q.left, q.top, q.z);
++  }
++
++  if (label_row > 0) {
++    pb_printat(label_row, 0, (char*)"%s", name.c_str());
++  } else {
++    pb_print("%s\n", name.c_str());
++  }
++  pb_draw_text_screen();
++
++  FinishDraw(name);
++}
+diff --git a/src/tests/fog_radial_priming_tests.h b/src/tests/fog_radial_priming_tests.h
+new file mode 100644
+index 0000000..fa42fa2
+--- /dev/null
++++ b/src/tests/fog_radial_priming_tests.h
+@@ -0,0 +1,29 @@
++#ifndef NXDK_PGRAPH_TESTS_FOG_RADIAL_PRIMING_TESTS_H
++#define NXDK_PGRAPH_TESTS_FOG_RADIAL_PRIMING_TESTS_H
++
++#include <memory>
++#include <string>
++
++#include "test_suite.h"
++
++class TestHost;
++
++/**
++ * hakuX #112 item 2 / #41: which state the programmable RADIAL fog coordinate
++ * reads. FogGenTests' scene, drawn fixed-function in a rotated quad order
++ * (the "priming" tests), each followed by the same scene drawn with a vertex
++ * program under RADIAL fog. Exp fog, bias 1.5, multiplier -0.000875, so the
++ * factor clips at neither end. Tests run in name order, so each *_FF sorts
++ * immediately before its *_VS.
++ */
++class FogRadialPrimingTests : public TestSuite {
++ public:
++  FogRadialPrimingTests(TestHost& host, std::string output_dir, const Config& config);
++
++  void Initialize() override;
++
++ private:
++  void Draw(const std::string& name, bool use_fixed_function, uint32_t rotation, int label_row);
++};
++
++#endif  // NXDK_PGRAPH_TESTS_FOG_RADIAL_PRIMING_TESTS_H
+-- 
+2.43.0
+
