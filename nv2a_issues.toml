@@ -4011,3 +4011,48 @@ impact_px = 0
 impact_onestep_px = 0
 impact_basis = "2026-09-26: no pixels move; a title-level visual regression instrument"
 game_visible = true
+
+[issue.412]
+title = "007: Agent Under Fire gameplay runs at ~16 fps on the Nova"
+component = "games"
+disposition = "defect"
+suites = []
+no_suites = "A PERFORMANCE DEFECT IN A COMMERCIAL TITLE (007: Agent Under Fire's first-mission gameplay). No pgraph suite measures frame rate, so none is named."
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-26T19:07Z by lane.titleplay (#397) from its first gameplay survey: 16.2 fps median, flat 16.1-16.2 per window (a steady per-frame cost, not stalls); title screen 40-60 fps, mission scene 12-20. BOARD 2026-09-26T19:15Z (tick): row written, dispatch_state available; the lane profiles the per-frame cost first and names the file it needs before it edits."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "game-visible (lane.titleplay #397, 2026-09-26): a commercial title's gameplay under the 1.0 bar of 30 fps and the owner's 20 fps floor; no golden, so no px figure"
+
+[issue.413]
+title = "Dead or Alive Ultimate: fights run at ~16 fps on the Nova, and a stage transition stalls at 0-2 fps for two minutes"
+component = "games"
+disposition = "defect"
+suites = []
+no_suites = "A PERFORMANCE DEFECT IN A COMMERCIAL TITLE (Dead or Alive Ultimate's fights and the post-ring-out stage transition). No pgraph suite measures frame rate, so none is named."
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-26T19:07Z by lane.titleplay (#397) from its first gameplay survey: 12.6 fps median over 191 s, hang gaps 11.3 / 76.3 / 44.4 s, worst frame stall 16.9 s, 0-2 fps for about two minutes after a ring-out. BOARD 2026-09-26T19:15Z (tick): row written, dispatch_state available; the lane profiles the per-frame cost first and names the file it needs before it edits."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "game-visible (lane.titleplay #397, 2026-09-26): a commercial title's gameplay under the 1.0 bar of 30 fps and the owner's 20 fps floor; no golden, so no px figure"
+
+[issue.414]
+title = "Forza Motorsport: races run at 3-16 fps on the Thor, game clock at ~26% of real time"
+component = "games"
+disposition = "defect"
+suites = []
+no_suites = "A PERFORMANCE DEFECT IN A COMMERCIAL TITLE (Forza Motorsport's race). No pgraph suite measures frame rate, so none is named."
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-26T19:07Z by lane.titleplay (#397) from its first gameplay survey: 16.7 fps median over 174 s, hang gaps 14.8-19.3 s, 67% audio callbacks short, race timer at 26% of wall time, ~14 falling to 2-4 fps after 90 s with the car standing. BOARD 2026-09-26T19:15Z (tick): row written, dispatch_state available; the lane profiles the per-frame cost first and names the file it needs before it edits."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "game-visible (lane.titleplay #397, 2026-09-26): a commercial title's gameplay under the 1.0 bar of 30 fps and the owner's 20 fps floor; no golden, so no px figure"

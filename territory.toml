@@ -1184,3 +1184,21 @@ files = []
 standing = false
 retired_utc = "2026-09-26T18:20:00Z"
 note = "RETIRED (hostops 2026-09-26 11:20 AM PDT): PR #409 MERGED (7b20fd2f66), unit gone. docs/testing/jobs/arms.sh RETURNED to [lane.toolsmith] (it was lent); selftest.d/94-arms-verdict-scope.sh and docs/lanes/armsscope/NOTES.md RELEASED to [free]. PRIOR NOTE: STARTED (hostops 2026-09-26 10:42 PDT): harness defect, no tracker issue. arms.sh LABEL_INDEX keys verdicts by branch name, so a reused branch (lane.remote's) inherits folded PRs' PASS/FAIL verdicts (#274 comment 2026-09-26T17:27:30Z, PR #389). arms.sh lent from [lane.toolsmith]; returns there on fold. Brief: briefs/armsscope.md. Retire on fold."
+
+[lane.aufire412]
+issues = ["412"]
+files = ["docs/testing/predictions/aufire412-*.json", "docs/lanes/aufire412/**"]
+standing = false
+note = "STARTED (job.board 2026-09-26T19:20Z), briefs/aufire412.md: #412 (007: Agent Under Fire) gameplay fps. Profile-first: docs and prediction only until the lane names the code file and the board grants it."
+
+[lane.doa413]
+issues = ["413"]
+files = ["docs/testing/predictions/doa413-*.json", "docs/lanes/doa413/**"]
+standing = false
+note = "STARTED (job.board 2026-09-26T19:20Z), briefs/doa413.md: #413 (Dead or Alive Ultimate) gameplay fps. Profile-first: docs and prediction only until the lane names the code file and the board grants it."
+
+[lane.forza414]
+issues = ["414"]
+files = ["docs/testing/predictions/forza414-*.json", "docs/lanes/forza414/**"]
+standing = false
+note = "STARTED (job.board 2026-09-26T19:20Z), briefs/forza414.md: #414 (Forza Motorsport) gameplay fps. Profile-first: docs and prediction only until the lane names the code file and the board grants it."
