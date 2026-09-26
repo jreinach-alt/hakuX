@@ -1,0 +1,30 @@
+{
+  "registered_utc": "2026-09-26T19:18:03Z",
+  "who": "lane.blinx372d",
+  "issue": "372",
+  "prediction": "MUST-NOT-MOVE guard for #372's GPU handoff, re-registered on the merge of master (9f5a3dfc98) into the lane (790dc14730) before marking ready; the first registration (blinx372d-mnm.json, 9540a21f79 vs 0f9735049c) passed byte-identical on all 102 rows with handoffs=2 in B. A is plain master (no [evict372] counter, no handoff); B carries the counter and the handoff (0f9735049c: an incompatible eviction of a draw-dirty binding whose shelved partner has the same width, height, pitch, swizzle and bytes per pixel is recorded image to buffer (depth-stencil packed) to buffer (unpacked) to image, with no download or finish; the partner owes the download and is marked dirty with its CPU-access watch live). Prediction: every capture in the five suites is byte-identical between arms. What would move each: Depth_buffer_fixed_function flips Z24 between fixed and float at one address and pitch (D24S8 and D32FS8, handed off through pack then unpack); it moves if pack then unpack on the GPU is not the byte stream the VRAM round trip gave, or a guest readback of the depth buffer misses the download the partner now owes; its Z16/Z24 flips differ in bytes per pixel and are declined, so they cannot move from this change. Color_zeta_overlap binds colour and zeta at one address (a role swap); it moves if the role swap through the compute buffers differs from the VRAM route or the overlap guard is wrong. Surface_format renders several colour formats at one address; it moves if a reinterpretation through a buffer differs from one through VRAM. Texture_CPU_Update and Texture_render_update_in_place are PR #387's arm: they move if a handed-off partner owes a download without a live watch (a CPU read of stale VRAM) or the evicted binding keeps a stale obligation that writes back over newer data. The two z16_*_FZy_M00ffff rows read white-content in both arms of the first run; they are unreadable, not passes. Read B's [evict372] handoffs= before reading a pass: zero handoffs makes this arm inert, not a pass.",
+  "a_ref": "9f5a3dfc98",
+  "b_ref": "790dc14730",
+  "must_not_move": [
+    "Depth_buffer_fixed_function/*",
+    "Color_zeta_overlap/*",
+    "Surface_format/*",
+    "Texture_CPU_Update/*",
+    "Texture_render_update_in_place/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Color zeta overlap",
+      "Depth buffer fixed function",
+      "Surface format",
+      "Texture CPU Update",
+      "Texture render update in place"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
