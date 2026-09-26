@@ -916,11 +916,7 @@ static SetupFiles SyncSetupFiles() {
   ds.unlock_framerate = GetPrefBool(env, activity, "unlock_framerate", true);
   ds.skip_occlusion_queries = GetPrefBool(env, activity, "skip_occlusion_queries", false);
   ds.texture_cache_size = GetPrefInt(env, activity, "texture_cache_size", 0);
-  /* lane.vklayer34 instrumentation ref, reverted in the next commit. */
-  ds.validation_layers = true;
-  __android_log_print(ANDROID_LOG_INFO, "hakuX-lane",
-                      "vkval validation_layers forced on (pref was %d)",
-                      GetPrefBool(env, activity, "validation_layers", false) ? 1 : 0);
+  ds.validation_layers = GetPrefBool(env, activity, "validation_layers", false);
   ds.use_dsp = GetPrefBool(env, activity, "use_dsp", false);
   ds.network_enabled = GetPrefBool(env, activity, "setting_network_enable", false);
   ds.skip_boot_anim = GetPrefBool(env, activity, "skip_boot_anim", true);
