@@ -190,7 +190,7 @@ static void append_wedge(MString *output, const GeomState *state,
     mstring_append(output,
                    "void emit_wedge_vertex(vec3 a, vec4 pos, mat4 pz) {\n"
                    "  gl_Position = pos;\n");
-    if (!opts.gles) {
+    if (!opts.gles && !opts.no_point_size) {
         mstring_append(output,
                        "  gl_PointSize = gl_in[0].gl_PointSize;\n");
     }
@@ -726,7 +726,7 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
         "%s"
         "  gl_Position = pos;\n",
         emit_vertex_sig);
-    if (!opts.gles) {
+    if (!opts.gles && !opts.no_point_size) {
         mstring_append(output,
             "  gl_PointSize = gl_in[index].gl_PointSize;\n");
     }
@@ -820,7 +820,7 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
             "  float t = %s;\n"
             "  gl_Position = line_clip_lerp(i0, i1, tl, screen);\n",
             state->noperspective ? "tl" : "line_lerp_t(i0, i1, tl)");
-        if (!opts.gles) {
+        if (!opts.gles && !opts.no_point_size) {
             mstring_append(
                 output,
                 "  gl_PointSize = mix(gl_in[i0].gl_PointSize,\n"
