@@ -32,7 +32,7 @@ the texel value. What is new here:
 2. **cloud-282b's binade rule predicts silicon's direction on 6,496 of 6,496**
    decidable Volume texture Y16 tie pixels. That rule was read off one quad
    (w = 8, corners (0,0)-(640,480)), and it is scored here on a different
-   geometry it never saw (w = 7, four 135 x 80 quads, other binades). A
+   geometry it never saw (w = 7, four 135 x 80 quads). A
    pixel-exact model built on it reproduces the **golden Y16 frame with 0 of
    75,840 quad px differing**, and the **golden R16B16 frame with 0 RGB px**.
    texvol283's approximate model fit 83%.
@@ -169,17 +169,25 @@ The +1 class (22,072 px suite-wide, 2,070 on Y16) needs silicon's binade rule:
     everything else goes up
 
 It needs the triangle's barycentric weights per fragment, and which vertex
-carries which weight. That is `VK_KHR_fragment_shader_barycentric`
-(`gl_BaryCoordEXT`), or `geom.c` passing per-vertex data flat. That is
-#282's hunk (`psh.c:2018-2019`, `texelTieBias`'s v half, made conditional),
-not #283's. **What changes for #282:** cloud-282b declined a code lane because
-the rule was "a fit to two triangles". It now predicts a second geometry
-100% (6,496 / 6,496), and it reproduces two whole golden frames pixel-exact.
-Two conditions remain open:
+carries which weight. PR #376 (lane.tie282c) points out that psh.c already
+receives `vtxPos0..2` from geom.c, and that only the per-vertex texcoords are
+missing. That is #282's hunk (`glsl/geom.c` + `psh.c:2018-2019`,
+`texelTieBias`'s v half, made conditional), not #283's.
 
-- Its general form for a triangle whose vertices are not UL/UR/LR with
-  v = (0, 0, 1). Both geometries share those roles.
-- Whether the Adreno driver exposes fragment barycentrics.
+**What changes for #282:** cloud-282b declined a code lane because the rule
+was "a fit to two triangles". #376 then scored it on
+`Texture_render_target` row 240 (6,108 / 6,108), but only in the l2 = 1/2 cell
+the checkerboard already had. Volume texture is a **different geometry
+across the whole cell table**: four quads at different screen positions,
+w = 7, 3.2 texels/px, with T1 ties in l2 binades 2^-6, 2^-4, 2^-3, 2^-2 and
+2^-1 and every l0 binade from 2^-9 to 2^-1, plus 32 px at l0 in [2^-12, 2^-11). That
+last cell is below the checkerboard's range (l0 >= 1/640), so it is new;
+most of the others are cells the checkerboard also had, reached here at
+different weights and positions. The rule predicts all 6,496 / 6,496
+decidable px, band included (412 up at l0, l2 both in [1/4, 1/2)), and it
+reproduces two whole golden frames pixel-exact. One condition remains
+open: the rule's general form for a triangle whose vertices are not UL/UR/LR
+with v = (0, 0, 1). All three geometries share those roles.
 
 ## Reading (2)'s falsifier
 
@@ -210,9 +218,8 @@ Two conditions remain open:
   different converters (my RGBA8888 decode scores 75,526 px off on A8R8G8B8).
   Their move counts above come from Y16's per-pixel direction map instead.
 - The general-triangle form of the binade rule, and the arithmetic behind it.
-- Checking the rule on the 184 non-Volume captures, or on
-  `Texture_render_target` row 240 (cloud-282b's other candidate).
-- Whether Adreno 740's stock driver exposes `VK_KHR_fragment_shader_barycentric`.
+- Checking the rule on the 184 non-Volume captures. `Texture_render_target`
+  row 240 is #376's.
 
 ## Do not repeat
 
