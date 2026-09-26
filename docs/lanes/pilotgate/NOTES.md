@@ -110,3 +110,17 @@ and no file this lane owns is on its path (status.sh / status_html.py /
 the gh-pages publish). Local full selftest on this head: 1877 passed,
 1 failed; every 99-pilot-gate leg passes. Blocked on a trunk fix to that
 fragment, not on anything here; do not debug it from this lane.
+
+## Attempt 3 (2026-09-26): why attempt 2 did not finish
+
+Attempt 2 stopped correctly as blocked: after its merge, CI's selftest failed
+only `64-status-html.sh:117`, a trunk-wide check this lane does not own. The
+trunk fix (lane.pri432's 1d99bcb5d9) folded as `c9331a68bc` (PR #438), and
+the hostops addendum resumed this lane to bring it in.
+
+Attempt 3 merged `origin/master` at `c9331a68bc` (clean; the merge moved only
+selftest fragments 64 and 97 among the jobs files, none of this lane's). The
+full selftest outruns one 10 min tool call on the loaded host (load ~7), so it
+ran the selftest prelude plus fragments 64, 97 and 99 in the foreground:
+94 passed, 0 failed, including the formerly red 64-status-html check. CI runs
+the whole suite on the pushed head.
