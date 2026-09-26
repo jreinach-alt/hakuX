@@ -1,0 +1,21 @@
+{
+  "registered_utc": "2026-09-26T20:33:54Z",
+  "who": "lane.tbchurn424",
+  "issue": "424",
+  "prediction": "#424 restores the range test on TB invalidation and answers code-free stores from a per-page code bitmap (accel/tcg only; B differs from A in accel/ by exactly cb66484748). It changes which translated blocks a guest store discards, never what the guest sends the GPU, so every capture in the must-not-move set is identical between arms. A moved capture means a store the range test or the bitmap spared DID touch code the guest then executed stale: that refutes the correctness argument in docs/lanes/tbchurn424/NOTES.md. Weak for self-modifying code (pgraph tests are mostly static), so the soaks' no-crash/no-hang legs carry that half.",
+  "a_ref": "7e6a4ac88a",
+  "b_ref": "1d1251aa4b",
+  "must_not_move": [
+    "Blend_tests/*",
+    "Depth_buffer/*",
+    "Texture_format/*",
+    "Texture_DXT/*",
+    "Surface_clip/*",
+    "3D_primitive/*",
+    "Fog_gen/*",
+    "Specular/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": []
+}
