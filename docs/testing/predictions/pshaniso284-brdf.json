@@ -1,0 +1,32 @@
+{
+  "registered_utc": "2026-09-26T13:40:13Z",
+  "who": "lane.pshaniso284",
+  "issue": "315",
+  "prediction": "#315 PS_TEXTUREMODES_BRDF volume lookup (brdf315 rule) with stage_consumed_raw exempting the two feeding stages from #283's byte split (brdf315b). The three Texture_BRDF captures get better, 614 -> at most 4 px each (the unmodelled edge pixels); (639,479) reads (198,246,222,255). 614 -> 5..30 would mean the boundary-tie analysis is wrong, not the rule; 614 with G still 89 would mean the exemption did not reach the stage. Only texture_brdf_tests sets BRDF, so Pixel shader, Texture format, Volume texture and Texture anisotropy are bit-identical.",
+  "a_ref": "1557f40923",
+  "b_ref": "929efa3d4e",
+  "must_not_move": [
+    "Pixel_shader/*",
+    "Texture_format/*",
+    "Volume_texture/*",
+    "Texture_anisotropy/*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "better": 3,
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Pixel shader",
+      "Texture BRDF",
+      "Texture anisotropy",
+      "Texture format",
+      "Volume texture"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

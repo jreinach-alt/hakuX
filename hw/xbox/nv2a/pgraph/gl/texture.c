@@ -631,7 +631,10 @@ static void apply_texture_parameters(PGRAPHGLState *r,
         GLfloat clamped_anisotropy = MIN(
             (GLfloat)max_anisotropy,
             r->supported_extensions.max_texture_max_anisotropy);
-        if (clamped_anisotropy < 1.0f) {
+        /* Point-sampled LOD0: the pixel shader takes the probes (#284). */
+        if (clamped_anisotropy < 1.0f ||
+            (min_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_LOD0 &&
+             mag_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_LOD0)) {
             clamped_anisotropy = 1.0f;
         }
         glTexParameterf(binding->gl_target, GL_TEXTURE_MAX_ANISOTROPY_EXT,

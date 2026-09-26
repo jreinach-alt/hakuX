@@ -537,6 +537,21 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
             (state->tex_hilo16[i] ||
              color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16 ||
              color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16);
+
+        /* NV2A's anisotropic filter, modelled for the one configuration it
+         * has been measured on: MIN = MAG = BOX_LOD0, where every probe is a
+         * point sample (Texture_anisotropy, #284).  Under TENT or with
+         * mipmaps what a probe is -- its LOD, its filter -- is unmeasured,
+         * so those keep the host sampler.  A split-byte 16-bit texel is
+         * rebuilt from one texel, so it cannot take a blend of probes. */
+        state->tex_aniso[i] = 1;
+        if (min_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_LOD0 &&
+            mag_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_LOD0 &&
+            !state->tex_bytes16[i]) {
+            state->tex_aniso[i] =
+                1 << GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_TEXCTL0_0 + i * 4),
+                              NV_PGRAPH_TEXCTL0_0_MAX_ANISOTROPY);
+        }
     }
 
     state->surface_zeta_format = pg->surface_shape.zeta_format;
@@ -1378,6 +1393,15 @@ static const char *get_sampler_type(struct PixelShader *ps, enum PS_TEXTUREMODES
         }
         return sampler2D;
 
+    case PS_TEXTUREMODES_BRDF:
+        /* The BRDF function is a volume texture indexed by three angles. */
+        if (dim == 3 && !state->tex_cubemap[i] && !state->shadow_map[i]) {
+            return sampler3D;
+        }
+        NV2A_UNIMPLEMENTED("%dD texture in BRDF mode on stage %d", dim, i);
+        ps->tex_unusable[i] = true;
+        return NULL;
+
     case PS_TEXTUREMODES_DPNDNT_AR:
     case PS_TEXTUREMODES_DPNDNT_GB:
         if (state->shadow_map[i]) {
@@ -1679,6 +1703,76 @@ static void psh_append_reflection(const struct PixelShader *ps, MString *vars,
             "vec3 rv_%d = 2.0*n_%d*dot(n_%d,e_%d)/dot(n_%d,n_%d) - e_%d;\n",
             i, i, i, i, i, i, i);
     }
+}
+
+/*
+ * NV2A's anisotropic filter on a point-sampled LOD0 texture (#284), as read
+ * off the Texture_anisotropy goldens by docs/lanes/cloud-284:
+ *
+ * - The footprint is the Jacobian's two columns in guest texels per guest
+ *   pixel, taken per 2x2 quad (rows sharing a quad carry identical golden
+ *   weights), so coarse derivatives where the language has them.
+ * - Probes run along the major column, one minor-axis width apart, the
+ *   minor axis floored at one texel (LOD0 cannot go finer).
+ * - More than N = 1 << MAX_ANISOTROPY probes widens the spacing to Pmaj / N
+ *   rather than truncating the count.
+ * - nf = Pmaj / spacing, fractional: 2*floor(nf/2) probes at +-(k + 1/2)
+ *   spacings, weight 1/nf, and an outer pair carrying the remainder.  Below
+ *   two, one pair at +-(nf - 1)/2 closing in to a single point at nf = 1.
+ *
+ * Each probe is a point sample at LOD0, and texelTieBias applies to each.
+ * Under TENT or with mipmaps what a probe is has never been measured, which
+ * is why tex_aniso stays 1 there.
+ */
+static void psh_append_aniso_probes(const struct PixelShader *ps,
+                                    MString *vars, int i,
+                                    const char *tex_remap)
+{
+    int n = ps->state->tex_aniso[i];
+    /* dFdxCoarse is GLSL 4.50; the desktop (400) and GLES builds take the
+     * driver's own derivative, which is per-quad on most. */
+    const char *dx = ps->opts.vulkan ? "dFdxCoarse" : "dFdx";
+    const char *dy = ps->opts.vulkan ? "dFdyCoarse" : "dFdy";
+
+    mstring_append_fmt(vars,
+        "vec4 t%d;\n"
+        "{\n"
+        "  vec2 aUV = %s(pT%d.xy) / pT%d.w + texelTieBias%d;\n"
+        "  vec2 aSize = vec2(textureSize(texSamp%d, 0)) / texScale[%d];\n"
+        "  vec2 aDx = %s(aUV) * aSize * float(surfaceScale.x);\n"
+        "  vec2 aDy = %s(aUV) * aSize * float(surfaceScale.y);\n"
+        "  float aPx = length(aDx), aPy = length(aDy);\n"
+        "  bool aYMaj = aPy >= aPx;\n"
+        "  float aMaj = aYMaj ? aPy : aPx;\n"
+        "  float aMin = aYMaj ? aPx : aPy;\n"
+        "  vec2 aAxis = (aYMaj ? aDy : aDx) / max(aMaj, 1e-9);\n"
+        "  float aPe = max(max(aMin, 1.0), aMaj / %d.0);\n"
+        "  float aNf = clamp(aMaj / aPe, 1.0, %d.0);\n"
+        "  vec2 aStep = aAxis * aPe / aSize;\n"
+        "  if (aNf < 2.0) {\n"
+        "    vec2 aD = (aNf - 1.0) * 0.5 * aStep;\n"
+        "    t%d = 0.5 * (textureLod(texSamp%d, aUV - aD, 0.0) +\n"
+        "                 textureLod(texSamp%d, aUV + aD, 0.0));\n"
+        "  } else {\n"
+        "    float aFull = 2.0 * floor(aNf * 0.5);\n"
+        "    float aW = 1.0 / aNf;\n"
+        "    vec4 aAcc = vec4(0.0);\n"
+        "    for (int k = 0; k < %d; k++) {\n"
+        "      if (float(2 * k) < aFull) {\n"
+        "        vec2 aD = (float(k) + 0.5) * aStep;\n"
+        "        aAcc += aW * (textureLod(texSamp%d, aUV - aD, 0.0) +\n"
+        "                      textureLod(texSamp%d, aUV + aD, 0.0));\n"
+        "      }\n"
+        "    }\n"
+        "    vec2 aD = (aFull * 0.5 + 0.5) * aStep;\n"
+        "    aAcc += (aNf - aFull) * 0.5 * aW *\n"
+        "            (textureLod(texSamp%d, aUV - aD, 0.0) +\n"
+        "             textureLod(texSamp%d, aUV + aD, 0.0));\n"
+        "    t%d = aAcc;\n"
+        "  }\n"
+        "}\n",
+        i, tex_remap, i, i, i, i, i, dx, dy, n, n, i, i, i, n / 2, i, i, i,
+        i, i);
 }
 
 static void apply_convolution_filter(const struct PixelShader *ps, MString *vars, int tex)
@@ -1990,6 +2084,15 @@ static void append_fog_factor(const struct PixelShader *ps, MString *vars,
 static bool stage_consumed_raw(const struct PixelShader *ps, int i)
 {
     for (int j = i + 1; j < 4; j++) {
+        /* BRDF reads the two stages before it, not input_tex[j], and indexes
+         * its volume with their whole 16-bit fields.  Split into bytes by
+         * tex_bytes16 it would sample the theta field's low byte and the phi
+         * field's high byte instead: that reading reproduces the #315 arm's
+         * capture at e3b13f5b45 on 598 of 610 wedge px, and the golden on
+         * none (docs/lanes/brdf315b/NOTES.md). */
+        if (ps->tex_modes[j] == PS_TEXTUREMODES_BRDF && j - i <= 2) {
+            return true;
+        }
         if (ps->input_tex[j] != i) {
             continue;
         }
@@ -3181,6 +3284,8 @@ static MString* psh_convert(struct PixelShader *ps)
                                 vars,
                                 "vec4 t%d = texture(texSamp%d, remap2DToCube(%s(pT%d.xyw)));\n",
                                 i, i, tex_remap, i);
+                        } else if (ps->state->tex_aniso[i] > 1) {
+                            psh_append_aniso_probes(ps, vars, i, tex_remap);
                         } else {
                             /* texelTieBias: see the note by its definition.
                              * Scaled by w so that textureProj's own divide
@@ -3352,10 +3457,21 @@ static MString* psh_convert(struct PixelShader *ps)
                 i, i, i, i);
             break;
         case PS_TEXTUREMODES_BRDF:
-            if (!stage_consistent(ps, vars, i, 2, 3, 2, "PS_TEXTUREMODES_BRDF")) break;
-            mstring_append_fmt(vars, "vec4 t%d = vec4(0.0); /* PS_TEXTUREMODES_BRDF */\n",
-                               i);
-            NV2A_UNIMPLEMENTED("PS_TEXTUREMODES_BRDF");
+            /* Stages i-2 and i-1 are ordinary reads whose texels carry the
+             * eye and light directions as two 16-bit fields, theta in the
+             * high half and phi in the low; SZ_R16B16's {G,R,R,G} view puts
+             * them in .r and .g. The volume lookup is (s, t, r) =
+             * (theta_eye, theta_light, phi_light - phi_eye), the phi
+             * difference taken modulo a full turn. Fitted per pixel on the
+             * three Texture_BRDF goldens (docs/lanes/brdf315/NOTES.md):
+             * 605 of 610 modelled wedge pixels whole-texel exact, the rest
+             * one texel off at a boundary. The feeding stages define no dot
+             * product, so none is required of them. */
+            if (!stage_consistent(ps, vars, i, 2, 3, 0, "PS_TEXTUREMODES_BRDF")) break;
+            mstring_append_fmt(vars,
+                "vec4 t%d = texture(texSamp%d, vec3(t%d.r, t%d.r, "
+                "fract(t%d.g - t%d.g))); /* PS_TEXTUREMODES_BRDF */\n",
+                i, i, i - 2, i - 1, i - 1, i - 2);
             break;
         case PS_TEXTUREMODES_DOT_ST:
             if (!stage_consistent(ps, vars, i, 2, 3, 1, "PS_TEXTUREMODES_DOT_ST")) break;

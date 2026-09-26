@@ -1,0 +1,41 @@
+{
+  "registered_utc": "2026-09-26T13:40:13Z",
+  "who": "lane.pshaniso284",
+  "issue": "284",
+  "prediction": "#284 NV2A anisotropic probes in the shader for a MIN=MAG=BOX_LOD0 stage (cloud-284 model: per-quad derivatives, minor-width spacing widened to Pmaj/N, fractional outer pair, texelTieBias per probe). Texture_anisotropy Anisotropy-2/4/8 get better, each by at least half of its differing px (offline bound 15,496->404, 21,981->2,488, 22,617->5,444; the shader's float arithmetic decides the |d|=1 band, so the values are a bound, and the half-way leg is read off the table). Anisotropy-1 is bit-identical (N=1 keeps the old fetch). Nothing else on the disc sets MAX_ANISOTROPY above 1, so every other capture, including #282's tie-rule captures in Volume texture, Texture palette and Pixel shader, is bit-identical.",
+  "a_ref": "31d6ec49b0",
+  "b_ref": "1557f40923",
+  "must_not_move": [
+    "Texture_anisotropy/Anisotropy-1",
+    "Texture_LOD_Bias/*",
+    "TextureWrapMode/*",
+    "Texture_perspective/*",
+    "Texture_format/*",
+    "Texture_BRDF/*",
+    "Pixel_shader/*",
+    "Volume_texture/*",
+    "Texture_palette/*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "better": 3,
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Pixel shader",
+      "Texture BRDF",
+      "Texture LOD Bias",
+      "Texture anisotropy",
+      "Texture format",
+      "Texture palette",
+      "Texture perspective",
+      "TextureWrapMode",
+      "Volume texture"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

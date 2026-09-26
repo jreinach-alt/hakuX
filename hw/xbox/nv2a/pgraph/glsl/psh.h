@@ -60,6 +60,9 @@ typedef struct PshState {
     /* SZ_Y16 or LU_IMAGE_Y16: a bump stage reading it takes the horizontal
      * offset from the filtered value's low byte (#10). */
     bool tex_y16[4];
+    /* 1 << TEXCTL0 MAX_ANISOTROPY for a point-sampled LOD0 stage, else 1:
+     * the probe count the shader's anisotropic loop is capped at (#284). */
+    int tex_aniso[4];
     uint32_t tex_signed[4]; /* NV_PGRAPH_TEXFILTER0_[ARGB]SIGNED bits */
     bool compare_mode[4][4];
     bool alphakill[4];
