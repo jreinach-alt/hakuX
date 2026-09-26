@@ -84,3 +84,25 @@ registered.
      `hakuX` log line reading `missing`.
 - Desktop is not armed: lavapipe has the feature, so the flag is 0 and the
   shader text is the same.
+
+## VUID survey result (2026-09-26, `survey_ab.py`)
+| | A 1790317606-vklayer34-4071708 | B 1790408065-vkpointsize34-3720485 |
+|---|---|---|
+| ref / apk_sha | e2c9fef860 / 6b99875f661e | 386af38184 / e71fca32c816 |
+| device, driver feature | thor, `missing` | thor, `missing` |
+| control lines (5) | PASS | PASS |
+| captures, progress_log_proof | 32, true | 32, true |
+| validation messages | 1 (08740) | **0** |
+
+The must-move leg passes: 1 -> 0, with the layer shown loaded and the
+feature off.
+
+Six Clear captures differ between A and B (SCF_R5G6B5 40,920 -> 0, and so
+on). A was built on a Sep 24 base and B on today's master. B's six values
+(0 / 65,472 / 65,568 / 0 / 0 / 0) equal every fleet-driver Clear run on
+master since 1790361025-vtxarr262-base (`clear_recent.py`), so the move came
+from master, not from this fix. The same-base pixel check is the fleet arm.
+
+## Waiting
+On the arms job's `[job.arms]` verdict for `vkpointsize34-fleet-inert.json`
+on PR #371. When it is PASS, mark the PR ready.
