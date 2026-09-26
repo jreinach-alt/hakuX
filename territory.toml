@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 239
-updated_utc = "2026-09-26T08:45:00Z"
+wave = 240
+updated_utc = "2026-09-26T09:10:00Z"
 
 
 [retired.hilodot10]
@@ -38,13 +38,11 @@ retired_utc = "2026-09-20T14:57:11Z"
 files = []
 note = "RETIRED (job.board, board tick): PR #168 MERGED 2026-09-19T23:27:57Z (fold c5f7169e70), unit gone, no open PR left on lane/hilodot10. #10 stays open (status fixed-part) -- its own blocked_on already says NO MECHANISM IN HAND for the three remaining classes and explicitly 'do not read this as queued work', so this is not a re-dispatch candidate, just label/row hygiene. docs/testing/bump_sign_quads.py and docs/lanes/hilodot10/NOTES.md RELEASED TO [free]."
 
-
 [retired.indexcheck]
 issues = ["157"]
 retired_utc = "2026-09-20T14:57:11Z"
 files = []
 note = "RETIRED (job.board, board tick): PR #159 MERGED 2026-09-19T16:46:02Z (fold 6db8217cdb), unit gone. #159 fixed both blocker-direction options per the issue's own last comment, with nothing outstanding -- closed on GitHub this tick and nv2a_issues.toml row moved to status=fixed-verified/dispatch_state=done. docs/testing/nv2a_index.py and docs/lanes/indexcheck/NOTES.md RELEASED TO [free]."
-
 
 [retired.wbufclip]
 issues = ["31"]
@@ -52,13 +50,11 @@ retired_utc = "2026-09-20T14:57:11Z"
 files = []
 note = "RETIRED (job.board, board tick): PR #156 MERGED 2026-09-19T18:43:45Z (fold 732b97e2df), unit gone. #31 stays fixed-part -- blocked_on already names the real blocker (needs an NV2A silicon capture this lab does not have), so labelled xbox-hardware this tick and the stale 'dispatchable' label dropped (it is not, until hardware exists). docs/lanes/wbufclip/NOTES.md RELEASED TO [free]."
 
-
 [retired.draftstrand]
 issues = []
 files = []
 retired_utc = "2026-09-25T08:30:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T08:30:00Z): PR #153 MERGED 2026-09-19T21:22:16Z, no open PR on lane/draftstrand, row was still lane.draftstrand. Files RELEASED to [free]. PRIOR NOTE: WRITTEN AT WAVE 119 (job.board) -- lane was RUNNING (attempt 1/opus-5, started 2026-09-19T13:45:52Z, no PR yet) with no territory row at all. Harness defect, no tracker issue: a draft PR whose lane has exited (CI green, nothing running) is invisible to every actor -- board.sh, fleet.py and fold.sh all filter drafts out, and nothing joins isDraft with the unit's liveness. Detects the state and resumes the lane via handback.sh rather than flipping isDraft itself. docs/testing/jobs/fold.sh NAMED IN THE BRIEF BUT NOT CLAIMED HERE -- 'only if the call site needs it', and fold.sh is [lane.branchprune]'s below; if draftstrand's diff needs a call site there it must be small and coordinated with branchprune at fold, the same pattern already applied to localtime/windowbudget/desktopchannel tonight. roles/lane.md is free (released by retiring lane.ciskip at wave 105) and taken outright since item 5's wording is this lane's own thing to fix."
-
 [retired.desktopchannel]
 issues = []
 files = ["docs/lanes/desktopchannel/NOTES.md", "docs/testing/desktop_channel.sh",
@@ -67,81 +63,67 @@ files = ["docs/lanes/desktopchannel/NOTES.md", "docs/testing/desktop_channel.sh"
 standing = false
 note = "RETIRED 2026-09-19 by the host session: PR #149 MERGED 2026-09-19T18:42:54Z (fold f7be6e68cb), unit inactive. Files RELEASED. Read this before reclaiming them: the channel it built is NOT CONNECTED TO ANYTHING. desktop_channel.sh has only `build` and `run` -- no serve/worker mode; there is no hakux-desktop unit in docs/testing/systemd/; $DISPATCH_DIR/lanes/ holds nova and thor and no `desktop`, so an explicit --device desktop request would sit unclaimed forever; and arms.sh contains no occurrence of `desktop`, `--device` or `renderer`, so the only automated producer of device work cannot address it. affinity.py OFFPOOL deliberately keeps `desktop` out of the pool rule 3 hashes over and makes rule 1 (an explicit device field) the sole route onto it -- which is correct and is also why nothing reaches it today: 10 of 116 predictions name a device and none names this one. Succeeded by [lane.glchannel]. PRIOR NOTE: WRITTEN AT WAVE 118 (job.board) -- lane was RUNNING (PR #149 draft, attempt 1/opus-5, started 2026-09-19T13:27:08Z) with no territory row at all, invisible to check_territory.py, the same defect this file has documented for a dozen lanes before it tonight. Harness capability, no tracker issue (PR body: 'Issue: none (harness capability, dispatched directly)'): a desktop GL build on this host so GL-only defects stop waiting on the one-way lane.remote session. NARROWED FROM THE BRIEF'S OWN FILES: LINE -- docs/testing/request.sh is dropped from this claim; it is lane.toolsmith's (standing lane, owns the instruments including request.sh, granted 2026-09-14) and this lane was not told to ask for it. Any request.sh touch this lane needs must be small and coordinated with lane.toolsmith at fold, not taken outright. docs/testing/jobs/selftest.d/ narrowed to a named fragment (91-desktop-channel.sh, next free number in the selftest.d sequence) rather than the whole directory, since lane.cloudterritory already holds a glob over it (selftest.d/**) for its own new fragment and a literal directory-string claim would not collide under check_territory.py's exact-match rule but would read as broader than intended."
 
-
 [retired.localtime]
 issues = []
 files = []
 retired_utc = "2026-09-25T08:30:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T08:30:00Z): PR #151 MERGED 2026-09-19T16:43:06Z, no open PR on lane/localtime, row was still lane.localtime. Files RELEASED to [free]. PRIOR NOTE: WRITTEN AT WAVE 118 (job.board) -- lane was RUNNING (PR #151 draft, attempt 1/opus-5, started 2026-09-19T13:37:25Z) with no territory row at all. Harness change, no tracker issue: show Pacific to the reader, keep UTC in the data. ITS OWN BRIEF'S Files: LINE NAMES SIX FILES ALREADY HELD BY OTHER RUNNING OR STANDING LANES, and none of them are given here -- a brief that lists a file as 'yours' is not the claim, this row is, and check_territory.py rejects a literal duplicate outright: `docs/testing/jobs/status.sh` is [lane.statusfresh]'s below (that lane's ENTIRE brief is this file); `docs/testing/jobs/board.sh` is [lane.windowbudget]'s below (its reserve-check logic lands there); `docs/testing/nightly_build.sh` is [lane.nightlynotes]'s below (its entire brief is this file); `docs/testing/jobs/fold.sh` is [lane.branchprune]'s (already on this board); `docs/testing/jobs/arms.sh` is [lane.armlabel]'s (already on this board); `docs/testing/jobs/cloud.sh` is [lane.cloudterritory]'s (already on this board); `docs/testing/fleet.py` is [lane.toolsmith]'s (standing lane, owns the instruments). If localtime's display change needs a one-line timestamp-formatting call in any of these, that touch must be small and coordinated with the holder at fold time, not a claim -- the same pattern this file already uses for branchprune/selftestsplit over selftest.sh. FLAG FOR THE NEXT READER: six collisions from one brief is not ordinary overlap; the brief was written without checking territory.toml at all, and whoever reviews this PR should confirm its diff actually stays out of the six files above before it is marked ready."
-
 [retired.nightlynotes]
 issues = []
 files = []
 retired_utc = "2026-09-21T16:06:07Z"
 note = "RETIRED (job.board, board tick wave 143): PR #152 MERGED 2026-09-19T20:51:07Z, unit gone. docs/testing/nightly_build.sh, docs/testing/jobs/selftest.d/86-nightly-notes.sh and docs/lanes/nightlynotes/NOTES.md RELEASED TO [free]. Retired now, not earlier, because nightly_build.sh was needed this tick: [lane.nightlytrunk] below claims it and check_territory.py rejects a literal duplicate."
 
-
 [retired.nightlytrunk]
 issues = []
 files = []
 retired_utc = "2026-09-25T08:30:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T08:30:00Z): PR #209 MERGED 2026-09-21T21:06:38Z, no open PR on lane/nightlytrunk, row was still lane.nightlytrunk. Files RELEASED to [free]. PRIOR NOTE: WRITTEN AT WAVE 143 (job.board) -- fleet.py reported the lane RUNNING (PR #209 draft, attempt 1/opus-5, started 2026-09-21T15:49:43Z) with no territory row at all, invisible to check_territory.py. Harness defect, no tracker issue: the nightly build runs out of the owner's checkout with no fetch, so two consecutive releases (nightly-2026-09-20, nightly-2026-09-21) shipped the same 2026-09-19 sha and told the reader 'No commits in the last day' while origin/master was 152 commits ahead. Files exactly as PR #209's own diff (`gh pr view 209 --json files`), which also matches its brief's stated blast radius (nightly_build.sh, a new run-nightly.sh launcher, the systemd unit, and its own lane notes). docs/testing/nightly_build.sh RECLAIMED FROM [retired.nightlynotes] above, freed the same tick this row was written."
-
 [retired.statusfresh]
 issues = []
 files = []
 retired_utc = "2026-09-25T08:30:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T08:30:00Z): PR #150 MERGED 2026-09-19T16:06:34Z, no open PR on lane/statusfresh, row was still lane.statusfresh. Files RELEASED to [free]. PRIOR NOTE: WRITTEN AT WAVE 118 (job.board) -- lane was RUNNING (PR #150 draft, attempt 1/opus-5, started 2026-09-19T13:35:46Z) with no territory row at all. Harness defect, no tracker issue: status.sh PATCHes one comment in place, so GitHub renders the comment's created_at and a fresh roll-up reads as eleven hours stale. Files exactly as its own brief's Files: line names; this is the file's PRIMARY claimant among the three lanes that named it tonight (its entire brief is this one file) -- lane.localtime and lane.windowbudget both listed status.sh too and neither holds it here, see their own notes."
-
 [retired.windowbudget]
 issues = []
 files = []
 standing = false
 note = "RETIRED WAVE 126 (job.board): PR #155 MERGED 2026-09-19T21:53:37Z, unit gone (see fold commit 6675e6414b). Files RELEASED: docs/testing/jobs/run-claude-job.sh, docs/testing/jobs/board.sh and docs/testing/jobs/selftest.d/95-window-budget.sh go to [free] (nothing running names them); docs/testing/lane.sh is granted outright to [lane.turncap] below, whose running brief needs it. PRIOR NOTE: WRITTEN AT WAVE 118 (job.board) -- lane was RUNNING (attempt 1/opus-5, started 2026-09-19T13:24:23Z, no PR yet) with no territory row at all. Harness defect, no tracker issue: the pipeline throttles on LANE_MAX, a session count, when the real constraint is the account's shared five-hour/weekly window -- a lane that hits a closed window burns an attempt and eventually escalates model tier for a reason that has nothing to do with the work. board.sh CLAIMED HERE, not released to lane.localtime, which named it too: windowbudget's reserve-check (deferring dispatch in the last fifth of the weekly window) is the substantive edit to that file; localtime's touch would be a one-line display change and is noted as coordinate-at-fold in [lane.localtime] instead. status.sh DROPPED from this claim though the brief names it as a coordination point, not a file to hold -- it is [lane.statusfresh]'s below, that lane's entire brief. docs/testing/jobs/selftest.d/ narrowed to a named fragment (95-window-budget.sh) for the same reason as [lane.desktopchannel]'s note above."
 
-
 [retired.turncap]
 issues = []
 files = []
 retired_utc = "2026-09-25T08:30:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T08:30:00Z): PR #171 MERGED 2026-09-20T02:37:54Z, no open PR on lane/turncap, row was still lane.turncap. Files RELEASED to [free]. PRIOR NOTE: WRITTEN AT WAVE 126 (job.board): lane was RUNNING (briefs/turncap.md, attempt 1/opus-5, no PR yet) with no territory row at all -- invisible to check_territory.py, the recurring defect this file documents. Harness defect, no tracker issue: $WORK/limits.env is sourced AFTER lane.sh:40 and cloud.sh:56 already read LANE_TURNS/CLOUD_TURNS into TURNS, so a raised limits.env value never reaches --max-turns -- nine lanes ended at exactly 151 turns on 2026-09-19 while limits.env said LANE_TURNS=300 since morning. docs/testing/lane.sh released by retiring [retired.windowbudget] above (PR #155 long merged); docs/testing/jobs/cloud.sh released by retiring [retired.cloudterritory] below (PR #147 long merged) -- both granted outright, no collision. selftest.d/101 is the next free fragment number (100 taken by lane.stalecheck)."
-
 [retired.clrpad164]
 issues = ["164"]
 files = []
 retired_utc = "2026-09-25T08:30:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T08:30:00Z): PR #172 MERGED 2026-09-25T06:41:27Z, no open PR on lane/clrpad164, row was still lane.clrpad164. Files RELEASED to [free]. PRIOR NOTE: DISPATCHED 2026-09-19 (job.board), briefs/clrpad164.md: #164's clear-half fix at gl/draw.c:259, fully specified on the issue by lane.remote (author of #158's raster half). File freed this tick by retiring it out of [lane.remote] above -- PR #162 folded as 11ddd94a66 and lane.remote confirmed on the issue that nothing outstanding of its touches gl/draw.c. Needs a device (Clear suite measurement), not NDK/disc-build -- the fleet's stock nxdk_pgraph_tests_xiso.iso already carries it, per the correction on the issue body. Must-not-move: Blend_surface/*, Surface_format/* (#158's recovered captures)."
-
 [retired.remotechannel]
 issues = []
 files = []
 retired_utc = "2026-09-25T08:30:00Z"
 note = "GRANTED (hostops 2026-09-26T08:32Z): hw/xbox/nv2a/pgraph/vk/shaders.c for #343's deferred LOW-1/2, released at ready by lane.vkpointsize34 (PR #371); merge origin/master (and lane/vkpointsize34 if #371 has not folded) before touching it. GRANTED AT WAVE 238 (hostops 2026-09-26T08:20Z, answering its 08:03Z #274 question): hw/xbox/nv2a/pgraph/vk/draw.c for #274 GPUAA's one-line create_pipeline() early-return hunk, now rather than after #366's remediation. Why: the board already named this lane next when it released the file at #366's ready; the hunks sit ~2,400 lines apart (:2085 vs :4497/:5624), so git merges them; a one-way lane waiting on a remediation of unknown length idles. #366's remediation stays on lane/aasample's own branch. Condition: before marking ready, merge origin/master (and lane/aasample if #366 has folded) and re-run the desktop arms. RETIRED (job.board, board tick 2026-09-25T08:30:00Z): PR #154 MERGED 2026-09-19T16:44:33Z, no open PR on lane/remotechannel, row was still lane.remotechannel. Files RELEASED to [free]. PRIOR NOTE: WRITTEN AT WAVE 120 (job.board) -- lane was RUNNING (PR #154 draft, attempt 1/opus-5, started 2026-09-19T06:59:46Z) with no territory row at all, the same invisible-lane defect this file has documented for six lanes tonight. Harness defect, no tracker issue: the delivery channel ($DISPATCH_DIR/deliveries/<lane>.md) is a file on this host's disk a cloud session cannot open -- moving activation onto a tagged GitHub comment, deriving check_coverage.py's lastbrief stamp from the newest delivery comment via a cache this channel writes, giving watch_remote_lane.sh's orphaned polling loop a destination inside comment_sweep.sh, and retiring the watcher. NARROWED FROM THE BRIEF'S OWN FILES: LINE -- docs/testing/check_coverage.py is dropped; it is lane.toolsmith's (standing lane, owns the instruments). The lastbrief-derivation change the lane's own NOTES.md plans is a small, coordinated touch at fold with lane.toolsmith, not a claim taken outright. docs/testing/jobs/selftest.d/93-backlog-state.sh is ALSO DROPPED: that filename already exists on master (added by the now-folded lane.backlogstate, PR #134) and has nothing to do with this lane's topic -- the brief's own Files: line named a file this lane cannot claim as new. Given 66-deliveries.sh instead, the next free number in the sequence and a name matching its actual new fragment. selftest.d/** is a glob held by lane.cloudterritory but check_territory.py's exact-match rule does not read a named fragment as colliding with it, the same reasoning already applied to [lane.desktopchannel] and [lane.windowbudget] tonight."
-
 [retired.cloud-audit1-143]
 issues = ["77"]
 files = []
 retired_utc = "2026-09-19T13:20:55Z"
 note = "RETIRED AT WAVE 117 (job.board): the pass-1 audit this row tracked has finished -- PR #143 now carries needs-remediation (audit found HIGH/MEDIUM), not needs-audit-1, and the outlet has already claimed the next unit against it (see [lane.cloud-remediate-143] below). Held files = [] throughout (an audit reads, it does not edit)."
-
 [retired.glerr86]
 issues = ["86"]
 files = []
 retired_utc = "2026-09-19T13:03:41Z"
 note = "RETIRED AT WAVE 116 (job.board): PR #128 MERGED 2026-09-19T12:59:28Z (fold commit 6ca12eb803, HEAD of this branch's own git log). Pass 2 audit closed all 3 MEDIUM and both LOW findings, arms VERDICT PASS on the pre-remediation prediction (568 checks). Held hw/xbox/nv2a/pgraph/gl/shaders.c -- RELEASED TO [free]. #86 stays open on GitHub (status updated to fixed-verified this tick, see nv2a_issues.toml) but carries a stale `lane:glerr86` label from before the fold; that label is GitHub's to clean up, not territory's."
 
-
 [retired.cloud-audit1-128]
 note = "RETIRED AT WAVE 116 (job.board): PR #128 MERGED 2026-09-19T12:59:28Z (fold commit 6ca12eb803 on this branch's own log), pass-1 audit long since superseded by pass 2 and the fold. Held files = [] (an audit reads, it does not edit). No release needed."
-
 
 [retired.cloud-audit2-128]
 note = "RETIRED AT WAVE 116 (job.board): PR #128 MERGED 2026-09-19T12:59:28Z (fold commit 6ca12eb803 on this branch's own log), pass 2 completed (all 3 MEDIUM and both LOW closed, 1 new LOW noted). Held files = [] (an audit reads, it does not edit). No release needed."
 
-
 [retired.cloud-remediate-128]
 note = "RETIRED AT WAVE 116 (job.board): PR #128 MERGED 2026-09-19T12:59:28Z (fold commit 6ca12eb803 on this branch's own log), remediation delivered (8a3ee8eb03, 3d8179f341, 3e170e56b7) and cleared by pass 2. Held files = [] (a remediation session edits the PR's own branch, not source files). No release needed."
-
 
 [retired.cloudterritory]
 issues = []
@@ -149,13 +131,11 @@ files = []
 standing = false
 note = "RETIRED WAVE 126 (job.board): PR #147 MERGED 2026-09-19T13:30:20Z, unit gone. Files RELEASED to [free]: docs/testing/jobs/selftest.d/** (the glob), and docs/testing/jobs/cloud.sh is granted outright to [lane.turncap] above, whose running brief needs it. PRIOR NOTE: WRITTEN AT WAVE 115 (job.board) -- lane was RUNNING with no territory row at all, a board-dispatched task lane this time, not an outlet unit. Attempt 1, started 2026-09-19T12:36:12Z, briefed at $WORK/briefs/cloudterritory.md to fix the exact defect it is itself an instance of: jobs/cloud.sh starts units without writing the territory row the way lane.sh does at dispatch, so every audit/remediation unit is invisible to check_territory.py until a board tick notices and back-fills it (five occurrences the night this lane was briefed). Its own brief names its files: docs/testing/jobs/cloud.sh (add the row-write at claim time, same branch/validation/push as the board's own) and docs/testing/jobs/selftest.d/ (a new fragment covering it, e.g. 71-cloud-territory.sh). Harness-only -- touches nothing under hw/, target/, accel/, android/. Issue: none (harness defect, dispatched directly per its brief)."
 
-
 [retired.blendrace50]
 issues = ["50"]
 retired_utc = "2026-09-20T14:57:11Z"
 files = []
 note = "RETIRED (job.board, board tick): PR #146 MERGED 2026-09-19T18:36:50Z (fold 233c87f5f3), unit gone. #50 stays open -- the disc-composition finding is recorded and blocked_on is current -- this is label/row hygiene only. Held files = [] throughout, nothing to release."
-
 
 [retired.cloud-audit2-115]
 issues = ["109"]
@@ -163,13 +143,11 @@ retired_utc = "2026-09-20T14:57:11Z"
 files = []
 note = "RETIRED (job.board, board tick): PR #115 (lane/cloud-109) MERGED, this outlet audit unit long since concluded. Held files = [] throughout (an audit reads, it does not edit). No release needed."
 
-
 [retired.cloud-audit1-115]
 issues = ["109"]
 retired_utc = "2026-09-20T14:57:11Z"
 files = []
 note = "RETIRED (job.board, board tick): same PR #115, same outlet unit as [retired.cloud-audit2-115]. Held files = [] throughout. No release needed."
-
 
 [retired.cloud-remediate-115]
 issues = ["109"]
@@ -177,204 +155,191 @@ retired_utc = "2026-09-20T14:57:11Z"
 files = []
 note = "RETIRED (job.board, board tick): same PR #115. Held files = [] throughout. No release needed."
 
-
 [retired.foldregress]
 issues = []
 files = []
 retired_utc = "2026-09-25T08:30:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T08:30:00Z): PR #145 MERGED 2026-09-19T15:03:31Z, no open PR on lane/foldregress, row was still lane.foldregress. Files RELEASED to [free]. PRIOR NOTE: WRITTEN AT WAVE 110 (job.board) -- lane was RUNNING (attempt 1/opus-5, no PR yet) with no territory row at all, invisible to check_territory.py, the same defect as armlabel/cloud-audit2-102/cloud-remediate-102 before it. No tracker issue (harness defect, apparently dispatched directly, matching this board's own dispatch-harness-fixes-not-issues rule): fleet.py's own registry entry names it '# lane.foldregress -- \\`regressed\\` is a rule in a role file, not a gate in the fold job', which is fold.sh not actually refusing to fold a PR the arms job marked `regressed` even though board.md documents that as a rule. FILES UNKNOWN: the registry JSON lives under $DISPATCH_DIR, outside this worktree's readable root, so its `files` field could not be read this tick -- claiming [] rather than guessing wrong names that could either falsely block another lane or fail to protect this one. Whoever reads this next should replace this row with the real file list from the lane's PR or brief once either exists."
-
 [retired.armlabel]
 issues = []
 files = ["docs/testing/jobs/arms.sh", "docs/testing/jobs/selftest.d/94-arms-label-state.sh", "docs/lanes/armlabel/NOTES.md"]
 standing = false
 note = "WRITTEN AT WAVE 107 (job.board) -- lane was RUNNING (PR #144 draft, attempt 1/opus-5) with no territory row at all, invisible to check_territory.py, the same defect as armsskip/auditoutlet/backlogstate/boardgate/handback/ciskip/cloud-audit2-102 before it. No tracker issue (harness defect, dispatched directly): arms.sh labelled a PR from the LAST verdict judged rather than from the full set, so PR #102 (lane.blitsafe) flipped regressed -> verified at 10:03Z with an outstanding FAIL on #88 still live and nothing superseding it. Files per the PR's own brief header. Not started or managed by anything but lane.sh; this row exists so check_territory.py can see it."
 
-
 [retired.cloud-remediate-102]
 note = "RETIRED AT WAVE 110 (job.board): PR #102 MERGED 2026-09-19T10:56:48Z (fold commit 3d072c6ea6 on this branch's own log). Held files = [] (a remediation session edits the PR's own branch, not source files). No release needed."
 
-
 [retired.cloud-audit2-102]
 note = "RETIRED AT WAVE 110 (job.board): PR #102 MERGED 2026-09-19T10:56:48Z (fold commit 3d072c6ea6 on this branch's own log), pass 2 completed (three rounds, last one clean). Held files = [] (an audit reads, it does not edit). No release needed."
-
 
 [retired.remote]
 issues = []
 retired_utc = "2026-09-25T05:30:00Z"
 files = []
 note = "RETIRED (job.board, board tick wave 146), decision-needed #213 decided by the board under the owner's fully-automated policy: branch claude/docs-tooling-agentic-coding-u152m1 last moved 2026-09-20T13:32Z (tip 5dd10ad8c6), 4.6d quiet, no open PR, no unit. Its files (gl/surface.c, gl/blit.c, gl/texture.c, gl/renderer.c, gl/debug.c, glsl/common.c, glsl/psh.c, target/**, ui/**, audio/**, tests/**) are RELEASED to [free] and #34/#62/#158 return to the dispatch pool. Unfolded commits stay on that branch, untouched; nothing is deleted. If the session comes back it opens numbered PRs and claims files through a new row, as any lane does. The old row's history (grants of gl/draw.c, gl/shaders.c, gl/surface.c, glsl/psh.c, glsl/common.c and the wave-87 psh.c findings M1/M2/L8) is in this branch's git history before wave 146."
-
 [retired.statusdash]
 issues = []
 files = []
 standing = false
 retired_utc = "2026-09-26T07:30:00Z"
 note = "RETIRED (job.board wave 236): PR #362 MERGED 2026-09-26T06:51:27Z, no open PR on lane/statusdash, unit gone. status.sh, board-status.sh, status_html.py, selftest.d/62-status-freshness.sh, 63-status-lanes.sh and docs/lanes/statusdash/** RELEASED to [free]. PRIOR NOTE: RELEASED AT READY (job.board wave 235): PR #362 is out of draft, CI green, unit gone, and already fold-ready; its files are free for the next lane. STARTED (host session, 2026-09-26 ~22:15 PDT), briefs/statusdash.md: owner -- #107 is the wrong tool (304 renamed events in 7 days; roll-up at the bottom). Build a GitHub Pages dashboard (orphan gh-pages, one commit, <= 1 push / 10 min, meta refresh 60 s, Pacific time, NEEDS ATTENTION first) and turn #107 into a pinned pointer (no more per-tick title PATCH). status.sh/board-status.sh released at ready from lane.statuspage (PR #354 ready)."
-
-[lane.boardprio]
+[retired.boardprio]
 issues = []
-files = ["docs/testing/jobs/board.sh", "docs/testing/jobs/roles/board.md", "docs/testing/jobs/selftest.d/97-board-priority.sh", "docs/lanes/boardprio/**", "docs/testing/check_territory.py", "docs/testing/fleet.py"]
-note = "RE-OPENED (host session, 2026-09-26T05:25Z) on the owner's go-ahead ('Yes, brief it'): release a lane's files at PR-ready, not at fold, and flag stuck fold-ready PRs (briefs/boardprio.md addendum). board.sh/roles/board.md/97-board-priority.sh were unclaimed after the wave-227 retirement of PR #270's row; check_territory.py and fleet.py moved from lane.toolsmith, whose queue does not touch them."
-
-[lane.indexloc]
+files = []
+standing = false
+retired_utc = "2026-09-26T09:10:00Z"
+note = "RETIRED (job.board wave 240): PR #358 MERGED 2026-09-26T06:35:28Z, no open PR on lane/boardprio, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: RE-OPENED (host session, 2026-09-26T05:25Z) on the owner's go-ahead ('Yes, brief it'): release a lane's files at PR-ready, not at fold, and flag stuck fold-ready PRs (briefs/boardprio.md addendum). board.sh/roles/board.md/97-board-priority.sh were unclaimed after the wave-227 retirement of PR #270's row; check_territory.py and fleet.py moved from lane.toolsmith, whose queue does not touch them. EARLIER RETIREMENT: RETIRED (job.board, board tick 2026-09-26T05:10:00Z): PR #270 MERGED 2026-09-26T04:30:55Z (fold a97c049f2e), no open PR on lane/boardprio. RELEASED TO [free]: docs/testing/jobs/board.sh, roles/board.md, selftest.d/97-board-priority.sh and docs/lanes/boardprio/**. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 186 (host session, 2026-09-25 12:20 PDT) on the owner's request: dispatch by expected improvement. board_filter sorts startable issues by the tracker's game_visible, then impact_px + impact_onestep_px//4, then oldest; roles/board.md says take them in listed order and keep the impact fields current. Brief: briefs/boardprio.md."
+[retired.indexloc]
 issues = []
-files = ["docs/testing/nv2a_index.py", "docs/testing/nv2a_index.json", ".github/workflows/nv2a-index.yml", "docs/lanes/indexloc/**"]
-note = "STARTED (host session, 2026-09-26T05:25Z), briefs/indexloc.md: root cause of the 2026-09-26 fold jam -- the index stores sites as file:LINE, so every hot-file edit rewrites ~100+ index lines and any two PRs on one file conflict in the index; check must tolerate line drift (anchor by content), build keeps fresh lines at fold. nv2a_index.py from [free]; the json and the CI workflow were unclaimed."
-
+files = []
+standing = false
+retired_utc = "2026-09-26T09:10:00Z"
+note = "RETIRED (job.board wave 240): PR #360 MERGED 2026-09-26T06:20:49Z, no open PR on lane/indexloc, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: STARTED (host session, 2026-09-26T05:25Z), briefs/indexloc.md: root cause of the 2026-09-26 fold jam -- the index stores sites as file:LINE, so every hot-file edit rewrites ~100+ index lines and any two PRs on one file conflict in the index; check must tolerate line drift (anchor by content), build keeps fresh lines at fold. nv2a_index.py from [free]; the json and the CI workflow were unclaimed."
 [lane.zrtz272]
 issues = ["272", "275"]
 files = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/zrtz272-*.json", "docs/lanes/zrtz272/**"]
 standing = false
 note = "STARTED (hostops tick, 2026-09-26T05:53:15Z = 22:53 PDT): host ran `lane.sh start zrtz272 briefs/zrtz272.md 272`, unit hakux-lane-zrtz272, attempt 1. STILL NOT STARTED AT WAVE 231 (job.board, 2026-09-26T05:45Z): `lane.sh start zrtz272` was refused approval in the board session a SECOND tick running, so no unit exists; the HOST must run `docs/testing/lane.sh start zrtz272 briefs/zrtz272.md 272` (routed on #272). The row keeps holding vsh-ff.c. PRIOR: BRIEFED AT TERRITORY WAVE 229, NOT YET STARTED (job.board, 2026-09-26T05:40Z; `lane.sh start` was refused approval in the board session, so no unit exists -- the next tick or the host starts it from briefs/zrtz272.md; the row holds vsh-ff.c meanwhile) for #272 (275k px) and #275's Swap (165k px, same defect): apply docs/lanes/zdepth272/vsh-ff-zrtz.patch (fixed-function screen z, every step rounded toward zero; vsh-ff.c only) on the tip that carries #321, register the NOTES arm after the last rebase, run it. vsh-ff.c came from lane.wparamcode223 (PR #321 folded 4bc77c3171). Brief: briefs/zrtz272.md."
-
-[lane.foldflow]
+[retired.foldflow]
 issues = []
-files = ["docs/testing/jobs/fold.sh", "docs/lanes/foldflow/**"]
-note = "STARTED (host session, 2026-09-26T05:00Z), briefs/foldflow.md: owner asked why 31 dispatchable issues sat idle under a 24-lane cap. fold.sh waited forever on 'CI is NONE' for four index-only-conflicting PRs holding the hot files; it must repair index-only conflicts itself, hand code conflicts back the same tick, and fold up to 3 disjoint PRs per tick. fold.sh was unclaimed."
-
+files = []
+standing = false
+retired_utc = "2026-09-26T09:10:00Z"
+note = "RETIRED (job.board wave 240): PR #356 MERGED 2026-09-26T06:10:56Z, no open PR on lane/foldflow, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: STARTED (host session, 2026-09-26T05:00Z), briefs/foldflow.md: owner asked why 31 dispatchable issues sat idle under a 24-lane cap. fold.sh waited forever on 'CI is NONE' for four index-only-conflicting PRs holding the hot files; it must repair index-only conflicts itself, hand code conflicts back the same tick, and fold up to 3 disjoint PRs per tick. fold.sh was unclaimed."
 [lane.turnipfork]
 issues = ["68"]
 files = ["tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json"]
 note = "RESUMED for Gate 1 step 2 (host session, 2026-09-26T04:35Z): the Gate 1 control was run by the host (our unmodified Turnip 220/220 pixel-identical to T30 on the (g) texture suites; #68 comment 5843130427). Driver runs go through host-tools/turnip_control.sh via '[lane.turnipfork] driver-run:' comments on #68 until toolsmith defect 24 lands."
-
-[lane.statuspage]
+[retired.statuspage]
 issues = []
-files = ["docs/lanes/statuspage/**"]
-note = "status.sh and board-status.sh RELEASED AT READY to lane.statusdash (host, 2026-09-26 wave 230): PR #349 folded, follow-up PR #354 is ready and folds on its own; statusdash merges lane/statuspage first. PRIOR: STARTED (host session, 2026-09-26T04:15Z), briefs/statuspage.md: owner ask -- #107 in America/Los_Angeles in body/title/comment (data stays UTC), and a lane table covering every territory row plus lane.xbox, lane.remote and the hostops tick, flagging idle-with-no-work. Files were unclaimed."
-
+files = []
+standing = false
+retired_utc = "2026-09-26T09:10:00Z"
+note = "RETIRED (job.board wave 240): PR #354 MERGED 2026-09-26T06:14:19Z, no open PR on lane/statuspage, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: status.sh and board-status.sh RELEASED AT READY to lane.statusdash (host, 2026-09-26 wave 230): PR #349 folded, follow-up PR #354 is ready and folds on its own; statusdash merges lane/statuspage first. PRIOR: STARTED (host session, 2026-09-26T04:15Z), briefs/statuspage.md: owner ask -- #107 in America/Los_Angeles in body/title/comment (data stays UTC), and a lane table covering every territory row plus lane.xbox, lane.remote and the hostops tick, flagging idle-with-no-work. Files were unclaimed."
 [lane.toolsmith]
 issues = ["94", "95"]
 standing = true
 files = ["docs/testing/ab_compare.py", "docs/testing/classify_residuals.py", "docs/testing/perf/tcg_pages.py", "docs/testing/preflight.sh", "docs/testing/ab_run.sh", "docs/testing/check_cited_commits.py", "docs/testing/check_coverage.py", "docs/testing/idle-watchdog.sh", "docs/testing/sweep_agreement.py", "docs/testing/sweep_diff.py", "docs/testing/sweep_queue.sh", "docs/lanes/dispatch-hardening/**", "docs/testing/run_disc.sh", "docs/testing/make_test_iso.py", "docs/testing/extract_results.py", "docs/testing/vsh_score.py", "docs/lanes/vsh-program/**", "docs/testing/jobs/allowed-tools.lane", "docs/testing/jobs/deliver.sh", "docs/orchestration.md", "docs/testing/devices.sh", "docs/testing/jobs/arms.sh", "docs/testing/jobs/selftest.d/51-dispatch-hardening.sh", "docs/testing/jobs/selftest.d/66-deliveries.sh", "docs/testing/score_sweep.py", "docs/testing/jobs/selftest.d/83-blank-rule.sh"]
 note = "RETURNED docs/testing/score_sweep.py and selftest.d/83-blank-rule.sh from lane.blankrule297 (retired wave 232, PR #335 folded). PRIOR: GRANTED docs/testing/score_sweep.py to lane.blankrule297 (job.board wave 215, 2026-09-26T01:00:00Z, #297 scorer change). STANDING LANE, not a task lane. It owns the instruments for as long as they need an owner, so its claim does NOT go stale when no agent is running -- which is the distinction the territory/fleet cross-check needs, since every other lane here retires when its agent reports. Two kinds of lane: a TASK lane holds files to do one job and releases them, a STANDING lane owns a domain. Only the first is a stale claim when idle. tcg_pages.py ADDED at wave 52. lane.tcgcount edited it under this lane's own 'analysis scripts belong to whoever is measuring with them' clause and FLAGGED IT rather than assuming -- correctly, because it is not an analysis script written for one issue, it is the judging tool for every soak prediction. It hard-coded one discard model as an invariant and voided a correct arm; it now tests both and names which one a build matched. fleet.py ADDED at wave 48 on the lane request: it was in NO row and not in [free], and the lane had just shipped a gate whose entire subject is that an unrecorded claim is invisible. It asked rather than took, and flagged the irony itself. It also DECLINED nv2a_index.py, score_sweep.py and collect_sweep.sh with a reason for each. RE-DISPATCHED 2026-09-14 wave 45, with one URGENT item: the queue-time expect-key gate in request.sh refuses EVERY soak prediction, because it assumes an expect key is Results_Directory/TestName and a soak produces no captures. #68's registered arm is blocked on it now. That is the sixth false positive in that gate; this lane already found five of eighty-one predictions falsely refused for legitimate glob keys. The gate models one request shape and there are two. preflight.sh GRANTED 2026-09-14 on request: it is where the audit gate belongs, because preflight is invoked FRESH while the watchdog holds the script it started with -- the same asymmetry that made one of this lane's own fixes live immediately and another inert. The lane asked rather than taking it, which is the behaviour the board wants; a lane briefed with files that were never claimed is a mistake this project made the same day. THE INSTRUMENTS, taken out of the orchestrator's hands 2026-09-14 at the owner's prompt: 'Why are you handling the manipulation of dispatch scripts?' Six instrument fixes landed tonight inline -- inert prediction legs, lane-claim-as-description, blockers behind retired lanes, cited commits compared as shas, advice that could not see its own fleet, and a guard nobody could state correctly. Each emerged from a failure being diagnosed, which justifies the first and not the sixth: it serialised work that could have run in parallel and spent orchestrator context on editing rather than on allocating. NOT IN THIS CLAIM, deliberately: territory.toml and nv2a_issues.toml. The tracker is the ONE hand-maintained table in the index and the claim registry is what arbitrates lanes -- an agent editing the registry while claiming territory in it is circular, and concurrent edits to the board conflict badly. Those stay with the orchestrator. Analysis scripts written BY a lane for its own issue (line_extent_phase.py, stencil_outliers.py, wbuf31_blocker_audit.py and the rest) are not claimed either: they belong to whoever is measuring with them. TWO FILES ADDED AT WAVE 63. classify_residuals.py -- it has no _ZB branch and so calls EVERY one-ULP depth pixel structural, which has now been flagged by two separate lanes and was the trap #52's brief had to warn about by hand. The patch is already written out in zb-packing-float-depth.md, unapplied. dispatcher.sh -- logged as the paper cut 'dispatcher-sh-unlisted' and placed rather than left in the state profile.c was in until wave 51: neither claimed nor in [free], so nobody is refused it and nobody is responsible for it. It is the file that defines LOGCAT_SPEC, the queue protocol and the soak/disc branch, and #81 is blocked on a one-token change to it. NOTE THE PATH: it lives under $DISPATCH_DIR and not in this repo, so check_territory.py cannot verify the row the way it verifies the rest -- the claim is a statement of ownership, not a machine-checked one. THE ORCHESTRATOR IS NOT TO EDIT IT; that is the division the owner set when asking why dispatch scripts were flowing through this session at all. ROW CORRECTED AT WAVE 74, BY THE LANE THAT HOLDS IT. Wave 63 claimed $DISPATCH_DIR/bin/dispatcher.sh and said 'it lives outside this repo, so check_territory.py cannot verify this row'. BOTH HALVES WERE WRONG: that path is a cp -f SNAPSHOT, and the tracked source docs/testing/dispatcher.sh was in NO row at all -- so the claim named the copy nobody should edit and left the original unclaimed, which is the unlisted-file hazard the same wave was logged to fix, reproduced while fixing it. The row now names the tracked file and IS machine-checkable. Editing the snapshot is the dangerous option twice over: a live byte-offset read, and it is overwritten at the next re-exec. sweep_diff.py ADDED because the lane DECLINED item 7 as outside its files and then diagnosed it read-only anyway, with numbers: over 749 scored runs, 115 carry a partial suite and 112 of those COMPLETED NORMALLY -- 97% false positives -- so floors go 103 -> 129 and six suites gain one for the first time, including Image blit, whose disc is permanently 41 of 42 and whose floor is therefore unobtainable forever. Declining and then doing the diagnosis is the behaviour this board wants; the file is granted so the patch can land. WHEN THE dispatcher.sh CHANGES TAKE EFFECT: the fold reaching the shared tree, on the worker's next loop tick -- the re-exec check sits BEFORE request claiming, so no run is disturbed. NO RESTART IS NEEDED; DO NOT SCHEDULE ONE. And one ordering detail nobody had written down: the hold check continues BEFORE the re-exec check, so while the fleet is held no worker picks up a script change and the log stays silent. That is expected, not a failed fold. FLAGGED AT WAVE 101: PR #134 (lane.backlogstate, an invisible-lane running with no territory row until this wave) edited fleet.py (60/5) and check_coverage.py (188/12) without asking -- see [lane.backlogstate]. Not granted here; this lane's claim does not go stale and a finished PR is not a request. Read #134's diff against the classify_residuals.py _ZB trap and the dispatcher.sh snapshot-vs-source split above before it folds. GRANTED AT WAVE 149 (host session): docs/testing/dispatcher.sh and docs/testing/fleet.py moved to [lane.xbox] for PR #206's audit remediation (H1, M1, M2, L1-L5), which that session is doing on the owner's instruction while this standing lane has no agent. RETURN BOTH HERE when #206 folds or closes. BRIEFED AT WAVE 150 (host session): dispatcher hardening, two serve-path defects lane.xbox found on PR #206 (the legacy sweep preemption that cannot work, and unbounded adb calls that hung the Thor for four days on 09-14). Brief: briefs/toolsmith-dispatch-hardening.md. DISPATCH AFTER #206 FOLDS, when dispatcher.sh returns here -- lane-local's poll starts it. docs/testing/sweep_queue.sh (unclaimed until now) and docs/lanes/dispatch-hardening/** added for it. SECOND JOB BRIEFED AT WAVE 152 (host session): run nxdk_vsh_tests on a handheld and diff hakuX's printed values against the console's (lane.xbox's spec after its silicon runs, PR #225): briefs/toolsmith-vsh-program.md. ORDER, decided: the vsh job FIRST, then dispatch hardening -- both edit dispatcher.sh so they run as sequential lanes, and the vsh job has live consumers (#112 item 4, #223's 5.1 M px) while the hardening job's hang has a backstop (host-tools/dispatch_jamcheck.sh). Both start only after PR #206 folds and returns dispatcher.sh here. run_disc.sh, make_test_iso.py, extract_results.py (all unclaimed until now), docs/testing/vsh_score.py and docs/lanes/vsh-program/** added for it. CANDIDATE THIRD JOB, not briefed yet (wave 153): arms.sh cannot resolve a renderer-variant ref ('<sha> with xemu.toml [display] renderer = OpenGL'), so PR #115's registered #109 arm has sat skipped since 2026-09-19 (arms/skipped d1b07db0..., d8522a7e...); lane.remote runs it by hand meanwhile. RETURNED AT WAVE 155: dispatcher.sh and fleet.py are back from lane.xbox -- PR #206 folded as 9a4cce6570 (2026-09-25 00:32 PDT). The vsh job is dispatched now. WAVE 166 (host session): + docs/testing/jobs/allowed-tools.lane and docs/testing/jobs/deliver.sh for briefs/toolsmith-dispatch-hardening.md defects 8 (the allowlist's docs/testing/* prefix never matches a direct call) and 9 (deliver.sh scan stamps only lanes with new comments, so check_coverage reports a running sweep as stopped). WAVE 176 (host session): + docs/orchestration.md, docs/testing/devices.sh, docs/testing/jobs/arms.sh, docs/testing/score_sweep.py, docs/testing/jobs/selftest.d/51-dispatch-hardening.sh, docs/testing/jobs/selftest.d/66-deliveries.sh -- files PR #249 (dispatch hardening) edits beyond this row; granted so its audit and fold gates see them claimed. LENT AT THIS WAVE (host session, 2026-09-25T20:25:20Z): docs/testing/request.sh and docs/testing/dispatcher.sh to [lane.titlerun] for its FIRST PR only (request.sh --route, ROUTE_FILE to soak_title.sh, LOGCAT_SPEC and SCRIPT_DEPS lines); they RETURN here when that PR folds. Your PR #260 touches neither. Host defect 19 (soak liveness) moves to titlerun with soak_title.sh."
-
 [retired.blitsafe]
 note = "RETIRED AT WAVE 110 (job.board): PR #102 MERGED 2026-09-19T10:56:48Z (fold commit 3d072c6ea6 on this branch's own log). Held hw/xbox/nv2a/pgraph/vk/blit.c, vk/surface.c, vk/draw.c, surface.h -- RELEASED TO [free]. #84/#89/#92 landed and are closed. #88 and #91 are REOPENED this tick (job.board): GitHub auto-closed both when PR #102 merged because its body's own 'Does not close #88'/'Does not close #91' sentences contain the substring 'close #88'/'close #91' and GitHub's keyword linking does not parse negation -- the PR text says plainly '#88 stays open ... mechanism CONFIRMED to the pixel; patch WITHDRAWN from the tip pending #91' and '#91: No patch.' So this lane's finished-and-merged state leaves #88's policy unlanded and #91 undiagnosed-in-code; the next actor here starts from nv2a_issues.toml's #88/#91 rows, not from a clean slate. Full pre-fold history (the BLEND_AND overrun, the #88/#89/#91/#92 surface-cluster reasoning, the vk/draw.c hold) is unchanged in this branch's git log at wave <=104 and is not repeated here."
-
 
 [lane.arms]
 issues = []
 files = []
 note = "RELEASED #38 and #59 2026-09-19 by the host session: `arms` is the arms JOB, not a lane. This row held zero files, had no unit, and fleet.py reported it as LANE CLAIMED WITH NO RUNNING AGENT -- so two accuracy issues read as covered and were dispatchable to nobody. A job does not hold territory. THREE ARMS THAT WERE READY AND UNQUEUED WHILE BOTH DEVICES SAT IDLE. Claims no source files -- it registers and queues, it does not edit hw/. THE OWNER SPOTTED THIS BEFORE I DID: 'I find it odd that neither device appears to have any testing running at the moment.' The cause was not a blocked lane; it was that the orchestrator had not queued work that was already ready. (1) #38's blit pair: arm A is 5 of 5 proven, arm B is 3 of 5, ab_compare REFUSED on MIN_RUNS, and BOTH arms need re-queueing rather than just B -- arm A's runs are sound and that was never the question; the question is whether the pair is one population, and a 09-14 A against a half-09-18 B is not. (2) #59's arm: its 600 lines ARE NOW FOLDED, so its prediction needs re-pointing at the FOLDED shas and then queueing -- and note the fleet cannot verify H1/H3 at all in the default build, because OPT_DYNAMIC_BLEND leaves the static pipeline path dead on Adreno, so an arm here confirms accuracy and NOT the remediation. (3) #89: a full iso_surf1 disc run, which is the only thing that separates renderer from disc composition on Swap_ZB -- 236 captures against the 9-capture narrowed disc. REGISTER AFTER THE LAST REBASE: a rebase silently un-ancestors a b_ref and a reachable-but-stale ref makes the dispatcher build fine and measure the WRONG BINARY. Three occurrences, one of them the orchestrator's. NO AGENT AND NO CAPACITY, 2026-09-19T01:30Z -- read this row as a CLAIM AWAITING CAPACITY, NOT AS COVERAGE. The device holds are lifted and all three arms above are still ready and unqueued, but LANE_MAX is 2 and two local lanes (blitsafe, swizzle87) are running, so lane.sh would refuse a start. The board did not queue them on this lane's behalf: queueing device arms is not the board's to do. START THIS FIRST when a local slot frees. One thing changed underneath it since the row was written: #83 closed into #38 mechanism 1, and 8 of the 20 surviving must-not-move legs on blit38-blend-and-divide.json are now known INERT against a blit change (#38's diff is entirely inside the BLEND_AND arm; arm A and arm B produce the byte-identical pixel). Drop those eight from the NEXT control list; it is not a re-judgement of the judged arm."
-
 [lane.fold]
 issues = []
 standing = true
 files = []
 note = "#84 REMOVED FROM THIS ROW AT WAVE 100: the fold landed (PR #129, lane.blit84, merged as 642b557e77 -- 9db71ddcb2 and 3c4892563b are both ancestors of HEAD) and the lane's own report recommended closing #84 on the mechanism, which the board did this tick (see issue.84 in nv2a_issues.toml). This is exactly the stale-claim failure mode the old note below warned about, reproduced once more before being cleared -- read it as the reason to remove a fold's issue claim the moment it lands rather than as still-live. OLD NOTE: The fold job's own fleet row named #84 in `asked` and a previous tick added it to dispatch/fleet/fold.json, but fleet.py builds ownership from THIS file and not from the fleet row -- so for two ticks #84 read as DISPATCHABLE while the fold job was holding it, and a lane dispatched on that reading would have landed in a tree being folded. issues[] is the claim; `asked` is prose. STANDING LANE. It owns FOLDING: cherry-pick, preflight, push, fast-forward. Created 2026-09-18 at the owner's direction after the orchestrator's own folds caused three distinct defects -- the shared tree went dirty twice and stalled every uncached build in the fleet, and a prediction was folded ahead of its own code, breaking the binding it exists for. The owner had asked whether this lane was needed once before and the orchestrator did not act on it. FOLD IN THE SCRATCH WORKTREE at /home/justin/hakux-work/fold and fast-forward the shared tree, so the dirty window is one ref update rather than several minutes -- AGENTS.md carries the procedure. CLAIMS NO SOURCE FILES: it moves commits, it does not author them, and a merge conflict in compiled code it does not hold goes BACK to the authoring lane rather than being resolved here. A generated file (the nv2a index) is REGENERATED, never hand-merged."
-
 [retired.branchprune]
 issues = []
 files = ["docs/lanes/branchprune/NOTES.md"]
 standing = false
 note = "RETIRED WAVE 125 (job.board): PR #137 MERGED 2026-09-19T14:32:15Z, unit gone. `docs/testing/jobs/fold.sh` RELEASED -- granted to [lane.stalecheck] below, whose running brief names this row as stale ('lane.branchprune's own PR #137 is MERGED and whose unit is gone') and needs the file to teach fold.sh to distinguish a stale red from a live one. PRIOR NOTE: WRITTEN AT WAVE 100 -- lane was RUNNING (PR #137 draft, systemd unit active) with no territory row at all, invisible to check_territory.py. Harness defect, no tracker issue: nothing ever deleted a lane branch, so `arms.sh` walks every `refs/remotes/origin/lane/*` the project has ever run and the cost grows monotonically. Fix: `fold.sh` deletes the branch once its fold's push succeeds. FLAGGED AT WAVE 101: PR #132 (lane.handback) already carried an 18-line fold.sh hook in the CONFLICT branch of the merge loop, recording the cause for handback.sh to read -- see [lane.handback]."
-
 [retired.stalecheck]
 issues = []
 files = []
 retired_utc = "2026-09-25T08:30:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T08:30:00Z): PR #169 MERGED 2026-09-20T01:02:34Z, no open PR on lane/stalecheck, row was still lane.stalecheck. Files RELEASED to [free]. PRIOR NOTE: WRITTEN AT WAVE 125 (job.board): lane was RUNNING (briefs/stalecheck.md, attempt 1/opus-5, started 2026-09-19T20:43:35Z, no PR yet) with no territory row at all -- invisible to check_territory.py, the recurring defect this file documents. Harness defect, no tracker issue: a PR whose only failing required check ran against a stale master (fixed by #167 at 19:47:52Z) sits fold-ready and refused forever, since GitHub does not re-run a PR's checks when the base moves and fold.sh cannot tell a stale red from a live one -- four PRs (#152, #153, #155, #163) stuck on it today. `docs/testing/jobs/fold.sh` released by retiring [retired.branchprune] above (PR #137 long merged) -- granted outright, no collision. `docs/testing/jobs/handback.sh` NAMED IN THE BRIEF BUT NOT CLAIMED HERE: it is [lane.draftstrand]'s (PR #153, fold-ready but not yet folded); the brief already tells the lane to check whether #153 has folded before touching it and keep the diff small and coordinated at fold, the same pattern used for localtime/windowbudget/branchprune tonight. selftest.d/100-stale-check.sh is the next free fragment number (99 taken by lane.desktopchannel's desktop-serve). Brief forbids folding on a stale verdict and caps any re-run to once per (PR, master-head) pair -- CI minutes are a finite budget."
-
 [lane.triage]
 issues = []
 standing = true
 files = []
 note = "STANDING LANE, scheduled. It owns READING THE ISSUE COMMENTS and routing what they contain. Created 2026-09-18 because the orchestrator had done ZERO of this for a week and the owner had to ask -- and the first pass immediately found five open issues whose comments carry verified results the tracker does not reflect, three of them apparently closable. CLAIMS NOTHING. It reads, it reports, and it routes; it does not edit the tracker -- that stays arbitrated, and a triage lane writing conclusions from comments it read once is how #82's 'read from source, not confirmed against a binary' happened in the first place."
 
-
 [retired.linecap13]
 issues = ["13"]
 retired_utc = "2026-09-20T14:57:11Z"
 files = []
 note = "RETIRED (job.board, board tick): PR #141 MERGED 2026-09-20T03:42:17Z (fold, cap rule landed and drawn), unit gone. #13 stays fixed-part. hw/xbox/nv2a/pgraph/glsl/geom.c RELEASED TO [free]."
-
 [retired.diagdump77]
 issues = []
 retired_utc = "2026-09-19T18:50:00Z"
 files = []
 note = "RETIRED AT WAVE 123 (job.board): PR #143 MERGED, unit inactive, and the claim had outlived the lane since wave 104. hw/xbox/nv2a/debug.h, hw/xbox/nv2a/pgraph/vk/renderer.c, android/app/src/main/cpp/xemu_android.cpp and android/app/src/main/java/com/rfandango/haku_x/LauncherActivity.kt ARE RELEASED TO [free] AT THIS WAVE. The marker-file-armed frame dump landed and needs no further code in these four files; #77's next step (drive the dump on a Thor soak of the Galleon deck and correlate merge/barrier state with the stipple frames) is dispatched at this wave as [lane.diagsoak77], which claims none of them -- see that row."
-
 [retired.diagsoak77]
 issues = ["77"]
 retired_utc = "2026-09-20T14:57:11Z"
 files = []
 note = "RETIRED (job.board, board tick): PR #165 MERGED 2026-09-19T20:19:32Z (fold edcc31d847), unit gone. #77 stays open -- the soak found the artifact captured but the stipple schedule not moving with it, a result, not a close. Held files = [] throughout, nothing to release."
-
 [retired.swizzle87]
 issues = ["85", "87"]
 files = []
 retired_utc = "2026-09-19T10:41:08Z"
 note = "RETIRED AT WAVE 108 (job.board): PR #139 MERGED (fold commit 886f7bed84 on this branch's own log) -- #87/#85: audit the landed fix, and give the falsifier a third exit status (both issues were already fixed in master). Both #85 and #87 are closed on GitHub. Held hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/gl/surface.c -- RELEASED TO [free]. gl/surface.c has a history: lane.remote asked for it by name and was told to wait three times before swizzle87 was granted it at wave 86 (see the wave-94 note under [free] below). That history is not a standing grant -- lane.remote has no running agent and its issue claims are the subject of #138, unresolved -- so this release goes to [free] for the next actor to decide, not to lane.remote automatically."
-
 [retired.ciskip]
 issues = []
 files = []
 retired_utc = "2026-09-19T10:41:08Z"
 note = "RETIRED AT WAVE 108 (job.board): PR #140 MERGED (fold commit 4a442e1b75, HEAD of this branch's own log) -- ciskip: the retired skip-ci marker is in no role file, and a board gate poisons an innocent head. Held docs/testing/jobs/roles/lane.md, docs/testing/jobs/roles/cloud.md, docs/lanes/ciskip/NOTES.md -- role docs RELEASED TO [free], NOTES.md is lane-local and not re-claimable."
-
 [retired.backlogstate]
 issues = []
 files = []
 retired_utc = "2026-09-19T10:41:08Z"
 note = "RETIRED AT WAVE 108 (job.board): PR #134 MERGED (fold commit 3f9e5edc1c on this branch's own log) -- board: a backlog had no \"available\" state, so honest bookkeeping hid the work. Held only docs/lanes/backlogstate/NOTES.md, lane-local -- nothing to release to [free]."
-
 [retired.armsskip]
 issues = []
 files = []
 retired_utc = "2026-09-19T09:40:00Z"
 note = "RETIRED AT WAVE 105 (job.board): PR #123 MERGED 2026-09-19T08:40:38Z (7d2b9ac165, per the fold commit on this branch's own log). Held arms.sh, docs/lanes/armsskip/NOTES.md -- RELEASED TO [free]. The row survived its own fold with no fleet.py FAIL because it holds no issues; caught by cross-checking merged PRs whose lane row was still live."
-
 [retired.auditoutlet]
 issues = []
 files = []
 retired_utc = "2026-09-19T09:40:00Z"
 note = "RETIRED AT WAVE 105 (job.board): PR #130 MERGED 2026-09-19T09:30:40Z (ab471cc80f, per the fold commit on this branch's own log). Held cloud.sh, roles/board.md, docs/lanes/auditoutlet/NOTES.md -- RELEASED TO [free]. jobs/cloud.sh is now live and is what claimed cloud-remediate-102, the very lane this same tick had to write a row for."
-
 [retired.boardgate]
 issues = []
 files = []
 retired_utc = "2026-09-19T09:40:00Z"
 note = "RETIRED AT WAVE 105 (job.board): PR #124 MERGED 2026-09-19T08:41:59Z (38385b79c1, per the fold commit on this branch's own log). Held board.sh, docs/lanes/boardgate/NOTES.md -- RELEASED TO [free]."
-
 [retired.handback]
 issues = []
 files = []
 retired_utc = "2026-09-19T09:40:00Z"
 note = "RETIRED AT WAVE 105 (job.board): PR #132 MERGED 2026-09-19T08:30:08Z. Held handback.sh, docs/lanes/handback/NOTES.md -- RELEASED TO [free]. jobs/handback.sh is now live and owns needs-rebase resumes, per this role's own instructions."
-
 [retired.selftestsplit]
 issues = []
 files = []
 retired_utc = "2026-09-19T09:40:00Z"
 note = "RETIRED AT WAVE 105 (job.board): PR #136 MERGED 2026-09-19T08:04:10Z. Held selftest.sh, selftest.d/**, .github/workflows/jobs-selftest.yml, docs/lanes/selftestsplit/NOTES.md -- RELEASED TO [free]. Its own note said it was the file's sole owner of record and would hand-carry concurrent appends (#122, #126, #127, #130, #132, #134) into fragments at its own fold; since it is folded, any lane still narrating selftest.sh coordination against it (e.g. lane.ciskip's note) is narrating a completed merge, not a live claim."
-
 [retired.tier81fix]
 issues = ["81", "90"]
 retired_utc = "2026-09-19T01:05:00Z"
 files = []
 note = "RETIRED AT WAVE 97: BOTH ITS ISSUES ARE CLOSED. #81 and #90 were closed 2026-09-19T00:20Z by the board (the fix is folded as 7dfa94c403 via 4d3edc563d; rev-list --left-right prints 109 0), and the fleet row has read `retired` since the 00:16Z tick -- but this row still claimed two files, so fleet.py listed the lane as a claim with no agent and the files were held by nobody. accel/tcg/cpu-exec.c and accel/tcg/translate-all.c ARE RELEASED TO [free] AT THIS WAVE. The old note is kept below the retirement line because #90's second contributor (the anti-churn tier-hint restore at translate-all.c:659-688, dead preprocessor on the only platform that ships) and the tb-maint.c coordination note are still the next reader's starting point. ORIGINAL NOTE: #81's FIX AND #90, granted OUTRIGHT because check_coverage told me #81's blocker names files NOBODY HOLDS -- 'a grant request rather than a wall'. That is the psh.c deadlock exactly, and it cost 77 commits several hours today, so this one is not waiting to be asked. THE MEASUREMENT IS DONE AND IT DECIDES THE FIX: the tier-1 mechanism FIRES and is STARVED, not dead. Eight of the first ten promotion requests name ONE pc inside ONE millisecond; cflags goes 0xff020000 -> 0xff024000 between promote #0 and #1, so the block kept CF_INVALID set and was re-promoted seven more times; exec_count climbs 64..71 past thresh=64 and a later request reads exec=128, the clamp ceiling, so the promotion test is TRUE FOREVER for such a block. Saturation in 2.2-2.7 s on four of four runs. SO THE FIX IS THE AUDIT'S M2 -- dedup plus reset-or-latch exec_count in tb_request_tier1_promotion() -- AND NOT unmasking the two CF_INVALID comparisons: the numbers point at eight duplicate requests for one pc, not at the lookup. #90 comes with translate-all.c because it is the same file and a candidate SECOND contributor: the anti-churn tier-hint restore at :659-688, whose own comment says it prevents 'endless re-promotion churn', sits inside #ifndef __ANDROID__ with its __android_log_print nested in an #ifdef __ANDROID__ INSIDE it -- dead preprocessor on the only platform that ships. CHANGE THEM SEPARATELY AND MEASURE SEPARATELY: #81's own entry says doing both at once makes either unattributable. AND THERE IS NO SPEC FOR THE TIER-1 MECHANISM, so the audit's remediation is the auditor's reading of intent from comments -- agree the intent before implementing. COORDINATE ON tb-maint.c, which is NOT granted: 937848c9e7 (#68's range-test restoration, ~200 lines) is HELD UNFOLDED pending its own arm."
 
-
 [retired.blit83]
 issues = ["83"]
 files = []
 retired_utc = "2026-09-19T00:45:00Z"
 note = "RETIRED AT WAVE 96: the lane RAN AND REPORTED (00:00:56Z to 00:12:47Z, 62 turns, issuecomment-5737707468) and its fleet row has said `retired` since the 00:16Z tick -- but the live row here still claimed #83, so fleet.py listed the lane as a claim with no agent AND #83 as dispatchable, which is two symptoms of one stale row. It answered its brief: the control on #38's BLEND_AND arm is SOUND BUT INERT, #38's PASS stands, and #83's premise is a COLUMN MISREAD -- the '1 px' is the max_rgb column and the differing-pixel counts on disk are 1,573 to 1,701. Analysis only, no commits, nothing to fold. WHAT IS LEFT is one offline measurement the lane could not reach from inside its worktree: briefs/blit83b.md, ready to dispatch the moment the fleet is under LANE_MAX. The old note, for the record: #83's EIGHT ONE-PIXEL-LOW SRCCOPY CAPTURES, dispatched ANALYSIS-ONLY -- files = [] deliberately. vk/blit.c is lane.blitsafe's and stays there: this lane does not get it, because four issues in that file cluster are already one lane's and a fifth agent in perform_blit() is the collision this file exists to prevent. What it CAN do without the file is the whole of the first step. The magnitude is fixed at exactly 1 px on eight captures and OURS IS ALWAYS LOW, which is a sign, not a rounding spread -- so the question is which of the three candidate one-low mechanisms it is, and reading answers that. IT IS ALSO THE MUST-NOT-MOVE CONTROL on #84's BLEND_AND arm, which is in fold now: if those eight move when the divide lands, this issue's own blocker_falsifier fires and the control leg is void. Say which, in writing, before the fold's arm is judged. If the answer needs an edit, it comes back for the file rather than taking it."
-
 [retired.blit83b]
 issues = ["83"]
 files = []
 retired_utc = "2026-09-19T01:05:00Z"
 note = "RETIRED AT WAVE 97, AND IT ANSWERED ITS BRIEF EXACTLY. lane.blit83b ran analysis-only with files = [] (it was told not to ask for vk/blit.c and it did not), measured the device capture the first pass could not reach, and posted issuecomment-5737991240 with the date, the ref, the count and the location relative to the blit rect -- which is what briefs/blit83b.md said DONE WHEN. THE FALSIFIER CAME OUT NEGATIVE FOR THE BLIT: 0 of 8 blitted destination pixels differ at 71c7bd1d7d and 24a75d6e3c on device thor, 2026-09-18 captures against 2026-09-09 goldens; the one differing pixel is (176,180) B ours-low-by-one, the same pixel in all eight captures and all ten runs while the blit destination varies over eight coordinates. #83 IS CLOSED into #38 mechanism 1 on that measurement. IT HAD NO FLEET ROW AND NO TERRITORY ROW while it ran -- the invisible-lane hazard fleet.py documents and cannot see, and the reason #83 read as dispatchable-and-undispatched on this tick when it had in fact just been answered. Both rows exist now. WHAT IS LEFT OF IT: PR #104, whose entire diff is a root NOTES.md the lane was never granted (files = [] means no file was its to commit) and which master does not carry. The board did not route it to fold -- the report is preserved verbatim on the issue and in this file, and moving the measurement into docs/investigations/ is a lane's write, not the board's. The PR is closed with that said on it; the branch is kept."
-
 [retired.stencil99]
 issues = ["99"]
 retired_utc = "2026-09-19T01:05:00Z"
 files = []
 note = "RETIRED AT WAVE 97: #99 was closed 2026-09-19T00:20Z as a duplicate of #75 (itself a duplicate of #39). The lane held no files and produced no commits, so there is nothing to fold and nothing to release; the row was the only thing left asserting coverage that does not exist. ORIGINAL NOTE: #99, dispatched ANALYSIS-ONLY and with a WARNING ATTACHED, because the issue is a title with an empty body and no tracker entry: three Stencil ZERO captures reading 0 -> 100,000 px between 2501f35211 and 0026f00534. #79 SAYS NINE OF SIXTEEN STENCIL CAPTURES CHANGE VALUE BETWEEN RUNS ON ONE BUILD, so a two-sha delta over that suite is not evidence of a regression until the three are shown to be outside #79's nine -- that separation is the first step and it is offline. Then date the goldens and the captures against both shas before attributing anything to code: a golden newer than the run, or a capture older than the fix, reads exactly like a live defect and has cost this project a suite twice. It writes the tracker entry the issue never got. No files, no arm; if a bisect is warranted it comes back and asks for one."
 
+[lane.tiecode282]
+issues = ["282", "283"]
+files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/geom.c", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 240 (job.board, 2026-09-26): the code half of #282/#283. The weight-binade tie rule now holds on three geometries (PR #314 checkerboard, PR #376 Texture_render_target row 240: 6,108/6,108, PR #378 Volume texture: 6,496/6,496) and no lane implements it. Brief briefs/tiecode282.md. psh.c is released at ready by lane.fog278 (PR #373) and touched by PR #367: the brief says merge master or those branches and re-run the arm before marking ready. geom.c released by lane.vkpointsize34 (PR #371)."
+
+[lane.blinx372b]
+issues = ["372"]
+files = ["docs/testing/dispatcher.sh", "docs/lanes/blinx372b/**", "docs/testing/predictions/blinx372b-*.json"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 240 (job.board, 2026-09-26): #372 second pass. lane.blinx372 (PR #374) split the attract-demo frame: renderer thread 96-98% busy, 32 ms of a 68 ms guest frame is two synchronous GPU-completion waits in pgraph_vk_finish (Sd2 St1), ceiling ~27 fps if both go. Its lever is unnamed because dispatcher.sh:1356's logcat allow-list drops hakuX-stall and hakuX-pace. This lane fixes the allow-list, runs one perflog soak, names the SURFACE_DOWN site, and names (does not edit) a vk hunk. Brief briefs/blinx372b.md. dispatcher.sh released at ready by lane.titlerun (retired this wave)."
+
 [free]
+# RELEASED (job.board wave 240) by retiring lanes boardprio (PR #358), indexloc (#360), foldflow (#356), statuspage (#354), titlerun (#307), cullnf276 (#368), blinx372 (#374), brdf315b (#375), tie282c (#376), regs200 (#377), vol283r (#378): every file each row held. CLAIMED the same wave: psh.c + geom.c -> lane.tiecode282; dispatcher.sh -> lane.blinx372b.
 # RELEASED (job.board wave 239) by retiring lane.sweepcover (PRs #298/#299 folded): docs/testing/scoreboard.py, collect_sweep.sh, queue_full_sweep.sh, selftest.d/88-sweep-cover.sh.
 # CLAIMED (hostops 2026-09-26T06:40Z): glsl/geom.c dropped from this list; lane.vkpointsize34 claimed it at wave 233.
 # RELEASED (job.board wave 232) by retiring lane.sphere273fix (PR #330 folded): hw/xbox/nv2a/pgraph/pgraph.c; CLAIMED the same wave by lane.cullnf276 (with nv2a_regs.h).
@@ -645,48 +610,40 @@ files = ["hw/xbox/nv2a/pgraph/gl/texture.c", "hw/xbox/nv2a/pgraph/texture.c",
   "docs/testing/jobs/selftest.d/99-handback-strand.sh",
 ]
 
-
 [retired.selftest86]
 issues = []
 files = []
 retired_utc = "2026-09-25T08:30:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T08:30:00Z): PR #167 MERGED 2026-09-19T19:47:51Z, no open PR on lane/selftest86, row was still lane.selftest86. Files RELEASED to [free]. PRIOR NOTE: WRITTEN 2026-09-19 by job.board -- lane was RUNNING with no territory row (fleet.py FAIL, same defect as laneshape/armlabel/desktopchannel/draftstrand/localtime before it). Harness defect, no tracker issue. Brief: selftest.d/86-fold-regressed.sh fails every run because fold.sh's prune_branch() deletes the local lane/foldreg ref the fixture assumes survives between ticks; fr_reset() must recreate it from a saved sha rather than assume. Blocks PR #152 and #155 (both fold-ready, CI-green, cannot fold) and every future harness PR. Both files were free; this row exists so check_territory.py can see the lane, which was itself told to write this row first and had not yet by the time this tick ran."
-
 [retired.vblank65]
 issues = ["65"]
 retired_utc = "2026-09-19T18:50:00Z"
 files = []
 note = "RETIRED AT WAVE 123 (job.board): PR #160 MERGED 2026-09-19T17:50:43Z (fold commit 841a38736c), unit inactive. All four remaining defects are closed -- see PR #160's own table: phase is arithmetic, not a defect; FLIP_STALL exonerated by reading; unlock_framerate and simple_vblank fixed in d6d84cd0c2/64c9f000d2; PCRTC coalescing followed the other three (1.49% -> 0.20%). hw/xbox/nv2a/nv2a.c, docs/testing/vblank_report.py and docs/testing/vblank_ab.py ARE RELEASED TO [free] AT THIS WAVE. #65 closed on GitHub this tick; nv2a_issues.toml's #65 row updated to match."
-
 [retired.laneshape]
 issues = []
 files = []
 retired_utc = "2026-09-25T08:30:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T08:30:00Z): PR #163 MERGED 2026-09-19T23:59:37Z, no open PR on lane/laneshape, row was still lane.laneshape. Files RELEASED to [free]. PRIOR NOTE: WRITTEN 2026-09-19 by the host session -- lane was RUNNING (PR #163 draft, unit hakux-lane-laneshape.service active) with no territory row, the same defect this file records for armlabel/desktopchannel/draftstrand/localtime before it. Harness defect, no tracker issue. Brief: teach the harness to recognise a lane by its territory row rather than by the `lane/` branch prefix -- arms.sh fetches only refs/heads/lane/* (:86) so lane.remote's registered predictions are NEVER collected and never queued on the handhelds, which is why that lane self-measures instead of using the device pipeline; arms.sh `tips=` (:91) and pr_for() (:237) prefix-match the same way; fleet.py (:199) counts lane/* PRs and derives RUNNING from hakux-lane-* units, neither of which a cloud lane has; handback.sh (:119) refuses a non-lane/ branch. Plus one `remote = true` marker consulted in exactly three places (fleet liveness, handback hand-back-by-comment, fold prune exemption), and `lane.sh resume` must REFUSE a remote lane -- two agents on one branch. FILES DELIBERATELY NARROW: arms.sh is [lane.armlabel]'s, handback.sh and roles/lane.md are [lane.draftstrand]'s, lane.sh is [lane.windowbudget]'s, fleet.py is unclaimed but read by everything. This lane was dispatched to touch four files that three live lanes already hold; claiming them here would turn preflight red for all of them -- the exact failure the host session caused by claiming nv2a.c for vblank65 without releasing it from [free]. The row exists so check_territory.py can SEE this lane. GRANT 2026-09-19T18:5xZ: arms.sh released by retiring [lane.armlabel] (PR #144 MERGED, unit inactive) and granted here -- the lane already has 124 changed lines in it. fleet.py DELIBERATELY NOT GRANTED although the lane is editing it: it is [lane.toolsmith]'s, a STANDING lane that owns the instruments, and a double claim is what this file exists to refuse. lane.sh ([lane.windowbudget], PR #155 open), fold.sh and handback.sh ([lane.draftstrand], RUNNING and editing handback.sh right now) are likewise not granted. The overlapping files must be coordinated at fold, or re-granted here once armlabel/draftstrand/windowbudget fold (PRs #144, #153, #155 all fold-ready as of 2026-09-19T18:35Z)."
-
 [retired.glchannel]
 issues = []
 files = []
 retired_utc = "2026-09-25T08:30:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T08:30:00Z): PR #166 MERGED 2026-09-19T22:56:40Z, no open PR on lane/glchannel, row was still lane.glchannel. Files RELEASED to [free]. PRIOR NOTE: WRITTEN 2026-09-19 by the host session; lane RUNNING since 18:56Z with no row (fleet.py FAIL). TO THE LANE: your brief told you to write this row yourself. THAT INSTRUCTION WAS WRONG and is withdrawn -- roles/lane.md:79 forbids a lane from editing territory.toml or nv2a_issues.toml, and it is right. It is written for you. Do not touch this file. Everything else in the brief stands. Files released when [lane.desktopchannel] was retired today (PR #149 MERGED f7be6e68cb, unit gone). CORRECTION TO THE BRIEF'S PREMISE, recorded here because a SendMessage to this lane was held for the recipient's approval and may never arrive: THIS HOST HAS A REAL GPU AND THE CHANNEL IS NOT USING IT. nvidia-smi reports NVIDIA GeForce RTX 2070, driver 591.86, 8192 MiB; /dev/dxg present, mode crw-rw-rw-; /usr/lib/wsl/lib/ holds libcuda.so, libd3d12.so, libd3d12core.so, libdxcore.so; the Mesa DRI directory holds d3d12_dri.so and zink_dri.so beside swrast_dri.so. But docs/lanes/desktopchannel/NOTES.md records what the channel ACTUALLY got: GL_RENDERER llvmpipe (LLVM 20.1.2, 256 bits) -- software, by loader default under xvfb-run, not by limitation. WHY IT MATTERS: the nv2a remote lane's environment report on PR #162 (2026-09-19T18:44Z) shows ITS desktop GL is ALSO llvmpipe (LLVM 20.1.2) on Mesa 25.2.8, the identical stack, and it already runs 236-capture OpenGL+Vulkan pairs unattended. So as shipped the two channels duplicate each other and the remote's is the one at volume. Reached, the RTX 2070 makes this the fleet's ONLY hardware-GL instrument -- the handhelds are Adreno on the Vulkan path, the remote is software, and nothing in the fleet can currently answer a question that turns on a real driver. DELIVERABLES UNCHANGED: the worker mode registering $DISPATCH_DIR/lanes/desktop, the systemd unit with an explicit PATH including /home/justin/.local/bin, and the selftest fragment are the point -- this channel's advantage over the remote's is that it is VISIBLE to affinity.py, the dispatcher, the gates and arms.sh, and the remote has no gh binary at all (gh: command not found, confirmed in its own report) so its GL output reaches no harness path. ADDED ONLY IF CHEAP: make the selected renderer explicit and RECORDED rather than whatever the loader defaults to, so no capture can be attributed to the wrong rasteriser. IF HEADLESS HARDWARE GL FIGHTS BACK, SHIP ON LLVMPIPE, record GL_RENDERER faithfully, and say in the PR body that the hardware path is available and unclaimed. Do not let this expand scope. Fragment 99 reserved here; 98 is lane.laneshape's."
-
 [retired.cloudtail]
 issues = []
 files = []
 retired_utc = "2026-09-25T08:30:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T08:30:00Z): PR #175 MERGED 2026-09-20T04:14:18Z, no open PR on lane/cloudtail, row was still lane.cloudtail. Files RELEASED to [free]. PRIOR NOTE: WRITTEN AT WAVE 127 (job.board): lane was RUNNING (PR #175 draft, branch lane/cloudtail) with no territory row at all, invisible to check_territory.py. Harness defect, no tracker issue (brief only): the cloud unit's tail must run however the unit ends, from a path nothing moves. docs/testing/jobs/cloud.sh DELIBERATELY NOT CLAIMED although the lane's diff touches it: that file was [lane.turncap]'s (granted outright at wave 126, PR #171). This is a fold-order question, not a re-dispatch or a grant: coordinate at fold with turncap, same pattern as localtime/laneshape over files they touch but do not hold. selftest.d/72 is the next free fragment number (71 was cloudterritory's, retired at wave 126) and collides with nothing live. UPDATED AT WAVE 129 (job.board): PR #175 is out of draft, CI green (build/build/selftest all SUCCESS), MERGEABLE against current master -- [lane.turncap]'s PR #171 folded 2026-09-20T02:37:54Z (fold ef2459f03c) before #175 went ready, so the coordination this row flagged has already happened; #171's TURNS-line hunk in cloud.sh is on master and #175's own hunks (header comment, systemd-run invocation) are disjoint from it. Diff touches nothing under hw/, target/, accel/, android/ -- no audit needed. Labelled fold-ready; this row's claim holds until the fold actually lands, per [lane.draftstrand]/[lane.stalecheck]'s own convention (fold-ready is not folded)."
-
 [retired.sweeps]
 issues = []
 files = []
 note = "RETIRED AT WAVE 128 (job.board): PR #174 MERGED 2026-09-20T03:10:08Z (fold commit 20e4708d50, visible in this branch's own log), unit gone. All eleven files formerly held here RELEASED TO [free]. See [lane.sweepremote] below: the two sweeps this lane shipped call a live remote lane dead, because issue-sweep.sh and pr-sweep.sh both predate lane.laneshape's remote-lane.sh (folded 2026-09-19T23:59Z) and neither sweep was wired to it."
-
 [retired.sweepremote]
 issues = []
 files = []
 retired_utc = "2026-09-25T08:30:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T08:30:00Z): PR #177 MERGED 2026-09-20T06:55:37Z, no open PR on lane/sweepremote, row was still lane.sweepremote. Files RELEASED to [free]. PRIOR NOTE: WRITTEN AT WAVE 128 (job.board): lane was RUNNING (branch lane/sweepremote, no open PR yet) with no territory row at all, invisible to check_territory.py -- the same defect this file has now recorded for eight lanes. Harness defect, no tracker issue (brief only, docs/lanes/sweepremote via briefs/sweepremote.md): lane.remote is a cloud session on a claude/* branch with no local systemd unit BY DESIGN and, between PRs, no open PR either -- issue-sweep.sh's dead-lane test ('no unit and no open PR') and pr-sweep.sh:189's lane extraction ('lane/' prefix or empty string) both misread it as dead/unnamed, which is how a live claim on #34/#60/#62 gets handed to the board as stale and how the next lane.remote PR would get routed to handback.sh for a resume that would put two agents on one branch. The fix already exists and just isn't called: lane.laneshape's remote-lane.sh (remote_lane_of/remote_branch_of/is_remote_branch/remote_source/remote_authoritative), sourced not edited -- needs no claim here. FILES NARROW TO THE TWO SWEEPS: board.sh, install-host.sh, the systemd units and selftest.d/73-74 from the old [lane.sweeps] claim are DONE work sitting in the folded PR and are not this lane's to reopen; they stay in [free]. Constraint carried from the brief: remote_authoritative must gate both sweeps' outward actions -- an unreadable board must make them fail safe and act on nothing, not silently report 'no remote lanes exist'."
-
 
 [retired.swatchorder50]
 issues = ["50"]
@@ -694,19 +651,16 @@ retired_utc = "2026-09-21T03:00:00Z"
 files = []
 note = "RETIRED (job.board, issue sweep): dispatched at wave 131 but never produced a hakux-lane-* unit or a PR -- fleet.py lists it as 'LANE CLAIMED WITH NO RUNNING AGENT' and no lane/swatchorder50 branch exists on origin. Nothing was delivered, so this is not a landed-work close, just stale-row hygiene. docs/lanes/swatchorder50/NOTES.md RELEASED TO [free]. #50's own next step (a DrawColorAndAlphaStack variant with unequal swatch heights or a 3-swatch draw, to separate reversed-position from reversed-colour-order) stands unchanged and the issue is dispatchable again; GitHub label lane:swatchorder50 dropped this tick."
 
-
 [retired.primpv13]
 issues = ["13"]
 files = []
 retired_utc = "2026-09-25T08:30:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T08:30:00Z): PR #194 MERGED 2026-09-25T08:04:57Z, no open PR on lane/primpv13, row was still lane.primpv13. Files RELEASED to [free]. PRIOR NOTE: DISPATCHED WAVE 133 (job.board), briefs/primpv13.md: #13's own remaining piece, deferred last tick for a careful brief rather than a rushed one. rewrite_triangle_fan()'s emit_tri_pv rotation reaches geom.c already rotated by one, so TFan/QStrip-TFan land at the predicted 70.36% rather than 100% -- 32,628 decisive px, a genuine trade against flat shading's need for provoking-vertex-at-0, not an oversight. prim_rewrite.c released from [free]."
-
 [retired.drvab77]
 issues = []
 retired_utc = "2026-09-21T14:04:00Z"
 files = []
 note = "RETIRED (job.board, issue sweep): PR #197 MERGED 2026-09-21T06:36:24Z, unit gone, no open PR left on lane/drvab77. Falsifier answered: the driver A/B (six Thor soaks, T30/T26/stock, stipple_classify.py) found the stipple rate does not move with the GPU driver, and it fires on Qualcomm's own driver -- so the mechanism is not driver-side. Claimed no in-repo file, nothing to release. #77 stays open (disposition unknown-semantics) -- the remaining question is what does drive the rate, which this lane did not attempt."
-
 
 [retired.pmc188]
 issues = ["188"]
@@ -714,13 +668,11 @@ retired_utc = "2026-09-21T16:39:00Z"
 files = []
 note = "RETIRED (job.board, board tick): PR #198 (lane/pmc188) FOLDED as 01538395b7 (`gh pr view 198` confirms MERGED 2026-09-21T15:53:09Z; visible in this worktree's own log). Unit gone, no open PR left on lane/pmc188. Scope delivered was exactly what the row promised: pmc_read returns the measured 0x01110000 constant for NV_PMC_ENABLE, pmc_write and bit-field semantics untouched. #188 STAYS OPEN -- the PR's own body records a follow-on caveat (0x01110000 is the idle value, not necessarily the value inside a running graphics context; see #203) that this fold did not attempt, so nv2a_issues.toml's status=open is correct, not stale. hw/xbox/nv2a/pmc.c RECLAIMED THE SAME TICK by [lane.cloud190] below (#190, next in this cluster's own established severity/age order -- this row's note said so at WAVE 135). hw/xbox/nv2a/nv2a_regs.h RELEASED TO [free] (nv2a_regs.h was never touched by the PR in the end; #200's remaining work needs it but its brief is stale -- see nv2a_issues.toml issue.200, not re-dispatched this tick)."
 
-
 [retired.vklayer34]
 issues = ["34"]
 files = []
 retired_utc = "2026-09-25T10:45:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T10:45:00Z): PR #217 MERGED 2026-09-25T09:36:59Z, unit gone, no open PR on lane/vklayer34. Files RELEASED. Result: the Khronos layer is packaged in the debug apk and one Adreno 740 Clear run counted ONE VUID, VUID-VkShaderModuleCreateInfo-pCode-08740 (GeometryPointSize capability without shaderTessellationAndGeometryPointSize), from glsl/geom.c:413/:508 writing gl_PointSize when !opts.gles while vk/instance.c:846 requests the feature as optional. Follow-up (the gate on those GS writes) touches glsl/geom.c, HELD by lane.shadeflat224 (PR #235), so it waits for that lane to fold. PRIOR NOTE: DISPATCHED WAVE 150 (job.board): #34's desktop half is closed (all eight findings zero); the open item is the Adreno confirmation, blocked on nothing packaging the validation layer in android/. lane.remote's claim on vk/* was files = [] by wave 147, so nothing collides. Brief briefs/vklayer34.md."
-
 
 [retired.clrvk184]
 issues = []
@@ -728,13 +680,11 @@ retired_utc = "2026-09-21T14:04:00Z"
 files = []
 note = "RETIRED (job.board, issue sweep): PR #204 MERGED 2026-09-21T03:15:56Z (docs/testing: instrument the Clear suite surface-format captures), unit gone, no open PR left on lane/clrvk184. This was the analysis-only half: instrumented Clear::TestSurfaceFmt, confirmed the shape bigger than filed and refuted the GetTextureMemoryForStage(0) cache-key mechanism as stated, replacing it with a narrower one (pad_alpha_needs_rebuild in vk/texture.c, confirmed per-ref on 10 of 13 refs). hw/xbox/nv2a/pgraph/vk/texture.c and vk/surface-compute.c RELEASED TO [free]; docs/lanes/clrvk184/NOTES.md released too. #184 stays open, dispatch_state=blocked in nv2a_issues.toml -- the actual fix site is vk/draw.c and vk/surface.c, still held by [lane.clrsurf91] pending PR #148's fold. Not a grant candidate: PR #148 is open pipeline state (labelled fold-ready + regressed), not a stuck lane."
 
-
 [retired.cloud-194]
 issues = []
 retired_utc = "2026-09-21T03:05:00Z"
 files = []
 note = "RETIRED (job.board): this row conflicted between two names (cloud-audit2-194 and cloud-remediate-194, each written at claim by jobs/cloud.sh at a different point in the same PR's audit cycle) and neither is live -- fleet.py's RUNNING set carries only cloud-audit1-197, and cloud-remediate-194 shows in LANE CLAIMED WITH NO RUNNING AGENT (0 files held). PR #194 (lane/primpv13) is already labelled fold-ready on GitHub, so the audit/remediation cycle this row tracked has concluded; nothing to hold. Held files = [] throughout, nothing to release."
-
 
 [retired.blendarm50]
 issues = []
@@ -742,31 +692,26 @@ retired_utc = "2026-09-21T14:04:00Z"
 files = []
 note = "RETIRED (job.board, issue sweep): PR #205 MERGED 2026-09-21T07:07:19Z, unit gone, no open PR left on lane/blendarm50. Falsifier fired: 771c8eb4f1 does not move stack C off the aliasing model, and could not have -- its body is unreachable with draw_reorder/draw_merge off, measured on 1,120 unsigned captures (aliasing 1119, control 1). Arm B (a follow-on device run) was stopped by the owner and recorded as a deliberate absence, not a gap to re-run. docs/lanes/blendarm50/NOTES.md and docs/testing/swatchorder50_readings.py RELEASED TO [free]. #50 stays open and dispatchable -- two readings (reversed placement vs. reversed colour assignment) remain unseparated and the full-1,673-capture-disc instability measurement blocked_on names is still outstanding; this lane answered one narrower question (does the flush already fix it) and did not attempt those."
 
-
 [retired.fulldisc50]
 issues = ["50"]
 retired_utc = "2026-09-25T05:10:00Z"
 files = []
 note = "RETIRED (job.board, board tick wave 145): PR #210 (lane/fulldisc50) MERGED 2026-09-21T19:31:37Z as fa6863f2f0, unit gone, no open PR. The lane answered its brief without device time: the full-disc instability measurement already existed at n=13 (lane.blendrace50's runs), rate posted on #50. Held docs/lanes/fulldisc50/NOTES.md only; released. Dropping the stale `lane:fulldisc50` label; #50 stays open and dispatchable for the placement-vs-colour-assignment reading."
-
 [retired.clrsurf91]
 issues = []
 retired_utc = "2026-09-25T05:45:00Z"
 files = []
 note = "RETIRED AT WAVE 147 (host session): PR #148 CLOSED unmerged 2026-09-25T05:11Z by owner decision #207 (not accepted: the lane withdrew its #91 claim, the golden requires the write-back the change declines, and it was pixel-inert on master). vk/draw.c and vk/surface.c RELEASED to [free]; #91 and #88 return to the pool with #91's corrected mechanism on the issue. Branch lane/clrsurf91 kept for salvage (the independent pass-1 M1 repair)."
-
 [retired.zdepth272]
 issues = ["272", "275"]
 files = []
 retired_utc = "2026-09-25T23:55:00Z"
 note = "RETIRED (job.board, wave 210): PR #322 MERGED (fold faf58eb89d), unit gone, no open PR on lane/zdepth272. It was analysis plus a named hunk, not the fix: the fix is docs/lanes/zdepth272/vsh-ff-zrtz.patch (round-toward-zero fixed-function screen z) in glsl/vsh-ff.c, which is lane.wparamcode223's until PR #321 folds; host queue 2026-09-25T22:15Z passes vsh-ff.c to a #272 code lane then. #272 and #275 stay open. No file held."
-
 [retired.zclamp276]
 issues = ["276"]
 files = []
 retired_utc = "2026-09-25T23:55:00Z"
 note = "RETIRED (job.board, wave 210): PR #323 MERGED (fold 2dc5d1b884), unit gone, no open PR on lane/zclamp276. Analysis plus a named hunk (docs/lanes/zclamp276/nearfar_cull.diff: pgraph.c SET_ZMIN_MAX_CONTROL drops CULL_NEAR_FAR_EN, plus psh.c / psh.h / nv2a_regs.h). #276 stays open; the code lane waits on the host queue (pgraph.c after #273 fix, psh.c after #266 and #283). No file held."
-
 
 [lane.remote]
 issues = ["184", "109", "274"]
@@ -778,27 +723,23 @@ issues = ["112", "110"]
 files = ["tools/nv2a_probe/**", "docs/testing/xbox-*.md", "docs/testing/nv2a-hardware-gap-list.md", "docs/testing/emulator-vs-hardware-registers.md", "docs/testing/pgraph-per-test-emulator-vs-hardware.md", "docs/testing/nv2a-probe-pmc-findings.md", "docs/lanes/xbox/**", "docs/testing/jobs/selftest.d/97-dispatch-deploy.sh", "docs/testing/jobs/selftest.d/98-fleet-queue-stall.sh", "docs/lanes/dispatch-script-deps/**", "docs/audits/2026-09-24-claude/dispatch-script-deps-*.md", "docs/testing/handoff-on-hardware.md", "docs/testing/patches/pgraph-per-test-instrument.patch", "docs/lanes/pmc-enable-under-load/**", "docs/audits/2026-09-21-claude/pmc-enable-under-load-*.md", "tools/xbox/**"]
 standing = true
 note = "CREATED AT WAVE 148 (host session). STANDING: owns the project's physical Xbox as an INSTRUMENT (GPU rev 163 / MCP rev 212, docs/testing/xbox-console-provenance.md), reached over FTP and an XBE listener service, which the owner confirmed working 2026-09-25 -- the 'hardware listener' every xbox-hardware blocker waited on. Driven by an interactive session the owner started (cross-session name hakux-ab); its inbound channel is $DISPATCH_DIR/deliveries/xbox.md, outbound is $DISPATCH_DIR/board-requests/xbox.md. The console is NOT a dispatcher device (devices.sh names thor, nova, desktop): this lane drives it directly, and it touches the handhelds only through request.sh / ab_run.sh like any lane. Queue, in #112's order: #112 items 1-2 (pre-registered in PR #179), then 3-5; #109; #110; #31 (needs a new nxdk_pgraph_tests case run on silicon). Files are the probe tooling and the hardware-measurement docs, none held by any lane or in [free] at wave 147; widen on the lane's own board request. WIDENED AT WAVE 149 on the lane's own list (session lane-xbox): PR #206's remediation first, on the owner's instruction -- dispatcher.sh and fleet.py GRANTED from lane.toolsmith until #206 folds, plus its two selftest fragments (names match selftest.sh's [0-9][0-9]-*.sh glob), NOTES and audit; the console PRs it inherits from the previous console session, #203 (pmc-enable-under-load) and #216 (handoff-on-hardware); and tools/xbox/** as the home for the host-side silicon runner (FTP 192.168.50.1 + SITE EXEC), which has no script in the repo yet. QUEUE REORDERED AT WAVE 150 by ROADMAP.md, on the lane's own reading (crashes/hangs first, then the largest pixel stakes): 1 #31 (566,549 px), 2 #112 item 2 = #41 radial fog (24 captures), 3 #112 item 3 = nxdk_vsh_tests goldens (a new oracle), 4 #112 item 1 = Viewport 9/16 (698 px on each of #49's two captures), 5 #109 (lead on #87's 10,240 px), 6 #110 (no framebuffer capture at stake; needs a display-output instrument). Until the console's power switch arrives (~2026-09-25) it runs under lockup safeguards: read-only probes, shutdown-on-completion off, new XBEs dry-run on the desktop channel first. PR #206's remediation is done (needs-audit-2); the instrument now lives on ~/nxdk_pgraph_tests branch hakux/per-test-instrument (8158852), and ~/nxdk_pgraph_tests is back on main at 6743b6a. #31 RELEASED AT TERRITORY WAVE 151 on the lane's word ('I'm finished with #31'): measurement closed on silicon (PR #218 clip_top=35, PR #221 clip_top=4), the fix dispatched as [lane.wbuf31fix]. Next in its queue: #112 item 2 (#41 radial fog). RE-RANKED 2026-09-25 (lane's own reading): #112 item 3 + item 4 next (nxdk_vsh_tests on the console: calibrate the 6 suites with published goldens, capture silicon goldens for CPU Shader Tests, SpyVsSpy and Exceptional Float; nxdk pbkit_extensions bafba08 built in ~/nxdk_vsh_tests, outside every repo and tests tree fold.sh reads); item 2 (#41) deferred, 0 px at stake; then item 1, #109, #110. NIGHT-END 2026-09-25 ~00:20 PDT: #112 item 1 MEASURED (PR #227: truncation, 9/16 refuted, all seven offsets bit-identical silicon vs hakuX); #109 needs no console run (the hardware half is in the goldens) and was PARKED by the lane -- its registered GL-vs-Vulkan arm is routed to lane.remote at territory wave 153; #110's next step (a PVIDEO register sweep after pb_init()) WRITES registers and waits for the owner's power switch (expected 2026-09-25); #112 item 2 stays deferred at 0 px. Nothing runnable under the lockup safeguards until the switch; the lane's 30-min check keeps watching #31/#109/#110/#112. dispatcher.sh and fleet.py RETURNED to lane.toolsmith at wave 155 (PR #206 folded)."
-
 [retired.wbuf31fix]
 issues = ["31"]
 retired_utc = "2026-09-25T12:30:00Z"
 files = []
 note = "RETIRED (job.board, wave 160): PR #222 MERGED 2026-09-25T12:10:26Z (fold 3d3a646f8e), unit gone, no open PR on lane/wbuf31fix. glsl/psh.c and docs/testing/wbuf_anchor_recover.py RELEASED TO [free]. The fix landed: a top-cut triangle takes the 4-grid row anchor unless the edge is 8-aligned and the triangle is flat-topped; the arm PASSED 371 checks and the rule reproduces all 52 recovered anchors. WHAT IS LEFT on #31 is not this lane: 93 four-literal fits agree on every existing capture, and the one capture that separates them is a silicon run (ClipF clip_left 300, clip_top 8) on lane.xbox's console, not a dispatch. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 151 (host session) as the psh.c half of #31, once lane.xbox closed the measurement on silicon: ClipF's second triangle anchors 4*floor(ct/4)+2 (34 at ct=35, 6.001 at ct=4; 47 coarse-grid rules refuted); ClipF's first triangle anchors 32/34/6 at ct 32/35/4, which neither the 4-grid nor the shipped quad snap fits -- so the job is the SELECTOR, proven offline against every recovered anchor before psh.c changes. psh.c taken from [free] (released there at wave 146). wbuf_anchor_recover.py is in the row so its --pairs framing can read the silicon runs. Brief: briefs/wbuf31fix.md."
-
 [retired.wparam223]
 issues = []
 files = []
 standing = false
 retired_utc = "2026-09-25T13:15:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T13:15Z): PR #228 MERGED (fold c5e8590f2a), no open PR on lane/wparam223. Files RELEASED to [free]: glsl/vsh-ff.c, predictions/wparam223-*.json, docs/lanes/wparam223/**. #223 stays open: its next lane is briefs/wparamgeom223.md (glsl/geom.c extreme-w scale), dispatched after PR #235 folds because geom.c is lane.shadeflat224s until then. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 154 (job.board): #223, the largest suite residual (W param, 5,117,044 px over 110 captures). Vertex-shader files taken from [free] because the leads are #112 item 4's inherited _RCC signed-zero clamp and _MUL zero-forcing; psh.c stays with lane.wbuf31fix, so a fix that needs it is a board request, not a wait. Brief: briefs/223.md. FILES MOVED AT WAVE 156 (host session): vsh-prog.c and vsh.c go to [lane.vshconst] for #233, a ROADMAP priority-1 guest-reachable abort (vsh-prog.c:383). This lane's session ended with PR #228 (analysis only: docs/lanes/wparam223/**, touching neither file), and the RCC/MUL lead those files were claimed for was refuted by it. #223's next brief re-claims them if it needs them."
-
 [retired.shade224]
 issues = []
 files = []
 standing = false
 retired_utc = "2026-09-25T14:00:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T14:00Z): PR #232 MERGED 2026-09-25T13:30:22Z (fold 48f0618aff), no open PR on lane/shade224. Files RELEASED to [free]: docs/testing/predictions/shade224-*.json, docs/lanes/shade224/**. Its classification of #224 is the input to [lane.shadeflat224] (family A, PR #235 fold-ready); #224 stays open under that lane. PRIOR NOTE: DISPATCHED 2026-09-25T08:07Z (job.board, wave 155), briefs/shade224.md: #224 Shade model, 3,757,101 px over 168 captures, analysis-first, docs and prediction files only."
-
 [retired.vshconst]
 issues = []
 files = []
@@ -806,27 +747,23 @@ standing = false
 retired_utc = "2026-09-25T14:30:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T14:30Z): PR #234 MERGED 2026-09-25T14:15:21Z (fold 84a67b9cf8), no open PR on lane/vshconst. Files RELEASED to [free]: glsl/vsh-prog.c, vsh-prog.h, vsh.c, vsh.h, rdi.c, pgraph.c, predictions/vshconst-*.json, docs/lanes/vshconst/**. #233 CLOSED with it: arm 2 PASS, 306/306 registered checks; ILU RCP Tests byte-identical to the console on all 32 rows on desktop GL. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 156 (host session), ROADMAP priority 1: #233, the assert(!\"TODO: Emulate writeable const registers\") at vsh-prog.c:383 that aborts every Android build (-UNDEBUG) when a vertex program writes a constant register; reproduced on desktop in nxdk_vsh_tests' ILU RCP Tests; silicon golden IluRcpTests.txt from lane.xbox's console run. Cross-draw persistence of const writes is UNMEASURED -- the lane settles it. Brief: briefs/vshconst.md. GRANTED AT WAVE 157 on its board request: rdi.c (the SECOND guest-reachable abort: pgraph_rdi_read asserts reading c[192..], silicon returns 0) and pgraph.c -- the WRITEBACK of the program's constant writes into pg->vsh_constants + dirty bits goes in pgraph.c's draw-end path, one place for both renderers; gl/draw.c and vk/draw.c go to lane.shadeflat224 the same wave, so do not edit them. Persistence answered by the lane from the test's source: silicon keeps the write in constant RAM after the draw."
 
-
 [retired.shadeflat224]
 issues = []
 files = []
 standing = false
 retired_utc = "2026-09-25T14:36:19Z"
 note = "RETIRED (host session, 2026-09-25T14:36:19Z): PR #235 MERGED 2026-09-25T14:35:30Z (fold 21946df29b), no open PR on lane/shadeflat224, unit inactive. hw/xbox/nv2a/pgraph/vk/draw.c goes to [lane.remote] for #184 and hw/xbox/nv2a/pgraph/glsl/geom.c to [lane.wparamgeom223] for #223 in this same edit (promised on #184 at wave 162, and briefs/wparamgeom223.md was written for this fold); the rest RELEASED: hw/xbox/nv2a/pgraph/prim_rewrite.c, hw/xbox/nv2a/pgraph/prim_rewrite.h, hw/xbox/nv2a/pgraph/gl/draw.c, hw/xbox/nv2a/pgraph/vk/renderer.c, docs/testing/predictions/shadeflat224-*.json, docs/lanes/shadeflat224/**. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 157 (host session) on lane.shade224's board request: #224 family A, the flat-quad diagonal (474,214 px) -- keep silicon's v0-v2/v1-v2 diagonal and feed v3's flat varyings through a triangles-with-adjacency slot (NOTES section 4 on PR #232). Files: prim_rewrite.c/.h and glsl/geom.c (from [free]/unclaimed), gl/draw.c and vk/draw.c for the draw-mode mapping (vk/draw.c from [free]; gl/draw.c unclaimed since lane.clrpad164 retired). Brief: briefs/shadeflat224.md. WAVE 165 (host session): + hw/xbox/nv2a/pgraph/vk/renderer.c, from [free]. #235's arm runs persisted geometry-shader keys carrying the new PRIM_TYPE_TRIANGLES_ADJACENCY, and a new enum value changes neither a struct size nor SHADER_STATE_LAYOUT_VERSION, so other builds on both handhelds kept the poisoned cache and aborted at geom.c's default assert. The host bumped the version to 2 on the PR (32319107ab) after the lane's four attempts were spent; the claim covers that one line until #235 folds."
-
 [retired.cloud190]
 issues = []
 retired_utc = "2026-09-25T08:40:00Z"
 files = []
 note = "RETIRED AT WAVE 158 (host session): PR #211 (the measured read-1 region at 0x160 and 0x204-0x2FC) FOLDED as f2e8ef8ba8 after audit passes 1 and 2; unit gone. hw/xbox/nv2a/pmc.c RELEASED to [free] -- #188's next cloud session needs it (briefs/188.md)."
-
 [retired.clrwb91]
 issues = []
 files = []
 standing = false
 retired_utc = "2026-09-25T14:50:00Z"
 note = "RETIRED (host session, 2026-09-25T14:50:00Z): PR #237 MERGED 2026-09-25T14:45:36Z (fold af5bedd1b0), no open PR on lane/clrwb91, unit inactive (attempts exhausted, but the work finished: the host re-merged the index twice and cleared a false blocked:needs-owner). Files RELEASED: hw/xbox/nv2a/pgraph/vk/surface.c, docs/testing/predictions/issue91-writeback.json, docs/lanes/clrwb91/NOTES.md. PRIOR NOTE: WRITTEN 2026-09-25 (job.board, wave 159) -- lane was RUNNING (PR #237 draft, attempt 1/opus-5-5, briefs/clrwb91.md) with no territory row; the row was owed at dispatch. #91: make the zeta-over-colour write-back land the golden's 0xFE242424 background (Swap 139,303 px) -- the write-back is REQUIRED, decline-shaped fixes cannot reach the target. Vulkan only, GL untouched. NARROWED FROM THE BRIEF'S OWN FILES: LINE -- hw/xbox/nv2a/pgraph/vk/draw.c is dropped from this claim: it is [lane.shadeflat224]'s (PR #235, draft, regressed; that lane also has it for the draw-mode mapping). vk/surface.c taken from [free] (released at wave 147 by retiring lane.clrsurf91). If clrwb91 needs a draw.c edit it is a board request, or a small hunk coordinated at fold with #235."
-
 
 [retired.handbackresolved]
 issues = []
@@ -835,13 +772,11 @@ standing = false
 retired_utc = "2026-09-25T16:35:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T16:35:00Z): PR #241 MERGED 2026-09-25T16:00:25Z (fold d124ff4961), no open PR on lane/handbackresolved, unit gone. RELEASED TO [free]: docs/testing/jobs/handback.sh, selftest.d/99-handback-resolved.sh and docs/lanes/handbackresolved/**. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 167 (host session, 2026-09-25 07:55 PDT). Harness defect, no tracker issue: handback.sh resumes a needs-rebase lane without asking whether the head still conflicts, so a lane that resolved its conflict and exited while CI ran is resumed again (#234: vshconst's wasted second handback, 13:50Z) and, at the attempt cap, its PR is labelled blocked:needs-owner for nothing (#237 at 14:25:34Z; the host cleared it). Fix: merge-tree the head against the trunk before resuming; clean+GREEN -> do the lane's own label swap, clean+PENDING -> wait, conflict or RED -> resume as today. Brief: briefs/handbackresolved.md. handback.sh released at wave 105 and unlisted since; selftest.d/99-handback-resolved.sh is a new name under the runner's two-digit glob."
 
-
 [retired.vshnobegin242]
 issues = ["242"]
 files = []
 retired_utc = "2026-09-25T19:40:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T19:40:00Z): PR #245 MERGED (fold d92ae5d7f3, labelled folded,verified); row was still lane.vshnobegin242. pgraph.c RELEASED and re-claimed this tick by lane.vshsubneg255 (#255)."
-
 [retired.wbuf31sel]
 issues = ["31"]
 files = []
@@ -849,48 +784,41 @@ standing = false
 retired_utc = "2026-09-26T00:45:00Z"
 note = "RETIRED (job.board, wave 214): PR #244 MERGED 2026-09-26T00:20:25Z (fold 77a21b28b9, arm PASS 570/570 byte-identical), no open PR on lane/wbuf31sel, unit gone. docs/testing/wbuf_anchor_recover.py, predictions/wbuf31sel-*.json and docs/lanes/wbuf31sel/** RELEASED to [free]. The `psh.c returns to lane.wbuf31sel` leg of lane.wbufdepth24's pass-on order is gone: psh.c is still lane.wbufdepth24's (PR #268 draft, arm pair queued, host aware). #31 stays open: the selector is encoded and the offline float32 simulation zeroes ClipF-300-008's wrong pixels, but that capture is not on the golden disc, so silicon-side confirmation is not scored."
 
-
 [retired.wparamclip223]
 issues = ["223"]
 files = []
 retired_utc = "2026-09-25T20:30:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T20:30Z): PR #250 MERGED 2026-09-25T20:10:35Z (fold 8e683b3a26), no open PR on lane/wparamclip223. glsl/geom.c and vk/instance.c RELEASED; geom.c re-claimed this tick by lane.wparamff223 (#223's ff and quad families, ~1.64 M px). #223 stays open. NOTES section 9 of docs/lanes/wparamclip223 is the hand-off."
-
 [retired.clrwin88]
 issues = []
 files = []
 standing = false
 retired_utc = "2026-09-25T17:30:00Z"
 note = "RETIRED (host session, 2026-09-25T17:30:00Z): PR #253 MERGED (fold 94c6729466), arm PASS 13/13 -- ColorIntoZeta_ZB 131,495 -> 10,766 and ZetaIntoColor 102,255 -> 71,663 to the digit, Swap held at 165,447, Swap_ZB 0; #88 fixed-verified. vk/surface.c passes to [lane.remote] for #109's Vulkan half (promised on #109); the rest RELEASED. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 174 (job.board, 2026-09-25T15:15Z) for #88: #91 is fixed on master (PR #237), and #237's own arm ran with the colour-wins decline applied and held Swap at 165,447, so the trade decision #207 declined is gone. Re-apply the four-line same-offset policy PR #148 (lane/clrsurf91, closed) carried; do NOT port the gate half. Arm: ColorIntoZeta_ZB 131,495 -> 10,766, ZetaIntoColor 102,255 -> 71,663, Swap must_not_move, Swap_ZB predicted by the lane. vk/surface.c was free (lane.clrwb91 retired). Brief: briefs/clrwin88.md."
-
 [retired.shadetie224]
 issues = []
 files = []
 standing = false
 retired_utc = "2026-09-25T17:10:00Z"
 note = "RETIRED (host session, 2026-09-25T17:10:00Z): lane.shadetie224's arm refuted its lit-normal candidate (PR #252: 18 family-B Flat captures exact, Lighting_range/Directional 792 -> 66,328); the vsh-ff.c change was reverted and #252 is CLOSED unmerged by decision #257 (option 2) because its regressed label cannot clear. The analysis lands from [lane.shadetie224-notes] with no registered prediction. docs/lanes/shadetie224/** passes to that row; predictions/shadetie224-*.json RELEASED. PRIOR NOTE: NARROWED AT WAVE 178 (job.board, 2026-09-25T17:00Z): PR #252 is ANALYSIS ONLY -- the lit-normal candidate was refuted by the arm (Lighting_range/Directional 792 -> 66,328, 20 must_not_regress legs) and its vsh-ff.c change reverted (353f68c938), so glsl/vsh-ff.c is RELEASED to [free]. The PR carries `regressed`, which arms.sh recomputes per issue from verdicts on disk and nothing docs-only can supersede: see the decision-needed issue opened this tick. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 174 (job.board, 2026-09-25T15:15Z) for #224 family B: the 1-LSB fixed-function lighting tie, ours (0,85,59) vs silicon (0,85,60), 884,185 px over 18 Fixed/W_Fixed Flat captures (docs/lanes/shade224/NOTES.md section 1B). Find a float pipeline that lands on silicon's side of both known ties WITHOUT fitting a rule to two points; if none has an independent argument the finding is a capture spec for more tie normals. glsl/vsh-ff.c was free (lane.wparam223 retired). Brief: briefs/shadetie224.md."
-
 [retired.foldindex]
 issues = []
 files = []
 standing = false
 retired_utc = "2026-09-25T15:50:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T15:50:00Z): PR #251 MERGED 2026-09-25T15:45:26Z (fold 5eab6a8754), no open PR on lane/foldindex, unit gone. RELEASED TO [free]: docs/testing/jobs/fold.sh, selftest.d/90-fold-index.sh and docs/lanes/foldindex/**. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 166 (host session). Harness defect, no tracker issue: every hw PR regenerates docs/testing/nv2a_index.json, so each fold leaves every other open hw PR conflicting in that one generated file, and fold.sh hands each back to its lane (06:40-06:50 PDT 2026-09-25: #234, #235, #237; four handback sessions by 07:10). fold.sh already regenerates the index after a clean merge; this lane adds resolve_index_only beside resolve_root_notes (the unmerged set is exactly that file: take master's copy, regenerate over the PINNED trees -- provenance.tests_commit and the workflow's PBKIT_SHA, via worktrees under $WORK/fold-pins -- and refuse on any doubt). Brief: briefs/foldindex.md. selftest.d/90-fold-index.sh checked against the runner's two-digit glob; duplicate numbers sort by full name."
-
 [retired.boardrate2]
 issues = []
 files = []
 standing = false
 retired_utc = "2026-09-25T15:50:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T15:50:00Z): PR #248 MERGED 2026-09-25T15:25:27Z (fold bde743f0af), no open PR on lane/boardrate2, unit gone. RELEASED TO [free]: docs/testing/jobs/board.sh and status.sh. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 171 (host session): the host's own two-line follow-up to PR #231 -- board.sh's tick prompt still said 'Dispatch AT MOST ONE this tick' and status.sh 'at most one per tick', contradicting roles/board.md's 'up to three', and the board obeyed the prompt (07:39 PDT tick). No NOTES dir: the commit message is the record. Retire on fold."
-
 [retired.nightlynotes2]
 issues = []
 files = []
 standing = false
 retired_utc = "2026-09-25T15:50:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T15:50:00Z): PR #240 MERGED 2026-09-25T14:25:26Z (fold at 14:25Z), no open PR on lane/nightlynotes, unit gone. RELEASED TO [free]: nightly_build.sh, run-nightly.sh, selftest.d/86-nightly-notes.sh, 87-nightly-trunk.sh and docs/lanes/nightlynotes/**. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 163 (host session) on the owner's question ('The nightly build shows zero emulator changes. Why did no emulator work make it into the nightly?'): nightly_build.sh selects release-note commits by COMMIT DATE (git log --since 'yesterday 00:30'), so lane commits written days before they fold are dropped -- nightly-2026-09-25 listed 4 of the 14 commits it built and '0 emulator' while carrying #172's fix. Fix: select by ancestry from the previous nightly-* tag. Harness defect, brief only (no issue). Must land before the 00:30 nightly. Brief: briefs/nightlynotes.md. WAVE 166 (host session): + docs/testing/jobs/run-nightly.sh and selftest.d/87-nightly-trunk.sh, which PR #240 edits (its Files: line names both)."
-
 [retired.wparamgeom223]
 issues = []
 files = []
@@ -898,42 +826,36 @@ standing = false
 retired_utc = "2026-09-25T15:50:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T15:50:00Z): PR #246 MERGED 2026-09-25T15:15:31Z (fold 38789df749), no open PR on lane/wparamgeom223, unit gone. RELEASED TO [free]: docs/lanes/wparamgeom223/** and docs/lanes/wparam223/NOTES.md. PRIOR NOTE: DISPATCHED AT THIS WAVE (host session, 2026-09-25T14:36:19Z), on PR #235's fold (21946df29b), which freed glsl/geom.c. #223's structural residual (NOTES section 4 on PR #228: external triangles at extreme w, 2.2M px of W_param) via section 5's per-primitive uniform positive scale in the geometry shader. Arm pre-specified in briefs/wparamgeom223.md (Thor, W_param). #13 waits for geom.c after this lane (tracker order note). WAVE 173 (host session): FINISHED as analysis -- PR #246 refuted the uniform w scale (the missing triangles are 2^120+ RATIO cases; a scale cannot change a ratio), corrected wparam223 NOTES section 4 and withdrew section 5; the code was reverted, so #246 is NOTES only. glsl/geom.c and the predictions glob pass to [lane.wparamclip223] for the geometry-shader clip #246 names as the next step; this row keeps its own docs and docs/lanes/wparam223/NOTES.md (edited by #246) until #246 folds, then retires."
 
-
 [retired.handbackstrand]
 issues = []
 files = []
 standing = false
 retired_utc = "2026-09-25T20:02:07Z"
 note = "RETIRED (host session, 2026-09-25T20:02:07Z): PR #258 MERGED 2026-09-25T19:35:27Z (fold d709a8d1fa), unit inactive, no open PR on lane/handbackstrand. RELEASED to [free]: docs/testing/jobs/handback.sh, docs/testing/jobs/selftest.d/99-handback-strand.sh. Known follow-up for whoever takes handback.sh next: defect 18 in the toolsmith brief (a lane's second branch is mistaken for a missing lane; #299). PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 179 (host session, 2026-09-25 10:05 PDT). Harness defect, no tracker issue: handback keys a draft-strand-arm resume on the HEAD sha ($H/done/$label-$pr-$head, handback.sh:625), so a lane that pushes while waiting on its verdict -- a replicate registration, NOTES, a master merge -- is resumed again with nothing new, and at DRAFT_STRAND_MAX=3 its PR is labelled blocked:needs-owner (#245: three resumes in 22 minutes while its replicate sat queued; host cleared it). Fix: key the cause on the set of judged verdicts, and do not strand-resume while the branch's own request is queued or running. Brief: briefs/handbackstrand.md."
-
 [retired.shadetie224-notes]
 issues = []
 files = []
 standing = false
 retired_utc = "2026-09-25T18:05:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T18:05Z): PR #259 MERGED (fold 2b04d4d422), no open PR on lane/shadetie224-notes. docs/lanes/shadetie224/** passes to [lane.shadetie224b]; nothing else was held. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 180 (host session): decision #257 option 2 -- the host lands lane.shadetie224's refuted-candidate analysis (NOTES sections 6-7 carry family B's next step) on a fresh branch with NO registered prediction; the judged prediction is kept under docs/lanes/shadetie224/ as a record, outside docs/testing/predictions/, so arms.sh never collects it."
-
 [retired.shadetie224b]
 issues = []
 files = []
 standing = false
 retired_utc = "2026-09-25T21:15:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T21:15:00Z): PR #263 MERGED 2026-09-25T20:40:33Z (fold 9eaae9448a), no open PR on lane/shadetie224b, unit gone. vsh-ff.c, predictions/shadetie224b-*.json, docs/lanes/shadetie224/** RELEASED to [free]. #224 stays open. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 183 (job.board, 2026-09-25T18:05Z), on #259's fold (2b04d4d422), which put docs/lanes/shadetie224/NOTES.md on master. #224 family B, the 1-LSB fixed-function lighting tie (884,185 px), take two: lt(N) on the whole normal is REFUTED (NOTES section 6: Lighting_range/Directional 792 -> 66,328), so the job is to price the unpriced candidates (lt on N.L only or the diffuse product only, the LT's truncating multiply/add, round-to-nearest at one named stage) against THREE tie points -- Shade_model n=3 (60), n=1 (179) and Directional's specular blue (224) -- and the Lighting_control NoSpec rows, with an independent argument; failing that, the finding is the nxdk_pgraph_tests capture spec in NOTES section 7. Fresh lane name (shadetie224b) so the refuted lane's attempt counter is not inherited. glsl/vsh-ff.c was free. Brief: briefs/shadetie224b.md. PASS-ON (host session, 2026-09-25T20:30:10Z): when PR #263 folds, glsl/vsh-ff.c goes to [lane.wparamff223] for #223 hunk (A), the position tail at vsh-ff.c:878-887 (priced: ff quad 494k -> ~2k, ff bitri w-inf 114k -> ~0)."
-
 [retired.vtxarr262]
 issues = ["262"]
 files = []
 standing = false
 retired_utc = "2026-09-26T03:40:00Z"
 note = "RETIRED (job.board wave 223, 2026-09-26T03:40Z): PR #264 MERGED 2026-09-26T03:30:51Z (fold 72e479ec59), no open PR on lane/vtxarr262. #262 stays open until the registered arm (predictions/vtxarr262-surface-vertex-refetch.json) posts a verdict. hw/xbox/nv2a/pgraph/vk/draw.c PASSES to [lane.aasample] for #286 class A (docs/lanes/aasample/draw-c-viewport.patch), THEN to lane.remote for #274 GPUAA -- as PRIOR NOTE ordered. predictions/vtxarr262-*.json stays claimed by no one (arm-owned); docs/lanes/vtxarr262/** RELEASED. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 184 (job.board, 2026-09-25T18:30Z) for #262: a vertex array over memory the GPU just rendered into is never re-fetched (Surface as vertex array::DynamicUpdateLoop, 96,000 px against lane.xbox's console references, PR #261). vk/draw.c taken from lane.remote (PR #256 folded). vk/surface.c is NOT granted -- lane.remote holds it for #109; the lane must fix from draw.c or report the one-line surface.c change on #262. Brief: briefs/vtxarr262.md. Arm: Thor, register before building. PASS-ON (host session, 2026-09-25T23:34:39Z): when PR #264 folds, vk/draw.c goes to lane.remote for #274's GPUAA uniform-refresh fix (create_pipeline early return; lane.remote's probe is on #274, 5840601274). PASS-ON REORDERED (hostops, 2026-09-26T02:35Z, impact-first): when PR #264 folds, vk/draw.c goes FIRST to [lane.aasample] for #286 class A (docs/lanes/aasample/draw-c-viewport.patch, +258,221 structural px over 120 AA captures, priced in PR #332), THEN to lane.remote for #274 GPUAA (2,674 -> 134 px). Both hunks are small; lane.aasample releases draw.c when its fix PR folds. vk/surface.c is now in [free]: claim it if #262 still needs it."
-
 [retired.gamecheck]
 issues = []
 files = []
 standing = false
 retired_utc = "2026-09-25T22:10:00Z"
 note = "HOSTOPS 2026-09-26T02:35Z: PR #332 (pgraph.h helper + analysis) is ready in the audit pipeline (needs-audit-1). vk/draw.c is PROMISED here when PR #264 folds, ahead of lane.remote's #274 hunk (impact-first: 258k vs 2.5k px). Then: apply draw-c-viewport.patch on a fresh branch off master, register the NOTES s4 arm first, then build. RETIRED (job.board, board tick 2026-09-25T22:10:00Z): PR #267 MERGED 2026-09-25T21:25:34Z (fold 6341ee6aa5), no open PR on lane/gamecheck. docs/lanes/gamecheck/** RELEASED to [free]. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 185 (host session, 2026-09-25 11:55 PDT) on the owner's go-ahead: re-check Retro Tech Dad's hakuX 0.3.1 glitch list (#265) on today's build, on the Nova only -- hands-off soaks through the dispatcher, then bounded (<= 60 min) holds with evdev input for scenes a soak cannot reach. Measures and reports; no code. Brief: briefs/gamecheck.md."
-
 [retired.wbufdepth24]
 issues = []
 files = []
@@ -941,117 +863,99 @@ standing = false
 retired_utc = "2026-09-26T05:40:00Z"
 note = "RETIRED (job.board, board tick 2026-09-26T05:40:00Z): PR #268 MERGED (fold d3e3e0bf7c: #266 D24 saturate + FloorQuad triage), labelled folded, no open PR on lane/wbufdepth24. glsl/psh.c passes to lane.pshqueue, which was already editing it under the lend (its PR #347 carries the psh.c hunks); lane.zclamp276's request for psh.c (with pgraph.c, psh.h) follows pshqueue's fold. The #266 mechanism-B residual is #272's (fixed-function z rounding), not this row's."
 
-
 [retired.vshsubneg255]
 issues = []
 files = []
 standing = false
 retired_utc = "2026-09-25T22:50:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T22:50Z): PR #288 MERGED (fold e4e532cca8), no open PR on lane/vshsubneg255. pgraph.c, predictions/vshsubneg255-*.json, docs/lanes/vshsubneg255/** RELEASED; pgraph.c passes to [lane.sphere273fix] per the queued host decision (then lane.zclamp276 for #276 already has PR #323 fold-ready). PRIOR NOTE: DISPATCHED AT WAVE 187 (job.board, 2026-09-25T19:40:00Z). #255: a negative subnormal vertex input reaches its constant as +0; silicon keeps -0 (nxdk_vsh_tests Exceptional Float MaxSub row). Fix is one function in pgraph.c (pgraph_vsh_writeback_constants and its float path). briefs/255.md. PASS-ON (host session, 2026-09-25T20:30:10Z): when PR #288 folds, pgraph.c goes to [lane.spheremap273] for #273's one case in kelvin_map_texgen (262,990 px, priced offline). The host re-pinned this lane's two queued vsh runs from the Thor (behind the 0.5 sweeps, ~7 h) to the Nova (devices agree per capture). AMENDED (host session, 2026-09-25T20:59:17Z): lane.spheremap273 retired at wave 197 (PR #305, analysis, merged). When PR #288 folds, pgraph.c goes to a NEW #273 fix dispatch. The hunk is in docs/lanes/spheremap273/NOTES.md section 4 (one case in kelvin_map_texgen, priced 262,990 -> 0 px); #273's tracker row now names this blocker. QUEUE (host session, 2026-09-25T22:15:39Z, impact-first): pgraph.c after PR #288 folds (verdict PASS 21:48Z): the #273 spheremap fix (263k px; hunk in docs/lanes/spheremap273/NOTES.md s4) -> lane.zclamp276 (#276, 129k px)."
-
 [retired.sphere273fix]
 issues = []
 files = []
 standing = false
 retired_utc = "2026-09-26T06:10:00Z"
 note = "RETIRED (job.board, board tick 2026-09-26T06:10Z): PR #330 MERGED 2026-09-26T06:00:35Z (arm PASS 71/71, SphereMap_RotateX/Arbitrary 131,495 -> ~126 px each), no open PR on lane/sphere273fix. RELEASED TO [free]: hw/xbox/nv2a/pgraph/pgraph.c (queue behind it: #200, briefs/200.md), predictions/sphere273fix-*.json and docs/lanes/sphere273fix/**. #273 closed. PRIOR NOTE: DISPATCHED AT WAVE 207 (job.board, 2026-09-25T22:50Z), on #288 folding (e4e532cca8) which freed pgraph.c. #273: land the priced one-case hunk (SPHERE_MAP on texgen channel 2 -> REFLECTION_MAP in kelvin_map_texgen; docs/lanes/spheremap273/NOTES.md s4, 262,990 -> 0 px). vsh-ff.c stays lane.wparamcode223's. QUEUE behind it on pgraph.c: #200 (briefs/200.md). Brief: briefs/sphere273fix.md."
-
 [retired.vshr12280]
 issues = ["280"]
 files = []
 retired_utc = "2026-09-26T01:40:00Z"
 note = "RETIRED (job.board wave 216, 2026-09-26T01:40:00Z): PR #290 MERGED 2026-09-26 (fold 9b3b0bb086), arm VERDICT PASS on 335 checks, no open PR on lane/vshr12280. Files RELEASED: glsl/vsh-prog.c passes to lane.nanfix281 (#281 part 2, the _MUL hunk ~30 lines from the R12 define, as recorded at wave 194); docs/lanes/vshr12280/** and its predictions are released."
-
 [retired.texvol283]
 issues = ["283"]
 files = []
 retired_utc = "2026-09-26T01:40:00Z"
 note = "RETIRED (job.board wave 216, 2026-09-26T01:40:00Z): PR #289 MERGED 2026-09-26T01:11:04Z (fold 036e6c191f), arm VERDICT PASS on 186 checks, no open PR on lane/texvol283. Files RELEASED to [free]: glsl/psh.h, gl/texture.c, pgraph/texture.c. glsl/psh.c was never this lane's to hold (its hunks landed under the wave-200 lend) and stays lane.wbufdepth24's until PR #268 folds, then goes to lane.pshqueue (briefs/pshqueue.md). glsl/psh.h: lane.pshqueue asks for it at dispatch."
-
 [retired.nanfix281]
 issues = ["281"]
 files = []
 standing = false
 retired_utc = "2026-09-26T07:30:00Z"
 note = "RETIRED (job.board wave 236): PR #336 MERGED 2026-09-26T06:08:32Z, no open PR on lane/nanfix281, unit gone. glsl/vsh.c passes to lane.fog278 (#278 INF fogSpecial hunk, vsh.c:944-949, disjoint from NaNToOne); glsl/vsh-prog.c and predictions/nanfix281-*.json, docs/lanes/nanfix281/** RELEASED to [free]. #281 stays open until the PR #336 arm verdict is read. PRIOR NOTE: DISPATCHED AT WAVE 216 (job.board, 2026-09-26T01:40:00Z) for #281's code half: PR #302 (lane.nanattr281) merged analysis only -- silicon clamps a NaN colour by its sign bit (-NaN -> 0, +NaN -> 1, drawn as the ordinary ramp, not culled), and we map every NaN to 1 in NaNToOne (glsl/vsh.c) plus _MUL in glsl/vsh-prog.c must yield +NaN. vsh-prog.c arrives from lane.vshr12280 (retired this wave, per the wave-194 pass-on); glsl/vsh.c was unclaimed. Brief: briefs/nanfix281.md. Reads docs/lanes/nanattr281/NOTES.md first. Do not touch the R12/oPos define (#280, landed) or vsh-ff.c (lane.wparamcode223). PASS-ON (hostops, 2026-09-26T03:35Z): when PR #336 folds, glsl/vsh.c goes to lane.pshqueue for #278's INF fogSpecial = 2.0 flag hunk (vsh.c:944-949, disjoint from NaNToOne); not lent concurrently, since #336 is in audit."
-
 [retired.sweepcover]
 issues = ["291", "292", "293", "294", "295", "296"]
 files = []
 standing = false
 retired_utc = "2026-09-26T08:45:00Z"
 note = "RETIRED (job.board wave 239): PR #298 (status column) MERGED 2026-09-26T05:35Z and PR #299 (sweep legs + unscoreable list) MERGED 2026-09-26T05:58Z, no open PR on lane/sweepcover, unit gone. #295 and #296 closed as fixed by #299. #291/#292/#294 keep fixed-part: the legs exist, the sweep that runs them is the host's. #293 waits on lane.toolsmith for dispatcher.sh and arms.sh (NOTES at docs/lanes/sweepcover/NOTES.md). scoreboard.py, collect_sweep.sh, queue_full_sweep.sh, selftest.d/88-sweep-cover.sh and docs/lanes/sweepcover/** RELEASED to [free]."
-
 [retired.goldencorr287]
 issues = []
 files = []
 standing = false
 retired_utc = "2026-09-25T23:40:00Z"
 note = "RETIRED (job.board, wave 208): PR #300 MERGED 2026-09-25T23:20:36Z (fold b07ecc56fc), unit gone, no open PR. The analysis half is done (#287 verified: ours is byte-identical to console set K, 134,902 phantom px are the golden's). The PNG + README half was granted (docs/testing/golden_overrides/**) but did not land in #300 -- the branch is deleted -- so it moves to lane.goldovr287. docs/lanes/goldencorr287/** and docs/testing/predictions/goldencorr287-*.json RELEASED."
-
 [retired.goldovr287]
 issues = ["287"]
 files = []
 standing = false
 retired_utc = "2026-09-26T02:05:00Z"
 note = "RETIRED (job.board, board tick 2026-09-26T02:05Z): PR #331 MERGED 2026-09-26T01:20:25Z (fold 169045feca, TexFmt_R6G5B5 console override), no open PR on lane/goldovr287, unit gone. Inert until lane.toolsmith defect 17 reads golden_overrides/; #287 stays open for that. docs/testing/golden_overrides/** and docs/lanes/goldovr287/** RELEASED to [free]. PRIOR NOTE: DISPATCHED AT WAVE 208 (job.board, 2026-09-25T23:40:00Z). #287 data half: commit the TexFmt_R6G5B5 override PNG (byte copy of console set K, sha256 07dedad9...) and the README provenance row that lane.goldencorr287 was granted but did not land before PR #300 folded. Inert until lane.toolsmith's defect-17 hook reads golden_overrides/ first; no score moves, no hw/ file, no device. briefs/goldovr287.md."
-
 [retired.zetaswap275]
 issues = []
 files = []
 standing = false
 retired_utc = "2026-09-25T21:15:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T21:15:00Z): PR #301 MERGED 2026-09-25T20:30:27Z (fold 248f1312c7), no open PR on lane/zetaswap275, unit gone. predictions/zetaswap275-*.json, docs/lanes/zetaswap275/** RELEASED to [free]. #275 and #272 stay open: the WIDENED plan (derive silicon's depth arithmetic from DBFF's grid, hold out Swap/ZetaIntoColor) is not started -- it needs a fresh dispatch on vsh-ff.c + psh.c, both to be claimed then. PRIOR NOTE: DISPATCHED AT WAVE 190 (job.board, 2026-09-25T20:00:00Z). #275: Color_zeta_overlap Swap, 165,447 px, console matches the golden. LOCATE-FIRST: no hw/ file claimed because every plausible file (vk/surface.c, pgraph.c, psh.c, vk/draw.c) is held by another lane; the lane names the function and asks. Must not undo #91's accepted colour-wins trade. briefs/zetaswap275.md. WIDENED (host session, 2026-09-25T20:30:10Z), accepting the lane's recommendation: #275's Swap is #272's defect (the fixed-function perspective depth transform, vsh-ff.c:884 feeding psh.c zfloor), so #272 joins this lane. Next: derive silicon's depth arithmetic from DBFF's grid, hold out Swap and ZetaIntoColor, price it offline. #275 closes into #272 when PR #301 folds."
-
 [retired.nanattr281]
 issues = ["281"]
 files = []
 standing = false
 retired_utc = "2026-09-25T21:40:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T21:40Z): PR #302 MERGED 2026-09-25T21:05:37Z (fold 215ed58e95), no open PR on lane/nanattr281, unit gone. vsh.c, predictions/nanattr281-*.json, docs/lanes/nanattr281/** RELEASED to [free]. #281 stays open: part 2 (vsh-prog.c _MUL, a NaN product -> +NaN) waits on lane.vshr12280's PR #290 folding; read docs/lanes/nanattr281/NOTES.md before re-dispatching."
-
 [retired.wparamff223]
 issues = ["223"]
 files = []
 standing = false
 retired_utc = "2026-09-25T21:40:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T21:40Z): PR #304 MERGED 2026-09-25T21:16:01Z (fold 8af1bbb18e), analysis; no open PR on lane/wparamff223, unit gone. geom.c, vsh-ff.c, predictions/wparamff223-*.json, docs/lanes/wparamff223/** RELEASED to [free]. #223 stays open: the fold names the vsh-ff.c carry hunk and recommends a geom.c degenerate-tri rule -- a code lane for those is the next #223 dispatch."
-
 [retired.spheremap273]
 issues = []
 files = []
 standing = false
 retired_utc = "2026-09-25T21:15:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T21:15:00Z): PR #305 MERGED 2026-09-25T20:56:21Z, analysis only, no open PR on lane/spheremap273, unit gone. predictions/spheremap273-*.json, docs/lanes/spheremap273/** RELEASED to [free]. #273 stays open. STANDING HOST DECISION carried over from the lane row: pgraph.c goes to the next #273 lane when lane.vshsubneg255's PR #288 folds (one file, one holder). PRIOR NOTE: DISPATCHED AT WAVE 192 (job.board, 2026-09-25T20:30Z). #273: Texgen with texture matrix, SphereMap_Arbitrary and SphereMap_RotateX draw the whole 455x289 quad wrong (262,990 px, one mechanism). LOCATE-FIRST: vsh-ff.c (the guessed area, :699) is lane.shadetie224b's; name the function and the change and ask. Brief: briefs/spheremap273.md. HOST DECISION (2026-09-25T20:30:10Z) on the 20:22Z grant request: pgraph.c comes here when lane.vshsubneg255's PR #288 folds (different function, but one file one holder). PR #305 stays analysis-only until then."
-
 [retired.x1a7271]
 issues = []
 files = []
 standing = false
 retired_utc = "2026-09-25T22:10:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T22:10:00Z): PR #306 MERGED 2026-09-25T21:35:25Z (fold fab230935e), no open PR on lane/x1a7271. predictions/x1a7271-*.json, docs/lanes/x1a7271/** RELEASED to [free]. PRIOR NOTE: DISPATCHED AT WAVE 192 (job.board, 2026-09-25T20:30Z). #271: X1A7R8G8B8 expanded 7-bit alpha not stored or read back (229,376 px recoverable, ceiling 409,382). PR #176's design (glsl/psh.c + vk/draw.c write, vk/texture.c read) fits 32/32 golden halves but all three files are held (lane.wbufdepth24 psh.c, lane.vtxarr262/remote vk/draw.c, lane.texvol283 vk/texture.c), so this lane re-derives the design against master, prices it offline, and reports the exact hunks per file; the code lands when the holders fold. Brief: briefs/x1a7271.md."
-
-[lane.titlerun]
+[retired.titlerun]
 issues = []
-files = ["docs/testing/soak_title.sh", "docs/testing/perf/pad.sh", "docs/testing/titles/**", "docs/testing/title_verdict.py", "docs/testing/jobs/selftest.d/89-title-verdict.sh", "docs/lanes/titlerun/**", "docs/testing/request.sh", "docs/testing/dispatcher.sh"]
-released = ["docs/testing/soak_title.sh", "docs/testing/perf/pad.sh", "docs/testing/titles/**", "docs/testing/title_verdict.py", "docs/testing/jobs/selftest.d/89-title-verdict.sh", "docs/lanes/titlerun/**", "docs/testing/request.sh", "docs/testing/dispatcher.sh"]
-released_at_ready = 307
+files = []
 standing = false
-note = "RELEASED AT READY (job.board wave 236): PR #307 is out of draft, CI green, unit gone (now in needs-audit-1); its files are free for the next lane. request.sh and dispatcher.sh are lane.toolsmith's and only lent to this PR: a lane that needs them merges master or lane/titlerun first. DISPATCHED AT THIS WAVE (host session, 2026-09-25T20:25:20Z), owner's 1.0 ruler: 90% of xemu's 950 Playable+ titles playable on the handhelds (Playable = >=30 fps at 1x, Playable (2x) at 2x, Perfect = human review only; ~145 titles per minor version). Scripted input routes carried in queued soaks (request.sh --route embeds the route text; dispatcher passes ROUTE_FILE), a generic route for titles without one, title_verdict.py per run, contact sheets, a per-title table; plus host defect 19 (soak_title.sh liveness reads one failed adb ps as a guest exit). LENT from lane.toolsmith for this lane's FIRST PR ONLY, limited to the lines briefs/titlerun.md names: docs/testing/request.sh, docs/testing/dispatcher.sh; they RETURN to toolsmith when that PR folds. soak_title.sh and perf/pad.sh were unlisted. Brief: briefs/titlerun.md."
-
+retired_utc = "2026-09-26T09:10:00Z"
+note = "RETIRED (job.board wave 240): PR #307 MERGED 2026-09-26T08:47:25Z, no open PR on lane/titlerun, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: RELEASED AT READY (job.board wave 236): PR #307 is out of draft, CI green, unit gone (now in needs-audit-1); its files are free for the next lane. request.sh and dispatcher.sh are lane.toolsmith's and only lent to this PR: a lane that needs them merges master or lane/titlerun first. DISPATCHED AT THIS WAVE (host session, 2026-09-25T20:25:20Z), owner's 1.0 ruler: 90% of xemu's 950 Playable+ titles playable on the handhelds (Playable = >=30 fps at 1x, Playable (2x) at 2x, Perfect = human review only; ~145 titles per minor version). Scripted input routes carried in queued soaks (request.sh --route embeds the route text; dispatcher passes ROUTE_FILE), a generic route for titles without one, title_verdict.py per run, contact sheets, a per-title table; plus host defect 19 (soak_title.sh liveness reads one failed adb ps as a guest exit). LENT from lane.toolsmith for this lane's FIRST PR ONLY, limited to the lines briefs/titlerun.md names: docs/testing/request.sh, docs/testing/dispatcher.sh; they RETURN to toolsmith when that PR folds. soak_title.sh and perf/pad.sh were unlisted. Brief: briefs/titlerun.md."
 [retired.perfbase]
 issues = ["68"]
 files = []
 standing = false
 retired_utc = "2026-09-26T02:40:00Z"
 note = "RETIRED (job.board, board tick 2026-09-26T02:40Z): PR #310 MERGED (fold bc6b93495a, pass 2 clean), no open PR on lane/perfbase, unit gone. hw/xbox/nv2a/pgraph/profile.c, docs/testing/perf/{run_perf,bench_ff,fps_target,profile_guest,loadsample}.sh, summarise.py, docs/investigations/perf-baseline-2026-09.md, docs/lanes/perfbase/** and predictions/perfbase-*.json RELEASED to [free]. #68 stays open (upstream). PRIOR NOTE: DISPATCHED AT THIS WAVE (host session, 2026-09-25T20:25:20Z): the performance baseline at master (no perf run exists after the accuracy fixes): a hakuX-pace line every 60 flips in profile.c (flip intervals at 1/2/3/4+ VBLANKs, worst stall), and fresh guest-thread profiles of Crimson Skies heavy flying, Fuzion Frenzy 4P and Galleon gameplay on the Nova (Thor after the 0.5 sweeps), two runs each. Names the top three guest-thread costs per title; answers lane.tcgchurn's question (what triggers full TLB flushes). profile.c was in [free]; the perf scripts were unlisted (tcg_pages.py stays toolsmith's, pad.sh is titlerun's). Brief: briefs/perfbase.md."
-
 [lane.perfarch]
 issues = ["68"]
 files = ["tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "android/app/build.gradle.kts", "android/app/src/main/cpp/CMakeLists.txt"]
 standing = false
 note = "DISPATCHED AT THIS WAVE (host session, 2026-09-25T20:25:20Z), the owner's pitch: an engineering-persona lane (principal performance engineer) that designs hakuX for the Snapdragon 8 Gen 2 / Adreno 740 and makes the Xbox's CPU/GPU concurrency a strength rather than a defect source: x86 TSO via RCpc (LDAPR/STLR) or ordering at MMIO doorbells instead of today's elide-everything (tcg_gen_mb under XBOX; full DMBs cost +34%), CTR_EL0 DIC/IDC cache maintenance, AArch64 codegen, big.LITTLE placement and thermals, Adreno/Turnip tiling and CPU-side draw cost, 'speculate then validate' run-ahead. Deliverables: docs/investigations/perf-architecture.md (ranked, evidence-graded) and flagged prototypes with arms. tcg/** and util/cacheflush.c were unlisted. Brief: briefs/perfarch.md. GRANTED (host session, 2026-09-25T21:03:27Z, owner-delegated) on the lane's #68 request: android/app/build.gradle.kts and android/app/src/main/cpp/CMakeLists.txt (both unlisted) for three measured build changes ONLY: minSdk 26 -> 29 (native TLS; drops Android 8/9, which no hakuX-capable Snapdragon still ships), -march=armv8.2-a (inline LSE atomics), -fvisibility=hidden. Each change is A/B'd separately. The PR touches android/, so it needs audit. The files return to [free] when that PR folds; lane.turnipfork will want CMakeLists.txt later to bundle a driver."
-
 [retired.tcgchurn]
 issues = ["68"]
 files = []
@@ -1059,13 +963,11 @@ standing = false
 retired_utc = "2026-09-26T03:00:00Z"
 note = "RETIRED (job.board, board tick 2026-09-26T03:00Z): PR #309 MERGED 2026-09-26T02:40:27Z (fold ab39609a2d, pass 2 clean), no open PR on lane/tcgchurn, unit gone. accel/tcg/{cputlb,tb-maint,translate-all,cpu-exec}.c, target/i386/helper.c, target/i386/tcg/**, docs/lanes/tcgchurn/** and predictions/tcgchurn-*.json RELEASED to [free]. #68 stays open (lane.perfarch also holds it; the fix arm is that lane's or a follow-up). PRIOR NOTE: DISPATCHED AT THIS WAVE (host session, 2026-09-25T20:25:20Z) for #68 (and #73): ~35-40% of the guest thread is translation-cache bookkeeping in the 09-11 Crimson profile (tlb_reset_dirty 10.7%, tcg_flush_jmp_cache 8.4%, lookups ~11%). Counters first (full-TLB-flush triggers by cause; tlb_reset_dirty callers and walk lengths), mechanism per trigger, then a fix with a soak arm. accel/tcg/*.c were in [free]; target/i386/helper.c and target/i386/tcg/** sit under the [free] glob target/**. #68's held range test 937848c9e7 is a candidate. Brief: briefs/tcgchurn.md."
 
-
 [lane.fmv303]
 issues = ["303"]
 files = ["hw/xbox/nv2a/pgraph/vk/display.c", "docs/testing/predictions/fmv303-*.json", "docs/lanes/fmv303/**"]
 standing = false
 note = "STARTED at wave 197 (job.board, 2026-09-25T20:56Z; the wave-195 start had hit an approval prompt, no attempt was spent). DISPATCHED WAVE 195 (job.board), briefs/fmv303.md: #303, Spikeout's FMV covered in green columns (Y=U=V=0 through the YUV path, pattern differs per pass -> suspect a missed write/dirty before sample, family of #262/#184). vk/display.c is free; vk/texture.c, gl/texture.c, pgraph/texture.c are lane.texvol283's and are named-not-edited."
-
 
 [retired.ghoul311]
 issues = ["311"]
@@ -1074,13 +976,11 @@ standing = false
 retired_utc = "2026-09-26T00:45:00Z"
 note = "RETIRED (job.board, wave 214): PR #316 MERGED 2026-09-26T00:30:30Z (fold dd6e2d095b), diagnosis, no open PR on lane/ghoul311, unit gone. Culprit 21cacb354a (surface-watch leak); the fix arm is lane.fix311's (PR #334). predictions/ghoul311-*.json and docs/lanes/ghoul311/** RELEASED. #311 stays open (0.5 release blocker) under lane.fix311."
 
-
 [retired.turnipfork]
 issues = ["68"]
 files = []
 retired_utc = "2026-09-26T00:35:00Z"
 note = "RETIRED (job.board, wave 213): PR #318 MERGED 2026-09-26T00:01:03Z (fold ab1b915a9c), unit gone, no open PR on lane/turnipfork. Gate 0 report delivered (docs/investigations/adreno-driver-feasibility.md, posted on #68); tools/turnip/build.sh builds; the Gate 1 control run needs a driver swap a lane cannot make. #68 stays upstream. Files RELEASED."
-
 [retired.wparamcode223]
 issues = []
 files = []
@@ -1088,33 +988,28 @@ standing = false
 retired_utc = "2026-09-26T05:40:00Z"
 note = "RETIRED (job.board, board tick 2026-09-26T05:40:00Z): PR #321 MERGED (fold 4bc77c3171: #223 hunk A vsh-ff.c position tail + hunk B geom.c zero-area wedge), labelled folded, no open PR on lane/wparamcode223. vsh-ff.c passes to lane.zrtz272 (queue recorded 2026-09-25T22:15Z); geom.c RELEASED to [free]. #223's residual stays with the tracker row."
 
-
 [retired.fix311]
 issues = ["311"]
 files = []
 standing = false
 retired_utc = "2026-09-26T02:25:00Z"
 note = "RETIRED (job.board, wave 218): PR #334 MERGED 2026-09-26T01:55:28Z (fold c0abc2b1e6), unit gone, no open PR on lane/fix311. update_surface_part now unregisters the reused slot's access watch; Ghoulies holds 29 gfps on both handhelds (2 on the base). #311 CLOSED on GitHub, tracker row fixed-verified. vk/surface.c, predictions/fix311-*.json and docs/lanes/fix311/** RELEASED."
-
 [retired.dmasurf277]
 issues = ["277"]
 files = []
 standing = false
 retired_utc = "2026-09-26T02:05:00Z"
 note = "RETIRED (job.board, board tick 2026-09-26T02:05Z): PR #325 MERGED 2026-09-26T01:35:24Z (fold e2f617ed99, physmem.c address_space_map hunk + arm), no open PR on lane/dmasurf277, unit gone. Arm verdict follows the fold; #277 stays open until it posts. docs/testing/predictions/dmasurf277-*.json and docs/lanes/dmasurf277/** RELEASED to [free]. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 203 (job.board, 2026-09-25T21:50Z) for #277: xemuReadFromFileIntoSurface, 90,912 px, a file read into a bound surface keeps the old colour. LOCATE-FIRST: the issue's guess vk/surface.c:3406-3422 is lane.remote's; vk/draw.c is lane.vtxarr262's; the lane names the hunk and asks. Read #262/#184 NOTES first (same family). Brief: briefs/dmasurf277.md."
-
 [retired.g8b8285]
 issues = ["285"]
 files = []
 retired_utc = "2026-09-26T00:35:00Z"
 note = "RETIRED (job.board, wave 213): PR #324 MERGED 2026-09-26T00:01:03Z (fold 21b8c6a80e), unit gone, no open PR on lane/g8b8285. Analysis plus a named hunk (docs/lanes/g8b8285/g8b8-bswap.diff: uniform-gated fragColor.rb = fragColor.br at the end of psh_convert, plus one DECL in psh.h). #285 stays open, a live defect; the code waits on psh.c/psh.h (queued in briefs/pshqueue.md). No file held."
-
 [retired.brdf315]
 issues = ["315"]
 files = []
 retired_utc = "2026-09-26T00:35:00Z"
 note = "RETIRED (job.board, wave 213): PR #326 MERGED 2026-09-26T00:10:26Z (fold f1a9634729), unit gone, no open PR on lane/brdf315. Analysis plus a named hunk (docs/lanes/brdf315/brdf315-psh.diff: BRDF case in get_sampler_type, dots_needed 0, texture(texSamp2, vec3(t0.r, t1.r, fract(t1.g - t0.g))); fits 605/610 px). #315 stays open; the code waits on psh.c (queued in briefs/pshqueue.md). No file held."
-
 [lane.aasample]
 issues = ["286"]
 files = ["hw/xbox/nv2a/pgraph/pgraph.h", "hw/xbox/nv2a/pgraph/vk/draw.c", "docs/testing/predictions/aasample-*.json", "docs/lanes/aasample/**"]
@@ -1122,51 +1017,36 @@ released = ["hw/xbox/nv2a/pgraph/pgraph.h", "hw/xbox/nv2a/pgraph/vk/draw.c", "do
 released_at_ready = 366
 standing = false
 note = "RELEASED AT READY (job.board wave 237, 2026-09-26): PR #366 is out of draft, CI green, unit gone (needs-audit-1); files stay listed for audit and fold, and are free for the next lane. lane.remote takes vk/draw.c for #274 GPUAA next; its brief names PR #366 and says merge master (or lane/aasample) and re-run its arm before marking ready. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 210 (job.board, 2026-09-25T23:55:00Z) for #286's class A (PR #328 folded, docs/lanes/cloud-286/NOTES.md sec 3): our AA-surface path is not transparent -- silicon's CENTER_CORNER_2 is byte-identical to a non-AA draw on the 48 inert captures, ours moves 517,872 px; pgraph_apply_anti_aliasing_factor (pgraph.h:572) is width*=2 and nothing else. ~242k px net recoverable (Quads loses 17.8k). LOCATE-FIRST for the consumers: vk/draw.c is lane.vtxarr262's (PR #264) and vk/surface.c is [free] but ungranted; the lane names the hunks and asks. Reads #282's NOTES for the tie rule. WAVE 223 (job.board, 2026-09-26T03:40Z): + hw/xbox/nv2a/pgraph/vk/draw.c GRANTED -- PR #264 folded (72e479ec59) and released it. Apply draw-c-viewport.patch on a fresh branch off master, register the NOTES s4 arm first, then build; lane.remote takes draw.c after this fold (#274 GPUAA). Brief: briefs/aasample.md."
-
 [retired.blankrule297]
 issues = []
 files = []
 standing = false
 retired_utc = "2026-09-26T06:10:00Z"
 note = "RETIRED (job.board, board tick 2026-09-26T06:10Z): PR #335 MERGED 2026-09-26T06:03:43Z (score_sweep.is_blank now also requires >=1% lost ink; 13 #297 rows read ok), no open PR on lane/blankrule297. docs/testing/score_sweep.py RETURNS to lane.toolsmith (its files line); selftest.d/83-blank-rule.sh and docs/lanes/blankrule297/** RELEASED. #297 closed. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 215 (job.board, 2026-09-26T01:00:00Z) for #297's scorer half: lane.cloud-297 (PR #313, folded) named every owner (DBFF z24 edges -> #272, Texture_BRDF -> #315) and measured the replacement `blank` rule over all 19 captures ever tagged blank (15 false positives <=0.33% ink lost, 4 real blanks 21-50%), and delivered it to lane.toolsmith, which has no running session and no open PR on score_sweep.py. score_sweep.py GRANTED out of lane.toolsmith's row for this lane; it returns when this lane retires. briefs/blankrule297.md."
-
 [retired.pshqueue]
 issues = ["278", "279", "285", "315"]
 files = []
 standing = false
 retired_utc = "2026-09-26T07:30:00Z"
 note = "RETIRED (job.board wave 236): PR #347 MERGED 2026-09-26T07:00:29Z (fold 6550967a5e, audit 2 clean), no open PR on lane/pshqueue, unit gone. #279 (DotZW 65,536 -> 165, +-1 depth word) and #285 (Fmt_G8B8 32,552 -> 0, Fmt_B8 16,144 -> 0) LANDED; #315 refuted by its arm and reverted (stays open). glsl/psh.h, predictions/pshqueue-*.json, docs/lanes/pshqueue/** RELEASED to [free]; glsl/psh.c passes to lane.fog278 for #278; vk/texture.c RELEASED to [free] (owed to lane.remote for PR #343 LOW-1/2 once #271 lands; cloud-271 is analysis only). PRIOR NOTE: RELEASED AT READY (job.board wave 235, 2026-09-26): PR #347 is out of draft, CI green on d0bd15f56d, unit gone, and fold-ready (audit 2 passed); psh.c, psh.h and vk/texture.c are free for the next lane -- a brief on them names PR #347 and says: merge master (or lane/pshqueue if #347 has not folded) and re-run the arm before marking ready. lane.cullnf276 and lane.y16bump10 already edit psh.c under the lend below. #271 (vk/texture.c) and #278 (needs vsh.c from PR #336) still queue behind this row's own work. DISPATCHED AT WAVE 222 (job.board, 2026-09-26T03:30Z). Four already-written glsl/psh.c hunks, one commit and one arm each: #278 fog INF (85k px), #279 DOT_ZW (65k), #285 G8B8 (32k), #315 BRDF (1.8k); #271's read side is skipped while vk/texture.c is lane.remote's. glsl/psh.c is LENT, not transferred: it stays lane.wbufdepth24's for its D24 write (case DEPTH_FORMAT_D24, ~:3698, PR #268, arm PASS 530/530, marked ready this tick); pshqueue's hunks are disjoint from it (~:1891, the DOT_ZW case, get_sampler_type), the wave-200 lend to texvol283 precedent. Granted with it: glsl/psh.h (free since texvol283 folded). psh.c is not on the Files line because check_territory allows one holder per file; the lend is this note. Brief: briefs/pshqueue.md. (hostops, 2026-09-26T03:35Z): psh.h dropped from [free] (it was granted here). #278 decision: glsl/vsh.c passes to this lane when PR #336 (lane.nanfix281) folds; #278 lands both halves (psh.c exemption + vsh.c flag) as one commit then. Not routed to nanfix281, whose PR is already in audit. #271 still waits for vk/texture.c. TICK 2026-09-26T05:20Z (job.board): [job.arms] VERDICT for #315 (pshqueue-315-brdf.json) is FAIL -- 1 of 30 checks violated; #279 and #285 PASS. PR #347 is `regressed` + `blocked:needs-owner` (handback DRAFT_STRAND_MAX spent while the lane waited on the arm; those resumes did not spend attempts). The lane's own stated plan for a FAIL stands: revert e3b13f5b45 in a new commit, record the Texture_BRDF figures, mark ready -- so the lane is resumed with the verdict (brief addendum), not escalated. #278 still waits for PR #336. HOSTOPS 2026-09-26T06:35Z: + hw/xbox/nv2a/pgraph/vk/texture.c for #271 (PASS-ON from lane.remote on PR #343's fold, 06:22Z). Owe it back to lane.remote for #343's LOW-1/2 follow-up when #271 lands."
-
-[retired.boardprio]
-issues = []
+[retired.cullnf276]
+issues = ["276"]
 files = []
 standing = false
-retired_utc = "2026-09-26T05:10:00Z"
-note = "RETIRED (job.board, board tick 2026-09-26T05:10:00Z): PR #270 MERGED 2026-09-26T04:30:55Z (fold a97c049f2e), no open PR on lane/boardprio. RELEASED TO [free]: docs/testing/jobs/board.sh, roles/board.md, selftest.d/97-board-priority.sh and docs/lanes/boardprio/**. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 186 (host session, 2026-09-25 12:20 PDT) on the owner's request: dispatch by expected improvement. board_filter sorts startable issues by the tracker's game_visible, then impact_px + impact_onestep_px//4, then oldest; roles/board.md says take them in listed order and keep the impact fields current. Brief: briefs/boardprio.md."
-
-
-[lane.cullnf276]
-issues = ["276"]
-files = ["hw/xbox/nv2a/pgraph/pgraph.c", "hw/xbox/nv2a/nv2a_regs.h", "docs/testing/predictions/cullnf276-*.json", "docs/lanes/cullnf276/**"]
-standing = false
-released = ["hw/xbox/nv2a/pgraph/pgraph.c", "hw/xbox/nv2a/nv2a_regs.h", "docs/testing/predictions/cullnf276-*.json", "docs/lanes/cullnf276/**"]
-released_at_ready = 368
-note = "BRIEFED AT WAVE 232 (job.board, 2026-09-26T06:15Z), STARTED BY THE HOST (draft PR #368) for #276's code half: lane.zclamp276 (PR #323, analysis) found CULL_NEAR_FAR_EN (bit 0 of SET_ZMIN_MAX_CONTROL) dropped by pgraph.c and priced the hunk (docs/lanes/zclamp276/nearfar_cull.diff, 143,673 px beyond one step -> 0). pgraph.c came free when lane.sphere273fix retired this wave; nv2a_regs.h was free. glsl/psh.h (one field) and glsl/psh.c (state capture ~:309, clip block ~:2553) are LENT from lane.pshqueue, disjoint from its fog/DOT_ZW/G8B8/BRDF hunks (the wave-200 and wave-222 lend precedent); they stay on pshqueue's row. Brief: briefs/cullnf276.md."
-
-[lane.blinx372]
+retired_utc = "2026-09-26T09:10:00Z"
+note = "RETIRED (job.board wave 240): PR #368 MERGED 2026-09-26T08:45:37Z, no open PR on lane/cullnf276, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: BRIEFED AT WAVE 232 (job.board, 2026-09-26T06:15Z), STARTED BY THE HOST (draft PR #368) for #276's code half: lane.zclamp276 (PR #323, analysis) found CULL_NEAR_FAR_EN (bit 0 of SET_ZMIN_MAX_CONTROL) dropped by pgraph.c and priced the hunk (docs/lanes/zclamp276/nearfar_cull.diff, 143,673 px beyond one step -> 0). pgraph.c came free when lane.sphere273fix retired this wave; nv2a_regs.h was free. glsl/psh.h (one field) and glsl/psh.c (state capture ~:309, clip block ~:2553) are LENT from lane.pshqueue, disjoint from its fog/DOT_ZW/G8B8/BRDF hunks (the wave-200 and wave-222 lend precedent); they stay on pshqueue's row. Brief: briefs/cullnf276.md."
+[retired.blinx372]
 issues = ["372"]
-files = ["docs/lanes/blinx372/**", "docs/investigations/perf-blinx-372.md", "docs/testing/predictions/blinx372-*.json"]
+files = []
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 237 (job.board, 2026-09-26): #372, Blinx: The Time Sweeper ~16 fps in the in-engine attract demo on the Thor (run 0-0-y-1790405024-titlebench-2). Measure and locate first: reproduce twice, profile the slow window (guest CPU vs GPU vs a wait), post the split on #372; any source hunk is named and board-requested, none is granted. Reads titlerun's released scripts (soak_title.sh, request.sh, dispatcher.sh, pad.sh) and edits none of them. Brief: briefs/blinx372.md."
-
-[lane.brdf315b]
+retired_utc = "2026-09-26T09:10:00Z"
+note = "RETIRED (job.board wave 240): PR #374 MERGED 2026-09-26T08:55:38Z, no open PR on lane/blinx372, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 237 (job.board, 2026-09-26): #372, Blinx: The Time Sweeper ~16 fps in the in-engine attract demo on the Thor (run 0-0-y-1790405024-titlebench-2). Measure and locate first: reproduce twice, profile the slow window (guest CPU vs GPU vs a wait), post the split on #372; any source hunk is named and board-requested, none is granted. Reads titlerun's released scripts (soak_title.sh, request.sh, dispatcher.sh, pad.sh) and edits none of them. Brief: briefs/blinx372.md."
+[retired.brdf315b]
 issues = ["315"]
-files = ["docs/lanes/brdf315b/**", "docs/testing/predictions/brdf315b-*.json"]
+files = []
 standing = false
-released = ["docs/lanes/brdf315b/**", "docs/testing/predictions/brdf315b-*.json"]
-released_at_ready = 375
-note = "DISPATCHED AT TERRITORY WAVE 237 (job.board, 2026-09-26): #315 second pass. lane.brdf315's BRDF rule fitted 605/610 px offline (PR #326) but the hunk was arm-refuted in PR #347 (614 -> 614 x3, moved not toward the golden). This lane finds which assumption in the fit the emitted shader breaks: per-pixel diff of the arm's capture, then the corrected rule or 'coincidence'. glsl/psh.c is NOT granted (lane.fog278 holds it, lent to lane.y16bump10); a hunk is a patch and a board-request. Brief: briefs/brdf315b.md."
-
+retired_utc = "2026-09-26T09:10:00Z"
+note = "RETIRED (job.board wave 240): PR #375 MERGED 2026-09-26T08:00:27Z, no open PR on lane/brdf315b, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 237 (job.board, 2026-09-26): #315 second pass. lane.brdf315's BRDF rule fitted 605/610 px offline (PR #326) but the hunk was arm-refuted in PR #347 (614 -> 614 x3, moved not toward the golden). This lane finds which assumption in the fit the emitted shader breaks: per-pixel diff of the arm's capture, then the corrected rule or 'coincidence'. glsl/psh.c is NOT granted (lane.fog278 holds it, lent to lane.y16bump10); a hunk is a patch and a board-request. Brief: briefs/brdf315b.md."
 [lane.y16bump10]
 issues = ["10"]
 files = ["docs/testing/predictions/y16bump10-*.json", "docs/lanes/y16bump10/**"]
@@ -1174,7 +1054,6 @@ released = ["docs/testing/predictions/y16bump10-*.json", "docs/lanes/y16bump10/*
 released_at_ready = 367
 standing = false
 note = "RELEASED AT READY (hostops 2026-09-26T08:22Z): PR #367 is out of draft, CI green, MERGEABLE; labelled needs-audit-1 (touches glsl/psh.c). Files stay listed for audit and fold. BRIEFED AT WAVE 232 (job.board, 2026-09-26T06:15Z), STARTED BY THE HOST (draft PR #367) for #10's Y16 class, on lane.xbox's silicon measurements (PR #359 low byte feeds an offset; PR #363 the HORIZONTAL offset reads the low byte, the vertical offset shows no sweep). glsl/psh.c is LENT from lane.pshqueue for the Y16 bump read only (append_bump_channel, ~:1725-1830), disjoint from its fog/DOT_ZW/G8B8/BRDF hunks; it stays on pshqueue's row. YUV and Y8/AY8/A8Y8 have no mechanism and are not touched. Brief: briefs/y16bump10.md."
-
 
 [lane.vkpointsize34]
 issues = ["34"]
@@ -1184,7 +1063,6 @@ released_at_ready = 371
 standing = false
 note = "RELEASED AT READY (hostops, 2026-09-26T08:30Z): PR #371 out of draft, CI green, arms PASS 78/78 byte-identical, unit gone; all six files free for the next lane (lane.remote's deferred #343 LOW-1/2 needs vk/shaders.c). PRIOR: GRANTED (hostops, 2026-09-26T07:10Z) on the lane's #371 ask (06:56Z): + hw/xbox/nv2a/pgraph/vk/shaders.c (from [free]; set no_point_size in shader_binding_build_module_keys) and hw/xbox/nv2a/pgraph/vk/renderer.c (unclaimed; SHADER_STATE_LAYOUT_VERSION 2 -> 3 so persisted GS keys regenerate). vk/instance.c RELEASED to [free] at the lane's word. lane.remote's deferred #343 LOW-1/2 (needs vk/shaders.c) waits for this row to release it. PRIOR: BRIEFED AT WAVE 233, NOT STARTED (job.board, 2026-09-26T06:40Z; `lane.sh start` needs approval the non-interactive board session cannot get -- the HOST runs `docs/testing/lane.sh start vkpointsize34 briefs/vkpointsize34.md 34`; the row holds its files meanwhile) for #34's one Adreno VUID (pCode-08740, GeometryPointSize without shaderTessellationAndGeometryPointSize): gate the three gl_PointSize writes in glsl/geom.c on the enabled feature. geom.c and vk/instance.c came free when lane.wparamclip223 (PR #250) folded. Findings 1-4 of the issue body are not in this lane. Brief: briefs/vkpointsize34.md."
 
-
 [lane.fog278]
 issues = ["278"]
 files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "docs/testing/predictions/fog278-*.json", "docs/lanes/fog278/**"]
@@ -1192,27 +1070,21 @@ released = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/vsh.c", 
 released_at_ready = 373
 standing = false
 note = "RELEASED AT READY (job.board wave 239, 2026-09-26T08:45Z): PR #373 is out of draft, CI green on its head (Android, Desktop build, NV2A index), MERGEABLE, arm verified, unit gone; labelled needs-audit-1 (touches hw/). psh.c and vsh.c are free for the next lane, whose brief names PR #373 and says to merge master (or lane/fog278 if unfolded) and re-run its arm before marking ready. PRIOR: DISPATCH ATTEMPTED AT WAVE 236 (job.board, 2026-09-26T07:30Z) for #278's code half: INF fog coordinate, exp and exp2 come out opposite to silicon (85,268 px, 16 captures). The hunk is named in docs/lanes/cloud-278/NOTES.md (vsh.c:944-949 fogSpecial = 2.0 for INF, psh.c:1905-1912 exemption); PR #319 analysis folded, PR #347 (pshqueue) and #336 (nanfix281) both folded, so psh.c and vsh.c are free. glsl/psh.c is LENT alongside lane.cullnf276 and lane.y16bump10 (their hunks are elsewhere in the file: fog278's is append_fog_factor ~:1905). Brief: briefs/fog278.md."
-
-[lane.tie282c]
+[retired.tie282c]
 issues = ["282"]
-files = ["docs/lanes/tie282c/**"]
-released = ["docs/lanes/tie282c/**"]
-released_at_ready = 376
+files = []
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 238 (job.board, 2026-09-26): #282 local, desktop-only analysis (the cloud outlet had not claimed the cloud-labelled issue; label removed on dispatch). BRIEF briefs/tie282c.md: row-240 binade test on a second geometry, docs/lanes/tie282c/** only."
-
-[lane.vol283r]
+retired_utc = "2026-09-26T09:10:00Z"
+note = "RETIRED (job.board wave 240): PR #376 MERGED 2026-09-26T08:25:25Z, no open PR on lane/tie282c, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 238 (job.board, 2026-09-26): #282 local, desktop-only analysis (the cloud outlet had not claimed the cloud-labelled issue; label removed on dispatch). BRIEF briefs/tie282c.md: row-240 binade test on a second geometry, docs/lanes/tie282c/** only."
+[retired.vol283r]
 issues = ["283"]
-files = ["docs/lanes/vol283r/**"]
-released = ["docs/lanes/vol283r/**"]
-released_at_ready = 378
+files = []
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 238 (job.board, 2026-09-26): #283 local, desktop-only analysis (the cloud outlet had not claimed the cloud-labelled issue; label removed on dispatch). BRIEF briefs/vol283r.md: which of three readings the Y16/R16B16 low-byte residual is, docs/lanes/vol283r/** only."
-
-[lane.regs200]
+retired_utc = "2026-09-26T09:10:00Z"
+note = "RETIRED (job.board wave 240): PR #378 MERGED 2026-09-26T08:27:10Z, no open PR on lane/vol283r, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 238 (job.board, 2026-09-26): #283 local, desktop-only analysis (the cloud outlet had not claimed the cloud-labelled issue; label removed on dispatch). BRIEF briefs/vol283r.md: which of three readings the Y16/R16B16 low-byte residual is, docs/lanes/vol283r/** only."
+[retired.regs200]
 issues = ["200"]
-files = ["docs/lanes/regs200/**"]
-released = ["docs/lanes/regs200/**"]
-released_at_ready = 377
+files = []
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 238 (job.board, 2026-09-26): #200 local, desktop-only analysis (the cloud outlet had not claimed the cloud-labelled issue; label removed on dispatch). BRIEF briefs/regs200.md: per-register table of unnamed bits and which the renderer reads, docs/lanes/regs200/** only; hw/ hunks named, not edited."
+retired_utc = "2026-09-26T09:10:00Z"
+note = "RETIRED (job.board wave 240): PR #377 MERGED 2026-09-26T08:26:18Z, no open PR on lane/regs200, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 238 (job.board, 2026-09-26): #200 local, desktop-only analysis (the cloud outlet had not claimed the cloud-labelled issue; label removed on dispatch). BRIEF briefs/regs200.md: per-register table of unnamed bits and which the renderer reads, docs/lanes/regs200/** only; hw/ hunks named, not edited."
