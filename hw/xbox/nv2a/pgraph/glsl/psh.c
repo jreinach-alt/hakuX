@@ -1878,7 +1878,8 @@ static bool append_bump_coords(const struct PixelShader *ps, MString *vars, int 
  *
  * An infinite or NaN coordinate (flagged by the vertex shader, since the
  * value itself cannot be interpolated) and a NaN factor take a fixed
- * result: 1 for linear, linear_abs and exp, 0 for the rest.
+ * result: 1 for linear, linear_abs and exp, 0 for the rest -- except an
+ * infinite coordinate at m = 0 in the exp modes, which is 0 (#278, below).
  *
  * The factor reaches the combiner as eight bits, and the hardware truncates
  * rather than rounds: with the linear sweeps' diffuse of (0, 0, 1) and fog
@@ -1931,15 +1932,27 @@ static void append_fog_factor(const struct PixelShader *ps, MString *vars,
         break;
     }
 
+    /*
+     * #278: in the exp modes an infinite coordinate (vtxFogSpecial 2.0) with a
+     * zero multiplier is not special: the hardware forms 0 * INF = 0 and runs
+     * the ordinary formula on x = bias - 1.5. fogCoord is already 0 there,
+     * because the vertex shader zeroes a flagged coordinate. Linear keeps the
+     * special value even at m = 0 (the Fog exceptional value goldens).
+     */
+    bool exp_mode = ps->state->fog_mode != FOG_MODE_LINEAR &&
+                    ps->state->fog_mode != FOG_MODE_LINEAR_ABS;
     mstring_append_fmt(vars,
                        "float fogCoord = vtxFog%s;\n"
                        "float fogX = fogParam.x + fogCoord * fogParam.y - 1.5;\n"
                        "float fogFactor = %s;\n"
-                       "if (vtxFogSpecial > 0.5 || isnan(fogFactor)) {\n"
+                       "if ((vtxFogSpecial > 0.5%s) || isnan(fogFactor)) {\n"
                        "  fogFactor = %s;\n"
                        "}\n"
                        "fogFactor = clamp(fogFactor, 0.0, 1.0);\n",
-                       lin, factor, special);
+                       lin, factor,
+                       exp_mode ? " && !(vtxFogSpecial > 1.5 && fogParam.y == 0.0)"
+                                : "",
+                       special);
     if (ps->state->fog_mode == FOG_MODE_LINEAR ||
         ps->state->fog_mode == FOG_MODE_LINEAR_ABS) {
         mstring_append(vars,

@@ -32,6 +32,8 @@ typedef struct {
     bool smooth_shading;
     bool z_perspective;
     bool noperspective; /* SET_CONTROL0 texture perspective off */
+    /* pgraph_anti_aliasing_sample_offset_x(), guest px; Vulkan only */
+    float aa_offset_x;
     /* NV_PGRAPH_TEXADDRESSn cylinder-wrap bits per stage: 1 U, 2 V, 4 P, 8 Q */
     uint8_t cylinder_wrap[4];
 } GeomState;
@@ -39,6 +41,10 @@ typedef struct {
 typedef struct GenGeomGlslOptions {
     bool vulkan;
     bool gles;
+    /* Vulkan without shaderTessellationAndGeometryPointSize: the GS must not
+     * write gl_PointSize (VUID-VkShaderModuleCreateInfo-pCode-08740, #34).
+     * Zero keeps the write, so GL and a zeroed key are unchanged. */
+    bool no_point_size;
     int gles_version;
 } GenGeomGlslOptions;
 

@@ -828,6 +828,9 @@ static void shader_binding_build_module_keys(
         geom_key->kind = VK_SHADER_STAGE_GEOMETRY_BIT;
         geom_key->geom.state = binding->state.geom;
         geom_key->geom.glsl_opts.vulkan = true;
+        geom_key->geom.glsl_opts.no_point_size =
+            r->enabled_physical_device_features
+                .shaderTessellationAndGeometryPointSize != VK_TRUE;
     }
 
     memset(vsh_key, 0, sizeof(*vsh_key));
