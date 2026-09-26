@@ -1369,7 +1369,14 @@ PYEOF
 # before it aborts. All three are emitted only on the way down, so they cost
 # nothing on a run that does not crash. hakuX-vk:I is one line, the app's own
 # "Cache identity mismatch: wiping" -- whether this run started cold.
-LOGCAT_SPEC="${LOGCAT_SPEC_OVERRIDE:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-lane:I hakuX-tier1:D hakuX-pages:I hakuX:I hakuX-rw:I hakuX-stderr:E hakuX-vk:I hakuX-route:I hakuX-pace:I libc:F DEBUG:F VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
+#
+# hakuX-stall, hakuX-rpbrk, hakuX-cpu, xemu-gpu and xemu-sfp ADDED 2026-09-26
+# for #372. All five are NV2A_PERF_LOG lines (a -Pperflog=true build), one per
+# 60 guest frames, so a normal apk logs none of them. The #372 perflog soak
+# measured `Sd2` finishes per frame on `xemu-work` but could not say which
+# surface-download site fired: that split is on `hakuX-stall` (sd[...],
+# dlSrc[...], dif[...]), and GPU time per frame is on `xemu-gpu`.
+LOGCAT_SPEC="${LOGCAT_SPEC_OVERRIDE:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-lane:I hakuX-tier1:D hakuX-pages:I hakuX:I hakuX-rw:I hakuX-stderr:E hakuX-vk:I hakuX-route:I hakuX-pace:I hakuX-stall:I hakuX-rpbrk:I hakuX-cpu:I xemu-gpu:I xemu-sfp:I libc:F DEBUG:F VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
 export LOGCAT_SPEC
 
 case "${1:-status}" in
