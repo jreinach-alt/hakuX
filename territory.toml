@@ -379,6 +379,7 @@ retired_utc = "2026-09-26T20:15:00Z"
 note = "RETIRED (hostops 2026-09-26 13:15 PDT): PR #415 MERGED, no open PR on lane/foldcancel, unit gone. Files RELEASED to [free] (fold.sh, selftest.d/74-fold-multi.sh, docs/lanes/foldcancel/NOTES.md)."
 
 [free]
+# RELEASED (hostops 2026-09-26T23:10Z) by retiring lane.pri432 (PR #438 folded c9331a68bc): jobs/board.sh, jobs/status.sh, jobs/status_html.py, selftest.d/97-board-priority.sh, jobs/roles/board.md, its lane dir.
 # RELEASED (job.board wave 264) by retiring lane.doa413 (PR #417), lane.cull13 (PR #403), lane.vshcpu345 (PR #402): every file each row held except CMakeLists.txt, which lane.buildflags427 holds.
 # RELEASED (hostops 2026-09-26T19:35Z) by retiring lane.titleplay (PR #399 merged, pass 1 stopped by the owner): docs/testing/titles/routes/**, docs/testing/titles/targets.toml, docs/testing/title_verdict.py, docs/testing/titles/table.py, docs/lanes/titleplay/**
 # RELEASED (hostops 2026-09-26T18:20Z) by retiring lane.armsscope (PR #409 merged): selftest.d/94-arms-verdict-scope.sh, docs/lanes/armsscope/NOTES.md; arms.sh returned to lane.toolsmith.
@@ -1257,12 +1258,6 @@ files = ["android/app/src/main/cpp/xemu_android.cpp", "docs/testing/predictions/
 standing = false
 note = "STARTED (job.board 2026-09-26T20:25Z), briefs/vcpuprime428.md: #428, 0.5 release perf workstream (#433). Measure on #397 gameplay windows, pgraph suites as the regression gate."
 
-
-[lane.pri432]
-issues = ["432"]
-files = ["docs/testing/jobs/board.sh", "docs/testing/jobs/status.sh", "docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/97-board-priority.sh", "docs/testing/jobs/roles/board.md", "docs/lanes/pri432/**"]
-standing = false
-note = "STARTED (job.board 2026-09-26T20:50Z), briefs/pri432.md: #432 harness for 0.5 (tracking #433): 0.5 issues first in the dispatch order, a 0.5 status panel; queue priority in request.sh is lane.pilotgate's, so the lane writes it up instead of editing it. No device, no hw/."
 
 [lane.doa413b]
 issues = ["413"]
