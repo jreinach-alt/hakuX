@@ -1060,6 +1060,21 @@ static void opt_stats_log_and_reset(void)
                 g_opt_stats.tex_zero_reupload);
         }
         {
+            /*
+             * On hakuX-stall rather than a tag of its own, because the
+             * dispatcher's logcat spec is an allow-list that silences every
+             * tag it does not name. Keep "evict[" out of the format: readers
+             * of this tag take that for the surface-eviction line above.
+             */
+            Lru *plc = &g_nv2a->pgraph.vk_renderer_state->pipeline_cache;
+            __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
+                "pipe[ev%d pend%d rec%d used%d/%d]",
+                g_opt_stats.pipe_evict,
+                g_opt_stats.pipe_evict_pending,
+                g_opt_stats.pipe_evict_recording,
+                plc->num_used, plc->num_used + plc->num_free);
+        }
+        {
             extern struct FPUProfileCounters {
                 int x87_arith, x87_load_store, x87_transcendental, x87_stack;
                 int sse_arith_packed, sse_arith_scalar, sse_cmp, sse_cvt, sse_other;
@@ -1253,6 +1268,48 @@ static VkPrimitiveTopology get_primitive_topology(PGRAPHState *pg)
     }
 }
 
+#if NV2A_PERF_LOG
+/*
+ * Count evictions of a pipeline the GPU may still be executing, before
+ * fixing anything (#426). vkDestroyPipeline requires every submitted command
+ * buffer that uses the pipeline to have completed. pipeline_cache_pre_evict()
+ * protects only the command buffer being recorded, and a flip or a present is
+ * submitted without waiting for its fence, so up to NUM_SUBMIT_FRAMES - 1
+ * earlier command buffers can still be in flight.
+ */
+#define PIPELINE_NOTE_BIND(r, b) do { \
+        (b)->last_use_cb = (r)->cb_serial; \
+        (b)->last_use_frame = (r)->current_frame; \
+    } while (0)
+
+static void pipeline_cache_count_evict(PGRAPHVkState *r,
+                                       PipelineBinding *snode)
+{
+    int f = snode->last_use_frame;
+
+    OPT_STAT_INC(pipe_evict);
+
+    /*
+     * Never bound, or its slot has begun a newer command buffer since, which
+     * Vulkan allows only once the older one has completed.
+     */
+    if (!snode->last_use_cb || r->frame_cb_serial[f] != snode->last_use_cb) {
+        return;
+    }
+
+    if (r->in_command_buffer && snode->last_use_cb == r->cb_serial) {
+        /* pre_evict should refuse these: a count is a hole in its test */
+        OPT_STAT_INC(pipe_evict_recording);
+        OPT_STAT_INC(pipe_evict_pending);
+    } else if (qatomic_read(&r->frame_submitted[f]) &&
+               vkGetFenceStatus(r->device, r->frame_fences[f]) != VK_SUCCESS) {
+        OPT_STAT_INC(pipe_evict_pending);
+    }
+}
+#else
+#define PIPELINE_NOTE_BIND(r, b) do { } while (0)
+#endif
+
 static void pipeline_cache_entry_init(Lru *lru, LruNode *node,
                                       const void *state)
 {
@@ -1260,6 +1317,9 @@ static void pipeline_cache_entry_init(Lru *lru, LruNode *node,
     snode->layout = VK_NULL_HANDLE;
     snode->pipeline = VK_NULL_HANDLE;
     snode->draw_time = 0;
+#if NV2A_PERF_LOG
+    snode->last_use_cb = 0;
+#endif
 }
 
 static bool pipeline_cache_pre_evict(Lru *lru, LruNode *node)
@@ -1290,6 +1350,10 @@ static void pipeline_cache_entry_post_evict(Lru *lru, LruNode *node)
     assert((!r->in_command_buffer ||
             snode->draw_time < r->command_buffer_start_time) &&
            "Pipeline evicted while in use!");
+
+#if NV2A_PERF_LOG
+    pipeline_cache_count_evict(r, snode);
+#endif
 
     if (snode->pipeline != VK_NULL_HANDLE) {
         vkDestroyPipeline(r->device, snode->pipeline, NULL);
@@ -2193,7 +2257,6 @@ static void create_pipeline(PGRAPHState *pg)
     if (xemu_get_async_compile() && !qatomic_read(&r->shader_binding->ready)) {
         r->pipeline_binding = snode;
         r->pipeline_binding_changed = true;
-        NV2A_PHASE_TIMER_END(pipe_lookup);
         NV2A_VK_DGROUP_END();
         return;
     }
@@ -2224,6 +2287,7 @@ static void create_pipeline(PGRAPHState *pg)
     if (!r->shader_binding ||
         !r->shader_binding->vsh.module_info ||
         !r->shader_binding->psh.module_info) {
+        NV2A_PHASE_TIMER_END(shader_compile);
         NV2A_VK_DGROUP_END();
         return;
     }
@@ -3814,6 +3878,9 @@ void pgraph_vk_begin_command_buffer(PGRAPHState *pg)
                                   &command_buffer_begin_info));
     r->command_buffer_start_time = pg->draw_time;
     r->in_command_buffer = true;
+#if NV2A_PERF_LOG
+    r->frame_cb_serial[r->current_frame] = ++r->cb_serial;
+#endif
     r->draws_in_cb = 0;
 
     if (r->gpu_ts_supported) {
@@ -4501,6 +4568,7 @@ static void begin_draw(PGRAPHState *pg)
                           r->pipeline_binding->pipeline);
         r->pipeline_binding_changed = false;
         r->pipeline_binding->draw_time = pg->draw_time;
+        PIPELINE_NOTE_BIND(r, r->pipeline_binding);
 #if OPT_DYNAMIC_STATES
         r->dyn_state.valid = false;
 #endif
@@ -6109,6 +6177,7 @@ static void emit_reorder_entry(PGRAPHState *pg, ReorderWindowEntry *e,
         vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           e->pipeline_binding->pipeline);
         e->pipeline_binding->draw_time = pg->draw_time;
+        PIPELINE_NOTE_BIND(r, e->pipeline_binding);
         vkCmdSetViewport(r->command_buffer, 0, 1, &e->viewport);
         vkCmdSetScissor(r->command_buffer, 0, 1, &e->scissor);
     }
