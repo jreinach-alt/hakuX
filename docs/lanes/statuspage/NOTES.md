@@ -54,7 +54,14 @@ State, first match wins:
 8. `standing, nothing in flight`: `standing = true`.
 9. Otherwise, **IDLE, NO WORK**. These rows sort first, are named in a
    `[!WARNING]` above the table, and are written to `$S/idle-lanes`, which the
-   issue body prints as `**Idle with no work:** ...`.
+   issue body prints as `**Idle with no work:** ...`. If `gh pr list` failed,
+   "no PR" is unknown, and the row says so instead of flagging idle. Without
+   this, one gh blip would name every lane idle in the body. A later selftest
+   fragment showed exactly that: its board fixture has no PRs, and the header
+   it produced listed fifteen lanes as idle.
+
+The two selftest fragments (62 edited, 63 new) are outside the brief's Files.
+The board has been asked for them in `board-requests/statuspage.md`.
 
 A running unit with no territory row gets its own row, and so do rows retired
 in the last 24 h (newest 16, the rest counted). That keeps turnipfork and
