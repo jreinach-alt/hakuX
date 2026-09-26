@@ -329,6 +329,7 @@ note = "RETIRED AT WAVE 97: #99 was closed 2026-09-19T00:20Z as a duplicate of #
 [lane.tiecode282]
 issues = ["282", "283"]
 files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/geom.c", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**"]
+released = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/geom.c", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**"]
 standing = false
 note = "STARTED BY THE HOST (seen by job.board wave 243, 2026-09-26T10:15Z): draft PR #379 on lane/tiecode282, mergeable state CONFLICTING against master (handback owns the resume; not a board action). PRIOR: BRIEFED AT TERRITORY WAVE 240, NOT STARTED (job.board, 2026-09-26; `lane.sh start` was refused approval in the board session, so the HOST runs `docs/testing/lane.sh start tiecode282 briefs/tiecode282.md 282`): the code half of #282/#283. The weight-binade tie rule now holds on three geometries (PR #314 checkerboard, PR #376 Texture_render_target row 240: 6,108/6,108, PR #378 Volume texture: 6,496/6,496) and no lane implements it. Brief briefs/tiecode282.md. psh.c is released at ready by lane.fog278 (PR #373) and touched by PR #367: the brief says merge master or those branches and re-run the arm before marking ready. geom.c released by lane.vkpointsize34 (PR #371)."
 
@@ -1123,5 +1124,6 @@ note = "HELD, NOT STRANDED (hostops, 2026-09-26 4:52 AM PDT): status.sh lists it
 [lane.ring53]
 issues = ["53"]
 files = ["docs/testing/predictions/ring53-*.json", "docs/lanes/ring53/**"]
+released = ["docs/testing/predictions/ring53-*.json", "docs/lanes/ring53/**"]
 standing = false
 note = "BLOCKED, FILES RELEASED (hostops 2026-09-26T13:10Z, PR #391): the #53 ring phase is not determined by the corpus; the per-method weight run (docs/lanes/ring53/NOTES.md s6) is ROUTED TO lane.xbox. vsh-ff.c and vsh-prog.c dropped from this row on the lane's own offer (no hunk written; zrtz272 and dpforce345 still hold them). pgraph.h, glsl/vsh.h, glsl/vsh.c, pgraph.c are NOT granted: a fresh #53 lane gets them once the console run lands (board-requests/ring53.md item 2). PRIOR: BRIEFED, NOT STARTED (job.board wave 247, 2026-09-26T12:40Z): `lane.sh start` again needs an approval the non-interactive board session cannot get; the HOST runs `docs/testing/lane.sh start ring53 briefs/ring53.md 53`. The row keeps holding vsh-ff.c and vsh-prog.c meanwhile. PRIOR: BRIEFED AT TERRITORY WAVE 246 (job.board, 2026-09-26T12:10:00Z), briefs/ring53.md: #53 ring model (six-entry ring of stale FF lighting outputs under a vertex program, PR #355). vsh-prog.c is released by dpforce345 (PR #383 at audit) and vsh-ff.c by zrtz272 (PR #364 at audit); the brief says merge master before ready. Per-draw state files are named-not-granted."
