@@ -18,7 +18,8 @@ FM="$T/foldmulti"; rm -rf "$FM"; mkdir -p "$FM/bin"
 
 # The gh shim: $FM/labels.<pr> holds a PR's labels, $FM/prs.tsv declares
 # "<num>\t<branch>", every PR head's CI is GREEN, and a trunk commit's CI is
-# the word in $FM/ci.<sha> (PENDING when there is none).
+# the word in $FM/ci.<sha> (PENDING when there is none; CANCELLED and NONE are
+# what TRUNK_CI_JQ says for all-cancelled runs and for no runs).
 cat > "$FM/bin/gh" <<'EOF'
 #!/usr/bin/env bash
 args="$*"; echo "$args" >> "$FM/gh.log"
@@ -76,10 +77,13 @@ fm_lane() {   # <branch> <file> <line> <text>
 fm_lane lane/fma a.c 1 "from fma"     # a.c, line 1
 fm_lane lane/fmb b.c 1 "from fmb"     # b.c: disjoint from fma
 fm_lane lane/fmc a.c 10 "from fmc"    # a.c again, line 10: shares a file with fma, merges cleanly
-git -C "$R" checkout -q -b lane/fmd master; echo d > "$R/d.c"; git -C "$R" add d.c; git -C "$R" commit -qm lane/fmd
+for x in d e f g; do   # a new file each: disjoint from everything
+    git -C "$R" checkout -q -b "lane/fm$x" master; echo $x > "$R/$x.c"; git -C "$R" add $x.c; git -C "$R" commit -qm "lane/fm$x"
+done
 git -C "$R" checkout -q master
 FM_M0=$(git -C "$R" rev-parse master)
-declare -A FM_H=([lane/fma]=$(git -C "$R" rev-parse lane/fma) [lane/fmb]=$(git -C "$R" rev-parse lane/fmb) [lane/fmc]=$(git -C "$R" rev-parse lane/fmc) [lane/fmd]=$(git -C "$R" rev-parse lane/fmd))
+declare -A FM_H
+for x in a b c d e f g; do FM_H[lane/fm$x]=$(git -C "$R" rev-parse "lane/fm$x"); done
 
 fm_reset() {   # <"num branch" ...> : a fresh origin, host work dir and label set
     rm -rf "$FM/tw" "$FM/labels."* "$FM/ci."*; git -C "$R" worktree prune
@@ -96,6 +100,10 @@ fm_tick() {
     env FM="$FM" PATH="$FM/bin:$PATH" TESTS="$FM/none" SUPPORT="$FM/none" \
         HAKUX_WORK="$FM/tw" HAKUX_REPO_DIR="$R" bash "${FM_FOLD:-$HERE/fold.sh}" >> "$FM/out.log" 2>&1
 }
+fm_add() {   # <num> <branch>: one more fold-ready PR on the current origin
+    git -C "$R" push -q -f origin "${FM_H[$2]}:refs/heads/$2"; printf '%s\t%s\n' "$1" "$2" >> "$FM/prs.tsv"; echo fold-ready > "$FM/labels.$1"
+}
+fm_master() { git -C "$FM/origin.git" rev-parse master; }
 fm_folds() { git -C "$FM/origin.git" log --first-parent --format=%s master | grep -c '^fold: PR #'; }
 fm_tiplog() { tail -n "${2:-3}" "$FM/tw/logs/fold/tick.log" | grep -q "$1"; }
 
@@ -135,7 +143,7 @@ check "(3) red after a two-fold tick: master moved by one revert" [ "$(git -C "$
 check "  of the LAST fold (#42): b.c is back to base, a.c keeps #41" \
     bash -c '[ "$(git -C "$1" show "$2:b.c")" = b ] && git -C "$1" show "$2:a.c" | grep -q "from fma"' _ "$FM/origin.git" "$FM_REV"
 check "  #42 told it was reverted to attribute" grep -q "^\[job.fold\] Reverted from \`master\`" "$FM/comments.log"
-git -C "$R" push -q -f origin "${FM_H[lane/fmd]}:refs/heads/lane/fmd"; printf '44\tlane/fmd\n' >> "$FM/prs.tsv"; echo fold-ready > "$FM/labels.44"
+fm_add 44 lane/fmd
 fm_tick
 check "  while the revert's CI is pending nothing folds, not even a disjoint #44" [ "$(git -C "$FM/origin.git" rev-parse master)" = "$FM_REV" ]
 check "  and the log says why #44 waits" grep -q "#44 waits: master's CI after a multi-fold tick is being attributed" "$FM/tw/logs/fold/tick.log"
@@ -156,12 +164,68 @@ fm_tick
 check "(3b) red before the tick too: nothing reverted" [ "$(git -C "$FM/origin.git" rev-parse master)" = "$FM_TIP" ]
 check "  and the log says why" grep -q "it was already red at ${FM_M0:0:10} before that tick" "$FM/tw/logs/fold/tick.log"
 
+# (5) the tip's runs were all CANCELLED by a later push: a descendant answers
+fm_reset "41 lane/fma" "42 lane/fmb"
+fm_tick
+FM_TIP=$(fm_master); echo CANCELLED > "$FM/ci.$FM_TIP"
+fm_add 44 lane/fmd
+fm_tick
+FM_D1=$(fm_master)
+check "(5) cancelled, no descendant yet: one fold (#44)" [ "$(fm_folds)" = 3 ]
+check "  and the log says the runs were cancelled and nothing answers yet" \
+    grep -q "master CI CANCELLED on ${FM_TIP:0:10} after folding #41 #42 in one tick (its own runs: all cancelled; none of its first-parent descendants has reported, 0 read); at most one fold" "$FM/tw/logs/fold/tick.log"
+fm_add 45 lane/fme; fm_add 46 lane/fmf
+fm_tick
+FM_D2=$(fm_master)
+check "(5c) its descendant still pending: still at most one fold per tick" [ "$(fm_folds)" = 4 ]
+check "  #45 folded, #46 waits" bash -c 'grep -qx folded "$1" && ! grep -qx folded "$2"' _ "$FM/labels.45" "$FM/labels.46"
+check "  the log says one descendant was read" grep -q "none of its first-parent descendants has reported, 1 read); at most one fold" "$FM/tw/logs/fold/tick.log"
+check "  the record stays open" bash -c '! grep -q "^done" "$1"' _ "$FM/tw/fold/multi/$FM_TIP"
+echo CANCELLED > "$FM/ci.$FM_D1"; echo GREEN > "$FM/ci.$FM_D2"
+fm_add 47 lane/fmg
+fm_tick
+check "(5g) a GREEN descendant past a cancelled one: done superseded-green, naming it" grep -qx "done superseded-green $FM_D2" "$FM/tw/fold/multi/$FM_TIP"
+check "  the log names the descendant" grep -q "master CI GREEN on ${FM_D2:0:10} after folding #41 #42 in one tick at ${FM_TIP:0:10} (its own runs: all cancelled; ${FM_D2:0:10}, its nearest descendant to report, answers for it)" "$FM/tw/logs/fold/tick.log"
+check "  and that same tick folds more than one: #46 and #47" grep -q "tick: repaired none; folded #46 #47;" "$FM/tw/logs/fold/tick.log"
+
+# (6) the same with no runs at all on the tip, and a RED descendant
+fm_reset "41 lane/fma" "42 lane/fmb"
+fm_tick
+FM_TIP=$(fm_master); echo NONE > "$FM/ci.$FM_TIP"; echo GREEN > "$FM/ci.$FM_M0"
+fm_add 44 lane/fmd
+fm_tick
+FM_D1=$(fm_master); echo RED > "$FM/ci.$FM_D1"
+fm_tick
+FM_REV=$(fm_master)
+check "(6) no runs on the tip, a RED descendant: master moved by one revert on top of it" [ "$(git -C "$FM/origin.git" rev-parse "$FM_REV^")" = "$FM_D1" ]
+check "  of the batch's LAST fold (#42): b.c is back to base, #44's d.c stays" \
+    bash -c '[ "$(git -C "$1" show "$2:b.c")" = b ] && git -C "$1" show "$2:d.c" | grep -qx d' _ "$FM/origin.git" "$FM_REV"
+check "  the log names the red descendant and the tip it answers for" \
+    grep -q "master CI RED on ${FM_D1:0:10} after folding #41 #42 in one tick at ${FM_TIP:0:10} (its own runs: none; ${FM_D1:0:10}, its nearest descendant to report, answers for it); reverting the last, #42" "$FM/tw/logs/fold/tick.log"
+check "  #42's comment names the red descendant" grep -q "went red on .${FM_D1:0:10}., the nearest descendant with a verdict of .${FM_TIP:0:10}., the tip after" "$FM/comments.log"
+# (6r) the revert's own runs are cancelled by an unrelated push to master
+echo CANCELLED > "$FM/ci.$FM_REV"
+git -C "$R" fetch -q origin master; git -C "$R" checkout -q --detach origin/master
+echo z > "$R/z.c"; git -C "$R" add z.c; git -C "$R" commit -qm "audit: an unrelated push"; git -C "$R" push -q origin HEAD:master
+git -C "$R" checkout -q master
+FM_D3=$(fm_master)
+fm_tick
+check "(6r) revert cancelled, its descendant pending: nothing folds" [ "$(fm_master)" = "$FM_D3" ]
+check "  and the log says so" grep -q "on the revert ${FM_REV:0:10} of #42 (its own runs: all cancelled; none of its first-parent descendants has reported, 1 read); nothing folds" "$FM/tw/logs/fold/tick.log"
+echo GREEN > "$FM/ci.$FM_D3"
+fm_tick
+check "  its descendant GREEN: #42 named, red together with #41" grep -qx "done culprit 42" "$FM/tw/fold/multi/$FM_TIP"
+check "  the log says the descendant answered for the revert" grep -q "master CI GREEN on the revert ${FM_REV:0:10} (its own runs: all cancelled; ${FM_D3:0:10}, its nearest descendant to report, answers for it): ATTRIBUTED #42" "$FM/tw/logs/fold/tick.log"
+check "  and the attribution names the red commit, not the silent tip" grep -q "went red on .${FM_D1:0:10}., and reverting this PR" "$FM/comments.log"
+
 # (4) the classifier, through the real jq
 fm_jq() { printf '%s' "$1" | jq -r "$(sed -n "/^TRUNK_CI_JQ='/,/end'\$/p" "$HERE/fold.sh" | sed "1s/^TRUNK_CI_JQ='//; \$s/'\$//")"; }
 check "(4) trunk CI: a failure is RED while another run is still going" \
     [ "$(fm_jq '{"check_runs":[{"status":"completed","conclusion":"failure"},{"status":"in_progress","conclusion":null}]}')" = RED ]
 check "  a cancelled run is not a verdict" \
     [ "$(fm_jq '{"check_runs":[{"status":"completed","conclusion":"cancelled"},{"status":"completed","conclusion":"success"}]}')" = GREEN ]
+check "  every run cancelled is CANCELLED, not NONE" \
+    [ "$(fm_jq '{"check_runs":[{"status":"completed","conclusion":"cancelled"},{"status":"completed","conclusion":"cancelled"}]}')" = CANCELLED ]
 check "  nothing at all is NONE" [ "$(fm_jq '{"check_runs":[]}')" = NONE ]
 
 # --------------------------------------------------------------- mutant
@@ -171,3 +235,16 @@ check "mutant: without the shared-file test the sed applied" bash -c '! cmp -s "
 fm_reset "41 lane/fma" "43 lane/fmc"
 FM_FOLD="$FM/mut/fold.sh" fm_tick
 check "  mutant: same-file PRs are NOT held apart (so (2) tests the guard)" [ "$(fm_folds)" != 1 ]
+
+# without the descendant walk, (5g)'s record never closes
+rm -rf "$FM/mut"; cp -r "$HERE" "$FM/mut"
+sed -i 's/^descendant_ci() {   #.*/&\n    return 1/' "$FM/mut/fold.sh"
+check "mutant: without descendant_ci the sed applied" bash -c '! cmp -s "$1" "$2"' _ "$FM/mut/fold.sh" "$HERE/fold.sh"
+fm_reset "41 lane/fma" "42 lane/fmb"
+FM_FOLD="$FM/mut/fold.sh" fm_tick
+FM_TIP=$(fm_master); echo CANCELLED > "$FM/ci.$FM_TIP"
+fm_add 44 lane/fmd
+FM_FOLD="$FM/mut/fold.sh" fm_tick
+echo GREEN > "$FM/ci.$(fm_master)"
+FM_FOLD="$FM/mut/fold.sh" fm_tick
+check "  mutant: a cancelled tip with a GREEN descendant stays open (so (5g) tests the walk)" bash -c '! grep -q "^done" "$1"' _ "$FM/tw/fold/multi/$FM_TIP"

@@ -6,3 +6,8 @@ url=https://github.com/xemu-project/nv2a_vsh_cpu
 # which carries the four sources this build compiles.
 revision=1115255708c10c4841b65dcd2223262e7a316598
 depth=1
+# #345: silicon arithmetic in the constant-writeback evaluator. The Android
+# CMake build applies the same file (android/app/src/main/cpp/CMakeLists.txt).
+# meson applies it only when it downloads the subproject: an existing
+# checkout needs `meson subprojects update --reset nv2a_vsh_cpu`.
+diff_files=nv2a_vsh_cpu/0001-silicon-arithmetic.patch
