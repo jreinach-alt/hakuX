@@ -156,6 +156,21 @@ ceiling, not a value.
 
 **Results: pending.**
 
+### Waiting (2026-09-26 07:50 PDT)
+
+The session ended waiting on the three Thor soaks above. About 22 Thor-pinned
+requests (hotfix041 and titleplay, priority 0-0-y) were ahead of them, roughly
+2.5-3 h. It is also waiting on the arms job's `[job.arms]` verdict for
+`blinx372d-mnm.json`. On resume:
+1. Read `[evict372]` in `1790432905`'s logcat over 135-265 s, and record the
+   mask and top pair in sec 1.
+2. Run `abread.py` on A/B: `--spec-a`/`--spec-b` from each result.json and
+   `--prediction` the demo JSON. Look at B's frames by eye.
+3. Read B's `handoffs=` in the must-not-move arm's logcat before calling its
+   pass anything but inert.
+4. Merge master (no rebase), re-register on the new refs, re-run the arm, and
+   mark ready.
+
 ## Tools
 
 - `cc_surface.py`: syntax-checks `vk/surface.c` from this worktree with the
