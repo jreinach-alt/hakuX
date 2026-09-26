@@ -1019,23 +1019,57 @@ Remove \`$bad\` when you add it. This is the only comment this job will make abo
 #                the revert's CI answers. GREEN names that PR, red together
 #                with the others, and hands it back; RED re-lands it and
 #                names the others as the suspects, for a person.
+# A head whose runs were all CANCELLED, or that has none, never answers:
+# android.yml and desktop.yml cancel a ref's older runs when a newer push
+# lands. Its nearest first-parent descendant that has reported answers for it
+# instead, since that commit's build contains this one's (descendant_ci).
 FOLD_MAX_PER_TICK="${FOLD_MAX_PER_TICK:-3}"
 MULTI="$F/multi"; mkdir -p "$MULTI"
 HOLD=""    # "" | one | all: what attribute_multi leaves this tick allowed to fold
 
 # CANCELLED is dropped, not counted red: a newer push cancelling an older run
 # is concurrency, not a verdict about this commit. Any failure is RED even
-# while other runs are still going. In a variable so the self-test runs this
-# exact text through the real jq; its gh shim never would.
-TRUNK_CI_JQ='[.check_runs[]? | if .status != "completed" then "PENDING" else ((.conclusion // "") | ascii_upcase) end
-         | select(. != "CANCELLED")] as $c
-        | if ($c | length) == 0 then "NONE"
+# while other runs are still going. A commit whose runs were ALL cancelled is
+# CANCELLED, one with no runs at all is NONE; neither will ever answer. In a
+# variable so the self-test runs this exact text through the real jq; its gh
+# shim never would.
+TRUNK_CI_JQ='[.check_runs[]? | if .status != "completed" then "PENDING" else ((.conclusion // "") | ascii_upcase) end] as $all
+        | [$all[] | select(. != "CANCELLED")] as $c
+        | if ($all | length) == 0 then "NONE"
+          elif ($c | length) == 0 then "CANCELLED"
           elif ($c | any(. == "FAILURE" or . == "TIMED_OUT" or . == "STARTUP_FAILURE" or . == "ACTION_REQUIRED")) then "RED"
           elif ($c | all(. == "SUCCESS" or . == "SKIPPED" or . == "NEUTRAL")) then "GREEN"
           else "PENDING" end'
-trunk_ci() {   # <sha> -> GREEN|RED|PENDING|NONE for the push runs on a trunk commit
+trunk_ci() {   # <sha> -> GREEN|RED|PENDING|CANCELLED|NONE for the push runs on a trunk commit
     gh api "repos/$GH_REPO/commits/$1/check-runs" --jq "$TRUNK_CI_JQ" 2>/dev/null
 }
+
+# DESC_MAX bounds the walk: one check-runs call per descendant, at most this
+# many. The walk stops at the first descendant that is still PENDING: its
+# answer is the nearer, so more specific, one, and it has not given it yet.
+DESC_MAX="${DESC_MAX:-20}"
+DESC_SHA=""; DESC_ST=""; DESC_WALKED=0
+descendant_ci() {   # <sha> -> 0 with DESC_ST GREEN|RED from DESC_SHA, the nearest first-parent descendant on origin/$TIP that reported
+    local c prev=$1 st
+    DESC_SHA=""; DESC_ST=""; DESC_WALKED=0
+    # Its own fetch, not cx_tip's: a revert pushed later this tick would
+    # leave cx_tip's once-per-tick head stale for the conflict pass.
+    git -C "$REPO" fetch -q origin "+refs/heads/$TIP:refs/remotes/origin/$TIP" 2>/dev/null || return 1
+    for c in $(git -C "$REPO" rev-list --first-parent --reverse "$1..refs/remotes/origin/$TIP" 2>/dev/null); do
+        # On the first-parent line of $1, or it answers for something else.
+        [ "$(git -C "$REPO" rev-parse -q --verify "$c^1" 2>/dev/null)" = "$prev" ] || return 1
+        [ "$DESC_WALKED" -lt "$DESC_MAX" ] || return 1
+        DESC_WALKED=$((DESC_WALKED + 1)); prev=$c
+        st=$(trunk_ci "$c")
+        case "$st" in
+            GREEN|RED) DESC_SHA=$c; DESC_ST=$st; return 0 ;;
+            CANCELLED|NONE) ;;
+            *) return 1 ;;
+        esac
+    done
+    return 1
+}
+ci_how() { case "$1" in CANCELLED) echo "all cancelled" ;; NONE) echo "none" ;; *) echo "$1" ;; esac; }
 
 trunk_wt() {   # -> 0 with $WT clean and detached at a fresh origin/$TIP
     if [ ! -e "$WT/.git" ]; then
@@ -1068,7 +1102,7 @@ revert_range() {   # <pr> <before> <after> <subject> <body> -> 0 with the revert
 }
 
 attribute_multi() {
-    local rec sha st base pr branch before after others rpr rv rvb rest p
+    local rec sha st base pr branch before after others rpr rv rvb rest p at own via
     for rec in "$MULTI"/*; do
         [ -f "$rec" ] || continue
         grep -q '^done' "$rec" && continue
@@ -1076,38 +1110,64 @@ attribute_multi() {
         others=$(awk '$1=="fold"{printf "#%s ", $2}' "$rec"); others="${others% }"
         read -r _ pr branch before after <<< "$(grep '^fold ' "$rec" | tail -1)"
         if ! grep -q '^reverted ' "$rec"; then
-            st=$(trunk_ci "$sha")
+            st=$(trunk_ci "$sha"); at=$sha; via=""
+            case "$st" in CANCELLED|NONE)
+                own=$st
+                if descendant_ci "$sha"; then
+                    st=$DESC_ST; at=$DESC_SHA
+                    via=" (its own runs: $(ci_how "$own"); ${at:0:10}, its nearest descendant to report, answers for it)"
+                else
+                    via=" (its own runs: $(ci_how "$own"); none of its first-parent descendants has reported, $DESC_WALKED read)"
+                fi ;;
+            esac
             case "$st" in
             GREEN)
-                echo "done green" >> "$rec"
-                say "master CI GREEN on ${sha:0:10} after folding $others in one tick" ;;
+                if [ "$at" = "$sha" ]; then
+                    echo "done green" >> "$rec"
+                else
+                    echo "done superseded-green $at" >> "$rec"
+                fi
+                say "master CI GREEN on ${at:0:10} after folding $others in one tick at ${sha:0:10}$via" ;;
             RED)
                 base=$(awk '$1=="base"{print $2}' "$rec")
                 if [ "$(trunk_ci "$base")" = RED ]; then
                     echo "done base-red" >> "$rec"
-                    say "master CI RED on ${sha:0:10} after folding $others, but it was already red at ${base:0:10} before that tick; not attributed to the tick"
+                    say "master CI RED on ${at:0:10} after folding $others at ${sha:0:10}$via, but it was already red at ${base:0:10} before that tick; not attributed to the tick"
                     continue
                 fi
                 HOLD=all
-                say "master CI RED on ${sha:0:10} after folding $others in one tick; reverting the last, #$pr, to attribute it"
-                if ! revert_range "$pr" "$before" "$after" "fold: revert #$pr to attribute master's red at ${sha:0:10}" \
-                     "master's CI went red on ${sha:0:10}, the tip after one tick folded $others. Each was green on its own head; the last fold of the tick is reverted first and the next CI run says whether it was this one."; then
+                [ "$at" = "$sha" ] || echo "red-at $at" >> "$rec"
+                say "master CI RED on ${at:0:10} after folding $others in one tick at ${sha:0:10}$via; reverting the last, #$pr, to attribute it"
+                if ! revert_range "$pr" "$before" "$after" "fold: revert #$pr to attribute master's red at ${at:0:10}" \
+                     "master's CI went red on ${at:0:10}, $([ "$at" = "$sha" ] && echo "the tip" || echo "the nearest descendant with a verdict of ${sha:0:10}, the tip") after one tick folded $others. Each was green on its own head; the last fold of the tick is reverted first and the next CI run says whether it was this one."; then
                     echo "done revert-failed" >> "$rec"
                     say "  could not revert #$pr: $WHY. Needs a person: master is red after folding $others"
                     continue
                 fi
                 echo "reverted $pr $REVERT_SHA $REVERT_BEFORE" >> "$rec"
                 say "  reverted #$pr as ${REVERT_SHA:0:10}; nothing folds until its CI answers"
-                comment "$pr" "[job.fold] Reverted from \`$TIP\` as \`${REVERT_SHA:0:10}\`: master's CI went red on \`${sha:0:10}\`, the tip after one tick folded $others. This was the last fold of that tick, so it is reverted first to attribute the red; master's next CI run says whether it was this PR. Nothing needs doing yet." ;;
+                comment "$pr" "[job.fold] Reverted from \`$TIP\` as \`${REVERT_SHA:0:10}\`: master's CI went red on \`${at:0:10}\`$([ "$at" = "$sha" ] || echo ", the nearest descendant with a verdict of \`${sha:0:10}\`"), the tip after one tick folded $others. This was the last fold of that tick, so it is reverted first to attribute the red; master's next CI run says whether it was this PR. Nothing needs doing yet." ;;
             *)
                 [ -n "$HOLD" ] || HOLD=one
-                say "master CI ${st:-UNREAD} on ${sha:0:10} after folding $others in one tick; at most one fold until it reports" ;;
+                say "master CI ${st:-UNREAD} on ${sha:0:10} after folding $others in one tick$via; at most one fold until it reports" ;;
             esac
             continue
         fi
         read -r _ rpr rv rvb <<< "$(grep '^reverted ' "$rec" | tail -1)"
         rest=$(printf '%s\n' $others | grep -vx "#$rpr" | tr '\n' ' '); rest="${rest% }"
-        st=$(trunk_ci "$rv")
+        at=$(awk '$1=="red-at"{print $2}' "$rec"); [ -n "$at" ] && sha=$at
+        # The revert is the tip and nothing folds while it waits, but any other
+        # push to $TIP cancels its runs just the same.
+        st=$(trunk_ci "$rv"); via=""
+        case "$st" in CANCELLED|NONE)
+            own=$st
+            if descendant_ci "$rv"; then
+                st=$DESC_ST
+                via=" (its own runs: $(ci_how "$own"); ${DESC_SHA:0:10}, its nearest descendant to report, answers for it)"
+            else
+                via=" (its own runs: $(ci_how "$own"); none of its first-parent descendants has reported, $DESC_WALKED read)"
+            fi ;;
+        esac
         case "$st" in
         GREEN)
             echo "done culprit $rpr" >> "$rec"
@@ -1116,7 +1176,7 @@ attribute_multi() {
             # a needs-rebase label here would sit on a closed PR that nothing
             # reads. Re-landing is new work: a new PR from the lane's local
             # branch, which the board dispatches like any other.
-            say "master CI GREEN on the revert ${rv:0:10}: ATTRIBUTED #$rpr, red together with $rest (each green apart); re-landing it is new work"
+            say "master CI GREEN on the revert ${rv:0:10}$via: ATTRIBUTED #$rpr, red together with $rest (each green apart); re-landing it is new work"
             comment "$rpr" "[job.fold] **Attributed: this PR is red together with $rest.** Each was green on its own head, and one tick folded them all; master's CI went red on \`${sha:0:10}\`, and reverting this PR (\`${rv:0:10}\`) turned it green again. So the red is the combination, not this PR alone and not the others alone.
 
 This PR is closed as merged and its branch was deleted by the fold, so re-landing it is a new PR. From the lane's worktree:
@@ -1128,7 +1188,7 @@ git revert ${rv:0:10}                              # restores this PR's changes
 \`\`\`" ;;
         RED)
             echo "done not $rpr" >> "$rec"
-            say "master CI still RED on the revert ${rv:0:10}: the red after folding $others is not #$rpr's alone; re-landing it"
+            say "master CI still RED on the revert ${rv:0:10}$via: the red after folding $others is not #$rpr's alone; re-landing it"
             if revert_range "$rpr" "$rvb" "$rv" \
                    "fold: re-land #$rpr; reverting it did not turn master green" "Reverting #$rpr (${rv:0:10}) left master red, so the red after the tick that folded $others is not its alone."; then
                 say "  re-landed #$rpr as ${REVERT_SHA:0:10}; suspects: $rest, or the trunk itself. Needs a person."
@@ -1141,7 +1201,7 @@ git revert ${rv:0:10}                              # restores this PR's changes
             done ;;
         *)
             HOLD=all
-            say "master CI ${st:-UNREAD} on the revert ${rv:0:10} of #$rpr; nothing folds until it answers" ;;
+            say "master CI ${st:-UNREAD} on the revert ${rv:0:10} of #$rpr$via; nothing folds until it answers" ;;
         esac
     done
 }
