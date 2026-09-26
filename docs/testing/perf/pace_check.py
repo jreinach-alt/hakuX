@@ -73,10 +73,12 @@ def main():
     if len(pace) < 3:
         print("FAIL      fewer than three hakuX-pace lines: nothing to judge")
         return 1
-    # A frame count that goes down is a new process; drop each first line.
+    # A frame count that does not go up is a new process (f restarts at 60,
+    # so a process that printed one line is followed by an equal f); drop
+    # each first line.
     body, steps = [], []
     for i, p in enumerate(pace):
-        if i == 0 or p["f"] < pace[i - 1]["f"]:
+        if i == 0 or p["f"] <= pace[i - 1]["f"]:
             continue
         steps.append(p["f"] - pace[i - 1]["f"])
         body.append(p)
@@ -84,6 +86,10 @@ def main():
     n = len(body)
     late = [sum(p["v"][a.nominal + 1:]) for p in body]
     fps = [60.0 / (p["ms"] / 1000.0) for p in body if p["ms"] > 0]
+    if not body or not fps:
+        print("FAIL      no window left to judge (%d windows, %d with ms > 0)"
+              % (n, len(fps)))
+        return 1
     print("windows   %d (first line of each process excluded)" % n)
     print("late      %d of %d flips (%.1f%%) above %d VBLANKs; windows with "
           "none late: %d of %d (%.0f%%)"
@@ -151,12 +157,12 @@ def selftest():
     def log(mutate=None):
         out = []
         for i in range(1, 8):
-            out.append("I/hakuX-perf( 1): gfps=30 G:33.3(33.0-34.0) D:16.7"
-                       "(16.0-17.0) S:1.0 J:0.1 Df:0 Vd:0.1 Ul:N Vpf:2.05 "
-                       "Ri:1.0 Tq:0")
-            w = dict(f=60 * i, v=[0, 0, 57, 3, 0], ms=2050.0)
+            w = dict(f=60 * i, v=[0, 0, 57, 3, 0], ms=2050.0, vpf=2.05)
             if mutate:
                 mutate(i, w)
+            out.append("I/hakuX-perf( 1): gfps=30 G:33.3(33.0-34.0) D:16.7"
+                       "(16.0-17.0) S:1.0 J:0.1 Df:0 Vd:0.1 Ul:N Vpf:%.2f "
+                       "Ri:1.0 Tq:0" % w["vpf"])
             vb = sum(k * c for k, c in enumerate(w["v"]))
             out.append("I/hakuX-pace( 1): f=%d v0=%d v1=%d v2=%d v3=%d v4=%d "
                        "vb=%d max=50.1 ms=%.1f"
@@ -178,9 +184,12 @@ def selftest():
     def slow(i, w):
         w["ms"] = 2500.0
 
+    def ema(i, w):
+        w["vpf"] = 2.30
+
     cases = [("clean", None, "PASS"), ("gap", gap, "FAIL P1"),
              ("short", short, "FAIL P2"), ("crowded", crowded, "FAIL P4"),
-             ("slow", slow, "FAIL P5")]
+             ("slow", slow, "FAIL P5"), ("ema", ema, "FAIL P3")]
     bad = 0
     for name, mut, want in cases:
         with tempfile.NamedTemporaryFile("w", suffix=".txt",

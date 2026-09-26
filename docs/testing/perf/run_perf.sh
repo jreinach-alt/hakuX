@@ -87,6 +87,9 @@ restore_prefs() {
         echo "[$TAG] prefs restored (read back identical)"
     else
         echo "[$TAG] PREFS NOT RESTORED: read-back differs from $OUT/${TAG}-prefs-before.xml"
+        # An EXIT trap keeps the script's status unless it exits itself, so
+        # a wrapper would otherwise see success with the run prefs left on.
+        exit 3
     fi
 }
 trap restore_prefs EXIT
@@ -105,13 +108,16 @@ command sleep $SETTLE
 
 adb -s $S exec-out screencap -p > "$OUT/${TAG}-start.png" 2>/dev/null
 echo "[$TAG] measuring ${MEASURE}s"
+# hakuX-build prints once, on the first flip, so it has to be kept before
+# the clear below or the log carries no build identity.
+adb -s $S logcat -d -v threadtime -s hakuX-build > "$OUT/${TAG}-build.txt" 2>/dev/null
 adb -s $S logcat -c
 bash $W/loadsample.sh "$MEASURE" 2 "$OUT/${TAG}-load.txt" &
 LOADPID=$!
 command sleep $MEASURE
 wait $LOADPID 2>/dev/null
 adb -s $S logcat -d -v threadtime -s hakuX-perf hakuX-pace hakuX-pages hakuX-phase \
-    xemu-gpu xemu-work hakuX-cpu hakuX-build > "$OUT/${TAG}.log" 2>/dev/null
+    xemu-gpu xemu-work hakuX-cpu > "$OUT/${TAG}.log" 2>/dev/null
 adb -s $S exec-out screencap -p > "$OUT/${TAG}-end.png" 2>/dev/null
 adb -s $S shell am force-stop $PKG
 

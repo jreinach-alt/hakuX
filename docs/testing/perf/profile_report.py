@@ -120,10 +120,14 @@ def main():
     print("== thread split (share of all samples)")
     for t in threads[:12]:
         print("  %7s  %-24s %s" % (t["Overhead"], t["Command"], t["Tid"]))
-    tid = a.tid or next(t["Tid"] for t in threads
-                        if t["Command"] == "qemu_main")
+    tid = a.tid or next((t["Tid"] for t in threads
+                         if t["Command"] == "qemu_main"), None)
+    if tid is None:
+        sys.exit("no thread named qemu_main in the split; pass --tid")
     total = sum(int(t["Sample"]) for t in threads)
-    gs = next(int(t["Sample"]) for t in threads if t["Tid"] == tid)
+    gs = next((int(t["Sample"]) for t in threads if t["Tid"] == tid), None)
+    if gs is None:
+        sys.exit("--tid %s is not a thread in the split" % tid)
     print("guest thread tid %s: %d of %d samples (%.1f%%)"
           % (tid, gs, total, 100.0 * gs / total))
 

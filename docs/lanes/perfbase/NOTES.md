@@ -54,10 +54,13 @@ with two independent sources (VBLANK timer count against the flip clock).
 
 ## Tooling changes
 
-- `run_perf.sh`: `OUT=` output dir; collects `hakuX-pace`, `hakuX-pages`,
-  `hakuX-build` with threadtime; refuses to run if `validation_layers` is on;
+- `run_perf.sh`: `OUT=` output dir; collects `hakuX-pace`, `hakuX-pages`
+  with threadtime, and `hakuX-build` to `$OUT/<tag>-build.txt` before the
+  pre-measure clear (the 2026-09-26 logs predate this and carry no build
+  line); refuses to run if `validation_layers` is on;
   saves the prefs before/as-run to `$OUT/<tag>-prefs-{before,run}.xml` and
-  restores the before file on exit, checked by read-back.
+  restores the before file on exit, checked by read-back; a failed read-back
+  exits 3.
 - `profile_guest.sh`: `GAME`, `MASH`, `BOOT_S`, `SETTLE_S`, `TAG`, `OUT`;
   records the prefs it ran under and refuses validation layers.
 - `bench_ff.sh`: calls the `run_perf.sh` beside it, not the copy in
@@ -143,7 +146,9 @@ the old b_ref `5c50884181`, and the legs are unchanged.
 **The line is right and Vpf is what drifts.** In all six runs, the pace
 line's VBLANK total times 16.683 ms equals its summed window wall time to
 0.9977-1.0000 (`~/hakux-work/perf/perfbase_vbwall.py`, a scratch
-script, not in the repo). Vpf is an EMA sampled at the window
+script, not in the repo). At the judge's P4 period, 1000/60 = 16.667 ms, the
+whole-run ratios are 0.9967-0.9990 (galleon-r2 lowest) and single windows
+0.945-1.009. Vpf is an EMA sampled at the window
 end, and it under-reads a window that contains a multi-second stall
 (3.3-11.4 s in those runs). P3 is a check that holds on steady content
 only; do not reuse it as a correctness check on titles with long stalls.
@@ -168,3 +173,27 @@ only; do not reuse it as a correctness check on titles with long stalls.
 - lane.tcgchurn (#309) owns `accel/tcg/cputlb.c` and `target/i386/tcg/**`
   and is adding the full-TLB-flush trigger counters; this lane answers "from
   which path" with simpleperf call graphs, not with a second counter.
+
+## Audit decisions (pass 1 and 2, 2026-09-25)
+
+Each of the seven LOWs in `docs/audits/2026-09-25-perfbase-pass1.md`:
+
+1. `hakuX-build` cleared before collection: fixed. `run_perf.sh` dumps it to
+   `<tag>-build.txt` before the pre-measure `logcat -c`. The six 09-26 logs
+   still carry no build line; their build identity is the lane's record.
+2. P3 unfixtured: fixed. The selftest has an `ema` mutant (Vpf 2.30 against
+   vb/60 2.05) that must give `FAIL P3` alone.
+3. `pace_check.py` boundaries and empty paths: fixed. A frame count that does
+   not go up starts a new process, so a one-line process followed by `f=60`
+   is excluded, not a step of 0. No window left, or no window with `ms > 0`,
+   prints a FAIL and exits 1 instead of a traceback.
+4. `profile_report.py` bare StopIteration: fixed. It says which lookup
+   failed: no `qemu_main` thread, or a `--tid` not in the split.
+5. "within 0.2%": corrected in the PR body to 0.9967-0.9990 at 16.667 ms
+   (whole run), and above.
+6. "up from the 35-40% read on 09-11": dropped. The 09-11 group total has no
+   source in the repo, and the grouping is new. The investigation now states
+   the lookup sub-share (11.6-11.8 points) and the 28.6-29.3% left without it.
+7. Prefs restore and the superseded prediction: fixed. A failed read-back
+   exits 3 from the EXIT trap. `perfbase-pace.json` carries `superseded_by`
+   naming `perfbase-pace-2.json`; its legs and refs are unchanged.

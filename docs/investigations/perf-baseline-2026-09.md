@@ -26,8 +26,13 @@ run. Raw logs, screenshots, prefs and `perf.data` are in
 
 **Crimson Skies is where the brief's premise holds, and it has not moved
 since 09-11.** In Crimson, translation-cache maintenance is 40.4-40.9% of the
-guest thread. That is up from the 35-40% read on 09-11: neither #73's fix nor
-the voice-lock release reduced this bill. `voice_lock` did fall, to
+guest thread. That group is new in this baseline and counts the four
+translation-block lookup symbols in the top 25 (`qht_lookup_custom`,
+`helper_lookup_tb_ptr`, `tb_lookup_cmp`, `tb_tc_cmp`), which are 11.8 points
+in p1b and 11.6 in p2. Without them the invalidation-side bill is 28.6-29.3%.
+There is no group total from 09-11 to compare against; symbol by symbol
+(the table under "Against 09-11" below) the five largest are where they were,
+so neither #73's fix nor the voice-lock release reduced this bill. `voice_lock` did fall, to
 0.76-0.84% (from 1.41%).
 
 **The jump-cache flush is driven by block discards, not by full TLB
