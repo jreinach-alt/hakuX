@@ -74,12 +74,12 @@ perf_json() { python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print
 # exit 0
 rc=$(perf_soak "$TESTING/soak_title.sh" 1)
 [ "$rc" = 0 ] && ok "exit 0: the soak ran to its deadline" || bad "exit 0: rc=$rc: $(tail -3 "$PR/run.log")"
-[ "$(cat "$PR/at_start" 2>/dev/null)" = "2 3" ] && ok "MAX ran: the title started at performance 2, fan 3" \
-    || bad "MAX ran: the title started at [$(cat "$PR/at_start" 2>/dev/null)], not [2 3]"
+[ "$(cat "$PR/at_start" 2>/dev/null)" = "2 5" ] && ok "MAX ran: the title started at performance 2, fan 5" \
+    || bad "MAX ran: the title started at [$(cat "$PR/at_start" 2>/dev/null)], not [2 5]"
 [ "$(cat "$PR/state")" = "0 4" ] && ok "exit 0: the device is left at REST 0/4" \
     || bad "exit 0: the device is left at [$(cat "$PR/state")]"
-[ "$(perf_json perf_restored)/$(perf_json perf_mode)/$(perf_json fan_mode)" = "True/2/3" ] \
-    && ok "exit 0: perf_regimen.json says perf_mode 2, fan_mode 3, perf_restored true" \
+[ "$(perf_json perf_restored)/$(perf_json perf_mode)/$(perf_json fan_mode)" = "True/2/5" ] \
+    && ok "exit 0: perf_regimen.json says perf_mode 2, fan_mode 5, perf_restored true" \
     || bad "exit 0: perf_regimen.json: $(cat "$PR/perf_regimen.json" 2>/dev/null | tr -d '\n')"
 grep -q "^PERF: restored=\[0 4\] perf_restored=true" "$PR/run.log" \
     && ok "exit 0: run.log carries the PERF: restore line" || bad "exit 0: no PERF: restore line in run.log"
@@ -96,7 +96,7 @@ PY
     cp "$PR/soak_die.sh" "$PR/t/soak_title.sh"
     rc=$(perf_soak "$PR/t/soak_title.sh" 30)
     [ "$rc" = 3 ] && ok "exit 3: the dying copy exited 3" || bad "exit 3: rc=$rc"
-    [ "$(cat "$PR/at_start" 2>/dev/null)" = "2 3" ] && [ "$(cat "$PR/state")" = "0 4" ] \
+    [ "$(cat "$PR/at_start" 2>/dev/null)" = "2 5" ] && [ "$(cat "$PR/state")" = "0 4" ] \
         && ok "exit 3: MAX at start, REST after a non-zero exit" \
         || bad "exit 3: at start [$(cat "$PR/at_start" 2>/dev/null)], after [$(cat "$PR/state")]"
     [ "$(perf_json perf_restored)" = True ] && ok "exit 3: perf_restored true" \

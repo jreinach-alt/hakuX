@@ -60,6 +60,8 @@ a shell am force-stop "$PKG" >/dev/null 2>&1
 a shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1
 
 # 1. Idle probe. 8 s settle per step: the fan ramps, the GPU floor is a write.
+# SKIP_IDLE=1 for a follow-up session that only runs arms.
+if [ "${SKIP_IDLE:-0}" = 1 ]; then log "== idle probe skipped"; exit 0; fi
 log "== idle probe"
 step() { log "set perf=$1 fan=$2 -> [$(device_perf_set "$1" "$2")]"; sleep "${SETTLE_S:-8}"; log "  $(snap)"; }
 log "  baseline $(snap)"

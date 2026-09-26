@@ -78,8 +78,10 @@ device_env() {
     # THE GAMEPLAY REGIMEN: the OEM performance and fan modes a title soak
     # runs at (MAX) and leaves the device at (REST). See device_perf below.
     # Both handhelds run the same Moorechip settings library, so the values
-    # agree today; they are per-row so a third device need not.
-    export DEVICE_PERF_MAX=2 DEVICE_FAN_MAX=3 DEVICE_PERF_REST=0 DEVICE_FAN_REST=4
+    # agree today; they are per-row so a third device need not. Fan MAX is 5
+    # (SPORT), not 3 (PERFORMANCE): measured on the Nova 2026-09-26, 3 holds
+    # the same PWM duty as SMART at idle (12000) and 5 drives 25000 / 8100 rpm.
+    export DEVICE_PERF_MAX=2 DEVICE_FAN_MAX=5 DEVICE_PERF_REST=0 DEVICE_FAN_REST=4
     export PKG="${PKG:-com.jreinach.hakux.debug}"
     # Per-device lease. One lease file for two devices would have each
     # dispatcher think the other's run was its own.

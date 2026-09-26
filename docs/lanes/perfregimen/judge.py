@@ -5,9 +5,8 @@
 
 Reads idle.log (the idle probe), each arm<N>-<rest|max>/ (logcat.txt,
 perf_regimen.json, samples.txt), and prints one line per leg and a verdict.
-The fps is the gfps-line cadence (hakuX-perf `gfps=`, one line per 60 guest
-flips) inside the window, in seconds from the first hakuX line of the arm --
-the same reader as docs/lanes/blinx372c/stallread.py.
+The fps is the median `gfps=N` value (hakuX-perf, one line per ~2 s window)
+inside the window, in seconds from the first hakuX line of the arm.
 """
 import argparse, glob, json, os, re, statistics, sys
 from datetime import datetime
@@ -32,13 +31,13 @@ def arm_fps(path, lo, hi):
         if t0 is None:
             continue
         if tag == "hakuX-perf" and body.startswith("gfps=") and lo <= t - t0 < hi:
-            g.append(t - t0)
-    fr, sp = 0, 0.0
-    for a, b in zip(g, g[1:]):
-        if 0 < b - a < 30:
-            fr += 60
-            sp += b - a
-    return (fr / sp if sp else float("nan")), len(g)
+            v = re.match(r"gfps=(\d+(?:\.\d+)?)", body)
+            if v:
+                g.append(float(v.group(1)))
+    # The line's own value: on this build `gfps=` is printed every ~2 s with
+    # the guest fps over that window (2 s apart at 30 fps AND at 14 fps), so
+    # the blinx372c cadence reader (60 flips per line) does not apply.
+    return (statistics.median(g) if g else float("nan")), len(g)
 
 
 def samples(path, skip=6):
