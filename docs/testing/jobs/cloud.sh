@@ -378,24 +378,63 @@ if [ "$active" -ge "$LANE_MAX" ] && [ "$mode" != list ]; then
 fi
 
 # ------------------------------------------------------------- what to claim
-pr_by_label() {   # <label> -> "num<TAB>head<TAB>title" of the oldest claimable match
+# THE LIST IS A CANDIDATE LIST, NOT A CLAIM LIST (measured 2026-09-26 15:03
+# PDT). `gh pr list --label` is served from GitHub's search index, which lags a
+# label added seconds earlier. The tick after the one that claimed audit2 #420
+# listed #420 as unclaimed, "claimed" it again, re-added its row, and then --
+# systemd-run refusing the unit that already existed -- ran the no-session
+# rollback below, which removed the RUNNING session's row and claimed:cloud.
+# fleet.py failed "RUNNING with no territory row" until the host put it back.
+# So every candidate is checked again, by number, against the two things that
+# cannot lag: the units systemd is running, and the labels the REST endpoint
+# returns (the one label_rm already trusts; a PR is an issue for labels).
+unit_busy() {   # <num> -> the hakux-lane-cloud-*-<num> unit(s) running, stopping or starting
+    # ANY kind, not just the one being claimed: a remediation of #N and an
+    # audit of #N are two sessions on one branch, and PR and issue numbers
+    # share one sequence. list-units, not is-active: it answers for a glob,
+    # and "deactivating" is the tail (`cloud.sh finish`) still releasing it.
+    systemctl --user list-units "hakux-lane-cloud-*-$1.service" --all --plain --no-legend \
+        --state=active,activating,deactivating,reloading 2>/dev/null | awk '{print $1}'
+}
+held_why() {    # <num> <kind> -> prints why it may not be claimed; exit 0 when held
+    local busy have
+    busy=$(unit_busy "$1")
+    [ -n "$busy" ] && { echo "unit $(echo $busy) is running"; return 0; }
+    # FAIL CLOSED: labels that could not be read are not labels that are absent.
+    have=$(gh api "repos/$GH_REPO/issues/$1/labels" --jq '.[].name' 2>/dev/null </dev/null) \
+        || { echo "its labels could not be read by number"; return 0; }
+    grep -qFx claimed:cloud <<< "$have" && { echo "it carries claimed:cloud (read by number; the list lagged)"; return 0; }
+    grep -qFx blocked:needs-owner <<< "$have" && { echo "it carries blocked:needs-owner (read by number)"; return 0; }
+    [ "$2" = issue ] && grep -q '^lane:' <<< "$have" && { echo "it carries a lane: label (read by number)"; return 0; }
+    return 1
+}
+first_free() {  # <kind>, candidates on stdin -> the first row nothing holds
+    local n h t why
+    while IFS=$'\t' read -r n h t <&3; do
+        [ -n "$n" ] || continue
+        why=$(held_why "$n" "$1") || { printf '%s\t%s\t%s\n' "$n" "$h" "$t"; return 0; }
+        if [ "$mode" = list ]; then echo "skip $1 #$n: $why" >&2; else say "skip $1 #$n: $why" >&2; fi
+    done 3<&0
+    return 0
+}
+pr_by_label() {   # <label> -> every "num<TAB>head<TAB>title" match, oldest first
     # NO HEAD-BRANCH FILTER. Every PR the harness opens is a lane's, and the
     # lane/cloud- prefix that used to be here made every one of them invisible.
     # Skipped: one a session already holds, and one the owner has been asked
     # to decide (blocked:needs-owner), which is what stops a failing unit from
-    # being claimed forever.
+    # being claimed forever. first_free re-checks both by number.
     gh pr list --repo "$GH_REPO" --state open --label "$1" --json number,headRefName,title,labels \
-        --jq 'sort_by(.number)[] | select((.labels | map(.name) | map(select(. == "claimed:cloud" or . == "blocked:needs-owner")) | length) == 0) | "\(.number)\t\(.headRefName)\t\(.title)"' 2>/dev/null | head -1
+        --jq 'sort_by(.number)[] | select((.labels | map(.name) | map(select(. == "claimed:cloud" or . == "blocked:needs-owner")) | length) == 0) | "\(.number)\t\(.headRefName)\t\(.title)"' 2>/dev/null
 }
 issue_cloud() {
     gh issue list --repo "$GH_REPO" --state open --label cloud --json number,title,labels \
-        --jq 'sort_by(.number)[] | select((.labels | map(.name) | map(select(startswith("lane:") or . == "claimed:cloud" or . == "blocked:needs-owner")) | length) == 0) | "\(.number)\t\t\(.title)"' 2>/dev/null | head -1
+        --jq 'sort_by(.number)[] | select((.labels | map(.name) | map(select(startswith("lane:") or . == "claimed:cloud" or . == "blocked:needs-owner")) | length) == 0) | "\(.number)\t\t\(.title)"' 2>/dev/null
 }
 kind=""; row=""
-row=$(pr_by_label needs-remediation); [ -n "$row" ] && kind=remediate
-[ -z "$row" ] && { row=$(pr_by_label needs-audit-2); [ -n "$row" ] && kind=audit2; }
-[ -z "$row" ] && { row=$(pr_by_label needs-audit-1); [ -n "$row" ] && kind=audit1; }
-[ -z "$row" ] && { row=$(issue_cloud); [ -n "$row" ] && kind=issue; }
+row=$(pr_by_label needs-remediation | first_free remediate); [ -n "$row" ] && kind=remediate
+[ -z "$row" ] && { row=$(pr_by_label needs-audit-2 | first_free audit2); [ -n "$row" ] && kind=audit2; }
+[ -z "$row" ] && { row=$(pr_by_label needs-audit-1 | first_free audit1); [ -n "$row" ] && kind=audit1; }
+[ -z "$row" ] && { row=$(issue_cloud | first_free issue); [ -n "$row" ] && kind=issue; }
 [ -n "$row" ] || { [ "$mode" = list ] && echo "nothing to claim"; exit 0; }
 IFS=$'\t' read -r num head title <<< "$row"
 name="cloud-$kind-$num"; unit="hakux-lane-$name"; wt="$WORK/wt/$name"
@@ -697,6 +736,21 @@ systemd-run --user --unit "$unit" --collect \
         # what it was claimed for, and the next tick should pick it up. The
         # attempt is given back for the same reason, by the EXIT trap, which
         # only a started unit clears.
+        #
+        # UNLESS A UNIT IS RUNNING. systemd-run also fails when the unit
+        # already exists, and then the claim below is not this tick's to drop:
+        # it is the running session's, and its own ExecStopPost releases it.
+        # That is the #420 incident (15:04 PDT 2026-09-26): this branch removed
+        # a live session's row and label. first_free refuses such a number up
+        # front; this is the check for whatever still gets past it (two ticks
+        # racing). The attempt is still given back by the trap -- this tick
+        # started nothing -- and the snapshot is left, because it is the one
+        # the running unit's tail executes from.
+        busy=$(unit_busy "$num")
+        if [ -n "$busy" ]; then
+            say "systemd-run failed for $unit, and $(echo $busy) is running: this is a collision, not a failed start; the claim, row and snapshot are the running session's, so nothing is undone"
+            exit 0
+        fi
         say "systemd-run failed for $unit; dropping the claim so the next tick can pick #$num up again"
         territory_row rm "$name" '[]' '[]' ''
         # if/else, not `A && x || y`: label_rm returning 1 on the issue path
