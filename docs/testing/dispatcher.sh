@@ -112,11 +112,20 @@ REPO="${DISPATCH_REPO:-$TREE}"
 BUILD_TREE="${DISPATCH_BUILD_TREE:-$D/build-tree}"
 snapshot_scripts() {
     mkdir -p "$SNAP"
-    for f in dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
+    local p f SRC0="$SRC" SNAP0="$SNAP"
+    for p in dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
              affinity.py captures.py make_test_iso.py extract_results.py \
              sweep_queue.sh make_isolation_discs.py vsh_score.py \
              titles/route.sh perf/pad.sh; do
+        # Two of these live in subdirectories. Each file is resolved against
+        # its own directory, so the write-beside-and-rename below stays in one
+        # directory, and cp gets a directory that exists.
+        local SRC="$SRC0" SNAP="$SNAP0"; f="$p"
+        if [ "${p%/*}" != "$p" ]; then
+            SRC="$SRC0/${p%/*}"; SNAP="$SNAP0/${p%/*}"; f="${p##*/}"
+        fi
         [ -f "$SRC/$f" ] || continue
+        mkdir -p "$SNAP" 2>/dev/null
         cmp -s "$SRC/$f" "$SNAP/$f" 2>/dev/null && continue
         # NEVER REWRITE A SNAPSHOT FILE IN PLACE. $SNAP is shared by every
         # worker, and bash reads a running script lazily, by byte offset: a
@@ -126,12 +135,9 @@ snapshot_scripts() {
         # emulator never started" (2026-09-25, dispatch-hardening defect 13).
         # Write beside it and rename: the rename swaps the inode, and a
         # process already reading the old file keeps the old one.
-        # Two of these live in subdirectories, and cp does not make one.
-        local d t; d="$SNAP/$(dirname "$f")"; t="$d/.$(basename "$f").tmp.$$"
-        mkdir -p "$d" 2>/dev/null
-        cp -f "$SRC/$f" "$t" 2>/dev/null \
-            && mv -f "$t" "$SNAP/$f" 2>/dev/null \
-            || rm -f "$t"
+        cp -f "$SRC/$f" "$SNAP/.$f.tmp.$$" 2>/dev/null \
+            && mv -f "$SNAP/.$f.tmp.$$" "$SNAP/$f" 2>/dev/null \
+            || rm -f "$SNAP/.$f.tmp.$$"
     done
 }
 # Hash of the scripts as they are IN THE TREE. This used to return empty
