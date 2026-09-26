@@ -54,7 +54,14 @@ State, first match wins:
 8. `standing, nothing in flight`: `standing = true`.
 9. Otherwise, **IDLE, NO WORK**. These rows sort first, are named in a
    `[!WARNING]` above the table, and are written to `$S/idle-lanes`, which the
-   issue body prints as `**Idle with no work:** ...`.
+   issue body prints as `**Idle with no work:** ...`. If `gh pr list` failed,
+   "no PR" is unknown, and the row says so instead of flagging idle. Without
+   this, one gh blip would name every lane idle in the body. A later selftest
+   fragment showed exactly that: its board fixture has no PRs, and the header
+   it produced listed fifteen lanes as idle.
+
+The two selftest fragments (62 edited, 63 new) are outside the brief's Files.
+The board has been asked for them in `board-requests/statuspage.md`.
 
 A running unit with no territory row gets its own row, and so do rows retired
 in the last 24 h (newest 16, the rest counted). That keeps turnipfork and
@@ -88,6 +95,19 @@ so.
 lanes were flagged idle with no work: blankrule297, sweepcover and titlerun, all
 with draft PRs. perfarch showed as `PR in audit (1)` on #308, and turnipfork as
 `retired 09-25 17:35`. The xbox line showed ON, 66.1 W.
+
+After PR #349 folded (`6b97882481`), the first real tick published it. At
+2026-09-26T04:40:36Z (21:40 PDT), #107 read:
+
+- title: `harness: live status -- 21:30 PDT+, 4 lanes running, ...`
+- body: `**Written 2026-09-25 21:40 PDT.**` and `Next roll-up due by **2026-09-25 22:10 PDT**`
+- comment: every lane row, with perfarch `PR in audit (2)`, turnipfork
+  `fold-ready` on its new PR #353, and the lane.xbox, lane.remote and host ops
+  lines. No lane was idle at that tick, because the three flagged at 21:15
+  had all been resumed.
+
+PR #349 was folded before the failed-PR-list guard landed, so the guard
+follows in PR #354.
 
 Don't run `--print` on the host and then read `$WORK/status/STATUS.md`. It
 writes to the live path, and a real tick landing between the write and the

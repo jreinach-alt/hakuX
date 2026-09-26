@@ -42,7 +42,10 @@ hr_state_reset() {
     hr_draft "$HEAD1"
 }
 # <script> [args]: one tick of a handback.sh, with our shims on PATH.
-hr() { local s="$1"; shift; ( export HD="$HR" HD_LOG="$HR/gh.log" PATH="$HR/bin:$PATH" HAKUX_LANE_SH="$TESTING/lane.sh"; bash "$s" "$@" 2>&1 ); }
+# IDLE_GRACE_SECS held off: this lane's session ended an hour ago with nothing
+# in flight, which is also the idle cause (99-handback-idle.sh), and leg (0)
+# asks only whether an OLD RUN is news.
+hr() { local s="$1"; shift; ( export HD="$HR" HD_LOG="$HR/gh.log" PATH="$HR/bin:$PATH" HAKUX_LANE_SH="$TESTING/lane.sh" IDLE_GRACE_SECS=999999; bash "$s" "$@" 2>&1 ); }
 hr_reset()  { : > "$HR/gh.log"; : > "$HR/comments.log"; }
 hr_runs()   { grep -cE "systemd-run.*hakux-lane-$ME( |$)" "$HR/gh.log"; }
 hr_ran()    { [ "$(hr_runs)" -eq 1 ]; }

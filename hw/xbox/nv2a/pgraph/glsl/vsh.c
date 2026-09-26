@@ -513,6 +513,14 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
         "vec4 NaNToOne(vec4 src) {\n"
         "  return mix(src, vec4(1.0), isnan(src));\n"
         "}\n"
+        /* A NaN colour is clamped by its sign bit, as an infinity is:
+         * -NaN draws as 0 and +NaN as 1. Attrib_float's passthrough column
+         * is the same ramp for -NaN..+NaN as for -INF..+INF and 0..1 on
+         * hardware, sNaN and qNaN alike (#281). */
+        "vec4 NaNToSignedOne(vec4 src) {\n"
+        "  vec4 one = mix(vec4(1.0), vec4(-1.0), lessThan(floatBitsToInt(src), ivec4(0)));\n"
+        "  return mix(src, one, isnan(src));\n"
+        "}\n"
         "vec4 NaNToValue(vec4 src, float replacement) {\n"
         "  return mix(src, vec4(replacement), isnan(src));\n"
         "}\n"
@@ -951,8 +959,8 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
     }
 
     mstring_append(body, "\n"
-                   "  vtxD0 = colorPrecision(clamp(NaNToOne(oD0), 0.0, 1.0));\n"
-                   "  vtxB0 = colorPrecision(clamp(NaNToOne(oB0), 0.0, 1.0));\n"
+                   "  vtxD0 = colorPrecision(clamp(NaNToSignedOne(oD0), 0.0, 1.0));\n"
+                   "  vtxB0 = colorPrecision(clamp(NaNToSignedOne(oB0), 0.0, 1.0));\n"
                    "  vtxFog = oFog.x;\n"
                    "  vtxFogSpecial = fogSpecial;\n"
                    "  vtxT0 = oT0;\n"
@@ -969,8 +977,8 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
 
     if (state->specular_enable) {
         mstring_append(body,
-                       "  vtxD1 = colorPrecision(clamp(NaNToOne(oD1), 0.0, 1.0));\n"
-                       "  vtxB1 = colorPrecision(clamp(NaNToOne(oB1), 0.0, 1.0));\n"
+                       "  vtxD1 = colorPrecision(clamp(NaNToSignedOne(oD1), 0.0, 1.0));\n"
+                       "  vtxB1 = colorPrecision(clamp(NaNToSignedOne(oB1), 0.0, 1.0));\n"
         );
 
         if (state->ignore_specular_alpha) {

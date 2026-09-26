@@ -1,0 +1,27 @@
+{
+  "registered_utc": "2026-09-26T01:10:10Z",
+  "who": "lane.remote",
+  "issue": "274",
+  "prediction": "#274 FOLLOW-UP -- PUSH-INFO REFRESH IN vk/texture.c (host 5841098119, board wave 209). DEFECT: pgraph_vk_bind_textures() sets texture_bindings_changed only when a slot's node pointer changes, but the view a slot pushes also depends on tex_surface_direct[] (create_texture() clears it on entry) and on the node's own image view. pgraph_vk_texture_surface_view_retired() drops a retired view only from slots still flagged direct, and bind_textures() clears texture_bindings_changed on entry, which drops a rebuild the hook requested between draws. So a slot can keep pushing a view its state no longer names, including a retired surface view that the next command buffer re-pushes after the view may be destroyed (use-after-free class; by reading). MEASURED with local detectors (never committed): with #327's condition switched off, the stale push is exactly CenterCorner2 and SquareOffset4's carry-over (push-time mismatch on slot 0, 3 + 3 pushes), and a one-line refresh took both from 78,496 to 0. With #327 (a_ref c6d14cad), a push-time check (pushed view, layout and sampler against the ones the slot's state names) fired 0 times on 359 captures of the five discs (aacs 3, Antialiasing + DMA 14, Clear 33, disc109 73, surf1 236). A retired view was still in the push infos twice (disc109 and surf1, slot 0, still flagged direct, handled by the existing branch) and was never pushed afterwards. On 2,436 tests of the full stock suite (94 suites, stopped inside W buffering) no slot left direct mode on its node and no retirement was missed. B: (a) the bind loop also sets texture_bindings_changed when a slot's effective view, layout or sampler differs across create_texture(), on the bound and the LRU-exhausted exits; (b) the retire hook points every slot whose push info names the retired view at the dummy texture, marks the slot dirty and requests a rebuild, and for a slot not flagged direct (the case the existing test misses) also bumps texture_state_gen so every draw path rebinds before it pushes; (c) a rebuild the hook requests survives bind_textures()'s entry reset. PREDICTION, desktop Vulkan on llvmpipe, surface_scale 1, this disc (Antialiasing tests + DMA corruption around surfaces, 14 captures; it contains aacs's three tests in the same order, so aacs is not registered separately), 3 runs per arm: GUARD -- all captures bit-identical between A and B (must_not_move *), better 0, worse 0. UNCOMFORTABLE OUTCOME: any capture moving means B changes a path the detectors saw as clean, and this FAILS.",
+  "a_ref": "c6d14cad",
+  "b_ref": "bcb7433f",
+  "must_not_move": [
+    "*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "better": 0,
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Antialiasing tests",
+      "DMA corruption around surfaces"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "title": "desktop Vulkan A/B -- hand-queue only, see the prediction text"
+}
