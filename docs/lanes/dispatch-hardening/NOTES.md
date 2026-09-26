@@ -223,6 +223,189 @@ hand and has no fragment.
     #91 notes are gone. Master's version printed them from the 09-18
     working-tree copy.
 
+## Defect 11: a refuted-then-reverted FAIL kept its PR `regressed` forever
+
+PR #260, decision #257 option 3.
+
+- **The shape.** A lane whose arm refutes its candidate reverts the code.
+  The branch is then docs-only, which builds master's binary, so no arm can
+  supersede the FAIL. PR #252 (#224 family B) sat there. The exits were an
+  override that was not an acceptance, or re-landing the docs with no
+  prediction (#259).
+- **The rule.** In `label_decide`, a FAIL is withdrawn when
+  `git diff --name-only a_ref b_ref`, minus `docs/`, shares no file with
+  `git diff --name-only origin/<tip>...<head>`.
+  - A withdrawn FAIL leaves the decision entirely. It neither counts nor
+    supersedes, so an older verdict on the same issue is live again.
+  - `state` prints `withdrawn <prediction>` straight after `STATE=`, and a
+    markdown line naming the files that are gone.
+  - Things that cannot be answered keep the FAIL: an unresolvable ref, a head
+    the object store lacks, or an arm whose b_ref changed no code. (An empty
+    set would otherwise be withdrawn vacuously.)
+  - A PASS is never withdrawn. A partial revert is not a withdrawal.
+  - `state` stays offline. It reads the refs the last tick fetched:
+    `origin/<branch>`, then `refs/heads/<branch>`, then `refs/remotes/pr/<n>`
+    from the last PR map.
+- **The label.** Beyond the brief, the judge loop moves labels only when it
+  judges an arm, and a reverted branch is never judged again. Without more,
+  `regressed` would stay on the PR and fold.sh reads the label. So each tick,
+  for every open PR (from the PR map) with a withdrawn FAIL and nothing else
+  outstanding, it takes `regressed` off once per set of withdrawn verdicts.
+  It posts a `[job.arms] WITHDRAWN:` comment and keeps a marker in
+  `$WORK/arms/withdrawn/`. It does not add `verified`. The verdict comment
+  and the `judged/` marker are untouched.
+- **Proof.** Fragment `94-arms-withdrawn.sh`, with its own git repo, work dir
+  and dispatch dir:
+  - (a) full revert reads `STATE=none` plus `withdrawn`.
+  - (b) partial reads `regressed`.
+  - (c) intact reads `regressed`.
+  - (d) a PASS on a docs-only branch reads `verified`.
+  - (e) on one branch with three arms, only the middle FAIL is withdrawn.
+  - The tick removes the label once, on the right PR only.
+  - Three mutants, run from copies inside the fragment, each red on its named
+    case: no `docs/` restriction (a), any-overlap-withdraws (b), and a PASS
+    withdrawn too (d).
+- **Falsification.** The fragment was copied into a scratch worktree at
+  `origin/master` (`d709a8d1fa`), and master's own arms.sh was never swapped.
+  (a) is red there for the reason this defect exists: "a fully reverted
+  refuted branch is not regressed" FAILs, because the old code says
+  `regressed`. (e) and the tick's label removal are red too. (b), (c) and (d)
+  are green, since the old code already gets those right. The three mutant
+  anchors are absent from the old file, as expected. That run had 1372
+  passes and 10 failures, all 10 in this fragment.
+- **Real check.** `arms.sh state lane/shadetie224` on the host, re-run
+  2026-09-25 after merging master: `STATE=none`,
+  `withdrawn shadetie224-ltnormal.json`, naming
+  `hw/xbox/nv2a/pgraph/glsl/vsh-ff.c` as the code that is gone.
+
+## Defect 12: arms backpressure counted the idle tier
+
+- **The shape.** The workers serve `queue/` in glob order, so `z-*` (the
+  full-corpus sweep, one request per suite) sorts behind every arm. arms.sh
+  counted every `.req`, though. A queued sweep of about 100 requests held
+  `waiting` above `ARMS_QUEUE_MAX=4`, and no lane's arm was queued. The host's
+  stopgap, `ARMS_QUEUE_MAX=1000`, removes backpressure entirely.
+- **The fix.** `waiting` counts only the requests that are not `z-*`. The
+  refusal line prints both counts: `queue has N waiting ahead of the idle
+  tier, M idle-tier z-* behind it`.
+- **The other readers.**
+  - `status.sh` (summary and queue line) and `board-status.sh` now print the
+    idle tier apart.
+  - `idle-watchdog.sh` and `backlog-gate.sh` already split `z-*` out.
+  - `fleet.py`'s `queue_stall` is correct as it stands. Its busy evidence
+    needs a claimer running something that sorts after the waiting request,
+    and nothing sorts after `z-*` except another `z-*`. An idle worker would
+    claim a `z-*` itself. So a `z-*` waiting behind real work is never
+    counted as a stall. It was left unchanged.
+- **Defect 12b.** `queue_full_sweep.sh` now resolves `"$REF^{commit}"`, so an
+  annotated tag peels to its commit instead of the tag object.
+- **Proof.** Fragment `94-arms-idle-tier.sh`, with its own work dir and
+  dispatch dir:
+  - 100 `z-*` requests plus 1 normal request: the pair is queued.
+  - 100 `z-*` requests plus 4 normal requests: refused, and the line names
+    both counts. This keeps a no-backpressure fix red.
+  - The mutant that counts every request refuses the pair (red).
+  - Against master's arms.sh in the scratch worktree, the queueing legs are
+    red.
+- **After the fold,** the host deletes
+  `~/.config/systemd/user/hakux-arms.service.d/zsweep-backpressure.conf`.
+
+## Defect 13: a worker's re-snapshot rewrote the other worker's running script
+
+- **The shape.** `snapshot_scripts` used `cp -f` into the shared `$SNAP`, which
+  rewrites the file in place. bash reads a running script by byte offset. On
+  2026-09-25 the Thor read the new `run_disc.sh` at the old offset, and the
+  run was voided.
+- **The fix.** Each file is written to `$SNAP/.<f>.tmp.$$` and then `mv`'d
+  into place. The rename swaps the inode, so a running bash keeps the old
+  inode. An unchanged file (`cmp -s`) is not touched at all.
+  - Per-worker snapshot directories were considered and not done. The
+    rename alone closes the race, and a per-worker `$SNAP` would change the
+    path every re-exec and every other reader of `$D/bin` depends on.
+- **Proof.** Fragment `97-dispatch-snapshot-rename.sh` is exact, not a race.
+  v1 starts with `sleep 2` (8 bytes), and v2 is built so that its byte 8
+  starts `echo GARBLED`.
+  - With the fix, the running v1 prints `v1-done`, the snapshot holds v2,
+    and no temp file is left behind.
+  - The mutant (`cp -f` in place) prints `GARBLED v2-done` (red).
+  - Master's dispatcher.sh in the scratch worktree fails the `v1-done` leg
+    (red).
+- **Selftest,** on the branch after merging master (defects 11 to 13):
+  `bash docs/testing/jobs/selftest.sh` gave 1393 passed, 0 failed.
+
+## Defect 23: a lane whose device run finished was not woken
+
+- **The shape.** A lane ends its session while its soak waits on a device,
+  which is correct. `handback.sh` resumed a waiting draft only on a judged arm
+  (`draft-strand-arm`) or on the two-hour quiet clock. So a lane whose soak
+  finished at minute ten sat on its own result for up to two hours. At
+  23:45Z on 2026-09-25 the Nova had 23 lane requests waiting, including
+  perfarch's nine soaks.
+- **The fix.** It adds a third strand cause, `draft-strand-runs`.
+  - `lane_requests_of` makes one read of `queue/`, `running/` and `results/`.
+    It replaces `inflight_of`, so the in-flight gate and the finished set
+    cannot attribute a request differently.
+  - A request belongs to a lane by these rules, first match wins: its `lane`
+    field; an expect_sha registered in `arms/pairs` (that pair's branch); a
+    purpose saying ` from lane/<b>:`; then its requester, or the owner field
+    of its id when there is no requester. A leading `lane.` or `arms-` is
+    stripped, and the owner is the lane it equals or the LONGEST known lane
+    it starts with plus `-`. Known lanes are the `$WORK/wt` dirs and the
+    branches in the pairs.
+  - A finished run is new when its DONE/ERROR marker is newer than the mtime
+    of the lane's newest `$WORK/logs/lane/<name>.<stamp>.json`. That is the
+    end of its last session, because `claude -p` writes that file on exit.
+    With no session log, nothing counts as new.
+  - An arm's own result (expect_sha registered) is left out. The verdict is
+    the arm cause's news, and resuming on the raw run would come ahead of it.
+  - The cause fires only when none of the lane's requests is queued or
+    running. It is keyed on the hash of the finished set, so a push is not a
+    new cause and a second soak finishing is. It skips the quiet clock, so it
+    fires on the first tick after the run finishes.
+  - A judged verdict that is still news goes first. The runs cause takes a
+    quiet row, or an arm row whose verdict was already actioned.
+  - The brief addendum is a table of request, state and result dir.
+  - It neither counts toward `DRAFT_STRAND_MAX` nor spends an attempt. It can
+    recur only after a new session ended and new device work finished, and
+    that is progress, not a loop. If it were counted, a lane that ran four
+    soaks would be labelled `blocked:needs-owner` for waiting on them.
+  - **A side effect, on purpose.** The in-flight gate that held a draft off
+    the quiet clock used to see only the lane's arms. It now sees any of the
+    lane's requests. On the host at 00:05Z it held #264 (vtxarr262), #308
+    (perfarch), #309 (tcgchurn) and #317 (fmv303) while their soaks are
+    queued. Each will be woken when those finish, instead of being told
+    "still queued".
+- **Proof.** Fragment `99-handback-runs.sh` has three lanes, ours in the
+  middle: `selftestrq`, `selftestrs`, and `selftestrs-x`, whose name has ours
+  as a prefix.
+  - (0) A run that finished before the session ended resumes nothing.
+  - (a) One request is still queued: no resume. `list` names the request.
+  - (b) Every request has finished: one resume inside the quiet clock, on
+    `draft-strand-runs`. The brief lists the ERROR row with its result dir
+    and the `lane`-field request. It does not list the old run or the
+    neighbour's run. The comment names the runs. The strand count and the
+    attempt counter are unchanged.
+  - (c) The next tick, and a push after it: no second resume.
+  - (d) An arm's result is left to the arm cause.
+  - Each of four mutants is red: first prefix instead of longest; no session
+    anchor; ignore requests in flight; count an arm's result as a run.
+  - **Falsification:** master's `handback.sh` was put in a scratch copy of
+    `docs/testing` (the real file was never swapped). It failed (b) and every
+    leg under it, because it never resumes on a finished run, plus (a)'s
+    named-request line, 11 FAIL in all.
+- **Not done: the live instance.** The brief asks for a lane resumed within
+  one tick of its run finishing. That can only be observed after this folds
+  and the handback timer runs the new file. The host's first
+  `draft-strand-runs` line in `$WORK/logs/handback/tick.log` is that
+  instance.
+
+## Defect 22: blocked on a lent file
+
+The queue priority field, `request.sh --priority`, and the hold `yield` file
+all live in `dispatcher.sh` / `request.sh`. Both are lent to lane.titlerun
+until #307 folds, and #307 was still open at 00:05Z on 2026-09-26. It was not
+started here.
+
 ## For the next lane
 
 - Do not match the WSL interop signature on a call's stderr; it bypasses

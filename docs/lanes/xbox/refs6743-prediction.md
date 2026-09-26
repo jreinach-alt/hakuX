@@ -24,6 +24,11 @@ cannot score them. Each was added upstream after the goldens:
 safeguards it waits for the owner's power switch. No other test source writes
 PMC, PFIFO or PBUS directly (grep over `src/`).
 
+_Corrected after the run (#296): `PVIDEO` is also interactive-only, and every
+test ends in `FinishDrawNoSave`. It saves nothing and never runs in an
+automated pass, so the PMC write is a reason not to run it by hand. It is not
+why it has no reference._
+
 ## What runs
 
 - **The XBE:** pristine `6743b6a`, with no instrument and no patch. XBE sha256

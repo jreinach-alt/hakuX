@@ -1670,3 +1670,177 @@ with the shader caches cleared. Score with `score_sweep.py --flat` and judge
 with `ab_compare.py --expect` on the prediction. For the per-swatch legs, run
 `docs/lanes/remote/clear_swatch_quads.py CAPTURE_DIR [GOLDENS_DIR]` on each B
 run.
+
+## #109's Vulkan half: a latent defect, measured by forcing it (2026-09-25)
+
+**Where it started.** #247 fixed GL's staging of a swizzled surface at the
+guest's pitch. Its PR noted that "Vulkan's deferred download still stages at
+`dl->pitch`", and the host granted `vk/surface.c` for that at territory wave
+181 (#109, 5836653214).
+
+**Three CPU sites, not one.** Reading `vk/surface.c` on master `5807b54f`
+found three places that stage a swizzled surface through a linear buffer at
+the guest's pitch:
+- **the deferred download's completion** (`pgraph_vk_complete_staged_downloads`),
+  for every format. It fills and swizzles a `pitch * height` buffer at
+  `dl->pitch`, so with an undersized pitch `swizzle_rect` also reads past the
+  buffer on the last row;
+- **the synchronous download's CPU branch** (`download_surface_to_buffer`), for
+  every format but 4-byte;
+- **the upload's CPU branch** (`pgraph_vk_upload_surface_data`), for every
+  format but 4-byte.
+
+The 4-byte swizzles and unswizzles run in compute, and those paths take no
+pitch.
+
+**No disc reaches them.** A local instrument, never committed, logged every
+swizzled transfer on disc109, `iso_surf1` and `iso_pre_clear` under Vulkan:
+- every deferred swizzled download had `pitch == width * bpp`, and each wrote
+  bytes identical to a pitch-free swizzle;
+- no 1- or 2-byte swizzled surface was transferred at all;
+- the corpus's only undersized-pitch swizzled surface, Swizzle's target 3
+  (`0271b000`, 128x128 A8R8G8B8, pitch 256), took the compute paths. That is
+  why Vulkan reads Model H on Swizzle.
+
+**A null from an instrument that cannot see the change is not evidence about
+the change**, so the defect was forced. A local patch, never committed, is
+inert unless `V109_FORCE` is set. Each mode routes every swizzled transfer
+through one CPU site, and logs a `[v109f]` line for each forced transfer of an
+undersized-pitch surface:
+- `sync` takes the CPU swizzle instead of the compute one;
+- `upload` takes the CPU unswizzle;
+- `defer` records the download through the deferred recorder and completes it
+  at once.
+
+On master plus the patch every mode forced exactly target 3, and only Swizzle
+moved:
+
+| `V109_FORCE` | q3 differing | q3 signature (golden 4,096) | q3 top-right non-green |
+|---|---:|---:|---:|
+| unset | 0 | 4,096 | 0 |
+| `sync` | 4,032 | 8,128 | 4,032 |
+| `upload` | 6,144 | 992 | 2,048 |
+| `defer` | 4,034 | 8,128 | 4,032 |
+
+`sync` and `defer` are GL's Model E pixel for pixel. `defer`'s extra pixels
+come from the over-read: A's two runs differ in exactly one pixel there, and
+every other arm is identical with itself.
+
+**The fix** (`3f3fe35b`) stages all three sites at `width * bpp` through
+`swizzle_linear_pitch()`. Linear surfaces keep the guest's pitch, and the
+compute paths and the `pitch * height` extent sites are untouched.
+
+**Registered before the code** (#109, 5837061813; drafts `20121600...`,
+`1af2c8aa...`, `a41527ee...` and `bf7a0b39...`; committed in `c190a93c`, each
+differing from its draft only in `b_ref` and `registered_utc`). Desktop
+Vulkan on llvmpipe, `surface_scale = 1`. Every run has progress-log proof, and
+no capture is `unreadable`.
+
+| registration | arms | verdict |
+|---|---|---|
+| `remote-109-vk-forced-sync.json` | master+patch vs fix+patch, disc109, 2 runs each | **PASS 75/75**: Swizzle 4,032 -> 0, the other 72 byte-identical |
+| `remote-109-vk-forced-upload.json` | same, `upload` | **PASS 75/75**: Swizzle 6,144 -> 0 |
+| `remote-109-vk-forced-defer.json` | same, `defer` | **PASS 75/75**: Swizzle 4,034 -> 0 |
+| `remote-109-vk-swizzle-stride.json` | master vs fix, no forcing, `iso_surf1`, 3 runs each | **PASS 238/238**: all 236 captures byte-identical, better 0, worse 0 |
+
+Every forced B run logged exactly one forced transfer of `0271b000`, and read
+q3 = 0, signature 4,096 and top-right 0. In the clean arm, #88's guards read
+the host's figures in every run of both arms (`Color_zeta_overlap`
+ColorIntoZeta_ZB 10,766, ZetaIntoColor 71,663, Swap 165,447), and Swizzle
+reads 0.
+
+One capture was not stable on master. `Blend_surface/R5G6B5_Add_SrcA_DstA`
+read 11,964 in master's first clean run and 14,833 in the other five runs of
+both arms. It moved in A only and is not on the judge's `KNOWN_UNSTABLE` list,
+so it is recorded here as an observation about master, not about this
+change.
+
+**Not covered.** The extent sites (`pitch * height` as a swizzled surface's
+size in the dirty ranges) are the silicon question and stay lane.xbox's.
+
+**Re-run it.** `docs/lanes/remote/v109_force_paths.py` applies the forcing
+edits to a working tree. Its replacements are exact-string, so it applies to
+master and to the fix alike. Build, then run disc109 under
+`renderer = 'VULKAN'` with `V109_FORCE` set in the emulator's environment,
+and read Swizzle with `docs/lanes/remote/swizzle_pitch_quads.py`. Revert with
+`git checkout -- hw/xbox/nv2a/pgraph/vk/surface.c` and rebuild. The clean
+arm needs nothing forced.
+
+**The script is the registered patch** (PR #269's pass-1 audit, LOW-1). The
+three forced registrations name `$SCRATCH/p109/v109_forcing.patch`, which was
+never committed. The script reproduces that patch, checked after the audit on
+2026-09-25:
+- On `5807b54f`'s `vk/surface.c` (blob `ee6bbd54897d`), the script writes blob
+  `7cb404a4f0b4`. In a scratch repository holding only that file,
+  `git diff --abbrev=8` then has sha256
+  `39537fdce7b982844801823348f012b4ca66e486afeb6f1955fae8d96fe9a283`. That
+  is byte-identical to the registered patch.
+- On the fix `3f3fe35b` (blob `b0fd1af5905d`), it writes blob `0230b080ab5d`.
+  That is the file the local applier writes, and the B arms' binary was built
+  from it. It has the same 23 added lines and the same removed lines as the
+  patch.
+
+Check an edited script the same way before re-running it. If `git hash-object`
+of its output on `5807b54f` is no longer
+`7cb404a4f0b4ab2cfd20d422808b7937ab1150d1`, the script no longer forces what
+the registrations measured, and a changed count says nothing about the fix.
+
+## #274: Vulkan sampled a surface whose pitch was not the texture's (2026-09-25)
+
+**Where it started.** #274, from the host's unowned-residual inventory:
+`Antialiasing_tests/CreateSurfaceWith{Center1,CenterCorner2,SquareOffset4}`,
+78,496 px each. On the desktop Vulkan reproduced 78,496 on all three, and GL
+read 0 on all three.
+
+**The mechanism.** Vulkan's `check_surface_to_texture_compatiblity()` in
+`vk/texture.c` compared extent, layout, conversion and texel size, but not
+pitch. GL's check refuses a linear surface whose pitch differs from the
+texture's. `CreateSurfaceWithCenter1` renders a 128x128 A8R8G8B8 surface at
+pitch 2048 over the 128x128 texture it then samples at pitch 512. Vulkan took
+the shortcut and sampled the surface image, which holds every fourth texture
+row and then nothing.
+
+A local instrument, never committed, logged the mismatched-pitch shortcut only
+there: twice inside Center1, and zero times on disc109, Clear and surf1.
+CenterCorner2 and SquareOffset4 never take the shortcut, because their
+AA-scaled surfaces fail the extent test. They read 0 each when run alone and
+78,496 after Center1, because they reuse the binding it leaves.
+
+**The fix** (`2c94b7ed`) is GL's condition, added to Vulkan's check for colour
+surfaces only. It sits after the zeta return, because nothing measured says
+what a zeta surface at a mismatched pitch should do.
+
+**Registered before the code** (#274, 5839473352). `9b5a61b1` committed the two
+files, each differing from its posted draft only in `b_ref` and
+`registered_utc`. Both ran on desktop Vulkan on llvmpipe, `surface_scale = 1`,
+3 runs per arm, alternating:
+
+| registration | arms | verdict |
+|---|---|---|
+| `remote-274-vk-s2t-pitch.json` | `9eaae944` vs `2c94b7ed`, Antialiasing + DMA disc | **FAIL, 14 of 16** |
+| `remote-274-vk-s2t-pitch-surf1.json` | same refs, `iso_surf1` | **PASS, 238 of 238** |
+
+- **The three CreateSurfaceWith\* went 78,496 -> 0,** byte-identical in every
+  run of each arm. Nothing else on either disc moved: the other 11 captures of
+  the first disc and all 236 of surf1 are byte-identical between the arms.
+- **The FAIL is the leg named in advance.** I predicted
+  `GPUAAWriteAfterCPUWrite` 2,674 -> 134, as carry-over from Center1's binding.
+  It stayed at 2,674, byte-identical to master, so `better` read 3 where I
+  predicted 4.
+- **Checked after judging, on two-test discs:** Center1 then GPUAA reads 134 on
+  master, so Center1 never contaminated it. FBSurfaceWithCenter1 then GPUAA,
+  and FBSurfaceWithCenterCorner2 then GPUAA, read 2,674 with the fix, and every
+  other earlier test then GPUAA reads 134. The carry-over comes from the
+  framebuffer-surface tests, not from this defect.
+
+**Not covered.**
+- Zeta surfaces are unchanged.
+- `GPUAAWriteAfterCPUWrite`'s carry-over from the FBSurface tests: 2,540 px in
+  sequence, Vulkan only (GL reads 134).
+- Device runs. The code is the same on Android, but no device ran it.
+
+**Re-run it.** Build the disc from the stock image with `make_test_iso.py
+--suite "Antialiasing tests" --suite "DMA corruption around surfaces"
+--progress-log --shutdown-on-completion`. Run each binary under `renderer =
+'VULKAN'`, `surface_scale = 1`, from a fresh HDD with the shader caches
+cleared. Judge each arm pair with `ab_compare.py --expect` on its prediction.

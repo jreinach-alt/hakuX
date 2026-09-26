@@ -1,0 +1,41 @@
+{
+  "registered_utc": "2026-09-25T18:02:59Z",
+  "who": "lane.remote",
+  "issue": "109",
+  "prediction": "#109'S VULKAN HALF, FORCED ONTO ONE SITE (defer). No disc here takes an undersized-pitch swizzled surface through the three CPU sites (see remote-109-vk-swizzle-stride.json), so this arm forces it. Both arms carry the same LOCAL FORCING PATCH, never committed ($SCRATCH/p109/v109_forcing.patch, sha256 39537fdce7b98284...; on B it is the same change applied on top of the fix). It is inert unless V109_FORCE is set, and this arm sets V109_FORCE=defer, which routes every swizzled transfer through the deferred download (download_surface records the download with download_surface_record_deferred and completes it at once with pgraph_vk_download_surface_complete_deferred). Every forced transfer of an undersized-pitch surface logs a [v109f] line.\nREPRODUCED ON A BEFORE ANY CODE (master 5807b54f + the patch, disc109, desktop Vulkan, one run): exactly one forced undersized transfer, of Swizzle's target 3 (0271b000, 128x128, pitch 256). Surface_pitch::Swizzle reads q0 / q1 / q2 / q3 = 0 / 0 / 0 / 4034, q3 signature 8128 of 8,128 (golden 4,096), q3 top-right non-green 4032. The other 72 captures are pixel-identical to the same build run without V109_FORCE, and that unforced control reads Swizzle 0, signature 4,096, as master does.\nARMS: A = 5807b54f + the patch, B = the fix commit + the patch. Desktop Vulkan (llvmpipe, surface_scale = 1), disc109 (the registered 8-suite disc of #109's arms), V109_FORCE=defer in both, 2 runs each, alternating.\nREGISTERED LEGS: Surface_pitch/Swizzle = 0 in B; better = 1, worse = 0; the other 72 captures (the seven other suites) must_not_move, bit-identical.\nPROSE LEGS, checked by script on B's captures: swizzle_pitch_quads.py reads 0 / 0 / 0 / 0, q3 signature 4,096 and top-right 0; each B run logs exactly one [v109f] forced transfer of 0271b000, so the forced site was exercised.\nUNCOMFORTABLE OUTCOMES NAMED NOW: (1) B's Swizzle above 0 means the fix misses something on this site. (2) A's Swizzle may vary run to run in the defer mode only: its 2 pixels over 4,032 are consistent with the last-row over-read, which reads whatever lies past the buffer. That is A's defect, not a failure of B.",
+  "a_ref": "5807b54f",
+  "b_ref": "3f3fe35b",
+  "must_not_move": [
+    "Color_Zeta_Disable/*",
+    "Null_surface/*",
+    "Surface_clip/*",
+    "Surface_format/*",
+    "Texture_Framebuffer_Blit/*",
+    "Texture_perspective/*",
+    "Texture_perspective_enable/*"
+  ],
+  "expect": {
+    "Surface_pitch/Swizzle": 0
+  },
+  "expect_counts": {
+    "better": 1,
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Color Zeta Disable",
+      "Null surface",
+      "Surface clip",
+      "Surface format",
+      "Surface pitch",
+      "Texture Framebuffer Blit",
+      "Texture perspective",
+      "Texture perspective enable"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "title": "desktop Vulkan A/B -- hand-queue only, see the prediction text"
+}

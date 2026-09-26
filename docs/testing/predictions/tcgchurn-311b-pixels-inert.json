@@ -1,0 +1,21 @@
+{
+  "registered_utc": "2026-09-25T23:04:01Z",
+  "who": "lane.tcgchurn",
+  "issue": "311",
+  "prediction": "#311 hunk (b) tlb-bound: a TCG-only change (accel/tcg, behind a HAKUX_TCG311_* build define; exactly one define flips between the refs). It changes when guest code pages are armed for write detection / how large the dynamic TLB grows; neither can change what the guest sends the GPU, so every capture in the must-not-move set is identical between arms. A moved capture means the hunk changed guest-visible behaviour (a missed SMC invalidation or a wrong translation), which refutes the correctness argument in docs/lanes/tcgchurn/NOTES.md.",
+  "a_ref": "709cfb13aa",
+  "b_ref": "1ce8693eb1",
+  "must_not_move": [
+    "Blend_tests/*",
+    "Depth_buffer/*",
+    "Texture_format/*",
+    "Texture_DXT/*",
+    "Surface_clip/*",
+    "3D_primitive/*",
+    "Fog_gen/*",
+    "Specular/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": []
+}

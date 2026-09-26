@@ -94,7 +94,150 @@ replacement for those two lines:
 > every scorer (`score_sweep.py`, `ab_compare.py`, `dispatcher.sh`,
 > `scoreboard.py`) shares one `SCORED_STATUSES` tuple.
 
+## PR #299: sweep legs and the unscoreable list
+
+Branch `lane/sweepcover-legs`, stacked on #298.
+
+- `queue_full_sweep.sh` resolves `"$REF^{commit}"`. Fixture: an annotated tag
+  whose object (`837d639`) is not its commit (`11d2e46`). The mutant with a bare
+  `"$REF"` writes the tag object into the request, and that goes red.
+- Legs, each queued as `z-<label>.<leg>-001-<Suite>` with `arm = <label>.<leg>`,
+  so `collect_sweep.sh <label>.<leg>` builds its own column and every row keeps
+  its own `disc_id`:
+  - `--with-depth-2025`: `Depth buffer` on `~/hakux-work/iso-2025-03-14.iso`
+    (`DEPTH2025_ISO`) (#291);
+  - `--with-blend-interactive`: `Blend tests` on
+    `~/nxdk_pgraph_tests_xiso_interactive.iso` (`INTERACTIVE_ISO`) (#292);
+  - `--with-rtloop`: `Texture render target` with `only_tests =
+    [RenderTextureLoop]` on the stock disc (#294). The main sweep keeps its skip.
+- `--base-iso PATH` sets `base_iso` on every main request. Given no label, it
+  defaults to `<sha>-iso-<isoname>`, so a non-stock column can never be named
+  like a stock one. A missing disc is refused before anything is queued.
+- A user label containing `.` is refused, because `.` is reserved for legs. Of
+  the live sweeps, `a-now-2b04d4d422` and `b-v040j1` have no dot.
+- `collect_sweep.sh` now globs `z-<label>-[0-9][0-9][0-9]-*`. The old `-*`
+  would have collected a sweep labelled `fix-now` into the column `fix`.
+- `unscoreable_goldens.json` holds the 20 goldens from #295, all 20 verified
+  present under `/home/justin/goldens/results` on 2026-09-25, plus
+  Clipping_precision (48) and PVIDEO (23) as not captured by design (#296).
+  `scoreboard.py --unscoreable` (defaults to the file beside it) removes them
+  from each category's goldens and prints `N (+k unscoreable)` and a list
+  under the table. On the live `c866527e03` column: Rasterisation 502/502
+  (was ⚠️98%), Texture addressing 197/197 (was ⚠️99%), 2D/blit 45/45 (was
+  ⚠️98%). Depth/stencil stays ⚠️62% (#291), Blend stays ⚠️9% (#292), and
+  Render to texture stays 66/67 because of RenderTextureLoop (#294).
+- **Not done here:** `score_sweep.py`'s own PARTIAL COVERAGE print (lines
+  428-451) is lane.toolsmith's. It should read the same JSON:
+  `have -= len(unscoreable.get(name, ()) & set(golden names))`. Until it
+  does, arm logs keep printing Front_face 24 of 36.
+- The legs are unproven on a device. None was queued, because the brief
+  forbids re-queueing the running sweeps and a leg is only meaningful next to
+  a main column. The first real use is the next sweep:
+  `queue_full_sweep.sh --with-depth-2025 --with-blend-interactive
+  --with-rtloop <ref>`.
+
+### #299 brought current (attempt 2, 2026-09-26)
+
+Merged #298's head (`84638df6bb`, which carries master) into
+`lane/sweepcover-legs`. Three conflicts:
+
+- `collect_sweep.sh`: took #298's `{0,z}-<label>-NNN-*` loop header, as
+  planned above. The NNN it carries is what keeps a leg out of its column.
+- `queue_full_sweep.sh`: toolsmith's defect 12b landed on master first
+  (`8655834510`, `git rev-parse --short --verify "$REF^{commit}"`), so master's
+  line and comment were kept over this branch's copy. The bare-ref mutant's sed
+  still matches it and still goes red.
+- Fragment 88: kept #298's glob mutants and this branch's unscoreable and
+  queue sections. Dropped this branch's one-sheet collect check, because #298's
+  fixture (a `0-` sheet and a `z-` sheet, plus the `fix-now`, `fix.depth2025`
+  and `void-z-` decoys) covers the same thing and made that check's count of 1
+  wrong. The unscoreable check now expects `9 (+1 unscoreable)` against 10,
+  because #298's fixture has 9 Fog goldens, not 6.
+
+## What lane.toolsmith needs for #293 (the 6743b6a disc)
+
+`queue_full_sweep.sh --base-iso <6743b6a disc>` queues the main sweep on that
+disc, but the 16 new tests still cannot score:
+
+1. **Enumeration.** `queue_full_sweep.sh` queues one request per directory in
+   `$GOLDENS`. `Fog_planar_vsh` and `Surface_as_vertex_array` have no directory
+   there; their console references are in
+   `~/hakux-work/hardware/runs/2026-09-25-refs6743/console-run/console/`. The
+   `Texture format XAlpha` tests would score inside `Texture_format` if a golden
+   existed, but they only have an instrumented capture. Either the references
+   are promoted into a golden root, or the sweep takes an extra root (my side,
+   once (2) exists).
+2. **`dispatcher.sh:46` / `:1039`.** `score_sweep.py --goldens "$GOLDENS"` uses
+   one fleet-wide root. It needs a per-request `goldens` field (default
+   `$GOLDENS`), like `base_iso` at `:882-916`, and the path should go into
+   `disc_id`/`result.json` so a column scored against another root is visible.
+   `:1181` hardcodes `/home/justin/goldens/results` for `captures_vs_goldens`
+   and needs the same value.
+3. **`jobs/arms.sh:373`.** `suites_for` drops every suite with no directory in
+   `$GOLDENS`, so an arm on a new suite is refused as empty. It should also
+   check the registration's golden root, if one is given.
+4. **`score_sweep.py`.** Unchanged for #293, since it already takes
+   `--goldens`. It should read `unscoreable_goldens.json` (see above).
+
+Once (2) exists, `queue_full_sweep.sh` gains `--goldens-root` and writes it
+into each request. That is a one-line change in `queue_one`.
+
+## Why attempt 1 did not finish (2026-09-25)
+
+Attempt 1 ended waiting for CI on #298's head `6d422c2e0a`, with the PR still
+in draft, no `[lane.sweepcover] waiting:` comment, and the NOTES commit for
+#299/#293 (`9f3cf8745d`) not pushed. CI came back GREEN; handback resumed the
+lane at 22:05Z.
+
+## Why the 22:05Z resume did not finish either
+
+It pushed `d9b37c18c9` (this section's first draft, which said the PR had been
+marked ready) and stopped before doing it: #298 was still a draft with the
+body "In progress" when handback resumed the lane again at 00:20Z. The
+sentence was written ahead of the action it described. It also never answered
+the host's 20:01Z delivery on #298, which asked for two more changes in scope
+(below). The 00:20Z resume made those changes and committed them
+(`c60a5ddcf1`, on top of a master merge), but the session ended before the
+push: the branch on origin stayed at `d9b37c18c9`, #298 stayed a draft with
+the "In progress" body, and nothing outside the session could see the work.
+
+## Attempt 2 (resumed by the host, 2026-09-26)
+
+Found `c60a5ddcf1` local-only, 148 commits behind master. Merged
+`origin/master` (clean), re-ran fragment 88 and the full selftest, pushed,
+rewrote the PR body through the REST API, then marked #298 ready.
+
+## Host delivery 2026-09-25 20:01Z: `0-` prefix and device_label (in #298)
+
+- **The release sweeps were promoted to priority** and renamed
+  `0-<label>-NNN-<Suite>` mid-flight, so one column holds both `0-` and `z-`
+  results. `collect_sweep.sh` now globs
+  `{0,z}-<label>-[0-9][0-9][0-9]-*`. The NNN moved here from #299 because it
+  also keeps `void-z-...` (the host's renamed voids), `fix-now` and `fix.leg`
+  out. When #299 merges master, take #298's loop header.
+- **Mixed devices per column are allowed.** Each copied sheet gains a
+  `device_label` column from its result's top-level `result.json`
+  `device_label` (the dispatcher writes it at `dispatcher.sh:1157`), and the
+  provenance table has a `devices` column (`nova 3, thor 3`). Columns
+  collected before this read `—`. Nothing refuses a mix.
+- Fragment 88 now has a `z-` sheet on thor and a `0-` sheet on nova in one
+  column, plus three decoys (`void-z-fix-003-Fog`, `z-fix-now-001-Fog`,
+  `z-fix.depth2025-001-Fog`), each an exact row that would move the cell.
+  New mutants: the `0-` glob replaced by the `z-` one gives `1/2 · 6 · 1 void`
+  (red), and the NNN widened to `*` gives `3/5` (red; it takes `fix-now`. The
+  dotted leg is not `fix-` under any glob). 16/16 standalone.
+- On 2026-09-26 no `0-`/`z-` result dir exists for either release label. Only
+  the four `void-z-a-now-2b04d4d422-00{1..4}-*` dirs do (004 has since been
+  voided as well), so there was nothing live to collect.
+
 ## Do not repeat
+
+- Do not end a session on a draft PR without a `waiting:` comment: nothing
+  but the handback job can find it.
+- Do not record an action in NOTES before it has happened ("marked ready").
+- Push before the session can end: a local commit is as invisible as a draft.
+- On resume, read the PR thread (`deliver.sh inbox sweepcover`) before
+  finishing: a host delivery there is part of the brief.
 
 - Do not run the old `collect_sweep.sh` against a fixture as written: it writes
   `/home/justin/hakux-work/scoreboard/<label>` and regenerates the repo's

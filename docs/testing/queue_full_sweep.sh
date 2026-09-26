@@ -119,13 +119,10 @@ LABEL="${POS[1]:-}"
 D="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}"
 GOLDENS="${GOLDENS:-/home/justin/goldens/results}"
 
-# `^{commit}`, because an annotated tag resolves to the TAG OBJECT. On
-# 2026-09-25 a tag went into a sweep's requests as the tag object's own sha,
-# which is not a commit and cannot be built -- toolsmith's defect 12b, moved
-# here with the file. Peeling makes a tag, a branch and a sha the same kind of
-# thing by the time a request is written.
-SHA=$(git rev-parse --short "$REF^{commit}" 2>/dev/null) \
-    || { echo "cannot resolve $REF to a commit" >&2; exit 2; }
+# Peel to the commit: an annotated tag resolves to its TAG OBJECT otherwise,
+# and every result row and "behind" count then names a sha that is not a
+# commit (v0.4.0-j1 wrote df3978f7b9, the tag, into 100 requests on 09-25).
+SHA=$(git rev-parse --short --verify "$REF^{commit}") || { echo "cannot resolve $REF" >&2; exit 2; }
 [ "$SHA" = "$REF" ] || echo "resolved $REF to $SHA" >&2
 
 # A named disc that is not there is refused NOW. The dispatcher would refuse
