@@ -112,6 +112,18 @@ was nothing to judge. Attempt 1 resumed at 21:48 UTC with A1 running on the
 Thor and B1 at the head of the queue. It merged origin/master (e08c1c0165).
 The runs still use ref 15d9406b81, which is the prediction's a_ref/b_ref.
 
+## A2 (attempt 2, 22:40 UTC)
+
+| run | id | fps | gfps p50/p10 | vCPU X3 | rqwait ms/s | busy | p7 first->last (mean) MHz | CPU C first->last |
+|---|---|---|---|---|---|---|---|---|
+| A2 | 1790454370-vcpuprime428-3939708 | 25.29 | 27/19 | 69% NOT PINNED | 14.09 | 88% | 2697->2215 (2328) | 94.6->93.9 |
+
+A2 ran after B1 on a hot device, at a lower X3 clock than B1 (mean 2328
+against 2480 MHz). Unpinned, it held 25.29 fps, the same as B1's 25.56. So
+the pilot's -9.5% was thermal order (cause 2), not the pin. Arm fps tracks
+the X3 clock, which tracks run order: the device does not return to A1's
+start state between runs.
+
 ## Why attempt 1 did not finish
 
 It ended correctly on a wait outside the session: the pilot review. Hostops
