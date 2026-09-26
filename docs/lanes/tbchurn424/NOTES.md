@@ -57,3 +57,64 @@ This lane adds the answer to (1): a per-page code bitmap, and a fast path
 that answers a store which touches no translated byte under the one page
 lock, without `page_collection_lock` (a GTree allocation per call) and
 without the walk. (2) is measured, not assumed away: it is a leg.
+
+### The code (cb66484748)
+
+- `tb_invalidate_phys_page_range__locked`: upstream's overlap test is the
+  predicate again, with 937848c9e7's two extra clauses, both of which discard
+  more: a dead block that is being walked is reclaimed, and `tier >= 2` or a
+  superblock is always discarded. Visits are counted before the predicate,
+  so `visited == ov + sp + ai` holds on both predicates.
+- `PageDesc.code_bitmap`: one bit per byte that any listed TB (dead ones
+  included) was translated from. It is built after a page's 10th code-write
+  trap (upstream's old `SMC_BITMAP_USE_THRESHOLD`). Bits are set in
+  `tb_page_add`. They are cleared only by a rebuild from the list after a
+  walk. The bitmap is freed when the page empties and in `tb_flush`, so it
+  is always a SUPERSET of the listed extents. A stale bit costs a walk; it
+  can never make a stale block run.
+- `tb_invalidate_phys_range_fast` (every notdirty store to an armed page):
+  if the bitmap shows no translated byte in the store, it returns under the
+  one page lock. That skips `page_collection_lock` (a GTree allocated per
+  store, plus every TB's other page locked) and the list walk.
+- Kill switch: `HAKUX_TCG424_WHOLEPAGE=1` restores whole-page invalidation
+  and bypasses the bitmap.
+- `[tlb68]` gains `rt=` (range test on), `cb=` (stores the bitmap answered)
+  and `cbb=` (builds).
+
+Compile-checked with the desktop build's flags
+(`-Wmissing-prototypes -Wredundant-decls`, `-Werror` except a pre-existing
+nested-extern in `tb_flush__exclusive_or_serial`). Not built for Android
+locally; the dispatcher builds each ref.
+
+## 3. The A/B (queued 2026-09-26 ~20:35 UTC)
+
+- A = `7e6a4ac88a` (master); B = `1d1251aa4b` (master merged with
+  cb66484748).
+- Predictions: `docs/testing/predictions/tbchurn424-soak.json` (legs
+  M0-M4, read with `churn.py`) and `tbchurn424-pixels-inert.json` (8 pgraph
+  suites, identical captures; the arms job runs it).
+- Blinx is in as the cost-side title. On the survey route it spends only
+  2.0% on churn but takes 50k slow stores a second, so a range test that
+  keeps more pages armed could cost there.
+
+| request | arm | title |
+|---|---|---|
+| `1790454893-lane.tbchurn424-3968865` | A | Crimson r1 |
+| `1790454908-lane.tbchurn424-3969831` | B | Crimson r1 |
+| `1790454909-lane.tbchurn424-3969958` | A | Crimson r2 |
+| `1790454910-lane.tbchurn424-3970059` | B | Crimson r2 |
+| `1790454911-lane.tbchurn424-3970176` | A | Crimson r3 |
+| `1790454912-lane.tbchurn424-3970253` | B | Crimson r3 |
+| `1790454914-lane.tbchurn424-3970398` | A | Blinx r1 |
+| `1790454915-lane.tbchurn424-3970555` | B | Blinx r1 |
+| `1790454916-lane.tbchurn424-3970610` | A | Blinx r2 |
+| `1790454917-lane.tbchurn424-3970654` | B | Blinx r2 |
+
+## For the next lane
+
+- **Measure on the route, not hands-off.** Hands-off Crimson sits at the
+  game's 30 cap and churns about 0.2-1.4%. The `crimson-skies` route churns
+  23.9%. lane.tcgchurn's "the premise does not hold" came from the
+  hands-off workload.
+- The soak path has no simpleperf. The `[tlb68]` timers (`jcus`, `rdus`,
+  `cpu`) time the two mechanisms directly, and `churn.py` reads them.
