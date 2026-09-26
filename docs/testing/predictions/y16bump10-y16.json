@@ -1,0 +1,37 @@
+{
+  "registered_utc": "2026-09-26T06:21:32Z",
+  "who": "lane.y16bump10",
+  "issue": "10",
+  "prediction": "#10, the Y16 class. The fix (14069e1ddd, merged at 0cae765a1e) gives a Y16 bump source's horizontal offset (component 2, the one m00 scales) the LOW BYTE of the filtered 16-bit value, read as two's complement, whatever the sign flags. The vertical offset (component 1) keeps the full value, as before. Silicon basis: PR #359 (forcing the low bytes to 0x00 moves silicon 28,336 px, hakuX 112) and PR #363 (only m00 live: 42,508 px against Y8 and a seam sweep of 26,254 px; only m11 live: no sweep).\n\nMUST MOVE: BumpMap_Y16 and BumpMap_Y16_L get better (expect_counts better=2), from 22,374 px each toward the 1,576 px positional floor. They are not registered as absolutes. My bound is below 6,000 px each. The vertical source is the open leg: on PR #363's m11-only variant, forcing the low bytes to 0x00 moved silicon 2,088 px and hakuX (full value) 770 px, so the vertical reading is not proven exact. A Y16 capture that gets worse, or that moves but stays above ~15,000, refutes the low-byte model as implemented. That result gets reported, not tuned.\n\nMUST NOT MOVE (bit-identical): every other Bump_map and Bump_env_lum capture, which includes the fixed classes A8 and R16B16, Y8/AY8/A8Y8 and YUY2/UYVY; all of Texture_format (TexFmt_Y16 is a colour lookup, not a bump read); and all of Texture_signed_component_tests. The new branch is gated on tex_y16, which is set only for SZ_Y16 and LU_IMAGE_Y16, so any movement there means the hunk leaked. worse=0 holds over the whole disc.\n\nBumpEnvLum_Y16 and _Y16_L are MUST NOT REGRESS, not must-move. The brief's 28,132 px predates the luminance-literal fix (93196d2d05), and they have been at the 1,576 floor since. Their m11 = 5.0 image is horizontal stripes (PR #350: 150 of 168 seam-band rows are one colour), so a horizontal offset change is invisible there. I expect them unchanged. If they move better, the better=2 leg fails on a capture this model does not predict, and I will name it rather than call it a pass. If they move worse, the low-byte reading is wrong in the rows that are not stripes.",
+  "a_ref": "081dcf4a38",
+  "b_ref": "50b46b0495",
+  "must_not_move": [
+    "Bump_map/BumpMap_[!Y]*",
+    "Bump_map/BumpMap_Y8*",
+    "Bump_map/BumpMap_YUY2*",
+    "Bump_env_lum/BumpEnvLum_[!Y]*",
+    "Bump_env_lum/BumpEnvLum_Y8*",
+    "Bump_env_lum/BumpEnvLum_YUY2*",
+    "Texture_format/*",
+    "Texture_signed_component_tests/*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "better": 2,
+    "worse": 0
+  },
+  "must_not_regress": [
+    "Bump_env_lum/BumpEnvLum_Y16*"
+  ],
+  "disc": {
+    "suites": [
+      "Bump_env_lum",
+      "Bump_map",
+      "Texture_format",
+      "Texture_signed_component_tests"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
