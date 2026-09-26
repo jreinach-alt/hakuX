@@ -165,3 +165,96 @@ check "an issue with no tracker row says so" \
 check "the sort does not change what is startable: a lane-held issue stays out" \
     bash -c '! grep -q "^#299" <<< "$1"' _ "$out"
 : > "$HAKUX_WORK/limits.env"
+
+# THE RELEASE GOES FIRST (#432). An issue labelled `0.5` sorts ahead of every
+# issue that is not, and the five tiers above order each group unchanged:
+#   #401  0.5, measured zero       -> ahead of #301, the game-visible non-0.5
+#                                     row that heads the list above
+#   #403, #402, #401  all 0.5      -> game, then px, then measured zero: the
+#                                     old key between them; gh's order puts
+#                                     the right first one (#403) in the middle
+#   #404  labels a STRING, game    -> unreadable: printed, never 0.5, ranked
+#                                     with #301 by the old key (oldest first)
+# Every leg fails on the pre-#432 board.sh: it has no release group, and it
+# raises on #404's label string and prints nothing at all.
+echo "== board.sh: issues labelled 0.5 dispatch first"
+cat >> "$BP/testing/nv2a_issues.toml" <<'EOF'
+[issue.401]
+title = "zero release"
+impact_px = 0
+impact_onestep_px = 0
+[issue.402]
+title = "small release"
+impact_px = 100
+[issue.403]
+title = "game release"
+game_visible = true
+[issue.404]
+title = "bad labels"
+game_visible = true
+EOF
+python3 - "$BP/issues.json" "$BP/issues-rel.json" <<'PY'
+import json, sys
+rows = json.load(open(sys.argv[1]))
+rel = [{"name": "0.5"}]
+rows[0:0] = [
+    {"number": 401, "title": "zero release", "labels": rel},
+    {"number": 403, "title": "game release", "labels": rel + [{"name": "harness"}]},
+    {"number": 404, "title": "bad labels", "labels": "0.5"},
+    {"number": 402, "title": "small release", "labels": rel},
+]
+json.dump(rows, open(sys.argv[2], "w"))
+PY
+bprio_rel() {
+    : > "$HAKUX_WORK/limits.env"
+    BP_ISSUES="$BP/issues-rel.json" HAKUX_BOARD_REF="" HAKUX_REPO_DIR="$BP/no-such-repo" \
+        PATH="$BP/bin:$PATH" bash "$BP/testing/jobs/board.sh" gate 2>&1
+}
+out=$(bprio_rel)
+order=$(grep -o '^#[0-9]*' <<< "$out" | tr '\n' ' ')
+check "a 0.5 measured zero sorts before a game-visible non-0.5 issue (got: $order)" \
+    bash -c '[[ " $1" == *" #401 "*" #301 "* ]]' _ "$order"
+check "0.5 issues keep the old key between them: game, px, measured zero (got: $order)" \
+    bash -c '[[ " $1" == " #403 #402 #401 "* ]]' _ "$order"
+want="#403 #402 #401 #301 #404 #302 #303 #270 #310 #320 #305 #280 #290 #304 #296 #306 #312 #300 "
+check "an unreadable label list is printed and leaves the old order below the release (got: $order)" \
+    test "$order" = "$want"
+check "a 0.5 line's key is tagged [0.5]" \
+    has '#401 [0.5] [impact 0 px, measured] zero release  [0.5]'
+check "a 0.5 line keeps its old key and its labels after the tag" \
+    has '#403 [0.5] [game] game release  [0.5,harness]'
+check "an unreadable label list says so and is not read as 0.5" \
+    has '#404 [labels unreadable] [game] bad labels'
+check "a non-0.5 line is untagged" \
+    has '#301 [game] game'
+: > "$HAKUX_WORK/limits.env"
+
+# THE FOCUS EXCLUDES (#432 addendum). With BOARD_FOCUS_LABEL=0.5 in
+# limits.env the list offers only 0.5 issues: #301, the game-visible non-0.5
+# row that heads every list above, is absent, #401 (a 0.5 measured zero) is
+# present, and one line counts the 15 left out (#404's unreadable labels
+# among them) -- said to the log, never a capacity line. Unset, the list is
+# the one above, line for line. Fails on the pre-#432 board.sh, which reads
+# no focus and offers #301.
+echo "== board.sh: BOARD_FOCUS_LABEL offers only the focus"
+bprio_focus() {
+    printf '%s\n' "$1" > "$HAKUX_WORK/limits.env"
+    BP_ISSUES="$BP/issues-rel.json" HAKUX_BOARD_REF="" HAKUX_REPO_DIR="$BP/no-such-repo" \
+        PATH="$BP/bin:$PATH" bash "$BP/testing/jobs/board.sh" gate 2>&1
+}
+unset_out=$(bprio_focus "")
+out=$(bprio_focus "BOARD_FOCUS_LABEL=0.5")
+forder=$(grep -o '^#[0-9]*' <<< "$out" | tr '\n' ' ')
+check "with the focus set, a non-focus game-visible issue is not offered (got: $forder)" \
+    bash -c '[[ " $1" != *" #301 "* ]]' _ "$forder"
+check "with the focus set, the focus issues are offered in the old order (got: $forder)" \
+    test "$forder" = "#403 #402 #401 "
+check "with the focus set, one line counts what it left out" \
+    grep -qF "15 startable issue(s) outside the 0.5 focus are not offered" <<< "$out"
+check "the focus count is not printed as a capacity line" \
+    bash -c '! grep -q "^FOCUS: " <<< "$1"' _ "$out"
+check "with the focus unset, the list is unchanged" \
+    test "$(grep '^#' <<< "$unset_out")" = "$(grep '^#' <<< "$(bprio_rel)")"
+check "with the focus unset, no focus line" \
+    bash -c '! grep -q "outside the .* focus" <<< "$1"' _ "$unset_out"
+: > "$HAKUX_WORK/limits.env"
