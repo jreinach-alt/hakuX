@@ -53,3 +53,34 @@ $DISPATCH_DIR/board-requests/vkpointsize34.md, PR #371 comment). On grant:
 `git apply shaders-renderer.diff`, commit, merge master (no rebase), then
 register the prediction on those shas. preflight.sh --allow-tracker passed on
 f6db20d771.
+
+## Why attempt 1 did not finish
+The grant landed on origin/board (ae93c49630, delivered as a PR #371 comment)
+while the session sat waiting. The session had applied the patch to the
+worktree but not committed it. It then ended saying it would continue when a
+background notification arrived. A headless session's background tasks end
+with it, so that notification could never arrive. Nothing was queued or
+registered.
+
+## Attempt 2 (2026-09-26)
+- 97f221cac0: the granted hunks (vk/shaders.c sets `no_point_size`;
+  vk/renderer.c layout version 3).
+- Which driver lacks the feature (`featgrep.py` over dispatch logcats):
+  every fleet run (purple adrenotools driver, Thor and Nova) logs
+  `vk feature shaderTessellationAndGeometryPointSize: available`. Only the
+  system-driver run 1790317606-vklayer34-4071708 logs `missing`. So on the
+  fleet the fix leaves the shader text unchanged. It changes the shader only
+  where the VUID was seen.
+- Two measurements, because one ref pair cannot cover both drivers:
+  1. **Arm** (fleet driver, arms job): `predictions/vkpointsize34-fleet-inert.json`
+     (sha256 6be17e7a...), a=6550967a5e (master) b=97f221cac0, must_not_move
+     Clear/*, Point_size/*, Point_params/*.
+  2. **VUID survey** (system driver + layer): 386af38184 = e2c9fef860's
+     instrumentation cherry-picked onto the fix, reverted by 1cd7991284 (the
+     branch diff is unaffected). Queued as 1790408065-vkpointsize34-3720485
+     (Clear, thor, the same shape as the A run). Count it with
+     `python3 docs/lanes/vklayer34/count_vuids.py <result dir>`. The pass
+     condition is 08740 = 0, with every control line present and the
+     `hakuX` log line reading `missing`.
+- Desktop is not armed: lavapipe has the feature, so the flag is 0 and the
+  shader text is the same.
