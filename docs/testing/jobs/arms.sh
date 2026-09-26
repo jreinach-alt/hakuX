@@ -421,6 +421,26 @@ post() {   # <pr> <issue> <body-file>
     if [ -n "$2" ]; then gh issue comment "$2" --repo "$GH_REPO" --body-file "$3" >/dev/null 2>&1 && return 0; fi
     return 1
 }
+# RELEASE PRIORITY (#432). A prediction whose issue carries the release label
+# is queued with HAKUX_RELEASE_PRIO=1, which request.sh turns into a `1-` id
+# prefix: served after probes and host-promoted heads, ahead of every other
+# request. One label read per prediction; the issue field may list several
+# ("88,91"), and any one labelled is enough. A failed read is logged and the
+# arm queues at normal priority -- a label is never a reason to refuse an arm.
+# ab_run.sh carries the same reader; change both.
+RELEASE_LABEL="${HAKUX_RELEASE_LABEL:-0.5}"
+release_prio() {   # <issue field> -> "1" or nothing; always exits 0
+    local n labels
+    [ -z "${HAKUX_RELEASE_PRIO:-}" ] || { echo 1; return 0; }
+    for n in $(printf '%s' "$1" | tr ',#' '  '); do
+        [[ "$n" =~ ^[0-9]+$ ]] || continue
+        if ! labels=$(gh api "repos/$GH_REPO/issues/$n" --jq '.labels[].name' 2>/dev/null); then
+            say "  release priority: could not read #$n's labels; queued at normal priority" >&2; continue
+        fi
+        grep -qxF -- "$RELEASE_LABEL" <<<"$labels" && { echo 1; return 0; }
+    done
+    return 0
+}
 # A REFUSAL FROM request.sh IS TOLD TO THE LANE, ONCE. request.sh's gates
 # (every key must name a golden, the composition rules, the ref must resolve)
 # are the project's own; when they refuse a lane's prediction the lane has to
@@ -843,11 +863,12 @@ while read -r sha path src; do
     # --runs "" and its JSON writer died on int(""): the very first arm the
     # job ever queued (#89, 02:56Z) was refused for that and nothing else.
     runs=$(field "$path" runs_per_arm); [[ "$runs" =~ ^[0-9]+$ ]] && [ "$runs" -ge 1 ] || runs=1
-    say "queue $src: $name #$issue a=$a b=$b suites=[$suites]$comp runs=$runs"
-    qa=$(cd "$REPO" && DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-base" --ref "$a" --suites "$suites" ${narrow[@]+"${narrow[@]}"} --runs "$runs" \
+    prio=$(release_prio "$issue")
+    say "queue $src: $name #$issue a=$a b=$b suites=[$suites]$comp runs=$runs${prio:+ release-prio}"
+    qa=$(cd "$REPO" && HAKUX_RELEASE_PRIO="$prio" DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-base" --ref "$a" --suites "$suites" ${narrow[@]+"${narrow[@]}"} --runs "$runs" \
             --expect "$path" --purpose "BASE arm ${issue:+#$issue }$who at $a, queued by the arms job from $src" 2>"$A/log/$sha.base.err") \
         || { refused "$sha" "$src" "$issue" base "$A/log/$sha.base.err"; continue; }
-    qb=$(cd "$REPO" && DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-fix" --ref "$b" --suites "$suites" ${narrow[@]+"${narrow[@]}"} --runs "$runs" \
+    qb=$(cd "$REPO" && HAKUX_RELEASE_PRIO="$prio" DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-fix" --ref "$b" --suites "$suites" ${narrow[@]+"${narrow[@]}"} --runs "$runs" \
             --expect "$path" --purpose "FIX arm ${issue:+#$issue }$who at $b, queued by the arms job from $src" 2>"$A/log/$sha.fix.err") \
         || { refused "$sha" "$src" "$issue" "fix (the base arm ${qa##* } is queued and will run unpaired)" "$A/log/$sha.fix.err"; continue; }
     ida="${qa##* }"; idb="${qb##* }"
