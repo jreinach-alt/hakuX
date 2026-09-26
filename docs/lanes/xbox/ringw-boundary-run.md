@@ -4,6 +4,9 @@
 were committed and pushed before the emulator dry run and before the console
 run. The branch was cut fresh from `origin/master` (`02374a6847`).
 
+**Result (2026-09-26):** every leg held, and every method weighs 0. See
+[`xbox-ringw-boundary-2026-09-26.md`](../../testing/xbox-ringw-boundary-2026-09-26.md).
+
 ## Why
 
 lane.ring53impl (#53, 14:37Z) implemented the ring with PR #394's weights. It
