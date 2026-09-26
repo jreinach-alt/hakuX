@@ -7,6 +7,7 @@ T="$(mktemp -d "${TMPDIR:-/tmp}/perfreg-frag.XXXXXX")"
 pass=0; fail=0
 ok()   { echo "  ok   $*"; pass=$((pass+1)); }
 bad()  { echo "  FAIL $*"; fail=$((fail+1)); }
+check() { local msg=$1; shift; if "$@" >/dev/null 2>&1; then ok "$msg"; else bad "$msg"; fi; }
 . "$1"
 echo "fragment: $pass passed, $fail failed ($T)"
 [ "$fail" -eq 0 ]
