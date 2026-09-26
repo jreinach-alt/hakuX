@@ -111,3 +111,15 @@ lane's. It goes to the host as a board request, to be sequenced with
 lane.tbchurn424. If F2 is refuted (misses are mostly collisions), the next
 lever is the jump cache's shape (`tb-jmp-cache.h`: size or a second way),
 armed on its own.
+
+## State at session end (2026-09-26 ~22:20 UTC, 15:20 PDT): WAITING
+
+Waiting on the six dispatch requests above. Nine requests were ahead of them
+in the queue at 22:15 UTC. Preflight passed at this head. The PR stays draft
+until the arms are judged. The next session:
+1. Runs `perfsum.py` over the four soak logcats and judges M0, F1, F2, S1 and
+   S2 as registered.
+2. Runs `ab_compare.py --allow-same-binary` over the two disc results, and
+   reads the arms job's `[job.arms]` verdict on the pixel prediction.
+3. Fills the before/after table here. If the legs hold, it files the board
+   request to default JC on in `cputlb.c`. Then it marks #443 ready.
