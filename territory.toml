@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 238
-updated_utc = "2026-09-26T07:40:00Z"
+wave = 239
+updated_utc = "2026-09-26T08:45:00Z"
 
 
 [retired.hilodot10]
@@ -1188,8 +1188,10 @@ note = "RELEASED AT READY (hostops, 2026-09-26T08:30Z): PR #371 out of draft, CI
 [lane.fog278]
 issues = ["278"]
 files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "docs/testing/predictions/fog278-*.json", "docs/lanes/fog278/**"]
+released = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "docs/testing/predictions/fog278-*.json", "docs/lanes/fog278/**"]
+released_at_ready = 373
 standing = false
-note = "DISPATCH ATTEMPTED AT WAVE 236 (job.board, 2026-09-26T07:30Z) for #278's code half: INF fog coordinate, exp and exp2 come out opposite to silicon (85,268 px, 16 captures). The hunk is named in docs/lanes/cloud-278/NOTES.md (vsh.c:944-949 fogSpecial = 2.0 for INF, psh.c:1905-1912 exemption); PR #319 analysis folded, PR #347 (pshqueue) and #336 (nanfix281) both folded, so psh.c and vsh.c are free. glsl/psh.c is LENT alongside lane.cullnf276 and lane.y16bump10 (their hunks are elsewhere in the file: fog278's is append_fog_factor ~:1905). Brief: briefs/fog278.md."
+note = "RELEASED AT READY (job.board wave 239, 2026-09-26T08:45Z): PR #373 is out of draft, CI green on its head (Android, Desktop build, NV2A index), MERGEABLE, arm verified, unit gone; labelled needs-audit-1 (touches hw/). psh.c and vsh.c are free for the next lane, whose brief names PR #373 and says to merge master (or lane/fog278 if unfolded) and re-run its arm before marking ready. PRIOR: DISPATCH ATTEMPTED AT WAVE 236 (job.board, 2026-09-26T07:30Z) for #278's code half: INF fog coordinate, exp and exp2 come out opposite to silicon (85,268 px, 16 captures). The hunk is named in docs/lanes/cloud-278/NOTES.md (vsh.c:944-949 fogSpecial = 2.0 for INF, psh.c:1905-1912 exemption); PR #319 analysis folded, PR #347 (pshqueue) and #336 (nanfix281) both folded, so psh.c and vsh.c are free. glsl/psh.c is LENT alongside lane.cullnf276 and lane.y16bump10 (their hunks are elsewhere in the file: fog278's is append_fog_factor ~:1905). Brief: briefs/fog278.md."
 
 [lane.tie282c]
 issues = ["282"]
