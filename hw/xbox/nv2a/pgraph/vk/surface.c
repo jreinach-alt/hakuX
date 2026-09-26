@@ -1995,6 +1995,14 @@ static void register_cpu_access_callback(NV2AState *d,
  * suspended, re-arm it and queue the gap check. Returns with upload_pending
  * cleared, as the upload always did; the caller holds surface_watch_lock.
  */
+/* Whole-surface hashes taken by surface_watch_resume(); see [surf413]. */
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+static unsigned long surf413_resume_hashes, surf413_resume_kb;
+#define SURF413_HASHED(kb) (surf413_resume_hashes++, surf413_resume_kb += (kb))
+#else
+#define SURF413_HASHED(kb) ((void)0)
+#endif
+
 static void surface_watch_resume(NV2AState *d, SurfaceBinding *surface)
 {
     if (!surface_watch_suspended ||
@@ -2003,6 +2011,7 @@ static void surface_watch_resume(NV2AState *d, SurfaceBinding *surface)
     }
     uint64_t hash = surface_watch_hash(d->vram_ptr + surface->vram_addr,
                                        surface->size);
+    SURF413_HASHED(surface->size / 1024);
     register_cpu_access_callback(d, surface);
     if (surface->access_cb) {
         SurfaceWatchRearm *w = g_new(SurfaceWatchRearm, 1);
@@ -2174,6 +2183,137 @@ extern volatile int32_t *xbox_ram_fp_cb_count_ptr;   /* tcg/tcg.c */
 static long surface_live_watches;
 static unsigned long surface_watch_inserts;
 
+/*
+ * #372: which part of the compatibility test an incompatible eviction in
+ * update_surface_part() failed. The eviction of a draw-dirty binding is a
+ * deferred download completed by a synchronous finish in the same
+ * surface_update, and the partner unshelved stale re-uploads it. Whether a
+ * GPU-side copy can replace that round trip depends on the failing field:
+ * a pitch or size mismatch between one host format is a copy, a role or
+ * format change is a conversion. Each bit is tested on its own, so a mask
+ * with several bits set means several fields differ, not a first failure.
+ */
+enum {
+    EVICT_WHY_ROLE = 1 << 0,     /* colour vs zeta                       */
+    EVICT_WHY_FORMAT = 1 << 1,   /* host vk_format                       */
+    EVICT_WHY_PITCH = 1 << 2,
+    EVICT_WHY_SMALL = 1 << 3,    /* held binding narrower or shorter     */
+    EVICT_WHY_SWIZZLE = 1 << 4,  /* swizzle differs, no clear rescued it */
+    EVICT_WHY_OVERLAP = 1 << 5,  /* colour would overlap the zeta range  */
+    EVICT_WHY_ZDIM = 1 << 6,     /* zeta dims differ from colour's       */
+    EVICT_WHY_BINS = 1 << 7,
+};
+
+typedef struct EvictSide {
+    bool color, swizzle;
+    int vk_format;
+    unsigned int pitch, width, height, bpp;
+} EvictSide;
+
+#define EVICT_PAIRS 8
+
+static struct {
+    unsigned long dirty[EVICT_WHY_BINS];  /* draw-dirty: took the download */
+    unsigned long clean[EVICT_WHY_BINS];
+    struct {
+        EvictSide from, to;
+        unsigned int why;
+        unsigned long n;
+    } pair[EVICT_PAIRS];
+    unsigned long pair_overflow;
+} g_evict372;
+
+/* Evictions handed to the shelved partner on the GPU (#372, see
+ * surface_handoff_partner), and ones that fell back to the download. */
+static unsigned long surface_handoffs, surface_handoff_fallbacks;
+
+static void evict372_side(EvictSide *e, SurfaceBinding const *s)
+{
+    /* Compared with memcmp, so the padding is zeroed first. */
+    memset(e, 0, sizeof(*e));
+    e->color = s->color;
+    e->swizzle = s->swizzle;
+    e->vk_format = s->host_fmt.vk_format;
+    e->pitch = s->pitch;
+    e->width = s->width;
+    e->height = s->height;
+    e->bpp = s->fmt.bytes_per_pixel;
+}
+
+static void evict372_record(SurfaceBinding const *held,
+                            SurfaceBinding const *target, unsigned int why)
+{
+    why &= EVICT_WHY_BINS - 1;
+    if (!held->draw_dirty) {
+        g_evict372.clean[why]++;
+        return;
+    }
+    g_evict372.dirty[why]++;
+
+    EvictSide from, to;
+    evict372_side(&from, held);
+    evict372_side(&to, target);
+    /*
+     * A full table replaces its least-counted pair, so pairs from the boot
+     * movies give way to the ones a later scene repeats every frame. n then
+     * counts from the replacement, and overflow counts replacements.
+     */
+    int victim = 0;
+    for (int i = 0; i < EVICT_PAIRS; i++) {
+        if (g_evict372.pair[i].n == 0) {
+            victim = i;
+            break;
+        }
+        if (!memcmp(&g_evict372.pair[i].from, &from, sizeof(from)) &&
+            !memcmp(&g_evict372.pair[i].to, &to, sizeof(to)) &&
+            g_evict372.pair[i].why == why) {
+            g_evict372.pair[i].n++;
+            return;
+        }
+        if (g_evict372.pair[i].n < g_evict372.pair[victim].n) {
+            victim = i;
+        }
+    }
+    if (g_evict372.pair[victim].n) {
+        g_evict372.pair_overflow++;
+    }
+    g_evict372.pair[victim].from = from;
+    g_evict372.pair[victim].to = to;
+    g_evict372.pair[victim].why = why;
+    g_evict372.pair[victim].n = 1;
+}
+
+static void evict372_log(void)
+{
+    char masks[512];
+    int len = 0;
+    masks[0] = '\0';
+    for (int m = 0; m < EVICT_WHY_BINS && len < (int)sizeof(masks) - 48; m++) {
+        if (g_evict372.dirty[m] || g_evict372.clean[m]) {
+            len += snprintf(masks + len, sizeof(masks) - len,
+                            " m%02x:%lu/%lu", m, g_evict372.dirty[m],
+                            g_evict372.clean[m]);
+        }
+    }
+    SURF92_LOG("[evict372] dirty/clean by mask (1role 2fmt 4pitch 8small "
+               "10swz 20ovl 40zdim):%s overflow=%lu handoffs=%lu "
+               "fallbacks=%lu",
+               masks, g_evict372.pair_overflow, surface_handoffs,
+               surface_handoff_fallbacks);
+    for (int i = 0; i < EVICT_PAIRS && g_evict372.pair[i].n; i++) {
+        EvictSide const *f = &g_evict372.pair[i].from;
+        EvictSide const *t = &g_evict372.pair[i].to;
+        SURF92_LOG("[evict372] pair%d n=%lu m%02x %c f%d %s p%u %ux%u b%u -> "
+                   "%c f%d %s p%u %ux%u b%u",
+                   i, g_evict372.pair[i].n, g_evict372.pair[i].why,
+                   f->color ? 'C' : 'Z', f->vk_format,
+                   f->swizzle ? "sz" : "ln", f->pitch, f->width, f->height,
+                   f->bpp, t->color ? 'C' : 'Z', t->vk_format,
+                   t->swizzle ? "sz" : "ln", t->pitch, t->width, t->height,
+                   t->bpp);
+    }
+}
+
 static void surface_watch_log_periodic(PGRAPHVkState *r)
 {
     static int64_t next_ns;
@@ -2207,6 +2347,7 @@ static void surface_watch_log_periodic(PGRAPHVkState *r)
                surface_watch_suspends, surface_watch_rearms,
                surface_watch_gap_writes, surface_watch_lost_writes);
     qemu_rec_mutex_unlock(&surface_watch_lock);
+    evict372_log();
 }
 
 static void unregister_cpu_access_callback(SurfaceBinding *surface)
@@ -3644,6 +3785,259 @@ static void populate_surface_binding_target(NV2AState *d, bool color,
     populate_surface_binding_target_sized(d, color, width, height, target);
 }
 
+/*
+ * #372: hand an evicted binding's pixels to its shelved partner on the GPU.
+ *
+ * Two bindings of one guest surface can share an address under host formats
+ * that do not match (a colour and a zeta binding, D24S8 and D32FS8, R5G6B5 and
+ * D16). Each time the guest switches between them the draw-dirty one was
+ * downloaded to VRAM with a synchronous finish, and the partner came off the
+ * shelf stale and re-uploaded those bytes. Blinx's attract demo does this
+ * twice a frame, and the two finishes were half its frame time.
+ *
+ * When the two bindings have the same width, height, pitch, swizzle and
+ * bytes per pixel, the download's staging bytes are exactly the bytes the
+ * upload would stage: VRAM only adds the pitch padding (never read back) and
+ * the swizzle (undone by the upload). So the round trip is recorded as one
+ * GPU sequence instead: image -> buffer (packed by the same compute pass the
+ * download uses, for a depth-stencil source) -> buffer unpacked by the same
+ * pass the upload uses (for a depth-stencil destination) -> image. The pixels
+ * are the ones the old path produced; only VRAM is not written.
+ *
+ * VRAM then owes the partner's pixels, and the partner, now the active
+ * binding, owes the download: it is marked draw-dirty with a new generation,
+ * through pgraph_vk_surface_watch_mark_dirty, so its CPU-access watch is live
+ * (see surface_watch_resume). A guest access to the memory downloads it --
+ * the same bytes the old path would have put there -- as it would any drawn
+ * surface. The evicted binding is shelved clean and stale (vram_newer): it
+ * owes nothing, and the next time it is wanted it is either handed the
+ * partner's pixels the same way or re-uploaded from VRAM after the partner's
+ * download.
+ *
+ * The obligation goes to the active binding, not to the shelved one, because
+ * surface_access_callback downloads only active surfaces. A shelved
+ * draw-dirty binding is written back on a texture or overlap lookup
+ * (pgraph_vk_download_surfaces_in_range_if_dirty), but a CPU read of it goes
+ * unanswered and reads stale VRAM.
+ *
+ * Declined, falling back to the download, when anything else could write the
+ * range between the old download and the partner's upload (another active
+ * binding over it, or a dirty shelved binding elsewhere that surface_put
+ * would write back), when the guest's CPU asked for the download
+ * (download_pending) or wrote the range (upload_pending, mem_dirty), and at
+ * any surface scale but 1, where the round trip down- and up-scales. Also
+ * without TCG, where no watch exists and VRAM has to be current.
+ */
+
+static bool surface_is_ds(SurfaceBinding const *s)
+{
+    return s->host_fmt.vk_format == VK_FORMAT_D24_UNORM_S8_UINT ||
+           s->host_fmt.vk_format == VK_FORMAT_D32_SFLOAT_S8_UINT;
+}
+
+/* The staging bytes a download produces equal the ones an upload reads. */
+static bool surface_stages_guest_bytes(SurfaceBinding const *s)
+{
+    return surface_is_ds(s) ?
+               s->fmt.bytes_per_pixel == 4 :
+               s->host_fmt.host_bytes_per_pixel == s->fmt.bytes_per_pixel;
+}
+
+/* get_shelved_surface()'s predicate, without taking the surface. */
+static bool surface_shelf_matches(SurfaceBinding const *s,
+                                  SurfaceBinding const *target)
+{
+    return s->vram_addr == target->vram_addr &&
+           s->host_fmt.vk_format == target->host_fmt.vk_format &&
+           s->color == target->color &&
+           s->width == target->width &&
+           s->height == target->height &&
+           s->pitch == target->pitch;
+}
+
+static SurfaceBinding *surface_handoff_partner(NV2AState *d,
+                                               SurfaceBinding *held,
+                                               SurfaceBinding const *target,
+                                               bool mem_dirty)
+{
+    PGRAPHState *pg = &d->pgraph;
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    /* Without TCG no watch sees a CPU read, and VRAM must be current. */
+    if (!tcg_enabled() || pg->surface_scale_factor != 1 || mem_dirty ||
+        !held->draw_dirty || held->upload_pending || held->download_pending ||
+        !held->width || !held->height) {
+        return NULL;
+    }
+    if (held->width != target->width || held->height != target->height ||
+        held->pitch != target->pitch || held->swizzle != target->swizzle ||
+        held->fmt.bytes_per_pixel != target->fmt.bytes_per_pixel ||
+        held->size != target->size ||
+        !surface_stages_guest_bytes(held) ||
+        !surface_stages_guest_bytes(target)) {
+        return NULL;
+    }
+    if (r->display_predownload_pending &&
+        r->display_predownload_surface == held) {
+        return NULL;
+    }
+    /* The held binding goes to the head of the shelf; if it matched, it
+     * would be the one taken back. */
+    if (surface_shelf_matches(held, target)) {
+        return NULL;
+    }
+
+    SurfaceBinding *s, *partner = NULL;
+    QTAILQ_FOREACH(s, &r->shelved_surfaces, entry) {
+        if (!partner && surface_shelf_matches(s, target)) {
+            partner = s;
+        } else if (s->vram_addr != target->vram_addr && s->draw_dirty &&
+                   check_surface_overlaps_range(s, target->vram_addr,
+                                                target->size)) {
+            return NULL;
+        }
+    }
+    if (!partner) {
+        return NULL;
+    }
+    QTAILQ_FOREACH(s, &r->surfaces, entry) {
+        if (s != held &&
+            check_surface_overlaps_range(s, target->vram_addr, target->size)) {
+            return NULL;
+        }
+    }
+    return partner;
+}
+
+static void surface_handoff_barrier(VkCommandBuffer cmd)
+{
+    VkMemoryBarrier barrier = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+        .srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT |
+                         VK_ACCESS_TRANSFER_WRITE_BIT |
+                         VK_ACCESS_SHADER_READ_BIT |
+                         VK_ACCESS_SHADER_WRITE_BIT,
+        .dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT |
+                         VK_ACCESS_TRANSFER_WRITE_BIT |
+                         VK_ACCESS_SHADER_READ_BIT |
+                         VK_ACCESS_SHADER_WRITE_BIT,
+    };
+    VkPipelineStageFlags stages = VK_PIPELINE_STAGE_TRANSFER_BIT |
+                                  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
+    vkCmdPipelineBarrier(cmd, stages, stages, 0, 1, &barrier, 0, NULL, 0,
+                         NULL);
+}
+
+/* The buffer regions of one image, packed as the download and upload do. */
+static int surface_handoff_regions(PGRAPHVkState *r, SurfaceBinding const *s,
+                                   VkBufferImageCopy regions[2])
+{
+    VkExtent3D extent = { s->width, s->height, 1 };
+    regions[0] = (VkBufferImageCopy){
+        .imageSubresource.aspectMask =
+            s->color ? VK_IMAGE_ASPECT_COLOR_BIT : VK_IMAGE_ASPECT_DEPTH_BIT,
+        .imageSubresource.layerCount = 1,
+        .imageExtent = extent,
+    };
+    if (!(s->host_fmt.aspect & VK_IMAGE_ASPECT_STENCIL_BIT)) {
+        return 1;
+    }
+    regions[1] = (VkBufferImageCopy){
+        .bufferOffset = ROUND_UP(
+            (VkDeviceSize)s->width * s->height * 4,
+            r->device_props.limits.minStorageBufferOffsetAlignment),
+        .imageSubresource.aspectMask = VK_IMAGE_ASPECT_STENCIL_BIT,
+        .imageSubresource.layerCount = 1,
+        .imageExtent = extent,
+    };
+    return 2;
+}
+
+static void surface_handoff_record(NV2AState *d, SurfaceBinding *src,
+                                   SurfaceBinding *dst)
+{
+    PGRAPHState *pg = &d->pgraph;
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    /* As download_surface_record_deferred: queued draws to src first. */
+    if (r->reorder_window.count > 0) {
+        pgraph_vk_flush_reorder_window(d);
+    }
+    if (r->draw_queue.count > 0) {
+        pgraph_vk_flush_draw_queue(d);
+    }
+
+    VkBuffer compute_dst = r->storage_buffers[BUFFER_COMPUTE_DST].buffer;
+    VkBuffer compute_src = r->storage_buffers[BUFFER_COMPUTE_SRC].buffer;
+    VkBufferImageCopy regions[2];
+    int num_regions;
+
+    VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
+    pgraph_vk_begin_debug_marker(r, cmd, RGBA_RED, __func__);
+
+    /* src image -> compute_dst, laid out as the download lays it out. */
+    VkImageLayout src_layout = src->image_layout;
+    pgraph_vk_transition_image_layout(pg, cmd, src->image,
+                                      src->host_fmt.vk_format, src_layout,
+                                      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    surface_handoff_barrier(cmd);
+    num_regions = surface_handoff_regions(r, src, regions);
+    vkCmdCopyImageToBuffer(cmd, src->image,
+                           VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, compute_dst,
+                           num_regions, regions);
+    pgraph_vk_transition_image_layout(pg, cmd, src->image,
+                                      src->host_fmt.vk_format,
+                                      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                      src_layout);
+    surface_handoff_barrier(cmd);
+
+    /* The guest's bytes: packed from depth and stencil, or the copy itself. */
+    VkBuffer guest = compute_dst;
+    if (surface_is_ds(src)) {
+        pgraph_vk_pack_depth_stencil(pg, src, cmd, compute_dst, compute_src,
+                                     false);
+        surface_handoff_barrier(cmd);
+        guest = compute_src;
+    }
+
+    /* The upload's side: unpack for a depth-stencil destination. */
+    VkBuffer staged = guest;
+    if (surface_is_ds(dst)) {
+        if (guest != compute_dst) {
+            VkBufferCopy copy = {
+                .size = (VkDeviceSize)dst->width * dst->height * 4,
+            };
+            vkCmdCopyBuffer(cmd, guest, compute_dst, 1, &copy);
+            surface_handoff_barrier(cmd);
+        }
+        pgraph_vk_unpack_depth_stencil(pg, dst, cmd, compute_dst, compute_src);
+        surface_handoff_barrier(cmd);
+        staged = compute_src;
+    }
+
+    VkImageLayout dst_layout = dst->color ?
+        VK_IMAGE_LAYOUT_GENERAL :
+        VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    pgraph_vk_transition_image_layout(pg, cmd, dst->image,
+                                      dst->host_fmt.vk_format,
+                                      dst->image_layout,
+                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    num_regions = surface_handoff_regions(r, dst, regions);
+    vkCmdCopyBufferToImage(cmd, staged, dst->image,
+                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, num_regions,
+                           regions);
+    pgraph_vk_transition_image_layout(pg, cmd, dst->image,
+                                      dst->host_fmt.vk_format,
+                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                      dst_layout);
+    dst->image_layout = dst_layout;
+    surface_handoff_barrier(cmd);
+
+    pgraph_vk_end_debug_marker(r, cmd);
+    pgraph_vk_end_nondraw_commands(pg, cmd);
+    surface_handoffs++;
+}
+
 static void update_surface_part(NV2AState *d, bool upload, bool color)
 {
     PGRAPHState *pg = &d->pgraph;
@@ -3773,10 +4167,19 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
             pg->surface_shape.clip_height);
 
         bool should_create = true;
+        SurfaceBinding *handoff_src = NULL, *handoff_dst = NULL;
 
         if (surface != NULL) {
             bool is_compatible =
                 check_surface_compatibility(surface, &target, false);
+            unsigned int evict_why =
+                (surface->color != target.color ? EVICT_WHY_ROLE : 0) |
+                (surface->host_fmt.vk_format != target.host_fmt.vk_format ?
+                     EVICT_WHY_FORMAT : 0) |
+                (surface->pitch != target.pitch ? EVICT_WHY_PITCH : 0) |
+                (surface->width < target.width ||
+                         surface->height < target.height ?
+                     EVICT_WHY_SMALL : 0);
 
             void (*trace_fn)(uint32_t addr, uint32_t width, uint32_t height,
                              const char *layout, uint32_t anti_aliasing,
@@ -3801,8 +4204,10 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                 // destined to be cleared and (2) a fully cleared linear surface
                 // to be marked swizzled. Strictly match size to avoid
                 // pathological cases.
-                is_compatible &= (pg->clearing || surface->cleared) &&
+                bool rescued = (pg->clearing || surface->cleared) &&
                     check_surface_compatibility(surface, &target, true);
+                is_compatible &= rescued;
+                evict_why |= rescued ? 0 : EVICT_WHY_SWIZZLE;
                 if (is_compatible) {
                     trace_nv2a_pgraph_surface_migrate_type(
                         target.swizzle ? "swizzled" : "linear");
@@ -3818,11 +4223,13 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                 hwaddr zeta_end = zeta_entry.vram_addr + zeta_entry.size;
                 is_compatible &= surface->vram_addr >= zeta_end ||
                                  zeta_entry.vram_addr >= color_end;
+                evict_why |= is_compatible ? 0 : EVICT_WHY_OVERLAP;
             }
 
             if (is_compatible && !color && r->color_binding) {
                 is_compatible &= (surface->width == r->color_binding->width) &&
                                  (surface->height == r->color_binding->height);
+                evict_why |= is_compatible ? 0 : EVICT_WHY_ZDIM;
             }
 
             if (is_compatible) {
@@ -3886,6 +4293,7 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                 trace_nv2a_pgraph_surface_evict_reason(
                     "incompatible", surface->vram_addr);
                 compare_surfaces(surface, &target);
+                evict372_record(surface, &target, evict_why);
                 /*
                  * Same contract as invalidate_overlapping_surfaces(): the
                  * binding that replaces this one uploads from VRAM in this
@@ -3902,7 +4310,12 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                  * binary.
                  */
                 surface->shelved_dirty = surface->draw_dirty;
-                if (surface->draw_dirty) {
+                handoff_dst = surface_handoff_partner(d, surface, &target,
+                                                      mem_dirty);
+                if (handoff_dst) {
+                    /* Recorded once the partner is off the shelf, below. */
+                    handoff_src = surface;
+                } else if (surface->draw_dirty) {
                     OPT_STAT_INC(sd_eviction_dl);
                     download_surface_deferred(d, surface);
                     surface->shelved_dirty = false;
@@ -3952,7 +4365,32 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
             *surface = target;
             set_surface_label(pg, surface);
 
-            if (unshelved) {
+            bool handed_off = false;
+            if (handoff_src && surface == handoff_dst) {
+                /* See surface_handoff_partner. The evicted binding owes
+                 * nothing now, and its image is older than the memory. */
+                surface_handoff_record(d, handoff_src, surface);
+                handoff_src->draw_dirty = false;
+                handoff_src->shelved_dirty = false;
+                handoff_src->download_generation =
+                    handoff_src->draw_generation;
+                handoff_src->vram_newer = true;
+                unregister_cpu_access_callback(handoff_src);
+                surface->upload_pending = false;
+                surface->initialized = true;
+                handed_off = true;
+            } else if (handoff_src) {
+                /* Not the partner the eviction found: take the download it
+                 * skipped. It completes in pgraph_vk_surface_update before
+                 * any upload, and whatever came off the shelf re-uploads. */
+                surface_handoff_fallbacks++;
+                OPT_STAT_INC(sd_eviction_dl);
+                download_surface_deferred(d, handoff_src);
+                handoff_src->shelved_dirty = false;
+                shelf_stale = true;
+            }
+
+            if (unshelved && !handed_off) {
                 /*
                  * The VkImage still holds what this binding drew, so the
                  * VRAM upload can be skipped -- unless the memory under it
@@ -3975,6 +4413,13 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
             SURF_TIMER_INIT(_gt3);
             surface_put(d, surface);
             SURF_TIMER_ACC(put_ns, _gt3);
+
+            if (handed_off) {
+                /* The handed-off pixels are not in VRAM: this binding owes
+                 * the download now, with its watch live. */
+                surface->draw_generation++;
+                pgraph_vk_surface_watch_mark_dirty(d, surface);
+            }
 
             // FIXME: Refactor
             pg->surface_binding_dim.width = target.width;
@@ -4036,6 +4481,86 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
     }
 }
 
+/*
+ * #413 PROBE: WHERE pgraph_vk_surface_update()'S TIME GOES, PER SEGMENT.
+ *
+ * DOA2U's 15 fps fight spends 33-52 ms per frame in `Surf` (the exclusive
+ * phase timer around this function), about 64 us a call against 2.5 us in
+ * light play. profile.c already splits it under `xemu-surf`, but that tag is
+ * not in the dispatcher's logcat spec, and the xemu-surf split leaves out
+ * the parts of this function that are not inside update_surface_part():
+ * the flushes on the download side, the deferred-download completion, the
+ * real uploads (as distinct from calls that return on !upload_pending) and
+ * expire/prune. This prints all of them raw, summed over 60 guest frames,
+ * under "hakuX" with a [surf413] prefix, beside profile.c's own xemu-surf
+ * string. Every segment is wall time and includes any pgraph_vk_finish()
+ * inside it; `fin` is that nested finish time, so sum(segments) - fin is
+ * what `Surf` reports. NV2A_PERF_LOG builds only.
+ */
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+static struct {
+    int frame0;
+    unsigned long calls_up, calls_dn;
+    unsigned long real_uploads, upload_kb;
+    int64_t pre_ns, flush_ns, part_ns, cdef_ns, upl_ns, exp_ns, prn_ns,
+            tail_ns, fin_ns;
+} g_surf413;
+
+static void surf413_log(PGRAPHState *pg, PGRAPHVkState *r)
+{
+    int frames = pg->frame_time - g_surf413.frame0;
+    if (frames < 60) {
+        return;
+    }
+    int active = 0, shelved = 0, invalid = 0;
+    SurfaceBinding *s;
+    QTAILQ_FOREACH(s, &r->surfaces, entry) {
+        active++;
+    }
+    QTAILQ_FOREACH(s, &r->shelved_surfaces, entry) {
+        shelved++;
+    }
+    QTAILQ_FOREACH(s, &r->invalid_surfaces, entry) {
+        invalid++;
+    }
+#define SURF413_MS(ns) ((double)(ns) / 1e6 / frames)
+    SURF92_LOG("[surf413] frames=%d up=%lu dn=%lu | ms/frame pre=%.2f "
+               "flush=%.2f part=%.2f cdef=%.2f upl=%.2f exp=%.2f prn=%.2f "
+               "tail=%.2f fin=%.2f | realupl=%lu uplKB=%lu hash=%lu "
+               "hashKB=%lu | active=%d shelved=%d invalid=%d",
+               frames, g_surf413.calls_up, g_surf413.calls_dn,
+               SURF413_MS(g_surf413.pre_ns), SURF413_MS(g_surf413.flush_ns),
+               SURF413_MS(g_surf413.part_ns), SURF413_MS(g_surf413.cdef_ns),
+               SURF413_MS(g_surf413.upl_ns), SURF413_MS(g_surf413.exp_ns),
+               SURF413_MS(g_surf413.prn_ns), SURF413_MS(g_surf413.tail_ns),
+               SURF413_MS(g_surf413.fin_ns),
+               g_surf413.real_uploads, g_surf413.upload_kb,
+               surf413_resume_hashes, surf413_resume_kb,
+               active, shelved, invalid);
+#undef SURF413_MS
+    char buf[512];
+    nv2a_profile_get_surf_timing_str(buf, sizeof(buf));
+    SURF92_LOG("[surf413] xemu-surf %s", buf);
+    memset(&g_surf413, 0, sizeof(g_surf413));
+    surf413_resume_hashes = surf413_resume_kb = 0;
+    g_surf413.frame0 = pg->frame_time;
+}
+#define SURF413_T(name) int64_t name = nv2a_clock_ns()
+#define SURF413_ACC(field, since) do { \
+        int64_t _now = nv2a_clock_ns(); \
+        g_surf413.field += _now - (since); \
+        (since) = _now; \
+    } while (0)
+#define SURF413_FIN(name) \
+    int64_t name = g_nv2a_stats.phase_working.finish_ns
+#define SURF413_DO(stmt) do { stmt; } while (0)
+#else
+#define SURF413_FIN(name) ((void)0)
+#define SURF413_T(name) ((void)0)
+#define SURF413_ACC(field, since) ((void)0)
+#define SURF413_DO(stmt) ((void)0)
+#endif
+
 // FIXME: Move to common?
 void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
                               bool zeta_write)
@@ -4043,6 +4568,10 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     NV2A_PHASE_TIMER_BEGIN_EXCL(surface_update);
     PGRAPHState *pg = &d->pgraph;
     PGRAPHVkState *r = pg->vk_renderer_state;
+    SURF413_T(_s413);
+    SURF413_FIN(_s413_fin);
+    SURF413_DO(if (upload) { g_surf413.calls_up++; }
+               else { g_surf413.calls_dn++; });
 
     VK_LOG("surface_update: upload=%d color_w=%d zeta_w=%d clearing=%d",
            upload, color_write, zeta_write, pg->clearing);
@@ -4054,6 +4583,8 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     color_write = color_write &&
             (pg->clearing || pgraph_color_write_enabled(pg));
     zeta_write = zeta_write && (pg->clearing || pgraph_zeta_write_enabled(pg));
+
+    SURF413_ACC(pre_ns, _s413);
 
     if (upload) {
         bool fb_dirty = framebuffer_dirty(pg);
@@ -4084,6 +4615,7 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     } else {
         pgraph_vk_flush_reorder_window(d);
         pgraph_vk_flush_draw_queue(d);
+        SURF413_ACC(flush_ns, _s413);
         if ((color_write || pg->surface_color.write_enabled_cache)
             && pg->surface_color.draw_dirty) {
             update_surface_part(d, false, true);
@@ -4094,7 +4626,9 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
         }
     }
 
+    SURF413_ACC(part_ns, _s413);
     pgraph_vk_download_surface_complete_deferred(d);
+    SURF413_ACC(cdef_ns, _s413);
 
     if (upload) {
         pg->draw_time++;
@@ -4107,6 +4641,10 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
         if (r->color_binding) {
             r->color_binding->frame_time = pg->frame_time;
             if (upload) {
+                SURF413_DO(if (r->color_binding->upload_pending) {
+                    g_surf413.real_uploads++;
+                    g_surf413.upload_kb += r->color_binding->size / 1024;
+                });
                 pgraph_vk_upload_surface_data(d, r->color_binding, false);
                 r->color_binding->draw_time = pg->draw_time;
                 r->color_binding->swizzle = swizzle;
@@ -4117,6 +4655,10 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
         if (r->zeta_binding) {
             r->zeta_binding->frame_time = pg->frame_time;
             if (upload) {
+                SURF413_DO(if (r->zeta_binding->upload_pending) {
+                    g_surf413.real_uploads++;
+                    g_surf413.upload_kb += r->zeta_binding->size / 1024;
+                });
                 pgraph_vk_upload_surface_data(d, r->zeta_binding, false);
                 r->zeta_binding->draw_time = pg->draw_time;
                 r->zeta_binding->swizzle = swizzle;
@@ -4125,6 +4667,7 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
         }
         SURF_TIMER_ACC(upload_ns, _su0);
     }
+    SURF413_ACC(upl_ns, _s413);
 
     // Sanity check color and zeta dimensions match
     if (r->color_binding && r->zeta_binding) {
@@ -4135,10 +4678,16 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     {
         SURF_TIMER_INIT(_se0);
         expire_old_surfaces(d);
+        SURF413_ACC(exp_ns, _s413);
         prune_invalid_surfaces(r, num_invalid_surfaces_to_keep);
+        SURF413_ACC(prn_ns, _s413);
         SURF_TIMER_ACC(expire_ns, _se0);
     }
     surface_watch_log_periodic(r);
+    SURF413_ACC(tail_ns, _s413);
+    SURF413_DO(g_surf413.fin_ns +=
+                   g_nv2a_stats.phase_working.finish_ns - _s413_fin;
+               surf413_log(pg, r));
 
     NV2A_PHASE_TIMER_END_EXCL(surface_update);
 }
