@@ -698,7 +698,7 @@ echo
 echo "### Host"
 echo
 echo "- checkout \`$REPO\` on $(git -C "$REPO" rev-parse --abbrev-ref HEAD 2>/dev/null), $(git -C "$REPO" rev-list --count HEAD..origin/master 2>/dev/null || echo '?') behind origin/master (jobs run the fetched trunk regardless)"
-[ $have_sd = 1 ] && echo "- timers: $(systemctl --user list-timers 'hakux-*' --no-legend --plain 2>/dev/null | awk '{printf "%s next %s; ", $NF, ($1 == "-" ? "-" : $3 " " $4)}' | sed 's/.service//g; s/hakux-//g' | cut -c1-300)"
+[ $have_sd = 1 ] && echo "- timers: $(systemctl --user list-timers 'hakux-*' --no-legend --plain 2>/dev/null | awk '{printf "%s next %s\n", $NF, ($1 == "-" ? "-" : $3 " " $4)}' | sed 's/.service//g; s/hakux-//g' | sort | paste -sd';' | sed 's/;/; /g' | cut -c1-400)"   # sorted by name: the dashboard republishes on a change, and the clock alone reorders by next elapse
 echo "- attempts: $(for f in "$WORK"/attempts/*; do [ -e "$f" ] && printf '%s=%s ' "$(basename "$f")" "$(cat "$f")"; done)"
 } > "$OUT" 2>/dev/null
 

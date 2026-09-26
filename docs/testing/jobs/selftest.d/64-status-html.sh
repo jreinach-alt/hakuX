@@ -42,7 +42,7 @@ check "NEEDS ATTENTION is on the page" grep -q 'NEEDS ATTENTION (1)' "$SH_H"
 check "the release blockers are on the page" grep -q '#311 Ghoulies' "$SH_H"
 sh_order() { python3 - "$1" <<'PY'
 import sys; s = open(sys.argv[1]).read()
-a, b, c, d = (s.find(x) for x in ('class="strip"', "NEEDS ATTENTION", "Release", "<h3>Lanes running"))
+a, b, c, d = (s.find(x) for x in ('class="strip"', "NEEDS ATTENTION", "Release", ">Lanes running</h"))
 sys.exit(0 if -1 < a < b < c < d else 1)
 PY
 }
@@ -92,6 +92,10 @@ esac
 GHEOF
 chmod +x "$T/bin/gh"
 echo 5738613782 > "$HAKUX_WORK/status/comment-id"
+# The page counts the HOST's dispatcher workers (`pgrep -fc`), which come and
+# go under this fake host when it runs on the real one -- a real change, and
+# so a republish, which is right on the host and noise here. Pin it.
+printf '#!/usr/bin/env bash\necho 0\n' > "$T/bin/pgrep"; chmod +x "$T/bin/pgrep"
 sh_tick() { STATUS_PAGES_REMOTE="$SH_BARE" SELFTEST_GH_LOG="$SH_LOG" bash "$HERE/status.sh" "$@" 2>&1; }
 : > "$SH_LOG"; sout=$(sh_tick)
 check "the first tick publishes gh-pages" grep -q '^pages: published' <<< "$sout"
@@ -148,7 +152,7 @@ check "a mergeable one with no CI run says CI never ran" \
     python3 -c 'import json,sys; a=json.load(open(sys.argv[1]))["attention"]; sys.exit(0 if any("PR #900" in x["text"] and "CI never ran" in x["text"] for x in a) else 1)' "$HAKUX_WORK/status/status.json"
 
 # ---- restore selftest.sh's own shim and state for any later fragment.
-rm -f "$HAKUX_WORK/status/comment-id" "$HAKUX_WORK/status/issue-pointer" "$HAKUX_WORK/status/pages-state"
+rm -f "$T/bin/pgrep" "$HAKUX_WORK/status/comment-id" "$HAKUX_WORK/status/issue-pointer" "$HAKUX_WORK/status/pages-state"
 rm -rf "$HAKUX_WORK/status/pages"
 cat > "$T/bin/gh" <<'GHEOF'
 #!/usr/bin/env bash

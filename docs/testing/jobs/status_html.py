@@ -416,6 +416,7 @@ _VOLATILE = [
     re.compile(r"\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?Z?)?"),
     re.compile(r"\b\d{1,2}:\d{2}(:\d{2})?\b"),
     re.compile(r"\b\d+h \d+m\b"),
+    re.compile(r"\b\d+ (second|minute|hour|day|week|month)s? ago\b"),        # git's %cr
     re.compile(r"\b\d+(\.\d+)?\s?(s|m|h|min|mins|sec|secs|W)\b"),
 ]
 
