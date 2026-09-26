@@ -39,8 +39,9 @@ dhmut() {   # <path under docs/testing> <sed-expression> [name] -> echoes the tr
 
 # ---------------------------------------------------------------- A. void
 echo "== dispatch hardening A: an unreadable capture is VOID, not 'now exact'"
-# #224's arm (pair 42c014b32fab): the fix arm's pull truncated 56 W_param
-# PNGs, score_sweep wrote each `unreadable` with differing=0, and the verdict
+# #224's arm (pair 42c014b32fab): the fix arm pulled a holed image, not a
+# truncated one (58-pull-verify.sh), so 56 W_param PNGs came out one cluster
+# long, score_sweep wrote each `unreadable` with differing=0, and the verdict
 # counted 52 of them better -- "repaired to exact". Falsified on that real
 # pair by hand: master's ab_compare says better 64 / repaired 52 / FAIL, this
 # one better 12 / VOID 56 / INCOMPLETE (NOTES.md). This is the same shape,
