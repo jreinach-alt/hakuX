@@ -1,8 +1,13 @@
 # lane.ghoul311 -- #311 Grabbed by the Ghoulies hands-off fps decay
 
-Status: 2026-09-25 22:55 UTC (attempt 3), waiting on the since-when pair and
-two bisect soaks, all on the Thor (section 4).
+Status: 2026-09-26 00:20 UTC (attempt 4). The since-when pair is judged (both
+bad, section 6); the host's bisect driver owns the since-when (section 7);
+waiting on lane.tcgchurn's counter arm and the next bisect rounds.
 Diagnosis first; no source claimed.
+
+**Read section 6 before section 1.** Section 1's model (the arming walk after
+a page empties) was written from one soak and is refuted by the pair: the
+re-arm count differs 7x between the two arms and the frame time is the same.
 
 ## 1. What the existing logs already say (no new device time)
 
@@ -180,7 +185,151 @@ the walk does not happen. It needs a grant on `accel/tcg/tb-maint.c`
 (lane.tcgchurn's). Its arm is master vs master+hunk, predicted from the pair
 above once the pair lands.
 
+## 6. Attempt 4 (2026-09-25 23:47 UTC): the pair, judged -- both bad
+
+Why attempt 3 did not finish: it ended in a wait, correctly (the
+`[lane.ghoul311] waiting:` comment is on #316 at 22:51 UTC). The host resumed
+it when both halves had `DONE`. Meanwhile the host withdrew my two bisect
+soaks (`7df72a6c98`, `aeb4a096b6`) into `queue/withdrawn/` and took the bisect
+mechanics over with `host-tools/bisect311.py` (section 7).
+
+Tools added here: `gfps.py` (30 s gfps bins and a window median from the
+`hakuX-perf` line), `pacing.py` (every pacing field over time), `ls_results.py`
+(request state without `ls`).
+
+### The two arms, Thor, 240 s, frames every 2 s
+
+| arm | ref | apk | gfps by 30 s bin | median gfps 90-240 s |
+|---|---|---|---|---|
+| A | 797129aea7 (09-13, pre-unstrand) | d1496958c8f7 | 29 6 7 3 2 3 2 | 2.5 |
+| B | 2af6def68a (09-14, #73 unstrand) | 4155a653abec | 29 5 5 4 1 2 2 2 | 2.0 |
+
+Both bad. Against the registered legs (`ghoul311-sincewhen.json`):
+
+| leg | predicted | A measured | B measured |
+|---|---|---|---|
+| A pr/f at 120 s | <= 25 | 29 | -- |
+| A ms/frame at 120 s | <= 100 | 381 | -- |
+| B pr/f at 120 s | >= 120 | -- | 218 |
+| B ms/frame at 120 s | >= 200 | -- | 420 |
+| B (ms-33)/pr | >= 0.9 ms | -- | 1.77 ms |
+| both <= 70 ms/frame at 20 s | yes | 33.9 | 33.9 |
+
+The A legs failed. The "refutes the model" leg (A at pr/f <= 25, still >= 200
+ms/frame, ai/visited <= 0.5) does not fire by the letter: A's pr/f is 29 and
+its ai/visited is 0.89. The "second growth" leg (A collapses with ai/visited
+> 0.5) fires by the letter. **Neither reading survives the brief's
+falsifier**, which is the one that matters: a counter that is flat while the
+fps collapses is refuted.
+
+| counter, per frame | A at 18 s | A at 120 s | B at 18 s | B at 134 s |
+|---|---|---|---|---|
+| ms/frame | 33.9 | 381 (11x) | 33.9 | 420 (12x) |
+| pr (arming walks) | 14 | 29 (2x) | 76 | 218 (2.9x) |
+| ev (invalidations) | 1614 | 2407 (1.5x) | 76 | 218 |
+| ai/visited | 0.85 | 0.89 | -- | -- |
+| cg (blocks generated) | 2.4 | 2.0 | 1.9 | 2.5 |
+| Tq (texture dirty queries) | 427 | 652 | 428 | 691 |
+
+Nothing the pages line counts grows with the frame time in either arm. And
+across the arms: **the re-arm count differs 7x (29 vs 218 per frame) while
+the frame-time curve is the same at every timestamp** (33.4 / 67.8 / 118.7 /
+155.1 / 606.1 ms in A at 3 / 24 / 35 / 45 / 120 s; 33.4 / 69.3 / 116.1 /
+177.7 / 653.5 ms in B at 3 / 24 / 36 / 46 / 134 s). The `Tq` values are
+identical to the unit at the same second in both arms (22, 576, 670, ...,
+348 at 3-20 s), so the guest's frame sequence is deterministic across the
+390 commits and the collapse is not a count of anything the guest does more
+of.
+
+**Consequences.**
+
+- The section-5 hunk (keep the page armed; tcgchurn's hunk (a),
+  `HAKUX_TCG311_KEEP_ARMED`) is **predicted to fail its gfps leg**: it
+  removes the walks that `pr` counts, and A already ran with 14-36 of them per
+  frame and collapsed on the same curve as B with 76-218. Removing 29 walks a
+  frame cannot recover 350 ms a frame unless each costs 12 ms, and then B
+  would be at 2.6 s a frame, which it is not.
+- What survives of the model is only its shape: a per-call cost that grows
+  with a caller count that does not. The callee both entry points share is
+  `tlb_reset_dirty_range_all` (system/physmem.c:1008), which
+  `physical_memory_test_and_clear_dirty` calls whenever a query finds a
+  dirty bit (physmem.c:1277), for every client. The second caller is the
+  texture poll: `check_texture_dirty` (hw/xbox/nv2a/pgraph/vk/texture.c:534)
+  issues `Tq` = 550-950 queries per frame, 3-20x more than the code re-arms,
+  identical in both arms. Only the queries that find a bit walk, and nothing
+  counts those.
+- The TLB-size model is **not measured**, and lane.perfbase's Crimson profile
+  (#68, 23:53 UTC) gives a reason it may be dead: no CR3, CR0/CR4 or INVLPG
+  flush was sampled. The dynamic TLB resizes only at a flush
+  (`tlb_flush_one_mmuidx_locked` -> `tlb_mmu_resize_locked`), so a guest that
+  never flushes has a TLB that never grows, and then no walk grows either.
+
+### Pre-registered for lane.tcgchurn's counter arm (709cfb13aa, queued)
+
+Its `[tlb68]` line carries `tn` (current TLB entries) and `rs` (resizes):
+
+- model alive: `tn` at 120 s >= 8x `tn` at 20 s and `rs` > 0; then hunk (b)
+  (`HAKUX_TCG311_TLB_BOUND`, cap 2^13) recovers gfps >= 25 and hunk (a) does
+  not.
+- model dead: `rs` = 0, or `tn` within 2x, while gfps collapses. Then no
+  counter we have names the growth, both hunks fail, and the only remaining
+  instruments are the bisect (section 7) and a simpleperf guest-thread
+  profile at 20 s vs 120 s, which only the host can take
+  (`docs/testing/perf/profile_guest.sh` drives adb directly).
+
+## 7. Since when: the host's bisect driver, and my reads of its probes
+
+`host-tools/bisect311.py`, state in `hakux-work/bisect311/state.json`. Its
+judge is the `hakuX-perf` median, but the **pacing line (33557e82ab) and the
+pages line (9e2f61dac5) were both added on 09-11, after the whole window**, so
+every probe in it runs 60 s with a frame every 10 s and is judged by the FPS
+overlay in the frames. A good build's counter curve cannot be read from any
+window probe; the confirmation pair on master (section 8) is where the
+counters land.
+
+| round | ref | date | read | verdict |
+|---|---|---|---|---|
+| bracket | e64e336d27 (0.3.1) | -- | host: 29 fps at 45, 130, 190 s | good |
+| 1 | aeb4a096b6 (v0.4.0-j1) | 09-10 | host hand verdict | bad |
+| 2 | 7d60ea3648 (probe commit 85e3550b0d) | 09-10 | FPS 6 at 60 s, comic page 1 blank | bad |
+| 3 | 9094472fae | 09-08 | FPS 29 at 50 s and 60 s, comic on page 2 at 60 s | **good** (my read, 00:05 UTC) |
+
+The comic's page is a second witness: at the same wall-clock second a good
+build is further into it. Every bad run reads <= 7 by 35 s.
+
+Window after round 3: `9094472fae..7d60ea3648`, 31 first-parent commits, no
+TCG or i386 change among them (the only accel/tcg touches are a meson line
+and a one-line mttcg build fix). The code-changing ones, first-parent order:
+b831942974 (glsl bump border), 4f6990c81e (vk: signedness in the sampler),
+2d0dadc0e0 + fcb43fc7e2 (net zero), 21cacb354a (vk: a retired surface
+writing over memory the guest took back), f81d0fa448 (R6G5B5 decode),
+f69f2fd8e1 (unimplemented surface formats), cd98400d03 (vk: bound surface
+invalidated undirtied), 23a8962df2 + a33fa42bc3 (depth encoding and scale),
+and the side branches of the merges 7283070f5c, ad5edf0897, 7d60ea3648.
+Not picking among them; ~5 halvings left.
+
+## 8. The confirmation A/B, prepared (register when the driver names the culprit)
+
+Template: `docs/lanes/ghoul311/culprit-ab.json.template`. Two pairs, both
+240 s hands-off on one device, `#311 bisect` in the purpose:
+
+1. `culprit^` vs `culprit`, frames every 10 s (no pacing line in the
+   window): overlay >= 25 at 50, 60, 90 and 120 s on `culprit^`, <= 8 from
+   60 s on `culprit`. Repeated once.
+2. `master` vs `master + revert(culprit)`, frames every 0: median gfps 90-240
+   s <= 5 on master and >= 25 on the revert; and the pages/pacing counter the
+   culprit implies, stated before the arm. Must-not-move: Spikeout and
+   RalliSport 2 gfps, and the pgraph suites via `ab_compare` (a revert of a
+   rendering fix moves pixels, and then the revert is the diagnosis, not the
+   fix).
+
 ## What the next lane should not repeat
+
+- Do not model from one arm. Section 1 charged the excess frame time to the
+  re-arm walk because `pr` was the counter that rose; the second arm showed
+  the same collapse at a seventh of the count.
+- The bisect window (09-08..09-10) predates every counter line; do not queue
+  a window probe expecting a `hakuX-pages` or `hakuX-perf` curve.
 
 - `docs/testing/perf/profile_guest.sh` drives the device with adb directly;
   a lane cannot use it, and the dispatch soak path has no simpleperf hook.
