@@ -751,6 +751,20 @@ data.
 
 ## Working with a device
 
+**Nothing holds a device for more than 30 minutes without a reviewed pilot**
+(owner, 2026-09-26). `request.sh` refuses an enqueue that would take its
+requester's queued plus running device time past 30 min, unless
+`$DISPATCH_DIR/pilots/<requester>.ok` exists and is under 24 h old. The
+estimate per request is `seconds` + 90 s of setup, times `runs` (180 s with no
+`seconds`), the same one `[device-budget]` in `host-tools/harness_health.py`
+uses after the fact. The first 30 min always goes through; that is the pilot.
+To go past it: queue a pilot of at most two requests, review what it produced
+against the batch's purpose, write the verdict to `pilots/<requester>.ok` (the
+pilot's result ids, what the output showed, the date), then queue the rest.
+titleplay's pass 1 (#397) queued 29 soaks of 420 s at once and held the only
+live handheld for hours on a route that reached clean gameplay in 7 of 15
+titles, which the first two runs' frames would have shown.
+
 > **LIFTED 2026-09-18. Both devices are online.** The Nova `ee317437` and the
 > Ayn Thor `bdc158a5` are available; both hold files were moved to
 > `$DISPATCH_DIR/hold/lifted/` at 11:08 and the fleet has run over forty arms

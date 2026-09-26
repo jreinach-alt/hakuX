@@ -1115,6 +1115,82 @@ case "$SUMMARY" in
         rm -f "$D/queue/.$ID.req.tmp"
         exit 2 ;;
 esac
+# THE PILOT GATE (owner, 2026-09-26): no requester holds a device for more than
+# 30 minutes without a reviewed pilot. "If something is going to hold the
+# device for more than, say, 30 minutes, we need to test the first few minutes
+# to confirm our approach is valid before dispatching the remainder of the
+# work." titleplay's pass 1 queued 29 soaks of 420 s at once; they held the only
+# live handheld for hours, and the route reached clean gameplay in 7 of 15
+# titles -- which the first two runs' frames would have shown.
+#
+# The estimate is read off the record just written, the one the dispatcher
+# will read, and summed with every queue/*.req and running/*.req carrying the
+# same requester: `seconds` + 90 s of setup, times `runs`; a request with no
+# `seconds` counts 180 s. It is the SAME estimate as the host's after-the-fact
+# check, `[device-budget]` in host-tools/harness_health.py; change both or
+# neither. Note that this script writes `seconds` 60 on every suite run too
+# (the --seconds default), so a suite request counts (60+90) x runs here and
+# there; the 180 s branch is reached only by records written elsewhere
+# (queue_full_sweep.sh's `full-sweep` requests).
+#
+# The first 30 min always goes through; that IS the pilot. Past it, the
+# enqueue needs $D/pilots/<requester>.ok, less than 24 h old, recording the
+# pilot's result ids, what they showed and the date. The 30 min is the owner's;
+# 24 h, 90 s and 180 s are the host's.
+#
+# Writers of queue/ that do not come through here, and why they are exempt:
+# dispatcher.sh and desktop_channel.sh requeue a request that was already
+# admitted (net zero), queue_full_sweep.sh writes the idle `z-` tier that any
+# epoch request pre-empts, and host-tools/park_requests.sh --restore is the
+# host putting back a batch it parked.
+if ! python3 - "$D" "$WHO" "$D/queue/.$ID.req.tmp" <<'PYPILOT'
+import glob, json, os, sys, time
+d, who, new = sys.argv[1:4]
+LIMIT, VALID = 30 * 60, 24 * 3600
+
+def est(rq):
+    sec = int(rq.get("seconds") or 0)
+    return (sec + 90) * int(rq.get("runs") or 1) if sec > 0 else 180
+
+mine = []
+for rf in glob.glob(d + "/queue/*.req") + glob.glob(d + "/running/*.req"):
+    try:
+        rq = json.load(open(rf))
+    except Exception:
+        continue
+    if (rq.get("requester") or "?") == who:
+        mine.append(est(rq))
+this = est(json.load(open(new)))
+total = sum(mine) + this
+if total <= LIMIT:
+    raise SystemExit(0)
+ok = "%s/pilots/%s.ok" % (d, who)
+if os.path.exists(ok):
+    age = time.time() - os.path.getmtime(ok)
+    if age < VALID:
+        print("pilot gate: %s would hold ~%.0f min of device time; reviewed pilot %s (%.1f h old) admits it"
+              % (who, total / 60, ok, age / 3600), file=sys.stderr)
+        raise SystemExit(0)
+    why = "%s is %.1f h old; a pilot verdict is valid 24 h" % (ok, age / 3600)
+else:
+    why = "there is no %s" % ok
+print("""refusing to queue: the pilot gate (owner rule, 2026-09-26: no requester holds a
+device for more than 30 min without a reviewed pilot).
+  %s has %d request(s) queued or running, ~%.0f min, and this one adds ~%.0f min:
+  ~%.0f min in all, over 30 min; and %s.
+  Estimate: `seconds` + 90 s setup, times `runs` (180 s with no `seconds`) --
+  the same as [device-budget] in host-tools/harness_health.py.
+The way out: queue a pilot of at most two requests (the first 30 min always goes
+through), review what it produced against the batch's purpose, record the verdict
+in %s -- the pilot's result ids, what the output showed, and the date -- then
+queue the rest.""" % (who, len(mine), sum(mine) / 60, this / 60, total / 60, why, ok),
+      file=sys.stderr)
+raise SystemExit(3)
+PYPILOT
+then
+    rm -f "$D/queue/.$ID.req.tmp"
+    exit 2
+fi
 mv "$D/queue/.$ID.req.tmp" "$D/queue/$ID.req"
 echo "queued $ID"
 echo "  $SUMMARY${DEVICE:+, pinned to $DEVICE}" >&2

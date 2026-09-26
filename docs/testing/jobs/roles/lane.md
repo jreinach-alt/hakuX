@@ -40,6 +40,21 @@ A path you edit that is not on that line is a collision nothing can see.
 - A prediction whose keys match no golden is refused at queue time. Keys are
   `Suite_dir/TestName`, underscores in the suite, one slash.
 
+## Pilot first: nothing over 30 minutes of device time unreviewed
+
+`request.sh` refuses an enqueue that would take your requester (`--who`) past
+30 min of queued plus running device time, estimated as `seconds` + 90 s of
+setup, times `runs`, unless `$DISPATCH_DIR/pilots/<requester>.ok` is under
+24 h old. The first 30 min always goes through; that is the pilot. For a
+bigger batch, queue at most two requests first, look at what they produced
+against the batch's purpose, write the verdict to `pilots/<requester>.ok` (the
+pilot's result ids, what the output showed, the date; write it with `python3`,
+which reaches the dispatch dir where Write and `cp` are blocked), then queue
+the rest. titleplay's pass 1 (#397) queued 29 soaks of 420 s at once and held the only
+live handheld for hours on a route that reached clean gameplay in 7 of 15
+titles, which the first two runs' frames would have shown. Rule text and the
+estimate's other home: AGENTS.md, "Working with a device".
+
 ## Definition of done (all of these, or say which is missing)
 
 1. Your branch is pushed and `preflight.sh` passes on it (the tracker gate
