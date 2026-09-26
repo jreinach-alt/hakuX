@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 230
-updated_utc = "2026-09-26T05:40:00Z"
+wave = 231
+updated_utc = "2026-09-26T05:45:00Z"
 
 
 [retired.hilodot10]
@@ -224,7 +224,13 @@ note = "STARTED (host session, 2026-09-26T05:25Z), briefs/indexloc.md: root caus
 issues = ["272", "275"]
 files = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/zrtz272-*.json", "docs/lanes/zrtz272/**"]
 standing = false
-note = "BRIEFED AT TERRITORY WAVE 229, NOT YET STARTED (job.board, 2026-09-26T05:40Z; `lane.sh start` was refused approval in the board session, so no unit exists -- the next tick or the host starts it from briefs/zrtz272.md; the row holds vsh-ff.c meanwhile) for #272 (275k px) and #275's Swap (165k px, same defect): apply docs/lanes/zdepth272/vsh-ff-zrtz.patch (fixed-function screen z, every step rounded toward zero; vsh-ff.c only) on the tip that carries #321, register the NOTES arm after the last rebase, run it. vsh-ff.c came from lane.wparamcode223 (PR #321 folded 4bc77c3171). Brief: briefs/zrtz272.md."
+note = "STARTED AT WAVE 231 (job.board, 2026-09-26T05:45Z) with `lane.sh start zrtz272 briefs/zrtz272.md 272`. PRIOR: BRIEFED AT TERRITORY WAVE 229, NOT YET STARTED (job.board, 2026-09-26T05:40Z; `lane.sh start` was refused approval in the board session, so no unit exists -- the next tick or the host starts it from briefs/zrtz272.md; the row holds vsh-ff.c meanwhile) for #272 (275k px) and #275's Swap (165k px, same defect): apply docs/lanes/zdepth272/vsh-ff-zrtz.patch (fixed-function screen z, every step rounded toward zero; vsh-ff.c only) on the tip that carries #321, register the NOTES arm after the last rebase, run it. vsh-ff.c came from lane.wparamcode223 (PR #321 folded 4bc77c3171). Brief: briefs/zrtz272.md."
+
+[lane.x1a7271]
+issues = ["271"]
+files = ["docs/lanes/x1a7271/**", "docs/testing/predictions/x1a7271-*.json"]
+standing = false
+note = "DISPATCHED AT WAVE 231 (job.board, 2026-09-26T05:45Z), briefs/x1a7271.md, for #271 (X1A7R8G8B8 expanded 7-bit alpha, 229,376 px on the four DstAlpha captures). ANALYSIS-FIRST: it claims only its own notes and prediction files, because PR #176's design needs glsl/psh.c (lane.pshqueue), vk/draw.c and vk/texture.c (lane.remote) -- the lane lists the hunks per holder and the board grants each file as its holder folds. Base refreshed to master 690a3377d1."
 
 [lane.foldflow]
 issues = []
