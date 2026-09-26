@@ -1148,6 +1148,8 @@ note = "RETIRED (job.board, board tick 2026-09-26T05:10:00Z): PR #270 MERGED 202
 issues = ["276"]
 files = ["hw/xbox/nv2a/pgraph/pgraph.c", "hw/xbox/nv2a/nv2a_regs.h", "docs/testing/predictions/cullnf276-*.json", "docs/lanes/cullnf276/**"]
 standing = false
+released = ["hw/xbox/nv2a/pgraph/pgraph.c", "hw/xbox/nv2a/nv2a_regs.h", "docs/testing/predictions/cullnf276-*.json", "docs/lanes/cullnf276/**"]
+released_at_ready = 368
 note = "BRIEFED AT WAVE 232 (job.board, 2026-09-26T06:15Z), STARTED BY THE HOST (draft PR #368) for #276's code half: lane.zclamp276 (PR #323, analysis) found CULL_NEAR_FAR_EN (bit 0 of SET_ZMIN_MAX_CONTROL) dropped by pgraph.c and priced the hunk (docs/lanes/zclamp276/nearfar_cull.diff, 143,673 px beyond one step -> 0). pgraph.c came free when lane.sphere273fix retired this wave; nv2a_regs.h was free. glsl/psh.h (one field) and glsl/psh.c (state capture ~:309, clip block ~:2553) are LENT from lane.pshqueue, disjoint from its fog/DOT_ZW/G8B8/BRDF hunks (the wave-200 and wave-222 lend precedent); they stay on pshqueue's row. Brief: briefs/cullnf276.md."
 
 [lane.blinx372]
