@@ -1297,10 +1297,3 @@ issues = []
 files = ["docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/73-cloud-claim.sh", "docs/lanes/claimrace/NOTES.md"]
 standing = false
 note = "STARTED (hostops 2026-09-26 15:10 PDT), briefs/claimrace.md: harness defect, no tracker issue. The audit outlet re-picked PR #420 50 s after claiming it (gh pr list --label lags a fresh claimed:cloud), systemd-run collided with the running unit, and the drop path removed the running session's row (restored, board ca46342888). Interim: the host's outlet loop skips a PR whose cloud unit is active."
-
-
-[lane.cloud-remediate-395]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-395, remediation of PR #395 on branch lane/ring53impl, attempt 1 of 4 on claude-opus-5-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 395` removes this row when the unit ends."
