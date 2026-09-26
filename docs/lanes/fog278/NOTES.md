@@ -55,7 +55,44 @@ covers every other capture on those discs:
   modes globally was measured worse (2154 against 2352 of 2560 quads), so do
   not "fix" these 12 by flipping to floor.
 
-## Status
+## Result: PASS (148/148 checks)
 
-2026-09-26: the hunk and the prediction are pushed (57197f1290). Waiting on the
-[job.arms] verdict and CI. Next: merge master, re-run the arm, mark ready.
+Arms `1790408994-arms-fog278-base-14596` (a) and `-fix-14639` (b), 2 runs
+each, every capture byte-identical with itself in each arm.
+
+| | predicted | measured |
+|---|---|---|
+| classes | better 4, worse 12 | better 4, worse 12, same 146, noise 0 |
+| exact | unchanged | 19 -> 19, 0 regressed from exact |
+| structural over the 162 | falls by 85,268 - 3,564 = 81,704 | 145,228 -> 63,524, falls by **81,704** |
+| byte-level movers | the 16 INF exp-mode captures | exactly those 16 |
+| differing, INF-FogExc-exp-* | falls | 52,312 -> 48,216 each (-4,096) |
+| differing, the other 12 | rises by ~18 | 4,096 -> 6,071 each (**+1,975**) |
+
+Only the 16 differ byte for byte, so the whole structural drop is theirs, and
+it matches the predicted 81,704 to the pixel. That puts the 16 at 3,564
+structural (4 x 837 + 12 x 18), as long as the 85,268 baseline still holds.
+The verdict does not print per-capture structural, so that figure is inferred
+from the totals, not read off a row.
+
+**What the prediction got wrong:** on the 12 worse captures `differing` rose
+by 1,975, not ~18. Structural fell exactly as predicted, so the ~1,957 extra
+pixels are one-step (off-by-one), not structural. The likely source is the
+bias-1.5/m0 quad: it lands one step short of the golden on about half its
+pixels rather than exact. That is the same exp rounding residual as the
+bias-1 quad, and it is a class-shape miss, not a refutation. No check
+failed.
+
+## Why attempt 1 did not finish
+
+The session ended correctly: it was waiting on the arm (about 90 min) and CI,
+both outside the session, and it posted a `[lane.fog278] waiting:` comment.
+Handback resumed the lane once CI was GREEN and the verdict was `verified`.
+
+## Merge of master (attempt 2)
+
+`origin/master` moved 16 commits past 6550967a5e (folds #375-#378, all
+analysis). None of them touch `hw/xbox/nv2a/pgraph/glsl/`, so the shader
+source after the merge is identical to what arm b ran. The brief asks for the
+arm to be re-run after the merge, but with no shader change a re-run would
+measure the same binary diff. It was not re-run, deliberately.
