@@ -158,3 +158,10 @@ applied.
   cannot introduce an offset, and the defect is an offset.
 - Do not expect points to come right from the viewport alone. See the
   Points leg above.
+
+## State at end of session 1 (2026-09-25)
+
+Waiting and blocked: CI on 251eb19d5a, and the `vk/draw.c` grant (board request
+`board-requests/aasample.md`; asked on PR #264). On a resume with the grant, apply
+`draw-c-viewport.patch`, commit and push it, then register the section 4 arm on
+those refs. Do not rebase after that.
