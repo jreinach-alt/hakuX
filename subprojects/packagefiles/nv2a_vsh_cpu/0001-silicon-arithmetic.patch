@@ -1,0 +1,181 @@
+From: hakuX lane.vshcpu345
+Subject: [PATCH] nv2a_vsh_cpu: silicon arithmetic for the constant-writeback evaluator (#345)
+
+Measured on the console (hakuX PR #344, CPU Shader Tests::SPECIAL_RAW):
+- MUL/MAD force a product with a +-0 operand to +0 (0 x inf, 0 x NaN, -0 x 5);
+- DP3/DPH/DP4 force each 0 x inf and 0 x NaN term to 0, taken only when the
+  plain sum is NaN, so every other dot keeps its bits;
+- RCC clamps into exactly [2^-64, 2^64] on the side of the result's sign bit:
+  RCC(+inf) = +2^-64, not a negative decimal approximation;
+- RCP/RCC/RSQ return the ILU's canonical NaN, 0x7FFFFFFF.
+
+Applied by subprojects/nv2a_vsh_cpu.wrap (diff_files) and by
+android/app/src/main/cpp/CMakeLists.txt; one file, both builds.
+---
+diff --git a/src/nv2a_vsh_cpu.c b/src/nv2a_vsh_cpu.c
+--- a/src/nv2a_vsh_cpu.c
++++ b/src/nv2a_vsh_cpu.c
+@@ -34,11 +34,21 @@
+   return *(float*)&fixed;
+ }
+ 
++// hakuX #345: nv2a forces a product with a +-0 operand to +0, whatever the
++// other operand: 0 x inf, 0 x NaN and -0 x 5 are all +0 on silicon. A NaN
++// operand is not a zero (it compares unequal), matching the GLSL _MUL.
++static inline float zero_forced_mult(float a, float b) {
++  if (a == 0.0f || b == 0.0f) {
++    return 0.0f;
++  }
++  return fix_inf_mult(a, b);
++}
++
+ void nv2a_vsh_cpu_mul(float *out, const float *inputs) {
+-  out[0] = fix_inf_mult(COMP(inputs, 0, _X), COMP(inputs, 1, _X));
+-  out[1] = fix_inf_mult(COMP(inputs, 0, _Y), COMP(inputs, 1, _Y));
+-  out[2] = fix_inf_mult(COMP(inputs, 0, _Z), COMP(inputs, 1, _Z));
+-  out[3] = fix_inf_mult(COMP(inputs, 0, _W), COMP(inputs, 1, _W));
++  out[0] = zero_forced_mult(COMP(inputs, 0, _X), COMP(inputs, 1, _X));
++  out[1] = zero_forced_mult(COMP(inputs, 0, _Y), COMP(inputs, 1, _Y));
++  out[2] = zero_forced_mult(COMP(inputs, 0, _Z), COMP(inputs, 1, _Z));
++  out[3] = zero_forced_mult(COMP(inputs, 0, _W), COMP(inputs, 1, _W));
+ }
+ 
+ void nv2a_vsh_cpu_add(float *out, const float *inputs) {
+@@ -49,10 +59,10 @@
+ }
+ 
+ void nv2a_vsh_cpu_mad(float *out, const float *inputs) {
+-  out[0] = fix_inf_mult(COMP(inputs, 0, _X), COMP(inputs, 1, _X)) + COMP(inputs, 2, _X);
+-  out[1] = fix_inf_mult(COMP(inputs, 0, _Y), COMP(inputs, 1, _Y)) + COMP(inputs, 2, _Y);
+-  out[2] = fix_inf_mult(COMP(inputs, 0, _Z), COMP(inputs, 1, _Z)) + COMP(inputs, 2, _Z);
+-  out[3] = fix_inf_mult(COMP(inputs, 0, _W), COMP(inputs, 1, _W)) + COMP(inputs, 2, _W);
++  out[0] = zero_forced_mult(COMP(inputs, 0, _X), COMP(inputs, 1, _X)) + COMP(inputs, 2, _X);
++  out[1] = zero_forced_mult(COMP(inputs, 0, _Y), COMP(inputs, 1, _Y)) + COMP(inputs, 2, _Y);
++  out[2] = zero_forced_mult(COMP(inputs, 0, _Z), COMP(inputs, 1, _Z)) + COMP(inputs, 2, _Z);
++  out[3] = zero_forced_mult(COMP(inputs, 0, _W), COMP(inputs, 1, _W)) + COMP(inputs, 2, _W);
+ }
+ 
+ static inline float fix_inf(float in) {
+@@ -64,10 +74,19 @@
+   return *(float*)&fixed;
+ }
+ 
++// hakuX #345: inside a dot product nv2a forces each 0 x inf and 0 x NaN term
++// to 0, as MUL does: (0,1,2).(inf,1,1) = 3 on silicon. Such a term always
++// makes the plain sum NaN, so the forced sum is taken only then and every
++// other dot product keeps its previous bits (the GLSL _DotZeroForced rule).
+ void nv2a_vsh_cpu_dp3(float *out, const float *inputs) {
+   float result = fix_inf_mult(COMP(inputs, 0, _X), COMP(inputs, 1, _X)) +
+                  fix_inf_mult(COMP(inputs, 0, _Y), COMP(inputs, 1, _Y)) +
+                  fix_inf_mult(COMP(inputs, 0, _Z), COMP(inputs, 1, _Z));
++  if (isnan(result)) {
++    result = zero_forced_mult(COMP(inputs, 0, _X), COMP(inputs, 1, _X)) +
++             zero_forced_mult(COMP(inputs, 0, _Y), COMP(inputs, 1, _Y)) +
++             zero_forced_mult(COMP(inputs, 0, _Z), COMP(inputs, 1, _Z));
++  }
+   result = fix_inf(result);
+   out[0] = result;
+   out[1] = result;
+@@ -79,6 +98,11 @@
+   float result = fix_inf_mult(COMP(inputs, 0, _X), COMP(inputs, 1, _X)) +
+                  fix_inf_mult(COMP(inputs, 0, _Y), COMP(inputs, 1, _Y)) +
+                  fix_inf_mult(COMP(inputs, 0, _Z), COMP(inputs, 1, _Z)) + COMP(inputs, 1, _W);
++  if (isnan(result)) {
++    result = zero_forced_mult(COMP(inputs, 0, _X), COMP(inputs, 1, _X)) +
++             zero_forced_mult(COMP(inputs, 0, _Y), COMP(inputs, 1, _Y)) +
++             zero_forced_mult(COMP(inputs, 0, _Z), COMP(inputs, 1, _Z)) + COMP(inputs, 1, _W);
++  }
+   result = fix_inf(result);
+   out[0] = result;
+   out[1] = result;
+@@ -92,6 +116,12 @@
+       fix_inf_mult(COMP(inputs, 0, _Y), COMP(inputs, 1, _Y)) +
+       fix_inf_mult(COMP(inputs, 0, _Z), COMP(inputs, 1, _Z)) +
+       fix_inf_mult(COMP(inputs, 0, _W), COMP(inputs, 1, _W));
++  if (isnan(result)) {
++    result = zero_forced_mult(COMP(inputs, 0, _X), COMP(inputs, 1, _X)) +
++             zero_forced_mult(COMP(inputs, 0, _Y), COMP(inputs, 1, _Y)) +
++             zero_forced_mult(COMP(inputs, 0, _Z), COMP(inputs, 1, _Z)) +
++             zero_forced_mult(COMP(inputs, 0, _W), COMP(inputs, 1, _W));
++  }
+   result = fix_inf(result);
+   out[0] = result;
+   out[1] = result;
+@@ -157,10 +187,23 @@
+   out[3] = -1.0f * nv2a_less_than(COMP(inputs, 0, _W), COMP(inputs, 1, _W)) + 1.0f;
+ }
+ 
++// hakuX #345: every NaN out of the nv2a ILU (RCP, RCC, RSQ) is 0x7FFFFFFF on
++// silicon, whatever the input NaN's sign and payload.
++static const uint32_t kILUNaNInt = 0x7FFFFFFF;
++
++static inline float fix_ilu_nan(float in) {
++  if (!isnan(in)) {
++    return in;
++  }
++  return *(float*)&kILUNaNInt;
++}
++
+ void nv2a_vsh_cpu_rcp(float *out, const float *inputs) {
+   float in = COMP(inputs, 0, _X);
+   float result;
+-  if (in == 1.0f) {
++  if (isnan(in)) {
++    result = fix_ilu_nan(in);
++  } else if (in == 1.0f) {
+     result = 1.0f;
+   } else if (in == 0.0f) {
+     // nv2a preserves the sign.
+@@ -180,25 +223,34 @@
+ 
+ static const uint32_t kRCCMaxInt = 0x5F800000;
+ static const uint32_t kRCCMaxNegInt = 0xDF800000;
+-
++// hakuX #345: the clamp's small end is exactly 2^-64 on silicon, not a
++// decimal approximation of it.
++static const uint32_t kRCCMinInt = 0x1F800000;
++static const uint32_t kRCCMinNegInt = 0x9F800000;
++
++// hakuX #345: the result is clamped into [2^-64, 2^64] by magnitude, on the
++// side its sign bit names: RCC(+inf) = +2^-64 and RCC(-inf) = -2^-64 on
++// silicon (the GLSL clampAwayZeroInf rule).
+ void nv2a_vsh_cpu_rcc(float *out, const float *inputs) {
+   float result;
+   float in = COMP(inputs, 0, _X);
+-  if (in == 1.0f) {
++  if (isnan(in)) {
++    result = fix_ilu_nan(in);
++  } else if (in == 1.0f) {
+     result = 1.0f;
+   } else {
+     result = 1.0f / in;
+-    if (result > 0.0f) {
+-      if (result < 5.42101e-020f) {
+-        result = 5.42101e-020f;
+-      } else if (result > 1.884467e+019f) {
++    if (!signbit(result)) {
++      if (result < *(float*)&kRCCMinInt) {
++        result = *(float*)&kRCCMinInt;
++      } else if (result > *(float*)&kRCCMaxInt) {
+         result = *(float*)&kRCCMaxInt;
+       }
+     } else {
+-      if (result < -1.884467e+019f) {
++      if (result < *(float*)&kRCCMaxNegInt) {
+         result = *(float*)&kRCCMaxNegInt;
+-      } else if (result > -5.42101e-020f) {
+-        result = -5.42101e-020f;
++      } else if (result > *(float*)&kRCCMinNegInt) {
++        result = *(float*)&kRCCMinNegInt;
+       }
+     }
+   }
+@@ -217,7 +269,7 @@
+   } else if (in == 0.0f) {
+     result = INFINITY;
+   } else {
+-    result = 1.0f / sqrtf(in);
++    result = fix_ilu_nan(1.0f / sqrtf(in));
+   }
+ 
+   out[0] = result;
