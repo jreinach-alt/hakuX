@@ -225,7 +225,65 @@ into arm 2.
 - Do not widen the rule to power-of-two triangles. Arm 1 measured silicon
   "up" on every tie row of five such draws.
 
-## Waiting (2026-09-26, attempt 2)
+## Why attempt 2 did not finish
+
+It ended correctly on a `waiting:` for arm 2 and the hand-queued TRT pair. All
+four result directories were DONE when attempt 3 started. The arms job posted
+no verdict for `tiecode282-pow2.json` (label `none`), so attempt 3 judged it
+by hand.
+
+## 7a. Arm 2 results (judged by hand, 2026-09-26)
+
+`ab_compare.py --expect docs/testing/predictions/tiecode282-pow2.json` on
+`1790419344-arms-tiecode282-base-4178057` / `-fix-4178393`: **PASS, 375 of 375
+checks.** 139 better, **0 worse**, 225 same; exact 110 -> 166 (+56); none
+regressed from exact.
+
+| suite | caps | better | worse | differing A -> B |
+|---|---|---|---|---|
+| Volume_texture | 20 | 18 | 0 | 34,727 -> **0** |
+| Material_color_source | 28 | 28 | 0 | 24,072 -> **0** |
+| Texture_palette | 2 | 2 | 0 | 10,488 -> **0** |
+| Lighting_spotlight | 24 | 24 | 0 | 166,198 -> 97,090 |
+| Lighting_control | 32 | 16 | 0 | 56,804 -> 28,960 |
+| Lighting_accumulation | 10 | 10 | 0 | 32,412 -> 20,102 |
+| Lighting_range | 3 | 3 | 0 | 9,968 -> 7,592 |
+| Specular / Specular_back | 39 | 33 | 0 | 452,606 -> 427,317 |
+| Combiner | 8 | 3 | 0 | 24,901 -> 8,195 |
+| Texture_border_color | 1 | 1 | 0 | 6,284 -> 716 |
+| Texture_border | 18 | 1 | 0 | 20,868 -> 20,837 |
+| Pixel_shader, Texture_3D_as_2D, Texture_signed, and the other must_not_move suites | | 0 | 0 | unchanged |
+
+The power-of-two gate removed all 8 wrong-way movers from arm 1 and kept every
+gain.
+
+TRT pair (`1790419139-tiecode282-trt-base-4031902` /
+`1790419143-tiecode282-trt-fix-4032233`, judged against
+`tiecode282-trt.json`, bound at queue time): **PASS, 41 of 41 checks.** 28
+better, 0 worse; exact 12 -> **40 of 40**; 1,473 -> 0 px. Every full-gradient
+TexFmt_* capture is now exact, including the Index8, YUV and 16-bit ones.
+
+## 8. Arm 3: the merge replicate (a 6c25a829ef = master, b adb573c270)
+
+Master gained #367 (y16bump10, psh.c bump paths) and #274 (vk/draw.c uniform
+refresh). The merge was clean except the generated `nv2a_index.json`, rebuilt
+with the fold pins (tests 6743b6ab16) and `check` clean. The brief asks for
+the arm to be re-run on the merged head before ready.
+
+- `docs/testing/predictions/tiecode282-merge.json`: arm 2's legs unchanged
+  (11 expect, 11 must_not_move, 12 must_not_regress, same 23-suite disc). The
+  arms job queues it.
+- `docs/lanes/tiecode282/tiecode282-trt-merge.json`: all 28 TexFmt_* captures
+  that arm 2 took to exact are expected at 0, and Texture_render_target/* must
+  not regress. Queued by hand with `request.sh --skip-tests`, because #386
+  (arms.sh carries `skip_tests`) has not folded.
+- Both were written by `register_merge.py`, which copies the legs from arm 2's
+  files so they cannot drift.
+
+A leg that passed in arm 2 and fails here is an interaction with the merged
+code, not a new reading of the rule.
+
+## Waiting (2026-09-26, attempt 2, superseded by attempt 3)
 
 On three things outside this session:
 - the arms job's `[job.arms]` verdict for `tiecode282-pow2.json` (a e673558587, b 1462da29d2);
