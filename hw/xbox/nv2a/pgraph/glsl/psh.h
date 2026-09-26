@@ -54,6 +54,9 @@ typedef struct PshState {
     /* The view swizzle drives component 0 from a literal rather than from
      * stored data, so a TEXFILTER sign flag on it has nothing to sign. */
     bool tex_comp0_const[4];
+    /* A Y16 or R16B16 texel point-sampled as a colour: the combiner sees its
+     * bytes, not its 16-bit fields (#283). */
+    bool tex_bytes16[4];
     uint32_t tex_signed[4]; /* NV_PGRAPH_TEXFILTER0_[ARGB]SIGNED bits */
     bool compare_mode[4][4];
     bool alphakill[4];

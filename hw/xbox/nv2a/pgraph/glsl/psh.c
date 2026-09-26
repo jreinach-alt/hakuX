@@ -505,6 +505,31 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
         }
 
         state->conv_tex[i] = kernel;
+
+        /* Y16 and R16B16 looked up as a colour reach the combiner as the
+         * texel's four bytes in A8R8G8B8 order -- R16B16 (b2, b1, b0, b3),
+         * Y16 (1, b1, b0, 1) -- not as 16-bit fields narrowed to eight bits.
+         * Measured on Volume_texture Y16 / R16B16 (#283), whose texels are
+         * raw RGBA8888 bytes: silicon's green and blue there are b1 and b0,
+         * where the {G,R,R,G} / {ONE,R,R,ONE} views give b1 in both.  Every
+         * 2D capture of these formats is blind to it, because the test's
+         * converter writes each field as a byte twice (y * 257, {b,b,r,r}).
+         *
+         * Point sampling only: one texel per fetch, so the bytes can be
+         * split back out of the 16-bit value exactly.  A filtered fetch
+         * blends each byte on its own on silicon, which a blended 16-bit
+         * value cannot be split back into. */
+        unsigned int mag_filter = GET_MASK(filter, NV_PGRAPH_TEXFILTER0_MAG);
+        /* MAG has no defines of its own; it shares MIN's encoding. */
+        bool point_sampled =
+            (min_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_LOD0 ||
+             min_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_NEARESTLOD) &&
+            mag_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_LOD0;
+        state->tex_bytes16[i] =
+            point_sampled && !state->snorm_tex[i] &&
+            (state->tex_hilo16[i] ||
+             color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16 ||
+             color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16);
     }
 
     state->surface_zeta_format = pg->surface_shape.zeta_format;
@@ -2405,7 +2430,7 @@ static MString* psh_convert(struct PixelShader *ps)
                 "    float ymin = poly[0].y;\n"
                 "    for (int i = 1; i < n; i++) ymin = min(ymin, poly[i].y);\n"
                 "    float r = ceil(ymin - 0.5);\n"
-                "    float c = 0.0;\n"
+                "    float c = 0.0, first = 0.0;\n"
                 "    bool found = false;\n"
                 "    for (int k = 0; k < 4 && !found; k++) {\n"
                 "        float yc = r + 0.5, lo = 1e30, hi = -1e30;\n"
@@ -2418,7 +2443,8 @@ static MString* psh_convert(struct PixelShader *ps)
                 "                lo = min(lo, min(a.x, b.x)); hi = max(hi, max(a.x, b.x));\n"
                 "            }\n"
                 "        }\n"
-                "        float first = ceil(lo - 0.5), last = ceil(hi - 0.5) - 1.0;\n"
+                "        first = ceil(lo - 0.5);\n"
+                "        float last = ceil(hi - 0.5) - 1.0;\n"
                 "        if (hi > lo && last >= first) {\n"
                 "            c = clamp(floor(xtop), first, last);\n"
                 "            found = true;\n"
@@ -2446,17 +2472,22 @@ static MString* psh_convert(struct PixelShader *ps)
                  *
                  * A triangle cut by the window clip's own TOP edge (clip.y > 0,
                  * top vertex above it) takes the 4-grid too, unless that edge
-                 * is on the 8-row grid and the triangle is flat-topped, which
-                 * keeps the 2x2 snap.  Measured on the project console on
-                 * 2026-09-25 (PRs #218, #221, #226) with `ClipF` at clip_top
-                 * 4, 8, 12, 16, 32, 35 and 64: its second triangle anchors at
-                 * 4*floor(ct/4)+2 at every one, its flat-topped first at ct
-                 * where ct is a multiple of 8 and at 4*floor(ct/4)+2 where it
-                 * is not.  A top cut by the surface edge (Floor, Roof, Wall,
-                 * ClipW, all at clip_top 0) keeps the 2x2 snap.  This rule
-                 * reproduces all 52 recovered anchors outside TriV; the flat
-                 * top is one of four literals no capture yet separates.  See
-                 * docs/lanes/wbuf31fix/NOTES.md.
+                 * is on the 8-row grid and the first covered span starts
+                 * right of the clip's left edge, which keeps the 2x2 snap.
+                 * Measured on the project console on 2026-09-25 (PRs #218,
+                 * #221, #226) with `ClipF` at clip_left 150 and clip_top 4, 8,
+                 * 12, 16, 32, 35 and 64: its second triangle (span at the
+                 * clip) anchors at 4*floor(ct/4)+2 at every one, its first
+                 * (span at the diagonal) at ct where ct is a multiple of 8
+                 * and at 4*floor(ct/4)+2 where it is not.  At clip_left 300,
+                 * clip_top 8 (PR #243) the first triangle's span starts at
+                 * the clip and it takes the 4-grid, 10: that refuted the
+                 * flat-top test this clause used before.  A top cut by the
+                 * surface edge (Floor, Roof, Wall, ClipW, all at clip_top 0)
+                 * keeps the 2x2 snap.  This rule reproduces all 54 recovered
+                 * anchors outside TriV.  `first` is the span above, a
+                 * function of the vertices and the clip rect; it does not
+                 * read the anchor column.  See docs/lanes/wbuf31sel/NOTES.md.
                  *
                  * Deliberately not done here, measured:
                  *   - the COLUMN stays on the 2-grid.  `TriV` is the only
@@ -2468,10 +2499,8 @@ static MString* psh_convert(struct PixelShader *ps)
                  *     answer and move no pixel -- TriV has pb == 0 exactly. */
                 "    c = 2.0 * floor(c * 0.5);\n"
                 "    float ytop = min(p0.y, min(p1.y, p2.y));\n"
-                "    bool flatTop = (p0.y == ytop ? 1 : 0) + (p1.y == ytop ? 1 : 0)\n"
-                "                 + (p2.y == ytop ? 1 : 0) > 1;\n"
                 "    bool topCut = clip.y > 0.0 && ytop < clip.y;\n"
-                "    bool grid = !cut || (topCut && !(flatTop && mod(clip.y, 8.0) == 0.0));\n"
+                "    bool grid = !cut || (topCut && !(first != clip.x && mod(clip.y, 8.0) == 0.0));\n"
                 "    r = grid ? 4.0 * floor(r * 0.25) + 2.0\n"
                 "        : 2.0 * floor(r * 0.5);\n"
                 "    float step = abs(pa) >= abs(pb) ? pa : pb;\n"
@@ -3358,6 +3387,28 @@ static MString* psh_convert(struct PixelShader *ps)
             }
             mstring_append_fmt(preflight, "uniform %s texSamp%d;\n",
                                sampler_type, i);
+
+            /* The texel's bytes, split back out of the 16-bit fields the
+             * view swizzle put in .r/.g (R16B16: .r = b2|b3<<8, .g =
+             * b0|b1<<8; Y16: .g = b0|b1<<8).  See tex_bytes16.  A texel a
+             * later bump or dot-product stage consumes keeps its fields. */
+            if (ps->state->tex_bytes16[i] && !stage_consumed_raw(ps, i)) {
+                if (ps->state->tex_hilo16[i]) {
+                    mstring_append_fmt(
+                        vars,
+                        "{ uvec2 fields = uvec2(round(t%d.rg * 65535.0));\n"
+                        "  t%d = vec4(fields.x & 255u, fields.y >> 8,\n"
+                        "             fields.y & 255u, fields.x >> 8) / 255.0; }\n",
+                        i, i);
+                } else {
+                    mstring_append_fmt(
+                        vars,
+                        "{ uint field = uint(round(t%d.g * 65535.0));\n"
+                        "  t%d = vec4(255u, field >> 8, field & 255u, 255u)"
+                        " / 255.0; }\n",
+                        i, i);
+                }
+            }
 
             /* Channels flagged signed on a texture the sampler holds
              * unsigned: two's complement over 127, the SNORM reading.  A

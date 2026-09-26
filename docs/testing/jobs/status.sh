@@ -96,8 +96,11 @@ due=$(date -u -d "@$(( now + FLOOR ))" '+%F %H:%M UTC' 2>/dev/null)
 units=""
 [ $have_sd = 1 ] && units=$(systemctl --user list-units 'hakux-lane-*' --state=active,activating --no-legend --plain 2>/dev/null | awk '{print $1}')
 n_lanes=$(printf '%s' "$units" | grep -c . 2>/dev/null || true); n_lanes=${n_lanes:-0}
-n_run=$(ls "$D"/running/*.req 2>/dev/null | wc -l); n_q=$(ls "$D"/queue/*.req 2>/dev/null | wc -l)
-summary="$n_lanes lane$([ "$n_lanes" = 1 ] || echo s) running, $n_run arm$([ "$n_run" = 1 ] || echo s) on a device, $n_q queued"
+# The z-* idle tier (the full-corpus sweep) is counted apart: it sorts behind
+# everything and waiting for hours is its design, not a backlog.
+n_run=$(ls "$D"/running/*.req 2>/dev/null | wc -l); n_z=$(ls "$D"/queue/z-*.req 2>/dev/null | wc -l)
+n_q=$(ls "$D"/queue/*.req 2>/dev/null | grep -vc '/z-[^/]*$')
+summary="$n_lanes lane$([ "$n_lanes" = 1 ] || echo s) running, $n_run arm$([ "$n_run" = 1 ] || echo s) on a device, $n_q queued$([ "$n_z" = 0 ] || echo " (+$n_z idle-tier sweep)")"
 
 pr_for_branch() { [ $have_gh = 1 ] || return; gh pr list --repo "$GH_REPO" --head "$1" --state all --json number,state,isDraft,url --jq '.[0] | "#\(.number) \(if .isDraft then "draft" else (.state|ascii_downcase) end)"' 2>/dev/null; }
 issue_of_brief() { grep -o -m1 '#[0-9]\+' "$WORK/briefs/$1.md" 2>/dev/null | head -1; }
@@ -242,7 +245,7 @@ if command -v adb >/dev/null 2>&1; then
     echo "- adb: ${devs:-no device visible}"
 fi
 [ $have_sd = 1 ] && echo "- dispatcher: $(systemctl --user is-active hakux-dispatcher.service 2>/dev/null), workers: $(pgrep -fc 'dispatcher.sh worker' 2>/dev/null || echo ?)"
-echo "- queue: $n_q waiting, $n_run running; holds: $(ls "$D"/hold 2>/dev/null | grep -v '\.why$' | grep -v '^lifted$' | tr '\n' ' ')"
+echo "- queue: $n_q waiting, $n_z idle-tier z-* behind them, $n_run running; holds: $(ls "$D"/hold 2>/dev/null | grep -v '\.why$' | grep -v '^lifted$' | tr '\n' ' ')"
 for r in "$D"/running/*.req; do [ -f "$r" ] || continue; echo "  - running: $(python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(d.get('requester',''),d.get('ref','')[:10],'--',(d.get('purpose') or '')[:90])" "$r" 2>/dev/null)"; done
 [ -f "$D/logs/dispatcher.log" ] && echo "- dispatcher last line: \`$(tail -1 "$D/logs/dispatcher.log" | cut -c1-140)\`"
 
