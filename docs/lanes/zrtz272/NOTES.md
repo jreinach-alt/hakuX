@@ -216,9 +216,60 @@ supersedes arm 2's FAIL when it is judged. Re-reading arm 2's two result dirs un
 arm 3's file (`.scratch/dryjudge3.txt`, a post-hoc read, not a verdict) gives PASS on
 1,253 checks, which shows every remaining guard matches a capture.
 
-**Status (2026-09-26 10:00Z):** waiting for arm 3's `[job.arms]` verdict. PR #364
-stays in draft until then. On resume: check scores1.tsv status and PARTIAL COVERAGE,
-judge the five bands by reading, then mark ready.
+## Arm 3 verdict: PASS, 1253 of 1253 checks (`zrtz272-rtz3.json`)
+
+Results `1790417358-arms-zrtz272-base-3007455` (apk `b5f276b45557`, ref `6550967a5e`)
+and `-fix-3007793` (apk `7c6260f3f710`, ref `e603fb3540`), queued 10:09Z by the host
+by hand, one run each, 983 captures each, judged in this lane at ~11:40Z with
+`ab_compare.py --a ... --b ... --expect docs/testing/predictions/zrtz272-rtz3.json`
+(`.scratch/judge3.txt`; the same apks as arm 2, so this is a replicate of arm 2 on
+the same binaries). Neither run1.log has `UtilAcceptVsock`. PARTIAL COVERAGE is the
+same Depth_buffer 144/784 and ZPass 72/78 floor in both arms. No row is `unreadable`
+(base: 874 ok, 100 white-content, 9 label-differs; fix: 876 / 98 / 9). The judge
+exits 1 only for its note that one unguarded capture is worse.
+
+`VERDICT: PASS -- all 1253 registered checks hold.` 37 better, 1 worse, 945 same;
+exact 278 → 290; repaired to exact 13, regressed from exact 1.
+
+The five bands, read from the movers list:
+
+| capture (×2, Cn and Cy) | A | B | band | arm 2 read |
+|---|---:|---:|---|---:|
+| `z24_C?_FZn_Mffffff_ZB` | 144,566 | **47,935** | 47,935 .. 53,852 | 47,935 |
+| `z24_C?_FZn_Mc00000_ZB` | 4,834 | **989** | 989 .. 1,037 | 989 |
+| `z24_C?_FZn_M800001_ZB` | 2,868 | **520** | 520 .. 568 | 520 |
+| `z24_C?_FZn_M400002_ZB` | 1,506 | **113** | 113 .. 145 | 113 |
+| `z16_C?_FZn_M00ffff_ZB` | 2,840 | **424** | 424 .. 456 | 424 |
+
+Every band is at the value arms 1 and 2 read, on the low edge. The rest matches arm 2
+row for row: `Color_zeta_overlap/Swap` 165,447 → 0 (#275, three arms out of three);
+`z24_C?_FZn_M000003` and `_ZB` 24 → 0; the z16 FZn small-M `_ZB` rows 16/32/32 → 0;
+`z16_C?_FZy_M008001_ZB` 13 → 0; `z16_C?_FZy_M00c000_ZB` 34 → 1 and `M00ffff_ZB`
+495 → 393 (third replicate); `z24_C?_FZy_M*` all 24 → 24 (F24 gate holds);
+`W_buffering/ZBuf24D_FloorQuad_V0_*_Z` 161,700 / 153,860 → 15,530 / 59,873;
+`ZBuf24F_*` unmoved.
+
+Blend_surface: all 32 captures same across the arms this time, including the two
+unguarded ones. So the arm-2 flip on `X_O1RGB5_Add_SrcA_DstA` did not recur on the
+same fix apk, which is what "bistable, not build-correlated" predicts.
+
+The one worse capture is `Stencil/Stencil_ZERO` 0 → 40,000, the unguarded
+`Stencil_ZERO*` family (arm 1: two rows 30,000..40,000; arm 2: `_ST_ZB` 30,000; arm 3:
+the bare one 40,000; each a different member of the family, on the same base apk in
+arms 2 and 3). It is not a leg and it is not the hunk's: the family moves between
+runs of one apk.
+
+**Label:** `arms.sh` had not written a verdict for arm 3 when this was judged
+(`arms/pairs/6a2077be38c7….json` exists, no `.verdict.*` beside it), so the PR still
+carries arm 2's `regressed` label. Only the arms job can write that verdict and
+relabel; the pr-sweep comment of 10:14Z says the route out is a superseding
+prediction, and arm 3 is that prediction, registered later on the same issue. The
+PR goes ready on this reading, as the host's 04:33 PDT addendum directed.
+
+`git merge --no-commit origin/master` (`c481e893ad`, 134 commits ahead of the
+branch) merges cleanly; aborted, the branch is left at `8a1c35f8d0` plus this note so
+the registered refs stay ancestors of the head. `preflight.sh --allow-tracker` passes
+(`.scratch/preflight4.txt`).
 
 ## Why attempt 2 did not finish
 
@@ -245,6 +296,15 @@ Both of its sessions ended on a `waiting:` comment for arm 2, which was queued a
 08:22Z and judged at 09:50Z, both outside the session. Neither waited on a task of its
 own. `handback.sh` resumed the lane one minute after the verdict (attempt 4, 09:51Z).
 Attempt 4 judged arm 2 (above), registered arm 3 and waits on it.
+
+## Why attempt 4's first session did not finish
+
+It ended at 10:00Z on a `waiting:` comment for arm 3's `[job.arms]` verdict, which is
+outside the session (the arms timer had not yet picked the file up; the host queued
+the pair by hand at 10:09Z). It waited on no task of its own. The pair finished, but no
+`[job.arms]` comment or verdict file was written, so the host's 04:33 PDT addendum
+resumed the lane to judge arm 3 from the result dirs directly. That reading is above:
+PASS, 1253 of 1253.
 
 ## Do not repeat
 
