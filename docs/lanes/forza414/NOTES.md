@@ -108,10 +108,38 @@ read, or a fence poll). The perflog soak (section 5) decides between them.
 `pDl` (CPU access to a draw-dirty surface, which blocks the vCPU until a
 SURFACE_DOWN finishes) and `Sub`/`Fen` per frame are the counters to read.
 
-## 5. Next measurement (queued)
+## 5. Next measurement (queued 2026-09-26 ~12:57 PDT)
 
-A perflog Thor soak on the same survey route, 420 s, on master. It carries the
-stall and phase lines across the step. See the PR for the request id.
+- `1790450265-forza414-1731727`: Thor, perflog, 420 s, ref dc38b745b8, route
+  `forza414` (the survey route's text copied verbatim from the source run's
+  request.json into `docs/testing/titles/routes/forza414.route`, because
+  `survey.route` exists only on PR #399's branch). It carries `hakuX-phase`,
+  `hakuX-stall` and `hakuX-cpu` across the step.
+- `1790450270-forza414-1731994`: the same on the Nova (brief item 4). The
+  dispatcher's saved prefs for the two devices differ only in `dvdUri` and
+  `gamesFolderUri`. If the Nova does not hold the title, the result says
+  `title not on device` and item 4 stays open.
+
+The perflog build adds a clock read around every method, so the step may land
+at a different race time or not at all. The reading keys on the regime
+signature (drain n == kicks, Ri > 100 ms), not on the wall time.
+
+To read either run:
+`python3 docs/lanes/forza414/timeline.py <logcat>`, then the stall and phase
+lines on each side of the step.
+
+The older Forza run on disk (`0-0-y-1790408503-titlebench-8`, Thor, 240 s)
+never leaves the front end. It holds 30 fps with the renderer ~85% idle and
+has no race to compare.
+
+## 6. No hunk yet
+
+The step's site is not named, so no code file is requested on #414 yet. The
+perflog soak is what names it. If `pDl` or `Sub` per frame jumps at the step,
+the site is in vk/surface.c's CPU-access path. That file is held by PR #396
+(lane.blinx372d), so the request waits for that fold. If neither moves, the
+wait is guest-side (a fence or report poll), and the next instrument is the
+vCPU's halt/MMIO split.
 
 ## Do not repeat
 

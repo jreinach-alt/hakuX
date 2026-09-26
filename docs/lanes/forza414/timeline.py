@@ -54,6 +54,9 @@ def main(argv):
             if 'soak start' in l:
                 t0 = secs(l)
                 break
+    if t0 is None:
+        # no route marker (titlebench runs): the first timestamped line
+        t0 = next(secs(l) for l in lines if secs(l) is not None)
     B = {}
 
     def b(t):
