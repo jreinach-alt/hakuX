@@ -1,0 +1,53 @@
+{
+  "registered_utc": "2026-09-26T12:14:06Z",
+  "who": "lane.tiecode282",
+  "issue": "282",
+  "prediction": "#282 row 240 of Texture render target's BiTri, re-run after merging master (#367, #274). Arm 2's hand-queued pair took 28 TexFmt_* captures to exact (1,473 -> 0 px, 40 of 40 exact); this predicts the same: every one of those 28 at 0 and no capture worse.",
+  "a_ref": "6c25a829ef",
+  "b_ref": "adb573c270",
+  "must_not_move": [],
+  "expect": {
+    "Texture_render_target/TexFmt_A8B8G8R8": 0,
+    "Texture_render_target/TexFmt_A8B8G8R8_L": 0,
+    "Texture_render_target/TexFmt_A8R8G8B8": 0,
+    "Texture_render_target/TexFmt_A8R8G8B8_L": 0,
+    "Texture_render_target/TexFmt_A8Y8": 0,
+    "Texture_render_target/TexFmt_AY8": 0,
+    "Texture_render_target/TexFmt_AY8_L": 0,
+    "Texture_render_target/TexFmt_B8G8R8A8": 0,
+    "Texture_render_target/TexFmt_B8G8R8A8_L": 0,
+    "Texture_render_target/TexFmt_G8B8": 0,
+    "Texture_render_target/TexFmt_G8B8_L": 0,
+    "Texture_render_target/TexFmt_R16B16": 0,
+    "Texture_render_target/TexFmt_R16B16_L": 0,
+    "Texture_render_target/TexFmt_R8B8": 0,
+    "Texture_render_target/TexFmt_R8G8B8A8": 0,
+    "Texture_render_target/TexFmt_R8G8B8A8_L": 0,
+    "Texture_render_target/TexFmt_SZ_Index8_p128": 0,
+    "Texture_render_target/TexFmt_SZ_Index8_p256": 0,
+    "Texture_render_target/TexFmt_SZ_Index8_p32": 0,
+    "Texture_render_target/TexFmt_SZ_Index8_p64": 0,
+    "Texture_render_target/TexFmt_UYVY_L": 0,
+    "Texture_render_target/TexFmt_X8R8G8B8": 0,
+    "Texture_render_target/TexFmt_X8R8G8B8_L": 0,
+    "Texture_render_target/TexFmt_Y16": 0,
+    "Texture_render_target/TexFmt_Y16_L": 0,
+    "Texture_render_target/TexFmt_Y8": 0,
+    "Texture_render_target/TexFmt_Y8_L": 0,
+    "Texture_render_target/TexFmt_YUY2_L": 0
+  },
+  "expect_counts": {},
+  "must_not_regress": [
+    "Texture_render_target/*"
+  ],
+  "disc": {
+    "suites": [
+      "Texture render target"
+    ],
+    "skip_tests": [
+      "Texture render target::RenderTextureLoop"
+    ],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

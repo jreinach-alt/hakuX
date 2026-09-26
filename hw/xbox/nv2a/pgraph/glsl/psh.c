@@ -297,6 +297,8 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
     state->smooth_shading = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3),
                                      NV_PGRAPH_CONTROL_3_SHADEMODE) ==
                             NV_PGRAPH_CONTROL_3_SHADEMODE_SMOOTH;
+    state->fixed_function = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_D),
+                                     NV_PGRAPH_CSV0_D_MODE) == 0;
     state->two_side_light = pgraph_reg_r(pg, NV_PGRAPH_CSV0_C) &
                             NV_PGRAPH_CSV0_C_TWO_SIDE_LIGHT_EN;
     state->stipple = pgraph_glsl_polygon_stipple_enabled(pg);
@@ -1105,12 +1107,12 @@ static void append_hilo16_texel(struct PixelShader *ps, MString *vars, int k,
      * filtered. */
     if (ps->state->rect_tex[k]) {
         mstring_append_fmt(
-            vars, "vec2 hiloUV%d = norm%d(pT%d.xy / pT%d.w) + texelTieBias;\n",
-            k, k, k, k);
+            vars, "vec2 hiloUV%d = norm%d(pT%d.xy / pT%d.w) + texelTieBias%d;\n",
+            k, k, k, k, k);
     } else {
         mstring_append_fmt(vars,
-                           "vec2 hiloUV%d = pT%d.xy / pT%d.w + texelTieBias;\n",
-                           k, k, k);
+                           "vec2 hiloUV%d = pT%d.xy / pT%d.w + texelTieBias%d;\n",
+                           k, k, k, k);
     }
     mstring_append_fmt(
         vars,
@@ -2012,6 +2014,128 @@ static bool stage_consumed_raw(const struct PixelShader *ps, int i)
     return false;
 }
 
+/*
+ * #282, #283: silicon's direction for an exact v tie, on the one triangle
+ * configuration it has been measured on.  Emits texelTieBias0..3, the
+ * texelTieBias each stage's sample adds; a stage the rule does not reach gets
+ * texelTieBias itself.
+ *
+ * Silicon has no sampler tie rule.  Where the interpolated v lands exactly on
+ * a texel boundary, which texel it takes follows the binades of the
+ * triangle's barycentric weights (docs/lanes/cloud-282b, "What the goldens do
+ * show"): for a triangle (v0, v1, v2) whose v0 and v1 share v and whose v
+ * rises toward v2,
+ *
+ *     down  iff  l2 <= 1/2  and not (l0 in (1/4,1/2] and l2 in (1/4,1/2])
+ *
+ * and up otherwise, with an exact power of two counting as a hair below
+ * itself.  Measured three times on silicon: the checkerboard quad
+ * (99.88% of 284,681 v <= 128 tie px, the fit), Texture_render_target row
+ * 240 (6,108 of 6,108, docs/lanes/tie282c) and Volume texture (6,496 of
+ * 6,496, docs/lanes/vol283r), the last two on geometry the rule was not read
+ * from.  VS-drawn checkerboards go up (32,674 of 32,674).
+ *
+ * All three are the same configuration, and only it is taken: a
+ * fixed-function draw, v0, v1, v2 = upper left, upper right, lower right of
+ * an axis-aligned right triangle, equal w on all three (so the interpolation
+ * is affine), v constant along v0-v1 and rising toward v2, constant q.  The
+ * general form -- other vertex roles, projective interpolation -- is not
+ * determined by anything on disk, and one natural generalisation ("the odd
+ * vertex's weight is computed a hair low") is refuted by the u ties, which
+ * silicon puts up where it would put them down.  Those draws keep "up".
+ *
+ * Nor is a triangle with a power-of-two leg taken.  Every geometry the rule
+ * holds on has legs that are not powers of two (640 x 480, 285.625, 135 x 80,
+ * and Texture_palette's 96 x 96, which the rule makes exact).  Where the legs
+ * are 64, 128 or 256 -- Pixel_shader's DotST, DotZW, BumpEnvMap* and
+ * StageDependent*, Texture_3D_as_2D's 1:1 reference quads -- every tie row
+ * sits in the rule's "down" region and silicon puts all of them up: the rule
+ * took four of those captures off exact.  Presumably the weights are exact
+ * dyadics there, so there is no rounding for a binade to steer.  All of those
+ * triangles are square, so which leg matters is not determined; neither may
+ * be a power of two.
+ *
+ * The weights come from the flat vtxPos0..2 the geometry stage already
+ * passes, in the unscaled frame the depth path's barycentrics use.  In this
+ * configuration l0 = (x1 - x) / (x1 - x0) and l2 = (y - y0) / (y2 - y0), and
+ * each binade test below is those differences scaled by a power of two:
+ * exact on the 1/16 grid, so the half-open ends fall where silicon's do.
+ * Which vertex carries which v is read from the texcoord's screen
+ * derivatives, so no per-vertex texcoord varying is needed.
+ *
+ * Vulkan only: gl_FragCoord shares vtxPos's frame there (the depth path
+ * relies on it), and it has not been checked on the GL renderer.  Smooth
+ * shading only: a flat, last-provoking TRIANGLES draw is rotated by
+ * prim_rewrite.c, and the rule names vertices by their place.
+ */
+static bool texel_tie_rule_stage(const struct PixelShader *ps, int i)
+{
+    if (ps->tex_unusable[i] || ps->state->shadow_map[i] ||
+        (i == 3 && ps->state->point_sprite)) {
+        return false;
+    }
+    switch (ps->tex_modes[i]) {
+    case PS_TEXTUREMODES_PROJECT2D:
+        return ps->state->dim_tex[i] == 2 && !ps->state->tex_cubemap[i];
+    case PS_TEXTUREMODES_PROJECT3D:
+        return ps->state->dim_tex[i] == 3;
+    default:
+        return false;
+    }
+}
+
+static void append_texel_tie_rule(const struct PixelShader *ps, MString *fn,
+                                  MString *body)
+{
+    bool gate = ps->opts.vulkan && ps->state->fixed_function &&
+                ps->state->smooth_shading;
+    bool any = false;
+
+    for (int i = 0; i < 4; i++) {
+        if (gate && texel_tie_rule_stage(ps, i)) {
+            mstring_append_fmt(body,
+                "vec2 texelTieBias%d = vec2(texelTieBias.x,\n"
+                "                          texelTieBias.y * texelTieV(vtxT%d));\n",
+                i, i);
+            any = true;
+        } else {
+            mstring_append_fmt(body, "vec2 texelTieBias%d = texelTieBias;\n",
+                               i);
+        }
+    }
+    if (!any) {
+        return;
+    }
+
+    mstring_append(fn,
+        "bool texelTiePow2(float x) {\n"
+        "  int e;\n"
+        "  return frexp(x, e) == 0.5;\n"
+        "}\n\n"
+        "float texelTieV(vec4 t) {\n"
+        "  float s = t.y / t.w;\n"
+        "  vec2 ds = vec2(dFdx(s), dFdy(s));\n"
+        "  vec2 dq = vec2(dFdx(t.w), dFdy(t.w));\n"
+        "  vec2 p = gl_FragCoord.xy / vec2(surfaceScale);\n"
+        "  float W = vtxPos1.x - vtxPos0.x;\n"
+        "  float H = vtxPos2.y - vtxPos1.y;\n"
+        "  bool roles = vtxPos0.y == vtxPos1.y && vtxPos1.x == vtxPos2.x &&\n"
+        "               W > 0.0 && H > 0.0 &&\n"
+        "               !texelTiePow2(W) && !texelTiePow2(H) &&\n"
+        "               vtxPos0.w == vtxPos1.w && vtxPos1.w == vtxPos2.w &&\n"
+        "               ds.y > 0.0 && abs(ds.x) <= ds.y * (1.0 / 1024.0) &&\n"
+        "               abs(dq.x) + abs(dq.y) <= abs(t.w) * (1.0 / 65536.0);\n"
+        "  if (!roles) {\n"
+        "    return 1.0;\n"
+        "  }\n"
+        "  float a = vtxPos1.x - p.x;\n" /* l0 * W */
+        "  float b = p.y - vtxPos0.y;\n" /* l2 * H */
+        "  bool band = 4.0 * a > W && 2.0 * a <= W &&\n"
+        "              4.0 * b > H && 2.0 * b <= H;\n"
+        "  return (2.0 * b <= H && !band) ? -1.0 : 1.0;\n"
+        "}\n\n");
+}
+
 static MString* psh_convert(struct PixelShader *ps)
 {
     MString *preflight = mstring_new();
@@ -2053,6 +2177,10 @@ static MString* psh_convert(struct PixelShader *ps)
      * 3,910 px.  The change is still net positive -- Point_params gains
      * 12,027 px -- but by roughly 7,800 rather than 11,700.
      * docs/investigations/edge-defect.md carries the measurements.
+     *
+     * #282 found the v rule, on one configuration only, so only that
+     * configuration takes it; every other draw keeps "up" (see
+     * append_texel_tie_rule() below).
      */
     mstring_append(preflight,
                    "const vec2 texelTieBias = vec2(1.0 / 262144.0, 1.0 / 262144.0);\n");
@@ -3060,8 +3188,8 @@ static MString* psh_convert(struct PixelShader *ps)
                             mstring_append_fmt(
                                 vars,
                                 "vec4 t%d = textureProj(texSamp%d,\n"
-                                "    vec3(%s(pT%d.xy) + texelTieBias * pT%d.w, pT%d.w));\n",
-                                i, i, tex_remap, i, i, i);
+                                "    vec3(%s(pT%d.xy) + texelTieBias%d * pT%d.w, pT%d.w));\n",
+                                i, i, tex_remap, i, i, i, i);
                         }
                     } else if (ps->state->dim_tex[i] == 3) {
                         mstring_append_fmt(vars, "vec4 t%d = textureProj(texSamp%d, vec4(pT%d.xy, 0.0, pT%d.w));\n",
@@ -3103,8 +3231,19 @@ static MString* psh_convert(struct PixelShader *ps)
                 psh_append_shadowmap(ps, i, true, vars);
             } else {
                 apply_border_adjustment(ps, vars, i, "pT%d");
-                mstring_append_fmt(vars, "vec4 t%d = textureProj(texSamp%d, %s(pT%d.xyzw));\n",
-                                   i, i, tex_remap, i);
+                if (ps->state->dim_tex[i] == 3) {
+                    /* texelTieBias on u and v, as PROJECT2D; r is left
+                     * alone, every Volume texture residual being a v tie
+                     * inside one slice (docs/lanes/vol283r).  Volumes are
+                     * swizzled, so there is no rect remap to apply. */
+                    mstring_append_fmt(vars,
+                        "vec4 t%d = textureProj(texSamp%d,\n"
+                        "    vec4(pT%d.xy + texelTieBias%d * pT%d.w, pT%d.zw));\n",
+                        i, i, i, i, i, i);
+                } else {
+                    mstring_append_fmt(vars, "vec4 t%d = textureProj(texSamp%d, %s(pT%d.xyzw));\n",
+                                       i, i, tex_remap, i);
+                }
             }
             break;
         case PS_TEXTUREMODES_CUBEMAP:
@@ -3840,17 +3979,27 @@ static MString* psh_convert(struct PixelShader *ps)
         }
     }
 
+    MString *tie_fn = mstring_new();
+    MString *tie = mstring_new();
+    append_texel_tie_rule(ps, tie_fn, tie);
+
     MString *final = mstring_new();
     pgraph_glsl_append_version(final, ps->opts.vulkan, ps->opts.gles,
                                ps->opts.gles_version);
     mstring_append(final, mstring_get_str(preflight));
+    mstring_append(final, mstring_get_str(tie_fn));
     mstring_append(final, "void main() {\n");
+    /* Ahead of clip: the rule takes derivatives, which a discard in the
+     * clip code would leave undefined for the rest of the quad. */
+    mstring_append(final, mstring_get_str(tie));
     mstring_append(final, mstring_get_str(clip));
     mstring_append(final, mstring_get_str(vars));
     mstring_append(final, mstring_get_str(ps->code));
     mstring_append(final, "}\n");
 
     mstring_unref(preflight);
+    mstring_unref(tie_fn);
+    mstring_unref(tie);
     mstring_unref(vars);
     mstring_unref(ps->code);
 
