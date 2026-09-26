@@ -1,7 +1,8 @@
 # lane.foldflow -- the fold pipeline must not freeze the backlog
 
 Brief: `briefs/foldflow.md` (host, 2026-09-26). Files: `docs/testing/jobs/fold.sh`,
-`docs/testing/jobs/selftest.d/73-fold-repair.sh`, `74-fold-multi.sh`, this file.
+`docs/testing/jobs/selftest.d/73-fold-repair.sh`, `74-fold-multi.sh`,
+`75-fold-exact.sh`, this file.
 
 ## What was wrong (measured in `$WORK/logs/fold/tick.log`)
 
@@ -119,7 +120,56 @@ Brief: `briefs/foldflow.md` (host, 2026-09-26). Files: `docs/testing/jobs/fold.s
   **acting** tick line (`tick: repaired ...`) appears only after this PR
   folds and the host's fold job runs the new fold.sh.
 
+## Attempt 2 (2026-09-25, 22:40-23:10 PDT)
+
+**Why attempt 1 did not finish.** It pushed the work and then ended its turn
+waiting on a background task, a full selftest run. That task died with the
+headless session. Nothing resumed the lane, and the PR stayed in draft.
+Meanwhile CI's `jobs selftest` on 67bbac7109 was RED on one check, in master's
+`86-fold-regressed.sh`: "an accepted one WOULD fold, and the line says on
+whose issue". CI tests the merge with master, and master had added that test
+after this branch forked. It greps `WOULD FOLD (regression accepted on #91)`,
+and this branch had put ` (score N)` in between.
+
+**Done in attempt 2:**
+- Merged origin/master. It was 74 commits ahead and the merge was clean.
+- The list line now reads `WOULD FOLD (regression accepted on #N) (score S)`.
+- Took on the host's request on this PR (2026-09-25 22:31 PDT), which came
+  from lane.indexloc (#360):
+  - After #360, `nv2a_index.py check` passes pure line drift, and only
+    `check --exact` fails on it.
+  - `regen_index` now passes `--exact` to its first check, but only when the
+    merged tree's own `check --help` lists it. The fold is therefore correct
+    before and after #360 lands, in either fold order.
+  - The post-build check is unchanged.
+  - `75-fold-exact.sh` drives `fold.sh regen-index` over both kinds of tree,
+    each with a stand-in script, and has two mutants: `--exact` always, and
+    `--exact` never. 6/6 pass.
+- Ran every fold fragment in isolation on the merged tree: 73 30/30, 74 27/27,
+  75 6/6, 86 47/47, 90 31/31.
+- Fresh read-only `fold.sh list` from this branch, 22:56 PDT, against the
+  live PRs:
+
+  ```
+  #330 lane/sphere273fix @ bf74f87ab1: CONFLICTS in docs/testing/nv2a_index.json alone; WOULD REPAIR on the lane branch
+  #332 lane/aasample @ 1f840fac9a: CONFLICTS in docs/testing/nv2a_index.json alone; WOULD REPAIR on the lane branch
+  #343 claude/docs-tooling-agentic-coding-u152m1 @ dad040909e: CONFLICTS in docs/testing/nv2a_index.json alone; WOULD REPAIR on the lane branch
+  #299 lane/sweepcover-legs @ 4459123315: WOULD FOLD (score 0)
+  #335 lane/blankrule297 @ 9856dc011d: WOULD FOLD (score 0)
+  #352 lane/xbox-notes @ da08566e9f: WOULD FOLD (score 0)
+  #353 lane/turnipfork: WOULD WAIT: 3 folds this tick
+  ...
+  ```
+
+  At 22:51:25-22:51:30 PDT, the live job, still running master's fold.sh,
+  logged nine PRs as `waits: one fold per tick` (#330 #332 #335 #352 #353
+  #354 #355 #359 #363).
+
 ## Do not repeat
+
+- Don't end a lane turn waiting on a `run_in_background` task: it dies with
+  the session. Run the selftest fragments in the foreground, one at a time.
+  Each fold fragment takes under two minutes.
 
 - Don't run an acting `fold.sh` tick from a lane branch against the live
   host to get a tick.log line. The host timer ticks about every 10 minutes

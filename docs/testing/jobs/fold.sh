@@ -214,12 +214,19 @@ resolve_index_only() {   # <worktree> -> 0 when the merge is left fully staged w
     [ -z "$(git -C "$wt" diff --name-only --diff-filter=U)" ] || return 1
 }
 regen_index() {   # <wt> <pr> [commit message] -> 0 index checks (committed on top if rebuilt); 2 cannot pin; 1 refused
-    local wt=$1 pr=$2 msg="${3:-nv2a index: regenerate after folding #$2}" tc have n p
+    local wt=$1 pr=$2 msg="${3:-nv2a index: regenerate after folding #$2}" tc have n p exact
     WHY=""
     git -C "$wt" cat-file -e "HEAD:$INDEX" 2>/dev/null || { WHY="no $INDEX in the merged tree"; return 2; }
     tc=$(tests_commit_of "$wt" HEAD)
     pin_trees "$wt" "$tc" || return 2
-    (cd "$wt" && python3 "$INDEX_PY" check --tests "$PIN_TESTS" --support "$PIN_SUPPORT" >"$F/index.log" 2>&1) && return 0
+    # Once nv2a_index.py's `check` passes pure line drift (#360), only --exact
+    # still fails on it, and the fold's rebuild is what keeps master's line
+    # numbers current. Ask the merged tree's own script whether it takes the
+    # flag, so this is right on either side of that fold. The post-build check
+    # below stays plain.
+    exact=""
+    (cd "$wt" && python3 "$INDEX_PY" check --help 2>/dev/null) | grep -q -- '--exact' && exact=--exact
+    (cd "$wt" && python3 "$INDEX_PY" check $exact --tests "$PIN_TESTS" --support "$PIN_SUPPORT" >"$F/index.log" 2>&1) && return 0
     say "  index stale after merge; regenerating over tests ${tc:0:12}, pbkitplusplus $(git -C "$PIN_SUPPORT" rev-parse --short=12 HEAD)"
     (cd "$wt" && python3 "$INDEX_PY" build --tests "$PIN_TESTS" --support "$PIN_SUPPORT" >>"$F/index.log" 2>&1) \
         || { WHY="the rebuild failed"; return 1; }
@@ -1421,7 +1428,7 @@ for row in "${ORDERED[@]}"; do
     fi
     if [ "$mode" = list ]; then
         acc="${accepted#-}"
-        echo "#$pr $branch @ ${head:0:10}: WOULD FOLD (score ${PSCORE[$pr]:-0})${acc:+ (regression accepted on #$acc)}"
+        echo "#$pr $branch @ ${head:0:10}: WOULD FOLD${acc:+ (regression accepted on #$acc)} (score ${PSCORE[$pr]:-0})"
         folded=$((folded+1)); FOLDED_FILES+="$files "; continue
     fi
     if fold_one "$pr" "$branch" "$head" "$accepted" "$title"; then
