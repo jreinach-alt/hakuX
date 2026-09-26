@@ -1,0 +1,23 @@
+{
+  "registered_utc": "2026-09-26T11:51:29Z",
+  "who": "lane.remote",
+  "issue": "274",
+  "title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso",
+  "device": "thor and nova, one pair each",
+  "seconds": 240,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "6c25a829ef",
+  "b_ref": "1d9c3e4c0f",
+  "judge": "by hand from each result's logcat.txt: hakuX-perf lines (gfps=, Ri:, Vpf:), 90-240 s from the first hakuX-perf line. Not an ab_compare golden arm: a title soak has no capture keys.",
+  "prediction": "#274 SFP GUARD -- DEVICE COST LEG (host decision 02:50Z, 5842521546: shape (a); perf legs on Crimson Skies and Grabbed by the Ghoulies on both handhelds; Ghoulies floor 25). B adds one test to the SFP's miss chain in begin_pre_draw_inner() (vk/draw.c), after the uniforms_changed test: miss (counted as sfp_miss_uniforms) while any of vsh_constants_any_dirty, ltctxa_any_dirty, ltctxb_any_dirty, ltc1_any_dirty is set. The missed draw goes to the MFP or the full path; both refresh the block (pgraph_vk_update_shader_uniforms), which clears the four flags, so the next draw can take the SFP again. A is the master it sits on, and the two refs differ by that one test. THE COST: a draw that follows one or more fixed-function constant, matrix or light writes that changed a value (pgraph.c raises the flags only when the written value differs) takes the MFP or the full path instead of the SFP, once, and pays one uniform refresh there; a draw after no such write can take the SFP as before. The desktop discs cannot price this: there every SFP hit is the BIOS boot animation's (none with skip_boot_anim set; i274u v2 probe on 6c25a829ef), and no test draw takes the SFP. How often a title writes those setters between SFP-eligible draws is unmeasured; that is what this leg is for. hakuX-perf lines only: a soak build logs no xemu-sfp line (NV2A_PERF_LOG builds only), and soaks do not capture hakuX-pace (dispatcher.sh LOGCAT_SPEC). Crimson Skies paced at a median of 29 gfps over 90-240 s on both handhelds in the GPUAA soaks (5845171802: 29 in all four runs), with Ri medians of 30.4-31.4 ms and the guest thread busy about 1,950 ms of every 2,000 ms, so a cost on the pgraph thread shows in gfps only once it makes that thread the slower side. C1 (NO COST, the leg): on each device, arm B's median hakuX-perf gfps over 90-240 s is >= arm A's median over the same span minus 1. C2 (STAYS UP): every B run holds to 240 s with hakuX-perf lines to the end, and logcat has no F/ line and no crash tag. REPORTED, NOT JUDGED (no run-to-run band on these titles is on file for them): the medians of Ri (renderer idle ms, the pgraph thread's slack, which is where this cost lands first) and Vpf over 90-240 s, A vs B per device. VOID, NOT FAILED: a run with no hakuX-perf line after 60 s, or one the soak script read as exited while logcat shows the process still logging (soak_title.sh's alive() probe after 'UtilAcceptVsock: accept4 failed 110', docs/lanes/tcgchurn/NOTES.md). It is re-queued once and reported either way. UNCOMFORTABLE OUTCOMES, named now: C1 failing on one device only is a FAIL as registered, and the next step would be a new registration with two runs per arm, not a re-reading of this one. C1 failing on both devices means shape (a) costs frame time on this title; per the host's decision the next step is then shape (b), refreshing from the setters in pgraph.c, as a new registration, and this one stays a FAIL.",
+  "must_not_move": [
+    "the two refs differ by one test in the SFP miss chain in hw/xbox/nv2a/pgraph/vk/draw.c",
+    "device_label identical between the two arms on each device"
+  ],
+  "expect": {
+    "C1/arm_b_minus_arm_a_gfps_median_90_240_min": -1
+  },
+  "expect_counts": {},
+  "expect_note": "The legs are read by hand off the hakuX-perf lines; a soak writes no captures, so there is no golden key for ab_compare to judge."
+}

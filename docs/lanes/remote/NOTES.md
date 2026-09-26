@@ -2035,3 +2035,192 @@ prediction.
   move no generation, so the SFP draws with the previous block (5842494980).
 - **The non-push descriptor path, and device pixels.** Only the soaks' frame
   rates run on a device; no device capture runs this change.
+
+## #274, fourth: the super-fast path drew with the previous draw's uniforms after a fixed-function setter (2026-09-26)
+
+**Where it started.** Pricing GPUAA's fix (5842494980) put the same probe at
+the super-fast path (SFP), the one draw path that never refreshes uniforms.
+It found 2,000-odd stale hits per desktop disc. The host took it as a second
+registration and a separate PR, shape (a) (5842521546), and kept it under #274
+after #274 closed (5846147481). It is PR #389.
+
+**The mechanism.**
+- The fixed-function setters in `pgraph.c` write `pg->vsh_constants` or the
+  light arrays: the matrices, texgen, fog, eye, viewport, lights and
+  materials. They raise only `vsh_constants_any_dirty` or `ltctx*_any_dirty`,
+  and none moves a generation.
+- The SFP in `begin_pre_draw_inner()` tests generations and
+  `uniforms_changed`. It never reads those four flags. So a draw whose only
+  change since the last one is such a setter keeps the previous uniform block.
+- `SET_TRANSFORM_CONSTANT` escapes: its load-pointer write changes
+  `CHEOPS_OFFSET`, which has no dynamic bits, so `non_dynamic_reg_gen` moves.
+
+**Priced on `a_ref` alone** (`6c25a829ef`; local probe i274u v2, never
+committed). At every SFP hit it snapshots both blocks, refreshes, compares,
+restores, and records whether any of the four flags was set.
+
+| disc | SFP hits | stale | flag set, right block | stale, no flag | stale frames | SFP hits with `skip_boot_anim` |
+|---|---:|---:|---:|---:|---|---|
+| Antialiasing + DMA | 2,016 | 1,968 | 48 | 0 | 1-28 | 0 |
+| Clear | 2,160 | 2,096 | 64 | 0 | 1-30 | 0 |
+| disc109 | 2,160 | 2,096 | 64 | 0 | 1-30 | 0 |
+| surf1 | 2,232 | 2,168 | 64 | 0 | 1-31 | 0 |
+
+- Every stale hit differs in `c[0]`, the first row of `compositeMat`. The last
+  differing byte falls in `c[10]`-`c[14]`, which is `modelViewMat0` and
+  `invModelViewMat0`.
+- **The control that placed it.** With xemu's `skip_boot_anim` set
+  (`short-animation=on`), the same probe binary takes no SFP hit at all on any
+  of the four discs, and every capture is still written. So every SFP hit on
+  these discs is the BIOS boot animation's, and no test draw takes the SFP.
+  The desktop discs can show only that the guard has no side effect; the
+  device soaks price its cost.
+
+**The fix** (`1d9c3e4c0f`, `vk/draw.c` only): one test in the SFP's miss
+chain, right after `uniforms_changed`. The draw misses, counted as
+`sfp_miss_uniforms`, while any of the four flags is set. The MFP or the full
+path then takes the draw and refreshes the block, which clears the flags.
+
+**Registered before the code** (#274, 5846039624). `39c41fbb` commits the six
+files with `b_ref` `1d9c3e4c0f`. Each differs from its posted draft only on
+the `b_ref` line.
+
+| registration | runs per arm | verdict |
+|---|---:|---|
+| `remote-274-sfp-guard-aadma.json` | 3 | **PASS**. 11 of 14 byte-identical in all six runs; the three named races in the band; 0 moved. Probe: 2,240 stale on A, 0 on B. |
+| `remote-274-sfp-guard-clear.json` | 3 | **PASS**. All 33 byte-identical. Probe: 2,240 / 0. |
+| `remote-274-sfp-guard-disc109.json` | 3 | **PASS**. All 73 byte-identical. Probe: 2,232 / 0. |
+| `remote-274-sfp-guard-surf1.json` | 5 | **PASS**. 233 of 236 byte-identical; the `Blend_surface` trio flips within both arms; 0 moved. Probe: 2,168 / 0. |
+| `remote-274-sfp-guard-perf-crimson.json` | 1 per device | **PASS**. C1: B − A is 0 gfps on thor and on nova. C2: every B run logs to 237 s with no `F/` or crash line. |
+| `remote-274-sfp-guard-perf-ghoulies.json` | 1 per device | **PASS**. F1: B's median is 29 on both devices, against a floor of 25. C1: B − A is 0 on both. C2 holds. |
+
+B keeps 40 SFP hits per disc, none stale and none with a flag set. That count
+is reported, not judged.
+
+**The soaks** were queued by the host at 12:51Z and read by hand as registered,
+from the hakuX-perf lines 90-240 s after each run's first one (5848257418):
+
+| title | device | A gfps / Ri / Vpf | B gfps / Ri / Vpf | B − A gfps |
+|---|---|---|---|---:|
+| Ghoulies | thor | 29 / 26.6 / 2.00 | 29 / 26.8 / 2.00 | 0 |
+| Ghoulies | nova | 29 / 27.8 / 2.00 | 29 / 27.6 / 2.00 | 0 |
+| Crimson Skies | thor | 29 / 30.7 / 1.98 | 29 / 30.6 / 1.99 | 0 |
+| Crimson Skies | nova | 29 / 31.4 / 1.97 | 29 / 31.2 / 1.90 | 0 |
+
+- **No run is void.** Both nova Ghoulies runs logged `UtilAcceptVsock` (2
+  lines on A, 5 on B), but each ran to 239 s with perf lines throughout, so
+  neither meets the registration's VOID rule.
+- **Reported, not judged:** Ri and Vpf are within 0.2 ms and 0.07 of each other
+  in every pair.
+- **So on these titles the guard costs no frame rate.** Shape (b), refreshing
+  from the setters in `pgraph.c`, was to be taken only if it did (5842521546).
+
+**Re-run on each merged tree** (master `0e7ba4c3`, then `a5b5b628`). A′ is
+the merged head with the guard reversed, so its `hw/` is master's. B′ is the
+merged head. Both trees show 0 moved on all four discs. The host's merge of
+`504aeee4` was not re-run on the desktop. It brought #379 (`glsl/psh.c`,
+`psh.h`) and #393 (those two, plus `pgraph.c`'s `SET_SHADER_STAGE_PROGRAM`,
+`vk/texture.c` and `gl/texture.c`). None of them touches the four flags or the
+SFP's miss chain; `hw/` differs from master by exactly the guard, and the host
+set the registered arms and the soaks as the definition of done (5848257418).
+
+One capture needs saying plainly:
+- `GPUAAWriteAfterCPUWrite` has a second state: a 2×2 block at
+  (65,239)-(66,240) reads white instead of (51,51,51), 138 px against the
+  golden rather than 134.
+- It appeared in 2 of 29 B runs, both as run B3 of a fresh arms script, and
+  in 0 of 59 A runs, 30 of them master alone. Fisher p ≈ 0.11, so it cannot
+  be attributed.
+- A third probe build records the frame of every SFP hit in a full run. On
+  AA + DMA and Clear, neither arm has a hit after frame 29, so during the
+  tests B executes A's code. B can shift the odds of a timing race through its boot phase; it
+  cannot draw the block.
+
+**Two race captures went beyond what was on file**, both judged by the band
+and neither caused by B:
+- `AAOnThenOffCPUWrite` lost pixel (1,0) alone to the clear, on a B run.
+- `CPUWriteIgnoresSurfaceConfig` read a 704 px black block inside
+  (65,64)-(321,240), on an A run. On file it was 424-648 px.
+
+**What the instruments taught here.**
+- **A-side counts do not predict B-side counts when B changes the state they
+  read.** On A no SFP draw clears the flags, so every A hit had one set. On B
+  the first missed draw's refresh clears them, and later draws take the SFP
+  again with a fresh block: 40 hits per disc, where A's split predicted 0.
+- **A control run is not the run.** 0 SFP hits with `skip_boot_anim` did not
+  by itself show that a full run has no test-phase SFP hit. The frame-range
+  probe did, measured in the full run the claim is about.
+- **A probe that reports on its first hit prints nothing when it never
+  fires.** i274u registers its report at the first probe call. On the
+  `skip_boot_anim` runs no TOTAL line meant 0 calls, not a crash.
+- **The binary embeds `git describe`.** Builds of the same source at different
+  HEADs, or with a dirty tree, differ in size and in nearly every byte after
+  the version string. Compare `strings | grep g<sha>` before calling them
+  different code.
+- **A stale build directory can fail preflight.** `docs/testing/psh_differ`'s
+  Makefile has no header dependencies. After #367 changed `psh.h`, the old
+  `differ.o` failed "baseline ... does not generate" until the git-ignored
+  `build/` was deleted (5846061565).
+
+**Re-run it.**
+- **Desktop.** Build the four discs from the stock image with
+  `make_test_iso.py --progress-log --shutdown-on-completion` and each
+  registration's `disc` suites. Run `a_ref` and `b_ref` alternately under
+  `renderer = 'VULKAN'` and `surface_scale = 1`, from a fresh HDD with the
+  shader caches cleared. Judge each pair with `ab_compare.py --expect` on its
+  prediction.
+- **Soaks.** The two `perf-*` registrations are device soaks, judged by hand as
+  their `judge` field says.
+
+**Not covered.**
+- **Whether any title draws stale through the SFP.** The soaks measure frame
+  rate only.
+- **B's SFP hit count on titles.** A's split cannot predict it: on B the first
+  missed draw's refresh clears the flags, so later draws can take the SFP again
+  with a fresh block.
+
+## #184, closed: the three routes the fix leaves stale are unreached on the stock suite (2026-09-26)
+
+**The decision.** The host closed #184 with decision (a) (5848257418). The three
+cases below are recorded as unreached on the stock suite. A title that reaches
+one gets a new issue carrying that title's evidence.
+
+**The cases**, as `pgraph_vk_surface_written_while_sampled()`'s comment and
+the "Not covered" paragraph of this file's first #184 section (2026-09-25)
+list them:
+1. A stage sampled while its own memory is written, with no register write in
+   between: a feedback loop.
+2. A stage that starts being sampled with no texture-register write, for
+   example through `SET_SHADER_STAGE_PROGRAM` alone.
+3. A direct-view stage sampled after its surface was written, with no rebind.
+   The rebind is where `bind_surface_as_texture()` issues the barrier, so this
+   is the skipped-barrier question.
+
+**Measured** (5848116139), with i184w, a local probe never committed, built from
+master `e26f8608`'s `hw/`:
+- **Mark:** the hook marks a stage when a draw or clear writes the surface its
+  binding came from, recording copy or direct view and whether it was sampled
+  then.
+- **Clear:** a successful `create_texture()` for the stage clears the mark.
+- **Count:** `begin_draw()` counts each enabled, sampled stage that is still
+  marked.
+
+| | |
+|---|---:|
+| per-suite discs, all exited 0 with the probe's total printed | 99 |
+| captures | 3,471 |
+| draws counted | 3,676,786 |
+| copy marks / direct marks | 106 / 13,433 |
+| draws sampling a marked stage, case 1 / 2 / 3 | **0 / 0 / 0** |
+
+**The positive control.** The same probe, with the fix's `tex_reg_cache`
+invalidation removed, counts 10 case-2 events on Clear: stage 0, PROJECT2D,
+frames 87-90, the `SCF_*` swatches. Master's code reads 0 there.
+
+**What the instrument taught.** A null needs a positive control, and a probe
+must print its total when it never fires. i184w registers its report at the
+first draw, not at its first hit, so every one of the 99 runs printed a line
+that says 0.
+
+**Not covered.** Titles. A game could take any of the three routes, and the
+desktop suite cannot show that.
