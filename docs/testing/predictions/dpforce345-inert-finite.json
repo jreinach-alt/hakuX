@@ -1,0 +1,46 @@
+{
+  "registered_utc": "2026-09-26T09:33:10Z",
+  "who": "lane.dpforce345",
+  "issue": "345",
+  "prediction": "#345 half 1: glsl/vsh-prog.c _DP3/_DPH/_DP4 force each 0 x inf and 0 x NaN product to 0 (the _MUL rule), matching silicon's (0,1,2).(inf,1,1) = 3 (PR #344, docs/testing/xbox-special-raw-2026-09-25.md). THE HUNK IS NaN-GATED: d = dot(); if isnan(d), d = sum of _MUL products. A zero factor can only change a dot's value through a 0 x inf or 0 x NaN term, and every such term makes dot() NaN, so for every dot whose plain result is not NaN the generated value is dot()'s, bit for bit. docs/lanes/dpforce345/dp_model.py reproduces all 5 silicon DP rows (3 moved from NaN, 2 unchanged). NO MUST_MOVE LEG: no golden in this disc is known to feed a DP a 0 x inf/NaN term. nxdk_vsh_tests CPU Shader Tests (vsh_score.py) is NOT an instrument for this hunk: its values come from the nv2a_vsh_cpu evaluator via LAUNCH_TRANSFORM_PROGRAM / constant writeback in pgraph.c, which never runs this GLSL (#281's prediction says the same of Exceptional Float). EVERY LEG IS MUST_NOT_MOVE, and what would move each: (1) any capture in any suite blanks or moves by its full geometry if the new helper fails to compile (it calls _MUL and isnan, both already used in this prelude); (2) Lighting_* (6 suites, a DP on every lit programmable path) and Vertex_shader_independence/rounding/swizzle move only if a DP in them is NaN today, i.e. one of their inputs is inf/NaN meeting a zero -- a move there toward the golden would be this defect showing, and is reported as an unpredicted finding, not claimed; (3) Attrib_float/* (the #281 NaN captures: MOV and MUL x NaN constant columns) moves only if its program has a DP over a NaN attribute; its NaN sign rule (_PosNaN) is untouched; (4) Fog_vsh, Fog_exceptional_value, Fog_inf_coord feed inf/NaN through vertex programs and move only if one of them reaches a DP with a zero factor. W_param is omitted: its prog_ captures run passthrough.vsh (mov only) and rcc_clamp_test.vsh (mul, rcc), no DP (docs/lanes/wparam223/NOTES.md). A worse move on any leg refutes 'inert on finite dots'.",
+  "a_ref": "2dc2b5c49a",
+  "b_ref": "74a238a614",
+  "must_not_move": [
+    "Lighting_Two_Sided/*",
+    "Lighting_accumulation/*",
+    "Lighting_control/*",
+    "Lighting_normals/*",
+    "Lighting_range/*",
+    "Lighting_spotlight/*",
+    "Vertex_shader_independence_tests/*",
+    "Vertex_shader_rounding_tests/*",
+    "Vertex_shader_swizzle_tests/*",
+    "Attrib_float/*",
+    "Fog_vsh/*",
+    "Fog_exceptional_value/*",
+    "Fog_inf_coord/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Attrib_float",
+      "Fog_exceptional_value",
+      "Fog_inf_coord",
+      "Fog_vsh",
+      "Lighting_Two_Sided",
+      "Lighting_accumulation",
+      "Lighting_control",
+      "Lighting_normals",
+      "Lighting_range",
+      "Lighting_spotlight",
+      "Vertex_shader_independence_tests",
+      "Vertex_shader_rounding_tests",
+      "Vertex_shader_swizzle_tests"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
