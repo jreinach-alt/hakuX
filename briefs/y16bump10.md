@@ -32,3 +32,15 @@ any `=0`.
 ## Done when
 The arm verdict is PASS (or each refuted leg is named with its figure and its hunk is out) and the PR is ready for review with
 the verdict cited. Do not edit the board files.
+
+## Addendum (board wave 244, 2026-09-26T10:40Z): the fold refuses PR #367 on preflight
+PR #367 is fold-ready, CI green, and the fold job has refused it five times (last 10:30Z): `preflight.sh` -> `psh_differ report FAILED`,
+every baseline (basic/stages/textures/surface/clipplane/border/bumpenv/misc x gl/vk/gles) `does not generate`. The differ builds
+and prints its table; only baseline generation fails. It is NOT the /tmp race: PR #384 (one mktemp dir per run) folded first and
+the refusal recurred. Master @ e673558587 passed the same preflight for #373 at 10:20Z, so the failure lives in master + this branch.
+1. Merge current master into `lane/y16bump10` (do not force-push), run `docs/testing/preflight.sh`, reproduce. Master's psh.c gained
+   fog278's hunk (PR #373) and tiecode282 is editing psh.c too; suspect the interaction with your `append_bump_channel` hunk.
+2. Find what the differ's baseline generation dies on (a child abort/assert, a carve.py boundary moved by your hunk, a new call the
+   shim lacks) and fix it on this branch. If the cause is in `docs/testing/psh_differ/` and not your hunk, say so on the PR and
+   make the smallest fix there; that path is not in your Files: line, so add it to the PR body's Files: line.
+3. Push, wait for CI, leave the PR ready. Do not edit the board files.
