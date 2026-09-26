@@ -269,13 +269,23 @@ class Fatx:
         return attributes, cluster, size
 
 
-def extract(fs, cluster, out_dir, prefix="", newer_than=None, manifest=None):
+def extract(fs, cluster, out_dir, prefix="", newer_than=None, manifest=None,
+            short=None):
+    """Extract one directory tree. A file whose cluster chain ends before the
+    size its directory entry records is still written, as far as the chain
+    goes, and its name is appended to `short`.
+
+    That shape is what a damaged image looks like, and it was read as a bad
+    capture: on 09-25 two arms had 56 and 51 W_param PNGs that were each
+    exactly 16384 bytes, one cluster, from runs whose guest had exited
+    cleanly. A FAT entry that reads as zero ends the chain, and nothing here
+    said so."""
     count = total = 0
     os.makedirs(out_dir, exist_ok=True)
     for name, attributes, first, size, mtime, ctime in fs.listdir(cluster):
         if attributes & ATTR_DIRECTORY:
             sub, subtotal = extract(fs, first, out_dir, prefix + name + "::",
-                                    newer_than, manifest)
+                                    newer_than, manifest, short)
             count += sub
             total += subtotal
             continue
@@ -285,6 +295,8 @@ def extract(fs, cluster, out_dir, prefix="", newer_than=None, manifest=None):
         if newer_than is not None and (mtime is None or mtime < newer_than):
             continue
         data = fs.read_file(first, size)
+        if len(data) < size and short is not None:
+            short.append(prefix + name)
         with open(os.path.join(out_dir, prefix + name), "wb") as handle:
             handle.write(data)
         if manifest is not None:
@@ -342,13 +354,19 @@ def main(argv=None):
     cutoff = (datetime.datetime.fromisoformat(args.newer_than)
               if args.newer_than else None)
     manifest = {} if args.manifest else None
+    short = []
     count, total = extract(fs, cluster, args.output, newer_than=cutoff,
-                           manifest=manifest)
+                           manifest=manifest, short=short)
     if manifest is not None:
         import json
         with open(args.manifest, "w") as handle:
             json.dump(manifest, handle, indent=1, sort_keys=True)
-    print(f"extracted {count} files ({total / (1 << 20):.1f} MiB) to {args.output}")
+    # ONE line, and the last: run_disc.sh keeps only `tail -1` of this output
+    # and reads the SHORT count from it.
+    tail = (f"; {len(short)} SHORT: the cluster chain ended before the size "
+            f"the directory records (first: {short[0]})" if short else "")
+    print(f"extracted {count} files ({total / (1 << 20):.1f} MiB) to "
+          f"{args.output}{tail}")
     return 0
 
 

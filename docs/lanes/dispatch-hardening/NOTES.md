@@ -488,6 +488,77 @@ all live in `dispatcher.sh` / `request.sh`. Both are lent to lane.titlerun
 until #307 folds, and #307 was still open at 00:05Z on 2026-09-26. It was not
 started here.
 
+## Defect 15: the pull was holed, not truncated
+
+**The brief's premise was wrong, and so was part A's comment.** Both said
+the pull truncated the PNGs. Measured on the two affected results
+(`1790327180-arms-shadeflat224-fix`, `1790357477-arms-wparamclip223-base`):
+
+| | shadeflat224-fix | wparamclip223-base | every other run of both pairs |
+|---|---|---|---|
+| bad PNGs | 56, all W_param | 51, all W_param | 0 |
+| size of each bad PNG | 16384 (one FATX cluster), header intact, no IEND | same | n/a |
+| `UtilAcceptVsock` lines in run1.log | 3 | 3 | 0 |
+| guest wall time (logcat) | 02:17:10 to 02:19:48, "QEMU cleanup complete" | 10:31:31 to 10:34:43, same | normal |
+| progress log | "Testing completed normally" | same | same |
+| `ran Ns` | 49 | 66 | 141 to 182 |
+
+- **`ran Ns` counts poll iterations, not seconds.** Retried `adb ps` calls
+  stretch each iteration. The guests ran their full time and exited cleanly,
+  so the run was not cut short.
+- **The image is qcow2** (`QFI\xfb`). A truncated qcow2 cannot produce these
+  files: `extract_results.Qcow2._read_at` raises "short read" on any cluster
+  past the end.
+- **What fits is a hole.** A 4 KB write missing from the host's copy zeroes
+  part of the FAT. A zero entry ends the chain, so each file behind it stops
+  after its first cluster, while the size is right and the pull exits 0. A
+  size check or an IEND check on the image cannot see that. A checksum can.
+- **Across all 201 results since epoch 1790000000:** unreadable rows occur in
+  2 runs, both with the interop signature. 18 other runs had the signature
+  and no damage.
+
+**Fix.**
+- `run_disc.sh` takes the device's `md5sum` of `hdd.img` once, after the
+  guest has exited. It pulls, compares, and pulls again on a mismatch, up to
+  `PULL_TRIES` (default 3). If no pull matches, it exits 1 without extracting.
+- `extract_results.py` names files whose chain ended before the size their
+  directory entry records. It says so on its summary line: `; N SHORT: ...
+  (first: <name>)`.
+- A device that gives no md5 leaves SHORT as the only check, so SHORT files
+  force a re-pull there. SHORT files from a pull that matches the md5 are
+  blamed on the device's own image and are not re-pulled.
+- Every run now logs `pull: md5 matches the device's image` or
+  `pull: NOT VERIFIED`.
+
+**Unverified on hardware:** that toybox `md5sum` answers on both handhelds. If
+it does not, the run log says NOT VERIFIED on every run, and SHORT still
+triggers the re-pull.
+
+**Proof: `58-pull-verify.sh`, 14 checks.**
+- The fixture is a real qcow2 holding a real FATX volume. The holed image is
+  the same bytes with the FAT page holding entries 0..1023 zeroed.
+- The real extractor gives 16384 bytes and `1 SHORT ... (first: t.png)` on
+  the holed image, and 40000 bytes with no SHORT on the good one.
+- Five run_disc cases, each asserted on rc, pull count, PNG size and output
+  words:
+
+  | case | device image | pulls return | md5 | expected |
+  |---|---|---|---|---|
+  | (a) | good | hole, good, hole | yes | 2 pulls; the good one, in the middle, is extracted |
+  | (b) | good | hole x3 | yes | exit 1; nothing extracted |
+  | (c) | good | hole, good | no | SHORT forces a second pull |
+  | (d) | hole | hole | yes | 1 pull; SHORT, blamed on the device |
+  | (e) | good | good | yes | 1 pull; clean |
+
+- **Three mutants, each red on its case:** the md5 never compared (b); SHORT
+  never re-pulls (c); the extractor does not measure the chain (d).
+- **Falsification:** `origin/master`'s `run_disc.sh` and `extract_results.py`
+  in a scratch copy. Case (a) gives `rc=0 pulls=1 png=16384`: the old code
+  scores the one-cluster PNG, the same shape as both live arms.
+
+Defect 19 (soak liveness) moved to lane.titlerun, so no shared adb wrapper
+was added here.
+
 ## For the next lane
 
 - Do not match the WSL interop signature on a call's stderr; it bypasses

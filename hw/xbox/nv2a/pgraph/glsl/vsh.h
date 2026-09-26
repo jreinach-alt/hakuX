@@ -79,6 +79,8 @@ typedef struct {
     bool smooth_shading;
     bool z_perspective;
     bool noperspective; /* SET_CONTROL0 texture perspective off */
+    /* pgraph_anti_aliasing_sample_offset_x(), guest px; Vulkan only */
+    float aa_offset_x;
 
     bool is_fixed_function;
     union {
