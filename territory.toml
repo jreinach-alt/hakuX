@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 262
+wave = 263
 updated_utc = "2026-09-26T20:30:00Z"
 
 [retired.hilodot10]
@@ -1216,6 +1216,12 @@ released = ["docs/testing/predictions/doa413-*.json", "docs/lanes/doa413/**"]
 released_at_ready = 417
 standing = false
 note = "READY, PR #417 (job.board 2026-09-26T20:20Z): docs-only diff, CI green; files released at ready, labelled fold-ready. PRIOR: STARTED (job.board 2026-09-26T19:20Z), briefs/doa413.md: #413 (Dead or Alive Ultimate) gameplay fps. Profile-first: docs and prediction only until the lane names the code file and the board grants it."
+
+[lane.visual404]
+issues = ["404"]
+files = ["docs/testing/titles/visual_score.py", "docs/testing/jobs/selftest.d/99-visual-score.sh", "docs/lanes/visual404/**", "docs/testing/predictions/visual404-*.json"]
+standing = false
+note = "STARTED (hostops 2026-09-26 13:18 PDT), briefs/visual404.md: #404 unblocked on lane.local's board request (host.md): #397 pass-1 table posted (5849041338) and the flow fix is live. Offline, no device time: detectors + positive controls (Galleon #77 stipple, MechAssault red box) on the titleplay-p1 route frames."
 
 [lane.forza414]
 issues = ["414"]
