@@ -283,6 +283,16 @@ the arm to be re-run on the merged head before ready.
 A leg that passed in arm 2 and fails here is an interaction with the merged
 code, not a new reading of the rule.
 
+## Waiting (2026-09-26, attempt 3)
+
+On things outside this session: the `[job.arms]` verdict for
+`tiecode282-merge.json`, dispatch requests
+`1790424878-tiecode282-trtm-base-759654` / `1790424878-tiecode282-trtm-fix-760263`
+(judge with `ab_compare.py --expect docs/lanes/tiecode282/tiecode282-trt-merge.json`),
+and CI on the head. If all pass: post both verdicts, then `gh pr ready 379`,
+which releases psh.c and psh.h. Preflight on 6a18634f4c: every gate is ok
+except `coverage`, which flags board rows #278 and #276. Those are the board's.
+
 ## Waiting (2026-09-26, attempt 2, superseded by attempt 3)
 
 On three things outside this session:
