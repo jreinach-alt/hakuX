@@ -104,6 +104,9 @@ typedef struct PshState {
     int window_clip_count;
 
     bool smooth_shading;
+    /* CSV0_D mode 0: vertices come from the fixed-function pipeline, which
+     * is the only transform path silicon's v-tie rule was measured on. */
+    bool fixed_function;
     bool two_side_light;
     bool stipple;
     bool fog_enable;
