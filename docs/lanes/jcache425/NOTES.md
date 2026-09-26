@@ -63,3 +63,51 @@ difference is how the report is taken: this counts records of one tid, while
   be split out of the 28.5% of guest code by a profile. On Fuzion Frenzy's
   (menu) profile `helper_cc_compute_c` is 6.1-6.5% (perf-baseline), but that
   window is a spin loop. **Not a 0.5 lever on Crimson**, and not built.
+
+## What was built, and what was not
+
+- **The per-discard wipe fix already existed.** lane.tcgchurn wrote it as
+  `HAKUX_TCG68_JC` in `tb_jmp_cache_inval_tb()` (tb-maint.c), argued it
+  exact (NOTES there, "JC"), and the 09-25 audit (pass 1) found the argument
+  holds for every reader. It shipped **default off** and was never measured:
+  no dispatch result on disk has ever set it (`fx=...jc1` appears in no
+  logcat). So this lane does not write a second one. It measures that one on
+  the workload where it matters.
+- **The inline probe the brief asks for already exists.** `tb_lookup()`
+  (cpu-exec.c) reads the jump-cache slot before any qht lookup, from both
+  the indirect-branch helper and the exec loop. No further probe is built
+  until a counter says what misses. "Tune before a counter moves" is the
+  rule, and the profile cannot tell a wiped slot from a collision.
+- **Built: `[jc425]`**, one line every 2 s beside `[tlb68]` (`1b43be6b3a`,
+  cpu-exec.c only). It counts each `tb_lookup()` probe per caller
+  (`i` indirect helper, `l` exec loop, `a` atomic step) as a hit (`h`), or a
+  miss by cause: empty slot (`e`, never filled or wiped), another pc in
+  the slot (`p`, a collision), same pc but a discarded block (`s`, what
+  JC=1 leaves behind), or same pc with another key (`k`). For each miss it
+  also counts whether the qht found a block (`f`) or not (`n`). It also
+  prints the JC switch state. Counters only, no control-flow change.
+  Compiled for arm64 Android against the existing build tree's flags.
+
+## Arms (queued 2026-09-26 ~22:10 UTC, 15:10 PDT)
+
+One binary, `1b43be6b3a`. A: no env. B: `--env HAKUX_TCG68_JC=1`. The legs
+are registered in `docs/testing/predictions/jcache425-crimson.json`
+(`d7669c10`) and the pixel must-not-move in `jcache425-pixels-inert.json`
+(master `9f34d60036` vs `1b43be6b3a`, 8 suites; the arms job queues it).
+
+| arm | request id |
+|---|---|
+| A1 soak, JC off | `1790460549-lane.jcache425-232585` |
+| B1 soak, JC=1 | `1790460549-lane.jcache425-232641` |
+| A2 soak, JC off | `1790460549-lane.jcache425-232746` |
+| B2 soak, JC=1 | `1790460550-lane.jcache425-232807` |
+| pixels, JC off (8 suites) | `1790460551-lane.jcache425-232905` |
+| pixels, JC=1 (8 suites) | `1790460551-lane.jcache425-232934` |
+
+**After the verdict:** if F1, F2 and S1 hold and the pixel pairs are
+identical, turning JC on by default is a one-line change in `cputlb.c`
+(`hakux_tlb68_jc_on()`, e.g. treating unset as on). That file is not this
+lane's. It goes to the host as a board request, to be sequenced with
+lane.tbchurn424. If F2 is refuted (misses are mostly collisions), the next
+lever is the jump cache's shape (`tb-jmp-cache.h`: size or a second way),
+armed on its own.
