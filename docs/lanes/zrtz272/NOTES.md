@@ -151,9 +151,74 @@ a_ref `6550967a5e` (origin/master at the merge), b_ref `e603fb3540` (merge + RTZ
 instead of `Stencil/*`, and `ZetaIntoColor*` as before. The five bands are still judged by
 reading.
 
-**Status (2026-09-26):** waiting for arm 2's `[job.arms]` verdict and CI. PR #364
+## Arm 2 verdict: FAIL, 1 of 1255 checks (`zrtz272-rtz2.json`)
+
+Results `1790410947-arms-zrtz272-base-885745` (apk `b5f276b45557`) and `-fix-885784`
+(apk `7c6260f3f710`), one run each, 983 captures each, judged 09:50Z. Neither log has
+`UtilAcceptVsock`. PARTIAL COVERAGE is the same Depth_buffer 144/784 and ZPass 72/78
+floor in both arms. No row is `unreadable` (base: 874 ok, 100 white-content, 9
+label-differs; fix: 876 / 98 / 9).
+
+**Every registered leg held, and every band landed on the value arm 1 read:**
+
+| capture (×2, Cn and Cy) | A | B | leg |
+|---|---:|---:|---|
+| `Color_zeta_overlap/Swap` (#275) | 165,447 | **0** | =0 |
+| `z24_C?_FZn_Mffffff_ZB` | 144,566 | 47,935 | 47,935 .. 53,852 |
+| `z24_C?_FZn_Mc00000_ZB` | 4,834 | 989 | 989 .. 1,037 |
+| `z24_C?_FZn_M800001_ZB` | 2,868 | 520 | 520 .. 568 |
+| `z24_C?_FZn_M400002_ZB` | 1,506 | 113 | 113 .. 145 |
+| `z16_C?_FZn_M00ffff_ZB` | 2,840 | 424 | 424 .. 456 |
+| `z24_C?_FZy_M*` colour and `_ZB` (20) | 24 | 24 | =24 (F24 gate holds) |
+| `z24_C?_FZn_M000003` and `_ZB` | 24 | 0 | =0 |
+| `z16_C?_FZn_M00{4002,8001,c000}_ZB` | 16/32/32 | 0 | =0 |
+| `z16_C?_FZy_M008001_ZB` | 13 | 0 | =0 |
+| `z16_C?_FZy_M00c000_ZB` / `M00ffff_ZB` | 34 / 495 | 1 / 393 | =1 / =393 (replicated) |
+| `W_buffering/ZBuf24D_FloorQuad_V0_*_Z` | 161,700 / 153,860 | 15,530 / 59,873 | must_not_regress |
+
+`ZBuf24F_FloorQuad_V0_*` did not move (the F24 gate gives those back, as priced).
+Totals: 38 better, 1 worse, 944 same; exact 278 → 290. `Stencil/Stencil_ZERO_ST_ZB`
+0 → 30,000 is the unguarded Stencil_ZERO* family again.
+
+**The one violated check:** `must_not_move Blend_surface/X_O1RGB5_Add_SrcA_DstA`
+15,016 → 12,274 (better). It is not the hunk's, on four independent reads:
+
+1. **The capture has exactly two images on disk.** Its fix-arm image is byte-identical
+   (sha256 `737252c6f3ff`) to `padwrite59-base` (09-14), `pad59A` runs 1-3 (09-18) and
+   the `z-c866527e03` sweep, all builds without this hunk. Its base-arm image
+   (`07624ee15fe9`) is the one every other 2026-09-25/26 run produced.
+2. **The two images differ in one block**, x 32..159, y 92..203 (8,389 px): the first
+   128×128 render-to-surface swatch at `kMargin`/`top` in `blend_surface_tests.cpp`.
+   One state is mostly white there (1,549 white px), the other has content. The
+   6,627 px outside that block are identical between the arms and against the golden.
+3. **The sibling `R5G6B5_Add_SrcA_DstA` flips the same block within one apk:**
+   pshqueue base `47f492ec0654` run1 14,833 vs run2 11,964, and its fix
+   `dafaf822bc87` the same; the diff is 8,393 px in the identical bbox. That is the
+   row arm 1 moved the other way. Arm 2 did not move it.
+4. **The hunk cannot reach the test.** `BlendSurfaceTests` sets
+   `NV097_SET_DEPTH_TEST_ENABLE` false, so vertex z decides nothing in it, and
+   `X_Z1RGB5_Add_SrcA_DstA`, the same draw calls with a different surface format,
+   was byte-identical across the arms.
+
+One-run arms cannot separate a nondeterministic flip from a build-correlated one
+(pad59A read 12,274 in 3 of 3 runs, pad59B 15,016 in 3 of 3), and this arm does not
+try. What it can say is that the fix arm drew a picture that other builds without
+the hunk have drawn, in a test the hunk cannot influence.
+
+## Arm 3 (`zrtz272-rtz3.json`, sha256 `6a2077be38c7`)
+
+Same refs as arm 2 (a_ref `6550967a5e`, b_ref `e603fb3540`), same disc, same
+`expect` and `must_not_regress`. The only change: `Blend_surface/*` in must_not_move
+is replaced by seven globs that cover the other 30 Blend_surface captures and leave
+`R5G6B5_Add_SrcA_DstA` and `X_O1RGB5_Add_SrcA_DstA` unguarded, the way arm 2 left
+`Stencil_ZERO*`. `arms.sh` supersedes by newest registration on the issue, so arm 3
+supersedes arm 2's FAIL when it is judged. Re-reading arm 2's two result dirs under
+arm 3's file (`.scratch/dryjudge3.txt`, a post-hoc read, not a verdict) gives PASS on
+1,253 checks, which shows every remaining guard matches a capture.
+
+**Status (2026-09-26 10:00Z):** waiting for arm 3's `[job.arms]` verdict. PR #364
 stays in draft until then. On resume: check scores1.tsv status and PARTIAL COVERAGE,
-judge the bands, then mark ready.
+judge the five bands by reading, then mark ready.
 
 ## Why attempt 2 did not finish
 
@@ -174,8 +239,18 @@ green (build ×2, check). Arm 2 still had no request under `dispatch/queue` and 
 The host's 00:54 PDT delivery said the arms job had hit its two-pairs-per-tick cap, so arm 2
 is first on the next tick. Nothing new was measured, so the lane waits again.
 
+## Why attempt 3 did not finish
+
+Both of its sessions ended on a `waiting:` comment for arm 2, which was queued at
+08:22Z and judged at 09:50Z, both outside the session. Neither waited on a task of its
+own. `handback.sh` resumed the lane one minute after the verdict (attempt 4, 09:51Z).
+Attempt 4 judged arm 2 (above), registered arm 3 and waits on it.
+
 ## Do not repeat
 
+- Do not guard `Blend_surface/R5G6B5_Add_SrcA_DstA` or `X_O1RGB5_Add_SrcA_DstA` with
+  must_not_move. Each has two images on disk that differ in the first swatch block,
+  and the R5G6B5 pair occurs within one apk. Arm 1 failed on one, arm 2 on the other.
 - `git apply` of the zdepth272 patch fails on master after #321. Place hunk 2 by
   anchoring on the `carry);` block. Do not re-derive the hunk.
 - The Bash tool rejects heredocs that contain quoted braces. Write scratch
