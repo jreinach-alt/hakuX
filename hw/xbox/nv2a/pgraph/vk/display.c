@@ -1541,6 +1541,48 @@ static Fmv303Stats fmv303_stats(const uint8_t *p, size_t len, bool linear,
     return s;
 }
 
+/*
+ * v2: the FMV is a CPU-written linear A8R8G8B8 texture (bytes B,G,R,A), so
+ * byte zeros cannot see the green (alpha is 0xFF, the tint has R,B > 0).
+ * Count it in colour instead, with the predicate the screen frames are
+ * scored by: G >= 40, G >= 1.7 R, G >= 2.5 B. A macroblock (16x16 texels)
+ * is tinted when more than half its pixels are, lit when more than half
+ * have R+G+B > 60. Screen green with a clean guest buffer is a missed
+ * upload; the same green here means guest RAM holds it.
+ */
+static void fmv303_tint(unsigned long frame, int stage, const uint8_t *p,
+                        unsigned int w, unsigned int h, unsigned int pitch)
+{
+    unsigned int tint_mb = 0, lit_mb = 0;
+    uint64_t tint_px = 0, sum_r = 0, sum_g = 0, sum_b = 0;
+    for (unsigned int by = 0; by + 16 <= h; by += 16) {
+        for (unsigned int bx = 0; bx + 16 <= w; bx += 16) {
+            unsigned int t = 0, l = 0;
+            for (unsigned int y = by; y < by + 16; y++) {
+                const uint8_t *row = p + (size_t)y * pitch + (size_t)bx * 4;
+                for (unsigned int x = 0; x < 16; x++) {
+                    unsigned int b = row[x * 4], g = row[x * 4 + 1],
+                                 r = row[x * 4 + 2];
+                    t += g >= 40 && g * 10 >= r * 17 && g * 10 >= b * 25;
+                    l += r + g + b > 60;
+                    sum_r += r;
+                    sum_g += g;
+                    sum_b += b;
+                }
+            }
+            tint_px += t;
+            tint_mb += t > 128;
+            lit_mb += l > 128;
+        }
+    }
+    uint64_t n = (uint64_t)(w / 16) * (h / 16) * 256;
+    FMV303_LOG("[fmv303] f=%lu tex%d tint mb=%u lit=%u of=%u px=%.4f "
+               "rgb=%.1f,%.1f,%.1f",
+               frame, stage, tint_mb, lit_mb, (w / 16) * (h / 16),
+               n ? (double)tint_px / n : 0, n ? (double)sum_r / n : 0,
+               n ? (double)sum_g / n : 0, n ? (double)sum_b / n : 0);
+}
+
 static void fmv303_probe(PGRAPHState *pg)
 {
     static int enabled = -1;
@@ -1652,6 +1694,11 @@ static void fmv303_probe(PGRAPHState *pg)
                    addr, s.len, s.zero_frac, s.mean, s.hash, s.zero_blocks,
                    s.blocks);
         lines++;
+        if (color == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8 &&
+            w >= 256 && pitch >= w * 4) {
+            fmv303_tint(frame, i, d->vram_ptr + addr, w, h, pitch);
+            lines++;
+        }
     }
 }
 
