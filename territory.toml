@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 259
+wave = 260
 updated_utc = "2026-09-26T19:25:00Z"
 
 [retired.hilodot10]
@@ -368,13 +368,12 @@ files = ["hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/glsl/geom.h", "
 note = "DISPATCHED (hostops 2026-09-26T14:52Z): #13 class A of PR #370 (line-mode triangles not culled, 31,152 px). geom.c from lane.tiecode282 (retired this tick, PR #379 folded 07:41 PDT); geom.h and renderer.c were in no row (renderer.c for SHADER_STATE_LAYOUT_VERSION only). Brief: briefs/cull13.md."
 
 
-[lane.foldcancel]
+[retired.foldcancel]
 issues = []
-files = ["docs/testing/jobs/fold.sh", "docs/testing/jobs/selftest.d/74-fold-multi.sh", "docs/lanes/foldcancel/NOTES.md"]
-released = ["docs/testing/jobs/fold.sh", "docs/testing/jobs/selftest.d/74-fold-multi.sh", "docs/lanes/foldcancel/NOTES.md"]
-released_at_ready = 415
+files = []
 standing = false
-note = "STARTED (hostops 2026-09-26 11:55 AM PDT): harness defect, no tracker issue. fold.sh attribute_multi waits for trunk CI on a multi-fold tip sha, but android/desktop runs are cancelled by concurrency when a later fold pushes, so trunk_ci says NONE forever and folds stay throttled to one per tick (993c5fe4b5 04:10, 7039df1d24 05:46-11:52 PDT; both marked done by hand). fold.sh and 74-fold-multi.sh were in no row. Brief: briefs/foldcancel.md."
+retired_utc = "2026-09-26T20:15:00Z"
+note = "RETIRED (hostops 2026-09-26 13:15 PDT): PR #415 MERGED, no open PR on lane/foldcancel, unit gone. Files RELEASED to [free] (fold.sh, selftest.d/74-fold-multi.sh, docs/lanes/foldcancel/NOTES.md)."
 
 [free]
 # RELEASED (hostops 2026-09-26T19:35Z) by retiring lane.titleplay (PR #399 merged, pass 1 stopped by the owner): docs/testing/titles/routes/**, docs/testing/titles/targets.toml, docs/testing/title_verdict.py, docs/testing/titles/table.py, docs/lanes/titleplay/**
@@ -569,7 +568,7 @@ note = "STARTED (hostops 2026-09-26 11:55 AM PDT): harness defect, no tracker is
 # exist, and check_coverage.py cannot tell the difference.
 # CLAIMED (hostops, 2026-09-26T03:35Z): glsl/psh.h -> lane.pshqueue (granted at wave 222; [free] still listed it, failing check_territory).
 # CLAIMED (hostops, 2026-09-26 6:45 AM PDT): gl/texture.c -> lane.pshaniso284 (granted 6:40 AM; [free] still listed it, failing check_territory).
-files = ["docs/testing/titles/routes/**", "docs/testing/titles/targets.toml", "docs/testing/title_verdict.py", "docs/testing/titles/table.py", "docs/lanes/titleplay/**", "docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/73-cloud-claim.sh", "docs/lanes/cloudclaim/**", "docs/testing/nightly_build.sh", "docs/testing/jobs/selftest.d/86-nightly-notes.sh", "docs/lanes/nightlynotes/**", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**", "tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "android/app/build.gradle.kts", 
+files = ["docs/testing/jobs/fold.sh", "docs/testing/jobs/selftest.d/74-fold-multi.sh", "docs/lanes/foldcancel/NOTES.md", "docs/testing/titles/routes/**", "docs/testing/titles/targets.toml", "docs/testing/title_verdict.py", "docs/testing/titles/table.py", "docs/lanes/titleplay/**", "docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/73-cloud-claim.sh", "docs/lanes/cloudclaim/**", "docs/testing/nightly_build.sh", "docs/testing/jobs/selftest.d/86-nightly-notes.sh", "docs/lanes/nightlynotes/**", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**", "tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "android/app/build.gradle.kts", 
 # RELEASED AT WAVE 158 by retiring lane.cloud190: PR #211 folded as f2e8ef8ba8 (#190 fixed).
     "hw/xbox/nv2a/pmc.c",
 # RELEASED (job.board wave 249) by retiring lane.fmv303 (PR #317 folded bb1f437bb7): vk/display.c.
@@ -1206,9 +1205,9 @@ note = "RETIRED (hostops 2026-09-26 11:20 AM PDT): PR #409 MERGED (7b20fd2f66), 
 
 [lane.aufire412]
 issues = ["412"]
-files = ["docs/testing/predictions/aufire412-*.json", "docs/lanes/aufire412/**"]
+files = ["hw/xbox/nv2a/pgraph/vk/shaders.c", "docs/testing/predictions/aufire412-*.json", "docs/lanes/aufire412/**"]
 standing = false
-note = "STARTED (job.board 2026-09-26T19:20Z), briefs/aufire412.md: #412 (007: Agent Under Fire) gameplay fps. Profile-first: docs and prediction only until the lane names the code file and the board grants it."
+note = "GRANTED (hostops 2026-09-26 13:15 PDT, answering its 19:56Z grant request on #412): hw/xbox/nv2a/pgraph/vk/shaders.c, unclaimed since lane.remote released it 18:20Z, for the UBO descriptor-ring growth hunk (grow_descriptor_ring() at the two UBO-ring sites). Register the prediction first. STARTED (job.board 2026-09-26T19:20Z), briefs/aufire412.md: #412 (007: Agent Under Fire) gameplay fps. Profile-first: docs and prediction only until the lane names the code file and the board grants it."
 
 [lane.doa413]
 issues = ["413"]
