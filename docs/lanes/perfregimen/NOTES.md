@@ -22,13 +22,13 @@ ships the same library). The enum static initialisers, read with `dexdump -d`:
 The OEM settings apps (`com.odin.settings` on the Thor, `com.rp.settings` on
 the Nova) label fan indices 0-4 as `Off, Quiet, Sport, High speed, Smart`
 (`array/array_fan_speed`, read from resources.arsc with `arsc_strings.py`).
-Both sources agree that 3 is the high setting and 4 is Smart.
+The two sources disagree above 1 (the settings app's index 2 is "Sport", the enum's 2 is BALANCE), and only the enum is what `fan_mode` stores. Both agree that 4 is Smart. Which mode is the maximum was settled by measurement, not by labels (5a).
 
 Chosen, and carried per device in `devices.sh` `device_env`:
 
 | | performance_mode | fan_mode |
 |---|---|---|
-| MAX | 2 (HIGH) | 3 (PERFORMANCE / "High speed") |
+| MAX | 2 (HIGH) | 5 (SPORT). 3 was the first choice, and the idle probe (5a) showed it is not the fan's maximum |
 | REST | 0 (NORMAL, the library default) | 4 (SMART, what both devices were found at) |
 
 REST is the same on both devices, so the Nova no longer idles at STANDARD.
@@ -92,10 +92,92 @@ It covers the idle probe (P1 GPU floor, P2 fan duty) and REST/MAX/REST Blinx
 arms (P3 load readouts, P4 REST agreement, P5 non-inferiority, P6 a labelled
 guess of +5%). Runner: `held_session.sh <label> <dir>`. Judge: `judge.py`.
 
-(results pending: see below)
+### 5a. The Nova, held 15:43:29-16:13:31 PDT (raw records: `pilot-nova.md`)
+
+**The writes reach the hardware.** Idle probe, 8 s settle per step, no title:
+
+| performance_mode | kgsl min_clock_mhz (min_pwrlevel) | big-core cur (policy7) |
+|---|---|---|
+| 0 NORMAL | 401 (4), four times | 1843200 |
+| 1 STANDARD | 550 (2) | 2476800 |
+| 2 HIGH | 615 (1) | 3187200 |
+
+| fan_mode | PWM duty | state | tach rpm |
+|---|---|---|---|
+| 0 DISABLED | 0 | 0 | 300 (spinning down) |
+| 1 QUIET, 2 BALANCE, 3 PERFORMANCE, 4 SMART | 12000 | 1 | 4200-4800 |
+| 5 SPORT | 25000 | 1 | 8100 |
+
+The device log names the actuators: `pservice: cpu_init boot_completed cpugpumode=0`
+writing kgsl `min_pwrlevel` (the vendor perf service, domain `pservice`),
+and `FanBase: mSmartAction smartSpeed = 13519` (the SMART fan curve in the
+OEM settings app).
+
+**The registered prediction's P2 failed in the world it named.** Fan mode 3
+is not the fan's maximum: at idle it holds the same duty as SMART, and 5
+(SPORT) doubles it. So FAN_MAX is 5 (commit 1d828b45e4). A follow-up MAX
+arm at 2/5 was registered (`perfregimen-pilot-nova-fan5.json`) before it ran.
+
+**The first two sessions' arms were VOID, and the fault was mine.**
+held_session.sh gave soak_title.sh a scratch lease. Every Claude session's
+Stop hook (`stop-emulator.sh`) force-stops hakuX on any handheld whose
+per-device lease (`/tmp/hakux-device-lease.<label>`) is stale. It does not
+read `dispatch/hold/`, so other sessions' turn ends killed the arms 33-103 s
+in. `watch_forcestop.py` caught one of those hooks (cloud-audit1-419's) in
+the act. With the real lease, session 3 ran clean. The **hold gap in the
+Stop hook** is the host's to decide (it is not this lane's file): a hold
+alone does not protect a device from other sessions' Stop hooks. Only the
+lease does.
+
+**Session 3, REST / MAX(2/5) / REST, Crimson Skies hands-off, 250 s arms.**
+Arm 3 was TERMed at 16:13:15 to keep the hold under 30 minutes. That is also
+the TERM leg on real hardware: rc 143, REST restored, read back as 0/4.
+
+| arm | fps 135-245 s (median gfps) | lines | ran at | restored | GPU MHz | GPU floor | fan duty | fan rpm | gpuss-0 |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 rest | 29 | 55 | 0/4 | true | 401 | 401 | 13729 | 5700 | 46.7 C |
+| 2 max | 29 | 55 | 2/5 | true | 615 | 615 | 25000 | 9000 | 48.9 C |
+| 3 rest | 29 | 33 (TERM) | 0/4 | true | 401 | 401 | 15024 | 6300 | 50.1 C |
+
+Verdict against `perfregimen-pilot-nova-fan5.json`: M0 through P5 pass, and P6
+(the labelled +5% guess) fails. The mean gfps in every stretch of every arm
+(0-60, 60-135 and 135-245 s) is 28.7-29.4: Crimson's hands-off stretch is
+**content-capped at ~30 fps**, so no mode can move it. The regimen works (the
+MAX arm really ran at MAX, and REST really came back). This title just cannot
+show an fps effect. The informative fps pilot is the Thor's Blinx demo
+(12-16 fps, under its cap).
+
+**The reader changed after registration, and this says so.** The
+registration names the blinx372c cadence reader (60 flips per gfps line).
+On this APK, `gfps=` is printed every ~2 s with that window's fps as its
+value, and 2 s apart is also what 30 fps at 60 flips per line looks like. So
+the cadence reader returns ~30 whatever the rate, and judge.py reads the
+value instead.
+
+### 5b. The Thor: pending
+
+At the time of writing the Thor was below the brief's 50% start floor (43%,
+flat while serving the queue) and held by lane.xbox. Its values are the same
+library's (the enums were read from the Thor's own SystemUI.apk), and its
+read-only state agrees with the Nova's mapping (0/4 reads 401 MHz and
+pwrlevel 4, exactly as the Nova does at 0). Its write proof and the Blinx
+pilot (`perfregimen-pilot-thor.json`, fan MAX now 5) remain to run:
+`launch_session.sh thor <dir>`.
+
+## For the host: REST values for host-tools/device_rest.conf
+
+    thor performance_mode=0 fan_mode=4
+    nova performance_mode=0 fan_mode=4
 
 ## Do not repeat
 
 - `aapt`/`unzip` may be unavailable to a lane shell. `arsc_strings.py` reads
   resources.arsc with only the stdlib, and Python's zipfile extracts dex.
 - The Thor's `gpio5_pwm2/speed` is always 0. Read `duty` there.
+- A hand-run soak on a held device MUST touch the device's real lease
+  (`/tmp/hakux-device-lease.<label>`), or any session's Stop hook kills it.
+  The hold does not protect it.
+- A content-capped title cannot show a clock effect. Check the REST arm's
+  fps against its cap (Crimson hands-off: ~30) before choosing a pilot title.
+- Running `settings get` / `cat` on sysfs from `adb shell` logs `avc: denied`
+  lines in permissive mode. They are harmless noise in the device log.

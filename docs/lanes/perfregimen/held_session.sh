@@ -74,7 +74,12 @@ step "$PMAX" "$FMAX"
 step "$PREST" "$FREST"
 } 2>&1 | tee "$OUT/idle.log"
 
-# 2. The pilot arms.
+# 2. The pilot arms. soak_title.sh touches the REAL per-device lease
+# (device_env's HAKUX_DEVICE_LEASE, /tmp/hakux-device-lease.<label>): every
+# Claude session's Stop hook (stop-emulator.sh) force-stops hakuX on any
+# device whose lease is stale, and it does not read dispatch/hold. A scratch
+# lease here got the first Nova session's arms killed 33-103 s in by other
+# sessions' turn ends.
 sampler() {   # <file>: every 10 s until killed
     while :; do snap >> "$1"; sleep 10; done
 }
@@ -92,7 +97,7 @@ for arm in ${ARMS:-rest max rest}; do
     log "== arm $arm_n $arm (battery $b%)" | tee -a "$OUT/session.log"
     sampler "$ad/samples.txt" & SP=$!
     SERIAL="$S" CAPTURE_LOG="$ad/logcat.txt" PERF_REGIMEN="$arm" \
-        HAKUX_DEVICE_LEASE="$OUT/lease" LOGCAT_SPEC="${LOGCAT_SPEC:-}" \
+        LOGCAT_SPEC="${LOGCAT_SPEC:-}" \
         bash "$TESTING/soak_title.sh" "$ISO" "$ARM_S" > "$ad/run.log" 2>&1
     rc=$?
     kill "$SP" 2>/dev/null; wait "$SP" 2>/dev/null
