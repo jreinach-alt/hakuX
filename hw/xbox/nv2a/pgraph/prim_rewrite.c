@@ -531,12 +531,23 @@ static void rewrite_quads(PrimRewrite *r, const uint32_t *idx, uint32_t base,
  * line has no third slot to carry the colour in.  That needs an input
  * layout in geom.c with a slot for it, as PRIM_TYPE_TRIANGLES_ADJACENCY is
  * for the filled quad.  See docs/lanes/flatlm13/NOTES.md.
+ *
+ * The flip is gated on a geometry stage (flat_line_first() below).  Without
+ * one (GLES without GL_EXT_geometry_shader, PrimAssemblyState::no_adjacency)
+ * a LINE's flat varyings come from the rasteriser's provoking vertex, which
+ * GLES fixes at the LAST index; there the unflipped order already carries
+ * the colour vertex on these edges, and flipping would move it off.
  */
-static inline void emit_edge_flat(PrimRewrite *r, uint32_t a, uint32_t b,
-                                  uint32_t p, bool flat_shading)
+static inline bool flat_line_first(const PrimAssemblyState *mode)
 {
-    if (flat_shading && b == p) {
-        emit_line(r, b, a);
+    return mode->flat_shading && !mode->no_adjacency;
+}
+
+static inline void emit_edge_flat(PrimRewrite *r, uint32_t a, uint32_t b,
+                                  uint32_t p, bool flat_first)
+{
+    if (flat_first) {
+        emit_line_pv(r, a, b, p);
     } else {
         emit_line(r, a, b);
     }
@@ -544,7 +555,7 @@ static inline void emit_edge_flat(PrimRewrite *r, uint32_t a, uint32_t b,
 
 static void rewrite_quads_line(PrimRewrite *r, const uint32_t *idx,
                                uint32_t base, unsigned int count,
-                               bool flat_shading)
+                               bool flat_first)
 {
     for (unsigned int i = 0; i + 3 < count; i += 4) {
         uint32_t v0 = idx_at(idx, i, base);
@@ -560,7 +571,7 @@ static void rewrite_quads_line(PrimRewrite *r, const uint32_t *idx,
          */
         emit_line(r, v1, v2);
         emit_line(r, v0, v1);
-        emit_edge_flat(r, v2, v3, v3, flat_shading);
+        emit_edge_flat(r, v2, v3, v3, flat_first);
         emit_line(r, v3, v0);
     }
 }
@@ -600,7 +611,7 @@ static void rewrite_quad_strip(PrimRewrite *r, const uint32_t *idx,
 
 static void rewrite_quad_strip_line(PrimRewrite *r, const uint32_t *idx,
                                     uint32_t base, unsigned int count,
-                                    bool flat_shading)
+                                    bool flat_first)
 {
     if (count < 4) {
         return;
@@ -621,7 +632,7 @@ static void rewrite_quad_strip_line(PrimRewrite *r, const uint32_t *idx,
          */
         emit_line(r, v2, v0);
         emit_line(r, v0, v1);
-        emit_edge_flat(r, v1, v3, v3, flat_shading);
+        emit_edge_flat(r, v1, v3, v3, flat_first);
         emit_line(r, v3, v2);
     }
 }
@@ -645,7 +656,7 @@ static void rewrite_polygon(PrimRewrite *r, const uint32_t *idx, uint32_t base,
 
 static void rewrite_polygon_line(PrimRewrite *r, const uint32_t *idx,
                                  uint32_t base, unsigned int count,
-                                 bool flat_shading)
+                                 bool flat_first)
 {
     if (count < 2) {
         return;
@@ -675,7 +686,7 @@ static void rewrite_polygon_line(PrimRewrite *r, const uint32_t *idx,
         if (t == count - 2) {
             emit_edge_flat(r, idx_at(idx, count - 1, base),
                            idx_at(idx, 0, base), idx_at(idx, 0, base),
-                           flat_shading);
+                           flat_first);
         }
         if (t == 1) {
             emit_line(r, idx_at(idx, 0, base), idx_at(idx, 1, base));
@@ -710,7 +721,7 @@ static void rewrite_indices(PrimRewrite *r, const PrimAssemblyState *mode,
     case PRIM_TYPE_QUADS:
         if (mode->polygon_mode == POLY_MODE_LINE) {
             rewrite_quads_line(r, idx, base, num_indices,
-                               mode->flat_shading);
+                               flat_line_first(mode));
         } else {
             rewrite_quads(r, idx, base, num_indices, mode->flat_shading,
                           emits_adjacency(mode));
@@ -719,7 +730,7 @@ static void rewrite_indices(PrimRewrite *r, const PrimAssemblyState *mode,
     case PRIM_TYPE_QUAD_STRIP:
         if (mode->polygon_mode == POLY_MODE_LINE) {
             rewrite_quad_strip_line(r, idx, base, num_indices,
-                                    mode->flat_shading);
+                                    flat_line_first(mode));
         } else {
             rewrite_quad_strip(r, idx, base, num_indices, mode->flat_shading,
                                emits_adjacency(mode));
@@ -728,7 +739,7 @@ static void rewrite_indices(PrimRewrite *r, const PrimAssemblyState *mode,
     case PRIM_TYPE_POLYGON:
         if (mode->polygon_mode == POLY_MODE_LINE) {
             rewrite_polygon_line(r, idx, base, num_indices,
-                                 mode->flat_shading);
+                                 flat_line_first(mode));
         } else {
             rewrite_polygon(r, idx, base, num_indices);
         }

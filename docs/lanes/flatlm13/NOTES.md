@@ -116,6 +116,28 @@ queued until 15:11 UTC.  Both dirs had DONE by the resume, but no
 `[job.arms]` comment was ever posted, so handback resumed on the quiet clock
 (`arm=none`).  Session 2 judged the result dirs directly.
 
+## Remediation of audit pass 1 (2026-09-26)
+
+M1: the edge flip is now gated on `flat_line_first(mode)` =
+`flat_shading && !no_adjacency`.  Without a geometry stage (GLES without
+GL_EXT_geometry_shader) a LINE's flat colour comes from GLES's LAST provoking
+vertex, where the unflipped order was already right, so that path keeps
+master's stream.  L1: `emit_edge_flat()` now calls `emit_line_pv()`.
+
+Checked by compiling master, the pre-remediation head (49ecb3e0e7) and the
+remediated file against one driver that dumps the rewritten stream for
+QUADS / QUAD_STRIP / POLYGON in POLY_MODE_LINE, n = 2..8, over every
+flat / no_adjacency / last_provoking combination (168 rows):
+
+- no_adjacency=1 (84 rows): remediated == master; the pre-remediation head
+  differed from master on 32 of them (the M1 scenario).
+- no_adjacency=0 (84 rows): remediated == pre-remediation head, byte for
+  byte.  Vulkan never sets no_adjacency, so the arm at b_ref 970c382ed1
+  measured this exact stream, and the prediction is not re-registered.
+
+L2 (desktop GL line-rasteriser corner pixels) is recorded in the audit and
+unchanged: bounded, unmeasured, not a gate.
+
 ## Do not repeat
 
 - Do not name vertices from these PNGs without the R/B swap (above).
