@@ -56,6 +56,23 @@ the run and suppresses M.
 - **SURVIVES:** m11 is eliminated. Two candidates remain (the LUMINANCE stage
   and the luminance values), each for a second capture.
 
+**The world each outcome rules out.** This is text only, added before any
+silicon run, at the host's request. No prediction changes.
+
+- **COLLAPSE rules out** a world where silicon reads a Y16 bump source
+  differently from Y8 whatever the matrix is: a read-side defect would
+  separate them at m11 = 5.0 as well. What is left is an interaction between
+  the Y16 source and the small vertical term.
+- **SURVIVES rules out** a world where m11 is the trigger. What is left is
+  the LUMINANCE stage and the luminance values.
+- **X** is a world where m11 modulates the separation without explaining
+  it. It covers a count between the thresholds, and the swizzled and
+  linear pairs disagreeing. That disagreement would bring the swizzle in as
+  a factor.
+- **hakuX's own leg fails** in a world where its bump path separates Y16
+  from Y8 at m11 = 5.0. That would contradict PR #187's finding that its Y16
+  is byte-identical to its Y8.
+
 **hakuX (the dry run):** its pairs **COLLAPSE**, because it renders Y16 as Y8.
 Its `BumpMap_Y16` against the golden is recorded, not predicted.
 
