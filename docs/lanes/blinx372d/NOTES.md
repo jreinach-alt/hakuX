@@ -223,6 +223,15 @@ Nothing failed.
   job queues it.
 - Did not re-register the demo A/B. On the demo this PR's code runs the same
   path as master, and a second hand-read soak pair would measure noise.
+- Posted the counter result and the sec 5 design on #372.
+- **Waiting** on the arms job's `[job.arms]` verdict for
+  `blinx372d-mnm2.json` (the brief asks for the arm re-run on the merge before
+  ready). On resume:
+  1. Check that all rows are byte-identical and that B's `[evict372]
+     handoffs=` is > 0. A has no counter, which is expected: it is plain
+     master.
+  2. Read `white-content` rows as unreadable.
+  3. Then `gh pr ready 396`.
 
 ## 5. The demo's case: a same-pitch size flip (next lane, not this PR)
 
