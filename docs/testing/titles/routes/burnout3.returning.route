@@ -1,0 +1,47 @@
+# Burnout 3: Takedown (4541005B), RETURNING: a Burnout 3 profile is on the
+# disk. DRAFT, not yet played: no run has yet booted Burnout 3 with a profile
+# present, so what it asks is inferred from the first-run screens. The
+# profile screen offers LOAD PROFILE above NEW PROFILE; with a profile on the
+# disk the cursor may already sit on LOAD, so this route flicks UP (harmless
+# if it is already there: the menu has two rows) and confirms, then takes the
+# first profile. Surveys from there, like burnout3.first-run.route.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+mark booted
+press START
+wait 4
+shot language
+press A
+wait 4
+shot select-option
+axis LY min
+wait 0.3
+axis LY mid
+wait 1
+shot load-profile
+press A
+wait 4
+shot profile-list
+press A
+wait 8
+shot loaded
+mark profile-loaded
+repeat 8 {
+    press A
+    wait 5
+    shot after-load
+}
+mark play
+repeat forever {
+    repeat 2 {
+        axis RT max
+        press A
+        wait 10
+        axis RT mid
+        wait 1
+    }
+    shot play
+}

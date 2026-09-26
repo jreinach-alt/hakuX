@@ -14,7 +14,11 @@
 #               30 is flagged below_own_target, not failed -- many Xbox games
 #               tie game speed to frame rate, so it may be in slow motion,
 #               and a human decides.
-#   route       its own route in routes/<route>.route (else generic)
+#   route       its own route in routes/<route>.route (else generic); or,
+#               for a title whose way in depends on a saved profile, the
+#               variants routes/<route>.first-run.route and
+#               routes/<route>.returning.route, which titlestate.py picks
+#               between from the device's title state
 #   notes       free text; where a value came from
 
 [defaults]
@@ -100,6 +104,7 @@ notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 
 [titles."45410083"]
 name = "Black"
 iso = { thor = "45410083-Black.xiso.iso" }
+route = "black"
 notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
 
 [titles."45410026"]
@@ -140,6 +145,7 @@ notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 
 [titles."4541005B"]
 name = "Burnout 3: Takedown"
 iso = { thor = "4541005B-Burnout_3_Takedown.xiso.iso" }
+route = "burnout3"
 notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
 
 [titles."4156005D"]
