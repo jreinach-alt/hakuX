@@ -53,7 +53,9 @@ Master had moved 128 commits in the meantime, and the PR had become unmergeable
 (`dirty`) on `docs/testing/nv2a_index.json`. I merged origin/master in, without a
 rebase, so a_ref and b_ref are still ancestors. I took master's index and rebuilt
 it over the fold-pins trees (tests_commit 6743b6ab), and `check` matches. The
-pgraph.c hunk merged without a conflict.
+pgraph.c hunk merged without a conflict. With `--allow-tracker`, preflight now
+passes on every gate, `coverage` included: hostops had cleared #273's stale
+blocker on origin/board.
 
 ## State
 
