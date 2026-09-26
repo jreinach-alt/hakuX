@@ -22,7 +22,7 @@ Columns
   slow/s  notdirty slow stores per second (`slow stores N`)
   inv/s   of those, the ones that reached the invalidator
   fs/s    stores the #424 code bitmap answered without the page walk
-          (`cb=` on the pages line; absent before #424)
+          (`cb=` on the [tlb68] line; absent before #424)
   xx      the impossible row, summed; must be 0
 
 A span with no [tlb68] line is VOID, not zero.
@@ -98,7 +98,7 @@ def one(run, lo, hi):
         'di/s': sum(num(d, 'di') for d in pg) / wall,
         'pr/s': sum(num(d, 'pr') for d in pg) / wall,
         'slow/s': slow / wall, 'inv/s': inv / wall,
-        'fs/s': sum(num(d, 'cb') for d in pg) / wall,
+        'fs/s': sum(num(d, 'cb') for d in tl) / wall,
         'xx': sum(num(d, 'xx') for d in pg),
         'fx': tl[-1].get('fx', '?'),
     }
