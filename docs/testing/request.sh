@@ -102,6 +102,7 @@ TITLE=""; SECONDS_HOLD=60; PULL_GLOB=""; EXPECT=""; NO_EXPECT=""; DEVICE=""
 AUDIO_CAPTURE=""; BASE_ISO=""; PERFLOG=""; ONLY_TESTS=""; PROGRAM="pgraph"
 ENV_VARS=()
 FRAMES_EVERY=0
+ROUTE=""; ROUTE_TEXT=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --who) WHO="$2"; shift 2;;
@@ -153,6 +154,7 @@ while [ $# -gt 0 ]; do
         --perflog) PERFLOG=true; shift;;
         --env) ENV_VARS+=("$2"); shift 2;;
         --frames-every) FRAMES_EVERY="$2"; shift 2;;
+        --route) ROUTE="$2"; shift 2;;
         --expect) EXPECT="$2"; shift 2;;
         --no-expect) NO_EXPECT="$2"; shift 2;;
         --wait) WAIT=1; shift;;
@@ -1015,9 +1017,23 @@ if [ -n "$BASE_ISO" ] || [ "$PROGRAM" = vsh ]; then
     fi
 fi
 
+# --route <name>: the route file is read from THIS tree now and its TEXT goes
+# into the request, so the request is self-contained and records exactly what
+# was played -- an edit to the route after queueing cannot change a run that
+# is already waiting. It is parsed here too (route.sh --check), so a typo is
+# refused at the prompt rather than twenty minutes into a soak.
+if [ -n "$ROUTE" ]; then
+    [ -n "$TITLE" ] || { echo "--route only means anything on a soak (--title)" >&2; exit 2; }
+    ROUTE_PATH="$(dirname "$0")/titles/routes/$ROUTE.route"
+    [ -f "$ROUTE_PATH" ] || { echo "refusing to queue: no route '$ROUTE' ($ROUTE_PATH)" >&2; exit 2; }
+    bash "$(dirname "$0")/titles/route.sh" --check "$ROUTE_PATH" >/dev/null || exit 2
+    ROUTE_TEXT=$(cat "$ROUTE_PATH")
+fi
+
 # `env` goes LAST and as the remaining argv, because it is the only repeatable
 # option here and packing it into one comma-joined string -- the shape every
 # other list option uses -- would make a value containing a comma unqueueable.
+ROUTE="$ROUTE" ROUTE_TEXT="$ROUTE_TEXT" \
 python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" "$AUDIO_CAPTURE" "$BASE_ISO" "$PERFLOG" "$ONLY_TESTS" "$FRAMES_EVERY" "$PROGRAM" ${ENV_VARS[@]+"${ENV_VARS[@]}"} <<'PY'
 import json, sys
 (p, i, who, purpose, suites, ref, arm, runs, tests, title, seconds,
@@ -1044,6 +1060,9 @@ json.dump({"id": i, "requester": who, "purpose": purpose,
            # same information and only the list survives a round trip.
            "env": env_vars,
            "frames_every": int(frames_every or 0),
+           # The route's name and its full text as queued; see --route.
+           "route_name": __import__("os").environ.get("ROUTE", ""),
+           "route": __import__("os").environ.get("ROUTE_TEXT", ""),
            "expect": expect, "expect_sha": expect_sha,
            "no_expect": no_expect,
            "queued_utc": __import__("datetime").datetime.now(
@@ -1079,8 +1098,9 @@ except Exception as e:
     print("UNREADABLE:%s" % e)
     raise SystemExit(0)
 if r.get("title"):
-    print("soak: %s, %ss%s" % (r["title"], r["seconds"],
-                               ", env " + " ".join(r["env"]) if r.get("env") else ""))
+    print("soak: %s, %ss%s%s" % (r["title"], r["seconds"],
+                               ", env " + " ".join(r["env"]) if r.get("env") else "",
+                               ", route " + r["route_name"] if r.get("route") else ""))
 else:
     print("%sdisc: %d suite(s) [%s], only_tests %d, skip_tests %d, runs %d"
           % ("vsh " if r.get("program") == "vsh" else "",
