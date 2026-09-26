@@ -68,3 +68,17 @@ owner if the console stops answering.
   `docs/testing/xbox-refs6743-2026-09-25.md`. `Clipping precision` is
   interactive-only and saves nothing. `PVIDEO` writes `NV_PMC_ENABLE` and
   waits for the power switch.
+- 2026-09-25. #255 on silicon (routed on the #112 thread, item 3), via
+  `CPU Shader Tests::SUBNORM_MAC`, raw bits:
+  - MOV keeps subnormals bit-exact.
+  - MUL, ADD and MAD flush a subnormal operand to **+0**, dropping the sign.
+  - An underflowed result flushes to a signed zero.
+  - `-0 + -0` gives `+0`.
+  - MAD flushes the product before the add.
+  - hakuX matches 20 of 32 rows.
+  - One registered control, `-0 + -0`, missed on a wrong IEEE premise, not an
+    instrument fault.
+  - #288's text-based "IDENTICAL" cannot tell `-0` from a negative
+    subnormal.
+
+  `docs/testing/xbox-subnorm-mac-2026-09-25.md`.

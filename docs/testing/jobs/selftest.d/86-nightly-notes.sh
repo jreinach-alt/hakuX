@@ -172,7 +172,10 @@ dated() {   # <when> <repo> <subject> <path...> -- commit_touching at a fixed da
     local when=$1; shift
     GIT_AUTHOR_DATE="$when" GIT_COMMITTER_DATE="$when" commit_touching "$@"
 }
-YDAY=$(date -d yesterday +%F)
+# The day before the script's own DAY, which is local_day() (Pacific), not the
+# runner's clock: from 00:00Z to 07:00Z a UTC runner's "yesterday" IS Pacific
+# today, the script skips that tag as today's own, and the base falls through.
+YDAY=$(. "$TESTING/jobs/localtime.sh"; date -d "$(local_day) -1 day" +%F)
 dated "$(date -d '5 days ago 12:00' -Iseconds)" "$FIX3" "base" README.md
 git -C "$FIX3" tag nightly-2000-01-01
 dated "$(date -d '2 days ago 12:00' -Iseconds)" "$FIX3" "docs: before yesterday's nightly" docs/old.md

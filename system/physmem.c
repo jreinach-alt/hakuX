@@ -3928,6 +3928,22 @@ void *address_space_map(AddressSpace *as,
     *plen = flatview_extend_translation(fv, addr, len, mr, xlat,
                                         l, is_write, attrs);
     fuzz_dma_read_cb(addr, *plen, mr);
+#ifdef XBOX
+    /*
+     * A device that maps RAM directly writes it without passing through
+     * flatview_write_continue(), so the surface watch never saw the write.
+     * xemuReadFromFileIntoSurface: an IDE read put white into a bound
+     * surface's memory, the guest's next read of it tripped the watch, and
+     * the surface's stale copy was downloaded over the file's data (#277).
+     * Report the write before the device makes it, as the bounce path does:
+     * a dirty surface is written back first, then marked for re-upload.
+     */
+    if (is_write) {
+        mem_check_access_callback_ramaddr(qemu_get_cpu(0),
+                                          memory_region_get_ram_addr(mr) + xlat,
+                                          *plen, BP_MEM_WRITE);
+    }
+#endif
     return qemu_ram_ptr_length(mr->ram_block, xlat, plen, true, is_write);
 }
 
