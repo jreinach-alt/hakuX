@@ -75,3 +75,24 @@ PY
 pf_pair "$PT/mut-preflight.sh"
 check "MUTANT (one shared log directory): run A loses its report" grep -q '^  produced no report' "$PT/a.out"
 check "  and fails" grep -q '^preflight FAILED' "$PT/a.out"
+
+# #367's refusal read `baseline basic/gl does not generate` out of the shared
+# differ.err. A run that passes alone must not fail on ANOTHER tree's stderr:
+# B's psh-differ prints that line, and A must stay green. A opens its files
+# first and B truncates after, so B's line lands at the start of a shared file.
+pf_errpair() {   # <preflight.sh>
+    rm -rf "$PT/a" "$PT/b" "$PT/sync"/* "$PT/tmp"/* "$PT/shared"/*
+    pf_tree "$PT/a" "$1" "echo 'TOTAL A'; touch '$PT/sync/a-wrote'; set -- '$PT/sync/b-wrote'; $WAIT"
+    pf_tree "$PT/b" "$1" "echo 'psh-differ: baseline basic/gl does not generate.' >&2; touch '$PT/sync/b-wrote'; set -- '$PT/sync/a-finished'; $WAIT"
+    ( export TMPDIR="$PT/tmp" TESTS="$PT/tests" SUPPORT=""
+      bash "$PT/a/docs/testing/preflight.sh" > "$PT/a.out" 2>&1 & a=$!
+      set -- "$PT/sync/a-wrote"; eval "$WAIT"
+      bash "$PT/b/docs/testing/preflight.sh" > "$PT/b.out" 2>&1 & b=$!
+      wait "$a"; touch "$PT/sync/a-finished"
+      wait "$b" )
+}
+pf_errpair "$TESTING/preflight.sh"
+check "another tree's 'does not generate' does not fail run A" grep -q '^preflight passed' "$PT/a.out"
+check "  and run B, whose line it is, fails on it" grep -q 'basic/gl does not generate' "$PT/b.out"
+pf_errpair "$PT/mut-preflight.sh"
+check "MUTANT: run A fails on B's stderr, as #367 did" grep -q 'basic/gl does not generate' "$PT/a.out"

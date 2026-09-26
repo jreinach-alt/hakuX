@@ -561,11 +561,18 @@ was added here.
 
 ## Defect 26: concurrent preflights read each other's reports
 
-The fold refused PR #367 twice with `psh_differ report FAILED / produced no
-report`, on a sha that passes alone. preflight.sh wrote every log to a fixed
-`/tmp/preflight-*` path (8 files, 22 references). A second run's
-`>/tmp/preflight-differ.log` truncates the report the first has written and
-not yet read.
+The fold refused PR #367 twice with `psh_differ report FAILED / a baseline
+no longer generates a shader: psh-differ: baseline basic/gl does not
+generate`, on a sha that passes alone. preflight.sh wrote every log to a
+fixed `/tmp/preflight-*` path (8 files, 22 references). A second run
+truncates the first's `differ.log` before the first reads it, which gives
+`produced no report`. A second run whose own psh-differ prints to
+`differ.err` puts its stderr in the first run's verdict, which gives #367's
+text. psh-differ itself opens no fixed path (`differ.c` writes only
+`--json`'s argument), so two causes remain for that text: another tree's run,
+or a real child death in this run. This removes the first. If the refusal
+recurs after this folds, it is the second, and the failing run now keeps its
+logs where the refusal says.
 
 **Fix.** One `mktemp -d` per run (`$TMPDIR/preflight.XXXXXX`) holds every
 log. A pass removes it; a failure keeps it and prints `this run's logs:
@@ -576,15 +583,19 @@ preflight.sh, every gate stubbed to pass. The order is forced with sync files,
 not sleeps: A's psh-differ writes `TOTAL A`, and only then does B start; B's
 redirect opens its report before A reads its own.
 
-| run | this branch | mutant (one fixed dir) | master @ 2dc2b5c49a |
-|---|---|---|---|
-| A | ok, `TOTAL A`, passed | `produced no report`, FAILED | `produced no report`, FAILED |
-| B | ok, `TOTAL B`, passed | ok | ok |
+| case | run | this branch | mutant (one fixed dir) | master @ 2dc2b5c49a |
+|---|---|---|---|---|
+| B truncates A's report | A | ok, `TOTAL A`, passed | `produced no report`, FAILED | `produced no report`, FAILED |
+| | B | ok, `TOTAL B`, passed | ok | ok |
+| B's stderr says `basic/gl does not generate` | A | passed | FAILED on B's line | FAILED on B's line |
+| | B | FAILED on its own line | FAILED | FAILED |
 
-The master row is master's own preflight.sh with `/tmp/preflight-` renamed
-to a private directory, so the falsification cannot clobber a real fold on
-this host. It is otherwise byte-identical. It shows #367's refusal word for
-word.
+The master column is master's own preflight.sh with `/tmp/preflight-`
+renamed to a private directory, so the falsification cannot clobber a real
+fold on this host. It is otherwise byte-identical. In the second case it
+prints the same four lines as #367's refusal (`psh_differ report FAILED`,
+`a baseline no longer generates a shader:`, `psh-differ: baseline basic/gl
+does not generate.`). The fixture's line stops at the first sentence.
 
 **The rest of the brief's list is not this class.** In `run_disc.sh`,
 `sweep_queue.sh`, `soak_title.sh` and `run_one_disc.sh`, the only `/tmp`
