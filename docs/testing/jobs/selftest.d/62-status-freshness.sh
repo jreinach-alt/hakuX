@@ -47,14 +47,23 @@ check "status.sh PATCHes the issue BODY (renders above every comment)" \
     grep -q 'api -X PATCH repos/example/hakux/issues/107 -F body=' "$SF_LOG"
 check "status.sh PATCHes the issue TITLE (all the issue list shows)" \
     grep -q 'api -X PATCH repos/example/hakux/issues/107 -f title=harness: live status' "$SF_LOG"
-check "the title carries a UTC clock" \
-    grep -qE -- '-f title=harness: live status -- [0-9]{2}:[0-9]{2}Z\+,' "$SF_LOG"
+# The clock is the display zone's (#107, owner 2026-09-26: "any timestamps on
+# it be in Americas/Los_Angeles"). tz_abbr says UTC only on a host without the
+# zone file, where localtime.sh refuses to mislabel UTC as Pacific.
+sf_tz=$(. "$HERE/localtime.sh"; tz_abbr)
+check "the title carries a display-zone clock ($sf_tz)" \
+    grep -qE -- "-f title=harness: live status -- [0-9]{2}:[0-9]{2} $sf_tz\\+," "$SF_LOG"
 check "the title carries the lane and arm counts" \
     grep -qE -- '-f title=.*[0-9]+ lanes? running, [0-9]+ arms? on a device' "$SF_LOG"
 
 check "the body header exists" [ -s "$HDR" ]
 check "the body header leads with the minute it was written" \
-    grep -qE '^\*\*Written [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} UTC\.\*\*' "$HDR"
+    grep -qE "^\\*\\*Written [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} $sf_tz\\.\\*\\*" "$HDR"
+if [ "$sf_tz" != UTC ]; then
+    check "the body header's deadline is in the display zone too" grep -qE "due by \\*\\*[0-9-]{10} [0-9:]{5} $sf_tz\\*\\*" "$HDR"
+    check "the body header carries no UTC clock" sf_nogrep -E '[0-9]{2}:[0-9]{2} UTC|[0-9]{2}:[0-9]{2}Z' "$HDR"
+    check "the title carries no UTC clock" sf_nogrep -E -- '-f title=.*([0-9]{2}:[0-9]{2}Z|UTC)' "$SF_LOG"
+fi
 check "the body header states the deadline a reader judges staleness by" \
     grep -q 'Next roll-up due by' "$HDR"
 check "the body header warns that a comment's rendered time is its posted time" \
@@ -86,6 +95,11 @@ check "the lapse names how long it lasted" grep -qE 'lapsed for 2h [0-9]+m' <<< 
 check "the lapse names the window that was not observed" \
     grep -q 'Nothing was observed across that window' <<< "$sout"
 check "the page always states its next deadline" grep -q 'Next roll-up due by' <<< "$sout"
+if [ "$sf_tz" != UTC ]; then
+    check "the lapse names both ticks in the display zone" \
+        bash -c 'l=$(grep "roll-up lapsed" <<< "$1"); [ "$(grep -o " $2" <<< "$l" | wc -l)" -ge 2 ] && ! grep -q UTC <<< "$l"' _ "$sout" "$sf_tz"
+    check "the comment's deadline is in the display zone" grep -qE "due by [0-9-]{10} [0-9:]{5} $sf_tz\\." <<< "$sout"
+fi
 check "--print writes nothing to GitHub" sf_nogrep 'api -X PATCH' "$SF_LOG"
 # `--print` is a dry run: it must not clear the lapse the next real tick owes
 # the reader.
