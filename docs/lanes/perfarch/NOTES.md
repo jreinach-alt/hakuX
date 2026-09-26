@@ -19,12 +19,18 @@ Landed and read (details in `perf-architecture.md` section 8):
   vCPU's busy time, below the registered band. The prediction stays as
   registered.
 - **TSO B1 did not boot** under `HAKUX_TCG_TSO=rcpc`: its log ends at
-  `qemu_main`, with no crash. A2 was a harness exit after 20 s. The judge
+  `qemu_main`, with no crash line. A2 was a harness exit after 20 s. The judge
   refuses both. The emitter's encodings check out by reading (LDAPR/STLR
-  opcodes, UXTW fold, TMP2 = X30). **B2 hung identically** (184 lines,
-  ends at `qemu_main`), so the TSO prototype hangs at boot, 2 of 2. That is
-  its arm verdict: its frame cost is unmeasured. The next lane on it should
-  dump `out_asm` for the first blocks, not re-queue the arm.
+  opcodes, UXTW fold, TMP2 = X30). **B2 stopped identically** (184 lines,
+  ends at `qemu_main`), so the TSO prototype stops at boot, 2 of 2, and its
+  frame cost is unmeasured. **Correction (audit pass 1):** "no crash line"
+  does not show the process lived. The emitter has no alignment test, so a
+  misaligned guest access faults as LDAPR/STLR. QEMU's `sigbus_handler`
+  re-raises the SIGBUS under `SIG_DFL`, and the process dies with no
+  tombstone and no log line. That is the leading candidate. It is settled
+  by the app pid's `has died` / `Process ... exited` line in the B runs'
+  full logcat. An `out_asm` dump would not settle it. The mode is not
+  runnable as built (section 1, last row).
 - **Placement arm: refused on validity.** Harness exits cut 3 of 4 runs
   short (30/120/40 s). The mechanism is verified: 100% on the X3, zero
   migrations, runqueue wait +3 ms/s. Galleon at 1x is capped at 33.40 ms, so
@@ -116,9 +122,11 @@ Then fill section 8 and the pending cells of the ranked table in
 
 ## Next three things to build (after the arms)
 
-1. **Find the rcpc boot hang, then re-arm on an uncapped scene.** Dump
-   `out_asm` for the first blocks under `HAKUX_TCG_TSO=rcpc` and read the
-   first LDAPR/STLR. Once the guest boots, arm both prototypes on Crimson's
+1. **Settle the rcpc boot stop, then re-arm on an uncapped scene.** First
+   read the B runs' full logcat for the app pid's death: if it died, add the
+   alignment guard (`tst addr, #(size-1)`, or `addr & 15` under LSE2;
+   fall back to LDR + DMB ISHLD or DMB ISH + STR) and put its cost in the
+   prediction band. Once the guest boots, arm both prototypes on Crimson's
    heavy frames, not Galleon (capped at 33.4 ms). Placement's prize there is
    bounded by the vCPU's off-X3 share, which the `HAKUX_TOPO` sampler reads.
    Pin-by-role (vCPU to the X3, PFIFO to the A715s, render and compile to the

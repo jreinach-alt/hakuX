@@ -33,7 +33,7 @@ thread's time reaches the frame roughly one for one until the renderer, busy
 | 5 | I-cache maintenance: patch-free TB chaining | this lane | about a third of 4.0% of vCPU time | M share, B gain; IDC=1 DIC=0 measured, 209 ns per 4-byte flush on the X3 | sections 2.2, 8.1 |
 | 6 | Renderer: split capture from translation (`RCMD_DRAW`, submit worker) | renderer lane | Crimson frame bounded at 41.5 ms (+21% fps) today; more once 1-3 land | B | `frame-pacing-and-parallelism.md` section 4 |
 | 7 | Run ahead with copy-on-write snapshots instead of holding the guest (#44 class) | future lane | removes the skew bound's cost: Galleon ceiling 13 -> 29 gfps with the fix on | H | section 6 |
-| 8 | x86-TSO from RCpc (`HAKUX_TCG_TSO=rcpc`) | this lane, prototype 1 | a **cost**, predicted +4% (band +1% to +12%); micro-mix +0% on the X3, +28% on an A715 | M micro; **arm: the prototype hangs at boot, 2 of 2**; frame cost unmeasured | sections 1, 8.1, 8.2; arm `perfarch-tso-rcpc-cost.json` |
+| 8 | x86-TSO from RCpc (`HAKUX_TCG_TSO=rcpc`) | this lane, prototype 1 | a **cost**, predicted +4% (band +1% to +12%); micro-mix +0% on the X3, +28% on an A715 | M micro; **not runnable as built: LDAPR/STLR fault on misaligned guest accesses, and there is no guard. The arm stopped at boot, 2 of 2**; frame cost unmeasured | sections 1, 8.1, 8.2; arm `perfarch-tso-rcpc-cost.json` |
 | 9 | Order GPU->CPU sync writes on the vCPU thread (`run_on_cpu`) | pgraph owner | about 0 fps; closes the one ordering gap that is real today | H | section 1.3 |
 
 Items 1 to 4 compound: they act on different parts of the same thread.
@@ -124,9 +124,14 @@ Guarantees under `HAKUX_TCG_TSO=rcpc`:
 | LFENCE, SFENCE | elided | already implied by LDAPR/STLR for write-back memory |
 | **guest accesses made inside C helpers** (x87 loads and stores, FXSAVE/FXRSTOR, string helpers) | **dropped** | plain C loads and stores; fixing them is in `accel/tcg` |
 | **ST_LD across a LOCK-prefixed RMW** | **dropped** | on x86 a locked op is a full barrier; here it is LDAPR + op + STLR. Only a Dekker-style store->load handshake with a concurrent agent can observe it, and the NV2A and APU threads do not take part in guest locks. |
+| **misaligned guest accesses** | **fault** | x86 accesses need no alignment, and the fast path accepts any address that does not cross a page. LDR/STR accept that; LDAPR/STLR raise an Alignment fault (without FEAT_LSE2 on any misalignment; with it, on crossing 16 bytes, or on any misalignment if `SCTLR_EL1.nAA` is clear). The prototype has no alignment test and no fallback. FEX-Emu handles this with a SIGBUS handler that backpatches the access. |
 
-The price is being measured (arm queued). Micro-costs come from the
-`HAKUX_HOSTBENCH` survey below.
+**The prototype is not runnable as built** because of the last row. A
+runnable version needs one of two fixes. It can test `addr & (size-1)` (or
+`addr & 15` under LSE2) and fall back to LDR + DMB ISHLD, or DMB ISH + STR,
+on misalignment. Or it can backpatch from a SIGBUS handler, as FEX does. The
+guard's cost belongs in the model and in the prediction band before a
+re-arm. Micro-costs come from the `HAKUX_HOSTBENCH` survey below.
 
 **Design B, ordering at the device's own sync points.** Design A is
 guest-wide. B changes only the three places a device writes a sync word:
@@ -551,13 +556,13 @@ hottest CPU zone peaked at 82.8 °C. GPU busy averaged 8.7%. No throttling in
 | run | env | outcome |
 |---|---|---|
 | A1 `1790369082-perfarch-2154145` | -- | 103 windows, game frame median 33.65 ms, `gfps` p50 29 |
-| B1 `1790369083-perfarch-2156492` | `HAKUX_TCG_TSO=rcpc` | **did not boot**: `tso mode=rcpc ... -> ON`, then nothing after `qemu_main` in 240 s. No crash line, no tier-1 promotion, no frame |
+| B1 `1790369083-perfarch-2156492` | `HAKUX_TCG_TSO=rcpc` | **did not boot**: `tso mode=rcpc ... -> ON`, then no app line after `qemu_main` in 240 s. No crash line, no tier-1 promotion, no frame |
 | A2 `1790369085-perfarch-2158840` | -- | harness exit after 20 s (`UtilAcceptVsock`), 12 windows: invalid |
 | B2 `1790369086-perfarch-2160586` | `HAKUX_TCG_TSO=rcpc` | **did not boot**, identically: 184 logcat lines, ending at `qemu_main` |
 
-**Verdict: the prototype as built hangs the guest before its first frame, 2
-of 2 runs.** The cost question is unanswered, because the arm never ran a
-frame. `tso_judge.py` refuses all three short runs on validity.
+**Verdict: under the prototype as built, the guest never reached its first
+frame, 2 of 2 runs.** The logs do not say whether the process hung or died
+(below). The cost question is unanswered, because the arm never ran a frame. `tso_judge.py` refuses all three short runs on validity.
 
 This is not a harness failure. The other Nova no-boots in the last 250 runs
 (2) logged zero lines. Both B runs logged the whole init, up to the first
@@ -568,18 +573,35 @@ accesses translated) ever appears.
 
 The encodings check out by reading (LDAPR{B,H,,X} `0x38bfc000` and the
 rest, STLR{B,H,,X} `0x089ffc00` and the rest), and so does the UXTW index
-fold (`MO_32` is option 2). TMP2 is X30, which is reserved. The remaining
-candidates, in the emitter. The process neither crashed nor raised SIGILL,
-so a wrong but mapped address, or a wrong value, is likelier than a bad
-encoding:
+fold (`MO_32` is option 2). TMP2 is X30, which is reserved. Correct
+encodings do not make the emitter correct, though.
+
+**Leading candidate: an Alignment fault on the first misaligned guest
+access.** x86 accesses need no alignment, and the emitter sends every
+fast-path access to LDAPR/STLR with no alignment test (section 1, last row).
+A misaligned LDAPR or STLR faults, and the kernel delivers SIGBUS
+(`BUS_ADRALN`). QEMU's `sigbus_handler` (`system/cpus.c`) replaces bionic's
+debuggerd handler. For anything but an MCE it re-raises the signal under
+`SIG_DFL`. So the process dies with no tombstone, no `Fatal signal` line and
+no `F DEBUG` line, and the app's log just stops. That fits both B runs.
+"No crash line" is therefore not evidence that the process stayed alive.
+Neither the app's logcat nor `tso_judge.py`'s `CRASH` regex can see this
+death.
+
+Two other candidates are less likely, both in the emitter:
 
 - LDAPR/STLR take `[Xn]` only, and register 31 there is SP, not XZR.
 - The XBOX RAM fast path in `prepare_host_addr` may hand the direct emitter a
   `HostAddress` shape this code does not expect.
 
-Next step: run the same ref under the host build's user-mode TCG, or on
-device with `-d in_asm,out_asm` over the first 100 blocks, and read the first
-LDAPR/STLR it emits.
+**The check that settles it** needs no new run. In the B runs' full
+logcat, look for the app pid's ActivityManager `has died` or `Process ...
+exited` line, or check process liveness at the end of the soak. If the
+process died, the fault is the leading candidate. If it stayed alive for the
+full 240 s, look at the other two. Dumping `out_asm` would not settle it: it
+shows correctly encoded instructions either way. Before any re-arm, the
+emitter needs the alignment guard from section 1, and the guard's cost must
+go into the prediction band.
 
 ### 8.3 Prototype 2, vCPU on the prime core (`perfarch-vcpu-prime.json`)
 

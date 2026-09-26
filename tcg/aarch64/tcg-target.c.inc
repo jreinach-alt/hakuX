@@ -1959,6 +1959,13 @@ static void hakux_tso_count(uint64_t *c)
     }
 }
 
+/*
+ * No alignment test: a misaligned guest access emitted here as LDAPR/STLR
+ * takes an Alignment fault (SIGBUS, re-raised under SIG_DFL by QEMU's
+ * sigbus_handler), which plain LDR/STR would not. The mode is not runnable
+ * as built; see hakux_tso_rcpc in tcg/tcg-op.c.
+ */
+
 /* LDAPR/STLR take only [Xn]: fold base + index into TMP2 when needed. */
 static TCGReg hakux_tso_addr(TCGContext *s, HostAddress h)
 {

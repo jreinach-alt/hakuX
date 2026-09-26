@@ -308,6 +308,13 @@ uint64_t hakux_mb_emitted;
  * barriers still emitted are the ones that ask for ST_LD: MFENCE (and anything
  * else requesting TCG_MO_ALL). Guarantees kept and dropped are listed in
  * docs/investigations/perf-architecture.md, section 1.
+ *
+ * NOT RUNNABLE AS BUILT: x86 accesses carry no alignment requirement, and the
+ * fast path hands LDAPR/STLR any address that does not cross a page. Those
+ * take an Alignment fault when misaligned (under FEAT_LSE2, when crossing 16
+ * bytes, or any misalignment with SCTLR_EL1.nAA clear). The resulting SIGBUS
+ * reaches QEMU's sigbus_handler, which re-raises it under SIG_DFL: the
+ * process dies with no tombstone. There is no alignment guard or fallback.
  */
 bool hakux_tso_rcpc;
 
