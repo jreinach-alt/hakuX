@@ -95,6 +95,15 @@ What the pilot shows, with n=1 per arm:
   28 fps, the loss is the pin (cause 1). If A2 drops to about 25.5, it is
   thermal order (cause 2).
 
+## Waiting (attempt 1, 22:20 UTC)
+
+Waiting on hostops to review the pilot (`dispatch/pilots/vcpuprime428.ok`)
+and restore A2 B2 A3 B3 from the parked directory. The request is PR #437
+comment 5850381031. On resume: run `waitruns.py` until all six runs are DONE,
+then run the full judge. If B still loses fps after A2 controls for heat,
+report the refutation: no code change and no pgraph arm. If B gains,
+make the one-line default change and register the pgraph must-not-move arm.
+
 ## Why attempt 0 did not finish
 
 The session ended with A1 and B1 (the pilot) still queued behind other
