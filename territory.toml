@@ -31,7 +31,6 @@
 wave = 246
 updated_utc = "2026-09-26T12:10:00Z"
 
-
 [retired.hilodot10]
 issues = ["10"]
 retired_utc = "2026-09-20T14:57:11Z"
@@ -1125,9 +1124,3 @@ files = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "hw/xbox/nv2a/pgraph/glsl/vsh-prog
 standing = false
 note = "BRIEFED AT TERRITORY WAVE 246 (job.board, 2026-09-26T12:10:00Z), briefs/ring53.md: #53 ring model (six-entry ring of stale FF lighting outputs under a vertex program, PR #355). vsh-prog.c is released by dpforce345 (PR #383 at audit) and vsh-ff.c by zrtz272 (PR #364 at audit); the brief says merge master before ready. Per-draw state files are named-not-granted."
 
-
-[lane.cloud-audit2-364]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-364, audit pass 2 of PR #364 on branch lane/zrtz272, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 364` removes this row when the unit ends."
