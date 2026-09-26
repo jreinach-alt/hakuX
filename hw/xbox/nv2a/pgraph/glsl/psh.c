@@ -2007,6 +2007,17 @@ static bool stage_consumed_raw(const struct PixelShader *ps, int i)
  * vertex's weight is computed a hair low") is refuted by the u ties, which
  * silicon puts up where it would put them down.  Those draws keep "up".
  *
+ * Nor is a triangle with a power-of-two leg taken.  Every geometry the rule
+ * holds on has legs that are not powers of two (640 x 480, 285.625, 135 x 80,
+ * and Texture_palette's 96 x 96, which the rule makes exact).  Where the legs
+ * are 64, 128 or 256 -- Pixel_shader's DotST, DotZW, BumpEnvMap* and
+ * StageDependent*, Texture_3D_as_2D's 1:1 reference quads -- every tie row
+ * sits in the rule's "down" region and silicon puts all of them up: the rule
+ * took four of those captures off exact.  Presumably the weights are exact
+ * dyadics there, so there is no rounding for a binade to steer.  All of those
+ * triangles are square, so which leg matters is not determined; neither may
+ * be a power of two.
+ *
  * The weights come from the flat vtxPos0..2 the geometry stage already
  * passes, in the unscaled frame the depth path's barycentrics use.  In this
  * configuration l0 = (x1 - x) / (x1 - x0) and l2 = (y - y0) / (y2 - y0), and
@@ -2060,6 +2071,10 @@ static void append_texel_tie_rule(const struct PixelShader *ps, MString *fn,
     }
 
     mstring_append(fn,
+        "bool texelTiePow2(float x) {\n"
+        "  int e;\n"
+        "  return frexp(x, e) == 0.5;\n"
+        "}\n\n"
         "float texelTieV(vec4 t) {\n"
         "  float s = t.y / t.w;\n"
         "  vec2 ds = vec2(dFdx(s), dFdy(s));\n"
@@ -2069,6 +2084,7 @@ static void append_texel_tie_rule(const struct PixelShader *ps, MString *fn,
         "  float H = vtxPos2.y - vtxPos1.y;\n"
         "  bool roles = vtxPos0.y == vtxPos1.y && vtxPos1.x == vtxPos2.x &&\n"
         "               W > 0.0 && H > 0.0 &&\n"
+        "               !texelTiePow2(W) && !texelTiePow2(H) &&\n"
         "               vtxPos0.w == vtxPos1.w && vtxPos1.w == vtxPos2.w &&\n"
         "               ds.y > 0.0 && abs(ds.x) <= ds.y * (1.0 / 1024.0) &&\n"
         "               abs(dq.x) + abs(dq.y) <= abs(t.w) * (1.0 / 65536.0);\n"
