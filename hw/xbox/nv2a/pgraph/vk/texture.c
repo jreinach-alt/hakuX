@@ -2602,6 +2602,49 @@ bool pgraph_vk_check_textures_fast_skip(PGRAPHState *pg)
 }
 
 
+/*
+ * What slot i samples through: the surface's own view while it is bound
+ * directly, the cache node's image otherwise. Every push-info rebuild
+ * computes exactly this (vk/shaders.c, and the two fast paths in vk/draw.c),
+ * so a change here is a change in what the draw samples -- whether or not
+ * the slot's node changed.
+ */
+typedef struct SlotView {
+    VkImageView view;
+    VkImageLayout layout;
+    VkSampler sampler;
+} SlotView;
+
+static SlotView slot_view(const PGRAPHVkState *r, int i)
+{
+    const TextureBinding *b = r->texture_bindings[i];
+
+    if (!b) {
+        return (SlotView){ VK_NULL_HANDLE, VK_IMAGE_LAYOUT_UNDEFINED,
+                           VK_NULL_HANDLE };
+    }
+    if (r->tex_surface_direct[i]) {
+        return (SlotView){ r->tex_surface_direct_views[i],
+                           r->tex_surface_direct_layout[i], b->sampler };
+    }
+    return (SlotView){ b->image_view, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                       b->sampler };
+}
+
+static bool slot_view_equal(SlotView a, SlotView b)
+{
+    return a.view == b.view && a.layout == b.layout && a.sampler == b.sampler;
+}
+
+/*
+ * A push-info rebuild that pgraph_vk_texture_surface_view_retired() asked
+ * for. The hook runs between draws and sets texture_bindings_changed, but
+ * pgraph_vk_bind_textures() starts by clearing that flag, so a bind landing
+ * between the hook and the next rebuild dropped the request and left the
+ * retired view in push_tex_infos.
+ */
+static bool retired_view_rebuild_pending;
+
 void pgraph_vk_bind_textures(NV2AState *d)
 {
     NV2A_VK_DGROUP_BEGIN("%s", __func__);
@@ -2610,7 +2653,8 @@ void pgraph_vk_bind_textures(NV2AState *d)
     PGRAPHVkState *r = pg->vk_renderer_state;
 
 
-    r->texture_bindings_changed = false;
+    r->texture_bindings_changed = retired_view_rebuild_pending;
+    retired_view_rebuild_pending = false;
 
     if (!check_textures_dirty(pg)) {
         NV2A_VK_DPRINTF("Not dirty");
@@ -2672,7 +2716,18 @@ void pgraph_vk_bind_textures(NV2AState *d)
             }
         }
 
+        /*
+         * THE NODE IS NOT ALL A SLOT PUSHES (#274). create_texture() clears
+         * tex_surface_direct[] on entry, and can rebuild the node's image in
+         * place, so the view a slot samples through can change while its node
+         * stays the same. Keyed on the node alone, the push infos were not
+         * rebuilt: Antialiasing tests::CenterCorner2 and SquareOffset4 kept
+         * sampling the surface view CreateSurfaceWithCenter1 had bound
+         * directly, 78,496 px each, after their own bind had re-uploaded the
+         * right texels into that same node. Compare what the slot samples.
+         */
         TextureBinding *prev_binding = r->texture_bindings[i];
+        SlotView prev_view = slot_view(r, i);
         bool bound = create_texture(pg, i);
 
         /*
@@ -2720,7 +2775,8 @@ void pgraph_vk_bind_textures(NV2AState *d)
             if (!r->texture_bindings[i]) {
                 r->texture_bindings[i] = &r->dummy_texture;
             }
-            if (r->texture_bindings[i] != prev_binding) {
+            if (r->texture_bindings[i] != prev_binding ||
+                !slot_view_equal(slot_view(r, i), prev_view)) {
                 r->texture_bindings_changed = true;
             }
             /*
@@ -2746,7 +2802,8 @@ void pgraph_vk_bind_textures(NV2AState *d)
             (pgraph_vk_reg_r(pg, NV_PGRAPH_SHADERPROG) >> (i * 5)) & 0x1F;
         r->tex_reg_cache[i].valid = true;
 
-        if (r->texture_bindings[i] != prev_binding) {
+        if (r->texture_bindings[i] != prev_binding ||
+            !slot_view_equal(slot_view(r, i), prev_view)) {
             r->texture_bindings_changed = true;
         }
 
@@ -2983,6 +3040,19 @@ static void texture_cache_entry_post_evict(Lru *lru, LruNode *node)
  * time and lavapipe survived only by timing (issue #34). Drop the handle
  * from every cache that could hand it back, and make the slot re-resolve
  * from VRAM on its next bind.
+ *
+ * THE DIRECT FLAG IS NOT THE TEST FOR "STILL PUSHED" (#274). A slot can stop
+ * being direct while push_tex_infos still names the surface's view: that is
+ * how CreateSurfaceWithCenter1's view reached two later tests. Testing only
+ * the flag left such a view pushed after its surface was gone, and every new
+ * command buffer re-pushes the infos as they stand. So any slot whose push
+ * info names the view is pointed at the dummy until its rebuild -- a slot
+ * that is still direct gets exactly that rebuild before its next push, so
+ * the dummy is never sampled there -- and the rebuild is requested three
+ * ways: the flag, a dirty pipeline state (which sends the next draw through
+ * pgraph_vk_update_descriptor_sets(), on either descriptor path), and a
+ * request pgraph_vk_bind_textures() cannot drop. A slot the flag test missed
+ * also bumps texture_state_gen, so the fast path rebinds it before pushing.
  */
 void pgraph_vk_texture_surface_view_retired(PGRAPHState *pg, VkImageView view)
 {
@@ -2991,15 +3061,34 @@ void pgraph_vk_texture_surface_view_retired(PGRAPHState *pg, VkImageView view)
         return;
     }
     for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
-        if (r->tex_surface_direct[i] && r->tex_surface_direct_views[i] == view) {
+        bool direct = r->tex_surface_direct[i] &&
+                      r->tex_surface_direct_views[i] == view;
+        bool pushed = r->push_tex_infos[i].imageView == view;
+
+        if (!direct && !pushed) {
+            continue;
+        }
+        if (direct) {
             r->tex_surface_direct[i] = false;
             r->tex_surface_direct_views[i] = VK_NULL_HANDLE;
-            r->tex_binding_cache[i].binding = NULL;
-            r->tex_binding_cache[i].key_hash = 0;
-            pg->texture_dirty[i] = true;
-            r->texture_bindings_changed = true;
-            r->push_tex_dirty = true;
         }
+        if (pushed) {
+            r->push_tex_infos[i] = (VkDescriptorImageInfo){
+                .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                .imageView = r->dummy_texture.image_view,
+                .sampler = r->dummy_texture.sampler,
+            };
+            if (!direct) {
+                pg->texture_state_gen++;
+            }
+        }
+        r->tex_binding_cache[i].binding = NULL;
+        r->tex_binding_cache[i].key_hash = 0;
+        pg->texture_dirty[i] = true;
+        r->texture_bindings_changed = true;
+        r->pipeline_state_dirty = true;
+        r->push_tex_dirty = true;
+        retired_view_rebuild_pending = true;
     }
     for (int c = 0; c < TEX_DESC_CACHE_SIZE; c++) {
         if (!r->tex_desc_cache[c].valid) continue;
