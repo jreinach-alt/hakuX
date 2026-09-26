@@ -86,6 +86,21 @@ request. Attempt 2 (this one) does the rest.
   a guest-side falsifier per op). A result between the two is no verdict and
   needs more runs.
 
+### Waiting (2026-09-26 14:40 UTC, 7:40 AM PDT)
+
+At queue time 36 requests were ahead of these four, and about 24 of them were
+Thor-pinned: hotfix041 soaks at 240 s and the titleplay p1 batch at 420 s.
+That is roughly three hours of Thor before arm 1 starts. Attempt 2 stops
+here, waiting on the four request ids above. Once all four have a `DONE`
+in `$DISPATCH_DIR/results/<id>/`, run `tier1_judge.py` on their
+`logcat.txt`s, fill section 4 (apk_sha from each `result.json`), and
+choose step 2a or 2b.
+
+Preflight on `f1f7a3c` passes everything but `coverage`. That gate
+reads #223, #262 and #266 in `nv2a_issues.toml` on origin/board: rows
+marked `dispatch_state = done` whose status is still `open`. Those are
+board files and not this lane's.
+
 ## 4. Table (empty until the arm runs)
 
 | arm | run id | apk_sha | tier1 logged | tint lines | lit>=100 | mean |
