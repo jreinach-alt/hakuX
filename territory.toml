@@ -1302,4 +1302,4 @@ note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tic
 issues = []
 files = []
 standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-420, audit pass 2 of PR #420 on branch lane/pilotgate, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 420` removes this row when the unit ends."
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-420, audit pass 2 of PR #420 on branch lane/pilotgate, attempt 2 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 420` removes this row when the unit ends."
