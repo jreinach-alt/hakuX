@@ -138,3 +138,14 @@ would let the fold take e3b13f5b45 before its arm is judged. When the
   measured Texture_BRDF figures here and in the body, then mark it ready.
 Master was not merged in this attempt: the PR is MERGEABLE/CLEAN, and a
 merge would only restart CI.
+
+## Resume 3 (2026-09-26 04:42Z): the #315 verdict still has not posted
+
+Why attempt 2 did not finish: it stopped to wait on the #315 arm, which was
+correct. The handback job resumed it only because CI went green on the
+NOTES-only head 71ca831044. The arm itself has not been judged:
+`$WORK/arms/pairs/f007be72da48...json` (the pshqueue-315-brdf.json pair) has
+no `.verdict.txt` yet. Hostops reported the base arm on a device at 04:29Z,
+with the fix arm queued after it, so the verdict is due around 06:00Z. The
+PR is MERGEABLE/CLEAN. Nothing else changed, and the plan in "Attempt 2"
+stands unchanged.
