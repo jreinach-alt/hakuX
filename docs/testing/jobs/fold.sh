@@ -541,11 +541,19 @@ REPAIRED_SHA=""
 repair_index_conflict() {   # <pr> <branch> <head> -> 0 pushed; 1 refused, hand it back; 3 wait (WHY either way)
     local pr=$1 branch=$2 head=$3 name live rc pins
     WHY=""; REPAIRED_SHA=""
-    name=$(lane_of "$branch") || { WHY="\`$branch\` is not a lane/<name> branch, so no lane unit can be checked before pushing to it"; return 1; }
+    # A lane/<name> branch has a unit to check; a claude/* cloud branch has
+    # none on this host, and the fast-forward-only push below is what keeps a
+    # session pushing to it at the same moment from losing anything.
+    name=""
+    case "$branch" in
+        lane/*)   name=$(lane_of "$branch") || { WHY="\`$branch\` has a slash inside the lane name; no unit \`hakux-lane-<name>\` can be checked for it"; return 1; } ;;
+        claude/*) ;;
+        *)        WHY="\`$branch\` is neither lane/* nor claude/*"; return 1 ;;
+    esac
     if is_remote_branch "$branch" 2>/dev/null; then
         WHY="\`$branch\` is a remote lane's branch; a session this host cannot see pushes to it"; return 1
     fi
-    unit_active "$name" && { WHY="lane.$name's unit is running; it brings $TIP in itself"; return 3; }
+    [ -n "$name" ] && unit_active "$name" && { WHY="lane.$name's unit is running; it brings $TIP in itself"; return 3; }
     if [ ! -e "$WT/.git" ]; then
         git -C "$REPO" fetch -q origin "$TIP" && git -C "$REPO" worktree add --quiet --detach "$WT" FETCH_HEAD \
             || { WHY="cannot create $WT"; return 3; }
@@ -579,7 +587,7 @@ repair_index_conflict() {   # <pr> <branch> <head> -> 0 pushed; 1 refused, hand 
         || { WHY="the repaired commit does not descend from ${head:0:10}"; return 1; }
     live=$(git -C "$WT" ls-remote origin "refs/heads/$branch" 2>/dev/null | cut -f1)
     [ "$live" = "$head" ] || { WHY="$branch moved during the repair (now ${live:0:10})"; return 3; }
-    unit_active "$name" && { WHY="lane.$name's unit started during the repair"; return 3; }
+    [ -n "$name" ] && unit_active "$name" && { WHY="lane.$name's unit started during the repair"; return 3; }
     # Never forced: a push that is not a fast-forward of $head is rejected by
     # origin, which is the last guard against a lane that pushed just now.
     git -C "$WT" push -q origin "HEAD:refs/heads/$branch" 2>"$F/push.log" \
@@ -606,7 +614,7 @@ conflict_handback() {   # <pr> <branch> <head> <files> [why]
     echo "handed-back $CX_TIP" > "$m"
     say "#$pr $branch: CONFLICT in $files${why:+($why)}; handed back this tick"
     hand_back "$pr" "$branch" "$head" "$files"
-    comment "$pr" "[job.fold] Not folded: merging \`$branch\` into \`$TIP\` at \`${CX_TIP:0:10}\` conflicts in: \`$files\`${why:+ -- $why}. GitHub runs no CI on a PR that does not merge, so this would otherwise wait on \`CI NONE\` forever. The fold job resolves only the generated index; this needs the lane. Merge \`origin/$TIP\` into the lane branch (merge, never rebase), resolve, push, then re-apply \`fold-ready\`."
+    comment "$pr" "[job.fold] Not folded: merging \`$branch\` into \`$TIP\` at \`${CX_TIP:0:10}\` conflicts in: \`$files\`${why:+ -- $why}. GitHub runs no CI on a PR that does not merge, so this would otherwise wait on \`CI NONE\` forever. The fold job resolves only the generated index; this needs the lane. Merge \`origin/$TIP\` into the lane branch (merge, never rebase), resolve, push, then re-apply \`fold-ready\` if this PR had it (an audit label was left in place)."
 }
 
 declare -A CX_SEEN=()   # PRs the conflict pass answered for this tick; the CI gate skips them
@@ -1096,17 +1104,20 @@ attribute_multi() {
         case "$st" in
         GREEN)
             echo "done culprit $rpr" >> "$rec"
-            say "master CI GREEN on the revert ${rv:0:10}: #$rpr is red together with $rest (each green apart); handed back"
-            label_rm "$rpr" folded
-            hand_back "$rpr" "$branch" "$after" "none: reverted from $TIP, red together with $rest "
+            # NAMED, NOT HANDED BACK. The fold deleted the lane branch and
+            # GitHub closed this PR as merged when its commits reached $TIP, so
+            # a needs-rebase label here would sit on a closed PR that nothing
+            # reads. Re-landing is new work: a new PR from the lane's local
+            # branch, which the board dispatches like any other.
+            say "master CI GREEN on the revert ${rv:0:10}: ATTRIBUTED #$rpr, red together with $rest (each green apart); re-landing it is new work"
             comment "$rpr" "[job.fold] **Attributed: this PR is red together with $rest.** Each was green on its own head, and one tick folded them all; master's CI went red on \`${sha:0:10}\`, and reverting this PR (\`${rv:0:10}\`) turned it green again. So the red is the combination, not this PR alone and not the others alone.
 
-To re-land it, on the lane branch:
+This PR is closed as merged and its branch was deleted by the fold, so re-landing it is a new PR. From the lane's worktree:
 
 \`\`\`
 git fetch origin $TIP && git merge origin/$TIP   # brings in the revert; merge, never rebase
 git revert ${rv:0:10}                              # restores this PR's changes
-# fix the interaction with $rest, push, and re-apply fold-ready once CI is green
+# fix the interaction with $rest, push, open a new PR
 \`\`\`" ;;
         RED)
             echo "done not $rpr" >> "$rec"

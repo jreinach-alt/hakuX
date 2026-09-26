@@ -142,7 +142,8 @@ check "  and the log says why #44 waits" grep -q "#44 waits: master's CI after a
 echo GREEN > "$FM/ci.$FM_REV"
 fm_tick
 check "  revert GREEN: #42 named, red together with #41" grep -q "this PR is red together with #41" "$FM/comments.log"
-check "  and handed back" grep -qx needs-rebase "$FM/labels.42"
+check "  with the re-land steps, since the PR is closed as merged" grep -q "git revert ${FM_REV:0:10}" "$FM/comments.log"
+check "  and the tick.log names it" grep -q "ATTRIBUTED #42, red together with #41" "$FM/tw/logs/fold/tick.log"
 check "  the record is closed" grep -qx "done culprit 42" "$FM/tw/fold/multi/$FM_TIP"
 check "  and in that same tick folding resumes: #44 folded" grep -qx folded "$FM/labels.44"
 
