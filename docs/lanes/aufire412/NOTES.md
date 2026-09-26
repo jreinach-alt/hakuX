@@ -58,3 +58,35 @@ route (text taken verbatim from the run above's request.json, because
 Tex, Shd, Draw [sub-phases], Fin(Sub, Fen), GPU(R, X, RP)), the hakuX-cpu line,
 the xemu-work workload line (BE/DA/IE/IB/IA draws, RP renderpasses, PGen/PBnd,
 QS, Fin:* reasons) and hakuX-stall, over the mission-play window.
+
+Reader: `splitread.py <logcat> --window A,B` (`--selftest` builds each line
+from its format string in profile.c/draw.c and checks the parse). On the
+Nova's own perflog run of 50 Cent (1790424433, 170-200 s) it reads 1 draw
+per frame, 0.2 ms GPU: that is a movie, and it cannot price a draw.
+
+A scale, not a price: Blinx's demo on the **Thor** (1790425369, 135-265 s)
+reads 2,496 draws per frame, Draw 22.9 ms (Pipe 10.8, of which Sh 8.2), renderer
+CPU (Tot-Idle-Fin) 29.2 ms = at most 11.7 us per draw, GPU 46.0 ms, Fin 39.9
+(Sub 35.2). A Nova frame of 1,200-2,400 draws at the same cost per draw would
+be 14-28 ms of CPU. AUF's renderer is busy ~54 ms. So either the Nova costs
+more per draw, or the GPU or a wait takes the rest. The soak decides which.
+Device differences mean this cannot stand in for the Nova's own figure.
+
+## 3. How the soak will be read (written before it ran)
+
+Window: mission play, from `mark play` + 10 s to soak end. The pause-menu
+rounds before it are the matched-scene window for any arm.
+
+| reading | shape | next |
+|---|---|---|
+| Fin (Sub) >= 25% of Tot, stall `sd` > 0 per frame | blinx372c (synchronous download) | name the dif/evict site; PR #396's reach |
+| GPU >= 0.8 x (Tot - Idle), Fin small | GPU-bound | GPU R vs X; RP count (render-pass breaks) |
+| Draw >= 0.6 x (Tot - Idle), GPU well under | per-draw renderer CPU | Draw's largest sub-phase (Pipe/Sh/Lu, Desc, Setup, Cmd, Vtx/Syn) names the file |
+| slow stores >= 100k/s | fps382 | excluded already (~350/s); a reversal means a different scene |
+
+## Status (2026-09-26)
+
+Waiting on dispatch request `1790450038-aufire412-1573805` (Nova, perflog,
+480 s). When it was queued, ~9 unpinned arms and one Nova host soak sat ahead
+of it. No code file is named yet, so no grant is requested, and no
+prediction is registered: there is no hunk to arm.
