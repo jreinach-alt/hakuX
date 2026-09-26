@@ -14,7 +14,7 @@ PR #307. Brief: scripted play through the queue, and a verdict per run
 | judge | `docs/testing/title_verdict.py` | writes `verdict.json` and a contact sheet per run |
 | table | `docs/testing/titles/table.py` | latest verdict per (title, device, ref); `--judge` fills in missing verdicts |
 | targets | `docs/testing/titles/targets.toml` | keyed on the CSV's canonical `title_id`; ISO per device, own target fps, route |
-| proof | `docs/testing/jobs/selftest.d/89-title-verdict.sh` | 24 checks: six fixtures, four mutants, the liveness path against a fake adb, `request.sh --route` |
+| proof | `docs/testing/jobs/selftest.d/89-title-verdict.sh` | 29 checks: six fixtures, five verdict mutants, the liveness path and a dropped logcat stream against a fake adb (two soak mutants), `request.sh --route` |
 
 ## Pad nodes (read-only `getevent -pl`, 2026-09-25)
 
@@ -88,6 +88,14 @@ handhelds.
     That run records `gameplay_by: review`.
   - Frames come from the route's `mark`/`shot` steps: about 10 screencaps in
     10 minutes, not the once-a-second `--frames-every` that costs frame rate.
+- **Pace.** `hakuX-pace` is read by key, in the format agreed with
+  lane.perfbase (`docs/lanes/perfbase/NOTES.md`, `pgraph/profile.c`). The
+  late flips are the sum of `vK` for K above the title's nominal VBLANKs a
+  flip (2 at 30 fps, 1 at 60). `late_per_100` is late flips per 100 flips
+  over the scored windows, and `worst_stall` is the largest `max`. A
+  process's first window (`f=60`) is dropped, because its first VBLANK
+  delta starts from zero. Pace is reported and not judged: the owner's bar
+  is frames per second.
 - **Ratings.**
   - `rating_candidate` is `Playable` at `surface_scale=1` and `Playable (2x)`
     at 2. The scale is read from the app's own `hakuX: surface_scale=N`
@@ -122,10 +130,6 @@ here.
 - **Run the verdict inside the dispatcher.** The worker writes the result;
   `titles/table.py --judge` (or `title_verdict.py <dir>`) judges it. Putting
   the verdict into the worker would touch lines that were not lent.
-- **Parse `hakuX-pace` properly.** Its format was not in the tree on
-  2026-09-25 (lane.perfbase). The verdict records the line count, the first
-  `late`/`worst`/`stall` figures it can find, and the last line, and does not
-  judge any of them.
 - **The Galleon, DOA3 and JSRF routes**: PR 2, on the Thor.
 
 ## Device budget (the owner's scale)
@@ -170,8 +174,76 @@ Attempt 2 merged `origin/master`. The conflict in `dispatcher.sh`'s
 `snapshot_scripts` is resolved by keeping master's write-beside-and-rename
 (dispatch defect 13). The temporary file is made in the target's own
 directory, because `titles/route.sh` and `perf/pad.sh` live in
-subdirectories. Attempt 2 then pushed, and retried the real run.
+subdirectories.
 
-## Real run
+**Attempt 2 did not finish either.** It wrote the paragraph above and
+merged, but the session ended before it pushed. `origin/lane/titlerun` was
+still `0239b7e1cd` when attempt 3 started, 118 commits behind the worktree.
+Attempt 3 did these things, in this order:
 
-(recorded below once the Nova is free; see PR #307)
+1. Committed and merged `origin/master` again. The merge was clean.
+2. **Pushed first** (`2df80d8b31`).
+3. Changed the real-run script so it could get onto the Nova at all. The old
+   script waited for a moment with no hold and nothing running, and the
+   worker claims the next request as soon as one ends, so that moment never
+   came. The new script:
+   - waits until no priority (`0-0-*`) Nova request is queued;
+   - places the hold while a request is still running, which the dispatcher
+     honours after that request (`dispatcher.sh`, "a hold placed mid-run
+     takes effect after the current request");
+   - waits up to 30 min for the Nova to drain;
+   - never touches the device until then.
+
+   It runs detached (`setsid nohup`) and logs to `scratch/realrun.log` in
+   this worktree.
+
+**Attempt 3's first session did not finish either.** Its real run started
+at 04:50Z. Two things went wrong:
+
+- Every liveness probe read as an adb failure.
+- The run was killed at 04:52Z, when the session's unit stopped. `setsid`
+  does not leave the unit's cgroup.
+
+The second session of attempt 3 (2026-09-26, 05:10-06:00Z) stayed in the
+foreground and polled its runs until they finished.
+
+## Real run (2026-09-26, Nova, three tries)
+
+Each try found a defect that only a real device shows. Each one is fixed,
+with a fixture in fragment 89:
+
+| try | what happened | fix |
+|---|---|---|
+| 04:50Z | Every probe read as an adb failure. The Nova's toybox `ps` pads the `NAME` header to its column width, so `grep -x NAME` never matched and the guest never counted as appeared. | strip trailing blanks (`663d0c0900`); the fake adb now pads its rows, and it goes red without the strip |
+| 05:13Z | The soak held the whole 783 s through 10 real `UtilAcceptVsock` failures, so the liveness fix works. But one vsock failure made `getevent` return nothing, so **no input was played**. Another ended the logcat stream at once, so `logcat.txt` had 0 lines and the verdict could only say "never booted". | `pad.sh detect` retries three times (`c4deb73085`). The soak respawns the logcat stream with `-T 1` and writes each gap to run.log (`39e3ae4d97`), with a fixture and a mutant. |
+| 05:29Z | **PASS**, as below | the pace parser was rewritten afterwards (`26f1331765`) and the run re-judged |
+
+The verdict of the 05:29Z run is in `docs/lanes/titlerun/realrun/`, with
+`verdict.json`, `contact.png`, `run.log`, `route.txt`, `request.json` and
+`result.json`. The run directory is
+`$HAKUX_WORK/titlerun/runs/1790400553-titlerun-crimson`.
+
+| field | value |
+|---|---|
+| title | Crimson Skies (4D530021), Nova, apk `a00704d02eb0`, surface scale 1 |
+| route | `crimson-skies.route`; `mark gameplay` at 22:31:52 PDT |
+| gameplay | 625.4 s scored (screening) |
+| fps | 309 windows; 97.2% of gameplay time at or above 30 (97.4% of windows); median 29.99, min 26.06 |
+| pace | 2.19 late flips per 100; worst stall 328 ms |
+| audio | short callbacks 0.029% of calls (bar 0.1%) |
+| crash / hang | none / none |
+| adb | 6 failures, none read as an exit; 2 route steps (`press A`) lost to vsock failures |
+| verdict | **PASS, Playable candidate, screening**; `gameplay_by: route` |
+
+The contact sheet shows the plane in flight, with the HUD, from the
+`gameplay` frame on.
+
+**For the next lane:**
+
+- The WSL `UtilAcceptVsock` failures come in bursts of several per minute
+  while the host is loaded. Any single adb call in a soak can fail. A route
+  step that fails is logged (`pad.sh press A failed (rc 1)`) and the route
+  carries on. It does not retry, so a route should not hang its progress on
+  one press. The Crimson route mashes A 12 times for that reason.
+- A detached helper started from a lane session dies with the session's
+  unit, `setsid` or not. Stay in the foreground and poll.
