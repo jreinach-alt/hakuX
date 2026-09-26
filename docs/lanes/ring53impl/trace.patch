@@ -1,0 +1,34 @@
+--- a/hw/xbox/nv2a/pgraph/pgraph.c
++++ b/hw/xbox/nv2a/pgraph/pgraph.c
+@@ -201,6 +201,11 @@
+  */
+ static inline void pgraph_ring_weigh(PGRAPHState *pg, uint32_t method)
+ {
++    { /* RING53DBG */
++        static int dbg2 = -1;
++        if (dbg2 < 0) { const char *e = getenv("HAKUX_RING_LOG"); dbg2 = e && e[0] == '2'; }
++        if (dbg2) fprintf(stderr, "RING53M %04x\n", method);
++    }
+     if (method == NV097_NO_OPERATION || method == NV097_SET_LIGHT_CONTROL ||
+         method == NV097_SET_BEGIN_END ||
+         method == NV097_SET_TRANSFORM_CONSTANT_LOAD) {
+@@ -4576,6 +4581,19 @@
+         /* #53: the fill reads the inline buffer draw_end consumes, and the
+          * draw's uniforms read ring_pos before its own vertices move it. */
+         unsigned int ring_vertices = pgraph_glsl_ring_fill(pg);
++        { /* RING53DBG */
++            static int dbg = -1; static uint32_t ff_end;
++            if (dbg < 0) dbg = getenv("HAKUX_RING_LOG") != NULL;
++            if (dbg) {
++                bool ff = PG_GET_MASK(NV_PGRAPH_CSV0_D, NV_PGRAPH_CSV0_D_MODE) == 0;
++                bool lit = PG_GET_MASK(NV_PGRAPH_CSV0_C, NV_PGRAPH_CSV0_C_LIGHTING);
++                fprintf(stderr, "RING53 %s%s n=%u ib=%u pos=%u p=%u\n",
++                        ff ? "FF" : "VS", lit ? "lit" : "unlit", ring_vertices,
++                        pg->inline_buffer_length, pg->ring_pos,
++                        (pg->ring_pos + 6 - ff_end) % 6);
++                if (ff && lit && pg->inline_buffer_length) ff_end = (pg->ring_pos + ring_vertices) % 6;
++            }
++        }
+         d->pgraph.renderer->ops.draw_end(d);
+         pg->ring_pos = (pg->ring_pos + ring_vertices) % 6;
+         pgraph_vsh_writeback_constants(pg);

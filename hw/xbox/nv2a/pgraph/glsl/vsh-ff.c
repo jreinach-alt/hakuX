@@ -592,9 +592,35 @@ void pgraph_glsl_append_vsh_prog_lighting(const VshState *state,
 {
     append_lighting_header(header);
 
+    /*
+     * #53: which vertex the lighting unit lights. Not the program's own:
+     * vertex i of a lit program draw takes the inputs in ring slot
+     * (ringPhase + i) % 6, which still holds a fixed-function lit vertex
+     * from before (PGRAPHState.ff_lit_ring). The ring's phase is the
+     * command stream's, not the draw's (pgraph.c, pgraph_ring_weigh), so
+     * the four corners of one quad can land on any window of the last six
+     * fixed-function vertices -- the three-and-one corner codes described
+     * above. ringPhase is -1 for a draw whose vertex index is not its
+     * position in the draw (glsl/vsh.c), which keeps its own inputs.
+     *
+     * Only the lighting unit's inputs come from the ring: its outputs are
+     * recomputed here under this draw's registers, and the mux below still
+     * runs on this draw's LIGHT_CONTROL. Specular ControlFlags_VS's row 3
+     * shows the unfolded output of vertices whose own draw folded it.
+     */
+    mstring_append(body,
+        "  vec4 rV0 = v0, rV2 = v2, rV3 = v3, rV4 = v4;\n"
+        "  if (ringPhase >= 0.0) {\n"
+        "    int ringSlot = 6 * ((int(ringPhase) + ringVertexIndex) % 6);\n"
+        "    rV0 = ringInput[ringSlot + 0];\n"
+        "    rV2 = ringInput[ringSlot + 1];\n"
+        "    rV3 = ringInput[ringSlot + 2];\n"
+        "    rV4 = ringInput[ringSlot + 3];\n"
+        "  }\n");
+
     mstring_append(body, "  {\n"
-                         "  vec4 ltDiffuse = lt(v3);\n"
-                         "  vec4 ltSpecular = lt(v4);\n");
+                         "  vec4 ltDiffuse = lt(rV3);\n"
+                         "  vec4 ltSpecular = lt(rV4);\n");
 
     /* The eye-space geometry the lighting unit works in, built from the
      * fixed function transform registers with no skinning: a vertex program
@@ -602,8 +628,8 @@ void pgraph_glsl_append_vsh_prog_lighting(const VshState *state,
      * unit to follow. This is what the fixed function stage emits for
      * SKINNING_OFF. */
     mstring_append(
-        body, "  vec4 tPosition = v0 * modelViewMat0;\n"
-              "  vec3 tNormal = (vec4(v2.xyz, 0.0) * invModelViewMat0).xyz;\n");
+        body, "  vec4 tPosition = rV0 * modelViewMat0;\n"
+              "  vec3 tNormal = (vec4(rV2.xyz, 0.0) * invModelViewMat0).xyz;\n");
     if (state->normalization) {
         mstring_append(body, "  tNormal = normalize(tNormal);\n");
     }
