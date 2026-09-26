@@ -2224,3 +2224,179 @@ that says 0.
 
 **Not covered.** Titles. A game could take any of the three routes, and the
 desktop suite cannot show that.
+
+## #426 items 1, 2 and 4: the phase instrument, pipeline eviction, texture hash (2026-09-26)
+
+**The ask.** lane.local's queue on #426 (5850280192):
+- Items 1 and 2 are one instrument PR.
+- Item 4's pricing rides on it (files granted by hostops, 5850492952).
+- Item 5 is parked below.
+
+For 0.5, every perf lever (#424-#429) and every per-title lane reads
+`hakuX-phase`, so a span counted twice or lost points them at the wrong cost.
+A pipeline destroyed while the GPU still uses it can fault or hang Turnip,
+and one crash fails a title's 20-minute Playable soak.
+
+**What the PR changes.** Everything is under `NV2A_PERF_LOG`.
+- `af13ae28`:
+  - `pipe_lookup` no longer ENDs twice on the async-compile miss.
+  - `shader_compile` now ENDs on the early return taken when the shader
+    binding has no modules.
+  - Pipeline-eviction counters print on the `hakuX-stall` line as
+    `pipe[ev pend rec used]`.
+- `aa208a29`: the fast paths get spans.
+  - `Sfp` and `Mfp` time the super-fast and medium-fast paths, hit or miss.
+  - `FTx` is their texture binds, and `Sfp` and `Mfp` exclude it.
+  - `TxH` times the texture content hash.
+  - The `NV2A_PERF_LOG` default moves above the structs that test it.
+  - The reader and the checker learn the new fields.
+- `4f09c8c9`: a nested finish counts once, and a clear's children fall inside
+  `Draw`.
+  - Every child of `Draw` and of `Pipe` is now exclusive of finish.
+  - The fall-through clear is timed as `Draw`.
+  - I1 becomes an inequality, and the reader counts `Pipe`'s remainder as
+    post-read.
+- `12a25c14`: I4 becomes an inequality too.
+
+**The eviction counters.**
+- `ev` counts every pipeline-cache eviction.
+- `pend` counts those whose last command buffer to bind the pipeline had not
+  completed: it is still recording, or it is submitted with its fence
+  unsignalled.
+- `rec` is the recording subset. `pipeline_cache_pre_evict()` should keep it
+  at 0.
+- `used` is the cache's occupancy, out of 2,048 entries.
+- **How it decides.** Each `pgraph_vk_begin_command_buffer()` numbers the
+  command buffer against its frame slot, and each bind records that number on
+  the pipeline.
+  - If the slot has since begun a newer command buffer, the old one completed,
+    since Vulkan forbids re-beginning a pending one.
+  - Otherwise the pipeline is still in use if it was bound in the buffer
+    being recorded, or if the slot is submitted and `vkGetFenceStatus` is not
+    `VK_SUCCESS`.
+  - A signalled fence also covers everything submitted earlier on the queue.
+- **Why `hakuX-stall` and not a tag of its own.** The dispatcher's logcat spec
+  is an allow-list ending `*:S`, so a new tag would come back with zero lines.
+  The format also avoids `evict[`, which `phase_table.py` reads as the
+  surface-eviction line on the same tag.
+
+**Inertness.**
+- **Default build.** All 70 objects that include `debug.h` or
+  `vk/renderer.h` are byte-identical to master. They were compiled at master
+  and at each commit, without debug info and with `__LINE__` pinned to 0.
+- **Correction to 5850345102.** That comment promised a `-DNDEBUG` build, but
+  QEMU refuses `NDEBUG` (`osdep.h:311`, an `#error`). Pinning `__LINE__`
+  neutralises the same `assert()` line numbers. So an unpinned build differs
+  only in `__LINE__` values.
+- **Perf build.** The same 70 objects compile with the same 133 warning lines
+  as master.
+- **Android.** The Android-only line (`__android_log_print`) was
+  syntax-checked on desktop against a stub `<android/log.h>` declared with
+  `format(printf, 3, 4)`. It gives no format warning. This container has no
+  NDK, so the first real compile of the perf APK is the soak's.
+
+**The controls.** All were local, never committed. Each was registered before
+its build: the log is `i47/predictions.txt` in this lane's scratch, and the
+scores below are quoted from it. Every run used desktop Vulkan on llvmpipe.
+The discs were AA+DMA, Clear, disc109 and surf1.
+
+| control | what | result |
+|---|---|---|
+| C, cache shrunk to 8 | `ev` > 0, `rec` = 0, `pend` > 0 somewhere | `ev` 135 / 126 / 151 / 227, `rec` 0: PASS. **`pend` 0 on all four: C3 FAIL** |
+| N, stock cache | `ev` = 0 | PASS: 32-89 keys used of 2,048 |
+| S, cache 8, GPU slowed (`surface_scale` 4, one llvmpipe thread) | `pend` > 0 | **FAIL**: 4,651 evictions, `pend` 0. Stopped at 737 s |
+| V, cache 8, validation layer on | count of `VUID-vkDestroyPipeline-pipeline-00765` == `pend` | PASS, but 0 = 0 |
+| P2, stock cache, up to 2 pipelines of the just-submitted CB evicted after each flip | `pend` > 0, and the layer agrees | **PASS on AA+DMA: `pend` 45, layer 45, exact.** The other 57 had already signalled |
+| Q, the instrument's perf build | lines parse; checker clean; `Sfp`+`Mfp` > 0 | parse PASS. **Checker FAIL** (below). **`Sfp`/`Mfp`/`FTx` 0.0 on every line: FAIL** |
+| Q', after `4f09c8c9` | checker clean; the reader's identity exact; no child above its parent; all four discs run | identity residual 0.00, no I3, all four exit 0: PASS. **One I4 violation: FAIL** (I4 is now an inequality, `12a25c14`) |
+
+**Why `pend` is 0 on desktop without forcing.**
+- An eviction lands at the first draw after a finish, because
+  `create_pipeline()` runs before `ensure_command_buffer()`. The evicted
+  pipeline was last used in the slot just recycled, and the slot's rotation
+  has just waited on its fence.
+- The discs also finish synchronously between flips, and a signalled fence
+  covers everything submitted before it.
+- So slowing the GPU does not open the window (S).
+- A title flips with fewer synchronous finishes. Whether its 2,048 entries
+  fill at all is what the device soak measures.
+
+**What Q's checker FAIL found**, which `4f09c8c9` fixes:
+- **Finish counted twice.** `Draw` was exclusive of finish, but its children
+  were plain. A finish nested in a child counted there and again in `Fin`.
+  On disc109, `Pipe` read 34.2 against a `Draw` of 32.5, and UNCLASSIFIED
+  went negative (-0.25 ms pooled).
+- **Clears outside `Draw`.** `pgraph_vk_clear_surface()` ran
+  `begin_pre_draw()` outside any `draw_dispatch` span. So a clear's pipeline
+  and setup time were counted as `Draw`'s children but fell outside `Draw`.
+- **Remainders the checker called faults.** `Pipe` also holds
+  `create_clear_pipeline()` and the pipeline-cache save, and finish does work
+  outside `Sub` and `Fen`. The checker treated I1 and I4 as identities.
+
+After the fix, pooled UNCLASSIFIED is +0.42 ms. The reader's identity
+closes exactly, and the checker still flags the old build's two double counts.
+
+**FINDING: a pipeline destroyed while its command buffer is in flight crashes
+the process on llvmpipe.**
+- P2 on Clear and on surf1 died with SIGSEGV in 7-10 s. Under gdb the fault is
+  in lavapipe's queue thread, executing a submitted command buffer:
+  `lvp_execute_cmds` > `handle_draw_indexed` > `draw_llvm_generate` >
+  `tgsi_parse_init(tokens=NULL)`. A draw in flight compiled a vertex-shader
+  variant from a destroyed pipeline.
+- The same build without forced evictions ran all four discs clean (Q).
+- So the hazard item 2 counts is fatal on at least one driver, not
+  theoretical. Whether titles reach it is the soak's question: `pend` on
+  Crimson and the #397 titles.
+
+**Texture binds on desktop** (item 4). `Tx` + `FTx` is every
+`pgraph_vk_bind_textures()` call and the only route to an upload or a content
+hash. Pooled over Q' it is 0.45 ms/frame:
+
+| part | ms/frame | share |
+|---|---:|---:|
+| content hash, `TxH` | 0.02 | 3.7% |
+| upload, `Tex` | 0.08 | 18.5% |
+| the rest | 0.35 | 77.8% |
+
+The rest is lookups and descriptors. A test disc is not a title, so this
+prices nothing for 0.5. The Crimson soak on this build does.
+
+### #426 item 3: stage 1 is not worth landing for 0.5
+
+The Thor soak `0-0-x-1790459535-remote-46835` ran master `9f34d60036`, a
+perflog build, on Crimson. lane.local read it (5850579748).
+- **The ceiling.** `Setup`+`Cmd`, stage 1's ceiling by this lane's own
+  definition (5850134041), is about 1 ms/frame in every gfps bucket: 0.8 when
+  fast, 1.1-1.2 when slow.
+- **Where the time is.** `Tx` is the largest span: 6.5 ms median, 4.1 in fast
+  windows and 8.1-11.8 in slow ones. `Syn` doubles in slow windows too.
+- **The fast paths.** The SFP took 0 of 17,955 draws per line.
+- **The verdict.** By the criterion registered in 5850134041, the deferred
+  command stream moves about 1 ms of a 30 ms frame. It is not worth landing
+  for 0.5. The prototype stays on the local branch.
+- **The lever is inside `Tx`.** This PR's `TxH`, `Tex` and rest split prices
+  it on the next Crimson soak. If the hash dominates, the lever is to stop
+  re-hashing texture memory the guest has not written. If the rest dominates,
+  descriptor work could move off the PFIFO thread, since it reads no guest
+  memory.
+
+### Parked until after 0.5 (item 5): the reorder path's vertex push constants
+
+- `emit_reorder_entry()` pushes a draw's uniform vertex attributes at
+  `vtx_offset = 0`.
+- `push_vertex_attr_values()` pushes them at `GEOM_PUSH_CONSTANT_SIZE` (16
+  bytes), where the layout and the vertex shader expect them.
+- So with `use_push_constants_for_uniform_attrs` on, a reordered draw
+  overwrites the geometry stage's line parameters in `[0,16)` and hands the
+  vertex shader values 16 bytes early.
+- The reorder path is gated on `g_xemu_draw_reorder`, which is false by
+  default in `draw.c` and in the Android settings.
+- No PR, by lane.local's decision.
+
+**Not covered.**
+- `Sfp`, `Mfp` and `FTx` never exceed 0.0 on the desktop discs, so only a
+  title exercises them.
+- The draw-merge and reorder paths (both off by default) still run
+  `begin_pre_draw()` outside `Draw`. With either on, I3 can fail by design;
+  the checker says so.
+- The inline clear stays untimed, as it was.
