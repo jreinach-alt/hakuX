@@ -512,9 +512,50 @@ static void rewrite_quads(PrimRewrite *r, const uint32_t *idx, uint32_t base,
  *
  * The emission COUNT is unchanged in all three functions, so no counter can
  * tell the two orders apart; only the captures can.
+ *
+ * FLAT COLOUR (#13 class C).  Silicon draws a flat wireframe quad or polygon
+ * in ONE colour, and which vertex supplies it is fixed by the primitive, not
+ * by FLAT_SHADE_OP -- the Shade_model ProgLM_*_Flat_First and _Last goldens
+ * are identical, and every edge carries:
+ *
+ *   QUADS       v3 of each quad (the fourth vertex)
+ *   QUAD_STRIP  v3 of each quad (v(2k+3)), the later quad winning the edge
+ *               the two share
+ *   POLYGON     v0
+ *
+ * the same vertex the FILL paths above colour from.  glsl/geom.c gives an
+ * emitted LINE its flat varyings from index 0, so the one thing this file
+ * can do is emit each edge that TOUCHES that vertex from it
+ * (emit_edge_flat()); the paint order is unchanged.  An edge that does not
+ * touch it still takes its own first endpoint, and cannot be fixed here: a
+ * line has no third slot to carry the colour in.  That needs an input
+ * layout in geom.c with a slot for it, as PRIM_TYPE_TRIANGLES_ADJACENCY is
+ * for the filled quad.  See docs/lanes/flatlm13/NOTES.md.
+ *
+ * The flip is gated on a geometry stage (flat_line_first() below).  Without
+ * one (GLES without GL_EXT_geometry_shader, PrimAssemblyState::no_adjacency)
+ * a LINE's flat varyings come from the rasteriser's provoking vertex, which
+ * GLES fixes at the LAST index; there the unflipped order already carries
+ * the colour vertex on these edges, and flipping would move it off.
  */
+static inline bool flat_line_first(const PrimAssemblyState *mode)
+{
+    return mode->flat_shading && !mode->no_adjacency;
+}
+
+static inline void emit_edge_flat(PrimRewrite *r, uint32_t a, uint32_t b,
+                                  uint32_t p, bool flat_first)
+{
+    if (flat_first) {
+        emit_line_pv(r, a, b, p);
+    } else {
+        emit_line(r, a, b);
+    }
+}
+
 static void rewrite_quads_line(PrimRewrite *r, const uint32_t *idx,
-                               uint32_t base, unsigned int count)
+                               uint32_t base, unsigned int count,
+                               bool flat_first)
 {
     for (unsigned int i = 0; i + 3 < count; i += 4) {
         uint32_t v0 = idx_at(idx, i, base);
@@ -530,7 +571,7 @@ static void rewrite_quads_line(PrimRewrite *r, const uint32_t *idx,
          */
         emit_line(r, v1, v2);
         emit_line(r, v0, v1);
-        emit_line(r, v2, v3);
+        emit_edge_flat(r, v2, v3, v3, flat_first);
         emit_line(r, v3, v0);
     }
 }
@@ -569,7 +610,8 @@ static void rewrite_quad_strip(PrimRewrite *r, const uint32_t *idx,
 }
 
 static void rewrite_quad_strip_line(PrimRewrite *r, const uint32_t *idx,
-                                    uint32_t base, unsigned int count)
+                                    uint32_t base, unsigned int count,
+                                    bool flat_first)
 {
     if (count < 4) {
         return;
@@ -590,7 +632,7 @@ static void rewrite_quad_strip_line(PrimRewrite *r, const uint32_t *idx,
          */
         emit_line(r, v2, v0);
         emit_line(r, v0, v1);
-        emit_line(r, v1, v3);
+        emit_edge_flat(r, v1, v3, v3, flat_first);
         emit_line(r, v3, v2);
     }
 }
@@ -613,7 +655,8 @@ static void rewrite_polygon(PrimRewrite *r, const uint32_t *idx, uint32_t base,
 }
 
 static void rewrite_polygon_line(PrimRewrite *r, const uint32_t *idx,
-                                 uint32_t base, unsigned int count)
+                                 uint32_t base, unsigned int count,
+                                 bool flat_first)
 {
     if (count < 2) {
         return;
@@ -641,7 +684,9 @@ static void rewrite_polygon_line(PrimRewrite *r, const uint32_t *idx,
     for (unsigned int t = 1; t + 1 < count; t++) {
         emit_line(r, idx_at(idx, t, base), idx_at(idx, t + 1, base));
         if (t == count - 2) {
-            emit_line(r, idx_at(idx, count - 1, base), idx_at(idx, 0, base));
+            emit_edge_flat(r, idx_at(idx, count - 1, base),
+                           idx_at(idx, 0, base), idx_at(idx, 0, base),
+                           flat_first);
         }
         if (t == 1) {
             emit_line(r, idx_at(idx, 0, base), idx_at(idx, 1, base));
@@ -675,7 +720,8 @@ static void rewrite_indices(PrimRewrite *r, const PrimAssemblyState *mode,
         break;
     case PRIM_TYPE_QUADS:
         if (mode->polygon_mode == POLY_MODE_LINE) {
-            rewrite_quads_line(r, idx, base, num_indices);
+            rewrite_quads_line(r, idx, base, num_indices,
+                               flat_line_first(mode));
         } else {
             rewrite_quads(r, idx, base, num_indices, mode->flat_shading,
                           emits_adjacency(mode));
@@ -683,7 +729,8 @@ static void rewrite_indices(PrimRewrite *r, const PrimAssemblyState *mode,
         break;
     case PRIM_TYPE_QUAD_STRIP:
         if (mode->polygon_mode == POLY_MODE_LINE) {
-            rewrite_quad_strip_line(r, idx, base, num_indices);
+            rewrite_quad_strip_line(r, idx, base, num_indices,
+                                    flat_line_first(mode));
         } else {
             rewrite_quad_strip(r, idx, base, num_indices, mode->flat_shading,
                                emits_adjacency(mode));
@@ -691,7 +738,8 @@ static void rewrite_indices(PrimRewrite *r, const PrimAssemblyState *mode,
         break;
     case PRIM_TYPE_POLYGON:
         if (mode->polygon_mode == POLY_MODE_LINE) {
-            rewrite_polygon_line(r, idx, base, num_indices);
+            rewrite_polygon_line(r, idx, base, num_indices,
+                                 flat_line_first(mode));
         } else {
             rewrite_polygon(r, idx, base, num_indices);
         }

@@ -2,14 +2,16 @@
 """Run an nxdk_pgraph_tests XBE on the project console and fetch what it wrote.
 
     tools/xbox/pgraph_run.py --xbe-dir DIR --config CFG.json --app NAME --out RUNDIR
-                             [--host 192.168.50.1] [--timeout-min 20] [--check]
+                             [--host ADDR] [--timeout-min 20] [--check]
 
 DIR holds `default.xbe` and the resource directories built beside it
 (`build-xbe/src/xbe/xbe_file/`). CFG is the run's config; it is installed as
 `nxdk_pgraph_tests_config.json` beside the XBE, which the console reads as
 `d:\\nxdk_pgraph_tests_config.json`. NAME is the directory under `E:\\Apps\\`.
 RUNDIR is local and receives the captures, the progress log, a copy of the
-config and PROVENANCE.txt.
+config and PROVENANCE.txt. ADDR defaults to the one line in
+~/hakux-work/hardware/console.addr, where the console's address lives
+(the home LAN, wired, since 2026-09-26); without that file, --host is required.
 
 WHAT IT REFUSES, because the console cannot be power-cycled from here and a
 wedged or powered-off console stays that way until someone presses the button:
@@ -75,6 +77,17 @@ VSH_CONFIG = "vsh_tests.cnf"
 VSH_MUST_HAVE = (b"Rebooting in 4 seconds", b"Run all and exit (automatic in",
                  COMPLETED.encode(), b"d:\\" + VSH_CONFIG.encode())
 ROOT_CONFIG = ("/E/nxdk_pgraph_tests", "nxdk_pgraph_tests_config.json")
+CONSOLE_ADDR = "/home/justin/hakux-work/hardware/console.addr"
+
+
+def console_addr(path=CONSOLE_ADDR):
+    """The console's address, from the one file a re-IP edits; None if unreadable."""
+    try:
+        with open(path) as fh:
+            words = fh.read().split()
+    except OSError:
+        return None
+    return words[0] if words else None
 
 
 def now_utc():
@@ -226,13 +239,16 @@ def main(argv=None):
     ap.add_argument("--config", required=True)
     ap.add_argument("--app", required=True, help="directory name under E:\\Apps\\")
     ap.add_argument("--out", required=True, help="local run directory")
-    ap.add_argument("--host", default="192.168.50.1")
+    ap.add_argument("--host", default=console_addr(),
+                    help="console address (default: %s)" % CONSOLE_ADDR)
     ap.add_argument("--timeout-min", type=float, default=20.0)
     ap.add_argument("--unreachable-min", type=float, default=3.0,
                     help="how long without ping before the run is abandoned to a human")
     ap.add_argument("--check", action="store_true", help="refusal tests only; touch nothing")
     ap.add_argument("--kind", choices=("pgraph", "vsh"), default="pgraph")
     a = ap.parse_args(argv)
+    if not a.host:
+        ap.error("no --host, and %s is missing or empty" % CONSOLE_ADDR)
 
     xbe = os.path.join(a.xbe_dir, "default.xbe")
     if not os.path.isfile(xbe):
