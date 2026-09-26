@@ -14,7 +14,7 @@ PR #307. Brief: scripted play through the queue, and a verdict per run
 | judge | `docs/testing/title_verdict.py` | writes `verdict.json` and a contact sheet per run |
 | table | `docs/testing/titles/table.py` | latest verdict per (title, device, ref); `--judge` fills in missing verdicts |
 | targets | `docs/testing/titles/targets.toml` | keyed on the CSV's canonical `title_id`; ISO per device, own target fps, route |
-| proof | `docs/testing/jobs/selftest.d/89-title-verdict.sh` | 29 checks: six fixtures, five verdict mutants, the liveness path and a dropped logcat stream against a fake adb (two soak mutants), `request.sh --route` |
+| proof | `docs/testing/jobs/selftest.d/89-title-verdict.sh` | 29 checks: six fixtures, four verdict mutants, the liveness path and a dropped logcat stream against a fake adb (two soak mutants), `request.sh --route` |
 
 ## Pad nodes (read-only `getevent -pl`, 2026-09-25)
 
