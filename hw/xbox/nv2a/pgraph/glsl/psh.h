@@ -57,6 +57,9 @@ typedef struct PshState {
     /* A Y16 or R16B16 texel point-sampled as a colour: the combiner sees its
      * bytes, not its 16-bit fields (#283). */
     bool tex_bytes16[4];
+    /* SZ_Y16 or LU_IMAGE_Y16: a bump stage reading it takes the horizontal
+     * offset from the filtered value's low byte (#10). */
+    bool tex_y16[4];
     uint32_t tex_signed[4]; /* NV_PGRAPH_TEXFILTER0_[ARGB]SIGNED bits */
     bool compare_mode[4][4];
     bool alphakill[4];
