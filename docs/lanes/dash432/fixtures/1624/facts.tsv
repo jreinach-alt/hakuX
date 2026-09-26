@@ -1,0 +1,12 @@
+now	1790465073
+floor_secs	1800
+heartbeat_secs	1800
+next_due	2026-09-26 16:54 PDT
+queue	23
+queue_idle	99
+arms_running	0
+lanes_running	4
+lane_cap	24
+last_fold	1790464806
+last_fold_subject	PR #437 lane/vcpuprime428 -- lane.vcpuprime428: #428 vCPU thread on the prime core, Crimso
+console	ON, 66.2 W (read 0s ago)

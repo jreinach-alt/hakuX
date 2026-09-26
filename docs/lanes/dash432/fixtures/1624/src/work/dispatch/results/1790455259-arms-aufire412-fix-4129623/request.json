@@ -1,0 +1,32 @@
+{
+ "id": "1790455259-arms-aufire412-fix-4129623",
+ "requester": "arms-aufire412-fix",
+ "purpose": "FIX arm #412 lane.aufire412 at 1b557ff6a4, queued by the arms job from lane/aufire412:docs/testing/predictions/aufire412-uboring-goldens.json",
+ "program": "pgraph",
+ "suites": [
+  "Color zeta overlap",
+  "Depth buffer fixed function",
+  "Surface format"
+ ],
+ "tests": [],
+ "skip_tests": [],
+ "ref": "1b557ff6a4",
+ "arm": "company",
+ "runs": 1,
+ "title": "",
+ "seconds": 60,
+ "device": "",
+ "pull_glob": "",
+ "audio_capture": "",
+ "base_iso": "",
+ "perflog": "",
+ "only_tests": [],
+ "env": [],
+ "frames_every": 0,
+ "route_name": "",
+ "route": "",
+ "expect": "(not copied)",
+ "expect_sha": "267b4c57521edc602f50e3c400134396cb19dd2f524c0664b8b38c08d2e313ec",
+ "no_expect": "",
+ "queued_utc": "2026-09-26T20:40:59Z"
+}

@@ -1,0 +1,3 @@
+{
+ "result": "The prediction hash matches the PR body, both a_ref and b_ref are still ancestors of the new head, and preflight is green. Everything left depends on the CI verdict for head cb628bf937, which the background wait will report. Once it lands I'll swap the labels (remove needs-rebase, add fold-ready) if green, or post a `[lane.primpv13]` comment if red."
+}

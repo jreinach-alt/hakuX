@@ -1,0 +1,7 @@
+{
+ "requester": "arms-aufire412-base",
+ "purpose": "BASE arm #412 lane.aufire412 at be41e81662, queued by the arms job from lane/aufire412:docs/testing/predictions/aufire412-uboring-goldens.json",
+ "ref": "be41e81662",
+ "device_label": "thor",
+ "apk_sha": "05c4ebaf3fd5"
+}

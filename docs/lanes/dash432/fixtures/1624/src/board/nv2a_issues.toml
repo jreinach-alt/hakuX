@@ -1,0 +1,784 @@
+
+[issue.10]
+title = "Bump mapping"
+disposition = "defect"
+blocker_falsifier = "if 'no mechanism in hand' were false for any of the three classes, the post-fix per-sign-quad decomposition would show that class concentrated in the FLAGGED quads -- the signature the luminance literal had (310/14,241/ 422/14,187) -- rather than spread evenly across all four while hardware's own flag sensitivity stays near zero."
+blocker_tested = "confirmed, bump_sign_quads.py on POST-FIX captures (ref c866527e03, z-repeat-c866527e03-010-Bump_env_lum). All three classes reproduce and none has the fixed class's shape. YUY2_L 27,864/27,874/27,874/27,884 per quad, one-step 0 in every quad -- wrong with ALL sign flags clear, so no sign or rounding model reaches it. Y8/AY8/A8Y8 7,139/7,441/7,301/7,501, one-step 6,829-7,079: evenly spread and one [cut]"
+suites = ["Bump map", "Bump env lum"]
+status = "fixed-part"
+dispatch_state = "blocked"
+status_note = "HOSTOPS 2026-09-26 12:25 PM PDT (lane.xbox board request 11:24/11:59 PDT): nothing in #10 waits on the console any more. Y8/AY8/A8Y8: PR #168 named their mechanism (truncation, exact on 25 rows); what is left is offline scope work (hilodot10 NOTES s4). YUV: silicon-measured in PR #411 (#10 comment 5848958489): SET_CONTROL0 CRYCB_TO_RGB converts every stage after the texture shader, YUY2/UYVY fetch [cut]"
+impact_px = 0
+impact_onestep_px = 1463282
+game_visible = false
+impact_basis = "2026-09-25 inventory (host session): PR #168 named a luminance-truncation mechanism covering up to 1,463,282 one-step px (Bump_map/Bump_env_lum, c866); structural 747,933 has named classes (YUV 445,984; R16B16 101,330) but no single mechanism"
+blocked_on = "IN FLIGHT (job.board 2026-09-26 12:35 PDT): lane.yuv10 holds the YUV fix (PR #419 draft, briefs/yuv10.md); the Y8/AY8/A8Y8 offline scope work (hilodot10 NOTES s4) waits on that lane's files. Not idle: a lane owns it."
+
+[issue.13]
+title = "Line and point rasterisation"
+disposition = "defect"
+blocker_falsifier = "if 'only the GL half remains' were false, a Line_width arm on the VULKAN path would still move -- so the leg is that arm B at the current tip reproduces 99.5838% / 99.6563% against --vs-goldens and does NOT improve further, because any further movement means something other than the GL half is still wrong."
+blocker_tested = "not run. Cheap: one Line_width disc pair on the Thor, no new instrument -- line_extent_phase.py --vs-goldens already exists and was the tool that produced both figures. The GL half itself is NOT falsifiable on this fleet: gl/*.c is invisible to a Vulkan device lane, which is why it is lane.remote's."
+suites = ["Line width", "Point size", "Point params", "Swath width", "2D Lines", "Smoothing control", "Stipple tests"]
+status = "open"
+status_note = "BOARD job.board 2026-09-26T21:55Z: not dispatchable, a lane owns it (PR #401 in audit). PRIOR: BOARD 2026-09-26T12:45Z (tick 247): the device probe of VkPhysicalDeviceLineRasterizationFeaturesEXT has run (see #286): bresenhamLines=1, rectangularLines=1, smoothLines=0, strictLines=1, lineWidthRange [1,127.5] on the Adreno 740. The GL wide-line minor-axis rule the vk/instance.c comment says #13 need [cut]"
+dispatch_state = "blocked"
+blocked_on = "IN FLIGHT (job.board 2026-09-26T21:55Z): lane.flatlm13 holds class C, PR #401 is ready (out of draft, CI green, verified) and in audit (needs-audit-1). Nothing to dispatch until the audit and fold land."
+impact_px = 4734
+impact_onestep_px = 0
+game_visible = false
+impact_basis = "2026-09-25 inventory (host session): Line_width's remaining 4,734 structural (09-25 arm); the other six suites' 103,406 has no mechanism"
+
+[issue.31]
+title = "Slope-scaled polygon offset is wrong under W buffering"
+suites = ["W buffering"]
+disposition = "unknown-semantics"
+blocker_falsifier = "if an existing golden separated flatTop from span_starts_at_clip, wbuf_anchor_recover.py --selectors would show a disagreeing capture, and the NOTES say none exists at any ClipF clip_top from 1 to 127."
+blocker_tested = "CONFIRMED BY READING 2026-09-25 (host session): docs/lanes/wbuf31fix/NOTES.md ('The silicon capture that would separate them: ClipF with clip_left 300 at clip_top 8 ... This lane has not requested it') and the tool's own scan: all 93 four-literal fits agree on every existing capture."
+status = "closed"
+status_note = "CLOSED 2026-09-26T19:52Z (hostops, on lane.xbox board request 12:40 PDT): #244 confirmed on silicon (PR #342). The one remaining miss, ClipF-150-008 t1 (17,803 px beyond +-1, offset 1.10 outside silicon interval, identical before/after #244, console-built XBE off the golden disc), is split to #423."
+blocked_on = "WAITING 2026-09-26 (job.board, board tick 07:35 PDT): PR #244 folded (77a21b28b9, arm PASS 570/570); the row stays open for silicon-side confirmation only (ClipF clip_left 300 at clip_top 8, which lane.xbox would have to capture). Nothing to dispatch: a lane cannot produce that capture, and no golden scores the case."
+dispatch_state = "blocked"
+impact_px = 0
+impact_onestep_px = 0
+game_visible = false
+impact_basis = "2026-09-26 (job.board): fix folded; 0 scored px because the case is not on the golden disc."
+
+[issue.34]
+title = "Vulkan validation layer: four open findings from the desktop lane"
+no_suites = "the instrument is a VUID count from VK_LAYER_KHRONOS_validation, which no suite scores; the findings were surfaced while running Image blit, Surface clip, Depth buffer fixed function and Texture render target, but naming those here would make issues_for_suite answer a pixel question with a layer issue"
+disposition = "harness"
+status = "fixed-part"
+status_note = "BOARD 2026-09-26T12:40Z (tick 247): PR #390 ready, recommends closing; dispatch_state available -> done with the blocker recorded. The prior vkpointsize34 brief is superseded (PR #371 fixed pCode-08740). || PRIOR: BOARD 2026-09-26T06:40Z: lane.vkpointsize34 BRIEFED, NOT STARTED (briefs/vkpointsize34.md; `lane.sh start` needs an approval the non-interactive board session cannot get, host to start): [cut]"
+blocked_on = "PR #390 (lane.cloud-34, analysis, docs/lanes/cloud-34/NOTES.md) reports every finding fixed and on master and recommends closing; #34 closes when #390 folds. Nothing is left to dispatch under #34; the instrument follow-ups it names (dispatcher.sh LOGCAT_SPEC, a validation_layers request field) are lane.toolsmith's."
+dispatch_state = "done"
+
+[issue.53]
+title = "Vertex program with LIGHTING_ENABLE: the programmable path emits the constant term but no light loop (6 captures)"
+suites = ["Specular", "Specular back", "Lighting control"]
+disposition = "unknown-semantics"
+blocker_falsifier = "if 'the corpus supplies only two distinct N.L values per lit quad' were false, the model-free per-triangle plane fit would recover MORE THAN TWO levels in at least one lit quad."
+blocker_tested = "confirmed, re-ran specular53_four_value_probe.py. Max levels within any single quad: 2, both suites. The four-valued per-vertex diffuse probe reads all four corners in submission order on 8 of 8 quads with lighting OFF (max err 0.31-0.37 byte) and 0 of 128 quad-by-channel slots carry those values with lighting ON, closest off by 77.5 bytes. Within-frame replicates agree to 0.0000 L-units. The acti [cut]"
+status = "fixed-part"
+status_note = "BOARD 2026-09-26T12:10Z (tick 246): lane.ring53 briefed (briefs/ring53.md) for the ring model the host said would be dispatched from the board (comment 2026-09-25 22:09 PDT): locate the carry, design it inside the two released glsl files (vsh-prog.c from dpforce345, vsh-ff.c from zrtz272) or name the per-draw hunk for a grant, price offline with a held-out phase, then arm. || PRIOR: BOARD 2026-09- [cut]"
+blocked_on = "ORCHESTRATOR SPOT-CHECKED THE TWO LOAD-BEARING SOURCE FACTS 2026-09-14 rather than taking them on report, because this verdict turns a wall into a two-line change and a wrong premise would be expensive. Both hold, read from nxdk_pgraph_tests: specular_tests.cpp:41 is `kDirectionalLightDir{1.f, 0.f, 1.f, 1.f}` -- y is EXACTLY ZERO -- and the four normals at :458-479 are (-+,-+, -0.990147542976674)  [cut]"
+impact_px = 162258
+impact_onestep_px = 0
+game_visible = false
+impact_basis = "2026-09-25 inventory (host session): two ControlFlags_VS captures (c866); blocked on one console capture"
+
+[issue.68]
+title = "tcg: whole-page invalidation discards ~40,000 live blocks per run of which essentially none were written (ov median 0, max 3); the block-extent lever is dead on feasibility"
+component = "tcg"
+no_suites = "not a pgraph suite defect: this is TCG/FPU behaviour, so no golden suite scores it"
+disposition = "defect"
+blocker_falsifier = "if 'a five-year-old SMC correctness decision' were false, git log -S on the `#ifndef XBOX` that disables the range test would date it inside the fork's recent perf work; and if 'correctness decision' were false, that commit would carry no SMC rationale while the predicate and its inputs would still be sitting in the file."
+blocker_tested = "date CONFIRMED, justification REFUTED. 703566ce33 'tcg: Invalidate all TBs on target page', Matt Borgerson, 2021-10-04 -- 4y11m, so 'five-year-old' is fair. But the commit body is EMPTY: no rationale, no SMC reference, no comment added; the diff just wraps the range test in `#ifndef XBOX`. The range data was never dropped (translation-block.h:111 `uint16_t size`, :129 `page_addr[2]`); the predicat [cut]"
+status = "fixed-part"
+status_note = "Measured over six Crimson Skies soaks. sp_share over LIVE blocks is 1.000 with four independent checks on what a systematic error would do, the last not using the predicate at all: the notdirty tracker puts the stores in 1,168- and 540-byte windows of 4,096-byte pages -- two hot data structures sharing a page with code. New cost symbol tcg_flush_jmp_cache 8.77% self, scaling with discards not visi [cut]"
+blocked_on = "ANSWERED 2026-09-14 BY THE THREE-ARM RE-RUN, and the answer is that the counters BOUND the trade without SETTLING it. Nine 90 s Crimson Skies soaks, three per ref, prediction committed before queueing, chain verified by rev-parse of each ref's PARENT. EVERY REGISTERED LEG HOLDS. THE MIDDLE ARM MOVES BOTH HALVES IN OPPOSITE DIRECTIONS, which is why two arms could not answer it: #73 alone removes th [cut]"
+
+[issue.94]
+title = "request.sh silently drops all but the last --only-tests/--skip-tests/--tests/--suites, and it nearly published a bracket that excluded the true answer"
+no_suites = "an instrument defect, not a renderer one -- no golden suite scores request.sh. Its oracle is the queued .req itself: only_tests length in the request record against what the caller passed."
+disposition = "harness"
+blocker_falsifier = "if 'repeated --only-tests is silently overwritten' were false, a request built with one flag per test would carry every test in its only_tests array -- and two arms on disk carry ONE each where 2 and 8 were passed."
+blocker_tested = "CONFIRMED BY READING request.sh:76-81 at HEAD, independently by lane.disc89 and by the orchestrator, and CONFIRMED EMPIRICALLY by two queued requests: disc89-G-pre2 and disc89-H-pre8 both show only_tests length 1 and Blend_surface scored 1. --env) ENV_VARS+=(\"$2\") appends into an array; --suites, --tests, --skip-tests and --only-tests are scalar assignments and clobber. Nothing in the parse loop d [cut]"
+status = "fixed-verified"
+status_note = "TRACKER SYNC 2026-09-18 (job.board): GitHub closed #94 as completed; lane.toolsmith reported the fix already in master as 99800a64d0 (the four list flags append, duplicates refused, the queued record re-read and its composition printed before rename) and verified it against a scratch DISPATCH_DIR (8 --only-tests flags in, 8 read back independently). lane/toolsmith @ baa5b32698 is an ancestor of or [cut]"
+blocked_on = "NOT BLOCKED. docs/testing/request.sh is held by the instruments standing lane, which is where the owner's division of labour puts dispatch scripts -- 'Why are you handling the manipulation of dispatch scripts?' -- so this is filed rather than fixed by the orchestrator. Needs no device and no build."
+
+[issue.95]
+title = "The prediction schema has no composition field, so the comparability rule cannot be enforced -- and disc_id conflates composition with the skip list"
+no_suites = "a schema gap in the judging tool, not a renderer defect. Every pgraph suite is affected in principle; #89's Color_zeta_overlap/Swap_ZB is the only capture where it has been MEASURED to matter."
+disposition = "harness"
+blocker_falsifier = "if 'composition is not a prediction field' were false, some prediction file would carry the disc it was derived on -- exactly 1 of 107 does, and ab_compare --register has no such key to write."
+blocker_tested = "CONFIRMED BY READING at HEAD and by counting the files on disk: ab_compare.py:1052-1085 writes registered_utc, who, issue, prediction, a_ref, b_ref, must_not_move, must_not_regress, expect and expect_counts and nothing else; request.sh:837-862 binds disc_id into the REQUEST and never into the prediction; ab_compare.py:486-489 refuses a pair whose two arms disagree on disc_id. 1 of 107 prediction f [cut]"
+status = "fixed-part"
+status_note = "TRACKER SYNC 2026-09-18 (job.board): GitHub closed #95 as completed; lane.toolsmith reported step (1) of the suggested shape already in master as baa5b32698 -- --disc-from / --disc-suites|--disc-skip-tests|--disc-only-tests write a disc block, and composition_notes() refuses an absolute / downgrades a delta on a composition mismatch (ancestor of origin/master). Steps (2)/(3) (rejecting composition [cut]"
+blocked_on = "NOT BLOCKED. docs/testing/ab_compare.py and docs/testing/request.sh are both held by the instruments standing lane, per the owner's division of labour on dispatch scripts. Needs no device and no build. Note the ordering constraint if it lands while arms are live: adding a field is backward-compatible, but step (2)'s refusal is NOT -- it would invalidate every prediction registered without the fiel [cut]"
+
+[issue.109]
+title = "Undersized surface pitch: hardware copes, our shared swizzle layout does not (absent; a lead on #87)"
+disposition = "unknown-semantics"
+suites = []
+no_suites = "a hardware capture question (pitch-vs-width behaviour on real silicon), not yet a suite result; #87's Surface_pitch::Swizzle residual is the pgraph capture this would inform."
+blocker_falsifier = "if a hardware listener already existed, docs/testing/ would carry a script that boots a disc on real Xbox hardware and captures its framebuffer; none does."
+blocker_tested = "confirmed by reading 2026-09-26: labels xbox-hardware and lane:remote, the status_note names the GL half as folded and the remaining question as a silicon capture."
+status = "open"
+dispatch_state = "blocked"
+status_note = "BOARD job.board 2026-09-26T21:55Z: not dispatchable to a local lane, xbox-hardware. PRIOR: 2026-09-25 08:00 PDT (host session): GL HALF FIXED IN PR #247 (lane.remote; arm PASS 75/75, 0 unreadable): Surface_pitch/Swizzle 12,224 -> 8,192 (-4,032 exactly, q3 signature 8,128 -> 4,096), the other 72 captures byte-identical, and the surface_scale=2 abort at gl/surface.c:2473 now completes. OPEN: (1) Vul [cut]"
+blocked_on = "HARDWARE (job.board 2026-09-26T21:55Z): the GL half folded in PR #247; the remainder is a pitch-vs-width capture on the real console, label xbox-hardware, the host-run lane.xbox instrument. A Vulkan or desktop lane has no next step here."
+
+[issue.110]
+title = "PVIDEO overlay: no size cap and no pitch handling (pvideo.c is 77 lines of register stubs)"
+disposition = "unknown-semantics"
+suites = []
+no_suites = "PVIDEO overlay composition has no pgraph golden at all; the goldens are framebuffer captures and never exercise the overlay path."
+blocker_falsifier = "if a capture path for PVIDEO overlay output existed, some tool under docs/testing/ would produce one; the issue says none does."
+blocker_tested = "confirmed by reading 2026-09-26: the status_note carries the wait and the issue carries xbox-hardware."
+status = "open"
+dispatch_state = "blocked"
+status_note = "BOARD job.board 2026-09-26T21:55Z: not dispatchable to a local lane, xbox-hardware. PRIOR: WAITS FOR THE OWNER'S POWER SWITCH (expected 2026-09-25): the next step is a PVIDEO register sweep after pb_init() (per #203's hypothesis, which retires the bit-28 PMC write), and it WRITES registers; lane.xbox runs no register writes under the lockup safeguards until the switch is in. First on its list afte [cut]"
+blocked_on = "HARDWARE (job.board 2026-09-26T21:55Z): the next step is a PVIDEO register sweep after pb_init(), which WRITES registers; lane.xbox runs none under the lockup safeguards until the owner's power switch is in (see status_note). Label xbox-hardware, host-run."
+
+[issue.112]
+title = "xbox-hardware: the experiments that need real silicon, in the order they pay"
+disposition = "harness"
+suites = []
+no_suites = "a roadmap issue ordering five hardware experiments (the viewport 9/16 boundary sweep, radial-fog carryover, vsh goldens, two inherited vsh behaviours, and #109-111), not itself a suite result."
+blocker_falsifier = "if a hardware listener existed, item 1 (the viewport sweep) would already be running rather than only registerable as a prediction."
+blocker_tested = "CONFIRMED BY READING 2026-09-18: the issue body says 'Nothing here is dispatchable to a lane as a device run until a hardware listener exists (a way to boot a disc on the Xbox and capture the framebuffer)', and no such listener exists in this tree."
+status = "closed"
+dispatch_state = "done"
+status_note = "CLOSED 2026-09-26T19:52Z (hostops, on lane.xbox board request 12:40 PDT; #112 comment 5849282270): items 1-4 landed (PRs #227, #346/#348, #225, #344/#339); item 5: #109 needs no console run, #111 closed. #110 (PVIDEO register sweep) and #188 stay parked on the owner word in their own issues. The header precondition (a hardware listener) is obsolete."
+blocked_on = ""
+
+[issue.184]
+title = "Vulkan: the Clear suite's surface-format captures are worse than GL on four of them, two of which GL gets pixel-exact -- and no arm scores that suite"
+component = "pgraph"
+disposition = "defect"
+suites = ["Clear"]
+status = "fixed-verified"
+dispatch_state = "done"
+status_note = "BOARD wave 254 (job.board, 2026-09-26T17:40Z): CLOSED on GitHub 2026-09-26T17:19Z by lane.remote: the fix covers every route the stock suite takes; the three not-reached cases each read 0 draws across all 99 per-suite discs on desktop Vulkan against master e26f8608, with a positive control that counts 10 case-2 events when the tex_reg_cache invalidation is removed. A title that takes an unreached  [cut]"
+blocked_on = ""
+
+[issue.200]
+title = "Bits nv2a_regs.h does not name are unreachable: method handlers rebuild registers field-by-field, so every header hole is a hole in reachable state"
+component = "pgraph"
+disposition = "defect"
+suites = []
+no_suites = "a register-modelling gap, not a scored pixel defect -- the filer explicitly declines to claim rendered-output impact (the 5,412px/max-delta-1 residual on the same capture is #38 territory and whether an unwritten TEXFMT0 bit contributes is untested)."
+status = "closed"
+status_note = "CLOSED (job.board wave 241, 2026-09-26T09:40Z): lane.regs200 (PR #377 folded) reproduced every measured hole from source and found NO consumer in hw/xbox/nv2a that reads a hole bit, so the rows are inert for pixels, are not a cause of the #38 residual, and no source-only fix matches hardware. The ranked hunk list stays in docs/lanes/regs200/NOTES.md; reopen if a consumer of an unnamed bit is ever  [cut]"
+dispatch_state = "done"
+blocked_on = ""
+blocker_tested = "CONFIRMED BY READING 2026-09-25 (host session): the [job.cloud] comment on #200 at 07:44Z ('Still open: whether silicon sets the holes listed below. That needs PR #201's per-test diff widened to more suites, a register diff with no pixel arm') and PR #230, merged 13:10Z."
+blocker_falsifier = "if the holes could be settled without the console, PR #230's static enumeration would have classified them instead of listing them as open."
+
+[issue.262]
+title = "Surface as vertex array: vertex fetch never sees later renders into memory bound as a vertex array (DynamicUpdateLoop, 96,000 px)"
+component = "pgraph"
+disposition = "defect"
+suites = ["Surface as vertex array"]
+status = "open"
+dispatch_state = "blocked"
+status_note = "FOLDED (job.board wave 223, 2026-09-26T03:40Z): PR #264 merged as 72e479ec59 (vk/draw.c stale-range check over draw_dirty / draw_generation surfaces); lane.vtxarr262 retired. Issue stays open until the registered arm (predictions/vtxarr262-surface-vertex-refetch.json) posts a verdict: DynamicUpdateLoop 96,000 px -> 0 expected. PRIOR: DISPATCHED (job.board, 2026-09-25T18:30Z) as [lane.vtxarr262], b [cut]"
+blocked_on = "VERIFICATION 2026-09-26 (job.board, board tick 07:35 PDT): PR #264 folded 72e479ec59 (vk/draw.c stale-range check); its registered arm (vtxarr262-surface-vertex-refetch.json, DynamicUpdateLoop 96,000 px -> 0) has posted no verdict yet. Nothing to dispatch: closes when that verdict or a post-fold sweep reads the capture at 0; a worse score reopens it."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = false
+impact_basis = "2026-09-26 (job.board): fix folded, arm verdict pending; the 96,000 px is expected to be 0 and is not counted as recoverable."
+
+[issue.272]
+title = "Depth buffer fixed function: 24-bit depth reads 2-5 units high across the receding quad near maximum depth (323,036 px; same signature as #266)"
+component = "pgraph"
+disposition = "defect"
+suites = ["Depth buffer fixed function"]
+status = "fixed"
+dispatch_state = "done"
+blocked_on = "VERIFICATION 2026-09-26 (job.board wave 249): fixed by PR #364 (folded, labelled verified; arm zrtz272-rtz3 PASS 1,253/1,253, 37 better, 1 worse, 945 same). Closes as fixed-verified when a post-fold sweep on master scores the Depth_buffer_fixed_function and Color_zeta_overlap captures at the arm level. A worse score there reopens it as a live defect."
+blocker_tested = "CONFIRMED BY READING 2026-09-25 (host session): the inventory decoded both suites' depth captures and found the same 2-5-unit-high offset near maximum depth (#266 issue body; this issue's body)."
+blocker_falsifier = "if the signatures differed, #266's FloorQuad rows and these z24 rows would disagree in where on the quad the error sits or in its sign; the inventory found them the same."
+status_note = "BOARD 2026-09-26T14:14:00Z (wave 249): PR #364 folded and arm-verified (rtz3 PASS 1,253/1,253); nothing structural is left to recover, so impact_px is 0 and the row leaves the dispatch order (was 275,358). The row still read a not-started lane. || PRIOR: BOARD 2026-09-26T05:45Z: lane.zrtz272 briefed and holding vsh-ff.c but STILL NOT STARTED: lane.sh start was refused approval again in the board s [cut]"
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-25 inventory (host session): medium: the two identical z24 full-range captures alone are 275,358; up to all 14 (323,036); same signature as #266, so lane.wbufdepth24's mechanism may cover both"
+game_visible = false
+
+[issue.274]
+title = "Antialiasing tests: a surface created over CPU-written memory shows different texture content (CreateSurfaceWith*, 235,488 px)"
+component = "pgraph"
+disposition = "defect"
+suites = ["Antialiasing tests"]
+status = "fixed-verified"
+dispatch_state = "done"
+blocked_on = ""
+status_note = "FIXED (hostops, 2026-09-26 4:55 AM PDT): the CreateSurfaceWith* captures were fixed by PR #327 (78,496 -> 0 each), and the GPUAAWriteAfterCPUWrite carry-over (2,674 -> 134 px) by #366 on master. PR #380 (folded 6c25a829ef) hardens the create_pipeline() early return that caused it (arms PASS on its registered refs). The 134 px left is the same run alone and on GL, so it is a different mechanism and [cut]"
+impact_px = 2540
+impact_onestep_px = 0
+impact_basis = "2026-09-26 (board): PR #327 folded and took the three CreateSurfaceWith* captures 78,496 -> 0 each (235,488 px recovered); what is left is GPUAAWriteAfterCPUWrite's 2,540 px carry-over from the FBSurface tests, a second Vulkan-only mechanism that lane.remote takes with a fresh registration."
+game_visible = false
+
+[issue.275]
+title = "Color zeta overlap residual after #88/#91: Swap 165,447 px from a single colour pair; the rest is within silicon's own variance"
+component = "pgraph"
+disposition = "defect"
+suites = ["Color zeta overlap"]
+status = "fixed"
+dispatch_state = "done"
+blocked_on = "VERIFICATION 2026-09-26 (job.board wave 249): fixed by PR #364 (folded, labelled verified; arm zrtz272-rtz3 PASS 1,253/1,253, 37 better, 1 worse, 945 same). Closes as fixed-verified when a post-fold sweep on master scores the Depth_buffer_fixed_function and Color_zeta_overlap captures at the arm level. A worse score there reopens it as a live defect."
+status_note = "BOARD 2026-09-26T14:14:00Z (wave 249): PR #364 folded and arm-verified (rtz3 PASS 1,253/1,253); nothing structural is left to recover, so impact_px is 0 and the row leaves the dispatch order (was 165,447). Swap is the #275 leg of the same defect. The row still read a not-started lane. || PRIOR: BOARD 2026-09-26T05:40Z: lane.zrtz272 briefed (not yet started) for #272 and carries Swap (same defect;  [cut]"
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-25 inventory (host session): medium: Swap in full (165,447; the console matches the golden there); at most 51,669 more on ZetaIntoColor; ~0 on ColorIntoZeta_ZB (its gap is smaller than the console's own nondeterminism)"
+game_visible = false
+
+[issue.276]
+title = "ZMinMaxControl: we draw geometry silicon culls under NEARFAR ZCLAMP / ZCULL (143,673 px)"
+component = "pgraph"
+disposition = "defect"
+suites = ["ZMinMaxControl"]
+status = "fixed"
+dispatch_state = "done"
+blocked_on = "VERIFICATION 2026-09-26 (job.board tick 247): fixed by PR #368 (folded, labelled verified); ZMinMaxControl 334,453 -> 190,780 px, all 32 captures within one step. Closes as fixed-verified when a post-fold sweep on master scores the captures at the arm level. A worse score there reopens it as a live defect. The issue stays open on GitHub until then; this field is what keeps it out of the unclassifi [cut]"
+status_note = "BOARD 2026-09-26T12:40Z (tick 247): blocked_on set to a VERIFICATION line, the same shape as #279/#285, because an open issue with dispatch_state=done and no blocker is read by fleet.py as unclassified (a FAIL that wakes the board every tick). || PRIOR: BOARD 2026-09-26T12:10Z (tick 246): PR #368 folded and labelled verified; ZMinMaxControl 334,453 -> 190,780 px, all 32 captures within one step. N [cut]"
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-26 (job.board tick 246): PR #368 folded, arm PASS 866/866, all 32 ZMinMaxControl captures within one step"
+game_visible = false
+
+[issue.277]
+title = "DMA corruption around surfaces: a file read into a bound surface keeps the old colour (xemuReadFromFileIntoSurface, 90,912 px)"
+component = "pgraph"
+disposition = "defect"
+suites = ["DMA corruption around surfaces"]
+status = "fixed-verified"
+dispatch_state = "done"
+blocked_on = ""
+status_note = "BOARD 2026-09-26T03:00Z: [job.arms] VERDICT PASS (45/45 checks) on lane/dmasurf277 dmasurf277-dmamap.json, 90,912 -> 0; issue CLOSED this tick. Fix: system/physmem.c address_space_map fires BP_MEM_WRITE callbacks (PR #325, e2f617ed99). PRIOR: BOARD 2026-09-26T02:05Z: PR #325 folded (e2f617ed99); lane.dmasurf277 retired, arm verdict follows the fold, issue stays open until it posts. PRIOR: BOARD 20 [cut]"
+impact_px = 90912
+impact_onestep_px = 0
+impact_basis = "2026-09-25 inventory (host session): high: one capture, whole region wrong; silicon shows the file's white and we still show the colour from before the read"
+game_visible = false
+
+[issue.278]
+title = "Fog exceptional value: with an INF fog coordinate, exp and exp2 fog come out opposite to silicon (85,268 px)"
+component = "pgraph"
+disposition = "defect"
+suites = ["Fog exceptional value"]
+status = "fixed"
+dispatch_state = "done"
+blocked_on = "VERIFICATION 2026-09-26 (job.board tick 247): fixed by PR #373 (folded, labelled verified); the 16 INF-FogExc captures at the arm level (predicted 85,268 -> at most 3,564). Closes as fixed-verified when a post-fold sweep on master scores the captures at the arm level. A worse score there reopens it as a live defect. The issue stays open on GitHub until then; this field is what keeps it out of the  [cut]"
+status_note = "BOARD 2026-09-26T12:40Z (tick 247): blocked_on set to a VERIFICATION line, the same shape as #279/#285, because an open issue with dispatch_state=done and no blocker is read by fleet.py as unclassified (a FAIL that wakes the board every tick). || PRIOR: BOARD 2026-09-26T12:10Z (tick 246): lane.fog278 REPORTED, PR #373 folded (labels folded, verified): vsh.c flags INF as 2.0 and psh.c append_fog_fa [cut]"
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-26 (job.board tick 246): PR #373 folded and arm-verified; the residual is the predicted 3,564 px of a separate unfogged-diffuse defect, unowned"
+game_visible = false
+
+[issue.279]
+title = "Pixel shader: DOT_ZW draws the whole quad one wrong colour (65,536 px)"
+component = "pgraph"
+disposition = "defect"
+suites = ["Pixel shader"]
+status = "fixed"
+dispatch_state = "done"
+blocked_on = "VERIFICATION 2026-09-26 (hostops): fixed by PR #347 (6550967a5e), arm passed; closes as fixed-verified when the post-fold sweep 1790407777-verify279-6550967a5e (queued, ref 6550967a5e) scores the #279 captures at the arm's level on master. A worse score there reopens it as a live defect."
+status_note = "BOARD 2026-09-26T12:40Z (tick 247): impact_px zeroed (was 65536) -- the row is fixed, and at that figure it sorted high in the capacity list and would have been dispatched again. || PRIOR: FIXED (hostops, 2026-09-26T07:25Z): PR #347 (lane.pshqueue) folded as 6550967a5e; #279 arm PASS 9/9 (pshqueue-279-dotzw.json). fixed-verified waits for a post-fold sweep on master. PRIOR: BOARD 2026-09-26T03:30Z [cut]"
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-26 (job.board tick 247): fixed by PR #347 (arm PASS); nothing structural left to recover, waits on a post-fold sweep. Was 65536."
+game_visible = false
+
+[issue.280]
+title = "Vertex shader independence: R12 must read back the original oPos after a paired MAC+ILU write (Multioutput, 32,768 px)"
+component = "pgraph"
+disposition = "defect"
+suites = ["Vertex shader independence tests"]
+status = "fixed-verified"
+dispatch_state = "done"
+blocked_on = ""
+status_note = "FIXED 2026-09-26: PR #290 folded (9b3b0bb086), arm PASS on 335 checks. The oPos write is deferred to the end of the instruction so the temp write no longer re-reads a changed R12. CLOSED on GitHub by job.board wave 216. PRIOR: FILED 2026-09-25 (host session) from the unowned-residual inventory."
+impact_px = 32768
+impact_onestep_px = 0
+impact_basis = "2026-09-25 inventory (host session): high: one capture, half the geometry wrong; XDK-compiled vertex shaders emit this R12/oPos pattern, so game relevance is medium-high"
+game_visible = false
+
+[issue.281]
+title = "Attrib float: NaN vertex attributes (NaNs/NaNq) differ from silicon by 14.6k px each (29,232 px)"
+component = "pgraph"
+disposition = "defect"
+suites = ["Attrib float"]
+status = "fixed"
+dispatch_state = "done"
+blocked_on = "VERIFICATION 2026-09-26 (job.board wave 249): fixed by PR #336 (folded 2026-09-26T06:08Z, labelled verified). Closes as fixed-verified when a post-fold sweep on master scores NaNs/NaNq (14.6k px each) at the arm level. A worse score there reopens it as a live defect."
+status_note = "BOARD 2026-09-26T14:14:00Z (wave 249): PR #336 carries `verified`; impact zeroed (was 29,172) so the row stops sorting high in the capacity list. || PRIOR: BOARD wave 236: PR #336 (lane.nanfix281) MERGED 2026-09-26T06:08Z; row stays open until its arm verdict is read against the 14.6k px/capture target. BOARD wave 216: PR #302 (lane.nanattr281) folded analysis only -- sign-bit rule found (-NaN ->  [cut]"
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-25 inventory (host session): medium: ours differs from the console by 14,586 px per capture while the console differs from the golden by 60 and 0 px"
+game_visible = false
+
+[issue.282]
+title = "Texel-tie boundary shift across the lighting and bump suites: nearest-sample ties break differently from silicon (334,945 px, no rule derived)"
+component = "pgraph"
+disposition = "defect"
+suites = ["Lighting spotlight", "Lighting control", "Material color source", "Combiner", "Lighting accumulation", "Specular back", "Specular", "Texture border color", "Lighting range", "Bump map", "Bump env lum"]
+status = "fixed-part"
+dispatch_state = "blocked"
+blocked_on = "RE-PRICE 2026-09-26 (job.board wave 253): PR #379 folded with a scoped rule; the remaining checkerboard/Specular residual is stale until a post-fold sweep of the lighting suites on master (the host queues it). Dispatch a vertex-role generalisation lane from docs/lanes/tiecode282/NOTES.md when that sweep still shows a structural family; a lane briefed from the pre-fold 60,000 px would chase a figur [cut]"
+status_note = "BOARD wave 253 (job.board, 2026-09-26T14:55Z): lane.tiecode282 retired -- PR #379 folded 14:40Z (verified, arm PASS 375/375): the binade rule now holds on the covered configuration (Vulkan, fixed-function, smooth, PROJECT2D/3D, axis-aligned right triangle, non-power-of-two legs). Material_color_source and Texture_palette went to 0; Lighting spotlight/control/accumulation/range 265,382 -> 153,744 a [cut]"
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-26 (job.board wave 253): withdrawn pending a post-fold sweep; was 60,000 before PR #379 landed the scoped binade rule."
+game_visible = false
+
+[issue.283]
+title = "Volume texture: Y16 and R16B16 volume textures differ (107,781 px; possibly #10's Y16/R16B16 classes)"
+component = "pgraph"
+disposition = "defect"
+suites = ["Volume texture"]
+status = "fixed"
+dispatch_state = "done"
+blocked_on = "VERIFICATION 2026-09-26 (job.board wave 253): fixed by PR #379 (folded 14:40Z, verified; arm tiecode282-pow2 PASS 375/375, Volume_texture 34,727 -> 0). Closes as fixed-verified when a post-fold sweep on master scores Volume texture at the arm level. A worse score there reopens it."
+status_note = "BOARD wave 253 (job.board, 2026-09-26T14:55Z): lane.tiecode282 retired -- PR #379 folded 14:40Z (labelled verified); its arm read Volume_texture 34,727 -> 0 (all 20 exact), so the Volume texture residual this row priced is closed pending a post-fold sweep. || PRIOR: BOARD wave 240 (2026-09-26T09:10Z): lane.vol283r reported (PR #378 folded): the Volume texture residual is the binade rule's down cla [cut]"
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-26 (job.board wave 253): PR #379 arm reads Volume_texture 0 px; was 4,243. Zeroed so the capacity list does not dispatch it again."
+game_visible = false
+
+[issue.284]
+title = "Texture anisotropy: Anisotropy-2/4/8 differ (60,074 px); the investigation found the host's filter, not our sampler"
+component = "pgraph"
+disposition = "defect"
+suites = ["Texture anisotropy"]
+status = "fixed-part"
+dispatch_state = "done"
+blocked_on = "VERIFICATION 2026-09-26 (job.board wave 254): PR #393 folded 504aeee4d4; arm PASS 86/86, Anisotropy-2/4/8 60,094 -> 9,432 px. The remainder is the host's filter (docs/investigations/anisotropy-is-the-hosts-filter-not-ours.md), no mechanism in hand. Closes as fixed-verified when a post-fold sweep on master scores Texture anisotropy at the arm level; a worse score reopens it."
+status_note = "BOARD wave 254 (job.board, 2026-09-26T17:40Z): lane.pshaniso284 retired -- PR #393 folded 504aeee4d4; arm pshaniso284-aniso PASS 86/86 (nova): Anisotropy-2 15,496 -> 116, -4 21,981 -> 3,313, -8 22,617 -> 6,003 (the other 83 captures bit-identical). About 9,400 px remain, in x4 and x8, slightly above cloud-284's offline model; what is left is the host's own filter. Closes as fixed-verified when a p [cut]"
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-26 (job.board wave 254): PR #393 arm reads 60,094 -> 9,432 px; the remainder is the host's filter with no mechanism in hand. Zeroed so the capacity list does not dispatch it again."
+game_visible = false
+
+[issue.285]
+title = "Surface format: Fmt_G8B8 differs (31,820 px)"
+component = "pgraph"
+disposition = "defect"
+suites = ["Surface format"]
+status = "fixed"
+dispatch_state = "done"
+blocked_on = "VERIFICATION 2026-09-26 (hostops): fixed by PR #347 (6550967a5e), arm passed; closes as fixed-verified when the post-fold sweep 1790407777-verify285-6550967a5e (queued, ref 6550967a5e) scores the #285 captures at the arm's level on master. A worse score there reopens it as a live defect."
+status_note = "BOARD 2026-09-26T12:40Z (tick 247): impact_px zeroed (was 3182) -- the row is fixed, and at that figure it sorted high in the capacity list and would have been dispatched again. || PRIOR: FIXED (hostops, 2026-09-26T07:25Z): PR #347 (lane.pshqueue) folded as 6550967a5e; #285 arm PASS 89/89 (pshqueue-285-g8b8.json). fixed-verified waits for a post-fold sweep on master. PRIOR: BOARD 2026-09-26T03:30Z [cut]"
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-26 (job.board tick 247): fixed by PR #347 (arm PASS); nothing structural left to recover, waits on a post-fold sweep. Was 3182."
+game_visible = false
+
+[issue.286]
+title = "3D primitive smoothing: residual beyond #36's unmodellable ruling, bounded at 175,704 px by silicon's own smoothed/unsmoothed difference"
+component = "pgraph"
+disposition = "defect"
+suites = ["3D primitive"]
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "MEASURED 2026-09-26: the Adreno 740 reports VkPhysicalDeviceLineRasterizationFeaturesEXT smoothLines=0 (rect=1 bresenham=1), so VK_EXT_line_rasterization cannot smooth lines here; polygons have no Vulkan analog short of MSAA, which neither backend has. The 165,144 px smoothing ceiling (line 87,392 + polygon 77,752) has no route on this hardware. Reopen if a driver with smoothLines=1 ships or MSAA  [cut]"
+blocker_falsifier = "if 'no Vulkan route to line smoothing' were false, the on-device probe line would read smooth=1 (or a second device would); it reads smooth=0 in every run cited below, and the probe itself is controlled by rect=1 bresenham=1 on the same line, so it did read the struct."
+blocker_tested = "confirmed, 2026-09-26: dispatch/results/1790424874-blinx372c-754046/logcat.txt line 112 (also 1790419344-arms-tiecode282-fix-4178393, 1790424433-surfwatch382-432556) all read smooth=0, rect=1, bresenham=1, ext=1. Not tested: the adrenotools/Turnip driver (a different driver may report smoothLines=1; the fleet default is the system driver) and a polygon-smoothing route via MSAA, which is a project  [cut]"
+status_note = "BOARD 2026-09-26T12:45Z (tick 247): THE DEVICE PROBE HAS ALREADY RUN -- every Adreno 740 logcat since the vk/instance.c report line landed carries `line raster: ext=1 rect=1 bresenham=1 smooth=0 stipple(rect=0 bres=0 smooth=0) width[1.000,127.500] gran=0.500 wide=1 strictLines=1` (dispatch/results/1790424874-blinx372c-754046/logcat.txt line 112 (also 1790419344-arms-tiecode282-fix-4178393, 1790424 [cut]"
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-26 (job.board tick 247): the only first step named for the 165,144 smoothing ceiling was the smoothLines probe, and it reads 0; expected recoverable by any fleet-reachable route is 0. The AA-surface half went to lane.aasample (PR #366). Was 17,570."
+game_visible = false
+
+[issue.287]
+title = "Golden correction: TexFmt_R6G5B5's golden is the outlier; our output is byte-identical to the console (134,902 phantom px)"
+component = "harness"
+disposition = "harness"
+suites = ["Texture format"]
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "WAITING 2026-09-26 (job.board, board tick 07:35 PDT): the R6G5B5 golden override landed (PR #331, 169045feca); the score moves only when lane.toolsmith defect 17 reads golden_overrides/. Nothing to dispatch here: closes when a sweep scores Texture format TexFmt_R6G5B5 against the override."
+status_note = "BOARD 2026-09-26T02:05Z: PR #331 folded (169045feca): the R6G5B5 override landed; lane.goldovr287 retired; still inert until lane.toolsmith defect 17 reads golden_overrides/. PRIOR: BOARD 2026-09-25T23:40Z: lane.goldencorr287 RETIRED (PR #300 folded b07ecc56fc, analysis complete). The override PNG + README (granted golden_overrides/**) did not land in #300; dispatched lane.goldovr287 for the data  [cut]"
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-26 (job.board): data half landed (PR #331); the 134,902 px is phantom residual, not recoverable renderer work, and waits on toolsmith defect 17."
+game_visible = false
+
+[issue.291]
+title = "Coverage: the sweep never scores 640 retired Depth buffer goldens (11% of the corpus; Depth/stencil is a 62% floor)"
+component = "harness"
+disposition = "harness"
+suites = []
+no_suites = "coverage/scoring gap: goldens or tests the harness never scores, not a rendered-output residual"
+status = "fixed-part"
+dispatch_state = "done"
+status_note = "2026-09-26 (job.board wave 239): the sweep leg is built (PR #299); the run is the host's. || FILED 2026-09-25 13:05 PDT (host session) from the tests-that-never-run inventory (2,229 of 5,608 goldens never scored; 1,656 of 4,590 corpus tests never run). Owned by lane.sweepcover (wave 189)."
+blocked_on = "TOOLING SHIPPED, RUN PENDING: PR #299 added queue_full_sweep.sh --with-depth-2025/--with-blend-interactive/--with-rtloop (each its own column). Closes when the first sweep queued with the flag is scored and folded into SCOREBOARD -- a device sweep the host queues; nothing to dispatch."
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-25 (host session): coverage, not px: 640 goldens (11% of the corpus) that no current disc emits; the v2025-03-14 disc does"
+game_visible = false
+
+[issue.292]
+title = "Coverage: Blend TestDetailed (1,568 goldens, 28% of the corpus) is outside the standing sweep"
+component = "harness"
+disposition = "harness"
+suites = []
+no_suites = "coverage/scoring gap: goldens or tests the harness never scores, not a rendered-output residual"
+status = "fixed-part"
+dispatch_state = "done"
+status_note = "2026-09-26 (job.board wave 239): the sweep leg is built (PR #299); the run is the host's. || FILED 2026-09-25 13:05 PDT (host session) from the tests-that-never-run inventory (2,229 of 5,608 goldens never scored; 1,656 of 4,590 corpus tests never run). Owned by lane.sweepcover (wave 189)."
+blocked_on = "TOOLING SHIPPED, RUN PENDING: PR #299 added queue_full_sweep.sh --with-depth-2025/--with-blend-interactive/--with-rtloop (each its own column). Closes when the first sweep queued with the flag is scored and folded into SCOREBOARD -- a device sweep the host queues; nothing to dispatch."
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-25 (host session): coverage: 1,568 goldens (28% of the corpus) reachable only on the interactive disc"
+game_visible = false
+
+[issue.293]
+title = "Coverage: the 16 tests added at 6743b6a never run in the harness (sweep disc is the 2026-09-01 release)"
+component = "harness"
+disposition = "harness"
+suites = []
+no_suites = "coverage/scoring gap: goldens or tests the harness never scores, not a rendered-output residual"
+status = "fixed-part"
+dispatch_state = "done"
+status_note = "2026-09-26 (job.board wave 239): the queue side is built (PR #299 --base-iso); the dispatcher/arms half is toolsmith's. || FILED 2026-09-25 13:05 PDT (host session) from the tests-that-never-run inventory (2,229 of 5,608 goldens never scored; 1,656 of 4,590 corpus tests never run). Owned by lane.sweepcover (wave 189)."
+blocked_on = "waits on lane.toolsmith (standing): dispatcher.sh needs a golden root per request and arms.sh suites_for needs the new disc; docs/lanes/sweepcover/NOTES.md spells out both changes. queue_full_sweep.sh --base-iso is already in master (PR #299)."
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-25 (host session): coverage: 16 tests (11 with new console references from lane.xbox) that no harness path scores"
+game_visible = false
+
+[issue.294]
+title = "Coverage: Texture render target::RenderTextureLoop is skipped by every sweep, so its golden is never scored"
+component = "harness"
+disposition = "harness"
+suites = []
+no_suites = "coverage/scoring gap: goldens or tests the harness never scores, not a rendered-output residual"
+status = "fixed-part"
+dispatch_state = "done"
+status_note = "2026-09-26 (job.board wave 239): the sweep leg is built (PR #299); the run is the host's. || FILED 2026-09-25 13:05 PDT (host session) from the tests-that-never-run inventory (2,229 of 5,608 goldens never scored; 1,656 of 4,590 corpus tests never run). Owned by lane.sweepcover (wave 189)."
+blocked_on = "TOOLING SHIPPED, RUN PENDING: PR #299 added queue_full_sweep.sh --with-depth-2025/--with-blend-interactive/--with-rtloop (each its own column). Closes when the first sweep queued with the flag is scored and folded into SCOREBOARD -- a device sweep the host queues; nothing to dispatch."
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-25 (host session): coverage: 1 golden, skipped on purpose because the old disc contaminates the tests after it"
+game_visible = false
+
+[issue.295]
+title = "Coverage: 20 goldens no current disc can produce (renamed or compiled-out tests) still count in the coverage denominators"
+component = "harness"
+disposition = "harness"
+suites = []
+no_suites = "coverage/scoring gap: goldens or tests the harness never scores, not a rendered-output residual"
+status = "fixed-verified"
+dispatch_state = "done"
+status_note = "2026-09-26 (job.board wave 239): FIXED by PR #299 (lane.sweepcover, folded 2026-09-26T05:58Z): unscoreable_goldens.json lists the 20 goldens no disc emits and scoreboard.py --unscoreable drops them from the coverage denominators (fixture 9 (+1 unscoreable), ignore-list mutant red). Closed. || FILED 2026-09-25 13:05 PDT (host session) from the tests-that-never-run inventory (2,229 of 5,608 goldens  [cut]"
+blocked_on = ""
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-25 (host session): coverage: 20 unproducible goldens that keep PARTIAL COVERAGE warnings permanently on"
+game_visible = false
+
+[issue.296]
+title = "Coverage: Clipping precision (48 tests) and PVIDEO (23) save nothing -- record them as deliberately unscored"
+component = "harness"
+disposition = "harness"
+suites = []
+no_suites = "coverage/scoring gap: goldens or tests the harness never scores, not a rendered-output residual"
+status = "fixed-verified"
+dispatch_state = "done"
+status_note = "2026-09-26 (job.board wave 239): FIXED by PR #299 (lane.sweepcover, folded 2026-09-26T05:58Z): Clipping_precision (48) and PVIDEO (23) are recorded as not captured by design in unscoreable_goldens.json, which scoreboard.py --unscoreable reads. Closed. || FILED 2026-09-25 13:05 PDT (host session) from the tests-that-never-run inventory (2,229 of 5,608 goldens never scored; 1,656 of 4,590 corpus tes [cut]"
+blocked_on = ""
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-25 (host session): coverage bookkeeping: 71 interactive-only tests that save no capture, to be recorded rather than left looking missing"
+game_visible = false
+
+[issue.303]
+title = "Spikeout: Battle Street: the intro/attract FMV decodes with green block corruption (Vulkan)"
+component = "games"
+disposition = "defect"
+suites = []
+no_suites = "A VISIBLE ARTIFACT IN A COMMERCIAL TITLE: an FMV (Sofdec) in Spikeout: Battle Street. No pgraph suite draws it, and naming one would put a game defect on a pixel column that can never move."
+status = "open"
+status_note = "PARKED (hostops 2026-09-26T20:55Z): lane.fmv303c stopped under the 0.5-first policy (owner 2026-09-26, tracking #433); #303 is not 0.5 work. Its probe commit b86f91641b is pushed on lane/fmv303c; resume it after 0.5 ships. PRIOR: STARTED (job.board 2026-09-26T20:50Z): lane.fmv303c, briefs/fmv303c.md; vk/surface.c released at ready by lane.blinx372d (PR #396) and taken for the probe hunk. PRIOR: BO [cut]"
+dispatch_state = "blocked"
+blocked_on = "after 0.5: the 0.5-first policy (owner 2026-09-26, tracking #433) parks non-0.5 work; label blocked:after-0.5"
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "game-visible (host, 2026-09-25): the whole intro/attract FMV of a commercial title, 30-90% of each frame, on every boot; no golden, so no px figure"
+
+[issue.311]
+title = "Grabbed by the Ghoulies: the title screen and attract loop decay from 29 to 1-2 fps within minutes"
+component = "games"
+disposition = "defect"
+suites = []
+no_suites = "A PERFORMANCE COLLAPSE IN A COMMERCIAL TITLE (hands-off, on its title screen); no pgraph suite can see a frame rate."
+status = "fixed-verified"
+status_note = "FIXED AND VERIFIED (job.board, 2026-09-25): PR #334 folded as c0abc2b1e6 (unregister the reused slot's access watch before overwriting it); lane.fix311 arm pair on both handhelds: Ghoulies median 29 gfps over 90-240 s vs 2 on the base, live watches 4 vs ~1,750. CLOSED on GitHub. PRIOR: FILED 2026-09-25 (host session) from lane.gamecheck's #265 re-check: 29 -> 1-2 gfps within ~2 min of boot on the  [cut]"
+dispatch_state = "done"
+blocked_on = ""
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "game-visible (host, 2026-09-25): a commercial title unplayable-slow on its own title screen; no golden, so no px figure"
+
+[issue.315]
+title = "Texture_BRDF: PS_TEXTUREMODES_BRDF unimplemented, and silicon's only ink (a 614-px corner wedge) is not rasterised"
+component = "pgraph"
+disposition = "defect"
+suites = ["Texture BRDF"]
+status = "fixed"
+dispatch_state = "done"
+blocked_on = "VERIFICATION 2026-09-26 (job.board wave 254): fixed by PR #393 (folded 504aeee4d4; arm pshaniso284-brdf PASS 74/74, BRDF captures 614 -> 0). Closes as fixed-verified when a post-fold sweep on master scores Texture BRDF at the arm level. A worse score there reopens it."
+status_note = "BOARD wave 254 (job.board, 2026-09-26T17:40Z): lane.pshaniso284 retired -- PR #393 folded 504aeee4d4; arm pshaniso284-brdf PASS 74/74 (thor): BRDF_e0_l0, BRDF_e0_l1, BRDF_e1_l0 614 -> 0 (all exact), Pixel shader / Texture format / Volume texture / Texture anisotropy bit-identical. The residual this row priced is closed pending a post-fold sweep. || PRIOR: BOARD wave 245 (2026-09-26T11:40Z): folded [cut]"
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-26 (job.board wave 254): PR #393 arm reads BRDF 614 -> 0 on all three captures. Zeroed so the capacity list does not dispatch it again."
+game_visible = false
+
+[issue.345]
+title = "vsh: DP3/DP4/DPH do not force 0*inf and 0*NaN products to 0 as silicon does; the CPU constant-writeback evaluator also diverges (no MUL/MAD/DP forcing, RCC(+inf) sign, inexact 2^-64 clamp)"
+component = "pgraph"
+disposition = "defect"
+suites = []
+no_suites = "no nxdk_pgraph_tests suite feeds a zero component against inf/NaN into DP3/DP4/DPH or evaluates a constant-writeback program with those operands; the exercising program is nxdk_vsh_tests' CPU Shader Tests, scored by vsh_score.py against the console text (PR #344)"
+status = "fixed-verified"
+dispatch_state = "done"
+blocked_on = ""
+status_note = "CLOSED (hostops 2026-09-26T21:10Z): half 1 PR #383 and half 2 PR #402 merged; #402 arm verified, SPECIAL_raw 22/44 -> 44/44 on Thor; subnormal remainder is #255. PRIOR: BOARD wave 241 (2026-09-26T09:40Z): half 1 (the GLSL _DP3/_DP4/_DPH zero-forcing in glsl/vsh-prog.c) DISPATCHED as lane.dpforce345 (briefs/dpforce345.md); lane.nanfix281 retired at wave 236 so vsh-prog.c is free. Half 2 (nv2a_vsh_c [cut]"
+impact_px = "0"
+impact_onestep_px = "0"
+impact_basis = "2026-09-26 (lane.xbox, PR #344): silicon rows only, no pgraph capture moves; games: unmeasured -- a DP whose zero component meets inf/NaN (e.g. after RSQ of 0) yields NaN instead of a finite value, visible when it reaches a position or colour"
+
+[issue.372]
+title = "Blinx: The Time Sweeper: ~16 fps in the attract demo on the Thor"
+component = "games"
+disposition = "defect"
+suites = []
+no_suites = "A PERFORMANCE DEFECT IN A COMMERCIAL TITLE (Blinx: The Time Sweeper's in-engine attract demo). No pgraph suite measures frame rate, so none is named."
+status = "open"
+status_note = "BOARD job.board 2026-09-26T21:55Z: not dispatchable, a lane owns it (PR #396 in audit). PRIOR: BOARD 2026-09-26T14:14:00Z (wave 249): PR #388 folded (lane.blinx372c retired): the site is the incompatible-binding eviction in vk/surface.c update_surface_part, two synchronous downloads per frame; ceiling 21-23 fps. Briefed lane.blinx372d (briefs/blinx372d.md; start pending the host) for the GPU-side  [cut]"
+dispatch_state = "blocked"
+blocker_tested = "confirmed 2026-09-26T21:55Z: PR #396 open, not draft, labelled needs-audit-1,verified."
+blocked_on = "IN FLIGHT (job.board 2026-09-26T21:55Z): lane.blinx372d holds the fix, PR #396 is ready (out of draft, CI green, verified) and in audit (needs-audit-1)."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "game-visible (hostops, 2026-09-26): a commercial title under the owner's 20 fps floor for the whole in-engine demo; no golden, so no px figure"
+
+[issue.382]
+title = "50 Cent: Bulletproof: ~14 fps in the intro FMV on the Nova"
+component = "games"
+disposition = "defect"
+suites = []
+no_suites = "A PERFORMANCE DEFECT IN A COMMERCIAL TITLE (50 Cent: Bulletproof's intro FMV). No pgraph suite measures frame rate, so none is named."
+status = "fixed-part"
+status_note = "BOARD 2026-09-26T14:14:00Z (wave 249): PR #387 folded (lane.surfwatch382 retired): the CPU-access watch is suspended after the first write to a surface that owes no download, re-armed before upload or a GPU draw; must-not-move arm only, the fps gain waits on a Nova soak on master. || PRIOR: BOARD wave 245 (2026-09-26T11:40Z): lane.fps382 REPORTED (PR #385 folded): the intro FMV is 30 fps native; t [cut]"
+dispatch_state = "done"
+blocked_on = "VERIFICATION 2026-09-26 (job.board wave 249): PR #387 (its lane (retired)) folded a5b5b628f2; its registered arm was the must-not-move half, so the gain itself (slow stores <= 50k/s and >= 1.5x fps on the intro FMV, same-session A/B on the Nova) is UNMEASURED on master. Closes when a Nova soak of 50 Cent on master reads the intro FMV at 20 fps or better; a lower number reopens it. A device run the [cut]"
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "game-visible (hostops, 2026-09-26): a commercial title under the owner's 20 fps floor through its intro FMV; no golden, so no px figure"
+
+[issue.397]
+title = "1.0 playable list: gameplay FPS per title with scripted input (Thor/Nova)"
+component = "titles"
+disposition = "measurement"
+suites = []
+no_suites = "a title measurement, not a pgraph suite: request.sh --route plays docs/testing/titles/routes/*.route into gameplay and title_verdict.py scores the share of gameplay time at the owner's 30 fps bar"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "OWNER STOP (2026-09-26 12:02 PDT): pass 1 halted and its 12 remaining requests parked in dispatch/parked/titleplay-p1-20260926; do not re-dispatch or restore without the owner. lane.titleplay retired (PR #399 merged); pass-1 table on #397."
+status_note = "OPENED (host session, 2026-09-26 07:30 PDT) on the owner's ask: gameplay FPS with programmed input, not boot/menus (#265's overnight batch was boot-only). lane.titleplay drives each title into gameplay, confirms it from the contact sheet, scores it; <20 fps gameplay / crash / won't load -> its own issue."
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-26: no pixels move; this is the 1.0 playable-list measurement (855 titles is the 1.0 target; ~145 per minor version)"
+game_visible = true
+
+[issue.412]
+title = "007: Agent Under Fire gameplay runs at ~16 fps on the Nova"
+component = "games"
+disposition = "defect"
+suites = []
+no_suites = "A PERFORMANCE DEFECT IN A COMMERCIAL TITLE (007: Agent Under Fire's first-mission gameplay). No pgraph suite measures frame rate, so none is named."
+status = "open"
+dispatch_state = "blocked"
+blocker_tested = "confirmed 2026-09-26T21:55Z: PR #416 open and draft, head lane/aufire412, its last commit names the queued soak arms."
+blocked_on = "IN FLIGHT (job.board 2026-09-26T21:55Z): lane.aufire412 holds it, PR #416 is a draft whose unit has exited (last push 20:15Z, NOTES: soak arm request ids). jobs/handback.sh owns a draft with no unit and resumes the lane once its arms resolve."
+status_note = "BOARD job.board 2026-09-26T21:55Z: not dispatchable, a lane owns it (draft PR #416, handback resumes). PRIOR: FILED 2026-09-26T19:07Z by lane.titleplay (#397) from its first gameplay survey: 16.2 fps median, flat 16.1-16.2 per window (a steady per-frame cost, not stalls); title screen 40-60 fps, mission scene 12-20. BOARD 2026-09-26T19:15Z (tick): row written, dispatch_state available; the lane pr [cut]"
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "game-visible (lane.titleplay #397, 2026-09-26): a commercial title's gameplay under the 1.0 bar of 30 fps and the owner's 20 fps floor; no golden, so no px figure"
+
+[issue.413]
+title = "Dead or Alive Ultimate: fights run at ~16 fps on the Nova, and a stage transition stalls at 0-2 fps for two minutes"
+component = "games"
+disposition = "defect"
+suites = []
+no_suites = "A PERFORMANCE DEFECT IN A COMMERCIAL TITLE (Dead or Alive Ultimate's fights and the post-ring-out stage transition). No pgraph suite measures frame rate, so none is named."
+status = "open"
+dispatch_state = "blocked"
+blocker_tested = "confirmed 2026-09-26T21:57Z: PR #440 open and draft, head lane/doa413b, its last commit says attempt 1 ended waiting on the pilot."
+blocked_on = "IN FLIGHT (job.board 2026-09-26T21:55Z): lane.doa413b holds it, PR #440 is a draft whose unit has exited (NOTES: attempt 1 ended waiting on the pilot, last push 21:50Z). jobs/handback.sh resumes it when the pilot and arms resolve."
+status_note = "BOARD job.board 2026-09-26T21:55Z: not dispatchable, a lane owns it (draft PR #440, handback resumes). PRIOR: STARTED (hostops 2026-09-26T21:10Z): lane.doa413b, briefs/doa413b.md: price and cut surface_update in the 16 fps fight (PR #417 found Surf 33-52 ms/frame). PRIOR: FILED 2026-09-26T19:07Z by lane.titleplay (#397) from its first gameplay survey: 12.6 fps median over 191 s, hang gaps 11.3 / 7 [cut]"
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "game-visible (lane.titleplay #397, 2026-09-26): a commercial title's gameplay under the 1.0 bar of 30 fps and the owner's 20 fps floor; no golden, so no px figure"
+
+[issue.414]
+title = "Forza Motorsport: races run at 3-16 fps on the Thor, game clock at ~26% of real time"
+component = "games"
+disposition = "defect"
+suites = []
+no_suites = "A PERFORMANCE DEFECT IN A COMMERCIAL TITLE (Forza Motorsport's race). No pgraph suite measures frame rate, so none is named."
+status = "open"
+dispatch_state = "blocked"
+blocker_tested = "confirmed 2026-09-26T21:55Z: territory.toml lists surface.c as released by blinx372d and taken by doa413b; lane.forza414 asked on the issue for surface.c and draw.c after #396 folds and a re-soak on master."
+blocked_on = "FILE HELD (job.board 2026-09-26T21:55Z): lane.forza414's next step (per-caller split of the uncoalesced SURFACE_DOWN finishes, then coalescing the dominant caller) is in hw/xbox/nv2a/pgraph/vk/surface.c, which lane.doa413b took on 2026-09-26 (PR #440 draft) after lane.blinx372d released it at ready (PR #396). check_territory allows no second unreleased holder. lane.forza414's PR #418 folded; the l [cut]"
+status_note = "BOARD job.board 2026-09-26T21:55Z: blocked on vk/surface.c (held by doa413b). Resume lane.forza414 once #440 is ready or folded, with the grant. PRIOR: FILED 2026-09-26T19:07Z by lane.titleplay (#397) from its first gameplay survey: 16.7 fps median over 174 s, hang gaps 14.8-19.3 s, 67% audio callbacks short, race timer at 26% of wall time, ~14 falling to 2-4 fps after 90 s with the car standing.  [cut]"
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "game-visible (lane.titleplay #397, 2026-09-26): a commercial title's gameplay under the 1.0 bar of 30 fps and the owner's 20 fps floor; no golden, so no px figure"
+
+[issue.424]
+title = "Performance: stop the translation cache's code-write invalidation and dirty re-arm churn"
+component = "tcg"
+disposition = "feature"
+suites = []
+no_suites = "performance: gameplay frame rate, not a pgraph measurement; the pgraph suites are its regression gate"
+status = "open"
+dispatch_state = "blocked"
+blocker_tested = "confirmed 2026-09-26T21:55Z: PR #434 open and draft, head lane/tbchurn424."
+blocked_on = "IN FLIGHT (job.board 2026-09-26T21:55Z): lane.tbchurn424 holds it, PR #434 is a draft whose unit has exited (NOTES: waiting on the soaks and the pixel arm, last push 20:37Z). jobs/handback.sh resumes it when the arms resolve."
+status_note = "BOARD job.board 2026-09-26T21:55Z: not dispatchable, a lane owns it (draft PR #434, handback resumes). PRIOR: DISPATCHED (job.board 2026-09-26T20:25Z) to lane.tbchurn424, briefs/tbchurn424.md. PRIOR: FILED 2026-09-26T20:17Z by the host for 0.5 (tracking #433), from perf-architecture.md's ranked levers."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "0.5 performance lever: up to 26% of the emulated CPU thread"
+
+[issue.425]
+title = "Performance: fewer jump-cache flushes and an inline indirect-branch probe"
+component = "tcg"
+disposition = "feature"
+suites = []
+no_suites = "performance: gameplay frame rate, not a pgraph measurement; the pgraph suites are its regression gate"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "IN FLIGHT (hostops 2026-09-26 15:00 PDT): lane.jcache425 holds it (briefs/jcache425.md), started under the 0.5 order on the unheld lookup-path files (cpu-exec.c, tb-jmp-cache.h); a tb-maint.c hunk is sequenced with lane.tbchurn424 by board request."
+status_note = "QUEUED (job.board 2026-09-26T20:25Z) behind the three perf lanes dispatched this tick. PRIOR: FILED 2026-09-26T20:17Z by the host for 0.5 (tracking #433), from perf-architecture.md's ranked levers."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "0.5 performance lever: up to 13.6% of the emulated CPU thread"
+blocker_tested = "confirmed 2026-09-26T22:00Z: [lane.jcache425] row on origin/board, hakux-lane-jcache425 started."
+
+[issue.426]
+title = "Performance: split renderer command capture from Vulkan translation"
+component = "renderer"
+disposition = "feature"
+suites = []
+no_suites = "performance: gameplay frame rate, not a pgraph measurement; the pgraph suites are its regression gate"
+status = "open"
+dispatch_state = "blocked"
+blocker_tested = "confirmed 2026-09-26T21:55Z: [lane.remote] comments on #426 at 21:21Z and 21:41Z."
+blocked_on = "IN FLIGHT (job.board 2026-09-26T21:55Z): lane.remote holds it (label lane:remote; stage 1 files granted by hostops 2eeab66579; stage 1 design and a Crimson soak request posted on the issue 21:21Z-21:41Z)."
+status_note = "BOARD job.board 2026-09-26T21:55Z: not dispatchable, lane.remote owns it. PRIOR: UNBLOCKED (job.board 2026-09-26T20:45Z): lane.cull13 retired (PR #403 folded), renderer.c is free; lane.remote holds the issue (label lane:remote, scoping comments on the issue). PRIOR: QUEUED (job.board 2026-09-26T20:25Z) behind the three perf lanes dispatched this tick. PRIOR: FILED 2026-09-26T20:17Z by the host for [cut]"
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "0.5 performance lever: +21% fps measured on Crimson Skies"
+
+[issue.427]
+title = "Performance: build with native TLS, inline LSE atomics and no intra-library PLT calls"
+component = "build"
+disposition = "feature"
+suites = []
+no_suites = "performance: gameplay frame rate, not a pgraph measurement; the pgraph suites are its regression gate"
+status = "open"
+dispatch_state = "blocked"
+blocker_tested = "confirmed 2026-09-26T21:55Z: PR #435 open and draft, head lane/buildflags427."
+blocked_on = "IN FLIGHT (job.board 2026-09-26T21:55Z): lane.buildflags427 holds it, PR #435 is a draft whose unit has exited (NOTES state at end of session 1, last push 21:50Z). jobs/handback.sh resumes it when its arms resolve."
+status_note = "BOARD job.board 2026-09-26T21:55Z: not dispatchable, a lane owns it (draft PR #435, handback resumes). PRIOR: DISPATCHED (job.board 2026-09-26T20:25Z) to lane.buildflags427, briefs/buildflags427.md. PRIOR: FILED 2026-09-26T20:17Z by the host for 0.5 (tracking #433), from perf-architecture.md's ranked levers."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "0.5 performance lever: up to 4.4% of the emulated CPU thread"
+
+[issue.428]
+title = "Performance: run the emulated CPU thread on the prime core"
+component = "host"
+disposition = "feature"
+suites = []
+no_suites = "performance: gameplay frame rate, not a pgraph measurement; the pgraph suites are its regression gate"
+status = "closed"
+dispatch_state = "done"
+blocked_on = ""
+status_note = "CLOSED (hostops 2026-09-26T23:20Z) as refuted by lane.vcpuprime428 (PR #437): six 480 s Crimson Skies runs on the Thor, one binary; pinned to the prime core 20.56 fps mean vs 26.20 unpinned (-21.5%). The pin thermally throttled the prime core in 2 of 3 pinned runs, and before that it was 24.4 vs 25.8 at matched clocks. Ceiling was 2-10% (the thread already sits 70-80% on the prime core). Reopen on [cut]"
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "0.5 performance lever: 3-9% of the emulated CPU thread"
+
+[issue.429]
+title = "Performance: smaller translation blocks on often-rewritten pages"
+component = "tcg"
+disposition = "feature"
+suites = []
+no_suites = "performance: gameplay frame rate, not a pgraph measurement; the pgraph suites are its regression gate"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "BOARD 2026-09-26T20:25Z, reaffirmed hostops 2026-09-26 15:00 PDT: accel/tcg/translate-all.c is held by lane.tbchurn424 (#424) and cpu-exec.c by lane.jcache425 (#425); #429 needs both (the cflags lookup-site trap). Dispatch after tbchurn424 reports. Refute by reading territory.toml for the files' holders."
+status_note = "QUEUED (job.board 2026-09-26T20:25Z) behind the three perf lanes dispatched this tick. PRIOR: FILED 2026-09-26T20:17Z by the host for 0.5 (tracking #433), from perf-architecture.md's ranked levers."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "0.5 performance lever: about 4 ms per frame"
+
+[issue.430]
+title = "Copy the next Playable-or-better titles from the console to the handhelds"
+component = "games"
+disposition = "feature"
+suites = []
+no_suites = "title supply for the 0.5 list, not a pgraph measurement"
+status = "open"
+dispatch_state = "blocked"
+blocker_tested = "confirmed by reading 2026-09-26: labels xbox-hardware and lane:xbox on the issue; lane.xbox is a standing console-only lane."
+blocked_on = "HARDWARE (job.board 2026-09-26T21:55Z): console work, label xbox-hardware and lane:xbox; the host-run lane.xbox copies titles over FTP and stage_xiso.py, and no local lane has a next step."
+status_note = "BOARD job.board 2026-09-26T21:55Z: not dispatchable to a local lane, console work. PRIOR: FILED 2026-09-26T20:17Z by the host for 0.5 (tracking #433). Console work: lane.xbox (label lane:xbox)."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "0.5: each title copied can be tested"
+
+[issue.431]
+title = "Measure each title's native frame rate on an original Xbox"
+component = "games"
+disposition = "feature"
+suites = []
+no_suites = "a per-title reference measurement on the original hardware, not a pgraph measurement"
+status = "open"
+dispatch_state = "blocked"
+blocker_tested = "confirmed 2026-09-26T21:55Z: PR #441 open, not draft, labelled fold-ready."
+blocked_on = "IN FLIGHT (job.board 2026-09-26T21:55Z): lane.xbox has PR #441 (lane/xbox-fps431, swap_interval.py) labelled fold-ready; console measurement remains host-run, label xbox-hardware."
+status_note = "BOARD job.board 2026-09-26T21:55Z: not dispatchable to a local lane, console work, PR #441 fold-ready. PRIOR: FILED 2026-09-26T20:17Z by the host for 0.5 (tracking #433). Console work: lane.xbox (label lane:xbox)."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "0.5: correct ratings for 30 and 60 fps titles"
+
+[issue.432]
+title = "Harness: dispatch 0.5 work first and show 0.5 progress on the status page"
+component = "tooling"
+disposition = "feature"
+suites = []
+no_suites = "harness dispatch order and status page, not a pgraph measurement"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "STARTED (job.board 2026-09-26T20:50Z): lane.pri432, briefs/pri432.md. PRIOR: FILED 2026-09-26T20:17Z by the host for 0.5 (tracking #433)."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = false
+impact_basis = "0.5: dispatch order"
+
+[issue.433]
+title = "0.5 release: the first tested-titles list for the Thor and Nova (target 2026-09-28)"
+component = "release"
+disposition = "feature"
+suites = []
+no_suites = "a release tracking issue"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "Not actionable as work: the 0.5 tracking issue. Its workstreams are separate issues, each dispatched on its own."
+status_note = "FILED 2026-09-26T20:17Z by the host (owner 2026-09-26: ship 0.5 around 2026-09-28 as the first honest tested-titles list; Turnip and #188 parked)."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = false
+impact_basis = "tracking"

@@ -1,0 +1,27 @@
+{
+ "_source": "STATUS.md of the 16:24 build: 'Lanes running' (four units, start = 16:24 minus 'running for') and the Host section's timers line (next); last runs from each job's own log where one exists, else unknown",
+ "units": {
+  "hakux-lane-claimrace.service": "Sat 2026-09-26 15:43:33 PDT",
+  "hakux-lane-pilotgate.service": "Sat 2026-09-26 16:07:33 PDT",
+  "hakux-lane-relprio432.service": "Sat 2026-09-26 15:39:33 PDT",
+  "hakux-lane-titlestate.service": "Sat 2026-09-26 15:31:33 PDT"
+ },
+ "inactive": ["hakux-xbox-titlepush.service"],
+ "timers": {
+  "arms":        ["-", "Sat 2026-09-26 16:24:10 PDT"],
+  "board":       ["Sat 2026-09-26 16:33:18 PDT", "Sat 2026-09-26 16:13:18 PDT"],
+  "comments":    ["Sat 2026-09-26 17:17:00 PDT", ""],
+  "dx":          ["Sun 2026-09-27 09:23:00 PDT", ""],
+  "fold":        ["Sat 2026-09-26 16:50:58 PDT", "Sat 2026-09-26 16:20:31 PDT"],
+  "foldpace":    ["Sat 2026-09-26 16:25:00 PDT", ""],
+  "handbackpace":["Sat 2026-09-26 16:32:00 PDT", ""],
+  "hostops":     ["-", "Sat 2026-09-26 16:04:45 PDT"],
+  "issue-sweep": ["Sat 2026-09-26 19:41:51 PDT", "Sat 2026-09-26 07:41:57 PDT"],
+  "jamcheck":    ["Sat 2026-09-26 16:30:00 PDT", ""],
+  "manifest":    ["Sat 2026-09-26 16:30:00 PDT", ""],
+  "nightly":     ["Sun 2026-09-27 00:30:00 PDT", ""],
+  "pr-sweep":    ["Sat 2026-09-26 18:13:59 PDT", "Sat 2026-09-26 15:14:03 PDT"],
+  "status":      ["Sat 2026-09-26 16:53:23 PDT", "Sat 2026-09-26 16:24:33 PDT"]
+ },
+ "boot": "Sat 2026-09-26 14:44:00 PDT"
+}

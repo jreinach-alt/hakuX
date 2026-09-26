@@ -1,0 +1,533 @@
+wave = 266
+
+[lane.toolsmith]
+issues = ["94", "95"]
+standing = true
+files = ["docs/testing/ab_compare.py", "docs/testing/classify_residuals.py", "docs/testing/perf/tcg_pages.py", "docs/testing/preflight.sh", "docs/testing/check_cited_commits.py", "docs/testing/check_coverage.py", "docs/testing/idle-watchdog.sh", "docs/testing/sweep_agreement.py", "docs/testing/sweep_diff.py", "docs/testing/sweep_queue.sh", "docs/lanes/dispatch-hardening/**", "docs/testing/run_disc.sh", "docs/testing/make_test_iso.py", "docs/testing/extract_results.py", "docs/testing/vsh_score.py", "docs/lanes/vsh-program/**", "docs/testing/jobs/allowed-tools.lane", "docs/testing/jobs/deliver.sh", "docs/orchestration.md", "docs/testing/jobs/selftest.d/51-dispatch-hardening.sh", "docs/testing/jobs/selftest.d/66-deliveries.sh", "docs/testing/score_sweep.py", "docs/testing/jobs/selftest.d/83-blank-rule.sh", "docs/testing/affinity.py"]
+note = "LENT (hostops 2026-09-26 15:00 PDT): docs/testing/devices.sh to [lane.perfregimen] (runbook 6n); RETURN it here when that PR folds. LENT (hostops 2026-09-26 12:18 PDT): docs/testing/request.sh to [lane.pilotgate] (owner's pilot rule: the enqueue guard); RETURN it here when that PR folds. RETURNED (hostops 2026-09-26 11:20 AM PDT): docs/testing/jobs/arms.sh from [lane.armsscope], PR #409 merged 7b2 [cut]"
+
+[lane.arms]
+issues = []
+files = []
+note = "RELEASED #38 and #59 2026-09-19 by the host session: `arms` is the arms JOB, not a lane. This row held zero files, had no unit, and fleet.py reported it as LANE CLAIMED WITH NO RUNNING AGENT -- so two accuracy issues read as covered and were dispatchable to nobody. A job does not hold territory. THREE ARMS THAT WERE READY AND UNQUEUED WHILE BOTH DEVICES SAT IDLE. Claims no source files -- it regis [cut]"
+
+[lane.fold]
+issues = []
+standing = true
+files = []
+note = "#84 REMOVED FROM THIS ROW AT WAVE 100: the fold landed (PR #129, lane.blit84, merged as 642b557e77 -- 9db71ddcb2 and 3c4892563b are both ancestors of HEAD) and the lane's own report recommended closing #84 on the mechanism, which the board did this tick (see issue.84 in nv2a_issues.toml). This is exactly the stale-claim failure mode the old note below warned about, reproduced once more before bein [cut]"
+
+[lane.triage]
+issues = []
+standing = true
+files = []
+note = "STANDING LANE, scheduled. It owns READING THE ISSUE COMMENTS and routing what they contain. Created 2026-09-18 because the orchestrator had done ZERO of this for a week and the owner had to ask -- and the first pass immediately found five open issues whose comments carry verified results the tracker does not reflect, three of them apparently closable. CLAIMS NOTHING. It reads, it reports, and it r [cut]"
+
+[lane.flatlm13]
+issues = ["13"]
+files = ["hw/xbox/nv2a/pgraph/prim_rewrite.c", "docs/testing/predictions/flatlm13-*.json", "docs/lanes/flatlm13/**"]
+released = ["hw/xbox/nv2a/pgraph/prim_rewrite.c", "docs/testing/predictions/flatlm13-*.json", "docs/lanes/flatlm13/**"]
+released_at_ready = 401
+note = "READY, PR #401 (job.board 2026-09-26T20:40Z): out of draft, CI green, unit gone, labelled needs-audit-1; files released at ready. PRIOR: DISPATCHED (hostops 2026-09-26T14:55Z): #13 class C of PR #370's attribution (flat colour in a line-mode quad/polygon, 7,324 px, Shade_model only). prim_rewrite.c was in no row. Brief: briefs/flatlm13.md. Class A (line-mode triangle cull, 31,152 px, glsl/geom.c)  [cut]"
+
+[lane.remote]
+issues = ["426", "184", "109", "274"]
+files = ["hw/xbox/nv2a/pgraph/vk/draw.c", "hw/xbox/nv2a/pgraph/vk/renderer.h", "hw/xbox/nv2a/pgraph/vk/command.c", "hw/xbox/nv2a/pgraph/vk/render_thread.c", "hw/xbox/nv2a/pgraph/vk/submit_worker.c", "docs/testing/predictions/remote-109-*.json", "docs/lanes/remote/**", "docs/testing/predictions/remote-184-*.json", "docs/testing/predictions/remote-274-*.json", "docs/testing/predictions/remote-426-*.json", "hw/xbox/nv2a/debug.h", "hw/xbox/nv2a/pgraph/profile.c", "docs/testing/phase_read_split.py", "docs/testing/phase_read_split_check.py", "hw/xbox/nv2a/pgraph/vk/texture.c"]
+standing = false
+note = "CLAIMED AT WAVE 147 (host session) on lane.remote's own request after it came back 2026-09-24 and closed out #62/#158: #184's open measurement -- one desktop Vulkan Clear run with pgraph_vk_bind_textures' three exits counted per bind, to find which source the stale refill reads and why X1R5G5B5 is exempt while R5G6B5 is not. files = [] BY DESIGN: the lane instruments locally, measures, reverts and [cut]"
+
+[lane.xbox]
+issues = ["112", "110", "430", "431"]
+files = ["tools/nv2a_probe/**", "docs/testing/xbox-*.md", "docs/testing/nv2a-hardware-gap-list.md", "docs/testing/emulator-vs-hardware-registers.md", "docs/testing/pgraph-per-test-emulator-vs-hardware.md", "docs/testing/nv2a-probe-pmc-findings.md", "docs/lanes/xbox/**", "docs/testing/jobs/selftest.d/97-dispatch-deploy.sh", "docs/testing/jobs/selftest.d/98-fleet-queue-stall.sh", "docs/lanes/dispatch-script-deps/**", "docs/audits/2026-09-24-claude/dispatch-script-deps-*.md", "docs/testing/handoff-on-hardware.md", "docs/testing/patches/pgraph-per-test-instrument.patch", "docs/lanes/pmc-enable-under-load/**", "docs/audits/2026-09-21-claude/pmc-enable-under-load-*.md", "tools/xbox/**"]
+standing = true
+note = "CREATED AT WAVE 148 (host session). STANDING: owns the project's physical Xbox as an INSTRUMENT (GPU rev 163 / MCP rev 212, docs/testing/xbox-console-provenance.md), reached over FTP and an XBE listener service, which the owner confirmed working 2026-09-25 -- the 'hardware listener' every xbox-hardware blocker waited on. Driven by an interactive session the owner started (cross-session name hakux- [cut]"
+
+[lane.ring53impl]
+issues = ["53"]
+files = ["hw/xbox/nv2a/pgraph/pgraph.h", "hw/xbox/nv2a/pgraph/glsl/vsh.h", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/ring53impl-*.json", "docs/lanes/ring53impl/**"]
+released = ["hw/xbox/nv2a/pgraph/pgraph.h", "hw/xbox/nv2a/pgraph/glsl/vsh.h", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/ring53impl-*.json", "docs/lanes/ring53impl/**"]
+released_at_ready = 395
+standing = false
+note = "READY, PR #395 (job.board 2026-09-26T21:10Z): out of draft, CI green, unit gone; files released at ready. PRIOR: LENT (hostops 2026-09-26 12:14 PM PDT): hw/xbox/nv2a/pgraph/pgraph.c to [lane.yuv10] for ONE hunk, the SET_CONTROL0 handler only (ring53impl's hunks are in the reg-category table, method paths and SET_BEGIN_END; disjoint); it RETURNS when PR yuv10 is ready. STARTED, PR #395 draft (job.b [cut]"
+
+[lane.yuv10]
+issues = ["10"]
+files = ["hw/xbox/nv2a/pgraph/pgraph.c", "hw/xbox/nv2a/nv2a_regs.h", "hw/xbox/nv2a/pgraph/texture.c", "hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/psh.h", "docs/testing/predictions/yuv10-*.json", "docs/lanes/yuv10/**"]
+released = ["hw/xbox/nv2a/pgraph/pgraph.c", "hw/xbox/nv2a/nv2a_regs.h", "hw/xbox/nv2a/pgraph/texture.c", "hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/psh.h", "docs/testing/predictions/yuv10-*.json", "docs/lanes/yuv10/**"]
+released_at_ready = 419
+standing = false
+note = "READY, PR #419 (job.board 2026-09-26T22:00Z): out of draft, CI green, unit gone, labelled needs-audit-1; files released at ready. PRIOR: STARTED (hostops 2026-09-26 12:14 PM PDT, on lane.xbox's board request of 11:59 PDT), briefs/yuv10.md: #10 YUV class fix. lane.xbox measured SET_CONTROL0's CRYCB_TO_RGB field on silicon (PR #411, #10 comment 5848958489): every stage converted after the texture sh [cut]"
+
+[lane.relprio432]
+issues = ["432"]
+files = ["docs/testing/request.sh", "docs/testing/ab_run.sh", "docs/testing/jobs/arms.sh", "docs/testing/jobs/selftest.d/97-release-prio.sh", "docs/lanes/relprio432/**"]
+standing = false
+note = "CREATED (hostops, 2026-09-26T22:45Z) from lane.pri432's board request (dispatch/board-requests/pri432.md, #432 item 2): request.sh names a 0.5 request 1-<epoch>-... so it sorts after probes and heads and ahead of every other request; ab_run.sh and arms.sh set it from the issue's 0.5 label. request.sh was RELEASED at ready by lane.pilotgate (PR #420); arms.sh and ab_run.sh LENT from lane.toolsmith  [cut]"
+
+[lane.pilotgate]
+issues = []
+files = ["docs/testing/request.sh", "docs/testing/jobs/roles/lane.md", "AGENTS.md", "docs/testing/jobs/selftest.d/99-pilot-gate.sh", "docs/lanes/pilotgate/**"]
+released = ["docs/testing/request.sh", "docs/testing/jobs/roles/lane.md", "AGENTS.md", "docs/testing/jobs/selftest.d/99-pilot-gate.sh", "docs/lanes/pilotgate/**"]
+released_at_ready = 420
+standing = false
+note = "READY, PR #420 (job.board 2026-09-26T21:10Z): out of draft, CI green, unit gone; files released at ready. PRIOR: STARTED (hostops 2026-09-26 12:18 PDT, runbook 6m one-shot), briefs/pilotgate.md: harness defect, no tracker issue. The owner's pilot rule (2026-09-26): a requester's queued device time over 30 min is refused at enqueue unless dispatch/pilots/<requester>.ok is fresh. request.sh LENT fro [cut]"
+
+[lane.blinx372d]
+issues = ["372"]
+files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/testing/predictions/blinx372d-*.json", "docs/lanes/blinx372d/**"]
+released = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/testing/predictions/blinx372d-*.json", "docs/lanes/blinx372d/**"]
+released_at_ready = 396
+standing = false
+note = "READY, PR #396 (job.board 2026-09-26T20:40Z): out of draft, CI green, unit gone, verified, needs-audit-1; files released at ready. PRIOR: STARTED, PR #396 draft (job.board 2026-09-26T17:45Z): the lane ran its Thor demo A/B; arms SKIPPED its prediction, the PR awaits handback or ready. PRIOR: BRIEFED AT TERRITORY WAVE 249, NOT STARTED (job.board, 2026-09-26T14:14:00Z; `lane.sh start` needs an appro [cut]"
+
+[lane.aufire412]
+issues = ["412"]
+files = ["hw/xbox/nv2a/pgraph/vk/shaders.c", "docs/testing/predictions/aufire412-*.json", "docs/lanes/aufire412/**"]
+standing = false
+note = "GRANTED (hostops 2026-09-26 13:15 PDT, answering its 19:56Z grant request on #412): hw/xbox/nv2a/pgraph/vk/shaders.c, unclaimed since lane.remote released it 18:20Z, for the UBO descriptor-ring growth hunk (grow_descriptor_ring() at the two UBO-ring sites). Register the prediction first. STARTED (job.board 2026-09-26T19:20Z), briefs/aufire412.md: #412 (007: Agent Under Fire) gameplay fps. Profile- [cut]"
+
+[lane.forza414]
+issues = ["414"]
+files = ["docs/testing/predictions/forza414-*.json", "docs/lanes/forza414/**"]
+standing = false
+note = "STARTED (job.board 2026-09-26T19:20Z), briefs/forza414.md: #414 (Forza Motorsport) gameplay fps. Profile-first: docs and prediction only until the lane names the code file and the board grants it."
+
+[lane.tbchurn424]
+issues = ["424"]
+files = ["accel/tcg/tb-maint.c", "accel/tcg/cputlb.c", "accel/tcg/translate-all.c", "docs/testing/predictions/tbchurn424-*.json", "docs/lanes/tbchurn424/**"]
+standing = false
+note = "STARTED (job.board 2026-09-26T20:25Z), briefs/tbchurn424.md: #424, 0.5 release perf workstream (#433). Measure on #397 gameplay windows, pgraph suites as the regression gate."
+
+[lane.buildflags427]
+issues = ["427"]
+files = ["android/app/build.gradle.kts", "android/app/src/main/cpp/CMakeLists.txt", "docs/testing/predictions/buildflags427-*.json", "docs/lanes/buildflags427/**"]
+standing = false
+note = "STARTED (job.board 2026-09-26T20:25Z), briefs/buildflags427.md: #427, 0.5 release perf workstream (#433). Measure on #397 gameplay windows, pgraph suites as the regression gate."
+
+[lane.vcpuprime428]
+issues = ["428"]
+files = ["android/app/src/main/cpp/xemu_android.cpp", "docs/testing/predictions/vcpuprime428-*.json", "docs/lanes/vcpuprime428/**"]
+standing = false
+released = ["android/app/src/main/cpp/xemu_android.cpp", "docs/testing/predictions/vcpuprime428-*.json", "docs/lanes/vcpuprime428/**"]
+note = "STARTED (job.board 2026-09-26T20:25Z), briefs/vcpuprime428.md: #428, 0.5 release perf workstream (#433). Measure on #397 gameplay windows, pgraph suites as the regression gate."
+
+[lane.doa413b]
+issues = ["413"]
+files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/testing/dispatcher.sh", "docs/lanes/doa413b/**", "docs/testing/predictions/doa413b-*.json"]
+standing = false
+note = "STARTED (hostops 2026-09-26 14:10 PDT), briefs/doa413b.md: #413 (0.5) step 2 after PR #417: add xemu-surf:I to the soak logcat, pilot one Nova soak, price surface_update's sub-split (33-52 ms/frame in the fight) and cut it. vk/surface.c taken from lane.blinx372d's released-at-ready list (PR #396): merge that branch or master and re-run the arm before ready. dispatcher.sh is the serve path: needs a [cut]"
+
+[lane.fmv303c]
+issues = ["303"]
+files = ["docs/lanes/fmv303c/**", "docs/testing/predictions/fmv303c-*.json"]
+standing = false
+note = "WRITTEN (job.board 2026-09-26T21:58Z): lane was RUNNING with no row -- jobs/handback.sh resumed it at 21:52Z from a draft PR #439 (its unit had been stopped by hostops under the 0.5-first policy, label blocked:after-0.5) and the lane answered `blocked:` at 21:53Z, which handback honours, so it does not resume again. It holds NO code file: its probe hunk is in hw/xbox/nv2a/pgraph/vk/surface.c, whic [cut]"
+
+[lane.perfregimen]
+issues = []
+files = ["docs/testing/soak_title.sh", "docs/testing/devices.sh", "docs/lanes/perfregimen/**", "docs/testing/jobs/selftest.d/99-perf-regimen.sh"]
+standing = false
+note = "STARTED (hostops 2026-09-26 15:00 PDT, runbook 6n one-shot), briefs/perfregimen.md: harness, serves 0.5 (#433). Gameplay (title) soaks at max performance and fan, REST restored on every exit path. devices.sh LENT from [lane.toolsmith]. Short HELD device sessions granted by the owner (under 30 min, above 30% battery, pilot first): the host runs them."
+
+[lane.titlestate]
+issues = ["397"]
+files = ["docs/testing/titles/**", "docs/lanes/titlestate/**", "docs/testing/jobs/selftest.d/99-title-state.sh"]
+standing = false
+note = "STARTED (hostops 2026-09-26 15:00 PDT, runbook 6n one-shot), briefs/titlestate.md: #397's routes, per-device title state and a navigating agent; serves 0.5 (#433). docs/testing/titles/** taken from [free] (released by lane.titleplay and lane.visual404). dispatcher.sh / affinity.py are NOT this lane's: board request. #397's OWNER STOP on the parked pass-1 requests stands."
+
+[lane.jcache425]
+issues = ["425"]
+files = ["accel/tcg/cpu-exec.c", "accel/tcg/tb-jmp-cache.h", "docs/lanes/jcache425/NOTES.md", "docs/testing/predictions/jcache425-crimson.json"]
+standing = false
+note = "STARTED (hostops 2026-09-26 15:00 PDT, 0.5 order 00(a)), briefs/jcache425.md: #425, 0.5 perf lever 2 (up to 13.6% of the vCPU thread, a bound). Granted the unheld lookup-path files; tb-maint.c stays with lane.tbchurn424 (a hunk there is a board request, sequenced by the host). Carries the owner's external ideas on block chaining and flag translation to PRICE. #429 stays queued behind tbchurn424 (t [cut]"
+
+[lane.claimrace]
+issues = []
+files = ["docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/73-cloud-claim.sh", "docs/lanes/claimrace/NOTES.md"]
+standing = false
+note = "STARTED (hostops 2026-09-26 15:10 PDT), briefs/claimrace.md: harness defect, no tracker issue. The audit outlet re-picked PR #420 50 s after claiming it (gh pr list --label lags a fresh claimed:cloud), systemd-run collided with the running unit, and the drop path removed the running session's row (restored, board ca46342888). Interim: the host's outlet loop skips a PR whose cloud unit is active."
+
+[retired.statusdash]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-26T07:30:00Z"
+note = "RETIRED (job.board wave 236): PR #362 MERGED 2026-09-26T06:51:27Z, no open PR on lane/statusdash, unit gone. status.sh, board-status.sh, status_html.py, selftest.d/62-status-freshness.sh, 63-status-lanes.sh and docs/lanes/statusdash/** RELEASED to [free]. PRIOR NOTE: RELEASED AT READY (job.board wave 235): PR #362 is out of draft, CI green, unit gone, and already fold-ready; its files are free for [cut]"
+
+[retired.boardprio]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-26T09:10:00Z"
+note = "RETIRED (job.board wave 240): PR #358 MERGED 2026-09-26T06:35:28Z, no open PR on lane/boardprio, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: RE-OPENED (host session, 2026-09-26T05:25Z) on the owner's go-ahead ('Yes, brief it'): release a lane's files at PR-ready, not at fold, and flag stuck fold-ready PRs (briefs/boardprio.md addendum). board.sh/roles/board.md/97-board-p [cut]"
+
+[retired.indexloc]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-26T09:10:00Z"
+note = "RETIRED (job.board wave 240): PR #360 MERGED 2026-09-26T06:20:49Z, no open PR on lane/indexloc, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: STARTED (host session, 2026-09-26T05:25Z), briefs/indexloc.md: root cause of the 2026-09-26 fold jam -- the index stores sites as file:LINE, so every hot-file edit rewrites ~100+ index lines and any two PRs on one file conflict in th [cut]"
+
+[retired.zrtz272]
+issues = ["272", "275"]
+files = []
+standing = false
+retired_utc = "2026-09-26T13:50:00Z"
+note = "RETIRED (job.board wave 248): PR #364 MERGED 2026-09-26T12:45:09Z, no open PR on the branch, unit gone. Files released to [free] except glsl/vsh-ff.c, which passes to lane.ring53impl (#53). PRIOR NOTE: PR #364 READY and verified (arm 3 PASS 1253/1253, pair 6a2077be38c7); labelled needs-audit-1 by hostops 2026-09-26 04:5x PDT; files released at ready (roles/board.md). PRIOR: STARTED (hostops tick,  [cut]"
+
+[retired.foldflow]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-26T09:10:00Z"
+note = "RETIRED (job.board wave 240): PR #356 MERGED 2026-09-26T06:10:56Z, no open PR on lane/foldflow, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: STARTED (host session, 2026-09-26T05:00Z), briefs/foldflow.md: owner asked why 31 dispatchable issues sat idle under a 24-lane cap. fold.sh waited forever on 'CI is NONE' for four index-only-conflicting PRs holding the hot files; it  [cut]"
+
+[retired.titleplay]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-26T19:35:00Z"
+note = "RETIRED (hostops 2026-09-26 12:35 PDT): PR #399 MERGED, no open PR on lane/titleplay, unit gone. Pass 1 was stopped by the OWNER (12:02 PDT); its pass table is on #397 (19:09Z); the 12 parked requests in dispatch/parked/titleplay-p1-20260926 stay parked until the owner says otherwise. Files RELEASED to [free]. PRIOR NOTE: STARTED (host session, 2026-09-26 07:40 PDT), briefs/titleplay.md: owner --  [cut]"
+
+[retired.statuspage]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-26T09:10:00Z"
+note = "RETIRED (job.board wave 240): PR #354 MERGED 2026-09-26T06:14:19Z, no open PR on lane/statuspage, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: status.sh and board-status.sh RELEASED AT READY to lane.statusdash (host, 2026-09-26 wave 230): PR #349 folded, follow-up PR #354 is ready and folds on its own; statusdash merges lane/statuspage first. PRIOR: STARTED (host session, [cut]"
+
+[retired.blinx372b]
+issues = ["372"]
+files = []
+standing = false
+retired_utc = "2026-09-26T11:40:00Z"
+note = "RETIRED (job.board wave 245): PR #381 MERGED, no open PR on lane/blinx372b, unit gone; dispatcher.sh allow-list landed; #372 continues as lane.blinx372c. Every file this row held is RELEASED to [free] (files another lane has since taken stay with that lane). PRIOR NOTE: RELEASED AT READY (job.board wave 242, 2026-09-26): PR #381 is out of draft, CI green, unit gone, labelled needs-audit-1. Files s [cut]"
+
+[retired.dpforce345]
+issues = ["345"]
+files = []
+standing = false
+retired_utc = "2026-09-26T13:50:00Z"
+note = "RETIRED (job.board wave 248): PR #383 MERGED 2026-09-26T12:45:34Z, no open PR on the branch, unit gone. PRIOR NOTE: PR #383 READY and verified (arm 2 PASS 291/291, pair c269a5c22ca3); labelled needs-audit-1 by hostops 2026-09-26 04:5x PDT; files released at ready (roles/board.md). PRIOR: DISPATCHED AT TERRITORY WAVE 241 (job.board, 2026-09-26T09:40Z), briefs/dpforce345.md: #345 half 1 -- _DP3/_DP4 [cut]"
+
+[retired.fps382]
+issues = ["382"]
+files = []
+standing = false
+retired_utc = "2026-09-26T11:40:00Z"
+note = "RETIRED (job.board wave 245): PR #385 MERGED, no open PR on lane/fps382, unit gone; #382 cause named (CPU-access watch traps); code half continues as lane.surfwatch382. Every file this row held is RELEASED to [free] (files another lane has since taken stay with that lane). PRIOR NOTE: STARTED BY THE HOST (seen by job.board wave 243, 2026-09-26T10:15Z): draft PR #385 on lane/fps382, unit active; is [cut]"
+
+[retired.vshcpu345]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-26T20:40:00Z"
+note = "RETIRED (job.board 2026-09-26T20:40Z): PR #402 MERGED (folded), unit gone. Files RELEASED to [free]: subprojects/nv2a_vsh_cpu.wrap, subprojects/packagefiles/nv2a_vsh_cpu/**, docs/testing/predictions/vshcpu345-*.json, docs/lanes/vshcpu345/**."
+
+[retired.cull13]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-26T20:40:00Z"
+note = "RETIRED (job.board 2026-09-26T20:40Z): PR #403 MERGED (fold 53742923df), unit gone. Files RELEASED to [free]: hw/xbox/nv2a/pgraph/glsl/geom.c, hw/xbox/nv2a/pgraph/glsl/geom.h, hw/xbox/nv2a/pgraph/vk/renderer.c, docs/testing/predictions/cull13-*.json, docs/lanes/cull13/**."
+
+[retired.foldcancel]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-26T20:15:00Z"
+note = "RETIRED (hostops 2026-09-26 13:15 PDT): PR #415 MERGED, no open PR on lane/foldcancel, unit gone. Files RELEASED to [free] (fold.sh, selftest.d/74-fold-multi.sh, docs/lanes/foldcancel/NOTES.md)."
+
+[retired.zdepth272]
+issues = ["272", "275"]
+files = []
+retired_utc = "2026-09-25T23:55:00Z"
+note = "RETIRED (job.board, wave 210): PR #322 MERGED (fold faf58eb89d), unit gone, no open PR on lane/zdepth272. It was analysis plus a named hunk, not the fix: the fix is docs/lanes/zdepth272/vsh-ff-zrtz.patch (round-toward-zero fixed-function screen z) in glsl/vsh-ff.c, which is lane.wparamcode223's until PR #321 folds; host queue 2026-09-25T22:15Z passes vsh-ff.c to a #272 code lane then. #272 and #27 [cut]"
+
+[retired.zclamp276]
+issues = ["276"]
+files = []
+retired_utc = "2026-09-25T23:55:00Z"
+note = "RETIRED (job.board, wave 210): PR #323 MERGED (fold 2dc5d1b884), unit gone, no open PR on lane/zclamp276. Analysis plus a named hunk (docs/lanes/zclamp276/nearfar_cull.diff: pgraph.c SET_ZMIN_MAX_CONTROL drops CULL_NEAR_FAR_EN, plus psh.c / psh.h / nv2a_regs.h). #276 stays open; the code lane waits on the host queue (pgraph.c after #273 fix, psh.c after #266 and #283). No file held."
+
+[retired.wbuf31sel]
+issues = ["31"]
+files = []
+standing = false
+retired_utc = "2026-09-26T00:45:00Z"
+note = "RETIRED (job.board, wave 214): PR #244 MERGED 2026-09-26T00:20:25Z (fold 77a21b28b9, arm PASS 570/570 byte-identical), no open PR on lane/wbuf31sel, unit gone. docs/testing/wbuf_anchor_recover.py, predictions/wbuf31sel-*.json and docs/lanes/wbuf31sel/** RELEASED to [free]. The `psh.c returns to lane.wbuf31sel` leg of lane.wbufdepth24's pass-on order is gone: psh.c is still lane.wbufdepth24's (PR # [cut]"
+
+[retired.vtxarr262]
+issues = ["262"]
+files = []
+standing = false
+retired_utc = "2026-09-26T03:40:00Z"
+note = "RETIRED (job.board wave 223, 2026-09-26T03:40Z): PR #264 MERGED 2026-09-26T03:30:51Z (fold 72e479ec59), no open PR on lane/vtxarr262. #262 stays open until the registered arm (predictions/vtxarr262-surface-vertex-refetch.json) posts a verdict. hw/xbox/nv2a/pgraph/vk/draw.c PASSES to [lane.aasample] for #286 class A (docs/lanes/aasample/draw-c-viewport.patch), THEN to lane.remote for #274 GPUAA --  [cut]"
+
+[retired.wbufdepth24]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-26T05:40:00Z"
+note = "RETIRED (job.board, board tick 2026-09-26T05:40:00Z): PR #268 MERGED (fold d3e3e0bf7c: #266 D24 saturate + FloorQuad triage), labelled folded, no open PR on lane/wbufdepth24. glsl/psh.c passes to lane.pshqueue, which was already editing it under the lend (its PR #347 carries the psh.c hunks); lane.zclamp276's request for psh.c (with pgraph.c, psh.h) follows pshqueue's fold. The #266 mechanism-B re [cut]"
+
+[retired.sphere273fix]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-26T06:10:00Z"
+note = "RETIRED (job.board, board tick 2026-09-26T06:10Z): PR #330 MERGED 2026-09-26T06:00:35Z (arm PASS 71/71, SphereMap_RotateX/Arbitrary 131,495 -> ~126 px each), no open PR on lane/sphere273fix. RELEASED TO [free]: hw/xbox/nv2a/pgraph/pgraph.c (queue behind it: #200, briefs/200.md), predictions/sphere273fix-*.json and docs/lanes/sphere273fix/**. #273 closed. PRIOR NOTE: DISPATCHED AT WAVE 207 (job.boa [cut]"
+
+[retired.vshr12280]
+issues = ["280"]
+files = []
+retired_utc = "2026-09-26T01:40:00Z"
+note = "RETIRED (job.board wave 216, 2026-09-26T01:40:00Z): PR #290 MERGED 2026-09-26 (fold 9b3b0bb086), arm VERDICT PASS on 335 checks, no open PR on lane/vshr12280. Files RELEASED: glsl/vsh-prog.c passes to lane.nanfix281 (#281 part 2, the _MUL hunk ~30 lines from the R12 define, as recorded at wave 194); docs/lanes/vshr12280/** and its predictions are released."
+
+[retired.texvol283]
+issues = ["283"]
+files = []
+retired_utc = "2026-09-26T01:40:00Z"
+note = "RETIRED (job.board wave 216, 2026-09-26T01:40:00Z): PR #289 MERGED 2026-09-26T01:11:04Z (fold 036e6c191f), arm VERDICT PASS on 186 checks, no open PR on lane/texvol283. Files RELEASED to [free]: glsl/psh.h, gl/texture.c, pgraph/texture.c. glsl/psh.c was never this lane's to hold (its hunks landed under the wave-200 lend) and stays lane.wbufdepth24's until PR #268 folds, then goes to lane.pshqueue  [cut]"
+
+[retired.nanfix281]
+issues = ["281"]
+files = []
+standing = false
+retired_utc = "2026-09-26T07:30:00Z"
+note = "RETIRED (job.board wave 236): PR #336 MERGED 2026-09-26T06:08:32Z, no open PR on lane/nanfix281, unit gone. glsl/vsh.c passes to lane.fog278 (#278 INF fogSpecial hunk, vsh.c:944-949, disjoint from NaNToOne); glsl/vsh-prog.c and predictions/nanfix281-*.json, docs/lanes/nanfix281/** RELEASED to [free]. #281 stays open until the PR #336 arm verdict is read. PRIOR NOTE: DISPATCHED AT WAVE 216 (job.boa [cut]"
+
+[retired.sweepcover]
+issues = ["291", "292", "293", "294", "295", "296"]
+files = []
+standing = false
+retired_utc = "2026-09-26T08:45:00Z"
+note = "RETIRED (job.board wave 239): PR #298 (status column) MERGED 2026-09-26T05:35Z and PR #299 (sweep legs + unscoreable list) MERGED 2026-09-26T05:58Z, no open PR on lane/sweepcover, unit gone. #295 and #296 closed as fixed by #299. #291/#292/#294 keep fixed-part: the legs exist, the sweep that runs them is the host's. #293 waits on lane.toolsmith for dispatcher.sh and arms.sh (NOTES at docs/lanes/sw [cut]"
+
+[retired.goldencorr287]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-25T23:40:00Z"
+note = "RETIRED (job.board, wave 208): PR #300 MERGED 2026-09-25T23:20:36Z (fold b07ecc56fc), unit gone, no open PR. The analysis half is done (#287 verified: ours is byte-identical to console set K, 134,902 phantom px are the golden's). The PNG + README half was granted (docs/testing/golden_overrides/**) but did not land in #300 -- the branch is deleted -- so it moves to lane.goldovr287. docs/lanes/golde [cut]"
+
+[retired.goldovr287]
+issues = ["287"]
+files = []
+standing = false
+retired_utc = "2026-09-26T02:05:00Z"
+note = "RETIRED (job.board, board tick 2026-09-26T02:05Z): PR #331 MERGED 2026-09-26T01:20:25Z (fold 169045feca, TexFmt_R6G5B5 console override), no open PR on lane/goldovr287, unit gone. Inert until lane.toolsmith defect 17 reads golden_overrides/; #287 stays open for that. docs/testing/golden_overrides/** and docs/lanes/goldovr287/** RELEASED to [free]. PRIOR NOTE: DISPATCHED AT WAVE 208 (job.board, 202 [cut]"
+
+[retired.titlerun]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-26T09:10:00Z"
+note = "RETIRED (job.board wave 240): PR #307 MERGED 2026-09-26T08:47:25Z, no open PR on lane/titlerun, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: RELEASED AT READY (job.board wave 236): PR #307 is out of draft, CI green, unit gone (now in needs-audit-1); its files are free for the next lane. request.sh and dispatcher.sh are lane.toolsmith's and only lent to this PR: a lane tha [cut]"
+
+[retired.perfbase]
+issues = ["68"]
+files = []
+standing = false
+retired_utc = "2026-09-26T02:40:00Z"
+note = "RETIRED (job.board, board tick 2026-09-26T02:40Z): PR #310 MERGED (fold bc6b93495a, pass 2 clean), no open PR on lane/perfbase, unit gone. hw/xbox/nv2a/pgraph/profile.c, docs/testing/perf/{run_perf,bench_ff,fps_target,profile_guest,loadsample}.sh, summarise.py, docs/investigations/perf-baseline-2026-09.md, docs/lanes/perfbase/** and predictions/perfbase-*.json RELEASED to [free]. #68 stays open (u [cut]"
+
+[retired.tcgchurn]
+issues = ["68"]
+files = []
+standing = false
+retired_utc = "2026-09-26T03:00:00Z"
+note = "RETIRED (job.board, board tick 2026-09-26T03:00Z): PR #309 MERGED 2026-09-26T02:40:27Z (fold ab39609a2d, pass 2 clean), no open PR on lane/tcgchurn, unit gone. accel/tcg/{cputlb,tb-maint,translate-all,cpu-exec}.c, target/i386/helper.c, target/i386/tcg/**, docs/lanes/tcgchurn/** and predictions/tcgchurn-*.json RELEASED to [free]. #68 stays open (lane.perfarch also holds it; the fix arm is that lane [cut]"
+
+[retired.fmv303]
+issues = ["303"]
+files = []
+standing = false
+retired_utc = "2026-09-26T14:14:00Z"
+note = "RETIRED (job.board wave 249): PR #317 MERGED 2026-09-26T05:51:16Z, no open PR on the branch, unit gone. vk/display.c released to [free]; its env-gated probe stays in master. PRIOR NOTE: STARTED at wave 197 (job.board, 2026-09-25T20:56Z; the wave-195 start had hit an approval prompt, no attempt was spent). DISPATCHED WAVE 195 (job.board), briefs/fmv303.md: #303, Spikeout's FMV covered in green colu [cut]"
+
+[retired.ghoul311]
+issues = ["311"]
+files = []
+standing = false
+retired_utc = "2026-09-26T00:45:00Z"
+note = "RETIRED (job.board, wave 214): PR #316 MERGED 2026-09-26T00:30:30Z (fold dd6e2d095b), diagnosis, no open PR on lane/ghoul311, unit gone. Culprit 21cacb354a (surface-watch leak); the fix arm is lane.fix311's (PR #334). predictions/ghoul311-*.json and docs/lanes/ghoul311/** RELEASED. #311 stays open (0.5 release blocker) under lane.fix311."
+
+[retired.turnipfork]
+issues = ["68"]
+files = []
+retired_utc = "2026-09-26T00:35:00Z"
+note = "RETIRED (job.board, wave 213): PR #318 MERGED 2026-09-26T00:01:03Z (fold ab1b915a9c), unit gone, no open PR on lane/turnipfork. Gate 0 report delivered (docs/investigations/adreno-driver-feasibility.md, posted on #68); tools/turnip/build.sh builds; the Gate 1 control run needs a driver swap a lane cannot make. #68 stays upstream. Files RELEASED."
+
+[retired.wparamcode223]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-26T05:40:00Z"
+note = "RETIRED (job.board, board tick 2026-09-26T05:40:00Z): PR #321 MERGED (fold 4bc77c3171: #223 hunk A vsh-ff.c position tail + hunk B geom.c zero-area wedge), labelled folded, no open PR on lane/wparamcode223. vsh-ff.c passes to lane.zrtz272 (queue recorded 2026-09-25T22:15Z); geom.c RELEASED to [free]. #223's residual stays with the tracker row."
+
+[retired.fix311]
+issues = ["311"]
+files = []
+standing = false
+retired_utc = "2026-09-26T02:25:00Z"
+note = "RETIRED (job.board, wave 218): PR #334 MERGED 2026-09-26T01:55:28Z (fold c0abc2b1e6), unit gone, no open PR on lane/fix311. update_surface_part now unregisters the reused slot's access watch; Ghoulies holds 29 gfps on both handhelds (2 on the base). #311 CLOSED on GitHub, tracker row fixed-verified. vk/surface.c, predictions/fix311-*.json and docs/lanes/fix311/** RELEASED."
+
+[retired.dmasurf277]
+issues = ["277"]
+files = []
+standing = false
+retired_utc = "2026-09-26T02:05:00Z"
+note = "RETIRED (job.board, board tick 2026-09-26T02:05Z): PR #325 MERGED 2026-09-26T01:35:24Z (fold e2f617ed99, physmem.c address_space_map hunk + arm), no open PR on lane/dmasurf277, unit gone. Arm verdict follows the fold; #277 stays open until it posts. docs/testing/predictions/dmasurf277-*.json and docs/lanes/dmasurf277/** RELEASED to [free]. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 203 (job.board, 2 [cut]"
+
+[retired.g8b8285]
+issues = ["285"]
+files = []
+retired_utc = "2026-09-26T00:35:00Z"
+note = "RETIRED (job.board, wave 213): PR #324 MERGED 2026-09-26T00:01:03Z (fold 21b8c6a80e), unit gone, no open PR on lane/g8b8285. Analysis plus a named hunk (docs/lanes/g8b8285/g8b8-bswap.diff: uniform-gated fragColor.rb = fragColor.br at the end of psh_convert, plus one DECL in psh.h). #285 stays open, a live defect; the code waits on psh.c/psh.h (queued in briefs/pshqueue.md). No file held."
+
+[retired.brdf315]
+issues = ["315"]
+files = []
+retired_utc = "2026-09-26T00:35:00Z"
+note = "RETIRED (job.board, wave 213): PR #326 MERGED 2026-09-26T00:10:26Z (fold f1a9634729), unit gone, no open PR on lane/brdf315. Analysis plus a named hunk (docs/lanes/brdf315/brdf315-psh.diff: BRDF case in get_sampler_type, dots_needed 0, texture(texSamp2, vec3(t0.r, t1.r, fract(t1.g - t0.g))); fits 605/610 px). #315 stays open; the code waits on psh.c (queued in briefs/pshqueue.md). No file held."
+
+[retired.aasample]
+issues = ["286"]
+files = []
+standing = false
+retired_utc = "2026-09-26T11:40:00Z"
+note = "RETIRED (job.board wave 245): PR #366 MERGED, no open PR on lane/aasample, unit gone; #286 stays open; PR #366 folded. Every file this row held is RELEASED to [free] (files another lane has since taken stay with that lane). PRIOR NOTE: RELEASED AT READY (job.board wave 237, 2026-09-26): PR #366 is out of draft, CI green, unit gone (needs-audit-1); files stay listed for audit and fold, and are free [cut]"
+
+[retired.blankrule297]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-26T06:10:00Z"
+note = "RETIRED (job.board, board tick 2026-09-26T06:10Z): PR #335 MERGED 2026-09-26T06:03:43Z (score_sweep.is_blank now also requires >=1% lost ink; 13 #297 rows read ok), no open PR on lane/blankrule297. docs/testing/score_sweep.py RETURNS to lane.toolsmith (its files line); selftest.d/83-blank-rule.sh and docs/lanes/blankrule297/** RELEASED. #297 closed. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 215 (jo [cut]"
+
+[retired.pshqueue]
+issues = ["278", "279", "285", "315"]
+files = []
+standing = false
+retired_utc = "2026-09-26T07:30:00Z"
+note = "RETIRED (job.board wave 236): PR #347 MERGED 2026-09-26T07:00:29Z (fold 6550967a5e, audit 2 clean), no open PR on lane/pshqueue, unit gone. #279 (DotZW 65,536 -> 165, +-1 depth word) and #285 (Fmt_G8B8 32,552 -> 0, Fmt_B8 16,144 -> 0) LANDED; #315 refuted by its arm and reverted (stays open). glsl/psh.h, predictions/pshqueue-*.json, docs/lanes/pshqueue/** RELEASED to [free]; glsl/psh.c passes to l [cut]"
+
+[retired.cullnf276]
+issues = ["276"]
+files = []
+standing = false
+retired_utc = "2026-09-26T09:10:00Z"
+note = "RETIRED (job.board wave 240): PR #368 MERGED 2026-09-26T08:45:37Z, no open PR on lane/cullnf276, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: BRIEFED AT WAVE 232 (job.board, 2026-09-26T06:15Z), STARTED BY THE HOST (draft PR #368) for #276's code half: lane.zclamp276 (PR #323, analysis) found CULL_NEAR_FAR_EN (bit 0 of SET_ZMIN_MAX_CONTROL) dropped by pgraph.c and priced t [cut]"
+
+[retired.blinx372]
+issues = ["372"]
+files = []
+standing = false
+retired_utc = "2026-09-26T09:10:00Z"
+note = "RETIRED (job.board wave 240): PR #374 MERGED 2026-09-26T08:55:38Z, no open PR on lane/blinx372, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 237 (job.board, 2026-09-26): #372, Blinx: The Time Sweeper ~16 fps in the in-engine attract demo on the Thor (run 0-0-y-1790405024-titlebench-2). Measure and locate first: reproduce twice, profile the slo [cut]"
+
+[retired.brdf315b]
+issues = ["315"]
+files = []
+standing = false
+retired_utc = "2026-09-26T09:10:00Z"
+note = "RETIRED (job.board wave 240): PR #375 MERGED 2026-09-26T08:00:27Z, no open PR on lane/brdf315b, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 237 (job.board, 2026-09-26): #315 second pass. lane.brdf315's BRDF rule fitted 605/610 px offline (PR #326) but the hunk was arm-refuted in PR #347 (614 -> 614 x3, moved not toward the golden). This lane  [cut]"
+
+[retired.y16bump10]
+issues = ["10"]
+files = []
+standing = false
+retired_utc = "2026-09-26T11:40:00Z"
+note = "RETIRED (job.board wave 245): PR #367 MERGED, no open PR on lane/y16bump10, unit gone; #10 stays open (fixed-part). Every file this row held is RELEASED to [free] (files another lane has since taken stay with that lane). PRIOR NOTE: WAVE 244 (job.board 2026-09-26T10:40Z): PR #367 fold-ready but the fold refuses it on preflight psh_differ (every baseline does not generate) on the merged tree with m [cut]"
+
+[retired.vkpointsize34]
+issues = ["34"]
+files = []
+standing = false
+retired_utc = "2026-09-26T11:40:00Z"
+note = "RETIRED (job.board wave 245): PR #371 MERGED, no open PR on lane/vkpointsize34, unit gone; #34 stays open for findings 1-4. Every file this row held is RELEASED to [free] (files another lane has since taken stay with that lane). PRIOR NOTE: RELEASED AT READY (hostops, 2026-09-26T08:30Z): PR #371 out of draft, CI green, arms PASS 78/78 byte-identical, unit gone; all six files free for the next lane [cut]"
+
+[retired.fog278]
+issues = ["278"]
+files = []
+standing = false
+retired_utc = "2026-09-26T11:40:00Z"
+note = "RETIRED (job.board wave 245): PR #373 MERGED, no open PR on lane/fog278, unit gone; #278 code half landed. Every file this row held is RELEASED to [free] (files another lane has since taken stay with that lane). PRIOR NOTE: RELEASED AT READY (job.board wave 239, 2026-09-26T08:45Z): PR #373 is out of draft, CI green on its head (Android, Desktop build, NV2A index), MERGEABLE, arm verified, unit gon [cut]"
+
+[retired.tie282c]
+issues = ["282"]
+files = []
+standing = false
+retired_utc = "2026-09-26T09:10:00Z"
+note = "RETIRED (job.board wave 240): PR #376 MERGED 2026-09-26T08:25:25Z, no open PR on lane/tie282c, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 238 (job.board, 2026-09-26): #282 local, desktop-only analysis (the cloud outlet had not claimed the cloud-labelled issue; label removed on dispatch). BRIEF briefs/tie282c.md: row-240 binade test on a seco [cut]"
+
+[retired.vol283r]
+issues = ["283"]
+files = []
+standing = false
+retired_utc = "2026-09-26T09:10:00Z"
+note = "RETIRED (job.board wave 240): PR #378 MERGED 2026-09-26T08:27:10Z, no open PR on lane/vol283r, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 238 (job.board, 2026-09-26): #283 local, desktop-only analysis (the cloud outlet had not claimed the cloud-labelled issue; label removed on dispatch). BRIEF briefs/vol283r.md: which of three readings the Y [cut]"
+
+[retired.regs200]
+issues = ["200"]
+files = []
+standing = false
+retired_utc = "2026-09-26T09:10:00Z"
+note = "RETIRED (job.board wave 240): PR #377 MERGED 2026-09-26T08:26:18Z, no open PR on lane/regs200, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 238 (job.board, 2026-09-26): #200 local, desktop-only analysis (the cloud outlet had not claimed the cloud-labelled issue; label removed on dispatch). BRIEF briefs/regs200.md: per-register table of unnamed [cut]"
+
+[retired.surfwatch382]
+issues = ["382"]
+files = []
+standing = false
+retired_utc = "2026-09-26T14:14:00Z"
+note = "RETIRED (job.board wave 249): PR #387 MERGED 2026-09-26T14:00:39Z, no open PR on the branch, unit gone. vk/surface.c passes to lane.blinx372d (#372). PRIOR NOTE: RELEASED AT READY (hostops, 2026-09-26 5:54 AM PDT): CI green on #387's head (needs-audit-1). PR #387 READY (job.board wave 247, 2026-09-26T12:40Z): out of draft, MERGEABLE, unit finished; labelled needs-audit-1 (touches vk/surface.c). CI [cut]"
+
+[retired.blinx372c]
+issues = ["372"]
+files = []
+standing = false
+retired_utc = "2026-09-26T13:50:00Z"
+note = "RETIRED (job.board wave 248): PR #388 MERGED 2026-09-26T12:50:31Z, no open PR on the branch, unit gone. PRIOR NOTE: RELEASED AT READY (hostops, 2026-09-26 5:54 AM PDT): CI green on #388's head, labelled fold-ready. PR #388 READY (job.board wave 247, 2026-09-26T12:40Z): out of draft, MERGEABLE, docs/predictions only (no hw/), CI build IN_PROGRESS, unit still up (attempt 2). Will be labelled fold-re [cut]"
+
+[retired.pshaniso284]
+issues = ["284", "315"]
+files = []
+standing = false
+retired_utc = "2026-09-26T17:40:00Z"
+note = "RETIRED (job.board wave 254): PR #393 MERGED 2026-09-26T17:15:26Z (fold 504aeee4d4), unit gone. Every file the row held is RELEASED to [free]. PRIOR NOTE: READY, ALL RELEASED (hostops, 2026-09-26 7:33 AM PDT): PR #393 out of draft, CI green; both arms PASS (#284 86/86, #315 74/74); prediction and lane docs released at ready. PRIOR: DISPATCHED BY HOSTOPS (2026-09-26 6:40 AM PDT): lane.tiecode282 re [cut]"
+
+[retired.ring53]
+issues = ["53"]
+files = []
+standing = false
+retired_utc = "2026-09-26T13:50:00Z"
+note = "RETIRED (job.board wave 248): PR #391 MERGED 2026-09-26T13:35:27Z, no open PR on the branch, unit gone. PRIOR NOTE: BLOCKED, FILES RELEASED (hostops 2026-09-26T13:10Z, PR #391): the #53 ring phase is not determined by the corpus; the per-method weight run (docs/lanes/ring53/NOTES.md s6) is ROUTED TO lane.xbox. vsh-ff.c and vsh-prog.c dropped from this row on the lane's own offer (no hunk written;  [cut]"
+
+[retired.fmv303b]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-26T18:50:00Z"
+note = "RETIRED (job.board 2026-09-26): PR #398 MERGED 2026-09-26T18:36:26Z, unit gone. Result: tier1 on/off does not change the #303 FMV green (tint mean 0.69 on, 0.68 off, four Thor runs); the lead is a non-CPU write racing the decoder chroma plane, prime suspect nv2a surface write-back. Next step is a write-back probe in hw/xbox/nv2a/pgraph/vk/surface.c, held by lane.blinx372d, so #303 waits on that fi [cut]"
+
+[retired.boardpushgate]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-26T17:58:00Z"
+note = "RETIRED (hostops 2026-09-26 10:58 AM PDT): PR #408 MERGED 2026-09-26T17:51:28Z, unit gone. Every file the row held is RELEASED to [free]. PRIOR NOTE: STARTED (hostops 2026-09-26 08:40 PDT, runbook 6k): harness defect, no tracker issue. board.sh gates its own push on check_territory.py && check_coverage.py via a pre-push hook in .boardtree. Brief: briefs/boardpushgate.md."
+
+[retired.armsscope]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-26T18:20:00Z"
+note = "RETIRED (hostops 2026-09-26 11:20 AM PDT): PR #409 MERGED (7b20fd2f66), unit gone. docs/testing/jobs/arms.sh RETURNED to [lane.toolsmith] (it was lent); selftest.d/94-arms-verdict-scope.sh and docs/lanes/armsscope/NOTES.md RELEASED to [free]. PRIOR NOTE: STARTED (hostops 2026-09-26 10:42 PDT): harness defect, no tracker issue. arms.sh LABEL_INDEX keys verdicts by branch name, so a reused branch (l [cut]"
+
+[retired.doa413]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-26T20:40:00Z"
+note = "RETIRED (job.board 2026-09-26T20:40Z): PR #417 MERGED (fold 7e6a4ac88a), unit gone. Files RELEASED to [free]: docs/testing/predictions/doa413-*.json, docs/lanes/doa413/**."

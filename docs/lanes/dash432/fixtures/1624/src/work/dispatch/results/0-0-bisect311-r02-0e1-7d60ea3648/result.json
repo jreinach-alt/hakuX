@@ -1,0 +1,7 @@
+{
+ "requester": "host-bisect311",
+ "purpose": "#311 bisect round 2 probe 0: 7d60ea3648 (2026-09-10 Merge the remote session's abort and renderer work, reconciling #16)",
+ "ref": "85e3550b0d17",
+ "device_label": "thor",
+ "apk_sha": "01609e1a4677"
+}
