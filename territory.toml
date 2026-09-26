@@ -1304,3 +1304,10 @@ issues = []
 files = ["docs/testing/jobs/status.sh", "docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/60-status.sh", "docs/testing/jobs/selftest.d/62-status-freshness.sh", "docs/testing/jobs/selftest.d/63-status-lanes.sh", "docs/testing/jobs/selftest.d/64-status-html.sh", "docs/testing/jobs/selftest.d/65-status-objective.sh", "docs/lanes/dash432/**"]
 standing = false
 note = "STARTED (lane.local 2026-09-26 16:26 PDT), briefs/dash432.md: #432's dashboard half. The owner asked at ~16:20 PDT for a status page that they or any outsider can read. The spec: the first screen answers four questions in order: how close 0.5 is (the target, the gate, a per-title table with fps, the levers), what is happening now (every lane, xbox and remote included, in a fixed state vocabulary), what needs a person (escalations.md, decision-needed, machine alarms only), and whether the machines are healthy (a device is running, in use by X until T, or idle; never a bare held). issues = [] on purpose: lane.relprio432 holds #432 (its queue-priority half). status.sh, status_html.py and the 60-64 status fragments were on no row after lane.pri432 retired (PR #438 folded 16:05 PDT). Serves 0.5 (#433)."
+
+
+[lane.cloud-remediate-419]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-419, remediation of PR #419 on branch lane/yuv10, attempt 1 of 4 on claude-opus-5-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 419` removes this row when the unit ends."
