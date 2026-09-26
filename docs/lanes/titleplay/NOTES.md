@@ -56,3 +56,9 @@ share. That title gets a pass-2 route with its own `mark gameplay` instead.
 ## Results
 
 (pass 1 pending)
+
+**Waiting (2026-09-26 07:42 PDT)** on the 29 pass-1 requests, and on the
+host's ISO listing for population 2. On resume, run
+`python3 docs/lanes/titleplay/tools/plan_p1.py` and the #397 comment's ids
+into an ids file, then `tools/review.py`, then look at each contact sheet
+and at the menu frames.
