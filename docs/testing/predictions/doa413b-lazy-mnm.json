@@ -1,0 +1,38 @@
+{
+  "registered_utc": "2026-09-26T22:25:13Z",
+  "who": "lane.doa413b",
+  "issue": "413",
+  "prediction": "MUST-NOT-MOVE guard for #413 lazy completion. A is 0d5f93f210 (the lane after merging master, before the change). B is 7f01f7f157, where an upload=true surface_update no longer completes a download batch that is already submitted (the flip's pre-record of the display surface and every dirty surface). The next reader of VRAM completes it instead: a surface upload, the next download record, the next flip, a CPU access, or a blit/vertex/texture range read. Prediction: every capture in the eight suites is byte-identical between arms. What would move each: Depth_buffer_fixed_function reads the depth buffer back on the CPU after a flip, and it moves if a readback lands on VRAM a batch still owes, or if the generation retired at completion is not the one the copy captured (the quad missing, the clear showing). Color_zeta_overlap and Surface_format rebind one address in another role or format across draws, which unshelves and uploads from VRAM, and they move if that upload runs ahead of the download it depends on (the #11 shape). Blend_surface reads the destination surface in several formats, and it moves on the same upload-before-completion ordering. Clear moves if a clear's surface is uploaded from VRAM that a pending download later overwrites. Texture_render_target samples a rendered surface as a texture: through the GPU image it cannot move, and through a VRAM range read it moves if download_surfaces_in_range_if_dirty misses a pending batch. Texture_CPU_Update and Texture_render_update_in_place are CPU writes and reads over rendered surfaces, and they move if a lazy memcpy lands after a CPU write and clobbers it. Before reading a pass, read B's logcat [lazy413] skips=: zero skips means B never took the lazy path, and the arm is inert, not a pass. Also read every scores1.tsv status for unreadable.",
+  "a_ref": "0d5f93f210",
+  "b_ref": "7f01f7f157",
+  "must_not_move": [
+    "Depth_buffer_fixed_function/*",
+    "Color_zeta_overlap/*",
+    "Surface_format/*",
+    "Blend_surface/*",
+    "Clear/*",
+    "Texture_render_target/*",
+    "Texture_CPU_Update/*",
+    "Texture_render_update_in_place/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Blend surface",
+      "Clear",
+      "Color zeta overlap",
+      "Depth buffer fixed function",
+      "Surface format",
+      "Texture CPU Update",
+      "Texture render target",
+      "Texture render update in place"
+    ],
+    "skip_tests": [
+      "Texture render target::RenderTextureLoop"
+    ],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
