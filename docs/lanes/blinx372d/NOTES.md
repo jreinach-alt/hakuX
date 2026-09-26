@@ -24,8 +24,23 @@ the download (the Sd wait), and `clean` the ones that did not. The pair table
 keeps 8 entries. When full it replaces the least-counted one, so boot-movie
 pairs give way to the demo's.
 
-**Result: pending.** Soak `1790432905-blinx372d-2396550` (ref 9540a21f79) is
-queued on the Thor. Arm A of the A/B below carries the same counter.
+**Result (soak `0-0-y-1790433000-1790432905-blinx372d-2396550`, ref
+9540a21f79, Thor, 240 s; the last print, cumulative since boot):**
+
+    m08:993/0 m10:14/0 m40:993/0 overflow=0
+    pair4 n=993 m40 Z f130 ln p2560 640x480 b4 -> Z f130 ln p2560 320x240 b4
+    pair5 n=993 m08 Z f130 ln p2560 320x240 b4 -> Z f130 ln p2560 640x480 b4
+
+The demo's two evictions are **one zeta surface at one address changing
+size**: D24S8 (vk 130), linear, pitch 2560, 4 bytes per pixel, 640x480 <->
+320x240. The role, format, pitch and swizzle are the same. Only the size
+differs, and each direction is one of the two waits. The `m10` rows (6+6+1+1,
+swizzle only) are boot-movie pairs, 14 in total, and not the demo. Both A/B
+arms print the same two pairs (A: n=710, B: n=866).
+
+So the demo's branch is **size-only at equal pitch**. The hunk in sec 2
+handles identical geometry only, and it declines this case by design (see the
+correction below and sec 5).
 
 ### A correction to the brief's framing
 
@@ -154,9 +169,101 @@ ceiling, not a value.
   Queued by the arms job. A pass with zero `handoffs=` across all five suites
   is inert, not a pass.
 
-**Results: pending.**
+**Results.**
 
-### Waiting (2026-09-26 07:50 PDT)
+Demo A/B, `abread.py` over 135-265 s. A is
+`0-0-y-1790433000-1790433606-blinx372d-2480701` (9540a21f79) and B is
+`-1790433607-blinx372d-2481219` (0f9735049c), back to back on the Thor:
+
+| arm | stall lines | sd/frame | Tot | Sub | GPU | fps | handoffs/frame |
+|---|---|---|---|---|---|---|---|
+| A | 23 | 1.04 | 56.6 | 25.6 | 31.4 | 12.98 | (not printed) |
+| B | 23 | 1.28 | 62.9 | 31.6 | 40.5 | 12.25 | **0.0** |
+
+Verdict **VOID**, and the hunk is **inert on the demo**. B logged
+`handoffs=0 fallbacks=0` because every demo eviction is the size flip from
+sec 1, and `surface_handoff_partner()` declines geometry changes before it
+counts a fallback. The two arms therefore ran the same path. Their
+differences in fps (0.943), sd/frame and the ms columns are run-to-run noise
+on one path, not an effect. Two reader notes:
+- `M1/A_evict372_live` FAILs because abread's line regex wants the
+  `handoffs=` field, and 9540a21f79 does not print it. That leg is a reader
+  limit, not a dead counter: the counter soak above is the same ref and
+  printed.
+- sd/frame came in at 1.0-1.3 here, not the brief's 2.0. The window catches
+  some non-demo frames.
+
+Must-not-move arm, `blinx372d-mnm.json`, pair
+`0-0-x-1790434483-arms-blinx372d-base-2755805` / `-fix-2755972`: **PASS, not
+inert.**
+- All 102 rows are byte-identical in `differing`, `max_rgb`, `max_a`,
+  `pixels` and `off_by_one`.
+- B's logcat reads `handoffs=2 fallbacks=0`, so the handoff ran in these
+  suites and changed no byte.
+- Two rows, `Depth_buffer_fixed_function/z16_Cn_FZy_M00ffff` and
+  `z16_Cy_FZy_M00ffff`, are `white-content` (unreadable) in both arms, with
+  identical values. They are not passes, and the Z16 flips are declined anyway
+  (bpp differs).
+
+### Why attempt 1 did not finish
+
+It ended correctly, on a `waiting:` comment. The three Thor soaks were about
+22 requests deep in the queue, and the `[job.arms]` pair had not run.
+`jobs/handback.sh` resumed this lane once all of them were DONE (19:15Z).
+Nothing failed.
+
+### Attempt 2 (2026-09-26, 12:20-12:40 PDT)
+
+- Read the four results above.
+- Merged origin/master 9f5a3dfc98 into the lane with no rebase, as
+  790dc14730. It was a clean merge: master's vk changes since a5b5b628f2 are
+  all in `draw.c`. `cc_surface.py` rc=0.
+- Re-registered the must-not-move arm on the merged refs as
+  `blinx372d-mnm2.json`: A 9f5a3dfc98 (plain master), B 790dc14730. The arms
+  job queues it.
+- Did not re-register the demo A/B. On the demo this PR's code runs the same
+  path as master, and a second hand-read soak pair would measure noise.
+
+## 5. The demo's case: a same-pitch size flip (next lane, not this PR)
+
+Not implemented here. The resume brief said not to extend this PR, and #303
+is waiting for `vk/surface.c`. What the counter says the next hunk must do:
+
+Pixel (x, y) sits at `y*2560 + x*4` in both bindings, so the 320x240 binding
+is exactly the top-left quadrant of the 640x480 one in VRAM. A GPU region
+copy (`vkCmdCopyImage`, same format D24S8, depth and stencil aspects) of the
+quadrant is exact **for the quadrant**. The part that is hard is the rest of
+the big binding:
+- **Small -> big (X=320x240 evicted, P=640x480 unshelved).** The old path
+  downloads X and then re-uploads all of P from VRAM. The quadrant copy X ->
+  P is exact if P's own image outside the quadrant still equals VRAM there.
+  That holds when P was written back on its own eviction, as it is today. It
+  fails if the guest CPU wrote that range while P sat shelved. `vram_newer`
+  (`surface_vram_written`, surface.c:848) is set only when a *download* is
+  recorded over a shelved binding, never on a guest CPU write. A clean
+  shelved binding sheds its watch
+  (`unregister_cpu_access_callback_if_clean`), so nothing sees that write.
+  Master's same-format rebind (`shelf_stale = surface->vram_newer`) already
+  has this exposure. A quadrant handoff would widen it from same-format
+  rebinds to size flips. Measure or close it first.
+- **Big -> small (X=640x480 evicted, P=320x240).** Copying the quadrant to P
+  is exact. But X still owes the other three quadrants to VRAM, and a
+  shelved binding's owed download is not guarded by the watch (sec 3). Keep
+  this direction on the old path, or make X's download deferred but not
+  waited on: record it, complete it at the next natural finish, and have the
+  watch answer a shelved binding with a pending download. The second option
+  is a watch change, and it is PR #387's territory.
+
+A first step that is safe by this reading is **small -> big only** (one wait
+per frame, sd/frame about 1 fewer). It needs the CPU-write gap above closed or
+measured first. It
+bounds the gain at about half of the Sub the two waits cost. That is a
+bound, and it has not been measured. The must-not-move set to add is every
+capture that binds zeta at two sizes at one address. Grep the nxdk tests for
+`set_surface_clip` with a changed size between draws, and name them before
+registering.
+
+### Waiting (2026-09-26 07:50 PDT, attempt 1; resolved)
 
 The session ended waiting on the three Thor soaks above. About 22 Thor-pinned
 requests (hotfix041 and titleplay, priority 0-0-y) were ahead of them, roughly
