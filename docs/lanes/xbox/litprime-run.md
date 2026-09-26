@@ -62,3 +62,25 @@ before this commit on six synthetic cases, each failing on its own leg:
   program (#53). Its corners are recorded, and S must hold on its `*_FF`
   captures.
 - **Void:** a run without "Testing completed normally", or S failing.
+
+## Amendment, before any silicon run
+
+The first dry run (`1790396742-xbox-litprime-dry-2351515`) completed
+cleanly, and S holds on hakuX (priming values at least 24.8 apart). But the
+progress log shows the four `Lighting priming` tests ran **before**
+`Alpha func`.
+
+- **The cause.** The suite is registered beside `LightingNormalTests`, which
+  `main.cpp` registers ahead of the main block. On silicon, `L0_FF` would
+  have been the first test after the XBE launch, against PR #348's rule.
+- **The fix is in the config only; the XBE is unchanged.** The config's
+  first test becomes `Lighting normals::NoNormal`. It runs first by
+  registration order, uses no fog, and was byte-identical to its golden as
+  the first test of PR #340's run. `Alpha func` is dropped.
+- **What stays the same:** the legs and thresholds. The dry run is repeated
+  with this selection before the console runs anything.
+- **Recorded from dry run 1:** hakuX draws every lit shader corner at red
+  255. Its passthrough colour is white, so hakuX ignores the lighting there.
+  On silicon, a corner at 255 would fail M1 in either reading: its own
+  normal lit, or its passthrough colour. The two are told apart by green and
+  blue, which the write-up will report.
