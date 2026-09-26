@@ -85,6 +85,34 @@ lanes would keep committing rewrites, and the jam would persist.
   branch after merging d3e3e0bf7c.
 - `preflight.sh` passes.
 
+## Attempt 2 (2026-09-25): why attempt 1 did not finish, and the re-run
+
+Attempt 1 committed this NOTES file but never pushed it, and never marked the
+PR ready. It ended waiting on the full `jobs/selftest.sh`, which it had
+started as a session background task. That task died with the session, and
+its log stopped partway through the arms fragments. Nothing outside the
+session was ever going to resume it.
+
+Re-run in the foreground after merging origin/master 24208f15cb (58 commits,
+none touching `nv2a_index.py`, `fold.sh` or the workflow):
+
+- `check` and `check --exact`, with `--tests`/`--support` at the pinned
+  provenance (tests 6743b6ab, pbkit e91d509e): both pass, 951 symbols,
+  2869 sites, 104 suites.
+- Fragment 75 alone under the selftest preamble: 20/20.
+- `demo.sh` against 24208f15cb: A (+4 after psh.c:40) and B (+6 after
+  psh.c:4080) both pass with INFO for 132 and 6 symbols. `merge-tree` is
+  clean. The old regime rewrites 228 and 9 lines, and conflicts in
+  `nv2a_index.json`.
+- `preflight.sh --allow-tracker` passes.
+- I did not complete the full `jobs/selftest.sh` locally. It takes more than
+  10 minutes: the arms fragments alone ran past 590 s. CI's `selftest` job
+  runs it; it passed on the previous head and is the gate of record.
+
+Next lane: do not run the full selftest as a session background task. Run
+the fragment you touched under the preamble (source it with `ok`, `bad`,
+`check`, `T`, `HERE` and `REPO` defined), and leave the whole run to CI.
+
 ## Do not repeat
 
 - Do not add an anchor field to the JSON for this. `text` already is one, and
