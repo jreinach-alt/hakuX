@@ -99,6 +99,18 @@ that construction, not on a measurement.
 
 Verdict: pending, from the arms job's `[job.arms]` comment on PR #379.
 
+**Waiting (2026-09-26):** on the arms job's verdict for
+`tiecode282-binade.json` (a 7a2036020d, b 18dc4f11e2) and on CI for the head.
+What comes next depends on the verdict:
+- Pass: merge master, or #367 and #373 if they have not folded. Re-register
+  on the merged head and re-run the arm, as the brief requires. Then mark ready.
+- A must_not_move leg moves: narrow the configuration test to exclude that
+  draw. Do not drop the leg.
+- An expect leg misses: read which case it is. 2,070 on Y16 means the rule is
+  inert on 3D. 71 on A8R8G8B8 means it is inert on 2D, the likely cause being a
+  y-frame mismatch between `gl_FragCoord` and `vtxPos`. Any other value means
+  the rule or the composition.
+
 ## 5. Exact-binade columns on the checkerboard (goldens, FF v ties)
 
 `golden down / total` per row, from `extract.py` over the three #314 result
