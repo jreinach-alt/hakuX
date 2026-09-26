@@ -1,0 +1,65 @@
+{
+  "registered_utc": "2026-09-26T06:20:43Z",
+  "who": "lane.cullnf276",
+  "issue": "276",
+  "prediction": "MECHANISM (#276, docs/lanes/zclamp276/NOTES.md, landed by lane.cullnf276).\nSET_ZMIN_MAX_CONTROL bit 0 (CULL_NEAR_FAR_EN) is now stored, and the fragment\nclip block discards a primitive whose three vtxPos z are all < CLIP_MIN or all\n> CLIP_MAX. It is emitted only when cull_near_far && (!depth_clipping ||\nz_perspective): ZCLAMP_EN_CLAMP, or a w-buffer. a_ref = master 081dcf4a38,\nb_ref = 41be7c432c (master + ed8e1cd3be, the one-commit hunk).\n\nMUST MOVE, better, 12 ZMinMaxControl captures (priced offline by painting the\nrejected quads background, zmm_price.py, against run 1790359589, apk at\n8af1bbb18e, nova):\n  Ctrl_NEARFAR_ZCLAMP, _IgnW, Ctrl_WBuf_NEARFAR_ZCLAMP, _IgnW: 21,073 -> 6,737\n    exact (pure one-step residual).\n  Ctrl_WBuf_NEARFAR_ZCULL, _IgnW: 6,968 -> 3,384 exact (= Ctrl_WBuf_ZCULL).\n  CtrlFixed_WBuf_NEARFAR_ZCULL, _IgnW: 7,074 -> 3,490 exact\n    (= CtrlFixed_WBuf_ZCULL).\n  CtrlFixed_NEARFAR_ZCLAMP, _IgnW, CtrlFixed_WBuf_NEARFAR_ZCLAMP, _IgnW:\n    ~25,100 -> <= 7,189 and max_rgb <= 1 (7,181 one-step; the w = 0 sliver of\n    the W=Inc block's quad 0 goes with its triangle since its z is 0 < 10). The\n    offline paint left the sliver (~10,800); the arm settles which. This band is\n    prose; the machine legs are the eight exact values and the count.\nEXPECT COUNT: better = 12, worse = 0 over the whole disc.\n\nMUST NOT MOVE, bit-identical: the other 20 ZMinMaxControl captures (no NEARFAR:\nbit 0 clear, nothing emitted; z-buffered *_NEARFAR_ZCULL: depth_clipping and\n!z_perspective, nothing emitted -- already exact to one step), and Depth_buffer,\nDepth_buffer_fixed_function, W_buffering, Blend_surface, Surface_format,\nDepth_Clamp. test_suite.cpp sets NEARFAR|ZCLAMP_CULL on a z-buffer before every\ntest, and the suites that w-buffer or clamp write ZMIN_MAX_CONTROL without\nNEARFAR, so each of these runs byte-identical shader text; one moves only if\nthe gate leaks (the discard emitted without cull_near_far, or on a z-buffered\nZCLAMP_EN_CULL draw).\n\nWORLD IN WHICH THIS FAILS: the 12 do not move (bit not reaching the shader, or\nvtxPos z not in clipRange's units on this path); a mover lands off its exact\nfigure (the reject takes a kept quad or leaves a rejected one -- unless A's\nnon-NEARFAR sibling moved by the same amount since 8af1bbb18e, which is base\ndrift and will be named as such, not tuned away); or any must-not-move row\nmoves. Before trusting either arm: scores1.tsv status for `unreadable`,\nrun1.log for PARTIAL COVERAGE and UtilAcceptVsock.\n",
+  "a_ref": "081dcf4a38",
+  "b_ref": "41be7c432c",
+  "must_not_move": [
+    "ZMinMaxControl/Ctrl_ZCLAMP",
+    "ZMinMaxControl/Ctrl_ZCLAMP_IgnW",
+    "ZMinMaxControl/Ctrl_ZCULL",
+    "ZMinMaxControl/Ctrl_ZCULL_IgnW",
+    "ZMinMaxControl/Ctrl_NEARFAR_ZCULL",
+    "ZMinMaxControl/Ctrl_NEARFAR_ZCULL_IgnW",
+    "ZMinMaxControl/Ctrl_WBuf_ZCLAMP",
+    "ZMinMaxControl/Ctrl_WBuf_ZCLAMP_IgnW",
+    "ZMinMaxControl/Ctrl_WBuf_ZCULL",
+    "ZMinMaxControl/Ctrl_WBuf_ZCULL_IgnW",
+    "ZMinMaxControl/CtrlFixed_ZCLAMP",
+    "ZMinMaxControl/CtrlFixed_ZCLAMP_IgnW",
+    "ZMinMaxControl/CtrlFixed_ZCULL",
+    "ZMinMaxControl/CtrlFixed_ZCULL_IgnW",
+    "ZMinMaxControl/CtrlFixed_NEARFAR_ZCULL",
+    "ZMinMaxControl/CtrlFixed_NEARFAR_ZCULL_IgnW",
+    "ZMinMaxControl/CtrlFixed_WBuf_ZCLAMP",
+    "ZMinMaxControl/CtrlFixed_WBuf_ZCLAMP_IgnW",
+    "ZMinMaxControl/CtrlFixed_WBuf_ZCULL",
+    "ZMinMaxControl/CtrlFixed_WBuf_ZCULL_IgnW",
+    "Depth_buffer/*",
+    "Depth_buffer_fixed_function/*",
+    "W_buffering/*",
+    "Blend_surface/*",
+    "Surface_format/*",
+    "Depth_Clamp/*"
+  ],
+  "expect": {
+    "ZMinMaxControl/Ctrl_NEARFAR_ZCLAMP": 6737,
+    "ZMinMaxControl/Ctrl_NEARFAR_ZCLAMP_IgnW": 6737,
+    "ZMinMaxControl/Ctrl_WBuf_NEARFAR_ZCLAMP": 6737,
+    "ZMinMaxControl/Ctrl_WBuf_NEARFAR_ZCLAMP_IgnW": 6737,
+    "ZMinMaxControl/Ctrl_WBuf_NEARFAR_ZCULL": 3384,
+    "ZMinMaxControl/Ctrl_WBuf_NEARFAR_ZCULL_IgnW": 3384,
+    "ZMinMaxControl/CtrlFixed_WBuf_NEARFAR_ZCULL": 3490,
+    "ZMinMaxControl/CtrlFixed_WBuf_NEARFAR_ZCULL_IgnW": 3490
+  },
+  "expect_counts": {
+    "better": 12,
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Blend_surface",
+      "Depth_Clamp",
+      "Depth_buffer",
+      "Depth_buffer_fixed_function",
+      "Surface_format",
+      "W_buffering",
+      "ZMinMaxControl"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

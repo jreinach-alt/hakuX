@@ -1,0 +1,21 @@
+# Fuzion Frenzy (4D530002), from perf/bench_ff.sh: boot 70 s, Start/A x5 at
+# 1.2 s, settle 3 s. Gameplay is about ninety seconds in behind that mash,
+# with no menu to navigate. It asks for every VBLANK, so unlike Crimson Skies
+# it can show a frame rate above 30.
+wait 70
+mark booted
+repeat 5 {
+    press START
+    wait 1.2
+    press A
+    wait 1.2
+}
+wait 3
+mark gameplay
+repeat forever {
+    repeat 20 {
+        press A
+        wait 3
+    }
+    shot play
+}
