@@ -116,8 +116,22 @@ snapshot_scripts() {
              affinity.py captures.py make_test_iso.py extract_results.py \
              sweep_queue.sh make_isolation_discs.py vsh_score.py \
              titles/route.sh perf/pad.sh; do
+        [ -f "$SRC/$f" ] || continue
+        cmp -s "$SRC/$f" "$SNAP/$f" 2>/dev/null && continue
+        # NEVER REWRITE A SNAPSHOT FILE IN PLACE. $SNAP is shared by every
+        # worker, and bash reads a running script lazily, by byte offset: a
+        # `cp -f` over run_disc.sh while the other device's worker was inside
+        # it made that bash read the new file at the old offset (`line 137:
+        # cess: command not found`), and a real run was voided as "the
+        # emulator never started" (2026-09-25, dispatch-hardening defect 13).
+        # Write beside it and rename: the rename swaps the inode, and a
+        # process already reading the old file keeps the old one.
         # Two of these live in subdirectories, and cp does not make one.
-        [ -f "$SRC/$f" ] && mkdir -p "$SNAP/$(dirname "$f")" && cp -f "$SRC/$f" "$SNAP/$f" 2>/dev/null
+        local d t; d="$SNAP/$(dirname "$f")"; t="$d/.$(basename "$f").tmp.$$"
+        mkdir -p "$d" 2>/dev/null
+        cp -f "$SRC/$f" "$t" 2>/dev/null \
+            && mv -f "$t" "$SNAP/$f" 2>/dev/null \
+            || rm -f "$t"
     done
 }
 # Hash of the scripts as they are IN THE TREE. This used to return empty

@@ -1765,3 +1765,22 @@ master and to the fix alike. Build, then run disc109 under
 and read Swizzle with `docs/lanes/remote/swizzle_pitch_quads.py`. Revert with
 `git checkout -- hw/xbox/nv2a/pgraph/vk/surface.c` and rebuild. The clean
 arm needs nothing forced.
+
+**The script is the registered patch** (PR #269's pass-1 audit, LOW-1). The
+three forced registrations name `$SCRATCH/p109/v109_forcing.patch`, which was
+never committed. The script reproduces that patch, checked after the audit on
+2026-09-25:
+- On `5807b54f`'s `vk/surface.c` (blob `ee6bbd54897d`), the script writes blob
+  `7cb404a4f0b4`. In a scratch repository holding only that file,
+  `git diff --abbrev=8` then has sha256
+  `39537fdce7b982844801823348f012b4ca66e486afeb6f1955fae8d96fe9a283`. That
+  is byte-identical to the registered patch.
+- On the fix `3f3fe35b` (blob `b0fd1af5905d`), it writes blob `0230b080ab5d`.
+  That is the file the local applier writes, and the B arms' binary was built
+  from it. It has the same 23 added lines and the same removed lines as the
+  patch.
+
+Check an edited script the same way before re-running it. If `git hash-object`
+of its output on `5807b54f` is no longer
+`7cb404a4f0b4ab2cfd20d422808b7937ab1150d1`, the script no longer forces what
+the registrations measured, and a changed count says nothing about the fix.

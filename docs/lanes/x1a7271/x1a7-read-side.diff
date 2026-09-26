@@ -1,0 +1,139 @@
+diff --git a/hw/xbox/nv2a/pgraph/glsl/psh.c b/hw/xbox/nv2a/pgraph/glsl/psh.c
+index 06393c4a31..11999d887c 100644
+--- a/hw/xbox/nv2a/pgraph/glsl/psh.c
++++ b/hw/xbox/nv2a/pgraph/glsl/psh.c
+@@ -251,6 +251,15 @@ bool pgraph_glsl_dual_src_pad_supported(void)
+     return g_dual_src_pad_supported;
+ }
+ 
++/* #271: per-stage X1A7 readback, set by the backend at texture bind. */
++static int g_tex_x1a7_readback[NV2A_MAX_TEXTURES];
++
++void pgraph_glsl_set_texture_x1a7_readback(int stage, int mode)
++{
++    assert(stage >= 0 && stage < NV2A_MAX_TEXTURES);
++    g_tex_x1a7_readback[stage] = mode;
++}
++
+ int pgraph_glsl_surface_pad_alpha_mode(unsigned int color_format)
+ {
+     switch (color_format) {
+@@ -3386,6 +3395,19 @@ static MString* psh_convert(struct PixelShader *ps)
+                 }
+             }
+ 
++            /*
++             * #271: an X1A7R8G8B8 surface read as a texture returns the
++             * guest byte (X << 7) | (h >> 1), not the host's 8-bit h. Before
++             * alphakill, which tests the alpha the texture unit returned.
++             */
++            mstring_append_fmt(
++                vars,
++                "if (texX1A7[%d] != 0) {\n"
++                "  t%d.a = (float((texX1A7[%d] - 1) * 128)\n"
++                "           + floor(floor(t%d.a * 255.0 + 0.5) * 0.5)) / 255.0;\n"
++                "}\n",
++                i, i, i, i);
++
+             /* As this means a texture fetch does happen, do alphakill */
+             if (ps->state->alphakill[i]) {
+                 mstring_append_fmt(vars, "if (t%d.a == 0.0) { discard; };\n",
+@@ -3905,6 +3927,11 @@ void pgraph_glsl_set_psh_uniform_values(PGRAPHState *pg,
+         values->colorKey[2] = pgraph_reg_r(pg, NV_PGRAPH_COLORKEYCOLOR2);
+         values->colorKey[3] = pgraph_reg_r(pg, NV_PGRAPH_COLORKEYCOLOR3);
+     }
++    if (locs[PshUniform_texX1A7] != -1) {
++        for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
++            values->texX1A7[i] = g_tex_x1a7_readback[i];
++        }
++    }
+     if (locs[PshUniform_colorKeyMask] != -1) {
+        for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+             values->colorKeyMask[i] =
+diff --git a/hw/xbox/nv2a/pgraph/glsl/psh.h b/hw/xbox/nv2a/pgraph/glsl/psh.h
+index 926192c751..b77656bf81 100644
+--- a/hw/xbox/nv2a/pgraph/glsl/psh.h
++++ b/hw/xbox/nv2a/pgraph/glsl/psh.h
+@@ -148,6 +148,26 @@ enum PshPadAlphaMode {
+ };
+ int pgraph_glsl_surface_pad_alpha_mode(unsigned int color_format);
+ 
++/*
++ * Issue #271, the READ side of X1A7R8G8B8. The host image keeps an 8-bit
++ * alpha, h; guest memory holds (X << 7) | A7 with A7 = h >> 1, and that byte
++ * is what the texture unit returns (vk/constants.h's X1A7 entry, measured
++ * 2026-09-12; re-derived from Blend surface and Clear goldens in
++ * docs/lanes/x1a7271/). Not a swizzle, so it is shader arithmetic, per stage:
++ * 0 leaves the texel alone, 1 reads X = 0 (_Z), 2 reads X = 1 (_O).
++ *
++ * A uniform and not PshState for the reason signedBlendPass is: the value
++ * comes from which surface a stage samples, which nothing that invalidates a
++ * shader watches. The backend sets it at texture bind; GL never does, so it
++ * stages 0 and generates the same result it does today.
++ */
++enum PshX1A7Readback {
++    PSH_X1A7_READBACK_NONE = 0,
++    PSH_X1A7_READBACK_Z = 1,
++    PSH_X1A7_READBACK_O = 2,
++};
++void pgraph_glsl_set_texture_x1a7_readback(int stage, int mode);
++
+ /*
+  * Whether the raster may stamp that constant at all, which is a DEVICE
+  * question and the reason #59's write side stood blocked.
+@@ -205,7 +225,8 @@ bool pgraph_glsl_dual_src_pad_supported(void);
+     DECL(S, signedBlendPass, int, 1) \
+     DECL(S, stipplePattern, ivec4, 8) \
+     DECL(S, surfaceScale, ivec2, 1) \
+-    DECL(S, texScale, float, 4)
++    DECL(S, texScale, float, 4)     \
++    DECL(S, texX1A7, int, 4)
+ 
+ DECL_UNIFORM_TYPES(PshUniform, PSH_UNIFORM_DECL_X)
+ 
+diff --git a/hw/xbox/nv2a/pgraph/vk/texture.c b/hw/xbox/nv2a/pgraph/vk/texture.c
+index c0e3c97630..b53388dfdc 100644
+--- a/hw/xbox/nv2a/pgraph/vk/texture.c
++++ b/hw/xbox/nv2a/pgraph/vk/texture.c
+@@ -1962,6 +1962,33 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
+         surface_is_texture_source(surface, &state, texture_is_compressed) ?
+             surface_sampled_pad_alpha(surface) :
+             VK_COMPONENT_SWIZZLE_IDENTITY;
++
++    /*
++     * #271: the X1A7R8G8B8 readback, which no swizzle can express, as a
++     * per-stage shader uniform (psh.h, PshX1A7Readback). Same gate as the
++     * override above, plus upload_pending: a surface whose VRAM holds newer
++     * CPU bytes is not what this texture reads (see the s2t skip above), and
++     * those bytes are already the guest's.
++     *
++     * KNOWN COST, priced in docs/lanes/x1a7271/NOTES.md: a pixel the GPU never
++     * wrote -- Surface format's CPU memset under a partial draw -- holds the
++     * guest's own byte, and on _O this rule reads it with bit 7 forced.
++     */
++    int x1a7_readback = PSH_X1A7_READBACK_NONE;
++    if (surface_is_texture_source(surface, &state, texture_is_compressed) &&
++        !surface->upload_pending) {
++        switch (pgraph_vk_surface_drawn_format(surface)) {
++        case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8:
++            x1a7_readback = PSH_X1A7_READBACK_Z;
++            break;
++        case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8:
++            x1a7_readback = PSH_X1A7_READBACK_O;
++            break;
++        default:
++            break;
++        }
++    }
++    pgraph_glsl_set_texture_x1a7_readback(texture_idx, x1a7_readback);
+     /*
+      * A pad-alpha surface (issue #48) carries its readback in the texture
+      * view's alpha swizzle, and that swizzle is baked in when the view is
+@@ -2609,6 +2636,7 @@ void pgraph_vk_bind_textures(NV2AState *d)
+                 r->texture_bindings[i] = &r->dummy_texture;
+                 r->texture_bindings_changed = true;
+             }
++            pgraph_glsl_set_texture_x1a7_readback(i, PSH_X1A7_READBACK_NONE);
+             pg->texture_dirty[i] = false;
+             continue;
+         }
