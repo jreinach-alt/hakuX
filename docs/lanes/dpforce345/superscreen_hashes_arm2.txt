@@ -1,0 +1,24 @@
+captures: 9 runs: 23
+1790325543-arms-vshconst-fix-650363                  47ee3f65e9 thor 9d4cb31f18 0/9 off: 
+1790327181-arms-vshconst-base-821044                 f2e8ef8ba8 nova b4db00b5e5 0/9 off: 
+1790328976-vshconst-base-1459825                     f2e8ef8ba8 nova b4db00b5e5 0/9 off: 
+1790328976-vshconst-fix-1460107                      9ff7f6d67a nova 236e448d37 0/9 off: 
+1790347539-xbox-region200-dryrun-3236568             84a67b9cf8 thor a7b9d28e6b 0/9 off: 
+1790347943-arms-vshnobegin242-base-3411865           21946df29b thor 8ea98adcbe 2/9 off: 0.5000 0.9990
+1790347943-arms-vshnobegin242-fix-3412056            bd552105ed thor d31700ad22 2/9 off: 0.4999 1.0000
+1790353899-arms-vshnobegin242-base-1226684           a8691063e6 thor 66a3ac8ef6 4/9 off: 0.5000 0.5624 0.9990 1.0000
+1790353899-arms-vshnobegin242-fix-1227042            6e3b1aff8b thor 710a096156 0/9 off: 
+1790359589-xbox-full6743-dry2-2802408                84a67b9cf8 thor a7b9d28e6b 0/9 off: 
+1790365512-arms-vshr12280-base-476184                d709a8d1fa nova 824d399f02 0/9 off: 
+1790365512-arms-vshr12280-fix-476266                 8dce0cf12e nova 691dedc412 0/9 off: 
+1790416205-arms-dpforce345-base-2398462              2dc2b5c49a nova cb97387981 4/9 off: 0.5624 0.5626 0.9990 1.0000
+1790416205-arms-dpforce345-fix-2398503               74a238a614 nova 41ffc776e4 5/9 off: 0.0010 0.4999 0.5000 0.5626 1.0000
+1790419343-arms-dpforce345-base-4176529              2dc2b5c49a nova cb97387981 5/9 off: 0.0010 0.4999 0.5624 0.5626 1.0000
+1790419343-arms-dpforce345-fix-4176905               74a238a614 nova 41ffc776e4 2/9 off: 0.0010 0.5000
+z-6762a54c82-090-Vertex_shader_rounding_tests        6762a54c82 thor 03ca859f94 0/9 off: 
+z-a-now-8e683b3a26-090-Vertex_shader_rounding_tests  8e683b3a26 thor 423469eb5d 0/9 off: 
+z-after-090-Vertex_shader_rounding_tests             2501f35211 nova 553cfffc73 0/9 off: 
+z-c866527e03-090-Vertex_shader_rounding_tests        c866527e03 thor 6bf6a11955 0/9 off: 
+z-repeat-c866527e03-090-Vertex_shader_rounding_tests c866527e03 thor 6bf6a11955 0/9 off: 
+z-sweep-091-Vertex_shader_rounding_tests             b63603975c nova fb4dfafc6d 0/9 off: 
+z-tip-090-Vertex_shader_rounding_tests               0026f00534 nova 88452c539d 0/9 off: 
