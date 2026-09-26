@@ -47,4 +47,14 @@ still separate A from B.
 
 ## Runs
 
-(queued; ids below)
+Queued 2026-09-26 on the Thor, ref 15d9406b81, `queue.sh` (A1 by hand with
+the same arguments). Poll with `waitruns.py`.
+
+| run | id | env |
+|---|---|---|
+| A1 | 1790454357-vcpuprime428-3938872 | HAKUX_TOPO=200,10 |
+| B1 | 1790454370-vcpuprime428-3939641 | HAKUX_TOPO=200,10 HAKUX_PLACE_VCPU=prime |
+| A2 | 1790454370-vcpuprime428-3939708 | HAKUX_TOPO=200,10 |
+| B2 | 1790454371-vcpuprime428-3939754 | HAKUX_TOPO=200,10 HAKUX_PLACE_VCPU=prime |
+| A3 | 1790454371-vcpuprime428-3939794 | HAKUX_TOPO=200,10 |
+| B3 | 1790454372-vcpuprime428-3939872 | HAKUX_TOPO=200,10 HAKUX_PLACE_VCPU=prime |
