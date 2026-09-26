@@ -2085,6 +2085,12 @@ static void create_pipeline(PGRAPHState *pg)
         pg->pipeline_state_gen == r->last_pipeline_state_gen &&
         pg->primitive_mode == r->shader_binding->state.geom.primitive_mode) {
         OPT_STAT_INC(pipeline_early_hits);
+        /* No generation above moved, but a uniform value can change without
+         * one: an attribute set once before the first vertex (GPUAA's
+         * diffuse) is passed as a uniform. Every other path through here
+         * refreshes the block; without this the draw uploads the previous
+         * draw's values (#274). */
+        pgraph_vk_update_shader_uniforms(pg);
         NV2A_VK_DGROUP_END();
         return;
     }
