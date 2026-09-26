@@ -1,0 +1,36 @@
+{
+  "registered_utc": "2026-09-25T19:38:28Z",
+  "who": "lane.vshr12280",
+  "issue": "280",
+  "prediction": "#280: an oPos write in an instruction that also writes a temporary (same unit) or pairs MAC with ILU now lands in a scratch vec4 (_opos_tmp) and is copied to oPos after every other statement of that instruction, so the temp write and the paired ILU's input C read R12 as the oPos the instruction started with. MUST MOVE: Vertex_shader_independence_tests/Multioutput 32768 -> 0 (both 128x128 right-hand quads: MAC 'add oPos.xyz,R12,v4 + add R0.xyz,R12,v4' stops adding specular twice; ILU 'rcp oPos.x,R12.x + rcp R1.x,R12.x' stops reciprocating twice and reads 0.5 grey, not white). A residual here means silicon does more than read-before-write (e.g. the Multioutput golden's MAC half depends on R0 init), not a wrong leg. WHAT WOULD MOVE EACH MUST-NOT-MOVE LEG. A desktop emitter diff of master vs patched vsh-prog.c over all 47 vertex programs in nxdk_pgraph_tests (33 .vsh -> .vshinc, the Cg .inl, every static uint32_t token array in src/) changes the body GLSL of exactly one program, vertex_shader_mac_independence_tests; no other program has an oPos write paired with a temp write or an ILU, so there is no 'legitimately reads the second write' shape in the corpus to register. Every other program's only change is one unused global in the header, 'vec4 _opos_tmp;'. So a move on MAC_ILU_Independence, rounding, swizzle, Attrib carryover, Fog vsh, Fog coord vec4 or W param means that header line broke or changed compilation of every vertex program (a compile failure blanks the draw); a move on any leg refutes the patch.",
+  "a_ref": "d709a8d1fa",
+  "b_ref": "8dce0cf12e",
+  "must_not_move": [
+    "Vertex_shader_independence_tests/MAC_ILU_Independence",
+    "Vertex_shader_rounding_tests/*",
+    "Vertex_shader_swizzle_tests/*",
+    "Attrib_carryover/*",
+    "Fog_vsh/*",
+    "Fog_coord_vec4/*",
+    "W_param/*"
+  ],
+  "expect": {
+    "Vertex_shader_independence_tests/Multioutput": 0
+  },
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Attrib carryover",
+      "Fog coord vec4",
+      "Fog vsh",
+      "Vertex shader independence tests",
+      "Vertex shader rounding tests",
+      "Vertex shader swizzle tests",
+      "W param"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
