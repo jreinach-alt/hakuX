@@ -93,3 +93,15 @@ Neither is a small call-site fix. It is a follow-up for the board.
   evaluator.
 - Do not replace `dot()` with an unconditional sum of products. It changes
   rounding (FMA and order) on every finite lit vertex for no gain.
+
+## Status (2026-09-26)
+
+Waiting on two things:
+
+- the `[job.arms]` verdict for `dpforce345-inert-finite.json` (a_ref
+  2dc2b5c49a, b_ref 74a238a614);
+- CI on the PR head.
+
+When both land, cite the verdict in the PR and mark it ready. If any
+must_not_move leg gets worse, the claim that the hunk is inert on finite dots
+is refuted.
