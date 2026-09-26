@@ -58,6 +58,11 @@ other way round (strict `check`, tolerant under a flag) would have needed
 preflight.sh, which belongs to the instruments lane. Until that change landed,
 lanes would keep committing rewrites, and the jam would persist.
 
+**Resolved (2026-09-25):** lane.foldflow's #356 makes `regen_index` pass
+`--exact` only when the merged tree's `nv2a_index.py check --help` lists it,
+so the order of #360 and #356 no longer matters. This branch's `check --help`
+lists `--exact`.
+
 ## Proof
 
 - **Fixtures**, `docs/testing/jobs/selftest.d/75-nv2a-index-drift.sh`, 20
