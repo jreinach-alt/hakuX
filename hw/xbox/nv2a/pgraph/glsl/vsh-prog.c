@@ -363,10 +363,16 @@ static MString *decode_opcode_input(const uint32_t *shader_token,
     return ret_str;
 }
 
+/*
+ * #280: an oPos write that another statement of the same instruction could
+ * still read back through R12 is held here and copied out last.
+ */
+#define VSH_OPOS_TMP "_opos_tmp"
+
 static MString *decode_opcode(const uint32_t *shader_token,
                               VshOutputMux out_mux, uint32_t mask,
                               const char *opcode, const char *inputs,
-                              MString **suffix)
+                              MString **suffix, MString *opos_suffix)
 {
     MString *ret = mstring_new();
     int reg_num = vsh_get_field(shader_token, FLD_OUT_R);
@@ -426,8 +432,25 @@ static MString *decode_opcode(const uint32_t *shader_token,
             }
         } else {
             int out_reg = vsh_get_field(shader_token, FLD_OUT_ADDRESS) & 0xF;
-            mstring_append(ret,out_reg_name[out_reg]);
             write_fog_register = out_reg == OUTPUT_REG_FOG;
+            if (out_reg == 0 && (use_temp_var || mask > 0)) {
+                /*
+                 * #280: R12 reads oPos.  The same result also goes to a
+                 * temporary, and a paired ILU reads input C after this
+                 * statement, so either could read this write back as R12.
+                 * Silicon feeds both from the oPos the instruction started
+                 * with (Vertex shader independence, Multioutput), so oPos
+                 * is written only once decode_token has emitted the rest.
+                 */
+                const char *o_mask =
+                    &mask_str[vsh_get_field(shader_token, FLD_OUT_O_MASK)][1];
+                mstring_append(ret, VSH_OPOS_TMP);
+                mstring_append_fmt(opos_suffix,
+                                   "  oPos.%s = " VSH_OPOS_TMP ".%s;\n",
+                                   o_mask, o_mask);
+            } else {
+                mstring_append(ret, out_reg_name[out_reg]);
+            }
         }
 
         int write_mask = vsh_get_field(shader_token, FLD_OUT_O_MASK);
@@ -491,6 +514,7 @@ static MString *decode_token(const uint32_t *shader_token, const char *c_file)
                             c_file);
 
     MString *mac_suffix = NULL;
+    MString *opos_suffix = mstring_new();
     if (mac != MAC_NOP) {
         MString *inputs_mac = mstring_new();
         if (mac_opcode_params[mac].A) {
@@ -526,7 +550,7 @@ static MString *decode_token(const uint32_t *shader_token, const char *c_file)
                             vsh_get_field(shader_token, FLD_OUT_MAC_MASK),
                             mac_opcode[mac],
                             mstring_get_str(inputs_mac),
-                            &mac_suffix);
+                            &mac_suffix, opos_suffix);
         mstring_unref(inputs_mac);
     } else {
         ret = mstring_new();
@@ -543,7 +567,7 @@ static MString *decode_token(const uint32_t *shader_token, const char *c_file)
                           vsh_get_field(shader_token, FLD_OUT_ILU_MASK),
                           ilu_opcode[ilu],
                           mstring_get_str(inputs_c),
-                          NULL);
+                          NULL, opos_suffix);
 
         mstring_append(ret, mstring_get_str(ilu_op));
 
@@ -557,6 +581,9 @@ static MString *decode_token(const uint32_t *shader_token, const char *c_file)
         mstring_append(ret, mstring_get_str(mac_suffix));
         mstring_unref(mac_suffix);
     }
+
+    mstring_append(ret, mstring_get_str(opos_suffix));
+    mstring_unref(opos_suffix);
 
     return ret;
 }
@@ -583,6 +610,7 @@ static const char* vsh_header =
     /* Used to emulate concurrency of paired MAC+ILU instructions */
     "vec4 _temp_vec;\n"
     "int _temp_addr;\n"
+    "vec4 " VSH_OPOS_TMP ";\n"
 
     /* See:
      * http://msdn.microsoft.com/en-us/library/windows/desktop/bb174703%28v=vs.85%29.aspx

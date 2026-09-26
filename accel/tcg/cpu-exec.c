@@ -49,6 +49,7 @@
 #include "tb-internal.h"
 #include "internal-common.h"
 #include "tb-cache-hints.h"
+#include "accel/tcg/hakux-tlb68.h"
 #ifdef __ANDROID__
 #include <android/log.h>
 #endif
@@ -1803,6 +1804,13 @@ cpu_exec_loop(CPUState *cpu, SyncClocks *sc)
 
                 if (tb->cflags & CF_INVALID) {
                     last_tb = NULL;
+                }
+
+                /* #68: the [tlb68] line; the clock read is 1 in 1024. */
+                static unsigned tlb68_gate;
+                if (unlikely(++tlb68_gate >= 1024)) {
+                    tlb68_gate = 0;
+                    hakux_tlb68_tick(cpu);
                 }
             }
 #endif

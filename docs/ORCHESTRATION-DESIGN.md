@@ -662,6 +662,12 @@ human gate, and it is the only human step.
    line, and guest fps is within 5% of the last release on each, measured by
    the existing `perf/` scripts. This is the "nothing crashes, hangs or
    aborts" goal from `ROADMAP.md`, which the pixel suite cannot see.
+   **Grabbed by the Ghoulies** joins the gate with an absolute floor instead of
+   the 5% rule: a median of at least 25 guest fps over 90-240 s of a 240 s
+   hands-off soak, on both handhelds, judged from the `hakuX-perf` gfps lines
+   (#311; leg F1 of `docs/testing/predictions/fix311-ghoulies-watch-leak.json`).
+   The last release, v0.4.0-j1, carries the #311 collapse to 1-2 fps, so a
+   comparison with it cannot catch a return of the regression.
 4. **Audit closure.** Every PR merged since the last release has a pass-2
    record with zero open HIGH or MEDIUM. Every LOW has a decision line.
 5. **Board hygiene.** Zero `fixed-unlanded`; zero `folded` PRs without an
