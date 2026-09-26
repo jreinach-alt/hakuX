@@ -345,6 +345,62 @@ fi
 # `board.sh released` -- the released-files list the tick brief carries, alone.
 if [ "${1:-}" = "released" ]; then board_released "$SELF/.."; exit 0; fi
 
+# ===================================================================
+# THE BOARD PUSH GATE (jobs/board-push-gate.sh), AS A pre-push HOOK
+#
+# The session edits the board in $WT/.boardtree and pushes `board` itself.
+# On 2026-09-26 it pushed a board that failed check_coverage twice (blockers
+# naming retired lanes; then dispatch_state="done" on five open issues), and a
+# red origin/board is red preflight for every lane until a person repairs it.
+# The role file asking the session to check first is a request; a hook is not.
+#
+# PER WORKTREE, so no other checkout of the repository runs it:
+# extensions.worktreeConfig lets core.hooksPath be set in the worktree's own
+# config.worktree, and the hook lives in that worktree's private git dir. It
+# gates ONLY a push whose remote ref is refs/heads/board, and it is installed
+# in $WT as well as .boardtree, because `git push origin <sha>:board` from the
+# trunk tree is the same push by another door. Rewritten every tick, so the
+# gate path it names follows $WT's trunk copy.
+#
+# `--no-verify` skips it. Denying that flag is allowed-tools.job's, which is
+# lane.toolsmith's file; the post-tick re-check below is what catches it.
+install_board_hook() {   # <worktree> <gate script>
+    local gd hd
+    gd=$(git -C "$1" rev-parse --absolute-git-dir 2>/dev/null) || return 1
+    hd="$gd/board-hooks"
+    mkdir -p "$hd" || return 1
+    cat > "$hd/pre-push.new" <<EOF || return 1
+#!/usr/bin/env bash
+# Installed by jobs/board.sh (install_board_hook). Refuses a push to
+# refs/heads/board that fails jobs/board-push-gate.sh. Other refs pass.
+GATE='$2'
+tree=\$(git rev-parse --show-toplevel)
+rc=0
+while read -r lref lsha rref rsha; do
+    [ "\$rref" = refs/heads/board ] || continue
+    case "\$lsha" in *[!0]*) ;; *)
+        echo "board pre-push: REFUSED: this push deletes refs/heads/board" >&2; rc=1; continue ;;
+    esac
+    if [ ! -f "\$GATE" ]; then
+        echo "board pre-push: REFUSED: gate \$GATE is missing (failing closed)" >&2; rc=1; continue
+    fi
+    bash "\$GATE" --rev "\$lsha" "\$tree" >&2 || rc=1
+done
+exit \$rc
+EOF
+    chmod +x "$hd/pre-push.new" && mv -f "$hd/pre-push.new" "$hd/pre-push" || return 1
+    git -C "$1" config extensions.worktreeConfig true || return 1
+    git -C "$1" config --worktree core.hooksPath "$hd"
+}
+
+# `board.sh install-hook <worktree> [<gate>]` -- the install alone, for the
+# selftest and for a person re-arming a tree by hand.
+if [ "${1:-}" = "install-hook" ]; then
+    install_board_hook "${2:?worktree}" "${3:-$SELF/board-push-gate.sh}" \
+        && { echo "board pre-push hook installed in $2"; exit 0; }
+    echo "cannot install the board pre-push hook in ${2:-}"; exit 1
+fi
+
 # A private worktree of the trunk, so this job never reads the owner's checkout.
 if [ ! -e "$WT/.git" ]; then
     git -C "$REPO" fetch -q origin "$TIP" && git -C "$REPO" worktree add --quiet --detach "$WT" FETCH_HEAD \
@@ -372,6 +428,31 @@ if [ -z "${HAKUX_BOARD_REEXEC:-}" ] && [ -f "$WT/docs/testing/jobs/board.sh" ]; 
     HAKUX_BOARD_REEXEC=1 exec bash "$WT/docs/testing/jobs/board.sh"
 fi
 JOBS="$WT/docs/testing/jobs"
+
+# Arm the push gate before anything in this tick can push `board`. The
+# session's board tree is $WT/.boardtree; make it if a previous tick did not.
+BT="$WT/.boardtree"
+if [ ! -e "$BT/.git" ]; then
+    git -C "$WT" worktree add -q "$BT" board 2>/dev/null \
+        || git -C "$WT" worktree add -q -B board "$BT" origin/board 2>/dev/null \
+        || say "cannot create $BT; the session will make its own, unguarded by the push gate"
+fi
+for t in "$BT" "$WT"; do
+    [ -e "$t/.git" ] || continue
+    install_board_hook "$t" "$JOBS/board-push-gate.sh" \
+        || say "WARNING: could not install the board pre-push hook in $t"
+done
+
+# After the tick: is origin/board green, whoever pushed it? The hook stops
+# THIS session's red push; it cannot stop --no-verify, hostops, cloud.sh or a
+# person. One `BOARD RED` line naming the rows, for hostops' health check.
+board_recheck() {
+    local out rows
+    git -C "$WT" fetch -q origin board 2>/dev/null || { say "board re-check: cannot fetch origin/board"; return; }
+    out=$(bash "$JOBS/board-push-gate.sh" --rev origin/board "$WT" 2>&1) && return
+    rows=$(printf '%s\n' "$out" | grep -E '^(FAIL|  )' | tr -s ' ' | tr '\n' ' ' | cut -c1-600)
+    say "BOARD RED: origin/board $(git -C "$WT" rev-parse --short origin/board 2>/dev/null) fails the board gates: ${rows:-$(printf '%s\n' "$out" | tail -1)}"
+}
 
 # THE AUDIT OUTLET IS DISPATCH, AND DISPATCH IS SCRIPT-FIRST.
 #
@@ -436,6 +517,7 @@ if nothing_actionable; then
     else
         say "nothing actionable ($lanes/${LANE_MAX:-2} lanes, no startable issue, no unlabelled ready PR)"
     fi
+    board_recheck
     bash "$JOBS/status.sh" >/dev/null 2>&1
     exit 0
 fi
@@ -505,6 +587,7 @@ if [ -n "$SWEEP_HASH" ] && [ "$rc" = 0 ]; then
 elif [ -n "$SWEEP_HASH" ]; then
     say "issue-sweep findings ${SWEEP_HASH:0:12} were in this tick's brief but it exited $rc; leaving them unread for the next tick"
 fi
+board_recheck
 # The roll-up after every tick, model or not: the status comment is how the
 # owner sees this job at all (jobs/status.sh).
 bash "$JOBS/status.sh" >/dev/null 2>&1
