@@ -1,6 +1,6 @@
 Lane: blinx372c            Issue: #372
 Base: master @ 6c25a829ef
-Files: docs/lanes/blinx372c/NOTES.md, docs/lanes/blinx372c/pr-body.md, docs/lanes/blinx372c/stallread.py, docs/testing/predictions/blinx372c-demo-soak.json
+Files: docs/lanes/blinx372c/NOTES.md, docs/lanes/blinx372c/comment-372.md, docs/lanes/blinx372c/pr-body.md, docs/lanes/blinx372c/stallread.py, docs/testing/predictions/blinx372c-demo-soak.json
 Prediction: docs/testing/predictions/blinx372c-demo-soak.json @ 475ff4d9502379c22b14b935554bba77e573b7379061d0a96975f0fb78399eb3   (a soak, not an A/B arm; arms.sh skips soaks)
 Needs device: yes    Needs NDK: no
 
