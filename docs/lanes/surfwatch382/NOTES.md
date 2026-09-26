@@ -100,7 +100,50 @@ reached; max 16.07).
 
 ## 4. Results
 
-(pending)
+### Soak pair: PASS, 8 of 8 legs
+
+Nova, perflog, frames every 10 s, back to back on 2026-09-26:
+- A `1790424430-surfwatch382-428526`: master 6c25a829ef, apk 0550f75e2024,
+  05:11-05:15 PDT.
+- B `1790424433-surfwatch382-432556`: 568332c8d2, apk 11cdfe1c66e6,
+  05:15-05:19 PDT.
+
+| | A (master) | B (hunk) |
+|---|---|---|
+| fps over W 58-172 s | 10.67 | 55.17 (tail holds the front end) |
+| fps over C 62-140 s | 10.12 | **59.93** |
+| slow stores/s over W | 2,529,495 | **977** |
+| tlb_set_dirty per 2 s | 5,083,646 | 1,962 |
+| vCPU ms per 2 s | 1949 | 1898 |
+| teaser on screen | 59-170 s (111 s) | 57-155 s (**98 s**; the file is 97.0 s) |
+| pre-teaser movies | mixed 10/60 fps, to 59 s | 60 fps, 10-56 s |
+| title screen from | 171 s | 155 s |
+| [surfwatch382] at the end | -- | suspends 6293, rearms 6288, gap_writes 0, lost_writes 0 |
+
+What this says:
+
+- **The traps were the cost.** Slow stores fell 2,590x. The teaser now plays
+  in 98 s, against 97.0 s of content: the decoder keeps up. On master it takes
+  111 s at about 10 flips/s, dropping every B picture. B flips on every VBLANK
+  (Vpf 1.00) through all the boot movies.
+- **About one suspend and one re-arm per displayed picture.** That is 6,293
+  over the run, against roughly 4,400 boot-movie pictures plus the attract
+  loop after 184 s. That is the cost 2c predicted: two TLB flushes per
+  picture, not a trap per store.
+- **The gap check never fired.** gap_writes 0 and lost_writes 0 over 6,288
+  re-arms. Sofdec does not write a surface in the microseconds after its
+  upload. The check is insurance, and it costs two hashes per picture.
+- **The vCPU is still ~95% busy** (1898 ms per 2 s). It was 97% at 30 fps on
+  master too (fps382 sec 2). The guest spins when it has nothing to do, so
+  this was never a cost measure.
+- B's frames at 80, 120, 150 and 200 s were read by eye: whole pictures, no
+  tear line, no half-updated band. The title screen at 150 s is clean.
+- The brief's ratio leg passes at 5.2x (W) and 5.9x (C), far outside the
+  1.53x that two master runs gave with no code change.
+
+### Texture must-not-move
+
+(pending: `1790425272-surfwatch382-870923` A, `1790425272-surfwatch382-871201` B)
 
 ## Do not repeat
 
