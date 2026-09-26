@@ -21,6 +21,10 @@ pg_rq() {   # <requester>: a 420 s soak, the titleplay shape: ~8.5 min
     DISPATCH_DIR="$PG" bash "$TESTING/request.sh" --who "$1" --purpose "pilot gate selftest" \
         --no-expect selftest --title "Crimson Skies.iso" --seconds 420 2>&1; }
 pg_n() { ls "$PG"/queue/*"-$1-"*.req 2>/dev/null | wc -l; }   # requests request.sh queued for <requester>
+# An admission is the anchored "queued <id>" LINE. The refusal's own prose says
+# "queued or running", so a bare *"queued "* pattern reads a refusal as an
+# admission -- measured: the >= mutant passed leg D that way.
+pg_ok() { grep -qE "^queued [0-9]+-$1-[0-9]+$" <<< "$2"; }   # <requester> <output>
 
 # `pg` holds 25.5 min: two soaks waiting and one RUNNING. A third soak (8.5 min)
 # takes it to 34 min.
@@ -55,9 +59,8 @@ check "B: and nothing was queued" [ "$(pg_n pg)" -eq 0 ]
 # everything, and in the world where the gate sums every requester's time
 # (25.5 + 8.5 = 34 min) rather than this requester's.
 out=$(pg_rq pgnew)
-case "$out" in
-    *"queued "*) ok "C: a requester under 30 min is admitted, whoever else is queued" ;;
-    *) bad "C: a requester under 30 min was refused: $(tail -3 <<< "$out" | tr '\n' ' ')" ;; esac
+if pg_ok pgnew "$out"; then ok "C: a requester under 30 min is admitted, whoever else is queued"
+else bad "C: a requester under 30 min was refused: $(tail -3 <<< "$out" | tr '\n' ' ')"; fi
 check "C: and its request is in the queue" [ "$(pg_n pgnew)" -eq 1 ]
 
 # D. EXACTLY 30 min goes through ("over 30 min" is the rule). `pgedge` holds
@@ -65,17 +68,16 @@ check "C: and its request is in the queue" [ "$(pg_n pgnew)" -eq 1 ]
 # is >= and the pilot itself -- the first 30 min -- is refused.
 pg_fix queue f103 pgedge 1200
 out=$(pg_rq pgedge)
-case "$out" in
-    *"queued "*) ok "D: exactly 30 min is admitted (the first 30 min is the pilot)" ;;
-    *) bad "D: exactly 30 min was refused: $(tail -3 <<< "$out" | tr '\n' ' ')" ;; esac
+if pg_ok pgedge "$out"; then ok "D: exactly 30 min is admitted (the first 30 min is the pilot)"
+else bad "D: exactly 30 min was refused: $(tail -3 <<< "$out" | tr '\n' ' ')"; fi
 
 # E. A FRESH pilot: admitted. Fails in the world where the gate never reads
 # pilots/, or reads a different path than the one its refusal names.
 touch "$PG/pilots/pg.ok"
 out=$(pg_rq pg)
-case "$out" in
-    *"reviewed pilot $PG/pilots/pg.ok"*"queued "*) ok "E: a fresh pilot verdict admits the batch, and says so" ;;
-    *) bad "E: a fresh pilot verdict did not admit the batch: $(tail -3 <<< "$out" | tr '\n' ' ')" ;; esac
+if pg_ok pg "$out" && grep -qF "reviewed pilot $PG/pilots/pg.ok" <<< "$out"; then
+    ok "E: a fresh pilot verdict admits the batch, and says so"
+else bad "E: a fresh pilot verdict did not admit the batch: $(tail -3 <<< "$out" | tr '\n' ' ')"; fi
 check "E: and its request is in the queue" [ "$(pg_n pg)" -eq 1 ]
 rm -rf "$PG"; unset PG out
-unset -f pg_fix pg_rq pg_n
+unset -f pg_fix pg_rq pg_n pg_ok
