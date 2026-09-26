@@ -119,6 +119,13 @@ windows = int(end // 2)
 inst_ok = bool(perf) and end >= 200 and len([x for x in tlb if x[0] >= 20]) >= 0.9 * max(1, (end - 20) / 2 - 1) and len(pages) >= 10
 slow = longest(lambda f: f <= 12)
 fast = longest(lambda f: f >= 25)
+if "--window" in args:
+    # Report one fixed span [lo, hi] as well, by the same measures. For reading
+    # a run whose movie span is no longer <= 12 fps; not used by the verdict.
+    lo, hi = (float(x) for x in args[args.index("--window") + 1].split(","))
+    inw = [p[0] for p in perf if lo <= p[0] <= hi]
+    lo, hi, n = inw[0], inw[-1], len(inw) - 1
+    print("window:", json.dumps(span_stats(lo, hi, n)))
 S = span_stats(*slow)
 Fs = span_stats(*fast)
 print("run: last gfps line at %.1f s; perf %d, pace %d, tlb68 %d, pages %d, gpu %d, phase %d lines" % (

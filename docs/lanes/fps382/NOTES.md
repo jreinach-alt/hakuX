@@ -163,8 +163,61 @@ can change**:
 
 ## 3. Soak on master (registered before it ran)
 
-Prediction: `docs/testing/predictions/fps382-intro-soak.json`. Judge:
-`judge.py <logcat> --prediction <json>`. Status: queued.
+Prediction: `docs/testing/predictions/fps382-intro-soak.json` (sha256
+7641da11...). Judge: `judge.py <logcat> --prediction <json>`.
+
+**Run `1790417278-fps382-2945668`**: perflog apk d5bae86e1d9a (master
+2dc2b5c49a), Nova, held 240 s, 1,993 logcat lines, frames every 10 s (as in
+the titlebench runs). **Registered verdict: FAIL (3 of 10 legs).**
+
+| leg | got | want | reading |
+|---|---|---|---|
+| M0 instrument | true | true | PASS |
+| P2 slow span (<= 12 fps) | 6.7 s | >= 60 s | **FAIL**: the movie span ran at 16.0 fps, not 10.5 |
+| P2 fast span | 30.4 s | >= 20 s | PASS |
+| P3 renderer busy, slow / fast | 6.2% / 4.8% | <= 25% | PASS |
+| P4 flips >= 4 VBL | no data | >= 85% | **FAIL, instrument absent**: the runner's LOGCAT_SPEC on this run has no `hakuX-pace` (see result.json `logcat.spec`), although master's dispatcher.sh names it |
+| P5 slow stores/s, slow span | NaN | >= 1M | **FAIL**, only because the 6.7 s span has too few pages lines. Over the movie span 58-171 s it is 2,660,133/s |
+| P5 slow stores/s, fast span | 4,026 | <= 100k | PASS |
+| P6 vCPU ms per 2 s | 1911 | >= 1800 | PASS |
+| B the brief's renderer-cost leg | false | false | PASS |
+
+The same movie span, read with `judge.py --window 58,172`:
+
+| | titlebench-9r (6561442869) | this run (2dc2b5c49a, perflog) |
+|---|---|---|
+| fps (gfps-line cadence) | 10.46 | **16.04** |
+| VBLANKs per flip | 5.9-6.0 | 3.2-4.7 |
+| renderer busy | 4.0% | 4.4% |
+| slow stores/s | 2,505,844 | 2,660,133 |
+| tlb_set_dirty per 2 s | 5,085,706 | 5,393,122 |
+| vCPU ms per 2 s | 1944 | 1966 |
+| renderer phase (perflog, ms/frame) | -- | Tot 58.6, Idle 57.1, Fin 1.1, Sub 0.9, GPU 0.2 |
+| fast span | 30.24 fps, 4,034 stores/s | 29.62 fps, 4,026 stores/s |
+
+What the failed legs say:
+
+- **P2 is a real difference, not yet explained.** No emulator code changed
+  between 6561442869 and 2dc2b5c49a on any path this workload runs
+  (`git log -- accel system hw/xbox tcg target`: psh, cull-near-far and AA
+  viewport commits only). The perflog build adds work rather than removing
+  it. Device state is the remaining candidate: the titlebench runs came late
+  in an overnight batch of 20 titles, and this one followed a 20-minute arm.
+  A rerun on the same ref without perflog is queued
+  (`1790417886-fps382-3356323`) to separate the build from the device.
+- **Nothing else moved.** The slow-store rate, the sd rate, vCPU saturation
+  and an idle renderer are the same in both runs. At 16 fps the movie is
+  still about half its native 30, with the guest CPU saturated and the
+  renderer idle. So the verdict (emulator cost, on the vCPU) stands. What is
+  not settled is its size on a given device state: 10.5 to 16 fps.
+- **The anchor-only reading needs a qualifier.** At 16 fps the flips are a
+  mix of 3, 4 and 5 VBLANKs. So on this run Sofdec showed some B pictures,
+  but not all of them. "Drops every B picture" describes the 10.5 fps runs.
+  The general statement is that it drops pictures it cannot decode in time.
+- **The brief's GPU and recording numbers** (perflog, movie span, per guest
+  frame): GPU 0.2 ms, submit 0.9 ms, finish 1.1 ms, draw recording 0.2 ms,
+  renderer idle 57.1 of 58.6 ms. There is no stall site to name: the
+  renderer waits on the guest, not the other way round.
 
 ## Do not repeat
 
@@ -174,3 +227,18 @@ Prediction: `docs/testing/predictions/fps382-intro-soak.json`. Judge:
   under `/G/Games/50Cent/ark/Movies/`.
 - Do not treat vCPU busy % as evidence of "decode-bound" by itself. It is 97%
   at 30 fps too.
+- Do not register a leg on `hakuX-pace` for a Nova soak until a result's
+  `logcat.spec` shows the tag. Master's dispatcher.sh names it, but the
+  running snapshot on 2026-09-26 03:12 did not.
+- Do not quote a single run's fps for this intro. It was 10.5 on two
+  back-to-back runs and 16.0 on the third, with the same code on its path.
+  The slow-store rate (2.5-2.7M/s) is the stable quantity.
+
+## Next
+
+The fix's A/B, once a lane holds a grant for hw/xbox/nv2a/pgraph/vk/surface.c:
+the hunk in §2c on arm B, and master on arm A, both run as a 240 s Nova soak
+of this title. Must move: slow stores over 58-172 s <= 50,000/s, and fps
+over that window at least 1.5x arm A's, taken from the same session (not
+from this file, given the 10.5/16 spread). Must not move:
+`Texture_CPU_Update` and `Texture_render_update_in_place` captures.
