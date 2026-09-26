@@ -23,14 +23,22 @@ owes no download, each later trap only sets `upload_pending` again.
 - **Re-arm** (`pgraph_vk_upload_surface_data`): if the surface is suspended,
   re-register the watch before VRAM is read. `upload_pending` is cleared under
   the same lock.
-- **Why the upload is the only re-arm site.** Nothing but the upload clears
+- **Re-arm on dirty** (`pgraph_vk_surface_watch_mark_dirty`, from
+  `pgraph_vk_set_surface_dirty`): a binding a draw marks `draw_dirty` is
+  re-armed if suspended, with the flag set and the set tested under the watch
+  lock. Added by the pass-1 remediation (sec 5).
+- **Why the upload alone was not enough.** Nothing but the upload clears
   `upload_pending` (grep: `surface.c` 2989; 3937 is the unshelve path, and
   shelving already dropped the surface from the suspended set via
   `unregister_cpu_access_callback`). Every draw and clear runs
-  `pgraph_vk_surface_update(upload=true)` first (draw.c 1188, 7086), which
-  uploads a bound surface whose `upload_pending` is set. So the watch is live
-  before the GPU can make the surface owe a download, and draw.c needs no
-  change. A CPU read of a suspended surface has nothing to download.
+  `pgraph_vk_surface_update(upload=true)` first (draw.c 1188, 7086), but with
+  `draw_reorder` on the draw only lands, and marks the surface dirty, when the
+  reorder window flushes: in a later method or on the render thread, after
+  `pgraph.lock` was released, with no upload between. The callback can
+  suspend the watch in that window. So the invariant "the watch is live
+  whenever a download is owed" is kept where a download starts to be owed,
+  in `pgraph_vk_set_surface_dirty`, not at the upload. A CPU read of a
+  suspended surface has nothing to download.
 - **Suspended set, not a flag.** `SurfaceBinding` is in `renderer.h`, which
   this lane was not granted, so `watch_suspended` is a pointer set in
   surface.c. Every retire and free path goes through
@@ -69,8 +77,11 @@ range under `pgraph.lock` and the watch lock:
   guest also wrote in the gap. Setting `upload_pending` would put VRAM over
   the draw, so the item only counts it, as `lost_writes`. This is the one
   residual. It needs a guest store to a render target in the microseconds
-  between that target's upload and the vCPU's next exit, and a draw to the
-  same target recorded in between. The arm's S1 leg reads `lost_writes`.
+  between that target's upload (or its re-arm on dirty, sec 5) and the vCPU's
+  next exit, and a draw to the same target recorded in between. The arm's S1
+  leg reads `lost_writes`. S1's prose calls this "the only path by which a
+  partly written picture can persist"; on 568332c8d2 that held only with
+  `draw_reorder` off (sec 5), which is how both arms ran.
 
 The item matches the arming that queued it by `access_cb` pointer. That
 pointer cannot be freed before the item runs, because its removal can only be
@@ -163,6 +174,39 @@ counters are not read at the very end of the run.
 What the texture arm does not cover: three captures is a small set. A
 full-corpus sweep of B is the wider guard, and the fold's CI and sweeps
 will run it.
+
+## 5. Pass-1 remediation (docs/audits/2026-09-26-surfwatch382-pass1.md)
+
+MEDIUM-1: with `draw_reorder` on, `pgraph_vk_draw_end` queues the draw in
+`r->reorder_window` and `pgraph_vk_set_surface_dirty` runs only when the
+window flushes (draw.c `flush_reorder_window_internal`), possibly on the
+render thread, with no upload first. A write between the upload and the flush
+suspended the watch, the flush made the surface owe a download with the watch
+down, and a CPU read then saw VRAM without the draw.
+
+Fix: `pgraph_vk_set_surface_dirty` now marks each binding dirty through
+`pgraph_vk_surface_watch_mark_dirty`, which sets `draw_dirty` and re-arms a
+suspended watch under `surface_watch_lock`. The callback holds that lock from
+its `!draw_dirty` test to the suspend, so either it sees `draw_dirty` and
+keeps the watch, or it suspends first and the mark re-arms. The gap check
+this re-arm queues finds `draw_dirty` set, so a gap write there is counted as
+`lost_writes` and never uploaded over the draw.
+
+Every site that sets `draw_dirty` true on a binding: only the two in
+`pgraph_vk_set_surface_dirty` (`grep -n 'draw_dirty |=\|draw_dirty = true'`
+over `pgraph/vk`; the other assignments all clear it). Its callers are
+draw.c's reorder flush, the draw-merge post-draw path, the clear and the
+plain draw; all go through the new call.
+
+Arm: `draw_reorder` is a Settings switch with no env override, so no queued
+request can turn it on and this path cannot be armed from here. Registered
+instead: `surfwatch382-texcpu-r2.json`, the same must-not-move suites on the
+remediated head against 6c25a829ef, with `draw_reorder` off, showing the new
+call is harmless on the default path.
+
+LOW-2: the lock-edge note is now at `surface_watch_rearmed`. LOW-1 (two
+hashes per re-arm) and LOW-3 (gap_writes counts non-guest VRAM changes, so it
+is an upper bound) are left as the audit states them.
 
 ## Do not repeat
 

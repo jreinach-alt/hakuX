@@ -1888,11 +1888,18 @@ void pgraph_vk_download_dirty_surfaces(NV2AState *d)
  * So the first write to a surface that owes no download (not draw_dirty)
  * sets upload_pending and suspends the watch. While suspended, upload_pending
  * stays set, because nothing but pgraph_vk_upload_surface_data clears it,
- * and that re-arms the watch before it reads VRAM. A GPU draw is always
+ * and that re-arms the watch before it reads VRAM. A draw is usually
  * preceded by that upload (pgraph_vk_surface_update(upload=true) runs before
- * every draw and clear), so the watch is live again before the surface can
- * owe a download, and a CPU read of a suspended surface has nothing to
- * download.
+ * every draw and clear), but not always in the same pgraph.lock hold: with
+ * draw reordering on, a draw is queued in r->reorder_window and marks its
+ * bindings dirty only when the window is flushed, possibly on the render
+ * thread, with no upload in between, so the callback can suspend the watch
+ * after the upload and before the draw lands. So the invariant is kept where
+ * a surface starts to owe a download instead: pgraph_vk_set_surface_dirty
+ * marks a binding dirty through pgraph_vk_surface_watch_mark_dirty, which
+ * re-arms a suspended watch under the same lock the callback suspends it
+ * under. A surface that owes a download therefore always has its watch live,
+ * and a CPU read of a suspended surface has nothing to download.
  *
  * The re-arm is asynchronous: mem_access_callback_insert queues the insert
  * and a TLB flush on the vCPU, and a store landing before those run is not
@@ -1951,6 +1958,11 @@ typedef struct SurfaceWatchRearm {
  * this item (both are queued under surface_watch_lock), so the pointer
  * compare identifies the arming that queued it and nothing else.
  */
+/*
+ * Lock edge: this takes pgraph.lock from the vCPU's exclusive section, with
+ * the BQL dropped. Nothing may therefore wait synchronously for the vCPU
+ * (run_on_cpu, start_exclusive) while holding pgraph.lock.
+ */
 static void surface_watch_rearmed(CPUState *cpu, run_on_cpu_data data)
 {
     SurfaceWatchRearm *w = data.host_ptr;
@@ -2003,6 +2015,23 @@ static void surface_watch_resume(NV2AState *d, SurfaceBinding *surface)
                               RUN_ON_CPU_HOST_PTR(w));
         surface_watch_rearms++;
     }
+}
+
+/*
+ * Called by pgraph_vk_set_surface_dirty for each binding a draw marks dirty.
+ * Setting draw_dirty and testing the suspended set happen under
+ * surface_watch_lock, which the callback holds from its !draw_dirty test to
+ * the suspend, so either the callback sees draw_dirty and keeps the watch, or
+ * the watch is suspended first and re-armed here. The gap check this queues
+ * finds draw_dirty set and only counts a gap write (lost), never uploading
+ * VRAM over the draw.
+ */
+void pgraph_vk_surface_watch_mark_dirty(NV2AState *d, SurfaceBinding *surface)
+{
+    qemu_rec_mutex_lock(&surface_watch_lock);
+    surface->draw_dirty = true;
+    surface_watch_resume(d, surface);
+    qemu_rec_mutex_unlock(&surface_watch_lock);
 }
 
 static void surface_access_callback(void *opaque, MemoryRegion *mr, hwaddr addr,
