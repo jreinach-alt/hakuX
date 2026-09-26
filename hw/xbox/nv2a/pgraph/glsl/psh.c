@@ -2430,7 +2430,7 @@ static MString* psh_convert(struct PixelShader *ps)
                 "    float ymin = poly[0].y;\n"
                 "    for (int i = 1; i < n; i++) ymin = min(ymin, poly[i].y);\n"
                 "    float r = ceil(ymin - 0.5);\n"
-                "    float c = 0.0;\n"
+                "    float c = 0.0, first = 0.0;\n"
                 "    bool found = false;\n"
                 "    for (int k = 0; k < 4 && !found; k++) {\n"
                 "        float yc = r + 0.5, lo = 1e30, hi = -1e30;\n"
@@ -2443,7 +2443,8 @@ static MString* psh_convert(struct PixelShader *ps)
                 "                lo = min(lo, min(a.x, b.x)); hi = max(hi, max(a.x, b.x));\n"
                 "            }\n"
                 "        }\n"
-                "        float first = ceil(lo - 0.5), last = ceil(hi - 0.5) - 1.0;\n"
+                "        first = ceil(lo - 0.5);\n"
+                "        float last = ceil(hi - 0.5) - 1.0;\n"
                 "        if (hi > lo && last >= first) {\n"
                 "            c = clamp(floor(xtop), first, last);\n"
                 "            found = true;\n"
@@ -2471,17 +2472,22 @@ static MString* psh_convert(struct PixelShader *ps)
                  *
                  * A triangle cut by the window clip's own TOP edge (clip.y > 0,
                  * top vertex above it) takes the 4-grid too, unless that edge
-                 * is on the 8-row grid and the triangle is flat-topped, which
-                 * keeps the 2x2 snap.  Measured on the project console on
-                 * 2026-09-25 (PRs #218, #221, #226) with `ClipF` at clip_top
-                 * 4, 8, 12, 16, 32, 35 and 64: its second triangle anchors at
-                 * 4*floor(ct/4)+2 at every one, its flat-topped first at ct
-                 * where ct is a multiple of 8 and at 4*floor(ct/4)+2 where it
-                 * is not.  A top cut by the surface edge (Floor, Roof, Wall,
-                 * ClipW, all at clip_top 0) keeps the 2x2 snap.  This rule
-                 * reproduces all 52 recovered anchors outside TriV; the flat
-                 * top is one of four literals no capture yet separates.  See
-                 * docs/lanes/wbuf31fix/NOTES.md.
+                 * is on the 8-row grid and the first covered span starts
+                 * right of the clip's left edge, which keeps the 2x2 snap.
+                 * Measured on the project console on 2026-09-25 (PRs #218,
+                 * #221, #226) with `ClipF` at clip_left 150 and clip_top 4, 8,
+                 * 12, 16, 32, 35 and 64: its second triangle (span at the
+                 * clip) anchors at 4*floor(ct/4)+2 at every one, its first
+                 * (span at the diagonal) at ct where ct is a multiple of 8
+                 * and at 4*floor(ct/4)+2 where it is not.  At clip_left 300,
+                 * clip_top 8 (PR #243) the first triangle's span starts at
+                 * the clip and it takes the 4-grid, 10: that refuted the
+                 * flat-top test this clause used before.  A top cut by the
+                 * surface edge (Floor, Roof, Wall, ClipW, all at clip_top 0)
+                 * keeps the 2x2 snap.  This rule reproduces all 54 recovered
+                 * anchors outside TriV.  `first` is the span above, a
+                 * function of the vertices and the clip rect; it does not
+                 * read the anchor column.  See docs/lanes/wbuf31sel/NOTES.md.
                  *
                  * Deliberately not done here, measured:
                  *   - the COLUMN stays on the 2-grid.  `TriV` is the only
@@ -2493,10 +2499,8 @@ static MString* psh_convert(struct PixelShader *ps)
                  *     answer and move no pixel -- TriV has pb == 0 exactly. */
                 "    c = 2.0 * floor(c * 0.5);\n"
                 "    float ytop = min(p0.y, min(p1.y, p2.y));\n"
-                "    bool flatTop = (p0.y == ytop ? 1 : 0) + (p1.y == ytop ? 1 : 0)\n"
-                "                 + (p2.y == ytop ? 1 : 0) > 1;\n"
                 "    bool topCut = clip.y > 0.0 && ytop < clip.y;\n"
-                "    bool grid = !cut || (topCut && !(flatTop && mod(clip.y, 8.0) == 0.0));\n"
+                "    bool grid = !cut || (topCut && !(first != clip.x && mod(clip.y, 8.0) == 0.0));\n"
                 "    r = grid ? 4.0 * floor(r * 0.25) + 2.0\n"
                 "        : 2.0 * floor(r * 0.5);\n"
                 "    float step = abs(pa) >= abs(pb) ? pa : pb;\n"

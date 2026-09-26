@@ -1,0 +1,39 @@
+{
+  "registered_utc": "2026-09-25T21:23:58Z",
+  "who": "lane.remote",
+  "issue": "274",
+  "prediction": "#274: VULKAN TAKES THE SURFACE-TO-TEXTURE SHORTCUT FOR A LINEAR SURFACE WHOSE PITCH IS NOT THE TEXTURE'S. check_surface_to_texture_compatiblity() in vk/texture.c compares extent, layout, conversion and texel size, but not pitch; GL's pgraph_gl_check_surface_to_texture_compatibility() refuses (!surface->swizzle && surface->pitch != shape->pitch). Antialiasing tests::CreateSurfaceWithCenter1 points a 128x128 A8R8G8B8 render target at pitch 2048 over the 128x128 LU_IMAGE_A8R8G8B8 texture it then samples at pitch 512, so Vulkan samples the surface image (every fourth texture row, then black) instead of the checkerboard the CPU wrote. A local instrument (never committed, on 7de83dd4) logged the shortcut taken with a mismatched pitch only there: twice inside Center1, and zero times on the rest of this disc, on disc109 (73 captures), Clear (33) and surf1 (236). The texture binding Center1 leaves is reused later in the suite: CenterCorner2 and SquareOffset4 read 78,496 each in sequence and 0 each when run alone on the same binary, and GPUAAWriteAfterCPUWrite reads 2,674 in sequence, 134 alone and 134 on GL. B adds GL's pitch condition to Vulkan's check and nothing else. PREDICTION, desktop Vulkan on llvmpipe, surface_scale 1, this disc (Antialiasing tests + DMA corruption around surfaces, 14 captures), 3 runs per arm: the three CreateSurfaceWith* read 0 each (GL's value), GPUAAWriteAfterCPUWrite reads 134 (GL's value and its solo value), better 4, worse 0, and the other 10 captures are bit-identical, including xemuReadFromFileIntoSurface at 90,912 (#277, not this defect). UNCOMFORTABLE OUTCOMES, named now: GPUAAWriteAfterCPUWrite staying above 134 while the three reach 0 means the carry-over has a second source, and this FAILS on that leg; any of the other 10 moving means the pitch condition reaches a path the instrument did not see.",
+  "a_ref": "9eaae944",
+  "b_ref": "2c94b7ed",
+  "must_not_move": [
+    "DMA_corruption_around_surfaces/*",
+    "Antialiasing_tests/AAOnThenOffCPUWrite",
+    "Antialiasing_tests/CPUWriteIgnoresSurfaceConfig",
+    "Antialiasing_tests/FBSurfaceWithCenter1",
+    "Antialiasing_tests/FBSurfaceWithCenterCorner2",
+    "Antialiasing_tests/FramebufferNotModifiedBySurfaceState",
+    "Antialiasing_tests/NonAACPURoundTrip",
+    "Antialiasing_tests/SurfaceStatesAreIndependent"
+  ],
+  "expect": {
+    "Antialiasing_tests/CreateSurfaceWithCenter1": 0,
+    "Antialiasing_tests/CreateSurfaceWithCenterCorner2": 0,
+    "Antialiasing_tests/CreateSurfaceWithSquareOffset4": 0,
+    "Antialiasing_tests/GPUAAWriteAfterCPUWrite": 134
+  },
+  "expect_counts": {
+    "better": 4,
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Antialiasing tests",
+      "DMA corruption around surfaces"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "title": "desktop Vulkan A/B -- hand-queue only, see the prediction text"
+}
