@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 257
-updated_utc = "2026-09-26T17:40:00Z"
+wave = 258
+updated_utc = "2026-09-26T19:25:00Z"
 
 [retired.hilodot10]
 issues = ["10"]
@@ -562,7 +562,7 @@ note = "STARTED (hostops 2026-09-26 11:55 AM PDT): harness defect, no tracker is
 # exist, and check_coverage.py cannot tell the difference.
 # CLAIMED (hostops, 2026-09-26T03:35Z): glsl/psh.h -> lane.pshqueue (granted at wave 222; [free] still listed it, failing check_territory).
 # CLAIMED (hostops, 2026-09-26 6:45 AM PDT): gl/texture.c -> lane.pshaniso284 (granted 6:40 AM; [free] still listed it, failing check_territory).
-files = ["docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/73-cloud-claim.sh", "docs/lanes/cloudclaim/**", "docs/testing/nightly_build.sh", "docs/testing/jobs/selftest.d/86-nightly-notes.sh", "docs/lanes/nightlynotes/**", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**", "tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "android/app/build.gradle.kts", "hw/xbox/nv2a/pgraph/texture.c", 
+files = ["docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/73-cloud-claim.sh", "docs/lanes/cloudclaim/**", "docs/testing/nightly_build.sh", "docs/testing/jobs/selftest.d/86-nightly-notes.sh", "docs/lanes/nightlynotes/**", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**", "tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "android/app/build.gradle.kts", 
 # RELEASED AT WAVE 158 by retiring lane.cloud190: PR #211 folded as f2e8ef8ba8 (#190 fixed).
     "hw/xbox/nv2a/pmc.c",
 # RELEASED (job.board wave 249) by retiring lane.fmv303 (PR #317 folded bb1f437bb7): vk/display.c.
@@ -1154,9 +1154,9 @@ note = "RETIRED (job.board wave 248): PR #391 MERGED 2026-09-26T13:35:27Z, no op
 
 [lane.ring53impl]
 issues = ["53"]
-files = ["hw/xbox/nv2a/pgraph/pgraph.h", "hw/xbox/nv2a/pgraph/pgraph.c", "hw/xbox/nv2a/pgraph/glsl/vsh.h", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/ring53impl-*.json", "docs/lanes/ring53impl/**"]
+files = ["hw/xbox/nv2a/pgraph/pgraph.h", "hw/xbox/nv2a/pgraph/glsl/vsh.h", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/ring53impl-*.json", "docs/lanes/ring53impl/**"]
 standing = false
-note = "STARTED, PR #395 draft (job.board 2026-09-26T17:45Z): the lane is waiting on the arms verdict (arm requests queued behind the Thor sweep). PRIOR: BRIEFED, NOT STARTED (job.board wave 248): `docs/testing/lane.sh start` needs an approval the non-interactive board session cannot get (same as wave 247 for ring53); the HOST runs `docs/testing/lane.sh start ring53impl briefs/ring53impl.md 53` and labels #53 lane:ring53impl. BRIEFED AT TERRITORY WAVE 248 (job.board, 2026-09-26T13:50:00Z), briefs/ring53impl.md: #53 ring implementation. The console run that pins the per-method ring weights landed (PR #394, lane/xbox-ringw, CI green, fold-ready); lane.ring53's NOTES s2 names the hunks and board-requests/ring53.md item 2 said a fresh lane gets pgraph.h, glsl/vsh.h, glsl/vsh.c and pgraph.c once the run lands. All five were unclaimed (checked against every open PR's files); vsh-ff.c released by lane.zrtz272 (PR #364 merged). vsh-prog.c is free and needs no hunk."
+note = "LENT (hostops 2026-09-26 12:25 PM PDT): hw/xbox/nv2a/pgraph/pgraph.c to [lane.yuv10] for ONE hunk, the SET_CONTROL0 handler only (ring53impl's hunks are in the reg-category table, method paths and SET_BEGIN_END; disjoint); it RETURNS when PR yuv10 is ready. STARTED, PR #395 draft (job.board 2026-09-26T17:45Z): the lane is waiting on the arms verdict (arm requests queued behind the Thor sweep). PRIOR: BRIEFED, NOT STARTED (job.board wave 248): `docs/testing/lane.sh start` needs an approval the non-interactive board session cannot get (same as wave 247 for ring53); the HOST runs `docs/testing/lane.sh start ring53impl briefs/ring53impl.md 53` and labels #53 lane:ring53impl. BRIEFED AT TERRITORY WAVE 248 (job.board, 2026-09-26T13:50:00Z), briefs/ring53impl.md: #53 ring implementation. The console run that pins the per-method ring weights landed (PR #394, lane/xbox-ringw, CI green, fold-ready); lane.ring53's NOTES s2 names the hunks and board-requests/ring53.md item 2 said a fresh lane gets pgraph.h, glsl/vsh.h, glsl/vsh.c and pgraph.c once the run lands. All five were unclaimed (checked against every open PR's files); vsh-ff.c released by lane.zrtz272 (PR #364 merged). vsh-prog.c is free and needs no hunk."
 
 [retired.fmv303b]
 issues = []
@@ -1164,6 +1164,12 @@ files = []
 standing = false
 retired_utc = "2026-09-26T18:50:00Z"
 note = "RETIRED (job.board 2026-09-26): PR #398 MERGED 2026-09-26T18:36:26Z, unit gone. Result: tier1 on/off does not change the #303 FMV green (tint mean 0.69 on, 0.68 off, four Thor runs); the lead is a non-CPU write racing the decoder chroma plane, prime suspect nv2a surface write-back. Next step is a write-back probe in hw/xbox/nv2a/pgraph/vk/surface.c, held by lane.blinx372d, so #303 waits on that file. Every file the row held is RELEASED to [free]. PRIOR NOTE: RELEASED AT READY (job.board 2026-09-26T18:10Z): PR #398 is out of draft, CI green, unit gone, needs-audit-1; files free for the next lane. PRIOR: STARTED, PR #398 draft (job.board 2026-09-26T17:45Z): handback.sh resumed the lane 17:42Z after its Thor tier1 A/B soaks. PRIOR: GRANTED BY HOSTOPS (2026-09-26 7:33 AM PDT): android/app/src/main/cpp/xemu_android.cpp from [free] (released wave 123; no open PR lists it) for the two-line default-inert HAKUX_TIER1_THRESHOLD env override the lane asked for on #398 (board-requests/fmv303b.md); the smaller of the two routes, and needs no dispatcher-tree update. PRIOR: BRIEFED AT TERRITORY WAVE 249, NOT STARTED (job.board, 2026-09-26T14:14:00Z; `lane.sh start` needs an approval the non-interactive board session cannot get, so the HOST runs `docs/testing/lane.sh start fmv303b briefs/fmv303b.md 303`), briefs/fmv303b.md: #303's CPU-side half. PR #317 (lane.fmv303, folded) showed the green is already in the guest's ARGB buffer (guest 0.66 vs screen 0.63), so display/upload/PVIDEO are exonerated; its NOTES s5 names the first discriminator, the same Thor soak with tier1 off metered by docs/lanes/fmv303/guest_tint.py. No hw/ file is held: a hunk is named and board-requested, not edited."
+
+[lane.yuv10]
+issues = ["10"]
+files = ["hw/xbox/nv2a/pgraph/pgraph.c", "hw/xbox/nv2a/nv2a_regs.h", "hw/xbox/nv2a/pgraph/texture.c", "hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/psh.h", "docs/testing/predictions/yuv10-*.json", "docs/lanes/yuv10/**"]
+standing = false
+note = "STARTED (hostops 2026-09-26 12:25 PM PDT, on lane.xbox's board request of 11:59 PDT), briefs/yuv10.md: #10 YUV class fix. lane.xbox measured SET_CONTROL0's CRYCB_TO_RGB field on silicon (PR #411, #10 comment 5848958489): every stage converted after the texture shader, YUY2/UYVY fetched raw, kr=128; model takes the four YUV captures 111,496 -> 1,688 px each. texture.c from [free]; nv2a_regs.h, glsl/psh.c, glsl/psh.h unclaimed; pgraph.c LENT from [lane.ring53impl] for the SET_CONTROL0 handler only, returned at ready."
 
 [lane.blinx372d]
 issues = ["372"]
