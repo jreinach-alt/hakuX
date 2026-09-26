@@ -1,0 +1,28 @@
+{
+  "registered_utc": "2026-09-26T20:14:34Z",
+  "who": "lane.aufire412",
+  "issue": "412",
+  "prediction": "Inert-in-goldens arm for the UBO descriptor ring growth hunk (vk/shaders.c, b_ref 1b557ff6a4 vs a_ref be41e81662, one hunk in one file). The grow runs only when one command buffer takes more than 1,024 UBO sets before a finish resets the index. A pgraph test frame issues at most a few hundred draws, so no capture in these suites reaches it, and every capture must stay put. What would move one: the grow firing inside a golden AND a freed overflow set still bound by live work (a stale uniform range, #34 finding 1's failure), or the removed mid-frame submit changing render-pass splits. The arm's logcat tells the two apart: a hakuX-stall ubo_ring_grow line means the grow fired, none means it did not and any move is noise or a wrong binary. Check each row's status for unreadable captures before reading a zero. The mover is a soak and is judged separately: aufire412-uboring-soak.json.",
+  "a_ref": "be41e81662",
+  "b_ref": "1b557ff6a4",
+  "must_not_move": [
+    "Depth_buffer_fixed_function/*",
+    "Color_zeta_overlap/*",
+    "Surface_format/*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Color zeta overlap",
+      "Depth buffer fixed function",
+      "Surface format"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

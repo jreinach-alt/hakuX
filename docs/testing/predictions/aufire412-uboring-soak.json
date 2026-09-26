@@ -1,0 +1,30 @@
+{
+  "registered_utc": "2026-09-26T20:40:00Z",
+  "who": "lane.aufire412",
+  "issue": "412",
+  "title": "4541000D-007_Agent_Under_Fire.xiso.iso",
+  "device": "nova",
+  "seconds": 480,
+  "perflog": true,
+  "route_name": "survey",
+  "runs_per_arm": 1,
+  "a_ref": "be41e81662",
+  "b_ref": "1b557ff6a4",
+  "windows": {"menu": [220, 285], "play": [299, 470]},
+  "prediction": "TWO ARMS, same-session Nova perflog soaks of Agent Under Fire on the survey route, 480 s each. A = be41e81662 (master aaf01a1cef plus lane docs; same binary as master). B = 1b557ff6a4, whose only code change from A is vk/shaders.c: a full UBO descriptor ring grows through an overflow pool (grow_descriptor_ring, capped at 16 pools) instead of calling pgraph_vk_finish(NEED_BUFFER_SPACE) + flush_all_frames. Judge: python3 docs/lanes/aufire412/splitread.py --judge <A logcat> <B logcat> docs/testing/predictions/aufire412-uboring-soak.json. Windows are seconds since the first hakuX line: menu 220-285 (pause menu over the mission scene), play 299-470 (mission play), taken from soak 1790450038, where mark play fell at 288.7 s. Each leg names the world in which it fails. M0 instrument: >= 10 phase lines per arm per window and >= 5 buf_detail lines per arm in play. Otherwise the pair is VOID: not a perflog build, or the route did not reach the scene. M1 is the impossible row. A prints no ubo_ring_grow line, because it lacks the code: a line in A means the arms carry the wrong binaries. B prints at least one: no line in B means the grow never ran (the arm is inert, not refuted), or the pool creation failed on the device. P1: B's median buf_detail ds in play is <= 2 (A read 38-46 in 1790450038). It fails if the grow does not take the ring-full path, or if the cap is hit every few frames. P2: B's Fin median in play is <= 0.5 x A's. It fails if the ring finish's wait reappears in another finish (flip, buffer space) rather than overlapping. P3, the mover: B's play fps is >= A's + 2, and B's play fps is in 17-26. The ceiling is the GPU floor, 40.6 ms/frame = 24.6 fps, plus margin. Above 26 means the GPU floor was wrong. Under +2 means the wait moved elsewhere (see Surf's rise when Desc fell, NOTES section 4, 'Floor: 0'). P4: the pause-menu-over-scene window gains >= 2 fps too. It fails if that scene fills the ring less often than play does. P5: the GPU per frame is within 0.75-1.25 x A's. It fails if removing the mid-frame submit changed what the GPU does (render-pass splits, load/store), which would also mean pixels could move. P6 is a guess and is labelled as one: B never holds more than 2 overflow pools. The index is reset by the flip finish while the pools stay, so one 4,096-set pool covers the ~1,950 sets per frame. It fails if the index is not reset per frame, and the cap then decides. Must-not-move (golden) legs are a separate disc arm: docs/testing/predictions/aufire412-uboring-goldens.json. PR #387's arm (watch suspension, vk/surface.c) shares no code with this hunk. It is named here and has no leg, because nothing in B reaches it.",
+  "expect": {
+    "M0/phase_lines_min": 10,
+    "M0/buf_lines_min": 5,
+    "M1/grow_lines_a_max": 0,
+    "M1/grow_lines_b_min": 1,
+    "P1/b_ds_median_max": 2,
+    "P2/b_fin_over_a_max": 0.5,
+    "P3/play_fps_gain_min": 2.0,
+    "P3/b_play_fps_range": [17, 26],
+    "P4/menu_fps_gain_min": 2.0,
+    "P5/gpu_ratio_range": [0.75, 1.25],
+    "P6/b_max_pools_max": 2
+  },
+  "expect_counts": {},
+  "expect_note": "Named rules read by docs/lanes/aufire412/splitread.py --judge, not golden keys. A soak writes no captures."
+}
