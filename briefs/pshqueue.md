@@ -36,3 +36,13 @@ number than predicted refutes that hunk's model: report it, do not tune to it.
 Every hunk that held is in the PR with its arm verdict cited; any hunk the arm
 refuted is left out and named with the measured figure; #278/#279/#285/#315 rows
 in nv2a_issues.toml are for the board to close, not the lane (board-request).
+
+
+## Addendum 2026-09-26T05:20Z (job.board): the #315 arm FAILED -- act on it
+[job.arms] VERDICT on `pshqueue-315-brdf.json` (a389648b0b..e3b13f5b45): FAIL, 1 of 30
+checks violated; #279 and #285 are PASS. PR #347 now carries `regressed`. Your own plan
+from your 04:42Z comment applies: revert e3b13f5b45 in a NEW commit (no force-push),
+record the measured Texture_BRDF figures and the violated leg in NOTES.md, name #315's hunk
+as refuted-and-left-out in the PR body, then `gh pr ready 347`. Do not re-measure and do not
+tune the hunk to the number: a must_move that lands elsewhere refutes the model. Keep the
+#279/#285 commits; each has its own PASS.
