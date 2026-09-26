@@ -36,6 +36,7 @@
 #include "swizzle.h"
 #include "nv2a_vsh_emulator.h"
 #include "glsl/vsh-prog.h"
+#include "glsl/vsh.h"
 
 #define PG_GET_MASK(reg, mask) GET_MASK(pgraph_reg_r(pg, reg), mask)
 #define PG_SET_MASK(reg, mask, value)        \
@@ -168,6 +169,69 @@ static void pgraph_init_reg_category_table(void)
 #ifndef XEMU_OPT_METHOD_FAST_TABLE
 #define XEMU_OPT_METHOD_FAST_TABLE 1
 #endif
+
+/*
+ * #53: how far one Kelvin method advances the lighting unit's six-slot ring
+ * (PGRAPHState.ff_lit_ring). Measured on the console, one method per case
+ * between single-quad lit program draws (docs/testing/xbox-ringw-2026-09-26.md):
+ *
+ *   method                                       weight   mapped here as
+ *   NOP 0x100                                    0        NV097_NO_OPERATION
+ *   LIGHT_CONTROL, same value                    0        NV097_SET_LIGHT_CONTROL
+ *   empty BEGIN_END pair                         0        NV097_SET_BEGIN_END
+ *   per-vertex attributes, front and back        0        the vertex data ranges
+ *   COMBINER_COLOR_ICW, same value               +1       default
+ *   SPECULAR_ENABLE, same or toggled             +1       default
+ *   SET_TRANSFORM_CONSTANT, one vec4 (4 words)   +1       +1 on the vec4's 4th word
+ *   one pb_fill                                  5        5 words at +1 (see below)
+ *   MATERIAL_ALPHA_BACK + 6 SPECULAR_PARAMS_BACK +1       7 words at +1, 7 = 1 mod 6
+ *   SET_TRANSFORM_CONSTANT_LOAD                  0        listed; from M7's first
+ *                                                         draw, the one method
+ *                                                         its setup adds to M0's
+ *
+ * A pb_fill is two headers carrying five words: CLEAR_RECT_HORIZONTAL and
+ * _VERTICAL, then ZSTENCIL_CLEAR_VALUE, COLOR_CLEAR_VALUE and CLEAR_SURFACE
+ * (nxdk pbkit_draw.c). So the ring counts methods, not headers (two headers
+ * would weigh 2) and not words (the vec4 constant would weigh 4): every word
+ * this hook sees weighs +1 unless it is listed. The vertices themselves are
+ * counted at the draw's END, one slot each.
+ *
+ * Unmeasured and carried by the default: every other Kelvin method. The
+ * transform program upload is weighed like the constants it shares the
+ * transform unit's 128-bit write with, one per instruction; that is by
+ * analogy, not measured. Methods on other classes (2D, blit) do not reach
+ * the 3D front end and weigh 0.
+ *
+ * NOT YET RIGHT: with these weights every first draw after a test boundary
+ * starts 2 slots past silicon's, on all 15 console cases and both Specular
+ * suites, while every step within a test is exact. Each of those gaps
+ * carries the same fixed harness set once -- WAIT_FOR_IDLE x3,
+ * FLIP_INCREMENT_WRITE, FLIP_STALL, SET_CONTEXT_DMA_COLOR and the four
+ * SET_TRANSFORM_EXECUTION_MODE/_PROGRAM_CXT_WRITE_EN/_PROGRAM_LOAD/
+ * _PROGRAM_START writes -- so no capture separates which of them is
+ * mis-weighed (docs/lanes/ring53impl/NOTES.md).
+ */
+static inline void pgraph_ring_weigh(PGRAPHState *pg, uint32_t method)
+{
+    if (method == NV097_NO_OPERATION || method == NV097_SET_LIGHT_CONTROL ||
+        method == NV097_SET_BEGIN_END ||
+        method == NV097_SET_TRANSFORM_CONSTANT_LOAD) {
+        return;
+    }
+    if ((method >= NV097_SET_VERTEX3F && method < 0x16D0) ||
+        (method >= NV097_ARRAY_ELEMENT16 && method < NV097_SET_EYE_VECTOR) ||
+        (method >= NV097_SET_VERTEX_DATA2F_M && method < NV097_SET_TEXTURE_OFFSET)) {
+        return;
+    }
+    if (method >= NV097_SET_TRANSFORM_PROGRAM &&
+        method < NV097_SET_TRANSFORM_CONSTANT + 0x80 &&
+        ((method >> 2) & 3) != 3) {
+        return;
+    }
+    if (++pg->ring_pos == 6) {
+        pg->ring_pos = 0;
+    }
+}
 
 #if NV2A_PERF_LOG
 /*
@@ -764,6 +828,7 @@ int pgraph_method_try_fast(NV2AState *d, unsigned int subchannel,
     if (!fast->reg && !fast->xlat) return 0;
 
     if (!fast_entry_apply_atomic(pg, fast, parameter)) return 0;
+    pgraph_ring_weigh(pg, midx << 2);
 
     size_t consumed = 1;
 
@@ -774,6 +839,7 @@ int pgraph_method_try_fast(NV2AState *d, unsigned int subchannel,
         if (!nf->reg && !nf->xlat) break;
         uint32_t p = ldl_le_p(parameters + consumed);
         if (!fast_entry_apply_atomic(pg, nf, p)) break;
+        pgraph_ring_weigh(pg, next_midx << 2);
         midx = next_midx;
         consumed++;
     }
@@ -805,6 +871,7 @@ int pgraph_method_try_fast(NV2AState *d, unsigned int subchannel,
                 consumed -= (i + 1);
                 goto coalesce_done;
             }
+            pgraph_ring_weigh(pg, (nm + i) << 2);
             consumed++;
         }
     }
@@ -1813,6 +1880,7 @@ int pgraph_method(NV2AState *d, unsigned int subchannel,
         const MethodFastPath *fast = &method_fast[midx];
         if (fast->reg || fast->xlat) {
             if (!fast_entry_apply(pg, fast, parameter)) goto slow_path;
+            pgraph_ring_weigh(pg, midx << 2);
             size_t consumed = 1;
             while (consumed < num_words_available) {
                 unsigned int next_midx = midx + 1;
@@ -1821,6 +1889,7 @@ int pgraph_method(NV2AState *d, unsigned int subchannel,
                 if (!nf->reg && !nf->xlat) break;
                 uint32_t p = ldl_le_p(parameters + consumed);
                 if (!fast_entry_apply(pg, nf, p)) break;
+                pgraph_ring_weigh(pg, next_midx << 2);
                 midx = next_midx;
                 consumed++;
             }
@@ -1858,6 +1927,7 @@ int pgraph_method(NV2AState *d, unsigned int subchannel,
                         consumed -= (i + 1);
                         goto coalesce_done;
                     }
+                    pgraph_ring_weigh(pg, (nm + i) << 2);
                     consumed++;
                 }
             }
@@ -2129,6 +2199,9 @@ slow_path:
         size_t num_words_consumed = 1;
         handler(d, pg, subchannel, method, parameter, parameters,
                 num_words_available, &num_words_consumed, inc);
+        for (size_t i = 0; i < num_words_consumed; i++) {
+            pgraph_ring_weigh(pg, inc ? method + 4 * i : method);
+        }
 
         /* Squash repeated BEGIN,DRAW_ARRAYS,END */
         #define LAM(i, mthd) ((parameters[i*2+1] & 0x31fff) == (mthd))
@@ -4512,7 +4585,11 @@ DEF_METHOD(NV097, SET_BEGIN_END)
             return;
         }
         nv2a_profile_inc_counter(NV2A_PROF_BEGIN_ENDS);
+        /* #53: the fill reads the inline buffer draw_end consumes, and the
+         * draw's uniforms read ring_pos before its own vertices move it. */
+        unsigned int ring_vertices = pgraph_glsl_ring_fill(pg);
         d->pgraph.renderer->ops.draw_end(d);
+        pg->ring_pos = (pg->ring_pos + ring_vertices) % 6;
         pgraph_vsh_writeback_constants(pg);
         pgraph_reset_inline_buffers(pg);
         pg->primitive_mode = PRIM_TYPE_INVALID;

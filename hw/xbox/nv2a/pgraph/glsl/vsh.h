@@ -106,6 +106,8 @@ void pgraph_glsl_set_vsh_state(PGRAPHState *pg, VshState *state);
     DECL(S, material_alpha, float, 1)                        \
     DECL(S, material_alpha_back, float, 1)                   \
     DECL(S, pointParams, float, 8)                           \
+    DECL(S, ringInput, vec4, 36)                             \
+    DECL(S, ringPhase, float, 1)                             \
     DECL(S, specularParams, vec3, 4)                         \
     DECL(S, surfaceSize, vec2, 1)
 
@@ -163,6 +165,15 @@ VshFogWrite pgraph_glsl_vsh_fog_write(const VshState *state);
  * the fog output register above, one register along.
  */
 bool pgraph_glsl_vsh_carries_ff_radial_fog(const VshState *state);
+
+/*
+ * #53: called at the end of every draw, before the renderer draws it. A
+ * fixed-function lit draw writes its last six vertices into the ring slots
+ * they occupy; every draw then advances pg->ring_pos by its vertex count,
+ * which the caller does once the renderer is done with the pre-draw phase.
+ * Returns the vertex count.
+ */
+unsigned int pgraph_glsl_ring_fill(PGRAPHState *pg);
 
 void pgraph_glsl_set_vsh_uniform_values(PGRAPHState *pg, const VshState *state,
                                         const VshUniformLocs locs,
