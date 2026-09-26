@@ -21,8 +21,18 @@ Landed and read (details in `perf-architecture.md` section 8):
 - **TSO B1 did not boot** under `HAKUX_TCG_TSO=rcpc`: its log ends at
   `qemu_main`, with no crash. A2 was a harness exit after 20 s. The judge
   refuses both. The emitter's encodings check out by reading (LDAPR/STLR
-  opcodes, UXTW fold, TMP2 = X30). B2, the same config, decides whether the
-  hang is the prototype.
+  opcodes, UXTW fold, TMP2 = X30). **B2 hung identically** (184 lines,
+  ends at `qemu_main`), so the TSO prototype hangs at boot, 2 of 2. That is
+  its arm verdict: its frame cost is unmeasured. The next lane on it should
+  dump `out_asm` for the first blocks, not re-queue the arm.
+- **Placement arm: refused on validity.** Harness exits cut 3 of 4 runs
+  short (30/120/40 s). The mechanism is verified: 100% on the X3, zero
+  migrations, runqueue wait +3 ms/s. Galleon at 1x is capped at 33.40 ms, so
+  it cannot show a vCPU speedup. **Do not re-queue it on Galleon.** Use
+  Crimson's heavy frames.
+- Harness note: 5 of the 8 arm runs tonight ended early with
+  `UtilAcceptVsock` in `run.log`. Check the `held ... for Ns` line before
+  judging.
 - Do not re-derive the placement prize from the 09-11 capture again. Use
   8.1's residency.
 
@@ -106,11 +116,14 @@ Then fill section 8 and the pending cells of the ranked table in
 
 ## Next three things to build (after the arms)
 
-1. **If the placement arm wins:** a fix PR that pins by role where each
-   thread is created. vCPU to the prime core, PFIFO to the A715 pair, and
-   render and compile to the A710 pair. It replaces the dead
-   `XEMU_OPT_THREAD_AFFINITY` code, and must be gated on a 20-minute thermal
-   soak (the sampler's p7 cap line) as well as the arm.
+1. **Find the rcpc boot hang, then re-arm on an uncapped scene.** Dump
+   `out_asm` for the first blocks under `HAKUX_TCG_TSO=rcpc` and read the
+   first LDAPR/STLR. Once the guest boots, arm both prototypes on Crimson's
+   heavy frames, not Galleon (capped at 33.4 ms). Placement's prize there is
+   bounded by the vCPU's off-X3 share, which the `HAKUX_TOPO` sampler reads.
+   Pin-by-role (vCPU to the X3, PFIFO to the A715s, render and compile to the
+   A710s, replacing the dead `XEMU_OPT_THREAD_AFFINITY`) is only worth a fix
+   PR if that arm shows it.
 2. **The host build flags** (`minSdk 29`, `-march=armv8.2-a`,
    `-fvisibility=hidden`/`-Bsymbolic`). They need no device design, just
    one A/B for the 4.4%. The files belong to no lane: needs a territory

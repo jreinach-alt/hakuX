@@ -26,19 +26,20 @@ thread's time reaches the frame roughly one for one until the renderer, busy
 
 | # | lever | owner | expected gain | grade | evidence |
 |---|---|---|---|---|---|
-| 1 | **Pin the vCPU thread to the X3 prime core** (`HAKUX_PLACE_VCPU=prime`) | this lane, prototype 2 | registered at -18% (band -5% to -35%); **re-bounded at 3-9% of vCPU time** | B, arm queued | 09-11 Crimson: vCPU on the X3 15.2% (M, 4.1). 09-25 Galleon at the arm's apk: **72%** (M, 8.1). Arm `perfarch-vcpu-prime.json` |
-| 2 | Stop code-write invalidation and dirty re-arm churn | lane.tcgchurn (#309) | up to 26% of vCPU time is this mechanism | M share, B gain | section 2 |
-| 3 | TB lookup: fewer jump-cache flushes, inline indirect-branch probe | lane.tcgchurn (flushes); codegen follow-up | up to 13.6% of vCPU time | M share, B gain | section 3 |
+| 1 | Stop code-write invalidation and dirty re-arm churn | lane.tcgchurn (#309) | up to 26% of vCPU time is this mechanism | M share, B gain | section 2 |
+| 2 | TB lookup: fewer jump-cache flushes, inline indirect-branch probe | lane.tcgchurn (flushes); codegen follow-up | up to 13.6% of vCPU time | M share, B gain | section 3 |
+| 3 | **Pin the vCPU thread to the X3 prime core** (`HAKUX_PLACE_VCPU=prime`) | this lane, prototype 2 | registered at -18% (band -5% to -35%); **re-bounded at 3-9% of vCPU time** | B; arm refused on validity (runs cut short; Galleon frame-capped) | 09-11 Crimson: vCPU on the X3 15.2% (M, 4.1). 09-25 Galleon: **72-88%** (M, 8.1, 8.3). Pinning verified at 100%, runqueue wait +3 ms/s. Arm `perfarch-vcpu-prime.json` |
 | 4 | Host build: native ELF TLS (minSdk 29), inline LSE atomics, no intra-library PLT | build owner (outside every lane's files) | up to 4.4% of vCPU time, 3.7% of PFIFO time | M share, B gain | section 3.3 |
 | 5 | I-cache maintenance: patch-free TB chaining | this lane | about a third of 4.0% of vCPU time | M share, B gain; IDC=1 DIC=0 measured, 209 ns per 4-byte flush on the X3 | sections 2.2, 8.1 |
 | 6 | Renderer: split capture from translation (`RCMD_DRAW`, submit worker) | renderer lane | Crimson frame bounded at 41.5 ms (+21% fps) today; more once 1-3 land | B | `frame-pacing-and-parallelism.md` section 4 |
 | 7 | Run ahead with copy-on-write snapshots instead of holding the guest (#44 class) | future lane | removes the skew bound's cost: Galleon ceiling 13 -> 29 gfps with the fix on | H | section 6 |
-| 8 | x86-TSO from RCpc (`HAKUX_TCG_TSO=rcpc`) | this lane, prototype 1 | a **cost**, predicted +4% (band +1% to +12%); micro-mix +0% on the X3, +28% on an A715 | M micro; **B1 did not boot under rcpc**, B2 running | sections 1, 8.1, 8.2; arm `perfarch-tso-rcpc-cost.json` |
+| 8 | x86-TSO from RCpc (`HAKUX_TCG_TSO=rcpc`) | this lane, prototype 1 | a **cost**, predicted +4% (band +1% to +12%); micro-mix +0% on the X3, +28% on an A715 | M micro; **arm: the prototype hangs at boot, 2 of 2**; frame cost unmeasured | sections 1, 8.1, 8.2; arm `perfarch-tso-rcpc-cost.json` |
 | 9 | Order GPU->CPU sync writes on the vCPU thread (`run_on_cpu`) | pgraph owner | about 0 fps; closes the one ordering gap that is real today | H | section 1.3 |
 
-Items 1, 2 and 4 compound: they act on different parts of the same thread.
-Item 1 speeds up every instruction on the thread, and 2 and 4 delete work from
-it.
+Items 1 to 4 compound: they act on different parts of the same thread.
+Item 3 speeds up every instruction on the thread, and 1, 2 and 4 delete work
+from it. Placement was ranked first until the survey re-measured its premise
+(section 8.1).
 
 ## 1. Memory ordering
 
@@ -552,17 +553,26 @@ hottest CPU zone peaked at 82.8 °C. GPU busy averaged 8.7%. No throttling in
 | A1 `1790369082-perfarch-2154145` | -- | 103 windows, game frame median 33.65 ms, `gfps` p50 29 |
 | B1 `1790369083-perfarch-2156492` | `HAKUX_TCG_TSO=rcpc` | **did not boot**: `tso mode=rcpc ... -> ON`, then nothing after `qemu_main` in 240 s. No crash line, no tier-1 promotion, no frame |
 | A2 `1790369085-perfarch-2158840` | -- | harness exit after 20 s (`UtilAcceptVsock`), 12 windows: invalid |
-| B2 `1790369086-perfarch-2160586` | `HAKUX_TCG_TSO=rcpc` | running at the time of writing |
+| B2 `1790369086-perfarch-2160586` | `HAKUX_TCG_TSO=rcpc` | **did not boot**, identically: 184 logcat lines, ending at `qemu_main` |
 
-`tso_judge.py` refuses the pair on validity. B1 is not a harness failure of
-the usual kind. The other Nova no-boots in the last 250 runs (2) logged zero
-lines, while B1 logged the whole init up to the first translation. In A1 the
-next lines, 2 ms later, are the first BIOS loop's tier-1 promotions. So the
-first reading is that **the guest does not get past its first blocks under
-rcpc** (H until B2). The candidates, in the emitter:
+**Verdict: the prototype as built hangs the guest before its first frame, 2
+of 2 runs.** The cost question is unanswered, because the arm never ran a
+frame. `tso_judge.py` refuses all three short runs on validity.
 
-- `hakux_tso_addr` folds base plus index into `TMP2`. If `TMP2` is live across
-  the access in some path, this corrupts it.
+This is not a harness failure. The other Nova no-boots in the last 250 runs
+(2) logged zero lines. Both B runs logged the whole init, up to the first
+translation, and stopped at the same line. In A1 the next lines, 2 ms later,
+are the first BIOS loop's tier-1 promotions. So **the guest does not get past
+its first blocks under rcpc**, and no `tso rcpc emitted` line (one per 65,536
+accesses translated) ever appears.
+
+The encodings check out by reading (LDAPR{B,H,,X} `0x38bfc000` and the
+rest, STLR{B,H,,X} `0x089ffc00` and the rest), and so does the UXTW index
+fold (`MO_32` is option 2). TMP2 is X30, which is reserved. The remaining
+candidates, in the emitter. The process neither crashed nor raised SIGILL,
+so a wrong but mapped address, or a wrong value, is likelier than a bad
+encoding:
+
 - LDAPR/STLR take `[Xn]` only, and register 31 there is SP, not XZR.
 - The XBOX RAM fast path in `prepare_host_addr` may hand the direct emitter a
   `HostAddress` shape this code does not expect.
@@ -573,5 +583,33 @@ LDAPR/STLR it emits.
 
 ### 8.3 Prototype 2, vCPU on the prime core (`perfarch-vcpu-prime.json`)
 
-Four runs queued at `5f4abcc368`. See 8.1 for why the gain is now bounded
-below the registered band.
+Galleon, `5f4abcc368` (apk `d5a8ff869a9d`), `HAKUX_TOPO=200,10` on both
+arms. Read with `place_judge.py`:
+
+| run | env | held | windows | game frame median ms | gfps p50/p90 | vCPU on the X3 | core changes/s | runqueue wait ms/s |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| A1 `...2361095` | -- | 30 s | 17 | 33.40 | 29/29 | 88% | 0.9 | 1.71 |
+| A2 `...2365726` | -- | 120 s | 51 | 38.60 | 27/29 | 80% | 1.4 | 2.96 |
+| B1 `...2363587` | `PLACE_VCPU=prime` | 40 s | 20 | 33.40 | 29/29 | **100%** | **0.0** | 5.95 |
+| B2 `...2367970` | `PLACE_VCPU=prime` | 240 s | 102 | 33.40 | 29/29 | **100%** | **0.0** | 5.06 |
+
+**Verdict: refused on validity, no frame-time answer.** Harness exits
+(`UtilAcceptVsock`) cut A1, A2 and B1 short. Only B2 ran its 240 s, and A2
+covers a different, shorter stretch of the soak, so the two are not
+comparable.
+
+What the arm does establish (M):
+
+- **The mechanism works.** The vCPU was on the X3 100% of the time, with zero
+  core changes, in both B runs.
+- **Pinning has a cost:** runqueue wait on the X3 rose from 1.7-3.0 to 5.1-6.0
+  ms/s, because whatever else the scheduler puts on cpu7 now delays the vCPU.
+- **This scene cannot show the gain.** The game frame median is 33.40 ms, the
+  30 fps cap, in three of four runs, on both arms. Galleon at 1x is
+  frame-capped on the Nova with the vCPU already 80-88% on the X3. A faster
+  vCPU shows up only as lower busy %, and the busy % did not fall (A 85%/85%,
+  B 92%/85%).
+
+The next arm for this lever needs an uncapped, guest-bound scene (Crimson
+Skies' heavy frames, where the guest is busy 41.5 of 50.2 ms), and it needs
+harness runs that hold their full length.
