@@ -568,7 +568,7 @@ note = "RETIRED (hostops 2026-09-26 13:15 PDT): PR #415 MERGED, no open PR on la
 # exist, and check_coverage.py cannot tell the difference.
 # CLAIMED (hostops, 2026-09-26T03:35Z): glsl/psh.h -> lane.pshqueue (granted at wave 222; [free] still listed it, failing check_territory).
 # CLAIMED (hostops, 2026-09-26 6:45 AM PDT): gl/texture.c -> lane.pshaniso284 (granted 6:40 AM; [free] still listed it, failing check_territory).
-files = ["docs/testing/jobs/fold.sh", "docs/testing/jobs/selftest.d/74-fold-multi.sh", "docs/lanes/foldcancel/NOTES.md", "docs/testing/titles/routes/**", "docs/testing/titles/targets.toml", "docs/testing/title_verdict.py", "docs/testing/titles/table.py", "docs/lanes/titleplay/**", "docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/73-cloud-claim.sh", "docs/lanes/cloudclaim/**", "docs/testing/nightly_build.sh", "docs/testing/jobs/selftest.d/86-nightly-notes.sh", "docs/lanes/nightlynotes/**", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**", "tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "android/app/build.gradle.kts", 
+files = ["docs/testing/jobs/fold.sh", "docs/testing/jobs/selftest.d/74-fold-multi.sh", "docs/lanes/foldcancel/NOTES.md", "docs/testing/titles/routes/**", "docs/testing/titles/targets.toml", "docs/testing/title_verdict.py", "docs/testing/titles/table.py", "docs/lanes/titleplay/**", "docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/73-cloud-claim.sh", "docs/lanes/cloudclaim/**", "docs/testing/nightly_build.sh", "docs/testing/jobs/selftest.d/86-nightly-notes.sh", "docs/lanes/nightlynotes/**", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**", "tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", 
 # RELEASED AT WAVE 158 by retiring lane.cloud190: PR #211 folded as f2e8ef8ba8 (#190 fixed).
     "hw/xbox/nv2a/pmc.c",
 # RELEASED (job.board wave 249) by retiring lane.fmv303 (PR #317 folded bb1f437bb7): vk/display.c.
@@ -1212,11 +1212,31 @@ note = "GRANTED (hostops 2026-09-26 13:15 PDT, answering its 19:56Z grant reques
 [lane.doa413]
 issues = ["413"]
 files = ["docs/testing/predictions/doa413-*.json", "docs/lanes/doa413/**"]
+released = ["docs/testing/predictions/doa413-*.json", "docs/lanes/doa413/**"]
+released_at_ready = 417
 standing = false
-note = "STARTED (job.board 2026-09-26T19:20Z), briefs/doa413.md: #413 (Dead or Alive Ultimate) gameplay fps. Profile-first: docs and prediction only until the lane names the code file and the board grants it."
+note = "READY, PR #417 (job.board 2026-09-26T20:20Z): docs-only diff, CI green; files released at ready, labelled fold-ready. PRIOR: STARTED (job.board 2026-09-26T19:20Z), briefs/doa413.md: #413 (Dead or Alive Ultimate) gameplay fps. Profile-first: docs and prediction only until the lane names the code file and the board grants it."
 
 [lane.forza414]
 issues = ["414"]
 files = ["docs/testing/predictions/forza414-*.json", "docs/lanes/forza414/**"]
 standing = false
 note = "STARTED (job.board 2026-09-26T19:20Z), briefs/forza414.md: #414 (Forza Motorsport) gameplay fps. Profile-first: docs and prediction only until the lane names the code file and the board grants it."
+
+[lane.tbchurn424]
+issues = ["424"]
+files = ["accel/tcg/tb-maint.c", "accel/tcg/cputlb.c", "accel/tcg/translate-all.c", "docs/testing/predictions/tbchurn424-*.json", "docs/lanes/tbchurn424/**"]
+standing = false
+note = "STARTED (job.board 2026-09-26T20:25Z), briefs/tbchurn424.md: #424, 0.5 release perf workstream (#433). Measure on #397 gameplay windows, pgraph suites as the regression gate."
+
+[lane.buildflags427]
+issues = ["427"]
+files = ["android/app/build.gradle.kts", "android/app/src/main/cpp/CMakeLists.txt", "docs/testing/predictions/buildflags427-*.json", "docs/lanes/buildflags427/**"]
+standing = false
+note = "STARTED (job.board 2026-09-26T20:25Z), briefs/buildflags427.md: #427, 0.5 release perf workstream (#433). Measure on #397 gameplay windows, pgraph suites as the regression gate."
+
+[lane.vcpuprime428]
+issues = ["428"]
+files = ["android/app/src/main/cpp/xemu_android.cpp", "docs/testing/predictions/vcpuprime428-*.json", "docs/lanes/vcpuprime428/**"]
+standing = false
+note = "STARTED (job.board 2026-09-26T20:25Z), briefs/vcpuprime428.md: #428, 0.5 release perf workstream (#433). Measure on #397 gameplay windows, pgraph suites as the regression gate."
