@@ -214,3 +214,9 @@ held. PR #332 (helper and analysis) was marked ready and folded as b9a1e501f1.
   surface exactly as the width already does.
 
 After this PR folds, `vk/draw.c` passes to lane.remote (#274 GPUAA).
+
+**State at end of session 3.** Waiting, and said so on PR #366: for CI, and
+for the arms job's `[job.arms]` verdict on `aasample-cc2-viewport.json`. The PR
+stays in draft until the verdict. If it matches, mark it ready. If a
+must-not-move row moves, diagnose it first. Do not re-register or rebase: the
+refs are live.
