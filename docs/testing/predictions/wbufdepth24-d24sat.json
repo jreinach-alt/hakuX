@@ -1,0 +1,25 @@
+{
+  "registered_utc": "2026-09-25T21:08:15Z",
+  "who": "lane.wbufdepth24",
+  "issue": "266",
+  "prediction": "#266 mechanism A. The change is one emitted GLSL line in psh.c's DEPTH_FORMAT_D24 case: gl_FragDepth = min(zfloor, 16777215.0) / 2^24 instead of zfloor / 2^24. zfloor was clamped only to clipRange.w = CLIP_MAX (16x past 0xFFFFFF), so on the D32_SFLOAT Z24S8 image a saturated fragment arrived above the cleared 0xFFFFFF/2^24 and failed LEQUAL; silicon writes 0xFFFFFF and passes.\n\nMUST MOVE, BETTER, BOUND IN PROSE (the judge only has exact expect values). Arm A figures are Thor arm 1790321693-arms-wbuf31fix-fix-301236 (1,130,494 colour px over these 18 rows; 1,129,274 of the 1,129,834 quad px missing where the golden depth word is 0xFFFFFF). Each of these colour captures falls to at most 10% of its arm-A value, and the 18 together to at most 113,000 px:\n  W_buffering/WBuf24D_FloorQuad_V0_ZB{0,1}_ZS1           230,469 / 230,399 (blank)\n  W_buffering/ZBuf24D_FloorQuad_V{0,1}_ZB{0,1}_ZS{0,1}   8 rows, 16,190..81,809\n  W_buffering/ZBuf24D_{Wall,Roof}Quad_V1_ZB{0,1}_ZS{0,1} 8 rows, 29,167..39,935\nKILL: any of those 18 stays above 10% of arm A, measured by classify.py's miss@S column and by the scorer's differing column.\n\nMUST NOT MOVE: every 16-bit row and every F24 row. They are emitted by other cases of the same switch, so their shaders are unchanged; a move means the edit leaked.\nMUST NOT REGRESS: every other D24 row, including all `_ZB` dumps. Where the fragment used to be dropped the buffer kept its clear, 0xFFFFFF, which is what the fix now writes, so the _ZB words should be byte-identical; small D24 edge rows (LargeZ, ClipF/ClipW, Trunc, TriV/TriH, 2-146 px of saturated misses each) may move better.\nNot claimed: #272 (Depth buffer fixed function, 24-bit, 2-5 units high). That is a word offset on drawn pixels, not a dropped fragment; this change does not predict it and its suite is not on this disc.",
+  "a_ref": "753feafde3",
+  "b_ref": "c2336637cf",
+  "must_not_move": [
+    "W_buffering/*Buf16*",
+    "W_buffering/*Buf24F*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [
+    "W_buffering/*Buf24D*"
+  ],
+  "disc": {
+    "suites": [
+      "W buffering"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

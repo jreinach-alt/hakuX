@@ -3696,8 +3696,14 @@ static MString* psh_convert(struct PixelShader *ps)
                 "gl_FragDepth = zfloor / 65535.0;\n");
             break;
         case DEPTH_FORMAT_D24:
+            /* Saturate at the format's own maximum, as F24 does below.
+             * clipRange.w is CLIP_MAX, 16x past 0xFFFFFF, so without this a
+             * saturated fragment lands above the cleared 0xFFFFFF on a float
+             * image and fails LEQUAL where silicon writes 0xFFFFFF and passes
+             * (#266: the missing far part of every ZBuf24D W buffering quad). */
             mstring_append_fmt(
-                ps->code, "gl_FragDepth = %szfloor / 16777216.0%s;\n",
+                ps->code,
+                "gl_FragDepth = %smin(zfloor, 16777215.0) / 16777216.0%s;\n",
                 z24_open, z24_close);
             break;
         case DEPTH_FORMAT_F24:
