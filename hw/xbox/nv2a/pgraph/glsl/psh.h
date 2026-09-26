@@ -159,6 +159,26 @@ enum PshPadAlphaMode {
 int pgraph_glsl_surface_pad_alpha_mode(unsigned int color_format);
 
 /*
+ * Issue #271, the READ side of X1A7R8G8B8. The host image keeps an 8-bit
+ * alpha, h; guest memory holds (X << 7) | A7 with A7 = h >> 1, and that byte
+ * is what the texture unit returns (vk/constants.h's X1A7 entry, measured
+ * 2026-09-12; re-derived from Blend surface and Clear goldens in
+ * docs/lanes/x1a7271/). Not a swizzle, so it is shader arithmetic, per stage:
+ * 0 leaves the texel alone, 1 reads X = 0 (_Z), 2 reads X = 1 (_O).
+ *
+ * A uniform and not PshState for the reason signedBlendPass is: the value
+ * comes from which surface a stage samples, which nothing that invalidates a
+ * shader watches. The backend sets it at texture bind; GL never does, so it
+ * stages 0 and generates the same result it does today.
+ */
+enum PshX1A7Readback {
+    PSH_X1A7_READBACK_NONE = 0,
+    PSH_X1A7_READBACK_Z = 1,
+    PSH_X1A7_READBACK_O = 2,
+};
+void pgraph_glsl_set_texture_x1a7_readback(int stage, int mode);
+
+/*
  * Whether the raster may stamp that constant at all, which is a DEVICE
  * question and the reason #59's write side stood blocked.
  *
@@ -216,7 +236,8 @@ bool pgraph_glsl_dual_src_pad_supported(void);
     DECL(S, stipplePattern, ivec4, 8) \
     DECL(S, surfaceBSwap, int, 1)   \
     DECL(S, surfaceScale, ivec2, 1) \
-    DECL(S, texScale, float, 4)
+    DECL(S, texScale, float, 4)     \
+    DECL(S, texX1A7, int, 4)
 
 DECL_UNIFORM_TYPES(PshUniform, PSH_UNIFORM_DECL_X)
 

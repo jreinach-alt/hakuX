@@ -1981,6 +1981,39 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
         surface_is_texture_source(surface, &state, texture_is_compressed) ?
             surface_sampled_pad_alpha(surface) :
             VK_COMPONENT_SWIZZLE_IDENTITY;
+
+    /*
+     * #271: the X1A7R8G8B8 readback, which no swizzle can express, as a
+     * per-stage shader uniform (psh.h, PshX1A7Readback). Same gate as the
+     * override above, plus upload_pending: a surface whose VRAM holds newer
+     * CPU bytes is not what this texture reads (see the s2t skip above), and
+     * those bytes are already the guest's.
+     *
+     * KNOWN COST, priced in docs/lanes/x1a7271/NOTES.md: a pixel the GPU never
+     * wrote -- Surface format's CPU memset under a partial draw -- holds the
+     * guest's own byte, and on _O this rule reads it with bit 7 forced.
+     *
+     * Only a texture format that reads alpha from memory: an X8R8G8B8
+     * texture's view swizzles alpha to ONE, and the rule would turn that 1.0
+     * into 127/255 on _Z.
+     */
+    int x1a7_readback = PSH_X1A7_READBACK_NONE;
+    if (surface_is_texture_source(surface, &state, texture_is_compressed) &&
+        !surface->upload_pending &&
+        kelvin_color_format_vk_map[state.color_format].component_map.a ==
+            VK_COMPONENT_SWIZZLE_IDENTITY) {
+        switch (pgraph_vk_surface_drawn_format(surface)) {
+        case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8:
+            x1a7_readback = PSH_X1A7_READBACK_Z;
+            break;
+        case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8:
+            x1a7_readback = PSH_X1A7_READBACK_O;
+            break;
+        default:
+            break;
+        }
+    }
+    pgraph_glsl_set_texture_x1a7_readback(texture_idx, x1a7_readback);
     /*
      * A pad-alpha surface (issue #48) carries its readback in the texture
      * view's alpha swizzle, and that swizzle is baked in when the view is
@@ -2672,6 +2705,7 @@ void pgraph_vk_bind_textures(NV2AState *d)
                 r->texture_bindings[i] = &r->dummy_texture;
                 r->texture_bindings_changed = true;
             }
+            pgraph_glsl_set_texture_x1a7_readback(i, PSH_X1A7_READBACK_NONE);
             pg->texture_dirty[i] = false;
             continue;
         }
