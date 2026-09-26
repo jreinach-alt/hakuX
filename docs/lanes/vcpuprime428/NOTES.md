@@ -66,6 +66,35 @@ reviewed (hostops writes `dispatch/pilots/<lane>.ok`) before the rest runs.
 A1 and B1 are the pilot. The rule is in `docs/lanes/titleplay/NOTES.md`.
 I queued all six without reading it.
 
+## Pilot result (A1, B1; Thor, apk acb81bbaa1d1 = ref 15d9406b81)
+
+Both runs held their 480 s and gave 367 to 369 s of gameplay window. The
+Tq collapse seen in the titleplay p1 run did not recur.
+
+| run | id | fps | gfps p50/p10 | vCPU X3 | rqwait ms/s | busy | p7 first->last (mean) MHz | CPU C first->last |
+|---|---|---|---|---|---|---|---|---|
+| A1 | 1790454357-vcpuprime428-3938872 | 28.23 | 29.0/24 | 79% NOT PINNED | 2.91 | 89% | 3115->2619 (2830) | 88.8->94.6 |
+| B1 | 1790454370-vcpuprime428-3939641 | 25.56 | 27.0/19 | 100% PINNED | 50.28 | 83% | 2713->2420 (2480) | 94.6->94.3 |
+
+Judge on the pair: P0 PASS, P1 PASS (the counter moved 20.7 points),
+P2 FAIL (-9.5%), P3 PASS (n=1 per arm, so the spread is 0), P4 FAIL
+(2420/2713 = 0.89).
+
+What the pilot shows, with n=1 per arm:
+- The counter moves. A already runs the vCPU on the X3 79% of the time on
+  this scene, not the 15% perfarch's model assumed. The bound on the gain
+  is now s*(1-1/r) with s=0.21: 2-7% of vCPU time. That is a BOUND, not a
+  measurement.
+- The scene sits near its 30 fps cap on this apk (A1 held 28.2; the p1 run
+  at 14.5 fps had collapsed). At most about 6% of gain is visible.
+- B lost fps. Two causes are confounded. (1) Runqueue wait rose 17x
+  (2.9 to 50 ms/s): pinned, the vCPU can no longer leave the X3 when
+  another thread holds it. (2) B1 ran right after A1 on a hot device: its X3
+  clock was 12% lower (mean 2480 against 2830 MHz). A2, which follows B1,
+  separates the two. If A2 also runs about 2480 MHz and still holds about
+  28 fps, the loss is the pin (cause 1). If A2 drops to about 25.5, it is
+  thermal order (cause 2).
+
 ## Why attempt 0 did not finish
 
 The session ended with A1 and B1 (the pilot) still queued behind other
