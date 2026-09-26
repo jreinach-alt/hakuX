@@ -96,7 +96,7 @@ in `$DISPATCH_DIR/results/<id>/`, run `tier1_judge.py` on their
 `logcat.txt`s, fill section 4 (apk_sha from each `result.json`), and
 choose step 2a or 2b.
 
-Preflight on `f1f7a3c` passes everything but `coverage`. That gate
+Preflight on `6030723364` passes everything but `coverage`. That gate
 reads #223, #262 and #266 in `nv2a_issues.toml` on origin/board: rows
 marked `dispatch_state = done` whose status is still `open`. Those are
 board files and not this lane's.
