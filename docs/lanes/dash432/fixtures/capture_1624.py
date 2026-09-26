@@ -48,6 +48,9 @@ def put(rel, text, mtime=None):
         os.utime(p, (mtime, mtime))
 
 
+WHOLE = ("blocked_on", "status_note", "title")     # the page shows these: never cut them
+
+
 def cut(v, n=400):
     return v if not isinstance(v, str) or len(v) <= n else v[:n] + " [cut]"
 
@@ -72,12 +75,13 @@ def toml_dump(d, prefix=""):
                 out.append("")
                 out.append("[%s.%s]" % (k, k2 if re.match(r"^[\w-]+$", k2) else json.dumps(k2)))
                 for k3, v3 in v2.items():
-                    out.append("%s = %s" % (k3, val(cut(v3))))
+                    out.append("%s = %s" % (k3, val(v3 if k3 in WHOLE else cut(v3))))
     return "\n".join(out) + "\n"
 
 
 def main():
-    for sub in ("board", "work"):          # systemd.json is written by hand, from STATUS.md
+    board_only = os.environ.get("BOARD_ONLY") == "1"       # the board is a fixed sha: safe to redo; the rest is not
+    for sub in (("board",) if board_only else ("board", "work")):          # systemd.json is written by hand, from STATUS.md
         if os.path.exists(os.path.join(OUT, sub)):
             shutil.rmtree(os.path.join(OUT, sub))
     # ---- board
@@ -100,6 +104,8 @@ def main():
     want |= {str(i) for i in range(424, 434)} | {"397", "412", "413", "414", "372", "303"}
     put("board/nv2a_issues.toml", toml_dump({"issue": {k: issues[k] for k in sorted(want, key=int) if k in issues}}))
 
+    if board_only:
+        return 0
     # ---- dispatch
     for st in ("queue", "running", "hold"):
         for p in sorted(glob.glob(os.path.join(D, st, "*"))):
@@ -129,6 +135,12 @@ def main():
     for p in glob.glob(os.path.join(OUT, "work/dispatch/queue/*.req")):
         if json.load(open(p)).get("queued_utc", "") > NOW_ISO:
             os.remove(p)
+    # The Thor's hold (lane.titlestate's nav.py pilot, taken 16:13:44) was lifted
+    # before the last capture; its text is the one lanes.json quotes.
+    put("work/dispatch/hold/thor", "lane.titlestate\n", 1790464424)
+    put("work/dispatch/hold/thor.why", "lane.titlestate (PR #442): HELD Thor pilot of nav.py on Burnout 3 and Black, "
+        "granted by hostops 15:38 PDT (board-requests/titlestate.md item 1). Taken 16:13 PDT, until 16:41 PDT at the latest.\n",
+        1790464424)
     put("work/dispatch/hold/nova", "host\n", 1790464790)
     put("work/dispatch/hold/nova.why", "host (buildflags427): A/B simpleperf profile, two APKs, ~20 min; "
         "profile_ab.sh lifts it on every exit path.\n", 1790464790)
