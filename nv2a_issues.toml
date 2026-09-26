@@ -3878,7 +3878,7 @@ suites = []
 no_suites = "coverage/scoring gap: goldens or tests the harness never scores, not a rendered-output residual"
 status = "open"
 dispatch_state = "available"
-status_note = "FILED 2026-09-25 13:05 PDT (host session) from the tests-that-never-run inventory (2,229 of 5,608 goldens never scored; 1,656 of 4,590 corpus tests never run). Scorer heuristic is lane.toolsmith's (score_sweep.py); the residuals need a look (the DBFF rows may share #272's 24-bit mechanism)."
+status_note = "BOARD 2026-09-26T01:00Z: lane.cloud-297 done (PR #313 folded): every residual has an owner -- DBFF z24 edges -> #272, Texture_BRDF -> #315 -- and the replacement `blank` rule is measured (15 false positives <=0.33% ink lost, 4 real blanks 21-50%). The scorer change sat in lane.toolsmith's inbox with no running session, so score_sweep.py is granted to lane.blankrule297 (briefs/blankrule297.md). Close #297 when it folds. PRIOR: FILED 2026-09-25 13:05 PDT (host session) from the tests-that-never-run inventory (2,229 of 5,608 goldens never scored; 1,656 of 4,590 corpus tests never run). Scorer heuristic is lane.toolsmith's (score_sweep.py); the residuals need a look (the DBFF rows may share #272's 24-bit mechanism)."
 blocked_on = ""
 impact_px = 0
 impact_onestep_px = 0
