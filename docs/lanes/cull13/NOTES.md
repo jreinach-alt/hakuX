@@ -55,11 +55,32 @@ sites changed.
 
 ## Arm
 
-Waiting (2026-09-26): the arms job queues the committed prediction
-(refs 02374a6847 / d750443b2a) and posts a `[job.arms]` verdict on PR #403.
-On resume: cite that verdict here and in the PR, then mark ready if it holds;
-if it fails, read which leg (see "WORLD IN WHICH THIS FAILS" in
-`prediction.txt`) before touching the sign.
+Attempt 1 ended correctly, waiting on the arm (`[lane.cull13] waiting:` on
+#403).  The arms job queued it as `1790435466-arms-cull13-{base-2947259,
+fix-2947293}`, and both runs finished (`DONE`).  When handback resumed this
+lane at 20:02Z, no `[job.arms]` verdict had been posted, so I judged the
+two result dirs against the registered prediction myself:
+`ab_compare.py --a <base> --b <fix> --expect
+docs/testing/predictions/cull13-linemode-cull.json`.
+
+**VERDICT: PASS, all 147 registered checks hold.**  better 12, worse 0,
+same 401 of 413; exact 39 -> 43; regressed from exact 0.
+
+| captures (x4 each: 0x00, 0x63, CW, CCW) | structural A -> B | bound |
+|---|---|---|
+| FrontFace_LM_*_CF_FaB | 3,911 -> 0 | <= 20 |
+| the 3,030 rows (CW/0x00/0x63 CF_B, CCW CF_F) | 3,030 -> 688 | <= 720 |
+| the 2,258 rows | 2,258 -> 689 | <= 720 |
+
+The structural total dropped by 31,288, against cloud-13's 31,152 for
+class A.  Shade_model (168), Line_width (61) and 3D_primitive (160) are
+byte-identical across the arms: the only 12 captures that differ by byte
+are the 12 movers.  There is one run per arm, but the result has no
+counter-case: the "WORLD IN WHICH THIS FAILS" legs (FaB unmoved, the B/F
+rows rising, a guard moving) all came out the other way.  What remains on
+the 8 (688/689) is the tie-stroke and extent residual (B and D) that the
+prediction said this hunk does not touch.  Front_face scored 24 of 36
+goldens in both arms (the FM rows are a floor, and the same in both).
 
 ## Do not repeat
 
