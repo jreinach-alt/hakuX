@@ -487,7 +487,34 @@ unsigned int pgraph_glsl_ring_fill(PGRAPHState *pg)
             memcpy(slot[k], v, sizeof(slot[k]));
         }
     }
+    pg->ring_gen++;
     return n;
+}
+
+static bool vsh_reads_ring(const VshState *state)
+{
+    return !state->is_fixed_function && state->lighting;
+}
+
+/*
+ * The shader takes vertex i from gl_VertexIndex, which is the vertex's index
+ * within the draw only for an inline buffer or inline array, both drawn from
+ * vertex 0; an array or element draw indexes the guest's arrays, so it keeps
+ * its own vertex's inputs (-1).
+ */
+static float ring_phase(PGRAPHState *pg, const VshState *state)
+{
+    return vsh_reads_ring(state) &&
+                   (pg->inline_buffer_length || pg->inline_array_length) ?
+               (float)(pg->ring_pos % 6) :
+               -1.0f;
+}
+
+bool pgraph_glsl_ring_uniforms_stale(PGRAPHState *pg, const VshState *state)
+{
+    return vsh_reads_ring(state) &&
+           (ring_phase(pg, state) != pg->ring_upload_phase ||
+            pg->ring_gen != pg->ring_upload_gen);
 }
 
 MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
@@ -1251,18 +1278,16 @@ void pgraph_glsl_set_vsh_uniform_values(PGRAPHState *pg, const VshState *state,
 
     /*
      * #53: a lit program draw lights vertex i with ring slot
-     * (ringPhase + i) % 6 (vsh-ff.c). The shader takes i from
-     * gl_VertexIndex, which is the vertex's index within the draw only for
-     * an inline buffer or inline array, both drawn from vertex 0; an array
-     * or element draw indexes the guest's arrays, so it keeps its own
-     * vertex's inputs (ringPhase -1). Both uniforms get a defined value on
-     * every draw so neither churns the upload hash.
+     * (ringPhase + i) % 6 (vsh-ff.c). Both uniforms get a defined value on
+     * every draw so neither churns the upload hash. What the block was built
+     * from is recorded whether or not the shader kept the uniforms, so that
+     * pgraph_glsl_ring_uniforms_stale settles after one refresh.
      */
+    bool reads_ring = vsh_reads_ring(state);
     if (locs[VshUniform_ringInput] != -1) {
         QEMU_BUILD_BUG_MSG(sizeof(values->ringInput) !=
                                sizeof(pg->ff_lit_ring),
                            "Uniform value size inconsistency");
-        bool reads_ring = !state->is_fixed_function && state->lighting;
         if (reads_ring) {
             memcpy(values->ringInput, pg->ff_lit_ring,
                    sizeof(pg->ff_lit_ring));
@@ -1271,9 +1296,11 @@ void pgraph_glsl_set_vsh_uniform_values(PGRAPHState *pg, const VshState *state,
         }
     }
     if (locs[VshUniform_ringPhase] != -1) {
-        bool reads_ring = !state->is_fixed_function && state->lighting &&
-                          (pg->inline_buffer_length || pg->inline_array_length);
-        values->ringPhase[0] = reads_ring ? (float)(pg->ring_pos % 6) : -1.0f;
+        values->ringPhase[0] = ring_phase(pg, state);
+    }
+    if (reads_ring) {
+        pg->ring_upload_phase = ring_phase(pg, state);
+        pg->ring_upload_gen = pg->ring_gen;
     }
 
     if (locs[VshUniform_clipRange] != -1) {

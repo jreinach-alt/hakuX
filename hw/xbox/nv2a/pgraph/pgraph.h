@@ -372,6 +372,17 @@ typedef struct PGRAPHState {
      */
     float ff_lit_ring[6][6][4];
     uint32_t ring_pos;
+    /*
+     * ring_gen moves whenever ff_lit_ring is written. ring_upload_phase and
+     * ring_upload_gen are the ringPhase and ring_gen the last lit-program
+     * uniform block was built from (glsl/vsh.c): the ring moves no register
+     * generation or dirty flag, so a renderer that reuses a uniform block
+     * across draws compares these to know the block is stale
+     * (pgraph_glsl_ring_uniforms_stale).
+     */
+    uint32_t ring_gen;
+    float ring_upload_phase;
+    uint32_t ring_upload_gen;
 
     const PGRAPHRenderer *renderer;
     union {

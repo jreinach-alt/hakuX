@@ -175,6 +175,14 @@ bool pgraph_glsl_vsh_carries_ff_radial_fog(const VshState *state);
  */
 unsigned int pgraph_glsl_ring_fill(PGRAPHState *pg);
 
+/*
+ * #53: true when state reads the ring and the ring's phase or contents moved
+ * since the last uniform block was built. Nothing else marks that block
+ * stale: the ring moves no register generation and raises no dirty flag, and
+ * a same-value register rewrite that weighs on the ring bumps nothing.
+ */
+bool pgraph_glsl_ring_uniforms_stale(PGRAPHState *pg, const VshState *state);
+
 void pgraph_glsl_set_vsh_uniform_values(PGRAPHState *pg, const VshState *state,
                                         const VshUniformLocs locs,
                                         VshUniformValues *values);
