@@ -91,3 +91,79 @@ default.
 
 Next lane, do not repeat: the "Y=U=V=0" premise (section 1 refutes it); the
 Nova soak's timing (validation layers were on).
+
+## 4. Attempt 3 (2026-09-26): the v1 probe runs, read
+
+Attempt 2 ended correctly, while waiting. The two runs were queued and
+unclaimed, and CI was not yet green on the regenerated index. Both have
+since landed (Thor, apk `bb5f85ba682e`, ref `4fe77d5830`), and CI went green
+on `26a67e33d8`.
+
+### The path: a CPU-written ARGB texture. Not PVIDEO, not a YUV texture
+
+| run | pvideo lines | `buf` ever nonzero | FMV source lines (tex0 `color=12 lin 640x368 pitch=2560`) | addresses |
+|---|---|---|---|---|
+| `1790370304-…` | 2252 | no | 1898 | `307d000` ×948, `3163000` ×950 |
+| `1790370307-…` | 4312 | no | 1921 | `307d000` ×963, `3163000` ×958 |
+
+PVIDEO is never enabled (`buf=00000000 size_in=ffffffff` on every line).
+The FMV is texture stage 0 alone, format 0x12 (`LU_IMAGE_A8R8G8B8`),
+double-buffered at two addresses. No stage ever binds a YUY2/UYVY format.
+**The game converts YUV to RGB on the CPU** and hands the GPU finished ARGB.
+So no GPU YUV path exists for this FMV, and `vk/display.c`'s overlay code
+cannot be where the green is made. Section 1's inference ("the game does its
+own colour conversion") is confirmed by the registers.
+
+### The green on Thor: region counts per frame
+
+Scored with `green_cells.py` (this directory). It uses a hue predicate over
+32x32-px cells and was validated before use: Nova f00028 gives 477/887,
+f00054 and f00058 give 0. **The Thor green is not R=0.** The commonest colours
+in run 1's f00030 are (117,251,76), (59,133,36) and (34,84,19): one green hue
+scaled by luma. An R<=6 detector read 0 on every Thor frame, including
+visibly green ones, and was thrown out. Section 1's exact "Cr=0" inversion
+therefore holds for the Nova frames only. On both devices the defect is a
+chroma-dominated tint over live luma, in macroblock cells.
+
+| run | FMV-window frames | green > 10% of lit cells | exactly 0 | > 90% | mean fraction |
+|---|---|---|---|---|---|
+| `1790370304-…` (f12-f50) | 39 | 27 | 10 | 3 | 0.41 |
+| `1790370307-…` (f16-f54, f63-f66) | 43 | 40 | 3 | 11 | 0.66 |
+
+It switches on and off within a shot: fully clean frames (0 cells) sit
+between frames that are 50-100% green. Same binary, same device, same spec:
+the two runs differ in both level (0.41 vs 0.66) and clean-frame count
+(10 vs 3). Frames are not aligned between the runs (the FMV starts at f12 in
+one and f16 in the other, with 2 s sampling), so a frame-for-frame
+disagreement is **not** claimed. The distributions differ, which is what a
+timing-dependent defect predicts and a deterministic one does not.
+
+### What v1 could not answer, and v2
+
+The v1 byte statistics are blind to this format. Alpha is 0xFF, so an
+all-zero 8x8 block cannot occur (`zblk=0/3680` on every line), and the Thor
+tint has R,B > 0, so zero bytes do not track it either. **Whether guest RAM
+holds the green is not measured yet.** One argument is not a measurement:
+since the GPU samples CPU-written RGB, a missed or stale upload would show an
+*older RGB picture*, not a green tint over the current luma. So reading (B),
+the upload, is unlikely on the colours alone. Where the chroma is lost
+(guest decoder, a JIT defect, or an emulated write clobbering the guest's
+chroma planes) stays open.
+
+Probe v2 (`de1c93d244`) counts tinted 16x16 macroblocks **in the guest ARGB
+buffer**, with the same predicate as `green_cells.py`
+(`[fmv303] f=… tex0 tint mb=… lit=… of=… px=… rgb=…`). Queued as
+`1790389079-fmv303-1248256` (Thor, 150 s, frames every 2 s).
+
+- Guest `mb/lit` distribution matching the screen's (≈0.4-0.7 mean, clean
+  frames interleaved): the green is in guest RAM and the display and upload
+  paths are exonerated. The next lane looks for who zeroes the chroma: CPU/JIT
+  (tier1 on/off A/B) or a surface write-back over the planes.
+- Guest buffer clean (mb≈0) while the screen is green: a missed upload of
+  the ARGB texture. That is `texture.c`, texvol283's file: name the hunk on
+  #303 for a grant.
+- `rgb=` sanity: a black frame must read 0,0,0 (the byte order is B,G,R,A).
+  If it does not, the v2 counts are void.
+
+No fix exists, so no prediction is registered. The brief's fix file
+(`vk/display.c`) is refuted as the fix site by the path table above.
