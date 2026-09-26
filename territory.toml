@@ -1183,3 +1183,10 @@ issues = ["278"]
 files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "docs/testing/predictions/fog278-*.json", "docs/lanes/fog278/**"]
 standing = false
 note = "DISPATCH ATTEMPTED AT WAVE 236 (job.board, 2026-09-26T07:30Z) for #278's code half: INF fog coordinate, exp and exp2 come out opposite to silicon (85,268 px, 16 captures). The hunk is named in docs/lanes/cloud-278/NOTES.md (vsh.c:944-949 fogSpecial = 2.0 for INF, psh.c:1905-1912 exemption); PR #319 analysis folded, PR #347 (pshqueue) and #336 (nanfix281) both folded, so psh.c and vsh.c are free. glsl/psh.c is LENT alongside lane.cullnf276 and lane.y16bump10 (their hunks are elsewhere in the file: fog278's is append_fog_factor ~:1905). Brief: briefs/fog278.md."
+
+
+[lane.cloud-audit2-307]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-307, audit pass 2 of PR #307 on branch lane/titlerun, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 307` removes this row when the unit ends."
