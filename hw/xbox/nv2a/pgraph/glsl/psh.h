@@ -109,6 +109,7 @@ typedef struct PshState {
     bool fog_enable;
     enum VshFogMode fog_mode;
     bool depth_clipping;
+    bool cull_near_far; /* reject a primitive wholly outside CLIP_MIN/MAX */
     bool z_perspective;
     bool noperspective; /* SET_CONTROL0 texture perspective off */
     bool depth_needed;
