@@ -188,6 +188,11 @@ case "$*" in
             down) printf 'NAME                       \r\ninit                       \r\n' ;;
             fail) echo "UtilAcceptVsock:271: accept4 failed 110" >&2; exit 1 ;;
         esac ;;
+    *"logcat -c"*) exit 0 ;;
+    # The first stream prints the ring and dies (a vsock drop); a restart
+    # with -T 1 prints one new line and keeps streaming.
+    *"logcat -v time -T 1"*) echo "I/hakuX-perf( 1): after-restart"; exec sleep 30 ;;
+    *"logcat -v time"*) echo "I/hakuX-perf( 1): ring-line"; exit 1 ;;
     *) exit 0 ;;
 esac
 EOF
@@ -220,6 +225,19 @@ case "$log3" in *"guest exited"*) bad "three failed probes read as an exit (shou
                 *"adb_failures=3"*) ok "three failed probes are unknown, counted, and keep holding";;
                 *) bad "three failed probes: $(printf '%s' "$log3" | grep -E 'adb_failures|ADB' | head -3)";; esac
 
+echo "== soak_title.sh: a dropped logcat stream is restarted, without re-reading the ring"
+logcat_run() {   # <soak_title.sh> -> run.log on stdout; capture in $SK/logcat.txt
+    rm -f "$SK/logcat.txt"
+    CAPTURE_LOG="$SK/logcat.txt" LOGCAT_RESTART_S=0.1 soak_run "$1" up
+}
+log4=$(logcat_run "$TESTING/soak_title.sh")
+case "$log4" in *"LOGCAT: stream ended"*"restart 1"*) ok "the dropped stream is written to run.log";;
+                *) bad "no LOGCAT restart line in run.log";; esac
+if grep -q after-restart "$SK/logcat.txt" 2>/dev/null; then ok "the capture continues after the drop"
+else bad "the capture stopped at the drop: $(cat "$SK/logcat.txt" 2>/dev/null | tr '\n' '|')"; fi
+if [ "$(grep -c ring-line "$SK/logcat.txt" 2>/dev/null)" = 1 ]; then ok "the restart did not re-read the ring"
+else bad "the ring was read $(grep -c ring-line "$SK/logcat.txt" 2>/dev/null) times"; fi
+
 echo "== soak_title.sh mutant: treat one adb failure as an exit"
 SM="$T/soak-mutant"; rm -rf "$SM"; mkdir -p "$SM"
 cp "$TESTING/devices.sh" "$SM/"; mkdir -p "$SM/titles" "$SM/perf"
@@ -239,6 +257,23 @@ then
     esac
 else
     bad "soak mutant: its anchor is gone from soak_title.sh -- update the mutant"
+fi
+
+echo "== soak_title.sh mutant: never restart the logcat stream"
+if python3 - "$TESTING/soak_title.sh" "$SM/soak_title.sh" <<'PY'
+import sys
+s = open(sys.argv[1]).read()
+old = 'while [ "$n" -le "${LOGCAT_RESTARTS:-30}" ]; do'
+if s.count(old) != 1:
+    sys.exit(1)
+open(sys.argv[2], "w").write(s.replace(old, 'while [ "$n" -le 0 ]; do'))
+PY
+then
+    logcat_run "$SM/soak_title.sh" >/dev/null
+    if grep -q after-restart "$SK/logcat.txt" 2>/dev/null; then bad "mutant SURVIVED: never restart the logcat stream"
+    else ok "mutant caught: never restart the logcat stream"; fi
+else
+    bad "logcat mutant: its anchor is gone from soak_title.sh -- update the mutant"
 fi
 rm -rf "$SM"
 
