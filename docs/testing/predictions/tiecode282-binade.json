@@ -1,0 +1,74 @@
+{
+  "registered_utc": "2026-09-26T09:24:55Z",
+  "who": "lane.tiecode282",
+  "issue": "282",
+  "prediction": "#282 / #283: silicon's v-tie direction, on the one configuration it was measured on (fixed function, smooth, Vulkan; triangle UL, UR, LR of an axis-aligned right triangle; equal w; v constant along v0-v1 and rising to v2): down iff l2 <= 1/2 and not (l0 in (1/4,1/2] and l2 in (1/4,1/2]); every other draw keeps today's up. PROJECT3D on a 3D texture also takes the bias (u up, v per the rule).\n\nMUST MOVE (exact): Volume_texture/Y16 = 0. vol283r's pixel-exact model with this rule reproduces the golden Y16 frame with 0 of 75,840 quad px differing; every one of Y16's 2,605 differing px is an exact v tie. The PROJECT3D bias alone (always up) predicts 2,070, and the rule reaching nothing predicts 2,605, so this leg fails if the rule is inert on the 3D path. Texture_render_target/TexFmt_A8R8G8B8 = 0: its residual on the full-disc run 1790359589 was 71 px, max_rgb 1, which is row 240's columns 392-462 exactly (tie282c: silicon down there, we up). It fails if the rule is inert on the 2D path, or if the composition (RenderTextureLoop skipped) does not reproduce that baseline.\n\nMUST NOT REGRESS (improvement expected, not asserted per capture): the nine checkerboard suites (FF captures improve; the VS-drawn ones, Lighting_control VS_* and the Specular *VS* tests, are outside the gate and should not move), all of Texture_render_target (the other full-gradient TexFmt_* captures should go to 0 as A8R8G8B8 does; the 5/6-bit ones observe no column and should not move) and all of Volume_texture (Y16 and R16B16 go down by at least 535 and 275, the PROJECT3D bias's share; the others toward 0; R5G6B5 and X1R5G5B5 stay 0).\n\nMUST NOT MOVE: Texture_BRDF, Texture_format, Texture_DXT, Texture_signed_component_tests, Texture_Matrix, Texture_perspective, Texture_palette, Texture_3D_as_2D, Texture_2D_as_cubemap, Pixel_shader, Point_params, Bump_env_lum and Texture_border/3D_BorderTex_SZ_* (VS draws, which vol283r measured all up; the PROJECT3D bias must leave them at 0). A must-not-move capture that moves, either way, means the configuration test reaches a draw the evidence does not cover: that refutes the scoping, not the rule, and the hunk gets narrowed, not the leg.\n\nOpen and not tested by this arm: vertex roles other than (UL, UR, LR), projective interpolation, VS draws with the same vertices, and the GL renderer. One known miss inside the configuration: checkerboard row 240, x = 480 (l0 = 1/4, l2 = 1/2 exactly) is up on silicon and down by the rule, 3 px over 3 captures; the rule is implemented as published, not patched for that point.",
+  "a_ref": "7a2036020d",
+  "b_ref": "18dc4f11e2",
+  "must_not_move": [
+    "Texture_BRDF/*",
+    "Texture_format/*",
+    "Texture_DXT/*",
+    "Texture_signed_component_tests/*",
+    "Texture_Matrix/*",
+    "Texture_perspective/*",
+    "Texture_palette/*",
+    "Texture_3D_as_2D/*",
+    "Texture_2D_as_cubemap/*",
+    "Pixel_shader/*",
+    "Point_params/*",
+    "Bump_env_lum/*",
+    "Texture_border/3D_BorderTex_SZ_*"
+  ],
+  "expect": {
+    "Volume_texture/Y16": 0,
+    "Texture_render_target/TexFmt_A8R8G8B8": 0
+  },
+  "expect_counts": {},
+  "must_not_regress": [
+    "Lighting_spotlight/*",
+    "Lighting_accumulation/*",
+    "Material_color_source/*",
+    "Lighting_control/*",
+    "Specular/*",
+    "Specular_back/*",
+    "Texture_border_color/*",
+    "Combiner/*",
+    "Lighting_range/*",
+    "Texture_render_target/*",
+    "Volume_texture/*"
+  ],
+  "disc": {
+    "suites": [
+      "Bump env lum",
+      "Combiner",
+      "Lighting accumulation",
+      "Lighting control",
+      "Lighting range",
+      "Lighting spotlight",
+      "Material color source",
+      "Pixel shader",
+      "Point params",
+      "Specular",
+      "Specular back",
+      "Texture 2D as cubemap",
+      "Texture 3D as 2D",
+      "Texture BRDF",
+      "Texture DXT",
+      "Texture Matrix",
+      "Texture border",
+      "Texture border color",
+      "Texture format",
+      "Texture palette",
+      "Texture perspective",
+      "Texture render target",
+      "Texture signed component tests",
+      "Volume texture"
+    ],
+    "skip_tests": [
+      "Texture render target::RenderTextureLoop"
+    ],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
