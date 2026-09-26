@@ -1,8 +1,24 @@
 # lane.tiecode282: the weight-binade v-tie rule, implemented (#282, #283)
 
-Base: master @ 7a2036020d. Code: `18dc4f11e2`. Prediction:
-`docs/testing/predictions/tiecode282-binade.json`, registered before any build
-or device run.
+Base: master @ 7a2036020d, merged up to e673558587 at 1462da29d2. Code:
+`18dc4f11e2` (the rule), `8e649f05e9` (the power-of-two gate). Predictions:
+`docs/testing/predictions/tiecode282-binade.json` (arm 1, refused, section 6),
+`docs/testing/predictions/tiecode282-pow2.json` and
+`docs/lanes/tiecode282/tiecode282-trt.json` (arm 2, section 7).
+
+## 0. Why attempt 1 did not finish
+
+Attempt 1 ended correctly on a `waiting:` for the arms job, and the arms job
+did run the pair. Its verdict (2026-09-26 03:09 PDT) was **REFUSED**, and
+nothing resumed the lane for that. The prediction recorded a disc composition
+with `skip_tests: Texture render target::RenderTextureLoop`. `arms.sh`'s
+`suites_for()` reads `disc.suites` only and never passes `skip_tests` to the
+request, so arm A ran a different composition from the registered one, and
+the judge refused the absolutes. **Harness defect:** `arms.sh` cannot run a
+prediction that needs `skip_tests`, and `ab_run.sh` has no flag for it
+either; only `request.sh --skip-tests` carries it. Both result directories
+were complete and comparable, so attempt 2 read them without the prediction
+(section 6).
 
 ## 1. What was implemented
 
@@ -97,19 +113,9 @@ shadow stages are excluded by construction) and Texture_cubemap (73; cube
 stages are excluded by construction). The claim that they cannot move rests on
 that construction, not on a measurement.
 
-Verdict: pending, from the arms job's `[job.arms]` comment on PR #379.
-
-**Waiting (2026-09-26):** on the arms job's verdict for
-`tiecode282-binade.json` (a 7a2036020d, b 18dc4f11e2) and on CI for the head.
-What comes next depends on the verdict:
-- Pass: merge master, or #367 and #373 if they have not folded. Re-register
-  on the merged head and re-run the arm, as the brief requires. Then mark ready.
-- A must_not_move leg moves: narrow the configuration test to exclude that
-  draw. Do not drop the leg.
-- An expect leg misses: read which case it is. 2,070 on Y16 means the rule is
-  inert on 3D. 71 on A8R8G8B8 means it is inert on 2D, the likely cause being a
-  y-frame mismatch between `gl_FragCoord` and `vtxPos`. Any other value means
-  the rule or the composition.
+Verdict: REFUSED on composition (section 0). Read unjudged in section 6: a
+must_not_move leg moved (Pixel_shader, Texture_3D_as_2D), so the scoping was
+refuted and narrowed. The arm-2 legs are in section 7.
 
 ## 5. Exact-binade columns on the checkerboard (goldens, FF v ties)
 
@@ -131,3 +137,90 @@ directories.
   ties down, and silicon puts 99.80% of them up).
 - Do not score Texture_render_target in a disc where RenderTextureLoop runs
   first. Every TexFmt_* capture after it differs on the whole quad.
+
+## 6. Arm 1, read without its prediction (7a2036020d vs 18dc4f11e2)
+
+Results `1790415048-arms-tiecode282-base-2121181` / `-fix-2121581`, 405
+captures each, progress-log proof on both, one disc (the 24 suites, with
+RenderTextureLoop). `ab_compare.py --a --b` with no expect file:
+**139 better, 8 worse, 258 same; exact 111 -> 163 (+52); 4 regressed from exact.**
+
+| suite | caps | better | worse | differing A -> B |
+|---|---|---|---|---|
+| Volume_texture | 20 | 18 | 0 | 34,727 -> **0** (all 20 exact) |
+| Material_color_source | 28 | 28 | 0 | 24,072 -> **0** |
+| Lighting_spotlight | 24 | 24 | 0 | 166,198 -> 97,090 |
+| Lighting_control | 32 | 16 | 0 | 56,804 -> 28,960 |
+| Lighting_accumulation | 10 | 10 | 0 | 32,412 -> 20,102 |
+| Lighting_range | 3 | 3 | 0 | 9,968 -> 7,592 |
+| Specular / Specular_back | 39 | 33 | 0 | 452,606 -> 427,317 |
+| Combiner | 8 | 3 | 0 | 24,901 -> 8,195 |
+| Texture_palette | 2 | 2 | 0 | 10,488 -> **0** |
+| Texture_border_color | 1 | 1 | 0 | 6,284 -> 1,324 |
+| Texture_border | 18 | 1 (2D) | 0 | 20,868 -> 20,837 |
+| **Pixel_shader** | 8 | 0 | **6** | 102,866 -> 190,420 |
+| **Texture_3D_as_2D** | 2 | 0 | **2** | 3,037 -> 5,709 |
+| Texture_render_target | 41 | 0 | 0 | 3,209,634 both (poisoned by RenderTextureLoop) |
+
+Texture_signed_component_tests/txt_A8R8G8B8_ADD moved 12,544 px at the same
+score. Everything else on the must_not_move list was byte-identical.
+
+**What the wrong-way movers share.** `scratch/where.py`, arm A vs arm B vs
+golden, per capture:
+- Pixel_shader StageDependentAlphaRed/GreenBlue, DotZW: 256 x 256 quad, a
+  256-texel texture (1:1). Moved: every column, rows 113-240, the upper half,
+  which is where the rule says "down". Arm A was exact, so silicon puts all of
+  those ties **up**. DotST moves every other row (a 2:1 map). BumpEnvMap and
+  BumpEnvMapLuminance use 128 and 64 px quads.
+- Texture_3D_as_2D: only the 64 x 64 reference quads (x 33-95) moved. The
+  256 x 256 main draw has no ties.
+- Texture_signed: 256 x 256 quads.
+- The draws the rule got right: 640 x 480 (checkerboard), 285.625 (TRT BiTri),
+  135 x 80 (Volume texture) and **96 x 96 over 128 texels (Texture_palette,
+  made exact)**. So w = 1 against w = 7 or 8 is not the split: Palette is w = 1
+  and the rule holds on it. The texture filter is not the split either,
+  because every draw here uses the nxdk default (BOX/BOX, `0x1012000`).
+
+Every wrong-way triangle has power-of-two legs, and every right-way triangle
+has legs that are not powers of two. A reading consistent with the rule: with
+dyadic legs the weights at pixel centres are exact, so no rounding exists for
+the binades to steer, and the tie takes silicon's plain "up". The power-of-two
+triangles are all square, so the data does not say whether one leg or both
+must be dyadic. The gate (`8e649f05e9`) takes the rule only when **neither**
+leg is a power of two, which is the narrowest scope the three geometries and
+Palette support.
+
+## 7. Arm 2 legs (a e673558587 = master, b 1462da29d2 = gate + master merge)
+
+`docs/testing/predictions/tiecode282-pow2.json` (the arms job; 23 suites, no
+skip):
+
+| leg | kind | predicted | refutes |
+|---|---|---|---|
+| Pixel_shader/StageDependentAlphaRed, GreenBlue, DotST, BumpEnvMap | expect | 0 (back to exact) | the gate does not reach the 1:1 and 2:1 draws |
+| Pixel_shader/*, Texture_3D_as_2D/*, Texture_signed_component_tests/* | must_not_move | byte-identical to master | same |
+| Volume_texture/Y16, R16B16, A8R8G8B8 | expect | 0 | the gate took Volume's 135 x 80 quads |
+| Texture_palette/PaletteSwapping, XemuHighPaletteBug | expect | 0 | the gate is wider than "a power-of-two leg" (96 x 96) |
+| Material_color_source/FromMaterial, Lighting_range/Directional | expect | 0 | the gate took the checkerboard |
+| the checkerboard suites, Texture_border(_color), Texture_palette, Volume_texture | must_not_regress | | any capture worse |
+| Texture_BRDF, _format, _DXT, _Matrix, _perspective, _2D_as_cubemap, Point_params, Bump_env_lum | must_not_move | byte-identical | |
+
+`docs/lanes/tiecode282/tiecode282-trt.json` (queued by hand with
+`request.sh --skip-tests "Texture render target::RenderTextureLoop"`; kept out
+of `predictions/` so that `arms.sh` does not queue it on the poisoned
+composition): TexFmt_A8R8G8B8 = 0, and Texture_render_target/* must not
+regress.
+
+PR #367 (y16bump10, fold-ready) is not merged into this branch. It merges
+cleanly with this head in psh.c and psh.h, and only the generated
+`nv2a_index.json` conflicts, which whichever PR folds second regenerates.
+Merging its branch would have put its diff in this PR and mixed its effect
+into arm 2.
+
+## Do not repeat (attempt 2)
+
+- Do not register a prediction that needs `skip_tests` in
+  `docs/testing/predictions/`. The arms job drops the skip, and the judge
+  refuses the verdict ~90 device-minutes later.
+- Do not widen the rule to power-of-two triangles. Arm 1 measured silicon
+  "up" on every tie row of five such draws.
