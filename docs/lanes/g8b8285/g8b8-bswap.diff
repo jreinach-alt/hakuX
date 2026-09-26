@@ -1,0 +1,51 @@
+diff --git a/hw/xbox/nv2a/pgraph/glsl/psh.c b/hw/xbox/nv2a/pgraph/glsl/psh.c
+index 06393c4a31..aef6733211 100644
+--- a/hw/xbox/nv2a/pgraph/glsl/psh.c
++++ b/hw/xbox/nv2a/pgraph/glsl/psh.c
+@@ -3587,6 +3587,20 @@ static MString* psh_convert(struct PixelShader *ps)
+             "}\n");
+     }
+ 
++    /*
++     * #285: B8 and G8B8 keep B in byte 0, and their host formats (R8_UNORM,
++     * R8G8_UNORM) put channel R there. Silicon stores the combiner's b in
++     * that byte and its g in byte 1, so route b to the host R. Last, after
++     * the alpha test, the fold and the #59 copy, because it is where the
++     * pixel lands, not what it is. Emitted unconditionally and gated on a
++     * uniform for the #59 reason: nothing invalidates a shader on a surface
++     * format change.
++     */
++    mstring_append(ps->code,
++                   "if (surfaceBSwap != 0) {\n"
++                   "    fragColor.rb = fragColor.br;\n"
++                   "}\n");
++
+     for (int i = 0; i < ps->num_var_refs; i++) {
+         mstring_append_fmt(vars, "vec4 %s = vec4(0);\n", ps->var_refs[i]);
+         if (strcmp(ps->var_refs[i], "r0") == 0) {
+@@ -3873,6 +3887,13 @@ void pgraph_glsl_set_psh_uniform_values(PGRAPHState *pg,
+                     pg->surface_shape.color_format) :
+                 PSH_PAD_ALPHA_NONE;
+     }
++    if (locs[PshUniform_surfaceBSwap] != -1) {
++        /* #285. The live guest format, staged every draw, as padAlphaMode. */
++        unsigned int fmt = pg->surface_shape.color_format;
++        values->surfaceBSwap[0] =
++            fmt == NV097_SET_SURFACE_FORMAT_COLOR_LE_B8 ||
++            fmt == NV097_SET_SURFACE_FORMAT_COLOR_LE_G8B8;
++    }
+     if (locs[PshUniform_consts] != -1) {
+         for (int i = 0; i < 9; i++) {
+             uint32_t constant[2];
+diff --git a/hw/xbox/nv2a/pgraph/glsl/psh.h b/hw/xbox/nv2a/pgraph/glsl/psh.h
+index 926192c751..32ffc26030 100644
+--- a/hw/xbox/nv2a/pgraph/glsl/psh.h
++++ b/hw/xbox/nv2a/pgraph/glsl/psh.h
+@@ -204,6 +204,7 @@ bool pgraph_glsl_dual_src_pad_supported(void);
+     DECL(S, padAlphaMode, int, 1)   \
+     DECL(S, signedBlendPass, int, 1) \
+     DECL(S, stipplePattern, ivec4, 8) \
++    DECL(S, surfaceBSwap, int, 1)   \
+     DECL(S, surfaceScale, ivec2, 1) \
+     DECL(S, texScale, float, 4)
+ 

@@ -1,0 +1,343 @@
+== Color_zeta_overlap  (run 0-a-now-8e683b3a26-016-Color_zeta_overlap)
+   ColorIntoZeta_ZB.png                         diff  10766  |d|<=16:      0  top(ours-gold) []  gold-depth-median 14452732
+   Swap_ZB.png                                  exact
+   ZetaIntoColor_ZB.png                         exact
+== Color_Zeta_Disable  (run 0-a-now-8e683b3a26-013-Color_Zeta_Disable)
+   MaskOff_ZB.png                               exact
+== Depth_Clamp  (run 0-a-now-8e683b3a26-021-Depth_Clamp)
+== Depth_function  (run 0-a-now-8e683b3a26-024-Depth_function)
+   DepthFunc_ZB.png                             exact
+== Stencil  (run 1790359589-xbox-full6743-dry2-2802408)
+   Stencil_REPLACE_DT_ZB.png                    exact
+   Stencil_REPLACE_ST_DT_ZB.png                 exact
+   Stencil_REPLACE_ST_ZB.png                    exact
+   Stencil_REPLACE_ZB.png                       exact
+   Stencil_ZERO_DT_ZB.png                       exact
+   Stencil_ZERO_ST_DT_ZB.png                    exact
+   Stencil_ZERO_ST_ZB.png                       exact
+   Stencil_ZERO_ZB.png                          exact
+== Stencil_func  (run 1790359589-xbox-full6743-dry3-2802696)
+   Always_ZB.png                                exact
+   Equal_ZB.png                                 exact
+   GreaterThanOrEqual_ZB.png                    exact
+   Greater_ZB.png                               exact
+   LessThanOrEqual_ZB.png                       exact
+   Less_ZB.png                                  exact
+   Never_ZB.png                                 exact
+   NotEqual_ZB.png                              exact
+== W_buffering  (run 1790362749-wbufdepth24-3948624)
+   WBuf16D_FloorQuad_V0_ZB0_ZS0_ZB.png          exact
+   WBuf16D_FloorQuad_V0_ZB0_ZS1_ZB.png          exact
+   WBuf16D_FloorQuad_V0_ZB1_ZS0_ZB.png          exact
+   WBuf16D_FloorQuad_V0_ZB1_ZS1_ZB.png          exact
+   WBuf16D_FloorQuad_V1_ZB0_ZS0_ZB.png          exact
+   WBuf16D_FloorQuad_V1_ZB0_ZS1_ZB.png          exact
+   WBuf16D_FloorQuad_V1_ZB1_ZS0_ZB.png          exact
+   WBuf16D_FloorQuad_V1_ZB1_ZS1_ZB.png          exact
+   WBuf16D_LargeZ_V1_ZB0_ZS0_ZB.png             exact
+   WBuf16D_LargeZ_V1_ZB0_ZS1_ZB.png             exact
+   WBuf16D_LargeZ_V1_ZB1_ZS0_ZB.png             exact
+   WBuf16D_LargeZ_V1_ZB1_ZS1_ZB.png             exact
+   WBuf16D_LineStrip_V1_ZB0_ZS0_ZB.png          diff      1  |d|<=16:      0  top(ours-gold) []  gold-depth-median 16777214
+   WBuf16D_LineStrip_V1_ZB0_ZS1_ZB.png          diff      1  |d|<=16:      0  top(ours-gold) []  gold-depth-median 16777214
+   WBuf16D_LineStrip_V1_ZB1_ZS0_ZB.png          diff      1  |d|<=16:      0  top(ours-gold) []  gold-depth-median 16777214
+   WBuf16D_LineStrip_V1_ZB1_ZS1_ZB.png          diff      1  |d|<=16:      0  top(ours-gold) []  gold-depth-median 16777214
+   WBuf16D_RoofQuad_V1_ZB0_ZS0_ZB.png           exact
+   WBuf16D_RoofQuad_V1_ZB0_ZS1_ZB.png           diff   1065  |d|<=16:   1065  top(ours-gold) [(-4, 1065)]  gold-depth-median 16755893
+   WBuf16D_RoofQuad_V1_ZB1_ZS0_ZB.png           exact
+   WBuf16D_RoofQuad_V1_ZB1_ZS1_ZB.png           diff   1035  |d|<=16:   1035  top(ours-gold) [(-4, 545), (4, 490)]  gold-depth-median 16755885
+   WBuf16D_TriH_V1_ZB0_ZS0_ZB.png               exact
+   WBuf16D_TriH_V1_ZB0_ZS1_ZB.png               exact
+   WBuf16D_TriH_V1_ZB1_ZS0_ZB.png               exact
+   WBuf16D_TriH_V1_ZB1_ZS1_ZB.png               exact
+   WBuf16D_TriV_V1_ZB0_ZS0_ZB.png               exact
+   WBuf16D_TriV_V1_ZB0_ZS1_ZB.png               exact
+   WBuf16D_TriV_V1_ZB1_ZS0_ZB.png               exact
+   WBuf16D_TriV_V1_ZB1_ZS1_ZB.png               exact
+   WBuf16D_WallQuad_V1_ZB0_ZS0_ZB.png           exact
+   WBuf16D_WallQuad_V1_ZB0_ZS1_ZB.png           exact
+   WBuf16D_WallQuad_V1_ZB1_ZS0_ZB.png           exact
+   WBuf16D_WallQuad_V1_ZB1_ZS1_ZB.png           exact
+   WBuf16F_FloorQuad_V0_ZB0_ZS0_ZB.png          diff   1712  |d|<=16:   1712  top(ours-gold) [(4, 1583), (-4, 129)]  gold-depth-median 16772648
+   WBuf16F_FloorQuad_V0_ZB0_ZS1_ZB.png          exact
+   WBuf16F_FloorQuad_V0_ZB1_ZS0_ZB.png          diff   1712  |d|<=16:   1712  top(ours-gold) [(4, 1583), (-4, 129)]  gold-depth-median 16772713
+   WBuf16F_FloorQuad_V0_ZB1_ZS1_ZB.png          exact
+   WBuf16F_FloorQuad_V1_ZB0_ZS0_ZB.png          exact
+   WBuf16F_FloorQuad_V1_ZB0_ZS1_ZB.png          exact
+   WBuf16F_FloorQuad_V1_ZB1_ZS0_ZB.png          exact
+   WBuf16F_FloorQuad_V1_ZB1_ZS1_ZB.png          exact
+   WBuf16F_LargeZ_V1_ZB0_ZS0_ZB.png             exact
+   WBuf16F_LargeZ_V1_ZB0_ZS1_ZB.png             exact
+   WBuf16F_LargeZ_V1_ZB1_ZS0_ZB.png             exact
+   WBuf16F_LargeZ_V1_ZB1_ZS1_ZB.png             exact
+   WBuf16F_LineStrip_V1_ZB0_ZS0_ZB.png          diff      1  |d|<=16:      0  top(ours-gold) []  gold-depth-median 16777214
+   WBuf16F_LineStrip_V1_ZB0_ZS1_ZB.png          diff      1  |d|<=16:      0  top(ours-gold) []  gold-depth-median 16777214
+   WBuf16F_LineStrip_V1_ZB1_ZS0_ZB.png          diff      1  |d|<=16:      0  top(ours-gold) []  gold-depth-median 16777214
+   WBuf16F_LineStrip_V1_ZB1_ZS1_ZB.png          diff      1  |d|<=16:      0  top(ours-gold) []  gold-depth-median 16777214
+   WBuf16F_RoofQuad_V1_ZB0_ZS0_ZB.png           exact
+   WBuf16F_RoofQuad_V1_ZB0_ZS1_ZB.png           exact
+   WBuf16F_RoofQuad_V1_ZB1_ZS0_ZB.png           exact
+   WBuf16F_RoofQuad_V1_ZB1_ZS1_ZB.png           exact
+   WBuf16F_TriH_V1_ZB0_ZS0_ZB.png               exact
+   WBuf16F_TriH_V1_ZB0_ZS1_ZB.png               exact
+   WBuf16F_TriH_V1_ZB1_ZS0_ZB.png               exact
+   WBuf16F_TriH_V1_ZB1_ZS1_ZB.png               exact
+   WBuf16F_TriV_V1_ZB0_ZS0_ZB.png               exact
+   WBuf16F_TriV_V1_ZB0_ZS1_ZB.png               exact
+   WBuf16F_TriV_V1_ZB1_ZS0_ZB.png               exact
+   WBuf16F_TriV_V1_ZB1_ZS1_ZB.png               exact
+   WBuf16F_WallQuad_V1_ZB0_ZS0_ZB.png           exact
+   WBuf16F_WallQuad_V1_ZB0_ZS1_ZB.png           exact
+   WBuf16F_WallQuad_V1_ZB1_ZS0_ZB.png           exact
+   WBuf16F_WallQuad_V1_ZB1_ZS1_ZB.png           exact
+   WBuf24D_ClipF-150-032_V1_ZB0_ZS1_ZB.png      diff  42224  |d|<=16:  42224  top(ours-gold) [(-1, 25704), (1, 16520)]  gold-depth-median 73710
+   WBuf24D_ClipF-150-128_V1_ZB0_ZS1_ZB.png      diff  24500  |d|<=16:  24500  top(ours-gold) [(1, 24500)]  gold-depth-median 30849
+   WBuf24D_ClipF-150-224_V1_ZB0_ZS1_ZB.png      diff  14700  |d|<=16:  14700  top(ours-gold) [(1, 14700)]  gold-depth-median 16874
+   WBuf24D_ClipW-159-000_V1_ZB0_ZS1_ZB.png      diff   1703  |d|<=16:   1703  top(ours-gold) [(-1, 1440), (1, 263)]  gold-depth-median 6768
+   WBuf24D_ClipW-261-000_V1_ZB0_ZS1_ZB.png      diff  12941  |d|<=16:  12941  top(ours-gold) [(1, 12941)]  gold-depth-median 9849
+   WBuf24D_ClipW-363-000_V1_ZB0_ZS1_ZB.png      diff   7110  |d|<=16:   7110  top(ours-gold) [(-1, 6847), (1, 263)]  gold-depth-median 15800
+   WBuf24D_FloorQuad_V0_ZB0_ZS0_ZB.png          diff   1583  |d|<=16:   1583  top(ours-gold) [(1, 1583)]  gold-depth-median 202
+   WBuf24D_FloorQuad_V0_ZB0_ZS1_ZB.png          exact
+   WBuf24D_FloorQuad_V0_ZB1_ZS0_ZB.png          diff   1583  |d|<=16:   1583  top(ours-gold) [(1, 1583)]  gold-depth-median 218
+   WBuf24D_FloorQuad_V0_ZB1_ZS1_ZB.png          exact
+   WBuf24D_FloorQuad_V1_ZB0_ZS0_ZB.png          exact
+   WBuf24D_FloorQuad_V1_ZB0_ZS1_ZB.png          diff 124615  |d|<=16: 124615  top(ours-gold) [(1, 124615)]  gold-depth-median 113224
+   WBuf24D_FloorQuad_V1_ZB1_ZS0_ZB.png          exact
+   WBuf24D_FloorQuad_V1_ZB1_ZS1_ZB.png          diff 124615  |d|<=16: 124615  top(ours-gold) [(1, 124615)]  gold-depth-median 113240
+   WBuf24D_LargeZ_V1_ZB0_ZS0_ZB.png             diff   7200  |d|<=16:   7200  top(ours-gold) [(-1, 7200)]  gold-depth-median 16777047
+   WBuf24D_LargeZ_V1_ZB0_ZS1_ZB.png             diff 118240  |d|<=16: 118240  top(ours-gold) [(1, 118240)]  gold-depth-median 16777182
+   WBuf24D_LargeZ_V1_ZB1_ZS0_ZB.png             diff   7200  |d|<=16:   7200  top(ours-gold) [(-1, 7200)]  gold-depth-median 16777063
+   WBuf24D_LargeZ_V1_ZB1_ZS1_ZB.png             diff 118240  |d|<=16: 118240  top(ours-gold) [(1, 118240)]  gold-depth-median 16777198
+   WBuf24D_LineStrip_V1_ZB0_ZS0_ZB.png          diff      1  |d|<=16:      0  top(ours-gold) []  gold-depth-median 16777215
+   WBuf24D_LineStrip_V1_ZB0_ZS1_ZB.png          diff      1  |d|<=16:      0  top(ours-gold) []  gold-depth-median 16777215
+   WBuf24D_LineStrip_V1_ZB1_ZS0_ZB.png          diff      1  |d|<=16:      0  top(ours-gold) []  gold-depth-median 16777215
+   WBuf24D_LineStrip_V1_ZB1_ZS1_ZB.png          diff      1  |d|<=16:      0  top(ours-gold) []  gold-depth-median 16777215
+   WBuf24D_Riddick_V1_ZB0_ZS0_ZB.png            diff    393  |d|<=16:    393  top(ours-gold) [(1, 375), (-1, 18)]  gold-depth-median 266772
+   WBuf24D_RoofQuad_V1_ZB0_ZS0_ZB.png           exact
+   WBuf24D_RoofQuad_V1_ZB0_ZS1_ZB.png           diff  23870  |d|<=16:  23870  top(ours-gold) [(-1, 22586), (-2, 794), (1, 490)]  gold-depth-median 44435
+   WBuf24D_RoofQuad_V1_ZB1_ZS0_ZB.png           exact
+   WBuf24D_RoofQuad_V1_ZB1_ZS1_ZB.png           diff  23870  |d|<=16:  23870  top(ours-gold) [(-1, 22586), (-2, 794), (1, 490)]  gold-depth-median 44451
+   WBuf24D_TriH_V1_ZB0_ZS0_ZB.png               exact
+   WBuf24D_TriH_V1_ZB0_ZS1_ZB.png               diff    204  |d|<=16:    204  top(ours-gold) [(1, 150), (-1, 54)]  gold-depth-median 459297
+   WBuf24D_TriH_V1_ZB1_ZS0_ZB.png               exact
+   WBuf24D_TriH_V1_ZB1_ZS1_ZB.png               diff    204  |d|<=16:    204  top(ours-gold) [(1, 150), (-1, 54)]  gold-depth-median 459313
+   WBuf24D_TriV_V1_ZB0_ZS0_ZB.png               diff    144  |d|<=16:    144  top(ours-gold) [(1, 144)]  gold-depth-median 324
+   WBuf24D_TriV_V1_ZB0_ZS1_ZB.png               diff  26400  |d|<=16:      0  top(ours-gold) []  gold-depth-median 431392
+   WBuf24D_TriV_V1_ZB1_ZS0_ZB.png               diff    144  |d|<=16:    144  top(ours-gold) [(1, 144)]  gold-depth-median 340
+   WBuf24D_TriV_V1_ZB1_ZS1_ZB.png               diff  26400  |d|<=16:      0  top(ours-gold) []  gold-depth-median 431408
+   WBuf24D_WallQuad_V1_ZB0_ZS0_ZB.png           exact
+   WBuf24D_WallQuad_V1_ZB0_ZS1_ZB.png           diff    263  |d|<=16:    263  top(ours-gold) [(1, 263)]  gold-depth-median 199739
+   WBuf24D_WallQuad_V1_ZB1_ZS0_ZB.png           exact
+   WBuf24D_WallQuad_V1_ZB1_ZS1_ZB.png           diff    263  |d|<=16:    263  top(ours-gold) [(1, 263)]  gold-depth-median 199755
+   WBuf24F_FloorQuad_V0_ZB0_ZS0_ZB.png          diff 163425  |d|<=16: 163425  top(ours-gold) [(1, 73187), (2, 47295), (3, 17754), (4, 9857), (-1, 9642), (-2, 3196)]  gold-depth-median 8765910
+   WBuf24F_FloorQuad_V0_ZB0_ZS1_ZB.png          diff  28420  |d|<=16:  28420  top(ours-gold) [(1, 28420)]  gold-depth-median 9935723
+   WBuf24F_FloorQuad_V0_ZB1_ZS0_ZB.png          diff 160898  |d|<=16: 160898  top(ours-gold) [(1, 77847), (2, 46371), (3, 14421), (4, 9069), (-1, 8231), (-2, 2852)]  gold-depth-median 8781074
+   WBuf24F_FloorQuad_V0_ZB1_ZS1_ZB.png          diff  32340  |d|<=16:  32340  top(ours-gold) [(1, 32340)]  gold-depth-median 9935723
+   WBuf24F_FloorQuad_V1_ZB0_ZS0_ZB.png          diff   6111  |d|<=16:   6111  top(ours-gold) [(1, 6083), (-1, 28)]  gold-depth-median 8735216
+   WBuf24F_FloorQuad_V1_ZB0_ZS1_ZB.png          diff 124615  |d|<=16: 124615  top(ours-gold) [(1, 124615)]  gold-depth-median 9419336
+   WBuf24F_FloorQuad_V1_ZB1_ZS0_ZB.png          diff   5615  |d|<=16:   5615  top(ours-gold) [(1, 5595), (-1, 20)]  gold-depth-median 8741667
+   WBuf24F_FloorQuad_V1_ZB1_ZS1_ZB.png          diff 124615  |d|<=16: 124615  top(ours-gold) [(1, 124615)]  gold-depth-median 9419352
+   WBuf24F_LargeZ_V1_ZB0_ZS0_ZB.png             exact
+   WBuf24F_LargeZ_V1_ZB0_ZS1_ZB.png             exact
+   WBuf24F_LargeZ_V1_ZB1_ZS0_ZB.png             exact
+   WBuf24F_LargeZ_V1_ZB1_ZS1_ZB.png             exact
+   WBuf24F_LineStrip_V1_ZB0_ZS0_ZB.png          diff     11  |d|<=16:     10  top(ours-gold) [(1, 8), (-1, 2)]  gold-depth-median 8728476
+   WBuf24F_LineStrip_V1_ZB0_ZS1_ZB.png          diff     11  |d|<=16:     10  top(ours-gold) [(1, 8), (-1, 2)]  gold-depth-median 8728476
+   WBuf24F_LineStrip_V1_ZB1_ZS0_ZB.png          diff     11  |d|<=16:     10  top(ours-gold) [(1, 8), (-1, 2)]  gold-depth-median 8728476
+   WBuf24F_LineStrip_V1_ZB1_ZS1_ZB.png          diff     11  |d|<=16:     10  top(ours-gold) [(1, 8), (-1, 2)]  gold-depth-median 8728476
+   WBuf24F_RoofQuad_V1_ZB0_ZS0_ZB.png           diff   2371  |d|<=16:   2371  top(ours-gold) [(1, 1951), (-1, 420)]  gold-depth-median 8756320
+   WBuf24F_RoofQuad_V1_ZB0_ZS1_ZB.png           diff  27522  |d|<=16:  27522  top(ours-gold) [(-2, 22145), (1, 4142), (-3, 1235)]  gold-depth-median 9329428
+   WBuf24F_RoofQuad_V1_ZB1_ZS0_ZB.png           diff   1988  |d|<=16:   1988  top(ours-gold) [(1, 1568), (-1, 420)]  gold-depth-median 8772704
+   WBuf24F_RoofQuad_V1_ZB1_ZS1_ZB.png           diff  27522  |d|<=16:  27522  top(ours-gold) [(-2, 22145), (1, 4142), (-3, 1235)]  gold-depth-median 9329460
+   WBuf24F_TriH_V1_ZB0_ZS0_ZB.png               diff    456  |d|<=16:    456  top(ours-gold) [(1, 456)]  gold-depth-median 8753522
+   WBuf24F_TriH_V1_ZB0_ZS1_ZB.png               diff    126  |d|<=16:    126  top(ours-gold) [(1, 72), (-1, 54)]  gold-depth-median 9552002
+   WBuf24F_TriH_V1_ZB1_ZS0_ZB.png               diff    456  |d|<=16:    456  top(ours-gold) [(1, 456)]  gold-depth-median 8769906
+   WBuf24F_TriH_V1_ZB1_ZS1_ZB.png               diff    126  |d|<=16:    126  top(ours-gold) [(1, 72), (-1, 54)]  gold-depth-median 9552006
+   WBuf24F_TriV_V1_ZB0_ZS0_ZB.png               diff    648  |d|<=16:    648  top(ours-gold) [(1, 600), (-1, 48)]  gold-depth-median 8764014
+   WBuf24F_TriV_V1_ZB0_ZS1_ZB.png               diff  26400  |d|<=16:      0  top(ours-gold) []  gold-depth-median 9545032
+   WBuf24F_TriV_V1_ZB1_ZS0_ZB.png               diff    648  |d|<=16:    648  top(ours-gold) [(1, 600), (-1, 48)]  gold-depth-median 8780398
+   WBuf24F_TriV_V1_ZB1_ZS1_ZB.png               diff  26400  |d|<=16:      0  top(ours-gold) []  gold-depth-median 9545036
+   WBuf24F_WallQuad_V1_ZB0_ZS0_ZB.png           diff   6209  |d|<=16:   6209  top(ours-gold) [(1, 6184), (-1, 25)]  gold-depth-median 8743614
+   WBuf24F_WallQuad_V1_ZB0_ZS1_ZB.png           diff   3100  |d|<=16:   3100  top(ours-gold) [(-1, 2837), (1, 263)]  gold-depth-median 9148689
+   WBuf24F_WallQuad_V1_ZB1_ZS0_ZB.png           diff   5721  |d|<=16:   5721  top(ours-gold) [(1, 5702), (-1, 19)]  gold-depth-median 8751600
+   WBuf24F_WallQuad_V1_ZB1_ZS1_ZB.png           diff   3100  |d|<=16:   3100  top(ours-gold) [(-1, 2837), (1, 263)]  gold-depth-median 9148945
+   ZBuf16D_FloorQuad_V0_ZB0_ZS0_ZB.png          exact
+   ZBuf16D_FloorQuad_V0_ZB0_ZS1_ZB.png          exact
+   ZBuf16D_FloorQuad_V0_ZB1_ZS0_ZB.png          exact
+   ZBuf16D_FloorQuad_V0_ZB1_ZS1_ZB.png          exact
+   ZBuf16D_FloorQuad_V1_ZB0_ZS0_ZB.png          exact
+   ZBuf16D_FloorQuad_V1_ZB0_ZS1_ZB.png          exact
+   ZBuf16D_FloorQuad_V1_ZB1_ZS0_ZB.png          exact
+   ZBuf16D_FloorQuad_V1_ZB1_ZS1_ZB.png          exact
+   ZBuf16D_LargeZ_V1_ZB0_ZS0_ZB.png             exact
+   ZBuf16D_LargeZ_V1_ZB0_ZS1_ZB.png             exact
+   ZBuf16D_LargeZ_V1_ZB1_ZS0_ZB.png             exact
+   ZBuf16D_LargeZ_V1_ZB1_ZS1_ZB.png             exact
+   ZBuf16D_LineStrip_V1_ZB0_ZS0_ZB.png          exact
+   ZBuf16D_LineStrip_V1_ZB0_ZS1_ZB.png          exact
+   ZBuf16D_LineStrip_V1_ZB1_ZS0_ZB.png          exact
+   ZBuf16D_LineStrip_V1_ZB1_ZS1_ZB.png          exact
+   ZBuf16D_RoofQuad_V1_ZB0_ZS0_ZB.png           exact
+   ZBuf16D_RoofQuad_V1_ZB0_ZS1_ZB.png           exact
+   ZBuf16D_RoofQuad_V1_ZB1_ZS0_ZB.png           exact
+   ZBuf16D_RoofQuad_V1_ZB1_ZS1_ZB.png           exact
+   ZBuf16D_TriH_V1_ZB0_ZS0_ZB.png               exact
+   ZBuf16D_TriH_V1_ZB0_ZS1_ZB.png               exact
+   ZBuf16D_TriH_V1_ZB1_ZS0_ZB.png               exact
+   ZBuf16D_TriH_V1_ZB1_ZS1_ZB.png               exact
+   ZBuf16D_TriV_V1_ZB0_ZS0_ZB.png               exact
+   ZBuf16D_TriV_V1_ZB0_ZS1_ZB.png               exact
+   ZBuf16D_TriV_V1_ZB1_ZS0_ZB.png               exact
+   ZBuf16D_TriV_V1_ZB1_ZS1_ZB.png               exact
+   ZBuf16D_WallQuad_V1_ZB0_ZS0_ZB.png           exact
+   ZBuf16D_WallQuad_V1_ZB0_ZS1_ZB.png           exact
+   ZBuf16D_WallQuad_V1_ZB1_ZS0_ZB.png           exact
+   ZBuf16D_WallQuad_V1_ZB1_ZS1_ZB.png           exact
+   ZBuf16F_FloorQuad_V0_ZB0_ZS0_ZB.png          exact
+   ZBuf16F_FloorQuad_V0_ZB0_ZS1_ZB.png          exact
+   ZBuf16F_FloorQuad_V0_ZB1_ZS0_ZB.png          exact
+   ZBuf16F_FloorQuad_V0_ZB1_ZS1_ZB.png          exact
+   ZBuf16F_FloorQuad_V1_ZB0_ZS0_ZB.png          exact
+   ZBuf16F_FloorQuad_V1_ZB0_ZS1_ZB.png          exact
+   ZBuf16F_FloorQuad_V1_ZB1_ZS0_ZB.png          exact
+   ZBuf16F_FloorQuad_V1_ZB1_ZS1_ZB.png          exact
+   ZBuf16F_LargeZ_V1_ZB0_ZS0_ZB.png             exact
+   ZBuf16F_LargeZ_V1_ZB0_ZS1_ZB.png             exact
+   ZBuf16F_LargeZ_V1_ZB1_ZS0_ZB.png             exact
+   ZBuf16F_LargeZ_V1_ZB1_ZS1_ZB.png             exact
+   ZBuf16F_LineStrip_V1_ZB0_ZS0_ZB.png          exact
+   ZBuf16F_LineStrip_V1_ZB0_ZS1_ZB.png          exact
+   ZBuf16F_LineStrip_V1_ZB1_ZS0_ZB.png          exact
+   ZBuf16F_LineStrip_V1_ZB1_ZS1_ZB.png          exact
+   ZBuf16F_RoofQuad_V1_ZB0_ZS0_ZB.png           exact
+   ZBuf16F_RoofQuad_V1_ZB0_ZS1_ZB.png           exact
+   ZBuf16F_RoofQuad_V1_ZB1_ZS0_ZB.png           exact
+   ZBuf16F_RoofQuad_V1_ZB1_ZS1_ZB.png           exact
+   ZBuf16F_TriH_V1_ZB0_ZS0_ZB.png               diff     96  |d|<=16:     96  top(ours-gold) [(4, 96)]  gold-depth-median 16770632
+   ZBuf16F_TriH_V1_ZB0_ZS1_ZB.png               diff     54  |d|<=16:     54  top(ours-gold) [(4, 54)]  gold-depth-median 16770632
+   ZBuf16F_TriH_V1_ZB1_ZS0_ZB.png               diff     96  |d|<=16:     96  top(ours-gold) [(4, 96)]  gold-depth-median 16770697
+   ZBuf16F_TriH_V1_ZB1_ZS1_ZB.png               diff     54  |d|<=16:     54  top(ours-gold) [(4, 54)]  gold-depth-median 16770697
+   ZBuf16F_TriV_V1_ZB0_ZS0_ZB.png               diff     96  |d|<=16:     96  top(ours-gold) [(4, 96)]  gold-depth-median 16770632
+   ZBuf16F_TriV_V1_ZB0_ZS1_ZB.png               diff     72  |d|<=16:     72  top(ours-gold) [(4, 72)]  gold-depth-median 16770632
+   ZBuf16F_TriV_V1_ZB1_ZS0_ZB.png               diff     96  |d|<=16:     96  top(ours-gold) [(4, 96)]  gold-depth-median 16770697
+   ZBuf16F_TriV_V1_ZB1_ZS1_ZB.png               diff     72  |d|<=16:     72  top(ours-gold) [(4, 72)]  gold-depth-median 16770697
+   ZBuf16F_WallQuad_V1_ZB0_ZS0_ZB.png           exact
+   ZBuf16F_WallQuad_V1_ZB0_ZS1_ZB.png           exact
+   ZBuf16F_WallQuad_V1_ZB1_ZS0_ZB.png           exact
+   ZBuf16F_WallQuad_V1_ZB1_ZS1_ZB.png           exact
+   ZBuf24D_FloorQuad_V0_ZB0_ZS0_ZB.png          diff 161700  |d|<=16: 161700  top(ours-gold) [(2, 90340), (1, 71360)]  gold-depth-median 16688848
+   ZBuf24D_FloorQuad_V0_ZB0_ZS1_ZB.png          diff 153860  |d|<=16: 153860  top(ours-gold) [(2, 138328), (3, 12382), (1, 3150)]  gold-depth-median 16693127
+   ZBuf24D_FloorQuad_V0_ZB1_ZS0_ZB.png          diff 161700  |d|<=16: 161700  top(ours-gold) [(2, 90340), (1, 71360)]  gold-depth-median 16688864
+   ZBuf24D_FloorQuad_V0_ZB1_ZS1_ZB.png          diff 153860  |d|<=16: 153860  top(ours-gold) [(2, 138328), (3, 12382), (1, 3150)]  gold-depth-median 16693143
+   ZBuf24D_FloorQuad_V1_ZB0_ZS0_ZB.png          diff  11199  |d|<=16:  11199  top(ours-gold) [(-1, 10897), (1, 302)]  gold-depth-median 16722292
+   ZBuf24D_FloorQuad_V1_ZB0_ZS1_ZB.png          diff 137950  |d|<=16: 137950  top(ours-gold) [(1, 137950)]  gold-depth-median 16673156
+   ZBuf24D_FloorQuad_V1_ZB1_ZS0_ZB.png          diff  11199  |d|<=16:  11199  top(ours-gold) [(-1, 10897), (1, 302)]  gold-depth-median 16722308
+   ZBuf24D_FloorQuad_V1_ZB1_ZS1_ZB.png          diff 137950  |d|<=16: 137950  top(ours-gold) [(1, 137950)]  gold-depth-median 16673172
+   ZBuf24D_LargeZ_V1_ZB0_ZS0_ZB.png             diff   7500  |d|<=16:   7500  top(ours-gold) [(-1, 7500)]  gold-depth-median 16777047
+   ZBuf24D_LargeZ_V1_ZB0_ZS1_ZB.png             diff    602  |d|<=16:    602  top(ours-gold) [(1, 471), (-1, 131)]  gold-depth-median 16777046
+   ZBuf24D_LargeZ_V1_ZB1_ZS0_ZB.png             diff   7500  |d|<=16:   7500  top(ours-gold) [(-1, 7500)]  gold-depth-median 16777063
+   ZBuf24D_LargeZ_V1_ZB1_ZS1_ZB.png             diff    602  |d|<=16:    602  top(ours-gold) [(1, 471), (-1, 131)]  gold-depth-median 16777062
+   ZBuf24D_LineStrip_V1_ZB0_ZS0_ZB.png          diff     78  |d|<=16:     77  top(ours-gold) [(1, 77)]  gold-depth-median 16608760
+   ZBuf24D_LineStrip_V1_ZB0_ZS1_ZB.png          diff     78  |d|<=16:     77  top(ours-gold) [(1, 77)]  gold-depth-median 16608760
+   ZBuf24D_LineStrip_V1_ZB1_ZS0_ZB.png          diff     78  |d|<=16:     77  top(ours-gold) [(1, 77)]  gold-depth-median 16608760
+   ZBuf24D_LineStrip_V1_ZB1_ZS1_ZB.png          diff     78  |d|<=16:     77  top(ours-gold) [(1, 77)]  gold-depth-median 16608760
+   ZBuf24D_RoofQuad_V1_ZB0_ZS0_ZB.png           diff  11136  |d|<=16:  11136  top(ours-gold) [(-1, 11081), (1, 55)]  gold-depth-median 16723265
+   ZBuf24D_RoofQuad_V1_ZB0_ZS1_ZB.png           diff 137920  |d|<=16: 137920  top(ours-gold) [(1, 137920)]  gold-depth-median 16673156
+   ZBuf24D_RoofQuad_V1_ZB1_ZS0_ZB.png           diff  11136  |d|<=16:  11136  top(ours-gold) [(-1, 11081), (1, 55)]  gold-depth-median 16723281
+   ZBuf24D_RoofQuad_V1_ZB1_ZS1_ZB.png           diff 137920  |d|<=16: 137920  top(ours-gold) [(1, 137920)]  gold-depth-median 16673172
+   ZBuf24D_TriH_V1_ZB0_ZS0_ZB.png               diff     96  |d|<=16:     96  top(ours-gold) [(1, 96)]  gold-depth-median 146
+   ZBuf24D_TriH_V1_ZB0_ZS1_ZB.png               diff    234  |d|<=16:    234  top(ours-gold) [(1, 234)]  gold-depth-median 324
+   ZBuf24D_TriH_V1_ZB1_ZS0_ZB.png               diff     96  |d|<=16:     96  top(ours-gold) [(1, 96)]  gold-depth-median 162
+   ZBuf24D_TriH_V1_ZB1_ZS1_ZB.png               diff    234  |d|<=16:    234  top(ours-gold) [(1, 234)]  gold-depth-median 340
+   ZBuf24D_TriV_V1_ZB0_ZS0_ZB.png               diff     96  |d|<=16:     96  top(ours-gold) [(1, 96)]  gold-depth-median 146
+   ZBuf24D_TriV_V1_ZB0_ZS1_ZB.png               diff    312  |d|<=16:    312  top(ours-gold) [(1, 312)]  gold-depth-median 324
+   ZBuf24D_TriV_V1_ZB1_ZS0_ZB.png               diff     96  |d|<=16:     96  top(ours-gold) [(1, 96)]  gold-depth-median 162
+   ZBuf24D_TriV_V1_ZB1_ZS1_ZB.png               diff    312  |d|<=16:    312  top(ours-gold) [(1, 312)]  gold-depth-median 340
+   ZBuf24D_Trunc0_V1_ZB0_ZS0_ZB.png             diff   1321  |d|<=16:   1321  top(ours-gold) [(-1, 936), (1, 385)]  gold-depth-median 373990
+   ZBuf24D_TruncNeg_V1_ZB0_ZS0_ZB.png           diff   2818  |d|<=16:   2818  top(ours-gold) [(-1, 1498), (1, 1320)]  gold-depth-median 183188
+   ZBuf24D_WallQuad_V1_ZB0_ZS0_ZB.png           diff  12048  |d|<=16:  12048  top(ours-gold) [(-1, 11767), (1, 281)]  gold-depth-median 16709157
+   ZBuf24D_WallQuad_V1_ZB0_ZS1_ZB.png           diff 134166  |d|<=16: 134166  top(ours-gold) [(1, 134166)]  gold-depth-median 16673156
+   ZBuf24D_WallQuad_V1_ZB1_ZS0_ZB.png           diff  12048  |d|<=16:  12048  top(ours-gold) [(-1, 11767), (1, 281)]  gold-depth-median 16709173
+   ZBuf24D_WallQuad_V1_ZB1_ZS1_ZB.png           diff 134166  |d|<=16: 134166  top(ours-gold) [(1, 134166)]  gold-depth-median 16673172
+   ZBuf24F_FloorQuad_V0_ZB0_ZS0_ZB.png          diff   2450  |d|<=16:   2450  top(ours-gold) [(1, 2450)]  gold-depth-median 9895882
+   ZBuf24F_FloorQuad_V0_ZB0_ZS1_ZB.png          diff   3430  |d|<=16:   3430  top(ours-gold) [(1, 3430)]  gold-depth-median 9895719
+   ZBuf24F_FloorQuad_V0_ZB1_ZS0_ZB.png          diff   2450  |d|<=16:   2450  top(ours-gold) [(1, 2450)]  gold-depth-median 9895786
+   ZBuf24F_FloorQuad_V0_ZB1_ZS1_ZB.png          diff   4243  |d|<=16:   4243  top(ours-gold) [(1, 4243)]  gold-depth-median 9895786
+   ZBuf24F_FloorQuad_V1_ZB0_ZS0_ZB.png          diff   1470  |d|<=16:   1470  top(ours-gold) [(1, 1470)]  gold-depth-median 9894894
+   ZBuf24F_FloorQuad_V1_ZB0_ZS1_ZB.png          diff   2940  |d|<=16:   2940  top(ours-gold) [(1, 2940)]  gold-depth-median 9895445
+   ZBuf24F_FloorQuad_V1_ZB1_ZS0_ZB.png          diff    490  |d|<=16:    490  top(ours-gold) [(1, 490)]  gold-depth-median 9895316
+   ZBuf24F_FloorQuad_V1_ZB1_ZS1_ZB.png          diff   1470  |d|<=16:   1470  top(ours-gold) [(1, 1470)]  gold-depth-median 9895335
+   ZBuf24F_LargeZ_V1_ZB0_ZS0_ZB.png             exact
+   ZBuf24F_LargeZ_V1_ZB0_ZS1_ZB.png             exact
+   ZBuf24F_LargeZ_V1_ZB1_ZS0_ZB.png             exact
+   ZBuf24F_LargeZ_V1_ZB1_ZS1_ZB.png             exact
+   ZBuf24F_LineStrip_V1_ZB0_ZS0_ZB.png          diff      3  |d|<=16:      2  top(ours-gold) [(1, 2)]  gold-depth-median 9894890
+   ZBuf24F_LineStrip_V1_ZB0_ZS1_ZB.png          diff      3  |d|<=16:      2  top(ours-gold) [(1, 2)]  gold-depth-median 9894890
+   ZBuf24F_LineStrip_V1_ZB1_ZS0_ZB.png          diff      3  |d|<=16:      2  top(ours-gold) [(1, 2)]  gold-depth-median 9894890
+   ZBuf24F_LineStrip_V1_ZB1_ZS1_ZB.png          diff      3  |d|<=16:      2  top(ours-gold) [(1, 2)]  gold-depth-median 9894890
+   ZBuf24F_RoofQuad_V1_ZB0_ZS0_ZB.png           diff   1470  |d|<=16:   1470  top(ours-gold) [(1, 1470)]  gold-depth-median 9894894
+   ZBuf24F_RoofQuad_V1_ZB0_ZS1_ZB.png           diff   2940  |d|<=16:   2940  top(ours-gold) [(1, 2940)]  gold-depth-median 9895445
+   ZBuf24F_RoofQuad_V1_ZB1_ZS0_ZB.png           diff    490  |d|<=16:    490  top(ours-gold) [(1, 490)]  gold-depth-median 9895316
+   ZBuf24F_RoofQuad_V1_ZB1_ZS1_ZB.png           diff   1470  |d|<=16:   1470  top(ours-gold) [(1, 1470)]  gold-depth-median 9895335
+   ZBuf24F_TriH_V1_ZB0_ZS0_ZB.png               diff     96  |d|<=16:     96  top(ours-gold) [(1, 96)]  gold-depth-median 8791551
+   ZBuf24F_TriH_V1_ZB0_ZS1_ZB.png               diff   1242  |d|<=16:   1242  top(ours-gold) [(1, 846), (-1, 396)]  gold-depth-median 8841573
+   ZBuf24F_TriH_V1_ZB1_ZS0_ZB.png               diff     96  |d|<=16:     96  top(ours-gold) [(1, 96)]  gold-depth-median 8799743
+   ZBuf24F_TriH_V1_ZB1_ZS1_ZB.png               diff   1224  |d|<=16:   1224  top(ours-gold) [(1, 900), (-1, 324)]  gold-depth-median 8843599
+   ZBuf24F_TriV_V1_ZB0_ZS0_ZB.png               diff     96  |d|<=16:     96  top(ours-gold) [(1, 96)]  gold-depth-median 8791551
+   ZBuf24F_TriV_V1_ZB0_ZS1_ZB.png               diff    360  |d|<=16:    360  top(ours-gold) [(1, 360)]  gold-depth-median 8865023
+   ZBuf24F_TriV_V1_ZB1_ZS0_ZB.png               diff     96  |d|<=16:     96  top(ours-gold) [(1, 96)]  gold-depth-median 8799743
+   ZBuf24F_TriV_V1_ZB1_ZS1_ZB.png               diff    432  |d|<=16:    432  top(ours-gold) [(1, 432)]  gold-depth-median 8869119
+   ZBuf24F_WallQuad_V1_ZB0_ZS0_ZB.png           diff   1440  |d|<=16:   1440  top(ours-gold) [(1, 1440)]  gold-depth-median 9894894
+   ZBuf24F_WallQuad_V1_ZB0_ZS1_ZB.png           diff   2880  |d|<=16:   2880  top(ours-gold) [(1, 2880)]  gold-depth-median 9895445
+   ZBuf24F_WallQuad_V1_ZB1_ZS0_ZB.png           diff    480  |d|<=16:    480  top(ours-gold) [(1, 480)]  gold-depth-median 9895316
+   ZBuf24F_WallQuad_V1_ZB1_ZS1_ZB.png           diff   1440  |d|<=16:   1440  top(ours-gold) [(1, 1440)]  gold-depth-median 9895335
+== ZPass_pixel_count  (run 1790359589-xbox-full6743-dry2-2802408)
+   ZPassLineWidth-0x0000_ZB.png                 exact
+   ZPassLineWidth-0x0001_ZB.png                 diff      2  |d|<=16:      0  top(ours-gold) []  gold-depth-median 16773935
+   ZPassLineWidth-0x0004_ZB.png                 diff      2  |d|<=16:      0  top(ours-gold) []  gold-depth-median 16773935
+   ZPassLineWidth-0x0008_ZB.png                 diff      2  |d|<=16:      0  top(ours-gold) []  gold-depth-median 16773935
+   ZPassLineWidth-0x000F_ZB.png                 diff      2  |d|<=16:      0  top(ours-gold) []  gold-depth-median 16773935
+   ZPassLineWidth-0x0010_ZB.png                 diff    130  |d|<=16:      0  top(ours-gold) []  gold-depth-median 16773935
+   ZPassLineWidth-0x0040_ZB.png                 diff    142  |d|<=16:      0  top(ours-gold) []  gold-depth-median 16773935
+   ZPassLineWidth-0x00FF_ZB.png                 diff     62  |d|<=16:      0  top(ours-gold) []  gold-depth-median 16773935
+   ZPassLineWidth-0x01F8_ZB.png                 diff    126  |d|<=16:      0  top(ours-gold) []  gold-depth-median 16773935
+   ZPassPointSize-0x0000_ZB.png                 exact
+   ZPassPointSize-0x0001_ZB.png                 exact
+   ZPassPointSize-0x0004_ZB.png                 exact
+   ZPassPointSize-0x0007_ZB.png                 exact
+   ZPassPointSize-0x0008_ZB.png                 exact
+   ZPassPointSize-0x0009_ZB.png                 exact
+   ZPassPointSize-0x000F_ZB.png                 exact
+   ZPassPointSize-0x0010_ZB.png                 exact
+   ZPassPointSize-0x0040_ZB.png                 exact
+   ZPassPointSize-0x00FF_ZB.png                 exact
+   ZPassPointSize-0x0100_ZB.png                 exact
+   ZPassPointSize-0x01F8_ZB.png                 exact
+   ZPassPointSize-0x01FF_ZB.png                 exact
+   ZPassPointSizeVS-0x0000_ZB.png               diff      2  |d|<=16:      0  top(ours-gold) []  gold-depth-median 16744447
+   ZPassPointSizeVS-0x0001_ZB.png               exact
+   ZPassPointSizeVS-0x0004_ZB.png               exact
+   ZPassPointSizeVS-0x0007_ZB.png               exact
+   ZPassPointSizeVS-0x0008_ZB.png               exact
+   ZPassPointSizeVS-0x0009_ZB.png               exact
+   ZPassPointSizeVS-0x000F_ZB.png               exact
+   ZPassPointSizeVS-0x0010_ZB.png               exact
+   ZPassPointSizeVS-0x0040_ZB.png               exact
+   ZPassPointSizeVS-0x00FF_ZB.png               exact
+   ZPassPointSizeVS-0x0100_ZB.png               exact
+   ZPassPointSizeVS-0x01F8_ZB.png               diff    127  |d|<=16:      0  top(ours-gold) []  gold-depth-median 16711680
+   ZPassPointSizeVS-0x01FF_ZB.png               exact
+   ZPass_ZB.png                                 exact
+== Clear  (run 0-a-now-8e683b3a26-012-Clear)
+   C00000000_Depth_n_ZB.png                     exact
+   C00000000_Depth_y_ZB.png                     exact
+   C00000001_Depth_n_ZB.png                     exact
+   C00000001_Depth_y_ZB.png                     exact
+   C00000100_Depth_n_ZB.png                     exact
+   C00000100_Depth_y_ZB.png                     exact
+   C00010000_Depth_n_ZB.png                     exact
+   C00010000_Depth_y_ZB.png                     exact
+   C01000000_Depth_n_ZB.png                     exact
+   C01000000_Depth_y_ZB.png                     exact
+   C01010101_Depth_n_ZB.png                     exact
+   C01010101_Depth_y_ZB.png                     exact
