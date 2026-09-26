@@ -1,0 +1,53 @@
+{
+  "registered_utc": "2026-09-25T19:45:11Z",
+  "who": "lane.texvol283",
+  "issue": "283",
+  "prediction": "#283: psh.c splits a point-sampled SZ/LU Y16 or R16B16 colour lookup into the texel's bytes, R16B16 -> (b2, b1, b0, b3) and Y16 -> (1, b1, b0, 1), where master narrows each 16-bit field and gives b1 to both G and B. MUST MOVE, each leg separately: (1) Volume_texture/Y16 65,819 (09-14, c866527e03) -> at most ~100 px: on 75,822 of 75,840 quad pixels our G already equals round((gold_G*256+gold_B)/257), so the right bytes of the right texel are exactly what the golden holds; every current G difference is exactly 1 (UNORM narrowing rounds up, silicon takes the high byte). (2) Volume_texture/R16B16 42,954 -> at most ~2,000 px: G (b1, blended by b3) matches the golden today except 11,679 px, all but 7 by one level; R and B carry b2 and b0 after the fix, alpha b3/255 instead of hi16/65535. Both are machine-checked as expect_counts better=2 with every other capture below must_not_move; the magnitudes are read off the verdict. MUST NOT MOVE and what would move each: Volume_texture others -- the flag is set only for the four 16-bit formats, a move means it leaked to another format. Texture_format Y16/R16B16 -- the converter writes lo==hi bytes, so the split returns the same values; a move means the split is wrong (byte order or the round), and that is the failing world the brief names: a decode change that fixes the volume capture by shifting a 2D 16-bit format. Bump_map / Bump_env_lum -- their 16-bit textures are consumed by a bump stage (excluded by stage_consumed_raw) and Bump_env_lum filters TENT (excluded by the point-sampling gate); a move means the exclusion failed and #10's HILO fields were split. Texture_render_target -- converted lo==hi source, and our capture is black for every format there (a separate defect). Texture_BRDF -- R16B16 on stages 0/1 but only TEX2 reaches the output. A MOVE ON ANY MUST-NOT-MOVE LEG REFUTES THE PATCH.",
+  "a_ref": "d709a8d1fa",
+  "b_ref": "a5b4141064",
+  "must_not_move": [
+    "Volume_texture/A1R5G5B5",
+    "Volume_texture/A4R4G4B4",
+    "Volume_texture/A8",
+    "Volume_texture/A8B8G8R8",
+    "Volume_texture/A8R8G8B8",
+    "Volume_texture/A8Y8",
+    "Volume_texture/AY8",
+    "Volume_texture/B8G8R8A8",
+    "Volume_texture/DXT1",
+    "Volume_texture/G8B8",
+    "Volume_texture/R5G6B5",
+    "Volume_texture/R6G5B5",
+    "Volume_texture/R8B8",
+    "Volume_texture/R8G8B8A8",
+    "Volume_texture/SZ_Index8",
+    "Volume_texture/X1R5G5B5",
+    "Volume_texture/X8R8G8B8",
+    "Volume_texture/Y8",
+    "Texture_format/*",
+    "Bump_map/*",
+    "Bump_env_lum/*",
+    "Texture_render_target/*",
+    "Texture_BRDF/*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "better": 2,
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Bump env lum",
+      "Bump map",
+      "Texture BRDF",
+      "Texture format",
+      "Texture render target",
+      "Volume texture"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "runs_per_arm": 2
+}
