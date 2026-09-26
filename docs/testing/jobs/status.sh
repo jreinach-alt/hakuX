@@ -3,8 +3,15 @@
 # The status roll-up: what is in flight, what finished, what the devices are
 # doing -- one Markdown page, rewritten in place.
 #
-#   status.sh            write $WORK/status/STATUS.md and update the GitHub comment
-#   status.sh --print    write the page and print it; do not touch GitHub
+#   status.sh            write $WORK/status/STATUS.md and index.html, publish the
+#                        dashboard to gh-pages, and (until #107 is a pointer) the comment
+#   status.sh --print    write the pages and print the Markdown; do not touch GitHub
+#   status.sh --pages    write the pages and publish the dashboard only
+#
+# THE DASHBOARD (2026-09-26) is what the owner reads now: index.html on an
+# orphan gh-pages branch, rendered by status_html.py. See "the dashboard" below;
+# everything from here to there is the gathering, and the #107 machinery at the
+# end runs only until #107 has been switched, once, to a pointer at the page.
 #
 # It is written by every job at the end of its tick and by hakux-status.timer
 # every 30 minutes as the floor. It goes to ONE comment on the issue labelled
@@ -180,6 +187,7 @@ if [ -x "$KASA" ]; then
 fi
 echo "### Lanes: every row on the board ($(tz_abbr))"
 echo
+rm -f "$S/lanes.json"      # the dashboard must not show last tick's lanes as this tick's
 STATUS_METER="$meter" WORK="$WORK" D="$D" REPO="$REPO" GH_REPO="$GH_REPO" J="$J" S="$S" \
 HAVE_GH=$have_gh HAVE_SD=$have_sd UNITS="$units" python3 - <<'PY' 2>&1 || echo "(the lane table could not be computed)"
 # Everything here fails soft, row by row: a source that cannot be read says so
@@ -238,14 +246,20 @@ except OSError:
     pass
 
 # device requests, queued and running, by requester
-reqs = []
+reqs, reqd = [], []
 for state in ("queue", "running"):
     for p in glob.glob(os.path.join(D, state, "*.req")):
         try:
             r = json.load(open(p))
             reqs.append((state, r.get("id") or os.path.basename(p)[:-4], r.get("requester") or ""))
         except Exception:
+            r = {}
             reqs.append((state, os.path.basename(p)[:-4], ""))
+        try:
+            r["_owner"] = open(p[:-4] + ".owner").read().strip()     # the device that claimed it
+        except OSError:
+            r["_owner"] = ""
+        reqd.append((state, reqs[-1][1], r))
 def reqs_of(name):
     pat = re.compile(r"^(lane[.-])?%s$|^arms-%s-" % (re.escape(name), re.escape(name)))
     return [r for r in reqs if pat.search(r[2])]
@@ -290,7 +304,7 @@ def state_of(name, row, standing):
     return "IDLE" if prs_ok else "not running, nothing on a device (PR state unknown: the PR list could not be read)"
 
 lanes = (terr or {}).get("lane", {})
-rows, idle = [], []
+rows, idle, blocked = [], [], []
 for name, row in sorted(lanes.items()):
     if name in ("xbox", "remote"):
         continue                                        # their own rows below: no unit, a comment channel instead
@@ -298,6 +312,8 @@ for name, row in sorted(lanes.items()):
     p = prs.get("lane/" + name)
     prs_s = ("#%d %s" % (p["number"], "draft" if p.get("isDraft") and p["state"] == "OPEN" else p["state"].lower())) if p else "none"
     ts, said = last.get(name, ("", ""))
+    if st.startswith("blocked"):
+        blocked.append({"lane": name, "state": st})
     if st == "IDLE":
         idle.append(name)
         st = "**:warning: IDLE, NO WORK**"
@@ -395,6 +411,91 @@ except OSError:
 try:
     with open(os.path.join(S, "idle-lanes"), "w") as f:
         f.write(", ".join(idle) + ("\n" if idle else ""))
+except OSError:
+    pass
+
+# ---- the dashboard's first screen (status_html.py reads this as lanes.json)
+def age_s(secs):
+    secs = int(max(0, secs))
+    return "%dm" % (secs // 60) if secs < 7200 else "%dh %dm" % (secs // 3600, (secs % 3600) // 60)
+def utc(s):
+    try:
+        return datetime.datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
+    except (ValueError, TypeError):
+        return None
+
+# Each handheld: the run it owns, else its hold, else idle.
+devices = []
+for dev in E.get("STATUS_DEVICES", "thor nova").split():
+    run_ = [(i, r) for s, i, r in reqd if s == "running" and r.get("_owner") == dev]
+    held = os.path.exists(os.path.join(D, "hold", dev))
+    why = ""
+    if held:
+        try: why = open(os.path.join(D, "hold", dev + ".why")).read().strip().splitlines()[0]
+        except (OSError, IndexError): pass
+    if run_:
+        i, r = run_[0]
+        devices.append({"name": dev, "state": "running", "detail": "%s: %s%s" % (r.get("requester") or "?", i, " (held after it)" if held else "")})
+    elif held:
+        devices.append({"name": dev, "state": "held", "detail": cell(why or "hold file present, no reason given", 120)})
+    else:
+        devices.append({"name": dev, "state": "idle", "detail": ""})
+
+# Runs waiting over an hour, the z- idle tier excepted: waiting is its design.
+queued_old = []
+for s, i, r in reqd:
+    t = utc(r.get("queued_utc", ""))
+    if s != "queue" or i.startswith("z-") or not t:
+        continue
+    a = (now - t).total_seconds()
+    if a > 3600:
+        queued_old.append((a, {"id": i, "requester": r.get("requester", ""), "age": age_s(a), "device": r.get("device", "")}))
+queued_old = [q for _, q in sorted(queued_old, key=lambda x: -x[0])]
+
+# Fold-ready PRs not folded within the hour, and why. The 2026-09-26 jam: a
+# CONFLICTING head gets no CI run from GitHub, fold.sh waits for CI forever,
+# and every surface said "waiting" for 2.5 h. `gh pr list` reports mergeable
+# UNKNOWN, so each PR is asked on its own.
+fold_stuck = []
+if have_gh:
+    for br, p in prs.items():
+        if p.get("state") != "OPEN" or p.get("isDraft") or "fold-ready" not in {l["name"] for l in p.get("labels", [])}:
+            continue
+        n = p["number"]
+        la = run("gh", "api", "repos/%s/issues/%d/events?per_page=100" % (GH_REPO, n), "--paginate", "--jq",
+                 '.[] | select(.event == "labeled" and .label.name == "fold-ready") | .created_at').split()
+        t = utc(la[-1]) if la else None
+        if t is None or (now - t).total_seconds() < 3600:
+            continue
+        v = {}
+        try: v = json.loads(run("gh", "pr", "view", str(n), "--repo", GH_REPO, "--json", "mergeable,statusCheckRollup") or "{}")
+        except Exception: pass
+        roll = v.get("statusCheckRollup") or []
+        bad = sorted({c.get("name") or c.get("context") or "?" for c in roll
+                      if (c.get("conclusion") or c.get("state") or "").upper() in ("FAILURE", "ERROR", "CANCELLED", "TIMED_OUT", "ACTION_REQUIRED", "STARTUP_FAILURE")})
+        pend = [c for c in roll if (c.get("status") or "").upper() in ("QUEUED", "IN_PROGRESS", "PENDING", "WAITING") or (c.get("state") or "").upper() == "PENDING"]
+        mg = (v.get("mergeable") or "UNKNOWN").upper()
+        if mg == "CONFLICTING":
+            why = "CONFLICTING with master; GitHub runs no CI on it, so the fold waits forever. Merge master into it"
+        elif not v:
+            why = "its mergeability and CI could not be read"
+        elif not roll:
+            why = "CI never ran on its head"
+        elif bad:
+            why = "CI red (%s)" % ", ".join(bad)[:80]
+        elif pend:
+            why = "CI still running"
+        elif mg == "UNKNOWN":
+            why = "GitHub has not computed mergeability yet"
+        else:
+            why = "green and mergeable, yet unfolded; read the fold job's log"
+        fold_stuck.append({"number": n, "branch": br, "age": age_s((now - t).total_seconds()), "reason": why})
+
+try:
+    with open(os.path.join(S, "lanes.json.tmp"), "w") as f:
+        json.dump({"idle": idle, "blocked": blocked, "fold_stuck": fold_stuck, "queued_old": queued_old,
+                   "devices": devices, "prs_ok": prs_ok, "terr_ok": terr is not None}, f, indent=1)
+    os.replace(os.path.join(S, "lanes.json.tmp"), os.path.join(S, "lanes.json"))
 except OSError:
     pass
 PY
@@ -597,13 +698,148 @@ echo
 echo "### Host"
 echo
 echo "- checkout \`$REPO\` on $(git -C "$REPO" rev-parse --abbrev-ref HEAD 2>/dev/null), $(git -C "$REPO" rev-list --count HEAD..origin/master 2>/dev/null || echo '?') behind origin/master (jobs run the fetched trunk regardless)"
-[ $have_sd = 1 ] && echo "- timers: $(systemctl --user list-timers 'hakux-*' --no-legend --plain 2>/dev/null | awk '{printf "%s next %s; ", $NF, ($1 == "-" ? "-" : $3 " " $4)}' | sed 's/.service//g; s/hakux-//g' | cut -c1-300)"
+[ $have_sd = 1 ] && echo "- timers: $(systemctl --user list-timers 'hakux-*' --no-legend --plain 2>/dev/null | awk '{printf "%s next %s\n", $NF, ($1 == "-" ? "-" : $3 " " $4)}' | sed 's/.service//g; s/hakux-//g' | sort | paste -sd';' | sed 's/;/; /g' | cut -c1-400)"   # sorted by name: the dashboard republishes on a change, and the clock alone reorders by next elapse
 echo "- attempts: $(for f in "$WORK"/attempts/*; do [ -e "$f" ] && printf '%s=%s ' "$(basename "$f")" "$(cat "$f")"; done)"
 } > "$OUT" 2>/dev/null
 
-[ "${1:-}" = "--print" ] && { cat "$OUT"; exit 0; }
+# ================================================================ the dashboard
+#
+# THE PAGE THE OWNER READS (2026-09-26): a static index.html on an orphan
+# `gh-pages` branch, https://<owner>.github.io/<repo>/. #107 could not be that
+# page: its roll-up was a comment, so it rendered below the issue's timeline,
+# and the per-tick title rename put 304 permanent `renamed` rows above it in a
+# week. The page is ONE commit, force-pushed, so nothing ever accumulates.
+#
+# Bash gathers the first screen here into facts.tsv (key<TAB>value, plus
+# `attn<TAB>kind<TAB>text` and `blocker<TAB>n<TAB>title` rows); the lane block
+# above wrote lanes.json; status_html.py merges both with STATUS.md into
+# status.json and renders index.html from it.
+FACTS="$S/facts.tsv"
+fact() { printf '%s\t%s\n' "$1" "$(printf '%s' "$2" | tr '\t\n' '  ')"; }
+attn() { printf 'attn\t%s\t%s\n' "$1" "$(printf '%s' "$2" | tr '\t\n' '  ')"; }
+HEARTBEAT="${STATUS_PAGES_HEARTBEAT:-1800}"; case "$HEARTBEAT" in ''|*[!0-9]*) HEARTBEAT=1800 ;; esac
+{
+fact now "$now"; fact floor_secs "$FLOOR"; fact heartbeat_secs "$HEARTBEAT"; fact next_due "$due"
+fact queue "$n_q"; fact queue_idle "$n_z"; fact arms_running "$n_run"
+fact lanes_running "$n_lanes"; fact lane_cap "${LANE_MAX:-2}"
+[ "${WINDOW_DEFER:-0}" = 1 ] && fact window "dispatch deferred until $(local_ts "${WINDOW_UNTIL:-}") (budget, not a fault)"
+# The last fold is the last `fold: PR` commit on master: fold.sh writes exactly that subject.
+lf=$(git -C "$REPO" log -1 --format='%ct%x09%s' --grep='^fold: PR' origin/master 2>/dev/null)
+[ -n "$lf" ] && { fact last_fold "${lf%%$'\t'*}"; fact last_fold_subject "$(printf '%s' "${lf#*$'\t'}" | sed 's/^fold: //' | cut -c1-90)"; }
+[ -x "$KASA" ] && fact console "${meter#console meter: }"
+[ "$lapse" -gt 0 ] && attn page "the roll-up itself lapsed for $(ago "$prev_run" | sed 's/ ago$//') before this tick (previous $(local_ts "@$prev_run")); nothing was observed across that window"
+# Escalations the host-ops tick could not decide (owner-level).
+ESC="$WORK/host-tools/escalations.md"
+if [ -s "$ESC" ]; then
+    ne=$(grep -c '^\s*[-*#]' "$ESC"); el=$(grep -v '^\s*$' "$ESC" | tail -1 | sed 's/^[-*# ]*//' | cut -c1-160)
+    attn escalation "${ne:-some} escalation line(s) from host ops awaiting the owner; latest: $el"
+fi
+if [ $have_gh = 1 ]; then
+    # A red CI on master: the newest COMPLETED run of each workflow. Reading run
+    # state costs no Actions minutes.
+    gh run list --repo "$GH_REPO" --branch master --limit 20 --json workflowName,status,conclusion,headSha,createdAt \
+        --jq '[.[] | select(.status == "completed")] | group_by(.workflowName) | map(max_by(.createdAt)) | .[]
+              | select(.conclusion == "failure" or .conclusion == "timed_out" or .conclusion == "startup_failure")
+              | "\(.workflowName) \(.conclusion) on master at \(.headSha[0:10])"' 2>/dev/null \
+        | while IFS= read -r l; do [ -n "$l" ] && attn ci "CI red: $l"; done
+    # The release gate. Blockers are open issues carrying the label; the gate's
+    # text is the owner's (hostops-poll item 10) and overridable in limits.env.
+    fact release_name "${STATUS_RELEASE_NAME:-0.5}"
+    fact release_gate "${STATUS_RELEASE_GATE:-Ghoulies median >= 25 gfps over a 240 s soak on the candidate APK, both handhelds}"
+    rc=$(gh release list --repo "$GH_REPO" --limit 30 --json tagName --jq ".[] | .tagName | select(startswith(\"${STATUS_RELEASE_TAG:-v0.5}\"))" 2>/dev/null | head -1)
+    fact release_candidate "${rc:-none cut yet}"
+    BL="${STATUS_BLOCKER_LABEL:-release-blocker}"; fact blocker_label "$BL"
+    if bl=$(gh issue list --repo "$GH_REPO" --state open --label "$BL" --limit 20 --json number,title --jq '.[] | "\(.number)\t\(.title)"' 2>/dev/null); then
+        fact blockers_known 1
+        printf '%s\n' "$bl" | while IFS=$'\t' read -r bn bt; do [ -n "$bn" ] && printf 'blocker\t%s\t%s\n' "$bn" "$(printf '%s' "$bt" | cut -c1-100)"; done
+    fi
+fi
+if [ $have_sd = 1 ]; then
+    systemctl --user list-units 'hakux-*' --state=failed --no-legend --plain 2>/dev/null | awk '{print $1}' \
+        | while read -r u; do [ -n "$u" ] && attn timer "$u has FAILED (systemctl --user status $u)"; done
+    # An ACTIVE timer with no next elapse never fires again: unanchored. Not
+    # while its service is running: an OnUnitInactiveSec timer shows no next
+    # elapse for exactly as long as the run lasts, and is re-armed at its end.
+    systemctl --user list-timers 'hakux-*' --no-legend --plain 2>/dev/null \
+        | awk '$1 == "-" || $1 == "n/a" { for (i = 1; i <= NF; i++) if ($i ~ /\.timer$/) print $i }' \
+        | while read -r u; do
+            [ -n "$u" ] || continue
+            case "$(systemctl --user is-active "${u%.timer}.service" 2>/dev/null)" in active|activating|reloading) continue ;; esac
+            attn timer "$u is active but has no next run: it will never fire again"
+        done
+fi
+} > "$FACTS" 2>/dev/null
+python3 "$J/status_html.py" build --facts "$FACTS" --lanes "$S/lanes.json" --md "$OUT" \
+    --json "$S/status.json" --html "$S/index.html" 2>"$S/status_html.err" \
+    || echo "the dashboard could not be rendered: $(tail -1 "$S/status_html.err")"
+
+# ---- publishing: one commit on an orphan gh-pages branch, force-pushed.
+#
+# GitHub Pages branch builds are soft-limited to 10 an hour, and every job tick
+# ends here. So: publish only when the content key (the page with the clock
+# masked out, status_html.py key) moved, never twice inside PAGES_MIN_GAP, and
+# otherwise at the heartbeat, so the page's own "updated N min ago" can tell a
+# quiet fleet (republished within the heartbeat) from a stopped host (older).
+# The git dir is a scratch one under $S, never the owner's checkout. There is
+# no remote unless this is the real repository or a test names one: selftest
+# drives this path with GH_REPO=example/hakux and must never reach the network.
+PAGES_DIR="${STATUS_PAGES_DIR:-$S/pages}"
+PAGES_REMOTE="${STATUS_PAGES_REMOTE-}"
+[ -z "$PAGES_REMOTE" ] && [ "$GH_REPO" = jreinach-alt/hakuX ] && [ $have_gh = 1 ] && PAGES_REMOTE="https://github.com/$GH_REPO.git"
+PAGES_MIN_GAP="${STATUS_PAGES_MIN_GAP:-600}"; case "$PAGES_MIN_GAP" in ''|*[!0-9]*) PAGES_MIN_GAP=600 ;; esac
+PSTATE="$S/pages-state"          # "<epoch of the last publish> <its content key>"
+publish_pages() {
+    [ -n "$PAGES_REMOTE" ] || { echo "pages: no remote for $GH_REPO; not published"; return 0; }
+    [ -s "$S/index.html" ] || { echo "pages: no page rendered; not published"; return 0; }
+    local key last_t last_k age tree c
+    key=$(python3 "$J/status_html.py" key "$S/index.html") || return 0
+    last_t=0; last_k=""; [ -s "$PSTATE" ] && read -r last_t last_k < "$PSTATE"
+    case "${last_t:-}" in ''|*[!0-9]*) last_t=0 ;; esac
+    age=$(( now - last_t ))
+    if [ "$key" = "${last_k:-}" ] && [ "$age" -lt "$HEARTBEAT" ]; then
+        echo "pages: unchanged since $(local_ts "@$last_t"); not republished"; return 0
+    fi
+    if [ "$age" -lt "$PAGES_MIN_GAP" ]; then
+        echo "pages: changed, but published $(( age / 60 )) min ago; the next tick after $(( PAGES_MIN_GAP / 60 )) min publishes it"; return 0
+    fi
+    [ -d "$PAGES_DIR/.git" ] || git init -q "$PAGES_DIR" 2>/dev/null || { echo "pages: cannot init $PAGES_DIR"; return 0; }
+    cp "$S/index.html" "$PAGES_DIR/index.html" && : > "$PAGES_DIR/.nojekyll"
+    git -C "$PAGES_DIR" add index.html .nojekyll 2>/dev/null
+    tree=$(git -C "$PAGES_DIR" write-tree 2>/dev/null)
+    # No parent, ever: the branch is this one commit.
+    c=$(git -C "$PAGES_DIR" -c user.name=hakux-status -c user.email=hakux-status@users.noreply.github.com \
+        commit-tree "$tree" -m "dashboard $(say_time)" 2>/dev/null)
+    [ -n "$c" ] || { echo "pages: could not build the commit"; return 0; }
+    if GIT_TERMINAL_PROMPT=0 timeout 120 git -C "$PAGES_DIR" push -q -f "$PAGES_REMOTE" "$c:refs/heads/gh-pages" 2>"$S/pages-push.log"; then
+        echo "$now $key" > "$PSTATE"; echo "pages: published ${c:0:10} to gh-pages"
+    else
+        echo "pages: push failed: $(tail -1 "$S/pages-push.log" | cut -c1-160)"
+    fi
+}
+
+[ "${1:-}" = "--print" ] && { cat "$OUT"; exit 0; }       # the page is rendered locally, never published
+# --pages: publish the dashboard and touch nothing else (no stamp, no #107).
+[ "${1:-}" = "--pages" ] && { publish_pages; exit 0; }
 echo "$now" > "$STAMP"          # a real tick ran; --print is a dry run and does not count
+publish_pages
 [ $have_gh = 1 ] || { echo "wrote $OUT (gh unavailable; comment not updated)"; exit 0; }
+
+# ================================================ #107: a pointer, switched ONCE
+#
+# Once the page has been published from here AND GitHub Pages serves it, #107 is
+# rewritten one last time -- body, title, roll-up comment -- to point at the
+# page, pinned, and locked; $POINTER records that, and from then on no tick
+# touches the issue at all (no `renamed` rows, no edits). Until both hold, the
+# legacy roll-up below keeps #107 current, so the owner is never left with
+# neither.
+POINTER="$S/issue-pointer"
+if [ -s "$POINTER" ]; then
+    echo "#$(cut -d' ' -f1 "$POINTER") points at the dashboard; not touched"
+    exit 0
+fi
+pages_url=""
+[ -s "$PSTATE" ] && pages_url=$(gh api "repos/$GH_REPO/pages" --jq .html_url 2>/dev/null)
+case "$pages_url" in https://*) ;; *) pages_url="" ;; esac
 
 # ------------------------------------------------- the one comment on GitHub
 #
@@ -615,6 +851,35 @@ issue=${il%% *}; cur_title=""; [ "$il" != "$issue" ] && cur_title=${il#* }
 # to sail into `PATCH /issues/null` -- every call returning 0 while the page
 # went nowhere. Treat anything that is not a number as "no issue".
 case "${issue:-}" in ''|*[!0-9]*) issue="" ;; esac
+if [ -n "$pages_url" ]; then
+    [ -n "$issue" ] || { echo "the dashboard is live at $pages_url; no open harness-status issue to point at it"; exit 0; }
+    PB="$S/POINTER.md"
+    {
+    echo "## hakuX harness status has moved"
+    echo
+    echo "### **$pages_url**"
+    echo
+    echo "One screen: the devices, the queue, running lanes, **NEEDS ATTENTION**, and the release gate, with the details below them. It is rewritten from the host at the end of every job tick and republished when it changes."
+    echo
+    echo "This issue stays pinned so the issue list still leads there, and is locked: nothing here is updated any more (switched $(say_time))."
+    } > "$PB"
+    if gh api -X PATCH "repos/$GH_REPO/issues/$issue" -F body=@"$PB" --silent >/dev/null 2>&1; then
+        # The one rename left: the old title carried a clock and counts that
+        # would otherwise read as current forever.
+        [ "$cur_title" = "harness: live status -- moved to $pages_url" ] \
+            || gh api -X PATCH "repos/$GH_REPO/issues/$issue" -f title="harness: live status -- moved to $pages_url" --silent >/dev/null 2>&1
+        cid=$(cat "$S/comment-id" 2>/dev/null)
+        [ -n "$cid" ] && gh api -X PATCH "repos/$GH_REPO/issues/comments/$cid" \
+            -f body="The roll-up moved to **$pages_url**. This comment is no longer updated." --silent >/dev/null 2>&1
+        gh issue pin "$issue" --repo "$GH_REPO" >/dev/null 2>&1       # already pinned is an error, and fine
+        gh issue lock "$issue" --repo "$GH_REPO" >/dev/null 2>&1      # likewise already locked
+        echo "$issue $pages_url $now" > "$POINTER"
+        echo "#$issue now points at $pages_url (pinned, locked); status.sh will not touch it again"
+    else
+        echo "could not rewrite #$issue as a pointer; retrying next tick"
+    fi
+    exit 0
+fi
 if [ -z "$issue" ]; then
     # Only a query that SUCCEEDED and found nothing licenses a second status
     # issue. A network blip must not fork the one page the owner reads.
