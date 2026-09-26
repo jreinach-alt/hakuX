@@ -61,8 +61,34 @@ capture and break the `-MaxSN_MaxSN`/`-Min_Min` legs, which are 0 today.
 
 ## Arm
 
-Queued by the arms job from the committed prediction. The verdict will be
-posted on the PR as `[job.arms]`.
+Queued by the arms job from the committed prediction. **Verdict: PASS, all
+12 registered checks hold** (`[job.arms]` on #336, PR label `verified`).
+a `1790386145-arms-nanfix281-base-3375997` (169045feca, apk 9c4cdc7460e2)
+vs b `1790386145-arms-nanfix281-fix-3376290` (2bedc113aa, apk 13ef43a8159e).
+
+| capture | a | b | predicted |
+|---|---:|---:|---:|
+| `-NaNq_NaNq` | 14,637 | 6,223 | 6,223 |
+| `-NaNs_NaNs` | 14,697 | 6,283 | 6,283 |
+| the other 10, `-INF_INF` included | | same | same |
+
+Both must_move figures land exactly on the model. Nothing got worse, and
+exact stays 3 -> 3. I read the result dirs: 12 captures per arm, scores1.tsv
+`status` is 3 `ok` + 9 `white-content` in both arms, with none `unreadable`,
+and no run log says PARTIAL COVERAGE. Each arm ran once, so the byte-level
+check calls 2 differing captures "not attributable". Those 2 are the two
+must_move captures, and they moved by the predicted 8,414 px each.
+
+The residual (6,223 / 6,283) is the separate +-1 colour floor, not #281. It
+is the same 6,223 px that `0_1` column 0 carries.
+
+## Why attempt 1 did not finish
+
+It ended correctly, with a `[lane.nanfix281] waiting:` comment, while the arm
+was queued behind the #311/#277 arms and CI was running. It left the PR in
+draft, and nothing but the lane can mark a draft ready. Attempt 2 was resumed
+by `job.handback` with CI green and the arm `verified`. It read the verdict
+and the result dirs, recorded them here, and marked the PR ready.
 
 ## Do not repeat
 
