@@ -66,8 +66,12 @@ typedef struct {
  * regenerate as a non-CC2 shader for a CC2 draw.
  * 4 is GenGeomGlslOptions.no_point_size (#34), which sits in padding: a key
  * persisted before it reads as 0 and would regenerate a geometry shader
- * that writes gl_PointSize on a device without the feature. */
-#define SHADER_STATE_LAYOUT_VERSION 4
+ * that writes gl_PointSize on a device without the feature.
+ * 5 is GeomState.line_cull_face/line_front_ccw (#13): GeomState grows, but
+ * ShaderState's size need not follow if PshState's alignment absorbs it, and
+ * a key stored without them would regenerate a line-mode shader that culls
+ * nothing. */
+#define SHADER_STATE_LAYOUT_VERSION 5
 
 static void remove_directory_recursive(const char *path)
 {
