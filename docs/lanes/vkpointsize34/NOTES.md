@@ -46,3 +46,10 @@ has no effect. Devices with the feature (lavapipe, any desktop) are unchanged.
 ## Do not repeat
 - `cc_check.py` must rewrite the build's `-iquote /home/justin/hakuX`, or the
   shared tree's `geom.h` wins and the check reads the wrong struct.
+
+## State (2026-09-25)
+Waiting on the board grant of vk/shaders.c and vk/renderer.c (request in
+$DISPATCH_DIR/board-requests/vkpointsize34.md, PR #371 comment). On grant:
+`git apply shaders-renderer.diff`, commit, merge master (no rebase), then
+register the prediction on those shas. preflight.sh --allow-tracker passed on
+f6db20d771.
