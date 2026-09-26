@@ -1,0 +1,28 @@
+{
+  "registered_utc": "2026-09-26T10:40:00Z",
+  "who": "lane.fps382",
+  "issue": "382",
+  "title": "56550042-50_Cent_Bulletproof.xiso.iso",
+  "device": "nova",
+  "seconds": 240,
+  "frames_every": 10,
+  "perflog": true,
+  "runs_per_arm": 1,
+  "ref": "2dc2b5c49a",
+  "a_ref": "2dc2b5c49a",
+  "prediction": "ONE ARM, hands-off 240 s perflog soak of the boot movies on master 2dc2b5c49a (the brief's step 2). Registered AFTER two runs on 6561442869 were read (0-0-y-1790409600-titlebench-9, 0-0-y-1790411511-titlebench-9r) and after the movies were read off the console: every ark/Movies/*.sfd is 640x480 MPEG-1 at 29.97 or 30 fps with no near-empty pictures (teaser.sfd: 2910 pictures, 97.0 s, 0% under 1% of the median I picture), so 10 Hz presentation drops about 2 of every 3 pictures. MODEL: the frame rate is set on the guest-CPU side, not the renderer. While Sofdec decodes a movie, every store into its output pages (7 pages at guest va 0x821a5000-0x82260000) takes the notdirty slow path and calls tlb_set_dirty (sd), and the slow-store rate runs inverse to the fps. Judge: python3 docs/lanes/fps382/judge.py <logcat> --prediction docs/testing/predictions/fps382-intro-soak.json. Spans come from the gfps-line cadence: slow = longest run of intervals <= 12 fps, fast = longest run >= 25 fps. Legs, with the world in which each fails: M0 the run lasts >= 200 s and prints [tlb68] in >= 90% of its 2 s windows and >= 10 hakuX-pages lines, else VOID. P2 the slow span still exists on current master (>= 60 s; it was 114 s) and so does the fast one (>= 20 s; it was 30 s); fails if master has changed the pacing, which would be a finding in itself. P3 renderer busy (1 - Ri/G) <= 25% in both spans; fails if the renderer is the wall (the brief's 'emulator cost' world, renderer >= 90% in the slow span only). P4 >= 85% of the slow span's flips span 4+ VBLANKs (hakuX-pace); fails if the gfps-line cadence and the pace line disagree. P5 the resource: slow stores >= 1,000,000/s in the slow span and <= 100,000/s in the fast span (were 2.5M and 4k); fails if the store storm does not separate the spans, which refutes the named resource. P6 vCPU thread CPU >= 1800 ms per 2 s in the slow span; fails if the guest is idle-waiting (the brief's content-paced world). B the brief's own emulator-cost falsifier (renderer >= 90% in slow, not in fast) is predicted FALSE: the cost is real but it is on the vCPU, which the brief's falsifier does not look at. This soak cannot price a slow store (no per-store timer); that needs a code change and is named in NOTES.",
+  "expect": {
+    "M0/instrument_ok_is": true,
+    "P2/slow_span_len_s_min": 60,
+    "P2/fast_span_len_s_min": 20,
+    "P3/renderer_busy_slow_pct_max": 25,
+    "P3/renderer_busy_fast_pct_max": 25,
+    "P4/flips_ge4vbl_slow_pct_min": 85,
+    "P5/slow_stores_per_s_slow_min": 1000000,
+    "P5/slow_stores_per_s_fast_max": 100000,
+    "P6/vcpu_ms_per_2s_slow_min": 1800,
+    "B/brief_emulator_cost_renderer_is": false
+  },
+  "expect_counts": {},
+  "expect_note": "Named rules read by docs/lanes/fps382/judge.py, not golden keys: a soak writes no captures and ab_compare never judges it."
+}
