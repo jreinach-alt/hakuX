@@ -793,7 +793,7 @@ publish_pages() {
     [ -s "$S/index.html" ] || { echo "pages: no page rendered; not published"; return 0; }
     local key last_t last_k age tree c
     key=$(python3 "$J/status_html.py" key "$S/index.html") || return 0
-    read -r last_t last_k < "$PSTATE" 2>/dev/null
+    last_t=0; last_k=""; [ -s "$PSTATE" ] && read -r last_t last_k < "$PSTATE"
     case "${last_t:-}" in ''|*[!0-9]*) last_t=0 ;; esac
     age=$(( now - last_t ))
     if [ "$key" = "${last_k:-}" ] && [ "$age" -lt "$HEARTBEAT" ]; then

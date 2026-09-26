@@ -87,6 +87,31 @@ merge of `origin/lane/statuspage` (PR #354) as the brief's start note asked.
 - A grep of the live page for `/home/`, email shapes, `justin`, `gh?_` tokens
   and dotted quads found nothing.
 
+## Live (2026-09-25, 23:35 PDT)
+
+- `gh-pages` was first published from this branch with `status.sh --pages`
+  as `597d9ac428`. It has 0 parents and holds `index.html` and `.nojekyll`.
+- GitHub Pages was already enabled: `gh api repos/jreinach-alt/hakuX/pages`
+  gave source `gh-pages/`, status `built`. **https://jreinach-alt.github.io/hakuX/**
+  serves the page (HTTP 200). `live-url-390x844.png` is that URL at 390x844.
+- **Two ticks, one commit.** A second `--pages` right after the first said
+  "changed, but published 0 min ago" (the fleet had moved; the 10-min gap
+  held it back). `git ls-remote origin gh-pages` was still `597d9ac428`.
+  selftest 64 checks the unchanged case, the gap, the heartbeat, and that
+  gh-pages stays at `rev-list --count` = 1.
+- **Until this PR folds, nothing republishes.** Trunk's status.sh has no
+  publisher, so the page stays at 23:34 PDT and its own counter marks it
+  STALE after 70 min. That is honest: after the fold, the first tick
+  republishes it.
+- **#107 switches at the first trunk tick after the fold.** `$S/pages-state`
+  exists on the host and the Pages API answers, so that tick rewrites #107
+  once, pins it, locks it, writes `$S/issue-pointer`, and never writes to it
+  again. The proof "no `renamed` event after the switch" can only be read
+  after that tick: look for a `renamed` event later than the one to
+  "harness: live status -- moved to ...".
+- selftest: 1515 passed, 0 failed (full suite, before the master merge).
+  preflight passed.
+
 ## For the next lane
 
 - The details below the fold are still the Markdown sections. If the page is
