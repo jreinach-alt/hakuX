@@ -1,0 +1,33 @@
+{
+  "registered_utc": "2026-09-26T20:30:00Z",
+  "who": "lane.tbchurn424",
+  "issue": "424",
+  "device": "thor",
+  "frames_every": 0,
+  "a_ref": "7e6a4ac88a",
+  "b_ref": "1d1251aa4b",
+  "arms": {
+    "A": "7e6a4ac88a, master: whole-page TB invalidation",
+    "B": "1d1251aa4b, master merged with cb66484748: range test restored, per-page code bitmap fast path. In accel/ B differs from A by exactly cb66484748."
+  },
+  "runs": {
+    "crimson": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso, --route crimson-skies, 300 s, 3 runs per arm, arms interleaved A B A B A B, all on the Thor",
+    "blinx": "4D530013-Blinx_The_Time_Sweeper.xiso.iso, --route survey, 300 s, 2 runs per arm, interleaved, Thor"
+  },
+  "reader": "python3 docs/lanes/tbchurn424/churn.py <result ids>; span = route 'mark gameplay' + 30 s to end of log (no-route soaks: first log line + 30 s). Per-arm value = median of its per-run values.",
+  "baseline_on_disk": "0-0-y-1790433159-titleplay-p1-crimson (a5b5b628f2, Thor, crimson-skies): gfps 23, churn% 23.9, di/s 21683, pr/s 3001, slow/s 6717. 0-0-y-1790433159-titleplay-p1-blinx (Thor, survey): gfps 25.5, churn% 2.0, slow/s 50166.",
+  "legs": {
+    "M0 (instrument)": "Every run prints [tlb68] in >= 90% of its 2 s windows over the span, and xx (the impossible row) sums to 0. B's lines carry rt=1; A's carry no rt= field. A run failing this is VOID, not zero.",
+    "M1 (THE COUNTER, must move; the falsifier)": "Crimson: churn% = (jcus + rdus) / vCPU cpu, the tb invalidation jump-cache wipes plus the vCPU-thread dirty re-arm walks, as a share of the vCPU thread. B <= 5.0 (A measured 23.9 on disk). And the arming walks pr/s fall >= 10x, and discards di/s fall >= 10x, B against A. If churn% on B is not below 5.0, the lever is inert here: report it and stop; do not tune.",
+    "M2 (cost side, the slow stores)": "Pages keep their code, so stores to data sharing a code page trap every time. Crimson and Blinx: slow/s on B is REPORTED against A, no threshold on the rise, and cb/s (stores the bitmap answered without a walk) is >= 0.8 of B's slow/s on both titles. FAILS if cb/s < 0.8 * slow/s: then the walks the bitmap exists to remove are still happening. A rise in slow/s above 20x on either title stops the fold until it is priced.",
+    "M3 (the number that counts, fps)": "Crimson, crimson-skies route: B's median gfps >= A's + 2 and >= 26, and B's median G ms < A's. This is a PREDICTION off a BOUND: 23.9% is what the two mechanisms cost, not what removing them returns; the game caps at 30. If M1 holds and M3 fails, the vCPU churn was not what bounded the frame on this route (or the cost moved into M2's slow stores): report both, do not tune.",
+    "M4 (must not regress)": "Blinx, survey route: B's median gfps >= A's - 1 (A's two runs set the floor; 25.5 on disk). No run of either title on B ends in a crash, hang or tombstone (logcat -b crash empty, frames still counted at the end)."
+  },
+  "must_not_move": [
+    "pgraph: tbchurn424-pixels-inert.json, 8 suites, identical captures between 7e6a4ac88a and 1d1251aa4b"
+  ],
+  "what_this_cannot_see": "Self-modifying code that a spared block should have caught. The range test makes invalidation do LESS; its failure mode is a stale block executing. pgraph suites are static content; the soaks show only no crash/hang/visible break on two titles. The corpus survey over more titles is the stronger instrument, and HAKUX_TCG424_WHOLEPAGE=1 is the field kill switch.",
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures, so there is no golden key for ab_compare. The legs are read with churn.py off the [tlb68], hakuX-pages and hakuX-perf lines."
+}

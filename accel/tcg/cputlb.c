@@ -146,6 +146,10 @@ uint64_t hakux_tlb68_rs;        /* dynamic TLB resizes, any mode (#311 rs) */
 uint64_t hakux_tlb68_ka;        /* hunk (a): pages kept armed on emptying */
 uint64_t hakux_tlb68_kafb;      /* hunk (a): ... disarmed by the fallback */
 static __thread bool hakux_tlb68_arming;
+/* #424, defined in tb-maint.c: range test on, bitmap-answered stores, builds */
+bool hakux_tcg424_range_on(void);
+extern uint64_t hakux_tcg424_cb;
+extern uint64_t hakux_tcg424_cbb;
 
 /*
  * Fix switches, read once from the environment so one binary carries both
@@ -206,7 +210,7 @@ void hakux_tlb68_tick(CPUState *cpu)
     static uint64_t p_cause[HAKUX_TLB68_NCAUSE];
     static uint64_t p_ff, p_ffe, p_pf, p_pfl, p_jc, p_jcns, p_jct, p_jci,
                     p_jcx, p_rd, p_rdc, p_rde, p_rdm, p_rdh, p_rdns, p_rdo,
-                    p_rdoe, p_rdons, p_sd, p_rs, p_ka, p_kafb;
+                    p_rdoe, p_rdons, p_sd, p_rs, p_ka, p_kafb, p_cb, p_cbb;
     static unsigned window;
     int64_t now = get_clock();
     struct timespec ts;
@@ -266,7 +270,8 @@ void hakux_tlb68_tick(CPUState *cpu)
               " rdo=%" PRIu64 " rdoe=%" PRIu64 " rdous=%" PRIu64
               " sd=%" PRIu64 " dm=0x%x sz=%s"
               " tw=%" PRIu64 " tn=%zu rs=%" PRIu64
-              " ka=%" PRIu64 " kafb=%" PRIu64 " fx=rd%djc%dka%dtb%d",
+              " ka=%" PRIu64 " kafb=%" PRIu64 " fx=rd%djc%dka%dtb%d"
+              " rt=%d cb=%" PRIu64 " cbb=%" PRIu64,
               window++, (now - prev_ns) / 1000000,
               (cpu_ns - prev_cpu_ns) / 1000000,
               hakux_tlb68_ff - p_ff, hakux_tlb68_ff_empty - p_ffe,
@@ -289,7 +294,9 @@ void hakux_tlb68_tick(CPUState *cpu)
               hakux_tlb68_rs - p_rs,
               hakux_tlb68_ka - p_ka, hakux_tlb68_kafb - p_kafb,
               hakux_tlb68_rd_on(), hakux_tlb68_jc_on(),
-              HAKUX_TCG311_KEEP_ARMED, HAKUX_TCG311_TLB_BOUND);
+              HAKUX_TCG311_KEEP_ARMED, HAKUX_TCG311_TLB_BOUND,
+              hakux_tcg424_range_on(), hakux_tcg424_cb - p_cb,
+              hakux_tcg424_cbb - p_cbb);
 
     for (int i = 0; i < HAKUX_TLB68_NCAUSE; i++) {
         p_cause[i] = c[i];
@@ -304,6 +311,7 @@ void hakux_tlb68_tick(CPUState *cpu)
     p_rdo = rdo; p_rdoe = rdoe; p_rdons = rdons;
     p_sd = hakux_tlb68_sd;
     p_rs = hakux_tlb68_rs; p_ka = hakux_tlb68_ka; p_kafb = hakux_tlb68_kafb;
+    p_cb = hakux_tcg424_cb; p_cbb = hakux_tcg424_cbb;
     prev_ns = now;
     prev_cpu_ns = cpu_ns;
 }

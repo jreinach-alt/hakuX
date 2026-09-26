@@ -23,6 +23,7 @@
 #endif
 #include "qemu/interval-tree.h"
 #include "qemu/qtree.h"
+#include "qemu/bitmap.h"
 #include "exec/cputlb.h"
 #include "exec/log.h"
 #include "exec/page-protection.h"
@@ -79,6 +80,15 @@ uint64_t hakux_inval_would_survive;   /* events that would NOT have, with the
  * are over-reports.
  */
 uint64_t hakux_tlb_protect_calls;     /* arming walks: the 10.6% symbol */
+/*
+ * #424: stores to an armed code page that the page's code bitmap answered
+ * without a walk (the write touched no translated byte), and bitmaps built or
+ * rebuilt. Written only by the vCPU thread (notdirty_write's fast path) and,
+ * for the rebuild count, by whoever holds the page lock. Printed on the
+ * [tlb68] line as cb= and cbb=. See tb_invalidate_phys_range_fast().
+ */
+uint64_t hakux_tcg424_cb;
+uint64_t hakux_tcg424_cbb;
 /*
  * TBs visited by the invalidation loop that already carried CF_INVALID.
  *
@@ -527,6 +537,17 @@ struct PageDesc {
      */
     uint16_t armed_idle;
 #endif
+#ifdef XBOX
+    /*
+     * #424: one bit per byte of the page that some TB on the list above was
+     * translated from, dead TBs included; NULL until the page has taken
+     * HAKUX_CODE_BITMAP_THRESHOLD code-write traps. A SUPERSET of the listed
+     * extents at all times: bits are set on every tb_page_add() and cleared
+     * only by a rebuild from the list. Under @lock, like first_tb.
+     */
+    unsigned long *code_bitmap;
+    uint16_t code_writes;
+#endif
 };
 
 void page_table_config_init(void)
@@ -741,6 +762,121 @@ static void page_unlock(PageDesc *pd)
     qemu_spin_unlock(&pd->lock);
     page_unlock__debug(pd);
 }
+
+#ifdef XBOX
+/*
+ * #424: the range test and the code bitmap that makes it cheap.
+ *
+ * HAKUX_TCG424_WHOLEPAGE=1 (request.sh --env) restores the fork's whole-page
+ * invalidation (xemu 703566ce33): every block on a written page is discarded
+ * and the bitmap is never consulted. Default: the range test, upstream's
+ * behaviour. Read once.
+ */
+static int hakux_tcg424_range = -1;
+
+bool hakux_tcg424_range_on(void);   /* also declared in cputlb.c */
+bool hakux_tcg424_range_on(void)
+{
+    int v = qatomic_read(&hakux_tcg424_range);
+
+    if (unlikely(v < 0)) {
+        const char *e = getenv("HAKUX_TCG424_WHOLEPAGE");
+        v = !(e && e[0] == '1');
+        qatomic_set(&hakux_tcg424_range, v);
+    }
+    return v;
+}
+
+/* Upstream's SMC_BITMAP_USE_THRESHOLD, from before it dropped the bitmap. */
+#define HAKUX_CODE_BITMAP_THRESHOLD 10
+
+/*
+ * The bytes of @p that TB @tb (linked on @p as its page @n) was translated
+ * from, as page offsets [*lo, *hi]. The arithmetic is the range test's own
+ * (tb_overlaps_written_range), so "no bit set" and "the range test would
+ * spare every block" are the same statement. Superblocks get the whole page:
+ * their tb->size is A's and their page_addr1 is B's, so the arithmetic is
+ * arbitrary for them, and the invalidation loop discards them unconditionally.
+ */
+static void tb_page_code_extent(const TranslationBlock *tb, unsigned n,
+                                unsigned *lo, unsigned *hi)
+{
+    tb_page_addr_t tb_start = tb_page_addr0(tb);
+    tb_page_addr_t tb_last = tb_start + MAX(tb->size, 1) - 1;
+
+    if (tb->tier >= 2 || tb->superblock != NULL) {
+        *lo = 0;
+        *hi = TARGET_PAGE_SIZE - 1;
+    } else if (n == 0) {
+        tb_last = MIN(tb_last, tb_start | ~TARGET_PAGE_MASK);
+        *lo = tb_start & ~TARGET_PAGE_MASK;
+        *hi = tb_last & ~TARGET_PAGE_MASK;
+    } else {
+        *lo = 0;
+        *hi = tb_last & ~TARGET_PAGE_MASK;
+    }
+}
+
+static void page_code_bitmap_add(PageDesc *p, const TranslationBlock *tb,
+                                 unsigned n)
+{
+    unsigned lo, hi;
+
+    tb_page_code_extent(tb, n, &lo, &hi);
+    bitmap_set(p->code_bitmap, lo, hi - lo + 1);
+}
+
+/* (Re)build @p's bitmap from its list. Call with @p->lock held. */
+static void page_code_bitmap_build(PageDesc *p)
+{
+    TranslationBlock *tb;
+    int n;
+
+    if (!p->code_bitmap) {
+        p->code_bitmap = bitmap_new(TARGET_PAGE_SIZE);
+    } else {
+        bitmap_zero(p->code_bitmap, TARGET_PAGE_SIZE);
+    }
+    TB_FOR_EACH_TAGGED(p->first_tb, tb, n, page_next) {
+        page_code_bitmap_add(p, tb, n);
+    }
+    hakux_tcg424_cbb++;
+}
+
+static void page_code_bitmap_free(PageDesc *p)
+{
+    g_free(p->code_bitmap);
+    p->code_bitmap = NULL;
+    p->code_writes = 0;
+}
+
+/*
+ * True if the store [start, start + len) provably touches no byte any TB on
+ * its page was translated from, so the range test would spare every block
+ * and the invalidation can be skipped outright. False means "walk", never
+ * "stale": the bitmap is a superset of the listed extents.
+ */
+static bool page_code_bitmap_misses(PageDesc *p, ram_addr_t start,
+                                    unsigned len)
+{
+    unsigned off = start & ~TARGET_PAGE_MASK;
+    bool miss = false;
+
+    page_lock(p);
+    if (p->first_tb) {
+        if (!p->code_bitmap &&
+            ++p->code_writes >= HAKUX_CODE_BITMAP_THRESHOLD) {
+            page_code_bitmap_build(p);
+        }
+        if (p->code_bitmap) {
+            miss = find_next_bit(p->code_bitmap, off + len, off) >= off + len;
+        }
+    }
+    page_unlock(p);
+    hakux_tcg424_cb += miss;
+    return miss;
+}
+#endif
 
 void tb_lock_page0(tb_page_addr_t paddr)
 {
@@ -1044,6 +1180,9 @@ static void tb_remove_all_1(int level, void **lp)
         for (i = 0; i < V_L2_SIZE; ++i) {
             page_lock(&pd[i]);
             pd[i].first_tb = (uintptr_t)NULL;
+#ifdef XBOX
+            page_code_bitmap_free(&pd[i]);
+#endif
             page_unlock(&pd[i]);
         }
     } else {
@@ -1077,6 +1216,11 @@ static void tb_page_add(PageDesc *p, TranslationBlock *tb, unsigned int n)
     tb->page_next[n] = p->first_tb;
     page_already_protected = p->first_tb != 0;
     p->first_tb = (uintptr_t)tb | n;
+#ifdef XBOX
+    if (p->code_bitmap) {
+        page_code_bitmap_add(p, tb, n);
+    }
+#endif
 
     /*
      * If some code is already present, then the pages are already
@@ -1640,10 +1784,13 @@ bool tb_invalidate_phys_page_unwind(CPUState *cpu, tb_page_addr_t addr,
  * invalidation every block on the page dies whatever its size.
  *
  * So before changing either thing, count what the range test would have done.
- * This computes it and throws the answer away; the invalidation below is
- * unchanged. The arithmetic is upstream's, kept identical on purpose so the
- * count means "what restoring the test would spare" and not "what some other
- * predicate would spare".
+ * The arithmetic is upstream's, kept identical on purpose so the count means
+ * "what restoring the test would spare" and not "what some other predicate
+ * would spare".
+ *
+ * Since #424 it is the live predicate of the loop below (unless
+ * HAKUX_TCG424_WHOLEPAGE=1), and tb_page_code_extent() is the same arithmetic
+ * expressed as a byte range for the per-page code bitmap.
  */
 static bool tb_overlaps_written_range(const TranslationBlock *tb, int n,
                                       tb_page_addr_t start,
@@ -1730,29 +1877,59 @@ tb_invalidate_phys_page_range__locked(CPUState *cpu,
         }
         if (!(tb_last < start || tb_start > last)) {
 #else
-        {
-            /*
-             * Counted, not acted on: the invalidation below is unchanged.
-             *
-             * The overlap question is asked only of blocks that are still
-             * live. A TB that already carries CF_INVALID is one
-             * do_tb_phys_invalidate refused to unlink (its qht_remove fails,
-             * and the early return fires before tb_remove), so it sits on the
-             * page list and every later store walks over it again. Such a
-             * block has no reason to overlap the current write, so counting it
-             * would report "a range test would have spared this" for a block
-             * that is already dead -- which is how the first run produced
-             * sp_share = 1.000 in every window. That figure was measured over
-             * the wrong population, and the premise check is worthless unless
-             * this split is made here.
-             */
-            tbs_seen++;
-            if (tb_cflags(tb) & CF_INVALID) {
-                hakux_inval_already++;
-            } else {
-                tbs_live++;
-                tbs_overlap += tb_overlaps_written_range(tb, n, start, last);
-            }
+        bool tb_live = !(tb_cflags(tb) & CF_INVALID);
+        bool tb_hit = tb_overlaps_written_range(tb, n, start, last);
+
+        /*
+         * Counted for EVERY block walked, before the predicate below, so the
+         * predicate cannot select its own population and ev/ov/sp/ai mean the
+         * same thing with the range test on or off. The overlap question is
+         * asked only of live blocks: a dead one has no reason to overlap the
+         * write, and counting it would report "spared" for a block that is
+         * already dead (the first run's sp_share = 1.000). visited is counted
+         * here too, so `visited == ov + sp + ai` holds on both predicates;
+         * `visited == discarded + already` holds only on whole-page.
+         */
+        tbs_seen++;
+        hakux_tb_visited++;
+        if (!tb_live) {
+            hakux_inval_already++;
+        } else {
+            tbs_live++;
+            tbs_overlap += tb_hit;
+        }
+
+        /*
+         * #424: THE RANGE TEST, restored. Upstream's behaviour: a block dies
+         * only if the write touched a byte it was translated from.
+         *
+         * xemu 703566ce33 (2021-10-04) wrapped the test in `#ifndef XBOX`
+         * with an empty commit body. On Crimson Skies' flying route that
+         * discards ~21,700 blocks a second, of which `ov` (a written byte)
+         * is 0 in every window: the stores go to data sharing a page with
+         * code. Each discard wipes the jump cache (CF_PCREL), and each page
+         * it empties is re-armed by a walk of the whole TLB on the next
+         * translation there. Those two took 23.9% of the vCPU thread on
+         * master (docs/lanes/tbchurn424/NOTES.md). First restored as
+         * 937848c9e7 (held, 2026-09-14); these clauses are that commit's.
+         *
+         * What it relies on: tb->size and tb->page_addr[] describe the bytes
+         * a block was translated from. That is upstream's contract, and the
+         * arithmetic is upstream's, unmodified.
+         *
+         * Two clauses that are not upstream, and both discard MORE:
+         *   !tb_live -- a dead (tier-1-promoted) block we are walking anyway
+         *     is reclaimed whatever the write touched, so the list does not
+         *     clog (#73). A dead block not walked stays findable, and is
+         *     correct to run: its bytes are unchanged, or a store touching
+         *     them would have walked here.
+         *   tier >= 2 / superblock -- tb->size is A's and page_addr1 is B's,
+         *     so the arithmetic is arbitrary for a superblock. Unreachable
+         *     while XBOX_SUPERBLOCK_ENABLED is 0; `tier` covers the window
+         *     before SuperblockInfo is attached.
+         */
+        if (!hakux_tcg424_range_on() || tb_hit || !tb_live ||
+            tb->tier >= 2 || tb->superblock != NULL) {
 #endif
             if (unlikely(current_tb == tb) &&
                 (tb_cflags(current_tb) & CF_COUNT_MASK) != 1) {
@@ -1773,9 +1950,8 @@ tb_invalidate_phys_page_range__locked(CPUState *cpu,
              * blocks at the top of this file; the short version is that the
              * early return on qht_remove sits before tb_remove, so counting
              * here counts re-visits of blocks this loop already refused to
-             * unlink.
+             * unlink. (Visits are counted above the predicate since #424.)
              */
-            hakux_tb_visited++;
             tb_phys_invalidate__locked(tb);
             if (!hakux_tb_discarded_here) {
                 /* Cannot happen; see hakux_inval_impossible. */
@@ -1854,6 +2030,23 @@ tb_invalidate_phys_page_range__locked(CPUState *cpu,
                 p->small_blocks = true;
             }
 #endif
+        }
+    }
+#endif
+
+#ifdef XBOX
+    /*
+     * #424: a walk is where blocks leave the list, so it is where the bitmap
+     * sheds bits. Rebuilding costs one more pass over the list we just
+     * walked, and only happens when the bitmap said "walk" (or on a DMA or
+     * watchpoint invalidation). Blocks discarded from their OTHER page leave
+     * stale bits here, which cost a walk, never a stale block.
+     */
+    if (p->code_bitmap) {
+        if (!p->first_tb) {
+            page_code_bitmap_free(p);
+        } else if (tbs_seen) {
+            page_code_bitmap_build(p);
         }
     }
 #endif
@@ -1975,7 +2168,22 @@ void tb_invalidate_phys_range_fast(CPUState *cpu, ram_addr_t start,
 
     if (p) {
         ram_addr_t last = start + len - 1;
-        struct page_collection *pages = page_collection_lock(start, last);
+        struct page_collection *pages;
+
+#ifdef XBOX
+        /*
+         * #424: with the range test on, a store that touches no translated
+         * byte discards nothing, so answer it under the one page lock. The
+         * alternative is page_collection_lock() -- a GTree allocated and
+         * every TB's other page locked -- and a walk of the whole list, per
+         * store. Pages that keep their code stay armed now, so these stores
+         * are the common case: on Crimson's route, all of them.
+         */
+        if (hakux_tcg424_range_on() && page_code_bitmap_misses(p, start, len)) {
+            return;
+        }
+#endif
+        pages = page_collection_lock(start, last);
 
         tb_invalidate_phys_page_range__locked(cpu, pages, p,
                                               start, last, ra);
