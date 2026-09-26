@@ -90,10 +90,31 @@ current.
 | each of them equals `orient`(A) pixel for pixel | `price.py --verify A/captures1 B/captures1`, run by this lane (its A==B control FAILs) | coverage changing when an edge is reversed |
 | every other Shade_model capture (162, globs checked to leave exactly the six free), Front_face, Line_width, 3D_primitive, Edge_flag bit-identical | `must_not_move` | the flat gate failing; a fill-path change (none) |
 
-Verdict: pending.  Session 1 (2026-09-26) stopped WAITING on the arms job's
-`[job.arms]` comment on PR #401 for this prediction; on resume run
-`price.py --verify` on its two result dirs, cite both, and mark the PR ready if
-the legs hold.
+**Verdict: PASS.**  Arms 1790435468-arms-flatlm13-base-2947484 (a 02374a6847)
+and 1790435471-arms-flatlm13-fix-2947524 (b 970c382ed1), Thor, 415 captures
+each, progress-log proof in both.
+
+- `ab_compare --expect`: all 417 registered checks hold.  Better 6, worse 0,
+  same 409; exact 39 -> 39; only the six Flat captures differ byte for byte.
+  Structural 610,437 -> 607,673 (-2,764 = 7,314 - 4,550, the offline price).
+- `price.py --verify A/captures1 B/captures1`: B equals `orient`(A) on all six,
+  0 px off.  So reversing an edge does not change its coverage.
+
+| capture | differing A -> B | colour px A / orient / B |
+|---|---|---|
+| Quad_Flat_First, _Last | 1,408 -> 994 | 1,388 / 974 / 974 |
+| QuadStrip_Flat_First, _Last | 1,670 -> 1,156 | 1,275 / 761 / 761 |
+| Poly_Flat_First, _Last | 1,007 -> 553 | 994 / 540 / 540 |
+
+ab_compare labels the verdict UNBOUND because the arms job's requests do not
+carry `--expect`.  The prediction was committed at 14:52 UTC, before either arm
+was queued (08:11 PDT = 15:11 UTC).
+
+Session 1 (2026-09-26) did not finish because it correctly stopped WAITING on
+the arm.  The arm sat behind the arms job's two-pairs-per-tick cap and was not
+queued until 15:11 UTC.  Both dirs had DONE by the resume, but no
+`[job.arms]` comment was ever posted, so handback resumed on the quiet clock
+(`arm=none`).  Session 2 judged the result dirs directly.
 
 ## Do not repeat
 
