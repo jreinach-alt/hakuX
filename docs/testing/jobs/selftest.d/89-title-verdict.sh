@@ -184,8 +184,8 @@ case "$*" in
         n=$(cat "$SOAK_FAKE/n" 2>/dev/null || echo 0); n=$((n+1)); echo "$n" > "$SOAK_FAKE/n"
         a=$(sed -n "${n}p" "$SOAK_FAKE/scenario"); [ -n "$a" ] || a=$(tail -1 "$SOAK_FAKE/scenario")
         case "$a" in
-            up)   printf 'NAME\r\ninit\r\ncom.jreinach.hakux.debug:xemu\r\n' ;;
-            down) printf 'NAME\r\ninit\r\n' ;;
+            up)   printf 'NAME                       \r\ninit                       \r\ncom.jreinach.hakux.debug:xemu\r\n' ;;
+            down) printf 'NAME                       \r\ninit                       \r\n' ;;
             fail) echo "UtilAcceptVsock:271: accept4 failed 110" >&2; exit 1 ;;
         esac ;;
     *) exit 0 ;;

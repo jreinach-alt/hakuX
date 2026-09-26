@@ -166,7 +166,9 @@ ADB_FAILURES=0
 probe() {   # 0 running, 1 not running, 2 adb failed
     local out
     out=$(a shell 'ps -A -o NAME' 2>&1) || { PROBE_ERR="$(printf '%s' "$out" | head -1)"; return 2; }
-    out=$(printf '%s\n' "$out" | tr -d '\r')
+    # toybox pads each row to the column width: the Nova prints `NAME` and
+    # 23 spaces, so strip trailing blanks or every probe reads as a failure.
+    out=$(printf '%s\n' "$out" | tr -d '\r' | sed 's/[[:space:]]*$//')
     printf '%s\n' "$out" | grep -qx NAME || { PROBE_ERR="$(printf '%s' "$out" | head -1)"; return 2; }
     printf '%s\n' "$out" | grep -qx "$PKG:xemu"
 }
