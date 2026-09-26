@@ -343,8 +343,8 @@ side of this change is wiped, not regenerated.
 **LOW-2 (no clip-volume row).** Added to the table, with the SQUARE_OFFSET_4
 consequence named.
 
-**Arm.** `aasample-cc2-clip.json`: a_ref is the fold base, b_ref the
-remediated head, and the prediction, must-not-move list and disc are session
+**Arm.** `aasample-cc2-clip.json` (`register_clip_arm.py`): a_ref is the fold
+base `db73a7fb99`, b_ref the remediated head `2f98d87e20`, and the prediction, must-not-move list and disc are session
 4's, because at sf = 1 the two forms place every sample identically. The
 viewport arm's verdict (PASS, -258,224 structural) is the number this one must
 reproduce.
