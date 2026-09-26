@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 224
+wave = 225
 updated_utc = "2026-09-26T03:40:00Z"
 
 
@@ -204,6 +204,11 @@ issues = []
 retired_utc = "2026-09-25T05:30:00Z"
 files = []
 note = "RETIRED (job.board, board tick wave 146), decision-needed #213 decided by the board under the owner's fully-automated policy: branch claude/docs-tooling-agentic-coding-u152m1 last moved 2026-09-20T13:32Z (tip 5dd10ad8c6), 4.6d quiet, no open PR, no unit. Its files (gl/surface.c, gl/blit.c, gl/texture.c, gl/renderer.c, gl/debug.c, glsl/common.c, glsl/psh.c, target/**, ui/**, audio/**, tests/**) are RELEASED to [free] and #34/#62/#158 return to the dispatch pool. Unfolded commits stay on that branch, untouched; nothing is deleted. If the session comes back it opens numbered PRs and claims files through a new row, as any lane does. The old row's history (grants of gl/draw.c, gl/shaders.c, gl/surface.c, glsl/psh.c, glsl/common.c and the wave-87 psh.c findings M1/M2/L8) is in this branch's git history before wave 146."
+
+[lane.turnipfork]
+issues = ["68"]
+files = ["tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json"]
+note = "RESUMED for Gate 1 step 2 (host session, 2026-09-26T04:35Z): the Gate 1 control was run by the host (our unmodified Turnip 220/220 pixel-identical to T30 on the (g) texture suites; #68 comment 5843130427). Driver runs go through host-tools/turnip_control.sh via '[lane.turnipfork] driver-run:' comments on #68 until toolsmith defect 24 lands."
 
 [lane.statuspage]
 issues = []
