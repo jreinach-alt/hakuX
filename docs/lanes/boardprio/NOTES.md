@@ -235,3 +235,11 @@ is the wrong reason.
 `fleet.py` reaches `gh_rest._api` and `gh_rest._paged` directly for the
 per-PR reads. If gh_rest grows public `pull()`/`check_runs()`/`events()`
 helpers, these calls should move onto them.
+
+### Waiting (2026-09-26)
+
+Items 1-4 of the definition of done are met: pushed, preflight passes,
+`Files:` matches the diff, NOTES written, `Prediction: none` with the reason.
+Waiting on CI (build, selftest) on the head carrying this note. The full
+selftest totals come from that run. When CI is green: put the totals in the
+PR body and `gh pr ready 358`.
