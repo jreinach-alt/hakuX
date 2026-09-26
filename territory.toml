@@ -1246,3 +1246,10 @@ issues = ["428"]
 files = ["android/app/src/main/cpp/xemu_android.cpp", "docs/testing/predictions/vcpuprime428-*.json", "docs/lanes/vcpuprime428/**"]
 standing = false
 note = "STARTED (job.board 2026-09-26T20:25Z), briefs/vcpuprime428.md: #428, 0.5 release perf workstream (#433). Measure on #397 gameplay windows, pgraph suites as the regression gate."
+
+
+[lane.cloud-remediate-420]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-420, remediation of PR #420 on branch lane/pilotgate, attempt 1 of 4 on claude-opus-5-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 420` removes this row when the unit ends."
