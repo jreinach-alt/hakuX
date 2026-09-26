@@ -44,15 +44,70 @@ to 0, and `Ri`/`vblphase` show an idle renderer. So:
   against 720 in the fight. But the pages line over the second gap (08:11:25-08:12:09) has
   45,093 blocks discarded by the store invalidator, against about 1,700 per 60 flips in the
   fight. tier1 also promotes TBs whose cflags carry an instruction count of 1 (`0xff031001`).
-  That is the single-instruction retranslation QEMU does after a store into the page of the
-  running TB.
+  From the code these are **`cpu_io_recompile` TBs**
+  (`CF_MEMI_ONLY|CF_NOIRQ|1`, translate-all.c:1109), not self-modifying-code ones
+  (`CF_NOIRQ|1`, tb-maint.c:1616). In this QEMU any MMIO access that is not the last instruction
+  of its TB (`can_do_io` false, cputlb.c:1625) exits the loop and re-runs that one instruction.
+  So the guest is touching device registers from its hot code during the stall. That fits
+  reading (i), a device poll. It does not prove it: the promote lines are sampled, one per
+  10,000.
+- The store invalidator does not separate the two windows either. Per CPU-second it is about
+  1,400 in the fight and about 1,100 in the second gap.
+- Disc reads are inline (`XEMU_ANDROID_INLINE_AIO=1`, block/file-posix.c:2536). That makes each
+  read synchronous in the thread that issues it, which for IDE is the main loop with BQL held.
+  A long read would therefore make the VBLANK timer late. The stall's VBLANK is on time
+  (0.1 ms mean lateness), so **the main loop is not blocked on the disc during the stall**. A
+  guest waiting on *completions that come slowly but without blocking*, or on its own schedule,
+  is not excluded. No counter in the tree reports IDE/ATAPI commands. `grep android_log_print`
+  over hw/ide, hw/block and block finds none.
 - Audio continues through the stall with no starvation, so the APU is not what stops.
 
-## 2. Next measurement (queued)
+### Surface traffic (`[surf92]`, same run)
 
-A perflog Nova soak of the same route on master dc38b745b8, to get (a)'s per-frame phase split
-(`Sub`, `Fen`, GPU, `Finish sd`/stall sites) and a second occurrence of (b).
+| window | surface_update/s | shape-dirty/s | flips/s | shape-dirty per flip |
+|---|---|---|---|---|
+| menus 08:07:00-08:08:00 | 20,243 | 91.9 | 22.3 | 4.1 |
+| fight 08:09:00-08:09:58 | 20,746 | 95.8 | 16.0 | **6.0** |
+| stall 08:10:13-08:11:24 | 1,925 | 3.8 | ~0 | -- |
+| after 08:12:10-08:12:40 | 16,619 | 70.6 | 11.8 | 6.0 |
+
+The fight re-shapes a surface binding about 6 times per frame (color 0x02CB0000 and zeta
+0x02F80000 alternate on every line). That is the shape in which blinx372c found the
+incompatible-binding eviction (`update_surface_part`, two synchronous finishes per frame). It is
+only a candidate here. Whether each shape change costs a `Finish sd` is what the perflog soak's
+`hakuX-stall` line says.
+
+## 2. Next measurement (queued, not yet run)
+
+`1790450181-doa413-1721403`: a perflog Nova soak of the same route (`survey.route`, 420 s) on
+master dc38b745b8. For (a) it gives the per-frame phase split: `Sub` against `Fen` (the
+pfifo-thread finish wait is in `Sub`, see blinx372c), GPU, and the `Finish sd`/`evict` stall
+sites. For (b) it gives a second occurrence, if the ring-out repeats. When it queued, it had
+about 12 requests ahead of it on two devices.
+
+What each reading would mean:
+
+- (a) `Sub` near `Tot - GPU` with `Finish sd` about 2 per shape change: blinx372c's eviction,
+  with the hunk in `vk/surface.c:update_surface_part`. That file is held by PR #396, so it is
+  not requestable now.
+- (a) GPU near `Tot`: the Adreno is the bound, and the next step is per-pass GPU time, not a
+  sync site.
+- (a) `Idle` large with `Ri` small is impossible. It would indict the instrument.
+- (b) recurs with kicks ~0 and the vCPU at 90% again: guest-side, confirmed on a second
+  occurrence. The next instrument is an IDE/ATAPI command and completion-latency counter
+  (hw/ide/core.c or atapi.c; the file needs a grant) plus the MMIO address the guest polls.
+- (b) does not recur on the same route: it depends on where the ring-out lands, which is
+  itself a finding for the route, not for the emulator.
+
+**Desktop xemu check (brief step 3): not done.** The disc is not on the host. The title
+pipeline deletes the local XISO once the handheld copy is verified, and `titles/` holds only
+the inventory JSON. `request.sh --device desktop` would need the ISO staged on the host first.
 
 ## Do not repeat
 
 - Do not read (b) as a renderer problem from the pictures. The renderer is idle through it.
+- Do not read the fight's 21-25 Hz VBLANK as a pacing-mode bug. The timer lands 24-30 ms late
+  whenever the renderer is busy, and on time when it is idle. It is a symptom of the same
+  contention, and the deferral cap is period/2, so deferral alone cannot produce it.
+- Do not price the fight from `[tlb68]`/pages. Slow stores are about 4k/s, and other-thread
+  dirty resets cost about 60 ms per 2 s (3%).
