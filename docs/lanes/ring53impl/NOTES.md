@@ -3,7 +3,7 @@
 Base: master @ a5b5b628f2. Continues lane.ring53 (`docs/lanes/ring53/NOTES.md`),
 with the console weights of PR #394 (`docs/testing/xbox-ringw-2026-09-26.md`).
 
-## 0. Outcome (read first): exact held out; prediction registered
+## 0. Outcome (read first): exact held out; arm PASS on the device
 
 **Attempt 3 (2026-09-26).** The boundary run on silicon (PR #406,
 `docs/testing/xbox-ringw-boundary-2026-09-26.md`) weighed every candidate
@@ -53,10 +53,41 @@ Prediction: `docs/testing/predictions/ring53impl-ring.json`
 Exact device values are not predicted: the desktop channel is GL on llvmpipe,
 and its floors differ from the device's.
 
-**Waiting (attempt 3 ended here):** for the arms job's `[job.arms]` verdict
-on `ring53impl-ring.json`, and for CI on the pushed head. On a PASS, mark
-#395 ready; the prediction's refs already include the latest master. On a
-FAIL, read which leg failed before touching a weight (see Do not repeat).
+### The arm: PASS (Thor, 2026-09-26)
+
+The arm pair was `1790443804-arms-ring53impl-base-121583` (a `504aeee4d4`) and
+`1790443805-arms-ring53impl-fix-121839` (b `b4fd40a16e`). It was judged with
+`ab_compare.py --expect ring53impl-ring.json`: **PASS, all 172 registered checks hold.**
+- **Readable:** 172 captures per arm, all with `status` `ok`. Neither arm has
+  PARTIAL COVERAGE, and progress-log proof is present in both.
+- **The disc is the same in both arms.**
+- **Counts:** better 2, worse 0, same 170. Exact 46 → 46.
+- **Only the two movers differ byte for byte.** Every must-not-move capture
+  is byte-identical between the arms.
+
+On the device, both movers land on their one-step floors. The `>1` column is
+differing minus `off_by_one`:
+
+| capture | base any / >1 | ring any / >1 | device floor (>1) |
+|---|---:|---:|---:|
+| Specular/ControlFlags_VS | 75,691 / 58,542 | 19,512 / **845** | ControlFlagsNoLight_VS 845 |
+| Specular_back/ControlFlags_VS | 86,567 / 72,748 | 30,556 / **8,615** | ControlFlagsNoLight_VS 8,611 |
+
+**After the arm, the branch was merged with origin/master at `7e6a4ac88a`, and
+the arm was not re-run.**
+- The conflict was the generated index only. It was rebuilt over the fold pins:
+  tests `6743b6a` and pbkitplusplus `e91d509`. `check --exact` passes.
+- The 69 master commits change these hw files: `glsl/geom.c/.h` (#403 line-mode
+  cull), `glsl/psh.c/.h` (#271 X1A7 fetch), and `vk/renderer.c`, `vk/texture.c`.
+  #389 (`vk/draw.c` SFP guard) was already in by the host's earlier merge.
+- None of these touches the ring's files, the vertex-program lighting path, or
+  the uniform upload the ring rides on.
+- The arm needed several hours of the only serving device. The prediction's
+  refs are still ancestors of the head.
+
+**Why attempt 3 did not finish.** It ended correctly, waiting on the arm,
+which was a device run outside the session. The arm finished at 13:47 PDT.
+Attempt 4 read the verdict, merged master, and marked #395 ready.
 
 **Why attempt 2 did not finish.** It applied the boundary weights (`ef22e2a037`)
 and re-derived all 33 rows exact. Then its session ended in the middle of the
