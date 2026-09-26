@@ -75,6 +75,11 @@ device_env() {
     *)  echo "unknown device $1 -- add it to devices.sh rather than guessing" >&2
         return 2 ;;
     esac
+    # THE GAMEPLAY REGIMEN: the OEM performance and fan modes a title soak
+    # runs at (MAX) and leaves the device at (REST). See device_perf below.
+    # Both handhelds run the same Moorechip settings library, so the values
+    # agree today; they are per-row so a third device need not.
+    export DEVICE_PERF_MAX=2 DEVICE_FAN_MAX=3 DEVICE_PERF_REST=0 DEVICE_FAN_REST=4
     export PKG="${PKG:-com.jreinach.hakux.debug}"
     # Per-device lease. One lease file for two devices would have each
     # dispatcher think the other's run was its own.
@@ -125,6 +130,54 @@ adb_call() {
     done
     cat "$out"; rm -f "$out"
     return "$rc"
+}
+
+# ------------------------------------------------ performance and fan modes
+#
+# Two `settings system` integers, owned by the OEM settings library in
+# SystemUI (com.android.settingslib.MoorechipSettingsLib, read out of the
+# Thor's SystemUI.apk on 2026-09-26; the Nova's is the same library):
+#
+#   performance_mode   PerformanceState  0 NORMAL (the default)  1 STANDARD
+#                                        2 HIGH
+#   fan_mode           FanState          0 DISABLED  1 QUIET  2 BALANCE
+#                                        3 PERFORMANCE  4 SMART (the default)
+#                                        5 SPORT  6 CUSTOM
+#
+# Before 2026-09-26 nothing set or recorded them, and the two handhelds sat
+# in different modes (Thor 0/4, Nova 1/4), so every title soak's frame rate
+# carried an unrecorded device-mode variable. docs/lanes/perfregimen/NOTES.md
+# has the measurement that `settings put` moves the hardware, not only the
+# setting.
+#
+# device_perf_values <serial>  ->  "PERF_MAX FAN_MAX PERF_REST FAN_REST"
+# In a subshell: device_env exports SERIAL and the lease path, and a caller
+# asking for four numbers must not have its lease moved as a side effect.
+device_perf_values() {
+    ( device_env "$1" >/dev/null || exit 2
+      printf '%s %s %s %s\n' "$DEVICE_PERF_MAX" "$DEVICE_FAN_MAX" \
+          "$DEVICE_PERF_REST" "$DEVICE_FAN_REST" )
+}
+
+# device_perf_get  ->  "PERF FAN" as the device reads them back, or a word
+# that is not a number ("null", empty) when adb could not say.
+device_perf_get() {
+    adb_call "${ADB_QUICK_TIMEOUT:-20}" "perf mode read" shell \
+        'echo "$(settings get system performance_mode) $(settings get system fan_mode)"' \
+        2>/dev/null | tr -d '\r' | tail -1
+}
+
+# device_perf_set <perf> <fan>  ->  0 when the read-back matches, else 1.
+# Echoes the read-back, so a caller records what the device says rather than
+# what was asked for.
+device_perf_set() {
+    local got
+    adb_call "${ADB_QUICK_TIMEOUT:-20}" "perf mode write $1/$2" shell \
+        "settings put system performance_mode $1; settings put system fan_mode $2" \
+        >/dev/null 2>&1
+    got=$(device_perf_get)
+    printf '%s\n' "$got"
+    [ "$got" = "$1 $2" ]
 }
 
 device_default() {
