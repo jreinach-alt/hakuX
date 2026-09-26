@@ -360,6 +360,16 @@ standing = false
 retired_utc = "2026-09-26T11:40:00Z"
 note = "RETIRED (job.board wave 245): PR #385 MERGED, no open PR on lane/fps382, unit gone; #382 cause named (CPU-access watch traps); code half continues as lane.surfwatch382. Every file this row held is RELEASED to [free] (files another lane has since taken stay with that lane). PRIOR NOTE: STARTED BY THE HOST (seen by job.board wave 243, 2026-09-26T10:15Z): draft PR #385 on lane/fps382, unit active; issue #382 labelled lane:fps382. PRIOR: BRIEFED AT TERRITORY WAVE 242, NOT STARTED (job.board, 2026-09-26; `lane.sh start` was refused approval in the board session, so the HOST runs `docs/testing/lane.sh start fps382 briefs/fps382.md 382`), briefs/fps382.md: #382 50 Cent: Bulletproof intro FMV ~14 fps on the Nova (9 fps for 120 s, 29 fps after). Separate content pacing from emulator cost, name the resource that differs between the 9 and 29 fps windows. No hw/ file granted; reuses lane.blinx372/blinx372b perflog tooling."
 
+[lane.flatlm13]
+issues = ["13"]
+files = ["hw/xbox/nv2a/pgraph/prim_rewrite.c", "docs/testing/predictions/flatlm13-*.json", "docs/lanes/flatlm13/**"]
+note = "DISPATCHED (hostops 2026-09-26T14:55Z): #13 class C of PR #370's attribution (flat colour in a line-mode quad/polygon, 7,324 px, Shade_model only). prim_rewrite.c was in no row. Brief: briefs/flatlm13.md. Class A (line-mode triangle cull, 31,152 px, glsl/geom.c) follows when PR #379 folds and returns geom.c."
+
+[lane.vshcpu345]
+issues = ["345"]
+files = ["subprojects/nv2a_vsh_cpu.wrap", "subprojects/packagefiles/nv2a_vsh_cpu/**", "android/app/src/main/cpp/CMakeLists.txt", "docs/testing/predictions/vshcpu345-*.json", "docs/lanes/vshcpu345/**"]
+note = "DISPATCHED (hostops 2026-09-26T14:55Z): #345 half 2, the nv2a_vsh_cpu constant-writeback evaluator (PR #344 silicon rows; docs/lanes/dpforce345/NOTES.md 'Half 2'). CMakeLists.txt from [free] (released by lane.perfarch this tick); the wrap and packagefiles were in no row. Brief: briefs/vshcpu345.md. Touches android/: its PR needs audit."
+
 [free]
 # RELEASED (hostops 2026-09-26T14:50Z) by retiring lane.turnipfork (PR #353 merged) and lane.perfarch (PR #308 merged): every file each row held.
 # RELEASED (job.board wave 240) by retiring lanes boardprio (PR #358), indexloc (#360), foldflow (#356), statuspage (#354), titlerun (#307), cullnf276 (#368), blinx372 (#374), brdf315b (#375), tie282c (#376), regs200 (#377), vol283r (#378): every file each row held. CLAIMED the same wave: psh.c + geom.c -> lane.tiecode282; dispatcher.sh -> lane.blinx372b.
@@ -545,7 +555,7 @@ note = "RETIRED (job.board wave 245): PR #385 MERGED, no open PR on lane/fps382,
 # exist, and check_coverage.py cannot tell the difference.
 # CLAIMED (hostops, 2026-09-26T03:35Z): glsl/psh.h -> lane.pshqueue (granted at wave 222; [free] still listed it, failing check_territory).
 # CLAIMED (hostops, 2026-09-26 6:45 AM PDT): gl/texture.c -> lane.pshaniso284 (granted 6:40 AM; [free] still listed it, failing check_territory).
-files = ["tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "android/app/build.gradle.kts", "android/app/src/main/cpp/CMakeLists.txt", "hw/xbox/nv2a/pgraph/texture.c", 
+files = ["tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "android/app/build.gradle.kts", "hw/xbox/nv2a/pgraph/texture.c", 
 # RELEASED AT WAVE 158 by retiring lane.cloud190: PR #211 folded as f2e8ef8ba8 (#190 fixed).
     "hw/xbox/nv2a/pmc.c",
 # RELEASED (job.board wave 249) by retiring lane.fmv303 (PR #317 folded bb1f437bb7): vk/display.c.
