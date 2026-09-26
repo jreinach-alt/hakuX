@@ -545,7 +545,8 @@ skip() {   # <sha> <expect-path> <source> <reason>
 #
 # COST. The index below is ONE pass over pairs/ per tick, built once before
 # the judge loop; each decision then reads it plus the handful of judged/
-# markers on that one branch. Not a walk of judged/* inside the loop over
+# markers on that one branch, and, when the branch has a verdict, one
+# `git diff` and one `git ls-tree` to scope them to its PR. Not a walk of judged/* inside the loop over
 # predictions -- bc7ccef95d took two quadratics out of this file and the tick
 # is 11s.
 LABEL_INDEX="$A/log/label-index.tsv"
@@ -644,6 +645,14 @@ def branch_files():                       # what the branch still changes agains
         _branch_files.append(names(base + "..." + head) if base and head else None)
     return _branch_files[0]
 
+def on_trunk():                           # the prediction files the trunk carries, or None when git cannot say
+    try:
+        out = subprocess.run(["git", "-C", repo, "ls-tree", "-r", "--name-only", base, "--",
+                              "docs/testing/predictions/"], capture_output=True, text=True, timeout=60)
+    except Exception:
+        return None
+    return set(out.stdout.split("\n")) - {""} if out.returncode == 0 else None
+
 def withdrawn(r):                         # the arm's code files, none of them left -> the files it changed
     if r["cls"] != "FAIL" or not r["a"] or not r["b"]:
         return None
@@ -687,6 +696,26 @@ for line in lines:
         continue
     rows.append({"sha": sha, "issue": issue, "pred": pred, "when": when,
                  "queued": queued, "cls": cls, "a": a_ref, "b": b_ref})
+
+# A VERDICT IS THE PR'S, NOT THE BRANCH NAME'S. The index keys a pair on the
+# branch it was collected from, and a branch name outlives its PR: lane.remote
+# reuses `claude/docs-tooling-agentic-coding-u152m1` for every PR it opens, so
+# PR #389 was labelled by #60's 09-20 PASS and listed four 09-20 FAILs as
+# `withdrawn`, all five folded with earlier PRs. A pair whose prediction the
+# trunk already carries, and which this branch's diff does not touch, belongs
+# to the PR that folded it: it neither counts nor is listed here.
+#
+# WHY "ON THE TRUNK AND NOT IN THE DIFF", NOT JUST "NOT IN THE DIFF". The
+# stricter rule drops a verdict whose prediction the lane deleted from its own
+# branch -- so deleting the registration would clear a live FAIL, the one exit
+# supersession exists to close. collect() reads the trunk first, so a pair
+# sourced from a branch was not on the trunk when it was queued; it is on the
+# trunk now only because a fold put it there. Anything git cannot answer keeps
+# the pair, as before. docs/lanes/armsscope/NOTES.md has the #389 replay.
+if rows and base and head:
+    have, folded = branch_files(), on_trunk()
+    if have is not None and folded is not None:
+        rows = [r for r in rows if not (r["pred"] in folded and r["pred"] not in have)]
 
 # A withdrawn FAIL leaves the decision entirely: it neither counts nor
 # supersedes, so an older verdict on its issue is live again.

@@ -265,6 +265,81 @@ int pgraph_glsl_surface_pad_alpha_mode(unsigned int color_format)
     }
 }
 
+/* Y16 and R16B16 looked up as a colour reach the combiner as the
+ * texel's four bytes in A8R8G8B8 order -- R16B16 (b2, b1, b0, b3),
+ * Y16 (1, b1, b0, 1) -- not as 16-bit fields narrowed to eight bits.
+ * Measured on Volume_texture Y16 / R16B16 (#283), whose texels are
+ * raw RGBA8888 bytes: silicon's green and blue there are b1 and b0,
+ * where the {G,R,R,G} / {ONE,R,R,ONE} views give b1 in both.  Every
+ * 2D capture of these formats is blind to it, because the test's
+ * converter writes each field as a byte twice (y * 257, {b,b,r,r}).
+ *
+ * Point sampling only: one texel per fetch, so the bytes can be
+ * split back out of the 16-bit value exactly.  A filtered fetch
+ * blends each byte on its own on silicon, which a blended 16-bit
+ * value cannot be split back into.  An SNORM view (every sign flag
+ * set on a format with a signed variant, see snorm_tex) is not split. */
+static bool tex_split_bytes16(unsigned int color_format, uint32_t filter)
+{
+    unsigned int min_filter = GET_MASK(filter, NV_PGRAPH_TEXFILTER0_MIN);
+    /* MAG has no defines of its own; it shares MIN's encoding. */
+    unsigned int mag_filter = GET_MASK(filter, NV_PGRAPH_TEXFILTER0_MAG);
+    const uint32_t any_signed = NV_PGRAPH_TEXFILTER0_ASIGNED |
+                                NV_PGRAPH_TEXFILTER0_RSIGNED |
+                                NV_PGRAPH_TEXFILTER0_GSIGNED |
+                                NV_PGRAPH_TEXFILTER0_BSIGNED;
+    bool snorm = (filter & any_signed) == any_signed &&
+                 pgraph_color_format_has_signed_variant(color_format);
+    bool point_sampled =
+        (min_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_LOD0 ||
+         min_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_NEARESTLOD) &&
+        mag_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_LOD0;
+    return point_sampled && !snorm &&
+           (color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16 ||
+            color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16 ||
+            color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16 ||
+            color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16);
+}
+
+/*
+ * NV2A's anisotropic filter, modelled for the one configuration it has
+ * been measured on: MIN = MAG = BOX_LOD0, where every probe is a point
+ * sample (Texture_anisotropy, #284).  Under TENT or with mipmaps what a
+ * probe is -- its LOD, its filter -- is unmeasured, so those keep the host
+ * sampler.  A split-byte 16-bit texel is rebuilt from one texel, so it
+ * cannot take a blend of probes.  The probes are emitted only on the plain
+ * PROJECT2D path (2D, not cube, not a shadow map); every other mode keeps
+ * the host sampler too.
+ *
+ * Returns the probe count cap N = 1 << MAX_ANISOTROPY when the pixel shader
+ * takes the probes for stage i, else 1.  The shader (tex_aniso) and both
+ * renderers' samplers read this one predicate: a sampler drops host
+ * anisotropy exactly when the shader replaces it, never for a stage the
+ * shader leaves alone.  It reads SHADERPROG, so a write that changes it
+ * marks the texture slots dirty (SET_SHADER_STAGE_PROGRAM, pgraph.c).
+ */
+int pgraph_glsl_tex_aniso_probes(PGRAPHState *pg, int i)
+{
+    uint32_t mode = (pgraph_reg_r(pg, NV_PGRAPH_SHADERPROG) >> (i * 5)) & 0x1F;
+    uint32_t tex_fmt = pgraph_reg_r(pg, NV_PGRAPH_TEXFMT0 + i * 4);
+    uint32_t filter = pgraph_reg_r(pg, NV_PGRAPH_TEXFILTER0 + i * 4);
+    unsigned int color_format = GET_MASK(tex_fmt, NV_PGRAPH_TEXFMT0_COLOR);
+
+    if (mode != PS_TEXTUREMODES_PROJECT2D ||
+        GET_MASK(tex_fmt, NV_PGRAPH_TEXFMT0_DIMENSIONALITY) != 2 ||
+        GET_MASK(tex_fmt, NV_PGRAPH_TEXFMT0_CUBEMAPENABLE) ||
+        pgraph_get_color_format_info(color_format).depth ||
+        GET_MASK(filter, NV_PGRAPH_TEXFILTER0_MIN) !=
+            NV_PGRAPH_TEXFILTER0_MIN_BOX_LOD0 ||
+        GET_MASK(filter, NV_PGRAPH_TEXFILTER0_MAG) !=
+            NV_PGRAPH_TEXFILTER0_MIN_BOX_LOD0 ||
+        tex_split_bytes16(color_format, filter)) {
+        return 1;
+    }
+    return 1 << GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_TEXCTL0_0 + i * 4),
+                         NV_PGRAPH_TEXCTL0_0_MAX_ANISOTROPY);
+}
+
 void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
 {
 
@@ -297,6 +372,8 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
     state->smooth_shading = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3),
                                      NV_PGRAPH_CONTROL_3_SHADEMODE) ==
                             NV_PGRAPH_CONTROL_3_SHADEMODE_SMOOTH;
+    state->fixed_function = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_D),
+                                     NV_PGRAPH_CSV0_D_MODE) == 0;
     state->two_side_light = pgraph_reg_r(pg, NV_PGRAPH_CSV0_C) &
                             NV_PGRAPH_CSV0_C_TWO_SIDE_LIGHT_EN;
     state->stipple = pgraph_glsl_polygon_stipple_enabled(pg);
@@ -511,30 +588,12 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
 
         state->conv_tex[i] = kernel;
 
-        /* Y16 and R16B16 looked up as a colour reach the combiner as the
-         * texel's four bytes in A8R8G8B8 order -- R16B16 (b2, b1, b0, b3),
-         * Y16 (1, b1, b0, 1) -- not as 16-bit fields narrowed to eight bits.
-         * Measured on Volume_texture Y16 / R16B16 (#283), whose texels are
-         * raw RGBA8888 bytes: silicon's green and blue there are b1 and b0,
-         * where the {G,R,R,G} / {ONE,R,R,ONE} views give b1 in both.  Every
-         * 2D capture of these formats is blind to it, because the test's
-         * converter writes each field as a byte twice (y * 257, {b,b,r,r}).
-         *
-         * Point sampling only: one texel per fetch, so the bytes can be
-         * split back out of the 16-bit value exactly.  A filtered fetch
-         * blends each byte on its own on silicon, which a blended 16-bit
-         * value cannot be split back into. */
-        unsigned int mag_filter = GET_MASK(filter, NV_PGRAPH_TEXFILTER0_MAG);
-        /* MAG has no defines of its own; it shares MIN's encoding. */
-        bool point_sampled =
-            (min_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_LOD0 ||
-             min_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_NEARESTLOD) &&
-            mag_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_LOD0;
-        state->tex_bytes16[i] =
-            point_sampled && !state->snorm_tex[i] &&
-            (state->tex_hilo16[i] ||
-             color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16 ||
-             color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16);
+        /* Y16 / R16B16 point-sampled: see tex_split_bytes16. */
+        state->tex_bytes16[i] = tex_split_bytes16(color_format, filter);
+
+        /* NV2A's anisotropic filter on a point-sampled LOD0 2D stage: see
+         * pgraph_glsl_tex_aniso_probes, which the samplers read too. */
+        state->tex_aniso[i] = pgraph_glsl_tex_aniso_probes(pg, i);
     }
 
     state->surface_zeta_format = pg->surface_shape.zeta_format;
@@ -1105,12 +1164,12 @@ static void append_hilo16_texel(struct PixelShader *ps, MString *vars, int k,
      * filtered. */
     if (ps->state->rect_tex[k]) {
         mstring_append_fmt(
-            vars, "vec2 hiloUV%d = norm%d(pT%d.xy / pT%d.w) + texelTieBias;\n",
-            k, k, k, k);
+            vars, "vec2 hiloUV%d = norm%d(pT%d.xy / pT%d.w) + texelTieBias%d;\n",
+            k, k, k, k, k);
     } else {
         mstring_append_fmt(vars,
-                           "vec2 hiloUV%d = pT%d.xy / pT%d.w + texelTieBias;\n",
-                           k, k, k);
+                           "vec2 hiloUV%d = pT%d.xy / pT%d.w + texelTieBias%d;\n",
+                           k, k, k, k);
     }
     mstring_append_fmt(
         vars,
@@ -1375,6 +1434,15 @@ static const char *get_sampler_type(struct PixelShader *ps, enum PS_TEXTUREMODES
             return samplerCube;
         }
         return sampler2D;
+
+    case PS_TEXTUREMODES_BRDF:
+        /* The BRDF function is a volume texture indexed by three angles. */
+        if (dim == 3 && !state->tex_cubemap[i] && !state->shadow_map[i]) {
+            return sampler3D;
+        }
+        NV2A_UNIMPLEMENTED("%dD texture in BRDF mode on stage %d", dim, i);
+        ps->tex_unusable[i] = true;
+        return NULL;
 
     case PS_TEXTUREMODES_DPNDNT_AR:
     case PS_TEXTUREMODES_DPNDNT_GB:
@@ -1677,6 +1745,76 @@ static void psh_append_reflection(const struct PixelShader *ps, MString *vars,
             "vec3 rv_%d = 2.0*n_%d*dot(n_%d,e_%d)/dot(n_%d,n_%d) - e_%d;\n",
             i, i, i, i, i, i, i);
     }
+}
+
+/*
+ * NV2A's anisotropic filter on a point-sampled LOD0 texture (#284), as read
+ * off the Texture_anisotropy goldens by docs/lanes/cloud-284:
+ *
+ * - The footprint is the Jacobian's two columns in guest texels per guest
+ *   pixel, taken per 2x2 quad (rows sharing a quad carry identical golden
+ *   weights), so coarse derivatives where the language has them.
+ * - Probes run along the major column, one minor-axis width apart, the
+ *   minor axis floored at one texel (LOD0 cannot go finer).
+ * - More than N = 1 << MAX_ANISOTROPY probes widens the spacing to Pmaj / N
+ *   rather than truncating the count.
+ * - nf = Pmaj / spacing, fractional: 2*floor(nf/2) probes at +-(k + 1/2)
+ *   spacings, weight 1/nf, and an outer pair carrying the remainder.  Below
+ *   two, one pair at +-(nf - 1)/2 closing in to a single point at nf = 1.
+ *
+ * Each probe is a point sample at LOD0, and texelTieBias applies to each.
+ * Under TENT or with mipmaps what a probe is has never been measured, which
+ * is why tex_aniso stays 1 there.
+ */
+static void psh_append_aniso_probes(const struct PixelShader *ps,
+                                    MString *vars, int i,
+                                    const char *tex_remap)
+{
+    int n = ps->state->tex_aniso[i];
+    /* dFdxCoarse is GLSL 4.50; the desktop (400) and GLES builds take the
+     * driver's own derivative, which is per-quad on most. */
+    const char *dx = ps->opts.vulkan ? "dFdxCoarse" : "dFdx";
+    const char *dy = ps->opts.vulkan ? "dFdyCoarse" : "dFdy";
+
+    mstring_append_fmt(vars,
+        "vec4 t%d;\n"
+        "{\n"
+        "  vec2 aUV = %s(pT%d.xy) / pT%d.w + texelTieBias%d;\n"
+        "  vec2 aSize = vec2(textureSize(texSamp%d, 0)) / texScale[%d];\n"
+        "  vec2 aDx = %s(aUV) * aSize * float(surfaceScale.x);\n"
+        "  vec2 aDy = %s(aUV) * aSize * float(surfaceScale.y);\n"
+        "  float aPx = length(aDx), aPy = length(aDy);\n"
+        "  bool aYMaj = aPy >= aPx;\n"
+        "  float aMaj = aYMaj ? aPy : aPx;\n"
+        "  float aMin = aYMaj ? aPx : aPy;\n"
+        "  vec2 aAxis = (aYMaj ? aDy : aDx) / max(aMaj, 1e-9);\n"
+        "  float aPe = max(max(aMin, 1.0), aMaj / %d.0);\n"
+        "  float aNf = clamp(aMaj / aPe, 1.0, %d.0);\n"
+        "  vec2 aStep = aAxis * aPe / aSize;\n"
+        "  if (aNf < 2.0) {\n"
+        "    vec2 aD = (aNf - 1.0) * 0.5 * aStep;\n"
+        "    t%d = 0.5 * (textureLod(texSamp%d, aUV - aD, 0.0) +\n"
+        "                 textureLod(texSamp%d, aUV + aD, 0.0));\n"
+        "  } else {\n"
+        "    float aFull = 2.0 * floor(aNf * 0.5);\n"
+        "    float aW = 1.0 / aNf;\n"
+        "    vec4 aAcc = vec4(0.0);\n"
+        "    for (int k = 0; k < %d; k++) {\n"
+        "      if (float(2 * k) < aFull) {\n"
+        "        vec2 aD = (float(k) + 0.5) * aStep;\n"
+        "        aAcc += aW * (textureLod(texSamp%d, aUV - aD, 0.0) +\n"
+        "                      textureLod(texSamp%d, aUV + aD, 0.0));\n"
+        "      }\n"
+        "    }\n"
+        "    vec2 aD = (aFull * 0.5 + 0.5) * aStep;\n"
+        "    aAcc += (aNf - aFull) * 0.5 * aW *\n"
+        "            (textureLod(texSamp%d, aUV - aD, 0.0) +\n"
+        "             textureLod(texSamp%d, aUV + aD, 0.0));\n"
+        "    t%d = aAcc;\n"
+        "  }\n"
+        "}\n",
+        i, tex_remap, i, i, i, i, i, dx, dy, n, n, i, i, i, n / 2, i, i, i,
+        i, i);
 }
 
 static void apply_convolution_filter(const struct PixelShader *ps, MString *vars, int tex)
@@ -1988,6 +2126,17 @@ static void append_fog_factor(const struct PixelShader *ps, MString *vars,
 static bool stage_consumed_raw(const struct PixelShader *ps, int i)
 {
     for (int j = i + 1; j < 4; j++) {
+        /* BRDF reads the two stages before it, not input_tex[j], and indexes
+         * its volume with their whole 16-bit fields.  Split into bytes by
+         * tex_bytes16 it would sample the theta field's low byte and the phi
+         * field's high byte instead: that reading reproduces the #315 arm's
+         * capture at e3b13f5b45 on 598 of 610 wedge px, and the golden on
+         * none (docs/lanes/brdf315b/NOTES.md). */
+        /* A BRDF in stage 0 or 1 has no two stages before it and is
+         * emitted as NONE, so it reads nothing raw. */
+        if (ps->tex_modes[j] == PS_TEXTUREMODES_BRDF && j >= 2 && j - i <= 2) {
+            return true;
+        }
         if (ps->input_tex[j] != i) {
             continue;
         }
@@ -2010,6 +2159,128 @@ static bool stage_consumed_raw(const struct PixelShader *ps, int i)
         }
     }
     return false;
+}
+
+/*
+ * #282, #283: silicon's direction for an exact v tie, on the one triangle
+ * configuration it has been measured on.  Emits texelTieBias0..3, the
+ * texelTieBias each stage's sample adds; a stage the rule does not reach gets
+ * texelTieBias itself.
+ *
+ * Silicon has no sampler tie rule.  Where the interpolated v lands exactly on
+ * a texel boundary, which texel it takes follows the binades of the
+ * triangle's barycentric weights (docs/lanes/cloud-282b, "What the goldens do
+ * show"): for a triangle (v0, v1, v2) whose v0 and v1 share v and whose v
+ * rises toward v2,
+ *
+ *     down  iff  l2 <= 1/2  and not (l0 in (1/4,1/2] and l2 in (1/4,1/2])
+ *
+ * and up otherwise, with an exact power of two counting as a hair below
+ * itself.  Measured three times on silicon: the checkerboard quad
+ * (99.88% of 284,681 v <= 128 tie px, the fit), Texture_render_target row
+ * 240 (6,108 of 6,108, docs/lanes/tie282c) and Volume texture (6,496 of
+ * 6,496, docs/lanes/vol283r), the last two on geometry the rule was not read
+ * from.  VS-drawn checkerboards go up (32,674 of 32,674).
+ *
+ * All three are the same configuration, and only it is taken: a
+ * fixed-function draw, v0, v1, v2 = upper left, upper right, lower right of
+ * an axis-aligned right triangle, equal w on all three (so the interpolation
+ * is affine), v constant along v0-v1 and rising toward v2, constant q.  The
+ * general form -- other vertex roles, projective interpolation -- is not
+ * determined by anything on disk, and one natural generalisation ("the odd
+ * vertex's weight is computed a hair low") is refuted by the u ties, which
+ * silicon puts up where it would put them down.  Those draws keep "up".
+ *
+ * Nor is a triangle with a power-of-two leg taken.  Every geometry the rule
+ * holds on has legs that are not powers of two (640 x 480, 285.625, 135 x 80,
+ * and Texture_palette's 96 x 96, which the rule makes exact).  Where the legs
+ * are 64, 128 or 256 -- Pixel_shader's DotST, DotZW, BumpEnvMap* and
+ * StageDependent*, Texture_3D_as_2D's 1:1 reference quads -- every tie row
+ * sits in the rule's "down" region and silicon puts all of them up: the rule
+ * took four of those captures off exact.  Presumably the weights are exact
+ * dyadics there, so there is no rounding for a binade to steer.  All of those
+ * triangles are square, so which leg matters is not determined; neither may
+ * be a power of two.
+ *
+ * The weights come from the flat vtxPos0..2 the geometry stage already
+ * passes, in the unscaled frame the depth path's barycentrics use.  In this
+ * configuration l0 = (x1 - x) / (x1 - x0) and l2 = (y - y0) / (y2 - y0), and
+ * each binade test below is those differences scaled by a power of two:
+ * exact on the 1/16 grid, so the half-open ends fall where silicon's do.
+ * Which vertex carries which v is read from the texcoord's screen
+ * derivatives, so no per-vertex texcoord varying is needed.
+ *
+ * Vulkan only: gl_FragCoord shares vtxPos's frame there (the depth path
+ * relies on it), and it has not been checked on the GL renderer.  Smooth
+ * shading only: a flat, last-provoking TRIANGLES draw is rotated by
+ * prim_rewrite.c, and the rule names vertices by their place.
+ */
+static bool texel_tie_rule_stage(const struct PixelShader *ps, int i)
+{
+    if (ps->tex_unusable[i] || ps->state->shadow_map[i] ||
+        (i == 3 && ps->state->point_sprite)) {
+        return false;
+    }
+    switch (ps->tex_modes[i]) {
+    case PS_TEXTUREMODES_PROJECT2D:
+        return ps->state->dim_tex[i] == 2 && !ps->state->tex_cubemap[i];
+    case PS_TEXTUREMODES_PROJECT3D:
+        return ps->state->dim_tex[i] == 3;
+    default:
+        return false;
+    }
+}
+
+static void append_texel_tie_rule(const struct PixelShader *ps, MString *fn,
+                                  MString *body)
+{
+    bool gate = ps->opts.vulkan && ps->state->fixed_function &&
+                ps->state->smooth_shading;
+    bool any = false;
+
+    for (int i = 0; i < 4; i++) {
+        if (gate && texel_tie_rule_stage(ps, i)) {
+            mstring_append_fmt(body,
+                "vec2 texelTieBias%d = vec2(texelTieBias.x,\n"
+                "                          texelTieBias.y * texelTieV(vtxT%d));\n",
+                i, i);
+            any = true;
+        } else {
+            mstring_append_fmt(body, "vec2 texelTieBias%d = texelTieBias;\n",
+                               i);
+        }
+    }
+    if (!any) {
+        return;
+    }
+
+    mstring_append(fn,
+        "bool texelTiePow2(float x) {\n"
+        "  int e;\n"
+        "  return frexp(x, e) == 0.5;\n"
+        "}\n\n"
+        "float texelTieV(vec4 t) {\n"
+        "  float s = t.y / t.w;\n"
+        "  vec2 ds = vec2(dFdx(s), dFdy(s));\n"
+        "  vec2 dq = vec2(dFdx(t.w), dFdy(t.w));\n"
+        "  vec2 p = gl_FragCoord.xy / vec2(surfaceScale);\n"
+        "  float W = vtxPos1.x - vtxPos0.x;\n"
+        "  float H = vtxPos2.y - vtxPos1.y;\n"
+        "  bool roles = vtxPos0.y == vtxPos1.y && vtxPos1.x == vtxPos2.x &&\n"
+        "               W > 0.0 && H > 0.0 &&\n"
+        "               !texelTiePow2(W) && !texelTiePow2(H) &&\n"
+        "               vtxPos0.w == vtxPos1.w && vtxPos1.w == vtxPos2.w &&\n"
+        "               ds.y > 0.0 && abs(ds.x) <= ds.y * (1.0 / 1024.0) &&\n"
+        "               abs(dq.x) + abs(dq.y) <= abs(t.w) * (1.0 / 65536.0);\n"
+        "  if (!roles) {\n"
+        "    return 1.0;\n"
+        "  }\n"
+        "  float a = vtxPos1.x - p.x;\n" /* l0 * W */
+        "  float b = p.y - vtxPos0.y;\n" /* l2 * H */
+        "  bool band = 4.0 * a > W && 2.0 * a <= W &&\n"
+        "              4.0 * b > H && 2.0 * b <= H;\n"
+        "  return (2.0 * b <= H && !band) ? -1.0 : 1.0;\n"
+        "}\n\n");
 }
 
 static MString* psh_convert(struct PixelShader *ps)
@@ -2053,6 +2324,10 @@ static MString* psh_convert(struct PixelShader *ps)
      * 3,910 px.  The change is still net positive -- Point_params gains
      * 12,027 px -- but by roughly 7,800 rather than 11,700.
      * docs/investigations/edge-defect.md carries the measurements.
+     *
+     * #282 found the v rule, on one configuration only, so only that
+     * configuration takes it; every other draw keeps "up" (see
+     * append_texel_tie_rule() below).
      */
     mstring_append(preflight,
                    "const vec2 texelTieBias = vec2(1.0 / 262144.0, 1.0 / 262144.0);\n");
@@ -3053,6 +3328,8 @@ static MString* psh_convert(struct PixelShader *ps)
                                 vars,
                                 "vec4 t%d = texture(texSamp%d, remap2DToCube(%s(pT%d.xyw)));\n",
                                 i, i, tex_remap, i);
+                        } else if (ps->state->tex_aniso[i] > 1) {
+                            psh_append_aniso_probes(ps, vars, i, tex_remap);
                         } else {
                             /* texelTieBias: see the note by its definition.
                              * Scaled by w so that textureProj's own divide
@@ -3060,8 +3337,8 @@ static MString* psh_convert(struct PixelShader *ps)
                             mstring_append_fmt(
                                 vars,
                                 "vec4 t%d = textureProj(texSamp%d,\n"
-                                "    vec3(%s(pT%d.xy) + texelTieBias * pT%d.w, pT%d.w));\n",
-                                i, i, tex_remap, i, i, i);
+                                "    vec3(%s(pT%d.xy) + texelTieBias%d * pT%d.w, pT%d.w));\n",
+                                i, i, tex_remap, i, i, i, i);
                         }
                     } else if (ps->state->dim_tex[i] == 3) {
                         mstring_append_fmt(vars, "vec4 t%d = textureProj(texSamp%d, vec4(pT%d.xy, 0.0, pT%d.w));\n",
@@ -3103,8 +3380,19 @@ static MString* psh_convert(struct PixelShader *ps)
                 psh_append_shadowmap(ps, i, true, vars);
             } else {
                 apply_border_adjustment(ps, vars, i, "pT%d");
-                mstring_append_fmt(vars, "vec4 t%d = textureProj(texSamp%d, %s(pT%d.xyzw));\n",
-                                   i, i, tex_remap, i);
+                if (ps->state->dim_tex[i] == 3) {
+                    /* texelTieBias on u and v, as PROJECT2D; r is left
+                     * alone, every Volume texture residual being a v tie
+                     * inside one slice (docs/lanes/vol283r).  Volumes are
+                     * swizzled, so there is no rect remap to apply. */
+                    mstring_append_fmt(vars,
+                        "vec4 t%d = textureProj(texSamp%d,\n"
+                        "    vec4(pT%d.xy + texelTieBias%d * pT%d.w, pT%d.zw));\n",
+                        i, i, i, i, i, i);
+                } else {
+                    mstring_append_fmt(vars, "vec4 t%d = textureProj(texSamp%d, %s(pT%d.xyzw));\n",
+                                       i, i, tex_remap, i);
+                }
             }
             break;
         case PS_TEXTUREMODES_CUBEMAP:
@@ -3213,10 +3501,21 @@ static MString* psh_convert(struct PixelShader *ps)
                 i, i, i, i);
             break;
         case PS_TEXTUREMODES_BRDF:
-            if (!stage_consistent(ps, vars, i, 2, 3, 2, "PS_TEXTUREMODES_BRDF")) break;
-            mstring_append_fmt(vars, "vec4 t%d = vec4(0.0); /* PS_TEXTUREMODES_BRDF */\n",
-                               i);
-            NV2A_UNIMPLEMENTED("PS_TEXTUREMODES_BRDF");
+            /* Stages i-2 and i-1 are ordinary reads whose texels carry the
+             * eye and light directions as two 16-bit fields, theta in the
+             * high half and phi in the low; SZ_R16B16's {G,R,R,G} view puts
+             * them in .r and .g. The volume lookup is (s, t, r) =
+             * (theta_eye, theta_light, phi_light - phi_eye), the phi
+             * difference taken modulo a full turn. Fitted per pixel on the
+             * three Texture_BRDF goldens (docs/lanes/brdf315/NOTES.md):
+             * 605 of 610 modelled wedge pixels whole-texel exact, the rest
+             * one texel off at a boundary. The feeding stages define no dot
+             * product, so none is required of them. */
+            if (!stage_consistent(ps, vars, i, 2, 3, 0, "PS_TEXTUREMODES_BRDF")) break;
+            mstring_append_fmt(vars,
+                "vec4 t%d = texture(texSamp%d, vec3(t%d.r, t%d.r, "
+                "fract(t%d.g - t%d.g))); /* PS_TEXTUREMODES_BRDF */\n",
+                i, i, i - 2, i - 1, i - 1, i - 2);
             break;
         case PS_TEXTUREMODES_DOT_ST:
             if (!stage_consistent(ps, vars, i, 2, 3, 1, "PS_TEXTUREMODES_DOT_ST")) break;
@@ -3840,17 +4139,27 @@ static MString* psh_convert(struct PixelShader *ps)
         }
     }
 
+    MString *tie_fn = mstring_new();
+    MString *tie = mstring_new();
+    append_texel_tie_rule(ps, tie_fn, tie);
+
     MString *final = mstring_new();
     pgraph_glsl_append_version(final, ps->opts.vulkan, ps->opts.gles,
                                ps->opts.gles_version);
     mstring_append(final, mstring_get_str(preflight));
+    mstring_append(final, mstring_get_str(tie_fn));
     mstring_append(final, "void main() {\n");
+    /* Ahead of clip: the rule takes derivatives, which a discard in the
+     * clip code would leave undefined for the rest of the quad. */
+    mstring_append(final, mstring_get_str(tie));
     mstring_append(final, mstring_get_str(clip));
     mstring_append(final, mstring_get_str(vars));
     mstring_append(final, mstring_get_str(ps->code));
     mstring_append(final, "}\n");
 
     mstring_unref(preflight);
+    mstring_unref(tie_fn);
+    mstring_unref(tie);
     mstring_unref(vars);
     mstring_unref(ps->code);
 
