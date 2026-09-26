@@ -108,7 +108,22 @@ disarm_audio() {
 # capture by default) and to run.log as `PERF:` lines: perf_mode and
 # fan_mode are the modes the title ran at, as read back from the device, and
 # perf_restored is whether the read-back after restoring equals REST.
-PERF_REGIMEN="${PERF_REGIMEN:-max}"
+#
+# A QUEUED SOAK picks its regimen with `request.sh --env PERF_REGIMEN=rest`.
+# The dispatcher does not pass a request's env to this script (it goes to the
+# app's env_vars pref, where an unknown name is harmless), so it is read here
+# from the request the dispatcher is serving: CAPTURE_LOG is
+# $D/results/<id>/logcat.txt and the request is $D/running/<id>.req while it
+# runs. PERF_REQUEST names it directly. The shell's PERF_REGIMEN wins over
+# both, and anything but max|rest|off is max.
+if [ -z "${PERF_REGIMEN:-}" ]; then
+    PERF_REQUEST="${PERF_REQUEST:-${CAPTURE_LOG:+$(dirname "$(dirname "$(dirname "$CAPTURE_LOG")")")/running/$(basename "$(dirname "$CAPTURE_LOG")").req}}"
+    [ -n "$PERF_REQUEST" ] && [ -f "$PERF_REQUEST" ] &&
+        PERF_REGIMEN=$(python3 -c 'import json,sys
+for e in json.load(open(sys.argv[1])).get("env") or []:
+    if e.startswith("PERF_REGIMEN="): print(e.split("=", 1)[1])' "$PERF_REQUEST" 2>/dev/null | tail -1)
+fi
+case "${PERF_REGIMEN:-}" in max|rest|off) ;; *) PERF_REGIMEN=max ;; esac
 PERF_RESULT="${PERF_RESULT:-${CAPTURE_LOG:+$(dirname "$CAPTURE_LOG")/perf_regimen.json}}"
 PERF_BEFORE=""; PERF_RAN=""; PERF_AFTER=""; PERF_RESTORED=""; PERF_SET=0
 read -r PERF_MAX FAN_MAX PERF_REST FAN_REST <<<"$(device_perf_values "$SERIAL" 2>/dev/null)"

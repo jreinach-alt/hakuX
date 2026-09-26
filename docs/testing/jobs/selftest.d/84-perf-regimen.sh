@@ -121,6 +121,21 @@ PERF_REGIMEN=rest perf_soak "$TESTING/soak_title.sh" 1 >/dev/null
 [ "$(cat "$PR/at_start" 2>/dev/null)" = "0 4" ] && ok "rest arm: the title started at REST 0/4" \
     || bad "rest arm: the title started at [$(cat "$PR/at_start" 2>/dev/null)]"
 
+# A queued soak's request picks the arm: `request.sh --env PERF_REGIMEN=rest`.
+# Laid out as the dispatcher does, results/<id>/logcat.txt beside
+# running/<id>.req. Fails if the request is not found from CAPTURE_LOG, or its
+# env is not read -- then the REST arm of the Thor pilot runs at MAX.
+mkdir -p "$PR/d/results/r1" "$PR/d/running"
+echo '{"title":"x","env":["HAKUX_X=1","PERF_REGIMEN=rest"]}' > "$PR/d/running/r1.req"
+CAPTURE_LOG="$PR/d/results/r1/logcat.txt" perf_soak "$TESTING/soak_title.sh" 1 >/dev/null
+[ "$(cat "$PR/at_start" 2>/dev/null)" = "0 4" ] && [ "$(perf_json regimen)" = rest ] \
+    && ok "request env: PERF_REGIMEN=rest in the running request starts the title at REST" \
+    || bad "request env: started at [$(cat "$PR/at_start" 2>/dev/null)], regimen $(perf_json regimen)"
+echo '{"title":"x","env":["HAKUX_X=1"]}' > "$PR/d/running/r1.req"
+CAPTURE_LOG="$PR/d/results/r1/logcat.txt" perf_soak "$TESTING/soak_title.sh" 1 >/dev/null
+[ "$(cat "$PR/at_start" 2>/dev/null)" = "2 5" ] && ok "request env: a request without it runs at MAX" \
+    || bad "request env: a request without PERF_REGIMEN started at [$(cat "$PR/at_start" 2>/dev/null)]"
+
 # Read-back: writes that do nothing must read as not restored.
 touch "$PR/ignore_writes"
 perf_soak "$TESTING/soak_title.sh" 1 >/dev/null
