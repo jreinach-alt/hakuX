@@ -3,6 +3,9 @@
 **Status: PRE-REGISTERED.** This file and its scorer were committed and pushed
 before the emulator dry run and before any console session below.
 
+**Result (2026-09-25):** Hα on every row, and the must-not-move legs held.
+See [`xbox-fogfirst-2026-09-25.md`](../../testing/xbox-fogfirst-2026-09-25.md).
+
 ## The observation this tests
 
 In the #112 item 2 follow-up (PR #346,
