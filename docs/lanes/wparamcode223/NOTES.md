@@ -5,29 +5,24 @@ Brief: build the two hunks PR #304 (wparamff223) priced but did not compile:
 "one-negative triangle with zero grid area draws nothing".  Land them
 together, gate (B) on every capture a must-not-move glob covers, and arm it.
 
-**Status (2026-09-25):** both hunks built, both compiled, prediction
-`docs/testing/predictions/wparamcode223-carry-zeroarea.json` registered on
-a = `6341ee6aa5` (master), b = `8555c013c6` (master + this lane), 23 suites.
-preflight passes.
+**Status (2026-09-26): done.** Both hunks are built and compiled.
+Prediction `docs/testing/predictions/wparamcode223-carry-zeroarea.json` is
+registered on a = `6341ee6aa5` (master) and b = `8555c013c6` (master + this
+lane), over 23 suites.  The arm is judged **PASS**, with all 570 registered
+checks holding: 19 better, 0 worse, 568 same, and exact 116 -> 117.  See
+section 5.
 
-**Waiting (2026-09-25):** on the arms job's `[job.arms]` verdict for
-`wparamcode223-carry-zeroarea.json` on PR #321, and on CI for this head.
-On resume:
-
-- read scores1.tsv `status` for `unreadable`, and run1.log for PARTIAL
-  COVERAGE and UtilAcceptVsock, in both arms;
-- check the per-row prose tolerances in section 4 by hand;
-- then mark ready, or diagnose the failed leg.
-
-**Attempt 2 (2026-09-25 23:55Z): still waiting, same cause.** Attempt 1
-ended waiting on the arm, and handback resumed it because CI went green on
-`634099fd2d`. That was not what it was waiting for.  The arm is still
-unrun: the arms job queued `1790373302-arms-wparamcode223-base-991502` and
-`-fix-991557` at 21:55Z.  Neither has been claimed.  They sit in a
-189-request queue, and the #311 bisect/ghoul runs hold the devices.  With no
-`[job.arms]` verdict, the must-not-move legs are unchecked, so the PR stays
-draft.  Files, prediction and CI are all done; the verdict is the only open
-item.
+**Why attempts 1 and 2 did not finish:** both ended waiting on the arm.
+The arms job queued `1790373302-arms-wparamcode223-base-991502` and
+`-fix-991557` at 21:55Z, into a 189-request queue behind the #311
+bisect/ghoul runs.  Handback resumed attempt 2 because CI was green, but the
+arm was still unrun at that point.  Attempt 3 found the verdict posted.  It
+also found the PR `CONFLICTING`, which is why no CI run existed on
+`33c1ceeca7`.  The only conflict was `docs/testing/nv2a_index.json`.
+Master's copy was taken and rebuilt over nxdk_pgraph_tests `6743b6a` and
+pbkitplusplus `e91d509` (the CI pins), the same way fold.sh does it.  The
+rebuilt index differs from master's only in four geom.c line numbers (+12)
+and in provenance.
 
 ## 1. Re-derived prices (ff_port.py, rerun here, unchanged tools)
 
@@ -119,7 +114,43 @@ What would move each must-not-move leg, by hunk line:
 | Lighting / Specular / Material / Shade / Texgen | the (A) branch or the carry failing to compile or to be a select |
 | Depth_Clamp, Viewport, Texture_perspective, Front_face, Attrib_float, Fog_inf_coord, Degenerate_begin_end, Edge_flag, Overlapping_draw_modes | any non-finite or far-off ff position (A), or zero-area one-negative triangle (B), that I did not enumerate |
 
+## 5. The verdict (arms job, 2026-09-25 18:29 PDT)
+
+PASS: all 570 registered checks hold.  Every mover is in W_param.
+
+| row | A | B | section 4 prose |
+|---|---:|---:|---|
+| ff quad w-0.00 / -1.50e-36 / -1.88e-37 / -3.76e-37 / -7.52e-37 | 79,174 | 314 | ~314: hit |
+| ff quad w0.00 | 72,012 | 376 | ~0: near |
+| ff quad winf | 25,600 | 0 | exact |
+| ff bitri w-inf | 114,508 | 511 | < 2,000: hit |
+| ff bitri winf | 12,880 | 240 | < 2,000: hit |
+| ff bitri w-0.00 / w0.00 | 68,063 / 68,132 | 3,251 / 3,234 | < 2,000: **missed** |
+| ff bitri extremes (6 rows) | ~146,450 | 3,256-3,266 | < 2,000: **missed** |
+| w_gaps, w_gaps_tex_persp | 145,687 | 31,743 | < 25,000: **missed** |
+
+Every other capture is unchanged, 568 of 587.  That covers every
+must-not-move leg: ff_w_zero, w_neg_strip (37,444 in both arms), prog quads,
+rcc, and the Lighting/Shade/Specular/Material/Texgen suites.  No row got
+worse.
+
+The divide is the cause: the bitri extremes fell from ~146k to ~3.2k, not
+the "stays ~146k" that would have refuted it.  The magnitudes in section 4's
+prose were too optimistic for 10 bitri rows (a ~3.2k residual each) and for
+w_gaps (a 31.7k residual).  Those residuals need a different rule; this lane
+has not identified it.
+
+Instrument checks, both arms: scores1.tsv `status` has no `unreadable`.
+`white-content` fell from 18 to 16, because the two bitri rows became `ok`.
+The run1.log PARTIAL COVERAGE line is Front_face 24 of 36 in both arms, and
+W_param is fully covered.  There is no UtilAcceptVsock.
+
 ## For the next lane
+
+- **Residuals after this PR:** 10 ff bitri rows at ~3.2k each, bitri w-inf
+  at 511, and w_gaps / w_gaps_tex_persp at 31,743.  Start from B's
+  captures in `dispatch/results/1790373302-arms-wparamcode223-fix-991557`,
+  not from #304's prices, because those predate both hunks.
 
 - **A grid-area test is only a grid test below 2^19.** Above it pz is not
   snapped, and a far vertex swallows the others.  Any rule keyed on
