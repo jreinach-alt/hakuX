@@ -1765,3 +1765,82 @@ master and to the fix alike. Build, then run disc109 under
 and read Swizzle with `docs/lanes/remote/swizzle_pitch_quads.py`. Revert with
 `git checkout -- hw/xbox/nv2a/pgraph/vk/surface.c` and rebuild. The clean
 arm needs nothing forced.
+
+**The script is the registered patch** (PR #269's pass-1 audit, LOW-1). The
+three forced registrations name `$SCRATCH/p109/v109_forcing.patch`, which was
+never committed. The script reproduces that patch, checked after the audit on
+2026-09-25:
+- On `5807b54f`'s `vk/surface.c` (blob `ee6bbd54897d`), the script writes blob
+  `7cb404a4f0b4`. In a scratch repository holding only that file,
+  `git diff --abbrev=8` then has sha256
+  `39537fdce7b982844801823348f012b4ca66e486afeb6f1955fae8d96fe9a283`. That
+  is byte-identical to the registered patch.
+- On the fix `3f3fe35b` (blob `b0fd1af5905d`), it writes blob `0230b080ab5d`.
+  That is the file the local applier writes, and the B arms' binary was built
+  from it. It has the same 23 added lines and the same removed lines as the
+  patch.
+
+Check an edited script the same way before re-running it. If `git hash-object`
+of its output on `5807b54f` is no longer
+`7cb404a4f0b4ab2cfd20d422808b7937ab1150d1`, the script no longer forces what
+the registrations measured, and a changed count says nothing about the fix.
+
+## #274: Vulkan sampled a surface whose pitch was not the texture's (2026-09-25)
+
+**Where it started.** #274, from the host's unowned-residual inventory:
+`Antialiasing_tests/CreateSurfaceWith{Center1,CenterCorner2,SquareOffset4}`,
+78,496 px each. On the desktop Vulkan reproduced 78,496 on all three, and GL
+read 0 on all three.
+
+**The mechanism.** Vulkan's `check_surface_to_texture_compatiblity()` in
+`vk/texture.c` compared extent, layout, conversion and texel size, but not
+pitch. GL's check refuses a linear surface whose pitch differs from the
+texture's. `CreateSurfaceWithCenter1` renders a 128x128 A8R8G8B8 surface at
+pitch 2048 over the 128x128 texture it then samples at pitch 512. Vulkan took
+the shortcut and sampled the surface image, which holds every fourth texture
+row and then nothing.
+
+A local instrument, never committed, logged the mismatched-pitch shortcut only
+there: twice inside Center1, and zero times on disc109, Clear and surf1.
+CenterCorner2 and SquareOffset4 never take the shortcut, because their
+AA-scaled surfaces fail the extent test. They read 0 each when run alone and
+78,496 after Center1, because they reuse the binding it leaves.
+
+**The fix** (`2c94b7ed`) is GL's condition, added to Vulkan's check for colour
+surfaces only. It sits after the zeta return, because nothing measured says
+what a zeta surface at a mismatched pitch should do.
+
+**Registered before the code** (#274, 5839473352). `9b5a61b1` committed the two
+files, each differing from its posted draft only in `b_ref` and
+`registered_utc`. Both ran on desktop Vulkan on llvmpipe, `surface_scale = 1`,
+3 runs per arm, alternating:
+
+| registration | arms | verdict |
+|---|---|---|
+| `remote-274-vk-s2t-pitch.json` | `9eaae944` vs `2c94b7ed`, Antialiasing + DMA disc | **FAIL, 14 of 16** |
+| `remote-274-vk-s2t-pitch-surf1.json` | same refs, `iso_surf1` | **PASS, 238 of 238** |
+
+- **The three CreateSurfaceWith\* went 78,496 -> 0,** byte-identical in every
+  run of each arm. Nothing else on either disc moved: the other 11 captures of
+  the first disc and all 236 of surf1 are byte-identical between the arms.
+- **The FAIL is the leg named in advance.** I predicted
+  `GPUAAWriteAfterCPUWrite` 2,674 -> 134, as carry-over from Center1's binding.
+  It stayed at 2,674, byte-identical to master, so `better` read 3 where I
+  predicted 4.
+- **Checked after judging, on two-test discs:** Center1 then GPUAA reads 134 on
+  master, so Center1 never contaminated it. FBSurfaceWithCenter1 then GPUAA,
+  and FBSurfaceWithCenterCorner2 then GPUAA, read 2,674 with the fix, and every
+  other earlier test then GPUAA reads 134. The carry-over comes from the
+  framebuffer-surface tests, not from this defect.
+
+**Not covered.**
+- Zeta surfaces are unchanged.
+- `GPUAAWriteAfterCPUWrite`'s carry-over from the FBSurface tests: 2,540 px in
+  sequence, Vulkan only (GL reads 134).
+- Device runs. The code is the same on Android, but no device ran it.
+
+**Re-run it.** Build the disc from the stock image with `make_test_iso.py
+--suite "Antialiasing tests" --suite "DMA corruption around surfaces"
+--progress-log --shutdown-on-completion`. Run each binary under `renderer =
+'VULKAN'`, `surface_scale = 1`, from a fresh HDD with the shader caches
+cleared. Judge each arm pair with `ab_compare.py --expect` on its prediction.

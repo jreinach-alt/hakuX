@@ -42,6 +42,8 @@
 #include "tb-cache-hints.h"
 #ifdef XBOX
 #include "tb-code-hash.h"
+#include "qemu/timer.h"
+#include "accel/tcg/hakux-tlb68.h"
 #ifndef TCG_HIGHWATER
 #define TCG_HIGHWATER 1024
 #endif
@@ -998,6 +1000,22 @@ recycle_tb:
                 qatomic_set(&tcg_ctx->code_gen_ptr, (void *)orig_aligned);
             }
         }
+#ifdef XBOX
+        else {
+            /*
+             * #68: a recycled TB that lost the link race is orphaned -- out
+             * of inv_htable (removed above), not in the htable, on no page
+             * list -- but the recycle cleared its CF_INVALID. With
+             * HAKUX_TCG68_JC a jump-cache slot from before its discard may
+             * still point here, and nothing would ever invalidate it again.
+             * Put the bit back so tb_lookup()'s exact cflags compare rejects
+             * it for good. Needs a second translating thread to reach.
+             */
+            qemu_spin_lock(&tb->jmp_lock);
+            qatomic_set(&tb->cflags, tb->cflags | CF_INVALID);
+            qemu_spin_unlock(&tb->jmp_lock);
+        }
+#endif
         tcg_tb_remove(tb);
         return existing_tb;
     }
@@ -1116,9 +1134,17 @@ void tcg_flush_jmp_cache(CPUState *cpu)
         return;
     }
 
+#ifdef XBOX
+    /* #68: counted and timed; the [tlb68] line in cputlb.c reports both. */
+    int64_t t0 = get_clock();
+#endif
     for (int i = 0; i < TB_JMP_CACHE_SIZE; i++) {
         qatomic_set(&jc->array[i].tb, NULL);
     }
+#ifdef XBOX
+    hakux_tlb68_jc++;
+    hakux_tlb68_jc_ns += get_clock() - t0;
+#endif
 }
 
 /* ================================================================== */
