@@ -102,14 +102,38 @@ def main():
     # No file claimed twice. `free` is checked against the lanes too: a file
     # cannot be both free and held, and that is exactly the state a partial
     # revert leaves behind.
+    #
+    # EXCEPT A FILE ITS FIRST HOLDER HAS RELEASED AT READY (roles/board.md).
+    # A lane whose PR is ready -- out of draft, CI green, its unit gone -- is
+    # finished writing; what is left is two audits and a one-at-a-time fold,
+    # hours per PR. On 2026-09-26 nine hot files were held that way and 31
+    # dispatchable issues waited behind them. So the board lists such a lane's
+    # files in `released = [...]` on its row, the row keeps them in `files`
+    # (the audit and the fold still need to see what the PR touches), and one
+    # more lane may claim them. Overlapping edits then meet at fold time, as
+    # merges do. What stays a FAIL is two holders who have NOT released: two
+    # later lanes on one released file, or a remediation that re-acquired a
+    # file (dropped it from `released`) after another lane started on it.
     owner = {}
+    held = {}               # file -> lanes holding it without releasing it
     problems = []
     for lane, meta in (d.get("lane") or {}).items():
-        for f in meta.get("files", []):
-            if f in owner:
-                problems.append("%s is claimed by both %s and %s"
-                                % (f, owner[f], lane))
-            owner[f] = lane
+        files = meta.get("files", [])
+        released = meta.get("released", [])
+        for f in released:
+            if f not in files:
+                # A release of a file the row does not hold frees nothing and
+                # says it did: the typo'd path stays held by its real owner.
+                problems.append("%s is in %s's released list but not in its "
+                                "files" % (f, lane))
+        for f in files:
+            owner.setdefault(f, lane)
+            if f not in released:
+                held.setdefault(f, []).append(lane)
+    for f, lanes in held.items():
+        if len(lanes) > 1:
+            problems.append("%s is claimed by both %s and %s"
+                            % (f, lanes[0], " and ".join(lanes[1:])))
     for f in (d.get("free") or {}).get("files", []):
         if f in owner:
             problems.append("%s is listed FREE but claimed by %s" % (f, owner[f]))
@@ -170,7 +194,8 @@ def main():
         if not named:
             continue
         hits = {}
-        for f, lane in owner.items():
+        # A released file walls nothing: the next lane may take it.
+        for f, lane in ((f, ls[0]) for f, ls in held.items()):
             if num in (d.get("lane") or {}).get(lane, {}).get("issues", []):
                 continue          # the lane that owns the issue is not a wall
             for n in named:
@@ -189,8 +214,11 @@ def main():
             print("  " + p, file=sys.stderr)
         return 1
 
-    print("territory ok (wave %d, %d lanes, %d files claimed)"
-          % (wave, len(d.get("lane") or {}), len(owner)))
+    released = {f for meta in (d.get("lane") or {}).values()
+                for f in meta.get("released", [])}
+    print("territory ok (wave %d, %d lanes, %d files claimed, %d released "
+          "at ready)" % (wave, len(d.get("lane") or {}), len(owner),
+                         len(released)))
     # After the summary line: idle-watchdog.sh reads `sed -n 1p` of this.
     for num, lane, ns in walled:
         print("NOTE: #%s's blocker names %s, held by %s, which does not own "
