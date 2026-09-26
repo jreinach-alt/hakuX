@@ -74,12 +74,92 @@ What this says:
   coded pictures, 41% of them, over 1.18x the teaser's own length. The player
   both drops pictures and runs late. That is a decoder that cannot keep up.
 
-Verdict so far: **not content-paced. The emulator is the cost, on the vCPU,
-not the renderer.** The brief's falsifier looks only at the renderer, so on
-its own terms it would read "content-paced" (the present interval is at most
-111 ms and the renderer is under 60% busy). The disc refutes that reading.
-The brief's "guest idle-waiting" is false (vCPU 97%). The renderer-based
-emulator-cost leg is false too, because the cost is not on the renderer.
+- **The player drops every B picture.** Sofdec shows only the anchor
+  pictures, I and P. Every boot movie has an anchor every third picture:
+  per 10 s the teaser has 24-26 I and 83-87 P pictures (about 11 per
+  second), and inter and GGLogo have about 10.2-10.4 per second. An anchor
+  every third picture of a 30 fps stream is one every 100 ms, or 6 VBLANKs,
+  which is exactly the measured Vpf of 6.00 and G of 99.5 ms. Dropping B
+  pictures is the standard fallback of an MPEG player that cannot decode in
+  real time. It is not a property of the content.
+
+Verdict: **not content-paced. The emulator is the cost, on the vCPU, not the
+renderer.** The brief's falsifier looks only at the renderer, so on its own
+terms it would read "content-paced": the present interval is at most 111 ms
+and the renderer is under 60% busy. The disc and the dropped B pictures
+refute that reading. The brief's "guest idle-waiting" is false (vCPU 97%).
+Its renderer-based emulator-cost leg is false too, because the cost is not
+on the renderer.
+
+## 2b. The resource: Sofdec writes into a watched colour surface
+
+`[surf92]` in the same run names the colour surface bound during the movie:
+VRAM **0x021A4F80** (`want=0x021a4f80`), which is guest va 0x821A4F80. A
+640x480x4 surface there spans 0x821A4F80-0x822CCF80, and it contains all
+seven slow-store pages. So the game decodes each movie picture with the CPU
+straight into the memory of a live render surface. `[watch311]` shows 4 live
+CPU-access watches through the whole span. Every surface has one while it is
+bound (`register_cpu_access_callback`, vk/surface.c:2047, called at 2293).
+
+The mechanism, all read from code on master 2dc2b5c49a:
+
+1. `tlb_set_page_full` gives every page overlapping a watch `TLB_WATCHPOINT`.
+   That is a slow flag, so the entry also carries `TLB_FORCE_SLOW`, and
+   **every** load and store to the page takes the softmmu slow path.
+2. On a store, `mmu_watch_or_dirty` (accel/tcg/cputlb.c:2098) walks the whole
+   callback list (`mem_check_access_callback_vaddr`, system/physmem.c:942).
+   It then runs `surface_access_callback` (vk/surface.c:1877), which takes
+   `pgraph.lock` (the lock the renderer thread holds while it works), walks
+   every surface, sets `upload_pending = true`, and walks the shelved and
+   invalid lists.
+3. Then `notdirty_write` → `tlb_set_dirty` (cputlb.c:1265) walks all 22 MMU
+   modes and their victim tables to clear `TLB_NOTDIRTY`. It never matches:
+   `tlb_set_dirty1_locked` only clears an entry equal to
+   `addr | TLB_NOTDIRTY`, and this one also carries `TLB_FORCE_SLOW`. That is
+   why sd equals the slow-store count. A normal page takes one slow store and
+   is then fast. This page stays slow for every store.
+
+After the first write in a generation, every later write is redundant work.
+If the surface owes no download, the callback's only effect is to set
+`upload_pending`, which is already true. Under TCG the watch is the only
+detector of CPU writes to a bound surface: `mem_dirty` is hard-wired false
+when `tcg_enabled()` (vk/surface.c:3473). So the watch cannot simply be
+dropped. It has to be re-armed.
+
+## 2c. The hunk, named (no hw/ grant; not edited)
+
+`hw/xbox/nv2a/pgraph/vk/surface.c`. **Watch a surface only while its answer
+can change**:
+
+- In `surface_access_callback`, on a **write** to a surface that owes no
+  download (not `draw_dirty`, or `download_generation == draw_generation`),
+  set `upload_pending` and then `unregister_cpu_access_callback(surface)`.
+  Mark the surface `watch_suspended`.
+- In `pgraph_vk_upload_surface_data`, where `upload_pending` is cleared, and
+  wherever the GPU draws to the surface (`draw_dirty = true`), call
+  `register_cpu_access_callback` on a suspended surface **before** reading
+  VRAM.
+- Cost per movie picture: one unregister and one register, each an
+  `async_safe_run_on_cpu` plus a `tlb_flush_all_cpus_synced`. That is about
+  2 full TLB flushes per displayed picture, against about 238,000 trapped
+  stores per displayed picture today (2.5M/s at 10.5 fps).
+- **The correctness risk, stated:** `mem_access_callback_insert` is
+  asynchronous. It runs when the vCPU next leaves its loop. A guest write
+  that lands after the upload reads VRAM and before the watch is live is
+  missed until the next write that traps. If the guest finishes a picture
+  inside that gap and never touches the surface again, one picture shows
+  partly stale. Either re-arm synchronously (`run_on_cpu`, which waits) or
+  accept at most one stale picture. The arm must include a CPU-texture
+  suite (`Texture_CPU_Update`) as must-not-move.
+- **Price, as a bound rather than a value:** the soak has no per-trap timer.
+  A trap here does a slow-path lookup, two list walks, an uncontended mutex
+  round trip, three surface-list walks, the notdirty slot scan and a
+  198-entry `tlb_set_dirty` walk. At 300 ns per trap, 2.5M traps per second
+  is 75% of the vCPU. At 150 ns it is 38%. Either way, removing the traps is
+  large next to the 3x the movie needs (decoding all 30 pictures/s instead
+  of the 11 anchors). Whether it reaches 30 fps is what the arm measures.
+  The must-move leg is `P5/slow_stores_per_s_slow_max <= 50,000` together
+  with a slow-span fps of at least 20.
 
 ## 3. Soak on master (registered before it ran)
 
