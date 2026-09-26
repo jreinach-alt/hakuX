@@ -128,7 +128,12 @@ forever. `titlestate_selftest.py` checks it with `NAV_DRY=1`.
 Includes must-move checks (a changed byte fails `verify`; a rejected save
 moves the choice to the other device, then to first-run).
 
-## Phase 2: blocked on a device grant (board request filed)
+## Phase 2: waiting on a device grant (board request filed)
+
+Phase 1 was posted on #397 at 15:20 PDT (comment 5850399550). The board
+request is `dispatch/board-requests/titlestate.md` (15:18 PDT). The PR stays
+a draft until the pilot has run and been posted; the lane resumes on the
+grant.
 
 Needs: a HELD Thor session under 30 min (Burnout 3 and Black are both on the
 Thor), in which I run `nav.py` with `SERIAL` set. Plus, for the dispatcher
