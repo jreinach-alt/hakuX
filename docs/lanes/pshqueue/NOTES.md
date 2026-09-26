@@ -88,3 +88,35 @@ drop any hunk whose arm refutes it (by revert commit, not rebase), cite the
 verdicts in the PR body, then mark the PR ready. A board request
 (board-requests/pshqueue.md) asks for vsh.c for #278 and for the [free] psh.h
 entry that fails check_territory.
+
+## Resume 2 (2026-09-26): two verdicts in, #315 still queued
+
+Why attempt 1 did not finish: it ended correctly, waiting on three arms
+that it could not see from inside the session. The handback job resumed it
+when the head's CI went green and the first verdicts landed.
+
+| arm | verdict | must move | measured | ceiling | holds? |
+|---|---|---|---|---|---|
+| #285 `pshqueue-285-g8b8.json` | PASS, 89/89 checks | Fmt_G8B8, Fmt_B8 | 32,552 -> 0; 16,144 -> 0 (label-differs -> ok) | <= ~100; down | yes, exact |
+| #279 `pshqueue-279-dotzw.json` | PASS, 9/9 checks | Pixel_shader/DotZW | 65,536 -> 165 | <= ~137 | yes, see below |
+| #315 `pshqueue-315-brdf.json` | not judged yet (queued 04:12Z, result ids 1790395945-arms-pshqueue-*) | Texture_BRDF/* | | <= 30 each | pending |
+
+Both judged arms had worse=0. The byte-level check put every mover on the
+change: each arm ran twice and was byte-identical with itself.
+
+**#279 is 28 px over its estimate, and that does not refute the model.**
+cloud-279's `dotzw_fit.py` on both fix-arm captures
+(`1790394108-arms-pshqueue-fix-151431/captures{1,2}/Pixel_shader::DotZW.png`)
+reads 99.75% exact and **100.00% within one depth word**. The two runs are
+identical. The model's own misses were 137 px at +-1 word. Those came from
+float64 z/w within 0.0093 of an integer, and cloud-279 said a float32 GPU
+divide "will land on one side or the other of these". 165 is the same
++-1-word shape at a slightly larger count. A wrong rule (rint, GL centres,
+another mapping) misses by 14 to 60,000 words (block median in the fit
+table), so it cannot produce a residual that stays within one word. The
+estimate was loose, and the rule is not wrong.
+
+Merged origin/master at b1bf2135f2 (no rebase; the arm refs are still
+ancestors). The only conflict was the generated nv2a_index.json, so I took
+master's and regenerated over the fold pins (tests 6743b6a, the provenance
+master's index was built from).
