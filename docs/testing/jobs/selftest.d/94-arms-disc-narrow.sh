@@ -95,9 +95,15 @@ check "only_tests (a comma string): both arms carry the allow-list" \
     grep -qz 'a skip= only=Blend surface::TestA.b skip= only=Blend surface::TestA' <<< "$out"
 check "  and its composition check passes" grep -qx 'composition ok' <<< "$out"
 
-# The mutant: both calls pass --suites alone, which is the old arms.sh.
-md="$DN-mut"; rm -rf "$md"; mkdir -p "$md"
-cp "$HERE/gh-label.sh" "$HERE/localtime.sh" "$md/"
+# The mutant: both calls pass --suites alone, which is the old arms.sh. It
+# queues through request.sh, which arms.sh finds at jobs/.., so it runs inside
+# a symlink tree of docs/testing with only jobs/arms.sh a real, edited file.
+# request.sh resolves --ref with `git -C $0/../..`, so the tree sits at
+# docs/testing under a directory whose .git is this repository's.
+mr="$DN-mut"; mt="$mr/docs/testing"; md="$mt/jobs"; rm -rf "$mr"; mkdir -p "$md"
+ln -s "$REPO/.git" "$mr/.git"
+for f in "$TESTING"/*; do [ "${f##*/}" = jobs ] || ln -s "$f" "$mt/"; done
+for f in "$HERE"/*; do [ "${f##*/}" = arms.sh ] || ln -s "$f" "$md/"; done
 python3 - "$HERE/arms.sh" "$md/arms.sh" <<'PY'
 import sys
 src, dst = sys.argv[1:]
@@ -118,4 +124,4 @@ if [ -f "$md/arms.sh" ]; then
 else
     bad "mutant anchor no longer matches arms.sh"
 fi
-rm -rf "$DN" "$md"
+rm -rf "$DN" "$mr"
