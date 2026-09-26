@@ -1371,6 +1371,15 @@ static const char *get_sampler_type(struct PixelShader *ps, enum PS_TEXTUREMODES
         }
         return sampler2D;
 
+    case PS_TEXTUREMODES_BRDF:
+        /* The BRDF function is a volume texture indexed by three angles. */
+        if (dim == 3 && !state->tex_cubemap[i] && !state->shadow_map[i]) {
+            return sampler3D;
+        }
+        NV2A_UNIMPLEMENTED("%dD texture in BRDF mode on stage %d", dim, i);
+        ps->tex_unusable[i] = true;
+        return NULL;
+
     case PS_TEXTUREMODES_DPNDNT_AR:
     case PS_TEXTUREMODES_DPNDNT_GB:
         if (state->shadow_map[i]) {
@@ -3150,10 +3159,21 @@ static MString* psh_convert(struct PixelShader *ps)
                 i, i, i, i);
             break;
         case PS_TEXTUREMODES_BRDF:
-            if (!stage_consistent(ps, vars, i, 2, 3, 2, "PS_TEXTUREMODES_BRDF")) break;
-            mstring_append_fmt(vars, "vec4 t%d = vec4(0.0); /* PS_TEXTUREMODES_BRDF */\n",
-                               i);
-            NV2A_UNIMPLEMENTED("PS_TEXTUREMODES_BRDF");
+            /* Stages i-2 and i-1 are ordinary reads whose texels carry the
+             * eye and light directions as two 16-bit fields, theta in the
+             * high half and phi in the low; SZ_R16B16's {G,R,R,G} view puts
+             * them in .r and .g. The volume lookup is (s, t, r) =
+             * (theta_eye, theta_light, phi_light - phi_eye), the phi
+             * difference taken modulo a full turn. Fitted per pixel on the
+             * three Texture_BRDF goldens (docs/lanes/brdf315/NOTES.md):
+             * 605 of 610 modelled wedge pixels whole-texel exact, the rest
+             * one texel off at a boundary. The feeding stages define no dot
+             * product, so none is required of them. */
+            if (!stage_consistent(ps, vars, i, 2, 3, 0, "PS_TEXTUREMODES_BRDF")) break;
+            mstring_append_fmt(vars,
+                "vec4 t%d = texture(texSamp%d, vec3(t%d.r, t%d.r, "
+                "fract(t%d.g - t%d.g))); /* PS_TEXTUREMODES_BRDF */\n",
+                i, i, i - 2, i - 1, i - 1, i - 2);
             break;
         case PS_TEXTUREMODES_DOT_ST:
             if (!stage_consistent(ps, vars, i, 2, 3, 1, "PS_TEXTUREMODES_DOT_ST")) break;
