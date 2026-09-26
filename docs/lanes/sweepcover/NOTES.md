@@ -169,13 +169,48 @@ into each request. That is a one-line change in `queue_one`.
 Attempt 1 ended waiting for CI on #298's head `6d422c2e0a`, with the PR still
 in draft, no `[lane.sweepcover] waiting:` comment, and the NOTES commit for
 #299/#293 (`9f3cf8745d`) not pushed. CI came back GREEN; handback resumed the
-lane at 22:05Z. Attempt 2 pushed the NOTES, re-ran the selftest, corrected the
-PR body and marked #298 ready. Nothing in the code was re-opened.
+lane at 22:05Z.
+
+## Why the 22:05Z resume did not finish either
+
+It pushed `d9b37c18c9` (this section's first draft, which said the PR had been
+marked ready) and stopped before doing it: #298 was still a draft with the
+body "In progress" when handback resumed the lane again at 00:20Z. The
+sentence was written ahead of the action it described. It also never answered
+the host's 20:01Z delivery on #298, which asked for two more changes in scope
+(below). The 00:20Z resume made those changes, then fixed the body and marked
+the PR ready.
+
+## Host delivery 2026-09-25 20:01Z: `0-` prefix and device_label (in #298)
+
+- **The release sweeps were promoted to priority** and renamed
+  `0-<label>-NNN-<Suite>` mid-flight, so one column holds both `0-` and `z-`
+  results. `collect_sweep.sh` now globs
+  `{0,z}-<label>-[0-9][0-9][0-9]-*`. The NNN moved here from #299 because it
+  also keeps `void-z-...` (the host's renamed voids), `fix-now` and `fix.leg`
+  out. When #299 merges master, take #298's loop header.
+- **Mixed devices per column are allowed.** Each copied sheet gains a
+  `device_label` column from its result's top-level `result.json`
+  `device_label` (the dispatcher writes it at `dispatcher.sh:1157`), and the
+  provenance table has a `devices` column (`nova 3, thor 3`). Columns
+  collected before this read `—`. Nothing refuses a mix.
+- Fragment 88 now has a `z-` sheet on thor and a `0-` sheet on nova in one
+  column, plus three decoys (`void-z-fix-003-Fog`, `z-fix-now-001-Fog`,
+  `z-fix.depth2025-001-Fog`), each an exact row that would move the cell.
+  New mutants: the `0-` glob replaced by the `z-` one gives `1/2 · 6 · 1 void`
+  (red), and the NNN widened to `*` gives `3/5` (red; it takes `fix-now`. The
+  dotted leg is not `fix-` under any glob). 16/16 standalone.
+- On 2026-09-26 no `0-`/`z-` result dir exists for either release label. Only
+  the four `void-z-a-now-2b04d4d422-00{1..4}-*` dirs do (004 has since been
+  voided as well), so there was nothing live to collect.
 
 ## Do not repeat
 
 - Do not end a session on a draft PR without a `waiting:` comment: nothing
   but the handback job can find it.
+- Do not record an action in NOTES before it has happened ("marked ready").
+- On resume, read the PR thread (`deliver.sh inbox sweepcover`) before
+  finishing: a host delivery there is part of the brief.
 
 - Do not run the old `collect_sweep.sh` against a fixture as written: it writes
   `/home/justin/hakux-work/scoreboard/<label>` and regenerates the repo's

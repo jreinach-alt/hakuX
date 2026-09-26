@@ -217,8 +217,8 @@ def main():
                "capture that could not be read is not an exact one.\n")
 
     # Provenance first. A column built from mixed binaries is not a column.
-    out.append("| run | binaries | built | hw commits behind tip | discs | captures | void | rescored |")
-    out.append("|---|---|---|---:|---:|---:|---:|---:|")
+    out.append("| run | binaries | built | hw commits behind tip | discs | devices | captures | void | rescored |")
+    out.append("|---|---|---|---:|---:|---|---:|---:|---:|")
     for r in runs:
         shas = ", ".join(sorted(r["shas"])) or "—"
         warn = " ⚠️ mixed" if len(r["shas"]) > 1 else ""
@@ -238,8 +238,14 @@ def main():
         void = (f"{sum(vb.values())} ⚠️ (" + ", ".join(
             f"{k} {v}" for k, v in sorted(vb.items())) + ")") if vb else "0"
         scored = len(r["rows"]) - sum(vb.values())
+        # Rows per device, from the column collect_sweep.sh adds. A mix is
+        # allowed (the handhelds agree per capture) but is shown, not hidden;
+        # columns collected before that column existed read "—".
+        dv = collections.Counter(r2["device_label"] for r2 in r["rows"]
+                                 if r2.get("device_label"))
+        devices = ", ".join(f"{k} {v}" for k, v in sorted(dv.items())) or "—"
         out.append(f"| `{r['label']}` | {shas}{warn} | {built} | {age} | "
-                   f"{len(r['discs'])} | {scored} | {void} | {dup} |")
+                   f"{len(r['discs'])} | {devices} | {scored} | {void} | {dup} |")
     out.append("")
 
     cats = [c for c in CATEGORIES] + ["(uncategorised)"]

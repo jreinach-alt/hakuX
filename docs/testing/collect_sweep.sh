@@ -49,7 +49,14 @@ seen_dirs=""
 # provenance record exists to catch, reintroduced while fixing something else.
 # A label with no results is an empty column and says so; that is the right
 # failure.
-for rdir in "$D"/results/z-"$SWEEP_LABEL"-*/; do
+#
+# `0-` as well as `z-`: a sweep promoted to priority is renamed `0-<label>-...`
+# mid-flight (a-now-2b04d4d422 and b-v040j1 on 2026-09-25), so one column holds
+# both prefixes. The NNN keeps a longer label (`fix-now`) or a leg
+# (`fix.depth2025`) out of the `fix` column, and a result the host voided by
+# renaming it `void-z-...` matches neither prefix.
+for rdir in "$D"/results/0-"$SWEEP_LABEL"-[0-9][0-9][0-9]-*/ \
+            "$D"/results/z-"$SWEEP_LABEL"-[0-9][0-9][0-9]-*/; do
     [ -d "$rdir" ] || continue
     case " $seen_dirs " in *" $rdir "*) continue;; esac
     seen_dirs="$seen_dirs $rdir"
@@ -71,7 +78,23 @@ except Exception:
         echo "  skipped (no progress-log proof): $(basename "$rdir")"
         continue
     fi
-    cp "$tsv" "$OUT/$(basename "$rdir").tsv"
+    # Copied with the result's device_label as a column. A column may mix
+    # devices per suite (a-now's suite 004 ran on the Nova, the rest on the
+    # Thor), which is allowed -- 3,040 captures scored on both at one apk_sha
+    # disagreed 0 times -- but a reader must be able to see it.
+    python3 -c "
+import csv,json,sys
+try: dev=json.load(open(sys.argv[2])).get('device_label') or 'unknown'
+except Exception: dev='unknown'
+rd=csv.DictReader(open(sys.argv[1]), delimiter='\t')
+f=list(rd.fieldnames or [])
+if 'device_label' not in f: f.append('device_label')
+w=csv.DictWriter(open(sys.argv[3],'w',newline=''), f, delimiter='\t', lineterminator='\n')
+w.writeheader()
+for r in rd:
+    r['device_label'] = r.get('device_label') or dev
+    w.writerow(r)" "$tsv" "$rdir/result.json" "$OUT/$(basename "$rdir").tsv" \
+        || cp "$tsv" "$OUT/$(basename "$rdir").tsv"
     # Void rows are TAKEN, not skipped: scoreboard.py counts them as void, so
     # the column says how much of it was unmeasured. Named here per sheet
     # because a sheet with 56 unreadable rows passed the proof gate above --
