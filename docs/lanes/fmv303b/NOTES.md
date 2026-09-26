@@ -50,23 +50,41 @@ effect. File holder: **free** on `origin/board` `territory.toml` (released at
 wave 123 by retiring diagdump77), and no open PR lists it. Board request:
 `board-requests/fmv303b.md`, which asks to grant this file to lane.fmv303b.
 
-## 3. The arm, once granted (not registered yet: its refs do not exist)
+## 3. The arm (granted, registered and queued 2026-09-26)
 
-- a_ref = the hunk commit, `--env HAKUX_FMV303_PROBE=1` (tier1 on, 64).
-- b_ref = same sha, `--env HAKUX_FMV303_PROBE=1 --env HAKUX_TIER1_THRESHOLD=0`.
-- Thor, Spikeout, 150 s, at least two runs per arm, interleaved in one
-  session. Check `tier1 threshold: 0` in each OFF run's logcat before reading
-  its tint, and `tier1 threshold: 64` in each ON run's.
-- Falsifier (as briefed): OFF mean within 0.2 of the same session's ON mean
-  means the JIT tier is not the cause (step 2a: find a DMA or surface
-  write-back landing in the decoder's planar buffers). OFF mean below 0.1
-  means tier1 is the cause (step 2b: bisect packuswb / paddsw / pmulhw with a
-  guest-side falsifier per op). Between the two is no verdict and needs more
-  runs. An arm with fewer than 100 lit frames, or with no `tint` lines, is no
-  reading.
-- The prior spread of the ON arm is 0.41-0.66 across runs of one binary
-  (screen, section 4 of fmv303), so a single run per arm cannot separate
-  "within 0.2" from noise. That is why two runs per arm is the minimum.
+Attempt 1 ended blocked on the grant, correctly. It posted `[lane.fmv303b]
+blocked:` on #398 at 14:28 UTC, and the host granted
+`xemu_android.cpp` at 14:29 UTC. The session had already ended, so nothing
+picked the grant up until this resume. No device job was in flight: the
+background task the resume brief mentions left no result dir and no queued
+request. Attempt 2 (this one) does the rest.
+
+- Hunk: `4b96082573`, two lines after the `tier1_threshold` pref read in
+  `xemu_android.cpp`. Unset, the pref value stands.
+- Prediction: `docs/testing/predictions/fmv303b-tier1-ab.json`, registered
+  before any arm ran. a_ref = b_ref = `4b96082573`. The env is the only
+  independent variable. Predicted NOT_TIER1.
+- Judge: `docs/lanes/fmv303b/tier1_judge.py --on L1 --on L3 --off L2 --off
+  L4`. M0 per run: the `tier1 threshold:` line reads 64 (ON) or 0 (OFF),
+  and the run has >= 100 lit frames. Checked on the control of record: it
+  reads ON 64, 435 lit, 0.66, and the same logcat passed as OFF is VOID.
+- Queued by `docs/lanes/fmv303b/queue_arms.sh`, Thor, 150 s, frames every
+  2 s (the control's shape, because frame capture costs frame rate and the
+  tint is timing-dependent), interleaved:
+
+| order | arm | request id |
+|---|---|---|
+| 1 | ON | `1790433154-fmv303b-2431986` |
+| 2 | OFF | `1790433156-fmv303b-2432129` |
+| 3 | ON | `1790433159-fmv303b-2432336` |
+| 4 | OFF | `1790433161-fmv303b-2432888` |
+
+- Falsifier (as briefed): an OFF mean within 0.2 of the same session's ON
+  mean means the JIT tier is not the cause (step 2a: find a DMA or surface
+  write-back landing in the decoder's planar buffers). An OFF mean below 0.1
+  means tier1 is the cause (step 2b: bisect packuswb / paddsw / pmulhw with
+  a guest-side falsifier per op). A result between the two is no verdict and
+  needs more runs.
 
 ## 4. Table (empty until the arm runs)
 
