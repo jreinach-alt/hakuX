@@ -1223,13 +1223,6 @@ standing = false
 note = "STARTED (job.board 2026-09-26T19:20Z), briefs/forza414.md: #414 (Forza Motorsport) gameplay fps. Profile-first: docs and prediction only until the lane names the code file and the board grants it."
 
 
-[lane.cloud-audit2-402]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-402, audit pass 2 of PR #402 on branch lane/vshcpu345, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 402` removes this row when the unit ends."
-
-
 [lane.cloud-audit1-405]
 issues = []
 files = []
