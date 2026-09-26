@@ -83,8 +83,15 @@ its golden on all 181,016 drawn px:
   the first such draw after the XBE starts. This is one observation, and its
   mechanism is not identified.
 
-**The practical rule until it is:** a silicon reference must not be taken
-from the first planar-fog test of a session. No earlier lane.xbox console run
+**Since measured (PR #348, three registered sessions):** the halving hits
+**the first test after the XBE launches, whatever it is**, and it shows
+through planar fog. It is reproducible bit for bit, identical for PLANAR and
+ABS_PLANAR, and a non-fog test in front absorbs it. So it is not "the first
+planar-fog draw" as supposed above.
+
+**The practical rule, as refined by PR #348:** a silicon reference must not
+be taken from the first test after an XBE launches. Put a non-fog test
+first. No earlier lane.xbox console run
 began with a fog test other than run 1's VS radial, so no earlier reference
 is affected. hakuX does not show it: its dry-run capture differs from the
 golden by the same 35,643 px as its `exp-planar`.
@@ -117,7 +124,7 @@ new multiplier (−0.000875). It gives silicon's fog factor from f8 ≈ 30 to
 
 ## Follow-ups, not run
 
-1. **The first-planar-fog halving.** Two short sessions would separate "the
+1. **Done in PR #348:** the first-planar-fog halving. Two short sessions would separate "the
    first planar draw" from "this test's position":
    - a non-fog test, then `FogGen_FF-exp-abs_planar`, predicted to match its
      golden;
