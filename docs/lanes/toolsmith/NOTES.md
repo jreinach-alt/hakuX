@@ -378,3 +378,22 @@ prefix on a command (`X=1 cmd`), and `$VAR` inside some compound commands.
 `.lanework/quick.py` runs chosen fragments over a scratch copy of
 `docs/testing`, with `old:<rel>=<ref>` to swap in an old file for a
 falsification run. It never touches the real path.
+
+## 2026-09-26 (attempt 3): #333 was red on a clock bug in another fragment
+
+**Why attempt 2 did not finish.** It pushed defect 23 at 00:06Z and ended to
+wait for CI. That CI came back red. The failure was not in handback: every PR's
+`jobs selftest` since 00:00Z (#333, boardprio, blankrule297) failed the same
+three checks in `86-nightly-notes.sh`'s late-fold fixture. `nightly_build.sh`
+names today's tag by `local_day()`, which is Pacific time, and skips that tag.
+The fixture named "yesterday" by the runner's clock. From 00:00Z to 07:00Z, a
+UTC runner's yesterday is Pacific today, so the script skipped the fixture's
+base tag and fell through to the older decoy.
+
+**Fix.** The fixture takes YDAY as the day before `local_day()`. Reproduced
+locally with `TZ=Pacific/Kiritimati` (the same 3 FAILs), and green under
+Kiritimati, UTC, Los_Angeles and GMT+12.
+
+**Do not repeat.** A fixture that names a day must take it from the same clock
+as the script under test. Test the fixture under a far-east TZ, which puts a
+local run in CI's bad window.
