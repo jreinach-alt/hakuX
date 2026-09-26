@@ -1943,3 +1943,95 @@ arm pair with `ab_compare.py --expect` on its prediction.
   push descriptors.
 - **The suites after W buffering** were not scanned.
 - **Device runs.** The code is the same on Android, but no device ran it.
+
+## #274, third: `create_pipeline()`'s early return drew with the previous draw's uniforms (2026-09-26)
+
+**Where it started.** After #327 and #343, `Antialiasing_tests/GPUAAWriteAfterCPUWrite`
+still read 2,674 px in sequence on desktop Vulkan, against 134 run alone and
+134 on GL. All 2,674 px lie in the test's triangle and read (64, 242, 191).
+That is `FBSurfaceWithCenter1`'s `SetDiffuse(0.25, 0.95, 0.75)`; the test sets
+`0xFFDDCC00` (5840601274).
+
+**The mechanism.**
+- Both tests set the diffuse once before the first vertex, so it is a uniform
+  attribute (`inlineValue`). On llvmpipe it travels in the uniform block.
+- `create_pipeline()` in `vk/draw.c` returns early when the pipeline binding
+  exists and no pipeline, shader, texture or render-pass generation moved.
+  That branch skipped `pgraph_vk_update_shader_uniforms()`, which every other
+  path through the function runs.
+- An inline attribute value bumps none of those generations. The new command
+  buffer's `uniforms_changed` still uploads the binding's block, and that
+  block held the previous test's diffuse.
+
+**Priced before the code** (local probes, never committed; 5842494980). The
+probe snapshots both uniform blocks at every draw that skips a refresh,
+refreshes, compares, then restores everything.
+
+| disc | draws | early returns | stale early returns |
+|---|---:|---:|---:|
+| Antialiasing + DMA | 40,704 | 1 | **1** (GPUAA's triangle) |
+| Clear | 51,367 | 0 | 0 |
+| disc109 | 48,485 | 0 | 0 |
+| surf1 | 87,691 | 0 | 0 |
+
+A count-only probe over all 99 per-suite discs of the stock suite then found
+the early return on two only:
+- Antialiasing tests: once, GPUAA's triangle.
+- Stencil: 7-10 times a run, none stale.
+
+Stencil is not registered. Its captures are #39's desktop race: 7 of 17 flip
+run to run in either arm, so a capture guard there would measure #39, not
+this change.
+
+**The fix** (`4a369ed1ee`, `vk/draw.c` only): one call to
+`pgraph_vk_update_shader_uniforms(pg)` in the early-return branch, with a
+comment saying why. The SFP never reaches `create_pipeline()`, and the MFP
+already refreshes on every draw it takes, so no other draw is touched.
+
+**Registered before the code** (#274, 5844464628; `a_ref` master
+`6550967a5e`). `93c83448` commits the four files with `b_ref` `4a369ed1ee`.
+Each differs from its posted draft only in `b_ref`, checked field by field.
+The desktop arms ran on Vulkan on llvmpipe, `surface_scale = 1`, alternating
+A and B.
+
+| registration | runs per arm | verdict |
+|---|---:|---|
+| `remote-274-gpuaa-uniform-aadma.json` | 3 | **PASS**. GPUAA 2,674 → 134 in every run (better 1, worse 0). 12 other captures are byte-identical in all six runs. The 13th, `AAOnThenOffCPUWrite`, flipped in one B run to the named race state, and the two arms' hash sets intersect. |
+| `remote-274-gpuaa-uniform-surf1.json` | 5 | **PASS**. 233 captures byte-identical, 0 moved, better 0, worse 0. The three named `Blend_surface::*_Add_SrcA_DstA` captures flip within both arms. |
+| `remote-274-gpuaa-perf-crimson.json` | 1 per device | pending: thor and nova soaks, queued by the host |
+| `remote-274-gpuaa-perf-ghoulies.json` | 1 per device | pending: as above, plus the 25 gfps floor |
+
+**Named before measuring as nondeterministic** (judged by the band, never by
+one run):
+- Antialiasing + DMA: two tests that CPU-write the back buffer after a clear
+  sometimes lose the first pixel or two of that write to the `0x050505` clear.
+  - `FramebufferNotModifiedBySurfaceState` did so in 2 of 41 runs on file.
+  - `AAOnThenOffCPUWrite` did so in 1 of 41.
+  - Both run before GPUAA, so the fix cannot reach them. Both were relayed
+    for `KNOWN_UNSTABLE` (5844018418).
+- surf1: `Blend_surface::{R5G6B5,X_O1RGB5,X_Z1RGB5}_Add_SrcA_DstA` (5842494980).
+
+**Re-run it.** Build the two discs from the stock image with
+`make_test_iso.py --progress-log --shutdown-on-completion` and each
+registration's `disc` suites. Run `a_ref` and `b_ref` alternately under
+`renderer = 'VULKAN'` and `surface_scale = 1`, from a fresh HDD with the shader
+caches cleared. Judge each pair with `ab_compare.py --expect` on its
+prediction.
+
+**Not covered.**
+- **`program_data_dirty` at the same early return (by reading only).**
+  - The early-return test does not read `program_data_dirty`.
+  - `SET_TRANSFORM_PROGRAM`'s load-pointer write goes to `CHEOPS_OFFSET`,
+    which is not a shader register, so it moves no generation the test
+    checks.
+  - So a vertex program replaced in place, with no shader-register write,
+    could skip `bind_shaders()`.
+  - It never happened on the stock suite: 0 early returns with it set on all
+    99 discs, while 539-1,062 `create_pipeline()` calls per disc have it set.
+  - The host's decision (5844505648): a known unreached path, not a defect.
+    Open it only if a title soak shows it.
+- **The SFP's own stale-uniform hole** is a separate change, the second
+  registration in this `vk/draw.c` window. The fixed-function matrix setters
+  move no generation, so the SFP draws with the previous block (5842494980).
+- **The non-push descriptor path, and device pixels.** Only the soaks' frame
+  rates run on a device; no device capture runs this change.
