@@ -1122,7 +1122,7 @@ note = "HELD, NOT STRANDED (hostops, 2026-09-26 4:52 AM PDT): status.sh lists it
 issues = ["53"]
 files = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "hw/xbox/nv2a/pgraph/glsl/vsh-prog.c", "docs/testing/predictions/ring53-*.json", "docs/lanes/ring53/**"]
 standing = false
-note = "STARTED BY job.board wave 247 (2026-09-26T12:40Z) via `lane.sh start ring53 briefs/ring53.md 53`; if the next tick finds no unit and no registry entry the start was refused -- resume, do not re-dispatch. PRIOR: BRIEFED AT TERRITORY WAVE 246 (job.board, 2026-09-26T12:10:00Z), briefs/ring53.md: #53 ring model (six-entry ring of stale FF lighting outputs under a vertex program, PR #355). vsh-prog.c is released by dpforce345 (PR #383 at audit) and vsh-ff.c by zrtz272 (PR #364 at audit); the brief says merge master before ready. Per-draw state files are named-not-granted."
+note = "BRIEFED, NOT STARTED (job.board wave 247, 2026-09-26T12:40Z): `lane.sh start` again needs an approval the non-interactive board session cannot get; the HOST runs `docs/testing/lane.sh start ring53 briefs/ring53.md 53`. The row keeps holding vsh-ff.c and vsh-prog.c meanwhile. PRIOR: BRIEFED AT TERRITORY WAVE 246 (job.board, 2026-09-26T12:10:00Z), briefs/ring53.md: #53 ring model (six-entry ring of stale FF lighting outputs under a vertex program, PR #355). vsh-prog.c is released by dpforce345 (PR #383 at audit) and vsh-ff.c by zrtz272 (PR #364 at audit); the brief says merge master before ready. Per-draw state files are named-not-granted."
 
 
 [lane.cloud-audit2-386]
