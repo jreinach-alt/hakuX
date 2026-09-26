@@ -56,6 +56,80 @@ or records the refutation.
 **Lesson, now twice over:** commit within the first few actions of a session,
 before reading anything at length.
 
+## Attempt 3, resumed 2026-09-26 02:02 UTC: why it had not finished
+
+The session was waiting, not stuck. It ended on purpose with a
+`[lane.tcgchurn] waiting:` comment. The seven soaks and both pixel arm pairs
+had since landed, so this resume judged them (below), then:
+- turned hunk (b) back off at the head;
+- merged origin/master;
+- marked the PR ready.
+
+## #311 verdict (Thor, 240 s hands-off, one run per arm)
+
+Results are under `dispatch/results/0-0-c-17903778{75,76}-lane.tcgchurn-*`.
+Each window is one 2 s `[tlb68]` line; spans are seconds from the first line.
+
+| arm | ref | gfps 20 s | gfps median 90-240 s | tw/rdc 22 s -> 121 s | tn max | reset_dirty share of guest CPU, 90-240 s |
+|---|---|---|---|---|---|---|
+| A, Ghoulies | `709cfb13aa` | 29 | **2** (n=6) | 6481 -> 6925 | 4096 | 0.8% |
+| (a), Ghoulies | `ea1e9f5a0d` | 29 | **VOID** | -- | 2048 | -- |
+| (b), Ghoulies | `1ce8693eb1` | 29 | **2** (n=6) | 6482 -> 6745 | 4096 | 1.1% |
+| (a), Crimson | `ea1e9f5a0d` | 29 | 29 (n=75) | walks 1100 -> ~5 a window | 8192 | 0.4% |
+| (b), Crimson | `1ce8693eb1` | 29 | 29 (n=74) | 7094 -> 14852 | 8192 | 1.7% |
+
+In every run, the guest thread is busy about 1950 ms of each 2000 ms window.
+The jump-cache wipes (`jcus`) take 0.2-0.3% of it.
+
+**Legs:**
+- **M0 (instrument): holds** on every run but (a) Ghoulies.
+- **M1 (model): REFUTED, by its own wording.** In A, gfps went from 29 to 1-3
+  while the walked entries per arming walk stayed within 1.07x (6481 -> 6925).
+  `tn` at 121 s equals `tn` at 22 s (1024), and `tn` never exceeded 4096 in
+  A. The arming walk neither grows nor weighs much: 0.8% of guest CPU during
+  the collapse.
+- **Ma (hunk a): VOID, not failed.** The soak script's `alive()` probe
+  (`soak_title.sh:115`) is an `adb shell ps`. It failed right after
+  `UtilAcceptVsock: accept4 failed 110`, and the script read that as "guest
+  exited after 15s". Logcat shows the process still logging normally when the
+  capture stopped, with no `F/` line and no crash tag. It is not a crash. It
+  was not re-queued: by the bound above, removing every `tlb_reset_dirty` call
+  saves at most 0.8% of a saturated guest thread. That cannot take 2 gfps to 25.
+- **Mb (hunk b): FAILS.** Median gfps is 2 with `tn` <= 8192 at every line.
+- **Rival: holds.** Both legs miss, so the arming walk is not the collapse.
+  This agrees with the host's 00:10Z addendum: the #311 code review names
+  21cacb354a (`vk/surface.c` surface-watch leak).
+- **Must-not-move holds:**
+  - pixels: 0 of 593 rows differ for either hunk (8 suites, score columns);
+  - Crimson ran 240 s on both hunks with no crash lines;
+  - **JSRF was not measured** on either hunk: "title not on device" on the Thor.
+
+**Hunk (a) works mechanically** (Crimson). Arming walks fall from about 1100
+a window to about 5, with 900-1100 keep-armed events a window. The fallback
+disarm (`kafb`) accounts for nearly all the walks that remain.
+
+**Hunk (b)'s cap is inert where it matters.** Ghoulies never reaches 8192
+entries. On Crimson, the cap is reached and the walk still costs more: 1.7%
+of guest CPU, against 0.4% on (a).
+
+**Head state:** both defines are 0. Master gets the `[tlb68]` instrument and
+both hunks dormant. Each hunk's arm ref stays on this branch for a later
+build.
+
+## For #68: the 09-11 premise does not hold at this master
+
+The brief's profile shares predate #73's fix: `tlb_reset_dirty` 10.68% and
+`tcg_flush_jmp_cache` 8.37%. On these soaks at `709cfb13aa`, the counters
+time them at 0.4-1.7% and 0.2-0.3% of guest CPU. Caveat: this is hands-off
+play, not Crimson's heavy-flying route. The counters time only the function
+bodies; the TLB refills a flush causes afterwards are not counted.
+
+Even so, at this master neither candidate can be worth the ~1.25x that
+Crimson needs. The next lane should:
+- **not** re-arm (a) or (b) for frame rate;
+- take a fresh profile of Crimson's heavy flying on lane.perfbase's route
+  before designing anything else from the 09-11 numbers.
+
 ## What the 09-11 profile actually says (read before question (a))
 
 The brief frames `tcg_flush_jmp_cache` (8.37% self) as the cost of *full TLB
