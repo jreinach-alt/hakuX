@@ -1,0 +1,151 @@
+From 7006335ac5a24b85a5d5e7ccb6c0a7913cc197f7 Mon Sep 17 00:00:00 2001
+From: t <t@t>
+Date: Fri, 25 Sep 2026 19:09:58 -0700
+Subject: [PATCH] hakuX #112 item 4: SPECIAL_RAW -- raw bits for zero x
+ inf/NaN, signed zeros, ILU specials
+
+MUL/MAD with 0 x inf, 0 x NaN and signed zeros (hakuX's _MUL forces +0),
+DP3/DP4 with 0 x inf and 0 x NaN terms (hakuX's dot has no forcing), and
+RCC/RSQ/RCP on +-0, +-inf, +-NaN, +-1e30, +-1e-30, +-MaxSub (hakuX's RCC
+clamps into [2^-64, 2^64] and sends -0 negative). Writes SPECIAL_raw.txt;
+compares nothing.
+---
+ src/tests/cpu_shader_tests.cpp | 104 +++++++++++++++++++++++++++++++++
+ src/tests/cpu_shader_tests.h   |   2 +
+ 2 files changed, 106 insertions(+)
+
+diff --git a/src/tests/cpu_shader_tests.cpp b/src/tests/cpu_shader_tests.cpp
+index 253ea36..e17c35b 100644
+--- a/src/tests/cpu_shader_tests.cpp
++++ b/src/tests/cpu_shader_tests.cpp
+@@ -139,6 +139,7 @@ CpuShaderTests::CpuShaderTests(TestHost &host, std::string output_dir)
+   tests_["SGE"] = [this]() { TestSge(); };
+   tests_["SLT"] = [this]() { TestSlt(); };
+   tests_["SUBNORM_MAC"] = [this]() { TestSubnormalMac(); };
++  tests_["SPECIAL_RAW"] = [this]() { TestSpecialRaw(); };
+ }
+ 
+ void CpuShaderTests::Initialize() {
+@@ -652,3 +653,106 @@ void CpuShaderTests::TestSubnormalMac() {
+     fclose(fh);
+   }
+ }
++
++// hakuX #112 item 4: the "inherited" vertex-program behaviours, on silicon.
++//
++// hakuX's GLSL helpers force MUL (and so MAD) to +0 when either operand is
++// +-0 (NaN counting as 1), leave DP3/DP4 as a plain dot() with no forcing,
++// and clamp RCC's result into [2^-64, 2^64] with -0 sent to the negative side.
++// This records silicon's raw bits for each of those cases and compares
++// nothing. ILU ops read one scalar, so each ILU case is its own run with all
++// four components set to the same value, and all four outputs are recorded.
++void CpuShaderTests::TestSpecialRaw() {
++  static constexpr uint32_t kP0 = 0x00000000, kN0 = 0x80000000, kPInf = 0x7F800000, kNInf = 0xFF800000,
++                            kPNaN = 0x7FC00000, kNNaN = 0xFFC00000, kOne = 0x3F800000, kNOne = 0xBF800000,
++                            kFive = 0x40A00000, kNFive = 0xC0A00000, kTwo = 0x40000000, kNFour = 0xC0800000,
++                            kBig = 0x7149F2CA /* 1e30 */, kNBig = 0xF149F2CA, kTiny = 0x0DA24260 /* 1e-30 */,
++                            kNTiny = 0x8DA24260, kMaxSub = 0x007FFFFF, kNMaxSub = 0x807FFFFF;
++  struct Case {
++    const char *op;
++    const uint32_t *shader;
++    uint32_t shader_size;
++    uint32_t num_inputs;
++    bool scalar;  // ILU / dot: one result replicated; record all four components
++    uint32_t in[12];
++  };
++  static const Case kCases[] = {
++      {"MUL", kMul, sizeof(kMul), 2, false, {kP0, kN0, kPInf, kP0, kPInf, kPInf, kP0, kPNaN}},
++      {"MUL", kMul, sizeof(kMul), 2, false, {kPNaN, kN0, kFive, kN0, kP0, kFive, kN0, kNFive}},
++      {"MAD", kMad, sizeof(kMad), 3, false, {kP0, kP0, kN0, kN0, kPInf, kPNaN, kFive, kFive, kOne, kOne, kN0, kP0}},
++      {"DP3", kDp3, sizeof(kDp3), 2, true, {kP0, kOne, kTwo, kP0, kPInf, kOne, kOne, kP0}},
++      {"DP3", kDp3, sizeof(kDp3), 2, true, {kN0, kP0, kP0, kP0, kFive, kFive, kFive, kP0}},
++      {"DP3", kDp3, sizeof(kDp3), 2, true, {kP0, kP0, kP0, kP0, kPNaN, kOne, kOne, kP0}},
++      {"DP4", kDp4, sizeof(kDp4), 2, true, {kP0, kOne, kOne, kOne, kPInf, kOne, kOne, kOne}},
++      {"DP4", kDp4, sizeof(kDp4), 2, true, {kOne, kOne, kOne, kP0, kOne, kOne, kOne, kPNaN}},
++  };
++  static const uint32_t kRccIn[] = {kP0, kN0, kPInf, kNInf, kPNaN, kNNaN, kBig, kNBig, kTiny, kNTiny, kMaxSub, kNMaxSub, kOne, kNOne};
++  static const uint32_t kRsqIn[] = {kP0, kN0, kPInf, kNInf, kNFour, kPNaN, kMaxSub, kNMaxSub};
++  static const uint32_t kRcpIn[] = {kP0, kN0, kPInf, kNInf, kPNaN};
++
++  auto as_float = [](uint32_t v) { return *reinterpret_cast<float *>(&v); };
++
++  std::vector<Case> cases(std::begin(kCases), std::end(kCases));
++  auto add_ilu = [&cases](const char *op, const uint32_t *shader, uint32_t size, const uint32_t *vals, size_t n) {
++    for (size_t i = 0; i < n; ++i) {
++      Case c{op, shader, size, 1, true, {vals[i], vals[i], vals[i], vals[i]}};
++      cases.push_back(c);
++    }
++  };
++  add_ilu("RCC", kRcc, sizeof(kRcc), kRccIn, sizeof(kRccIn) / sizeof(kRccIn[0]));
++  add_ilu("RSQ", kRsq, sizeof(kRsq), kRsqIn, sizeof(kRsqIn) / sizeof(kRsqIn[0]));
++  add_ilu("RCP", kRcp, sizeof(kRcp), kRcpIn, sizeof(kRcpIn) / sizeof(kRcpIn[0]));
++
++  std::list<TestHost::Results> results;
++  std::list<TestHost::Computation> computations;
++  for (const auto &c : cases) {
++    results.emplace_back(c.op);
++    const Case *cp = &c;
++    auto prepare = [cp, as_float](const std::shared_ptr<VertexShaderProgram> &shader) {
++      for (uint32_t i = 0; i < cp->num_inputs; ++i) {
++        shader->SetUniformF(96 + i, as_float(cp->in[i * 4]), as_float(cp->in[i * 4 + 1]),
++                            as_float(cp->in[i * 4 + 2]), as_float(cp->in[i * 4 + 3]));
++      }
++    };
++    computations.push_back({c.shader, c.shader_size, prepare, nullptr, &results.back()});
++  }
++  host_.Compute(computations);
++
++  std::string text;
++  char line[200];
++  auto res = results.begin();
++  for (const auto &c : cases) {
++    const uint32_t *hw = reinterpret_cast<const uint32_t *>(res->cOut[0]);
++    ++res;
++    if (c.scalar) {
++      int n = snprintf(line, sizeof(line), "%s", c.op);
++      for (uint32_t i = 0; i < c.num_inputs; ++i) {
++        n += snprintf(line + n, sizeof(line) - n, " %c=0x%08X,0x%08X,0x%08X,0x%08X", 'a' + i, c.in[i * 4],
++                      c.in[i * 4 + 1], c.in[i * 4 + 2], c.in[i * 4 + 3]);
++      }
++      snprintf(line + n, sizeof(line) - n, " hw=0x%08X,0x%08X,0x%08X,0x%08X\n", hw[0], hw[1], hw[2], hw[3]);
++      text += line;
++      continue;
++    }
++    for (uint32_t k = 0; k < 4; ++k) {
++      int n = snprintf(line, sizeof(line), "%s a=0x%08X", c.op, c.in[k]);
++      if (c.num_inputs > 1) {
++        n += snprintf(line + n, sizeof(line) - n, " b=0x%08X", c.in[4 + k]);
++      }
++      if (c.num_inputs > 2) {
++        n += snprintf(line + n, sizeof(line) - n, " c=0x%08X", c.in[8 + k]);
++      }
++      snprintf(line + n, sizeof(line) - n, " hw=0x%08X\n", hw[k]);
++      text += line;
++    }
++  }
++  PrintMsg("%s", text.c_str());
++
++  CreateDirectory(output_dir_.c_str(), nullptr);
++  std::string path = output_dir_ + "\\SPECIAL_raw.txt";
++  FILE *fh = fopen(path.c_str(), "wb");
++  if (fh) {
++    fwrite(text.data(), 1, text.size(), fh);
++    fclose(fh);
++  }
++}
+diff --git a/src/tests/cpu_shader_tests.h b/src/tests/cpu_shader_tests.h
+index 7fd6e5b..13c795d 100644
+--- a/src/tests/cpu_shader_tests.h
++++ b/src/tests/cpu_shader_tests.h
+@@ -41,6 +41,8 @@ class CpuShaderTests : public TestSuite {
+   void TestSlt();
+   // hakuX #255: raw MAC bits on subnormal operands, every case written out.
+   void TestSubnormalMac();
++  // hakuX #112 item 4: raw bits for zero x inf/NaN, signed zeros and ILU specials.
++  void TestSpecialRaw();
+ 
+   void Test(const char* name, uint32_t num_inputs, const uint32_t* shader, uint32_t shader_size,
+             const std::function<void(float*, const float*)>& cpu_op, uint32_t assert_line, uint32_t flags = CPUTF_NONE,
+-- 
+2.43.0
+

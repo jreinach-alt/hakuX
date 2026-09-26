@@ -94,3 +94,14 @@ owner if the console stops answering.
     subnormal.
 
   `docs/testing/xbox-subnorm-mac-2026-09-25.md`.
+- 2026-09-25. #112 item 4 on silicon (`SPECIAL_RAW`, raw bits):
+  - MUL/MAD force a zero-factor product to +0; hakuX's GLSL `_MUL` is right.
+  - DP3 and DP4 force the same way inside the dot; hakuX's plain `dot()` gives
+    NaN, a rendering-path defect.
+  - RCC's signed-zero clamp matches hakuX's GLSL exactly.
+  - ILU NaN outputs are `0x7FFFFFFF`.
+  - #234's CPU evaluator misses the zero-forcing, gets RCC(+inf)'s sign
+    wrong, and clamps to a decimal 2^-64.
+  - The `SUBNORM_MAC` repeat on silicon is bit-identical.
+
+  `docs/testing/xbox-special-raw-2026-09-25.md`.
