@@ -4115,12 +4115,13 @@ suites = []
 no_suites = "performance: gameplay frame rate, not a pgraph measurement; the pgraph suites are its regression gate"
 status = "open"
 dispatch_state = "blocked"
-blocked_on = "BOARD 2026-09-26T20:25Z: accel/tcg lookup path shares cpu-exec.c with #429 and the churn with #424: dispatch after lane.tbchurn424 reports, or grant explicitly. Refute by reading territory.toml for the file's holder."
+blocked_on = "IN FLIGHT (hostops 2026-09-26 15:00 PDT): lane.jcache425 holds it (briefs/jcache425.md), started under the 0.5 order on the unheld lookup-path files (cpu-exec.c, tb-jmp-cache.h); a tb-maint.c hunk is sequenced with lane.tbchurn424 by board request."
 status_note = "QUEUED (job.board 2026-09-26T20:25Z) behind the three perf lanes dispatched this tick. PRIOR: FILED 2026-09-26T20:17Z by the host for 0.5 (tracking #433), from perf-architecture.md's ranked levers."
 impact_px = 0
 impact_onestep_px = 0
 game_visible = true
 impact_basis = "0.5 performance lever: up to 13.6% of the emulated CPU thread"
+blocker_tested = "confirmed 2026-09-26T22:00Z: [lane.jcache425] row on origin/board, hakux-lane-jcache425 started."
 
 [issue.426]
 title = "Performance: split renderer command capture from Vulkan translation"
@@ -4177,7 +4178,7 @@ suites = []
 no_suites = "performance: gameplay frame rate, not a pgraph measurement; the pgraph suites are its regression gate"
 status = "open"
 dispatch_state = "blocked"
-blocked_on = "BOARD 2026-09-26T20:25Z: accel/tcg/translate-all.c is held by lane.tbchurn424 (#424); dispatch after it reports (same file, and the cflags lookup-site trap). Refute by reading territory.toml for the file's holder."
+blocked_on = "BOARD 2026-09-26T20:25Z, reaffirmed hostops 2026-09-26 15:00 PDT: accel/tcg/translate-all.c is held by lane.tbchurn424 (#424) and cpu-exec.c by lane.jcache425 (#425); #429 needs both (the cflags lookup-site trap). Dispatch after tbchurn424 reports. Refute by reading territory.toml for the files' holders."
 status_note = "QUEUED (job.board 2026-09-26T20:25Z) behind the three perf lanes dispatched this tick. PRIOR: FILED 2026-09-26T20:17Z by the host for 0.5 (tracking #433), from perf-architecture.md's ranked levers."
 impact_px = 0
 impact_onestep_px = 0
