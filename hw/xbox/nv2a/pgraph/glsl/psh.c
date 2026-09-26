@@ -3173,7 +3173,15 @@ static MString* psh_convert(struct PixelShader *ps)
             mstring_append_fmt(vars, "float dot%d = dot(pT%d.xyz, %s(%s));\n",
                 i, i, dotmap_func, dot_src);
             mstring_append_fmt(vars, "vec4 t%d = vec4(0.0);\n", i);
-            // FIXME: mstring_append_fmt(vars, "gl_FragDepth = t%d.x;\n", i);
+            if (ps->state->depth_needed) {
+                /* texm3x2depth: the depth word is dot(i-1)/dot(i), in the
+                 * surface's own units, floored like the fixed-point path.
+                 * #279. */
+                mstring_append_fmt(vars,
+                    "zvalue = dot%d / dot%d;\n"
+                    "zfloor = clamp(floor(zvalue), 0.0, clipRange.y);\n",
+                    i - 1, i);
+            }
             break;
         case PS_TEXTUREMODES_DOT_RFLCT_DIFF:
             if (!stage_consistent(ps, vars, i, 2, 2, 1, "PS_TEXTUREMODES_DOT_RFLCT_DIFF")) break;
