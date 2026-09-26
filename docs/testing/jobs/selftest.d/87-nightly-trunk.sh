@@ -1,0 +1,366 @@
+# Sourced by ../selftest.sh with the harness already built: $T, $HERE, $REPO,
+# the shims on PATH, ok/bad/check, and the live prediction's fixtures. Not
+# executable, no shebang, no exit -- `fail` is shared and is the run's verdict.
+#
+# nightly_build.sh: the nightly publishes THE TRUNK, or it publishes nothing.
+#
+# Builds its own git fixtures under $T/nightlytrunk -- a bare origin, a clone
+# at its tip, and a clone pinned five commits behind it. No shared state; the
+# gradle step is a committed stub, so nothing here compiles anything.
+#
+# WHAT THIS PINS. nightly-2026-09-20 and nightly-2026-09-21 were both built
+# from 20e4708d50, a commit from the evening of 2026-09-19, and both were
+# published under a current date with an APK attached and the sentence "No
+# commits in the last day". 89 commits landed on origin/master on 09-20 alone;
+# the trunk was 152 ahead of the sha that shipped. The cause was that
+# hakux-nightly.service ExecStarted out of /home/justin/hakuX -- whatever
+# branch the owner last checked out there -- and nightly_build.sh asked that
+# checkout what it was:
+#
+#     BRANCH=$(git rev-parse --abbrev-ref HEAD)
+#     SHA=$(git rev-parse --short HEAD)
+#
+# It never fetched and never compared, so a checkout nobody had pulled for 34
+# hours produced a confident, current-dated, wrong release. Twice.
+#
+# WHY THE FIXTURE IS PINNED BEHIND AND NOT CURRENT. A check that only ever
+# runs against a tree that happens to be at the tip passes against the broken
+# version for free -- that is the entire shape of this bug. So the central
+# check runs on a tree that IS five commits behind, and the falsification at
+# the bottom runs the replaced lines verbatim over that same tree and requires
+# that the check FAILS against them.
+#
+# The behind tree's commits are backdated three days and the trunk's five new
+# ones are dated now, so with a one-day window the behind tree's own log is
+# empty. That is not decoration: it reproduces the exact sentence the two bad
+# releases printed, which a same-day fixture cannot.
+
+echo "== nightly_build.sh: the nightly builds the trunk, or refuses"
+NT="$T/nightlytrunk"
+NIGHTLY="$TESTING/nightly_build.sh"
+rm -rf "$NT"; mkdir -p "$NT"
+
+nt_commit() {   # <repo> <subject> <date> <path...>
+    local d=$1 subject=$2 when=$3; shift 3
+    local p
+    for p in "$@"; do mkdir -p "$d/$(dirname "$p")"; echo "$subject" >> "$d/$p"; done
+    git -C "$d" add -A
+    GIT_AUTHOR_DATE="$when" GIT_COMMITTER_DATE="$when" \
+        git -C "$d" commit -q -m "$subject"
+}
+
+# Absolute, not "3 days ago": git's date parser on the CI runner rejects the
+# relative form for GIT_AUTHOR_DATE and commits at the wall clock instead,
+# which would collapse the whole point of the fixture -- and do it silently,
+# which is why the "really five commits behind" check above exists.
+OLD=$(date -d '3 days ago' -Iseconds)
+# The trunk commits land two hours ago, not at the wall clock: they must be
+# inside a "since yesterday 00:30" window AND outside the short window the
+# empty-window control below uses. Both bounds relative, never a fixed date --
+# a hardcoded one in a windowed fixture goes red at some hour of the day.
+NOW=$(date -d '2 hours ago' -Iseconds)
+SEED="$NT/seed"
+git -c init.defaultBranch=master init -q "$SEED"
+git -C "$SEED" config user.email s@t; git -C "$SEED" config user.name s
+
+# The android/ stub. Committed, so every clone below has it, and it is what
+# makes build mode runnable in a selftest at all: nightly_build.sh runs
+# `(cd android && ./gradlew assembleRelease)` and then looks for the apk and
+# greps the versionName out of the kts. Faking those three facts is what lets
+# the publish path -- the one that labels the release with a sha -- be checked
+# here instead of only at 00:30 on the owner's box.
+mkdir -p "$SEED/android/app"
+cat > "$SEED/android/gradlew" <<'GRADLEW'
+#!/usr/bin/env bash
+# selftest stub: produce the one artifact the real assembleRelease produces.
+mkdir -p app/build/outputs/apk/release
+echo "fake apk for $*" > app/build/outputs/apk/release/app-release.apk
+GRADLEW
+chmod +x "$SEED/android/gradlew"
+echo 'versionName = "0.9-selftest"' > "$SEED/android/app/build.gradle.kts"
+nt_commit "$SEED" "base: the android stub" "$OLD" README.md
+
+# What the pinned checkout knows about: old, and nothing in a one-day window.
+nt_commit "$SEED" "hw/xbox/nv2a: something from three days ago" "$OLD" hw/xbox/nv2a/old.c
+
+ORIGIN="$NT/origin.git"
+# -c init.defaultBranch=master: a bare repo made without it gets HEAD ->
+# refs/heads/main, and every clone below then checks out nothing at all --
+# which turns each negative grep in this file green against an empty file.
+git -c init.defaultBranch=master init -q --bare "$ORIGIN"
+git -C "$SEED" remote add origin "$ORIGIN"
+git -C "$SEED" push -q origin master
+
+BEHIND="$NT/behind"          # the owner's checkout, as it stood on 09-21
+git clone -q "$ORIGIN" "$BEHIND"
+
+# The trunk moves. Five commits, today, exactly as it did on 09-20.
+for i in 1 2 3 4 5; do
+    nt_commit "$SEED" "target/i386: trunk commit $i, landed today" "$NOW" "target/i386/new$i.c"
+done
+git -C "$SEED" push -q origin master
+
+CURRENT="$NT/current"        # a tree at the tip, for the control
+git clone -q "$ORIGIN" "$CURRENT"
+TRUNK=$(git -C "$SEED" rev-parse --short HEAD)
+STALE=$(git -C "$BEHIND" rev-parse --short HEAD)
+DAY_L=$(TZ="${HAKUX_TZ:-America/Los_Angeles}" date '+%F' 2>/dev/null || date '+%F')
+# The premise of every check below, asserted rather than assumed: a fixture
+# that quietly failed to pin would make the whole fragment green for free --
+# which is the same failure mode as the bug.
+check "the fixture is really five commits behind the trunk" \
+    bash -c 'git -C "$1" fetch -q origin master && [ "$(git -C "$1" rev-list --count HEAD..FETCH_HEAD)" = 5 ]' \
+        _ "$BEHIND"
+check "  and the behind tree's own one-day window is empty, as the owner's was" \
+    bash -c '[ "$(git -C "$1" log --oneline --since="$(date -d "yesterday 00:30" -Iseconds)" | wc -l)" = 0 ]' \
+        _ "$BEHIND"
+
+nt_notes() {   # <script> <tree> <outfile> [since]
+    NIGHTLY_TREE="$2" NIGHTLY_TIP=master NIGHTLY_OUT="$NT/must-not-exist" \
+        bash "$1" notes "${4:-$(date -d 'yesterday 00:30' -Iseconds)}" >"$3" 2>"$3.err"
+}
+
+# --------------------------------------------------------------- the checks
+#
+# THE CHECK, as two functions so the falsification below can put the replaced
+# code through the identical test. A release is honest when it either carries
+# the trunk's sha, or says out loud that it is not the trunk -- and when the
+# flat sentence "No commits in the last day." is reserved for a window that is
+# actually the trunk's.
+notes_do_not_claim_to_be_the_trunk() {   # <notes file>
+    grep -qF "$TRUNK" "$1" || grep -qiE 'behind|unreachable' "$1"
+}
+# -s first. Every predicate here but this one is positive, and a negative grep
+# passes against a missing or empty file -- so the one predicate that IS a
+# negation has to assert the notes exist before it can say anything about them.
+notes_avoid_the_bare_sentence() {        # <notes file>
+    [ -s "$1" ] && ! grep -qxF 'No commits in the last day.' "$1"
+}
+# Negated as functions, not as `bash -c '! ...'`: a shell function is not
+# exported into a child shell, so the negation there would succeed against
+# anything at all, including a missing file, and prove nothing.
+notes_claim_to_be_the_trunk_falsely() { ! notes_do_not_claim_to_be_the_trunk "$1"; }
+notes_print_the_bare_sentence()       { ! notes_avoid_the_bare_sentence "$1"; }
+
+# Since 2026-09-25 the qualification is in the LOG, not the body: the owner's
+# standing order is that the public body carries no process commentary, and a
+# tree that needed the caveat is refused in build mode (below) instead. So
+# notes mode names the problem on stderr, and its body is the plain one.
+nt_notes "$NIGHTLY" "$BEHIND" "$NT/behind.md"; rc=$?
+check "notes mode on a tree behind the trunk still exits 0 and builds nothing" \
+    bash -c '[ "$1" = 0 ] && [ ! -e "$2" ]' _ "$rc" "$NT/must-not-exist"
+check "THE CHECK: the log says this tree is not the trunk, and names the tip" \
+    notes_do_not_claim_to_be_the_trunk "$NT/behind.md.err"
+check "  the count is right: five commits behind" \
+    grep -qF '5 commit(s) behind' "$NT/behind.md.err"
+check "  and the body carries none of it (nightly_body_has_no_caveat, from 86)" \
+    nightly_body_has_no_caveat "$NT/behind.md"
+
+# Build mode, same tree: it must refuse, before ./gradlew and before gh.
+GH_BEHIND="$NT/gh-behind.log"; : > "$GH_BEHIND"
+NIGHTLY_TREE="$BEHIND" NIGHTLY_TIP=master NIGHTLY_OUT="$NT/out-behind" \
+    SELFTEST_GH_LOG="$GH_BEHIND" bash "$NIGHTLY" >"$NT/behind-build.log" 2>&1
+rc=$?
+check "build mode on a tree behind the trunk refuses (exit 5)" [ "$rc" = 5 ]
+check "  and says why, naming both shas" \
+    bash -c 'grep -q "REFUSING" "$1" && grep -qF "$2" "$1" && grep -qF "$3" "$1"' \
+        _ "$NT/behind-build.log" "$STALE" "$TRUNK"
+check "  it refuses BEFORE ./gradlew: no apk was produced" \
+    bash -c '[ -z "$(find "$1" -name "*.apk" 2>/dev/null)" ]' _ "$NT/out-behind"
+check "  and nothing was published: gh was never asked to create a release" \
+    bash -c '! grep -q "release create" "$1"' _ "$GH_BEHIND"
+
+# ------------------------------------------------------------- the controls
+#
+# A refusal is easy to get by refusing always, so the tip must publish, and
+# the flat sentence must still be reachable when it is true.
+GH_CUR="$NT/gh-current.log"; : > "$GH_CUR"
+NIGHTLY_TREE="$CURRENT" NIGHTLY_TIP=master NIGHTLY_OUT="$NT/out-current" \
+    SELFTEST_GH_LOG="$GH_CUR" bash "$NIGHTLY" >"$NT/current-build.log" 2>&1
+rc=$?
+check "build mode on a tree AT the tip publishes (exit 0)" [ "$rc" = 0 ]
+check "  the apk is named with the trunk's sha, not the checkout's" \
+    bash -c '[ -n "$(find "$1" -name "*-$2.apk")" ] && [ -z "$(find "$1" -name "*-$3.apk")" ]' \
+        _ "$NT/out-current" "$TRUNK" "$STALE"
+check "  the release title carries the trunk's sha" \
+    bash -c 'grep -q "release create nightly-" "$1" && grep -qF "($2)" "$1"' _ "$GH_CUR" "$TRUNK"
+check "  and the notes call it the tip rather than qualifying it" \
+    bash -c 'grep -qF "the tip of" "$1" && ! grep -qiE "behind|unreachable" "$1"' \
+        _ "$NT/out-current/$DAY_L.notes.md"
+check "  the body gh was handed carries no warning or caveat line" \
+    nightly_body_has_no_caveat "$NT/out-current/$DAY_L.notes.md"
+check "  the day's five trunk commits are in the notes" \
+    grep -qF 'target/i386: trunk commit 5, landed today' "$NT/out-current/$DAY_L.notes.md"
+
+# The flat sentence is not simply deleted: at the tip, with an empty window,
+# it is the correct sentence and it must still appear.
+nt_notes "$NIGHTLY" "$CURRENT" "$NT/current-empty.md" "$(date -d '30 minutes ago' -Iseconds)"
+check "at the tip with a genuinely empty window, the flat sentence is still used" \
+    notes_print_the_bare_sentence "$NT/current-empty.md"
+
+# Origin unreachable: it used to publish with a caveat at the top of the body.
+# Since 2026-09-25 it refuses (exit 8) and says why in the log -- not silently
+# falling back to the local sha, and not putting the story in the release.
+UNREACH="$NT/unreachable"
+git clone -q "$ORIGIN" "$UNREACH"
+git -C "$UNREACH" remote set-url origin "$NT/no-such-repo.git"
+GH_UN="$NT/gh-unreachable.log"; : > "$GH_UN"
+NIGHTLY_TREE="$UNREACH" NIGHTLY_TIP=master NIGHTLY_OUT="$NT/out-unreachable" \
+    SELFTEST_GH_LOG="$GH_UN" bash "$NIGHTLY" >"$NT/unreachable-build.log" 2>&1
+rc=$?
+check "build mode with origin unreachable refuses (exit 8)" [ "$rc" = 8 ]
+check "  the log names the cause and dates the last successful fetch" \
+    bash -c 'grep -qF "cannot reach origin/master" "$1" && grep -qF "last fetch:" "$1"' \
+        _ "$NT/unreachable-build.log"
+check "  before ./gradlew, and nothing was published" \
+    bash -c '[ -z "$(find "$1" -name "*.apk" 2>/dev/null)" ] && ! grep -q "release create" "$2"' \
+        _ "$NT/out-unreachable" "$GH_UN"
+nt_notes "$NIGHTLY" "$UNREACH" "$NT/unreachable.md"
+check "  notes mode logs it, and its body carries no caveat" \
+    bash -c 'grep -qF "REFUSING: cannot reach" "$1"' _ "$NT/unreachable.md.err"
+check "  (unreachable body)" nightly_body_has_no_caveat "$NT/unreachable.md"
+
+# A modified tracked file: the binary would not be the sha the body names. It
+# used to publish with "> Built with N modified tracked file(s)" at the top.
+DIRTY_T="$NT/dirty"
+git clone -q "$ORIGIN" "$DIRTY_T"
+echo "an edit nobody committed" >> "$DIRTY_T/README.md"
+GH_DIRTY="$NT/gh-dirty.log"; : > "$GH_DIRTY"
+NIGHTLY_TREE="$DIRTY_T" NIGHTLY_TIP=master NIGHTLY_OUT="$NT/out-dirty" \
+    SELFTEST_GH_LOG="$GH_DIRTY" bash "$NIGHTLY" >"$NT/dirty-build.log" 2>&1
+rc=$?
+check "build mode on a tree with a modified tracked file refuses (exit 7)" [ "$rc" = 7 ]
+check "  the log says why, and nothing was built or published" \
+    bash -c 'grep -qF "1 tracked file(s) modified" "$1" && [ -z "$(find "$2" -name "*.apk" 2>/dev/null)" ] && ! grep -q "release create" "$3"' \
+        _ "$NT/dirty-build.log" "$NT/out-dirty" "$GH_DIRTY"
+nt_notes "$NIGHTLY" "$DIRTY_T" "$NT/dirty.md"
+check "  notes mode on it: the body carries no caveat" \
+    nightly_body_has_no_caveat "$NT/dirty.md"
+check "  and the dirty tree really was the tip (so exit 7 is the dirt, not 5)" \
+    grep -qF "the tip of" "$NT/dirty.md"
+
+# Diverged, and ahead-only. The script documents a deliberate asymmetry here
+# -- a tree purely AHEAD of the trunk publishes with the old "unpushed" label,
+# because it contains every trunk commit and so nothing a reader is owed is
+# missing from it, while a tree that is ahead AND behind refuses. That rests
+# entirely on the order of an `elif`, and a documented gate is not an enforced
+# one, so both arms are checked.
+DIVERGED="$NT/diverged"
+git clone -q "$ORIGIN" "$DIVERGED"
+git -C "$DIVERGED" config user.email s@t; git -C "$DIVERGED" config user.name s
+git -C "$DIVERGED" reset -q --hard "$STALE"
+nt_commit "$DIVERGED" "a local commit the owner never pushed" "$NOW" local.c
+GH_DIV="$NT/gh-diverged.log"; : > "$GH_DIV"
+NIGHTLY_TREE="$DIVERGED" NIGHTLY_TIP=master NIGHTLY_OUT="$NT/out-diverged" \
+    SELFTEST_GH_LOG="$GH_DIV" bash "$NIGHTLY" >"$NT/diverged-build.log" 2>&1
+rc=$?
+check "a tree both ahead of and behind the trunk refuses (behind wins the elif)" \
+    bash -c '[ "$1" = 5 ] && grep -q "REFUSING" "$2" && ! grep -q "release create" "$3"' \
+        _ "$rc" "$NT/diverged-build.log" "$GH_DIV"
+
+AHEAD_T="$NT/ahead"
+git clone -q "$ORIGIN" "$AHEAD_T"
+git -C "$AHEAD_T" config user.email s@t; git -C "$AHEAD_T" config user.name s
+nt_commit "$AHEAD_T" "hw/xbox/nv2a: a local commit on top of the tip" "$NOW" hw/xbox/nv2a/local.c
+nt_notes "$NIGHTLY" "$AHEAD_T" "$NT/ahead.md"
+check "a tree purely ahead of the trunk publishes, labelled unpushed" \
+    bash -c 'grep -qF "**unpushed**" "$1" && grep -qF "1 commits ahead of origin/master" "$1"' \
+        _ "$NT/ahead.md"
+check "  and is not mislabelled as behind" \
+    bash -c '! grep -qF "behind" "$1"' _ "$NT/ahead.md"
+check "  and carries no warning or caveat line" \
+    nightly_body_has_no_caveat "$NT/ahead.md"
+check "the empty-window control's body carries no caveat either" \
+    nightly_body_has_no_caveat "$NT/current-empty.md"
+
+# ------------------------------------------------- the unit, and its copies
+#
+# Everything above is about the script refusing. This is about the OTHER half
+# of the defect, which no amount of care inside nightly_build.sh can reach: a
+# unit file that hands it the owner's checkout in the first place.
+#
+# docs/systemd/ held a second hakux-nightly.service and .timer. Both
+# directories install into ~/.config/systemd/user/, so whichever was copied
+# last won; they had already drifted (AccuracySec 1min vs 30s, no Unit= in the
+# older); and the older one still carried WorkingDirectory=/home/justin/hakuX
+# with ExecStart=.../nightly_build.sh. Its README gave the `cp` command. That
+# is a documented procedure for reinstating this bug after it is fixed, which
+# is worse than the bug, because it fires long after anyone is looking.
+#
+# So: no unit anywhere in the repository may ExecStart nightly_build.sh. The
+# launcher is the only entry point, and it is the thing that knows which tree
+# to hand over.
+# Parameterised on the directory, so the identical predicate can be run
+# against a mutant tree below. A check whose only evidence is that it is green
+# on the fixed tree cannot distinguish "no bad unit" from "found no units".
+no_unit_execstarts_the_script() {   # <dir>
+    ! grep -rlE '^ExecStart=.*nightly_build\.sh' "$1" --include='*.service' | grep -q .
+}
+a_unit_execstarts_the_script() { ! no_unit_execstarts_the_script "$1"; }
+
+check "no installable unit ExecStarts nightly_build.sh directly" \
+    no_unit_execstarts_the_script "$REPO/docs"
+# The mutant: the docs/systemd/ unit as it stood at bda6c52d9c, verbatim. If
+# the predicate above is green against this too, it is finding no units rather
+# than finding no bad ones.
+MUT="$NT/mutant-units"; mkdir -p "$MUT"
+cat > "$MUT/hakux-nightly.service" <<'MUTANT'
+[Service]
+Type=oneshot
+WorkingDirectory=/home/justin/hakuX
+ExecStart=/home/justin/hakuX/docs/testing/nightly_build.sh
+MUTANT
+check "  MUTANT: the deleted docs/systemd/ unit would be caught" \
+    a_unit_execstarts_the_script "$MUT"
+check "  and the search really reaches the repository's own .service files" \
+    bash -c 'grep -rlE "^ExecStart=.*run-nightly\.sh" "$1"/docs --include="*.service" | grep -q .' \
+        _ "$REPO"
+check "  and exactly one hakux-nightly.service is shipped" \
+    bash -c '[ "$(find "$1"/docs -name hakux-nightly.service | wc -l)" = 1 ]' _ "$REPO"
+check "  the unit no longer pins a WorkingDirectory (that WAS the defect)" \
+    bash -c '! grep -q "^WorkingDirectory=" "$1/docs/testing/systemd/hakux-nightly.service"' \
+        _ "$REPO"
+
+# ------------------------------------------------------------ falsification
+# nightly_build.sh lines 66-80 and the notes else-branch as they stood at
+# bda6c52d9c, verbatim, over the SAME five-commits-behind tree. The lines
+# cannot be reached through the real script any more, so they are run
+# directly. If the checks above pass against this, they are testing nothing.
+cat > "$NT/legacy-notes.sh" <<'LEGACY'
+#!/usr/bin/env bash
+set -u
+cd "$NIGHTLY_TREE" || exit 1
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+SHA=$(git rev-parse --short HEAD)
+UNPUSHED=$(git log --oneline "origin/$BRANCH..HEAD" 2>/dev/null | wc -l)
+if [ "$UNPUSHED" -gt 0 ]; then
+    PROV="built from **unpushed** \`$SHA\` on \`$BRANCH\` ($UNPUSHED commits ahead of origin)"
+else
+    PROV="built from \`$SHA\` on \`$BRANCH\`"
+fi
+SINCE="${2:-$(date -d 'yesterday 00:30' -Iseconds)}"
+TOTAL=$(git log --since="$SINCE" --oneline 2>/dev/null | wc -l)
+echo "Automated nightly. $PROV."
+echo
+if [ "$TOTAL" -gt 0 ]; then
+    git log --no-merges --since="$SINCE" --format='- %s'
+else
+    echo "No commits in the last day."
+fi
+LEGACY
+nt_notes "$NT/legacy-notes.sh" "$BEHIND" "$NT/legacy.md"
+check "the falsification ran and produced notes at all" \
+    grep -qF 'Automated nightly.' "$NT/legacy.md"
+check "  it reproduces the shipped defect: the stale sha, stated as fact" \
+    grep -qF "built from \`$STALE\` on \`master\`" "$NT/legacy.md"
+check "FALSIFIED: the replaced code claims to be the trunk while five behind" \
+    notes_claim_to_be_the_trunk_falsely "$NT/legacy.md"
+check "FALSIFIED: and prints 'No commits in the last day.' while the trunk moved" \
+    notes_print_the_bare_sentence "$NT/legacy.md"
+# The replaced code published whatever it wrote. The new code's answer to the
+# same tree is not a better-worded body but no release at all, plus a log that
+# names the trunk -- so that is what "not vacuous" is measured against.
+check "  not vacuous (1): on the same tree the new log names the trunk" \
+    notes_do_not_claim_to_be_the_trunk "$NT/behind.md.err"
+check "  not vacuous (2): and the new build publishes nothing from it" \
+    bash -c '! grep -q "release create" "$1"' _ "$GH_BEHIND"

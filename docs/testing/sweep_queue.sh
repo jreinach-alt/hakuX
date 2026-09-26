@@ -1,0 +1,235 @@
+#!/usr/bin/env bash
+#
+# Run a long queue of single-test pgraph discs that yields the device on demand.
+#
+#   sweep_queue.sh start <queue.txt>   begin (or continue) working the queue
+#   sweep_queue.sh pause               stop after the current test, free the Nova
+#   sweep_queue.sh resume              carry on
+#   sweep_queue.sh status              progress, and whether the device is free
+#   sweep_queue.sh collect             pull the image and extract results so far
+#
+# There is one device, and a full re-baseline is hours of it. Without a way to
+# preempt, any fix that needs the Nova waits for the whole sweep; with a naive
+# preempt, an experimental APK installed mid-sweep silently produces results
+# from a different binary than the ones before it.
+#
+# So: `pause` blocks until the runner has genuinely parked, and every `resume`
+# reinstalls the baseline APK before continuing. Which build produced each
+# result is recorded per row, so a mix-up is visible after the fact rather than
+# inferred.
+#
+# Discs are built just-in-time — 1,591 tests would otherwise be ~9GB of ISOs.
+set -u
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PKG="${PKG:-com.jreinach.hakux.debug}"
+ACT="$PKG/com.rfandango.haku_x.LauncherActivity"
+HDD="/sdcard/Android/data/$PKG/files/x1box/hdd.img"
+DEVISO="/storage/E6C6-D7AA/Games/XBox/sweep.iso"
+LEASE="${HAKUX_DEVICE_LEASE:-/tmp/hakux-device-lease}"
+
+STATE="${SWEEP_STATE:?set SWEEP_STATE to a working directory}"
+# THE SWEEP'S DEVICE IS RECORDED AT START AND READ BACK BY EVERY OTHER VERB.
+# `pause` used to take whichever adb device happened to be listed first, so
+# on a two-handheld host it could force-stop the app on the device the sweep
+# was NOT running on -- in the middle of someone else's run. And the four
+# build inputs below were demanded at top level, so `pause` and `resume`
+# exited on a missing BASE_ISO before doing anything; they need none of them.
+if [ "${1:-status}" = start ]; then
+    SERIAL="${SERIAL:-$(adb devices | tr -d '\r' | awk 'NR>1 && $2=="device"{print $1; exit}')}"
+    [ -n "$SERIAL" ] || { echo "no adb device; set SERIAL"; exit 1; }
+else
+    SERIAL="${SERIAL:-$(cat "$STATE/serial" 2>/dev/null)}"
+    [ -n "$SERIAL" ] || [ "${1:-status}" = status ] || {
+        echo "no $STATE/serial (the sweep was never started here); set SERIAL"; exit 1; }
+fi
+case "${1:-status}" in
+    start)
+        BASE_ISO="${BASE_ISO:?set BASE_ISO to the stock nxdk_pgraph_tests xiso}"
+        GOLDENS="${GOLDENS:?set GOLDENS to goldens/results}"
+        RESULTS="${RESULTS:?set RESULTS to the sweep results dir}"
+        BASELINE_APK="${BASELINE_APK:?set BASELINE_APK to the APK the sweep measures}" ;;
+esac
+
+mkdir -p "$STATE"
+QUEUE="$STATE/queue.txt"; DONE="$STATE/done.tsv"; LOG="$STATE/run.log"
+PAUSE="$STATE/PAUSE"; IDLE="$STATE/IDLE"; PID="$STATE/pid"
+
+a() { adb -s "$SERIAL" "$@"; }
+now() { date +%H:%M:%S; }
+
+apk_sha() { sha256sum "$BASELINE_APK" 2>/dev/null | cut -c1-12; }
+
+# This script's whole reason for reinstalling on every resume is that a mix-up
+# must be visible rather than inferred. Throwing away the install's output
+# defeated that: a failed install leaves the previous build running while the
+# log says "installed <sha of the file we meant>". Check it and say so.
+#
+# (The install that exposed this failed because the path was a Linux symlink and
+# adb here is Windows adb.exe, which cannot stat one.)
+install_baseline() {
+    local out
+    out=$(a install -r "$BASELINE_APK" 2>&1)
+    case "$out" in
+        *Success*) echo "$(now) installed baseline $(apk_sha)" >> "$LOG" ;;
+        *) echo "$(now) BASELINE INSTALL FAILED, rows after this are suspect: $(echo "$out" | tail -1)" >> "$LOG" ;;
+    esac
+}
+
+# The Nova can leave the USB bus -- it did at 23:18 on 2026-09-11, mid-sweep.
+# Without this check the worker "ran" every remaining test in about a second,
+# recorded all of them FAILED, and emptied the queue, which loses the work
+# rather than pausing it. A queue is not the place to record a cable.
+device_present() {
+    adb devices | tr -d '\r' | grep -q "^$SERIAL[[:space:]]*device$"
+}
+
+run_one() {  # $1 = Suite::Test ; echoes guest_dir on success
+    local spec="$1" plan
+    device_present || return 2
+    plan=$(python3 "$HERE/make_isolation_discs.py" x --results "$RESULTS" \
+             --goldens "$GOLDENS" --base "$BASE_ISO" --out-dir "$STATE/disc" \
+             --build-one "$spec" 2>>"$LOG") || return 1
+    local gdir iso
+    gdir=$(python3 -c "import json,sys;print(json.loads(sys.argv[1])['guest_dir'])" "$plan")
+    iso=$(python3  -c "import json,sys;print(json.loads(sys.argv[1])['iso'])"  "$plan")
+
+    a push "$iso" "$DEVISO" >/dev/null 2>&1 || return 1
+    a shell am force-stop "$PKG" >/dev/null 2>&1
+    a shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1
+    a shell "am start -a android.intent.action.VIEW -n $ACT --es rom_path '$DEVISO'" \
+        >/dev/null 2>&1
+    # Same two-stage wait as run_disc.sh, and for the same reason: `am start`
+    # returns before :xemu exists and a transient adb failure looks identical
+    # to a finished run, so a single ps call force-stops healthy runs. Here
+    # that costs one test's capture rather than a whole group, but it costs it
+    # silently.
+    local s misses=0 appeared=0
+    for s in $(seq 1 20); do
+        sleep 1; touch "$LEASE"
+        if a shell 'ps -A -o NAME' | tr -d '\r' | grep -qx "$PKG:xemu"; then
+            appeared=1; break
+        fi
+    done
+    [ "$appeared" = 1 ] || return 1
+    for s in $(seq 1 40); do
+        sleep 1
+        touch "$LEASE"          # hold the device so the Stop hook defers
+        if a shell 'ps -A -o NAME' | tr -d '\r' | grep -qx "$PKG:xemu"; then
+            misses=0; continue
+        fi
+        misses=$((misses+1))
+        [ "$misses" -ge 3 ] && break
+    done
+    a shell am force-stop "$PKG" >/dev/null 2>&1
+    echo "$gdir"
+}
+
+# ES-DE (org.es_de.frontend) is this device's home app and its window carries
+# FLAG_KEEP_SCREEN_ON, so the moment the emulator leaves the foreground the
+# display is pinned on and the screen-off timeout never fires. Measured on the
+# Nova: asleep and idle draws +122uA, the same device parked on ES-DE with the
+# screen lit draws -107mA. Anywhere this script hands the device back, put the
+# panel out. KEYCODE_SLEEP overrides the flag; the timeout cannot.
+sleep_panel() { a shell input keyevent KEYCODE_SLEEP >/dev/null 2>&1; }
+
+collect() {
+    local img="$STATE/hdd.img"
+    a pull "$HDD" "$img" >/dev/null 2>&1 || return 1
+    local n=0
+    while IFS=$'\t' read -r spec gdir _sha _ts; do
+        [ -n "${gdir:-}" ] || continue
+        [ -d "$STATE/out/$gdir" ] && continue
+        python3 "$HERE/extract_results.py" "$img" -o "$STATE/out/$gdir" -d "$gdir" \
+            >/dev/null 2>&1 && n=$((n+1))
+    done < "$DONE"
+    echo "collected $n new result dir(s) into $STATE/out"
+}
+
+worker() {
+    echo "$(now) worker start, $(wc -l < "$QUEUE") queued" >> "$LOG"
+    install_baseline
+    local paused=0 count=0
+    while [ -s "$QUEUE" ]; do
+        if [ -f "$PAUSE" ]; then
+            if [ "$paused" = 0 ]; then
+                a shell am force-stop "$PKG" >/dev/null 2>&1
+                rm -f "$LEASE"          # let the Stop hook protect the device again
+                collect >> "$LOG" 2>&1
+                sleep_panel
+                touch "$IDLE"
+                echo "$(now) paused, device free" >> "$LOG"
+                paused=1
+            fi
+            sleep 3
+            continue
+        fi
+        if [ "$paused" = 1 ]; then
+            rm -f "$IDLE"
+            echo "$(now) resuming" >> "$LOG"
+            install_baseline            # whatever was installed meanwhile is gone
+            paused=0
+        fi
+
+        local spec gdir rc
+        spec=$(head -1 "$QUEUE")
+        gdir=$(run_one "$spec"); rc=$?
+        if [ "$rc" = 2 ]; then
+            # Device gone. Keep the row and wait for it: the queue survives a
+            # cable, and nothing here can tell a flat battery from a knock.
+            echo "$(now) device $SERIAL not present; waiting (queue intact)" >> "$LOG"
+            sleep 30
+            continue
+        fi
+        if [ "$rc" = 0 ]; then
+            printf '%s\t%s\t%s\t%s\n' "$spec" "$gdir" "$(apk_sha)" "$(date -Is)" >> "$DONE"
+            sed -i '1d' "$QUEUE"
+        else
+            printf '%s\t\tFAILED\t%s\n' "$spec" "$(date -Is)" >> "$DONE"
+            sed -i '1d' "$QUEUE"
+            echo "$(now) FAILED $spec" >> "$LOG"
+        fi
+        count=$((count+1))
+        [ $((count % 100)) = 0 ] && collect >> "$LOG" 2>&1
+    done
+    collect >> "$LOG" 2>&1
+    rm -f "$LEASE"
+    sleep_panel
+    echo "$(now) QUEUE EMPTY" >> "$LOG"
+}
+
+case "${1:-status}" in
+  start)
+    [ -f "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null && { echo "already running (pid $(cat "$PID"))"; exit 0; }
+    [ -n "${2:-}" ] && cp "$2" "$QUEUE"
+    [ -f "$QUEUE" ] || { echo "no queue; pass one: sweep_queue.sh start queue.txt"; exit 1; }
+    touch "$DONE"; rm -f "$PAUSE" "$IDLE"
+    echo "$SERIAL" > "$STATE/serial"
+    worker & echo $! > "$PID"
+    echo "started (pid $(cat "$PID")), $(wc -l < "$QUEUE") queued"
+    ;;
+  pause)
+    touch "$PAUSE"
+    for _ in $(seq 1 40); do [ -f "$IDLE" ] && break; sleep 2; done
+    if [ -f "$IDLE" ]; then
+        a shell am force-stop "$PKG" >/dev/null 2>&1
+        sleep_panel
+        echo "paused — the Nova is yours. $(wc -l < "$QUEUE") test(s) still queued."
+    else
+        echo "WARNING: runner did not confirm idle; check $LOG before using the device."
+        exit 1
+    fi
+    ;;
+  resume)  rm -f "$PAUSE"; echo "resumed; baseline APK will be reinstalled first" ;;
+  status)
+    d=$( [ -f "$DONE" ] && wc -l < "$DONE" || echo 0 )
+    q=$( [ -f "$QUEUE" ] && wc -l < "$QUEUE" || echo 0 )
+    running=no; [ -f "$PID" ] && kill -0 "$(cat "$PID")" 2>/dev/null && running=yes
+    state=running; [ -f "$PAUSE" ] && state=paused
+    [ -f "$IDLE" ] && state="paused (device free)"
+    echo "worker=$running  state=$state  done=$d  remaining=$q"
+    [ "$q" -gt 0 ] && echo "eta ~$(( q * 13 / 60 )) min at 13s/test"
+    ;;
+  collect) collect ;;
+  *) sed -n '3,12p' "$0" ;;
+esac

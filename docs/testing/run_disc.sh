@@ -1,0 +1,305 @@
+#!/usr/bin/env bash
+#
+# Run one test disc on the device and extract its results.
+#
+#   run_disc.sh <iso> <guest-dir> <results-dir> [timeout-seconds]
+#
+# e.g. run_disc.sh iso-blank3.iso blank3 ./res_blank3
+#
+# This exists because the same fifteen lines were being retyped for every
+# measurement, and two of the details are not obvious:
+#
+#   * The hard disk image is ~1.5GB and it is pulled after every run. Pulling
+#     each one to a *new* filename grew the WSL ext4.vhdx by 12GB in an
+#     afternoon, filled the host's C: drive, and killed the VM mid-session --
+#     a dynamically expanding VHDX never returns deleted blocks to the host.
+#     So: one fixed path, reused, deleted as soon as the results are out.
+#
+#   * Stopping the emulator is only half of releasing the device. ES-DE is the
+#     home app here and its window carries FLAG_KEEP_SCREEN_ON, so the moment
+#     the emulator exits the display is pinned on and the 30s timeout never
+#     fires -- the handheld then sits at -107mA instead of charging.
+#     KEYCODE_SLEEP overrides the flag where the timeout cannot.
+set -u
+
+ISO="${1:?usage: run_disc.sh <iso> <guest-dir> <results-dir> [timeout-s]}"
+GUEST_DIR="${2:?}"
+RESULTS="${3:?}"
+TIMEOUT="${4:-900}"
+
+# Refuses rather than guesses when two handhelds are attached; see devices.sh.
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/devices.sh"
+SERIAL="${SERIAL:-$(device_default)}"
+[ -n "$SERIAL" ] || exit 2
+PKG="${PKG:-com.jreinach.hakux.debug}"
+ACT="$PKG/com.rfandango.haku_x.LauncherActivity"
+# Per-device, because the SD card UUID and the library layout are the owner's
+# choice, not something discoverable. devices.sh is the table; the dispatcher
+# exports DEVICE_ISO_ROOT before calling here.
+DEVISO="${DEVISO:-${DEVICE_ISO_ROOT:-/storage/E6C6-D7AA/Games/XBox}/fast.iso}"
+LEASE="${HAKUX_DEVICE_LEASE:-/tmp/hakux-device-lease}"
+# Per-device. This is the guest's disk pulled back to the host for result
+# extraction, and it was one path for every run. With two handhelds running
+# concurrently the second pull overwrites the first, and the loser extracts
+# nothing: "ran but produced 0 captures", with a clean device log and a
+# successful run. Found the first time both devices ran at once, which is the
+# only way it could have been found.
+HDD="${HAKUX_HDD_SCRATCH:-$HOME/hakux-work/hdd-${DEVICE_LABEL:-${SERIAL:-x}}.img}"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Every adb call gets a deadline. Without one this script finished a run,
+# extracted its results, and then sat for seven hours wedged in the exit trap
+# because adb stopped answering -- the work was done and the job still looked
+# alive. A device that goes unresponsive must not be able to hold a slot.
+# adb_call (devices.sh) keeps that deadline and adds a retry on failure: the
+# WSL interop drop-outs lost two arms' pulls in 40 minutes on 09-25, one of
+# them after a run whose logcat was normal.
+a() { adb_call "${ADB_TIMEOUT:-120}" "adb $1" "$@"; }
+
+# Optional logcat capture, off unless CAPTURE_LOG names a file.
+#
+# It has to STREAM, not dump at the end. The core's own fprintf(stderr) never
+# reaches logcat on Android, so anything we want to see from pgraph is routed
+# through __android_log_print -- and the interesting lines are the startup set,
+# emitted in the first second. A run can take the full 1800s plus a ~1.5GB
+# pull, and the ring has long since turned over by then: a closing `logcat -d`
+# reliably returns everything except the lines we came for. That eviction is
+# already on record in galleon-flashing-deck.md.
+#
+# So the reader starts BEFORE `am start` and is killed by PID in release().
+# Killing by PID matters: a pattern kill here would match this script's own
+# command line.
+CAPTURE_LOG="${CAPTURE_LOG:-}"
+# The dispatcher exports this, and when it does that value wins -- one spec
+# per run, and the one recorded in result.json. This default is for a direct
+# invocation only. hakuX:I rather than :W because the draw-reorder pref lines
+# are logged at I; see the #50 investigation, which could not establish from
+# any dispatcher logcat whether those prefs were on.
+# libc:F, DEBUG:F and hakuX-stderr:E carry an assert's text; see dispatcher.sh.
+LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-pages:I hakuX:I hakuX-rw:I hakuX-stderr:E hakuX-vk:I libc:F DEBUG:F VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
+LOGCAT_PID=""
+
+release() {
+    [ -n "$LOGCAT_PID" ] && kill "$LOGCAT_PID" 2>/dev/null
+    a shell am force-stop "$PKG" >/dev/null 2>&1
+    a shell input keyevent KEYCODE_SLEEP >/dev/null 2>&1
+    rm -f "$LEASE"
+}
+trap release EXIT INT TERM
+
+mkdir -p "$(dirname "$HDD")"
+a push "$ISO" "$DEVISO" >/dev/null 2>&1 || { echo "push failed"; exit 1; }
+a shell am force-stop "$PKG" >/dev/null 2>&1
+a shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1
+
+if [ -n "$CAPTURE_LOG" ]; then
+    a logcat -c >/dev/null 2>&1
+    # Unwrapped by design: `a` imposes a 120s deadline, and this outlives the run.
+    # shellcheck disable=SC2086
+    adb -s "$SERIAL" logcat -v time $LOGCAT_SPEC >"$CAPTURE_LOG" 2>/dev/null &
+    LOGCAT_PID=$!
+fi
+
+a shell "am start -a android.intent.action.VIEW -n $ACT --es rom_path '$DEVISO'" >/dev/null 2>&1
+
+# Wait for the guest in two stages, because the obvious single loop is wrong
+# in both directions.
+#
+# It watched for the process to *disappear* from the first second, with one ps
+# call deciding. But `am start` returns before the :xemu process exists, so an
+# early poll sees nothing and concludes the run is over; and any transient adb
+# failure returns no output at all, which reads the same way. That cost a
+# 1,300-test group: the loop declared the emulator gone after eleven seconds
+# while it was mid-test-32, the harness force-stopped a healthy run, and
+# twenty-two of the twenty-three suites on the disc never ran. The evidence was
+# a progress log that simply stopped, which looks exactly like a guest crash.
+#
+# So: wait for it to appear, then require several consecutive misses before
+# believing it has gone.
+alive() { a shell 'ps -A -o NAME' | tr -d '\r' | grep -qx "$PKG:xemu"; }
+
+# A PROCESS THAT DIED BEFORE THE FIRST POLL WAS NEVER "NOT STARTED".
+# 1790342580-vsh-2092945 aborted 0.2 s after Vulkan init and this said "the
+# emulator never started: no ...:xemu within 90s" -- after waiting the whole
+# 90 s for a process that was already gone. A one-second poll cannot see a
+# 0.2 s life; the logcat can. The crash handler logs "Caught signal", bionic
+# logs the assert under libc and the kernel's "Fatal signal" line under
+# libc too. Read only this run's capture: the reader started after
+# `logcat -c`, so an older run's crash is not in it.
+crash_line() {
+    [ -n "$CAPTURE_LOG" ] && [ -s "$CAPTURE_LOG" ] || return 1
+    grep -a -m1 -E "Caught signal|Fatal signal|assertion .* failed" "$CAPTURE_LOG"
+}
+
+s=0
+appeared=0
+while [ "$s" -lt "${APPEAR_TIMEOUT:-90}" ]; do
+    sleep 1; s=$((s+1))
+    touch "$LEASE"
+    if alive; then appeared=1; break; fi
+    if crashed=$(crash_line); then break; fi
+done
+if [ "$appeared" = 0 ]; then
+    sleep 1                          # the handler sleeps 200 ms before re-raising
+    if crashed=$(crash_line); then
+        echo "the emulator started and CRASHED before $PKG:xemu was seen running (${s}s): $crashed"
+        grep -a -m1 -E "assertion .* failed|Abort message" "$CAPTURE_LOG" | sed 's/^/  /'
+    elif [ -n "$CAPTURE_LOG" ]; then
+        echo "the emulator never started: no $PKG:xemu within ${APPEAR_TIMEOUT:-90}s, and no crash in $CAPTURE_LOG"
+    else
+        echo "the emulator never started: no $PKG:xemu within ${APPEAR_TIMEOUT:-90}s (no CAPTURE_LOG, so a crash faster than the 1 s poll cannot be ruled out)"
+    fi
+    exit 1
+fi
+
+misses=0
+while [ "$s" -lt "$TIMEOUT" ]; do
+    sleep 1; s=$((s+1))
+    touch "$LEASE"          # hold off the Stop hook while we legitimately run
+    if alive; then misses=0; continue; fi
+    misses=$((misses+1))
+    [ "$misses" -ge "${MISSES_TO_EXIT:-3}" ] && break
+done
+TIMED_OUT=0
+if [ "$s" -ge "$TIMEOUT" ]; then
+    # Extract anyway. A run that overruns has usually written most of its
+    # captures, and the progress log names the test it stopped on -- which is
+    # the single most useful thing you can have about a hang. Exiting here
+    # threw all of that away and left "0 files", which reads as "the guest
+    # wrote nothing" when it means "we never looked". Two hangs were
+    # misdiagnosed that way before this was fixed.
+    echo "TIMEOUT after ${s}s — the guest never exited; extracting anyway"
+    TIMED_OUT=1
+    a shell am force-stop "$PKG" >/dev/null 2>&1
+    sleep 2
+else
+    echo "ran ${s}s"
+fi
+
+# THE PULL IS CHECKED AGAINST THE DEVICE, NOT TRUSTED. On 09-25 two arms
+# (shadeflat224-fix, wparamclip223-base) scored 56 and 51 W_param captures
+# that were each exactly 16384 bytes: one FATX cluster, with the PNG header
+# intact and the rest of the file gone. Both guests had exited cleanly
+# ("QEMU cleanup complete") after normal wall time, and both runs logged
+# UtilAcceptVsock. The image is qcow2, and a TRUNCATED qcow2 cannot do that:
+# the extractor raises "short read" on the first cluster past the end. A hole
+# can. A write that never landed in the host's copy leaves zeroes where a
+# table was, a zero FAT entry ends a chain, and every file behind it stops
+# after its first cluster. The size is right and the pull exited 0.
+#
+# So: take the device's md5 of its image once (the guest has exited, so the
+# file is still), pull, compare, and pull again on a mismatch, up to
+# PULL_TRIES pulls. A device that gives no md5 leaves the extractor's SHORT
+# count as the only check. SHORT files are then re-pulled too. SHORT files
+# from a pull that matches the device are the device's own image, and a
+# re-pull cannot mend those.
+DEVHDD=/storage/emulated/0/Android/data/"$PKG"/files/x1box/hdd.img
+DEV_MD5=$(a shell "md5sum '$DEVHDD'" 2>/dev/null | tr -d '\r' | awk 'NR==1{print $1}')
+[[ "$DEV_MD5" =~ ^[0-9a-f]{32}$ ]] || DEV_MD5=""
+PULL_TRIES="${PULL_TRIES:-3}"
+pull_try=0
+while :; do
+    pull_try=$((pull_try + 1))
+    rm -f "$HDD"
+    # The image is ~1.5GB; allow generously for it but never indefinitely.
+    ADB_TIMEOUT="${PULL_TIMEOUT:-600}" \
+        a pull "$DEVHDD" "$HDD" \
+        >/dev/null 2>&1 || { echo "pull failed or timed out"; exit 1; }
+    # A pull can exit 0 and still leave nothing behind -- two runs sharing this one
+    # fixed path is enough to do it, and the only symptom was a FileNotFoundError
+    # from the extractor thirty lines further down, which reads as "the extractor is
+    # broken". Check for the file instead of trusting the exit status.
+    [ -s "$HDD" ] || { echo "pull reported success but $HDD is missing or empty"; exit 1; }
+    PULL_CHECK=none
+    if [ -n "$DEV_MD5" ]; then
+        host_md5=$(md5sum "$HDD" | cut -d' ' -f1)
+        if [ "$host_md5" = "$DEV_MD5" ]; then
+            PULL_CHECK=match
+        else
+            echo "pull $pull_try: the image is not the device's (md5 $host_md5 here, $DEV_MD5 on the device)"
+            if [ "$pull_try" -lt "$PULL_TRIES" ]; then continue; fi
+            echo "pull: $pull_try pulls, none matched the device's image; not extracting a damaged copy"
+            rm -f "$HDD"
+            exit 1
+        fi
+    fi
+    rm -rf "$RESULTS"
+    # PROGRAM=vsh: nxdk_vsh_tests. From DVD it always writes e:\nxdk_vsh_tests (the
+    # dispatcher passes that as GUEST_DIR), so every earlier run's files are still
+    # there beside this one's. The manifest carries each file's guest-clock times,
+    # which is what lets vsh_score.py refuse a file older than this run's log.
+    #
+    # That guard trusts log.txt to be THIS run's, and on its own it is not: main.cpp
+    # replaces the log only once it runs, so a run that dies before main() (an apk
+    # that aborts on boot, an XBE that fails to load) leaves the previous run's log
+    # and files on the image, and they scored as a complete, identical run (audit
+    # M1, PR #229). So the host keeps, per device, the created time of the last
+    # log.txt it extracted from that device's image. A log with that same created
+    # time is the one we already saw: this run never replaced it. No guest/host
+    # clock comparison is involved, which is the point -- the guest clock's offset
+    # from the host's is unknown. The record is written to the results dir as
+    # .previous_log_created for vsh_score.py, which then refuses every file.
+    EXTRACT_EXTRA=()
+    VSH_LEDGER="${VSH_LOG_LEDGER:-$HOME/hakux-work/vsh-last-log-${DEVICE_LABEL:-${SERIAL:-x}}}"
+    if [ "${PROGRAM:-pgraph}" = vsh ]; then
+        mkdir -p "$RESULTS"
+        EXTRACT_EXTRA=(--manifest "$RESULTS/.fatx_times.json")
+        [ -s "$VSH_LEDGER" ] && cp "$VSH_LEDGER" "$RESULTS/.previous_log_created"
+    fi
+    extracted=$(python3 "$HERE/extract_results.py" "$HDD" -d "$GUEST_DIR" -o "$RESULTS" \
+        ${EXTRACT_EXTRA[@]+"${EXTRACT_EXTRA[@]}"} | tail -1)
+    echo "$extracted"
+    case "$extracted" in *" SHORT: "*) ;; *) break ;; esac
+    if [ "$PULL_CHECK" = match ]; then
+        echo "  ^ this pull matches the device's md5: the image on the device is itself"
+        echo "    inconsistent, and pulling it again cannot mend it"
+        break
+    fi
+    [ "$pull_try" -lt "$PULL_TRIES" ] || break
+    echo "pull $pull_try: SHORT files and no device md5 to check the pull against; pulling again"
+done
+case "$PULL_CHECK" in
+    match) echo "pull: md5 matches the device's image (pull $pull_try of at most $PULL_TRIES)" ;;
+    *)     echo "pull: NOT VERIFIED -- the device gave no md5 for its image (pull $pull_try)" ;;
+esac
+VSH_LOG_CREATED=""
+if [ "${PROGRAM:-pgraph}" = vsh ]; then
+    VSH_LOG_CREATED=$(python3 -c 'import json,sys
+print((json.load(open(sys.argv[1])).get("log.txt") or {}).get("created") or "")' \
+        "$RESULTS/.fatx_times.json" 2>/dev/null)
+    if [ -n "$VSH_LOG_CREATED" ]; then
+        mkdir -p "$(dirname "$VSH_LEDGER")"
+        printf '%s\n' "$VSH_LOG_CREATED" > "$VSH_LEDGER"
+    fi
+fi
+# The image is the whole point of the fixed path: take it back off the disk
+# before the next run needs the room.
+rm -f "$HDD"
+echo "results: $RESULTS ($(ls "$RESULTS" 2>/dev/null | wc -l) files)"
+if [ "$TIMED_OUT" = 1 ]; then
+    echo "  ^ PARTIAL: the guest did not exit. The tail of"
+    if [ "${PROGRAM:-pgraph}" = vsh ]; then
+        echo "    $RESULTS/log.txt names the test it stopped on."
+    else
+        echo "    $RESULTS/pgraph_progress_log.txt names the test it stopped on."
+    fi
+    exit 1
+fi
+# A vsh run is complete when ITS LOG SAYS SO, not when the process went away
+# or when it took about as long as the last one. main.cpp deletes log.txt at
+# start and writes this line after the last suite; an ASSERT, a crash or a
+# guest that never reached the tests leaves it absent.
+if [ "${PROGRAM:-pgraph}" = vsh ]; then
+    VSH_PREV=$(tr -d '\r\n' < "$RESULTS/.previous_log_created" 2>/dev/null)
+    if [ -n "$VSH_LOG_CREATED" ] && [ "$VSH_LOG_CREATED" = "$VSH_PREV" ]; then
+        echo "vsh: STALE LOG -- log.txt was created $VSH_LOG_CREATED, the same log the"
+        echo "     previous run on this device left; this run never started the program"
+        exit 1
+    fi
+    if grep -q "Testing completed normally" "$RESULTS/log.txt" 2>/dev/null; then
+        echo "vsh: log.txt says Testing completed normally"
+    else
+        echo "vsh: INCOMPLETE -- $RESULTS/log.txt has no 'Testing completed normally'"
+        exit 1
+    fi
+fi

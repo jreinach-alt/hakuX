@@ -1,0 +1,16 @@
+{
+  "registered_utc": "2026-09-26T07:34:37Z",
+  "who": "lane.vkpointsize34",
+  "issue": "34",
+  "prediction": "INERT ON THE FLEET DRIVER. The fix adds GenGeomGlslOptions.no_point_size, set by vk/shaders.c only when the enabled feature shaderTessellationAndGeometryPointSize is not VK_TRUE, and gates geom.c's three gl_PointSize writes on it. Every fleet run on Thor and Nova (purple adrenotools driver, e.g. 1790407777-verify279-6550967a5e) logs 'vk feature shaderTessellationAndGeometryPointSize: available', so on this arm the flag is 0 and the geometry shader text is byte-identical to A's. The only other change is SHADER_STATE_LAYOUT_VERSION 2 -> 3, which wipes the persisted shader cache once; that recompiles the same text. So Clear (the suite whose system-driver run carried the VUID), Point_size and Point_params (point sizes, where a lost gl_PointSize write would show first) must not move by a single pixel. FALSIFIED IF any of them moves outside the run-to-run band: the gate would then be keyed on the wrong flag, or the flag reaches the key on a device that has the feature. NOT THIS ARM: the VUID count 1 -> 0 on the system driver, which lacks the feature (1790317606-vklayer34-4071708 logs 'missing'). That leg is measured by survey request 1790408065-vkpointsize34-3720485 on instrumentation ref 386af38184 (e2c9fef860 on this fix), counted with docs/lanes/vklayer34/count_vuids.py, and VOID unless every positive-control line is present. Desktop is inert by the same reading (lavapipe has the feature) and is not armed here.",
+  "a_ref": "6550967a5e",
+  "b_ref": "97f221cac0",
+  "must_not_move": [
+    "Clear/*",
+    "Point_size/*",
+    "Point_params/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": []
+}

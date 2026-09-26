@@ -1,0 +1,29 @@
+{
+  "registered_utc": "2026-09-25T23:28:49Z",
+  "who": "lane.dmasurf277",
+  "issue": "277",
+  "prediction": "#277: address_space_map's direct-RAM branch (system/physmem.c) now fires the BP_MEM_WRITE access callbacks for a write mapping before returning the pointer, as flatview_write_continue already does for every non-mapped write. MUST MOVE: DMA_corruption_around_surfaces/xemuReadFromFileIntoSurface 90,912 -> 0 (exact), and its on-screen 'Read'/'Surf flush' lines from 0x22222222 to 0xFFFFFFFF. Mechanism: the IDE bus-master read of Z:\\opaque_white.raw is dma_blk_read -> dma_memory_map (direct pointer) -> unmap; no access callback fires, so the bound 640x480 surface at that address keeps draw_dirty from the no-op draw and upload_pending false. The guest's next CPU read of the first dword trips the surface watch, which downloads the stale 0x22 surface over the file's white; the texture then samples 0x22. With the hunk the map-time callback downloads the (still 0x22) surface first, retires draw_dirty, sets upload_pending; the DMA then lands white, the CPU read finds nothing to download, and the texture path (upload_pending disables surface-to-texture on VK; GL re-uploads) reads white. The hunk is in code both renderers share, which is why GL and Vulkan fail identically today (lane.remote measurement on #277). WHAT WOULD MOVE EACH MUST-NOT-MOVE LEG: (1) DMAOverlap and xemuReadFromFileIntoTexture: exact today; the first writes its surface from the CPU (already watched), the second is a texture with no surface, so a move means the new call matched a range it should not (ram_addr of the mapping vs the watch's vram ram_addr disagree). (2) Surface format, Clear: no test writes a bound surface by DMA; the only direct-map writes during them are disc/cache-file reads by the test host into its own buffers. A move means one of those buffers overlaps a still-watched draw_dirty surface -- a real ordering the old code got wrong, so the move must be toward the golden; a move away, or a hung run (the callback waits on the pfifo thread from the DMA completion context, which holds the BQL), refutes the hunk. A MOVE ON ANY LEG REFUTES THE PATCH, NOT THE LEG. (Re-registered 2026-09-25 by job.cloud before any arm ran: Surface_as_vertex_array dropped from must_not_move and the disc, since the golden set has no PNG under it and request.sh refused the arm; PR #325 pass-2 MEDIUM-1.)",
+  "a_ref": "7f6b5e3473",
+  "b_ref": "c49955975b",
+  "must_not_move": [
+    "DMA_corruption_around_surfaces/DMAOverlap",
+    "DMA_corruption_around_surfaces/xemuReadFromFileIntoTexture",
+    "Surface_format/*",
+    "Clear/*"
+  ],
+  "expect": {
+    "DMA_corruption_around_surfaces/xemuReadFromFileIntoSurface": 0
+  },
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Clear",
+      "DMA corruption around surfaces",
+      "Surface format"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

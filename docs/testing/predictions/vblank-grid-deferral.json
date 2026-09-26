@@ -1,0 +1,16 @@
+{
+  "registered_utc": "2026-09-13T04:59:21Z",
+  "who": "vblank-timing",
+  "issue": "65",
+  "prediction": "Keeping the VBLANK phase grid across a deferral (if (was_deferred || unlocked) -> if (unlocked)). Judged on soak logcat vbl lines via docs/testing/vblank_report.py, not on captures: no golden can see VBLANK timing, which is why this stream exists. Arm A measured: def>20 mean 19159610 ns / 52.285 Hz, def 1-20 mean 17198838 ns, def==0 mean 16712711 ns / 59.844 Hz, whole soak 56.587 Hz, 14653 assertions, 229 coalesced. B1: def>20 mean interval falls by at least 1000000 ns. FAILS if it moves less than 300000 ns, the world where deferrals routinely exceed a period so the <= now clamp discards the grid anyway. B2: whole-soak delivered rate rises above 58.000 Hz. FAILS below 57.000 Hz. B3: def==0 windows stay within +/-50000 ns of 16712711 ns -- the fix must not touch the regime it does not apply to; this is the paired within-run control against Galleon scene variation. FAILS if they move, which would mean something other than the grid changed. B4 THE COST: median gfps does not fall by more than 2. This is the leg the old comment predicts will fail; FAILS at a drop of 3 or more, and then the trade is real and the deferral itself needs reworking rather than the grid restoring. B5: deferrals per window RISE, because a VBLANK arriving sooner after a deferral lands inside the next deferral window more often. FAILS if def falls, which would mean I have the loop wrong.",
+  "a_ref": "19f52510d9",
+  "b_ref": "ed5df55ccc",
+  "must_not_move": [],
+  "expect": {
+    "def_gt20/mean_interval_ns": 18100000,
+    "whole_soak/delivered_millihertz": 58000000,
+    "def_eq0/mean_interval_ns": 16712711,
+    "gfps_median_drop_max": 2
+  },
+  "expect_counts": {}
+}

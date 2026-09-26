@@ -1,0 +1,3 @@
+# Texture_wrap_mode on the Nova. after = cylinder-wrap bits honoured in the geometry shader on WRAP axes (this commit); before = 14d1369983.
+# test	after_px	before_px
+CylinderWrapping	2778	18953

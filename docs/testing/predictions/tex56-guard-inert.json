@@ -1,0 +1,28 @@
+{
+  "registered_utc": "2026-09-13T11:54:56Z",
+  "who": "tex-border-length-agent",
+  "issue": "56",
+  "prediction": "#56 arm B against the probe-only arm A that already ran, SAME DISC (5-suites:392c13e5, disc_id matches by construction), one behaviour-bearing commit apart.\n\nWHAT CHANGED BETWEEN THE ARMS. 7c7c2d63b1 rewires the LRU-exhausted path: create_texture now returns a bool, and pgraph_vk_bind_textures keys its repair off that instead of off `!r->texture_bindings[i]`, so an exhausted bind leaves the slot dirty and its tex_reg_cache unstamped rather than recording it as done; vk/buffer.c floors a user texture_cache_size override at NV2A_MAX_TEXTURES * (submit_frames + 1); and the early return gained the NV2A_VK_DGROUP_END it was missing. db7afd2076 adds logging only.\n\nLEG 1 -- THE ONE THAT CAN FAIL, AND THE POINT OF THE ARM: all 111 non-flaky captures bit-identical between the arms, i.e. better=0 and worse=0 over the must-not-move set. The argument is that the changed code is inside a branch taken only when lru_lookup returns NULL, and arm A's probe logged no LRU-EXHAUSTED line across 112 captures. FAILS in any world where I have mis-wired the bool: create_texture has two non-exhausted exits and both had to gain `return true`, and the caller's `continue` now skips the register-cache stamp for a case it did not previously skip. Getting either wrong shows up as captures moving on a disc where the LRU is never exhausted, which is exactly what this leg reads. Nothing in the patch forces it true -- the failure mode is a wrong texture on 112 captures, not a subtle one.\n\nLEG 2 -- THE SUBSTANTIVE COUNTER, for the bordered-length defect handed over with #44: `blind == 0` in the final tally, over a denominator the final tally now states. Arm A established zero but bounded its denominator only as 1..128. FAILS if any bordered bind declines to re-upload while the DECODED range's content has changed since its last upload -- the two concrete shapes are an interior-only rewrite of the coloured sub-rect at (4,4), and a bordered cubemap whose faces 2..5 are rewritten alone. I predict zero because every writer in these suites is GenerateBordered2DSurface followed by swizzle_rect, which walks its source row-major and so always touches byte 0 (#44's own measured finding: prefix on 9 of 9 frontiers).\n\nLEG 3 -- #56's OWN QUESTION: `lru_exhausted == 0` and `lru_exhausted_null == 0` in the final tally. This is what decides whether the guard has ever been exercised on the path it exists for. FAILS if these five suites churn ~1,020 distinct texture keys inside one submit window, which Texture_cubemap's 72 captures make worth asking.\n\nLEG 4 -- NOT A FALSIFIER, stated so it is not counted as one: the per-shape lines will show decoded/tracked of 4 for a 2D bordered texture with w,h >= 8, larger powers of two for the small sizes, and faces_covered below 2 for a bordered cubemap. My own code computes both sides of that ratio; it asserts the patch does what I think it does and constrains nothing the goldens constrain.\n\n2D_BorderTex_SZ IS DELIBERATELY OFF THE MUST-NOT-MOVE LIST. Ten runs of one unchanged APK give 0 0 0 0 0 146 181 1847 2352 2430 5640 (#44), so a single-run delta on it is a coin flip in either direction. It is judged, if at all, on docs/testing/border_swatch_origin.py's stale_px against that floor -- never on differing pixels. Arm A's value for it is one draw from that distribution and so is arm B's.\n\nWHAT A PASS DOES AND DOES NOT LICENSE. A pass says the #56 rewiring is inert on everything this corpus can run; it does NOT say the guard is now tested, because the branch it guards is never entered. That distinction is the deliverable, not a side note: the disposition being recorded is that the committed guard's NULL condition is unreachable by construction, and the reachable half of #56 was not covered until this change.",
+  "a_ref": "0cbdddace0",
+  "b_ref": "db7afd2076",
+  "must_not_move": [
+    "Texture_border/2D",
+    "Texture_border/3D_BorderTex_SZ_*",
+    "Texture_border/Cube_BorderTex_SZ_*",
+    "Texture_border_color/*",
+    "Texture_cubemap/*",
+    "Volume_texture/*",
+    "TextureWrapMode/*",
+    "Texture_border/xemu#1034"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "better": 0,
+    "worse": 0
+  },
+  "notes": [
+    "Texture_border/xemu#1034 is in must_not_move explicitly rather than via a glob; the '#' in the name is easy to lose to a shell and a pattern that matches no capture is a refusal in ab_compare, so it is listed rather than assumed.",
+    "Arm A is dispatcher result 1789299768-tex-border-length-agent-4073295 (apk 85108f2e0e02, nova ee317437, 112 captures, 22 exact, progress_log_proof true). Arm B must land on the same device; affinity.py pins both arms of a pair that share this prediction file.",
+    "This registration commit sits on top of b_ref db7afd2076, which is the last code-bearing commit; the arm is queued at db7afd2076 so the built ref and b_ref are the same sha, and this file is read from the agent's own worktree rather than from the dispatcher's detached checkout."
+  ]
+}

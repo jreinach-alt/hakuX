@@ -1,0 +1,988 @@
+#!/usr/bin/env bash
+#
+# The arms job. Runs from hakux-arms.timer every 30 minutes, and never starts
+# a model session: it is a script, start to finish.
+#
+#   arms.sh            queue what is runnable, judge what has finished
+#   arms.sh list       what it would queue, and why the rest is skipped
+#   arms.sh state lane/<name>
+#                      the label that branch's verdicts add up to, and why:
+#                      which FAIL is outstanding, or which verdict superseded
+#                      which. Reads $WORK/arms only; queues and judges nothing.
+#
+# WHAT IT DOES. Every registered prediction names two refs (a_ref, b_ref) and
+# the captures it expects to move or hold. That is a complete device request:
+# the arms job finds every such prediction on master, on any branch with an
+# open PR, on any lane branch, or registered on this host, queues its two arms
+# through request.sh, and when
+# both have run, judges the pair with ab_compare.py and posts the verdict on
+# the lane's PR (or its issue). Nothing has to label anything for the
+# handhelds to get work: a lane that commits a prediction and pushes has
+# queued an arm.
+#
+# WHY IT IS A SCRIPT. On the first evening of the job harness two handhelds
+# sat idle for two hours while three lanes pushed predictions, because the
+# only actor that used to queue arms was the orchestrator session, and that
+# session had been wound down. A queue driven by a model's attention is a
+# queue that empties whenever the model is not looking. This one is driven
+# by files.
+#
+# WHAT KEEPS IT FROM RE-RUNNING HISTORY. 131 predictions are on disk and most
+# have run. A prediction is skipped when its sha256 already appears in a
+# result's request.json (the dispatcher records expect_sha at queue time), in
+# the queue, or in $WORK/arms/judged; and when it was registered before the
+# watermark in $WORK/arms/since (install-host.sh seeds it with "now"). Set the
+# watermark back to re-run older ones; delete a judged marker to re-judge.
+#
+# A LANE IS A BRANCH WITH AN OPEN PR, NOT A BRANCH NAMED `lane/*`. Until
+# 2026-09-19 the collect step fetched and walked `refs/remotes/origin/lane/*`
+# and nothing else, so a prediction on any other branch was never collected,
+# never queued and never judged. `lane.remote` is a cloud session on
+# `claude/docs-tooling-agentic-coding-u152m1` and had been contributing for
+# days: the device pipeline had never once been available to it, which is why
+# it measured on its own desktop build. The prefix was a proxy for "a branch a
+# lane owns" and it failed on the one real lane that does not use it.
+#
+# WHAT IT REFUSES, per AGENTS.md's inert-prediction rules: a ref that does not
+# resolve, a b_ref that is not an ancestor of master or of any live lane
+# branch (a reachable-but-stale ref is the one that measures the wrong
+# binary and looks like success), and a prediction naming no suite that has
+# goldens. request.sh's own gate (every key must name a golden capture) runs
+# too, and a refusal there is recorded once and not retried. Every one of
+# those refusals -- structural or request.sh's -- is posted on the lane's PR
+# (or its issue) exactly once: a refusal the lane cannot read is a lane that
+# thinks it has an arm running.
+set -u
+WORK="${HAKUX_WORK:-/home/justin/hakux-work}"
+REPO="${HAKUX_REPO_DIR:-/home/justin/hakuX}"          # the object store the dispatcher builds from
+D="${DISPATCH_DIR:-$WORK/dispatch}"
+GOLDENS="${GOLDENS:-/home/justin/goldens/results}"
+GH_REPO="${GH_REPO:-jreinach-alt/hakuX}"
+TIP="${HAKUX_TIP:-master}"
+A="$WORK/arms"
+# The scripts a queue and a judge run through are the trunk's, taken from
+# beside this file (board.sh re-execs this from a fetched master worktree).
+T="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$(dirname "${BASH_SOURCE[0]}")/gh-label.sh"   # label_add/label_rm: `gh pr edit --add-label` exits 1 here
+. "$(dirname "${BASH_SOURCE[0]}")/localtime.sh"  # say_time/local_ts: the display zone. Data timestamps below stay `date -u`.
+mkdir -p "$A"/{expect,pairs,judged,skipped,log,incomplete} "$WORK/logs/arms"
+LOG="$WORK/logs/arms/tick.log"
+# The tick log is read by hand when something jams, so it is display: local.
+say() { echo "$(say_time_s) $*" | tee -a "$LOG"; }
+[ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
+MAX_PAIRS="${ARMS_MAX_PAIRS_PER_TICK:-2}"   # pairs queued per tick; both handhelds busy is the goal, a 40-deep queue is not
+QUEUE_MAX="${ARMS_QUEUE_MAX:-4}"            # do not queue when this many requests already wait ahead of the z-* idle tier
+# Default watermark: two days back, not "now". Seeded at "now" on the first
+# install, it made every prediction the lanes had pushed THAT DAY read as
+# history, and the first tick queued nothing while PR #102's live arm sat
+# there. The expect_sha check is what stops a re-run; the watermark only
+# keeps the job from walking a week of old registrations.
+# DATA, NOT DISPLAY -- STAYS UTC. $SINCE is compared to registered_utc with
+# `\<` below, a LEXICAL string comparison that is correct only because UTC
+# "%FT%TZ" sorts chronologically. In local time the November fall-back makes
+# 01:00-02:00 happen twice, so two distinct instants compare in the wrong
+# order and the watermark silently re-runs or skips a prediction -- once a
+# year, at night, leaving no trace. Do not "finish the job" here.
+[ -f "$A/since" ] || date -u -d '2 days ago' '+%FT%TZ' > "$A/since"
+SINCE=$(cat "$A/since")
+history=0
+mode="${1:-run}"
+
+# --------------------------------------------------------- the open PRs
+#
+# THE BRANCHES A LANE OWNS, ASKED OF GITHUB ONCE. Read before the fetch below
+# because it decides what to fetch, and reused by pr_for() so a verdict costs
+# no second call.
+#
+# WHY AN OPEN PR AND NOT A TERRITORY ROW. The brief offered either. A territory
+# row does not NAME a branch -- the lane rows carry files/issues/note/standing
+# and nothing else -- so "every branch a row names" would need a new field on
+# every row, kept in step by hand, and a row whose field was never written
+# would be silently uncollectable in exactly the way the `lane/*` glob already
+# is. An open PR IS the branch, machine-read, and it is the same fact this job
+# needs anyway: a prediction's verdict has to be POSTED somewhere, and for a
+# branch that is not the trunk that somewhere is its PR. One question, one
+# call, two uses.
+#
+# THE `lane/*` GLOB IS KEPT ALONGSIDE IT, NOT REPLACED. A lane that pushes a
+# prediction before opening its PR -- the ordering roles/lane.md asks for is
+# the other way round, but the window is real -- would otherwise become
+# uncollectable the moment this changed. This only ever ADDS branches.
+#
+# `arms.sh state` SKIPS ALL OF THIS, AND THE FETCH BELOW WITH IT. Its own
+# header promises it "Reads $WORK/arms only; queues and judges nothing", and it
+# needs neither the PR map nor a ref: it prints a label decision from disk. The
+# first version of this block asked anyway, and on a host where `gh` answers
+# nothing the WARNING landed on stdout AHEAD of the `STATE=` line -- which
+# callers read with `sed -n 1p`. A read-only mode that opens the network is a
+# contract broken quietly; here it also corrupted the one line it exists to
+# print.
+PR_TSV="$A/log/prs.tsv"
+if [ "$mode" = state ]; then
+    :
+elif out=$(gh pr list --repo "$GH_REPO" --state open --limit 100 \
+             --json number,headRefName --jq '.[] | "\(.headRefName)\t\(.number)"' 2>/dev/null) \
+       && [ -n "$out" ]; then
+    printf '%s\n' "$out" > "$PR_TSV"
+else
+    # gh could not answer, or there are genuinely no open PRs. Either way the
+    # previous tick's file is a better map than none -- a verdict posted on a
+    # PR that has since closed is a comment on a closed PR, which is visible;
+    # a verdict posted nowhere is not. Do NOT delete it.
+    say "WARNING: gh pr list did not answer; using the last tick's PR map ($(wc -l < "$PR_TSV" 2>/dev/null || echo 0) branches) and the lane/* glob"
+fi
+
+# ----------------------------------------------------------------- collect
+# Every prediction file reachable from the trunk, from any branch with an open
+# PR, from any lane branch, or registered in the dispatch directory. Exported
+# by content hash so the same registration on two branches is one candidate and
+# an amended copy is a new one (an amendment changes the sha, and the sha is
+# what binds an arm).
+#
+# A PR HEAD IS FETCHED AS `refs/pull/<n>/head`, AND IN A SECOND, SEPARATE
+# `git fetch`. Both halves of that sentence are load-bearing, and the first
+# version of this block had neither.
+#
+# (a) NOT `+refs/heads/<branch>:...`. `headRefName` is the branch name in the
+#     HEAD repository, which for a PR from a fork is not a branch on `origin`
+#     at all; a head branch deleted while its PR stays open is the same state,
+#     and GitHub leaves such PRs open indefinitely. `refs/pull/<n>/head` is
+#     always present for an open PR, fork or not, and survives the branch's
+#     deletion. The number is already in the map -- the same `gh` call carries
+#     it for pr_for().
+#
+# (b) A SECOND `git fetch`, NOT ONE MORE REFSPEC. `git fetch` fails the WHOLE
+#     invocation when any NAMED (non-wildcard) refspec matches no remote ref,
+#     and updates NOTHING -- not the other named specs, not the `lane/*`
+#     wildcard, and not $TIP. One such PR would therefore have staled every
+#     ref collect() walks, master included: every prediction pushed after that
+#     moment invisible to the queue, for as long as that PR stayed open, with
+#     one WARNING in a log nobody reads. Splitting it means the trunk and the
+#     lane branches are already updated before anything that can name a
+#     missing ref is asked for, and the PR fetch's failure costs only the PR
+#     heads. The first spec cannot fail this way at all: $TIP always exists
+#     and a wildcard that matches nothing is not an error.
+#
+# THE DESTINATION IS `refs/remotes/pr/<n>`, ITS OWN NAMESPACE, not
+# `refs/remotes/origin/<branch>`. A fork's head branch name is chosen by a
+# stranger and is under no obligation to differ from a branch of ours: a fork
+# PR whose head is called `board` would otherwise have overwritten
+# `refs/remotes/origin/board`, which is where every job reads the board from.
+declare -A PR_HEAD_BRANCH=()   # refs/remotes/pr/<n> -> the head branch, which is the label pr_for() keys on
+tips=""
+if [ "$mode" != state ]; then
+    # Fetch one: cannot fail on a name.
+    git -C "$REPO" fetch -q origin "$TIP" '+refs/heads/lane/*:refs/remotes/origin/lane/*' 2>/dev/null \
+        || say "WARNING: fetch of $TIP and lane/* failed; working from what the object store has"
+    # Fetch two: can, and is allowed to, without taking the first one with it.
+    prspec=()
+    while IFS=$'\t' read -r b n; do
+        [ -n "$b" ] && [ -n "$n" ] || continue
+        case "$b" in lane/*|"$TIP") continue ;; esac   # the wildcard and $TIP already have these
+        # The NUMBER is what enters the refspec now, so the number is what has
+        # to be validated. A non-numeric field here means the map is not the
+        # map, and expanding it into a ref path is how a fetch grows a second
+        # destination.
+        case "$n" in ''|*[!0-9]*) say "  ignoring PR head '$b': '$n' is not a PR number"; continue ;; esac
+        [ -n "${PR_HEAD_BRANCH[refs/remotes/pr/$n]:-}" ] && continue
+        PR_HEAD_BRANCH["refs/remotes/pr/$n"]="$b"
+        prspec+=("+refs/pull/$n/head:refs/remotes/pr/$n")
+    done < <([ -s "$PR_TSV" ] && cat "$PR_TSV")
+    if [ ${#prspec[@]} -gt 0 ] && ! git -C "$REPO" fetch -q origin "${prspec[@]}" 2>/dev/null; then
+        # ...AND ONE BAD NAME MUST NOT COST THE OTHER PR HEADS EITHER. The
+        # batch is one round trip and is what runs on every ordinary tick;
+        # this is the degraded path, entered only when it already failed, so
+        # the N fetches cost nothing on the days nothing is wrong. Without it
+        # a single unfetchable pull ref would still have staled every OTHER
+        # open PR's head -- a smaller outage than staling master, and the same
+        # shape.
+        say "WARNING: the PR-head fetch failed as a batch; retrying ${#prspec[@]} spec(s) one at a time ($TIP and lane/* are already current)"
+        for spec in "${prspec[@]}"; do
+            git -C "$REPO" fetch -q origin "$spec" 2>/dev/null || say "  PR head unavailable: $spec"
+        done
+        unset spec
+    fi
+    # The trunk first: a prediction that is on master AND on the lane branch
+    # that folded it is master's, and its verdict goes to the issue, not to a
+    # PR that may have closed.
+    tips="refs/remotes/origin/$TIP $(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/remotes/origin/lane/*')"
+    # ...then the non-lane/* PR heads. One ref per PR number, so there is
+    # nothing left to deduplicate against the wildcard; a ref the fetch could
+    # not produce is simply skipped.
+    for ref in "${!PR_HEAD_BRANCH[@]}"; do
+        git -C "$REPO" rev-parse -q --verify "$ref" >/dev/null || continue
+        tips="$tips $ref"
+    done
+    unset ref
+fi
+
+collect() {   # prints: <sha256> <exported-path> <source>, first sighting wins (trunk before lanes)
+    local ref blob f sha out; declare -A seen; declare -A blobsha
+    for ref in $tips; do
+        # ONE cat-file per unique BLOB, not one per (ref, path). 23 lane refs
+        # times 110 predictions is 2,530 pairs of git spawns, and almost all of
+        # them are the same hundred blobs -- the identical prediction file is
+        # reachable from every branch cut after it landed. The tick's cost grew
+        # with the NUMBER OF LANE BRANCHES, which nothing prunes, and
+        # selftest.sh runs this eight times: the gate every harness lane must
+        # pass went to eight minutes against a fifteen-minute CI timeout.
+        while read -r blob f; do
+            [ -n "$blob" ] || continue
+            sha="${blobsha[$blob]:-}"
+            if [ -z "$sha" ]; then
+                sha=$(git -C "$REPO" cat-file -p "$blob" | sha256sum | cut -d' ' -f1)
+                blobsha[$blob]=$sha
+            fi
+            [ -n "${seen[$sha]:-}" ] && continue; seen[$sha]=1
+            out="$A/expect/$sha.json"
+            [ -f "$out" ] || git -C "$REPO" cat-file -p "$blob" > "$out"
+            # The SOURCE label is the branch, always: pr_for() keys the PR map
+            # on it, and a `refs/remotes/pr/<n>` path would answer nothing.
+            echo "$sha $out ${PR_HEAD_BRANCH[$ref]:-${ref#refs/remotes/origin/}}:$f"
+        done < <(git -C "$REPO" ls-tree -r "$ref" -- docs/testing/predictions/ 2>/dev/null \
+                     | awk -F'\t' '$2 ~ /\.json$/ {split($1,a," "); print a[3], $2}')
+    done
+    for f in "$D"/expect/*.json; do
+        [ -f "$f" ] || continue
+        sha=$(sha256sum "$f" | cut -d' ' -f1)
+        [ -n "${seen[$sha]:-}" ] && continue; seen[$sha]=1
+        echo "$sha $f host:$(basename "$f")"
+    done
+}
+
+ARMS_VERSION=$(md5sum "${BASH_SOURCE[0]}" | cut -c1-12)
+already_ran() {   # the sha is in a result, in the queue, in flight, or judged
+    local sha=$1
+    [ -f "$A/judged/$sha" ] && return 0
+    [ -f "$A/pairs/$sha.json" ] && return 0
+    if [ -f "$A/skipped/$sha" ]; then
+        # A request.sh refusal recorded by an OLDER arms.sh is reconsidered
+        # once this script changes: the first real refusal (#89, 02:56Z) was
+        # this script's own bug, and the fix should not need a human to rm a
+        # file on the host.
+        #
+        # WHAT IDENTIFIES ONE IS THE REFUSAL TEXT, NOT THE "arms=" STAMP. The
+        # first version of this retry tested `grep -q '^arms='` first, and the
+        # stamp was introduced by the same commit as the retry -- so the one
+        # marker the retry was written for, #89's, already sitting on the host
+        # with no stamp, took the `else` and was skipped forever. A guard keyed
+        # on a field only the new writer emits exempts exactly the backlog it
+        # was meant to clear. The stamp still does its job: it makes the retry
+        # once per version, not every tick.
+        #
+        # Structural skips (no a_ref, a_ref == b_ref, a ref that does not
+        # resolve, a stale b_ref, a soak, no suite with goldens) never carry
+        # that text and stand until the prediction itself changes, because no
+        # edit to this script can turn one of them into a run. They are still
+        # ANNOUNCED once -- tell_skip below, called on this path too, so that a
+        # marker written before it existed reaches its lane.
+        if grep -q 'request\.sh refused' "$A/skipped/$sha" && ! grep -q "^arms=$ARMS_VERSION" "$A/skipped/$sha"; then
+            say "  reconsidering $sha: request.sh refusal recorded by an older arms.sh"; rm -f "$A/skipped/$sha"
+        else
+            return 0
+        fi
+    fi
+    grep -lq "\"expect_sha\": *\"$sha\"" "$D"/queue/*.req "$D"/running/*.req 2>/dev/null && return 0
+    [ -n "${RAN[$sha]:-}" ] && return 0
+    return 1
+}
+
+# EVERY expect_sha THAT ACTUALLY RAN, READ ONCE.
+#
+# A result that ERRORED is not a run: the ARM ERROR comment tells the lane to
+# delete judged/<sha> and pairs/<sha>.json to have the arm queued again, and
+# that could not work while an errored result's request.json still matched it.
+# #89's arm hit exactly that when it failed to build on both sides for a reason
+# that was the host's and not the branch's.
+#
+# The first version of that fix tested it PER CANDIDATE -- a grep per result
+# directory, inside the loop over predictions. On this host that is 916 result
+# directories times 117 candidates. The tick went from 17 seconds to over ten
+# minutes and had to be killed. A per-item test inside a per-item loop is a
+# quadratic that nobody notices until the corpus is real, and this corpus grew
+# to 916 results without anyone watching it.
+#
+# So the results are read ONCE, here, into a set.
+#
+# AND A SHA HAS RUN ONLY WHEN BOTH HALVES HAVE. This counted a sha as run if
+# EITHER arm's result was clean, so a pair with one half ERRORed could never be
+# queued again: vshconst's base lost its pull to WSL interop (09-25), its fix
+# half was DONE, and the ARM ERROR comment's "delete judged/<sha> and
+# pairs/<sha>.json" did nothing, because the surviving half still matched
+# here. A half is told apart by its ref -- a pair with a_ref == b_ref is
+# skipped structurally before it gets this far -- so a sha counts once two
+# distinct refs carry a clean result for it.
+#
+# A VOIDED result is not a run either. The judge loop drops that marker in
+# both halves of a pair whose verdict was INCOMPLETE (a leg on an unscored
+# capture), and the verdict says "Re-run the arm" -- which nothing could do
+# while those clean request.jsons still carried the sha (PR #249 audit M1).
+declare -A RAN
+while IFS= read -r s; do [ -n "$s" ] && RAN[$s]=1; done < <(python3 - "$D" <<'PYRAN'
+import glob, json, os, sys
+refs = {}
+for rj in glob.glob(os.path.join(sys.argv[1], "results", "*", "request.json")):
+    if os.path.exists(os.path.join(os.path.dirname(rj), "ERROR")):
+        continue                       # an ERRORed result is not a run
+    if os.path.exists(os.path.join(os.path.dirname(rj), "VOIDED")):
+        continue                       # nor is one an INCOMPLETE verdict voided
+    try:
+        r = json.load(open(rj))
+    except Exception:
+        continue
+    if r.get("expect_sha"):
+        refs.setdefault(r["expect_sha"], set()).add(r.get("ref") or "")
+for sha, got in refs.items():
+    if len(got) >= 2:
+        print(sha)
+PYRAN
+)
+
+live_ancestor() {   # is $1 an ancestor of the trunk or of any lane tip?
+    local ref
+    for ref in $tips; do
+        git -C "$REPO" merge-base --is-ancestor "$1" "$ref" 2>/dev/null && return 0
+    done
+    return 1
+}
+
+# The suites a prediction runs on. The registration's own disc composition
+# wins when it has one (its order is part of the disc identity); otherwise the
+# suite half of every capture key, results-directory spelling turned back
+# into the constructor spelling request.sh takes. Wildcard suites and suites
+# with no goldens are dropped, and dropping everything is a refusal.
+suites_for() {
+    python3 - "$1" "$GOLDENS" <<'PY'
+import json, os, sys
+exp = json.load(open(sys.argv[1])); goldens = sys.argv[2]
+disc = exp.get("disc") or {}
+suites = disc.get("suites") if isinstance(disc, dict) else None
+if isinstance(suites, str):
+    suites = [s.strip() for s in suites.split(",") if s.strip()]
+if not suites:
+    seen = []
+    keys = list((exp.get("expect") or {}).keys()) + list(exp.get("must_not_move") or []) + list(exp.get("must_not_regress") or [])
+    for k in keys:
+        s = k.split("/", 1)[0]
+        if any(c in s for c in "*?[") or not s:
+            continue
+        s = s.replace("_", " ")
+        if s not in seen:
+            seen.append(s)
+    suites = sorted(seen)
+ok = [s for s in suites if os.path.isdir(os.path.join(goldens, s.replace(" ", "_"))) or os.path.isdir(os.path.join(goldens, s))]
+print(",".join(ok))
+PY
+}
+
+# The other two composition axes, `disc.skip_tests` and `disc.only_tests`,
+# comma-joined as request.sh takes them (a list or a comma string, like
+# suites). ab_compare checks all three axes against the request.json each arm
+# ran on, so an arm queued with the suites alone is a disc the prediction can
+# never be judged on: tiecode282-binade.json was REFUSED for exactly that on
+# #379, its `Texture render target::RenderTextureLoop` skip dropped here. Not
+# filtered against the goldens: request.sh refuses a skip or an allow-list
+# whose suite is not run, and that refusal reaches the lane.
+disc_list() {   # <prediction> skip_tests|only_tests
+    python3 - "$1" "$2" <<'PY'
+import json, sys
+disc = json.load(open(sys.argv[1])).get("disc") or {}
+v = disc.get(sys.argv[2]) if isinstance(disc, dict) else None
+if isinstance(v, str):
+    v = v.split(",")
+print(",".join(t.strip() for t in (v or []) if isinstance(t, str) and t.strip()))
+PY
+}
+
+field() { python3 -c "import json,sys;v=json.load(open(sys.argv[1])).get(sys.argv[2],'');print(v if not isinstance(v,(list,dict)) else json.dumps(v))" "$1" "$2"; }
+
+# The PR a verdict belongs on: the open PR whose head is the branch the
+# prediction came from. A host-registered or master prediction goes to its
+# issue instead.
+#
+# NO PREFIX TEST. It used to answer only for `lane/*`, so every verdict for the
+# one lane whose branch is `claude/...` fell through to the issue -- graceful,
+# and the wrong place, because fold.sh and the board both read the PR. The
+# branch either has an open PR or it does not, and the map read at the top of
+# this tick already says which.
+pr_for() {   # <source>  -> PR number or empty
+    local branch="${1%%:*}" n
+    case "$branch" in ""|host|"$TIP") return 0 ;; esac   # the trunk and host registrations have no PR
+    n=$(awk -F'\t' -v b="$branch" '$1 == b { print $2; exit }' "$PR_TSV" 2>/dev/null)
+    # ASK DIRECTLY WHEN THE MAP IS SILENT. The map is one snapshot taken at the
+    # top of the tick, and a judge loop runs minutes later; a PR opened in
+    # between, or a map this tick could not refresh, must not cost a lane its
+    # verdict. One call, only for a branch the map does not already answer.
+    [ -n "$n" ] || n=$(gh pr list --repo "$GH_REPO" --head "$branch" --state open --json number --jq '.[0].number' 2>/dev/null)
+    printf '%s' "$n"
+}
+post() {   # <pr> <issue> <body-file>
+    if [ -n "$1" ]; then gh pr comment "$1" --repo "$GH_REPO" --body-file "$3" >/dev/null 2>&1 && return 0; fi
+    if [ -n "$2" ]; then gh issue comment "$2" --repo "$GH_REPO" --body-file "$3" >/dev/null 2>&1 && return 0; fi
+    return 1
+}
+# A REFUSAL FROM request.sh IS TOLD TO THE LANE, ONCE. request.sh's gates
+# (every key must name a golden, the composition rules, the ref must resolve)
+# are the project's own; when they refuse a lane's prediction the lane has to
+# hear it on its PR, not in a file on the host it cannot read. The skipped
+# marker keeps it to one comment; a fixed prediction is a new sha.
+refused() {   # <sha> <source> <issue> <which arm> <stderr file>
+    local sha=$1 src=$2 issue=$3 arm=$4 err=$5 body="$A/log/$sha.refused.md"
+    mark "$sha" "arms=$ARMS_VERSION $src: request.sh refused the $arm arm: $(tail -3 "$err" | tr '\n' ' ')"
+    {
+        echo "[job.arms] REFUSED: request.sh would not queue the $arm arm of \`${src#*:}\` (sha256 \`${sha:0:12}\`). The prediction is not on the device until this is fixed."
+        echo; echo '```'; tail -40 "$err"; echo '```'; echo
+        echo "Fix the prediction (a changed file is a new registration and is picked up on the next arms tick, every 30 min), or say on this PR why the refusal is wrong."
+    } > "$body"
+    post "$(pr_for "$src")" "$issue" "$body" || say "  could not post the refusal for $sha anywhere"
+}
+# mark() records; skip() records AND tells. Keep the two apart: refused() has
+# its own, richer comment to post and must not get a second one.
+mark() { if [ "$mode" = list ]; then echo "  would skip $1: $2"; else echo "$2" > "$A/skipped/$1"; say "  skip $1: $2"; fi; }
+
+# A STRUCTURAL SKIP IS TOLD TO THE LANE TOO, ONCE. Until 2026-09-19 only a
+# request.sh refusal reached a PR; the six structural refusals (no a_ref/b_ref,
+# a_ref == b_ref, a ref that does not resolve, a stale b_ref, a soak, no suite
+# with goldens) wrote a marker under $WORK/arms/skipped and said nothing at
+# all. The lane believed it had registered an arm, the arm would never run, and
+# the only actor that knew was a file on a host the lane cannot read -- a cloud
+# lane has no host disk whatsoever. Measured on PR #115, whose registration had
+# English prose where the a_ref belonged and which the job had been silently
+# refusing since 04:29Z.
+#
+# The asymmetry had it backwards: a structural skip is MORE the lane's to fix
+# than a request.sh refusal, because "your a_ref is not a sha" is a one-line
+# correction and this job already knows exactly what is wrong.
+#
+# WHY told= IS A SEPARATE STAMP AND NOT THE MARKER ITSELF. The obvious design
+# -- the marker's existence is the record that it has been said -- makes every
+# marker already on the host count as said, which is exactly the two markers
+# this was written for, including #115's. This file has made that mistake once
+# before (see already_ran: a retry keyed on an `arms=` stamp that the same
+# commit introduced exempted the single refusal it existed to clear). So the
+# marker holds the reason and a `told=` line holds the announcement, and a
+# marker written before this existed is announced on the next tick.
+#
+# Once-only still holds: the stamp is written when the comment lands, and a
+# fixed prediction is a new sha and therefore a new marker. That is "once per
+# registration", not "once ever", which is the behaviour a lane wants.
+#
+# WHAT BOUNDS THE BACKLOG. Not the 131 predictions on disk and not the 38
+# behind the watermark -- those are history, counted and skipped before any
+# skip() runs, and they have no marker to announce. The backlog is exactly the
+# files in $WORK/arms/skipped, which is everything skip() and refused() have
+# ever written: two of them on the day this shipped.
+tell_skip() {   # <sha> <expect-path> <source>
+    [ "$mode" = list ] && return 0
+    local sha=$1 path=$2 src=$3 m="$A/skipped/$sha" body="$A/log/$sha.skipped.md" issue pr
+    [ -f "$m" ] || return 0
+    grep -q '^told=' "$m" && return 0
+    grep -q 'request\.sh refused' "$m" && return 0   # refused() posts its own
+    issue=$(field "$path" issue); pr=$(pr_for "$src")
+    if [ -z "$pr" ] && [ -z "$issue" ]; then
+        echo "told=nowhere (no open PR for $src and no issue field)" >> "$m"
+        say "  skip $sha has nowhere to be told: no open PR for $src and no issue"; return 0
+    fi
+    {
+        echo "[job.arms] SKIPPED: the arms job will not queue \`${src#*:}\` (sha256 \`${sha:0:12}\`), and no arm will run for it."
+        echo; echo '```'; grep -v '^told=' "$m"; echo '```'; echo
+        echo "This is a structural refusal, not a device failure: nothing ran, and nothing will until the registration itself changes. A prediction is bound by the sha256 of its file, so correcting the file is a new registration and the next arms tick (every 30 min) picks it up on its own -- there is nothing to delete on the host."
+        echo; echo "If the skip is wrong, say so here."
+    } > "$body"
+    if post "$pr" "$issue" "$body"; then
+        # UTC: a stamp in a host state file, alongside queued_utc, not a line
+        # a reader is shown. tell_skip probes it with `grep -q '^told='` and
+        # never compares the value, so this is provenance -- keep it in the
+        # same zone as every other recorded field.
+        echo "told=$(date -u '+%FT%TZ')" >> "$m"
+    else
+        say "  could not post the skip for $sha anywhere; will try again next tick"
+    fi
+}
+skip() {   # <sha> <expect-path> <source> <reason>
+    mark "$1" "$3: $4"
+    tell_skip "$1" "$2" "$3"
+}
+
+# ------------------------------------------------ the label, from ALL verdicts
+#
+# THE LABEL IS PER-PR; THE VERDICTS ARE PER-PREDICTION. Until 2026-09-19 this
+# job labelled from whichever verdict was in its hand:
+#
+#     *PASS*) label_add "$pr" verified  && label_rm "$pr" regressed
+#     *FAIL*) label_add "$pr" regressed && label_rm "$pr" verified
+#
+# Unconditional, per verdict, so the label reported the most recently judged
+# ARM and not the state of the PR. PR #102 carried four: #89 PASS, #88 FAIL,
+# #91 FAIL, #91 PASS. At 10:03Z the last was judged and flipped the PR to
+# `verified` with #88's failure outstanding and nothing superseding it. It had
+# to be corrected by hand.
+#
+# The DIRECTION is what makes it serious. roles/board.md: a `regressed` PR is
+# not fold-ready and its lane is resumed with the verdict; a `verified` one
+# proceeds through audit as normal. So the failure mode moved a PR with a live
+# regression FORWARD. And it is not rare -- a lane under remediation registers
+# fresh predictions by design, so every remediation could clear its own
+# regression label as a side effect of doing exactly what it was told.
+#
+# SUPERSESSION IS BY ISSUE NUMBER: for each issue the newest registration's
+# verdict counts and the older ones do not, and the PR is `regressed` if any
+# issue's newest verdict is a FAIL. #102's #91 pair is genuinely resolved --
+# issue91-decline-frame-attribution replaced issue91-swap-solo-classification,
+# same issue, later registration -- and its #88 failure is not resolved by
+# anything. The stricter same-file rule is rejected because a lane cannot
+# re-register the same file (a changed file is a new sha and usually a new
+# name, and the ARM ERROR path tells lanes to "register a fresh prediction"),
+# so under it no lane could ever clear a FAIL from its own branch: only a
+# human with shell on the host could. docs/lanes/armlabel/NOTES.md names the
+# case that would make the stricter rule right.
+#
+# A superseded FAIL is never silently dropped: every decision is written to
+# $WORK/arms/pairs/<sha>.label.md, quoted into the [job.arms] comment naming
+# which verdict superseded which, and recomputable from disk at any time with
+#
+#     arms.sh state lane/<name>
+#
+# COST. The index below is ONE pass over pairs/ per tick, built once before
+# the judge loop; each decision then reads it plus the handful of judged/
+# markers on that one branch, and, when the branch has a verdict, one
+# `git diff` and one `git ls-tree` to scope them to its PR. Not a walk of judged/* inside the loop over
+# predictions -- bc7ccef95d took two quadratics out of this file and the tick
+# is 11s.
+LABEL_INDEX="$A/log/label-index.tsv"
+build_label_index() {   # sha, branch, issue, prediction, registered, queued, a_ref, b_ref
+    python3 - "$A" > "$LABEL_INDEX" <<'PY'
+import glob, json, os, sys
+A = sys.argv[1]
+for pj in sorted(glob.glob(os.path.join(A, "pairs", "*.json"))):
+    if pj.endswith(".verdict.json"):
+        continue                          # ab_compare's own output, not a pair
+    try:
+        p = json.load(open(pj))
+    except Exception:
+        continue
+    sha, src = p.get("sha"), p.get("source")
+    if not sha or not src:
+        continue
+    branch, _, pred = src.partition(":")   # lane/x:docs/testing/predictions/y.json
+    reg = ""
+    try:
+        e = json.load(open(p.get("expect") or ""))
+        for k in ("registered_utc", "amended_utc", "amended_utc_2"):
+            v = str(e.get(k) or "")
+            if v > reg:
+                reg = v
+    except Exception:
+        pass                               # a host registration may be overwritten
+    q = str(p.get("queued_utc") or "")
+    print("\t".join([sha, branch, str(p.get("issue") or "").strip(),
+                     pred or src, reg or q, q,
+                     str(p.get("a_ref") or ""), str(p.get("b_ref") or "")]))
+PY
+}
+# ------------------------------------------- a FAIL whose code is gone
+#
+# A REFUTED CANDIDATE IS REVERTED, AND THEN ITS FAIL IS ABOUT NOTHING. A lane
+# whose arm FAILS does the right thing by taking the code back out. What is
+# left is a docs-only branch, which builds master's binary, so no arm on it can
+# ever supersede the FAIL: the PR was `regressed` forever. PR #252 (#224 family
+# B) sat exactly there on 2026-09-25, and the only exits were an owner override
+# that recorded an acceptance that was not one (#257, option 1) or re-landing
+# the docs from a fresh branch with no prediction (option 2, PR #259).
+#
+# So a FAIL is WITHDRAWN when the branch's diff against $TIP no longer touches
+# ANY file outside docs/ that the arm's b_ref changed against its a_ref. It
+# then neither counts nor supersedes anything -- an older verdict on the same
+# issue is live again, which is right, because it may still be about code on
+# the branch -- and it is listed as `withdrawn <prediction>` so the record
+# stays visible. The verdict comment is not touched.
+#
+# WHY docs/ IS OUTSIDE THE SET. A lane that reverts its code keeps its NOTES
+# and its prediction, and both are in b_ref's diff; counting them would keep
+# every reverted FAIL alive on the lane's own write-up.
+#
+# WHY ANY SURVIVING FILE KEEPS IT. A partial revert is not a withdrawal: the
+# arm measured the files together, and nothing has measured the half that is
+# left.
+#
+# EVERYTHING THAT CANNOT BE ANSWERED KEEPS THE FAIL. A ref that does not
+# resolve, a branch head this object store does not have, an arm that changed
+# no code at all (the empty set would be withdrawn vacuously): all regressed,
+# as before. `state` stays offline -- it reads the refs the last tick fetched.
+withdrawn_refs_for() {   # <branch> -> the head ref to diff, or nothing
+    local b=$1 n r
+    for r in "refs/remotes/origin/$b" "refs/heads/$b"; do
+        git -C "$REPO" rev-parse -q --verify "$r^{commit}" >/dev/null 2>&1 && { echo "$r"; return; }
+    done
+    n=$(awk -F'\t' -v b="$b" '$1 == b { print $2; exit }' "$PR_TSV" 2>/dev/null)
+    [ -n "$n" ] && git -C "$REPO" rev-parse -q --verify "refs/remotes/pr/$n^{commit}" >/dev/null 2>&1 && echo "refs/remotes/pr/$n"
+}
+withdrawn_base() {
+    local r
+    for r in "refs/remotes/origin/$TIP" "refs/heads/$TIP"; do
+        git -C "$REPO" rev-parse -q --verify "$r^{commit}" >/dev/null 2>&1 && { echo "$r"; return; }
+    done
+}
+label_decide() {   # <branch> [<sha being judged> <its verdict>] -> STATE=... then markdown
+    python3 - "$A" "$LABEL_INDEX" "$1" "${2:-}" "${3:-}" "$REPO" "$(withdrawn_base)" "$(withdrawn_refs_for "$1")" <<'PY'
+import os, subprocess, sys
+A, index, branch, ovr_sha, ovr_verdict, repo, base, head = sys.argv[1:9]
+
+def names(*args):                         # git diff --name-only, or None when git cannot say
+    # --no-renames: porcelain diff detects renames by default, and a renamed file
+    # would then list only its NEW path -- a `git mv` of refuted code would read
+    # as the code being gone (PR #260 audit M1). Delete+add keeps the old path.
+    try:
+        out = subprocess.run(["git", "-C", repo, "diff", "--no-renames", "--name-only"] + list(args),
+                             capture_output=True, text=True, timeout=60)
+    except Exception:
+        return None
+    return set(out.stdout.split("\n")) - {""} if out.returncode == 0 else None
+
+_branch_files = []
+def branch_files():                       # what the branch still changes against the trunk
+    if not _branch_files:
+        _branch_files.append(names(base + "..." + head) if base and head else None)
+    return _branch_files[0]
+
+def on_trunk():                           # the prediction files the trunk carries, or None when git cannot say
+    try:
+        out = subprocess.run(["git", "-C", repo, "ls-tree", "-r", "--name-only", base, "--",
+                              "docs/testing/predictions/"], capture_output=True, text=True, timeout=60)
+    except Exception:
+        return None
+    return set(out.stdout.split("\n")) - {""} if out.returncode == 0 else None
+
+def withdrawn(r):                         # the arm's code files, none of them left -> the files it changed
+    if r["cls"] != "FAIL" or not r["a"] or not r["b"]:
+        return None
+    code = names(r["a"], r["b"])
+    if not code:
+        return None                       # unresolvable, or an arm that changed nothing to take back
+    code = {f for f in code if not f.startswith("docs/")}
+    have = branch_files()
+    if not code or have is None or code & have:
+        return None
+    return sorted(code)
+
+rows = []
+try:
+    lines = open(index).read().splitlines()
+except Exception:
+    lines = []
+for line in lines:
+    f = line.split("\t")
+    if len(f) != 8:
+        continue
+    sha, br, issue, pred, when, queued, a_ref, b_ref = f
+    if br != branch:
+        continue
+    if sha == ovr_sha:
+        v = ovr_verdict                    # judged this tick, not on disk yet
+    else:
+        try:
+            v = open(os.path.join(A, "judged", sha)).read()
+        except Exception:
+            continue                       # queued or running; no verdict yet
+    # FAIL is tested FIRST. ab_compare prints exactly one of PASS / FAIL /
+    # UNJUDGED, so the order cannot matter today; it is this way round so that
+    # the day a verdict line says both words, the thing that clears a
+    # regression is never a string this job could not read unambiguously.
+    # UNJUDGED, "(none printed)" and the ERROR marker are NOT verdicts: they
+    # set no label and they supersede nothing, which is the same rule the
+    # judge loop has always followed for the label.
+    cls = "FAIL" if "FAIL" in v else ("PASS" if "PASS" in v else None)
+    if cls is None:
+        continue
+    rows.append({"sha": sha, "issue": issue, "pred": pred, "when": when,
+                 "queued": queued, "cls": cls, "a": a_ref, "b": b_ref})
+
+# A VERDICT IS THE PR'S, NOT THE BRANCH NAME'S. The index keys a pair on the
+# branch it was collected from, and a branch name outlives its PR: lane.remote
+# reuses `claude/docs-tooling-agentic-coding-u152m1` for every PR it opens, so
+# PR #389 was labelled by #60's 09-20 PASS and listed four 09-20 FAILs as
+# `withdrawn`, all five folded with earlier PRs. A pair whose prediction the
+# trunk already carries, and which this branch's diff does not touch, belongs
+# to the PR that folded it: it neither counts nor is listed here.
+#
+# WHY "ON THE TRUNK AND NOT IN THE DIFF", NOT JUST "NOT IN THE DIFF". The
+# stricter rule drops a verdict whose prediction the lane deleted from its own
+# branch -- so deleting the registration would clear a live FAIL, the one exit
+# supersession exists to close. collect() reads the trunk first, so a pair
+# sourced from a branch was not on the trunk when it was queued; it is on the
+# trunk now only because a fold put it there. Anything git cannot answer keeps
+# the pair, as before. docs/lanes/armsscope/NOTES.md has the #389 replay.
+if rows and base and head:
+    have, folded = branch_files(), on_trunk()
+    if have is not None and folded is not None:
+        rows = [r for r in rows if not (r["pred"] in folded and r["pred"] not in have)]
+
+# A withdrawn FAIL leaves the decision entirely: it neither counts nor
+# supersedes, so an older verdict on its issue is live again.
+gone = []
+for r in rows:
+    r["gone"] = withdrawn(r)
+    if r["gone"]:
+        gone.append(r)
+rows = [r for r in rows if not r["gone"]]
+
+groups = {}
+for r in rows:
+    r["key"] = ("#" + r["issue"]) if r["issue"] else r["pred"]
+    groups.setdefault(r["key"], []).append(r)
+for key, rs in groups.items():
+    # Newest registration wins. amended_utc counts as a registration (the
+    # queue loop treats it that way too); queued_utc breaks a tie, the sha
+    # breaks that, so the answer does not depend on directory order.
+    rs.sort(key=lambda r: (r["when"], r["queued"], r["sha"]))
+    rs[-1]["live"] = True
+    for r in rs[:-1]:
+        r["live"] = False
+        r["by"] = rs[-1]
+
+fails = [r for r in rows if r["live"] and r["cls"] == "FAIL"]
+state = "regressed" if fails else ("verified" if rows else "none")
+print("STATE=" + state)
+
+def name(r):
+    return os.path.basename(r["pred"]) or r["pred"]
+
+# `withdrawn <prediction>`, one per line, straight after STATE= so a caller can
+# grep it; then the same in prose inside the markdown below.
+for r in sorted(gone, key=lambda r: (r["when"], r["sha"])):
+    print("withdrawn %s" % name(r))
+wd = ["- `%s` FAILED, and is **withdrawn**: `%s` no longer changes %s against `%s`, the code "
+      "its b_ref `%s` changed against its a_ref `%s`. The code the arm refuted is gone from the "
+      "branch, so the FAIL is about nothing on it. The verdict comment stands as measured."
+      % (name(r), branch, ", ".join("`%s`" % f for f in r["gone"]), base.split("/")[-1] or "the trunk",
+         r["b"], r["a"]) for r in sorted(gone, key=lambda r: (r["when"], r["sha"]))]
+if state == "none":
+    if wd:
+        print("\n".join(["**PR label: no verdict counts** -- every judged verdict on `%s` is withdrawn." % branch, ""]
+                        + wd + ["", "Recompute from the verdicts on disk with `arms.sh state %s`." % branch]))
+    sys.exit(0)                            # nothing judged on this branch that still counts
+
+out = []
+if state == "regressed":
+    out.append("**PR label: `regressed`** -- %d of the %d judged verdict(s) on `%s` %s a FAIL "
+               "that nothing supersedes. The label is a function of all of them, not of this one."
+               % (len(fails), len(rows), branch, "is" if len(fails) == 1 else "are"))
+else:
+    out.append("**PR label: `verified`** -- every one of the %d judged verdict(s) on `%s` that still "
+               "counts is a PASS." % (len(rows), branch))
+out += ["", "| verdict | prediction | issue | counts? |", "|---|---|---|---|"]
+for r in sorted(rows, key=lambda r: (r["key"], r["when"], r["sha"])):
+    if r["live"]:
+        why = "**yes -- nothing supersedes it**" if r["cls"] == "FAIL" else "yes"
+    else:
+        why = "no: superseded by `%s`" % name(r["by"])
+    out.append("| %s | `%s` | %s | %s |"
+               % (r["cls"], name(r), ("#" + r["issue"]) if r["issue"] else "--", why))
+cleared = [r for r in rows if not r["live"] and r["cls"] == "FAIL"]
+if cleared:
+    out.append("")
+    for r in cleared:
+        out.append("- `%s` FAILED, and does not count: `%s` was registered later against the same "
+                   "%s and supersedes it." % (name(r), name(r["by"]),
+                                              "issue (%s)" % r["key"] if r["issue"] else "prediction"))
+if wd:
+    out += [""] + wd
+out += ["", "Recompute from the verdicts on disk with `arms.sh state %s`." % branch]
+print("\n".join(out))
+PY
+}
+if [ "$mode" = state ]; then
+    [ -n "${2:-}" ] || { echo "usage: arms.sh state <branch> [<sha> <verdict>]" >&2; exit 2; }
+    build_label_index
+    label_decide "$2" "${3:-}" "${4:-}"
+    exit 0
+fi
+
+# ------------------------------------------------------------------- queue
+queued=0
+# BACKPRESSURE COUNTS ONLY WHAT AN ARM WOULD WAIT BEHIND. The workers serve
+# queue/ in glob order, and `z-*` is the idle tier (the full-corpus sweep, one
+# request per suite): every arm sorts ahead of it. Counting it too let a queued
+# ~100-suite sweep hold `waiting` over ARMS_QUEUE_MAX for hours, so the most
+# urgent work starved behind the least (dispatch-hardening defect 12).
+waiting=$(ls "$D"/queue/*.req 2>/dev/null | grep -vc '/z-[^/]*$')
+idle_tier=$(ls "$D"/queue/z-*.req 2>/dev/null | wc -l)
+while read -r sha path src; do
+    [ -n "$sha" ] || continue
+    # A marker already on the host may predate tell_skip; announce it once.
+    # (already_ran is true for judged/queued/run predictions too, which have no
+    # marker at all -- tell_skip returns immediately for those.)
+    already_ran "$sha" && { tell_skip "$sha" "$path" "$src"; continue; }
+    reg=$(field "$path" registered_utc)
+    for k in amended_utc amended_utc_2; do v=$(field "$path" $k); [ -n "$v" ] && [ "$v" \> "$reg" ] && reg=$v; done
+    [ -n "$reg" ] && [ "$reg" \< "$SINCE" ] && { history=$((history+1)); continue; }   # history; not a refusal, so not recorded
+    a=$(field "$path" a_ref); b=$(field "$path" b_ref); who=$(field "$path" who); issue=$(field "$path" issue)
+    [ -n "$a" ] && [ -n "$b" ] || { skip "$sha" "$path" "$src" "no a_ref/b_ref (a soak or a hand-read prediction)"; continue; }
+    [ "$a" != "$b" ] || { skip "$sha" "$path" "$src" "a_ref == b_ref, nothing to compare"; continue; }
+    git -C "$REPO" rev-parse -q --verify "$a^{commit}" >/dev/null || { skip "$sha" "$path" "$src" "a_ref $a does not resolve"; continue; }
+    git -C "$REPO" rev-parse -q --verify "$b^{commit}" >/dev/null || { skip "$sha" "$path" "$src" "b_ref $b does not resolve"; continue; }
+    live_ancestor "$b" || { skip "$sha" "$path" "$src" "b_ref $b is not an ancestor of $TIP or any lane branch (stale registration; re-register on live refs)"; continue; }
+    title=$(field "$path" title)
+    if [ -n "$title" ]; then
+        skip "$sha" "$path" "$src" "soak predictions (title=$title) are hand-read; queue with request.sh --title yourself"; continue
+    fi
+    suites=$(suites_for "$path")
+    [ -n "$suites" ] || { skip "$sha" "$path" "$src" "no suite with goldens in its keys or disc"; continue; }
+    skips=$(disc_list "$path" skip_tests); onlys=$(disc_list "$path" only_tests)
+    narrow=(); comp=""
+    [ -z "$skips" ] || { narrow+=(--skip-tests "$skips"); comp+=" skip=[$skips]"; }
+    [ -z "$onlys" ] || { narrow+=(--only-tests "$onlys"); comp+=" only=[$onlys]"; }
+    if [ "$mode" = list ]; then
+        echo "WOULD QUEUE $sha $src who=$who issue=#$issue a=$a b=$b suites=[$suites]$comp"; continue
+    fi
+    [ "$queued" -lt "$MAX_PAIRS" ] || { say "pair cap $MAX_PAIRS reached this tick; $src waits"; continue; }
+    [ "$waiting" -lt "$QUEUE_MAX" ] || { say "queue has $waiting waiting ahead of the idle tier, $idle_tier idle-tier z-* behind it (ARMS_QUEUE_MAX=$QUEUE_MAX counts the first); $src waits"; continue; }
+    name=$(echo "${who:-arm}" | sed 's/^lane\.//; s/[^A-Za-z0-9_-]/_/g' | cut -c1-24)
+    # runs_per_arm is optional. The first version tested "${runs:-1}" and never
+    # assigned it, so a prediction without the field handed request.sh
+    # --runs "" and its JSON writer died on int(""): the very first arm the
+    # job ever queued (#89, 02:56Z) was refused for that and nothing else.
+    runs=$(field "$path" runs_per_arm); [[ "$runs" =~ ^[0-9]+$ ]] && [ "$runs" -ge 1 ] || runs=1
+    say "queue $src: $name #$issue a=$a b=$b suites=[$suites]$comp runs=$runs"
+    qa=$(cd "$REPO" && DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-base" --ref "$a" --suites "$suites" ${narrow[@]+"${narrow[@]}"} --runs "$runs" \
+            --expect "$path" --purpose "BASE arm ${issue:+#$issue }$who at $a, queued by the arms job from $src" 2>"$A/log/$sha.base.err") \
+        || { refused "$sha" "$src" "$issue" base "$A/log/$sha.base.err"; continue; }
+    qb=$(cd "$REPO" && DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-fix" --ref "$b" --suites "$suites" ${narrow[@]+"${narrow[@]}"} --runs "$runs" \
+            --expect "$path" --purpose "FIX arm ${issue:+#$issue }$who at $b, queued by the arms job from $src" 2>"$A/log/$sha.fix.err") \
+        || { refused "$sha" "$src" "$issue" "fix (the base arm ${qa##* } is queued and will run unpaired)" "$A/log/$sha.fix.err"; continue; }
+    ida="${qa##* }"; idb="${qb##* }"
+    python3 - "$A/pairs/$sha.json" "$sha" "$ida" "$idb" "$path" "$src" "$who" "$issue" "$a" "$b" "$suites" <<'PY'
+import json, sys, datetime
+p, sha, ida, idb, path, src, who, issue, a, b, suites = sys.argv[1:]
+json.dump({"sha": sha, "id_a": ida, "id_b": idb, "expect": path, "source": src, "who": who, "issue": issue,
+           "a_ref": a, "b_ref": b, "suites": suites,
+           # queued_utc: DATA, stays UTC. It breaks the tie when two
+           # registrations carry the same timestamp (see "Newest registration
+           # wins" above) -- another lexical comparison that needs a zone
+           # whose strings sort chronologically.
+           "queued_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")},
+          open(p, "w"), indent=2)
+PY
+    say "  queued base $ida fix $idb"
+    queued=$((queued + 1)); waiting=$((waiting + 2))
+done < <(collect)
+[ "$mode" = list ] && { echo "--- $history prediction(s) older than the watermark $SINCE were not considered (edit $A/since to move it)"; echo "--- skipped (delete $A/skipped/<sha> to reconsider):"; for f in "$A"/skipped/*; do [ -e "$f" ] && echo "  $(basename "$f") $(tr '\n' ' ' < "$f")"; done; exit 0; }
+
+# ------------------------------------------------------------------- judge
+build_label_index          # once, here: every decision below reads this file
+for pair in "$A"/pairs/*.json; do
+    [ -f "$pair" ] || continue
+    sha=$(field "$pair" sha); [ -f "$A/judged/$sha" ] && continue
+    ida=$(field "$pair" id_a); idb=$(field "$pair" id_b); exp=$(field "$pair" expect)
+    src=$(field "$pair" source); who=$(field "$pair" who); issue=$(field "$pair" issue)
+    RA="$D/results/$ida"; RB="$D/results/$idb"
+    body="$A/pairs/$sha.comment.md"
+    if [ -f "$RA/ERROR" ] || [ -f "$RB/ERROR" ]; then
+        {
+            echo "[job.arms] ARM ERROR for $who ${issue:+(#$issue)} -- no verdict."
+            echo
+            echo "a_ref $(field "$pair" a_ref) ($ida): $( [ -f "$RA/ERROR" ] && head -3 "$RA/ERROR" || echo ok )"
+            echo "b_ref $(field "$pair" b_ref) ($idb): $( [ -f "$RB/ERROR" ] && head -3 "$RB/ERROR" || echo ok )"
+            echo
+            echo "A half-run pair is not compared (a missing arm is absent, not zero). Fix the cause and register a fresh prediction, or delete \`\$WORK/arms/judged/$sha\` and \`\$WORK/arms/pairs/$sha.json\` to have the job queue it again."
+        } > "$body"
+        post "$(pr_for "$src")" "$issue" "$body" || say "  could not post the ARM ERROR for $sha anywhere"
+        echo "ERROR" > "$A/judged/$sha"; say "judged $sha: ARM ERROR ($src)"
+        continue
+    fi
+    [ -f "$RA/DONE" ] && [ -f "$RB/DONE" ] || continue
+    out="$A/pairs/$sha.verdict.txt"
+    (cd "$REPO" && DISPATCH_DIR="$D" python3 "$T/ab_compare.py" --a "$RA" --b "$RB" --expect "$exp" --json "$A/pairs/$sha.verdict.json") > "$out" 2>&1
+    verdict=$(grep -m1 '^VERDICT:' "$out" || echo "VERDICT: (none printed; see the full output)")
+    pr=$(pr_for "$src")
+    # The PR's state, from every verdict on its branch and not just this one.
+    # Computed BEFORE the comment is built so the comment carries its own
+    # explanation -- which verdict is outstanding, or which superseded which.
+    dec="$A/pairs/$sha.label.md"
+    label_decide "${src%%:*}" "$sha" "$verdict" > "$dec"
+    state=$(sed -n '1s/^STATE=//p' "$dec")
+    # INCOMPLETE IS NOT A VERDICT, SO IT MUST NOT END THE PREDICTION. Some leg
+    # landed on a capture that was never measured -- #224's pull truncated 56
+    # W_param PNGs in one arm, which still had captures, so the dispatcher's
+    # 0-capture interop requeue never fired. Both halves are marked VOIDED so
+    # the RAN walk above stops counting them, and the first INCOMPLETE is
+    # re-queued by the next tick with no judged marker written. A second one is
+    # final: the cause is then likely not a transient pull, and a loop would
+    # spend a device on it every tick.
+    incomplete=""; note=""
+    case "$verdict" in
+        "VERDICT: INCOMPLETE"*)
+            if [ -f "$A/incomplete/$sha" ]; then
+                incomplete=final
+                note="This is this prediction's second INCOMPLETE, so it is not queued again. Fix what left the captures unscored (the VOID lines below), then register the prediction again (any edit changes its sha), or delete \`\$WORK/arms/judged/$sha\` and \`\$WORK/arms/pairs/$sha.json\` to have the job queue it once more."
+            else
+                incomplete=first
+                note="Not a verdict, and no label moves on it. Both results are marked VOIDED and the pair is queued again on the next tick, once; a second INCOMPLETE is final."
+            fi ;;
+    esac
+    {
+        echo "[job.arms] $verdict"
+        echo
+        echo "| | |"; echo "|---|---|"
+        echo "| prediction | \`$src\` (sha256 \`${sha:0:12}\`) |"
+        echo "| who / issue | $who ${issue:+/ #$issue} |"
+        echo "| a_ref (base) | \`$(field "$pair" a_ref)\` result \`$ida\` |"
+        echo "| b_ref (fix) | \`$(field "$pair" b_ref)\` result \`$idb\` |"
+        echo "| suites | $(field "$pair" suites) |"
+        echo "| judged | $(say_time_s) by ab_compare.py on the host; full text in \`\$WORK/arms/pairs/$sha.verdict.txt\` |"
+        if [ -n "$incomplete" ]; then echo; echo "$note"; fi
+        if [ -n "$pr" ] && [ "${state:-none}" != none ]; then echo; sed '1d; /^withdrawn /d' "$dec"; fi
+        echo
+        echo "<details><summary>ab_compare output (first 80 lines)</summary>"
+        echo; echo '```'; head -80 "$out"; echo '```'; echo "</details>"
+    } > "$body"
+    post "$pr" "$issue" "$body" || say "  could not post the verdict for $sha anywhere"
+    if [ -n "$pr" ]; then
+        # verified and regressed are mutually exclusive, and only one of the
+        # two arms of this case can run, so they cannot both end up applied.
+        case "$state" in
+            verified)  label_add "$pr" verified  && label_rm "$pr" regressed || say "  WARNING: #$pr has no unsuperseded FAIL but could not be labelled verified" ;;
+            regressed) label_add "$pr" regressed && label_rm "$pr" verified  || say "  WARNING: #$pr has an unsuperseded FAIL but could not be labelled regressed" ;;
+        esac
+    fi
+    if [ -n "$incomplete" ]; then
+        : > "$RA/VOIDED"; : > "$RB/VOIDED"
+        if [ "$incomplete" = first ]; then
+            echo "$verdict" > "$A/incomplete/$sha"; rm -f "$pair"
+            say "judged $sha: INCOMPLETE, results voided, the pair re-queued once ($src)"
+            continue
+        fi
+    fi
+    echo "$verdict" > "$A/judged/$sha"; say "judged $sha: $verdict ($src${pr:+, PR #$pr -> ${state:-no label}})"
+done
+
+# ------------------------------------------- a withdrawn FAIL takes its label
+# The judge loop moves a label only when it judges an arm, and a branch whose
+# refuted code was reverted will never be judged again -- its head builds
+# master's binary. So `regressed` would stay on it, and fold.sh reads the label.
+# For each open PR with a withdrawn FAIL and nothing else outstanding, take
+# `regressed` off, once per set of withdrawn verdicts, and say so on the PR.
+# `verified` is not added: a withdrawal is the absence of a measurement.
+mkdir -p "$A/withdrawn"
+cut -f2 "$LABEL_INDEX" 2>/dev/null | sort -u | while read -r br; do
+    [ -n "$br" ] || continue
+    pr=$(awk -F'\t' -v b="$br" '$1 == b { print $2; exit }' "$PR_TSV" 2>/dev/null)
+    [ -n "$pr" ] || continue                      # open PRs only: the map, no extra gh call per branch
+    dec=$(label_decide "$br")
+    grep -q '^withdrawn ' <<< "$dec" || continue
+    state=$(sed -n '1s/^STATE=//p' <<< "$dec")
+    [ "$state" = regressed ] && continue
+    m="$A/withdrawn/$pr-$(grep '^withdrawn ' <<< "$dec" | md5sum | cut -c1-12)"
+    [ -f "$m" ] && continue
+    label_rm "$pr" regressed || { say "  WARNING: #$pr's FAIL is withdrawn but regressed could not be removed; will try again next tick"; continue; }
+    body="$m.md"
+    {
+        echo "[job.arms] WITHDRAWN: the FAIL on \`$br\` no longer counts, so \`regressed\` is off this PR."
+        echo; sed '1d; /^withdrawn /d' <<< "$dec"
+    } > "$body"
+    post "$pr" "" "$body" || say "  could not post the withdrawal for #$pr"
+    : > "$m"; say "withdrawn: #$pr ($br) -> $state; regressed removed"
+done
+
+[ -x "$T/jobs/status.sh" ] && bash "$T/jobs/status.sh" >/dev/null 2>&1
+exit 0

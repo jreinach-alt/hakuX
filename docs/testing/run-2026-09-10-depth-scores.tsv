@@ -1,0 +1,17 @@
+# Depth captures (*_ZB) scored against the nxdk_pgraph_tests goldens, one
+# suite per disc, Retroid Pocket Nova (Adreno), serial ee317437.
+#
+# before = cd98400d03, the last commit before the depth work
+# after  = a33fa42bc3, one scale for the depth buffer
+#
+# "differing px" is the sum over the suite's depth captures of pixels whose
+# reconstructed depth word differs from silicon. Depth words are unpacked from
+# the capture the way nxdk_pgraph_tests writes them: ARGB8888 for Z24S8, with
+# A = z[23:16], R = z[15:8], G = z[7:0], B = stencil; RGB565 for Z16.
+suite	captures	build	exact	near	wrong	blank	differing_px
+W_buffering	265	before	82	36	123	24	29881554
+W_buffering	265	after	94	64	107	0	10499122
+Depth_buffer	72	before	20	0	42	10	11721972
+Depth_buffer	72	after	22	0	50	0	505280
+Depth_buffer_fixed_function	40	before	2	10	28	0	6746610
+Depth_buffer_fixed_function	40	after	6	14	20	0	317130

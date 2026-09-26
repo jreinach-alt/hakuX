@@ -1,0 +1,34 @@
+{
+  "registered_utc": "2026-09-13T03:51:20Z",
+  "who": "issue59-agent",
+  "issue": "59",
+  "prediction": "THE FALSIFIER IS A SAMPLED ALPHA VALUE, not a pixel count. The texture unit returns alpha = 1.0 for an X1R5G5B5_O1R5G5B5 surface and alpha = 0.0 for an X1R5G5B5_Z1R5G5B5 surface, whatever path filled the host image. Blend_surface's DstAlpha tests display exactly that: the top half of each swatch is drawn with the sampled alpha as its coverage, so alpha 1.0 writes the swatch colour and alpha 0.0 leaves the test's own 0xFF555555 clear showing through as (85,85,85,255). Measured in the previous arms: golden and pre-#59 hold (255,255,255,255) in the O1 top halves, post-#59 holds (85,85,85,255) -- alpha 0 where it must be 1. The BOTTOM half of every swatch, which is the blend result with the combiner forcing alpha, is unchanged at (255,255,255,255) in both arms and on both suffixes, which is why this is NOT the blend unit and vk/draw.c is untouched: the blend still substitutes Ad = 1.0 for both O and Z. Cause: #48's texture-unit readback was applied as a view swizzle gated on surface_to_texture, and #59's widening to RGBA8 pushed these binds onto the VRAM path. The gate was always wrong -- the readback is a property of the surface format, not of the fill path -- so it now applies on both. THE Z VARIANT IS THE CHECK THAT A HARDCODED 1.0 WOULD FAIL: DstAlpha_X_Z1RGB5 and 1-DstAlpha_X_Z1RGB5 are bit-exact today only because those pad bits happen to be stored as 0, and they must STAY bit-exact, which they can only do if the swizzle carries ZERO for Z and ONE for O out of host_fmt.sampled_pad_alpha. The four X1A7R8G8B8 captures MUST NOT MOVE AT ALL: that format's sampled_pad_alpha is deliberately IDENTITY in constants.h, because its readback needs the stored alpha requantised to 7 bits rather than a swizzle, so nothing in this change can reach them -- their +156 against the previous arm is #59's expansion moving pixels onto the right 565 value on a capture whose golden is offset by one for the unfixed A7 reason, and it is left alone. Surface_format/Fmt_R5G6B5 and Fmt_A8R8G8B8 are carried as expect-0 because Fmt_R5G6B5 samples a 565 surface as a texture, was bit-exact before #59, and was never measured under it; if arm A shows it non-zero and arm B shows 0, this change repaired a second #59 regression that the first A/B could not see. Surface_clip must stay at 0 across the board -- that is #59's 1,175,741 px win and nothing here may undo it.",
+  "a_ref": "00dc9c68c5",
+  "b_ref": "36a4276ed5",
+  "must_not_move": [
+    "Surface_clip/*",
+    "Texture_format/TexFmt_R5G6B5*",
+    "Texture_format/TexFmt_A1R5G5B5*",
+    "Texture_format/TexFmt_X1R5G5B5*",
+    "Texture_format/TexFmt_A4R4G4B4*",
+    "Texture_format/TexFmt_R6G5B5",
+    "Texture_format/TexFmt_DXT1",
+    "Texture_DXT/*",
+    "Blend_surface/XA_O1A7RGB8_Add_SrcA_DstA",
+    "Blend_surface/XA_Z1A7RGB8_Add_SrcA_DstA",
+    "Blend_surface/DstAlpha_XA_O1A7RGB8",
+    "Blend_surface/DstAlpha_XA_Z1A7RGB8"
+  ],
+  "expect": {
+    "Blend_surface/DstAlpha_X_O1RGB5": 0,
+    "Blend_surface/1-DstAlpha_X_O1RGB5": 0,
+    "Blend_surface/DstAlpha_X_Z1RGB5": 0,
+    "Blend_surface/1-DstAlpha_X_Z1RGB5": 0,
+    "Blend_surface/DstAlpha_ARGB8": 0,
+    "Blend_surface/DstAlpha_X_ORGB8": 0,
+    "Blend_surface/DstAlpha_X_ZRGB8": 0,
+    "Surface_format/Fmt_R5G6B5": 0,
+    "Surface_format/Fmt_A8R8G8B8": 0
+  },
+  "expect_counts": {}
+}

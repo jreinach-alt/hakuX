@@ -1,0 +1,20 @@
+{
+  "registered_utc": "2026-09-13T12:19:52Z",
+  "who": "perf-tcg-correct",
+  "issue": "",
+  "prediction": "CORRECTNESS ARM for the TCG retranslation instrument. The performance stream owes evidence that a change altered nothing visible, and 'a TCG change cannot affect pixels' is exactly the kind of latent-and-harmless claim this fork has already retracted once (#54). So it is measured against the corpus rather than argued. What the two refs differ by: six integer counters on the translation-block invalidation path, two adds per code generation, two counters printed on an existing log line, and a block-extent mechanism that is compiled out because HAKUX_SMALL_BLOCK_INSNS is 0. No emulated behaviour is changed by any of that -- the invalidation loop still discards the same blocks in the same order, and the counterfactual range test is computed and thrown away. PREDICTION: every capture bit-identical, zero differing pixels on every test in all eight suites. That is a strong claim and it is the right one, because the alternative -- 'no regression' -- would pass a run in which the change perturbed timing enough to flip an nv2a race, which is the only mechanism by which this diff could reach a pixel at all. So the leg is equality, and a single differing pixel is a result worth having rather than noise to absorb: it would mean this suite is timing-sensitive at the scale of a few integer increments on a slow path, which nothing in the tree currently claims. Eight suites chosen as an unrelated cross-section rather than a topic, because the blast radius of a change in accel/tcg is every guest instruction in every title, not a feature. Texture render target is deliberately excluded: its RenderTextureLoop leaves the texture stage disabled and the TexFmt_* tests after it render flat black, which would swamp the comparison with an artefact that has nothing to do with this change.",
+  "a_ref": "9eb64cbcc3",
+  "b_ref": "6b574e163e",
+  "must_not_move": [
+    "Blend_tests/*",
+    "Depth_buffer/*",
+    "Texture_format/*",
+    "Texture_DXT/*",
+    "Surface_clip/*",
+    "3D_primitive/*",
+    "Fog_gen/*",
+    "Specular/*"
+  ],
+  "expect": {},
+  "expect_counts": {}
+}

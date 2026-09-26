@@ -1,0 +1,330 @@
+# Friction that has cost real time, tracked so it can be fixed on a cadence
+# rather than only at the moment it bites.
+#
+# WHY THIS FILE EXISTS. Six instruments were fixed on 2026-09-13/14 and every
+# one was fixed REACTIVELY -- at the moment it cost something. That works, and
+# it means the only paper cuts that ever get fixed are the ones that draw
+# blood twice. The rest stay, are rediscovered by the next agent, and cost the
+# same time again. Nothing was tracked; the record lived in commit messages.
+#
+# A DX pass is dispatched daily against this file. Entries are removed when
+# fixed, with the commit named.
+#
+#   cost      what it actually cost, measured where possible
+#   bit       how many separate times it has been observed
+#   owner     lane that would fix it, or "unassigned"
+
+[[cut]]
+id = "heredoc-commit-chain"
+what = "`python3 - <<PY ... PY && git commit` commits over an edit that never landed: the heredoc asserts, dies before writing, and the && still runs because python's exit is not what git sees in a multi-command chain."
+cost = "Committed lane.lineext's territory claim without its blocker declarations, then repeated it an hour later with lane.readfreq's. Both needed a follow-up commit to correct the board."
+bit = 2
+owner = "unassigned"
+fix = "Verify the edit landed before committing -- `git diff --cached --name-only`, or split the write and the commit into separate tool calls. Possibly a wrapper."
+
+[[cut]]
+id = "backticks-in-commit-m"
+what = "Backticks inside a double-quoted `git commit -m \"...\"` are command substitution, so a word in the message runs as a command and vanishes from the text."
+cost = "THREE occurrences: ate `agentwork`, then `unlocked ? 12 : 4`, then `visited` -- each caught only by reading the message back afterwards, and each needing an amend plus (once) a force-push. The shell reports `command not found` to stderr and the commit still succeeds, so the failure is silent in the commit itself."
+bit = 3
+owner = "unassigned"
+fix = "NEVER `git commit -m` for a message with backticks or $ -- write the message to a file and use `-F`. Three occurrences say the discipline does not hold under load; the mechanical form is to always use -F. A pre-commit check could also refuse a message containing an empty `` pair, which is what the substitution leaves behind."
+
+[[cut]]
+id = "watchdog-holds-its-script"
+what = "bash reads a script lazily by byte offset, so editing idle-watchdog.sh mid-session changes nothing in the running instance -- and a length-changing edit can in principle make it resume mid-token."
+cost = "A lane-aware branch was written, committed, and had no effect for the rest of the session."
+bit = 1
+owner = "toolsmith"
+fix = "Item 3 on toolsmith's backlog. Header comment added; the structural fix is undecided."
+
+[[cut]]
+id = "checkout-restores-staged"
+what = "`git checkout -- <file>` after a staged change restores the file from the INDEX, i.e. the staged version, not HEAD. Needs `git checkout HEAD -- <file>`."
+cost = "A cherry-pick test left the tree dirty and the next cherry-pick aborted with 'Please commit your changes'."
+bit = 1
+owner = "unassigned"
+fix = "Documentation, or a habit. Not automatable."
+
+[[cut]]
+id = "gh-body-at-file"
+what = "`gh issue create --body \"@file\"` does not expand @; it files the literal string."
+cost = "#77 was filed with a literal path as its body."
+bit = 1
+owner = "unassigned"
+fix = "Always --body-file."
+
+[[cut]]
+id = "prediction-bound-into-worktree"
+what = "An arm queued from a lane's worktree records the prediction's path INSIDE that worktree. If the worktree is removed before anyone re-judges, the binding path breaks."
+cost = "Flagged by two separate lanes in their final reports; no loss yet because both were folded in time."
+bit = 2
+owner = "toolsmith"
+fix = "request.sh could resolve the prediction to a repo-relative path, or record the content hash as the primary key rather than the path."
+
+[[cut]]
+id = "two-suite-spellings"
+what = "The derived suite name uses spaces (`Blend tests`) and the results directory uses underscores (`Blend_tests`). Predictions key on the second; the tracker and the test binary use the first."
+cost = "Ten expect legs matched no capture and could not fail, on an arm that still returned PRE-REGISTERED."
+bit = 1
+owner = "toolsmith"
+fix = "request.sh now refuses an unmatched expect key at queue time. The other prediction fields are unchecked -- toolsmith item 4."
+
+[[cut]]
+id = "logcat-tag-silenced"
+what = "A new logcat tag is invisible unless it is in run_disc.sh's LOGCAT_SPEC, which ends `*:S`."
+cost = "#13's line-width log printed under a silenced tag and was invisible in every dispatcher run; the question it was written to settle stayed open."
+bit = 1
+owner = "unassigned"
+fix = "A gate that greps for __android_log_print tags not present in LOGCAT_SPEC."
+
+[[cut]]
+id = "index-build-needs-both-flags"
+what = "`nv2a_index.py build --tests DIR` alone produces an index that passes a by-hand `check --tests` and then FAILS preflight, which rebuilds with --tests AND --support. The two disagree by 197 lines while reporting identical counts."
+cost = "An agent lost a preflight pass and had to rebuild."
+bit = 1
+owner = "unassigned"
+fix = "Make `build` refuse without --support, or default it the way preflight does."
+
+[[cut]]
+id = "hedge-gap-false-positive"
+what = "nv2a_index.py scores `may not be` as a HEDGE gap, and it fires on precise sentences -- it tripped on `a surface that may not be the current target`, which is a statement of fact."
+cost = "A lane reworded correct prose to satisfy it. Right call in the moment, wrong as a pattern: the false-positive rate is paid by whoever reads the gap list next, and the daily DX pass reads it."
+bit = 1
+owner = "unassigned"
+fix = "Either narrow the pattern or report a confidence, so a reader can tell a hedge from a precise `may`."
+
+[[cut]]
+id = "usb-dialog-needs-a-human"
+what = "A persistent `Use USB for` chooser (com.odin.settings) sits modal over the Thor's display. It occludes the central 61% x 44% and caps everything behind it at ~100/255 -- a measured 0.40 scrim -- so every screen-based measurement on the only live handheld is attenuated and partly blind."
+cost = "Cost #77's driver A/B 60% of its signal and forced an instrument correction before any result could be believed. It is identical in all arms so it cannot manufacture a difference, but it can HIDE one."
+bit = 1
+owner = "unassigned"
+fix = "One CANCEL tap by a human; it survives `am force-stop` and is tied to USB state. NOT automatable from here: `adb shell input keyevent` terminates the emulator, and `svc usb setFunctions` or `pm disable-user` on the ONLY live device during a sweep is not a risk worth taking to save a tap. The durable fix is a device setup step -- pin the USB function so the chooser never arms -- recorded once rather than rediscovered per session."
+
+[[cut]]
+id = "claim-not-pushed-before-dispatch"
+what = "The orchestrator writes a lane's territory row, validates it, dispatches, and commits afterwards. The agent fast-forwards to a tip that predates the commit, so for its whole run the claim exists only in the orchestrator's working tree."
+cost = "lane.tcginval opened its board request reporting territory.toml at wave 42 with no [lane.tcginval] row and accel/** still free -- correct from where it stood. THREE OCCURRENCES NOW, each a different variant: lane.padwrite had no row at all, lane.tcginval had one written but not committed before dispatch, and lane.audit-tcg was dispatched with no row because an auditor claims no files and I concluded it therefore needed no row. It needs one: a lane running and unclaimed is invisible to every guard."
+bit = 3
+owner = "unassigned"
+fix = "Order is: write the row, validate, commit, PUSH, then dispatch. A lane verifies its territory by reading the repo, so the claim must be in the repo before the lane starts. An uncommitted claim is not a claim."
+
+[[cut]]
+id = "folded-without-an-audit"
+what = "The orchestrator folded 2af6def68a -- #73's fix, +107/-14 in accel/tcg, guest-CPU core reaching every title -- on an Android build and a green preflight, with no audit pass. AGENTS.md's own heading is 'preflight is not an audit'."
+cost = "Not yet known; an audit is running. The protocol was written the same day, and the first audit had explicitly flagged accel/tcg as glanced-only and deserving its own pass. Both facts were available and neither stopped the fold."
+bit = 1
+owner = "unassigned"
+fix = "The fold path needs the gate, not the orchestrator's memory. lane.toolsmith holds preflight.sh and is already building an audit-record gate; it should refuse a fold whose diff touches compiled code with no audit record covering it. Until then the protocol depends on the person most likely to be in a hurry."
+
+# FIXED AND REMOVED 2026-09-14 by lane.toolsmith, folded in the merge above:
+#   skip-ci-typo                  -> preflight's commit-subject gate now fails a
+#                                    near-miss, including `[skip ci] [skip ki]`
+#                                    which the old grep passed silently. Radius 2
+#                                    for transpositions, verified against 390 real
+#                                    bracketed tokens.
+#   index-gate-punishes-lanes     -> the nv2a index gate scores against the FOLD
+#                                    BASE; attribution is structural, SCAN_ROOTS
+#                                    read out of nv2a_index.py.
+#   expect-gate-refuses-soaks     -> the gate follows judge(); 12 of 12 soak
+#                                    predictions were being refused, now 0 of 15,
+#                                    with all 32 disc-side true positives kept.
+#   lastbrief-needs-remembering   -> derives from deliveries/<lane>.md mtime, with
+#                                    the stamp as a FALLBACK rather than a
+#                                    tiebreak so it cannot mask a missing entry.
+#   minimised-run-reads-as-a-defect -> ab_compare --check-truncation, called by
+#                                    request.sh --wait, the one place both disc
+#                                    and soak results are read.
+
+[[cut]]
+id = "audit-remediation-can-be-wrong"
+what = "An audit finding's proposed REMEDIATION is not itself audited. Twice in one chain a proposed fix was wrong and only the remediating lane caught it: pass 2 found the first HIGH's assert unfireable, and M5's proposed eviction-on-insert was refuted because ihash is over guest bytes, so alternating overlays make a superseded entry recyclable."
+cost = "Following M5's remediation would have destroyed exactly the recycle hit the cache exists for, on the workload #73 and #68 are about. Caught only because the remediating lane read the code rather than the finding."
+bit = 2
+owner = "unassigned"
+fix = "State in AGENTS.md that a remediation is a CLAIM like a blocker, and a lane that disagrees should decline with a reason rather than implement it. Both lanes did this correctly without being told; the protocol should say so, so the next one does not assume the finding is authoritative."
+
+[[cut]]
+id = "soak-results-keep-no-frames"
+retired = "2026-09-18 by lane.toolsmith: 2d5c9b9b20"
+what = "A soak result dir carries `pulled: []` and holds only a logcat. The FRAMES an analysis rests on survive nowhere durable -- for #77's driver A/B they existed only in the lane's scratchpad, one reap from gone."
+cost = "434 frames across four arms, the entire evidential basis of a four-arm driver A/B, were recoverable only by hand-copying out of /tmp before the scratchpad was reaped. Found by lane.scene77 while re-analysing them; nobody had noticed the result dirs were empty."
+bit = 1
+owner = "unassigned"
+fix = "A soak that captures frames should pull them into its result dir like a disc run pulls captures. Until then the orchestrator must copy them at fold time -- done for these four, but that is a step someone has to remember, which is the category this file exists to eliminate."
+
+[[cut]]
+id = "partial-coverage-suites-can-never-get-a-floor"
+retired = "2026-09-18 by lane.toolsmith: diagnosed with numbers; patch written, sweep_diff.py granted at wave 74"
+what = "sweep_diff's repeats_for() discards any run where a suite is `partial`, conflating 'the run truncated' with 'the disc contains fewer tests than the goldens'. A suite whose disc coverage is short can therefore NEVER get a noise floor, no matter how many times it is run."
+cost = "36 of the corpus's 42 movers are unattributable and cannot be made attributable by any amount of device time. Three ZPass_pixel_count noise-floor runs -- identical to the pixel, 72 captures / 26 exact / 14,244 px, ending 'Testing completed normally' -- were all discarded for scoring 72 of 78 goldens."
+bit = 1
+owner = "toolsmith"
+fix = "Distinguish truncated (unmatched Starting in the progress log, or window minimized with no restore) from short-disc (completed normally, fewer tests than goldens). Let the second count as a repeat, recording the population it covers so a floor over 72 captures is never read as a floor over 78. progress_log_proof is already in result.json and already true for these runs."
+
+[[cut]]
+id = "dispatcher-sh-unlisted"
+retired = "2026-09-18 by lane.toolsmith: 7f2d091c58 / wave 74"
+what = "dispatcher.sh is unlisted in territory.toml -- neither claimed by a lane nor in [free] -- despite being the file that defines LOGCAT_SPEC, the queue protocol and the soak/disc branch. profile.c was in the same state until wave 51."
+cost = "Not yet paid, which is the point of logging it now. An unlisted file is one nobody is refused and nobody is responsible for, and the collision guards cannot see a claim on it because there is none to see."
+bit = 1
+owner = "unassigned"
+fix = "Audit territory.toml for files under docs/testing/ and hw/ that appear in neither a lane nor [free], and place them. A file that is genuinely nobody problem should say so explicitly rather than by omission."
+
+[[cut]]
+id = "discard-model-exact-equality"
+retired = "2026-09-18 by lane.toolsmith: 521296dfff"
+what = "tcg_pages.py's discard_model() compares with exact equality and no tolerance, while the population check beside it carries max(8, n*1e-4). One invalidation straddling a window boundary therefore reads as a model mismatch."
+cost = "C3 called an arm-A run MIXED on a di-(ov+sp) of +1 in one window and -1 in the next. lane.tcgarm had to establish build identity with a SECOND instrument (apk_sha per arm) to dismiss it -- correct, and unnecessary."
+bit = 1
+owner = "toolsmith"
+fix = "Give discard_model() the slack the population check already has. It is the residual of the exact-equality defect that voided a correct arm earlier the same day."
+
+[[cut]]
+id = "fold-in-dirties-the-shared-tree-for-minutes"
+retired = "2026-09-18 by lane.toolsmith: c90eaddb1a (dispatcher half) + AGENTS.md fold-worktree section"
+what = "A fold-in is several commits long by nature -- cherry-pick, tracker edit, territory edit, index rebuild, preflight, commit -- and the shared tree is DIRTY for all of it. dispatcher.sh refuses to build any uncached ref against a dirty tree and requeues every 30 s in silence, so the whole fleet stalls on whatever the orchestrator happens to be in the middle of."
+cost = "Seven consecutive requeues of lane.skew44's tip-ref control arm, 05:25:15 to 05:28:22, with eight more of its arms queued behind it. The lane had to diff the shared tree against the tip from the object store to find out why, then report it as BLOCKING FLEET-WIDE. Earlier the same day this class cost 251 requeues."
+bit = 2
+owner = "toolsmith"
+fix = "The orchestrator should fold on a scratch worktree and fast-forward the shared tree in one move, so the dirty window is a single ref update rather than several minutes. Failing that, dispatcher.sh should say WHICH files are dirty and for how long it has been waiting -- it currently repeats an identical line every 30 s, which reads as a hang rather than as a blocked queue. Note the lane could not run git against the shared tree at all, being worktree-isolated."
+
+[[cut]]
+id = "backticks-inside-python-c-double-quotes"
+retired = "2026-09-18 by lane.toolsmith: 7d285138ef"
+what = "dispatcher.sh:471 embeds Python in `python3 -c \"...\"` -- a DOUBLE-quoted shell string -- and the Python comments inside it contain backticked identifiers. The shell command-substitutes them before Python ever sees the source."
+cost = "Cosmetic so far: `suites: command not found`, `skip_tests: command not found`, `only_tests: command not found` and `iso:85b525/Blend: No such file or directory` on stderr for every disc request, which is noise a lane has to rule out before trusting its own run. It is a live hazard the moment a backtick pair wraps something executable, and the comment text is silently destroyed either way."
+bit = 1
+owner = "toolsmith"
+fix = "Single-quote the heredoc or the -c string so nothing inside is expanded. Same root cause as the three commit messages that lost a word to backticks today, and as the git commit -F rule -- a double-quoted shell string is not a quoting boundary."
+
+[[cut]]
+id = "territory-gate-fails-lanes-not-on-the-instant-tip"
+retired = "2026-09-18 by lane.toolsmith: 41739857b0"
+what = "preflight.sh's `territory` gate compares the lane's territory.toml against the tip's, so a lane whose worktree is even one wave behind FAILS a gate it is barred from fixing -- territory.toml is the orchestrator's file and a lane must not edit it."
+cost = "lane.audit-blit failed it twice in a row while working, purely because the board advanced 65 -> 66 -> 67 underneath it. The only remedy available to a lane is rebasing onto a moving tip, which on a busy board is a race it cannot win. It reported the friction rather than the gate being broken, which is the right read and is also why nobody noticed sooner."
+bit = 2
+owner = "toolsmith"
+fix = "The gate's subject is whether THIS LANE moved the file, not whether the file is current. Compare the lane's territory.toml against the MERGE BASE rather than the tip, and fail only if the lane's own commits changed it -- which is the same question check_cited_commits.py already learned to ask about patches instead of shas. A monotone-wave check still catches the reversion this file exists to prevent, because that is a comparison against the lane's own base."
+
+[[cut]]
+id = "a-request-can-sit-in-running-for-days"
+what = "A request stays in running/ until it completes, with no staleness bound and no report of per-run failures inside it. Two of one arm's five runs died with 'pull failed or timed out' -- the device dropping mid-run -- and the request sat in running/ for FOUR DAYS across a session suspension while every status view reported '1 device run in flight'."
+cost = "Four days of a device slot nominally occupied by a request that had already lost 40% of its runs. The fleet view, the watchdog and the dispatcher log all agreed and all said the same useless true thing. Found only because the owner suspended device testing and the queue was inspected by hand."
+bit = 1
+owner = "toolsmith"
+fix = "Two separate things. (a) Report per-run outcomes as they happen, not only the request's completion: 'run 2 of 5: no captures, device vanished' belongs in the dispatcher log and in the fleet view. (b) Give a running request a staleness bound -- a request whose last run ended hours ago is not in flight, it is stuck, and the two should not render identically. Note the existing MIN_RUNS gate then makes the arm unjudgeable anyway, so the lane learns hours later what the dispatcher knew immediately."
+
+[[cut]]
+id = "score-sweep-tracebacks-after-diagnosing-cleanly"
+what = "score_sweep.py prints a correct, well-worded diagnostic for an empty capture set -- naming the cause, and explicitly saying 'this is not a scoring failure' -- and then tracebacks two lines later on `max(len(k) for k in suites)` over an empty suite set."
+cost = "Every device-drop run ends in a Python traceback, so a cleanly handled condition is indistinguishable from a broken tool in a log tail. Two runs of one arm did exactly this and the traceback is what the log tail shows, not the diagnostic above it."
+bit = 1
+owner = "toolsmith"
+fix = "Return after the diagnostic instead of falling through to the summary table, or default the column width when `suites` is empty. The diagnostic text is already good and should be the last thing printed -- the value here is that the log tail then says what happened."
+
+[[cut]]
+id = "a-must-not-move-glob-matching-no-capture"
+what = "A must_not_move control can name a test that writes NO capture, so the leg can never fire and never reports that it did not. Image_blit/OverlapFIFO was one of 21 registered controls and was scored in NEITHER arm."
+cost = "One of 21 controls silently absent on an arm whose whole purpose was to show a fix moved the right pixels and nothing else. Found by the lane auditing its own prediction after the fact, not by any gate. It had checked the GOLDEN existed and not that the CAPTURE did -- and a golden with no capture is exactly the shape that reads as a passing control."
+bit = 1
+owner = "toolsmith"
+fix = "ab_compare.py --register should refuse, or at minimum warn, when a must_not_move or expect glob matches no capture in the runs on hand -- the same gate request.sh already applies to expect KEYS at queue time, extended from 'is the key well-formed' to 'does anything actually produce it'. This is the inert-prediction-leg class one layer in: ten legs were inert for naming the wrong key shape, and this one is inert for naming a real key nothing writes."
+
+[[cut]]
+id = "selftest-passes-while-the-tool-cannot-read-real-data"
+what = "fifo_skew_report.py crashes on the mode-1 log shape -- load() calls int() on optional regex groups that are absent when the bound is on -- so it cannot read the very cost pair #44 publishes. Its --selftest passes, because the selftest exercises the shape the author had in front of them."
+cost = "The tool that produced this issue's headline cost figures cannot re-read them. lane.skew44 had to write its own parser and then validate it by reproducing the published numbers to the digit on a known run -- correct, and work the instrument should have done."
+bit = 1
+owner = "toolsmith"
+fix = "Default the optional groups instead of int()ing them, and make --selftest cover BOTH log shapes: bound-off and bound-on. The general lesson is the one this file keeps relearning -- a selftest built from the case in front of you tests that case. An impossible row is the check: feed the selftest a bound-on log and assert it parses, because that is the shape a passing selftest could not previously see."
+
+[[cut]]
+id = "the-gate-cannot-see-ordered-or-deliberately-deferred"
+what = "fleet.py's DISPATCHABLE-NOW-NOT-DISPATCHED keys on the words NOT BLOCKED in blocked_on, so it reports three different states identically: genuinely unallocated, ordered behind a live claim, and deliberately deferred with a recorded reason. Only the first is a problem."
+cost = "Two issues (#83 ordered behind lane.blitsafe, #87 deferred while two unfolded implementations await audits) sit in a FAIL bucket with their reasons written one field away. The cost is not the noise -- it is that the ONE state worth acting on is now indistinguishable from two that are not, in the check whose whole purpose is to surface unallocated work."
+bit = 1
+owner = "toolsmith"
+fix = "Give the reader the distinction the board already records. Either read a structured marker (ORDERED / DEFERRED / UNALLOCATED at the head of blocked_on) or print the three as separate sections. DO NOT fix it by rewording the entries to dodge the match -- silencing a gate by editing the text it reads is how a gate stops meaning anything, and this file already carries a cut about a selftest that passed while its tool could not read real data. The FAIL should mean unallocated; an ordered or deferred issue with a stated reason is the board working. SAME SHAPE, SECOND BUCKET, found 2026-09-18: fleet.py's WAITING ON THE ORCHESTRATOR section prints any lane whose waiting_on field is non-empty, so a lane waiting on a DISPATCHED AUDIT, on another lane releasing a file, or on the OWNER all render as waiting on the orchestrator. Three lanes sat in that section while every one of them was chained to two audits already running. The field answers 'what is this waiting on' and the section header answers 'who must act', and those are different questions being served by one string. The fix is a second field -- waiting_on_kind, one of orchestrator | lane | owner | device -- and to print only the orchestrator ones under that header. Same principle as above: do not fix it by blanking the field, because the text is the only place the chain is recorded."
+
+[[cut]]
+id = "a-rebase-silently-unbinds-a-prediction"
+what = "A rebase rewrites every commit it moves, so a prediction's b_ref stops being an ancestor -- and merge-base --is-ancestor run BEFORE the rebase reports healthy. Nothing warns at the moment the binding breaks. Worse, a stale-but-REACHABLE ref makes the dispatcher build successfully and measure the wrong binary."
+cost = "#59 hit it twice from two causes: once from an abandoned branch that kept a superseded ref reachable, and once from a routine rebase to clear an unrelated gate, which reintroduced the identical defect minutes after it was fixed. Both times the arms would have completed, scored, and been reported. Caught by an audit and then by the lane re-checking, never by a gate."
+bit = 2
+owner = "toolsmith"
+fix = "A queue-time gate in request.sh: refuse a b_ref that is not an ancestor of any live branch tip. That is where the other inert-prediction classes are already caught, and it is the only check that fires at the moment it matters. Note the asymmetry that makes it worth the gate rather than the discipline -- an UNREACHABLE ref fails loudly, while a reachable stale one produces a clean confident wrong measurement. AGENTS.md now carries the rule (register after the last rebase), but a rule competes with a territory gate that sometimes demands a rebase."
+
+[[cut]]
+id = "a-fold-takes-the-record-and-leaves-the-evidence"
+what = "Folding an issue's tracker record without the investigation or instrument it CITES. Twice in two days: #82's close was folded while x87-fscale-saturation-is-verified-on-the-shipped-text.md was not (it surfaced only as a modify/delete cherry-pick conflict days later), and #87's blocker_tested cited swizzle_residual.py which did not exist on this branch at all."
+cost = "A cited artefact that is absent reads as a missing instrument to the next lane, which then rewrites it. lane.swizzle87 had to run swizzle_residual.py out of another branch's object store to reproduce its own issue's numbers. And the #82 gap was invisible until a later cherry-pick collided with it -- nothing checks that a cited path exists."
+bit = 2
+owner = "toolsmith"
+fix = "preflight should verify that every path a tracker entry cites actually exists at HEAD -- the entries already name their instruments and write-ups by path, so this is a grep over status_note/blocked_on plus an os.path.exists. Cheap, and it catches the class rather than the instance. For the orchestrator: when folding a record that cites an artefact, fold the artefact in the same commit or say in the message that it is deliberately left behind."
+
+[[cut]]
+id = "a-hand-built-suites-request-gets-no-poison-test-skip"
+what = "`Texture render target::RenderTextureLoop` leaves the texture stage disabled, so the 40 TexFmt_* tests after it render FLAT BLACK -- 3,209,634 px against 324,349. queue_full_sweep.sh skips it automatically at :66. A hand-built --suites request does not, and NOTHING WARNS: request.sh:43 documents the hazard in a comment only."
+cost = "Not paid, and only because lane.swizzle87 read request.sh's header before queueing. 37 of its prediction's 38 must-not-move keys are in that suite, so the arm would have read as a CATASTROPHIC REGRESSION while measuring nothing -- the most expensive possible failure shape, because a huge adverse number invites a revert rather than an investigation."
+bit = 1
+owner = "toolsmith"
+fix = "Move the knowledge out of the comment and into the tool: request.sh should apply the same poison-test skip queue_full_sweep.sh does whenever a request names a suite containing one, or refuse the request and say which test to skip. A hazard that only a careful reader avoids is a hazard the next lane pays for -- and this one is silent, self-consistent and enormous."
+
+[[cut]]
+id = "a-suite-level-annotation-can-excuse-a-capture-level-regression"
+what = "ab_compare annotates a violated leg with any OPEN harness issue owning the SUITE. On #88's arm it annotated `Color_zeta_overlap/Swap` with '#89 (Color zeta overlap)' -- but #89 is about `Swap_ZB`, a different capture. The annotation exists to suppress known noise and here it manufactured a dismissal for a real 139,303-px regression."
+cost = "Not paid, because the verdict was still FAIL and the numbers were read. But the annotation is the sentence a reader in a hurry uses to close the question, and it was wrong: it matched at suite level while claiming per-capture relevance ('every one is in a suite...'). The disc total ALSO improved by 12,018 px, so both the summary line and the excuse pointed the same wrong way."
+bit = 1
+owner = "toolsmith"
+fix = "Match the annotation at CAPTURE level, not suite level -- the harness issues already name their captures. Where only a suite-level match exists, say so in those words ('an open issue owns this suite, but not this capture') rather than implying the capture is covered. An annotation that is right about the suite and wrong about the capture is worse than none, because it reads as specific."
+
+[[cut]]
+id = "the-fold-worktree-is-a-shared-resource-with-no-lock"
+what = "One scratch worktree at hakux-work/fold is used by the orchestrator AND by lane.fold. There is no claim file and no lock, so a `git reset --hard` in it is silent and unrecoverable for anyone who has not yet committed."
+cost = "Nearly cost a 78-commit fold. The orchestrator reset that worktree SIXTEEN SECONDS after lane.fold's last command in it and began working there; the lane survived only because its commits already existed and it recovered the tip from the reflog, pushing the sha directly rather than reclaiming the working copy. Separately, the lane's push then rejected the orchestrator's, which had to be rebased."
+bit = 2
+owner = "toolsmith"
+fix = "Per-lane fold worktrees, or a claim file the way the device dispatcher already does it (atomic mv, one holder). Note the first attempt at fixing this made it WORSE in a second way: a separate hakux-work/board worktree for the orchestrator immediately tripped preflight's own board-files gate, which exempts the fold path by name via HAKUX_FOLD_DIR -- so two worktrees means two paths that may edit the tracker, which is the concurrency the gate exists to prevent. DECIDE THE SPLIT DELIBERATELY: either one worktree with a lock, or two with the gate taught about both. It is currently ambiguous and the override is being used to paper over it."
+
+[[cut]]
+id = "the-fixed-unlanded-check-cannot-trip-on-a-fold"
+what = "check_coverage.py's `fixed-unlanded` rule requires every `fixed_by` sha to be a real commit that is NOT an ancestor of HEAD -- so it trips 'the instant the work is merged'. But a fold is a CHERRY-PICK, so the cited lane sha is absent from the campaign tip BY CONSTRUCTION. The check is silent on precisely the event it exists to announce."
+cost = "[issue.74] and [issue.82] both passed the gate at the folded tip while being wrong about the world -- #82 still said lane.remote's commits would not fold until its HIGH was fixed, after they had folded and it was. Found by lane.fold, which expected the gate to fail and reported that its NOT failing was worse."
+bit = 1
+owner = "toolsmith"
+fix = "Ask about patches, not shas: `git cherry`, a patch-id comparison, or a search for the sha in an `-x` trailer. check_cited_commits.py already classifies by patch-id and knows this -- it is just not wired into preflight, which is its own logged cut. This is the ancestry-asks-about-shas lesson appearing inside a gate written to enforce that lesson."
+
+[[cut]]
+id = "composition-is-not-a-field-of-the-prediction-schema"
+what = "A prediction can register an ABSOLUTE pixel count but cannot record the disc composition it was derived from. Of 107 files in docs/testing/predictions/, exactly ONE carries a disc_id. ab_compare can compare two ARMS' discs to each other, but nothing can compare an absolute against the composition it came from."
+cost = "Thirty-one live predictions register an absolute, on a narrowed disc, with no arm-A reproduction condition -- so nothing would catch a composition substitution. They are safe today only because none touches the one capture measured as composition-sensitive, which is luck rather than protection. Found by auditing all 107 files, after a capture moved 141,125 px on composition alone."
+bit = 1
+owner = "toolsmith"
+fix = "Add disc_id (or the suite list) to the prediction schema and have ab_compare REFUSE an absolute whose recorded composition differs from the arm's. The pattern to copy is already in the codebase: several predictions carry an 'arm A is the check' clause in PROSE that does exactly this, and prose is not enforced -- #88's entry credits itself with that condition while its prediction file does not contain it."
+
+[[cut]]
+id = "disc-id-conflates-composition-with-the-skip-list"
+what = "disc_id is the comparability key, and it encodes the suite list AND the skip list together, then truncates at about 60 characters. So two discs differing only in a skipped test get different keys, and two genuinely different compositions can collide after truncation."
+cost = "Two wrong classifications in one investigation: the 24 Texture_render_target/TexFmt_* captures looked like a composition effect and are actually the known RenderTextureLoop skip, because the skip is inside the key. The lane had to notice and back both out."
+bit = 1
+owner = "toolsmith"
+fix = "Separate the fields: composition and skip-list as distinct keys, both full-length, with the human-readable label derived from them rather than being them. A key that truncates is a key that can silently collide, and this one is the thing every pooled measurement on this board is grouped by."
+
+[[cut]]
+id = "a-sweep-of-open-issues-misses-the-closing-comment"
+what = "The hourly comment sweep listed `--state open` only, so it could not see THE COMMENT THAT CLOSES AN ISSUE -- which is the most valuable class there is, because a lane posts its final report as it closes. A sweep reporting zero and a sweep that cannot see are identical from outside."
+cost = "It reported '0 issues with new comments' twice while #51's closing comment sat unread -- a full verification with 92 GL shader dirs and 119 SPIR-V modules regenerated and iso_cube 78/78 byte-identical. Two hours of a brand-new instrument being confidently blind, in the same session it was built to end a week-long gap."
+bit = 1
+owner = "toolsmith"
+retired = "2026-09-18 by the orchestrator: --state all with a window filter on updatedAt. Verified by positive control -- it now finds the #51 comment it previously missed."
+fix = "Fixed. The lesson is the method rather than the patch: it was caught by asking WHAT WOULD THIS SHOW IF THE THING WERE PRESENT and then feeding it a comment known to exist. `gh` found that comment directly with the same time filter; the script did not, because the issue was not in its list. Every new instrument on this board should get that positive control before its zeros are trusted -- this one had two clean sweeps behind it and was broken the whole time."
+
+[[cut]]
+id = "only-tests-last-wins"
+what = "`request.sh --only-tests` and `--skip-tests` (and `--tests`, `--suites`) silently keep only the LAST of repeated flags. `request.sh:81` is `--only-tests) ONLY_TESTS=\"$2\"`, a scalar assignment, while `--env` accumulates into an array -- so a request built with one flag per test looks right, queues without a warning, and measures a different disc from the one its own `--purpose` and `--who` describe."
+cost = "Two device arms (four runs) re-queued, and ONE NEAR-MISS INFERENCE that is the real cost: `disc89-H-pre8` ran 1 test instead of 8, and its pre-registration said '0 puts the threshold in 9..32'. It read 0. Read as registered it would have placed #89's threshold in 9..32 WHEN THE ANSWER IS 2 -- excluding the correct value rather than merely wasting an arm. Caught only by a pre-registered impossible-row check on the expected row count."
+bit = 1
+owner = "instruments standing lane (filed as #94)"
+fix = "Preferred: make the four list flags APPEND like `--env`, comma-joined to match what the consumer parses -- `--env` already appends, so 'flags repeat' is a correct inference from this same interface and is exactly what the caller drew. Grep `docs/testing/` and `$DISPATCH_DIR/bin/` first for a caller relying on last-wins. Fallback: refuse a repeated occurrence with `exit 2`. Worth landing either way, because it needs no code change and does not trust the caller: assert `only_tests` length in the queued `.req` before the device claims it."

@@ -1,0 +1,12 @@
+[Unit]
+Description=hakuX cloud-class lane, hourly
+
+[Timer]
+OnBootSec=6min
+OnUnitActiveSec=60min
+RandomizedDelaySec=120
+Persistent=true
+Unit=hakux-cloud.service
+
+[Install]
+WantedBy=timers.target

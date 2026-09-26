@@ -1,0 +1,25 @@
+{
+  "registered_utc": "2026-09-13T04:00:05Z",
+  "who": "depth52-agent",
+  "issue": "52",
+  "prediction": "Second form, after the first one's arm (base 1789269678-depth52-base-1592032 -> fix 1789269684-depth52-fix-1592057) confirmed the mechanism and fell short of the oracle. What the first arm established, and what this one must not un-establish: the constant relative error down the big quad -- the barycentric normalisation -- went from -0.80 float32 ULP to -0.15, and the residual against floor(exact) stopped being one-sided (9,738 low / 140 high -> 4,308 / 2,057, against silicon's own 3,060 / 2,972). What it did not do is reach floor(exact), and it pushed the bottom quad from 140 px above it to 250. Diagnosis, by re-modelling the identical chain with fma() lowered to multiply-then-add: this driver does not fuse fma(), so the division residual fma(-q,S,N) was quantised. The unfused model reproduces the measured shape including the bottom quad's one-sided +95/360, where a fused fma predicts zero everywhere; the bottom quad is the tell because its 12,582,910 span puts the quotient's own ULP at a whole depth unit, so all of its fraction has to come through that term. This form uses Dekker's exact product (multiply and add only) and asks the compiler for nothing; modelled over 24 combinations of fused/unfused fma, three divide behaviours, two depth formats and four primitive shapes, every one lands on floor(exact) where the fma form manages 12 of 24. PREDICTION: ours equals docs/testing/depth_exact_floor.py's oracle pixel for pixel on all eighteen z24 FZn _ZB captures -- the expect-values above are oracle-vs-golden, i.e. silicon's own irreducible +-1 edge walk. Cell total 72,138 -> 43,690. FALSIFIED IF, on Mffffff_ZB, the big quad's fitted constant relative error is not within 0.02 float32 ULP of zero (base -0.80, first form -0.15) OR the bottom quad is still further from floor(exact) than the base arm's -106/+140. Either says the remaining error is not the arithmetic modelled here and this comes out. Not predicted: the colour cells, and Depth_buffer_fixed_function, whose vertex depths are not integers so the oracle does not apply -- the first form cost it 148 px of 663,094 and up to 2,000 is accepted. Cost: about two dozen extra ALU ops per fragment in every depth-writing shader; if a perf arm later says that matters, the fma form is the cheaper two-thirds of this win.",
+  "a_ref": "5e612529b9",
+  "b_ref": "91b0897e01",
+  "must_not_move": [
+    "Depth_buffer/DepthFmt_z16_*_FZn_*_ZB",
+    "Depth_buffer/DepthFmt_z16_*_FZy_*_ZB",
+    "Depth_buffer/DepthFmt_z24_*_FZy_*_ZB"
+  ],
+  "expect": {
+    "Depth_buffer/DepthFmt_z24_*_FZn_M00000f_ZB": 0,
+    "Depth_buffer/DepthFmt_z24_*_FZn_M055564_ZB": 5,
+    "Depth_buffer/DepthFmt_z24_*_FZn_M0aaab9_ZB": 21,
+    "Depth_buffer/DepthFmt_z24_*_FZn_M40000b_ZB": 227,
+    "Depth_buffer/DepthFmt_z24_*_FZn_M800007_ZB": 654,
+    "Depth_buffer/DepthFmt_z24_*_FZn_Mc00003_ZB": 1221,
+    "Depth_buffer/DepthFmt_z24_*_FZn_Mf55555_ZB": 6177,
+    "Depth_buffer/DepthFmt_z24_*_FZn_Mfaaaaa_ZB": 6770,
+    "Depth_buffer/DepthFmt_z24_*_FZn_Mffffff_ZB": 6770
+  },
+  "expect_counts": {}
+}

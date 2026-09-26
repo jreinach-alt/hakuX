@@ -1,0 +1,27 @@
+{
+  "registered_utc": "2026-09-26T11:51:29Z",
+  "who": "lane.remote",
+  "issue": "274",
+  "prediction": "#274 SFP MATRIX HOLE -- THE SUPER-FAST PATH DRAWS WITH A STALE UNIFORM BLOCK AFTER A FIXED-FUNCTION SETTER (found pricing GPUAA, 5842494980; host decision 02:50Z, 5842521546: shape (a), a second registration and a separate PR). DEFECT: the fixed-function setters in pgraph.c (SET_COMPOSITE_MATRIX, SET_MODEL_VIEW_MATRIX, SET_INVERSE_MODEL_VIEW_MATRIX, SET_PROJECTION_MATRIX, SET_TEXTURE_MATRIX, SET_TEXGEN_PLANE_*, SET_FOG_PLANE, SET_EYE_POSITION, SET_VIEWPORT_OFFSET, SET_VIEWPORT_SCALE, and the light and material setters) write pg->vsh_constants or the light arrays and set only vsh_constants_any_dirty or ltctx*_any_dirty; none bumps a generation counter. The SFP in begin_pre_draw_inner() checks generation counters and r->uniforms_changed, which only a refresh sets, and never reads the four dirty flags, so a draw whose only change since the last one is such a setter keeps the previous uniform buffer. SET_TRANSFORM_CONSTANT escapes because its load-pointer register write moves non_dynamic_reg_gen. B adds one test to the SFP's miss chain in begin_pre_draw_inner() (vk/draw.c), after the uniforms_changed test: miss (counted as sfp_miss_uniforms) while any of vsh_constants_any_dirty, ltctxa_any_dirty, ltctxb_any_dirty, ltc1_any_dirty is set. The missed draw goes to the MFP or the full path; both refresh the block (pgraph_vk_update_shader_uniforms), which clears the four flags, so the next draw can take the SFP again. A is the master it sits on, and the two refs differ by that one test. MEASURED on a_ref 6c25a829ef alone with a local probe (i274u v2, never committed) that, at every SFP hit, snapshots both blocks, refreshes, compares and restores, and records whether any of the four flags was set: the SFP hits 2,016-2,232 draws per disc and 1,968-2,168 of them draw a stale block, all in the first 28-31 frames of the run. Every stale hit differs in c[0], the first row of compositeMat (vsh-ff.c, oPos = tPosition * compositeMat), and its last differing byte lies in c[10]-c[14] (modelViewMat0, invModelViewMat0). With xemu's skip_boot_anim set (short-animation=on), the same probe binary takes no SFP hit at all on any of the four desktop discs and still writes every capture, so on these discs every SFP hit, stale or not, is drawn by the BIOS boot animation, and no test draw takes the SFP. Every SFP hit on A had one of the four flags set (1,968-2,168 stale and 48-64 not, per disc; 0 with no flag), so no stale hit escapes the guard's test on A's own trajectory. B's SFP hit count is not predictable from A's: on B the first missed draw's refresh clears the flags, so later draws with no new setter write can take the SFP again with a fresh block (a pricing build of the guard on the pre-#366 base kept 40 SFP hits per disc, 0 stale). PREDICTION, desktop Vulkan on llvmpipe, surface_scale 1, this disc (33 captures), 3 runs per arm: GUARD -- every capture bit-identical between A and B (must_not_move *), better 0, worse 0. HAND-REPORTED LEG, same disc: with the i274u v2 probe applied locally to each ref, stale SFP hits read >= 1,000 on A (the instrument sees the defect) and exactly 0 on B; B's SFP hit count is reported, not judged. UNCOMFORTABLE OUTCOMES, named now: a capture moving outside the band means the guard reaches a test draw although no test draw takes the SFP, and this FAILS; any stale SFP hit left on B means a producer of stale uniforms that sets none of the four flags, and this FAILS on that leg.",
+  "a_ref": "6c25a829ef",
+  "b_ref": "1d9c3e4c0f",
+  "must_not_move": [
+    "*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "better": 0,
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Clear",
+      "Pixel shader"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "title": "desktop Vulkan A/B -- hand-queue only, see the prediction text"
+}

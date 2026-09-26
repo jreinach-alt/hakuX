@@ -1,0 +1,39 @@
+{
+  "registered_utc": "2026-09-26T08:02:53Z",
+  "who": "lane.remote",
+  "issue": "274",
+  "prediction": "#274 GPUAA CARRY-OVER -- STALE UNIFORM BLOCK ON create_pipeline()'S EARLY RETURN (host order 02:30Z, 5842390350; mechanism 5840601274; priced 5842494980). DEFECT: create_pipeline() in vk/draw.c returns early (pipeline_early_hits) when the pipeline binding exists and no pipeline, shader, texture or render-pass generation moved, and that branch skips pgraph_vk_update_shader_uniforms(), which the non-early path runs. A value that reaches the shader only through the uniform block without bumping a generation (an inline vertex attribute such as the diffuse colour set before the first vertex, which travels in the UBO on llvmpipe) is then drawn with the previous draw's block: the command buffer's uniforms_changed still uploads the binding's block, and that block was never refreshed. Antialiasing tests::GPUAAWriteAfterCPUWrite is that draw: all 2,674 px where it differs from the same test run alone lie in its triangle and read (64, 242, 191), FBSurfaceWithCenter1's SetDiffuse(0.25, 0.95, 0.75), where the test sets 0xFFDDCC00. It reads 2,674 in sequence, 134 alone and 134 on GL. B adds pgraph_vk_update_shader_uniforms(pg) to the early-return branch and nothing else. PRICED with a local probe (never committed) that snapshots both blocks at the early return, refreshes, compares and restores: early hits whose refresh changes the block are 1 on the Antialiasing + DMA disc (GPUAA's triangle), 0 on Clear (33 captures), 0 on disc109 (73) and 0 on surf1 (236). A count-only probe over the 99 per-suite discs of the stock suite (master 6215a64c) found the early return on two only: Antialiasing tests (1, GPUAA's triangle) and Stencil (7-10 per run, none stale by the snapshot probe; Stencil's captures are #39's desktop race, 7 of 17 flipping run to run in either arm, so a capture guard there would measure #39 and is not registered). The SFP never reaches create_pipeline() and the MFP already refreshes on every draw it takes, so no other draw changes. PRE-MEASURED with local builds (never committed), 2 runs per arm, on a_ref itself and on master 6215a64c plus PR #366's vk/draw.c viewport hunk (not folded at registration; its offset is 0.0 for SQUARE_OFFSET_4, the mode GPUAA's triangle draws in): GPUAA 2,674 -> 134 in every run on both bases, and the same two capture hashes on both. PREDICTION, desktop Vulkan on llvmpipe, surface_scale 1, this disc (surf1, 14 suites, 236 captures), 5 runs per arm: GUARD -- every capture bit-identical between A and B (must_not_move *), better 0, worse 0. The probe counted 0 early hits on this disc (tree f8b848bb, 87,691 draws), so B's line is not expected to run here at all. KNOWN NONDETERMINISM, named before measuring: Blend_surface/R5G6B5_Add_SrcA_DstA, Blend_surface/X_O1RGB5_Add_SrcA_DstA and Blend_surface/X_Z1RGB5_Add_SrcA_DstA each flip between two states 8,389-8,393 px apart run to run on one binary (c6d14cad: 1 of 9 runs in the second state; master c0abc2b1: 8 of 9; f8b848bb: 4 of 6; a timing race whose winner moved when master got faster). They are judged by ab_compare's band over the 5 runs per arm (the arms' hash sets must intersect), never by one run. UNCOMFORTABLE OUTCOME: any capture moving outside the band means B changes a path the probe saw as clean, and this FAILS.",
+  "a_ref": "6550967a5e",
+  "b_ref": "4a369ed1ee",
+  "must_not_move": [
+    "*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "better": 0,
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Blend surface",
+      "Color Zeta Disable",
+      "Color mask blend",
+      "Color zeta overlap",
+      "Image blit",
+      "Null surface",
+      "Surface clip",
+      "Surface format",
+      "Surface pitch",
+      "Texture Framebuffer Blit",
+      "Texture format",
+      "Texture perspective",
+      "Texture perspective enable",
+      "Texture render target"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "title": "desktop Vulkan A/B -- hand-queue only, see the prediction text"
+}

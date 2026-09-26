@@ -1,0 +1,21 @@
+{
+  "registered_utc": "2026-09-13T06:30:00Z",
+  "who": "vblank-period",
+  "issue": "64",
+  "prediction": "Which half of the failed derivation is wrong: the raster or the clock. MEASURED on the first arm (1789278960-vblank-period-1231801): the guest DOES program the flat-panel timing generator, and its vertical raster is exactly the NTSC frame -- fp_vtotal=524 so 525 lines, 480 active, vsync at 493. Its horizontal total is 776 px, and 525 x 776 at the decoded 31,089,742 Hz pixel clock is 13,104,000 ns, -21.46%. So the FP raster fails too, but differently from the CRTC's -26.3%, and each failure has the same two-sided reading: either the raster is not the output one, or the pixel clock is too fast by a constant factor. The factors are 1.273 for the FP raster (776 px needs 24,419,600 Hz) and 1.357 for the CRTC's (728 px needs 22,909,091 Hz). A wrong crystal or a wrong PLL formula would produce exactly that shape, and nothing measured so far can rule it out, because VPLL's right answer is the very thing under dispute. NVPLL and MPLL are the same formula on the same crystal and their right answers are known from outside this tree: the NV2A core runs at 233 MHz and its memory at 200 MHz. So they calibrate the decode. G1 THE QUESTION: the core clock decodes within 5% of 233,333,333 Hz. HOLDS means crystal * N / M / 2^P on a 16.6667 MHz crystal is sound, the 31,089,742 Hz pixel clock is what the guest asked for, and no raster in the NV2A register file can be the output raster at 59.94 Hz -- the derivation is dead and the constants stay. FAILS at about 297 MHz, which is 233 x 1.273: the world where the crystal is wrong by exactly the factor that makes the flat-panel raster derive 16,683,750 ns, and the derivation is back with a one-constant fix. FAILS differently at any other value, which localises the error without resolving it. G2 SECOND WITNESS: the memory clock decodes within 10% of 200,000,000 Hz. It has to agree with G1: two clocks off by the same factor is a crystal, one off is a coincidence in the coefficients. G3 VOID LEG: either coefficient reading 0 means the guest never programmed that PLL and it calibrates nothing; record it rather than reading the zero as a failure. G4 MUST-NOT-MOVE: fp_vtotal=524, fp_htotal=775, pixclk=31089742, want=16683750, vd=479, il=ff -- byte-identical to the first arm. The mode is not supposed to vary between soaks of the same title, and if it does, every comparison across the two arms is unsafe and this one first. G5 THE COST: median gfps does not fall by more than 2 from the 29.0 both prior arms measured. One more log line every two seconds on a path that already runs at 0.5 Hz should cost nothing at all.",
+  "a_ref": "1789278960-vblank-period-1231801 (cdc3a4b4d8)",
+  "b_ref": "HEAD-at-dispatch",
+  "must_not_move": [
+    "fp_vtotal=524 fp_htotal=775 pixclk=31089742",
+    "vblmode want=16683750 vd=479 il=ff"
+  ],
+  "expect": {
+    "core_clock_hz": 233333333,
+    "core_clock_tolerance_pct": 5.0,
+    "memory_clock_hz": 200000000,
+    "memory_clock_tolerance_pct": 10.0,
+    "crystal_wrong_would_read_core_hz": 297000000,
+    "gfps_median_drop_max": 2
+  },
+  "expect_counts": {}
+}

@@ -1,0 +1,15 @@
+[Unit]
+Description=hakuX issue-comment sweep -- report comments the board has not absorbed
+Documentation=file:///home/justin/hakuX/docs/testing/comment_sweep.sh
+# Needs no device, no build and no lock, so it contends with nothing and is
+# deliberately not ordered against the nightly or the dispatcher.
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/justin/hakuX
+ExecStart=/usr/bin/env bash /home/justin/hakuX/docs/testing/comment_sweep.sh
+# Its own log as well as the journal, for the nightly's reason: a sweep that
+# failed silently is worse than no sweep, because an unswept hour is
+# indistinguishable from an hour with no comments.
+StandardOutput=append:/home/justin/hakux-work/comment-sweep/systemd.log
+StandardError=append:/home/justin/hakux-work/comment-sweep/systemd.log

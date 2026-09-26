@@ -1,0 +1,13 @@
+suite	test	solo	status	differing	max_rgb	max_a	pixels	off_by_one
+Viewport	-0.438_-0.438-0.000_0.000	False	ok	698	224	1	307200	0
+Viewport	-0.531_-0.531-0.000_0.000	False	ok	0	0	0	307200	0
+Viewport	-0.531_-0.531-2.000_0.000	False	ok	0	0	0	307200	0
+Viewport	-1.000_-1.000-0.000_0.000	False	ok	0	0	0	307200	0
+Viewport	-1.000_-1.000-2.000_0.000	False	ok	0	0	0	307200	0
+Viewport	0.000_0.000-0.000_0.000	False	ok	0	0	0	307200	0
+Viewport	0.000_0.000-2.000_0.000	False	ok	0	0	0	307200	0
+Viewport	0.531_0.531-0.000_0.000	False	ok	0	0	0	307200	0
+Viewport	0.531_0.531-2.000_0.000	False	ok	0	0	0	307200	0
+Viewport	0.562_0.562-0.000_0.000	False	ok	698	224	1	307200	0
+Viewport	1.000_1.000-0.000_0.000	False	ok	0	0	0	307200	0
+Viewport	1.000_1.000-2.000_0.000	False	ok	0	0	0	307200	0

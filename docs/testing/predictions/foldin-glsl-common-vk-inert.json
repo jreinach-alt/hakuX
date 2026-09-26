@@ -1,0 +1,14 @@
+{
+  "registered_utc": "2026-09-14T05:30:00Z",
+  "who": "orchestrator",
+  "issue": "72",
+  "prediction": "THE FOLD-IN IS INERT ON VULKAN, or the GL/GLES gating is wrong. The remote lane's 53 commits landed on this branch as b9ca113199; 28 files, six of them compiled, and five of those six are gl/*. Those five cannot reach this device lane at all, because it is Vulkan. THE SIXTH CAN: glsl/common.c is SHARED between the two shader generators, and it is the one change in the merge that alters Android shader text.\n\nThe #72 fix makes the GL renderer emit `noperspective`, by changing a gate that read `noperspective && location` where location is Vulkan-only. If that change is correctly scoped, the Vulkan generator emits exactly what it emitted before and every capture is BIT-IDENTICAL. So the leg is must_not_move, not must_not_regress: an improvement here would be as informative as a regression, because it would mean the Vulkan path had been reading the same gate and the two renderers are coupled somewhere nobody has looked.\n\nWHY THIS IS WORTH A DEVICE RUN RATHER THAN A COMPILE. The merge commit message says plainly that nothing in those 53 commits has been measured against the goldens on this branch: every px figure in them was taken by lane.remote on lane.remote's branch under the DESKTOP GL renderer. Android GRADLE_EXIT=0 proves the shader text compiles, not that it is unchanged -- and the grant condition on glsl/common.c was specifically that the fix must distinguish desktop GL from GLES, where noperspective needs GL_NV_shader_noperspective_interpolation and the failure mode is a shader that does not compile. A compile gate cannot see a wrong-but-valid qualifier.\n\nSUITES CHOSEN BECAUSE THEY ARE WHERE THE EFFECT WOULD BE LARGEST, not because they are convenient: Texture perspective and Texture perspective enable are the two suites #72 measured, and they split perfectly on the bit the fix changes -- every capture where the renderers disagreed was a pers_n case, at up to 159,574 px. If a shared-gate leak exists, it surfaces here first.\n\nNOT PREDICTED: anything about whether #72's fix is CORRECT on GL. This device lane cannot see the GL renderer, and this arm makes no claim about it. That measurement still does not exist on this branch.\n\nNOT A FALSIFIER: that the five gl/*.c files do not move Vulkan captures. That is true by construction and is not being counted.",
+  "a_ref": "c58ce95249",
+  "b_ref": "b9ca113199",
+  "must_not_move": [
+    "Texture_perspective/*",
+    "Texture_perspective_enable/*"
+  ],
+  "expect": {},
+  "expect_counts": {}
+}

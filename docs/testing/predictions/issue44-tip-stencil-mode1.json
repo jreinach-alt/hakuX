@@ -1,0 +1,27 @@
+{
+  "who": "skew44",
+  "issue": "44",
+  "a_ref": "220858ee9d",
+  "b_ref": "03b6a026de",
+  "must_not_move": [],
+  "expect": {
+    "Stencil/Stencil_REPLACE": 0,
+    "Stencil/Stencil_REPLACE_DT": 0,
+    "Stencil/Stencil_REPLACE_DT_ZB": 0,
+    "Stencil/Stencil_REPLACE_ST": 0,
+    "Stencil/Stencil_REPLACE_ST_DT": 0,
+    "Stencil/Stencil_REPLACE_ST_DT_ZB": 0,
+    "Stencil/Stencil_REPLACE_ST_ZB": 0,
+    "Stencil/Stencil_REPLACE_ZB": 0,
+    "Stencil/Stencil_ZERO": 0,
+    "Stencil/Stencil_ZERO_DT": 0,
+    "Stencil/Stencil_ZERO_DT_ZB": 0,
+    "Stencil/Stencil_ZERO_ST": 0,
+    "Stencil/Stencil_ZERO_ST_DT": 0,
+    "Stencil/Stencil_ZERO_ST_DT_ZB": 0,
+    "Stencil/Stencil_ZERO_ST_ZB": 0,
+    "Stencil/Stencil_ZERO_ZB": 0
+  },
+  "expect_counts": {},
+  "prediction": "#44 SHIPPING PRECONDITION: THE TIP-REF REPEAT OF #79's STENCIL ARM.\n\n#79 established that the intermittent Stencil defect IS #44's guest<->pgraph skew on vertex data, and that XEMU_OPT_FIFO_SKEW_BOUND=1 removes it: 7 wrong of 64 observations -> 0 of 64, 3 of 4 flaking runs -> 0 of 4, PRE-REGISTERED PASS on 16 checks. Both of that pair's refs (d97d506514, ec7f50e859) are 535 commits behind this tip -- equally, which is what made them a valid pair, but that certifies the MECHANISM and not mainline. nv2a_issues.toml carries the caveat forward in those words and names a tip-ref repeat as the honest precondition for shipping. This is that repeat, on the thor, at the tip.\n\nSCOPE OF THE FLOOR, kept to the disc it was measured on. stencil_outliers.py --floor scores every result whose disc_id is exactly `Stencil` -- 26 runs, 416 (run, capture) observations, 40 wrong (9.615%), 14 of 26 runs carrying at least one wrong capture, across refs from b63603975c to 1dee9e25f6 (the most recent being 120 commits behind this tip and showing 3 of 16 wrong in one of its two runs). That figure is a property of THIS disc. It is not carried to any other disc, any other suite, or any full-sweep band, and nothing here is a claim about a noise floor anywhere else.\n\nWHY THREE BINARIES AND NOT ONE. vk/draw.c:4016 says the tip needs no code change because HAKUX_FIFO_SKEW_BOUND selects the mode by environment. That is true of the emulator and FALSE of the dispatch path: the app takes its environment from the `env_vars` pref in x1box_prefs.xml (xemu_android.cpp:796) and no part of request.sh, dispatcher.sh or soak_title.sh writes that pref. So each mode is a ref whose compile-time default is that mode -- 220858ee9d (the tip, mode 0), 03b6a026de (mode 1), cc8fb579c4 (mode 2) -- each a child of the tip differing from it by exactly one line of hw/xbox/nv2a/pfifo.c, verified with `git diff --stat`. Three binaries, three apk_shas, one variable.\n\nJUDGED ON WRONG (RUN, CAPTURE) OBSERVATIONS by docs/testing/stencil_outliers.py, never on differing pixels and never on a median. #79's whole content is that the majority image is golden-exact and the outliers are wrong, so a capture wrong in one run of four has median 0 and reads as a pass to ab_compare.\n\nV0 (VALIDITY GATE on arm A ALONE; the pair is VOID, not passed, if it fails): arm A shows at least 2 wrong observations in its 4 x 16 = 64. At the disc-scoped 9.615% rate the expectation is 6.2 and P(fewer than 2) = 1.21%. A control that does not flake cannot test a fix for a flake, and a zero from arm A would be a fact about the tip's observable rather than about the bound. This gate exists because AGENTS.md records a falsifier whose power silently eroded when its baseline moved -- and because the OTHER #44 observable, stale_px on the Texture border disc, is already dead at the tip (0 of 10).\n\nV1 (THE BAR): arm B shows 0 wrong observations in 64. Under the null that the bound does nothing, P = 0.90385^64 = 0.155%. FAILS on any non-exact Stencil capture in any of arm B's four runs.\n\nV2 (DID IT EXECUTE -- on the direct counter, not a proxy): the `fifoskew` line in arm B's logcat reads bound=1 and held(n)/kicks >= 0.90, and arm A reads bound=0 with held(n) = 0. SILENCE IS VOID: if no fifoskew line is captured, V2 is void and does not pass by default.\n\nV1 AND V2 ARE IN TENSION ON PURPOSE. Turning the bound off passes neither. A bound genuinely in force but irrelevant to Stencil passes V2 and FAILS V1, and that is the world this leg names: it would refute #79's attribution while leaving #44 untouched. Nothing in the change forces V1 true -- the change is one constant governing when the PFIFO thread may lag the guest, and it touches no stencil, clear, surface or draw code.\n\nTHE `expect` BLOCK IS THE WEAK HALF AND IS LABELLED AS SUCH. It registers all sixteen captures at 0 px in arm B. ab_compare compares MEDIANS and every one already has median 0 in arm A, so arm A passes it too. It is not inert -- a badly broken arm B fails it -- but V1 is the bar. No expect_counts: worse = 0 is unsatisfiable on a disc carrying Stencil while #79 is open. No must_not_move on Stencil/*: the disc has no other suite to use as a control and inventing one would change the disc composition and therefore what is measured."
+}

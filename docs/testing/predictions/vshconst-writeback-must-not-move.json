@@ -1,0 +1,36 @@
+{
+  "registered_utc": "2026-09-25T08:42:48Z",
+  "who": "lane.vshconst",
+  "issue": "233",
+  "prediction": "#233, second arm: the whole PR against master f2e8ef8ba8 (b_ref 9ff7f6d67a = master merged with the lane). It adds to the first arm (vshconst-must-not-move.json, GLSL only) a writeback at draw end in pgraph.c and an RDI bound in rdi.c. Every leg is must-not-move; no pixel on this disc is claimed to move (the value check is nxdk_vsh_tests ILU RCP Tests, byte-identical to silicon on desktop GL at 9ff7f6d67a). WHAT WOULD MOVE EACH LEG. (1) Vertex shader independence/rounding/swizzle, W param, Fog vsh, the Fog gen VS captures: vertex-program draws. pgraph_vsh_writeback_constants runs only in program mode (CSV0_D MODE==2) and only when pgraph_glsl_vsh_token_constant_write fires on a token of the bound program. If it fires on a program that writes no constant (a pre-scan misfire), the program is CPU-evaluated and any component it 'writes' replaces vsh_constants[r][c]; the NEXT draw then uploads the changed constant and its geometry or colour moves. A program that really writes a constant would have asserted on master, so no capture that exists on master comes from one. The GLSL movers of the first arm apply unchanged. (2) Fog coord vec4: as in the first arm, the CONST-to-COMPUTED fog demotion in vsh.c on a misfire. (3) Fog gen FF captures and SetVertexData: fixed-function and inline-buffer draws. The writeback returns at the mode check, so these move only if the new call in SET_BEGIN_END disturbs the draw itself -- it runs after draw_end and before pgraph_reset_inline_buffers and writes nothing but vsh_constants, so a move here means the call order is wrong. (4) LAUNCH_TRANSFORM_PROGRAM now takes its parsed program from a shared helper; the parse, cache and v0-hash behaviour are unchanged, so a move in a state-program capture refutes that. A MOVE ON ANY LEG REFUTES THE PATCH, NOT THE LEG.",
+  "a_ref": "f2e8ef8ba8",
+  "b_ref": "9ff7f6d67a",
+  "must_not_move": [
+    "Vertex_shader_independence_tests/*",
+    "Vertex_shader_rounding_tests/*",
+    "Vertex_shader_swizzle_tests/*",
+    "W_param/*",
+    "Fog_coord_vec4/*",
+    "Fog_vsh/*",
+    "Fog_gen/*",
+    "SetVertexData/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Fog coord vec4",
+      "Fog gen",
+      "Fog vsh",
+      "SetVertexData",
+      "Vertex shader independence tests",
+      "Vertex shader rounding tests",
+      "Vertex shader swizzle tests",
+      "W param"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

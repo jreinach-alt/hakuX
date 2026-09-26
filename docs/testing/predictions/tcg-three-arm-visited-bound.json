@@ -1,0 +1,91 @@
+{
+  "registered_utc": "2026-09-14T11:30:25Z",
+  "who": "lane.tcgarm",
+  "issue": "68,73",
+  "prediction": "THREE ARMS FOR A THREE-ARM QUESTION, re-registered after the first attempt ran two. Judged on the always-on hakuX-pages line with docs/testing/perf/tcg_pages.py (lane.toolsmith's; not edited by this lane). Crimson Skies, 90 s dispatcher soaks, --device thor, THREE SOAKS PER REF queued as three separate requests under one --who, because the soak path runs the title once and the replicate for a no-oracle measurement is the RUN, not the window. ARM A = 117203fe9b, neither #73 nor #68. ARM B = a94386a3c8, #73 ALONE -- the middle arm the first attempt never ran, which is why its 73-1 and 73-2 came back NOT ATTRIBUTABLE. ARM C = 937848c9e7, #73 + #68 held unfolded. The chain is linear and was verified by rev-parse of each ref's parent, not by ancestry against a cherry-pick: a94386a3c8^ == 117203fe9b and 937848c9e7^ == a94386a3c8, so each arm differs from the one before by exactly one commit and every leg below is a one-commit attribution. ALL THREE ARMS ARE QUEUED BY THIS LANE; nothing here is registered against an arm that will not run. || CONTROLS, on all nine runs; if any fails no ratio below may be quoted. C1: xx == 0 in every window -- the impossible row, whose model #73 restated to the one-directional \"a LIVE TB must always be discarded\" and which #68 must not break. C2: visited == ov + sp + ai per window within tcg_pages.py's own slack, max(8, visited*1e-4). This is the population identity that survives the fold, and it is the one that replaces the hard-coded sp+ov==di that voided a correct arm. C3: each arm is ONE ref and ONE device_label (thor), and tcg_pages.py's discard_model() names A and B WHOLE-PAGE and C RANGE-TESTED. C3 is a build-identity check, not a mechanism claim: if C is not named RANGE-TESTED the binary does not carry #68 and the arm is void. || LEG 73-A, THE MISSING MIDDLE, arms A and B only. ai/visited falls from at least 0.80 on A to at most 0.05 on B. Three arm-A soaks measured 0.931/0.856/0.856 and six earlier soaks measured 0.85-0.93. The mechanism: do_tb_phys_invalidate hashed WITH CF_INVALID while tb_link_page can only ever have inserted WITHOUT it, so qht_remove missed and the early return fired before tb_remove; the block stayed in the htable AND on the page list and was re-counted by every later store to that page, forever. With the mask it is removed on its FIRST visit, so ai falls to the tier-1 promotion rate. DENOMINATOR CHECKED against every other leg here: visited on arm B is a whole-page build's visit count, of order 1e4, and no leg below drives it toward zero. FAILS AND REFUTES THE MODEL RATHER THAN THE PATCH if ai/visited is at or above 0.50 on B: the already-invalid population would then not be the tier-1 one and would already have been out of the htable, in which case #73's correctness claim does not hold either. || LEG 73-B, THE INTERMEDIATE VALUE, arms A and B only. em/ev rises from 0.063-0.141 on A to at least 0.80 on B, and em + ai == ev continues to hold in EVERY window on both arms. That identity is exact on arm A -- 63 of 63 windows over three runs -- and it says every event either empties its page or is blocked from emptying by a stranded block. With ai driven to the tier-1 rate the arithmetic puts em/ev at about 0.95; 0.80 is registered as the leg and 0.95 as the value expected, because ai is a share of visited while em/ev is per event and visited slightly exceeds ev. NOT SATISFIABLE BY REVERTING #73: with the strand bug present em/ev is pinned at 1 - ai/ev by an identity that held in 63 of 63 windows. || LEG 73-C, THE ATTRIBUTION THE TWO-ARM RUN COULD NOT MAKE, arms A and B. pr on B exceeds pr on A on every run pairing; arm A's run medians are 914/1846/1871 per window. pr == em by construction on a whole-page build (pr/em = 1.000 in 63 of 63 arm-A windows), so a rise in em is a rise in the arming TLB walk. THIS IS THE LEG THAT CAN REVERSE THE FIRST ATTEMPT'S READING. The A-vs-C pair credited #68 with pr 1846 -> 0. If pr_B > pr_A then #73 ALONE makes the arming-walk cost WORSE, and #68's real prize is pr_B -> 0, which is LARGER than the two-arm reading said. FAILS if pr_B <= pr_A on any pairing, which requires ev to fall below about 14% of its arm-A level to cancel the em/ev rise -- a fall no mechanism in #73 predicts, and if it happens the prize the A-vs-C pair attributed to #68 is an overstatement that must be requoted from B. || LEG 73-D, THE QUOTIENT THAT SURVIVES ALL THREE ARMS, and the replacement for the failed 68-2. pr per GENERATION, pr/cg: arm A 17.1/33.0/34.5, arm B predicted above arm A on every pairing, arm C at most 0.5. cg is nonzero in 126 of 126 existing windows and codegen cannot stop while the title runs, so this denominator is defined on all three arms. pr_per_em is NOT REGISTERED ON ARM C, and that is deliberate: leg 68-1 drives em to 0 there, so pr_per_em would be 0/0 -- which is exactly how the previous prediction's 68-2 failed, its own sibling 68-1 having destroyed its denominator. pr/em IS registered on arms A and B, where em is large, as a structural control: within 0.95-1.05 on both. EVERY QUOTIENT IN THIS FILE HAS BEEN CHECKED AGAINST EVERY OTHER LEG IN IT for this failure, and the two that could go 0/0 -- pr_per_em on C, and R in 68-3d -- are respectively not registered there and registered with an explicit precondition. || LEG 68-1, THE PRIZE, B against C. em falls to a per-window median of at most 1 on C, and pr likewise. NO FACTOR IS REGISTERED, because #68 drives the denominator to zero and a fall factor would be undefined; the prize is stated as the ABSOLUTE per-window level removed, which is pr_B, and leg 73-C is what establishes that level. Arm C's three existing soaks measured em and pr medians of 0. || LEG 68-2, THE COST SIDE ON STORES, B against C. slow stores RISES on C. A page that keeps its code keeps its code-write detection armed, so stores that used to run fast in the window between a page emptying and code being generated there again now trap every time. Existing A-to-C factor 3.3 (39,827 -> 130,390). The factor stores_C/stores_B is REPORTED with no threshold, because there is no prior for the per-store cost; a rise beyond 10x stops the fold and must be costed before anything else is read. Direction predicted: rise, factor 2-5. stores is 21k-51k in every existing window and no leg drives it to zero. || LEG 68-3, THE BOUND ON `visited` THAT NOBODY HAD, and the reason 937848c9e7 stays unfolded. visited rose about 560x across the fold, 13,270 -> 7.5M per window, each visit a page-list traversal plus a range test. Leg 68-4 of the previous prediction counted STORES and cannot see this at all. Four parts. 68-3a DECOMPOSITION: visited_C/visited_B factors as (ev_C/ev_B) x (vpe_C/vpe_B), where vpe = visited/ev is the mean page-list length the loop walks. Both factors are REPORTED SEPARATELY and both are predicted above 1, with the list-length factor dominating; the existing A-to-C numbers are ev 7.9x and vpe 75x, product 592x. This separates \"the loop runs more often\" -- pages stay armed, so more stores reach the invalidator, reach_share 0.33 -> 0.80 -- from \"each run walks further\", which are two different mechanisms with two different remedies, and only the first is visible in `stores`. Denominators: ev_B is at least 1 while the title runs and vpe_B is at least 1 by definition, since an event that found a block visited at least one. 68-3b PLATEAU, AND THIS IS THE PART THAT CAN STOP THE FOLD. On every arm-C run, the median of vpe over the LAST THIRD of post-boot windows is at most 1.25x its median over the MIDDLE THIRD. The three existing arm-C runs give 0.976x, so 1.25 is a bound with room and not a curve fit. If vpe GROWS instead, the spared-block population is bounded only by translation-buffer flush -- which #68 does not control -- and a 90 s soak then says nothing about an hours-long play session, so the fold stops. A monotone leak is a live possibility that neither commit forces either way, which is what makes this a falsifier rather than a description. 68-3c CAPACITY CEILING, also fold-stopping. On every arm-C run the median vpe stays below B_page = 4096 / ((bytes/ins) x blk), every term read from that run's own inval line: the number of non-overlapping blocks that fit in a 4 KiB guest page at that run's own measured mean block size. The existing runs give B_page 201-225 against vpe 75-81, about 2.7x of headroom. Above B_page the page list holds more entries than the page has distinct block starts, so the surplus cannot be the page's live code and must be superseded translations accumulating -- the leak shape reached from the other side. The threshold is the geometry of a 4 KiB page computed per run, not a number chosen after seeing 75. 68-3d WHAT THE PRICE CANNOT BE READ IN. R = (visited_C - visited_B) / (pr_B - pr_C), visits added per arming TLB walk removed; the existing A-vs-C pair gives about 4,040. REPORTED, NO THRESHOLD, and the reason is stated rather than implied: a soak yields no per-visit and no per-walk time, so R cannot be turned into a verdict here. PRECONDITION, registered in advance: R is quoted only if pr_B is at least 100 per window median. If pr_B is below 100 the quotient is NOT computed, and that is itself the finding -- #73 alone would already have removed the arming walks and #68's prize would be near zero, which is what leg 73-C decides. 68-3e THE FRAME CEILING, ONE-WAY ON PURPOSE. gfps max and p90 per tcg_pages.py's cost(), ceiling and never median. If arm C's gfps max is below arm B's on every run pairing, the added visit work reached frame scale even in a soak, and that stops the fold. If it is not, NOTHING IS ESTABLISHED: a dispatcher soak injects no input, and this project has already measured that Crimson Skies' guest CPU thread is not its critical path -- #44 saw p90 fall by 0 and max by 3 while the guest was blocked 30.7% of wall clock at a hold 74% larger than Galleon's. The existing A and C runs read 37/31 and 33-37/31-35, indistinguishable, so this instrument has ALREADY SHOWN it cannot see the effect and is registered only for the direction in which it could. || THE PAIR IN TENSION: 73-A and 68-3a cannot both be satisfied by turning a feature off. Reverting #73 makes arm B identical to arm A, restores ai/visited to about 0.9 and fails 73-A. Reverting #68 makes arm C identical to arm B, pins the vpe factor at 1 and fails 68-3a. No inert change and no disabled feature passes both. || WHAT THIS CANNOT ESTABLISH, stated because a leg registered against an arm that will not run is the first attempt's error in the other direction. NO CORPUS ARM IS QUEUED AND NO LEG HERE NEEDS ONE. #68 makes invalidation do LESS, so its failure mode is a stale translation executing after a guest write the range test wrongly spared, and nxdk_pgraph_tests is nearly all static content that does little self-modifying code: byte-identical captures would be necessary and not sufficient and would not license the fold. A title that overlay-loads code is the instrument that would. `ws` is retired on arm C and pinned at 0 by construction, so no leg is registered on it. `di`, `waste` and `recycle` are INCOMMENSURABLE across the fold -- a spared live block is a visit on both sides and a discard on only one -- so no cross-arm leg is registered on any of them. And NO LEG IS REGISTERED ON A TIME PER VISIT OR A TIME PER WALK: the 10.6%-self figure for tlb_reset_dirty comes from a different profile on a different build, and deriving a break-even exchange rate from it would be an inference that is sound inside a model nobody has measured. R is reported so that a later, direct instrument can price it; it is not a verdict. Desktop build not run -- libcurl4-openssl-dev is the known, named gap on this host.",
+  "a_ref": "117203fe9b",
+  "b_ref": "937848c9e7",
+  "must_not_move": [],
+  "expect": {
+    "C1_xx_every_window": 0,
+    "C2_visited_eq_ov_plus_sp_plus_ai_within_tool_slack": true,
+    "C3_discard_model_armA": "WHOLE-PAGE",
+    "C3_discard_model_armB": "WHOLE-PAGE",
+    "C3_discard_model_armC": "RANGE-TESTED",
+    "C3_device_label_every_run": "thor",
+    "73A_ai_over_visited_armA_at_least": 0.8,
+    "73A_ai_over_visited_armB_at_most": 0.05,
+    "73A_refuted_if_armB_at_or_above": 0.5,
+    "73B_em_over_ev_armA_range": [
+      0.05,
+      0.2
+    ],
+    "73B_em_over_ev_armB_at_least": 0.8,
+    "73B_em_over_ev_armB_expected": 0.95,
+    "73B_em_plus_ai_eq_ev_every_window_armA_and_armB": true,
+    "73C_pr_armB_exceeds_pr_armA_every_pairing": true,
+    "73C_pr_armA_run_medians_measured": [
+      914,
+      1846,
+      1871
+    ],
+    "73D_pr_per_cg_armA_measured": [
+      17.1,
+      33.0,
+      34.5
+    ],
+    "73D_pr_per_cg_armB_exceeds_armA_every_pairing": true,
+    "73D_pr_per_cg_armC_at_most": 0.5,
+    "73D_pr_per_em_armA_and_armB_range": [
+      0.95,
+      1.05
+    ],
+    "73D_pr_per_em_armC_NOT_REGISTERED_reason": "leg 68-1 drives em to 0 on arm C, so the quotient is 0/0. This is the sibling-destroys-denominator failure that voided 68-2 of tcg-range-test-restored.json, and it is not repeated here.",
+    "68_1_em_armC_per_window_median_at_most": 1,
+    "68_1_pr_armC_per_window_median_at_most": 1,
+    "68_1_no_fall_factor_registered_reason": "the denominator goes to zero on arm C; the prize is the absolute per-window level removed, which is pr_B, established by leg 73-C.",
+    "68_2_stores_direction_armB_to_armC": "rise",
+    "68_2_stores_factor_expected_range": [
+      2.0,
+      5.0
+    ],
+    "68_2_stores_factor_threshold_reported_not_judged": true,
+    "68_2_stop_the_fold_above_factor": 10.0,
+    "68_3a_ev_factor_armB_to_armC_above": 1.0,
+    "68_3a_vpe_factor_armB_to_armC_above": 1.0,
+    "68_3a_vpe_is_visited_over_ev_mean_page_list_length": true,
+    "68_3a_reported_as_two_factors_not_one": true,
+    "68_3b_vpe_last_third_over_mid_third_at_most": 1.25,
+    "68_3b_measured_on_existing_armC_runs": 0.976,
+    "68_3b_above_this_STOPS_THE_FOLD": true,
+    "68_3c_vpe_armC_median_below_B_page": true,
+    "68_3c_B_page_formula": "4096 / ((bytes/ins) * blk), per run",
+    "68_3c_B_page_measured_range": [
+      201,
+      225
+    ],
+    "68_3c_vpe_measured_range": [
+      75,
+      82
+    ],
+    "68_3c_above_B_page_STOPS_THE_FOLD": true,
+    "68_3d_R_visits_added_per_arming_walk_removed": "(visited_C - visited_B) / (pr_B - pr_C); REPORTED, no threshold",
+    "68_3d_R_precondition_pr_armB_per_window_median_at_least": 100,
+    "68_3d_R_measured_on_existing_A_vs_C_pair": 4040,
+    "68_3d_why_no_threshold": "a soak yields no per-visit and no per-walk time, so R cannot be converted into a verdict here. It is reported so a later direct instrument can price it.",
+    "68_3e_frame_ceiling_one_way_only": true,
+    "68_3e_stop_the_fold_if_gfps_max_armC_below_armB_every_pairing": true,
+    "68_3e_null_result_establishes_nothing_reason": "a dispatcher soak injects no input, and Crimson Skies' guest CPU thread is not its critical path (#44). Existing A 37/31 and C 33-37/31-35 are indistinguishable, so this instrument has already shown it cannot see the effect.",
+    "TENSION_pair": "73A and 68_3a",
+    "TENSION_reverting_73_fails": "73A",
+    "TENSION_reverting_68_fails": "68_3a"
+  },
+  "expect_counts": {},
+  "must_not_regress": [],
+  "arms": {
+    "A": "117203fe9b",
+    "B": "a94386a3c8",
+    "C": "937848c9e7"
+  },
+  "arms_note": "a_ref/b_ref carry only two of the three arms because the field pair holds two. The authoritative list is `arms`, and all three are queued by this lane: three 90 s Crimson Skies soaks each, --device thor, one --who per arm. a94386a3c8^ == 117203fe9b and 937848c9e7^ == a94386a3c8, verified by rev-parse of the parents rather than by ancestry against a cherry-picked copy."
+}

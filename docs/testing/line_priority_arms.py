@@ -1,0 +1,345 @@
+#!/usr/bin/env python3
+"""Ask OUR captures the question the goldens already answered: which of several
+overlapping wide edges did we draw last?
+
+`line_priority.py` derives silicon's edge-priority rule from the goldens alone.
+This is the arm-side half of it, and it exists because a change to the emission
+ORDER in `prim_rewrite.c` cannot be measured by any counter: the number of
+lines emitted is identical before and after, so `mb_emitted`-style
+instrumentation passes on both arms and proves nothing.  A pixel total is not
+much better -- the priority class and the extent class overlap, so removing one
+cause need not move the count.
+
+So the measurement is a LABEL, not a number.  For each pixel whose golden
+colour names exactly one covering edge (a *decisive* pixel, as
+`line_priority.decisive` defines it), this asks which edge OUR capture's colour
+names, and reports agreement per candidate class.  That separates the three
+outcomes a total cannot:
+
+  * arm B names the same edge as arm A        -> the change did not execute
+  * arm B names a different edge, not golden's -> it executed and is wrong
+  * arm B names the golden's edge              -> it executed and is right
+
+WHICH FOOTPRINT: PASS `--extent-rule`.  The decisive set is built from a model
+of OUR OWN footprint, not silicon's, because the question is which edge OUR
+capture's colour names -- an edge our render covers but the model excludes
+reads as `unm` rather than as agreement.  The default here is the
+PERPENDICULAR footprint and the reason given was "that is the footprint our
+renderer actually draws".  THAT REASON EXPIRED ON 2026-09-13: `80c23dcabe`
+landed the derived extent in geom.c's `widen_lines` path that same day and
+`7ce57a799b`/`e0c0a9974b` refined its cap on 2026-09-19, so on Vulkan -- which
+is every device arm -- we now draw the WIDER hypot-approximation width, and
+`--extent-rule` is the accurate model of our own coverage.
+
+The default is left alone rather than flipped, so that arms already judged
+against it (#13's geom.c arm) stay judgeable on the same footprint.  But a
+new arm should pass `--extent-rule`, and the two are not interchangeable: over
+widths 8-63.875 the perpendicular set is 198,890 px and the derived-extent set
+is 225,570 -- the latter being the population #13's own derivation quotes, and
+the one on which the derived rule scores 100.00% in each of eleven classes
+separately rather than 98-99%.
+
+BOTH OF THOSE TOTALS MOVED ON 2026-09-20, by +10 and +12 respectively, and
+this docstring carried the old pair (198,880 / 225,558) until the same day.
+The cause is line_priority.py's LLoop segment direction, which was hard-coded
+to the FIRST-provoking naming while the suite it models is
+PROVOKING_VERTEX_LAST (lane primpv13, audit pass 1 LOW 2).  The correction is
+inert in coverage and moves the colour lerp by ~1e-13, which is enough for a
+dozen pixels sitting exactly on `decisive()`'s thresholds to cross them.  So
+#13's geom.c arm RE-RUNS AT 198,890, not the 198,880 recorded when it was
+judged, with every percentage in its eleven-class table unchanged and only
+LLoop/Tri's population moving (1,305 -> 1,315).  A ten-pixel gap against that
+arm's record is this instrument change, not a device change.
+
+    line_priority_arms.py --a RESULTDIR [--b RESULTDIR] [--goldens DIR] \
+        --extent-rule --min-width 8 --max-width 63.875
+
+Captures are resolved with `captures.py`, never by globbing: a falsifier that
+reports its own evidence MISSING on an arm that contains it reads exactly like
+a failed render.
+
+VOID CAPTURES.  `Line_0064.0`-`.7` and `Line_FFFFFFFF` are excluded by
+default.  Their goldens' ink mask is byte-identical to `Line_0001.0`'s -- the
+width register holds nine bits of eighths, 64.0 is 512 and does not fit, so
+hardware left the width at the 1.0 the suite restores between tests while every
+model, and this emulator, draws them at 64.  That is one statement about the
+goldens, decided before any score, and it applies to exactly the set whose
+register value overflows nine bits.  `--include-void` keeps them.
+"""
+import argparse
+import os
+import sys
+from collections import defaultdict
+
+import numpy as np
+from PIL import Image
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+import captures as caps
+import line_priority as lp
+
+# Goldens whose ink mask is byte-identical to Line_0001.0's: the width register
+# overflowed, hardware drew width 1, we draw 64.  Not measurements.
+VOID = tuple("Line_0064.%d" % i for i in range(8)) + ("Line_FFFFFFFF",)
+
+# The blocks whose emission order THIS EMULATOR chooses, as opposed to the
+# driver.  The original list here was ("Quad", "QStrip", "Poly") on the reading
+# that "TRIANGLES and TRIANGLE_FAN keep VK_POLYGON_MODE_LINE, so Turnip orders
+# their edges".  That is wrong and this tool's own arm refuted it: a TRIANGLES
+# or TRIANGLE_FAN draw under POLY_MODE_LINE keeps PRIM_TYPE_TRIANGLES through
+# `pgraph_prim_rewrite_get_output_mode()` and is decomposed by OUR geometry
+# shader, `pgraph_glsl_gen_geom()`, which emits three `emit_line` calls.  So
+# Tri and TFan are ours to order too -- Tri in `glsl/geom.c` alone, TFan in
+# `geom.c` composed with `rewrite_triangle_fan()`'s provoking-vertex rotation.
+#
+# This matters beyond the `*` marker: `changed_region()` uses this set to say
+# which pixels an order change is allowed to touch, so leaving Tri and TFan out
+# reported every pixel a geom.c reorder moved as "outside", i.e. as a scoping
+# bug.  LINE_LOOP is still submission order and already matched.
+OURS_TO_ORDER = ("Quad", "QStrip", "Poly", "Tri", "TFan")
+
+
+def decisive_xy(g, w, extent_rule=False):
+    """As line_priority.decisive, but also returns (y, x) and the candidate
+    colours, so an arm's own pixel can be labelled at the same site.
+
+    Kept a separate function rather than a change to line_priority.py: that
+    file is the derivation's instrument and its numbers are on the record.
+    """
+    d = lp.text_mask(g)
+    n_e, H, W = len(lp.EDGES), lp.H, lp.W
+    deep = np.ones((n_e, H, W), dtype=bool)
+    full = np.zeros((n_e, H, W), dtype=bool)
+    cols = np.empty((n_e, H, W, 3))
+    for i, e in enumerate(lp.EDGES):
+        for bias in ((0.0, 0.0), (0.5, 0.0)):
+            c, t, _a, _L = lp.field(e, w, bias, lp.MARGIN, extent_rule)
+            deep[i] &= c
+            f, _, _, _ = lp.field(e, w, bias, 0.0, extent_rule)
+            full[i] |= f
+        cols[i] = lp.edge_colour(e, t)
+    nd, nf = deep.sum(0), full.sum(0)
+    ys, xs = np.nonzero((nd >= 2) & (nd == nf) & ~d)
+    out = []
+    for y, x in zip(ys, xs):
+        which = np.nonzero(deep[:, y, x])[0]
+        cc = cols[which, y, x]
+        sep = min(np.abs(cc[i] - cc[j]).max()
+                  for i in range(len(which)) for j in range(i + 1, len(which)))
+        if sep < lp.SEP:
+            continue
+        errs = np.abs(cc - g[y, x, :3].astype(float)).max(axis=1)
+        o = np.argsort(errs)
+        if errs[o[0]] > lp.TOL or errs[o[1]] <= lp.TOL * 3:
+            continue
+        out.append((int(y), int(x), int(which[o[0]]),
+                    [int(v) for v in which], cc.copy()))
+    return out
+
+
+def label(pix, cand_cols, tol, ratio):
+    """Which candidate this pixel's colour names, or None if it names none."""
+    errs = np.abs(cand_cols - np.asarray(pix, dtype=float)).max(axis=1)
+    o = np.argsort(errs)
+    if errs[o[0]] > tol or errs[o[1]] <= tol * ratio:
+        return None
+    return int(o[0])
+
+
+def changed_region(w):
+    """Union of the footprints of every edge whose ORDER prim_rewrite.c picks,
+    dilated by one pixel.  Nothing outside this can move when only the order of
+    those edges changes, so a difference outside it is a scoping bug.
+
+    IT TAKES EVERY FOOTPRINT MODEL AT ONCE, and that is the whole point of the
+    function rather than a refinement of it.  `outside` is not a selection
+    rule like `decisive_xy()`'s -- it is a BOUND on where our renderer's own
+    pixels for those edges can be, and a bound that under-covers what we draw
+    manufactures escapes out of nothing.  This used to hard-code the narrow
+    perpendicular model while `decisive_xy()` was given `--extent-rule`, i.e.
+    the WIDE hypot-approximation footprint we actually draw on Vulkan.  The
+    margin between the two grows with width and the one-pixel dilation stops
+    covering it around w = 40, so on #13's own fan arm -- judged with
+    `--extent-rule` exactly as this file's docstring instructs -- 17 of the
+    window's 28 captures reported a non-zero `outside` against a footnote
+    calling it a must-be-zero (audit pass 1b of PR #194, 2026-09-21).
+
+    Threading the run's rule through, which is what that audit asked for, is
+    not enough: it fixes `--extent-rule` and leaves the DEFAULT reading 1 and
+    2 px outside at w = 40 and 48, because there the model is narrower than
+    our own coverage for a second, legitimate reason -- the arms really do
+    differ out at the wider extent.  So the region unions both models.  The
+    derived extent is the wider of the two at every angle ((max + min/2) / L
+    is 1.0 axis-aligned and 1.06 at 45 degrees, never below 1), so the union
+    IS the extent footprint today; taking it as a union rather than as "the
+    wide one" is what keeps this sound if a third model is ever added.  With
+    it, all 28 captures read 0 under BOTH rules -- each a full sweep of the
+    window, not an inference from the two that had moved -- and no other
+    column of the report moves.
+
+    A WIDER BOUND OWES A POSITIVE CONTROL, since a scoping check that can no
+    longer report a non-zero is worth less than no check.  At the widest width
+    in the window this region is 76,383 px of the 307,200-px frame -- 24.9%,
+    with 230,817 px still excluded -- and a single differing pixel planted at
+    an excluded coordinate is counted.
+    """
+    m = np.zeros((lp.H, lp.W), dtype=bool)
+    for i, e in enumerate(lp.EDGES):
+        if e[0] not in OURS_TO_ORDER:
+            continue
+        for bias in ((0.0, 0.0), (0.5, 0.0)):
+            for rule in (False, True):
+                c, _, _, _ = lp.field(e, w, bias, 0.0, rule)
+                m |= c
+    d = m.copy()
+    for s in (1, -1):
+        d |= np.roll(m, s, axis=0)
+        d |= np.roll(m, s, axis=1)
+    return d
+
+
+def arm_capture(d, test):
+    p = caps.find(d, lp.SUITE, test)
+    if p is None:
+        return None
+    return np.asarray(Image.open(p).convert("RGBA")).astype(np.int16)
+
+
+def main():
+    ap = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--goldens", default=os.path.expanduser("~/goldens/results"))
+    ap.add_argument("--a", required=True, help="arm A result or captures dir")
+    ap.add_argument("--b", help="arm B result or captures dir")
+    ap.add_argument("--min-width", type=float, default=8.0)
+    ap.add_argument("--max-width", type=float, default=63.875)
+    ap.add_argument("--extent-rule", action="store_true")
+    ap.add_argument("--include-void", action="store_true")
+    ap.add_argument("--tol", type=float, default=16.0,
+                    help="max channel error at which an arm's pixel is taken "
+                         "to name a candidate (goldens use 10)")
+    ap.add_argument("--ratio", type=float, default=2.0,
+                    help="the runner-up must be further than tol*ratio")
+    a = ap.parse_args()
+
+    arms = [("A", a.a)] + ([("B", a.b)] if a.b else [])
+    for nm, d in arms:
+        if not os.path.isdir(d):
+            print("arm %s: no such directory %s" % (nm, d))
+            return 2
+        print("arm %s captures: %s" % (nm, caps.resolve(d, "%s::*.png" % lp.SUITE)),
+              file=sys.stderr)
+
+    # per candidate class: [n, agree_A, agree_B, unmatched_A, unmatched_B, moved]
+    cls = defaultdict(lambda: [0, 0, 0, 0, 0, 0])
+    per_capture = {}
+    scope = {}
+    missing = []
+
+    for test, w, g in lp.captures(a.goldens, a.min_width, a.max_width):
+        if test in VOID and not a.include_void:
+            print("  %-14s w=%-8s VOID (golden ink == Line_0001.0)"
+                  % (test, w), file=sys.stderr)
+            continue
+        imgs = {}
+        for nm, d in arms:
+            im = arm_capture(d, test)
+            if im is None:
+                missing.append((nm, test))
+            imgs[nm] = im
+        if any(imgs[nm] is None for nm, _ in arms):
+            continue
+
+        px = decisive_xy(g, w, a.extent_rule)
+        row = [0, 0, 0, 0, 0, 0]
+        for (y, x, win, which, cc) in px:
+            key = "/".join(sorted({lp.EDGES[e][0] for e in which}))
+            wi = which.index(win)
+            lab = {}
+            for nm, _ in arms:
+                lab[nm] = label(imgs[nm][y, x, :3], cc, a.tol, a.ratio)
+            for rec in (cls[key], row):
+                rec[0] += 1
+                if lab["A"] is None:
+                    rec[3] += 1
+                elif lab["A"] == wi:
+                    rec[1] += 1
+                if "B" in lab:
+                    if lab["B"] is None:
+                        rec[4] += 1
+                    elif lab["B"] == wi:
+                        rec[2] += 1
+                    if lab["A"] != lab["B"]:
+                        rec[5] += 1
+        per_capture[test] = (w, row)
+
+        if len(arms) == 2:
+            diff = np.abs(imgs["A"].astype(int) - imgs["B"].astype(int)).max(axis=2) > 0
+            reg = changed_region(w)
+            scope[test] = (int(diff.sum()), int((diff & ~reg).sum()))
+
+        print("  %-14s w=%-8s decisive=%-7d moved=%d"
+              % (test, w, row[0], row[5]), file=sys.stderr)
+
+    if missing:
+        print("\n*** MISSING CAPTURES -- this is not a zero, it is an absence:")
+        for nm, t in missing:
+            print("    arm %s: %s" % (nm, t))
+
+    def pct(n, d):
+        return "%.2f%%" % (100.0 * n / d) if d else "     -"
+
+    print("\n" + "=" * 78)
+    print("decisive pixels by candidate class  (footprint: %s)"
+          % ("derived extent" if a.extent_rule else "perpendicular rectangle"))
+    print("=" * 78)
+    print("%-18s%9s%10s%10s%9s%9s%10s"
+          % ("class", "n", "A names", "B names", "unm A", "unm B", "moved"))
+    tot = [0, 0, 0, 0, 0, 0]
+    for key in sorted(cls, key=lambda k: -cls[k][0]):
+        n, aok, bok, ua, ub, mv = cls[key]
+        for i, v in enumerate(cls[key]):
+            tot[i] += v
+        print("%-18s%9d%10s%10s%9s%9s%10d"
+              % (key + ("*" if any(b in key.split("/") for b in OURS_TO_ORDER)
+                        else " "),
+                 n, pct(aok, n), pct(bok, n), pct(ua, n), pct(ub, n), mv))
+    n, aok, bok, ua, ub, mv = tot
+    print("%-18s%9d%10s%10s%9s%9s%10d"
+          % ("ALL", n, pct(aok, n), pct(bok, n), pct(ua, n), pct(ub, n), mv))
+    print("\n* the class involves at least one block whose emission order this "
+          "emulator picks\n  (%s).  Quad, QStrip and Poly are ordered in "
+          "prim_rewrite.c, which rewrites them\n  straight to LINES; Tri and "
+          "TFan reach glsl/geom.c as PRIM_TYPE_TRIANGLES and are\n  ordered "
+          "by its three emit_line calls, with TFan additionally rotated by\n  "
+          "rewrite_triangle_fan().  LLoop is submission order and already "
+          "matched." % ", ".join(OURS_TO_ORDER))
+
+    print("\n" + "=" * 78)
+    print("per capture")
+    print("=" * 78)
+    print("%-14s%8s%9s%10s%10s%9s%12s%12s"
+          % ("capture", "w", "decisive", "A names", "B names", "moved",
+             "A!=B px", "outside*"))
+    for test in sorted(per_capture, key=lambda t: per_capture[t][0]):
+        w, (n, aok, bok, ua, ub, mv) = per_capture[test]
+        s = scope.get(test)
+        print("%-14s%8s%9d%10s%10s%9d%12s%12s"
+              % (test, w, n, pct(aok, n), pct(bok, n), mv,
+                 ("%d" % s[0]) if s else "-", ("%d" % s[1]) if s else "-"))
+    if scope:
+        print("\n* 'outside' counts pixels differing between the arms OUTSIDE "
+              "the union of the\n  footprints whose order changed, dilated by "
+              "one pixel.  It must be 0: a\n  reordering of those edges cannot "
+              "reach anything else.  The region unions\n  EVERY footprint "
+              "model, not the one --extent-rule selected above, because it is "
+              "a\n  bound on our own coverage rather than a selection rule: a "
+              "region narrower than\n  what we actually draw reports the gap "
+              "between two models as a scoping escape.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

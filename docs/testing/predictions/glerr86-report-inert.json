@@ -1,0 +1,21 @@
+{
+  "registered_utc": "2026-09-19T06:20:03Z",
+  "who": "lane.glerr86",
+  "issue": "86",
+  "prediction": "#86 arm B (540b0ec235) against arm A at master (a1691ae68e), two commits of\nbehaviour-bearing change apart plus a selftest and NOTES.\n\nWHAT CHANGED BETWEEN THE ARMS. 7140d94731 replaces the unconditional silent\n`while (glGetError() != GL_NO_ERROR) {}` at the top of\npgraph_gl_shader_load_from_memory() -- Android only -- with a helper that\ndrains exactly the same backlog and names each error on a logcat line tagged\n[glerr], repeats counted rather than printed. a09ba73f2f adds\ndocs/testing/glerr_report_selftest.{c,sh}, which nothing in the emulator\nbuilds or runs. Nothing else in the tree is touched.\n\nTHE ONLY LEG, AND IT IS AN INERTNESS LEG: better=0 and worse=0 over the\nmust_not_move set, i.e. every scored capture in those five suites is the same\ndistance from its golden in both arms. I predict this because the patch adds\nno GL call, removes none, and reorders none: the set of errors drained on\nentry is identical, the shader compiled is identical, and the only new work is\n__android_log_print on a path that previously did nothing. The non-Android\npath is byte-identical, so on any arm that is not Android this is not a change\nat all.\n\nNAMING THE WORLD IN WHICH IT FAILS, since an inert prediction that cannot fail\nis not a prediction. Three concrete ones. (1) The helper stops draining --\nif the loop were rewritten so that an error survives the call, the glGetError\neleven lines below reads it, treats the binary as failed, deletes the program\nand returns false; the shader is then recompiled from source. That recompile\nproduces a working shader, so the SCORES may well not move -- which is exactly\nwhy the selftest checks the drain directly rather than trusting this leg to\ncatch it. Stated so the leg is not credited with a check it does not perform.\n(2) The helper is called somewhere other than shader load, or more than once\nper load, which would show as timing-sensitive captures moving. (3) The\nreport's cost is not free: __android_log_print on every shader load of every\nframe -- what the power-of-ten suppression exists to prevent -- would slow the\nrun enough to move captures whose content depends on how much work lands in a\nframe. Leg 3 is the one this arm can actually catch, and it is a real risk of\nthis patch shape rather than a hypothetical.\n\nWHAT A PASS DOES NOT LICENSE. A pass says the change moved no pixels. It says\nnothing whatever about whether the report works: the [glerr] line is not in\nthe golden comparison and a device run on healthy code is expected to emit\nnone at all, which is indistinguishable at the pixel level from the silent\ndrain it replaces. The evidence that the report works is\ndocs/testing/glerr_report_selftest.sh (host compiler, both header sets, with a\npre-#86 falsification build that must fail by name), plus, on a device, a\ndeliberately provoked GL error before a shader load producing exactly one\nline. NOTES.md states what a run's `grep '\\[glerr\\]'` should and should not\nshow.\n\nWHAT NEITHER ARM CAN SHOW. Neither arm is a build by the shipping toolchain of\nthe code under test: the block is inside #ifdef __ANDROID__ and this lane has\nno NDK. If arm B is built for Android by the dispatcher then the build itself\nis the missing check, and its success is worth more than the pixel comparison\nthis file registers.\n\nSUITE CHOICE. Five suites that exercise the GL shader path heavily and are\nlarge enough that a real disturbance would be visible: Texture_render_target\n(40 captures in the 2026-09-12 corpus), Blend_tests (105),\nTexture_shadow_comparator (288), Texture_format (40), Window_clip (92).\n2D_BorderTex_SZ and the rest of Texture_border are deliberately absent: that\ncapture's ten-run band on one unchanged APK is 0 0 0 0 0 146 181 1847 2352\n2430 5640, so a single-run delta on it is a coin flip and would make a\nmust-not-move leg a lottery ticket.",
+  "a_ref": "a1691ae68e",
+  "b_ref": "540b0ec235",
+  "must_not_move": [
+    "Texture_render_target/*",
+    "Blend_tests/*",
+    "Texture_shadow_comparator/*",
+    "Texture_format/*",
+    "Window_clip/*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "better": 0,
+    "worse": 0
+  },
+  "must_not_regress": []
+}

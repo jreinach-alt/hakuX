@@ -1,0 +1,31 @@
+{
+  "registered_utc": "2026-09-26T00:13:32Z",
+  "who": "fix311",
+  "issue": "311",
+  "title": "Grabbed by the Ghoulies (USA) (En,Fr,De,Es,It).xiso.iso",
+  "device": "thor and nova, one pair each",
+  "seconds": 240,
+  "frames_every": 10,
+  "runs_per_arm": 1,
+  "a_ref": "5d2d2e7290",
+  "b_ref": "d5eb83f39e",
+  "judge": "by hand from each result's logcat.txt: hakuX-perf gfps lines (the bisect311.py regex) and [watch311] lines; frames every 10 s as the cross-check on the overlay. Not an ab_compare golden arm: a title soak has no capture keys.",
+  "prediction": "#311: Grabbed by the Ghoulies falls from 29 to 1-2 fps within a minute. The model under test: update_surface_part() reuses a shelved or invalid SurfaceBinding with `*surface = target`, which drops the live access_cb of a slot retired dirty (21cacb354a keeps that watch up), and surface_put()'s unregister-first sees NULL. One watch leaks per reuse, every guest TLB fill walks the whole list, and every access to a watched page takes pgraph.lock once per stacked duplicate. Arm A 5d2d2e7290 is master 21b8c6a80e plus a [watch311] counter only. Arm B d5eb83f39e is arm A plus one unregister_cpu_access_callback(surface) before the assignment (and g_malloc0 for a fresh slot, so the call sees NULL there).\n\nW1 (THE LEAK, must move): each binding holds at most one watch, so a live count above active+shelved+invalid on the same [watch311] line can only be leaked watches. Arm A: live exceeds active+shelved+invalid by the 60 s line, and the last line's live is >= 200 and >= 5x the line nearest 30 s, on both devices. Arm B: live <= active+shelved+invalid on every line, and max(live) over 120-240 s <= 2x max(live) over 30-90 s, on both devices. The brief expected single or low double digits for arm B; that is reported, not a leg, because the active list's legitimate size on this title is unmeasured.\nFAILS: arm A never exceeds its binding count (then the leak does not happen on this title and the model is refuted regardless of fps), or arm B exceeds it or keeps climbing (the fix missed a path).\n\nF1 (THE SYMPTOM, the release gate): arm B's median hakuX-perf gfps over 90-240 s of the soak is >= 25 on both devices, and no gfps line in that window is below 15.\nF2 (THE CONTROL): arm A's median gfps over 90-240 s is <= 12 on both devices. It reproduces the collapse on the same binary lineage, so F1 is attributable to the one hunk.\nFAILS: F1 failing with W1 passing means the leak is real and fixed but is not #311's cause (or not all of it); the counter curve is then the finding. F2 failing means the pair measured nothing.\n\nX1 (THE IMPOSSIBLE ROW): arm B's live count is never negative. A negative count means an unregister ran on a pointer the counter never saw (the counter is wrong), which voids W1.",
+  "must_not_move": [
+    "Crimson Skies 120 s on arm B (one device): no crash, no guest exit, gfps lines present to the end",
+    "Jet Set Radio Future 120 s on arm B (one device): no crash, no guest exit, gfps lines present to the end",
+    "the two refs differ by one hunk in hw/xbox/nv2a/pgraph/vk/surface.c"
+  ],
+  "expect": {
+    "W1/arm_a_live_minus_bindings_at_60s_min": 1,
+    "W1/arm_a_live_last_min": 200,
+    "W1/arm_a_live_last_over_30s_min": 5,
+    "W1/arm_b_live_minus_bindings_max": 0,
+    "W1/arm_b_live_120_240_over_30_90_max": 2,
+    "F1/arm_b_gfps_median_90_240_min": 25,
+    "F1/arm_b_gfps_min_90_240": 15,
+    "F2/arm_a_gfps_median_90_240_max": 12,
+    "X1/arm_b_live_min": 0
+  },
+  "expect_counts": {}
+}

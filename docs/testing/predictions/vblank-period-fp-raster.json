@@ -1,0 +1,24 @@
+{
+  "registered_utc": "2026-09-13T05:55:03Z",
+  "who": "vblank-period",
+  "issue": "64",
+  "prediction": "Whether the VBLANK period can be DERIVED at all, after the CRTC/VPLL derivation (P7) failed by -26.3%. Arithmetic first: with vtotal=525 and the VPLL decoded at 31,089,742 Hz, a 59.94 Hz frame needs a horizontal total of 987.96 pixels, and the VGA CRTC register counts whole 8-dot characters, so 123.5 of them is not a value it can hold -- no extension bit, character width or PDIV shift reaches it, because halving or doubling the clock preserves the fractional part. Repairing the clock instead needs 22,909,091 Hz at the CRTC's 728 px, which is this VCO over 10.86: not a power of two, so not a PDIV misread, and it would need a 12.28 MHz crystal that is not one of the parts. So P7 did not fail by a decode bug; the VGA CRTC and the PRAMDAC flat-panel timing generator describe different rasters, and only the FP one counts in pixels and can express 988. FP_VTOTAL (0x804) and FP_HTOTAL (0x824) were the two registers of that block never modelled -- the writes fell through pramdac.c's switch. They are stored and logged now as a `vblfp` line, read by docs/testing/vblank_report.py. Judged on a Galleon soak logcat; no golden can see any of this. F1 THE QUESTION: fp_vtotal and fp_htotal both read non-zero and derived_fp lands within 1% of 16,683,333 ns. FAILS with zeros -- the world where the Xbox programs only FP_VDISPLAY_END and the video standard lives outside the NV2A (AV pack / kernel video region), which ends the derivation question for good. FAILS with a non-zero value outside 1% -- the world where the FP block holds the scaler's input raster rather than the output one. Nothing in this change can make this leg pass: it prints registers the guest either writes or does not. F2 THE ARITHMETIC, sharper: if the totals are non-zero then fp_vtotal+1 == 525 lines exactly and fp_htotal+1 is within 980..996 px, the window around the 987.96 the decoded pixel clock demands. FAILS on any other line count, which would mean the FP raster is not the 525-line NTSC frame and the VPLL decode is implicated after all. F3 MUST-NOT-MOVE, the guard: every window reports want=16683750 with vd=479 il=ff, and the def==0 mean interval stays within +/-50,000 ns of arm B's 16,718,178 ns. FAILS if want ever reads 20000000, which is the real risk the new interlace scaling carries: cr[0x39] is 0 before the guest programs it, so a transient with vd in 240..288 would scale into the PAL window. def==0 is the within-run control -- it is the regime nothing in this change touches. F4 THE COST: median gfps does not fall by more than 2 from arm B's 29.0. The instrument adds one log line per two seconds and a handful of register reads in a path that already runs at 0.5 Hz, so a drop of 3 would mean the dump path is not what I think it is. F5 SANITY: whole-soak delivered rate stays above 58.000 Hz, confirming this ref carries the grid fix (0edf4f2f0d). FAILS near 56.6 Hz, which would mean the ref I named predates it and every other leg is being read against the wrong baseline.",
+  "a_ref": "1789275582-vblank-grid-B-4057320 (arm B of #65, ed5df55ccc)",
+  "b_ref": "HEAD-at-dispatch",
+  "must_not_move": [
+    "vblmode want=16683750 on a 480-line title",
+    "def==0 mean interval within +/-50000 ns of 16718178"
+  ],
+  "expect": {
+    "fp_vtotal_plus_1": 525,
+    "fp_htotal_plus_1_min": 980,
+    "fp_htotal_plus_1_max": 996,
+    "derived_fp_ns_target": 16683333,
+    "derived_fp_tolerance_pct": 1.0,
+    "want_ns": 16683750,
+    "def_eq0/mean_interval_ns": 16718178,
+    "whole_soak/delivered_millihertz": 58000000,
+    "gfps_median_drop_max": 2
+  },
+  "expect_counts": {}
+}

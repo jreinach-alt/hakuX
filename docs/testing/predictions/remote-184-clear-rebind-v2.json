@@ -1,0 +1,37 @@
+{
+  "registered_utc": "2026-09-25T16:02:07Z",
+  "who": "lane.remote",
+  "issue": "184",
+  "prediction": "SECOND ATTEMPT AT #184, AFTER THE FIRST FAILED ITS ARM. remote-184-clear-rebind.json (b_ref b0470969, judged FAIL 4 of 35 in 5835099210) made pgraph_vk_surface_written_while_sampled() (vk/draw.c) bump texture_state_gen when a written surface overlaps a stage's bound memory. That fixed SFC_A8R8G8B8, SCF_R5G6B5 and SCF_X8R8G8B8_Z8R8G8B8 and left SCF_X8R8G8B8_O8R8G8B8 and SCF_X1A7R8G8B8_O1A7R8G8B8 aliased on every swatch after the first.\nWHY, MEASURED ON A LOCAL INSTRUMENT OF b0470969 (not committed; one desktop Vulkan run of iso_pre_clear, /tmp/pgraph-run/p184/instr_c): the stale swatches are copied from the SAME SurfaceBinding that was written (shelved=0), so the hypothesis in 5835099210 is wrong. The bump opens the draw-time gate, and pgraph_vk_bind_textures() then skips the stage twice. At the centre-mark draw nothing is marked dirty, so it returns at check_textures_dirty(). At the display quad, SetupTextureStages() rewrites the stage's texture registers with identical values, which sets texture_dirty but moves no gen, and the tex_reg_cache shortcut skips create_texture(): registers unchanged, and the binding's VRAM memo says 'checked clean this frame'. For a stage built from a surface that memo is about guest memory the draw never wrote, so it vouches for nothing. By reading (the instrument did not log it), the memo is stamped by resolve_possibly_dirty_textures() at the first swatch's bind when a download in an earlier frame marked the range, and frame_time moves only on FLIP_INCREMENT_WRITE, so all six swatches share it. Whether it is current is timing: in the v1 arm the tests after the two VRAM-path formats aliased (X8R8G8B8_O after X1R5G5B5_O, X1A7_O after R5G6B5), and in the instrumented run the X1A7 twins swapped (Z aliased, O did not).\nTHE CHANGE, still body-only in the same function, call sites unchanged: for every stage whose bound TextureBinding overlaps the written surface, invalidate tex_reg_cache[i], so the next rewrite of that stage's registers rebuilds it instead of taking the shortcut. The single texture_state_gen bump stays. A stage bound straight to the surface (tex_surface_direct) keeps exactly its old treatment, but no longer ends the scan early, so a copy of the same surface on another stage is reached too. texture_dirty is deliberately NOT set: it would rebuild, and so recopy, an enabled stage the current draw does not sample on every bind of a render pass that leaves it bound to its own target.\nARMS: A = 5eab6a87 (master, 0.4.0-j1-2243-g5eab6a87), B = the fix commit on this branch, whose only hw/ difference from A is this function (b0470969 plus this change). Desktop Vulkan (llvmpipe, [display.quality] surface_scale = 1), iso_pre_clear (suites Clear and Pixel shader, 33 captures), 3 runs each, alternating.\nPREDICTED IN B, every value measured on the Vulkan path rather than derived, so no alpha model this time: SFC_A8R8G8B8 = 0, SCF_R5G6B5 = 0, SCF_X8R8G8B8_Z8R8G8B8 = 0, SCF_X8R8G8B8_O8R8G8B8 = 0 (the v1 arm's zeros, and quad 0 of _O is already exact with alpha ff). SCF_X1A7R8G8B8_Z1A7R8G8B8 = 65,568, per swatch 16 / 16,384 / 16,384 / 16 / 16,384 / 16,384, which is the v1 arm's value in all 3 B runs, where _Z did not alias. SCF_X1A7R8G8B8_O1A7R8G8B8 = 65,472, per swatch 16,368 / 16,368 / 0 / 16,368 / 16,368 / 0, measured in the instrumented run, where _O did not alias. Both X1A7 residuals follow one rule: the stored alpha is the clear alpha's low 7 bits widened back to 8 by bit replication (00 02 ff 00 fd ff over clear alphas 00 01 7f 80 fe ff), where the goldens hold (X << 7) | (alpha & 0x7F). That is #60's pad-bit family and this change does not touch it. Both equal GL's values in #184's own table.\nREGISTERED LEGS: the six absolutes; better = 6, worse = 0; must_not_move, bit-identical, on the 27 other captures (the 24 Clear/C*, both X1R5G5B5, Pixel_shader/Passthru).\nPROSE LEGS, checked by script on B's captures: every swatch of the six shows its own clear colour; the X1A7 per-swatch splits are as above; B's three runs are byte-identical on all 8 SCF/SFC captures, which is the timing dependence closed.\nUNCOMFORTABLE OUTCOMES NAMED NOW: (1) any swatch still showing swatch 0's colour in any run means a third skip I have not found, and the fix is incomplete. (2) B not byte-identical with itself on the eight means the timing dependence survives. (3) A must_not_move capture moving means the invalidation reaches further than this test. (4) Not covered, and not claimed: a stage sampled while its own memory is written with no register write in between (a feedback loop), and a stage that starts being sampled through SET_SHADER_STAGE_PROGRAM alone. Both are stale on master too, and nothing on this disc exercises either. The absolutes are desktop llvmpipe values, so this is hand-queued (title), as before.",
+  "a_ref": "5eab6a87",
+  "b_ref": "1213f50c",
+  "must_not_move": [
+    "Clear/C*",
+    "Clear/SCF_X1R5G5B5_O1R5G5B5",
+    "Clear/SFC_X1R5G5B5_Z1R5G5B5",
+    "Pixel_shader/*"
+  ],
+  "expect": {
+    "Clear/SFC_A8R8G8B8": 0,
+    "Clear/SCF_R5G6B5": 0,
+    "Clear/SCF_X8R8G8B8_Z8R8G8B8": 0,
+    "Clear/SCF_X8R8G8B8_O8R8G8B8": 0,
+    "Clear/SCF_X1A7R8G8B8_Z1A7R8G8B8": 65568,
+    "Clear/SCF_X1A7R8G8B8_O1A7R8G8B8": 65472
+  },
+  "expect_counts": {
+    "better": 6,
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Clear",
+      "Pixel shader"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "title": "desktop Vulkan A/B -- hand-queue only, see the prediction text"
+}

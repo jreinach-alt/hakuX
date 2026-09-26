@@ -1,0 +1,17 @@
+suite	test	solo	status	differing	max_rgb	max_a	pixels	off_by_one
+Stencil	Stencil_REPLACE	False	ok	0	0	0	307200	0
+Stencil	Stencil_REPLACE_DT	False	ok	0	0	0	307200	0
+Stencil	Stencil_REPLACE_DT_ZB	False	ok	0	0	0	307200	0
+Stencil	Stencil_REPLACE_ST	False	ok	0	0	0	307200	0
+Stencil	Stencil_REPLACE_ST_DT	False	ok	0	0	0	307200	0
+Stencil	Stencil_REPLACE_ST_DT_ZB	False	ok	0	0	0	307200	0
+Stencil	Stencil_REPLACE_ST_ZB	False	ok	0	0	0	307200	0
+Stencil	Stencil_REPLACE_ZB	False	ok	0	0	0	307200	0
+Stencil	Stencil_ZERO	False	ok	0	0	0	307200	0
+Stencil	Stencil_ZERO_DT	False	ok	0	0	0	307200	0
+Stencil	Stencil_ZERO_DT_ZB	False	ok	0	0	0	307200	0
+Stencil	Stencil_ZERO_ST	False	ok	0	0	0	307200	0
+Stencil	Stencil_ZERO_ST_DT	False	ok	0	0	0	307200	0
+Stencil	Stencil_ZERO_ST_DT_ZB	False	ok	0	0	0	307200	0
+Stencil	Stencil_ZERO_ST_ZB	False	ok	0	0	0	307200	0
+Stencil	Stencil_ZERO_ZB	False	ok	0	0	0	307200	0

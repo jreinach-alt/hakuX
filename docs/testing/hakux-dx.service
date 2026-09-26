@@ -1,0 +1,15 @@
+[Unit]
+Description=hakuX daily DX pass -- harvest paper cuts and mark one due
+Documentation=file:///home/justin/hakuX/docs/testing/dx_pass.sh
+# Needs no device and no build, so it contends with nothing. Deliberately not
+# ordered against the nightly or the dispatcher.
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/justin/hakuX
+ExecStart=/usr/bin/env bash /home/justin/hakuX/docs/testing/dx_pass.sh
+# Its own log as well as the journal, for the nightly's reason: a pass that
+# failed silently is worse than no pass, because an unharvested day is
+# indistinguishable from a day with no friction.
+StandardOutput=append:/home/justin/hakux-work/dx/systemd.log
+StandardError=append:/home/justin/hakux-work/dx/systemd.log

@@ -1,0 +1,40 @@
+{
+  "_about": "Goldens no current disc can produce, and suites that save nothing by design. Read by scoreboard.py, which takes them out of coverage denominators and reports them by name. Keys are golden directory names (underscores). Issues #295 and #296; inventory of 2026-09-25 against nxdk_pgraph_tests 6743b6a. A test listed here is one that NO disc in use emits: none of the 20 appears in any of the 139,833 capture files under ~/hakux-work. Add a row only with that kind of evidence -- the cost of a wrong row is a golden silently dropped from every denominator.",
+  "unscoreable": {
+    "Front_face": {
+      "reason": "old spelling from 2025-03-10; the disc now emits FM_/LM_ names (#295)",
+      "tests": [
+        "FrontFace_0x00_CF_B", "FrontFace_0x00_CF_F", "FrontFace_0x00_CF_FaB",
+        "FrontFace_0x63_CF_B", "FrontFace_0x63_CF_F", "FrontFace_0x63_CF_FaB",
+        "FrontFace_CCW_CF_B", "FrontFace_CCW_CF_F", "FrontFace_CCW_CF_FaB",
+        "FrontFace_CW_CF_B", "FrontFace_CW_CF_F", "FrontFace_CW_CF_FaB"
+      ]
+    },
+    "ZPass_pixel_count": {
+      "reason": "the test now ends at 0x1F8/0x1FF, zpass_pixel_count_tests.cpp:53 (#295)",
+      "tests": [
+        "ZPassPointSizeVS-0x01F9", "ZPassPointSizeVS-0x01F9_ZB",
+        "ZPassPointSizeVS-0x0200", "ZPassPointSizeVS-0x0200_ZB",
+        "ZPassPointSizeVS-0x0201", "ZPassPointSizeVS-0x0201_ZB"
+      ]
+    },
+    "Texture_cubemap": {
+      "reason": "renamed; now Cubemap_q* (#295)",
+      "tests": ["Cubemap"]
+    },
+    "Image_blit": {
+      "reason": "compiled out, image_blit_tests.cpp:13, 204-211 (#295)",
+      "tests": ["OverlapFIFO"]
+    }
+  },
+  "not_captured_by_design": {
+    "Clipping_precision": {
+      "tests": 48,
+      "reason": "interactive-only upstream (clipping_precision_tests.cpp:23 suite flag; :155 FinishDrawNoSave); 0 goldens (#296)"
+    },
+    "PVIDEO": {
+      "tests": 23,
+      "reason": "interactive-only; every test FinishDrawNoSave (pvideo_tests.cpp:46); not reachable by capture, #110 (#296)"
+    }
+  }
+}

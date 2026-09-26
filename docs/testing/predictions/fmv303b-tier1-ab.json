@@ -1,0 +1,28 @@
+{
+  "registered_utc": "2026-09-26T14:32:00Z",
+  "who": "lane.fmv303b",
+  "issue": "303",
+  "title": "Spikeout - Battle Street (Europe).iso",
+  "device": "thor",
+  "seconds": 150,
+  "frames_every": 2,
+  "runs_per_arm": 2,
+  "ref": "4b96082573",
+  "a_ref": "4b96082573",
+  "b_ref": "4b96082573",
+  "a_env": ["HAKUX_FMV303_PROBE=1"],
+  "b_env": ["HAKUX_FMV303_PROBE=1", "HAKUX_TIER1_THRESHOLD=0"],
+  "prediction": "ENV A/B on one binary (4b96082573), Thor, Spikeout, 150 s, frames every 2 s (same shape as the control of record 1790389079-fmv303-1248256), two runs per arm queued interleaved ON, OFF, ON, OFF. Independent variable: HAKUX_TIER1_THRESHOLD=0 turns the tier1 JIT tier off (xemu_android.cpp reads it after the tier1_threshold pref; cpu-exec.c xemu_set_tier1_threshold(0) = 0x7FFFFFFF). Registered before any arm has run. Judge: python3 docs/lanes/fmv303b/tier1_judge.py --on L1 --on L3 --off L2 --off L4. M0 per run: the logcat's `tier1 threshold:` line reads 64 (ON) or 0 (OFF) and the run has >= 100 lit frames, else VOID; fewer than two valid runs in an arm is no verdict. Checked against the control of record: it reads ON 64, 435 lit, 0.66, and the same logcat passed as OFF is VOID. PREDICTED: NOT_TIER1, |OFF - ON| <= 0.2 with OFF >= 0.1, because the tint differs between two runs of one binary (0.41 vs 0.66) and switches within a shot, which reads as a race, not a deterministic miscompile. It fails in the world where tier1 miscompiles a saturating op in Sofdec's IDCT/colour conversion: OFF < 0.1 with ON >= 0.3 (TIER1). P2: the ON arm reproduces the control, pooled mean in [0.3, 0.8]; it fails if master since de1c93d244 (for example #387's surface-watch change) moved the tint, which is a finding in itself and voids the comparison with the control.",
+  "expect": {
+    "M0/tier_logged_on": 64,
+    "M0/tier_logged_off": 0,
+    "M0/lit_frames_min_per_run": 100,
+    "M0/valid_runs_per_arm_min": 2,
+    "V/verdict_is": "NOT_TIER1",
+    "V/abs_off_minus_on_max": 0.2,
+    "V/off_mean_min": 0.1,
+    "P2/on_mean_range": [0.3, 0.8]
+  },
+  "expect_counts": {},
+  "expect_note": "Named rules read by docs/lanes/fmv303b/tier1_judge.py, not golden keys: a soak writes no captures and ab_compare never judges it."
+}

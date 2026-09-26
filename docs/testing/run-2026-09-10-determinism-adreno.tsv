@@ -1,0 +1,10 @@
+# Determinism control: Depth_buffer_fixed_function, three runs, same build
+# (ccad2844d4), same disc (iso-depth_buffer_fixed_function.iso), cold boot
+# each, Retroid Pocket Nova / Adreno. Byte comparison of the 80 captures.
+#
+# Answers the remote lane's question: on lavapipe the same suite gives 42/80
+# captures varying before the eviction fixes, 26/80 after the first, 20/80
+# after both (23edc14a3d + 5448264259). If Adreno is deterministic, the
+# residual 20/80 is lavapipe's own, not xemu's translation.
+runs	captures	identical_across_all	varying
+3	80	80	0

@@ -1,0 +1,22 @@
+{
+  "registered_utc": "2026-09-13T12:17:52Z",
+  "who": "perf-tcg",
+  "issue": "",
+  "prediction": "PREMISE CHECK for performance-next-three.md section 2, which scopes 'smaller translation blocks on thrashing pages' on the stated premise that 'the invalidation is already range-precise ... so it does nothing when no translated block overlaps the write'. Reading the code says that premise is false in this tree: xemu commit 703566ce33 (2021-10-04, no rationale recorded) wraps the range test in '#ifndef XBOX', and PAGE_FOR_EACH_TB in the softmmu half ignores its start/last arguments, so a guest store to a page holding translated code discards EVERY block on that page. If that reading is right the block-extent lever has no mechanism: it works by letting a store miss a block, and no store can miss one. Judged on the hakuX-pages 'inval' counters via docs/testing/perf/tcg_pages.py, not on captures -- no golden can see translation-block extent. Three soaks, ONE ref (6b574e163e), so the three runs are also the noise-floor measurement this stream has been missing; the tool reports NOT JUDGED for an A/B and prints the per-window spread, which is the intended use here. Statistic: per-window ratios, one window per 120 guest frames, boot window dropped; ratios rather than absolute rates because on two Galleon soaks already on disk the absolute counts vary 3-5x within a single run while toss_per_gen separated 0.68 from 5.34. LEGS. L1 THE DELIVERABLE: sp_share, the share of discarded blocks that had no written byte in them, is at least 0.30. FAILS if it is at most 0.10, which would mean pages hold about one block each at invalidation time, whole-page and range-precise invalidation coincide here, the premise stands as written and my refutation is wrong. L2 THE PRIZE: ws_share, the share of page-emptying events where a block would have survived a range test, is at least 0.30. Each such event costs a full arming TLB walk on the next generation there (tlb_protect_code fires only on a page's empty->non-empty transition; tlb_reset_dirty is 10.6 percent self of the bounding thread). FAILS at most 0.10. L3 THE ROW THAT CANNOT HAPPEN: em equals ev exactly, in every window. Under whole-page invalidation every block on the page is discarded so the page always empties. If any window has em below ev, my reading of tb-maint.c is wrong and every leg above inherits that -- this leg exists to catch a systematic misreading that the other legs would otherwise absorb as a plausible number. L4 MODEL CHECK: pr_per_em lands in 0.5 to 1.5. Below 0.5 means emptied pages are mostly not re-armed, so the arming walk is not driven by this loop and the 10.6 percent attribution needs another cause. L5 ARM FEASIBILITY: baseline mean block length blk is at least 16 guest instructions. Below 8 an 8-instruction cap is a no-op and the smaller-blocks arm cannot be applied at all. NONE OF THESE IS FORCED BY THE PATCH: the instrument only counts, and HAKUX_SMALL_BLOCK_INSNS is 0 so the block-extent mechanism is compiled out -- were it enabled, L5 would be a tautology of my own clamp.",
+  "a_ref": "9eb64cbcc3",
+  "b_ref": "6b574e163e",
+  "must_not_move": [],
+  "expect": {
+    "L1_sp_share_at_least": 0.3,
+    "L1_sp_share_fails_at_or_below": 0.1,
+    "L2_ws_share_at_least": 0.3,
+    "L2_ws_share_fails_at_or_below": 0.1,
+    "L3_em_equals_ev_every_window": true,
+    "L4_pr_per_em_min": 0.5,
+    "L4_pr_per_em_max": 1.5,
+    "L5_baseline_blk_at_least": 16,
+    "L5_blk_fails_below": 8,
+    "noise_floor_runs_on_one_ref": 3
+  },
+  "expect_counts": {}
+}

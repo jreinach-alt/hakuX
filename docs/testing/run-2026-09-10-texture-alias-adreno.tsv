@@ -1,0 +1,4 @@
+# Texture_3D_as_2D on the Nova. after = a consumed dirty range marks every aliasing cached texture (this commit); before = 75477f6278.
+# test	after_px	before_px
+Cubemap_as_2D	3051	3051
+Volumetric_as_2D	4714	10500

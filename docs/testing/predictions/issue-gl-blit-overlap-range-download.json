@@ -1,0 +1,17 @@
+{
+  "registered_utc": "2026-09-13T13:28:15Z",
+  "who": "desktop-lane-agent",
+  "issue": "7",
+  "prediction": "READ FROM THE TWO RENDERERS SIDE BY SIDE, before writing anything, and the Vulkan source states the mechanism in its own comment naming issue #7 and the tests it fixed. gl/blit.c looks surfaces up with pgraph_gl_surface_get(d, source_addr) and pgraph_gl_surface_get(d, dest_addr), both EXACT-BASE-ADDRESS lookups, and does nothing else to bring VRAM up to date. So a blit whose source or destination lands INSIDE a surface at a different base finds nothing, and reads or writes stale VRAM. vk/blit.c calls pgraph_vk_download_surfaces_in_range_if_dirty() over both ranges first, and that helper exists ONLY in the Vulkan renderer -- grep returns vk/surface.c, vk/renderer.h, vk/texture.c, vk/vertex.c and vk/blit.c, and nothing under gl/. The GL column measures the cost: Image_blit/DirtyOverlappedDestSurf is GL 49,142 against Vulkan 6, and the whole GL failure is the region x[0..323] y[64..255] coming out #111111, the background, where the golden has the blitted content -- 23,552 px of #8D76FF, 4,032 of #00FFDD, 3,547 of #FFFFFF and so on. Not a conversion difference: the blit result is simply absent. The test is 'a 3d render into the backbuffer, then a 2D srccopy that completely overwrites it, then another 3d render', so the overlap is the point of it. THE CHANGE, entirely inside this lane's files: add pgraph_gl_download_surfaces_in_range_if_dirty() to gl/surface.c, which already has check_surface_overlaps_range() for its memory-access callback, declare it in gl/renderer.h, and call it over both ranges in gl/blit.c before the copy. Simpler than the Vulkan version, which also has to flush deferred downloads and walk shelved surfaces; GL has neither. FALSIFIERS. (1) Image_blit/DirtyOverlappedDestSurf lands at 6, Vulkan's exact value. Genuine: downloading the overlapping surface is necessary for the blit to see the rendered content but not obviously sufficient, and the second 3d render still has to composite on top of it, so a partial fix leaves a residual rather than hitting 6. (2) No capture regresses anywhere on the 236-capture disc. Genuine and the real risk: this forces downloads that did not happen before, and a download writes GPU contents over guest memory, so any capture where our surface is dirtier than hardware's would lose. (3) Vulkan byte-identical -- gl/ only. NOT PREDICTED, and registered so it is not scored: the seven Image_blit/Overlap_* captures sit exactly one pixel worse than Vulkan each (1,702 or 1,701 against 1,701 or 1,700). The Vulkan comment says those tests are what forced its range download, so they MAY come to Vulkan's values, but one pixel is inside the rounding floor of #38 and I will not claim it either way.",
+  "a_ref": "0092dd53",
+  "b_ref": "",
+  "must_not_move": [
+    "Vulkan/*"
+  ],
+  "expect": {
+    "Image_blit/DirtyOverlappedDestSurf": 6
+  },
+  "expect_counts": {
+    "worse": 0
+  }
+}

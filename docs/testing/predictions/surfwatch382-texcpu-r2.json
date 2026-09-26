@@ -1,0 +1,24 @@
+{
+  "registered_utc": "2026-09-26T13:02:53Z",
+  "who": "lane.surfwatch382",
+  "issue": "382",
+  "prediction": "MUST-NOT-MOVE guard for the pass-1 remediation of #382 (13f7ec35ea: pgraph_vk_set_surface_dirty re-arms a suspended surface watch when a draw marks the surface dirty, on top of 568332c8d2's watch suspension). Same suites as surfwatch382-texcpu.json, which passed 3/3 byte-identical on 568332c8d2. Prediction: every capture in both suites is byte-identical between arms A (master 6c25a829ef) and B (13f7ec35ea). With draw_reorder off (the default, and not selectable by a request) every set_surface_dirty runs in the same pgraph.lock hold as the upload before it, so the callback cannot suspend in between and the new re-arm should never fire; on this path the change is one hash-set lookup per dirtied binding. This arm shows it is harmless on the default path, not that it repairs the reorder path. It fails in the world where the new call does fire here and its re-arm or gap check lands an upload over a draw (VRAM over rendered pixels) or loses a CPU write (pre-write texels).",
+  "a_ref": "6c25a829ef",
+  "b_ref": "13f7ec35ea",
+  "must_not_move": [
+    "Texture_CPU_Update/*",
+    "Texture_render_update_in_place/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Texture CPU Update",
+      "Texture render update in place"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

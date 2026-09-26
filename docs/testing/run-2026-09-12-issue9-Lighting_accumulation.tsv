@@ -1,0 +1,11 @@
+suite	test	solo	status	differing	max_rgb	max_a	pixels	off_by_one
+Lighting_accumulation	All	False	ok	33136	112	0	307200	31905
+Lighting_accumulation	Directional-2	False	ok	1231	112	0	307200	0
+Lighting_accumulation	Directional-4	False	ok	1231	112	0	307200	0
+Lighting_accumulation	Directional-5	False	ok	1231	112	0	307200	0
+Lighting_accumulation	Point-2	False	ok	32622	112	0	307200	31391
+Lighting_accumulation	Point-4	False	ok	35159	112	0	307200	33926
+Lighting_accumulation	Point-5	False	ok	35175	112	0	307200	33904
+Lighting_accumulation	Spot-2	False	ok	7602	112	0	307200	6371
+Lighting_accumulation	Spot-4	False	ok	7853	112	0	307200	6622
+Lighting_accumulation	Spot-5	False	ok	8320	112	0	307200	7089

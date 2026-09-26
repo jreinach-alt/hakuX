@@ -1,0 +1,21 @@
+# Texture_border_color and Texture_border on the Nova. after = BORDER axes replaced with the border-colour register in the shader (this commit); before = 14d1369983.
+# test	after_px	before_px
+TextureBorderColor	16205	56419
+2D	90	90
+2D_BorderTex_SZ	0	0
+3D_BorderTex_SZ_16x1	0	0
+3D_BorderTex_SZ_16x16	0	0
+3D_BorderTex_SZ_1x1	0	0
+3D_BorderTex_SZ_2x2	0	0
+3D_BorderTex_SZ_32x32	0	0
+3D_BorderTex_SZ_4x4	0	0
+3D_BorderTex_SZ_4x8	0	0
+3D_BorderTex_SZ_8x2	0	0
+3D_BorderTex_SZ_8x8	0	0
+Cube_BorderTex_SZ_16x16	37	37
+Cube_BorderTex_SZ_1x1	0	0
+Cube_BorderTex_SZ_2x2	0	0
+Cube_BorderTex_SZ_32x32	4504	4504
+Cube_BorderTex_SZ_4x4	0	0
+Cube_BorderTex_SZ_8x8	0	0
+xemu#1034	27	27

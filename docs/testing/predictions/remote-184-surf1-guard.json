@@ -1,0 +1,39 @@
+{
+  "registered_utc": "2026-09-25T16:02:07Z",
+  "who": "lane.remote",
+  "issue": "184",
+  "prediction": "GUARD FOR remote-184-clear-rebind-v2.json ON A WIDER DISC. That change makes a write to a surface bump texture_state_gen and invalidate the tex_reg_cache entry of every stage whose bound memory overlaps it. pgraph_vk_bind_textures() therefore runs after such a write, and the next identical rewrite of that stage's registers rebuilds it through create_texture() -- an s2t copy, or a download and re-upload -- where the register shortcut used to skip it. Clear's TestSurfaceFmt is the only test I know of where that skip was wrong: its display quad disables stage 0 with SetTextureStageEnabled(0, false) and never pushes it with SetupTextureStages(), so the binding survives the next render into its own memory. By reading, the suites on this disc do not do that. Blend_surface pushes the disable after every composited quad, so the next quad binds stage 0 from the dummy texture, which the shortcut excludes. Surface_format renders once per capture, after a CPU memset of the same memory. Color_zeta_overlap enables no texture stage.\nARMS: the same A (5eab6a87, master) and B as that registration. Desktop Vulkan (llvmpipe, [display.quality] surface_scale = 1), /tmp/pgraph-run/iso_surf1.iso (14 suites, 236 captures), 3 runs each, alternating.\nREGISTERED LEGS: every capture must_not_move, bit-identical; better = 0, worse = 0.\nUNCOMFORTABLE OUTCOMES NAMED NOW: (1) a capture moving WORSE means a rebuild the shortcut used to skip changes what a later bind or download reads -- a mid-pass download on a VRAM-path stage is the candidate -- and kills the change as written. (2) A capture moving BETTER is a second instance of this staleness on a suite I read as unreachable: a finding, reported by name, not a pass. (3) A capture that is not byte-identical with itself within an arm is reported as noise and not attributed. Desktop llvmpipe values, hand-queued (title).",
+  "a_ref": "5eab6a87",
+  "b_ref": "1213f50c",
+  "must_not_move": [
+    "*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "better": 0,
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Blend surface",
+      "Color Zeta Disable",
+      "Color mask blend",
+      "Color zeta overlap",
+      "Image blit",
+      "Null surface",
+      "Surface clip",
+      "Surface format",
+      "Surface pitch",
+      "Texture Framebuffer Blit",
+      "Texture format",
+      "Texture perspective",
+      "Texture perspective enable",
+      "Texture render target"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "title": "desktop Vulkan A/B -- hand-queue only, see the prediction text"
+}

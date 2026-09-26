@@ -1,0 +1,23 @@
+{
+  "registered_utc": "2026-09-13T23:15:52Z",
+  "who": "signfold",
+  "issue": "43",
+  "prediction": "#43 RING 0 FIXED AT THE ROOT: the fold no longer keys the shader cache.\n\nCAUSE, established structurally before this arm was queued. signed_blend_fold\nwas a PshState field set from NV_PGRAPH_BLEND, and\npgraph_glsl_check_shader_state_dirty() rebuilds ShaderState from a FIXED\nregister list that does NOT contain NV_PGRAPH_BLEND (grep of that list: 0). So\nDrawQuad's SetBlend(false) for its colour half kept the folded shader, green\n0xCC = 204 sits above the sign bit, got masked to f1 = 0, and reached the\nframebuffer unblended. That predicts G 204 -> 0 and ring 0 measured exactly\nthat on all 11,280 px, alpha almost untouched because the colour half's write\nmask excludes it.\n\nFIX: the fold rides the signedBlendPass uniform alone, recomputed from the live\nregister at every staging. Nothing cached, so nothing stale.\n\nW1 RING 0 RETURNS TO BIT-EXACT. DrawAlphaStack's outer ring, the published\n   control, goes 11,280 -> 0 differing on green under SADD, and the region\n   tool's LEG 3 (`124,200 px of ring 0, 0 differing`) passes for BOTH SADD and\n   SREVSUB, as it did at 322adc3a01 before pass 2 emitted.\n   FAILS IF the stale-shader path is not the whole cause, or if gating on the\n   uniform leaves some other draw folded when it should not be.\n\nW2 THE TWO BIT-EXACT CAPTURES STAY BIT-EXACT: txt_A8R8G8B8_SADD and\n   txt_A8R8G8B8_SREVSUB remain 0 differing pixels, status ok. This is the leg\n   that a careless fix fails -- disabling the fold everywhere would satisfy W1\n   and destroy W2, so the two together cannot both be met by simply turning\n   the feature off.\n\nW3 THE COUNTERS STILL HOLD: emitted == 2*folds, empty == 0, and\n   staged_high == folds, read from logcat tag `hakuX-lane` (now genuinely\n   captured: the spec self-shadowed via LOGCAT_SPEC=\"${LOGCAT_SPEC:-...}\" plus\n   export, fixed at 821ae8e73f). VOID, not passed, if no [signfold] line\n   appears.\n   staged_low will now be MUCH smaller than before, because an unfolded draw\n   stages NONE rather than LOW -- that is the fix visible in a counter.\n\nW4 UNSIGNED CAPTURES MUST NOT MOVE: Blend_surface/* (32),\n   Texture_signed_component_tests/A8R8G8B8_* (16), txt_A8R8G8B8_ADD (1) and\n   Blend_tests/#spot_*_{ADD,SUB,REVSUB,MIN,MAX} (75) -- 124 captures. These\n   matter more on this arm than any before it: the masking block is now emitted\n   into EVERY fragment shader, so a mistake in the runtime gate corrupts\n   unsigned draws across the whole corpus rather than only signed ones.\n\nW5 BOUNDED, and still a bound: the 15 #spot_*_SADD improve from 80,007 and the\n   15 #spot_*_SREVSUB from 76,897, staying above the seam floor of 7,350.\n   No exact value is registered, because 19,140 is the cardinality of the UNION\n   of the 75 unsigned seam masks while individual unsigned residuals run\n   6,154..19,140 -- an attribution-derived bound is weak evidence in both\n   directions, so it is a bound and says so. Factor-independence must survive:\n   one distinct value across all 15 of each.\n\nNOT CLAIMED: the #spot ink residual (fold alone 54,015 px plus 8,280 in neither\nclass). If W1 and W5 hold and a residual remains, it is a separate mechanism\nand gets described separately rather than folded into #43.",
+  "a_ref": "d99be2b35d",
+  "b_ref": "86a1c53195",
+  "must_not_move": [
+    "Blend_surface/*",
+    "Texture_signed_component_tests/A8R8G8B8_*",
+    "Texture_signed_component_tests/txt_A8R8G8B8_ADD",
+    "Blend_tests/#spot_*_ADD",
+    "Blend_tests/#spot_*_SUB",
+    "Blend_tests/#spot_*_REVSUB",
+    "Blend_tests/#spot_*_MIN",
+    "Blend_tests/#spot_*_MAX"
+  ],
+  "expect": {
+    "Texture_signed_component_tests/txt_A8R8G8B8_SADD": 0,
+    "Texture_signed_component_tests/txt_A8R8G8B8_SREVSUB": 0
+  },
+  "expect_counts": {}
+}

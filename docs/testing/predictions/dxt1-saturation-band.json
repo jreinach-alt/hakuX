@@ -1,0 +1,24 @@
+{
+  "registered_utc": "2026-09-13T14:01:05Z",
+  "who": "dxt1-lane",
+  "issue": "6",
+  "prediction": "#6 second half. The DXT1 ordered dither SATURATES at both ends: its output is\nconfined to {0} u [11,250] u {255} on a 5-bit channel (R,B) and\n{0} u [5,252] u {255} on a 6-bit one (G). Anything it would place below the\nlow bound is emitted as 0, anything above the high bound as 255. Both bounds\nare the top of the dither window of the extreme non-saturating code and both\nare measured at both widths. The change is confined to dither_to_residue in\ns3tc.c, which only write_dxt1_block_to_texture calls, and it DELETES the\nv==0/v==255 clauses rather than adding a case.\n\nLEGS, and what world each fails in.\n\n1-4. The four non-bands DXT1 captures go BIT-EXACT: DXT1_plasma 384 -> 0,\nDXT1_plasma_alpha 448 -> 0, MIPDXT1_plasma 510 -> 0,\nMIPDXT1_plasma_alpha 595 -> 0. These fail if the rule is any of the seven\nrivals scored in docs/testing/dxt1_saturation_rule.py --rivals: \"code 1 is\nblack\" leaves 757 channel misses, \"code 1 does not dither\" 1,555, low limb\nonly 358, high limb only 1,026, \"clamp to the bounds instead of saturating\"\n26,384. Each rival predicts a DIFFERENT specific value on named texels, so a\nwrong rule cannot reach 0 here. Derived offline from these captures, so this\nis the rule doing what it was fitted to do.\n\n5. THE FALSIFIER: Texture_format/TexFmt_DXT1 goes BIT-EXACT, 4,487 -> 0.\nNothing about it was used to derive the rule. Its blocks come from a\ndifferent guest-side compressor (pbkitplusplus texture_stage.cpp: c0 = 0,\nc1 = the block's top-left pixel in 565, all-one or all-three indices, so\nevery block is punch-through), its quad is 480x360 rather than a 256x256\npoint magnification, and it is in a different suite. The world in which this\nleg fails is the one where the two bounds are a curve fit to the Texture DXT\nplasma and bands images. It also independently pins the 6-bit high bound of\n252, which the Texture DXT goldens cannot see because their green never\nexceeds 232.\n\n6. MIPDXT1_64x256_bands_dxt1 improves, carried by \"worse 0\" rather than by a\nvalue. Its level-0 quad -- 5,336 of its 7,594 px -- goes to 0 by the same\narithmetic, so the capture should land near 2,300 px and a CEILING of about\n2,600 is the honest bound. No value is registered for it because its L1 and\nL2 quads (2,148 px) are a tent-filtered MINIFICATION of the only non-square\nDXT1 texture, so their pixels are blends of expanded texels and the offline\nsimulation is invalid exactly there -- it reports them getting slightly\nworse. If bands comes back above ~2,600, check the level-0 quad in isolation\nbefore doubting the rule.\n\n7. SCOPING GUARD, not a falsifier: the ten DXT3 and DXT5 captures are\nbyte-identical. This is forced by the change's location -- dither_to_residue\nis only reached from the DXT1 writer -- so it asserts the edit is scoped,\nnot that the model is right. It has teeth anyway: applying the same remap to\nthose captures is measured to make them WORSE by +448 to +936 px each, and\ndecode_bc1_colors IS shared between all three formats, so a mis-scoped edit\nhas a known sign and would show here.\n\nMUST NOT MOVE: Texture_DXT/{DXT3,DXT5,MIPDXT3,MIPDXT5}_*, and worse == 0\nacross the whole disc.\n\nArms are parent and child of one commit on the same disc, so absolutes are\nvalid rather than deltas.",
+  "a_ref": "886fbd11ea",
+  "b_ref": "9ef86d78b7",
+  "must_not_move": [
+    "Texture_DXT/DXT3_*",
+    "Texture_DXT/DXT5_*",
+    "Texture_DXT/MIPDXT3_*",
+    "Texture_DXT/MIPDXT5_*"
+  ],
+  "expect": {
+    "Texture_DXT/DXT1_plasma_dxt1": 0,
+    "Texture_DXT/DXT1_plasma_alpha_dxt1": 0,
+    "Texture_DXT/MIPDXT1_plasma_dxt1": 0,
+    "Texture_DXT/MIPDXT1_plasma_alpha_dxt1": 0,
+    "Texture_format/TexFmt_DXT1": 0
+  },
+  "expect_counts": {
+    "worse": 0
+  }
+}

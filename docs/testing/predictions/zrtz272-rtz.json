@@ -1,0 +1,60 @@
+{
+  "registered_utc": "2026-09-26T05:56:16Z",
+  "who": "lane.zrtz272",
+  "issue": "272",
+  "prediction": "FF screen z rounds toward zero at every step (see docs/lanes/zdepth272/NOTES.md, docs/lanes/zrtz272/NOTES.md). Stated bands, judged by reading: z24_C?_FZn_Mffffff_ZB 144566 -> 47935..53852; Mc00000_ZB 4834 -> 989..1037; M800001_ZB 2868 -> 520..568; M400002_ZB 1506 -> 113..145; z16_C?_FZn_M00ffff_ZB 2840 -> 424..456. A value outside its band means host arithmetic + 3-step correction is not exact RTZ. Swap 165447 -> 0 closes #275.",
+  "a_ref": "b2cf2a6624",
+  "b_ref": "aa2b4e1582",
+  "must_not_move": [
+    "Blend_surface/*",
+    "Surface_format/*",
+    "W_buffering/WBuf*",
+    "W_buffering/*_V1_*",
+    "Depth_buffer/*",
+    "Color_zeta_overlap/ColorIntoZeta*",
+    "Color_zeta_overlap/Swap_ZB",
+    "Color_zeta_overlap/Adjacent*"
+  ],
+  "expect": {
+    "Color_zeta_overlap/Swap": 0,
+    "Depth_buffer_fixed_function/z24_C?_FZn_M000003": 0,
+    "Depth_buffer_fixed_function/z24_C?_FZn_M000003_ZB": 0,
+    "Depth_buffer_fixed_function/z24_C?_FZy_M*_ZB": 0,
+    "Depth_buffer_fixed_function/z24_C?_FZy_M??????": 3,
+    "Depth_buffer_fixed_function/z16_C?_FZn_M00[48c]00?_ZB": 0,
+    "Depth_buffer_fixed_function/z16_C?_FZn_M000003_ZB": 0,
+    "Depth_buffer_fixed_function/z16_C?_FZy_M00[048c]00?_ZB": 0,
+    "Depth_buffer_fixed_function/z16_C?_FZy_M00ffff_ZB": 392
+  },
+  "expect_counts": {},
+  "must_not_regress": [
+    "Depth_buffer_fixed_function/*",
+    "Color_zeta_overlap/ZetaIntoColor*",
+    "W_buffering/ZBuf*_V0_*",
+    "Depth_Clamp/*",
+    "Depth_function/*",
+    "Stencil/*",
+    "Stencil_func/*",
+    "ZPass_pixel_count/*",
+    "Clear/*"
+  ],
+  "disc": {
+    "suites": [
+      "Blend_surface",
+      "Clear",
+      "Color_zeta_overlap",
+      "Depth_Clamp",
+      "Depth_buffer",
+      "Depth_buffer_fixed_function",
+      "Depth_function",
+      "Stencil",
+      "Stencil_func",
+      "Surface_format",
+      "W_buffering",
+      "ZPass_pixel_count"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

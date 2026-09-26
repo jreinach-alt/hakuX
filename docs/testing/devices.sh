@@ -1,0 +1,289 @@
+#!/usr/bin/env bash
+#
+# The device table. Sourced by the dispatcher; runnable on its own to check.
+#
+#   . devices.sh && device_env <serial>     # exports SERIAL, DEVICE_*, LEASE
+#   devices.sh list                         # what is attached and known
+#
+# MEASURED 2026-09-12: the two handhelds ARE interchangeable.
+#
+# One identical disc -- `Texture DXT` + `Surface clip`, same ref, same hour,
+# one request pinned to each device -- produced **62 of 62 captures
+# byte-identical, zero differing**. Same kalama/Adreno 740, same Turnip build,
+# same output to the byte.
+#
+# THE SCOPE OF THAT CLAIM, because it has since been cited past its evidence.
+# The check ran `Texture DXT` + `Surface clip` on the STOCK disc. It has never
+# been run on the interactive disc, nor on 1,673 captures, nor -- and this is
+# the sharper limit, named by the lane that wanted to lean on it -- on any
+# capture class involving `_ZB` zeta READBACKS or 64x256 render-to-texture
+# blits. `Blend tests`'s TestDetailed does three RT blits per capture through
+# one guest address, so equivalence on colour-buffer suites says nothing about
+# readback timing, which is precisely the mechanism #50 is about.
+#
+# So a result from either device may be compared with a result from the other,
+# and the pairing machinery below is now an efficiency measure rather than a
+# correctness one -- FOR THE CAPTURE CLASSES THE CHECK COVERED. Outside them,
+# "the devices are equivalent" is a plausible assumption and not a measured
+# one, which is the distinction this file exists to keep. Two things nonetheless stay exactly as they were:
+#
+#   - every result still records device_label, because the claim is about
+#     these two devices on this driver today, and the cheapest way to discover
+#     that it has stopped being true is to have recorded which device produced
+#     what;
+#   - affinity.py still pins an A/B pair to one device, because keeping a
+#     comparison one-variable costs nothing and re-establishing equivalence
+#     after a driver change would cost a day.
+#
+# AND RE-RUN IT BEFORE ANY CROSS-DEVICE COMPARISON ON A CAPTURE CLASS IT DID
+# NOT COVER. This stopped being hypothetical on 2026-09-13: #50's pair was
+# split across the two handhelds by a scheduler fallthrough, five of 1,673
+# captures moved, and nothing here can say whether that is the disc or the
+# devices -- because the equivalence check has never run on render-to-texture
+# blits through one shared guest address, which is the mechanism under test.
+# If the same-device re-run holds, extending this check to that disc is a
+# PREREQUISITE for any cross-device Blend comparison, not a nicety.
+#
+# Re-run the check after any driver swap. The original wording follows, and
+# the reasoning in it is still why the check was worth running:
+# Both are kalama (Snapdragon 8 Gen 2, Adreno 740) on the same Turnip build,
+# which is why sharing a queue is plausible at all -- but "plausible" is not
+# "measured", and a scoreboard column that silently mixes two devices is the
+# same failure as one that silently mixes two binaries. That cost a day when
+# the binary was the variable; see the hw-commits-behind column.
+#
+# So every result records the serial it came from, and the pairing is verified
+# by running one identical disc on both and diffing the captures. Until that
+# passes, treat them as two lanes, not one pool.
+#
+# Paths differ per device and there is no discovering them: the SD card UUID
+# is per-card and the library layout is whatever the owner chose.
+set -u
+
+device_env() {
+    case "${1:?device_env needs a serial}" in
+    ee317437)   # Retroid Pocket Nova
+        export SERIAL=ee317437
+        export DEVICE_LABEL="nova"
+        export DEVICE_ISO_ROOT="/storage/E6C6-D7AA/Games/XBox"
+        ;;
+    bdc158a5)   # AYN Thor
+        export SERIAL=bdc158a5
+        export DEVICE_LABEL="thor"
+        export DEVICE_ISO_ROOT="/storage/388C-68F7/ROMS/xbox"
+        ;;
+    *)  echo "unknown device $1 -- add it to devices.sh rather than guessing" >&2
+        return 2 ;;
+    esac
+    export PKG="${PKG:-com.jreinach.hakux.debug}"
+    # Per-device lease. One lease file for two devices would have each
+    # dispatcher think the other's run was its own.
+    export HAKUX_DEVICE_LEASE="/tmp/hakux-device-lease.$DEVICE_LABEL"
+    return 0
+}
+
+# adb_call <seconds> <what> [--in FILE] <adb args...>
+#
+# ONE adb call against $SERIAL, with a deadline and a retry. Stdout and stderr
+# pass through; the exit status is adb's, or 124 when the deadline expired.
+#
+# THE DEADLINE. The dispatcher's install, run-as pref reads/writes and
+# force-stops had none. On 09-14 the Thor sat in one request from 06:29 until
+# 09-18 09:23, stopped between run 2 and run 3, and the queue waited four days
+# behind a call that never returned. run_disc.sh has bounded its own calls
+# since 09-10; this is the same rule for everything else. On expiry the call
+# is named on stderr and, when ADB_HUNG_FILE is set, in that file -- a file,
+# because most calls sit in a pipeline or a $(...), where a variable set here
+# would die with the subshell.
+#
+# THE RETRY. The host's adb is Windows adb.exe reached through WSL interop,
+# and interop sometimes fails (`<3>WSL (...) ERROR: UtilAcceptVsock:271:
+# accept4 failed 110`). That line is written past the call's own stderr
+# redirection, straight into the run log, so it cannot be matched here; the
+# exit status can. A failed call (not a hung one: a deadline is not retried,
+# it already cost its whole budget) is retried ADB_RETRIES times more, after
+# 2 s and then 6 s. Every call routed through here is safe to repeat: reads,
+# `install -r`, a push or pull to a fixed path, a force-stop, and a pref write
+# whose input is a file re-read on each try (--in), never a consumed pipe.
+adb_call() {
+    local secs="$1" what="$2" in=/dev/null rc try=0 out
+    shift 2
+    if [ "${1:-}" = --in ]; then in="$2"; shift 2; fi
+    out=$(mktemp "${TMPDIR:-/tmp}/adb_call.XXXXXX")
+    while :; do
+        timeout -k 5 "$secs" adb -s "$SERIAL" "$@" <"$in" >"$out"; rc=$?
+        if [ "$rc" = 124 ] || [ "$rc" = 137 ]; then
+            echo "adb_call: HUNG -- $what: no answer in ${secs}s" >&2
+            [ -n "${ADB_HUNG_FILE:-}" ] && echo "$what (no answer in ${secs}s)" >> "$ADB_HUNG_FILE"
+            rc=124; break
+        fi
+        [ "$rc" = 0 ] || [ "$try" -ge "${ADB_RETRIES:-2}" ] && break
+        try=$((try + 1))
+        local wait=$((try == 1 ? 2 : 6))
+        echo "adb_call: $what failed (exit $rc); retry $try of ${ADB_RETRIES:-2} in ${wait}s" >&2
+        sleep "${ADB_RETRY_SLEEP:-$wait}"
+    done
+    cat "$out"; rm -f "$out"
+    return "$rc"
+}
+
+device_default() {
+    # Resolve a serial when the caller gave none -- and REFUSE when the answer
+    # is ambiguous.
+    #
+    # Every script here used to say `adb devices | awk 'NR==2{print $1}'`,
+    # which means "whichever device adb happens to list first". With one
+    # handheld that is unambiguous. With two it is a coin flip decided by
+    # lexical order, and bdc158a5 (Thor) sorts before ee317437 (Nova) -- so
+    # the day a second device was attached, every one of those scripts
+    # silently changed which handheld it drives, with no error and no log
+    # line. A run against the wrong device does not fail; it produces a
+    # perfectly clean result from somewhere else.
+    #
+    # So: one device, use it. More than one, demand SERIAL. Guessing is the
+    # one thing not on offer.
+    local attached
+    attached=$(adb devices | tr -d '\r' | awk 'NR>1 && $2=="device"{print $1}')
+    local n; n=$(printf '%s\n' "$attached" | grep -c .)
+    if [ "$n" -eq 1 ]; then
+        printf '%s' "$attached"; return 0
+    fi
+    if [ "$n" -eq 0 ]; then
+        echo "no device attached" >&2; return 2
+    fi
+    {
+        echo "$n devices attached and SERIAL is not set; refusing to guess:"
+        printf '%s\n' "$attached" | sed 's/^/  /'
+        echo "re-run with SERIAL=<serial>, or see devices.sh list"
+    } >&2
+    return 2
+}
+
+# ---------------------------------------------------------------- the labels
+#
+# There are two kinds of execution target and only one of them is a handheld.
+#
+# POOLED labels are the handhelds in the table above. They are interchangeable
+# (within the limits stated at the top of this file), they are what
+# affinity.py's rule 3 hashes an unpinned A/B pair over, and an idle one may
+# take any free request.
+#
+# OFF-POOL labels are execution targets with NO SERIAL that are never chosen
+# for a request -- only rule 1, an explicit `--device`, reaches them. Today
+# that is `desktop`: this host's own xemu build.
+#
+# Why `desktop` is off-pool rather than a third row in the table:
+#
+#   - it has no adb serial, so `device_env` cannot key on one and
+#     `device_list` (which iterates `adb devices`) can never see it;
+#   - it is a DIFFERENT RENDERER. The handhelds run Vulkan on an Adreno 740;
+#     the desktop channel exists to run OpenGL on llvmpipe, which is the whole
+#     reason it is worth having. Two handhelds were measured byte-identical on
+#     62 of 62 captures before they were allowed to share a queue. The desktop
+#     has had no such check against either of them and cannot pass one: its
+#     captures are not expected to match the Adreno goldens at all.
+#
+# So the pooling decision here is not an optimisation, it is the same
+# correctness rule as the rest of this file -- a column that silently mixes
+# two renderers is worse than one that silently mixes two devices.
+
+device_pool_labels() {
+    # Derived from the table above rather than restated, so a third handheld
+    # added to device_env needs no second edit here. Anchored on the actual
+    # `export DEVICE_LABEL=` assignment: request.sh used to do this same sed
+    # with a leading `.*`, which would also match any prose or code mentioning
+    # the variable.
+    sed -n 's/^ *export DEVICE_LABEL="\([a-z0-9]*\)".*/\1/p' "${BASH_SOURCE[0]}"
+}
+
+device_offpool_labels() {
+    # Enumerated, because there is no table to derive them from -- an off-pool
+    # target has no serial by definition. affinity.py carries the same set as
+    # a constant (it must not depend on reading a file at claim time) and
+    # selftest.d/55-affinity-offpool.sh fails if the two disagree.
+    printf 'desktop\n'
+}
+
+device_all_labels() {
+    device_pool_labels
+    device_offpool_labels
+}
+
+device_is_pooled() {
+    device_pool_labels | grep -qx "${1:-}"
+}
+
+device_list() {
+    # tr -d '\r' is load-bearing: adb prints CRLF, so without it $2 is
+    # "device\r", nothing ever matches, and the list comes back empty rather
+    # than wrong -- which reads as "no devices attached". sweep_queue.sh has
+    # always stripped it; this did not, and silently listed nothing.
+    adb devices | tr -d '\r' | awk 'NR>1 && $2=="device"{print $1}' | while read -r s; do
+        if device_env "$s" 2>/dev/null; then
+            printf '%-12s %-6s %s\n' "$s" "$DEVICE_LABEL" "$DEVICE_ISO_ROOT"
+        else
+            printf '%-12s %-6s (not in the table)\n' "$s" "?"
+        fi
+    done
+}
+
+device_titles() {
+    # List the ISOs on one device, or on every attached device.
+    #
+    # WHY THIS IS HERE. A soak names a title by its EXACT filename --
+    # dispatcher.sh does `[ -f "$DEVICE_ISO_ROOT/$title" ]` and writes ERROR if
+    # it misses -- and nothing in this repository could tell you one. The two
+    # libraries are the owner's, laid out however the owner chose, and the
+    # naming does not follow from anything checked in: the Nova's root is
+    # `Games/XBox` while the Thor's is `ROMS/xbox`, and the one filename any
+    # document records ("Galleon (USA).xiso.iso") carries an `.xiso` infix that
+    # is part of the name rather than the extension.
+    #
+    # So a second title was a guess, and on 2026-09-12 five guesses in a row
+    # missed -- "Dead or Alive 3 (USA).xiso.iso", the same with `.iso`, the same
+    # without the region, plus JSRF, Psychonauts and Panzer Dragoon Orta. Each
+    # miss cost a queue claim, a cached-APK install and an ERROR, and none of
+    # them narrowed anything down. That is the cheapest possible thing to fix
+    # and it had simply never been needed until a question required a title
+    # other than Galleon.
+    #
+    # It is `ls`, and nothing else. No lease, no install, no `am start`, no
+    # input injection: it cannot disturb a run in progress, which is why it
+    # does not take the device lease and must not grow to anything that would.
+    # `devices.sh list` has always run `adb devices` from a caller's shell for
+    # the same reason -- a read-only query is not device work.
+    local want="${1:-}"
+    adb devices | tr -d '\r' | awk 'NR>1 && $2=="device"{print $1}' | while read -r s; do
+        ( device_env "$s" 2>/dev/null || exit 0
+          [ -z "$want" ] || [ "$want" = "$DEVICE_LABEL" ] || [ "$want" = "$s" ] || exit 0
+          echo "=== $DEVICE_LABEL ($s)  $DEVICE_ISO_ROOT"
+          # -1 so one name is one line even when a name contains spaces, which
+          # every one of them does. The names are printed verbatim: they are
+          # what --title wants, and quoting them here would mean the caller had
+          # to un-quote them again.
+          adb -s "$s" shell "ls -1 '$DEVICE_ISO_ROOT'" 2>/dev/null \
+              | tr -d '\r' | sed 's/^/  /'
+        )
+    done
+}
+
+# Run directly: print the table. Sourced: define the functions and return 0.
+#
+# The `&&` chain this replaces left a FALSE test as the last statement when the
+# file was sourced, so `. devices.sh` returned 1 -- and the documented usage
+# `. devices.sh && device_env <serial>` silently never ran device_env. Caught
+# by the device-setup session. dispatcher.sh was unaffected only because it
+# happens to call device_env on its own line.
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+    case "${1:-list}" in
+        list)   device_list ;;
+        titles) device_titles "${2:-}" ;;
+        labels) device_all_labels ;;
+        pool)   device_pool_labels ;;
+        offpool) device_offpool_labels ;;
+        *)      device_env "$1" && printf '%s %s %s\n' \
+                    "$SERIAL" "$DEVICE_LABEL" "$DEVICE_ISO_ROOT" ;;
+    esac
+else
+    return 0 2>/dev/null || true
+fi

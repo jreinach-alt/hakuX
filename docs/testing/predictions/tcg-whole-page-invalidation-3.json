@@ -1,0 +1,28 @@
+{
+  "registered_utc": "2026-09-13T15:25:00Z",
+  "who": "perf-tcg3",
+  "issue": "69,68",
+  "prediction": "ROUND THREE. Rounds one and two measured the retranslation counters with two of them pointed at the wrong events (#69): hakux_tb_generated incremented at the top of tb_gen_code and so counted CALLS, and hakux_tb_invalidated incremented before tb_phys_invalidate__locked and so counted VISITS, past neither early return. Their quotient was published as the 2.8:1 waste ratio that ranked performance-next-three.md's three levers. Round three is the first arm on a build where every field on the always-on line names its own event -- 'blocks discarded D of V visited, generated C of K calls' -- and where a deliberate impossible row, xx=, is emitted. Three 90s Crimson Skies soaks on ONE ref, one device (thor), read with docs/testing/perf/tcg_pages.py. The purpose is to PRODUCE THE CORRECTED WASTE RATIO, which nobody has, and to re-ask #68's premise check over live blocks only. LEGS. N1 THE CONTROL, and it gates every other leg: xx = 0 in every window. A live TB is findable in tb_ctx.htable under the hash of its current cflags so do_tb_phys_invalidate's qht_remove succeeds; a TB already carrying CF_INVALID is not findable, because CF_INVALID is an input to tb_hash_func and was clear at insertion. Live iff discarded, per visit. This FAILS at any nonzero value, and the world in which it fails is describable and not one this patch can force: the tier-1 soft invalidation in cpu-exec.c rehashing as well as setting the bit, a live TB absent from the htable, or anything clearing CF_INVALID without re-inserting. If N1 fails, the populations behind di, ai and visited are not what tb-maint.c says and NO ratio below may be quoted. N2 THE IDENTITY, aggregate: visits equals real discards plus already-invalid, with the residual under 2 percent of visits. A positive residual is tb_check_watchpoint traffic, which is counted by di and not by visits; a NEGATIVE residual cannot happen and would refute N1's model from the other side. N3 THE DIRECTION OF THE CORRECTION: waste (di/cg) is BELOW waste_legacy (visited/calls) measured on the same runs. This is not algebra: waste = waste_legacy * (1 - clog) * recycle, so with a recycle rate near 5 the corrected ratio comes out HIGHER than the retracted one whenever the clog is under 0.80. FAILS if waste exceeds waste_legacy, which would mean the page lists are not the thing inflating the old number and the recycle path is, and the correction then reads the opposite way round from how #69 describes it. N4 THE WASTE RATIO IS REPORTABLE AT ALL: the three runs' medians of waste span less than a factor of two, max over min. The measured floor on this rig is asymmetric -- ev/sp/ov reproduce within plus or minus 5 percent across runs but em and pr came in at 897/909/1844, a factor of two -- and di and cg are new quantities with no floor of their own. FAILS at a factor of two or worse, in which case the honest report is that a single-number waste ratio is not supportable on an unattended soak and only the direction in N3 is, which is itself the result. N5 #68's PREMISE CHECK, over live blocks only: sp_share, that is sp/(sp+ov), is at least 0.30. FAILS at or below 0.10. Round one registered this leg, got 1.000 in all 21 windows, and WITHDREW it, correctly: a page list clogged with already-invalidated TBs reports 100 percent spared for free, because a dead block has no reason to overlap the current write. N6 guards against repeating that. N6 THE DENOMINATOR, which is what makes N5 citable or not: the per-window median of sp+ov is at least 100, and sp+ov equals visits minus already-invalid exactly (the same live population, counted twice by two pieces of code). A share of 1.000 over a denominator of a handful of blocks a window is not a premise check however pure it looks, and if the live population is that small the answer to #68 is that its cost cannot be sized from this title at all. N7 ARM FEASIBILITY: blk is at least 1.00 in every window -- the void row of rounds one and two is gone -- and its median is at least 16 guest instructions, below which an 8-instruction cap is a no-op. N8 REPLICATION of the one clean result rounds one and two produced: pr_per_em stays within 0.95 to 1.05. Round one gave 1.000/1.000/1.000 with within-run 0.987 to 1.018. N9 THE COST OF THE INSTRUMENT: gfps ceiling (max and p90) is not below round one's 35/30. The patch adds one cflags test and one global compare per visited TB on a path that runs about 120 times a guest frame, so it should cost nothing measurable; a fall here says the instrument is changing what it measures. NOT FORCED BY THE PATCH: HAKUX_SMALL_BLOCK_INSNS is still 0, so N7 measures the baseline and not a clamp; the range test is untouched and still #ifndef XBOX, so N5 and N6 are properties of the guest; and N1 through N4 are properties of the pre-existing early returns, which this commit renames and instruments but does not move.",
+  "a_ref": "848f98a6a6",
+  "b_ref": "d287c512d9",
+  "must_not_move": [],
+  "expect": {
+    "N1_xx_every_window": 0,
+    "N2_visits_minus_di_minus_ai_abs_share_max": 0.02,
+    "N3_waste_below_waste_legacy": 1,
+    "N4_waste_run_median_max_over_min_below": 2.0,
+    "N5_sp_share_live_at_least": 0.3,
+    "N5_fails_at_or_below": 0.1,
+    "N6_sp_plus_ov_window_median_at_least": 100,
+    "N6_sp_plus_ov_equals_visits_minus_ai": 1,
+    "N7_blk_min_every_window": 1.0,
+    "N7_blk_median_at_least": 16,
+    "N8_pr_per_em_min": 0.95,
+    "N8_pr_per_em_max": 1.05,
+    "N9_gfps_max_at_least": 35,
+    "N9_gfps_p90_at_least": 30,
+    "noise_floor_ev_sp_ov_pct": 5,
+    "noise_floor_em_pr_factor": 2
+  },
+  "expect_counts": {}
+}

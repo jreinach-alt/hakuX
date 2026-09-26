@@ -1,0 +1,27 @@
+{
+  "registered_utc": "2026-09-14T04:33:09Z",
+  "who": "lane.padwrite",
+  "issue": "59",
+  "prediction": "ARM 3: #59 REDUCED TO THE HALF THAT MEASURED. Arms 1 and 2 were both PRE-REGISTERED and both FAILED, and they failed on disjoint mechanisms, which is what licenses keeping one and dropping the other rather than reverting the pair.\n\nWHAT THIS ARM CONTAINS. One change: pgraph_get_clear_color() hands every pad-bit colour format alpha 1.0, and vk/draw.c now substitutes the format's own constant -- 0 for a Z suffix, 1 for an O suffix -- at the three sites that program a clear. Nothing else. #48's readback swizzle is back in vk/texture.c, glsl/psh.c no longer stamps fragColor.a, and the alpha-equation override is gone from vk/draw.c.\n\nWHY THE DROPPED HALF IS DROPPED, MEASURED. Arm 1 (23be8223f5 -> 4381fae5f6) stamped the constant as the fragment's alpha. VK_BLEND_FACTOR_SRC_ALPHA and ONE_MINUS_SRC_ALPHA read that same value, so the stamp silently rewrote the RGB of every draw that blends on source alpha. The failure set had NO EXCEPTIONS: moved = { format has pad bits } AND { colour blend factor is SRC_ALPHA }. Blend surface has sixteen Add_SrcA_* captures, eight formats by two configs, and exactly the four pad formats moved, four of them from bit-exact; its sixteen DstAlpha_* captures, which never reference the source alpha, all held; Surface_clip, Texture_DXT, Texture_format and Texture_render_target moved zero of 143 captures. It is not an ordering bug inside the shader -- result.a is a linear combination of the source and destination alphas, so a constant 1 is not expressible in the fixed-function blend, and the route is dual-source blending, which needs a device feature vk/instance.c does not request.\n\nL1, THE SUBSTANTIVE LEG. Clear/SFC_X1R5G5B5_Z1R5G5B5 = 48, from 49,152 in the baseline (1789359225-padwrite59-base-1009294, thor). THE VALUE 48 IS NOT A FIT AND HERE IS WHY IT IS 48 RATHER THAN 0. That capture's baseline residual decomposes per channel as R 48, G 49,152, B 48, A 49,104: the green-and-alpha part is a 1555 pad bit landing in bytes 1 and 3 of an 8888 texel at max delta exactly 128, and the 48 px in red and blue were already there and are a different, small defect. Arm 2 -- the same clear change plus the dropped half -- measured exactly 48. My arm-2 leg said 0 because I read my own per-channel line as \"R and B bit-identical\" when it said 48; that was my arithmetic, not a surprise from the device, and this leg corrects it rather than widening it. What arm 3 actually predicts, and what is not settled by arm 2, is that REMOVING the shader stamp, the blend override and the readback swizzle leaves this capture untouched -- they cannot reach a surface written only by CLEAR_SURFACE, and the number says whether that reasoning holds.\n\nL2, THE CONTROL THAT MAKES L1 A COMPARISON. Clear/SCF_X1R5G5B5_O1R5G5B5 = 0, unchanged and bit-exact. Same test, same code path, same six clear colours, opposite constant, and bit-exact today precisely because alpha 1.0 is the O constant by coincidence. If this moves, the substitution is not selecting on the format.\n\nL3, THE TWO MECHANISMS MUST AGREE WHERE THEY OVERLAP. Clear/SCF_X8R8G8B8_{Z,O}8R8G8B8 = 81,840 each, unchanged. These are the pad captures whose 4-byte guest stride lets #48's readback swizzle fire, so with the swizzle restored AND the clear now storing the right constant, the two independently force the same sampled alpha and the capture must not move at all. Their alpha is already exactly right -- 0 differing alpha px against the golden in both -- and their whole 81,840 px residual is an unrelated clear-colour defect at max delta 158/159/204. This leg is the check that the clear substitution and the readback constant do not disagree: if they did, one of these two moves.\n\nL4, EVERYTHING ELSE. Clear/SFC_A8R8G8B8, Clear/SCF_R5G6B5 and both Clear/SCF_X1A7R8G8B8 rows bit-identical, together with Blend_surface/*, Surface_format/*, Surface_clip/*, Texture_DXT/*, Texture_format/* and Texture_render_target/* -- 217 captures with 14 of them named or covered above. Clear/SFC_A8R8G8B8 is on this list deliberately and is the sharpest member: it moved by 96 px in BOTH earlier arms, consistently, on a format with no pad bits at all. Neither arm changed anything that should reach it except the dropped half, so predicting it bit-identical here is a test of the attribution rather than a formality. If it moves again, the 96 px belong to the clear change and I have not understood them.\n\nWHAT THIS ARM DOES NOT CLAIM. It does not fix #59. The raster half of the write side is unimplemented and blocked on dual-source blending; with the readback swizzle restored, every pixel the raster never wrote still reads back the constant it should not. This is the clear half alone, worth 49,104 px on one capture, and it is landable on its own because it needs neither the shader nor the texture unit.",
+  "a_ref": "23be8223f5",
+  "b_ref": "55de5edfff",
+  "must_not_move": [
+    "Clear/SFC_A8R8G8B8",
+    "Clear/SCF_R5G6B5",
+    "Clear/SCF_X1A7R8G8B8_Z1A7R8G8B8",
+    "Clear/SCF_X1A7R8G8B8_O1A7R8G8B8",
+    "Blend_surface/*",
+    "Surface_format/*",
+    "Surface_clip/*",
+    "Texture_DXT/*",
+    "Texture_format/*",
+    "Texture_render_target/*"
+  ],
+  "expect": {
+    "Clear/SFC_X1R5G5B5_Z1R5G5B5": 48,
+    "Clear/SCF_X1R5G5B5_O1R5G5B5": 0,
+    "Clear/SCF_X8R8G8B8_Z8R8G8B8": 81840,
+    "Clear/SCF_X8R8G8B8_O8R8G8B8": 81840
+  },
+  "expect_counts": {}
+}

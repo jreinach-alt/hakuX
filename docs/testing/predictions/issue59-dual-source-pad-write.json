@@ -1,0 +1,36 @@
+{
+  "registered_utc": "2026-09-14T13:33:19Z",
+  "who": "lane.padwrite59",
+  "issue": "59",
+  "prediction": "#59 write side, dual-source separation. Arm A 2445a6ff46 (wave 70 tip) -> arm B fab34eb3ea.\n\nMECHANISM. The Z/O suffix on a colour surface format names what the RASTER STORES into the pad bits; the texture unit then reads the stored bytes plainly. psh.c stamps that constant as fragColor.a, writes the combiner's real alpha to source output index 1, and vk/draw.c gives the COLOUR blend SRC1_ALPHA / ONE_MINUS_SRC1_ALPHA in place of the guest's SRC_ALPHA while forcing the ALPHA blend to ONE/ZERO/ADD. vk/texture.c withdraws #48's read-side swizzle behind the same device condition, because with the bytes in memory correct a second correction stacks on a corrected value. instance.c enables dualSrcBlend where the feature bit AND maxFragmentDualSrcAttachments both allow it, and refuses to enable it otherwise rather than failing to start.\n\nNO ARM-1 NUMBER IS USED. Arm 1's absolutes were measured against a tree that no longer exists: arm 3's clear substitution (55de5edfff) has landed since, and two of the rows arm 1 moved were on the clear path it declared untouched. Arm A is run here for that reason and not out of habit.\n\nTHE TWO BOUND LEGS CANNOT BOTH BE SATISFIED BY ANY PARTIAL CHANGE, which is the point of registering them as a pair:\n\n  W1  Blend_surface/*DstAlpha* must not move, all 16. Eight are pad formats, and the texture.c comment records that these are the captures #48's override was ADDED for: without it DstAlpha_X_O1RGB5 and 1-DstAlpha_X_O1RGB5 went bit-exact -> 65,536 px, eight half-swatches whose displayed alpha is whatever the texture unit returns, our (85,85,85,255) against the golden's (255,255,255,255) -- the 0xFF555555 clear showing through an alpha of 0. Withdrawing the override is therefore only safe BECAUSE the stamp lands. A stamp that does not work fails this leg at 65,536.\n\n  W2  Clear/SFC_X1R5G5B5_Z1R5G5B5 = 48, NOT 0. Verified offline against the golden from arm 3's own capture rather than taken from the issue's prose: total 49,152 differing px decomposing as green-only 48 at max delta 128 and alpha-only 49,104, DISJOINT (intersection 0), with R and B bit-exact. On the 49,104 the golden holds {31,43,44,74,78,93} in six bands of 8,184 and we hold 0 on every one -- the exact signature of sampled_pad_alpha's ZERO, and nothing else. Withdrawing the override lets the fetched byte through; the 48 green px are arm 3's pre-existing residual, which this change does not touch, so the value is an intermediate one and 0 would be the wrong answer.\n\nDoing nothing passes W1 and fails W2. Withdrawing the override without a working stamp passes W2 and fails W1. Stamping without the dual-source separation is arm 1 and fails the Add_SrcA_* guards below. Only the whole mechanism passes all three.\n\nVALIDITY GATE, stated so a pass cannot be read off a moved baseline: arm A must read Clear/SFC_X1R5G5B5_Z1R5G5B5 = 49,152 and Blend_surface/*DstAlpha* = 0 on all 16. If it does not, W2's derivation is against a tree that has moved and the leg is measuring that rather than this change.\n\nTHE SET ARM 1 BROKE, bound as must_not_move: Blend_surface/X_ORGB8_Add_SrcA_* and X_ZRGB8_Add_SrcA_* went 0 -> 20,723 / 18,227 / 56,801 / 56,801 under arm 1, from bit-exact. ARGB8_ and R5G6B5_ have no pad bits and XA_* (X1A7R8G8B8) is deliberately out of the write side's scope with no override either, so those six are controls that must hold whatever happens.\n\nNOT BOUND, AND DELIBERATELY: Surface_format/Fmt_X8R8G8B8_* and Fmt_X1R5G5B5_*, Clear/SCF_X8R8G8B8_*, and the four 1555 Add_SrcA_* captures. These are where the benefit should appear, and naming an absolute for them would mean deriving it from arm 1 -- the stale-baseline failure this campaign has recorded three times. They are reported, not predicted. Blend_surface/X_O1RGB5_Add_SrcA_* and X_Z1RGB5_Add_SrcA_* are additionally expected to MOVE (1555 sampled through an 8888 view is where the withdrawn override was actively wrong), so binding them bit-identical would be the #13 wide-line mistake of writing must_not_move where must_not_regress was meant. ab_compare has no --must-not-regress flag, which is why they are prose.\n\nFAILS IF: the stamp does not reach the raster (W1 at ~65,536 on the four X_*1RGB5/X_*RGB8 DstAlpha pad rows); the dual-source substitution does not reach the colour blend (the eight Add_SrcA_* guards move, as they did in arm 1); the withdrawal does not take effect (W2 stays 49,152); or dualSrcBlend fails to enable on the Thor, in which case every leg passes trivially and the boot log says so -- read \"vk dualSrcBlend: enabled\" in the logcat before believing a pass.",
+  "a_ref": "2445a6ff46",
+  "b_ref": "fab34eb3ea",
+  "must_not_move": [
+    "Blend_surface/*DstAlpha*",
+    "Blend_surface/ARGB8_Add_SrcA_*",
+    "Blend_surface/R5G6B5_Add_SrcA_*",
+    "Blend_surface/XA_O1A7RGB8_Add_SrcA_*",
+    "Blend_surface/XA_Z1A7RGB8_Add_SrcA_*",
+    "Blend_surface/X_ORGB8_Add_SrcA_*",
+    "Blend_surface/X_ZRGB8_Add_SrcA_*",
+    "Surface_clip/*",
+    "Texture_DXT/*",
+    "Texture_format/*",
+    "Texture_render_target/*",
+    "Clear/C0*",
+    "Clear/SCF_X1R5G5B5_O1R5G5B5",
+    "Clear/SCF_X1A7R8G8B8_*",
+    "Surface_format/Fmt_A8R8G8B8",
+    "Surface_format/Fmt_B8",
+    "Surface_format/Fmt_G8B8",
+    "Surface_format/Fmt_R5G6B5",
+    "Surface_format/Fmt_X1A7R8G8B8_*"
+  ],
+  "expect": {
+    "Clear/SFC_X1R5G5B5_Z1R5G5B5": 48
+  },
+  "expect_counts": {
+    "worse": 0
+  },
+  "must_not_regress": []
+}

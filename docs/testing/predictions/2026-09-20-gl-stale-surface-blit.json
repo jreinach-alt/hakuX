@@ -1,0 +1,32 @@
+{
+  "registered_utc": "2026-09-20T08:06:29Z",
+  "who": "lane.remote",
+  "issue": "60",
+  "prediction": "A GL TEXTURE CACHE COHERENCE DEFECT, found while measuring #60 and not a\npad-bit defect at all. TextureBinding::data_hash describes the guest bytes a\nbinding was generated from; pgraph_gl_render_surface_to_texture() overwrites\nthe binding's pixels without touching it. The slow path then asks the hash\nwhether the binding matches VRAM, and when it does -- which it can, because\nthe hash is still an accurate description of bytes that are no longer in the\ntexture -- the blitted pixels are served instead. The fix forces\nregeneration whenever a binding with a nonzero draw_time is wanted as a VRAM\ntexture.\n\nWHAT IT WAS MEASURED ON. Blend_surface::DstAlpha_XA_O1A7RGB8, first swatch,\ninstrumented at the bind: recorded data_hash 141e1a7bae3fe174, live VRAM hash\n141e1a7bae3fe174, genuinely equal; vram[0] 00000000; glGetTexImage on the\nbound texture ffffff22; binding->draw_time 306824 where every other X1A7\nswatch reads 0.\n\nPREDICTED, exactly:\n\n  Blend_surface/DstAlpha_XA_O1A7RGB8   90,112 -> 81,920\n\n81,920 is not a modelled number, it is VULKAN'S CURRENT VALUE on this\ncapture. The claim is that GL becomes byte-identical to Vulkan here, and\nVulkan is what a renderer that does not serve a stale blit produces. The\nremaining 81,920 px is #60's pad-bit residual and this change does not touch\nit.\n\n  the ten X1A7 captures, GL total   458,042 -> 449,850, which is Vulkan's\n  GL vs Vulkan over the ten                16,384 px -> 0\n  whole disc GL vs Vulkan byte-identical   227/236 -> 228/236\n\nFAILS IF DstAlpha_XA_O1A7RGB8 is anything but 81,920, or if any of the other\nnine X1A7 captures moves at all: they are byte-identical to Vulkan today, so\na move means the discriminator caught something it should not have.\n\nTHE BLAST RADIUS IS NOT THE TEN, and must_not_move is deliberately NOT set\nover the disc. The defect is general -- any cache key shared between a\nsurface-to-texture test and a VRAM-texture test can hit it -- so other\ncaptures MAY move, and a move is a result rather than an accident. The\ndirection is what is predicted: NO CAPTURE MAY GET WORSE. An improvement\nanywhere else is this same defect found in a second place and must be named\nin the record with its capture and its delta; a regression anywhere\nfalsifies this file, because a binding that regenerates from VRAM when the\nguest asked for VRAM cannot be less correct than one that serves an\nunrelated blit.\n\nTHE UNCOMFORTABLE OUTCOME, named in advance. If DstAlpha_XA_O1A7RGB8 lands\nat 81,920 but a capture elsewhere regresses, the draw_time discriminator is\ncatching bindings the s2t branch legitimately owns -- the case to look at is\na key whose every draw takes the fast path, where forcing possibly_dirty now\nhashes VRAM that nothing reads. That costs time, not pixels, so a PIXEL\nregression there would mean draw_time is not the invariant this file claims.\n\nNOT PREDICTED: Vulkan, which has its own texture cache and is untouched;\nperformance, which this can only cost (one extra hash and one re-upload on\neach transition between the two sourcing paths for one key); and #60's\npad-bit residual, which is the 449,850 px that remain.",
+  "a_ref": "01047cf3",
+  "b_ref": "da9e02a2",
+  "must_not_move": [],
+  "expect": {
+    "Blend_surface/DstAlpha_XA_O1A7RGB8": 81920,
+    "Blend_surface/1-DstAlpha_XA_O1A7RGB8": 81920,
+    "Blend_surface/1-DstAlpha_XA_Z1A7RGB8": 65536,
+    "Blend_surface/DstAlpha_XA_Z1A7RGB8": 65536,
+    "Surface_format/Fmt_X1A7R8G8B8_O1A7R8G8B8": 16414,
+    "Surface_format/Fmt_X1A7R8G8B8_Z1A7R8G8B8": 32774
+  },
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Blend_surface",
+      "Blend_tests",
+      "Image_blit",
+      "Surface_format",
+      "Texture_format",
+      "Texture_render_target"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

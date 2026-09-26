@@ -1,0 +1,68 @@
+{
+  "registered_utc": "2026-09-26T09:58:02Z",
+  "who": "lane.zrtz272",
+  "issue": "272",
+  "prediction": "Arm 3: arm 2 (zrtz272-rtz2.json, FAIL 1 of 1255) re-registered on the same refs. Its one violated leg was must_not_move Blend_surface/X_O1RGB5_Add_SrcA_DstA 15016 -> 12274: that capture and R5G6B5_Add_SrcA_DstA each have exactly two images on disk, differing in one 128x112 block (x32..159, y92..203); the fix arm's image is byte-identical to five earlier captures from unrelated apks (padwrite59, pad59A x3, z-c866527e03), R5G6B5's two images occur within one apk (pshqueue base run1/run2), the test disables the depth test (blend_surface_tests.cpp SET_DEPTH_TEST_ENABLE false), and its sibling X_Z1RGB5_Add_SrcA_DstA with identical geometry was byte-identical across the arms. Those two captures are not guarded here; the other 30 Blend_surface captures stay must_not_move. Everything else is arm 2's: FF screen z rounds toward zero at every step except on F24 (arm 1 refuted F24: 20 z24 FZy captures 24 -> 403..406). Judged by reading: z24_C?_FZn_Mffffff_ZB 144566 -> 47935..53852; Mc00000_ZB 4834 -> 989..1037; M800001_ZB 2868 -> 520..568; M400002_ZB 1506 -> 113..145; z16_C?_FZn_M00ffff_ZB 2840 -> 424..456 (arm 2 read 47935, 989, 520, 113, 424). z16 FZy M00c000_ZB=1 and M00ffff_ZB=393 are arms 1 and 2's measured figures. Stencil_ZERO* is not guarded (0..40000 across runs of one apk). Swap 165447 -> 0 closes #275 (arms 1 and 2 both read 0).",
+  "a_ref": "6550967a5e",
+  "b_ref": "e603fb3540",
+  "must_not_move": [
+    "Blend_surface/*DstAlpha_*",
+    "Blend_surface/*_Add_SrcA_1-SrcA",
+    "Blend_surface/ARGB8_Add_SrcA_DstA",
+    "Blend_surface/XA_*_Add_SrcA_DstA",
+    "Blend_surface/X_ORGB8_Add_SrcA_DstA",
+    "Blend_surface/X_ZRGB8_Add_SrcA_DstA",
+    "Blend_surface/X_Z1RGB5_Add_SrcA_DstA",
+    "Surface_format/*",
+    "W_buffering/WBuf*",
+    "W_buffering/*_V1_*",
+    "Depth_buffer/*",
+    "Color_zeta_overlap/ColorIntoZeta*",
+    "Color_zeta_overlap/Swap_ZB",
+    "Color_zeta_overlap/Adjacent*"
+  ],
+  "expect": {
+    "Color_zeta_overlap/Swap": 0,
+    "Depth_buffer_fixed_function/z24_C?_FZn_M000003": 0,
+    "Depth_buffer_fixed_function/z24_C?_FZn_M000003_ZB": 0,
+    "Depth_buffer_fixed_function/z24_C?_FZy_M*_ZB": 24,
+    "Depth_buffer_fixed_function/z24_C?_FZy_M??????": 24,
+    "Depth_buffer_fixed_function/z16_C?_FZn_M00[48c]00?_ZB": 0,
+    "Depth_buffer_fixed_function/z16_C?_FZn_M000003_ZB": 0,
+    "Depth_buffer_fixed_function/z16_C?_FZy_M00[048]00?_ZB": 0,
+    "Depth_buffer_fixed_function/z16_C?_FZy_M00c000_ZB": 1,
+    "Depth_buffer_fixed_function/z16_C?_FZy_M00ffff_ZB": 393
+  },
+  "expect_counts": {},
+  "must_not_regress": [
+    "Depth_buffer_fixed_function/*",
+    "Color_zeta_overlap/ZetaIntoColor*",
+    "W_buffering/ZBuf*_V0_*",
+    "Depth_Clamp/*",
+    "Depth_function/*",
+    "Stencil/Stencil_REPLACE*",
+    "Stencil_func/*",
+    "ZPass_pixel_count/*",
+    "Clear/*"
+  ],
+  "disc": {
+    "suites": [
+      "Blend_surface",
+      "Clear",
+      "Color_zeta_overlap",
+      "Depth_Clamp",
+      "Depth_buffer",
+      "Depth_buffer_fixed_function",
+      "Depth_function",
+      "Stencil",
+      "Stencil_func",
+      "Surface_format",
+      "W_buffering",
+      "ZPass_pixel_count"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "/home/justin/hakux-work/dispatch/results/1790410947-arms-zrtz272-base-885745/request.json",
+    "source_request": "1790410947-arms-zrtz272-base-885745"
+  }
+}

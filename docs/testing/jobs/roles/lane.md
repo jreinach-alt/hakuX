@@ -1,0 +1,116 @@
+# Role: lane
+
+You are a lane: one branch, one issue (or one brief), one PR. The brief
+you were given says what to do; this file says what "done" means and what
+every lane owes the rest of the harness, because a lane that finishes work
+nobody can find has not finished.
+
+## Your PR is your claim. Open it first, not last
+
+Within your first few actions: `git push -u origin <your branch>` and
+`gh pr create --draft --base master` with this body, filled in, and keep it
+current as your files and prediction change:
+
+```
+Lane: <name>            Issue: #<n> [#<m>]
+Base: master @ <sha you branched from>
+Files: <comma-separated paths you will edit, or NONE for analysis-only>
+Prediction: docs/testing/predictions/<file>.json @ <sha256>   (or "none: analysis-only", or "none: no arm")
+Needs device: yes|no    Needs NDK: yes|no
+
+<what you found / changed, in a few paragraphs; tables for numbers>
+```
+
+The board reads `Files:` from every open PR to keep two lanes off one file.
+A path you edit that is not on that line is a collision nothing can see.
+
+## Predictions: register before, commit with the refs, never rebase after
+
+- A change that claims to move pixels registers its prediction with
+  `docs/testing/ab_compare.py --register` BEFORE any device run, names
+  concrete `a_ref`/`b_ref` shas that exist on your branch, and is
+  committed in `docs/testing/predictions/` in the same push as (or after)
+  the commits it names. **Committing and pushing it is how the arm gets
+  queued**: the arms job on the host runs every registered prediction whose
+  refs are live and posts the verdict on your PR as a `[job.arms]` comment.
+  You may still queue it yourself with `ab_run.sh` when you need the result
+  to continue; the arms job will not run it twice.
+- Do not rebase after registering. Bring `master` in with `git merge`, and
+  if you must re-register, re-register on the new refs.
+- A prediction whose keys match no golden is refused at queue time. Keys are
+  `Suite_dir/TestName`, underscores in the suite, one slash.
+
+## Definition of done (all of these, or say which is missing)
+
+1. Your branch is pushed and `preflight.sh` passes on it (the tracker gate
+   is the board's; `--allow-tracker` is fine when only that fails).
+2. The PR body's `Files:` matches `git diff --stat origin/master...HEAD`.
+3. `docs/lanes/<your lane name>/NOTES.md` records what you tried, what you
+   measured, and what the next lane should not repeat. **Not the branch
+   root**: every lane writing root `NOTES.md` means the first fold lands one
+   on master and every fold after it conflicts on that exact path forever.
+   One file per lane cannot collide, and the whole set stays readable after
+   the folds.
+4. The prediction, if any, is registered and committed with its refs, or
+   the body says `Prediction: none` and why.
+5. Then **mark the PR ready**: `gh pr ready <number>`. A draft is "still
+   working"; a ready PR is what the board audits and folds, and a draft is
+   skipped by `board.sh`, `fleet.py` and `fold.sh` alike. So do not end a
+   session on a finished PR still in draft.
+
+   **If you are waiting, that is a finished session too -- say so and stop.**
+   CI on a head you just pushed is ~10 minutes, a device arm is ~90, an audit
+   is a different session entirely, and you have no way to sleep. Do not burn
+   turns polling until the turn cap cuts you off; do not end silently either,
+   because until 2026-09-19 that left five finished, green PRs in draft with
+   no actor that could ever touch them. Instead: post a PR comment starting
+   `[lane.<name>] waiting:` that names what you are waiting for and what
+   signal will resolve it, write it in `NOTES.md`, and stop.
+
+   `jobs/handback.sh` is the actor for that state. Every fold tick it looks
+   for a draft lane PR whose `hakux-lane-<name>` unit is not running, and
+   resumes you with the resolved state in your brief -- CI is GREEN on this
+   sha, or your arm was judged and the verdict is in a `[job.arms]` comment.
+   **A resume for a wait does not count against your attempts**, so waiting
+   costs you no part of the escalation budget. It resumes once per head sha
+   per cause, and it will never mark your PR ready for you: nothing but you
+   can check items 1-4.
+
+   **Never end a session waiting on your own background task.** You are a
+   headless `claude -p` session: when your turn ends, every
+   `run_in_background` command and every Monitor you started ends with it,
+   and the notification you are waiting for never comes. On 2026-09-25 three
+   lanes (titlerun, sweepcover, blankrule297) sat idle for 3 to 8 hours that
+   way. Run long work in the foreground, in chunks under the Bash tool's
+   10-minute limit, or detach it with
+   `setsid nohup <cmd> > <log in your worktree> 2>&1 < /dev/null &` and poll
+   that log until it is done, all in this session. A `waiting:` comment names
+   something OUTSIDE your session: a dispatch request id, a PR check, a board
+   grant, another PR's fold. It never names your own task. `handback.sh`
+   honours a `waiting:` or `blocked:` as your newest word. With neither, and
+   nothing of yours on a device, it resumes an idle lane about 40 minutes
+   after its session ended, once per session end, whether its PR is a draft
+   or absent.
+6. If the brief cannot be done as written, say so in your `NOTES.md` and in a
+   PR comment starting `[lane.<name>] blocked:`, with the measurement or
+   decision that would unblock it. That is a finished outcome.
+
+## Never
+
+- Put the retired **skip-ci marker** in a commit message. It is not a hint to
+  CI, it is the absence of CI: GitHub creates no workflow run at all, the PR's
+  check rollup comes back empty, and the fold job cannot fold a head that
+  nothing has built -- so the PR waits, silently, until a person pushes over
+  it. That is what stalled #101, #123, #129 and #139. `AGENTS.md`'s transition
+  note retired the marker; CI is free on this public repository and now runs
+  on every PR, and it is the gate of record.
+- **Quote** that marker, in a commit message, for any reason -- including
+  explaining this rule. GitHub matches it anywhere in the message, body
+  included, so the empty commit pushed to restore a missing run suppressed
+  that very run on 2026-09-18 and cost another cycle. Name it in prose, as
+  this file does, or push `git commit --allow-empty -m 'ci: build this head'`.
+- Edit `docs/testing/nv2a_issues.toml` or `territory.toml`.
+- Push to `master` or to any branch but your own.
+- Run git in a tree that is not your worktree.
+- Touch a device directly. `request.sh` and `ab_run.sh` are the only way in.
+- Rewrite published history on your branch after a prediction names it.

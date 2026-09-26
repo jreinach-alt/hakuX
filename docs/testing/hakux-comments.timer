@@ -1,0 +1,20 @@
+[Unit]
+Description=hakuX issue-comment sweep, hourly
+
+[Timer]
+# HOURLY AND OFF THE MINUTE MARK. Lane reports land in issues continuously and
+# the cost of a missed one is a lane's finished work going unabsorbed -- which
+# is what happened for a week -- so the window is an hour rather than a day.
+# :17 because every scheduler on the planet lands on :00.
+OnCalendar=*-*-* *:17:00
+# SAME REASON AS THE NIGHTLY AND THE DX PASS. This host is WSL2 and is shut
+# down whenever the user closes it, so a plain hourly timer silently misses
+# every hour the box was not running -- and an unswept hour looks exactly like
+# an hour with no comments. Persistent=true fires once on the next boot if the
+# window was missed, and the sweeper's own watermark then covers the whole gap
+# rather than just the last hour.
+Persistent=true
+Unit=hakux-comments.service
+
+[Install]
+WantedBy=timers.target

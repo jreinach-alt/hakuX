@@ -1,0 +1,23 @@
+{
+  "registered_utc": "2026-09-13T12:39:37Z",
+  "who": "perf-tcg2",
+  "issue": "",
+  "prediction": "ROUND TWO of the premise check. Round one (predictions/tcg-whole-page-invalidation.json, ref 6b574e163e, three Crimson Skies soaks on the thor) returned an arithmetically impossible row -- mean instructions per generated block of 0.38 -- and that row was the instrument, not the emulator. Two pre-existing counters were found to be measuring the wrong events: hakux_tb_generated counts CALLS to tb_gen_code rather than generations (the recycle path never reaches codegen), and hakux_tb_invalidated counts VISITS rather than discards (do_tb_phys_invalidate early-returns before tb_remove when qht_remove fails). Consequently round one's headline, sp_share = 1.000 in every window, was measured over a population that includes already-invalidated TBs left clogging the page lists, which cannot overlap the current write and so report as spared for free. That figure is withdrawn, not cited. Round two adds cg= (real generations), di= (real discards), and restricts the sp/ov overlap question to blocks without CF_INVALID. Judged on hakuX-pages via docs/testing/perf/tcg_pages.py. Three soaks, one ref, thor, Crimson Skies, 90s -- same shape as round one so the noise floor carries over. LEGS. M1 THE IDENTITY, and it gates everything else: visits (tossed) equals real discards (di) plus already-invalid (ai), residual zero. If it does not close, the counters are still measuring the wrong events and no other leg may be read. M2 THE EXPLANATION for round one's em/ev of 0.06: ai/tossed is at least 0.80. FAILS at or below 0.20, which would mean the visits really were live discards, the page lists are not clogged, and round one's sp_share stands as a genuine premise check after all -- in which case my retraction of section 2's premise is right for the wrong reason and needs restating. M3 THE PREMISE CHECK, now over live blocks only: sp_share is at least 0.30. FAILS at or below 0.10. This is the leg round one was supposed to answer. M4 REPLICATION of the one clean round-one result: pr_per_em stays within 0.95 to 1.05. Round one gave 1.000/1.000/1.000 with within-run 0.987-1.018, so this leg is a check that the split above did not disturb it. M5 ARM FEASIBILITY: blk is at least 1.00 in every window (the void row is gone) and its median is at least 16 guest instructions, below which an 8-instruction cap is a no-op. NOISE FLOOR, measured in round one and registered here so it is not chosen later: ev/sp/ov reproduce within +/-5 percent across runs, but em and pr came in at 897/909/1844 -- a factor of two -- so any claim about the arming-walk rate must beat 2x on an unattended soak. NOT FORCED BY THE PATCH: HAKUX_SMALL_BLOCK_INSNS is still 0, so M5 measures the baseline rather than my own clamp, and M2/M3 are properties of the guest and of the pre-existing early return.",
+  "a_ref": "6b574e163e",
+  "b_ref": "d0dc45a130",
+  "must_not_move": [],
+  "expect": {
+    "M1_visits_equals_di_plus_ai_residual": 0,
+    "M2_ai_over_tossed_at_least": 0.8,
+    "M2_fails_at_or_below": 0.2,
+    "M3_sp_share_live_at_least": 0.3,
+    "M3_fails_at_or_below": 0.1,
+    "M4_pr_per_em_min": 0.95,
+    "M4_pr_per_em_max": 1.05,
+    "M5_blk_min_every_window": 1.0,
+    "M5_blk_median_at_least": 16,
+    "noise_floor_ev_sp_ov_pct": 5,
+    "noise_floor_em_pr_factor": 2.0
+  },
+  "expect_counts": {}
+}

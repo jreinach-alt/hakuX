@@ -1,0 +1,13 @@
+{
+  "registered_utc": "2026-09-13T00:38:19Z",
+  "who": "f24-agent (recorded post-hoc by orchestrator)",
+  "issue": "16",
+  "prediction": "class B's 25,915 px/half -> 0; class A's 20,736 -> unmoved; the 705, the 2,024, and every other corpus capture byte-identical. Cn and Cy are identical to the pixel here, so both halves move together. Net -51,830 px across the cell, nothing worse anywhere. FALSIFIER: if class B does not go to zero, the subnormal-flush mechanism is wrong and the change should come straight back out.",
+  "a_ref": "4946433d87",
+  "b_ref": "a1fe59400e",
+  "must_not_move": [
+    "Depth_buffer_fixed_function/*"
+  ],
+  "expect": {},
+  "expect_counts": {}
+}

@@ -1,0 +1,17 @@
+{
+  "registered_utc": "2026-09-13T00:40:34Z",
+  "who": "line2d-agent (recorded post-hoc by orchestrator)",
+  "issue": "2d-lines",
+  "prediction": "2D_Lines goes 1/13 -> 13/13 exact, 3,257 differing px -> 0. 222_222-222_222 is already exact and must stay 0. Image blit and Texture Framebuffer Blit must not move at all. Least certain: the two 627-px diagonals depend on Bresenham tie-breaking, and the 555/565 pair on a bit-replication rule that is INFERRED from the captures, not measured.",
+  "a_ref": "bb69716f7f",
+  "b_ref": "b6a35b3439",
+  "must_not_move": [
+    "Image_blit/*",
+    "Texture_Framebuffer_Blit/*"
+  ],
+  "expect": {
+    "2D_Lines/*222_222-222_222": 0
+  },
+  "expect_counts": {},
+  "note": "The glob was first written as '2D_Lines/222_222-222_222' from a truncated TSV column and matched no capture, which ab_compare correctly reported as a violated check. The capture's full name is 2DLine-24-C00FFFFFF-222_222-222_222. Corrected here; the code was never in question."
+}

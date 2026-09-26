@@ -1,0 +1,38 @@
+{
+  "registered_utc": "2026-09-25T15:07:25Z",
+  "who": "lane.clrwin88",
+  "issue": "88",
+  "prediction": "RE-REGISTERED 2026-09-25 by lane.clrwin88 onto a_ref 0a4e284536 (master, carrying #237's #91 fix 9de95de849) -> b_ref 78a9609125 (master + #88's four-line decline). The arms differ in vk/surface.c alone: the zeta-declines-colour early return at the `surface == other` site of update_surface_part() plus comment text. The gate half of #66 is NOT ported (Vulkan's gate is already `!current_binding || (upload && ...)`, 9161e3e14a). The bound values are carried from the prior registration (lane.blitsafe, 2026-09-19), not re-derived: they are the goldens' own non-colour-write populations, ColorIntoZeta_ZB 307200-175705-120729 = 10766 and ZetaIntoColor 307200-201641-30592-3304 = 71663, and both have been hit to the digit twice on the device: the old 3-suite arm at 67dc7724ee, and both arms of #237 (1790328745/1790328746, apk 3a14bb895983 and 3c0863f5c029, status ok on all 11 captures), which carried this exact decline. ARM A IS THE CHECK on the pre-fix values: master should reproduce ColorIntoZeta_ZB 131495 and ZetaIntoColor 102255; if it does not, the claim is the deltas (-120729, -30592) and a miss on an absolute is a base effect, not the mechanism failing. MUST NOT MOVE: Color_zeta_overlap/Swap at 165447 in both arms. On master that is the #237 background word (FE242424 x 139303 right; the 165447 is the quad's E91A24 vs E91624 depth-precision gap under both policies). Before #237 this leg failed (304750) under the decline; #237's fix arm held it at 165447 with the decline in both arms. The world in which it fails: #237's fix does not cover every zeta upload order this decline produces on master's current tree. Also must_not_move: the other six Color_zeta_overlap captures and the two out-of-suite controls Color_Zeta_Disable/MaskOff_ZB and Null_surface/XemuBug893 (the edited function is shared surface code; queue as the three-suite disc). SWAP_ZB, PREDICTED AS AN ABSOLUTE: 0 in arm B (and 0 in arm A). It scored 0 with status ok in both #237 arms and on six earlier handheld runs; the #88 tracker's 141125 is the desktop/lavapipe iso_surf1 figure and equals the golden's own black-pixel count. A reading of 141125 here would mean nothing rendered in that region, not a regression by this change. Check the status column first: an unreadable capture scores 0 and would read as a pass. THE COUNTER, the world in which must_move fails because the site never fires: the existing [surf91] probe at the site logs declines=N on Android unconditionally. Predicted: arm B logs [surf91] in two frames (ColorIntoZeta_ZB's and ZetaIntoColor's tests) with final declines=3, as both #237 arms did; arm A also reaches the site (the probe fires before master's unbind). declines absent or 0 in arm B with the must_move legs unmoved means the site did not fire, not that the policy is wrong. OPEN READING, NOT CLAIMED: the early return skips the download tail that clears pg->surface_zeta.draw_dirty, so a zeta-writing draw while zeta is absent can later create and download a fresh zeta image once colour moves away. #237's arms and the old 67dc7724ee arm, all with this return, show no capture moved by it on this disc. Beyond this disc it is unmeasured.",
+  "a_ref": "0a4e284536",
+  "b_ref": "78a9609125",
+  "must_not_move": [
+    "Color_zeta_overlap/Swap",
+    "Color_zeta_overlap/AdjacentWithAA",
+    "Color_zeta_overlap/AdjacentWithClipOffset_l",
+    "Color_zeta_overlap/AdjacentWithClipOffset_sz",
+    "Color_zeta_overlap/ColorIntoZeta",
+    "Color_zeta_overlap/ZetaIntoColor_ZB",
+    "Color_Zeta_Disable/MaskOff_ZB",
+    "Null_surface/XemuBug893"
+  ],
+  "expect": {
+    "Color_zeta_overlap/ColorIntoZeta_ZB": 10766,
+    "Color_zeta_overlap/ZetaIntoColor": 71663,
+    "Color_zeta_overlap/Swap_ZB": 0
+  },
+  "expect_counts": {
+    "worse": 0,
+    "better": 2
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Color Zeta Disable",
+      "Color zeta overlap",
+      "Null surface"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
