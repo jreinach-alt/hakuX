@@ -11,7 +11,8 @@ count, in first-seen order, so a gap's composition can be read.
 import collections
 import sys
 
-WEIGHT0 = {0x100, 0x294, 0x17FC}
+WEIGHT0 = {0x100, 0x110, 0x194, 0x294, 0x17FC,
+           0x1E94, 0x1E98, 0x1E9C, 0x1EA0, 0x1EA4}
 
 
 def weight(m):

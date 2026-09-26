@@ -173,7 +173,8 @@ static void pgraph_init_reg_category_table(void)
 /*
  * #53: how far one Kelvin method advances the lighting unit's six-slot ring
  * (PGRAPHState.ff_lit_ring). Measured on the console, one method per case
- * between single-quad lit program draws (docs/testing/xbox-ringw-2026-09-26.md):
+ * between single-quad lit program draws (docs/testing/xbox-ringw-2026-09-26.md,
+ * and the test-boundary methods in xbox-ringw-boundary-2026-09-26.md):
  *
  *   method                                       weight   mapped here as
  *   NOP 0x100                                    0        NV097_NO_OPERATION
@@ -185,9 +186,13 @@ static void pgraph_init_reg_category_table(void)
  *   SET_TRANSFORM_CONSTANT, one vec4 (4 words)   +1       +1 on the vec4's 4th word
  *   one pb_fill                                  5        5 words at +1 (see below)
  *   MATERIAL_ALPHA_BACK + 6 SPECULAR_PARAMS_BACK +1       7 words at +1, 7 = 1 mod 6
- *   SET_TRANSFORM_CONSTANT_LOAD                  0        listed; from M7's first
- *                                                         draw, the one method
- *                                                         its setup adds to M0's
+ *   SET_TRANSFORM_CONSTANT_LOAD                  0        listed
+ *   WAIT_FOR_IDLE                                0        listed
+ *   SET_CONTEXT_DMA_COLOR, same value            0        listed
+ *   SET_TRANSFORM_EXECUTION_MODE, same value     0        listed
+ *   SET_TRANSFORM_PROGRAM_CXT_WRITE_EN, _LOAD,
+ *   _START, same value                           0        listed
+ *   FLIP_INCREMENT_WRITE + FLIP_STALL            +2       default, +1 each
  *
  * A pb_fill is two headers carrying five words: CLEAR_RECT_HORIZONTAL and
  * _VERTICAL, then ZSTENCIL_CLEAR_VALUE, COLOR_CLEAR_VALUE and CLEAR_SURFACE
@@ -202,20 +207,21 @@ static void pgraph_init_reg_category_table(void)
  * analogy, not measured. Methods on other classes (2D, blit) do not reach
  * the 3D front end and weigh 0.
  *
- * NOT YET RIGHT: with these weights every first draw after a test boundary
- * starts 2 slots past silicon's, on all 15 console cases and both Specular
- * suites, while every step within a test is exact. Each of those gaps
- * carries the same fixed harness set once -- WAIT_FOR_IDLE x3,
- * FLIP_INCREMENT_WRITE, FLIP_STALL, SET_CONTEXT_DMA_COLOR and the four
- * SET_TRANSFORM_EXECUTION_MODE/_PROGRAM_CXT_WRITE_EN/_PROGRAM_LOAD/
- * _PROGRAM_START writes -- so no capture separates which of them is
- * mis-weighed (docs/lanes/ring53impl/NOTES.md).
+ * The flip pair is the one row not isolated on silicon: a FLIP_STALL between
+ * draws waits for a flip. Every test boundary issues the pair once and
+ * nothing else issues it, and with every other boundary method measured the
+ * boundary gaps close with the pair at +2 together, which the default gives.
+ * Only the pair's sum is visible, so which of the two carries it is not.
  */
 static inline void pgraph_ring_weigh(PGRAPHState *pg, uint32_t method)
 {
     if (method == NV097_NO_OPERATION || method == NV097_SET_LIGHT_CONTROL ||
         method == NV097_SET_BEGIN_END ||
-        method == NV097_SET_TRANSFORM_CONSTANT_LOAD) {
+        method == NV097_SET_TRANSFORM_CONSTANT_LOAD ||
+        method == NV097_WAIT_FOR_IDLE ||
+        method == NV097_SET_CONTEXT_DMA_COLOR ||
+        (method >= NV097_SET_TRANSFORM_EXECUTION_MODE &&
+         method <= NV097_SET_TRANSFORM_PROGRAM_START)) {
         return;
     }
     if ((method >= NV097_SET_VERTEX3F && method < 0x16D0) ||
