@@ -25,6 +25,10 @@
 - **hakuX** carries one scalar, the last vertex. It lands on the same values
   as silicon's slots at a single colour, so it is right in direction and flat
   in detail.
+- **The repeat** ([follow-up](xbox-fogprime-repeat-2026-09-25.md)): a second
+  session with a different history reproduced all 11 priming captures bit
+  for bit, so the slots and the phase are deterministic. It also showed V3
+  holding in the composition it needs.
 
 ## What ran
 
@@ -47,7 +51,7 @@
 | **V0** A0 in 29.63–35.20 | **holds.** A0's three colours, 30/31/32, all fall inside | the session is not void |
 | **V1** the FF captures identical outside the label | **holds.** A1, A2 and A4 against A0: 0 px each | the rotation reordered and did nothing else |
 | **V2** each VS region is one colour over 181,016 px | **fails.** 2 to 5 colours per capture (below) | voids the single-value reading |
-| **V3** the six radial captures equal their goldens | **fails**, 181,016 px each. This is the run's composition and **my registration error** (below) | not evidence that the rig moved |
+| **V3** the six radial captures equal their goldens | **fails**, 181,016 px each. This is the run's composition and **my registration error** (below). It **holds** in the follow-up, where Fog gen's FF tests run first | not evidence that the rig moved |
 
 **V3 is my error, not the rig's.** The golden radial captures were recorded
 with Fog gen's 30 fixed-function tests running first, and the value they show
@@ -60,8 +64,9 @@ reproducible on a disc with the same composition".
   but it does not test the rig.
 - **Where the rig was tested.** The same console reproduced all six goldens
   bit-exactly in PR #340's full `6743b6a` run, where the suite ran in order.
-- **What would test this binary** is a run with the FF tests first
-  (follow-ups).
+- **Since run on this binary** with Fog gen's FF tests first: all six are
+  bit-identical to their goldens
+  ([follow-up](xbox-fogprime-repeat-2026-09-25.md)). V3 holds.
 
 ## Silicon against the models
 
@@ -189,12 +194,15 @@ is not known: this run gives one session and one value.
   windows whose tops are 101.85 and 226.92. I noticed this only after the
   dry run and have not re-scored anything with it.
 
-## Follow-ups, not run
+## Follow-ups
 
-1. **V3 on this binary.** Run Fog gen's FF tests, then its six VS radial tests
-   (predicted: bit-identical to their goldens), then the priming suite again.
-   The repeat also measures whether the six values, and the phase, reproduce
-   from run to run.
+1. **Done:** V3 on this binary, and the repeat
+   ([follow-up](xbox-fogprime-repeat-2026-09-25.md)). V3 holds, and the slots
+   and phases reproduce bit for bit. That run also found the session's first
+   planar-fog test rendering with half its fog coordinate.
+
+**Not run:**
+
 2. **What moves the phase.** It moved 2 from A4pad to A4radial,
    and 3 between the A0 and A3 tests. A variant that changes the pad draw's
    quad count separates per-vertex, per-quad and per-draw counting. This needs
