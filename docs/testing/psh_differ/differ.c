@@ -182,6 +182,7 @@ static const Field fields[] = {
     F(window_clip_count,     K_INT, 0, 8),
 
     F(smooth_shading, K_BOOL, 0, 1),
+    F(fixed_function, K_BOOL, 0, 1),
     F(depth_clipping, K_BOOL, 0, 1),
     F(z_perspective,  K_BOOL, 0, 1),
     F(noperspective,  K_BOOL, 0, 1),
