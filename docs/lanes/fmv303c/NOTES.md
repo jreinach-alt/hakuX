@@ -15,6 +15,11 @@ tested against fixtures but not committed, and no prediction was registered,
 so nothing was queued. Attempt 2 (handback resume) found 0.5 still open,
 merged master, committed the judge and these notes, and did not register the
 arm: committing a prediction queues it on the device, which the park forbids.
+Attempt 2 did finish, as blocked (PR comment `[lane.fmv303c] blocked:`); the
+handback job resumed it on the quiet clock at 23:55Z. Attempt 3 found #433
+still open and the `blocked:after-0.5` label still on #439; master (110
+commits ahead, #396 folded) merges clean against this branch, so the merge is
+left to the arm step, where it has to precede registration anyway.
 
 ## What the branch carries
 
