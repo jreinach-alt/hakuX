@@ -3,6 +3,12 @@
 **Status: PRE-REGISTERED.** This file, its scorer and the tests patch were
 committed and pushed before the emulator dry run and before the console run.
 
+**Result (2026-09-25):** M is COLLAPSE and C1 holds. But the m11 = 5.0 image
+is all horizontal stripes and cannot show #10's horizontal flip, so the
+inference registered for COLLAPSE below is withdrawn. #10's `Bump env lum`
+control is blind the same way. See
+[`xbox-bumpm11-2026-09-25.md`](../../testing/xbox-bumpm11-2026-09-25.md).
+
 ## The question
 
 #10's Y16 class covers `BumpMap_Y16` and `BumpMap_Y16_L`, 22,374 px each
