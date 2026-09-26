@@ -559,6 +559,43 @@ triggers the re-pull.
 Defect 19 (soak liveness) moved to lane.titlerun, so no shared adb wrapper
 was added here.
 
+## Defect 26: concurrent preflights read each other's reports
+
+The fold refused PR #367 twice with `psh_differ report FAILED / produced no
+report`, on a sha that passes alone. preflight.sh wrote every log to a fixed
+`/tmp/preflight-*` path (8 files, 22 references). A second run's
+`>/tmp/preflight-differ.log` truncates the report the first has written and
+not yet read.
+
+**Fix.** One `mktemp -d` per run (`$TMPDIR/preflight.XXXXXX`) holds every
+log. A pass removes it; a failure keeps it and prints `this run's logs:
+<dir>`, so the path in `full output:` still exists when someone reads it.
+
+**Proof, `selftest.d/97-preflight-tmp.sh`:** two stub trees around the real
+preflight.sh, every gate stubbed to pass. The order is forced with sync files,
+not sleeps: A's psh-differ writes `TOTAL A`, and only then does B start; B's
+redirect opens its report before A reads its own.
+
+| run | this branch | mutant (one fixed dir) | master @ 2dc2b5c49a |
+|---|---|---|---|
+| A | ok, `TOTAL A`, passed | `produced no report`, FAILED | `produced no report`, FAILED |
+| B | ok, `TOTAL B`, passed | ok | ok |
+
+The master row is master's own preflight.sh with `/tmp/preflight-` renamed
+to a private directory, so the falsification cannot clobber a real fold on
+this host. It is otherwise byte-identical. It shows #367's refusal word for
+word.
+
+**The rest of the brief's list is not this class.** In `run_disc.sh`,
+`sweep_queue.sh`, `soak_title.sh` and `run_one_disc.sh`, the only `/tmp`
+path is the device lease, `/tmp/hakux-device-lease`, which is shared on
+purpose: it is how the Stop hook sees a device in use. In `run_perf.sh`,
+`swap_driver.sh` and `profile_guest.sh`, the hits are `/data/local/tmp/...`
+on the device, one per `adb -s` serial, used under that device's lease.
+`pgraph_capture_run.sh`'s `/tmp/pgraph-run` is an `OUTDIR` default for a
+hand-run tool. None of these is two host processes sharing one path by
+accident, so nothing else was changed.
+
 ## For the next lane
 
 - Do not match the WSL interop signature on a call's stderr; it bypasses

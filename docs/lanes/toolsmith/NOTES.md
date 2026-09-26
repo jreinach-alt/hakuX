@@ -439,3 +439,21 @@ md5. The measurement is in `docs/lanes/dispatch-hardening/NOTES.md` under
 **Do not repeat.** `ran Ns` in run_disc's log is a poll count, not a
 duration. Read the logcat's first and last timestamps before concluding
 that a run was cut short.
+
+## 2026-09-26 (attempt 2 of this resume): dispatch-hardening defect 26
+
+**Why the previous attempt did not finish, in this lane's terms.** It did
+finish. PR #369 (defect 15) was marked ready and has since folded. This
+resume came from the host adding defect 26 at the head of the order, not
+from a failure.
+
+**This PR is defect 26**, on its own branch `lane/toolsmith-preflighttmp`
+from `origin/master` @ 2dc2b5c49a. The record is under "Defect 26" in
+`docs/lanes/dispatch-hardening/NOTES.md`.
+
+**Do not repeat.** A race fixture with `&` and a sleep proved nothing on the
+first try: B truncated the shared file *before* A wrote it, so A still read
+its own report and the mutant passed. Order the writes with sync files, and
+check that the mutant is red before trusting the green. The brief's list of
+"same class" scripts came from a grep for `/tmp`. Read each hit: most were
+the deliberately shared device lease or device-side `/data/local/tmp`.
