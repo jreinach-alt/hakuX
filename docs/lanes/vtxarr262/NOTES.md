@@ -138,3 +138,34 @@ is not jammed: a 100-suite `0-a-now-*`/`0-b-*` priority sweep is running ahead o
 finishing a suite every 1-2 minutes. The PR stays draft until the must-move leg
 (DynamicUpdateLoop 96,000 -> 0) is hand-scored. That leg is the only evidence the fix
 does anything, and the machine legs only show it is inert elsewhere.
+
+## Attempt 2, third resume (2026-09-26 02:10Z): the must-move leg, measured
+
+**Why the previous session did not finish:** it ended correctly, still waiting on
+the refs6743-disc pair, which was queued behind a 100-suite priority sweep. Both
+runs have finished since then. Master moved again and `nv2a_index.json` conflicted
+a second time.
+
+**Result.** Both runs are in `dispatch/results/`, with apks `851650a27937` (base,
+342d21c43f) and `cf2d5d9d29d4` (fix, 74ac01608d). Each has all 5
+`Surface_as_vertex_array::*` captures, no `unreadable`, and no PARTIAL COVERAGE or
+UtilAcceptVsock in `run1.log`. Their `ERROR` file ("produced 0 captures") and
+"no golden to compare: 5" come from the stock goldens root having no copy of this
+suite. They are not missing captures. Hand-scored with
+`docs/lanes/vtxarr262/score_console.py` against the console root:
+
+| test | base px (maxd) | fix px (maxd) | base vs fix |
+|---|---|---|---|
+| DynamicUpdateLoop | 96,000 (255) | **0** | differ |
+| LinearDiffuseArray | 0 | 0 | identical |
+| MultiStream | 0 | 0 | identical |
+| RenderScalePattern | 18,136 (1) | 18,136 (1) | identical |
+| SwizzledDiffuseArray | 0 | 0 | identical |
+
+Colours in DynamicUpdateLoop: the base arm has red over 128,000 px (four red quads).
+The fix arm has red, green, blue and yellow at 32,000 px each, which matches the
+console histogram exactly. So the must-move leg PASSES. The first pair's machine
+legs had already passed 73/73 byte-identical.
+
+Merged `origin/master` again, with the same index resolution as before: master's
+copy, rebuilt over `fold-pins/` (6743b6a). `check --tests --support` matches.
