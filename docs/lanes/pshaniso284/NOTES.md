@@ -45,7 +45,7 @@ lambda = 0, which Vulkan resolves with the MAG filter.
   Pixel shader, Texture format, Volume texture, Texture anisotropy
   bit-identical.
 
-## State at end of session 1 (2026-09-26)
+## State at end of session 1 (2026-09-26; superseded, see Arm verdicts)
 
 Waiting on two things outside this session: the arms job's `[job.arms]`
 verdicts for both predictions on PR #393, and CI on the pushed head. On
@@ -53,6 +53,38 @@ resume: read both verdicts (the #284 at-least-half leg by hand from the
 table), merge master again (the brief's addendum; #379 may have folded), and
 if psh.c changed underneath, re-register on new refs and re-run the arms before
 marking ready.
+
+## Arm verdicts (session 2, 2026-09-26)
+
+Session 1 ended on a `waiting:` comment. The arms finished at about 07:09 PDT,
+but the arms job never posted a `[job.arms]` verdict on #284, #315 or PR #393,
+so nothing resumed the lane until the host's idle resume. Session 2 read the
+four result dirs directly (`scores1.tsv` status `ok` on every row, and
+progress-log proof on both arms of each pair), and judged them with
+`ab_compare.py --expect`:
+
+| prediction | device | capture | base | fix | change |
+|---|---|---|---|---|---|
+| pshaniso284-aniso (#284) | nova | Anisotropy-2 | 15,496 | 116 | -99.3% |
+| | | Anisotropy-4 | 21,981 | 3,313 | -84.9% |
+| | | Anisotropy-8 | 22,617 | 6,003 | -73.5% |
+| | | Anisotropy-1 and the other 83 | | | same |
+| pshaniso284-brdf (#315) | thor | BRDF_e0_l0 / e0_l1 / e1_l0 | 614 each | 0 each | exact |
+| | | the other 72 | | | same |
+
+Both verdicts: PASS (86/86 and 74/74 registered checks). The at-least-half leg
+holds on all three anisotropy levels. x4 and x8 land a little above the
+offline bound (2,488, 5,444), which the prediction called a bound, not a value.
+Each arm is one run. The only captures that differ byte-for-byte are the three
+predicted movers per pair, so no unpredicted capture moved.
+
+After this, origin/master @ a5b5b628f2 was merged. It touches none of psh.c,
+psh.h, vk/texture.c or gl/texture.c (#387 and #394: vk/surface.c, draw.c,
+docs). The binaries the arms measured therefore differ from the merged head
+only in code outside the fetch path. The arms were not re-run. The
+nv2a_index.json conflict was resolved by rebuilding it at the fold pins
+(tests 6743b6ab16), and `check` is clean. #379 (tiecode282) has not folded,
+and its head has gained only an audit doc since 6321ec4477.
 
 ## Not covered, do not extend without a measurement
 
