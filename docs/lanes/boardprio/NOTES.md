@@ -102,6 +102,20 @@ merged in (that would only re-run CI on an identical diff). Preflight passes
 on ee5e290acd; the body was set via REST PATCH and read back, then marked
 ready.
 
+## Resume after audit (2026-09-25, handback: stale base)
+
+**Why the previous session did not finish:** it did finish -- #270 was
+marked ready and audited twice (be2355b412) -- but attempt 3 chose not to
+merge master, reasoning an identical diff needed no fresh CI. The fold job
+then refused be2355b412 because its only red (selftest) ran before
+master's head, and GitHub never re-runs a PR's checks on a base move.
+Lesson: when master has moved, merge it; "no conflicts, none of my files"
+is not the fold's test, a CI verdict newer than trunk is.
+
+This resume: fast-forwarded to the audit commits, merged origin/master
+(130 commits, clean, no lane file touched), preflight passes on
+ec022efb83, pushed. No code changed.
+
 ## For the owner / the next lane
 
 - Real tracker today: #31, #38, #50 are measured zeros and now sort below
