@@ -16,6 +16,14 @@ know about the park. I checked the park and it still holds: #433 is open and
 #404 carries `blocked:after-0.5`. I did no build work, so the owner stop is
 not overridden. I posted a `[lane.visual404] blocked:` comment on #436.
 
+**Attempt 3 (handback resume, 2026-09-26 ~16:55 PDT).** handback.sh resumed
+the lane on head `621e87702f`. It had not ended with a failure: attempt 2's
+`blocked:` comment was posted before the NOTES push. That made
+`621e87702f` a new head with no blocked word after it, so handback treated
+the lane as idle. I checked again and the park still holds: #433 is OPEN, and
+#404 still carries `blocked:after-0.5`. I did no build work. This time the
+NOTES push goes first and the `blocked:` comment follows it.
+
 **What unblocks it:** #433 closes (0.5 ships), or the owner or host removes
 `blocked:after-0.5` from #404.
 
