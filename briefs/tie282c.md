@@ -1,0 +1,31 @@
+# #282: Texel-tie direction -- does the binade rule hold on a second geometry? (analysis, desktop only)
+
+Issue: #282 (33,494 px)        Class: analysis, desktop only. PR #337 folded: docs/lanes/cloud-282b/ is on master.
+Base: origin/master tip when you start (rebase before you cite anything).
+Files: docs/lanes/tie282c/** only. No hw/ file, no prediction. Needs device: no. Needs NDK: no.
+(This brief was first written for the cloud outlet as briefs/282.md; the outlet had not claimed it, so a local lane takes it.)
+
+## What is known (docs/lanes/cloud-282b/NOTES.md)
+The plane-setup model is FALSIFIED: dv/dx = 0 on both triangles, so no plane or DDA at any precision can produce the
+x 320-479 band. What fits is a rule keyed on the barycentric weights' binades, on ONE geometry (the checkerboard quad).
+NOTES "Do not repeat": no plane evaluator; no train/test split inside the checkerboard suites (held-out means another
+quad); the console run is not an independent sample for these suites (byte-identical to the goldens); do not put the
+binade rule in psh.c -- it is a fit to two triangles.
+
+## The job (NOTES "What would move this forward")
+1. Take the second geometry: `Texture_render_target` row 240 (v = 128), where silicon breaks a v tie down on part of the
+   row (docs/investigations/edge-defect.md, "The v axis"). Quad `DefineBiTri(0, -1.75, 1.75, 1.75, -1.75, 0.1)` under the
+   XDK matrices, w = 7.1, so the weights differ from the checkerboard's.
+2. Tabulate row 240's tie directions by weight binade with `cloud-282b/binades.py`'s method, and say BEFORE you run it what
+   a hit looks like (which binade conditions predict which x range goes down).
+3. If the binade conditions predict the row, the rule is a mechanism: name the hunk and its holder from territory.toml.
+   If not, say it is a two-triangle fit and that #282 has no code lane.
+4. Give lane.aasample (#286, PR #332) the half-column rule with its evidence only if step 3 supports it.
+
+## Falsifier
+The rule is falsified if its binade conditions do no better than chance on row 240 (score direction per pixel, x 0..639,
+as a region, not a handful of points). Date the capture and the console set.
+
+## Done when
+docs/lanes/tie282c/NOTES.md holds the row-240 table, the pre-registered hit criterion, the score, and a recommendation
+(code lane / no lane). A measured negative is a complete outcome. Ready PR; no hw/ edit.

@@ -1,0 +1,30 @@
+# #200: bits nv2a_regs.h does not name are unreachable -- analysis brief
+
+Issue: #200 (read the issue body, docs/testing/unnamed-bits-are-unreachable.md and
+docs/testing/emulator-vs-hardware-registers.md first). Base: origin/master tip when you start (last cited: 6550967a5e).
+Needs device: no. Needs NDK: no. Analysis only -- read hw/xbox/nv2a/pgraph/pgraph.c
+and nv2a_regs.h, edit nothing under hw/. Both are released at ready by lane.cullnf276 (PR #368, ready):
+a code lane that follows this one must merge master (or PR #368's branch) first. NAME every hunk, do not edit.
+Files: docs/lanes/regs200/** (NOTES.md and any script).
+(First written for the cloud outlet as briefs/200.md; unclaimed, so a local lane takes it.)
+
+## Goal
+Turn the mechanism into a list a code lane can act on. For every PGRAPH register a
+DEF_METHOD handler rebuilds from named fields (NV097_SET_TEXTURE_FORMAT ->
+NV_PGRAPH_TEXFMT0/1, and the SURFACE writers at pgraph.c:934/2275-2296 are the known
+ones), compute: (a) the bits the register has that no PG_SET_MASK covers, (b) any
+width mismatch between the NV097 method field and the NV_PGRAPH_* register field (the
+DIMENSIONALITY 4-bit vs 2-bit case is the known one), (c) the bit positions in the
+Blend spot_0_ADD hardware-vs-emulator table that each explains.
+
+## Falsifier
+Your table must reproduce the three measured rows exactly (SURFACE bit 0; TEXFMT0 and
+TEXFMT1 bits 4-5) from the source alone, with no fitting. Any unexplained bit in those
+rows is reported as unexplained, not absorbed. Also state whether any listed hole is
+READ by the render path (grep the consumers): an unreachable bit nothing reads is inert
+and belongs at the bottom of the list.
+
+## Done when
+NOTES.md holds the per-register table, the read-by-renderer column, and the hunks named
+per file for a code lane, ranked by whether a consumer reads the bit. If nothing on the
+list is read by the renderer, say so plainly -- that is a result. Ready PR; no hw/ edit.
