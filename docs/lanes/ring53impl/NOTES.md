@@ -238,7 +238,17 @@ offset would be 8 ≡ 2, which is wrong.
   - At `SET_BEGIN_END` END: fill before `draw_end`, because `vk/draw.c` clears
     `inline_buffer_populated` while uploading. Then `ring_pos += n` after
     `draw_end`, so the draw's uniforms see the phase before its own vertices.
-  - `vk/draw.c` is untouched.
+- **`vk/draw.c`** (audit pass 1 HIGH-1): `begin_pre_draw_inner`'s super-fast
+  path skips the uniform refresh when no generation or dirty flag moved, and the
+  ring moves neither. Two lit-program inline draws with nothing between them
+  (or only same-value rewrites, which weigh +1 but bump no generation) shared
+  the first draw's `ringPhase`. The setter now records the `ringPhase` and the
+  `ring_gen` (bumped by every fill) that it built the block from, in
+  `pg->ring_upload_phase` and `pg->ring_upload_gen`. The super-fast path misses
+  through `pgraph_glsl_ring_uniforms_stale` when the bound vertex state reads
+  the ring and either value moved. GL refreshes on every bind and needs nothing.
+  No device test pins this yet: it would need two lit-program inline quads
+  with no method between them, which no suite has.
 
 State methods advance the ring **without writing a slot**. Whether silicon
 overwrites a slot with a state token is not visible in any capture: every
