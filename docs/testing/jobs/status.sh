@@ -728,11 +728,15 @@ lf=$(git -C "$REPO" log -1 --format='%ct%x09%s' --grep='^fold: PR' origin/master
 [ -n "$lf" ] && { fact last_fold "${lf%%$'\t'*}"; fact last_fold_subject "$(printf '%s' "${lf#*$'\t'}" | sed 's/^fold: //' | cut -c1-90)"; }
 [ -x "$KASA" ] && fact console "${meter#console meter: }"
 [ "$lapse" -gt 0 ] && attn page "the roll-up itself lapsed for $(ago "$prev_run" | sed 's/ ago$//') before this tick (previous $(local_ts "@$prev_run")); nothing was observed across that window"
-# Escalations the host-ops tick could not decide (owner-level).
+# Escalations the host-ops tick could not decide (owner-level). Only OPEN lines count: host ops marks a
+# decided line RESOLVED in place, and counting those kept "awaiting the owner" up with nothing awaiting
+# him (6 lines, 0 open, 2026-09-26). grep -c exits 1 on a zero count, hence the `|| true`.
 ESC="$WORK/host-tools/escalations.md"
 if [ -s "$ESC" ]; then
-    ne=$(grep -c '^\s*[-*#]' "$ESC"); el=$(grep -v '^\s*$' "$ESC" | tail -1 | sed 's/^[-*# ]*//' | cut -c1-160)
-    attn escalation "${ne:-some} escalation line(s) from host ops awaiting the owner; latest: $el"
+    open_esc=$(grep -E '^\s*[-*] ' "$ESC" | grep -v 'RESOLVED' || true)
+    ne=$(printf '%s' "$open_esc" | grep -c . || true)
+    el=$(printf '%s\n' "$open_esc" | tail -1 | sed 's/^[-*# ]*//' | cut -c1-160)
+    [ "${ne:-0}" -gt 0 ] && attn escalation "$ne escalation line(s) from host ops awaiting the owner; latest: $el"
 fi
 if [ $have_gh = 1 ]; then
     # A red CI on master: the newest COMPLETED run of each workflow. Reading run
