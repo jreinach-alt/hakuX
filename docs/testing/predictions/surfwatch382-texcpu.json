@@ -1,0 +1,24 @@
+{
+  "registered_utc": "2026-09-26T12:06:31Z",
+  "who": "lane.surfwatch382",
+  "issue": "382",
+  "prediction": "MUST-NOT-MOVE guard for #382's watch suspension (vk/surface.c 568332c8d2). The hunk stops trapping guest stores to a surface that owes no download after its first write, and re-arms the watch in pgraph_vk_upload_surface_data before VRAM is read; a write in the async re-arm gap is caught by a VRAM hash re-checked once the watch is live. These two suites are the ones that write surface/texture memory with the CPU and then sample or render it, which is where a missed write or a mistimed re-arm would show: a stale texel region or a half-updated texture. Prediction: every capture in both suites is byte-identical between arms A (master 6c25a829ef) and B. It fails in the world where a CPU write to a bound or sampled surface is lost while its watch is suspended (the capture shows the pre-write texels), or where the gap check's extra upload lands over a draw (the capture shows VRAM over rendered pixels).",
+  "a_ref": "6c25a829ef",
+  "b_ref": "568332c8d2",
+  "must_not_move": [
+    "Texture_CPU_Update/*",
+    "Texture_render_update_in_place/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Texture CPU Update",
+      "Texture render update in place"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

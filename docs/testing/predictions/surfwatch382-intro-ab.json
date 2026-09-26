@@ -1,0 +1,26 @@
+{
+  "registered_utc": "2026-09-26T12:10:00Z",
+  "who": "lane.surfwatch382",
+  "issue": "382",
+  "title": "56550042-50_Cent_Bulletproof.xiso.iso",
+  "device": "nova",
+  "seconds": 240,
+  "frames_every": 10,
+  "perflog": true,
+  "runs_per_arm": 1,
+  "a_ref": "6c25a829ef",
+  "b_ref": "568332c8d2",
+  "prediction": "A/B SOAK PAIR, both arms 240 s hands-off perflog soaks of 50 Cent: Bulletproof's boot movies on the Nova, queued back to back (A first). A = master 6c25a829ef, B = 568332c8d2 (vk/surface.c: the first guest write to a surface that owes no download suspends its CPU-access watch; pgraph_vk_upload_surface_data re-arms it before reading VRAM; a VRAM hash re-checked once the re-armed watch is live catches a write in the async gap). Registered before either arm ran, after the only commit B names. Judge: python3 docs/lanes/surfwatch382/abjudge.py <A logcat> <B logcat> --prediction docs/testing/predictions/surfwatch382-intro-ab.json. Windows are seconds since each logcat's first hakuX line: W = 58-172 s (the brief's; the teaser on master), C = 62-140 s (inside the 97 s teaser on both arms even if B reaches it early; W's tail can hold B's 30 fps front end). MODEL: Sofdec decodes each picture with the CPU into the bound colour surface at VRAM 0x021A4F80; every store traps (2.5-2.7M/s on every master run), and removing the traps frees most of the vCPU for decoding. Legs, with the world in which each fails: M0 both arms run >= 200 s with >= 10 hakuX-pages lines, else VOID. M2 CONTROL: arm A's slow stores over W >= 1,000,000/s; fails (VOID) if the session did not play the movie on master (title absent, a different boot path). M1 B prints [surfwatch382] with suspends >= 1; fails if the hunk never engaged, which makes every other leg inert rather than refuted. P1 THE MECHANISM: B's slow stores over W <= 50,000/s; fails if the stores still trap (the watch re-arms every picture and is live most of the time, or another watch covers the pages). P2 the brief's leg: fps B/A over W >= 1.5. Two master runs alone gave 1.53 (10.46 vs 16.04), so this leg cannot separate on its own and is not the decider. P3 the same over C. P4 THE OUTCOME: B's fps over C >= 20; no master run has exceeded 16.07 there, so noise cannot pass it; fails if the traps were not the cost, in which case the NOTES say what the vCPU does instead (tlb68 cpu and sd per 2 s are printed per arm). S1 THE STALE-PICTURE LEG: B's lost_writes (a VRAM change seen in the re-arm gap on a surface the GPU drew over meanwhile, the only path by which a partly written picture can persist) == 0 at the last print; gap_writes (the same, repaired by a re-upload) is reported, not judged. Frames every 10 s are kept on both arms for inspection; they are not pixel-compared (the two arms show different pictures at a given second by design).",
+  "expect": {
+    "M0/both_arms_instrument_ok_is": true,
+    "M2/a_slow_stores_per_s_W_min": 1000000,
+    "M1/b_suspends_min": 1,
+    "P1/b_slow_stores_per_s_W_max": 50000,
+    "P2/fps_ratio_W_min": 1.5,
+    "P3/fps_ratio_C_min": 1.5,
+    "P4/b_fps_C_min": 20,
+    "S1/b_lost_writes_max": 0
+  },
+  "expect_counts": {},
+  "expect_note": "Named rules read by docs/lanes/surfwatch382/abjudge.py, not golden keys: a soak writes no captures and ab_compare never judges it."
+}
