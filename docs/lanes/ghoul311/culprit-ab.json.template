@@ -1,0 +1,40 @@
+{
+  "_template": "NOT REGISTERED. Copy to docs/testing/predictions/ghoul311-culprit.json, fill every <...>, register with ab_compare.py --register, commit with the refs, then queue. Two pairs; the second is the one that carries the counters.",
+  "registered_utc": "<utc>",
+  "who": "lane.ghoul311",
+  "issue": "311",
+  "title": "Grabbed by the Ghoulies (USA) (En,Fr,De,Es,It).xiso.iso",
+  "device": "thor",
+  "seconds": 240,
+  "runs_per_arm": 2,
+  "pairs": {
+    "1_window": {
+      "a_ref": "<culprit^>",
+      "b_ref": "<culprit>",
+      "frames_every": 10,
+      "why_frames": "both refs predate the hakuX-perf line (33557e82ab, 09-11); the judge is the FPS overlay in the frames",
+      "legs": {
+        "A good": "overlay >= 25 at 50, 60, 90 and 120 s in both runs",
+        "B bad": "overlay <= 8 from 60 s on in both runs",
+        "refuted": "A <= 8 at 60 s in either run: the driver's verdicts are inconsistent and the window is re-bisected from the last consistent pair"
+      }
+    },
+    "2_master": {
+      "a_ref": "<master sha>",
+      "b_ref": "<master + revert(culprit) sha>",
+      "frames_every": 0,
+      "legs": {
+        "A bad": "median hakuX-perf gfps 90-240 s <= 5",
+        "B good": "median hakuX-perf gfps 90-240 s >= 25, and G within 40 ms at every line from 30 s on",
+        "counter": "<the pages/pacing field the culprit implies, its value at 20 s and 120 s on A, and the flat value on B -- written BEFORE the arm>",
+        "refuted": "B >= 25 with the named counter unchanged between A and B: the revert works for a reason the counter does not see, and the mechanism is still open"
+      }
+    }
+  },
+  "must_not_move": [
+    "Spikeout and RalliSport 2 gfps on the revert build, 120 s each, within 10% of master",
+    "pgraph suites via ab_compare on master vs master+revert: identical captures. If they differ, the culprit is a rendering fix and the revert is the diagnosis, not the fix; the fix is a cheap way to do what the culprit does"
+  ],
+  "expect": {},
+  "expect_note": "EMPTY ON PURPOSE for the soak legs: a soak writes no captures. The pgraph must-not-move pair gets its own registered prediction with real golden keys."
+}
