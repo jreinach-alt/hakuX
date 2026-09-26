@@ -3957,3 +3957,18 @@ impact_px = 0
 impact_onestep_px = 0
 game_visible = true
 impact_basis = "game-visible (hostops, 2026-09-26): a commercial title under the owner's 20 fps floor for the whole in-engine demo; no golden, so no px figure"
+
+[issue.382]
+title = "50 Cent: Bulletproof: ~14 fps in the intro FMV on the Nova"
+component = "games"
+disposition = "defect"
+suites = []
+no_suites = "A PERFORMANCE DEFECT IN A COMMERCIAL TITLE (50 Cent: Bulletproof's intro FMV). No pgraph suite measures frame rate, so none is named."
+status = "open"
+status_note = "FILED 2026-09-26 (hostops) from the overnight title batch: soak 0-0-y-1790411511-titlebench-9r (re-run after an adb transient), Nova, ref 6561442869, 240 s hands-off. Time-weighted median gfps over 90-240 s = 14 (9 for 30-150 s, 29 for 150-210 s). No crash lines. Every frame is the intro FMV, decoded cleanly. Unattended run: the intro video, not gameplay. The FMV's own pacing may account for part of the figure, so compare it against silicon or desktop first."
+dispatch_state = "available"
+blocked_on = ""
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "game-visible (hostops, 2026-09-26): a commercial title under the owner's 20 fps floor through its intro FMV; no golden, so no px figure"
