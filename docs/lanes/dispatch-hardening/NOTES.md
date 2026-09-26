@@ -333,6 +333,79 @@ PR #260, decision #257 option 3.
 - **Selftest,** on the branch after merging master (defects 11 to 13):
   `bash docs/testing/jobs/selftest.sh` gave 1393 passed, 0 failed.
 
+## Defect 23: a lane whose device run finished was not woken
+
+- **The shape.** A lane ends its session while its soak waits on a device,
+  which is correct. `handback.sh` resumed a waiting draft only on a judged arm
+  (`draft-strand-arm`) or on the two-hour quiet clock. So a lane whose soak
+  finished at minute ten sat on its own result for up to two hours. At
+  23:45Z on 2026-09-25 the Nova had 23 lane requests waiting, including
+  perfarch's nine soaks.
+- **The fix.** It adds a third strand cause, `draft-strand-runs`.
+  - `lane_requests_of` makes one read of `queue/`, `running/` and `results/`.
+    It replaces `inflight_of`, so the in-flight gate and the finished set
+    cannot attribute a request differently.
+  - A request belongs to a lane by these rules, first match wins: its `lane`
+    field; an expect_sha registered in `arms/pairs` (that pair's branch); a
+    purpose saying ` from lane/<b>:`; then its requester, or the owner field
+    of its id when there is no requester. A leading `lane.` or `arms-` is
+    stripped, and the owner is the lane it equals or the LONGEST known lane
+    it starts with plus `-`. Known lanes are the `$WORK/wt` dirs and the
+    branches in the pairs.
+  - A finished run is new when its DONE/ERROR marker is newer than the mtime
+    of the lane's newest `$WORK/logs/lane/<name>.<stamp>.json`. That is the
+    end of its last session, because `claude -p` writes that file on exit.
+    With no session log, nothing counts as new.
+  - An arm's own result (expect_sha registered) is left out. The verdict is
+    the arm cause's news, and resuming on the raw run would come ahead of it.
+  - The cause fires only when none of the lane's requests is queued or
+    running. It is keyed on the hash of the finished set, so a push is not a
+    new cause and a second soak finishing is. It skips the quiet clock, so it
+    fires on the first tick after the run finishes.
+  - A judged verdict that is still news goes first. The runs cause takes a
+    quiet row, or an arm row whose verdict was already actioned.
+  - The brief addendum is a table of request, state and result dir.
+  - It neither counts toward `DRAFT_STRAND_MAX` nor spends an attempt. It can
+    recur only after a new session ended and new device work finished, and
+    that is progress, not a loop. If it were counted, a lane that ran four
+    soaks would be labelled `blocked:needs-owner` for waiting on them.
+  - **A side effect, on purpose.** The in-flight gate that held a draft off
+    the quiet clock used to see only the lane's arms. It now sees any of the
+    lane's requests. On the host at 00:05Z it held #264 (vtxarr262), #308
+    (perfarch), #309 (tcgchurn) and #317 (fmv303) while their soaks are
+    queued. Each will be woken when those finish, instead of being told
+    "still queued".
+- **Proof.** Fragment `99-handback-runs.sh` has three lanes, ours in the
+  middle: `selftestrq`, `selftestrs`, and `selftestrs-x`, whose name has ours
+  as a prefix.
+  - (0) A run that finished before the session ended resumes nothing.
+  - (a) One request is still queued: no resume. `list` names the request.
+  - (b) Every request has finished: one resume inside the quiet clock, on
+    `draft-strand-runs`. The brief lists the ERROR row with its result dir
+    and the `lane`-field request. It does not list the old run or the
+    neighbour's run. The comment names the runs. The strand count and the
+    attempt counter are unchanged.
+  - (c) The next tick, and a push after it: no second resume.
+  - (d) An arm's result is left to the arm cause.
+  - Each of four mutants is red: first prefix instead of longest; no session
+    anchor; ignore requests in flight; count an arm's result as a run.
+  - **Falsification:** master's `handback.sh` was put in a scratch copy of
+    `docs/testing` (the real file was never swapped). It failed (b) and every
+    leg under it, because it never resumes on a finished run, plus (a)'s
+    named-request line, 11 FAIL in all.
+- **Not done: the live instance.** The brief asks for a lane resumed within
+  one tick of its run finishing. That can only be observed after this folds
+  and the handback timer runs the new file. The host's first
+  `draft-strand-runs` line in `$WORK/logs/handback/tick.log` is that
+  instance.
+
+## Defect 22: blocked on a lent file
+
+The queue priority field, `request.sh --priority`, and the hold `yield` file
+all live in `dispatcher.sh` / `request.sh`. Both are lent to lane.titlerun
+until #307 folds, and #307 was still open at 00:05Z on 2026-09-26. It was not
+started here.
+
 ## For the next lane
 
 - Do not match the WSL interop signature on a call's stderr; it bypasses

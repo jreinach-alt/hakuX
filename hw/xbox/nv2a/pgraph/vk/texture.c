@@ -1269,6 +1269,25 @@ static bool check_surface_to_texture_compatiblity(const SurfaceBinding *surface,
     }
 
     /*
+     * A linear surface is the texture's source only if its rows sit where the
+     * texture reads them, so the pitch has to agree as well as the extent.
+     * Antialiasing tests::CreateSurfaceWithCenter1 renders a 128x128 surface
+     * at pitch 2048 over the 128x128 texture it then samples at pitch 512.
+     * The host image, filled at the surface's pitch, holds every fourth
+     * texture row and then nothing. Refuse, and the texture is read from
+     * VRAM at its own pitch.
+     *
+     * This is GL's condition in pgraph_gl_check_surface_to_texture_
+     * compatibility(). Vulkan never had it (#274). A swizzled surface has no
+     * pitch (#109), so only a linear one is tested. It sits after the zeta
+     * return above for the reason the layout test below gives: nothing
+     * measured says what a zeta surface at a mismatched pitch should do.
+     */
+    if (!surface->swizzle && surface->pitch != shape->pitch) {
+        return false;
+    }
+
+    /*
      * Layout has to agree, not just extent and format. The host image is
      * always linear; what makes sampling it equivalent to the guest's view is
      * that the hardware's swizzled STORE and the texture unit's swizzled READ

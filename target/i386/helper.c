@@ -21,6 +21,7 @@
 #include "qapi/qapi-events-run-state.h"
 #include "cpu.h"
 #include "exec/cputlb.h"
+#include "accel/tcg/hakux-tlb68.h"
 #include "exec/translation-block.h"
 #include "exec/target_page.h"
 #include "system/runstate.h"
@@ -126,6 +127,7 @@ void x86_cpu_set_a20(X86CPU *cpu, int a20_state)
 
         /* when a20 is changed, all the MMU mappings are invalid, so
            we must flush everything */
+        HAKUX_TLB68_SET_CAUSE(HAKUX_TLB68_A20);
         tlb_flush(cs);
         env->a20_mask = ~(1 << 20) | (a20_state << 20);
     }
@@ -140,6 +142,7 @@ void cpu_x86_update_cr0(CPUX86State *env, uint32_t new_cr0)
     qemu_log_mask(CPU_LOG_MMU, "CR0 update: CR0=0x%08x\n", new_cr0);
     if ((new_cr0 & (CR0_PG_MASK | CR0_WP_MASK | CR0_PE_MASK)) !=
         (env->cr[0] & (CR0_PG_MASK | CR0_WP_MASK | CR0_PE_MASK))) {
+        HAKUX_TLB68_SET_CAUSE(HAKUX_TLB68_CR0);
         tlb_flush(CPU(cpu));
     }
 
@@ -176,10 +179,15 @@ void cpu_x86_update_cr0(CPUX86State *env, uint32_t new_cr0)
    the PDPT */
 void cpu_x86_update_cr3(CPUX86State *env, target_ulong new_cr3)
 {
+    /* #68: a reload of the value CR3 already holds is the TLB-flush idiom. */
+    bool same G_GNUC_UNUSED = new_cr3 == env->cr[3];
+
     env->cr[3] = new_cr3;
     if (env->cr[0] & CR0_PG_MASK) {
         qemu_log_mask(CPU_LOG_MMU,
                         "CR3 update: CR3=" TARGET_FMT_lx "\n", new_cr3);
+        HAKUX_TLB68_SET_CAUSE(same ? HAKUX_TLB68_CR3_SAME
+                                   : HAKUX_TLB68_CR3_NEW);
         tlb_flush(env_cpu(env));
     }
 }
@@ -194,6 +202,7 @@ void cpu_x86_update_cr4(CPUX86State *env, uint32_t new_cr4)
     if ((new_cr4 ^ env->cr[4]) &
         (CR4_PGE_MASK | CR4_PAE_MASK | CR4_PSE_MASK |
          CR4_SMEP_MASK | CR4_SMAP_MASK | CR4_LA57_MASK)) {
+        HAKUX_TLB68_SET_CAUSE(HAKUX_TLB68_CR4);
         tlb_flush(env_cpu(env));
     }
 
