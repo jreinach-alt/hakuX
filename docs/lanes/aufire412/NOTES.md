@@ -176,19 +176,62 @@ Risks and must-not-move:
 - PR #387's arm (watch suspension): no shared code. Inert.
 - PR #396 / Blinx's vk/surface.c: untouched.
 
-## Status (2026-09-26, attempt 2)
+## 5. The hunk, landed (attempt 3, 2026-09-26)
 
-**Why attempt 1 did not finish:** it ended, correctly, waiting on the perflog
-soak `1790450038`, a device request outside the session. The soak has now
-run (DONE) and is read above.
+**Why attempt 2 did not finish:** it read the soak (section 4), found the site
+was in `vk/shaders.c`, and ended, correctly, waiting on the board grant it had
+requested on #412. hostops granted the file at board 94f842b35f (13:16 PDT).
+(Attempt 1 had ended waiting on the soak itself.)
 
-**Now waiting on a board grant** for `hw/xbox/nv2a/pgraph/vk/shaders.c`,
-requested on #412. No open PR's `Files:` names it (checked #401, #405; #396 is
-surface.c). No prediction is registered: there is no code commit to name as
-`b_ref` until the grant lands. Once it lands: implement the hunk above, merge
-master, register `aufire412-uboring.json` on the pause-menu-over-scene window
-(mover fps, must-not-move the three suites above), and push. Master is merged
-at 3d40f14389.
+`1b557ff6a4` (vk/shaders.c only). `make_room_in_ubo_ring()` replaces the two
+UBO-ring finish sites. It calls `grow_descriptor_ring(r, push_ubo_set_layout,
+&push_ubo_sets, &push_ubo_set_count, false)` while fewer than
+`DESCRIPTOR_MAX_OVERFLOW_POOLS` (16) overflow pools exist. Past the cap, it
+falls back to the old finish + `flush_all_frames` + index 0. The standard-path
+texture ring is unchanged (not reached on a push-descriptor device). A grow
+prints `hakuX-stall ubo_ring_grow: n<grows> pools<len> sets<count>` for the
+first 16 grows and then every 256th. That line is outside the perflog gate, so
+any build shows whether the grow fired. `renderer.h` is not granted, so the
+counter is a static in shaders.c rather than a `g_opt_stats` field.
+
+Read from draw.c before writing it:
+
+- Reclaim (`pgraph_vk_reclaim_descriptor_overflow`) runs only in
+  `pgraph_vk_flush_all_frames`, after every submitted fence is waited, and only
+  with `!in_command_buffer`. Its callers are the ring-full path and a
+  submit-frames settings change. So after this hunk, overflow pools live until
+  the cap forces the old path, and the cap bounds them.
+- The flip-finish paths (draw.c ~3543, ~3610, ~3718) reset `push_ubo_set_index`
+  to 0 without reclaiming. The grown ring stays grown and is reused from 0.
+  That is why P6 guesses that at most 1-2 pools are ever held.
+- `push_ubo_sets` is `g_realloc`ed by the grow. Every reader takes the handle by
+  value at record time (`vkCmdBindDescriptorSets` with `&push_ubo_sets[i-1]`,
+  and the reorder window's `e->descriptor_set = push_ubo_sets[i-1]`), so a move
+  of the array invalidates no stored pointer.
+- Sets handed out earlier in the same command buffer are not rewritten. The
+  index only moves forward into the new pool. That is the #34 finding 1
+  constraint.
+
+Not compiled locally (no host build in this tree). CI builds it.
+
+### Predictions (registered after the last merge; master is an ancestor of the refs)
+
+| file | kind | a_ref | b_ref | judged by |
+|---|---|---|---|---|
+| `aufire412-uboring-soak.json` | Nova A/B perflog soak, survey route, 480 s | be41e81662 | 1b557ff6a4 | `splitread.py --judge A B <json>` |
+| `aufire412-uboring-goldens.json` | disc arm: must-not-move Depth_buffer_fixed_function, Color_zeta_overlap, Surface_format; worse = 0 | be41e81662 | 1b557ff6a4 | ab_compare (arms job) |
+
+Soak legs: M0 instrument (phase and buf_detail lines present), M1 impossible row
+(no grow line in A, at least one in B), P1 B ds <= 2, P2 B Fin <= 0.5 x A,
+P3 mover play fps +2 and in 17-26, P4 pause-menu window +2, P5 GPU ratio
+0.75-1.25, P6 (guess) <= 2 pools. Dry run with the old soak as both arms: the
+legs read 15.2 fps, ds 39, Fin 22.2 ms and GPU 40.1 ms, and the verdict is VOID on
+M1 (no grow lines in B), as the judge should say for a B without the code.
+
+## Status
+
+Waiting on the two soak arms (queued with request.sh; ids on the PR) and the
+golden arm (the arms job queues it from the committed prediction).
 
 Do not repeat: the non-perflog titleplay run cannot split Sub/Fen (no phase
 line). A 1,024-set ring looks like a pool-size question, but raising

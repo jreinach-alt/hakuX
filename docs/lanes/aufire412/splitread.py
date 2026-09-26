@@ -88,7 +88,7 @@ def stall(body):
 
 def read(path):
     t0 = None
-    rows = {"gfps": [], "phase": [], "cpu": [], "work": [], "stall": []}
+    rows = {"gfps": [], "phase": [], "cpu": [], "work": [], "stall": [], "buf": [], "grow": []}
     for line in open(path, errors="replace"):
         m = TS.match(line)
         if not m:
@@ -114,6 +114,10 @@ def read(path):
             rows["work"].append((t, work(body)))
         elif tag == "hakuX-stall" and body.startswith("RPBreaks"):
             rows["stall"].append((t, stall(body)))
+        elif tag == "hakuX-stall" and body.startswith("buf_detail:"):
+            rows["buf"].append((t, {k: int(v) for k, v in re.findall(r"([a-z]+)(\d+)", body[11:])}))
+        elif tag == "hakuX-stall" and body.startswith("ubo_ring_grow:"):
+            rows["grow"].append((t, {k: int(v) for k, v in re.findall(r"([a-z]+)(\d+)", body[14:])}))
     return rows
 
 
@@ -168,6 +172,72 @@ def main(argv=None):
                   fin, gpu, floor, 1000 / floor if floor else float("nan")))
 
 
+def fps_of(g):
+    return 60.0 * (len(g) - 1) / (g[-1][0] - g[0][0]) if len(g) > 1 else float("nan")
+
+
+def judge(a_path, b_path, pred_path):
+    """Judge an A/B pair of perflog soaks against a registered prediction.
+
+    Reads only `expect` and `windows` from the prediction, and prints one row
+    per leg. M legs are the instrument: any M failure makes the pair VOID, not
+    a result. Returns 0 on PASS, 1 on FAIL, 2 on VOID.
+    """
+    import json
+    pred = json.load(open(pred_path))
+    ex, win = pred["expect"], pred["windows"]
+    arms = {"a": read(a_path), "b": read(b_path)}
+
+    def cut(arm, name):
+        lo, hi = win[name]
+        return {k: [r for r in v if lo <= r[0] <= hi] for k, v in arms[arm].items()}
+
+    w = {(arm, n): cut(arm, n) for arm in "ab" for n in win}
+    legs = []
+
+    def leg(name, ok, got):
+        legs.append((name, bool(ok), got))
+
+    for arm in "ab":
+        for n in win:
+            k = len(w[arm, n]["phase"])
+            leg("M0/phase_lines_min %s.%s" % (arm, n), k >= ex["M0/phase_lines_min"], k)
+        k = len(w[arm, "play"]["buf"])
+        leg("M0/buf_lines_min %s.play" % arm, k >= ex["M0/buf_lines_min"], k)
+    ga, gb = len(arms["a"]["grow"]), len(arms["b"]["grow"])
+    leg("M1/grow_lines_a_max", ga <= ex["M1/grow_lines_a_max"], ga)
+    leg("M1/grow_lines_b_min", gb >= ex["M1/grow_lines_b_min"], gb)
+
+    ds_a, ds_b = med(w["a", "play"]["buf"], "ds"), med(w["b", "play"]["buf"], "ds")
+    leg("P1/b_ds_median_max (a %.0f)" % ds_a, ds_b <= ex["P1/b_ds_median_max"], ds_b)
+    fa, fb = med(w["a", "play"]["phase"], "Fin"), med(w["b", "play"]["phase"], "Fin")
+    leg("P2/b_fin_over_a_max (a %.1f b %.1f ms)" % (fa, fb),
+        fb <= ex["P2/b_fin_over_a_max"] * fa, round(fb / fa, 2) if fa else None)
+    pa, pb = fps_of(w["a", "play"]["gfps"]), fps_of(w["b", "play"]["gfps"])
+    leg("P3/play_fps_gain_min (a %.1f b %.1f)" % (pa, pb),
+        pb - pa >= ex["P3/play_fps_gain_min"], round(pb - pa, 2))
+    lo, hi = ex["P3/b_play_fps_range"]
+    leg("P3/b_play_fps_range", lo <= pb <= hi, round(pb, 2))
+    ma, mb = fps_of(w["a", "menu"]["gfps"]), fps_of(w["b", "menu"]["gfps"])
+    leg("P4/menu_fps_gain_min (a %.1f b %.1f)" % (ma, mb),
+        mb - ma >= ex["P4/menu_fps_gain_min"], round(mb - ma, 2))
+    ua, ub = med(w["a", "play"]["phase"], "GPU"), med(w["b", "play"]["phase"], "GPU")
+    lo, hi = ex["P5/gpu_ratio_range"]
+    leg("P5/gpu_ratio_range (a %.1f b %.1f ms)" % (ua, ub),
+        ua and lo <= ub / ua <= hi, round(ub / ua, 2) if ua else None)
+    pools = max((d.get("pools", 0) for _, d in arms["b"]["grow"]), default=0)
+    leg("P6/b_max_pools_max (guess)", pools <= ex["P6/b_max_pools_max"], pools)
+
+    for name, ok, got in legs:
+        print("%-4s %-48s %s" % ("ok" if ok else "FAIL", name, got))
+    if not all(ok for name, ok, _ in legs if name.startswith("M")):
+        print("VERDICT VOID: an instrument leg failed; this pair measures nothing")
+        return 2
+    bad = [name for name, ok, _ in legs if not ok]
+    print("VERDICT %s" % ("PASS" if not bad else "FAIL: " + ", ".join(bad)))
+    return 1 if bad else 0
+
+
 def selftest():
     import tempfile, os
     lines = [
@@ -176,6 +246,9 @@ def selftest():
         "09-26 05:17:36.968 I/xemu-work(1): BE:2000 DA:1500 IE:500 IB:0 IA:0 Clr:3 QS:4/0 PGen:0 PBnd:300 PNd:1700 RP:4 SGen:0 SBnd:1 SNd:0 UBOd:1900 UBOn:100 TexU:2 S2T:0/0 GBU:1/1/0/0/0 Fin:Vbd0 Sc0 Sd0 Bs0 Fbd0 Pr0 Fl1 Flu0 St0",
         "09-26 05:17:36.968 I/hakuX-cpu(1): CPU: K:3 W:0.4K M:115(Fh:139 Ni:1) Push:0.8ms [Pull:0.8(Lk:0.0 Mth:0.7 Fst:0.0)] SpH:138% TbH:98.9%",
         "09-26 05:17:36.968 I/hakuX-stall(1): RPBreaks:195 Finish:73(vtx0 sc0 sd9 buf0 fb0 pres2 flip58 flu1 stl3 stlDef58 stlBat0) InlClr:0/68 PreDL:28 sd[ev0 noCb0 dl1 cDef8 cDefC0 pDl0 dDl0] dlSrc[defFb0 ppdFb0 dirtyIf1] dif[ovl1 ovlSh0 exp11 expSh0 blt1 flu0 dds0 oth0]",
+        # Built from vk/draw.c's and vk/shaders.c's format strings.
+        "09-26 05:17:36.968 I/hakuX-stall(1): buf_detail: ds42 ubo0 fb0 stg0 comp0 vtx0",
+        "09-26 05:17:36.968 I/hakuX-stall(1): ubo_ring_grow: n3 pools1 sets5120",
         "09-26 05:17:37.968 I/hakuX-perf(1): gfps=15 G:62.0(30.0-73.0) D:16.7(16.7-16.7) S:4.9 J:4.4 Df:46 Vd:0.0 Ul:N Vpf:3.70 Ri:8.0 Tq:0",
     ]
     fd, p = tempfile.mkstemp(suffix=".txt")
@@ -191,11 +264,16 @@ def selftest():
     st = r["stall"][0][1]
     assert st["fin_sd"] == 9 and st["sd_cDef"] == 8 and st["RPBreaks"] == 195 and st["fin_stlDef"] == 58, st
     assert abs(r["gfps"][0][1]["busy"] - (1 - 8 / 62)) < 1e-9
+    assert r["buf"][0][1] == {"ds": 42, "ubo": 0, "fb": 0, "stg": 0, "comp": 0, "vtx": 0}, r["buf"]
+    assert r["grow"][0][1] == {"n": 3, "pools": 1, "sets": 5120}, r["grow"]
     print("selftest ok")
 
 
 if __name__ == "__main__":
     if sys.argv[1:] == ["--selftest"]:
         selftest()
+    elif sys.argv[1:2] == ["--judge"]:
+        # splitread.py --judge A_LOGCAT B_LOGCAT PREDICTION.json
+        sys.exit(judge(*sys.argv[2:5]))
     else:
         main()
