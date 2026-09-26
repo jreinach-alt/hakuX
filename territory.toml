@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 263
+wave = 264
 updated_utc = "2026-09-26T20:30:00Z"
 
 [retired.hilodot10]
@@ -353,20 +353,23 @@ note = "RETIRED (job.board wave 245): PR #385 MERGED, no open PR on lane/fps382,
 [lane.flatlm13]
 issues = ["13"]
 files = ["hw/xbox/nv2a/pgraph/prim_rewrite.c", "docs/testing/predictions/flatlm13-*.json", "docs/lanes/flatlm13/**"]
-note = "DISPATCHED (hostops 2026-09-26T14:55Z): #13 class C of PR #370's attribution (flat colour in a line-mode quad/polygon, 7,324 px, Shade_model only). prim_rewrite.c was in no row. Brief: briefs/flatlm13.md. Class A (line-mode triangle cull, 31,152 px, glsl/geom.c) follows when PR #379 folds and returns geom.c."
+released = ["hw/xbox/nv2a/pgraph/prim_rewrite.c", "docs/testing/predictions/flatlm13-*.json", "docs/lanes/flatlm13/**"]
+released_at_ready = 401
+note = "READY, PR #401 (job.board 2026-09-26T20:40Z): out of draft, CI green, unit gone, labelled needs-audit-1; files released at ready. PRIOR: DISPATCHED (hostops 2026-09-26T14:55Z): #13 class C of PR #370's attribution (flat colour in a line-mode quad/polygon, 7,324 px, Shade_model only). prim_rewrite.c was in no row. Brief: briefs/flatlm13.md. Class A (line-mode triangle cull, 31,152 px, glsl/geom.c) follows when PR #379 folds and returns geom.c."
 
-[lane.vshcpu345]
-issues = ["345"]
-files = ["subprojects/nv2a_vsh_cpu.wrap", "subprojects/packagefiles/nv2a_vsh_cpu/**", "android/app/src/main/cpp/CMakeLists.txt", "docs/testing/predictions/vshcpu345-*.json", "docs/lanes/vshcpu345/**"]
-released = ["subprojects/nv2a_vsh_cpu.wrap", "subprojects/packagefiles/nv2a_vsh_cpu/**", "android/app/src/main/cpp/CMakeLists.txt", "docs/testing/predictions/vshcpu345-*.json", "docs/lanes/vshcpu345/**"]
-released_at_ready = 402
-note = "DISPATCHED (hostops 2026-09-26T14:55Z): #345 half 2, the nv2a_vsh_cpu constant-writeback evaluator (PR #344 silicon rows; docs/lanes/dpforce345/NOTES.md 'Half 2'). CMakeLists.txt from [free] (released by lane.perfarch this tick); the wrap and packagefiles were in no row. Brief: briefs/vshcpu345.md. Touches android/: its PR needs audit."
+[retired.vshcpu345]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-26T20:40:00Z"
+note = "RETIRED (job.board 2026-09-26T20:40Z): PR #402 MERGED (folded), unit gone. Files RELEASED to [free]: subprojects/nv2a_vsh_cpu.wrap, subprojects/packagefiles/nv2a_vsh_cpu/**, docs/testing/predictions/vshcpu345-*.json, docs/lanes/vshcpu345/**."
 
-[lane.cull13]
-issues = ["13"]
-files = ["hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/glsl/geom.h", "hw/xbox/nv2a/pgraph/vk/renderer.c", "docs/testing/predictions/cull13-*.json", "docs/lanes/cull13/**"]
-note = "DISPATCHED (hostops 2026-09-26T14:52Z): #13 class A of PR #370 (line-mode triangles not culled, 31,152 px). geom.c from lane.tiecode282 (retired this tick, PR #379 folded 07:41 PDT); geom.h and renderer.c were in no row (renderer.c for SHADER_STATE_LAYOUT_VERSION only). Brief: briefs/cull13.md."
-
+[retired.cull13]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-26T20:40:00Z"
+note = "RETIRED (job.board 2026-09-26T20:40Z): PR #403 MERGED (fold 53742923df), unit gone. Files RELEASED to [free]: hw/xbox/nv2a/pgraph/glsl/geom.c, hw/xbox/nv2a/pgraph/glsl/geom.h, hw/xbox/nv2a/pgraph/vk/renderer.c, docs/testing/predictions/cull13-*.json, docs/lanes/cull13/**."
 
 [retired.foldcancel]
 issues = []
@@ -376,6 +379,7 @@ retired_utc = "2026-09-26T20:15:00Z"
 note = "RETIRED (hostops 2026-09-26 13:15 PDT): PR #415 MERGED, no open PR on lane/foldcancel, unit gone. Files RELEASED to [free] (fold.sh, selftest.d/74-fold-multi.sh, docs/lanes/foldcancel/NOTES.md)."
 
 [free]
+# RELEASED (job.board wave 264) by retiring lane.doa413 (PR #417), lane.cull13 (PR #403), lane.vshcpu345 (PR #402): every file each row held except CMakeLists.txt, which lane.buildflags427 holds.
 # RELEASED (hostops 2026-09-26T19:35Z) by retiring lane.titleplay (PR #399 merged, pass 1 stopped by the owner): docs/testing/titles/routes/**, docs/testing/titles/targets.toml, docs/testing/title_verdict.py, docs/testing/titles/table.py, docs/lanes/titleplay/**
 # RELEASED (hostops 2026-09-26T18:20Z) by retiring lane.armsscope (PR #409 merged): selftest.d/94-arms-verdict-scope.sh, docs/lanes/armsscope/NOTES.md; arms.sh returned to lane.toolsmith.
 # RELEASED (hostops 2026-09-26T18:20Z) by lane.remote on #343 option (a): hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/shaders.c.
@@ -568,7 +572,7 @@ note = "RETIRED (hostops 2026-09-26 13:15 PDT): PR #415 MERGED, no open PR on la
 # exist, and check_coverage.py cannot tell the difference.
 # CLAIMED (hostops, 2026-09-26T03:35Z): glsl/psh.h -> lane.pshqueue (granted at wave 222; [free] still listed it, failing check_territory).
 # CLAIMED (hostops, 2026-09-26 6:45 AM PDT): gl/texture.c -> lane.pshaniso284 (granted 6:40 AM; [free] still listed it, failing check_territory).
-files = ["docs/testing/jobs/fold.sh", "docs/testing/jobs/selftest.d/74-fold-multi.sh", "docs/lanes/foldcancel/NOTES.md", "docs/testing/titles/routes/**", "docs/testing/titles/targets.toml", "docs/testing/title_verdict.py", "docs/testing/titles/table.py", "docs/lanes/titleplay/**", "docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/73-cloud-claim.sh", "docs/lanes/cloudclaim/**", "docs/testing/nightly_build.sh", "docs/testing/jobs/selftest.d/86-nightly-notes.sh", "docs/lanes/nightlynotes/**", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**", "tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", 
+files = ["docs/testing/jobs/fold.sh", "docs/testing/jobs/selftest.d/74-fold-multi.sh", "docs/lanes/foldcancel/NOTES.md", "docs/testing/titles/routes/**", "docs/testing/titles/targets.toml", "docs/testing/title_verdict.py", "docs/testing/titles/table.py", "docs/lanes/titleplay/**", "docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/73-cloud-claim.sh", "docs/lanes/cloudclaim/**", "docs/testing/nightly_build.sh", "docs/testing/jobs/selftest.d/86-nightly-notes.sh", "docs/lanes/nightlynotes/**", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**", "tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "docs/testing/predictions/doa413-*.json", "docs/lanes/doa413/**", "hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/glsl/geom.h", "hw/xbox/nv2a/pgraph/vk/renderer.c", "docs/testing/predictions/cull13-*.json", "docs/lanes/cull13/**", "subprojects/nv2a_vsh_cpu.wrap", "subprojects/packagefiles/nv2a_vsh_cpu/**", "docs/testing/predictions/vshcpu345-*.json", "docs/lanes/vshcpu345/**", 
 # RELEASED AT WAVE 158 by retiring lane.cloud190: PR #211 folded as f2e8ef8ba8 (#190 fixed).
     "hw/xbox/nv2a/pmc.c",
 # RELEASED (job.board wave 249) by retiring lane.fmv303 (PR #317 folded bb1f437bb7): vk/display.c.
@@ -1186,8 +1190,10 @@ note = "STARTED (hostops 2026-09-26 12:18 PDT, runbook 6m one-shot), briefs/pilo
 [lane.blinx372d]
 issues = ["372"]
 files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/testing/predictions/blinx372d-*.json", "docs/lanes/blinx372d/**"]
+released = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/testing/predictions/blinx372d-*.json", "docs/lanes/blinx372d/**"]
+released_at_ready = 396
 standing = false
-note = "STARTED, PR #396 draft (job.board 2026-09-26T17:45Z): the lane ran its Thor demo A/B; arms SKIPPED its prediction, the PR awaits handback or ready. PRIOR: BRIEFED AT TERRITORY WAVE 249, NOT STARTED (job.board, 2026-09-26T14:14:00Z; `lane.sh start` needs an approval the non-interactive board session cannot get, so the HOST runs `docs/testing/lane.sh start blinx372d briefs/blinx372d.md 372`), briefs/blinx372d.md: #372's code half. lane.blinx372c (PR #388, folded) named the site: the incompatible-binding eviction in vk/surface.c update_surface_part does two synchronous pgraph_vk_finish(SURFACE_DOWN) per frame (Sub 34.5 ms of a 64-70 ms frame); the hunk is a GPU-side image->buffer->image copy. vk/surface.c was released by lane.surfwatch382 (PR #387 folded a5b5b628f2), which the hunk depends on (its CPU-access watch becomes the only guard against a stale CPU read)."
+note = "READY, PR #396 (job.board 2026-09-26T20:40Z): out of draft, CI green, unit gone, verified, needs-audit-1; files released at ready. PRIOR: STARTED, PR #396 draft (job.board 2026-09-26T17:45Z): the lane ran its Thor demo A/B; arms SKIPPED its prediction, the PR awaits handback or ready. PRIOR: BRIEFED AT TERRITORY WAVE 249, NOT STARTED (job.board, 2026-09-26T14:14:00Z; `lane.sh start` needs an approval the non-interactive board session cannot get, so the HOST runs `docs/testing/lane.sh start blinx372d briefs/blinx372d.md 372`), briefs/blinx372d.md: #372's code half. lane.blinx372c (PR #388, folded) named the site: the incompatible-binding eviction in vk/surface.c update_surface_part does two synchronous pgraph_vk_finish(SURFACE_DOWN) per frame (Sub 34.5 ms of a 64-70 ms frame); the hunk is a GPU-side image->buffer->image copy. vk/surface.c was released by lane.surfwatch382 (PR #387 folded a5b5b628f2), which the hunk depends on (its CPU-access watch becomes the only guard against a stale CPU read)."
 
 [retired.boardpushgate]
 issues = []
@@ -1209,13 +1215,12 @@ files = ["hw/xbox/nv2a/pgraph/vk/shaders.c", "docs/testing/predictions/aufire412
 standing = false
 note = "GRANTED (hostops 2026-09-26 13:15 PDT, answering its 19:56Z grant request on #412): hw/xbox/nv2a/pgraph/vk/shaders.c, unclaimed since lane.remote released it 18:20Z, for the UBO descriptor-ring growth hunk (grow_descriptor_ring() at the two UBO-ring sites). Register the prediction first. STARTED (job.board 2026-09-26T19:20Z), briefs/aufire412.md: #412 (007: Agent Under Fire) gameplay fps. Profile-first: docs and prediction only until the lane names the code file and the board grants it."
 
-[lane.doa413]
-issues = ["413"]
-files = ["docs/testing/predictions/doa413-*.json", "docs/lanes/doa413/**"]
-released = ["docs/testing/predictions/doa413-*.json", "docs/lanes/doa413/**"]
-released_at_ready = 417
+[retired.doa413]
+issues = []
+files = []
 standing = false
-note = "READY, PR #417 (job.board 2026-09-26T20:20Z): docs-only diff, CI green; files released at ready, labelled fold-ready. PRIOR: STARTED (job.board 2026-09-26T19:20Z), briefs/doa413.md: #413 (Dead or Alive Ultimate) gameplay fps. Profile-first: docs and prediction only until the lane names the code file and the board grants it."
+retired_utc = "2026-09-26T20:40:00Z"
+note = "RETIRED (job.board 2026-09-26T20:40Z): PR #417 MERGED (fold 7e6a4ac88a), unit gone. Files RELEASED to [free]: docs/testing/predictions/doa413-*.json, docs/lanes/doa413/**."
 
 [lane.visual404]
 issues = ["404"]
