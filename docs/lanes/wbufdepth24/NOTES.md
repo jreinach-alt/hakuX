@@ -150,3 +150,22 @@ Both logcats: `Z24S8 host format 0x82, depth stored as float`.
   B and the status column for `unreadable` before touching the line.
 - Not merged master (45 behind) this session: the prediction is registered
   and nothing here needs master's changes; fold will build the merge.
+
+## Session 4 (2026-09-26, resumed at 01:52Z)
+
+**Why session 3 did not finish:** it ended correctly in a wait for the
+arm, but skipped merging master, and master moved `nv2a_index.json` under
+it: #268 went CONFLICTING, so GitHub built nothing on `3d870930db` (CI NONE).
+Lesson: a lane that edits a line under `hw/` owns a generated index and must
+merge master before ending a wait, not leave it to the fold.
+
+Done: merged origin/master (`6ea34eb27a`); the only conflict was the
+index, rebuilt with `nv2a_index.py build` over the fold pins (tests
+6743b6ab, pbkitplusplus e91d509e, matching the workflow's PBKIT_SHA);
+`check` passes, 104 suites. b_ref `c2336637cf` is still an ancestor, so the
+registered prediction stands.
+
+- **Still waiting on:** the `[job.arms]` verdict for `wbufdepth24-d24sat.json`.
+  Both requests are still in `dispatch/queue/` at 01:55Z. On a pass,
+  `gh pr ready 268`. On a fail, read `classify.py` miss@S on arm B and the
+  status column for `unreadable` first.
