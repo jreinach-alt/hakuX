@@ -208,6 +208,7 @@ bool pgraph_glsl_dual_src_pad_supported(void);
     DECL(S, padAlphaMode, int, 1)   \
     DECL(S, signedBlendPass, int, 1) \
     DECL(S, stipplePattern, ivec4, 8) \
+    DECL(S, surfaceBSwap, int, 1)   \
     DECL(S, surfaceScale, ivec2, 1) \
     DECL(S, texScale, float, 4)
 

@@ -210,6 +210,39 @@ for _, key, r, text in ranked:
 PY
 }
 
+# FILES RELEASED AT READY (roles/board.md), for the capacity section.
+#
+# The capacity list above is issues, and the tracker records no files per
+# issue, so which issue a free file unblocks is the board's reading. What the
+# board could NOT read before is that a file held by a finished lane is free:
+# on 2026-09-26 every tick said "every issue needs a file another lane holds"
+# while nine hot files sat with lanes waiting only on audit and fold. A row's
+# `released = [...]` says so, and this prints each such file with its state:
+#   AVAILABLE                       -- start the next lane on it
+#   taken by lane.<x>               -- one later lane already has it
+# The PR the release came from is `released_at_ready` on the row, if written.
+board_released() {   # <dir holding board_files.py>
+    python3 - "$1" <<'PY'
+import sys
+sys.path.insert(0, sys.argv[1])
+try:
+    import board_files
+    rows = board_files.load("territory.toml").get("lane") or {}
+except Exception as e:
+    print("(territory.toml unreadable: %s -- released files unknown)" % e)
+    sys.exit(0)
+for lane, meta in sorted(rows.items()):
+    pr = meta.get("released_at_ready")
+    src = "lane.%s%s" % (lane, " (PR #%s ready)" % pr if pr else "")
+    for f in meta.get("released") or []:
+        taken = [l for l, m in rows.items() if l != lane
+                 and f in (m.get("files") or [])
+                 and f not in (m.get("released") or [])]
+        print("%s  released by %s -- %s"
+              % (f, src, "taken by lane." + taken[0] if taken else "AVAILABLE"))
+PY
+}
+
 # ===================================================================
 # THE ISSUE SWEEP'S FINDINGS (jobs/issue-sweep.sh), AS A FIFTH GATE
 #
@@ -308,6 +341,9 @@ if [ "${1:-}" = "gate" ]; then
     [ -n "$sweep" ] && { echo "issue-sweep findings not yet seen (sha ${SWEEP_HASH:0:12}):"; printf '%s\n' "$sweep" | grep '^### ' | sed 's/^/  /'; }
     exit 0
 fi
+
+# `board.sh released` -- the released-files list the tick brief carries, alone.
+if [ "${1:-}" = "released" ]; then board_released "$SELF/.."; exit 0; fi
 
 # A private worktree of the trunk, so this job never reads the owner's checkout.
 if [ ! -e "$WT/.git" ]; then
@@ -434,6 +470,13 @@ brief="$WORK/briefs/board.$(date -u +%Y%m%dT%H%M%SZ).md"
     echo "$lanes of ${LANE_MAX:-2} lanes are running. Every issue below is open, carries no \`lane:\` label, no \`claimed:cloud\`, and none of \`blocked:*\`, \`decision-needed\`, \`upstream\`, \`unmodellable\`, \`xbox-hardware\`, \`harness-status\` -- so a lane could be started on it. They are NOT all \`dispatchable\`; deciding that is your job (files free, no blocker), and only you may apply the label. Dispatch UP TO THREE this tick (roles/board.md), in the order listed (it is sorted by expected improvement: game-visible, then recoverable px, and each line shows its key), each on files that are free with no blocker, and label \`cloud\` the ones that need no device so the hourly cloud session takes the overflow. If \`lane.sh\` prints REFUSED you are at the cap: stop, do not retry."
     echo
     printf '%s\n' "${capacity:-none}"
+    echo
+    echo "### files released at ready -- free for the rule above"
+    echo
+    echo "Each file below is held by a lane whose PR is ready (out of draft, CI green, unit gone), and its row lists it in \`released\`. An AVAILABLE one counts as free: start the next lane on it, and its brief names the ready PR on that file and says to merge master (or that PR's branch, if it has not folded) and re-run its arm before marking its own PR ready (roles/board.md, release at ready). A file taken by a later lane is not free again."
+    echo
+    released=$(board_released "$WT/docs/testing")
+    printf '%s\n' "${released:-none}"
     echo
     echo "## ready PRs with no state label -- the pipeline is stalled on you"
     echo
