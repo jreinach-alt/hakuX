@@ -96,6 +96,19 @@ lanes were flagged idle with no work: blankrule297, sweepcover and titlerun, all
 with draft PRs. perfarch showed as `PR in audit (1)` on #308, and turnipfork as
 `retired 09-25 17:35`. The xbox line showed ON, 66.1 W.
 
+After PR #349 folded (`6b97882481`), the first real tick published it. At
+2026-09-26T04:40:36Z (21:40 PDT), #107 read:
+
+- title: `harness: live status -- 21:30 PDT+, 4 lanes running, ...`
+- body: `**Written 2026-09-25 21:40 PDT.**` and `Next roll-up due by **2026-09-25 22:10 PDT**`
+- comment: every lane row, with perfarch `PR in audit (2)`, turnipfork
+  `fold-ready` on its new PR #353, and the lane.xbox, lane.remote and host ops
+  lines. No lane was idle at that tick, because the three flagged at 21:15
+  had all been resumed.
+
+PR #349 was folded before the failed-PR-list guard landed, so the guard
+follows in PR #354.
+
 Don't run `--print` on the host and then read `$WORK/status/STATUS.md`. It
 writes to the live path, and a real tick landing between the write and the
 `cat` replaced my first proof with master's page. Capture `--print`'s stdout
