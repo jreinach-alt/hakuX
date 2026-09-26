@@ -229,6 +229,16 @@ that gets worse, and the brief says an accepted regression is the owner's.
 It is put to the owner on #271, not accepted here. The alternative is the
 per-surface gate (section 5), which needs `vk/surface.c` and the probe.
 
+**Status at the end of the second session: waiting, PR #405 in draft.**
+It waits on three things outside the session: the arms job's `[job.arms]`
+verdict on #405, CI on the head, and the owner's decision on #271 (accept
+the `Fmt_X1A7R8G8B8_O` regression, or hold for the per-surface gate). The
+resumed session should do the following. Read the verdict, and check
+`status` and coverage on every row. If the only failure is the declared leg
+and the owner accepts, merge master. If master moved any of the three
+sources, re-register on the new refs. Then mark the PR ready. If the owner
+declines, the PR waits for the section 5 probe.
+
 ## What the next lane should not repeat
 
 - Do not invert the top half's alpha alone. It is quadratic in `s` and
