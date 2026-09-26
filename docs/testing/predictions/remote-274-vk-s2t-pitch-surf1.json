@@ -1,0 +1,39 @@
+{
+  "registered_utc": "2026-09-25T21:23:58Z",
+  "who": "lane.remote",
+  "issue": "274",
+  "prediction": "#274 GUARD: GL's pitch condition, added to Vulkan's check_surface_to_texture_compatiblity(), must be inert wherever the shortcut never meets a linear surface whose pitch differs from the texture's. A local instrument (never committed, on 7de83dd4) logged zero such shortcuts, active or shelved, on this disc: surf1, 236 captures over 14 suites including Surface pitch, Color zeta overlap and Texture render target. PREDICTION, desktop Vulkan on llvmpipe, surface_scale 1, 3 runs per arm: all 236 captures bit-identical between A and B (must_not_move *), better 0, worse 0. This includes #88's guards (Color_zeta_overlap ColorIntoZeta_ZB, ZetaIntoColor, Swap) and #109's Surface_pitch/Swizzle. Known in advance: Blend_surface/R5G6B5_Add_SrcA_DstA was unstable on master in #109's clean arm (11,964 in one run, 14,833 in five), so it can only be attributed with at least two self-identical runs per arm. UNCOMFORTABLE OUTCOME: any capture moving means the condition reaches a path the instrument did not see, and this FAILS.",
+  "a_ref": "9eaae944",
+  "b_ref": "2c94b7ed",
+  "must_not_move": [
+    "*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "better": 0,
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Blend surface",
+      "Color Zeta Disable",
+      "Color mask blend",
+      "Color zeta overlap",
+      "Image blit",
+      "Null surface",
+      "Surface clip",
+      "Surface format",
+      "Surface pitch",
+      "Texture Framebuffer Blit",
+      "Texture format",
+      "Texture perspective",
+      "Texture perspective enable",
+      "Texture render target"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "title": "desktop Vulkan A/B -- hand-queue only, see the prediction text"
+}
