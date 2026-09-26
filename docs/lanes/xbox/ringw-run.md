@@ -6,6 +6,9 @@ The branch was cut fresh from `origin/master` (`0e7ba4c334`). The host routed
 it on #53 at 06:09 PDT, from lane.ring53's NOTES s6 (PR #391). Its purpose is
 to unblock the #53 ring fix, which is at chance on held-out rows.
 
+**Result (2026-09-26):** every leg held and every case was readable. See
+[`xbox-ringw-2026-09-26.md`](../../testing/xbox-ringw-2026-09-26.md).
+
 ## What runs
 
 - **The XBE:** nxdk_pgraph_tests `6743b6a` plus
