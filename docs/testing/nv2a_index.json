@@ -968,13 +968,13 @@
   },
   {
    "kind": "HEDGE",
-   "loc": "hw/xbox/nv2a/nv2a_regs.h:1571",
+   "loc": "hw/xbox/nv2a/nv2a_regs.h:1573",
    "symbols": [],
    "text": "* Eventually we'll probably adopt nouveau names for these internals."
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/nv2a_regs.h:1611",
+   "loc": "hw/xbox/nv2a/nv2a_regs.h:1613",
    "symbols": [],
    "text": "* FIXME: Remove NV2A_MAX_BATCH_LENGTH_V2 at some point in the future."
   },
@@ -1585,13 +1585,13 @@
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:439",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:441",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED("
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:496",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:498",
    "symbols": [
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16",
@@ -1607,7 +1607,7 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:551",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:553",
    "symbols": [
     "NV097_SET_SURFACE_FORMAT_ZETA_Z24S8"
    ],
@@ -1615,43 +1615,43 @@
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:641",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:643",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"combiner stage %d writes read-only register \""
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:714",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:716",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"combiner stage %d reads EF_PROD, which only \""
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:724",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:726",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"combiner stage %d uses reserved register 0x%x; \""
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:743",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:745",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:755",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:757",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:788",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:790",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1006",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1008",
    "symbols": [
     "NV097_SET_DOT_RGBMAPPING"
    ],
@@ -1659,91 +1659,91 @@
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1240",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1242",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"%s in texture stage %d: %s; treated as NONE\","
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1266",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1268",
    "symbols": [],
    "text": "// FIXME: Cleanup"
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1275",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1277",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"%dD shadow map on stage %d\", dim, i);"
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1290",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1292",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"3D depth texture on stage %d\", i);"
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1296",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1298",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"%dD texture in mode %d on stage %d\", dim, mode, i);"
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1306",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1308",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"shadow map in mode %d on stage %d; sampled \""
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1311",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1313",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"%dD texture in mode %d on stage %d\", dim, mode, i);"
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1341",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1343",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"%dD shadow map on stage %d\", dim, i);"
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1348",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1350",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"%dD texture in mode %d on stage %d\", dim, mode, i);"
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1360",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1362",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"shadow map in mode %d on stage %d; sampled \""
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1364",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1366",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"%dD texture in cube mode %d on stage %d\","
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1377",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1379",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"shadow map in mode %d on stage %d; sampled \""
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1381",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1383",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"%dD texture in dependent mode %d on stage %d\","
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1924",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1926",
    "symbols": [],
    "text": "assert(!\"Invalid fog mode\");"
   },
   {
    "kind": "HEDGE",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:2027",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:2029",
    "symbols": [
     "NV097_SET_SURFACE_FORMAT"
    ],
@@ -1751,79 +1751,79 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:2241",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:2243",
    "symbols": [],
    "text": "\"    return col.rgb;\\n\" // FIXME"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:2244",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:2246",
    "symbols": [],
    "text": "\"    return col.rgb;\\n\" // FIXME"
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:2914",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:2940",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"point sprite over a linear texture on stage 3\");"
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:2951",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:2977",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"Dot Mapping mode %s\", dotmap_func);"
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:2978",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3004",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"convolution filter on a %dD%s texture, \""
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3062",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3088",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"border texture on passthru stage %d\", i);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3103",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3129",
    "symbols": [],
    "text": "// FIXME: Does hardware pass through the r/z coordinate or is it 0?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3137",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3163",
    "symbols": [],
    "text": "// FIXME: Does hardware pass through the r/z coordinate or is it 0?"
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3156",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3182",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"PS_TEXTUREMODES_BRDF\");"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3176",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3202",
    "symbols": [],
    "text": "// FIXME: mstring_append_fmt(vars, \"gl_FragDepth = t%d.x;\\n\", i);"
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3322",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3348",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"dependent AR read from a linear texture, \""
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3336",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3362",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"dependent GB read from a linear texture, \""
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3376",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3402",
    "symbols": [
     "NV097_SET_SHADER_STAGE_PROGRAM"
    ],
@@ -1831,19 +1831,19 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3474",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3500",
    "symbols": [],
    "text": "assert(!\"Unhandled key mode.\");"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3531",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3557",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3818",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3844",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"%d combiner stages, the hardware has %d\","
   },
@@ -1950,19 +1950,19 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:666",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:674",
    "symbols": [],
    "text": "/* FIXME: Is the fog still calculated / passed somehow?! */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:670",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:678",
    "symbols": [],
    "text": "/* FIXME: Does foggen do something here? Let's do some tracking.."
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:786",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:794",
    "symbols": [],
    "text": "*   starting from.  RollerCoaster Tycoon, the guest the FIXME"
   },
@@ -2272,7 +2272,7 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4885",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4890",
    "symbols": [
     "NV097_SET_ANTI_ALIASING_CONTROL",
     "NV097_SET_ZMIN_MAX_CONTROL_ZCLAMP_EN_CLAMP",
@@ -2287,7 +2287,7 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4886",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4891",
    "symbols": [
     "NV097_SET_ANTI_ALIASING_CONTROL",
     "NV097_SET_ANTI_ALIASING_CONTROL_ENABLE",
@@ -2302,7 +2302,7 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4895",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4900",
    "symbols": [
     "NV097_SET_ANTI_ALIASING_CONTROL",
     "NV097_SET_ANTI_ALIASING_CONTROL_ENABLE",
@@ -2316,7 +2316,7 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4954",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4959",
    "symbols": [
     "NV097_SET_COMBINER_CONTROL",
     "NV097_SET_SHADOW_DEPTH_FUNC",
@@ -2330,7 +2330,7 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5103",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5108",
    "symbols": [
     "NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8",
     "NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8"
@@ -2339,7 +2339,7 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5152",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5157",
    "symbols": [
     "NV097_SET_SURFACE_FORMAT_ZETA_Z16",
     "NV097_SET_SURFACE_FORMAT_ZETA_Z24S8"
@@ -2348,13 +2348,13 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5165",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5170",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5175",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5180",
    "symbols": [
     "NV097_GET_REPORT_OFFSET"
    ],
@@ -2362,7 +2362,7 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5176",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5181",
    "symbols": [
     "NV097_GET_REPORT_OFFSET"
    ],
@@ -4626,6 +4626,7 @@
   "NV097_SET_ZMIN_MAX_CONTROL": [
    "NV_PGRAPH_NSOURCE_DATA_ERROR_PENDING",
    "NV_PGRAPH_ZCOMPRESSOCCLUDE",
+   "NV_PGRAPH_ZCOMPRESSOCCLUDE_CULL_NEAR_FAR_EN",
    "NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN",
    "NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN_CLAMP",
    "NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN_CULL"
@@ -4651,17 +4652,17 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "b9a1e501f150055e7a8302cc29c4d4ac08ea2bf3",
+  "emulator_commit": "400c3b02823e43b4dd0ddde823c7eb943e104a3c",
   "gaps": 497,
   "resolved_tables": 1,
-  "sites": 2871,
+  "sites": 2876,
   "suites": 104,
   "support_dirs": [
-   "/home/justin/hakux-work/fold-pins/pbkitplusplus"
+   "/home/justin/pbkitplusplus"
   ],
-  "symbols": 951,
+  "symbols": 953,
   "tests_commit": "6743b6ab164e760e8b995e969c762d829af5d52e",
-  "tests_root": "/home/justin/hakux-work/fold-pins/nxdk_pgraph_tests",
+  "tests_root": "/home/justin/nxdk_pgraph_tests",
   "unread": 145
  },
  "schema": 1,
@@ -4736,7 +4737,7 @@
     "text": "DEF_METHOD(NV097, CLEAR_SURFACE)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4908",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4913",
     "role": "HANDLER",
     "text": "DEF_METHOD(NV097, CLEAR_SURFACE)"
    }
@@ -5029,7 +5030,7 @@
   ],
   "NV097_GET_REPORT_OFFSET": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5182",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5187",
     "role": "READ",
     "text": "hwaddr offset = GET_MASK(parameter, NV097_GET_REPORT_OFFSET);"
    }
@@ -5092,7 +5093,7 @@
     "text": "DEF_METHOD(NV097, LAUNCH_TRANSFORM_PROGRAM)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4986",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4991",
     "role": "HANDLER",
     "text": "DEF_METHOD(NV097, LAUNCH_TRANSFORM_PROGRAM)"
    }
@@ -5152,14 +5153,14 @@
     "text": "DEF_METHOD(NV097, SET_ANTI_ALIASING_CONTROL)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4891",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4896",
     "role": "HANDLER",
     "text": "DEF_METHOD(NV097, SET_ANTI_ALIASING_CONTROL)"
    }
   ],
   "NV097_SET_ANTI_ALIASING_CONTROL_ENABLE": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4894",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4899",
     "role": "READ",
     "text": "GET_MASK(parameter, NV097_SET_ANTI_ALIASING_CONTROL_ENABLE));"
    }
@@ -5681,7 +5682,7 @@
     "text": "DEF_METHOD(NV097, SET_CLEAR_RECT_HORIZONTAL)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4913",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4918",
     "role": "HANDLER",
     "text": "DEF_METHOD(NV097, SET_CLEAR_RECT_HORIZONTAL)"
    }
@@ -5693,7 +5694,7 @@
     "text": "DEF_METHOD(NV097, SET_CLEAR_RECT_VERTICAL)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4918",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4923",
     "role": "HANDLER",
     "text": "DEF_METHOD(NV097, SET_CLEAR_RECT_VERTICAL)"
    }
@@ -5729,7 +5730,7 @@
     "text": "DEF_METHOD(NV097, SET_COLOR_CLEAR_VALUE)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4903",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4908",
     "role": "HANDLER",
     "text": "DEF_METHOD(NV097, SET_COLOR_CLEAR_VALUE)"
    }
@@ -5861,19 +5862,19 @@
     "text": "DEF_METHOD_RANGE(NV097, SET_COMBINER_COLOR_OCW, 8)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4940",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4945",
     "role": "HANDLER",
     "text": "DEF_METHOD_INC(NV097, SET_COMBINER_COLOR_OCW)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4942",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4947",
     "role": "REF",
     "text": "int slot = (method - NV097_SET_COMBINER_COLOR_OCW) / 4;"
    }
   ],
   "NV097_SET_COMBINER_CONTROL": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.h:218",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.h:219",
     "role": "COMMENT",
     "text": "* eight. The stage count arrives in the low byte of NV097_SET_COMBINER_CONTROL"
    },
@@ -5883,7 +5884,7 @@
     "text": "DEF_METHOD(NV097, SET_COMBINER_CONTROL)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4946",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4951",
     "role": "HANDLER",
     "text": "DEF_METHOD(NV097, SET_COMBINER_CONTROL)"
    }
@@ -6269,17 +6270,17 @@
   ],
   "NV097_SET_DOT_RGBMAPPING": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1000",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1002",
     "role": "COMMENT",
     "text": "/* NV097_SET_DOT_RGBMAPPING packs 4-bit nibbles; the hardware defines eight"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1142",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1144",
     "role": "COMMENT",
     "text": "* named dot behind for anyone else.  NV097_SET_DOT_RGBMAPPING is sticky,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:2219",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:2221",
     "role": "COMMENT",
     "text": "* STAGE_DOT_ST with NV097_SET_DOT_RGBMAPPING 0x044).  Going through"
    },
@@ -6289,7 +6290,7 @@
     "text": "DEF_METHOD(NV097, SET_DOT_RGBMAPPING)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4968",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4973",
     "role": "HANDLER",
     "text": "DEF_METHOD(NV097, SET_DOT_RGBMAPPING)"
    }
@@ -6330,7 +6331,7 @@
   ],
   "NV097_SET_EYE_VECTOR": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3353",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3379",
     "role": "COMMENT",
     "text": "* NV097_SET_EYE_VECTOR instead of the w of the three stages'"
    },
@@ -7276,7 +7277,7 @@
     "text": "DEF_METHOD(NV097, SET_SHADER_CLIP_PLANE_MODE)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4935",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4940",
     "role": "HANDLER",
     "text": "DEF_METHOD(NV097, SET_SHADER_CLIP_PLANE_MODE)"
    }
@@ -7288,14 +7289,14 @@
     "text": "DEF_METHOD(NV097, SET_SHADER_OTHER_STAGE_INPUT)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4974",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4979",
     "role": "HANDLER",
     "text": "DEF_METHOD(NV097, SET_SHADER_OTHER_STAGE_INPUT)"
    }
   ],
   "NV097_SET_SHADER_STAGE_PROGRAM": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3374",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3400",
     "role": "COMMENT",
     "text": "/* Five bits per stage in NV097_SET_SHADER_STAGE_PROGRAM; the"
    },
@@ -7305,7 +7306,7 @@
     "text": "DEF_METHOD(NV097, SET_SHADER_STAGE_PROGRAM)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4963",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4968",
     "role": "HANDLER",
     "text": "DEF_METHOD(NV097, SET_SHADER_STAGE_PROGRAM)"
    }
@@ -7343,7 +7344,7 @@
     "text": "DEF_METHOD(NV097, SET_SHADOW_DEPTH_FUNC)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4957",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4962",
     "role": "HANDLER",
     "text": "DEF_METHOD(NV097, SET_SHADOW_DEPTH_FUNC)"
    }
@@ -7355,7 +7356,7 @@
     "text": "DEF_METHOD(NV097, SET_SHADOW_ZSLOPE_THRESHOLD)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4951",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4956",
     "role": "HANDLER",
     "text": "DEF_METHOD(NV097, SET_SHADOW_ZSLOPE_THRESHOLD)"
    }
@@ -7442,12 +7443,12 @@
     "text": "DEF_METHOD_RANGE(NV097, SET_SPECULAR_FOG_FACTOR, 2)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4923",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4928",
     "role": "HANDLER",
     "text": "DEF_METHOD_INC(NV097, SET_SPECULAR_FOG_FACTOR)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4925",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4930",
     "role": "REF",
     "text": "int slot = (method - NV097_SET_SPECULAR_FOG_FACTOR) / 4;"
    }
@@ -7476,12 +7477,12 @@
     "text": "DEF_METHOD_RANGE(NV097, SET_SPECULAR_PARAMS_BACK, 6)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4929",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4934",
     "role": "HANDLER",
     "text": "DEF_METHOD_INC(NV097, SET_SPECULAR_PARAMS_BACK)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4931",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4936",
     "role": "REF",
     "text": "int slot = (method - NV097_SET_SPECULAR_PARAMS_BACK) / 4;"
    }
@@ -7750,7 +7751,7 @@
     "text": "* Takes a GUEST colour format enum -- the value NV097_SET_SURFACE_FORMAT"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:2035",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:2037",
     "role": "COMMENT",
     "text": "* NV097_SET_SURFACE_FORMAT between cases while rendering into ONE surface"
    },
@@ -7882,12 +7883,12 @@
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8];"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5072",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5077",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5119",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5124",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8:"
    },
@@ -7919,7 +7920,7 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5077",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5082",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_B8:"
    },
@@ -7956,7 +7957,7 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5078",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5083",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_G8B8:"
    },
@@ -8013,7 +8014,7 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5: switch (texture_fmt) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5063",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5068",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5:"
    },
@@ -8045,12 +8046,12 @@
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5071",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5076",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5109",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5114",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8:"
    },
@@ -8072,12 +8073,12 @@
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5070",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5075",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5108",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5113",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8:"
    },
@@ -8109,7 +8110,7 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_O1R5G5B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5058",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5063",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_O1R5G5B5:"
    },
@@ -8181,7 +8182,7 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5057",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5062",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5:"
    },
@@ -8218,7 +8219,7 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_O8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5069",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5074",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_O8R8G8B8:"
    },
@@ -8290,7 +8291,7 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5068",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5073",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8:"
    },
@@ -8397,12 +8398,12 @@
     "text": "case NV097_SET_SURFACE_FORMAT_ZETA_Z16:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:540",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:542",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_ZETA_Z16:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5150",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5155",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_ZETA_Z16: {"
    },
@@ -8434,12 +8435,12 @@
     "text": "case NV097_SET_SURFACE_FORMAT_ZETA_Z24S8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:544",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:546",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_ZETA_Z24S8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5156",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5161",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_ZETA_Z24S8: {"
    },
@@ -9195,7 +9196,7 @@
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8: {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:488",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:490",
     "role": "REF",
     "text": "color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8 ||"
    },
@@ -9442,7 +9443,7 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FIXED] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:378",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:380",
     "role": "REF",
     "text": "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FIXED ||"
    },
@@ -9464,12 +9465,12 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FLOAT] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:380",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:382",
     "role": "REF",
     "text": "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FLOAT;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:386",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:388",
     "role": "REF",
     "text": "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FLOAT ||"
    },
@@ -9508,7 +9509,7 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FLOAT] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:388",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:390",
     "role": "REF",
     "text": "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FLOAT;"
    },
@@ -9567,7 +9568,7 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:479",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:481",
     "role": "REF",
     "text": "color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16;"
    },
@@ -9812,12 +9813,12 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:490",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:492",
     "role": "REF",
     "text": "color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:532",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:534",
     "role": "REF",
     "text": "color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16);"
    },
@@ -10101,7 +10102,7 @@
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:487",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:489",
     "role": "REF",
     "text": "color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8 ||"
    },
@@ -10434,7 +10435,7 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:478",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:480",
     "role": "REF",
     "text": "color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16 ||"
    },
@@ -10728,12 +10729,12 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:489",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:491",
     "role": "REF",
     "text": "color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16 ||"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:531",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:533",
     "role": "REF",
     "text": "color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16 ||"
    },
@@ -11009,7 +11010,7 @@
     "text": "DEF_METHOD(NV097, SET_TRANSFORM_CONSTANT_LOAD)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5042",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5047",
     "role": "HANDLER",
     "text": "DEF_METHOD(NV097, SET_TRANSFORM_CONSTANT_LOAD)"
    }
@@ -11021,12 +11022,12 @@
     "text": "DEF_METHOD_RANGE(NV097, SET_TRANSFORM_DATA, 4)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4980",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4985",
     "role": "HANDLER",
     "text": "DEF_METHOD_INC(NV097, SET_TRANSFORM_DATA)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4982",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4987",
     "role": "REF",
     "text": "int slot = (method - NV097_SET_TRANSFORM_DATA) / 4;"
    }
@@ -11038,21 +11039,21 @@
     "text": "DEF_METHOD(NV097, SET_TRANSFORM_EXECUTION_MODE)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5013",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5018",
     "role": "HANDLER",
     "text": "DEF_METHOD(NV097, SET_TRANSFORM_EXECUTION_MODE)"
    }
   ],
   "NV097_SET_TRANSFORM_EXECUTION_MODE_MODE": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5017",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5022",
     "role": "REF",
     "text": "NV097_SET_TRANSFORM_EXECUTION_MODE_MODE));"
    }
   ],
   "NV097_SET_TRANSFORM_EXECUTION_MODE_RANGE_MODE": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5020",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5025",
     "role": "REF",
     "text": "NV097_SET_TRANSFORM_EXECUTION_MODE_RANGE_MODE));"
    }
@@ -11081,7 +11082,7 @@
     "text": "DEF_METHOD(NV097, SET_TRANSFORM_PROGRAM_CXT_WRITE_EN)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5023",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5028",
     "role": "HANDLER",
     "text": "DEF_METHOD(NV097, SET_TRANSFORM_PROGRAM_CXT_WRITE_EN)"
    }
@@ -11093,7 +11094,7 @@
     "text": "DEF_METHOD(NV097, SET_TRANSFORM_PROGRAM_LOAD)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5028",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5033",
     "role": "HANDLER",
     "text": "DEF_METHOD(NV097, SET_TRANSFORM_PROGRAM_LOAD)"
    }
@@ -11105,7 +11106,7 @@
     "text": "DEF_METHOD(NV097, SET_TRANSFORM_PROGRAM_START)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5035",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5040",
     "role": "HANDLER",
     "text": "DEF_METHOD(NV097, SET_TRANSFORM_PROGRAM_START)"
    }
@@ -11611,23 +11612,30 @@
     "text": "DEF_METHOD(NV097, SET_ZMIN_MAX_CONTROL)"
    }
   ],
+  "NV097_SET_ZMIN_MAX_CONTROL_CULL_NEAR_FAR_EN": [
+   {
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4876",
+    "role": "READ",
+    "text": "GET_MASK(parameter, NV097_SET_ZMIN_MAX_CONTROL_CULL_NEAR_FAR_EN)"
+   }
+  ],
   "NV097_SET_ZMIN_MAX_CONTROL_ZCLAMP_EN": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4873",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4878",
     "role": "READ",
     "text": "switch (GET_MASK(parameter, NV097_SET_ZMIN_MAX_CONTROL_ZCLAMP_EN)) {"
    }
   ],
   "NV097_SET_ZMIN_MAX_CONTROL_ZCLAMP_EN_CLAMP": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4879",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4884",
     "role": "DISPATCH",
     "text": "case NV097_SET_ZMIN_MAX_CONTROL_ZCLAMP_EN_CLAMP:"
    }
   ],
   "NV097_SET_ZMIN_MAX_CONTROL_ZCLAMP_EN_CULL": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4874",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4879",
     "role": "DISPATCH",
     "text": "case NV097_SET_ZMIN_MAX_CONTROL_ZCLAMP_EN_CULL:"
    }
@@ -11651,7 +11659,7 @@
     "text": "DEF_METHOD(NV097, SET_ZSTENCIL_CLEAR_VALUE)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4898",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4903",
     "role": "HANDLER",
     "text": "DEF_METHOD(NV097, SET_ZSTENCIL_CLEAR_VALUE)"
    }
@@ -11680,7 +11688,7 @@
     "text": "[MI(0x1D7C)] = MF_MASKED(NV_PGRAPH_ANTIALIASING, 35),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4893",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4898",
     "role": "REF",
     "text": "PG_SET_MASK(NV_PGRAPH_ANTIALIASING, NV_PGRAPH_ANTIALIASING_ENABLE,"
    }
@@ -11702,7 +11710,7 @@
     "text": "/* 35 */ NV_PGRAPH_ANTIALIASING_ENABLE,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4893",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4898",
     "role": "REF",
     "text": "PG_SET_MASK(NV_PGRAPH_ANTIALIASING, NV_PGRAPH_ANTIALIASING_ENABLE,"
    }
@@ -11729,17 +11737,17 @@
     "text": "uint32_t equation = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_BLEND),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3579",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3605",
     "role": "COMMENT",
     "text": "* shader state meant keying it on NV_PGRAPH_BLEND, which"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3885",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3911",
     "role": "COMMENT",
     "text": "* and that is the whole point: NV_PGRAPH_BLEND is not watched by"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3892",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3918",
     "role": "READ",
     "text": "uint32_t blend = pgraph_reg_r(pg, NV_PGRAPH_BLEND);"
    },
@@ -12215,7 +12223,7 @@
     "text": "if (pgraph_reg_r(pg, NV_PGRAPH_BLEND) & NV_PGRAPH_BLEND_EN) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3895",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3921",
     "role": "REF",
     "text": "(blend & NV_PGRAPH_BLEND_EN) &&"
    },
@@ -12272,7 +12280,7 @@
     "text": "NV_PGRAPH_BLEND_EQN);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3893",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3919",
     "role": "READ",
     "text": "uint32_t eqn = GET_MASK(blend, NV_PGRAPH_BLEND_EQN);"
    },
@@ -12356,7 +12364,7 @@
     "text": "return equation == NV_PGRAPH_BLEND_EQN_FUNC_ADD_SIGNED ||"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3896",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3922",
     "role": "REF",
     "text": "(eqn == NV_PGRAPH_BLEND_EQN_FUNC_ADD_SIGNED ||"
    },
@@ -12385,7 +12393,7 @@
     "text": "equation == NV_PGRAPH_BLEND_EQN_FUNC_REVERSE_SUBTRACT_SIGNED;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3897",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3923",
     "role": "REF",
     "text": "eqn == NV_PGRAPH_BLEND_EQN_FUNC_REVERSE_SUBTRACT_SIGNED);"
    },
@@ -12688,7 +12696,7 @@
     "text": "uint32_t border_color = pgraph_reg_r(pg, NV_PGRAPH_BORDERCOLOR0 + i*4);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4005",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4031",
     "role": "READ",
     "text": "pgraph_reg_r(pg, NV_PGRAPH_BORDERCOLOR0 + i * 4),"
    },
@@ -12745,7 +12753,7 @@
   ],
   "NV_PGRAPH_BUMPMAT00": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3977",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4003",
     "role": "READ",
     "text": "m_u32[0] = pgraph_reg_r(pg, NV_PGRAPH_BUMPMAT00 + 4 * (i - 1));"
    },
@@ -12757,7 +12765,7 @@
   ],
   "NV_PGRAPH_BUMPMAT01": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3978",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4004",
     "role": "READ",
     "text": "m_u32[1] = pgraph_reg_r(pg, NV_PGRAPH_BUMPMAT01 + 4 * (i - 1));"
    },
@@ -12769,7 +12777,7 @@
   ],
   "NV_PGRAPH_BUMPMAT10": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3979",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4005",
     "role": "READ",
     "text": "m_u32[2] = pgraph_reg_r(pg, NV_PGRAPH_BUMPMAT10 + 4 * (i - 1));"
    },
@@ -12781,7 +12789,7 @@
   ],
   "NV_PGRAPH_BUMPMAT11": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3980",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4006",
     "role": "READ",
     "text": "m_u32[3] = pgraph_reg_r(pg, NV_PGRAPH_BUMPMAT11 + 4 * (i - 1));"
    },
@@ -12793,7 +12801,7 @@
   ],
   "NV_PGRAPH_BUMPOFFSET1": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3993",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4019",
     "role": "READ",
     "text": "pgraph_reg_r(pg, NV_PGRAPH_BUMPOFFSET1 + (i - 1) * 4);"
    },
@@ -12805,7 +12813,7 @@
   ],
   "NV_PGRAPH_BUMPSCALE1": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3988",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4014",
     "role": "READ",
     "text": "pgraph_reg_r(pg, NV_PGRAPH_BUMPSCALE1 + (i - 1) * 4);"
    },
@@ -12877,12 +12885,12 @@
     "text": "PG_SET_MASK(NV_PGRAPH_CHEOPS_OFFSET,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5031",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5036",
     "role": "REF",
     "text": "PG_SET_MASK(NV_PGRAPH_CHEOPS_OFFSET,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5045",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5050",
     "role": "REF",
     "text": "PG_SET_MASK(NV_PGRAPH_CHEOPS_OFFSET,"
    }
@@ -12904,7 +12912,7 @@
     "text": "NV_PGRAPH_CHEOPS_OFFSET_CONST_LD_PTR, const_load+1);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5046",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5051",
     "role": "REF",
     "text": "NV_PGRAPH_CHEOPS_OFFSET_CONST_LD_PTR, parameter);"
    }
@@ -12921,7 +12929,7 @@
     "text": "NV_PGRAPH_CHEOPS_OFFSET_PROG_LD_PTR, program_load+1);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5032",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5037",
     "role": "REF",
     "text": "NV_PGRAPH_CHEOPS_OFFSET_PROG_LD_PTR, parameter);"
    }
@@ -12943,7 +12951,7 @@
     "text": "[MI(0x1D98)] = MF_DIRECT(NV_PGRAPH_CLEARRECTX),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4915",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4920",
     "role": "WRITE",
     "text": "pgraph_reg_w(pg, NV_PGRAPH_CLEARRECTX, parameter);"
    },
@@ -12994,7 +13002,7 @@
     "text": "[MI(0x1D9C)] = MF_DIRECT(NV_PGRAPH_CLEARRECTY),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4920",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4925",
     "role": "WRITE",
     "text": "pgraph_reg_w(pg, NV_PGRAPH_CLEARRECTY, parameter);"
    },
@@ -13040,19 +13048,19 @@
     "text": "[MI(0x1D90)] = MF_DIRECT(NV_PGRAPH_COLORCLEARVALUE),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4905",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4910",
     "role": "WRITE",
     "text": "pgraph_reg_w(pg, NV_PGRAPH_COLORCLEARVALUE, parameter);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5051",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5056",
     "role": "READ",
     "text": "uint32_t clear_color = pgraph_reg_r(pg, NV_PGRAPH_COLORCLEARVALUE);"
    }
   ],
   "NV_PGRAPH_COLORKEYCOLOR0": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3960",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3986",
     "role": "READ",
     "text": "values->colorKey[0] = pgraph_reg_r(pg, NV_PGRAPH_COLORKEYCOLOR0);"
    },
@@ -13084,33 +13092,33 @@
   ],
   "NV_PGRAPH_COLORKEYCOLOR1": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3961",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3987",
     "role": "READ",
     "text": "values->colorKey[1] = pgraph_reg_r(pg, NV_PGRAPH_COLORKEYCOLOR1);"
    }
   ],
   "NV_PGRAPH_COLORKEYCOLOR2": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3962",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3988",
     "role": "READ",
     "text": "values->colorKey[2] = pgraph_reg_r(pg, NV_PGRAPH_COLORKEYCOLOR2);"
    }
   ],
   "NV_PGRAPH_COLORKEYCOLOR3": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3963",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3989",
     "role": "READ",
     "text": "values->colorKey[3] = pgraph_reg_r(pg, NV_PGRAPH_COLORKEYCOLOR3);"
    }
   ],
   "NV_PGRAPH_COMBINEALPHAI0": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:331",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:333",
     "role": "READ",
     "text": "pgraph_reg_r(pg, NV_PGRAPH_COMBINEALPHAI0 + i * 4);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.h:216",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.h:217",
     "role": "COMMENT",
     "text": "* The register file has eight combiner stages: NV_PGRAPH_COMBINEALPHAI0 and"
    },
@@ -13172,12 +13180,12 @@
   ],
   "NV_PGRAPH_COMBINEALPHAO0": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:333",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:335",
     "role": "READ",
     "text": "pgraph_reg_r(pg, NV_PGRAPH_COMBINEALPHAO0 + i * 4);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.h:217",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.h:218",
     "role": "COMMENT",
     "text": "* NV_PGRAPH_COMBINEALPHAO0 sit 0x20 apart, and every array here is sized for"
    },
@@ -13239,7 +13247,7 @@
   ],
   "NV_PGRAPH_COMBINECOLORI0": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:327",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:329",
     "role": "READ",
     "text": "pgraph_reg_r(pg, NV_PGRAPH_COMBINECOLORI0 + i * 4);"
    },
@@ -13301,7 +13309,7 @@
   ],
   "NV_PGRAPH_COMBINECOLORO0": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:329",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:331",
     "role": "READ",
     "text": "pgraph_reg_r(pg, NV_PGRAPH_COMBINECOLORO0 + i * 4);"
    },
@@ -13356,7 +13364,7 @@
     "text": "[MI(0x1E5C)] = MF_DIRECT(NV_PGRAPH_COMBINECOLORO0 + 28),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4943",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4948",
     "role": "WRITE",
     "text": "pgraph_reg_w(pg, NV_PGRAPH_COMBINECOLORO0 + slot*4, parameter);"
    }
@@ -13368,7 +13376,7 @@
     "text": "state->combiner_control = pgraph_reg_r(pg, NV_PGRAPH_COMBINECTL);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:324",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:326",
     "role": "READ",
     "text": "psh_num_combiner_stages(pgraph_reg_r(pg, NV_PGRAPH_COMBINECTL));"
    },
@@ -13393,14 +13401,14 @@
     "text": "[MI(0x1E60)] = MF_DIRECT(NV_PGRAPH_COMBINECTL),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4948",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4953",
     "role": "WRITE",
     "text": "pgraph_reg_w(pg, NV_PGRAPH_COMBINECTL, parameter);"
    }
   ],
   "NV_PGRAPH_COMBINEFACTOR0": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3942",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3968",
     "role": "READ",
     "text": "pgraph_reg_r(pg, NV_PGRAPH_COMBINEFACTOR0 + i * 4);"
    },
@@ -13457,7 +13465,7 @@
   ],
   "NV_PGRAPH_COMBINEFACTOR1": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3944",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3970",
     "role": "READ",
     "text": "pgraph_reg_r(pg, NV_PGRAPH_COMBINEFACTOR1 + i * 4);"
    },
@@ -13623,12 +13631,12 @@
     "text": "state->noperspective = !(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) &"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:316",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:318",
     "role": "READ",
     "text": "uint32_t ctl0 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3955",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3981",
     "role": "READ",
     "text": "int alpha_ref = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0),"
    },
@@ -13942,7 +13950,7 @@
   ],
   "NV_PGRAPH_CONTROL_0_ALPHAREF": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3956",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3982",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_0_ALPHAREF);"
    },
@@ -14445,7 +14453,7 @@
     "text": "bool depth_test = control_0 & NV_PGRAPH_CONTROL_0_ZENABLE;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:317",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:319",
     "role": "REF",
     "text": "bool depth_test = ctl0 & NV_PGRAPH_CONTROL_0_ZENABLE;"
    },
@@ -14593,7 +14601,7 @@
     "text": "glDepthMask(!!(control_0 & NV_PGRAPH_CONTROL_0_ZWRITEENABLE));"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:318",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:320",
     "role": "REF",
     "text": "bool depth_write = !!(ctl0 & NV_PGRAPH_CONTROL_0_ZWRITEENABLE);"
    },
@@ -16218,7 +16226,7 @@
     "text": "unsigned int program_start = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_C),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5038",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5043",
     "role": "REF",
     "text": "PG_SET_MASK(NV_PGRAPH_CSV0_C,"
    }
@@ -16259,7 +16267,7 @@
     "text": "NV_PGRAPH_CSV0_C_CHEOPS_PROGRAM_START);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5039",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5044",
     "role": "REF",
     "text": "NV_PGRAPH_CSV0_C_CHEOPS_PROGRAM_START, parameter);"
    }
@@ -16484,12 +16492,12 @@
     "text": "if (GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_D), NV_PGRAPH_CSV0_D_MODE) !="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5015",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5020",
     "role": "REF",
     "text": "PG_SET_MASK(NV_PGRAPH_CSV0_D, NV_PGRAPH_CSV0_D_MODE,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5018",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5023",
     "role": "REF",
     "text": "PG_SET_MASK(NV_PGRAPH_CSV0_D, NV_PGRAPH_CSV0_D_RANGE_MODE,"
    }
@@ -16591,7 +16599,7 @@
     "text": "if (GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_D), NV_PGRAPH_CSV0_D_MODE) !="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5015",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5020",
     "role": "REF",
     "text": "PG_SET_MASK(NV_PGRAPH_CSV0_D, NV_PGRAPH_CSV0_D_MODE,"
    }
@@ -16610,7 +16618,7 @@
   ],
   "NV_PGRAPH_CSV0_D_RANGE_MODE": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5018",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5023",
     "role": "REF",
     "text": "PG_SET_MASK(NV_PGRAPH_CSV0_D, NV_PGRAPH_CSV0_D_RANGE_MODE,"
    }
@@ -17137,7 +17145,7 @@
   ],
   "NV_PGRAPH_EYEVEC0": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4011",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4037",
     "role": "READ",
     "text": "uint32_t bits = pgraph_reg_r(pg, NV_PGRAPH_EYEVEC0 + k * 4);"
    },
@@ -17193,7 +17201,7 @@
   ],
   "NV_PGRAPH_FOGCOLOR": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4018",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4044",
     "role": "READ",
     "text": "uint32_t fog_color = pgraph_reg_r(pg, NV_PGRAPH_FOGCOLOR);"
    },
@@ -17220,7 +17228,7 @@
   ],
   "NV_PGRAPH_FOGCOLOR_ALPHA": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4026",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4052",
     "role": "READ",
     "text": "GET_MASK(fog_color, NV_PGRAPH_FOGCOLOR_ALPHA) / 255.0;"
    },
@@ -17232,7 +17240,7 @@
   ],
   "NV_PGRAPH_FOGCOLOR_BLUE": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4024",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4050",
     "role": "READ",
     "text": "GET_MASK(fog_color, NV_PGRAPH_FOGCOLOR_BLUE) / 255.0;"
    },
@@ -17244,7 +17252,7 @@
   ],
   "NV_PGRAPH_FOGCOLOR_GREEN": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4022",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4048",
     "role": "READ",
     "text": "GET_MASK(fog_color, NV_PGRAPH_FOGCOLOR_GREEN) / 255.0;"
    },
@@ -17256,7 +17264,7 @@
   ],
   "NV_PGRAPH_FOGCOLOR_RED": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4020",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4046",
     "role": "READ",
     "text": "GET_MASK(fog_color, NV_PGRAPH_FOGCOLOR_RED) / 255.0;"
    },
@@ -17268,7 +17276,7 @@
   ],
   "NV_PGRAPH_FOGPARAM0": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4030",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4056",
     "role": "READ",
     "text": "uint32_t param_0 = pgraph_reg_r(pg, NV_PGRAPH_FOGPARAM0);"
    },
@@ -17280,7 +17288,7 @@
   ],
   "NV_PGRAPH_FOGPARAM1": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4031",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4057",
     "role": "READ",
     "text": "uint32_t param_1 = pgraph_reg_r(pg, NV_PGRAPH_FOGPARAM1);"
    }
@@ -17597,12 +17605,12 @@
     "text": "state->point_sprite = pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER) &"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:536",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:538",
     "role": "READ",
     "text": "unsigned int z_format = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4042",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4068",
     "role": "READ",
     "text": "uint32_t raster = pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER);"
    },
@@ -18093,7 +18101,7 @@
     "text": "setupraster, NV_PGRAPH_SETUPRASTER_FRONTFACEMODE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4044",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4070",
     "role": "READ",
     "text": "GET_MASK(raster, NV_PGRAPH_SETUPRASTER_FRONTFACEMODE);"
    },
@@ -18140,7 +18148,7 @@
   ],
   "NV_PGRAPH_SETUPRASTER_FRONTFACEMODE_FILL": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4046",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4072",
     "role": "REF",
     "text": "if ((polygon_mode == NV_PGRAPH_SETUPRASTER_FRONTFACEMODE_FILL &&"
    },
@@ -18152,7 +18160,7 @@
   ],
   "NV_PGRAPH_SETUPRASTER_FRONTFACEMODE_LINE": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4048",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4074",
     "role": "REF",
     "text": "(polygon_mode == NV_PGRAPH_SETUPRASTER_FRONTFACEMODE_LINE &&"
    },
@@ -18169,7 +18177,7 @@
   ],
   "NV_PGRAPH_SETUPRASTER_FRONTFACEMODE_POINT": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4050",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4076",
     "role": "REF",
     "text": "(polygon_mode == NV_PGRAPH_SETUPRASTER_FRONTFACEMODE_POINT &&"
    },
@@ -18213,7 +18221,7 @@
   ],
   "NV_PGRAPH_SETUPRASTER_POFFSETFILLENABLE": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4047",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4073",
     "role": "REF",
     "text": "(raster & NV_PGRAPH_SETUPRASTER_POFFSETFILLENABLE)) ||"
    },
@@ -18240,7 +18248,7 @@
   ],
   "NV_PGRAPH_SETUPRASTER_POFFSETLINEENABLE": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4049",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4075",
     "role": "REF",
     "text": "(raster & NV_PGRAPH_SETUPRASTER_POFFSETLINEENABLE)) ||"
    },
@@ -18267,7 +18275,7 @@
   ],
   "NV_PGRAPH_SETUPRASTER_POFFSETPOINTENABLE": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4051",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4077",
     "role": "REF",
     "text": "(raster & NV_PGRAPH_SETUPRASTER_POFFSETPOINTENABLE))) {"
    },
@@ -18372,7 +18380,7 @@
     "text": "NV_PGRAPH_SETUPRASTER_Z_FORMAT);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:537",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:539",
     "role": "REF",
     "text": "NV_PGRAPH_SETUPRASTER_Z_FORMAT);"
    },
@@ -18389,7 +18397,7 @@
   ],
   "NV_PGRAPH_SHADERCLIPMODE": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:339",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:341",
     "role": "READ",
     "text": "(pgraph_reg_r(pg, NV_PGRAPH_SHADERCLIPMODE) >> (4 * i + j)) & 1;"
    },
@@ -18409,7 +18417,7 @@
     "text": "[MI(0x17F8)] = MF_DIRECT(NV_PGRAPH_SHADERCLIPMODE),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4937",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4942",
     "role": "WRITE",
     "text": "pgraph_reg_w(pg, NV_PGRAPH_SHADERCLIPMODE, parameter);"
    }
@@ -18441,12 +18449,12 @@
     "text": "[MI(0x1E74)] = MF_MASKED(NV_PGRAPH_SHADERCTL, 36),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4970",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4975",
     "role": "REF",
     "text": "PG_SET_MASK(NV_PGRAPH_SHADERCTL, 0xFFF,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4976",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4981",
     "role": "REF",
     "text": "PG_SET_MASK(NV_PGRAPH_SHADERCTL, 0xFFFF000,"
    }
@@ -18473,7 +18481,7 @@
     "text": "[MI(0x1E70)] = MF_DIRECT(NV_PGRAPH_SHADERPROG),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4965",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4970",
     "role": "WRITE",
     "text": "pgraph_reg_w(pg, NV_PGRAPH_SHADERPROG, parameter);"
    },
@@ -18520,7 +18528,7 @@
     "text": "[MI(0x1E6C)] = MF_MASKED(NV_PGRAPH_SHADOWCTL, 31),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4959",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4964",
     "role": "REF",
     "text": "PG_SET_MASK(NV_PGRAPH_SHADOWCTL, NV_PGRAPH_SHADOWCTL_SHADOW_ZFUNC,"
    }
@@ -18537,21 +18545,21 @@
     "text": "/* 31 */ NV_PGRAPH_SHADOWCTL_SHADOW_ZFUNC,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4959",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4964",
     "role": "REF",
     "text": "PG_SET_MASK(NV_PGRAPH_SHADOWCTL, NV_PGRAPH_SHADOWCTL_SHADOW_ZFUNC,"
    }
   ],
   "NV_PGRAPH_SHADOWZSLOPETHRESHOLD": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4953",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4958",
     "role": "WRITE",
     "text": "pgraph_reg_w(pg, NV_PGRAPH_SHADOWZSLOPETHRESHOLD, parameter);"
    }
   ],
   "NV_PGRAPH_SPECFOGFACTOR0": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3938",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3964",
     "role": "READ",
     "text": "constant[0] = pgraph_reg_r(pg, NV_PGRAPH_SPECFOGFACTOR0);"
    },
@@ -18566,7 +18574,7 @@
     "text": "[MI(0x1E24)] = MF_DIRECT(NV_PGRAPH_SPECFOGFACTOR0 + 4),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4926",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4931",
     "role": "WRITE",
     "text": "pgraph_reg_w(pg, NV_PGRAPH_SPECFOGFACTOR0 + slot*4, parameter);"
    },
@@ -18578,7 +18586,7 @@
   ],
   "NV_PGRAPH_SPECFOGFACTOR1": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3939",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3965",
     "role": "READ",
     "text": "constant[1] = pgraph_reg_r(pg, NV_PGRAPH_SPECFOGFACTOR1);"
    },
@@ -18778,7 +18786,7 @@
     "text": "uint32_t a = pgraph_reg_r(pg, NV_PGRAPH_TEXADDRESS0 + i * 4);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:395",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:397",
     "role": "READ",
     "text": "uint32_t a = pgraph_reg_r(pg, NV_PGRAPH_TEXADDRESS0 + i * 4);"
    },
@@ -18865,7 +18873,7 @@
     "text": "bool p = GET_MASK(a, NV_PGRAPH_TEXADDRESS0_ADDRP) =="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:399",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:401",
     "role": "READ",
     "text": "(GET_MASK(a, NV_PGRAPH_TEXADDRESS0_ADDRP) == NV_PGRAPH_TEXADDRESS0_ADDRU_BORDER ? 4 : 0);"
    },
@@ -18887,7 +18895,7 @@
     "text": "bool u = GET_MASK(a, NV_PGRAPH_TEXADDRESS0_ADDRU) =="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:397",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:399",
     "role": "READ",
     "text": "(GET_MASK(a, NV_PGRAPH_TEXADDRESS0_ADDRU) == NV_PGRAPH_TEXADDRESS0_ADDRU_BORDER ? 1 : 0) |"
    },
@@ -18919,17 +18927,17 @@
     "text": "|| binding->addrp == NV_PGRAPH_TEXADDRESS0_ADDRU_BORDER;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:397",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:399",
     "role": "REF",
     "text": "(GET_MASK(a, NV_PGRAPH_TEXADDRESS0_ADDRU) == NV_PGRAPH_TEXADDRESS0_ADDRU_BORDER ? 1 : 0) |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:398",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:400",
     "role": "REF",
     "text": "(GET_MASK(a, NV_PGRAPH_TEXADDRESS0_ADDRV) == NV_PGRAPH_TEXADDRESS0_ADDRU_BORDER ? 2 : 0) |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:399",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:401",
     "role": "REF",
     "text": "(GET_MASK(a, NV_PGRAPH_TEXADDRESS0_ADDRP) == NV_PGRAPH_TEXADDRESS0_ADDRU_BORDER ? 4 : 0);"
    }
@@ -18963,7 +18971,7 @@
     "text": "bool v = GET_MASK(a, NV_PGRAPH_TEXADDRESS0_ADDRV) =="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:398",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:400",
     "role": "READ",
     "text": "(GET_MASK(a, NV_PGRAPH_TEXADDRESS0_ADDRV) == NV_PGRAPH_TEXADDRESS0_ADDRU_BORDER ? 2 : 0) |"
    },
@@ -19013,7 +19021,7 @@
     "text": "1 << (GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_TEXCTL0_0 + i*4),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:342",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:344",
     "role": "READ",
     "text": "uint32_t ctl_0 = pgraph_reg_r(pg, NV_PGRAPH_TEXCTL0_0 + i * 4);"
    },
@@ -19085,26 +19093,26 @@
   ],
   "NV_PGRAPH_TEXCTL0_0_ALPHAKILLEN": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:367",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:369",
     "role": "REF",
     "text": "state->alphakill[i] = ctl_0 & NV_PGRAPH_TEXCTL0_0_ALPHAKILLEN;"
    }
   ],
   "NV_PGRAPH_TEXCTL0_0_COLORKEYMODE": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:368",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:370",
     "role": "REF",
     "text": "state->colorkey_mode[i] = ctl_0 & NV_PGRAPH_TEXCTL0_0_COLORKEYMODE;"
    }
   ],
   "NV_PGRAPH_TEXCTL0_0_ENABLE": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:359",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:361",
     "role": "REF",
     "text": "(ctl_0 & NV_PGRAPH_TEXCTL0_0_ENABLE) && decodable;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:361",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:363",
     "role": "REF",
     "text": "if (!decodable && (ctl_0 & NV_PGRAPH_TEXCTL0_0_ENABLE)) {"
    },
@@ -19248,12 +19256,12 @@
     "text": "uint32_t filter = pgraph_reg_r(pg, NV_PGRAPH_TEXFILTER0 + i*4);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:453",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:455",
     "role": "READ",
     "text": "uint32_t sign_filter = pgraph_reg_r(pg, NV_PGRAPH_TEXFILTER0 + i * 4);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:493",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:495",
     "role": "READ",
     "text": "uint32_t filter = pgraph_reg_r(pg, NV_PGRAPH_TEXFILTER0 + i * 4);"
    },
@@ -19330,22 +19338,22 @@
     "text": "if (filter & NV_PGRAPH_TEXFILTER0_ASIGNED) NV2A_UNIMPLEMENTED(\"NV_PGRAPH_TEXFILTER0_ASIGNED\");"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:454",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:456",
     "role": "REF",
     "text": "const uint32_t any_signed = NV_PGRAPH_TEXFILTER0_ASIGNED |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1069",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1071",
     "role": "REF",
     "text": "if (!(ps->state->tex_signed[k] & (NV_PGRAPH_TEXFILTER0_ASIGNED |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1118",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1120",
     "role": "REF",
     "text": "} halves[2] = { { NV_PGRAPH_TEXFILTER0_ASIGNED, 0 },"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3429",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3455",
     "role": "REF",
     "text": "{ NV_PGRAPH_TEXFILTER0_ASIGNED, 'a' },"
    },
@@ -19372,22 +19380,22 @@
     "text": "if (filter & NV_PGRAPH_TEXFILTER0_BSIGNED) NV2A_UNIMPLEMENTED(\"NV_PGRAPH_TEXFILTER0_BSIGNED\");"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:457",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:459",
     "role": "REF",
     "text": "NV_PGRAPH_TEXFILTER0_BSIGNED;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3086",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3112",
     "role": "REF",
     "text": "append_bump_channel(ps, vars, i, k, 2, NV_PGRAPH_TEXFILTER0_BSIGNED, false, sname, gather_ok);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3121",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3147",
     "role": "REF",
     "text": "append_bump_channel(ps, vars, i, k, 2, NV_PGRAPH_TEXFILTER0_BSIGNED, false, sname, gather_ok);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3428",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3454",
     "role": "REF",
     "text": "{ NV_PGRAPH_TEXFILTER0_BSIGNED, 'b' },"
    },
@@ -19409,21 +19417,21 @@
   ],
   "NV_PGRAPH_TEXFILTER0_CONVOLUTION_KERNEL": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:501",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:503",
     "role": "READ",
     "text": "int k = GET_MASK(filter, NV_PGRAPH_TEXFILTER0_CONVOLUTION_KERNEL);"
    }
   ],
   "NV_PGRAPH_TEXFILTER0_CONVOLUTION_KERNEL_GAUSSIAN_3": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:503",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:505",
     "role": "REF",
     "text": "k == NV_PGRAPH_TEXFILTER0_CONVOLUTION_KERNEL_GAUSSIAN_3);"
    }
   ],
   "NV_PGRAPH_TEXFILTER0_CONVOLUTION_KERNEL_QUINCUNX": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:502",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:504",
     "role": "REF",
     "text": "assert(k == NV_PGRAPH_TEXFILTER0_CONVOLUTION_KERNEL_QUINCUNX ||"
    }
@@ -19435,32 +19443,32 @@
     "text": "if (filter & NV_PGRAPH_TEXFILTER0_GSIGNED) NV2A_UNIMPLEMENTED(\"NV_PGRAPH_TEXFILTER0_GSIGNED\");"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:456",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:458",
     "role": "REF",
     "text": "NV_PGRAPH_TEXFILTER0_GSIGNED |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1070",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1072",
     "role": "REF",
     "text": "NV_PGRAPH_TEXFILTER0_GSIGNED))) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1119",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1121",
     "role": "REF",
     "text": "{ NV_PGRAPH_TEXFILTER0_GSIGNED, 1 } };"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3087",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3113",
     "role": "REF",
     "text": "append_bump_channel(ps, vars, i, k, 1, NV_PGRAPH_TEXFILTER0_GSIGNED, false, tname, gather_ok);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3122",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3148",
     "role": "REF",
     "text": "append_bump_channel(ps, vars, i, k, 1, NV_PGRAPH_TEXFILTER0_GSIGNED, false, tname, gather_ok);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3427",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3453",
     "role": "REF",
     "text": "{ NV_PGRAPH_TEXFILTER0_GSIGNED, 'g' },"
    },
@@ -19487,7 +19495,7 @@
     "text": "unsigned int mag_filter = GET_MASK(filter, NV_PGRAPH_TEXFILTER0_MAG);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:522",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:524",
     "role": "READ",
     "text": "unsigned int mag_filter = GET_MASK(filter, NV_PGRAPH_TEXFILTER0_MAG);"
    },
@@ -19509,7 +19517,7 @@
     "text": "unsigned int min_filter = GET_MASK(filter, NV_PGRAPH_TEXFILTER0_MIN);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:494",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:496",
     "role": "READ",
     "text": "unsigned int min_filter = GET_MASK(filter, NV_PGRAPH_TEXFILTER0_MIN);"
    },
@@ -19531,12 +19539,12 @@
     "text": "min_filter = NV_PGRAPH_TEXFILTER0_MIN_BOX_LOD0;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:525",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:527",
     "role": "REF",
     "text": "(min_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_LOD0 ||"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:527",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:529",
     "role": "REF",
     "text": "mag_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_LOD0;"
    },
@@ -19553,7 +19561,7 @@
     "text": "case NV_PGRAPH_TEXFILTER0_MIN_BOX_NEARESTLOD:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:526",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:528",
     "role": "REF",
     "text": "min_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_NEARESTLOD) &&"
    },
@@ -19572,7 +19580,7 @@
   ],
   "NV_PGRAPH_TEXFILTER0_MIN_CONVOLUTION_2D_LOD0": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:500",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:502",
     "role": "REF",
     "text": "if (min_filter == NV_PGRAPH_TEXFILTER0_MIN_CONVOLUTION_2D_LOD0) {"
    },
@@ -19642,17 +19650,17 @@
     "text": "if (filter & NV_PGRAPH_TEXFILTER0_RSIGNED) NV2A_UNIMPLEMENTED(\"NV_PGRAPH_TEXFILTER0_RSIGNED\");"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:455",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:457",
     "role": "REF",
     "text": "NV_PGRAPH_TEXFILTER0_RSIGNED |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3123",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3149",
     "role": "REF",
     "text": "append_bump_channel(ps, vars, i, k, 0, NV_PGRAPH_TEXFILTER0_RSIGNED, true, lname, gather_ok);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3426",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:3452",
     "role": "REF",
     "text": "{ NV_PGRAPH_TEXFILTER0_RSIGNED, 'r' },"
    },
@@ -19700,7 +19708,7 @@
     "text": "uint32_t fmt = pgraph_reg_r(pg, NV_PGRAPH_TEXFMT0 + i * 4);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:370",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:372",
     "role": "READ",
     "text": "uint32_t tex_fmt = pgraph_reg_r(pg, NV_PGRAPH_TEXFMT0 + i * 4);"
    },
@@ -19777,7 +19785,7 @@
   ],
   "NV_PGRAPH_TEXFMT0_BASE_SIZE_P": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:414",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:416",
     "role": "READ",
     "text": "1 << GET_MASK(tex_fmt, NV_PGRAPH_TEXFMT0_BASE_SIZE_P);"
    },
@@ -19794,7 +19802,7 @@
   ],
   "NV_PGRAPH_TEXFMT0_BASE_SIZE_U": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:410",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:412",
     "role": "READ",
     "text": "1 << GET_MASK(tex_fmt, NV_PGRAPH_TEXFMT0_BASE_SIZE_U);"
    },
@@ -19821,7 +19829,7 @@
   ],
   "NV_PGRAPH_TEXFMT0_BASE_SIZE_V": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:412",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:414",
     "role": "READ",
     "text": "1 << GET_MASK(tex_fmt, NV_PGRAPH_TEXFMT0_BASE_SIZE_V);"
    },
@@ -19848,7 +19856,7 @@
   ],
   "NV_PGRAPH_TEXFMT0_BORDER_SOURCE": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:391",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:393",
     "role": "READ",
     "text": "GET_MASK(tex_fmt, NV_PGRAPH_TEXFMT0_BORDER_SOURCE);"
    },
@@ -19865,7 +19873,7 @@
   ],
   "NV_PGRAPH_TEXFMT0_BORDER_SOURCE_COLOR": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:404",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:406",
     "role": "REF",
     "text": "if (border_source != NV_PGRAPH_TEXFMT0_BORDER_SOURCE_COLOR) {"
    },
@@ -19882,7 +19890,7 @@
     "text": "unsigned int color_format = GET_MASK(fmt, NV_PGRAPH_TEXFMT0_COLOR);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:373",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:375",
     "role": "READ",
     "text": "unsigned int color_format = GET_MASK(tex_fmt, NV_PGRAPH_TEXFMT0_COLOR);"
    },
@@ -19936,7 +19944,7 @@
   ],
   "NV_PGRAPH_TEXFMT0_CUBEMAPENABLE": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:392",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:394",
     "role": "READ",
     "text": "bool cubemap = GET_MASK(tex_fmt, NV_PGRAPH_TEXFMT0_CUBEMAPENABLE);"
    },
@@ -19953,7 +19961,7 @@
   ],
   "NV_PGRAPH_TEXFMT0_DIMENSIONALITY": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:371",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:373",
     "role": "READ",
     "text": "state->dim_tex[i] = GET_MASK(tex_fmt, NV_PGRAPH_TEXFMT0_DIMENSIONALITY);"
    },
@@ -20303,7 +20311,7 @@
     "text": "uint32_t x = pgraph_reg_r(pg, NV_PGRAPH_WINDOWCLIPX0 + i * 4);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4101",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4127",
     "role": "READ",
     "text": "uint32_t x = pgraph_reg_r(pg, NV_PGRAPH_WINDOWCLIPX0 + i * 4);"
    },
@@ -20325,7 +20333,7 @@
     "text": "unsigned int x_max = GET_MASK(x, NV_PGRAPH_WINDOWCLIPX0_XMAX) + 1;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4103",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4129",
     "role": "READ",
     "text": "unsigned int x_max = GET_MASK(x, NV_PGRAPH_WINDOWCLIPX0_XMAX) + 1;"
    }
@@ -20337,7 +20345,7 @@
     "text": "unsigned int x_min = GET_MASK(x, NV_PGRAPH_WINDOWCLIPX0_XMIN);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4102",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4128",
     "role": "READ",
     "text": "unsigned int x_min = GET_MASK(x, NV_PGRAPH_WINDOWCLIPX0_XMIN);"
    }
@@ -20349,7 +20357,7 @@
     "text": "uint32_t y = pgraph_reg_r(pg, NV_PGRAPH_WINDOWCLIPY0 + i * 4);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4105",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4131",
     "role": "READ",
     "text": "uint32_t y = pgraph_reg_r(pg, NV_PGRAPH_WINDOWCLIPY0 + i * 4);"
    },
@@ -20371,7 +20379,7 @@
     "text": "unsigned int y_max = GET_MASK(y, NV_PGRAPH_WINDOWCLIPY0_YMAX) + 1;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4107",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4133",
     "role": "READ",
     "text": "unsigned int y_max = GET_MASK(y, NV_PGRAPH_WINDOWCLIPY0_YMAX) + 1;"
    }
@@ -20383,7 +20391,7 @@
     "text": "unsigned int y_min = GET_MASK(y, NV_PGRAPH_WINDOWCLIPY0_YMIN);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4106",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4132",
     "role": "READ",
     "text": "unsigned int y_min = GET_MASK(y, NV_PGRAPH_WINDOWCLIPY0_YMIN);"
    }
@@ -20429,6 +20437,11 @@
     "text": "GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_ZCOMPRESSOCCLUDE),"
    },
    {
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:312",
+    "role": "READ",
+    "text": "state->cull_near_far = pgraph_reg_r(pg, NV_PGRAPH_ZCOMPRESSOCCLUDE) &"
+   },
+   {
     "loc": "hw/xbox/nv2a/pgraph/glsl/shaders.c:103",
     "role": "REF",
     "text": "NV_PGRAPH_SHADOWCTL,       NV_PGRAPH_ZCOMPRESSOCCLUDE,"
@@ -20439,7 +20452,7 @@
     "text": "NV_PGRAPH_SHADOWCTL,       NV_PGRAPH_ZCOMPRESSOCCLUDE,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4875",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4874",
     "role": "REF",
     "text": "PG_SET_MASK(NV_PGRAPH_ZCOMPRESSOCCLUDE,"
    },
@@ -20447,6 +20460,23 @@
     "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4880",
     "role": "REF",
     "text": "PG_SET_MASK(NV_PGRAPH_ZCOMPRESSOCCLUDE,"
+   },
+   {
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4885",
+    "role": "REF",
+    "text": "PG_SET_MASK(NV_PGRAPH_ZCOMPRESSOCCLUDE,"
+   }
+  ],
+  "NV_PGRAPH_ZCOMPRESSOCCLUDE_CULL_NEAR_FAR_EN": [
+   {
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:313",
+    "role": "REF",
+    "text": "NV_PGRAPH_ZCOMPRESSOCCLUDE_CULL_NEAR_FAR_EN;"
+   },
+   {
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4875",
+    "role": "REF",
+    "text": "NV_PGRAPH_ZCOMPRESSOCCLUDE_CULL_NEAR_FAR_EN,"
    }
   ],
   "NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN": [
@@ -20456,19 +20486,19 @@
     "text": "NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN) =="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4876",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4881",
     "role": "REF",
     "text": "NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4881",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4886",
     "role": "REF",
     "text": "NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN,"
    }
   ],
   "NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN_CLAMP": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4882",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4887",
     "role": "REF",
     "text": "NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN_CLAMP);"
    }
@@ -20480,14 +20510,14 @@
     "text": "NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN_CULL;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4877",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4882",
     "role": "REF",
     "text": "NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN_CULL);"
    }
   ],
   "NV_PGRAPH_ZOFFSETBIAS": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4060",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4086",
     "role": "READ",
     "text": "uint32_t zbias_u32 = pgraph_reg_r(pg, NV_PGRAPH_ZOFFSETBIAS);"
    },
@@ -20509,7 +20539,7 @@
   ],
   "NV_PGRAPH_ZOFFSETFACTOR": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4071",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:4097",
     "role": "READ",
     "text": "uint32_t zfactor_u32 = pgraph_reg_r(pg, NV_PGRAPH_ZOFFSETFACTOR);"
    },
@@ -20536,17 +20566,17 @@
     "text": "[MI(0x1D8C)] = MF_DIRECT(NV_PGRAPH_ZSTENCILCLEARVALUE),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4900",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4905",
     "role": "WRITE",
     "text": "pgraph_reg_w(pg, NV_PGRAPH_ZSTENCILCLEARVALUE, parameter);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5132",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5137",
     "role": "READ",
     "text": "pgraph_reg_r(pg, NV_PGRAPH_ZSTENCILCLEARVALUE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5141",
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.c:5146",
     "role": "COMMENT",
     "text": "* NV_PGRAPH_ZSTENCILCLEARVALUE is already in that encoding, so it wants"
    }
@@ -22839,2881 +22869,2887 @@
  },
  "symbols": {
   "NV097_ARRAY_ELEMENT16": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1276",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1277",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001800"
   },
   "NV097_ARRAY_ELEMENT32": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1277",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1278",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001808"
   },
   "NV097_BACK_END_WRITE_SEMAPHORE_RELEASE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1377",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1378",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001D70"
   },
   "NV097_CLEAR_REPORT_VALUE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1254",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1255",
    "family": "NV097",
    "kind": "field",
    "value": "0x000017C8"
   },
   "NV097_CLEAR_REPORT_VALUE_TYPE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1255",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1256",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0xFFFFFFFF"
   },
   "NV097_CLEAR_REPORT_VALUE_TYPE_ZPASS_PIXEL_CNT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1256",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1257",
    "family": "NV097",
    "kind": "enum-value",
    "value": "1"
   },
   "NV097_CLEAR_SURFACE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1386",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1388",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001D94"
   },
   "NV097_CLEAR_SURFACE_A": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1393",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1395",
    "family": "NV097",
    "kind": "enum-value",
    "value": "(1"
   },
   "NV097_CLEAR_SURFACE_B": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1392",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1394",
    "family": "NV097",
    "kind": "enum-value",
    "value": "(1"
   },
   "NV097_CLEAR_SURFACE_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1389",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1391",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x000000F0"
   },
   "NV097_CLEAR_SURFACE_G": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1391",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1393",
    "family": "NV097",
    "kind": "enum-value",
    "value": "(1"
   },
   "NV097_CLEAR_SURFACE_R": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1390",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1392",
    "family": "NV097",
    "kind": "enum-value",
    "value": "(1"
   },
   "NV097_CLEAR_SURFACE_STENCIL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1388",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1390",
    "family": "NV097",
    "kind": "enum-value",
    "value": "(1"
   },
   "NV097_CLEAR_SURFACE_Z": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1387",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1389",
    "family": "NV097",
    "kind": "enum-value",
    "value": "(1"
   },
   "NV097_DRAW_ARRAYS": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1278",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1279",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001810"
   },
   "NV097_DRAW_ARRAYS_COUNT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1279",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1280",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0xFF000000"
   },
   "NV097_DRAW_ARRAYS_START_INDEX": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1280",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1281",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x00FFFFFF"
   },
   "NV097_FLIP_INCREMENT_WRITE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:948",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:949",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000012C"
   },
   "NV097_FLIP_STALL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:949",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:950",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000130"
   },
   "NV097_GET_REPORT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1258",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1259",
    "family": "NV097",
    "kind": "field",
    "value": "0x000017D0"
   },
   "NV097_GET_REPORT_OFFSET": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1259",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1260",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x00FFFFFF"
   },
   "NV097_GET_REPORT_TYPE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1260",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1261",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0xFF000000"
   },
   "NV097_GET_REPORT_TYPE_ZPASS_PIXEL_CNT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1261",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1262",
    "family": "NV097",
    "kind": "enum-value",
    "value": "1"
   },
   "NV097_INLINE_ARRAY": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1281",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1282",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001818"
   },
   "NV097_LAUNCH_TRANSFORM_PROGRAM": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1414",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1416",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001E90"
   },
   "NV097_NO_OPERATION": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:943",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:944",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000100"
   },
   "NV097_SET_ALPHA_FUNC": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1054",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1055",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000033C"
   },
   "NV097_SET_ALPHA_REF": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1055",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1056",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000340"
   },
   "NV097_SET_ALPHA_TEST_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1032",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1033",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000300"
   },
   "NV097_SET_ANTI_ALIASING_CONTROL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1382",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1384",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001D7C"
   },
   "NV097_SET_ANTI_ALIASING_CONTROL_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1383",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1385",
    "family": "NV097",
    "kind": "enum-value",
    "value": "(1"
   },
   "NV097_SET_BACK_LIGHT_AMBIENT_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1196",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1197",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000C00"
   },
   "NV097_SET_BACK_LIGHT_DIFFUSE_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1197",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1198",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000C0C"
   },
   "NV097_SET_BACK_LIGHT_SPECULAR_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1198",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1199",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000C18"
   },
   "NV097_SET_BACK_MATERIAL_ALPHA": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1250",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1251",
    "family": "NV097",
    "kind": "field",
    "value": "0x000017AC"
   },
   "NV097_SET_BACK_POLYGON_MODE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1130",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1131",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000390"
   },
   "NV097_SET_BEGIN_END": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1264",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1265",
    "family": "NV097",
    "kind": "field",
    "value": "0x000017FC"
   },
   "NV097_SET_BEGIN_END_OP_END": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1265",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1266",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x00"
   },
   "NV097_SET_BEGIN_END_OP_LINES": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1267",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1268",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x02"
   },
   "NV097_SET_BEGIN_END_OP_LINE_LOOP": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1268",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1269",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x03"
   },
   "NV097_SET_BEGIN_END_OP_LINE_STRIP": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1269",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1270",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x04"
   },
   "NV097_SET_BEGIN_END_OP_POINTS": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1266",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1267",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x01"
   },
   "NV097_SET_BEGIN_END_OP_POLYGON": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1275",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1276",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0A"
   },
   "NV097_SET_BEGIN_END_OP_QUADS": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1273",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1274",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x08"
   },
   "NV097_SET_BEGIN_END_OP_QUAD_STRIP": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1274",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1275",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x09"
   },
   "NV097_SET_BEGIN_END_OP_TRIANGLES": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1270",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1271",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x05"
   },
   "NV097_SET_BEGIN_END_OP_TRIANGLE_FAN": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1272",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1273",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x07"
   },
   "NV097_SET_BEGIN_END_OP_TRIANGLE_STRIP": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1271",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1272",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x06"
   },
   "NV097_SET_BLEND_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1088",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1089",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000034C"
   },
   "NV097_SET_BLEND_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1033",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1034",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000304"
   },
   "NV097_SET_BLEND_EQUATION": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1089",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1090",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000350"
   },
   "NV097_SET_BLEND_EQUATION_V_FUNC_ADD": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1092",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1093",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x8006"
   },
   "NV097_SET_BLEND_EQUATION_V_FUNC_ADD_SIGNED": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1096",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1097",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0xF006"
   },
   "NV097_SET_BLEND_EQUATION_V_FUNC_REVERSE_SUBTRACT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1091",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1092",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x800B"
   },
   "NV097_SET_BLEND_EQUATION_V_FUNC_REVERSE_SUBTRACT_SIGNED": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1095",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1096",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0xF005"
   },
   "NV097_SET_BLEND_EQUATION_V_FUNC_SUBTRACT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1090",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1091",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x800A"
   },
   "NV097_SET_BLEND_EQUATION_V_MAX": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1094",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1095",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x8008"
   },
   "NV097_SET_BLEND_EQUATION_V_MIN": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1093",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1094",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x8007"
   },
   "NV097_SET_BLEND_FUNC_DFACTOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1072",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1073",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000348"
   },
   "NV097_SET_BLEND_FUNC_DFACTOR_V_CONSTANT_ALPHA": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1086",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1087",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x8003"
   },
   "NV097_SET_BLEND_FUNC_DFACTOR_V_CONSTANT_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1084",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1085",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x8001"
   },
   "NV097_SET_BLEND_FUNC_DFACTOR_V_DST_ALPHA": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1079",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1080",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0304"
   },
   "NV097_SET_BLEND_FUNC_DFACTOR_V_DST_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1081",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1082",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0306"
   },
   "NV097_SET_BLEND_FUNC_DFACTOR_V_ONE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1074",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1075",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0001"
   },
   "NV097_SET_BLEND_FUNC_DFACTOR_V_ONE_MINUS_CONSTANT_ALPHA": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1087",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1088",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x8004"
   },
   "NV097_SET_BLEND_FUNC_DFACTOR_V_ONE_MINUS_CONSTANT_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1085",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1086",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x8002"
   },
   "NV097_SET_BLEND_FUNC_DFACTOR_V_ONE_MINUS_DST_ALPHA": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1080",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1081",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0305"
   },
   "NV097_SET_BLEND_FUNC_DFACTOR_V_ONE_MINUS_DST_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1082",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1083",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0307"
   },
   "NV097_SET_BLEND_FUNC_DFACTOR_V_ONE_MINUS_SRC_ALPHA": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1078",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1079",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0303"
   },
   "NV097_SET_BLEND_FUNC_DFACTOR_V_ONE_MINUS_SRC_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1076",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1077",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0301"
   },
   "NV097_SET_BLEND_FUNC_DFACTOR_V_SRC_ALPHA": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1077",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1078",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0302"
   },
   "NV097_SET_BLEND_FUNC_DFACTOR_V_SRC_ALPHA_SATURATE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1083",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1084",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0308"
   },
   "NV097_SET_BLEND_FUNC_DFACTOR_V_SRC_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1075",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1076",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0300"
   },
   "NV097_SET_BLEND_FUNC_DFACTOR_V_ZERO": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1073",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1074",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0000"
   },
   "NV097_SET_BLEND_FUNC_SFACTOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1056",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1057",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000344"
   },
   "NV097_SET_BLEND_FUNC_SFACTOR_V_CONSTANT_ALPHA": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1070",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1071",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x8003"
   },
   "NV097_SET_BLEND_FUNC_SFACTOR_V_CONSTANT_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1068",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1069",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x8001"
   },
   "NV097_SET_BLEND_FUNC_SFACTOR_V_DST_ALPHA": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1063",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1064",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0304"
   },
   "NV097_SET_BLEND_FUNC_SFACTOR_V_DST_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1065",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1066",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0306"
   },
   "NV097_SET_BLEND_FUNC_SFACTOR_V_ONE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1058",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1059",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0001"
   },
   "NV097_SET_BLEND_FUNC_SFACTOR_V_ONE_MINUS_CONSTANT_ALPHA": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1071",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1072",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x8004"
   },
   "NV097_SET_BLEND_FUNC_SFACTOR_V_ONE_MINUS_CONSTANT_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1069",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1070",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x8002"
   },
   "NV097_SET_BLEND_FUNC_SFACTOR_V_ONE_MINUS_DST_ALPHA": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1064",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1065",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0305"
   },
   "NV097_SET_BLEND_FUNC_SFACTOR_V_ONE_MINUS_DST_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1066",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1067",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0307"
   },
   "NV097_SET_BLEND_FUNC_SFACTOR_V_ONE_MINUS_SRC_ALPHA": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1062",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1063",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0303"
   },
   "NV097_SET_BLEND_FUNC_SFACTOR_V_ONE_MINUS_SRC_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1060",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1061",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0301"
   },
   "NV097_SET_BLEND_FUNC_SFACTOR_V_SRC_ALPHA": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1061",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1062",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0302"
   },
   "NV097_SET_BLEND_FUNC_SFACTOR_V_SRC_ALPHA_SATURATE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1067",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1068",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0308"
   },
   "NV097_SET_BLEND_FUNC_SFACTOR_V_SRC_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1059",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1060",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0300"
   },
   "NV097_SET_BLEND_FUNC_SFACTOR_V_ZERO": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1057",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1058",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0000"
   },
   "NV097_SET_CLEAR_RECT_HORIZONTAL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1394",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1396",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001D98"
   },
   "NV097_SET_CLEAR_RECT_VERTICAL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1395",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1397",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001D9C"
   },
   "NV097_SET_CLIP_MAX": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1132",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1133",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000398"
   },
   "NV097_SET_CLIP_MIN": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1131",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1132",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000394"
   },
   "NV097_SET_COLOR_CLEAR_VALUE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1385",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1387",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001D90"
   },
   "NV097_SET_COLOR_KEY_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1188",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1189",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000AE0"
   },
   "NV097_SET_COLOR_MASK": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1098",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1099",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000358"
   },
   "NV097_SET_COLOR_MASK_ALPHA_WRITE_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1102",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1103",
    "family": "NV097",
    "kind": "enum-value",
    "value": "(1"
   },
   "NV097_SET_COLOR_MASK_BLUE_WRITE_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1099",
-   "family": "NV097",
-   "kind": "enum-value",
-   "value": "(1"
-  },
-  "NV097_SET_COLOR_MASK_GREEN_WRITE_ENABLE": {
    "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1100",
    "family": "NV097",
    "kind": "enum-value",
    "value": "(1"
   },
-  "NV097_SET_COLOR_MASK_RED_WRITE_ENABLE": {
+  "NV097_SET_COLOR_MASK_GREEN_WRITE_ENABLE": {
    "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1101",
    "family": "NV097",
    "kind": "enum-value",
    "value": "(1"
   },
+  "NV097_SET_COLOR_MASK_RED_WRITE_ENABLE": {
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1102",
+   "family": "NV097",
+   "kind": "enum-value",
+   "value": "(1"
+  },
   "NV097_SET_COLOR_MATERIAL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1007",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1008",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000298"
   },
   "NV097_SET_COMBINER_ALPHA_ICW": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:995",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:996",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000260"
   },
   "NV097_SET_COMBINER_ALPHA_OCW": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1186",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1187",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000AA0"
   },
   "NV097_SET_COMBINER_COLOR_ICW": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1187",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1188",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000AC0"
   },
   "NV097_SET_COMBINER_COLOR_OCW": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1398",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1400",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001E40"
   },
   "NV097_SET_COMBINER_CONTROL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1399",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1401",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001E60"
   },
   "NV097_SET_COMBINER_FACTOR0": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1184",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1185",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000A60"
   },
   "NV097_SET_COMBINER_FACTOR1": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1185",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1186",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000A80"
   },
   "NV097_SET_COMBINER_SPECULAR_FOG_CW0": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:996",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:997",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000288"
   },
   "NV097_SET_COMBINER_SPECULAR_FOG_CW1": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:997",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:998",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000028C"
   },
   "NV097_SET_COMPOSITE_MATRIX": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1165",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1166",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000680"
   },
   "NV097_SET_CONTEXT_DMA_A": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:951",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:952",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000184"
   },
   "NV097_SET_CONTEXT_DMA_B": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:952",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:953",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000188"
   },
   "NV097_SET_CONTEXT_DMA_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:954",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:955",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000194"
   },
   "NV097_SET_CONTEXT_DMA_NOTIFIES": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:950",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:951",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000180"
   },
   "NV097_SET_CONTEXT_DMA_REPORT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:959",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:960",
    "family": "NV097",
    "kind": "field",
    "value": "0x000001A8"
   },
   "NV097_SET_CONTEXT_DMA_SEMAPHORE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:958",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:959",
    "family": "NV097",
    "kind": "field",
    "value": "0x000001A4"
   },
   "NV097_SET_CONTEXT_DMA_STATE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:953",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:954",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000190"
   },
   "NV097_SET_CONTEXT_DMA_VERTEX_A": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:956",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:957",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000019C"
   },
   "NV097_SET_CONTEXT_DMA_VERTEX_B": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:957",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:958",
    "family": "NV097",
    "kind": "field",
    "value": "0x000001A0"
   },
   "NV097_SET_CONTEXT_DMA_ZETA": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:955",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:956",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000198"
   },
   "NV097_SET_CONTROL0": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:998",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:999",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000290"
   },
   "NV097_SET_CONTROL0_STENCIL_WRITE_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:999",
-   "family": "NV097",
-   "kind": "enum-value",
-   "value": "(1"
-  },
-  "NV097_SET_CONTROL0_TEXTURE_PERSPECTIVE_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1002",
-   "family": "NV097",
-   "kind": "enum-value",
-   "value": "(1"
-  },
-  "NV097_SET_CONTROL0_Z_FORMAT": {
    "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1000",
    "family": "NV097",
    "kind": "enum-value",
    "value": "(1"
   },
-  "NV097_SET_CONTROL0_Z_PERSPECTIVE_ENABLE": {
+  "NV097_SET_CONTROL0_TEXTURE_PERSPECTIVE_ENABLE": {
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1003",
+   "family": "NV097",
+   "kind": "enum-value",
+   "value": "(1"
+  },
+  "NV097_SET_CONTROL0_Z_FORMAT": {
    "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1001",
    "family": "NV097",
    "kind": "enum-value",
    "value": "(1"
   },
+  "NV097_SET_CONTROL0_Z_PERSPECTIVE_ENABLE": {
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1002",
+   "family": "NV097",
+   "kind": "enum-value",
+   "value": "(1"
+  },
   "NV097_SET_CULL_FACE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1133",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1134",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000039C"
   },
   "NV097_SET_CULL_FACE_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1034",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1035",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000308"
   },
   "NV097_SET_CULL_FACE_V_BACK": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1135",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1136",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x405"
   },
   "NV097_SET_CULL_FACE_V_FRONT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1134",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1135",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x404"
   },
   "NV097_SET_CULL_FACE_V_FRONT_AND_BACK": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1136",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1137",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x408"
   },
   "NV097_SET_DEPTH_FUNC": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1097",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1098",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000354"
   },
   "NV097_SET_DEPTH_MASK": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1103",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1104",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000035C"
   },
   "NV097_SET_DEPTH_TEST_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1035",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1036",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000030C"
   },
   "NV097_SET_DIFFUSE_COLOR3F": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1213",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1214",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001560"
   },
   "NV097_SET_DIFFUSE_COLOR4F": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1212",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1213",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001550"
   },
   "NV097_SET_DIFFUSE_COLOR4UB": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1214",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1215",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000156C"
   },
   "NV097_SET_DITHER_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1036",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1037",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000310"
   },
   "NV097_SET_DOT_RGBMAPPING": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1411",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1413",
    "family": "NV097",
    "kind": "field",
    "value": "0X00001E74"
   },
   "NV097_SET_EYE_DIRECTION": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1262",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1263",
    "family": "NV097",
    "kind": "field",
    "value": "0x000017E0"
   },
   "NV097_SET_EYE_POSITION": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1183",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1184",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000A50"
   },
   "NV097_SET_EYE_VECTOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1282",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1283",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000181C"
   },
   "NV097_SET_FLIP_MODULO": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:947",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:948",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000128"
   },
   "NV097_SET_FLIP_READ": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:945",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:946",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000120"
   },
   "NV097_SET_FLIP_WRITE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:946",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:947",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000124"
   },
   "NV097_SET_FOG_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1022",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1023",
    "family": "NV097",
    "kind": "field",
    "value": "0x000002A8"
   },
   "NV097_SET_FOG_COLOR_ALPHA": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1026",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1027",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0xFF000000"
   },
   "NV097_SET_FOG_COLOR_BLUE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1025",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1026",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x00FF0000"
   },
   "NV097_SET_FOG_COLOR_GREEN": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1024",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1025",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0000FF00"
   },
   "NV097_SET_FOG_COLOR_RED": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1023",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1024",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x000000FF"
   },
   "NV097_SET_FOG_COORD": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1234",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1235",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001698"
   },
   "NV097_SET_FOG_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1021",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1022",
    "family": "NV097",
    "kind": "field",
    "value": "0x000002A4"
   },
   "NV097_SET_FOG_GEN_MODE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1015",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1016",
    "family": "NV097",
    "kind": "field",
    "value": "0x000002A0"
   },
   "NV097_SET_FOG_GEN_MODE_V_ABS_PLANAR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1019",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1020",
    "family": "NV097",
    "kind": "enum-value",
    "value": "3"
   },
   "NV097_SET_FOG_GEN_MODE_V_FOG_X": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1020",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1021",
    "family": "NV097",
    "kind": "enum-value",
    "value": "6"
   },
   "NV097_SET_FOG_GEN_MODE_V_PLANAR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1018",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1019",
    "family": "NV097",
    "kind": "enum-value",
    "value": "2"
   },
   "NV097_SET_FOG_GEN_MODE_V_RADIAL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1017",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1018",
    "family": "NV097",
    "kind": "enum-value",
    "value": "1"
   },
   "NV097_SET_FOG_GEN_MODE_V_SPEC_ALPHA": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1016",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1017",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0"
   },
   "NV097_SET_FOG_MODE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1008",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1009",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000029C"
   },
   "NV097_SET_FOG_MODE_V_EXP": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1010",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1011",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x800"
   },
   "NV097_SET_FOG_MODE_V_EXP2": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1011",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1012",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x801"
   },
   "NV097_SET_FOG_MODE_V_EXP2_ABS": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1013",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1014",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x803"
   },
   "NV097_SET_FOG_MODE_V_EXP_ABS": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1012",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1013",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x802"
   },
   "NV097_SET_FOG_MODE_V_LINEAR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1009",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1010",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x2601"
   },
   "NV097_SET_FOG_MODE_V_LINEAR_ABS": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1014",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1015",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x804"
   },
   "NV097_SET_FOG_PARAMS": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1167",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1168",
    "family": "NV097",
    "kind": "field",
    "value": "0x000009C0"
   },
   "NV097_SET_FOG_PLANE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1175",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1176",
    "family": "NV097",
    "kind": "field",
    "value": "0x000009D0"
   },
   "NV097_SET_FRONT_FACE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1137",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1138",
    "family": "NV097",
    "kind": "field",
    "value": "0x000003A0"
   },
   "NV097_SET_FRONT_FACE_V_CCW": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1139",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1140",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x901"
   },
   "NV097_SET_FRONT_FACE_V_CW": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1138",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1139",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x900"
   },
   "NV097_SET_FRONT_POLYGON_MODE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1126",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1127",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000038C"
   },
   "NV097_SET_FRONT_POLYGON_MODE_V_FILL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1129",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1130",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x1B02"
   },
   "NV097_SET_FRONT_POLYGON_MODE_V_LINE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1128",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1129",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x1B01"
   },
   "NV097_SET_FRONT_POLYGON_MODE_V_POINT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1127",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1128",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x1B00"
   },
   "NV097_SET_INVERSE_MODEL_VIEW_MATRIX": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1164",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1165",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000580"
   },
   "NV097_SET_LIGHTING_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1037",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1038",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000314"
   },
   "NV097_SET_LIGHT_AMBIENT_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1199",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1200",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001000"
   },
   "NV097_SET_LIGHT_CONTROL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1003",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1004",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000294"
   },
   "NV097_SET_LIGHT_CONTROL_ALPHA_FROM_MATERIAL_SPECULAR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1006",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1007",
    "family": "NV097",
    "kind": "enum-value",
    "value": "(1"
   },
   "NV097_SET_LIGHT_CONTROL_LOCALEYE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1005",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1006",
    "family": "NV097",
    "kind": "enum-value",
    "value": "(1"
   },
   "NV097_SET_LIGHT_CONTROL_SEPARATE_SPECULAR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1004",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1005",
    "family": "NV097",
    "kind": "enum-value",
    "value": "1"
   },
   "NV097_SET_LIGHT_DIFFUSE_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1200",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1201",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000100C"
   },
   "NV097_SET_LIGHT_ENABLE_MASK": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1144",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1145",
    "family": "NV097",
    "kind": "field",
    "value": "0x000003BC"
   },
   "NV097_SET_LIGHT_ENABLE_MASK_LIGHT0_INFINITE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1146",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1147",
    "family": "NV097",
    "kind": "enum-value",
    "value": "1"
   },
   "NV097_SET_LIGHT_ENABLE_MASK_LIGHT0_LOCAL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1147",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1148",
    "family": "NV097",
    "kind": "enum-value",
    "value": "2"
   },
   "NV097_SET_LIGHT_ENABLE_MASK_LIGHT0_OFF": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1145",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1146",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0"
   },
   "NV097_SET_LIGHT_ENABLE_MASK_LIGHT0_SPOT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1148",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1149",
    "family": "NV097",
    "kind": "enum-value",
    "value": "3"
   },
   "NV097_SET_LIGHT_INFINITE_DIRECTION": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1204",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1205",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001034"
   },
   "NV097_SET_LIGHT_INFINITE_HALF_VECTOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1203",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1204",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001028"
   },
   "NV097_SET_LIGHT_LOCAL_ATTENUATION": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1208",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1209",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001068"
   },
   "NV097_SET_LIGHT_LOCAL_POSITION": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1207",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1208",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000105C"
   },
   "NV097_SET_LIGHT_LOCAL_RANGE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1202",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1203",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001024"
   },
   "NV097_SET_LIGHT_SPECULAR_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1201",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1202",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001018"
   },
   "NV097_SET_LIGHT_SPOT_DIRECTION": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1206",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1207",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000104C"
   },
   "NV097_SET_LIGHT_SPOT_FALLOFF": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1205",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1206",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001040"
   },
   "NV097_SET_LIGHT_TWO_SIDE_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1253",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1254",
    "family": "NV097",
    "kind": "field",
    "value": "0x000017C4"
   },
   "NV097_SET_LINE_SMOOTH_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1040",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1041",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000320"
   },
   "NV097_SET_LINE_WIDTH": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1122",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1123",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000380"
   },
   "NV097_SET_LINE_WIDTH_MAX": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1123",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1124",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x000001FF"
   },
   "NV097_SET_LOGIC_OP": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1252",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1253",
    "family": "NV097",
    "kind": "field",
    "value": "0x000017C0"
   },
   "NV097_SET_LOGIC_OP_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1251",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1252",
    "family": "NV097",
    "kind": "field",
    "value": "0x000017BC"
   },
   "NV097_SET_MATERIAL_ALPHA": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1142",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1143",
    "family": "NV097",
    "kind": "field",
    "value": "0x000003B4"
   },
   "NV097_SET_MATERIAL_EMISSION": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1141",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1142",
    "family": "NV097",
    "kind": "field",
    "value": "0x000003A8"
   },
   "NV097_SET_MODEL_VIEW_MATRIX": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1163",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1164",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000480"
   },
   "NV097_SET_NORMAL3F": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1210",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1211",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001530"
   },
   "NV097_SET_NORMAL3S": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1211",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1212",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001540"
   },
   "NV097_SET_NORMALIZATION_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1140",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1141",
    "family": "NV097",
    "kind": "field",
    "value": "0x000003A4"
   },
   "NV097_SET_OBJECT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:942",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:943",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000000"
   },
   "NV097_SET_POINT_PARAMS": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1182",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1183",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000A30"
   },
   "NV097_SET_POINT_PARAMS_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1038",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1039",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000318"
   },
   "NV097_SET_POINT_SIZE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1160",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1161",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000043C"
   },
   "NV097_SET_POINT_SIZE_V_MAX": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1161",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1162",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x1FF"
   },
   "NV097_SET_POINT_SMOOTH_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1039",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1040",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000031C"
   },
   "NV097_SET_POLYGON_OFFSET_BIAS": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1125",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1126",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000388"
   },
   "NV097_SET_POLYGON_OFFSET_SCALE_FACTOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1124",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1125",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000384"
   },
   "NV097_SET_POLY_OFFSET_FILL_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1053",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1054",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000338"
   },
   "NV097_SET_POLY_OFFSET_LINE_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1052",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1053",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000334"
   },
   "NV097_SET_POLY_OFFSET_POINT_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1051",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1052",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000330"
   },
   "NV097_SET_POLY_SMOOTH_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1041",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1042",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000324"
   },
   "NV097_SET_PROJECTION_MATRIX": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1162",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1163",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000440"
   },
   "NV097_SET_PROVOKING_VERTEX": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1177",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1178",
    "family": "NV097",
    "kind": "field",
    "value": "0x000009FC"
   },
   "NV097_SET_PROVOKING_VERTEX_FIRST": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1179",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1180",
    "family": "NV097",
    "kind": "enum-value",
    "value": "1"
   },
   "NV097_SET_PROVOKING_VERTEX_LAST": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1178",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1179",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0"
   },
   "NV097_SET_SCENE_AMBIENT_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1180",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1181",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000A10"
   },
   "NV097_SET_SEMAPHORE_OFFSET": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1376",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1377",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001D6C"
   },
   "NV097_SET_SHADER_CLIP_PLANE_MODE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1263",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1264",
    "family": "NV097",
    "kind": "field",
    "value": "0x000017F8"
   },
   "NV097_SET_SHADER_OTHER_STAGE_INPUT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1412",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1414",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001E78"
   },
   "NV097_SET_SHADER_STAGE_PROGRAM": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1410",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1412",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001E70"
   },
   "NV097_SET_SHADE_MODE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1119",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1120",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000037C"
   },
   "NV097_SET_SHADE_MODE_V_FLAT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1120",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1121",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x1D00"
   },
   "NV097_SET_SHADE_MODE_V_SMOOTH": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1121",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1122",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x1D01"
   },
   "NV097_SET_SHADOW_DEPTH_FUNC": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1401",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1403",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001E6C"
   },
   "NV097_SET_SHADOW_DEPTH_FUNC_ALWAYS": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1409",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1411",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x00000007"
   },
   "NV097_SET_SHADOW_DEPTH_FUNC_EQUAL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1404",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1406",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x00000002"
   },
   "NV097_SET_SHADOW_DEPTH_FUNC_GEQUAL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1408",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1410",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x00000006"
   },
   "NV097_SET_SHADOW_DEPTH_FUNC_GREATER": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1406",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1408",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x00000004"
   },
   "NV097_SET_SHADOW_DEPTH_FUNC_LEQUAL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1405",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1407",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x00000003"
   },
   "NV097_SET_SHADOW_DEPTH_FUNC_LESS": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1403",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1405",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x00000001"
   },
   "NV097_SET_SHADOW_DEPTH_FUNC_NEVER": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1402",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1404",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x00000000"
   },
   "NV097_SET_SHADOW_DEPTH_FUNC_NOTEQUAL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1407",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1409",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x00000005"
   },
   "NV097_SET_SHADOW_ZSLOPE_THRESHOLD": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1400",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1402",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001E68"
   },
   "NV097_SET_SKIN_MODE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1042",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1043",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000328"
   },
   "NV097_SET_SKIN_MODE_2": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1045",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1046",
    "family": "NV097",
    "kind": "enum-value",
    "value": "2"
   },
   "NV097_SET_SKIN_MODE_2G": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1044",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1045",
    "family": "NV097",
    "kind": "enum-value",
    "value": "1"
   },
   "NV097_SET_SKIN_MODE_3": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1047",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1048",
    "family": "NV097",
    "kind": "enum-value",
    "value": "4"
   },
   "NV097_SET_SKIN_MODE_3G": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1046",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1047",
    "family": "NV097",
    "kind": "enum-value",
    "value": "3"
   },
   "NV097_SET_SKIN_MODE_4": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1049",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1050",
    "family": "NV097",
    "kind": "enum-value",
    "value": "6"
   },
   "NV097_SET_SKIN_MODE_4G": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1048",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1049",
    "family": "NV097",
    "kind": "enum-value",
    "value": "5"
   },
   "NV097_SET_SKIN_MODE_OFF": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1043",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1044",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0"
   },
   "NV097_SET_SPECULAR_COLOR3F": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1216",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1217",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001580"
   },
   "NV097_SET_SPECULAR_COLOR4F": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1215",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1216",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001570"
   },
   "NV097_SET_SPECULAR_COLOR4UB": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1217",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1218",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000158C"
   },
   "NV097_SET_SPECULAR_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1143",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1144",
    "family": "NV097",
    "kind": "field",
    "value": "0x000003B8"
   },
   "NV097_SET_SPECULAR_FOG_FACTOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1396",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1398",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001E20"
   },
   "NV097_SET_SPECULAR_PARAMS": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1176",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1177",
    "family": "NV097",
    "kind": "field",
    "value": "0x000009E0"
   },
   "NV097_SET_SPECULAR_PARAMS_BACK": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1397",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1399",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001E28"
   },
   "NV097_SET_STENCIL_FUNC": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1105",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1106",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000364"
   },
   "NV097_SET_STENCIL_FUNC_MASK": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1107",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1108",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000036C"
   },
   "NV097_SET_STENCIL_FUNC_REF": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1106",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1107",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000368"
   },
   "NV097_SET_STENCIL_MASK": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1104",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1105",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000360"
   },
   "NV097_SET_STENCIL_OP_FAIL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1108",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1109",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000370"
   },
   "NV097_SET_STENCIL_OP_V_DECR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1118",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1119",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x8508"
   },
   "NV097_SET_STENCIL_OP_V_DECRSAT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1115",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1116",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x1E03"
   },
   "NV097_SET_STENCIL_OP_V_INCR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1117",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1118",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x8507"
   },
   "NV097_SET_STENCIL_OP_V_INCRSAT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1114",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1115",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x1E02"
   },
   "NV097_SET_STENCIL_OP_V_INVERT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1116",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1117",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x150A"
   },
   "NV097_SET_STENCIL_OP_V_KEEP": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1111",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1112",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x1E00"
   },
   "NV097_SET_STENCIL_OP_V_REPLACE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1113",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1114",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x1E01"
   },
   "NV097_SET_STENCIL_OP_V_ZERO": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1112",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1113",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0000"
   },
   "NV097_SET_STENCIL_OP_ZFAIL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1109",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1110",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000374"
   },
   "NV097_SET_STENCIL_OP_ZPASS": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1110",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1111",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000378"
   },
   "NV097_SET_STENCIL_TEST_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1050",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1051",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000032C"
   },
   "NV097_SET_STIPPLE_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1192",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1193",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000147C"
   },
   "NV097_SET_STIPPLE_PATTERN": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1193",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1194",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001480"
   },
   "NV097_SET_STIPPLE_PATTERN_COUNT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1194",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1195",
    "family": "NV097",
    "kind": "enum-value",
    "value": "32"
   },
   "NV097_SET_SURFACE_CLIP_HORIZONTAL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:960",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:961",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000200"
   },
   "NV097_SET_SURFACE_CLIP_HORIZONTAL_WIDTH": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:962",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:963",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0xFFFF0000"
   },
   "NV097_SET_SURFACE_CLIP_HORIZONTAL_X": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:961",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:962",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0000FFFF"
   },
   "NV097_SET_SURFACE_CLIP_VERTICAL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:963",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:964",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000204"
   },
   "NV097_SET_SURFACE_CLIP_VERTICAL_HEIGHT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:965",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:966",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0xFFFF0000"
   },
   "NV097_SET_SURFACE_CLIP_VERTICAL_Y": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:964",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:965",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0000FFFF"
   },
   "NV097_SET_SURFACE_COLOR_OFFSET": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:993",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:994",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000210"
   },
   "NV097_SET_SURFACE_FORMAT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:966",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:967",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000208"
   },
   "NV097_SET_SURFACE_FORMAT_ANTI_ALIASING": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:984",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:985",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0000F000"
   },
   "NV097_SET_SURFACE_FORMAT_ANTI_ALIASING_CENTER_1": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:985",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:986",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0"
   },
   "NV097_SET_SURFACE_FORMAT_ANTI_ALIASING_CENTER_CORNER_2": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:986",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:987",
    "family": "NV097",
    "kind": "enum-value",
    "value": "1"
   },
   "NV097_SET_SURFACE_FORMAT_ANTI_ALIASING_SQUARE_OFFSET_4": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:987",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:988",
    "family": "NV097",
    "kind": "enum-value",
    "value": "2"
   },
   "NV097_SET_SURFACE_FORMAT_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:967",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:968",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0000000F"
   },
   "NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:975",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:976",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x08"
   },
   "NV097_SET_SURFACE_FORMAT_COLOR_LE_B8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:976",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:977",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x09"
   },
   "NV097_SET_SURFACE_FORMAT_COLOR_LE_G8B8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:977",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:978",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0A"
   },
   "NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:970",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:971",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x03"
   },
   "NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:974",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:975",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x07"
   },
   "NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:973",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:974",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x06"
   },
   "NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_O1R5G5B5": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:969",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:970",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x02"
   },
   "NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:968",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:969",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x01"
   },
   "NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_O8R8G8B8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:972",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:973",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x05"
   },
   "NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:971",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:972",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x04"
   },
   "NV097_SET_SURFACE_FORMAT_HEIGHT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:989",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:990",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0xFF000000"
   },
   "NV097_SET_SURFACE_FORMAT_TYPE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:981",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:982",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x00000F00"
   },
   "NV097_SET_SURFACE_FORMAT_TYPE_PITCH": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:982",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:983",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x1"
   },
   "NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:983",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:984",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x2"
   },
   "NV097_SET_SURFACE_FORMAT_WIDTH": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:988",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:989",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x00FF0000"
   },
   "NV097_SET_SURFACE_FORMAT_ZETA": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:978",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:979",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x000000F0"
   },
   "NV097_SET_SURFACE_FORMAT_ZETA_Z16": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:979",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:980",
    "family": "NV097",
    "kind": "enum-value",
    "value": "1"
   },
   "NV097_SET_SURFACE_FORMAT_ZETA_Z24S8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:980",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:981",
    "family": "NV097",
    "kind": "enum-value",
    "value": "2"
   },
   "NV097_SET_SURFACE_PITCH": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:990",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:991",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000020C"
   },
   "NV097_SET_SURFACE_PITCH_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:991",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:992",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0000FFFF"
   },
   "NV097_SET_SURFACE_PITCH_ZETA": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:992",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:993",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0xFFFF0000"
   },
   "NV097_SET_SURFACE_ZETA_OFFSET": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:994",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:995",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000214"
   },
   "NV097_SET_TEXCOORD0_2F": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1218",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1219",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001590"
   },
   "NV097_SET_TEXCOORD0_2S": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1220",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1221",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001598"
   },
   "NV097_SET_TEXCOORD0_4F": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1219",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1220",
    "family": "NV097",
    "kind": "field",
    "value": "0x000015A0"
   },
   "NV097_SET_TEXCOORD0_4S": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1221",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1222",
    "family": "NV097",
    "kind": "field",
    "value": "0x000015B0"
   },
   "NV097_SET_TEXCOORD1_2F": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1222",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1223",
    "family": "NV097",
    "kind": "field",
    "value": "0x000015B8"
   },
   "NV097_SET_TEXCOORD1_2S": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1224",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1225",
    "family": "NV097",
    "kind": "field",
    "value": "0x000015C0"
   },
   "NV097_SET_TEXCOORD1_4F": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1223",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1224",
    "family": "NV097",
    "kind": "field",
    "value": "0x000015C8"
   },
   "NV097_SET_TEXCOORD1_4S": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1225",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1226",
    "family": "NV097",
    "kind": "field",
    "value": "0x000015D8"
   },
   "NV097_SET_TEXCOORD2_2F": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1226",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1227",
    "family": "NV097",
    "kind": "field",
    "value": "0x000015E0"
   },
   "NV097_SET_TEXCOORD2_2S": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1228",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1229",
    "family": "NV097",
    "kind": "field",
    "value": "0x000015E8"
   },
   "NV097_SET_TEXCOORD2_4F": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1227",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1228",
    "family": "NV097",
    "kind": "field",
    "value": "0x000015F0"
   },
   "NV097_SET_TEXCOORD2_4S": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1229",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1230",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001600"
   },
   "NV097_SET_TEXCOORD3_2F": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1230",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1231",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001608"
   },
   "NV097_SET_TEXCOORD3_2S": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1232",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1233",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001610"
   },
   "NV097_SET_TEXCOORD3_4F": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1231",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1232",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001620"
   },
   "NV097_SET_TEXCOORD3_4S": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1233",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1234",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001630"
   },
   "NV097_SET_TEXGEN_PLANE_Q": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1171",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1172",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000870"
   },
   "NV097_SET_TEXGEN_PLANE_R": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1170",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1171",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000860"
   },
   "NV097_SET_TEXGEN_PLANE_S": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1168",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1169",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000840"
   },
   "NV097_SET_TEXGEN_PLANE_T": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1169",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1170",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000850"
   },
   "NV097_SET_TEXGEN_Q": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1158",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1159",
    "family": "NV097",
    "kind": "field",
    "value": "0x000003CC"
   },
   "NV097_SET_TEXGEN_R": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1157",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1158",
    "family": "NV097",
    "kind": "field",
    "value": "0x000003C8"
   },
   "NV097_SET_TEXGEN_S": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1149",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1150",
    "family": "NV097",
    "kind": "field",
    "value": "0x000003C0"
   },
   "NV097_SET_TEXGEN_S_DISABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1150",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1151",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0000"
   },
   "NV097_SET_TEXGEN_S_EYE_LINEAR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1151",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1152",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x2400"
   },
   "NV097_SET_TEXGEN_S_NORMAL_MAP": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1155",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1156",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x8511"
   },
   "NV097_SET_TEXGEN_S_OBJECT_LINEAR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1152",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1153",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x2401"
   },
   "NV097_SET_TEXGEN_S_REFLECTION_MAP": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1154",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1155",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x8512"
   },
   "NV097_SET_TEXGEN_S_SPHERE_MAP": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1153",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1154",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x2402"
   },
   "NV097_SET_TEXGEN_T": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1156",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1157",
    "family": "NV097",
    "kind": "field",
    "value": "0x000003C4"
   },
   "NV097_SET_TEXGEN_VIEW_MODEL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1172",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1173",
    "family": "NV097",
    "kind": "field",
    "value": "0x000009CC"
   },
   "NV097_SET_TEXGEN_VIEW_MODEL_INFINITE_VIEWER": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1174",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1175",
    "family": "NV097",
    "kind": "enum-value",
    "value": "1"
   },
   "NV097_SET_TEXGEN_VIEW_MODEL_LOCAL_VIEWER": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1173",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1174",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0"
   },
   "NV097_SET_TEXTURE_ADDRESS": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1346",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1347",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001B08"
   },
   "NV097_SET_TEXTURE_BORDER_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1372",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1373",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001B24"
   },
   "NV097_SET_TEXTURE_CONTROL0": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1347",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1348",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001B0C"
   },
   "NV097_SET_TEXTURE_CONTROL0_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1348",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1349",
    "family": "NV097",
    "kind": "enum-value",
    "value": "(1"
   },
   "NV097_SET_TEXTURE_CONTROL0_MAX_LOD_CLAMP": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1350",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1351",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0003FFC0"
   },
   "NV097_SET_TEXTURE_CONTROL0_MIN_LOD_CLAMP": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1349",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1350",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x3FFC0000"
   },
   "NV097_SET_TEXTURE_CONTROL1": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1351",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1352",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001B10"
   },
   "NV097_SET_TEXTURE_CONTROL1_IMAGE_PITCH": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1352",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1353",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0xFFFF0000"
   },
   "NV097_SET_TEXTURE_FILTER": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1353",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1354",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001B14"
   },
   "NV097_SET_TEXTURE_FILTER_ASIGNED": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1357",
-   "family": "NV097",
-   "kind": "enum-value",
-   "value": "(1"
-  },
-  "NV097_SET_TEXTURE_FILTER_BSIGNED": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1360",
-   "family": "NV097",
-   "kind": "enum-value",
-   "value": "(1"
-  },
-  "NV097_SET_TEXTURE_FILTER_GSIGNED": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1359",
-   "family": "NV097",
-   "kind": "enum-value",
-   "value": "(1"
-  },
-  "NV097_SET_TEXTURE_FILTER_MAG": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1356",
-   "family": "NV097",
-   "kind": "enum-value",
-   "value": "0x0F000000"
-  },
-  "NV097_SET_TEXTURE_FILTER_MIN": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1355",
-   "family": "NV097",
-   "kind": "enum-value",
-   "value": "0x00FF0000"
-  },
-  "NV097_SET_TEXTURE_FILTER_MIPMAP_LOD_BIAS": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1354",
-   "family": "NV097",
-   "kind": "enum-value",
-   "value": "0x00001FFF"
-  },
-  "NV097_SET_TEXTURE_FILTER_RSIGNED": {
    "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1358",
    "family": "NV097",
    "kind": "enum-value",
    "value": "(1"
   },
+  "NV097_SET_TEXTURE_FILTER_BSIGNED": {
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1361",
+   "family": "NV097",
+   "kind": "enum-value",
+   "value": "(1"
+  },
+  "NV097_SET_TEXTURE_FILTER_GSIGNED": {
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1360",
+   "family": "NV097",
+   "kind": "enum-value",
+   "value": "(1"
+  },
+  "NV097_SET_TEXTURE_FILTER_MAG": {
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1357",
+   "family": "NV097",
+   "kind": "enum-value",
+   "value": "0x0F000000"
+  },
+  "NV097_SET_TEXTURE_FILTER_MIN": {
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1356",
+   "family": "NV097",
+   "kind": "enum-value",
+   "value": "0x00FF0000"
+  },
+  "NV097_SET_TEXTURE_FILTER_MIPMAP_LOD_BIAS": {
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1355",
+   "family": "NV097",
+   "kind": "enum-value",
+   "value": "0x00001FFF"
+  },
+  "NV097_SET_TEXTURE_FILTER_RSIGNED": {
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1359",
+   "family": "NV097",
+   "kind": "enum-value",
+   "value": "(1"
+  },
   "NV097_SET_TEXTURE_FORMAT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1289",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1290",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001B04"
   },
   "NV097_SET_TEXTURE_FORMAT_BASE_SIZE_P": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1345",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1346",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0xF0000000"
   },
   "NV097_SET_TEXTURE_FORMAT_BASE_SIZE_U": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1343",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1344",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x00F00000"
   },
   "NV097_SET_TEXTURE_FORMAT_BASE_SIZE_V": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1344",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1345",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0F000000"
   },
   "NV097_SET_TEXTURE_FORMAT_BORDER_SOURCE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1292",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1293",
    "family": "NV097",
    "kind": "enum-value",
    "value": "(1"
   },
   "NV097_SET_TEXTURE_FORMAT_BORDER_SOURCE_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1294",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1295",
    "family": "NV097",
    "kind": "enum-value",
    "value": "1"
   },
   "NV097_SET_TEXTURE_FORMAT_BORDER_SOURCE_TEXTURE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1293",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1294",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1296",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1297",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0000FF00"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1322",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1323",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x24"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_YB8CR8YA8CB8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1323",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1324",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x25"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1309",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1310",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x10"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A4R4G4B4": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1318",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1319",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x1D"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1320",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1321",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x1F"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8B8G8R8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1339",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1340",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x3F"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1311",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1312",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x12"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8Y8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1321",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1322",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x20"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_AY8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1316",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1317",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x1B"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_B8G8R8A8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1340",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1341",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x40"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FIXED": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1328",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1329",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x2E"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FLOAT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1329",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1330",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x2F"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FIXED": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1330",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1331",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x30"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FLOAT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1331",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1332",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x31"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_G8B8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1313",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1314",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x17"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1335",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1336",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x36"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1310",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1311",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x11"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8G8B8A8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1341",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1342",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x41"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1317",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1318",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x1C"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1319",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1320",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x1E"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1334",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1335",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x35"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1312",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1313",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x13"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT1_A1R5G5B5": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1306",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1307",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0C"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT23_A8R8G8B8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1307",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1308",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0E"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT45_A8R8G8B8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1308",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1309",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0F"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1299",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1300",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x02"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A4R4G4B4": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1301",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1302",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x04"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1314",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1315",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x19"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8B8G8R8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1336",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1337",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x3A"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1303",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1304",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x06"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8Y8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1315",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1316",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x1A"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_AY8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1298",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1299",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x01"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_B8G8R8A8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1337",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1338",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x3B"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_DEPTH_Y16_FIXED": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1327",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1328",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x2C"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_G8B8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1325",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1326",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x28"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1305",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1306",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0B"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1333",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1334",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x33"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1302",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1303",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x05"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1324",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1325",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x27"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8B8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1326",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1327",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x29"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8G8B8A8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1338",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1339",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x3C"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1300",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1301",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x03"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1304",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1305",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x07"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1332",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1333",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x32"
   },
   "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y8": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1297",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1298",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x00"
   },
   "NV097_SET_TEXTURE_FORMAT_CONTEXT_DMA": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1290",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1291",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x00000003"
   },
   "NV097_SET_TEXTURE_FORMAT_CUBEMAP_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1291",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1292",
    "family": "NV097",
    "kind": "enum-value",
    "value": "(1"
   },
   "NV097_SET_TEXTURE_FORMAT_DIMENSIONALITY": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1295",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1296",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x000000F0"
   },
   "NV097_SET_TEXTURE_FORMAT_MIPMAP_LEVELS": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1342",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1343",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x000F0000"
   },
   "NV097_SET_TEXTURE_IMAGE_RECT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1361",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1362",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001B1C"
   },
   "NV097_SET_TEXTURE_IMAGE_RECT_HEIGHT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1363",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1364",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0000FFFF"
   },
   "NV097_SET_TEXTURE_IMAGE_RECT_WIDTH": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1362",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1363",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0xFFFF0000"
   },
   "NV097_SET_TEXTURE_MATRIX": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1166",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1167",
    "family": "NV097",
    "kind": "field",
    "value": "0x000006C0"
   },
   "NV097_SET_TEXTURE_MATRIX_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1159",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1160",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000420"
   },
   "NV097_SET_TEXTURE_OFFSET": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1288",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1289",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001B00"
   },
   "NV097_SET_TEXTURE_PALETTE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1364",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1365",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001B20"
   },
   "NV097_SET_TEXTURE_PALETTE_CONTEXT_DMA": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1365",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1366",
    "family": "NV097",
    "kind": "enum-value",
    "value": "(1"
   },
   "NV097_SET_TEXTURE_PALETTE_LENGTH": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1366",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1367",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0000000C"
   },
   "NV097_SET_TEXTURE_PALETTE_LENGTH_128": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1368",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1369",
    "family": "NV097",
    "kind": "enum-value",
    "value": "1"
   },
   "NV097_SET_TEXTURE_PALETTE_LENGTH_256": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1367",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1368",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0"
   },
   "NV097_SET_TEXTURE_PALETTE_LENGTH_32": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1370",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1371",
    "family": "NV097",
    "kind": "enum-value",
    "value": "3"
   },
   "NV097_SET_TEXTURE_PALETTE_LENGTH_64": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1369",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1370",
    "family": "NV097",
    "kind": "enum-value",
    "value": "2"
   },
   "NV097_SET_TEXTURE_PALETTE_OFFSET": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1371",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1372",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0xFFFFFFC0"
   },
   "NV097_SET_TEXTURE_SET_BUMP_ENV_MAT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1373",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1374",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001B28"
   },
   "NV097_SET_TEXTURE_SET_BUMP_ENV_OFFSET": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1375",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1376",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001B3C"
   },
   "NV097_SET_TEXTURE_SET_BUMP_ENV_SCALE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1374",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1375",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001B38"
   },
   "NV097_SET_TRANSFORM_CONSTANT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1191",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1192",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000B80"
   },
   "NV097_SET_TRANSFORM_CONSTANT_LOAD": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1421",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1423",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001EA4"
   },
   "NV097_SET_TRANSFORM_DATA": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1413",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1415",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001E80"
   },
   "NV097_SET_TRANSFORM_EXECUTION_MODE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1415",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1417",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001E94"
   },
   "NV097_SET_TRANSFORM_EXECUTION_MODE_MODE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1416",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1418",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x00000003"
   },
   "NV097_SET_TRANSFORM_EXECUTION_MODE_RANGE_MODE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1417",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1419",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0xFFFFFFFC"
   },
   "NV097_SET_TRANSFORM_PROGRAM": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1190",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1191",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000B00"
   },
   "NV097_SET_TRANSFORM_PROGRAM_CXT_WRITE_EN": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1418",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1420",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001E98"
   },
   "NV097_SET_TRANSFORM_PROGRAM_LOAD": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1419",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1421",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001E9C"
   },
   "NV097_SET_TRANSFORM_PROGRAM_START": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1420",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1422",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001EA0"
   },
   "NV097_SET_VERTEX3F": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1195",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1196",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001500"
   },
   "NV097_SET_VERTEX4F": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1209",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1210",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001518"
   },
   "NV097_SET_VERTEX_DATA2F_M": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1283",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1284",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001880"
   },
   "NV097_SET_VERTEX_DATA2S": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1285",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1286",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001900"
   },
   "NV097_SET_VERTEX_DATA4F_M": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1284",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1285",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001A00"
   },
   "NV097_SET_VERTEX_DATA4S_M": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1287",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1288",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001980"
   },
   "NV097_SET_VERTEX_DATA4UB": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1286",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1287",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001940"
   },
   "NV097_SET_VERTEX_DATA_ARRAY_FORMAT": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1240",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1241",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001760"
   },
   "NV097_SET_VERTEX_DATA_ARRAY_FORMAT_SIZE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1248",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1249",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x000000F0"
   },
   "NV097_SET_VERTEX_DATA_ARRAY_FORMAT_STRIDE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1249",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1250",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0xFFFFFF00"
   },
   "NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1241",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1242",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0000000F"
   },
   "NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_CMP": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1247",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1248",
    "family": "NV097",
    "kind": "enum-value",
    "value": "6"
   },
   "NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_F": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1244",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1245",
    "family": "NV097",
    "kind": "enum-value",
    "value": "2"
   },
   "NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_S1": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1243",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1244",
    "family": "NV097",
    "kind": "enum-value",
    "value": "1"
   },
   "NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_S32K": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1246",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1247",
    "family": "NV097",
    "kind": "enum-value",
    "value": "5"
   },
   "NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_UB_D3D": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1242",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1243",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0"
   },
   "NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_UB_OGL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1245",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1246",
    "family": "NV097",
    "kind": "enum-value",
    "value": "4"
   },
   "NV097_SET_VERTEX_DATA_ARRAY_OFFSET": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1239",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1240",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001720"
   },
   "NV097_SET_VIEWPORT_OFFSET": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1181",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1182",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000A20"
   },
   "NV097_SET_VIEWPORT_SCALE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1189",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1190",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000AF0"
   },
   "NV097_SET_WEIGHT1F": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1235",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1236",
    "family": "NV097",
    "kind": "field",
    "value": "0x0000169C"
   },
   "NV097_SET_WEIGHT2F": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1236",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1237",
    "family": "NV097",
    "kind": "field",
    "value": "0x000016A0"
   },
   "NV097_SET_WEIGHT3F": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1237",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1238",
    "family": "NV097",
    "kind": "field",
    "value": "0x000016B0"
   },
   "NV097_SET_WEIGHT4F": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1238",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1239",
    "family": "NV097",
    "kind": "field",
    "value": "0x000016C0"
   },
   "NV097_SET_WINDOW_CLIP_HORIZONTAL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1028",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1029",
    "family": "NV097",
    "kind": "field",
    "value": "0x000002C0"
   },
   "NV097_SET_WINDOW_CLIP_HORIZONTAL_XMAX": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1030",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1031",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x0FFF0000"
   },
   "NV097_SET_WINDOW_CLIP_HORIZONTAL_XMIN": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1029",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1030",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x00000FFF"
   },
   "NV097_SET_WINDOW_CLIP_TYPE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1027",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1028",
    "family": "NV097",
    "kind": "field",
    "value": "0x000002B4"
   },
   "NV097_SET_WINDOW_CLIP_VERTICAL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1031",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1032",
    "family": "NV097",
    "kind": "field",
    "value": "0x000002E0"
   },
   "NV097_SET_ZMIN_MAX_CONTROL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1378",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1379",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001D78"
   },
+  "NV097_SET_ZMIN_MAX_CONTROL_CULL_NEAR_FAR_EN": {
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1380",
+   "family": "NV097",
+   "kind": "enum-value",
+   "value": "0x0000000F"
+  },
   "NV097_SET_ZMIN_MAX_CONTROL_ZCLAMP_EN": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1379",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1381",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0x000000F0"
   },
   "NV097_SET_ZMIN_MAX_CONTROL_ZCLAMP_EN_CLAMP": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1381",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1383",
    "family": "NV097",
    "kind": "enum-value",
    "value": "1"
   },
   "NV097_SET_ZMIN_MAX_CONTROL_ZCLAMP_EN_CULL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1380",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1382",
    "family": "NV097",
    "kind": "enum-value",
    "value": "0"
   },
   "NV097_SET_ZPASS_PIXEL_COUNT_ENABLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1257",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1258",
    "family": "NV097",
    "kind": "field",
    "value": "0x000017CC"
   },
   "NV097_SET_ZSTENCIL_CLEAR_VALUE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1384",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1386",
    "family": "NV097",
    "kind": "field",
    "value": "0x00001D8C"
   },
   "NV097_WAIT_FOR_IDLE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:944",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:945",
    "family": "NV097",
    "kind": "field",
    "value": "0x00000110"
@@ -27297,19 +27333,19 @@
    "value": "0x00001034"
   },
   "NV_PGRAPH_EYEVEC0": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:670",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:671",
    "family": "NV_PGRAPH",
    "kind": "register/method",
    "value": "0x00001AAC"
   },
   "NV_PGRAPH_EYEVEC1": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:671",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:672",
    "family": "NV_PGRAPH",
    "kind": "register/method",
    "value": "0x00001AB0"
   },
   "NV_PGRAPH_EYEVEC2": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:672",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:673",
    "family": "NV_PGRAPH",
    "kind": "register/method",
    "value": "0x00001AB4"
@@ -28491,13 +28527,13 @@
    "value": "0x00001A80"
   },
   "NV_PGRAPH_ZCLIPMAX": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:673",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:674",
    "family": "NV_PGRAPH",
    "kind": "register/method",
    "value": "0x00001ABC"
   },
   "NV_PGRAPH_ZCLIPMIN": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:667",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:668",
    "family": "NV_PGRAPH",
    "kind": "register/method",
    "value": "0x00001A90"
@@ -28508,38 +28544,44 @@
    "kind": "register/method",
    "value": "0x00001A84"
   },
-  "NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN": {
+  "NV_PGRAPH_ZCOMPRESSOCCLUDE_CULL_NEAR_FAR_EN": {
    "defined_at": "hw/xbox/nv2a/nv2a_regs.h:663",
    "family": "NV_PGRAPH",
    "kind": "field",
    "value": "(1"
   },
+  "NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN": {
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:664",
+   "family": "NV_PGRAPH",
+   "kind": "field",
+   "value": "(1"
+  },
   "NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN_CLAMP": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:665",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:666",
    "family": "NV_PGRAPH",
    "kind": "enum-value",
    "value": "1"
   },
   "NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN_CULL": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:664",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:665",
    "family": "NV_PGRAPH",
    "kind": "enum-value",
    "value": "0"
   },
   "NV_PGRAPH_ZOFFSETBIAS": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:668",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:669",
    "family": "NV_PGRAPH",
    "kind": "register/method",
    "value": "0x00001AA4"
   },
   "NV_PGRAPH_ZOFFSETFACTOR": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:669",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:670",
    "family": "NV_PGRAPH",
    "kind": "register/method",
    "value": "0x00001AA8"
   },
   "NV_PGRAPH_ZSTENCILCLEARVALUE": {
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:666",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:667",
    "family": "NV_PGRAPH",
    "kind": "register/method",
    "value": "0x00001A88"
@@ -28548,7 +28590,7 @@
  "unread": {
   "NV097_CLEAR_REPORT_VALUE_TYPE": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1255",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1256",
    "kind": "enum-value",
    "parent": "NV097_CLEAR_REPORT_VALUE",
    "signal": "positional"
@@ -28557,14 +28599,14 @@
    "aliases": [
     "NV097_GET_REPORT_TYPE_ZPASS_PIXEL_CNT"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1256",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1257",
    "kind": "enum-value",
    "parent": "NV097_CLEAR_REPORT_VALUE",
    "signal": "positional"
   },
   "NV097_SET_BEGIN_END_OP_LINES": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1267",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1268",
    "kind": "enum-value",
    "parent": "NV097_SET_BEGIN_END",
    "signal": "unhandled-case"
@@ -28573,7 +28615,7 @@
    "aliases": [
     "PRIM_TYPE_LINE_LOOP"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1268",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1269",
    "kind": "enum-value",
    "parent": "NV097_SET_BEGIN_END",
    "signal": "unhandled-case"
@@ -28582,21 +28624,21 @@
    "aliases": [
     "PRIM_TYPE_LINE_STRIP"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1269",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1270",
    "kind": "enum-value",
    "parent": "NV097_SET_BEGIN_END",
    "signal": "unhandled-case"
   },
   "NV097_SET_BEGIN_END_OP_POINTS": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1266",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1267",
    "kind": "enum-value",
    "parent": "NV097_SET_BEGIN_END",
    "signal": "unhandled-case"
   },
   "NV097_SET_BEGIN_END_OP_QUADS": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1273",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1274",
    "kind": "enum-value",
    "parent": "NV097_SET_BEGIN_END",
    "signal": "unhandled-case"
@@ -28605,14 +28647,14 @@
    "aliases": [
     "PRIM_TYPE_QUAD_STRIP"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1274",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1275",
    "kind": "enum-value",
    "parent": "NV097_SET_BEGIN_END",
    "signal": "unhandled-case"
   },
   "NV097_SET_BEGIN_END_OP_TRIANGLES": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1270",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1271",
    "kind": "enum-value",
    "parent": "NV097_SET_BEGIN_END",
    "signal": "unhandled-case"
@@ -28621,7 +28663,7 @@
    "aliases": [
     "PRIM_TYPE_TRIANGLE_FAN"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1272",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1273",
    "kind": "enum-value",
    "parent": "NV097_SET_BEGIN_END",
    "signal": "unhandled-case"
@@ -28630,42 +28672,42 @@
    "aliases": [
     "PRIM_TYPE_TRIANGLE_STRIP"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1271",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1272",
    "kind": "enum-value",
    "parent": "NV097_SET_BEGIN_END",
    "signal": "unhandled-case"
   },
   "NV097_SET_LIGHT_ENABLE_MASK_LIGHT0_INFINITE": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1146",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1147",
    "kind": "enum-value",
    "parent": "NV097_SET_LIGHT_ENABLE_MASK",
    "signal": "positional"
   },
   "NV097_SET_LIGHT_ENABLE_MASK_LIGHT0_LOCAL": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1147",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1148",
    "kind": "enum-value",
    "parent": "NV097_SET_LIGHT_ENABLE_MASK",
    "signal": "positional"
   },
   "NV097_SET_LIGHT_ENABLE_MASK_LIGHT0_OFF": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1145",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1146",
    "kind": "enum-value",
    "parent": "NV097_SET_LIGHT_ENABLE_MASK",
    "signal": "positional"
   },
   "NV097_SET_LIGHT_ENABLE_MASK_LIGHT0_SPOT": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1148",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1149",
    "kind": "enum-value",
    "parent": "NV097_SET_LIGHT_ENABLE_MASK",
    "signal": "positional"
   },
   "NV097_SET_PROVOKING_VERTEX_FIRST": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1179",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1180",
    "kind": "enum-value",
    "parent": "NV097_SET_PROVOKING_VERTEX",
    "signal": "positional"
@@ -28674,7 +28716,7 @@
    "aliases": [
     "NV_PGRAPH_CONTROL_3_PROVOKING_VERTEX_LAST"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1178",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1179",
    "kind": "enum-value",
    "parent": "NV097_SET_PROVOKING_VERTEX",
    "signal": "positional"
@@ -28683,7 +28725,7 @@
    "aliases": [
     "SHADOW_DEPTH_FUNC_ALWAYS"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1409",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1411",
    "kind": "enum-value",
    "parent": "NV097_SET_SHADOW_DEPTH_FUNC",
    "signal": "positional"
@@ -28692,7 +28734,7 @@
    "aliases": [
     "SHADOW_DEPTH_FUNC_EQUAL"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1404",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1406",
    "kind": "enum-value",
    "parent": "NV097_SET_SHADOW_DEPTH_FUNC",
    "signal": "positional"
@@ -28701,7 +28743,7 @@
    "aliases": [
     "SHADOW_DEPTH_FUNC_GEQUAL"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1408",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1410",
    "kind": "enum-value",
    "parent": "NV097_SET_SHADOW_DEPTH_FUNC",
    "signal": "positional"
@@ -28710,7 +28752,7 @@
    "aliases": [
     "SHADOW_DEPTH_FUNC_GREATER"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1406",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1408",
    "kind": "enum-value",
    "parent": "NV097_SET_SHADOW_DEPTH_FUNC",
    "signal": "positional"
@@ -28719,7 +28761,7 @@
    "aliases": [
     "SHADOW_DEPTH_FUNC_LEQUAL"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1405",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1407",
    "kind": "enum-value",
    "parent": "NV097_SET_SHADOW_DEPTH_FUNC",
    "signal": "positional"
@@ -28728,7 +28770,7 @@
    "aliases": [
     "SHADOW_DEPTH_FUNC_LESS"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1403",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1405",
    "kind": "enum-value",
    "parent": "NV097_SET_SHADOW_DEPTH_FUNC",
    "signal": "positional"
@@ -28737,7 +28779,7 @@
    "aliases": [
     "SHADOW_DEPTH_FUNC_NEVER"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1402",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1404",
    "kind": "enum-value",
    "parent": "NV097_SET_SHADOW_DEPTH_FUNC",
    "signal": "positional"
@@ -28746,99 +28788,99 @@
    "aliases": [
     "SHADOW_DEPTH_FUNC_NOTEQUAL"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1407",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1409",
    "kind": "enum-value",
    "parent": "NV097_SET_SHADOW_DEPTH_FUNC",
    "signal": "positional"
   },
   "NV097_SET_SKIN_MODE_2": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1045",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1046",
    "kind": "enum-value",
    "parent": "NV097_SET_SKIN_MODE",
    "signal": "positional"
   },
   "NV097_SET_SKIN_MODE_2G": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1044",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1045",
    "kind": "enum-value",
    "parent": "NV097_SET_SKIN_MODE",
    "signal": "positional"
   },
   "NV097_SET_SKIN_MODE_3": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1047",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1048",
    "kind": "enum-value",
    "parent": "NV097_SET_SKIN_MODE",
    "signal": "positional"
   },
   "NV097_SET_SKIN_MODE_3G": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1046",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1047",
    "kind": "enum-value",
    "parent": "NV097_SET_SKIN_MODE",
    "signal": "positional"
   },
   "NV097_SET_SKIN_MODE_4": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1049",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1050",
    "kind": "enum-value",
    "parent": "NV097_SET_SKIN_MODE",
    "signal": "positional"
   },
   "NV097_SET_SKIN_MODE_4G": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1048",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1049",
    "kind": "enum-value",
    "parent": "NV097_SET_SKIN_MODE",
    "signal": "positional"
   },
   "NV097_SET_SKIN_MODE_OFF": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1043",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1044",
    "kind": "enum-value",
    "parent": "NV097_SET_SKIN_MODE",
    "signal": "positional"
   },
   "NV097_SET_SURFACE_FORMAT_TYPE_PITCH": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:982",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:983",
    "kind": "enum-value",
    "parent": "NV097_SET_SURFACE_FORMAT",
    "signal": "unhandled-case"
   },
   "NV097_SET_TEXGEN_PLANE_Q": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1171",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1172",
    "kind": "field"
   },
   "NV097_SET_TEXGEN_PLANE_R": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1170",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1171",
    "kind": "field"
   },
   "NV097_SET_TEXGEN_PLANE_T": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1169",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1170",
    "kind": "field"
   },
   "NV097_SET_TEXGEN_VIEW_MODEL_INFINITE_VIEWER": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1174",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1175",
    "kind": "enum-value",
    "parent": "NV097_SET_TEXGEN_VIEW_MODEL",
    "signal": "positional"
   },
   "NV097_SET_TEXGEN_VIEW_MODEL_LOCAL_VIEWER": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1173",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1174",
    "kind": "enum-value",
    "parent": "NV097_SET_TEXGEN_VIEW_MODEL",
    "signal": "positional"
   },
   "NV097_SET_TEXTURE_CONTROL0_ENABLE": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1348",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1349",
    "kind": "enum-value",
    "parent": "NV097_SET_TEXTURE_CONTROL0",
    "signal": "positional"
@@ -28847,7 +28889,7 @@
    "aliases": [
     "NV_PGRAPH_TEXCTL0_0_MAX_LOD_CLAMP"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1350",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1351",
    "kind": "enum-value",
    "parent": "NV097_SET_TEXTURE_CONTROL0",
    "signal": "positional"
@@ -28856,7 +28898,7 @@
    "aliases": [
     "NV_PGRAPH_TEXCTL0_0_MIN_LOD_CLAMP"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1349",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1350",
    "kind": "enum-value",
    "parent": "NV097_SET_TEXTURE_CONTROL0",
    "signal": "positional"
@@ -28865,42 +28907,42 @@
    "aliases": [
     "NV_PGRAPH_TEXCTL1_0_IMAGE_PITCH"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1352",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1353",
    "kind": "enum-value",
    "parent": "NV097_SET_TEXTURE_CONTROL1",
    "signal": "positional"
   },
   "NV097_SET_TEXTURE_FILTER_ASIGNED": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1357",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1358",
    "kind": "enum-value",
    "parent": "NV097_SET_TEXTURE_FILTER",
    "signal": "positional"
   },
   "NV097_SET_TEXTURE_FILTER_BSIGNED": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1360",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1361",
    "kind": "enum-value",
    "parent": "NV097_SET_TEXTURE_FILTER",
    "signal": "positional"
   },
   "NV097_SET_TEXTURE_FILTER_GSIGNED": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1359",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1360",
    "kind": "enum-value",
    "parent": "NV097_SET_TEXTURE_FILTER",
    "signal": "positional"
   },
   "NV097_SET_TEXTURE_FILTER_MAG": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1356",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1357",
    "kind": "enum-value",
    "parent": "NV097_SET_TEXTURE_FILTER",
    "signal": "positional"
   },
   "NV097_SET_TEXTURE_FILTER_MIN": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1355",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1356",
    "kind": "enum-value",
    "parent": "NV097_SET_TEXTURE_FILTER",
    "signal": "positional"
@@ -28909,14 +28951,14 @@
    "aliases": [
     "NV_PGRAPH_TEXFILTER0_MIPMAP_LOD_BIAS"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1354",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1355",
    "kind": "enum-value",
    "parent": "NV097_SET_TEXTURE_FILTER",
    "signal": "positional"
   },
   "NV097_SET_TEXTURE_FILTER_RSIGNED": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1358",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1359",
    "kind": "enum-value",
    "parent": "NV097_SET_TEXTURE_FILTER",
    "signal": "positional"
@@ -28925,28 +28967,28 @@
    "aliases": [
     "NV_PGRAPH_TEXFMT0_BORDER_SOURCE_COLOR"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1294",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1295",
    "kind": "enum-value",
    "parent": "NV097_SET_TEXTURE_FORMAT",
    "signal": "unhandled-case"
   },
   "NV097_SET_TEXTURE_FORMAT_BORDER_SOURCE_TEXTURE": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1293",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1294",
    "kind": "enum-value",
    "parent": "NV097_SET_TEXTURE_FORMAT",
    "signal": "unhandled-case"
   },
   "NV097_SET_TEXTURE_IMAGE_RECT_HEIGHT": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1363",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1364",
    "kind": "enum-value",
    "parent": "NV097_SET_TEXTURE_IMAGE_RECT",
    "signal": "positional"
   },
   "NV097_SET_TEXTURE_IMAGE_RECT_WIDTH": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1362",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1363",
    "kind": "enum-value",
    "parent": "NV097_SET_TEXTURE_IMAGE_RECT",
    "signal": "positional"
@@ -28955,7 +28997,7 @@
    "aliases": [
     "NV_PGRAPH_TEXPALETTE0_LENGTH_128"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1368",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1369",
    "kind": "enum-value",
    "parent": "NV097_SET_TEXTURE_PALETTE",
    "signal": "unhandled-case"
@@ -28964,7 +29006,7 @@
    "aliases": [
     "NV_PGRAPH_TEXPALETTE0_LENGTH_256"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1367",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1368",
    "kind": "enum-value",
    "parent": "NV097_SET_TEXTURE_PALETTE",
    "signal": "unhandled-case"
@@ -28973,7 +29015,7 @@
    "aliases": [
     "NV_PGRAPH_TEXPALETTE0_LENGTH_32"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1370",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1371",
    "kind": "enum-value",
    "parent": "NV097_SET_TEXTURE_PALETTE",
    "signal": "unhandled-case"
@@ -28982,21 +29024,21 @@
    "aliases": [
     "NV_PGRAPH_TEXPALETTE0_LENGTH_64"
    ],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1369",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1370",
    "kind": "enum-value",
    "parent": "NV097_SET_TEXTURE_PALETTE",
    "signal": "unhandled-case"
   },
   "NV097_SET_WINDOW_CLIP_HORIZONTAL_XMAX": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1030",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1031",
    "kind": "enum-value",
    "parent": "NV097_SET_WINDOW_CLIP_HORIZONTAL",
    "signal": "positional"
   },
   "NV097_SET_WINDOW_CLIP_HORIZONTAL_XMIN": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1029",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:1030",
    "kind": "enum-value",
    "parent": "NV097_SET_WINDOW_CLIP_HORIZONTAL",
    "signal": "positional"
@@ -29473,12 +29515,12 @@
   },
   "NV_PGRAPH_EYEVEC1": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:671",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:672",
    "kind": "register/method"
   },
   "NV_PGRAPH_EYEVEC2": {
    "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:672",
+   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:673",
    "kind": "register/method"
   },
   "NV_PGRAPH_INCREMENT_READ_BLIT": {
