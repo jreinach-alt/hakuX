@@ -121,11 +121,39 @@ Ghoulies gate (median gfps 90-240 s >= 25, both handhelds): met on these soaks (
 
 (Titles after #432 are shortened here; the page prints 50 characters of each.)
 
+## CI: fragment 64 read the live board (fixed here)
+
+The first CI run on this branch (eaff4dc4f1) failed one leg: 64-status-html's
+"the republished page carries the change". It is not this lane's code.
+master's own jobs/ fails the same leg when fragment 64 runs alone on this
+host. The lane block reads `origin/board` of the checkout, and CI has it too
+(`fetch-depth: 0`). The live board had eleven blocked or idle lanes, so eleven
+attention rows pushed the fixture's `queued over 60 min; oldest
+1-selftest-dash` line past the ten the page shows. Master's last green jobs
+selftest (2acb89eba1, 20:55Z) ran before the board grew. With an empty
+`STATUS_BOARD_DIR`, both trees pass.
+
+The fix is in 64's `sh_tick`: `STATUS_BOARD_DIR` points at an empty fixture
+dir, and `HAKUX_XISO_DIR` at a missing one, because the panel would
+otherwise read the host's `/mnt/d` staging manifest. 64 was added to Files
+(no open PR held it). With the fix, fragment 64 passes 54/0 against the live
+board on this host.
+
+The panel's legs are in 64 too (section 6):
+- the counts come from their files, and a missing manifest reads as
+  `no source`;
+- the gate reads the newest Ghoulies soak that has gfps (median 16.5 of
+  t/10 over 90-240 s, with 100 outside the window);
+- a newer soak with no perf lines is passed over and counted;
+- a newer non-Ghoulies soak is never read;
+- a handheld with no soak is NOT MET.
+
+The one other local failure, "a stale failure ALONGSIDE a live one is a live
+red" (76/87), passes in CI and does not involve these files.
+
 ## For the next lane
 
 - Do not put a malformed-row fixture in the same list as the order legs. The
   old code crashes on it, and every leg then "fails on old" for one reason.
-- The panel has no selftest leg. `selftest.d/64-status-html.sh` was not in
-  this lane's files. A leg there would feed `release05` a fixture results dir
-  containing one Ghoulies soak with perf lines and one newer soak without, and
-  check the median and the passed-over count.
+- A status.sh fixture that does not pin `STATUS_BOARD_DIR` reads the live
+  board, in CI as well as on the host.
