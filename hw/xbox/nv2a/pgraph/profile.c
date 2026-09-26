@@ -563,6 +563,16 @@ void nv2a_profile_flip_stall(void)
         }
     }
 
+    /*
+     * Exact pacing for the hakuX-pace window: flips per VBLANK count (0, 1,
+     * 2, 3, 4+), the VBLANK total, the longest flip interval and the window's
+     * wall time. Vpf and G are smoothed and cannot say how many frames were
+     * late or how long the worst stall was; these can.
+     */
+    static unsigned int pace_vb[5];
+    static unsigned int pace_vsum;
+    static int64_t pace_max_us, pace_span_us;
+
     /* VBLANKs consumed by the frame that just ended. */
     {
         static unsigned int prev_vblank_count;
@@ -572,6 +582,8 @@ void nv2a_profile_flip_stall(void)
         if (n <= 16) {
             p->vblanks_per_flip = p->vblanks_per_flip * 0.9f + (float)n * 0.1f;
         }
+        pace_vb[MIN(n, 4)]++;
+        pace_vsum += n;
     }
 
     /* Track game frame time (flip-to-flip interval) */
@@ -584,6 +596,8 @@ void nv2a_profile_flip_stall(void)
             p->game_frame_min_ms = frame_ms;
         if (frame_ms > p->game_frame_max_ms)
             p->game_frame_max_ms = frame_ms;
+        pace_max_us = MAX(pace_max_us, now - prev_flip_us);
+        pace_span_us += now - prev_flip_us;
     }
     prev_flip_us = now;
 
@@ -603,8 +617,21 @@ void nv2a_profile_flip_stall(void)
         __android_log_print(ANDROID_LOG_INFO, "hakuX-perf",
                             "gfps=%d %s", (int)g_nv2a_stats.increment_fps,
                             pbuf);
+        /* Format agreed with lane.titlerun's verdict; see
+         * docs/lanes/perfbase/NOTES.md before changing a field. */
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-pace",
+                            "f=%u v0=%u v1=%u v2=%u v3=%u v4=%u vb=%u "
+                            "max=%.1f ms=%.1f",
+                            g_nv2a_stats.frame_count, pace_vb[0], pace_vb[1],
+                            pace_vb[2], pace_vb[3], pace_vb[4], pace_vsum,
+                            pace_max_us / 1000.0, pace_span_us / 1000.0);
     }
 #endif
+    if ((g_nv2a_stats.frame_count % 60) == 0) {
+        memset(pace_vb, 0, sizeof(pace_vb));
+        pace_vsum = 0;
+        pace_max_us = pace_span_us = 0;
+    }
 
 #if defined(__ANDROID__) && NV2A_PERF_LOG
     if ((g_nv2a_stats.frame_count % 60) == 0) {
