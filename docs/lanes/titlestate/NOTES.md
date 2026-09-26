@@ -191,6 +191,15 @@ in the board request.
 Also seen: one `pad.sh` press lost to `UtilAcceptVsock accept4 failed`
 (rc 1). nav.py logs the rc; a lost press shifts a replay by one screen.
 
+### State at the end of attempt 2
+
+Posted on #397 (comment 5850969763). Board request items 2 (titles disk via
+`hddPath`), 3 (flush before force-stop), 4 (`choose` in the dispatcher) and
+5 (stop-emulator.sh honours holds) are the board's. Still open for a later
+lane: Black past its mission cutscene; a played `first-run` on a clean
+titles disk (needs item 2); the Nova's `eeprom.bin` md5 (does a save move
+between handhelds?).
+
 ## Do not repeat
 
 - Do not `request.sh --pull` anything under `x1box/`: it deletes the file.
