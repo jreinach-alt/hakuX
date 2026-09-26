@@ -1143,14 +1143,32 @@ esac
 # admitted (net zero), queue_full_sweep.sh writes the idle `z-` tier that any
 # epoch request pre-empts, and host-tools/park_requests.sh --restore is the
 # host putting back a batch it parked.
-if ! python3 - "$D" "$WHO" "$D/queue/.$ID.req.tmp" <<'PYPILOT'
+#
+# Callers of this script that the gate does not judge:
+# - arms.sh (`arms-<name>-base` / `-fix`). An arm is one registered prediction,
+#   admitted per prediction and already paired; `<name>` pools unrelated lanes
+#   (every remote lane's arms are `arms-remote-*`), and arms.sh records any
+#   refusal as permanent against the prediction. A queue-state refusal there
+#   would skip an arm forever and tell the lane to fix a prediction that is fine.
+# Callers that stage the record in a private DISPATCH_DIR and move it into the
+# real queue themselves (docs/lanes/titleplay/tools/queue.py) set
+# PILOT_DISPATCH_DIR to the real dispatch dir: the gate sums and looks for the
+# pilot THERE, not in the staging dir, so neither a split plan nor a fresh
+# tempdir starts the count at zero.
+PILOT_D=${PILOT_DISPATCH_DIR:-$D}
+if ! python3 - "$PILOT_D" "$WHO" "$D/queue/.$ID.req.tmp" <<'PYPILOT'
 import glob, json, os, sys, time
 d, who, new = sys.argv[1:4]
 LIMIT, VALID = 30 * 60, 24 * 3600
+if who.startswith("arms-"):
+    raise SystemExit(0)
 
 def est(rq):
-    sec = int(rq.get("seconds") or 0)
-    return (sec + 90) * int(rq.get("runs") or 1) if sec > 0 else 180
+    try:
+        sec = int(rq.get("seconds") or 0)
+        return (sec + 90) * int(rq.get("runs") or 1) if sec > 0 else 180
+    except (TypeError, ValueError):
+        return 180  # a record not written here; counted like one with no `seconds`
 
 mine = []
 for rf in glob.glob(d + "/queue/*.req") + glob.glob(d + "/running/*.req"):
@@ -1158,7 +1176,7 @@ for rf in glob.glob(d + "/queue/*.req") + glob.glob(d + "/running/*.req"):
         rq = json.load(open(rf))
     except Exception:
         continue
-    if (rq.get("requester") or "?") == who:
+    if isinstance(rq, dict) and (rq.get("requester") or "?") == who:
         mine.append(est(rq))
 this = est(json.load(open(new)))
 total = sum(mine) + this

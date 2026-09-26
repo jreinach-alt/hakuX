@@ -52,7 +52,10 @@ pilot's result ids, what the output showed, the date; write it with `python3`,
 which reaches the dispatch dir where Write and `cp` are blocked), then queue
 the rest. titleplay's pass 1 (#397) queued 29 soaks of 420 s at once and held the only
 live handheld for hours on a route that reached clean gameplay in 7 of 15
-titles, which the first two runs' frames would have shown. Rule text and the
+titles, which the first two runs' frames would have shown. Arms (`arms-*`
+requesters) are not judged: a registered prediction is its own review. A tool
+that stages records in a private `DISPATCH_DIR` must set `PILOT_DISPATCH_DIR`
+to the real one, or the gate counts an empty tempdir. Rule text and the
 estimate's other home: AGENTS.md, "Working with a device".
 
 ## Definition of done (all of these, or say which is missing)

@@ -763,7 +763,10 @@ against the batch's purpose, write the verdict to `pilots/<requester>.ok` (the
 pilot's result ids, what the output showed, the date), then queue the rest.
 titleplay's pass 1 (#397) queued 29 soaks of 420 s at once and held the only
 live handheld for hours on a route that reached clean gameplay in 7 of 15
-titles, which the first two runs' frames would have shown.
+titles, which the first two runs' frames would have shown. `arms-*` requesters
+are exempt (arms.sh records a refusal as permanent and pools lanes under one
+name); a caller staging records in a private `DISPATCH_DIR` sets
+`PILOT_DISPATCH_DIR` to the real one so the gate counts the real queue.
 
 > **LIFTED 2026-09-18. Both devices are online.** The Nova `ee317437` and the
 > Ayn Thor `bdc158a5` are available; both hold files were moved to

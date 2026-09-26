@@ -32,10 +32,19 @@ neither.
 Measured side effect worth knowing: `request.sh` writes `"seconds": 60` on
 EVERY request (the `--seconds` default), suite runs included, so a suite
 request counts (60+90) x runs, not 180. The 180 s branch is only reached by
-records written elsewhere (`queue_full_sweep.sh` writes `"seconds": 0`). An arms pair at runs 3 is
-2 x 450 s = 15 min, under the limit; the gate will not bite the arms job in
-normal use, and if it does, arms.sh already posts a request.sh refusal on the
-lane's PR as `[job.arms] REFUSED`.
+records written elsewhere (`queue_full_sweep.sh` writes `"seconds": 0`).
+
+`arms-*` requesters are NOT judged (audit pass 1, M2). arms.sh records every
+request.sh refusal as a permanent `skipped/<sha>` and tells the lane to fix the
+prediction; a queue-state refusal would clear an hour later but never be
+retried. And `arms-<name>` pools unrelated lanes: every `who: lane.remote`
+prediction queues as `arms-remote-base`/`-fix`, so twelve remote arms in flight
+would permanently skip the thirteenth. A prediction at `runs_per_arm: 12` is
+30 min per arm by itself. Arms are admitted per prediction and already paired;
+`[device-budget]` still sees them after the fact.
+
+A record the gate cannot parse (`"seconds": "420s"`) counts 180 s, like one
+with no `seconds`, instead of crashing the gate with a traceback (audit L2).
 
 ## Writers of queue/ that do not go through request.sh (exempt)
 
@@ -46,8 +55,17 @@ lane's PR as `[job.arms] REFUSED`.
 | `queue_full_sweep.sh` | idle `z-` tier, pre-empted by every epoch request, so it cannot make anyone wait longer than one run; it is the host's corpus survey, not a lane batch. `[device-budget]` still sees it after the fact, as requester `full-sweep` |
 | `host-tools/park_requests.sh --restore` | the host restoring a batch it parked; the remedy, not a new decision |
 
-`arms.sh`, `ab_run.sh`, `ab_bisect.sh` and `sweep_queue.sh` all enqueue
-through `request.sh` and are gated.
+`ab_run.sh`, `ab_bisect.sh` and `sweep_queue.sh` all enqueue through
+`request.sh` and are gated. `arms.sh` enqueues through it and is exempt (above).
+
+`docs/lanes/titleplay/tools/queue.py`, the writer behind #397, calls
+`request.sh` with `DISPATCH_DIR` set to a private staging tempdir, then re-keys
+each record `0-0-y-...` and renames it into the real queue. Judged against the
+staging dir, the gate would start every invocation at zero (a split plan passes
+any amount) and would look for the pilot in a tempdir (audit pass 1, M1). The
+gate reads `PILOT_DISPATCH_DIR` (default `$DISPATCH_DIR`) for the dir it sums
+and the `pilots/` it reads, and queue.py sets it to the real dir. Any future
+staging caller must do the same; selftest leg F pins queue.py's env line.
 
 ## Falsification (measured on this branch)
 
