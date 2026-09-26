@@ -51,7 +51,30 @@ still served first.
 **Selftest fragment, prefix removed** (request.sh's ID line reverted to
 `ID="$(date +%s)-$WHO-$$"`, everything else unchanged):
 
-MUTANT_RESULT
+```
+  ok   request.sh without HAKUX_RELEASE_PRIO names <epoch>-relprio-<pid>
+  FAIL request.sh with HAKUX_RELEASE_PRIO=1 names 1-<epoch>-relprio-<pid>
+  FAIL glob order under LC_ALL=C: 0-0-x-9 0-probe 1-1759000500-b 1759000000-a 1790464617-relprio-1780783 1790464618-relprio-1782341 z-sweep-x
+  FAIL glob order under LC_ALL=C.UTF-8: (same)
+  FAIL arms.sh, issue read 'label': 1790464659-arms-relprio-base-1835623 1790464659-arms-relprio-fix-1835906
+  ok   arms.sh, issue read 'nolabel': ...
+  ok   arms.sh, issue read 'fail': ...
+  ok   arms.sh read the issue's labels once per prediction (3 ticks, 3 reads of #7)
+  ok   a failed label read is said in the tick log
+selftest: 5 passed, 4 failed
+```
+
+With the prefix removed, the release request sorts last among the plain
+requests (arrival order), and arms.sh's labelled arms lose the `1-`. The file
+was restored with `git checkout` afterwards.
+
+**Full jobs selftest** on this host: 1871 passed, 1 failed. The failure is
+`64-status-html.sh:117` "the republished page carries the change". It fails
+the same way when that fragment runs alone (twice). It is unrelated to this
+change: on this host the fixture's page renders the real host's state ("Last
+fold 16:05 PDT (11m ago) PR #438", "Queue 0 queued"), so the fixture's queued
+request never appears. None of this lane's files are involved. CI runs on a
+clean runner and is the gate of record.
 
 **request.sh dry run** (`bash docs/lanes/relprio432/dryrun.sh`). Both requests
 go into a scratch `DISPATCH_DIR` that no dispatcher serves, and the scratch dir
