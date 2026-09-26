@@ -219,7 +219,7 @@ note = "STARTED (host session, 2026-09-26T05:25Z), briefs/indexloc.md: root caus
 issues = ["272", "275"]
 files = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/zrtz272-*.json", "docs/lanes/zrtz272/**"]
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 229 (job.board, 2026-09-26T05:40Z) for #272 (275k px) and #275's Swap (165k px, same defect): apply docs/lanes/zdepth272/vsh-ff-zrtz.patch (fixed-function screen z, every step rounded toward zero; vsh-ff.c only) on the tip that carries #321, register the NOTES arm after the last rebase, run it. vsh-ff.c came from lane.wparamcode223 (PR #321 folded 4bc77c3171). Brief: briefs/zrtz272.md."
+note = "BRIEFED AT TERRITORY WAVE 229, NOT YET STARTED (job.board, 2026-09-26T05:40Z; `lane.sh start` was refused approval in the board session, so no unit exists -- the next tick or the host starts it from briefs/zrtz272.md; the row holds vsh-ff.c meanwhile) for #272 (275k px) and #275's Swap (165k px, same defect): apply docs/lanes/zdepth272/vsh-ff-zrtz.patch (fixed-function screen z, every step rounded toward zero; vsh-ff.c only) on the tip that carries #321, register the NOTES arm after the last rebase, run it. vsh-ff.c came from lane.wparamcode223 (PR #321 folded 4bc77c3171). Brief: briefs/zrtz272.md."
 
 [lane.foldflow]
 issues = []
