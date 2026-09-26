@@ -54,3 +54,8 @@ covers every other capture on those discs:
   above `append_fog_factor`), not a fault in this rule. Truncating the exp
   modes globally was measured worse (2154 against 2352 of 2560 quads), so do
   not "fix" these 12 by flipping to floor.
+
+## Status
+
+2026-09-26: the hunk and the prediction are pushed (57197f1290). Waiting on the
+[job.arms] verdict and CI. Next: merge master, re-run the arm, mark ready.
