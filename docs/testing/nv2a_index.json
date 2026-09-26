@@ -4652,10 +4652,10 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "45a6da8bd83cfd6ff27fadc863dc02a2a2a05a3e",
+  "emulator_commit": "581adaa52095f447b3766f7a23fd4382fcae4a61",
   "gaps": 497,
   "resolved_tables": 1,
-  "sites": 2845,
+  "sites": 2846,
   "suites": 104,
   "support_dirs": [
    "/home/justin/hakux-work/fold-pins/pbkitplusplus"
@@ -7800,6 +7800,11 @@
     "loc": "hw/xbox/nv2a/pgraph/pgraph.h:579",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_ANTI_ALIASING_CENTER_CORNER_2:"
+   },
+   {
+    "loc": "hw/xbox/nv2a/pgraph/pgraph.h:612",
+    "role": "REF",
+    "text": "NV097_SET_SURFACE_FORMAT_ANTI_ALIASING_CENTER_CORNER_2 ?"
    }
   ],
   "NV097_SET_SURFACE_FORMAT_ANTI_ALIASING_SQUARE_OFFSET_4": [
