@@ -91,15 +91,62 @@ Neither is a small call-site fix. It is a follow-up for the board.
 
 - Do not use nxdk_vsh_tests text to judge a `glsl/` change: it reads the CPU
   evaluator.
+- Do not guard `Vertex_shader_rounding_tests/GeometrySuperscreen_*` in a
+  one-run arm. It drifts between runs of the same build, in the base arm too.
 - Do not replace `dot()` with an unconditional sum of products. It changes
   rounding (FMA and order) on every finite lit vertex for no gain.
 
-## Status (2026-09-26)
+## Arm 1 (Nova, 1 run per arm): FAIL on noise captures only
+
+Result dirs: `dispatch/results/1790416205-arms-dpforce345-{base,fix}-*`.
+Of 300 captures, 294 are byte-for-byte the same score. The 6 movers are all
+`Vertex_shader_rounding_tests/GeometrySuperscreen_*`:
+
+| capture | A | B |
+|---|---|---|
+| 0.0010 | 0 | 800 |
+| 0.4999 | 0 | 400 |
+| 0.5000 | 0 | 800 |
+| 0.5624 | 800 | 0 |
+| 0.5626 | 570 | 285 |
+| 0.9990 | 570 | 0 |
+
+`superscreen_hashes.py` hashes every GeometrySuperscreen capture in the 21
+result dirs that hold them. Off-modal images occur in only two places:
+
+- the vshnobegin242 arms (Thor), in both base and fix;
+- this arm pair, where the **base** arm at master was off the modal image on
+  4 of 9 captures (0.5624, 0.5626, 0.9990, 1.0000).
+
+The fix arm matched the modal image on 0.5624 and 0.9990. The drift is the
+suite's own and goes both ways.
+
+**Why arm 1 is not a refutation.** The hunk is NaN-gated, and none of these
+captures feeds a DP an inf or NaN.
+
+**The fix.** The prediction is re-registered on the same refs with
+GeometrySuperscreen_* unguarded, not must_not_regress. Every other rounding
+capture stays guarded through the legs `[!G]*`, `Geometry_*` and
+`GeometrySubscreen_*`. A dry judge of the new file against arm 1 passes
+291/291. That is not the verdict: the file postdates arm 1, so the verdict
+has to come from a fresh arm.
+
+## Why attempt 1 did not finish
+
+It ended correctly with a `waiting:` comment on arm 1 and CI. CI went green,
+and arm 1 finished at about 10:12Z. Its verdict was never posted as a
+`[job.arms]` comment. The bg-addendum resume that started attempt 2
+misread the wait as a wait on a background task.
+
+## Status (2026-09-26, attempt 2)
+
+Arm 1 was judged locally, as above. The re-registered prediction is pushed.
 
 Waiting on two things:
 
-- the `[job.arms]` verdict for `dpforce345-inert-finite.json` (a_ref
-  2dc2b5c49a, b_ref 74a238a614);
+- the `[job.arms]` verdict for the re-registered
+  `dpforce345-inert-finite.json` (registered 10:31:56Z; a_ref 2dc2b5c49a,
+  b_ref 74a238a614);
 - CI on the PR head.
 
 When both land, cite the verdict in the PR and mark it ready. If any
