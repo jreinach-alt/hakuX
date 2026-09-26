@@ -135,7 +135,65 @@ fog and NaN suite in the vshconst and dpforce345 arms.
 GeometrySuperscreen_* is left out because it drifts on its own. The arms job
 queues it.
 
-## Status (2026-09-26)
+## Results (attempt 2, 2026-09-26)
+
+**Why attempt 1 did not finish.** Attempt 1 ended correctly, in a
+`waiting:` state. It was waiting on three things outside its session: the two
+vsh device requests, the arms job's pgraph arm, and the fix APK's build log.
+It posted a `[lane.vshcpu345] waiting:` comment. `jobs/handback.sh` resumed
+the lane once all three had finished. Nothing failed.
+
+**Where the runs went.** Both vsh requests ran on **Thor** (`bdc158a5`), not
+Nova. The disc is `vsh:iso:6fe98f/CPU Shader Tests`. Every capture was
+written after its run started (read from `.fatx_times.json`). The two `STALE`
+rows in `vsh1.txt` are leftovers from 09-25 (Exceptional_Float, MAC_mov) and
+are not scored.
+
+- base: APK `25abcaccbf45` (master `a5b5b628f2`)
+- fix: APK `9ef7ad198dc3` (`a3baa35286`)
+
+**vsh_score.py against the console text.** The reference is
+`hardware/runs/2026-09-25-special/console-run/console`. Counts are lines
+identical to silicon:
+
+| capture | base | fix | predicted fix | base-exact lines lost |
+|---|---:|---:|---:|---:|
+| SPECIAL_raw | 22/44 | **44/44 (IDENTICAL)** | 44/44 | 0 |
+| SUBNORM_MAC_raw | 11/32 | 11/32 | 22/32 | 0 |
+
+- **SPECIAL_raw: the prediction holds.** Every must_move row now matches
+  silicon: MUL, MAD and DP3/DP4 with 0×inf or 0×NaN, `−0×5`,
+  RCC(±inf), RCC(±huge), and RCP/RCC/RSQ of NaN. vsh_score reports the file
+  IDENTICAL.
+- **SUBNORM_MAC_raw: the base and fix files are byte-identical**
+  (sha256 `b7ef53098a93` for both), so must_not_move holds. The predicted
+  +2 did not happen, because its premise was a Nova property. On Nova's dry
+  run the evaluator flushed subnormal operands to −0, and the patch's +0
+  rule then fixed two MUL rows. On Thor the evaluator does **not** flush:
+  `MUL 0x807FFFFF×2^24` gives `0x8C7FFFFE`, a finite product, so the ±0 rule
+  never applies. All 21 remaining lines are subnormal handling (MUL, ADD and
+  MAD keep subnormals that silicon flushes to +0). That is #255 and not this
+  patch. **Residual, named:** 21 subnormal lines on Thor, which differ from
+  Nova because of the device's float-mode behaviour, not the patch.
+
+**pgraph must-not-move arm.** The requests are
+`1790435594-arms-vshcpu345-{base-2960820,fix-2960842}`. Judged locally with
+`ab_compare.py --expect vshcpu345-must-not-move.json`:
+**VERDICT: PASS, all 411 registered checks hold.** 420 of 420 captures are
+byte-identical between the arms, with 146 exact on each side. As of this
+writing the arms job has not posted its `[job.arms]` comment.
+
+**The Android build compiled the patched source.** The gradle log does not
+print CMake's `message(STATUS)` on success, so `build-a3baa35286.log`
+carries no `nv2a_vsh_cpu:` line. The dispatcher build tree still has
+`nv2a_vsh_cpu-patched/src/nv2a_vsh_cpu.c` with the `hakuX #345` marker,
+written at 12:16 PDT, which is when the fix build ran. A later build of
+another ref reconfigured that tree at 12:21, so its `compile_commands.json`
+shows the unpatched `_deps` path. The behavioural proof is stronger than the
+log line would have been: the fix APK changes exactly the 22 SPECIAL_raw
+rows that the patch targets, and nothing else.
+
+## Status (attempt 1, superseded by Results above)
 
 **Waiting**, on things outside this session:
 
@@ -162,3 +220,9 @@ preflight.sh passed on `29d006df02`. On resume:
   defect. The device flushes subnormals, and the host does not.
 - Do not look for SPECIAL_raw's reference in vsh_score.py's defaults. The
   file is under `hardware/runs/2026-09-25-special/`.
+- Do not predict SUBNORM_MAC rows from a Nova dry run when the request can
+  land on Thor. The evaluator flushes subnormals on Nova and does not on Thor,
+  so pin the device or predict both.
+- Do not grep the gradle build log for CMake `message(STATUS)` lines. Gradle
+  prints them only when configure fails. Read the build tree, or rely on the
+  device rows.
