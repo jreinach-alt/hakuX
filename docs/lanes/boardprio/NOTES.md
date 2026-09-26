@@ -127,3 +127,21 @@ ec022efb83, pushed. No code changed.
 - Do not test this against the real `docs/testing/nv2a_issues.toml`:
   board_files prefers origin/board, so a fixture has to be read through a
   copy of board_files.py whose directory holds it (what the fragment does).
+
+## Attempt 5 (2026-09-26, handback: CI red after a master merge)
+
+**Why attempt 4 did not finish:** it merged origin/master (196e007b06) and
+started two selftest runs with `run_in_background`, then its turn ended. A
+headless session exits at the end of a turn, so no completion notice came
+back and the merge was never pushed. Lesson: in a headless lane, wait on
+long work in the foreground; the full jobs selftest runs longer than one
+10-minute tool call here, so detach it into a log and wait on the log's
+exit line in successive foreground calls.
+
+The red on efc8fb9391 was three checks in `86-nightly-notes.sh` (the
+previous-nightly tag range), not this lane's code: the fixture named
+"yesterday" by the runner's clock, and a UTC runner between 00:00Z and
+07:00Z is a day ahead of the script's Los Angeles day. Master fixed it in
+241e720324 ("name the fixture's yesterday by the script's clock"), so this
+lane edits nothing there; merging master (ff14a4580c) brings the fix in.
+The selftest was re-run under `TZ=UTC` on the merged tree to confirm.
