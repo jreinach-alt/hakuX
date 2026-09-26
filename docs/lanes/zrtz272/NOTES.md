@@ -165,6 +165,15 @@ result dir under `dispatch/`, and CI on `18b0df7f8d` was still pending (build ×
 had resolved. Attempt 3 records this and waits again. The PR stays in draft until arm 2 is
 judged: the label still reads arm 1's FAIL, and the F24 gate is unmeasured.
 
+## Why attempt 3's first session did not finish
+
+It ended on a `waiting:` comment for arm 2, which is outside the session. It did not wait on
+a background task of its own. The resume at 08:11Z carried hostops's "background job died"
+addendum, but that addendum was about attempt 1's wait. At 08:11Z CI on `11dc42ef74` was
+green (build ×2, check). Arm 2 still had no request under `dispatch/queue` and no result dir.
+The host's 00:54 PDT delivery said the arms job had hit its two-pairs-per-tick cap, so arm 2
+is first on the next tick. Nothing new was measured, so the lane waits again.
+
 ## Do not repeat
 
 - `git apply` of the zdepth272 patch fails on master after #321. Place hunk 2 by
