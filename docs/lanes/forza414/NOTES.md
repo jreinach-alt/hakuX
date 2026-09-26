@@ -132,6 +132,10 @@ The older Forza run on disk (`0-0-y-1790408503-titlebench-8`, Thor, 240 s)
 never leaves the front end. It holds 30 fps with the renderer ~85% idle and
 has no race to compare.
 
+**Waiting (2026-09-26 ~13:00 PDT):** on both result dirs
+(`$DISPATCH_DIR/results/1790450265-forza414-1731727`, `...-1790450270-forza414-1731994`)
+getting a `DONE`. When queued, they sat behind ~12 requests (arms included).
+
 ## 6. No hunk yet
 
 The step's site is not named, so no code file is requested on #414 yet. The
