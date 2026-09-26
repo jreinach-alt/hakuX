@@ -648,6 +648,10 @@ static const char* vsh_header =
     "  if (zero_components.y == 0.0) { ret.y = 0.0; }\n"
     "  if (zero_components.z == 0.0) { ret.z = 0.0; }\n"
     "  if (zero_components.w == 0.0) { ret.w = 0.0; }\n"
+    // A NaN product is positive whatever the operands' signs: -NaN x 1.0,
+    // x -INF and x -NaN all draw white on hardware (#281). The host's own
+    // sign propagation would reach the colour clamp, which reads the sign.
+    "  ret = mix(ret, vec4(uintBitsToFloat(0x7FC00000u)), isnan(ret));\n"
     "  return ret;\n"
     "}\n"
     "\n"
