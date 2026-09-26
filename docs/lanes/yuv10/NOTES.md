@@ -86,3 +86,13 @@ name from a full-suite arm, because a glob cannot exclude the four.
   after the last stage all look right. A compile failure would show on the
   arm as the four captures, and Texture_format's two, going far worse.
 - **Desktop not built** (see AGENTS.md). Android builds on the arm.
+
+## Waiting (2026-09-26)
+
+- **What resolves it.** The arms job's `[job.arms]` verdict for
+  `yuv10-csc.json` on PR #419, and CI for the head. Then merge origin/master,
+  re-run preflight and mark the PR ready.
+- **Files beyond the brief.** `docs/testing/nv2a_index.json` is on the Files
+  line although the brief did not list it: preflight requires the rebuild for
+  the new symbols. `docs/lanes/yuv10/register.py` is on it too; it generates
+  the prediction.
