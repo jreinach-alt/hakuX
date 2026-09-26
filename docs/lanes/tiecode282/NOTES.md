@@ -283,7 +283,26 @@ the arm to be re-run on the merged head before ready.
 A leg that passed in arm 2 and fails here is an interaction with the merged
 code, not a new reading of the rule.
 
-## Waiting (2026-09-26, attempt 3)
+## 8a. Arm 3 TRT pair result (attempt 4, 2026-09-26)
+
+Attempt 3 did not finish because it stopped on a correct `waiting:`: arm 3 and
+its TRT pair had been queued and nothing in the session could produce their
+results. A handback resumed the lane once the TRT pair was DONE.
+
+`ab_compare.py --expect docs/lanes/tiecode282/tiecode282-trt-merge.json` on
+`1790424878-tiecode282-trtm-base-759654` / `-fix-760263`: **PASS, 68 of 68
+checks** (bound sha b9b4e8f4..., pre-registered). 28 better, 0 worse, 12 same;
+1,473 -> 0 px. This is the same as arm 2's pair, so the merge left row 240
+unchanged.
+
+`tiecode282-merge.json` (sha 7343032786...) has not run yet. The arms job
+copied it into `arms/expect/` at 12:29Z but has not queued it. Its last queue
+was at 11:48Z, and the device queue holds only idle-tier `z-*` requests. I did
+not hand-queue it: the job's dedupe reads only its own `pairs/` markers, so a
+hand copy could run the ~90-minute arm twice. Master has not moved since
+adb573c270 (0 commits), so the refs are still current.
+
+## Waiting (2026-09-26, attempt 3, superseded by 8a for the TRT pair)
 
 On things outside this session: the `[job.arms]` verdict for
 `tiecode282-merge.json`, dispatch requests
