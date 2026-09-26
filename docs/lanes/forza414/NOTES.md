@@ -132,18 +132,68 @@ The older Forza run on disk (`0-0-y-1790408503-titlebench-8`, Thor, 240 s)
 never leaves the front end. It holds 30 fps with the renderer ~85% idle and
 has no race to compare.
 
-**Waiting (2026-09-26 ~13:00 PDT):** on both result dirs
-(`$DISPATCH_DIR/results/1790450265-forza414-1731727`, `...-1790450270-forza414-1731994`)
-getting a `DONE`. When queued, they sat behind ~12 requests (arms included).
+Attempt 1 ended here, waiting on both requests. That was a correct stop: a
+lane session cannot wait ~90 min for a device. Attempt 2 (resumed
+2026-09-26 13:50 PDT) reads the results below.
 
-## 6. No hunk yet
+## 6. The perflog soak (Thor, 1790450265, apk 853368f2e827, 13:42-13:49 PDT)
 
-The step's site is not named, so no code file is requested on #414 yet. The
-perflog soak is what names it. If `pDl` or `Sub` per frame jumps at the step,
-the site is in vk/surface.c's CPU-access path. That file is held by PR #396
-(lane.blinx372d), so the request waits for that fold. If neither moves, the
-wait is guest-side (a fence or report poll), and the next instrument is the
-vCPU's halt/MMIO split.
+**The step did not recur.** The race ran from 13:44:41 to the end (13:49:42,
+~300 s of race, past race time ~48 s on any clock ratio above 16%) in the
+pre-step regime the whole way: Ri 0.1 ms, `drain` 0, audio starve 0%, fps
+14-20 per 30 s. The last bucket's 2 fps is the partial window at the end of
+the run. So the step is not deterministic at race time ~48 s. It is either
+timing-dependent (the perflog build reads a clock around every method) or
+one-off. One run each way cannot say which. Its cause stays unnamed.
+
+The Nova request (1790450270) returned `ERROR: title not on device`
+(`/storage/E6C6-D7AA/Games/XBox/4D53006E-...`). Brief item 4 is still open
+until the ISO is staged on the Nova.
+
+What the soak does name is what the race costs before any step. Per displayed
+frame, from `hakuX-phase` (ms/frame) and `hakuX-stall` (per 60 flips):
+
+| wall (PDT) | Tot | Draw (Pipe) | Fin (Sub) | GPU R | Finish / 60 flips | of which sd | cDef | cDefC |
+|---|---|---|---|---|---|---|---|---|
+| 13:43 menus | 29.3 | 0.1 (0.0) | 0.1 (0.0) | 0.1 | 60 | 0 | 0 | 0 |
+| 13:45:47 race | 63.0 | 21.3 (10.3) | 36.9 (36.4) | 32.4 | 417 | 357 | 357 | 0 |
+| 13:46:39 | 60.9 | 20.5 (10.1) | 35.7 (35.1) | 30.8 | 382 | 322 | 322 | 0 |
+| 13:47:39 | 43.6 | 13.1 (5.6) | 26.5 (25.9) | 21.7 | 382 | 322 | 322 | 0 |
+| 13:48:19 | 62.8 | 22.2 (10.7) | 35.8 (35.3) | 30.3 | 396 | 336 | 336 | 0 |
+| 13:49:20 | 43.2 | 12.0 (5.2) | 27.1 (26.5) | 21.7 | 396 | 336 | 336 | 0 |
+
+- **Sub is 48-60% of every race frame**: 26-37 ms of 43-63. Each frame has
+  ~5.5 `SURFACE_DOWN` finishes, and every one of them is `sd_complete_def`
+  (`cDef == sd`, `cDefC` = 0). That is the uncoalesced branch of
+  `pgraph_vk_download_surface_complete_deferred` (vk/surface.c:926-957). It
+  submits and waits a fresh finish because no prior finish carried the
+  staged downloads. That is ~5-6 ms of Sub per finish.
+- `pDl`, `dDl`, `ev` are 0. The downloads are not guest CPU reads of a
+  draw-dirty surface (the section 4 hypothesis). They come from one of the
+  function's 10 call sites (surface.c:436, 1000, 1613, 1715, 1751, 1798, 1835,
+  2933, 4097; renderer.c:2192). No counter on this build says which caller.
+- The race's first scene had the shader cache cleared (`result.json`). Pipe
+  is 5-11 ms/frame for the whole race, not only at the start, so pipeline
+  lookup/creation is the second cost.
+
+**Price (a bound, not a value).** If the ~5.5 mid-frame finishes coalesced
+into the flip's own finish, a frame would cost at most the larger of the CPU
+side without Sub (Tot - Sub = 17-27 ms) and the GPU work (R 22-32 ms). That is
+~31-45 fps, capped at 30, against 14-20 today. The bound assumes the waits
+can be dropped. Whether the guest needs those bytes before the next draw is
+what the per-caller counter has to show.
+
+## 7. Grant request (surface.c is held)
+
+The site is vk/surface.c's deferred-download completion and its callers. PR
+#396 (lane.blinx372d, "#372 remove the two synchronous surface downloads in
+the Blinx demo") holds vk/surface.c and is open. Its change may already cut
+some of these finishes, so the next Forza lane should rerun this soak on
+master after #396 folds, before writing a hunk. The request, posted on #414,
+is: after #396 folds, grant vk/surface.c (and draw.c for the stats line) for
+a per-caller `cDef` split, and then coalesce the dominant caller.
+
+No hunk and no arm on this PR, so `Prediction: none`.
 
 ## Do not repeat
 
@@ -152,3 +202,7 @@ vCPU's halt/MMIO split.
 - Do not look for a counter that grows with time. The run has a single regime
   step at race time ~48.5 s (section 1).
 - Do not treat the game-clock ratio as its own defect. It is fps/30.
+- Do not expect the 2-3 fps step on a rerun. The perflog soak ran 300 s of
+  race without it (section 6). The steady cost is the ~5.5 uncoalesced
+  `SURFACE_DOWN` finishes per frame. Fix those first.
+- Do not queue the Nova half until the ISO is on the Nova's card.
