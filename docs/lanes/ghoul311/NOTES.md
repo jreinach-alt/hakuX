@@ -1,9 +1,9 @@
 # lane.ghoul311 -- #311 Grabbed by the Ghoulies hands-off fps decay
 
-Status: 2026-09-26 00:20 UTC (attempt 4). The since-when pair is judged (both
-bad, section 6); the host's bisect driver owns the since-when (section 7);
-waiting on lane.tcgchurn's counter arm and the next bisect rounds.
-Diagnosis first; no source claimed.
+Status: 2026-09-26 00:40 UTC (attempt 4), **finished**. The since-when pair
+is judged (both bad, section 6); the host's bisect driver named the culprit
+`21cacb354a` with this lane's reads (section 7); the fix is lane.fix311's
+(section 9). Diagnosis only; no source claimed.
 
 **Read section 6 before section 1.** Section 1's model (the arming walk after
 a page empties) was written from one soak and is refuted by the pair: the
@@ -322,6 +322,66 @@ Template: `docs/lanes/ghoul311/culprit-ab.json.template`. Two pairs, both
    RalliSport 2 gfps, and the pgraph suites via `ab_compare` (a revert of a
    rendering fix moves pixels, and then the revert is the diagnosis, not the
    fix).
+
+## 9. Outcome (2026-09-26 00:40 UTC): culprit 21cacb354a, fix owned by lane.fix311
+
+The driver closed at 00:05 UTC: `a6fdf61aad` good (Nova, FPS 29 at 50 and
+60 s, comic page 2), `21cacb354a` bad (Thor, FPS 6 at 60 s, page 1), both
+read by eye here as well. Culprit `21cacb354a` (2026-09-08, "nv2a/vk: stop a
+retired surface writing over memory the guest took back", only
+`hw/xbox/nv2a/pgraph/vk/surface.c`). The host's code review (#311 comment
+5841280742) names the mechanism: the commit keeps a guest-memory access
+watch on a retired dirty surface, and an unchanged `*surface = target` in
+`update_surface_part()` overwrites the live `access_cb` when the slot is
+reused, so watches leak one per reuse for the life of the process.
+lane.fix311 holds `vk/surface.c` (board wave 212) and builds the one-hunk fix
+with a live-watch count; its master-vs-fix soaks on both handhelds are the
+proof. **This lane builds nothing** (host, 00:03 UTC).
+
+What this lane adds, handed to fix311 on #311:
+
+- **The curve its counter has to match.** ms/frame is deterministic to the
+  second across builds: 33.4 at 3-20 s, 68 at 24 s, 117 at 35 s, 155-178 at
+  45 s, 215-260 at 75-90 s, 380-420 at 120-134 s, then a **plateau** of
+  340-430 ms to 240 s. A count that climbs without limit through 120-240 s
+  while the frame time is flat there does not model the cost by itself; the
+  cost is count x accesses per frame, and the accesses are the game's.
+- **Where the time is.** `Ri` tracks `G` (renderer idle while the guest runs)
+  and tcgchurn's `[tlb68]` `cpu=` field reads the guest thread at 98% of the
+  wall clock (2004 of 2042 ms) during the collapse. GPU busy was 1% (host).
+- **Three per-access costs on a watched page, in the order they are paid:**
+  the TLB fill walks the whole callback list (`accel/tcg/cputlb.c:1107`);
+  the access walks it again and calls the callback once per matching entry,
+  so once per stacked duplicate (`system/physmem.c:955`); each call takes
+  `pgraph.lock` and walks `r->surfaces`, and on a write also
+  `shelved_surfaces` and `invalid_surfaces` (`vk/surface.c:1881-1985`). None
+  of these is counted by any line we log, which is why nothing in the pages,
+  pacing or `[tlb68]` lines tracks the collapse.
+- **Both TCG-side models are out, measured:** tcgchurn's hunk (b)
+  (`HAKUX_TCG311_TLB_BOUND`, TLB capped at 2^13, `1ce8693eb1`) collapses on
+  the same curve, median 2.0 gfps over 90-240 s with `tn` <= 4096 on every
+  line; hunk (a) (`ea1e9f5a0d`) is VOID (the guest exited at 15 s; the
+  run.log carries a WSL `UtilAcceptVsock` error, the same voiding pattern the
+  memory on dispatcher jams records). The re-arm count and the walk size are
+  both refuted as the growth.
+- **Two follow-ups that are not the collapse but are in the same code:**
+  every `mem_access_callback_insert`/`remove` does a full TLB flush
+  (`physmem.c:907,939`; `ff` = 462 per 2 s in the first window, 3-16 per 2 s
+  later); and even without the leak, 21cacb354a keeps a bounded watch on a
+  retired-dirty surface until it is freed, so guest accesses to reclaimed
+  memory still pay the callback. Dropping the watch at the moment the
+  obligation is discharged (`surface.c:1968-1983` on the cancelling write,
+  and on download completion) keeps the bump-map fix and removes that cost.
+
+Counters fix311's arm should carry, with the values this lane predicts on
+master: live watches (`xbox_ram_fp.cb_count`, already maintained at
+`physmem.c:898/930`) rising from 22 s and flattening or slowing by ~120 s;
+watched accesses per frame (calls into `mem_check_access_callback_ramaddr`)
+rising >= 30x between 20 s and 120 s. On the fix: both within 2x of their
+20 s values from 20 s to 240 s, and gfps >= 25 over 90-240 s.
+
+The confirmation template in section 8 is superseded by fix311's own
+prediction; it stays as the record of what a confirmation must contain.
 
 ## What the next lane should not repeat
 
