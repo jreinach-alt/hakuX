@@ -90,7 +90,10 @@ current.
 | each of them equals `orient`(A) pixel for pixel | `price.py --verify A/captures1 B/captures1`, run by this lane (its A==B control FAILs) | coverage changing when an edge is reversed |
 | every other Shade_model capture (162, globs checked to leave exactly the six free), Front_face, Line_width, 3D_primitive, Edge_flag bit-identical | `must_not_move` | the flat gate failing; a fill-path change (none) |
 
-Verdict: pending.
+Verdict: pending.  Session 1 (2026-09-26) stopped WAITING on the arms job's
+`[job.arms]` comment on PR #401 for this prediction; on resume run
+`price.py --verify` on its two result dirs, cite both, and mark the PR ready if
+the legs hold.
 
 ## Do not repeat
 
