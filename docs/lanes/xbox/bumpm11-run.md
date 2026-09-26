@@ -24,8 +24,8 @@ commented line, `SetBumpEnv(0.3, 0, 0, 5.0, 0, 0)`, and capture on silicon.
 ## What runs
 
 - **The XBE:** nxdk_pgraph_tests `6743b6a` plus [`bumpm11.patch`](bumpm11.patch)
-  (tests branch `hakux/bump-m11` `a452e38`): sha256 `58bffa3d0fc1…`, ISO
-  `95136d9b48c5…`.
+  (tests branch `hakux/bump-m11` `d8c5f38`): sha256 `5516a74bd4d6…`, ISO
+  `c8e6a0069643…`. The amendment below says what changed.
 - **The patch** adds four tests to `Bump map`, `BumpMap_{Y16,Y16_L,Y8,Y8_L}_m11x10`.
   Each is the unchanged draw with m11 = 5.0. Every existing test is unchanged:
   `Test()` takes m11 as a parameter that defaults to the original 0.5.
@@ -64,3 +64,21 @@ whether a tenfold m11 exposes a second defect on the Y8 path, which would
 matter for a fix but not for M.
 
 **Void:** a run without "Testing completed normally", or a failed C1.
+
+## Amendment, before any silicon run
+
+The first emulator dry run (`1790393963-xbox-bumpm11-dry-32559`, first XBE
+`58bffa3d0fc1…`) completed all nine tests, but it returned only four
+`Bump map` captures.
+
+- **The cause.** `DrawRectangles()` names its capture with `MakeTestName()`,
+  which drops the `_m11x10` suffix. Each variant runs after its base test in
+  name order, so it overwrote the base test's file.
+- **The fix** (`d8c5f38`) carries the suffix into the saved name through
+  `name_suffix_`. Base tests still save under their own names, and no
+  on-screen text changes, so the controls are unchanged.
+- **What stays the same:** the legs, the thresholds and the console
+  selection.
+- **Order:** the dry run is repeated on the fixed XBE before the console
+  runs anything. The console run also waits for the host's word, since
+  console work is paused for the smart-plug install.

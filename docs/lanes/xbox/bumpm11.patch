@@ -1,16 +1,5 @@
-From a452e38826edbf340ad847c6286dbf7a88d51b51 Mon Sep 17 00:00:00 2001
-From: t <t@t>
-Date: Fri, 25 Sep 2026 20:36:58 -0700
-Subject: [PATCH] hakuX #10: Bump map Y16/Y8 variants with the vertical
- bump-env term at 5.0 (_m11x10)
-
----
- src/tests/bump_map_tests.cpp | 14 ++++++++++++--
- src/tests/bump_map_tests.h   |  2 +-
- 2 files changed, 13 insertions(+), 3 deletions(-)
-
 diff --git a/src/tests/bump_map_tests.cpp b/src/tests/bump_map_tests.cpp
-index 9be03aa..2bfb641 100644
+index 9be03aa..3a4c309 100644
 --- a/src/tests/bump_map_tests.cpp
 +++ b/src/tests/bump_map_tests.cpp
 @@ -53,6 +53,16 @@ BumpMapTests::BumpMapTests(TestHost &host, std::string output_dir, const Config
@@ -30,16 +19,17 @@ index 9be03aa..2bfb641 100644
    auto &format16 = GetTextureFormatInfo(NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16);
  
    for (auto cross_on_blue : {false, true}) {
-@@ -63,7 +73,7 @@ BumpMapTests::BumpMapTests(TestHost &host, std::string output_dir, const Config
+@@ -63,7 +73,8 @@ BumpMapTests::BumpMapTests(TestHost &host, std::string output_dir, const Config
  
  void BumpMapTests::Initialize() { TestSuite::Initialize(); }
  
 -void BumpMapTests::Test(const TextureFormatInfo &texture_format, bool cross_on_blue, bool rotate90) {
 +void BumpMapTests::Test(const TextureFormatInfo &texture_format, bool cross_on_blue, bool rotate90, float mat11) {
++  name_suffix_ = mat11 == 0.5f ? "" : "_m11x10";
    auto shader = std::make_shared<PassthroughVertexShader>();
    host_.SetVertexShaderProgram(shader);
  
-@@ -108,7 +118,7 @@ void BumpMapTests::Test(const TextureFormatInfo &texture_format, bool cross_on_b
+@@ -108,7 +119,7 @@ void BumpMapTests::Test(const TextureFormatInfo &texture_format, bool cross_on_b
      if (rotate90) {
        stage.SetBumpEnv(0.0, -0.1, 0.3, 0.0, 0.0, 0.0);
      } else {
@@ -48,11 +38,25 @@ index 9be03aa..2bfb641 100644
        // stage.SetBumpEnv(0.3, 0.0, 0.0, 5.0, 0.0, 0.0);
      }
    }
+@@ -204,11 +215,12 @@ void BumpMapTests::DrawRectangles(const TextureFormatInfo &texture_format, char
+   pb_print("Rot90: %d\n", rotate90);
+   pb_draw_text_screen();
+ 
+-  std::string test_name = MakeTestName(texture_format, cross_on_blue, rotate90);
++  std::string test_name = MakeTestName(texture_format, cross_on_blue, rotate90) + name_suffix_;
+   FinishDraw(test_name);
+ }
+ 
+ void BumpMapTests::Test16bit(const TextureFormatInfo &texture_format, bool cross_on_blue) {
++  name_suffix_.clear();
+   auto shader = std::make_shared<PassthroughVertexShader>();
+   host_.SetVertexShaderProgram(shader);
+ 
 diff --git a/src/tests/bump_map_tests.h b/src/tests/bump_map_tests.h
-index 5da2038..e8ce12c 100644
+index 5da2038..c892fb5 100644
 --- a/src/tests/bump_map_tests.h
 +++ b/src/tests/bump_map_tests.h
-@@ -19,7 +19,7 @@ class BumpMapTests : public TestSuite {
+@@ -19,9 +19,12 @@ class BumpMapTests : public TestSuite {
   private:
    void DrawRectangles(const TextureFormatInfo &texture_format, char x_channel, char y_channel, bool cross_on_blue,
                        bool rotate90, const std::function<void(float, float, float, float)> &draw);
@@ -60,7 +64,9 @@ index 5da2038..e8ce12c 100644
 +  void Test(const TextureFormatInfo &texture_format, bool cross_on_blue, bool rotate90, float mat11 = 0.5f);
    void Test16bit(const TextureFormatInfo &texture_format, bool cross_on_blue);
    static std::string MakeTestName(const TextureFormatInfo &texture_format, bool cross_on_blue, bool rotate90);
++
++  // hakuX #10: appended to the saved capture's name, so a variant does not overwrite its base test.
++  std::string name_suffix_;
  };
--- 
-2.43.0
-
+ 
+ #endif  // NXDK_PGRAPH_TESTS_BUMP_MAP_TESTS_H
