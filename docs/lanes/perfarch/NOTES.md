@@ -145,3 +145,12 @@ Conditional: if the TSO arm shows STLR is the expensive half, a
 `HAKUX_TCG_TSO=ldapr` variant (LDAPR loads, plain stores) keeps LD_LD and
 LD_ST and drops only ST_ST. The doorbell lock pair already covers the
 CPU->GPU direction where ST_ST mattered.
+
+## Resume 2026-09-26: base moved
+
+The earlier resumes found #308 in draft because the session had ended on a
+wait (soaks queued), not on unfinished work; it was since audited twice and
+marked ready. This resume was a handback: CI on `365f4907f7` was red only
+because it ran before master moved. Merged `origin/master` (clean, no
+conflicts, no lane file touched by the merge) and pushed; nothing was
+re-measured or extended.
