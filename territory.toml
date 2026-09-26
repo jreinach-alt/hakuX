@@ -1214,3 +1214,10 @@ released = ["docs/lanes/regs200/**"]
 released_at_ready = 377
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 238 (job.board, 2026-09-26): #200 local, desktop-only analysis (the cloud outlet had not claimed the cloud-labelled issue; label removed on dispatch). BRIEF briefs/regs200.md: per-register table of unnamed bits and which the renderer reads, docs/lanes/regs200/** only; hw/ hunks named, not edited."
+
+
+[lane.cloud-remediate-366]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-366, remediation of PR #366 on branch lane/aasample, attempt 1 of 4 on claude-opus-5-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 366` removes this row when the unit ends."
