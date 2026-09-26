@@ -282,10 +282,26 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
 
     pace = [msg for t, lv, tag, msg in lc if tag == "hakuX-pace" and mark_t is not None and t >= mark_t]
     if pace:
-        late = [float(x) for m_ in pace for x in re.findall(r"late\D{0,12}?([\d.]+)", m_)[:1]]
-        worst = [float(x) for m_ in pace for x in re.findall(r"(?:worst|stall)\D{0,12}?([\d.]+)", m_)[:1]]
-        v["pace"] = dict(lines=len(pace), late_per_100=(max(late) if late else None),
-                         worst_stall=(max(worst) if worst else None), last=pace[-1][:200])
+        # profile.c's format, agreed in docs/lanes/perfbase/NOTES.md: parse by
+        # key. vK = flips that took exactly K VBLANKs (v4 = 4+), so for a title
+        # whose nominal is N VBLANKs a flip (1 at 60 fps, 2 at 30) the late
+        # flips are the sum of vK for K > N. f=60 is a process's first window,
+        # whose first delta is taken from zero; it is not steady state.
+        nominal = max(1, round(60.0 / (v.get("target_fps") or 30.0)))
+        late = flips = 0
+        worst = None
+        for m_ in pace:
+            kv = dict(re.findall(r"(\w+)=([\d.]+)", m_))
+            if not all("v%d" % k in kv for k in range(5)) or float(kv.get("f", 0)) <= 60:
+                continue
+            counts = [int(kv["v%d" % k]) for k in range(5)]
+            flips += sum(counts)
+            late += sum(counts[k] for k in range(nominal + 1, 5))
+            if "max" in kv:
+                worst = max(worst or 0.0, float(kv["max"]))
+        v["pace"] = dict(lines=len(pace), nominal_vblanks=nominal,
+                         late_per_100=(round(100.0 * late / flips, 2) if flips else None),
+                         worst_stall=worst, last=pace[-1][:200])
     else:
         v["pace"] = None
 

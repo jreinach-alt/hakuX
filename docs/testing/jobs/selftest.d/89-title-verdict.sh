@@ -39,14 +39,23 @@ def make(name, *, mark=True, gap_at=None, crash_at=None, fps=30.0, g_ms=33.3,
         t += 6.0
     if mark:
         L.append((100.0, "I", "hakuX-route", "mark gameplay"))
+    # hakuX-pace (profile.c): a pre-mark window and a process's first window
+    # (f=60) are all late flips and must not count; every scored window after
+    # them has 2 of 60 flips late at 30 fps, so late_per_100 is 3.33.
+    L.append((50.0, "I", "hakuX-pace", "f=3000 v0=0 v1=0 v2=0 v3=0 v4=60 vb=240 max=999.0 ms=8000.0"))
+    L.append((100.2, "I", "hakuX-pace", "f=60 v0=0 v1=0 v2=0 v3=0 v4=60 vb=240 max=888.0 ms=8000.0"))
     t = 100.5
     stop = crash_at if crash_at else end - 0.5
+    f_n = 120
     while t < stop:
         if gap_at and gap_at <= t < gap_at + 30:   # 30 s with no flips
             t = gap_at + 30
             continue
         L.append((t, "I", "hakuX-perf",
                   "gfps=%d G:%.1f(%.1f-%.1f) D:16.7" % (fps, g_ms, g_ms - 1, g_ms + 1)))
+        L.append((t + 0.001, "I", "hakuX-pace",
+                  "f=%d v0=0 v1=0 v2=58 v3=2 v4=0 vb=122 max=50.0 ms=2000.0" % f_n))
+        f_n += 60
         t += 60.0 / fps
     a = 0.0
     while a < stop:
@@ -105,7 +114,9 @@ def v(n):
         return {}
 exp = {
     "pass":    lambda x: x.get("pass") is True and x.get("rating_candidate") == "Playable"
-                         and x.get("fps_windows", 0) > 300 and x.get("audio_measured") is True,
+                         and x.get("fps_windows", 0) > 300 and x.get("audio_measured") is True
+                         and (x.get("pace") or {}).get("late_per_100") == 3.33
+                         and (x.get("pace") or {}).get("worst_stall") == 50.0,
     "crash":   lambda x: x.get("pass") is False and x.get("crash") is True
                          and (x.get("failing") or "").startswith("crash"),
     "hang":    lambda x: x.get("pass") is False and x.get("hang") is True and x.get("crash") is False,
@@ -163,6 +174,9 @@ PY
 tv_mutant "judge by G" below \
     'FRAMES_PER_LINE / dt_s, float(p1.group(2))' \
     '1000.0 / float(p1.group(2)), float(p1.group(2))'
+tv_mutant "count a process's first pace window" pass \
+    ' or float(kv.get("f", 0)) <= 60:' \
+    ':'
 tv_mutant "count pre-mark windows" pass \
     'zip(after, after[1:])' \
     'zip(perf, perf[1:])'
