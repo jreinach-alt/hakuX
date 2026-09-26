@@ -1259,12 +1259,6 @@ files = []
 standing = false
 note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-420, remediation of PR #420 on branch lane/pilotgate, attempt 1 of 4 on claude-opus-5-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 420` removes this row when the unit ends."
 
-[lane.fmv303c]
-issues = ["303"]
-files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/testing/predictions/fmv303c-*.json", "docs/lanes/fmv303c/**"]
-standing = false
-note = "STARTED (job.board 2026-09-26T20:50Z), briefs/fmv303c.md: #303 step 2a, the default-inert HAKUX_FMV303_PROBE surface write-back probe (board_request_surface.md of lane.fmv303b). vk/surface.c released at ready by lane.blinx372d (PR #396): the brief says merge master or that branch and re-run the arm before ready. Touches hw/: its PR needs audit."
-
 [lane.pri432]
 issues = ["432"]
 files = ["docs/testing/jobs/board.sh", "docs/testing/jobs/status.sh", "docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/97-board-priority.sh", "docs/testing/jobs/roles/board.md", "docs/lanes/pri432/**"]
