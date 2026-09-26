@@ -3,12 +3,18 @@
 Check the parse of `hakuX-phase` against the emitter's own identities, before
 any number derived from it is believed.
 
-  I1  Pipe == Tx + Sh + Lu                       (create_pipeline sub-phases)
+  I1  Pipe == Tx + Sh + Lu + Shd                 (create_pipeline sub-phases;
+                                                  shader_compile is timed only
+                                                  inside it)
   I2  Tot  == Surf + Tex + Shd + Draw + Fin
               + Flip + Idle                      (profile.c total_ms)
   I3  Draw >= Vtx+Syn+Prw+Pipe+Desc+Setup+Cmd    (sub-phases do not cover all
-                                                  of draw_dispatch)
+              + Sfp+Mfp+FTx                       of draw_dispatch)
   I4  Fin  == Sub + Fen
+  I5  TxH + Tex <= Tx + FTx                      (the content hash and the
+                                                  upload are reached only from
+                                                  the texture binds; lines that
+                                                  carry Sfp/Mfp/FTx/TxH only)
 
 Every field is printed to one decimal, so an identity can only be expected to
 hold to the rounding of its terms. I1/I2/I4 are exact identities in the source;
@@ -18,7 +24,7 @@ import re, sys
 
 FIELDS = ["Surf", "Tex", "Shd", "Draw", "Vtx", "Syn", "Prw", "Pipe", "Tx", "Sh",
           "Lu", "Desc", "Setup", "Cmd", "Fin", "Sub", "Fen", "Flip", "Idle",
-          "Fr", "St", "Tot"]
+          "Fr", "St", "Tot", "Sfp", "Mfp", "FTx", "TxH"]
 
 
 def parse(path):
@@ -48,8 +54,9 @@ for p in sys.argv[1:]:
         n += 1
         checks = {
             # terms, rounding bound = 0.05 * number of terms summed
-            "I1 Pipe=Tx+Sh+Lu":
-                (g(d, "Pipe"), g(d, "Tx") + g(d, "Sh") + g(d, "Lu"), 4),
+            "I1 Pipe=Tx+Sh+Lu+Shd":
+                (g(d, "Pipe"),
+                 g(d, "Tx") + g(d, "Sh") + g(d, "Lu") + g(d, "Shd"), 5),
             "I2 Tot=Surf+Tex+Shd+Draw+Fin+Flip+Idle":
                 (g(d, "Tot"),
                  g(d, "Surf") + g(d, "Tex") + g(d, "Shd") + g(d, "Draw")
@@ -68,13 +75,23 @@ for p in sys.argv[1:]:
                 print("   ", d["_raw"][:150])
         # I3 is an inequality: sub-phases must not EXCEED draw_dispatch
         sub = sum(g(d, k) for k in
-                  ["Vtx", "Syn", "Prw", "Pipe", "Desc", "Setup", "Cmd"])
+                  ["Vtx", "Syn", "Prw", "Pipe", "Desc", "Setup", "Cmd",
+                   "Sfp", "Mfp", "FTx"])
         if sub > g(d, "Draw") + 0.35:
             fails += 1
             print("FAIL I3 draw sub-phases exceed Draw: %.2f > %.2f"
                   % (sub, g(d, "Draw")))
         worst["I3 Draw-sub (unattributed)"] = max(
             worst.get("I3 Draw-sub (unattributed)", 0.0), g(d, "Draw") - sub)
+        # I5 is an inequality too, and an older line has no FTx to hold the
+        # fast paths' uploads, so it applies only where the new fields are
+        if "Sfp" in d:
+            nested = g(d, "TxH") + g(d, "Tex")
+            binds = g(d, "Tx") + g(d, "FTx")
+            if nested > binds + 0.2:
+                fails += 1
+                print("FAIL I5 TxH+Tex exceed Tx+FTx: %.2f > %.2f"
+                      % (nested, binds))
 
 print("\n%d phase lines checked, %d identity violations" % (n, fails))
 for k, v in sorted(worst.items()):

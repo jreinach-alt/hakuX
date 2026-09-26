@@ -3949,6 +3949,11 @@ static void begin_pre_draw_inner(PGRAPHState *pg)
      * every fast path below already treats as a reason to rebind. */
     pgraph_vk_poll_bound_textures(container_of(pg, NV2AState, pgraph));
 
+    /*
+     * Sfp and Mfp time each fast path, hit or miss, less its texture bind
+     * (FTx): all three are children of Draw beside the full path's.
+     */
+    NV2A_PHASE_TIMER_BEGIN_EXCL_CHILD(draw_sfp, draw_ftx);
     {
         bool sfp_ok = true;
         if (pg->clearing)                { OPT_STAT_INC(sfp_miss_clearing); sfp_ok = false; }
@@ -4016,7 +4021,9 @@ static void begin_pre_draw_inner(PGRAPHState *pg)
                     pg->texture_state_gen != r->last_texture_state_gen) {
                     uint32_t saved_shader_gen = pg->shader_state_gen;
                     NV2AState *d_push = container_of(pg, NV2AState, pgraph);
+                    NV2A_PHASE_TIMER_BEGIN_EXCL(draw_ftx);
                     pgraph_vk_bind_textures(d_push);
+                    NV2A_PHASE_TIMER_END_EXCL(draw_ftx);
                     r->last_texture_state_gen = pg->texture_state_gen;
                     r->last_texture_vram_gen = r->texture_vram_gen;
 
@@ -4145,6 +4152,7 @@ static void begin_pre_draw_inner(PGRAPHState *pg)
                     r->last_non_dynamic_reg_gen = pg->non_dynamic_reg_gen;
                     OPT_STAT_INC(super_fast_hits);
                     r->pre_draw_skipped = true;
+                    NV2A_PHASE_TIMER_END_EXCL_CHILD(draw_sfp, draw_ftx);
                     return;
                 }
             }
@@ -4152,6 +4160,9 @@ static void begin_pre_draw_inner(PGRAPHState *pg)
         }
     }
     OPT_STAT_INC(super_fast_misses);
+    NV2A_PHASE_TIMER_END_EXCL_CHILD(draw_sfp, draw_ftx);
+
+    NV2A_PHASE_TIMER_BEGIN_EXCL_CHILD(draw_mfp, draw_ftx);
 
     if (!pg->clearing &&
         r->pipeline_binding &&
@@ -4201,7 +4212,9 @@ static void begin_pre_draw_inner(PGRAPHState *pg)
             (pg->texture_state_gen != r->last_texture_state_gen ||
              r->texture_vram_gen != r->last_texture_vram_gen)) {
             NV2AState *d_mfp_push = container_of(pg, NV2AState, pgraph);
+            NV2A_PHASE_TIMER_BEGIN_EXCL(draw_ftx);
             pgraph_vk_bind_textures(d_mfp_push);
+            NV2A_PHASE_TIMER_END_EXCL(draw_ftx);
             r->last_texture_state_gen = pg->texture_state_gen;
             r->last_texture_vram_gen = r->texture_vram_gen;
             if (r->texture_bindings_changed) {
@@ -4228,9 +4241,11 @@ static void begin_pre_draw_inner(PGRAPHState *pg)
             create_frame_buffer(pg);
         }
         pgraph_vk_ensure_command_buffer(pg);
+        NV2A_PHASE_TIMER_END_EXCL_CHILD(draw_mfp, draw_ftx);
         return;
     }
 mfp_miss: (void)0;
+    NV2A_PHASE_TIMER_END_EXCL_CHILD(draw_mfp, draw_ftx);
 
     r->pre_draw_skipped = false;
 
