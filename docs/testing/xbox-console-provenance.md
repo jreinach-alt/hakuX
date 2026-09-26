@@ -174,13 +174,17 @@ place the result will appear means there is nothing to mistake it for.
 
 ## Talking to the console
 
-Direct ethernet, static `192.168.50.1`. FTP is `xbox` / `xbox`.
+Wired to the home LAN since 2026-09-26. Its address is the one line in
+`~/hakux-work/hardware/console.addr` (`192.168.4.57` that day), which the
+host-side tools read: `tools/xbox/pgraph_run.py`,
+`tools/nv2a_probe/host/supervisor.py` and the title stager. Before that it was
+on a direct link, static `192.168.50.1`. FTP is `xbox` / `xbox`.
 
 **Passive mode only.** The console cannot open an inbound connection to a NATed
 WSL2 address, so active mode hangs.
 
 ```
-curl -s --list-only ftp://xbox:xbox@192.168.50.1/E/
+curl -s --list-only "ftp://xbox:xbox@$(cat ~/hakux-work/hardware/console.addr)/E/"
 ```
 
 Two things that cost time here, recorded so they do not cost it again:
