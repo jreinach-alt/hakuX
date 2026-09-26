@@ -3975,3 +3975,18 @@ impact_px = 0
 impact_onestep_px = 0
 game_visible = true
 impact_basis = "game-visible (hostops, 2026-09-26): a commercial title under the owner's 20 fps floor through its intro FMV; no golden, so no px figure"
+
+[issue.397]
+title = "1.0 playable list: gameplay FPS per title with scripted input (Thor/Nova)"
+component = "titles"
+disposition = "measurement"
+suites = []
+no_suites = "a title measurement, not a pgraph suite: request.sh --route plays docs/testing/titles/routes/*.route into gameplay and title_verdict.py scores the share of gameplay time at the owner's 30 fps bar"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "OPENED (host session, 2026-09-26 07:30 PDT) on the owner's ask: gameplay FPS with programmed input, not boot/menus (#265's overnight batch was boot-only). lane.titleplay drives each title into gameplay, confirms it from the contact sheet, scores it; <20 fps gameplay / crash / won't load -> its own issue."
+impact_px = "0"
+impact_onestep_px = "0"
+impact_basis = "2026-09-26: no pixels move; this is the 1.0 playable-list measurement (855 titles is the 1.0 target; ~145 per minor version)"
+game_visible = "True"
