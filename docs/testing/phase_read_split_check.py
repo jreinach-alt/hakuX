@@ -13,16 +13,20 @@ any number derived from it is believed.
               + Flip + Idle                      (profile.c total_ms)
   I3  Draw >= Vtx+Syn+Prw+Pipe+Desc+Setup+Cmd    (sub-phases do not cover all
               + Sfp+Mfp+FTx                       of draw_dispatch)
-  I4  Fin  == Sub + Fen
+  I4  Fin  >= Sub + Fen                          (finish also ends the render
+                                                  pass, the queries and the
+                                                  command buffer before Sub, and
+                                                  processes pending reports
+                                                  after Fen)
   I5  TxH + Tex <= Tx + FTx                      (the content hash and the
                                                   upload are reached only from
                                                   the texture binds; lines that
                                                   carry Sfp/Mfp/FTx/TxH only)
 
 Every field is printed to one decimal, so an identity can only be expected to
-hold to the rounding of its terms. I2/I4 are exact identities in the source;
-a residual larger than the rounding bound is a PARSE fault, not noise. I1, I3
-and I5 are inequalities: a child may not exceed its parent beyond rounding.
+hold to the rounding of its terms. I2 is an exact identity in the source; a
+residual larger than the rounding bound is a PARSE fault, not noise. I1, I3,
+I4 and I5 are inequalities: a child may not exceed its parent beyond rounding.
 
 Since #426's instrument fix every child of Draw and of Pipe is exclusive of
 finish, as Draw is, and the fall-through clear is timed as Draw, whose
@@ -68,8 +72,6 @@ for p in sys.argv[1:]:
                 (g(d, "Tot"),
                  g(d, "Surf") + g(d, "Tex") + g(d, "Shd") + g(d, "Draw")
                  + g(d, "Fin") + g(d, "Flip") + g(d, "Idle"), 8),
-            "I4 Fin=Sub+Fen":
-                (g(d, "Fin"), g(d, "Sub") + g(d, "Fen"), 3),
         }
         for name, (lhs, rhs, nterms) in checks.items():
             resid = abs(lhs - rhs)
@@ -80,6 +82,14 @@ for p in sys.argv[1:]:
                 print("FAIL %-40s lhs=%.2f rhs=%.2f resid=%.2f > %.2f"
                       % (name, lhs, rhs, resid, bound))
                 print("   ", d["_raw"][:150])
+        # I4 is an inequality: Sub and Fen must not EXCEED finish
+        if g(d, "Sub") + g(d, "Fen") > g(d, "Fin") + 0.15:
+            fails += 1
+            print("FAIL I4 Sub+Fen exceed Fin: %.2f > %.2f"
+                  % (g(d, "Sub") + g(d, "Fen"), g(d, "Fin")))
+        worst["I4 Fin-Sub-Fen (rest of finish)"] = max(
+            worst.get("I4 Fin-Sub-Fen (rest of finish)", 0.0),
+            g(d, "Fin") - g(d, "Sub") - g(d, "Fen"))
         # I1 is an inequality: create_pipeline's sub-phases must not EXCEED
         # draw_pipeline, which also holds work that has no child span
         kids = g(d, "Tx") + g(d, "Sh") + g(d, "Lu") + g(d, "Shd")
