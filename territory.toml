@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 221
-updated_utc = "2026-09-26T03:00:00Z"
+wave = 222
+updated_utc = "2026-09-26T03:30:00Z"
 
 
 [retired.hilodot10]
@@ -894,7 +894,7 @@ note = "HOSTOPS 2026-09-26T02:35Z: PR #332 (pgraph.h helper + analysis) is ready
 issues = ["266"]
 files = ["docs/lanes/wbufdepth24/**", "docs/testing/predictions/wbufdepth24-*.json", "hw/xbox/nv2a/pgraph/glsl/psh.c"]
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 185 (host session, 2026-09-25 11:55 PDT) on the owner's question about the unowned 1.85 M W-buffering residual: #266, 24-bit depth on the FloorQuad family (~1.5 M structural px; ZBuf24D 0/16 exact; two blank WBuf24D captures). Re-measure on both handhelds, classify, price mechanisms offline, then request code files through the board. Brief: briefs/wbufdepth24.md. WAVE 188 (host session): + glsl/psh.c, the D24 gl_FragDepth write only (case DEPTH_FORMAT_D24, near line 3647), granted on the lane's request (#266 comment 5838034022). Do not touch the slope-offset code or #31's rule; the file returns to lane.wbuf31sel when this PR folds. PASS-ON ORDER (host session, 2026-09-25T21:02:11Z): when this lane's #266 PR folds, psh.c goes to lane.texvol283 (#283, PR #289, disjoint hunks at ~:510/~:3380), then back to lane.wbuf31sel (#244). QUEUE (host session, 2026-09-25T22:15:39Z, impact-first): psh.c after this lane's #266 PR folds: lane.texvol283 (#283, its hunk ready) -> lane.zclamp276 (#276, 129k px; also needs pgraph.c and psh.h) -> lane.wbuf31sel (#244, 0 scored px). Supersedes the wave-200 order. WAVE 214 (job.board): lane.wbuf31sel folded (PR #244), so the last leg (back to wbuf31sel) is void and lane.zclamp276 folded (PR #323); psh.c order is now lane.texvol283 (PR #289) -> lane.pshqueue (briefs/pshqueue.md: #278, #279, #285, #315, #271 hunks)."
+note = "DISPATCHED AT TERRITORY WAVE 185 (host session, 2026-09-25 11:55 PDT) on the owner's question about the unowned 1.85 M W-buffering residual: #266, 24-bit depth on the FloorQuad family (~1.5 M structural px; ZBuf24D 0/16 exact; two blank WBuf24D captures). Re-measure on both handhelds, classify, price mechanisms offline, then request code files through the board. Brief: briefs/wbufdepth24.md. WAVE 188 (host session): + glsl/psh.c, the D24 gl_FragDepth write only (case DEPTH_FORMAT_D24, near line 3647), granted on the lane's request (#266 comment 5838034022). Do not touch the slope-offset code or #31's rule; the file returns to lane.wbuf31sel when this PR folds. PASS-ON ORDER (host session, 2026-09-25T21:02:11Z): when this lane's #266 PR folds, psh.c goes to lane.texvol283 (#283, PR #289, disjoint hunks at ~:510/~:3380), then back to lane.wbuf31sel (#244). QUEUE (host session, 2026-09-25T22:15:39Z, impact-first): psh.c after this lane's #266 PR folds: lane.texvol283 (#283, its hunk ready) -> lane.zclamp276 (#276, 129k px; also needs pgraph.c and psh.h) -> lane.wbuf31sel (#244, 0 scored px). Supersedes the wave-200 order. WAVE 214 (job.board): lane.wbuf31sel folded (PR #244), so the last leg (back to wbuf31sel) is void and lane.zclamp276 folded (PR #323); psh.c order is now lane.texvol283 (PR #289) -> lane.pshqueue (briefs/pshqueue.md: #278, #279, #285, #315, #271 hunks). WAVE 222 (job.board): PR #268 passed its arm (530/530) and sat in draft (blocked:needs-owner after three strand resumes); marked ready + needs-audit-1 this tick. psh.c is now LENT to lane.pshqueue for hunks disjoint from the D24 write rather than queued behind the fold."
 
 [lane.boardprio]
 issues = []
@@ -1082,3 +1082,9 @@ issues = ["297"]
 files = ["docs/testing/score_sweep.py", "docs/testing/jobs/selftest.d/83-blank-rule.sh", "docs/lanes/blankrule297/**"]
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 215 (job.board, 2026-09-26T01:00:00Z) for #297's scorer half: lane.cloud-297 (PR #313, folded) named every owner (DBFF z24 edges -> #272, Texture_BRDF -> #315) and measured the replacement `blank` rule over all 19 captures ever tagged blank (15 false positives <=0.33% ink lost, 4 real blanks 21-50%), and delivered it to lane.toolsmith, which has no running session and no open PR on score_sweep.py. score_sweep.py GRANTED out of lane.toolsmith's row for this lane; it returns when this lane retires. briefs/blankrule297.md."
+
+[lane.pshqueue]
+issues = ["278", "279", "285", "315"]
+files = ["hw/xbox/nv2a/pgraph/glsl/psh.h", "docs/testing/predictions/pshqueue-*.json", "docs/lanes/pshqueue/**"]
+standing = false
+note = "DISPATCHED AT WAVE 222 (job.board, 2026-09-26T03:30Z). Four already-written glsl/psh.c hunks, one commit and one arm each: #278 fog INF (85k px), #279 DOT_ZW (65k), #285 G8B8 (32k), #315 BRDF (1.8k); #271's read side is skipped while vk/texture.c is lane.remote's. glsl/psh.c is LENT, not transferred: it stays lane.wbufdepth24's for its D24 write (case DEPTH_FORMAT_D24, ~:3698, PR #268, arm PASS 530/530, marked ready this tick); pshqueue's hunks are disjoint from it (~:1891, the DOT_ZW case, get_sampler_type), the wave-200 lend to texvol283 precedent. Granted with it: glsl/psh.h (free since texvol283 folded). psh.c is not on the Files line because check_territory allows one holder per file; the lend is this note. Brief: briefs/pshqueue.md."

@@ -1,12 +1,15 @@
 # pshqueue -- land the five queued glsl/psh.c hunks, one arm each
 
 Issues: #278 (fog INF), #279 (DOT_ZW), #285 (G8B8), #315 (BRDF), #271 (X1A7 read side).
-Base: master at the fold of PR #268 (lane.wbufdepth24). Wave 213, job.board.
-DISPATCH GATE: psh.c is held by lane.wbufdepth24 (PR #268, draft, arm pending).
-Dispatch the tick after #268 folds and `psh.c` shows free in territory.toml.
+Base: origin/master at dispatch (336b0728f2); rebase to the tip before you register anything.
+Wave 222, job.board. GATE LIFTED: PR #268 (lane.wbufdepth24) passed its arm (530/530) and sat
+in draft, so psh.c is LENT to you now instead of waiting on its fold. Its only psh.c hunk is
+the D24 gl_FragDepth write (`case DEPTH_FORMAT_D24`, ~:3698). Yours are elsewhere
+(append_fog_factor ~:1891, the DOT_ZW case, get_sampler_type BRDF, the G8B8 swap): touch nothing
+in the D24 case, and if a hunk of yours has to sit near ~:3698, stop and board-request.
 Files: hw/xbox/nv2a/pgraph/glsl/psh.c, hw/xbox/nv2a/pgraph/glsl/psh.h,
        docs/testing/predictions/pshqueue-*.json, docs/lanes/pshqueue/**
-       (psh.h is lane.texvol283's -- ask for it, do not edit it unheld.
+       (psh.h is free (texvol283 folded): granted with this dispatch.
         vk/texture.c, for #271's read side, is lane.remote's: skip #271 then.)
 
 ## Hunks already written -- apply, compile, do not re-derive
