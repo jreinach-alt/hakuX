@@ -77,7 +77,13 @@ incompatible-binding eviction (`update_surface_part`, two synchronous finishes p
 only a candidate here. Whether each shape change costs a `Finish sd` is what the perflog soak's
 `hakuX-stall` line says.
 
-## 2. Next measurement (queued, not yet run)
+## Why attempt 1 did not finish
+
+Attempt 1 ended with the perflog soak `1790450181-doa413-1721403` still queued, about 12
+requests deep. That was a wait on a device request, not on its own task. Attempt 2 reads that
+soak (section 3) and closes the PR.
+
+## 2. Next measurement (as queued in attempt 1; read in section 3)
 
 `1790450181-doa413-1721403`: a perflog Nova soak of the same route (`survey.route`, 420 s) on
 master dc38b745b8. For (a) it gives the per-frame phase split: `Sub` against `Fen` (the
@@ -103,7 +109,105 @@ What each reading would mean:
 pipeline deletes the local XISO once the handheld copy is verified, and `titles/` holds only
 the inventory JSON. `request.sh --device desktop` would need the ISO staged on the host first.
 
+## 3. The perflog soak (`1790450181-doa413-1721403`, Nova ee317437, ref dc38b745b8, apk 853368f2e827)
+
+420 s of the same route, PDT 12:51-12:58. `status` is fine: 7673 logcat lines, 165 `hakuX-phase`
+lines, 546 `hakuX-stall`, no crash, adb_failures=0. The tables below come from
+`tools/phase_table.py` and `tools/work_table.py` run over its `logcat.txt`. Every phase figure is
+ms per guest frame, smoothed over the 60-flip window.
+
+### (a) The fight: the renderer thread spends most of its time in `surface_update`
+
+| window (PDT) | gfps | Tot | **Surf** | Draw (Pipe) | Fin (Sub / Fen) | Idle | GPU | draws/frame (BE) | Finish sd / 60 fl |
+|---|---|---|---|---|---|---|---|---|---|
+| menus 12:51:36-12:52:21 | 59 | 16.2 | 0.1 | 0.1 | 0.2 | 15.8 | 0.2 | 3 | 0 |
+| light play 12:57:13-12:57:24 | 59 | 15.5 | **0.3-0.6** | 1.6 | 0.2 | 13 | 1.1 | 244 | 0 |
+| fight 1, 12:53:25-12:53:33 | 41-50 | 14-22 | 3-8 | 3-7 | 1.6-5.4 | 1-7 | 4-11 | 240-390 | 0 |
+| **fight 2, 12:54:01-12:56:04** | **14-15** | 55-67 | **33-52** | 8-10 (3) | 2-19 (0.4-15 / 1-11) | 0.1-1.3 | 31-44 | 564-766 | **0** |
+| fight 3, 12:58:00-12:58:30 | 15-16 | 55-59 | 36-46 | 8-14 (3-9) | 4-10 (3-4 / 1-7) | 0.0-1.1 | 27-32 | 630-700 | **52-58** |
+
+The 15 fps fight repeats the original run's number (16 fps). The phase line splits it:
+
+- **The renderer is never idle** (Idle 0.0-1.3 ms). This matches the original run's `Ri`.
+- **`Surf` is 60-80% of the frame**: 33-52 ms of 55-67. `Surf` is the exclusive timer around
+  `pgraph_vk_surface_update` (vk/surface.c:4043-4143), which the pusher calls once per draw.
+  Per call that is about 64 µs in fight 2 (45 ms / ~700 draws), against about 2.5 µs in light
+  play (0.6 ms / 244). **The per-call cost rose 25-fold.** The draw count only tripled.
+- **Not blinx372c's eviction.** Fight 2 has **zero** `Finish sd` and zero eviction downloads
+  (`sd[ev0 dl0]`, `evict[dl:0]`). Fight 3 has about one `sd` finish and two eviction downloads
+  per frame, and its `Surf` is the same. So the eviction adds nothing measurable to `Surf`.
+- **Not a Finish wait.** `Sub` is 0.4-15 ms and `Fen` 1-11 ms, and together they are under
+  a fifth of `Surf`.
+- **Not a pipeline or shader storm.** `Pipe` is about 3 ms, and `Shd` is 0 outside two
+  one-off compiles (below).
+- **The GPU is not the bound, but it is loaded.** GPU is 31-44 ms per frame against 55-67 of
+  Tot. With `Surf` at zero the frame would be about 20 ms of CPU, so the GPU's 33 ms would
+  bound it at about 30 fps. **Removing `Surf` is worth 15 to about 30 fps, not to 60.**
+- The pusher's method time (`hakuX-cpu` `Mth`) tracks Tot (57-65 ms). The pusher is the
+  renderer thread, so this is the same time seen from its side. The vCPU's 21-33% in section 1
+  is the guest waiting on it.
+
+**Which part of `surface_update` it is, the soak cannot say.** The sub-split (populate, dirty,
+enrp, lookup hit/evict/nosurf, create, put, bind, upload, download, expire) is accumulated in
+`g_nv2a_stats.surf` and logged once per 60 frames under tag **`xemu-surf`**
+(profile.c:645). The dispatcher's `LOGCAT_SPEC` (docs/testing/dispatcher.sh:1379) does not
+carry that tag, so the soak dropped it. The columns that did reach the log correlate with
+`Surf` but do not separate it:
+
+| window | Surf | draws/frame | surface render-pass breaks / 60 fl (`rpbrk srf`) | `xemu-sfp` noRp / shC |
+|---|---|---|---|---|
+| light play 12:57:21 | 0.5 | 251 | 40 | 41 / 4879 |
+| fight 1 12:53:29 | 6.8 | 387 | 113 | 114 / 5281 |
+| fight 2 12:55:06 | 44.0 | 737 | 413 | 472 / 6199 |
+
+Fight 2 breaks the render pass for a surface reason about 7 times per frame, which fits the
+original run's 6 shape changes per frame (color 0x02CB0000 and 0x02E18000 alternating with
+zeta 0x02F80000 in `[surf92]`). The candidate is the `upload && framebuffer_dirty` branch
+(`unbind_surface` on both, then `update_surface_part`), plus `expire_old_surfaces` and
+`prune_invalid_surfaces`, which run on *every* call (surface.c:4133-4139). That is a
+candidate, not a site: the unsplit timer cannot price it.
+
+### (b) The stall: second occurrence, the same shape, shorter
+
+The 76 s span did not recur at that length. Two shorter spans of the same shape did, and a
+third gap has a different cause:
+
+| gap (PDT) | length | vCPU `cpu` ms / 2000 | VBLANK | FIFO kicks | renderer |
+|---|---|---|---|---|---|
+| 12:52:43-12:52:57 (menu -> first fight) | 14 s (Gmax 12.4 s) | **1833-1974 (92-99%)** | **59.94 Hz** | no `fifoskew` line from 12:52:43.5 to 12:52:56.4 | Idle |
+| 12:57:32-12:57:45 (fight -> next stage) | 13 s (Gmax 10.5 s) | **1667-1808 (83-90%)** | **59.94 Hz** | none until 12:57:41 | Idle |
+| 12:53:16-12:53:24 | 7 s (Gmax 7.2 s) | 1780 | 59.94 Hz | 57 | **`Shd` 747 ms, `Pipe` 753 ms in one window: a one-off shader compile** |
+
+The two long ones match the original run's 76 s gap on every counter: the guest runs flat
+out, the timer is on time, and the pusher gets nothing. Both fall on scene changes (menu to
+fight, fight to the next stage). The original's gap also followed a ring-out, which is a
+scene change. So **(b) is a guest-side CPU-bound span at scene loads, repeated with the same
+counters.** It is 13-14 s here and was 76 s in the original. Whether that difference comes
+from what gets loaded (the ring-out stage) or from the disc path is not something these
+counters can say. The only renderer-side event in any gap is the single 747 ms compile, and a
+compile cannot hold the renderer idle.
+
+The desktop xemu check is still not done, for section 2's reason (the disc is not on the host).
+
+### What would unblock a priced hunk
+
+- **(a)** The same soak with `xemu-surf:I` in the logcat spec. That is a one-token edit to
+  `docs/testing/dispatcher.sh:1379`, a harness file outside this lane's grant. It must also
+  reach the running dispatcher (the dispatcher tree lags master). With the sub-split, the
+  hunk sits in `vk/surface.c`, which PR #396 (lane.blinx372d) holds. So there is **no priced
+  hunk and no arm now**. The code site to grant once #396 folds is
+  `hw/xbox/nv2a/pgraph/vk/surface.c:pgraph_vk_surface_update` (4040-4144).
+- **(b)** An IDE/ATAPI command and completion counter (hw/ide/core.c, needs a grant), plus the
+  guest PC sampled during the span. Those separate a guest waiting on the disc from TCG-slow
+  decompression.
+
 ## Do not repeat
+
+- Do not chase blinx372c's `update_surface_part` eviction for DOA's 15 fps. Fight 2 has zero
+  `sd` finishes and still spends 45 ms in `Surf`.
+- Do not expect 60 fps from a `Surf` fix alone: the GPU's 31-44 ms per frame bounds it near 30.
+- Do not queue another soak for (a) before `xemu-surf` is in the dispatcher's spec. It will
+  measure the same unsplit timer.
 
 - Do not read (b) as a renderer problem from the pictures. The renderer is idle through it.
 - Do not read the fight's 21-25 Hz VBLANK as a pacing-mode bug. The timer lands 24-30 ms late
