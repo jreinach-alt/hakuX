@@ -63,6 +63,19 @@ void pgraph_glsl_set_geom_state(PGRAPHState *pg, GeomState *state)
             ((p && (a & NV_PGRAPH_TEXADDRESS0_WRAP_P)) ? 4 : 0) |
             ((a & NV_PGRAPH_TEXADDRESS0_WRAP_Q) ? 8 : 0);
     }
+
+    /* See the POLY_MODE_LINE body of pgraph_glsl_gen_geom(). */
+    uint32_t setupraster = pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER);
+    state->line_cull_face = 0;
+    state->line_front_ccw = false;
+    if (state->primitive_mode == PRIM_TYPE_TRIANGLES &&
+        state->polygon_front_mode == POLY_MODE_LINE &&
+        (setupraster & NV_PGRAPH_SETUPRASTER_CULLENABLE)) {
+        state->line_cull_face =
+            GET_MASK(setupraster, NV_PGRAPH_SETUPRASTER_CULLCTRL);
+        state->line_front_ccw =
+            (setupraster & NV_PGRAPH_SETUPRASTER_FRONTFACE) != 0;
+    }
 }
 
 bool pgraph_glsl_need_geom(const GeomState *state)
@@ -346,6 +359,7 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
     const char *layout_in = NULL;
     const char *layout_out = NULL;
     const char *body = NULL;
+    char line_cull_body[512];
     const char *provoking_index = state->smooth_shading ? "index" : "0";
     /*
      * #224: a flat, filled quad arrives as triangles-with-adjacency,
@@ -494,10 +508,69 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
              * emulator stopped drawing in 80c23dcabe; the pixels actually
              * naming the wrong edge were 8,920.)
              */
-            body = "  float dz = calc_triz(0, 1, 2)[3].x;\n"
-                   "  emit_line(1, 2, dz);\n"
-                   "  emit_line(2, 0, dz);\n"
-                   "  emit_line(0, 1, dz);\n";
+            /*
+             * Face culling.  Silicon culls a triangle drawn under
+             * POLY_MODE_LINE by the SOURCE triangle's face, exactly as it
+             * culls a filled one; only line primitives escape it.  Every
+             * Front_face FrontFace_LM_* golden shows it (#13,
+             * docs/lanes/cloud-13/NOTES.md, class A).  The widened footprint
+             * cannot be culled by the host instead -- vk/draw.c clears the
+             * host's cull for it, because a widened edge's own winding comes
+             * from the sign of its perpendicular offset -- so the face is
+             * decided here, from v_vtxPos: the truncated guest screen
+             * position, whose y runs down as the Vulkan framebuffer's does.
+             * `face` is the edge cross product, so face < 0 is what Vulkan
+             * calls counter-clockwise, and vk/draw.c maps FRONTFACE set to
+             * VK_FRONT_FACE_COUNTER_CLOCKWISE; the fill-mode FrontFace_FM_*
+             * captures match silicon under that mapping.
+             *
+             * A triangle of zero area on the grid (face == 0) takes the face
+             * a counter-clockwise one gets: Front_face's two zero-area
+             * triangles are culled and drawn with its CCW quad in all 12
+             * goldens.  kahan_det() returns an exact 0 for collinear grid
+             * points.  A non-finite face culls nothing, as before.
+             *
+             * Winding reaching this stage is the guest's: prim_rewrite.c
+             * rotates list and fan triangles and REFLECTS odd strip
+             * triangles, (v1, v0, v2), so a strip's triangles all wind alike
+             * (Shade_model/ProgLM_TriStrip_* is the guard).  QUADS,
+             * QUAD_STRIP and POLYGON under POLY_MODE_LINE arrive here already
+             * rewritten to PRIM_TYPE_LINES and are not culled: their face is
+             * gone by then.
+             */
+            const char *cull_test = NULL;
+            switch (state->line_cull_face) {
+            case NV_PGRAPH_SETUPRASTER_CULLCTRL_FRONT:
+                cull_test = "front";
+                break;
+            case NV_PGRAPH_SETUPRASTER_CULLCTRL_BACK:
+                cull_test = "!front";
+                break;
+            case NV_PGRAPH_SETUPRASTER_CULLCTRL_FRONT_AND_BACK:
+                cull_test = "true";
+                break;
+            default:
+                break;
+            }
+            if (cull_test) {
+                snprintf(line_cull_body, sizeof(line_cull_body),
+                         "  vec2 g1 = v_vtxPos[1].xy - v_vtxPos[0].xy;\n"
+                         "  vec2 g2 = v_vtxPos[2].xy - v_vtxPos[0].xy;\n"
+                         "  float face = kahan_det(g1.x, g2.y, g2.x, g1.y);\n"
+                         "  bool front = %s(face > 0.0);\n"
+                         "  if (!isnan(face) && (%s)) { return; }\n"
+                         "  float dz = calc_triz(0, 1, 2)[3].x;\n"
+                         "  emit_line(1, 2, dz);\n"
+                         "  emit_line(2, 0, dz);\n"
+                         "  emit_line(0, 1, dz);\n",
+                         state->line_front_ccw ? "!" : "", cull_test);
+                body = line_cull_body;
+            } else {
+                body = "  float dz = calc_triz(0, 1, 2)[3].x;\n"
+                       "  emit_line(1, 2, dz);\n"
+                       "  emit_line(2, 0, dz);\n"
+                       "  emit_line(0, 1, dz);\n";
+            }
         } else {
             assert(polygon_mode == POLY_MODE_POINT);
             layout_out = "layout(points, max_vertices = 3) out;\n";

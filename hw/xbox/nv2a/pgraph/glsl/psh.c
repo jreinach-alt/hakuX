@@ -251,6 +251,15 @@ bool pgraph_glsl_dual_src_pad_supported(void)
     return g_dual_src_pad_supported;
 }
 
+/* #271: per-stage X1A7 readback, set by the backend at texture bind. */
+static int g_tex_x1a7_readback[NV2A_MAX_TEXTURES];
+
+void pgraph_glsl_set_texture_x1a7_readback(int stage, int mode)
+{
+    assert(stage >= 0 && stage < NV2A_MAX_TEXTURES);
+    g_tex_x1a7_readback[stage] = mode;
+}
+
 int pgraph_glsl_surface_pad_alpha_mode(unsigned int color_format)
 {
     switch (color_format) {
@@ -3807,6 +3816,19 @@ static MString* psh_convert(struct PixelShader *ps)
                 }
             }
 
+            /*
+             * #271: an X1A7R8G8B8 surface read as a texture returns the
+             * guest byte (X << 7) | (h >> 1), not the host's 8-bit h. Before
+             * alphakill, which tests the alpha the texture unit returned.
+             */
+            mstring_append_fmt(
+                vars,
+                "if (texX1A7[%d] != 0) {\n"
+                "  t%d.a = (float((texX1A7[%d] - 1) * 128)\n"
+                "           + floor(floor(t%d.a * 255.0 + 0.5) * 0.5)) / 255.0;\n"
+                "}\n",
+                i, i, i, i);
+
             /* As this means a texture fetch does happen, do alphakill */
             if (ps->state->alphakill[i]) {
                 mstring_append_fmt(vars, "if (t%d.a == 0.0) { discard; };\n",
@@ -4362,6 +4384,11 @@ void pgraph_glsl_set_psh_uniform_values(PGRAPHState *pg,
         values->colorKey[1] = pgraph_reg_r(pg, NV_PGRAPH_COLORKEYCOLOR1);
         values->colorKey[2] = pgraph_reg_r(pg, NV_PGRAPH_COLORKEYCOLOR2);
         values->colorKey[3] = pgraph_reg_r(pg, NV_PGRAPH_COLORKEYCOLOR3);
+    }
+    if (locs[PshUniform_texX1A7] != -1) {
+        for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+            values->texX1A7[i] = g_tex_x1a7_readback[i];
+        }
     }
     if (locs[PshUniform_colorKeyMask] != -1) {
        for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {

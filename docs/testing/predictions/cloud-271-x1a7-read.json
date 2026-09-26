@@ -1,0 +1,61 @@
+{
+  "registered_utc": "2026-09-26T14:50:23Z",
+  "who": "lane.cloud-271",
+  "issue": "271",
+  "prediction": "#271, the READ side of X1A7R8G8B8: an X1A7 surface sampled as a texture returns the guest byte (X<<7)|(h>>1), applied as a per-stage psh uniform set in vk/texture.c create_texture() (same surface_is_texture_source gate as the pad-alpha override, plus !upload_pending and an alpha-from-memory texture format). Rule re-derived by inversion in docs/lanes/cloud-271/ (0 of 32 swatches break it); base values from 1790394110-arms-pshqueue-base (both runs) and 1790417358-arms-zrtz272-base.\n\nMUST MOVE (exact): the four Blend_surface {,1-}DstAlpha_XA_{Z,O}1A7RGB8 go 65,536 / 81,920 -> 16,384 each; the residue is the two bg 0x80 bottom halves, 128 vs 129, which is the WRITE side and not this change. They stay at base if the mode never reaches the stage (drawn format not 0x06/0x07 at bind, or upload_pending true on these surfaces). Z fixed and O still structural means a wrong (X<<7) term. Clear/SCF_X1A7R8G8B8_{Z,O}1A7R8G8B8 65,568 / 65,472 -> 0 (#306's price).\n\nDECLARED REGRESSION, A LEG REGISTERED TO FAIL: Surface_format/Fmt_X1A7R8G8B8_O1A7R8G8B8 is registered at its base value 16,383 and is predicted NOT to hold it: it rises by at least 58,754, because the CPU-memset background (byte 0x00) under a partial draw is read with bit 7 forced (0x80). The failure line of this leg is the measured price. The gate that would avoid it is per-surface ('these bytes came from the CPU'), needs vk/surface.c and a device probe (NOTES s5), and is not in this change. A PASS on this leg would mean the mode does not reach Surface_format's _O swatches at all, which the four Blend_surface legs then cross-check.\n\nMUST NOT MOVE (bit-identical score): Blend_surface {,1-}DstAlpha_{ARGB8,R5G6B5,X_ZRGB8,X_ORGB8,X_Z1RGB5,X_O1RGB5} (0 today) move only if the mode is set for a non-X1A7 drawn format or a stale per-stage mode survives on a slot (the disabled-slot reset in pgraph_vk_bind_textures). {ARGB8,X_ZRGB8,X_ORGB8}_Add_SrcA_{1-SrcA,DstA} (0) move if the uniform reaches a non-X1A7 stage. XA_{Z,O}1A7RGB8_Add_SrcA_1-SrcA (0) sample the X1A7 surface with alpha forced opaque, so they move only if the new line runs after that override instead of before it. Surface_format Fmt_A8R8G8B8, Fmt_X8R8G8B8_{Z8,O8}R8G8B8, Fmt_R5G6B5 (0) move if the drawn-format gate misreads 0x07 against 0x04/0x05 or the X8R8G8B8 texture-format gate is missing. Fmt_X1R5G5B5_{Z1,O1}R5G5B5 are NOT exact today (12,988 / 13,734); their leg is equal-to-base, and they move only if the stride gate in surface_is_texture_source was loosened, since a 2-byte surface cannot pass it against a 4-byte texture.\n\nMUST NOT REGRESS (direction only): Fmt_X1A7R8G8B8_Z1A7R8G8B8 (32,743, predicted to improve; no device-side count), XA_{Z,O}1A7RGB8_Add_SrcA_DstA (37,007 each, 886 structural that post-blend alpha quantisation owns; not predicted to move).\n\nUnguarded on purpose: {R5G6B5,X_Z1RGB5,X_O1RGB5}_Add_SrcA_{1-SrcA,DstA}, whose DstA rows are white-content and R5G6B5_Add_SrcA_DstA reads 14,833 / 11,964 across two runs of one binary; and every other Clear capture.",
+  "a_ref": "02374a6847",
+  "b_ref": "81e74b9ac9",
+  "must_not_move": [
+    "Blend_surface/DstAlpha_ARGB8",
+    "Blend_surface/1-DstAlpha_ARGB8",
+    "Blend_surface/DstAlpha_R5G6B5",
+    "Blend_surface/1-DstAlpha_R5G6B5",
+    "Blend_surface/DstAlpha_X_ZRGB8",
+    "Blend_surface/1-DstAlpha_X_ZRGB8",
+    "Blend_surface/DstAlpha_X_ORGB8",
+    "Blend_surface/1-DstAlpha_X_ORGB8",
+    "Blend_surface/DstAlpha_X_Z1RGB5",
+    "Blend_surface/1-DstAlpha_X_Z1RGB5",
+    "Blend_surface/DstAlpha_X_O1RGB5",
+    "Blend_surface/1-DstAlpha_X_O1RGB5",
+    "Blend_surface/ARGB8_Add_SrcA_1-SrcA",
+    "Blend_surface/ARGB8_Add_SrcA_DstA",
+    "Blend_surface/X_ZRGB8_Add_SrcA_1-SrcA",
+    "Blend_surface/X_ZRGB8_Add_SrcA_DstA",
+    "Blend_surface/X_ORGB8_Add_SrcA_1-SrcA",
+    "Blend_surface/X_ORGB8_Add_SrcA_DstA",
+    "Blend_surface/XA_Z1A7RGB8_Add_SrcA_1-SrcA",
+    "Blend_surface/XA_O1A7RGB8_Add_SrcA_1-SrcA",
+    "Surface_format/Fmt_A8R8G8B8",
+    "Surface_format/Fmt_R5G6B5",
+    "Surface_format/Fmt_X8R8G8B8_Z8R8G8B8",
+    "Surface_format/Fmt_X8R8G8B8_O8R8G8B8",
+    "Surface_format/Fmt_X1R5G5B5_Z1R5G5B5",
+    "Surface_format/Fmt_X1R5G5B5_O1R5G5B5"
+  ],
+  "expect": {
+    "Blend_surface/DstAlpha_XA_Z1A7RGB8": 16384,
+    "Blend_surface/DstAlpha_XA_O1A7RGB8": 16384,
+    "Blend_surface/1-DstAlpha_XA_Z1A7RGB8": 16384,
+    "Blend_surface/1-DstAlpha_XA_O1A7RGB8": 16384,
+    "Clear/SCF_X1A7R8G8B8_Z1A7R8G8B8": 0,
+    "Clear/SCF_X1A7R8G8B8_O1A7R8G8B8": 0,
+    "Surface_format/Fmt_X1A7R8G8B8_O1A7R8G8B8": 16383
+  },
+  "expect_counts": {},
+  "must_not_regress": [
+    "Surface_format/Fmt_X1A7R8G8B8_Z1A7R8G8B8",
+    "Blend_surface/XA_Z1A7RGB8_Add_SrcA_DstA",
+    "Blend_surface/XA_O1A7RGB8_Add_SrcA_DstA"
+  ],
+  "disc": {
+    "suites": [
+      "Blend surface",
+      "Clear",
+      "Surface format"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
