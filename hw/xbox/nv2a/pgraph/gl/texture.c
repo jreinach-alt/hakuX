@@ -631,10 +631,7 @@ static void apply_texture_parameters(PGRAPHGLState *r,
         GLfloat clamped_anisotropy = MIN(
             (GLfloat)max_anisotropy,
             r->supported_extensions.max_texture_max_anisotropy);
-        /* Point-sampled LOD0: the pixel shader takes the probes (#284). */
-        if (clamped_anisotropy < 1.0f ||
-            (min_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_LOD0 &&
-             mag_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_LOD0)) {
+        if (clamped_anisotropy < 1.0f) {
             clamped_anisotropy = 1.0f;
         }
         glTexParameterf(binding->gl_target, GL_TEXTURE_MAX_ANISOTROPY_EXT,
@@ -693,6 +690,11 @@ void pgraph_gl_bind_textures(NV2AState *d)
         uint32_t max_anisotropy =
             1 << (GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_TEXCTL0_0 + i*4),
                            NV_PGRAPH_TEXCTL0_0_MAX_ANISOTROPY));
+        /* The pixel shader takes this stage's anisotropic probes (#284):
+         * no host anisotropy on top of them.  Every other stage keeps it. */
+        if (pgraph_glsl_tex_aniso_probes(pg, i) > 1) {
+            max_anisotropy = 1;
+        }
 
         /* Check for unsupported features */
         if (filter & NV_PGRAPH_TEXFILTER0_ASIGNED) NV2A_UNIMPLEMENTED("NV_PGRAPH_TEXFILTER0_ASIGNED");

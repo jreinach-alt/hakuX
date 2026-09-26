@@ -130,6 +130,9 @@ typedef struct PshState {
 int pgraph_glsl_window_clip_count(PGRAPHState *pg);
 bool pgraph_glsl_polygon_stipple_enabled(PGRAPHState *pg);
 void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state);
+/* 1 << MAX_ANISOTROPY when the pixel shader takes stage i's anisotropic
+ * probes, else 1; the samplers drop host anisotropy on exactly these (#284). */
+int pgraph_glsl_tex_aniso_probes(PGRAPHState *pg, int i);
 
 /*
  * Issue #59, the write side of the Z/O pad bits.

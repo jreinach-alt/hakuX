@@ -93,3 +93,30 @@ and its head has gained only an audit doc since 6321ec4477.
   measures it (cloud-284 "What is NOT covered").
 - Cube, 3D, rect-under-scale and projective-bump stages take the old fetch.
 - A signed-flagged R16B16 feeding BRDF now reaches it unsigned (brdf315b sec 3).
+
+## Audit pass-1 remediation (2026-09-26)
+
+MEDIUM-1: the samplers had dropped host anisotropy for every MIN = MAG =
+BOX_LOD0 stage, but the shader takes the probes only on the plain PROJECT2D
+path, so cube, 3D, shadow, dependent-read and dot-product stages, and
+point-sampled Y16 / R16B16, lost anisotropy with nothing replacing it. Now
+there is one predicate, `pgraph_glsl_tex_aniso_probes(pg, i)` in psh.c. It
+checks the stage mode (PROJECT2D), that the texture is 2D and not a cube
+or depth format, MIN = MAG = BOX_LOD0, and the byte-split test (now
+`tex_split_bytes16`, shared with `tex_bytes16`). `tex_aniso` and both
+samplers read it. VK folds the result into `TextureKey.max_anisotropy`, so
+the two samplers are separate cache nodes. GL passes it through the
+`max_anisotropy` it already hands to `apply_texture_parameters`. The
+predicate reads SHADERPROG, so SET_SHADER_STAGE_PROGRAM now goes through the
+slow method path, which marks dirty the slots whose 5-bit mode changed.
+Without that, neither binder would look at the slot again.
+
+LOW-2 fixed as well (`j >= 2` on the BRDF raw-consumption exemption). LOW-1
+is left alone: taking the derivatives before the tie bias could move pixels
+the arms have already measured.
+
+The arms were not re-run. On every stage the arms measure (2D PROJECT2D
+BOX_LOD0, not bytes16), the predicate returns the value the old condition
+gave, so the shaders and samplers there do not change. The only change is
+on stages where the old code had tex_aniso > 1 and emitted no probes, and
+there only the shader key changes, not the GLSL.
