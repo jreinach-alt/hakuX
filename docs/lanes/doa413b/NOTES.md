@@ -123,3 +123,21 @@ enabled= skips= reads=` prints every 5 s in every build, so an arm can show the 
 Type-checked with the NDK clang line from the shared tree's compile database, perflog on and off: 0
 errors. There is no desktop build on this host (AGENTS.md's known gap). Next: a same-APK Nova A/B
 (`XEMU_SURF_LAZY_COMPLETE=0` vs default) of the pilot route, and the pgraph must-not-move arm.
+
+## Attempt 3 ends waiting (2026-09-26 ~22:40Z)
+
+The cut is committed at 7f01f7f157, and the arm is registered at 7c0dc74319
+(`doa413b-lazy-mnm.json`, 0d5f93f210 vs 7f01f7f157). preflight passes. The lane is waiting on
+three things outside this session:
+
+- Soak arm A `1790461490-doa413b-542947` (`XEMU_SURF_LAZY_COMPLETE=0`) and arm B
+  `1790461494-doa413b-546424` (`=1`). Same APK, Nova, perflog, survey route, 300 s. At queue
+  time about 115 queue entries were ahead of them, and a Nova hold was in force.
+- The pgraph must-not-move arm, which the arms job runs from the committed prediction.
+
+How to read them on resume: take each soak's gfps and `[surf413] cdef` over the fight lines (gfps
+under 20 after the route's `mark play` at about 15:16 in the pilot's timeline, i.e. the last ~110 s).
+Report the median per arm, and check `[lazy413] skips` > 0 in B and `enabled=0` in A. For the arm,
+read the `[job.arms]` verdict, B's `[lazy413] skips`, and every scores1.tsv `status` for
+`unreadable`. If the arm fails, set the default to off (`enabled = env && env[0] == '1'`) and say
+why in the A/B.
