@@ -309,6 +309,8 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
         GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_ZCOMPRESSOCCLUDE),
                  NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN) ==
         NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN_CULL;
+    state->cull_near_far = pgraph_reg_r(pg, NV_PGRAPH_ZCOMPRESSOCCLUDE) &
+                           NV_PGRAPH_ZCOMPRESSOCCLUDE_CULL_NEAR_FAR_EN;
 
     /* Depth needed flag — used by VK for depth output in fragment shader.
      * GL handles depth via fixed-function pipeline. */
@@ -2582,6 +2584,30 @@ static MString* psh_convert(struct PixelShader *ps)
                                  "  discard;\n"
                                  "}\n");
         }
+    }
+
+    /*
+     * ZMIN_MAX_CONTROL CULL_NEAR_FAR_EN: silicon rejects a primitive whole
+     * when every vertex's screen z is below CLIP_MIN, or every one above
+     * CLIP_MAX, whatever ZCLAMP_EN says and on a w-buffered surface too --
+     * the test is on z, never on w. ZMinMaxControl's goldens show it on all
+     * 12 captures that can: in each Z=Inc block quads 0-1 (z <= 6.4) and
+     * 28-39 (z >= 102.4) go, quad 2 (7.3..10.06) and quad 27 (98.8..101.5)
+     * stay, and every Z=N->F quad (8..120) stays (docs/lanes/zclamp276).
+     * Where the per-pixel clip below already discards every pixel of such a
+     * primitive -- ZCLAMP_EN_CULL on a z-buffer -- nothing is emitted, so
+     * those shaders are unchanged. Issue #276.
+     */
+    if (ps->state->cull_near_far &&
+        (!ps->state->depth_clipping || ps->state->z_perspective)) {
+        mstring_append(
+            clip,
+            "if ((vtxPos0.z < clipRange.z && vtxPos1.z < clipRange.z &&\n"
+            "     vtxPos2.z < clipRange.z) ||\n"
+            "    (vtxPos0.z > clipRange.w && vtxPos1.z > clipRange.w &&\n"
+            "     vtxPos2.z > clipRange.w)) {\n"
+            "  discard;\n"
+            "}\n");
     }
 
     if (ps->state->depth_needed) {
