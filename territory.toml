@@ -1137,3 +1137,10 @@ issues = []
 files = []
 standing = false
 note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-336, remediation of PR #336 on branch lane/nanfix281, attempt 1 of 4 on claude-opus-5-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 336` removes this row when the unit ends."
+
+
+[lane.cloud-audit1-343]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit1-343, audit pass 1 of PR #343 on branch claude/docs-tooling-agentic-coding-u152m1, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit1 343` removes this row when the unit ends."
