@@ -369,6 +369,8 @@ note = "DISPATCHED (hostops 2026-09-26T14:52Z): #13 class A of PR #370 (line-mod
 [lane.foldcancel]
 issues = []
 files = ["docs/testing/jobs/fold.sh", "docs/testing/jobs/selftest.d/74-fold-multi.sh", "docs/lanes/foldcancel/NOTES.md"]
+released = ["docs/testing/jobs/fold.sh", "docs/testing/jobs/selftest.d/74-fold-multi.sh", "docs/lanes/foldcancel/NOTES.md"]
+released_at_ready = 415
 standing = false
 note = "STARTED (hostops 2026-09-26 11:55 AM PDT): harness defect, no tracker issue. fold.sh attribute_multi waits for trunk CI on a multi-fold tip sha, but android/desktop runs are cancelled by concurrency when a later fold pushes, so trunk_ci says NONE forever and folds stay throttled to one per tick (993c5fe4b5 04:10, 7039df1d24 05:46-11:52 PDT; both marked done by hand). fold.sh and 74-fold-multi.sh were in no row. Brief: briefs/foldcancel.md."
 
