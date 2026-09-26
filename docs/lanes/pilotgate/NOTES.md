@@ -101,3 +101,12 @@ the red was a verdict on a stale base, not on this work. This worktree was
 also 63 commits behind its own remote branch (the audit commits). Attempt 2
 fast-forwarded to `origin/lane/pilotgate`, merged `origin/master` (clean, no
 conflicts) and re-ran the selftest; no change to the gate itself.
+
+After the merge (head `c0cc86268d`) CI's selftest fails exactly one check,
+`selftest.d/64-status-html.sh:117` "the republished page carries the change"
+(run 36276660235). It is not this PR's: the same check fails on
+`lane/perfregimen` (run 36276469953) and `lane/claimrace` (run 36276062801),
+and no file this lane owns is on its path (status.sh / status_html.py /
+the gh-pages publish). Local full selftest on this head: 1877 passed,
+1 failed; every 99-pilot-gate leg passes. Blocked on a trunk fix to that
+fragment, not on anything here; do not debug it from this lane.
