@@ -857,6 +857,79 @@ static void surface_vram_written(PGRAPHVkState *r, hwaddr addr, size_t size,
     }
 }
 
+/*
+ * #303 PROBE (lane.fmv303c, diagnostic only; set HAKUX_FMV303_PROBE=1).
+ *
+ * Spikeout's FMV green is already in guest RAM (Cr=0 in the CPU-written
+ * A8R8G8B8 buffers at 0x307d000 / 0x3163000), and it comes and goes with
+ * host timing. A surface write-back is a non-CPU writer into guest RAM, so
+ * log every one where its bytes land: at the synchronous copy at the end of
+ * download_surface_to_buffer() and at each staged copy in
+ * pgraph_vk_complete_staged_downloads(). `ft` is pg->frame_time, the guest
+ * flip count. One `wbc` line per flip (pgraph_vk_prerecord_display_download
+ * runs at every flip stall) carries cumulative counts, so a zero is observed
+ * and dropped `wb` lines show up as gaps in `n`. Unset, fmv303_wb_on() is the
+ * only thing that runs, and it reads the env once.
+ */
+#ifdef __ANDROID__
+#define FMV303_WB_LOG(...) \
+    __android_log_print(ANDROID_LOG_INFO, "hakuX", __VA_ARGS__)
+#else
+#define FMV303_WB_LOG(...) do { \
+        fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while (0)
+#endif
+#define FMV303_REGION_LO 0x3000000
+#define FMV303_REGION_HI 0x3400000
+
+static int fmv303_wb_enabled = -1;
+static uint32_t fmv303_wb_n, fmv303_wb_in, fmv303_wb_lines;
+
+static bool fmv303_wb_on(void)
+{
+    if (fmv303_wb_enabled < 0) {
+        const char *e = getenv("HAKUX_FMV303_PROBE");
+        fmv303_wb_enabled = e && e[0] == '1';
+    }
+    return fmv303_wb_enabled;
+}
+
+static void fmv303_wb(NV2AState *d, const uint8_t *dst, size_t len,
+                      SurfaceBinding *s, bool color, const char *path)
+{
+    if (!fmv303_wb_on()) {
+        return;
+    }
+    size_t vram_size = memory_region_size(d->vram);
+    if (dst < d->vram_ptr || dst >= d->vram_ptr + vram_size) {
+        return;
+    }
+    size_t addr = dst - d->vram_ptr;
+    bool in = addr < FMV303_REGION_HI && addr + len > FMV303_REGION_LO;
+    uint32_t n = qatomic_fetch_inc(&fmv303_wb_n);
+    if (in) {
+        qatomic_inc(&fmv303_wb_in);
+    }
+    /* Every landing in the region; the rest until the cap. */
+    if (!in && qatomic_fetch_inc(&fmv303_wb_lines) >= 20000) {
+        return;
+    }
+    int fmt = !s ? -1 : color ? (int)s->shape.color_format
+                              : (int)s->shape.zeta_format;
+    FMV303_WB_LOG("[fmv303] wb addr=%08zx len=%zx color=%d fmt=%d ft=%d "
+                  "n=%u in=%d path=%s surf=%08" HWADDR_PRIx " %ux%u",
+                  addr, len, color, fmt, d->pgraph.frame_time, n, in, path,
+                  s ? s->vram_addr : 0, s ? s->width : 0, s ? s->height : 0);
+}
+
+static void fmv303_wb_frame(NV2AState *d)
+{
+    if (!fmv303_wb_on()) {
+        return;
+    }
+    FMV303_WB_LOG("[fmv303] wbc ft=%d n=%u in=%u", d->pgraph.frame_time,
+                  qatomic_read(&fmv303_wb_n), qatomic_read(&fmv303_wb_in));
+}
+
 void pgraph_vk_complete_staged_downloads(NV2AState *d, PGRAPHVkState *r)
 {
     StorageBuffer *staging = &r->storage_buffers[BUFFER_STAGING_DST];
@@ -883,6 +956,9 @@ void pgraph_vk_complete_staged_downloads(NV2AState *d, PGRAPHVkState *r)
             memcpy_image(dl->dest_ptr, src, dl->pitch,
                          dl->width * dl->bytes_per_pixel, dl->height);
         }
+        fmv303_wb(d, dl->dest_ptr, (size_t)dl->pitch * dl->height,
+                  dl->surface, dl->color, dl->partial ? "staged-part"
+                                                      : "staged");
 
         /* Clean up surface flags now that data is in VRAM */
         if (dl->surface) {
@@ -1537,6 +1613,8 @@ static void download_surface_to_buffer(NV2AState *d, SurfaceBinding *surface,
             g_free(swizzle_buf);
         }
     }
+    fmv303_wb(d, pixels, (size_t)surface->pitch * dl_height, surface,
+              surface->color, partial ? "sync-part" : "sync");
 }
 
 static void download_surface(NV2AState *d, SurfaceBinding *surface, bool force)
@@ -1625,6 +1703,8 @@ bool pgraph_vk_prerecord_display_download(NV2AState *d)
 {
     PGRAPHState *pg = &d->pgraph;
     PGRAPHVkState *r = pg->vk_renderer_state;
+
+    fmv303_wb_frame(d);
 
     if (r->display_predownload_pending) {
         return false;
