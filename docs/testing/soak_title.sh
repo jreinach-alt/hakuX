@@ -114,14 +114,17 @@ if [ -n "$CAPTURE_LOG" ]; then
     # And respawned: one WSL `UtilAcceptVsock` failure ends the stream, and on
     # 2026-09-26 that left a 783 s Nova soak with an empty logcat.txt and no
     # verdict. A restart asks the ring for everything from the last captured
-    # line's stamp (`-T '<stamp>'`), so the lines the device logged during the
-    # drop are read back while the ring still holds them. That replay reprints
+    # line's stamp (`-T "$last"`, no inner quotes: see the restart below), so
+    # the lines the device logged during the drop are read back while the ring
+    # still holds them. That replay reprints
     # the line the capture ended on, and title_verdict.py reads an exact
     # duplicate once. Each break is written INTO the capture as a
     # `# hakuX-capture: stream ended` line: a restart whose replay does not
     # overlap the last line lost something, and the verdict takes that span
     # (in device time, from the lines either side) out of its windows and its
-    # hang gaps rather than scoring it as a guest with no flips.
+    # hang gaps rather than scoring it as a guest with no flips. A break that
+    # nothing follows (the restarts ran out) is a truncated capture, and the
+    # verdict names that rather than a short run.
     : >"$CAPTURE_LOG"
     (
         child=""
@@ -134,9 +137,12 @@ if [ -n "$CAPTURE_LOG" ]; then
             if [ "$n" = 0 ] || [ -z "$last" ]; then
                 adb -s "$SERIAL" logcat -v time $LOGCAT_SPEC >>"$CAPTURE_LOG" 2>/dev/null &
             else
-                # adb joins its arguments into one device shell command, so
-                # the stamp's space needs the inner quotes.
-                adb -s "$SERIAL" logcat -v time -T "'$last'" $LOGCAT_SPEC >>"$CAPTURE_LOG" 2>/dev/null &
+                # A plain argument, unlike `adb shell`'s "'mark x'": `adb
+                # logcat` escapes each argument itself (commandline.cpp
+                # logcat(): escape_arg per arg), so inner quotes would reach
+                # logcat's -T parser, which rejects them and exits -- and every
+                # restart after the first drop would fail the same way.
+                adb -s "$SERIAL" logcat -v time -T "$last" $LOGCAT_SPEC >>"$CAPTURE_LOG" 2>/dev/null &
             fi
             child=$!
             wait "$child"

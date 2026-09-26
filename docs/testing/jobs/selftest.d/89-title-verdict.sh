@@ -29,7 +29,7 @@ def stamp(t):
     return "09-25 %02d:%02d:%06.3f" % (t // 3600, (t % 3600) // 60, t % 60)
 
 def make(name, *, mark=True, gap_at=None, crash_at=None, fps=30.0, g_ms=33.3,
-         runlog_extra="", exited=None, end=760.0, breaks=(), marks=()):
+         runlog_extra="", exited=None, end=760.0, breaks=(), marks=(), cut=None):
     d = os.path.join(root, name); os.makedirs(d)
     L = [(1.0, "I", "hakuX", "surface_scale=1 (override=)"),
          (2.0, "I", "hakuX-route", "soak start")]
@@ -75,6 +75,10 @@ def make(name, *, mark=True, gap_at=None, crash_at=None, fps=30.0, g_ms=33.3,
     for b0, bl, rp in breaks:
         if not rp:
             L = [x for x in L if not (b0 < x[0] < b0 + bl)]
+    # A capture that breaks at `cut` and never comes back: every restart
+    # fails at once, so the file ends in LOGCAT_RESTARTS+1 break lines.
+    if cut:
+        L = [x for x in L if x[0] < cut]
     fmt = lambda x: "%s %s/%s( 4242): %s\n" % (stamp(x[0]), x[1], x[2], x[3])
     todo = sorted(breaks)
     with open(os.path.join(d, "logcat.txt"), "w") as f:
@@ -87,6 +91,9 @@ def make(name, *, mark=True, gap_at=None, crash_at=None, fps=30.0, g_ms=33.3,
                 todo.pop(0)
             f.write(fmt(x))
             done.append(x)
+        if cut:
+            f.writelines("# hakuX-capture: stream ended after X; restart %d\n" % k
+                         for k in range(1, 32))
     json.dump({"pace_lines": sum(1 for x in L if x[2] == "hakuX-pace" and x[0] >= 100.0)},
               open(os.path.join(d, "expect.json"), "w"))
     with open(os.path.join(d, "run.log"), "w") as f:
@@ -125,6 +132,10 @@ make("lostmark", mark=False, marks=[(60.0, "booted")], runlog_extra=
      "ROUTE 13:01:42.100 mark gameplay: logcat write failed (try 2/3): UtilAcceptVsock\n"
      "ROUTE 13:01:44.100 mark gameplay: logcat write failed (try 3/3): UtilAcceptVsock\n"
      "ROUTE 13:01:44.100 mark gameplay: logcat write FAILED\n")
+# Audit #307 pass 2: the `pass` run, but the capture broke at 300 s and every
+# restart failed. The guest played 660 s; the verdict must name the capture,
+# not the duration, and must not report nothing lost.
+make("truncated", cut=300.0, runlog_extra="held x.iso for 758s\n")
 PY
 
 # verdict_expect <title_verdict.py> -> prints one "FAIL <why>" line per unmet
@@ -132,7 +143,7 @@ PY
 # bad) and for every mutant (at least one line is the mutant being caught).
 verdict_expect() {
     local vpy="$1" f
-    for f in pass crash hang nomark below adbfail capgap lostmark; do
+    for f in pass crash hang nomark below adbfail capgap lostmark truncated; do
         rm -f "$TV/$f/verdict.json"
         python3 "$vpy" "$TV/$f" --targets "$TESTING/titles/targets.toml" >/dev/null 2>&1 \
             || { echo "FAIL $f: title_verdict exited non-zero"; continue; }
@@ -165,6 +176,10 @@ exp = {
                              == json.load(open(os.path.join(root, "capgap", "expect.json")))["pace_lines"],
     "lostmark": lambda x: x.get("pass") is False and x.get("reached_gameplay") is False
                          and "logcat write FAILED" in (x.get("failing") or ""),
+    "truncated": lambda x: x.get("pass") is False and x.get("capture_truncated") is True
+                         and (x.get("failing") or "").startswith("capture: truncated")
+                         and (x.get("capture_truncated_s") or 0) > 400
+                         and (x.get("capture_lost_s") or 0) > 400,
 }
 for n, ok in exp.items():
     x = v(n)
@@ -175,7 +190,7 @@ PY
 }
 
 out=$(verdict_expect "$TESTING/title_verdict.py")
-for f in pass crash hang nomark below adbfail capgap lostmark; do
+for f in pass crash hang nomark below adbfail capgap lostmark truncated; do
     case "$out" in
         *"FAIL $f:"*) bad "verdict on the '$f' fixture: $(printf '%s\n' "$out" | grep "FAIL $f:")" ;;
         *) ok "verdict on the '$f' fixture is what it should be" ;;
@@ -231,6 +246,9 @@ tv_mutant "count a capture gap as a hang" capgap \
 tv_mutant "read a replayed line twice" capgap \
     '                if raw in seen:' \
     '                if False:'
+tv_mutant "ignore a capture that never resumed" truncated \
+    'truncated = open_break is not None and not soak_end' \
+    'truncated = False'
 tv_mutant "ignore route.sh's failed mark write" lostmark \
     '        elif lost:' \
     '        elif False:'
@@ -255,9 +273,16 @@ case "$*" in
         esac ;;
     *"logcat -c"*) exit 0 ;;
     # The first stream prints the ring and dies (a vsock drop); a restart
-    # with -T '<stamp>' replays from that line, as the ring does, then streams.
-    *"logcat -v time -T"*) echo "09-25 13:00:01.000 I/hakuX-perf( 1): ring-line"
-                           echo "09-25 13:00:03.000 I/hakuX-perf( 1): after-restart"; exec sleep 30 ;;
+    # with -T <stamp> replays from that line, as the ring does, then streams.
+    # Real `adb logcat` escapes each argument (escape_arg), so logcat's argv
+    # holds exactly what the soak passed: an argument with quote characters
+    # in it fails logcat's -T parse ("not in time format") and exits, as here.
+    *"logcat -v time -T"*)
+        while [ "$#" -gt 0 ] && [ "$1" != -T ]; do shift; done
+        printf '%s\n' "$2" | grep -qE '^[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}$' \
+            || { echo "logcat: -T '$2' not in time format" >&2; exit 1; }
+        echo "09-25 13:00:01.000 I/hakuX-perf( 1): ring-line"
+        echo "09-25 13:00:03.000 I/hakuX-perf( 1): after-restart"; exec sleep 30 ;;
     *"logcat -v time"*) echo "09-25 13:00:01.000 I/hakuX-perf( 1): ring-line"; exit 1 ;;
     *) exit 0 ;;
 esac
@@ -301,14 +326,16 @@ case "$log4" in *"LOGCAT: stream ended"*"restart 1"*) ok "the dropped stream is 
                 *) bad "no LOGCAT restart line in run.log";; esac
 if grep -q after-restart "$SK/logcat.txt" 2>/dev/null; then ok "the capture continues after the drop"
 else bad "the capture stopped at the drop: $(cat "$SK/logcat.txt" 2>/dev/null | tr '\n' '|')"; fi
-if grep -qF "logcat -v time -T '09-25 13:00:01.000'" "$SK/calls" 2>/dev/null; then
+# Unquoted: `adb logcat` escapes each argument, so what the soak passes is
+# what logcat parses (audit #307 pass 2).
+if grep -qF "logcat -v time -T 09-25 13:00:01.000 " "$SK/calls" 2>/dev/null; then
     ok "the restart asked the ring from the last captured stamp"
 else bad "the restart did not ask from the last stamp: $(grep 'logcat -v time' "$SK/calls" 2>/dev/null | tr '\n' '|')"; fi
 if grep -q '^# hakuX-capture: stream ended after 09-25 13:00:01.000; restart 1' "$SK/logcat.txt" 2>/dev/null; then
     ok "the break is written into the capture"
 else bad "no capture-break line in logcat.txt: $(tr '\n' '|' < "$SK/logcat.txt" 2>/dev/null)"; fi
 check "the verdict reads the replayed line once and finds no gap in an overlapping restart" \
-    python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import title_verdict as t; l, g = t.parse_logcat(sys.argv[2]); assert [m for *_, m in l].count("ring-line") == 1 and g == [], (l, g)' \
+    python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import title_verdict as t; l, g, o = t.parse_logcat(sys.argv[2]); assert [m for *_, m in l].count("ring-line") == 1 and g == [] and o is None, (l, g, o)' \
     "$TESTING" "$SK/logcat.txt"
 
 echo "== soak_title.sh mutant: treat one adb failure as an exit"
@@ -347,6 +374,24 @@ then
     else ok "mutant caught: never restart the logcat stream"; fi
 else
     bad "logcat mutant: its anchor is gone from soak_title.sh -- update the mutant"
+fi
+
+echo "== soak_title.sh mutant: quote the restart stamp as for adb shell"
+# Audit #307 pass 2: `-T "'$last'"` reached logcat with the quotes in it.
+if python3 - "$TESTING/soak_title.sh" "$SM/soak_title.sh" <<'PY'
+import sys
+s = open(sys.argv[1]).read()
+old = 'logcat -v time -T "$last"'
+if s.count(old) != 1:
+    sys.exit(1)
+open(sys.argv[2], "w").write(s.replace(old, 'logcat -v time -T "\'$last\'"'))
+PY
+then
+    logcat_run "$SM/soak_title.sh" >/dev/null
+    if grep -q after-restart "$SK/logcat.txt" 2>/dev/null; then bad "mutant SURVIVED: quote the restart stamp"
+    else ok "mutant caught: quote the restart stamp"; fi
+else
+    bad "quoted-stamp mutant: its anchor is gone from soak_title.sh -- update the mutant"
 fi
 rm -rf "$SM"
 

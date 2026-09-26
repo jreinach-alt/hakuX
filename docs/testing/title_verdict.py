@@ -44,6 +44,12 @@ in device time. Nothing is known about the guest inside a gap, so a gap is
 neither a hang nor slow frames: a window spanning one is not scored, and a
 hang gap is measured with the capture gap subtracted. Exact duplicate lines
 (the replayed overlap) are read once. The gaps are reported, never judged.
+A break that no line follows, in a capture with no `soak end`, is a
+TRUNCATED capture: the restarts ran out and the rest of the run is unseen.
+That run is not judged on what little was captured -- it fails as
+`capture: truncated`, named first, so a short capture never reads as a short
+run or a missing mark. `capture_truncated_s` estimates the unseen span from
+`soak start` plus the hold run.log reports (host clock, so approximate).
 
 AUDIO: the APU's `starve:` lines (hakuX-audiocap) each carry the callbacks
 and the short callbacks since the previous line. The share is short/total
@@ -113,7 +119,9 @@ def find_title(targets, iso):
 
 
 def parse_logcat(path):
-    """(lines, capture gaps). See CAPTURE GAPS above."""
+    """(lines, capture gaps, open break). See CAPTURE GAPS above. The open
+    break is the device time of the last line before a break that no line
+    follows, else None."""
     out, gaps, seen = [], [], set()
     last_t = pending = None
     overlap = False
@@ -142,7 +150,7 @@ def parse_logcat(path):
                 last_t = t
     except OSError:
         pass
-    return out, gaps
+    return out, gaps, pending
 
 
 def lost_in(a, b, gaps):
@@ -210,7 +218,8 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
     route_marks_host = re.findall(r"^ROUTE \S+ mark ([A-Za-z0-9_.-]+)$", runlog, re.M)
     route_marks_failed = re.findall(r"^ROUTE \S+ mark ([A-Za-z0-9_.-]+): logcat write FAILED$", runlog, re.M)
 
-    lc, cap_gaps = parse_logcat(os.path.join(rdir, "logcat.txt"))
+    held = re.search(r"^(?:held \S.* for|guest exited after) (\d+)s", runlog, re.M)
+    lc, cap_gaps, open_break = parse_logcat(os.path.join(rdir, "logcat.txt"))
     perf = [(t, PERF.search(msg)) for t, lv, tag, msg in lc if tag == "hakuX-perf"]
     perf = [(t, p) for t, p in perf if p]
     marks = [(t, msg[5:].strip()) for t, lv, tag, msg in lc
@@ -276,6 +285,15 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
                if mark_t is not None and end_t is not None and b > mark_t and a < end_t]
     v["capture_gaps_s"] = [round(b - a, 1) for a, b in in_play][:20]
     v["capture_lost_s"] = round(sum(b - a for a, b in in_play), 1)
+    # A break with nothing after it, and no `soak end`: see CAPTURE GAPS.
+    truncated = open_break is not None and not soak_end
+    v["capture_truncated"] = truncated
+    v["capture_truncated_s"] = None
+    if truncated:
+        start = [t for t, lv, tag, msg in lc if tag == "hakuX-route" and msg.strip() == "soak start"]
+        if start and held:
+            v["capture_truncated_s"] = round(max(0.0, start[0] + int(held.group(1)) - open_break), 1)
+            v["capture_lost_s"] = round(v["capture_lost_s"] + v["capture_truncated_s"], 1)
 
     hang_gaps = []
     if mark_t is not None and flipped_after:
@@ -354,6 +372,13 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
         require = "confirmation" if gameplay_s >= need["confirmation"] else "screening"
     v["pass_kind"] = require
     fails = []
+    if truncated:
+        at = ("%.0f s after the mark" % (open_break - mark_t)) if mark_t is not None \
+            else "before any `mark gameplay` was captured"
+        fails.append("capture: truncated -- the logcat stream broke %s and never resumed%s; "
+                     "what follows judges only the captured part (see LOGCAT: in run.log)"
+                     % (at, (", about %.0f s unseen" % v["capture_truncated_s"])
+                        if v["capture_truncated_s"] is not None else ""))
     if not v["booted"]:
         fails.append("booted: the guest never appeared or never flipped 60 frames")
     if v["reached_gameplay"] is None:
@@ -422,12 +447,13 @@ def main(argv=None):
         json.dump(v, f, indent=2)
     json.load(open(tmp))
     os.replace(tmp, os.path.join(a.rdir, "verdict.json"))
-    print("VERDICT %s %s %s gameplay=%ss fps_ok=%s crash=%s hang=%s audio_short=%s%s%s" % (
+    print("VERDICT %s %s %s gameplay=%ss fps_ok=%s crash=%s hang=%s audio_short=%s%s%s%s" % (
         v["name"] or v["title"] or "?", v["device"] or "?",
         ("PASS " + str(v["rating_candidate"])) if v["pass"] else "FAIL(%s)" % v["failing"],
         v["gameplay_s"], v["fps_ok_share"], v["crash"], v["hang"], v["audio_starve_share"],
         " below_own_target" if v["below_own_target"] else "",
-        (" capture_lost=%ss" % v["capture_lost_s"]) if v["capture_lost_s"] else ""))
+        (" capture_lost=%ss" % v["capture_lost_s"]) if v["capture_lost_s"] else "",
+        " capture_truncated" if v["capture_truncated"] else ""))
     return 0
 
 

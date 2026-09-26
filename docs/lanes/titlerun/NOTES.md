@@ -251,7 +251,7 @@ The contact sheet shows the plane in flight, with the HUD, from the
 ## Audit pass 1 remediation (2026-09-26)
 
 - **M1, capture gaps.** A logcat restart now asks the ring for everything
-  from the last captured stamp (`-T '<stamp>'`), and writes a
+  from the last captured stamp (`-T <stamp>`; pass 2 below), and writes a
   `# hakuX-capture: stream ended` line into logcat.txt. `title_verdict.py`
   reads an exact duplicate line once. A restart whose replay does not reprint
   the last line is a gap. A window that spans a gap is not scored, and a hang
@@ -267,3 +267,22 @@ The contact sheet shows the plane in flight, with the HUD, from the
   three writes and no FAILED.
 - The LOWs are not changed here. L2 (`fps_tolerance = 0.95`) is a policy
   value for the owner.
+
+## Audit pass 2 remediation (2026-09-26)
+
+- **M1, the restart stamp.** `-T "'$last'"` became `-T "$last"`. `adb shell`
+  joins its arguments unescaped, so route.sh's `"'mark x'"` is right, but
+  `adb logcat` escapes each argument itself, and the inner quotes reached
+  logcat's `-T` parser, which rejected them. Every restart after the first
+  drop failed. The selftest's fake adb now parses `-T` the way logcat does
+  and exits on a quoted stamp. The call check asserts the unquoted form, and
+  a soak mutant that restores the quotes must be caught.
+- **M1, a break that never closes.** `parse_logcat` also returns the open
+  break, which is a break line with no line after it. If the capture has no
+  `soak end`, the run is `capture_truncated`. The verdict names
+  `capture: truncated` first, ahead of duration and reached_gameplay, and
+  estimates `capture_truncated_s` from `soak start` plus the hold that
+  run.log reports. That estimate is added to `capture_lost_s`. Fixture
+  `truncated` is the audit's falsifier: the pass run, cut at 300 s, then 31
+  breaks. It now fails as "capture: truncated ... about 462 s unseen", not
+  on duration, and a mutant that ignores the open break must be caught.
