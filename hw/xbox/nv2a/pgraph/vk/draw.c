@@ -3896,6 +3896,16 @@ static void begin_pre_draw_inner(PGRAPHState *pg)
         else if (r->pipeline_state_dirty) { OPT_STAT_INC(sfp_miss_pipe_dirty); sfp_ok = false; }
         else if (r->need_descriptor_rebind) { OPT_STAT_INC(sfp_miss_desc_rebind); sfp_ok = false; }
         else if (r->uniforms_changed)    { OPT_STAT_INC(sfp_miss_uniforms); sfp_ok = false; }
+        /* The fixed-function setters (matrices, texgen, fog, eye, viewport,
+         * lights, materials) raise only these flags and move no generation
+         * tested here, so without this the draw keeps the previous draw's
+         * uniform block (#274). The path a missed draw takes refreshes the
+         * block, which clears them -- except while the bound shader is still
+         * compiling (OPT_ASYNC_COMPILE): the refresh then returns early and
+         * the draw is skipped, so the flags stay set and draws keep missing
+         * here until the shader is ready. */
+        else if (pg->vsh_constants_any_dirty || pg->ltctxa_any_dirty ||
+                 pg->ltctxb_any_dirty || pg->ltc1_any_dirty) { OPT_STAT_INC(sfp_miss_uniforms); sfp_ok = false; }
         else if (r->push_ubo_set_index <= 0 ||
                  (!r->push_descriptors_supported &&
                   r->descriptor_set_index <= 0)) { OPT_STAT_INC(sfp_miss_no_desc); sfp_ok = false; }
