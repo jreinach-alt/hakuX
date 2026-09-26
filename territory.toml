@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 242
-updated_utc = "2026-09-26T09:40:00Z"
+wave = 243
+updated_utc = "2026-09-26T10:15:00Z"
 
 
 [retired.hilodot10]
@@ -330,7 +330,7 @@ note = "RETIRED AT WAVE 97: #99 was closed 2026-09-19T00:20Z as a duplicate of #
 issues = ["282", "283"]
 files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/geom.c", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**"]
 standing = false
-note = "BRIEFED AT TERRITORY WAVE 240, NOT STARTED (job.board, 2026-09-26; `lane.sh start` was refused approval in the board session, so the HOST runs `docs/testing/lane.sh start tiecode282 briefs/tiecode282.md 282`): the code half of #282/#283. The weight-binade tie rule now holds on three geometries (PR #314 checkerboard, PR #376 Texture_render_target row 240: 6,108/6,108, PR #378 Volume texture: 6,496/6,496) and no lane implements it. Brief briefs/tiecode282.md. psh.c is released at ready by lane.fog278 (PR #373) and touched by PR #367: the brief says merge master or those branches and re-run the arm before marking ready. geom.c released by lane.vkpointsize34 (PR #371)."
+note = "STARTED BY THE HOST (seen by job.board wave 243, 2026-09-26T10:15Z): draft PR #379 on lane/tiecode282, mergeable state CONFLICTING against master (handback owns the resume; not a board action). PRIOR: BRIEFED AT TERRITORY WAVE 240, NOT STARTED (job.board, 2026-09-26; `lane.sh start` was refused approval in the board session, so the HOST runs `docs/testing/lane.sh start tiecode282 briefs/tiecode282.md 282`): the code half of #282/#283. The weight-binade tie rule now holds on three geometries (PR #314 checkerboard, PR #376 Texture_render_target row 240: 6,108/6,108, PR #378 Volume texture: 6,496/6,496) and no lane implements it. Brief briefs/tiecode282.md. psh.c is released at ready by lane.fog278 (PR #373) and touched by PR #367: the brief says merge master or those branches and re-run the arm before marking ready. geom.c released by lane.vkpointsize34 (PR #371)."
 
 [lane.blinx372b]
 issues = ["372"]
@@ -350,7 +350,7 @@ note = "DISPATCHED AT TERRITORY WAVE 241 (job.board, 2026-09-26T09:40Z), briefs/
 issues = ["382"]
 files = ["docs/lanes/fps382/**", "docs/testing/predictions/fps382-*.json"]
 standing = false
-note = "BRIEFED AT TERRITORY WAVE 242, NOT STARTED (job.board, 2026-09-26; `lane.sh start` was refused approval in the board session, so the HOST runs `docs/testing/lane.sh start fps382 briefs/fps382.md 382`), briefs/fps382.md: #382 50 Cent: Bulletproof intro FMV ~14 fps on the Nova (9 fps for 120 s, 29 fps after). Separate content pacing from emulator cost, name the resource that differs between the 9 and 29 fps windows. No hw/ file granted; reuses lane.blinx372/blinx372b perflog tooling."
+note = "STARTED BY THE HOST (seen by job.board wave 243, 2026-09-26T10:15Z): draft PR #385 on lane/fps382, unit active; issue #382 labelled lane:fps382. PRIOR: BRIEFED AT TERRITORY WAVE 242, NOT STARTED (job.board, 2026-09-26; `lane.sh start` was refused approval in the board session, so the HOST runs `docs/testing/lane.sh start fps382 briefs/fps382.md 382`), briefs/fps382.md: #382 50 Cent: Bulletproof intro FMV ~14 fps on the Nova (9 fps for 120 s, 29 fps after). Separate content pacing from emulator cost, name the resource that differs between the 9 and 29 fps windows. No hw/ file granted; reuses lane.blinx372/blinx372b perflog tooling."
 
 [free]
 # RELEASED (job.board wave 240) by retiring lanes boardprio (PR #358), indexloc (#360), foldflow (#356), statuspage (#354), titlerun (#307), cullnf276 (#368), blinx372 (#374), brdf315b (#375), tie282c (#376), regs200 (#377), vol283r (#378): every file each row held. CLAIMED the same wave: psh.c + geom.c -> lane.tiecode282; dispatcher.sh -> lane.blinx372b.
