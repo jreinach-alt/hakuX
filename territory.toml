@@ -1144,13 +1144,13 @@ note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tic
 issues = ["276"]
 files = ["hw/xbox/nv2a/pgraph/pgraph.c", "hw/xbox/nv2a/nv2a_regs.h", "docs/testing/predictions/cullnf276-*.json", "docs/lanes/cullnf276/**"]
 standing = false
-note = "BRIEFED AT WAVE 232, NOT STARTED (job.board, 2026-09-26T06:15Z; `lane.sh start` needs approval the non-interactive board session cannot get, a third tick running -- the HOST runs `docs/testing/lane.sh start <lane> briefs/<lane>.md <issue>`; the row holds its files meanwhile) for #276's code half: lane.zclamp276 (PR #323, analysis) found CULL_NEAR_FAR_EN (bit 0 of SET_ZMIN_MAX_CONTROL) dropped by pgraph.c and priced the hunk (docs/lanes/zclamp276/nearfar_cull.diff, 143,673 px beyond one step -> 0). pgraph.c came free when lane.sphere273fix retired this wave; nv2a_regs.h was free. glsl/psh.h (one field) and glsl/psh.c (state capture ~:309, clip block ~:2553) are LENT from lane.pshqueue, disjoint from its fog/DOT_ZW/G8B8/BRDF hunks (the wave-200 and wave-222 lend precedent); they stay on pshqueue's row. Brief: briefs/cullnf276.md."
+note = "BRIEFED AT WAVE 232 (job.board, 2026-09-26T06:15Z), STARTED BY THE HOST (draft PR #368) for #276's code half: lane.zclamp276 (PR #323, analysis) found CULL_NEAR_FAR_EN (bit 0 of SET_ZMIN_MAX_CONTROL) dropped by pgraph.c and priced the hunk (docs/lanes/zclamp276/nearfar_cull.diff, 143,673 px beyond one step -> 0). pgraph.c came free when lane.sphere273fix retired this wave; nv2a_regs.h was free. glsl/psh.h (one field) and glsl/psh.c (state capture ~:309, clip block ~:2553) are LENT from lane.pshqueue, disjoint from its fog/DOT_ZW/G8B8/BRDF hunks (the wave-200 and wave-222 lend precedent); they stay on pshqueue's row. Brief: briefs/cullnf276.md."
 
 [lane.y16bump10]
 issues = ["10"]
 files = ["docs/testing/predictions/y16bump10-*.json", "docs/lanes/y16bump10/**"]
 standing = false
-note = "BRIEFED AT WAVE 232, NOT STARTED (job.board, 2026-09-26T06:15Z; `lane.sh start` needs approval the non-interactive board session cannot get, a third tick running -- the HOST runs `docs/testing/lane.sh start <lane> briefs/<lane>.md <issue>`; the row holds its files meanwhile) for #10's Y16 class, on lane.xbox's silicon measurements (PR #359 low byte feeds an offset; PR #363 the HORIZONTAL offset reads the low byte, the vertical offset shows no sweep). glsl/psh.c is LENT from lane.pshqueue for the Y16 bump read only (append_bump_channel, ~:1725-1830), disjoint from its fog/DOT_ZW/G8B8/BRDF hunks; it stays on pshqueue's row. YUV and Y8/AY8/A8Y8 have no mechanism and are not touched. Brief: briefs/y16bump10.md."
+note = "BRIEFED AT WAVE 232 (job.board, 2026-09-26T06:15Z), STARTED BY THE HOST (draft PR #367) for #10's Y16 class, on lane.xbox's silicon measurements (PR #359 low byte feeds an offset; PR #363 the HORIZONTAL offset reads the low byte, the vertical offset shows no sweep). glsl/psh.c is LENT from lane.pshqueue for the Y16 bump read only (append_bump_channel, ~:1725-1830), disjoint from its fog/DOT_ZW/G8B8/BRDF hunks; it stays on pshqueue's row. YUV and Y8/AY8/A8Y8 have no mechanism and are not touched. Brief: briefs/y16bump10.md."
 
 
 [lane.cloud-audit1-347]
@@ -1158,3 +1158,9 @@ issues = []
 files = []
 standing = false
 note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit1-347, audit pass 1 of PR #347 on branch lane/pshqueue, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit1 347` removes this row when the unit ends."
+
+[lane.vkpointsize34]
+issues = ["34"]
+files = ["hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/glsl/geom.h", "hw/xbox/nv2a/pgraph/vk/instance.c", "docs/testing/predictions/vkpointsize34-*.json", "docs/lanes/vkpointsize34/**"]
+standing = false
+note = "DISPATCHED AT WAVE 233 (job.board, 2026-09-26T06:40Z) for #34's one Adreno VUID (pCode-08740, GeometryPointSize without shaderTessellationAndGeometryPointSize): gate the three gl_PointSize writes in glsl/geom.c on the enabled feature. geom.c and vk/instance.c came free when lane.wparamclip223 (PR #250) folded. Findings 1-4 of the issue body are not in this lane. Brief: briefs/vkpointsize34.md."
