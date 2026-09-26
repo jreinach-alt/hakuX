@@ -92,3 +92,12 @@ the anchored `^queued <id>$` line. Do not loosen it back.
   the host's; change them in both homes with a reason.
 - Writing `pilots/<requester>.ok` from a lane: use python3; the lane sandbox
   blocks Write/cp into the dispatch dir.
+
+## Attempt 2 (2026-09-26): why attempt 1 did not finish
+
+Attempt 1's work was complete, audited (pass 2 clean) and pushed at
+`c048e73280`; it did not fold because its CI ran before `master` moved, so
+the red was a verdict on a stale base, not on this work. This worktree was
+also 63 commits behind its own remote branch (the audit commits). Attempt 2
+fast-forwarded to `origin/lane/pilotgate`, merged `origin/master` (clean, no
+conflicts) and re-ran the selftest; no change to the gate itself.
