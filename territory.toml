@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 251
+wave = 252
 updated_utc = "2026-09-26T14:14:00Z"
 
 [retired.hilodot10]
@@ -206,6 +206,11 @@ files = []
 standing = false
 retired_utc = "2026-09-26T09:10:00Z"
 note = "RETIRED (job.board wave 240): PR #356 MERGED 2026-09-26T06:10:56Z, no open PR on lane/foldflow, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: STARTED (host session, 2026-09-26T05:00Z), briefs/foldflow.md: owner asked why 31 dispatchable issues sat idle under a 24-lane cap. fold.sh waited forever on 'CI is NONE' for four index-only-conflicting PRs holding the hot files; it must repair index-only conflicts itself, hand code conflicts back the same tick, and fold up to 3 disjoint PRs per tick. fold.sh was unclaimed."
+[lane.nightlynotes]
+issues = []
+files = ["docs/testing/nightly_build.sh", "docs/testing/jobs/selftest.d/86-nightly-notes.sh", "docs/lanes/nightlynotes/**"]
+note = "STARTED (host session, 2026-09-26 07:50 PDT), briefs/nightlynotes.md: the nightly notes list 563 raw commits incl. 'NOT FOR MERGE', 'arm scaffolding', 'remediate: audit pass' -- process commentary in public text (owner's standing order). One user-facing line per merged emulator PR, grouped by player impact; regenerate nightly-2026-09-26 in place. Files were unclaimed."
+
 [lane.titleplay]
 issues = ["397"]
 files = ["docs/testing/titles/routes/**", "docs/testing/titles/targets.toml", "docs/testing/title_verdict.py", "docs/testing/titles/table.py", "docs/lanes/titleplay/**"]
