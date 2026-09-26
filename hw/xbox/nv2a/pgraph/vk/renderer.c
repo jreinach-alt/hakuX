@@ -61,8 +61,10 @@ typedef struct {
  * enum VALUE counts: 2 is PRIM_TYPE_TRIANGLES_ADJACENCY (#224). Persisted
  * geometry-shader keys carrying it abort any build without the case at
  * startup (geom.c's default: assert), so builds on either side of it must
- * see different versions and wipe the cache rather than regenerate it. */
-#define SHADER_STATE_LAYOUT_VERSION 2
+ * see different versions and wipe the cache rather than regenerate it.
+ * 3 is VshState/GeomState.aa_offset_x (#286): a key stored without it would
+ * regenerate as a non-CC2 shader for a CC2 draw. */
+#define SHADER_STATE_LAYOUT_VERSION 3
 
 static void remove_directory_recursive(const char *path)
 {

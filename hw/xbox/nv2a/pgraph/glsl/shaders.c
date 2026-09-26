@@ -124,7 +124,8 @@ bool pgraph_glsl_check_shader_state_dirty(PGRAPHState *pg,
         pg->compressed_attrs != state->vsh.compressed_attrs ||
         pg->primitive_mode != state->geom.primitive_mode ||
         pg->surface_scale_factor != state->vsh.surface_scale_factor ||
-        pg->surface_shape.zeta_format != state->psh.surface_zeta_format) {
+        pg->surface_shape.zeta_format != state->psh.surface_zeta_format ||
+        pgraph_anti_aliasing_sample_offset_x(pg) != state->vsh.aa_offset_x) {
         return true;
     }
 

@@ -2509,8 +2509,19 @@ DEF_METHOD(NV097, SET_SURFACE_FORMAT)
         pg->non_dynamic_reg_gen++;
         pg->any_reg_gen++;
     }
+    /*
+     * The vertex and geometry shaders carry the mode's sample shift
+     * (pgraph_anti_aliasing_sample_offset_x), so a change must reach
+     * pgraph_vk_bind_shaders()'s cached-state path the way zeta's does.
+     */
+    uint32_t old_anti_aliasing = pg->surface_shape.anti_aliasing;
     pg->surface_shape.anti_aliasing =
         GET_MASK(parameter, NV097_SET_SURFACE_FORMAT_ANTI_ALIASING);
+    if (pg->surface_shape.anti_aliasing != old_anti_aliasing) {
+        pg->shader_state_gen++;
+        pg->non_dynamic_reg_gen++;
+        pg->any_reg_gen++;
+    }
     pg->surface_shape.log_width =
         GET_MASK(parameter, NV097_SET_SURFACE_FORMAT_WIDTH);
     pg->surface_shape.log_height =
