@@ -18,8 +18,11 @@ which hid the sign on both counts.
    +1; the existing clamp then gives 0/1), applied to oD0/oB0/oD1/oB1 in place
    of `NaNToOne`. `NaNToOne` stays, because `_MUL`'s zero test still uses it.
 2. `glsl/vsh-prog.c` `_MUL`: after the anything-times-zero forcing, a NaN
-   product becomes +NaN (0x7FC00000). `_MAD` inherits it. `_ADD`, `_DP*`,
-   `_MIN/_MAX` are unchanged and unmeasured, because no capture feeds them a NaN.
+   product becomes +NaN (0x7FC00000). After audit pass 1 (MEDIUM-1) this is
+   one helper, `_PosNaN`, applied to every op that computes a new value:
+   `_MUL`, `_ADD`, `_MAD` after the add, `_DP3/_DPH/_DP4`, DST's product,
+   and the ILU ops `RCP/RCC/RSQ/EXP/LOG/LIT`. `_MOV`, `_MIN` and `_MAX`
+   return an operand and keep its sign.
 
 Part 1 alone would turn the x1.0/x+-INF/x+-NaNq columns into "whatever sign
 the host propagates". Part 2 alone does nothing. The arm tests both together.
@@ -95,3 +98,27 @@ and the result dirs, recorded them here, and marked the PR ready.
 - Do not tune the prediction to the arm's figure. 6,223/6,283 is the model.
 - Before calling a leg held, read scores1.tsv `status` for `unreadable` and the
   run log for PARTIAL COVERAGE.
+
+## Remediation of audit pass 1 (a6227fea68)
+
+MEDIUM-1: with only `_MUL` forced positive, a -NaN out of `_ADD`, the add
+half of `_MAD`, or `_DP*` reached the sign-reading colour map with the
+host's sign. That drew black where master drew white, and nothing had
+measured it. Choice: keep the sign reading and make every computing op's
+NaN +NaN. For those ops this is exactly master's output (white), and it
+agrees with the one measured model (an arithmetic NaN is positive). The
+ILU ops get the same treatment for the same reason. Silicon's only ILU NaN
+row, `rcp(NaN)=nan` (xbox-vsh-silicon-2026-09-25.md), prints no sign, so
+it neither supports this nor contradicts it. The sign is visible nowhere
+except the colour clamp: `geom.c` and fog test `isnan`, and comparisons,
+`min/max` and `mul` all give the same result for either sign.
+
+This is unmeasured beyond the Attrib float disc. No capture feeds these ops
+a NaN, so the prediction was re-registered unchanged on b_ref a6227fea68.
+Its job is to catch a GLSL compile failure, which would blank every capture
+and fail the 0-px legs. This host has no GLSL validator.
+
+LOW-1 (FF lighting accumulation reads the host's sign) is left as is.
+vsh-ff.c does not include the program header, and no capture produces a
+NaN FF colour. LOW-2 (the "`_MAD` inherits it" wording) is fixed in the PR
+body.
