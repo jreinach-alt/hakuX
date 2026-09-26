@@ -1162,12 +1162,6 @@ standing = false
 note = "GRANTED (hostops, 2026-09-26T07:10Z) on the lane's #371 ask (06:56Z): + hw/xbox/nv2a/pgraph/vk/shaders.c (from [free]; set no_point_size in shader_binding_build_module_keys) and hw/xbox/nv2a/pgraph/vk/renderer.c (unclaimed; SHADER_STATE_LAYOUT_VERSION 2 -> 3 so persisted GS keys regenerate). vk/instance.c RELEASED to [free] at the lane's word. lane.remote's deferred #343 LOW-1/2 (needs vk/shaders.c) waits for this row to release it. PRIOR: BRIEFED AT WAVE 233, NOT STARTED (job.board, 2026-09-26T06:40Z; `lane.sh start` needs approval the non-interactive board session cannot get -- the HOST runs `docs/testing/lane.sh start vkpointsize34 briefs/vkpointsize34.md 34`; the row holds its files meanwhile) for #34's one Adreno VUID (pCode-08740, GeometryPointSize without shaderTessellationAndGeometryPointSize): gate the three gl_PointSize writes in glsl/geom.c on the enabled feature. geom.c and vk/instance.c came free when lane.wparamclip223 (PR #250) folded. Findings 1-4 of the issue body are not in this lane. Brief: briefs/vkpointsize34.md."
 
 
-[lane.cloud-audit1-307]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit1-307, audit pass 1 of PR #307 on branch lane/titlerun, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit1 307` removes this row when the unit ends."
-
 [lane.fog278]
 issues = ["278"]
 files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "docs/testing/predictions/fog278-*.json", "docs/lanes/fog278/**"]
