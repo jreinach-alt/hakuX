@@ -3659,10 +3659,10 @@ title = "Pixel shader: DOT_ZW draws the whole quad one wrong colour (65,536 px)"
 component = "pgraph"
 disposition = "defect"
 suites = ["Pixel shader"]
-status = "open"
-dispatch_state = "available"
+status = "fixed"
+dispatch_state = "done"
 blocked_on = ""
-status_note = "BOARD 2026-09-26T03:30Z: lane.pshqueue dispatched (briefs/pshqueue.md) to land this hunk in glsl/psh.c, lent alongside lane.wbufdepth24's D24 hunk. PRIOR: BOARD 2026-09-25T21:50Z: lane.cloud-279 REPORTED (PR #320, analysis, CI green, labelled fold-ready). The whole-quad colour is a Z16 depth buffer read back as R5G6B5; the defect is a missing depth write in psh.c's DOT_ZW case (FIXME at :3141-3148). Rule D = floor(dot1/dot2) in raw depth-word units at NV2A pixel centres: 99.79% exact / 100% within 1 against the golden (137 misses are float32 ULP). Hunk for a grant is in docs/lanes/cloud-279/NOTES.md; psh.c is held (lane.wbufdepth24, lane.texvol283, lane.wbuf31sel) -- a code lane follows when it frees. PRIOR: FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
+status_note = "FIXED (hostops, 2026-09-26T07:25Z): PR #347 (lane.pshqueue) folded as 6550967a5e; #279 arm PASS 9/9 (pshqueue-279-dotzw.json). fixed-verified waits for a post-fold sweep on master. PRIOR: BOARD 2026-09-26T03:30Z: lane.pshqueue dispatched (briefs/pshqueue.md) to land this hunk in glsl/psh.c, lent alongside lane.wbufdepth24's D24 hunk. PRIOR: BOARD 2026-09-25T21:50Z: lane.cloud-279 REPORTED (PR #320, analysis, CI green, labelled fold-ready). The whole-quad colour is a Z16 depth buffer read back as R5G6B5; the defect is a missing depth write in psh.c's DOT_ZW case (FIXME at :3141-3148). Rule D = floor(dot1/dot2) in raw depth-word units at NV2A pixel centres: 99.79% exact / 100% within 1 against the golden (137 misses are float32 ULP). Hunk for a grant is in docs/lanes/cloud-279/NOTES.md; psh.c is held (lane.wbufdepth24, lane.texvol283, lane.wbuf31sel) -- a code lane follows when it frees. PRIOR: FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
 impact_px = 65536
 impact_onestep_px = 0
 impact_basis = "2026-09-25 inventory (host session): high: one capture, the whole quad a single wrong colour"
@@ -3743,10 +3743,10 @@ title = "Surface format: Fmt_G8B8 differs (31,820 px)"
 component = "pgraph"
 disposition = "defect"
 suites = ["Surface format"]
-status = "open"
-dispatch_state = "available"
+status = "fixed"
+dispatch_state = "done"
 blocked_on = ""
-status_note = "BOARD 2026-09-26T03:30Z: lane.pshqueue dispatched (briefs/pshqueue.md) to land this hunk in glsl/psh.c, lent alongside lane.wbufdepth24's D24 hunk. PRIOR: BOARD 2026-09-26T00:35Z: lane.g8b8285 REPORTED (PR #324 folded): live defect, the stored B byte comes from src.r where silicon uses src.b (15 px vs 16,399 offline). Hunk docs/lanes/g8b8285/g8b8-bswap.diff (passes -fsyntax-only); queued in briefs/pshqueue.md, dispatch when PR #268 folds. PRIOR: BOARD 2026-09-25T21:50Z: lane.g8b8285 dispatched (classify first: defect / stale capture / golden; no mechanism named; briefs/g8b8285.md). PRIOR: FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
+status_note = "FIXED (hostops, 2026-09-26T07:25Z): PR #347 (lane.pshqueue) folded as 6550967a5e; #285 arm PASS 89/89 (pshqueue-285-g8b8.json). fixed-verified waits for a post-fold sweep on master. PRIOR: BOARD 2026-09-26T03:30Z: lane.pshqueue dispatched (briefs/pshqueue.md) to land this hunk in glsl/psh.c, lent alongside lane.wbufdepth24's D24 hunk. PRIOR: BOARD 2026-09-26T00:35Z: lane.g8b8285 REPORTED (PR #324 folded): live defect, the stored B byte comes from src.r where silicon uses src.b (15 px vs 16,399 offline). Hunk docs/lanes/g8b8285/g8b8-bswap.diff (passes -fsyntax-only); queued in briefs/pshqueue.md, dispatch when PR #268 folds. PRIOR: BOARD 2026-09-25T21:50Z: lane.g8b8285 dispatched (classify first: defect / stale capture / golden; no mechanism named; briefs/g8b8285.md). PRIOR: FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
 impact_px = 3182
 impact_onestep_px = 0
 impact_basis = "2026-09-25 inventory (host session): low: 0-31,820; one capture, no mechanism named; expected 10% of the ceiling"
