@@ -165,3 +165,22 @@ Waiting and blocked: CI on the head (aa805678dd or later), and the `vk/draw.c` g
 `board-requests/aasample.md`; asked on PR #264). On a resume with the grant, apply
 `draw-c-viewport.patch`, commit and push it, then register the section 4 arm on
 those refs. Do not rebase after that.
+
+## Session 2 (2026-09-26, resumed by job.handback)
+
+**Why session 1 did not finish.** It ended correctly, waiting on two things:
+CI on the head, and the `vk/draw.c` grant. It left the PR in draft, though. A
+draft is skipped by the board and the fold, so nothing could act on it.
+
+**This session.** CI was green on `337f0b5632`. The grant has **not** landed:
+`vk/draw.c` is still lane.vtxarr262's on `origin/board`. Master had moved 110
+commits and conflicted only in the generated `nv2a_index.json`. I merged
+master in (no rebase) and rebuilt the index against the pinned tests tree
+(`6743b6ab16`). `check` passes. `draw-c-viewport.patch` still applies cleanly,
+and the line numbers in section 2 are unchanged.
+
+The PR is marked ready as an analysis and helper PR with `Prediction: none`.
+Folding it is safe: the helper is unused, so no binary changes. The arm in
+section 4 is owed by whoever applies `draw-c-viewport.patch`: this lane with
+the grant, or lane.vtxarr262 carrying it in PR #264. Register it after that
+commit, on those refs.
