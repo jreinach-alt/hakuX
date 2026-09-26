@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 234
-updated_utc = "2026-09-26T06:35:00Z"
+wave = 235
+updated_utc = "2026-09-26T07:10:00Z"
 
 
 [retired.hilodot10]
@@ -208,7 +208,9 @@ note = "RETIRED (job.board, board tick wave 146), decision-needed #213 decided b
 [lane.statusdash]
 issues = []
 files = ["docs/testing/jobs/status.sh", "docs/testing/jobs/board-status.sh", "docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/62-status-freshness.sh", "docs/testing/jobs/selftest.d/63-status-lanes.sh", "docs/lanes/statusdash/**"]
-note = "STARTED (host session, 2026-09-26 ~22:15 PDT), briefs/statusdash.md: owner -- #107 is the wrong tool (304 renamed events in 7 days; roll-up at the bottom). Build a GitHub Pages dashboard (orphan gh-pages, one commit, <= 1 push / 10 min, meta refresh 60 s, Pacific time, NEEDS ATTENTION first) and turn #107 into a pinned pointer (no more per-tick title PATCH). status.sh/board-status.sh released at ready from lane.statuspage (PR #354 ready)."
+released = ["docs/testing/jobs/status.sh", "docs/testing/jobs/board-status.sh", "docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/62-status-freshness.sh", "docs/testing/jobs/selftest.d/63-status-lanes.sh", "docs/lanes/statusdash/**"]
+released_at_ready = 362
+note = "RELEASED AT READY (job.board wave 235): PR #362 is out of draft, CI green, unit gone, and already fold-ready; its files are free for the next lane. STARTED (host session, 2026-09-26 ~22:15 PDT), briefs/statusdash.md: owner -- #107 is the wrong tool (304 renamed events in 7 days; roll-up at the bottom). Build a GitHub Pages dashboard (orphan gh-pages, one commit, <= 1 push / 10 min, meta refresh 60 s, Pacific time, NEEDS ATTENTION first) and turn #107 into a pinned pointer (no more per-tick title PATCH). status.sh/board-status.sh released at ready from lane.statuspage (PR #354 ready)."
 
 [lane.boardprio]
 issues = []
@@ -1123,8 +1125,10 @@ note = "RETIRED (job.board, board tick 2026-09-26T06:10Z): PR #335 MERGED 2026-0
 [lane.pshqueue]
 issues = ["278", "279", "285", "315"]
 files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/psh.h", "docs/testing/predictions/pshqueue-*.json", "docs/lanes/pshqueue/**", "hw/xbox/nv2a/pgraph/vk/texture.c"]
+released = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/psh.h", "docs/testing/predictions/pshqueue-*.json", "docs/lanes/pshqueue/**", "hw/xbox/nv2a/pgraph/vk/texture.c"]
+released_at_ready = 347
 standing = false
-note = "DISPATCHED AT WAVE 222 (job.board, 2026-09-26T03:30Z). Four already-written glsl/psh.c hunks, one commit and one arm each: #278 fog INF (85k px), #279 DOT_ZW (65k), #285 G8B8 (32k), #315 BRDF (1.8k); #271's read side is skipped while vk/texture.c is lane.remote's. glsl/psh.c is LENT, not transferred: it stays lane.wbufdepth24's for its D24 write (case DEPTH_FORMAT_D24, ~:3698, PR #268, arm PASS 530/530, marked ready this tick); pshqueue's hunks are disjoint from it (~:1891, the DOT_ZW case, get_sampler_type), the wave-200 lend to texvol283 precedent. Granted with it: glsl/psh.h (free since texvol283 folded). psh.c is not on the Files line because check_territory allows one holder per file; the lend is this note. Brief: briefs/pshqueue.md. (hostops, 2026-09-26T03:35Z): psh.h dropped from [free] (it was granted here). #278 decision: glsl/vsh.c passes to this lane when PR #336 (lane.nanfix281) folds; #278 lands both halves (psh.c exemption + vsh.c flag) as one commit then. Not routed to nanfix281, whose PR is already in audit. #271 still waits for vk/texture.c. TICK 2026-09-26T05:20Z (job.board): [job.arms] VERDICT for #315 (pshqueue-315-brdf.json) is FAIL -- 1 of 30 checks violated; #279 and #285 PASS. PR #347 is `regressed` + `blocked:needs-owner` (handback DRAFT_STRAND_MAX spent while the lane waited on the arm; those resumes did not spend attempts). The lane's own stated plan for a FAIL stands: revert e3b13f5b45 in a new commit, record the Texture_BRDF figures, mark ready -- so the lane is resumed with the verdict (brief addendum), not escalated. #278 still waits for PR #336. HOSTOPS 2026-09-26T06:35Z: + hw/xbox/nv2a/pgraph/vk/texture.c for #271 (PASS-ON from lane.remote on PR #343's fold, 06:22Z). Owe it back to lane.remote for #343's LOW-1/2 follow-up when #271 lands."
+note = "RELEASED AT READY (job.board wave 235, 2026-09-26): PR #347 is out of draft, CI green on d0bd15f56d, unit gone, and fold-ready (audit 2 passed); psh.c, psh.h and vk/texture.c are free for the next lane -- a brief on them names PR #347 and says: merge master (or lane/pshqueue if #347 has not folded) and re-run the arm before marking ready. lane.cullnf276 and lane.y16bump10 already edit psh.c under the lend below. #271 (vk/texture.c) and #278 (needs vsh.c from PR #336) still queue behind this row's own work. DISPATCHED AT WAVE 222 (job.board, 2026-09-26T03:30Z). Four already-written glsl/psh.c hunks, one commit and one arm each: #278 fog INF (85k px), #279 DOT_ZW (65k), #285 G8B8 (32k), #315 BRDF (1.8k); #271's read side is skipped while vk/texture.c is lane.remote's. glsl/psh.c is LENT, not transferred: it stays lane.wbufdepth24's for its D24 write (case DEPTH_FORMAT_D24, ~:3698, PR #268, arm PASS 530/530, marked ready this tick); pshqueue's hunks are disjoint from it (~:1891, the DOT_ZW case, get_sampler_type), the wave-200 lend to texvol283 precedent. Granted with it: glsl/psh.h (free since texvol283 folded). psh.c is not on the Files line because check_territory allows one holder per file; the lend is this note. Brief: briefs/pshqueue.md. (hostops, 2026-09-26T03:35Z): psh.h dropped from [free] (it was granted here). #278 decision: glsl/vsh.c passes to this lane when PR #336 (lane.nanfix281) folds; #278 lands both halves (psh.c exemption + vsh.c flag) as one commit then. Not routed to nanfix281, whose PR is already in audit. #271 still waits for vk/texture.c. TICK 2026-09-26T05:20Z (job.board): [job.arms] VERDICT for #315 (pshqueue-315-brdf.json) is FAIL -- 1 of 30 checks violated; #279 and #285 PASS. PR #347 is `regressed` + `blocked:needs-owner` (handback DRAFT_STRAND_MAX spent while the lane waited on the arm; those resumes did not spend attempts). The lane's own stated plan for a FAIL stands: revert e3b13f5b45 in a new commit, record the Texture_BRDF figures, mark ready -- so the lane is resumed with the verdict (brief addendum), not escalated. #278 still waits for PR #336. HOSTOPS 2026-09-26T06:35Z: + hw/xbox/nv2a/pgraph/vk/texture.c for #271 (PASS-ON from lane.remote on PR #343's fold, 06:22Z). Owe it back to lane.remote for #343's LOW-1/2 follow-up when #271 lands."
 
 [retired.boardprio]
 issues = []
