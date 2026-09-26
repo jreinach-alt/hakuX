@@ -26,14 +26,14 @@ thread's time reaches the frame roughly one for one until the renderer, busy
 
 | # | lever | owner | expected gain | grade | evidence |
 |---|---|---|---|---|---|
-| 1 | **Pin the vCPU thread to the X3 prime core** (`HAKUX_PLACE_VCPU=prime`) | this lane, prototype 2 | **-18% frame time predicted**, band -5% to -35% | H, arm queued | vCPU on the X3 for only 15.2% of samples, 123 core changes/s (M, section 4); arm `perfarch-vcpu-prime.json` |
+| 1 | **Pin the vCPU thread to the X3 prime core** (`HAKUX_PLACE_VCPU=prime`) | this lane, prototype 2 | registered at -18% (band -5% to -35%); **re-bounded at 3-9% of vCPU time** | B, arm queued | 09-11 Crimson: vCPU on the X3 15.2% (M, 4.1). 09-25 Galleon at the arm's apk: **72%** (M, 8.1). Arm `perfarch-vcpu-prime.json` |
 | 2 | Stop code-write invalidation and dirty re-arm churn | lane.tcgchurn (#309) | up to 26% of vCPU time is this mechanism | M share, B gain | section 2 |
 | 3 | TB lookup: fewer jump-cache flushes, inline indirect-branch probe | lane.tcgchurn (flushes); codegen follow-up | up to 13.6% of vCPU time | M share, B gain | section 3 |
 | 4 | Host build: native ELF TLS (minSdk 29), inline LSE atomics, no intra-library PLT | build owner (outside every lane's files) | up to 4.4% of vCPU time, 3.7% of PFIFO time | M share, B gain | section 3.3 |
-| 5 | I-cache maintenance: patch-free TB chaining | this lane | about a third of 4.0% of vCPU time | M share, B gain; `CTR_EL0` pending | section 2.2 |
+| 5 | I-cache maintenance: patch-free TB chaining | this lane | about a third of 4.0% of vCPU time | M share, B gain; IDC=1 DIC=0 measured, 209 ns per 4-byte flush on the X3 | sections 2.2, 8.1 |
 | 6 | Renderer: split capture from translation (`RCMD_DRAW`, submit worker) | renderer lane | Crimson frame bounded at 41.5 ms (+21% fps) today; more once 1-3 land | B | `frame-pacing-and-parallelism.md` section 4 |
 | 7 | Run ahead with copy-on-write snapshots instead of holding the guest (#44 class) | future lane | removes the skew bound's cost: Galleon ceiling 13 -> 29 gfps with the fix on | H | section 6 |
-| 8 | x86-TSO from RCpc (`HAKUX_TCG_TSO=rcpc`) | this lane, prototype 1 | a **cost**, predicted +4% (band +1% to +12%) | H, arm queued | section 1; arm `perfarch-tso-rcpc-cost.json` |
+| 8 | x86-TSO from RCpc (`HAKUX_TCG_TSO=rcpc`) | this lane, prototype 1 | a **cost**, predicted +4% (band +1% to +12%); micro-mix +0% on the X3, +28% on an A715 | M micro; **B1 did not boot under rcpc**, B2 running | sections 1, 8.1, 8.2; arm `perfarch-tso-rcpc-cost.json` |
 | 9 | Order GPU->CPU sync writes on the vCPU thread (`run_on_cpu`) | pgraph owner | about 0 fps; closes the one ordering gap that is real today | H | section 1.3 |
 
 Items 1, 2 and 4 compound: they act on different parts of the same thread.
@@ -198,9 +198,8 @@ thread. The texture poll rate has since fallen from about 1,480 per frame
 - **IDC=1** skips the D-cache clean.
 - **DIC=1** skips `IC IVAU`.
 
-What these cores report is being read by the `HAKUX_HOSTBENCH` survey, from
-every CPU (**pending**). The public TRMs for the X3, A715, A710 and A510
-suggest IDC=1 and DIC=0 (**H**). In that case what remains is `IC IVAU` per
+The `HAKUX_HOSTBENCH` survey read it on every core: **IDC=1, DIC=0** (M,
+section 8.1). So what remains is `IC IVAU` per
 64-byte line, then `DSB ISH` and `ISB`. The `IC IVAU` is broadcast to all
 eight cores' instruction caches.
 
@@ -335,8 +334,9 @@ gain is. The rest belongs to the files that create those threads.
 A handheld's sustained fps is decided by the prime core's clock after
 minutes, not seconds. The `HAKUX_TOPO` sampler reports each policy's
 `scaling_cur_freq` (mean, min, max) and its `scaling_max_freq` cap every 10 s,
-plus the thermal zones and GPU clock where the app may read them. It is
-**pending** on the survey run and on both arms of prototype 2. The
+plus the thermal zones and GPU clock where the app may read them. The survey
+run found no throttling in 240 s (section 8.1). Both arms of prototype 2 are
+queued. The
 prototype's P3 leg compares the late half of each run with its early half. A
 240 s soak does not reach thermal equilibrium, so a pass is necessary and a
 20-minute soak is the follow-up.
@@ -489,5 +489,89 @@ and the build host.
 
 ## 8. Results
 
-*Pending: the survey (`1790369070-perfarch-2147739`) and eight arm runs are
-queued on the Nova at `9181cb4c13` and `5f4abcc368`.*
+### 8.1 Host survey (M, Nova, `1790369070-perfarch-2147739`)
+
+Galleon, 240 s, `9181cb4c13` (apk `2d7521670420`), `HAKUX_HOSTBENCH=1
+HAKUX_TOPO=100,10`. Read with `tools/bench/hostbench_report.py`. The bench
+could not pin itself to cpu6, so that core has no ISA row. The sampler saw
+threads run on it.
+
+**Cores and `CTR_EL0`.** cpu0-2 are A510 (`0xd46`), cpu3-4 A715 (`0xd4d`),
+cpu5 A710 (`0xd47`) and cpu7 X3 (`0xd4e`). Every readable core reports
+**IDC=1, DIC=0**. So I-cache maintenance cannot be skipped: `IC IVAU` per line
+plus `DSB; ISB` stays. The patch-free chaining design in 2.2 stands.
+`flush_idcache_range` of 4 bytes costs **209 ns on the X3** (177 on an A715,
+157-161 on an A510), and 4 KB costs 608 ns.
+
+**Ordering instructions, ns per op (throughput):**
+
+| core | LDR | LDAPR | STR | STLR | DMB ISH | mix plain | mix rcpc | mix revert |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| X3 (cpu7) | 0.122 | 0.107 | 0.473 | 0.315 | 2.27 | 0.921 | **0.902** | 7.23 |
+| A715 (cpu3) | 0.182 | 0.182 | 0.357 | 1.077 | 5.02 | 0.989 | 1.271 | 15.67 |
+| A710 (cpu5) | 0.359 | 0.358 | 0.359 | 0.359 | 2.52 | 0.945 | 1.076 | 7.98 |
+| A510 (cpu0) | 0.274 | 2.637 | 0.526 | 2.652 | 0.57 | 1.126 | 5.677 | 8.56 |
+
+- **On the X3, TSO from RCpc costs nothing in the micro-mix** (0.902 against
+  0.921 ns per unit). The barrier revert costs 7.8x.
+- **On an A715 it costs +28%, on an A710 +14%.** The A715's STLR is the
+  expensive half (3x STR).
+- **An A510 must never run the vCPU under rcpc:** its LDAPR is 10x LDR.
+- **Store-then-reload** (a store, then a load of the same address) on the X3:
+  plain 1.894 ns, LDAPR after STLR 1.883, LDAR after STLR 5.04, revert 5.11.
+  LDAPR keeps store-to-load forwarding and LDAR loses it. That is the RCpc
+  point, measured.
+- **Cache-missing loads** cost the same with LDR, LDAPR or DMB ISHLD+LDR on
+  every core (X3: 3.62, 3.54, 3.58 ns).
+
+**Placement (the premise of prototype 2, re-measured).** The busiest thread
+(tid 21243, `qemu_main`, busy 80% mean, 25 windows of 10 s) ran on the X3
+for **72% of its busy time**. It spent 28% on the A715/A710s and 0.2% on the
+A510s. It averaged 3.5 core changes/s and a runqueue wait of 3.5 ms/s. Per window,
+its X3 share ranged from 3% to 100%.
+
+That contradicts the 15.2% and 123 changes/s of the 09-11 Crimson capture
+(4.1), which prototype 2's prediction was built on. The two runs differ in
+title, build and sampler. On Galleon, at the arm's own apk, the prize is
+bounded by the 28% of busy time off the X3. If an A715 runs the thread 1.1x
+to 1.5x slower (the X3/A715 ratio across the ALU and load rows above), pinning
+saves **3% to 9% of the vCPU's busy time (B)**. That is below the registered
+band (-5% to -35%, point -18%). The prediction is left as registered; the arm
+judges it.
+
+**Clocks and thermal.** The X3 policy averaged 2,975 MHz (minimum window
+2,500) against a cap of 3,187 MHz, which never moved. The early half averaged
+2,923 MHz and the late half 3,022. The A715 policy averaged 2,281 MHz. The
+hottest CPU zone peaked at 82.8 °C. GPU busy averaged 8.7%. No throttling in
+240 s. A 20-minute soak is still the test for sustained clocks.
+
+### 8.2 Prototype 1, TSO from RCpc (`perfarch-tso-rcpc-cost.json`)
+
+| run | env | outcome |
+|---|---|---|
+| A1 `1790369082-perfarch-2154145` | -- | 103 windows, game frame median 33.65 ms, `gfps` p50 29 |
+| B1 `1790369083-perfarch-2156492` | `HAKUX_TCG_TSO=rcpc` | **did not boot**: `tso mode=rcpc ... -> ON`, then nothing after `qemu_main` in 240 s. No crash line, no tier-1 promotion, no frame |
+| A2 `1790369085-perfarch-2158840` | -- | harness exit after 20 s (`UtilAcceptVsock`), 12 windows: invalid |
+| B2 `1790369086-perfarch-2160586` | `HAKUX_TCG_TSO=rcpc` | running at the time of writing |
+
+`tso_judge.py` refuses the pair on validity. B1 is not a harness failure of
+the usual kind. The other Nova no-boots in the last 250 runs (2) logged zero
+lines, while B1 logged the whole init up to the first translation. In A1 the
+next lines, 2 ms later, are the first BIOS loop's tier-1 promotions. So the
+first reading is that **the guest does not get past its first blocks under
+rcpc** (H until B2). The candidates, in the emitter:
+
+- `hakux_tso_addr` folds base plus index into `TMP2`. If `TMP2` is live across
+  the access in some path, this corrupts it.
+- LDAPR/STLR take `[Xn]` only, and register 31 there is SP, not XZR.
+- The XBOX RAM fast path in `prepare_host_addr` may hand the direct emitter a
+  `HostAddress` shape this code does not expect.
+
+Next step: run the same ref under the host build's user-mode TCG, or on
+device with `-d in_asm,out_asm` over the first 100 blocks, and read the first
+LDAPR/STLR it emits.
+
+### 8.3 Prototype 2, vCPU on the prime core (`perfarch-vcpu-prime.json`)
+
+Four runs queued at `5f4abcc368`. See 8.1 for why the gain is now bounded
+below the registered band.

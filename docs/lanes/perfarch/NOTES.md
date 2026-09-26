@@ -4,6 +4,28 @@ Brief: performance architecture for the Snapdragon 8 Gen 2 and Adreno 740
 (#68 family). Base: master @ 724a0dd868. PR #308.
 Deliverable 1: `docs/investigations/perf-architecture.md`.
 
+## Resume 3 (2026-09-26 ~02:00 UTC): results arriving
+
+Why the previous resume did not finish: the soaks still had not run (it
+ended waiting, correctly). They started at 01:45 UTC.
+
+Landed and read (details in `perf-architecture.md` section 8):
+
+- **Survey:** IDC=1/DIC=0 on every readable core. LDAPR equals LDR on the X3,
+  A715 and A710. The rcpc micro-mix costs +0% on the X3 and +28% on an A715.
+  **The vCPU was already on the X3 for 72% of its busy time** (Galleon, at
+  the arm's apk), against the 15.2% on the 09-11 Crimson capture that
+  prototype 2's prediction was built on. That bounds its gain at 3-9% of the
+  vCPU's busy time, below the registered band. The prediction stays as
+  registered.
+- **TSO B1 did not boot** under `HAKUX_TCG_TSO=rcpc`: its log ends at
+  `qemu_main`, with no crash. A2 was a harness exit after 20 s. The judge
+  refuses both. The emitter's encodings check out by reading (LDAPR/STLR
+  opcodes, UXTW fold, TMP2 = X30). B2, the same config, decides whether the
+  hang is the prototype.
+- Do not re-derive the placement prize from the 09-11 capture again. Use
+  8.1's residency.
+
 ## Attempt 2 (resumed 2026-09-25 ~23:00 UTC): still WAITING, PR kept draft
 
 Attempt 1 did not finish because none of the nine Nova soaks had run: it
