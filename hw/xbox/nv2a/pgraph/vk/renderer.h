@@ -1642,6 +1642,7 @@ static inline unsigned int pgraph_vk_surface_drawn_format(
     return binding->drawn_format;
 }
 void pgraph_vk_set_surface_dirty(PGRAPHState *pg, bool color, bool zeta);
+void pgraph_vk_surface_watch_mark_dirty(NV2AState *d, SurfaceBinding *surface);
 void pgraph_vk_surface_written_while_sampled(PGRAPHState *pg,
                                              SurfaceBinding *surface);
 void pgraph_vk_set_surface_scale_factor(NV2AState *d, unsigned int scale);

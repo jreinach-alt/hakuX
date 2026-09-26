@@ -1874,6 +1874,166 @@ void pgraph_vk_download_dirty_surfaces(NV2AState *d)
     qemu_event_set(&r->dirty_surfaces_download_complete);
 }
 
+/*
+ * #382: a watch is worth its cost only while its answer can change.
+ *
+ * Every page under a watch is TLB_FORCE_SLOW, so every guest store to it
+ * traps into surface_access_callback below. After the first write to a
+ * surface that owes no download, the rest of that generation's traps only
+ * set upload_pending again. 50 Cent: Bulletproof's Sofdec player decodes
+ * each movie picture with the CPU straight into a bound 640x480 colour
+ * surface, and took 2.5M such traps per second, with the vCPU at 97% and
+ * the movie at 10-16 fps against its native 30 (docs/lanes/fps382).
+ *
+ * So the first write to a surface that owes no download (not draw_dirty)
+ * sets upload_pending and suspends the watch. While suspended, upload_pending
+ * stays set, because nothing but pgraph_vk_upload_surface_data clears it,
+ * and that re-arms the watch before it reads VRAM. A draw is usually
+ * preceded by that upload (pgraph_vk_surface_update(upload=true) runs before
+ * every draw and clear), but not always in the same pgraph.lock hold: with
+ * draw reordering on, a draw is queued in r->reorder_window and marks its
+ * bindings dirty only when the window is flushed, possibly on the render
+ * thread, with no upload in between, so the callback can suspend the watch
+ * after the upload and before the draw lands. So the invariant is kept where
+ * a surface starts to owe a download instead: pgraph_vk_set_surface_dirty
+ * marks a binding dirty through pgraph_vk_surface_watch_mark_dirty, which
+ * re-arms a suspended watch under the same lock the callback suspends it
+ * under. A surface that owes a download therefore always has its watch live,
+ * and a CPU read of a suspended surface has nothing to download.
+ *
+ * The re-arm is asynchronous: mem_access_callback_insert queues the insert
+ * and a TLB flush on the vCPU, and a store landing before those run is not
+ * seen. It cannot wait for them (run_on_cpu), since the vCPU may itself be
+ * waiting in this callback for pgraph.lock, which the uploader holds. So the
+ * upload hashes the surface's VRAM just before it reads it, and a work item
+ * queued behind the insert and the flush hashes it again once the watch is
+ * live. If they differ the guest wrote in the gap, and upload_pending is set,
+ * which is what a trapped write would have done. If the GPU has drawn to the
+ * surface in between, the write is counted (lost) and not acted on: setting
+ * upload_pending then would put VRAM over the draw.
+ *
+ * The suspended set stands in for a per-surface flag (SurfaceBinding lives in
+ * renderer.h). surface_watch_lock guards it and each surface's access_cb
+ * across the three threads that touch them: the vCPU in the callback, the
+ * pfifo thread under pgraph.lock, and the render thread, which uploads the
+ * display surface without pgraph.lock.
+ */
+static QemuRecMutex surface_watch_lock;
+static GHashTable *surface_watch_suspended;
+static unsigned long surface_watch_suspends, surface_watch_rearms,
+                     surface_watch_gap_writes, surface_watch_lost_writes;
+
+static void unregister_cpu_access_callback(SurfaceBinding *surface);
+
+static uint64_t surface_watch_hash(const uint8_t *p, size_t len)
+{
+    uint64_t h[4] = { 0x9e3779b97f4a7c15ull, 0xc2b2ae3d27d4eb4full,
+                      0x165667b19e3779f9ull, 0x27d4eb2f165667c5ull };
+    size_t i = 0;
+    for (; i + 32 <= len; i += 32) {
+        for (int k = 0; k < 4; k++) {
+            uint64_t v;
+            memcpy(&v, p + i + 8 * k, 8);
+            h[k] = (h[k] ^ v) * 0x100000001b3ull;
+        }
+    }
+    for (; i < len; i++) {
+        h[0] = (h[0] ^ p[i]) * 0x100000001b3ull;
+    }
+    return h[0] ^ (h[1] << 1) ^ (h[2] << 2) ^ (h[3] << 3);
+}
+
+typedef struct SurfaceWatchRearm {
+    NV2AState *d;
+    hwaddr vram_addr;
+    hwaddr size;
+    MemAccessCallback *cb;
+    uint64_t hash;
+} SurfaceWatchRearm;
+
+/*
+ * Runs on the vCPU as safe work, queued after the insert and the TLB flush
+ * that re-armed the watch, so from here on every store to the surface traps.
+ * The cb it names is still allocated: its removal can only be queued after
+ * this item (both are queued under surface_watch_lock), so the pointer
+ * compare identifies the arming that queued it and nothing else.
+ */
+/*
+ * Lock edge: this takes pgraph.lock from the vCPU's exclusive section, with
+ * the BQL dropped. Nothing may therefore wait synchronously for the vCPU
+ * (run_on_cpu, start_exclusive) while holding pgraph.lock.
+ */
+static void surface_watch_rearmed(CPUState *cpu, run_on_cpu_data data)
+{
+    SurfaceWatchRearm *w = data.host_ptr;
+    NV2AState *d = w->d;
+
+    qemu_mutex_lock(&d->pgraph.lock);
+    qemu_rec_mutex_lock(&surface_watch_lock);
+    PGRAPHVkState *r = d->pgraph.vk_renderer_state;
+    SurfaceBinding *s = r ? g_hash_table_lookup(r->surface_addr_map,
+                                (gpointer)(uintptr_t)w->vram_addr) : NULL;
+    if (s && s->access_cb == w->cb && s->size == w->size &&
+        surface_watch_hash(d->vram_ptr + w->vram_addr, w->size) != w->hash) {
+        if (s->draw_dirty) {
+            surface_watch_lost_writes++;
+        } else {
+            s->upload_pending = true;
+            surface_watch_gap_writes++;
+        }
+    }
+    qemu_rec_mutex_unlock(&surface_watch_lock);
+    qemu_mutex_unlock(&d->pgraph.lock);
+    g_free(w);
+}
+
+static void register_cpu_access_callback(NV2AState *d,
+                                         SurfaceBinding *surface);
+
+/*
+ * Called by the upload before it reads VRAM. If the surface's watch is
+ * suspended, re-arm it and queue the gap check. Returns with upload_pending
+ * cleared, as the upload always did; the caller holds surface_watch_lock.
+ */
+static void surface_watch_resume(NV2AState *d, SurfaceBinding *surface)
+{
+    if (!surface_watch_suspended ||
+        !g_hash_table_contains(surface_watch_suspended, surface)) {
+        return;
+    }
+    uint64_t hash = surface_watch_hash(d->vram_ptr + surface->vram_addr,
+                                       surface->size);
+    register_cpu_access_callback(d, surface);
+    if (surface->access_cb) {
+        SurfaceWatchRearm *w = g_new(SurfaceWatchRearm, 1);
+        w->d = d;
+        w->vram_addr = surface->vram_addr;
+        w->size = surface->size;
+        w->cb = surface->access_cb;
+        w->hash = hash;
+        async_safe_run_on_cpu(qemu_get_cpu(0), surface_watch_rearmed,
+                              RUN_ON_CPU_HOST_PTR(w));
+        surface_watch_rearms++;
+    }
+}
+
+/*
+ * Called by pgraph_vk_set_surface_dirty for each binding a draw marks dirty.
+ * Setting draw_dirty and testing the suspended set happen under
+ * surface_watch_lock, which the callback holds from its !draw_dirty test to
+ * the suspend, so either the callback sees draw_dirty and keeps the watch, or
+ * the watch is suspended first and re-armed here. The gap check this queues
+ * finds draw_dirty set and only counts a gap write (lost), never uploading
+ * VRAM over the draw.
+ */
+void pgraph_vk_surface_watch_mark_dirty(NV2AState *d, SurfaceBinding *surface)
+{
+    qemu_rec_mutex_lock(&surface_watch_lock);
+    surface->draw_dirty = true;
+    surface_watch_resume(d, surface);
+    qemu_rec_mutex_unlock(&surface_watch_lock);
+}
+
 static void surface_access_callback(void *opaque, MemoryRegion *mr, hwaddr addr,
                                     hwaddr len, bool write)
 {
@@ -1949,7 +2109,16 @@ static void surface_access_callback(void *opaque, MemoryRegion *mr, hwaddr addr,
         }
 
         if (write) {
+            qemu_rec_mutex_lock(&surface_watch_lock);
             surface->upload_pending = true;
+            /* Owes no download: the rest of this generation's traps would
+             * only repeat the line above. See surface_watch_resume. */
+            if (!surface->draw_dirty && surface->access_cb) {
+                unregister_cpu_access_callback(surface);
+                g_hash_table_add(surface_watch_suspended, surface);
+                surface_watch_suspends++;
+            }
+            qemu_rec_mutex_unlock(&surface_watch_lock);
         }
     }
 
@@ -2030,10 +2199,19 @@ static void surface_watch_log_periodic(PGRAPHVkState *r)
                surface_live_watches, surface_watch_inserts,
                xbox_ram_fp_cb_count_ptr ? *xbox_ram_fp_cb_count_ptr : -1,
                active, shelved, invalid);
+    qemu_rec_mutex_lock(&surface_watch_lock);
+    SURF92_LOG("[surfwatch382] suspended=%u suspends=%lu rearms=%lu "
+               "gap_writes=%lu lost_writes=%lu",
+               surface_watch_suspended ?
+                   g_hash_table_size(surface_watch_suspended) : 0,
+               surface_watch_suspends, surface_watch_rearms,
+               surface_watch_gap_writes, surface_watch_lost_writes);
+    qemu_rec_mutex_unlock(&surface_watch_lock);
 }
 
 static void unregister_cpu_access_callback(SurfaceBinding *surface)
 {
+    qemu_rec_mutex_lock(&surface_watch_lock);
     if (tcg_enabled() && surface->access_cb) {
         mem_access_callback_remove_by_ref(qemu_get_cpu(0), surface->access_cb);
         surface_live_watches--;
@@ -2042,10 +2220,17 @@ static void unregister_cpu_access_callback(SurfaceBinding *surface)
      * order: a surface can now be retired with its watch still up, and both
      * the free paths and surface_put re-run these unconditionally. */
     surface->access_cb = NULL;
+    /* Every retire and free path comes through here, so a freed or recycled
+     * binding never stays in the suspended set (#382). */
+    if (surface_watch_suspended) {
+        g_hash_table_remove(surface_watch_suspended, surface);
+    }
+    qemu_rec_mutex_unlock(&surface_watch_lock);
 }
 
 static void register_cpu_access_callback(NV2AState *d, SurfaceBinding *surface)
 {
+    qemu_rec_mutex_lock(&surface_watch_lock);
     /* Re-arm from scratch: a recycled binding may carry a watch over the
      * address it had in its previous life. */
     unregister_cpu_access_callback(surface);
@@ -2059,6 +2244,7 @@ static void register_cpu_access_callback(NV2AState *d, SurfaceBinding *surface)
             surface_watch_inserts++;
         }
     }
+    qemu_rec_mutex_unlock(&surface_watch_lock);
 }
 
 /*
@@ -2825,7 +3011,12 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
                  surface->width, surface->height, surface->pitch,
                  surface->fmt.bytes_per_pixel);
 
+    /* Re-arm a suspended watch before VRAM is read, and clear upload_pending
+     * under the same lock the callback sets it under (#382). */
+    qemu_rec_mutex_lock(&surface_watch_lock);
+    surface_watch_resume(d, surface);
     surface->upload_pending = false;
+    qemu_rec_mutex_unlock(&surface_watch_lock);
     surface->draw_time = pg->draw_time;
 
     if (!surface->width || !surface->height) {
@@ -3987,6 +4178,13 @@ static bool check_surface_internal_formats_supported(
 void pgraph_vk_init_surfaces(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
+
+    /* Process-lifetime: a renderer switch re-runs this with no surfaces
+     * alive, and the set is emptied as each surface is retired. */
+    if (!surface_watch_suspended) {
+        qemu_rec_mutex_init(&surface_watch_lock);
+        surface_watch_suspended = g_hash_table_new(NULL, NULL);
+    }
 
     // Make sure all surface format types are supported. We don't expect issue
     // with these, and therefore have no fallback mechanism.
