@@ -10,19 +10,38 @@ failures in fragments this lane does not touch (`pr-sweep.sh` "a stale failure
 ALONGSIDE a live one", and three tag-range checks); `83-blank-rule.sh` itself
 passed on the runner. The branch was 75 commits behind master. Attempt 2
 merged `origin/master` (no conflict: master had not touched
-`score_sweep.py` since `036e6c191f`), re-ran the selftest and the full scan,
-and did the eye-checks.
+`score_sweep.py` since `036e6c191f`) and did the eye-checks. It then started
+the full scan, which was still running when the session ended. It had printed
+only its header line, and a background task does not outlive its session.
+
+Attempt 2's session also ended with nothing pushed past `5c63c19559`.
+Attempt 3 found the scan could never finish. Each flat capture costs about
+10 s here, from three `np.unique(axis=0)` calls, and 8k of the 96k rows are
+flat, so the full scan would take about 3 hours. Attempt 3 rewrote the scan
+on packed RGB keys (below), and the finished scan **refuted the brief's
+rule**. That rule ran into the reverse direction the brief itself names as a
+refutation (see "Reverse direction"). The shipped rule is therefore the
+brief's `lost` clause ADDED to the old golden-colour clause, not
+substituted for it.
+
+The CI red on `5c63c19559` was 4 failures in `pr-sweep.sh` and the
+nightly-notes tag-range checks, on a head based on a 75-commits-old master.
+Master's own selftest is green. After merging `origin/master` again, the full
+`selftest.sh` passes locally with 0 FAIL.
 
 ## The change
 
 `score_sweep.py`: new `is_blank(o, g, label_rows)` and `BLANK_MIN_LOST = 0.01`.
-The flatness clause (ours is > 90% one colour, <= 4 colours) is unchanged. The
-golden-side clause `gold_colours > 4` is replaced by the one measured in
-`docs/lanes/cloud-297/NOTES.md` section 3:
+The flatness clause (ours is > 90% one colour, <= 4 colours) is unchanged, and
+so is the golden-side clause (golden > 4 colours). The `lost` clause measured in
+`docs/lanes/cloud-297/NOTES.md` section 3 is added to them:
 
     ink  = golden pixels != golden's dominant colour, label band masked off
     lost = ink & (ours == ours' dominant colour)
-    blank = flat_ours and lost.sum() >= 1% of the image
+    blank = flat_ours and golden_colours > 4 and lost.sum() >= 1% of the image
+
+The new rule is the old rule plus one more condition, so it can only
+release a capture from `blank`, never add one.
 
 **`scorer_rev` needs no manual bump.** `dispatcher.sh` records `scorer_rev` as
 `git log -1` of `docs/testing/score_sweep.py` and `scorer_sha256` as the
@@ -32,8 +51,11 @@ old TSV cannot be compared silently against one written by the new rule.
 
 ## Falsifier: the 19 captures ever tagged `blank`
 
-`blank_rule_eval.before-after.out` (cloud-297's evaluator, run against this
-tree's `is_blank`):
+`blank_rule_eval.before-after.out` (cloud-297's evaluator, run in attempt 1
+against the `lost`-only rule). All 19 captures have goldens with > 4 colours,
+because the old rule tagged them `blank`. So the added golden clause cannot
+change any row here, and the full scan below confirms the same 15 against the
+shipped function:
 
 | capture | differ px | lost % | old | new |
 |---|---:|---:|---|---|
@@ -96,18 +118,66 @@ resulting TSVs with `rescore_cmp.py` (`rescore_297.out`):
 ## Reverse direction: every ok/blank row on disk
 
 `blank_rule_eval_all.py` re-scores every `ok`/`blank` row that still has its
-capture on disk. It runs the old rule inline and the new rule by importing this
-tree's `score_sweep.py`, so it measures the code that ships. It reports every
-transition. Output: `blank_rule_eval_all.out`.
+capture on disk, under both rules, and reports every transition. The rules
+are evaluated on packed RGB keys (one int32 per pixel). Those keys sort in
+the same order as `np.unique(axis=0)`, so the dominant colour is the same.
+They are also skipped where ours is not flat, since both rules are False
+there. It then re-runs the shipped `score_sweep.is_blank` on every changed
+capture plus 100 random flat rows, and prints any disagreement.
 
-RESULT_PLACEHOLDER
+**The brief's rule (`lost` alone) is refuted.** From
+`blank_rule_eval_all.lost-only.out` (96,359 rows, 1,175 TSVs; shipped rule
+re-run on 135 rows, 0 disagreements):
+
+| old -> new | rows |
+|---|---:|
+| blank -> blank | 50 |
+| blank -> ok | 257 (the 15 captures, exactly) |
+| **ok -> blank** | **436** |
+| ok -> ok | 95,616 |
+
+The 436 rows are 35 captures in two families, all with goldens of <= 4
+colours:
+- Stencil `REPLACE`/`ZERO` variants: 1.6-11.4% lost, 5k-40k px differing.
+- W_param `ff_w_zero_inf__*` and `prog_w_zero_inf__bitri_w-0.00`: 4.2-37.8%
+  lost, 12.9k-271.5k px differing.
+
+Residual triage reads `ok` rows, so these real residuals would have left
+triage. That is #297's harm in the other direction, on more rows than it
+fixes.
+
+**The shipped rule (golden > 4 colours AND `lost`)**, from
+`blank_rule_eval_all.out` (96,440 rows, 1,178 TSVs; shipped rule re-run on
+115 rows, 0 disagreements):
+
+| old -> new | rows |
+|---|---:|
+| blank -> blank | 50 |
+| blank -> ok | 257: the 15 captures, nothing else |
+| ok -> blank | **0** |
+| ok -> ok | 96,133 |
+
+The recorded TSV status matches the old-rule re-run on every row (307 blank,
+96,133 ok), so every TSV scanned was written by the old rule.
+`rescore_297.out` was made with the `lost`-only rule. It still holds: its 13
+rows were old-rule `blank` (golden > 4 colours), and the full scan finds no
+other row in those two runs that moves.
 
 ## For the next lane
 
-- Do not reintroduce a golden-only test such as a colour count. The question
-  is what OUR flat frame covered of what the golden drew.
-- If a future test's real residual loses more than 1% of the image while ours
-  is flat, it will read `blank`. That is the intended outcome: it did not draw.
-- The selftest fragment builds numpy in a venv when the runner lacks it, and
-  runs two mutants: the old `gold_colours > 4` rule, and the label band left
-  unmasked. Each must get its case wrong.
+- Do not drop either golden-side clause. The colour count alone hides
+  near-exact captures (#297), and `lost` alone hides Stencil and W_param
+  residuals (436 rows). Test any future change to `is_blank` with
+  `blank_rule_eval_all.py`, which scans every row on disk, not with an
+  evaluator that reads only rows already tagged `blank`. That kind of
+  evaluator cannot see the reverse direction, and it is how the brief's
+  rule got past cloud-297.
+- Do not call `np.unique(axis=0)` over 96k captures on this host. Use the
+  packed keys in `blank_rule_eval_all.py` (about 6 min on 6 workers) and
+  cross-check them against the shipped function.
+- Stencil and W_param lose 1.6-38% of the image with a flat capture. Whether
+  those count as "did not draw" is an open question the old rule settled as
+  `ok`. This lane kept that answer, and `blank` would take them out of triage.
+- The selftest fragment builds numpy in a venv when the runner lacks it. It
+  runs three mutants: the old colour-count-only rule, the label band left
+  unmasked, and `lost` without the colour count. Each must get its case wrong.

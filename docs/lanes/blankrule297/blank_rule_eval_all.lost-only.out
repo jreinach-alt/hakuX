@@ -1,0 +1,51 @@
+96359 ok/blank rows with a capture on disk, 1175 TSVs
+7976 rows had ours flat; shipped is_blank re-run on 135 of them (35 changed + a sample): 0 disagree with the packed rule
+
+recorded status vs old rule re-run (a mismatch = the TSV was written by a different scorer):
+  recorded blank  old-rule blank      307
+  recorded ok     old-rule ok       96052
+
+old rule -> new rule:
+  ('blank', 'blank')       50
+  ('blank', 'ok')      257
+  ('ok', 'blank')      436
+  ('ok', 'ok')    95616
+
+capture                                                          old -> new    rows    lost  lost%  differing
+Depth_buffer/DepthFmt_z16_Cn_FZy_M00000f                       blank -> ok        1    1008  0.33%  3936
+Depth_buffer/DepthFmt_z16_Cy_FZy_M00000f                       blank -> ok        1    1008  0.33%  3936
+Depth_buffer_fixed_function/z24_Cn_FZy_M000003                 blank -> ok       21       8  0.00%  24
+Depth_buffer_fixed_function/z24_Cn_FZy_M3fc002                 blank -> ok       21       8  0.00%  24
+Depth_buffer_fixed_function/z24_Cn_FZy_M7f8001                 blank -> ok       21       8  0.00%  24
+Depth_buffer_fixed_function/z24_Cn_FZy_Mbf4000                 blank -> ok       21       8  0.00%  24
+Depth_buffer_fixed_function/z24_Cn_FZy_Mfeffff                 blank -> ok       21       8  0.00%  24
+Depth_buffer_fixed_function/z24_Cy_FZy_M000003                 blank -> ok       21       8  0.00%  24
+Depth_buffer_fixed_function/z24_Cy_FZy_M3fc002                 blank -> ok       21       8  0.00%  24
+Depth_buffer_fixed_function/z24_Cy_FZy_M7f8001                 blank -> ok       21       8  0.00%  24
+Depth_buffer_fixed_function/z24_Cy_FZy_Mbf4000                 blank -> ok       21       8  0.00%  24
+Depth_buffer_fixed_function/z24_Cy_FZy_Mfeffff                 blank -> ok       21       8  0.00%  24
+Stencil/Stencil_REPLACE_ST                                        ok -> blank     2   30000  9.77%  30000
+Stencil/Stencil_REPLACE_ST_DT                                     ok -> blank     1   30000  9.77%  30000
+Stencil/Stencil_REPLACE_ST_DT_ZB                                  ok -> blank     2    4950  1.61%  10000,20000
+Stencil/Stencil_REPLACE_ST_ZB                                     ok -> blank     2    5050  1.64%  5050,10000
+Stencil/Stencil_ZERO                                              ok -> blank     2   30000  9.77%  40000
+Stencil/Stencil_ZERO_DT                                           ok -> blank     4   34950 11.38%  40000
+Stencil/Stencil_ZERO_ST                                           ok -> blank     5   30000  9.77%  30000,34950,40000
+Stencil/Stencil_ZERO_ST_DT                                        ok -> blank     4   30000  9.77%  30000,34950
+Stencil/Stencil_ZERO_ST_DT_ZB                                     ok -> blank     4   10000  3.26%  5050,10000,20000
+Stencil/Stencil_ZERO_ST_ZB                                        ok -> blank     1    4950  1.61%  20000
+Texture_BRDF/BRDF_e0_l0                                        blank -> ok       15     614  0.20%  614
+Texture_BRDF/BRDF_e0_l1                                        blank -> ok       15     614  0.20%  614
+Texture_BRDF/BRDF_e1_l0                                        blank -> ok       15     614  0.20%  614
+W_param/ff_w_zero_inf__bitri_w-inf                                ok -> blank    41  114508 37.27%  114508
+W_param/ff_w_zero_inf__bitri_winf                                 ok -> blank    41   12880  4.19%  12880
+W_param/ff_w_zero_inf__quad_w-0.00                                ok -> blank    41   71974 23.43%  79174
+W_param/ff_w_zero_inf__quad_w-1.50e-36                            ok -> blank    41   71974 23.43%  79174
+W_param/ff_w_zero_inf__quad_w-1.88e-37                            ok -> blank    41   71974 23.43%  79174
+W_param/ff_w_zero_inf__quad_w-3.76e-37                            ok -> blank    41   71974 23.43%  79174
+W_param/ff_w_zero_inf__quad_w-7.52e-37                            ok -> blank    41   71974 23.43%  79174
+W_param/ff_w_zero_inf__quad_w0.00                                 ok -> blank    41   72012 23.44%  72012
+W_param/ff_w_zero_inf__quad_winf                                  ok -> blank    41   25600  8.33%  25600
+W_param/prog_w_zero_inf__bitri_w-0.00                             ok -> blank    40  116128 37.80%  271518
+
+ok -> blank transitions: 436

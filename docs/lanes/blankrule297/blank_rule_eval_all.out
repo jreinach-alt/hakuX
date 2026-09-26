@@ -1,0 +1,30 @@
+96440 ok/blank rows with a capture on disk, 1178 TSVs
+7996 rows had ours flat; shipped is_blank re-run on 115 of them (15 changed + a sample): 0 disagree with the packed rule
+
+recorded status vs old rule re-run (a mismatch = the TSV was written by a different scorer):
+  recorded blank  old-rule blank      307
+  recorded ok     old-rule ok       96133
+
+old rule -> new rule:
+  ('blank', 'blank')       50
+  ('blank', 'ok')      257
+  ('ok', 'ok')    96133
+
+capture                                                          old -> new    rows    lost  lost%  differing
+Depth_buffer/DepthFmt_z16_Cn_FZy_M00000f                       blank -> ok        1    1008  0.33%  3936
+Depth_buffer/DepthFmt_z16_Cy_FZy_M00000f                       blank -> ok        1    1008  0.33%  3936
+Depth_buffer_fixed_function/z24_Cn_FZy_M000003                 blank -> ok       21       8  0.00%  24
+Depth_buffer_fixed_function/z24_Cn_FZy_M3fc002                 blank -> ok       21       8  0.00%  24
+Depth_buffer_fixed_function/z24_Cn_FZy_M7f8001                 blank -> ok       21       8  0.00%  24
+Depth_buffer_fixed_function/z24_Cn_FZy_Mbf4000                 blank -> ok       21       8  0.00%  24
+Depth_buffer_fixed_function/z24_Cn_FZy_Mfeffff                 blank -> ok       21       8  0.00%  24
+Depth_buffer_fixed_function/z24_Cy_FZy_M000003                 blank -> ok       21       8  0.00%  24
+Depth_buffer_fixed_function/z24_Cy_FZy_M3fc002                 blank -> ok       21       8  0.00%  24
+Depth_buffer_fixed_function/z24_Cy_FZy_M7f8001                 blank -> ok       21       8  0.00%  24
+Depth_buffer_fixed_function/z24_Cy_FZy_Mbf4000                 blank -> ok       21       8  0.00%  24
+Depth_buffer_fixed_function/z24_Cy_FZy_Mfeffff                 blank -> ok       21       8  0.00%  24
+Texture_BRDF/BRDF_e0_l0                                        blank -> ok       15     614  0.20%  614
+Texture_BRDF/BRDF_e0_l1                                        blank -> ok       15     614  0.20%  614
+Texture_BRDF/BRDF_e1_l0                                        blank -> ok       15     614  0.20%  614
+
+ok -> blank transitions: 0

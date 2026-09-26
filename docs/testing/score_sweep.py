@@ -24,8 +24,8 @@ What it reports, per test:
     print "C: 1", the suite's own require_conversion flag, which selects
     between two completely different upload paths.
   * whether the capture is *blank* -- one colour over more than 90% of a frame
-    that painted over at least 1% of the image where the golden drew
-    something. A blank frame is a different failure from
+    whose golden has more than 4 colours, painted over at least 1% of the
+    image where the golden drew something. A blank frame is a different failure from
     a wrong one: nothing drew, or the capture beat the draw to it. Mixed into a
     pixel-difference average it reads as dozens of subtly broken tests instead
     of one thing that did not run, so it is counted separately.
@@ -116,14 +116,17 @@ BLANK_MIN_LOST = 0.01
 def is_blank(o, g, label_rows):
     """True when capture ``o`` is blank against golden ``g`` (RGBA arrays).
 
-    Two questions: is OURS flat (> 90% one colour, <= 4 colours), and did it
-    LOSE what the golden drew. The second used to be "the golden has > 4
-    colours", which a golden that is 99% background with a sliver of ink
-    passes -- so 15 near-exact captures (#297: DBFF z24 FZy at 24 px,
-    Texture_BRDF at 614 px) were filed as `blank` in every run from 09-13 and
-    their residuals were never triaged. ``lost`` is the golden's ink (anything
-    not the golden's dominant colour, below the label band) that we painted
-    our own dominant colour. See docs/lanes/cloud-297/NOTES.md section 3 and
+    Three clauses: OURS is flat (> 90% one colour, <= 4 colours), the golden
+    is not (> 4 colours), and ours LOST what the golden drew. The rule used to
+    stop at the golden's colour count, which a golden that is 99% background
+    with a sliver of ink passes -- so 15 near-exact captures (#297: DBFF z24
+    FZy at 24 px, Texture_BRDF at 614 px) were filed as `blank` in every run
+    from 09-13 and their residuals were never triaged. ``lost`` is the
+    golden's ink (anything not the golden's dominant colour, below the label
+    band) that we painted our own dominant colour. The colour count stays: on
+    its own, ``lost`` also calls few-colour goldens blank (Stencil, W_param
+    w zero/inf, 1.6-38% lost), which moves 436 `ok` rows on disk out of
+    residual triage -- the same harm in the other direction. See
     docs/lanes/blankrule297/NOTES.md.
     """
     flat = o[..., :3].reshape(-1, 3)
@@ -134,6 +137,7 @@ def is_blank(o, g, label_rows):
     ink[:label_rows] = False
     lost = ink & (o[..., :3] == ocols[counts.argmax()]).all(axis=2)
     return bool(counts.max() / flat.shape[0] > 0.90 and len(counts) <= 4
+                and len(gcols) > 4
                 and lost.sum() >= BLANK_MIN_LOST * flat.shape[0])
 
 
