@@ -3253,12 +3253,26 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                 if (surface) {
                     migrate_surface_image(&target, surface);
                 } else {
-                    surface = g_malloc(sizeof(SurfaceBinding));
+                    surface = g_malloc0(sizeof(SurfaceBinding));
                     create_surface_image(pg, &target);
                 }
             }
             SURF_TIMER_ACC(create_ns, _gt2);
 
+            /*
+             * A slot retired dirty kept its watch (see
+             * unregister_cpu_access_callback_if_clean), and the assignment
+             * below drops the only pointer to it; surface_put's own
+             * unregister then sees NULL, and the watch outlives the process.
+             * One leaked per reuse, and every guest TLB fill walks them all:
+             * Ghoulies fell from 29 to 1-2 fps within a minute (#311).
+             * Releasing it here loses nothing. The watch exists so a guest
+             * write can cancel the writeback a retired surface still owes,
+             * and that handler only walks the shelved and invalid lists,
+             * which this slot has just left; the assignment replaces its
+             * address and draw_dirty, so the old writeback is gone anyway.
+             */
+            unregister_cpu_access_callback(surface);
             *surface = target;
             set_surface_label(pg, surface);
 
