@@ -1117,9 +1117,16 @@ GLSL_DEFINE(texPlaneQ3, GLSL_C(NV_IGRAPH_XF_XFCTX_TG3MAT + 3))
 
     /* The depth the rasteriser interpolates, in silicon's arithmetic (see
      * ffScreenZ above). Only vtxPos.z: w, and so W buffering and the
-     * perspective-correct varyings, are untouched, as is the GL clip z. */
+     * perspective-correct varyings, are untouched, as is the GL clip z.
+     *
+     * Not on F24 (clipRange.y is f24_max there). Its near-plane vertex z is
+     * exactly 0 under RTZ, so it passes the depth clip, and our rasteriser
+     * then draws zero-depth edges that silicon does not. That took the 20
+     * z24 FZy Depth buffer fixed function captures from 24 px to 403-406
+     * each. docs/lanes/zrtz272/NOTES.md. */
     mstring_append(body,
-    "  if (!(any(isinf(tPosition)) || any(isnan(tPosition)))) {\n"
+    "  if (clipRange.y <= 16777216.0\n"
+    "      && !(any(isinf(tPosition)) || any(isnan(tPosition)))) {\n"
     "    vtxPos.z = ffScreenZ(tPosition);\n"
     "  }\n");
 
