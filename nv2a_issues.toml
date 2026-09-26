@@ -3443,13 +3443,13 @@ component = "pgraph"
 disposition = "defect"
 suites = ["W param"]
 status = "open"
-dispatch_state = "available"
+dispatch_state = "done"
 status_note = "BOARD 2026-09-25T21:40Z: PR #304 FOLDED (8af1bbb18e, analysis); lane.wparamcode223 dispatched to BUILD its two hunks (vsh-ff.c position tail (A) + geom.c append_wedge (B), together; briefs/wparamcode223.md). PRIOR: BOARD 2026-09-25T20:30Z: PR #250 FOLDED (8e683b3a26); lane.wparamff223 dispatched for the ff bitri + ff quad families (docs/lanes/wparamclip223/NOTES.md section 9); vsh-ff.c is lane.shadetie224b's. PRIOR: 2026-09-25 08:00 PDT (host session): lane.wparamgeom223 refuted the uniform w scale before any device run (PR #246: the missing triangles are 2^120+ w RATIO cases); lane.wparamclip223 dispatched at territory wave 173 for the geometry-shader clip that emits silicon's external wedge as positive-w geometry. PRIOR: HOST DISPATCHES ON #235's FOLD (2026-09-25 07:45 PDT): briefs/wparamgeom223.md is written (NOTES section 5's per-primitive uniform w scale in glsl/geom.c, with the arm pre-specified); the host claims geom.c for [lane.wparamgeom223] in the same board edit that retires lane.shadeflat224. Do not brief #223 separately. PRIOR: NEXT STEP (host session, 2026-09-25 06:15, from PR #228's NOTES on master): about half of W_param is WASH (2,653,711 px, max-channel |d| 1..2; rcc_ is 99.87% wash) -- ROUTED TO #38; the RCC/MUL leads are REFUTED by measurement. The structural residual is external triangles at extreme w (ff_w_zero_inf + prog_w_zero_inf__bitri: 2,210,752 px, 1,658,611 coverage): the host clipper fails at extreme |w|. The fix is a per-primitive uniform positive scale of clip-space vertices in glsl/geom.c (NOTES section 5); briefs/wparamgeom223.md is written and the lane is DISPATCHED WHEN PR #235 FOLDS (geom.c is lane.shadeflat224's until then). The earlier '#235 moved W_param -67%' heads-up was withdrawn: those were unreadable captures. || FILED 2026-09-25. 110 captures (104 ok, 6 white-content), 5,117,044 differing px, 42 captures over 50k px; largest prog_w_zero_inf__bitri_w-0.00 271,518, rcc_w_zero_inf__z-7.52e-37 152,648, rcc_w_zero_inf__z-1.88e-37 152,525. NOT leakage: AGENTS.md's composition instrument ran the two largest alone and in company, identical to the digit. LEAD: the w-zero/Inf and RCC paths are #112 item 4's inherited _RCC signed-zero clamp (vsh-prog.c:669) and _MUL zero-forcing (vsh-prog.c:571); lane.xbox's nxdk_vsh_tests console run includes Exceptional Float (no published goldens), the direct oracle. Measured on the Thor 2026-09-20 in PR #194's base arm (result 1789968297-arms-primpv13-base-2094212, ref 4955050b31, apk a0fe6a75cfe2); #194's fix arm reads identically. Filed 2026-09-25 by the host session on lane.xbox's board-gap report (no open or closed issue named the suite; #19's row lists it only as a contamination victim)."
-blocked_on = ""
-impact_px = 1640845
+blocked_on = "VERIFICATION 2026-09-26 (job.board, board tick 07:35 PDT): the two hunks PR #321 built (vsh-ff.c position tail + geom.c zero-area wedge) folded 4bc77c3171 and its arm PASSED all 570 checks. The 1,640,845 px this row priced for the ff bitri/quad families is therefore stale: what remains is unmeasured until a post-fold sweep of the W param suite on master, which is the host's to queue. Reopens as available if that sweep still shows a structural family over 50k px."
+impact_px = 0
 impact_onestep_px = 0
 game_visible = false
-impact_basis = "2026-09-25 inventory (host session): the ff_ bitri + quad families (1,640,845 structural) share PR #250's mechanism (external-wedge clip, verified 451/451 on the prog_ family) and have no lane; the 569,907 in PR #250 itself is not counted here"
+impact_basis = "2026-09-26 (job.board): PR #321 folded and verified (arm PASS 570/570); the prior 1,640,845 px estimate predates the fold and is withdrawn until a post-fold sweep re-measures the suite."
 
 [issue.224]
 title = "Shade model: 3.76 M px over 168 captures, and no issue owns it"
@@ -3506,13 +3506,13 @@ component = "pgraph"
 disposition = "defect"
 suites = ["Surface as vertex array"]
 status = "open"
-dispatch_state = "available"
+dispatch_state = "done"
 status_note = "FOLDED (job.board wave 223, 2026-09-26T03:40Z): PR #264 merged as 72e479ec59 (vk/draw.c stale-range check over draw_dirty / draw_generation surfaces); lane.vtxarr262 retired. Issue stays open until the registered arm (predictions/vtxarr262-surface-vertex-refetch.json) posts a verdict: DynamicUpdateLoop 96,000 px -> 0 expected. PRIOR: DISPATCHED (job.board, 2026-09-25T18:30Z) as [lane.vtxarr262], briefs/vtxarr262.md, territory wave 184; vk/draw.c taken from lane.remote (#256 folded), vk/surface.c not granted. PRIOR: FILED 2026-09-25 11:20 PDT (host session) from lane.xbox's new silicon references (PR #261; #112 comment 5837123665): DynamicUpdateLoop renders a colour into surface_a_ four times and draws a quad whose DIFFUSE array (UB_D3D) points at that memory; silicon shows red/green/blue/yellow, hakuX 84a67b9cf8 all red -- 96,000 px (3 quads x 32,000). No golden covered this suite before; the console captures at ~/hakux-work/hardware/runs/2026-09-25-refs6743/console-run/console/ serve as an extra --goldens root. Likely mechanism (to confirm): the vertex-array upload/cache does not invalidate on a GPU surface write to its range -- #184's class through a different consumer."
-blocked_on = ""
-impact_px = 96000
+blocked_on = "VERIFICATION 2026-09-26 (job.board, board tick 07:35 PDT): PR #264 folded 72e479ec59 (vk/draw.c stale-range check); its registered arm (vtxarr262-surface-vertex-refetch.json, DynamicUpdateLoop 96,000 px -> 0) has posted no verdict yet. Nothing to dispatch: closes when that verdict or a post-fold sweep reads the capture at 0; a worse score reopens it."
+impact_px = 0
 impact_onestep_px = 0
 game_visible = false
-impact_basis = "2026-09-25 inventory (host session): DynamicUpdateLoop 3 quads x 32,000 px against lane.xbox's new silicon references; render-to-vertex-array also occurs in games"
+impact_basis = "2026-09-26 (job.board): fix folded, arm verdict pending; the 96,000 px is expected to be 0 and is not counted as recoverable."
 
 [issue.265]
 title = "Game re-check: Retro Tech Dad's hakuX 0.3.1 glitch list on today's build (Nova)"
@@ -3531,13 +3531,13 @@ component = "pgraph"
 disposition = "defect"
 suites = ["W buffering"]
 status = "open"
-dispatch_state = "available"
+dispatch_state = "done"
 status_note = "FILED 2026-09-25 11:50 PDT (host session) from PR #222's fix arm 1790321693-arms-wbuf31fix-fix-301236: W buffering 1,955,022 structural px, of which #31's TriV 105,628; ZBuf24D FloorQuad 874,418 (0/16 exact), WBuf24D FloorQuad two blank captures 460,868, WBuf24F FloorQuad 158,050, ZBuf24D Wall/RoofQuad 277,308; 16-bit formats and ZBuf24F nearly exact. ~1.06 M sits in captures tagged blank/white-content/label-differs -- re-measure before fixing. lane.wbufdepth24 dispatched at territory wave 185."
-blocked_on = ""
-impact_px = 1493336
+blocked_on = "VERIFICATION 2026-09-26 (job.board, board tick 07:35 PDT): PR #268 folded (d3e3e0bf7c; D24 saturate) and verified, arm PASS 530/530; the FloorQuad mechanism-B residual is #272's (fixed-function z rounding, PR #364 folded and verified). The ~1.49 M px this row priced is stale: re-measure with a post-fold Depth/W-buffering sweep on master (the host's to queue) before dispatching anything."
+impact_px = 0
 impact_onestep_px = 0
 game_visible = false
-impact_basis = "2026-09-25 inventory (host session): W buffering 24-bit FloorQuad: ZBuf24D 874,418 (0/16 exact) + two blank WBuf24D captures 460,868 + WBuf24F 158,050, from PR #222's fix arm 1790321693; ~1.06 M of the suite sits in non-ok captures, so this may shrink after lane.wbufdepth24 re-measures"
+impact_basis = "2026-09-26 (job.board): PR #268 and #272's PR #364 folded and verified; the prior 1,493,336 px estimate predates both and is withdrawn until a post-fold sweep re-measures W buffering."
 
 [issue.271]
 title = "X1A7 surface format: the expanded 7-bit alpha is not stored or read back (411,154 px; orphaned between #60 and #184)"
@@ -3986,7 +3986,7 @@ status = "open"
 dispatch_state = "available"
 blocked_on = ""
 status_note = "OPENED (host session, 2026-09-26 07:30 PDT) on the owner's ask: gameplay FPS with programmed input, not boot/menus (#265's overnight batch was boot-only). lane.titleplay drives each title into gameplay, confirms it from the contact sheet, scores it; <20 fps gameplay / crash / won't load -> its own issue."
-impact_px = "0"
-impact_onestep_px = "0"
+impact_px = 0
+impact_onestep_px = 0
 impact_basis = "2026-09-26: no pixels move; this is the 1.0 playable-list measurement (855 titles is the 1.0 target; ~145 per minor version)"
-game_visible = "True"
+game_visible = true
