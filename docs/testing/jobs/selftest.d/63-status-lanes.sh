@@ -97,6 +97,15 @@ SL_LOG="$T/gh-lanes.log"; : > "$SL_LOG"
 STATUS_BOARD_DIR="$SL_BOARD" SELFTEST_GH_LOG="$SL_LOG" bash "$HERE/status.sh" >/dev/null 2>&1
 check "the body header names the idle lane" grep -qF '**Idle with no work:** idlex' "$HAKUX_WORK/status/HEADER.md"
 
+# A PR list that could not be read is not "no PR": a gh failure must not flag
+# every lane idle in the issue body.
+mkdir -p "$T/status-ghfail"
+printf '#!/usr/bin/env bash\n[ "$1 $2" = "pr list" ] && exit 1\n[ "$1 $2" = "auth status" ] && exit 0\nexit 0\n' > "$T/status-ghfail/gh"
+chmod +x "$T/status-ghfail/gh"
+sout=$(PATH="$T/status-ghfail:$PATH" STATUS_BOARD_DIR="$SL_BOARD" bash "$HERE/status.sh" --print 2>&1)
+check "a failed PR list flags no lane idle" sf_nogrep -F 'IDLE, NO WORK' <<< "$sout"
+check "...it says the PR state is unknown" grep -qF '| idlex | not running, nothing on a device (PR state unknown' <<< "$sout"
+
 # No board to read: the page still renders and says so.
 mkdir -p "$T/status-noboard"
 sout=$(STATUS_BOARD_DIR="$T/status-noboard" bash "$HERE/status.sh" --print 2>&1); src=$?
