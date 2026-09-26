@@ -206,10 +206,12 @@ files = []
 standing = false
 retired_utc = "2026-09-26T09:10:00Z"
 note = "RETIRED (job.board wave 240): PR #356 MERGED 2026-09-26T06:10:56Z, no open PR on lane/foldflow, unit gone. Every file this row held is RELEASED to [free]. PRIOR NOTE: STARTED (host session, 2026-09-26T05:00Z), briefs/foldflow.md: owner asked why 31 dispatchable issues sat idle under a 24-lane cap. fold.sh waited forever on 'CI is NONE' for four index-only-conflicting PRs holding the hot files; it must repair index-only conflicts itself, hand code conflicts back the same tick, and fold up to 3 disjoint PRs per tick. fold.sh was unclaimed."
-[lane.titleplay]
-issues = ["397"]
-files = ["docs/testing/titles/routes/**", "docs/testing/titles/targets.toml", "docs/testing/title_verdict.py", "docs/testing/titles/table.py", "docs/lanes/titleplay/**"]
-note = "STARTED (host session, 2026-09-26 07:40 PDT), briefs/titleplay.md: owner -- gameplay FPS with scripted input, not boot/menus. Generic-route pass over the 20 staged titles, frame review, title routes for the rest (3 passes), verdicts on #397; <20 fps gameplay / crash / won't load -> issues. Files were unclaimed."
+[retired.titleplay]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-26T19:35:00Z"
+note = "RETIRED (hostops 2026-09-26 12:35 PDT): PR #399 MERGED, no open PR on lane/titleplay, unit gone. Pass 1 was stopped by the OWNER (12:02 PDT); its pass table is on #397 (19:09Z); the 12 parked requests in dispatch/parked/titleplay-p1-20260926 stay parked until the owner says otherwise. Files RELEASED to [free]. PRIOR NOTE: STARTED (host session, 2026-09-26 07:40 PDT), briefs/titleplay.md: owner -- gameplay FPS with scripted input, not boot/menus. Generic-route pass over the 20 staged titles, frame review, title routes for the rest (3 passes), verdicts on #397; <20 fps gameplay / crash / won't load -> issues. Files were unclaimed."
 
 [retired.statuspage]
 issues = []
@@ -371,6 +373,7 @@ standing = false
 note = "STARTED (hostops 2026-09-26 11:55 AM PDT): harness defect, no tracker issue. fold.sh attribute_multi waits for trunk CI on a multi-fold tip sha, but android/desktop runs are cancelled by concurrency when a later fold pushes, so trunk_ci says NONE forever and folds stay throttled to one per tick (993c5fe4b5 04:10, 7039df1d24 05:46-11:52 PDT; both marked done by hand). fold.sh and 74-fold-multi.sh were in no row. Brief: briefs/foldcancel.md."
 
 [free]
+# RELEASED (hostops 2026-09-26T19:35Z) by retiring lane.titleplay (PR #399 merged, pass 1 stopped by the owner): docs/testing/titles/routes/**, docs/testing/titles/targets.toml, docs/testing/title_verdict.py, docs/testing/titles/table.py, docs/lanes/titleplay/**
 # RELEASED (hostops 2026-09-26T18:20Z) by retiring lane.armsscope (PR #409 merged): selftest.d/94-arms-verdict-scope.sh, docs/lanes/armsscope/NOTES.md; arms.sh returned to lane.toolsmith.
 # RELEASED (hostops 2026-09-26T18:20Z) by lane.remote on #343 option (a): hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/shaders.c.
 # RELEASED (hostops 2026-09-26T17:58Z) by retiring lane.boardpushgate (PR #408 merged): jobs/board.sh, jobs/board-push-gate.sh, jobs/roles/board.md, selftest.d/97-board-push-gate.sh, its lane dir.
@@ -562,7 +565,7 @@ note = "STARTED (hostops 2026-09-26 11:55 AM PDT): harness defect, no tracker is
 # exist, and check_coverage.py cannot tell the difference.
 # CLAIMED (hostops, 2026-09-26T03:35Z): glsl/psh.h -> lane.pshqueue (granted at wave 222; [free] still listed it, failing check_territory).
 # CLAIMED (hostops, 2026-09-26 6:45 AM PDT): gl/texture.c -> lane.pshaniso284 (granted 6:40 AM; [free] still listed it, failing check_territory).
-files = ["docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/73-cloud-claim.sh", "docs/lanes/cloudclaim/**", "docs/testing/nightly_build.sh", "docs/testing/jobs/selftest.d/86-nightly-notes.sh", "docs/lanes/nightlynotes/**", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**", "tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "android/app/build.gradle.kts", 
+files = ["docs/testing/titles/routes/**", "docs/testing/titles/targets.toml", "docs/testing/title_verdict.py", "docs/testing/titles/table.py", "docs/lanes/titleplay/**", "docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/73-cloud-claim.sh", "docs/lanes/cloudclaim/**", "docs/testing/nightly_build.sh", "docs/testing/jobs/selftest.d/86-nightly-notes.sh", "docs/lanes/nightlynotes/**", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**", "tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "android/app/build.gradle.kts", 
 # RELEASED AT WAVE 158 by retiring lane.cloud190: PR #211 folded as f2e8ef8ba8 (#190 fixed).
     "hw/xbox/nv2a/pmc.c",
 # RELEASED (job.board wave 249) by retiring lane.fmv303 (PR #317 folded bb1f437bb7): vk/display.c.
