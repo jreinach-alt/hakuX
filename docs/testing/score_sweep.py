@@ -24,7 +24,8 @@ What it reports, per test:
     print "C: 1", the suite's own require_conversion flag, which selects
     between two completely different upload paths.
   * whether the capture is *blank* -- one colour over more than 90% of a frame
-    whose golden is richer than that. A blank frame is a different failure from
+    that painted over at least 1% of the image where the golden drew
+    something. A blank frame is a different failure from
     a wrong one: nothing drew, or the capture beat the draw to it. Mixed into a
     pixel-difference average it reads as dozens of subtly broken tests instead
     of one thing that did not run, so it is counted separately.
@@ -104,6 +105,36 @@ def decode_depth(img, bits):
         return (a[..., 3] << 16) | (a[..., 0] << 8) | a[..., 1], a[..., 2]
     depth = ((a[..., 0] >> 3) << 11) | ((a[..., 1] >> 2) << 5) | (a[..., 2] >> 3)
     return depth, np.zeros_like(depth)
+
+
+# Share of the image a flat capture must have lost to be `blank`. Measured over
+# every capture the old rule ever tagged blank (1,075 TSVs): the near-exact
+# ones lose <= 0.33%, the real blanks >= 21.33%. See is_blank().
+BLANK_MIN_LOST = 0.01
+
+
+def is_blank(o, g, label_rows):
+    """True when capture ``o`` is blank against golden ``g`` (RGBA arrays).
+
+    Two questions: is OURS flat (> 90% one colour, <= 4 colours), and did it
+    LOSE what the golden drew. The second used to be "the golden has > 4
+    colours", which a golden that is 99% background with a sliver of ink
+    passes -- so 15 near-exact captures (#297: DBFF z24 FZy at 24 px,
+    Texture_BRDF at 614 px) were filed as `blank` in every run from 09-13 and
+    their residuals were never triaged. ``lost`` is the golden's ink (anything
+    not the golden's dominant colour, below the label band) that we painted
+    our own dominant colour. See docs/lanes/cloud-297/NOTES.md section 3 and
+    docs/lanes/blankrule297/NOTES.md.
+    """
+    flat = o[..., :3].reshape(-1, 3)
+    ocols, counts = np.unique(flat, axis=0, return_counts=True)
+    gcols, gcounts = np.unique(g[..., :3].reshape(-1, 3), axis=0,
+                               return_counts=True)
+    ink = (g[..., :3] != gcols[gcounts.argmax()]).any(axis=2)
+    ink[:label_rows] = False
+    lost = ink & (o[..., :3] == ocols[counts.argmax()]).all(axis=2)
+    return bool(counts.max() / flat.shape[0] > 0.90 and len(counts) <= 4
+                and lost.sum() >= BLANK_MIN_LOST * flat.shape[0])
 
 
 def read_log(path):
@@ -223,11 +254,7 @@ def score_dir(args):
         label_delta = int(white_mismatch[:LABEL_ROWS].sum())
         content_white_delta = int(white_mismatch[LABEL_ROWS:].sum())
 
-        flat = o[..., :3].reshape(-1, 3)
-        _, counts = np.unique(flat, axis=0, return_counts=True)
-        gold_colours = len(np.unique(g[..., :3].reshape(-1, 3), axis=0))
-        blank = (counts.max() / flat.shape[0] > 0.90 and len(counts) <= 4
-                 and gold_colours > 4)
+        blank = is_blank(o, g, LABEL_ROWS)
 
         status = "blank" if blank else "ok"
         # NEITHER CHECK APPLIES TO A DEPTH CAPTURE, which is the other half and
