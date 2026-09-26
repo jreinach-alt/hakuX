@@ -154,6 +154,24 @@ here.
   - Generic-route runs cost a reviewer's look at a contact sheet, seconds
     per title.
 
+## Why attempt 1 did not finish (recorded 2026-09-26, attempt 2)
+
+- **The implementation commit was never pushed.** `2695e09853` sat only in
+  the worktree, so PR #307's head stayed at `0239b7e1cd` (notes only). CI went
+  green on that head, but on a head that carried none of the work.
+- **The real run never started.** `scratch/realrun.sh` waits for a moment when
+  the Nova has no hold and no running request. The Nova was busy with lane
+  requests the whole time. The script's log was empty when the session ended,
+  and no run directory was ever made.
+- **The PR was left in draft** with no waiting comment, which is what the
+  handback job found.
+
+Attempt 2 merged `origin/master`. The conflict in `dispatcher.sh`'s
+`snapshot_scripts` is resolved by keeping master's write-beside-and-rename
+(dispatch defect 13). The temporary file is made in the target's own
+directory, because `titles/route.sh` and `perf/pad.sh` live in
+subdirectories. Attempt 2 then pushed, and retried the real run.
+
 ## Real run
 
 (recorded below once the Nova is free; see PR #307)
