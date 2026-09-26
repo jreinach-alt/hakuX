@@ -45,6 +45,15 @@ lambda = 0, which Vulkan resolves with the MAG filter.
   Pixel shader, Texture format, Volume texture, Texture anisotropy
   bit-identical.
 
+## State at end of session 1 (2026-09-26)
+
+Waiting on two things outside this session: the arms job's `[job.arms]`
+verdicts for both predictions on PR #393, and CI on the pushed head. On
+resume: read both verdicts (the #284 at-least-half leg by hand from the
+table), merge master again (the brief's addendum; #379 may have folded), and
+if psh.c changed underneath, re-register on new refs and re-run the arms before
+marking ready.
+
 ## Not covered, do not extend without a measurement
 
 - Anisotropy under TENT or with mipmaps: `tex_aniso` stays 1 there, and the
