@@ -141,3 +141,33 @@ Report the median per arm, and check `[lazy413] skips` > 0 in B and `enabled=0` 
 read the `[job.arms]` verdict, B's `[lazy413] skips`, and every scores1.tsv `status` for
 `unreadable`. If the arm fails, set the default to off (`enabled = env && env[0] == '1'`) and say
 why in the A/B.
+
+## Why attempt 3 did not finish
+
+Attempt 3 ended waiting, correctly, on the soak pair and the arm, but its soak requests pinned
+`--device thor`. The Thor has no DOA2U, so both errored at once ("title not on device") and
+measured nothing. The arm ran. Attempt 4 (this one) re-queued the pair on the Nova.
+
+## Must-not-move arm: PASS (Thor, 1790463182-arms-doa413b-base/-fix, 0d5f93f210 vs 7f01f7f157)
+
+- 206 captures per leg, the same keys. Status is `ok` 201 / `white-content` 5 in both legs, and
+  no `unreadable`.
+- 205 of 206 captures score identically. The one that moved is `Blend_surface/R5G6B5_Add_SrcA_DstA`
+  (white-content in both legs, 14833/239 -> 11964/33). Its fix capture (sha256 110b0261177c) is
+  byte-identical to the BASE legs of `arms-zrtz272` and `arms-pshqueue` (both legs). So it is a
+  known noise state of that row, not this change. The base capture 30aaeba84f30 is the row's
+  commonest state (61 dirs).
+- B's logcat: `[lazy413] enabled=1 skips=1 reads=0`. The lazy path fired once, so the arm is not
+  inert, but it is thin: the test discs rarely leave a batch submitted across a surface_update.
+  The soak is where the path does real work.
+- So the default stays ON.
+
+## A/B soak pair, attempt 4 (queued 2026-09-26, Nova)
+
+`1790473771-doa413b-1386898` (A, `XEMU_SURF_LAZY_COMPLETE=0`) and `1790473773-doa413b-1387399`
+(B, `=1`). Both are same APK 7f01f7f157, perflog, survey route, 300 s. Read them as the attempt 3
+section says: fight-window median gfps and `[surf413] cdef`, `[lazy413] enabled=0` in A and
+`skips>0` in B. If B does not beat A, the price stands, but the cut is refuted. Then set the
+default off and name the next lever on #413: the GPU's own 40-48 ms.
+
+Merged origin/master at 2026-09-26 (#396 had folded), so the blinx372d files left this PR's diff.
