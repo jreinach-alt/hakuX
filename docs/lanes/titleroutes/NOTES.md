@@ -362,6 +362,27 @@ twice, because the failure is a timing window.
 After the intro the saves list holds slot B at "1/7" from pass 1; slot A is
 empty (the START train picks slot A).
 
+### Session 12: HELD Thor, 01:01-01:23 PDT (22 min; hold taken 00:58 while a blinx372e run finished), battery 69%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Galleon (41540004) | thor | none | - | the 2 s START train reached the intro again, but the intro ran at 2 fps and 16 A presses did not reach the deck; parked |
+| JSRF: Jet Set Radio Future (49470018) | thor | `jsrf.route` | yes (01:21; one failed replay before it) | the Garage, Yoyo on skates with the HUD; he skates, turns and jumps |
+
+**JSRF.** No save prompt: New Game drops straight into the Garage
+dialogue. A first route with two single STARTs stayed on the title over the
+attract loop on replay, where the game ran at 59 fps instead of 9
+(`scratch/replay/jsrf-010926/`). The route now presses START every 4 s,
+eight times, from 70 s. START leaves the intro, opens the menu and picks
+NEW GAME, and does nothing in the dialogue. Then it presses A every 3 s,
+twelve times. Nav frames `~/hakux-work/nav/jsrf.first-run-20260927T011434/`
+(002-moved.png), replay `scratch/replay/jsrf-011802/zz-end.png`.
+
+**A pattern for titles whose boot timing drifts (MechAssault 2, JSRF,
+Galleon, GTA):** when START or A also means "select", replace single timed
+presses with a train of them spaced wider than the slowest transition. Check
+first that the extra presses are harmless at the screen they end on.
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
@@ -386,6 +407,7 @@ request.
 | Crash Twinsanity | crash-twinsanity | 1-1790489396-titleroutes-512742 | 540 | 268 s of gameplay; fps window median 15.72 (min 9.38), 0% at >= 30; target 60 |
 | MechAssault 2 | mechassault-2 | 1-1790492206-titleroutes-681960 | 530 | 315 s of gameplay; fps window median 29.97 (min 15.81), 91.7% at >= 30; target 30 |
 | GTA: San Andreas | gta-sa | 0-0-x-1790493356-titleroutes-734802 (promoted from 1-1790493356-titleroutes-734802) | 500 | 279 s of gameplay; fps window median 4.56 (min 3.91), 0% at >= 30; target 30. Ten 11-15 s hangs, 80% of audio callbacks short. apk 397ae7dca16a. Posted on #397 (comment 5853851696) |
+| JSRF | jsrf | 1-1790497366-titleroutes-886445 | 500 | pending |
 
 ## Do not repeat
 
