@@ -757,6 +757,8 @@ static void fsk_maybe_dump(int64_t now)
  *   nested wait counted whole, so each is capped at the methods' total. The
  *   profile's per-flip reset lands inside FLIP_STALL, so that method's nested
  *   time is not counted (`rst`); FLIP_STALL's own time is `mflip`.
+ * - A callback is stamped after its own dispatch, when the interrupt has
+ *   been raised; the NOP method's time (its BQL wait included) is `mother`.
  * - The split is over non-overlapping intervals: from the later of the kick
  *   and the previous callback's dispatch. Two callbacks in one submission
  *   would otherwise count the same wait twice, and per-frame sums would
@@ -906,8 +908,9 @@ static void cbl_note_caught_up(void)
     s_cbl.tail = s_cbl.head;
 }
 
-static void cbl_note_callback(uint32_t param, bool dup, int64_t now)
+static void cbl_note_callback(uint32_t param, bool dup)
 {
+    int64_t now = nv2a_clock_ns();
     CblSnap cb;
     const CblSnap *from;
     bool has_kick = s_cbl.tail != s_cbl.head;
@@ -1073,7 +1076,7 @@ static int cbl_park_cat(NV2AState *d)
 #define cbl_note_kick(put)                    ((void)(put))
 #define cbl_note_advance(b, a, j)             ((void)(b), (void)(a), (void)(j))
 #define cbl_note_caught_up()                  ((void)0)
-#define cbl_note_callback(param, dup, now)    ((void)(param), (void)(dup), (void)(now))
+#define cbl_note_callback(param, dup)         ((void)(param), (void)(dup))
 #define cbl_maybe_dump(now)                   ((void)0)
 #define cbl_park_cat(d)                       0
 #endif
@@ -1957,7 +1960,6 @@ static void pfifo_run_pusher(NV2AState *d)
             *status &= ~NV_PFIFO_CACHE1_STATUS_LOW_MARK;
 
             bool cbl_nop = CBL_ON && method == NV097_NO_OPERATION && word;
-            int64_t cbl_t = cbl_nop ? nv2a_clock_ns() : 0;
             bool cbl_dup = cbl_nop && (qatomic_read(&d->pgraph.pending_interrupts)
                                        & NV_PGRAPH_INTR_ERROR);
             cbl_enter(cbl_method_cat(method));
@@ -1970,7 +1972,7 @@ static void pfifo_run_pusher(NV2AState *d)
                 break;
             }
             if (cbl_nop) {
-                cbl_note_callback(word, cbl_dup, cbl_t);
+                cbl_note_callback(word, cbl_dup);
             }
 #if CBL_ON
             if (method == NV097_FLIP_STALL) {
