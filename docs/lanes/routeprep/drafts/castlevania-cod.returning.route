@@ -1,0 +1,51 @@
+# Castlevania: Curse of Darkness (4B4E002D), Thor, RETURNING: a save is on
+# the disk. DRAFT by lane.routeprep, 2026-09-26, not played. NO FRAMES ON
+# DISK: every step is [guess].
+#
+# [guess]: the main menu offers Continue / Load above or below New Game. The
+# safest path for a benchmark is Load of the saved file, which puts Hector
+# at the last save point; the saved file's place is what the first run's
+# frames will show.
+wait 30
+shot boot30
+press START
+wait 15
+shot boot45
+press START
+wait 15
+shot boot60
+press START
+wait 8
+shot main-menu              # CHECK: which item is highlighted with a save present
+mark booted
+press A                     # [guess] Continue / Load
+wait 8
+shot slot
+press A                     # [guess] the saved file
+wait 15
+shot loaded
+mark profile-loaded
+repeat 4 {
+    press A
+    wait 6
+    shot load-a
+}
+mark gameplay               # [guess] placeholder
+repeat forever {
+    axis LY min
+    wait 1.5
+    press X
+    wait 0.3
+    press X
+    wait 0.3
+    press A
+    wait 0.6
+    axis LY mid
+    axis LX max
+    wait 1
+    press X
+    wait 0.3
+    axis LX min
+    wait 1
+    axis LX mid
+}

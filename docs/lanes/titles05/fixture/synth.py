@@ -28,6 +28,10 @@ SYN = [
     ("Zz Yellow", "5A5A0004", ("thor", "nova"), "burnout3", True, [("nova", "screening", 22.5, 0.12, True, False, False)], "below 30"),
     ("Zz Purple", "5A5A0005", ("thor", "nova"), "burnout3", True, [], "inputs ready"),
     ("Zz Blue", "5A5A0006", ("thor",), "", False, [], "copied"),
+    # lane.titleroutes' shapes (PR #455): one route with no profile step needs
+    # no save, so it is inputs ready; a first-run route alone still needs one.
+    ("Zz Purple Single Route", "5A5A0007", ("nova",), "kabuki-warriors", False, [], "inputs ready"),
+    ("Zz Blue First Run: Tom Clancy's Rainbow Six 3 Black Arrow", "5A5A0008", ("nova",), "goldeneye-ra", False, [], "copied"),
 ]
 GREY = [("Zz Grey %02d" % i, "5A5A01%02d" % i) for i in range(1, 13)]
 
