@@ -30,6 +30,14 @@
 # hakuX did not have the Thor's input focus and an overlay covered display
 # 0, so all 7 frames are black and the presses went to another app. Its
 # 28.32 fps is not a reading of this title's gameplay.
+#
+# REPLAYED 2026-09-27 13:00 PDT, in a HELD Thor session, unattended, with
+# hakuX holding the input focus on all 12 reads of `dumpsys input` (before
+# the launch, after it, and every 20 s). The frame at the mark shows the Arena
+# with the training box "To end your training session, leave the Arena ...
+# Continue (A)" still up; the play pattern's first A closes it. 40 s later
+# Azurik stands at the far arch (scratch/replay/azurik-130014/zz-end.png,
+# overlay FPS 29). The boot was warm (shaders cached).
 wait 25.1
 shot boot
 wait 8.4

@@ -385,6 +385,7 @@ route = "alias"
 [titles."4D570002"]
 name = "Arctic Thunder"
 iso = { thor = "4D570002-Arctic_Thunder.xiso.iso" }
+route = "arctic-thunder"
 target_fps = 60
 notes = "Own target 60 from #431 (comment 5853568091): medium confidence. IGN Xbox review (2001)."
 
@@ -399,6 +400,11 @@ name = "Dungeons & Dragons Heroes"
 iso = { thor = "49470013-Dungeons_Dragons_Heroes.xiso.iso" }
 route = "dnd-heroes"
 
+[titles."4D4A0001"]
+name = "BloodRayne"
+iso = { thor = "4D4A0001-BloodRayne.xiso.iso" }
+route = "bloodrayne"
+
 [titles."56550009"]
 name = "Antz Extreme Racing"
 iso = { thor = "56550009-Antz_Extreme_Racing.xiso.iso" }
@@ -408,5 +414,11 @@ notes = "Own target 60 from #431 (comment 5853568091): low confidence. xemu user
 [titles."5655001A"]
 name = "Baldur's Gate: Dark Alliance"
 iso = { thor = "5655001A-Baldur_s_Gate_Dark_Alliance.xiso.iso" }
+route = "baldurs-gate-da"
 target_fps = 60
 notes = "Own target 60 from #431 (comment 5853568091): medium confidence. IGN Xbox review (2002)."
+
+[titles."534E0007"]
+name = "KOF: Maximum Impact - Maniax"
+iso = { thor = "534E0007-KOF_Maximum_Impact_Maniax.xiso.iso" }
+route = "kof-mi.returning"
