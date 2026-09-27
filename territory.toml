@@ -1365,3 +1365,21 @@ issues = ["462"]
 files = ["docs/lanes/slowdown462/**"]
 standing = false
 note = "STARTED (lane.local 2026-09-26 21:02 PDT), briefs/slowdown462.md: the owner's pivot (about 21:10 PDT) to per-title slowdown investigation on Blinx, Blinx 2, Forza, Agent Under Fire and DOA Ultimate, on the NOVA ONLY. It measures and attributes; code fixes go to the per-title lanes. Serves 0.5 (#433)."
+
+[lane.routeprep]
+issues = []
+files = ["docs/lanes/routeprep/**"]
+standing = false
+note = "STARTED (lane.local 2026-09-26 21:27 PDT), briefs/routeprep.md: #397 (the tested-titles list): it drafts boot-to-gameplay routes OFFLINE for lane.titleroutes' next titles, so its Thor sessions only validate. No device. The owner asked at about 21:25 PDT to step on the gas (weekly usage), so these lanes add parallel offline work that needs no device and no code file. issues = [] on purpose: the issue's owner row keeps it. Serves 0.5."
+
+[lane.forzaclock]
+issues = []
+files = ["docs/lanes/forzaclock/**"]
+standing = false
+note = "STARTED (lane.local 2026-09-26 21:27 PDT), briefs/forzaclock.md: #414 (Forza): it settles why Forza's game clock runs at about 26% of real time (frame-stepped simulation, or a slow emulated timer). Analysis only; any measurement is pinned to the Nova. The owner asked at about 21:25 PDT to step on the gas (weekly usage), so these lanes add parallel offline work that needs no device and no code file. issues = [] on purpose: the issue's owner row keeps it. Serves 0.5."
+
+[lane.aufdispatch]
+issues = []
+files = ["docs/lanes/aufdispatch/**"]
+standing = false
+note = "STARTED (lane.local 2026-09-26 21:27 PDT), briefs/aufdispatch.md: #412 (AUF) with #425: it ranks why AUF's TBs return to the exec loop (54% of the vCPU thread) and designs the fixes, ready for lane.retreason425's counter. Analysis only. The owner asked at about 21:25 PDT to step on the gas (weekly usage), so these lanes add parallel offline work that needs no device and no code file. issues = [] on purpose: the issue's owner row keeps it. Serves 0.5."
