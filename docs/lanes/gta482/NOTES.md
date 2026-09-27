@@ -114,6 +114,23 @@ window. REST was restored, the caches were cleared and the hold released
 after 38 s of device time. The case and the ask for one replacement session
 are in hostops-inbox (12:14 PDT).
 
+## State at the end of this session (2026-09-27 12:25 PDT): waiting
+
+- Posted: the per-cost table on #482 (comment 5859028974). Rows 1 (guest
+  JIT, 77.6 ms) and 2 (blocked, 61.9 ms) are pending. The #424 churn finding
+  and its bound are on #424 (5858850203). Row 3 (lookup) is #425's, which
+  slowdown462 already routed.
+- Waiting on hostops for ONE replacement held Thor session
+  (hostops-inbox 12:14 PDT). With it, ideally, `PERF_HARDEN0=1`.
+- The next attempt: `env OUT=~/hakux-work/perf/2026-09-27-gta482/s3
+  PERF_HARDEN0=1 bash docs/lanes/gta482/capture_gta.sh 60` (take hold/thor
+  first with `jobs/hold.sh take`, between runs). Then run
+  `winfps.py <dir>` and `winfps.py <dir> 'prof on end' 'prof off end'`,
+  which should read ~4-5 fps. Then `tbmap.py <dir>` (rows 1's guest pcs),
+  `offcpu.py <dir>/rec-off.data <vCPU tid>` (row 2) and `codewrites.py
+  <dir>/logcat.txt 50 200`. Post the filled table on #482 and #462.
+- Nothing of this lane's is queued, running or held.
+
 ## Do not repeat
 
 - Do not start a held session without a non-black screencap AND without
