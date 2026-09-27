@@ -35,11 +35,19 @@ Decomposition, derived from the source and verified by an exact identity:
   child is counted there and again in Fin, and a clear's children sit outside
   Draw, so UNCLASSIFIED can go negative there.
 
+  So do not compare a span across that fix without allowing for it:
+  - the children of Draw and Pipe (Pipe, Tx, Setup, ...) read lower on a new
+    line, by the nested finish no longer counted in them;
+  - Draw, and with it BUSY, reads higher on a title that clears through the
+    fall-through path, by that clear's pre-draw and recording, which sat
+    outside Draw before.
+  Neither change is the title's.
+
   TEXTURE BINDS (new lines only): Tx + FTx is every pgraph_vk_bind_textures
   call, and the only route to a texture upload or content hash. So
     binds = TxH (content hash) + Tex (upload) + rest (lookups, descriptors)
-  where rest also carries any finish nested in a Tx bind, since Tx is not
-  exclusive of finish and Tex and FTx are.
+  where rest holds no finish time: Tx, FTx and Tex are all exclusive of
+  finish, and TxH's fast_hash() cannot reach one.
 """
 import re, sys, statistics as st
 
