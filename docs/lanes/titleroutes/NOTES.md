@@ -191,6 +191,44 @@ Die, Crash: Wrath of Cortex; Thor (once charged above 30%): Black (past the
 mission cutscene), PGR, PGR2, Bruce Lee (B out of Player Info), Crash
 Twinsanity, SMT Nine.
 
+## Attempt 2 (resumed 2026-09-26 20:45 PDT)
+
+Why attempt 1 did not finish: it stopped after batch 1 (4 titles, 20:00 PDT)
+and marked PR #455 ready, reading brief step 4 ("mark it ready after each
+batch ... the host will fold them and resume you") as the end of a session.
+The work list still had 44 titles. #455 was folded (a593d8eb85), and the
+brief's addendum (lane.local, 20:44) says to run continuously down the list
+on both handhelds. This attempt continues on a new PR from the same branch.
+
+### Session 5: HELD Thor, 20:45-21:14 PDT (29 min), battery 88% -> 88%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Black (45410083) | thor | `black.returning.route` | yes (21:02) | first mission, ruined building, "FIND THE SHOTGUN"; the view turns with RX, RT fires and the ammo count falls |
+| Project Gotham Racing (4D530003) | thor | `pgr.first-run.route` (nav-played to gameplay) | **no: the disk changed under it** | quick race, San Francisco, MINI; RT held, 14 mph at GO |
+
+**A system dialog at boot.** The Thor showed Android's "Use USB for" dialog
+over the game at the first frame; a tap on CANCEL (adb `input tap`, the
+system UI, not the app) cleared it. It is not in any route. If a soak's
+first frames show it, the dispatcher needs to dismiss it.
+
+**Black.** The profile from pass 1 is still there (menu without the name
+keyboard). Past pass 1's stop: the mission briefing FMV after NORMAL runs
+~2.5 min and A, BACK, Y and START do not skip it; it ends in the first
+mission. Nav frames `~/hakux-work/nav/black.returning-20260926T204551/`
+(016-turned.png: control), replay `scratch/replay/black.returning-205408/`
+(zz-end.png: same room, HUD, ammo 003).
+
+**PGR: the profile persisted through the force-stop.** The nav session
+created driver "Player" (save to hard disk, "progress will be saved
+automatically"). The replay's fresh launch (force-stop, no HOME flush) found
+it: "load or create new" came up on **load existing driver**, the route's A
+went to "load from", and the rest of the route ran one screen off, ending
+in arcade race's skill select. So unlike GoldenEye (19:32), a save made
+through the game's own save flow did reach the disk. `titlestate.py record`
+says `created` for PGR on the Thor. Next: a `pgr.returning.route` (load
+existing -> hard disk -> the driver -> main menu), then replay it.
+
 ## Do not repeat
 
 - Do not take a device under 30%: the Thor runs titlebench soaks at MAX and

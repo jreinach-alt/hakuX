@@ -1,0 +1,99 @@
+# Project Gotham Racing (4D530003), FIRST-RUN: no driver on the disk.
+# PLAYED by nav.py on the Thor, 2026-09-26 21:03 PDT (lane.titleroutes HELD
+# session pgr.first-run-20260926T210321), to gameplay.
+#
+#   intro FMV (START) -> Kudos card (START) -> Bizarre Creations logo
+#   (START) -> "load or create new", cursor on create new driver (A) ->
+#   setup driver with defaults (name Player, plate GOTHAM), cursor on
+#   continue (A) -> save to hard disk (A) -> "progress will be saved
+#   automatically" (A) = profile saved -> main menu on arcade race; one
+#   left-stick flick up to quick race (A) -> skill easy (A) -> San Francisco
+#   (A) -> car select MINI Cooper S (A) -> transmission AUTO (A) -> flyby
+#   (A skips part of it) -> grid countdown.
+#
+# Player control: RT held from the countdown; at GO the car was at 14 mph
+# (nav frames 017 -> 018). The first run on the Thor ran at 4-5 fps while
+# shaders compiled. Quick race shows Time 50 and 2 laps: what the 420 s
+# window holds after the race or the timer ends is not seen yet.
+#
+wait 26.4
+shot boot
+wait 5.7
+press START
+wait 5.1
+shot s1
+wait 5.9
+press START
+wait 5.1
+shot s2
+wait 10.8
+press START
+wait 6.0
+shot s3
+wait 7.0
+press A
+wait 4.1
+shot create
+wait 6.4
+press A
+wait 5.4
+shot cont
+wait 6.4
+press A
+wait 5.1
+shot saved
+wait 6.4
+mark profile-saved
+wait 2.0
+press A
+wait 5.1
+shot main
+wait 11.0
+axis LY min
+wait 0.8
+axis LY mid
+wait 0.7
+shot up
+wait 1.5
+press A
+wait 5.1
+shot qr
+wait 6.6
+press A
+wait 5.1
+shot easy
+wait 6.2
+press A
+wait 6.4
+shot city
+wait 6.6
+press A
+wait 5.1
+shot car
+wait 6.4
+press A
+wait 13.6
+shot auto
+wait 6.9
+press A
+wait 4.1
+shot fly
+wait 15.0
+shot grid
+wait 11.7
+axis RT max
+wait 6.1
+shot go
+wait 18.5
+shot moving
+wait 18.3
+mark gameplay
+repeat forever {
+    axis RT max
+    axis LX min
+    wait 1.5
+    axis LX max
+    wait 1.5
+    axis LX mid
+    wait 3
+}
