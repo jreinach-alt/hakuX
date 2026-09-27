@@ -95,3 +95,12 @@ the `device: thor` check. No device time was used.
   dispatcher's locale collation ever puts `1-…` after `17…`, the "ahead"
   set is slightly wrong. This is not changed here because dispatcher.sh is
   not in this lane's files.
+
+## Attempt 2 (2026-09-27): why attempt 1 did not fold
+
+Attempt 1 finished the work: audited, green, labelled fold-ready at
+`7be0c97ca5`. It did not fold because `master` moved after its CI ran
+(the latest failing check started 23:09:41Z, before the trunk's head), and
+a PR's checks are not re-run when its base moves. Nothing in the lane's
+code was at fault. This attempt merged `origin/master` (clean, no
+conflicts), re-ran the selftest, and pushed; the work itself is unchanged.
