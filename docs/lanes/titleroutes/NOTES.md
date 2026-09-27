@@ -721,6 +721,57 @@ on a cold boot. The nav session is warm (its shaders are cached), and a soak
 may not be. Before trusting a reading, open the route-frame at the mark. A
 flat 29.97 with min = median is what an attract demo looks like.
 
+### Attempt 7, 2026-09-27 12:20-12:50 PDT (offline: both soaks void, no Thor input until a focus guard is live)
+
+**Why attempt 6 did not finish.** It did not fail. It ended on a `waiting:`
+for the Azurik and D&D Heroes soaks, and PR #487 folded. This attempt was
+resumed when both were DONE.
+
+Both readings are void, and neither says anything about its route.
+
+| title | request | verdict's number | what the run was | evidence |
+|---|---|---|---|---|
+| Azurik | 1-1790527983-titleroutes-2100312 (thor, 11:05-11:13 PDT, apk 6ed0b8d20937) | 28.32 median (min 20.42), 43.1% at >= 30, 288.7 s after the mark: **void** | display 0 covered by the AYN dual-screen assistant's overlay; hakuX without input focus | 7 of 7 route frames are 10,899 B, a 1920x1080 all-black PNG with no FPS overlay |
+| D&D Heroes | 0-0-x-1790527983-titleroutes-2100395 (thor, 12:11-12:21 PDT, apk 6ed0b8d20937) | no mark, 0 s of gameplay: **void** | hakuX rendered on display 0, but no press reached it; devwatch stopped the route at 12:14:30, 187 s in, because Lime3DS was the app in front | `121221-a3.png`: main menu. `121257-name.png`, `121324-load.png`, `121347-skip.png`: the attract demo (heroes with keys and potions already collected) |
+
+What happened on the Thor (hostops-inbox.md, 11:50 to 12:14 PDT; #397
+deliveries at 11:53 and 12:12):
+- The Thor came back from a USB drop at about 11:05 with the launcher in
+  front. Azurik's soak launched hakuX, but gamepad events go to the focused
+  window. The route's first A came at 11:05:53 and Lime3DS started at
+  11:06:02. The presses most likely opened it from the launcher. Route input
+  also changed `dual_screen_display_mode` to 2, and the assistant's overlay
+  then covered display 0 until hostops set the mode back at 12:10.
+- D&D Heroes ran after that fix. Its frames are real, so the display was
+  clear. Its input still went elsewhere. The logcat's frame rate alternates
+  between 59-60 (menu, about 40 s) and 28-31 (demo, about 80 s) for the
+  whole 580 s, in step, including across the route's presses at 12:12:31,
+  12:12:50, 12:13:34 and 12:13:40. An A that reached the game would have
+  left the demo or chosen NEW GAME. lane.gta482 read the focus on display
+  1's launcher at 12:10 (SecondaryDisplayLauncher), which fits.
+- So the display-covered check (PR #495) would have refused the Azurik run
+  and would NOT have refused the D&D Heroes run. That one needs the focus
+  check (hostops 12:07, item 2: abort the route when hakuX is not in front).
+
+Azurik's number looks like play, and that is the trap. It is not flat like
+the attract demo (16 to 30 after 11:09). I still cannot say what was on the
+screen, and the presses went to another app, so it is not a reading.
+
+**I queued nothing on the Thor in this attempt.** A route soak presses
+buttons into whatever holds the focus. Twice today that was the owner's own
+apps, and devwatch needs 90 s to notice, which is three to five presses.
+Azurik and D&D Heroes go back in the queue when a soak refuses to press
+without the focus (the signal is in the `waiting:` comment on the PR). The
+Nova is reserved for the fps-focus work today, so no held Nova session
+either. Every title left on the work list is behind one of those two.
+
+Offline work done: the two route headers say what the void soaks showed;
+`python3 scratch/chk431.py` confirms all 35 of #431's targets are in
+targets.toml with the same `target_fps` (61 titles, 27 with a route).
+
+Board request (dispatch/board-requests/titleroutes.md, 12:40 PDT): the D&D
+Heroes run as the case the display-covered check misses.
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
@@ -783,3 +834,11 @@ copy of the result dir (`scratch/judge.py`), apk 397ae7dca16a.
   both ways.
 - Do not assume a force-stop loses a save: PGR's driver, saved through the
   game's own save screen, was on the disk at the next launch.
+- Do not read a soak's fps before its frames AND its input. Black frames
+  (10,899 B each) mean a covered display. Real frames with a menu/demo
+  rhythm in the logcat's `gfps` (D&D Heroes: 40 s at 60, 80 s at 30,
+  repeating) mean no press reached the game. `scratch/timeline.py <dir>`
+  prints that rhythm.
+- Do not queue a route soak on a device that has just reconnected or
+  rebooted until something has checked that hakuX holds the input focus. The
+  presses go to the focused window, whoever owns it.
