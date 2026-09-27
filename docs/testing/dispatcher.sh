@@ -1377,13 +1377,7 @@ PYEOF
 # measured `Sd2` finishes per frame on `xemu-work` but could not say which
 # surface-download site fired: that split is on `hakuX-stall` (sd[...],
 # dlSrc[...], dif[...]), and GPU time per frame is on `xemu-gpu`.
-#
-# xemu-surf ADDED 2026-09-26 for #413, same shape (NV2A_PERF_LOG, one line per
-# 60 guest frames, profile.c). It is the sub-split of `Surf` -- populate,
-# dirty, lookup hit/evict/nosurf, create, put, bind, upload, download,
-# expire -- and DOA2U's perflog soak (1790450181-doa413-1721403) spent 33-52
-# ms per frame in `Surf` without it, so the soak could not say which part.
-LOGCAT_SPEC="${LOGCAT_SPEC_OVERRIDE:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-lane:I hakuX-tier1:D hakuX-pages:I hakuX:I hakuX-rw:I hakuX-stderr:E hakuX-vk:I hakuX-route:I hakuX-pace:I hakuX-stall:I hakuX-rpbrk:I hakuX-cpu:I xemu-gpu:I xemu-sfp:I xemu-surf:I libc:F DEBUG:F VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
+LOGCAT_SPEC="${LOGCAT_SPEC_OVERRIDE:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-lane:I hakuX-tier1:D hakuX-pages:I hakuX:I hakuX-rw:I hakuX-stderr:E hakuX-vk:I hakuX-route:I hakuX-pace:I hakuX-stall:I hakuX-rpbrk:I hakuX-cpu:I xemu-gpu:I xemu-sfp:I libc:F DEBUG:F VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
 export LOGCAT_SPEC
 
 case "${1:-status}" in
@@ -1407,52 +1401,21 @@ case "${1:-status}" in
     snapshot_scripts
     workers=()
     serials=()
-    unknown=" "
-    # Start a worker for every attached, known serial that has none yet.
-    # Called at start AND from the supervise loop below: a handheld that is
-    # off adb when serve starts -- unplugged to charge on its 500 mA port --
-    # was otherwise never served until the next restart. 2026-09-26: the
-    # update window restarted serve at 20:12 PDT with the Thor off adb, the
-    # owner plugged it back at 20:35, and no worker ever started for it; the
-    # only remedy was a drain-restart holding both devices for 30 min.
-    #
-    # adb is Windows adb.exe through interop and can hang or fail with the
-    # UtilAcceptVsock transient, so the listing has a deadline and a failed
-    # listing changes nothing. A serial with a worker is never started twice:
-    # a dead worker is the restart loop's to bring back, not this one's.
-    attach_workers() {   # <suffix for the log line>
-        local listing s i have
-        listing=$(timeout -k 5 30 adb devices 2>/dev/null) || return 0
-        for s in $(printf '%s\n' "$listing" | tr -d '\r' | awk 'NR>1 && $2=="device"{print $1}'); do
-            have=0
-            for i in "${!serials[@]}"; do [ "${serials[$i]}" = "$s" ] && have=1; done
-            [ "$have" = 1 ] && continue
-            if ! ( device_env "$s" ) >/dev/null 2>&1; then
-                # Once per serial, not once a minute for as long as it is plugged in.
-                case "$unknown" in *" $s "*) ;; *)
-                    log "skipping unknown device $s; add it to devices.sh"
-                    unknown="$unknown$s " ;; esac
-                continue
-            fi
-            log "starting worker for $s${1:-}"
-            SERIAL="$s" bash "$SNAP/dispatcher.sh" worker "$s" &
-            workers+=($!)
-            serials+=("$s")
-        done
-    }
-    attach_workers
+    for s in $(adb devices | tr -d '\r' | awk 'NR>1 && $2=="device"{print $1}'); do
+        if ! ( device_env "$s" ) 2>/dev/null; then
+            log "skipping unknown device $s; add it to devices.sh"
+            continue
+        fi
+        log "starting worker for $s"
+        SERIAL="$s" bash "$SNAP/dispatcher.sh" worker "$s" &
+        workers+=($!)
+        serials+=("$s")
+    done
     if [ "${#workers[@]}" -eq 0 ]; then
-        # NOT an exit. Exiting 2 here made the unit crash-loop, or sit dead,
-        # while every handheld was off charging; supervising an empty set lets
-        # the first one to come back be served by the late-attach path.
-        log "no known device attached; supervising none until one attaches"
+        echo "no known device attached" >&2; exit 2
     fi
     log "=== supervising ${#workers[@]} device worker(s) ==="
     trap 'kill ${workers[@]} 2>/dev/null; exit 0' INT TERM
-    # Both overridable for the selftest only (98-dispatch-late-device.sh).
-    SUPERVISE_SLEEP="${DISPATCH_SUPERVISE_SLEEP:-20}"
-    RESCAN_SECS="${DISPATCH_RESCAN_SECS:-60}"
-    last_scan=$SECONDS
     # Supervise, rather than merely start and wait. A worker that dies takes
     # its device out of service silently: the queue keeps accepting requests
     # pinned to it and nothing serves them. That happened within the hour --
@@ -1463,11 +1426,7 @@ case "${1:-status}" in
     # safe because all state lives in the queue and results directories, and
     # a worker's own orphan sweep requeues only what it owns.
     while :; do
-        sleep "$SUPERVISE_SLEEP"
-        if [ $((SECONDS - last_scan)) -ge "$RESCAN_SECS" ]; then
-            last_scan=$SECONDS
-            attach_workers " (attached late)"
-        fi
+        sleep 20
         for i in "${!workers[@]}"; do
             if ! kill -0 "${workers[$i]}" 2>/dev/null; then
                 log "worker for ${serials[$i]} (pid ${workers[$i]}) is gone; restarting"

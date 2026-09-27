@@ -157,10 +157,7 @@ def read_log(path):
 
 
 def score_dir(args):
-    # args is (run_dir, goldens) or (run_dir, goldens, names): a flat run is one
-    # directory, so main() splits its file list across workers by `names`.
-    run_dir, goldens = args[0], args[1]
-    only = args[2] if len(args) > 2 else None
+    run_dir, goldens = args
     # A MISSING CAPTURE DIRECTORY IS AN EXPECTED OUTCOME, NOT A BUG HERE.
     #
     # It happens when the device disappears mid-run: on 2026-09-13 the thor
@@ -183,7 +180,7 @@ def score_dir(args):
         return []
     solo, _ = read_log(os.path.join(run_dir, "pgraph_progress_log.txt"))
     rows = []
-    for name in (only if only is not None else sorted(os.listdir(run_dir))):
+    for name in sorted(os.listdir(run_dir)):
         if not name.endswith(".png") or "::" not in name:
             continue
         suite, test = name[:-4].split("::", 1)
@@ -347,23 +344,9 @@ def main():
         dirs = [os.path.join(args.out, d) for d in sorted(os.listdir(args.out))
                 if os.path.isdir(os.path.join(args.out, d))]
     captures = []
-    # A flat run is ONE directory, so mapping over `dirs` gave the whole run to
-    # one worker: 755 captures scored serially in ~10 min while the device sat
-    # held and the other workers idled (hostops, 2026-09-27). Split the file
-    # list instead; ex.map keeps order, so the rows come out as before.
-    work = [(d, args.goldens) for d in dirs]
-    if args.flat and os.path.isdir(args.out):
-        names = sorted(os.listdir(args.out))
-        n = max(1, min(args.jobs or 1, len(names)))
-        step = (len(names) + n - 1) // n if names else 1
-        work = [(args.out, args.goldens, names[i:i + step])
-                for i in range(0, len(names), step)] or work
-        # One line to stderr so the split is observable (selftest fragment
-        # 99-score-sweep-flat-split.sh reads it); the TSV is unchanged.
-        sys.stderr.write("score_sweep: flat run split into %d work items "
-                         "over %d files\n" % (len(work), len(names)))
     with ProcessPoolExecutor(max_workers=args.jobs) as ex:
-        for got in ex.map(score_dir, work, chunksize=1):
+        for got in ex.map(score_dir, [(d, args.goldens) for d in dirs],
+                          chunksize=8):
             captures.extend(got)
 
     # A test can be captured more than once: the suites that could not be split

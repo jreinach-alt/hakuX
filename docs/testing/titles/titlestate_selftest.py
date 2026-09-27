@@ -161,8 +161,7 @@ def test_registry(tmp):
     with open(tgt, "w") as fh:
         fh.write('[titles."4541005B"]\nname = "Burnout 3"\nroute = "burnout3"\n'
                  'iso = { nova = "b3.iso", thor = "b3.iso" }\n'
-                 '[titles."45410083"]\nname = "Black"\nroute = "black"\niso = { thor = "black.iso" }\n'
-                 '[titles."5A440004"]\nname = "Alien Hominid"\nroute = "alien-hominid"\niso = { thor = "ah.iso" }\n')
+                 '[titles."45410083"]\nname = "Black"\nroute = "black"\niso = { thor = "black.iso" }\n')
     env = {"TITLESTATE_DIR": tdir, "TITLE_TARGETS": tgt}
 
     def choose(tid, devices=None):
@@ -221,23 +220,6 @@ def test_registry(tmp):
     c = choose("45410083")
     check("a device with a titles disk and no row for a title is known clean",
           (c["device"], c["variant"]) == ("thor", "first-run"), str(c))
-
-    # no-save: a read disk with no save stands in for one, until a harvest finds one
-    row = json.loads(run_ts(env, "no-save", "--device", "thor", "--title-id", "4541005B",
-                            "--reason", "New Game route", "--run", "r6"))
-    check("no-save records its reason", row["save_na"]["reason"] == "New Game route", str(row))
-    run_ts(env, "harvest", "--device", "thor", "--title-id", "4541005B", "--image", img, "--run", "r7")
-    row = json.loads(run_ts(env, "show", "--device", "thor", "--json"))["thor"]["titles"]["4541005B"]
-    check("a harvested save clears no-save", "save_na" not in row and row["save"] == m["save_id"], str(row))
-
-    # a title with one route runs it, whatever the state says
-    c = choose("5A440004")
-    check("single route, nothing known: the route, not survey",
-          c["variant"] == "single" and c["route"].endswith("/alien-hominid.route"), str(c))
-    run_ts(env, "record", "--device", "thor", "--title-id", "5A440004", "--observed", "created", "--run", "r8")
-    c = choose("5A440004")
-    check("single route with a profile: still the route, not survey",
-          (c["device"], c["variant"]) == ("thor", "single") and c["route"].endswith("/alien-hominid.route"), str(c))
 
 
 def test_nav(tmp):

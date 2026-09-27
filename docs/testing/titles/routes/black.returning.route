@@ -1,93 +1,33 @@
-# Black (45410083), RETURNING: a Black profile is on the disk (pass 1's).
-# PLAYED by nav.py on the Thor, 2026-09-26 20:46 PDT (lane.titleroutes HELD
-# session black.returning-20260926T204551), to gameplay.
+# Black (45410083), RETURNING: a Black profile is on the disk. PARTLY
+# PLAYED by nav.py on the Thor, 2026-09-26 16:31 PDT (HELD pilot, session
+# black.first-run-20260926T163124), up to the first mission's cutscene; the
+# hold ended there. What it saw:
 #
-#   "PRESS START" (START) -> opening credits FMV, ~2 min, which neither START
-#   nor A skips -> newspaper story FMV (START skips) -> main menu, START
-#   MISSION (A) -> DIFFICULTY SELECT, NORMAL (A) -> mission briefing FMV
-#   (interrogation, then a chat-log dossier), ~2.5 min; A, BACK and Y did
-#   not skip it -> first mission, in a ruined building, "FIND THE SHOTGUN".
+#   "PRESS START" (START) -> opening credits FMV, about 2 min, then a
+#   newspaper story FMV that START skips -> main menu, START MISSION above
+#   OPTIONS, with NO profile-name keyboard: pass 1's profile was found
+#   (A) -> DIFFICULTY SELECT, cursor on NORMAL (A) -> mission cutscene,
+#   which one START did not skip within 25 s.
 #
-# Player control: RX max turned the view from the table to the brick wall
-# (nav frames 015 -> 016), RT fired into the wall and the ammo count fell
-# (018). The play pattern walks forward, turns and fires; the magazine runs
-# dry within the window, after which RT does nothing and the walk goes on.
-#
-wait 27.7
+# Nothing past the cutscene was seen, so from `mark mission-started` on
+# this route surveys and never marks gameplay.
+wait 26
 shot boot
-wait 8.8
-shot dlg
-wait 10.2
 press START
-wait 16.6
-shot c1
-wait 0.6
+wait 120
+shot credits
 press START
-wait 5.0
-shot c2
-wait 6.2
-press A
-wait 3.0
-shot a
-wait 58.2
-shot w1
-wait 51.9
-shot w2
-wait 26.1
-shot w3
-wait 5.4
-press START
-wait 9.6
+wait 8
 shot menu
-wait 5.0
 mark profile-loaded
-wait 0.8
 press A
-wait 6.0
-shot diff
-wait 0.8
+wait 8
+shot difficulty
 press A
-wait 26.6
-shot cut1
-wait 5.6
-press A
-wait 5.1
-shot skipA
-wait 0.7
-press BACK
-wait 5.0
-shot skipBack
-wait 6.7
-press Y
-wait 63.0
-shot f1
-wait 63.4
-shot f2
-wait 23.5
-axis RX max
-wait 0.9
-axis RX mid
-wait 0.5
-shot turned
-wait 13.3
-mark gameplay
+wait 20
+mark mission-started
 repeat forever {
-    axis LY min
-    wait 2
-    axis LY mid
-    axis RX max
-    wait 0.6
-    axis RX mid
-    axis RT max
-    wait 0.3
-    axis RT min
-    axis LY min
-    wait 2
-    axis LY mid
-    axis RX min
-    wait 0.6
-    axis RX mid
-    axis RT max
-    wait 0.3
-    axis RT min
+    press START
+    wait 25
+    shot survey
 }
