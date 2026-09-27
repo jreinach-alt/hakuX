@@ -598,6 +598,17 @@ build, on a screen no frame identifies.
   (Ask 4 has the command), then one soak with `--frames-every 10` to see
   what the fast regime is, then rows 1 and 2 of GTA's table.
 
+## Attempt 5 (2026-09-27, 08:15 PDT): GTA's profile on the Thor
+
+- **Why attempt 4 did not finish:** it ended blocked on the device for GTA's
+  profile (Ask 4). PR #477 folded with that state at 08:0x PDT. Hostops
+  answered Ask 4 at 08:20 (option 1: one held Thor session under 10 min, and
+  one Thor perflog soak with `--frames-every 10`) and Ask 5 (#482 is GTA's
+  issue). This attempt runs both on a new PR.
+- `capture_profile.sh` now takes `DEV=nova|thor` (default nova), finds the
+  ISO under the device's `DEVICE_ISO_ROOTS` from `devices.sh`, and refuses
+  the Thor below 30% battery (the Nova below 20%, as before).
+
 ## Summary (Nova, MAX, e5db66fa37 soaks / a593d8eb85 profiles)
 
 | title | fps (soak window) | sets the frame | top cost (ms/frame, share) | owner | bound if it goes |

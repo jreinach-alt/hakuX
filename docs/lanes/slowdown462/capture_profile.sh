@@ -24,7 +24,9 @@
 # reinstalls and re-applies prefs), sleeps the screen and releases the hold.
 set -u
 SHORT=$1 ISO=$2 DELAY=${3:-60}
-S=ee317437 DEV=nova
+# DEV: nova (the five titles) or thor (GTA SA only: hostops grant, 09-27 08:20 PDT)
+DEV=${DEV:-nova}
+case $DEV in nova) S=ee317437 MIN_BATT=${MIN_BATT:-20} ;; thor) S=bdc158a5 MIN_BATT=${MIN_BATT:-30} ;; *) echo "DEV nova|thor"; exit 2 ;; esac
 PKG=com.jreinach.hakux.debug
 D=/home/justin/hakux-work/dispatch
 OUT=/home/justin/hakux-work/perf/2026-09-26-slowdown462/$SHORT
@@ -37,7 +39,7 @@ SOAK_S=${SOAK_S:-330}
 mkdir -p "$OUT"
 a() { timeout "${T:-120}" adb -s $S "$@"; }
 say() { echo "CAP $(date -u +%H:%M:%S) $*"; }
-running_nova() { grep -lx $DEV "$D"/running/*.owner 2>/dev/null; }
+running_dev() { grep -lx $DEV "$D"/running/*.owner 2>/dev/null; }
 
 [ -f "$APK" ] || { say "no apk $APK"; exit 1; }
 # The grant (#462, 21:10 PDT): the session runs only between runs. A poll
@@ -48,7 +50,7 @@ running_nova() { grep -lx $DEV "$D"/running/*.owner 2>/dev/null; }
 # request finishes untouched (nothing below touches the device until running/
 # is empty of the Nova), and the session then has the gap.
 bash "$HOLDSH" wait $DEV $TAG "${HOLD_WAIT_S:-3600}" \
-    "lane.slowdown462 #462: held Nova session, 1 x 30 s simpleperf of $SHORT (apk a593d8eb85), <10 min of device time; waits for the running request first; capture_profile.sh releases on every exit" \
+    "lane.slowdown462 #462: held $DEV session, 1 x 30 s simpleperf of $SHORT (apk a593d8eb85), <10 min of device time; waits for the running request first; capture_profile.sh releases on every exit" \
     || { say "could not take hold/$DEV: $(bash "$HOLDSH" who $DEV)"; exit 3; }
 say "hold taken"
 
@@ -75,10 +77,10 @@ trap cleanup EXIT
 trap 'exit 130' INT TERM
 
 for i in $(seq 1 45); do
-    r=$(running_nova) || break
+    r=$(running_dev) || break
     say "waiting for running request $r"; sleep 20
 done
-running_nova >/dev/null && { say "nova still busy after 15 min"; exit 3; }
+running_dev >/dev/null && { say "$DEV still busy after 15 min"; exit 3; }
 USED=1
 # the lease is the dispatcher's while its request runs; ours only from here
 ( while :; do touch "$LEASE"; sleep 20; done ) & LEASE_PID=$!
@@ -86,12 +88,17 @@ say "device free; session starts"
 
 lvl=$(a shell dumpsys battery | tr -d '\r' | awk '/level:/{print $2; exit}')
 say "battery $lvl"
-[ -n "$lvl" ] && [ "$lvl" -ge "${MIN_BATT:-20}" ] || { say "battery below ${MIN_BATT:-20} or unreadable"; exit 4; }
+[ -n "$lvl" ] && [ "$lvl" -ge "$MIN_BATT" ] || { say "battery below $MIN_BATT or unreadable"; exit 4; }
 # --trace-offcpu needs the sched_switch tracepoint; these say whether it can open
 say "perf: harden=$(a shell getprop security.perf_harden | tr -d '\r') paranoid=$(a shell cat /proc/sys/kernel/perf_event_paranoid | tr -d '\r') uptime=$(a shell cat /proc/uptime | tr -d '\r' | cut -d' ' -f1)"
 
-ISOPATH=$(a shell "ls /storage/*/Games/XBox/$ISO" 2>/dev/null | tr -d '\r' | head -1)
-[ -n "$ISOPATH" ] || { say "no $ISO on the Nova"; exit 5; }
+ROOTS=$( . "$HERE/devices.sh"; device_env $S >/dev/null; echo "$DEVICE_ISO_ROOTS")
+ISOPATH=""
+for r in ${ROOTS//:/ }; do
+    ISOPATH=$(a shell "ls $r/$ISO" 2>/dev/null | tr -d '\r' | grep -v 'No such' | head -1)
+    [ -n "$ISOPATH" ] && break
+done
+[ -n "$ISOPATH" ] || { say "no $ISO on the $DEV ($ROOTS)"; exit 5; }
 say "iso $ISOPATH"
 
 T=300 a install -r "$(wslpath -w "$APK")" 2>&1 | tail -1 | grep -q Success || { say "install failed"; exit 5; }
