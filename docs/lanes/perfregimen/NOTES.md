@@ -253,3 +253,19 @@ If SMART drives the fan harder than SPORT under load, FAN_MAX should be 4
   fps against its cap (Crimson hands-off: ~30) before choosing a pilot title.
 - Running `settings get` / `cat` on sysfs from `adb shell` logs `avc: denied`
   lines in permissive mode. They are harmless noise in the device log.
+
+### 5e. Remediation of audit M1 (2026-09-26)
+
+The Thor's fan MAX is now 4 (SMART), per row in `devices.sh`; the Nova keeps
+5 (SPORT), which 5a supports. So the Thor's MAX is 2/4: the performance half
+only, with the fan on the same temperature curve as REST. The queued Thor
+pilot (`perfregimen-pilot-thor-queued.json`, not yet run) now expects
+`max_fan` 4. selftest.d/84 runs its legs as the Nova (2/5) and adds a Thor
+leg that fails if the Thor row's fan MAX goes back to 5. CUSTOM (6) and the
+PWM period are still unread; if CUSTOM at its ceiling beats SMART hot, the
+Thor row changes again.
+
+Regimen boundary (audit L1): soaks before the #444 fold ran at whatever the
+device was left at (Thor 0/4, Nova 1/4 when found); soaks after it run at MAX
+unless their request says otherwise. An fps comparison across the fold sha
+mixes regimens; read `perf_regimen.json` in each result dir.

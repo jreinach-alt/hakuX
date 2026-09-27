@@ -50,12 +50,14 @@ echo "1 4" > "$PR/seed"
 # soak sources it from its own directory), never from the repository's.
 mkdir -p "$PR/t"; ln -sf "$TESTING/devices.sh" "$PR/t/devices.sh"
 
+# The legs below run as the Nova (ee317437), whose MAX is 2/5; the Thor leg
+# sets PERF_SERIAL=bdc158a5.
 perf_soak() {   # <soak_title.sh> <hold seconds> [TERM-after-start] -> rc on stdout
     local s="$1" hold="$2" term="${3:-}" pid rc
     rm -f "$PR/started" "$PR/at_start" "$PR/state" "$PR/perf_regimen.json"
     cp "$PR/seed" "$PR/state"
     : > "$PR/logcat.txt"
-    PATH="$PR/bin:$PATH" PERF_FAKE="$PR" SERIAL=bdc158a5 \
+    PATH="$PR/bin:$PATH" PERF_FAKE="$PR" SERIAL="${PERF_SERIAL:-ee317437}" \
         HAKUX_DEVICE_LEASE="$PR/lease" SOAK_POLL_S=0.2 SOAK_RETRY_S=0.1 \
         PERF_RESULT="$PR/perf_regimen.json" \
         timeout 60 bash "$s" /fake/iso.iso "$hold" > "$PR/run.log" 2>&1 &
@@ -135,6 +137,19 @@ echo '{"title":"x","env":["HAKUX_X=1"]}' > "$PR/d/running/r1.req"
 CAPTURE_LOG="$PR/d/results/r1/logcat.txt" perf_soak "$TESTING/soak_title.sh" 1 >/dev/null
 [ "$(cat "$PR/at_start" 2>/dev/null)" = "2 5" ] && ok "request env: a request without it runs at MAX" \
     || bad "request env: a request without PERF_REGIMEN started at [$(cat "$PR/at_start" 2>/dev/null)]"
+
+# The Thor's fan MAX is not SPORT (5). Hot (66-74 C), SMART (4) ran
+# 25000-29000 duty and SPORT a fixed 25000, so 5 cools less than REST under
+# gameplay (NOTES 5d, audit M1). Fails if the Thor row goes back to 5, or if
+# the soak takes its values from anywhere but the serial's own row.
+read -r _ thor_fan_max _ _ <<<"$(bash -c '. "$1"; device_perf_values bdc158a5' _ "$TESTING/devices.sh")"
+[ -n "$thor_fan_max" ] && [ "$thor_fan_max" != 5 ] \
+    && ok "thor: device_perf_values gives fan MAX $thor_fan_max, not 5 (SPORT)" \
+    || bad "thor: device_perf_values gives fan MAX [$thor_fan_max]"
+PERF_SERIAL=bdc158a5 perf_soak "$TESTING/soak_title.sh" 1 >/dev/null
+[ "$(cat "$PR/at_start" 2>/dev/null)" = "2 $thor_fan_max" ] && [ "$(cat "$PR/state")" = "0 4" ] \
+    && ok "thor: the title started at 2/$thor_fan_max and the device is left at REST 0/4" \
+    || bad "thor: started at [$(cat "$PR/at_start" 2>/dev/null)], left at [$(cat "$PR/state")]"
 
 # Read-back: writes that do nothing must read as not restored.
 touch "$PR/ignore_writes"

@@ -66,22 +66,29 @@ device_env() {
         export SERIAL=ee317437
         export DEVICE_LABEL="nova"
         export DEVICE_ISO_ROOT="/storage/E6C6-D7AA/Games/XBox"
+        # Fan MAX 5 (SPORT), not 3 (PERFORMANCE): measured 2026-09-26, 3
+        # holds SMART's idle duty (12000) and 5 drives 25000 / 8100 rpm.
+        export DEVICE_PERF_MAX=2 DEVICE_FAN_MAX=5 DEVICE_PERF_REST=0 DEVICE_FAN_REST=4
         ;;
     bdc158a5)   # AYN Thor
         export SERIAL=bdc158a5
         export DEVICE_LABEL="thor"
         export DEVICE_ISO_ROOT="/storage/388C-68F7/ROMS/xbox"
+        # Fan MAX 4 (SMART), the same as REST, not 5 (SPORT): SPORT is a
+        # fixed 25000 duty, and on a hot Thor (66-74 C, 2026-09-26) SMART's
+        # curve ran 25000-29000, so SPORT would cool LESS than REST under
+        # gameplay (NOTES 5d). Revisit once CUSTOM (6) and the PWM period
+        # are read.
+        export DEVICE_PERF_MAX=2 DEVICE_FAN_MAX=4 DEVICE_PERF_REST=0 DEVICE_FAN_REST=4
         ;;
     *)  echo "unknown device $1 -- add it to devices.sh rather than guessing" >&2
         return 2 ;;
     esac
-    # THE GAMEPLAY REGIMEN: the OEM performance and fan modes a title soak
-    # runs at (MAX) and leaves the device at (REST). See device_perf below.
-    # Both handhelds run the same Moorechip settings library, so the values
-    # agree today; they are per-row so a third device need not. Fan MAX is 5
-    # (SPORT), not 3 (PERFORMANCE): measured on the Nova 2026-09-26, 3 holds
-    # the same PWM duty as SMART at idle (12000) and 5 drives 25000 / 8100 rpm.
-    export DEVICE_PERF_MAX=2 DEVICE_FAN_MAX=5 DEVICE_PERF_REST=0 DEVICE_FAN_REST=4
+    # THE GAMEPLAY REGIMEN (DEVICE_PERF_*/DEVICE_FAN_*, set per row above):
+    # the OEM performance and fan modes a title soak runs at (MAX) and leaves
+    # the device at (REST). See device_perf below. Both handhelds run the
+    # same Moorechip settings library, so the mode numbers mean the same
+    # thing on each, but the fan curves differ, so the fan MAX does too.
     export PKG="${PKG:-com.jreinach.hakux.debug}"
     # Per-device lease. One lease file for two devices would have each
     # dispatcher think the other's run was its own.
