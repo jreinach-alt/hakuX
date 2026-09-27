@@ -901,3 +901,11 @@ New refs, both on this branch:
 
 All three predictions were re-registered on A/B before any arm ran, with the reason appended to
 each.
+
+Re-queued at priority 1:
+- Thor pilot `1-1790552636-forza414-3224517` (A 35ee65562a, Forza, 420 s).
+- DOA A `1-1790552638-forza414-3224848` and B `1-1790552639-forza414-3225184` (Nova, 300 s; they
+  wait for the battery hold).
+
+`preflight.sh --allow-tracker` on 24c705df60 passes every gate but `coverage`. That one is the
+board's tracker row for #513 (status open, issue closed).
