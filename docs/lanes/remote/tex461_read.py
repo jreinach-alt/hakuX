@@ -23,8 +23,9 @@ lines on hakuX-stall every 60 frames. Each counts the same 60 frames:
          pal (palette), cvt (other conversion), swz (unswizzle only)
   txr[]  create_texture calls, bind calls / those that ran the loop, surface
          downloads a bind started directly (dl, with KiB) and through its range
-         scans (sc scans, scdl downloads), images made (img, pool hits), and
-         surface-to-texture copies (s2tc) and direct binds (s2td)
+         scans (sc scans, scdl downloads), images made (img, pool hits),
+         surface-to-texture copies (s2tc), and direct binds made where the
+         view changed (s2td; a bind that reuses the bound view is not counted)
 
 IDENTITIES, checked on every 60-frame group, because a hash and its upload
 happen in one create_texture() call and the counters reset between groups:
@@ -36,7 +37,10 @@ A violation means the instrument is wrong, not the title.
 
 --window A,B keeps lines from A to B seconds after the first hakuX-perf line
 (or the first line, if there is none); it needs logcat timestamps. Lines
-already cut to a window, as the host posts them, need no --window.
+already cut to a window, as the host posts them, need no --window. Logcat
+stamps carry no year: they are read in a leap year only when a 29 February
+stamp is present, and a stamp more than half a year from the window's first
+is read in the neighbouring year, so a window may cross New Year.
 """
 import argparse
 import re
@@ -54,23 +58,32 @@ RE_TXU = re.compile(r"txu\[n(\d+)/(\d+)K " + " ".join(r"%s(\d+)" % n for n in TX
 RE_TXR = re.compile(r"txr\[ct(\d+) bt(\d+)/(\d+) dl(\d+)/(\d+)K sc(\d+) scdl(\d+) "
                     r"img(\d+) pool(\d+) s2tc(\d+) s2td(\d+)\]")
 RE_TS = re.compile(r"^(\d\d-\d\d \d\d:\d\d:\d\d\.\d+)")
+EPOCH = datetime(2000, 1, 1)
+HALF_YEAR = 183 * 86400.0
 
 
-def stamp(line):
+def stamp(line, year=2001):
+    """The line's logcat stamp as seconds since 2000, read in `year`."""
     m = RE_TS.match(line)
-    return datetime.strptime(m.group(1), "%m-%d %H:%M:%S.%f").timestamp() if m else None
+    if not m:
+        return None
+    t = datetime.strptime("%d-%s" % (year, m.group(1)), "%Y-%m-%d %H:%M:%S.%f")
+    return (t - EPOCH).total_seconds()
 
 
 def parse(lines, window=None):
     """Group the three lines of each 60-frame block. Returns (groups, dropped)."""
     t0 = None
     if window:
+        # A fixed leap year would read a common year's 28 February to 1 March
+        # as two days, and a fixed common year cannot parse 29 February.
+        year = 2000 if any(RE_TS.match(l) and l.startswith("02-29") for l in lines) else 2001
         for l in lines:
-            if "hakuX-perf" in l and stamp(l) is not None:
-                t0 = stamp(l)
+            if "hakuX-perf" in l and stamp(l, year) is not None:
+                t0 = stamp(l, year)
                 break
         if t0 is None:
-            t0 = next((stamp(l) for l in lines if stamp(l) is not None), None)
+            t0 = next((stamp(l, year) for l in lines if stamp(l, year) is not None), None)
         if t0 is None:
             sys.exit("--window needs logcat timestamps, and these lines have none")
     groups, cur, dropped = [], {}, 0
@@ -79,7 +92,9 @@ def parse(lines, window=None):
         if not kind:
             continue
         if window:
-            t = stamp(l)
+            t = stamp(l, year)
+            if t is not None and abs(t - t0) > HALF_YEAR:    # New Year between them
+                t = stamp(l, year + (1 if t < t0 else -1))
             if t is None or not window[0] <= t - t0 <= window[1]:
                 continue
         m = {"txh": RE_TXH, "txu": RE_TXU, "txr": RE_TXR}[kind].search(l)
@@ -170,7 +185,8 @@ def report(name, groups, dropped):
         r["ct"] / (60.0 * k), r["bt"] / (60.0 * k), r["btl"] / (60.0 * k)))
     print("    surface downloads: direct %.2f (%d KiB total), by range scan %.2f of %.1f scans" % (
         r["dl"] / (60.0 * k), r["dlkib"], r["scdl"] / (60.0 * k), r["sc"] / (60.0 * k)))
-    print("    images made %.2f (pool hits %.2f)   s2t copies %.2f, direct binds %.2f" % (
+    print("    images made %.2f (pool hits %.2f)   s2t copies %.2f, direct binds made "
+          "(the view changed) %.2f" % (
         r["img"] / (60.0 * k), r["pool"] / (60.0 * k), r["s2tc"] / (60.0 * k), r["s2td"] / (60.0 * k)))
     print("    downloads + images per create_texture call: %.3f" % (
         (r["dl"] + r["scdl"] + r["img"]) / float(r["ct"]) if r["ct"] else float("nan")))
@@ -205,6 +221,14 @@ def selftest():
     ok &= len(g4) == 0
     g5, _ = parse(SAMPLE.splitlines(), window=(0.5, 1.5))
     ok &= len(g5) == 1
+    # a window across midnight: 29 February parses, a common year's end of
+    # February is one night, and New Year is too
+    for first, then in (("02-29 23:59:59.000", "03-01 00:00:01.000"),
+                        ("02-28 23:59:59.000", "03-01 00:00:01.000"),
+                        ("12-31 23:59:59.000", "01-01 00:00:01.000")):
+        s = SAMPLE.replace("09-27 05:00:01.000", first).replace("09-27 05:00:02.000", then)
+        g6, _ = parse(s.splitlines(), window=(1.5, 2.5))
+        ok &= len(g6) == 1
     print("selftest: %s" % ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
 

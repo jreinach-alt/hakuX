@@ -1,0 +1,29 @@
+{
+  "registered_utc": "2026-09-27T13:52:59Z",
+  "who": "lane.remote",
+  "issue": "461",
+  "title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso",
+  "route": "crimson-skies",
+  "device": "thor",
+  "seconds": 240,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "perflog": true,
+  "a_ref": "f131dd11",
+  "b_ref": "8f9c74f0",
+  "judge": "by hand from each result's logcat, 90-240 s after the first hakuX-perf line: docs/lanes/remote/tex461_read.py --window 90,240 (txh/txu/txr on hakuX-stall) and docs/testing/phase_read_split.py (hakuX-phase), both from this PR's head (7dd4b495 or later), and the hakuX-perf gfps median over the same window. Not an ab_compare golden arm: a title soak has no capture keys.",
+  "prediction": "#461 M1 FIX -- THE THOR A/B (F461, registered on #461 at 2026-09-27T06:15:46Z, comment 5853293806, before any fix code existed; filed here under the host's 06:34Z grant, 5853432317, with the text unchanged). THE CAUSE (R5 on the Crimson Skies soak of #473's head, 5853252841): TxH 6.71 ms of 8.78 ms/frame of texture binds; 99.7% of found-binding hashes compare equal; 91.4% of hashes repeat one taken on the same node in the same flip; the per-flip memo forces 69.1% of the hashed KiB. A bind that finds a texture's pages dirty stamps the node's memo (dirty_check_frame/dirty_check_result) 'dirty this flip', the hash follows in the same create_texture() call, and nothing cleared the stamp afterwards, so every later bind of that node in the flip hashed it again without asking the bitmap. B (vk/texture.c create_texture()): once a hash has settled the node's verdict, dirty_check_frame = frame_time - 1 ('no verdict yet this flip'), on the found path after the compare and any upload when a hash ran, and on the miss path for a hashed node (not surface-to-texture). A later bind in the same flip tests the bitmap, as the first bind of a flip does. A is the master B sits on; the refs differ by that change and comment-only wording (LOW-1). BOTH ARMS ARE PERFLOG BUILDS (-Pperflog=true): the txh/txu/txr lines exist only there. Read 90-240 s after the first hakuX-perf line, with docs/lanes/remote/tex461_read.py --window 90,240 and docs/testing/phase_read_split.py from this PR's head. F1 (high): B's memo share of hashed KiB is under 5%. F2 (moderate-low): B's TxH (ms/frame, phase_read_split's texture-bind split) is at most 0.5 x A's TxH from A's own run. F3 (moderate-low): B's hashed KiB per frame is at most 0.5 x A's. F4 (high): B's median hakuX-perf gfps is at least A's median minus 1. NOT A GATE (low): B's gfps above A's + 1; PFIFO has ~11.6 ms/frame idle on this route, so a saving on the render thread may not reach the frame rate. KILL: B's TxH above 0.8 x A's refutes M1 as the lever -- the memo was covering real rewrites (M2, page-granular dirt), and the next step is page attribution of the bitmap hits, not a re-reading of this one. VOID, NOT FAILED: a run with no hakuX-perf line after 60 s, or no txh/txu/txr lines (a non-perflog APK), or a run the route did not reach gameplay in (the route's own markers); re-queued once and reported either way. The desktop correctness arm is remote-461-memo-texture.json. A FAIL stays a FAIL.",
+  "must_not_move": [
+    "the two refs differ only by the memo retirement in create_texture() (hw/xbox/nv2a/pgraph/vk/texture.c) and comment wording",
+    "both arms perflog, same device, same route"
+  ],
+  "expect": {
+    "F1/arm_b_memo_share_of_hashed_kib_90_240_max": 0.05,
+    "F2/arm_b_txh_over_arm_a_txh_90_240_max": 0.5,
+    "F3/arm_b_hashed_kib_per_frame_over_arm_a_90_240_max": 0.5,
+    "F4/arm_b_minus_arm_a_gfps_median_90_240_min": -1,
+    "KILL/arm_b_txh_over_arm_a_txh_90_240_refutes_above": 0.8
+  },
+  "expect_counts": {},
+  "expect_note": "Read by hand off the hakuX-stall, hakuX-phase and hakuX-perf lines; a soak writes no captures, so there is no golden key for ab_compare to judge. Queue by hand: request.sh --title ... --route crimson-skies --seconds 240 --perflog --device thor, once per ref."
+}

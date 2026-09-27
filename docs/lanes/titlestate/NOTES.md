@@ -200,7 +200,164 @@ lane: Black past its mission cutscene; a played `first-run` on a clean
 titles disk (needs item 2); the Nova's `eeprom.bin` md5 (does a save move
 between handhelds?).
 
+## Attempt 3 (resumed 2026-09-27 06:26 PDT): extract the routed titles' saves
+
+Why attempt 2 did not "finish": it did. PR #442 was marked ready and folded
+(bb9c2b9ca5 is on master); nothing of the pilot brief was left. The resume is
+for a new addendum (lane.local, 06:26 PDT): the page reads "save: none
+extracted" for routed titles, so extract each routed title's profile save into
+the store, and record the titles whose route makes no save as not applicable.
+New PR, branched from master at f131dd11c6.
+
+What the page actually needs (read from `status_html.py _registry`, run
+against the live registry on current master): a title whose route is ONE
+`routes/<name>.route` is already `needs_save=False` ("not needed (no profile
+step)"), so Bruce Lee, JSRF, MechAssault 2, GTA SA, Crash Twinsanity,
+Kabuki, Nightfire, DOAX need no record. The 06:26 page predates #466's routes
+being read (it shows `inputs False` for MechAssault 2, which has a route on
+master). The titles that need a save are the two-variant ones (Black,
+Burnout 3, PGR, GoldenEye RA) and the single-route titles whose route relies
+on a save the nav session left on the Thor (Alien Hominid, Blood Wake, Brute
+Force, Burnout, Otogi, Ghoulies, Midtown Madness 3).
+
+### The pull: HELD Thor 06:59:41-07:01:56 PDT
+
+`scratch/pullthor.sh` (not committed): `hold.sh wait` (the Thor was under
+lane.titleroutes' hold until 06:59), wait for `running/` to hold nothing on
+the Thor, check the app is stopped (no pid, so nothing unflushed to lose by
+reading), device md5, `adb pull`, host md5, release. Battery 54%. Screen and
+perf values untouched (the app was never started).
+
+| step | measured |
+|---|---|
+| device `md5sum` of hdd.img | 15 s |
+| `adb pull`, 4,327,800,832 B | 104 s, 39.6 MB/s |
+| host md5 | matches (`6d128b75...`) |
+| `saves.py list` of the whole image | 0.06 s, 31 titles on E: |
+
+Host copy: `~/hakux-work/titlestate-pull/thor-hdd-20260927T135944Z.img`.
+
+**EEPROMs differ**: Thor `f52cf53a866814e402fbd48aa23af522`, Nova
+`7eb04a8797832812f6632ccd26e307e1`. So a save signed with the HDD key will not
+move between the handhelds as-is; whether a given title signs its save is still
+per title, and a failed load is recorded as `rejected`.
+
+### What the disk holds, per routed title (addendum list)
+
+`titlestate.py harvest --device thor` into `$DISPATCH_DIR/titlestate/saves/`,
+run id `pull:thor-hdd-20260927T135944Z`; every stored save `saves.py verify`s
+byte for byte against the pulled image.
+
+| title | TID | on the Thor's disk | registry |
+|---|---|---|---|
+| Alien Hominid | 5A440004 | save 2BBB66D72945, 137 KB | harvested c50c0ad5b571 |
+| MechAssault 2 | 4D53006B | save 59E5F0453F4D, 3.1 MB (the route saw no profile step; the game writes one anyway) | harvested aeffd81ffd76 |
+| Bruce Lee | 56550016 | no save; 5 settings files in TDATA | no-save (New Game route) |
+| Blood Wake | 4D530010 | save 514A848BC678 | harvested d37699733a14 |
+| JSRF | 49470018 | nothing (no UDATA, no TDATA) | no-save |
+| Ghoulies | 4D530053 | save 1C4407D127C7 | harvested 55758513a9e3 (replaces the label "slot 1 My Game") |
+| Crimson Skies | 4D530021 | save 126216BC1B2A | harvested 42b0f68410a3 |
+| Burnout | 41430006 | save 2A823CBA7496 | harvested bc52aa2f6fd8 |
+| Brute Force | 4D53001E | save 0F2B11F2A1AC + 4 TDATA files | harvested 6e97d00a8a46 |
+| Otogi | 46530002 | save 6D36723E1C71 | harvested 247ba69fcbc2 |
+| Midtown Madness 3 | 4D53002A | save 194916D15BE4 | harvested 424a68037d87 |
+| Crash Twinsanity | 56550036 | no save | no-save (route declines saving) |
+| GTA: San Andreas | 54540082 | no save | no-save (saves only at save points) |
+| Black | 45410083 | no save: UDATA has only TitleMeta/TitleImage/SaveImage | no-save (returning route reaches the mission from this disk) |
+| PGR | 4D530003 | save 12E9194916CD | harvested c151b9a02c1b |
+| (also) Burnout 3 | 4541005B | save 57BD267AFF58 | harvested 3853ca5a2387 |
+
+Not done: **GoldenEye: Rogue Agent** (Nova). Its registry row says the
+PLAYER1 profile is not on the disk after a force-stop, so there is no save to
+extract; it needs a first-run that ends with the HOME flush (board request
+item 3), then a pull. The Nova titles with one route (Kabuki, Nightfire, DOAX)
+were not recorded no-save: I did not read the Nova's disk, and their one route
+already reads "not needed" on the page.
+
+### Code
+
+- `titlestate.py no-save --device D --title-id T --reason TEXT --run ID`: the
+  "not applicable" record, `save_na` on the row; a later `harvest` clears it.
+- `choose` returns the title's own route (`variant: single`) for a title
+  with one `routes/<route>.route` and no variants. It used to answer
+  `returning` + `survey.route` for them (Alien Hominid with its profile on
+  the Thor did exactly that). No dispatcher calls `choose` yet (board item 4).
+- `status_html.py _registry`: a `save_na` reason makes a title's save
+  not needed, and the detail line reads `save: not needed: <reason>`. Black is
+  the only two-route title this changes today.
+- Selftests: 4 checks in `titlestate_selftest.py` (both single-route checks
+  fail on the old `choose`), one in `selftest.d/66-status-titles.sh` (fails on
+  master's page: no `save_na`, Black still `needs_save`).
+
+Seen, not mine: the 06:26 page lists some titles twice, once by name and once
+by ISO file name (`4D530010-Blood_Wake.xiso.i...`, Burnout, Otogi, Brute
+Force, Alien Hominid, Midtown Madness 3), and the ISO-named row carries the
+measurement with `inputs False`. That is the page's title join (lane.local's).
+
+## Attempt 4 (resumed 2026-09-27 07:26 PDT): PR #478's selftest was red
+
+Why attempt 3 did not finish: its work was done and PR #478 was marked ready,
+but the jobs selftest on it failed one check in `66-status-titles.sh`, `the
+'not copied' tail folds after 10 rows, with its count -- 8 folded (8 rows), 10
+shown`, and the host put the PR back to draft. Attempt 3 ran its own new
+checks and `titlestate_selftest.py`, not fragment 66's fixture checks, so it
+marked the PR ready on a head it had not run the gate on.
+
+### The cause is not in #478's code
+
+The resume brief says the check passes on master f131dd11c6. It does not; it
+had not been run there. Measured, fragment 66 alone (`scratch/run66.sh`, a
+driver that defines `check` and sources one fragment):
+
+| tree | `targets.toml` | fold check |
+|---|---|---|
+| #478's head c7d0113008 | its own (= f131dd11c6's) | FAIL, 8 folded, 10 shown |
+| c7d0113008 with master f131dd11c6's `status_html.py`, fragment 66, `titlestate.py` | the same | FAIL, 8 folded, 10 shown |
+| c7d0113008 | 84d2e83cef's | pass, 16 of 16 |
+| c7d0113008 + master 9aa05616a8 merged (#481) | 9aa05616a8's | FAIL, 4 folded, 10 shown |
+
+- The fixture (`docs/lanes/titles05/fixture/synth.py`) added its synthetic
+  titles to the LIVE `docs/testing/titles/targets.toml`. The page lists every
+  title the registry names, and one with no `iso` map, on no handheld in the
+  16:24 tree, renders "not copied".
+- 4943ea546f (this lane, #431's targets, "15 added") added six such titles:
+  Amped: Freestyle Snowboarding, Bloody Roar: Extreme, Crash Bandicoot: The
+  Wrath of Cortex, Gunvalkyrie, Mortal Kombat: Armageddon, Sega GT 2002 +
+  JSRF. So the tail was 18 rows, not the 12 the assertion counts. #481 gave
+  four of them `iso` maps, and the count moved again, to 14.
+- `jobs-selftest.yml` runs on `docs/testing/jobs/**`, `request.sh`, `lane.sh`
+  and `nv2a_index.py`. A change to `targets.toml` does not run it. Its last
+  run on master was 84d2e83cef (the #472 fold, 2026-09-26 23:25 PDT); the
+  folds after it changed `targets.toml` only. #478 was the first PR to touch
+  `jobs/` since, so it was the first to run the check.
+
+### The fix
+
+- `docs/lanes/titles05/fixture/targets.toml`: the registry as of 84d2e83cef,
+  with a note on top. `synth.py` adds the synthetic titles to that copy.
+- `assert_titles.py` is untouched: the check still wants 2 folded and 10
+  shown.
+- Fragment 66's no-save check reads Black from the same copy
+  (`TITLE_TARGETS`), not from the live file.
+- Proof that the live file no longer reaches the fixture: with a title with
+  no `iso` map appended to the live `targets.toml`, fragment 66 is 16 of 16.
+  Fragment 67 (`measured05`, which shares `synth.py`) is 14 of 14.
+- The two fixture paths are outside this lane's territory row. Both sat in
+  `[free]` (lane.titles05 and lane.measured05 are retired). Board request
+  item 6 asks for them on the row.
+
+Not fixed here, the board's: a `targets.toml` change still does not run the
+jobs selftest. The fixture no longer reads that file, so this check cannot go
+red that way again; any other fragment that reads live title data can.
+
 ## Do not repeat
+
+- Do not mark a PR that touches `docs/testing/jobs/**` ready on the lane's own
+  new checks alone. Run the whole of `docs/testing/jobs/selftest.sh` on the
+  head first: a fragment is sourced by it and cannot be run by itself.
+- Do not read "green on master" as "this check passed on master". Look for
+  the workflow's run on that sha (`gh run list --workflow jobs-selftest.yml`):
+  a path-filtered workflow does not run on every fold.
 
 - Do not `request.sh --pull` anything under `x1box/`: it deletes the file.
 - Do not move a device's `hdd.img` to carry a profile: 4.8 GB and it carries

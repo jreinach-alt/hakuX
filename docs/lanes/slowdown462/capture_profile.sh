@@ -102,7 +102,8 @@ grep -q 'name="validation_layers" value="true"' "$OUT/prefs.xml" && { say "valid
 # A previous request's --env left in the pref would run this profile under it.
 grep -Eq '<string name="env_vars">[^<]+' "$OUT/prefs.xml" && { say "env_vars pref not empty; refusing: $(grep 'name="env_vars"' "$OUT/prefs.xml")"; exit 6; }
 a shell "rm -f /data/local/tmp/$SHORT.data"
-cp "$HERE/titles/routes/survey.route" "$OUT/route.txt"
+# ROUTE: the five titles ran survey; GTA SA (added 09-27) runs its own gta-sa
+cp "$HERE/titles/routes/${ROUTE:-survey}.route" "$OUT/route.txt" || { say "no route ${ROUTE:-survey}"; exit 5; }
 
 LOGCAT_SPEC="hakuX-crash:V hakuX-unhandled:W hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-tier1:D hakuX-pages:I hakuX:I hakuX-stderr:E hakuX-vk:I hakuX-route:I hakuX-pace:I hakuX-stall:I hakuX-rpbrk:I hakuX-cpu:I xemu-gpu:I xemu-sfp:I libc:F DEBUG:F *:S" \
 HAKUX_DEVICE_LEASE="$OUT/soak.lease" CAPTURE_LOG="$OUT/logcat.txt" ROUTE_FILE="$OUT/route.txt" SERIAL=$S \

@@ -2281,6 +2281,21 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
                 did_upload = true;
             }
             snode->possibly_dirty = false;
+            if (possibly_dirty) {
+                /*
+                 * #461: the hash has just settled this flip's verdict, so the
+                 * memo must stop saying "dirty". Left standing, it forced a
+                 * hash on every later bind of this binding until the flip:
+                 * on the Crimson Skies soak, nine hashes in ten repeated one
+                 * taken earlier in the same flip, and nearly all compared
+                 * equal. A later bind now asks the bitmap again, as the first
+                 * bind of a flip does. No write is lost: the bits are
+                 * consumed only by check_texture_dirty(), which marks every
+                 * binding over the range, so a write after this hash is
+                 * either still in the bitmap or has marked this node.
+                 */
+                snode->dirty_check_frame = pg->frame_time - 1;
+            }
         }
 
         NV2A_VK_DGROUP_END();
@@ -2307,6 +2322,10 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
     snode->current_layout = VK_IMAGE_LAYOUT_UNDEFINED;
     snode->possibly_dirty = false;
     snode->hash = content_hash;
+    if (!surface_to_texture) {
+        /* the hash above settled this flip's verdict: see the found path */
+        snode->dirty_check_frame = pg->frame_time - 1;
+    }
 
     VkColorFormatInfo vkf = kelvin_color_format_vk_map[state.color_format];
 
