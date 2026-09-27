@@ -1,5 +1,94 @@
 # lane.displayguard (#494)
 
+## Attempt 3 (2026-09-27, from ~13:20 PDT): why attempt 2 stopped short
+
+Attempt 2 built the foreground guard, marked #495 ready and ended at ~12:40.
+Addendum 3 (the focus read, 12:45) was written after that session had read
+the brief, so its `hakux_in_front` still read `dumpsys window`: the first
+`topResumedActivity`, then `mTopFocusedDisplayId` and that display's
+`mCurrentFocus`. hostops measured at 12:43 that `dumpsys window` and
+`dumpsys activity` both list the Thor's display 4 first. Audit pass 1
+(four LOW) landed at 13:1x. Attempt 3 does both.
+
+### Addendum 3: the focus read comes from `dumpsys input`
+
+`devices.sh` `hakux_in_front` now makes one call,
+`dumpsys input | grep -E '^  [A-Za-z][A-Za-z]*:|displayId=[0-9]+, name='`,
+and reads `FocusedDisplayId: N`, then the `FocusedApplications:` and
+`FocusedWindows:` entries by their `displayId=`. It tracks sections, so the
+`FocusRequests:` entries (the same `displayId=D, name='...'` form) are not
+read as focus. No `dumpsys window` and no `topResumedActivity` any more.
+
+| answer | when |
+|---|---|
+| `in-front: <s> app=<pkg> focus=<pkg> display=0` (0) | N = 0 and display 0's focused window is `com.jreinach.hakux*` (and its focused application, if listed, too) |
+| `not-foreground: <pkg> (input focus is on display N ...)` (1) | N != 0 |
+| `not-foreground: <pkg> (the focused application on display 0 ...)` (1) | display 0's application is not hakuX |
+| `not-foreground: <pkg> (holds input focus on display 0 ...)` (1) | display 0's focused window is not hakuX's (e.g. `NotificationShade`) |
+| `foreground-unknown: ...` (2) | no `FocusedDisplayId`, or display 0 has no focused window |
+
+Every fixture lists display 4 (SecondaryDisplayLauncher) first and ends with
+a `FocusRequests:` entry naming Lime3DS on display 0. Legs: (a) Lime3DS
+focused, (b) FocusedDisplayId 4, shade, no window, (c) hakuX, silence.
+Mutants: **first-entry** (each section's first entry read as display 0's):
+leg (c) reads `not-foreground: com.android.launcher3` and turns red;
+**application only** (the focused-display and focused-window checks
+removed): leg (b) reads `in-front` and turns red.
+
+### Audit pass 1
+
+- **L1 fixed.** Black frames now split in two at the end of the hold,
+  while hakuX is still up: the soak re-runs `display_clear` and
+  `hakux_in_front`. **Both clear** -> `render-black: ... hakuX drew black`,
+  which title_verdict.py does NOT void: the fps stands and the run fails on
+  that line (a title failure, not a re-queue). **Anything else**, unknown
+  included -> `display-black: ... display 0 was not hakuX's at the end of the
+  hold (<both lines>)`, void as before. For a run.log from before this
+  change, the frames alone still void unless run.log has `render-black:`.
+  (The audit suggested "void only without a `display-clear:` line"; I kept
+  void for a run.log with `display-clear:` and no end-of-hold line, which
+  is a soak that was killed before its end, so a rerun is the safe answer.)
+  Residual: a black screen that neither check can see (not an overlay, not a
+  focus change) reads as render-black. The first such case is the one to
+  compare against a screencap.
+- **L2 fixed.** `hakux_in_front` uses `ADB_RETRIES=1`: one retry, 2 s later,
+  on an adb failure only. A single vsock drop no longer counts as an
+  unknown; two consecutive failed reads (each already retried) still abort.
+  Worst unwatched window: ~2 s poll + ~2 s retry, twice, about 8 s.
+- **L3 fixed.** When the watcher sees something else in front, it stops
+  the route first (input must not reach the launcher either), then reads
+  `ps -A -o NAME`. If `$PKG:xemu` is gone it logs `ROUTE STOPPED: ... the
+  guest exited (...)`, raises no flag and writes no `not-foreground:` line,
+  and the hold loop's `alive()` reports `guest exited`. Leg: the guest dies
+  at the 5th foreground read, and Lime3DS is in front. (`probe()` is defined
+  after the watcher forks, so the read is inline.)
+- **L4 declined.** The remedy re-issues the title's VIEW intent because
+  Addendum 2 prescribes exactly that one non-input remedy. An intent
+  without `rom_path` is unmeasured on a device and could land on the library
+  screen, where the route would then play. It is rare (it needs the remedy
+  path), it happens before any input, and run.log already carries
+  `FOREGROUND: re-issuing am start on display 0` for whoever reads boot
+  timing.
+
+### Measured (attempt 3)
+
+- `99-display-covered.sh` standalone: 22 of 22 under gawk, mawk and busybox
+  awk (after merging master @ `origin/master` of 13:2x, 22 of 22 again).
+- Mutants: first-entry, application-only (both in the fragment); and two
+  ad hoc on soak_title.sh: no end-of-hold check -> the render-black leg red;
+  no guest-exit probe -> the guest-exit leg red (`VOIDED no-exit-line`).
+- Neighbours: 84-perf-regimen 21/21, 89-title-verdict 36/36,
+  99-iso-roots 10/10, 99-title-state 9/9 (new on master).
+
+### Still not verified on a device
+
+The `dumpsys input` layout comes from hostops' 12:43 Thor read (quoted in
+Addendum 3) and devwatch.py's read of the same text; the fixtures follow it.
+If the Nova's text differs, the answer is `foreground-unknown` and route
+soaks abort with no input sent. The first route soak after the fold is the
+pilot: its run.log must show `in-front: <serial> app=com.jreinach.hakux...
+focus=com.jreinach.hakux... display=0` before `ROUTE started`.
+
 ## Attempt 2 (2026-09-27, from 12:35 PDT): why attempt 1 stopped short
 
 Attempt 1 started at 11:55 PDT from the brief as it stood then: the display
@@ -14,7 +103,7 @@ the same PR.
 
 | where | what |
 |---|---|
-| `docs/testing/devices.sh` `hakux_in_front <serial>` | one adb call: the first `topResumedActivity=` of `dumpsys activity activities`, and from `dumpsys window` the `mTopFocusedDisplayId=` line and the `mCurrentFocus=` of that display (the per-display blocks start `Display: mDisplayId=N`; with no blocks, the first `mCurrentFocus`). Prints `in-front:` (0), `not-foreground: <pkg> (<why>)` (1) or `foreground-unknown:` (2). In front means: top activity is `com.jreinach.hakux*`, top-focused display is 0, and the focused window is hakuX's. No retries: the caller polls. |
+| `docs/testing/devices.sh` `hakux_in_front <serial>` | **Superseded in attempt 3 (reads `dumpsys input`; see above).** Attempt 2: one adb call: the first `topResumedActivity=` of `dumpsys activity activities`, and from `dumpsys window` the `mTopFocusedDisplayId=` line and the `mCurrentFocus=` of that display (the per-display blocks start `Display: mDisplayId=N`; with no blocks, the first `mCurrentFocus`). Prints `in-front:` (0), `not-foreground: <pkg> (<why>)` (1) or `foreground-unknown:` (2). In front means: top activity is `com.jreinach.hakux*`, top-focused display is 0, and the focused window is hakuX's. No retries: the caller polls. |
 | `docs/testing/soak_title.sh` `fg_wait` | before the route's first input: poll every `FG_POLL_S` (2 s) for up to `FG_WAIT_S` (30 s), then ONE remedy that sends no input (the same `am start` with `--display 0`), then `FG_REMEDY_S` (15 s) more. Still not in front: `ROUTE ABORTED: not foreground (<pkg>)`, a `not-foreground:` line, `ROUTE NOT PLAYED`, no route process at all, exit 5 through `release()` (force-stop hakuX, REST, lease). Never a tap or a key. |
 | `docs/testing/soak_title.sh` `fg_watch` | beside the route, every `FG_POLL_S` while route.sh is alive (not a zombie): one `not-foreground`, or two unknowns in a row, TERMs route.sh, logs the same two lines and writes a flag. The hold loop sees the flag at its next poll, logs `soak aborted: not-foreground after Ns`, and the soak exits 5. It aborts; it never resumes. |
 | `docs/testing/title_verdict.py` | a `not-foreground:` line voids the run the same way as `display-covered:` / `display-black:`. |

@@ -321,70 +321,79 @@ display_clear() {
 }
 
 # hakux_in_front <serial>  ->  one line on stdout, and
-#   0  `in-front: ...`                hakuX is the top resumed activity AND
-#                                     holds input focus, on display 0
-#   1  `not-foreground: <pkg> (...)`  something else is in front, or has focus
-#   2  `foreground-unknown: ...`      adb did not answer with both lines
+#   0  `in-front: ...`                input focus is on display 0, and display
+#                                     0's focused window is hakuX's
+#   1  `not-foreground: <pkg> (...)`  focus is on another display, or display
+#                                     0's focused application or window is not
+#                                     hakuX's
+#   2  `foreground-unknown: ...`      adb did not answer, or display 0 has no
+#                                     focused window to read
 #
 # WHY. Route input is evdev events on the pad node, and Android delivers them
 # to the FOCUSED window, whatever app that is. On 2026-09-27 the Thor came
 # back at ~11:05 PDT with its launcher in front; a soak's route pressed
 # buttons into it and started Lime3DS (Animal Crossing), then drove it to a
-# name prompt. After the 12:03 reboot hakuX was display 0's top activity, but
-# focus sat on display 4's SecondaryDisplayLauncher (mTopFocusedDisplayId=4),
-# and a route launched Lime3DS there too. So the top activity alone is not
-# enough: the focused window must be hakuX's, on display 0.
+# name prompt. At 12:12 a route launched Lime3DS again. So the question is
+# not which activity is on top but which window key and gamepad events reach.
 #
-# Read: the first `topResumedActivity=` of `dumpsys activity activities`
-# (harness_health.py's not-foreground check reads the same line), and from
-# `dumpsys window` the `mTopFocusedDisplayId=` line and the `mCurrentFocus=`
-# of that display (the per-display blocks start `Display: mDisplayId=N`;
-# without them, the first mCurrentFocus). One adb call: soak_title.sh runs
-# this every 2 s while a route plays, so it does not retry; the caller counts
-# unknowns.
+# Read it from the input system: `dumpsys input` prints `FocusedDisplayId: N`,
+# then `FocusedApplications:` and `FocusedWindows:`, one
+# `displayId=D, name='...'` entry per display. Events go to display N's entry.
+# NOT `dumpsys window | grep -m1 mCurrentFocus`, and not the first
+# `topResumedActivity`: `dumpsys window` prints one mCurrentFocus per display,
+# and on the Thor display 4 (the bottom screen, whose SecondaryDisplayLauncher
+# always holds a focused window) is listed before display 0, so a first-match
+# read names the launcher even when hakuX has focus (hostops, 12:43 PDT: a
+# cold `am start --display 0` of hakuX read FocusedDisplayId 0 with hakuX in
+# FocusedWindows while grep -m1 mCurrentFocus named the launcher). The
+# fixtures in 99-display-covered.sh list display 4 first for that reason.
+#
+# One adb call, with one retry (about 2 s) on an adb failure: soak_title.sh
+# runs this every 2 s while a route plays and counts unknowns itself.
 hakux_in_front() {
     local SERIAL="$1" out
-    out=$(ADB_RETRIES=0 adb_call "${ADB_QUICK_TIMEOUT:-10}" "foreground read" shell \
-        "dumpsys activity activities | grep -m1 topResumedActivity=; dumpsys window | grep -E 'WINDOW MANAGER|Display: mDisplayId=|mCurrentFocus=|mTopFocusedDisplayId='; true" \
+    out=$(ADB_RETRIES=1 adb_call "${ADB_QUICK_TIMEOUT:-10}" "foreground read" shell \
+        "dumpsys input | grep -E '^  [A-Za-z][A-Za-z]*:|displayId=[0-9]+, name='; true" \
         2>/dev/null | tr -d '\r')
     printf '%s\n' "$out" | awk -v serial="$SERIAL" '
-        function owner(s,   i) {     # "...{hash u0 pkg/cls ...}" -> pkg
-            i = index(s, "{"); if (!i) return s
-            s = substr(s, i + 1); sub(/}.*/, "", s)
-            sub(/^[^ ]+ [^ ]+ /, "", s); sub(/[\/ ].*/, "", s)
+        function owner(s) {  # "ActivityRecord{h u0 pkg/cls t4}" or "h pkg/cls" -> pkg
+            if (index(s, "{")) { s = substr(s, index(s, "{") + 1); sub(/}.*/, "", s) }
+            sub(/\/.*/, "", s); sub(/.* /, "", s)
             return s
         }
         function ours(p) { return p ~ /^com\.jreinach\.hakux/ }
-        /topResumedActivity=/ && top == "" { top = owner($0) }
-        /WINDOW MANAGER/ { cur = "" }
-        match($0, /Display: mDisplayId=[0-9]+/) { cur = substr($0, RSTART + 20, RLENGTH - 20) }
-        match($0, /mTopFocusedDisplayId=-?[0-9]+/) { tfd = substr($0, RSTART + 21, RLENGTH - 21) }
-        /mCurrentFocus=/ {
-            f = $0; sub(/.*mCurrentFocus=/, "", f)
-            f = (f ~ /^null/) ? "null" : owner(f)
-            if (first == "") first = f
-            if (cur != "" && !(cur in foc)) foc[cur] = f
+        # Section headers sit at two spaces; entries are indented deeper.
+        /^  [A-Za-z]+:/ { sec = $1; sub(/:.*/, "", sec) }
+        /FocusedDisplayId: *-?[0-9]/ { fd = $0; sub(/.*FocusedDisplayId: */, "", fd); sub(/[^-0-9].*/, "", fd) }
+        (sec == "FocusedApplications" || sec == "FocusedWindows") && /displayId=[0-9]+, name=\047/ {
+            e = $0; sub(/.*displayId=/, "", e); d = e; sub(/,.*/, "", d)
+            sub(/^[0-9]+, name=\047/, "", e); sub(/\047.*/, "", e)
+            if (sec == "FocusedApplications") app[d] = owner(e); else win[d] = owner(e)
         }
         END {
-            focus = (tfd != "" && (tfd in foc)) ? foc[tfd] : first
-            if (top == "" || focus == "") {
-                printf "foreground-unknown: %s answered top=%s focus=%s\n", serial, \
-                    (top == "" ? "(none)" : top), (focus == "" ? "(none)" : focus)
+            if (fd == "") {
+                printf "foreground-unknown: %s answered no FocusedDisplayId\n", serial; exit 2
+            }
+            if (fd != "0") {
+                w = (fd in win) ? win[fd] : ((fd in app) ? app[fd] : "unknown")
+                printf "not-foreground: %s (input focus is on display %s of %s, not display 0)\n", w, fd, serial
+                exit 1
+            }
+            if (("0" in app) && !ours(app["0"])) {
+                printf "not-foreground: %s (the focused application on display 0 of %s, not hakuX)\n", app["0"], serial
+                exit 1
+            }
+            if (!("0" in win)) {
+                printf "foreground-unknown: %s has no focused window on display 0 (app=%s)\n", serial, \
+                    (("0" in app) ? app["0"] : "(none)")
                 exit 2
             }
-            if (!ours(top)) {
-                printf "not-foreground: %s (the top resumed activity on %s, not hakuX)\n", top, serial
+            if (!ours(win["0"])) {
+                printf "not-foreground: %s (holds input focus on display 0 of %s, not hakuX)\n", win["0"], serial
                 exit 1
             }
-            if (tfd != "" && tfd != "0") {
-                printf "not-foreground: %s (input focus is on display %s of %s, not display 0)\n", focus, tfd, serial
-                exit 1
-            }
-            if (!ours(focus)) {
-                printf "not-foreground: %s (holds input focus on %s; hakuX is only the top activity)\n", focus, serial
-                exit 1
-            }
-            printf "in-front: %s top=%s focus=%s display=%s\n", serial, top, focus, (tfd == "" ? "0?" : tfd)
+            printf "in-front: %s app=%s focus=%s display=0\n", serial, \
+                (("0" in app) ? app["0"] : "(none)"), win["0"]
         }'
 }
 

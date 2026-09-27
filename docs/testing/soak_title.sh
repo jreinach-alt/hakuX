@@ -348,10 +348,10 @@ stop_route() {
 # THE ROUTE DRIVES hakuX AND NOTHING ELSE. Its input is evdev events on the
 # pad node, delivered to whichever window holds input focus. On 2026-09-27 a
 # route pressed buttons into the Thor's launcher and started Lime3DS, and
-# after a reboot focus sat on display 4's launcher while hakuX was display
-# 0's top activity (devices.sh hakux_in_front has both). So before the first
-# input, and every FG_POLL_S (2 s) while the route runs, hakuX must be the
-# top resumed activity and hold input focus on display 0.
+# a route launched Lime3DS again at 12:12 (devices.sh hakux_in_front has
+# both). So before the first input, and every FG_POLL_S (2 s) while the route
+# runs, the input system's focused display must be 0 and its focused window
+# hakuX's (read from `dumpsys input`, not from a first-match mCurrentFocus).
 #
 # Before the first input: wait up to FG_WAIT_S for hakuX to come up, then
 # try ONE remedy that sends no input -- `am start` of hakuX on display 0 --
@@ -402,7 +402,7 @@ fg_wait() {
     return 1
 }
 fg_watch() {
-    local st rc unk=0 state
+    local st rc unk=0 state ps_out
     trap 'exit 0' TERM
     while :; do
         sleep "$FG_POLL_S"
@@ -418,6 +418,16 @@ fg_watch() {
             unk=0; continue
         fi
         kill "$ROUTE_PID" 2>/dev/null
+        # A guest that died closes hakuX to whatever is behind it, which then
+        # reads as not in front. That run is an exit, not a void: stop the
+        # route (its input must not reach the launcher either), raise no
+        # flag, and let the hold loop's alive() report `guest exited`.
+        # probe() is defined after this subshell forked, so ps is read here.
+        ps_out=$(a shell 'ps -A -o NAME' 2>/dev/null | tr -d '\r' | sed 's/[[:space:]]*$//')
+        if printf '%s\n' "$ps_out" | grep -qx NAME && ! printf '%s\n' "$ps_out" | grep -qx "$PKG:xemu"; then
+            echo "ROUTE STOPPED: $PKG:xemu is gone, so the guest exited ($st)"
+            return 0
+        fi
         fg_abort "$st"
         return 0
     done
@@ -495,8 +505,16 @@ echo "adb_failures=$ADB_FAILURES"
 # THE BLACK-FRAME GUARD. A 1920x1080 all-black PNG is 10,899 B; every route
 # frame of the 2026-09-27 covered-display runs was exactly that. When every
 # frame the route took is under DISPLAY_BLACK_B, nothing the route did was
-# seen, and title_verdict.py voids the run on this line (and on the frames
-# themselves, for a run.log written before this guard existed).
+# seen. Black frames have two causes, and they are not the same answer:
+#   display-black:  something else covered display 0 or held focus -- a
+#                   harness failure; title_verdict.py voids the run.
+#   render-black:   display 0 is clear and hakuX holds focus, and hakuX drew
+#                   black -- the title's failure, judged, not re-queued.
+# The check that separates them is the one the soak starts with, run again
+# now, while hakuX is still up: display_clear AND hakux_in_front. Both clear
+# is render-black; anything else, unknown included, is display-black.
+# title_verdict.py also voids a run on the frames themselves when run.log
+# has no render-black line (a run.log from before this guard).
 if [ -n "$ROUTE_FILE" ]; then
     rf="${ROUTE_FRAMES:-$(dirname "$ROUTE_FILE")/route-frames}"
     nf=0; nsmall=0; big=0
@@ -507,7 +525,14 @@ if [ -n "$ROUTE_FILE" ]; then
         [ "$sz" -gt "$big" ] && big=$sz
     done
     if [ "$nf" -gt 0 ] && [ "$nsmall" = "$nf" ]; then
-        echo "display-black: all $nf route frames under ${DISPLAY_BLACK_B:-12288} B (largest $big B) -- nothing on display 0 was hakuX's"
+        black="all $nf route frames under ${DISPLAY_BLACK_B:-12288} B (largest $big B)"
+        end_disp=$(display_clear "$SERIAL"); end_disp_rc=$?
+        end_fg=$(hakux_in_front "$SERIAL"); end_fg_rc=$?
+        if [ "$end_disp_rc" = 0 ] && [ "$end_fg_rc" = 0 ]; then
+            echo "render-black: $black -- display 0 is clear and hakuX holds focus, so hakuX drew black ($end_disp; $end_fg)"
+        else
+            echo "display-black: $black -- display 0 was not hakuX's at the end of the hold ($end_disp; $end_fg)"
+        fi
     fi
 fi
 

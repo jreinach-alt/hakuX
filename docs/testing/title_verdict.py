@@ -60,6 +60,10 @@ themselves). On 2026-09-27 a foreign overlay on the Thor's display 0 did both.
 A third: the route was aborted because hakuX did not hold display 0 and
 input focus (`not-foreground:` in run.log, from soak_title.sh's foreground
 guard); its input went to, or would have gone to, another app.
+Black frames are NOT void when run.log says `render-black:`: the soak
+re-ran display_clear and hakux_in_front at the end of the hold and both were
+clear, so hakuX itself drew black. That run is judged (its fps stands) and
+fails on the `render-black:` line, a title failure rather than a re-queue.
 
 AUDIO: the APU's `starve:` lines (hakuX-audiocap) each carry the callbacks
 and the short callbacks since the previous line. The share is short/total
@@ -243,8 +247,11 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
     void = None
     rframes = glob.glob(os.path.join(rdir, "route-frames", "*.png"))
     m = re.search(r"^(display-covered|display-black|not-foreground): .*$", runlog, re.M)
+    render_black = re.search(r"^render-black: .*$", runlog, re.M)
     if m:
         void = m.group(0)
+    elif render_black:
+        pass    # black frames, display 0 clear and hakuX focused: hakuX's own failure
     elif rframes and all(os.path.getsize(f) < BLACK_FRAME_B for f in rframes):
         void = "display-black: all %d route frames under %d B" % (len(rframes), BLACK_FRAME_B)
 
@@ -407,6 +414,8 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
     v["void"] = void
     if void:
         fails.append("void: " + void)
+    elif render_black:
+        fails.append(render_black.group(0))
     if truncated:
         at = ("%.0f s after the mark" % (open_break - mark_t)) if mark_t is not None \
             else "before any `mark gameplay` was captured"
