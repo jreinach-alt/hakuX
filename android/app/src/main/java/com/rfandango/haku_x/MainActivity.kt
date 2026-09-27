@@ -58,6 +58,8 @@ class MainActivity : SDLActivity(), InputManager.InputDeviceListener {
   private external fun nativeDumpDiagFrames(numFrames: Int): Unit
 
   override fun loadLibraries() {
+    // Throws before SDL2 or xemu is loaded; SDLActivity shows the message.
+    CpuSupport.requireSupported()
     super.loadLibraries()
     initializeGpuDriver()
   }

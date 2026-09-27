@@ -1,0 +1,7 @@
+{
+ "requester": "lane.fix311",
+ "purpose": "#311 fix311 arm A on nova: Ghoulies 240 s",
+ "ref": "5d2d2e7290",
+ "device_label": "nova",
+ "apk_sha": "80d3b6e119ce"
+}

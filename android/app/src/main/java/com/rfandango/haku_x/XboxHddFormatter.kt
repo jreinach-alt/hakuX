@@ -152,6 +152,7 @@ internal object XboxHddFormatter {
 
   private object NativeBridge {
     init {
+      CpuSupport.requireSupported()
       System.loadLibrary("SDL2")
       System.loadLibrary("xemu")
     }

@@ -1,0 +1,7 @@
+{
+ "requester": "lane.fix311",
+ "purpose": "#311 fix311 arm B on thor: Ghoulies 240 s",
+ "ref": "d5eb83f39e",
+ "device_label": "thor",
+ "apk_sha": "a4af97540969"
+}

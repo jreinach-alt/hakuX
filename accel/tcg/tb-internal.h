@@ -49,6 +49,11 @@ void tb_invalidate_phys_range_fast(CPUState *cpu, ram_addr_t ram_addr,
                                    unsigned size, uintptr_t retaddr);
 #endif /* CONFIG_SOFTMMU */
 
+#ifdef XBOX
+/* #424: range test and code bitmap on (HAKUX_TCG424_RANGE=1). */
+bool hakux_tcg424_range_on(void);
+#endif
+
 bool tb_invalidate_phys_page_unwind(CPUState *cpu, tb_page_addr_t addr,
                                     uintptr_t pc);
 

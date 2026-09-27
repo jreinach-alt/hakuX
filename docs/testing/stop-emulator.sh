@@ -58,12 +58,31 @@ if age=$(lease_age "$LEASE") && [ "$age" -lt "$LEASE_TTL" ]; then
     exit 0
 fi
 
-# The per-device lease path for a serial, from the device table. A subshell,
-# because device_env exports into whatever sources it. Sourcing devices.sh
-# returns non-zero (its last line is a false test), so do not chain on it.
-device_lease() {
+# The label and per-device lease path for a serial, from the device table, as
+# "<label> <lease>". A subshell, because device_env exports into whatever
+# sources it. Sourcing devices.sh returns non-zero (its last line is a false
+# test), so do not chain on it.
+device_label_lease() {
     ( . "$HERE/devices.sh" >/dev/null 2>&1
-      device_env "$1" >/dev/null 2>&1 && printf '%s' "$HAKUX_DEVICE_LEASE" )
+      device_env "$1" >/dev/null 2>&1 && printf '%s %s' "$DEVICE_LABEL" "$HAKUX_DEVICE_LEASE" )
+}
+
+# A HOLD is a lease too. `touch $DISPATCH_DIR/hold/<label>` stops the
+# dispatcher claiming on that handheld, so nothing refreshes the per-device
+# lease while it is held -- and the holder (a lane pilot, profile_ab.sh, a
+# title push) is exactly a session running the app. Before this check every
+# other session's turn end force-stopped it: the Nova on 2026-09-26 16:24 PDT,
+# mid-Crimson, arm B of lane.buildflags427's profile lost (PR #435, #444).
+#
+# Except a BATTERY hold: its `<label>.why` says "battery", the device is held
+# so it can charge, and stopping the app and sleeping the panel is the point.
+# The holder of any other hold sleeps the device itself when it lifts it.
+DISPATCH="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}"
+held_by() {   # prints the hold file when <label> is held for a non-battery reason
+    local h="$DISPATCH/hold/$1"
+    [ -n "$1" ] && [ -e "$h" ] || return 1
+    grep -qi battery "$h.why" 2>/dev/null && return 1
+    printf '%s' "$h"
 }
 
 # Match ANY process belonging to the package, not just "<pkg>:xemu".  The
@@ -80,7 +99,11 @@ for serial in $(adb devices 2>/dev/null | tr -d '\r' |
                 awk 'NR>1 && $2=="device" {print $1}'); do
     # Leave a device alone -- emulator and screen both -- while its own lease
     # is fresh. Putting the panel to sleep mid-run minimises the app.
-    dlease=$(device_lease "$serial")
+    read -r dlabel dlease <<< "$(device_label_lease "$serial")"
+    if hold=$(held_by "$dlabel"); then
+        echo "hakuX: $serial held ($hold) — leaving it running."
+        continue
+    fi
     if [ -n "$dlease" ] && age=$(lease_age "$dlease") && [ "$age" -lt "$LEASE_TTL" ]; then
         echo "hakuX: $serial lease ($dlease) renewed ${age}s ago — leaving it running."
         continue

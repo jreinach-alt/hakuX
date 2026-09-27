@@ -1,0 +1,154 @@
+{
+ "idle": [
+  "perfregimen"
+ ],
+ "blocked": [
+  {
+   "lane": "blinx372d",
+   "state": "blocked: #372 IN FLIGHT (job.board 2026-09-26T21:55Z): lane.blin..."
+  },
+  {
+   "lane": "flatlm13",
+   "state": "blocked: #13 IN FLIGHT (job.board 2026-09-26T21:55Z): lane.flat..."
+  },
+  {
+   "lane": "fmv303c",
+   "state": "blocked: #303 after 0.5: the 0.5-first policy (owner 2026-09-26,..."
+  },
+  {
+   "lane": "forza414",
+   "state": "blocked: #414 FILE HELD (job.board 2026-09-26T21:55Z): lane.forz..."
+  }
+ ],
+ "fold_stuck": [],
+ "queued_old": [
+  {
+   "id": "1790454909-lane.tbchurn424-3969958",
+   "requester": "lane.tbchurn424",
+   "age": "2h 49m",
+   "device": "thor"
+  },
+  {
+   "id": "1790454911-lane.tbchurn424-3970176",
+   "requester": "lane.tbchurn424",
+   "age": "2h 49m",
+   "device": "thor"
+  },
+  {
+   "id": "1790454910-lane.tbchurn424-3970059",
+   "requester": "lane.tbchurn424",
+   "age": "2h 49m",
+   "device": "thor"
+  },
+  {
+   "id": "1790454912-lane.tbchurn424-3970253",
+   "requester": "lane.tbchurn424",
+   "age": "2h 49m",
+   "device": "thor"
+  },
+  {
+   "id": "1790454914-lane.tbchurn424-3970398",
+   "requester": "lane.tbchurn424",
+   "age": "2h 49m",
+   "device": "thor"
+  },
+  {
+   "id": "1790454915-lane.tbchurn424-3970555",
+   "requester": "lane.tbchurn424",
+   "age": "2h 49m",
+   "device": "thor"
+  },
+  {
+   "id": "1790454916-lane.tbchurn424-3970610",
+   "requester": "lane.tbchurn424",
+   "age": "2h 49m",
+   "device": "thor"
+  },
+  {
+   "id": "1790454917-lane.tbchurn424-3970654",
+   "requester": "lane.tbchurn424",
+   "age": "2h 49m",
+   "device": "thor"
+  },
+  {
+   "id": "1790455260-arms-buildflags427-base-4129766",
+   "requester": "arms-buildflags427-base",
+   "age": "2h 43m",
+   "device": ""
+  },
+  {
+   "id": "1790455261-arms-buildflags427-fix-4129802",
+   "requester": "arms-buildflags427-fix",
+   "age": "2h 43m",
+   "device": ""
+  },
+  {
+   "id": "1790459680-arms-tbchurn424-fix-65417",
+   "requester": "arms-tbchurn424-fix",
+   "age": "89m",
+   "device": ""
+  },
+  {
+   "id": "1790460549-lane.jcache425-232585",
+   "requester": "lane.jcache425",
+   "age": "75m",
+   "device": "nova"
+  },
+  {
+   "id": "1790460549-lane.jcache425-232641",
+   "requester": "lane.jcache425",
+   "age": "75m",
+   "device": "nova"
+  },
+  {
+   "id": "1790460550-lane.jcache425-232807",
+   "requester": "lane.jcache425",
+   "age": "75m",
+   "device": "nova"
+  },
+  {
+   "id": "1790460549-lane.jcache425-232746",
+   "requester": "lane.jcache425",
+   "age": "75m",
+   "device": "nova"
+  },
+  {
+   "id": "1790460551-lane.jcache425-232905",
+   "requester": "lane.jcache425",
+   "age": "75m",
+   "device": "nova"
+  },
+  {
+   "id": "1790460551-lane.jcache425-232934",
+   "requester": "lane.jcache425",
+   "age": "75m",
+   "device": "nova"
+  },
+  {
+   "id": "1790461337-arms-jcache425-fix-436872",
+   "requester": "arms-jcache425-fix",
+   "age": "62m",
+   "device": ""
+  },
+  {
+   "id": "1790461337-arms-jcache425-base-436536",
+   "requester": "arms-jcache425-base",
+   "age": "62m",
+   "device": ""
+  }
+ ],
+ "devices": [
+  {
+   "name": "thor",
+   "state": "held",
+   "detail": "lane.titlestate (PR #442): HELD Thor pilot of nav.py on Burnout 3 and Black, granted by hostops 15:38 PDT (board-request..."
+  },
+  {
+   "name": "nova",
+   "state": "held",
+   "detail": "host (buildflags427): A/B simpleperf profile, two APKs, ~20 min; profile_ab.sh lifts it on every exit path."
+  }
+ ],
+ "prs_ok": true,
+ "terr_ok": true
+}
