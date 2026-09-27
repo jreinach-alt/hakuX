@@ -396,6 +396,7 @@ standing = false
 note = "STARTED (hostops 2026-09-26 18:50 PDT), briefs/isoroots.md: #397 / 0.5 (#433) title storage. Owner 18:15 authorized Thor internal storage for titles; the runner knows one DEVICE_ISO_ROOT per device (dispatcher.sh:752), and the Thor SD card is 94% full (64 GB free). devices.sh (orphaned when lane.perfregimen retired without returning it) and soak_title.sh from unclaimed; dispatcher.sh moved from lane.doa413b (its hunk is committed). Serve path: needs-audit-1 and the host's update window after fold."
 
 [free]
+# RELEASED (hostops 2026-09-27T01:58Z) at PR-ready by lane.tbsize429 (PR #459, docs only, #429 refuted): accel/tcg/translate-all.c, accel/tcg/cpu-exec.c, predictions/tbsize429-soak.json.
 # RELEASED (job.board 2026-09-27T01:30Z) by retiring lane.tbchurn424, lane.buildflags427, lane.vcpuprime428, lane.flatlm13, lane.ring53impl, lane.blinx372d, lane.handbackpark, lane.holdtake, lane.holdlease (their PRs #434, #435, #437, #401, #395, #396, #452, #453, #450 all MERGED): every file each row held except vk/surface.c, which lane.doa413b holds.
 # RELEASED (job.board 2026-09-27T00:30Z) by retiring lane.relprio432 (PR #447 folded a164578ad7): selftest.d/97-release-prio.sh, its lane dir; request.sh, ab_run.sh, arms.sh returned to lane.toolsmith.
 # RELEASED (hostops 2026-09-26T23:10Z) by retiring lane.pri432 (PR #438 folded c9331a68bc): jobs/board.sh, jobs/status.sh, jobs/status_html.py, selftest.d/97-board-priority.sh, jobs/roles/board.md, its lane dir.
@@ -1307,7 +1308,8 @@ note = "RELEASED AT READY (job.board 2026-09-27): PR #443 is out of draft, CI gr
 
 [lane.tbsize429]
 issues = ["429"]
-files = ["accel/tcg/translate-all.c", "accel/tcg/cpu-exec.c", "docs/lanes/tbsize429/NOTES.md", "docs/testing/predictions/tbsize429-soak.json"]
+files = ["accel/tcg/translate-all.c", "accel/tcg/cpu-exec.c", "docs/lanes/tbsize429/NOTES.md", "docs/lanes/tbsize429/scan.py", "docs/testing/predictions/tbsize429-soak.json"]
+released = ["accel/tcg/translate-all.c", "accel/tcg/cpu-exec.c", "docs/testing/predictions/tbsize429-soak.json"]
 standing = false
 note = "STARTED (job.board 2026-09-27), briefs/tbsize429.md: #429, 0.5 perf lever, smaller translation blocks on often-rewritten pages. translate-all.c came free with PR #434; cpu-exec.c released at ready by lane.jcache425 (PR #443), so the brief tells the lane to merge master or lane/jcache425 and re-run its arm before ready. tb-maint.c, tb-internal.h and cputlb.c stay with lane.tbflip424."
 
