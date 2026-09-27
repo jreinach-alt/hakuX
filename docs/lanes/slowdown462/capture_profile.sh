@@ -120,18 +120,24 @@ wait_for() {  # <grep pattern> <nth> <timeout s>
 }
 
 ok=0
-if wait_for "ROUTE .* mark play" 1 400; then
+# ANCHOR / ANCHOR_N: start at the Nth route line matching ANCHOR instead of
+# `mark play` (DOA fights during the menu rounds: the 8th `press START`).
+if wait_for "ROUTE .* ${ANCHOR:-mark play}" "${ANCHOR_N:-1}" 400; then
     sleep "$DELAY"
     a shell log -t hakuX-route "'prof start'" >/dev/null
     say "prof start"
     for attempt in 1 2; do
-        rec=$(T=90 a shell "simpleperf record --app $PKG -e cpu-clock --call-graph dwarf,8192 --duration 30 -f 1000 -o /data/local/tmp/$SHORT.data" 2>&1)
+        # OFFCPU=1 adds --trace-offcpu (off-CPU time as weighted samples: where a
+        # thread BLOCKS, which cpu-clock alone cannot see). Attempt 2 drops it.
+        off=""; [ "${OFFCPU:-0}" = 1 ] && [ $attempt = 1 ] && off="--trace-offcpu"
+        rec=$(T=90 a shell "simpleperf record --app $PKG -e cpu-clock $off --call-graph dwarf,8192 --duration 30 -f 1000 -o /data/local/tmp/$SHORT.data" 2>&1)
+        say "record attempt $attempt ${off:-(on-CPU only)}"
         echo "$rec" | tail -3 | sed "s/^/CAP rec: /"
         echo "$rec" | grep -q "Recorded for" && { a shell log -t hakuX-route "'prof end'" >/dev/null; ok=1; break; }
         sleep 2
     done
 else
-    say "mark play never came"
+    say "anchor ${ANCHOR:-mark play} x${ANCHOR_N:-1} never came"
 fi
 sleep 5
 kill $SOAK_PID 2>/dev/null; wait $SOAK_PID 2>/dev/null; SOAK_PID=""

@@ -24,7 +24,7 @@ def ts(s):
 
 
 rid = sys.argv[1]
-rdir = f"{D}/results/{rid}"
+rdir = rid if os.path.isdir(rid) else f"{D}/results/{rid}"
 first = None
 gf = work = None
 events = []
