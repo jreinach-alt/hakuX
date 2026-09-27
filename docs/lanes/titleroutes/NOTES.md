@@ -772,6 +772,17 @@ targets.toml with the same `target_fps` (61 titles, 27 with a route).
 Board request (dispatch/board-requests/titleroutes.md, 12:40 PDT): the D&D
 Heroes run as the case the display-covered check misses.
 
+**Waiting (PR #497, 12:50 PDT).** Nothing of mine is queued or running.
+The signal is outside this lane: issue #494 (lane.displayguard; PR #495 is
+its display-covered half) landing a check that hakuX holds the input focus
+before a route presses, live on the Thor's dispatcher, and hostops saying
+so on #397. Then: re-queue Azurik (480 s) and D&D Heroes (580 s) with
+`scratch/bench.sh`, open the frame at the mark before reading either
+number, and go on down the Thor list in a held session (the Japanese-only
+titles, All-Star Baseball 2003/2004/2005, AMF Bowling 2004, AMF Xtreme
+Bowling, AFL Live, American Chopper 2, then the older open list).
+#397 comment for this batch: 5859098639.
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
