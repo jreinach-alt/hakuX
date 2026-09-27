@@ -1142,3 +1142,74 @@ not conflict with #509's copy.
 State at the end of this session: waiting on
 `1-1790543757-slowdown462-3565156` (eleven requests were ahead of it on
 the Nova at 14:56 PDT). No hold held.
+
+## Attempt 9 (2026-09-27, from 15:45 PDT): the AUF pilot read; Blinx queued
+
+Why attempt 8 did not finish: it ended correctly, waiting on the pilot
+`1-1790543757-slowdown462-3565156` behind eleven Nova requests. The pilot
+finished at 15:39 PDT and this session is the resume. `origin/master` was
+merged at the start of this session (#509 had folded, so the PR diff is now
+texture.c and these NOTES only).
+
+### AUF: `txw[]` over 299-420 s (Nova, MAX, `26936d9639-perflog`, apk 3883925fc5c0)
+
+`txwwin.py <result> 299 420` (seconds from the first `hakuX-route` line;
+34 lines, 2040 flips in 122.6 s = 16.6 fps, 60.1 ms/flip). The frames at
+15:38:02 and 15:38:58 are first-person mission play at FPS 16-17: gameplay.
+`phasesoak.py` over the same seconds gives phase `Tx` 5.8 ms, `Pipe` 9.8,
+`Draw` 18.3, `Surf` 21.1, GPU 25.6 (x1.573 = 40.3).
+
+| step | ms/flip | calls/flip | share of `bt` |
+|---|---:|---:|---:|
+| `bt` whole `pgraph_vk_bind_textures` | **4.57** | 78 | 100% |
+| `res` resolve_possibly_dirty | 0.02 | | 0% |
+| `ct` create_texture, all slots | 4.54 | 88 | 99% |
+| **`faf` `pgraph_vk_flush_all_frames`** | **4.47** | **0.27** | **98%** |
+| `bs` direct surface bind (flq 0.00 + nd 0.01) | 0.02 | 1.00 | 0% |
+| `sdl` / `scan` downloads | 0.00 / 0.00 | 0 / 86 | 0% |
+| `cp` surface copy / `up` upload | 0.00 / 0.00 | 0 / 0 | 0% |
+
+- **The dominant step is `faf`: 16.6 ms per call (4.47 / 0.27), once every
+  ~3.7 flips.** That is a full drain: the render thread's idle wait, then
+  every in-flight frame fence. No finish is involved (`[cblat]` `fin` ~0
+  agrees), no upload, no copy, no download.
+- `up` and `cp` are 0 in the window, so every `faf` in it is the
+  surface-to-texture one (texture.c `create_texture`, the
+  `snode->submit_time + num_active_frames > submit_count` test before the
+  s2t branch), not the upload one. And `bs` is 1.00/flip with `cp` 0:
+  every s2t bind here is a **direct** bind of the surface's own image view.
+- The direct bind writes nothing into the texture node's image. It ends the
+  render pass and puts its own COLOR_ATTACHMENT_WRITE -> SHADER_READ barrier
+  on the surface image (`bind_surface_as_texture`). So the drain before it
+  protects nothing that path writes. It is needed only before
+  `copy_surface_to_texture`, which does write the node's image.
+- The whole-soak figure (0-298 s: bt 2.90, faf 2.82 at 0.44/flip) shows the
+  same shape in the menus and the early mission.
+- The addendum's "~9 ms/frame" was attempt 7's `Pipe.Tx` 8.7 on
+  `76cba82fd2-perflog`. In this run the phase `Tx` reads 5.8 and the probe
+  reads 4.57 inside it. The remaining ~1.2 ms is in the `Tx` timer but
+  outside `pgraph_vk_bind_textures`.
+
+**Candidate fix:** in `create_texture`, take the `flush_all_frames` only on
+the copy path (`!can_direct_bind`), not before a direct bind. Owner: a #474
+fix lane. texture.c belongs to lane.remote (#461), so the fix lane needs it
+lent the way this probe's was. Asked for as Ask 8 in
+`dispatch/board-requests/slowdown462.md`.
+
+**Bound (a bound, not a value):** removing the 4.47 ms/flip of PFIFO wall
+takes AUF from 60.1 to at most 55.6 ms/flip, i.e. **at most ~18.0 fps**
+(from 16.6), if the PFIFO thread sets the frame and nothing refills the
+time. The corrected GPU time is 40.3 of the 60.1 ms, so the GPU does not
+cap it first. The drain also serializes the CPU and the GPU for ~16 ms
+each time, and this probe cannot price the overlap that is lost.
+
+### Blinx: queued
+
+`1-1790549006-slowdown462-1787985`: Blinx, 420 s, survey route, perflog,
+`26936d9639`, pinned to the Nova, release priority, no prediction
+(attribution probe). The window is 255-411 s, as before. The AUF pilot plus
+this soak total about 17 min of device time, which is inside the pilot budget.
+When it queued, a forza414 arm was running on the Nova and three Nova
+requests (forza414 fix arm, flip474, flip474 fix arm) were ahead of it.
+Read it with `txwwin.py <result> 255 411` and `phasesoak.py` over the same
+seconds.
