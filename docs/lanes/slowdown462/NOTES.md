@@ -87,6 +87,49 @@ pause menu). Session #1 (`doa/`) missed the fight and is not used.
   off vs 13.6 on) and ships default-off. That fits: it cut work inside
   `surface_update`, and the time there is a wait.
 
+## AUF (4541000D, #412)
+
+**Soak** `1-1790483186-slowdown462-3496610` (e5db66fa37 perflog, Nova, MAX),
+mission play `mark play`+30 s to 10 s before the end (264-412 s; shots
+213606-213910 are first-person mission play, 15 fps):
+
+| | value |
+|---|---|
+| fps (gfps cadence) / ms per flip | 15.12 / 66.1 |
+| VBLANKs per flip (v2/v3/v4+) / VBLANK rate | 3.76 (12/24/63%) / 56.95 Hz, 347 clamps |
+| vCPU busy (`[tlb68]` cpu/dt) | 83.8% = 55.4 ms/frame |
+| perflog renderer: Tot / Idle / Surf / Draw (Pipe, Tx) | 56.5 / 13.9 / 23.4 / 18.6 (9.9, 6.0) ms |
+| GPU | 29.0 ms (Rnd 14.4, Xfr 14.6) |
+| #424 churn | 0.6% of vCPU |
+
+**Profile** `perf/2026-09-26-slowdown462/auf/auf.data` (a593d8eb85, not perflog,
+`--trace-offcpu`, 22:20:57 PDT, 13.5 s recorded of the 30 asked; 15 fps, vCPU
+`cpu=` 1,800-1,970 per 2,000 ms in the same seconds):
+
+- From the context-switch records (exact, not sampled): **vCPU (tid 15470)
+  on-CPU 12,406 of 13,214 ms (94%)**; **PFIFO (tid 15486) on-CPU 3,214 ms
+  (24%)**, off 9,991 ms. The vCPU sets the frame.
+- vCPU on-CPU, by sample share (the sampler dropped ~25% of the vCPU's
+  cpu-clock samples under `--trace-offcpu`, so shares, not ms):
+  `cpu_exec_loop` self 61.3%, guest JIT 20.4%, `cpu_tb_exec` 6.2%, TB lookup
+  (`x86_get_tb_cpu_state`, `curr_cflags`, `tb_lookup`, `helper_lookup_tb_ptr`,
+  qht) 6.5%. Off-CPU 808 ms, mostly `qemu_mutex_lock` from `cpu_exec_loop`
+  (BQL, 232 ms sampled), `pgraph_write`/`pgraph_read` (110 ms).
+- PFIFO off-CPU, every interval charged to its switch-out sample: 60%
+  unsampled; of the rest, `qemu_cond_wait` in `pfifo_thread` (idle, waiting
+  for the guest's pushes) 2,617 ms, `pgraph_vk_process_pending` event wait
+  888 ms, GPU timestamp wait 290 ms.
+- This reproduces aufire412b's profile (p2: exec loop 54%, JIT 26%) at MAX
+  and on this build, with the off-CPU half added: the renderer is waiting on
+  the guest, not the reverse.
+
+**What the perflog renderer line means here.** The perflog soak says the
+renderer is busy 42 ms of every 66 ms frame; the shipping build's PFIFO thread
+is on-CPU ~16 ms of it (24%). The phase timers are wall time and include
+time the thread is switched out inside a timed section; and the perflog build
+reads a clock around every method. Read `Surf`/`Draw` as upper bounds on
+cost, never as CPU.
+
 ## Log
 
 - 2026-09-26 21:04 PDT: pilot queued, DOA1U, `1-1790481863-slowdown462-3154279`,
