@@ -70,6 +70,7 @@ LEASE_PID="" SOAK_PID="" USED=0
 cleanup() {
     rc=$?
     if [ "$USED" = 1 ]; then
+    [ -n "${GUARD_PID:-}" ] && kill "$GUARD_PID" 2>/dev/null
     [ -n "$SOAK_PID" ] && kill "$SOAK_PID" 2>/dev/null && wait "$SOAK_PID" 2>/dev/null
     if ! grep -q '"perf_restored": true' "$OUT/perf_regimen.json" 2>/dev/null; then
         ( . "$HERE/devices.sh"; read -r _ _ pr fr <<<"$(device_perf_values $S)"
@@ -154,6 +155,23 @@ PERF_RESULT="$OUT/perf_regimen.json" \
     setsid bash "$HERE/soak_title.sh" "$ISOPATH" $SOAK_S > "$OUT/soak.log" 2>&1 &
 SOAK_PID=$!
 say "soak pid $SOAK_PID"
+# Foreground guard. The route injects input into whatever app is in front: on
+# 09-27 a Thor route drove Lime3DS (hostops-inbox 11:53 PDT). From 20 s after
+# launch, every 5 s, the focused window must be hakuX's; two misses in a row
+# stop the soak (and so its route) and end the session.
+(
+    sleep 20; miss=0; n=0
+    while kill -0 $SOAK_PID 2>/dev/null; do
+        f=$(a shell dumpsys window < /dev/null 2>/dev/null | tr -d '\r' | grep -m1 'mCurrentFocus=')
+        [ $n = 0 ] && say "focus: $f"; n=$((n + 1))
+        case "$f" in *com.jreinach.hakux*) miss=0 ;; *) miss=$((miss + 1)) ;; esac
+        if [ $miss -ge 2 ]; then
+            say "hakuX is not in front ($f); stopping the soak and its route"
+            touch "$OUT/not-foreground"; kill $SOAK_PID 2>/dev/null; break
+        fi
+        sleep 5
+    done
+) & GUARD_PID=$!
 
 wait_for() {  # <grep pattern> <nth> <timeout s>
     local t=0
