@@ -154,15 +154,35 @@ tbflip424-doa1u.json stays on file as registered: piloted, not completed, no ver
 
 | request | arm | round | gameplay gfps | churn% | ng | m50 | note |
 |---|---|---|---|---|---|---|---|
-| `1790517344-lane.tbflip424-1425036` | A | r1 (pilot) | | | | | queued 14:09Z |
-| `1790517350-lane.tbflip424-1433200` | B | r1 (pilot) | | | | | queued 14:09Z |
+| `1-1790517344-lane.tbflip424-1425036` | A | r1 (pilot) | 19 | 2.5 | 81 | 29 | rt 0, fatal 0, tail 0.3 s; G 51.9 ms, di/s 520, slow/s 894; stage play in `route-frames/085757-play.png` |
+| `1-1790517350-lane.tbflip424-1433200` | B | r1 (pilot) | 17.0 | 0.0 | 74 | 25 | rt 1, fatal 0, tail 2.8 s; G 53.0 ms, di/s 0, slow/s 31,384, fs/s 31,561; stage play in `route-frames/090705-play.png` |
+| `1-1790525434-lane.tbflip424-730013` | A | r2 | | | | | queued 16:17Z |
+| `1-1790525435-lane.tbflip424-730250` | B | r2 | | | | | queued 16:17Z |
+| `1-1790525435-lane.tbflip424-730605` | A | r3 | | | | | queued 16:17Z |
+| `1-1790525435-lane.tbflip424-730719` | B | r3 | | | | | queued 16:17Z |
+
+## 8. Attempt 5 (2026-09-27 ~16:10Z): the Blinx pilot, reviewed
+
+Why attempt 4 did not finish: it ended on a correct wait. The Blinx pilot pair was queued on the
+Thor at 14:09Z and ran ~15:50-16:08Z.
+
+- Both pilot runs pass M0: `mark play` present, ng 81 / 74, m50 29 / 25 (floor 4), rt 0 on A and
+  1 on B, fatal 0, tail 0.3 / 2.8 s. The play frames are Blinx stage gameplay on both arms, with
+  the stage timer running.
+- The counter moves as M1 requires: churn 2.5 -> 0.0, di/s 520 -> 0, and the bitmap answers the
+  stores that reach the invalidator on B (fs/s 31.6k against inv/s 31.1k).
+- One run per arm reads A 19, B 17 gfps. That is under M4''s A - 1, but it is one run per arm
+  against a noted A-path spread of 11-15 on the Thor. It decides nothing until all six are read.
+- The pilot verdict is in `pilots/lane.tbflip424.ok`. r2 and r3 are queued at priority 1 (above).
 
 ### On resume
 
-1. `python3 docs/lanes/tbflip424/playread.py <A id> <B id>`. Check M0 (m50 included) and open one
-   play frame per arm.
-2. Write `pilots/lane.tbflip424.ok` with python3, then queue A B A B for r2 and r3 (42 min).
-3. Do not push the range flip until M4' is read on all six.
+1. `python3 docs/lanes/tbflip424/playread.py 1425036 1433200 730013 730250 730605 730719`. Check
+   M0 on each run (an m50 under 4 is VOID and re-queued once), then read M1 and M4' as registered in
+   tbflip424-blinx2.json: medians over the three runs per arm, no refit.
+2. If M4' passes, flip `hakux_tcg424_range_on()` (default and comment only), then run the pgraph
+   byte-identity check on the flipped binary. If it fails, do not flip: diagnose from cb/s, inv/s
+   and slow/s and post on #424.
 
 ### Do not repeat
 
