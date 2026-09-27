@@ -146,8 +146,7 @@ uint64_t hakux_tlb68_rs;        /* dynamic TLB resizes, any mode (#311 rs) */
 uint64_t hakux_tlb68_ka;        /* hunk (a): pages kept armed on emptying */
 uint64_t hakux_tlb68_kafb;      /* hunk (a): ... disarmed by the fallback */
 static __thread bool hakux_tlb68_arming;
-/* #424, defined in tb-maint.c: range test on, bitmap-answered stores, builds */
-bool hakux_tcg424_range_on(void);
+/* #424, defined in tb-maint.c: bitmap-answered stores, builds */
 extern uint64_t hakux_tcg424_cb;
 extern uint64_t hakux_tcg424_cbb;
 

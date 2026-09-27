@@ -76,8 +76,9 @@ without the walk. (2) is measured, not assumed away: it is a leg.
   if the bitmap shows no translated byte in the store, it returns under the
   one page lock. That skips `page_collection_lock` (a GTree allocated per
   store, plus every TB's other page locked) and the list walk.
-- Kill switch: `HAKUX_TCG424_WHOLEPAGE=1` restores whole-page invalidation
-  and bypasses the bitmap.
+- Switch: at `1d1251aa4b`, `HAKUX_TCG424_WHOLEPAGE=1` restored whole-page
+  invalidation. Since the audit remediation it is opt-in instead:
+  `HAKUX_TCG424_RANGE=1` turns the range test on (section 5).
 - `[tlb68]` gains `rt=` (range test on), `cb=` (stores the bitmap answered)
   and `cbb=` (builds).
 
@@ -200,4 +201,29 @@ not tuned around.
   `slow/s`: most slow stores on Blinx never reach the invalidator on either arm.
 - **The survey route is not an fps instrument.** Its span median is set by
   how many menu samples it holds. Use a title route with a gameplay mark.
-- Field kill switch if a title shows stale code: `HAKUX_TCG424_WHOLEPAGE=1`.
+- The switch is now opt-in: `HAKUX_TCG424_RANGE=1` turns the range test on
+  (section 5). Whole-page is the default until Blinx gameplay is measured.
+
+## 5. The default is whole-page (audit pass 1, MEDIUM M1)
+
+M4 is a must-not-regress leg, and it failed as registered. The only gameplay
+reader (post hoc) leans the wrong way on Blinx (A 9/9, B 7/9). Nothing
+registered clears it. So the fix ships **off by default**:
+
+- `HAKUX_TCG424_RANGE=1` (request.sh --env) turns the range test and the
+  code bitmap on. Unset, or any other value, is the fork's whole-page
+  invalidation, and no bitmap is built (`page_code_bitmap_misses` is only
+  reached when the switch is on, and it is the only place a bitmap is
+  created).
+- This replaces `HAKUX_TCG424_WHOLEPAGE=1`, which no longer exists. The
+  registered results above were taken on `1d1251aa4b`, where the range test
+  was the default, so they are B's behaviour and still stand for the opt-in.
+- Crimson's 26 -> 29 does not ship until a later change flips the default.
+  That change needs a registered Blinx leg read on gameplay, not on the survey
+  route's span: `--env HAKUX_TCG424_RANGE=1` against the same binary without
+  it, >= 3 interleaved runs per arm, B's gameplay gfps >= A's - 1. The reader
+  is either a Blinx route with a `mark gameplay` (#397) or the gameplay-tail
+  reader of section 4, named in the prediction before the runs.
+- `hakux_tcg424_range_on()` is declared once, in `tb-internal.h` (audit L2).
+  The `cbb` comment now says the counter can lose a count when builds of
+  different pages race (audit L1).

@@ -83,8 +83,10 @@ uint64_t hakux_tlb_protect_calls;     /* arming walks: the 10.6% symbol */
 /*
  * #424: stores to an armed code page that the page's code bitmap answered
  * without a walk (the write touched no translated byte), and bitmaps built or
- * rebuilt. Written only by the vCPU thread (notdirty_write's fast path) and,
- * for the rebuild count, by whoever holds the page lock. Printed on the
+ * rebuilt. cb is written only by the vCPU thread (notdirty_write's fast
+ * path). cbb is written under the lock of the page being rebuilt, which does
+ * not serialise builds of different pages (a DMA invalidation and the vCPU
+ * can race), so it may lose a count: a rate, not a check. Printed on the
  * [tlb68] line as cb= and cbb=. See tb_invalidate_phys_range_fast().
  */
 uint64_t hakux_tcg424_cb;
@@ -767,21 +769,22 @@ static void page_unlock(PageDesc *pd)
 /*
  * #424: the range test and the code bitmap that makes it cheap.
  *
- * HAKUX_TCG424_WHOLEPAGE=1 (request.sh --env) restores the fork's whole-page
- * invalidation (xemu 703566ce33): every block on a written page is discarded
- * and the bitmap is never consulted. Default: the range test, upstream's
- * behaviour. Read once.
+ * HAKUX_TCG424_RANGE=1 (request.sh --env) turns on the range test and the
+ * bitmap. Default OFF: the fork's whole-page invalidation (xemu 703566ce33),
+ * where every block on a written page is discarded and no bitmap is built.
+ * The default stays whole-page until the must-not-regress leg on Blinx
+ * (tbchurn424-soak.json M4, failed on the survey route) is measured on
+ * gameplay. Read once.
  */
 static int hakux_tcg424_range = -1;
 
-bool hakux_tcg424_range_on(void);   /* also declared in cputlb.c */
 bool hakux_tcg424_range_on(void)
 {
     int v = qatomic_read(&hakux_tcg424_range);
 
     if (unlikely(v < 0)) {
-        const char *e = getenv("HAKUX_TCG424_WHOLEPAGE");
-        v = !(e && e[0] == '1');
+        const char *e = getenv("HAKUX_TCG424_RANGE");
+        v = e && e[0] == '1';
         qatomic_set(&hakux_tcg424_range, v);
     }
     return v;
@@ -1788,8 +1791,8 @@ bool tb_invalidate_phys_page_unwind(CPUState *cpu, tb_page_addr_t addr,
  * "what restoring the test would spare" and not "what some other predicate
  * would spare".
  *
- * Since #424 it is the live predicate of the loop below (unless
- * HAKUX_TCG424_WHOLEPAGE=1), and tb_page_code_extent() is the same arithmetic
+ * Since #424 it is the live predicate of the loop below when
+ * HAKUX_TCG424_RANGE=1, and tb_page_code_extent() is the same arithmetic
  * expressed as a byte range for the per-page code bitmap.
  */
 static bool tb_overlaps_written_range(const TranslationBlock *tb, int n,
