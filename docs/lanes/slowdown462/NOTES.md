@@ -302,6 +302,72 @@ Bound, not a value: none above the cap. The frame is at the title's 2-VBLANK
 pacing (33.4 ms); removing any of these leaves it at **<= 30 fps**. No new
 issue is asked for Blinx 2: it is not slow on this build and device.
 
+## Forza Motorsport (4D53006E, #414)
+
+**Soak** `1-1790492278-slowdown462-690198` (e5db66fa37 perflog, apk
+c4b30cf46bd6, Nova, MAX restored). The race starts ~160 s after line 1 (shot
+002700: race clock 00:09, 8th of 8); the survey route barely drives (0-3 mph).
+Window `mark play`+10 s to 10 s before the end (243-414 s):
+
+| | whole window | before the USB dialog (243-333 s) |
+|---|---|---|
+| fps (gfps cadence) / ms per flip | 22.95 / 42.0 (pace.py 22.99 / 43.5) | 24.13 / 39.5 |
+| VBLANKs per flip (v2/v3/v4+) | 2.59 (46/49/5%) | 2.46 |
+| vCPU busy (`[tlb68]`) | 96% | 95% |
+| perflog renderer: Tot / Idle | 35.8 / 0.0 ms | 33.8 / 0.0 |
+| Fin (Sub 19.9); `sd_cDef` per 60 flips | 20.2 ms; 371 (6.2 per frame) | 19.6; 378 |
+| Draw (Pipe 5.4) / Surf | 12.1 / 3.3 ms | 10.9 / 3.2 |
+| GPU (GR 18.0, GX 2.4) | 20.2 ms | 19.2 |
+| draws / RP breaks | 1,026 / 1,408 per 60 flips | |
+| #424 churn | 1.5% of vCPU | |
+
+At 00:30:20 PDT (shot 003020) an **"Allow USB debugging?" dialog** for an
+unknown RSA key (2C:58:B6:23:...:F8) covered the Nova's screen. The pre-dialog
+window reads the same shape, so the numbers stand; the dialog is a host
+matter (reported on #462).
+
+**Profile** `perf/2026-09-26-slowdown462/forza/forza.data` (a593d8eb85,
+`--trace-offcpu`, 00:48:51-00:49:26 PDT, `mark play`+60 s; race, car stopped
+on the start straight; `profwin.py`: 960 flips in 34.3 s = 28.0 fps, 35.7
+ms/flip, gfps 28-30 falling to 19-25 in the last 10 s; ~840 frames in the 30
+s record). **Lighter than the soak's median (23 fps)**, so the ms below are
+at 28 fps; the soak's heavier stretches have `Sub` 22-23 ms.
+
+| thread | on-CPU | off-CPU | where the off-CPU time goes |
+|---|---|---|---|
+| vCPU (tid 26799) | 25,650 ms (85%) = 30.5 ms/frame | 4,368 ms | **`pgraph_read` `pg->lock` 2,768**; BQL 399; unsampled 916 |
+| PFIFO (tid 26809) | 13,593 ms (45%) = 16.2 ms/frame | 16,418 ms | **`pgraph_vk_finish` <- `pgraph_vk_download_surface_complete_deferred` 15,230** (18.1 ms/frame); `process_pending` 163; idle 91 |
+
+vCPU on-CPU (sample shares): guest JIT 41.6%; **TB lookup 25.8%**
+(`tb_lookup` 10.0, `qht_lookup_custom` 7.1, `helper_lookup_tb_ptr` 6.4,
+`tb_lookup_cmp` 2.3); `cpu_exec_loop` only 5.1%;
+`mem_access_callback_address_matches` 3.4%; `helper_mulss` 2.1%. Forza's
+vCPU is not AUF's and Blinx's exec-loop shape: it misses in the indirect-jump
+lookup instead. PFIFO on-CPU: `memcpy_opt` 23.6%, `rewrite_indices` 9.5%,
+`fast_hash` 4.7%, `apply_uniform_updates` 4.3%.
+
+The PFIFO thread is on-CPU or waiting for a deferred download 34.3 of every
+35.7 ms: it sets the frame. The vCPU's `pgraph_read` waits are the same lock
+as DOA's (#474), here held across the download waits, not the flip.
+
+**Forza answer** (frame 35.7 ms at 28.0 fps in the profile; 42.0 ms at 23.0
+in the soak window):
+
+| # | cost | ms/frame | share | evidence | candidate fix | owner |
+|---|---|---|---|---|---|---|
+| 1 | PFIFO waits for deferred surface-download completions | 18.1 | 51% | forza.data tid 26809; soak `sd_cDef` 371/60 flips, `Sub` 19.9 | complete the ~6 deferred downloads per frame with one finish (forza414's uncoalesced `sd_complete_def`), or complete them off the PFIFO thread | #414 |
+| 2 | vCPU TB lookup (indirect jumps) | 7.9 | 22% | 25.8% of 25,650 ms vCPU on-CPU | #425 jump cache (Forza is its workload) | #425 |
+| 3 | vCPU blocked on `pg->lock` in `pgraph_read` | 3.3 | 9% | tid 26799 off-CPU 2,768 ms | drop `pg->lock` across the wait (#474's fix, applied to the download path too) | #474 |
+
+The guest's own JIT code is 12.7 ms/frame (36%).
+
+Bounds, not values: with (1) gone the PFIFO needs ~16 ms and the frame is at
+least the vCPU's 30.5 ms on-CPU: **<= 33 fps**, and at the title's 2-VBLANK
+pacing **<= 30 fps**. With (2) also gone the vCPU needs ~22.6 ms: still
+**<= 30 fps** at the pacing. The same bound holds from the soak's heavier
+window only if its vCPU on-CPU is also under 33 ms, which a soak cannot
+show.
+
 ## Log (PDT, 2026-09-26)
 
 - 21:04 pilot queued (DOA1U); ran 21:12-21:25; reviewed and
@@ -325,11 +391,28 @@ issue is asked for Blinx 2: it is not slow on this build and device.
   shape and priority as DOA/AUF: Blinx `1-1790492277-slowdown462-690144`,
   Blinx 2 `1-1790492277-slowdown462-690171`, Forza
   `1-1790492278-slowdown462-690198`. Waits are polled in the foreground.
-- Next: Blinx, Blinx 2, Forza once lane.xbox posts "verified on the Nova";
-  one soak each (release priority, pinned nova, survey), then one `OFFCPU=1`
-  session each at `mark play` + 60 s (their pass-1 shots show gameplay after
-  the mark: Blinx and Blinx 2 in a level, Forza's race clock starting ~30 s
-  after it).
+- 00:18 `blinx` session (hold taken during the Blinx 2 soak, handed to the
+  script); `--trace-offcpu` failed, on-CPU fallback recorded 30 s.
+- 00:31 `blinx2` session (off-CPU). 00:43 `forza` session (off-CPU,
+  `SOAK_S=360`, `mark play`+60 s). Each released the hold; the dispatcher
+  ran retreason425 between them.
+- Blinx, Blinx 2 and Forza answers posted on #462, #372 and #414; the
+  five-title summary on #462.
+
+## Summary (Nova, MAX, e5db66fa37 soaks / a593d8eb85 profiles)
+
+| title | fps (soak window) | sets the frame | top cost (ms/frame, share) | owner | bound if it goes |
+|---|---|---|---|---|---|
+| DOA1U | 13.2 | the flip's GPU wait under `pg->lock`; guest blocks in `pgraph_read` | 34 (49%) | #474 | <= 26 fps |
+| AUF | 15.1 | vCPU (94% on-CPU) | exec-loop returns 42 (63%) | #425 / #412 | <= 34 fps (<= 30 at its pacing), if the returns are overhead |
+| Blinx | 17.2 | vCPU (73% on-CPU, 27% blocked) | exec-loop returns 21.7 (36%) | #425 | <= 26 fps (<= 30 with the blocked time too) |
+| Blinx 2 | 28.9 | at its 2-VBLANK cap | exec-loop returns 13.5 (40%) | #425 | none above the 30 cap |
+| Forza | 23.0 | PFIFO (waits on deferred downloads) | deferred download finishes 18.1 (51%) | #414 | <= 30 fps (pacing) |
+
+Two mechanisms cover four titles: the exec loop between TBs on the vCPU (AUF,
+Blinx, Blinx 2; Forza's variant is the indirect-jump lookup), and PFIFO waits
+for the GPU inside `pg->lock`, which the guest's `pgraph_read` then waits
+behind (DOA at the flip, Forza and Blinx 2 at surface downloads).
 
 ## Do not repeat
 
@@ -349,3 +432,16 @@ issue is asked for Blinx 2: it is not slow on this build and device.
   0.9 ms before) to find the emulator caller.
 - A poll for an empty `running/` never sees the gap between Nova runs; take
   the hold during a run and touch nothing until `running/` empties.
+- `--trace-offcpu` can fail at once ("Event type 'cpu-clock' is not
+  supported", Blinx 00:23) and work 8 min later on the same boot (harden 0,
+  paranoid 1). The script falls back to on-CPU; if the off-CPU half matters,
+  rerun the session.
+- `capture_profile.sh`'s soak is `SOAK_S` (330 s) from launch: `mark play`
+  lands at ~235-245 s on these titles, so a delay over ~40 s needs
+  `SOAK_S=360` or the record is cut by the soak's end.
+- Do not end a session waiting on a background task: attempt 1 did, and
+  nothing resumed it for the ~25 min after the Nova came back.
+  `systemd-run` and `setsid` are refused by this lane's permissions; a held
+  session fits in one foreground call if the hold is taken during the
+  running request and handed to the script (`.cap/prof.sh` pattern:
+  release and re-take in the same call).
