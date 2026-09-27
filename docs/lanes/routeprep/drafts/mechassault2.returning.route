@@ -1,0 +1,49 @@
+# MechAssault 2: Lone Wolf (4D53006B), Thor, RETURNING: a profile is on the
+# disk. DRAFT by lane.routeprep, 2026-09-26, not played. NO FRAMES ON DISK:
+# every step is [guess]. The profile list should highlight the saved profile;
+# the campaign menu should then offer Continue first.
+wait 30
+shot boot30
+press START
+wait 15
+shot boot45
+press START
+wait 15
+shot boot60
+press START
+wait 8
+shot profiles               # [guess] the saved profile highlighted
+mark booted
+press A
+wait 8
+shot main-menu
+mark profile-loaded
+press A                     # [guess] campaign
+wait 8
+shot campaign               # CHECK: Continue vs New Campaign
+press A
+wait 15
+shot briefing
+repeat 8 {
+    press A
+    wait 8
+    shot brief-a
+}
+mark gameplay               # [guess] placeholder
+repeat forever {
+    axis LY min
+    axis RT max
+    wait 0.4
+    axis RT min
+    axis RX max
+    wait 0.6
+    axis RX mid
+    axis RT max
+    wait 0.4
+    axis RT min
+    axis RX min
+    wait 0.6
+    axis RX mid
+    axis LY mid
+    wait 1
+}

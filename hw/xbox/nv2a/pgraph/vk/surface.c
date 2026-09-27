@@ -1995,6 +1995,14 @@ static void register_cpu_access_callback(NV2AState *d,
  * suspended, re-arm it and queue the gap check. Returns with upload_pending
  * cleared, as the upload always did; the caller holds surface_watch_lock.
  */
+/* Whole-surface hashes taken by surface_watch_resume(); see [surf413]. */
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+static unsigned long surf413_resume_hashes, surf413_resume_kb;
+#define SURF413_HASHED(kb) (surf413_resume_hashes++, surf413_resume_kb += (kb))
+#else
+#define SURF413_HASHED(kb) ((void)0)
+#endif
+
 static void surface_watch_resume(NV2AState *d, SurfaceBinding *surface)
 {
     if (!surface_watch_suspended ||
@@ -2003,6 +2011,7 @@ static void surface_watch_resume(NV2AState *d, SurfaceBinding *surface)
     }
     uint64_t hash = surface_watch_hash(d->vram_ptr + surface->vram_addr,
                                        surface->size);
+    SURF413_HASHED(surface->size / 1024);
     register_cpu_access_callback(d, surface);
     if (surface->access_cb) {
         SurfaceWatchRearm *w = g_new(SurfaceWatchRearm, 1);
@@ -4472,6 +4481,86 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
     }
 }
 
+/*
+ * #413 PROBE: WHERE pgraph_vk_surface_update()'S TIME GOES, PER SEGMENT.
+ *
+ * DOA2U's 15 fps fight spends 33-52 ms per frame in `Surf` (the exclusive
+ * phase timer around this function), about 64 us a call against 2.5 us in
+ * light play. profile.c already splits it under `xemu-surf`, but that tag is
+ * not in the dispatcher's logcat spec, and the xemu-surf split leaves out
+ * the parts of this function that are not inside update_surface_part():
+ * the flushes on the download side, the deferred-download completion, the
+ * real uploads (as distinct from calls that return on !upload_pending) and
+ * expire/prune. This prints all of them raw, summed over 60 guest frames,
+ * under "hakuX" with a [surf413] prefix, beside profile.c's own xemu-surf
+ * string. Every segment is wall time and includes any pgraph_vk_finish()
+ * inside it; `fin` is that nested finish time, so sum(segments) - fin is
+ * what `Surf` reports. NV2A_PERF_LOG builds only.
+ */
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+static struct {
+    int frame0;
+    unsigned long calls_up, calls_dn;
+    unsigned long real_uploads, upload_kb;
+    int64_t pre_ns, flush_ns, part_ns, cdef_ns, upl_ns, exp_ns, prn_ns,
+            tail_ns, fin_ns;
+} g_surf413;
+
+static void surf413_log(PGRAPHState *pg, PGRAPHVkState *r)
+{
+    int frames = pg->frame_time - g_surf413.frame0;
+    if (frames < 60) {
+        return;
+    }
+    int active = 0, shelved = 0, invalid = 0;
+    SurfaceBinding *s;
+    QTAILQ_FOREACH(s, &r->surfaces, entry) {
+        active++;
+    }
+    QTAILQ_FOREACH(s, &r->shelved_surfaces, entry) {
+        shelved++;
+    }
+    QTAILQ_FOREACH(s, &r->invalid_surfaces, entry) {
+        invalid++;
+    }
+#define SURF413_MS(ns) ((double)(ns) / 1e6 / frames)
+    SURF92_LOG("[surf413] frames=%d up=%lu dn=%lu | ms/frame pre=%.2f "
+               "flush=%.2f part=%.2f cdef=%.2f upl=%.2f exp=%.2f prn=%.2f "
+               "tail=%.2f fin=%.2f | realupl=%lu uplKB=%lu hash=%lu "
+               "hashKB=%lu | active=%d shelved=%d invalid=%d",
+               frames, g_surf413.calls_up, g_surf413.calls_dn,
+               SURF413_MS(g_surf413.pre_ns), SURF413_MS(g_surf413.flush_ns),
+               SURF413_MS(g_surf413.part_ns), SURF413_MS(g_surf413.cdef_ns),
+               SURF413_MS(g_surf413.upl_ns), SURF413_MS(g_surf413.exp_ns),
+               SURF413_MS(g_surf413.prn_ns), SURF413_MS(g_surf413.tail_ns),
+               SURF413_MS(g_surf413.fin_ns),
+               g_surf413.real_uploads, g_surf413.upload_kb,
+               surf413_resume_hashes, surf413_resume_kb,
+               active, shelved, invalid);
+#undef SURF413_MS
+    char buf[512];
+    nv2a_profile_get_surf_timing_str(buf, sizeof(buf));
+    SURF92_LOG("[surf413] xemu-surf %s", buf);
+    memset(&g_surf413, 0, sizeof(g_surf413));
+    surf413_resume_hashes = surf413_resume_kb = 0;
+    g_surf413.frame0 = pg->frame_time;
+}
+#define SURF413_T(name) int64_t name = nv2a_clock_ns()
+#define SURF413_ACC(field, since) do { \
+        int64_t _now = nv2a_clock_ns(); \
+        g_surf413.field += _now - (since); \
+        (since) = _now; \
+    } while (0)
+#define SURF413_FIN(name) \
+    int64_t name = g_nv2a_stats.phase_working.finish_ns
+#define SURF413_DO(stmt) do { stmt; } while (0)
+#else
+#define SURF413_FIN(name) ((void)0)
+#define SURF413_T(name) ((void)0)
+#define SURF413_ACC(field, since) ((void)0)
+#define SURF413_DO(stmt) ((void)0)
+#endif
+
 // FIXME: Move to common?
 void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
                               bool zeta_write)
@@ -4479,6 +4568,10 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     NV2A_PHASE_TIMER_BEGIN_EXCL(surface_update);
     PGRAPHState *pg = &d->pgraph;
     PGRAPHVkState *r = pg->vk_renderer_state;
+    SURF413_T(_s413);
+    SURF413_FIN(_s413_fin);
+    SURF413_DO(if (upload) { g_surf413.calls_up++; }
+               else { g_surf413.calls_dn++; });
 
     VK_LOG("surface_update: upload=%d color_w=%d zeta_w=%d clearing=%d",
            upload, color_write, zeta_write, pg->clearing);
@@ -4490,6 +4583,8 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     color_write = color_write &&
             (pg->clearing || pgraph_color_write_enabled(pg));
     zeta_write = zeta_write && (pg->clearing || pgraph_zeta_write_enabled(pg));
+
+    SURF413_ACC(pre_ns, _s413);
 
     if (upload) {
         bool fb_dirty = framebuffer_dirty(pg);
@@ -4520,6 +4615,7 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     } else {
         pgraph_vk_flush_reorder_window(d);
         pgraph_vk_flush_draw_queue(d);
+        SURF413_ACC(flush_ns, _s413);
         if ((color_write || pg->surface_color.write_enabled_cache)
             && pg->surface_color.draw_dirty) {
             update_surface_part(d, false, true);
@@ -4530,7 +4626,9 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
         }
     }
 
+    SURF413_ACC(part_ns, _s413);
     pgraph_vk_download_surface_complete_deferred(d);
+    SURF413_ACC(cdef_ns, _s413);
 
     if (upload) {
         pg->draw_time++;
@@ -4543,6 +4641,10 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
         if (r->color_binding) {
             r->color_binding->frame_time = pg->frame_time;
             if (upload) {
+                SURF413_DO(if (r->color_binding->upload_pending) {
+                    g_surf413.real_uploads++;
+                    g_surf413.upload_kb += r->color_binding->size / 1024;
+                });
                 pgraph_vk_upload_surface_data(d, r->color_binding, false);
                 r->color_binding->draw_time = pg->draw_time;
                 r->color_binding->swizzle = swizzle;
@@ -4553,6 +4655,10 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
         if (r->zeta_binding) {
             r->zeta_binding->frame_time = pg->frame_time;
             if (upload) {
+                SURF413_DO(if (r->zeta_binding->upload_pending) {
+                    g_surf413.real_uploads++;
+                    g_surf413.upload_kb += r->zeta_binding->size / 1024;
+                });
                 pgraph_vk_upload_surface_data(d, r->zeta_binding, false);
                 r->zeta_binding->draw_time = pg->draw_time;
                 r->zeta_binding->swizzle = swizzle;
@@ -4561,6 +4667,7 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
         }
         SURF_TIMER_ACC(upload_ns, _su0);
     }
+    SURF413_ACC(upl_ns, _s413);
 
     // Sanity check color and zeta dimensions match
     if (r->color_binding && r->zeta_binding) {
@@ -4571,10 +4678,16 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     {
         SURF_TIMER_INIT(_se0);
         expire_old_surfaces(d);
+        SURF413_ACC(exp_ns, _s413);
         prune_invalid_surfaces(r, num_invalid_surfaces_to_keep);
+        SURF413_ACC(prn_ns, _s413);
         SURF_TIMER_ACC(expire_ns, _se0);
     }
     surface_watch_log_periodic(r);
+    SURF413_ACC(tail_ns, _s413);
+    SURF413_DO(g_surf413.fin_ns +=
+                   g_nv2a_stats.phase_working.finish_ns - _s413_fin;
+               surf413_log(pg, r));
 
     NV2A_PHASE_TIMER_END_EXCL(surface_update);
 }

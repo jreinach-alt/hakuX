@@ -1,0 +1,73 @@
+# Project Gotham Racing 2 (4D53004B), Thor, FIRST RUN: no PGR2 driver on the
+# disk. DRAFT by lane.routeprep, 2026-09-26, not played.
+#
+# Evidence:
+# - titlebench hands-off 240 s (0-0-y-1790413062-titlebench-14, Thor), one
+#   frame per ~10 s in frames/: f02-f09 Bizarre logos, the driving warning
+#   and the intro FMV (red Enzo with city names), f10 PGR2 splash, f11
+#   "Loading", f12-f14 "PRESS START" (~120-140 s), f15-f24 attract races
+#   ("Welcome to Hong Kong"). The FMV was not pressed at, so it may be
+#   skippable earlier.
+# - The menus past PRESS START are not on disk for PGR2. They are drafted from
+#   PGR1 (same studio, Bizarre), which titleroutes played on the Thor
+#   (nav sessions pgr.first-run-20260926T210321 and pgr.returning-...212324):
+#   "load or create new" (create new driver: A) -> "setup driver", name
+#   Player pre-filled, continue (A) -> "save to" hard disk (A) -> "progress
+#   will be automatically saved" continue (A) -> main menu -> race type ->
+#   skill level -> city -> car select -> AUTO transmission -> grid; RT drives.
+#   PGR2's menu items differ from PGR1's (Kudos World Series, Arcade Racing,
+#   Time Attack...); this draft takes the highlighted item at each step.
+wait 60
+shot boot60
+press START                 # [guess] try to skip the intro FMV; harmless if it ignores it
+wait 30
+shot boot90
+wait 30
+shot boot120                # expect "PRESS START" [seen f12-f14]
+mark booted
+press START                 # [seen f12] title; must come before the attract (~150 s) or it starts a demo
+wait 8
+shot load-or-create         # [PGR1] create new driver highlighted when there is none
+press A
+wait 6
+shot setup-driver           # [PGR1] name "Player" pre-filled, continue at the bottom
+press A                     # OPEN: PGR1 needed only A here; if the cursor sits on "driver name", flick down to continue
+wait 6
+shot save-to                # [PGR1] hard disk
+press A
+wait 6
+shot autosave-notice        # [PGR1] "progress will be automatically saved", continue
+press A
+wait 6
+mark profile-saved
+shot main-menu
+press A                     # [guess] highlighted race type
+wait 6
+shot race-type
+press A
+wait 6
+shot series-or-city
+press A
+wait 6
+shot event
+press A
+wait 6
+shot car-select
+press A
+wait 5
+shot transmission           # [PGR1] AUTO highlighted
+press A
+wait 25
+shot loading
+wait 10
+shot grid
+mark gameplay               # [guess] placeholder: move to the first frame on the grid with the HUD
+repeat forever {
+    axis RT max
+    axis LX min
+    wait 1.5
+    axis LX max
+    wait 1.5
+    axis LX mid
+    wait 3
+}
