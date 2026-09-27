@@ -450,6 +450,7 @@ files = ["docs/testing/devices.sh", "docs/testing/jobs/selftest.d/99-display-cov
 note = "STARTED (hostops 2026-09-27 15:20 PDT), briefs/focusanr.md: #513 (0.5, fps-focus). hakux_in_front parses dumpsys input's stale 'at time of last ANR' block, so every Thor title soak since PR #495 voided as daijishou. The interim patch is in $DISPATCH_DIR/bin/devices.sh and is lost at the next re-exec. Files taken from [free] (released by lane.displayguard)."
 
 [free]
+# CLAIMED (hostops 2026-09-27T22:38Z): hw/xbox/nv2a/pgraph/vk/instance.c -> lane.flip474 (#474 Addendum 7: the sysmem render-mode fix is configured there).
 # RELEASED (hostops 2026-09-27T22:36Z) by retiring lane.notify488 (PR #490 merged eb4251594a: NV097 NOTIFY notifier written; the semaphore half refuted on the Nova): docs/lanes/notify488/**, docs/testing/predictions/notify488-*.json; hw/xbox/nv2a/pgraph/pgraph.c stays with lane.flip474.
 # CLAIMED (hostops 2026-09-27T22:20Z): docs/testing/devices.sh, docs/testing/jobs/selftest.d/99-display-covered.sh -> lane.focusanr (#513: foreground guard reads the stale ANR block).
 # RELEASED (hostops 2026-09-27T21:55Z) by retiring lane.tbflip424 (PR #456 folded): accel/tcg/tb-maint.c, accel/tcg/tb-internal.h, accel/tcg/cputlb.c, docs/testing/predictions/tbflip424-blinx.json, docs/lanes/tbflip424/NOTES.md.
@@ -696,7 +697,6 @@ files = ["docs/lanes/notify488/**", "docs/testing/predictions/notify488-*.json",
 # new row was pushed.
 "accel/**/*.h",
          "hw/xbox/nv2a/pgraph/swizzle.c",
-         "hw/xbox/nv2a/pgraph/vk/instance.c",
 # NAMED OUT (hostops, 2026-09-26T07:10Z): vk/shaders.c, granted to lane.vkpointsize34
 # for #34 (set GenGeomGlslOptions.no_point_size); vk/instance.c released here by that lane.
          "hw/xbox/mcpx/**",
@@ -1444,7 +1444,7 @@ note = "RETIRED (hostops 2026-09-26 23:40 PDT): PR #472 folded as 84d2e83cef: 'M
 
 [lane.flip474]
 issues = ["474"]
-files = ["hw/xbox/nv2a/pgraph/vk/renderer.c", "hw/xbox/nv2a/pfifo.c", "hw/xbox/nv2a/pgraph/pgraph.c", "docs/lanes/flip474/**", "docs/testing/predictions/flip474-*.json"]
+files = ["hw/xbox/nv2a/pgraph/vk/renderer.c", "hw/xbox/nv2a/pgraph/vk/instance.c", "hw/xbox/nv2a/pfifo.c", "hw/xbox/nv2a/pgraph/pgraph.c", "docs/lanes/flip474/**", "docs/testing/predictions/flip474-*.json"]
 released = ["hw/xbox/nv2a/pgraph/vk/renderer.c", "hw/xbox/nv2a/pfifo.c", "hw/xbox/nv2a/pgraph/pgraph.c", "docs/lanes/flip474/**", "docs/testing/predictions/flip474-*.json"]
 standing = false
 note = "RELEASED at PR-ready (hostops 2026-09-27 09:09 PDT): PR #475 ready, CI green, mergeable, needs-audit-1; the unit is gone. || STARTED (hostops 2026-09-27T06:45Z), briefs/flip474.md: #474, pgraph.lock held across the flip-stall GPU wait (DOA Ultimate fight ~35 ms/frame, ceiling <= 26 fps), filed from lane.slowdown462 board request Ask 3. renderer.c and pfifo.c from [free]; pgraph.c was unclaimed. Serves 0.5 (DOA Ultimate is on the 0.5 list)."
