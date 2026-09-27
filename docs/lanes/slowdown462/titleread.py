@@ -90,11 +90,16 @@ def main():
         if hi is None:
             sys.exit("no `soak end` mark and no --to")
         print("window: %.1f-%.1f s after line 1 (%.0f s of play, from mark+%.0f)" % (lo - first, hi - first, hi - lo, a.frm))
+    # churn.py's base is the route's `mark gameplay` when the route wrote one
+    # and logcat line 1 only when it did not. The survey route writes `mark
+    # play`, so the five titles were read from line 1; gta-sa writes `mark
+    # gameplay`, and passing line-1 offsets read the wrong 53 s (GTA, 09-27).
+    churn_base = marks.get("mark gameplay", first)
     runs = [
         ["aufire412/splitread.py", log, "--window", "%.1f,%.1f" % (lo - first_hx, hi - first_hx)],
         ["aufire412b/pace.py", "%.1f" % (lo - first), "%.1f" % (hi - first), a.rid],
         ["aufire412b/vbl.py", "%.1f" % (lo - first), "%.1f" % (hi - first), a.rid],
-        ["tbchurn424/churn.py", "--from", "%.1f" % (lo - first), "--to", "%.1f" % (hi - first), a.rid],
+        ["tbchurn424/churn.py", "--from", "%.1f" % (lo - churn_base), "--to", "%.1f" % (hi - churn_base), a.rid],
     ]
     for r in runs:
         print("\n== " + r[0])
