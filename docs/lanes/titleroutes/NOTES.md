@@ -1254,3 +1254,13 @@ copy of the result dir (`scratch/judge.py`), apk 397ae7dca16a.
 - Do not queue a route soak on a device that has just reconnected or
   rebooted until something has checked that hakuX holds the input focus. The
   presses go to the focused window, whoever owns it.
+
+### Attempt 9 (resumed 2026-09-27 15:19 PDT)
+
+Why attempt 8 did not finish: it ended on purpose, waiting on something
+outside the lane. The focus guard read the last-ANR copy of the dispatcher
+state (#513), so no route soak could be queued. Hostops put an interim patch
+on the dispatcher's devices.sh at 15:13 and queued the pilot soak
+1-1790547557-titleroutes-979135 (Arctic Thunder, 590 s, Thor, ref
+677ae13af8). This attempt reads that pilot first. If it plays, the other five
+hand-over soaks go in the queue, and the lane goes on down the Thor list.
