@@ -1,0 +1,3 @@
+{
+ "result": "That was the first poll (armed against the pre-amend head) finally exiting \u2014 no new information; the final head `9428d3ab00` is green on all three checks and PR #167 is ready.\n\nNothing further from me on this lane. One note on what I deliberately did not do: I applied the `harness` label but left `fold-ready` alone \u2014 that label means the board has audited the PR, and it isn't a lane's to grant itself. So #167 waits on a board tick to be picked up, and once it folds, the `selftest` check goes green on master and #152 and #155 can fold behind it."
+}

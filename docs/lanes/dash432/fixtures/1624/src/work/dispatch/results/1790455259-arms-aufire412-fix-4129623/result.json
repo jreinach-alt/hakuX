@@ -1,0 +1,7 @@
+{
+ "requester": "arms-aufire412-fix",
+ "purpose": "FIX arm #412 lane.aufire412 at 1b557ff6a4, queued by the arms job from lane/aufire412:docs/testing/predictions/aufire412-uboring-goldens.json",
+ "ref": "1b557ff6a4",
+ "device_label": "nova",
+ "apk_sha": "d246794e232b"
+}

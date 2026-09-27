@@ -1,0 +1,39 @@
+{
+ "id": "1790463182-arms-doa413b-fix-1083874",
+ "requester": "arms-doa413b-fix",
+ "purpose": "FIX arm #413 lane.doa413b at 7f01f7f157, queued by the arms job from lane/doa413b:docs/testing/predictions/doa413b-lazy-mnm.json",
+ "program": "pgraph",
+ "suites": [
+  "Blend surface",
+  "Clear",
+  "Color zeta overlap",
+  "Depth buffer fixed function",
+  "Surface format",
+  "Texture CPU Update",
+  "Texture render target",
+  "Texture render update in place"
+ ],
+ "tests": [],
+ "skip_tests": [
+  "Texture render target::RenderTextureLoop"
+ ],
+ "ref": "7f01f7f157",
+ "arm": "company",
+ "runs": 1,
+ "title": "",
+ "seconds": 60,
+ "device": "",
+ "pull_glob": "",
+ "audio_capture": "",
+ "base_iso": "",
+ "perflog": "",
+ "only_tests": [],
+ "env": [],
+ "frames_every": 0,
+ "route_name": "",
+ "route": "",
+ "expect": "(not copied)",
+ "expect_sha": "46210a732072550562fca3b7eb3cb2cf601b8701d4e2fb763e2fc4bfff75f8d4",
+ "no_expect": "",
+ "queued_utc": "2026-09-26T22:53:02Z"
+}

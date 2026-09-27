@@ -12,6 +12,16 @@
 # check below, against a local bare repository standing in for GitHub.
 #
 # Runs after 63-status-lanes.sh and restores selftest.sh's gh shim at the end.
+#
+# UPDATED FOR #432 (lane.dash432, 2026-09-26): the first screen is no longer a
+# strip of tiles and a NEEDS ATTENTION box but four questions in order (how
+# close is 0.5, what is happening, what needs a person, are the machines
+# healthy), rendered from status.json's `first`. The fixture JSON carries a
+# `first` block; the order check, the attention wording, the key's moving part
+# (the queue now lives in `first.queue`), the republished change (a queued run
+# shows in the Queue line; "queued over 60 min" is no longer an alarm: a long
+# queue behind two busy devices is not a fault) and the panel's lines (no
+# "N of 145": the counts are computed from the 0.5 title table) follow it.
 
 echo "== status.sh dashboard"
 SH_PY="$HERE/status_html.py"
@@ -22,13 +32,19 @@ SH_J="$T/status-dash.json"
 cat > "$SH_J" <<'EOF'
 {"now": 1790400000, "generated": "2026-09-25 22:00 PDT", "tz": "PDT", "floor_secs": 1800, "heartbeat_secs": 1800,
  "next_due": "2026-09-25 22:30 PDT",
+ "first": {"release_name": "0.5", "conf": {"target": "0.5 ships as the first tested-titles list.", "decided": "owner"},
+           "devices": [{"name": "thor", "state": "running", "who": "arms-x", "purpose": "1-arms-x-fix", "since": 1790399000, "src": "dispatch/running"},
+                       {"name": "nova", "state": "in use", "who": "owner", "purpose": "owner hold, see /home/someone/.ssh/id_ed25519", "since": 1790399500, "until": 1790401000, "src": "dispatch/hold/nova.why"}],
+           "queue": {"queued": 3, "queued_05": 2, "idle_tier": 90, "constraint": "device-bound: 3 runs queued, both devices busy"},
+           "lanes": [{"lane": "x", "kind": "local lane", "issue": "#1 t", "state": "running", "since": 1790399000, "result": "It works."}],
+           "titles": {"rows": [], "counts": {"on_handhelds": 0, "tested": 0, "reached": 0, "playable": 0}}},
  "strip": {"devices": [{"name": "thor", "state": "running", "detail": "arms-x: 1-arms-x-fix"},
                        {"name": "nova", "state": "held", "detail": "owner hold, see /home/someone/.ssh/id_ed25519"}],
            "queue": 3, "queue_idle": 90, "arms_running": 1, "lanes_running": 2, "lane_cap": 24,
            "last_fold": 1790399000, "last_fold_subject": "PR #1 lane/x"},
- "attention": [{"kind": "fold", "text": "PR #9 fold-ready for 2h and not folded: CONFLICTING, mail me at someone@example.com, token ghp_abcdefghijklmnopqrstuvwxyz0123"}],
+ "attention": [{"kind": "fold", "who": "host", "action": "PR #9 fold-ready for 2h and not folded: CONFLICTING, mail me at someone@example.com, token ghp_abcdefghijklmnopqrstuvwxyz0123"}],
  "release": {"gate": "the gate", "candidate": "none cut yet", "blockers": [{"number": "311", "title": "Ghoulies"}], "blockers_known": true},
- "details_md": "## title\n\n### Lanes running\n\n| lane | state |\n|---|---|\n| a | b \\| c |\n\n- `code` and **bold**\n\n```\nraw /home/someone/x\n```\n"}
+ "details_md": "## title\n\n### Board job\n\n| lane | state |\n|---|---|\n| a | b \\| c |\n\n- `code` and **bold**\n\n```\nraw /home/someone/x\n```\n"}
 EOF
 SH_H="$T/status-dash.html"
 python3 "$SH_PY" render "$SH_J" -o "$SH_H"; check "status_html.py renders a fixture" [ -s "$SH_H" ]
@@ -37,16 +53,18 @@ check "the page has a dark variant" grep -q 'prefers-color-scheme:dark' "$SH_H"
 check "the page is phone-width aware" grep -q 'name="viewport" content="width=device-width' "$SH_H"
 check "the page loads no external script or stylesheet" sh_no -E '<script[^>]+src=|<link[^>]+stylesheet' "$SH_H"
 check "the page says how long ago it was updated" grep -q 'id="age" data-t="1790400000"' "$SH_H"
-check "the strip names the Thor's run" grep -q 'arms-x: 1-arms-x-fix' "$SH_H"
-check "NEEDS ATTENTION is on the page" grep -q 'NEEDS ATTENTION (1)' "$SH_H"
+check "the machines answer names the Thor's run" grep -q 'running</span> 1-arms-x-fix, for arms-x' "$SH_H"
+check "a hold names its holder and its end" grep -q 'in use by owner</span>' "$SH_H"
+check "what needs a person is on the page" grep -q '3. What needs a person?' "$SH_H"
+check "...with who acts" grep -q '<span class="who">host</span>PR #9' "$SH_H"
 check "the release blockers are on the page" grep -q '#311 Ghoulies' "$SH_H"
 sh_order() { python3 - "$1" <<'PY'
 import sys; s = open(sys.argv[1]).read()
-a, b, c, d = (s.find(x) for x in ('class="strip"', "NEEDS ATTENTION", "Release", ">Lanes running</h"))
-sys.exit(0 if -1 < a < b < c < d else 1)
+a, b, c, d, e, f = (s.find(x) for x in ('class="glance"', 'id="q1"', 'id="q2"', 'id="q3"', 'id="q4"', ">Board job</h"))
+sys.exit(0 if -1 < a < b < c < d < e < f else 1)
 PY
 }
-check "strip, then NEEDS ATTENTION, then the gate, then the details" sh_order "$SH_H"
+check "at a glance, then the four questions in order, then the details" sh_order "$SH_H"
 check "a Markdown table becomes an HTML table" grep -q '<td>b | c</td>' "$SH_H"
 check "the page's own title block is not repeated below the fold" sh_no '<h3>title</h3>' "$SH_H"
 check "no email address reaches the public page" sh_no 'someone@example.com' "$SH_H"
@@ -60,7 +78,7 @@ sed 's/"now": 1790400000/"now": 1790403333/; s/22:00 PDT/22:55 PDT/; s/22:30 PDT
 python3 "$SH_PY" render "$T/status-dash2.json" -o "$T/status-dash2.html"
 k2=$(python3 "$SH_PY" key "$T/status-dash2.html")
 check "a page that differs only in its clock has the same key" [ -n "$k1" ] && [ "$k1" = "$k2" ]
-sed 's/"queue": 3/"queue": 4/' "$SH_J" > "$T/status-dash3.json"
+sed 's/"queued": 3/"queued": 4/' "$SH_J" > "$T/status-dash3.json"
 python3 "$SH_PY" render "$T/status-dash3.json" -o "$T/status-dash3.html"
 check "a page whose queue moved has a new key" [ "$k1" != "$(python3 "$SH_PY" key "$T/status-dash3.html")" ]
 
@@ -122,7 +140,7 @@ sout=$(sh_tick)
 check "the change is published once the gap has passed" grep -q '^pages: published' <<< "$sout"
 check "gh-pages is still exactly one commit" [ "$(git --git-dir="$SH_BARE" rev-list --count gh-pages 2>/dev/null)" = 1 ]
 check "the republished page carries the change" \
-    bash -c 'git --git-dir="$1" show gh-pages:index.html | grep -q "queued over 60 min; oldest 1-selftest-dash"' _ "$SH_BARE"
+    bash -c 'git --git-dir="$1" show gh-pages:index.html | grep -q "1 run queued while"' _ "$SH_BARE"
 rm -f "$DISPATCH_DIR/queue/1-selftest-dash.req"
 read -r sh_t sh_k < "$HAKUX_WORK/status/pages-state"; echo "$(( sh_t - 700 )) $sh_k" > "$HAKUX_WORK/status/pages-state"
 sh_tick >/dev/null
@@ -153,10 +171,10 @@ check "...and says so" grep -q 'points at the dashboard; not touched' <<< "$sout
 # ---- 5. a fold-ready PR left unfolded for an hour, with the reason
 sout=$(SELFTEST_FOLDREADY=CONFLICTING SELFTEST_GH_LOG="$SH_LOG" bash "$HERE/status.sh" --print 2>&1)
 check "a CONFLICTING fold-ready PR is named in NEEDS ATTENTION" \
-    python3 -c 'import json,sys; a=json.load(open(sys.argv[1]))["attention"]; sys.exit(0 if any("PR #900" in x["text"] and "CONFLICTING" in x["text"] for x in a) else 1)' "$HAKUX_WORK/status/status.json"
+    python3 -c 'import json,sys; a=json.load(open(sys.argv[1]))["attention"]; sys.exit(0 if any("PR #900" in x["action"] and "CONFLICTING" in x["action"] for x in a) else 1)' "$HAKUX_WORK/status/status.json"
 sout=$(SELFTEST_FOLDREADY=MERGEABLE SELFTEST_GH_LOG="$SH_LOG" bash "$HERE/status.sh" --print 2>&1)
 check "a mergeable one with no CI run says CI never ran" \
-    python3 -c 'import json,sys; a=json.load(open(sys.argv[1]))["attention"]; sys.exit(0 if any("PR #900" in x["text"] and "CI never ran" in x["text"] for x in a) else 1)' "$HAKUX_WORK/status/status.json"
+    python3 -c 'import json,sys; a=json.load(open(sys.argv[1]))["attention"]; sys.exit(0 if any("PR #900" in x["action"] and "CI never ran" in x["action"] for x in a) else 1)' "$HAKUX_WORK/status/status.json"
 
 # ---- 6. the 0.5 panel (#432): counts from their files, the Ghoulies gate
 #   thor g-old  Ghoulies, perf lines: 100 outside 90-240 s, t/10 inside
@@ -201,12 +219,12 @@ printf 'release_name\t0.5\nrelease_titles_target\t145\nr05issues_known\nr05issue
 echo '{}' > "$SP/lanes.json"; : > "$SP/md"
 python3 "$SH_PY" build --facts "$SP/facts.tsv" --lanes "$SP/lanes.json" --md "$SP/md" --json "$SP/s.json" --html "$SP/i.html"
 sp_text=$(python3 "$SH_PY" panel "$SP/s.json")
-check "panel: counts print against the target" grep -qF 'Playable (latest verdict passes on every handheld tested): 1 of 145' <<< "$sp_text"
+check "panel: no count against a quota (the counts are the title table's)" sh_no -F 'of 145' <<< "$sp_text"
 check "panel: one handheld with no readable soak is NOT MET, and says which" \
     grep -qF 'NOT MET -- thor 16.5 (n=16; g-old' <<< "$sp_text"
 check "panel: ...and names the soak it passed over" grep -qF '1 newer soak logged no gfps in 90-240 s' <<< "$sp_text"
 check "panel: the lane on each 0.5 issue" grep -qF '#424 lane.x -- Performance' <<< "$sp_text"
-check "panel: the page carries it, below the gate" grep -qF 'Release 0.5: titles and the Ghoulies gate' "$SP/i.html"
+check "panel: the page carries the gate's readings" grep -qF 'thor: <b>16.5</b> gfps median (n=16)' "$SP/i.html"
 
 # ---- restore selftest.sh's own shim and state for any later fragment.
 rm -f "$T/bin/pgrep" "$HAKUX_WORK/status/comment-id" "$HAKUX_WORK/status/issue-pointer" "$HAKUX_WORK/status/pages-state"

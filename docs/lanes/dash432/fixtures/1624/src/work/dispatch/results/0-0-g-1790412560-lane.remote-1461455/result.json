@@ -1,0 +1,7 @@
+{
+ "requester": "lane.remote",
+ "purpose": "#274 GPUAA device cost leg: arm A, ghoulies 240 s (thor)",
+ "ref": "6550967a5e",
+ "device_label": "thor",
+ "apk_sha": "b5f276b45557"
+}

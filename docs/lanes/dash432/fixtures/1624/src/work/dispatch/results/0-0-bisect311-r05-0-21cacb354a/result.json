@@ -1,0 +1,7 @@
+{
+ "requester": "host-bisect311",
+ "purpose": "#311 bisect round 5 probe 0: 21cacb354a (2026-09-08 nv2a/vk: stop a retired surface writing over memory the guest took ba)",
+ "ref": "a2211701dad7",
+ "device_label": "thor",
+ "apk_sha": "94bfad6def43"
+}

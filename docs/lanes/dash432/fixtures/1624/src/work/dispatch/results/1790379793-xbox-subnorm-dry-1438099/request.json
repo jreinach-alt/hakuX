@@ -1,0 +1,28 @@
+{
+ "id": "1790379793-xbox-subnorm-dry-1438099",
+ "requester": "xbox-subnorm-dry",
+ "purpose": "#255 SUBNORM_MAC: emulator dry run of the new nxdk_vsh_tests build before the console",
+ "program": "vsh",
+ "suites": [
+  "CPU Shader Tests"
+ ],
+ "tests": [],
+ "skip_tests": [],
+ "ref": "404437a160",
+ "arm": "company",
+ "runs": 1,
+ "title": "",
+ "seconds": 60,
+ "device": "desktop",
+ "pull_glob": "",
+ "audio_capture": "",
+ "base_iso": "/home/justin/hakux-work/vsh-build-subnorm/shutdown/src/xiso/nxdk_vsh_tests_xiso/nxdk_vsh_tests_xiso.iso",
+ "perflog": "",
+ "only_tests": [],
+ "env": [],
+ "frames_every": 0,
+ "expect": "",
+ "expect_sha": "",
+ "no_expect": "safety dry run of a new XBE before silicon (docs/lanes/xbox/subnorm-mac-prediction.md @ 404437a160); not an A/B arm",
+ "queued_utc": "2026-09-25T23:43:14Z"
+}

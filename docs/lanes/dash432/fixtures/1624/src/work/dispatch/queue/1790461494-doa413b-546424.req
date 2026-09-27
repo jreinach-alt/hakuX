@@ -1,0 +1,30 @@
+{
+ "id": "1790461494-doa413b-546424",
+ "requester": "doa413b",
+ "purpose": "#413 A/B arm B (lazy ON, default): DOA2U fight gfps + [surf413] cdef, same APK as arm A",
+ "program": "pgraph",
+ "suites": [],
+ "tests": [],
+ "skip_tests": [],
+ "ref": "7f01f7f157",
+ "arm": "company",
+ "runs": 1,
+ "title": "54430006-Dead_or_Alive_1_Ultimate.xiso.iso",
+ "seconds": 300,
+ "device": "thor",
+ "pull_glob": "",
+ "audio_capture": "",
+ "base_iso": "",
+ "perflog": "true",
+ "only_tests": [],
+ "env": [
+  "XEMU_SURF_LAZY_COMPLETE=1"
+ ],
+ "frames_every": 0,
+ "route_name": "survey",
+ "route": "(not copied)",
+ "expect": "",
+ "expect_sha": "",
+ "no_expect": "soak A/B read by hand: fight-window gfps median and surf413 cdef per arm; not a golden score",
+ "queued_utc": "2026-09-26T22:24:54Z"
+}

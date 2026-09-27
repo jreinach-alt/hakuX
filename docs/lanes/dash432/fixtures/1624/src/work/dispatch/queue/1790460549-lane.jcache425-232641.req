@@ -1,0 +1,30 @@
+{
+ "id": "1790460549-lane.jcache425-232641",
+ "requester": "lane.jcache425",
+ "purpose": "#425 Crimson soak B1 (JC=1)",
+ "program": "pgraph",
+ "suites": [],
+ "tests": [],
+ "skip_tests": [],
+ "ref": "1b43be6b3a",
+ "arm": "company",
+ "runs": 1,
+ "title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso",
+ "seconds": 240,
+ "device": "nova",
+ "pull_glob": "",
+ "audio_capture": "",
+ "base_iso": "",
+ "perflog": "",
+ "only_tests": [],
+ "env": [
+  "HAKUX_TCG68_JC=1"
+ ],
+ "frames_every": 0,
+ "route_name": "crimson-skies",
+ "route": "(not copied)",
+ "expect": "(not copied)",
+ "expect_sha": "d7669c10426f81e1ad4ef69b57addae5bc71d7dc360d90fd160c7337ee7192e7",
+ "no_expect": "",
+ "queued_utc": "2026-09-26T22:09:09Z"
+}
