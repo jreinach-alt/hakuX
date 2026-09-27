@@ -7832,8 +7832,17 @@ static void flush_draw_one_pass(NV2AState *d)
     r->num_vertex_ram_buffer_syncs = 0;
 
 #ifndef NDEBUG
-    RenderCommandSnapshot snap;
-    pgraph_vk_snapshot_state(pg, &snap);
+    /*
+     * Only the four fields asserted at the end. A full RenderCommandSnapshot
+     * copies the 32 KB register file and the program data on every draw pass,
+     * and Android release builds keep NDEBUG blocks (-UNDEBUG): 2.2-2.5
+     * ms/frame on AUF and Blinx (#474, #414).
+     */
+    const uint32_t snap_primitive_mode = pg->primitive_mode;
+    const bool snap_clearing = pg->clearing;
+    const uint32_t snap_control_0 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0);
+    const uint32_t snap_setupraster =
+        pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER);
 #endif
 
     PrimAssemblyState assembly = {
@@ -8196,12 +8205,10 @@ inline_array_done:
     }
 
 #ifndef NDEBUG
-    assert(snap.primitive_mode == pg->primitive_mode);
-    assert(snap.clearing == pg->clearing);
-    assert(snapshot_reg_r(&snap, NV_PGRAPH_CONTROL_0) ==
-           pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0));
-    assert(snapshot_reg_r(&snap, NV_PGRAPH_SETUPRASTER) ==
-           pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER));
+    assert(snap_primitive_mode == pg->primitive_mode);
+    assert(snap_clearing == pg->clearing);
+    assert(snap_control_0 == pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0));
+    assert(snap_setupraster == pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER));
 #endif
 
     NV2A_PHASE_TIMER_END_EXCL(draw_dispatch);
