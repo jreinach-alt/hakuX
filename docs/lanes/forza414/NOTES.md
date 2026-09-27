@@ -800,3 +800,51 @@ surface.c, cleared by the upload.
 
 Section 20's `stale` at ~105 per 60 flips is the first candidate; `realupl` 249 per 60 flips and
 `su_upl` ~3 per frame are what the split has to account for.
+
+Pilot queued on the Thor, priority 1, perflog, survey route, 420 s:
+`1-1790550241-forza414-2434853` on d04973ce9b. Read it with the `[sdcall]` line over the race
+window (t = 125-240 s): `why=` per frame against `su_upl` per frame.
+
+## 25. Hunk 4: the flip's pre-download stays pending until a consumer (ee830484bb)
+
+This is lane.flip474's O1 (their NOTES sections 5 and 14, and addendum 2). It is all in vk/surface.c. The
+draw.c rows of flip474's list need no change once the display flag is retired where the batch
+completes.
+
+| flip474 row | what the hunk does |
+|---|---|
+| 1, surface_update | `surface_update_may_defer_downloads` now defers a submitted batch when it is the flip's (`display_predownload_pending`). Other submitted batches complete there as before, so the next flip's pre-record is not refused more often than today. An uploading binding still completes it |
+| 2 and 4, mixed batch | `complete_submitted_downloads()`: a download recorded after a finish submitted the batch completes that batch first, in `download_surface_record_deferred` and, before its generation test, in `download_surface_deferred`. So one fence always covers every entry. This was reachable before the hunk too: an eviction in the first update after any deferred-submit finish appended to the submitted batch, and the fence branch then copied that entry's staging before the GPU wrote it |
+| 2, the override | the display branch no longer marks the display surface clean at its *current* generation. Its entry retires it at the generation the flip's copy captured (`pgraph_vk_complete_staged_downloads`) |
+| 3, range lookup | `pgraph_vk_download_surfaces_in_range_if_dirty` no longer completes a submitted batch on every call. It completes it when a new download is recorded (row 2's rule), or when the range overlaps a pending entry or an overlapping surface (the existing test at its end) |
+| 5 and 6, slot rotation | `pgraph_vk_complete_staged_downloads` clears `display_predownload_*`, so every completion retires the flag: the rotation into the flip's slot and a non-deferred finish's completion (draw.c), as much as `download_surface_complete_deferred` |
+| 7, next flip | the pre-record completes a still-pending flip batch (`SDC_PREREC`) instead of returning early, so the display download is recorded every flip |
+| 12, frees | `deferred_downloads_clear_surface` also clears `display_predownload_surface`. Nothing dereferences it now; `surface_handoff_partner` compares it |
+| 11, 17 | unchanged. The CPU-access watch already completes an overlapping pending entry before the store lands, and row 17 is a diagnostic |
+
+`[sdcall]` gains two callers: `record` (row 2's completion) and `prerec` (row 7's). With these,
+the per-caller line shows where the wait went.
+
+**The risk named before any run.** Android presents through the CPU path, and
+`pgraph_vk_get_framebuffer_surface` forces a download request on every refresh. If that request
+lands soon after the flip, the PFIFO thread waits for the same fence in `pend` instead of `surfupd`.
+Then the wait moves between callers and does not go away. The W1 leg (total wait across callers) is
+the one that separates the two cases.
+
+**Remaining hazard, not fixed:** a surface freed while its entry is pending still has its staging
+copied to VRAM when the batch completes. That is today's behaviour, but the window is now up to a
+frame instead of one method. The CPU watch covers live surfaces. Freed ones have no watch.
+
+Predictions, registered before any device run, A = d04973ce9b, B = ee830484bb:
+
+| file | kind | legs |
+|---|---|---|
+| `forza414-predl-mnm.json` | goldens, arms job | the ten suites, byte-identical |
+| `forza414-predl-doa.json` | DOA Nova soak, hand-read, 151-288 s | M0; G1 surfupd pre <= 0.1/frame; C1 cdef B/A <= 0.3; **W1 total completion wait B/A <= 0.5**; H0 no hang. fps is a readout (bound +1 to +2: DOA is GPU-bound, flip474 section 15) |
+| `forza414-predl-auf.json` | AUF Nova soak, hand-read, 299-420 s | M0; G0 A's pre >= 0.5/frame (else inert on AUF); W1; H0 |
+
+The addendum's "Tot <= 45 ms" is not registered: DOA's GPU work alone is about 64 ms a frame.
+
+Queued, Nova, priority 1: DOA `1-1790550612-forza414-2663397` (A) and
+`1-1790550616-forza414-2665748` (B). The AUF pair waits for the Thor pilot's verdict (the 30-min
+rule).
