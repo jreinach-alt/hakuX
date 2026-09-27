@@ -142,6 +142,47 @@ hakuX's `am start --display 0` once on a focus miss. `capture_gta.sh` does
 that now (first check at +12 s, before the route's first input at ~+63 s);
 a second miss after the re-issue still stops the session.
 
+### Session 3 (held, replacement, 19:35:16-19:35:54Z): stopped by the foreground guard again, nothing recorded
+
+Taken at 19:33:17Z. It waited for `arms-forza414-base` to leave the Thor
+(free at 19:35:08) and started with the Thor at 86%, perf_harden 0 /
+paranoid 1 (uptime 1,929 s: the Thor had rebooted again at about 19:03Z,
+and hostops's 12:31 setting was applied after that). Display 0 was Awake
+and clear (screencap 106,528 B, Daijisho's Settings page). hakuX launched
+and rendered on display 0: logcat has `SDL_main: display ready` and
+`render_display done` from 12:35:29 PDT. Even so, the focused window was:
+
+- at +14 s: `com.android.launcher3/...secondarydisplay.SecondaryDisplayLauncher`
+- after the one `am start --display 0` re-issue (+20 s, then 6 s later): the same
+- at +25 s: the same, so the guard stopped the soak. The route had reached
+  only its first `wait 26.7`, so no input was sent.
+
+REST was restored (`perf_restored=true`), the caches were cleared, the screen
+was put to sleep and the hold released after 38 s of device time. This used
+the addendum's one replacement session. Data: `perf/2026-09-27-gta482/s3/`
+(soak.log, logcat.txt, shot0.png; no records).
+
+Reading: on the Thor, a launch on display 0 does not take the input focus
+from display 1's launcher, and `am start --display 0` does not move it
+either. This is #494's (lane.displayguard, PR #495). Gamepad route input
+goes to the focused window, so no held session or soak on the Thor can drive
+GTA to the open world until the focus is fixed, or until route input is
+addressed to hakuX's display.
+
+## State at the end of attempt 2 (2026-09-27 12:40 PDT): blocked
+
+- Blocked on the Thor's input focus (#494). Unblocks when a Thor launch of
+  hakuX reads `mCurrentFocus=...com.jreinach.hakux...`, e.g. once
+  displayguard's fix or a hostops setting (display 1 off, or the launcher on
+  display 1 made unfocusable) is in place. Then one held session:
+  `env OUT=~/hakux-work/perf/2026-09-27-gta482/s4 DEADLINE_S=430
+  bash docs/lanes/gta482/capture_gta.sh 60` (hold first, foreground,
+  `timeout 570`). perf_harden resets at a reboot, so it needs
+  `PERF_HARDEN0=1` again if hostops agrees.
+- Rows 1 and 2 of the #482 table remain pending. Rows 3-8 (TCG-side, from
+  slowdown462's data) are posted and routed (#424, #425).
+- Nothing of this lane's is queued, running or held.
+
 ## Do not repeat
 
 - Do not start a held session without a non-black screencap AND without
@@ -157,3 +198,9 @@ a second miss after the re-issue still stops the session.
 - A reboot resets `security.perf_harden` to 1 (paranoid 3). Read `perf:` in
   the session log. `PERF_HARDEN0=1` sets it to 0 for one session, only with
   hostops's leave.
+- Do not spend a held Thor session before reading the focus with no launch:
+  on 09-27, twice after a reboot, display 1's launcher held the focus, and
+  neither a display-0 launch nor `am start --display 0` took it.
+- In this sandbox, `systemd-run` and `setsid` need approval. Run the session
+  in the foreground under `timeout 570`, with the hold taken and the running
+  request waited out in an earlier call.
