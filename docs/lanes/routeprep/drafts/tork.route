@@ -1,0 +1,47 @@
+# Tork: Prehistoric Punk (55530040), Nova and Thor. DRAFT by lane.routeprep,
+# 2026-09-26, not played. One file: New Game does not need a save; a save
+# prompt, if any, is accepted with A.
+#
+# Evidence: gamecheck hands-off 240 s (1790365218-gamecheck-415427, Nova,
+# ~2.4 s per frame): f05 Ubisoft, f10-f22 the TORK title with "Press START"
+# (~25-55 s), then, left alone, f26 a TORK logo over the sky and an
+# in-engine cinematic running at 1-4 fps (village, a bird, Tork's face),
+# and by f90-f98 a top-down shot of Tork lying in a clearing. Whether that
+# cinematic is the attract or the game's intro is not known. Nothing past
+# "Press START" is on disk.
+wait 30
+shot boot30                 # expect the TORK title, "Press START" [seen f10-f22]
+press START
+wait 6
+shot after-title            # [guess] New Game / Load / Options
+mark booted
+press A                     # [guess] New Game
+wait 8
+shot after-new-game         # OPEN: a save slot / difficulty prompt
+press A
+wait 10
+shot intro
+# [guess] the intro cinematic; it ran at 1-4 fps in gamecheck, so it may take
+# minutes. A is tried; START is not (it would pause gameplay).
+repeat 12 {
+    press A
+    wait 8
+    shot intro-a
+}
+mark gameplay               # [guess] placeholder: move to the first frame with Tork walking under the stick
+repeat forever {
+    axis LY min
+    wait 2
+    press X                 # [guess] club
+    wait 0.4
+    press A                 # [guess] jump
+    wait 0.6
+    axis LY mid
+    axis LX max
+    wait 1
+    press X
+    wait 0.4
+    axis LX min
+    wait 1
+    axis LX mid
+}

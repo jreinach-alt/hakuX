@@ -1,0 +1,60 @@
+# Dead or Alive 3 (4D53002D), Thor. DRAFT by lane.routeprep, 2026-09-26,
+# not played. One file: DOA3 has no profile on the way to a fight.
+#
+# Evidence: pass 1 (0-0-y-1790433159-titleplay-p1-doa3, Thor), frames in its
+# route-frames/ (t = seconds after the route started):
+#   113257 t20 .. 113553 t~200: the copyright warning scrolls at 3-14 fps;
+#          pass 1's START and A every ~6 s did NOT skip it
+#   113559 t~206 TECMO logo; 113710 t~277 dark
+#   113738 t~305 "DEAD OR ALIVE 3 / PRESS START BUTTON"; 113802, 113830 the
+#          same prompt over attract backgrounds. Pass 1 was in its play
+#          phase by then (stick + A), and A does not pass this screen.
+#
+# So: wait out the warning without pressing (nothing is gained, and a press
+# queued at the wrong moment could only hurt), then START at ~310 s. The
+# menus after the title are [recalled]: STORY is the first mode, character
+# select takes A, then the fight. Pattern and marking as Kabuki Warriors
+# (titleroutes: mark at the round start, attack without pause).
+wait 100
+shot warning100
+wait 100
+shot warning200
+wait 60
+shot boot260
+wait 40
+shot boot300                # expect PRESS START BUTTON [seen 113738]
+press START
+wait 5
+shot after-start1           # if still the prompt, the next START takes it
+press START
+wait 5
+shot mode-menu              # [recalled] STORY highlighted; CHECK: a second START may already have entered it
+mark booted
+press A                     # [recalled] Story
+wait 6
+shot char-select
+press A                     # [recalled] the highlighted fighter
+wait 5
+shot costume
+press A                     # [guess] costume / confirm, if asked
+wait 15
+shot loading
+press A                     # [guess] skip the intro poses
+wait 8
+shot round
+mark gameplay               # [guess] placeholder: move to the round start (timer running)
+repeat forever {
+    axis LX max
+    wait 0.6
+    press X
+    wait 0.3
+    press Y
+    wait 0.3
+    press X
+    wait 0.3
+    axis LX mid
+    press B
+    wait 0.3
+    press A                 # also leaves a KO / continue screen
+    wait 0.3
+}

@@ -27,7 +27,9 @@ check "...and writes the page" [ -s "$ST_OUT/render/index.html" ]
 st_check() { python3 "$ST_F/assert_titles.py" "$ST_OUT" "$1" > "$T/status-titles-$1.txt" 2>&1; }
 check "every row carries exactly one status word from the scale, and each stage renders as itself" st_check word
 check "Benchmarked N / 145 and Playable M / 50 are the rows' counts" st_check counts
-check "no title is more than two lines at 400 px (the HTML structure)" st_check lines
+check "fixed columns: no title or next step past two lines at 360 or 400 px; short tokens never wrap" st_check lines
+check "nothing in the 0.5 section is shortened (no ellipsis; every title and next step in full)" st_check nocut
+check "the pipeline is four labelled columns (Copied, Inputs, Save, Bench) with a legend; one-route titles count" st_check pipe
 check "the target line says 145 and 50 and carries no date" st_check target
 check "'~2026-09-28' is not on the page" st_check nodate
 check "the 'not copied' tail folds after 10 rows, with its count" st_check fold
