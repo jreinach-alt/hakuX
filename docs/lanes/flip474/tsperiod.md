@@ -76,6 +76,26 @@ arrived one minute after it ended. This session does Addendum 5, item 1.
 `tsperiod_register.py` writes the two device files. The inert file came from
 `ab_compare.py --register`.
 
+## Waiting (from 2026-09-27 ~21:25Z)
+
+Four requests at priority 1, queued with `env HAKUX_RELEASE_PRIO=1 bash
+docs/testing/request.sh`. The pgraph arm is left to the arms job.
+
+| request | ref | what |
+|---|---|---|
+| `1-1790540673-flip474-2311172` | `795ea6b3af` | DOA Nova A |
+| `1-1790540673-flip474-2311288` | `902cf1ab53` | DOA Nova B |
+| `1-1790540677-flip474-2313064` | `795ea6b3af` | Crimson Thor A |
+| `1-1790540677-flip474-2313275` | `902cf1ab53` | Crimson Thor B |
+
+When they land, do the following, then mark #504 ready if every leg holds
+and the pgraph arm is identical:
+
+- grep `GPU timestamp` in each logcat;
+- run `phaseread.py` over the windows;
+- judge K0-H0;
+- post on #474 and #462.
+
 ## Not done here (Addendum 5, item 2)
 
 DOA's GPU cost per pass waits on B's corrected period. After that, the
