@@ -480,6 +480,27 @@ Ghoulies read the same in both. Not investigated here (the nav launch sets
 performance_mode 2, fan 5; the soak runs the MAX regimen); the numbers
 below are what the soaks measured.
 
+### Session 16: HELD Thor, 04:40-05:02 PDT (22 min; hold taken 04:31 while the Blood Wake soak ran), battery 62% -> 60%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Brute Force (4D53001E) | thor | `brute-force.route` | yes (04:54 and 05:00) | mission 1 in the jungle, Tex with HUD and radar; he walks, turns, fires, takes fire |
+
+**Brute Force.** ~100 s of loading and intro FMV -> START/DEMOS -> CAMPAIGN
+-> CAMPAIGN TYPE -> profile DEFAULT -> New Campaign -> name keyboard (DONE)
+-> STANDARD -> JOIN CAMPAIGN (Tex, then START) -> two FMVs and an in-engine
+intro, which A skips -> the jungle, and tutorial cards (A accepts one, Y
+skips them all). Every choice is the default row. A stick flick and a hat
+press each moved the CAMPAIGN TYPE cursor two rows, so the route counts no
+cursor moves. The route is START at 100 s, A every 8 s eight times, START,
+A every 4 s twenty times, Y twice, the mark. On the first replay the boot was
+slower and the START came before the title menu was up. The A train still
+carried the run into the mission, but a tutorial card was up 40 s past the
+mark, so the play loop now starts with Y. The second replay was in a
+firefight 60 s past the mark (`scratch/replay/brute-force-045442/zz-end.png`).
+Nav frames `~/hakux-work/nav/brute-force.first-run-20260927T043949/`
+(024-y1 -> 025-turned2).
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
@@ -509,7 +530,10 @@ request.
 | Grabbed by the Ghoulies | ghoulies | 1-1790503792-titleroutes-997141 | 730 | 224 s of gameplay; fps window median 29.96 (min 11.88), 59.0% at >= 30; target 30 (*) |
 | Alien Hominid | alien-hominid | 1-1790505449-titleroutes-1023605 | 410 | 306 s of gameplay; fps window median 59.94 (min 31.15), 100% at >= 30; target 30 (*) |
 | Midtown Madness 3 | midtown-madness-3.returning | 1-1790506491-titleroutes-1032854 | 580 | 264 s of gameplay; fps window median 3.13 (min 2.85), 0% at >= 30; ten 12-20 s hangs; target 30 (*). The mark frame shows the race running at FPS 3 |
-| Blood Wake | blood-wake | 1-1790508532-titleroutes-1074940 | 480 | pending |
+| Blood Wake | blood-wake | 1-1790508532-titleroutes-1074940 | 480 | 287 s of gameplay; fps window median 37.36 (min 5.12), 29.5% at >= 30; three ~11 s hangs; target 30 (*) |
+| Brute Force | brute-force | 1-1790510457-titleroutes-1101937 | 570 | queued |
+
+Batch-4 table posted on #397 (comment 5855637410).
 
 (*) No host verdict.json yet at 04:30; these are `title_verdict.py` run on a
 copy of the result dir (`scratch/judge.py`), apk 397ae7dca16a.
