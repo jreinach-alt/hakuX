@@ -389,6 +389,12 @@ files = ["accel/tcg/tb-maint.c", "accel/tcg/tb-internal.h", "accel/tcg/cputlb.c"
 standing = false
 note = "STARTED (hostops 2026-09-26 18:45 PDT), briefs/tbflip424.md: #424 0.5 lever 1 follow-up. PR #434 folded the range test default OFF (M4 Blinx leg failed as registered); this lane registers a Blinx GAMEPLAY leg (>=3 interleaved A/B, env HAKUX_TCG424_RANGE=1, pilot first) and flips the default if it passes. translate-all.c / cpu-exec.c deliberately NOT granted: #429 queues on them."
 
+[lane.isoroots]
+issues = ["397"]
+files = ["docs/testing/devices.sh", "docs/testing/dispatcher.sh", "docs/testing/soak_title.sh", "docs/testing/jobs/selftest.d/99-iso-roots.sh", "docs/lanes/isoroots/NOTES.md"]
+standing = false
+note = "STARTED (hostops 2026-09-26 18:50 PDT), briefs/isoroots.md: #397 / 0.5 (#433) title storage. Owner 18:15 authorized Thor internal storage for titles; the runner knows one DEVICE_ISO_ROOT per device (dispatcher.sh:752), and the Thor SD card is 94% full (64 GB free). devices.sh (orphaned when lane.perfregimen retired without returning it) and soak_title.sh from unclaimed; dispatcher.sh moved from lane.doa413b (its hunk is committed). Serve path: needs-audit-1 and the host's update window after fold."
+
 [free]
 # RELEASED (job.board 2026-09-27T01:30Z) by retiring lane.tbchurn424, lane.buildflags427, lane.vcpuprime428, lane.flatlm13, lane.ring53impl, lane.blinx372d, lane.handbackpark, lane.holdtake, lane.holdlease (their PRs #434, #435, #437, #401, #395, #396, #452, #453, #450 all MERGED): every file each row held except vk/surface.c, which lane.doa413b holds.
 # RELEASED (job.board 2026-09-27T00:30Z) by retiring lane.relprio432 (PR #447 folded a164578ad7): selftest.d/97-release-prio.sh, its lane dir; request.sh, ab_run.sh, arms.sh returned to lane.toolsmith.
@@ -1272,9 +1278,9 @@ note = "RETIRED (job.board 2026-09-27T01:30Z): PR #437 MERGED, no open PR on lan
 
 [lane.doa413b]
 issues = ["413"]
-files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/testing/dispatcher.sh", "docs/lanes/doa413b/**", "docs/testing/predictions/doa413b-*.json"]
+files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/lanes/doa413b/**", "docs/testing/predictions/doa413b-*.json"]
 standing = false
-note = "STARTED (hostops 2026-09-26 14:10 PDT), briefs/doa413b.md: #413 (0.5) step 2 after PR #417: add xemu-surf:I to the soak logcat, pilot one Nova soak, price surface_update's sub-split (33-52 ms/frame in the fight) and cut it. vk/surface.c taken from lane.blinx372d's released-at-ready list (PR #396): merge that branch or master and re-run the arm before ready. dispatcher.sh is the serve path: needs audit and the host's update window."
+note = "MOVED (hostops 2026-09-26 18:50 PDT): docs/testing/dispatcher.sh to [lane.isoroots]; this lane's committed xemu-surf hunk (PR #440, ~line 1376) stays on its branch and folds as is; make no further dispatcher.sh edits. STARTED (hostops 2026-09-26 14:10 PDT), briefs/doa413b.md: #413 (0.5) step 2 after PR #417: add xemu-surf:I to the soak logcat, pilot one Nova soak, price surface_update's sub-split (33-52 ms/frame in the fight) and cut it. vk/surface.c taken from lane.blinx372d's released-at-ready list (PR #396): merge that branch or master and re-run the arm before ready. dispatcher.sh is the serve path: needs audit and the host's update window."
 
 
 [lane.fmv303c]
