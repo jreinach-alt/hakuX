@@ -222,6 +222,29 @@ trap 'exit 130' INT
 
 a shell am force-stop "$PKG" >/dev/null 2>&1
 a shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1
+
+# THE DISPLAY MUST BE OURS. A foreign overlay on display 0 renders every
+# hakuX frame black and stalls its flips while the device reads Awake
+# (display_clear in devices.sh has the 2026-09-27 case). Checked after the
+# wake and before anything is armed or started, so a refused run leaves no
+# marker, no MAX mode and no title behind, and writes no frame to be scored.
+# The `display-covered:` line lands in run.log at the start of a line, where
+# title_verdict.py reads it and voids the run; the dispatcher writes its
+# result either way, so the request ends as a void result, not a requeue.
+# Unknown (adb could not say) is recorded and the run goes on: the
+# black-frame guard below is the backstop for that case.
+#
+# The refusal skips release(): nothing it undoes has happened yet, and its
+# KEYCODE_SLEEP would put the screen out under the owner's app, which is
+# whatever raised the overlay. That is their session, not ours to put away.
+DISPLAY_STATE=$(display_clear "$SERIAL"); display_rc=$?
+echo "$DISPLAY_STATE"
+if [ "$display_rc" = 1 ]; then
+    trap - EXIT
+    rm -f "$LEASE"
+    echo "soak refused: display 0 is not hakuX's to draw on; nothing was started"
+    exit 4
+fi
 arm_audio
 perf_enter
 
@@ -370,6 +393,25 @@ done
 stop_route
 a shell log -t hakuX-route "'soak end'" >/dev/null 2>&1
 echo "adb_failures=$ADB_FAILURES"
+
+# THE BLACK-FRAME GUARD. A 1920x1080 all-black PNG is 10,899 B; every route
+# frame of the 2026-09-27 covered-display runs was exactly that. When every
+# frame the route took is under DISPLAY_BLACK_B, nothing the route did was
+# seen, and title_verdict.py voids the run on this line (and on the frames
+# themselves, for a run.log written before this guard existed).
+if [ -n "$ROUTE_FILE" ]; then
+    rf="${ROUTE_FRAMES:-$(dirname "$ROUTE_FILE")/route-frames}"
+    nf=0; nsmall=0; big=0
+    for f in "$rf"/*.png; do
+        [ -f "$f" ] || continue
+        sz=$(stat -c%s "$f"); nf=$((nf+1))
+        [ "$sz" -lt "${DISPLAY_BLACK_B:-12288}" ] && nsmall=$((nsmall+1))
+        [ "$sz" -gt "$big" ] && big=$sz
+    done
+    if [ "$nf" -gt 0 ] && [ "$nsmall" = "$nf" ]; then
+        echo "display-black: all $nf route frames under ${DISPLAY_BLACK_B:-12288} B (largest $big B) -- nothing on display 0 was hakuX's"
+    fi
+fi
 
 if [ "$appeared" = 0 ]; then
     echo "guest never appeared in ${SECONDS_TO_HOLD}s -- title did not boot"

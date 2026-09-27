@@ -51,6 +51,13 @@ That run is not judged on what little was captured -- it fails as
 run or a missing mark. `capture_truncated_s` estimates the unseen span from
 `soak start` plus the hold run.log reports (host clock, so approximate).
 
+DISPLAY. A run whose display 0 was not hakuX's is VOID, not slow: `void`
+names why, it is the first failure, and every fps field is null. Two ways in:
+soak_title.sh refused to start (`display-covered:` in run.log, from
+devices.sh display_clear), or every route frame is under 12 KB (a 1920x1080
+all-black PNG is 10,899 B; `display-black:` in run.log, or the frames
+themselves). On 2026-09-27 a foreign overlay on the Thor's display 0 did both.
+
 AUDIO: the APU's `starve:` lines (hakuX-audiocap) each carry the callbacks
 and the short callbacks since the previous line. The share is short/total
 over lines stamped more than 10 s after the mark. No starve line there at
@@ -79,6 +86,7 @@ PERF = re.compile(r"gfps=(\d+)\s+G:([\d.]+)\(([\d.]+)-([\d.]+)\)")
 STARVE = re.compile(r"starve: (\d+)/(\d+) callbacks short \((\d+) empty\)")
 SCALE = re.compile(r"surface_scale=(\d+)")
 CAPTURE_BREAK = "# hakuX-capture: stream ended"   # soak_title.sh writes it
+BLACK_FRAME_B = 12288      # a 1920x1080 all-black PNG is 10,899 B
 
 FRAMES_PER_LINE = 60          # profile.c: frame_count % 60
 HANG_S = 10.0
@@ -226,6 +234,16 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
     route_marks_host = re.findall(r"^ROUTE \S+ mark ([A-Za-z0-9_.-]+)$", runlog, re.M)
     route_marks_failed = re.findall(r"^ROUTE \S+ mark ([A-Za-z0-9_.-]+): logcat write FAILED$", runlog, re.M)
 
+    # VOID: the display was not hakuX's (see DISPLAY above). The frames on
+    # disk decide too, so a run.log older than the guard is judged the same.
+    void = None
+    rframes = glob.glob(os.path.join(rdir, "route-frames", "*.png"))
+    m = re.search(r"^(display-covered|display-black): .*$", runlog, re.M)
+    if m:
+        void = m.group(0)
+    elif rframes and all(os.path.getsize(f) < BLACK_FRAME_B for f in rframes):
+        void = "display-black: all %d route frames under %d B" % (len(rframes), BLACK_FRAME_B)
+
     held = re.search(r"^(?:held \S.* for|guest exited after) (\d+)s", runlog, re.M)
     lc, cap_gaps, open_break = parse_logcat(os.path.join(rdir, "logcat.txt"))
     perf = [(t, PERF.search(msg)) for t, lv, tag, msg in lc if tag == "hakuX-perf"]
@@ -283,7 +301,9 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
     # that straddles the mark belongs to pre-mark play and is not counted.
     # A window that spans a capture gap is not a measurement of the guest.
     windows = []
-    for (t0, p0), (t1, p1) in zip(after, after[1:]):
+    # A void run has no windows: its flips were drawn under someone else's
+    # window, and no field below may carry them as a frame rate.
+    for (t0, p0), (t1, p1) in ([] if void else zip(after, after[1:])):
         dt_s = t1 - t0
         if dt_s > 0 and not lost_in(t0, t1, cap_gaps):
             windows.append((dt_s, FRAMES_PER_LINE / dt_s, float(p1.group(2)), int(p1.group(1))))
@@ -380,6 +400,9 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
         require = "confirmation" if gameplay_s >= need["confirmation"] else "screening"
     v["pass_kind"] = require
     fails = []
+    v["void"] = void
+    if void:
+        fails.append("void: " + void)
     if truncated:
         at = ("%.0f s after the mark" % (open_break - mark_t)) if mark_t is not None \
             else "before any `mark gameplay` was captured"
@@ -415,7 +438,7 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
     if mark_t is not None and gameplay_s < need[require]:
         fails.append("duration: %.0f s of gameplay < %.0f s %s" % (gameplay_s, need[require], require))
     if v["fps_ok_share"] is None:
-        if mark_t is not None and flipped_after:
+        if mark_t is not None and flipped_after and not void:
             fails.append("fps: fewer than two perf lines after the mark")
     elif v["fps_ok_share"] < share_min:
         fails.append("fps: %.1f%% of gameplay at >= %g fps (bar %.0f%%)"

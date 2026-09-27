@@ -238,6 +238,88 @@ device_perf_set() {
     [ "$got" = "$1 $2" ]
 }
 
+# ------------------------------------------------------------ display 0
+#
+# display_clear <serial>  ->  one line on stdout, and
+#   0  `display-clear: ...`    awake, and nothing foreign covers display 0
+#   1  `display-covered: ...`  not Awake after the wake, or a foreign
+#                              full-screen overlay sits on display 0
+#   2  `display-unknown: ...`  adb could not say (no mWakefulness line, or a
+#                              window dump with no `Window #` in it)
+#
+# WHY. On 2026-09-27 the owner started Lime3DS on the Thor at 11:06 PDT, and
+# AYN's dual-screen assistant (com.odin.dualscreen.assistant) raised a
+# full-screen `primaryScreenTopLayout` window of type BOOT_PROGRESS on display
+# 0, above hakuX. It stayed there for at least 45 minutes. The device read
+# Awake with no keyguard; every hakuX frame came out as a 10,899 B all-black
+# PNG, GTA stopped flipping, and the soaks in that window still looked like
+# measurements. A wakefulness check alone cannot see this; the window list can.
+#
+# The rule is host-tools/harness_health.py's `covered:` check, restated here:
+# a window block (from one `  Window #N ` header to the next) covers display 0
+# when it is on mDisplayId=0, laid out fillxfill, has a surface, is visible
+# (mViewVisibility=0x0), is of an overlay type, and its package is neither
+# hakuX nor systemui. An app window of the owner's own game is NOT an overlay
+# type and does not count; that case is hakuX simply not being in front, and
+# the soak's `am start` brings it forward.
+display_clear() {
+    local SERIAL="$1" wake="" try out covers n
+    for try in 1 2 3; do
+        wake=$(adb_call "${ADB_QUICK_TIMEOUT:-20}" "power state read" shell \
+            'dumpsys power | grep mWakefulness=' 2>/dev/null | tr -d '\r' \
+            | sed -n 's/.*mWakefulness=\([A-Za-z]*\).*/\1/p' | head -1)
+        # Unreadable is not a transition: no point waiting for it to settle.
+        [ -z "$wake" ] || [ "$wake" = Awake ] && break
+        [ "$try" = 3 ] || sleep "${DISPLAY_WAKE_S:-1}"
+    done
+    if [ -z "$wake" ]; then
+        echo "display-unknown: no mWakefulness line from dumpsys power on $SERIAL"
+        return 2
+    fi
+    if [ "$wake" != Awake ]; then
+        echo "display-covered: $SERIAL reads mWakefulness=$wake after KEYCODE_WAKEUP, not Awake"
+        return 1
+    fi
+    out=$(adb_call "${ADB_QUICK_TIMEOUT:-20}" "window list read" shell \
+        'dumpsys window windows' 2>/dev/null | tr -d '\r')
+    n=$(printf '%s\n' "$out" | grep -c '^  Window #[0-9]')
+    if [ "$n" = 0 ]; then
+        echo "display-unknown: dumpsys window windows on $SERIAL listed no window"
+        return 2
+    fi
+    covers=$(printf '%s\n' "$out" | awk '
+        function flush() {
+            if (inw && name != "" && pkg != "" && d0 && fill && surf && vis && ty \
+                    && tolower(pkg) !~ /hakux|haku_x|systemui/)
+                printf "%s%s (%s, %s)", (nc++ ? ", " : ""), name, pkg, tyname
+        }
+        /^  Window #[0-9]+ / {
+            flush(); inw = 1; name = ""; pkg = ""; tyname = ""
+            d0 = fill = surf = vis = ty = 0
+            s = $0; i = index(s, "Window{")
+            if (i) {
+                s = substr(s, i + 7); s = substr(s, 1, index(s, "}") - 1)
+                if (sub(/^[^ ]+ [^ ]+ /, "", s)) name = s
+            }
+        }
+        !inw { next }
+        /mDisplayId=0([^0-9]|$)/ { d0 = 1 }
+        index($0, "fillxfill") { fill = 1 }
+        /mHasSurface=true/ { surf = 1 }
+        /mViewVisibility=0x0([^0-9A-Za-z_]|$)/ { vis = 1 }
+        match($0, /ty=(BOOT_PROGRESS|SYSTEM_OVERLAY|APPLICATION_OVERLAY|SYSTEM_ALERT)([^A-Za-z0-9_]|$)/) {
+            ty = 1; tyname = substr($0, RSTART + 3, RLENGTH - 3); sub(/[^A-Za-z_]$/, "", tyname)
+        }
+        pkg == "" && match($0, /package=[^ ]+/) { pkg = substr($0, RSTART + 8, RLENGTH - 8) }
+        END { flush() }')
+    if [ -n "$covers" ]; then
+        echo "display-covered: a foreign full-screen overlay covers display 0 on $SERIAL: $covers"
+        return 1
+    fi
+    echo "display-clear: $SERIAL Awake, no foreign overlay on display 0 ($n windows read)"
+    return 0
+}
+
 device_default() {
     # Resolve a serial when the caller gave none -- and REFUSE when the answer
     # is ambiguous.
