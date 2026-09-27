@@ -22,7 +22,9 @@
 echo "== status.sh objective (the 16:24 fixture)"
 SO_F="$REPO/docs/lanes/dash432/fixtures"
 SO_OUT="$T/status-objective"
-FIXTURE_REPO="$REPO" bash "$SO_F/run_fixture.sh" "$HERE" "$SO_OUT"; so_rc=$?
+# release-0.5.toml moved to docs/testing/ (lane.titles05, #433); run_fixture.sh's
+# default still names its old home under docs/lanes/dash432/.
+STATUS_RELEASE_CONF="$REPO/docs/testing/release-0.5.toml" FIXTURE_REPO="$REPO" bash "$SO_F/run_fixture.sh" "$HERE" "$SO_OUT"; so_rc=$?
 check "the fixture renders (status.sh --print exits 0)" [ "$so_rc" -eq 0 ]
 check "...and writes the page" [ -s "$SO_OUT/index.html" ]
 sf_no65() { ! grep -q "$@"; }
@@ -32,8 +34,17 @@ check "'what needs a person' is exactly the six owner decisions and the stranded
 check "lane.xbox and lane.remote are rows of the lanes table" so_check sessions
 check "'never' is not a value on the page, nor on its first screen" so_check never
 check "every latest-result cell is a whole sentence" so_check results
-check "the 0.5 table carries pass 1's 17 titles, and its counts are its rows'" so_check titles
-check "the 0.5 section does not count against 145" so_check no145
+# The 0.5 table's own checks (pass 1's titles, counts from rows, no "of 145")
+# were #448's, against a target the owner replaced at 17:15 PDT with "145
+# benchmarked, 50 Playable" (#433). 66-status-titles.sh asserts the table
+# against the new goals; here only pass 1's titles are held to the page.
+so_pass1() { python3 - "$SO_OUT/status.json" "$REPO/docs/lanes/dash432/pass1-backfill.json" <<'PY'
+import json, sys
+rows = {r["title"] for r in json.load(open(sys.argv[1]))["first"]["titles"]["rows"]}
+sys.exit(0 if all(r["title"] in rows for r in json.load(open(sys.argv[2]))["rows"]) else 1)
+PY
+}
+check "the 0.5 table carries pass 1's 17 titles" so_pass1
 for so_f in "$T"/status-objective-*.txt; do grep -q '^FAIL' "$so_f" && sed 's/^/    /' "$so_f"; done
 
 # The machine-readable outputs are kept and extended, not replaced.
@@ -45,7 +56,7 @@ check "status.json carries the four answers" python3 -c '
 import json, sys
 j = json.load(open(sys.argv[1]))
 f = j["first"]
-sys.exit(0 if f["titles"]["counts"]["tested"] == 16 and f["queue"]["queued"] == 23 and f["queue"]["queued_05"] == 23
+sys.exit(0 if f["titles"]["counts"]["listed"] == len(f["titles"]["rows"]) >= 17 and f["queue"]["queued"] == 23 and f["queue"]["queued_05"] == 23
          and [d["state"] for d in f["devices"]] == ["in use", "in use"] and f["stranded"] == ["perfregimen"] else 1)' "$SO_OUT/status.json"
 check "the #107 body header's idle list names the stranded lane" grep -qx 'perfregimen' "$SO_OUT/work/status/idle-lanes"
 check "STATUS.md keeps the running-units table for #107" grep -q '^### Lanes running' "$SO_OUT/STATUS.md"
