@@ -1,0 +1,125 @@
+# Dead or Alive Xtreme Beach Volleyball (54430007): one route, EXHIBITION (no
+# Zack Island vacation, no shop). PLAYED by nav.py on the Nova, 2026-09-26
+# 19:46 PDT (HELD session doax.first-run-20260926T194604).
+#
+#   federal warning (A) -> title (START) -> GO TO ZACK ISLAND / EXHIBITION:
+#   LY max flick to EXHIBITION (A) -> One Player (A) -> CHARACTER SELECT:
+#   A for each of Player 1, swimsuit, Partner, mood, COM, COM and their
+#   moods (A x13 in all) -> match intro at 0-0 -> rally.
+#
+# Player control: in the rally Kasumi (P1, black) ran toward the ball with LX
+# held (frames rally -> rally2). The match cuts to a reaction scene of a few
+# seconds after every point; the play pattern keeps pressing A/B through
+# them. What follows the end of the match was not seen.
+wait 27.0
+shot boot
+wait 7.8
+press A
+wait 6.4
+shot a1
+wait 1.0
+press START
+wait 5.1
+shot start1
+wait 7.7
+press START
+wait 5.1
+shot start2
+wait 8.3
+axis LY max
+wait 0.4
+axis LY mid
+wait 0.6
+shot exh
+wait 1.0
+press A
+wait 6.5
+shot exh-a
+wait 8.6
+press A
+wait 5.1
+shot 1p
+wait 7.8
+press A
+wait 3.1
+shot pick1
+wait 0.7
+press A
+wait 3.1
+shot pick2
+wait 9.6
+press A
+wait 3.1
+shot pick3
+wait 0.9
+press A
+wait 3.1
+shot pick4
+wait 0.9
+press A
+wait 3.1
+shot pick5
+wait 9.6
+press A
+wait 3.3
+press A
+wait 4.7
+press A
+wait 3.1
+shot pick8
+wait 0.9
+press A
+wait 3.1
+shot pick9
+wait 8.7
+press A
+wait 3.1
+shot pick10
+wait 0.9
+press A
+wait 8.1
+shot pick11
+wait 11.3
+press A
+wait 3.3
+press A
+wait 3.4
+press A
+wait 3.1
+shot pick14
+wait 8.3
+shot loading
+wait 18.0
+shot serve
+wait 0.8
+axis LX min
+wait 1.6
+shot move-left
+wait 0.9
+axis LX mid
+wait 14.2
+shot rally
+wait 0.8
+axis LX max
+wait 0.3
+press A
+wait 1.1
+shot rally2
+wait 0.7
+axis LX mid
+wait 15.1
+mark gameplay
+repeat forever {
+    axis LX max
+    press A
+    wait 0.6
+    axis LX mid
+    press B
+    wait 0.6
+    axis LX min
+    press A
+    wait 0.6
+    axis LX mid
+    press B
+    wait 0.6
+}

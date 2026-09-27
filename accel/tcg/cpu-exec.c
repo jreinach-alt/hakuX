@@ -974,6 +974,91 @@ TranslationBlock *inv_tb_htable_lookup(CPUState *cpu, TCGTBCPUState s)
     return tb;
 }
 
+/*
+ * #425: WHY A JUMP-CACHE PROBE MISSES, split by who probed. One [jc425] line
+ * every 2 s, next to [tlb68]; tag hakuX at WARN, which every runner keeps.
+ *
+ * Callers (the first index):
+ *   i  helper_lookup_tb_ptr: an indirect branch (RET, JMP/CALL r/m) or any
+ *      goto_ptr exit. 10.3% of the guest thread on the Crimson route
+ *      (docs/lanes/jcache425/NOTES.md).
+ *   l  cpu_exec_loop: an exit that was not chained (first run of a block,
+ *      interrupts, cross-page blocks, a chain unlinked by a discard).
+ *   a  cpu_exec_step_atomic.
+ *
+ * Outcomes (the second), exactly one per probe, in this order:
+ *   h  hit: the slot's TB matches.
+ *   e  empty slot: never filled, or wiped (tcg_flush_jmp_cache, the page
+ *      clears in cputlb.c).
+ *   p  the slot holds another virtual pc: a hash collision.
+ *   s  same pc, TB carries CF_INVALID: a discarded block left in place, which
+ *      is what HAKUX_TCG68_JC=1 produces instead of a wipe.
+ *   k  same pc, live TB, other flags/cs_base/cflags.
+ * and for every miss, what the qht said: f found, n not found (translate).
+ *
+ * The prediction reads these: with the wipe off, `e` must fall and `s`
+ * appear, and f / (probes) is the share the qht still carries.
+ *
+ * vCPU thread only (an Xbox has one vCPU), so plain increments.
+ */
+enum { JC425_HELPER, JC425_LOOP, JC425_ATOMIC, JC425_NCALLER };
+enum {
+    JC425_HIT, JC425_EMPTY, JC425_PC, JC425_STALE, JC425_KEY,
+    JC425_QHT_FOUND, JC425_QHT_NONE, JC425_NOUT
+};
+#ifdef XBOX
+static uint64_t jc425_n[JC425_NCALLER][JC425_NOUT];
+#define JC425_COUNT(c, o) (jc425_n[(c)][(o)]++)
+
+#ifdef __ANDROID__
+#define JC425_LOG(...) \
+    __android_log_print(ANDROID_LOG_WARN, "hakuX", __VA_ARGS__)
+#else
+#define JC425_LOG(...) do { \
+        fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while (0)
+#endif
+
+/* Called at [tlb68]'s gate (1 in 1024 loop iterations); prints every 2 s. */
+static void jc425_tick(void)
+{
+    static const char cname[JC425_NCALLER] = { 'i', 'l', 'a' };
+    static uint64_t prev[JC425_NCALLER][JC425_NOUT];
+    static int64_t prev_ns;
+    static unsigned window;
+    int64_t now = get_clock();
+    char buf[512];
+    int off = 0;
+
+    if (prev_ns && now - prev_ns < 2 * NANOSECONDS_PER_SECOND) {
+        return;
+    }
+    if (prev_ns) {
+        for (int c = 0; c < JC425_NCALLER && off < (int)sizeof(buf) - 160;
+             c++) {
+            uint64_t d[JC425_NOUT];
+
+            for (int o = 0; o < JC425_NOUT; o++) {
+                d[o] = jc425_n[c][o] - prev[c][o];
+            }
+            off += snprintf(buf + off, sizeof(buf) - off,
+                            " %ch=%" PRIu64 " %ce=%" PRIu64 " %cp=%" PRIu64
+                            " %cs=%" PRIu64 " %ck=%" PRIu64
+                            " %cf=%" PRIu64 " %cn=%" PRIu64,
+                            cname[c], d[JC425_HIT], cname[c], d[JC425_EMPTY],
+                            cname[c], d[JC425_PC], cname[c], d[JC425_STALE],
+                            cname[c], d[JC425_KEY], cname[c],
+                            d[JC425_QHT_FOUND], cname[c], d[JC425_QHT_NONE]);
+        }
+        JC425_LOG("[jc425] w=%u dt=%" PRId64 " jc=%d%s", window++,
+                  (now - prev_ns) / 1000000, hakux_tlb68_jc_on(), buf);
+    }
+    memcpy(prev, jc425_n, sizeof(prev));
+    prev_ns = now;
+}
+#else
+#define JC425_COUNT(c, o) do { } while (0)
+#endif
+
 /**
  * tb_lookup:
  * @cpu: CPU that will execute the returned translation block
@@ -988,7 +1073,8 @@ TranslationBlock *inv_tb_htable_lookup(CPUState *cpu, TCGTBCPUState s)
  *
  * Returns: an existing translation block or NULL.
  */
-static inline TranslationBlock *tb_lookup(CPUState *cpu, TCGTBCPUState s)
+static inline TranslationBlock *tb_lookup(CPUState *cpu, TCGTBCPUState s,
+                                          int caller)
 {
     TranslationBlock *tb;
     CPUJumpCache *jc;
@@ -1006,13 +1092,27 @@ static inline TranslationBlock *tb_lookup(CPUState *cpu, TCGTBCPUState s)
                tb->cs_base == s.cs_base &&
                tb->flags == s.flags &&
                tb_cflags(tb) == s.cflags)) {
+        JC425_COUNT(caller, JC425_HIT);
         goto hit;
     }
+#ifdef XBOX
+    if (!tb) {
+        JC425_COUNT(caller, JC425_EMPTY);
+    } else if (jc->array[hash].pc != s.pc) {
+        JC425_COUNT(caller, JC425_PC);
+    } else if (tb_cflags(tb) & CF_INVALID) {
+        JC425_COUNT(caller, JC425_STALE);
+    } else {
+        JC425_COUNT(caller, JC425_KEY);
+    }
+#endif
 
     tb = tb_htable_lookup(cpu, s);
     if (tb == NULL) {
+        JC425_COUNT(caller, JC425_QHT_NONE);
         return NULL;
     }
+    JC425_COUNT(caller, JC425_QHT_FOUND);
 
     jc->array[hash].pc = s.pc;
     qatomic_set(&jc->array[hash].tb, tb);
@@ -1156,7 +1256,7 @@ const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
         cpu_loop_exit(cpu);
     }
 
-    tb = tb_lookup(cpu, s);
+    tb = tb_lookup(cpu, s, JC425_HELPER);
     if (tb == NULL) {
         return tcg_code_gen_epilogue;
     }
@@ -1335,7 +1435,7 @@ void cpu_exec_step_atomic(CPUState *cpu)
          * Any breakpoint for this insn will have been recognized earlier.
          */
 
-        tb = tb_lookup(cpu, s);
+        tb = tb_lookup(cpu, s, JC425_ATOMIC);
         if (tb == NULL) {
             mmap_lock();
             tb = tb_gen_code(cpu, s);
@@ -1736,7 +1836,7 @@ cpu_exec_loop(CPUState *cpu, SyncClocks *sc)
                 break;
             }
 
-            tb = tb_lookup(cpu, s);
+            tb = tb_lookup(cpu, s, JC425_LOOP);
             if (tb == NULL) {
                 CPUJumpCache *jc;
                 uint32_t h;
@@ -1811,6 +1911,7 @@ cpu_exec_loop(CPUState *cpu, SyncClocks *sc)
                 if (unlikely(++tlb68_gate >= 1024)) {
                     tlb68_gate = 0;
                     hakux_tlb68_tick(cpu);
+                    jc425_tick();
                 }
             }
 #endif
