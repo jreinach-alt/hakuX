@@ -27,7 +27,9 @@
 # on an airfield stage. The mark frame is that fight (timer 46, overlay FPS
 # 33) and a frame 20 s before the end is a later round of it (timer 54, FPS
 # 11). 319 s of gameplay, fps window median 14.56 (min 11.34), 17.2% at
-# >= 30, no hang.
+# >= 30, no hang. The rate was 33-34 for the first 66 s after the mark and
+# 13-15 from 300 s on: the Thor's thermal pause (#507) is not ruled out,
+# so the median is not the title's rate.
 wait 49.4
 press START 300
 wait 8.5

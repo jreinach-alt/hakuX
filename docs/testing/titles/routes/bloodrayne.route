@@ -32,8 +32,9 @@
 # a593d8eb85; scratch/held/bloodrayne-20260927T133838): the mark frame is
 # Rayne at the church wall, overlay FPS 22, and hakuX held the input focus
 # on all 34 reads. 288 s of gameplay, fps window median 22.89 (min 5.48),
-# 0% at >= 30. The frame rate fell from 22-25 to 6-7 about 130 s after the
-# mark, and no frame shows what was on the screen then.
+# 0% at >= 30. The frame rate fell from 20-26 to 6-7 at 390 s (144 s after
+# the mark) and stayed there: the shape of the Thor's thermal pause (#507).
+# The title's rate in this place is the 20-26.
 wait 35.1
 press A 300
 wait 8.6

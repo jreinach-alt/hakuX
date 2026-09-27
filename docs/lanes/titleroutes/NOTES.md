@@ -982,6 +982,66 @@ it for 89 of the 105 minutes since 12:59.
 The leave state at 14:44: app stopped, performance_mode 0, fan_mode 4,
 dual_screen_display_mode 0, screen_focus_lock 0, screen asleep, 80%.
 
+### The held readings against the Thor's thermal pause (#507), 14:50 PDT
+
+Hostops, 14:26 PDT on #397: PR #495's guard is live on the dispatcher
+(folded as a04b5c59fc, dispatcher tree at 0800f26eec), so queued Thor route
+soaks are open again and held sessions are for nav work only. The same note
+says the Thor's thermal pause (#507) voids fps after 4 to 6 minutes at MAX.
+#507: the kernel pauses cpu3-7, every emulator thread moves to cpu0-2, and
+the frame rate falls by 5 to 7 times for the rest of the run.
+
+`scratch/fpsbins.py <result dir>` bins a soak's fps at 30 s from `soak
+start` (60-flip windows, as `title_verdict.py` counts them) and applies
+lane.thermal507's test: at 200 s or later, the three preceding bins' median
+is 10 or more and every later bin is under a third of it.
+
+| title | mark at | bins before the fall | fall | bins after | #507 shape |
+|---|---|---|---|---|---|
+| BloodRayne | 245 s | 20-26 fps from 30 s to 389 s | 390 s (mark +144 s) | 6-7 to the end (534 s) | **yes**: 23.1 -> 6.5 |
+| Baldur's Gate: Dark Alliance | 486 s | 60 in every bin, 0 s to 731 s | none | - | no |
+| KOF: Maximum Impact | 234 s | 33-34 from 210 s to 299 s | 300 s (mark +66 s) | 13-15 to the end (553 s) | no by the test (the fall is to 0.42 of the rate before, not under a third) |
+
+So:
+- **BloodRayne's title rate is the 20-26 fps before 390 s.** The verdict's
+  median of 22.89 happens to sit there, because the fall came halfway
+  through the window. Its 5.48 minimum and its four "hang" gaps are the
+  pause. Session 23's question (what was on the screen in the last 150 s)
+  has this answer: the same place, on three cores.
+- **Baldur's Gate held 60 for 12 minutes at MAX.** Either the pause did not
+  happen or the tavern fits in what is left. I did not read the cooling
+  device, so I cannot say which.
+- **KOF's 14.56 median is not the title's rate, and I cannot say what is.**
+  The same fight on the same stage ran at 33-34 for 66 s and at 13-15 for
+  the 253 s after. A fall at 300 s fits #507's 4 to 6 minutes. It fails the
+  one-third test, and nothing else I have separates the pause from the
+  fight getting heavier. The cooling device's state was not read.
+
+**What to do differently.** Read `thermal-pause-F8` (the cooling device
+#507 names) at the end of a Thor soak, or run `fpsbins.py` on the result,
+before writing a median down. For a title whose mark comes late, the window
+is after the 4 to 6 minutes by construction: Baldur's Gate's mark is at
+486 s. A shorter way in (a returning route from a save in play) is the fix
+on the route side; the rest is #507's.
+
+**Older Thor readings of mine, same test** (lane.thermal507's scan on #507,
+PR #508): Blood Wake `1-1790508532-titleroutes-1074940` falls at 300 s
+(mark +98 s), 38.5 -> 6.2, and its scored median 37.4 is from before the
+fall; Battlefield 2: MC `1-1790517591-titleroutes-1523259` falls at 480 s
+(mark +90 s), 19.3 -> 4.1. Midtown Madness 3's 3.13 with ten 12-20 s hangs
+(against 16-18 in its nav session) has the same look and was not in that
+table; I did not re-scan it.
+
+### Queued soaks after the guard went live (ref 92560461c5, 0.5 priority, Thor)
+
+`scratch/bench8.sh` sizes a soak as the route's pre-mark waits + 3 s per
+`shot` before the mark + 300 s.
+
+| title | route | request | seconds | reading |
+|---|---|---|---|---|
+| Azurik | `azurik` | 1-1790545605-titleroutes-65853 | 500 | queued 14:46 |
+| D&D Heroes | `dnd-heroes` | 1-1790545622-titleroutes-76653 | 600 | queued 14:47 |
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
