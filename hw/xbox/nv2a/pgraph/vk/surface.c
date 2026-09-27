@@ -4199,11 +4199,18 @@ static void surface_handoff_record(NV2AState *d, SurfaceBinding *src,
  * would still owe VRAM the rest of its area from the shelf, and the watch
  * does not answer a read of a shelved binding.
  */
+/*
+ * A row must fit in the pitch. An antialiased binding can be wider than its
+ * pitch (3D_primitive's AA x2 zeta is 1280 pixels at pitch 2560), and then
+ * its rows overlap in VRAM: its download is not invertible, and its image is
+ * not what an upload of that memory gives even with the memory unchanged.
+ */
 static bool surface_quad_eligible(PGRAPHState *pg, SurfaceBinding const *s)
 {
     return tcg_enabled() && pg->surface_scale_factor == 1 && !s->color &&
            surface_is_ds(s) && surface_stages_guest_bytes(s) && !s->swizzle &&
-           s->width && s->height;
+           s->width && s->height &&
+           (size_t)s->width * s->fmt.bytes_per_pixel <= s->pitch;
 }
 
 /* An eviction download was recorded for s: remember it until it lands. */
