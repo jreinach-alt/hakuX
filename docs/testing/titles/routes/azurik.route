@@ -1,0 +1,90 @@
+# Azurik: Rise of Perathia (4D530007): one route for the first run (no
+# save is written before control). PLAYED by nav.py on the Thor, 2026-09-27
+# 07:02 PDT (lane.titleroutes HELD session azurik.first-run-20260927T070214).
+#
+#   the intro FMV (A skips it) -> the title, "Press START to play" (START)
+#   -> the save screen, cursor on "Start New Game" (A) -> the in-engine
+#   opening in the temple (A presses) -> the Arena, "For your first
+#   challenge, destroy the five orange vases ... Continue (A)" (A) -> player
+#   control in the Arena, health and elemental gauges shown.
+#
+# In play A is jab, so a spare A in the tutorial boxes is harmless.
+#
+# Player control: LY min ran Azurik across the Arena and out through the
+# far arch, LX turned him, A and X attacked (nav frames 006-gameplay ->
+# 007-moved, in the room past the arch).
+#
+# Revised 2026-09-27 10:30 PDT, NOT yet replayed. The first soak
+# (1-1790519287-titleroutes-2112912r) booted cold: at `a2` the Adrenium logo
+# was still up at 8 fps, the one START was spent on the intro, and every
+# later frame was the attract demo ("Press START to play. Press X for Game
+# Demos"), so its reading is void. This version waits 20 s longer, presses A
+# once more for the FMV, and presses START twice. The title shows "Press
+# START to play" over the attract demo too, so a late START still starts;
+# a spare START on the save screen either selects "Start New Game" (the A
+# after it then lands in the opening, which A presses through) or does
+# nothing. Two more A presses and 20 s more come before the mark.
+#
+# Still NOT replayed (2026-09-27 12:30 PDT). This version's soak,
+# 1-1790527983-titleroutes-2100312, is void for a reason outside the route:
+# hakuX did not have the Thor's input focus and an overlay covered display
+# 0, so all 7 frames are black and the presses went to another app. Its
+# 28.32 fps is not a reading of this title's gameplay.
+wait 25.1
+shot boot
+wait 8.4
+press A
+wait 5.3
+press A
+wait 5.1
+shot a2
+wait 12
+press A
+wait 8
+press START
+wait 8
+press START
+wait 6.1
+shot st
+wait 9.8
+press A
+wait 8.1
+shot new
+wait 7.6
+press A
+wait 5.4
+press A
+wait 5.4
+press A
+wait 6.9
+shot cut
+wait 8.2
+press A
+wait 4.3
+press A
+wait 4.1
+shot tut
+wait 10
+press A
+wait 5
+press A
+wait 24.5
+mark gameplay
+repeat forever {
+    axis LY min
+    wait 2
+    press A
+    axis LX max
+    wait 1
+    press X
+    axis LX mid
+    axis LY max
+    wait 2
+    press A
+    axis LX min
+    wait 1
+    press X
+    axis LX mid
+    axis LY mid
+    wait 0.5
+}

@@ -112,6 +112,12 @@ def _jload(p):
 
 def _soak_median(rdir, lo=90.0, hi=240.0):
     """(median gfps over lo..hi s, n) from a result dir's logcat, or (None, 0)."""
+    return _soak_read(rdir, lo, hi)[:2]
+
+
+def _soak_read(rdir, lo=90.0, hi=240.0):
+    """(median gfps over lo..hi s, n, share of those samples at 30+) from a
+    result dir's logcat, or (None, 0, None)."""
     stamp = re.compile(r"(\d\d-\d\d \d\d:\d\d:\d\d\.\d+).*?hakuX-perf.*?\bgfps=(\d+(?:\.\d+)?)")
     perf = []
     for p in sorted(os.listdir(rdir)):
@@ -131,15 +137,15 @@ def _soak_median(rdir, lo=90.0, hi=240.0):
                         continue
                     perf.append((t, float(m.group(2))))
     if not perf:
-        return None, 0
+        return None, 0, None
     perf.sort()
     t0 = perf[0][0]
     win = sorted(g for t, g in perf if lo <= (t - t0).total_seconds() <= hi)
     if not win:
-        return None, 0
+        return None, 0, None
     n = len(win)
     med = win[n // 2] if n % 2 else (win[n // 2 - 1] + win[n // 2]) / 2
-    return med, n
+    return med, n, round(sum(1 for g in win if g >= 30) / float(n), 3)
 
 
 def release05(titles, results, xiso, devices=("thor", "nova")):
@@ -1098,14 +1104,29 @@ def _registry(F):
         if sys.path and sys.path[0] == tdir:
             sys.path.pop(0)
     survey = os.path.basename(titlestate.route_path("00000000", "survey"))
+    rdir = os.path.dirname(titlestate.route_path("00000000", "survey"))
     states = {d: titlestate.load(d) for d in titlestate.DEVICES}
     out = {}
     for tid, t in tg.items():
+        # Inputs are programmed when the title's own route exists: one
+        # routes/<route>.route for a title with no profile step (it needs no
+        # save), or the first-run variant, which sets the profile up; the
+        # returning variant replays from the extracted save.
         routes = {v: os.path.basename(titlestate.route_path(tid, v)) for v in ("first-run", "returning")}
+        routes = {v: r for v, r in routes.items() if r != survey}
+        single = bool(t.get("route")) and os.path.exists(os.path.join(rdir, "%s.route" % t["route"]))
+        if single and not routes:
+            routes = {"single": "%s.route" % t["route"]}
         held = {d: (states[d].get("titles") or {}).get(tid, {}).get("save") for d in states}
         stored = titlestate.store_saves(tid)
+        # A disk that was read and holds no save for a title whose route
+        # reaches gameplay anyway (titlestate.py no-save): the reason stands
+        # in for a save until one is harvested.
+        na = [((states[d].get("titles") or {}).get(tid, {}).get("save_na") or {}).get("reason") for d in states]
+        na = "" if stored or any(held.values()) else next((r for r in na if r), "")
         out[tid] = {"name": t.get("name") or tid, "iso": dict(t.get("iso") or {}), "route": t.get("route") or "",
-                    "inputs": all(r != survey for r in routes.values()), "routes": routes,
+                    "inputs": bool(routes), "routes": routes, "needs_save": "single" not in routes and not na,
+                    "save_na": na,
                     "save": bool(stored or any(held.values())),
                     "save_id": (stored[0] if stored else next((s for s in held.values() if s), "")),
                     "profile": {d: (states[d].get("titles") or {}).get(tid, {}).get("profile") for d in states}}
@@ -1138,6 +1159,26 @@ def _devwatch(F, now):
         if isinstance(d, dict):
             devs[n] = {k: d.get(k) for k in ("state", "since_pdt", "detail", "flags", "minutes_60")}
     return {"found": True, "updated": up, "stale": up is None or now - up > 300, "devices": devs}
+
+
+def _iso_name(iso):
+    """A title's name from an ISO file no registry names: "Tork - Prehistoric
+    Punk (USA).iso" -> "Tork - Prehistoric Punk"."""
+    s = re.sub(r"(\.xiso)?\.iso$", "", os.path.basename(iso), flags=re.I)
+    s = re.sub(r"^[0-9A-Fa-f]{8}-", "", s)
+    s = re.sub(r"\s*\([^)]*\)", "", s).replace("_", " ")
+    return s.strip() or iso
+
+
+def _steps(times):
+    """Cumulative count over time: [[epoch, n], ...], one point per distinct time."""
+    out = []
+    for i, t in enumerate(sorted(t for t in times if t)):
+        if out and out[-1][0] == t:
+            out[-1][1] = i + 1
+        else:
+            out.append([int(t), i + 1])
+    return out
 
 
 def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue=None, r05_issues=None, issue_state=None):
@@ -1206,9 +1247,19 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
     bf = _jload(bf_path) or {}
     prov = bf.get("provenance", {})
     meas, soaked = {}, {}
+    # A title is MEASURED at its first gameplay-window fps reading, on either
+    # handheld, at any build and mode (the owner, 2026-09-26 21:55 PDT, #433).
+    first, measured = {}, set()
+
+    def seen(n, fps, at):
+        if n and fps is not None:
+            measured.add(n)
+            if at and (n not in first or at < first[n]):
+                first[n] = at
     for r in bf.get("rows", []):
         n = r.get("title")
         add(n, "", r.get("device"))
+        seen(n, r.get("fps_median"), _stamp(prov.get("source_utc")))
         reached = r.get("reached")
         meas.setdefault(n, {})[r.get("device") or "?"] = {
             "device": r.get("device") or "?", "fps": r.get("fps_median"), "share": r.get("share_30"),
@@ -1216,17 +1267,29 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
             "verdict": r.get("verdict") or "", "at": _stamp(prov.get("source_utc")), "ref": prov.get("ref", ""),
             "mode": prov.get("mode", "unrecorded"), "src": prov.get("label", "backfill"), "hand": True,
             "url": prov.get("source", ""), "id": "", "route": "generic"}
+    # A verdict scored before its title had a registry entry carries no name
+    # and no title_id: its ISO names the title (the registry's map, else the
+    # file name's title-ID prefix), so it joins that title's row rather than
+    # forming one of its own.
+    iso_title = {}
+    for tid, t in (reg or {}).items():
+        for iso in t["iso"].values():
+            iso_title[iso] = t["name"]
     latest = {}
     for p in _glob(os.path.join(F.D, "results"), "verdict.json"):
         v = _jload(p)
         if not isinstance(v, dict):
             continue
+        iso = str(v.get("title") or "")
         tid = str(v.get("title_id") or "")
-        n = v.get("name") or by_tid.get(tid) or v.get("title") or "?"
+        m = None if tid else re.match(r"^([0-9A-Fa-f]{8})-", os.path.basename(iso))
+        tid = m.group(1).upper() if m else tid
+        n = v.get("name") or iso_title.get(iso) or by_tid.get(tid) or iso or "?"
         d = v.get("device") or "?"
         at = F.mtime(p) or 0
         if at > now:
             continue
+        seen(n, v.get("fps_window_median"), at)
         if v.get("pass") and v.get("pass_kind") == "confirmation":
             soaked.setdefault(n, []).append((at, d, v.get("request_id") or ""))
         if (n, d) not in latest or at > latest[(n, d)][0]:
@@ -1246,17 +1309,61 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
             "kind": v.get("pass_kind") or "", "route": v.get("route") or ""}
 
     # ---- in flight: requests whose `title` (the ISO file) is this title's
-    iso_title = {}
-    for tid, t in (reg or {}).items():
-        for iso in t["iso"].values():
-            iso_title[iso] = t["name"]
-
     def req_title(r):
         t = r.get("title") or ""
         if t in iso_title:
             return iso_title[t]
         m = re.match(r"^([0-9A-Fa-f]{8})-", t)
         return by_tid.get(m.group(1).upper()) if m else (t if t in where else None)
+    # ---- soaks: a finished run whose request names the title, read as the
+    # Ghoulies gate reads it (median gfps over 90-240 s from the first perf
+    # line). Results do not change once DONE, so each is read once and kept in
+    # $S/soak-gfps.json.
+    cache_p = os.path.join(F.E["S"], "soak-gfps.json") if F.E.get("S") else ""
+    cache = (_jload(cache_p) if cache_p else None) or {}
+    fresh, soakr = False, {}
+    rdir0 = os.path.join(F.D, "results")
+    try:
+        rids = sorted(os.listdir(rdir0))
+    except OSError:
+        rids = []
+    for rid in rids:
+        rdir = os.path.join(rdir0, rid)
+        at = F.mtime(rdir, "DONE") or 0
+        if not at or at > now:
+            continue
+        q = _jload(os.path.join(rdir, "request.json"))
+        if not isinstance(q, dict) or not q.get("title"):
+            continue
+        n = req_title(q) or _iso_name(q["title"])
+        if len(cache.get(rid) or ()) < 3:      # a two-field entry predates the share
+            cache[rid] = list(_soak_read(rdir))
+            fresh = True
+        med, cnt, shr = cache[rid][:3]
+        if med is None:
+            continue
+        d = q.get("device") or "?"
+        add(n, "", d)
+        seen(n, med, at)
+        x = {"device": d, "fps": med, "share": shr, "reached": "unconfirmed", "blocker": "", "crash": False,
+             "hang": False, "verdict": "soak, %d gfps samples in 90-240 s" % cnt, "at": at,
+             "ref": str(q.get("ref") or "")[:10], "mode": _perf_mode(rdir), "src": "soak", "hand": False,
+             "url": "", "id": rid, "route": ""}
+        if n not in soakr or at > soakr[n]["at"]:
+            soakr[n] = x
+        m = meas.setdefault(n, {})
+        if any(y.get("src") != "soak" for y in m.values()):
+            continue        # a verdict or the backfill speaks for this title's stage
+        if d not in m or at > m[d]["at"]:
+            m[d] = x
+    if fresh and cache_p:
+        try:
+            with open(cache_p + ".tmp", "w", encoding="utf-8") as fh:
+                json.dump(cache, fh)
+            os.replace(cache_p + ".tmp", cache_p)
+        except OSError:
+            pass
+
     reqs_by = {}
     for r in reqs:
         n = req_title(r)
@@ -1268,7 +1375,8 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
     for n in issue_of:
         add(n)
 
-    need = int(conf.get("benchmark_copies") or 2)
+    # One handheld's measurement is enough (the owner, 18:10 PDT, #433).
+    need = int(conf.get("benchmark_copies") or 1)
     share_min = 0.90
     out = []
     for n in names:
@@ -1282,8 +1390,10 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
             prim = max(m.values(), key=lambda x: x.get("at") or 0)
         cross = [x for x in withfps if prim and x is not prim]
         inputs, save = bool(g.get("inputs")), bool(g.get("save"))
+        needs_save = g.get("needs_save", True)
+        save = save or (inputs and not needs_save)
         bench = bool(prim and prim.get("fps") is not None and prim.get("mode") == "MAX" and inputs and save
-                     and len(devs) >= need and prim.get("reached") == "yes")
+                     and max(len(devs), int(n in somewhere)) >= need and prim.get("reached") == "yes")
         # A run that could not reach gameplay blocks the title only if it ran the
         # title's own inputs: pass 1 ran the generic route, and a title whose
         # routes were written since is not blocked by it. A crash or hang always is.
@@ -1352,14 +1462,16 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
         missing = ("needs a gameplay route and a save" if not inputs and not save else
                    "needs a gameplay route" if not inputs else "extract the profile save")
         if st == "blocked":
-            nxt = "needs a gameplay route" if prim.get("reached") == "no" and not inputs else "fix: " + blocker
+            # a few words; the blocker itself shows in full under it
+            nxt = ("needs a gameplay route" if prim.get("reached") == "no" and not inputs else
+                   "fix the crash" if prim.get("crash") else "fix the hang" if prim.get("hang") else "reach gameplay")
         elif st == "none":
             nxt = "copy to a handheld"
         elif st == "copied":
             nxt = missing
         elif st == "inputs":
             other = [d for d in _DEV_LETTER if d not in devs]
-            if len(devs) < need and other:
+            if max(len(devs), int(n in somewhere)) < need and other:
                 nxt = "copy to the " + " and ".join(d.capitalize() for d in other)
             elif prim and prim.get("fps") is not None and prim.get("mode") != "MAX":
                 nxt = "re-benchmark at MAX"
@@ -1371,19 +1483,21 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
             nxt = "20-min soak"
         else:
             nxt = "done"
-        if rq and st != "playable":
-            r0 = rq[0]
-            nxt += " (%s %s)" % ("running as" if r0["state"] == "running" else "queued as", r0["id"])
         out.append({"title": n, "tid": tid, "stage": st, "word": STAGE_WORD[st], "chip": STAGE_CHIP[st],
-                    "blocker": blocker, "devices": devs, "somewhere": n in somewhere, "inputs": inputs, "save": save, "benchmarked": st in BENCHMARKED,
-                    "routes": g.get("routes") or {}, "save_id": g.get("save_id") or "",
+                    "blocker": blocker, "devices": devs, "somewhere": n in somewhere, "inputs": inputs, "save": save, "needs_save": needs_save, "benchmarked": st in BENCHMARKED,
+                    "fps_read": n in measured, "measured_at": first.get(n), "soak_read": soakr.get(n), "need": need, "routes": g.get("routes") or {}, "save_id": g.get("save_id") or "", "save_na": g.get("save_na") or "",
                     "prim": prim, "cross": cross, "measured": [m[d] for d in sorted(m)],
                     "issues": flight, "runs": runs, "next": nxt, "alarm": alarm})
     order = {k: i for i, (k, _, _) in enumerate(STAGES)}
     out.sort(key=lambda r: (order[r["stage"]], r["title"].lower()))
     counts = {"listed": len(out), "benchmarked": sum(r["stage"] in BENCHMARKED for r in out),
-              "playable": sum(r["stage"] == "playable" for r in out)}
+              "playable": sum(r["stage"] == "playable" for r in out),
+              "measured": sum(1 for r in out if r["fps_read"])}
     counts.update({k: sum(r["stage"] == k for r in out) for k, _, _ in STAGES})
+    # the chart's three step lines, each title at the time it first reached the goal
+    series = {"measured": _steps(r["measured_at"] for r in out),
+              "benchmarked": _steps(r["prim"].get("at") for r in out if r["stage"] in BENCHMARKED),
+              "playable": _steps(max(s[0] for s in soaked[r["title"]]) for r in out if r["stage"] == "playable")}
 
     # the forecast: titles that reached each goal in the last `rate_hours`
     hrs = float(conf.get("rate_hours") or 48)
@@ -1400,8 +1514,8 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
             fc[goal] = {"target": tgt, "eta": int(now + (tgt - have) * hrs * 3600 / recent), "recent": recent}
         else:
             fc[goal] = {"target": tgt, "eta": None, "recent": 0}
-    return {"rows": out, "counts": counts, "forecast": fc, "rate_hours": hrs,
-            "sources": srcs + ([os.path.basename(bf_path)] if bf else []) + (["dispatch results/*/verdict.json"]),
+    return {"rows": out, "counts": counts, "forecast": fc, "rate_hours": hrs, "series": series,
+            "sources": srcs + ([os.path.basename(bf_path)] if bf else []) + ["dispatch results/*/verdict.json", "soaks (results/*/logcat, gfps 90-240 s)"],
             "registry_src": reg_src, "backfill": prov, "list_rule": conf.get("test_list", "")}
 
 
@@ -1735,35 +1849,46 @@ section.md td{min-width:4.5em} section.md td:last-child{min-width:18em}
  table.lanes td.lbl:before{content:attr(data-l) " "}
  table.lanes td.lbl:nth-child(n+3):not(:last-child):before{content:" \\00b7 " attr(data-l) " "}
 }
-/* the 0.5 title table (#433): one row per title; on a phone exactly two lines, every cell one line */
+/* the 0.5 title table (#433): fixed columns, nothing truncated. One row per
+   title: title and next step | status | fps | four pipeline marks. A title and
+   its next step wrap in their own column; no word is wider than its column. */
 .goal{display:flex;align-items:center;gap:8px;margin:3px 0}
 .goal .gl{min-width:11em;font-size:15px}
 .goal .bar{flex:1;height:10px;border-radius:5px;background:var(--card);border:1px solid var(--line);overflow:hidden}
 .goal .bar i{display:block;height:100%;background:var(--grn)}
+.chart{display:block;width:100%;max-width:600px;height:auto;margin:6px 0}
+.chart .ax{font-size:10px;fill:var(--mut)} .chart .sl{font-size:10.5px;fill:var(--fg);font-weight:600}
 .fc{margin:4px 0;font-weight:600}
 .chip{display:inline-block;width:.75em;height:.75em;border-radius:50%;margin-right:4px;vertical-align:-1px;border:1px solid rgba(0,0,0,.25)}
 .k-red{background:#cf222e} .k-green{background:#1a7f37} .k-orange{background:#e16f24} .k-yellow{background:#d4a72c}
 .k-purple{background:#8250df} .k-blue{background:#0969da} .k-grey{background:#8c959f}
-table.tt td{white-space:nowrap} table.tt td.c-t,table.tt td.c-i,table.tt td.c-n{white-space:normal}
+.legend{font-size:11px;color:var(--mut);margin:4px 0 2px}
+table.tt{table-layout:fixed;width:100%;min-width:0;font-size:13px}
+table.tt col.w-s{width:76px} table.tt col.w-f{width:82px} table.tt col.w-p{width:18px}
+table.tt th,table.tt td{padding:2px 4px;overflow-wrap:break-word;word-break:normal}
+table.tt tbody{border-top:2px solid var(--line)}
+table.tt td{vertical-align:top;padding-top:4px}
+table.tt td.c-s{font-size:12px} table.tt .sw{display:block;font-weight:600}
+table.tt .c-f{text-align:right}
+table.tt td.c-f .fm{display:block;font-size:19px;line-height:1.1;font-variant-numeric:tabular-nums}
+table.tt td.c-f .fsh{display:block;font-size:11px;white-space:nowrap;font-variant-numeric:tabular-nums}
+table.tt td.c-f .fsub{display:block;font-size:10.5px;color:var(--mut);line-height:1.25}
+table.tt td.c-f.nm{color:var(--mut);font-size:12px}
+table.tt .nx{display:block;font-size:12px;margin-top:2px}
+.ctl{font-size:13px;margin:4px 0} .ctl label{white-space:nowrap;margin-right:6px}
+table.tt .ln{display:block;white-space:nowrap}
+table.tt td.c-m{text-align:center;padding:4px 0 2px;white-space:nowrap;font-size:11px}
+table.tt td.c-m.no{color:var(--mut)}
+table.tt th.v{height:4.4em;vertical-align:bottom;padding:2px 0;text-align:center}
+table.tt th.v span{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;font-size:11px;font-weight:600}
+table.tt .fl{display:block;color:var(--mut);font-size:12px;font-weight:400;overflow-wrap:anywhere} table.tt .fl.bad{color:var(--red)}
 table.tt .sub{display:block;color:var(--mut);font-size:11px}
-table.tt .pm{font:600 12px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin-right:1px}
-table.tt s.pm{font-weight:400;color:var(--mut)}
 table.tt details summary{cursor:pointer}
-table.tt .td{font-size:12px;color:var(--mut);white-space:normal}
+table.tt .td{font-size:12px;color:var(--mut);white-space:normal;overflow-wrap:anywhere}
 table.tt .xc{color:var(--mut);font-size:12px}
 table.lv td{font-size:12px}
 .wd{font-size:13px}
-@media (max-width:640px){
- table.tt,table.tt tbody{display:block;min-width:0}
- table.tt tr:first-child{display:none}
- table.tt tr{display:grid;grid-template-columns:8.2em minmax(0,1.3fr) minmax(0,1fr);font-size:13px;column-gap:6px;border-bottom:1px solid var(--line);padding:2px 0}
- table.tt td.l1,table.tt td.l2{display:block;border:0;padding:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal;min-width:0}
- table.tt td.l1{grid-row:1} table.tt td.l2{grid-row:2;font-size:12px;color:var(--mut)}
- table.tt td.c-f,table.tt td.c-n{text-align:right}
- table.tt .sub{display:none}
- table.tt details[open]{white-space:normal}
- table.tt td.c-t:has(details[open]){grid-column:1/-1;grid-row:3;white-space:normal;overflow:visible}
-}
+@media (min-width:641px){ table.tt col.w-s{width:130px} table.tt col.w-f{width:150px} table.tt col.w-p{width:30px} }
 details.note{display:inline} details.note summary{display:inline;cursor:pointer;color:var(--mut);font-size:12px}
 details.note[open]{display:block;font-size:12px;color:var(--mut)}
 pre{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:6px 8px;overflow-x:auto;font-size:12px;line-height:1.3}
@@ -1868,35 +1993,59 @@ def _fps_cls(v):
     return "good" if v >= 30 else "warnc" if v >= 25 else "bad"
 
 
-def _fps_cell(x):
-    """35.7 · 54% T, the cross-check beside it, and a small line with the measurement's provenance."""
+def _fps_read(x):
+    """The reading a row shows: the stage's run, else (it had no fps) the newest soak."""
     p = x.get("prim")
-    if not p or p.get("fps") is None:
-        return "-"
-    s = '<b class="%s">%s</b>' % (_fps_cls(p["fps"]), esc("%g" % p["fps"]))
-    if p.get("share") is not None:
-        s += " &middot; %d%%" % round(100 * p["share"])
-    s += " %s" % esc(_DEV_LETTER.get(p["device"], p["device"]))
+    if (not p or p.get("fps") is None) and x.get("soak_read"):
+        p = x["soak_read"]
+    return p if p and p.get("fps") is not None else None
+
+
+def _fps_cell(x):
+    """The fps column, on every row with no tap (the owner, 22:45 PDT): the
+    gameplay median large, the share of play at 30+ under it, then one small
+    line with the device, date and mode, and any other handheld's median."""
+    p = _fps_read(x)
+    if not p:
+        return '<td class="c-f nm">not measured</td>'
+    s = '<b class="fm %s">%s</b>' % (_fps_cls(p["fps"]), esc("%.1f" % p["fps"]))
+    s += '<span class="fsh">%s</span>' % (
+        ("%d%% at 30+" % round(100 * p["share"])) if p.get("share") is not None else "share at 30+ not recorded")
+    how = "hand-reviewed" if p.get("hand") else "soak" if p.get("src") == "soak" else ""
+    sub = " &middot; ".join(esc(b) for b in (str(p["device"]).capitalize(), _lt(p.get("at"), "md")[:5] if p.get("at") else "date ?",
+                                              (p.get("mode") or "unrecorded") + (", " + how if how else "")))
     for c in x.get("cross") or []:
-        s += ' <span class="xc">(%s <span class="%s">%s</span>)</span>' % (
-            esc(_DEV_LETTER.get(c["device"], c["device"])), _fps_cls(c["fps"]), esc("%g" % c["fps"]))
-    sub = "%s, %s, %s%s" % (_lt(p.get("at"), "md")[:5] if p.get("at") else "date ?", p.get("ref") or "build ?",
-                            p.get("mode") or "unrecorded", ", hand-reviewed" if p.get("hand") else "")
-    return s + ' <span class="sub">%s</span>' % esc(sub)
+        if c is not p:
+            sub += '<br>%s <span class="%s">%s</span>' % (esc(str(c["device"]).capitalize()), _fps_cls(c["fps"]), esc("%.1f" % c["fps"]))
+    return '<td class="c-f">%s<span class="fsub">%s</span></td>' % (s, sub)
+
+
+# The pipeline's four labelled mini-columns, in order, and what a tick in each means.
+PIPE = (("Copied", "copied to a handheld (one is enough)"), ("Inputs", "profile setup and gameplay inputs programmed (the title's own route)"),
+        ("Save", "profile save extracted"), ("Bench", "gameplay fps measured at MAX on one handheld"))
+PIPE_LEGEND = "&check; done &middot; &ndash; not yet &middot; n/a no profile step. Tap a title for the rest."
 
 
 def _marks(x):
-    """Four compact marks: copied (T, N), inputs, save extracted, benchmarked. A missing one is struck through."""
-    def m(on, letter, say):
-        return ('<span class="pm" title="%s">%s</span>' if on else '<s class="pm" title="not yet: %s">%s</s>') % (esc(say), esc(letter))
+    """One cell per pipeline step: a tick, a dash, or (Save) n/a.
+
+    Copied is a tick on ANY handheld (the owner, 18:10 PDT, #433 comment
+    5851512534); its hover names which."""
     devs = x.get("devices") or []
-    cp = [m("thor" in devs, "T", "copied to the Thor"), m("nova" in devs, "N", "copied to the Nova")]
-    if not devs and x.get("somewhere"):
-        cp = ['<span class="pm" title="on a handheld; which one is not recorded">?</span>']
-    return "".join(cp + [" ",
-                    m(x.get("inputs"), "I", "inputs: first-run and returning routes"),
-                    m(x.get("save"), "S", "profile save extracted"),
-                    m(x.get("benchmarked"), "B", "benchmarked at MAX")])
+    if devs:
+        cp = ("&check;", "on the %s" % " and the ".join(d.capitalize() for d in devs))
+    elif x.get("somewhere"):
+        cp = ("&check;", "on a handheld; which one is not recorded")
+    else:
+        cp = ("&ndash;", "not on a handheld")
+    sv = (("&check;", "extracted") if x.get("save") and x.get("needs_save", True) else
+          ("n/a", "no profile step: the route needs no save") if x.get("save") else ("&ndash;", "not extracted"))
+    cells = [cp,
+             ("&check;", "programmed") if x.get("inputs") else ("&ndash;", "no route of its own"),
+             sv,
+             ("&check;", "measured at MAX") if x.get("benchmarked") else ("&ndash;", "not yet")]
+    return "".join('<td class="c-m%s" title="%s: %s">%s</td>' % ("" if m != "&ndash;" else " no", esc(PIPE[i][0]), esc(say), m)
+                   for i, (m, say) in enumerate(cells))
 
 
 def _flight(x):
@@ -1910,17 +2059,18 @@ def _flight(x):
         bits.append(b)
     if x.get("runs"):
         bits.append(esc("; ".join(x["runs"])))
-    return " &middot; ".join(bits) or "-"
+    return " &middot; ".join(bits)
 
 
 def _title_detail(x, now):
     """What a tap on the title opens: everything the row abbreviates."""
-    d = ["copied to: %s" % (", ".join(x["devices"]) or "no handheld recorded")]
+    d = ["copied to: %s" % (", ".join(x["devices"]) or ("a handheld, which one not recorded" if x.get("somewhere") else "no handheld recorded"))]
     if x.get("tid"):
         d.append("title id %s" % x["tid"])
     r = x.get("routes") or {}
-    d.append("routes: %s" % (", ".join("%s %s" % (k, v) for k, v in sorted(r.items())) or "none (no targets.toml entry)"))
-    d.append("save: %s" % (x.get("save_id") or "none extracted"))
+    d.append("routes: %s" % (", ".join("%s %s" % (k, v) for k, v in sorted(r.items())) or "none of its own"))
+    d.append("save: %s" % (x.get("save_id") or (("not needed: " + x["save_na"]) if x.get("save_na") and x.get("inputs") else
+                                                 "not needed (no profile step)" if not x.get("needs_save", True) and x.get("inputs") else "none extracted")))
     for m in x.get("measured") or []:
         d.append("%s: %s fps, %s at 30+, reached gameplay %s; %s (%s, %s, ref %s, %s%s)" % (
             m.get("device"), ("%g" % m["fps"]) if m.get("fps") is not None else "-",
@@ -1938,20 +2088,125 @@ def _title_detail(x, now):
 
 
 def _title_rows(xs, now):
+    """One row per title: title (tap for detail) with its next step under it,
+    status, fps, and the four pipeline marks. data-* carry the sort keys."""
+    order = {k: i for i, (k, _, _) in enumerate(STAGES)}
     out = []
     for x in xs:
+        p = _fps_read(x)
         st = '<span class="chip k-%s"></span>%s' % (x["chip"], esc(x["word"]))
         ti = '<details><summary>%s</summary><div class="td">%s</div></details>' % (esc(x["title"]), _title_detail(x, now))
-        nx = esc(x["next"])
-        if x["stage"] == "blocked":
-            nx = '<span class="bad">%s</span>' % nx
-        out.append('<tr class="st-%s"><td class="l1 c-s">%s</td><td class="l1 c-t">%s</td><td class="l1 c-f">%s</td>'
-                   '<td class="l2 c-p">%s</td><td class="l2 c-i">%s</td><td class="l2 c-n">%s</td></tr>' % (
-                       x["stage"], st, ti, _fps_cell(x), _marks(x), _flight(x), nx))
+        nx = '<span class="nx%s">%s</span>' % (" bad" if x["stage"] == "blocked" else "", esc(x["next"]))
+        if x.get("blocker"):
+            nx += '<span class="fl bad">blocker: %s</span>' % esc(x["blocker"])
+        fl = _flight(x)
+        if fl:
+            nx += '<span class="fl">%s</span>' % fl
+        out.append('<tbody class="st-%s" data-f="%s" data-o="%d" data-a="%s"><tr><td class="c-t">%s%s</td>'
+                   '<td class="c-s"><span class="sw">%s</span></td>%s%s</tr></tbody>' % (
+                       x["stage"], ("%.1f" % p["fps"]) if p else "", order.get(x["stage"], 9), esc(x["title"].lower()),
+                       ti, nx, st, _fps_cell(x), _marks(x)))
     return out
 
 
-_TT_HEAD = "<tr><th>status</th><th>title</th><th>fps (median &middot; play at 30+)</th><th>pipeline</th><th>issue and in flight</th><th>next step</th></tr>"
+def _by_fps(xs):
+    """Measured titles first, highest fps first; then the rest in status order."""
+    def key(x):
+        p = _fps_read(x)
+        return (0, -p["fps"], x["title"].lower()) if p else (1, 0, "")
+    return sorted(xs, key=key)
+
+
+_TT_HEAD = ('<colgroup><col><col class="w-s"><col class="w-f"><col class="w-p"><col class="w-p"><col class="w-p"><col class="w-p"></colgroup>'
+            '<thead><tr><th>title (tap for detail) &middot; next step</th><th>status</th><th class="c-f">fps</th>%s</tr></thead>' % "".join(
+                '<th class="v" title="%s"><span>%s</span></th>' % (esc(say), esc(k)) for k, say in PIPE))
+
+# The sort control. With scripts off the server's order (measured first) stands.
+TT_JS = """
+(function(){var t=document.querySelector('#ttw table');if(!t)return;var c=document.getElementById('ttc');c.hidden=false;
+var ks={f:function(b){var v=b.dataset.f;return v===''?[1,0,b.dataset.a]:[0,-v,b.dataset.a]},
+o:function(b){return [+b.dataset.o,b.dataset.a,'']},a:function(b){return [b.dataset.a,'','']}};
+function cmp(x,y){for(var i=0;i<3;i++){if(x[i]<y[i])return -1;if(x[i]>y[i])return 1}return 0}
+c.addEventListener('change',function(){var k=c.querySelector('input[name=ttk]:checked').value,m=document.getElementById('ttm').checked;
+var bs=[].slice.call(t.tBodies);bs.sort(function(x,y){return cmp(ks[k](x),ks[k](y))});
+bs.forEach(function(b){t.appendChild(b);b.hidden=m&&b.dataset.f===''})})})();
+"""
+
+
+_SERIES = (("measured", "Measured", "var(--link)", ""), ("benchmarked", "Benchmarked", "var(--amb)", "7 4"),
+           ("playable", "Playable", "var(--grn)", "2 3"))
+
+
+def _pt(epoch):
+    t = datetime.datetime.fromtimestamp(int(epoch), datetime.timezone.utc)
+    return t.astimezone(localtime.tz()) if localtime else t
+
+
+def _chart(series, now, bt, pt):
+    """Cumulative titles over time, as inline SVG: one step line per goal, told
+    apart by colour, dash and an end label; a line at the 0.5 target (bt) and a
+    marker at the Playable target (pt). X is the display zone (Pacific)."""
+    W, H, x0, x1, y0, y1 = 400, 236, 30, 276, 14, 204
+    ts = [t for k in series for t, _ in series.get(k) or []]
+    if not ts:
+        return '<p class="src">No title has an fps reading yet, so there is nothing to chart.</p>'
+    # The clock is not an input: a tick with nothing new must render the same
+    # page (content_key), so the axis ends at the newest point, not at now.
+    t0, t1 = min(ts), max(ts)
+    pad = max(3600, (t1 - t0) // 20)
+    t0, t1 = t0 - pad, t1 + pad
+    top = max([bt, pt] + [n for k in series for _, n in series.get(k) or []]) * 1.06
+
+    def X(t):
+        return x0 + (x1 - x0) * (t - t0) / float(t1 - t0)
+
+    def Y(n):
+        return y1 - (y1 - y0) * n / top
+    o = ['<svg class="chart" viewBox="0 0 %d %d" role="img" aria-label="Titles over time: %s">' % (W, H, esc(", ".join(
+        "%s %d" % (lab, (series.get(k) or [[0, 0]])[-1][1]) for k, lab, _, _ in _SERIES)))]
+    # axes and grid
+    for n in sorted({0, 50, 100, bt, pt}):
+        o.append('<line x1="%d" x2="%d" y1="%.1f" y2="%.1f" style="stroke:var(--line)"/>' % (x0, x1, Y(n), Y(n)))
+        if n not in (bt, pt):
+            o.append('<text x="%d" y="%.1f" class="ax" text-anchor="end">%d</text>' % (x0 - 4, Y(n) + 4, n))
+    o.append('<line x1="%d" x2="%d" y1="%.1f" y2="%.1f" style="stroke:var(--fg);stroke-width:1.5;stroke-dasharray:1 3"/>'
+             '<text x="%d" y="%.1f" class="ax" text-anchor="end">%d</text><text x="%d" y="%.1f" class="ax">target %d</text>' % (
+                 x0, x1, Y(bt), Y(bt), x0 - 4, Y(bt) + 4, bt, x0 + 4, Y(bt) - 4, bt))
+    o.append('<path d="M%d %.1fl6 -4v8z" style="fill:var(--grn)"/><text x="%d" y="%.1f" class="ax" text-anchor="end">%d</text>'
+             '<text x="%d" y="%.1f" class="ax">%d Playable</text>' % (x0, Y(pt), x0 - 4, Y(pt) + 4, pt, x0 + 9, Y(pt) - 4, pt))
+    # x ticks: local midnights, or every few hours over a short span
+    step = next((h for h in (3, 6, 12, 24, 48, 168) if (t1 - t0) / (h * 3600.0) <= 5), 336)
+    d = _pt(t0).replace(minute=0, second=0, microsecond=0)
+    d = d.replace(hour=0) if step >= 24 else d.replace(hour=d.hour - d.hour % step)
+    tt = int(d.timestamp())
+    while tt <= t1:
+        if tt >= t0:
+            lt = _pt(tt)
+            lab = lt.strftime("%b %d").replace(" 0", " ") if lt.hour == 0 else lt.strftime("%H:00")
+            o.append('<line x1="%.1f" x2="%.1f" y1="%d" y2="%d" style="stroke:var(--line)"/><text x="%.1f" y="%d" class="ax" text-anchor="middle">%s</text>' % (
+                X(tt), X(tt), y1, y1 + 4, X(tt), y1 + 16, esc(lab)))
+        tt = int((_pt(tt) + datetime.timedelta(hours=step)).timestamp())
+    o.append('<text x="%d" y="%d" class="ax" text-anchor="end">Pacific time</text>' % (x1, H - 2))
+    # the step lines, and their end labels, nudged apart so none overlap
+    ends = []
+    for k, lab, col, dash in _SERIES:
+        pts = series.get(k) or []
+        d = "M%.1f %.1f" % (X(t0), Y(0))
+        for t, n in pts:
+            d += "H%.1fV%.1f" % (X(t), Y(n))
+        d += "H%.1f" % X(t1)
+        last = pts[-1][1] if pts else 0
+        o.append('<path d="%s" data-series="%s" data-end="%d" style="fill:none;stroke:%s;stroke-width:2.5%s"/>' % (
+            d, k, last, col, (";stroke-dasharray:" + dash) if dash else ""))
+        ends.append([Y(last), lab, last, col, dash])
+    ends.sort()
+    for i in range(1, len(ends)):
+        ends[i][0] = max(ends[i][0], ends[i - 1][0] + 13)
+    for y, lab, last, col, dash in ends:
+        o.append('<line x1="%d" x2="%d" y1="%.1f" y2="%.1f" style="stroke:%s;stroke-width:2.5%s"/><text x="%d" y="%.1f" class="sl">%s %d</text>' % (
+            x1 + 3, x1 + 17, y, y, col, (";stroke-dasharray:" + dash) if dash else "", x1 + 20, y + 4, lab, last))
+    o.append("</svg>")
+    return "".join(o)
 
 
 def _q1(j, now):
@@ -1962,13 +2217,17 @@ def _q1(j, now):
     t = fs.get("titles") or {}
     rows = t.get("rows") or []
     out = ['<section class="q" id="q1"><h2>1. How close is %s?</h2>' % esc(name)]
-    # the header: two bars, counted from the table below, and one line
+    # the header: three bars, counted from the table below, the chart, and one line
     bt, pt = int(conf.get("benchmarked_target") or 145), int(conf.get("playable_target") or 50)
+    nm = sum(1 for x in rows if x.get("fps_read"))
     nb = sum(1 for x in rows if x.get("stage") in BENCHMARKED)
     npl = sum(1 for x in rows if x.get("stage") == "playable")
-    for label, n, tg in (("Benchmarked", nb, bt), ("Playable", npl, pt)):
-        out.append('<div class="goal"><span class="gl">%s <b>%d</b> / %d</span><span class="bar"><i style="width:%.1f%%"></i></span></div>' % (
-            label, n, tg, min(100.0, 100.0 * n / tg) if tg else 0))
+    for label, n, tg, col in (("Measured", nm, bt, "var(--link)"), ("Benchmarked", nb, bt, "var(--amb)"), ("Playable", npl, pt, "var(--grn)")):
+        out.append('<div class="goal"><span class="gl">%s <b>%d</b> / %d</span><span class="bar"><i style="width:%.1f%%;background:%s"></i></span></div>' % (
+            label, n, tg, min(100.0, 100.0 * n / tg) if tg else 0, col))
+    out.append(_chart(t.get("series") or {}, now, bt, pt))
+    out.append('<p class="src">Measured: any gameplay fps reading (median gfps in the play window) on either handheld, at any build and mode. '
+               'Each title is plotted at its first reading (a soak\'s finish, a verdict, or the pass-1 review\'s date).</p>')
     fc = t.get("forecast") or {}
     hrs = int(t.get("rate_hours") or 48)
     etas = [fc.get(k, {}).get("eta") for k in ("benchmarked", "playable")]
@@ -1990,14 +2249,18 @@ def _q1(j, now):
         out.append('<p class="bad">No target is stated: <code>%s</code> could not be read.</p>' % esc(fs.get("conf_path") or "release-0.5.toml"))
     # the table: every title in the pipeline, the "not copied" tail folded after 10
     if rows:
-        grey = [x for x in rows if x["stage"] == "none"]
-        shown = [x for x in rows if x["stage"] != "none"] + grey[:10]
-        out.append('<div class="tw"><table class="tt">%s%s</table></div>' % (_TT_HEAD, "".join(_title_rows(shown, now))))
+        grey = [x for x in rows if x["stage"] == "none" and not _fps_read(x)]
+        shown = _by_fps([x for x in rows if x["stage"] != "none" or _fps_read(x)] + grey[:10])
+        out.append('<p class="legend">Pipeline: Copied, Inputs, Save, Bench. %s</p>' % PIPE_LEGEND)
+        out.append('<div class="ctl" id="ttc" hidden>Sort: <label><input type="radio" name="ttk" value="f" checked> fps, measured first</label> '
+                   '<label><input type="radio" name="ttk" value="o"> status</label> <label><input type="radio" name="ttk" value="a"> A-Z</label> '
+                   '<label><input type="checkbox" id="ttm"> Measured only</label></div>')
+        out.append('<div class="tw" id="ttw"><table class="tt">%s%s</table></div>' % (_TT_HEAD, "".join(_title_rows(shown, now))))
         if grey[10:]:
             out.append('<details class="more"><summary>%d more not copied</summary><div class="tw"><table class="tt">%s%s</table></div></details>' % (
                 len(grey) - 10, _TT_HEAD, "".join(_title_rows(grey[10:], now))))
         c = t.get("counts") or {}
-        out.append('<p class="src">%d titles: %s. Benchmarked = below 30 + soak pending + Playable. Pipeline: T N copied to the Thor, Nova; I inputs programmed; S save extracted; B benchmarked at MAX (struck through: not yet). fps: gameplay median &middot; share of play at 30+ and the device (T/N); the small line is date, build, performance mode. Sources: %s; registry: %s.</p>' % (
+        out.append('<p class="src">%d titles: %s. Benchmarked = below 30 + soak pending + Playable. Measured = any gameplay fps reading, on either handheld, any build or mode. Pipeline: Copied to a handheld; Inputs, the title\'s own route (profile setup and gameplay); Save, the profile save extracted (n/a when the route has no profile step); Bench, fps measured at MAX. fps: the gameplay median (30+ green, 25-29.9 amber, under 25 red), the share of play at 30+, then the handheld, date and performance mode; the build is in the title\'s detail. Sources: %s; registry: %s.</p>' % (
             len(rows), esc(", ".join("%d %s" % (c.get(k, 0), w) for k, w, _ in STAGES if c.get(k))),
             esc(", ".join(t.get("sources") or []) or "none"), esc(t.get("registry_src") or "not read")))
         bp = t.get("backfill") or {}
@@ -2170,8 +2433,9 @@ def _glance(j, now):
     devs = "; ".join("%s %s" % (d["name"], "running" if d["state"] == "running" else ("in use by " + d.get("who", "?")) if d["state"] == "in use" else "idle")
                      for d in fs.get("devices") or [])
     lines = [
-        '<a href="#q1">%s</a>: Benchmarked %d / %d, Playable %d / %d; gate %s.' % (
-            esc(name), sum(1 for x in trows if x.get("stage") in BENCHMARKED), int(conf.get("benchmarked_target") or 145),
+        '<a href="#q1">%s</a>: Measured %d / %d &middot; Benchmarked %d / %d &middot; Playable %d / %d; gate %s.' % (
+            esc(name), sum(1 for x in trows if x.get("fps_read")), int(conf.get("benchmarked_target") or 145),
+            sum(1 for x in trows if x.get("stage") in BENCHMARKED), int(conf.get("benchmarked_target") or 145),
             sum(1 for x in trows if x.get("stage") == "playable"), int(conf.get("playable_target") or 50),
             esc("met on the newest soaks, no candidate yet" if g.get("met") and g.get("candidate") == "none cut yet" else (g.get("verdict") or "not measured"))),
         '<a href="#q2">Now</a>: %d lanes: %s.' % (len(rows), esc(", ".join("%d %s" % (v, k) for k, v in sorted(by.items(), key=lambda kv: -kv[1])))),
@@ -2208,7 +2472,7 @@ def render(j):
                'Every time here is %s. Next tick due by %s.</footer>' % (
                    int(j.get("floor_secs") or 1800) // 60, int(j.get("heartbeat_secs") or 1800) // 60,
                    esc(j.get("tz", "")), esc(j.get("next_due", "") or "?")))
-    out.append("<script>%s</script></main></body></html>" % JS)
+    out.append("<script>%s%s</script></main></body></html>" % (JS, TT_JS))
     return "\n".join(out) + "\n"
 
 
@@ -2310,7 +2574,12 @@ def md_to_html(md):
         if not l.strip():
             i += 1
             continue
-        buf = []
+        # Always consume the first line: a "|" line with no separator after it
+        # (a table header cut off mid-write) matched no branch above and none
+        # here, so i never moved and out grew until the host ran out of memory
+        # (the board tick of 2026-09-26 21:55 PDT, 41 min and 5.2 GB).
+        buf = [l]
+        i += 1
         while i < n and lines[i].strip() and not re.match(r"^(#{2,4}\s|\||>|```|\s*[-*] )", lines[i]):
             buf.append(lines[i])
             i += 1

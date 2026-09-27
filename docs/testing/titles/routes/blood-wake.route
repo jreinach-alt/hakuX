@@ -1,0 +1,86 @@
+# Blood Wake (4D530010): one route for the first run and later runs.
+# PLAYED by nav.py on the Thor, 2026-09-27 04:15 PDT (lane.titleroutes HELD
+# session blood-wake.first-run-20260927T041516).
+#
+#   title, "Press START" (START) -> MAIN MENU, cursor on Story Mode (A) ->
+#   CREATE / LOAD GAME, cursor on Create Game (A) -> CREATE GAME, focus on
+#   Select Storage = Xbox Hard Disk (A keeps it) -> left stick down moves
+#   the focus to the slot list, NEW GAME (A) -> [later runs only: "You are
+#   about to overwrite an existing saved game" (A)] -> story pages, a sketchbook
+#   (A, A) -> SELECT DIFFICULTY, mission 1 "Fish in a Barrel", cursor on
+#   Ensign (A) -> PLAYER BOAT, Speedboat (A) -> briefing pages (A, A, A) ->
+#   MISSION GOALS card (A) -> mission 1 on the water: the boat, minimap,
+#   weapon and hull bars.
+#
+# Every screen after the slot list takes A, and the overwrite prompt comes
+# only when a save exists, so the route presses A every 4.5 s, 14 times,
+# from the slot list on; spare presses land in the mission (A fires).
+#
+# Player control: RT held with LX max for 2.5 s gave the boat throttle and
+# a hard right turn, a white wake and the minimap rotated (nav frames
+# 012-q2 -> 013-turn). The play pattern holds RT and weaves the left stick.
+#
+wait 32.4
+shot boot30
+wait 7.2
+press START
+wait 5.1
+shot s1
+wait 7.3
+press A
+wait 5.1
+shot a1
+wait 9.4
+press A
+wait 5.0
+shot a2
+wait 7.6
+press A
+wait 5.1
+shot a3
+wait 12.6
+axis LY max
+wait 0.4
+axis LY mid
+wait 0.6
+shot down1
+wait 3.0
+press A
+wait 4.5
+press A
+wait 4.5
+press A
+wait 4.5
+press A
+wait 4.5
+press A
+wait 4.5
+press A
+wait 4.5
+press A
+wait 4.5
+press A
+wait 4.5
+press A
+wait 4.5
+press A
+wait 4.5
+press A
+wait 4.5
+press A
+wait 4.5
+press A
+wait 4.5
+press A
+wait 4.5
+wait 15.0
+mark gameplay
+repeat forever {
+    axis RT max
+    axis LX min
+    wait 1.5
+    axis LX max
+    wait 1.5
+    axis LX mid
+    wait 3
+}
