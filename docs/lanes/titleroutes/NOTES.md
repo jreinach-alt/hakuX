@@ -339,6 +339,29 @@ the replay reached control at the first of those shots. Nav frames
 `scratch/replay/gta-sa-001049/` (001425-moved.png, zz-end.png). Posted on
 #397 (comment 5853707979) with the other batch-3 titles.
 
+### Session 11: HELD Thor, 00:35-00:57 PDT (22 min; hold taken 00:27 while the GTA soak ran), battery 72%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Galleon (41540004) | thor | none yet (`scratch/galleon.draft.route`) | **failed twice** | the deck tutorial ("Turn Rhama to face towards the arrow"); Rhama turns under LX (nav frames `galleon.first-run-20260927T004625/005-c3 -> 006-turned`) |
+
+**Galleon: the title's window drifts.** The title ("Please press the START
+button to begin") times out into an attract demo, and the demo's load runs
+~2.5 min before "Exiting Demo" returns to the title. The window moved a lot
+between launches: up at 41 s in one, at 28 s in another, and already gone
+before 28 s in a third. START also selects on the menus (title -> save list
+-> slot A -> New Game), so a START train is safe. Replays:
+- one START at 48 s missed the title (`scratch/replay/galleon-004011/`, demo load);
+- a START every 3 s from 28 s to 58 s missed it too (`scratch/replay/galleon-005004/`);
+- a nav probe with a START every 2 s from 8 s to 60 s reached the new game's
+  intro (`~/hakux-work/nav/galleon.first-run-20260927T005445/`).
+Next: route = START every 2 s from 8 s to 60 s, then A every 6 s for ~90 s
+(the intro and its loading screens), mark at the deck tutorial. Replay it
+twice, because the failure is a timing window.
+
+After the intro the saves list holds slot B at "1/7" from pass 1; slot A is
+empty (the START train picks slot A).
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
@@ -360,9 +383,9 @@ request.
 | Black | black.returning | 1-1790482599-titleroutes-3358750 | 760 | 291 s of gameplay; fps window median 7.45 (min 6.52), 0% of gameplay time at >= 30; target 30. The mark frame's overlay reads FPS 7 |
 | Project Gotham Racing | pgr.returning | 1-1790483525-titleroutes-3587419 | 480 | 298 s of gameplay; fps window median 14.27 (min 5.14), 0% at >= 30; target 60. Verdict also flags a hang: 11.6 s without guest flips after the mark |
 | Bruce Lee | bruce-lee | 1-1790487611-titleroutes-261841 | 420 | 289 s of gameplay; fps window median 59.94 (min 2.83), 81.3% at >= 30; target 30. Verdict flags a hang: 21.2 s without guest flips after the mark |
-| Crash Twinsanity | crash-twinsanity | 1-1790489396-titleroutes-512742 | 540 | pending |
-| MechAssault 2 | mechassault-2 | 1-1790492206-titleroutes-681960 | 530 | pending |
-| GTA: San Andreas | gta-sa | 1-1790493356-titleroutes-734802 | 500 | pending |
+| Crash Twinsanity | crash-twinsanity | 1-1790489396-titleroutes-512742 | 540 | 268 s of gameplay; fps window median 15.72 (min 9.38), 0% at >= 30; target 60 |
+| MechAssault 2 | mechassault-2 | 1-1790492206-titleroutes-681960 | 530 | 315 s of gameplay; fps window median 29.97 (min 15.81), 91.7% at >= 30; target 30 |
+| GTA: San Andreas | gta-sa | 0-0-x-1790493356-titleroutes-734802 (promoted from 1-1790493356-titleroutes-734802) | 500 | 279 s of gameplay; fps window median 4.56 (min 3.91), 0% at >= 30; target 30. Ten 11-15 s hangs, 80% of audio callbacks short. apk 397ae7dca16a. Posted on #397 (comment 5853851696) |
 
 ## Do not repeat
 
