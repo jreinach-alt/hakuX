@@ -160,8 +160,8 @@ tbflip424-doa1u.json stays on file as registered: piloted, not completed, no ver
 | `1-1790525435-lane.tbflip424-730250` | B | r2 (**Nova**) | 21 | 0.0 | 89 | 31 | rt 1, fatal 0, tail 1.3 s; G 46.2 ms, di/s 0, slow/s 35,784, fs/s 35,671 |
 | `0-0-x-1790525435-lane.tbflip424-730605` | A | r3 (**Nova**) | 19.0 | 0.8 | 86 | 30 | rt 0, fatal 0, tail 2.4 s; G 49.6 ms, di/s 533, slow/s 1237 |
 | `0-0-x-1790525435-lane.tbflip424-730719` | B | r3 (**Nova**) | 21.5 | 0.0 | 92 | 30 | rt 1, fatal 0, tail 1.0 s; G 46.0 ms, di/s 0, slow/s 37,615, fs/s 36,672 |
-| `1-1790532976-lane.tbflip424-3375310` | A | r4 (Nova) | | | | | queued 18:16Z |
-| `1-1790532976-lane.tbflip424-3375824` | B | r4 (Nova) | | | | | queued 18:16Z |
+| `1-1790532976-lane.tbflip424-3375310` | A | r4 (Nova) | 19 | 0.8 | 87 | 31 | rt 0, fatal 0, tail 5.1 s; G 47.8 ms, di/s 537, slow/s 1232 |
+| `1-1790532976-lane.tbflip424-3375824` | B | r4 (Nova) | 21.0 | 0.0 | 86 | 31 | rt 1, fatal 0, tail 2.6 s; G 48.7 ms, di/s 0, slow/s 37,119, fs/s 37,169 |
 
 ## 8. Attempt 5 (2026-09-27 ~16:10Z): the Blinx pilot, reviewed
 
@@ -219,3 +219,54 @@ Why attempt 5 did not finish: it ended on a correct wait for r2/r3. hostops resu
    check M0 on r4 and take Nova medians over r2-r4.
 2. M1 A floor < 1.0 -> no flip; report on #424 (with M4' as read, labelled inert). All legs pass
    -> flip `hakux_tcg424_range_on()` and run the pgraph byte-identity check.
+
+## 10. Attempt 7 (2026-09-27 ~21:30Z): the verdict, no flip
+
+Why attempt 6 did not finish: it ended on a correct wait for the r4 pair, which ran on the Nova
+after the session ended. `jobs/handback.sh` resumed the lane at 21:26Z with CI green on 96af7a8506.
+
+Merged origin/master (173 commits, clean). The branch's diff against master is now docs only: this
+NOTES file, `playread.py` and the three prediction files. There is no accel/ change, since #465
+landed JC default-on and the range flip is not made.
+
+### Verdict, tbflip424-blinx2.json as amended on #424 (Nova, r2-r4, medians over three runs per arm)
+
+| leg | A | B | registered test | verdict |
+|---|---|---|---|---|
+| M0 | ng 86-88, m50 30-31, rt 0, fatal 0, tail <= 5.1 s | ng 86-92, m50 30-31, rt 1, fatal 0, tail <= 2.6 s | all clauses | PASS, no VOID run |
+| M1 churn% | 0.9, 0.8, 0.8 -> **0.8** | 0.0, 0.0, 0.0 -> 0.0 | A >= 1.0 and B <= 0.5 x A | **FAIL (A < 1.0)** |
+| M1 di/s | 564, 533, 537 -> 537 | 0, 0, 0 -> 0 | B <= 0.1 x A | pass |
+| M4' gfps | 23.0, 19.0, 19 -> **19** | 21, 21.5, 21.0 -> **21** | B >= A - 1 | reads pass, **inert** because M1 failed |
+
+The Thor pair (r1, reported on its own, not pooled): A 19 gfps, churn 2.5; B 17.0 gfps, churn 0.0.
+
+Gameplay frames: A `dispatch/results/1-1790517344-lane.tbflip424-1425036/route-frames/085757-play.png`,
+B `dispatch/results/1-1790517350-lane.tbflip424-1433200/route-frames/090705-play.png` (Thor pilot).
+The Nova runs were not read frame by frame. Their M0 columns (m50 30-31, ng 86-92) match the pilot's
+normal state.
+
+**Decision, as registered: do not flip.** M1's "A < 1.0" branch says Blinx gameplay on the Nova
+spends too little on the two #424 mechanisms for the arm to show a cost that trades against a saving.
+`hakux_tcg424_range_on()` stays default-off.
+
+### What the counters show anyway (diagnosis, not a verdict)
+
+- The range test engages fully. di/s goes ~540 -> 0. On B, ~36-37k stores a second reach the
+  invalidator (A: ~530), and the bitmap answers all of them (fs/s ~ inv/s). slow/s goes ~1.2k -> ~37k.
+- B's cost does not show in gfps on the Nova. B is at or above A in all three pairs, and G is flat
+  (A 43.8-49.6 ms, B 46.0-48.7 ms). B's extra ~36k invalidator entries a second do not cost a
+  measurable frame here.
+- A narrower default (for example, the range test only on pages above a store-rate threshold) is
+  **not worth a lane on this evidence**. It would exist to cut B's invalidator traffic, and nothing
+  measured so far shows that traffic costing anything. What stands between the lever and 0.5 is a
+  Blinx arm whose A side churns enough to price it. The Thor's A read 2.5% on r1, and
+  tbflip424-blinx2.json was registered for the Thor. Two more Thor pairs would complete it as
+  written (three Thor pairs with r1). That call belongs to hostops, because the amendment moved the
+  verdict to the Nova.
+
+### Do not repeat
+
+- Do not judge a cost-side leg on the Nova's Blinx: A churns 0.8-0.9% there, against 2.2-2.8% on
+  the Thor, on the same window.
+- Check that the A side's counter clears its floor on the device that will run the arm before you
+  move a registered arm across devices.
