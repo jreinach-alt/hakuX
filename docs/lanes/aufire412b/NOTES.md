@@ -320,6 +320,29 @@ from a handful of guest PCs, while real work returns from many.
 
 Handed to lane.jcache425 on #425 (deliver.sh), and posted on #412.
 
+## Status (2026-09-26 18:55 PDT, session 2): done, one read outstanding
+
+Done: the profile (section 6), priced per lever; the finding handed to
+lane.jcache425 on #425 (issuecomment-5851721315) and posted on #412
+(issuecomment-5851724172); `Lw` printed on `hakuX-cpu`.
+
+Not done, with the reason:
+
+- **The `Lw` read.** Request `1790470425-aufire412b-4161655` (perflog, ref
+  53a9b91df3, survey route, Nova) was 4th in the Nova queue when this session
+  ended. Its result lands in `dispatch/results/1790470425-aufire412b-4161655/`
+  whatever this PR's state is. Read `cpu_Lw` in the pause (220-285) and
+  mission (299-483) windows with aufire412's `splitread.py`. If it is ~0, the
+  guest's MMIO wait on `pfifo.lock` is not what delays the VBLANK timer, and
+  the next candidate is the puller's `pgraph.lock` hold (section 3, item 2).
+  The PR is marked ready now so that `profile.c` goes back to lane.remote, as
+  the grant asked.
+- **The Surf/Tx wait-excluded split** (brief, Proof). It needs vk/surface.c
+  and vk/texture.c, which are not this lane's. After section 6, it is also
+  not where the frame goes: the vCPU's exec-loop returns bound 37 ms of the
+  62 ms frame. The Surf/Tx split is worth asking for only if #425's return
+  counter shows the returns are a guest poll loop.
+
 ## Do not repeat
 
 - The brief's premise that "the vCPU is saturated in both arms" came from the
