@@ -1409,10 +1409,3 @@ issues = []
 files = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-merged.sh", "docs/lanes/handbackmerged/**"]
 standing = false
 note = "STARTED (hostops 2026-09-27 08:10 PDT), briefs/handbackmerged.md. Harness defect, no tracker issue: handback.sh idle_lanes() skips any lane with a MERGED PR, so a multi-batch lane (lane.titleroutes after PR #476, soaks queued for the next batch) is never resumed when its runs finish. docs/testing/jobs/handback.sh taken from [free]."
-
-
-[lane.cloud-remediate-460]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-460, remediation of PR #460 on branch lane/retreason425, attempt 1 of 4 on claude-opus-5-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 460` removes this row when the unit ends."
