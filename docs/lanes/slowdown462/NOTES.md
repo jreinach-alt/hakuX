@@ -188,6 +188,92 @@ at least the GPU's 29 ms: **<= 34 fps**, and **<= 30 fps** at the title's
 VBLANK pacing (2 VBLANKs = 33.4 ms). If the returns are a guest wait loop,
 removing them makes the wait cheaper and fps does not move (aufire412b).
 
+## Blinx (4D530013, #372)
+
+**Soak** `1-1790492277-slowdown462-690144` (e5db66fa37 perflog, apk
+c4b30cf46bd6, Nova, MAX restored). The level starts ~136 s after line 1
+(shot 000642 in the first level, timer 0'01"); the menu rounds' START pauses
+it until `mark play` (242 s). Window `mark play`+10 s to 10 s before the end
+(252-411 s; shots 000852-001100: level play, 13-30 fps on the overlay):
+
+| | value |
+|---|---|
+| fps (gfps cadence) / ms per flip | 17.17 / 54.6 (pace.py: 16.93 / 59.1) |
+| VBLANKs per flip (v2/v3/v4+) / VBLANK rate | 3.01 (42/32/26%) / 51.2 Hz, 619 clamps |
+| vCPU busy (`[tlb68]`) | 78% |
+| perflog renderer: Tot / Idle | 42.1 / 2.9 ms |
+| Draw (Pipe 17.2: Tx 6.9, Sh 7.9, Lu 1.2) | 28.9 ms |
+| Fin (Fen 8.6; 77.5 FLIP_STALL-deferred finishes per 60 flips) | 8.9 ms |
+| Surf / Syn | 2.0 / 1.4 ms |
+| GPU (GR 20.0) | 23.3 ms |
+| draws / render passes / RP breaks | 2,829 / 19 / 1,205 per 60 flips (20 per frame) |
+| #424 churn | 0.9% of vCPU |
+
+Not blinx372d's attract-demo shape: `Sub` is 0.1 and no staged downloads
+(`sd_*` all 0) in level play. The perflog timers are wall time; the split
+between the vCPU (78% busy) and the renderer's `Pipe` waits the profile.
+
+**Profile** `perf/2026-09-26-slowdown462/blinx/blinx.data` (a593d8eb85, not
+perflog, **on-CPU only**: the `--trace-offcpu` attempt failed at once with
+"Event type 'cpu-clock' is not supported", and the script's fallback recorded
+without it). 00:23:11-00:23:42 PDT, `mark play`+15 s, level play at 13-23 fps
+(the session logcat's gfps lines: 8 x 60 flips in 30.3 s = 15.8 fps, 63
+ms/flip). Per-thread on-CPU from cpu-clock samples (1 sample = 1 ms):
+
+| thread | on-CPU (of 30.3 s) | ms/frame | top self |
+|---|---|---|---|
+| vCPU (tid 17669) | 22,046 ms (73%) | 45.9 | `cpu_exec_loop` 44.6%, guest JIT 30.8%, `cpu_tb_exec` 4.8%, TB lookup (`tb_lookup`, `helper_lookup_tb_ptr`, `x86_get_tb_cpu_state`, `curr_cflags`, qht) 12.2% |
+| PFIFO (tid 17677) | 13,080 ms (44%) | 27.3 | `memcpy_opt` 30.5% (47% of it `pgraph_vk_snapshot_state` per draw pass, 27% `apply_uniform_updates`, 11% `pgraph_vk_finish` <- process_pending_reports), `apply_uniform_updates` 8.5%, `fast_hash` 4.7% (95% the uniform hash) |
+| DSP (tid 17675) | 3,028 ms | | kernel 60% |
+
+The vCPU is off-CPU ~8.3 s of 30 (16.6 ms/frame). The soak's FLIP_STALL
+deferred finishes (77.5 per 60 flips, `Fen` 8.6 ms) are DOA's mechanism
+(#474), but without the switch records that is a candidate, not a finding.
+
+**Blinx answer** (frame 63 ms at 15.8 fps, shipping build, level play):
+
+| # | cost | ms/frame | share | evidence | candidate fix | owner |
+|---|---|---|---|---|---|---|
+| 1 | exec-loop returns (`cpu_exec_loop` self + `cpu_tb_exec`) | 22.7 | 36% | blinx.data tid 17669: 44.6% + 4.8% of 22,046 ms | chain the returning TBs (retreason425's split, aufdispatch's designs PR #469); same shape as AUF | #425 (retreason425) |
+| 2 | vCPU blocked | 16.6 | 26% | 30.3 s wall - 22.0 s on-CPU; cause not captured (no switch records) | if it is `pgraph.lock` at the flip (DOA's `pgraph_read` wait), #474's fix | #474 (flip474), to be confirmed |
+| 3 | TB lookup | 5.6 | 9% | 12.2% of vCPU samples | #425 jump cache (default off) | #425 |
+
+The guest's own JIT code is 14.1 ms/frame (22%) and not a lever. The PFIFO
+(27.3 ms on-CPU) is not the bound; its per-draw snapshot and uniform upload
+are ~12 ms of it.
+
+Bounds, not values: with (1) gone and the blocked time unchanged, the vCPU
+still needs 23.2 on + 16.6 blocked = 39.8 ms per frame: **<= 25 fps**. With
+(1) and (2) both gone, the frame is at least max(vCPU 23.2, GPU 23.3, PFIFO
+on-CPU 27.3) ms: **<= 36 fps**, and the title's 2-VBLANK pacing (33.4 ms) caps
+it at **<= 30 fps**.
+
+## Blinx 2 (4D530065, no issue)
+
+**Soak** `1-1790492277-slowdown462-690171` (e5db66fa37 perflog, apk
+c4b30cf46bd6, Nova, MAX restored). Window `mark play`+10 s to 10 s before the
+end (246-415 s); shots 001525-001824 are the first mission ("Locate the 3
+balloons"), the route walking into a wall:
+
+| | value |
+|---|---|
+| fps (gfps cadence) / ms per flip | 28.86 / 33.8 (pace.py 28.82 / 34.7) |
+| VBLANKs per flip (v2/v3) / VBLANK rate | 2.07 (93/7%) / 59.6 Hz, 46 clamps |
+| vCPU busy (`[tlb68]`) | 92% |
+| perflog renderer: Tot / Idle | 29.5 / 2.8 ms |
+| Fin (Sub 13.6, Fen 1.6); `sd_dl` 60 and `sd_cDef` 31 per 60 flips | 15.4 ms |
+| Draw (Pipe 4.9, Sh 3.7) / Surf / Syn | 11.1 / 0.9 / 1.9 ms |
+| GPU (GR 16.7) | 17.0 ms |
+| draws / RP breaks | 1,230 / 926 per 60 flips |
+| #424 churn | 0.7% of vCPU |
+
+**On this build and device Blinx 2 is at its 30 fps pacing cap** in the first
+mission (93% of flips at 2 VBLANKs). #462's 21.7 fps is the Thor's, from
+another run; fps is compared on one handheld, so this lane's figure is 28.8.
+The vCPU is at 92%, so a heavier scene would drop below the cap. The one
+synchronous download per frame (`sd_dl` 60/60, `Sub` 13.6 ms) is
+blinx372d's zeta-download shape, the same as Blinx 1's attract demo.
+
 ## Log (PDT, 2026-09-26)
 
 - 21:04 pilot queued (DOA1U); ran 21:12-21:25; reviewed and

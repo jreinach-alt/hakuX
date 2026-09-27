@@ -87,6 +87,8 @@ say "device free; session starts"
 lvl=$(a shell dumpsys battery | tr -d '\r' | awk '/level:/{print $2; exit}')
 say "battery $lvl"
 [ -n "$lvl" ] && [ "$lvl" -ge "${MIN_BATT:-20}" ] || { say "battery below ${MIN_BATT:-20} or unreadable"; exit 4; }
+# --trace-offcpu needs the sched_switch tracepoint; these say whether it can open
+say "perf: harden=$(a shell getprop security.perf_harden | tr -d '\r') paranoid=$(a shell cat /proc/sys/kernel/perf_event_paranoid | tr -d '\r') uptime=$(a shell cat /proc/uptime | tr -d '\r' | cut -d' ' -f1)"
 
 ISOPATH=$(a shell "ls /storage/*/Games/XBox/$ISO" 2>/dev/null | tr -d '\r' | head -1)
 [ -n "$ISOPATH" ] || { say "no $ISO on the Nova"; exit 5; }
@@ -132,7 +134,8 @@ if wait_for "ROUTE .* ${ANCHOR:-mark play}" "${ANCHOR_N:-1}" 400; then
         off=""; [ "${OFFCPU:-0}" = 1 ] && [ $attempt = 1 ] && off="--trace-offcpu"
         rec=$(T=90 a shell "simpleperf record --app $PKG -e cpu-clock $off --call-graph dwarf,8192 --duration 30 -f 1000 -o /data/local/tmp/$SHORT.data" 2>&1)
         say "record attempt $attempt ${off:-(on-CPU only)}"
-        echo "$rec" | tail -3 | sed "s/^/CAP rec: /"
+        # all of it: on 09-27 attempt 1 failed with an error the last 3 lines cut
+        echo "$rec" | grep -v 'symbol table' | tail -8 | sed "s/^/CAP rec: /"
         echo "$rec" | grep -q "Recorded for" && { a shell log -t hakuX-route "'prof end'" >/dev/null; ok=1; break; }
         sleep 2
     done
