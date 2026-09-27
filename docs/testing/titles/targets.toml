@@ -326,3 +326,8 @@ route = "midtown-madness-3.returning"
 name = "Blood Wake"
 iso = { thor = "4D530010-Blood_Wake.xiso.iso" }
 route = "blood-wake"
+
+[titles."4D53001E"]
+name = "Brute Force"
+iso = { thor = "4D53001E-Brute_Force.xiso.iso" }
+route = "brute-force"
