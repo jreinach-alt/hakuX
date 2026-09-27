@@ -1,0 +1,28 @@
+{
+  "registered_utc": "2026-09-26T14:39:57Z",
+  "who": "lane.blinx372d",
+  "issue": "372",
+  "title": "4D530013-Blinx_The_Time_Sweeper.xiso.iso",
+  "device": "thor",
+  "seconds": 240,
+  "frames_every": 30,
+  "perflog": true,
+  "runs_per_arm": 1,
+  "a_ref": "9540a21f79",
+  "b_ref": "0f9735049c",
+  "prediction": "SAME-SESSION A/B, two hands-off 240 s perflog soaks of Blinx's attract demo on the Thor, frames every 30 s in both arms, queued back to back. A is 9540a21f79: master a5b5b628f2 plus the [evict372] counter, no behaviour change. B is 0f9735049c: A plus the GPU handoff in vk/surface.c update_surface_part (surface_handoff_partner / surface_handoff_record). Registered before either arm, and before any [evict372] line exists: the counter-only soak 1790432905-blinx372d-2396550 is still queued. Judge: python3 docs/lanes/blinx372d/abread.py <A logcat> <B logcat> --window 135,265 --spec-a <A result.json> --spec-b <B result.json> --prediction docs/testing/predictions/blinx372d-demo-ab.json. M0 and M1 are the instrument (both arms: the spec has hakuX-stall, at least 10 stall lines in the window, pres+flip == 60 on every line, and [evict372] printed in the window); failing either voids the arm. P0 is the premise from lane.blinx372c, re-measured in A: sd per frame is between 1.7 and 2.2, and A's counter sees at least 1.5 draw-dirty incompatible evictions per frame. It fails if the demo's pattern changed since 6c25a829ef. P1 is the counter's question, and it is a guess: A's most-repeated eviction pair has the same swizzle, pitch, width, height and bytes per pixel on both sides, which is the only case this hunk hands off. The rival is a pitch or size mismatch (the brief's 'plain vkCmdCopyImage' case), which B declines, and then P2 to P4 fail with it. P2 is the mover: B's sd per frame is at most 0.2 (A's is 2.0), and B hands off at least 1.5 evictions per frame. P3 is the guard: B has no fallbacks (the partner the eviction found is the one taken off the shelf), and Finish sd == dl + cDef + pDl + dDl on every B line (a download site the stall line does not name would void the site split). P4 is the frame rate over the gfps cadence: B/A >= 1.2 and B is between 15 and 24 fps. Two master soaks on 6c25a829ef read 12.56 and 12.36 (ratio 1.016), so 1.2 is well outside the no-change spread. The price bound is lane.blinx372c's demobound: median Tot 66-71 ms, Sub 33.5-35.2 ms (the finish waits' upper bound), GPU 44-46 ms. With the waits gone the frame is GPU-bound near 44-46 ms, 22-23 fps by Tot, and gfps runs about 0.83 of 1000/Tot in A, so about 18-19. P4 fails in the world where the GPU work the synchronous finish hid (the download half is in X) is the real bottleneck, and B stays under 15. B's frames at 150, 180, 210 and 240 s are read by eye against A's: the demo scene with no depth garbage in colour, no black or stale frame. That is not a leg, because the demo's timing is not frame-locked between runs.",
+  "expect": {
+    "M0/stall_lines_min": 10,
+    "P0/A_sd_per_frame_range": [1.7, 2.2],
+    "P0/A_dirty_evict_per_frame_min": 1.5,
+    "P1/A_top_pair_same_geometry_is": true,
+    "P2/B_sd_per_frame_max": 0.2,
+    "P2/B_handoffs_per_frame_min": 1.5,
+    "P3/B_fallbacks_max": 0,
+    "P3/B_sum_mismatch_lines_max": 0,
+    "P4/fps_ratio_min": 1.2,
+    "P4/B_fps_range": [15, 24]
+  },
+  "expect_counts": {},
+  "expect_note": "These are named rules read by docs/lanes/blinx372d/abread.py, not golden keys. A soak writes no captures, and arms.sh skips soaks structurally; this lane queues both arms with request.sh."
+}

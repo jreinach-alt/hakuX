@@ -34,6 +34,18 @@ import subprocess
 import sys
 import time
 
+CONSOLE_ADDR = "/home/justin/hakux-work/hardware/console.addr"
+
+
+def console_addr(path: str = CONSOLE_ADDR) -> str | None:
+    """The console's address, from the one file a re-IP edits; None if unreadable."""
+    try:
+        with open(path) as fh:
+            words = fh.read().split()
+    except OSError:
+        return None
+    return words[0] if words else None
+
 
 class State(enum.Enum):
     AT_DASHBOARD = "at-dashboard"
@@ -180,13 +192,16 @@ class Supervisor:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--host", default="192.168.50.1")
+    ap.add_argument("--host", default=console_addr(),
+                    help="console address (default: %s)" % CONSOLE_ADDR)
     ap.add_argument("--xbe", default="E:\\Apps\\NV2AProbe\\default.xbe")
     ap.add_argument("--interval", type=float, default=10.0)
     ap.add_argument("--max-bounces", type=int, default=3)
     ap.add_argument("--once", action="store_true",
                     help="observe and act once, then exit (for checking)")
     args = ap.parse_args()
+    if not args.host:
+        ap.error("no --host, and %s is missing or empty" % CONSOLE_ADDR)
 
     sup = Supervisor(Console(args.host), args.xbe, max_bounces=args.max_bounces)
     print("supervising %s, launching %s when the dashboard is up"

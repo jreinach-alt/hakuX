@@ -187,6 +187,11 @@ typedef struct ShaderPipelineStats {
     unsigned int pipeline_cache_disk_saved;
 } ShaderPipelineStats;
 
+/* Before the structs below, whose perf-only fields test it */
+#ifndef NV2A_PERF_LOG
+#define NV2A_PERF_LOG 0
+#endif
+
 typedef struct FramePhaseTimingWork {
     int64_t surface_update_ns;
     int64_t texture_upload_ns;
@@ -225,6 +230,15 @@ typedef struct FramePhaseTimingWork {
     int gpu_gap_count_small;    /* gaps < 0.1ms */
     int gpu_gap_count_medium;   /* gaps 0.1-0.5ms */
     int gpu_gap_count_large;    /* gaps > 0.5ms */
+#if NV2A_PERF_LOG
+    /* Sub-phases within draw_dispatch: the super-fast and medium-fast paths,
+     * and their texture binds, which neither of the two includes */
+    int64_t draw_sfp_ns;
+    int64_t draw_mfp_ns;
+    int64_t draw_ftx_ns;
+    /* Texture content hash; nested in Tx and FTx, as texture_upload is */
+    int64_t tex_hash_ns;
+#endif
 } FramePhaseTimingWork;
 
 typedef struct FramePhaseTimingStats {
@@ -265,6 +279,12 @@ typedef struct FramePhaseTimingStats {
     float gpu_gap_count_small;
     float gpu_gap_count_medium;
     float gpu_gap_count_large;
+#if NV2A_PERF_LOG
+    float draw_sfp_ms;
+    float draw_mfp_ms;
+    float draw_ftx_ms;
+    float tex_hash_ms;
+#endif
 } FramePhaseTimingStats;
 
 typedef struct CpuTimingWork {
@@ -405,10 +425,6 @@ void nv2a_profile_get_vsync_timing_str(char *buf, int bufsize);
 void nv2a_profile_get_surf_timing_str(char *buf, int bufsize);
 void nv2a_profile_get_workload_str(char *buf, int bufsize);
 
-#ifndef NV2A_PERF_LOG
-#define NV2A_PERF_LOG 0
-#endif
-
 /*
  * Fast nanosecond clock for per-frame phase timing.
  * On ARM64, reads the generic timer directly via cntvct_el0.
@@ -458,8 +474,10 @@ static inline void nv2a_profile_inc_counter(enum NV2A_PROF_COUNTERS_ENUM cnt)
 /*
  * Exclusive phase timer: like NV2A_PHASE_TIMER but subtracts any
  * pgraph_vk_finish() time that occurs while the parent phase is active.
- * Use for top-level phases (surface_update, draw_dispatch, texture_upload)
- * that can call finish internally, so Tot doesn't double-count.
+ * Use for every phase that can call finish internally, top-level
+ * (surface_update, draw_dispatch, texture_upload) or nested (draw_dispatch's
+ * and draw_pipeline's children), so finish is counted once, in Fin: a plain
+ * child of an exclusive parent could otherwise exceed it.
  */
 #define NV2A_PHASE_TIMER_BEGIN_EXCL(phase) \
     int64_t _phase_t0_##phase = nv2a_clock_ns(); \
@@ -470,6 +488,22 @@ static inline void nv2a_profile_inc_counter(enum NV2A_PROF_COUNTERS_ENUM cnt)
                       - _phase_fsnap_##phase; \
     g_nv2a_stats.phase_working.phase##_ns += \
         nv2a_clock_ns() - _phase_t0_##phase - _nested; \
+} while (0)
+
+/*
+ * Exclusive of finish and also of one child phase that is printed beside
+ * the parent rather than inside it (Sfp and Mfp around their texture binds,
+ * FTx), so the two stay disjoint. The child must be an _EXCL timer, or the
+ * finish nested in it would be subtracted twice.
+ */
+#define NV2A_PHASE_TIMER_BEGIN_EXCL_CHILD(phase, child) \
+    NV2A_PHASE_TIMER_BEGIN_EXCL(phase); \
+    int64_t _phase_csnap_##phase = g_nv2a_stats.phase_working.child##_ns
+
+#define NV2A_PHASE_TIMER_END_EXCL_CHILD(phase, child) do { \
+    NV2A_PHASE_TIMER_END_EXCL(phase); \
+    g_nv2a_stats.phase_working.phase##_ns -= \
+        g_nv2a_stats.phase_working.child##_ns - _phase_csnap_##phase; \
 } while (0)
 
 #else /* !NV2A_PERF_LOG */
@@ -483,6 +517,8 @@ static inline void nv2a_profile_inc_counter(enum NV2A_PROF_COUNTERS_ENUM cnt)
 #define NV2A_PHASE_TIMER_END(phase)  do { } while (0)
 #define NV2A_PHASE_TIMER_BEGIN_EXCL(phase) do { } while (0)
 #define NV2A_PHASE_TIMER_END_EXCL(phase)  do { } while (0)
+#define NV2A_PHASE_TIMER_BEGIN_EXCL_CHILD(phase, child) do { } while (0)
+#define NV2A_PHASE_TIMER_END_EXCL_CHILD(phase, child)  do { } while (0)
 
 #endif /* NV2A_PERF_LOG */
 

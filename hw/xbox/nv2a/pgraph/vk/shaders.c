@@ -23,6 +23,10 @@
 #include "renderer.h"
 #include "ui/xemu-settings.h"
 
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
+
 #if OPT_ASYNC_COMPILE
 extern bool xemu_get_async_compile(void);
 #endif
@@ -475,6 +479,51 @@ void pgraph_vk_reclaim_descriptor_overflow(PGRAPHVkState *r)
     }
 }
 
+/*
+ * Overflow pools the rings may hold before a full ring falls back to a
+ * finish. They are reclaimed only by pgraph_vk_flush_all_frames() with
+ * nothing recording, and the ring-full finish below is that function's main
+ * caller, so a scene that never reaches one would otherwise grow without
+ * bound. 16 x DESCRIPTOR_GROW_BATCH sets is tens of frames of the busiest
+ * scene measured (Agent Under Fire, ~1,950 UBO sets per frame, issue #412).
+ */
+#define DESCRIPTOR_MAX_OVERFLOW_POOLS 16
+
+/*
+ * The UBO ring is full. Grow it through an overflow pool instead of
+ * finishing: the finish submits and waits for the GPU to drain mid-frame,
+ * and a scene that rebinds shaders a few thousand times per frame took one
+ * on most frames (#412: 23 ms of a 62 ms frame). Sets already handed out
+ * stay where they are, so draws recorded earlier in this command buffer keep
+ * their descriptors; #34 finding 1 was the finish-less alternative of
+ * rewinding the index. Falls back to the finish past the cap.
+ */
+static void make_room_in_ubo_ring(PGRAPHState *pg)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    static int grows;
+
+    if (r->descriptor_overflow_pools->len < DESCRIPTOR_MAX_OVERFLOW_POOLS &&
+        grow_descriptor_ring(r, r->push_ubo_set_layout, &r->push_ubo_sets,
+                             &r->push_ubo_set_count, false)) {
+        grows++;
+#ifdef __ANDROID__
+        if (grows <= 16 || grows % 256 == 0) {
+            __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
+                                "ubo_ring_grow: n%d pools%u sets%d", grows,
+                                r->descriptor_overflow_pools->len,
+                                r->push_ubo_set_count);
+        }
+#endif
+        return;
+    }
+
+    OPT_STAT_INC(buf_ds_full);
+    pgraph_vk_finish(pg, VK_FINISH_REASON_NEED_BUFFER_SPACE);
+    pgraph_vk_flush_all_frames(pg);
+    r->push_ubo_set_index = 0;
+}
+
 void pgraph_vk_update_descriptor_sets(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -504,10 +553,7 @@ void pgraph_vk_update_descriptor_sets(PGRAPHState *pg)
         !r->push_ubo_set_index;
 
     if (need_new_ubo_set && r->push_ubo_set_index >= r->push_ubo_set_count) {
-        OPT_STAT_INC(buf_ds_full);
-        pgraph_vk_finish(pg, VK_FINISH_REASON_NEED_BUFFER_SPACE);
-        pgraph_vk_flush_all_frames(pg);
-        r->push_ubo_set_index = 0;
+        make_room_in_ubo_ring(pg);
     }
 
     if (r->uniforms_changed) {
@@ -585,10 +631,7 @@ void pgraph_vk_update_descriptor_sets(PGRAPHState *pg)
     /* Write UBO descriptor set */
     if (need_new_ubo_set) {
         if (r->push_ubo_set_index >= r->push_ubo_set_count) {
-            OPT_STAT_INC(buf_ds_full);
-            pgraph_vk_finish(pg, VK_FINISH_REASON_NEED_BUFFER_SPACE);
-            pgraph_vk_flush_all_frames(pg);
-            r->push_ubo_set_index = 0;
+            make_room_in_ubo_ring(pg);
         }
         assert(r->push_ubo_set_index < r->push_ubo_set_count);
 
