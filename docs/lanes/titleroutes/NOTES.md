@@ -307,6 +307,23 @@ written; attempt 3 wrote it. Hostops lifted the hold at 23:26. From here:
 release the hold with turns to spare, and write the board line in the same
 step as the queueing.
 
+### Session 9: HELD Thor, 23:37-23:57 PDT (20 min; hold taken 23:31 while the Bruce Lee soak ran), battery 79%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| MechAssault 2: Lone Wolf (4D53006B) | thor | `mechassault-2.route` | yes (23:55; one failed replay before it) | first mission, a city street at night, tutorial boxes; the mech walks, turns and fires mortars |
+
+**MechAssault 2.** No profile step. The first route (from the 23:37 nav
+session) put two STARTs into the intro and an A and a BACK into the mission
+cutscene. On replay the intro ran slower, the menu presses fell one screen
+behind, BACK went back to the main menu, and the "gameplay" frame was the
+attract demo (top-down city). The route that replays waits for the title
+(it holds "Press START" for at least 60 s), then START, A, A, A 10 s apart
+(A also skips the campaign FMV), and no input in the cutscene. Nav frames
+`~/hakux-work/nav/mechassault-2.first-run-20260926T234710/` (008-moved.png),
+replay `scratch/replay/mechassault-2-235122/zz-end.png` (the mech 40 s past
+the mark).
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
@@ -327,8 +344,9 @@ request.
 | Black | black.returning | 1-1790482534-titleroutes-3347838 | 300 | void: no gameplay reached |
 | Black | black.returning | 1-1790482599-titleroutes-3358750 | 760 | 291 s of gameplay; fps window median 7.45 (min 6.52), 0% of gameplay time at >= 30; target 30. The mark frame's overlay reads FPS 7 |
 | Project Gotham Racing | pgr.returning | 1-1790483525-titleroutes-3587419 | 480 | 298 s of gameplay; fps window median 14.27 (min 5.14), 0% at >= 30; target 60. Verdict also flags a hang: 11.6 s without guest flips after the mark |
-| Bruce Lee | bruce-lee | 1-1790487611-titleroutes-261841 | 420 | pending |
+| Bruce Lee | bruce-lee | 1-1790487611-titleroutes-261841 | 420 | 289 s of gameplay; fps window median 59.94 (min 2.83), 81.3% at >= 30; target 30. Verdict flags a hang: 21.2 s without guest flips after the mark |
 | Crash Twinsanity | crash-twinsanity | 1-1790489396-titleroutes-512742 | 540 | pending |
+| MechAssault 2 | mechassault-2 | 1-1790492206-titleroutes-681960 | 530 | pending |
 
 ## Do not repeat
 
