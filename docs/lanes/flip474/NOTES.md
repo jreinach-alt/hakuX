@@ -542,9 +542,14 @@ Three Nova requests, priority 1, each 300 s, survey route, perflog:
 
 | request | ref | prediction |
 |---|---|---|
-| see the `[lane.flip474] waiting:` comment on the PR for the ids | `4b22f2526b` (A) | `flip474-doa-forza414-ab.json` |
-| | `94f002d309` (B) | `flip474-doa-forza414-ab.json` |
-| | `3112e410db` (pilot) | `flip474-o4-pilot.json` |
+| `1-1790527182-flip474-1639694` | `4b22f2526b` (A) | `flip474-doa-forza414-ab.json` |
+| `1-1790527188-flip474-1640231` | `94f002d309` (B) | `flip474-doa-forza414-ab.json` |
+| `1-1790527190-flip474-1640480` | `3112e410db` (pilot) | `flip474-o4-pilot.json` |
+
+Queued 16:40Z on PR #485, behind about sixteen requests. The priority
+prefix is set with `env HAKUX_RELEASE_PRIO=1 bash docs/testing/request.sh`;
+the bare `VAR=1 bash ...` spelling is refused by this session's command
+check.
 
 When they land: `o4read.py --show` on each, judge every leg, read the shots
 for the scene, post on #474, #414 and #462, and mark the PR ready. The three
