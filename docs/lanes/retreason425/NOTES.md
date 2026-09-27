@@ -279,3 +279,125 @@ Next: read each soak with `rr425.py`; name the wake key with the long busy
 periods per title, its idle ms/frame, and its owner (#474 for PFIFO waits
 and pacing); check the Blinx titles' `[rr425pc]` for `sti; nop`; post on
 #425 and #462; then mark #460 ready.
+
+## 8. The wake split, read (attempt 4, resumed 2026-09-27 09:55 PDT)
+
+Why the previous session did not finish: it ended correctly on a wait for the
+three soaks and the wake arm, all outside the session. The soaks finished at
+09:54, 10:08 and 10:15 PDT. The arm (`retreason425-wake-inert.json`) was still
+queued when this was written.
+
+All three on the Nova, e156fcdf02 (apk 28f7987cf5ab, perflog, MAX regimen,
+survey route, 420 s). Windows: AUF 299-420 s (mission play, as before); the
+Blinx titles `mark play` + 10 s to 10 s before the end, checked against the
+route's `play` shots (Blinx: first level, timer running; Blinx 2: "Locate
+the 3 balloons"). Read with `rr425.py --from A --to B <id>`; the last table it
+prints ("wake source") is the one below.
+
+| | AUF | Blinx | Blinx 2 |
+|---|---:|---:|---:|
+| request `1-1790524520-retreason425-` | `202048` | `202137` | `202197` |
+| window, s | 299-420 | 255-411 | 251-411 |
+| fps / ms per frame | 14.96 / 66.9 | 17.32 / 57.7 | 28.54 / 35.0 |
+| VBLANKs per flip (median `Vpf`) | 3.88 | 2.74 | 2.01 |
+| returns on `8001b02e sti` + `8001b02f nop` | 99.86% | 99.84% | 99.90% |
+| vCPU idle, share of wall | 65.1% | 52.5% | 65.6% |
+| idle, ms/frame | 43.5 | 30.3 | 23.0 |
+| busy, ms/frame | 23.4 | 27.4 | 12.1 |
+| check: idle + busy vs wall (5%) | ok | ok | ok |
+
+What starts the guest's work. A busy period of 2 ms or more is a thread that
+was readied; an ISR that returns to idle is under 0.2 ms.
+
+| wake source | AUF busy ms/f (share) | AUF share of >=2 ms periods | Blinx busy | Blinx >=2 ms | Blinx 2 busy | Blinx 2 >=2 ms |
+|---|---:|---:|---:|---:|---:|---:|
+| PGRAPH ERROR (push-buffer callback) | 17.64 (75.5%) | 84.6% | 25.42 (92.8%) | 95.8% | 10.81 (89.6%) | 96.3% |
+| NV2A vblank | 3.35 (14.4%) | 10.0% | 1.11 (4.0%) | 2.4% | 0.68 (5.7%) | 2.1% |
+| PIT timer | 2.11 (9.0%) | 5.2% | 0.35 (1.3%) | 0.8% | 0.16 (1.4%) | 0.5% |
+| USB | 0.24 (1.0%) | 0.3% | 0.50 (1.8%) | 0.9% | 0.40 (3.3%) | 1.1% |
+| APU, IDE | 0.01 | 0.1% | 0.03 | 0.1% | 0.00 | 0.0% |
+| PGRAPH NOTIFY, PFIFO, CTXSW, BUFFER_NOTIFY | never pending at a wake | | never | | never | |
+
+| per frame | AUF | Blinx | Blinx 2 |
+|---|---:|---:|---:|
+| PGRAPH ERROR interrupts taken | 1.97 | 14.66 | 2.30 |
+| busy periods >= 2 ms, all sources | 0.87 | 1.22 | 1.00 |
+| idle per such period, ms (derived: all idle / their count) | 50.0 | 24.9 | 23.0 |
+| PIT ticks that end an idle stretch | 43.5 | 30.6 | 23.3 |
+| idle booked to those PIT ticks, ms | 40.4 | 26.6 | 18.1 |
+
+**Reading.**
+- The three titles idle in the same kernel loop (`sti; nop; nop; cli`), so
+  slowdown462's exec-loop rows for Blinx (21.7 ms) and Blinx 2 (13.5 ms) are
+  idle time too, as AUF's 42 ms is.
+- The event that readies the guest's frame work is the PGRAPH ERROR
+  interrupt. In this tree that interrupt has one source: `NV097_NO_OPERATION`
+  with a non-zero parameter (pgraph.c, `DEF_METHOD(NV097, NO_OPERATION)`),
+  the push buffer's software callback. The puller raises it when it reaches
+  the marker the guest wrote, and then stalls (`waiting_for_nop`) until the
+  guest clears it. So the guest submits its frame, sleeps, and is woken when
+  the emulated GPU has consumed the push buffer up to the marker. **The
+  frame is set by how late that callback arrives**, which is the PFIFO
+  thread's progress through the frame (flip stall on VBLANK included).
+- The 1 kHz PIT ends most idle stretches and readies nothing (its busy
+  periods are under 20 us in 75-98% of wakes). It chops the wait into 1 ms
+  pieces, which is why idle time by key does not name the waited-for event
+  and the source of the long busy periods does.
+- Blinx 2 is at its 2-VBLANK cap (92% of flips take 2 VBLANKs, 8% take 3):
+  its 23 ms of idle is the title's own pacing, and no lever moves it in this
+  scene. AUF (70% of flips take 4 or more) and Blinx (42% take 2, 36% take 3,
+  22% take 4 or more) are above the cap, so their callback is late.
+
+**Notifier and semaphore polling (the 09:54 PDT question).** Not on these
+titles, as far as this counter sees:
+- A spinning poll keeps a thread runnable, and the kernel's idle loop runs
+  only when none is. The vCPU is in the idle loop 52-66% of the time.
+- A sleeping poll (a timed wait between reads) would start its work on a
+  timer tick. Timer-started busy periods of 2 ms or more are 5.2% (AUF),
+  0.8% (Blinx) and 0.5% (Blinx 2) of all such periods. A timeout fallback
+  for a notifier hakuX never writes would look the same, so that is also
+  the ceiling on frames started by a timeout.
+- No wake had PGRAPH NOTIFY, BUFFER_NOTIFY or PFIFO pending.
+- What the counter cannot see: what the woken thread reads after the
+  callback. A thread that is woken by the callback and then reads a
+  semaphore or notifier location is booked as the callback's busy period.
+  AUF's PIT row also has 1.05 busy periods of 0.2-2 ms per frame (16 a
+  second): a timer-driven thread whose work is under 2 ms a frame. What it
+  does is unread.
+
+**Bounds, not values.** With no wait at all the frame is at least the
+guest's own work and the GPU's: AUF 23.4 ms busy and `GPU Tot` 29.3 ms, so
+<= 34 fps and <= 30 at 2-VBLANK pacing; Blinx 27.4 ms busy and 20.5 ms GPU,
+so <= 30 fps at 2-VBLANK pacing. Blinx 2 has no bound above its cap. The
+perflog build's PFIFO wall time per frame (`Push`, medians) is 56.0 ms (AUF),
+40.1 (Blinx), 30.3 (Blinx 2); these are wall time with a clock read around
+every method, upper bounds on cost (slowdown462, "Do not repeat").
+
+**Owner.** The wait belongs to the PFIFO thread's latency, not to the vCPU
+or the exec loop: #474 (the PFIFO thread's own waits; flip474's "next lever")
+and #488 (semaphore and notifier latency, 13.8 ms after the last kick against
+2.7 us on silicon). #425's return path is not a lever for these three
+titles. `HAKUX_IDLE_HLT` stays parked: it frees a host core at most.
+
+**Not measured, and the next measurement.** Which callback it is (the NOP's
+parameter: flip, fence, read or write callback), and the time from the
+guest's kick that covers the marker to the puller reaching it. Both belong
+in the puller (pgraph.c `NO_OPERATION`, pfifo.c), outside this lane's files:
+a histogram of the parameter, and kick-to-callback latency split by what
+the puller waited on in between (flip stall, finish, download). Blinx takes
+14.66 callbacks a frame against AUF's 1.97, so the parameter mix differs by
+title.
+
+**Known defects of the reader's checks.** `pcdrop == 0` prints FAIL at 3, 151
+and 224 dropped pc samples of ~3e9; it affects only the top-pc counts, by
+under 1e-7. `timed <= wall` is INVALID as in section 3; nothing here uses
+`gapus`/`tbus`.
+
+Do not repeat: reading idle ms by wake key as "what the guest waits for".
+The PIT takes 79-93% of the idle time on every title and readies nothing.
+
+### State at the end of this session
+
+Master is merged (576b4b6faf; the only conflict was `nv2a_index.json`,
+rebuilt over the pinned trees in aae68b4aed) and the four TUs compile with
+the NDK arm64 line. The result is posted on #425, #462 and #412.

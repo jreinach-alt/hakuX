@@ -18,8 +18,10 @@ frame rate from the hakuX-perf gfps lines in the same span. It prints:
   - the top 16 (cause, pc) pairs summed over the span, with guest bytes;
   - from [rr425w]: the guest's idle time and what ended each idle stretch,
     by interrupt vector and the NV2A units pending at the wake, with the
-    busy period each wake started, in ms per frame; and the check that
-    idle + busy comes to the wall clock of the span.
+    busy period each wake started, in ms per frame; the check that
+    idle + busy comes to the wall clock of the span; and the same keys
+    rolled up by source, with each source's share of the busy periods of
+    2 ms or more (the wakes that readied a thread).
 
 --selftest runs it on a built-in two-window logcat.
 """
@@ -106,6 +108,54 @@ def label(vec, units):
     return s + (' [' + ' '.join(u) + ']' if u else '')
 
 
+def source(vec, units):
+    """One source per wake key. A pending PGRAPH ERROR decides the source
+    whatever the vector: it is raised only by NV097_NO_OPERATION with a
+    non-zero parameter, the push buffer's software callback (pgraph.c)."""
+    if units & 0x40:
+        return 'PGRAPH ERROR (push-buffer callback)'
+    if units & 0xb8:
+        return 'PGRAPH other (NOTIFY, CTXSW, BUFNOTIFY)'
+    if units & 0x01:
+        return 'PFIFO'
+    if vec == 0x33:
+        return 'NV2A vblank' if units & 0x02 else 'NV2A, nothing pending'
+    irq = vec - 0x30
+    return IRQ.get(irq, 'v%02x' % vec) if 0 <= irq < 16 else 'v%02x' % vec
+
+
+def by_source(wake):
+    src = defaultdict(Counter)
+    for key, w in wake.items():
+        src[source(*key)].update(w)
+    return src
+
+
+def report_source(wake, frames):
+    """Which interrupt starts the guest's work. A busy period of 2 ms or more
+    is a thread that was readied; an ISR that returns to idle is under 0.2 ms.
+    The 1 kHz PIT ends most idle stretches without readying anything, so idle
+    time by key does not name what the guest waited for; the source of the
+    long busy periods does."""
+    src = by_source(wake)
+    busy = sum(w['busy_us'] for w in src.values())
+    long_n = sum(w['b3'] for w in src.values())
+    per = (lambda n: '%.2f' % (n / frames)) if frames else (lambda n: 'n/a')
+    print('   %-40s %8s %9s %9s %7s %9s %7s' % (
+        'wake source', 'taken/f', 'wakes/f', 'busy ms/f', 'share', '>=2ms /f',
+        'share'))
+    for name, w in sorted(src.items(), key=lambda kv: -kv[1]['busy_us']):
+        print('   %-40s %8s %9s %9s %6.1f%% %9s %6.1f%%' % (
+            name, per(w['n'] + w['nb']), per(w['n']), per(w['busy_us'] / 1000),
+            100.0 * w['busy_us'] / busy if busy else 0, per(w['b3']),
+            100.0 * w['b3'] / long_n if long_n else 0))
+    idle = sum(w['idle_us'] for w in src.values())
+    print('   busy periods >= 2 ms: %s per frame; idle per such period %.1f ms'
+          ' (derived: all idle / their count)' % (
+              per(long_n), idle / 1000 / long_n if long_n else 0))
+    return src
+
+
 def report_wake(tot, wake, secs, frames):
     if not tot['w_lines']:
         print('   [rr425w]: none in the span (a build without the wake counter)')
@@ -135,6 +185,7 @@ def report_wake(tot, wake, secs, frames):
             per(w['busy_us']),
             '/'.join(str(w['i%d' % i]) for i in range(4)),
             '/'.join(str(w['b%d' % i]) for i in range(4)), w['nb'] / secs))
+    report_source(wake, frames)
     return good
 
 
@@ -211,6 +262,14 @@ def selftest():
     assert tot['w_idle_us'] == 3000000 and tot['w_n'] == 1100, tot
     assert wake[(0x33, 0x02)]['n'] == 100 and wake[(0x33, 0x02)]['b3'] == 100, wake
     assert wake[(0x30, 0)]['nb'] == 0 and wake[(0x33, 2)]['nb'] == 10
+    # A pending ERROR names the source under any vector; vblank needs the
+    # NV2A vector; a timer tick with vblank pending is still the timer's.
+    assert source(0x30, 0x44) == source(0x33, 0x46) \
+        == 'PGRAPH ERROR (push-buffer callback)'
+    assert source(0x33, 0x02) == 'NV2A vblank' and source(0x30, 0x02) == 'PIT timer'
+    assert source(0x33, 0x0c).startswith('PGRAPH other') and source(0x33, 1) == 'PFIFO'
+    src = by_source(wake)
+    assert src['NV2A vblank']['b3'] == 100 and src['PIT timer']['b3'] == 0, src
     ok = report('selftest', tot, nwin, pcs, gfps, wake)
     assert ok
     short = Counter(tot)
@@ -235,7 +294,9 @@ def main(argv):
         elif k == '--to':
             hi = v
     for run in args:
-        path = run if os.path.exists(run) else R + run + '/logcat.txt'
+        path = run if os.path.exists(run) else R + run
+        if os.path.isdir(path):
+            path = os.path.join(path, 'logcat.txt')
         lines = open(path, errors='replace').read().splitlines()
         report(run, *read(lines, lo, hi))
 
