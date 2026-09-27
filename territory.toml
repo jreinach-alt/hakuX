@@ -1225,13 +1225,11 @@ standing = false
 retired_utc = "2026-09-26T18:20:00Z"
 note = "RETIRED (hostops 2026-09-26 11:20 AM PDT): PR #409 MERGED (7b20fd2f66), unit gone. docs/testing/jobs/arms.sh RETURNED to [lane.toolsmith] (it was lent); selftest.d/94-arms-verdict-scope.sh and docs/lanes/armsscope/NOTES.md RELEASED to [free]. PRIOR NOTE: STARTED (hostops 2026-09-26 10:42 PDT): harness defect, no tracker issue. arms.sh LABEL_INDEX keys verdicts by branch name, so a reused branch (lane.remote's) inherits folded PRs' PASS/FAIL verdicts (#274 comment 2026-09-26T17:27:30Z, PR #389). arms.sh lent from [lane.toolsmith]; returns there on fold. Brief: briefs/armsscope.md. Retire on fold."
 
-[lane.aufire412]
-issues = ["412"]
-files = ["hw/xbox/nv2a/pgraph/vk/shaders.c", "docs/testing/predictions/aufire412-*.json", "docs/lanes/aufire412/**"]
+[retired.aufire412]
+issues = []
+files = []
 standing = false
-released = ["hw/xbox/nv2a/pgraph/vk/shaders.c", "docs/testing/predictions/aufire412-*.json", "docs/lanes/aufire412/**"]
-note = "GRANTED (hostops 2026-09-26 13:15 PDT, answering its 19:56Z grant request on #412): hw/xbox/nv2a/pgraph/vk/shaders.c, unclaimed since lane.remote released it 18:20Z, for the UBO descriptor-ring growth hunk (grow_descriptor_ring() at the two UBO-ring sites). Register the prediction first. STARTED (job.board 2026-09-26T19:20Z), briefs/aufire412.md: #412 (007: Agent Under Fire) gameplay fps. Profile-first: docs and prediction only until the lane names the code file and the board grants it."
-
+note = "RETIRED (hostops 2026-09-27T00:25Z): PR #416 folded 034d46a06c; every file was already released. #412 reopened: the change did not move fps. PRIOR: GRANTED (hostops 2026-09-26 13:15 PDT, answering its 19:56Z grant request on #412): hw/xbox/nv2a/pgraph/vk/shaders.c, unclaimed since lane.remote released it 18:20Z, for the UBO descriptor-ring growth hunk (grow_descriptor_ring() at the two UBO-ring sites). Register the prediction first. STARTED (job.board 2026-09-26T19:20Z), briefs/aufire412.md: #412 (007: Agent Under Fire) gameplay fps. Profile-first: docs and prediction only until the lane names the code file and the board grants it."
 [retired.doa413]
 issues = []
 files = []
