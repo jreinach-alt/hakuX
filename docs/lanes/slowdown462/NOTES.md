@@ -3,6 +3,14 @@
 Five slow titles, one protocol, one device (Nova ee317437, MAX). Measure and
 attribute only; fixes go to the per-title lanes.
 
+> **Correction, 2026-09-27 13:18 PDT (lane.flip474, #474 section 3):** every
+> GPU, `Rnd`/`R` and `Xfr`/`X` figure read on the Nova from `xemu-gpu` or
+> `hakuX-phase` is 0.636 of the true value. The Nova's GPU timestamps tick at
+> 19.2 MHz, while `limits.timestampPeriod` reports 30.2 MHz, and hakuX uses that
+> as `gpu_ts_period_ns`. This file's Nova GPU rows and the bounds read from them
+> are restated below at x1.573, each beside the old value. GTA's rows are the
+> Thor's, which has not been checked, and are left as read.
+
 ## The build and the instruments (same for every title)
 
 - **Soaks:** ref `e5db66fa37` (master when this lane started), `--perflog`,
@@ -57,7 +65,7 @@ START toggling the pause menu over it; the fight costs the same paused or not).
 | `Surf` (`pgraph_vk_surface_update`, exclusive timer) | 59.8 | 79% |
 | Draw (Pipe 3.1, Sh 2.1, Syn 2.0) | 9.0 | 12% |
 | Fin (Sub 0.1 / Fen 1.5) | 1.6 | 2% |
-| GPU (Rnd 19.4, Xfr 19.3; 9 render passes) | 38.3 | 51%, overlapped |
+| GPU (Rnd 19.4, Xfr 19.3; 9 render passes); **x1.573: 60.2 (30.5, 30.4)** | 38.3 -> **60.2** | 51% -> **79%**, overlapped |
 | vCPU busy (`[tlb68]`) | 25% | not the bound |
 
 Render-pass breaks 541/60 flips, 420 of them for a surface reason (7 per
@@ -130,6 +138,12 @@ Bounds, not values: with (1) gone and CPU and GPU overlapping, the frame is
 at least the GPU's 38.6 ms: **<= 26 fps**. With (2) also gone, at least
 max(GPU render 19.4, vCPU ~18, PFIFO ~15) ms: **<= ~51 fps**.
 
+**Restated at x1.573 (13:18 correction):** the GPU is 60.7 ms (Rnd 30.5, Xfr
+30.4), so with (1) gone the bound is **<= 16.5 fps**, not 26. lane.flip474's
+fitted span, 63.7 ms, gives 15.6. With (2) also gone the bound is max(30.5,
+~18, ~15) ms, **<= 33 fps**, not 51. DOA on the Nova is GPU-bound. Row 2's
+`Xfr` is 30.4 ms/frame.
+
 ## AUF (4541000D, #412)
 
 **Soak** `1-1790483186-slowdown462-3496610` (e5db66fa37 perflog, Nova, MAX),
@@ -142,7 +156,7 @@ mission play `mark play`+30 s to 10 s before the end (264-412 s; shots
 | VBLANKs per flip (v2/v3/v4+) / VBLANK rate | 3.76 (12/24/63%) / 56.95 Hz, 347 clamps |
 | vCPU busy (`[tlb68]` cpu/dt) | 83.8% = 55.4 ms/frame |
 | perflog renderer: Tot / Idle / Surf / Draw (Pipe, Tx) | 56.5 / 13.9 / 23.4 / 18.6 (9.9, 6.0) ms |
-| GPU | 29.0 ms (Rnd 14.4, Xfr 14.6) |
+| GPU | 29.0 ms (Rnd 14.4, Xfr 14.6); **x1.573: 45.6 (22.7, 23.0)** |
 | #424 churn | 0.6% of vCPU |
 
 **Profile** `perf/2026-09-26-slowdown462/auf/auf.data` (a593d8eb85, not perflog,
@@ -188,6 +202,10 @@ at least the GPU's 29 ms: **<= 34 fps**, and **<= 30 fps** at the title's
 VBLANK pacing (2 VBLANKs = 33.4 ms). If the returns are a guest wait loop,
 removing them makes the wait cheaper and fps does not move (aufire412b).
 
+**Restated at x1.573 (13:18 correction):** the GPU is 45.6 ms, so the same
+condition gives **<= 21.9 fps**, not 34. The 30 fps pacing bound no longer
+binds.
+
 ## Blinx (4D530013, #372)
 
 **Soak** `1-1790492277-slowdown462-690144` (e5db66fa37 perflog, apk
@@ -205,7 +223,7 @@ it until `mark play` (242 s). Window `mark play`+10 s to 10 s before the end
 | Draw (Pipe 17.2: Tx 6.9, Sh 7.9, Lu 1.2) | 28.9 ms |
 | Fin (Fen 8.6; 77.5 FLIP_STALL-deferred finishes per 60 flips) | 8.9 ms |
 | Surf / Syn | 2.0 / 1.4 ms |
-| GPU (GR 20.0) | 23.3 ms |
+| GPU (GR 20.0) | 23.3 ms; **x1.573: 36.7 (GR 31.5)** |
 | draws / render passes / RP breaks | 2,829 / 19 / 1,205 per 60 flips (20 per frame) |
 | #424 churn | 0.9% of vCPU |
 
@@ -249,6 +267,11 @@ still needs 22.3 on + 15.9 blocked = 38.2 ms per frame: **<= 26 fps**. With
 on-CPU 26.1) ms: **<= 38 fps**, and the title's 2-VBLANK pacing (33.4 ms) caps
 it at **<= 30 fps**.
 
+**Restated at x1.573 (13:18 correction):** the GPU is 36.7 ms. The first bound
+(<= 26 fps, the vCPU's) stands. With (1) and (2) both gone, the bound is
+max(22.3, 36.7, 26.1) ms: **<= 27 fps**, not 38. The GPU, not the pacing, is
+then the limit.
+
 ## Blinx 2 (4D530065, no issue)
 
 **Soak** `1-1790492277-slowdown462-690171` (e5db66fa37 perflog, apk
@@ -264,7 +287,7 @@ balloons"), the route walking into a wall:
 | perflog renderer: Tot / Idle | 29.5 / 2.8 ms |
 | Fin (Sub 13.6, Fen 1.6); `sd_dl` 60 and `sd_cDef` 31 per 60 flips | 15.4 ms |
 | Draw (Pipe 4.9, Sh 3.7) / Surf / Syn | 11.1 / 0.9 / 1.9 ms |
-| GPU (GR 16.7) | 17.0 ms |
+| GPU (GR 16.7) | 17.0 ms; **x1.573: 26.7 (GR 26.3)**, under the 33.4 ms cap |
 | draws / RP breaks | 1,230 / 926 per 60 flips |
 | #424 churn | 0.7% of vCPU |
 
@@ -317,7 +340,7 @@ Window `mark play`+10 s to 10 s before the end (243-414 s):
 | perflog renderer: Tot / Idle | 35.8 / 0.0 ms | 33.8 / 0.0 |
 | Fin (Sub 19.9); `sd_cDef` per 60 flips | 20.2 ms; 371 (6.2 per frame) | 19.6; 378 |
 | Draw (Pipe 5.4) / Surf | 12.1 / 3.3 ms | 10.9 / 3.2 |
-| GPU (GR 18.0, GX 2.4) | 20.2 ms | 19.2 |
+| GPU (GR 18.0, GX 2.4) | 20.2 ms; **x1.573: 31.8 (GR 28.3, GX 3.8)** | 19.2; **30.2** |
 | draws / RP breaks | 1,026 / 1,408 per 60 flips | |
 | #424 churn | 1.5% of vCPU | |
 
@@ -367,6 +390,12 @@ pacing **<= 30 fps**. With (2) also gone the vCPU needs ~22.6 ms: still
 **<= 30 fps** at the pacing. The same bound holds from the soak's heavier
 window only if its vCPU on-CPU is also under 33 ms, which a soak cannot
 show.
+
+**Restated at x1.573 (13:18 correction):** the soak's GPU is 31.8 ms (GR 28.3).
+With (1) gone, the frame is at least max(vCPU 30.5, GPU 31.8) ms: **<= 31
+fps**, still **<= 30** at the pacing. This fits lane.forza414's finding that
+`Sub` tracks the GPU's render time: the download waits are the GPU's frame,
+seen from the PFIFO thread.
 
 ## Log (PDT, 2026-09-26)
 
@@ -725,19 +754,31 @@ steady frame.
 
 ## Summary (Nova, MAX, e5db66fa37 soaks / a593d8eb85 profiles)
 
-| title | fps (soak window) | sets the frame | top cost (ms/frame, share) | owner | bound if it goes |
-|---|---|---|---|---|---|
-| DOA1U | 13.2 | the flip's GPU wait under `pg->lock`; guest blocks in `pgraph_read` | 34 (49%) | #474 | <= 26 fps |
-| AUF | 15.1 | vCPU (94% on-CPU) | exec-loop returns 42 (63%) | #425 / #412 | <= 34 fps (<= 30 at its pacing), if the returns are overhead |
-| Blinx | 17.2 | vCPU (73% on-CPU, 27% blocked) | exec-loop returns 21.7 (36%) | #425 | <= 26 fps (<= 30 with the blocked time too) |
-| Blinx 2 | 28.9 | at its 2-VBLANK cap | exec-loop returns 13.5 (40%) | #425 | none above the 30 cap |
-| Forza | 23.0 | PFIFO (waits on deferred downloads) | deferred download finishes 18.1 (51%) | #414 | <= 30 fps (pacing) |
-| GTA: San Andreas (**Thor**; soak with frames, open-world profile) | 4.4-4.8 in the open world; 28.6 in the alley | the guest: vCPU 70% on-CPU, renderer starved | guest JIT code 77.6 (37%); blocked 61.9 (30%); TB dispatch 46.0 (22%) | #482 (#425 for dispatch) | <= 6.1 fps without dispatch; <= 7.2 without all TCG overhead |
+GPU column and bounds corrected at x1.573 (13:18 PDT, #474 section 3): the
+Nova's GPU timestamps tick at 19.2 MHz, not 30.2. The pre-correction bound is
+kept beside each one.
+
+| title | fps (soak window) | GPU ms/frame, corrected (read) | sets the frame | top cost (ms/frame, share) | owner | bound if it goes (corrected; was) |
+|---|---|---|---|---|---|---|
+| DOA1U | 13.2 | 60.2 (38.3) | the GPU (60 of 76 ms); the flip waits for it under `pg->lock`, and the guest blocks in `pgraph_read` | 34 (49%) | #474 | **<= 16.5 fps** (lane.flip474's fitted span: 15.6); was <= 26 |
+| AUF | 15.1 | 45.6 (29.0) | vCPU (94% on-CPU) | exec-loop returns 42 (63%) | #425 / #412 | **<= 21.9 fps**, if the returns are overhead; was <= 34 (30 at pacing) |
+| Blinx | 17.2 | 36.7 (23.3) | vCPU (73% on-CPU, 27% blocked) | exec-loop returns 21.7 (36%) | #425 | **<= 26 fps** (unchanged, the vCPU's); with the blocked time too **<= 27** (the GPU's); was <= 30 |
+| Blinx 2 | 28.9 | 26.7 (17.0) | at its 2-VBLANK cap | exec-loop returns 13.5 (40%) | #425 | none above the 30 cap (GPU 26.7 < 33.4) |
+| Forza | 23.0 | 31.8 (20.2) | PFIFO (waits on deferred downloads, which track the GPU's render) | deferred download finishes 18.1 (51%) | #414 | **<= 30 fps** (pacing; the GPU alone allows 31) |
+| GTA: San Andreas (**Thor**; soak with frames, open-world profile) | 4.4-4.8 in the open world; 28.6 in the alley | Thor: its clock is not checked; not the bound (4% busy) | the guest: vCPU 70% on-CPU, renderer starved | guest JIT code 77.6 (37%); blocked 61.9 (30%); TB dispatch 46.0 (22%) | #482 (#425 for dispatch) | <= 6.1 fps without dispatch; <= 7.2 without all TCG overhead |
 
 Two mechanisms cover four titles: the exec loop between TBs on the vCPU (AUF,
 Blinx, Blinx 2; Forza's variant is the indirect-jump lookup), and PFIFO waits
 for the GPU inside `pg->lock`, which the guest's `pgraph_read` then waits
 behind (DOA at the flip, Forza and Blinx 2 at surface downloads).
+
+With the GPU corrected, the GPU's own work comes next in line on four of the
+five. It sets DOA's frame outright (60 of 76 ms). It caps AUF at 22 fps and
+Blinx at 27 once their vCPU costs go, and it sits at 31.8 of Forza's 42 ms. So
+the uncorrected ceilings were too high: by 10-12 fps for DOA's first bound,
+AUF and Blinx, by 18 for DOA's second, and by 2 for Forza. On the
+Nova a GPU-work lever (DOA's `Xfr`, now 30.4 ms/frame; render passes broken
+for surfaces) matters as much as the TCG levers.
 
 ## Do not repeat
 
@@ -878,3 +919,185 @@ Ask 7 is used up, and this lane holds no hold and has nothing queued. The
 next GTA step belongs to #482: a guest-PC profile of the open world, plus
 an off-CPU session on the Thor (paranoid 1 now). Each needs a device grant.
 This lane's deliverables are complete.
+
+## Attempt 7 (2026-09-27, 13:18 PDT addendum): the PFIFO thread's SET_BEGIN_END on AUF and Blinx
+
+### Why this is a new attempt, not an unfinished one
+
+Attempt 6 finished: PR #483 folded (a3952caec3) with this lane's GTA work,
+and it held nothing and had nothing queued. The resume notice named PR #477
+as a draft, but #477 had already folded (49ca6d319d), so that notice was
+stale. The work below is lane.local's 13:18 addendum: profile the PFIFO
+thread on AUF and Blinx over lane.flip474's `[cblat]` windows, break
+SET_BEGIN_END down, and restate the Nova GPU figures at x1.573 (done in
+place above: the banner at the top, each title's GPU row and bound, and
+the summary table).
+
+### The sessions (Nova, MAX, `76cba82fd2-perflog`, the APK of flip474's `[cblat]` runs)
+
+`capture_profile.sh` now takes `APK_REF`. There was one held session per
+title, run with `OFFCPU=1 SOAK_S=360`. Each hold was taken during
+forza414's running request and used only after `running/` emptied. REST was
+restored (`perf_restored: true`), the caches were cleared and the hold was
+released on exit.
+
+| | AUF `auf474/` | Blinx `blinx474/` |
+|---|---|---|
+| session (PDT) | 13:25:42-13:31:50 | 13:39:22-13:44:58 |
+| window, `mark play` + | 70 s (~315 s from launch; `[cblat]` read 299-420 s) | 30 s (~278 s; `[cblat]` read 255-411 s) |
+| battery | 62% | 57% |
+| `profwin.py` | 420 flips in 28.3 s = 14.87 fps, **67.3 ms/flip**; gfps 14-15 | 600 flips in 30.4 s = 19.73 fps, **50.7 ms/flip**; gfps 10-27 |
+| shots | 133104, 133130: first-person mission play (FPS 14) | 134358, 134425: level play (FPS 24) |
+| samples lost | 0 of 527,411 | 0 of 544,232 |
+| PFIFO tid | 29610 | 5221 |
+
+The Blinx window is lighter than flip474's run (19.7 fps against 16), and its
+first 10 s ran at 10-17 gfps. `[cblat]` read over these same seconds
+(`cblatwin.py`) is the comparison, not flip474's numbers.
+
+### Three instruments, one window
+
+`cblatwin.py` sums `[cblat]`'s split over the profile window.
+`phasewin.py` averages the `hakuX-phase` and `hakuX-cpu` lines. `drawcost.py`
+reads the profile. All figures are ms per frame.
+
+| | AUF | Blinx |
+|---|---:|---:|
+| **`[cblat]` mdraw: SET_BEGIN_END wall, with its lock wait** | **51.0** (flip474: 50.1) | **31.9** (flip474: 36.8) |
+| of which the nested download (`dl`) | 22.3 | 0.4 |
+| `[cblat]` pflip (parked in FLIP_STALL on the VBLANK) | 10.6 | 0.0 |
+| phase `Surf` (draw_begin's `surface_update`; holds the download) | 24.9 | 3.1 |
+| phase `Draw` | 21.8 | 27.3 |
+| of `Draw`: `Pipe.Tx` (texture bind, exclusive) / `Pipe.Sh` / `Lu` | 8.7 / 3.4 / 0.6 | 9.7 / 6.9 / 1.1 |
+| of `Draw`: Mfp / Setup / Syn / Desc / Cmd | 1.5 / 0.8 / 0.5 / 0.5 / 0.4 | 0.1 / 1.2 / 1.2 / 0.3 / 0.8 |
+| `hakuX-cpu` `Mth` (wall in `pgraph_method`) / `Lk` (puller's `pgraph.lock` wait) | 50.3 / 0.4 | 33.4 / 0.6 |
+| **PFIFO thread on-CPU, whole frame** (switch records) | **20.5** (9,157 ms of 30 s) | **28.9** (17,101 ms) |
+| PFIFO thread off-CPU, whole frame | 46.7 | 21.8 |
+| **SET_BEGIN_END on-CPU** (profile) | **10.5**, at most 14.9 | **11.8**, at most 16.5 |
+| GPU, corrected x1.573 (read) | 46.6 (29.6) = 69% of the frame | 33.2 (21.1) = 65% |
+
+`[cblat]`'s mdraw equals `Surf` + `Draw` (AUF 46.7 of 51.0, Blinx 30.4 of
+31.9), so the phase timers break the wall down. **SET_BEGIN_END is wall time,
+not CPU:** 10.5-14.9 of AUF's 51.0 and 11.8-16.5 of Blinx's 31.9 are the
+thread on-CPU. The rest, at least 36 and 15 ms/frame, is the PFIFO thread
+blocked inside the method.
+
+How "on-CPU" is counted:
+- The switch records give each thread's exact on-CPU time. The cpu-clock
+  sampler dropped samples under `--trace-offcpu`: 6,311 of 9,157 ms (AUF),
+  11,173 of 17,101 (Blinx). Sample shares are therefore scaled by 1.451 and
+  1.531.
+- A sample is in draw dispatch when its chain holds a function only the draw
+  path calls. A plain entry list misses most of them:
+  - `--call-graph dwarf,8192` copies 8 KB of stack, and `flush_draw_one_pass`
+    alone has a ~35 KB frame (below), so the chains are cut before they reach
+    the method handler.
+  - SET_BEGIN_END(begin) tail-calls `pgraph_vk_surface_update`, so draw_begin
+    leaves no frame.
+- The "at most" figure adds every `surface_update` sample with no draw frame
+  (AUF 3.6, Blinx 3.5: draw_begin's share, and the flip's and the surface
+  methods') and every chain that reaches neither a draw frame nor
+  `pfifo_thread` (0.8, 1.2).
+
+### SET_BEGIN_END's CPU, by what it does (ms/frame, scaled)
+
+| bucket (innermost frame wins) | AUF | Blinx | functions |
+|---|---:|---:|---|
+| uniforms: hash, compare, upload | 3.53 | 3.70 | `apply_uniform_updates` (`memcpy_opt`), `fast_hash`, `pgraph_glsl_set_*_uniform_values`, under `pgraph_vk_bind_shaders` / `update_shader_uniforms` |
+| **debug snapshot** | **2.48** | **2.17** | `pgraph_vk_snapshot_state` -> `memcpy_opt` |
+| state checks: `flush_draw_one_pass` self, `pgraph_vk_draw_end` | 1.31 | 1.22 | |
+| pre-draw state (`begin_pre_draw_inner` self, fast-path checks) | 1.23 | 1.65 | |
+| lock handoff on-CPU (`pthread_mutex_unlock`, `__aarch64_swp*`) | 0.91 | 1.24 | |
+| vertex RAM sync / dirty pages | 0.38 | 0.58 | `sync_vertex_ram_buffer`, `vertex_range_gpu_stale`, `tlb_reset_dirty` |
+| vertex attributes, remap, index rewrite | 0.19 | 0.37 | |
+| shader/pipeline lookup | 0.12 | 0.49 | `pgraph_glsl_compare_shader_state`, `vsh_get_field` |
+| textures | 0.12 | 0.14 | `pgraph_vk_bind_textures` |
+| Vulkan driver (`tu_*`) / descriptors / render pass | 0.15 / 0.03 / 0.01 | 0.09 / 0.05 / 0.02 | |
+| **total** | **10.5** | **11.8** | |
+
+The shipping build agrees: the old `a593d8eb85` profiles, read the same way,
+give AUF 11.2 and Blinx 15.5 ms/frame (uniforms 4.4 and 6.0, snapshot 3.1 and
+3.4) in their windows.
+
+**The debug snapshot does nothing in a release build and is a clean cut.**
+`flush_draw_one_pass` (draw.c:7784) copies `pg->regs_` (32 KB),
+`program_data` (2 KB) and the rest into a `RenderCommandSnapshot` on its
+stack for every draw pass. The copy exists only to `assert` four fields at
+the end, under `#ifndef NDEBUG`. The Android CMake passes `-UNDEBUG` to every
+release config (CMakeLists.txt:971, kept so QEMU's asserts stay live), so the
+copy runs in every shipped build: 2.2-3.4 ms/frame of the PFIFO thread. It
+is also why the unwinder cannot get past that frame.
+
+### Where SET_BEGIN_END blocks
+
+| | AUF | Blinx | evidence |
+|---|---:|---:|---|
+| the flip's display download, waited in draw_begin's `surface_update` | 22.3 | 0.4 | `[cblat]` `dl`; phase `Surf` 24.9; flip474's O1 |
+| **inside `pgraph_vk_bind_textures`** | **~8.6** | **~9.6** | `Pipe.Tx` wall 8.7 / 9.7 (exclusive of nested timers) against 0.12 / 0.14 on-CPU; no uploads or hashes in the window (`txu[n0]`, `txh` all 0); `[cblat]` `fin` 0.00 / 0.07, so not a `pgraph_vk_finish` |
+| shader bind and uniforms, beyond their CPU | ~0 | ~2.7 | `Pipe.Sh` 3.4 / 6.9 wall against ~3.6 / ~4.2 CPU |
+| the rest, not placed | 5-10 | 3-7 | mdraw less on-CPU (lower to upper bound), less the rows above |
+
+What the texture bind waits on is not in this capture:
+- There are 41 (AUF) and ~3,700 (Blinx) bind calls per frame, of which
+  `txr[... s2td]` counts 0.5 and 2 surface-as-texture binds per frame.
+  `bind_surface_as_texture` flushes the queued draws and ends the render pass
+  (`pgraph_vk_begin_nondraw_commands` -> `pgraph_vk_ensure_command_buffer`).
+- The driver's GPU waits (`wait_timestamp_safe`) are 5.1 (AUF) and 1.5
+  (Blinx) ms/frame where sampled. Matched to the thread's last on-CPU sample
+  (median 0.5-0.6 ms before), Blinx's start in the draw path (snapshot,
+  uniform upload, pre-draw), and 79% of AUF's have no on-CPU sample within
+  2 ms.
+- 51% (AUF) and 59% (Blinx) of the off-CPU time has no switch-out sample. It
+  is mostly intervals of 20 ms or more, and 88% of AUF's follow less than
+  2 ms of running. That fits the flip park and the download waits, not
+  preemption.
+
+Next measurement: a wall probe on each step of `pgraph_vk_bind_textures` (the
+command-buffer begin, the surface bind, the range download check), counted
+per frame.
+
+### The answer for #474 (ms/frame; bounds are bounds, not values)
+
+| # | cost | AUF | Blinx | candidate fix | owner |
+|---|---|---:|---:|---|---|
+| 1 | the flip's display download, waited inside SET_BEGIN_END(begin) | 22.3 | 0.4 | O1: lazy completion of the flip's download | #474 (flip474) |
+| 2 | a wait inside texture bind, cause not placed | ~8.6 | ~9.6 | per-step probe of `pgraph_vk_bind_textures` first | #474, with #461's texture counters |
+| 3 | uniform upload (hash, compare, copy per draw) | 3.5 | 3.7 | skip unchanged uniform blocks per draw (dirty ranges, not a whole-block hash and copy) | #474 |
+| 4 | the debug snapshot per draw pass | 2.5 | 2.2 | guard it with a hakuX debug switch, not `NDEBUG`, or snapshot only the four asserted fields | #474 (a few lines in draw.c) |
+
+Bounds, **not values**. Each assumes the ms leaves the frame one for one, per
+flip474's reading that the guest waits on callbacks the PFIFO thread
+dispatches late. Each is also capped by the corrected GPU time of the same
+window.
+
+| gone | AUF (67.3 ms, 14.9 fps) | Blinx (50.7 ms, 19.7 fps) |
+|---|---|---|
+| 4 (snapshot) | <= 15.4 fps | <= 20.6 fps |
+| 3 + 4 | <= 16.3 fps | <= 22.3 fps |
+| all SET_BEGIN_END CPU (10.5 / 11.8) | <= 17.6 fps | <= 25.7 fps |
+| that and 2 | <= 20.7 fps | <= 30 fps: the GPU's 33.2 ms and the 2-VBLANK pacing both bind |
+| that and 1 | <= 21.5 fps: the GPU's 46.6 ms | (1 is 0.4) |
+
+The PFIFO thread's CPU per draw is real but small. It is 10.5-15.5 ms/frame
+across two builds and four windows, and no single piece of it is over 6. The
+larger levers are the blocks: AUF's download (22.3) and a texture-bind wait
+in both titles (~9). With the clock corrected, the GPU is busy 65-69% of both
+frames, so AUF cannot pass ~21.5 fps on its GPU work as it stands.
+
+### Do not repeat (added)
+
+- Do not read `[cblat]`'s or the phase line's per-method time as CPU. On
+  these two titles, SET_BEGIN_END's wall is 1.9-4.9 times its on-CPU time.
+- Do not take draw-path shares from chains cut at 8 KB without checking the
+  entry frames. `flush_draw_one_pass`'s 35 KB debug snapshot stops the
+  unwinder, and draw_begin reaches `surface_update` by a tail call.
+  `drawcost.py` lists the draw-only functions it keys on, and prints the
+  unplaceable share beside the result.
+- `puller_lock_ns` (`hakuX-cpu` `Lk`) is the puller's `pgraph.lock` wait.
+  It is 0.4-0.6 ms/frame here, so the lock is not the unplaced time.
+
+### State at the end of attempt 7
+
+Both sessions are done, and this lane holds no hold and has nothing queued.
+The answer is posted on #474 and #462, and the #462 summary is corrected in
+place.

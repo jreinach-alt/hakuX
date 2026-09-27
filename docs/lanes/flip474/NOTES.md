@@ -435,8 +435,392 @@ out almost equal in every run, which looks like an instrument artefact
 before anyone relies on it, and `GPU` is a per-frame sum over command
 buffers.
 
+## Why the last session did not finish, and this one (2026-09-27, from 09:23 PDT)
+
+The last session did finish what it had. It logged the audit decisions and
+the next lever, pushed `117b3b56d1` at 16:21Z and left #475 ready. One
+minute later the host's delivery on #474/#414 (09:22 PDT) asked for three
+more things: a DOA A/B on lane.forza414's fix build, the O4 split pilot, and
+a check of the R/X artefact. No session was running to read it.
+
+#475 folded at 16:30Z as `bf60a2b5b8` and the fold deleted the lane branch.
+This session fast-forwarded to master and works on a **second PR** from the
+same branch name. Its net diff is docs only.
+
+### 9. lane.forza414's fix and DOA: the same call, not the same branch
+
+The delivery's premise is that DOA's `cdef` and Forza's `surfupd` are the
+same completion, so one fix frees both. Read against `94f002d309`, they are
+the same call in `pgraph_vk_surface_update` and different branches of
+`download_surface_complete_deferred` (vk/surface.c):
+
+| branch | who waits there | what 94f002d309 does |
+|---|---|---|
+| `display_predownload_pending`: wait on the flip's submitted command buffer | **DOA**: #475's B released the lock only around the fence waits and the vCPU's wait went 0.69 -> 0.004; surf413 `fin` is 0.00 ms in all four runs | nothing: `surface_update_may_defer_downloads()` returns false when the flag is set |
+| `deferred_downloads_frame >= 0`: wait on an earlier finish's fence | neither, measurably | nothing: the gate returns false, "a fence wait, not a finish" |
+| neither: `pgraph_vk_finish(SURFACE_DOWN)` | **Forza**: `[sdcall]` surfupd fin 7.0 per frame, 20.9 ms | defers it unless a binding is about to upload |
+
+So by reading, `94f002d309` completes DOA's flip download exactly where its
+base does. The A/B is registered on that reading
+(`flip474-doa-forza414-ab.json`): C1 says cdef does **not** fall (B/A >= 0.8),
+and B/A <= 0.5 kills the reading. It is one run per arm, because the two
+outcomes are ~51 ms and ~0. Both refs print `[sdcall]`, which no DOA run has
+had, so G0 measures the branch directly.
+
+What DOA needs is the deferral extended to the first row: leave
+`display_predownload_pending` set across draws and complete on a consumer
+(O1). That is a second gate in the same function, in lane.forza414's file.
+This lane does not write a second copy of the deferral.
+
+### 10. What the logs on disk already say about the ~18 ms (`o4read.py`)
+
+| DOA fight, 151-288 s | A1 | B1 | A2 | B2 |
+|---|---|---|---|---|
+| cdef, ms/frame | 52.3 | 51.0 | 61.6 | 50.4 |
+| dfF, the completion's wait | 53.7 | 51.0 | 62.1 | 50.8 |
+| dfR, the staged copy and flags | 0.4 | 0.2 | 0.4 | 0.2 |
+| GPU span | 34.8 | 33.0 | 39.9 | 33.0 |
+| R, inside render passes | 17.4 | 16.5 | 20.0 | 16.5 |
+| X, outside them | 17.4 | 16.4 | 19.9 | 16.6 |
+| MxG, the longest gap between two passes | 16.8 | 16.2 | 19.5 | 16.3 |
+| wait / R | 3.09 | 3.09 | 3.10 | 3.08 |
+
+- **The excess is not the copy.** dfR is 0.2 to 0.4 ms.
+- **It is not the render thread's submit.** `pgraph_vk_finish(FLIP_STALL)`
+  spins until `frame_submitted` is set, which `process_finish`
+  (render_thread.c) does after `vkQueueSubmit` returns. The wait cannot start
+  before that.
+- **It scales with the frame's work.** The wait is 3.08 to 3.10 x R in all
+  four runs, A2's replay scene included. A fixed wake-up or queue latency
+  would not scale. This is a pattern, not an explanation.
+
+### 11. The R/X check: the equality is real, and it is DOA's long-wait scenes
+
+| run | device | X/R per line, median (p10 to p90) |
+|---|---|---|
+| DOA fight, four runs | Nova | 0.99 to 1.01 (0.93 to 1.01) |
+| DOA, scenes with no long gap (B1, 08:35:28-40) | Nova | 0.03 to 0.05 |
+| Crimson Skies A, B | Thor | 0.09 (0.07 to 0.17) |
+| Forza, two runs | Nova | 0.13, 0.20 (0.11 to 0.62) |
+
+- The instrument does not force X = R: the same code reads 0.09 and 0.13
+  on other titles, and 0.03 on DOA's own scenes without the long wait.
+- In DOA, every line with one large gap (`g:n/0/1`) has X = R within 2%,
+  from the menus (R 6.4 ms) to the fight (R 18.1 ms), and every such line
+  has the long `Surf` wait. Lines with no large gap have neither.
+- X is one gap: MxG is X less 0.3 ms. So one gap between two render passes
+  is as long as all the passes together.
+- Not decided here: whether the GPU does the passes' work twice, or whether
+  timestamps written inside a pass misplace it, as they can on a tiling GPU.
+  Until the pilot's S2 answers, **do not use the phase line's R/X split for
+  DOA**. The span (first to last timestamp) does not depend on the passes'
+  timestamps and is kept.
+
+### 12. The O4 pilot
+
+- `3112e410db` is master `bf60a2b5b8` plus the `[o4]` probe (vk/surface.c,
+  vk/renderer.c, perflog only). `e8ed36413e` reverts it: vk/surface.c is
+  lane.forza414's file, and the probe is for one pilot.
+- One line per waited flip: the PFIFO thread's clock around the flip's
+  finish and the fence wait, the command buffer's first and last GPU
+  timestamp raw, and each render pass as an offset.
+- No extension is needed to compare the clocks. A command buffer cannot end
+  after its fence was seen signalled, so the smallest (fence seen - last
+  timestamp) in the window is the offset plus the smallest signal latency.
+  `start` is an upper bound by that much; K0 checks drift.
+- `ndkcheck.py` passes on both files in both NV2A_PERF_LOG modes, and a
+  `#error` placed in the block fails perflog=1 and passes perflog=0, so the
+  check does compile it. `check_android_guards.py` ok.
+- `o4read.py --selftest` recovers a synthetic split (every part a different
+  size, GPU clock 7 s off) and drops a short and a malformed line.
+- Legs in `flip474-o4-pilot.json`: M0, K0, S0, S1 (start or end; a labelled
+  guess), S2 (is gap = R per flip), P4 (probe cost).
+
+### Waiting (this session)
+
+Three Nova requests, priority 1, each 300 s, survey route, perflog:
+
+| request | ref | prediction |
+|---|---|---|
+| `1-1790527182-flip474-1639694` | `4b22f2526b` (A) | `flip474-doa-forza414-ab.json` |
+| `1-1790527188-flip474-1640231` | `94f002d309` (B) | `flip474-doa-forza414-ab.json` |
+| `1-1790527190-flip474-1640480` | `3112e410db` (pilot) | `flip474-o4-pilot.json` |
+
+Queued 16:40Z on PR #485, behind about sixteen requests. The priority
+prefix is set with `env HAKUX_RELEASE_PRIO=1 bash docs/testing/request.sh`;
+the bare `VAR=1 bash ...` spelling is refused by this session's command
+check.
+
+When they land: `o4read.py --show` on each, judge every leg, read the shots
+for the scene, post on #474, #414 and #462, and mark the PR ready. The three
+are 19.5 min of device time with setup, under the pilot rule's 30.
+
+## Why the last session did not finish, and this one (resumed 2026-09-27 17:22Z)
+
+The last session ended on a wait, correctly: the three Nova requests above
+had been queued at 16:40Z, outside the session. At 17:23Z all three were
+still in the queue, seventh to ninth, behind tbflip424, retreason425's arms
+and forza414. The resume notice named #475, which had folded at 16:30Z; the
+live PR is #485. This session merged master (23 behind; no hw/ change) and
+built Addendum 3's instrument while the DOA runs wait.
+
+### 13. `[cblat]`: kick -> push-buffer callback, split by the PFIFO thread's waits
+
+The request (host delivery on #474, 17:22Z): retreason425 found AUF, Blinx and
+Blinx 2 idle until the PGRAPH ERROR interrupt that `NV097_NO_OPERATION` with a
+parameter raises. So their frame is set by how soon the puller dispatches that
+callback after the guest publishes it.
+
+`dad7864b73` plus `76cba82fd2`, pfifo.c only, compiled only in Android perflog
+builds. It writes
+one `hakuX-perf cblat` line per 2 s window.
+
+- **Which kick.** A 128-entry ring of (DMA_PUT, time, split snapshot) is filled
+  at the vCPU's DMA_PUT store (the `fsk_note_submit` site). It is retired as
+  the pusher's DMA_GET walks past each put: a linear step retires the puts in
+  (before, after]; a jump, call or return retires only a put equal to its
+  target. Reaching DMA_PUT retires everything. At a callback's dispatch, the
+  oldest unretired entry is the submission that made the marker visible.
+- **The split.** This is cumulative time per category, kept by the PFIFO
+  thread. Every update and both snapshots are under `pfifo.lock`: the kick
+  holds it (user.c), and the thread holds it at each park and method boundary.
+  So a snapshot sees an in-progress category from its published start.
+  - Parks, by the reason at park time: `pflip` (waiting_for_flip), `pnop`
+    (waiting_for_nop, i.e. the previous callback unacknowledged), `pidle`.
+  - Method dispatches by class, each including its `pgraph.lock` wait:
+    `mflip`, `msema` (semaphore release), `mclear`, `mdraw` (SET_BEGIN_END),
+    `mother`.
+  - `rest` is the remainder.
+  - Nested and overlapping: `dl` is surf_working df_flush+df_read, i.e.
+    `download_surface_complete_deferred`: DOA's cdef and Forza's surfupd finish.
+    `fin` is phase finish_ns, which is every `pgraph_vk_finish`.
+  - The profile's per-flip reset happens inside FLIP_STALL, so that method's
+    nested time is dropped (`rst` counts it).
+  - A method in progress at the kick has its nested wait counted whole, so
+    `dl` and `fin` are each capped at the interval's method time.
+- **Non-overlapping.** A callback's split starts at the later of its kick and
+  the previous callback's dispatch (`shared` counts those), so the per-frame
+  sums cannot exceed the frame. `lat` is the full kick -> dispatch.
+- `dup` is read before the dispatch, because the NOP handler sets the ERROR bit
+  itself. It counts callbacks the Android handler drops.
+- A callback is stamped after its own dispatch (`76cba82fd2`). The first cut
+  stamped it before, while the counters already held the NOP method's time
+  (its BQL wait included), so `rest` would have read negative by that much.
+  Both predictions were re-registered on `76cba82fd2`, and the two requests on
+  `dad7864b73` were withdrawn unrun.
+- **Checks.** `ndkcheck.py` passes on pfifo.c in both NV2A_PERF_LOG modes with
+  no warnings in the file; it now prints the file's warnings too. A `#error`
+  in the block fails perflog=1 and passes perflog=0. `check_android_guards.py`
+  is ok. `cblread.py --selftest` passes, and the reader parses a line generated
+  from the C format string itself.
+- **Not checked.** The desktop build (none on this host). Off Android, the
+  only added code is two locals and a flag the macros cast to void.
+- **Predictions:** `flip474-cblat-auf.json`, `flip474-cblat-blinx.json` (one
+  arm each; M1 ties the count to retreason425's ERROR interrupts per frame; M2
+  is the no-overlap check; S1 is labelled a guess).
+
+### 14. O1's consumers (lazy completion of the flip's display download), by reading
+
+This is the list promised to lane.forza414 on #474. O1 would keep
+`display_predownload_pending` set across draws and complete on a consumer.
+Line numbers are this branch's (master 5ec9b2267f + pfifo.c). An Explore pass
+did the read; rows 2 and 4 were checked by hand (draw.c:3590 tags
+`deferred_downloads_frame` only while it is < 0, and a record goes into
+`r->command_buffer`, draw.c:3981).
+
+**O1 is not a one-gate change.** The completion assumes the display download
+is completed within a method of the flip:
+
+| # | where | what breaks if completion is later |
+|---|---|---|
+| 1 | surface.c:4673 `pgraph_vk_surface_update` (today's site) | must still complete when this update itself recorded downloads (evict 4360/4428, overlap 2626, 4513, expire 3103): the uploads at 4692/4706 read VRAM |
+| 2 | surface.c:972-980, display branch of `download_surface_complete_deferred` | waits only on the flip's fence, then copies ALL staged entries, including ones recorded after the flip into the unsubmitted current CB: stale bytes, and 912-916 clears `draw_dirty`. 1010-1013 marks the display surface clean at its *current* generation, overriding 912-916. Reachable today when `update_surface_part` records before 4673; O1 makes it the normal case |
+| 3 | surface.c:392 `pgraph_vk_download_surfaces_in_range_if_dirty` (texture.c:1938, vertex.c:50, blit.c:558/560/900) | calls `pgraph_vk_complete_staged_downloads` raw: the flag stays set; 436 later waits on the old fence (row 2) |
+| 4 | draw.c:3590 finish | never re-tags post-flip entries; the cause of row 2 |
+| 5 | draw.c:3785-3797 rotation into the flip's slot (and 3656, 3724) | completes staging but never clears `display_predownload_*`: prerecord is off for good (1665), and the next completion waits on a reused slot `fi`. With 3 slots and several finishes a frame, O1 hits this nearly every frame |
+| 7 | surface.c:1660-1716 prerecord at the next flip (renderer.c:2309) | a second flip finds the flag set and records nothing; entries pile toward MAX 64 (470) |
+| 11 | surface.c:2186-2200 access callback, write to a shelved/invalid surface | clears `draw_dirty`, then the late staged copy overwrites the guest's write |
+| 12 | surface frees: 3078, 2647, 3131, 4900; reuse 3058+4405 | `deferred_downloads_clear_surface` (825) does not clear `display_predownload_surface`: use-after-free at 996-1013 |
+| 17 | renderer.c:377-420 `diag_download_surface` | writes staging offset 0 without completing (diagnostic only) |
+
+Already complete first, and so are as correct as row 2: `download_surface_to_buffer`
+(1036, retry 1649), `pgraph_vk_process_pending_downloads` (1751, from the vCPU access
+callback and the display thread's wait), `pgraph_vk_download_dirty_surfaces` (1834,
+savevm and scale), expire (3114), fdump (renderer.c:2192), reset/post_load flush.
+Unaffected: scan-out reads the VkImage (display.c:1729); `surface_handoff_partner`
+(3920) only declines longer.
+
+**What O1 needs, in order:** (a) row 2/4: split the display entry from later
+entries, each completed on its own fence, and drop 1010-1013's override; (b)
+row 3: go through `download_surface_complete_deferred`; (c) rows 5/6: clear the
+display bookkeeping at slot rotation, which is also the natural lazy completion
+point, since that fence has just been waited; (d) row 7: complete before the next
+prerecord; (e) row 1: complete when the update recorded downloads; (f) rows 11,
+12, 17.
+
+### Waiting (resumed session, from 17:36Z)
+
+Five Nova requests, priority 1, perflog, survey route:
+
+| request | ref | what | read with |
+|---|---|---|---|
+| `1-1790527182-flip474-1639694` | `4b22f2526b` | DOA A, forza414's base | `o4read.py --from 151 --to 288` |
+| `1-1790527188-flip474-1640231` | `94f002d309` | DOA B, forza414's fix | same |
+| `1-1790527190-flip474-1640480` | `3112e410db` | DOA O4 pilot | same, `--show` |
+| `1-1790530526-flip474-2801414` | `76cba82fd2` | AUF `[cblat]`, 420 s | `cblread.py --from 299 --to 420 --show` |
+| `1-1790530526-flip474-2807172` | `76cba82fd2` | Blinx `[cblat]`, 420 s | `cblread.py --from 255 --to 411 --show` |
+
+The pilot gate admitted the last two on `pilots/flip474.ok` (36 min held).
+When they land: judge every leg of the five predictions, post on #474, #462,
+#414 (DOA) and #425 (cblat), then mark #485 ready.
+
+## Why the last session did not finish, and this one (resumed 2026-09-27 20:15Z)
+
+The last session ended correctly, waiting on the five Nova requests above.
+All five were outside the session, and all were done by 13:10 PDT. The resume
+notice named #475 again, which had folded; the live PR is #485. This session
+read the five runs, judged every leg, merged master (42 behind; the only
+conflict was `nv2a_index.json`, rebuilt with `nv2a_index.py build --tests
+fold-pins/nxdk_pgraph_tests --support fold-pins/pbkitplusplus`, and `check`
+with both passes), and posted the results.
+
+### 15. The five Nova runs
+
+Read with `cblread.py`, `o4read.py`, `o4clock.py` (new), `lockread.py`,
+`crashcheck.py` and `tailcheck.py` (`judge5.sh` runs them all). Each route's
+play shots were checked by eye: every window is level play or the fight.
+
+**`[cblat]`, AUF `0-0-x-1790530526-flip474-2801414`, 299-420 s, and Blinx
+`...-2807172`, 255-411 s.** Units are ms per frame over non-overlapping intervals.
+
+| | AUF | Blinx |
+|---|---:|---:|
+| gfps median (frame, ms) | 14 (71.4) | 16 (62.5) |
+| callbacks per flip (retreason425's ERROR/frame) | 1.67 (1.97) | 14.24 (14.66) |
+| kick -> dispatch, p50 / p90 of lines | 93.5 / 100.3 | 19.6 / 46.9 |
+| span | 67.4 | 44.5 |
+| **mdraw** (SET_BEGIN_END, with its lock wait) | **50.1** | **36.8** |
+| pflip (FLIP_STALL parked on the VBLANK) | 11.3 | 0.00 |
+| mflip | 2.6 | 0.00 |
+| mother | 2.1 | 5.8 |
+| rest | 1.2 | 1.4 |
+| pnop (previous callback unacknowledged) | 0.02 | 0.35 |
+| msema | 0.04 | 0.05 |
+| dl, nested (deferred download) | 19.3 | 0.4 |
+| fin, nested (every `pgraph_vk_finish`) | 0.00 | 0.10 |
+
+| leg | AUF | Blinx |
+|---|---|---|
+| M0 instrument | holds (59 lines, all parse) | holds (78) |
+| M1 same event as retreason425 | holds (1.67 is within 25% of 1.97; nokick 0) | holds (14.24 against 14.66; nokick 0) |
+| M2 no double counting | holds (67.4 <= 75.0) | holds (44.5 <= 65.6) |
+| S1 the guess | **held**: method time 54.8 of 67.4 | **refuted**: pnop 0.35, the smallest part; mdraw 36.8 is the largest |
+| P probe cost | holds (14 against 14.96) | holds (16 against 17.32) |
+
+- **For both titles, the callback is late because the PFIFO thread is
+  still dispatching the frame's draws.** Neither is waiting on the guest.
+  Every AUF callback, and 78% of Blinx's, is `shared`: it was kicked
+  before the previous one was dispatched. So the split covers the puller's
+  frame nearly end to end.
+- **AUF:** of mdraw's 50.1 ms, 19.3 is the nested deferred download.
+  `fin` is 0.00, so that download is a fence wait, not a finish of its own,
+  and lane.forza414's deferral (whose gate excludes fence waits) does not
+  reach it. #474's lazy completion (O1) does, **bound 19.3 ms/frame**. Flip
+  pacing is **bound 11.3** (pflip). The rest, about 31 ms, is the draws'
+  own work on the PFIFO thread.
+- **Blinx:** dl 0.4, fin 0.1, msema 0.05, pflip 0. **None of O1, #488,
+  flip pacing or forza414's deferral has more than 0.5 ms/frame to take.**
+  What sets Blinx's callback is the PFIFO thread's draw dispatch: 36.8 of
+  a 62.5 ms frame.
+- **Silicon** (lane.xbox, #474 comment 5859096857): from kick to handled is
+  13-14.5 us, whether the frame is empty or has 500 quads, and the puller
+  resumes 8 us after the handler. On hakuX the resume leg is already that
+  order (6.8-31.7 us). The gap is the time before dispatch, which grows with
+  queued draws: here 19.6 ms (Blinx) and 93.5 ms (AUF) at p50. On silicon the
+  whole 500-quad frame, first draw to semaphore, takes 6.4 ms.
+- **The next lever for both** is the per-draw cost of SET_BEGIN_END on the
+  PFIFO thread. slowdown462's `hakuX-phase` Draw is the place to split it.
+  This instrument ends there.
+
+**DOA on lane.forza414's fix: A `...-1639694` on `4b22f2526b`, B
+`...-1640231` on `94f002d309`, 151-288 s.**
+
+| leg | A | B | verdict |
+|---|---:|---:|---|
+| M0: surf413 / sdcall / gfps lines | 31/31/31 | 29/29/29 | holds; both windows show the fight, with no KO replay in either |
+| G0: sdcall surfupd pre per frame, fin per frame | 0.98, 0.000 | | holds: DOA waits in the display-predownload branch |
+| G1: su_deferred per frame | | 0.000 | holds: the deferral never fires on DOA |
+| C1: cdef median, ms | 56.0 | 59.9 | **holds: B/A 1.07 (>= 0.8)**. cdef did not fall, as predicted |
+| T1: Tot median, ms | 67.9 | 73.6 | holds (1.08) |
+| P1: gfps median | 13 | 12 | holds, at the edge (B >= A - 1) |
+| H0: longest gap / lines to end / crash | 2.1 s / 300.7 of 301.8 / 0 | 2.1 s / 299.3 of 300.6 / 0 | holds |
+
+The reading of section 9 stands: `94f002d309` does not reach DOA. DOA
+needs O1, for which section 14 lists the consumers.
+
+**O4 pilot `...-1640480` on `3112e410db`, 151-288 s.**
+
+| leg | verdict |
+|---|---|
+| M0 | holds: 1128 long-wait flips, fight in the shots |
+| K0 clocks | **FAILS**: offset drift 0 / 11,825 / 22,943 ms by third. The cause is below |
+| S0 | holds: wait 63.1 against dfF 62.9. The span, 40.5, agrees with phase GPU 40.4 because both use the same period |
+| S1 the guess (start-dominant) | **the premise is refuted: there is no excess to place** |
+| S2 R/X structural | holds: gap within 5% of R on 96% of flips, and after pass 0 on 93.1% |
+| P4 probe cost | **FAILS as written**: gfps 12 (range 13-17), cdef 62.5 (range 43-59). Today's unprobed arms read 13 and 12 gfps, and 56.0 and 59.9 ms, so most of the miss is the day's frame and not the probe. The probe's own cost is not separable in one run |
+
+**The GPU timestamp period on the Nova is wrong by a factor of 1.573.**
+`o4clock.py` fits the lower envelope of (fence seen - last timestamp)
+against the CPU clock. Its slope is 0.364 ns per ns, and it goes flat,
+with residuals of -0.06 to +0.10 ms over 22 five-second bins, at **52.083
+ns per tick, which is 19.200 MHz**. The period printed in the line, from
+`limits.timestampPeriod` (renderer.c:263 `gpu_ts_period_ns`), is 33.11 ns
+(30.2 MHz). 19.2 MHz is the rate of Adreno's always-on counter. With the
+fitted period:
+
+| DOA fight, O4 pilot | ms |
+|---|---:|
+| the flip's finish plus the fence wait | 64.7 |
+| GPU span, first to last timestamp | **63.7** |
+| GPU start after the finish began | 0.9 |
+| fence seen after the last timestamp | 0.1 |
+
+- **The ~18 ms "excess" of sections 7 to 10 was this factor**, not time
+  before or after the command buffer. The GPU is busy for the whole wait.
+  This also explains "wait = 3.09 x R": 2 x R x 1.573 = 3.15 x R.
+- **DOA on the Nova is GPU-bound at about 64 ms of GPU work a frame.** That
+  is a ceiling of about 15.7 fps for the current GPU work, whatever the CPU
+  side does. The brief's "<= 26 fps" came from the misread 34 ms span. **O4's
+  bound is about 1 ms, not 18.** O1 (the lazy completion) moves the wait
+  off the PFIFO thread but cannot shorten it. With O1, the frame would be
+  bounded by max(GPU ~64 ms, the PFIFO thread's ~10 ms of Draw and Fin).
+  Today it is Tot 67.9 ms, gfps 13. So O1's bound for DOA is **about 15.6
+  fps, +1 to +2**, not the 26 fps ceiling. The lever that remains is the
+  GPU work itself.
+- **Every `hakuX-phase` GPU, R and X figure from the Nova reads 0.636 of
+  the true value.** That covers slowdown462's and forza414's too, and
+  every figure in this file before this section. The Thor was not checked:
+  no `[o4]` run exists there. The fix is to calibrate `gpu_ts_period_ns` at
+  start-up (vkGetCalibratedTimestampsEXT, or a fit like this one), in
+  renderer.c. That is an instrument change, and this lane has not made it.
+- **R/X, a hypothesis labelled as one.** In corrected units, pass 0 is
+  about 30 us, then there is a gap of 30.6 ms, then pass 1 runs 30.6 ms. A
+  tiler replays a render pass's commands once per bin. A timestamp written
+  inside the pass is then overwritten by each bin, so it keeps the last
+  bin's value. With two equal bins, the gap is the first bin, which is X = R
+  exactly. The test is to read the pass's bin count (render area against
+  GMEM) or to move the timestamp outside the pass.
+
 ## Do not repeat
 
+- Do not trust `limits.timestampPeriod` on Adreno. Fit it against the CPU
+  clock first (`o4clock.py`): the Nova reports 30.2 MHz and ticks at 19.2.
+  A drift check (K0) is what caught it. Keep a drift check on any
+  cross-clock reading.
+
+- Do not read "the same call site" as "the same fix". A completion with three
+  branches has three waits; check which branch each title takes before
+  measuring one title on another's fix.
 - Do not make every PGRAPH read lockless without knowing the polled register:
   STATUS always reads idle, so the lock is the only thing holding an idle
   poll off mid-batch.
