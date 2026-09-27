@@ -139,3 +139,17 @@ Whole suite after merging origin/master (2026-09-26 ~18:05 PDT):
   takes it as CHROME.
 - Run fragments 60-65 alone with a copy of selftest.sh whose loop sources
   only `$FRAGS` (30 s instead of ~35 min for the whole suite).
+
+## 7. Attempt 2 (2026-09-26 ~18:15 PDT): why attempt 1 did not finish
+
+Attempt 1 did finish: PR #448 was ready, audited and green on `4f53412669`.
+The fold refused it because its checks ran before `master` moved (#450,
+#453, #454 and others folded after 17:41 PDT), and a PR's checks do not
+re-run when its base moves. Nothing in the branch was wrong.
+
+This attempt merged `origin/master` at `37eef9fa1e` (clean). The merge
+brought in `jobs/hold.sh` (#453), which writes `hold/<dev>.why` as
+`<UTC stamp> <tag>: <reason>`. `_hold_of` would have read the stamp's date
+and hour as the "via" and started the purpose at "02:03Z". It now takes the
+stamp as the hold's start and parses the rest as before; 65 has a check for
+that format (fails before the fix: via `2026-09-27T01`).

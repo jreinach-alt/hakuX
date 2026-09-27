@@ -419,6 +419,11 @@ def _hold_of(F, dev):
     who = (F.read(hp) or "").strip().splitlines()
     why = (F.read(hp + ".why") or "").strip()
     start = F.mtime(hp + ".why") or F.mtime(hp)
+    # jobs/hold.sh writes "<UTC stamp> <tag>: <reason>"; the stamp is the start
+    ms = re.match(r"^\s*(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z)\s+(.*)$", why, re.S)
+    if ms:
+        start = _stamp(ms.group(1)) or start
+        why = ms.group(2)
     # the hold file's first word is its owner ("lane.xbox title push 827868 <stamp>")
     holder = who[0].split()[0] if who and who[0].strip() else ""
     m = re.match(r"^\s*([\w.-]+(?:\s*\([^)]*\))?)\s*:\s*(.*)$", why, re.S)

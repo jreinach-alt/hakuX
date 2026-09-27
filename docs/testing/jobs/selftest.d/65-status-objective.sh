@@ -59,3 +59,23 @@ check "a merged lane is finished, not blocked" grep -qE '^\| blinx372d \| #372 .
 # lane.remote for other work. A note is not a wait; only the current blocker,
 # naming the path and its holder together, is.
 check "a path in an issue's history is not a file wait" sf_no65 -E '^\| flatlm13 \| local lane .*waiting on a file' "$SO_OUT/STATUS.md"
+
+# jobs/hold.sh (#453) writes .why as "<UTC stamp> <tag>: <reason>". The stamp
+# is the hold's start, not its holder: before this, "2026-09-27T01" read as
+# the via and the purpose began "02:03Z".
+SO_H="$T/status-objective-hold"; mkdir -p "$SO_H/hold"
+echo "lane.titlestate" > "$SO_H/hold/thor"
+echo "2026-09-27T01:02:03Z lane.titlestate: nav.py pilot on Burnout 3, until 18:41 PDT" > "$SO_H/hold/thor.why"
+check "a hold.sh .why names its holder, purpose, start and end" python3 -c '
+import os, sys
+sys.path.insert(0, sys.argv[1]); import status_html as S
+class F:
+    D = sys.argv[2]
+    def read(self, p):
+        return open(p).read() if os.path.exists(p) else None
+    def mtime(self, p):
+        return 0
+h = S._hold_of(F(), "thor")
+ok = (h["holder"] == "lane.titlestate" and h["via"] == "lane.titlestate" and h["purpose"].startswith("nav.py pilot")
+      and h["start"] == 1790470923 and h["end"] == 1790473260)
+print(h); sys.exit(0 if ok else 1)' "$REPO/docs/testing/jobs" "$SO_H"
