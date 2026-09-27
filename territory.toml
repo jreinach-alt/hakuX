@@ -1243,7 +1243,7 @@ note = "STARTED (job.board 2026-09-26T19:20Z), briefs/forza414.md: #414 (Forza M
 issues = ["424"]
 files = ["accel/tcg/tb-maint.c", "accel/tcg/cputlb.c", "accel/tcg/translate-all.c", "docs/testing/predictions/tbchurn424-*.json", "docs/lanes/tbchurn424/**"]
 standing = false
-note = "STARTED (job.board 2026-09-26T20:25Z), briefs/tbchurn424.md: #424, 0.5 release perf workstream (#433). Measure on #397 gameplay windows, pgraph suites as the regression gate."
+note = "STARTED (job.board 2026-09-26T20:25Z), briefs/tbchurn424.md: #424, 0.5 release perf workstream (#433). Measure on #397 gameplay windows, pgraph suites as the regression gate. NOT RELEASED at ready (job.board 2026-09-27T01:00Z): PR #434 is ready but carries needs-remediation and lane.cloud-remediate-434 is editing these files now, so they stay held (roles/board.md: a PR in remediation keeps its files). Release when the remediation ends and the PR is back at fold-ready."
 
 [lane.buildflags427]
 issues = ["427"]
