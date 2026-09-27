@@ -24,6 +24,12 @@
 # a spare START on the save screen either selects "Start New Game" (the A
 # after it then lands in the opening, which A presses through) or does
 # nothing. Two more A presses and 20 s more come before the mark.
+#
+# Still NOT replayed (2026-09-27 12:30 PDT). This version's soak,
+# 1-1790527983-titleroutes-2100312, is void for a reason outside the route:
+# hakuX did not have the Thor's input focus and an overlay covered display
+# 0, so all 7 frames are black and the presses went to another app. Its
+# 28.32 fps is not a reading of this title's gameplay.
 wait 25.1
 shot boot
 wait 8.4

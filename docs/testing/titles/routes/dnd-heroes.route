@@ -19,6 +19,16 @@
 # pattern's A then chose Save Game. This version drops that START and waits
 # 150 s after `skip` for the cutscene to end. A spare A in play is an attack.
 #
+# Still NOT replayed (2026-09-27 12:30 PDT). This version's soak,
+# 0-0-x-1790527983-titleroutes-2100395, is void for a reason outside the
+# route: hakuX rendered on display 0 but did not have the Thor's input
+# focus, so no press reached the game. The title sat in its own loop, the
+# main menu for about 40 s and then the attract demo for about 80 s, and
+# the frames `name`, `load` and `skip` are that demo (heroes with keys and
+# potions already collected). One thing it did show: on a cold boot the
+# main menu, NEW GAME highlighted, is up about 55 s after launch with no
+# press at all (`a3`).
+#
 # Player control: LY min walked the fighter down the screen, A and X
 # attacked; X also opens the skill list (Avid Pursuit, War Cry, Thrown
 # Dagger), so the play pattern presses A only. Nav frames 008-gameplay ->
