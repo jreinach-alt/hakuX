@@ -584,3 +584,30 @@ On resume:
    and `su_upl` from ~3.1 toward <= 1.9. Register fps as a readout, with the reason from section 14.
 3. When flip474's DOA pair on 4b22f2526b / 94f002d309 lands (`1790527182`, `1790527188`), add DOA's
    cdef to section 14's table.
+
+## Why attempt 4 did not finish (resume of 2026-09-27, addendum 3)
+
+It ended on a `waiting:` (PR #479, 18:10Z) for the `forza414-coalesce-mnm2.json` arm and the
+vk/draw.c grant. The grant landed at 11:13 PDT (board 5f78b6a5ba). At this resume the arms job had
+not yet queued mnm2 (no `arms-forza414` result after `1-1790519668`), and CI on 7787feb2ae was
+green on `check` with `build` still running.
+
+## 19. Hunk 1: `cleared` after a full clear (51721e36aa)
+
+`mark_clear_full()` in vk/draw.c, called at both exits of `pgraph_vk_clear_surface` after
+`pgraph_vk_set_surface_dirty` (which resets the flag). The rect is the clip-bounded clear rect,
+saved before the inline path's binding clamp. It is compared in anti-aliased units, as the binding's
+size and GL's `surface_binding_dim` are, and before the scale factor. Colour counts only when all
+four channels are cleared. Zeta counts only when Z is cleared, and stencil too if the host format
+has a stencil aspect. There is no local compile for this file on this host, so CI builds it.
+
+Predictions, registered before any device run, on A = 7787feb2ae (the head before the hunk) and
+B = 51721e36aa:
+
+| file | kind | legs |
+|---|---|---|
+| `forza414-cleared-mnm.json` | goldens, arms job | the ten suites of mnm/mnm2, byte-identical |
+| `forza414-cleared-soak.json` | Nova soak, hand-read | M0 race reached; P1 m10 evictions <= 25% of A; P2 `su_upl` <= 1.9/frame; P3 `surfupd` fin <= 60% of A; fps is a readout, window t = 125-240 s |
+
+P1 is also the only reading of whether Forza's clears are full: if they are not, m10 does not
+move and the hunk is inert on Forza, not refuted.
