@@ -60,7 +60,7 @@ void pgraph_vk_set_surface_scale_factor(NV2AState *d, unsigned int scale)
     qemu_mutex_unlock(&d->pfifo.lock);
 
     // FIXME: It's just flush
-    qemu_mutex_lock(&d->pgraph.lock);
+    pgraph_lock_settled(&d->pgraph);
     qemu_event_reset(&d->pgraph.vk_renderer_state->dirty_surfaces_download_complete);
     qatomic_set(&d->pgraph.vk_renderer_state->download_dirty_surfaces_pending, true);
     qemu_mutex_unlock(&d->pgraph.lock);
@@ -69,7 +69,7 @@ void pgraph_vk_set_surface_scale_factor(NV2AState *d, unsigned int scale)
     qemu_mutex_unlock(&d->pfifo.lock);
     qemu_event_wait(&d->pgraph.vk_renderer_state->dirty_surfaces_download_complete);
 
-    qemu_mutex_lock(&d->pgraph.lock);
+    pgraph_lock_settled(&d->pgraph);
     qemu_event_reset(&d->pgraph.flush_complete);
     qatomic_set(&d->pgraph.flush_pending, true);
     qemu_mutex_unlock(&d->pgraph.lock);
@@ -1968,7 +1968,7 @@ static void surface_watch_rearmed(CPUState *cpu, run_on_cpu_data data)
     SurfaceWatchRearm *w = data.host_ptr;
     NV2AState *d = w->d;
 
-    qemu_mutex_lock(&d->pgraph.lock);
+    pgraph_lock_settled(&d->pgraph);
     qemu_rec_mutex_lock(&surface_watch_lock);
     PGRAPHVkState *r = d->pgraph.vk_renderer_state;
     SurfaceBinding *s = r ? g_hash_table_lookup(r->surface_addr_map,
@@ -2047,7 +2047,11 @@ static void surface_access_callback(void *opaque, MemoryRegion *mr, hwaddr addr,
                                     hwaddr len, bool write)
 {
     NV2AState *d = (NV2AState *)opaque;
-    qemu_mutex_lock(&d->pgraph.lock);
+    /* Settled (#474): inside the lock-released fence wait of
+     * download_surface_complete_deferred the staged downloads have not been
+     * copied into VRAM yet, and a write here that let the guest store first
+     * would be overwritten by that copy. */
+    pgraph_lock_settled(&d->pgraph);
 
     PGRAPHVkState *r = d->pgraph.vk_renderer_state;
     bool wait_for_downloads = false;

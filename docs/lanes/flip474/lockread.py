@@ -104,12 +104,17 @@ def main():
             print(f'  flips {tot["flips"]:.0f} ({tot["flips"] / wall * 1000:.1f}/s); '
                   f'per flip surface_update {tot["flip_surf_ms"] / tot["flips"]:.1f} ms, '
                   f'flip_stall op {tot["flip_op_ms"] / tot["flips"]:.1f} ms')
+        if 'rd_unl' in tot:
+            # Present from the counter's second version on; zero on any build
+            # that never releases the lock across a fence wait.
+            print(f'  served inside a lock-released fence wait: reads '
+                  f'{tot["rd_unl"]:.0f}, writes {tot["wr_unl"]:.0f}')
         reg_n, reg_w = defaultdict(float), defaultdict(float)
         for _, _, regs in rows:
             for a, n, w in regs:
                 reg_n[int(a, 16)] += float(n)
                 reg_w[int(a, 16)] += float(w)
-        print('  registers (top 4 per line, summed):')
+        print(f'  registers (top {max(len(r) for _, _, r in rows)} per line, summed):')
         for a in sorted(reg_n, key=lambda a: -reg_w[a])[:8]:
             print(f'    0x{a:04x} {names.get(a, "?"):32s} n={reg_n[a]:.0f} '
                   f'wait {reg_w[a] / 1000:.2f} s = {reg_w[a] / max(rd, 1e-9):.2f} of read wait')

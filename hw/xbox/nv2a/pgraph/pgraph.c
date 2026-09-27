@@ -907,10 +907,14 @@ NV2AState *g_nv2a;
  * the puller is mid-batch) and on what the puller is doing while it holds
  * the lock. So per 2 s: reads and writes, their lock wait split by the
  * puller's phase when the wait began (FLIP_STALL's surface_update, its
- * flip_stall op, anything else), the four most-read registers with their
- * wait, and the FLIP_STALL phases' own time. Uncontended acquisitions go
- * through trylock and read no clock. The vCPU owns the read/write fields; the
- * puller owns the flip fields and publishes them with qatomic ops.
+ * flip_stall op, anything else), the six registers read with the most
+ * wait (the pilot ranked by count and hid 64% of the wait below its top
+ * four), the FLIP_STALL phases' own time, and rd_unl/wr_unl: accesses served
+ * while the PFIFO thread had released the lock across a fence wait, which is
+ * zero wherever pgraph_lock_release_for_fence() is never called. Uncontended
+ * acquisitions go through trylock and read no clock. The vCPU owns the
+ * read/write fields; the puller owns the flip fields and publishes them with
+ * qatomic ops.
  */
 enum { LOCK474_OTHER, LOCK474_FLIP_SURF, LOCK474_FLIP_OP, LOCK474_PHASES };
 #define LOCK474_REGS 16
@@ -922,7 +926,7 @@ static uint32_t lock474_flips;
 
 static struct {
     int64_t t0;
-    uint32_t n[2], slow[2];
+    uint32_t n[2], slow[2], unl[2];
     int64_t wait_ns[2][LOCK474_PHASES];
     struct { uint32_t addr, n; int64_t wait_ns; } reg[LOCK474_REGS];
     uint32_t reg_other_n;
@@ -940,13 +944,20 @@ static void lock474_flip_done(int64_t surf_ns, int64_t op_ns)
     qatomic_inc(&lock474_flips);
 }
 
-static void pgraph_mmio_lock(PGRAPHState *pg, bool write, hwaddr addr)
+static void pgraph_mmio_lock(PGRAPHState *pg, bool write, hwaddr addr,
+                             bool settle)
 {
     int64_t wait = 0;
-    if (qemu_mutex_trylock(&pg->lock) != 0) {
+    bool locked = qemu_mutex_trylock(&pg->lock) == 0;
+    if (!locked || (settle && pg->lock_released_for_fence)) {
         int phase = qatomic_read(&lock474_phase);
         int64_t t0 = nv2a_clock_ns();
-        qemu_mutex_lock(&pg->lock);
+        if (!locked) {
+            qemu_mutex_lock(&pg->lock);
+        }
+        while (settle && pg->lock_released_for_fence) {
+            qemu_cond_wait(&pg->lock_settled_cond, &pg->lock);
+        }
         wait = nv2a_clock_ns() - t0;
         lock474.wait_ns[write][phase] += wait;
         if (wait >= LOCK474_SLOW_NS) {
@@ -954,6 +965,9 @@ static void pgraph_mmio_lock(PGRAPHState *pg, bool write, hwaddr addr)
         }
     }
     lock474.n[write]++;
+    if (pg->lock_released_for_fence) {
+        lock474.unl[write]++;
+    }
     if (write) {
         return;
     }
@@ -981,11 +995,14 @@ static void lock474_log(void)
         return;
     }
 
-    int top[4] = { -1, -1, -1, -1 };
+    int top[6] = { -1, -1, -1, -1, -1, -1 };
     for (int i = 0; i < LOCK474_REGS && lock474.reg[i].n; i++) {
-        for (int t = 0; t < 4; t++) {
-            if (top[t] < 0 || lock474.reg[i].n > lock474.reg[top[t]].n) {
-                for (int s = 3; s > t; s--) {
+        for (int t = 0; t < 6; t++) {
+            if (top[t] < 0 ||
+                lock474.reg[i].wait_ns > lock474.reg[top[t]].wait_ns ||
+                (lock474.reg[i].wait_ns == lock474.reg[top[t]].wait_ns &&
+                 lock474.reg[i].n > lock474.reg[top[t]].n)) {
+                for (int s = 5; s > t; s--) {
                     top[s] = top[s - 1];
                 }
                 top[t] = i;
@@ -993,9 +1010,9 @@ static void lock474_log(void)
             }
         }
     }
-    char regs[160] = "";
+    char regs[256] = "";
     size_t len = 0;
-    for (int t = 0; t < 4 && top[t] >= 0; t++) {
+    for (int t = 0; t < 6 && top[t] >= 0; t++) {
         len += snprintf(regs + len, sizeof(regs) - len, " r%d=0x%x:%u:%.1f", t,
                         lock474.reg[top[t]].addr, lock474.reg[top[t]].n,
                         lock474.reg[top[t]].wait_ns / 1e6);
@@ -1011,7 +1028,7 @@ static void lock474_log(void)
         "[lock474] dt_ms=%lld rd=%u rd_slow=%u rd_wait_ms=%.1f rd_fs=%.1f "
         "rd_fo=%.1f rd_ot=%.1f wr=%u wr_slow=%u wr_wait_ms=%.1f wr_fs=%.1f "
         "wr_fo=%.1f wr_ot=%.1f flips=%u flip_surf_ms=%.1f flip_op_ms=%.1f "
-        "regs_other=%u%s",
+        "rd_unl=%u wr_unl=%u regs_other=%u%s",
         (long long)((now - lock474.t0) / 1000000), lock474.n[0],
         lock474.slow[0],
         (lock474.wait_ns[0][0] + lock474.wait_ns[0][1] +
@@ -1026,7 +1043,7 @@ static void lock474_log(void)
         lock474.wait_ns[1][LOCK474_FLIP_OP] / 1e6,
         lock474.wait_ns[1][LOCK474_OTHER] / 1e6,
         flips, flip[LOCK474_FLIP_SURF] / 1e6, flip[LOCK474_FLIP_OP] / 1e6,
-        lock474.reg_other_n, regs);
+        lock474.unl[0], lock474.unl[1], lock474.reg_other_n, regs);
 
     memset(&lock474, 0, sizeof(lock474));
     lock474.t0 = now;
@@ -1038,9 +1055,14 @@ static inline void lock474_set_phase(int phase) {}
 static inline void lock474_flip_done(int64_t surf_ns, int64_t op_ns) {}
 static inline void lock474_log(void) {}
 
-static inline void pgraph_mmio_lock(PGRAPHState *pg, bool write, hwaddr addr)
+static inline void pgraph_mmio_lock(PGRAPHState *pg, bool write, hwaddr addr,
+                                    bool settle)
 {
-    qemu_mutex_lock(&pg->lock);
+    if (settle) {
+        pgraph_lock_settled(pg);
+    } else {
+        qemu_mutex_lock(&pg->lock);
+    }
 }
 #endif
 
@@ -1049,7 +1071,17 @@ uint64_t pgraph_read(void *opaque, hwaddr addr, unsigned int size)
     NV2AState *d = (NV2AState *)opaque;
     PGRAPHState *pg = &d->pgraph;
 
-    pgraph_mmio_lock(pg, false, addr);
+    /*
+     * #474: a read may run while the PFIFO thread waits on a GPU fence with
+     * the lock released (pgraph_lock_release_for_fence): the ISR's INTR,
+     * NSOURCE and TRAPPED_* reads are what DOA Ultimate's vCPU waited ~50 ms
+     * a frame for. Two do not: RDI_DATA advances RDI_INDEX, and STATUS
+     * (0x700, never written here, so it always reads idle) is the register a
+     * guest would poll to learn the engine is done -- held off until the
+     * method ends, as before.
+     */
+    pgraph_mmio_lock(pg, false, addr,
+                     addr == NV_PGRAPH_RDI_DATA || addr == 0x700);
 
     uint64_t r = 0;
     switch (addr) {
@@ -1128,7 +1160,12 @@ void pgraph_write(void *opaque, hwaddr addr, uint64_t val, unsigned int size)
     if (needs_pfifo_lock) {
         qemu_mutex_lock(&d->pfifo.lock);
     }
-    pgraph_mmio_lock(pg, true, addr);
+    /* #474: interrupt acknowledge, its enable and the flip read index may
+     * be written inside a lock-released fence wait; any other write waits it
+     * out. See pgraph_read. */
+    pgraph_mmio_lock(pg, true, addr,
+                     addr != NV_PGRAPH_INTR && addr != NV_PGRAPH_INTR_EN &&
+                     addr != NV_PGRAPH_INCREMENT);
 
     switch (addr) {
     case NV_PGRAPH_INTR:
@@ -1321,6 +1358,8 @@ void pgraph_init(NV2AState *d)
 
     PGRAPHState *pg = &d->pgraph;
     qemu_mutex_init(&pg->lock);
+    qemu_cond_init(&pg->lock_settled_cond);
+    pg->lock_released_for_fence = false;
     qemu_mutex_init(&pg->renderer_lock);
     qemu_event_init(&pg->sync_complete, false);
     qemu_event_init(&pg->flush_complete, false);
@@ -1569,6 +1608,7 @@ void pgraph_destroy(PGRAPHState *pg)
        pg->renderer->ops.finalize(d);
     }
 
+    qemu_cond_destroy(&pg->lock_settled_cond);
     qemu_mutex_destroy(&pg->lock);
 }
 
