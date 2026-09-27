@@ -83,6 +83,10 @@ cost is bounded: the pick was right when it was made, and harness_health's
 - Wiring: arms.sh runs for real against a private host with a backlogged
   nova, and queues both arms with `device: thor`.
 
+Full `bash docs/testing/jobs/selftest.sh`: 2166 passed, 0 failed.
+`preflight.sh` passed. The wiring mutant (arms.sh with the pin dropped) fails
+the `device: thor` check. No device time was used.
+
 ## Next lane: do not repeat
 
 - Do not move the choice to claim time. See the table: it is the #13 race.
