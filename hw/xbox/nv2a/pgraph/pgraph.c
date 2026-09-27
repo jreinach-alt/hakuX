@@ -26,6 +26,7 @@
 #endif
 
 #include "hw/xbox/nv2a/nv2a_int.h"
+#include "system/tcg.h"
 #ifdef __ANDROID__
 #include "hw/core/cpu.h"
 #include "target/i386/cpu.h"
@@ -4428,12 +4429,19 @@ DEF_METHOD(NV097, SET_ZPASS_PIXEL_COUNT_ENABLE)
     pg->zpass_pixel_count_enable = parameter;
 }
 
+/* #488: a report is written to guest memory only when the renderer next
+ * finishes (vk/reports.c), so a semaphore release after one keeps the
+ * download, and with it the finish that writes the report first. Cleared by
+ * that release. Not migrated: a restored machine has no queries in flight. */
+static bool report_since_semaphore;
+
 DEF_METHOD(NV097, GET_REPORT)
 {
     uint8_t type = GET_MASK(parameter, NV097_GET_REPORT_TYPE);
     assert(type == NV097_GET_REPORT_TYPE_ZPASS_PIXEL_CNT);
 
     d->pgraph.renderer->ops.get_report(d, parameter);
+    report_since_semaphore = true;
 }
 
 DEF_METHOD_INC(NV097, SET_EYE_DIRECTION)
@@ -5247,9 +5255,49 @@ DEF_METHOD(NV097, SET_SEMAPHORE_OFFSET)
     pgraph_reg_w(pg, NV_PGRAPH_SEMAPHOREOFFSET, parameter);
 }
 
+/*
+ * #488: the release used to download the bound surfaces first, which waits for
+ * the GPU to finish every draw before it: 13.8 ms median after the last kick
+ * for 500 quads on the Thor, where the console takes 2.7 us (lane.xbox's
+ * signal-timing suite). That download dates from before the renderer watched
+ * surface memory, when it was the only way for a CPU read after the semaphore
+ * to see the rendering.
+ *
+ * Under TCG the Vulkan renderer watches every draw-dirty surface: a guest read
+ * or write of its VRAM downloads it first (surface_access_callback). So only
+ * the draws still queued are recorded here, which marks their surfaces dirty
+ * and arms the watch; the download waits for a reader. What nothing reads is
+ * never downloaded here, and what the CPU reads is downloaded when it reads.
+ * Textures and blits over a dirty surface download it themselves
+ * (download_surfaces_in_range_if_dirty).
+ *
+ * A GET_REPORT since the last release keeps the download: the report reaches
+ * guest memory only in the finish, and the guest reads it after the
+ * semaphore (ZPass_pixel_count does). GL, and a build without TCG, keep the
+ * download too.
+ *
+ * The risk: a CPU read of a surface that was shelved while still dirty is not
+ * answered by the watch (vk/surface.c's handoff note); the old download here
+ * had cleaned the bound surfaces before any later shelving.
+ */
+#ifdef CONFIG_VULKAN
+void pgraph_vk_flush_reorder_window(NV2AState *d);
+void pgraph_vk_flush_draw_queue(NV2AState *d);
+#endif
+
 DEF_METHOD(NV097, BACK_END_WRITE_SEMAPHORE_RELEASE)
 {
-    d->pgraph.renderer->ops.surface_update(d, false, true, true);
+#ifdef CONFIG_VULKAN
+    if (!report_since_semaphore && tcg_enabled() &&
+        pg->renderer->type == CONFIG_DISPLAY_RENDERER_VULKAN) {
+        pgraph_vk_flush_reorder_window(d);
+        pgraph_vk_flush_draw_queue(d);
+    } else
+#endif
+    {
+        d->pgraph.renderer->ops.surface_update(d, false, true, true);
+        report_since_semaphore = false;
+    }
 
     //qemu_mutex_unlock(&d->pgraph.lock);
     //bql_lock();
