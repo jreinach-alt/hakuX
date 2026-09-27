@@ -1,0 +1,11 @@
+# hakuX #462 signal timing: ST_Calibrate
+freq_hz 3375000
+counter_s 2.000040
+interrupt_time_s 1.999000
+counter_over_interrupt 1.000520
+tsc_mhz 733.334
+vblanks 121
+vblank_hz 60.4988
+# raw, counter ticks unless named
+q0	q1	tsc0	tsc1	int0_100ns	int1_100ns	vbl0	vbl1
+4692391216	4699141351	86353855084	87820552114	902680000	922670000	6930	7051

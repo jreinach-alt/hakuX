@@ -160,3 +160,21 @@ No values are predicted.
 - **v3b:** only the test name goes on screen. The measurement code is unchanged. Tests commit `c9a473c`, XBE sha256 `d4796af3d408…`, ISO `1b5ffbabae6e…`, in `hardware/runs/2026-09-27-callback462b/`, with output `e:/callback462b`.
 - The legs, the session and the order are as registered above. A new dry run comes first.
 - **The v3 dry run's data is void.** A full-screen overlay had covered hakuX on the Thor's display since 11:06 PDT (hostops, #462 comment 5858742140). Its 500-quad frames took a median 139 ms, where the same Thor took about 25 ms at 09:45. v3b's dry run replaces all of it. v1 (09:45, Thor) and v2 (09:58, Nova) ran before the overlay.
+
+### v3b result (2026-09-27)
+
+- **hakuX:** the dry run `0-0-x-1790534090-xbox-callback462b-dry-3973639` completed normally on the **Thor** at 12:27 PDT, with no BugCheck.
+- **Console:** 12:27-12:28 PDT, 56 s, completed normally.
+- **Legs:** I1, I7 and I8 hold on the console, and I1 holds on hakuX (1.000520).
+- The raw files are in `signal-timing/console-v3b` and `signal-timing/hakux-thor-v3b`. The table is in [`signal-timing/table-v3b.md`](signal-timing/table-v3b.md).
+
+**On silicon:**
+- A push-buffer callback is handled 13-14.5 us after its kick, whatever the workload: the GPU keeps up with the CPU.
+- The puller resumes, and the semaphore behind the callback is visible, 8.0 us after the handler.
+- An extra callback costs 16.1 us of frame time.
+
+**On hakuX (Thor):**
+- **Kick -> handled** grows with the queued work: 23.7 us on an empty frame, 293 us after 500 quads (p95 2.0 ms), and 160 us per callback in the 15-callback frame (p95 0.92 ms).
+- **Handled -> resumed** is on the same order as silicon: 6.8 us empty, 31.7 us after 500 quads (p95 151), and 18.8 us with 15 callbacks.
+
+**Caveat on hakuX's frame and submission rows:** this Thor submitted the 500-quad frame about 17 times slower than it did at 09:45 (187 ms against 11 ms, same APK), after its flat battery. Those rows describe that device state. The callback latencies are the comparison.
