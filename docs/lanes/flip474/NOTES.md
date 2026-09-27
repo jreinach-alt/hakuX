@@ -329,6 +329,112 @@ previous frame's GPU work (cdef). This change was never meant to touch it.
 The next lever is that wait itself: complete the display download without
 blocking the next method, or pipeline it a frame (#413/#414).
 
+## Why attempt 3 did not finish, and attempt 4 (2026-09-27)
+
+Attempt 3 did finish the definition of done. It judged every leg (section 8),
+posted on #474 and #462, and marked #475 ready at 15:56Z. After that, two
+things arrived that it never read. The first was audit pass 1
+(`docs/audits/2026-09-27-flip474-pass1.md`, four LOW findings, each needing a
+logged decision). The second was lane.local's 09:17 PDT addendum asking for
+the next lever with a bound for each option; attempt 3 gave it one line.
+Attempt 4 does both. It re-measures nothing and extends no arm.
+
+### Audit pass 1: a decision for each LOW
+
+Audit pass 2 (`docs/audits/2026-09-27-flip474-pass2.md`) landed while
+attempt 4 was writing these remedies. It found the tree clean on
+`e3138297ee`, carried the four LOWs as follow-ups, and labelled #475
+`fold-ready`. A push of `hw/` edits after that would put code the audit
+never read into the fold. So the remedies below are **written but not on
+this branch**. They belong in the next change that touches these files
+(the O1 lane below). This PR carries only docs.
+
+| LOW | decision |
+|---|---|
+| 1: the comments name the ISR reads as DOA's wait | **follow-up, text ready.** `pgraph_read`'s comment should say PATT_COLOR0 (0xb10) is 0.55-0.65 of the wait, the ISR's INTR/NSOURCE/TRAPPED_* reads the rest, "so do not narrow this to the interrupt registers". `wait_frame_fence`'s comment should say the same in one line |
+| 2: release assumes the lock is held | **no guard.** Every PFIFO-thread caller of `surface_update` is a method under the batch hold; pass 2 re-enumerated them. This is the third instance of the mid-method drop already made by `pgraph_context_switch` and NO_OPERATION. The guard belongs with any change that adds a lockless PFIFO path into surface_update |
+| 3: `len` in `lock474_log` is unchecked | **follow-up, one line.** Add `&& len < sizeof(regs)` to the loop condition. Perflog-only; both passes show it cannot truncate today (at most ~210 of 256 bytes) |
+| 4: the exemption is "all but two" | **follow-up, text ready.** Beside the exemption, say: a window read returns a register as the method left it before its surface_update. That linearises only while every method writes PGRAPH registers on one side of surface_update (SET_CONTROL0: after; the diag FLIP_INCREMENT_WRITE: before) |
+
+The written remedies passed `ndkcheck.py` on pgraph.c and vk/surface.c in
+both NV2A_PERF_LOG modes before they were set aside.
+
+### The next lever: the PFIFO thread's own wait (`cdef`)
+
+`phaseread.py` (hakuX-phase medians over 151-288 s; GPU is the per-frame
+span from GPU timestamps):
+
+| run | Tot (PFIFO ms/frame) | Surf | Draw | Fin | GPU span | cdef |
+|---|---|---|---|---|---|---|
+| A1 | 65.0 | 54.9 | 8.3 | 1.7 | 34.8 | 52.3 |
+| A2 | 74.0 | 62.6 | 9.1 | 1.8 | 39.9 | 61.6 |
+| B1 | 61.7 | 51.8 | 8.1 | 1.8 | 33.0 | 51.0 |
+| B2 | 62.1 | 51.8 | 8.1 | 1.8 | 33.0 | 50.4 |
+
+Read with B's numbers. The PFIFO thread's frame is about 62 ms. Of that,
+about 51 ms is the wait at the first surface_update after the flip, for the
+flip's command buffer, and about 11 ms is its own work. The GPU's span for
+that buffer is only 33 ms. The PFIFO thread and the GPU therefore take
+turns: the thread records a frame, submits at the flip, then waits for the
+whole of it before it records the first draw of the next frame. So the
+overlap is near zero, and the frame is roughly CPU + latency + GPU, not the
+max of them. The wait is also about 18 ms longer than the GPU span. That gap is
+submit latency through the render thread, queue start, or GPU clock ramp
+after an idle gap. It is not measured, and it is not split.
+
+The completion is unconditional (`pgraph_vk_surface_update`, vk/surface.c,
+the `download_surface_complete_deferred` call after `part`). It does not
+ask whether the surface being bound, or anything the method reads,
+overlaps a staged download.
+
+Options, with a **bound** for each. A bound is a ceiling, not a prediction
+(GPU span and CPU work held at B's values):
+
+- **O1, complete lazily.** Leave `display_predownload_pending` set across
+  draws. Complete only when a consumer needs the VRAM:
+  - a trapped CPU access to a staged surface (`surface_access_callback`
+    already kicks downloads);
+  - a texture or surface upload from an overlapping range;
+  - the scanout read;
+  - or, at the latest, the next flip's pre-record, which returns early
+    while one is pending.
+
+  Frame bound = max(CPU 11, GPU 33) ≈ 33 ms, **<= 30 fps**, from 15. The
+  real ceiling is lower if the GPU span grows once the GPU runs back to
+  back. The frame-slot rotation (3 slots, draw.c) still caps in-flight
+  work at two frames. Risk: a consumer this path misses reads a stale
+  frame (the DOA display surface is read only by scanout), so the
+  consumers must be enumerated before any code.
+- **O2, complete off the PFIFO thread.** The render thread (or a
+  completion worker) waits on the fence and copies the staged downloads.
+  The PFIFO thread goes on at once, and VRAM consumers wait on a
+  per-surface completion. Same bound as O1, **<= 30 fps**. It has more
+  hazards than O1: the copy races guest writes to the same VRAM. It is
+  the general form of #414's "complete off the PFIFO thread", so
+  Forza/Blinx 2's synchronous SURFACE_DOWN path could share it.
+- **O3, gate the wait on overlap.** Keep the completion in surface_update,
+  but run it only if the surface being bound or read overlaps a staged
+  download range. Otherwise defer it as in O1. This is O1 restricted to
+  one call site. Bound: **<= 30 fps** if DOA's first-draw surfaces never
+  overlap the flip's staged downloads; **no gain** if they do (the display
+  surface re-bound as the next back buffer is exactly that case, and it is
+  not measured).
+- **O4, shorten the wait without overlap.** Attack the ~18 ms between the
+  wait and the GPU span: submit latency, queue start, clock ramp. Frame
+  bound = 62 - 18 = 44 ms, **<= 22.7 fps**. A cheaper first measurement
+  than O1-O3 is a CPU timestamp at the flip's `vkQueueSubmit` against the
+  command buffer's first GPU timestamp (same clock domain via
+  `VK_EXT_calibrated_timestamps`, or its absence noted). It also decides
+  whether O1's ceiling is 33 ms or smaller.
+
+Recommendation: measure O4's split first (perflog-only, one pilot). Then
+enumerate O1's consumers by reading, and implement O1 against a prediction
+whose legs are cdef -> ~0, Tot <= 45 ms, and the pgraph suites
+bit-identical. Two things to watch: the `R`/`X` halves of the GPU span come
+out almost equal in every run, which looks like an instrument artefact
+before anyone relies on it, and `GPU` is a per-frame sum over command
+buffers.
+
 ## Do not repeat
 
 - Do not make every PGRAPH read lockless without knowing the polled register:
