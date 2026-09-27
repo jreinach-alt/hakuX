@@ -72,6 +72,7 @@ cleanup() {
     rc=$?
     if [ "$USED" = 1 ]; then
     [ -n "${GUARD_PID:-}" ] && kill "$GUARD_PID" 2>/dev/null
+    [ -n "${HS_PID:-}" ] && kill "$HS_PID" 2>/dev/null
     [ -n "$SOAK_PID" ] && kill "$SOAK_PID" 2>/dev/null && wait "$SOAK_PID" 2>/dev/null
     if ! grep -q '"perf_restored": true' "$OUT/perf_regimen.json" 2>/dev/null; then
         ( . "$HERE/devices.sh"; read -r _ _ pr fr <<<"$(device_perf_values $S)"
@@ -79,7 +80,7 @@ cleanup() {
     fi
     a shell am force-stop $PKG >/dev/null 2>&1
     a shell "run-as $PKG rm -rf files/spv_cache files/vk_pipeline_cache.bin files/shader_module_keys.bin" >/dev/null 2>&1
-    a shell "rm -f /data/local/tmp/gta482-on.data /data/local/tmp/gta482-off.data" >/dev/null 2>&1
+    a shell "rm -f /data/local/tmp/gta482-on.data /data/local/tmp/gta482-off.data /data/local/tmp/gta482-hoststate.sh" >/dev/null 2>&1
     rm -f "$D/.shader_cache_apk.$DEV"
     [ -n "${HARDEN_WAS:-}" ] && a shell setprop security.perf_harden "$HARDEN_WAS" >/dev/null 2>&1 \
         && say "perf_harden restored to $HARDEN_WAS"
@@ -169,6 +170,16 @@ say "pre-launch focus: $pre"
 grep -q 'FocusedWindows:' "$OUT/dumpsys-input-prelaunch.txt" && case "$pre" in "miss: no FocusedDisplayId"*) false ;; esac \
     || { say "dumpsys input has no FocusedDisplayId/FocusedWindows; refusing"; exit 7; }
 cp "$HERE/titles/routes/gta-sa.route" "$OUT/route.txt" || { say "no route gta-sa"; exit 5; }
+# The host's state (hoststate.sh, read-only): in slowdown462's slow record every
+# hakuX thread ran on cpu0-2 only, in both fast records on cpu3-7 (cpuof.py).
+# A full read before launch, at the mark, at `prof start` and after the
+# records; a light read every 5 s in between (hoststate-timeline.txt), so the
+# order of "the cores changed" and "gfps fell" can be read.
+a shell "cat > /data/local/tmp/gta482-hoststate.sh" < "$HERE/../lanes/gta482/hoststate.sh"
+hs() { T=25 a shell "sh /data/local/tmp/gta482-hoststate.sh $PKG $1" < /dev/null 2>/dev/null | tr -d '\r'; }
+hsfull() { { hs full; echo "# label $1"; } > "$OUT/hoststate-$1.txt"; say "hoststate $1: $(grep -c . "$OUT/hoststate-$1.txt") lines, $(grep -m1 '^online=' "$OUT/hoststate-$1.txt") $(grep -m1 '^proc ' "$OUT/hoststate-$1.txt")"; }
+hsfull prelaunch
+grep -q '^== end' "$OUT/hoststate-prelaunch.txt" || say "hoststate did not run (no '== end'); the session goes on without it"
 
 LOGCAT_SPEC="hakuX-crash:V hakuX-unhandled:W hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-tier1:D hakuX-pages:I hakuX:I hakuX-stderr:E hakuX-vk:I hakuX-route:I hakuX-pace:I hakuX-stall:I hakuX-rpbrk:I hakuX-cpu:I xemu-gpu:I xemu-sfp:I libc:F DEBUG:F *:S" \
 HAKUX_DEVICE_LEASE="$OUT/soak.lease" CAPTURE_LOG="$OUT/logcat.txt" ROUTE_FILE="$OUT/route.txt" SERIAL=$S \
@@ -210,6 +221,7 @@ focus() { a shell dumpsys input < /dev/null 2>/dev/null | tee "$OUT/dumpsys-inpu
         sleep 5
     done
 ) & GUARD_PID=$!
+( sleep 15; while kill -0 $SOAK_PID 2>/dev/null; do hs light >> "$OUT/hoststate-timeline.txt"; sleep 5; done ) & HS_PID=$!
 
 wait_for() {  # <grep pattern> <nth> <timeout s>
     local t=0
@@ -242,6 +254,7 @@ if wait_for "ROUTE .* mark gameplay" 1 420 && wait_for "ROUTE .* shot gameplay" 
     # wait for it: two hakuX-perf lines in a row at gfps <= SLOW_GFPS, read
     # from the live logcat, for at most <arg 1> s. Never reached: record
     # nothing and end the session.
+    hsfull mark
     n0=$(wc -l < "$OUT/logcat.txt"); t=0; slow=""
     while [ $t -lt "$DELAY" ] && kill -0 $SOAK_PID 2>/dev/null; do
         slow=$(tail -n +$((n0 + 1)) "$OUT/logcat.txt" | grep 'hakuX-perf.*gfps=' | sed 's/.*gfps=\([0-9]*\).*/\1/' | tail -2 | tr '\n' ' ')
@@ -249,11 +262,12 @@ if wait_for "ROUTE .* mark gameplay" 1 420 && wait_for "ROUTE .* shot gameplay" 
         [ $# = 2 ] && [ "$1" -le "$SLOW_GFPS" ] && [ "$2" -le "$SLOW_GFPS" ] && break
         slow=""; sleep 2; t=$((t + 2))
     done
-    [ -n "$slow" ] || { shot shot-noregime; say "slow regime (gfps <= $SLOW_GFPS twice) never came in $DELAY s; recording nothing"; exit 9; }
+    [ -n "$slow" ] || { shot shot-noregime; hsfull noregime; say "slow regime (gfps <= $SLOW_GFPS twice) never came in $DELAY s; recording nothing"; exit 9; }
     say "slow regime at +$t s: gfps $slow"
     a shell log -t hakuX-route "'prof start'" >/dev/null
     say "prof start (left $(left) s)"
     shot shot1
+    hsfull profstart
     # Off-CPU first: a --trace-offcpu record holds the on-CPU samples too, so
     # it answers rows 1 and 2 of the #482 table when paranoid <= 1.
     if [ "$PARANOID" -le 1 ]; then
@@ -274,6 +288,7 @@ if wait_for "ROUTE .* mark gameplay" 1 420 && wait_for "ROUTE .* shot gameplay" 
     else
         say "skipping the on-CPU record: $(left) s left"
     fi
+    hsfull profend
     if [ "$(left)" -gt 70 ]; then
         PID=$(a shell "pidof $PKG:xemu" | tr -d '\r' | awk '{print $1}')
         say "xemu pid $PID"

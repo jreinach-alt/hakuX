@@ -13,6 +13,9 @@ blocked 61.9 ms/frame, cause unmeasured).
 | `tbmap.py` | maps a thread's JIT samples to guest pcs. Each TranslationBlock header sits in the code buffer just before its code, and `tc.ptr` points 192 B past the header. Self-checks: the delta mode, tier-1 promote pcs as known answers, and the mapped share |
 | `codewrites.py` | #424 code-page store churn over a window of any soak logcat (`hakuX-pages` lines), per second and per frame, with the pages written |
 | `winfps.py` | flips and fps between two route markers (profwin.py's arithmetic, any marker pair) |
+| `cpuof.py` | which host CPUs each thread's samples are on, per event, from `simpleperf dump` (`--selftest`) |
+| `hoststate.sh` | device side, read-only: online/isolated CPUs, per-CPU frequency and cap, cpusets, the emulator's cpuset, per-thread `stat` and `schedstat`, thermal zones, active cooling devices; `full` adds process state, power, thermalservice, battery |
+| `hoststate.py` | reads `hoststate.sh`'s output: one row per read, then per interval each thread's run share and run-queue wait share (`--selftest`) |
 
 How a guest pc is recovered without instrumenting the build: `tcg_tb_alloc`
 puts the header at the aligned `code_gen_ptr` and the code right after it
@@ -313,3 +316,65 @@ default 540.
   place, and the route does not always reach it. Trigger on live gfps.
 - Do not set `DEADLINE_S` below what the grant allows when the second
   record is the one the brief needs most.
+
+## Attempt 4 (resumed 2026-09-27 13:03 PDT, after hostops's addendum 3)
+
+Why attempt 3 did not finish: it ended correctly in a wait. Its one granted
+session (s4) recorded the fast regime (28.8 fps), because the records
+started a fixed 60 s after the mark and the route never reached a slow
+place. A further session needed a new grant, which addendum 3 gives (one
+held Thor session, PERF_HARDEN0=1 allowed, after lane.titleroutes' hold
+lifts).
+
+### Found offline while waiting for the Thor: the slow record ran on the little cores only
+
+`cpuof.py` over the three GTA records on disk (all a593d8eb85, Thor, MAX
+regimen `perf_mode` 2 / `fan_mode` 4 in every `perf_regimen.json`):
+
+| record | regime | samples | vCPU thread | every other emulator thread |
+|---|---|---:|---|---|
+| slowdown462 `gta-open.data` | slow, 4.8 fps | 62,706 | cpu0-2: 36.2 / 32.2 / 31.5%; cpu3-7: 0 | cpu0-2 only |
+| slowdown462 `gta.data` | alley, 26.6 fps | 69,092 | cpu7 96.9% | cpu3-6 (PFIFO 94.1%, the rest ~100%) |
+| gta482 s4 `rec-on.data` | wall, 28.8 fps | 55,277 | cpu7 92.3% | cpu3-6 |
+
+Not one of the slow record's 62,706 samples is on cpu3-7. In the fast
+records only `Thread-6`, the binder threads and part of the app's main
+thread are on cpu0-2.
+
+The soak's own counters say the same from the other side
+(`0-0-x-1790522043-slowdown462-3573620`, the lines before and after the
+fall at 08:42:05):
+
+| per frame | fast (08:41:47-08:42:02) | slow (08:42:11-08:42:37) |
+|---|---|---|
+| gfps | 23-27 | 4-5 |
+| draws (`Df`) | 53-60 | 56-63 |
+| PFIFO methods (`M`) | 12,898-16,945 | 15,761-18,285 |
+| PFIFO method time (`Mth`) | 17.7-23.2 ms | 46.0-59.7 ms |
+| per method | 1.37 us | 2.75-3.27 us |
+| renderer `Draw` | 11.2-14.8 ms | 31.2-43.7 ms |
+
+The guest submits the same frame (draws and methods per frame are equal),
+and every host thread needs 2.3-3 times as long per unit of its work. That
+is a slower host, not a heavier scene. slowdown462 read the same thing as
+"the alley's mix, about 4.2 times over per frame".
+
+What this does and does not establish:
+
+- Established: the one slow record this lane's table is built on was taken
+  with the whole emulator confined to cpu0-2. The table's ms/frame are
+  little-core milliseconds with ~10 busy threads on 3 cores.
+- Likely, not measured: "vCPU blocked 61.9 ms/frame" (row 2) is mostly
+  waiting for a CPU, not blocking. The record has no switch events.
+- Not established: WHY the threads were on cpu0-2. Candidates: the process
+  left the `top-app` cpuset (no longer the top app: focus or display state
+  on the dual-screen Thor), or the big cores were isolated or capped
+  (thermal, core_ctl; the slow runs followed other device work, s4 started
+  after an idle gap at 86%). `cpuof.py` cannot separate these, and cannot
+  see a frequency cap at all.
+- Not established: that the place plays no part. The slow regime began 30
+  and 43 s after the mark in two runs and never in two others.
+
+So the session records the host's state as well: `hoststate.sh` full reads
+before launch, at the mark, at `prof start` and after the records, and a
+light read every 5 s in between.
