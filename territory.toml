@@ -1394,10 +1394,3 @@ issues = []
 files = ["docs/testing/jobs/status.sh", "docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/60-status.sh", "docs/testing/jobs/selftest.d/62-status-freshness.sh", "docs/testing/jobs/selftest.d/63-status-lanes.sh", "docs/testing/jobs/selftest.d/64-status-html.sh", "docs/testing/jobs/selftest.d/65-status-objective.sh", "docs/testing/jobs/selftest.d/66-status-titles.sh", "docs/testing/release-0.5.toml", "docs/lanes/dash432/release-0.5.toml", "docs/testing/jobs/selftest.d/67-status-measured.sh", "docs/lanes/measured05/**"]
 standing = false
 note = "STARTED (lane.local 2026-09-26 21:54 PDT), briefs/measured05.md: the owner, about 21:55 PDT, asked for 'Measured N / 145' (titles with any fps reading) at the top of the status page, and a chart of it in How close is 0.5. issues = [] on purpose: #433 is the release tracker. Serves 0.5."
-
-
-[lane.cloud-audit1-473]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit1-473, audit pass 1 of PR #473 on branch claude/docs-tooling-agentic-coding-u152m1, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit1 473` removes this row when the unit ends."
