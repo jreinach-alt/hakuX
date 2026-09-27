@@ -240,3 +240,27 @@ file (same issue, newer registration).
 Waiting on the `[job.arms]` verdict for `doa413b-defoff-mnm.json` (a593d8eb85 vs 6cd9507d07), and
 on CI for the pushed head. On PASS: `gh pr ready 440`. Nothing else is left: preflight passes, the
 body's `Files:` matches the diff, and the prediction is committed with its refs.
+
+## Why attempt 5 did not finish
+
+It ended correctly, waiting on the default-off arm. That arm was judged PASS (205 checks) at
+21:04 PDT, and host ops marked #440 ready. Then lane.local decided (21:14 PDT) that a refuted
+cut must not ship as switched-off dead code, and the lane was resumed to strip it.
+
+## Attempt 6: the refuted cut is stripped; what ships is the probe
+
+- Merged origin/master (e5db66fa37). Removed every line of the lazy-completion path from
+  vk/surface.c (14ed3ff573): `surf_lazy_complete`, `deferred_downloads_submitted`, the
+  display-predownload forget helper, the four `complete_submitted_downloads` call sites, the
+  `[lazy413]` log line, the `lazy` column of `[surf413]`, and the tail's two-way branch. The
+  surface.c diff against master is now 113 added lines and none removed. All of them are the
+  `[surf413]` probe, which compiles to nothing outside `NV2A_PERF_LOG && __ANDROID__` builds.
+  `ab_read.py` still reads older soaks' `lazy` column and prints 0 when it is missing.
+- dispatcher.sh keeps `xemu-surf:I` in the default logcat spec. It goes live only through the
+  host's dispatcher update window after the fold. lane.isoroots now holds dispatcher.sh, and this
+  attempt did not edit it.
+- Dropped `doa413b-lazy-mnm.json` and `doa413b-defoff-mnm.json`. Both named builds that had the
+  lazy path, and nothing else reads them. Registered `doa413b-instr-mnm.json`
+  (`register_instr.py`, e5db66fa37 vs 14ed3ff573): the same 8 suites, with the same unguarded
+  known-noise row `Blend_surface/R5G6B5_Add_SrcA_DstA`.
+- Posted the surface-cost breakdown on #462, which lane.slowdown462 now owns for DOA.
