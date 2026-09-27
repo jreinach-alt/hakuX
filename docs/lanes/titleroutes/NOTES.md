@@ -1264,3 +1264,40 @@ on the dispatcher's devices.sh at 15:13 and queued the pilot soak
 1-1790547557-titleroutes-979135 (Arctic Thunder, 590 s, Thor, ref
 677ae13af8). This attempt reads that pilot first. If it plays, the other five
 hand-over soaks go in the queue, and the lane goes on down the Thor list.
+
+**The pilot (1-1790547557-titleroutes-979135, Arctic Thunder, ref 677ae13af8).**
+The guard passed on the live state (`in-front: bdc158a5
+app=com.jreinach.hakux.debug focus=com.jreinach.hakux.debug display=0`), and
+the route's input reached the game: frames boot -> title -> SELECT GAME MODE
+-> PLAYER SELECT -> SELECT A DRIVER -> SELECT A TRACK -> race. Verdict:
+reached_gameplay, 319.6 s after the mark, adb_failures 0, no hang, apk
+5cc9d88172f4. **Its fps is not a reading of the race.** Frame m10 is
+already GO! with the checkpoint clock at 54, the sled stays still through
+m11, rt and gas (clock 41, 22, 16), and the mark frame
+(`route-frames/152432-gameplay.png`) reads TIME IS UP. The race began about
+27 s earlier than it did in the held soak. So the fps median of 21.37 (9.4%
+at >= 30, target 60) covers the time-up screen and whatever followed it.
+Fix (f57c1e3b05): hold A from m10 on, with the mark 17 s later, and drop the
+RT probe. The pilot verdict is in `pilots/titleroutes.ok`.
+
+**Batch 9 queued (Thor, 0.5 priority, ref e884ad260e, `scratch/q9.sh`, log
+`scratch/q9.log`):**
+
+| title | route | request | seconds |
+|---|---|---|---|
+| Azurik | azurik | 1-1790548501-titleroutes-1529314 | 500 |
+| D&D Heroes | dnd-heroes | 1-1790548501-titleroutes-1529756 | 600 |
+| BloodRayne | bloodrayne | 1-1790548501-titleroutes-1530145 | 540 |
+| Baldur's Gate: DA | baldurs-gate-da | 1-1790548501-titleroutes-1530514 | 780 |
+| KOF: Maximum Impact | kof-mi.returning | 1-1790548502-titleroutes-1531011 | 540 |
+| Arctic Thunder | arctic-thunder (fixed) | 1-1790548502-titleroutes-1531400 | 550 |
+
+For each result, read the mark frame and the contact sheet before the fps.
+The Arctic pilot is the example: a route can reach its mark and still be
+off target. Check the cooling devices too (#507).
+
+**Waiting (PR #515, 15:45 PDT)** on those six requests. They hold the Thor
+for about 70 min, so a held nav session would only block them. After they
+land: read them, then go on down the Thor list in held sessions (Bicycle
+Casino, Breeders' Cup, AMF Xtreme Bowling, then the Playable list in the
+hand-over).
