@@ -4,7 +4,7 @@
     synth.py <copied fixture work dir> <synth dir> <repo>
 
 One title at each stage of the 0.5 scale (#433), each reaching it the way a
-real title would: targets.toml entries (ISO per device, route), a save in
+real title would: entries added to the fixture's targets.toml (ISO per device, route), a save in
 titlestate's store, title_verdict.py-shaped verdict.json files beside
 soak_title.sh's perf_regimen.json, a staged-ISO manifest, and an [issues] map.
 Plus twelve staged titles, so the "not copied" tail folds after ten, and a
@@ -35,7 +35,11 @@ SYN = [
 ]
 GREY = [("Zz Grey %02d" % i, "5A5A01%02d" % i) for i in range(1, 13)]
 
-tg = open(os.path.join(REPO, "docs/testing/titles/targets.toml"), encoding="utf-8").read()
+# The registry the synthetic titles join is the fixture's own copy, not the
+# live docs/testing/titles/targets.toml: every title the live file names is a
+# row on the page, so each edit to it moved the counts asserted here
+# (targets.toml beside this file says what that cost).
+tg = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "targets.toml"), encoding="utf-8").read()
 for name, tid, devs, route, save, verdicts, _ in SYN:
     tg += '\n[titles."%s"]\nname = "%s"\niso = { %s }\n' % (
         tid, name, ", ".join('%s = "%s-%s.xiso.iso"' % (d, tid, name.replace(" ", "_")) for d in devs))
