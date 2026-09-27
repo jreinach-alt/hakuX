@@ -399,6 +399,330 @@ show.
 - Blinx, Blinx 2 and Forza answers posted on #462, #372 and #414; the
   five-title summary on #462.
 
+## Attempt 3 (2026-09-27): GTA: San Andreas, the sixth title
+
+Why there is an attempt 3: attempt 2 did finish. The five answers and the
+summary were posted, and PR #463 folded into master. The resume's "background
+job died" note is about attempt 1 (above). Attempt 3 exists because of
+lane.local's 06:26 PDT addendum, which added GTA: San Andreas (54540082)
+after the fold.
+
+State at 06:27 PDT: GTA is **not on the Nova** (`ls /storage/*/Games/XBox/`).
+It is on lane.xbox's `titlepush/queue-investigation.txt` (reason #462), to be
+copied the next time the Nova is free. The Nova was running a titleroutes
+benchmark then. A soak queued before the copy lands ends as the
+dispatcher's `TITLE NOT FOUND` (dispatcher.sh:756), so the soak waits for
+lane.xbox's "verified on the Nova" note on #462.
+
+### Pre-read of the Thor benchmark (not the protocol's measurement)
+
+`0-0-x-1790493356-titleroutes-734802`: ca54a41dd1, apk 397ae7dca16a, Thor,
+MAX, no perflog. It has hakuX-pace only, so the read below is pacing only.
+There were 22 pace lines (60 flips each) after the route's `mark gameplay`:
+
+| | value |
+|---|---|
+| ms/frame, median of the 22 windows | 216 (min 156, max 256) = 4.6 fps |
+| VBLANKs per flip, median | 12.5; the VBLANK rate is 58.4 Hz, so the timer is not starved |
+| flips at >= 4 VBLANKs | 1316 of 1320 |
+| the slowest frame in each window | 250-470 ms in 15 of the 22; 711, 955, 1152, 1855 and 1919 ms in the rest |
+
+**The verdict's ten 11-15 s "hangs" are not stalls.** The hang detector
+reports a gap as "N s without 60 guest flips", and at 216 ms/frame 60 flips
+take 13 s. Every gameplay window is such a "gap". The steady frame time is
+the problem. The real spikes are the five frames of 0.7-1.9 s. Their
+excess over the median frame totals about 6 s of the ~285 s window (~2%).
+The steady 216 ms is the other ~98%. Whether each spike is streaming, a
+shader compile or a lock is a question for the Nova soak's hakuX-stall and
+hakuX-phase lines and the profile, not this run.
+
+### Queued, 06:59 PDT
+
+- **Soak** `1-1790517499-slowdown462-1484367`: e5db66fa37 (the five's
+  ref), perflog, MAX, Nova, release priority, route `gta-sa`, **500 s**. The
+  Thor run's `mark gameplay` came ~225 s after `soak start`, so 420 s would
+  leave only ~190 s of gameplay. The window is `mark gameplay` + 30 s to 10 s
+  before `soak end`.
+- Queued before the copy landed, to hold its place in line. At 06:58 the
+  Nova was in a host update window (`hold/nova`, bounded 30 min) with four
+  priority requests ahead (the flip474 and retreason425 arms, lanelocal). If
+  the soak is claimed before lane.xbox's copy lands, it ends as `TITLE NOT
+  FOUND` and is re-queued unchanged.
+- **Profile** after the soak: `ROUTE=gta-sa ANCHOR="mark gameplay"
+  SOAK_S=360 .cap/prof.sh gta 54540082-Grand_Theft_Auto_San_Andreas.xiso.iso
+  60`. `capture_profile.sh` now takes `ROUTE` (default survey, so the five
+  are unchanged).
+- To answer the extra question, split the frames into the steady ~216 ms and
+  the >= 0.7 s spikes. For each spike, read the hakuX-stall, hakuX-phase and
+  hakuX-cpu lines around it.
+
+## Attempt 4 (2026-09-27, 07:42 PDT): GTA's soak read; the profile is blocked
+
+Why attempt 3 did not finish: it ended on a wait, as it should have. The
+GTA soak was queued and the copy to the Nova had not landed. Two things
+changed after it ended:
+
+- hostops withdrew the Nova copy (07:11 PDT, on #462): GTA stays on the
+  Thor only, under the one-handheld-per-title rule. At 07:50 PDT the Nova
+  has no `54540082` file.
+- hostops re-pinned the queued soak to the Thor and promoted it. It ran
+  there 07:28-07:37 PDT as `0-0-x-1790517499-slowdown462-1484367`.
+
+**So GTA's numbers are the Thor's, not the Nova's.** They do not compare
+with the five Nova rows fps for fps. The shape (which thread, which cost)
+is what carries over.
+
+**The simpleperf profile was not taken.** This lane's brief says Nova only
+and that the Thor is not touched. The messages on #462 (07:11, 07:12 and
+07:25 PDT) offer one held Thor session, and the 07:12 one says to take it
+"once the grant appears in your board-request file or brief". At 07:45 PDT
+it is in neither. Board request Ask 4 asks for it there.
+
+### Soak `0-0-x-1790517499-slowdown462-1484367`
+
+e5db66fa37 perflog, apk c4b30cf46bd6, **Thor** (bdc158a5), MAX restored,
+route `gta-sa`, 500 s, shader cache cleared before the run (APK change).
+`regimes.py <id> --from 230 --split 80` gives one row per 60-flip window.
+
+**The route's `mark gameplay` fell inside the police-stop cutscene.** Shots
+073152-cut3, 073206-moved and 073212-gameplay are all the letterboxed
+cutscene at 5-6 fps: the A presses did not skip it in this run. The route
+takes no shot after the mark, so no frame shows what was on screen in the
+275 s that follow.
+
+After the mark the run has two regimes:
+
+| | slow | fast |
+|---|---|---|
+| when (s after line 1) | 230-291 and 470-505 | 292-468 |
+| windows / flips / wall | 8 / 480 / 90.9 s (34%) | 77 / 4,620 / 177.1 s (66%) |
+| ms per flip, median (fps) | 197.5 (5.1) | 35.7 (28.0) |
+| VBLANKs per flip | 9.8 | 2.1 |
+| vCPU on-CPU (`[tlb68]` cpu/dt) | 69.9% = 138 ms/frame | 94.5% = 33.7 ms/frame |
+| vCPU off-CPU | 30.1% = 59 ms/frame | 5.5% = 2 ms/frame |
+| renderer `Tot` / `Idle` (of it `St`, starved mid-frame) | 178.3 / 117.5 (100.1) | 29.2 / 12.8 (7.0) |
+| renderer busy (`Tot` - `Idle`): Draw (Pipe) / Fin / Surf | 61: 28.9 (12.1) / 7.1 / 3.5 | 16: 11.5 (4.9) / 2.7 / 2.7 |
+| GPU | 7.0 ms | 5.2 ms |
+| draws per frame | 561 | 643 |
+| finishes because the FIFO ran dry (`stl`), per frame | 8.2 | 0.9 |
+| #424 churn, share of vCPU (`churn.py`) | 4.4-5.0% | 1.6% |
+| invalidations per second (`churn.py` inv/s) | 373 and 169 | 423 |
+| audio callbacks' zero-filled output | 18% | 1.4% |
+
+The phase fields are a running average over about the last 5 frames
+(`SMOOTH`, alpha 0.2, profile.c), read once per 60 flips. The figures above
+are medians over the windows.
+
+**The slow regime is the benchmark's gameplay.** The Thor benchmark
+`0-0-x-1790493356-titleroutes-734802` (ca54a41dd1, not perflog) has frames
+of CJ on foot in the alley with the HUD, at 7-8 fps on the overlay. Over its
+230-505 s it reads 219.4 ms per flip, 12.1 VBLANKs per flip, vCPU 68.1%,
+churn 4.9%, 340 invalidations a second, 27.8% zero-filled audio: the soak's
+slow regime in every column both runs have. So the slow regime is seen in
+the cutscene (the soak's frames) and in alley gameplay (the benchmark's).
+
+**What the fast regime is, this soak cannot say.** It holds the title's
+2-VBLANK pacing for 175 s with the same draw count. No frame covers it. The
+builds differ too (the benchmark's ca54a41dd1 has #465's jump cache on by
+default; e5db66fa37 does not), so "the same scene, faster on the older
+build" is not excluded either. A soak with frames after the mark separates
+these (Ask 4).
+
+### Attribution of the slow regime, as far as a soak reaches
+
+1. **Which thread sets the frame: the guest.** The renderer is starved for
+   100 ms of each frame (`St`: idle with the frame not yet flipped, waiting
+   for the guest's next push). The GPU works 7 ms (4%). The FIFO runs dry
+   8 times a frame, so the guest delivers the frame's commands in bursts.
+2. **Within the vCPU: not split.** The vCPU thread is on-CPU 138 ms of each
+   197.5 ms frame and off-CPU 59 ms. #424's churn is 4.4-5.0% of the on-CPU
+   time (6-7 ms/frame), timed by the build. The rest of the split (exec
+   loop, TB lookup, softmmu, helpers, guest code) is what the profile is
+   for. What the 59 ms blocks on (a lock, a disc read, a halt) needs the
+   off-CPU record.
+3. **Within PFIFO:** 61 ms busy per frame, overlapped with the guest and
+   not the bound. Draw 28.9 (Pipe 12.1, of it Sh 8.4), Fin 7.1 (Sub 4.0,
+   Fen 2.8), Surf 3.5. One deferred download completion per 2 flips.
+4. **Pacing:** 9.8-12.1 VBLANKs per flip at a VBLANK rate of 55-58 Hz. The
+   timer is not starved; the guest is late.
+
+### The extra question: the 11-15 s stalls against the steady frame time
+
+- **The verdict's ten 11-15 s "hangs" are the steady frame time.** At
+  197-219 ms per flip, 60 flips take 11.8-13.2 s, and the hang detector
+  reports "N s without 60 guest flips". Every slow window is one.
+- **Steady:** the time above the regime's median frame is 4% of the
+  benchmark's gameplay wall (9.6 s of 274.2) and 7% of the soak's slow wall
+  (6.8 s of 90.9). The rest is the steady frame.
+- **Spikes (one frame over 700 ms):**
+
+| run | window | spike frames (ms) | time above the steady frame | share of the wall |
+|---|---|---|---|---|
+| benchmark, gameplay 230-505 s | 274.2 s | 1919, 1855, 1152, 955, 711 | 5.5 s | 2.0% |
+| soak, slow regime | 90.9 s | 1974, 1837, 936 | 4.2 s | 4.6% |
+| soak, fast regime | 177.1 s | 1872 | 1.8 s | 1.0% |
+
+- **Cause, in the soak: each spike sits with a shader or pipeline
+  compile.** The window of each has a non-zero `Shd` at its end (253, 37.9
+  and 118 ms) or pipeline-cache growth in it or the next (+18, +14, +6
+  entries; `hakuX-stall pipe[used N/2048]`). The soak ran on a cleared
+  shader cache.
+- **Not settled:** the benchmark kept its shader cache and still has five
+  spikes. It has no perflog lines, so its spikes have no cause on record. A
+  disc read or a lock under the same frame would not show in either run.
+  That needs the off-CPU record.
+
+### GTA answer, attempt 4 (superseded in attempt 5: the slow regime it prices is a cutscene on this build)
+
+| # | cost | ms/frame | share | evidence | candidate fix | owner |
+|---|---|---|---|---|---|---|
+| 1 | vCPU on-CPU, not split | 138 | 70% | `[tlb68]` cpu/dt 69.9% (soak), 68.1% (benchmark); renderer starved 100 ms/frame | none until the profile splits it | new GTA issue (Ask 5) |
+| 2 | vCPU off-CPU, cause not captured | 59 | 30% | the same lines; zero-filled audio 18-28% | none until the off-CPU record names it | new GTA issue |
+| 3 | #424 code-write churn (inside 1) | 6-7 | 3% | `churn.py`: 4.4-5.0% of vCPU, 340-373 invalidations/s | #424's path is already in this build | #424 |
+
+The spikes are priced above: 2.0-4.6% of the wall, and not part of the
+steady frame.
+
+Bound, not a value: the title's pacing is 2 VBLANKs per flip, so **<= 30
+fps**. The soak's fast regime held 28.0 fps for 175 s on this device and
+build, on a screen no frame identifies.
+
+### State at the end of attempt 4 (08:00 PDT)
+
+- **Blocked** on the device for GTA's profile: `[lane.slowdown462] blocked:`
+  on PR #477. Board request Ask 4 (the Thor grant in the brief, or the Nova
+  copy) and Ask 5 (an issue for GTA) are filed.
+- Nothing of this lane's is queued or running on either device. No hold is
+  taken. No background task is left.
+- The next attempt, once the brief names the device: the profile session
+  (Ask 4 has the command), then one soak with `--frames-every 10` to see
+  what the fast regime is, then rows 1 and 2 of GTA's table.
+
+## Attempt 5 (2026-09-27, 08:15 PDT): GTA's profile on the Thor
+
+- **Why attempt 4 did not finish:** it ended blocked on the device for GTA's
+  profile (Ask 4). PR #477 folded with that state at 08:0x PDT. Hostops
+  answered Ask 4 at 08:20 (option 1: one held Thor session under 10 min, and
+  one Thor perflog soak with `--frames-every 10`) and Ask 5 (#482 is GTA's
+  issue). This attempt runs both on a new PR.
+- `capture_profile.sh` now takes `DEV=nova|thor` (default nova), finds the
+  ISO under the device's `DEVICE_ISO_ROOTS` from `devices.sh`, and refuses
+  the Thor below 30% battery (the Nova below 20%, as before).
+
+### GTA's held profile (Thor, a593d8eb85, 08:18-08:23 PDT)
+
+`DEV=thor ROUTE=gta-sa ANCHOR="mark gameplay" SOAK_S=360 OFFCPU=1
+capture_profile.sh gta ... 15`, output `perf/2026-09-26-slowdown462/gta/`.
+Hold taken during the Thor's running request (titleroutes), used only after
+`running/` emptied of the Thor; REST restored (`perf_regimen.json`
+`perf_restored: true`), caches cleared, hold released; battery 38%.
+
+- **`--trace-offcpu` cannot open on the Thor**: harden=1, paranoid=3 ("Event
+  type 'cpu-clock' is not supported"). The record fell back to on-CPU only.
+  The Nova had paranoid 1. The off-CPU half of GTA is not measurable on this
+  device without root.
+- **The window is gameplay, at 26.6 fps.** Frame `082206-gameplay`: CJ in
+  the Jefferson alley, HUD, 24 fps on the overlay. `profwin.py`: 840 flips
+  in 31.6 s = 26.62 fps, 37.6 ms/flip (gfps 19-31 after the first line).
+- vCPU (tid 29568) 28,045 of 30,000 ms sampled = 93.5% on-CPU = 35.1 ms per
+  frame. Self: guest JIT 49.8%, `tb_lookup` 10.4%, `helper_lookup_tb_ptr`
+  6.8%, `qht_lookup_custom` 4.8%, `voice_lock` 2.0%, `tb_lookup_cmp` 1.9%,
+  softmmu (`tlb_set_page_full`, `tlb_reset_dirty`, `probe_access_internal`)
+  3.9%, SSE helpers 4.3%. Inclusive: **27.9% under `helper_lookup_tb_ptr`**
+  (the indirect-jump lookup), 4.9% under `cpu_exec_loop`, 2.2% `tb_gen_code`.
+  Unlike AUF and Blinx, `cpu_exec_loop` self is not in the top: GTA's
+  dispatch cost is the indirect-jump lookup (Forza's variant).
+- PFIFO (tid 29579) 14,848 ms = 49.5% on-CPU: `memcpy_opt` 25.9% (of it
+  `pgraph_vk_snapshot_state` 36%, `pgraph_vk_finish` at FLIP_STALL 18%,
+  `apply_uniform_updates` 18%), `rewrite_indices` 4.5%. Not the frame's
+  setter at half a core.
+- Audio: four `voice_worker_thread`s 3.1-4.0 s each (~48% of a core in
+  total), the DSP thread 3.9 s, SDLThread 4.0 s of which 68% is
+  `__kernel_clock_gettime` (a poll).
+
+### The soak with frames: GTA's 5 fps is the open world, not the build
+
+`0-0-x-1790522043-slowdown462-3573620`: e5db66fa37 perflog, **Thor**, MAX,
+JC off, `gta-sa`, 500 s, `--frames-every 10` (frames cost frame rate: do not
+compare its fps with a soak without them). `mark gameplay` at 221.9 s.
+`regimes.py <id> --from 150 --split 80`:
+
+| | fast | slow |
+|---|---|---|
+| when (s after soak start) | up to ~262 | 265-500 |
+| screen | the Jefferson alley (f00020, 29 fps on the overlay) | open world: streets, houses, traffic, a pedestrian (f00032 4 fps, f00042 2 fps) |
+| wall | 111.8 s (33%) | 222.8 s (67%) |
+| ms per flip, median (fps) | 35.0 (28.6) | 229.6 (4.4) |
+| VBLANKs per flip | 2.0 | 12.7 |
+| vCPU on-CPU (`[tlb68]` cpu/dt) | 93.0% | 68.9% = 158 ms/frame; off-CPU 71 |
+| renderer `Tot` / `Idle` / `St` | 27.8 / 12.9 / 5.8 | 219.4 / 150.7 / 130.6 |
+| Draw (Pipe) / Fin / GPU | 11.1 (4.6) / 3.0 / 4.3 | 35.7 (15.4) / 17.3 / 8.6 |
+| guest `pf` / `cr3s` per s (hakuX-cpu) | 1,600 / 96 | ~10 / 0 |
+| audio zero-filled | 0% | 29.9% |
+| spikes over 700 ms | 0 | 3 (2.1, 1.7, 7.7 s) |
+
+**This withdraws the jump-cache hypothesis I posted at 08:25 PDT.** The
+three runs in that table (benchmark 4 gfps with JC on; soak and profile 27
+with JC off) were read in different places. The two fast readings came from
+the alley and the benchmark's came from past it, so the build difference was
+a coincidence of the windows. I posted the correction on #425
+(`deliver.sh`), #482 and #462 at 08:55 PDT, and withdrew Ask 6. The lesson
+is in "Do not repeat".
+
+The attempt-4 soak fits this too: its slow 230-291 s was the cutscene,
+its fast 292-468 s was the alley (no frames), and its slow 470-505 s was
+most likely CJ past it.
+
+**The held profile (08:22) is of the alley, the fast regime.** It prices
+28 fps gameplay, not the 4.4 fps that matter. **Ask 7** (host) asks for one
+more held Thor session anchored at `mark gameplay` + 90 s. The slow regime's
+`pf` and `cr3s` falling to ~0 says the guest stops switching address spaces
+and taking page faults there. A guest stuck in one thread, spinning or
+waiting (31% off-CPU), fits that. So does one long streaming or decompress
+loop. The profile would tell them apart. On the Thor it cannot show off-CPU
+time.
+
+### GTA answer, attempt 5 (Thor, e5db66fa37 perflog soak with frames, open world, 229.6 ms/frame = 4.4 fps)
+
+The guest sets the frame. The renderer idles 151 ms of every 230 ms frame,
+131 of them starved mid-frame, and the vCPU is on-CPU 69% of the wall.
+
+| # | cost | ms/frame | share | evidence | candidate fix | owner |
+|---|---|---|---|---|---|---|
+| 1 | vCPU on-CPU in the open world, not split | 158 | 69% | soak `...3573620` slow windows; frames f00032, f00042 | none until the profile of Ask 7 splits it | #482 |
+| 2 | vCPU off-CPU (blocked), cause not measurable on the Thor | 71 | 31% | the same lines; audio 30% zero-filled | none: `--trace-offcpu` fails at paranoid 3 | #482 |
+| 3 | indirect-jump TB lookup (from the alley profile, if the open world has the same mix) | <= 44 | <= 19% | gta.data: 27.9% of vCPU samples under `helper_lookup_tb_ptr` at 26.6 fps | the jump cache (#425) | #425 |
+
+Row 3 scales the alley profile's share onto the open world's on-CPU time.
+That is a bound for a mix nobody has measured yet, not a value.
+
+The alley (the first ~40 s of gameplay) runs at 26.6-28.6 fps. Its profile
+(a593d8eb85): vCPU 93.5% on-CPU, guest JIT 49.8%, indirect-jump lookup
+27.9%, softmmu 3.9%; PFIFO 49.5% on-CPU. With the lookup at zero, the alley
+is at the 2-VBLANK cap: <= 30 fps.
+
+Bound, not a value: the pacing caps GTA at **<= 30 fps**. In the open world,
+removing both vCPU rows leaves the renderer's busy 69 ms (Tot - Idle): at
+most **~14 fps** until the renderer's own Draw/Fin (53 ms) moves as well.
+
+The 11-15 s stalls: attempt 4 priced them at 2.0-4.6% of the wall, with
+shader or pipeline compiles. This soak has three spikes over 700 ms in the
+open world (2.1, 1.7, 7.7 s), 10.8 s of its 222.8 s. They are not the
+steady frame.
+
+### State at the end of attempt 5 (09:00 PDT)
+
+- Done under the 08:20 grant: the held Thor profile (alley, 08:18-08:23;
+  hold released, REST restored) and the Thor soak with frames
+  (`0-0-x-1790522043-slowdown462-3573620`). Both grants are used up.
+- **Waiting** on Ask 7 (host): one more held Thor session, anchored in the
+  open world. Nothing of this lane's is queued or running, it holds no
+  hold, and it has no background task.
+- Next attempt, once Ask 7 is granted: `DEV=thor ROUTE=gta-sa ANCHOR="mark
+  gameplay" SOAK_S=420 capture_profile.sh gta-open <iso> 90`, check with
+  `profwin.py` and the frames that the window is past the alley, then split
+  rows 1 and 3 of the answer above with `profread.py`.
+
 ## Summary (Nova, MAX, e5db66fa37 soaks / a593d8eb85 profiles)
 
 | title | fps (soak window) | sets the frame | top cost (ms/frame, share) | owner | bound if it goes |
@@ -408,6 +732,7 @@ show.
 | Blinx | 17.2 | vCPU (73% on-CPU, 27% blocked) | exec-loop returns 21.7 (36%) | #425 | <= 26 fps (<= 30 with the blocked time too) |
 | Blinx 2 | 28.9 | at its 2-VBLANK cap | exec-loop returns 13.5 (40%) | #425 | none above the 30 cap |
 | Forza | 23.0 | PFIFO (waits on deferred downloads) | deferred download finishes 18.1 (51%) | #414 | <= 30 fps (pacing) |
+| GTA: San Andreas (**Thor**; soak with frames, open-world profile) | 4.4-4.8 in the open world; 28.6 in the alley | the guest: vCPU 70% on-CPU, renderer starved | guest JIT code 77.6 (37%); blocked 61.9 (30%); TB dispatch 46.0 (22%) | #482 (#425 for dispatch) | <= 6.1 fps without dispatch; <= 7.2 without all TCG overhead |
 
 Two mechanisms cover four titles: the exec loop between TBs on the vCPU (AUF,
 Blinx, Blinx 2; Forza's variant is the indirect-jump lookup), and PFIFO waits
@@ -439,9 +764,117 @@ behind (DOA at the flip, Forza and Blinx 2 at surface downloads).
 - `capture_profile.sh`'s soak is `SOAK_S` (330 s) from launch: `mark play`
   lands at ~235-245 s on these titles, so a delay over ~40 s needs
   `SOAK_S=360` or the record is cut by the soak's end.
+- Do not take `mark gameplay` as gameplay either: GTA's fell inside a
+  cutscene the A presses had skipped in the route's other runs. A route
+  with no shot after its mark leaves the whole window unseen; ask for
+  `--frames-every` on any soak whose window the frames must confirm.
+- Do not compare per-window counts across regimes. A 60-flip window is 2 s
+  at 30 fps and 12 s at 5, and hakuX-pages counts "since last": its raw
+  counts read 5 times higher in GTA's slow regime while the per-second rate
+  (`churn.py` inv/s) was the same.
+- `titleread.py` passed `churn.py` offsets from logcat line 1. `churn.py`
+  counts from `mark gameplay` when the route wrote one, so GTA's first
+  churn read was of the wrong 53 s. Fixed in `titleread.py`; the five
+  survey-route titles were not affected (their route writes `mark play`).
+- The phase line is a running average of the last ~5 frames, not the
+  window's mean. A `Shd` of 0.0 does not show that the window had no
+  compile; pipeline-cache growth (`pipe[used N/2048]`) does.
 - Do not end a session waiting on a background task: attempt 1 did, and
   nothing resumed it for the ~25 min after the Nova came back.
   `systemd-run` and `setsid` are refused by this lane's permissions; a held
   session fits in one foreground call if the hold is taken during the
   running request and handed to the script (`.cap/prof.sh` pattern:
   release and re-take in the same call).
+- Do not compare runs of an open-world title across builds before the
+  frames say where each window was. GTA's alley runs at 28 fps and the
+  street past it at 4.4. Three runs lined up with the jump-cache switch by
+  where their windows fell, and I posted a build hypothesis that the next
+  soak refuted (08:25 -> 08:55 PDT, corrected on #425, #482 and #462).
+- `--trace-offcpu` did not open on the Thor at 08:18 (paranoid 3). At 09:16
+  it read paranoid 1 on the same boot, so read `perf:` in the session log
+  before assuming either way.
+- Do not delete a dispatcher marker in a held session's cleanup unless the
+  session undid the thing the marker records. `.env_pref.<dev>` is how the
+  next request's env gets cleared. Deleting it with the env still set ran
+  titleroutes' Azurik benchmark under #424's range test (09:08).
+
+### Attempt 6 (09:04 PDT): why attempt 5 did not finish
+
+Attempt 5 did not fail. It ended waiting on Ask 7, a host grant outside the
+session, with nothing of its own queued, held or running in the background.
+Hostops granted Ask 7 at 09:03 PDT with a 25% battery floor, and this
+attempt runs that one session. The request `0-0-x-1790517499-slowdown462-1484367`
+named in the resume is the earlier GTA soak, which attempt 4 already read.
+
+### GTA's open-world profile (Thor, a593d8eb85, Ask 7, 09:16-09:23 PDT)
+
+`DEV=thor ROUTE=gta-sa ANCHOR="mark gameplay" SOAK_S=420 OFFCPU=0 MIN_BATT=25
+capture_profile.sh gta-open ... 90`, output `perf/2026-09-26-slowdown462/gta-open/`.
+The hold was taken during titleroutes' Azurik request (09:10) and used only
+after `running/` emptied of the Thor (09:16:31). The battery was at 27%. REST
+was restored (`perf_restored: true`), the caches were cleared and the hold
+was released at 09:22:45.
+
+- **The first try (09:08) refused, and its cleanup broke the next request.**
+  tbflip424's request had left `HAKUX_TCG424_RANGE=1` in the Thor's
+  `env_vars` pref. The script refused on it, which was correct. But its
+  cleanup deleted `dispatch/.env_pref.thor`, and that marker is how the
+  dispatcher knows to clear a previous env. So titleroutes' Azurik benchmark
+  `1-1790519286-titleroutes-2112912`, claimed 10 s later, ran with the #424
+  range test on. I restored the marker at 09:12, so the next Thor claim clears
+  it. I fixed the script: it clears a leftover env itself, reads the clear
+  back, and drops the marker only after that. I reported it in
+  host-tools/hostops-inbox.md (09:15).
+- **The window is the slow regime.** `profwin.py`: 120 flips in 25.0 s =
+  4.79 fps, 208.7 ms/flip (gfps 3 5 6). This profile has no frame. The regime
+  is identified from the soak with frames, where the slow regime started
+  ~43 s after `mark gameplay`; this window is at +90 s.
+- **The Thor now reads harden=0, paranoid=1, on the same boot** (uptime
+  16.4 h). At 08:18 it read harden=1, paranoid=3. So `--trace-offcpu` may open
+  there now. Ask 7 asked for OFFCPU=0, so the vCPU's blocked third is still
+  unpriced.
+- vCPU (tid 20343): 21,096 of 30,000 ms on-CPU = 70.3%. The soak read 68.9%.
+  That is 146.8 ms of each 208.7 ms frame, and 61.9 ms blocked. Self: guest
+  JIT 52.9%, `tb_lookup` 5.6%, `helper_lookup_tb_ptr` 3.9%, `tlb_reset_dirty`
+  3.7%, `qht_lookup_custom` 2.7%, `voice_lock` 2.1% (all from APU MMIO
+  writes, `do_st_mmio_leN`), SSE helpers ~2%. Inclusive: 21.3% under
+  `helper_lookup_tb_ptr`, 10.0% under `cpu_exec_loop` (of it `tb_gen_code`
+  5.6%), 3.9% under `tlb_reset_dirty`, and none under `io_readx`/`io_writex`.
+- **It is the alley's mix, about 4.2 times over per frame.** Per frame, alley
+  -> open world: JIT 17.5 -> 77.6 ms (x4.4), lookup 9.8 -> 31.3 (x3.2), exec
+  loop 1.7 -> 14.7 (x8.6), `tb_gen_code` 0.8 -> 8.2 (x10). The guest runs
+  4.4 times the JIT time per displayed frame. Translation is the one cost
+  that grows faster than the rest: new code keeps arriving.
+- **Not a spin loop.** `jitspots.py` (new): the vCPU's 11,162 JIT samples
+  fall in 6,548 host-code buckets of 256 B, half of them in 1,353, and the
+  top bucket holds 0.7%. A guest spinning in one loop would sit in a
+  handful. Taken with `pf`/`cr3s` falling to ~0 in the soak, the guest runs
+  a broad workload in one thread that never yields for 200 ms at a time.
+- PFIFO (tid 20350): 7,309 ms = 24% on-CPU (the alley: 49.5%). Of it
+  `memcpy_opt` 24.4%. It is starved, as the soak said.
+- Audio: four `voice_worker_thread`s at 4.4-5.9 s each (~69% of a core in
+  total), the DSP thread 5.2 s. That is more than in the alley (48%).
+
+### GTA answer, attempt 6 (Thor, open world, 208.7 ms/frame = 4.8 fps)
+
+| # | cost | ms/frame | share | evidence | candidate fix | owner |
+|---|---|---|---|---|---|---|
+| 1 | guest code (JIT) on the vCPU | 77.6 | 37% | `gta-open.data` tid 20343: 52.9% self `[guest JIT]`; 6,548 buckets, not a loop | find what the guest runs (a guest-PC profile, `profile_guest.sh`), then why it is 4.4x the alley's per frame | #482 |
+| 2 | vCPU blocked (off-CPU), cause not measured | 61.9 | 30% | 30,000 - 21,096 ms; the soak: 71 ms, audio 30% zero-filled | an off-CPU profile, now possible on the Thor (paranoid 1) | #482 |
+| 3 | TB dispatch: indirect-jump lookup + exec loop (incl. translation 8.2) | 31.3 + 14.7 = 46.0 | 22% | 21.3% under `helper_lookup_tb_ptr`, 10.0% under `cpu_exec_loop` | the jump cache (#425); for translation, why new code keeps arriving | #425 / #482 |
+
+Bounds, not values. With row 3 gone, the frame is 162.7 ms: **<= 6.1 fps**.
+With every non-JIT on-CPU vCPU cost gone (69.2 ms), it is 139.5 ms: **<= 7.2
+fps**. So the TCG overhead levers cannot bring GTA's open world near 30. The
+frame is guest work (rows 1 and 2, 139.5 ms, 67%), and pricing it takes a
+guest-side profile and an off-CPU profile, not an emulator-side one.
+
+The 11-15 s stalls stay as attempt 4 priced them: 2.0-4.6% of the wall, with
+shader or pipeline compiles, and separate from this steady frame.
+
+### State at the end of attempt 6
+
+Ask 7 is used up, and this lane holds no hold and has nothing queued. The
+next GTA step belongs to #482: a guest-PC profile of the open world, plus
+an off-CPU session on the Thor (paranoid 1 now). Each needs a device grant.
+This lane's deliverables are complete.

@@ -4,7 +4,7 @@
     synth.py <copied fixture work dir> <synth dir> <repo>
 
 One title at each stage of the 0.5 scale (#433), each reaching it the way a
-real title would: targets.toml entries (ISO per device, route), a save in
+real title would: entries added to the fixture's targets.toml (ISO per device, route), a save in
 titlestate's store, title_verdict.py-shaped verdict.json files beside
 soak_title.sh's perf_regimen.json, a staged-ISO manifest, and an [issues] map.
 Plus twelve staged titles, so the "not copied" tail folds after ten, and a
@@ -32,10 +32,20 @@ SYN = [
     # no save, so it is inputs ready; a first-run route alone still needs one.
     ("Zz Purple Single Route", "5A5A0007", ("nova",), "kabuki-warriors", False, [], "inputs ready"),
     ("Zz Blue First Run: Tom Clancy's Rainbow Six 3 Black Arrow", "5A5A0008", ("nova",), "goldeneye-ra", False, [], "copied"),
+    # Scored before its registry entry landed: its verdicts carry no name and
+    # no title_id, and name an ISO the registry's map does not (the #397 08:05
+    # delivery). The file name's title-ID prefix puts them in this row.
+    ("Zz Nameless", "5A5A0009", ("thor",), "burnout3", True, [("thor", "screening", 59.0, 0.99, True, True, False),
+                                                             ("thor", "confirmation", 58.5, 0.99, True, True, False)], "Playable"),
 ]
+NAMELESS = {"5A5A0009"}
 GREY = [("Zz Grey %02d" % i, "5A5A01%02d" % i) for i in range(1, 13)]
 
-tg = open(os.path.join(REPO, "docs/testing/titles/targets.toml"), encoding="utf-8").read()
+# The registry the synthetic titles join is the fixture's own copy, not the
+# live docs/testing/titles/targets.toml: every title the live file names is a
+# row on the page, so each edit to it moved the counts asserted here
+# (targets.toml beside this file says what that cost).
+tg = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "targets.toml"), encoding="utf-8").read()
 for name, tid, devs, route, save, verdicts, _ in SYN:
     tg += '\n[titles."%s"]\nname = "%s"\niso = { %s }\n' % (
         tid, name, ", ".join('%s = "%s-%s.xiso.iso"' % (d, tid, name.replace(" ", "_")) for d in devs))
@@ -58,6 +68,8 @@ for name, tid, devs, route, save, verdicts, _ in SYN:
              "crash": crash, "hang": False, "fps_window_median": fps, "fps_ok_share": share, "pass": ok,
              "pass_kind": kind, "failing": "crash: SIGSEGV in the guest" if crash else (None if ok else "fps: 12% of play at >= 30"),
              "failures": [], "rating_candidate": "Playable" if ok else None}
+        if tid in NAMELESS:
+            v.update(name=None, title_id=None, title="%s-%s_(USA).xiso.iso" % (tid, name.replace(" ", "_")))
         json.dump(v, open(os.path.join(rd, "verdict.json"), "w"))
         json.dump({"regimen": "max", "perf_mode": 2, "fan_mode": 4, "max": {"perf_mode": 2, "fan_mode": 4},
                    "rest": {"perf_mode": 0, "fan_mode": 4}}, open(os.path.join(rd, "perf_regimen.json"), "w"))

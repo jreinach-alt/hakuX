@@ -1093,7 +1093,8 @@ static void opt_stats_log_and_reset(void)
              *   txr  create_texture calls, bind calls and those that ran the
              *        loop, direct surface downloads, range scans and the
              *        downloads they started, images made (pool hits),
-             *        surface-to-texture copies and direct binds.
+             *        surface-to-texture copies, and direct binds made:
+             *        the view changed (a reused view is not counted).
              */
             const struct OptBisectStats *s = &g_opt_stats;
 #define TX_KIB(b) ((unsigned long long)((b) >> 10))
