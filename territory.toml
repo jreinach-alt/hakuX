@@ -423,6 +423,12 @@ files = ["docs/lanes/gta482/**", "docs/testing/predictions/gta482-*.json"]
 standing = false
 note = "STARTED (hostops 2026-09-27 11:20 PDT), briefs/gta482.md: #482 (fps-focus) GTA open world ~4.5 fps; guest-PC + off-CPU profiles on the Thor (two held sessions <10 min, >=30% battery), then route each lever. Follows lane.slowdown462 (PR #483)."
 
+[lane.slowdown462]
+issues = ["462", "482"]
+files = ["docs/lanes/slowdown462/**"]
+standing = false
+note = "RESUMED (job.board 2026-09-27T20:18 PDT), attempt 3: #462/#482 per-title frame-time attribution on the Nova (AUF, Blinx, Blinx 2, Forza, DOA1U, GTA); Ask 7 grant covers one more held Thor session for GTA open-world. PRs #463/#477/#483 merged; row was missing from territory.toml -- written by job.board from briefs/slowdown462.md and fleet.py's report."
+
 [lane.scoresplit]
 issues = ["500"]
 files = ["docs/testing/score_sweep.py", "docs/testing/jobs/selftest.d/99-score-sweep-flat-split.sh", "docs/lanes/scoresplit/**"]
