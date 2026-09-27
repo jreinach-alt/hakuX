@@ -3,7 +3,7 @@
 
     assert_measured.py <out dir> <check>     prints PASS/FAIL and a reason; exit 0 on PASS
 
-checks: glance, order, bar, chart, json
+checks: glance, order, bar, chart, json, copied
 """
 import html, json, os, re, sys
 
@@ -69,6 +69,36 @@ def c_json():
     se = (((j.get("first") or {}).get("titles") or {}).get("series")) or {}
     ms = se.get("measured") or []
     return bool(ms) and ms[-1][1] == N and set(se) == {"measured", "benchmarked", "playable"}, "measured %s" % ms[-3:]
+
+
+def copied_cells():
+    """{title: (stage, Copied mark, Copied hover)} for every table row."""
+    rows = {}
+    for m in re.finditer(r'<tbody class="st-(\w+)"><tr class="a"><td class="c-t" colspan="6">(.*?)</td></tr>(.*?)</tbody>', page, re.S):
+        c = re.search(r'<td class="c-m[^"]*" title="Copied: ([^"]*)">([^<]*)</td>', m.group(3))
+        s = re.search(r"<summary>(.*?)</summary>", m.group(2), re.S)
+        t = text(s.group(1) if s else m.group(2)).strip()
+        rows[t] = (m.group(1), html.unescape(c.group(2)) if c else None, html.unescape(c.group(1)) if c else None)
+    return rows
+
+
+def c_copied():
+    """one handheld is enough: a title on one handheld is a tick naming that handheld and is not
+    'not copied'; no half mark in the Copied column; no 'copied to both handhelds' anywhere"""
+    rows = copied_cells()
+    bad = []
+    one = {t: r for t, r in rows.items() if r[2] and re.fullmatch(r"on the (Thor|Nova)", r[2])}
+    if not one:
+        bad.append("no row whose Copied hover names exactly one handheld")
+    for t, (st, mark, say) in one.items():
+        if mark != "✓" or st == "none":
+            bad.append("%s: %s %r (%s)" % (t, st, mark, say))
+    halves = [t for t, r in rows.items() if r[1] == "½"]
+    if halves:
+        bad.append("half marks in Copied: %s" % halves[:3])
+    if "copied to both handhelds" in text(page).lower() or "one handheld of two" in text(page).lower():
+        bad.append("the page still says 'copied to both handhelds' or 'one handheld of two'")
+    return not bad, ("%d one-handheld rows, all ticks: %s" % (len(one), sorted(one)[:4]) if not bad else "; ".join(bad[:4]))
 
 
 ok, why = globals()["c_" + CHECK]()

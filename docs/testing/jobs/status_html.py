@@ -1998,14 +1998,15 @@ PIPE_LEGEND = "&check; done &middot; &ndash; not yet &middot; n/a no profile ste
 
 
 def _marks(x):
-    """One cell per pipeline step: a tick, a dash, or (Copied) a half, (Save) n/a."""
+    """One cell per pipeline step: a tick, a dash, or (Save) n/a.
+
+    Copied is a tick on ANY handheld (the owner, 18:10 PDT, #433 comment
+    5851512534); its hover names which."""
     devs = x.get("devices") or []
-    if devs and len(devs) >= int(x.get("need") or 1):
+    if devs:
         cp = ("&check;", "on the %s" % " and the ".join(d.capitalize() for d in devs))
-    elif x.get("somewhere") and int(x.get("need") or 1) <= 1:
+    elif x.get("somewhere"):
         cp = ("&check;", "on a handheld; which one is not recorded")
-    elif devs or x.get("somewhere"):
-        cp = ("&frac12;", "on the %s only" % devs[0].capitalize() if devs else "on a handheld; which one is not recorded")
     else:
         cp = ("&ndash;", "not on a handheld")
     sv = (("&check;", "extracted") if x.get("save") and x.get("needs_save", True) else

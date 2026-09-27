@@ -27,6 +27,7 @@ check "Measured >= Benchmarked >= Playable, and a soak alone makes a title Measu
 check "How close shows a Measured bar first, above Benchmarked and Playable" sm_check bar
 check "the chart is inline SVG under the bars; its Measured line ends at N; three dashes" sm_check chart
 check "status.json carries the three series" sm_check json
+check "Copied is a tick on one handheld, never a half, and nothing says 'copied to both handhelds'" sm_check copied
 for sm_f in "$T"/status-measured-*.txt; do grep -q '^FAIL' "$sm_f" && sed 's/^/    /' "$sm_f"; done
 
 # One handheld's measurement is enough (the owner, 18:10 PDT, #433 comment 5851512534).
