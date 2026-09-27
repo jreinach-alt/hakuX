@@ -299,3 +299,8 @@ notes = "#431 (comment 5851536933): 30, medium confidence. IGN (Xbox, 2004); cap
 name = "Amped: Freestyle Snowboarding"
 target_fps = 30
 notes = "#431 (comment 5851536933): 30, medium confidence. ActiveXbox (2002)"
+
+[titles."4D53006B"]
+name = "MechAssault 2: Lone Wolf"
+iso = { thor = "4D53006B-MechAssault_2_Lone_Wolf.xiso.iso" }
+route = "mechassault-2"
