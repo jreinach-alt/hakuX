@@ -1383,10 +1383,3 @@ issues = []
 files = ["docs/lanes/aufdispatch/**"]
 standing = false
 note = "STARTED (lane.local 2026-09-26 21:27 PDT), briefs/aufdispatch.md: #412 (AUF) with #425: it ranks why AUF's TBs return to the exec loop (54% of the vCPU thread) and designs the fixes, ready for lane.retreason425's counter. Analysis only. The owner asked at about 21:25 PDT to step on the gas (weekly usage), so these lanes add parallel offline work that needs no device and no code file. issues = [] on purpose: the issue's owner row keeps it. Serves 0.5."
-
-
-[lane.cloud-audit2-440]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-440, audit pass 2 of PR #440 on branch lane/doa413b, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 440` removes this row when the unit ends."
