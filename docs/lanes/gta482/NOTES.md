@@ -102,6 +102,18 @@ work in the open world. It ran under the same overlay: 9 of 9 route frames and
 23 of 23 frames are black, and it flipped for only 45 s of the 284 s after
 `mark gameplay`. Nothing of the open world can be read from it.
 
+### Session 2 (held, 19:10:08-19:10:51Z): stopped by the foreground guard, nothing recorded
+
+Taken when hostops-display lifted. Display 0 was Awake and clear: the
+screencap was 106,019 B, Daijisho. The Thor had rebooted (uptime 427 s), and
+`perf_harden` 1 / paranoid 3 were back. 21 s and 26 s after launch the focused
+window was `com.android.launcher3/...secondarydisplay.SecondaryDisplayLauncher`
+(display 1), not hakuX, so the guard stopped the soak before the route's first
+input (+63 s). Route input is gamepad events, and they go to the focused
+window. REST was restored, the caches were cleared and the hold released
+after 38 s of device time. The case and the ask for one replacement session
+are in hostops-inbox (12:14 PDT).
+
 ## Do not repeat
 
 - Do not start a held session without a non-black screencap AND without
@@ -112,3 +124,8 @@ work in the open world. It ran under the same overlay: 9 of 9 route frames and
   0.9-1.5 MB frames. So a 10,899 B frame is a covered or dark display, not a
   capture limit.
 - `/memfd:jit-cache` and `/memfd:jit-zygote-cache` are ART's JIT, not TCG.
+- On the dual-screen Thor, a clear display 0 does not mean hakuX has the
+  input focus. Read `mCurrentFocus` after launch and before any route input.
+- A reboot resets `security.perf_harden` to 1 (paranoid 3). Read `perf:` in
+  the session log. `PERF_HARDEN0=1` sets it to 0 for one session, only with
+  hostops's leave.

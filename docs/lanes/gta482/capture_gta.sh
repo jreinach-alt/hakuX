@@ -80,6 +80,8 @@ cleanup() {
     a shell "run-as $PKG rm -rf files/spv_cache files/vk_pipeline_cache.bin files/shader_module_keys.bin" >/dev/null 2>&1
     a shell "rm -f /data/local/tmp/gta482-on.data /data/local/tmp/gta482-off.data" >/dev/null 2>&1
     rm -f "$D/.shader_cache_apk.$DEV"
+    [ -n "${HARDEN_WAS:-}" ] && a shell setprop security.perf_harden "$HARDEN_WAS" >/dev/null 2>&1 \
+        && say "perf_harden restored to $HARDEN_WAS"
     a shell input keyevent KEYCODE_SLEEP >/dev/null 2>&1
     [ -n "$T0" ] && say "device time $(( $(date +%s) - T0 )) s"
     fi
@@ -104,6 +106,15 @@ lvl=$(a shell dumpsys battery | tr -d '\r' | awk '/level:/{print $2; exit}')
 say "battery $lvl"
 [ -n "$lvl" ] && [ "$lvl" -ge "$MIN_BATT" ] || { say "battery below $MIN_BATT or unreadable"; exit 4; }
 say "perf: harden=$(a shell getprop security.perf_harden | tr -d '\r') paranoid=$(a shell cat /proc/sys/kernel/perf_event_paranoid | tr -d '\r') uptime=$(a shell cat /proc/uptime | tr -d '\r' | cut -d' ' -f1)"
+# PERF_HARDEN0=1 (only with hostops's leave): --trace-offcpu needs paranoid
+# <= 1, which a reboot resets to 3 (harden 1). The value found is restored on
+# every exit path.
+HARDEN_WAS=""
+if [ "${PERF_HARDEN0:-0}" = 1 ]; then
+    HARDEN_WAS=$(a shell getprop security.perf_harden | tr -d '\r')
+    a shell setprop security.perf_harden 0
+    say "perf_harden set 0 (was $HARDEN_WAS): paranoid=$(a shell cat /proc/sys/kernel/perf_event_paranoid | tr -d '\r')"
+fi
 
 ROOTS=$( . "$HERE/devices.sh"; device_env $S >/dev/null; echo "$DEVICE_ISO_ROOTS")
 ISOPATH=""
