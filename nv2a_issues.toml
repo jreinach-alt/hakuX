@@ -4100,7 +4100,7 @@ no_suites = "performance: gameplay frame rate, not a pgraph measurement; the pgr
 status = "open"
 dispatch_state = "blocked"
 blocker_tested = "confirmed 2026-09-26T21:55Z: PR #434 open and draft, head lane/tbchurn424."
-blocked_on = "UPDATED job.board 2026-09-27T01:30Z: PR #434 folded 46936c6a3d; the tbchurn424 lane is retired. The change ships default OFF (HAKUX_TCG424_RANGE=1 opts in): Crimson churn 21.0% -> 0.0% of the vCPU thread and pgraph 593/593 byte-identical, but the Blinx must-not-regress leg failed and AUF measures ~0.5% churn (#412). Next step is a follow-up lane that registers a Blinx gameplay leg per docs/lanes/tbchurn424/NOTES.md section 5 before flipping the default; not started, no lane running."
+blocked_on = "UPDATED job.board 2026-09-27T01:30Z: PR #434 folded 46936c6a3d; the tbchurn424 lane is retired. The change ships default OFF (HAKUX_TCG424_RANGE=1 opts in): Crimson churn 21.0% -> 0.0% of the vCPU thread and pgraph 593/593 byte-identical, but the Blinx must-not-regress leg failed and AUF measures ~0.5% churn (#412). Next step is a follow-up lane that registers a Blinx gameplay leg per docs/lanes/tbchurn424/NOTES.md section 5 before flipping the default; STARTED as lane.tbflip424 (hostops 2026-09-26 18:45 PDT, briefs/tbflip424.md)."
 status_note = "BOARD job.board 2026-09-26T21:55Z: not dispatchable, a lane owns it (draft PR #434, handback resumes). PRIOR: DISPATCHED (job.board 2026-09-26T20:25Z) to lane.tbchurn424, briefs/tbchurn424.md. PRIOR: FILED 2026-09-26T20:17Z by the host for 0.5 (tracking #433), from perf-architecture.md's ranked levers."
 impact_px = 0
 impact_onestep_px = 0
@@ -4145,10 +4145,10 @@ component = "build"
 disposition = "feature"
 suites = []
 no_suites = "performance: gameplay frame rate, not a pgraph measurement; the pgraph suites are its regression gate"
-status = "open"
-dispatch_state = "blocked"
+status = "closed"
+dispatch_state = "done"
 blocker_tested = "confirmed 2026-09-26T21:55Z: PR #435 open and draft, head lane/buildflags427."
-blocked_on = "UPDATED job.board 2026-09-27T01:30Z: PR #435 folded ed6830c930; the buildflags427 lane is retired. Native TLS, inline LSE and -Bsymbolic are in libxemu.so; the bound is ~3% of vCPU time, unmeasurable on Crimson/Nova (both arms at the 30 fps cap). A gain measurement needs a title with headroom on the Thor; no lane running."
+blocked_on = ""
 status_note = "BOARD job.board 2026-09-26T21:55Z: not dispatchable, a lane owns it (draft PR #435, handback resumes). PRIOR: DISPATCHED (job.board 2026-09-26T20:25Z) to lane.buildflags427, briefs/buildflags427.md. PRIOR: FILED 2026-09-26T20:17Z by the host for 0.5 (tracking #433), from perf-architecture.md's ranked levers."
 impact_px = 0
 impact_onestep_px = 0
