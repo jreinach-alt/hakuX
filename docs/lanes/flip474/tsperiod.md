@@ -58,6 +58,15 @@ arrived one minute after it ended. This session does Addendum 5, item 1.
   change to `instance.c`.
 - **Cost.** About 100 ms, once, at start-up.
 
+## What the driver's source says (read 2026-09-27, after the change)
+
+The Nova's driver is a Turnip build. The Mesa series it is built from
+(`~/hakux-work/mesa-turnipfork`, `4c18636110`, pinned by lane.turnipfork)
+reports `timestampPeriod` as 1e9 / 19.2e6 = 52.083 ns, with the comment
+"CP_ALWAYS_ON_COUNTER is fixed 19.2 MHz" (`tu_device.cc:1179-1296`). That is
+the fitted value to five figures. The build on the device reports 33.11 ns,
+so the wrong period is that build's, not the hardware's or upstream's.
+
 ## Checks
 
 - `ndkcheck.py`: renderer.c passes in NV2A_PERF_LOG 0 and 1, with 0 errors

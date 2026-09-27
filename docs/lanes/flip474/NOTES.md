@@ -811,8 +811,206 @@ fitted period:
   exactly. The test is to read the pass's bin count (render area against
   GMEM) or to move the timestamp outside the pass.
 
+## Why the last session did not finish, and this one (resumed 2026-09-27 21:27Z)
+
+The last session ended on a wait, correctly. It had built the timestamp-period
+calibration (#504, `tsperiod.md`), registered three predictions and queued four
+priority-1 device requests, all outside the session. At 21:28Z none had run:
+the Nova was on lane.forza414's Blinx pair and the Thor was held for a title
+push and then for lane.titleroutes. Addendum 6 arrived at 21:15Z, after that
+session had ended.
+
+This session merged master (60 behind, no conflict) and did the parts of
+Addenda 5 and 6 that need no device: sections 16 and 17. It registered and
+queued one new A/B (section 16). #504's own legs are judged in `tsperiod.md`.
+
+### 16. DOA's GPU cost per render pass (Addendum 5, item 2)
+
+`passread.py --period 52.083 0-0-x-1790527190-flip474-1640480` reads the O4
+pilot's `[o4]` lines over 151-288 s and restates them with the fitted period.
+896 of the 1128 waited flips have nine passes; the table is over those. Times
+are ms, medians, true units.
+
+| pass | starts at | gap before it | inside it | gap + inside |
+|---:|---:|---:|---:|---:|
+| 0 | 0.00 | 0.00 | 0.04 | 0.05 |
+| **1** | 31.28 | **31.23** (p10-p90 30.57-31.91) | **31.09** (30.49-32.03) | **62.33** |
+| 2 | 62.40 | 0.02 | 0.02 | 0.04 |
+| 3 | 62.42 | 0.00 | 0.31 | 0.31 |
+| 4 | 62.74 | 0.00 | 0.07 | 0.07 |
+| 5 | 62.80 | 0.00 | 0.03 | 0.04 |
+| 6 | 62.84 | 0.00 | 0.01 | 0.02 |
+| 7 | 62.85 | 0.00 | 0.01 | 0.01 |
+| 8 | 62.87 | 0.00 | 0.42 | 0.43 |
+| command buffer | | | | span 63.62, tail after the last pass 0.40 |
+
+**One pass is 98% of the GPU's frame: 62.3 of 63.6 ms.** What that bounds,
+for each suspect the addendum named:
+
+| suspect | bound, ms per frame | from |
+|---|---:|---|
+| render-pass breaks (9.2 a frame, `hakuX-rpbrk`) | <= 0.97 | the eight small passes, gap + inside, summed |
+| loadOp/storeOp on those eight passes | <= 0.97 | the same rows; a load or a store is inside its pass's row |
+| resolve and download after the last pass | <= 0.40 | the tail |
+| pass 1's own load and store | not separable | inside its 62.3 |
+| the draws of pass 1 | <= 62.3 | what is left |
+
+So no change to pass structure, load/store ops or downloads can take more
+than about 1.4 ms of DOA's 63.6. The cost is the draws of one pass, or how
+the driver executes them.
+
+**The driver and its timestamps.** The Nova's driver is a Turnip build
+("PurpleVK public driver", Mesa 26.3.0-devel, in the logcat's start-up lines).
+lane.turnipfork pinned the Mesa series it is built from at
+`~/hakux-work/mesa-turnipfork` (`4c18636110`). That source, not the binary,
+is what was read:
+
+- `tu_query_pool.cc:2108-2112`: a timestamp written inside a render pass goes
+  into the pass's draw command stream. Its comment: "just write the timestamp
+  multiple times so that the user gets the last one if we use GMEM".
+- `tu_cmd_buffer.cc:3802` calls that stream once per tile in GMEM rendering,
+  `:2773` once more in the binning pass when there is one, and `:4165` once
+  in sysmem rendering.
+- `tu_util.cc:509`: the binning pass runs only when the pass has more than two
+  tiles. With one or two tiles every tile executes every draw.
+- `tu_device.cc:1179-1296`: upstream reports `timestampPeriod` as 1e9 / 19.2e6
+  = 52.083 ns, and its comment says the counter is fixed at 19.2 MHz. That is
+  the value `o4clock.py` fitted. The build on the Nova reports 33.11 ns.
+
+hakuX writes both of a pass's timestamps inside the pass (draw.c:3279-3300).
+So under GMEM, `hakuX-phase`'s **R is the last replay of each pass, and X is
+everything before it**: the binning pass if there is one, the earlier tiles,
+and the loads and stores. X is not transfer time. That is section 15's
+"replay" hypothesis, and the source says it is the driver's design.
+
+**The guess this makes for DOA, labelled as one.** Pass 1's two halves are
+equal within 2% at p10 and p90 over 896 flips of a fight. Two executions of
+the same draw stream would be, if the stream's cost does not depend on which
+tile it is clipped to. Two halves of the screen would not be. So the guess is
+two replays of about 31 ms each, and the cost per replay is per draw or per
+vertex, not per pixel.
+
+Not established by reading: the tile count of DOA's pass (it needs the
+attachment sizes and the device's usable GMEM), and which render mode the
+driver's autotuner picks.
+
+**The A/B, registered before any arm ran:**
+`docs/testing/predictions/flip474-doa-rendermode.json`, one binary
+(`795ea6b3af`), the env is the variable.
+
+| arm | request | env |
+|---|---|---|
+| base | `1-1790540673-flip474-2311172` (#504's A arm, the same sha) | none |
+| sysmem | queued this session, see Waiting | `TU_DEBUG=sysmem` |
+| gmem | queued this session | `TU_DEBUG=gmem` |
+
+- S1, the guess: sysmem's GPU span is at most 0.70 of the base's (60%).
+- S2: sysmem's X/R is at most 0.25, against 0.98.
+- G1: gmem equals the base, so the default is GMEM.
+- F1: the frame follows, Tot down 12 ms or more and gfps up 2 or more.
+- R0: if all three agree, the run cannot tell "no effect" from "this build
+  ignores `TU_DEBUG`". lane.turnipfork showed `--env` reaches this driver's
+  driconf options; nothing has shown it for `TU_DEBUG`.
+
+lane.turnipfork ran the same three modes on Crimson Skies and found them flat
+at 29 gfps. Crimson sits at its 30 Hz cap, so that run could show a cost and
+not a gain. Its notes say to reopen "when a profile puts GPU time on the
+critical path of an uncapped title". DOA is that title.
+
+**Candidate fixes. Each figure is a bound, not a prediction.**
+
+| fix | what it takes | bound for DOA on the Nova |
+|---|---|---|
+| F-a: render DOA's pass in sysmem | conditional on S1. The env is a test, not a fix: the app would have to ask per driver, at instance creation (`instance.c`), and the pgraph suites must be identical under it first | GPU span 63.6 -> about 32 ms. With today's serial wait the frame is about 11 + 32 = 43 ms, **<= 23 fps** |
+| F-a with O1 (section 14's lazy completion) | both | frame >= max(32, 11) ms, **<= 31 fps** |
+| F-b: the cost of one replay | not measured. 31 ms over about 760 surface updates a frame (`[surf413] up`, roughly one per draw) is 41 us each; silicon draws the frame in under 16 ms. The next instrument is a per-pass count of draws, vertices and pipeline binds beside the pass's GPU time. It is in draw.c, which is not on this lane's row | unknown until counted |
+| F-c: write a pass's timestamps outside it | draw.c `begin_render_pass` / `end_render_pass`, perflog only. R then means "inside passes" on a tiler too | an instrument fix; it moves no frame time |
+
+### 17. lane.notify488's render-target-switch lead (Addendum 6)
+
+The lead: on master, a rep of 500 quads and one render-target switch costs
+93.7 ms in submit when the previous back buffer was not CPU-read, and 8.9 ms
+when it was. Both figures are medians.
+
+**Both tests have the same two humps. The medians are which hump holds more
+than half the reps.** `stmodes.py` reads the suite's raw rows per rep
+(A = master `0-0-x-1790531584-notify488-3150101`, B =
+`0-0-x-1790529854-notify488-2739010`; a rep is slow when its submit is over
+40 ms):
+
+| run, test | slow reps | submit, fast hump | submit, slow hump | kick -> semaphore, fast / slow | slow after a slow rep | slow after a fast rep |
+|---|---:|---:|---:|---|---:|---:|
+| A `ST_Done_DOA` | 235 of 300 (78%) | 8.5 ms | 96.6 ms | 5.9 ms / 15 us | 74% | 97% |
+| A `ST_Done_DOA_Read` | 75 of 300 (25%) | 8.5 ms | 95.0 ms | 8.2 ms / 13 us | 15% | 28% |
+| B `ST_Done_DOA` | 299 of 300 | 7.1 ms | 99.0 ms | | | |
+| B `ST_Done_DOA_Read` | 293 of 300 | 11.4 ms | 94.5 ms | | | |
+
+- The CPU read does not reset a state that makes the next rep cheap. A quarter
+  of the reps after a read are slow, and a fifth of the reps without one are
+  fast. The read changes the odds.
+- In a fast rep the guest submits in 8.5 ms, near silicon's 6.4, and then waits
+  6 to 8 ms for the semaphore. In a slow rep the guest is held for about 88 ms
+  more while it submits, and the semaphore is there 15 us after its last kick.
+  So a slow rep is the PFIFO thread taking about 95 ms over the same 500
+  quads and keeping pace with the guest, not falling behind it.
+
+**A mechanism that fits, by reading. It is a hypothesis.**
+
+- The suite kicks after every method, seven times a quad: pbkitplusplus's
+  `Begin`, `SetDiffuse`, `SetVertex` and `End` each open and close their own
+  pushbuffer block (nv2astate.cpp:332-342, 579-583, 641-645), and closing one
+  is `pb_end`.
+- When the PFIFO thread has caught up with the guest (`DMA_GET == DMA_PUT`)
+  and the command buffer holds a draw, `pgraph_vk_process_pending_reports`
+  calls `pgraph_vk_finish(VK_FINISH_REASON_STALLED)` (vk/reports.c:184-190).
+- That finish ends the render pass and submits (draw.c:3513-3600). It does not
+  wait for its own fence, but the rotation to the next of the three frame
+  slots waits for that slot's (draw.c:3771-3790).
+- So while the PFIFO thread keeps pace with the guest, every quad is its own
+  command buffer and its own render pass, with a load and a store of the
+  640x480 colour and depth, and the thread runs at the GPU's pace two
+  submissions behind. (96.6 - 8.5) / 500 is 176 us a quad.
+- When the thread starts a rep behind the guest, the kicks pile up, it never
+  catches up mid-rep, and the 500 quads go in a few passes. That is the fast
+  hump. Whether it starts behind is a race, and what the previous rep left to
+  do at the first `surface_update` moves the odds.
+
+What would confirm it: the suite run on a perflog build, reading `stl` in
+`hakuX-stall` per rep. It should be about 500 in a slow rep and under 5 in a
+fast one. Neither run above was a perflog build.
+
+**It is not DOA's cost, and it names no path in vk/surface.c.**
+
+| title (run) | stalled finishes per 60 flips (`stl`) | per frame |
+|---|---:|---:|
+| DOA (`0-0-x-1790527190-flip474-1640480`) | 0, 1, 0 | 0 |
+| AUF (`0-0-x-1790530526-flip474-2801414`) | 0 | 0 |
+| Blinx (`0-0-x-1790530526-flip474-2807172`) | 72 to 84 | 1.2 to 1.4 |
+
+DOA's frame has no stalled finish and one expensive pass (section 16). The
+500-quad rep has up to 500 cheap ones. So this case does not belong in DOA's
+per-pass table, and there is nothing here to hand to lane.forza414. For
+Blinx, 1.3 finishes a frame each add a submit and a pass's load and store;
+that is not priced here.
+
+### Waiting (this session, from 21:50Z)
+
+| request | ref | what |
+|---|---|---|
+| `1-1790540673-flip474-2311172` | `795ea6b3af` | DOA Nova, #504's A and section 16's base |
+| `1-1790540673-flip474-2311288` | `902cf1ab53` | DOA Nova, #504's B |
+| `1-1790540677-flip474-2313064` | `795ea6b3af` | Crimson Thor, #504's A |
+| `1-1790540677-flip474-2313275` | `902cf1ab53` | Crimson Thor, #504's B |
+| see `tsperiod.md`, "Results" | `795ea6b3af` | DOA Nova, `TU_DEBUG=sysmem` and `TU_DEBUG=gmem` |
+
 ## Do not repeat
 
+- Do not read a median of timing reps without looking at the rows. The
+  Signal timing suite's 500-quad reps have two humps 88 ms apart, and a
+  median reports only which one is larger (`stmodes.py`).
+- Do not read `hakuX-phase`'s R and X as render and transfer on a tiler. Both
+  of a pass's timestamps are inside the pass, and the driver keeps the last
+  tile's.
 - Do not trust `limits.timestampPeriod` on Adreno. Fit it against the CPU
   clock first (`o4clock.py`): the Nova reports 30.2 MHz and ticks at 19.2.
   A drift check (K0) is what caught it. Keep a drift check on any
