@@ -102,6 +102,7 @@ notes = "Staged 2026-09-26 (#265 batch). Own target 30 from #431: documented, hi
 name = "Dead or Alive Xtreme Beach Volleyball"
 iso = { nova = "54430007-Dead_or_Alive_Xtreme_Beach_Volleyball.xiso.iso" }
 target_fps = 60
+route = "doax"
 notes = "Staged 2026-09-26 (#265 batch). Own target 60 from #431: low confidence, one user review. Set to 60 because a false below_own_target costs one look, while a missed 60 would publish a half-speed title as Playable."
 
 [titles."45410083"]

@@ -166,3 +166,17 @@ what these games read as the D-pad (not yet tried).
 route. For a single-file route (Kabuki, Nightfire) it answers `survey.route`
 with variant first-run, since it only looks for `<route>.<variant>.route`.
 `request.sh --route <stem>` reads `routes/<stem>.route` directly, so the host queues these by file stem; on the board request.
+
+### Session 4: HELD Nova, 19:43-19:57 PDT (device used from 19:46), battery 48% -> 44%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Dead or Alive Xtreme Beach Volleyball (54430007) | nova | `doax.route` | yes (19:51) | Exhibition 2-on-2 match; rallies at 14-25 fps, a reaction cutaway after each point |
+
+**DOAX.** EXHIBITION instead of Zack Island avoids pass 1's trap (the
+vacation's shop menu). Character select wants A for each pick, swimsuit and
+mood: 13 A presses, 3-5 s apart. The nav session's match stood at 0-2 after
+~30 s of play; the replay's at 1-1 at mark + 60 s
+(`frames/doax-replay-end.jpg`), so the pattern (LX sweeps, A and B) does
+return balls. The end of a match (7 points?) was not seen: the 420 s window
+may reach a results screen, which A may or may not leave.
