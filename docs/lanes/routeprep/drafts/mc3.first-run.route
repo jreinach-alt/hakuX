@@ -1,0 +1,65 @@
+# Midnight Club 3: DUB Edition (54540079), Nova, FIRST RUN: no MC3 profile
+# on the disk. DRAFT by lane.routeprep, 2026-09-26, not played.
+#
+# Evidence: titlebench hands-off 240 s (0-0-y-1790416268-titlebench-19,
+# Nova), one frame per ~10 s in frames/: f02 Rockstar logo, f04-f09 intro
+# FMV, f10 legal screen, f12-f17 "PRESS START TO BEGIN" (~120-170 s), then
+# the FMV again (f18-f24). Nothing past the title is on disk.
+#
+# The route aims at ARCADE -> CRUISE [guess, recalled]: free driving in the
+# city with no timer and no objective, so the window holds only driving.
+# Career starts with cutscenes and a car pick, and would be the fallback.
+wait 60
+shot boot60
+press START                 # [guess] try to skip the intro FMV
+wait 30
+shot boot90
+wait 25
+shot boot115                # expect "PRESS START TO BEGIN" [seen f12]
+mark booted
+press START
+wait 8
+shot after-title            # OPEN: a profile screen (create new) or a storage prompt
+press A                     # [guess] create new profile
+wait 6
+shot keyboard               # [guess] a name keyboard
+press START                 # [guess] START accepts a keyboard in many titles; else move to Done
+wait 6
+shot after-keyboard
+press A                     # [guess] confirm / save
+wait 8
+shot saved
+mark profile-saved
+shot main-menu              # [guess] Career highlighted, Arcade below it
+axis LY max                 # [guess] down: Arcade
+wait 0.15
+axis LY mid
+wait 0.6
+shot on-arcade
+press A
+wait 6
+shot arcade-menu            # [guess] Cruise first
+press A
+wait 6
+shot city
+press A                     # [guess] first city (San Diego)
+wait 6
+shot car
+press A                     # [guess] first car
+wait 6
+shot confirm
+press A
+wait 30
+shot loading
+wait 10
+shot drive
+mark gameplay               # [guess] placeholder: move to the first frame driving with the HUD
+repeat forever {
+    axis RT max
+    axis LX min
+    wait 1.5
+    axis LX max
+    wait 1.5
+    axis LX mid
+    wait 4
+}

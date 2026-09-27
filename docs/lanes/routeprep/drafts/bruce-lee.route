@@ -1,0 +1,71 @@
+# Bruce Lee: Quest of the Dragon (56550016), Thor. DRAFT by lane.routeprep,
+# 2026-09-26, not played. One file: no profile screen appears on the way to
+# New Game in pass 1, and New Game does not read a save.
+#
+# Evidence: pass 1 (0-0-y-1790433159-titleplay-p1-brucelee, Thor), frames in
+# its route-frames/ (t = seconds after the route started):
+#   111133 t20 Ronin logo; 111153 t40 and 111217 t60 an in-engine attract
+#   111223 title "Press START" (after the START at t60)
+#   111230 New Game (highlighted) / Load Game / Options / Training Mode
+#   111239 after the next press: Player Info (highlighted) / Purchase Moves /
+#          Continue -- New Game lands on this menu, not in a level
+#   111246 A on it opens the Player Info status screen ("B Return To Menu"),
+#          which A never leaves; pass 1 sat there for the rest of the run.
+#
+# The fix: move the cursor to Continue BEFORE pressing A. Cursor moves are
+# left-stick flicks (titleroutes: the D-pad did nothing in two games).
+# Nothing past Continue has been seen.
+wait 55
+shot boot55
+wait 5
+mark booted
+press START                 # [seen 111217->111223] attract -> title
+wait 6
+shot title
+press START                 # [inferred] pass 1 pressed A here and reached the menu; START is the prompt
+wait 6
+shot main-menu              # expect New Game highlighted [seen 111230]
+press A                     # [seen 111230->111239] New Game
+wait 8
+shot new-game-menu          # expect Player Info highlighted [seen 111239]
+axis LY max                 # [inferred] down: Purchase Moves
+wait 0.15
+axis LY mid
+wait 0.6
+axis LY max                 # [inferred] down: Continue
+wait 0.15
+axis LY mid
+wait 0.6
+shot on-continue            # CHECK: Continue highlighted; if the stick did not move it, try axis HATY max
+press A                     # [guess] Continue -> level load / story
+wait 10
+shot after-continue
+mark new-game
+# [guess] from here: a story cutscene or loading, then the first stage.
+# A only: a START that lands in gameplay pauses it (pass 1's generic rounds
+# toggled pause). If a cutscene ignores A, the frames will show it; add
+# START there.
+repeat 8 {
+    press A
+    wait 6
+    shot skip-a
+}
+mark gameplay               # [guess] placeholder: move to the first frame with Bruce under control
+# A fighter: walk at the enemy and strike (A/X/B/Y are the attacks in this
+# genre; which is punch or kick is not known).
+repeat forever {
+    axis LY min
+    wait 1
+    press X
+    wait 0.4
+    press A
+    wait 0.4
+    press Y
+    wait 0.4
+    axis LY mid
+    axis LX max
+    wait 1
+    press B
+    wait 0.4
+    axis LX mid
+}

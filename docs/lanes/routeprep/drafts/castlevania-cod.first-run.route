@@ -1,0 +1,57 @@
+# Castlevania: Curse of Darkness (4B4E002D), Thor, FIRST RUN: no save on
+# the disk. DRAFT by lane.routeprep, 2026-09-26, not played. NO FRAMES ON
+# DISK for this title: every step is [guess] or [recalled].
+#
+# [recalled, low]: Konami logos and an intro FMV, "PRESS START", a main menu
+# with New Game (or Game Start) first, a file-name keyboard, a difficulty
+# (for a first game, Normal only), then an opening FMV of Hector and the
+# first area, Abandoned Castle, under control.
+wait 30
+shot boot30
+press START                 # [guess] skip logos
+wait 15
+shot boot45
+press START                 # [guess] skip the intro FMV
+wait 15
+shot boot60
+press START                 # [guess] the title prompt
+wait 8
+shot main-menu
+mark booted
+press A                     # [guess] New Game
+wait 8
+shot after-new-game         # OPEN: a file-name keyboard, a slot choice or a difficulty
+press START                 # [guess] accept a default name on a keyboard
+wait 6
+shot after-name
+press A                     # [guess] confirm / default slot / Normal
+wait 8
+shot confirm
+press A
+wait 12
+shot opening
+mark profile-saved
+repeat 12 {
+    press A                 # [guess] advance the opening FMV / dialogue
+    wait 8
+    shot opening-a
+}
+mark gameplay               # [guess] placeholder: move to the first frame with Hector under control
+repeat forever {
+    axis LY min
+    wait 1.5
+    press X                 # [guess] attack
+    wait 0.3
+    press X
+    wait 0.3
+    press A                 # [guess] jump
+    wait 0.6
+    axis LY mid
+    axis LX max
+    wait 1
+    press X
+    wait 0.3
+    axis LX min
+    wait 1
+    axis LX mid
+}

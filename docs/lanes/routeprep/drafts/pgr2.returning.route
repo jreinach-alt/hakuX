@@ -1,0 +1,55 @@
+# Project Gotham Racing 2 (4D53004B), Thor, RETURNING: a PGR2 driver is on
+# the disk. DRAFT by lane.routeprep, 2026-09-26, not played.
+#
+# Evidence: as pgr2.first-run.route (hands-off frames for the boot, PGR1's
+# played returning session for the menus): "load or create new" with
+# "load existing driver" highlighted (A) -> "select driver" Player (A) ->
+# main menu.
+wait 60
+shot boot60
+press START                 # [guess] try to skip the intro FMV
+wait 30
+shot boot90
+wait 30
+shot boot120                # expect "PRESS START" [seen f12-f14 of titlebench-14]
+mark booted
+press START
+wait 8
+shot load-or-create         # [PGR1] load existing driver highlighted
+press A
+wait 6
+shot select-driver          # [PGR1] the saved driver
+press A
+wait 8
+mark profile-loaded
+shot main-menu
+press A                     # [guess] highlighted race type
+wait 6
+shot race-type
+press A
+wait 6
+shot series-or-city
+press A
+wait 6
+shot event
+press A
+wait 6
+shot car-select
+press A
+wait 5
+shot transmission
+press A
+wait 25
+shot loading
+wait 10
+shot grid
+mark gameplay               # [guess] placeholder: move to the first frame on the grid with the HUD
+repeat forever {
+    axis RT max
+    axis LX min
+    wait 1.5
+    axis LX max
+    wait 1.5
+    axis LX mid
+    wait 3
+}
