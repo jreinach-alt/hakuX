@@ -159,4 +159,4 @@ No values are predicted.
 - **The cause is the suite's own `Finish()`, not the callback.** It printed the whole summary through `pb_printat()`, which formats into a 512-byte stack buffer with `vsprintf` (`pbkit_print.c`). v3's longer summaries overflowed it. v1 and v2 stayed under 512 bytes.
 - **v3b:** only the test name goes on screen. The measurement code is unchanged. Tests commit `c9a473c`, XBE sha256 `d4796af3d408…`, ISO `1b5ffbabae6e…`, in `hardware/runs/2026-09-27-callback462b/`, with output `e:/callback462b`.
 - The legs, the session and the order are as registered above. A new dry run comes first.
-- The v3 dry run's `ST_CB_1_Empty` numbers stand as hakuX data. Its I7 fields held there too: 300 reps, 0 timeouts, 0 stale.
+- **The v3 dry run's data is void.** A full-screen overlay had covered hakuX on the Thor's display since 11:06 PDT (hostops, #462 comment 5858742140). Its 500-quad frames took a median 139 ms, where the same Thor took about 25 ms at 09:45. v3b's dry run replaces all of it. v1 (09:45, Thor) and v2 (09:58, Nova) ran before the overlay.
