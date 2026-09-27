@@ -1,6 +1,6 @@
 # lane.flip474: Turnip's sysmem render mode (#474, Addenda 7 and 8)
 
-This file is PR #(this branch)'s notes. `NOTES.md` belongs to the lane's
+This file is #516's notes. `NOTES.md` belongs to the lane's
 earlier PRs and #504 is still editing it, so this PR does not touch it.
 
 ## Why the last session did not finish, and this one (resumed 2026-09-27 22:38Z)
@@ -71,7 +71,16 @@ on master are on #504's branch.
 
 ## Results
 
-Not yet run.
+Not yet run. The change is Android-only (`#ifdef __ANDROID__`), so the
+desktop pgraph suites cannot see it; its pixel check is the Nova pair
+above and the arms job's pair for `flip474-sysmemfix-pgraph.json`.
+
+## Waiting (from 2026-09-27 23:05Z)
+
+On the eleven requests above, all outside this session, and the arms job's
+pair. When they land: judge each file's legs, post the table on #474 and
+#462, and take #516 to ready only if both pgraph pairs are byte-identical
+and no breadth soak meets its KILL leg.
 
 ## Do not repeat
 
