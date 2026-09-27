@@ -773,3 +773,30 @@ snap-mnm) stand on the code as it is. `preflight.sh --allow-tracker` passes on 3
 2. The DOA/AUF display-predownload branch with flip474's consumer list (section 16, addendum 2).
 3. Addendum 4's uniform-block skip in draw.c (`apply_uniform_updates` / `fast_hash`, 3.5-3.7
    ms/frame on Blinx and AUF).
+
+## Why attempt 7 did not finish (resume of 2026-09-27, addendum 6)
+
+It did finish its PR: #479 went ready after hunk 3's verdicts (section 22) and the master merge
+(section 23), and the session ended on "next, in a new PR" with nothing queued. Nothing started
+the next PR. PR #479 is now in audit, so this work is on `lane/forza414b`, stacked on #479, in its
+own PR. Sections from 24 on are that PR's.
+
+## 24. Probe: which setter left the surfupd finishes' `upload_pending`
+
+`[sdcall]` gains `why=new/inv/stale/hoff/cpuw/gap/oth`: for every binding counted in `su_upl` (an
+update that completed its downloads with a finish because a binding was about to upload from
+VRAM), the site that last set that binding's `upload_pending`. perflog builds only; a side table in
+surface.c, cleared by the upload.
+
+| tag | setter |
+|---|---|
+| new | a fresh `g_malloc0` binding (populate sets `upload_pending`) |
+| inv | a reused slot from the invalid list |
+| stale | a shelf hit with `vram_newer` (another surface's download was recorded over it) |
+| hoff | a shelf hit that was clean, made stale by a handoff fallback |
+| cpuw | the CPU-write watch (`surface_access_callback`) |
+| gap | the watch's re-arm gap check |
+| oth | a setter this file does not tag: blit.c's two |
+
+Section 20's `stale` at ~105 per 60 flips is the first candidate; `realupl` 249 per 60 flips and
+`su_upl` ~3 per frame are what the split has to account for.

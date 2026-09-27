@@ -984,8 +984,16 @@ void pgraph_vk_complete_staged_downloads(NV2AState *d, PGRAPHVkState *r)
  * the wait. su_upl splits pgraph_vk_surface_update's own fin: the calls
  * where an upload that reads VRAM followed in the same surface_update;
  * su_deferred counts the updates that left their downloads to the next
- * finish (surface_update_may_defer_downloads). NV2A_PERF_LOG builds only.
+ * finish (surface_update_may_defer_downloads). why= splits su_upl's bindings
+ * by the site that last set their upload_pending (#414): a new or reused
+ * invalid slot, a shelf hit stale by vram_newer or by a handoff fallback, the
+ * CPU-write watch or its gap check, and "oth" for a setter this file does not
+ * tag (blit.c). NV2A_PERF_LOG builds only.
  */
+enum {
+    UPW_NONE, UPW_NEW, UPW_INVALID, UPW_STALE, UPW_HANDOFF, UPW_CPUW, UPW_GAP,
+    UPW__COUNT
+};
 #if NV2A_PERF_LOG && defined(__ANDROID__)
 static struct {
     int frame0;
@@ -993,7 +1001,37 @@ static struct {
     unsigned long dl[SDC__COUNT];
     int64_t wait_ns[SDC__COUNT];
     unsigned long su_upl, su_deferred;
+    unsigned long why[UPW__COUNT];
 } g_sdcall;
+
+/* Binding -> the UPW_ that last set its upload_pending; cleared by the
+ * upload. Touched only under pgraph.lock. */
+static GHashTable *g_upw_map;
+
+static void upw_set(SurfaceBinding *s, int why)
+{
+    if (!g_upw_map) {
+        g_upw_map = g_hash_table_new(NULL, NULL);
+    }
+    if (why == UPW_NONE) {
+        g_hash_table_remove(g_upw_map, s);
+    } else {
+        g_hash_table_insert(g_upw_map, s, GINT_TO_POINTER(why));
+    }
+}
+
+static void upw_count(SurfaceBinding *s)
+{
+    if (s && s->upload_pending) {
+        g_sdcall.why[g_upw_map ? GPOINTER_TO_INT(
+                         g_hash_table_lookup(g_upw_map, s)) : UPW_NONE]++;
+    }
+}
+#define UPW_SET(s, why) upw_set((s), (why))
+#else
+#define UPW_SET(s, why) ((void)(s), (void)(why))
+#endif
+#if NV2A_PERF_LOG && defined(__ANDROID__)
 
 static void sdcall_log(PGRAPHState *pg)
 {
@@ -1005,7 +1043,7 @@ static void sdcall_log(PGRAPHState *pg)
     if (frames < 60) {
         return;
     }
-    char buf[640];
+    char buf[800];
     int n = snprintf(buf, sizeof(buf), "[sdcall] frames=%d", frames);
     for (int i = 0; i < SDC__COUNT && n < (int)sizeof(buf); i++) {
         if (!g_sdcall.fin[i] && !g_sdcall.fence[i] && !g_sdcall.pre[i]) {
@@ -1017,8 +1055,14 @@ static void sdcall_log(PGRAPHState *pg)
                       g_sdcall.dl[i], (double)g_sdcall.wait_ns[i] / 1e6);
     }
     if (n < (int)sizeof(buf)) {
-        snprintf(buf + n, sizeof(buf) - n, " su_upl=%lu su_deferred=%lu",
-                 g_sdcall.su_upl, g_sdcall.su_deferred);
+        snprintf(buf + n, sizeof(buf) - n,
+                 " su_upl=%lu su_deferred=%lu why=new%lu/inv%lu/stale%lu/"
+                 "hoff%lu/cpuw%lu/gap%lu/oth%lu",
+                 g_sdcall.su_upl, g_sdcall.su_deferred,
+                 g_sdcall.why[UPW_NEW], g_sdcall.why[UPW_INVALID],
+                 g_sdcall.why[UPW_STALE], g_sdcall.why[UPW_HANDOFF],
+                 g_sdcall.why[UPW_CPUW], g_sdcall.why[UPW_GAP],
+                 g_sdcall.why[UPW_NONE]);
     }
     SURF92_LOG("%s", buf);
     memset(&g_sdcall, 0, sizeof(g_sdcall));
@@ -2138,6 +2182,7 @@ static void surface_watch_rearmed(CPUState *cpu, run_on_cpu_data data)
             surface_watch_lost_writes++;
         } else {
             s->upload_pending = true;
+            UPW_SET(s, UPW_GAP);
             surface_watch_gap_writes++;
         }
     }
@@ -2292,6 +2337,7 @@ static void surface_access_callback(void *opaque, MemoryRegion *mr, hwaddr addr,
         if (write) {
             qemu_rec_mutex_lock(&surface_watch_lock);
             surface->upload_pending = true;
+            UPW_SET(surface, UPW_CPUW);
             /* Owes no download: the rest of this generation's traps would
              * only repeat the line above. See surface_watch_resume. */
             if (!surface->draw_dirty && surface->access_cb) {
@@ -3340,6 +3386,7 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
     qemu_rec_mutex_lock(&surface_watch_lock);
     surface_watch_resume(d, surface);
     surface->upload_pending = false;
+    UPW_SET(surface, UPW_NONE);
     qemu_rec_mutex_unlock(&surface_watch_lock);
     surface->draw_time = pg->draw_time;
 
@@ -4515,15 +4562,18 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
             SURF_TIMER_INIT(_gt2);
             bool unshelved = false;
             bool shelf_stale = false;
+            int upw = UPW_NEW;
             surface = get_shelved_surface(r, target.vram_addr, &target);
             if (surface) {
                 shelf_stale = surface->vram_newer;
                 migrate_surface_image(&target, surface);
                 unshelved = true;
+                upw = UPW_STALE;
             } else {
                 surface = get_any_compatible_invalid_surface(r, &target);
                 if (surface) {
                     migrate_surface_image(&target, surface);
+                    upw = UPW_INVALID;
                 } else {
                     surface = g_malloc0(sizeof(SurfaceBinding));
                     create_surface_image(pg, &target);
@@ -4570,6 +4620,9 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                 OPT_STAT_INC(sd_eviction_dl);
                 download_surface_deferred(d, handoff_src);
                 handoff_src->shelved_dirty = false;
+                if (unshelved && !shelf_stale) {
+                    upw = UPW_HANDOFF;
+                }
                 shelf_stale = true;
             }
 
@@ -4592,6 +4645,7 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                     OPT_STAT_INC(sd_shelved_unshelved);
                 }
             }
+            UPW_SET(surface, surface->upload_pending ? upw : UPW_NONE);
 
             SURF_TIMER_INIT(_gt3);
             surface_put(d, surface);
@@ -4852,6 +4906,8 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
                   ((r->color_binding && r->color_binding->upload_pending) ||
                    (r->zeta_binding && r->zeta_binding->upload_pending))) {
                   g_sdcall.su_upl++;
+                  upw_count(r->color_binding);
+                  upw_count(r->zeta_binding);
               });
     if (surface_update_may_defer_downloads(d, upload)) {
         SDCALL_DO(g_sdcall.su_deferred++);
