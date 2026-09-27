@@ -65,7 +65,9 @@ A fourth: the device was THERMALLY PAUSED inside the scored window
 MAX the Thor's kernel pauses cpu3-7 a few minutes in and fps falls 5-7x; that
 is the device's temperature, not the title's frame rate. A pause is sampled
 every 30 s, so its span is bounded by the clean samples either side, and a
-window that span may overlap is void (thermal_state.py, A PAUSE EPISODE). A
+window that span may overlap is void (thermal_state.py, A PAUSE EPISODE). So
+is a window the readable samples do not cover (`thermal-unread:`, A WINDOW IS
+COVERED): adb failing after a pause began would otherwise read as clean. A
 run with no thermal.jsonl is judged as before, with `thermal.measured` false.
 Black frames are NOT void when run.log says `render-black:`: the soak
 re-ran display_clear and hakux_in_front at the end of the hold and both were
@@ -303,14 +305,20 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
     read = [r for r in therm or [] if thermal_state.paused(r) is not None
             and thermal_state.dev_ts(r) is not None]
     eps = thermal_state.episodes(therm or [])
-    hit = (thermal_state.in_window(therm, mark_t, end_t)
-           if read and mark_t is not None and end_t is not None else [])
+    windowed = bool(read) and mark_t is not None and end_t is not None
+    hit = thermal_state.in_window(therm, mark_t, end_t) if windowed else []
+    # A measured window no readable sample covers is void too (thermal_state.py,
+    # A WINDOW IS COVERED): a pause there would leave no paused sample.
+    gap = thermal_state.coverage(therm, mark_t, end_t) if windowed and not hit else None
     thermal = dict(measured=bool(read), samples=len(therm or []), unread=len(therm or []) - len(read),
                    pauses=[thermal_state.describe(e, mark_t if mark_t is not None else
                                                   min(thermal_state.dev_ts(r) for r in read))
-                           for e in eps], in_window=bool(hit))
+                           for e in eps], in_window=bool(hit),
+                   window_covered=(None if not windowed else gap is None), gap=gap)
     if hit and void is None:
         void = "thermal-pause: %s, relative to the mark" % thermal_state.describe(hit[0], mark_t)
+    elif gap and void is None:
+        void = "thermal-unread: %s, relative to the mark" % gap
 
     v = dict(title=title, title_id=tid, name=entry.get("name"),
              device=res.get("device_label") or "", ref=res.get("ref") or req.get("ref"),

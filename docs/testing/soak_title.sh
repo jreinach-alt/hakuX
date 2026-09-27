@@ -321,7 +321,9 @@ thermal_sample() {   # <label>
         THERMAL_OUT=""
         return 0
     fi
-    python3 "$HERE/thermal_state.py" "$SERIAL" --label "$1" >>"$THERMAL_OUT" 2>/dev/null
+    # stderr to run.log: a sampler traceback writes no line, and a reader
+    # should see why a gap is there (the verdict voids it either way).
+    python3 "$HERE/thermal_state.py" "$SERIAL" --label "$1" >>"$THERMAL_OUT"
     return 0
 }
 [ -n "$THERMAL_OUT" ] && rm -f "$THERMAL_OUT"

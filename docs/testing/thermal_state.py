@@ -34,6 +34,21 @@ span overlaps it: a pause first seen at +250 s, last clean at +220 s, may have
 begun at +221 s, inside a window ending at +240 s. Conservative on purpose: a
 benchmark voided by a pause that began one second after its window costs a
 rerun; one scored across a pause is a wrong fps in the 0.5 table.
+
+A WINDOW IS COVERED when readable samples bound it on both sides with no gap
+between them longer than MAX_GAP_S. An episode needs a paused sample, so a
+window no readable sample reaches would otherwise read as clean: a pause at
++150 s, then every later `adb shell` failing (the WSL `UtilAcceptVsock`
+case, while `adb logcat` keeps streaming perf lines), left one clean reading
+before `am start` and scored the paused fps. coverage() names the gap;
+--window exits 2 on it, and title_verdict.py VOIDS the window
+(`thermal-unread: ...`) rather than scoring it, for the same reason a pause
+it may overlap is void. MAX_GAP_S is three sample periods: one failed sample
+(60 s) or soak_title.sh's foreground wait before the first hold sample still
+counts as covered; two failures in a row do not. The window's end needs a
+readable sample at or after it, less END_SLACK_S: dev_time is whole seconds
+and `soak end` is a millisecond logcat stamp, so the `end` sample taken just
+after it can read up to a second earlier.
 """
 import datetime as dt
 import json
@@ -48,6 +63,11 @@ PAUSE_PREFIX = "thermal-pause"
 # all 0/1 at rest beside the mask devices (`thermal-pause-F8` is cpu3-7).
 # Either kind takes a core away from the emulator, so either is a pause.
 PAUSE_PREFIXES = (PAUSE_PREFIX, "pause-cpu")
+
+# soak_title.sh's THERMAL_EVERY_S default; see A WINDOW IS COVERED.
+EVERY_S = 30
+MAX_GAP_S = 3 * EVERY_S
+END_SLACK_S = 1.0
 
 # One sh script, one adb call. `2>/dev/null` per read: a zone whose temp
 # read fails (some sensors return EINVAL while powered down) must not end the
@@ -100,6 +120,11 @@ def parse_sample(text):
         if m:
             s["cool"].append([int(m.group(1)), m.group(4).strip(), int(m.group(2)), int(m.group(3))])
             continue
+        # A pause device whose cur_state or max_state read failed: dropping
+        # it would read the sample as clean, so the sample is unread.
+        if line.startswith("cd ") and any(p in line for p in PAUSE_PREFIXES):
+            s["bad_pause"] = line.strip()
+            continue
         m = re.match(r"tz (\d+) (-?\d+) (.*)$", line)
         if m:
             s["tz"].append([int(m.group(1)), m.group(3).strip(), int(m.group(2))])
@@ -111,6 +136,8 @@ def sample(serial, label=None):
     s = parse_sample(out) if not err else {"dev_time": None, "up": None, "cool": [], "tz": []}
     if not err and s["dev_time"] is None:
         err = "no clock line in the device's answer"
+    if not err and s.get("bad_pause"):
+        err = "pause device unreadable: %s" % s["bad_pause"]
     rec = {"t": round(time.time(), 1), "label": label}
     rec.update(s)
     if err:
@@ -192,6 +219,26 @@ def overlaps(ep, lo, hi):
 def in_window(recs, lo, hi):
     """Episodes that may overlap device-time window (lo, hi)."""
     return [e for e in episodes(recs) if overlaps(e, lo, hi)]
+
+
+def coverage(recs, lo, hi, t0=None):
+    """None when readable samples cover device-time window (lo, hi) (see A
+    WINDOW IS COVERED), else the gap, relative to t0 (default lo), as a phrase."""
+    ts = sorted(dev_ts(r) for r in recs if paused(r) is not None and dev_ts(r) is not None)
+    t0 = lo if t0 is None else t0
+    rel = lambda t: "%+.0f s" % (t - t0)
+    if not ts or ts[-1] < hi - END_SLACK_S:
+        return "no reading at or after the window's end %s (last %s)" % (
+            rel(hi), rel(ts[-1]) if ts else "none")
+    before = [t for t in ts if t <= lo]
+    chain = [before[-1] if before else lo] + [t for t in ts if lo < t < hi]
+    after = [t for t in ts if t >= hi]
+    if after:
+        chain.append(after[0])
+    for a, b in zip(chain, chain[1:]):
+        if b - a > MAX_GAP_S:
+            return "no reading from %s to %s (%.0f s > %d s)" % (rel(a), rel(b), b - a, MAX_GAP_S)
+    return None
 
 
 def describe(ep, t0=None):
@@ -279,12 +326,18 @@ def main(argv):
             print("unread: no sample with a reading")
             return 2
         t0 = min(ok)
-        hit = in_window(recs, t0 + float(argv[2]), t0 + float(argv[3]))
+        lo, hi = t0 + float(argv[2]), t0 + float(argv[3])
+        hit = in_window(recs, lo, hi)
         for e in hit:
             print("thermal-pause: " + describe(e, t0))
-        if not hit:
-            print("no pause may overlap +%s..+%s s" % (argv[2], argv[3]))
-        return 0 if hit else 1
+        if hit:
+            return 0
+        gap = coverage(recs, lo, hi, t0)
+        if gap:
+            print("unread: " + gap)
+            return 2
+        print("no pause may overlap +%s..+%s s" % (argv[2], argv[3]))
+        return 1
     if argv[0] == "--trips" and len(argv) == 2:
         zones = trips(argv[1])
         print(json.dumps({"serial": argv[1], "zones": zones}, sort_keys=True))

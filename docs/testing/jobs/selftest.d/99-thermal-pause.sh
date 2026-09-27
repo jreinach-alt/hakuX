@@ -18,6 +18,17 @@
 #              bound widens to the clean sample before it, and a window ending
 #              at +215 s is flagged. Fails if a failed read counts as clean.
 #   all-fail   every sample failed: exit 2 `unread`, never `no pause`.
+#   tail-gap   clean at +0, every later sample failed, window +60..+240 s:
+#              exit 2 `unread: no reading at or after the window's end`.
+#              Fails if a window no readable sample reaches reads as clean
+#              (the #508 pass-1 M1 scenario: adb dies after a pause begins).
+#   mid-gap    clean at +0 and +300 s, nine failures between: exit 2 `unread:
+#              no reading from +0 s to +300 s`. Fails if only the tail is
+#              tested. One failed sample (a 60 s gap, `unread` leg) is still
+#              covered, so a lone adb blip does not void a run.
+#   bad-pause  a `cd` line for thermal-pause-F8 with no cur_state makes the
+#              sample an error. Fails if the device is dropped and the rest
+#              of the sample reads clean.
 #   per-core   `pause-cpu7` 1/1 alone is a pause. Fails if only the mask
 #              devices (`thermal-pause-*`) are read.
 #   not-pause  kgsl devfreq 5/8 alone is not a pause, and --diff names it.
@@ -30,7 +41,9 @@
 #              scored window is void `thermal-pause:` with every fps field
 #              null; the same run paused only after `soak end` is judged at
 #              60 fps with the pause reported; with no thermal.jsonl it is
-#              judged and `thermal.measured` is false.
+#              judged and `thermal.measured` is false; with the samples
+#              after the mark all failed it is void `thermal-unread:` and
+#              `thermal.window_covered` is false.
 
 echo "== thermal pause: thermal_state.py bounds a sampled pause and tests a window (#507)"
 TP="$T/thermalpause"; rm -rf "$TP"; mkdir -p "$TP/bin" "$TP/t"
@@ -70,6 +83,8 @@ tp_fix "$TP/later.jsonl" 0:c 30:c 60:c 90:c 120:c 150:c 180:c 210:c 240:c 270:c 
 tp_fix "$TP/none.jsonl"  0:n 30:n 60:n 90:n 120:n 150:n 180:n 210:n 240:n 270:n
 tp_fix "$TP/unread.jsonl" 0:c 30:c 60:c 90:c 120:c 150:c 180:c 210:c 220:e 250:p 280:c
 tp_fix "$TP/allfail.jsonl" 0:e 30:e 60:e
+tp_fix "$TP/tailgap.jsonl" 0:c 30:e 60:e 90:e 120:e 150:e 180:e 210:e 240:e 270:e 300:e
+tp_fix "$TP/midgap.jsonl" 0:c 30:e 60:e 90:e 120:e 150:e 180:e 210:e 240:e 270:e 300:c
 tp_fix "$TP/percore.jsonl" 0:c 30:c 60:c 90:c 120:u 150:c
 tp_fix "$TP/kgsl.jsonl"  0:c 30:c 60:c 90:c 120:k 150:k
 tp_legs() {    # <thermal_state.py> -> one "FAIL <why>" per unmet leg
@@ -86,6 +101,16 @@ tp_legs() {    # <thermal_state.py> -> one "FAIL <why>" per unmet leg
         *) echo "FAIL unread: [$r]" ;; esac
     r=$(tp_win "$s" "$TP/allfail.jsonl" 0 60)
     case "$r" in "2|unread: no sample with a reading") ;; *) echo "FAIL all-fail: [$r]" ;; esac
+    r=$(tp_win "$s" "$TP/tailgap.jsonl" 60 240)
+    case "$r" in "2|unread: no reading at or after the window's end +240 s (last +0 s)") ;;
+        *) echo "FAIL tail-gap: [$r]" ;; esac
+    r=$(tp_win "$s" "$TP/midgap.jsonl" 60 240)
+    case "$r" in "2|unread: no reading from +0 s to +300 s (300 s > 90 s)") ;;
+        *) echo "FAIL mid-gap: [$r]" ;; esac
+    r=$(python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import thermal_state as t
+s = t.parse_sample("now 09-27 13:00:00 up 5.0\ncd 10  1 thermal-pause-F8\ncd 34 0 8 devfreq\nend\n")
+print(s.get("bad_pause") or "-", t.paused(dict(s, error="x") if s.get("bad_pause") else s))' "$(dirname "$s")" 2>&1)
+    case "$r" in "cd 10  1 thermal-pause-F8 None") ;; *) echo "FAIL bad-pause: [$r]" ;; esac
     r=$(tp_win "$s" "$TP/percore.jsonl" 100 110)
     case "$r" in "0|thermal-pause: pause-cpu7 1/1 began after +90 s and by +120 s"*) ;;
         *) echo "FAIL per-core: [$r]" ;; esac
@@ -95,7 +120,7 @@ tp_legs() {    # <thermal_state.py> -> one "FAIL <why>" per unmet leg
     case "$r" in "devfreq-3d00000.qcom,kgsl-3d0(cd34) 0->5/8") ;; *) echo "FAIL diff: [$r]" ;; esac
 }
 out=$(tp_legs "$TESTING/thermal_state.py")
-[ -z "$out" ] && ok "thermal_state: onset, later, none, unread, all-fail, per-core, not-pause and --diff each read as they should" \
+[ -z "$out" ] && ok "thermal_state: onset, later, none, unread, all-fail, tail-gap, mid-gap, bad-pause, per-core, not-pause and --diff each read as they should" \
     || bad "thermal_state: $(printf '%s; ' "$out")"
 
 echo "== thermal pause mutant: take the onset as the first paused sample"
@@ -184,3 +209,10 @@ rm -f "$PV/thermal.jsonl"
 r=$(tp_verdict "$PV")
 case "$r" in "None|1.0|60.0|39|"*"|False,False,0") ok "no thermal.jsonl: judged as before, thermal.measured false" ;;
     *) bad "no-thermal verdict: [$r]" ;; esac
+tp_fix "$PV/thermal.jsonl" 0:c 10:e 20:e 30:e 40:e 51:e
+r=$(tp_verdict "$PV")
+case "$r" in "thermal-unread: no reading at or after the window's end +45 s (last -5 s), relative to the mark|None|None|0|False|void: thermal-unread: "*"|True,False,0")
+        ok "no reading after the mark: void thermal-unread, no frame rate" ;;
+    *) bad "unread-window verdict: [$r]" ;; esac
+wc=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]+"/verdict.json"))["thermal"]["window_covered"])' "$PV")
+[ "$wc" = False ] && ok "unread window: thermal.window_covered is false" || bad "unread window: window_covered [$wc]"
