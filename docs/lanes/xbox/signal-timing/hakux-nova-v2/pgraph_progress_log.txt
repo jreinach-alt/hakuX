@@ -1,0 +1,5 @@
+Starting [1/1] Alpha func::AlphaFuncAlways_Disabled
+  Completed [1/1] 'AlphaFuncAlways_Disabled' in 381ms
+Starting [1/1] Signal timing::ST_VBlank_Event
+  Completed [1/1] 'ST_VBlank_Event' in 5446ms
+Testing completed normally, closing log.
