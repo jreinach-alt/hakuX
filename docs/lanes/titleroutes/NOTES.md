@@ -560,6 +560,43 @@ Waiting (PR #466 comment 5855932850): dispatch request
 been seen: in Otogi (Restart Stage) and Midtown Madness 3 (the race) START
 opens a pause menu the moment control starts.
 
+## Attempt 5 (resumed 2026-09-27 06:09 PDT)
+
+Why attempt 4 did not finish: it did finish its batch, and it ended
+correctly on a `waiting:` for the Burnout soak (1-1790513065). The host
+resumed the lane once that soak was done. PR #466 was folded during this
+session, so batch 5 is on a new PR, #476.
+
+Burnout's result: 304 s of gameplay, fps window median 10.85 (min 7.68),
+7.0% at >= 30, no hang; target 30.
+
+### Session 19: HELD Nova, 06:09-06:27 PDT (18 min), battery 80% -> 75%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| 50 Cent: Bulletproof (56550042) | nova | `50cent.route` | yes (06:15) | the Intro level: an alley at night, two G-Unit allies, enemies behind an SUV; walks, turns, fires (15/20 -> 5/20) |
+| WWE Raw 2 (5451000D) | nova | `wwe-raw-2.route` | yes (06:25) | Quick Start singles match, The Rock (1P) vs The Undertaker (CPU); the clock runs, both health bars show |
+
+**50 Cent.** Logos (A) -> Title Screen, New Game (A) -> Thug (Normal)
+(A) -> "- Create New Profile -": X is Continue without saving, and it
+avoids the profile keyboard the old note warned about. The confirm's cursor
+is on No, so flick LY up once, then A -> the intro cutscene (A skips) -> the
+Intro level. Nav frames `~/hakux-work/nav/50cent.first-run-20260927T061007/`
+(009-pre -> 010-moved). Replay `scratch/replay/50cent-061258/zz-end.png`.
+
+**WWE Raw 2.** No profile step. START skips the intro FMV. At the title,
+START -> "Now checking free blocks." -> Main Menu on Quick Start (A) -> 1P
+vs CPU (A, A) -> default superstars (A, A) -> "start the next match?" (A)
+-> two entrances, each skipped with A -> the match. The nav mark was at
+00:14 on the match clock and the replay's at 00:41. Both are in the match,
+so the soak (560 s) scores about 276 s of it. Nav frames
+`~/hakux-work/nav/wwe-raw-2.first-run-20260927T061604/` (014-gameplay ->
+015-moved). Replay `scratch/replay/wwe-raw-2-062043/zz-end.png` (01:01).
+
+Benchmarks (Nova, 0.5 priority, ref 2ce8f4a985): 50 Cent
+1-1790515600-titleroutes-1194351 (440 s), WWE Raw 2
+1-1790515603-titleroutes-1194477 (560 s).
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
