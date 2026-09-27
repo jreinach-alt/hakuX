@@ -441,8 +441,9 @@ note = "STARTED (hostops 2026-09-27 13:25 PDT), briefs/affinitybacklog.md: #502,
 [lane.handbackbranch]
 issues = []
 files = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-branch.sh"]
+released = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-branch.sh"]
 standing = false
-note = "STARTED (hostops 2026-09-27 13:40 PDT), briefs/handbackbranch.md: handback.sh lane_name() maps lane/flip474-ts to a lane flip474-ts that does not exist, so it labelled PR #504 blocked:needs-owner while lane.flip474 (worktree wt/flip474 on that branch) was alive; resolve the lane from the worktree that has the branch checked out. handback.sh taken from [free]."
+note = "RELEASED at PR-ready (hostops 2026-09-27 14:33 PDT): PR #510 ready, fold-ready, unit gone. STARTED (hostops 2026-09-27 13:40 PDT), briefs/handbackbranch.md: handback.sh lane_name() maps lane/flip474-ts to a lane flip474-ts that does not exist, so it labelled PR #504 blocked:needs-owner while lane.flip474 (worktree wt/flip474 on that branch) was alive; resolve the lane from the worktree that has the branch checked out. handback.sh taken from [free]."
 
 [lane.thermal507]
 issues = ["507"]
