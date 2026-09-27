@@ -107,3 +107,10 @@ write-then-awaken NOTIFY and times kick -> interrupt handled. That is a separate
 - **Flip:**
   - On silicon, `pb_finished()` takes effect at the next vblank: the start register changes 16.18 ms after the request, and the next counter tick comes one frame later.
   - On hakuX the start register changes **24.1 ms** after the request, and the next counter tick comes **8.25 ms** after that. The write is not on a vblank boundary. The mechanism is not established here.
+
+## v2: the vblank event wake (PRE-REGISTERED before its dry run)
+
+- **The change:** `ST_VBlank_Event` guards itself. Before the untimed `pb_wait_for_vbl()`, it sees three vblanks arrive by spinning, each within 100 ms. The tests commit is `27c602e` on `hakux/signal-timing462`, and the updated [`signal-timing462.patch`](signal-timing462.patch) replaces the first.
+- **The files:** XBE sha256 `7f85e8489424…`, in `hardware/runs/2026-09-27-timing462v2/`.
+- **The session:** `Alpha func::AlphaFuncAlways_Disabled`, then `ST_VBlank_Event` only. The same order applies: a hakuX dry run first, then the console.
+- **The leg:** under hakuX, the table's two event rows (the interval, and its jitter as the woken thread sees it) are the measurement. On the console, I6 applies: 0 intervals spanning a missed vblank, and a mean interval 16683 +/- 20 us over the 300 intervals.

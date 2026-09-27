@@ -33,10 +33,10 @@ index 1dfd467..dde0b4c 100644
    REG_TEST(AttributeExplicitSetterTests)
 diff --git a/src/tests/signal_timing_tests.cpp b/src/tests/signal_timing_tests.cpp
 new file mode 100644
-index 0000000..7681329
+index 0000000..7cec605
 --- /dev/null
 +++ b/src/tests/signal_timing_tests.cpp
-@@ -0,0 +1,500 @@
+@@ -0,0 +1,509 @@
 +#include "signal_timing_tests.h"
 +
 +#include <pbkit/pbkit.h>
@@ -349,12 +349,21 @@ index 0000000..7681329
 +
 +void SignalTimingTests::TestVBlankEvent(const std::string &name) {
 +  const uint64_t f = KeQueryPerformanceFrequency();
-+  if (!vblank_ok_) {
-+    // pb_wait_for_vbl() has no timeout, so it runs only after the spin test saw every vblank arrive.
-+    const std::string summary = "skipped: ST_VBlank_Spin did not see 301 vblanks without a timeout\n";
-+    Write(name, summary, {}, {});
-+    Finish(name, summary);
-+    return;
++  // pb_wait_for_vbl() has no timeout, so it runs only after three vblanks have been seen to arrive by spinning, each
++  // within 100 ms. The guard is here, not in ST_VBlank_Spin: the suite runs its tests in name order, so this test
++  // runs first.
++  {
++    uint64_t when;
++    DWORD last = pb_get_vbl_counter();
++    for (int i = 0; i < 3; ++i) {
++      if (!WaitFor([&last]() { return pb_get_vbl_counter() != last; }, f / 10, &when)) {
++        const std::string summary = "skipped: a vblank did not arrive within 100 ms in the guard\n";
++        Write(name, summary, {}, {});
++        Finish(name, summary);
++        return;
++      }
++      last = pb_get_vbl_counter();
++    }
 +  }
 +  std::vector<std::vector<uint64_t>> rows;
 +  std::vector<double> intervals;
