@@ -1039,8 +1039,127 @@ table; I did not re-scan it.
 
 | title | route | request | seconds | reading |
 |---|---|---|---|---|
-| Azurik | `azurik` | 1-1790545605-titleroutes-65853 | 500 | queued 14:46 |
-| D&D Heroes | `dnd-heroes` | 1-1790545622-titleroutes-76653 | 600 | queued 14:47 |
+| Azurik | `azurik` | 1-1790545605-titleroutes-65853 | 500 | **void**: refused by the guard before the first input (14:52 PDT), with hakuX in front. See "The guard reads the last-ANR copy" |
+| D&D Heroes | `dnd-heroes` | 1-1790545622-titleroutes-76653 | 600 | **void**: the same (14:53 PDT) |
+
+### The guard reads the last-ANR copy of the dispatcher state (15:00 PDT)
+
+Both re-queued soaks ran 45 s and were refused: `not-foreground:
+com.magneticchen.daijishou (the focused application on display 0 of
+bdc158a5, not hakuX)`, then `soak aborted: not-foreground before the route's
+first input`. No input was sent. hakuX was running: Azurik's logcat has its
+`gfps=29` lines.
+
+On the Thor `dumpsys input` prints the dispatcher state twice. At 14:54:31
+PDT, during the D&D Heroes run, line 593 (`Input Dispatcher State:`) named
+hakuX as display 0's focused application and window, and line 805 (`Input
+Dispatcher State at time of last ANR:`) named Daijishou as the application,
+with `FocusedWindows: <none>`. `hakux_in_front` (devices.sh, PR #495) keeps
+the last entry per display, so it answers from the ANR copy.
+
+Until that is fixed or the Thor reboots, no route soak runs on the Thor,
+for any requester. Reported: #494 comment 5860177923, #397 comment
+5860180117, and an ASK on the board request file. `scratch/focus.py` reads
+the first copy; it met the same dump at 12:59 and failed on it until I
+looked at why.
+
+### Session 26: HELD Thor, 14:56-15:11 PDT (15 min; the Thor was idle), battery 80% -> 79%
+
+I had written on the board file that I would not take the Thor before
+15:15. I took it at 14:56 because nothing was running on it and its route
+soaks were being refused.
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Arctic Thunder (4D570002) | thor | `arctic-thunder.route` | yes (14:56, as a held soak) | the race, at the mark and 15 s before the end (race clock 02:01.22, the lava section, overlay FPS 18) |
+| Barbarian (54530002) | thor | none | - | not reached: Quest needs a save slot, and the session ended on a lost focus before Training was tried |
+
+Held reading (same instrument as session 23's; `heldsoak.sh` now reads the
+cooling devices at the start and in the last 25 s, `thermal.txt`):
+
+| title | held result | apk | gameplay | fps median (min) / share >= 30 | notes |
+|---|---|---|---|---|---|
+| Arctic Thunder | `scratch/held/arctic-thunder-20260927T145652` | de1f28453e96 (the build the two refused soaks installed, ref 92560461c5) | 317.2 s | 20.29 (14.67) / 8.9% | target 60 (#431). No hang. 18-22 fps in most bins after the mark, 34 in one. No thermal pause: every `thermal-pause-*` device read 0/1 at 15:06:36, hottest cpu zone 93.9 C (66.7 C at the start) |
+
+**Barbarian.** START ends the intro video and a second START opens QUEST's
+box (NEW GAME / LOAD GAME). A, then Warrior Select (Keela, A), then three
+initials on a letter wheel (A three times gives AAA, and a fourth A on END
+accepts). Then SAVE GAME: the hard disk and five EMPTY slots. B goes back to
+Warrior Select, so Quest cannot start without writing a save. I did not
+write one. VERSUS and TRAINING are on the main menu and should need none.
+On the main menu the hat did not move the cursor.
+
+**The focus was lost at 15:10:53, and I stopped.** What I have:
+
+| host time (PDT) | what |
+|---|---|
+| 15:10:39.6 | frame `010-mm.png`: Barbarian's main menu |
+| about 15:10:48 | `focus.py` passes (the read before the next inputs) |
+| 15:10:49.5-15:10:51.6 | I send two left-stick flicks down (`axis LY max`, 0.2 s, `axis LY mid`). No button |
+| 15:10:53.2 | frame `011-mm2.png` is 10,899 B: the all-black frame |
+| 15:11:00 | `focus.py` fails: `screen_focus_lock` 2, `FocusedDisplayId: 4`, display 0's focused window `primaryScreenTopLayout`; `dual_screen_display_mode` 2 |
+
+The Thor's logcat (device clock; `scratch/thor-focusloss-151100.logcat.txt`)
+has `PhoneWindowManager.interceptKeyBeforeDispatching` sending a broadcast
+at 15:10:52.886 and 15:10:53.028, and the `com.odin.dualscreen.assistant`
+window opening at 15:10:53.175. That is a KEY, down and up, 140 ms apart. My
+steps in those seconds were stick axis events, and nav.py sent no button
+after the B at about 15:10:30. I did not measure the offset between the host's
+clock and the device's, so I cannot place my last axis event against that
+key to better than a second or two. A second pair of the same lines is at
+15:11:00.196 and 15:11:00.425, when I was sending nothing at all (a
+`dumpsys` read and a `settings get`). So a key that is not mine reached the
+policy at least once. Whether the first one was mine is open: a hand on the
+device and an AYN hotkey both fit.
+
+I sent nothing after the failed read. Release: app stopped,
+performance_mode 0, fan_mode 4, `dual_screen_display_mode` put back to 0
+(device_rest.conf), KEYCODE_SLEEP. `screen_focus_lock` read 0 afterwards
+without my touching it, so it follows the dual-screen mode. Battery 79%.
+
+### Hand-over (15:20 PDT, the end of this lane's last attempt)
+
+**Routes committed today, all replayed on the Thor:**
+
+| title | route | pre-mark + shots | queued soak it still needs | held reading |
+|---|---|---|---|---|
+| Azurik | `azurik` | 177 s + 6 | 500 s | none |
+| D&D Heroes | `dnd-heroes` | 279 s + 7 | 600 s | none |
+| BloodRayne | `bloodrayne` | 218 s + 7 | 540 s | 20-26 fps before the thermal pause |
+| Baldur's Gate: Dark Alliance | `baldurs-gate-da` | 422 s + 18 | 780 s | 59.94 |
+| KOF: Maximum Impact | `kof-mi.returning` | 205 s + 10 | 540 s | 33-34 for 66 s, then 13-15; not settled |
+| Arctic Thunder | `arctic-thunder` | 238 s + 15 | 590 s | 20.29, no thermal pause |
+
+Queue them with `scratch/bench8.sh <iso> <stem> <ref> thor` once the guard
+reads the live copy. None is in `dispatch/results` with a reading, so none
+counts as benchmarked on the status page.
+
+**Blocked, with what would unblock each:**
+- AMF Bowling 2004: the title does not take START or A. Try BACK, the
+  triggers, a second pad.
+- Mercenaries: the first load never ends (frozen frame, `kicks=0`). An
+  emulation defect, not a route problem.
+- Barbarian: route TRAINING or VERSUS. Quest needs a save slot.
+- Batman: Dark Tomorrow (Nova), from session 2: the combat button map.
+
+**Next on the Thor's internal storage, by xemu rating** (`scratch/thorlist.py`):
+Bicycle Casino, Breeders' Cup, AMF Xtreme Bowling (Perfect); The Lord of the
+Rings: The Third Age, The Urbz, Area 51, The Bard's Tale, Bad Boys: Miami
+Takedown, Backyard Wrestling 2, Arena Football, Battlestar Galactica,
+American Chopper 1 and 2, All-Star Baseball 2003/2004/2005, AFL Live,
+AFL Premiership 2005 (Playable); then the Japanese text titles (Bistro
+Cupid 1 and 2, Aoi Namida, Angelic Concert, Ex-Chaser, Innocent Tears),
+where "an input moves the player" needs a definition first; Antz Extreme
+Racing (Starts). Big Bumpin' landed at 14:27 and is not in that list. The
+SD-card list from attempt 4 is still open as well.
+
+**For whoever drives the Thor next:**
+- Read the focus from the FIRST dispatcher state in `dumpsys input`.
+- A title's menus may take the hat, the stick, or neither. Take a frame
+  after the move and before the A, above all on a save prompt.
+- Size a soak with 3 s per `shot`, and check the result with
+  `scratch/fpsbins.py` and the cooling devices before writing a median down.
+- A black 10,899 B frame means stop: read the focus, send nothing.
 
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 

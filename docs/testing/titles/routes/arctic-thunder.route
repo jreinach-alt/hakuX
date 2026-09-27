@@ -21,7 +21,15 @@
 # each round, so that A is also PRESSED: a held button alone would not
 # answer a results or continue screen when the race or its countdown ends.
 #
-# NOT yet replayed.
+# REPLAYED 2026-09-27 14:56 PDT, as a held soak (soak_title.sh in our hold,
+# MAX regimen, apk de1f28453e96;
+# scratch/held/arctic-thunder-20260927T145652): hakuX held the input focus
+# on all 37 reads. The mark frame is the race, and a frame 15 s before the
+# end is the same race at 02:01.22 on its clock, in the lava section,
+# overlay FPS 18. 317 s of gameplay, fps window median 20.29 (min 14.67),
+# 8.9% at >= 30, no hang. The Thor's thermal pause (#507) did not engage:
+# every thermal-pause cooling device read 0/1 at the end, with the hottest
+# cpu zone at 93.9 C.
 wait 50.8
 shot boot
 wait 9.9
