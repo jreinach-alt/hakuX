@@ -19,6 +19,22 @@
 #   shot <label>                take a frame only
 #   repeat <n|forever> {        a block; blocks nest; `}` on its own line
 #   }
+#   flush [timeout_s]           send the app to the background so it writes
+#                               its disk, and wait (default 10 s) for
+#                               `deferred bdrv_flush_all completed`. LAST
+#                               STEP ONLY: the title is paused after it.
+#
+# WHY `flush`. A soak ends with `am force-stop` (SIGKILL), and the app
+# flushes its qcow2 disk only when it is backgrounded or terminated
+# (ui/xemu.c, SDL_APP_WILLENTERBACKGROUND). A profile a first-run creates
+# is written into clusters whose allocation is still in memory, so the
+# force-stop loses it and the next boot asks for the profile again
+# (GoldenEye: Rogue Agent, 09-26, three times). A route that exists to
+# leave a save on the disk ends with `flush`. The background is a HOME
+# intent (`am start -c android.intent.category.HOME`), never
+# `input keyevent`. The title stops rendering, so a flush after
+# `mark gameplay` reads as a hang to title_verdict.py: a flushing run
+# makes a save, not a measurement.
 #
 # `mark gameplay` STARTS THE SCORED WINDOW: title_verdict.py judges frame
 # rate, hangs and audio only after the logcat line this writes
@@ -94,12 +110,26 @@ validate() {
                     [ "${w[2]:-}" = '{' ] || err "$i" "repeat wants '{' on the same line"
                     depth=$((depth+1)) ;;
             '}') [ "$depth" -gt 0 ] || err "$i" "unmatched '}'"; depth=$((depth-1)) ;;
+            flush) [ -z "${w[1]:-}" ] || isnum "${w[1]}" || err "$i" "flush wants a timeout in seconds"
+                   [ "$depth" = 0 ] || err "$i" "flush inside a repeat block"
+                   FLUSH_AT=$i ;;
             *) err "$i" "unknown step '${w[0]}'" ;;
         esac
         i=$((i+1))
     done
     [ "$depth" = 0 ] || err "$((N-1))" "unclosed repeat block"
+    # Nothing but waits, shots and comments may follow a flush: the title is
+    # in the background, and input sent to it goes nowhere.
+    if [ -n "$FLUSH_AT" ]; then
+        i=$((FLUSH_AT + 1))
+        while [ "$i" -lt "$N" ]; do
+            read -r -a w <<< "${L[$i]}"
+            case "${w[0]:-}" in ''|wait|shot) ;; *) err "$i" "'${w[0]}' after flush: flush is the last step" ;; esac
+            i=$((i+1))
+        done
+    fi
 }
+FLUSH_AT=""
 validate
 if [ -n "$CHECK" ]; then echo "route ok: $ROUTE ($N lines)"; exit 0; fi
 
@@ -154,6 +184,28 @@ mark_logcat() {
     return 1
 }
 
+# The flush is judged by the app's own line, stamped after the request on the
+# DEVICE clock (the host and device clocks differ): a line from an earlier
+# background in the same logcat buffer must not count.
+flush_disk() {   # flush_disk <timeout_s>
+    local t0 out waited=0
+    t0=$(timeout 20 adb -s "$SERIAL" shell date +%s 2>/dev/null | tr -dc 0-9)
+    [ -n "$t0" ] || { log "flush: no device clock; flush NOT confirmed"; return 1; }
+    out=$(timeout 20 adb -s "$SERIAL" shell am start -a android.intent.action.MAIN \
+          -c android.intent.category.HOME 2>&1) || { log "flush: HOME intent failed: $(printf '%s' "$out" | head -1)"; return 1; }
+    while :; do
+        if timeout 20 adb -s "$SERIAL" shell logcat -d -v epoch -s hakuX:I 2>/dev/null \
+            | awk -v t0="$t0" '$1 + 0 >= t0 && /deferred bdrv_flush_all completed/ { f = 1 } END { exit !f }'; then
+            log "flush: bdrv_flush_all completed after ${waited}s"
+            return 0
+        fi
+        [ "$waited" -lt "$1" ] || break
+        nap 1; waited=$((waited + 1))
+    done
+    log "flush: no 'deferred bdrv_flush_all completed' within ${1}s; flush NOT confirmed"
+    return 1
+}
+
 run() {   # run <first line> <end line, exclusive>
     local i=$1 end=$2 w j k n
     while [ "$i" -lt "$end" ]; do
@@ -172,6 +224,8 @@ run() {   # run <first line> <end line, exclusive>
                    [ -n "${ROUTE_DRY:-}" ] || mark_logcat "${w[1]}"
                    shot "${w[1]}" ;;
             shot)  shot "${w[1]}" ;;
+            flush) log "flush ${w[1]:-10}"
+                   [ -n "${ROUTE_DRY:-}" ] || flush_disk "${w[1]:-10}" ;;
             repeat) j=$(close_of "$i")
                     n=${w[1]}; [ "$n" = forever ] && n=-1
                     k=0

@@ -503,3 +503,60 @@ profile save or a recorded no-save.
   hold can sit on it through the gap (lane.xbox's title push at 11:16).
   Wait for both, and poll once a second, because the dispatcher claims the
   next request within seconds of a run ending.
+
+## Attempt 7 (resumed 2026-09-27, after hostops' 11:52 addendum): GoldenEye's flushed first run
+
+Why the previous sessions of this resume did not finish: they left nothing.
+There is no commit after `ff1635addf` (11:38), no request of mine in
+`queue/`, `running/` or `results/`, and no PR. The addendum asked for "a
+normal dispatch request ... that must end with the HOME flush". A normal
+request cannot do that, and a session that tried to square those two
+most likely ran out of turns before writing anything. This one records why
+and builds the missing piece.
+
+**A normal title request never flushes.** `soak_title.sh`'s `release()`
+runs `am force-stop` (SIGKILL), and the app flushes its disk only on
+SDL_APP_WILLENTERBACKGROUND or SDL_APP_TERMINATING (`ui/xemu.c:902-915`).
+Board request item 3 (flush before force-stop, 09-26) was never built:
+`dispatch/bin` has no HOME intent and no wait for the flush line. So a
+normal GoldenEye first run would lose PLAYER1 the same way the three before
+it did (nav 19:25, replay 19:32, titlebench 23:30, all on the Nova).
+
+**What I built (docs/testing/titles/, my row):**
+- `route.sh` gains a `flush [timeout_s]` step. It sends the HOME intent
+  (`am start -a android.intent.action.MAIN -c android.intent.category.HOME`,
+  never `input keyevent`). It then polls `logcat -d -v epoch -s hakuX:I`
+  for `deferred bdrv_flush_all completed`, stamped at or after the device
+  clock read before the intent. It says `flush NOT confirmed` when the
+  line does not come. The route is refused at parse time for a flush inside
+  a repeat block, or for any input step after a flush: the title is in the
+  background by then.
+- `routes/goldeneye-ra.save.route`: the first-run route's steps (lines
+  22-121, unchanged) up to player control, then `flush 20`. It has no `mark
+  gameplay`, so a run of it can never score as a measurement: the flush
+  pauses the title, and title_verdict.py would read that as a hang.
+- `selftest.d/99-title-state.sh` (the name on my row): a fake adb. 6 of 6
+  pass on the branch; 5 of 6 fail against master's route.sh (`unknown step
+  'flush'`). A mutant with no device-clock filter fails 3, including the
+  stale-line check: a flush line from an EARLIER background in the buffer
+  must not count.
+
+The soak's liveness probe reads `ps -A -o NAME` for `:xemu`. A backgrounded
+app keeps that process, so the soak holds until its deadline and then
+force-stops an app whose disk is already flushed.
+
+**Why the request is not queued yet.** The dispatcher plays routes with
+`dispatch/bin/titles/route.sh`, its snapshot of master, not this branch.
+Queued today, the save route would be refused before its first input
+(`unknown step 'flush'`) and would spend about 8 min of Nova time
+doing nothing. The order is: this PR folds, then the dispatcher update
+window fast-forwards `dispatch/bin`, then
+`request.sh --who titlestate --title 4541005D-GoldenEye_Rogue_Agent.xiso.iso
+--device nova --route goldeneye-ra.save --seconds 420`, then pull the Nova
+(`scratch/pullnova.sh`), then `saves.py` extract and record.
+
+- Do not queue a route that uses a new route.sh step until `dispatch/bin`
+  has that route.sh: request.sh checks the route with the queuing tree's
+  parser, and the dispatcher plays it with its own.
+- Do not put `flush` in a measured route: it pauses the title, and the
+  verdict calls the rest of the window a hang.
