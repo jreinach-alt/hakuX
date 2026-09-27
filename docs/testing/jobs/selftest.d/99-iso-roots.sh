@@ -31,6 +31,9 @@
 #   unchanged  DEVICE_ISO_ROOT is still the first root, and `devices.sh
 #              <serial>` still prints it (run_disc.sh pushes test discs there).
 #   titles     `devices.sh titles thor` lists both roots.
+#   launch     soak_title.sh's `am start` hands an apostrophe title's path to
+#              the app whole. Fails on master, whose '$ISO' left the quote
+#              unbalanced -- a title the lookup now finds would not launch.
 # Set IR_TESTING to another docs/testing tree to run these legs against it.
 
 echo "== title roots: a soak finds its title under any of the device's roots"
@@ -99,6 +102,19 @@ case "$out" in
     MISS*"searched $NOVA1") ok "one root: a Nova miss names exactly its one root" ;;
     *) bad "one root: a Nova miss got [$out]" ;;
 esac
+
+# launch: the soak's own `am start` line, cut out of soak_title.sh and run
+# with `adb shell` replaced by the host's sh and `am` by a function recording
+# its last argument -- the rom_path the app would receive.
+IRAM=$(grep -m1 '^a shell "am start' "$IRT/soak_title.sh")
+ir_launch() {   # <iso path> -> rom_path as the device's shell parses it
+    ( . "$IRT/devices.sh"; ISO=$1 ACT=pkg/.Act
+      a() { [ "$1" = shell ] && IR_AM="$IR/am.out" sh -c 'am() { while [ $# -gt 1 ]; do shift; done; printf "%s\n" "$1" > "$IR_AM"; }; '"$2"; }
+      rm -f "$IR/am.out"; eval "$IRAM"; cat "$IR/am.out" 2>/dev/null )
+}
+out=$(ir_launch "$THOR1/Tom Clancy's Thing (USA).iso")
+[ "$out" = "$THOR1/Tom Clancy's Thing (USA).iso" ] && ok "launch: am start receives an apostrophe title's full path" \
+    || bad "launch: rom_path arrived as [$out]"
 
 out=$(PATH="$IR/bin:$PATH" bash "$IRT/devices.sh" bdc158a5)
 [ "$out" = "bdc158a5 thor $THOR1" ] && ok "unchanged: \`devices.sh bdc158a5\` still prints the SD root" \

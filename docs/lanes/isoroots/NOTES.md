@@ -21,8 +21,10 @@ Issue #397 (tracking #433). PR #457.
 - `docs/testing/dispatcher.sh` (soak path, ~line 752, one 5-line hunk):
   `tpath=$(device_title_path "$title")`; on a miss the ERROR is
   `device_title_miss`. The xemu-surf region (~1376, PR #440) is untouched.
-- `soak_title.sh`: not changed. It takes the full path as `$1` and derives no
-  root anywhere (grepped: its only use is `ISO="$1"`).
+- `soak_title.sh`: derives no root (it takes the full path as `$1`), but its
+  `am start ... --es rom_path '$ISO'` had master's quoting bug: once the lookup
+  lets an apostrophe title through, the launch line left the device shell with
+  an unbalanced quote. It now quotes with devices.sh's `_dev_sq`. One line.
 - `docs/testing/jobs/selftest.d/99-iso-roots.sh`: new.
 
 ## The selftest and how each leg was shown to fail
@@ -44,10 +46,17 @@ origin/master docs/testing` at deb0903b51).
 | one root: Nova miss names exactly its one root | ok | FAIL | Nova given a second root |
 | unchanged: `devices.sh bdc158a5` prints the SD root | ok | ok (no-regression) | -- |
 | titles: `devices.sh titles thor` lists both roots | ok | FAIL | first-root-only, reversed order |
+| launch: soak_title.sh's own `am start` line hands an apostrophe path whole | ok | FAIL (rom_path empty) | (master's quoting) |
 
 Mutants were one-line edits of this branch's devices.sh (append `| tac` to the
 root list; replace the split with `cut -d: -f1`; add internal storage to the
-Nova's roots). Branch: 9/9 ok. Master: 4 ok, 5 FAIL. Each mutant: the rows named.
+Nova's roots). Branch: 10/10 ok. Master: 4 ok, 6 FAIL. Each mutant: the rows
+named. 84-perf-regimen.sh (which drives soak_title.sh) run standalone after the
+launch edit: 21/21 ok.
+
+The full `jobs/selftest.sh` takes over 10 minutes and this session could not
+detach it (systemd-run needed approval), so CI on the PR is the full-suite
+run. preflight.sh passed on the branch.
 
 ## Live proof (read-only, Thor bdc158a5, 2026-09-27T01:43Z)
 
