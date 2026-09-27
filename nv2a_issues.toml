@@ -4139,6 +4139,23 @@ impact_onestep_px = 0
 game_visible = true
 impact_basis = "0.5 performance lever: +21% fps measured on Crimson Skies"
 
+
+[issue.461]
+title = "Performance: Crimson Skies re-hashes unchanged textures (6.5 ms/frame) and Blinx's texture uploads cost 3.4 ms/frame"
+component = "renderer"
+disposition = "feature"
+suites = []
+no_suites = "performance: gameplay frame rate, not a pgraph measurement; the pgraph suites are its regression gate"
+status = "open"
+dispatch_state = "blocked"
+blocker_tested = "confirmed 2026-09-27T03:40Z: [lane.remote] asked for it on #426 at 03:29Z and holds vk/texture.c."
+blocked_on = "IN FLIGHT (hostops 2026-09-27T03:40Z): lane.remote holds it (label lane:remote); stage 1 is the perf-only txh/txu/txr count."
+status_note = "FILED 2026-09-27T03:40Z by hostops for 0.5 (tracking #433), from lane.remote's #426 item-4 Tx timer readout."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "0.5 performance lever: 6.49 ms/frame of texture hashing on Crimson Skies, 3.38 ms/frame of uploads on Blinx"
+
 [issue.427]
 title = "Performance: build with native TLS, inline LSE atomics and no intra-library PLT calls"
 component = "build"
