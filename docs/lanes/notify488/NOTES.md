@@ -169,6 +169,11 @@ Session 2 ended waiting on those six dispatch requests. The next session:
 4. Post the before/after table on #488 and #462.
 5. If world (ii) holds, drop the semaphore half from the PR and ship NOTIFY alone (`46aff48301`).
 
+### Why attempt 2 did not finish
+
+It ended correctly on a `[lane.notify488] waiting:` for six dispatch requests, all outside the session. No background task
+was lost. All six were DONE by 14:07 PDT; attempt 3 (this one) was the resume to judge them.
+
 Master merged at `1f5e4b6eb7`. The index was regenerated with `--support fold-pins/pbkitplusplus`: without `--support`,
 5 suites read as changed. `preflight.sh --allow-tracker` passes.
 
@@ -177,3 +182,83 @@ Master merged at `1f5e4b6eb7`. The index was regenerated with `--support fold-pi
 - Do not look for NOTIFY in DOA or AUF; they do not send it (section 1).
 - A perflog line on a tag outside `dispatcher.sh`'s `LOGCAT_SPEC` is invisible in every result.
 - Before removing any finish, list what the finish writes besides pixels: reports ride on it.
+
+## 6. The verdict (attempt 3, 2026-09-27; all runs on the Nova)
+
+Tools: `timing_judge.py`, `rep_cycle.py`, `cmp_caps.py` (timing captures), `cmp_pair.py` (pgraph pair),
+`superscreen_noise.py` (one capture's hashes across every result on disk), `notify_read.py` (DOA soaks),
+`req_refs.py` (each result's ref, read from its `request.json`, not from queue order).
+
+### Timing: A `0-0-x-1790531584-notify488-3150101` vs B `0-0-x-1790529854-notify488-2739010`
+
+| test | A submit (median) | A kick->sem | A read | B submit | B kick->sem | B read | A notifier | B kick->notify |
+|---|---|---|---|---|---|---|---|---|
+| ST_Done_Tiny | 0.0 ms | 260 us | - | 0.0 ms | 23.1 us | - | 300/300 timeouts | 23.7 us |
+| ST_Done_DOA | 93.7 ms | 18.4 us | - | 99.4 ms (cycle) | 15.4 us | - | 300/300 timeouts | 16.9 us |
+| ST_Done_DOA_Read | 8.9 ms | 7.0 ms | 16.3 ms | 94.5 ms | 13.9 us | 28.5 ms | 300/300 timeouts | 15.7 us |
+
+Console (lane.xbox): kick->notify 4.1 us, kick->semaphore 2.7 us, back-buffer read 31.1 ms.
+
+- **NOTIFY: every leg passes.** M1: A never writes (900 of 900 timeouts). N1: B always writes, within 24 us.
+  N2: the timestamp is PTIMER ns (0.9987). H0: both arms completed, with no fatal lines.
+- **S1 is refuted (B/A 0.84 on ST_Done_DOA).** On the Nova, master's release is already 18 us after the kick. The Thor's
+  13.8 ms does not reproduce: the Nova pays the 500 quads in `submit`, before the kick, in both arms.
+- **Reading (ii) holds for the read case.** A's first-draw->semaphore is 93.7 ms on ST_Done_DOA; by the addendum's rule
+  that is reading (i), the wait only moved. On ST_Done_DOA_Read it is 16 ms (8.9 + 7.0), and B's is 94.5 ms.
+  - Per rep, submit + semaphore + read is **A 32 ms, B 123 ms.** B adds a serializing cost when the guest reads the back buffer.
+  - S3 "passed" (B's read is slower than A's), but that pass is this regression: the read moved *and* grew.
+- **P0 is void, not failed.** The Signal timing captures are 2-colour text screens that print the measured timings
+  (e.g. `Signal_timing::ST_Done_DOA.png`), so they differ between any two runs. ST_Calibrate differs too, and neither
+  change touches it. The one drawn capture in the run, `Alpha_func::AlphaFuncAlways_Disabled`, is identical.
+  A P0 leg on this suite was a bad leg: it could not pass in any world.
+
+### pgraph pair (`arms-notify488-base-2805773` vs `-fix-2807175`, B = NOTIFY + semaphore)
+
+**752 of 754 captures byte-identical.** Every capture of `Texture_CPU_Update` (2) and `ZPass_pixel_count` (72) is
+identical, and those are the two suites that send releases. The two that differ are
+`Vertex_shader_rounding_tests::GeometrySuperscreen_0.5626` and `_0.9990` (285 px each).
+- Both are noise, not this change. `superscreen_noise.py` finds 3 and 5+ distinct hashes of them across earlier arms.
+- The fix arm's 0.5626 hash also appears in `vshnobegin242-base` and `dpforce345-fix`, builds without this code.
+
+No `[job.arms]` verdict was posted on #490 for this pair. The captures were compared by hand.
+
+### DOA A1 B1 A2 B2 (window 151-288 s)
+
+| run | ref | gfps median (min-max) | sem_release in window | notify |
+|---|---|---|---|---|
+| A1 `1-1790531595-notify488-3150971` | A | 13 (13-15) | 41318 | 0 |
+| B1 `1-1790531596-notify488-3151021` | B | 13 (12-15) | 36928 | 0 |
+| A2 `1-1790531596-notify488-3151064` | A | 13 (12-13) | 36827 | 0 |
+| B2 `1-1790531596-notify488-3151101` | B | 14 (12-15) | 37575 | 0 |
+
+- M0 ok: 30-32 lines per run.
+- F0 holds: DOA releases about 1200 semaphores per 60 frames, about 20 a frame. The notify count is 0, which confirms the prior.
+- P1 passes: B 13.5 against A 13.
+- **P2 is not met:** B - A = +0.5, under its +1. The kill is `< 0.5`, so the leg is at the kill's edge.
+  - With integer gfps and two runs per arm, that is no measurable gain.
+  - DOA's 20 releases a frame do not carry its wait on the Nova. That fits the timing arm: master's release is already fast there.
+- H0 passes: the longest perf gap is 2 s, with no fatal lines. There is no on/off gfps collapse (range 12-15), so the thermal pause
+  (#507) did not touch these soaks.
+
+### What ships
+
+**NOTIFY alone** (`0b3d108e1b` restores master's `BACK_END_WRITE_SEMAPHORE_RELEASE`).
+- It keeps the `NV097_NOTIFY` defines, the method entry and the perflog-only `[notify488]` counter.
+- The pgraph suites do not send NOTIFY (only the Signal timing suite does), so it is inert on every pgraph capture by construction.
+- The Nova pair above ran NOTIFY *with* the semaphore change and was identical anyway.
+- Desktop: not run. This host's desktop channel is GL-only. With NOTIFY alone the change is renderer-independent, but
+  no suite with goldens executes the method, so a desktop run could only show the inert result.
+
+### For the next lane on the semaphore / #474
+
+- **Do not re-try "record instead of download" at the release.** On the Nova it buys nothing, because the release is 18 us
+  on master. It also costs 4x per rep when the guest reads the back buffer.
+- **The lead is in A's own numbers.** On master, a rep of 500 quads + RT switch costs 93.7 ms in *submit* when the previous
+  rep's back buffer was not CPU-read. It costs 8.9 ms when it was (ST_Done_DOA vs ST_Done_DOA_Read).
+  - Both A runs idle 250 ms between reps (the notify timeout), so this is not GPU backlog.
+  - Something in recording the next rep's draws pays about 85 ms for a surface state that the CPU read resets. It may be
+    the watched/dirty surface being re-uploaded or downloaded on the RT switch.
+  - That is `vk/surface.c` (lane.forza414) or #474's territory, not this lane's. It is also likely what DOA pays per frame
+    (13 gfps, about 77 ms).
+- The Thor's master numbers (13.8 ms at the release) and the Nova's (18 us) disagree. Re-measure A on the device you
+  judge on (see memory: a cross-device disagreement is the instrument).
