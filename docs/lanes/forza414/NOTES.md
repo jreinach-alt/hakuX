@@ -848,3 +848,31 @@ The addendum's "Tot <= 45 ms" is not registered: DOA's GPU work alone is about 6
 Queued, Nova, priority 1: DOA `1-1790550612-forza414-2663397` (A) and
 `1-1790550616-forza414-2665748` (B). The AUF pair waits for the Thor pilot's verdict (the 30-min
 rule).
+
+## 26. Addendum 4's uniform-block skip is in vk/shaders.c, not draw.c: grant requested
+
+`pgraph_vk_update_shader_uniforms` (vk/shaders.c:1349-1435) does the following on every draw:
+1. Fills the whole `VshUniformValues`. That includes `c`, 192 vec4 = 3 KB memcpy'd from
+   `pg->vsh_constants` (glsl/vsh.c:1196), plus the lights, ring and ltc arrays.
+2. Copies every live uniform into the binding's layout, one element at a time
+   (`apply_uniform_updates` -> `uniform_copy`, vk/glsl.h:123).
+3. Hashes both whole layouts with `fast_hash`. It hashes them even when the dirty flags have
+   already decided `uniforms_changed`: the hashes are recomputed only so the next draw has
+   something to compare against.
+
+The hunk, in two parts:
+- **(a) No hash on a dirty draw.** Mark the saved hashes invalid instead. The next clean draw
+  then hashes and counts as changed once. That costs one extra upload per dirty run and saves two
+  whole-layout hashes on every dirty draw.
+- **(b) Skip re-copying `c` and the light/ltc arrays into a binding whose copy is current.** This
+  needs a per-binding "constants copied at generation N" and a generation counter bumped where
+  the `*_any_dirty` flags are set. The flags are set in pgraph.c (lane.flip474's file) and cleared
+  here. A side table in shaders.c keyed by binding avoids renderer.h, and a counter kept in
+  shaders.c, bumped here when a flag is seen set, avoids pgraph.c.
+
+Price: lane.slowdown462's 3.5-3.7 ms/frame (Blinx, AUF) is the whole of `apply_uniform_updates`
+plus `fast_hash`. (a) takes the hash share on dirty draws, and (b) the constant copy on clean
+draws. The split between the two is not measured.
+
+The file is on no row (lane.remote released it 2026-09-26T18:20Z). The request is in
+`$DISPATCH_DIR/board-requests/forza414.md`. Nothing is written until it is granted.
