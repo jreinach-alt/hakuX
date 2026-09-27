@@ -4343,3 +4343,19 @@ impact_px = 0
 impact_onestep_px = 0
 game_visible = false
 impact_basis = "harness (hostops 2026-09-27): voids 0.5 fps benchmarks silently"
+
+[issue."500"]
+title = "score_sweep --flat scores a whole-suite run in one worker; the device waits ~10 min per arm"
+component = "harness"
+disposition = "defect"
+suites = []
+no_suites = "A HARNESS DEFECT in the scorer's parallelism; no pgraph suite covers it."
+status = "open"
+dispatch_state = "blocked"
+blocker_tested = "confirmed 2026-09-27T20:00Z: [lane.scoresplit] row on origin/board, hakux-lane-scoresplit started."
+blocked_on = "IN FLIGHT (hostops 2026-09-27T20:00Z): lane.scoresplit holds it (briefs/scoresplit.md)."
+status_note = "FILED 2026-09-27T19:58Z by hostops: notify488's FIX arm held the Nova 11 min after its run for scoring (one worker of nine busy). Interim: the patched scorer is in the dispatcher's snapshot; the same 755 captures re-scored in 155 s with identical rows."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = false
+impact_basis = "harness (hostops 2026-09-27): ~7 min of device time per pgraph arm"
