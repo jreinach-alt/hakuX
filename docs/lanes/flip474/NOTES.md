@@ -243,6 +243,19 @@ lock wait 2.6 ms/frame, at its 30 fps cap: not a target either.
 - Pilot verdict written to `pilots/flip474.ok` (the batch is 37 min of
   device time with setup).
 
+## Waiting (attempt 2, 2026-09-27 ~06:50 PDT)
+
+On the six arms, queued 13:45Z: DOA A1 `1790516325-flip474-1235330`, B1
+`1790516329-flip474-1235504`, A2 `1790516335-flip474-1235784`, B2
+`1790516335-flip474-1235822` (Nova); Crimson A `1790516335-flip474-1235863`,
+B `1790516335-flip474-1235910` (Thor); and the arms job's pgraph pair for
+`flip474-pgraph-inert.json`. When they land: `lockread.py` on each pair,
+judge every leg in `flip474-doa-ab.json` / `-crimson-ab.json`, read
+`logcat -b crash`, post on #474 and #462, then ready the PR if L1 and H0
+hold and the suite arm is identical. If F0 fails (B's `rd_unl` ~0), the wait
+is at another completion call: find it with the v2 counter before touching
+code again.
+
 ## Do not repeat
 
 - Do not make every PGRAPH read lockless without knowing the polled register:
