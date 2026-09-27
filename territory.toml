@@ -1254,6 +1254,7 @@ note = "STARTED (job.board 2026-09-26T20:25Z), briefs/tbchurn424.md: #424, 0.5 r
 [lane.buildflags427]
 issues = ["427"]
 files = ["android/app/build.gradle.kts", "android/app/src/main/cpp/CMakeLists.txt", "docs/testing/predictions/buildflags427-*.json", "docs/lanes/buildflags427/**"]
+released = ["android/app/build.gradle.kts", "android/app/src/main/cpp/CMakeLists.txt", "docs/testing/predictions/buildflags427-*.json", "docs/lanes/buildflags427/**"]
 standing = false
 note = "STARTED (job.board 2026-09-26T20:25Z), briefs/buildflags427.md: #427, 0.5 release perf workstream (#433). Measure on #397 gameplay windows, pgraph suites as the regression gate."
 
