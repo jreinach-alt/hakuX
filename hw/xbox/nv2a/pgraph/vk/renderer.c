@@ -155,6 +155,105 @@ static void check_driver_identity_and_wipe_caches(PGRAPHVkState *r)
     g_free(id_path);
 }
 
+/*
+ * limits.timestampPeriod is not trusted. The Nova's Adreno reports 33.11 ns
+ * (30.2 MHz) while its timestamps tick every 52.08 ns (19.2 MHz), so every GPU
+ * phase figure read 0.636 of the true value (#474). The period is measured
+ * against the CPU clock instead. Each sample submits a command buffer that
+ * writes one timestamp and waits for it: the tick was written between the
+ * submit and the fence, so the sample's CPU time is that window's middle,
+ * uncertain by half its width. The narrowest of several windows is kept at
+ * each end of a ~100 ms span. The measured period replaces the reported one
+ * only where they differ by more than 2% and by more than the measurement's
+ * own uncertainty, so a driver that reports correctly keeps its value. The
+ * period feeds only the GPU phase stats (gpu_ts_readback); no rendering
+ * reads it.
+ */
+#define GPU_TS_CAL_SAMPLES 4
+#define GPU_TS_CAL_SPAN_US 100000
+
+typedef struct GpuTsSample {
+    uint64_t tick;
+    int64_t mid_ns;
+    int64_t width_ns;
+} GpuTsSample;
+
+static bool gpu_ts_sample(PGRAPHState *pg, VkQueryPool pool, GpuTsSample *out)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    bool have = false;
+
+    for (int i = 0; i < GPU_TS_CAL_SAMPLES; i++) {
+        VkCommandBuffer cmd = pgraph_vk_begin_single_time_commands(pg);
+        vkCmdResetQueryPool(cmd, pool, 0, 1);
+        vkCmdWriteTimestamp(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, pool, 0);
+        int64_t t0 = get_clock();
+        pgraph_vk_end_single_time_commands(pg, cmd);
+        int64_t t1 = get_clock();
+
+        uint64_t tick;
+        if (vkGetQueryPoolResults(r->device, pool, 0, 1, sizeof(tick), &tick,
+                                  sizeof(tick), VK_QUERY_RESULT_64_BIT) !=
+            VK_SUCCESS) {
+            continue;
+        }
+        if (!have || t1 - t0 < out->width_ns) {
+            out->tick = tick;
+            out->mid_ns = t0 + (t1 - t0) / 2;
+            out->width_ns = t1 - t0;
+            have = true;
+        }
+    }
+    return have;
+}
+
+static void gpu_ts_calibrate(PGRAPHState *pg)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    float reported = r->device_props.limits.timestampPeriod;
+
+    r->gpu_ts_period_ns = reported;
+
+    VkQueryPoolCreateInfo ci = {
+        .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+        .queryType = VK_QUERY_TYPE_TIMESTAMP,
+        .queryCount = 1,
+    };
+    VkQueryPool pool;
+    if (vkCreateQueryPool(r->device, &ci, NULL, &pool) != VK_SUCCESS) {
+        VK_LOG_ERROR("init: GPU timestamp period %.3f ns (reported; "
+                     "not measured: no query pool)", reported);
+        return;
+    }
+
+    GpuTsSample a, b;
+    bool ok = gpu_ts_sample(pg, pool, &a);
+    g_usleep(GPU_TS_CAL_SPAN_US);
+    ok = ok && gpu_ts_sample(pg, pool, &b);
+    vkDestroyQueryPool(r->device, pool, NULL);
+
+    if (!ok || b.tick <= a.tick || b.mid_ns <= a.mid_ns) {
+        VK_LOG_ERROR("init: GPU timestamp period %.3f ns (reported; "
+                     "not measured: no usable samples)", reported);
+        return;
+    }
+
+    double span_ns = (double)(b.mid_ns - a.mid_ns);
+    double measured = span_ns / (double)(b.tick - a.tick);
+    double err = (a.width_ns + b.width_ns) / 2.0 / span_ns;
+    double ratio = measured / reported;
+    double dev = ratio > 1.0 ? ratio - 1.0 : 1.0 - ratio;
+    bool use = err < 0.05 && dev > MAX(0.02, err);
+
+    if (use) {
+        r->gpu_ts_period_ns = measured;
+    }
+    VK_LOG_ERROR("init: GPU timestamp period reported=%.3f ns measured=%.3f ns "
+                 "(+-%.2f%%, span %.1f ms) using=%.3f ns (%s)",
+                 reported, measured, err * 100.0, span_ns / 1e6,
+                 r->gpu_ts_period_ns, use ? "measured" : "reported");
+}
+
 #if HAVE_EXTERNAL_MEMORY
 static GloContext *g_gl_context;
 #endif
@@ -260,9 +359,7 @@ static void pgraph_vk_init(NV2AState *d, Error **errp)
             VK_CHECK(vkCreateQueryPool(r->device, &ts_ci, NULL,
                                        &r->gpu_ts_pool));
             r->gpu_ts_supported = true;
-            r->gpu_ts_period_ns = r->device_props.limits.timestampPeriod;
-            VK_LOG_ERROR("init: GPU timestamps enabled (period=%.2f ns)",
-                         r->gpu_ts_period_ns);
+            gpu_ts_calibrate(pg);
         } else {
             r->gpu_ts_supported = false;
             VK_LOG_ERROR("init: GPU timestamps not supported");
