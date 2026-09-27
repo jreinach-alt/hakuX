@@ -171,6 +171,17 @@ typedef struct PGRAPHState {
     QemuMutex lock;
     QemuMutex renderer_lock;
 
+    /*
+     * #474: true while the PFIFO thread waits on a GPU fence inside a method
+     * with `lock` released (pgraph_lock_release_for_fence). Written only by
+     * the PFIFO thread and only under `lock`. The guest's PGRAPH MMIO for
+     * interrupt and register state may run in that window; every other
+     * taker of `lock` waits it out with pgraph_lock_settled(), so it sees
+     * the method either not started or finished, as before.
+     */
+    bool lock_released_for_fence;
+    QemuCond lock_settled_cond;
+
     uint32_t pending_interrupts;
     uint32_t enabled_interrupts;
 
@@ -391,6 +402,35 @@ typedef struct PGRAPHState {
         PGRAPHVkState *vk_renderer_state;
     };
 } PGRAPHState;
+
+/*
+ * #474: take `lock` as every taker but the guest's interrupt/register MMIO
+ * must: not inside a method's lock-released fence wait. Waiters sleep on the
+ * cond with `lock` free and wake once the PFIFO thread has retaken it, so
+ * they run where they ran before -- after that method.
+ */
+static inline void pgraph_lock_settled(PGRAPHState *pg)
+{
+    qemu_mutex_lock(&pg->lock);
+    while (pg->lock_released_for_fence) {
+        qemu_cond_wait(&pg->lock_settled_cond, &pg->lock);
+    }
+}
+
+/* PFIFO thread only, with `lock` held, around a GPU fence wait that touches
+ * no PGRAPH or renderer state. */
+static inline void pgraph_lock_release_for_fence(PGRAPHState *pg)
+{
+    pg->lock_released_for_fence = true;
+    qemu_mutex_unlock(&pg->lock);
+}
+
+static inline void pgraph_lock_retake_after_fence(PGRAPHState *pg)
+{
+    qemu_mutex_lock(&pg->lock);
+    pg->lock_released_for_fence = false;
+    qemu_cond_broadcast(&pg->lock_settled_cond);
+}
 
 void pgraph_init(NV2AState *d);
 void pgraph_init_thread(NV2AState *d);
