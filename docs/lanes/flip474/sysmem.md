@@ -85,7 +85,26 @@ pair. When they land: judge each file's legs, post the table on #474 and
 #462, and take #516 to ready only if both pgraph pairs are byte-identical
 and no breadth soak meets its KILL leg.
 
+## Attempt 2 (resumed 2026-09-27 ~23:00Z)
+
+Attempt 1 did not finish because it ended waiting on the device, which was
+the right call. At 22:51Z the arms job then refused `flip474-sysmemfix-pgraph.json`.
+Its skip was spelled `Texture render target::RenderTextureLoop`, with spaces,
+because it was copied from the env pair. That pair was queued by hand with
+spaced suite names. The arms job passes the prediction's underscored suites,
+and `request.sh` matches the skip's suite against those literally.
+Attempt 2 respells the skip `Texture_render_target::RenderTextureLoop`
+(`make_test_iso.py` maps `_` to a space, so the disc is the same). The refs
+stay the same and nothing was rebased. The arms job picks up the new sha on its next tick.
+
+At 23:00Z none of the eleven requests had run. The Nova is still under the
+battery hold, and the Thor is held for lane.xbox's title push. The wait below still holds.
+
 ## Do not repeat
+
+- Do not copy a skip spec from a hand-queued request (spaced suite names)
+  into a registered prediction (underscored): the arms job's `request.sh`
+  gate compares them literally and refuses.
 
 - Do not borrow a driconf engine entry to get one option: DXVK's entry in
   Turnip's defaults also changes texture-coordinate rounding and

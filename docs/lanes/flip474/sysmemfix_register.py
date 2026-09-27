@@ -22,7 +22,7 @@ cmd = ['python3', 'docs/testing/ab_compare.py', '--register',
        P + 'flip474-sysmemfix-pgraph.json', '--who', 'lane.flip474',
        '--issue', '474', '--a-ref', A, '--b-ref', B,
        '--disc-suites', ','.join(env['disc']['suites']),
-       '--disc-skip-tests', ','.join(env['disc']['skip_tests']),
+       '--disc-skip-tests', 'Texture_render_target::RenderTextureLoop',
        '--prediction',
        '#474: b_ref sets TU_DEBUG=sysmem before the first vkCreateInstance '
        'on Android when TU_DEBUG is unset (instance.c '
