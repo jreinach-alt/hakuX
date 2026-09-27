@@ -131,6 +131,17 @@ are in hostops-inbox (12:14 PDT).
   <dir>/logcat.txt 50 200`. Post the filled table on #482 and #462.
 - Nothing of this lane's is queued, running or held.
 
+## Attempt 2 (resumed 2026-09-27, after the 12:36 PDT addendum)
+
+Why attempt 1 did not finish: it ended correctly in a wait. Both device
+sessions were voided by the Thor's shared display (session 1 covered by the
+AYN assistant, session 2 with the focus on display 1's launcher), and a third
+session needed hostops's leave. The addendum grants ONE replacement session
+(perf_harden 0 set by hostops at 12:31 PDT) and lets the guard re-issue
+hakuX's `am start --display 0` once on a focus miss. `capture_gta.sh` does
+that now (first check at +12 s, before the route's first input at ~+63 s);
+a second miss after the re-issue still stops the session.
+
 ## Do not repeat
 
 - Do not start a held session without a non-black screencap AND without

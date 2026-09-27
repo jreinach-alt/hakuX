@@ -170,12 +170,23 @@ say "soak pid $SOAK_PID"
 # 09-27 a Thor route drove Lime3DS (hostops-inbox 11:53 PDT). From 20 s after
 # launch, every 5 s, the focused window must be hakuX's; two misses in a row
 # stop the soak (and so its route) and end the session.
+# Session 2 (19:10Z): display 1's launcher had the focus. Hostops's addendum
+# (12:36 PDT) allows ONE re-issue of hakuX's `am start` with `--display 0` on
+# the first miss, then the usual check; never a tap or a key to move focus.
 (
-    sleep 20; miss=0; n=0
+    sleep 12; miss=0; n=0; relaunched=0
     while kill -0 $SOAK_PID 2>/dev/null; do
         f=$(a shell dumpsys window < /dev/null 2>/dev/null | tr -d '\r' | grep -m1 'mCurrentFocus=')
         [ $n = 0 ] && say "focus: $f"; n=$((n + 1))
         case "$f" in *com.jreinach.hakux*) miss=0 ;; *) miss=$((miss + 1)) ;; esac
+        if [ $miss = 1 ] && [ $relaunched = 0 ]; then
+            relaunched=1; miss=0; touch "$OUT/relaunched-display0"
+            say "focus is not hakuX ($f); re-issuing am start --display 0 once"
+            a shell "am start --display 0 -a android.intent.action.VIEW -n $PKG/com.rfandango.haku_x.LauncherActivity --es rom_path '$ISOPATH'" < /dev/null >/dev/null 2>&1
+            sleep 6
+            say "focus after re-issue: $(a shell dumpsys window < /dev/null 2>/dev/null | tr -d '\r' | grep -m1 'mCurrentFocus=')"
+            continue
+        fi
         if [ $miss -ge 2 ]; then
             say "hakuX is not in front ($f); stopping the soak and its route"
             touch "$OUT/not-foreground"; kill $SOAK_PID 2>/dev/null; break
