@@ -130,7 +130,8 @@ file comes from `gapus`/`tbus`.
 
 ## 4. The fix for the dominant reason: HAKUX_IDLE_HLT (d259abab29)
 
-Default off. With `HAKUX_IDLE_HLT=1`, after the STI return at P (bytes
+**Removed from the tree in attempt 4 (section 7): it wedged AUF at boot
+(section 6). d259abab29 keeps it in history.** Default off. With `HAKUX_IDLE_HLT=1`, after the STI return at P (bytes
 `fb 90 90 fa`, verified once per pc) and the EOB_NEXT return of the NOP in its
 shadow at P+1, if `cpu_has_work()` is false the vCPU does what helper_hlt does:
 `halted = 1`, EXCP_HLT, cpu_loop_exit. The interrupt wakes it and is taken at
@@ -217,3 +218,54 @@ read. If they are `sti; nop` pairs, that share is idle time.
 
 None edited. cputlb.c / tb-maint.c / tb-internal.h untouched; the `[rr425]`
 line needs no dispatcher allow-list change (tag `hakuX` at W).
+
+## 7. What wakes the idle guest: `[rr425w]` (attempt 4)
+
+Why attempt 3 did not finish: it did. It recorded the pilot (section 6) and
+ended; then job.cloud's audit pass 1 (`docs/audits/2026-09-27-retreason425-pass1.md`,
+needs-remediation, M1) and lane.local's 08:48 PDT addendum arrived: find what
+the idle guest waits for, park HAKUX_IDLE_HLT, run Blinx and Blinx 2.
+
+Audit answers:
+- **M1 (fixed):** the idle-halt path is gone (`idle_hlt_*`, the `getenv`,
+  `RR_IH` and `ih=`). No `HAKUX_IDLE_HLT` remains in the tree.
+- **L1 (decided):** the counters stay always-on in XBOX builds until #425
+  and #412 close, as `[jc425]` does; the AUF fps A/B measured no cost
+  (17.82 vs 17.76). Whoever closes #412 removes them with `[jc425]`.
+- **L2, L3:** moot for the halt. The new idle detector re-reads the window's
+  bytes in every 2 s window and never caches a failed read.
+
+The counter (e156fcdf02, three files):
+- `accel/tcg/cpu-exec.c`: an idle stretch starts at the STI return of the
+  `fb 90 90 fa` window and ends when `cpu_handle_interrupt` takes an
+  interrupt. Each wake is keyed by vector and by which NV2A units had an
+  enabled interrupt pending; the busy period it starts (to the next idle
+  entry) is charged to the same key. Per key and 2 s window: wakes, idle us,
+  busy us, idle-length and busy-length histograms, and `nb` (the same key
+  taken while busy). One `[rr425w]` line per window, after `[rr425pc]`.
+- `target/i386/tcg/system/seg_helper.c`: stores the PIC vector in
+  `hakux_rr425_vec` (one line, XBOX only).
+- `hw/xbox/nv2a/nv2a.c`: `hakux_nv2a_irq_units()`, read-only: PFIFO,
+  PCRTC (vblank), PGRAPH, and PGRAPH's NOTIFY / CONTEXT_SWITCH /
+  BUFFER_NOTIFY / ERROR / other.
+- Reader: `rr425.py` prints idle and busy ms/frame by wake key, labels the
+  vector as IRQ (vector - 0x30, the Xbox kernel's mapping), and checks
+  idle + busy against the wall clock of the span (5%); that check is this
+  counter's falsifier. `--selftest` covers a passing and a failing span.
+- Compile-checked with the NDK arm64 Release line (`typecheck_rr.py`, now
+  four TUs): no warnings on the new lines.
+
+How to read it: a wake whose busy period is short (<20-200 us) is an ISR that
+went straight back to idle (the 1 kHz PIT tick). A wake followed by a long
+busy period readied a thread; that key is what the guest was waiting for.
+Idle ms/frame by the key of the stretch's end says how long it waited.
+
+| run | ref | request id |
+|---|---|---|
+| AUF, survey, 420 s, Nova, perflog MAX | e156fcdf02 | `1-1790524520-retreason425-202048` |
+| Blinx, same | e156fcdf02 | `1-1790524520-retreason425-202137` |
+| Blinx 2, same | e156fcdf02 | `1-1790524520-retreason425-202197` |
+| pixels must-not-move, 8 suites | 6e4dee6a28 vs e156fcdf02 | `retreason425-wake-inert.json` (arms job) |
+
+Read with `python3 docs/lanes/retreason425/rr425.py --from 299 --to 420 <id>`
+(AUF); for the Blinx titles read the windows after the route's `mark play`.
