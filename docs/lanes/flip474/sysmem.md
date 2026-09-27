@@ -1,0 +1,80 @@
+# lane.flip474: Turnip's sysmem render mode (#474, Addenda 7 and 8)
+
+This file is PR #(this branch)'s notes. `NOTES.md` belongs to the lane's
+earlier PRs and #504 is still editing it, so this PR does not touch it.
+
+## Why the last session did not finish, and this one (resumed 2026-09-27 22:38Z)
+
+The last session ended on a wait, correctly: #504 (the timestamp period)
+had every device leg judged and waited on the arms job's pgraph pair
+(`1-1790547698-arms-flip474-base-1028880` done on the Thor, `-fix-1029105`
+still queued at 22:40Z). Addendum 7 (15:12 PDT) reached that session after
+it had started and was not acted on. This session starts Addendum 7 on a new
+branch, `lane/flip474-sysmem`, from master `09fdca3ba1`; #504 stays as it is.
+
+## What decides the render mode (read in lane.turnipfork's Mesa tree, `4c18636110`)
+
+That tree is the series the bundled driver ("PurpleVK", Mesa 26.3.0-devel
+git-62ac221a33) is built from, not the binary itself.
+
+- `TU_DEBUG` is parsed once, in `tu_env_init` (`tu_util.cc:130-176`, a
+  `call_once`), which `tu_CreateInstance` calls (`tu_device.cc:1971`).
+- The `sysmem` flag is read in one place: `use_sysmem_rendering`
+  (`tu_cmd_buffer.cc:1419`). It picks the render mode and nothing else.
+- Without it, the autotuner decides per pass (`tu_autotune.cc`). Its default
+  for a pass it cannot tune is SYSMEM (`:1831`, "an incorrect decision
+  towards SYSMEM tends to be far less impactful than an incorrect decision
+  towards GMEM"). DOA's heavy pass is tuned, and gets GMEM.
+- The driver's own driconf already sets `tu_autotune_algorithm=prefer_sysmem`
+  for DXVK and vkd3d, "DX games almost always tend to prefer SYSMEM"
+  (`00-turnip-defaults.conf:36-40`). It matches on the engine name, and the
+  other options on that engine entry change rounding and alpha-to-coverage,
+  so borrowing it is not an option.
+- `TU_AUTOTUNE_ALGO=prefer_sysmem` is the supported spelling in this tree.
+  Whether the bundled binary has it is not known; `TU_DEBUG=sysmem` is the
+  one measured on the device (NOTES.md section 16), so that is the one used.
+
+hakuX has one `vkCreateInstance` (`instance.c`, `create_instance`), and the
+`env_vars` pref is applied before it (`xemu_android.cpp:796-806`). So a
+`setenv` just before the instance is created reaches the driver, and a
+`TU_DEBUG` the user or a request set wins.
+
+## Policy
+
+Per title is not open to hakuX: the flag is read once per process, at
+instance creation, before a disc is read. Per pass is the autotuner's job,
+and it is the thing getting DOA wrong. So the choice is global sysmem or the
+driver's default, and the breadth soaks decide it. The change is written for
+global sysmem and is only right if no title loses (the KILL legs below).
+
+## Registered before any arm ran
+
+| file | what | arms |
+|---|---|---|
+| `flip474-sysmem-pgraph.json` | 27 pgraph suites, no env against `TU_DEBUG=sysmem`, ref `09fdca3ba1`, the Nova. Every capture byte-identical (75%) | `1-1790549038-flip474-1817562` (A), `1-1790549039-flip474-1817704` (B) |
+| `flip474-sysmem-auf.json` | AUF, X/R 1.01: GPU <= 0.75 x, gfps +2 (55%) | the next two in `.queue_sysmem.log` order: base, sysmem |
+| `flip474-sysmem-blinx.json` | Blinx, X/R 0.13: GPU 0.80-1.15 x, no loss | base, sysmem |
+| `flip474-sysmem-forza.json` | Forza, X/R 0.25: GPU 0.70-1.10 x, no loss | base, sysmem |
+| `flip474-sysmem-crimson.json` | Crimson on the Thor, capped at 30: gfps within 1 | base, sysmem |
+| `flip474-sysmemfix-pgraph.json` | the change itself, master `09fdca3ba1` against `1a8f16ef16`, the same 27 suites | the arms job |
+| `flip474-sysmemfix-doa.json` | the change on DOA, no env: the `init: TU_DEBUG=sysmem (default` line, X/R <= 0.25 | `1-1790549110-flip474-1833747` |
+
+The ten env requests, in queue order: `1-1790549038-flip474-1817562`,
+`1-1790549039-flip474-1817704` (pgraph A, B), `-1817992`, `-1818193` (AUF
+base, sysmem), `-1818394`, `-1818597` (Blinx), `-1818830`, `-1819047`
+(Forza), `-1819312`, `-1819530` (Crimson, Thor). Each id's prefix is
+`1-17905490NN-flip474-`.
+
+The judge scripts (`phaseread.py`, `lockread.py`, `gfpsseries.py`,
+`crashcheck.py`, `tailcheck.py`) are in `docs/lanes/flip474/`; the ones not
+on master are on #504's branch.
+
+## Results
+
+Not yet run.
+
+## Do not repeat
+
+- Do not borrow a driconf engine entry to get one option: DXVK's entry in
+  Turnip's defaults also changes texture-coordinate rounding and
+  alpha-to-coverage.
