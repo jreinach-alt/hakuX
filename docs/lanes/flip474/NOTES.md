@@ -674,7 +674,149 @@ The pilot gate admitted the last two on `pilots/flip474.ok` (36 min held).
 When they land: judge every leg of the five predictions, post on #474, #462,
 #414 (DOA) and #425 (cblat), then mark #485 ready.
 
+## Why the last session did not finish, and this one (resumed 2026-09-27 20:15Z)
+
+The last session ended correctly, waiting on the five Nova requests above.
+All five were outside the session, and all were done by 13:10 PDT. The resume
+notice named #475 again, which had folded; the live PR is #485. This session
+read the five runs, judged every leg, merged master (42 behind; the only
+conflict was `nv2a_index.json`, rebuilt with `nv2a_index.py build --tests
+fold-pins/nxdk_pgraph_tests --support fold-pins/pbkitplusplus`, and `check`
+with both passes), and posted the results.
+
+### 15. The five Nova runs
+
+Read with `cblread.py`, `o4read.py`, `o4clock.py` (new), `lockread.py`,
+`crashcheck.py` and `tailcheck.py` (`judge5.sh` runs them all). Each route's
+play shots were checked by eye: every window is level play or the fight.
+
+**`[cblat]`, AUF `0-0-x-1790530526-flip474-2801414`, 299-420 s, and Blinx
+`...-2807172`, 255-411 s.** Units are ms per frame over non-overlapping intervals.
+
+| | AUF | Blinx |
+|---|---:|---:|
+| gfps median (frame, ms) | 14 (71.4) | 16 (62.5) |
+| callbacks per flip (retreason425's ERROR/frame) | 1.67 (1.97) | 14.24 (14.66) |
+| kick -> dispatch, p50 / p90 of lines | 93.5 / 100.3 | 19.6 / 46.9 |
+| span | 67.4 | 44.5 |
+| **mdraw** (SET_BEGIN_END, with its lock wait) | **50.1** | **36.8** |
+| pflip (FLIP_STALL parked on the VBLANK) | 11.3 | 0.00 |
+| mflip | 2.6 | 0.00 |
+| mother | 2.1 | 5.8 |
+| rest | 1.2 | 1.4 |
+| pnop (previous callback unacknowledged) | 0.02 | 0.35 |
+| msema | 0.04 | 0.05 |
+| dl, nested (deferred download) | 19.3 | 0.4 |
+| fin, nested (every `pgraph_vk_finish`) | 0.00 | 0.10 |
+
+| leg | AUF | Blinx |
+|---|---|---|
+| M0 instrument | holds (59 lines, all parse) | holds (78) |
+| M1 same event as retreason425 | holds (1.67 is within 25% of 1.97; nokick 0) | holds (14.24 against 14.66; nokick 0) |
+| M2 no double counting | holds (67.4 <= 75.0) | holds (44.5 <= 65.6) |
+| S1 the guess | **held**: method time 54.8 of 67.4 | **refuted**: pnop 0.35, the smallest part; mdraw 36.8 is the largest |
+| P probe cost | holds (14 against 14.96) | holds (16 against 17.32) |
+
+- **For both titles, the callback is late because the PFIFO thread is
+  still dispatching the frame's draws.** Neither is waiting on the guest.
+  Every AUF callback, and 78% of Blinx's, is `shared`: it was kicked
+  before the previous one was dispatched. So the split covers the puller's
+  frame nearly end to end.
+- **AUF:** of mdraw's 50.1 ms, 19.3 is the nested deferred download.
+  `fin` is 0.00, so that download is a fence wait, not a finish of its own,
+  and lane.forza414's deferral (whose gate excludes fence waits) does not
+  reach it. #474's lazy completion (O1) does, **bound 19.3 ms/frame**. Flip
+  pacing is **bound 11.3** (pflip). The rest, about 31 ms, is the draws'
+  own work on the PFIFO thread.
+- **Blinx:** dl 0.4, fin 0.1, msema 0.05, pflip 0. **None of O1, #488,
+  flip pacing or forza414's deferral has more than 0.5 ms/frame to take.**
+  What sets Blinx's callback is the PFIFO thread's draw dispatch: 36.8 of
+  a 62.5 ms frame.
+- **Silicon** (lane.xbox, #474 comment 5859096857): from kick to handled is
+  13-14.5 us, whether the frame is empty or has 500 quads, and the puller
+  resumes 8 us after the handler. On hakuX the resume leg is already that
+  order (6.8-31.7 us). The gap is the time before dispatch, which grows with
+  queued draws: here 19.6 ms (Blinx) and 93.5 ms (AUF) at p50. On silicon the
+  whole 500-quad frame, first draw to semaphore, takes 6.4 ms.
+- **The next lever for both** is the per-draw cost of SET_BEGIN_END on the
+  PFIFO thread. slowdown462's `hakuX-phase` Draw is the place to split it.
+  This instrument ends there.
+
+**DOA on lane.forza414's fix: A `...-1639694` on `4b22f2526b`, B
+`...-1640231` on `94f002d309`, 151-288 s.**
+
+| leg | A | B | verdict |
+|---|---:|---:|---|
+| M0: surf413 / sdcall / gfps lines | 31/31/31 | 29/29/29 | holds; both windows show the fight, with no KO replay in either |
+| G0: sdcall surfupd pre per frame, fin per frame | 0.98, 0.000 | | holds: DOA waits in the display-predownload branch |
+| G1: su_deferred per frame | | 0.000 | holds: the deferral never fires on DOA |
+| C1: cdef median, ms | 56.0 | 59.9 | **holds: B/A 1.07 (>= 0.8)**. cdef did not fall, as predicted |
+| T1: Tot median, ms | 67.9 | 73.6 | holds (1.08) |
+| P1: gfps median | 13 | 12 | holds, at the edge (B >= A - 1) |
+| H0: longest gap / lines to end / crash | 2.1 s / 300.7 of 301.8 / 0 | 2.1 s / 299.3 of 300.6 / 0 | holds |
+
+The reading of section 9 stands: `94f002d309` does not reach DOA. DOA
+needs O1, for which section 14 lists the consumers.
+
+**O4 pilot `...-1640480` on `3112e410db`, 151-288 s.**
+
+| leg | verdict |
+|---|---|
+| M0 | holds: 1128 long-wait flips, fight in the shots |
+| K0 clocks | **FAILS**: offset drift 0 / 11,825 / 22,943 ms by third. The cause is below |
+| S0 | holds: wait 63.1 against dfF 62.9. The span, 40.5, agrees with phase GPU 40.4 because both use the same period |
+| S1 the guess (start-dominant) | **the premise is refuted: there is no excess to place** |
+| S2 R/X structural | holds: gap within 5% of R on 96% of flips, and after pass 0 on 93.1% |
+| P4 probe cost | **FAILS as written**: gfps 12 (range 13-17), cdef 62.5 (range 43-59). Today's unprobed arms read 13 and 12 gfps, and 56.0 and 59.9 ms, so most of the miss is the day's frame and not the probe. The probe's own cost is not separable in one run |
+
+**The GPU timestamp period on the Nova is wrong by a factor of 1.573.**
+`o4clock.py` fits the lower envelope of (fence seen - last timestamp)
+against the CPU clock. Its slope is 0.364 ns per ns, and it goes flat,
+with residuals of -0.06 to +0.10 ms over 22 five-second bins, at **52.083
+ns per tick, which is 19.200 MHz**. The period printed in the line, from
+`limits.timestampPeriod` (renderer.c:263 `gpu_ts_period_ns`), is 33.11 ns
+(30.2 MHz). 19.2 MHz is the rate of Adreno's always-on counter. With the
+fitted period:
+
+| DOA fight, O4 pilot | ms |
+|---|---:|
+| the flip's finish plus the fence wait | 64.7 |
+| GPU span, first to last timestamp | **63.7** |
+| GPU start after the finish began | 0.9 |
+| fence seen after the last timestamp | 0.1 |
+
+- **The ~18 ms "excess" of sections 7 to 10 was this factor**, not time
+  before or after the command buffer. The GPU is busy for the whole wait.
+  This also explains "wait = 3.09 x R": 2 x R x 1.573 = 3.15 x R.
+- **DOA on the Nova is GPU-bound at about 64 ms of GPU work a frame.** That
+  is a ceiling of about 15.7 fps for the current GPU work, whatever the CPU
+  side does. The brief's "<= 26 fps" came from the misread 34 ms span. **O4's
+  bound is about 1 ms, not 18.** O1 (the lazy completion) moves the wait
+  off the PFIFO thread but cannot shorten it. With O1, the frame would be
+  bounded by max(GPU ~64 ms, the PFIFO thread's ~10 ms of Draw and Fin).
+  Today it is Tot 67.9 ms, gfps 13. So O1's bound for DOA is **about 15.6
+  fps, +1 to +2**, not the 26 fps ceiling. The lever that remains is the
+  GPU work itself.
+- **Every `hakuX-phase` GPU, R and X figure from the Nova reads 0.636 of
+  the true value.** That covers slowdown462's and forza414's too, and
+  every figure in this file before this section. The Thor was not checked:
+  no `[o4]` run exists there. The fix is to calibrate `gpu_ts_period_ns` at
+  start-up (vkGetCalibratedTimestampsEXT, or a fit like this one), in
+  renderer.c. That is an instrument change, and this lane has not made it.
+- **R/X, a hypothesis labelled as one.** In corrected units, pass 0 is
+  about 30 us, then there is a gap of 30.6 ms, then pass 1 runs 30.6 ms. A
+  tiler replays a render pass's commands once per bin. A timestamp written
+  inside the pass is then overwritten by each bin, so it keeps the last
+  bin's value. With two equal bins, the gap is the first bin, which is X = R
+  exactly. The test is to read the pass's bin count (render area against
+  GMEM) or to move the timestamp outside the pass.
+
 ## Do not repeat
+
+- Do not trust `limits.timestampPeriod` on Adreno. Fit it against the CPU
+  clock first (`o4clock.py`): the Nova reports 30.2 MHz and ticks at 19.2.
+  A drift check (K0) is what caught it. Keep a drift check on any
+  cross-clock reading.
 
 - Do not read "the same call site" as "the same fix". A completion with three
   branches has three waits; check which branch each title takes before
