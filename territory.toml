@@ -413,9 +413,9 @@ note = "RETIRED (hostops 2026-09-26 23:40 PDT): PR #464 folded as 55a82867dd; un
 
 [lane.slowdown462]
 issues = ["462", "482"]
-files = ["hw/xbox/nv2a/pgraph/vk/texture.c", "docs/lanes/slowdown462/**"]
+files = ["docs/lanes/slowdown462/**"]
 standing = false
-note = "GRANTED (hostops 2026-09-27 14:10 PDT): hw/xbox/nv2a/pgraph/vk/texture.c LENT from [lane.remote], perflog-only probe hunk in pgraph_vk_bind_textures (#474, texture-bind wait ~9 ms/frame AUF/Blinx); no default-build change; return at fold. RESUMED (job.board 2026-09-27T20:18 PDT), attempt 3: #462/#482 per-title frame-time attribution on the Nova (AUF, Blinx, Blinx 2, Forza, DOA1U, GTA); Ask 7 grant covers one more held Thor session for GTA open-world. PRs #463/#477/#483 merged; row was missing from territory.toml -- written by job.board from briefs/slowdown462.md and fleet.py's report."
+note = "PASSED ON (hostops 2026-09-27 15:48 PDT): hw/xbox/nv2a/pgraph/vk/texture.c -> lane.drain474 (Ask 8: the #474 fix for the drain before a direct s2t bind), based on lane/slowdown462-bindtex so PR #512's probe rides along; PR #512 needs no further texture.c edits (Blinx read + ready only). GRANTED (hostops 2026-09-27 14:10 PDT): hw/xbox/nv2a/pgraph/vk/texture.c LENT from [lane.remote], perflog-only probe hunk in pgraph_vk_bind_textures (#474, texture-bind wait ~9 ms/frame AUF/Blinx); no default-build change; return at fold. RESUMED (job.board 2026-09-27T20:18 PDT), attempt 3: #462/#482 per-title frame-time attribution on the Nova (AUF, Blinx, Blinx 2, Forza, DOA1U, GTA); Ask 7 grant covers one more held Thor session for GTA open-world. PRs #463/#477/#483 merged; row was missing from territory.toml -- written by job.board from briefs/slowdown462.md and fleet.py's report."
 
 [retired.displayguard]
 issues = []
@@ -448,6 +448,11 @@ note = "STARTED (hostops 2026-09-27 13:58 PDT), briefs/thermal507.md: #507 (0.5,
 issues = ["513"]
 files = ["docs/testing/devices.sh", "docs/testing/jobs/selftest.d/99-display-covered.sh", "docs/lanes/focusanr/**"]
 note = "STARTED (hostops 2026-09-27 15:14 PDT, from lane log focusanr.20260927T221433Z), briefs/focusanr.md: #513 (0.5, fps-focus). hakux_in_front parses dumpsys input's stale 'at time of last ANR' block, so every Thor title soak since PR #495 voided as daijishou. The interim patch is in $DISPATCH_DIR/bin/devices.sh and is lost at the next re-exec. Files taken from [free] (released by lane.displayguard)."
+
+[lane.drain474]
+issues = ["474"]
+files = ["hw/xbox/nv2a/pgraph/vk/texture.c", "docs/lanes/drain474/**", "docs/testing/predictions/drain474-*.json"]
+note = "STARTED (hostops 2026-09-27 15:48 PDT), briefs/drain474.md: #474 (0.5, fps-focus), lane.slowdown462 Ask 8. pgraph_vk_bind_textures drains all frames (4.47 of 4.57 ms/flip, AUF 1-1790543757) before a DIRECT s2t bind that writes nothing into the snode image; move the drain under !can_direct_bind. vk/texture.c passed on from lane.slowdown462 (lent by [lane.remote]); returns to [lane.remote] at fold. Base lane/slowdown462-bindtex (PR #512)."
 
 [free]
 # CLAIMED (hostops 2026-09-27T22:38Z): hw/xbox/nv2a/pgraph/vk/instance.c -> lane.flip474 (#474 Addendum 7: the sysmem render-mode fix is configured there).
