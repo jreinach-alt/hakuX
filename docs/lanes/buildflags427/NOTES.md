@@ -181,3 +181,22 @@ marked the PR ready.
 - Write a helper-count leg per DSO. System `libc.so` has its own `__aarch64_*`
   helpers under pthread_mutex and scudo, and no build flag of ours removes them.
 - `f1.py` reads a simpleperf file in about 4 minutes per arm (report-sample with call chains).
+
+## Remediation after audit pass 1 (2026-09-26)
+
+- **M1, CPU floor.** `-march=armv8.2-a` traps with SIGILL on an ARMv8.0 core
+  (no LSE) the moment a library loads. `CpuSupport.kt` reads the `Features`
+  lines of `/proc/cpuinfo` and requires `atomics` on every core. It is Kotlin
+  because a native check built from this CMakeLists would carry the flag.
+  `LauncherActivity` shows "Unsupported CPU" and exits before any screen that
+  loads a library; `MainActivity.loadLibraries`, `XisoConverterNative` and the
+  `NativeBridge` objects in `XboxHddFormatter`, `XboxInsigniaHelper` and
+  `XboxDashboardImporter` call `CpuSupport.requireSupported()` first, which
+  throws `UnsatisfiedLinkError` so their existing missing-library handling
+  applies. A cpuinfo with no `Features` line is treated as supported (logged).
+  The README states the Android 10 and ARMv8.2/LSE floor.
+- **M2, the `regressed` verdict.** `buildflags427-pgraph-inert.json` is
+  re-registered on the same refs with `GeometrySuperscreen_*` unguarded and the
+  rest of `Vertex_shader_rounding_tests` guarded through `[!G]*`, `Geometry_*`
+  and `GeometrySubscreen_*` (dpforce345's remedy for the same drift). A fresh
+  arm judges it; do not remove `regressed` by hand.

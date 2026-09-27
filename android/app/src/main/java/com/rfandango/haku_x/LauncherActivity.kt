@@ -16,6 +16,18 @@ class LauncherActivity : Activity() {
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
 
+    // Below the CPU floor every native library traps on load (CpuSupport), so
+    // stop here, before any screen that could load one, and say why.
+    if (!CpuSupport.hasLse) {
+      android.app.AlertDialog.Builder(this)
+        .setTitle("Unsupported CPU")
+        .setMessage(CpuSupport.UNSUPPORTED_MESSAGE)
+        .setCancelable(false)
+        .setPositiveButton("Exit") { _, _ -> finish() }
+        .show()
+      return
+    }
+
     val prefs = getSharedPreferences("x1box_prefs", MODE_PRIVATE)
     var setupComplete = prefs.getBoolean("setup_complete", false)
     val mcpxUriStr = prefs.getString("mcpxUri", null)
