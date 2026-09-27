@@ -114,3 +114,12 @@ write-then-awaken NOTIFY and times kick -> interrupt handled. That is a separate
 - **The files:** XBE sha256 `7f85e8489424…`, in `hardware/runs/2026-09-27-timing462v2/`.
 - **The session:** `Alpha func::AlphaFuncAlways_Disabled`, then `ST_VBlank_Event` only. The same order applies: a hakuX dry run first, then the console.
 - **The leg:** under hakuX, the table's two event rows (the interval, and its jitter as the woken thread sees it) are the measurement. On the console, I6 applies: 0 intervals spanning a missed vblank, and a mean interval 16683 +/- 20 us over the 300 intervals.
+
+### v2 result (2026-09-27)
+
+- **hakuX:** the dry run `0-0-x-1790528078-xbox-timing462v2-dry-2128991` completed normally on the **Nova**.
+- **Console:** 09:59-10:00 PDT, 58 s, completed normally.
+- **I6 holds:** 0 missed vblanks, and a mean interval of 16683.33 us.
+- **The result:** a thread woken by `pb_wait_for_vbl()` sees vblank intervals that vary by 0.3 us p95 on silicon, and by 141.6 us p95 on hakuX (range 16303-17107 us).
+  - The Nova's event-wake spread is smaller than the Thor's spin spread (v1). That is two devices and two methods, so the two figures are not compared.
+- The raw files are in `signal-timing/console-v2` and `signal-timing/hakux-nova-v2`.

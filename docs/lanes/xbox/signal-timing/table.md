@@ -21,3 +21,10 @@ hakuX Thor I1 clock: counter / interrupt time over 2 s in 0.995..1.005: holds (1
 | CPU read of the back buffer, after the semaphore | 31073.5 / 31081.8 (n=300) | 23269.3 / 25222.5 (n=300) | 0.75 |
 | flip: pb_finished -> NV_PCRTC_START written (vblank ISR) | 16179.6 / 16181.0 (n=300) | 24117.5 / 24549.6 (n=300) | 1.49 |
 | flip: NV_PCRTC_START change seen -> next vblank counter tick | 16681.8 / 16682.7 (n=300) | 8252.0 / 8505.5 (n=300) | 0.49 |
+
+v2 (the vblank event wake, `ST_VBlank_Event`; console 10:00 PDT, hakuX dry run on the **Nova**):
+
+| signal | console median / p95 (us) | hakuX Nova median / p95 (us) |
+|---|---:|---:|
+| vblank interval, event wake (`pb_wait_for_vbl()`) | 16683.3 / 16683.6 (n=300) | 16683.3 / 16799.1 (n=300) |
+| vblank jitter \|interval - median\|, event wake | 0.0 / 0.3 (n=300) | 6.1 / 141.6 (n=300) |
