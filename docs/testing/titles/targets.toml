@@ -348,3 +348,13 @@ route = "burnout"
 name = "Battlefield 2: Modern Combat"
 iso = { thor = "45410062-Battlefield_2_Modern_Combat.xiso.iso" }
 route = "bf2mc"
+
+[titles."4D530007"]
+name = "Azurik: Rise of Perathia"
+iso = { thor = "4D530007-Azurik_Rise_of_Perathia.xiso.iso" }
+route = "azurik"
+
+[titles."41430016"]
+name = "Alias"
+iso = { thor = "41430016-Alias.xiso.iso" }
+route = "alias"
