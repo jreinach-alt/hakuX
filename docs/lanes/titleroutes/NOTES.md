@@ -619,6 +619,38 @@ minutes, and B on the first Help box turns help off. Nav frames
 1-1790517591-titleroutes-1523259 (thor, 640 s, ref 3ea9cd9a34). The
 replay's mark came 375 s after launch, so the soak scores about 265 s.
 
+### Session 21: HELD Thor, 07:02-07:28 PDT (26 min; the hold was taken the moment lane.titlestate's hdd.img pull released it), battery 54% -> 48%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Azurik: Rise of Perathia (4D530007) | thor | `azurik.route` | yes (07:07) | the Arena after the "first challenge" box; Azurik runs out through the far arch |
+| Alias (41430016) | thor | `alias.route` | yes (07:14) | Operation Casino, Sydney on the casino floor; the replay walked her the length of the bar at 19 fps |
+| Dungeons & Dragons Heroes (49470013) | thor | draft only (`scratch/dnd-heroes.draft.route`) | two replays, both failed | ARADIN (Fighter) in the ruins after the dwarves' cutscene |
+
+**Azurik.** FMV (A) -> START -> Start New Game (A) -> A presses through the
+opening and the Arena tutorial box (A is jab in play). Nav frames
+`~/hakux-work/nav/azurik.first-run-20260927T070214/` (006-gameplay ->
+007-moved). Replay `scratch/replay/azurik-070456/zz-end.png`.
+
+**Alias.** Intro (A) -> NEW GAME (A) -> briefing (A) -> Operation Casino
+load -> door cutscene (A) -> the casino. Vaughn's radio box does not stop
+movement. The nav session ran at 5-7 fps (first run) and the replay at 19.
+Nav frames `~/hakux-work/nav/alias.first-run-20260927T070810/` (006-gameplay
+-> 008-walk). Replay `scratch/replay/alias-071116/zz-end.png`.
+
+**D&D Heroes (not done).** Three A presses 5 s apart go from the logos to
+the hero select without showing the menus. Fighter (A) -> name "ARADIN" (A)
+-> load -> a dwarves' cutscene that neither A nor START ends (~40 s). In the
+nav session one START landed in the cutscene. Replay 1 marked inside a
+slower cutscene (2 fps). Replay 2 (+60 s before the mark) was in play when
+that START landed, so it opened Game Options, and the play pattern's A then
+picked Save Game. Next time: drop the START press, wait out the cutscene,
+and replay again. Frames `scratch/replay/dnd-heroes-071819/` and
+`scratch/replay/dnd-heroes-072237/`.
+
+Benchmarks (thor, ref c6e2be0936): Azurik 1-1790519286-titleroutes-2112912
+(440 s), Alias 1-1790519290-titleroutes-2113140 (450 s).
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
