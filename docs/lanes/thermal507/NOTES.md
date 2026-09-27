@@ -106,6 +106,15 @@ cpu-0-2). Idle readings: xo-therm 41.3 C, hottest zone 46 C.
   (~225 s). Only if that is clean: fan_mode 5 vs 4, time to pause (report only;
   the regimen is perfregimen's).
 
+### Post-fold pilot (session 3, 2026-09-27 16:30 PDT)
+
+- Why session 2 did not finish: the pilot could not exercise the soak
+  wiring before #508 folded (above), so it ended waiting on the fold. #508
+  folded as 8a54dcf1b2 at 16:20 PDT. The dispatcher update window started at
+  16:26 PDT to put the merged scripts in the workers' snapshot.
+- Queued `1790551730-thermal507-2943941`: GTA SA, gta-sa route, 600 s, Thor,
+  ref 8a54dcf1b2. It claims after the update window.
+
 ## Existing Thor title benchmarks (brief item 4)
 
 Posted on #507 (comment 5859894811). 122 Thor title soaks of the last 48 h
