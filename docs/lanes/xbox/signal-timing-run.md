@@ -79,3 +79,31 @@ the raw samples. It is posted on #462 and #474, and the raw files are committed 
 
 A private nxdk copy puts a counter timestamp inside pbkit's DPC for the NOTIFY interrupt. The suite then adds a
 write-then-awaken NOTIFY and times kick -> interrupt handled. That is a separate build with its own dry run.
+
+## Result (2026-09-27)
+
+- **Console:** 09:49-09:50 PDT, 89 s, "Testing completed normally", 16 files.
+- **hakuX:** the dry run `0-0-x-1790526930-xbox-timing462-dry-1549920` on the **Thor**, hakuX `c6e2be0936` (apk `17eff0363df9`), completed normally.
+- The raw files are in [`signal-timing/console`](signal-timing/console) and [`signal-timing/hakux-thor`](signal-timing/hakux-thor). The table is in [`signal-timing/table.md`](signal-timing/table.md).
+
+**Instrument legs:**
+- I1 holds on both machines (1.000001 and 1.000018).
+- I3, I4 and I5 hold on the console.
+- **I2, as registered, FAILS (59.9999 Hz). The leg was mis-specified.** A 2 s count of vblanks (120) resolves only +/- 0.5 Hz. The rate from the 300 spin intervals is **59.9401 Hz on the console** (16683.33 us mean), and **59.9390 Hz on hakuX**. I3 is the leg that checks the rate, and it holds.
+
+**Not run:** `ST_VBlank_Event` ran in neither run. The suite runs its tests in name order, so it ran before `ST_VBlank_Spin` and its guard skipped it. A fixed build, whose event test checks vblanks itself, gets its own dry run.
+
+**Amendments:**
+1. After the dry run, before the console run: the table script's file matching also accepts the dispatcher's flattened names (`Signal_timing::ST_x.txt`). No computation changed.
+2. After the console run: the second flip row's label says what it measures. It is from seeing the `NV_PCRTC_START` change to the NEXT vblank counter tick. On the console that is one frame (16.68 ms), because the vblank ISR's write and the DPC's counter increment come from the same interrupt, before the loop reads the counter.
+
+### What the table says
+
+- **vblank:** the same mean rate on both, but the console's intervals vary by 1.8 us p5-p95, and hakuX's by 391 us. hakuX's intervals range from 14.17 to 18.93 ms; the console's from 16.672 to 16.695 ms.
+- **GPU completion:** on silicon, the semaphore release is visible **2.7 us** after the last kick, and the NOTIFY write 4.1 us after it. That holds for 1 quad and for 500 quads with a render-target switch alike: the GPU finishes the frame while the CPU is still submitting it (6.38 ms).
+  - On hakuX the same 500-quad frame's semaphore arrives a median **13.8 ms** after the last kick (p95 16.9 ms), after a submission of 11.0 ms.
+- **NOTIFY:** hakuX never wrote the NV097 write-only NOTIFY notifier, 0 of 900 times. Silicon wrote it every time.
+- **CPU read of the 640x480 back buffer:** 31.07 ms on silicon, 23.27 ms on hakuX.
+- **Flip:**
+  - On silicon, `pb_finished()` takes effect at the next vblank: the start register changes 16.18 ms after the request, and the next counter tick comes one frame later.
+  - On hakuX the start register changes **24.1 ms** after the request, and the next counter tick comes **8.25 ms** after that. The write is not on a vblank boundary. The mechanism is not established here.

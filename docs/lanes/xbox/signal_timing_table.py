@@ -20,7 +20,10 @@ TESTS = ("ST_Calibrate", "ST_VBlank_Spin", "ST_VBlank_Event", "ST_Done_Tiny", "S
 
 def load(root, test):
     """(freq, summary dict, columns, rows) for one test's file, or None if the run did not write it."""
-    found = glob.glob(os.path.join(root, "**", test + ".txt"), recursive=True)
+    # pgraph_run.py keeps the suite directory (Signal_timing/ST_x.txt); the dispatcher's extractor flattens it
+    # to Signal_timing::ST_x.txt. The name must END in "<test>.txt" either way (ST_Done_DOA never matches _Read).
+    found = [f for f in glob.glob(os.path.join(root, "**", "*" + test + ".txt"), recursive=True)
+             if os.path.basename(f) in (test + ".txt", "Signal_timing::" + test + ".txt")]
     if not found:
         return None
     freq, summary, cols, rows = None, {}, [], []
@@ -92,7 +95,7 @@ def signals(root):
         rq, ss, cs = cols.index("request"), cols.index("start_seen"), cols.index("count_seen")
         out["flip: pb_finished -> NV_PCRTC_START written (vblank ISR)"] = stats(
             [us(r[ss] - r[rq], freq) for r in rows if r[ss]])
-        out["flip: NV_PCRTC_START written -> vblank DPC counter"] = stats(
+        out["flip: NV_PCRTC_START change seen -> next vblank counter tick"] = stats(
             [us(r[cs] - r[ss], freq) for r in rows if r[ss] and r[cs]])
     return out
 
