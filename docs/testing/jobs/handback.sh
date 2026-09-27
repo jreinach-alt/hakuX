@@ -829,7 +829,34 @@ lane_name() {   # <head branch> -> 0 with $NAME set, or 1 with $REASON set
             REASON="\`$1\` has a slash inside the lane name; \`lane.sh\` names a worktree \`\$WORK/wt/<name>\` and a unit \`hakux-lane-<name>\`, neither of which can hold one. Not guessing."
             return 1 ;;
         lane/?*)
-            NAME="${1#lane/}"; return 0 ;;
+            NAME="${1#lane/}"
+            [ -d "$WORK/wt/$NAME" ] && return 0
+            # A LANE MAY OPEN ITS PR ON A SECOND BRANCH. lane.flip474 pushed
+            # #504 from `lane/flip474-ts`, checked out in `wt/flip474`; the
+            # strip above named a lane `flip474-ts` with no worktree, and the
+            # PR was labelled `blocked:needs-owner` while its lane sat waiting
+            # on four queued device requests. So when the stripped name has no
+            # worktree, ask the worktrees which one has this branch checked
+            # out -- and has a brief, or `lane.sh resume` could not run it
+            # anyway. One answer is the lane. None keeps the old path. Two is
+            # a question this job cannot settle, and a guess is a resume of
+            # the wrong lane against its attempts budget.
+            local d hits=""
+            for d in "$WORK"/wt/*/; do
+                d="${d%/}"
+                [ "$(git -C "$d" symbolic-ref --short HEAD 2>/dev/null)" = "$1" ] || continue
+                [ -f "$WORK/briefs/${d##*/}.md" ] || continue
+                hits+="${hits:+ }${d##*/}"
+            done
+            case "$hits" in
+                "") ;;
+                *" "*)
+                    NAME=""
+                    REASON="\`$1\` has no worktree of its own name, and it is checked out in more than one lane's worktree (\`$hits\`, under \`\$WORK/wt/\`). Not guessing which lane it is; the one that does not own it should switch branch."
+                    return 1 ;;
+                *) NAME="$hits" ;;
+            esac
+            return 0 ;;
         *)
             REASON="\`$1\` is not a \`lane/<name>\` branch, so there is no local lane to resume. Whoever owns this branch merges \`origin/$TIP\` into it by hand."
             return 1 ;;
@@ -1021,7 +1048,8 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
         park=$(parked_label "$labels")
         if [ -z "$park" ]; then
             case "$branch" in lane/?*)
-                park=$(awk -F'\t' -v n="${branch#lane/}" '$1 == n { print "issue " $2; exit }' <<< "$PARKED_LANES") ;;
+                lane_name "$branch" && pn="$NAME" || pn="${branch#lane/}"
+                park=$(awk -F'\t' -v n="$pn" '$1 == n { print "issue " $2; exit }' <<< "$PARKED_LANES") ;;
             esac
         fi
         if [ -n "$park" ]; then
@@ -1097,15 +1125,18 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
         # How the cause reads to a person on the PR. A label says itself; the
         # strand causes are not labels and there is nothing on the PR to point
         # at, so they have to be said in words or the comment names a label
-        # that does not exist.
+        # that does not exist. The lane named is the one the branch RESOLVED
+        # to, which is not always the branch minus `lane/`.
+        lane_name "$branch"; named=$?
+        ln="${NAME:-${branch#lane/}}"
         case "$label" in
-            draft-strand-*) said="this PR is a draft and lane \`${branch#lane/}\`'s unit is not running" ;;
-            idle-no-pr)     said="lane \`${branch#lane/}\` has no open PR and its unit is not running" ;;
-            merged-runs)    said="lane \`${branch#lane/}\`'s PR merged, its device runs have finished since, and its unit is not running" ;;
+            draft-strand-*) said="this PR is a draft and lane \`$ln\`'s unit is not running" ;;
+            idle-no-pr)     said="lane \`$ln\` has no open PR and its unit is not running" ;;
+            merged-runs)    said="lane \`$ln\`'s PR merged, its device runs have finished since, and its unit is not running" ;;
             *)              said="\`$label\` is set on this PR" ;;
         esac
 
-        if ! lane_name "$branch"; then
+        if [ "$named" -ne 0 ]; then
             # Say it once per PR, not once per tick: this state does not change
             # by itself, and a comment every 30 minutes is noise on a PR whose
             # owner is a person.
@@ -1240,8 +1271,8 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
 
         if [ ! -d "$WORK/wt/$name" ] || [ ! -f "$WORK/briefs/$name.md" ]; then
             [ "$mode" = list ] && { echo "#$pr $branch: $label, lane $name has no worktree or brief on this host"; continue; }
-            echo "no worktree or brief for lane $name" > "$marker"
-            say "#$pr: lane $name has no worktree ($WORK/wt/$name) or brief; cannot resume"
+            echo "no worktree or brief for lane $name (branch $branch)" > "$marker"
+            say "#$pr: branch $branch resolved to lane $name, which has no worktree ($WORK/wt/$name) or brief; cannot resume"
             # AND IT IS LABELLED, NOT ONLY COMMENTED. A PR comment is read by
             # whoever opens the PR; nothing polls it. This is the end of the
             # line for a lane that is not merely exited but GONE -- no session
@@ -1250,7 +1281,7 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
             # the attempts-exhausted path sets, and appears in status.sh's
             # roll-up instead of only in a comment nobody is looking at.
             [ "$pr" = none ] || label_add "$pr" blocked:needs-owner || say "  WARNING: could not label #$pr blocked:needs-owner"
-            comment "$pr" "[job.handback] $said and lane \`$name\`'s worktree or brief is gone from this host (\`$WORK/wt/$name\`), so \`lane.sh resume\` cannot run. It needs \`lane.sh start $name <brief>\`, which is the board's call, not this job's. Labelled \`blocked:needs-owner\` so this PR is not waiting in silence: **nothing will act on it until someone does.**"
+            comment "$pr" "[job.handback] $said and lane \`$name\` (resolved from branch \`$branch\`; no worktree under \`$WORK/wt/\` with a brief has that branch checked out) has its worktree or brief gone from this host (\`$WORK/wt/$name\`), so \`lane.sh resume\` cannot run. It needs \`lane.sh start $name <brief>\`, which is the board's call, not this job's. Labelled \`blocked:needs-owner\` so this PR is not waiting in silence: **nothing will act on it until someone does.**"
             continue
         fi
 
