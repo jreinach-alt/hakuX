@@ -152,6 +152,7 @@ notes = "#431 (comment 5849938891): 30, medium confidence. IGN (Xbox, 2005): loc
 [titles."56550042"]
 name = "50 Cent: Bulletproof"
 iso = { nova = "56550042-50_Cent_Bulletproof.xiso.iso" }
+route = "50cent"
 notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
 
 [titles."45530018"]
@@ -163,6 +164,7 @@ notes = "#431 (comment 5849938891): 60 from the hakuX swap interval: reviewed ga
 [titles."5451000D"]
 name = "WWE Raw 2"
 iso = { nova = "5451000D-WWE_Raw_2.xiso.iso" }
+route = "wwe-raw-2"
 notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
 
 [titles."4541005B"]
