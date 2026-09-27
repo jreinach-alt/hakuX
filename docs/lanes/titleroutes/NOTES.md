@@ -180,3 +180,29 @@ mood: 13 A presses, 3-5 s apart. The nav session's match stood at 0-2 after
 (`frames/doax-replay-end.jpg`), so the pattern (LX sweeps, A and B) does
 return balls. The end of a match (7 points?) was not seen: the 420 s window
 may reach a results screen, which A may or may not leave.
+
+## State at the end of batch 1 (2026-09-26 20:00 PDT)
+
+Posted on #397 (comment 5852128252). Four routes ready and on the board
+request; the PR is marked ready so the host can fold them. Next, in work-list
+order: Nova 50 Cent (profile keyboard: move to Done, not A), WWE Raw 2,
+Burnout Revenge (Create Profile is one down), Midnight Club 3, 187 Ride or
+Die, Crash: Wrath of Cortex; Thor (once charged above 30%): Black (past the
+mission cutscene), PGR, PGR2, Bruce Lee (B out of Player Info), Crash
+Twinsanity, SMT Nine.
+
+## Do not repeat
+
+- Do not take a device under 30%: the Thor runs titlebench soaks at MAX and
+  drains faster than USB charges it (26% -> 9% in 50 min).
+- Do not use `press LEFT/RIGHT/UP/DOWN` to move a menu cursor: they did
+  nothing in two games. Flick the left stick (0.15 s out, 0.5 s rest);
+  try `axis HATX/HATY` before relying on it.
+- Do not put the mark after an idle in a timed section (Nightfire): the
+  replay runs ahead of the nav session's timing and the target escapes.
+  Mark as soon as control is shown and let the play pattern do the rest.
+- Do not mark at the first sight of control in a fighter if the nav session
+  then idles: Kabuki's first replay was lost by the mark. Mark at the round
+  start.
+- Do not assume a first-run's profile persisted: a force-stop without the
+  HOME flush leaves the disk as it was (GoldenEye).
