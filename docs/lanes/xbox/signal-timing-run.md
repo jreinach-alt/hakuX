@@ -152,3 +152,11 @@ Each callback's kick time is taken just BEFORE its kick, so no callback can prec
 - **I8:** `ST_CB_3_DOA15` has 300 reps, 0 timeouts and 0 stale times, and all 15 callbacks seen in every frame.
 
 No values are predicted.
+
+### v3 amendment, before any silicon: the dry run bugchecked the guest; v3b
+
+- **What happened:** the v3 dry run `0-0-x-1790531870-xbox-callback462-dry-3197659` (Thor) ran `ST_CB_1_Empty` to completion and wrote `ST_CB_2_DOA.txt`. Then the guest bugchecked: 0x1E, access violation, CR2 `0x3d78616d`, which is the bytes "max=".
+- **The cause is the suite's own `Finish()`, not the callback.** It printed the whole summary through `pb_printat()`, which formats into a 512-byte stack buffer with `vsprintf` (`pbkit_print.c`). v3's longer summaries overflowed it. v1 and v2 stayed under 512 bytes.
+- **v3b:** only the test name goes on screen. The measurement code is unchanged. Tests commit `c9a473c`, XBE sha256 `d4796af3d408…`, ISO `1b5ffbabae6e…`, in `hardware/runs/2026-09-27-callback462b/`, with output `e:/callback462b`.
+- The legs, the session and the order are as registered above. A new dry run comes first.
+- The v3 dry run's `ST_CB_1_Empty` numbers stand as hakuX data. Its I7 fields held there too: 300 reps, 0 timeouts, 0 stale.

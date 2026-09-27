@@ -33,10 +33,10 @@ index 1dfd467..dde0b4c 100644
    REG_TEST(AttributeExplicitSetterTests)
 diff --git a/src/tests/signal_timing_tests.cpp b/src/tests/signal_timing_tests.cpp
 new file mode 100644
-index 0000000..57bdb27
+index 0000000..e1ecb98
 --- /dev/null
 +++ b/src/tests/signal_timing_tests.cpp
-@@ -0,0 +1,641 @@
+@@ -0,0 +1,645 @@
 +#include "signal_timing_tests.h"
 +
 +#include <pbkit/pbkit.h>
@@ -285,8 +285,12 @@ index 0000000..57bdb27
 +}
 +
 +void SignalTimingTests::Finish(const std::string &name, const std::string &line) {
++  // Only the name goes on screen. pb_printat() formats into a 512-byte stack buffer with vsprintf, so a summary
++  // longer than that overwrites the stack: the v3 dry run bugchecked (0x1E, CR2 = "max=") after ST_CB_2_DOA.
++  // The summary is in <name>.txt.
++  (void)line;
 +  host_.PrepareDraw(0xFF202020);
-+  pb_printat(0, 0, "%s\n%s", name.c_str(), line.c_str());
++  pb_printat(0, 0, "%.40s", name.c_str());
 +  pb_draw_text_screen();
 +  FinishDraw(name);
 +}
