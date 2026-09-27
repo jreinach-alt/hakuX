@@ -1,0 +1,32 @@
+{
+  "registered_utc": "2026-09-27T04:34:42Z",
+  "who": "lane.blinx372e",
+  "issue": "372",
+  "title": "4D530013-Blinx_The_Time_Sweeper.xiso.iso",
+  "device": "thor",
+  "seconds": 240,
+  "frames_every": 30,
+  "perflog": true,
+  "runs_per_arm": 1,
+  "a_ref": "988e51328e",
+  "b_ref": "489394939f",
+  "prediction": "SAME-SESSION A/B, two hands-off 240 s perflog soaks of Blinx's attract demo on the Thor, frames every 30 s in both arms, queued back to back. A is 988e51328e, lane/doa413b's head (PR #440): master's hw/ tree plus #440's surface logging and its env-gated lazy completion (off). B is 489394939f, this lane after merging A: A plus the small-to-big quadrant copy in vk/surface.c (surface_quad_partner / surface_quad_record) and its [quad372] counter. `git diff 988e51328e 489394939f -- hw/` is that hunk and nothing else. Registered before either arm and before any [quad372] line exists. Judge: python3 docs/lanes/blinx372e/abquad.py <A logcat> <B logcat> --window 135,265 --spec-a <A result.json> --spec-b <B result.json> --prediction docs/testing/predictions/blinx372e-demo-ab.json. M0 and M1 are the instrument: both specs have hakuX-stall, at least 10 stall lines in the window, the window intact, [evict372] printed in both, and [quad372] and [surfwatch382] printed in B. Failing any voids the arm. P0 is the premise from lane.blinx372d, re-measured in A: the two flips (mask 08 small->big and 40 big->small) are at least 90% of A's draw-dirty incompatible evictions in the window, and A takes at least 0.85 synchronous surface downloads per flip (blinx372d's pair read 1.02). It fails if the demo's pattern changed. P1 is the mover: B copies at least 0.9 of its small->big flips, and B's sd per flip is at most 0.65. Sd is judged per flip, not per display frame, because a faster B flips more often per second. The rival worlds: the guard never arms (copies 0: the eviction download does not land in the surface_update that shelved it, or the partner is not the noted binding), or it arms but the hash differs at every flip (vram_changed near the flip count: something rewrites the large binding's memory while it sits shelved, such as a download of the small binding). P2 is the gap measurement, the brief's step 1: B's shelved large binding sees 0 guest CPU writes (cpu_writes, counted by the watch it keeps on the shelf) and its memory hash changes at most 20 times in the window (vram_changed); B's lost_writes (surfwatch382's run-wide counter) stays 0; and fallbacks stays 0. The watch is handed from the shelved binding to the new one with its removal queued after the insert, so the flip leaves no unwatched window to measure. A cpu_writes or vram_changed above these is still declined to the old path by the guard, so a P2 failure says the gap is real in the demo, not that B drew wrong. P3 is the frame rate over the gfps cadence: B/A >= 1.1 and B between 13.5 and 20 fps. The no-change spread from two same-path pairs is 1.016 (blinx372c) and 1.06 (blinx372d), so 1.1 is just outside it. The bound: A's waits are Sub 25.6-35.2 ms of Tot 56.6-71.1 ms across blinx372c/d's soaks, and B removes one of the two per frame, so at most about half of Sub: Tot 44-55 ms, 18-23 fps by Tot, and at the 0.83 gfps/Tot factor blinx372d measured, about 15-19. The added cost is two hashes of 1.2 MB and one 320x240 D24S8 image copy per frame; the hashes are an analytic 0.1-0.6 ms, not measured (compiled binaries cannot run in this lane's session). P3 fails in the world where the remaining big->small wait absorbs the GPU work the removed wait used to drain (GPU 31-46 ms), and B stays near A. B's frames at 150, 180, 210 and 240 s are read by eye against A's: the demo scene, no depth garbage or missing geometry in the top-left quarter against the rest, no black or stale frame. That is not a leg, because the demo's timing is not frame-locked between runs.",
+  "expect": {
+    "M0/stall_lines_min": 10,
+    "P0/A_flip_share_min": 0.9,
+    "P0/A_sd_per_flip_min": 0.85,
+    "P1/B_copies_per_small_flip_min": 0.9,
+    "P1/B_sd_per_flip_max": 0.65,
+    "P2/B_cpu_writes_max": 0,
+    "P2/B_vram_changed_max": 20,
+    "P2/B_lost_writes_max": 0,
+    "P2/B_fallbacks_max": 0,
+    "P3/fps_ratio_min": 1.1,
+    "P3/B_fps_range": [
+      13.5,
+      20
+    ]
+  },
+  "expect_counts": {},
+  "expect_note": "These are named rules read by docs/lanes/blinx372e/abquad.py, not golden keys. A soak writes no captures, and arms.sh skips soaks structurally; this lane queues both arms with request.sh."
+}
