@@ -184,12 +184,47 @@ add_optional_instance_extension_names(PGRAPHState *pg,
                                    VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 }
 
+#ifdef __ANDROID__
+/*
+ * Ask Turnip to render every pass in system memory rather than in GMEM tiles.
+ *
+ * On the handhelds' bundled Turnip the autotuner puts a guest's one heavy
+ * pass in GMEM with too few tiles to bin, so every tile executes the whole
+ * draw stream: DOA's fight runs its stream twice, 31 ms each, and sysmem runs
+ * it once (#474, docs/lanes/flip474/sysmem.md). TU_DEBUG is parsed once, at
+ * the driver's first vkCreateInstance, and its "sysmem" flag is read in one
+ * place, the render-mode choice (tu_cmd_buffer.cc use_sysmem_rendering), so
+ * this must run before the instance exists and changes nothing else. Other
+ * drivers ignore the variable.
+ *
+ * A TU_DEBUG already in the environment wins, whatever its value: the
+ * env_vars pref is applied before this runs, so `TU_DEBUG=` there restores
+ * the driver's own choice and `TU_DEBUG=gmem` forces tiling.
+ */
+static void default_turnip_render_mode(void)
+{
+    const char *cur = getenv("TU_DEBUG");
+
+    if (cur) {
+        __android_log_print(ANDROID_LOG_INFO, "xemu-vk",
+                            "init: TU_DEBUG='%s' from the environment", cur);
+        return;
+    }
+    setenv("TU_DEBUG", "sysmem", 0);
+    __android_log_print(ANDROID_LOG_INFO, "xemu-vk",
+                        "init: TU_DEBUG=sysmem (default; set TU_DEBUG in "
+                        "env_vars to override)");
+}
+#endif
+
 static bool create_instance(PGRAPHState *pg, Error **errp)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
     VkResult result;
 
 #ifdef __ANDROID__
+    default_turnip_render_mode();
+
     /*
      * When RenderDoc is injected, use the standard Vulkan loader so
      * RenderDoc's layer can intercept all API calls.  Custom drivers
