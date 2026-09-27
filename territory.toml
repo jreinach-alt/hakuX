@@ -380,8 +380,10 @@ note = "RETIRED (hostops 2026-09-26 13:15 PDT): PR #415 MERGED, no open PR on la
 [lane.titleroutes]
 issues = ["397"]
 files = ["docs/testing/titles/routes/**", "docs/testing/titles/targets.toml", "docs/lanes/titleroutes/**"]
+released = ["docs/testing/titles/routes/**", "docs/testing/titles/targets.toml", "docs/lanes/titleroutes/**"]
+released_at_ready = 455
 standing = false
-note = "STARTED (hostops 2026-09-26 18:25 PDT), briefs/titleroutes.md: #397 / 0.5 (#433) benchmark stage 2, profile-setup and gameplay routes for the ~57 titles on the handhelds with none. The stage had no owner after lane.titlestate retired (PR #442). Short HELD sessions (<30 min, >=30% battery; the titlestate grant carried over by hostops under the owner's 16:40 order). Route-ready titles go to dispatch/board-requests/titleroutes.md for the host to queue soaks."
+note = "RELEASED AT READY (job.board 2026-09-27T03:10Z): PR #455 is out of draft, CI green, unit gone; docs-only diff, no audit needed. STARTED (hostops 2026-09-26 18:25 PDT), briefs/titleroutes.md: #397 / 0.5 (#433) benchmark stage 2, profile-setup and gameplay routes for the ~57 titles on the handhelds with none. The stage had no owner after lane.titlestate retired (PR #442). Short HELD sessions (<30 min, >=30% battery; the titlestate grant carried over by hostops under the owner's 16:40 order). Route-ready titles go to dispatch/board-requests/titleroutes.md for the host to queue soaks."
 
 [lane.tbflip424]
 issues = ["424"]
