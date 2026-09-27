@@ -73,7 +73,10 @@ Read with `python3 docs/lanes/retreason425/rr425.py --from 299 --to 400 <id>`
 
 ## 3. Result
 
-Pending the arms above.
+Pending the arms above. 2026-09-27 03:00Z (20:00 PDT): both soaks queued on the Nova
+behind aufire412b (running), doa413b x2 and tbflip424 x2; the Thor is
+owner-held. preflight passes on be819ae6bf+. Waiting on those two result ids;
+nothing of this lane is running in a session.
 
 ## Files outside this lane
 
