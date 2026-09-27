@@ -1183,6 +1183,36 @@ texture.c and these NOTES only).
   on the surface image (`bind_surface_as_texture`). So the drain before it
   protects nothing that path writes. It is needed only before
   `copy_surface_to_texture`, which does write the node's image.
+- **Descriptor sets, checked (code reading, line numbers at lane head
+  `3d3c22f8c0`).** The direct bind also changes what slot `i`'s
+  descriptor points at (`tex_surface_direct_views`,
+  `texture_bindings_changed`), so the image-write argument alone does not
+  cover it. The descriptor side, from
+  `shaders.c:596-750`:
+  - A changed binding takes a fresh ring set (`descriptor_sets[index]`,
+    written by `vkUpdateDescriptorSets`, then `index++`). The ring rewinds
+    to 0 only when nothing submitted is pending and nothing is recording:
+    `draw.c:3663` and `3730` after the frame's fence or finish event,
+    `draw.c:3838` only with no frame in flight, `draw.c:3446`
+    (`flush_all_frames`) only when `!in_command_buffer`, and the ring-full
+    paths `shaders.c:604-608`, `713-717` only after `pgraph_vk_finish` +
+    `flush_all_frames`. So a fresh set is never one an in-flight frame
+    holds, drain or no drain.
+  - A cache hit (`shaders.c:699-710`) calls no `vkUpdateDescriptorSets`; it
+    binds `ce->descriptor_set` as it is.
+  - The s2t drain (`texture.c:2300-2303`) runs inside a recording command
+    buffer, so its `flush_all_frames` does not rewind the ring; it changes
+    nothing the descriptor path reads.
+  So the drain protects no descriptor write either. **One hazard exists on
+  this path with or without the drain, and removing the drain does not
+  touch it:** a cache hit stores the cached handle into the ring array
+  (`descriptor_sets[index] = ce->descriptor_set`), aliasing that ring slot
+  to a set another slot owns, and no rewind clears `tex_desc_cache` (only
+  the `shaders.c:713-717` ring-full path does). After a rewind, a stale hit
+  can bind set S early in the new command buffer and a later miss whose
+  ring slot aliases S rewrites S while that command buffer still holds it.
+  That is a use-while-recording write in the existing cache, not in the
+  drain; it is noted for the fix lane, not measured.
 - The whole-soak figure (0-298 s: bt 2.90, faf 2.82 at 0.44/flip) shows the
   same shape in the menus and the early mission.
 - The addendum's "~9 ms/frame" was attempt 7's `Pipe.Tx` 8.7 on
@@ -1275,7 +1305,9 @@ Split by the window's fps (`.cap/txwregime.py`, scratch, not committed):
   `bs` 2.0-3.0 per flip. So every `faf` in the window is the s2t drain before
   a **direct** bind of the surface's own image view, and that bind writes
   nothing into the texture node's image. The drain protects nothing on this
-  path, as on AUF.
+  path, as on AUF: neither an image write nor a descriptor write (see the
+  AUF "Descriptor sets, checked" bullet for the ring and cache lines read,
+  and the cache-aliasing hazard that exists with or without the drain).
 - **flip474's drain-only-on-copy fix (addendum 8) reaches Blinx:** with no
   copies, it removes every drain in the window.
 
