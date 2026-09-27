@@ -200,6 +200,9 @@ Screenshots in `screenshots/`: `before-448-phone.png`, `before-458a-phone-{400,3
 `after-phone-{400,360}.png` (the same fixture), and `live-{400,360}.png` (`status.sh
 --print` via `docs/lanes/dash432/fixtures/live_print.sh`, 20:56 PDT).
 
+Full `selftest.sh`, run as a user unit in this session with its log polled to the end:
+`selftest: 2071 passed, 0 failed`, exit 0.
+
 Not done: the owner's earlier remark that the lanes table (Q2, "Finished today") cuts
 off the result of finished lanes. That is a different section and outside this
 addendum's five items. The next status lane should take it.
