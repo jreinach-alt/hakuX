@@ -200,6 +200,9 @@ removing them makes the wait cheaper and fps does not move (aufire412b).
   finish DOA; Ask 2). 22:37 "Nova free" posted on #462.
 - 22:47 DOA and AUF answers posted on #462, #413, #412. Ask 3 (new issue for
   the flip's lock-held GPU wait) filed.
+- 23:36 waiting: the owner's charger-swap hold on the Nova (hold/nova,
+  "only the owner lifts it") and lane.xbox's "verified on the Nova" notes for
+  Blinx, Blinx 2 and Forza on #462. Neither had happened by 23:36.
 - Next: Blinx, Blinx 2, Forza once lane.xbox posts "verified on the Nova";
   one soak each (release priority, pinned nova, survey), then one `OFFCPU=1`
   session each at `mark play` + 60 s (their pass-1 shots show gameplay after
