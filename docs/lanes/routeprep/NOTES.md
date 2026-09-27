@@ -73,6 +73,37 @@ reached its gameplay; it is blocked on combat, not on a route).
 - route draft: `spikeout.route` (Nova, Thor) -- evidence: fmv303b and gamecheck hands-off frames: a long subtitled story FMV, then "Please press START to begin" at ~180 s, looping back to the FMV. START at 45/60 s tries to skip the FMV, then START at ~170 s. Open: whether the FMV skips (the route's frames will show which START landed); all menus.
 - route draft: `rallisport2.route` (Nova, Thor) -- evidence: gamecheck-354879 hands-off frames: intro FMV, PRESS START TO BEGIN at ~130-180 s, attract replays. Past it [recalled, low]: profile + keyboard, Career then single race, discipline/track/car. Open: all menus.
 
+### Batch 4 (posted on #397, 2026-09-26)
+
+- route draft: `tork.route` (Nova, Thor) -- evidence: gamecheck-415427 hands-off frames: "Press START" at ~25-55 s; left alone an in-engine cinematic runs at **1-4 fps** (attract or intro, unknown). Past START [guess]. Open: all menus; the intro's length at that frame rate; the attack button.
+- route draft: `ghoulies.route` (Nova, Thor) -- evidence: ghoul311-3053340 hands-off frames: "Press START" from ~15 s and on every attract page. Past it [guess]. The play pattern works both sticks: the right stick attacks in this game [recalled]. Open: the slot screen; the opening comic's length.
+- route draft: `castlevania-cod.first-run.route`, `.returning.route` (Thor) -- evidence: **none on disk**. New Game, a file-name keyboard (START), Normal, the opening FMV with A. Worth a nav session.
+- route draft: `mechassault2.first-run.route`, `.returning.route` (Thor) -- evidence: **none on disk**. Profile + keyboard, campaign, briefing; the play pattern walks, turns the torso (RX) and fires (RT). Worth a nav session.
+- route draft: `thps2x.route` (Thor) -- evidence: **none on disk**. Aims at **Free Skate** (two down from Career [recalled]): no timer, no goals. Open: a save prompt at boot; the menu order.
+
+## Not drafted yet (in list order)
+
+Batman (combat, not route), Crash: Wrath of Cortex, Black Stone, SW Ep. III,
+Bloody Roar Extreme, Gunvalkyrie, Dino Crisis 3, Buffy, PDO, Psychonauts,
+Fuzion Frenzy (has a route), Halo, MechAssault, Amped 2, Phantom Dust,
+Conker (the `&` in its name kept dispatcher soaks from starting, #265),
+Halo 2, ToeJam III, NG, NGB, Deathrow, Tron 2.0. Of these, only Conker has
+frames on disk (gamecheck-734705/998763).
+
+## What this lane found about the method
+
+- 5 of the 20 drafted titles rest on frames that include input (pass 1):
+  50 Cent, Bruce Lee, Burnout Revenge, Galleon, DOA3. Those drafts carry
+  real fixes (X = continue without saving; Continue, not Player Info;
+  Create Profile one down; START before the Galleon title times out; wait
+  out DOA3's 200 s warning). 9 more rest on hands-off frames, which give
+  boot-to-title timing and nothing past the title. 6 have nothing on disk.
+- The cheapest way to put evidence under the other titles is a survey-route
+  run like pass 1's (a frame after every press), which the owner stopped
+  for holding the device. A nav session reaches the same screens with a
+  person choosing each press, so for no-evidence titles the draft is a
+  plan to follow, not a replay.
+
 ## Do not repeat
 
 - Do not read the titlebench `frames/` as if they had input: they are
