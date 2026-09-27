@@ -61,6 +61,36 @@ void nv2a_update_irq(NV2AState *d)
     }
 }
 
+/*
+ * #425 [rr425w]: which units have an enabled interrupt pending, read by the
+ * vCPU thread (BQL held) as it takes an interrupt. Bit 0 PFIFO, 1 PCRTC,
+ * 2 PGRAPH; and of PGRAPH's, 3 NOTIFY, 4 CONTEXT_SWITCH, 5 BUFFER_NOTIFY,
+ * 6 ERROR, 7 any other.
+ */
+uint32_t hakux_nv2a_irq_units(void);
+uint32_t hakux_nv2a_irq_units(void)
+{
+    NV2AState *d = g_nv2a;
+    uint32_t u = 0, pg;
+
+    if (!d) {
+        return 0;
+    }
+    pg = d->pgraph.pending_interrupts & d->pgraph.enabled_interrupts;
+    u |= (d->pfifo.pending_interrupts & d->pfifo.enabled_interrupts) ? 1 : 0;
+    u |= (d->pcrtc.pending_interrupts & d->pcrtc.enabled_interrupts) ? 2 : 0;
+    u |= pg ? 4 : 0;
+    u |= (pg & NV_PGRAPH_INTR_NOTIFY) ? 8 : 0;
+    u |= (pg & NV_PGRAPH_INTR_CONTEXT_SWITCH) ? 16 : 0;
+    u |= (pg & NV_PGRAPH_INTR_BUFFER_NOTIFY) ? 32 : 0;
+    u |= (pg & NV_PGRAPH_INTR_ERROR) ? 64 : 0;
+    u |= (pg & ~(uint32_t)(NV_PGRAPH_INTR_NOTIFY
+                           | NV_PGRAPH_INTR_CONTEXT_SWITCH
+                           | NV_PGRAPH_INTR_BUFFER_NOTIFY
+                           | NV_PGRAPH_INTR_ERROR)) ? 128 : 0;
+    return u;
+}
+
 uint8_t *xemu_get_xbox_ram_ptr(void)
 {
     return g_nv2a ? g_nv2a->vram_ptr : NULL;
