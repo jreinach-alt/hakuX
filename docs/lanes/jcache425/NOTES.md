@@ -112,14 +112,79 @@ lane.tbchurn424. If F2 is refuted (misses are mostly collisions), the next
 lever is the jump cache's shape (`tb-jmp-cache.h`: size or a second way),
 armed on its own.
 
-## State at session end (2026-09-26 ~22:20 UTC, 15:20 PDT): WAITING
+## Why attempt 1 did not finish
 
-Waiting on the six dispatch requests above. Nine requests were ahead of them
-in the queue at 22:15 UTC. Preflight passed at this head. The PR stays draft
-until the arms are judged. The next session:
-1. Runs `perfsum.py` over the four soak logcats and judges M0, F1, F2, S1 and
-   S2 as registered.
-2. Runs `ab_compare.py --allow-same-binary` over the two disc results, and
-   reads the arms job's `[job.arms]` verdict on the pixel prediction.
-3. Fills the before/after table here. If the legs hold, it files the board
-   request to default JC on in `cputlb.c`. Then it marks #443 ready.
+It ended on purpose, WAITING on the six dispatch requests above (they ran on
+the Nova after tbchurn424's arm and perfregimen's held session). A waiting
+session cannot poll, so the PR stayed draft. `jobs/handback.sh` resumed the
+lane (attempt 2, 2026-09-27 01:32 UTC) once all six were DONE. Nothing failed.
+
+## Result (attempt 2, 2026-09-27): F1, F2 and S2 hold, S1 FAILS, pixels identical
+
+Nova, apk `ae72025f8ca8` (ref `1b43be6b3a`) in all six runs. Window: 90-240 s
+from the first `hakuX-perf` line. Read with `perfsum.py`. The pooled figures
+come from the same parse over both runs of an arm.
+
+| run | arm | gfps med / p10 | G ms med / p90 | guest cpu/wall | wipes/s (`jci`) | discards/s (`jcx`) | wipe time / guest CPU | indirect probes to qht | indirect probes/s |
+|---|---|---|---|---|---|---|---|---|---|
+| `1790460549-lane.jcache425-232585` | A1, JC off | 29 / 24 | 33.6 / 41.2 | 0.891 | 49,898 | 0 | 8.65% | 11.84% | 6.18 M |
+| `1790460549-lane.jcache425-232746` | A2, JC off | 29 / 23 | 33.4 / 40.6 | 0.898 | 49,415 | 0 | 8.50% | 10.65% | 6.79 M |
+| `1790460549-lane.jcache425-232641` | B1, JC=1 | 29 / 25 | 33.4 / 38.2 | 0.903 | 0 | 51,041 | 0.00% | 2.36% | 7.47 M |
+| `1790460550-lane.jcache425-232807` | B2, JC=1 | 29 / 27 | 33.4 / 35.9 | 0.918 | 0 | 53,252 | 0.00% | 2.26% | 8.04 M |
+| **A pooled** (135 windows) | | **29 / 23** | 33.4 / **40.6** | 0.895 (median) | | | | | |
+| **B pooled** (140 windows) | | **29 / 26** | 33.4 / **37.8** | 0.911 (median) | | | | | |
+
+How the misses split (`[jc425]` helper misses, `ie`/`ip`/`is` over `ie+ip+is+ik`, same in both runs of an arm):
+
+| arm | empty slot `ie` | another pc `ip` | stale same-pc `is` |
+|---|---|---|---|
+| A (JC off) | 88.1% | 11.8% | 0.0% |
+| B (JC=1) | 4.8% | 85.6% | 7.2% |
+
+Legs, as registered in `jcache425-crimson.json` (`d7669c10`):
+
+- **M0: holds, with one literal miss.** `[tlb68]` and `[jc425]` print in
+  71-73 windows per run. A shows `fx=...jc0`/`jc=0` and B shows `jc1`/`jc=N`
+  on every line. No F/ line, crash tag or tombstone in any run. The last
+  `hakuX-perf` line falls 231-234 s after the first, not at 240 s, and it
+  does so in all four runs. The soak's 240 s counts from launch, and the
+  first perf line comes after boot. That is the leg's wording, not a
+  dropout, so nothing was re-queued.
+- **F1: holds.** B does not wipe (`jci` 0, `jcus` 0). The discard rate
+  (51-53 k/s) matches A's wipe rate (49-50 k/s).
+- **F2: holds.** The share of indirect probes that reach the qht falls from
+  11.25% (A median) to 2.31% (B), which is 0.21x. In A, 88% of misses are
+  wiped slots. **The wipe was the cause of the misses.**
+- **S1: FAILS.** Guest cpu/wall *rises*, from 0.895 to 0.911, where a drop
+  of 0.04 was predicted. The registered rival explains it: the freed time
+  did not become idle. The guest spent it running more guest code, since
+  indirect probes per second rose 6.2-6.8 M to 7.5-8.0 M (+20%). "Removed
+  work shows as idle" is refuted for this route.
+- **S2: holds.** Pooled median 29 -> 29, pooled p10 23 -> 26. Each B run's
+  p10 (25, 27) is above each A run's (24, 23). G p90 (reported, not judged)
+  falls from 40.6 to 37.8 ms. Two runs per arm is a small tail sample.
+- **Pixels: identical.** Both disc pairs are byte-identical on 593 of 593
+  captures over 8 suites:
+  - `ab_compare --allow-same-binary`, JC off vs JC=1 on `1b43be6b3a`
+    (`-232905` vs `-232934`). B's logcat shows `env: HAKUX_TCG68_JC=1`.
+  - The arms job's pair for `jcache425-pixels-inert.json`, master
+    `9f34d60036` vs `1b43be6b3a` (`1790461337-arms-jcache425-base-436536`
+    vs `-fix-436872`). Read locally: PASS, all 593 checks hold.
+
+So the wipe fix does what it claims on the route. It removes 8.5% of guest
+CPU and 80% of the qht lookups. On this title that shows up as frame-time
+tail (p10 +3 fps, G p90 -2.8 ms), not as idle time.
+
+## Next (not done here)
+
+- **Default JC on.** It is a one-line change in `cputlb.c`
+  (`hakux_tlb68_jc_on()`), which is not this lane's file. It is filed as
+  `dispatch/board-requests/jcache425.md`, for the host to sequence with
+  lane.tbchurn424.
+- **The jump cache's shape.** With the wipe gone, 86% of the remaining
+  misses are collisions (`ip`). That is the next lever: size or a second
+  way in `tb-jmp-cache.h`. The remaining ceiling is small, because only
+  2.3% of indirect probes miss now. It should be armed on its own, with
+  `[jc425]` as the counter.
+- Do not repeat: pricing chaining (at most about 1%) or EFLAGS->NZCV (0.25%)
+  on this route. Both are above.
