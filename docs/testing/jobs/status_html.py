@@ -1098,14 +1098,23 @@ def _registry(F):
         if sys.path and sys.path[0] == tdir:
             sys.path.pop(0)
     survey = os.path.basename(titlestate.route_path("00000000", "survey"))
+    rdir = os.path.dirname(titlestate.route_path("00000000", "survey"))
     states = {d: titlestate.load(d) for d in titlestate.DEVICES}
     out = {}
     for tid, t in tg.items():
+        # Inputs are programmed when the title's own route exists: one
+        # routes/<route>.route for a title with no profile step (it needs no
+        # save), or the first-run variant, which sets the profile up; the
+        # returning variant replays from the extracted save.
         routes = {v: os.path.basename(titlestate.route_path(tid, v)) for v in ("first-run", "returning")}
+        routes = {v: r for v, r in routes.items() if r != survey}
+        single = bool(t.get("route")) and os.path.exists(os.path.join(rdir, "%s.route" % t["route"]))
+        if single and not routes:
+            routes = {"single": "%s.route" % t["route"]}
         held = {d: (states[d].get("titles") or {}).get(tid, {}).get("save") for d in states}
         stored = titlestate.store_saves(tid)
         out[tid] = {"name": t.get("name") or tid, "iso": dict(t.get("iso") or {}), "route": t.get("route") or "",
-                    "inputs": all(r != survey for r in routes.values()), "routes": routes,
+                    "inputs": bool(routes), "routes": routes, "needs_save": "single" not in routes,
                     "save": bool(stored or any(held.values())),
                     "save_id": (stored[0] if stored else next((s for s in held.values() if s), "")),
                     "profile": {d: (states[d].get("titles") or {}).get(tid, {}).get("profile") for d in states}}
@@ -1282,6 +1291,8 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
             prim = max(m.values(), key=lambda x: x.get("at") or 0)
         cross = [x for x in withfps if prim and x is not prim]
         inputs, save = bool(g.get("inputs")), bool(g.get("save"))
+        needs_save = g.get("needs_save", True)
+        save = save or (inputs and not needs_save)
         bench = bool(prim and prim.get("fps") is not None and prim.get("mode") == "MAX" and inputs and save
                      and len(devs) >= need and prim.get("reached") == "yes")
         # A run that could not reach gameplay blocks the title only if it ran the
@@ -1352,7 +1363,9 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
         missing = ("needs a gameplay route and a save" if not inputs and not save else
                    "needs a gameplay route" if not inputs else "extract the profile save")
         if st == "blocked":
-            nxt = "needs a gameplay route" if prim.get("reached") == "no" and not inputs else "fix: " + blocker
+            # a few words; the blocker itself shows in full under it
+            nxt = ("needs a gameplay route" if prim.get("reached") == "no" and not inputs else
+                   "fix the crash" if prim.get("crash") else "fix the hang" if prim.get("hang") else "reach gameplay")
         elif st == "none":
             nxt = "copy to a handheld"
         elif st == "copied":
@@ -1371,11 +1384,8 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
             nxt = "20-min soak"
         else:
             nxt = "done"
-        if rq and st != "playable":
-            r0 = rq[0]
-            nxt += " (%s %s)" % ("running as" if r0["state"] == "running" else "queued as", r0["id"])
         out.append({"title": n, "tid": tid, "stage": st, "word": STAGE_WORD[st], "chip": STAGE_CHIP[st],
-                    "blocker": blocker, "devices": devs, "somewhere": n in somewhere, "inputs": inputs, "save": save, "benchmarked": st in BENCHMARKED,
+                    "blocker": blocker, "devices": devs, "somewhere": n in somewhere, "inputs": inputs, "save": save, "needs_save": needs_save, "benchmarked": st in BENCHMARKED,
                     "routes": g.get("routes") or {}, "save_id": g.get("save_id") or "",
                     "prim": prim, "cross": cross, "measured": [m[d] for d in sorted(m)],
                     "issues": flight, "runs": runs, "next": nxt, "alarm": alarm})
@@ -1735,7 +1745,10 @@ section.md td{min-width:4.5em} section.md td:last-child{min-width:18em}
  table.lanes td.lbl:before{content:attr(data-l) " "}
  table.lanes td.lbl:nth-child(n+3):not(:last-child):before{content:" \\00b7 " attr(data-l) " "}
 }
-/* the 0.5 title table (#433): one row per title; on a phone exactly two lines, every cell one line */
+/* the 0.5 title table (#433): fixed columns, nothing truncated. Each title is a
+   tbody of two rows: status | title, then fps | next step and in flight | four
+   pipeline marks. A title and its next step wrap in their own column; short
+   tokens (status words, fps figures, Thor, Nova) never wrap. */
 .goal{display:flex;align-items:center;gap:8px;margin:3px 0}
 .goal .gl{min-width:11em;font-size:15px}
 .goal .bar{flex:1;height:10px;border-radius:5px;background:var(--card);border:1px solid var(--line);overflow:hidden}
@@ -1744,26 +1757,28 @@ section.md td{min-width:4.5em} section.md td:last-child{min-width:18em}
 .chip{display:inline-block;width:.75em;height:.75em;border-radius:50%;margin-right:4px;vertical-align:-1px;border:1px solid rgba(0,0,0,.25)}
 .k-red{background:#cf222e} .k-green{background:#1a7f37} .k-orange{background:#e16f24} .k-yellow{background:#d4a72c}
 .k-purple{background:#8250df} .k-blue{background:#0969da} .k-grey{background:#8c959f}
-table.tt td{white-space:nowrap} table.tt td.c-t,table.tt td.c-i,table.tt td.c-n{white-space:normal}
+.legend{font-size:11px;color:var(--mut);margin:4px 0 2px}
+table.tt{table-layout:fixed;width:100%;min-width:0;font-size:13px}
+table.tt col.w-s{width:116px} table.tt col.w-p{width:22px}
+table.tt th,table.tt td{padding:2px 4px;overflow-wrap:break-word;word-break:normal}
+table.tt tbody{border-top:2px solid var(--line)}
+table.tt tr.a td{border-bottom:0} table.tt tr.b td{border-top:0}
+table.tt .nw{white-space:nowrap} table.tt .sw{display:block;font-weight:600}
+table.tt tr.a td{padding-top:4px}
+table.tt .ln{display:block;white-space:nowrap}
+table.tt td.c-m{text-align:center;padding:2px 0;white-space:nowrap}
+table.tt td.c-m.no{color:var(--mut)}
+table.tt th.v{height:4.4em;vertical-align:bottom;padding:2px 0;text-align:center}
+table.tt th.v span{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;font-size:11px;font-weight:600}
+table.tt .fl{display:block;color:var(--mut);font-size:12px;font-weight:400;overflow-wrap:anywhere} table.tt .fl.bad{color:var(--red)}
 table.tt .sub{display:block;color:var(--mut);font-size:11px}
-table.tt .pm{font:600 12px/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin-right:1px}
-table.tt s.pm{font-weight:400;color:var(--mut)}
 table.tt details summary{cursor:pointer}
-table.tt .td{font-size:12px;color:var(--mut);white-space:normal}
+table.tt .td{font-size:12px;color:var(--mut);white-space:normal;overflow-wrap:anywhere}
 table.tt .xc{color:var(--mut);font-size:12px}
 table.lv td{font-size:12px}
 .wd{font-size:13px}
-@media (max-width:640px){
- table.tt,table.tt tbody{display:block;min-width:0}
- table.tt tr:first-child{display:none}
- table.tt tr{display:grid;grid-template-columns:8.2em minmax(0,1.3fr) minmax(0,1fr);font-size:13px;column-gap:6px;border-bottom:1px solid var(--line);padding:2px 0}
- table.tt td.l1,table.tt td.l2{display:block;border:0;padding:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;overflow-wrap:normal;min-width:0}
- table.tt td.l1{grid-row:1} table.tt td.l2{grid-row:2;font-size:12px;color:var(--mut)}
- table.tt td.c-f,table.tt td.c-n{text-align:right}
- table.tt .sub{display:none}
- table.tt details[open]{white-space:normal}
- table.tt td.c-t:has(details[open]){grid-column:1/-1;grid-row:3;white-space:normal;overflow:visible}
-}
+@media (max-width:640px){ table.tt .sub{display:none} }
+@media (min-width:641px){ table.tt col.w-s{width:170px} table.tt col.w-p{width:30px} }
 details.note{display:inline} details.note summary{display:inline;cursor:pointer;color:var(--mut);font-size:12px}
 details.note[open]{display:block;font-size:12px;color:var(--mut)}
 pre{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:6px 8px;overflow-x:auto;font-size:12px;line-height:1.3}
@@ -1869,34 +1884,46 @@ def _fps_cls(v):
 
 
 def _fps_cell(x):
-    """35.7 · 54% T, the cross-check beside it, and a small line with the measurement's provenance."""
+    """35.7 · 54% on its own line, the device (Thor / Nova) under it, the
+    cross-check under that, and a small line with the measurement's provenance."""
     p = x.get("prim")
     if not p or p.get("fps") is None:
-        return "-"
+        return '<span class="ln xc">no fps yet</span>'
     s = '<b class="%s">%s</b>' % (_fps_cls(p["fps"]), esc("%g" % p["fps"]))
     if p.get("share") is not None:
         s += " &middot; %d%%" % round(100 * p["share"])
-    s += " %s" % esc(_DEV_LETTER.get(p["device"], p["device"]))
+    s = '<span class="ln">%s</span><span class="ln">%s</span>' % (s, esc(str(p["device"]).capitalize()))
     for c in x.get("cross") or []:
-        s += ' <span class="xc">(%s <span class="%s">%s</span>)</span>' % (
-            esc(_DEV_LETTER.get(c["device"], c["device"])), _fps_cls(c["fps"]), esc("%g" % c["fps"]))
+        s += '<span class="ln xc">%s <span class="%s">%s</span></span>' % (
+            esc(str(c["device"]).capitalize()), _fps_cls(c["fps"]), esc("%g" % c["fps"]))
     sub = "%s, %s, %s%s" % (_lt(p.get("at"), "md")[:5] if p.get("at") else "date ?", p.get("ref") or "build ?",
                             p.get("mode") or "unrecorded", ", hand-reviewed" if p.get("hand") else "")
-    return s + ' <span class="sub">%s</span>' % esc(sub)
+    return s + '<span class="sub">%s</span>' % esc(sub)
+
+
+# The pipeline's four labelled mini-columns, in order, and what a tick in each means.
+PIPE = (("Copied", "copied to both handhelds"), ("Inputs", "profile setup and gameplay inputs programmed (the title's own route)"),
+        ("Save", "profile save extracted"), ("Bench", "gameplay fps measured at MAX on one handheld"))
+PIPE_LEGEND = "&check; done &middot; &ndash; not yet &middot; &frac12; on one handheld of two &middot; n/a no profile step. Tap a title for the rest."
 
 
 def _marks(x):
-    """Four compact marks: copied (T, N), inputs, save extracted, benchmarked. A missing one is struck through."""
-    def m(on, letter, say):
-        return ('<span class="pm" title="%s">%s</span>' if on else '<s class="pm" title="not yet: %s">%s</s>') % (esc(say), esc(letter))
+    """One cell per pipeline step: a tick, a dash, or (Copied) a half, (Save) n/a."""
     devs = x.get("devices") or []
-    cp = [m("thor" in devs, "T", "copied to the Thor"), m("nova" in devs, "N", "copied to the Nova")]
-    if not devs and x.get("somewhere"):
-        cp = ['<span class="pm" title="on a handheld; which one is not recorded">?</span>']
-    return "".join(cp + [" ",
-                    m(x.get("inputs"), "I", "inputs: first-run and returning routes"),
-                    m(x.get("save"), "S", "profile save extracted"),
-                    m(x.get("benchmarked"), "B", "benchmarked at MAX")])
+    if len(devs) >= 2:
+        cp = ("&check;", "on the %s" % " and the ".join(d.capitalize() for d in devs))
+    elif devs or x.get("somewhere"):
+        cp = ("&frac12;", "on the %s only" % devs[0].capitalize() if devs else "on a handheld; which one is not recorded")
+    else:
+        cp = ("&ndash;", "not on a handheld")
+    sv = (("&check;", "extracted") if x.get("save") and x.get("needs_save", True) else
+          ("n/a", "no profile step: the route needs no save") if x.get("save") else ("&ndash;", "not extracted"))
+    cells = [cp,
+             ("&check;", "programmed") if x.get("inputs") else ("&ndash;", "no route of its own"),
+             sv,
+             ("&check;", "measured at MAX") if x.get("benchmarked") else ("&ndash;", "not yet")]
+    return "".join('<td class="c-m%s" title="%s: %s">%s</td>' % ("" if m != "&ndash;" else " no", esc(PIPE[i][0]), esc(say), m)
+                   for i, (m, say) in enumerate(cells))
 
 
 def _flight(x):
@@ -1910,17 +1937,17 @@ def _flight(x):
         bits.append(b)
     if x.get("runs"):
         bits.append(esc("; ".join(x["runs"])))
-    return " &middot; ".join(bits) or "-"
+    return " &middot; ".join(bits)
 
 
 def _title_detail(x, now):
     """What a tap on the title opens: everything the row abbreviates."""
-    d = ["copied to: %s" % (", ".join(x["devices"]) or "no handheld recorded")]
+    d = ["copied to: %s" % (", ".join(x["devices"]) or ("a handheld, which one not recorded" if x.get("somewhere") else "no handheld recorded"))]
     if x.get("tid"):
         d.append("title id %s" % x["tid"])
     r = x.get("routes") or {}
-    d.append("routes: %s" % (", ".join("%s %s" % (k, v) for k, v in sorted(r.items())) or "none (no targets.toml entry)"))
-    d.append("save: %s" % (x.get("save_id") or "none extracted"))
+    d.append("routes: %s" % (", ".join("%s %s" % (k, v) for k, v in sorted(r.items())) or "none of its own"))
+    d.append("save: %s" % (x.get("save_id") or ("not needed (no profile step)" if not x.get("needs_save", True) and x.get("inputs") else "none extracted")))
     for m in x.get("measured") or []:
         d.append("%s: %s fps, %s at 30+, reached gameplay %s; %s (%s, %s, ref %s, %s%s)" % (
             m.get("device"), ("%g" % m["fps"]) if m.get("fps") is not None else "-",
@@ -1938,20 +1965,27 @@ def _title_detail(x, now):
 
 
 def _title_rows(xs, now):
+    """Each title is one tbody of two rows; its title and next step are never shortened."""
     out = []
     for x in xs:
         st = '<span class="chip k-%s"></span>%s' % (x["chip"], esc(x["word"]))
         ti = '<details><summary>%s</summary><div class="td">%s</div></details>' % (esc(x["title"]), _title_detail(x, now))
-        nx = esc(x["next"])
-        if x["stage"] == "blocked":
-            nx = '<span class="bad">%s</span>' % nx
-        out.append('<tr class="st-%s"><td class="l1 c-s">%s</td><td class="l1 c-t">%s</td><td class="l1 c-f">%s</td>'
-                   '<td class="l2 c-p">%s</td><td class="l2 c-i">%s</td><td class="l2 c-n">%s</td></tr>' % (
-                       x["stage"], st, ti, _fps_cell(x), _marks(x), _flight(x), nx))
+        nx = '<span class="nx%s">%s</span>' % (" bad" if x["stage"] == "blocked" else "", esc(x["next"]))
+        if x.get("blocker"):
+            nx += '<span class="fl bad">blocker: %s</span>' % esc(x["blocker"])
+        fl = _flight(x)
+        if fl:
+            nx += '<span class="fl">%s</span>' % fl
+        out.append('<tbody class="st-%s"><tr class="a"><td class="c-t" colspan="6">%s</td></tr>'
+                   '<tr class="b"><td class="c-s"><span class="sw nw">%s</span>%s</td><td class="c-n">%s</td>%s</tr></tbody>' % (
+                       x["stage"], ti, st, _fps_cell(x), nx, _marks(x)))
     return out
 
 
-_TT_HEAD = "<tr><th>status</th><th>title</th><th>fps (median &middot; play at 30+)</th><th>pipeline</th><th>issue and in flight</th><th>next step</th></tr>"
+_TT_HEAD = ('<colgroup><col class="w-s"><col><col class="w-p"><col class="w-p"><col class="w-p"><col class="w-p"></colgroup>'
+            '<thead><tr><th colspan="6">title (tap for detail)</th></tr>'
+            '<tr><th>status, fps &middot; play at 30+</th><th>next step &middot; issue, in flight</th>%s</tr></thead>' % "".join(
+                '<th class="v" title="%s"><span>%s</span></th>' % (esc(say), esc(k)) for k, say in PIPE))
 
 
 def _q1(j, now):
@@ -1992,12 +2026,13 @@ def _q1(j, now):
     if rows:
         grey = [x for x in rows if x["stage"] == "none"]
         shown = [x for x in rows if x["stage"] != "none"] + grey[:10]
+        out.append('<p class="legend">Pipeline: Copied, Inputs, Save, Bench. %s</p>' % PIPE_LEGEND)
         out.append('<div class="tw"><table class="tt">%s%s</table></div>' % (_TT_HEAD, "".join(_title_rows(shown, now))))
         if grey[10:]:
             out.append('<details class="more"><summary>%d more not copied</summary><div class="tw"><table class="tt">%s%s</table></div></details>' % (
                 len(grey) - 10, _TT_HEAD, "".join(_title_rows(grey[10:], now))))
         c = t.get("counts") or {}
-        out.append('<p class="src">%d titles: %s. Benchmarked = below 30 + soak pending + Playable. Pipeline: T N copied to the Thor, Nova; I inputs programmed; S save extracted; B benchmarked at MAX (struck through: not yet). fps: gameplay median &middot; share of play at 30+ and the device (T/N); the small line is date, build, performance mode. Sources: %s; registry: %s.</p>' % (
+        out.append('<p class="src">%d titles: %s. Benchmarked = below 30 + soak pending + Playable. Pipeline: Copied to both handhelds; Inputs, the title\'s own route (profile setup and gameplay); Save, the profile save extracted (n/a when the route has no profile step); Bench, fps measured at MAX. fps: gameplay median &middot; share of play at 30+, and the handheld it was measured on; on a desk the small line is date, build, performance mode. Sources: %s; registry: %s.</p>' % (
             len(rows), esc(", ".join("%d %s" % (c.get(k, 0), w) for k, w, _ in STAGES if c.get(k))),
             esc(", ".join(t.get("sources") or []) or "none"), esc(t.get("registry_src") or "not read")))
         bp = t.get("backfill") or {}

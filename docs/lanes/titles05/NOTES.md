@@ -133,6 +133,77 @@ re-ran `proof.sh` (the before run fails all 10 checks, the after run passes all 
 ran the full selftest in this session, polling its log until it finished:
 `selftest: 2055 passed, 0 failed`, exit 0.
 
+## Attempt 3 (2026-09-26, 20:45-21:30 PDT): the owner's layout review
+
+Why attempt 2 did not finish: it did. It merged master, re-ran the proof and the full
+selftest (2055 passed), and marked #458 ready. Then, about 20:45 PDT, the owner looked
+at the live page and asked for a revision: no fixed column widths, even "Thor" and
+"Nova" wrapping, text cut off mid-word ("needs a gamepl..."), and pipeline marks
+("TN ISB") that an outsider cannot read. lane.local took `fold-ready` off #458 and
+resumed this lane with Addendum 2. This attempt is that revision, on master merged
+again.
+
+What changed:
+- **Fixed columns.** `table.tt` is `table-layout:fixed` with a colgroup: a status/fps
+  column (116 px on a phone, 170 px on a desk), a next-step column that takes the rest,
+  and four 22 px pipeline columns (30 px on a desk). Each title is one `<tbody>` of two
+  rows. Row 1 is the title (tap for detail), across the full width, so a title gets
+  the most room. The longest live title, Blinx 2's 66 characters, is two lines at
+  360 px. Row 2 is the status chip and word, then fps, then the next step with the
+  issue and in-flight line under it, then the four marks.
+- **Nothing is truncated.** The phone grid with `nowrap; overflow:hidden;
+  text-overflow:ellipsis` is gone. Titles and next steps wrap inside their own column.
+  Status words, fps figures and Thor/Nova are `nowrap` spans, each on its own line in
+  the status column. A blocked row's blocker is shown in full under its next step.
+  The next step is a few words ("fix the crash", not "fix: " plus the whole failure
+  string). The queued or running request id moved from the next step to the in-flight
+  line.
+- **Pipeline marks.** There are four labelled mini-columns, Copied, Inputs, Save and
+  Bench, with vertical headers. Each cell holds ✓, – or, for Copied, ½ (on one
+  handheld of two). Save can read n/a (no profile step). Each cell carries a tooltip.
+  A one-line legend sits above the table. No letter codes.
+- **Inputs see lane.titleroutes' work.** `_registry` used to need both
+  `<route>.first-run.route` and `.returning.route`. Now inputs are programmed when the
+  title's own route exists in targets.toml: a single `routes/<route>.route` (no
+  profile step, so no save is needed and Save reads n/a), or the first-run variant,
+  which sets up the profile. A first-run route with no extracted save stays "copied",
+  with "extract the profile save" as its next step. Live at 20:56 PDT: Kabuki
+  Warriors, 007: Nightfire, DOA Xtreme Beach Volleyball, Fuzion Frenzy and Crimson
+  Skies read **inputs ready**. GoldenEye: Rogue Agent (first-run only) and Burnout 3
+  (both variants, no save in titlestate's store) read copied, with "extract the
+  profile save". Live counts: 60 titles, 5 blocked, 5 inputs ready, 48 copied,
+  2 not copied. Benchmarked 0 / 145, Playable 0 / 50.
+
+Proof (`proof.sh` now runs two bases, and shoots at 400 and 360 px). The assertions
+gained `nocut` (no ellipsis rule on the section's tables, no ellipsis glyph, and every
+title and next step in status.json appears whole on the page) and `pipe` (the four
+headers, the legend, ✓/–/½/n/a only, and the two titleroutes-shaped synthetic titles).
+`lines` now reads the colgroup's pixel widths and word-wraps each title and next step
+at 360 and 400 px, at a generous 0.58 em per glyph: at most two lines each. The
+extracted old trees now include `docs/testing/titles`, `extract_results.py` and
+`tools/make_xbox_hdd.py`. Without them the old renderer's titlestate import failed and
+every title read "copied", so the "before" failures were a fixture artifact, not a
+renderer difference.
+
+```
+== before-deb0903b51   (#448)          all 12 FAIL
+== before-cd78454e6a   (#458, first cut)
+FAIL word     -- Zz Purple Single Route reads 'copied', want 'inputs ready'
+FAIL lines    -- no fixed layout: table.tt needs table-layout:fixed and a colgroup with pixel widths
+FAIL nocut    -- ellipsis rule: table.tt td.l1,table.tt td.l2
+FAIL pipe     -- headers []
+PASS counts target nodate fold order forecast flight watch
+== after                               all 12 PASS
+```
+
+Screenshots in `screenshots/`: `before-448-phone.png`, `before-458a-phone-{400,360}.png`,
+`after-phone-{400,360}.png` (the same fixture), and `live-{400,360}.png` (`status.sh
+--print` via `docs/lanes/dash432/fixtures/live_print.sh`, 20:56 PDT).
+
+Not done: the owner's earlier remark that the lanes table (Q2, "Finished today") cuts
+off the result of finished lanes. That is a different section and outside this
+addendum's five items. The next status lane should take it.
+
 ## For the next lane
 
 - The full `selftest.sh` takes over 10 minutes here. Run it where you can poll it in the
