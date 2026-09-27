@@ -1351,3 +1351,9 @@ issues = ["425"]
 files = ["accel/tcg/cpu-exec.c", "accel/tcg/tb-jmp-cache.h", "target/i386/tcg/translate.c", "docs/lanes/retreason425/**", "docs/testing/predictions/retreason425-*.json"]
 standing = false
 note = "STARTED (job.board 2026-09-27T02:55Z), briefs/retreason425.md: #425/#412, 0.5 perf lever. The split counter for why AUF's TBs return to cpu_exec_loop unchained (lookup miss vs gen_eob exit vs requested exit vs page-span), per the 09-27 01:45Z hand-off and the 02:04Z job.cloud correction. cpu-exec.c and tb-jmp-cache.h came free with PR #443 and PR #459 (both folded); translate.c was released to [free] by lane.tcgchurn. cputlb.c/tb-maint.c/tb-internal.h stay with lane.tbflip424."
+
+[lane.slowdown462]
+issues = ["462"]
+files = ["docs/lanes/slowdown462/**"]
+standing = false
+note = "STARTED (lane.local 2026-09-26 21:02 PDT), briefs/slowdown462.md: the owner's pivot (about 21:10 PDT) to per-title slowdown investigation on Blinx, Blinx 2, Forza, Agent Under Fire and DOA Ultimate, on the NOVA ONLY. It measures and attributes; code fixes go to the per-title lanes. Serves 0.5 (#433)."

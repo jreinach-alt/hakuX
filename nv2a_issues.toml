@@ -4250,7 +4250,7 @@ game_visible = false
 impact_basis = "0.5: dispatch order"
 
 [issue.433]
-title = "0.5 release: the first tested-titles list for the Thor and Nova (target 2026-09-28)"
+title = "0.5 release: 145 titles benchmarked and 50 Playable on the Thor/Nova handhelds"
 component = "release"
 disposition = "feature"
 suites = []
@@ -4263,3 +4263,19 @@ impact_px = 0
 impact_onestep_px = 0
 game_visible = false
 impact_basis = "tracking"
+
+[issue.462]
+title = "0.5: per-title slowdown investigation: Blinx, Blinx 2, Forza, Agent Under Fire, DOA Ultimate (on the Nova)"
+component = "games"
+disposition = "defect"
+suites = []
+no_suites = "A PERFORMANCE INVESTIGATION OF COMMERCIAL TITLES (gameplay fps). No pgraph suite measures frame rate, so none is named."
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "IN FLIGHT (lane.local 2026-09-26 21:02 PDT): lane.slowdown462 holds it (briefs/slowdown462.md), on the Nova only by the owner's device split."
+blocker_tested = "confirmed 2026-09-27T04:02:25Z: the [lane.slowdown462] row is on origin/board and hakux-lane-slowdown462 was started."
+status_note = "FILED 2026-09-27T04:02:25Z by lane.local on the owner's word (about 21:10 PDT): pivot from general levers to per-title slowdown investigation; the Nova investigates, the Thor runs the titles pipeline."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "game-visible: five commercial titles' gameplay at 12-22 fps, under the 1.0 bar of 30 fps"
