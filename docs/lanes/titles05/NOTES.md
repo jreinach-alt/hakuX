@@ -122,7 +122,21 @@ Screenshots: `screenshots/before-448-phone.png` and `after-phone.png` (same fixt
 400 px), and `live-first-screen.png` (`status.sh --print` via
 `docs/lanes/dash432/fixtures/live_print.sh`, 19:06 PDT).
 
+## Attempt 2 (2026-09-26, resumed)
+
+Attempt 1 did not finish because it ended its session waiting on the full jobs
+selftest, which it had started as a background task. The task died with the session,
+so nothing ever reported back and the PR stayed in draft. The full selftest runs
+longer than the Bash tool's 10-minute limit (a foreground run was cut off at 580 s
+inside "the delivery channel" fragment). Attempt 2 merged origin/master (14 commits, clean),
+re-ran `proof.sh` (the before run fails all 10 checks, the after run passes all 10, as above), and
+ran the full selftest in this session, polling its log until it finished:
+`selftest: 2055 passed, 0 failed`, exit 0.
+
 ## For the next lane
+
+- The full `selftest.sh` takes over 10 minutes here. Run it where you can poll it in the
+  same session. Never end a session waiting on it.
 
 - The rows are only as good as the registry. Today no title has a save extracted, so
   nothing reaches "inputs ready" until lane.titlestate's harvest runs. That is correct,
