@@ -1179,14 +1179,6 @@ standing = false
 retired_utc = "2026-09-26T18:50:00Z"
 note = "RETIRED (job.board 2026-09-26): PR #398 MERGED 2026-09-26T18:36:26Z, unit gone. Result: tier1 on/off does not change the #303 FMV green (tint mean 0.69 on, 0.68 off, four Thor runs); the lead is a non-CPU write racing the decoder chroma plane, prime suspect nv2a surface write-back. Next step is a write-back probe in hw/xbox/nv2a/pgraph/vk/surface.c, held by lane.blinx372d, so #303 waits on that file. Every file the row held is RELEASED to [free]. PRIOR NOTE: RELEASED AT READY (job.board 2026-09-26T18:10Z): PR #398 is out of draft, CI green, unit gone, needs-audit-1; files free for the next lane. PRIOR: STARTED, PR #398 draft (job.board 2026-09-26T17:45Z): handback.sh resumed the lane 17:42Z after its Thor tier1 A/B soaks. PRIOR: GRANTED BY HOSTOPS (2026-09-26 7:33 AM PDT): android/app/src/main/cpp/xemu_android.cpp from [free] (released wave 123; no open PR lists it) for the two-line default-inert HAKUX_TIER1_THRESHOLD env override the lane asked for on #398 (board-requests/fmv303b.md); the smaller of the two routes, and needs no dispatcher-tree update. PRIOR: BRIEFED AT TERRITORY WAVE 249, NOT STARTED (job.board, 2026-09-26T14:14:00Z; `lane.sh start` needs an approval the non-interactive board session cannot get, so the HOST runs `docs/testing/lane.sh start fmv303b briefs/fmv303b.md 303`), briefs/fmv303b.md: #303's CPU-side half. PR #317 (lane.fmv303, folded) showed the green is already in the guest's ARGB buffer (guest 0.66 vs screen 0.63), so display/upload/PVIDEO are exonerated; its NOTES s5 names the first discriminator, the same Thor soak with tier1 off metered by docs/lanes/fmv303/guest_tint.py. No hw/ file is held: a hunk is named and board-requested, not edited."
 
-[lane.yuv10]
-issues = ["10"]
-files = ["hw/xbox/nv2a/pgraph/pgraph.c", "hw/xbox/nv2a/nv2a_regs.h", "hw/xbox/nv2a/pgraph/texture.c", "hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/psh.h", "docs/testing/predictions/yuv10-*.json", "docs/lanes/yuv10/**"]
-released = ["hw/xbox/nv2a/pgraph/pgraph.c", "hw/xbox/nv2a/nv2a_regs.h", "hw/xbox/nv2a/pgraph/texture.c", "hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/psh.h", "docs/testing/predictions/yuv10-*.json", "docs/lanes/yuv10/**"]
-released_at_ready = 419
-standing = false
-note = "READY, PR #419 (job.board 2026-09-26T22:00Z): out of draft, CI green, unit gone, labelled needs-audit-1; files released at ready. PRIOR: STARTED (hostops 2026-09-26 12:14 PM PDT, on lane.xbox's board request of 11:59 PDT), briefs/yuv10.md: #10 YUV class fix. lane.xbox measured SET_CONTROL0's CRYCB_TO_RGB field on silicon (PR #411, #10 comment 5848958489): every stage converted after the texture shader, YUY2/UYVY fetched raw, kr=128; model takes the four YUV captures 111,496 -> 1,688 px each. texture.c from [free]; nv2a_regs.h, glsl/psh.c, glsl/psh.h unclaimed; pgraph.c LENT from [lane.ring53impl] for the SET_CONTROL0 handler only, returned at ready."
-
 [retired.relprio432]
 issues = ["432"]
 files = []
@@ -1298,13 +1290,6 @@ files = ["accel/tcg/cpu-exec.c", "accel/tcg/tb-jmp-cache.h", "docs/lanes/jcache4
 standing = false
 note = "STARTED (hostops 2026-09-26 15:00 PDT, 0.5 order 00(a)), briefs/jcache425.md: #425, 0.5 perf lever 2 (up to 13.6% of the vCPU thread, a bound). Granted the unheld lookup-path files; tb-maint.c stays with lane.tbchurn424 (a hunk there is a board request, sequenced by the host). Carries the owner's external ideas on block chaining and flag translation to PRICE. #429 stays queued behind tbchurn424 (translate-all.c, and cpu-exec.c now here)."
 
-
-[lane.claimrace]
-issues = []
-files = ["docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/73-cloud-claim.sh", "docs/lanes/claimrace/NOTES.md"]
-standing = false
-released = ["docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/73-cloud-claim.sh", "docs/lanes/claimrace/NOTES.md"]
-note = "STARTED (hostops 2026-09-26 15:10 PDT), briefs/claimrace.md: harness defect, no tracker issue. The audit outlet re-picked PR #420 50 s after claiming it (gh pr list --label lags a fresh claimed:cloud), systemd-run collided with the running unit, and the drop path removed the running session's row (restored, board ca46342888). Interim: the host's outlet loop skips a PR whose cloud unit is active."
 
 [lane.dash432]
 issues = []
