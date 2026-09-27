@@ -321,3 +321,8 @@ route = "alien-hominid"
 name = "Midtown Madness 3"
 iso = { thor = "4D53002A-Midtown_Madness_3.xiso.iso" }
 route = "midtown-madness-3.returning"
+
+[titles."4D530010"]
+name = "Blood Wake"
+iso = { thor = "4D530010-Blood_Wake.xiso.iso" }
+route = "blood-wake"
