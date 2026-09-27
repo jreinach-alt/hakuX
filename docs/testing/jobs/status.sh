@@ -384,7 +384,7 @@ echo "### Open lane PRs"
 echo
 if [ $have_gh = 1 ]; then
     gh pr list --repo "$GH_REPO" --state open --json number,title,isDraft,headRefName,labels,updatedAt \
-        --jq '.[] | "- #\(.number) \(if .isDraft then "(draft) " else "" end)`\(.headRefName)` \(.title | .[0:80]) -- labels: \(.labels | map(.name) | join(", ") | if . == "" then "none" else . end)"' 2>/dev/null
+        --jq '.[] | "- #\(.number) \(if .isDraft then "(draft) " else "" end)`\(.headRefName)` \(.title) -- labels: \(.labels | map(.name) | join(", ") | if . == "" then "none" else . end)"' 2>/dev/null
 fi
 echo
 echo "### Job errors (last 24h, from the units' logs)"
@@ -449,6 +449,8 @@ if [ $have_gh = 1 ]; then
     fact release_gate "${STATUS_RELEASE_GATE:-Ghoulies median >= 25 gfps over 90-240 s on the candidate APK, both handhelds}"
     rc=$(gh release list --repo "$GH_REPO" --limit 30 --json tagName --jq ".[] | .tagName | select(startswith(\"${STATUS_RELEASE_TAG:-v0.5}\"))" 2>/dev/null | head -1)
     fact release_candidate "${rc:-none cut yet}"
+    # Whether a gate soak ran the candidate is a ref comparison, so the page needs the tag's commit.
+    [ -n "$rc" ] && fact release_candidate_sha "$(gh api "repos/$GH_REPO/commits/$rc" --jq .sha 2>/dev/null)"
     BL="${STATUS_BLOCKER_LABEL:-release-blocker}"; fact blocker_label "$BL"
     if bl=$(gh issue list --repo "$GH_REPO" --state open --label "$BL" --limit 20 --json number,title --jq '.[] | "\(.number)\t\(.title)"' 2>/dev/null); then
         fact blockers_known 1

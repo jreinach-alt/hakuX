@@ -609,10 +609,15 @@ def gather(E):
             t = tracker.get(str(i), {})
             if t.get("status") not in ("open", None) or t.get("status") is None and not t:
                 continue
-            note = " ".join(str(t.get(k) or "") for k in ("blocked_on", "status_note"))
+            # Only the CURRENT blocker (a status_note is history: #13's names files
+            # held by lanes long retired), and only a path that territory.toml says
+            # another live lane holds AND that the blocker names that lane beside:
+            # the path and the holder corroborate each other, or it is not a wait.
+            note = str(t.get("blocked_on") or "")
             for path in re.findall(r"[\w./-]+/[\w.-]+\.\w+", note):
                 for f, who in held_by.items():
-                    if who != name and (f == path or f.endswith("/" + path)) and f not in row.get("files", []):
+                    if who != name and (f == path or f.endswith("/" + path)) and f not in row.get("files", []) \
+                            and re.search(r"\b(lane\.)?%s\b" % re.escape(who), note):
                         return f, who, str(i)
         return None
 
@@ -1424,11 +1429,13 @@ section.md td{min-width:4.5em} section.md td:last-child{min-width:18em}
  table.cards td[data-l]:before{content:attr(data-l) ": ";color:var(--mut);font-size:12px}
  table.cards td.h{font-weight:600}
  table.lanes td{display:inline;padding:0}
- table.lanes td:not(:last-child):not(:first-child):after{content:" \00b7 ";color:var(--mut)}
+ table.lanes td:nth-child(n+3):not(:last-child):before{content:" \\00b7 ";color:var(--mut)}
  table.lanes td:first-child{display:block}
  table.lanes td:last-child{display:block;margin-top:2px;color:var(--mut)}
  table.lanes td[data-l]:before{content:none}
+ table.lanes td.e{display:none}
  table.lanes td.lbl:before{content:attr(data-l) " "}
+ table.lanes td.lbl:nth-child(n+3):not(:last-child):before{content:" \\00b7 " attr(data-l) " "}
 }
 details.note{display:inline} details.note summary{display:inline;cursor:pointer;color:var(--mut);font-size:12px}
 details.note[open]{display:block;font-size:12px;color:var(--mut)}
@@ -1518,7 +1525,7 @@ def _tbl(head, rows, labels=None, cls="cards", lbl=()):
     out = ['<div class="tw"><table class="%s"><tr>%s</tr>' % (cls, "".join("<th>%s</th>" % esc(h) for h in head))]
     for r in rows:
         out.append("<tr>%s</tr>" % "".join(
-            '<td%s data-l="%s">%s</td>' % (' class="h"' if i == 0 else (' class="lbl"' if head[i] in lbl else ""), esc(labels[i]), c)
+            '<td%s data-l="%s">%s</td>' % (' class="h"' if i == 0 else (' class="e"' if c in ("-", "") else (' class="lbl"' if head[i] in lbl else "")), esc(labels[i]), c)
             for i, c in enumerate(r)))
     out.append("</table></div>")
     return "".join(out)
@@ -1592,7 +1599,7 @@ def _q1(j, now):
                 body.append([esc(x["title"]), esc(m.get("device") or "-"), esc(reached), esc(fps), esc(s30),
                              esc(m.get("soak") or "not run"), esc(m.get("verdict") or "-"), esc(iss), meas])
         out.append(_tbl(["title", "device", "reached gameplay", "median fps (1x)", "play at 30+", "20-min soak", "verdict", "issue", "measured"],
-                        body, cls="titles"))
+                        body, cls="cards lanes titles", lbl=("median fps (1x)", "play at 30+", "20-min soak", "measured")))
         out.append('<p class="src">%s</p>' % "<br>".join("[%d] %s" % (i + 1, esc(l)) for i, l in enumerate(legend)))
         nr = {}
         for x in listed:
@@ -1682,7 +1689,7 @@ def _q3(j, now):
                 (" " + esc(p["detail"][:1].upper() + p["detail"][1:])) if p.get("detail") else "", esc(p.get("src", "")),
                 (", " + _lt(p["at"], "md")) if p.get("at") and p.get("kind") != "decision" else ""))
         out.append("</ol></div>")
-    out.append('<p class="src">Listed: the owner\'s open decisions (host-tools/escalations.md, issues labelled decision-needed), then the alarms no job handles: a stranded lane, a device idle with runnable work, a hold past its end, a run past twice its expected time, a failing gate on the candidate, CI red on master, a failed timer. Never listed: owned or in-flight work, a file wait, parked work, a queue that is long because both devices are busy.</p>')
+    out.append('<p class="src">Listed: the owner\'s open decisions (host-tools/escalations.md, issues labelled decision-needed), then the alarms no job handles: a stranded lane, a device idle with runnable work, a hold past its end, a run past twice its expected time, a failing gate on the candidate, CI red on master, a failed timer. Not listed: owned or in-flight work, a file wait, parked work, a queue that is long because both devices are busy.</p>')
     out.append("</section>")
     return "\n".join(out)
 
