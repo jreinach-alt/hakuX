@@ -273,25 +273,44 @@ store buffer, so part of that 37% is the cost of the guest's own stores,
 surfacing at the barrier rather than being spread over the JIT code. That is
 a bound, not a value: it is the most removing the barrier could give.
 
-Why the TBs return. `tb_add_jump` has zero samples in 14,152 loop samples,
-so the loop is not patching jumps. Every return therefore arrives with
-`last_tb == NULL`. In this code that happens three ways:
+Why the TBs return. `tb_add_jump` has zero samples in 14,152 loop samples.
+Zero samples is not zero calls: `tb_add_jump` runs once per (TB, exit) link,
+so a loop that chains perfectly also samples it at zero in steady state. What
+says the TBs return is the barrier's volume above, not this absence. A TB
+returns to the loop without being chained into its successor in four ways:
 
 1. an indirect jump whose `helper_lookup_tb_ptr` probe misses and exits the
-   TB with 0;
+   TB with 0 (the helper returns `tcg_code_gen_epilogue` on a miss);
 2. `TB_EXIT_REQUESTED`: something set `icount_decr.u16.high` (a kick or
    `cpu_exit`);
 3. the target TB spans two guest pages (`tb_page_addr1(tb) != -1` clears
    `last_tb`, cpu-exec.c:1770-1772), so nothing ever chains into it. A title's
    hot loop straddling a 4 KB page would return on every iteration. That
    would be specific to one title, which fits Crimson reading 11.7%.
+4. the i386 translator ends the TB with a plain `tcg_gen_exit_tb(NULL, 0)`.
+   `gen_eob()` (target/i386/tcg/translate.c) does this for every mode except
+   an uninhibited `DISAS_JUMP`: `STI`, `POPF`, `IRET`, segment-register
+   writes, `CLTS`, `WRMSR`, CR writes, and any `DISAS_JUMP` that follows an
+   interrupt shadow. The kernel's `pushfd; cli; ...; popfd` IRQL and
+   spinlock idiom, and the `IRET` closing every interrupt, all end a TB this
+   way. No jump cache sees these exits: no lookup is ever made.
 
 The profile rules out PAUSE spins, HLT, exceptions, MMIO exits and the BQL.
-It cannot tell 1-3 apart. **The instrument that can** is one counter per
-return reason in `cpu_exec_loop` (tb_exit value, `last_tb` NULL by cause,
-page-spanning target, `interrupt_request` non-zero), plus the loop's iteration
-count and the guest PCs of the top returning TBs, printed on `[tlb68]`'s
-2-second cadence. `[tlb68]` has no tick count, and `[tier1] threshold=`
+It cannot tell 1-4 apart. Causes 1 and 4 in particular look identical from
+`cpu_exec_loop`: both come back through the epilogue with `tb_exit` 0 and
+`last_tb` NULL. A counter at the loop would book every cause-4 exit as a
+lookup miss, and a jump-cache change would then be aimed at returns it cannot
+move. **The instrument that can** separate them is:
+
+- a miss counter inside `helper_lookup_tb_ptr` itself (cause 1);
+- a separate count of translator-generated `exit_tb(NULL, 0)` exits
+  (cause 4): a per-TB flag set at `gen_eob`'s `exit_tb` arm, or the guest
+  opcode of the returning TB's last instruction;
+- in `cpu_exec_loop`, `tb_exit == TB_EXIT_REQUESTED` (cause 2), a
+  page-spanning target (cause 3), and `interrupt_request` non-zero;
+
+plus the loop's iteration count and the guest PCs of the top returning TBs,
+printed on `[tlb68]`'s 2-second cadence. `[tlb68]` has no tick count, and `[tier1] threshold=`
 (printed every 5,000,000 loop iterations) goes to stdout, not logcat, so no
 existing line gives the iteration rate.
 
@@ -315,10 +334,15 @@ on real guest work, cutting it takes the guest's per-frame vCPU time from
 under 3 VBLANKs, and could be under 2 (30 fps) if the GPU's 28 ms and the
 renderer allow. If the returning TBs are the guest polling (a wait written as
 a loop that does not chain), the same cut only makes the wait cheaper, and fps
-does not move. The per-reason counter separates those cases: a poll returns
-from a handful of guest PCs, while real work returns from many.
+does not move. A handful of returning guest PCs does not by itself mean a
+poll: a handful of IRQL/spinlock or `IRET` PCs (cause 4) looks the same. Read
+the PCs together with the per-cause counts. Returns dominated by cause 4 are
+not a jump-cache case at all; the lever there is the translator's EOB
+(chaining past `POPF`/`STI` when no interrupt is pending), not #425's cache.
 
-Handed to lane.jcache425 on #425 (deliver.sh), and posted on #412.
+Handed to lane.jcache425 on #425 (deliver.sh), and posted on #412. The
+hand-off listed three causes; the fourth and the split counter were posted to
+#425 as a correction (audit pass 1, M1).
 
 ## Status (2026-09-26 18:55 PDT, session 2): done, one read outstanding
 
