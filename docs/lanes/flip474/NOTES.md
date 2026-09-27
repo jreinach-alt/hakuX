@@ -137,14 +137,118 @@ answer, before the fix is written.
   time the Nova carried lane.xbox's title-push hold and the owner's
   charger-swap hold before it; ten requests ahead.
 
-## Waiting
+## Attempt 1 ended waiting, attempt 2 resumed on the pilot
 
-On `1790491858-flip474-658414`. When it lands: `lockread.py` on it, judge the
-pilot legs, write `pilots/flip474.ok`, then pick R or F by P1-P3, register
-`flip474-ab.json` (A = 7f13054916, B = the fix) and only then write the fix.
+Attempt 1 did not finish because it ended, correctly, waiting on the pilot
+`1790491858-flip474-658414` (Nova queue: ten requests and two holds ahead).
+The pilot ran overnight and ended 01:02 PDT. Attempt 2 (2026-09-27) read it,
+merged 51 master commits (`c5e7460372`, a merge, no rebase: the pilot's ref
+is still in history), and continued.
+
+## 4. The pilot's answer (`lockread.py --from 151 --to 288`)
+
+The shots in the window show the fight (STAGE 01, FPS 12-13): M0 holds.
+
+| leg | registered | measured | verdict |
+|---|---|---|---|
+| M0 | >= 30 lock / 20 gfps lines, fight on screen | 68 / 32, fight | PASS |
+| P0 premise | read wait >= 0.25 of wall | **0.70** (96 s of 137) | PASS |
+| P1 behind FLIP_STALL | fs + fo >= 0.6 of read wait | **0.18** (fs 0.17, fo 0.01) | **FAIL** |
+| P2 guess | fo > fs | fo 0.01 < fs 0.17 | FAIL (either kept) |
+| P3 register | top register >= 0.5 of wait | INTR 0.36; **0.64 unattributed** | instrument gap |
+| P4 counter cost | gfps 11-16 | 13.0 | PASS |
+
+- The premise is right: the vCPU waits on `pgraph.lock` for 70% of wall,
+  about one slow (~54 ms) wait a frame (`rd_slow` ~26 per 2 s at ~13 fps).
+- The brief's location is wrong for this build: FLIP_STALL is cheap
+  (surface_update 0.0 ms, flip_stall op 1.8 ms per flip). Even if every flip
+  millisecond blocked a reader it would cover ~4% of the wait.
+- What holds the lock is in `[surf413]` (same logcat): **`cdef` 56.6 ms per
+  frame**, the `pgraph_vk_download_surface_complete_deferred()` call in
+  `pgraph_vk_surface_update()` (vk/surface.c, after `part`). The first
+  surface_update after each flip waits there for the flip's pre-recorded
+  display download (`display_predownload_pending`, fence of the flip's
+  submit), i.e. for the GPU to finish the previous frame, inside a draw
+  method, lock held. `hakuX-phase` agrees: `Surf` 57-61 ms, `Fin` 1-3 ms.
+  So slowdown462's profile attribution (`<- flip_stall`) was the right
+  *cause* (the flip's pre-record) at the wrong *call* (the wait is paid at
+  the next frame's first draw).
+- The waited reads are the guest's NOP-interrupt handler: INTR is read twice
+  and NSOURCE, TRAPPED_ADDR, TRAPPED_DATA_LOW once per interrupt (3,499 each).
+  One more register carried the other 64% of the wait at ~1 read per
+  interrupt; the counter ranked by count and printed four, so it is not
+  named. Its read rate says it is not a poll loop. Counter v2 ranks by wait.
+- The PFIFO thread is behind the guest (fifoskew backlog mean ~210 KB), and
+  its own frame is ~70 ms of which 56 is that GPU wait. Freeing the vCPU
+  does not shorten the PFIFO thread's frame; see P2 in the A/B.
+
+## 5. The design, and what becomes visible unlocked
+
+Design F, moved to where the wait is: `ef66174066` releases `pgraph.lock`
+across the two frame-fence waits in the deferred-download completion
+(`wait_frame_fence()`, vk/surface.c), only when reached from
+`pgraph_vk_surface_update()` and only on the PFIFO thread
+(`qemu_thread_is_self(&d->pfifo.thread)`). The third branch (no submit yet:
+`pgraph_vk_finish(SURFACE_DOWN)`) records and submits, and stays locked.
+Every caller of surface_update is a method or the flip-stall path, all
+holding the lock; the lockless fast path only writes the register table and
+never reaches it.
+
+`16b7e14ec9` is the plumbing, inert on its own (arm A): a flag
+`lock_released_for_fence` and a cond in PGRAPHState (pgraph.h), and
+`pgraph_lock_settled()`, which waits the window out. Who may run inside it:
+
+| taker | in the window? | why safe / why not |
+|---|---|---|
+| `pgraph_read`, all but two registers | yes | reads `regs_`, `pending_interrupts`, `enabled_interrupts`. The puller writes none of them while it waits on a fence; values are those after the method's earlier register writes, as at the NOP interrupt's own mid-method release (pgraph.c NO_OPERATION) |
+| `pgraph_read` RDI_DATA | settles | side effect: advances RDI_INDEX |
+| `pgraph_read` 0x700 STATUS | settles | never written, reads idle; the register a guest would poll to learn the engine is done, so it is held off until the method ends, as before |
+| `pgraph_write` INTR, INTR_EN, INCREMENT | yes | interrupt ack/enable and the flip read index; the puller mid-fence touches none of them; INCREMENT's RMW of NV_PGRAPH_SURFACE races no puller write (the methods that write it cannot run) |
+| `pgraph_write`, anything else | settles | context loads, RDI writes, FIFO access, raw registers could change state the method reads after the wait |
+| `surface_access_callback` | settles | the staged downloads are copied into VRAM only after the wait; a guest write let in first would be overwritten by that copy (shelved/invalid surfaces take no download wait) |
+| `surface_watch_rearmed`, scale-factor flushes | settle | surface state |
+| `pfifo_stall_for_flip`, renderer switch, `nv2a_lock_fifo` | n/a | the PFIFO thread itself, or after the FIFO is idle |
+
+Lock order is unchanged (pfifo.lock before pgraph.lock; the batch puller
+holds no pfifo.lock inside a method). A settled waiter sleeps on the cond
+with the lock free and wakes after the retake, i.e. where it ran before.
+
+Syntax-checked with the NDK compile command (`ndkcheck.py`, both
+NV2A_PERF_LOG modes) for pgraph.c, vk/surface.c, pfifo.c, nv2a.c,
+gl/surface.c; `check_android_guards.py` ok. **No desktop build**: this host
+still has none (AGENTS.md's named gap), so step 4's "run it locally" is
+replaced by the device pgraph arm in `flip474-pgraph-inert.json` (12 suites,
+c5e7460372 vs ef66174066), queued by the arms job.
+
+## 6. Does it reach Forza's download path? No.
+
+slowdown462's Forza profile has the PFIFO wait in `pgraph_vk_finish <-
+pgraph_vk_download_surface_complete_deferred` (18.1 ms/frame, ~6 uncoalesced
+`sd_complete_def` per frame): the third branch, the synchronous
+SURFACE_DOWN finish, which this change leaves locked. Forza's vCPU lock
+wait is 3.3 ms/frame (9%). So no Forza A/B for this change; the Forza lever
+is #414's (coalesce the completions, or complete them off the PFIFO thread).
+Blinx 2's is the same synchronous shape (`download_surface` finish), vCPU
+lock wait 2.6 ms/frame, at its 30 fps cap: not a target either.
+
+## 7. The A/B, registered before any arm runs
+
+- `flip474-doa-ab.json`: Nova, survey, 300 s, 2 runs per arm, A
+  `16b7e14ec9`, B `ef66174066`. Legs: F0 B `rd_unl` >= 500 (A == 0); L1 lock
+  wait B <= 0.5 x A, kill > 0.8; P1 gfps no regression; P2 rise < 2 fps
+  (guess, PFIFO-bound); P3 cdef unchanged; H0 no gap > 3 s, no tombstone.
+- `flip474-crimson-ab.json`: Thor, crimson-skies, 240 s, 1 run per arm;
+  measures whether Crimson waits there at all, then no-harm.
+- `flip474-pgraph-inert.json`: the suite arm, bit-identical.
+- Pilot verdict written to `pilots/flip474.ok` (the batch is 37 min of
+  device time with setup).
 
 ## Do not repeat
 
 - Do not make every PGRAPH read lockless without knowing the polled register:
   STATUS always reads idle, so the lock is the only thing holding an idle
   poll off mid-batch.
+- Do not attribute a vCPU lock wait to the puller phase where the wait
+  *began* and stop there: the wait lasts until the method ends. Read
+  `[surf413]`/`hakuX-phase` in the same logcat for what the method spent.
+- Do not rank a counter's registers by count when the question is wait.

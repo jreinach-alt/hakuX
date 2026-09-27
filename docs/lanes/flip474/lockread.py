@@ -42,8 +42,19 @@ def reg_names():
 def read(run, lo, hi):
     L = open(R + run + '/logcat.txt', errors='replace').read().splitlines()
     t0 = ts(L[1])
-    rows, gfps = [], []
+    rows, gfps, cdef, stamps = [], [], [], []
     for l in L:
+        if '[surf413] frames=' in l:
+            # surf413's per-frame deferred-download completion time, the
+            # PFIFO thread's own wait (#474 does not shorten it).
+            try:
+                s = (ts(l) - t0).total_seconds()
+            except ValueError:
+                continue
+            m = re.search(r'cdef=([0-9.]+)', l)
+            if m and lo <= s <= hi:
+                cdef.append(float(m.group(1)))
+            continue
         if 'hakuX-perf' not in l:
             continue
         try:
@@ -52,6 +63,7 @@ def read(run, lo, hi):
             continue
         if not lo <= s <= hi:
             continue
+        stamps.append(s)
         if '[lock474]' in l:
             kv = dict(re.findall(r'(\w+)=([0-9.]+)\b', l))
             regs = re.findall(r'r\d=0x([0-9a-f]+):(\d+):([0-9.]+)', l)
@@ -60,7 +72,8 @@ def read(run, lo, hi):
         m = re.search(r'gfps[= ]([\d.]+)', l)
         if m:
             gfps.append(float(m.group(1)))
-    return rows, gfps
+    gap = max((b - a for a, b in zip(stamps, stamps[1:])), default=0.0)
+    return rows, gfps, cdef, gap
 
 
 def main():
@@ -74,9 +87,13 @@ def main():
             hi = v
     names = reg_names()
     for run in args:
-        rows, gfps = read(run, lo, hi)
+        rows, gfps, cdef, gap = read(run, lo, hi)
         print(f'{run}  window {lo:.0f}-{hi:.0f} s: {len(rows)} [lock474] '
-              f'lines, {len(gfps)} gfps lines')
+              f'lines, {len(gfps)} gfps lines; longest gap between '
+              f'hakuX-perf lines {gap:.1f} s')
+        if cdef:
+            print(f'  surf413 cdef median {median(cdef):.1f} ms/frame '
+                  f'(n={len(cdef)})')
         if gfps:
             print(f'  gfps median {median(gfps):.1f} (min {min(gfps):.1f}, '
                   f'max {max(gfps):.1f}, n={len(gfps)})')
