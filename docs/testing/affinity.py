@@ -26,7 +26,11 @@ Three rules, in order:
    arms job's LOAD PIN (see CHOOSE below), which is the one explicit device
    that is a preference rather than a requirement: an `arms-*` request pinned
    to a pooled device that is not serving falls through to the rules below,
-   exactly as a rule-2 pin to a gone device does, instead of stalling.
+   exactly as a rule-2 pin to a gone device does, instead of stalling. And
+   because it is only a preference, a load pin ranks BELOW a sibling that is
+   running or has run on a live device: an arm that fell through while the
+   pinned device was held pulls its partner after it when the hold lifts,
+   rather than the partner going back to the pin and splitting the pair.
 
 2. Otherwise, a request naming a registered prediction (`expect`) is pinned to
    whichever device already ran another request naming the same prediction.
@@ -390,15 +394,26 @@ def decide(d, req, me, notes=True, labels_for=None):
     """
     note_split = _note_split if notes else (lambda *a: None)
 
+    # A LOAD PIN RANKS BELOW A SIBLING THAT HAS LANDED. It was written before
+    # either arm was claimed, as a guess at the shorter queue; a sibling that
+    # is running or has run is ground truth. Returning a live load pin first
+    # split a pair: thor held, the nova took the base arm, the hold lifted,
+    # and the thor took the fix arm on its own pin (audit of #503, H1). So a
+    # live load pin is kept aside and answered only once no sibling has
+    # landed on a live device. A hand pin stays absolute (rule 1).
     explicit = (req.get("device") or "").strip()
+    load_pin = ""
     if explicit:
-        if not _is_load_pin(req, explicit) or _live(d, explicit):
+        if not _is_load_pin(req, explicit):
             return explicit
-        note_split(d, me, _key(req) or "(none)", explicit)
+        if _live(d, explicit):
+            load_pin = explicit
+        else:
+            note_split(d, me, _key(req) or "(none)", explicit)
 
     key = _key(req)
     if not key:
-        return ""
+        return load_pin
 
     # Rule 2b, read FIRST because queue/ is where a sibling is before it is
     # anywhere else (see the module docstring). Sorted, so two explicit
@@ -457,7 +472,9 @@ def decide(d, req, me, notes=True, labels_for=None):
     except OSError:
         pass
 
-    if queued_pin:
+    # A queued sibling has not landed, so it does not outrank a live load pin
+    # (which, for an arms-job pair, it normally equals anyway).
+    if queued_pin and not load_pin:
         return queued_pin
 
     # Then any completed result whose request named the same prediction.
@@ -468,6 +485,10 @@ def decide(d, req, me, notes=True, labels_for=None):
         if _live(d, label):
             return label
         note_split(d, me, key, label)
+
+    # No sibling has landed on a live device: now the load pin decides.
+    if load_pin:
+        return load_pin
 
     # Rule 3: no sibling anywhere, so this is the pair's first arm. Decide by
     # hash, so the second arm decides the same way without having to see this

@@ -141,7 +141,37 @@ check "an arms-job pin to a device that stopped serving is not a stall" [ "$abg1
 check "and both arms move together" [ "$abg1" = "$abg2" ]
 abreq "$AB/q-soak.req" '{"requester":"titleplay","device":"thor","title":"only-on-thor","seconds":60}'
 check "CONTROL: a hand-written device pin to a gone device still holds (rule 1)" [ "$(aff "$AB/q-soak.req")" = thor ]
+
+# --- the hold lifts between the two claims (audit of #503, H1). The nova took
+# the base arm while the thor was gone; the thor comes back before the fix arm
+# is claimed. The fix arm's own load pin names the live thor, but its sibling
+# is RUNNING on the nova, and the pair must stay there.
+mv "$AB/queue/1-1790534300-arms-g-base-1.req" "$AB/running/"
+printf 'nova\n' > "$AB/running/1-1790534300-arms-g-base-1.owner"
 printf '%s\n' "$ABLIVE" > "$AB/lanes/thor"
+check "after a hold lifts, the fix arm follows its base arm running on the nova, not its own load pin" \
+    [ "$(aff "$AB/queue/1-1790534300-arms-g-fix-2.req")" = nova ]
+# MUTANT: the load pin answered first whenever its device is live (this PR
+# before remediation). It must answer thor here, or the check above is blind.
+abmut=$(python3 - "$TESTING" "$AB" "$AB/queue/1-1790534300-arms-g-fix-2.req" <<'PY' 2>/dev/null
+import os, sys
+sys.path.insert(0, sys.argv[1])
+import affinity as a
+d, p = sys.argv[2], sys.argv[3]
+orig = a.decide
+def early(d, req, me, **kw):
+    e = (req.get("device") or "").strip()
+    return e if e and a._live(d, e) else orig(d, req, me, **kw)
+print(early(d, a.load(p), os.path.basename(p)))
+PY
+)
+check "MUTANT: a load pin that outranks a running sibling answers thor, and so fails the check above" [ "$abmut" = thor ]
+# With nothing landed, the live load pin still decides: the base arm leaves
+# running/ and the fix arm goes back to the thor.
+rm -f "$AB/running/1-1790534300-arms-g-base-1."*
+check "with no sibling landed, a live load pin is still where the arm goes" \
+    [ "$(aff "$AB/queue/1-1790534300-arms-g-fix-2.req")" = thor ]
+rm -f "$AB/queue/1-1790534300-arms-g-fix-2.req"
 
 # --- the wiring. arms.sh, run for real against a private host whose nova is
 # backlogged, queues both arms with --device thor.
