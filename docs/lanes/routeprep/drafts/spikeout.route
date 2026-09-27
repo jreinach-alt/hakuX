@@ -1,0 +1,66 @@
+# Spikeout: Battle Street (53450029, PAL ISO), Nova and Thor. DRAFT by
+# lane.routeprep, 2026-09-26, not played. One file: whether a save/profile is
+# made is not known; A accepts a create prompt if one shows.
+#
+# Evidence: fmv303b hands-off runs (0-0-y-1790433000-1790433161-fmv303b-
+# 2432888, Thor, 56 frames) and gamecheck (1790364700-gamecheck-355013,
+# Nova, ~3 s per frame): Xbox, SEGA, Sofdec, Dolby, ESRB notice, then a long
+# story FMV with subtitles ("Four guys that comprised the legendary Team
+# SPIKE..."), then the title "Please press START to begin" (gamecheck f61-
+# f65, ~180 s; fmv303b f53, the last frame). Left alone the title loops back
+# into the FMV (gamecheck f69). Whether START skips the FMV is not on disk.
+#
+# Past the title [recalled, low]: a mode menu with the story / street mode
+# first, then a character select, then a street fight with gang members.
+wait 45
+shot boot45
+press START                 # [guess] try to skip the story FMV
+wait 15
+shot boot60
+press START                 # [guess] again; on the title it opens the menu
+wait 10
+shot boot70
+wait 100
+shot boot170
+press START                 # title at ~180 s if nothing skipped [seen gamecheck f61]
+wait 8
+shot after-title            # OPEN: which of these STARTs the menus took
+mark booted
+press A                     # [guess] first mode
+wait 8
+shot menu1
+press A                     # [guess] a save / difficulty / confirm
+wait 8
+shot menu2
+press A                     # [guess] character
+wait 8
+shot char-select
+press A
+wait 20
+shot loading
+repeat 4 {
+    press A                 # [guess] mission text / intro
+    wait 6
+    shot intro-a
+}
+mark gameplay               # [guess] placeholder: move to the first frame with the fighter under control
+repeat forever {
+    axis LY min
+    wait 1
+    press X
+    wait 0.3
+    press X
+    wait 0.3
+    press Y
+    wait 0.3
+    axis LY mid
+    axis LX max
+    wait 1
+    press X
+    wait 0.3
+    press A
+    wait 0.5
+    axis LX min
+    wait 1
+    axis LX mid
+}

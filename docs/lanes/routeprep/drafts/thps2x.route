@@ -1,0 +1,62 @@
+# Tony Hawk's Pro Skater 2x (41560001), Thor. DRAFT by lane.routeprep,
+# 2026-09-26, not played. NO FRAMES ON DISK for this title: every step is
+# [guess] or [recalled]. One file: Free Skate needs no career save.
+#
+# Aim [recalled, medium]: FREE SKATE -- no timer and no goals, so the window
+# holds only skating. The series' main menu lists Career, Single Session,
+# Free Skate, ...; the draft moves down twice from the first item. Then a
+# skater select (A) and a level select (A, the first level).
+wait 30
+shot boot30
+press START                 # [guess] skip logos / intro FMV
+wait 15
+shot boot45
+press START
+wait 15
+shot boot60
+press START                 # [guess] the title prompt
+wait 8
+shot after-title            # OPEN: a "no save found / create?" prompt
+press A                     # [guess] accept it, or pick the first menu item
+wait 8
+shot main-menu              # CHECK: which item is highlighted; Career should be first
+mark booted
+axis LY max                 # [recalled] down: Single Session
+wait 0.15
+axis LY mid
+wait 0.6
+axis LY max                 # [recalled] down: Free Skate
+wait 0.15
+axis LY mid
+wait 0.6
+shot on-free-skate
+press A
+wait 6
+shot skater-select
+press A
+wait 6
+shot level-select
+press A
+wait 20
+shot loading
+mark gameplay               # [guess] placeholder: move to the first frame with the skater rolling
+# Push, jump (A), flip/grab (X/B) and turn: bails are fine, the level keeps going.
+repeat forever {
+    axis LY min
+    wait 1.5
+    press A
+    wait 0.4
+    press X
+    wait 0.6
+    axis LX max
+    wait 1
+    press A
+    wait 0.4
+    press B
+    wait 0.6
+    axis LX min
+    wait 1
+    axis LX mid
+    axis LY mid
+    wait 0.3
+}

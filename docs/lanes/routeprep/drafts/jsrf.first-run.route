@@ -1,0 +1,55 @@
+# JSRF: Jet Set Radio Future (49470018), Nova and Thor, FIRST RUN: no JSRF
+# save on the disk. DRAFT by lane.routeprep, 2026-09-26, not played.
+#
+# Evidence: hotfix041 hands-off 240 s (0-0-y-1790432892-hotfix041-09, Thor),
+# one frame per 10 s in frames/: f02 Smilebit, f03 Dolby, f04 the graffiti
+# notice, f05 "Now Loading", f06-f07 the JSRF logo with "PLEASE PRESS START
+# TO BEGIN" (~60-70 s), f08-f22 attract gameplay with the same prompt in the
+# corner -- so START is taken during the attract too. Nothing past the
+# prompt is on disk.
+#
+# Past the prompt [recalled, low]: a new game creates a save file, then an
+# opening scene with Professor K, then the Garage (the gang's hideout), where
+# the player skates under control.
+wait 60
+shot boot60
+wait 10
+shot boot70                 # expect PLEASE PRESS START TO BEGIN [seen f06-f07]
+mark booted
+press START
+wait 6
+shot after-title            # OPEN: a "no save / create one?" prompt, or a menu with a new-game item
+press A
+wait 6
+shot menu1
+press A
+wait 8
+shot menu2
+press A                     # [guess] confirm a save slot / "save created"
+wait 10
+shot saved
+mark profile-saved
+repeat 10 {
+    press A                 # [guess] advance the opening scenes
+    wait 6
+    shot story-a
+}
+mark gameplay               # [guess] placeholder: move to the first frame skating in the Garage
+repeat forever {
+    axis LY min
+    axis RT max             # [guess] boost/dash on the trigger
+    wait 2
+    press A                 # jump
+    wait 1
+    axis LX max
+    wait 1
+    axis LX mid
+    press A
+    wait 1
+    axis LX min
+    wait 1
+    axis LX mid
+    axis RT min
+    axis LY mid
+    wait 0.5
+}

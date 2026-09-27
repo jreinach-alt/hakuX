@@ -1,0 +1,79 @@
+# Burnout Revenge (45410076), Nova, FIRST RUN: no Burnout Revenge profile on
+# the disk. DRAFT by lane.routeprep, 2026-09-26, not played.
+#
+# Evidence: pass 1 (0-0-y-1790433159-titleplay-p1-burnout-rev, Nova), frames
+# in its route-frames/ (t = seconds after the route started):
+#   075152 t42 and 075213 t63: the attract FMV (split-screen crash replays)
+#   075221 title "Press START to continue" (after the START at t63)
+#   075232 SAVE/LOAD: "Burnout Revenge needs a profile to store your
+#          progression. Would you like to create or load a profile?"
+#          Load Profile (highlighted) above Create Profile
+#   075238 A on Load Profile: "There are no profiles to load", OK -> back to
+#          the prompt. Pass 1 went round this loop for the whole run.
+#
+# The fix: one flick down to Create Profile, then A. Nothing past that has
+# been seen. The rest leans on Burnout 3 (same studio, same profile flow),
+# whose played routes (routes/burnout3.*.route) show: a name keyboard with a
+# default name and `Done` highlighted (A), then "save your profile? YES / NO"
+# with NO highlighted (flick UP, then A), then the main menu, WORLD TOUR first.
+# In Burnout 3 a RACE TRAINING video of ~110 s that neither A nor START
+# skipped played before the first race; Revenge may have the same.
+wait 55
+shot boot55
+wait 8
+mark booted
+press START                 # [seen t63->075221] attract -> title
+wait 6
+shot title
+press START                 # [seen 075226->075232] title -> SAVE/LOAD prompt
+wait 6
+shot saveload               # expect Load Profile highlighted [seen 075232]
+axis LY max                 # [inferred] down: Create Profile
+wait 0.15
+axis LY mid
+wait 0.6
+shot on-create              # CHECK: Create Profile highlighted
+press A                     # [inferred] Create Profile
+wait 6
+shot keyboard               # [guess, Burnout 3] name keyboard, default name, Done highlighted
+press A                     # [guess, Burnout 3] Done
+wait 6
+shot save-prompt            # [guess, Burnout 3] "save your profile? YES / NO", NO highlighted
+axis LY min                 # [guess, Burnout 3] up: YES
+wait 0.15
+axis LY mid
+wait 0.6
+shot save-yes
+press A
+wait 10
+shot saved                  # OPEN: a storage-device choice or "saving" notice may show; A is next either way
+mark profile-saved
+press A
+wait 6
+shot main-menu              # [guess] WORLD TOUR first, as in Burnout 3
+press A                     # World Tour
+wait 6
+shot tour
+press A                     # [guess] first event
+wait 6
+shot event
+press A                     # [guess] car / confirm
+wait 6
+shot car
+press A
+wait 30
+shot loading
+wait 90                     # [guess, Burnout 3] a race-training video that ignores A and START
+shot pre-race
+wait 20
+shot grid
+mark gameplay               # [guess] placeholder: move to the first frame of the race with the HUD
+repeat forever {
+    axis RT max
+    axis LX min
+    wait 1.5
+    axis LX max
+    wait 1.5
+    axis LX mid
+    wait 3
+}
