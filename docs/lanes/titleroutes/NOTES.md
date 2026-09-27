@@ -783,6 +783,25 @@ titles, All-Star Baseball 2003/2004/2005, AMF Bowling 2004, AMF Xtreme
 Bowling, AFL Live, American Chopper 2, then the older open list).
 #397 comment for this batch: 5859098639.
 
+### Attempt 8, 2026-09-27 12:48 PDT (held Thor sessions behind an input-focus read)
+
+**Why attempt 7 did not finish.** It did not fail. It ended on a `waiting:`
+for a focus check (#494), with nothing queued, and PR #497 folded. Hostops
+resumed this attempt at 12:48 PDT with two changes:
+
+- The Thor's "focus on display 1" was a misread. `dumpsys window | grep -m1
+  mCurrentFocus` prints the second screen's line first. `dumpsys input` is
+  the input dispatcher's own view, and on a cold launch at 12:43 PDT it read
+  `FocusedDisplayId: 0` with hakuX as display 0's focused window. The AYN
+  setting `screen_focus_lock` read 2 after the 12:03 reboot; hostops set it
+  to 0 at 12:41. Whether that setting sent the 12:12 D&D Heroes presses to
+  display 4's launcher is unproven.
+- Held sessions are allowed again, behind a read before the first input and
+  between steps (`scratch/focus.sh`): `screen_focus_lock` is 0,
+  `FocusedDisplayId` is 0, and display 0's `FocusedWindows` entry names
+  hakuX. If any of the three fails, nothing is sent and the hold is
+  released. Queued Thor route soaks still wait for PR #495's guard.
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
