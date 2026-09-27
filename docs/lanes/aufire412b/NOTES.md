@@ -200,8 +200,12 @@ Done in this session:
 
 - `hakuX-cpu` now ends with `Lw:%.1f`, the guest's `pfifo.lock` wait in
   `user_write`, ms per guest frame (EMA, alpha 0.2), commit 9aff9caf99.
-  Perflog-gated like the rest of the line. `splitread.py --selftest` parses it
-  (`cpu_Lw`). No pixel leg is possible, so no golden prediction.
+  Perflog-gated like the rest of the line. aufire412's `splitread.py`
+  (not this lane's file, left unedited) reads `hakuX-cpu` by key: its
+  `--selftest` passes, and its `cpu()` returns `cpu_Lw` for a line built from
+  the new format string (checked by hand). No pixel leg is possible, so no
+  golden prediction. Read by request `1790470425-aufire412b-4161655`
+  (perflog soak of 53a9b91df3, survey route), queued 2026-09-26 17:53 PDT.
 - `capture_p1p2.sh` (this dir): the held session. The survey route verbatim,
   run through `soak_title.sh` with a private lease path, p1 5 s after the 11th
   menu `press START`, p2 40 s after `mark play`, both 30 s of
@@ -210,6 +214,112 @@ Done in this session:
   can be cut from the session logcat. Output:
   `~/hakux-work/perf/2026-09-26-aufire412b/`.
 
+## 6. The profile: the vCPU spends half its time returning to the exec loop
+
+Held Nova session 2026-09-26 18:31-18:37 PDT (01:31-01:37Z), APK
+1b557ff6a4 (the folded #416 hunk, not perflog), survey route verbatim, run by
+`capture_p1p2.sh`. **Default regimen**: #444 (MAX perf) folded after this
+branch's merge, and the session ran `soak_title.sh` from this tree. The hold
+stood 01:17:53-01:36:56Z; the first 14 min of it waited on a jcache425
+request, and the device was used 01:31:40-01:36:56 (5 min 16 s).
+
+Files: `~/hakux-work/perf/2026-09-26-aufire412b/{p1,p2}.data`, `logcat.txt`,
+`soak.log`, `prefs.xml`, `apk/libxemu.so` (the APK's own copy, with debug
+info). vCPU tid 9188 (its chains end in `__start_thread`, and it alone carries
+`cpu_exec_loop`, `helper_lookup_tb_ptr` and the JIT).
+
+**The windows match the soaks** (`pace.py`/`vbl.py`, seconds since the logcat's
+first line):
+
+| window | fps | VBLANK/flip | v2/v3/v4+ % | vCPU busy | VBLANK Hz | clamps |
+|---|---|---|---|---|---|---|
+| p2, mission, 272-303 | 16.12 | 3.55 | 9/29/61 | 87.0% | 57.22 | 67 |
+| B soak mission 299-483 | 15.48 | 3.69 | 11/24/65 | 84.1% | 57.16 | 414 |
+| p1, menus over the scene, 189-220 | 20.55 | 2.72 | 33/31/21 | 83.2% | 56.02 | 73 |
+| B soak pause 220-285 | 15.71 | 3.46 | 16/28/51 | 72.8% | 54.49 | 232 |
+
+p2 is the soak's mission play. p1 sits on rounds 11-13 of the menus, a
+lighter screen than the soak's pause window (20.6 fps against 15.7), with the
+same VBLANK loss. p1 is a near match, not the same screen. The late VBLANK
+reproduces without perflog: 57.2 Hz here, 59.6 Hz in pass 1 (pre-hunk, not
+perflog).
+
+**Sample counts, vCPU thread** (`vcpucount.py`, plain `report-sample`
+records, cpu-clock at 1 kHz):
+
+| | p1 | p2 |
+|---|---|---|
+| vCPU samples | 24,698 | 26,139 |
+| `cpu_exec_loop` self | 12,642 (51.2%) | 14,152 (54.1%) |
+| of which the `stlrh; dmb ish; ldar` at 0x5b1a84-0x5b1a90 | 8,735 (35.4%) | 9,781 (37.4%) |
+| `cpu_tb_exec` self | 1,737 (7.0%) | 1,945 (7.4%) |
+| guest JIT code (file `unknown`) | 7,090 (28.7%) | 6,843 (26.2%) |
+| TB lookup (`x86_get_tb_cpu_state`, `curr_cflags`, `helper_lookup_tb_ptr`, qht) | 7.8% | 7.1% |
+| #424's code-write invalidation + re-arm | 0.74% | 0.59% |
+| host runtime (emutls, PLT, outline atomics) | 1.08% | 1.08% |
+| `tb_add_jump`, `helper_pause`, `helper_hlt`, `cpu_handle_exception`, `io_readx/writex`, `bql_lock` self | 0 / ~0 | 0 / ~0 |
+
+Crimson on the Nova (buildflags427 `a.data`, same method): `cpu_exec_loop`
+self 11.7%. **AUF's 51-54% is its own.**
+
+What the pile is. `cpu_exec_loop` -> `cpu_handle_interrupt` (cpu-exec.c:1575)
+clears `icount_decr.u16.high` with `qatomic_set_mb` and then tests
+`interrupt_request` with a load-acquire. On arm64 that is `stlrh; dmb ish;
+ldar`. The samples land on the `ldar` and the `cbnz` after it, which is
+where a `dmb ish` stall gets billed. The loop runs this once per TB that
+returns to it. So in AUF the guest's TBs return to the loop instead of running
+chained, and every return pays a full barrier. The barrier also drains the
+store buffer, so part of that 37% is the cost of the guest's own stores,
+surfacing at the barrier rather than being spread over the JIT code. That is
+a bound, not a value: it is the most removing the barrier could give.
+
+Why the TBs return. `tb_add_jump` has zero samples in 14,152 loop samples,
+so the loop is not patching jumps. Every return therefore arrives with
+`last_tb == NULL`. In this code that happens three ways:
+
+1. an indirect jump whose `helper_lookup_tb_ptr` probe misses and exits the
+   TB with 0;
+2. `TB_EXIT_REQUESTED`: something set `icount_decr.u16.high` (a kick or
+   `cpu_exit`);
+3. the target TB spans two guest pages (`tb_page_addr1(tb) != -1` clears
+   `last_tb`, cpu-exec.c:1770-1772), so nothing ever chains into it. A title's
+   hot loop straddling a 4 KB page would return on every iteration. That
+   would be specific to one title, which fits Crimson reading 11.7%.
+
+The profile rules out PAUSE spins, HLT, exceptions, MMIO exits and the BQL.
+It cannot tell 1-3 apart. **The instrument that can** is one counter per
+return reason in `cpu_exec_loop` (tb_exit value, `last_tb` NULL by cause,
+page-spanning target, `interrupt_request` non-zero), plus the loop's iteration
+count and the guest PCs of the top returning TBs, printed on `[tlb68]`'s
+2-second cadence. `[tlb68]` has no tick count, and `[tier1] threshold=`
+(printed every 5,000,000 loop iterations) goes to stdout, not logcat, so no
+existing line gives the iteration rate.
+
+**Priced against the frame** (p2; frame 62.0 ms = 1000/16.12, vCPU CPU per
+frame 54.0 ms = 87.0% of that, from `[tlb68]` in the same window; each figure
+is the category's share of vCPU samples times 54.0 ms, so it bounds that
+category's vCPU CPU per frame from above):
+
+| consumer | share of vCPU | ms per frame (bound) | lever (owner) |
+|---|---|---|---|
+| exec-loop returns: loop self + `cpu_tb_exec` + lookup | 68.6% | 37.0 | #425 block chaining / jump cache (lane.jcache425, PR #443) |
+| of which the per-return barrier | 37.4% | 20.2 | #425, same site (cpu-exec.c) |
+| guest JIT code | 26.2% | 14.1 | none: this is the guest's own work |
+| #424 invalidation + re-arm | 0.6% | 0.3 | #424 (PR #434, merged): not a case |
+| host runtime helpers | 1.1% | 0.6 | #427 (PR #435): below any fps effect |
+| vCPU placement/priority | vCPU 87% busy, not saturated | -- | #428 (PR #437, refuted): not a case |
+
+What this means for fps, stated as a condition. If the loop time is overhead
+on real guest work, cutting it takes the guest's per-frame vCPU time from
+~54 ms toward ~17-25 ms (JIT plus what dispatch must still cost). That is
+under 3 VBLANKs, and could be under 2 (30 fps) if the GPU's 28 ms and the
+renderer allow. If the returning TBs are the guest polling (a wait written as
+a loop that does not chain), the same cut only makes the wait cheaper, and fps
+does not move. The per-reason counter separates those cases: a poll returns
+from a handful of guest PCs, while real work returns from many.
+
+Handed to lane.jcache425 on #425 (deliver.sh), and posted on #412.
+
 ## Do not repeat
 
 - The brief's premise that "the vCPU is saturated in both arms" came from the
@@ -217,3 +327,10 @@ Done in this session:
 - Do not read fps from `Vpf` alone. fps = VBLANK rate / Vpf, and the rate is
   not a constant: B's is 4-9% low.
 - The dispatcher cannot take a simpleperf profile. Ask the host.
+- Do not take `report-sample --show-callchain` counts as the denominator. It
+  drops the samples whose unwind fails, mostly JIT: 3,511 of 26,139 on p2,
+  which reads the exec loop as 62.5% instead of 54.1%.
+- A held session has to take the hold while a request runs: the dispatcher
+  claims the next request within seconds of a finish, and a 60 s poll never
+  sees the Nova idle. The running request's `.owner` stays up through
+  host-side scoring after the device is free.

@@ -9,8 +9,10 @@
 # dispatch/results/0-0-y-1790433159-titleplay-p1-aufire/request.json, so the
 # scene and its timing match the soaks the profile is read against.
 #
-# Hold: taken only if hold/nova is absent and no running/*.owner names nova;
-# released only if it still holds our tag. Every exit path force-stops the
+# Hold: taken only if hold/nova is absent; a request already running on the
+# Nova finishes before this touches the device (the dispatcher claims the next
+# request within seconds of a finish, so "nothing running" is never seen by a
+# 60 s poll). Released only if it still holds our tag. Every exit path force-stops the
 # app, clears the shader caches this APK wrote (the dispatcher reinstalls its
 # own APK per request, and an empty cache is only a cold one), sleeps the
 # screen with KEYCODE_SLEEP, and releases the hold.
@@ -32,7 +34,7 @@ running_nova() { grep -lx nova "$D"/running/*.owner 2>/dev/null; }
 
 [ -f "$APK" ] || { say "no apk $APK"; exit 1; }
 [ -e "$HOLD" ] && { say "hold/nova exists: $(cat "$HOLD")"; exit 3; }
-r=$(running_nova) && { say "running on nova: $r"; exit 3; }
+r=$(running_nova) && say "running on nova: $r (the hold stops new claims; it finishes first)"
 lvl=$(a shell dumpsys battery | tr -d '\r' | awk '/level:/{print $2; exit}')
 say "battery $lvl"
 [ -n "$lvl" ] && [ "$lvl" -ge 30 ] || { say "battery below 30 or unreadable"; exit 4; }
@@ -59,11 +61,11 @@ trap cleanup EXIT
 trap 'exit 130' INT TERM
 
 # A request that was claimed between our check and our hold finishes first.
-for i in $(seq 1 30); do
+for i in $(seq 1 45); do
     r=$(running_nova) || break
     say "waiting for running request $r"; sleep 20
 done
-running_nova >/dev/null && { say "nova still busy after 10 min"; exit 3; }
+running_nova >/dev/null && { say "nova still busy after 15 min"; exit 3; }
 
 T=300 a install -r "$APK" 2>&1 | tail -1 | grep -q Success || { say "install failed"; exit 5; }
 a shell am force-stop $PKG
