@@ -34,6 +34,7 @@ check "the pipeline is four labelled columns (Copied, Inputs, Save, Bench) with 
 check "the target line says 145 and 50 and carries no date" st_check target
 check "'~2026-09-28' is not on the page" st_check nodate
 check "the 'not copied' tail folds after 10 rows, with its count" st_check fold
+check "a verdict with no name or title_id lands in its title's row, by the ISO's title-ID prefix" st_check nameless
 check "red first, then from the most advanced stage down" st_check order
 check "the header forecasts from the last 48 h rate" st_check forecast
 check "each issue shows its state and what is in flight; an unowned open one is an alarm" st_check flight
@@ -59,6 +60,19 @@ g = reg({"profile": True, "save_na": {"reason": "UDATA holds no save", "by_run":
 det = S._title_detail(dict(g, inputs=True, devices=["thor"], next="-"), 0)
 g0 = reg({"profile": True})
 sys.exit(0 if not g["needs_save"] and "save: not needed: UDATA holds no save" in det and g0["needs_save"] and not g0["save_na"] else 1)' "$HERE" "$T" "$ST_F/targets.toml"
+
+# title_verdict.py names the title the same way at scoring time: an ISO the
+# registry's map does not list, whose file name leads with a registered title
+# ID, is that title (so its verdict carries title_id and name); an unregistered
+# prefix is still no title.
+check "title_verdict.py finds a title by its ISO's title-ID prefix, and only a registered one" python3 -c '
+import sys
+sys.path.insert(0, sys.argv[1]); import title_verdict as V
+tg = {"titles": {"5A5A0009": {"name": "Zz Nameless", "iso": {"thor": "5A5A0009-Zz_Nameless.xiso.iso"}}}}
+a = V.find_title(tg, "/x/5A5A0009-Zz_Nameless_(USA).xiso.iso")
+b = V.find_title(tg, "5a5a0009-Zz_Nameless.xiso.iso")
+c = V.find_title(tg, "5A5A0010-Zz_Other.xiso.iso")
+sys.exit(0 if a[0] == b[0] == "5A5A0009" and a[1]["name"] == "Zz Nameless" and c == (None, {}) else 1)' "$HERE/.."
 
 # The config's new home is the default, and it is the owner's two numbers.
 check "release-0.5.toml at docs/testing is the default and states 145 and 50" python3 -c '
