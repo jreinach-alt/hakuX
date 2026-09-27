@@ -215,6 +215,7 @@ notes = "#431 (comment 5851536933): 30, medium confidence. IGN (PS2 and Xbox, 20
 name = "Crash Twinsanity"
 target_fps = 60
 iso = { thor = "56550036-Crash_Twinsanity.xiso.iso" }
+route = "crash-twinsanity"
 notes = "#431 (comment 5851536933): 60, medium confidence. Play Magazine (Oct 2004) via Metacritic's Xbox excerpt"
 
 # lane.titleroutes (#397, 0.5 benchmark stage 2): routes programmed with nav.py in HELD sessions.
