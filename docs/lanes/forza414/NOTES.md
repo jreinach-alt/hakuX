@@ -611,3 +611,18 @@ B = 51721e36aa:
 
 P1 is also the only reading of whether Forza's clears are full: if they are not, m10 does not
 move and the hunk is inert on Forza, not refuted.
+
+Queued, Nova, priority 1 (a lane cannot make a `0-0-x` id; the host promotes):
+`1-1790533007-forza414-3417242` (base 7787feb2ae) and `1-1790533010-forza414-3422338`
+(fix 51721e36aa). The index was rebuilt for the new CLEAR_SURFACE references against the fold-pins
+trees (tests_commit unchanged). `preflight.sh --allow-tracker` passes on the head.
+
+## Attempt 5 ends waiting
+
+PR #479 stays a draft, waiting on requests outside this session:
+- the soak pair above, read by hand with `abread.py` plus the `[evict372]` m10 growth over the window;
+- the `[job.arms]` verdicts for `forza414-coalesce-mnm2.json` and `forza414-cleared-mnm.json`.
+
+On resume: judge the soak's legs from section 19. Then read both arm verdicts and every scores1.tsv
+`status`. If all hold and CI is green, mark #479 ready. Hunk 2 and the DOA pre-download branch
+(section 16, flip474's consumer list) come after the verdict, in the next PR.
