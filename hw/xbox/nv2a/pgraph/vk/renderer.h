@@ -54,6 +54,20 @@
 #define REORDER_WINDOW_MAX       64
 #define OPT_ASYNC_COMPILE        1
 
+#if NV2A_PERF_LOG
+/*
+ * #461's texture-bind attribution. Why create_texture() hashed a binding's
+ * content: the first of these that applies, in this order. TXH_OTH is none of
+ * them and must stay 0.
+ */
+enum { TXH_NEW, TXH_RB, TXH_SRF, TXH_MK, TXH_MEMO, TXH_BIT, TXH_BOV, TXH_OTH,
+       TXH__N };
+/* Why upload_texture_image() ran. */
+enum { TXU_NEW, TXU_RB, TXU_CHG, TXU_OTH, TXU__N };
+/* The path get_texture_layout() decoded a level through. */
+enum { TXK_LIN, TXK_BC, TXK_S3TC, TXK_PAL, TXK_CVT, TXK_SWZ, TXK__N };
+#endif
+
 struct OptBisectStats {
     int super_fast_hits;
     int super_fast_misses;
@@ -177,6 +191,29 @@ struct OptBisectStats {
     int pipe_evict;
     int pipe_evict_pending;
     int pipe_evict_recording;
+    /*
+     * #461: what a texture bind spends its time on (vk/texture.c), printed
+     * as the txh[], txu[] and txr[] lines. Bytes are 64-bit: Crimson Skies
+     * hashes gigabytes in 60 frames.
+     */
+    int txh_n[TXH__N];          /* content hashes, by reason */
+    uint64_t txh_b[TXH__N];     /* ...and the bytes hashed */
+    int txh_eq;                 /* hashes of a found binding that compared equal */
+    uint64_t txh_eq_b;
+    int txh_rep;                /* hashes of a node already hashed this flip */
+    uint64_t txh_rep_b;
+    int txu_n[TXU__N];          /* uploads, by cause */
+    uint64_t txu_b;             /* ...and their guest bytes */
+    uint64_t txk_b[TXK__N];     /* guest bytes each decode path read */
+    int txr_ct;                 /* create_texture() calls */
+    int txr_bt;                 /* pgraph_vk_bind_textures() calls */
+    int txr_btl;                /* ...that ran the per-slot loop */
+    int txr_dl;                 /* surface downloads a bind started directly */
+    uint64_t txr_dl_b;
+    int txr_sc;                 /* surface-range scans run */
+    int txr_scdl;               /* surface downloads those scans started */
+    int txr_s2tc;               /* surface-to-texture copies */
+    int txr_s2td;               /* surfaces bound directly as a texture */
 #endif
 };
 extern struct OptBisectStats g_opt_stats;
@@ -814,6 +851,11 @@ typedef struct TextureBinding {
     uint32_t submit_time;
     unsigned int dirty_check_frame;
     bool dirty_check_result;
+#if NV2A_PERF_LOG
+    /* #461: the flip this node's content was last hashed in */
+    bool pf_hashed;
+    unsigned int pf_hash_frame;
+#endif
 } TextureBinding;
 
 /*
