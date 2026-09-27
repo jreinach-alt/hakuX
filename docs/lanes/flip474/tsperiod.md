@@ -8,8 +8,8 @@ PR too.
 this branch is a second cut.** The first cut (`902cf1ab53`) read 4636.591 ns
 per tick at start-up on the Thor, 89 times the true period, and measured
 nothing on the Nova. The second cut (`36d2a6faaf`, merged head
-`253148451f`) read 52.047 ns on the Thor and every Thor leg holds. Its Nova
-run and its pgraph pair have not run.
+`253148451f`) read 52.047 ns on the Thor and 52.051 ns on the Nova, and
+every device leg holds. Its pgraph pair has not run.
 
 ## Why the sessions before this one did not finish
 
@@ -170,13 +170,33 @@ time the route played):
 In play Crimson reads GPU 7.0, R 6.4, X 0.6 (true ms). Its X/R is 0.09, so
 it is not a title whose passes run twice.
 
-**The Nova and the pgraph pair: not run yet.**
+**The Nova, `0-0-x-1790546971-flip474-641697`** (DOA, 300 s, window
+151-288 s; the shots show the fight, and the replay starts after 290 s):
 
-## Waiting (from 2026-09-27 22:20Z)
+`init: GPU timestamp period reported=33.113 ns measured=52.051 ns (+-0.12%, span 119.6 ms, samples 371 of 372, halves differ 0.01%) using=52.051 ns (measured)`
+
+| leg | verdict |
+|---|---|
+| M0 | holds: 29 phase lines with GPU > 0, the fight in the shots |
+| K0 | holds: one line |
+| K1 | **holds: 52.051 ns, 0.06% under 52.083**, and it is the value used |
+| K3, the guess | **holds: the halves differ 0.01%**, scatter 0.12% |
+| G1 | **holds: phase GPU 61.0 ms against cdef 59.1 ms, 1.03.** On master the same ratio reads 0.65 |
+| P1 | holds, at its edge: gfps median 12.0 (11 to 13) against the rule's 12. This fight's GPU span is 61.0 ms; the three runs of section 16 that read 14 to 16 gfps had 49 to 54 ms (31.2 to 34.4 as printed). The O4 pilot's fight read 63.6 ms and 12 gfps on a build without this change |
+| H0 | holds: longest gap 1.8 s, lines to 304.9 of 305.8 s, no crash marker |
+
+The two devices measure 52.047 and 52.051 ns. Upstream's constant is
+52.083; both are 0.06 to 0.07% under it.
+
+**What the corrected figures show in this run:** R 30.7 and X 30.6 ms, true.
+The draw stream is executed twice, 30.7 ms each time (NOTES section 16).
+
+**The pgraph pair: not run yet.**
+
+## Waiting (from 2026-09-27 22:35Z)
 
 | request | device | ref | for |
 |---|---|---|---|
-| `1-1790546971-flip474-641697` | Nova | `253148451f` | `flip474-tsperiod2-doa-nova.json` |
 | the arms job's pair | either | `57e2a7107c` / `253148451f` | `flip474-tsperiod2-pgraph-inert.json` |
 | `1-1790546289-flip474-398286` | Nova | `795ea6b3af` | NOTES section 16, the base's one rerun |
 
@@ -184,9 +204,9 @@ it is not a title whose passes run twice.
 queued by running the queue script twice. They were withdrawn unclaimed
 (`queue/withdrawn/`, with a `.why` each).
 
-When they land: read each start-up line, run `phaseread.py`, `lockread.py`
-and `gfpsseries.py`, judge every leg, post on #474 and #462, and mark #504
-ready only if K1 and G1 hold on the Nova and the pgraph pair is identical.
+When the pgraph pair is judged: read its `[job.arms]` comment on #504, and
+mark #504 ready only if every capture is identical. Both devices' legs hold
+already.
 
 ## Not done here
 
