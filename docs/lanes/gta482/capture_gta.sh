@@ -83,7 +83,7 @@ cleanup() {
     a shell "rm -f /data/local/tmp/gta482-on.data /data/local/tmp/gta482-off.data /data/local/tmp/gta482-hoststate.sh" >/dev/null 2>&1
     rm -f "$D/.shader_cache_apk.$DEV"
     [ -n "${HARDEN_WAS:-}" ] && a shell setprop security.perf_harden "$HARDEN_WAS" >/dev/null 2>&1 \
-        && say "perf_harden restored to $HARDEN_WAS"
+        && say "perf_harden restored to $HARDEN_WAS (read back $(a shell getprop security.perf_harden 2>/dev/null | tr -d '\r'), paranoid $(a shell cat /proc/sys/kernel/perf_event_paranoid 2>/dev/null | tr -d '\r'))"
     a shell input keyevent KEYCODE_SLEEP >/dev/null 2>&1
     [ -n "$T0" ] && say "device time $(( $(date +%s) - T0 )) s"
     fi
