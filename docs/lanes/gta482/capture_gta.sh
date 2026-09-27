@@ -135,6 +135,17 @@ PYENV
     say "env_vars cleared (read back)"
 fi
 a shell "rm -f /data/local/tmp/gta482-on.data /data/local/tmp/gta482-off.data"
+# The display must be on. soak_title.sh sends KEYCODE_WAKEUP and checks
+# nothing; in session 1 (18:37Z) the Thor stayed dark, every frame was black
+# and the game stopped flipping. Wake, dismiss the keyguard, read it back.
+a shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1
+a shell wm dismiss-keyguard >/dev/null 2>&1
+sleep 2
+wk=$(a shell dumpsys power | tr -d '\r' | grep -o 'mWakefulness=[A-Za-z]*' | head -1)
+a exec-out screencap -p > "$OUT/shot0.png" 2>/dev/null
+s0=$(stat -c %s "$OUT/shot0.png" 2>/dev/null || echo 0)
+say "display: $wk, screencap $s0 bytes"
+[ "$wk" = mWakefulness=Awake ] && [ "$s0" -gt 12000 ] || { say "the display is not on; refusing"; exit 7; }
 cp "$HERE/titles/routes/gta-sa.route" "$OUT/route.txt" || { say "no route gta-sa"; exit 5; }
 
 LOGCAT_SPEC="hakuX-crash:V hakuX-unhandled:W hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-tier1:D hakuX-pages:I hakuX:I hakuX-stderr:E hakuX-vk:I hakuX-route:I hakuX-pace:I hakuX-stall:I hakuX-rpbrk:I hakuX-cpu:I xemu-gpu:I xemu-sfp:I libc:F DEBUG:F *:S" \
@@ -162,7 +173,13 @@ record() {  # <name> <extra flags>
 }
 
 ok_on=0 ok_off=0 ok_dump=0
-if wait_for "ROUTE .* mark gameplay" 1 420; then
+if wait_for "ROUTE .* mark gameplay" 1 420 && wait_for "ROUTE .* shot gameplay" 1 20; then
+    sleep 2
+    g=$(ls -t "$OUT"/route-frames/*-gameplay.png 2>/dev/null | head -1)
+    gs=$(stat -c %s "$g" 2>/dev/null || echo 0)
+    say "gameplay frame $g $gs bytes"
+    # session 1: every frame 10,899 B (all black), and the game stopped flipping
+    [ "$gs" -gt 100000 ] || { say "the gameplay frame is black: not the open world; stopping"; exit 8; }
     sleep "$DELAY"
     a shell log -t hakuX-route "'prof start'" >/dev/null
     say "prof start (left $(left) s)"
@@ -198,7 +215,9 @@ for l in open(sys.argv[1]):
     if len(f) < 5:
         continue
     path = f[5] if len(f) > 5 else ''
-    if path and not (path.startswith('[anon') or 'memfd' in path or 'jit' in path.lower()):
+    # the TCG buffer and the guest RAM are unnamed; /memfd:jit-cache and
+    # /memfd:jit-zygote-cache are ART's (session 1 dumped one of those)
+    if path and not path.startswith('[anon'):
         continue
     lo, hi = (int(x, 16) for x in f[0].split('-'))
     if 'x' in f[1] and hi - lo >= 1 << 20:
@@ -211,7 +230,9 @@ PYMAPS
             while read -r kind lo hi _; do
                 [ "$kind" = ram ] && [ "$(left)" -lt 45 ] && { say "skipping $kind $lo: $(left) s left"; continue; }
                 sk=$(( 0x$lo / 4096 )); ct=$(( (0x$hi - 0x$lo) / 4096 ))
-                T=180 a exec-out "run-as $PKG sh -c 'dd if=/proc/$PID/mem bs=4096 skip=$sk count=$ct 2>/dev/null | gzip -1'" > "$OUT/$kind-$lo.bin.gz"
+                # < /dev/null: adb reads stdin, and in session 1 it ate the
+                # rest of regions.txt, so only the first region was dumped
+                T=180 a exec-out "run-as $PKG sh -c 'dd if=/proc/$PID/mem bs=4096 skip=$sk count=$ct 2>/dev/null | gzip -1'" > "$OUT/$kind-$lo.bin.gz" < /dev/null
                 n=$(gzip -dc "$OUT/$kind-$lo.bin.gz" 2>/dev/null | wc -c)
                 say "dump $kind $lo: $n of $(( ct * 4096 )) bytes (left $(left) s)"
                 [ "$kind" = codebuf ] && [ "$n" = $(( ct * 4096 )) ] && ok_dump=1
