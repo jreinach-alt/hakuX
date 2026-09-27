@@ -1,0 +1,31 @@
+{
+  "registered_utc": "2026-09-27T16:36:00Z",
+  "who": "lane.flip474",
+  "issue": "474",
+  "title": "54430006-Dead_or_Alive_1_Ultimate.xiso.iso",
+  "device": "nova",
+  "seconds": 300,
+  "route": "survey",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "4b22f2526b5f5981ed2fec0cc71f65a4dc61b91e",
+  "b_ref": "94f002d309228830da68b8c531a64a38d9dad3fd",
+  "queue_order": "A then B, each request.sh --title, --device nova, --route survey, --seconds 300, --perflog, --expect this file, at HAKUX_RELEASE_PRIO=1",
+  "judge": "python3 docs/lanes/flip474/o4read.py --from 151 --to 288 --show <A> <B>; python3 docs/lanes/flip474/lockread.py for gfps and the gaps; crashcheck.py and tailcheck.py; the route's shots in the window, by eye",
+  "prediction": "#474/#414: does lane.forza414's deferral (94f002d309, base 4b22f2526b) move DOA Ultimate's cdef? The host's delivery of 09:22 PDT expects it to: DOA's wait and Forza's are the same completion call in pgraph_vk_surface_update. They are the same call and not the same branch. Forza's wait is the branch that submits a finish of its own (sdcall surfupd fin 7.0 per frame). DOA's is the branch that waits on the flip's already-submitted command buffer (display_predownload_pending): #475's B released the lock only around the two fence waits and took the vCPU's lock wait from 0.69 of wall to 0.004, and surf413's own fin is 0.00 ms in every DOA run. 94f002d309's gate, surface_update_may_defer_downloads(), returns false when display_predownload_pending is set or when the downloads were already submitted (deferred_downloads_frame >= 0), and its comment says why: those cost a fence wait, not a finish, so they complete as before. So by reading, B completes DOA's flip download exactly where A does and cdef does not fall. Neither ref has #475, so both arms keep the vCPU's lock wait and neither prints [lock474]. One run per arm: the two outcomes are cdef ~51 ms and cdef ~0, which one run separates.",
+  "legs": {
+    "M0 (instrument)": ">= 20 [surf413], >= 20 [sdcall] and >= 20 gfps lines in 151-288 s in each run, and the route's shots in that window show the fight. A run without them is VOID, not zero, and is rerun once. If one arm's window holds a KO replay and the other's does not (#475's A2), the pair is not same-scene and C1 is read with that stated.",
+    "G0 (which branch DOA waits in, arm A)": "[sdcall] surfupd over the window: pre >= 0.8 per frame and fin <= 0.1 per frame. FAILS in the world where DOA's completions submit their own finish; then 94f002d309 does reach them, C1 should fall, and the reading above is wrong at its first step.",
+    "G1 (the deferral does not fire, arm B)": "[sdcall] su_deferred <= 0.1 per frame over the window. DOA's fight evicts nothing (surf413 #ev 0), so no update records a download for the gate to leave pending. FAILS if the deferral fires on DOA after all; then C1 is read as a measurement of it.",
+    "C1 (the host's leg, predicted NOT to move)": "surf413 cdef median, B / A >= 0.8 (#475's four runs: 50.4 to 61.6 ms). KILL of this lane's reading: B / A <= 0.5. Between the two is reported as unexplained, not as either.",
+    "T1 (the PFIFO thread's frame)": "hakuX-phase Tot median, B / A between 0.85 and 1.15.",
+    "P1 (fps, no regression)": "gfps median in the window: B >= A - 1.",
+    "H0 (no new hang)": "B: longest gap between hakuX-perf lines in the window <= 3 s, the lines continue to the end of the soak, and no crash marker in the logcat."
+  },
+  "if_c1_holds": "DOA's lever is the deferral extended to the flip's pre-download: leave display_predownload_pending set across draws and complete on a consumer (NOTES, option O1). That is a second gate in the same function, in lane.forza414's file, and this lane writes the consumer list for it rather than a second copy of the deferral.",
+  "must_not_move": [],
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off [surf413], [sdcall], hakuX-phase and gfps lines by o4read.py and lockread.py, and the shots by eye."
+}

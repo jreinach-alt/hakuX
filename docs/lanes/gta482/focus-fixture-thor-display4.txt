@@ -1,0 +1,19 @@
+INPUT MANAGER (dumpsys input)
+
+Input Manager Service (Java) State:
+  Pointer Capture: false
+Input Dispatcher State:
+  DispatchEnabled: true
+  DispatchFrozen: false
+  InputFilterEnabled: false
+  FocusedDisplayId: 4
+  FocusedApplications:
+    displayId=4, name='ActivityRecord{5b2c1e u0 com.android.launcher3/.secondarydisplay.SecondaryDisplayLauncher t2}', dispatchingTimeout=5000ms
+    displayId=0, name='ActivityRecord{8c1f2a u0 com.jreinach.hakux.debug/com.rfandango.haku_x.GameLibraryActivity t41}', dispatchingTimeout=5000ms
+  FocusedWindows:
+    displayId=4, name='3e1a2b0 com.android.launcher3/com.android.launcher3.secondarydisplay.SecondaryDisplayLauncher'
+    displayId=0, name='9c1d0f7 com.jreinach.hakux.debug/com.rfandango.haku_x.GameLibraryActivity'
+  FocusRequests:
+    displayId=4, name='3e1a2b0 com.android.launcher3/com.android.launcher3.secondarydisplay.SecondaryDisplayLauncher' result='OK'
+    displayId=0, name='9c1d0f7 com.jreinach.hakux.debug/com.rfandango.haku_x.GameLibraryActivity' result='OK'
+  Pointer Capture Requested: false

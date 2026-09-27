@@ -980,49 +980,49 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pfifo.c:1331",
+   "loc": "hw/xbox/nv2a/pfifo.c:1688",
    "symbols": [],
    "text": "// TODO think more about locking"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pfifo.c:1393",
+   "loc": "hw/xbox/nv2a/pfifo.c:1750",
    "symbols": [],
    "text": "* TODO: Check this range is correct for the nv2a */"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pfifo.c:1470",
+   "loc": "hw/xbox/nv2a/pfifo.c:1827",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pfifo.c:1509",
+   "loc": "hw/xbox/nv2a/pfifo.c:1866",
    "symbols": [],
    "text": "// TODO: should we become busy here??"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pfifo.c:1563",
+   "loc": "hw/xbox/nv2a/pfifo.c:1921",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pfifo.c:1690",
+   "loc": "hw/xbox/nv2a/pfifo.c:2067",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pfifo.c:1713",
+   "loc": "hw/xbox/nv2a/pfifo.c:2091",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pfifo.c:1883",
+   "loc": "hw/xbox/nv2a/pfifo.c:2264",
    "symbols": [],
    "text": "/* XXX: Think this is different to what nouveau calculates... */"
   },
@@ -4649,10 +4649,10 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "ccb97d5ce61b301c142777ccf801818ea8ae3690",
+  "emulator_commit": "6fe4729972cfc636caddb84c3d7f73f61eae340b",
   "gaps": 497,
   "resolved_tables": 1,
-  "sites": 2964,
+  "sites": 2972,
   "suites": 104,
   "support_dirs": [
    "/home/justin/hakux-work/fold-pins/pbkitplusplus"
@@ -4710,6 +4710,11 @@
   ],
   "NV097_BACK_END_WRITE_SEMAPHORE_RELEASE": [
    {
+    "loc": "hw/xbox/nv2a/pfifo.c:831",
+    "role": "DISPATCH",
+    "text": "case NV097_BACK_END_WRITE_SEMAPHORE_RELEASE: return CBL_M_SEMA;"
+   },
+   {
     "loc": "hw/xbox/nv2a/pgraph/methods.h.inc:185",
     "role": "DECL",
     "text": "DEF_METHOD(NV097, BACK_END_WRITE_SEMAPHORE_RELEASE)"
@@ -4733,6 +4738,11 @@
    }
   ],
   "NV097_CLEAR_SURFACE": [
+   {
+    "loc": "hw/xbox/nv2a/pfifo.c:832",
+    "role": "DISPATCH",
+    "text": "case NV097_CLEAR_SURFACE:                    return CBL_M_CLEAR;"
+   },
    {
     "loc": "hw/xbox/nv2a/pgraph/methods.h.inc:190",
     "role": "DECL",
@@ -5038,9 +5048,19 @@
   ],
   "NV097_FLIP_STALL": [
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:1266",
+    "loc": "hw/xbox/nv2a/pfifo.c:830",
+    "role": "DISPATCH",
+    "text": "case NV097_FLIP_STALL:                       return CBL_M_FLIP;"
+   },
+   {
+    "loc": "hw/xbox/nv2a/pfifo.c:1623",
     "role": "COMMENT",
     "text": "/* If NV097_FLIP_STALL was executed, check if the flip has completed."
+   },
+   {
+    "loc": "hw/xbox/nv2a/pfifo.c:1978",
+    "role": "REF",
+    "text": "if (method == NV097_FLIP_STALL) {"
    },
    {
     "loc": "hw/xbox/nv2a/pgraph/methods.h.inc:8",
@@ -5136,6 +5156,16 @@
    }
   ],
   "NV097_NO_OPERATION": [
+   {
+    "loc": "hw/xbox/nv2a/pfifo.c:732",
+    "role": "COMMENT",
+    "text": "* NV097_NO_OPERATION software callback (a non-zero parameter raises the"
+   },
+   {
+    "loc": "hw/xbox/nv2a/pfifo.c:1962",
+    "role": "REF",
+    "text": "bool cbl_nop = CBL_ON && method == NV097_NO_OPERATION && word;"
+   },
    {
     "loc": "hw/xbox/nv2a/pgraph/methods.h.inc:2",
     "role": "DECL",
@@ -5309,27 +5339,32 @@
   ],
   "NV097_SET_BEGIN_END": [
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:981",
+    "loc": "hw/xbox/nv2a/pfifo.c:833",
+    "role": "DISPATCH",
+    "text": "case NV097_SET_BEGIN_END:                    return CBL_M_DRAW;"
+   },
+   {
+    "loc": "hw/xbox/nv2a/pfifo.c:1337",
     "role": "REF",
     "text": "return m == NV097_SET_BEGIN_END;"
    },
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:983",
+    "loc": "hw/xbox/nv2a/pfifo.c:1339",
     "role": "REF",
     "text": "return m <= NV097_SET_BEGIN_END &&"
    },
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:984",
+    "loc": "hw/xbox/nv2a/pfifo.c:1340",
     "role": "REF",
     "text": "NV097_SET_BEGIN_END < m + 4u * cnt;"
    },
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:1047",
+    "loc": "hw/xbox/nv2a/pfifo.c:1403",
     "role": "REF",
     "text": "if (m <= NV097_SET_BEGIN_END &&"
    },
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:1048",
+    "loc": "hw/xbox/nv2a/pfifo.c:1404",
     "role": "REF",
     "text": "NV097_SET_BEGIN_END < m + 4u * cnt) {"
    },
@@ -17439,7 +17474,7 @@
     "text": "* (NV_PGRAPH_INTR, NV_PGRAPH_INCREMENT, NV_PGRAPH_FIFO) additionally require"
    },
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:1262",
+    "loc": "hw/xbox/nv2a/pfifo.c:1619",
     "role": "REF",
     "text": "return qatomic_read(&d->pgraph.regs_[NV_PGRAPH_FIFO]) &"
    },
@@ -17456,7 +17491,7 @@
   ],
   "NV_PGRAPH_FIFO_ACCESS": [
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:1263",
+    "loc": "hw/xbox/nv2a/pfifo.c:1620",
     "role": "REF",
     "text": "NV_PGRAPH_FIFO_ACCESS;"
    }
@@ -17672,6 +17707,11 @@
     "loc": "hw/xbox/nv2a/nv2a.c:90",
     "role": "REF",
     "text": "| NV_PGRAPH_INTR_ERROR)) ? 128 : 0;"
+   },
+   {
+    "loc": "hw/xbox/nv2a/pfifo.c:1964",
+    "role": "REF",
+    "text": "& NV_PGRAPH_INTR_ERROR);"
    },
    {
     "loc": "hw/xbox/nv2a/pgraph/pgraph.c:1188",
@@ -18969,7 +19009,7 @@
   ],
   "NV_PGRAPH_SURFACE": [
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:1273",
+    "loc": "hw/xbox/nv2a/pfifo.c:1630",
     "role": "READ",
     "text": "uint32_t s = pgraph_reg_r(pg, NV_PGRAPH_SURFACE);"
    },
@@ -19046,7 +19086,7 @@
   ],
   "NV_PGRAPH_SURFACE_MODULO_3D": [
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:1278",
+    "loc": "hw/xbox/nv2a/pfifo.c:1635",
     "role": "READ",
     "text": "GET_MASK(s, NV_PGRAPH_SURFACE_MODULO_3D));"
    },
@@ -19073,12 +19113,12 @@
   ],
   "NV_PGRAPH_SURFACE_READ_3D": [
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:1276",
+    "loc": "hw/xbox/nv2a/pfifo.c:1633",
     "role": "READ",
     "text": "GET_MASK(s, NV_PGRAPH_SURFACE_READ_3D),"
    },
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:1280",
+    "loc": "hw/xbox/nv2a/pfifo.c:1637",
     "role": "READ",
     "text": "if (GET_MASK(s, NV_PGRAPH_SURFACE_READ_3D)"
    },
@@ -19105,12 +19145,12 @@
   ],
   "NV_PGRAPH_SURFACE_WRITE_3D": [
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:1277",
+    "loc": "hw/xbox/nv2a/pfifo.c:1634",
     "role": "READ",
     "text": "GET_MASK(s, NV_PGRAPH_SURFACE_WRITE_3D),"
    },
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:1281",
+    "loc": "hw/xbox/nv2a/pfifo.c:1638",
     "role": "READ",
     "text": "!= GET_MASK(s, NV_PGRAPH_SURFACE_WRITE_3D)) {"
    },
