@@ -113,6 +113,9 @@ Fragments changed, and why (each file's header says so too):
   the panel has no "of 145".
 - 60, 62: unchanged, pass.
 
+Whole suite after merging origin/master (2026-09-26 ~18:05 PDT):
+`selftest: 1952 passed, 0 failed`. `preflight.sh`: passed.
+
 ## 5. Found on the live render (status.sh --print, fixtures/live_print.sh)
 
 - A hold file's first line can be a sentence ("lane.xbox title push 827868
