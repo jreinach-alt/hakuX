@@ -288,7 +288,7 @@ a full buffer; the two checks that test the mapping pass.
 `capture_gta.sh` now waits for the regime instead of a fixed delay: from the
 mark, two hakuX-perf lines in a row at `gfps <= SLOW_GFPS` (8), read from the
 live logcat, within `<arg 1>` s (default 150); otherwise it records nothing
-and ends (exit 9). Dry run (`.scratch`-free replay of the same loop over a
+and ends (exit 9). Dry run (`dryregime.sh <logcat> "mark gameplay"`, the same loop replayed over a
 logcat, line by line): slowdown462 `gta-open` fires at 09:21:05 (gfps 4, 5,
 ~35 s after its mark); slowdown462 `gta` (alley) and this s4 never fire.
 Off-CPU is now recorded first when paranoid <= 1 (a `--trace-offcpu` record
