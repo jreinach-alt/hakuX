@@ -1,0 +1,40 @@
+{
+  "registered_utc": "2026-09-27T18:07:57Z",
+  "who": "lane.forza414",
+  "issue": "414",
+  "prediction": "MUST-NOT-MOVE guard for PR #479 after the merge of master, the arm the brief asks for before ready. A is c91697f116 (origin/master, which has #475: pgraph.lock released across the deferred-download fence waits). B is c6bfa6c85a (the merge of that master into lane/forza414: the [sdcall] probe, inert outside NV2A_PERF_LOG && __ANDROID__, and the cut of 94f002d309). The merge resolved one conflict in vk/surface.c by keeping both sides: the completion takes the caller tag and the release_lock flag (download_surface_complete_deferred_at), and pgraph_vk_surface_update passes qemu_thread_is_self(pfifo.thread) as master does. In B, pgraph_vk_surface_update leaves the downloads recorded so far to the next finish instead of submitting one, unless a binding is about to upload from VRAM, the batch was already submitted, a display pre-download is pending, or TCG is off. PREDICTION: every guarded capture is byte-identical between the arms, as in the first registration (forza414-coalesce-mnm.json, PASS, 266 of 266 on 4b22f2526b vs 94f002d309). What would move each, in the world where the cut or the merge is wrong: Surface_clip and Color_zeta_overlap, if an evicted surface download lands after the binding that replaced it uploaded or drew over the same memory; Depth_buffer_fixed_function and Surface_format, if a display pre-download that shares a batch retires the wrong generation, or a readback reads VRAM before the pending copy; Texture_render_target and Texture_Framebuffer_Blit, if the range lookup misses a pending download under a texture; Texture_CPU_Update and Texture_render_update_in_place (PR #387 guard), if a CPU write lands under a pending download, or if the watch, which now takes the lock settled (#475), lets a write in before a deferred batch that is no longer completed inside the method; Image_blit, if the blit source read misses one; Clear, if the gate changes clear ordering. A hang or a crash in B is a failed arm, not a moved capture: the merge joins a lock hand-off with a deferral, and a deadlock between the settled lock and the download hand-off would show as a run that does not finish. Read every scores1.tsv status for unreadable.",
+  "a_ref": "c91697f116",
+  "b_ref": "c6bfa6c85a",
+  "must_not_move": [
+    "Depth_buffer_fixed_function/*",
+    "Color_zeta_overlap/*",
+    "Surface_format/*",
+    "Surface_clip/*",
+    "Clear/*",
+    "Texture_render_target/*",
+    "Texture_CPU_Update/*",
+    "Texture_render_update_in_place/*",
+    "Image_blit/*",
+    "Texture_Framebuffer_Blit/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Clear",
+      "Color zeta overlap",
+      "Depth buffer fixed function",
+      "Image blit",
+      "Surface clip",
+      "Surface format",
+      "Texture CPU Update",
+      "Texture Framebuffer Blit",
+      "Texture render target",
+      "Texture render update in place"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

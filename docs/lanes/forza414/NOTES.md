@@ -474,3 +474,113 @@ The bound with both gone is the larger of the PFIFO thread's CPU side (`Surf` + 
 20-23 ms), the GPU (22.5 ms) and the vCPU, which is 96% on-CPU in this window: at most ~27 fps here
 if the vCPU's time is the guest's own work. lane.slowdown462's profile was taken at 28 fps, not in
 this window, so the vCPU's share here is not measured.
+
+## 15. What the three remaining finishes are: the Vulkan clear never sets `cleared`
+
+`[evict372]` in arm B, growth over 5 s at ~30 fps (10:54:11 to 10:54:16 PDT), per frame:
+
+| pair | mask | from -> to | per frame |
+|---|---|---|---|
+| 6, 7 | m10 swizzle | C and Z, 128x128 linear -> 128x128 swizzled, same format and pitch | 2.8 each |
+| 0, 1 | m10 swizzle | C and Z, 256x256 linear -> 256x256 swizzled | 0.94 each |
+| 2 | m08 small | Z 640x480 -> Z 1280x480, pitch 5120 | 0.94 |
+| 3 | m40 zdim | Z 1280x480 -> Z 640x480 | 0.94, half of them dirty |
+
+`handoffs=0`: #372's GPU-side handoff declines all of them, because it needs the same swizzle and
+the same size. No pair runs from swizzled to linear.
+
+So about 3.75 times a frame Forza sets up a small render target like this:
+1. It sets the surface type to linear and clears the target. The held binding is swizzled (last
+   frame's). `update_surface_part` rescues that mismatch because `pg->clearing` is set, and the
+   binding becomes linear.
+2. It sets the type to swizzled and draws. The held binding is now linear. The rescue for this
+   direction is `surface->cleared`: "a fully cleared linear surface to be marked swizzled"
+   (surface.c, `update_surface_part`).
+3. **`cleared` is never true in the Vulkan renderer.** `gl/draw.c:401-404` sets
+   `binding->cleared = full_clear && write_color` (and zeta) at the end of the clear.
+   `pgraph_vk_clear_surface` (vk/draw.c:7213-7496) has no such line on either of its two exits (the
+   inline clear at 7391 and the pipeline clear at 7489). The only writers in vk/ set it false
+   (`populate_surface_binding_target_sized`, `pgraph_vk_set_surface_dirty`).
+4. So the draw evicts the colour and the zeta binding. Each records a download of the cleared
+   pixels. The partner comes off the shelf stale (`vram_newer`), so it is `upload_pending`, and the
+   update completes the downloads with a finish before it uploads them back.
+
+That is a GPU -> VRAM -> GPU round trip of a uniform colour, 7.5 evictions of the ~9.5 per frame.
+It is also why section 12's next cut (complete only when the upload overlaps a pending download)
+is dead: these uploads read the very memory the eviction just downloaded. They overlap by
+construction. Do not build it.
+
+**The hunk, in vk/draw.c (not this lane's file):** at both exits of `pgraph_vk_clear_surface`, after
+`pgraph_vk_set_surface_dirty`, set `cleared` as GL does. `full_clear` is the clip-bounded clear
+rect covering the binding, taken before the scale factor is applied, as at `gl/draw.c:374-376`.
+Two conditions are stricter than GL's, because the rescue relies on the content being uniform:
+colour counts only when all four channels are cleared (`clear_all_color_channels`, already
+computed there), and zeta only when Z is cleared, and stencil too if the format has it.
+
+**Price (a bound, in finishes, and section 14 says not to trust a price in finishes).** The
+small-target evictions go: 7.5 of 9.5 per frame, and with them their downloads, their uploads
+(`realupl` 4.15 per frame) and the render-pass breaks around them. `su_upl` falls from 3.1-3.4 to at
+most the Z 640/1280 flips, 0.94-1.9 per frame. What that does to the wait depends on where in the
+frame the Z flips sit. If one is late, the PFIFO thread still waits for most of the GPU's work
+there. The A/B has to say. No fps figure is claimed here.
+
+**Not known:** whether Forza's clears of these targets are full clears. Eight clears a frame all
+take the pipeline path (`InlClr:0/480`), and the logcat does not carry the clear rect. If they are
+partial, `cleared` stays false and the A/B shows no change in `[evict372]` m10.
+
+## 16. lane.flip474's O1 (the pre-download branch) also needs vk/draw.c
+
+flip474's NOTES section 14 lists what lazy completion of the flip's display download needs. Rows 4
+and 5 are in vk/draw.c: the finish at draw.c:3590 tags `deferred_downloads_frame` only while it is
+< 0 and never re-tags entries recorded after the flip, and the slot rotation at draw.c:3785-3797
+completes the staging without clearing `display_predownload_*`. The surface.c rows (1, 2, 3, 7,
+11, 12) are this lane's. They are not safe to land without rows 4 and 5, because row 2's stale
+copy becomes the normal case once the completion is lazy.
+
+Forza pays this branch too (section 14: `pre` 0.85 per frame, ~2.7 ms in arm B).
+
+## 17. Grant request: vk/draw.c
+
+`hw/xbox/nv2a/pgraph/vk/draw.c` is on lane.remote's row (#426, #184, #109, #274, #461). The two
+hunks this lane needs:
+
+| hunk | site | size |
+|---|---|---|
+| set `cleared` after a full clear | `pgraph_vk_clear_surface`, both exits (7391, 7489) | ~15 lines |
+| O1 rows 4 and 5 | the finish's tag (3590) and the slot rotation (3785-3797) | not written yet |
+
+Requested on #414 and in `$DISPATCH_DIR/board-requests/forza414.md`. The first hunk is
+independent of the second and goes first.
+
+## 18. The merge and the re-registered arm
+
+- Merged origin/master c91697f116 at c6bfa6c85a. One conflict, in vk/surface.c, with #475
+  (`ef66174066`, the lock released across the completion's fence waits). Both sides are kept: the
+  completion is `download_surface_complete_deferred_at(d, caller, release_lock)`, the tagged
+  in-file callers go through `download_surface_complete_deferred(d, caller)` with the lock held
+  as on master, and `pgraph_vk_surface_update` passes `qemu_thread_is_self(&d->pfifo.thread)`.
+- No local compile exists on this host for these files. CI builds the head, and the arm's build is
+  the Android one.
+- `docs/testing/predictions/forza414-coalesce-mnm2.json` (sha256 e3771ace4860...): the same ten
+  suites, A = c91697f116 (master), B = c6bfa6c85a. The arms job queues it from the commit. This is
+  the arm the brief asks for before ready.
+- The soak was not re-run on the merged refs. A second pair would measure a 3% effect again, and
+  the Nova's queue is better spent on the `cleared` hunk's A/B.
+
+## Attempt 4 ends waiting
+
+PR #479 stays a draft, waiting on two things outside this session:
+
+- The `[job.arms]` verdict for `forza414-coalesce-mnm2.json`.
+- The board's answer on vk/draw.c.
+
+On resume:
+1. Read the arm verdict and every scores1.tsv `status`. If it passes and CI is green on the head,
+   check the PR body's `Files:` against `git diff --stat origin/master...HEAD` and mark #479 ready.
+2. If vk/draw.c is granted: write the `cleared` hunk, register a Forza soak prediction on the new
+   refs with the window t = 125-240 s (the place all runs share) and a goldens must-not-move with
+   Surface_format, Clear, Texture_render_target and any suite that draws swizzled targets, then
+   queue one pilot. The mover to register is `[evict372]` m10 per frame falling from ~7.5 toward 0
+   and `su_upl` from ~3.1 toward <= 1.9. Register fps as a readout, with the reason from section 14.
+3. When flip474's DOA pair on 4b22f2526b / 94f002d309 lands (`1790527182`, `1790527188`), add DOA's
+   cdef to section 14's table.
