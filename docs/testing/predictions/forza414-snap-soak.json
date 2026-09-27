@@ -1,0 +1,20 @@
+{
+  "registered_utc": "2026-09-27T21:15:27Z",
+  "who": "lane.forza414",
+  "issue": "414",
+  "title": "4D530013-Blinx_The_Time_Sweeper.xiso.iso",
+  "device": "nova",
+  "seconds": 420,
+  "route": "survey",
+  "perflog": true,
+  "runs_per_arm": 1,
+  "a_ref": "6ab1c50643",
+  "b_ref": "72de98abd1",
+  "prediction": "SAME-SESSION NOVA SOAK A/B of #414 hunk 3, hand-read (arms.sh skips title soaks). A is 6ab1c50643 (lane/forza414 after merging origin/master 940c77e866). B is 72de98abd1 (A plus: flush_draw_one_pass keeps the four fields its #ifndef NDEBUG asserts compare in scalars instead of copying a whole RenderCommandSnapshot, ~40 KB: the 32 KB register file, program data, constants, per draw pass; Android release builds pass -UNDEBUG, so shipped builds pay it). lane.slowdown462's Blinx profile (blinx.data, level play, 16.7 fps) put 47% of the PFIFO thread's memcpy_opt (30.5% of 13,080 ms on-CPU) under pgraph_vk_snapshot_state: ~3.7 ms/frame; #474's note says 2.2-2.5 ms/frame on AUF and Blinx. Title Blinx (4D530013), Nova, MAX regimen, survey route, 420 s, perflog, as 1-1790492277-slowdown462-690144. WINDOW: mark play + 10 s to the last perflog line - 10 s (level play; the menu rounds' START pauses the level until mark play). Per-arm figures are medians over the window's perflog phase lines. DRAW SELF is Draw minus its bracketed children (Vtx + Syn + Prw + Pipe + Desc + Setup + Cmd): the snapshot runs inside draw_dispatch and outside every child timer, so it lands there and nowhere else. Legs, and the world each fails in: M0 both arms reach level play (mark play, perflog phase lines with Draw > 0 in the window), no crash or abort line (an assert on the four scalars aborting would show here); else VOID. P1 B's Draw self median <= A's - 1.0 ms/frame. It fails in the world where the snapshot costs what its size says rather than what the profile says: ~40 KB per pass at a few GB/s is 5-10 us, times ~47 draw passes a frame, 0.3-0.5 ms/frame, i.e. the profile's attribution is inflated (sample rounding, or memcpy_opt callers mis-split). If P1 fails with B's Draw self lower by 0.2-0.6 ms, that is the world, and the hunk is correct but small. READOUTS, not judged: fps, Tot, Draw, Pipe, Sub, GPU, draws per frame (a scene difference between the arms moves Draw self with the draw count; read it before judging P1). No fps figure is claimed: in slowdown462's reading Blinx's PFIFO (26 ms on-CPU) is not the bound, the vCPU is.",
+  "expect": {
+    "M0/both_reach_level_play_is": true,
+    "P1/a_minus_b_draw_self_ms_per_frame_min": 1.0
+  },
+  "expect_counts": {},
+  "expect_note": "Named rules read by hand from the two logcats (perflog phase lines, mark play); a soak writes no captures and ab_compare never judges it."
+}
