@@ -350,11 +350,95 @@ Not fixed here, the board's: a `targets.toml` change still does not run the
 jobs selftest. The fixture no longer reads that file, so this check cannot go
 red that way again; any other fragment that reads live title data can.
 
+## Attempt 5 (resumed 2026-09-27 08:29 PDT): nameless verdicts; the remaining saves
+
+Why attempt 4 did not "finish": it did. PR #478 was marked ready and folded
+(6e4dee6a28, 08:27 PDT). This resume has new work: lane.local's 08:05
+delivery (a nameless verdict must land in its title's row) and the routed
+titles that still had no profile at 08:30. New PR #489, from a merge of
+master at 6e4dee6a28.
+
+### A verdict with no name lands in its title's row
+
+- `status_html.py`: a verdict with no `title_id` takes it from the registry's
+  `iso` map, else from the ISO's leading 8-hex title ID. The row is named by
+  the registry's name for that ID.
+- `title_verdict.py find_title` falls back to the same prefix when the map
+  does not list the ISO, so new verdicts carry `title_id` and `name`.
+- Fixture: `synth.py` adds "Zz Nameless" (5A5A0009). Both of its verdicts,
+  one a passing confirmation, have `name: null, title_id: null` and name
+  `5A5A0009-Zz_Nameless_(USA).xiso.iso`, which the map does not list. A new
+  check, `assert_titles.py nameless`, wants one row, Playable. Fragment 66
+  also calls `find_title` directly.
+- `measured05/fixture/soaks.py` built fragment 67's expected Measured set
+  from verdict `name`, and crashed on the null (TypeError sorting None). It
+  now names such a verdict through the fixture's registry by the same
+  prefix. That path was in [free]; board request item 7 asks for it and for
+  title_verdict.py.
+
+| code | `nameless` | fragment 66 |
+|---|---|---|
+| master 6e4dee6a28's `status_html.py` | FAIL: a row `5A5A0009-Zz_Nameless_(USA).xiso.iso`; "Zz Nameless" reads "inputs ready" | FAIL (also `word`, `lines`) |
+| master's `title_verdict.py` | | FAIL, find_title by prefix |
+| this branch | PASS | 18 of 18 |
+
+The live dispatch dir had no nameless verdicts left (lane.local re-scored the
+seven at 08:00), so the fixture is the only test of this.
+
+The whole jobs selftest could not run in one Bash call (it takes more than
+10 min), and detaching needed approval this session did not have.
+`scratch/selftest-subset.sh` (a copy of selftest.sh that sources only the
+fragments matching `$ONLY`) ran it in chunks, each chunk with the fragments
+it reads state from: 10-51; 10-50 + 55-localtime + 60-64; 55-67; 7x; 8x;
+10-40 + 9x (timed out inside 97-release-prio with no FAIL, so 97-release/
+preflight/fold-branch were rerun alone); 10-40 + 98/99. All were green.
+Fragments 51, 60 and 92 fail when run without 10-50: 51 reads 50's queue,
+60 reads arms' tick log, and 92 reads `sha2` from 40.
+
+### Saves: the Nova, HELD 09:57:59-10:01:17 PDT
+
+`scratch/pullnova.sh` is `pullthor.sh` with the Nova's serial and a 30%
+battery floor. The Nova ran a request until 09:58:33, and the script waited
+for it before reading. Battery was 63%. The app was never started.
+
+| step | measured |
+|---|---|
+| device `md5sum` | 13 s |
+| `adb pull`, 5,364,776,960 B | 137 s, 37.4 MB/s |
+| host md5 | matches (`e6f66790...`) |
+
+Host copy: `~/hakux-work/titlestate-pull/nova-hdd-20260927T165801Z.img`.
+Nova eeprom md5 is `7eb04a87...`, the same as on 09-26.
+
+| title | TID | device | on its disk | registry |
+|---|---|---|---|---|
+| Kabuki Warriors | 43560001 | Nova | no save; one TDATA file | no-save |
+| 007: Nightfire | 45410026 | Nova | no save | no-save |
+| GoldenEye: Rogue Agent | 4541005D | Nova | no save | **not recorded**: its first-run makes PLAYER1, and the nav session's force-stop never flushed it. Needs a first-run that ends with the HOME flush, then a pull |
+| Batman (no registry name) | 4B420001 | Nova | no save | no-save (no route on master) |
+| DOAX | 54430007 | Nova | save 42285B90C468 (the route never asks; the game writes one anyway) | harvested b292dbfed04f, verify OK |
+| WWE Raw 2 | 5451000D | Nova | save 02871B605091 (the same: Quick Start still writes one) | harvested 9616810a4c85, verify OK |
+| 50 Cent: Bulletproof | 56550042 | Nova | no save (the route picks Continue without saving) | no-save |
+| BF2MC | 45410062 | Thor | no save in the 06:59 image, read after the 06:46 nav session | no-save, run `pull:thor-hdd-20260927T135944Z` |
+| Azurik | 4D530007 | Thor | played at 07:02, after the 06:59 pull | **not read**: the Thor is under hostops' battery hold (9%, lifted at >= 80%) |
+| Alias | 41430016 | Thor | played at 07:08 | **not read**, the same |
+| Black | 45410083 | Thor | UDATA holds only TitleMeta/TitleImage/SaveImage; no save directory and no TDATA | no save id exists. The attempt 3 no-save record stands; the page reads "save: not needed" |
+
+The Thor titles JSRF, GTA: San Andreas, Bruce Lee and Crash Twinsanity were
+already recorded no-save in attempt 3. `show` does not print `save_na`, so
+at 08:30 they looked unrecorded.
+
+Left for the next session, on the Thor after its battery hold lifts: one
+pull, then Azurik and Alias. GoldenEye: Rogue Agent needs a flushed
+first-run first.
+
 ## Do not repeat
 
 - Do not mark a PR that touches `docs/testing/jobs/**` ready on the lane's own
   new checks alone. Run the whole of `docs/testing/jobs/selftest.sh` on the
   head first: a fragment is sourced by it and cannot be run by itself.
+- Do not read a title as unrecorded from `titlestate.py show`: it does not
+  print `save_na`. Read the device's JSON (`scratch/na.py`).
 - Do not read "green on master" as "this check passed on master". Look for
   the workflow's run on that sha (`gh run list --workflow jobs-selftest.yml`):
   a path-filtered workflow does not run on every fold.

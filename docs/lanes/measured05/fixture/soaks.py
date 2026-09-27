@@ -7,7 +7,7 @@ below whose gfps fall in 90-240 s), never from the renderer.
 
     soaks.py <copied fixture work dir> <synth dir>
 """
-import datetime, json, os, sys
+import datetime, json, os, re, sys, tomllib
 
 WORK, SYN = sys.argv[1:3]
 NOW = 1790465073                                   # the fixture's clock
@@ -33,6 +33,9 @@ for k, (rid, iso, dev, a, b, g, _) in enumerate(SOAKS):
     os.utime(os.path.join(rd, "DONE"), (at, at))
 
 want = set()
+# A verdict with no name (scored before its registry entry) is the title its
+# ISO's title-ID prefix names in the fixture's registry (synth.py's).
+reg = tomllib.load(open(os.path.join(SYN, "targets.toml"), "rb")).get("titles", {})
 bf = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../dash432/pass1-backfill.json")))
 want |= {r["title"] for r in bf["rows"] if r.get("fps_median") is not None}
 for n in os.listdir(RES):
@@ -40,6 +43,7 @@ for n in os.listdir(RES):
     if os.path.exists(p):
         v = json.load(open(p))
         if v.get("fps_window_median") is not None:
-            want.add(v.get("name"))
+            m = re.match(r"([0-9A-Fa-f]{8})-", v.get("title") or "")
+            want.add(v.get("name") or reg[m.group(1).upper()]["name"])
 want |= {s[6] for s in SOAKS if s[6]}
 json.dump(sorted(want), open(os.path.join(SYN, "measured.json"), "w"), indent=1)
