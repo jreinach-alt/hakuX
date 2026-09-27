@@ -1,0 +1,1 @@
+host (buildflags427): A/B simpleperf profile, two APKs, ~20 min; profile_ab.sh lifts it on every exit path.

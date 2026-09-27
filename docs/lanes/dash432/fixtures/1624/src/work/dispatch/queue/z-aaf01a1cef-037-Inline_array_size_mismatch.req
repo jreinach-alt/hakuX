@@ -1,0 +1,22 @@
+{
+ "id": "z-aaf01a1cef-037-Inline_array_size_mismatch",
+ "requester": "full-sweep",
+ "arm": "aaf01a1cef",
+ "purpose": "full-corpus sweep of Inline array size mismatch at aaf01a1cef",
+ "suites": [
+  "Inline array size mismatch"
+ ],
+ "tests": [],
+ "skip_tests": [],
+ "only_tests": [],
+ "base_iso": "",
+ "ref": "aaf01a1cef",
+ "runs": 1,
+ "title": "",
+ "seconds": 0,
+ "pull_glob": "",
+ "expect": "",
+ "expect_sha": "",
+ "no_expect": "full-corpus survey at one pinned binary, not an A/B arm",
+ "queued_utc": "2026-09-26T19:39:20Z"
+}

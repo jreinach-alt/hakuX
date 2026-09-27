@@ -1,0 +1,7 @@
+{
+ "requester": "host-bisect311",
+ "purpose": "#311 bisect round 5 probe 1: a6fdf61aad (2026-09-08 test: state the open goal on every turn end)",
+ "ref": "78610f7bcf86",
+ "device_label": "nova",
+ "apk_sha": "7a0c3745bf88"
+}

@@ -1,0 +1,3 @@
+{
+ "result": "Monitor timeout only \u2014 it was tailing the self-test log, which finished green (`65 passed, 0 failed`) before the timeout. Nothing to re-arm; the lane's work is complete and PR #131 is ready for the board."
+}

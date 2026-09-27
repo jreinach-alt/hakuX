@@ -1,0 +1,7 @@
+{
+ "requester": "host-bisect311",
+ "purpose": "#311 bisect round 1 probe 0: aeb4a096b6 (2026-09-10 release: v0.4.0-j1 notes and version)",
+ "ref": "aeb4a096b6",
+ "device_label": "thor",
+ "apk_sha": "6655bdec171e"
+}

@@ -1,0 +1,7 @@
+{
+ "requester": "arms-tbchurn424-base",
+ "purpose": "BASE arm #424 lane.tbchurn424 at 7e6a4ac88a, queued by the arms job from lane/tbchurn424:docs/testing/predictions/tbchurn424-pixels-inert.json",
+ "ref": "7e6a4ac88a",
+ "device_label": "nova",
+ "apk_sha": "556fe3b4e153"
+}
