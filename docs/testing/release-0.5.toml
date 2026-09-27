@@ -1,0 +1,68 @@
+# The 0.5 release, as the status page states it (status.sh reads this file;
+# STATUS_RELEASE_CONF overrides the path). Owner decisions only: when the owner
+# sets or changes the target, edit the fields here and nothing in the renderer.
+# Every field is shown with `decided`, its source and date.
+#
+# Moved here from docs/lanes/dash432/ by lane.titles05 (#433), when the owner
+# replaced the tested-titles target with the two numbers below.
+
+name = "0.5"
+tracking_issue = 433
+
+# The target in one sentence, and where it was decided. No date: the owner set
+# none, and the page forecasts one from the measured rate.
+target = "0.5 ships when 145 titles are benchmarked and 50 of them are Playable on the Thor/Nova handhelds (#433)."
+decided = "owner, 2026-09-26 17:15 PDT: https://github.com/jreinach-alt/hakuX/issues/433#issuecomment-5851419837"
+
+# The two numbers the header's progress bars count against.
+#   benchmarked: copied to both handhelds, profile setup and gameplay inputs
+#                programmed (the first-run and returning routes), the profile
+#                save extracted, and gameplay fps measured at MAX performance on
+#                ONE handheld (the owner, 18:10 PDT: "The hardware is identical
+#                and we previously ruled only one device needs to be measured").
+#   playable:    every criterion of title_verdict.py's bar met on the handheld
+#                it was measured on, including the 20-minute soak.
+benchmarked_target = 145
+playable_target = 50
+# How many handhelds a benchmarked title must be copied to ("copied to both").
+benchmark_copies = 2
+# The forecast's window: titles benchmarked (or made Playable) in the last N hours.
+rate_hours = 48
+
+# The release gate. The page keeps status.sh's measurement (the newest soak per
+# handheld whose request names the title, median gfps over 90-240 s from the
+# first perf line) and compares its ref with the candidate's.
+gate = "Ghoulies median >= 25 gfps over 90-240 s on the candidate APK, both handhelds"
+gate_min = 25
+candidate_tag_prefix = "v0.5"
+
+# The 0.5 title list: every title on either handheld, every title staged for
+# them, and every title an issue below names. "Any title fits into that 145."
+test_list = "every title on either handheld (titles/already-on-handhelds.json, lane.xbox's pushes in logs/titlepipe/batch-*.tsv, targets.toml's iso), every staged ISO (the xiso manifest), and every title named in [issues]"
+
+# Parked-by-policy work: one line on the page, with its gate.
+parked_label = "blocked:after-0.5"
+parked_gate = "#433 closes (0.5 ships)"
+
+# Hand-reviewed rows that no verdict.json carries (pass 1 of #397), relative
+# to this file.
+backfill = "../lanes/dash432/pass1-backfill.json"
+
+# The performance levers, in the order the owner filed them. Words come from
+# each issue's title on the board; the owner lane from territory.toml; the
+# effect from the arms job's verdicts and the board's closing note.
+levers = [424, 425, 426, 427, 428, 429]
+
+# The issue that stands between each title and the next stage of the 0.5 scale
+# (its frame rate, or a defect on its way to gameplay), by the title's name on
+# the handhelds (targets.toml `name`). Explicit, never matched from the issue's
+# words. A value may be a list. An open issue here with no lane, no run and no
+# tracker row is a "needs a person" alarm: nothing would ever pick it up.
+[issues]
+"Blinx: The Time Sweeper" = 372
+"007: Agent Under Fire" = 412
+"Dead or Alive 1 Ultimate" = 413
+"Forza Motorsport" = 414
+"50 Cent: Bulletproof" = 382
+"Spikeout: Battle Street" = 303
+"Grabbed by the Ghoulies" = 311
