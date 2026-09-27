@@ -153,3 +153,8 @@ brought in `jobs/hold.sh` (#453), which writes `hold/<dev>.why` as
 and hour as the "via" and started the purpose at "02:03Z". It now takes the
 stamp as the hold's start and parses the rest as before; 65 has a check for
 that format (fails before the fix: via `2026-09-27T01`).
+
+Whole suite on the merged tree (2026-09-26 ~18:50 PDT): `selftest: 2043
+passed, 0 failed`. `preflight.sh`: passed. Waiting on CI for this head; once
+it is green, `needs-rebase` comes off and `fold-ready` goes on (the brief's
+two gh-label.sh calls).
