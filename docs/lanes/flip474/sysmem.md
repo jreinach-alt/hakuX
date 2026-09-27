@@ -100,6 +100,25 @@ stay the same and nothing was rebased. The arms job picks up the new sha on its 
 At 23:00Z none of the eleven requests had run. The Nova is still under the
 battery hold, and the Thor is held for lane.xbox's title push. The wait below still holds.
 
+## Attempt 3 (resumed 2026-09-27 23:03Z)
+
+Attempt 2 did not finish because it ended waiting on the device again, and
+that was the right call: none of its eleven requests had started. At 23:05Z
+the Nova is running the first one, pgraph A `0-0-x-1790549038-flip474-1817562`
+(the host moved the batch to the device head as `0-0-x-`). The other nine env
+requests, DOA `1-1790549110-flip474-1833747`, and the arms job's pair for
+`flip474-sysmemfix-pgraph.json` (`1-1790549941-arms-flip474-base-2298159`,
+`-fix-2298254`) are queued. #516's CI is green on `eb473c8377`, and its
+`Files:` line matches the diff.
+
+Side items, and why none are this lane's:
+- The texture-bind drain (lane.local's 15:46 addendum) went to its own lane,
+  lane.drain474, which holds vk/texture.c (board, hostops 15:48 PDT).
+- #504 waits on its fix arm `1-1790547698-arms-flip474-fix-1029105`,
+  which is still queued. Hostops marks it ready when the arms job PASSes it.
+
+The wait is the same one: judge the legs when the requests land.
+
 ## Do not repeat
 
 - Do not copy a skip spec from a hand-queued request (spaced suite names)
