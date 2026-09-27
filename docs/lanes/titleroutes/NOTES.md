@@ -165,4 +165,4 @@ what these games read as the D-pad (not yet tried).
 `first-run` ("known to have no profile") once targets.toml names the
 route. For a single-file route (Kabuki, Nightfire) it answers `survey.route`
 with variant first-run, since it only looks for `<route>.<variant>.route`.
-The soak must use targets.toml's `route` for those; on the board request.
+`request.sh --route <stem>` reads `routes/<stem>.route` directly, so the host queues these by file stem; on the board request.
