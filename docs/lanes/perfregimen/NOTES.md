@@ -154,7 +154,7 @@ value, and 2 s apart is also what 30 fps at 60 flips per line looks like. So
 the cadence reader returns ~30 whatever the rate, and judge.py reads the
 value instead.
 
-### 5b. The Thor: pending
+### 5b. The Thor (attempt 1: not run)
 
 At the time of writing the Thor was below the brief's 50% start floor (43%,
 flat while serving the queue) and held by lane.xbox. Its values are the same
@@ -192,7 +192,49 @@ longer gates the PR.
   (P5 PASS, P6 FAIL at 1.000). The host queues the pair when #444 folds.
 - **The Thor write proof** (no title, idle probe only):
   `BATT_MIN=30 ARMS=' ' bash held_session.sh thor <dir>`, under a hold.
-  The result is below (5d) if it ran.
+  The result is in 5d.
+
+### 5d. The Thor write proof, held 17:00:14-17:02:30 PDT (raw: `pilot-thor.md`)
+
+The Thor went idle at 17:00:14 after about 10 minutes of `wait_idle.sh`. It
+was at 30% battery (the owner's floor) and hot from the request it had just
+served (gpuss-0 73.6 C, cooling to 66.1 C during the probe). The probe took
+112 s. REST read back 0/4 before the hold was lifted.
+
+**The performance writes reach the hardware, exactly as on the Nova:**
+
+| performance_mode | kgsl min_clock_mhz (min_pwrlevel) | big-core cur (policy7) |
+|---|---|---|
+| 0 NORMAL | 401 (4), five times | 1843200 |
+| 1 STANDARD | 550 (2) | 2476800 |
+| 2 HIGH | 615 (1), twice (alone and as MAX 2/5) | 3187200 |
+
+**The fan writes reach the hardware too, but SPORT is not the maximum on a
+hot Thor.** The tach (`speed`) reads 0, as before, so this is PWM duty:
+
+| fan_mode | duty | gpuss-0 |
+|---|---|---|
+| 4 SMART (baseline and REST steps) | 29000, 29000, 27500, 25500, 25000 | 73.6 to 66.1 C, falling |
+| 0 DISABLED | 0 (state 0) | 69.6 C |
+| 1 QUIET, 2 BALANCE, 3 PERFORMANCE | 12000 | 68-69 C |
+| 5 SPORT (alone and as MAX) | 25000 | 66.5-66.9 C |
+
+SPORT is a fixed 25000 on both devices. SMART is a temperature curve: about
+13700 at the Nova's 47 C, and 29000 at the Thor's 74 C. Against the
+registered P2 of `perfregimen-pilot-thor.json` ("duty at 5 >= every other
+mode"), the Thor **fails**, in the world that leg named: the Thor's curve
+differs from what the Nova showed at 47 C. So under a hot gameplay load,
+MAX (2/5) can run the fan slower than REST (0/4) would. The performance half
+of MAX is unaffected.
+
+This is not changed here, for two reasons. First, no fixed mode measured so
+far is the maximum at every temperature. Second, the duty ceiling
+(`gpio5_pwm2` period) and mode 6 CUSTOM are unread. The next step belongs to
+whoever takes the Thor next: read the PWM period and CUSTOM's duty, and
+compare the 4 and 5 duty under the queued Blinx pair's load. A queued
+result carries no duty samples, so read `duty` from adb while the arms run.
+If SMART drives the fan harder than SPORT under load, FAN_MAX should be 4
+(SMART), or CUSTOM at its ceiling.
 
 ## For the host: REST values for host-tools/device_rest.conf
 
