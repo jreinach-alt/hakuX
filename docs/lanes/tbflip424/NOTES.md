@@ -31,3 +31,13 @@ falls >= 10x) and M4' (B median gfps >= A - 1, no FATAL, frames to the end).
 |---|---|---|---|---|---|---|
 | `1790473035-lane.tbflip424-1078946` | A | r1 (pilot) | | | | queued |
 | `1790473037-lane.tbflip424-1082948` | B | r1 (pilot) | | | | queued |
+
+## 4. Waiting (2026-09-27 ~01:45Z)
+
+The pilot is queued behind ~43 min of titlebench runs on the Thor. `handback.sh` resumes this
+lane when the two pilot results carry DONE/ERROR (`draft-strand-runs`; the arms job skips soak
+predictions, so no `[job.arms]` verdict will come). On resume:
+1. `python3 docs/lanes/tbflip424/playread.py 1078946 1082948`. Check M0 (mark play, ng >= 20,
+   rt 0 on A and 1 on B, fatal 0, tail <= 15 s) and look at one play frame per arm.
+2. Write `pilots/lane.tbflip424.ok` (with python3), then queue A B A B for r2 and r3.
+3. Do not push the flip until M4' is read.
