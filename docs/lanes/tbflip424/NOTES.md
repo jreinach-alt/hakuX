@@ -25,19 +25,42 @@ A = 46936c6a3d with no env; B = the same apk with `--env HAKUX_TCG424_RANGE=1`. 
 arm, interleaved. Legs M0 (instrument), M1 (counter: A churn >= 1.0, B <= 0.5 x A, di/s
 falls >= 10x) and M4' (B median gfps >= A - 1, no FATAL, frames to the end).
 
-## 3. Runs
+## 3. Why attempt 1 did not finish, and the move to the Nova
+
+Attempt 1 ended correctly on a wait: the Blinx pilot pair (`1790473035-...-1078946` A,
+`1790473037-...-1082948` B) was queued on the Thor. The pair never ran. At 02:30Z the
+owner put the Thor on hold to charge it from 7% on a 500 mA port, and only the owner lifts
+that hold. Blinx is staged on the Thor only. hostops (19:51 PDT) asked for M4' on a Nova title.
+Attempt 2 (2026-09-27 ~03:00Z) did the following:
+
+- Merged origin/master (231d04df51) and withdrew the Thor pair to `dispatch/queue/withdrawn/`
+  with no result. `tbflip424-blinx.json` stays on file as registered, unmeasured.
+- Registered `docs/testing/predictions/tbflip424-doa1u.json` (ab07cd2483, sha256 8178685c...)
+  before any run: Dead or Alive 1 Ultimate, survey route, 420 s, Nova, A/B = 231d04df51 with and
+  without `HAKUX_TCG424_RANGE=1`, the same reader (`playread.py`, unchanged).
+- Why DOA1U: of the Nova titles with a survey soak that reaches play and carries [tlb68] lines,
+  it is the closest to Blinx's cost-side profile. titlebench's `1790467161-titlebench-2613663`
+  (pre-#434 binary) reads churn 1.2%, slow/s 1115 against inv/s 305, and gfps 27.5 against a
+  target of 60, so it runs uncapped. Every play frame after `mark play` is a STAGE 01 fight
+  (`route-frames/192135-play.png` to `192434-play.png`). Rejected: Crimson (already priced by
+  M3), CoD3 (29 against a cap of 30), and AUF (churn 0.6).
+- The M1 floor on A's churn is 0.5 here, not 1.0. The one run on disk reads 1.2, and a floor at
+  1.0 would decide the leg on noise. It was fixed in the file before the pilot was queued.
+- The addendum's `HAKUX_TCG68_JC` default flip is commit af6fffdc0c (cputlb.c, the default plus
+  the comment). Its pixel must-not-move leg goes in the pgraph arm on the flipped binary.
+
+## 4. Runs (DOA1U, Nova)
 
 | request | arm | round | gameplay gfps | churn% | ng | note |
 |---|---|---|---|---|---|---|
-| `1790473035-lane.tbflip424-1078946` | A | r1 (pilot) | | | | queued |
-| `1790473037-lane.tbflip424-1082948` | B | r1 (pilot) | | | | queued |
+| `1790477688-lane.tbflip424-1974728` | A | r1 (pilot) | | | | queued |
+| `1790477690-lane.tbflip424-1974936` | B | r1 (pilot) | | | | queued |
 
-## 4. Waiting (2026-09-27 ~01:45Z)
+## 5. Waiting (2026-09-27 ~03:15Z)
 
-The pilot is queued behind ~43 min of titlebench runs on the Thor. `handback.sh` resumes this
-lane when the two pilot results carry DONE/ERROR (`draft-strand-runs`; the arms job skips soak
-predictions, so no `[job.arms]` verdict will come). On resume:
-1. `python3 docs/lanes/tbflip424/playread.py 1078946 1082948`. Check M0 (mark play, ng >= 20,
+The Nova queue ahead holds an AUF soak (#412), a DOA pair (#413) and lane.titleroutes' 30-min
+sessions. On resume:
+1. `python3 docs/lanes/tbflip424/playread.py 1974728 1974936`. Check M0 (mark play, ng >= 20,
    rt 0 on A and 1 on B, fatal 0, tail <= 15 s) and look at one play frame per arm.
 2. Write `pilots/lane.tbflip424.ok` (with python3), then queue A B A B for r2 and r3.
-3. Do not push the flip until M4' is read.
+3. Do not push the range flip until M4' is read.
