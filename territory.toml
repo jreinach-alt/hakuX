@@ -411,6 +411,12 @@ retired_utc = "2026-09-27T06:40:00Z"
 files = []
 note = "RETIRED (hostops 2026-09-26 23:40 PDT): PR #464 folded as 55a82867dd; unit gone. The dispatcher now serves a handheld that attaches after it started."
 
+[lane.notify488]
+issues = ["488"]
+files = ["hw/xbox/nv2a/pgraph/pgraph.c", "docs/lanes/notify488/**", "docs/testing/predictions/notify488-*.json"]
+standing = false
+note = "STARTED (hostops 2026-09-27 10:00 PDT), briefs/notify488.md: #488 (fps-focus), hakuX never writes NV097 NOTIFY notifiers and BACK_END_WRITE_SEMAPHORE_RELEASE waits for a full surface download (13.8 ms vs 2.7 us on silicon; lane.xbox signal-timing suite, PR #486). pgraph.c taken from [lane.flip474]'s released files (PR #475 folded; its PR #485 is docs only)."
+
 [free]
 # RELEASED (hostops 2026-09-27T16:58Z) by retiring lane.handbackmerged (PR #484 folded): docs/testing/jobs/handback.sh, docs/testing/jobs/selftest.d/99-handback-merged.sh, docs/lanes/handbackmerged/**.
 # CLAIMED (hostops 2026-09-27T15:15Z) by lane.handbackmerged: docs/testing/jobs/handback.sh.

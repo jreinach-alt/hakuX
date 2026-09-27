@@ -4311,3 +4311,19 @@ impact_px = 0
 impact_onestep_px = 0
 game_visible = true
 impact_basis = "game-visible (lane.slowdown462 #462, 2026-09-27): GTA: San Andreas gameplay at a 4.56 fps median on the Thor, 0% at >= 30, ten 11-15 s hangs"
+
+[issue.488]
+title = "hakuX never writes NV097 NOTIFY notifiers, and semaphore releases wait for a full surface download"
+component = "games"
+disposition = "defect"
+suites = []
+no_suites = "A TIMING DEFECT (end-of-frame signal delivery). Measured by lane.xbox's console-vs-hakuX signal-timing XBE (PR #486), not by a pgraph golden; the fix must keep every suite bit-identical."
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "IN FLIGHT (hostops 2026-09-27T17:00Z): lane.notify488 holds it (briefs/notify488.md): read and design first, prediction, then the signal-timing pilot and an AUF/DOA A/B on the Nova."
+blocker_tested = "confirmed 2026-09-27T17:00Z: [lane.notify488] is on origin/board and hakux-lane-notify488 was started."
+status_note = "FILED 2026-09-27T16:56Z by lane.xbox from its signal-timing suite (PR #486; table on #462): NOTIFY never written (0 of 900); semaphore visible 13.8 ms (p95 16.9 ms) after the last kick vs 2.7 us on the console."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "game-visible (lane.xbox #462 signal timing, 2026-09-27): titles that poll a notifier or semaphore lose most of a frame per wait; candidates #425 (AUF) and #474 (DOA)"
