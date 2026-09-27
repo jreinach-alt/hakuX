@@ -912,17 +912,58 @@ driver's autotuner picks.
   ignores `TU_DEBUG`". lane.turnipfork showed `--env` reaches this driver's
   driconf options; nothing has shown it for `TU_DEBUG`.
 
+**The result (2026-09-27, 21:41 to 21:57Z, the Nova, one session, MAX
+regimen).** `phaseread.py`, `lockread.py` and `gfpsseries.py` over 151-288 s.
+GPU, R and X are as printed, with the reported period; true ms is x 1.573.
+
+| arm | request | gfps median (min-max) | Tot | cdef | GPU | R | X | X/R |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| base | `1-1790540673-flip474-2311172` | 16 (1-28) | 58.1 | 47.7 | 31.2 | 15.7 | 15.5 | 0.99 |
+| gmem | `0-0-x-1790545474-flip474-43429` | 14 (11-17) | 64.4 | 53.1 | 34.4 | 17.0 | 17.4 | 1.02 |
+| **sysmem** | `0-0-x-1790545474-flip474-43379` | **21** (18-40) | **41.0** | 29.8 | **19.6** | 19.3 | **0.3** | **0.02** |
+
+| leg | verdict |
+|---|---|
+| M0 | holds: 35, 33 and 54 phase lines; the shots show the fight in every arm |
+| E0 | holds: `env: TU_DEBUG=sysmem` and `env: TU_DEBUG=gmem` in their logcats, none in the base's |
+| T0 | **fails for the base as written**: one line at 1 gfps, at 274.7 s. It is the KO, not a thermal collapse: the shots go fight, REPLAY, CONTINUE. sysmem (18 of 21) and gmem (11 of 14) hold. By the rule the base is void and is rerun once: `1-1790546289-flip474-398286` |
+| S1 | **holds against gmem: 19.6 / 34.4 = 0.57.** Against the void base it is 0.63 |
+| S2 | **holds: X/R 0.02.** The gap outside the passes is gone |
+| G1 | holds against the void base: GPU 1.10 of it, X/R 1.02. The default is GMEM |
+| F1 | **holds against gmem: Tot -23.4 ms, gfps +7.** Against the void base: -17.1 ms, +5 |
+| R0 | not needed: the arms differ, so `TU_DEBUG` reaches this driver |
+| H0 | holds in all three: longest gap 2.0, 1.5 and 1.2 s, lines to the end, no crash marker |
+
+- **GMEM rendering executes DOA's draw stream twice, and sysmem once.** X
+  equals R in every scene of the two GMEM arms (fight 15.5/15.7 and
+  18.3/18.3, replay 15.3/15.0, the screen after it 8.2/8.2, CONTINUE
+  12.8/12.6), whatever is on screen.
+- On the CONTINUE screen, which all three arms reach, R is the same in both
+  modes and only X goes: base 12.6 + 12.8, gmem 12.7 + 13.1, sysmem 12.4 +
+  0.3. The three are at different spots of the same stage, so this is a
+  like scene, not the same frame.
+- In the fight one sysmem execution (19.3) is dearer than one GMEM replay
+  (15.7 to 17.0). The opponents differ by run (Zack, Gen Fu, Tina), so that
+  difference is not attributed.
+- **What the windows are not:** the same fight. The survey route is blind and
+  the opponent is drawn per run. A faster arm also reaches the KO sooner:
+  the sysmem arm's fight ends at 265 s and its last 23 s are the screens
+  after the KO, at 30 to 40 gfps. Its fight alone reads 21 to 22 gfps.
+- The frame is still serial. In sysmem, cdef is 29.8 of Tot 41.0: the PFIFO
+  thread still waits out the GPU's whole frame (section 14's O1).
+
 lane.turnipfork ran the same three modes on Crimson Skies and found them flat
 at 29 gfps. Crimson sits at its 30 Hz cap, so that run could show a cost and
 not a gain. Its notes say to reopen "when a profile puts GPU time on the
 critical path of an uncapped title". DOA is that title.
 
-**Candidate fixes. Each figure is a bound, not a prediction.**
+**Candidate fixes. Each figure is a bound, not a prediction,** except F-a's
+first row, which is now measured.
 
 | fix | what it takes | bound for DOA on the Nova |
 |---|---|---|
-| F-a: render DOA's pass in sysmem | conditional on S1. The env is a test, not a fix: the app would have to ask per driver, at instance creation (`instance.c`), and the pgraph suites must be identical under it first | GPU span 63.6 -> about 32 ms. With today's serial wait the frame is about 11 + 32 = 43 ms, **<= 23 fps** |
-| F-a with O1 (section 14's lazy completion) | both | frame >= max(32, 11) ms, **<= 31 fps** |
+| F-a: render in sysmem | **measured with the env: 14 to 16 -> 21 gfps, Tot 58 to 64 -> 41 ms.** The env is a test, not a fix. The app would have to ask per driver, at instance creation (`instance.c`, not this lane's file). Before that: the pgraph suites identical under `TU_DEBUG=sysmem`, and the other titles measured, because sysmem is the mode a tiler avoids for fill-heavy passes | measured, not a bound |
+| F-a with O1 (section 14's lazy completion) | both | frame >= max(GPU 30.8 true, CPU 11) ms, **<= 32 fps**, from 21 |
 | F-b: the cost of one replay | not measured. 31 ms over about 760 surface updates a frame (`[surf413] up`, roughly one per draw) is 41 us each; silicon draws the frame in under 16 ms. The next instrument is a per-pass count of draws, vertices and pipeline binds beside the pass's GPU time. It is in draw.c, which is not on this lane's row | unknown until counted |
 | F-c: write a pass's timestamps outside it | draw.c `begin_render_pass` / `end_render_pass`, perflog only. R then means "inside passes" on a tiler too | an instrument fix; it moves no frame time |
 
@@ -993,15 +1034,23 @@ per-pass table, and there is nothing here to hand to lane.forza414. For
 Blinx, 1.3 finishes a frame each add a submit and a pass's load and store;
 that is not priced here.
 
-### Waiting (this session, from 21:50Z)
+**Other titles, from runs on disk. X/R says which are rendered twice.**
 
-| request | ref | what |
-|---|---|---|
-| `1-1790540673-flip474-2311172` | `795ea6b3af` | DOA Nova, #504's A and section 16's base |
-| `1-1790540673-flip474-2311288` | `902cf1ab53` | DOA Nova, #504's B |
-| `1-1790540677-flip474-2313064` | `795ea6b3af` | Crimson Thor, #504's A |
-| `1-1790540677-flip474-2313275` | `902cf1ab53` | Crimson Thor, #504's B |
-| see `tsperiod.md`, "Results" | `795ea6b3af` | DOA Nova, `TU_DEBUG=sysmem` and `TU_DEBUG=gmem` |
+| title (run, window) | GPU | R | X | X/R |
+|---|---:|---:|---:|---:|
+| DOA (above) | 31.2 | 15.7 | 15.5 | 0.99 |
+| AUF (`0-0-x-1790530526-flip474-2801414`, 299-420 s) | 29.1 | 14.4 | 14.6 | 1.01 |
+| Blinx (`0-0-x-1790530526-flip474-2807172`, 255-411 s) | 24.1 | 20.0 | 2.5 | 0.13 |
+| Forza (`0-0-x-1790533007-forza414-3417242`, 125-240 s) | 24.2 | 19.3 | 4.8 | 0.25 |
+
+AUF reads like DOA. Blinx and Forza do not: most of their GPU time is in
+the last execution of their passes. What sysmem does to each is not
+predicted from this table; it is the next measurement.
+
+### Waiting (this session)
+
+See `tsperiod.md` for #504's requests. Section 16's base rerun is
+`1-1790546289-flip474-398286`.
 
 ## Do not repeat
 
