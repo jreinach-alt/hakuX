@@ -896,7 +896,7 @@ NV2AState *g_nv2a;
 #define LOCK474 0
 #endif
 
-#if LOCK474
+#if NV2A_PERF_LOG && defined(__ANDROID__)
 /*
  * [lock474]: what the vCPU's PGRAPH MMIO waits for, on hakuX-perf every 2 s.
  *
