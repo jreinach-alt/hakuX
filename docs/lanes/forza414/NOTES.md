@@ -626,3 +626,89 @@ PR #479 stays a draft, waiting on requests outside this session:
 On resume: judge the soak's legs from section 19. Then read both arm verdicts and every scores1.tsv
 `status`. If all hold and CI is green, mark #479 ready. Hunk 2 and the DOA pre-download branch
 (section 16, flip474's consumer list) come after the verdict, in the next PR.
+
+## Why attempt 5 did not finish (resume of 2026-09-27, addendum 4)
+
+It ended on a `waiting:` (PR #479, 18:18Z) for hunk 1's Nova soak pair and two goldens arms, all
+outside the session. At this resume the soak pair had finished (promoted to
+`0-0-x-1790533007-forza414-3417242` and `0-0-x-1790533010-forza414-3422338`), `forza414-cleared-mnm.json`
+was judged PASS (266 of 266 byte-identical, 13:11 PDT), and the mnm2 fix arm
+(`1-1790534057-arms-forza414-fix-3970185`) was still queued behind its base arm.
+
+## 20. Hunk 1's soak, read: the swizzle round trip is gone, the finishes are not
+
+`abread.py` over t = 125-240 s (the start line and pit straight), plus `evictgrow.py` for the
+`[evict372]` masks. Same Nova, MAX, survey route, 2100 guest frames in the window in each arm. No
+crash or validation line in either.
+
+| leg | rule | A (7787feb2ae) | B (51721e36aa) | result |
+|---|---|---|---|---|
+| M0 | both in the race, `[evict372]` and `[sdcall]` printed | yes | yes | holds |
+| P1 | m10 evictions per frame, B/A <= 0.25 | 16,088 in the window, ~7.7/frame | 0 | **holds** |
+| P2 | B `su_upl` per frame <= 1.9 | 3.09 | 2.98 | **fails** |
+| P3 | B/A `surfupd` fin per frame <= 0.6 | 3.086 | 2.982 (0.966) | **fails** |
+
+Readouts: fps 19.52 -> 20.28 (1.039), `Sub` 18.8 -> 17.3, `Tot` 43.0 -> 41.5, `Surf` 8.1 -> 8.7,
+`ev.dl` 586 -> 156 per 60 flips (0.27), `unshelve` 420 -> 0, `s413.exp` 0.93 -> 0.15, `realupl` 249
+-> 249, `stale` 106 -> 104, `PreDL` 45 -> 52.
+
+**So Forza's clears of the small targets are full clears, and the hunk does what it says.** Every
+m10 eviction is gone, and with them the downloads (`ev.dl` -73%) and the shelf round trip
+(`unshelve` to 0). The m08/m40 Z flips are unchanged (2,010 vs 2,006), as registered.
+
+**But section 15's model of the finishes was wrong.** It said the unshelved partner comes back
+`upload_pending` and the update finishes the eviction's downloads before uploading it. With every
+unshelve gone, `su_upl` and `realupl` do not move at all: the ~3 `upload_pending` bindings per frame
+come from somewhere else. The failure is P2's registered world, "the rescued bindings still come
+back upload_pending (the watch marks them dirty another way)", seen as m10 falling while `su_upl`
+holds. The surfupd fin per frame is the same 3.0 in both arms. P3 fails with it.
+
+**What the next lane should not repeat:** do not attribute an `upload_pending` completion to the
+eviction that happens to sit next to it. Read what set `upload_pending` (a `[sdcall]` split by the
+setter: the VRAM watch on a CPU write, `vram_newer` on a shelf hit, the surface's creation) before
+pricing a cut in these finishes. `stale` at ~105 per 60 flips in both arms is the first candidate.
+
+The hunk stays: it is correct, it removes a real GPU -> VRAM -> GPU round trip per small target,
+and its goldens arm is byte-identical. It is inert on the frame's wait on Forza.
+
+## 21. Hunk 3: the per-pass state snapshot (addendum 4)
+
+`flush_draw_one_pass` copied a whole `RenderCommandSnapshot` (`regs[0x2000]`, 32 KB, plus program
+data, constants and lights, about 40 KB) on every draw pass, only to assert four fields at the end
+under `#ifndef NDEBUG`. Android release configs pass `-UNDEBUG`, so shipped builds pay it.
+5f07b1d542 keeps the four asserts and saves only `primitive_mode`, `clearing`, `CONTROL_0` and
+`SETUPRASTER` in scalars. Nothing else in draw.c read `snap`. `pgraph_vk_snapshot_state` keeps its
+other caller (render_thread.c). No local compile of this file on this host: CI builds it.
+
+Price, two figures that disagree, and the arm decides between them:
+- lane.slowdown462's Blinx profile: 47% of the PFIFO thread's `memcpy_opt` (30.5% of 13,080 ms
+  on-CPU in 30 s, ~501 frames) is under the snapshot, about 3.7 ms/frame. #474's note says 2.2-2.5.
+- Its size: ~40 KB per pass at a few GB/s is 5-10 us. At ~47 draw passes a frame that is 0.3-0.5
+  ms/frame.
+
+The time lands in `Draw` and outside every bracketed child timer, so the leg reads Draw's self time
+(`Draw` - `Vtx` - `Syn` - `Prw` - `Pipe` - `Desc` - `Setup` - `Cmd`).
+
+Predictions, registered before any device run, on A = 6ab1c50643 (the merge of origin/master
+940c77e866) and B = 72de98abd1 (hunk 3 plus the index rebuild):
+
+| file | kind | legs |
+|---|---|---|
+| `forza414-snap-mnm.json` | goldens, arms job | the same ten suites, byte-identical |
+| `forza414-snap-soak.json` | Blinx Nova soak, hand-read | M0 level play reached, no abort; P1 Draw self falls by >= 1.0 ms/frame. It fails in the world where the size-based price is right (a 0.2-0.6 ms fall): the hunk is correct and small |
+
+Queued, Nova, priority 1: `1-1790543736-forza414-3560854` (base 6ab1c50643) and
+`1-1790543737-forza414-3561797` (fix 72de98abd1).
+
+## Attempt 6 ends waiting
+
+PR #479 stays a draft, waiting on requests outside this session:
+- the Blinx soak pair above, read by hand: `abread.py` for the readouts, and Draw self from the
+  perflog phase lines, window mark play + 10 s to the last line - 10 s;
+- the `[job.arms]` verdicts for `forza414-coalesce-mnm2.json` (fix arm queued) and
+  `forza414-snap-mnm.json` (queued by the arms job from this push).
+
+On resume: judge P1 and M0, read both verdicts and every scores1.tsv `status`, post the verdict on
+#414 and #474, then mark ready. After that, in the next PR: the setter split for `upload_pending`
+(section 20), the DOA pre-download branch with flip474's consumer list, and addendum 4's uniform-block
+skip (`apply_uniform_updates` / `fast_hash`).
