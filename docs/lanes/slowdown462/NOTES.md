@@ -1213,3 +1213,9 @@ When it queued, a forza414 arm was running on the Nova and three Nova
 requests (forza414 fix arm, flip474, flip474 fix arm) were ahead of it.
 Read it with `txwwin.py <result> 255 411` and `phasesoak.py` over the same
 seconds.
+
+State at the end of this session (15:58 PDT): the AUF split is posted on #474
+and #462 and Ask 8 (the fix lane) is on the board. Waiting on
+`1-1790549006-slowdown462-1787985` (Blinx). On resume: read it with
+`txwwin.py`/`phasesoak.py` over 255-411 s, check the frames, post on #474
+and #462, run preflight, and mark #512 ready. No hold held.
