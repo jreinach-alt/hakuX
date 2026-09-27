@@ -68,6 +68,20 @@ Premise (lane.slowdown462, run `1-1790543757-slowdown462-3565156`, AUF, Nova,
   perflog survey soaks. Read with `docs/lanes/slowdown462/txwwin.py <dir> 255 411`.
   These are hand-queued (arms.sh skips soaks).
 
-## State
+## State (2026-09-27, attempt 1)
 
-See the PR for the arm results as they come in.
+- Preflight passed on f759e898db. CI is the build check. The code was not
+  compiled locally.
+- Pixel arm: the arms job queues `drain474-s2t-pixels.json` from the pushed
+  registration.
+- Blinx pair on the Thor, the pilot (two requests, 17 min):
+  A `1790549563-drain474-2135431`, B `1790549563-drain474-2135559`. When they
+  were queued, about 2.5 h of flip474 and titleroutes work was ahead of them.
+- AUF pair on the Nova: **not queued yet.** Four soaks come to 34 min, over the
+  30-min pilot gate. After the Blinx pair is read, write
+  `pilots/drain474.ok` (with python3) and queue AUF A/B on the Nova with
+  `--expect docs/testing/predictions/drain474-auf-soak.json`. The Nova is held
+  for battery at the moment, so the pair will wait for it either way.
+- Next lane: do not re-queue the Blinx pair. Read it with
+  `python3 docs/lanes/slowdown462/txwwin.py <dir> 255 411`, and read the
+  cooling devices before trusting a low fps (#507).
