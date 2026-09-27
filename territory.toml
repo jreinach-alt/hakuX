@@ -401,6 +401,8 @@ note = "RETIRED (hostops 2026-09-27T03:55Z): PR #457 MERGED 2026-09-27T03:05Z (f
 [lane.dispsuper]
 issues = []
 files = ["docs/testing/dispatcher.sh", "docs/testing/jobs/selftest.d/98-dispatch-late-device.sh", "docs/lanes/dispsuper/**"]
+released = ["docs/testing/dispatcher.sh", "docs/testing/jobs/selftest.d/98-dispatch-late-device.sh", "docs/lanes/dispsuper/**"]
+released_at_ready = 464
 standing = false
 note = "STARTED (hostops 2026-09-27T03:55Z), briefs/dispsuper.md: harness defect. dispatcher.sh serve starts workers only for serials adb lists at startup and the supervise loop restarts only those, so a handheld absent across a dispatcher restart is never served (2026-09-26 20:35 PDT: the Thor returned after the 20:12 update-window restart with no worker; devwatch 'thor no-worker'). Serves 0.5 device throughput. Serve path: needs-audit-1 and the host's update window after fold. dispatcher.sh from retired lane.isoroots (released at its PR #457 fold)."
 
