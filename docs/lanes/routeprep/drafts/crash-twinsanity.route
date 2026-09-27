@@ -1,0 +1,53 @@
+# Crash Twinsanity (56550036), Thor. DRAFT by lane.routeprep, 2026-09-26,
+# not played. One file: New Game does not need a save; if the game offers
+# to create one, the A at that step accepts it and a later run sees the same
+# path (New Game is still the first item).
+#
+# Evidence: titlebench hands-off 240 s (0-0-y-1790416653-titlebench-20,
+# Thor), one frame per ~10 s in frames/: f02 Vivendi, f03 Traveller's Tales,
+# f04-f05 "THREE YEARS AGO..." intro, f06-f11 "PRESS START BUTTON" (~60-110
+# s), f12-f16 attract gameplay clips, f17-f18 the intro again, f19-f24 the
+# title again. Nothing past the title is on disk.
+wait 55
+shot boot55
+wait 10
+shot boot65                 # expect "PRESS START BUTTON" [seen f06]
+mark booted
+press START
+wait 6
+shot main-menu              # [guess] New Game first
+press A
+wait 6
+shot after-new-game         # OPEN: a save-slot / "create save" prompt
+press A                     # [guess] accept
+wait 8
+shot after-save
+press A                     # [guess] dismiss a notice, or nothing
+wait 10
+shot story
+mark new-game
+# [guess] the opening cutscene (it is long); A is tried, START is not (it
+# would pause gameplay once control starts).
+repeat 12 {
+    press A
+    wait 6
+    shot story-a
+}
+mark gameplay               # [guess] placeholder: move to the first frame with Crash under control
+# Platformer: run, jump (A), spin (B or X).
+repeat forever {
+    axis LY min
+    wait 1.5
+    press A
+    wait 0.8
+    press X
+    wait 0.5
+    axis LY mid
+    axis LX max
+    wait 1
+    press B
+    wait 0.5
+    axis LX min
+    wait 1
+    axis LX mid
+}

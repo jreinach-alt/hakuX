@@ -224,7 +224,8 @@ check "panel: one handheld with no readable soak is NOT MET, and says which" \
     grep -qF 'NOT MET -- thor 16.5 (n=16; g-old' <<< "$sp_text"
 check "panel: ...and names the soak it passed over" grep -qF '1 newer soak logged no gfps in 90-240 s' <<< "$sp_text"
 check "panel: the lane on each 0.5 issue" grep -qF '#424 lane.x -- Performance' <<< "$sp_text"
-check "panel: the page carries the gate's readings" grep -qF 'thor: <b>16.5</b> gfps median (n=16)' "$SP/i.html"
+# #433 (lane.titles05): the gate is one line under the title table.
+check "panel: the page carries the gate's readings" grep -qF 'thor <b>16.5</b> gfps (n=16,' "$SP/i.html"
 
 # ---- restore selftest.sh's own shim and state for any later fragment.
 rm -f "$T/bin/pgrep" "$HAKUX_WORK/status/comment-id" "$HAKUX_WORK/status/issue-pointer" "$HAKUX_WORK/status/pages-state"

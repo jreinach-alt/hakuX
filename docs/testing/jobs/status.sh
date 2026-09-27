@@ -469,8 +469,9 @@ fi
 # The Ghoulies gate's measurement (#432), from the soaks that carry it. The
 # title counts are NOT facts here any more: they are computed on the page from
 # the 0.5 title table itself (status_html.py titles05), so a count can never
-# disagree with its rows, and there is no "of 145" -- 145 is the per-minor quota
-# from 0.6 on, not 0.5's target, which is release-0.5.toml's sentence.
+# disagree with its rows. The targets they are counted against (145
+# benchmarked, 50 Playable; the owner, 2026-09-26, #433) are
+# docs/testing/release-0.5.toml's, which STATUS_RELEASE_CONF overrides.
 fact release_gate_min "${STATUS_RELEASE_GATE_MIN:-25}"
 timeout 60 python3 "$J/status_html.py" release05 --titles "${STATUS_TITLES_DIR:-$WORK/titles}" \
     --results "$D/results" --xiso "${HAKUX_XISO_DIR:-/mnt/d/hakux-staging/xiso}"
@@ -489,9 +490,13 @@ if [ $have_sd = 1 ]; then
         done
 fi
 } > "$FACTS" 2>/dev/null
-python3 "$J/status_html.py" build --facts "$FACTS" --lanes "$S/lanes.json" --md "$OUT" \
-    --json "$S/status.json" --html "$S/index.html" 2>"$S/status_html.err" \
-    || echo "the dashboard could not be rendered: $(tail -1 "$S/status_html.err")"
+# Bounded: an unbounded build once held the board tick for 41 min (2026-09-26
+# 21:55 PDT, md_to_html looping on a cut-off table). A timeout says so in the err file.
+timeout "${STATUS_BUILD_TIMEOUT:-120}" python3 "$J/status_html.py" build --facts "$FACTS" --lanes "$S/lanes.json" \
+    --md "$OUT" --json "$S/status.json" --html "$S/index.html" 2>"$S/status_html.err"
+sh_rc=$?
+[ "$sh_rc" -eq 124 ] && echo "status_html.py build timed out after ${STATUS_BUILD_TIMEOUT:-120} s and was killed" >> "$S/status_html.err"
+[ "$sh_rc" -eq 0 ] || echo "the dashboard could not be rendered: $(tail -1 "$S/status_html.err")"
 
 # ---- publishing: one commit on an orphan gh-pages branch, force-pushed.
 #

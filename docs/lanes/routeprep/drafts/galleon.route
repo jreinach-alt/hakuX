@@ -1,0 +1,64 @@
+# Galleon (41540004), Nova and Thor. DRAFT by lane.routeprep, 2026-09-26,
+# not played. One file: no profile screen was seen on the way in; a save
+# prompt, if New Game shows one, is accepted with A.
+#
+# Evidence: pass 1 (0-0-y-1790433159-titleplay-p1-galleon, Thor), frames in
+# its route-frames/ (t = seconds after the route started):
+#   115331 t20 SCi logo
+#   115354 t40 the title, "Please press the START button to begin"
+#   115417 t63 "Loading..." at 0 fps: left alone, the title times out into
+#          an attract demo, and that load held ~2.5 min (115615 black,
+#          115627-115712 the demo, marked "Demo")
+#   115718 the title background again after START+A; 115748 an options
+#          submenu (Audio / Controller / Display / Done) that pass 1's A
+#          walked into; 115814 "Loading..." with a gameplay tip ("Rhama
+#          cannot fall off an edge...") -- a game was starting
+#   115841 on the ship's deck at the wheel; 115909 a close-up of Rhama with
+#          a map (a cutscene); 115936 Loading; 120004 the ship at a jetty.
+#
+# The one timing that matters: START must reach the title between ~40 and
+# ~60 s, before it times out into the 2.5 min demo load. The route presses
+# START at 38, 44 and 50 s; a START on the main menu would pick its first
+# item, which is the one this route wants anyway [guess: New Game first].
+wait 38
+shot boot38
+press START                 # [seen 115354] title at t40
+wait 6
+shot title44
+press START                 # [inferred] second chance at the title, or picks the first menu item
+wait 6
+shot menu50
+mark booted
+press A                     # [guess] New Game (first item)
+wait 8
+shot after-new-game         # OPEN: a difficulty or save prompt; A takes its default
+press A
+wait 30
+shot loading                # [seen 115814] the loading screen with tips; OPEN: "Press A" to leave it
+press A
+wait 20
+shot deck                   # [seen 115841] the deck at the wheel
+repeat 10 {
+    press A                 # [inferred] cutscenes and dialogue advance on A (pass 1 got through them)
+    wait 6
+    shot story-a
+}
+mark gameplay               # [guess] placeholder: move to the first frame with Rhama walking under the stick
+repeat forever {
+    axis LY min
+    wait 2
+    axis LY mid
+    axis LX max
+    wait 1
+    axis LX mid
+    press A
+    wait 1
+    axis LY min
+    wait 2
+    axis LY mid
+    axis LX min
+    wait 1
+    axis LX mid
+    press A
+    wait 1
+}

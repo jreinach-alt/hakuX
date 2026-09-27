@@ -1,0 +1,62 @@
+# MechAssault 2: Lone Wolf (4D53006B), Thor, FIRST RUN: no profile on the
+# disk. DRAFT by lane.routeprep, 2026-09-26, not played. NO FRAMES ON DISK
+# for this title: every step is [guess] or [recalled].
+#
+# [recalled, low]: Microsoft/Day 1 logos, an intro FMV, "PRESS START", a
+# profile screen (create new -> a name keyboard), a main menu with the
+# single-player campaign first, a difficulty, a briefing and mission 1 in a
+# 'Mech. Mechs drive with the left stick, aim with the right, fire on RT.
+wait 30
+shot boot30
+press START                 # [guess] skip logos
+wait 15
+shot boot45
+press START                 # [guess] skip the intro FMV
+wait 15
+shot boot60
+press START                 # [guess] the title prompt
+wait 8
+shot after-title            # OPEN: a profile screen
+mark booted
+press A                     # [guess] create new profile
+wait 6
+shot keyboard
+press START                 # [guess] accept the default name
+wait 6
+shot after-keyboard
+press A                     # [guess] confirm / save
+wait 8
+shot main-menu
+mark profile-saved
+press A                     # [guess] campaign
+wait 8
+shot campaign
+press A                     # [guess] new campaign / difficulty
+wait 8
+shot difficulty
+press A
+wait 15
+shot briefing
+repeat 8 {
+    press A                 # [guess] skip the briefing and the FMV
+    wait 8
+    shot brief-a
+}
+mark gameplay               # [guess] placeholder: move to the first frame in the 'Mech with the HUD
+repeat forever {
+    axis LY min
+    axis RT max
+    wait 0.4
+    axis RT min
+    axis RX max
+    wait 0.6
+    axis RX mid
+    axis RT max
+    wait 0.4
+    axis RT min
+    axis RX min
+    wait 0.6
+    axis RX mid
+    axis LY mid
+    wait 1
+}

@@ -1,0 +1,45 @@
+# JSRF: Jet Set Radio Future (49470018), Nova and Thor, RETURNING: a JSRF
+# save is on the disk. DRAFT by lane.routeprep, 2026-09-26, not played.
+#
+# Evidence: as jsrf.first-run.route for the boot (prompt at ~60-70 s,
+# hotfix041-09 f06-f07). Past it [guess]: a Continue / load item first, the
+# save slot, then the Garage.
+wait 60
+shot boot60
+wait 10
+shot boot70
+mark booted
+press START
+wait 6
+shot after-title            # OPEN: a load prompt or a menu with Continue first
+press A
+wait 6
+shot slot
+press A                     # [guess] the saved slot
+wait 10
+shot loaded
+mark profile-loaded
+repeat 6 {
+    press A                 # [guess] dismiss notices / scenes
+    wait 6
+    shot load-a
+}
+mark gameplay               # [guess] placeholder
+repeat forever {
+    axis LY min
+    axis RT max
+    wait 2
+    press A
+    wait 1
+    axis LX max
+    wait 1
+    axis LX mid
+    press A
+    wait 1
+    axis LX min
+    wait 1
+    axis LX mid
+    axis RT min
+    axis LY mid
+    wait 0.5
+}
