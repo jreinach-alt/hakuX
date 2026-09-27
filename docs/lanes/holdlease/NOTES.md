@@ -68,7 +68,24 @@ checkout: a lane worktree branched before the fold keeps the old hook until it
 merges master. Retire the service when every running worktree's copy contains
 `held_by`, not at fold time.
 
+## Attempt 2 (2026-09-26): why attempt 1 did not finish
+
+Attempt 1 built and proved the change, then started the full
+`jobs/selftest.sh` as a `run_in_background` task and ended its turn waiting
+for the notification. A headless lane session exits when its turn ends, and
+its background tasks exit with it: the suite never finished, the PR stayed a
+draft, and nothing resumed the lane.
+
+Attempt 2 merged origin/master (a164578ad7; neither `stop-emulator.sh` nor
+`devices.sh` changed on master since 5172e9ac67), re-ran fragment 79 on both
+hooks with the same result as above (new 16/0; master's hook 14/2, both
+FAILs leg (a)), and ran the full suite to completion inside the session,
+polling its log, before marking the PR ready.
+
 ## Do not repeat
 
-- The full `jobs/selftest.sh` runs past the Bash tool's 10-minute limit; run it
-  in the background of the session, not in the foreground.
+- The full `jobs/selftest.sh` runs past the Bash tool's 10-minute limit.
+  Start it in the background AND stay in the session polling its log until
+  `SELFTEST_EXIT=` appears; never end the turn on it. In this lane sandbox
+  `systemd-run` and `setsid` need approval; a plain `run_in_background` with
+  the output redirected to a file in the worktree works.
