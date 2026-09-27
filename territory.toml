@@ -1242,6 +1242,8 @@ note = "STARTED (job.board 2026-09-26T19:20Z), briefs/forza414.md: #414 (Forza M
 [lane.tbchurn424]
 issues = ["424"]
 files = ["accel/tcg/tb-maint.c", "accel/tcg/cputlb.c", "accel/tcg/translate-all.c", "docs/testing/predictions/tbchurn424-*.json", "docs/lanes/tbchurn424/**"]
+released = ["accel/tcg/tb-maint.c", "accel/tcg/cputlb.c", "accel/tcg/translate-all.c", "docs/testing/predictions/tbchurn424-*.json", "docs/lanes/tbchurn424/**"]
+released_at_ready = 434
 standing = false
 note = "STARTED (job.board 2026-09-26T20:25Z), briefs/tbchurn424.md: #424, 0.5 release perf workstream (#433). Measure on #397 gameplay windows, pgraph suites as the regression gate. NOT RELEASED at ready (job.board 2026-09-27T01:00Z): PR #434 is ready but carries needs-remediation and lane.cloud-remediate-434 is editing these files now, so they stay held (roles/board.md: a PR in remediation keeps its files). Release when the remediation ends and the PR is back at fold-ready."
 
@@ -1296,6 +1298,8 @@ note = "STARTED (lane.local 2026-09-26 16:26 PDT), briefs/dash432.md: #432's das
 [lane.holdtake]
 issues = []
 files = ["docs/testing/jobs/hold.sh", "docs/testing/jobs/selftest.d/99-hold-take.sh", "docs/testing/jobs/roles/lane.md", "docs/lanes/holdtake/NOTES.md"]
+released = ["docs/testing/jobs/hold.sh", "docs/testing/jobs/selftest.d/99-hold-take.sh", "docs/testing/jobs/roles/lane.md", "docs/lanes/holdtake/NOTES.md"]
+released_at_ready = 453
 standing = false
 note = "STARTED (hostops 2026-09-27T00:30Z), briefs/holdtake.md: harness defect, a device hold is removed only by its taker (perfregimen removed the update window's Thor hold 09-26 17:02 PDT)."
 
