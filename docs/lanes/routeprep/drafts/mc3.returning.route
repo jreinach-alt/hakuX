@@ -1,0 +1,57 @@
+# Midnight Club 3: DUB Edition (54540079), Nova, RETURNING: an MC3 profile
+# is on the disk. DRAFT by lane.routeprep, 2026-09-26, not played.
+#
+# Evidence: as mc3.first-run.route (boot and title timing only, from
+# titlebench-19's hands-off frames). Everything past the title is [guess]:
+# the profile list with the saved profile highlighted, then the same
+# Arcade -> Cruise path.
+wait 60
+shot boot60
+press START                 # [guess] try to skip the intro FMV
+wait 30
+shot boot90
+wait 25
+shot boot115                # expect "PRESS START TO BEGIN" [seen f12]
+mark booted
+press START
+wait 8
+shot profiles               # [guess] the saved profile highlighted, or an autoload notice
+press A
+wait 8
+shot loaded
+press A                     # [guess] dismiss a "load successful"; OPEN: if this lands in Career, press B
+wait 6
+mark profile-loaded
+shot main-menu
+axis LY max                 # [guess] down: Arcade
+wait 0.15
+axis LY mid
+wait 0.6
+shot on-arcade
+press A
+wait 6
+shot arcade-menu
+press A
+wait 6
+shot city
+press A
+wait 6
+shot car
+press A
+wait 6
+shot confirm
+press A
+wait 30
+shot loading
+wait 10
+shot drive
+mark gameplay               # [guess] placeholder
+repeat forever {
+    axis RT max
+    axis LX min
+    wait 1.5
+    axis LX max
+    wait 1.5
+    axis LX mid
+    wait 4
+}

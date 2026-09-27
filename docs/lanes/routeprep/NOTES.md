@@ -57,6 +57,14 @@ reached its gameplay; it is blocked on combat, not on a route).
 - route draft: `pgr2.first-run.route`, `.returning.route` (Thor) -- evidence: titlebench-14's hands-off frames (PRESS START at ~120-140 s, attract from ~150 s); the menus from titleroutes' PGR1 sessions. Open: PGR2's main-menu items (the draft takes the highlighted one at every step), whether the intro FMV skips.
 - route draft: `wwe-raw2.route` (Nova) -- evidence: titlebench-11's hands-off frames (Press START at ~110-120 s, then FMV and DEMONSTRATION attract). Everything past the title is a guess: a possible save-data prompt, Exhibition, one-on-one, two selects, entrances. Open: all menus; the strike/grapple buttons.
 
+### Batch 2 (posted on #397, 2026-09-26)
+
+- route draft: `mc3.first-run.route`, `.returning.route` (Nova) -- evidence: titlebench-19's hands-off frames (PRESS START TO BEGIN at ~120-170 s, then the FMV again). Aims at Arcade -> Cruise (free driving, no timer) [recalled]. Open: the profile screen and keyboard; whether Arcade is one below Career; Cruise's place in the Arcade menu.
+- route draft: `crash-twinsanity.route` (Thor) -- evidence: titlebench-20's hands-off frames (PRESS START BUTTON at ~60-110 s, attract clips, then the intro again). Past the title all [guess]: New Game, a possible save prompt, a long opening cutscene advanced with A. Open: every menu; which button spins.
+- route draft: `187-ride-or-die.route` (Nova) -- evidence: **none on disk**. A survey with a frame after every press, aiming at Story's first (driving) mission. Worth one short nav session rather than a replay.
+- route draft: `smt-nine.route` (Thor) -- evidence: **none on disk**; a Japan-only release, so its menus are in Japanese. New Game (first item), default name (START), then dialogue with A. Worth a nav session.
+- route draft: `capcom-classics2.route` (Thor) -- evidence: **none on disk**. First game in the list, Play, BACK = coin, START = 1P start [recalled]; the play pattern feeds coins so a game over continues. Open: every menu; that BACK is the coin.
+
 ## Do not repeat
 
 - Do not read the titlebench `frames/` as if they had input: they are
