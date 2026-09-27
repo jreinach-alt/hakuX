@@ -202,6 +202,7 @@ notes = "#431 (comment 5849938891): 60 from the hakuX swap interval: reviewed ga
 [titles."56550016"]
 name = "Bruce Lee: Quest of the Dragon"
 iso = { thor = "56550016-Bruce_Lee_Quest_of_the_Dragon.xiso.iso" }
+route = "bruce-lee"
 notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
 
 [titles."54540079"]
