@@ -2306,19 +2306,9 @@ static void pgraph_vk_flip_stall(NV2AState *d)
      * copy onto the same GPU submission as the frame's draws, eliminating a
      * separate SURFACE_DOWN finish (one fewer vkQueueSubmit + fence cycle).
      */
-#if NV2A_PERF_LOG && defined(__ANDROID__)
-    /* #474 O4 pilot: the flip's finish on the PFIFO thread's clock, by the
-     * frame slot it submits. Read by o4_log() in surface.c. */
-    extern int64_t g_o4_flip_ns[NUM_SUBMIT_FRAMES][2];
-    int o4_fi = d->pgraph.vk_renderer_state->current_frame;
-    g_o4_flip_ns[o4_fi][0] = nv2a_clock_ns();
-#endif
     pgraph_vk_prerecord_display_download(d);
 
     pgraph_vk_finish(&d->pgraph, VK_FINISH_REASON_FLIP_STALL);
-#if NV2A_PERF_LOG && defined(__ANDROID__)
-    g_o4_flip_ns[o4_fi][1] = nv2a_clock_ns();
-#endif
 
     {
         PGRAPHVkState *r = d->pgraph.vk_renderer_state;

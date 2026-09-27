@@ -956,58 +956,6 @@ static void wait_frame_fence(NV2AState *d, int fi, bool release_lock)
     }
 }
 
-/*
- * #474 O4 pilot: where the wait for the flip's command buffer goes. DOA
- * Ultimate's fight waits ~51 ms a frame here for a command buffer whose own
- * GPU timestamps span ~33 ms. One line per waited flip: the PFIFO thread's
- * clock around the flip's finish (pgraph_vk_flip_stall; vkQueueSubmit has
- * returned by `post`) and around the fence wait, and the command buffer's GPU
- * timestamps -- its start and end raw, each render pass as microseconds from
- * the start -- so o4read.py can place the GPU's span inside the wait and say
- * which gap between two passes is the long one. Short waits are sampled one
- * in 16. NV2A_PERF_LOG builds only.
- */
-#if NV2A_PERF_LOG && defined(__ANDROID__)
-int64_t g_o4_flip_ns[NUM_SUBMIT_FRAMES][2];
-
-static void o4_log(PGRAPHVkState *r, int fi, int64_t w0, int64_t w1)
-{
-    static unsigned int seq;
-    uint64_t ts[GPU_TS_QUERIES_PER_CB];
-    char buf[1024];
-    int rp = r->gpu_ts_rp_counts[fi];
-    int n;
-
-    seq++;
-    if (!r->gpu_ts_supported || rp < 0 || rp > GPU_TS_MAX_RENDER_PASSES ||
-        (w1 - w0 < 4000000 && (seq & 15))) {
-        return;
-    }
-    if (vkGetQueryPoolResults(r->device, r->gpu_ts_pool,
-                              fi * GPU_TS_QUERIES_PER_CB, 2 + rp * 2,
-                              sizeof(uint64_t) * (2 + rp * 2), ts,
-                              sizeof(uint64_t),
-                              VK_QUERY_RESULT_64_BIT) != VK_SUCCESS) {
-        return;
-    }
-
-    n = snprintf(buf, sizeof(buf),
-                 "[o4] fi=%d sc=%u pre=%lld post=%lld w0=%lld w1=%lld "
-                 "per=%.4f cs=%llu ce=%llu rp=%d o=",
-                 fi, (unsigned)qatomic_read(&r->submit_count),
-                 (long long)g_o4_flip_ns[fi][0],
-                 (long long)g_o4_flip_ns[fi][1], (long long)w0,
-                 (long long)w1, r->gpu_ts_period_ns,
-                 (unsigned long long)ts[0], (unsigned long long)ts[1], rp);
-    for (int i = 0; i < rp * 2 && n > 0 && n < (int)sizeof(buf); i++) {
-        n += snprintf(buf + n, sizeof(buf) - n, "%s%lld", i ? "," : "",
-                      (long long)((double)(int64_t)(ts[2 + i] - ts[0]) *
-                                  r->gpu_ts_period_ns / 1000.0));
-    }
-    SURF92_LOG("%s", buf);
-}
-#endif
-
 static void download_surface_complete_deferred(NV2AState *d,
                                                bool release_lock)
 {
@@ -1028,13 +976,7 @@ static void download_surface_complete_deferred(NV2AState *d,
          */
         int fi = r->display_predownload_frame_index;
         if (qatomic_read(&r->frame_submitted[fi])) {
-#if NV2A_PERF_LOG && defined(__ANDROID__)
-            int64_t o4_w0 = nv2a_clock_ns();
-#endif
             wait_frame_fence(d, fi, release_lock);
-#if NV2A_PERF_LOG && defined(__ANDROID__)
-            o4_log(r, fi, o4_w0, nv2a_clock_ns());
-#endif
         }
     } else if (r->deferred_downloads_frame >= 0) {
         /* Downloads were already submitted as part of a prior finish.
