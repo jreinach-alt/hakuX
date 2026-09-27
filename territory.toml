@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 266
-updated_utc = "2026-09-26T20:30:00Z"
+wave = 267
+updated_utc = "2026-09-27T01:30:00Z"
 
 [retired.hilodot10]
 issues = ["10"]
@@ -350,12 +350,11 @@ standing = false
 retired_utc = "2026-09-26T11:40:00Z"
 note = "RETIRED (job.board wave 245): PR #385 MERGED, no open PR on lane/fps382, unit gone; #382 cause named (CPU-access watch traps); code half continues as lane.surfwatch382. Every file this row held is RELEASED to [free] (files another lane has since taken stay with that lane). PRIOR NOTE: STARTED BY THE HOST (seen by job.board wave 243, 2026-09-26T10:15Z): draft PR #385 on lane/fps382, unit active; issue #382 labelled lane:fps382. PRIOR: BRIEFED AT TERRITORY WAVE 242, NOT STARTED (job.board, 2026-09-26; `lane.sh start` was refused approval in the board session, so the HOST runs `docs/testing/lane.sh start fps382 briefs/fps382.md 382`), briefs/fps382.md: #382 50 Cent: Bulletproof intro FMV ~14 fps on the Nova (9 fps for 120 s, 29 fps after). Separate content pacing from emulator cost, name the resource that differs between the 9 and 29 fps windows. No hw/ file granted; reuses lane.blinx372/blinx372b perflog tooling."
 
-[lane.flatlm13]
+[retired.flatlm13]
 issues = ["13"]
-files = ["hw/xbox/nv2a/pgraph/prim_rewrite.c", "docs/testing/predictions/flatlm13-*.json", "docs/lanes/flatlm13/**"]
-released = ["hw/xbox/nv2a/pgraph/prim_rewrite.c", "docs/testing/predictions/flatlm13-*.json", "docs/lanes/flatlm13/**"]
-released_at_ready = 401
-note = "READY, PR #401 (job.board 2026-09-26T20:40Z): out of draft, CI green, unit gone, labelled needs-audit-1; files released at ready. PRIOR: DISPATCHED (hostops 2026-09-26T14:55Z): #13 class C of PR #370's attribution (flat colour in a line-mode quad/polygon, 7,324 px, Shade_model only). prim_rewrite.c was in no row. Brief: briefs/flatlm13.md. Class A (line-mode triangle cull, 31,152 px, glsl/geom.c) follows when PR #379 folds and returns geom.c."
+files = []
+retired_utc = "2026-09-27T01:30:00Z"
+note = "RETIRED (job.board 2026-09-27T01:30Z): PR #401 MERGED, no open PR on lane/flatlm13, unit gone. Files RELEASED to [free]."
 
 [retired.vshcpu345]
 issues = []
@@ -385,6 +384,7 @@ standing = false
 note = "STARTED (hostops 2026-09-26 18:25 PDT), briefs/titleroutes.md: #397 / 0.5 (#433) benchmark stage 2, profile-setup and gameplay routes for the ~57 titles on the handhelds with none. The stage had no owner after lane.titlestate retired (PR #442). Short HELD sessions (<30 min, >=30% battery; the titlestate grant carried over by hostops under the owner's 16:40 order). Route-ready titles go to dispatch/board-requests/titleroutes.md for the host to queue soaks."
 
 [free]
+# RELEASED (job.board 2026-09-27T01:30Z) by retiring lane.tbchurn424, lane.buildflags427, lane.vcpuprime428, lane.flatlm13, lane.ring53impl, lane.blinx372d, lane.handbackpark, lane.holdtake, lane.holdlease (their PRs #434, #435, #437, #401, #395, #396, #452, #453, #450 all MERGED): every file each row held except vk/surface.c, which lane.doa413b holds.
 # RELEASED (job.board 2026-09-27T00:30Z) by retiring lane.relprio432 (PR #447 folded a164578ad7): selftest.d/97-release-prio.sh, its lane dir; request.sh, ab_run.sh, arms.sh returned to lane.toolsmith.
 # RELEASED (hostops 2026-09-26T23:10Z) by retiring lane.pri432 (PR #438 folded c9331a68bc): jobs/board.sh, jobs/status.sh, jobs/status_html.py, selftest.d/97-board-priority.sh, jobs/roles/board.md, its lane dir.
 # RELEASED (job.board wave 264) by retiring lane.doa413 (PR #417), lane.cull13 (PR #403), lane.vshcpu345 (PR #402): every file each row held except CMakeLists.txt, which lane.buildflags427 holds.
@@ -582,7 +582,7 @@ note = "STARTED (hostops 2026-09-26 18:25 PDT), briefs/titleroutes.md: #397 / 0.
 # CLAIMED (hostops, 2026-09-26 3:10 PM PDT): docs/testing/jobs/cloud.sh and selftest.d/73-cloud-claim.sh -> lane.claimrace (outlet double-claim).
 # CLAIMED (hostops, 2026-09-26 3:00 PM PDT): docs/testing/titles/** -> lane.titlestate (runbook 6n).
 # CLAIMED (hostops, 2026-09-26 6:45 AM PDT): gl/texture.c -> lane.pshaniso284 (granted 6:40 AM; [free] still listed it, failing check_territory).
-files = ["docs/testing/jobs/selftest.d/97-release-prio.sh", "docs/lanes/relprio432/**", "docs/testing/titles/**", "docs/lanes/titlestate/**", "docs/testing/jobs/selftest.d/99-title-state.sh", "AGENTS.md", "docs/testing/jobs/selftest.d/99-pilot-gate.sh", "docs/lanes/pilotgate/**", "docs/testing/jobs/selftest.d/99-visual-score.sh", "docs/lanes/visual404/**", "docs/testing/predictions/visual404-*.json", "docs/testing/jobs/fold.sh", "docs/testing/jobs/selftest.d/74-fold-multi.sh", "docs/lanes/foldcancel/NOTES.md", "docs/testing/title_verdict.py", "docs/lanes/titleplay/**", "docs/lanes/cloudclaim/**", "docs/testing/nightly_build.sh", "docs/testing/jobs/selftest.d/86-nightly-notes.sh", "docs/lanes/nightlynotes/**", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**", "tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "docs/testing/predictions/doa413-*.json", "docs/lanes/doa413/**", "hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/glsl/geom.h", "hw/xbox/nv2a/pgraph/vk/renderer.c", "docs/testing/predictions/cull13-*.json", "docs/lanes/cull13/**", "subprojects/nv2a_vsh_cpu.wrap", "subprojects/packagefiles/nv2a_vsh_cpu/**", "docs/testing/predictions/vshcpu345-*.json", "docs/lanes/vshcpu345/**", 
+files = ["accel/tcg/tb-maint.c", "accel/tcg/cputlb.c", "accel/tcg/translate-all.c", "docs/testing/predictions/tbchurn424-*.json", "docs/lanes/tbchurn424/**", "android/app/build.gradle.kts", "android/app/src/main/cpp/CMakeLists.txt", "docs/testing/predictions/buildflags427-*.json", "docs/lanes/buildflags427/**", "android/app/src/main/cpp/xemu_android.cpp", "docs/testing/predictions/vcpuprime428-*.json", "docs/lanes/vcpuprime428/**", "hw/xbox/nv2a/pgraph/prim_rewrite.c", "docs/testing/predictions/flatlm13-*.json", "docs/lanes/flatlm13/**", "hw/xbox/nv2a/pgraph/pgraph.h", "hw/xbox/nv2a/pgraph/glsl/vsh.h", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/ring53impl-*.json", "docs/lanes/ring53impl/**", "docs/testing/predictions/blinx372d-*.json", "docs/lanes/blinx372d/**", "docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-parked.sh", "docs/lanes/handbackpark/**", "docs/testing/jobs/hold.sh", "docs/testing/jobs/selftest.d/99-hold-take.sh", "docs/testing/jobs/roles/lane.md", "docs/lanes/holdtake/NOTES.md", "docs/testing/stop-emulator.sh", "docs/testing/jobs/selftest.d/79-stop-hook-hold.sh", "docs/lanes/holdlease/NOTES.md", "docs/testing/jobs/selftest.d/97-release-prio.sh", "docs/lanes/relprio432/**", "docs/testing/titles/**", "docs/lanes/titlestate/**", "docs/testing/jobs/selftest.d/99-title-state.sh", "AGENTS.md", "docs/testing/jobs/selftest.d/99-pilot-gate.sh", "docs/lanes/pilotgate/**", "docs/testing/jobs/selftest.d/99-visual-score.sh", "docs/lanes/visual404/**", "docs/testing/predictions/visual404-*.json", "docs/testing/jobs/fold.sh", "docs/testing/jobs/selftest.d/74-fold-multi.sh", "docs/lanes/foldcancel/NOTES.md", "docs/testing/title_verdict.py", "docs/lanes/titleplay/**", "docs/lanes/cloudclaim/**", "docs/testing/nightly_build.sh", "docs/testing/jobs/selftest.d/86-nightly-notes.sh", "docs/lanes/nightlynotes/**", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**", "tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "docs/testing/predictions/doa413-*.json", "docs/lanes/doa413/**", "hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/glsl/geom.h", "hw/xbox/nv2a/pgraph/vk/renderer.c", "docs/testing/predictions/cull13-*.json", "docs/lanes/cull13/**", "subprojects/nv2a_vsh_cpu.wrap", "subprojects/packagefiles/nv2a_vsh_cpu/**", "docs/testing/predictions/vshcpu345-*.json", "docs/lanes/vshcpu345/**", 
 # RELEASED AT WAVE 158 by retiring lane.cloud190: PR #211 folded as f2e8ef8ba8 (#190 fixed).
     "hw/xbox/nv2a/pmc.c",
 # RELEASED (job.board wave 249) by retiring lane.fmv303 (PR #317 folded bb1f437bb7): vk/display.c.
@@ -1170,13 +1170,12 @@ standing = false
 retired_utc = "2026-09-26T13:50:00Z"
 note = "RETIRED (job.board wave 248): PR #391 MERGED 2026-09-26T13:35:27Z, no open PR on the branch, unit gone. PRIOR NOTE: BLOCKED, FILES RELEASED (hostops 2026-09-26T13:10Z, PR #391): the #53 ring phase is not determined by the corpus; the per-method weight run (docs/lanes/ring53/NOTES.md s6) is ROUTED TO lane.xbox. vsh-ff.c and vsh-prog.c dropped from this row on the lane's own offer (no hunk written; zrtz272 and dpforce345 still hold them). pgraph.h, glsl/vsh.h, glsl/vsh.c, pgraph.c are NOT granted: a fresh #53 lane gets them once the console run lands (board-requests/ring53.md item 2). PRIOR: BRIEFED, NOT STARTED (job.board wave 247, 2026-09-26T12:40Z): `lane.sh start` again needs an approval the non-interactive board session cannot get; the HOST runs `docs/testing/lane.sh start ring53 briefs/ring53.md 53`. The row keeps holding vsh-ff.c and vsh-prog.c meanwhile. PRIOR: BRIEFED AT TERRITORY WAVE 246 (job.board, 2026-09-26T12:10:00Z), briefs/ring53.md: #53 ring model (six-entry ring of stale FF lighting outputs under a vertex program, PR #355). vsh-prog.c is released by dpforce345 (PR #383 at audit) and vsh-ff.c by zrtz272 (PR #364 at audit); the brief says merge master before ready. Per-draw state files are named-not-granted."
 
-[lane.ring53impl]
+[retired.ring53impl]
 issues = ["53"]
-files = ["hw/xbox/nv2a/pgraph/pgraph.h", "hw/xbox/nv2a/pgraph/glsl/vsh.h", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/ring53impl-*.json", "docs/lanes/ring53impl/**"]
-released = ["hw/xbox/nv2a/pgraph/pgraph.h", "hw/xbox/nv2a/pgraph/glsl/vsh.h", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/ring53impl-*.json", "docs/lanes/ring53impl/**"]
-released_at_ready = 395
+files = []
 standing = false
-note = "READY, PR #395 (job.board 2026-09-26T21:10Z): out of draft, CI green, unit gone; files released at ready. PRIOR: LENT (hostops 2026-09-26 12:14 PM PDT): hw/xbox/nv2a/pgraph/pgraph.c to [lane.yuv10] for ONE hunk, the SET_CONTROL0 handler only (ring53impl's hunks are in the reg-category table, method paths and SET_BEGIN_END; disjoint); it RETURNS when PR yuv10 is ready. STARTED, PR #395 draft (job.board 2026-09-26T17:45Z): the lane is waiting on the arms verdict (arm requests queued behind the Thor sweep). PRIOR: BRIEFED, NOT STARTED (job.board wave 248): `docs/testing/lane.sh start` needs an approval the non-interactive board session cannot get (same as wave 247 for ring53); the HOST runs `docs/testing/lane.sh start ring53impl briefs/ring53impl.md 53` and labels #53 lane:ring53impl. BRIEFED AT TERRITORY WAVE 248 (job.board, 2026-09-26T13:50:00Z), briefs/ring53impl.md: #53 ring implementation. The console run that pins the per-method ring weights landed (PR #394, lane/xbox-ringw, CI green, fold-ready); lane.ring53's NOTES s2 names the hunks and board-requests/ring53.md item 2 said a fresh lane gets pgraph.h, glsl/vsh.h, glsl/vsh.c and pgraph.c once the run lands. All five were unclaimed (checked against every open PR's files); vsh-ff.c released by lane.zrtz272 (PR #364 merged). vsh-prog.c is free and needs no hunk."
+retired_utc = "2026-09-27T01:30:00Z"
+note = "RETIRED (job.board 2026-09-27T01:30Z): PR #395 MERGED, no open PR on lane/ring53impl, unit gone. Files RELEASED to [free]."
 
 [retired.fmv303b]
 issues = []
@@ -1191,13 +1190,12 @@ files = []
 standing = false
 retired_utc = "2026-09-27T00:30:00Z"
 note = "RETIRED (job.board 2026-09-27T00:30Z): PR #447 MERGED 2026-09-27T00:17:06Z (fold a164578ad7), unit gone. request.sh, ab_run.sh and jobs/arms.sh RETURN to [lane.toolsmith] (arms.sh and ab_run.sh were lent from it; request.sh is its instrument); selftest.d/97-release-prio.sh and docs/lanes/relprio432/** RELEASED to [free]. PRIOR NOTE: CREATED (hostops, 2026-09-26T22:45Z) from lane.pri432's board request (dispatch/board-requests/pri432.md, #432 item 2): request.sh names a 0.5 request 1-<epoch>-... so it sorts after probes and heads and ahead of every other request; ab_run.sh and arms.sh set it from the issue's 0.5 label. request.sh was RELEASED at ready by lane.pilotgate (PR #420); arms.sh and ab_run.sh LENT from lane.toolsmith (inactive), returned at fold. Brief: briefs/relprio432.md."
-[lane.handbackpark]
+[retired.handbackpark]
 issues = []
-files = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-parked.sh", "docs/lanes/handbackpark/**"]
-released = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-parked.sh", "docs/lanes/handbackpark/**"]
-released_at_ready = 452
+files = []
 standing = false
-note = "CREATED (hostops, 2026-09-27T00:20Z). Harness defect, no tracker issue: handback.sh's draft-strand cause resumes drafts the host parked on purpose under the 0.5 policy (label blocked:after-0.5). #436 (visual404) was resumed 20:22Z/21:50Z/23:53Z and #439 (fmv303c) 21:52Z/23:55Z, each session only re-posting 'blocked: parked until after 0.5'. STRAND_STALE lists blocked:needs-owner but no other blocked:* label. Interim: hostops set handback/strand/<lane> to DRAFT_STRAND_MAX for both."
+retired_utc = "2026-09-27T01:30:00Z"
+note = "RETIRED (job.board 2026-09-27T01:30Z): PR #452 MERGED, no open PR on lane/handbackpark, unit gone. Files RELEASED to [free]."
 [retired.pilotgate]
 issues = []
 files = []
@@ -1205,13 +1203,12 @@ standing = false
 retired_utc = "2026-09-26T23:42:00Z"
 note = "RETIRED (hostops 2026-09-26 16:42 PDT): PR #420 MERGED (fold 5172e9ac67), unit gone. Files RELEASED to [free]: docs/testing/jobs/roles/lane.md, AGENTS.md, docs/testing/jobs/selftest.d/99-pilot-gate.sh, docs/lanes/pilotgate/**. docs/testing/request.sh stays with [lane.relprio432], which already holds it. The enqueue guard is live on master; hostops item 6m's manual park enforcement is superseded by it."
 
-[lane.blinx372d]
+[retired.blinx372d]
 issues = ["372"]
-files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/testing/predictions/blinx372d-*.json", "docs/lanes/blinx372d/**"]
-released = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/testing/predictions/blinx372d-*.json", "docs/lanes/blinx372d/**"]
-released_at_ready = 396
+files = []
 standing = false
-note = "READY, PR #396 (job.board 2026-09-26T20:40Z): out of draft, CI green, unit gone, verified, needs-audit-1; files released at ready. PRIOR: STARTED, PR #396 draft (job.board 2026-09-26T17:45Z): the lane ran its Thor demo A/B; arms SKIPPED its prediction, the PR awaits handback or ready. PRIOR: BRIEFED AT TERRITORY WAVE 249, NOT STARTED (job.board, 2026-09-26T14:14:00Z; `lane.sh start` needs an approval the non-interactive board session cannot get, so the HOST runs `docs/testing/lane.sh start blinx372d briefs/blinx372d.md 372`), briefs/blinx372d.md: #372's code half. lane.blinx372c (PR #388, folded) named the site: the incompatible-binding eviction in vk/surface.c update_surface_part does two synchronous pgraph_vk_finish(SURFACE_DOWN) per frame (Sub 34.5 ms of a 64-70 ms frame); the hunk is a GPU-side image->buffer->image copy. vk/surface.c was released by lane.surfwatch382 (PR #387 folded a5b5b628f2), which the hunk depends on (its CPU-access watch becomes the only guard against a stale CPU read)."
+retired_utc = "2026-09-27T01:30:00Z"
+note = "RETIRED (job.board 2026-09-27T01:30Z): PR #396 MERGED, no open PR on lane/blinx372d, unit gone. Files RELEASED to [free] except vk/surface.c, which lane.doa413b holds."
 
 [retired.boardpushgate]
 issues = []
@@ -1245,27 +1242,26 @@ files = ["docs/testing/predictions/forza414-*.json", "docs/lanes/forza414/**"]
 standing = false
 note = "STARTED (job.board 2026-09-26T19:20Z), briefs/forza414.md: #414 (Forza Motorsport) gameplay fps. Profile-first: docs and prediction only until the lane names the code file and the board grants it."
 
-[lane.tbchurn424]
+[retired.tbchurn424]
 issues = ["424"]
-files = ["accel/tcg/tb-maint.c", "accel/tcg/cputlb.c", "accel/tcg/translate-all.c", "docs/testing/predictions/tbchurn424-*.json", "docs/lanes/tbchurn424/**"]
-released = ["accel/tcg/tb-maint.c", "accel/tcg/cputlb.c", "accel/tcg/translate-all.c", "docs/testing/predictions/tbchurn424-*.json", "docs/lanes/tbchurn424/**"]
-released_at_ready = 434
+files = []
 standing = false
-note = "STARTED (job.board 2026-09-26T20:25Z), briefs/tbchurn424.md: #424, 0.5 release perf workstream (#433). Measure on #397 gameplay windows, pgraph suites as the regression gate. NOT RELEASED at ready (job.board 2026-09-27T01:00Z): PR #434 is ready but carries needs-remediation and lane.cloud-remediate-434 is editing these files now, so they stay held (roles/board.md: a PR in remediation keeps its files). Release when the remediation ends and the PR is back at fold-ready."
+retired_utc = "2026-09-27T01:30:00Z"
+note = "RETIRED (job.board 2026-09-27T01:30Z): PR #434 MERGED (fold 46936c6a3d), no open PR on lane/tbchurn424, unit gone. Files RELEASED to [free]."
 
-[lane.buildflags427]
+[retired.buildflags427]
 issues = ["427"]
-files = ["android/app/build.gradle.kts", "android/app/src/main/cpp/CMakeLists.txt", "docs/testing/predictions/buildflags427-*.json", "docs/lanes/buildflags427/**"]
-released = ["android/app/build.gradle.kts", "android/app/src/main/cpp/CMakeLists.txt", "docs/testing/predictions/buildflags427-*.json", "docs/lanes/buildflags427/**"]
+files = []
 standing = false
-note = "STARTED (job.board 2026-09-26T20:25Z), briefs/buildflags427.md: #427, 0.5 release perf workstream (#433). Measure on #397 gameplay windows, pgraph suites as the regression gate."
+retired_utc = "2026-09-27T01:30:00Z"
+note = "RETIRED (job.board 2026-09-27T01:30Z): PR #435 MERGED (fold ed6830c930), no open PR on lane/buildflags427, unit gone. Files RELEASED to [free]."
 
-[lane.vcpuprime428]
+[retired.vcpuprime428]
 issues = ["428"]
-files = ["android/app/src/main/cpp/xemu_android.cpp", "docs/testing/predictions/vcpuprime428-*.json", "docs/lanes/vcpuprime428/**"]
+files = []
 standing = false
-released = ["android/app/src/main/cpp/xemu_android.cpp", "docs/testing/predictions/vcpuprime428-*.json", "docs/lanes/vcpuprime428/**"]
-note = "STARTED (job.board 2026-09-26T20:25Z), briefs/vcpuprime428.md: #428, 0.5 release perf workstream (#433). Measure on #397 gameplay windows, pgraph suites as the regression gate."
+retired_utc = "2026-09-27T01:30:00Z"
+note = "RETIRED (job.board 2026-09-27T01:30Z): PR #437 MERGED, no open PR on lane/vcpuprime428, unit gone. Files RELEASED to [free]."
 
 
 [lane.doa413b]
@@ -1301,21 +1297,19 @@ files = ["docs/testing/jobs/status.sh", "docs/testing/jobs/status_html.py", "doc
 standing = false
 note = "STARTED (lane.local 2026-09-26 16:26 PDT), briefs/dash432.md: #432's dashboard half. The owner asked at ~16:20 PDT for a status page that they or any outsider can read. The spec: the first screen answers four questions in order: how close 0.5 is (the target, the gate, a per-title table with fps, the levers), what is happening now (every lane, xbox and remote included, in a fixed state vocabulary), what needs a person (escalations.md, decision-needed, machine alarms only), and whether the machines are healthy (a device is running, in use by X until T, or idle; never a bare held). issues = [] on purpose: lane.relprio432 holds #432 (its queue-priority half). status.sh, status_html.py and the 60-64 status fragments were on no row after lane.pri432 retired (PR #438 folded 16:05 PDT). Serves 0.5 (#433)."
 
-[lane.holdtake]
+[retired.holdtake]
 issues = []
-files = ["docs/testing/jobs/hold.sh", "docs/testing/jobs/selftest.d/99-hold-take.sh", "docs/testing/jobs/roles/lane.md", "docs/lanes/holdtake/NOTES.md"]
-released = ["docs/testing/jobs/hold.sh", "docs/testing/jobs/selftest.d/99-hold-take.sh", "docs/testing/jobs/roles/lane.md", "docs/lanes/holdtake/NOTES.md"]
-released_at_ready = 453
+files = []
 standing = false
-note = "STARTED (hostops 2026-09-27T00:30Z), briefs/holdtake.md: harness defect, a device hold is removed only by its taker (perfregimen removed the update window's Thor hold 09-26 17:02 PDT)."
+retired_utc = "2026-09-27T01:30:00Z"
+note = "RETIRED (job.board 2026-09-27T01:30Z): PR #453 MERGED (fold 37eef9fa1e), no open PR on lane/holdtake, unit gone. Files RELEASED to [free]."
 
-[lane.holdlease]
+[retired.holdlease]
 issues = []
-files = ["docs/testing/stop-emulator.sh", "docs/testing/jobs/selftest.d/79-stop-hook-hold.sh", "docs/lanes/holdlease/NOTES.md"]
-released = ["docs/testing/stop-emulator.sh", "docs/testing/jobs/selftest.d/79-stop-hook-hold.sh", "docs/lanes/holdlease/NOTES.md"]
-released_at_ready = 450
+files = []
 standing = false
-note = "STARTED (hostops 2026-09-26 16:37 PDT), briefs/holdlease.md: harness defect, no tracker issue (toolsmith defect 21 of 2026-09-25, never landed). stop-emulator.sh, every session's Stop hook, ignores dispatch/hold/<label>, so a HELD handheld's app is force-stopped at any other session's turn end: it killed buildflags427's profile arm B on the held Nova at 16:24:25 PDT and voided perfregimen's first Nova pilot. Interim: host-only hakux-holdlease.service keeps a held device's per-device lease fresh (battery holds excluded); it retires when this lands. stop-emulator.sh was on no row."
+retired_utc = "2026-09-27T01:30:00Z"
+note = "RETIRED (job.board 2026-09-27T01:30Z): PR #450 MERGED (fold a3ecdc3a4d), no open PR on lane/holdlease, unit gone. Files RELEASED to [free]."
 
 [lane.aufire412b]
 issues = ["412"]
