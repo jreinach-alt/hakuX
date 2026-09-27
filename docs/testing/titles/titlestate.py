@@ -7,6 +7,7 @@ which route variant a title run should use.
     titlestate.py record --device D --title-id T --observed OBS --run ID
                          [--save SAVE_ID] [--note TEXT]
     titlestate.py harvest --device D --title-id T --image IMG --run ID
+    titlestate.py no-save --device D --title-id T --reason TEXT --run ID
     titlestate.py build-image --device D OUT.qcow2 [--add T:SAVE_ID ...]
     titlestate.py pushed --device D --image OUT.qcow2 --device-path PATH
     titlestate.py choose --title-id T [--devices nova,thor]
@@ -49,7 +50,9 @@ Until a titles disk has been pushed, `image` is null and every title is
      "titles": {"4541005B": {"profile": true, "origin": "created",
                              "since_utc": ..., "save": null | "<save_id>",
                              "by_run": "<request id>", "observed_utc": ...,
-                             "observed": "created", "note": ...}},
+                             "observed": "created", "note": ...,
+                             "save_na": {"reason": ..., "by_run": ...,
+                                         "utc": ...}}},
      "rejected": {"4541005B": ["<save_id>", ...]}}
 """
 
@@ -166,6 +169,20 @@ def record(device, tid, observed, run, save=None, note=None):
         return row
 
 
+def no_save(device, tid, reason, run):
+    """Record that T's route needs no save on DEVICE, and why: the disk was
+    read and holds no save for T, yet the route reaches gameplay (a New Game
+    route, or a title whose only persistent data is settings). This is a
+    reading of a disk, never a guess: a later harvest of a real save clears
+    it."""
+    if not reason:
+        raise SystemExit("titlestate: no-save needs --reason")
+    with Registry(device) as st:
+        row = st["titles"].setdefault(tid, {"profile": None})
+        row["save_na"] = {"reason": reason, "by_run": run, "utc": now()}
+        return row
+
+
 def store_dir(tid, save_id):
     return os.path.join(root(), "saves", tid, save_id)
 
@@ -186,6 +203,7 @@ def harvest(device, tid, image, run):
         row = st["titles"].setdefault(tid, {"profile": True, "origin": "found",
                                             "since_utc": now()})
         row.update(save=m["save_id"], harvested_utc=now(), harvested_by=run)
+        row.pop("save_na", None)
         if not row.get("profile"):
             row.update(profile=True, origin=row.get("origin") or "found",
                        since_utc=row.get("since_utc") or now())
@@ -258,6 +276,19 @@ def route_path(tid, variant):
     return os.path.join(HERE, "routes", "survey.route")
 
 
+def single_route(tid):
+    """routes/<route>.route when the title has it and no first-run or
+    returning variant; else None."""
+    name = targets().get(tid, {}).get("route")
+    if not name:
+        return None
+    if any(os.path.exists(os.path.join(HERE, "routes", f"{name}.{v}.route"))
+           for v in ("first-run", "returning")):
+        return None
+    p = os.path.join(HERE, "routes", f"{name}.route")
+    return p if os.path.exists(p) else None
+
+
 def choose(tid, devices=None):
     """Which device, which variant, and whether to import a save first.
 
@@ -268,7 +299,11 @@ def choose(tid, devices=None):
     4. Else (state unknown everywhere): `survey`. A first-run route on a disk
        that may hold a profile meets prompts it was not written for.
     Candidates are the devices that hold the ISO (targets.toml `iso`), in the
-    order given; a title with no targets entry may run anywhere."""
+    order given; a title with no targets entry may run anywhere.
+
+    A title whose only route is routes/<route>.route (no first-run or
+    returning variant) runs that route whatever the disk holds: the device
+    and the import are chosen as above, the variant is `single`."""
     t = targets().get(tid, {})
     have_iso = list((t.get("iso") or {}).keys())
     cands = [d for d in (devices or DEVICES) if not have_iso or d in have_iso]
@@ -278,7 +313,12 @@ def choose(tid, devices=None):
     states = {d: load(d) for d in cands}
     rows = {d: states[d]["titles"].get(tid, {}) for d in cands}
 
+    single = single_route(tid)
+
     def pick(d, variant, imp, reason):
+        if single:
+            return {"title_id": tid, "device": d, "variant": "single", "import": imp,
+                    "route": single, "reason": reason + "; the title has one route"}
         return {"title_id": tid, "device": d, "variant": variant, "import": imp,
                 "route": route_path(tid, variant), "reason": reason}
 
@@ -307,6 +347,9 @@ def main(argv=None):
     for f in ("--device", "--title-id", "--observed", "--run"):
         s.add_argument(f, required=True)
     s.add_argument("--save"); s.add_argument("--note")
+    s = sub.add_parser("no-save")
+    for f in ("--device", "--title-id", "--reason", "--run"):
+        s.add_argument(f, required=True)
     s = sub.add_parser("harvest")
     for f in ("--device", "--title-id", "--image", "--run"):
         s.add_argument(f, required=True)
@@ -340,6 +383,8 @@ def main(argv=None):
     elif a.cmd == "record":
         print(json.dumps(record(a.device, tid_norm(a.title_id), a.observed, a.run, a.save, a.note),
                          sort_keys=True))
+    elif a.cmd == "no-save":
+        print(json.dumps(no_save(a.device, tid_norm(a.title_id), a.reason, a.run), sort_keys=True))
     elif a.cmd == "harvest":
         print(harvest(a.device, tid_norm(a.title_id), a.image, a.run))
     elif a.cmd == "build-image":
