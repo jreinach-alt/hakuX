@@ -902,6 +902,57 @@ The leave state at 14:00: app stopped, performance_mode 0, fan_mode 4,
 dual_screen_display_mode 0, screen_focus_lock 0, screen asleep, 82%. At
 13:58:47 PDT the host's update window took both handhelds (bounded 30 min).
 
+### Session 24: HELD Thor, 14:02-14:28 PDT (26 min; hold taken 14:02 as the host's update window lifted), battery 82% -> 80%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Baldur's Gate: Dark Alliance (5655001A) | thor | `baldurs-gate-da.route` | yes (14:02, as a held soak) | the archer on the tavern floor at the mark, overlay FPS 59 |
+| Mercenaries (4C410015) | thor | none | - | not reached: the first load never ends |
+| KOF: Maximum Impact - Maniax (534E0007) | thor | `kof-mi.returning.route` | no: a draft | round 1, Alba Meira against Soiree Meira; the pattern's kick lands and Soiree's bar drops; 30-33 fps |
+
+Held reading (same instrument and caveats as session 23's):
+
+| title | held result | apk | gameplay | fps median (min) / share >= 30 | notes |
+|---|---|---|---|---|---|
+| Baldur's Gate: Dark Alliance | `scratch/held/baldurs-gate-da-20260927T140214` | f5abfa521745 (= ref a593d8eb85) | 245.5 s | 59.94 (58.31) / 100% | target 30 (none from #431). No hang. The tavern is an indoor room with five characters, so this is the title's light end |
+
+The soak was sized at pre-mark + 300 s from the route's waits (422 s), but
+the replay reached the mark 487 s after the launch: each `shot` costs about
+3 s and this route has 19. So the window was 245 s. `premark.py` should add
+3 s per `shot`; until it does, add it by hand for a route with many frames.
+`end-frame.png` was not written in this run either (the frame step in
+`heldsoak.sh` did not fire; not looked into).
+
+**Mercenaries: blocked at the first load.** The title needs no press up to
+"PRESS START". START, then A on NEW GAME, A on JACOBS, A on ACCEPT, and A
+ends the news-footage video. The loading screen ("Allied M1025 Scout") then
+never ends. Three frames over 95 s (14:19:41 to 14:21:16) are identical
+pixel for pixel below the FPS overlay, spinner included
+(`scratch/same.py`), while the overlay reads 59. The logcat's `fifoskew`
+lines read `kicks=0` over the same time, so the guest submits nothing to
+the GPU; the vblank keeps its 59.94 Hz. Frames
+`~/hakux-work/nav/mercenaries.first-run-20260927T141501/` (007 to 010),
+640x480 copy `frames/mercenaries-loading-frozen.jpg`, logcat tail
+`scratch/merc-logcat-tail.txt`. The menus before it ran at 12-14 fps.
+
+**KOF: Maximum Impact.** START ends the intro video. The first box asks to
+create option data. I meant to answer NO twice over (NO, then "begin game
+play anyway" YES), which would have left the disk alone and given one route
+for every run. The hat moved the cursor down on the first box and did not
+move it on the next ones, up or down, so an A meant for NO landed on YES and
+the data was saved. It persisted (HOME flush, then a relaunch showed "OPTION
+DATA ALREADY EXISTS"). So the Thor's disk now has KOF's option data, and the
+committed route is the returning one. lane.titlestate's registry does not
+know about this save yet; it is on the board request file.
+
+**Do not repeat:** do not answer a save prompt by moving the cursor blind.
+Take a frame after the move and before the A. `step.sh` takes its frame
+after the last step, so put `shot` between the move and the press.
+
+The leave state at 14:28: HOME flush, app stopped, performance_mode 0,
+fan_mode 4, dual_screen_display_mode 0, screen_focus_lock 0, screen asleep,
+80%.
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only

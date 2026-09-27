@@ -23,7 +23,14 @@
 # The play pattern uses the stick only. A talks to whoever is near, and in
 # the tavern that opens a conversation.
 #
-# NOT yet replayed.
+# REPLAYED 2026-09-27 14:02 PDT, as a held soak (soak_title.sh in our hold,
+# MAX regimen, apk f5abfa521745 = ref a593d8eb85;
+# scratch/held/baldurs-gate-da-20260927T140214): the mark frame is the
+# archer at the same spot on the tavern floor, overlay FPS 59, and hakuX
+# held the input focus on all 46 reads. 245.5 s of gameplay, fps window
+# median 59.94 (min 58.31), 100% at >= 30, no hang. The replay reached the
+# mark 487 s after the launch, 65 s later than the waits add up to: each of
+# the 19 frames costs about 3 s.
 wait 28.4
 shot boot
 wait 35.4

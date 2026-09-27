@@ -408,3 +408,8 @@ route = "bloodrayne"
 name = "Baldur's Gate: Dark Alliance"
 iso = { thor = "5655001A-Baldur_s_Gate_Dark_Alliance.xiso.iso" }
 route = "baldurs-gate-da"
+
+[titles."534E0007"]
+name = "KOF: Maximum Impact - Maniax"
+iso = { thor = "534E0007-KOF_Maximum_Impact_Maniax.xiso.iso" }
+route = "kof-mi.returning"
