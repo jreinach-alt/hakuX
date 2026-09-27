@@ -196,3 +196,10 @@ notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 
 name = "Crash Twinsanity"
 iso = { thor = "56550036-Crash_Twinsanity.xiso.iso" }
 notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+# lane.titleroutes (#397, 0.5 benchmark stage 2): routes programmed with nav.py in HELD sessions.
+[titles."43560001"]
+name = "Kabuki Warriors"
+iso = { nova = "43560001-Kabuki_Warriors.xiso.iso" }
+route = "kabuki-warriors"
+notes = "Route by lane.titleroutes 2026-09-26 (Nova): Tour Mode fight vs CPU, no profile step. Own target not yet measured, so the 30 default."

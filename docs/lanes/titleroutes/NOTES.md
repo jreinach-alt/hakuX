@@ -68,4 +68,41 @@ Playable), then `download-priority-2026-09-25.csv` (`-` = not in that list).
 
 ## 2. Sessions
 
-(filled per HELD session)
+Helpers (in `scratch/`, not committed): `dev.sh <dev> take|launch <iso>|release|state`
+(launch = force-stop, wake, MAX perf 2/5, VIEW intent with `rom_path`),
+`n.sh <dev> <nav.py args>` (touches the lease on every call), `lease.sh`
+(touches the lease every 30 s while our hold exists), and `replay.sh <dev>
+<iso> <route>` (fresh launch, `route.sh` under a timeout of the route's
+pre-mark time + 40 s, frames to `scratch/replay/<route>-<hhmmss>/`).
+
+### Session 1: HELD Nova, 18:37-18:54 PDT (17 min), battery 70% -> 64%
+
+The Thor was taken first at 18:25 and released at once: battery 26%, under
+the 30% floor (a titlebench soak was running on it at MAX).
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Kabuki Warriors (43560001) | nova | `kabuki-warriors.route` | yes, twice (18:42, 18:49) | Tour Mode fight vs a random CPU team; the timer and health bars run and the round restarts after a loss |
+
+**Kabuki Warriors.** No profile step. Intro FMV (START) -> title (START)
+-> Tour Mode is the default (START) -> Player Entry (A, then wait out the
+30 s countdown) -> Tokaido map -> Character Select vs CPU (A x3) -> fight.
+On the map, `LEFT` on the D-pad does nothing; START opens CONTINUE/MODE END,
+and LX min held 1.2 s walks west, then A travels. Player control: with LX
+min held the gap to the CPU grew (nav frames 016 -> 017), with LX max it
+closed (021 -> 022). Frames:
+`~/hakux-work/nav/kabuki.first-run-20260926T183708/022-forward5.png` (nav)
+and `scratch/replay/kabuki-warriors-184913/185256-gameplay.png` (replay;
+copied to `docs/lanes/titleroutes/frames/`).
+
+- The first fight of the nav session ran at 2-16 fps with the game clock at
+  about 1/20 of real time (shaders compiling for the first time); both
+  replays ran the same fight at 59 fps. So the first run of a title on a
+  device is not its speed.
+- First replay: the mark came where nav.py put it, ~90 s into the fight,
+  and by then the player had lost. The route was cut at the round start
+  (`shot round` + 3 s) and the play pattern made to attack without pause
+  (LX max, X, A, Y, B). After a loss A skips the winner pose and a new round
+  starts by itself (probe session `kabuki-after.probe-20260926T185342`), so
+  the 420 s window holds fights plus a few seconds of KO/winner poses per
+  round.
