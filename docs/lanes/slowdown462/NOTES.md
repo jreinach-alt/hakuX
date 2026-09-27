@@ -399,6 +399,43 @@ show.
 - Blinx, Blinx 2 and Forza answers posted on #462, #372 and #414; the
   five-title summary on #462.
 
+## Attempt 3 (2026-09-27): GTA: San Andreas, the sixth title
+
+Why there is an attempt 3: attempt 2 did finish. The five answers and the
+summary were posted, and PR #463 folded into master. The resume's "background
+job died" note is about attempt 1 (above). Attempt 3 exists because of
+lane.local's 06:26 PDT addendum, which added GTA: San Andreas (54540082)
+after the fold.
+
+State at 06:27 PDT: GTA is **not on the Nova** (`ls /storage/*/Games/XBox/`).
+It is on lane.xbox's `titlepush/queue-investigation.txt` (reason #462), to be
+copied the next time the Nova is free. The Nova was running a titleroutes
+benchmark then. A soak queued before the copy lands ends as the
+dispatcher's `TITLE NOT FOUND` (dispatcher.sh:756), so the soak waits for
+lane.xbox's "verified on the Nova" note on #462.
+
+### Pre-read of the Thor benchmark (not the protocol's measurement)
+
+`0-0-x-1790493356-titleroutes-734802`: ca54a41dd1, apk 397ae7dca16a, Thor,
+MAX, no perflog. It has hakuX-pace only, so the read below is pacing only.
+There were 22 pace lines (60 flips each) after the route's `mark gameplay`:
+
+| | value |
+|---|---|
+| ms/frame, median of the 22 windows | 216 (min 156, max 256) = 4.6 fps |
+| VBLANKs per flip, median | 12.5; the VBLANK rate is 58.4 Hz, so the timer is not starved |
+| flips at >= 4 VBLANKs | 1316 of 1320 |
+| the slowest frame in each window | 250-470 ms in 15 of the 22; 711, 955, 1152, 1855 and 1919 ms in the rest |
+
+**The verdict's ten 11-15 s "hangs" are not stalls.** The hang detector
+reports a gap as "N s without 60 guest flips", and at 216 ms/frame 60 flips
+take 13 s. Every gameplay window is such a "gap". The steady frame time is
+the problem. The real spikes are the five frames of 0.7-1.9 s. Their
+excess over the median frame totals about 6 s of the ~285 s window (~2%).
+The steady 216 ms is the other ~98%. Whether each spike is streaming, a
+shader compile or a lock is a question for the Nova soak's hakuX-stall and
+hakuX-phase lines and the profile, not this run.
+
 ## Summary (Nova, MAX, e5db66fa37 soaks / a593d8eb85 profiles)
 
 | title | fps (soak window) | sets the frame | top cost (ms/frame, share) | owner | bound if it goes |
