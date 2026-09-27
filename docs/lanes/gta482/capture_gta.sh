@@ -158,6 +158,14 @@ a exec-out screencap -p > "$OUT/shot0.png" 2>/dev/null
 s0=$(stat -c %s "$OUT/shot0.png" 2>/dev/null || echo 0)
 say "display: $wk, screencap $s0 bytes"
 [ "$wk" = mWakefulness=Awake ] && [ "$s0" -gt 12000 ] || { say "the display is not on; refusing"; exit 7; }
+# Before launch, the focus read must parse the Thor's real `dumpsys input`
+# (hakuX is not running, so a miss is expected; a missing FocusedDisplayId or
+# FocusedWindows is a format this reader does not know, and the guard would
+# stop the soak on it).
+pre=$(a shell dumpsys input < /dev/null 2>/dev/null | tr -d '\r' | tee "$OUT/dumpsys-input-prelaunch.txt" | python3 "$HERE/../lanes/gta482/focus.py")
+say "pre-launch focus: $pre"
+grep -q 'FocusedWindows:' "$OUT/dumpsys-input-prelaunch.txt" && case "$pre" in "miss: no FocusedDisplayId"*) false ;; esac \
+    || { say "dumpsys input has no FocusedDisplayId/FocusedWindows; refusing"; exit 7; }
 cp "$HERE/titles/routes/gta-sa.route" "$OUT/route.txt" || { say "no route gta-sa"; exit 5; }
 
 LOGCAT_SPEC="hakuX-crash:V hakuX-unhandled:W hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-tier1:D hakuX-pages:I hakuX:I hakuX-stderr:E hakuX-vk:I hakuX-route:I hakuX-pace:I hakuX-stall:I hakuX-rpbrk:I hakuX-cpu:I xemu-gpu:I xemu-sfp:I libc:F DEBUG:F *:S" \
@@ -173,18 +181,24 @@ say "soak pid $SOAK_PID"
 # Session 2 (19:10Z): display 1's launcher had the focus. Hostops's addendum
 # (12:36 PDT) allows ONE re-issue of hakuX's `am start` with `--display 0` on
 # the first miss, then the usual check; never a tap or a key to move focus.
+# Sessions 2 and 3 were stopped by a misread, not by the focus: `dumpsys window
+# | grep -m1 mCurrentFocus=` returns display 4's launcher line first on the
+# Thor (hostops, 12:45 PDT). The read is focus.py over `dumpsys input`:
+# FocusedDisplayId must be 0 and that display's FocusedWindows entry hakuX's.
+FOCUS="$HERE/../lanes/gta482/focus.py"
+focus() { a shell dumpsys input < /dev/null 2>/dev/null | tee "$OUT/dumpsys-input-$1.txt" | python3 "$FOCUS"; }
 (
     sleep 12; miss=0; n=0; relaunched=0
     while kill -0 $SOAK_PID 2>/dev/null; do
-        f=$(a shell dumpsys window < /dev/null 2>/dev/null | tr -d '\r' | grep -m1 'mCurrentFocus=')
+        f=$(focus $n); frc=$?
         [ $n = 0 ] && say "focus: $f"; n=$((n + 1))
-        case "$f" in *com.jreinach.hakux*) miss=0 ;; *) miss=$((miss + 1)) ;; esac
+        [ $frc = 0 ] && miss=0 || miss=$((miss + 1))
         if [ $miss = 1 ] && [ $relaunched = 0 ]; then
             relaunched=1; miss=0; touch "$OUT/relaunched-display0"
             say "focus is not hakuX ($f); re-issuing am start --display 0 once"
             a shell "am start --display 0 -a android.intent.action.VIEW -n $PKG/com.rfandango.haku_x.LauncherActivity --es rom_path '$ISOPATH'" < /dev/null >/dev/null 2>&1
             sleep 6
-            say "focus after re-issue: $(a shell dumpsys window < /dev/null 2>/dev/null | tr -d '\r' | grep -m1 'mCurrentFocus=')"
+            say "focus after re-issue: $(focus relaunch)"
             continue
         fi
         if [ $miss -ge 2 ]; then

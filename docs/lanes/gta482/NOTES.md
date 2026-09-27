@@ -204,3 +204,32 @@ addressed to hakuX's display.
 - In this sandbox, `systemd-run` and `setsid` need approval. Run the session
   in the foreground under `timeout 570`, with the hold taken and the running
   request waited out in an earlier call.
+
+## Attempt 3 (resumed 2026-09-27 12:45 PDT, after hostops's addendum 2)
+
+Why attempt 2 did not finish: its guard misread the focus, so it recorded
+itself blocked on #494. `capture_gta.sh` read `dumpsys window | grep -m1
+mCurrentFocus=`; `dumpsys window` prints one `mCurrentFocus=` per display and
+on the Thor display 4's SecondaryDisplayLauncher is listed first, so the read
+saw the launcher every time, even with hakuX focused. Hostops's launch-only
+test (12:43 PDT) read `FocusedDisplayId: 0` with display 0's focused window
+hakuX's GameLibraryActivity. Sessions 2 and 3 were most likely voided by the
+misread, not by the focus; the "Reading" under session 3 above is wrong.
+
+Fix: `focus.py` reads `dumpsys input`: `FocusedDisplayId: N`, then the
+`FocusedWindows:` entry `displayId=N`; in front means N = 0 and that window
+is `com.jreinach.hakux*`. `focus.py --selftest` runs three Thor-shaped
+fixtures (written by `focus_fixtures.py`, display 4 listed first in every
+block, so a first-match read fails) plus an empty read:
+
+| fixture | focus.py | old first-match read |
+|---|---|---|
+| hakux (FocusedDisplayId 0, display 0 = hakuX) | in-front | display 4 launcher (miss) |
+| launcher (FocusedDisplayId 0, display 0 = Daijisho) | miss | display 4 launcher |
+| display4 (FocusedDisplayId 4) | miss | display 4 launcher |
+| empty (adb failed) | miss | - |
+
+No saved real `dumpsys input` from the Thor was on disk (hostops's inbox
+quotes the excerpt only), so the session now saves one before launch
+(`dumpsys-input-prelaunch.txt`) and refuses to launch if the reader cannot
+find `FocusedDisplayId`/`FocusedWindows` in it; every guard read is saved too.
