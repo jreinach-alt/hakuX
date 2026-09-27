@@ -1309,7 +1309,7 @@ note = "RELEASED AT READY (job.board 2026-09-27): PR #443 is out of draft, CI gr
 [lane.tbsize429]
 issues = ["429"]
 files = ["accel/tcg/translate-all.c", "accel/tcg/cpu-exec.c", "docs/lanes/tbsize429/NOTES.md", "docs/lanes/tbsize429/scan.py", "docs/testing/predictions/tbsize429-soak.json"]
-released = ["accel/tcg/translate-all.c", "accel/tcg/cpu-exec.c", "docs/testing/predictions/tbsize429-soak.json"]
+released = ["accel/tcg/translate-all.c", "accel/tcg/cpu-exec.c", "docs/testing/predictions/tbsize429-soak.json", "docs/lanes/tbsize429/NOTES.md", "docs/lanes/tbsize429/scan.py"]
 standing = false
 note = "STARTED (job.board 2026-09-27), briefs/tbsize429.md: #429, 0.5 perf lever, smaller translation blocks on often-rewritten pages. translate-all.c came free with PR #434; cpu-exec.c released at ready by lane.jcache425 (PR #443), so the brief tells the lane to merge master or lane/jcache425 and re-run its arm before ready. tb-maint.c, tb-internal.h and cputlb.c stay with lane.tbflip424."
 
