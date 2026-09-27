@@ -2523,6 +2523,33 @@ static void register_cpu_access_callback(NV2AState *d, SurfaceBinding *surface)
 }
 
 /*
+ * Take a surface's watch off it without removing it from the vCPU, so it
+ * stays up until surface_watch_retire queues the removal (#372's quadrant
+ * copy hands the range over this way, with no unwatched moment).
+ */
+static MemAccessCallback *surface_watch_detach(SurfaceBinding *surface)
+{
+    qemu_rec_mutex_lock(&surface_watch_lock);
+    MemAccessCallback *cb = surface->access_cb;
+    surface->access_cb = NULL;
+    if (surface_watch_suspended) {
+        g_hash_table_remove(surface_watch_suspended, surface);
+    }
+    qemu_rec_mutex_unlock(&surface_watch_lock);
+    return cb;
+}
+
+static void surface_watch_retire(MemAccessCallback *cb)
+{
+    qemu_rec_mutex_lock(&surface_watch_lock);
+    if (tcg_enabled() && cb) {
+        mem_access_callback_remove_by_ref(qemu_get_cpu(0), cb);
+        surface_live_watches--;
+    }
+    qemu_rec_mutex_unlock(&surface_watch_lock);
+}
+
+/*
  * Retire a surface's watch on its VRAM, unless it still owes that VRAM a
  * writeback.
  *
@@ -4213,6 +4240,31 @@ static bool surface_quad_eligible(PGRAPHState *pg, SurfaceBinding const *s)
            (size_t)s->width * s->fmt.bytes_per_pixel <= s->pitch;
 }
 
+/*
+ * The guard's hash. Not surface_watch_hash: a multiply alone carries a
+ * word's top bit only into the product's top bit, and that hash's final
+ * shifts drop it, so a change confined to bit 63 of some words (a D24S8
+ * pixel's depth MSB) hashes the same. Rotating each step moves every bit
+ * into the low half before the next multiply spreads it.
+ */
+static uint64_t surface_quad_hash(const uint8_t *p, size_t len)
+{
+    uint64_t h[4] = { 0x9e3779b97f4a7c15ull, 0xc2b2ae3d27d4eb4full,
+                      0x165667b19e3779f9ull, 0x27d4eb2f165667c5ull };
+    size_t i = 0;
+    for (; i + 32 <= len; i += 32) {
+        for (int k = 0; k < 4; k++) {
+            uint64_t v;
+            memcpy(&v, p + i + 8 * k, 8);
+            h[k] = rol64(h[k] ^ v, 29) * 0x100000001b3ull;
+        }
+    }
+    for (; i < len; i++) {
+        h[0] = rol64(h[0] ^ p[i], 29) * 0x100000001b3ull;
+    }
+    return h[0] ^ rol64(h[1], 16) ^ rol64(h[2], 32) ^ rol64(h[3], 48);
+}
+
 /* An eviction download was recorded for s: remember it until it lands. */
 static void surface_quad_note(PGRAPHState *pg, SurfaceBinding *s)
 {
@@ -4245,7 +4297,7 @@ static void surface_quad_arm(NV2AState *d)
         surface_quad_ref.armed = true;
         surface_quad_ref.draw_generation = s->draw_generation;
         surface_quad_ref.hash =
-            surface_watch_hash(d->vram_ptr + s->vram_addr, s->size);
+            surface_quad_hash(d->vram_ptr + s->vram_addr, s->size);
         surface_quad_arms++;
     } else {
         surface_quad_forget(s);
@@ -4291,7 +4343,10 @@ static SurfaceBinding *surface_quad_partner(NV2AState *d, SurfaceBinding *held,
     }
     if (!partner || partner != surface_quad_ref.s || !surface_quad_ref.armed ||
         partner->draw_generation != surface_quad_ref.draw_generation ||
-        partner->draw_dirty || partner->upload_pending || partner->vram_newer) {
+        partner->draw_dirty || partner->upload_pending || partner->vram_newer ||
+        !partner->access_cb) {
+        /* The shelf watch must still be up: it is handed over at the flip
+         * without a gap (see update_surface_part). */
         return NULL;
     }
     QTAILQ_FOREACH(s, &r->surfaces, entry) {
@@ -4300,7 +4355,7 @@ static SurfaceBinding *surface_quad_partner(NV2AState *d, SurfaceBinding *held,
             return NULL;
         }
     }
-    if (surface_watch_hash(d->vram_ptr + partner->vram_addr, partner->size) !=
+    if (surface_quad_hash(d->vram_ptr + partner->vram_addr, partner->size) !=
         surface_quad_ref.hash) {
         surface_quad_vram_changed++;
         surface_quad_forget(partner);
@@ -4495,7 +4550,7 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
         bool should_create = true;
         SurfaceBinding *handoff_src = NULL, *handoff_dst = NULL;
         bool handoff_quad = false;
-        uint64_t quad_hash = 0;
+        MemAccessCallback *quad_watch_p = NULL, *quad_watch_x = NULL;
 
         if (surface != NULL) {
             bool is_compatible =
@@ -4644,7 +4699,6 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                     handoff_dst = surface_quad_partner(d, surface, &target,
                                                        mem_dirty);
                     handoff_quad = handoff_dst != NULL;
-                    quad_hash = surface_quad_ref.hash;
                 }
                 if (handoff_dst) {
                     /* Recorded once the partner is off the shelf, below. */
@@ -4696,6 +4750,10 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
              * which this slot has just left; the assignment replaces its
              * address and draw_dirty, so the old writeback is gone anyway.
              */
+            if (handoff_quad && surface == handoff_dst) {
+                /* Kept up until surface_put's watch is queued (below). */
+                quad_watch_p = surface_watch_detach(surface);
+            }
             unregister_cpu_access_callback(surface);
             surface_quad_forget(surface);
             *surface = target;
@@ -4715,6 +4773,9 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                 handoff_src->download_generation =
                     handoff_src->draw_generation;
                 handoff_src->vram_newer = true;
+                if (handoff_quad) {
+                    quad_watch_x = surface_watch_detach(handoff_src);
+                }
                 unregister_cpu_access_callback(handoff_src);
                 surface->upload_pending = false;
                 surface->initialized = true;
@@ -4759,24 +4820,19 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                  * the download now, with its watch live. */
                 surface->draw_generation++;
                 pgraph_vk_surface_watch_mark_dirty(d, surface);
-                /* The shelf's watch was dropped above and surface_put's is
-                 * inserted asynchronously: a guest store in between is not
-                 * trapped. surfwatch382's gap check counts one (lost_writes)
-                 * against the memory the partner was matched to. */
-                qemu_rec_mutex_lock(&surface_watch_lock);
-                if (handoff_quad && surface->access_cb) {
-                    SurfaceWatchRearm *w = g_new(SurfaceWatchRearm, 1);
-                    w->d = d;
-                    w->vram_addr = surface->vram_addr;
-                    w->size = surface->size;
-                    w->cb = surface->access_cb;
-                    w->hash = quad_hash;
-                    async_safe_run_on_cpu(qemu_get_cpu(0),
-                                          surface_watch_rearmed,
-                                          RUN_ON_CPU_HOST_PTR(w));
-                }
-                qemu_rec_mutex_unlock(&surface_watch_lock);
             }
+            /*
+             * After a quadrant copy VRAM's corner is older than the image
+             * until P's download, so the range may not go unwatched for a
+             * moment: the insert and the remove are both queued to the vCPU,
+             * and a remove queued before surface_put's insert would leave a
+             * window in which a guest read of the corner is not trapped. The
+             * old watches were kept up; their removal is queued now, after
+             * the insert. Every watch runs surface_access_callback, which
+             * finds P by range, so either one answers the same way.
+             */
+            surface_watch_retire(quad_watch_p);
+            surface_watch_retire(quad_watch_x);
 
             // FIXME: Refactor
             pg->surface_binding_dim.width = target.width;
