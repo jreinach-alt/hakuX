@@ -109,12 +109,20 @@ def load_targets(path):
 
 
 def find_title(targets, iso):
-    """(title_id, entry) for the ISO the request named, or (None, {})."""
+    """(title_id, entry) for the ISO the request named, or (None, {}).
+    An ISO no entry's `iso` map names, but whose file name leads with a
+    registered title ID (`<TID>-<Name>.xiso.iso`, the pipeline's), is that
+    title: a verdict scored before the map listed it must not come out
+    nameless (#397, 2026-09-27)."""
     base = os.path.basename(iso or "")
-    for tid, t in (targets.get("titles") or {}).items():
+    titles = targets.get("titles") or {}
+    for tid, t in titles.items():
         isos = t.get("iso") or {}
         if base and base in [os.path.basename(v) for v in isos.values()]:
             return tid, t
+    m = re.match(r"([0-9A-Fa-f]{8})-", base)
+    if m and m.group(1).upper() in titles:
+        return m.group(1).upper(), titles[m.group(1).upper()]
     return None, {}
 
 
