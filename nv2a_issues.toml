@@ -4305,7 +4305,7 @@ no_suites = "A PERFORMANCE DEFECT in one title. No pgraph suite measures frame r
 status = "open"
 dispatch_state = "blocked"
 blocker_tested = "confirmed 2026-09-27T16:55Z: PR #483 merged 16:35Z; the Thor battery is 18% and falling (devwatch)."
-blocked_on = "WAITING ON THE THOR'S CHARGE (hostops 2026-09-27T16:55Z): the #462 attribution is done (PR #483: 37% guest code, 30% guest blocked, 22% dispatch overhead incl. 31 ms/frame jump lookup; bounds 6.1-7.2 fps). The next step, a guest-PC profile of the open world plus an off-CPU session, needs a held Thor session at >= 30% battery; the Thor was at 18% and enters the 15% battery-hostops hold (lifts at 80%). hostops starts the GTA profile lane when that hold lifts (hostops-inbox, open item)."
+blocked_on = "IN FLIGHT (hostops 2026-09-27T18:20Z): lane.gta482 holds it (briefs/gta482.md): the Thor is back at 87% (owner put it back in production 11:05 PDT); guest-PC + off-CPU profiles of the open world."
 status_note = "FILED 2026-09-27T15:15Z by hostops from lane.slowdown462's board request Ask 5 (soak 0-0-x-1790517499-slowdown462-1484367; benchmark 0-0-x-1790493356-titleroutes-734802)."
 impact_px = 0
 impact_onestep_px = 0
