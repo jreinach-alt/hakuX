@@ -1329,10 +1329,3 @@ issues = ["412"]
 files = ["docs/lanes/aufire412b/NOTES.md", "docs/testing/predictions/aufire412b-*.json"]
 standing = false
 note = "STARTED (hostops 2026-09-27T00:16Z), briefs/aufire412b.md: #412 Agent Under Fire ~15 fps on the Nova, profile what paces the frame (vCPU side); lane.aufire412's PR #416 folded and did not move fps. A code site it finds is a board request for that file, not an edit. Serves 0.5 (#433). Row written by job.board 2026-09-27: the lane ran with no row."
-
-
-[lane.cloud-remediate-435]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-435, remediation of PR #435 on branch lane/buildflags427, attempt 2 of 4 on claude-opus-5-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 435` removes this row when the unit ends."
