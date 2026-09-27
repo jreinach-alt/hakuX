@@ -160,6 +160,9 @@ extern uint64_t hakux_tcg424_cbb;
  *                   heuristic: see tlb_reset_dirty().
  *   HAKUX_TCG68_JC  do_tb_phys_invalidate() does not wipe the whole jump
  *                   cache for a CF_PCREL TB. See tb_jmp_cache_inval_tb().
+ *                   Default ON since #425 (PR #443: pixels 593/593
+ *                   identical, Crimson wipes 8.6% of guest CPU to 0);
+ *                   "0" turns it off.
  */
 static int hakux_tlb68_env(const char *name)
 {
@@ -184,7 +187,7 @@ bool hakux_tlb68_jc_on(void)
 {
     int v = qatomic_read(&hakux_tlb68_fix_jc);
     if (unlikely(v < 0)) {
-        v = hakux_tlb68_env("HAKUX_TCG68_JC");
+        v = getenv("HAKUX_TCG68_JC") ? hakux_tlb68_env("HAKUX_TCG68_JC") : 1;
         qatomic_set(&hakux_tlb68_fix_jc, v);
     }
     return v;
