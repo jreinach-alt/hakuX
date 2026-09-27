@@ -977,7 +977,7 @@ idle sled runs out of time. #431's target for it is 60.
 
 I gave the Thor back after 15 minutes. Five requests pinned to it were
 waiting (thermal507's GTA soak, two of flip474's, two arms), and I had held
-it for 93 of the 105 minutes since 12:59.
+it for 89 of the 105 minutes since 12:59.
 
 The leave state at 14:44: app stopped, performance_mode 0, fan_mode 4,
 dual_screen_display_mode 0, screen_focus_lock 0, screen asleep, 80%.
