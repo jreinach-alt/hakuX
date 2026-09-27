@@ -523,6 +523,19 @@ Unpaused, GTA on the Thor ran 22-29 gfps from 7 to 50 s after the mark and
 record).
 slowdown462's soak frame `f00022.png` shows the street at 27 fps.
 
+## State at the end of attempt 4 (2026-09-27 13:50 PDT): done
+
+- Rows 1 and 2 of the old table are measured, and both follow from a host
+  state. The table is on #482 (5859692804) and #462 (5859692928).
+- Levers handed over: #425 (5859693029: prices corrected, the guest wait
+  loop), #424 (5859693137: price corrected, "new code" is its churn), #474
+  (5859693255: `pgraph.lock`, an upper bound). The thermal state is #507
+  (new; labels 0.5, fps-focus, harness).
+- Asked hostops (inbox, 13:48 PDT) for #507's tracker row, a harness lane
+  for the cooling-device detection, and a read of the trip points.
+- Nothing of this lane's is queued, running or held. No further device
+  session is asked for.
+
 ## Do not repeat (attempt 4)
 
 - Do not read a slow window as the title's before `cpuof.py` says which
