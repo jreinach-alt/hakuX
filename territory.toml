@@ -426,9 +426,8 @@ note = "STARTED (hostops 2026-09-27 11:20 PDT), briefs/gta482.md: #482 (fps-focu
 [lane.displayguard]
 issues = ["494"]
 files = ["docs/testing/soak_title.sh", "docs/testing/devices.sh", "docs/testing/jobs/selftest.d/99-display-covered.sh", "docs/lanes/displayguard/**"]
-released = ["docs/testing/soak_title.sh", "docs/testing/devices.sh", "docs/testing/jobs/selftest.d/99-display-covered.sh", "docs/lanes/displayguard/**"]
 standing = false
-note = "STARTED (hostops 2026-09-27 11:58 PDT), briefs/displayguard.md: #494, a title soak must refuse to run (status display-covered, void) when a foreign full-screen overlay covers hakuX on display 0; 09-27 11:06-11:51 PDT the AYN dual-screen assistant voided every Thor run. soak_title.sh and devices.sh from [free]; run_disc.sh stays with lane.toolsmith."
+note = "STARTED (hostops 2026-09-27 11:58 PDT), briefs/displayguard.md: #494, a title soak must refuse to run (status display-covered, void) when a foreign full-screen overlay covers hakuX on display 0; 09-27 11:06-11:51 PDT the AYN dual-screen assistant voided every Thor run. soak_title.sh and devices.sh from [free]; run_disc.sh stays with lane.toolsmith. RESUMED (hostops 2026-09-27 12:33 PDT): add a focus guard (route input went to display 4's launcher and launched Lime3DS, 09-27 12:12); files un-released until PR #495 is ready again."
 
 [free]
 # RELEASED (hostops 2026-09-27T19:00Z) by retiring lane.retreason425 (PRs #460 #493 folded): accel/tcg/cpu-exec.c, accel/tcg/tb-jmp-cache.h, target/i386/tcg/translate.c.
