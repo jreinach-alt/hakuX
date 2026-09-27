@@ -447,7 +447,10 @@ note = "RETIRED (hostops 2026-09-27 14:40 PDT): PR #510 folded as 2e00efa205 (ha
 [lane.thermal507]
 issues = ["507"]
 files = ["docs/testing/thermal_state.py", "docs/testing/soak_title.sh", "docs/testing/title_verdict.py", "docs/testing/jobs/selftest.d/99-thermal-pause.sh", "docs/lanes/thermal507/**"]
-note = "STARTED (hostops 2026-09-27 13:58 PDT), briefs/thermal507.md: #507 (0.5, fps-focus), Thor thermal-pause-F8 parks cpu3-7 ~4-6 min into a MAX run; fps falls 5-7x. Detect it in every soak (thermal_state.py, thermal.jsonl, status thermal-pause), name the trip zone, audit recent Thor benchmarks. soak_title.sh taken from lane.displayguard's release at PR #495 ready."
+released = ["docs/testing/thermal_state.py", "docs/testing/soak_title.sh", "docs/testing/title_verdict.py", "docs/testing/jobs/selftest.d/99-thermal-pause.sh", "docs/lanes/thermal507/**"]
+released_at_ready = 508
+standing = false
+note = "STARTED (hostops 2026-09-27 13:58 PDT), briefs/thermal507.md: #507 (0.5, fps-focus), Thor thermal-pause-F8 parks cpu3-7 ~4-6 min into a MAX run; fps falls 5-7x. Detect it in every soak (thermal_state.py, thermal.jsonl, status thermal-pause), name the trip zone, audit recent Thor benchmarks. soak_title.sh taken from lane.displayguard's release at PR #495 ready. RELEASED at PR-ready (job.board 2026-09-27): PR #508 out of draft, CI green, unit gone; files stay in `files` for audit/fold, released to [free] for the next lane."
 
 [lane.focusanr]
 issues = ["513"]
