@@ -285,6 +285,28 @@ be lost in the first.
 Frames: nav `~/hakux-work/nav/bruce-lee.first-run-20260926T223411/`
 (003-fight.png), replay `scratch/replay/bruce-lee-223619/zz-end.png`.
 
+### Session 8: HELD Thor, 22:58-23:17 PDT (hold lifted by hostops 23:26), battery 84% -> ~80%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Crash Twinsanity (56550036) | thor | `crash-twinsanity.route` | yes (23:04) | first level, a beach; Crash runs, jumps and spins; long stretched polygons cross the screen (a rendering defect); overlay FPS 7 |
+| Capcom Classics Collection Vol. 2 (43430019) | thor | none | - | nav stopped at the first menu (23:11) |
+| MechAssault 2 (4D53006B) | thor | none | - | nav reached a mech in a hangar after Campaign -> Regular, still a cutscene at 23:17 |
+
+**Crash Twinsanity.** Declines the save game (CONTINUE WITHOUT SAVING, one
+stick push down), so one route fits every run. Nav frames
+`~/hakux-work/nav/crash-twinsanity.first-run-20260926T230002/` (010-moved.png),
+replay `scratch/replay/crash-twinsanity-230414/zz-end.png`.
+
+## Attempt 3 (resumed 2026-09-26 23:30 PDT)
+
+Why attempt 2 did not finish: it ran into the 300-turn cap at 23:17 PDT in
+the middle of MechAssault 2's nav, still holding the Thor. The Crash
+Twinsanity benchmark was queued (23:05) but its board-request line was not
+written; attempt 3 wrote it. Hostops lifted the hold at 23:26. From here:
+release the hold with turns to spare, and write the board line in the same
+step as the queueing.
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
@@ -304,8 +326,9 @@ request.
 |---|---|---|---|---|
 | Black | black.returning | 1-1790482534-titleroutes-3347838 | 300 | void: no gameplay reached |
 | Black | black.returning | 1-1790482599-titleroutes-3358750 | 760 | 291 s of gameplay; fps window median 7.45 (min 6.52), 0% of gameplay time at >= 30; target 30. The mark frame's overlay reads FPS 7 |
-| Project Gotham Racing | pgr.returning | 1-1790483525-titleroutes-3587419 | 480 | pending |
+| Project Gotham Racing | pgr.returning | 1-1790483525-titleroutes-3587419 | 480 | 298 s of gameplay; fps window median 14.27 (min 5.14), 0% at >= 30; target 60. Verdict also flags a hang: 11.6 s without guest flips after the mark |
 | Bruce Lee | bruce-lee | 1-1790487611-titleroutes-261841 | 420 | pending |
+| Crash Twinsanity | crash-twinsanity | 1-1790489396-titleroutes-512742 | 540 | pending |
 
 ## Do not repeat
 
