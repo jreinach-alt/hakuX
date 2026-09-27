@@ -316,3 +316,8 @@ route = "gta-sa"
 name = "Alien Hominid"
 iso = { thor = "5A440004-Alien_Hominid.xiso.iso" }
 route = "alien-hominid"
+
+[titles."4D53002A"]
+name = "Midtown Madness 3"
+iso = { thor = "4D53002A-Midtown_Madness_3.xiso.iso" }
+route = "midtown-madness-3.returning"
