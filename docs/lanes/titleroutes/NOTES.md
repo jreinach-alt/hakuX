@@ -270,7 +270,7 @@ request.
 | title | route | request | seconds | fps median / share >= 30 |
 |---|---|---|---|---|
 | Black | black.returning | 1-1790482534-titleroutes-3347838 | 300 | void: no gameplay reached |
-| Black | black.returning | 1-1790482599-titleroutes-3358750 | 760 | pending |
+| Black | black.returning | 1-1790482599-titleroutes-3358750 | 760 | 291 s of gameplay; fps window median 7.45 (min 6.52), 0% of gameplay time at >= 30; target 30. The mark frame's overlay reads FPS 7 |
 | Project Gotham Racing | pgr.returning | 1-1790483525-titleroutes-3587419 | 480 | pending |
 
 ## Do not repeat
