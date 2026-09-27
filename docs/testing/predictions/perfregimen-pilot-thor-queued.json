@@ -1,5 +1,7 @@
 {
   "registered_utc": "2026-09-27T00:20:00Z",
+  "amended_utc": "2026-09-27T01:30:00Z",
+  "amended_why": "audit M1: the Thor fan MAX is 4 (SMART), so max_fan 5 -> 4; amended before either arm ran",
   "who": "lane.perfregimen",
   "issue": "none (harness; PR #444)",
   "title": "4D530013-Blinx_The_Time_Sweeper.xiso.iso",
