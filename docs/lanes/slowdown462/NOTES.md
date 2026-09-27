@@ -436,6 +436,26 @@ The steady 216 ms is the other ~98%. Whether each spike is streaming, a
 shader compile or a lock is a question for the Nova soak's hakuX-stall and
 hakuX-phase lines and the profile, not this run.
 
+### Queued, 06:59 PDT
+
+- **Soak** `1-1790517499-slowdown462-1484367`: e5db66fa37 (the five's
+  ref), perflog, MAX, Nova, release priority, route `gta-sa`, **500 s**. The
+  Thor run's `mark gameplay` came ~225 s after `soak start`, so 420 s would
+  leave only ~190 s of gameplay. The window is `mark gameplay` + 30 s to 10 s
+  before `soak end`.
+- Queued before the copy landed, to hold its place in line. At 06:58 the
+  Nova was in a host update window (`hold/nova`, bounded 30 min) with four
+  priority requests ahead (the flip474 and retreason425 arms, lanelocal). If
+  the soak is claimed before lane.xbox's copy lands, it ends as `TITLE NOT
+  FOUND` and is re-queued unchanged.
+- **Profile** after the soak: `ROUTE=gta-sa ANCHOR="mark gameplay"
+  SOAK_S=360 .cap/prof.sh gta 54540082-Grand_Theft_Auto_San_Andreas.xiso.iso
+  60`. `capture_profile.sh` now takes `ROUTE` (default survey, so the five
+  are unchanged).
+- To answer the extra question, split the frames into the steady ~216 ms and
+  the >= 0.7 s spikes. For each spike, read the hakuX-stall, hakuX-phase and
+  hakuX-cpu lines around it.
+
 ## Summary (Nova, MAX, e5db66fa37 soaks / a593d8eb85 profiles)
 
 | title | fps (soak window) | sets the frame | top cost (ms/frame, share) | owner | bound if it goes |
