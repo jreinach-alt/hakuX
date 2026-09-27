@@ -518,6 +518,40 @@ mark and running at a demon 40 s later (`scratch/replay/otogi-051754/`).
 Nav frames `~/hakux-work/nav/otogi.first-run-20260927T051231/`
 (009-pre -> 010-moved).
 
+### Session 18: HELD Thor, 05:33-05:44 PDT (11 min; hold taken 05:24 while the Otogi soak ran), battery 58% -> 56%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Burnout (41430006) | thor | `burnout.route` | yes (05:43; one failed replay before it) | Championship race 1, Interstate, lap 1/3; the Supermini at 45 mph, timer running |
+
+**Burnout.** Title (START) -> first run only: "No Burnout saved game
+present ... create a new saved game?" (Yes) and Enter Your Name ("PL1",
+END) -> Championship -> Supermini -> AT -> Journeyman Grand Prix -> race
+1/3 Confirm -> intro flyover -> "Continue (A)" -> the start. All choices
+are defaults. A train of nine A presses 7 s apart stopped on the intro's
+"Continue (A)" (`scratch/replay/burnout-053704/zz-end.png`). Thirteen
+presses reached the race, and it was at 45 mph 40 s past the mark
+(`scratch/replay/burnout-054037/zz-end.png`). Nav frames
+`~/hakux-work/nav/burnout.first-run-20260927T053326/` (008-a7 -> 009-rt).
+
+### State at the end of attempt 4 (05:45 PDT)
+
+Seven titles routed, replayed and benchmarked (or queued) in this attempt:
+Alien Hominid, Midtown Madness 3, Blood Wake, Brute Force, Otogi and Burnout,
+plus the Ghoulies re-run. The session ended on its turn budget with the hold
+released and the Thor at rest (56%). Burnout's soak
+1-1790513065-titleroutes-1150288 is queued. The next titles on the Thor, by
+xemu rank: Battlefield 2: MC (95), Azurik (96), Alias (104), D&D Heroes (59,
+SD card), then the Japanese-only titles (Aoi Namida, Angelic Concert, Bistro
+Cupid 1 and 2, Ex-Chaser, Innocent Tears; expect text menus), then All-Star
+Baseball 2003/2004/2005, AMF Bowling 2004, AMF Xtreme Bowling, AFL Live and
+American Chopper 2 (pushed at 05:01). From the older list, still open on the
+Thor: Shin Megami Tensei: Nine, Capcom Classics 2 (nav stopped at the first
+menu), Castlevania: CoD, THPS2x, Panzer Dragoon Orta, Psychonauts,
+MechAssault, DOA3, RalliSport 2, Amped 2, Phantom Dust, ToeJam & Earl III,
+Spikeout, Ninja Gaiden, Deathrow, Tork, Tron 2.0; Galleon and PGR2 are
+parked (see sessions 6-7 and 11-12).
+
 **Do not skip with START in an action game** unless its pause menu has
 been seen: in Otogi (Restart Stage) and Midtown Madness 3 (the race) START
 opens a pause menu the moment control starts.
@@ -553,7 +587,8 @@ request.
 | Midtown Madness 3 | midtown-madness-3.returning | 1-1790506491-titleroutes-1032854 | 580 | 264 s of gameplay; fps window median 3.13 (min 2.85), 0% at >= 30; ten 12-20 s hangs; target 30 (*). The mark frame shows the race running at FPS 3 |
 | Blood Wake | blood-wake | 1-1790508532-titleroutes-1074940 | 480 | 287 s of gameplay; fps window median 37.36 (min 5.12), 29.5% at >= 30; three ~11 s hangs; target 30 (*) |
 | Brute Force | brute-force | 1-1790510457-titleroutes-1101937 | 570 | 294 s of gameplay; fps window median 13.16 (min 7.57), 0% at >= 30; no hang; target 30 (*) |
-| Otogi | otogi | 1-1790511808-titleroutes-1129571 | 550 | queued |
+| Otogi | otogi | 1-1790511808-titleroutes-1129571 | 550 | 273 s of gameplay; fps window median 12.62 (min 9.53), 0% at >= 30; no hang; target 30 (*) |
+| Burnout | burnout | 1-1790513065-titleroutes-1150288 | 460 | queued 05:45 |
 
 Batch-4 table posted on #397 (comment 5855637410).
 
