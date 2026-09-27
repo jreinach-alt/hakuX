@@ -311,3 +311,8 @@ route = "mechassault-2"
 name = "Grand Theft Auto: San Andreas"
 iso = { thor = "54540082-Grand_Theft_Auto_San_Andreas.xiso.iso" }
 route = "gta-sa"
+
+[titles."5A440004"]
+name = "Alien Hominid"
+iso = { thor = "5A440004-Alien_Hominid.xiso.iso" }
+route = "alien-hominid"
