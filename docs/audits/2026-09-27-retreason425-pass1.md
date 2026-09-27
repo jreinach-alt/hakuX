@@ -70,7 +70,7 @@ Head audited: `3700b87707`. Auditor: job.cloud, 2026-09-27.
 
 ### M1 (MEDIUM): refuted idle-halt code folds with a comment that says it is safe
 
-`accel/tcg/cpu-exec.c:1136-1195` (`idle_hlt_check` and its block comment).
+`accel/tcg/cpu-exec.c:1149-1210` (`idle_hlt_check` and its block comment).
 
 The lane's own pilot (`1-1790515918-retreason425-1213231`, NOTES line 180)
 ran `d259abab29` with `HAKUX_IDLE_HLT=1`, and it **wedged at boot**: no
