@@ -44,6 +44,12 @@
 #              Fails under a first-match read (the first-entry mutant), which
 #              sees display 4's launcher.
 #       silent adb answers nothing: unknown, never in front.
+#   (d) anr    the live block is followed by the dispatcher state at the last
+#              ANR (#513). anr-ours: hakuX live, Daijishou in the ANR block,
+#              in front. anr-daijishou: the reverse, not in front. The first
+#              fails under a last-value read of the whole dump (master before
+#              #513, and the ANR mutant); the second fails under a read of the
+#              wrong block.
 #   soak (a) and (b): exit 5, `ROUTE ABORTED: not foreground (<pkg>)`, one
 #              `am start --display 0` remedy, and not one sendevent.
 #   soak (c):  the route starts and sends input; nothing is aborted.
@@ -282,6 +288,20 @@ fg_fix 0 "$HX" NotificationShade > "$DG/f.shade"
 fg_fix 0 "$HX" - > "$DG/f.nowin"
 fg_fix 0 "$HX" "$HX" > "$DG/f.ours"
 : > "$DG/f.silent"
+# #513: after the live block, `dumpsys input` prints the dispatcher state at
+# the time of the last ANR, laid out the same way (the Thor, 09-27 15:13 PDT:
+# live FocusedDisplayId at line 597, the ANR's at 821). <live app/window>
+# <ANR app/window>, both on display 0 with FocusedDisplayId 0.
+DJS=com.magneticchen.daijishou/.ui.activities.MainActivity
+fg_anr() {
+    fg_fix 0 "$1" "$1"
+    printf 'Input Dispatcher State at time of last ANR:\r\n  ANR:\r\n    Time: 2026-09-27 11:06:41\r\n'
+    printf '    Reason: ActivityRecord{2394797 u0 %s t1672} does not have a focused window\r\n' "$2"
+    printf '    Window: ActivityRecord{2394797 u0 %s t1672}\r\n' "$2"
+    fg_fix 0 "$2" "$2" | sed 1d
+}
+fg_anr "$HX" "$DJS" > "$DG/f.anrours"
+fg_anr "$DJS" "$HX" > "$DG/f.anrdjs"
 
 fg_check() {   # <devices.sh> <fixture> -> "rc|line"
     local out rc
@@ -310,10 +330,33 @@ fg_legs() {    # <devices.sh> -> one "FAIL <why>" per unmet leg
     r=$(fg_check "$d" silent)
     case "$r" in "2|foreground-unknown: ee317437 answered no FocusedDisplayId") ;;
         *) echo "FAIL silent: [$r]" ;; esac
+    r=$(fg_check "$d" anrours)
+    case "$r" in "0|in-front: ee317437 app=com.jreinach.hakux.debug focus=com.jreinach.hakux.debug display=0") ;;
+        *) echo "FAIL anr-ours: [$r]" ;; esac
+    r=$(fg_check "$d" anrdjs)
+    case "$r" in "1|not-foreground: com.magneticchen.daijishou (the focused application on display 0 of ee317437, not hakuX)") ;;
+        *) echo "FAIL anr-daijishou: [$r]" ;; esac
 }
 out=$(fg_legs "$TESTING/devices.sh")
-[ -z "$out" ] && ok "hakux_in_front: Lime3DS focused, focus on display 4, the shade focused, no window, hakuX, and silence each read as they should" \
+[ -z "$out" ] && ok "hakux_in_front: Lime3DS focused, focus on display 4, the shade focused, no window, hakuX, silence, and both live-vs-ANR blocks each read as they should" \
     || bad "hakux_in_front: $(printf '%s; ' "$out")"
+
+echo "== foreground guard mutant: read past the live block into the last ANR's (#513)"
+if python3 - "$TESTING/devices.sh" "$DG/t/devices.sh" <<'PY'
+import sys
+s = open(sys.argv[1]).read()
+old = '        stop { next }\n'
+if s.count(old) != 1:
+    sys.exit(3)
+open(sys.argv[2], "w").write(s.replace(old, '', 1))
+PY
+then
+    out=$(fg_legs "$DG/t/devices.sh")
+    case "$out" in *"FAIL anr-ours: [1|not-foreground: com.magneticchen.daijishou "*"FAIL anr-daijishou: [0|in-front: "*) ok "ANR mutant: the stale block wins both ways, and both ANR legs turn red" ;;
+        *) bad "ANR mutant: the legs did not catch it: [$out]" ;; esac
+else
+    bad "ANR mutant: its anchor is gone from devices.sh -- update the mutant"
+fi
 
 echo "== foreground guard mutant: a first-match read (display 4 is listed first)"
 if python3 - "$TESTING/devices.sh" "$DG/t/devices.sh" <<'PY'

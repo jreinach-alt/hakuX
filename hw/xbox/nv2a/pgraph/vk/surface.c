@@ -213,6 +213,7 @@ enum {
     SDC_DIRTY_FB,       /*   and its synchronous fallback                */
     SDC_EXPIRE,         /* expire_old_surfaces                           */
     SDC_SURF_UPDATE,    /* pgraph_vk_surface_update                      */
+    SDC_REUSE,          /* update_surface_part, unshelving a pending one */
     SDC_RECORD,         /* a new download, after a submitted batch       */
     SDC_PREREC,         /* the next flip's pre-record                    */
     SDC_EXTERNAL,
@@ -904,6 +905,27 @@ static void deferred_downloads_clear_surface(PGRAPHVkState *r,
 }
 
 /*
+ * Does a pending download still name this struct? Since #414 a download can
+ * stay pending across methods, until the next finish, so a struct that is
+ * shelved or invalid can still be the one its completion will retire. Reusing
+ * it (`*surface = target`) hands the new binding that completion: it credits
+ * the old binding's draw_generation to the new one, which restarts at 0, and
+ * with the same draw count it marks the new binding clean over VRAM that holds
+ * the old one's pixels. Freeing it drops the watch on the range the download
+ * is about to write.
+ */
+static bool deferred_downloads_reference(PGRAPHVkState *r,
+                                         SurfaceBinding *surface)
+{
+    for (int i = 0; i < r->num_deferred_downloads; i++) {
+        if (r->deferred_downloads[i].surface == surface) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/*
  * A download is about to rewrite VRAM. A shelved surface whose image was kept
  * for a same-format rebind will then disagree with the memory under it if the
  * two overlap: the rebind used to take the image as-is and lose the write.
@@ -953,6 +975,23 @@ void pgraph_vk_complete_staged_downloads(NV2AState *d, PGRAPHVkState *r)
         } else {
             memcpy_image(dl->dest_ptr, src, dl->pitch,
                          dl->width * dl->bytes_per_pixel, dl->height);
+        }
+
+        /*
+         * A download whose surface was freed while it was pending still
+         * wrote guest memory, and a texture cached from that range must hear
+         * about it. Take the range from what was written, since there is no
+         * binding to take it from.
+         */
+        if (!dl->surface) {
+            hwaddr dl_start = dl->dest_ptr - d->vram_ptr;
+            hwaddr dl_len = dl->swizzle ?
+                (hwaddr)dl->width * dl->height * dl->bytes_per_pixel :
+                (hwaddr)dl->pitch * dl->height;
+            memory_region_set_client_dirty(d->vram, dl_start, dl_len,
+                                           DIRTY_MEMORY_VGA);
+            memory_region_set_client_dirty(d->vram, dl_start, dl_len,
+                                           DIRTY_MEMORY_NV2A_TEX);
         }
 
         /* Clean up surface flags now that data is in VRAM */
@@ -1061,7 +1100,7 @@ static void sdcall_log(PGRAPHState *pg)
 {
     static const char *const names[SDC__COUNT] = {
         "range", "tobuf", "deffull", "pend", "pendfb", "dirty", "dirtyfb",
-        "expire", "surfupd", "record", "prerec", "ext",
+        "expire", "surfupd", "reuse", "record", "prerec", "ext",
     };
     int frames = pg->frame_time - g_sdcall.frame0;
     if (frames < 60) {
@@ -3250,7 +3289,10 @@ get_any_compatible_invalid_surface(PGRAPHVkState *r, SurfaceBinding *target)
 {
     SurfaceBinding *surface, *next;
     QTAILQ_FOREACH_SAFE(surface, &r->invalid_surfaces, entry, next) {
-        if (surface_in_flight(r, surface)) {
+        /* A pending download is in flight too: see
+         * deferred_downloads_reference. */
+        if (surface_in_flight(r, surface) ||
+            deferred_downloads_reference(r, surface)) {
             continue;
         }
         if (check_invalid_surface_is_compatibile(surface, target)) {
@@ -3270,7 +3312,8 @@ static void prune_invalid_surfaces(PGRAPHVkState *r, int keep)
     QTAILQ_FOREACH_SAFE(surface, &r->invalid_surfaces, entry, next) {
         num_surfaces += 1;
         if (num_surfaces > keep) {
-            if (surface_in_flight(r, surface)) {
+            if (surface_in_flight(r, surface) ||
+                deferred_downloads_reference(r, surface)) {
                 continue;
             }
             QTAILQ_REMOVE(&r->invalid_surfaces, surface, entry);
@@ -4615,6 +4658,17 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
              * which this slot has just left; the assignment replaces its
              * address and draw_dirty, so the old writeback is gone anyway.
              */
+            /*
+             * A shelved struct can still be named by a download pending from
+             * its previous life (the ping-pong #414 defers: F1 evicted, F2
+             * bound, F1 back before a finish). Retire that download against
+             * the binding it was recorded for before the struct becomes a
+             * new one; see deferred_downloads_reference. The invalid list
+             * skips such structs instead, so only the shelf pays this.
+             */
+            if (deferred_downloads_reference(r, surface)) {
+                download_surface_complete_deferred(d, SDC_REUSE);
+            }
             unregister_cpu_access_callback(surface);
             *surface = target;
             set_surface_label(pg, surface);
