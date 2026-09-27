@@ -1,0 +1,64 @@
+# Burnout 3: Takedown (4541005B), FIRST RUN: a disk with no Burnout 3
+# profile. DRAFT, not yet played: written from pass 1's frames
+# (0-0-y-1790433159-titleplay-p1-burnout3, Thor, 2026-09-26), which show:
+#
+#   ~20 s RenderWare, ~40 s attract FMV, ~60 s "Press START to continue";
+#   START -> Select Language (English highlighted);
+#   A -> "Burnout 3 requires a Profile ... LOAD PROFILE / NEW PROFILE",
+#        NEW PROFILE highlighted;
+#   A -> DRIVER DETAILS keyboard, name BURNOUT, `Done` highlighted;
+#   A -> "Would you like to save your profile? YES / NO", NO highlighted.
+#
+# Pass 1 answered A there, which is NO, then "Autosave will be disabled. Are
+# you sure?" and A again: a loop it never left. The answer is UP, then A.
+# What follows YES (a storage prompt, a "saving" notice) was never seen, so
+# from `mark profile-saved` on this route goes back to surveying: frames at
+# every step, and no `mark gameplay`. The navigating agent's pilot replaces
+# that part with what it actually finds.
+#
+# UP is the left stick pushed and released, not the D-pad: pad.sh maps UP to
+# BTN_DPAD_UP (544), and whether the Thor's pad reports its D-pad as keys or
+# as a hat has not been checked. A stick flick works in both cases.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+mark booted
+press START
+wait 4
+shot language
+press A
+wait 4
+shot select-option
+press A
+wait 4
+shot keyboard
+press A
+wait 4
+shot save-prompt
+axis LY min
+wait 0.3
+axis LY mid
+wait 1
+shot save-prompt-yes
+press A
+wait 8
+shot after-yes
+mark profile-saved
+repeat 8 {
+    press A
+    wait 5
+    shot after-save
+}
+mark play
+repeat forever {
+    repeat 2 {
+        axis RT max
+        press A
+        wait 10
+        axis RT mid
+        wait 1
+    }
+    shot play
+}

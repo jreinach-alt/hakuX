@@ -190,6 +190,29 @@ $DIRTY"
     # Concrete shas, never a name. The baseline goes first so that if the
     # queue is only served once more today, the arm that does not exist yet
     # is the one that waits.
+    # -- release priority (#432) --------------------------------------------
+    # An issue carrying the release label queues both arms with
+    # HAKUX_RELEASE_PRIO=1, i.e. request.sh ids `1-<epoch>-...`: served after
+    # probes and host-promoted heads, ahead of every other request. The issue
+    # is --issue, else the prediction's own issue field; any one of a list
+    # ("88,91") labelled is enough. One read; a failed read is said and the
+    # arms queue at normal priority. jobs/arms.sh carries the same reader.
+    PRIO="${HAKUX_RELEASE_PRIO:-}"
+    PRIO_ISSUES="$ISSUE"
+    if [ -z "$PRIO_ISSUES" ] && [ -n "$EXPECT" ] && [ -f "$EXPECT" ]; then
+        PRIO_ISSUES=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('issue') or '')" "$EXPECT" 2>/dev/null || true)
+    fi
+    if [ -z "$PRIO" ]; then
+        for n in $(printf '%s' "$PRIO_ISSUES" | tr ',#' '  '); do
+            [[ "$n" =~ ^[0-9]+$ ]] || continue
+            if ! labels=$(gh api "repos/${GH_REPO:-jreinach-alt/hakuX}/issues/$n" --jq '.labels[].name' 2>/dev/null); then
+                echo "ab_run: could not read #$n's labels; queueing at normal priority" >&2; continue
+            fi
+            grep -qxF -- "${HAKUX_RELEASE_LABEL:-0.5}" <<<"$labels" && { PRIO=1; break; }
+        done
+    fi
+    [ -z "$PRIO" ] || echo "  priority release (HAKUX_RELEASE_PRIO=1: ids sort 1-<epoch>, ahead of plain requests)"
+
     PURP_A="BASE arm ${ISSUE:+#$ISSUE }$WHO at $PAR_SHA. ${PURPOSE:-}${PREDICTION:+ Predicted: $PREDICTION}"
     PURP_B="FIX arm ${ISSUE:+#$ISSUE }$WHO at $FIX_SHA. ${PURPOSE:-}${PREDICTION:+ Predicted: $PREDICTION}"
     if [ "$DRY" = 1 ]; then
@@ -204,9 +227,9 @@ $DIRTY"
         else
             DRY_EXPECT="--no-expect '...'"
         fi
-        echo "request.sh --who $WHO-base --ref $PAR_SHA --suites '$SUITES' --runs $RUNS \\"
+        echo "${PRIO:+HAKUX_RELEASE_PRIO=1 }request.sh --who $WHO-base --ref $PAR_SHA --suites '$SUITES' --runs $RUNS \\"
         echo "           $DRY_EXPECT --purpose '$PURP_A'"
-        echo "request.sh --who $WHO-fix  --ref $FIX_SHA --suites '$SUITES' --runs $RUNS \\"
+        echo "${PRIO:+HAKUX_RELEASE_PRIO=1 }request.sh --who $WHO-fix  --ref $FIX_SHA --suites '$SUITES' --runs $RUNS \\"
         echo "           $DRY_EXPECT --purpose '$PURP_B'"
         echo
         echo "then: ab_compare.py --a \$D/results/<base-id> --b \$D/results/<fix-id>${EXPECT:+ --expect $EXPECT}"
@@ -233,11 +256,11 @@ $DIRTY"
         EXPECT_ARGS=(--no-expect "ab_run.sh --no-expect: ${PURPOSE:-unjudged A/B}")
     fi
 
-    qa=$(bash "$HERE/request.sh" --who "$WHO-base" --ref "$PAR_SHA" \
+    qa=$(HAKUX_RELEASE_PRIO="$PRIO" bash "$HERE/request.sh" --who "$WHO-base" --ref "$PAR_SHA" \
              --suites "$SUITES" --runs "$RUNS" "${EXPECT_ARGS[@]}" \
              --purpose "$PURP_A") \
         || fail "queueing the baseline arm failed"
-    qb=$(bash "$HERE/request.sh" --who "$WHO-fix" --ref "$FIX_SHA" \
+    qb=$(HAKUX_RELEASE_PRIO="$PRIO" bash "$HERE/request.sh" --who "$WHO-fix" --ref "$FIX_SHA" \
              --suites "$SUITES" --runs "$RUNS" "${EXPECT_ARGS[@]}" \
              --purpose "$PURP_B") \
         || fail "queueing the fix arm failed"

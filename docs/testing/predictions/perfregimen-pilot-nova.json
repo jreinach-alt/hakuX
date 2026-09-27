@@ -1,0 +1,34 @@
+{
+  "registered_utc": "2026-09-26T22:21:00Z",
+  "who": "lane.perfregimen",
+  "issue": "none (harness; PR #444)",
+  "title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso",
+  "device": "nova",
+  "seconds": 250,
+  "frames_every": 0,
+  "perflog": true,
+  "runs_per_arm": 1,
+  "arms": [
+    "rest",
+    "max",
+    "rest"
+  ],
+  "ref": "71d7a1552b",
+  "a_ref": "71d7a1552b",
+  "prediction": "THE PILOT for the gameplay regimen, registered before any arm has run and before `settings put` has been tried on either device. One HELD Nova session (PILOT_TITLE='Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso' docs/lanes/perfregimen/held_session.sh nova <dir>, under 30 min, >= 50% battery at start): an idle probe that steps performance_mode 0,1,2 and fan_mode 0,1,2,3,5 with no title running, then three hands-off 250 s Crimson Skies arms (Blinx is not on the Nova; Crimson is the title #427's Nova soaks run hands-off) through soak_title.sh at 71d7a1552b in the order REST (0/4), MAX (2/3), REST. REST-MAX-REST, so that drift across the session (heat, battery) shows up as a difference between the two REST arms rather than being read as the mode's effect. The APK is whatever the dispatcher last installed on the Nova, the same in all three arms. The session records its versionName and the env pref. Judge: python3 docs/lanes/perfregimen/judge.py <dir> --prediction docs/testing/predictions/perfregimen-pilot-nova.json (fps = gfps-line cadence, 135-245 s from the arm's first hakuX line, the blinx372c reader). Legs, each with the world in which it fails: M0 the instrument: every arm has >= 15 gfps lines in the window, and its perf_regimen.json reads back the modes it asked for with perf_restored true. Otherwise VOID, not a result. P1 at idle, kgsl min_clock_mhz at performance_mode 2 exceeds the value at 0 (the Nova reads 550 MHz at 1 today, the Thor 401 at 0). It fails if no OEM service observes a `settings put`, so that the write lands only in the settings table. That is the brief's central worry. P2 at idle, the fan PWM duty (/sys/class/gpio5_pwm2/duty) at fan_mode 3 (FanState.PERFORMANCE) is >= the duty at every other mode probed. It fails if the fan write is not observed, or if 3 is not the fan's maximum (SPORT=5 higher), and then FAN_MAX in devices.sh is wrong. P3 under the title, the MAX arm's median GPU floor and fan duty both exceed each REST arm's. It fails if the load's own governor boost masks the mode. P4 the two REST arms' demo fps agree within 8%. If not, drift or noise is as large as the effect, and P5/P6 say nothing. P5 non-inferiority: MAX demo fps >= 0.97 x the mean REST fps. It fails if MAX costs frame rate, for example if a fixed high CPU floor takes thermal headroom from the GPU. P6 a GUESS, labelled as one: MAX >= 1.05 x REST. Nothing on disk says what bounds Crimson's hands-off stretch, so this is the weakest leg. If P6 fails with P1-P5 passing, the regimen is sound and that stretch is not clock-bound on the Nova.",
+  "expect": {
+    "rest_perf": 0,
+    "rest_fan": 4,
+    "max_perf": 2,
+    "max_fan": 3,
+    "M0/gfps_lines_min": 15,
+    "P1/idle_gpu_floor_max_gt_rest_is": true,
+    "P2/idle_fan_duty_max_mode_ge_all_is": true,
+    "P3/load_floor_and_duty_max_gt_rest_is": true,
+    "P4/rest_spread_max": 0.08,
+    "P5/max_over_rest_min": 0.97,
+    "P6/max_over_rest_guess": 1.05
+  },
+  "expect_counts": {},
+  "expect_note": "Named rules read by docs/lanes/perfregimen/judge.py, not golden keys: a soak writes no captures and arms.sh skips soaks."
+}

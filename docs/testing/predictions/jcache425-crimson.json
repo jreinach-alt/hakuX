@@ -1,0 +1,37 @@
+{
+  "registered_utc": "2026-09-26T22:08:51Z",
+  "who": "lane.jcache425",
+  "issue": "425",
+  "title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso",
+  "route": "crimson-skies",
+  "device": "nova",
+  "seconds": 240,
+  "frames_every": 0,
+  "runs_per_arm": 2,
+  "run_order": "A1, B1, A2, B2, queued together, one device, one session",
+  "arms": {
+    "A": "1b43be6b3a, no env (HAKUX_TCG68_JC unset: every CF_PCREL discard wipes the whole 4096-entry jump cache, as master does)",
+    "B": "1b43be6b3a, --env HAKUX_TCG68_JC=1 (a discard leaves its slot; tb_lookup's exact cflags compare rejects the CF_INVALID block)"
+  },
+  "a_ref": "1b43be6b3a",
+  "b_ref": "1b43be6b3a",
+  "judge": "by hand, with docs/lanes/jcache425/perfsum.py over each result's logcat.txt: [tlb68], [jc425] and hakuX-perf lines, 90-240 s from the first hakuX-perf line. Per-arm values are the median over the arm's two runs unless a leg says pooled. Not an ab_compare golden arm: a title soak has no capture keys.",
+  "prediction": "#425 lever 1: stop the per-discard jump-cache wipe on the Crimson route. On master the route wipes the whole jump cache about 52,000 times a second, and the wipe bodies alone are 8.75-8.90% of the guest thread's CPU (three soaks, docs/lanes/jcache425/NOTES.md). The per-sample profile puts a further 6.4% of the thread in qht lookups entered from helper_lookup_tb_ptr, which are jump-cache misses. B turns the wipe off with the exact switch lane.tcgchurn wrote and argued (tb-maint.c tb_jmp_cache_inval_tb; audit 2026-09-25 pass 1). Both arms are one binary, so the only difference is the env value the dispatcher writes into env_vars.",
+  "legs": {
+    "M0 (instrument; VOID, not FAIL)": "Every run prints [tlb68] and [jc425] in >= 90% of its 2 s windows over 90-240 s, and hakuX-perf lines to 240 s. A shows fx=...jc0 and [jc425] jc=0 on every line; B shows jc1 and jc=1. A run that misses this is re-queued once, and reported either way.",
+    "F1 (falsifier: the wipe stops)": "B's jci summed over 90-240 s is <= 1% of A's, B's jcx per second is within 0.5x-2x of A's jci per second (the discards still happen at the same rate; only the wipe stops), and B's jcus/cpu is <= 0.5% where A's is >= 5%. FAILS if B still wipes: then the switch did not reach the process and nothing below means anything.",
+    "F2 (falsifier: the lookup path falls)": "From [jc425], the share of indirect-branch probes that reach the qht, (if+in)/(ih+ie+ip+is+ik), is in B <= 0.5x A's. And in A, empty-slot misses (ie) are >= 50% of helper misses (ie+ip+is+ik). REFUTED as a model if A's misses are mostly ip (another pc in the slot): then collisions, not the wipe, empty the cache, and the next lever is the cache's shape (tb-jmp-cache.h), not the wipe.",
+    "S1 (scored: guest-thread work)": "Guest-thread CPU over wall time, [tlb68] sum(cpu)/sum(dt) over 90-240 s: B <= A - 0.04. On master the route reads 0.89-0.91, so the thread has slack at the frame cap and removed work shows as idle. FAILS if B is not at least 0.04 below A.",
+    "S2 (scored: frames)": "gfps from hakuX-perf over 90-240 s, pooled over each arm's two runs: B's median >= A's median, and B's 10th percentile >= A's 10th percentile. The route paces at 29 of a 30 cap on master (median), so the median can only hold; the tail is where freed guest time can show. G ms p90, pooled, is REPORTED, not judged.",
+    "Rival": "Nothing in B forces S1 or S2: it removes 4,096 stores per discard and changes which lookups miss, and does nothing to the guest's own work, the renderer or pacing. If F1 and F2 hold and S1 fails, the freed time went somewhere the counters do not see (a spin that absorbs slack), and the lever is real but not worth frames on this title.",
+    "Uncomfortable outcome, named now": "F1, F2 and S1 hold and S2 is flat. That means the route is pacing-bound at the cap. The win is headroom, and gfps on this route cannot score it. It is recorded as S2 FAIL, not re-read as a pass."
+  },
+  "must_not_move": [
+    "both arms are the same apk (apk_sha identical); the arms differ only in env",
+    "every run reaches 240 s with no F/ line, no crash tag, no tombstone (logcat -b crash)",
+    "pixels: docs/testing/predictions/jcache425-pixels-inert.json (master 9f34d60036 vs 1b43be6b3a, 8 suites, identical scores), plus a hand-queued disc pair on 1b43be6b3a with HAKUX_TCG68_JC unset vs =1 over the same 8 suites, compared with ab_compare --allow-same-binary: 0 rows differ"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures, so there is no golden key for ab_compare to judge. The legs are read by hand off the [tlb68], [jc425] and hakuX-perf lines; the content hash recorded at queue time is what makes a widened leg detectable."
+}

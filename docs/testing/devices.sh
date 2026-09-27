@@ -65,16 +65,39 @@ device_env() {
     ee317437)   # Retroid Pocket Nova
         export SERIAL=ee317437
         export DEVICE_LABEL="nova"
-        export DEVICE_ISO_ROOT="/storage/E6C6-D7AA/Games/XBox"
+        export DEVICE_ISO_ROOTS="/storage/E6C6-D7AA/Games/XBox"
+        # Fan MAX 5 (SPORT), not 3 (PERFORMANCE): measured 2026-09-26, 3
+        # holds SMART's idle duty (12000) and 5 drives 25000 / 8100 rpm.
+        export DEVICE_PERF_MAX=2 DEVICE_FAN_MAX=5 DEVICE_PERF_REST=0 DEVICE_FAN_REST=4
         ;;
     bdc158a5)   # AYN Thor
         export SERIAL=bdc158a5
         export DEVICE_LABEL="thor"
-        export DEVICE_ISO_ROOT="/storage/388C-68F7/ROMS/xbox"
+        # SD card first, then internal storage: the card was 94% full on
+        # 2026-09-26 and the owner said to "swap over into internal storage
+        # as needed". The app's UID reads an adb-pushed file there (verified
+        # 09-26), and a soak launches by rom_path, not the in-app library.
+        export DEVICE_ISO_ROOTS="/storage/388C-68F7/ROMS/xbox:/storage/emulated/0/ROMS/xbox"
+        # Fan MAX 4 (SMART), the same as REST, not 5 (SPORT): SPORT is a
+        # fixed 25000 duty, and on a hot Thor (66-74 C, 2026-09-26) SMART's
+        # curve ran 25000-29000, so SPORT would cool LESS than REST under
+        # gameplay (NOTES 5d). Revisit once CUSTOM (6) and the PWM period
+        # are read.
+        export DEVICE_PERF_MAX=2 DEVICE_FAN_MAX=4 DEVICE_PERF_REST=0 DEVICE_FAN_REST=4
         ;;
     *)  echo "unknown device $1 -- add it to devices.sh rather than guessing" >&2
         return 2 ;;
     esac
+    # DEVICE_ISO_ROOTS: every directory a title may sit in, colon-separated,
+    # searched in order (device_title_path). DEVICE_ISO_ROOT stays the first
+    # one, which is where run_disc.sh pushes its test disc and what
+    # `devices.sh <serial>` prints.
+    export DEVICE_ISO_ROOT="${DEVICE_ISO_ROOTS%%:*}"
+    # THE GAMEPLAY REGIMEN (DEVICE_PERF_*/DEVICE_FAN_*, set per row above):
+    # the OEM performance and fan modes a title soak runs at (MAX) and leaves
+    # the device at (REST). See device_perf below. Both handhelds run the
+    # same Moorechip settings library, so the mode numbers mean the same
+    # thing on each, but the fan curves differ, so the fan MAX does too.
     export PKG="${PKG:-com.jreinach.hakux.debug}"
     # Per-device lease. One lease file for two devices would have each
     # dispatcher think the other's run was its own.
@@ -125,6 +148,94 @@ adb_call() {
     done
     cat "$out"; rm -f "$out"
     return "$rc"
+}
+
+# ------------------------------------------------------------ title roots
+#
+# device_iso_roots  ->  one root per line, in search order. From
+# DEVICE_ISO_ROOTS, or DEVICE_ISO_ROOT alone when a caller set only that.
+device_iso_roots() {
+    local roots="${DEVICE_ISO_ROOTS:-${DEVICE_ISO_ROOT:?device_env first}}"
+    printf '%s\n' "$roots" | tr ':' '\n' | sed '/^$/d'
+}
+
+# device_title_path <title>  ->  the first <root>/<title> that is a file on
+# $SERIAL, on stdout; non-zero when no root has it (or adb failed -- the
+# caller's adb_error names a hung call). ONE adb call: the loop runs in the
+# device's shell. Every path is single-quoted for that shell, because titles
+# carry spaces, parentheses, ampersands and apostrophes ("Tom Clancy's ...").
+# A found path is echoed behind a `=` so nothing else adb prints can pass for
+# one.
+device_title_path() {
+    local title="${1:?device_title_path needs a title}" r loop="" out
+    while IFS= read -r r; do
+        loop+=" $(_dev_sq "$r/$title")"
+    done < <(device_iso_roots)
+    out=$(adb_call "${ADB_QUICK_TIMEOUT:-30}" "title check" shell \
+        "for p in$loop; do if [ -f \"\$p\" ]; then echo \"=\$p\"; break; fi; done" \
+        2>/dev/null | tr -d '\r' | sed -n 's/^=//p' | head -1)
+    [ -n "$out" ] || return 1
+    printf '%s\n' "$out"
+}
+
+# device_title_miss <title>  ->  the ERROR text for a title no root has: the
+# name and every root searched, so a miss says where it looked.
+device_title_miss() {
+    printf 'title not on device: %s -- searched %s\n' "$1" \
+        "$(device_iso_roots | paste -sd, - | sed 's/,/, /g')"
+}
+
+_dev_sq() {   # <word> -> the word single-quoted for the device's sh
+    local q="'\\''"
+    printf "'%s'" "${1//\'/$q}"
+}
+
+# ------------------------------------------------ performance and fan modes
+#
+# Two `settings system` integers, owned by the OEM settings library in
+# SystemUI (com.android.settingslib.MoorechipSettingsLib, read out of the
+# Thor's SystemUI.apk on 2026-09-26; the Nova's is the same library):
+#
+#   performance_mode   PerformanceState  0 NORMAL (the default)  1 STANDARD
+#                                        2 HIGH
+#   fan_mode           FanState          0 DISABLED  1 QUIET  2 BALANCE
+#                                        3 PERFORMANCE  4 SMART (the default)
+#                                        5 SPORT  6 CUSTOM
+#
+# Before 2026-09-26 nothing set or recorded them, and the two handhelds sat
+# in different modes (Thor 0/4, Nova 1/4), so every title soak's frame rate
+# carried an unrecorded device-mode variable. docs/lanes/perfregimen/NOTES.md
+# has the measurement that `settings put` moves the hardware, not only the
+# setting.
+#
+# device_perf_values <serial>  ->  "PERF_MAX FAN_MAX PERF_REST FAN_REST"
+# In a subshell: device_env exports SERIAL and the lease path, and a caller
+# asking for four numbers must not have its lease moved as a side effect.
+device_perf_values() {
+    ( device_env "$1" >/dev/null || exit 2
+      printf '%s %s %s %s\n' "$DEVICE_PERF_MAX" "$DEVICE_FAN_MAX" \
+          "$DEVICE_PERF_REST" "$DEVICE_FAN_REST" )
+}
+
+# device_perf_get  ->  "PERF FAN" as the device reads them back, or a word
+# that is not a number ("null", empty) when adb could not say.
+device_perf_get() {
+    adb_call "${ADB_QUICK_TIMEOUT:-20}" "perf mode read" shell \
+        'echo "$(settings get system performance_mode) $(settings get system fan_mode)"' \
+        2>/dev/null | tr -d '\r' | tail -1
+}
+
+# device_perf_set <perf> <fan>  ->  0 when the read-back matches, else 1.
+# Echoes the read-back, so a caller records what the device says rather than
+# what was asked for.
+device_perf_set() {
+    local got
+    adb_call "${ADB_QUICK_TIMEOUT:-20}" "perf mode write $1/$2" shell \
+        "settings put system performance_mode $1; settings put system fan_mode $2" \
+        >/dev/null 2>&1
+    got=$(device_perf_get)
+    printf '%s\n' "$got"
+    [ "$got" = "$1 $2" ]
 }
 
 device_default() {
@@ -231,8 +342,8 @@ device_titles() {
     # List the ISOs on one device, or on every attached device.
     #
     # WHY THIS IS HERE. A soak names a title by its EXACT filename --
-    # dispatcher.sh does `[ -f "$DEVICE_ISO_ROOT/$title" ]` and writes ERROR if
-    # it misses -- and nothing in this repository could tell you one. The two
+    # dispatcher.sh looks it up under every root (device_title_path) and writes
+    # ERROR if all of them miss -- and nothing in this repository could tell you one. The two
     # libraries are the owner's, laid out however the owner chose, and the
     # naming does not follow from anything checked in: the Nova's root is
     # `Games/XBox` while the Thor's is `ROMS/xbox`, and the one filename any
@@ -256,13 +367,17 @@ device_titles() {
     adb devices | tr -d '\r' | awk 'NR>1 && $2=="device"{print $1}' | while read -r s; do
         ( device_env "$s" 2>/dev/null || exit 0
           [ -z "$want" ] || [ "$want" = "$DEVICE_LABEL" ] || [ "$want" = "$s" ] || exit 0
-          echo "=== $DEVICE_LABEL ($s)  $DEVICE_ISO_ROOT"
-          # -1 so one name is one line even when a name contains spaces, which
-          # every one of them does. The names are printed verbatim: they are
-          # what --title wants, and quoting them here would mean the caller had
-          # to un-quote them again.
-          adb -s "$s" shell "ls -1 '$DEVICE_ISO_ROOT'" 2>/dev/null \
-              | tr -d '\r' | sed 's/^/  /'
+          # Every root, in search order: a name under two roots plays from
+          # the first one listed (device_title_path).
+          device_iso_roots | while IFS= read -r root; do
+            echo "=== $DEVICE_LABEL ($s)  $root"
+            # -1 so one name is one line even when a name contains spaces,
+            # which every one of them does. The names are printed verbatim:
+            # they are what --title wants, and quoting them here would mean
+            # the caller had to un-quote them again.
+            adb -s "$s" shell "ls -1 $(_dev_sq "$root")" 2>/dev/null </dev/null \
+                | tr -d '\r' | sed 's/^/  /'
+          done
         )
     done
 }

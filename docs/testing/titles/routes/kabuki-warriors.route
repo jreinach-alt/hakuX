@@ -1,0 +1,93 @@
+# Kabuki Warriors (43560001): no profile step, one route. PLAYED by nav.py on the
+# Nova, 2026-09-26 18:37 PDT (HELD session kabuki.first-run-20260926T183708),
+# replayed unattended 18:42 and 18:50 PDT.
+#
+#   intro FMV (START skips) -> title, "Press START" (START) -> TOUR MODE is
+#   the default (START) -> Player Entry (A; the 30 s countdown is waited out)
+#   -> Tokaido map (START opens CONTINUE/MODE END, A = CONTINUE; LX min for
+#   1.2 s walks several stations west; A travels) -> Character Select vs CPU
+#   (A x3) -> NOW LOADING -> intro pose -> the round starts, timer 59.
+#
+# Player control was confirmed in the nav session, not in this file: with
+# LX min held the gap to the CPU grew, with LX max held it closed (frames
+# 016-022 of that session). The fight runs at 2-16 fps on the Nova at MAX.
+# In the first replay the player lost the round before a late mark, so the
+# mark is at the round start and the play pattern attacks without pause; a
+# lost team (three fighters) may end on a continue screen, which A accepts.
+# The CPU's fighters are random, so the arena differs run to run.
+wait 25.5
+shot boot
+wait 8.0
+press START
+wait 4.1
+shot start1
+wait 6.4
+press START
+wait 3.1
+shot start2
+wait 5.7
+press A
+wait 3.1
+shot a1
+wait 5.1
+press A
+wait 4.1
+shot a2
+wait 23.1
+shot countdown
+wait 6.0
+press A
+wait 4.1
+shot map-a
+wait 5.9
+press LEFT
+wait 5.1
+shot map-left
+wait 8.9
+press START
+wait 4.1
+shot map-start
+wait 6.7
+press A
+wait 1.7
+axis LX min
+wait 1.2
+axis LX mid
+wait 2.1
+shot stick-left
+wait 5.8
+press A
+wait 6.2
+shot go
+wait 8.9
+shot charsel
+wait 6.4
+press A
+wait 1.8
+press A
+wait 1.9
+press A
+wait 4.1
+shot picked
+wait 14.8
+shot fight
+wait 13.4
+shot round
+wait 3.0
+mark gameplay
+repeat forever {
+    axis LX max
+    press X
+    wait 0.4
+    press A
+    wait 0.4
+    press Y
+    wait 0.4
+    press B
+    wait 0.4
+    axis LX mid
+    press X
+    wait 0.4
+    press A
+    wait 0.4
+}

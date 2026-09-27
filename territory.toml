@@ -1354,6 +1354,12 @@ files = ["accel/tcg/cpu-exec.c", "accel/tcg/tb-jmp-cache.h", "target/i386/tcg/tr
 standing = false
 note = "STARTED (job.board 2026-09-27T02:55Z), briefs/retreason425.md: #425/#412, 0.5 perf lever. The split counter for why AUF's TBs return to cpu_exec_loop unchained (lookup miss vs gen_eob exit vs requested exit vs page-span), per the 09-27 01:45Z hand-off and the 02:04Z job.cloud correction. cpu-exec.c and tb-jmp-cache.h came free with PR #443 and PR #459 (both folded); translate.c was released to [free] by lane.tcgchurn. cputlb.c/tb-maint.c/tb-internal.h stay with lane.tbflip424."
 
+[lane.blinx372e]
+issues = ["372"]
+files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/lanes/blinx372e/**", "docs/testing/predictions/blinx372e-*.json"]
+standing = false
+note = "STARTED (job.board 2026-09-27T04:20Z), briefs/blinx372e.md: #372 / 0.5, Blinx demo size flip 640x480 to 320x240, small to big quadrant copy only, after closing the CPU-write gap (blinx372d NOTES sec 5). vk/surface.c taken from lane.doa413b's released-at-ready list (PR #440, in audit): merge master or that branch and re-run the arm before ready."
+
 [lane.slowdown462]
 issues = ["462"]
 files = ["docs/lanes/slowdown462/**"]

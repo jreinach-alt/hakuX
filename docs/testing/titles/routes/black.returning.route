@@ -1,0 +1,33 @@
+# Black (45410083), RETURNING: a Black profile is on the disk. PARTLY
+# PLAYED by nav.py on the Thor, 2026-09-26 16:31 PDT (HELD pilot, session
+# black.first-run-20260926T163124), up to the first mission's cutscene; the
+# hold ended there. What it saw:
+#
+#   "PRESS START" (START) -> opening credits FMV, about 2 min, then a
+#   newspaper story FMV that START skips -> main menu, START MISSION above
+#   OPTIONS, with NO profile-name keyboard: pass 1's profile was found
+#   (A) -> DIFFICULTY SELECT, cursor on NORMAL (A) -> mission cutscene,
+#   which one START did not skip within 25 s.
+#
+# Nothing past the cutscene was seen, so from `mark mission-started` on
+# this route surveys and never marks gameplay.
+wait 26
+shot boot
+press START
+wait 120
+shot credits
+press START
+wait 8
+shot menu
+mark profile-loaded
+press A
+wait 8
+shot difficulty
+press A
+wait 20
+mark mission-started
+repeat forever {
+    press START
+    wait 25
+    shot survey
+}
