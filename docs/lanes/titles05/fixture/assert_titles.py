@@ -208,12 +208,14 @@ def c_pipe():
             bad.append("%s: %r" % (title_of(tds), m))
     if 'class="pm"' in q1():
         bad.append("letter codes (span.pm) still on the page")
+    # Both are on one handheld, and one is enough (the owner, 18:10 PDT, #433;
+    # lane.measured05): Copied is a tick.
     one = marks.get("Zz Purple Single Route")
-    if one != ["\u00bd", "\u2713", "n/a", "\u2013"]:
-        bad.append("the one-route title reads %r, want half, tick, n/a, dash" % (one,))
+    if one != ["\u2713", "\u2713", "n/a", "\u2013"]:
+        bad.append("the one-route title reads %r, want tick, tick, n/a, dash" % (one,))
     fr = marks.get("Zz Blue First Run: Tom Clancy's Rainbow Six 3 Black Arrow")
-    if fr != ["\u00bd", "\u2713", "\u2013", "\u2013"]:
-        bad.append("the first-run-only title reads %r, want half, tick, dash, dash" % (fr,))
+    if fr != ["\u2713", "\u2713", "\u2013", "\u2013"]:
+        bad.append("the first-run-only title reads %r, want tick, tick, dash, dash" % (fr,))
     return not bad, ("%d rows, four marks each" % len(marks) if not bad else "; ".join(bad[:4]))
 
 
