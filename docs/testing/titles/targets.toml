@@ -304,3 +304,8 @@ notes = "#431 (comment 5851536933): 30, medium confidence. ActiveXbox (2002)"
 name = "MechAssault 2: Lone Wolf"
 iso = { thor = "4D53006B-MechAssault_2_Lone_Wolf.xiso.iso" }
 route = "mechassault-2"
+
+[titles."54540082"]
+name = "Grand Theft Auto: San Andreas"
+iso = { thor = "54540082-Grand_Theft_Auto_San_Andreas.xiso.iso" }
+route = "gta-sa"
