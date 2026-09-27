@@ -401,14 +401,17 @@ static bool check_surface_overlaps_range(const SurfaceBinding *surface,
  * The generation a completion retires is the one the copy captured, so a
  * draw landing between the flip and the completion leaves the surface dirty.
  *
- * XEMU_SURF_LAZY_COMPLETE=0 restores the completion in every surface_update.
+ * Off by default; XEMU_SURF_LAZY_COMPLETE=1 turns it on. On the Nova A/B of
+ * the DOA2U fight it never fired: deferred_downloads_submitted() was false at
+ * every surface_update in the fight, so each one completed the batch as
+ * before, and the fight ran 14.9 fps off against 13.6 on.
  */
 static bool surf_lazy_complete(void)
 {
     static int enabled = -1;
     if (enabled < 0) {
         const char *env = getenv("XEMU_SURF_LAZY_COMPLETE");
-        enabled = !(env && env[0] == '0');
+        enabled = env && env[0] == '1';
     }
     return enabled;
 }
