@@ -377,6 +377,85 @@ static bool check_surface_overlaps_range(const SurfaceBinding *surface,
     return !(surface->vram_addr >= range_end || range_start >= surface_end);
 }
 
+/*
+ * Lazy completion of submitted downloads (#413). The flip pre-records the
+ * display surface's download (and every other dirty surface's) into the
+ * frame it submits, and the first surface_update of the next frame used to
+ * complete that batch: a wait on the flip's fence, which is the whole of the
+ * previous frame's GPU work. The CPU could not record frame N+1 while the GPU
+ * ran frame N. In the DOA2U fight that wait was 52-59 ms of a 76-86 ms frame
+ * (docs/lanes/doa413b/NOTES.md).
+ *
+ * A batch that is already submitted does not have to be completed there. The
+ * copy is ordered on the GPU ahead of any later draw, and the staging buffer
+ * is only reused after a completion. What has to wait for VRAM is whatever
+ * reads it, and each of those completes first:
+ *  - an upload from VRAM (pgraph_vk_upload_surface_data), which covers the
+ *    #11 unshelve case described at surface_vram_written;
+ *  - a new download record, so one batch never spans two fences;
+ *  - the next flip's pre-record;
+ *  - a guest CPU access, a blit, a vertex or texture read of the range, which
+ *    already went through process_pending_downloads or
+ *    download_surfaces_in_range_if_dirty;
+ *  - the frame ring reusing the batch's slot (pgraph_vk_finish).
+ * The generation a completion retires is the one the copy captured, so a
+ * draw landing between the flip and the completion leaves the surface dirty.
+ *
+ * Off by default; XEMU_SURF_LAZY_COMPLETE=1 turns it on. On the Nova A/B of
+ * the DOA2U fight it never fired: deferred_downloads_submitted() was false at
+ * every surface_update in the fight, so each one completed the batch as
+ * before, and the fight ran 14.9 fps off against 13.6 on.
+ */
+static bool surf_lazy_complete(void)
+{
+    static int enabled = -1;
+    if (enabled < 0) {
+        const char *env = getenv("XEMU_SURF_LAZY_COMPLETE");
+        enabled = env && env[0] == '1';
+    }
+    return enabled;
+}
+
+/* Printed as [lazy413] beside [watch311]: skips is surface_updates that left
+ * a submitted batch pending, reads is batches a reader completed early. */
+static unsigned long lazy413_skips, lazy413_reads;
+
+static bool deferred_downloads_submitted(PGRAPHVkState *r)
+{
+    if (r->num_deferred_downloads == 0) {
+        return false;
+    }
+    if (r->display_predownload_pending) {
+        return qatomic_read(
+            &r->frame_submitted[r->display_predownload_frame_index]);
+    }
+    return r->deferred_downloads_frame >= 0;
+}
+
+/*
+ * The frame ring completes a batch through pgraph_vk_complete_staged_downloads
+ * alone, which leaves the display pre-download flags set, and with them set
+ * the next flip records nothing. Clear them once the batch is gone. The
+ * surface's generation was already retired, correctly, by the staged
+ * completion.
+ */
+static void display_predownload_forget_if_drained(PGRAPHVkState *r)
+{
+    if (r->display_predownload_pending && r->num_deferred_downloads == 0) {
+        r->display_predownload_pending = false;
+        r->display_predownload_surface = NULL;
+    }
+}
+
+static void complete_submitted_downloads(NV2AState *d)
+{
+    PGRAPHVkState *r = d->pgraph.vk_renderer_state;
+    if (surf_lazy_complete() && deferred_downloads_submitted(r)) {
+        lazy413_reads++;
+        pgraph_vk_download_surface_complete_deferred(d);
+    }
+}
+
 bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
                                                    hwaddr start, hwaddr size)
 {
@@ -450,6 +529,9 @@ static bool download_surface_record_deferred(NV2AState *d,
     if (!surface->width || !surface->height) {
         return true;
     }
+
+    /* One batch, one fence: finish a submitted one before starting the next. */
+    complete_submitted_downloads(d);
 
     bool is_ds =
         surface->host_fmt.vk_format == VK_FORMAT_D24_UNORM_S8_UINT ||
@@ -953,6 +1035,9 @@ void pgraph_vk_download_surface_complete_deferred(NV2AState *d)
     PGRAPHVkState *r = pg->vk_renderer_state;
 
     if (r->num_deferred_downloads == 0) {
+        if (surf_lazy_complete()) {
+            display_predownload_forget_if_drained(r);
+        }
         return;
     }
 
@@ -985,7 +1070,15 @@ void pgraph_vk_download_surface_complete_deferred(NV2AState *d)
 
     pgraph_vk_complete_staged_downloads(d, r);
 
-    if (r->display_predownload_pending) {
+    if (surf_lazy_complete()) {
+        /*
+         * The staged completion above already retired the display surface
+         * with the generation its copy captured. Under lazy completion draws
+         * may have landed on it since the flip, and retiring the current
+         * generation here would call it clean with VRAM a frame behind.
+         */
+        display_predownload_forget_if_drained(r);
+    } else if (r->display_predownload_pending) {
         SurfaceBinding *s = r->display_predownload_surface;
         if (s) {
             memory_region_set_client_dirty(d->vram, s->vram_addr,
@@ -1650,6 +1743,12 @@ bool pgraph_vk_prerecord_display_download(NV2AState *d)
     PGRAPHState *pg = &d->pgraph;
     PGRAPHVkState *r = pg->vk_renderer_state;
 
+    /* A batch left pending by lazy completion is the previous flip's. */
+    complete_submitted_downloads(d);
+    if (surf_lazy_complete()) {
+        display_predownload_forget_if_drained(r);
+    }
+
     if (r->display_predownload_pending) {
         return false;
     }
@@ -2019,6 +2118,14 @@ static void register_cpu_access_callback(NV2AState *d,
  * suspended, re-arm it and queue the gap check. Returns with upload_pending
  * cleared, as the upload always did; the caller holds surface_watch_lock.
  */
+/* Whole-surface hashes taken by surface_watch_resume(); see [surf413]. */
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+static unsigned long surf413_resume_hashes, surf413_resume_kb;
+#define SURF413_HASHED(kb) (surf413_resume_hashes++, surf413_resume_kb += (kb))
+#else
+#define SURF413_HASHED(kb) ((void)0)
+#endif
+
 static void surface_watch_resume(NV2AState *d, SurfaceBinding *surface)
 {
     if (!surface_watch_suspended ||
@@ -2027,6 +2134,7 @@ static void surface_watch_resume(NV2AState *d, SurfaceBinding *surface)
     }
     uint64_t hash = surface_watch_hash(d->vram_ptr + surface->vram_addr,
                                        surface->size);
+    SURF413_HASHED(surface->size / 1024);
     register_cpu_access_callback(d, surface);
     if (surface->access_cb) {
         SurfaceWatchRearm *w = g_new(SurfaceWatchRearm, 1);
@@ -2371,6 +2479,8 @@ static void surface_watch_log_periodic(PGRAPHVkState *r)
                surface_watch_suspends, surface_watch_rearms,
                surface_watch_gap_writes, surface_watch_lost_writes);
     qemu_rec_mutex_unlock(&surface_watch_lock);
+    SURF92_LOG("[lazy413] enabled=%d skips=%lu reads=%lu",
+               surf_lazy_complete(), lazy413_skips, lazy413_reads);
     evict372_log();
 }
 
@@ -3154,6 +3264,9 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
     if (!(surface->upload_pending || force)) {
         return;
     }
+
+    /* The upload reads VRAM that a submitted download may still owe. */
+    complete_submitted_downloads(d);
 
     VK_LOG("upload_surface: %s addr=0x%x %ux%u pitch=%d bpp=%d swizzle=%d",
            surface->color ? "COLOR" : "ZETA", surface->vram_addr,
@@ -4718,6 +4831,86 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
     }
 }
 
+/*
+ * #413 PROBE: WHERE pgraph_vk_surface_update()'S TIME GOES, PER SEGMENT.
+ *
+ * DOA2U's 15 fps fight spends 33-52 ms per frame in `Surf` (the exclusive
+ * phase timer around this function), about 64 us a call against 2.5 us in
+ * light play. profile.c already splits it under `xemu-surf`, but that tag is
+ * not in the dispatcher's logcat spec, and the xemu-surf split leaves out
+ * the parts of this function that are not inside update_surface_part():
+ * the flushes on the download side, the deferred-download completion, the
+ * real uploads (as distinct from calls that return on !upload_pending) and
+ * expire/prune. This prints all of them raw, summed over 60 guest frames,
+ * under "hakuX" with a [surf413] prefix, beside profile.c's own xemu-surf
+ * string. Every segment is wall time and includes any pgraph_vk_finish()
+ * inside it; `fin` is that nested finish time, so sum(segments) - fin is
+ * what `Surf` reports. NV2A_PERF_LOG builds only.
+ */
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+static struct {
+    int frame0;
+    unsigned long calls_up, calls_dn;
+    unsigned long real_uploads, upload_kb, lazy;
+    int64_t pre_ns, flush_ns, part_ns, cdef_ns, upl_ns, exp_ns, prn_ns,
+            tail_ns, fin_ns;
+} g_surf413;
+
+static void surf413_log(PGRAPHState *pg, PGRAPHVkState *r)
+{
+    int frames = pg->frame_time - g_surf413.frame0;
+    if (frames < 60) {
+        return;
+    }
+    int active = 0, shelved = 0, invalid = 0;
+    SurfaceBinding *s;
+    QTAILQ_FOREACH(s, &r->surfaces, entry) {
+        active++;
+    }
+    QTAILQ_FOREACH(s, &r->shelved_surfaces, entry) {
+        shelved++;
+    }
+    QTAILQ_FOREACH(s, &r->invalid_surfaces, entry) {
+        invalid++;
+    }
+#define SURF413_MS(ns) ((double)(ns) / 1e6 / frames)
+    SURF92_LOG("[surf413] frames=%d up=%lu dn=%lu | ms/frame pre=%.2f "
+               "flush=%.2f part=%.2f cdef=%.2f upl=%.2f exp=%.2f prn=%.2f "
+               "tail=%.2f fin=%.2f | realupl=%lu uplKB=%lu hash=%lu "
+               "hashKB=%lu lazy=%lu | active=%d shelved=%d invalid=%d",
+               frames, g_surf413.calls_up, g_surf413.calls_dn,
+               SURF413_MS(g_surf413.pre_ns), SURF413_MS(g_surf413.flush_ns),
+               SURF413_MS(g_surf413.part_ns), SURF413_MS(g_surf413.cdef_ns),
+               SURF413_MS(g_surf413.upl_ns), SURF413_MS(g_surf413.exp_ns),
+               SURF413_MS(g_surf413.prn_ns), SURF413_MS(g_surf413.tail_ns),
+               SURF413_MS(g_surf413.fin_ns),
+               g_surf413.real_uploads, g_surf413.upload_kb,
+               surf413_resume_hashes, surf413_resume_kb, g_surf413.lazy,
+               active, shelved, invalid);
+#undef SURF413_MS
+    char buf[512];
+    nv2a_profile_get_surf_timing_str(buf, sizeof(buf));
+    SURF92_LOG("[surf413] xemu-surf %s", buf);
+    memset(&g_surf413, 0, sizeof(g_surf413));
+    surf413_resume_hashes = surf413_resume_kb = 0;
+    g_surf413.frame0 = pg->frame_time;
+}
+#define SURF413_T(name) int64_t name = nv2a_clock_ns()
+#define SURF413_ACC(field, since) do { \
+        int64_t _now = nv2a_clock_ns(); \
+        g_surf413.field += _now - (since); \
+        (since) = _now; \
+    } while (0)
+#define SURF413_FIN(name) \
+    int64_t name = g_nv2a_stats.phase_working.finish_ns
+#define SURF413_DO(stmt) do { stmt; } while (0)
+#else
+#define SURF413_FIN(name) ((void)0)
+#define SURF413_T(name) ((void)0)
+#define SURF413_ACC(field, since) ((void)0)
+#define SURF413_DO(stmt) ((void)0)
+#endif
+
 // FIXME: Move to common?
 void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
                               bool zeta_write)
@@ -4725,6 +4918,10 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     NV2A_PHASE_TIMER_BEGIN_EXCL(surface_update);
     PGRAPHState *pg = &d->pgraph;
     PGRAPHVkState *r = pg->vk_renderer_state;
+    SURF413_T(_s413);
+    SURF413_FIN(_s413_fin);
+    SURF413_DO(if (upload) { g_surf413.calls_up++; }
+               else { g_surf413.calls_dn++; });
 
     VK_LOG("surface_update: upload=%d color_w=%d zeta_w=%d clearing=%d",
            upload, color_write, zeta_write, pg->clearing);
@@ -4736,6 +4933,8 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     color_write = color_write &&
             (pg->clearing || pgraph_color_write_enabled(pg));
     zeta_write = zeta_write && (pg->clearing || pgraph_zeta_write_enabled(pg));
+
+    SURF413_ACC(pre_ns, _s413);
 
     if (upload) {
         bool fb_dirty = framebuffer_dirty(pg);
@@ -4766,6 +4965,7 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     } else {
         pgraph_vk_flush_reorder_window(d);
         pgraph_vk_flush_draw_queue(d);
+        SURF413_ACC(flush_ns, _s413);
         if ((color_write || pg->surface_color.write_enabled_cache)
             && pg->surface_color.draw_dirty) {
             update_surface_part(d, false, true);
@@ -4776,7 +4976,16 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
         }
     }
 
-    pgraph_vk_download_surface_complete_deferred(d);
+    SURF413_ACC(part_ns, _s413);
+    /* See surf_lazy_complete: a submitted batch is left to its reader. */
+    if (upload && surf_lazy_complete() && deferred_downloads_submitted(r)) {
+        lazy413_skips++;
+        SURF413_DO(g_surf413.lazy++);
+    } else {
+        pgraph_vk_download_surface_complete_deferred(d);
+    }
+    SURF413_ACC(cdef_ns, _s413);
+    /* A note whose download was left to its reader does not arm. */
     surface_quad_arm(d);
 
     if (upload) {
@@ -4790,6 +4999,10 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
         if (r->color_binding) {
             r->color_binding->frame_time = pg->frame_time;
             if (upload) {
+                SURF413_DO(if (r->color_binding->upload_pending) {
+                    g_surf413.real_uploads++;
+                    g_surf413.upload_kb += r->color_binding->size / 1024;
+                });
                 pgraph_vk_upload_surface_data(d, r->color_binding, false);
                 r->color_binding->draw_time = pg->draw_time;
                 r->color_binding->swizzle = swizzle;
@@ -4800,6 +5013,10 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
         if (r->zeta_binding) {
             r->zeta_binding->frame_time = pg->frame_time;
             if (upload) {
+                SURF413_DO(if (r->zeta_binding->upload_pending) {
+                    g_surf413.real_uploads++;
+                    g_surf413.upload_kb += r->zeta_binding->size / 1024;
+                });
                 pgraph_vk_upload_surface_data(d, r->zeta_binding, false);
                 r->zeta_binding->draw_time = pg->draw_time;
                 r->zeta_binding->swizzle = swizzle;
@@ -4808,6 +5025,7 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
         }
         SURF_TIMER_ACC(upload_ns, _su0);
     }
+    SURF413_ACC(upl_ns, _s413);
 
     // Sanity check color and zeta dimensions match
     if (r->color_binding && r->zeta_binding) {
@@ -4818,10 +5036,16 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     {
         SURF_TIMER_INIT(_se0);
         expire_old_surfaces(d);
+        SURF413_ACC(exp_ns, _s413);
         prune_invalid_surfaces(r, num_invalid_surfaces_to_keep);
+        SURF413_ACC(prn_ns, _s413);
         SURF_TIMER_ACC(expire_ns, _se0);
     }
     surface_watch_log_periodic(r);
+    SURF413_ACC(tail_ns, _s413);
+    SURF413_DO(g_surf413.fin_ns +=
+                   g_nv2a_stats.phase_working.finish_ns - _s413_fin;
+               surf413_log(pg, r));
 
     NV2A_PHASE_TIMER_END_EXCL(surface_update);
 }
