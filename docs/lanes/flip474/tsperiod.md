@@ -71,10 +71,17 @@ The first cut took four samples, slept 100 ms, and took four more.
 | run | device | the start-up line |
 |---|---|---|
 | `1-1790540677-flip474-2313275` | Thor | `reported=33.113 ns measured=4636.591 ns (+-0.16%, span 109.7 ms) using=4636.591 ns (measured)` |
+| `1-1790540673-flip474-2311288` | Nova | `GPU timestamp period 33.113 ns (reported; not measured: no usable samples)` |
 
 - 109.7 ms at 4636.591 ns a tick is 23,660 ticks. At 19.2 MHz that is 1.2 ms:
   about the time the eight command buffers kept the GPU working. **The
   counter did not advance while the GPU was idle.**
+- On the Nova the second group's tick was not above the first's: across the
+  100 ms the counter went back or stood still. The first cut refused that
+  and kept the reported period, so the Nova run reads as master does (GPU
+  33.2 against cdef 51.2, 0.65).
+- Both fit a counter that restarts when the GPU powers down after an idle
+  stretch. That is a reading, not a measurement.
 - The line's own uncertainty, 0.16%, came from the width of the sample
   windows. It could not see this.
 - On the title's unattended screen (two render passes) the run read GPU 28
@@ -89,7 +96,7 @@ The first cut took four samples, slept 100 ms, and took four more.
 | file | run | verdict |
 |---|---|---|
 | `flip474-tsperiod-crimson-thor.json` | A `1-1790540677-flip474-2313064`, B `...-2313275` | **M0 void:** both routes were refused (`ROUTE ABORTED: not foreground`, Daijishou held display 0), so there is no gameplay window. **K0 holds** (one line). **K1, the labelled guess, is refuted**: 4636.591, not 52.08. **K2 holds**, which is the problem: the code used what it measured. G1 and G2 are not judged without a window; the unattended screen's 28 to 30 ms is reported above |
-| `flip474-tsperiod-doa-nova.json` | A `1-1790540673-flip474-2311172` ran; B `...-2311288` is queued | not judged. B is left in the queue: what the first cut reads on the Nova says whether the Nova's counter stops too |
+| `flip474-tsperiod-doa-nova.json` | A `1-1790540673-flip474-2311172`, B `...-2311288` | **K0 is killed**: B's line says "not measured". K1 is not met (nothing measured). K2 holds (it used the reported period). G1 fails as it must: B/A GPU is 33.2 / 31.2 = 1.06, not 1.573. **P1 fails as written**: B's gfps median is 14.5 against A's 16, and the rule was A - 1. B ran master's code after a start-up that measured nothing, and the two runs drew different opponents (section 16 has three runs of one binary at 14, 16 and 14.5 to 16), so the leg compared scenes; it still fails as registered. G2 and H0 hold. **The first cut is refuted on both devices: useless on the Nova, wrong on the Thor** |
 | `flip474-tsperiod-pgraph-inert.json` | the arms job's pair, queued | not judged; it is about `902cf1ab53` |
 
 ## What the driver's source says
@@ -143,9 +150,23 @@ G1 replaces the first cut's B/A ratio. The route is blind and DOA draws its
 opponent per run, so two runs are not the same scene; GPU and cdef in one
 run are. On `795ea6b3af` the ratio read 0.65, 0.65 and 0.66 in three runs.
 
-## Waiting
+## Waiting (from 2026-09-27 22:15Z)
 
-See the PR's newest `[lane.flip474] waiting:` comment for the request ids.
+| request | device | ref | for |
+|---|---|---|---|
+| `1-1790546971-flip474-641697` | Nova | `253148451f` | `flip474-tsperiod2-doa-nova.json` |
+| `1-1790546971-flip474-641838` | Thor | `253148451f` | `flip474-tsperiod2-thor.json` |
+| the arms job's pair | either | `57e2a7107c` / `253148451f` | `flip474-tsperiod2-pgraph-inert.json` |
+| `1-1790546289-flip474-398286` | Nova | `795ea6b3af` | NOTES section 16, the base's one rerun |
+
+`1-1790546975-flip474-643697` and `-643811` were duplicates of the first two,
+queued by running the queue script twice. They were withdrawn unclaimed
+(`queue/withdrawn/`, with a `.why` each).
+
+When they land: read each start-up line, run `phaseread.py`, `lockread.py`
+and `gfpsseries.py`, judge every leg, post on #474 and #462, and mark #504
+ready only if K1 and G1 hold on the Nova, the Thor's line is either a
+measured 52.08 or a refusal, and the pgraph pair is identical.
 
 ## Not done here
 
