@@ -659,8 +659,8 @@ files = ["docs/testing/titles/**", "docs/lanes/titlestate/**", "docs/testing/job
          "docs/lanes/hilodot10/NOTES.md",
          "docs/lanes/indexcheck/NOTES.md",
          "docs/lanes/wbufclip/NOTES.md",
-  "docs/testing/jobs/handback.sh",
   "docs/testing/jobs/selftest.d/99-handback-strand.sh",
+# CLAIMED (hostops 2026-09-27T00:20Z) by lane.handbackpark: docs/testing/jobs/handback.sh.
 ]
 
 [retired.selftest86]
@@ -1191,6 +1191,11 @@ issues = ["432"]
 files = ["docs/testing/request.sh", "docs/testing/ab_run.sh", "docs/testing/jobs/arms.sh", "docs/testing/jobs/selftest.d/97-release-prio.sh", "docs/lanes/relprio432/**"]
 standing = false
 note = "CREATED (hostops, 2026-09-26T22:45Z) from lane.pri432's board request (dispatch/board-requests/pri432.md, #432 item 2): request.sh names a 0.5 request 1-<epoch>-... so it sorts after probes and heads and ahead of every other request; ab_run.sh and arms.sh set it from the issue's 0.5 label. request.sh was RELEASED at ready by lane.pilotgate (PR #420); arms.sh and ab_run.sh LENT from lane.toolsmith (inactive), returned at fold. Brief: briefs/relprio432.md."
+[lane.handbackpark]
+issues = []
+files = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-parked.sh", "docs/lanes/handbackpark/**"]
+standing = false
+note = "CREATED (hostops, 2026-09-27T00:20Z). Harness defect, no tracker issue: handback.sh's draft-strand cause resumes drafts the host parked on purpose under the 0.5 policy (label blocked:after-0.5). #436 (visual404) was resumed 20:22Z/21:50Z/23:53Z and #439 (fmv303c) 21:52Z/23:55Z, each session only re-posting 'blocked: parked until after 0.5'. STRAND_STALE lists blocked:needs-owner but no other blocked:* label. Interim: hostops set handback/strand/<lane> to DRAFT_STRAND_MAX for both."
 [retired.pilotgate]
 issues = []
 files = []
