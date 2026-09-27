@@ -7210,6 +7210,51 @@ static void clr91_probe(PGRAPHState *pg, bool write_color, bool write_zeta)
               r->zeta_binding ? r->zeta_binding->vram_addr : (hwaddr)0);
 }
 
+/*
+ * #414: mark a binding the clear left uniform, as gl/draw.c does, so that
+ * update_surface_part's second rescue ("a fully cleared linear surface to be
+ * marked swizzled") can fire in this renderer too. Without it a title that
+ * clears a small target as linear and then draws it as swizzled (Forza, ~3.75
+ * times a frame) evicts both bindings, downloads the cleared pixels and
+ * uploads them straight back, with a finish in between.
+ *
+ * The rect is the clip-bounded clear rect, before the binding clamp and the
+ * scale factor, compared in anti-aliased units as the binding's size is.
+ * Stricter than GL's rule, because the rescue relies on the content being
+ * uniform: colour counts only when all four channels are cleared, zeta only
+ * when Z is, and stencil too if the format has one. Must run after
+ * pgraph_vk_set_surface_dirty, which resets cleared.
+ */
+static void mark_clear_full(PGRAPHState *pg, uint32_t parameter,
+                            unsigned int xmin, unsigned int ymin,
+                            unsigned int xmax, unsigned int ymax)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    unsigned int x = xmin, y = ymin;
+    unsigned int w = xmax - xmin + 1, h = ymax - ymin + 1;
+    pgraph_apply_anti_aliasing_factor(pg, &x, &y);
+    pgraph_apply_anti_aliasing_factor(pg, &w, &h);
+
+    if (r->color_binding) {
+        SurfaceBinding *b = r->color_binding;
+        bool all_channels = (parameter & NV097_CLEAR_SURFACE_COLOR) ==
+                            (NV097_CLEAR_SURFACE_R | NV097_CLEAR_SURFACE_G |
+                             NV097_CLEAR_SURFACE_B | NV097_CLEAR_SURFACE_A);
+        b->cleared = all_channels && !x && !y && w >= b->width &&
+                     h >= b->height;
+    }
+    if (r->zeta_binding) {
+        SurfaceBinding *b = r->zeta_binding;
+        bool has_stencil = b->host_fmt.aspect & VK_IMAGE_ASPECT_STENCIL_BIT;
+        bool all_aspects = (parameter & NV097_CLEAR_SURFACE_Z) &&
+                           (!has_stencil ||
+                            (parameter & NV097_CLEAR_SURFACE_STENCIL));
+        b->cleared = all_aspects && !x && !y && w >= b->width &&
+                     h >= b->height;
+    }
+}
+
 void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
 {
     PGRAPHState *pg = &d->pgraph;
@@ -7291,6 +7336,8 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
             return;
         }
     }
+    const unsigned int clip_xmin = xmin, clip_ymin = ymin,
+                       clip_xmax = xmax, clip_ymax = ymax;
 
     NV2A_VK_DGROUP_BEGIN("CLEAR min=(%d,%d) max=(%d,%d)%s%s", xmin, ymin, xmax,
                          ymax, write_color ? " color" : "",
@@ -7390,6 +7437,8 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
 
             pg->clearing = false;
             pgraph_vk_set_surface_dirty(pg, write_color, write_zeta);
+            mark_clear_full(pg, parameter, clip_xmin, clip_ymin, clip_xmax,
+                            clip_ymax);
             mark_clear_drawn(pg, write_color, write_zeta);
             NV2A_VK_DGROUP_END();
             return;
@@ -7489,6 +7538,7 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
     pg->clearing = false;
 
     pgraph_vk_set_surface_dirty(pg, write_color, write_zeta);
+    mark_clear_full(pg, parameter, clip_xmin, clip_ymin, clip_xmax, clip_ymax);
     mark_clear_drawn(pg, write_color, write_zeta);
     NV2A_PHASE_TIMER_END_EXCL(draw_dispatch);
 
