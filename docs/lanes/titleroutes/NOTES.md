@@ -324,6 +324,21 @@ attract demo (top-down city). The route that replays waits for the title
 replay `scratch/replay/mechassault-2-235122/zz-end.png` (the mech 40 s past
 the mark).
 
+### Session 10: HELD Thor, 00:06-00:16 PDT (10 min; hold taken 23:57 while the Crash soak ran), battery 75%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Grand Theft Auto: San Andreas (54540082) | thor (internal storage, `/storage/emulated/0/ROMS/xbox/`) | `gta-sa.route` | yes (00:14) | Jefferson alley, CJ on foot with HUD; 60 s past the mark he runs free (the bike mission lapsed) |
+
+**GTA: San Andreas** (owner priority, addendum 4). No save on the disk, so
+START at the title starts a new game with no menu; A skips the intro
+credits, the airport cutscene and the police cutscene. The route presses A
+every 5 s for 60 s through the cutscenes (on foot A is sprint, harmless);
+the replay reached control at the first of those shots. Nav frames
+`~/hakux-work/nav/gta-sa.first-run-20260927T000620/` (009-moved.png), replay
+`scratch/replay/gta-sa-001049/` (001425-moved.png, zz-end.png). Posted on
+#397 (comment 5853707979) with the other batch-3 titles.
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
@@ -347,6 +362,7 @@ request.
 | Bruce Lee | bruce-lee | 1-1790487611-titleroutes-261841 | 420 | 289 s of gameplay; fps window median 59.94 (min 2.83), 81.3% at >= 30; target 30. Verdict flags a hang: 21.2 s without guest flips after the mark |
 | Crash Twinsanity | crash-twinsanity | 1-1790489396-titleroutes-512742 | 540 | pending |
 | MechAssault 2 | mechassault-2 | 1-1790492206-titleroutes-681960 | 530 | pending |
+| GTA: San Andreas | gta-sa | 1-1790493356-titleroutes-734802 | 500 | pending |
 
 ## Do not repeat
 
