@@ -501,6 +501,27 @@ firefight 60 s past the mark (`scratch/replay/brute-force-045442/zz-end.png`).
 Nav frames `~/hakux-work/nav/brute-force.first-run-20260927T043949/`
 (024-y1 -> 025-turned2).
 
+### Session 17: HELD Thor, 05:12-05:23 PDT (11 min; hold taken 05:02 while the Brute Force soak ran), battery 60% -> 58%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Otogi: Myth of Demons (46530002) | thor | `otogi.route` | yes (05:22) | stage 1, the bamboo forest; Raikoh runs, slashes bamboo, a flying demon ahead |
+
+**Otogi.** Title (START) -> New Game -> save slot 01 -> "Create a new save
+game?" (A) -> story scroll and two cutscenes -> stage 1. In the nav
+session A and START alternated through the intro. The last START landed in
+the stage and opened PAUSE, whose default row is Restart Stage, and B
+closed it. So the route skips with A only: A every 5 s through the menus
+(the spare press covers the overwrite prompt a saved slot 01 adds), A
+every 4 s through the intro, then one B. The replay was in the stage at the
+mark and running at a demon 40 s later (`scratch/replay/otogi-051754/`).
+Nav frames `~/hakux-work/nav/otogi.first-run-20260927T051231/`
+(009-pre -> 010-moved).
+
+**Do not skip with START in an action game** unless its pause menu has
+been seen: in Otogi (Restart Stage) and Midtown Madness 3 (the race) START
+opens a pause menu the moment control starts.
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
@@ -531,7 +552,8 @@ request.
 | Alien Hominid | alien-hominid | 1-1790505449-titleroutes-1023605 | 410 | 306 s of gameplay; fps window median 59.94 (min 31.15), 100% at >= 30; target 30 (*) |
 | Midtown Madness 3 | midtown-madness-3.returning | 1-1790506491-titleroutes-1032854 | 580 | 264 s of gameplay; fps window median 3.13 (min 2.85), 0% at >= 30; ten 12-20 s hangs; target 30 (*). The mark frame shows the race running at FPS 3 |
 | Blood Wake | blood-wake | 1-1790508532-titleroutes-1074940 | 480 | 287 s of gameplay; fps window median 37.36 (min 5.12), 29.5% at >= 30; three ~11 s hangs; target 30 (*) |
-| Brute Force | brute-force | 1-1790510457-titleroutes-1101937 | 570 | queued |
+| Brute Force | brute-force | 1-1790510457-titleroutes-1101937 | 570 | 294 s of gameplay; fps window median 13.16 (min 7.57), 0% at >= 30; no hang; target 30 (*) |
+| Otogi | otogi | 1-1790511808-titleroutes-1129571 | 550 | queued |
 
 Batch-4 table posted on #397 (comment 5855637410).
 
