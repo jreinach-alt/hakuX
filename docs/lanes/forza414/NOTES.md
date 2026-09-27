@@ -712,3 +712,64 @@ On resume: judge P1 and M0, read both verdicts and every scores1.tsv `status`, p
 #414 and #474, then mark ready. After that, in the next PR: the setter split for `upload_pending`
 (section 20), the DOA pre-download branch with flip474's consumer list, and addendum 4's uniform-block
 skip (`apply_uniform_updates` / `fast_hash`).
+
+## Why attempt 6 did not finish (resume of 2026-09-27, addendum 5)
+
+It ended on a `waiting:` (PR #479, 21:17Z) for hunk 3's Blinx Nova soak pair and two goldens arms,
+all outside the session. At this resume all had finished: the soak pair as
+`0-0-x-1790543736-forza414-3560854` / `0-0-x-1790543737-forza414-3561797`, the mnm2 arm (judged
+PASS, 15:22 PDT), and the snap-mnm arms `1-1790543810-arms-forza414-base-3588648` /
+`1-1790543811-arms-forza414-fix-3588699` (DONE, no `[job.arms]` comment yet at this resume).
+
+## 22. Hunk 3's verdicts: Draw self falls 4.1 ms/frame, pixels byte-identical
+
+`drawself.py` (this directory) over both logcats, window mark play + 10 s to the last phase line
+- 10 s, medians over the phase lines. Same Nova, MAX, survey route. No crash, abort or assert line
+in either arm.
+
+| | A (6ab1c50643) | B (72de98abd1) |
+|---|---|---|
+| window | 150.9 s, 39 lines | 152.7 s, 43 lines |
+| Draw | 27.8 | 25.5 |
+| **Draw self** (Draw - Vtx Syn Prw Pipe Desc Setup Cmd) | **5.8** | **1.7** |
+| Draw self, also minus Sfp Mfp FTx | 5.6 | 1.5 |
+| Pipe | 16.6 | 18.8 |
+| Tot | 45.4 | 37.7 |
+| GPU | 24.5 | 22.0 |
+| Sub | 0.1 | 0.1 |
+| fps (pace lines) | 16.81 | 17.16 |
+
+| leg | rule | result |
+|---|---|---|
+| M0 | both arms reach level play, Draw > 0 in the window, no abort | **holds** (39/39 and 43/43 lines with Draw > 0) |
+| P1 | A - B Draw self >= 1.0 ms/frame | **holds**: 4.1 |
+| snap-mnm | 266 guarded captures byte-identical | **PASS**, 266 of 266 (`ab_compare.py` run by hand; the arms job will post its own) |
+
+Every scores1.tsv row in both snap-mnm arms is `ok` except the same ten `white-content` rows (two
+z16 Depth_buffer_fixed_function, eight TexFmt Texture_render_target). They are identical in both
+arms and in hunk 1's base arm `1-1790534055-arms-forza414-base-3969468`, so they come from before
+this lane.
+
+**The profile's price was right, and the size-based price was wrong**: 4.1 ms against slowdown462's
+~3.7 and the 0.3-0.5 of "40 KB at a few GB/s". The phase line has no draw count, so a scene
+difference between the arms is not ruled out directly. But Pipe rose 2.2 ms in B, so B did not do
+less work, and Draw self is the only child the hunk can reach. Tot fell 7.7 ms and fps rose only
+2%: Blinx's bound is the vCPU (slowdown462), as the prediction said. No fps figure is claimed.
+
+## 23. The merge of origin/master (38e33bae67)
+
+origin/master at this resume was 69 commits ahead. Its only code change is #488's NOTIFY handler
+(pgraph.c, methods.h.inc, nv2a_regs.h), with its own arm. It touches neither vk/draw.c nor
+vk/surface.c. The only conflict was `nv2a_index.json`, rebuilt from the fold-pins trees (tests_commit
+6743b6ab, 104 suites, `check` passes). **The arms were not re-run on the merge:** no line of either
+hunk, nor anything they call, changed. The three judged goldens arms (cleared-mnm, coalesce-mnm2,
+snap-mnm) stand on the code as it is. `preflight.sh --allow-tracker` passes on 38e33bae67.
+
+## Next, in a new PR (not this one)
+
+1. Split the ~3 surfupd finishes per frame by what set `upload_pending` (section 20): the VRAM
+   watch on a CPU write, `vram_newer` on a shelf hit, or the surface's creation. `stale` at ~105 per
+   60 flips is the first candidate.
+2. The DOA/AUF display-predownload branch with flip474's consumer list (section 16, addendum 2).
+3. Addendum 4's uniform-block skip in draw.c (`apply_uniform_updates` / `fast_hash`, 3.5-3.7
+   ms/frame on Blinx and AUF).
