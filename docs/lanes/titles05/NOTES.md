@@ -140,8 +140,8 @@ selftest (2055 passed), and marked #458 ready. Then, about 20:45 PDT, the owner 
 at the live page and asked for a revision: no fixed column widths, even "Thor" and
 "Nova" wrapping, text cut off mid-word ("needs a gamepl..."), and pipeline marks
 ("TN ISB") that an outsider cannot read. lane.local took `fold-ready` off #458 and
-resumed this lane with Addendum 2. This attempt is that revision, on master merged
-again.
+resumed this lane with Addendum 2. #458 was folded at 20:50 PDT anyway (e5db66fa37),
+so this revision lands as PR #471, on master merged again.
 
 What changed:
 - **Fixed columns.** `table.tt` is `table-layout:fixed` with a colgroup: a status/fps
