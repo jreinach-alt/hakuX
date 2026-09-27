@@ -64,6 +64,7 @@ notes = "A §11 soak title; a 60 fps fighter. Route: PR 2."
 name = "JSRF: Jet Set Radio Future"
 target_fps = 60
 iso = { thor = "JSRF - Jet Set Radio Future (USA).xiso.iso" }
+route = "jsrf"
 notes = "#431 (comment 5851536933): 60, medium confidence. GameSpot review and preview (Xbox, 2002); its slowdown is slow motion"
 
 [titles."4D530053"]
