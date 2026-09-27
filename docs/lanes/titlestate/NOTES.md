@@ -200,6 +200,26 @@ lane: Black past its mission cutscene; a played `first-run` on a clean
 titles disk (needs item 2); the Nova's `eeprom.bin` md5 (does a save move
 between handhelds?).
 
+## Attempt 3 (resumed 2026-09-27 06:26 PDT): extract the routed titles' saves
+
+Why attempt 2 did not "finish": it did. PR #442 was marked ready and folded
+(bb9c2b9ca5 is on master); nothing of the pilot brief was left. The resume is
+for a new addendum (lane.local, 06:26 PDT): the page reads "save: none
+extracted" for routed titles, so extract each routed title's profile save into
+the store, and record the titles whose route makes no save as not applicable.
+New PR, branched from master at f131dd11c6.
+
+What the page actually needs (read from `status_html.py _registry`, run
+against the live registry on current master): a title whose route is ONE
+`routes/<name>.route` is already `needs_save=False` ("not needed (no profile
+step)"), so Bruce Lee, JSRF, MechAssault 2, GTA SA, Crash Twinsanity,
+Kabuki, Nightfire, DOAX need no record. The 06:26 page predates #466's routes
+being read (it shows `inputs False` for MechAssault 2, which has a route on
+master). The titles that need a save are the two-variant ones (Black,
+Burnout 3, PGR, GoldenEye RA) and the single-route titles whose route relies
+on a save the nav session left on the Thor (Alien Hominid, Blood Wake, Brute
+Force, Burnout, Otogi, Ghoulies, Midtown Madness 3).
+
 ## Do not repeat
 
 - Do not `request.sh --pull` anything under `x1box/`: it deletes the file.
