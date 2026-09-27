@@ -303,6 +303,32 @@ if [ -n "$CAPTURE_LOG" ]; then
     LOGCAT_PID=$!
 fi
 
+# THE THERMAL RECORD (#507). Under MAX the Thor's kernel pauses cpu3-7 a few
+# minutes in (`thermal-pause-F8`, bound to xo-therm's 78 C trip) and fps falls
+# 5-7x; no other readout shows it. thermal_state.py reads every cooling device
+# and zone in one adb call and appends one JSON line to thermal.jsonl beside
+# the capture: once here, before `am start`, once every THERMAL_EVERY_S (30 s)
+# from the hold loop below (no second poller), and once at the end.
+# title_verdict.py voids a scored window a pause may overlap; the `THERMAL:`
+# line in run.log is for a reader.
+THERMAL_OUT="${THERMAL_OUT:-${CAPTURE_LOG:+$(dirname "$CAPTURE_LOG")/thermal.jsonl}}"
+thermal_sample() {   # <label>
+    [ -n "$THERMAL_OUT" ] || return 0
+    if [ ! -f "$HERE/thermal_state.py" ]; then
+        # An older snapshot (see ROUTE NOT PLAYED below): say so once; no
+        # thermal.jsonl then reads as `unread`, never as `no pause`.
+        echo "THERMAL: not recorded: $HERE/thermal_state.py is missing from this snapshot"
+        THERMAL_OUT=""
+        return 0
+    fi
+    # stderr to run.log: a sampler traceback writes no line, and a reader
+    # should see why a gap is there (the verdict voids it either way).
+    python3 "$HERE/thermal_state.py" "$SERIAL" --label "$1" >>"$THERMAL_OUT"
+    return 0
+}
+[ -n "$THERMAL_OUT" ] && rm -f "$THERMAL_OUT"
+thermal_sample start
+
 # Quoted for the device's sh by devices.sh: a bare '...' broke on a title
 # with an apostrophe ("Tom Clancy's ...").
 a shell "am start -a android.intent.action.VIEW -n $ACT --es rom_path $(_dev_sq "$ISO")" >/dev/null 2>&1
@@ -480,11 +506,15 @@ s=0
 appeared=0
 SOAK_RC=0
 t0=$(date +%s)
+thermal_s=0
 while [ "$s" -lt "$SECONDS_TO_HOLD" ]; do
     # SOAK_POLL_S / SOAK_RETRY_S exist for selftest.d/89, which drives this
     # loop against a fake adb in seconds rather than minutes.
     sleep "${SOAK_POLL_S:-5}"; s=$(( $(date +%s) - t0 ))
     touch "$LEASE"
+    if [ $((s - thermal_s)) -ge "${THERMAL_EVERY_S:-30}" ]; then
+        thermal_sample hold; thermal_s=$s
+    fi
     if [ -f "$FG_FLAG" ]; then
         echo "soak aborted: not-foreground after ${s}s of ${SECONDS_TO_HOLD}s"
         SOAK_RC=5
@@ -501,6 +531,8 @@ done
 stop_route
 a shell log -t hakuX-route "'soak end'" >/dev/null 2>&1
 echo "adb_failures=$ADB_FAILURES"
+thermal_sample end
+[ -n "$THERMAL_OUT" ] && python3 "$HERE/thermal_state.py" --summary "$THERMAL_OUT"
 
 # THE BLACK-FRAME GUARD. A 1920x1080 all-black PNG is 10,899 B; every route
 # frame of the 2026-09-27 covered-display runs was exactly that. When every

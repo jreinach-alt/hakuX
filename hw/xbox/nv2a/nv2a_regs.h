@@ -946,6 +946,9 @@
 #define NV_KELVIN_PRIMITIVE                              0x0097
 #   define NV097_SET_OBJECT                                   0x00000000
 #   define NV097_NO_OPERATION                                 0x00000100
+#   define NV097_NOTIFY                                       0x00000104
+#       define NV097_NOTIFY_WRITE_ONLY                            0
+#       define NV097_NOTIFY_WRITE_THEN_AWAKEN                     1
 #   define NV097_WAIT_FOR_IDLE                                0x00000110
 #   define NV097_SET_FLIP_READ                                0x00000120
 #   define NV097_SET_FLIP_WRITE                               0x00000124

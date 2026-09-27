@@ -33,6 +33,12 @@
 # attacked; X also opens the skill list (Avid Pursuit, War Cry, Thrown
 # Dagger), so the play pattern presses A only. Nav frames 008-gameplay ->
 # 009-moved.
+#
+# REPLAYED 2026-09-27 13:04 PDT, in a HELD Thor session, unattended, with
+# hakuX holding the input focus on all 17 reads of `dumpsys input`. The frame
+# at the mark is ARADIN in the ruins, out of the cutscene (overlay FPS 15);
+# 40 s later he stands at the torch-lit sign further on
+# (scratch/replay/dnd-heroes-130437/zz-end.png, FPS 11). The boot was warm.
 wait 26.8
 shot boot
 wait 9.6
