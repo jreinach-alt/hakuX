@@ -131,4 +131,9 @@ estimate's other home: AGENTS.md, "Working with a device".
 - Push to `master` or to any branch but your own.
 - Run git in a tree that is not your worktree.
 - Touch a device directly. `request.sh` and `ab_run.sh` are the only way in.
+- Write or remove `$DISPATCH_DIR/hold/<dev>` by hand. Take and release a
+  device hold ONLY with `jobs/hold.sh take|release <dev> lane.<name>`; it
+  refuses (exit 3) a device someone else holds, and never removes a hold you
+  did not take. On 2026-09-26 a lane removed the host update window's hold on
+  the Thor and the Thor claimed a request inside the window.
 - Rewrite published history on your branch after a prediction names it.
