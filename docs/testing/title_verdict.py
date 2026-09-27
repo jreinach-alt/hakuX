@@ -60,6 +60,13 @@ themselves). On 2026-09-27 a foreign overlay on the Thor's display 0 did both.
 A third: the route was aborted because hakuX did not hold display 0 and
 input focus (`not-foreground:` in run.log, from soak_title.sh's foreground
 guard); its input went to, or would have gone to, another app.
+A fourth: the device was THERMALLY PAUSED inside the scored window
+(thermal.jsonl, from soak_title.sh's thermal_state.py samples, #507). Under
+MAX the Thor's kernel pauses cpu3-7 a few minutes in and fps falls 5-7x; that
+is the device's temperature, not the title's frame rate. A pause is sampled
+every 30 s, so its span is bounded by the clean samples either side, and a
+window that span may overlap is void (thermal_state.py, A PAUSE EPISODE). A
+run with no thermal.jsonl is judged as before, with `thermal.measured` false.
 Black frames are NOT void when run.log says `render-black:`: the soak
 re-ran display_clear and hakux_in_front at the end of the hold and both were
 clear, so hakuX itself drew black. That run is judged (its fps stands) and
@@ -85,6 +92,8 @@ except ImportError:            # python < 3.11
     tomllib = None
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import thermal_state  # noqa: E402
 DEFAULT_TARGETS = os.path.join(HERE, "titles", "targets.toml")
 
 # `logcat -v time`: "09-25 13:31:41.662 I/hakuX-perf( 1234): gfps=30 G:..."
@@ -288,11 +297,26 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
         mark_t, gameplay_by = None, None
     end_t = soak_end[-1] if soak_end else (lc[-1][0] if lc else None)
 
+    # THERMAL: a pause that may overlap the scored window voids it (see
+    # DISPLAY above). Every episode is reported, in or out of the window.
+    therm = thermal_state.load(os.path.join(rdir, "thermal.jsonl"))
+    read = [r for r in therm or [] if thermal_state.paused(r) is not None
+            and thermal_state.dev_ts(r) is not None]
+    eps = thermal_state.episodes(therm or [])
+    hit = (thermal_state.in_window(therm, mark_t, end_t)
+           if read and mark_t is not None and end_t is not None else [])
+    thermal = dict(measured=bool(read), samples=len(therm or []), unread=len(therm or []) - len(read),
+                   pauses=[thermal_state.describe(e, mark_t if mark_t is not None else
+                                                  min(thermal_state.dev_ts(r) for r in read))
+                           for e in eps], in_window=bool(hit))
+    if hit and void is None:
+        void = "thermal-pause: %s, relative to the mark" % thermal_state.describe(hit[0], mark_t)
+
     v = dict(title=title, title_id=tid, name=entry.get("name"),
              device=res.get("device_label") or "", ref=res.get("ref") or req.get("ref"),
              apk_sha=res.get("apk_sha"), request_id=req.get("id") or os.path.basename(rdir.rstrip("/")),
              route=req.get("route_name") or None, surface_scale=scale,
-             adb_failures=adb_failures, human_review="")
+             adb_failures=adb_failures, thermal=thermal, human_review="")
     v["booted"] = (not never) and bool(perf) and bool(lc)
     after = [(t, p) for t, p in perf if mark_t is not None and t >= mark_t]
     flipped_after = bool(after)

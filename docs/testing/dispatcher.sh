@@ -88,7 +88,7 @@ SRC="${DISPATCH_SRC:-$TREE/docs/testing}"
 # pass 1 on #206, M2). selftest.d/97 checks the closure, not only equality.
 SCRIPT_DEPS="dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
 affinity.py captures.py make_test_iso.py extract_results.py sweep_queue.sh \
-make_isolation_discs.py vsh_score.py titles/route.sh perf/pad.sh"
+make_isolation_discs.py vsh_score.py thermal_state.py titles/route.sh perf/pad.sh"
 # WHERE BUILDS HAPPEN, AND IT IS NEVER $TREE.
 #
 # Until 2026-09-19 a build detached the SHARED checkout onto the requested
@@ -115,7 +115,7 @@ snapshot_scripts() {
     local f SRC0="$SRC" SNAP0="$SNAP"
     for f in dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
              affinity.py captures.py make_test_iso.py extract_results.py \
-             sweep_queue.sh make_isolation_discs.py vsh_score.py \
+             sweep_queue.sh make_isolation_discs.py vsh_score.py thermal_state.py \
              titles/route.sh perf/pad.sh; do
         # Two of these live in subdirectories. Each file is resolved against
         # its own directory, so the write-beside-and-rename below stays in one
