@@ -876,3 +876,28 @@ draws. The split between the two is not measured.
 
 The file is on no row (lane.remote released it 2026-09-26T18:20Z). The request is in
 `$DISPATCH_DIR/board-requests/forza414.md`. Nothing is written until it is granted.
+
+## 27. #479 folded with its audit fix: merge, new arm refs, re-registration
+
+PR #479 folded (de2ed0f50f) with an audit fix in vk/surface.c (f65175f993):
+- A pending download's struct is kept out of reuse and prune.
+- A shelf reuse completes the download first (`[sdcall]` caller `reuse`).
+- A download whose surface was freed marks its own range dirty.
+
+That is the same path hunk 4 lengthens, and it is compatible with it. A reuse of a struct the
+pending flip batch names now completes the batch first, and prune no longer frees such a struct.
+That shrinks section 25's "freed while pending" hazard to surfaces freed by other paths.
+
+PR #518 showed CONFLICTING and had no CI run. The conflict was the `SDC_*` enum and its name list;
+both sides were kept, in the order `reuse, record, prerec`. Merged at 6eb7b1115c. The arms queued
+on d04973ce9b/ee830484bb had not started. All five were withdrawn unrun
+(`queue/withdrawn/*.why`): the Thor pilot, the DOA pair and the arms job's goldens pair. The
+reason is that A/B on the pre-merge refs would measure code that does not ship.
+
+New refs, both on this branch:
+- **A = 35ee65562a**: the merge, with hunk 4 reverted.
+- **B = 32657e9719**: A with hunk 4 re-applied. Its tree equals the merge's (`git diff 6eb7b1115c
+  32657e9719` is empty).
+
+All three predictions were re-registered on A/B before any arm ran, with the reason appended to
+each.
