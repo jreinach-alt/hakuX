@@ -1,0 +1,38 @@
+# The 0.5 release, as the status page states it (status.sh reads this file;
+# STATUS_RELEASE_CONF overrides the path). Owner decisions only: when the owner
+# sets or changes the target, edit `target` / `numeric_target` here and nothing
+# in the renderer. Every field is shown with `decided`, its source and date.
+
+name = "0.5"
+tracking_issue = 433
+
+# The target in one sentence, and where it was decided.
+target = "0.5 ships as the first honest tested-titles list for the Thor and Nova, plus the performance work landed by then; target ~2026-09-28 (#433)."
+decided = "owner, 2026-09-26 (#433)"
+
+# A numeric target, pending with the owner (escalations.md, 2026-09-26 16:24 PDT).
+# Empty means "not set"; the page says so instead of inventing one.
+numeric_target = ""
+numeric_decided = ""
+
+# The release gate. The page keeps status.sh's measurement (the newest soak per
+# handheld whose request names the title, median gfps over 90-240 s from the
+# first perf line) and compares its ref with the candidate's.
+gate = "Ghoulies median >= 25 gfps over 90-240 s on the candidate APK, both handhelds"
+gate_min = 25
+candidate_tag_prefix = "v0.5"
+
+# The 0.5 test list, until the owner sets another: every title on either handheld.
+test_list = "every title on either handheld: titles/already-on-handhelds.json plus lane.xbox's #430 pushes (logs/titlepipe/batch-*.tsv)"
+
+# Parked-by-policy work: one line on the page, with its gate.
+parked_label = "blocked:after-0.5"
+parked_gate = "#433 closes (0.5 ships)"
+
+# Hand-reviewed rows that no verdict.json carries (pass 1 of #397).
+backfill = "pass1-backfill.json"
+
+# The performance levers, in the order the owner filed them. Words come from
+# each issue's title on the board; the owner lane from territory.toml; the
+# effect from the arms job's verdicts and the board's closing note.
+levers = [424, 425, 426, 427, 428, 429]

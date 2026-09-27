@@ -1,0 +1,174 @@
+{
+ "attention": [
+  {
+   "kind": "idle",
+   "text": "1 lane idle with no work: perfregimen. Unit stopped, nothing on a device, PR draft or none: nothing will wake it"
+  },
+  {
+   "kind": "blocked",
+   "text": "lane blinx372d: blocked: #372 IN FLIGHT (job.board 2026-09-26T21:55Z): lane.blin..."
+  },
+  {
+   "kind": "blocked",
+   "text": "lane flatlm13: blocked: #13 IN FLIGHT (job.board 2026-09-26T21:55Z): lane.flat..."
+  },
+  {
+   "kind": "blocked",
+   "text": "lane fmv303c: blocked: #303 after 0.5: the 0.5-first policy (owner 2026-09-26,..."
+  },
+  {
+   "kind": "blocked",
+   "text": "lane forza414: blocked: #414 FILE HELD (job.board 2026-09-26T21:55Z): lane.forz..."
+  },
+  {
+   "kind": "queue",
+   "text": "19 runs queued over 60 min; oldest 1790454909-lane.tbchurn424-3969958 (2h 47m, for lane.tbchurn424)"
+  }
+ ],
+ "details_md": "## hakuX harness -- live status\n\n_Rewritten 2026-09-26 16:22 PDT by `status.sh` on the host. Every time on this page is PDT. Sections that could not be computed say so._\n\n_Next roll-up due by 2026-09-26 16:52 PDT. A clock older than that means `status.sh` has stopped: a roll-up that is not running cannot say so itself._\n\n### Lanes running (cap 24)\n\n| lane | issue | attempt | model | running for | PR |\n|---|---|---|---|---|---|\n| aufire412 | #412 | 2 | claude-opus-5-5 | 2m ago | #416 draft |\n| claimrace | #420 | 2 | claude-opus-5-5 | 40m ago | #446 draft |\n| pilotgate | #397 | 3 | claude-opus-5-5 | 15m ago | #420 open |\n| relprio432 | #432 | 1 | claude-opus-5-5 | 43m ago | #447 draft |\n| titlestate | #397 | 2 | claude-opus-5-5 | 51m ago | #442 draft |\n\n### Lanes: every row on the board (PDT)\n\n> [!WARNING]\n> **1 lane idle with no work:** perfregimen. Unit stopped, nothing queued or running on a device, and its PR is a draft or absent -- nothing will wake it.\n\n| lane | state | issue | PR | last session ended | it said |\n|---|---|---|---|---|---|\n| perfregimen | **:warning: IDLE, NO WORK** |  | #444 draft | 09-26 16:18 | The regimen is in: title soaks switch to MAX performance and fan before the app starts and... |\n| arms | job (hakux-arms.timer) |  | none | never |  |\n| aufire412 | running | #412 | #416 draft | 09-26 13:15 | Using the vk/shaders.c grant, I wrote the fix for Agent Under Fire's flat ~16 fps and queu... |\n| blinx372d | blocked: #372 IN FLIGHT (job.board 2026-09-26T21:55Z): lane.blin... | #372 | #396 merged | 09-26 13:12 | PR #396 is marked ready for review. Two things are still outstanding: CI on the new head `... |\n| buildflags427 | waiting on device (0 running, 2 queued) | #427 | #435 draft | 09-26 13:41 | The build flags are in and verified in the symbol table, but the before/after fps number d... |\n| claimrace | running |  | #446 draft | 09-26 15:33 | The full selftest is still running; the monitor will report its FAIL lines and summary whe... |\n| doa413b | waiting on device (0 running, 4 queued) | #413 | #440 draft | 09-26 15:27 | I found where the DOA2U fight's `surface_update` time goes and pushed a fix for it, but it... |\n| flatlm13 | blocked: #13 IN FLIGHT (job.board 2026-09-26T21:55Z): lane.flat... | #13 | #401 merged | 09-26 13:18 | PR #401 is now marked ready. The arm passed, and the magnitude check matched the offline p... |\n| fmv303c | blocked: #303 after 0.5: the 0.5-first policy (owner 2026-09-26,... | #303 | #439 draft | 09-26 14:53 | Lane fmv303c is blocked, not finished. The Thor soak hasn't run, so #303 has no answer yet... |\n| fold | job (hakux-fold.timer) |  | none | never |  |\n| forza414 | blocked: #414 FILE HELD (job.board 2026-09-26T21:55Z): lane.forz... | #414 | #418 merged | 09-26 13:53 | PR #418 is marked ready. It carries analysis only: no code change, and no prediction becau... |\n| jcache425 | waiting on device (0 running, 8 queued) | #425 | #443 draft | 09-26 15:11 | I've finished the pilot, added counters and queued the A/B arms, but there is no verdict y... |\n| pilotgate | running |  | #420 open | 09-26 15:58 | PR #420 still can't fold. Merging master cleared the out-of-date failure, but the new head... |\n| relprio432 | running | #432 | #447 draft | never |  |\n| ring53impl | folded (row not yet retired) | #53 | #395 merged | 09-26 13:48 | PR #395 is done and marked ready. The device test (the \"arm\") comparing the ring against c... |\n| tbchurn424 | waiting on device (0 running, 9 queued) | #424 | #434 draft | 09-26 13:37 | I've written and queued the fix for #424, but nothing is measured on a device yet: ten Tho... |\n| titlestate | running | #397 | #442 draft | 09-26 15:20 | Phase 1 is finished and posted on #397. Phase 2 can't start until I get a device grant, so... |\n| toolsmith | folded (row not yet retired) | #94 #95 | #361 merged | 09-26 04:27 | I fixed defect 27 in PR #386, which is marked ready and labelled `needs-audit-1`. Defect 2... |\n| triage | standing, nothing in flight |  | none | never |  |\n| vcpuprime428 | folded (row not yet retired) | #428 | #437 merged | 09-26 16:09 | Pinning the emulated CPU thread to the Thor's prime core (`HAKUX_PLACE_VCPU=prime`) is ref... |\n| yuv10 | PR needs remediation | #10 | #419 open | 09-26 14:47 | PR #419 is out of draft and marked ready, on head `9536845ce5`. The device test confirmed ... |\n| vshcpu345 | retired 09-26 13:40 |  | #402 merged | 09-26 12:45 | The patched vector-shader evaluator now matches the Xbox console on every row it targets, ... |\n| doa413 | retired 09-26 13:40 |  | #417 merged | 09-26 13:09 | PR #417 is now ready for review. It separates the two problems in #413, but proposes no fi... |\n| cull13 | retired 09-26 13:40 |  | #403 merged | 09-26 13:04 | PR #403 is marked ready and goes to audit because it touches `hw/`. The device test of the... |\n| foldcancel | retired 09-26 13:15 |  | #415 merged | 09-26 12:26 | I've pushed the fix as PR #415 and marked it ready for review. A fold tick whose final tru... |\n| titleplay | retired 09-26 12:35 |  | #399 merged | 09-26 12:10 | PR #399 is marked ready for review. It's pushed at `08ad953514` with `origin/master` merge... |\n| fmv303b | retired 09-26 11:50 |  | #398 merged | 09-26 10:45 | Turning the tier1 JIT tier off does not change Spikeout's FMV green, so tier1 is not the c... |\n| armsscope | retired 09-26 11:20 |  | #409 merged | 09-26 10:59 | The fix is in and PR #409 is marked ready: `arms.sh` now counts only a PR's own prediction... |\n| boardpushgate | retired 09-26 10:58 |  | #408 merged | 09-26 10:43 | The board push gate is built and PR #408 is out of draft. The jobs selftest passed (1827 c... |\n| pshaniso284 | retired 09-26 10:40 | #284 #315 | #393 merged | 09-26 07:20 | PR #393 has both fixes, both device tests passed, CI is green on the current head (329df5e... |\n| surfwatch382 | retired 09-26 07:14 | #382 | #387 merged | 09-26 05:34 | The fix works: with it, 50 Cent: Bulletproof's intro movies play at full speed on the Nova... |\n| fmv303 | retired 09-26 07:14 | #303 | #317 merged | 09-25 20:31 | PR #317 is now marked ready. It ends as an analysis-only outcome: the green is in the game... |\n| zrtz272 | retired 09-26 06:50 | #272 #275 | #364 merged | 09-26 04:36 | Arm 3 passed and PR #364 is ready for review. |\n| ring53 | retired 09-26 06:50 | #53 | #391 merged | 09-26 06:08 | Lane ring53 is finished but blocked: no emulator code landed. PR #391 is now ready (analys... |\n| dpforce345 | retired 09-26 06:50 | #345 | #383 merged | 09-26 04:47 | PR #383 is now marked ready. The re-registered prediction passes on the device: all 291 ch... |\n| blinx372c | retired 09-26 06:50 | #372 | #388 merged | 09-26 05:40 | I found the site behind Blinx's two surface-download waits per frame in the attract demo, ... |\n| y16bump10 | retired 09-26 04:40 | #10 | #367 merged | 09-26 04:11 | PR #367 is finished and I made no new commits this session. The previous session did get t... |\n\n_40 more rows retired in the last 24 h are not listed._\n\n- **lane.xbox** (interactive session; the console): last `[lane.xbox]` comment 09-26 14:14 on #397: A label correction to the pass-1 table: the row \"DOA Ultimate (DOA2U)\" is the **Dead or Alive 1 Ultimate** dis...; **no host answer after it**. Device requests: none queued or running. console meter: ON, 66.1 W (read 0s ago).\n- **lane.remote** (cloud session, one-way): last `` `[lane.remote]` `` comment 09-26 15:11 on #426: **Taking lane.local's queue (5850280192) in order.** Items 1 and 2 become one instrument PR while the Thor soa...; host answered 09-26 15:44.\n- **host ops tick** (`hakux-hostops.timer`, every 20 min): last tick 09-26 15:39: ectly flags the claimrace log.\n\n### Window budget (the account's five-hour and weekly windows)\n\n- dispatching normally. Lanes and audits start as work allows; expanding is the default.\n- week from 2026-09-20 17:00 PDT (85% elapsed, reserve from 2026-09-26 07:24 PDT), 564 run(s), spend 1130.7 of no declared budget, 0 usage-limit hit(s) this week (0 in the reserve); the weekly reserve is NOT armed: there is no declared WEEK_SPEND_BUDGET in $WORK/limits.env, and this fleet has been refused 0 time(s) since the reserve began (2 arms it).\n- no session has ever been refused by the account's window on this host. That is the only first-hand evidence of a closed window there is: **the remaining five-hour and weekly balance cannot be queried from here**, so the weekly reserve arms on that evidence, or on `WEEK_SPEND_BUDGET` if the owner declares one in `$WORK/limits.env`. Unknown means open, by design.\n\n### Lane sessions finished (last 24h)\n\n| when (PDT) | lane | model | turns | min | result | PR | said |\n|---|---|---|---|---|---|---|---|\n| 09-26 14:50 | doa413b | opus-5-5 | 25 | 1 | ok | #440 draft | The fight is not priced yet, and nothing is cut. The pilot soak that would give the price  |\n| 09-26 14:51 | visual404 | opus-5-5 | 11 | 0 | ok | #436 draft | I didn't resume the work, because #404 is still parked until after the 0.5 release. The ow |\n| 09-26 14:53 | fmv303c | opus-5-5 | 9 | 1 | ok | #439 draft | Lane fmv303c is blocked, not finished. The Thor soak hasn't run, so #303 has no answer yet |\n| 09-26 15:11 | jcache425 | opus-5-5 | 93 | 10 | ok | #443 draft | I've finished the pilot, added counters and queued the A/B arms, but there is no verdict y |\n| 09-26 15:16 | vcpuprime428 | opus-5-5 | 27 | 27 | ok | #437 merged | I've stopped here, waiting for the host to release the last four runs. PR #437 is still a  |\n| 09-26 15:20 | titlestate | opus-5-5 | 125 | 19 | ok | #442 draft | Phase 1 is finished and posted on #397. Phase 2 can't start until I get a device grant, so |\n| 09-26 15:27 | doa413b | opus-5-5 | 72 | 9 | ok | #440 draft | I found where the DOA2U fight's `surface_update` time goes and pushed a fix for it, but it |\n| 09-26 15:33 | claimrace | opus-5-5 | 49 | 16 | ok | #446 draft | The full selftest is still running; the monitor will report its FAIL lines and summary whe |\n| 09-26 15:58 | pilotgate | opus-5-5 | 42 | 36 | ok | #420 open | PR #420 still can't fold. Merging master cleared the out-of-date failure, but the new head |\n| 09-26 16:03 | pri432 | opus-5-5 | 146 | 72 | ok | #438 merged | PR #438 is ready for review. CI is green on 1d99bcb5d9 (both builds and the jobs selftest) |\n| 09-26 16:09 | vcpuprime428 | opus-5-5 | 37 | 36 | ok | #437 merged | Pinning the emulated CPU thread to the Thor's prime core (`HAKUX_PLACE_VCPU=prime`) is ref |\n| 09-26 16:18 | perfregimen | opus-5-5 | 175 | 76 | ok | #444 draft | The regimen is in: title soaks switch to MAX performance and fan before the app starts and |\n\n_result: ok = ended on its own; MAXTURNS = cut at the turn cap, work kept; ERR = the session errored. A lane that ended without a ready PR is resumed by the board (attempts 1-3 on claude-opus-5-5, then claude-fable-5-1, then decision-needed)._\n\n### Cloud-class sessions (hourly, on the host; last 24h from their `[job.cloud]` comments)\n\n- 09-25 16:49 #270  claimed for audit2 (unit hakux-lane-cloud-audit2-270, model claude-opus-5-5, attempt 1 of 4).\n- 09-25 16:49 #325  claimed for audit2 (unit hakux-lane-cloud-audit2-325, model claude-opus-5-5, attempt 1 of 4).\n- 09-25 16:50 #244  claimed for audit1 (unit hakux-lane-cloud-audit1-244, model claude-opus-5-5, attempt 1 of 4).\n- 09-25 16:50 #289  claimed for audit1 (unit hakux-lane-cloud-audit1-289, model claude-opus-5-5, attempt 1 of 4).\n- 09-25 16:51 #290  claimed for audit1 (unit hakux-lane-cloud-audit1-290, model claude-opus-5-5, attempt 1 of 4).\n- 09-25 16:53 #325  the audit2 session for this PR ended without setting a next state, so `needs-audit-2` stays and the outlet w\n- 09-25 17:12 #244  claimed for audit2 (unit hakux-lane-cloud-audit2-244, model claude-opus-5-5, attempt 1 of 4).\n- 09-25 17:34 #289  claimed for audit2 (unit hakux-lane-cloud-audit2-289, model claude-opus-5-5, attempt 1 of 4).\n- 09-25 17:56 #290  claimed for audit2 (unit hakux-lane-cloud-audit2-290, model claude-opus-5-5, attempt 1 of 4).\n- 09-25 18:19 #325  claimed for audit2 (unit hakux-lane-cloud-audit2-325, model claude-opus-5-5, attempt 2 of 4).\n- running now: \n\n```\n09-26 15:49 cloud-audit2-401 claude-opus-5-5 turns=17 81s ok PR #401 passes audit pass 2 with nothing left open, and it is now labelled `fold\n09-26 15:53 cloud-audit1-419 claude-opus-5-5 turns=22 171s ok I finished the first audit pass of PR #419 (head `c3d401ad6b`). It found one MED\n09-26 16:12 cloud-remediate-419 claude-opus-5-5 turns=20 78s ok I fixed the one medium finding from the first audit of PR #419 and pushed it as \n09-26 16:14 cloud-audit2-419 claude-opus-5-5 turns=18 98s ok I finished pass 2 on PR #419 and moved it to `needs-remediation`, not `fold-read\n```\n\n### Board job (every 20 min)\n\n```\n  FAIL: 1 lane PR(s) are READY and carry no pipeline label: #437. A ready PR with no needs-audit-*/needs-remediation/fold-ready/folded label is stalled -- nothi\n2026-09-26 16:13:32 PDT capacity: 6/24 lanes running and 2 startable issue(s):\n  #429 [0.5] [game] Performance: smaller translation blocks on often-rewritten pages  [0.5]\n  #433 [0.5] [impact 0 px, measured] 0.5 release: the first tested-titles list for the Thor and Nova (target 2026-09-28)  [0.5]\n2026-09-26 16:13:32 PDT ready PRs with no state label:\n  #437 lane.vcpuprime428: #428 vCPU thread on the prime core, Crimson gameplay A/B\n```\n\nlast model ticks:\n```\n09-26 15:32 board claude-sonnet-5 turns=16 51s ok The tick made no board edits, so nothing was pushed to `board`. I resumed one la\n09-26 15:52 board claude-sonnet-5 turns=21 52s ok Nothing dispatched this tick, and I made no board edits or pushes because none w\n09-26 16:14 board claude-sonnet-5 turns=16 49s ok Nothing to push or dispatch this tick, so I made no board edits, comments or lab\n```\n\nboard branch: e62d272ea7 8 minutes ago -- hostops: #428 closed as refuted (PR #437); release lane.vcpuprime428's files at ready\n\n### Handhelds and arms\n\n- adb: bdc158a5(device) ee317437(device) \n- dispatcher: active, workers: 2\n- queue: 23 waiting, 99 idle-tier z-* behind them, 0 running; holds: nova thor \n- dispatcher last line: `09-26 16:19:50 HELD by /home/justin/hakux-work/dispatch/hold/nova; claiming nothing until it is removed`\n- affinity: lanes serving `desktop` -- an A/B pair queued now is pinned to one of them\n- affinity notes, last 24h (a pair named here may span two devices and cannot isolate run-to-run variation):\n  - `1790463182-arms-doa413b-fix-1083874`: no poolable device lane is registered in /home/justin/hakux-work/dispatch/lanes, so 46210a732072550562fca3b7eb3cb2cf601b8701d4e2fb763e2fc4bfff75f8d4.json could not be pinned at all; if this is one arm of an A/B its partn\n  - `1790463182-arms-doa413b-base-1083820`: no poolable device lane is registered in /home/justin/hakux-work/dispatch/lanes, so 46210a732072550562fca3b7eb3cb2cf601b8701d4e2fb763e2fc4bfff75f8d4.json could not be pinned at all; if this is one arm of an A/B its partn\n  - `1790461337-arms-jcache425-fix-436872`: no poolable device lane is registered in /home/justin/hakux-work/dispatch/lanes, so 42a3484111dfd3afad81b026e07b3b79a0c06bd05041c20671a2fc73497effb3.json could not be pinned at all; if this is one arm of an A/B its partn\n  - `1790461337-arms-jcache425-base-436536`: no poolable device lane is registered in /home/justin/hakux-work/dispatch/lanes, so 42a3484111dfd3afad81b026e07b3b79a0c06bd05041c20671a2fc73497effb3.json could not be pinned at all; if this is one arm of an A/B its partn\n  - `1790459680-arms-tbchurn424-fix-65417`: no poolable device lane is registered in /home/justin/hakux-work/dispatch/lanes, so f427c521c5ded1cf8b6c77990c4d744a8e6fb2169b578dea6dbee70f005393f1.json could not be pinned at all; if this is one arm of an A/B its partn\n- arms job: 72 pair(s) queued or running and not yet judged; 70 judged; 45 skipped (see `arms.sh list`); watermark 2026-09-18 13:00 PDT (stored as `2026-09-18T20:00:00Z`: arms.sh compares that UTC string to registered_utc, so the file stays UTC and only this rendering is local)\n\nlast verdicts:\n\n- `545e0dc3c5` lane/yuv10:docs/testing/predictions/yuv10-csc.json: VERDICT: PASS -- all 84 registered checks hold.\n- `3e0a694efe` lane/ring53impl:docs/testing/predictions/ring53impl-ring.json: VERDICT: PASS -- all 172 registered checks hold.\n- `f34d19d9b3` lane/flatlm13:docs/testing/predictions/flatlm13-orient.json: VERDICT: PASS -- all 417 registered checks hold.\n- `b002f5ac0b` lane/blinx372d:docs/testing/predictions/blinx372d-mnm2.json: VERDICT: PASS -- all 102 registered checks hold.\n- `999fe80a7c` lane/cull13:docs/testing/predictions/cull13-linemode-cull.json: VERDICT: PASS -- all 147 registered checks hold.\n\n```\n2026-09-26 15:22:22 PDT   skip 66d9557131a8b2466f73f42477a38f37cdb9ac79038ed9be4f63bee4d3c701c0: lane/vcpuprime428:docs/testing/predictions/vcpuprime428-soak.js\n2026-09-26 15:53:02 PDT queue lane/doa413b:docs/testing/predictions/doa413b-lazy-mnm.json: doa413b #413 a=0d5f93f210 b=7f01f7f157 suites=[Blend surface,Clear,Co\n2026-09-26 15:53:02 PDT   queued base 1790463182-arms-doa413b-base-1083820 fix 1790463182-arms-doa413b-fix-1083874\n2026-09-26 15:53:03 PDT   skip 93732f6edc40a6268b3357fbf39e22bcbb68d901fa42456c4d0d4c5e2e55b1bd: lane/perfregimen:docs/testing/predictions/perfregimen-pilot-nov\n```\n\nlast refusals, in full (a refusal is recorded once; delete the file under `$WORK/arms/skipped/` to retry):\n\n- `93732f6edc` lane/perfregimen:docs/testing/predictions/perfregimen-pilot-nova-fan5.json: no a_ref/b_ref (a soak or a hand-read prediction)\ntold=2026-09-26T22:53:04Z\n- `66d9557131` lane/vcpuprime428:docs/testing/predictions/vcpuprime428-soak.json: a_ref == b_ref, nothing to compare\ntold=2026-09-26T22:22:26Z\n- `70bf77a9f7` lane/perfregimen:docs/testing/predictions/perfregimen-pilot-thor.json: no a_ref/b_ref (a soak or a hand-read prediction)\ntold=2026-09-26T22:22:21Z\n\n### Fold job (every 30 min)\n\n- fold-ready: ; needs-rebase: #420; needs-remediation: #419\n- awaiting audit: needs-audit-1 ; needs-audit-2 \n```\n2026-09-26 16:20:31 PDT   deleted origin's lane/vcpuprime428 @ 49dd45e305 (every commit is on HEAD) and its tracking ref\n2026-09-26 16:20:31 PDT   local refs/heads/lane/vcpuprime428 KEPT: error: cannot delete branch 'lane/vcpuprime428' used by worktree at '/home/justin/hakux-work/\n2026-09-26 16:20:31 PDT     (if that lane is finished: lane.sh rm vcpuprime428)\n2026-09-26 16:20:31 PDT tick: repaired none; folded #437; handed back none; waiting none\n```\n- master: 916c246260 3 minutes ago -- fold: PR #437 lane/vcpuprime428 -- lane.vcpuprime428: #428 vCPU thread on the prime core, Cr\n\n### Open lane PRs\n\n- #447 (draft) `lane/relprio432` lane.relprio432: 0.5 device requests queue ahead of other requests (#432) -- labels: none\n- #446 (draft) `lane/claimrace` cloud.sh: never claim a number whose unit is running, and never undo a running u -- labels: none\n- #444 (draft) `lane/perfregimen` lane.perfregimen: MAX perf+fan during title soaks, REST on every exit -- labels: none\n- #443 (draft) `lane/jcache425` lane.jcache425: #425 fewer jump-cache flushes and an inline indirect-branch prob -- labels: none\n- #442 (draft) `lane/titlestate` lane.titlestate: #397 first-run/returning routes and per-device title state -- labels: none\n- #440 (draft) `lane/doa413b` lane.doa413b: #413 price and cut DOA2U surface_update cost -- labels: none\n- #439 (draft) `lane/fmv303c` lane.fmv303c: #303 surface write-back probe for Spikeout's FMV green -- labels: blocked:after-0.5\n- #436 (draft) `lane/visual404` lane.visual404: #404 reference-free visual scoring of scripted-play frames -- labels: blocked:after-0.5\n- #435 (draft) `lane/buildflags427` Performance: native TLS, inline LSE atomics and no intra-library PLT for libxemu -- labels: none\n- #434 (draft) `lane/tbchurn424` lane.tbchurn424: #424 translation-cache code-write invalidation and dirty re-arm -- labels: none\n- #420 `lane/pilotgate` pilotgate: refuse a device batch over 30 min without a reviewed pilot -- labels: needs-rebase\n- #419 `lane/yuv10` lane.yuv10: #10 SET_CONTROL0 colour-space conversion as silicon measured it -- labels: needs-remediation, verified\n- #416 (draft) `lane/aufire412` lane.aufire412: #412 Agent Under Fire flat 16 fps split -- labels: none\n\n### Job errors (last 24h, from the units' logs)\n\n- **board** (`/home/justin/hakux-work/logs/board/systemd.log`):\n```\n509:python3: can't open file '/home/justin/hakux-work/board-wt/docs/testing/jobs/summarise_run.py': [Errno 2] No such file or directory\n555:python3: can't open file '/home/justin/hakux-work/board-wt/docs/testing/jobs/summarise_run.py': [Errno 2] No such file or directory\n846:python3: can't open file '/home/justin/hakux-work/board-wt/docs/testing/jobs/summarise_run.py': [Errno 2] No such file or directory\n```\n- **arms** (`/home/justin/hakux-work/logs/arms/systemd.log`):\n```\n3:2026-09-19T02:56:34Z   skip e7d2d7398fa68af98650c6b1514d29fcda61b6a112336558f20fe7d37100d218: lane/blitsafe:docs/testing/predictions/issue89-clear-pad-alpha-shape.json: request.sh refused the base a\n```\n- **fold** (`/home/justin/hakux-work/logs/fold/systemd.log`):\n```\n2489:2026-09-26 15:56:35 PDT   local refs/heads/lane/flatlm13 KEPT: error: cannot delete branch 'lane/flatlm13' used by worktree at '/home/justin/hakux-work/wt/flatlm13'\n2497:2026-09-26 16:05:34 PDT   local refs/heads/lane/pri432 KEPT: error: cannot delete branch 'lane/pri432' used by worktree at '/home/justin/hakux-work/wt/pri432'\n2503:2026-09-26 16:20:31 PDT   local refs/heads/lane/vcpuprime428 KEPT: error: cannot delete branch 'lane/vcpuprime428' used by worktree at '/home/justin/hakux-work/wt/vcpuprime428'\n```\n\n### Host\n\n- checkout `/home/justin/hakuX` on master, 13 behind origin/master (jobs run the fetched trunk regardless)\n- timers: arms next 16:23:56 PDT; board next 16:33:55 PDT; comments next 17:17:00 PDT; dx next 09:23:00 PDT; fold next 16:50:15 PDT; foldpace next 16:25:00 PDT; handbackpace next 16:32:00 PDT; hostops next -; issue-sweep next 19:41:07 PDT; jamcheck next 16:30:00 PDT; manifest next 16:30:00 PDT; nightly next 00:30:00 PDT; pr-sweep next 18:13:17 PDT; status next -\n- attempts: aasample=3 armlabel=1 armpin=1 armsscope=1 armsskip=3 aufire412=2 backlogstate=3 blankrule297=2 blendarm50=1 blendrace50=2 blinx372=1 blinx372b=1 blinx372c=2 blinx372d=1 blit83b=1 blit84=1 blitsafe=2 boardgate=4 boardprio=3 boardpushgate=1 branchprune=2 brdf315=1 brdf315b=1 buildflags427=1 ciskip=1 claimrace=2 cloud-audit1-181=1 cloud-audit2-163=1 cloud-audit2-308=2 cloud-issue-10=1 cloud-issue-111=1 cloud-issue-112=1 cloud-issue-13=1 cloud-issue-188=3 cloud-issue-189=1 cloud-issue-200=2 cloud-issue-271=2 cloud-issue-278=1 cloud-issue-279=1 cloud-issue-282=3 cloud-issue-283=1 cloud-issue-284=4 cloud-issue-286=1 cloud-issue-297=1 cloud-issue-34=1 cloud190=1 cloudclaim=1 cloudtail=1 cloudterritory=1 clrpad164=2 clrsurf91=3 clrvk184=1 clrwb91=4 clrwin88=1 cull13=1 cullnf276=2 desktopchannel=2 diagdump77=2 diagsoak77=1 dmasurf277=1 doa413=1 doa413b=1 dpforce345=2 draftstrand=3 drvab77=1 fix311=1 flatlm13=1 fleetreg=2 fmv303=1 fmv303b=2 fmv303c=1 fog278=1 foldcancel=1 foldci=3 foldflow=2 foldindex=1 foldregress=2 forza414=1 fps382=1 fulldisc50=1 g8b8285=1 gamecheck=1 ghoul311=4 glchannel=1 glerr86=1 goldencorr287=1 goldovr287=1 handback=3 handbackresolved=1 handbackstrand=1 hilodot10=1 indexcheck=1 indexloc=2 jcache425=1 laneshape=1 linecap13=2 localtime=1 nanattr281=1 nanfix281=1 nightlynotes=3 nightlytrunk=1 notespath=1 perfarch=2 perfbase=1 perfregimen=1 pilotgate=3 pmc188=3 pri432=2 primpv13=4 pshaniso284=2 pshqueue=3 regs200=1 relprio432=1 remotechannel=1 ring53=1 ring53impl=3 selftest86=1 selftestsplit=2 shade224=1 shadeflat224=4 shadetie224=1 shadetie224b=2 sphere273fix=1 spheremap273=1 stalecheck=2 statusdash=1 statusfresh=1 statuspage=1 surfwatch382=1 swatchorder50=1 sweepcover=2 sweepremote=1 sweeps=1 swizzle87=1 tbchurn424=1 tcgchurn=2 texvol283=1 tie282c=1 tiecode282=2 titleplay=1 titlerun=3 titlestate=2 toolsmith=3 turncap=1 turnipfork=2 vblank65=1 vcpuprime428=2 visual404=1 vklayer34=1 vkpointsize34=4 vol283r=1 vshconst=3 vshcpu345=1 vshnobegin242=2 vshr12280=1 vshsubneg255=1 vtxarr262=1 wbuf31fix=3 wbuf31sel=1 wbufclip=2 wbufdepth24=1 windowbudget=2 wparam223=1 wparamclip223=2 wparamcode223=1 wparamff223=1 wparamgeom223=1 x1a7271=1 y16bump10=2 yuv10=1 zclamp276=1 zdepth272=1 zetaswap275=1 zrtz272=4 \n",
+ "floor_secs": 1800,
+ "generated": "2026-09-26 16:22 PDT",
+ "heartbeat_secs": 1800,
+ "next_due": "2026-09-26 16:52 PDT",
+ "now": 1790464966,
+ "release": {
+  "blocker_label": "release-blocker",
+  "blockers": [],
+  "blockers_known": true,
+  "candidate": "none cut yet",
+  "gate": "Ghoulies median >= 25 gfps over a 240 s soak on the candidate APK, both handhelds",
+  "name": "0.5",
+  "panel": {
+   "facts": {
+    "copied": "23",
+    "playable": "0",
+    "staged": "29",
+    "tested": "0"
+   },
+   "gate": [
+    {
+     "at": "1790427563",
+     "device": "thor",
+     "id": "1790426955-lane.remote-2612788",
+     "median": "29",
+     "n": "69",
+     "ref": "1d9c3e4c0f",
+     "unread": "2"
+    },
+    {
+     "at": "1790429630",
+     "device": "nova",
+     "id": "1790426956-lane.remote-2612842",
+     "median": "29",
+     "n": "71",
+     "ref": "1d9c3e4c0f",
+     "unread": "1"
+    }
+   ],
+   "gate_min": "25",
+   "issues": [
+    {
+     "lane": "no lane",
+     "number": "433",
+     "title": "0.5 release: the first tested-titles list for the Thor and Nova (target 2026-09-28)"
+    },
+    {
+     "lane": "lane.pri432",
+     "number": "432",
+     "title": "Harness: dispatch 0.5 work first and show 0.5 progress on the status page"
+    },
+    {
+     "lane": "lane.xbox",
+     "number": "431",
+     "title": "Measure each title's native frame rate on an original Xbox"
+    },
+    {
+     "lane": "lane.xbox",
+     "number": "430",
+     "title": "Copy the next Playable-or-better titles from the console to the handhelds"
+    },
+    {
+     "lane": "no lane",
+     "number": "429",
+     "title": "Performance: smaller translation blocks on often-rewritten pages"
+    },
+    {
+     "lane": "lane.buildflags427",
+     "number": "427",
+     "title": "Performance: build with native TLS, inline LSE atomics and no intra-library PLT calls"
+    },
+    {
+     "lane": "lane.remote",
+     "number": "426",
+     "title": "Performance: split renderer command capture from Vulkan translation"
+    },
+    {
+     "lane": "lane.jcache425",
+     "number": "425",
+     "title": "Performance: fewer jump-cache flushes and an inline indirect-branch probe"
+    },
+    {
+     "lane": "lane.tbchurn424",
+     "number": "424",
+     "title": "Performance: stop the translation cache's code-write invalidation and dirty re-arm churn"
+    },
+    {
+     "lane": "lane.forza414",
+     "number": "414",
+     "title": "Forza Motorsport: races run at 3-16 fps on the Thor, game clock at ~26% of real time"
+    },
+    {
+     "lane": "lane.doa413b",
+     "number": "413",
+     "title": "Dead or Alive Ultimate: fights run at ~16 fps on the Nova, and a stage transition stalls at 0-2 fps "
+    },
+    {
+     "lane": "lane.aufire412",
+     "number": "412",
+     "title": "007: Agent Under Fire gameplay runs at ~16 fps on the Nova"
+    },
+    {
+     "lane": "lane.titlestate",
+     "number": "397",
+     "title": "1.0 playable list: gameplay FPS per title with scripted input (Thor/Nova)"
+    },
+    {
+     "lane": "lane.blinx372d",
+     "number": "372",
+     "title": "Blinx: The Time Sweeper runs at ~16 fps in the attract demo on Thor"
+    }
+   ],
+   "issues_known": true,
+   "target": "145"
+  }
+ },
+ "schema": 1,
+ "strip": {
+  "arms_running": 0,
+  "devices": [
+   {
+    "detail": "lane.titlestate (PR #442): HELD Thor pilot of nav.py on Burnout 3 and Black, granted by hostops 15:38 PDT (board-request...",
+    "name": "thor",
+    "state": "held"
+   },
+   {
+    "detail": "host (buildflags427): A/B simpleperf profile, two APKs, ~20 min; profile_ab.sh lifts it on every exit path.",
+    "name": "nova",
+    "state": "held"
+   },
+   {
+    "detail": "plug meter, read 0s ago",
+    "name": "console",
+    "state": "ON, 66.1 W"
+   }
+  ],
+  "lane_cap": 24,
+  "lanes_running": 5,
+  "last_fold": 1790464806,
+  "last_fold_subject": "PR #437 lane/vcpuprime428 -- lane.vcpuprime428: #428 vCPU thread on the prime core, Crimso",
+  "queue": 23,
+  "queue_idle": 99,
+  "window": ""
+ },
+ "tz": "PDT"
+}

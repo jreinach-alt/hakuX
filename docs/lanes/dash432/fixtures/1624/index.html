@@ -1,0 +1,214 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="refresh" content="60">
+<meta name="color-scheme" content="light dark">
+<title>hakuX harness status</title><style>
+:root{--bg:#fff;--fg:#1b1f24;--mut:#59636e;--card:#f6f8fa;--line:#d1d9e0;--red:#cf222e;--redbg:#ffebe9;--grn:#1a7f37;--grnbg:#dafbe1;--amb:#9a6700;--ambbg:#fff8c5;--link:#0969da}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--mut:#9198a1;--card:#151b23;--line:#3d444d;--red:#ff7b72;--redbg:#3c1618;--grn:#3fb950;--grnbg:#12261e;--amb:#d29922;--ambbg:#2e2410;--link:#4493f8}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+main{max-width:980px;margin:0 auto;padding:10px 12px 40px}
+a{color:var(--link)}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin-bottom:8px}
+header h1{font-size:18px;margin:0}
+#age{color:var(--mut);font-size:13px}
+#age.stale{color:var(--red);font-weight:600}
+.strip{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px;margin-bottom:10px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:5px 8px;min-width:0}
+.tile .k{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+.tile .v{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile .d{font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tile.run .v{color:var(--grn)} .tile.held .v{color:var(--amb)}
+.att{border:2px solid var(--red);background:var(--redbg);border-radius:8px;padding:6px 10px;margin-bottom:10px}
+.att h2{color:var(--red);font-size:15px;margin:0 0 4px;letter-spacing:.04em}
+.att ul{margin:0;padding-left:18px} .att li{margin:2px 0}
+.att .kind{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--red);margin-right:4px}
+.ok{border:1px solid var(--grn);background:var(--grnbg);color:var(--grn);border-radius:8px;padding:6px 10px;margin-bottom:10px;font-weight:600}
+.rel{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:6px 10px;margin-bottom:10px;font-size:14px}
+.rel b.block{color:var(--red)}
+.fold{border-top:1px dashed var(--line);margin:18px 0 6px;color:var(--mut);font-size:12px;text-align:center}
+section.md h3{font-size:16px;margin:18px 0 6px;border-bottom:1px solid var(--line);padding-bottom:2px}
+section.md h4{font-size:14px;margin:12px 0 4px}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;font-size:13px;min-width:100%}
+th,td{border:1px solid var(--line);padding:3px 6px;text-align:left;vertical-align:top;min-width:4.5em}
+td:last-child{min-width:18em}
+th{background:var(--card)}
+pre{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:6px 8px;overflow-x:auto;font-size:12px;line-height:1.3}
+code{font:12px/1.3 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;background:var(--card);padding:0 3px;border-radius:3px;overflow-wrap:anywhere}
+pre code{background:none;padding:0}
+blockquote{margin:6px 0;padding:4px 10px;border-left:4px solid var(--amb);background:var(--ambbg)}
+blockquote.warn{border-color:var(--red);background:var(--redbg)}
+section.md ul{padding-left:20px;margin:4px 0} section.md li{margin:2px 0;overflow-wrap:anywhere}
+section.md p{margin:6px 0;overflow-wrap:anywhere}
+footer{color:var(--mut);font-size:12px;margin-top:20px}
+</style></head><body><main>
+<header><h1>hakuX harness</h1><span id="age" data-t="1790464966" data-stale="4200" data-at="2026-09-26 16:22 PDT">updated 2026-09-26 16:22 PDT</span></header>
+<div class="strip">
+<div class="tile held"><div class="k">Thor</div><div class="v" title="held">held</div><div class="d" title="lane.titlestate (PR #442): HELD Thor pilot of nav.py on Burnout 3 and Black, granted by hostops 15:38 PDT (board-request...">lane.titlestate (PR #442): HELD Thor pilot of nav.py on Burnout 3 and Black, granted by hostops 15:38 PDT (board-request...</div></div>
+<div class="tile held"><div class="k">Nova</div><div class="v" title="held">held</div><div class="d" title="host (buildflags427): A/B simpleperf profile, two APKs, ~20 min; profile_ab.sh lifts it on every exit path.">host (buildflags427): A/B simpleperf profile, two APKs, ~20 min; profile_ab.sh lifts it on every exit path.</div></div>
+<div class="tile "><div class="k">Console</div><div class="v" title="ON, 66.1 W">ON, 66.1 W</div><div class="d" title="plug meter, read 0s ago">plug meter, read 0s ago</div></div>
+<div class="tile "><div class="k">Queue</div><div class="v" title="23 queued">23 queued</div><div class="d" title="0 running, +99 idle-tier">0 running, +99 idle-tier</div></div>
+<div class="tile run"><div class="k">Lanes</div><div class="v" title="5 of 24 running">5 of 24 running</div></div>
+<div class="tile "><div class="k">Last fold</div><div class="v" title="16:20 PDT (2m ago)">16:20 PDT (2m ago)</div><div class="d" title="PR #437 lane/vcpuprime428 -- lane.vcpuprime428: #428 vCPU thread on the prime core, Crimso">PR #437 lane/vcpuprime428 -- lane.vcpuprime428: #428 vCPU thread on the prime core, Crimso</div></div>
+</div>
+<div class="att"><h2>NEEDS ATTENTION (6)</h2><ul>
+<li><span class="kind">idle</span>1 lane idle with no work: perfregimen. Unit stopped, nothing on a device, PR draft or none: nothing will wake it</li>
+<li><span class="kind">blocked</span>lane blinx372d: blocked: #372 IN FLIGHT (job.board 2026-09-26T21:55Z): lane.blin...</li>
+<li><span class="kind">blocked</span>lane flatlm13: blocked: #13 IN FLIGHT (job.board 2026-09-26T21:55Z): lane.flat...</li>
+<li><span class="kind">blocked</span>lane fmv303c: blocked: #303 after 0.5: the 0.5-first policy (owner 2026-09-26,...</li>
+<li><span class="kind">blocked</span>lane forza414: blocked: #414 FILE HELD (job.board 2026-09-26T21:55Z): lane.forz...</li>
+<li><span class="kind">queue</span>19 runs queued over 60 min; oldest 1790454909-lane.tbchurn424-3969958 (2h 47m, for lane.tbchurn424)</li>
+</ul></div>
+<div class="rel"><b>Release 0.5 gate:</b> Ghoulies median &gt;= 25 gfps over a 240 s soak on the candidate APK, both handhelds<br>Candidate: none cut yet<br>Open blockers: none labelled <code>release-blocker</code></div>
+<div class="rel"><b>Release 0.5: titles and the Ghoulies gate</b><br>Titles on the handhelds: 23 of 145 (+29 staged on the host; a staged ISO&#x27;s copy to a handheld has no record yet, #430)<br>Tested (a title_verdict on either handheld): 0 of 145<br>Playable (latest verdict passes on every handheld tested): 0 of 145<br>Ghoulies gate (median gfps 90-240 s &gt;= 25, both handhelds): met on these soaks (check the ref is the candidate&#x27;s) -- thor 29 (n=69; 1790426955-lane.remote-2612788, ref 1d9c3e4c0f, 10h 23m ago; 2 newer soaks logged no gfps in 90-240 s); nova 29 (n=71; 1790426956-lane.remote-2612842, ref 1d9c3e4c0f, 9h 48m ago; 1 newer soak logged no gfps in 90-240 s)<br>0.5 issues (14 open): #433 no lane -- 0.5 release: the first tested-titles list for the ; #432 lane.pri432 -- Harness: dispatch 0.5 work first and show 0.5 prog; #431 lane.xbox -- Measure each title&#x27;s native frame rate on an origi; #430 lane.xbox -- Copy the next Playable-or-better titles from the c; #429 no lane -- Performance: smaller translation blocks on often-r; #427 lane.buildflags427 -- Performance: build with native TLS, inline LSE ato; #426 lane.remote -- Performance: split renderer command capture from V; #425 lane.jcache425 -- Performance: fewer jump-cache flushes and an inlin; #424 lane.tbchurn424 -- Performance: stop the translation cache&#x27;s code-wri; #414 lane.forza414 -- Forza Motorsport: races run at 3-16 fps on the Tho; #413 lane.doa413b -- Dead or Alive Ultimate: fights run at ~16 fps on t; #412 lane.aufire412 -- 007: Agent Under Fire gameplay runs at ~16 fps on ; #397 lane.titlestate -- 1.0 playable list: gameplay FPS per title with scr; #372 lane.blinx372d -- Blinx: The Time Sweeper runs at ~16 fps in the att</div>
+<div class="fold">details</div>
+<section class="md"><h4>Lanes running (cap 24)</h4>
+<div class="tw"><table><tr><th>lane</th><th>issue</th><th>attempt</th><th>model</th><th>running for</th><th>PR</th></tr><tr><td>aufire412</td><td>#412</td><td>2</td><td>claude-opus-5-5</td><td>2m ago</td><td>#416 draft</td></tr><tr><td>claimrace</td><td>#420</td><td>2</td><td>claude-opus-5-5</td><td>40m ago</td><td>#446 draft</td></tr><tr><td>pilotgate</td><td>#397</td><td>3</td><td>claude-opus-5-5</td><td>15m ago</td><td>#420 open</td></tr><tr><td>relprio432</td><td>#432</td><td>1</td><td>claude-opus-5-5</td><td>43m ago</td><td>#447 draft</td></tr><tr><td>titlestate</td><td>#397</td><td>2</td><td>claude-opus-5-5</td><td>51m ago</td><td>#442 draft</td></tr></table></div>
+<h4>Lanes: every row on the board (PDT)</h4>
+<blockquote class="warn"><b>1 lane idle with no work:</b> perfregimen. Unit stopped, nothing queued or running on a device, and its PR is a draft or absent -- nothing will wake it.</blockquote>
+<div class="tw"><table><tr><th>lane</th><th>state</th><th>issue</th><th>PR</th><th>last session ended</th><th>it said</th></tr><tr><td>perfregimen</td><td><b>&#9888; IDLE, NO WORK</b></td><td></td><td>#444 draft</td><td>09-26 16:18</td><td>The regimen is in: title soaks switch to MAX performance and fan before the app starts and...</td></tr><tr><td>arms</td><td>job (hakux-arms.timer)</td><td></td><td>none</td><td>never</td><td></td></tr><tr><td>aufire412</td><td>running</td><td>#412</td><td>#416 draft</td><td>09-26 13:15</td><td>Using the vk/shaders.c grant, I wrote the fix for Agent Under Fire's flat ~16 fps and queu...</td></tr><tr><td>blinx372d</td><td>blocked: #372 IN FLIGHT (job.board 2026-09-26T21:55Z): lane.blin...</td><td>#372</td><td>#396 merged</td><td>09-26 13:12</td><td>PR #396 is marked ready for review. Two things are still outstanding: CI on the new head `...</td></tr><tr><td>buildflags427</td><td>waiting on device (0 running, 2 queued)</td><td>#427</td><td>#435 draft</td><td>09-26 13:41</td><td>The build flags are in and verified in the symbol table, but the before/after fps number d...</td></tr><tr><td>claimrace</td><td>running</td><td></td><td>#446 draft</td><td>09-26 15:33</td><td>The full selftest is still running; the monitor will report its FAIL lines and summary whe...</td></tr><tr><td>doa413b</td><td>waiting on device (0 running, 4 queued)</td><td>#413</td><td>#440 draft</td><td>09-26 15:27</td><td>I found where the DOA2U fight's <code>surface_update</code> time goes and pushed a fix for it, but it...</td></tr><tr><td>flatlm13</td><td>blocked: #13 IN FLIGHT (job.board 2026-09-26T21:55Z): lane.flat...</td><td>#13</td><td>#401 merged</td><td>09-26 13:18</td><td>PR #401 is now marked ready. The arm passed, and the magnitude check matched the offline p...</td></tr><tr><td>fmv303c</td><td>blocked: #303 after 0.5: the 0.5-first policy (owner 2026-09-26,...</td><td>#303</td><td>#439 draft</td><td>09-26 14:53</td><td>Lane fmv303c is blocked, not finished. The Thor soak hasn't run, so #303 has no answer yet...</td></tr><tr><td>fold</td><td>job (hakux-fold.timer)</td><td></td><td>none</td><td>never</td><td></td></tr><tr><td>forza414</td><td>blocked: #414 FILE HELD (job.board 2026-09-26T21:55Z): lane.forz...</td><td>#414</td><td>#418 merged</td><td>09-26 13:53</td><td>PR #418 is marked ready. It carries analysis only: no code change, and no prediction becau...</td></tr><tr><td>jcache425</td><td>waiting on device (0 running, 8 queued)</td><td>#425</td><td>#443 draft</td><td>09-26 15:11</td><td>I've finished the pilot, added counters and queued the A/B arms, but there is no verdict y...</td></tr><tr><td>pilotgate</td><td>running</td><td></td><td>#420 open</td><td>09-26 15:58</td><td>PR #420 still can't fold. Merging master cleared the out-of-date failure, but the new head...</td></tr><tr><td>relprio432</td><td>running</td><td>#432</td><td>#447 draft</td><td>never</td><td></td></tr><tr><td>ring53impl</td><td>folded (row not yet retired)</td><td>#53</td><td>#395 merged</td><td>09-26 13:48</td><td>PR #395 is done and marked ready. The device test (the "arm") comparing the ring against c...</td></tr><tr><td>tbchurn424</td><td>waiting on device (0 running, 9 queued)</td><td>#424</td><td>#434 draft</td><td>09-26 13:37</td><td>I've written and queued the fix for #424, but nothing is measured on a device yet: ten Tho...</td></tr><tr><td>titlestate</td><td>running</td><td>#397</td><td>#442 draft</td><td>09-26 15:20</td><td>Phase 1 is finished and posted on #397. Phase 2 can't start until I get a device grant, so...</td></tr><tr><td>toolsmith</td><td>folded (row not yet retired)</td><td>#94 #95</td><td>#361 merged</td><td>09-26 04:27</td><td>I fixed defect 27 in PR #386, which is marked ready and labelled <code>needs-audit-1</code>. Defect 2...</td></tr><tr><td>triage</td><td>standing, nothing in flight</td><td></td><td>none</td><td>never</td><td></td></tr><tr><td>vcpuprime428</td><td>folded (row not yet retired)</td><td>#428</td><td>#437 merged</td><td>09-26 16:09</td><td>Pinning the emulated CPU thread to the Thor's prime core (<code>HAKUX_PLACE_VCPU=prime</code>) is ref...</td></tr><tr><td>yuv10</td><td>PR needs remediation</td><td>#10</td><td>#419 open</td><td>09-26 14:47</td><td>PR #419 is out of draft and marked ready, on head <code>9536845ce5</code>. The device test confirmed ...</td></tr><tr><td>vshcpu345</td><td>retired 09-26 13:40</td><td></td><td>#402 merged</td><td>09-26 12:45</td><td>The patched vector-shader evaluator now matches the Xbox console on every row it targets, ...</td></tr><tr><td>doa413</td><td>retired 09-26 13:40</td><td></td><td>#417 merged</td><td>09-26 13:09</td><td>PR #417 is now ready for review. It separates the two problems in #413, but proposes no fi...</td></tr><tr><td>cull13</td><td>retired 09-26 13:40</td><td></td><td>#403 merged</td><td>09-26 13:04</td><td>PR #403 is marked ready and goes to audit because it touches <code>hw/</code>. The device test of the...</td></tr><tr><td>foldcancel</td><td>retired 09-26 13:15</td><td></td><td>#415 merged</td><td>09-26 12:26</td><td>I've pushed the fix as PR #415 and marked it ready for review. A fold tick whose final tru...</td></tr><tr><td>titleplay</td><td>retired 09-26 12:35</td><td></td><td>#399 merged</td><td>09-26 12:10</td><td>PR #399 is marked ready for review. It's pushed at <code>08ad953514</code> with <code>origin/master</code> merge...</td></tr><tr><td>fmv303b</td><td>retired 09-26 11:50</td><td></td><td>#398 merged</td><td>09-26 10:45</td><td>Turning the tier1 JIT tier off does not change Spikeout's FMV green, so tier1 is not the c...</td></tr><tr><td>armsscope</td><td>retired 09-26 11:20</td><td></td><td>#409 merged</td><td>09-26 10:59</td><td>The fix is in and PR #409 is marked ready: <code>arms.sh</code> now counts only a PR's own prediction...</td></tr><tr><td>boardpushgate</td><td>retired 09-26 10:58</td><td></td><td>#408 merged</td><td>09-26 10:43</td><td>The board push gate is built and PR #408 is out of draft. The jobs selftest passed (1827 c...</td></tr><tr><td>pshaniso284</td><td>retired 09-26 10:40</td><td>#284 #315</td><td>#393 merged</td><td>09-26 07:20</td><td>PR #393 has both fixes, both device tests passed, CI is green on the current head (329df5e...</td></tr><tr><td>surfwatch382</td><td>retired 09-26 07:14</td><td>#382</td><td>#387 merged</td><td>09-26 05:34</td><td>The fix works: with it, 50 Cent: Bulletproof's intro movies play at full speed on the Nova...</td></tr><tr><td>fmv303</td><td>retired 09-26 07:14</td><td>#303</td><td>#317 merged</td><td>09-25 20:31</td><td>PR #317 is now marked ready. It ends as an analysis-only outcome: the green is in the game...</td></tr><tr><td>zrtz272</td><td>retired 09-26 06:50</td><td>#272 #275</td><td>#364 merged</td><td>09-26 04:36</td><td>Arm 3 passed and PR #364 is ready for review.</td></tr><tr><td>ring53</td><td>retired 09-26 06:50</td><td>#53</td><td>#391 merged</td><td>09-26 06:08</td><td>Lane ring53 is finished but blocked: no emulator code landed. PR #391 is now ready (analys...</td></tr><tr><td>dpforce345</td><td>retired 09-26 06:50</td><td>#345</td><td>#383 merged</td><td>09-26 04:47</td><td>PR #383 is now marked ready. The re-registered prediction passes on the device: all 291 ch...</td></tr><tr><td>blinx372c</td><td>retired 09-26 06:50</td><td>#372</td><td>#388 merged</td><td>09-26 05:40</td><td>I found the site behind Blinx's two surface-download waits per frame in the attract demo, ...</td></tr><tr><td>y16bump10</td><td>retired 09-26 04:40</td><td>#10</td><td>#367 merged</td><td>09-26 04:11</td><td>PR #367 is finished and I made no new commits this session. The previous session did get t...</td></tr></table></div>
+<p><i>40 more rows retired in the last 24 h are not listed.</i></p>
+<ul>
+<li><b>lane.xbox</b> (interactive session; the console): last <code>[lane.xbox]</code> comment 09-26 14:14 on #397: A label correction to the pass-1 table: the row "DOA Ultimate (DOA2U)" is the <b>Dead or Alive 1 Ultimate</b> dis...; <b>no host answer after it</b>. Device requests: none queued or running. console meter: ON, 66.1 W (read 0s ago).</li>
+<li><b>lane.remote</b> (cloud session, one-way): last <code>`[lane.remote]`</code> comment 09-26 15:11 on #426: <b>Taking lane.local's queue (5850280192) in order.</b> Items 1 and 2 become one instrument PR while the Thor soa...; host answered 09-26 15:44.</li>
+<li><b>host ops tick</b> (<code>hakux-hostops.timer</code>, every 20 min): last tick 09-26 15:39: ectly flags the claimrace log.</li>
+</ul>
+<h4>Window budget (the account's five-hour and weekly windows)</h4>
+<ul>
+<li>dispatching normally. Lanes and audits start as work allows; expanding is the default.</li>
+<li>week from 2026-09-20 17:00 PDT (85% elapsed, reserve from 2026-09-26 07:24 PDT), 564 run(s), spend 1130.7 of no declared budget, 0 usage-limit hit(s) this week (0 in the reserve); the weekly reserve is NOT armed: there is no declared WEEK_SPEND_BUDGET in $WORK/limits.env, and this fleet has been refused 0 time(s) since the reserve began (2 arms it).</li>
+<li>no session has ever been refused by the account's window on this host. That is the only first-hand evidence of a closed window there is: <b>the remaining five-hour and weekly balance cannot be queried from here</b>, so the weekly reserve arms on that evidence, or on <code>WEEK_SPEND_BUDGET</code> if the owner declares one in <code>$WORK/limits.env</code>. Unknown means open, by design.</li>
+</ul>
+<h4>Lane sessions finished (last 24h)</h4>
+<div class="tw"><table><tr><th>when (PDT)</th><th>lane</th><th>model</th><th>turns</th><th>min</th><th>result</th><th>PR</th><th>said</th></tr><tr><td>09-26 14:50</td><td>doa413b</td><td>opus-5-5</td><td>25</td><td>1</td><td>ok</td><td>#440 draft</td><td>The fight is not priced yet, and nothing is cut. The pilot soak that would give the price</td></tr><tr><td>09-26 14:51</td><td>visual404</td><td>opus-5-5</td><td>11</td><td>0</td><td>ok</td><td>#436 draft</td><td>I didn't resume the work, because #404 is still parked until after the 0.5 release. The ow</td></tr><tr><td>09-26 14:53</td><td>fmv303c</td><td>opus-5-5</td><td>9</td><td>1</td><td>ok</td><td>#439 draft</td><td>Lane fmv303c is blocked, not finished. The Thor soak hasn't run, so #303 has no answer yet</td></tr><tr><td>09-26 15:11</td><td>jcache425</td><td>opus-5-5</td><td>93</td><td>10</td><td>ok</td><td>#443 draft</td><td>I've finished the pilot, added counters and queued the A/B arms, but there is no verdict y</td></tr><tr><td>09-26 15:16</td><td>vcpuprime428</td><td>opus-5-5</td><td>27</td><td>27</td><td>ok</td><td>#437 merged</td><td>I've stopped here, waiting for the host to release the last four runs. PR #437 is still a</td></tr><tr><td>09-26 15:20</td><td>titlestate</td><td>opus-5-5</td><td>125</td><td>19</td><td>ok</td><td>#442 draft</td><td>Phase 1 is finished and posted on #397. Phase 2 can't start until I get a device grant, so</td></tr><tr><td>09-26 15:27</td><td>doa413b</td><td>opus-5-5</td><td>72</td><td>9</td><td>ok</td><td>#440 draft</td><td>I found where the DOA2U fight's <code>surface_update</code> time goes and pushed a fix for it, but it</td></tr><tr><td>09-26 15:33</td><td>claimrace</td><td>opus-5-5</td><td>49</td><td>16</td><td>ok</td><td>#446 draft</td><td>The full selftest is still running; the monitor will report its FAIL lines and summary whe</td></tr><tr><td>09-26 15:58</td><td>pilotgate</td><td>opus-5-5</td><td>42</td><td>36</td><td>ok</td><td>#420 open</td><td>PR #420 still can't fold. Merging master cleared the out-of-date failure, but the new head</td></tr><tr><td>09-26 16:03</td><td>pri432</td><td>opus-5-5</td><td>146</td><td>72</td><td>ok</td><td>#438 merged</td><td>PR #438 is ready for review. CI is green on 1d99bcb5d9 (both builds and the jobs selftest)</td></tr><tr><td>09-26 16:09</td><td>vcpuprime428</td><td>opus-5-5</td><td>37</td><td>36</td><td>ok</td><td>#437 merged</td><td>Pinning the emulated CPU thread to the Thor's prime core (<code>HAKUX_PLACE_VCPU=prime</code>) is ref</td></tr><tr><td>09-26 16:18</td><td>perfregimen</td><td>opus-5-5</td><td>175</td><td>76</td><td>ok</td><td>#444 draft</td><td>The regimen is in: title soaks switch to MAX performance and fan before the app starts and</td></tr></table></div>
+<p><i>result: ok = ended on its own; MAXTURNS = cut at the turn cap, work kept; ERR = the session errored. A lane that ended without a ready PR is resumed by the board (attempts 1-3 on claude-opus-5-5, then claude-fable-5-1, then decision-needed).</i></p>
+<h4>Cloud-class sessions (hourly, on the host; last 24h from their <code>[job.cloud]</code> comments)</h4>
+<ul>
+<li>09-25 16:49 #270  claimed for audit2 (unit hakux-lane-cloud-audit2-270, model claude-opus-5-5, attempt 1 of 4).</li>
+<li>09-25 16:49 #325  claimed for audit2 (unit hakux-lane-cloud-audit2-325, model claude-opus-5-5, attempt 1 of 4).</li>
+<li>09-25 16:50 #244  claimed for audit1 (unit hakux-lane-cloud-audit1-244, model claude-opus-5-5, attempt 1 of 4).</li>
+<li>09-25 16:50 #289  claimed for audit1 (unit hakux-lane-cloud-audit1-289, model claude-opus-5-5, attempt 1 of 4).</li>
+<li>09-25 16:51 #290  claimed for audit1 (unit hakux-lane-cloud-audit1-290, model claude-opus-5-5, attempt 1 of 4).</li>
+<li>09-25 16:53 #325  the audit2 session for this PR ended without setting a next state, so <code>needs-audit-2</code> stays and the outlet w</li>
+<li>09-25 17:12 #244  claimed for audit2 (unit hakux-lane-cloud-audit2-244, model claude-opus-5-5, attempt 1 of 4).</li>
+<li>09-25 17:34 #289  claimed for audit2 (unit hakux-lane-cloud-audit2-289, model claude-opus-5-5, attempt 1 of 4).</li>
+<li>09-25 17:56 #290  claimed for audit2 (unit hakux-lane-cloud-audit2-290, model claude-opus-5-5, attempt 1 of 4).</li>
+<li>09-25 18:19 #325  claimed for audit2 (unit hakux-lane-cloud-audit2-325, model claude-opus-5-5, attempt 2 of 4).</li>
+<li>running now: </li>
+</ul>
+<pre><code>09-26 15:49 cloud-audit2-401 claude-opus-5-5 turns=17 81s ok PR #401 passes audit pass 2 with nothing left open, and it is now labelled `fold
+09-26 15:53 cloud-audit1-419 claude-opus-5-5 turns=22 171s ok I finished the first audit pass of PR #419 (head `c3d401ad6b`). It found one MED
+09-26 16:12 cloud-remediate-419 claude-opus-5-5 turns=20 78s ok I fixed the one medium finding from the first audit of PR #419 and pushed it as 
+09-26 16:14 cloud-audit2-419 claude-opus-5-5 turns=18 98s ok I finished pass 2 on PR #419 and moved it to `needs-remediation`, not `fold-read</code></pre>
+<h4>Board job (every 20 min)</h4>
+<pre><code>  FAIL: 1 lane PR(s) are READY and carry no pipeline label: #437. A ready PR with no needs-audit-*/needs-remediation/fold-ready/folded label is stalled -- nothi
+2026-09-26 16:13:32 PDT capacity: 6/24 lanes running and 2 startable issue(s):
+  #429 [0.5] [game] Performance: smaller translation blocks on often-rewritten pages  [0.5]
+  #433 [0.5] [impact 0 px, measured] 0.5 release: the first tested-titles list for the Thor and Nova (target 2026-09-28)  [0.5]
+2026-09-26 16:13:32 PDT ready PRs with no state label:
+  #437 lane.vcpuprime428: #428 vCPU thread on the prime core, Crimson gameplay A/B</code></pre>
+<p>last model ticks:</p>
+<pre><code>09-26 15:32 board claude-sonnet-5 turns=16 51s ok The tick made no board edits, so nothing was pushed to `board`. I resumed one la
+09-26 15:52 board claude-sonnet-5 turns=21 52s ok Nothing dispatched this tick, and I made no board edits or pushes because none w
+09-26 16:14 board claude-sonnet-5 turns=16 49s ok Nothing to push or dispatch this tick, so I made no board edits, comments or lab</code></pre>
+<p>board branch: e62d272ea7 8 minutes ago -- hostops: #428 closed as refuted (PR #437); release lane.vcpuprime428's files at ready</p>
+<h4>Handhelds and arms</h4>
+<ul>
+<li>adb: bdc158a5(device) ee317437(device) </li>
+<li>dispatcher: active, workers: 2</li>
+<li>queue: 23 waiting, 99 idle-tier z-* behind them, 0 running; holds: nova thor </li>
+<li>dispatcher last line: <code>09-26 16:19:50 HELD by ~/hakux-work/dispatch/hold/nova; claiming nothing until it is removed</code></li>
+<li>affinity: lanes serving <code>desktop</code> -- an A/B pair queued now is pinned to one of them</li>
+<li>affinity notes, last 24h (a pair named here may span two devices and cannot isolate run-to-run variation):</li>
+<li style="margin-left:16px"><code>1790463182-arms-doa413b-fix-1083874</code>: no poolable device lane is registered in ~/hakux-work/dispatch/lanes, so 46210a732072550562fca3b7eb3cb2cf601b8701d4e2fb763e2fc4bfff75f8d4.json could not be pinned at all; if this is one arm of an A/B its partn</li>
+<li style="margin-left:16px"><code>1790463182-arms-doa413b-base-1083820</code>: no poolable device lane is registered in ~/hakux-work/dispatch/lanes, so 46210a732072550562fca3b7eb3cb2cf601b8701d4e2fb763e2fc4bfff75f8d4.json could not be pinned at all; if this is one arm of an A/B its partn</li>
+<li style="margin-left:16px"><code>1790461337-arms-jcache425-fix-436872</code>: no poolable device lane is registered in ~/hakux-work/dispatch/lanes, so 42a3484111dfd3afad81b026e07b3b79a0c06bd05041c20671a2fc73497effb3.json could not be pinned at all; if this is one arm of an A/B its partn</li>
+<li style="margin-left:16px"><code>1790461337-arms-jcache425-base-436536</code>: no poolable device lane is registered in ~/hakux-work/dispatch/lanes, so 42a3484111dfd3afad81b026e07b3b79a0c06bd05041c20671a2fc73497effb3.json could not be pinned at all; if this is one arm of an A/B its partn</li>
+<li style="margin-left:16px"><code>1790459680-arms-tbchurn424-fix-65417</code>: no poolable device lane is registered in ~/hakux-work/dispatch/lanes, so f427c521c5ded1cf8b6c77990c4d744a8e6fb2169b578dea6dbee70f005393f1.json could not be pinned at all; if this is one arm of an A/B its partn</li>
+<li>arms job: 72 pair(s) queued or running and not yet judged; 70 judged; 45 skipped (see <code>arms.sh list</code>); watermark 2026-09-18 13:00 PDT (stored as <code>2026-09-18T20:00:00Z</code>: arms.sh compares that UTC string to registered_utc, so the file stays UTC and only this rendering is local)</li>
+</ul>
+<p>last verdicts:</p>
+<ul>
+<li><code>545e0dc3c5</code> lane/yuv10:docs/testing/predictions/yuv10-csc.json: VERDICT: PASS -- all 84 registered checks hold.</li>
+<li><code>3e0a694efe</code> lane/ring53impl:docs/testing/predictions/ring53impl-ring.json: VERDICT: PASS -- all 172 registered checks hold.</li>
+<li><code>f34d19d9b3</code> lane/flatlm13:docs/testing/predictions/flatlm13-orient.json: VERDICT: PASS -- all 417 registered checks hold.</li>
+<li><code>b002f5ac0b</code> lane/blinx372d:docs/testing/predictions/blinx372d-mnm2.json: VERDICT: PASS -- all 102 registered checks hold.</li>
+<li><code>999fe80a7c</code> lane/cull13:docs/testing/predictions/cull13-linemode-cull.json: VERDICT: PASS -- all 147 registered checks hold.</li>
+</ul>
+<pre><code>2026-09-26 15:22:22 PDT   skip 66d9557131a8b2466f73f42477a38f37cdb9ac79038ed9be4f63bee4d3c701c0: lane/vcpuprime428:docs/testing/predictions/vcpuprime428-soak.js
+2026-09-26 15:53:02 PDT queue lane/doa413b:docs/testing/predictions/doa413b-lazy-mnm.json: doa413b #413 a=0d5f93f210 b=7f01f7f157 suites=[Blend surface,Clear,Co
+2026-09-26 15:53:02 PDT   queued base 1790463182-arms-doa413b-base-1083820 fix 1790463182-arms-doa413b-fix-1083874
+2026-09-26 15:53:03 PDT   skip 93732f6edc40a6268b3357fbf39e22bcbb68d901fa42456c4d0d4c5e2e55b1bd: lane/perfregimen:docs/testing/predictions/perfregimen-pilot-nov</code></pre>
+<p>last refusals, in full (a refusal is recorded once; delete the file under <code>$WORK/arms/skipped/</code> to retry):</p>
+<ul>
+<li><code>93732f6edc</code> lane/perfregimen:docs/testing/predictions/perfregimen-pilot-nova-fan5.json: no a_ref/b_ref (a soak or a hand-read prediction)</li>
+</ul>
+<p>told=2026-09-26T22:53:04Z</p>
+<ul>
+<li><code>66d9557131</code> lane/vcpuprime428:docs/testing/predictions/vcpuprime428-soak.json: a_ref == b_ref, nothing to compare</li>
+</ul>
+<p>told=2026-09-26T22:22:26Z</p>
+<ul>
+<li><code>70bf77a9f7</code> lane/perfregimen:docs/testing/predictions/perfregimen-pilot-thor.json: no a_ref/b_ref (a soak or a hand-read prediction)</li>
+</ul>
+<p>told=2026-09-26T22:22:21Z</p>
+<h4>Fold job (every 30 min)</h4>
+<ul>
+<li>fold-ready: ; needs-rebase: #420; needs-remediation: #419</li>
+<li>awaiting audit: needs-audit-1 ; needs-audit-2 </li>
+</ul>
+<pre><code>2026-09-26 16:20:31 PDT   deleted origin&#x27;s lane/vcpuprime428 @ 49dd45e305 (every commit is on HEAD) and its tracking ref
+2026-09-26 16:20:31 PDT   local refs/heads/lane/vcpuprime428 KEPT: error: cannot delete branch &#x27;lane/vcpuprime428&#x27; used by worktree at &#x27;~/hakux-work/
+2026-09-26 16:20:31 PDT     (if that lane is finished: lane.sh rm vcpuprime428)
+2026-09-26 16:20:31 PDT tick: repaired none; folded #437; handed back none; waiting none</code></pre>
+<ul>
+<li>master: 916c246260 3 minutes ago -- fold: PR #437 lane/vcpuprime428 -- lane.vcpuprime428: #428 vCPU thread on the prime core, Cr</li>
+</ul>
+<h4>Open lane PRs</h4>
+<ul>
+<li>#447 (draft) <code>lane/relprio432</code> lane.relprio432: 0.5 device requests queue ahead of other requests (#432) -- labels: none</li>
+<li>#446 (draft) <code>lane/claimrace</code> cloud.sh: never claim a number whose unit is running, and never undo a running u -- labels: none</li>
+<li>#444 (draft) <code>lane/perfregimen</code> lane.perfregimen: MAX perf+fan during title soaks, REST on every exit -- labels: none</li>
+<li>#443 (draft) <code>lane/jcache425</code> lane.jcache425: #425 fewer jump-cache flushes and an inline indirect-branch prob -- labels: none</li>
+<li>#442 (draft) <code>lane/titlestate</code> lane.titlestate: #397 first-run/returning routes and per-device title state -- labels: none</li>
+<li>#440 (draft) <code>lane/doa413b</code> lane.doa413b: #413 price and cut DOA2U surface_update cost -- labels: none</li>
+<li>#439 (draft) <code>lane/fmv303c</code> lane.fmv303c: #303 surface write-back probe for Spikeout's FMV green -- labels: blocked:after-0.5</li>
+<li>#436 (draft) <code>lane/visual404</code> lane.visual404: #404 reference-free visual scoring of scripted-play frames -- labels: blocked:after-0.5</li>
+<li>#435 (draft) <code>lane/buildflags427</code> Performance: native TLS, inline LSE atomics and no intra-library PLT for libxemu -- labels: none</li>
+<li>#434 (draft) <code>lane/tbchurn424</code> lane.tbchurn424: #424 translation-cache code-write invalidation and dirty re-arm -- labels: none</li>
+<li>#420 <code>lane/pilotgate</code> pilotgate: refuse a device batch over 30 min without a reviewed pilot -- labels: needs-rebase</li>
+<li>#419 <code>lane/yuv10</code> lane.yuv10: #10 SET_CONTROL0 colour-space conversion as silicon measured it -- labels: needs-remediation, verified</li>
+<li>#416 (draft) <code>lane/aufire412</code> lane.aufire412: #412 Agent Under Fire flat 16 fps split -- labels: none</li>
+</ul>
+<h4>Job errors (last 24h, from the units' logs)</h4>
+<ul>
+<li><b>board</b> (<code>~/hakux-work/logs/board/systemd.log</code>):</li>
+</ul>
+<pre><code>509:python3: can&#x27;t open file &#x27;~/hakux-work/board-wt/docs/testing/jobs/summarise_run.py&#x27;: [Errno 2] No such file or directory
+555:python3: can&#x27;t open file &#x27;~/hakux-work/board-wt/docs/testing/jobs/summarise_run.py&#x27;: [Errno 2] No such file or directory
+846:python3: can&#x27;t open file &#x27;~/hakux-work/board-wt/docs/testing/jobs/summarise_run.py&#x27;: [Errno 2] No such file or directory</code></pre>
+<ul>
+<li><b>arms</b> (<code>~/hakux-work/logs/arms/systemd.log</code>):</li>
+</ul>
+<pre><code>3:2026-09-19T02:56:34Z   skip e7d2d7398fa68af98650c6b1514d29fcda61b6a112336558f20fe7d37100d218: lane/blitsafe:docs/testing/predictions/issue89-clear-pad-alpha-shape.json: request.sh refused the base a</code></pre>
+<ul>
+<li><b>fold</b> (<code>~/hakux-work/logs/fold/systemd.log</code>):</li>
+</ul>
+<pre><code>2489:2026-09-26 15:56:35 PDT   local refs/heads/lane/flatlm13 KEPT: error: cannot delete branch &#x27;lane/flatlm13&#x27; used by worktree at &#x27;~/hakux-work/wt/flatlm13&#x27;
+2497:2026-09-26 16:05:34 PDT   local refs/heads/lane/pri432 KEPT: error: cannot delete branch &#x27;lane/pri432&#x27; used by worktree at &#x27;~/hakux-work/wt/pri432&#x27;
+2503:2026-09-26 16:20:31 PDT   local refs/heads/lane/vcpuprime428 KEPT: error: cannot delete branch &#x27;lane/vcpuprime428&#x27; used by worktree at &#x27;~/hakux-work/wt/vcpuprime428&#x27;</code></pre>
+<h4>Host</h4>
+<ul>
+<li>checkout <code>~/hakuX</code> on master, 13 behind origin/master (jobs run the fetched trunk regardless)</li>
+<li>timers: arms next 16:23:56 PDT; board next 16:33:55 PDT; comments next 17:17:00 PDT; dx next 09:23:00 PDT; fold next 16:50:15 PDT; foldpace next 16:25:00 PDT; handbackpace next 16:32:00 PDT; hostops next -; issue-sweep next 19:41:07 PDT; jamcheck next 16:30:00 PDT; manifest next 16:30:00 PDT; nightly next 00:30:00 PDT; pr-sweep next 18:13:17 PDT; status next -</li>
+<li>attempts: aasample=3 armlabel=1 armpin=1 armsscope=1 armsskip=3 aufire412=2 backlogstate=3 blankrule297=2 blendarm50=1 blendrace50=2 blinx372=1 blinx372b=1 blinx372c=2 blinx372d=1 blit83b=1 blit84=1 blitsafe=2 boardgate=4 boardprio=3 boardpushgate=1 branchprune=2 brdf315=1 brdf315b=1 buildflags427=1 ciskip=1 claimrace=2 cloud-audit1-181=1 cloud-audit2-163=1 cloud-audit2-308=2 cloud-issue-10=1 cloud-issue-111=1 cloud-issue-112=1 cloud-issue-13=1 cloud-issue-188=3 cloud-issue-189=1 cloud-issue-200=2 cloud-issue-271=2 cloud-issue-278=1 cloud-issue-279=1 cloud-issue-282=3 cloud-issue-283=1 cloud-issue-284=4 cloud-issue-286=1 cloud-issue-297=1 cloud-issue-34=1 cloud190=1 cloudclaim=1 cloudtail=1 cloudterritory=1 clrpad164=2 clrsurf91=3 clrvk184=1 clrwb91=4 clrwin88=1 cull13=1 cullnf276=2 desktopchannel=2 diagdump77=2 diagsoak77=1 dmasurf277=1 doa413=1 doa413b=1 dpforce345=2 draftstrand=3 drvab77=1 fix311=1 flatlm13=1 fleetreg=2 fmv303=1 fmv303b=2 fmv303c=1 fog278=1 foldcancel=1 foldci=3 foldflow=2 foldindex=1 foldregress=2 forza414=1 fps382=1 fulldisc50=1 g8b8285=1 gamecheck=1 ghoul311=4 glchannel=1 glerr86=1 goldencorr287=1 goldovr287=1 handback=3 handbackresolved=1 handbackstrand=1 hilodot10=1 indexcheck=1 indexloc=2 jcache425=1 laneshape=1 linecap13=2 localtime=1 nanattr281=1 nanfix281=1 nightlynotes=3 nightlytrunk=1 notespath=1 perfarch=2 perfbase=1 perfregimen=1 pilotgate=3 pmc188=3 pri432=2 primpv13=4 pshaniso284=2 pshqueue=3 regs200=1 relprio432=1 remotechannel=1 ring53=1 ring53impl=3 selftest86=1 selftestsplit=2 shade224=1 shadeflat224=4 shadetie224=1 shadetie224b=2 sphere273fix=1 spheremap273=1 stalecheck=2 statusdash=1 statusfresh=1 statuspage=1 surfwatch382=1 swatchorder50=1 sweepcover=2 sweepremote=1 sweeps=1 swizzle87=1 tbchurn424=1 tcgchurn=2 texvol283=1 tie282c=1 tiecode282=2 titleplay=1 titlerun=3 titlestate=2 toolsmith=3 turncap=1 turnipfork=2 vblank65=1 vcpuprime428=2 visual404=1 vklayer34=1 vkpointsize34=4 vol283r=1 vshconst=3 vshcpu345=1 vshnobegin242=2 vshr12280=1 vshsubneg255=1 vtxarr262=1 wbuf31fix=3 wbuf31sel=1 wbufclip=2 wbufdepth24=1 windowbudget=2 wparam223=1 wparamclip223=2 wparamcode223=1 wparamff223=1 wparamgeom223=1 x1a7271=1 y16bump10=2 yuv10=1 zclamp276=1 zdepth272=1 zetaswap275=1 zrtz272=4 </li>
+</ul></section>
+<footer>Written by <code>docs/testing/jobs/status.sh</code> on the host every job tick and every 30 min; republished when the content changes (at most every 10 min) and at least every 30 min. Every time here is PDT. Next tick due by 2026-09-26 16:52 PDT.</footer>
+<script>
+(function(){var e=document.getElementById('age');if(!e)return;var t=+e.dataset.t,st=+e.dataset.stale;
+function f(){var s=Math.max(0,Math.floor(Date.now()/1000-t)),m=Math.floor(s/60),x;
+x=m<1?'just now':m<120?m+' min ago':Math.floor(m/60)+'h '+(m%60)+'m ago';
+e.textContent='updated '+x+' ('+e.dataset.at+')'+(s>st?' -- STALE: the host has stopped publishing':'');
+e.className=s>st?'stale':''}f();setInterval(f,30000)})();
+</script></main></body></html>

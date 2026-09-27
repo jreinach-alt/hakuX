@@ -1,0 +1,25 @@
+--- a/docs/testing/dispatcher.sh
++++ b/docs/testing/dispatcher.sh
+@@ -794,11 +794,22 @@
+ # cost a phase survey exactly this way. No fallback literal: if LOGCAT_SPEC is
+ # unset, say so rather than inventing the string it probably was.
+ _spec = os.environ.get("LOGCAT_SPEC", "(LOGCAT_SPEC UNSET -- spec unknown)")
++# THE PERFORMANCE AND FAN MODES THE TITLE RAN AT, as soak_title.sh read them
++# back (perf_enter/perf_leave; values in devices.sh). null when the snapshot's
++# soak_title.sh predates the regimen and wrote no perf_regimen.json: a frame
++# rate from before 2026-09-26 ran at whatever mode the device was left in.
++try:
++    _perf = json.load(open(os.path.join(rdir, "perf_regimen.json")))
++except (OSError, ValueError):
++    _perf = {}
+ json.dump(dict(apk_sha=sha, kind="soak", title=title, seconds=int(seconds),
+                requester=who, purpose=purpose, ref=ref,
+                logcat=dict(spec=_spec, lines=int(lines)),
+                device_serial=os.environ.get("SERIAL", ""),
+                device_label=os.environ.get("DEVICE_LABEL", ""),
++               perf_mode=_perf.get("perf_mode"), fan_mode=_perf.get("fan_mode"),
++               perf_restored=_perf.get("perf_restored"),
++               perf_regimen=_perf.get("regimen"),
+                logcat_lines=int(lines), pulled=pulled,
+                # Cold or warm shader cache: a cleared cache puts shader
+                # warm-up in the first minute of a frame-rate soak.

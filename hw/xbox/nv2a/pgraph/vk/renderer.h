@@ -172,6 +172,12 @@ struct OptBisectStats {
     int stall_deferred;
     int stall_batched;
     int predownload_hits;
+#if NV2A_PERF_LOG
+    /* Pipeline-cache evictions; see pipeline_cache_count_evict() */
+    int pipe_evict;
+    int pipe_evict_pending;
+    int pipe_evict_recording;
+#endif
 };
 extern struct OptBisectStats g_opt_stats;
 #if NV2A_PERF_LOG
@@ -231,6 +237,11 @@ typedef struct PipelineBinding {
     bool has_dynamic_line_width;
 #if OPT_ASYNC_COMPILE
     bool pending;
+#endif
+#if NV2A_PERF_LOG
+    /* The last command buffer to bind it: its serial and frame slot */
+    uint64_t last_use_cb;
+    int last_use_frame;
 #endif
 } PipelineBinding;
 
@@ -1138,6 +1149,11 @@ typedef struct PGRAPHVkState {
     VkFence frame_fences[NUM_SUBMIT_FRAMES];
     bool frame_submitted[NUM_SUBMIT_FRAMES];
     bool frame_enqueued[NUM_SUBMIT_FRAMES];
+#if NV2A_PERF_LOG
+    /* Serial of every command_buffer begun, and the last one per slot */
+    uint64_t cb_serial;
+    uint64_t frame_cb_serial[NUM_SUBMIT_FRAMES];
+#endif
     VkSemaphore stall_chain_semaphore;
     bool stall_chain_pending;
     int current_frame;

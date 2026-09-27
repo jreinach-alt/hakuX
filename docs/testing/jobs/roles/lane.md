@@ -40,6 +40,24 @@ A path you edit that is not on that line is a collision nothing can see.
 - A prediction whose keys match no golden is refused at queue time. Keys are
   `Suite_dir/TestName`, underscores in the suite, one slash.
 
+## Pilot first: nothing over 30 minutes of device time unreviewed
+
+`request.sh` refuses an enqueue that would take your requester (`--who`) past
+30 min of queued plus running device time, estimated as `seconds` + 90 s of
+setup, times `runs`, unless `$DISPATCH_DIR/pilots/<requester>.ok` is under
+24 h old. The first 30 min always goes through; that is the pilot. For a
+bigger batch, queue at most two requests first, look at what they produced
+against the batch's purpose, write the verdict to `pilots/<requester>.ok` (the
+pilot's result ids, what the output showed, the date; write it with `python3`,
+which reaches the dispatch dir where Write and `cp` are blocked), then queue
+the rest. titleplay's pass 1 (#397) queued 29 soaks of 420 s at once and held the only
+live handheld for hours on a route that reached clean gameplay in 7 of 15
+titles, which the first two runs' frames would have shown. Arms (`arms-*`
+requesters) are not judged: a registered prediction is its own review. A tool
+that stages records in a private `DISPATCH_DIR` must set `PILOT_DISPATCH_DIR`
+to the real one, or the gate counts an empty tempdir. Rule text and the
+estimate's other home: AGENTS.md, "Working with a device".
+
 ## Definition of done (all of these, or say which is missing)
 
 1. Your branch is pushed and `preflight.sh` passes on it (the tracker gate
@@ -113,4 +131,9 @@ A path you edit that is not on that line is a collision nothing can see.
 - Push to `master` or to any branch but your own.
 - Run git in a tree that is not your worktree.
 - Touch a device directly. `request.sh` and `ab_run.sh` are the only way in.
+- Write or remove `$DISPATCH_DIR/hold/<dev>` by hand. Take and release a
+  device hold ONLY with `jobs/hold.sh take|release <dev> lane.<name>`; it
+  refuses (exit 3) a device someone else holds, and never removes a hold you
+  did not take. On 2026-09-26 a lane removed the host update window's hold on
+  the Thor and the Thor claimed a request inside the window.
 - Rewrite published history on your branch after a prediction names it.

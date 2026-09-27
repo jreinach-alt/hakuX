@@ -1,0 +1,25 @@
+n	title_id	name	device	iso	bytes	request_id	pushed_pdt
+1	4541000D	007: Agent Under Fire	nova	4541000D-007_Agent_Under_Fire.xiso.iso	3555065856	0-0-y-1790404523-titlebench-1	09-25 23:35
+2	4D530013	Blinx: The Time Sweeper	thor	4D530013-Blinx_The_Time_Sweeper.xiso.iso	2298150912	0-0-y-1790405024-titlebench-2	09-25 23:43
+3	54430007	Dead or Alive Xtreme Beach Volleyball	nova	54430007-Dead_or_Alive_Xtreme_Beach_Volleyball.xiso.iso	4392943616	0-0-y-1790405804-titlebench-3	09-25 23:56
+4	45410083	Black	thor	45410083-Black.xiso.iso	2230190080	0-0-y-1790406179-titlebench-4	09-26 00:02
+5	45410026	007: Nightfire	nova	45410026-007_Nightfire.xiso.iso	2226192384	0-0-y-1790406549-titlebench-5	09-26 00:09
+3r	54430007	Dead or Alive Xtreme Beach Volleyball	nova	54430007-Dead_or_Alive_Xtreme_Beach_Volleyball.xiso.iso	4392943616	0-0-y-1790406733-titlebench-3r	requeue
+6	4D530003	Project Gotham Racing	thor	4D530003-Project_Gotham_Racing.xiso.iso	2244345856	0-0-y-1790407115-titlebench-6	09-26 00:18
+7	4541005D	GoldenEye: Rogue Agent	nova	4541005D-GoldenEye_Rogue_Agent.xiso.iso	3400663040	0-0-y-1790407716-titlebench-7	09-26 00:28
+8	4D53006E	Forza Motorsport	thor	4D53006E-Forza_Motorsport.xiso.iso	3270705152	0-0-y-1790408503-titlebench-8	09-26 00:41
+7r	4541005D	GoldenEye: Rogue Agent	nova	4541005D-GoldenEye_Rogue_Agent.xiso.iso	3400663040	0-0-y-1790409100-titlebench-7r	requeue
+9	56550042	50 Cent: Bulletproof	nova	56550042-50_Cent_Bulletproof.xiso.iso	5821300736	0-0-y-1790409600-titlebench-9	09-26 01:00
+10	45530018	25 to Life	thor	45530018-25_to_Life.xiso.iso	1180041216	0-0-y-1790409817-titlebench-10	09-26 01:03
+11	5451000D	WWE Raw 2	nova	5451000D-WWE_Raw_2.xiso.iso	1642004480	0-0-y-1790410659-titlebench-11	09-26 01:17
+12	4541005B	Burnout 3: Takedown	thor	4541005B-Burnout_3_Takedown.xiso.iso	2865758208	0-0-y-1790411098-titlebench-12	09-26 01:24
+13	4156005D	Call of Duty 3	nova	4156005D-Call_of_Duty_3.xiso.iso	4216586240	0-0-y-1790411492-titlebench-13	09-26 01:31
+9r	56550042	50 Cent: Bulletproof	nova	56550042-50_Cent_Bulletproof.xiso.iso	5821300736	0-0-y-1790411511-titlebench-9r	requeue
+10r	45530018	25 to Life	thor	45530018-25_to_Life.xiso.iso	1180041216	0-0-y-1790411512-titlebench-10r	requeue
+14	4D53004B	Project Gotham Racing 2	thor	4D53004B-Project_Gotham_Racing_2.xiso.iso	5607456768	0-0-y-1790413062-titlebench-14	09-26 01:57
+15	45410076	Burnout Revenge	nova	45410076-Burnout_Revenge.xiso.iso	2337406976	0-0-y-1790413479-titlebench-15	09-26 02:04
+16	4D530065	Blinx 2: Battle of Time & Space ~ Blinx 2: Masters of Time & Space	thor	4D530065-Blinx_2_Battle_of_Time_Space_Blinx_2_Masters_of_Time_Space.xiso.iso	3398107136	0-0-y-1790414139-titlebench-16	09-26 02:15
+17	54430006	Dead or Alive 1 Ultimate	nova	54430006-Dead_or_Alive_1_Ultimate.xiso.iso	4400283648	0-0-y-1790414875-titlebench-17	09-26 02:27
+18	56550016	Bruce Lee: Quest of the Dragon	thor	56550016-Bruce_Lee_Quest_of_the_Dragon.xiso.iso	3954049024	0-0-y-1790415671-titlebench-18	09-26 02:41
+19	54540079	Midnight Club 3: DUB Edition	nova	54540079-Midnight_Club_3_DUB_Edition.xiso.iso	3568828416	0-0-y-1790416268-titlebench-19	09-26 02:51
+20	56550036	Crash Twinsanity	thor	56550036-Crash_Twinsanity.xiso.iso	2196176896	0-0-y-1790416653-titlebench-20	09-26 02:57

@@ -48,11 +48,15 @@ REPO="${HAKUX_REPO_DIR:-/home/justin/hakuX}"
 D="${DISPATCH_DIR:-$WORK/dispatch}"
 GH_REPO="${GH_REPO:-jreinach-alt/hakuX}"
 J="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-S="$WORK/status"; mkdir -p "$S"
+# STATUS_OUT_DIR renders somewhere else: `--print` against the live host from a lane, without
+# overwriting the pages, stamps and caches the real tick owns.
+S="${STATUS_OUT_DIR:-$WORK/status}"; mkdir -p "$S"
 OUT="$S/STATUS.md"
 . "$J/models.env" 2>/dev/null; . "$J/window.sh" 2>/dev/null; [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
 . "$J/localtime.sh"   # say_time/local_ts/tz_abbr: this page is read by a person, so it is shown in the display zone
-now=$(date +%s)       # epoch: zone-free by construction, only ever subtracted (see ago())
+# epoch: zone-free by construction, only ever subtracted (see ago()). STATUS_NOW pins it for a
+# fixture (docs/lanes/dash432/fixtures): a page rendered from a snapshot must age from the snapshot.
+now=${STATUS_NOW:-$(date +%s)}; case "$now" in ''|*[!0-9]*) now=$(date +%s) ;; esac
 ago() { local t=${1:-}; [ -n "$t" ] || { echo "never"; return; }; local s=$(( now - t )); if [ $s -lt 120 ]; then echo "${s}s ago"; elif [ $s -lt 7200 ]; then echo "$(( s / 60 ))m ago"; else echo "$(( s / 3600 ))h $(( (s % 3600) / 60 ))m ago"; fi; }
 # DATA, NOT DISPLAY -- STAYS UTC, for two independent reasons. It is handed
 # to the GitHub API as `since=`, which is specified in UTC; and it is the
@@ -162,13 +166,19 @@ echo
 
 # ------------------------------------------------------------- every lane
 #
-# "Lanes running" above lists live units and nothing else, so a lane that had
-# stopped with a draft PR and nothing on a device -- idle, with no actor that
-# would ever wake it -- appeared nowhere, and so did lane.xbox (an interactive
-# session) and lane.remote (a cloud session), which never have a unit at all.
-# The owner found each of those by hand (2026-09-26). This table starts from
-# the board's claim list instead, territory.toml on origin/board, so a lane is
-# on the page for as long as it holds a row, whatever it is doing.
+# WHAT EACH LANE IS DOING, from facts (#432). The owner, 2026-09-26 16:20 PDT,
+# could not read the table this replaced: "never" in a column meant three
+# different things, every summary was cut at 90 characters, timer jobs, live
+# lanes, parked lanes and twenty retired rows shared one table, and the board's
+# `dispatch_state = blocked` -- written on EVERY owned issue so it will not
+# start a second lane -- was read as "stuck". status_html.py `lanes` now derives
+# one state per lane from a fixed vocabulary (running, waiting on device, in a
+# device session, waiting on audit, waiting on a file, waiting on owner, parked,
+# finished, stranded) out of units, the dispatch dirs, PR state and labels,
+# territory.toml and the tracker, the lane logs, and for lane.xbox and
+# lane.remote their GitHub comments. Only "stranded" is an alarm. It writes
+# lanes.json (the dashboard's first screen), `idle-lanes` (the #107 body
+# header), and these sections of STATUS.md.
 #
 # The console meter is read here, once, because it takes the plug's lock and
 # the plug must not be polled more than once a minute: every job tick ends in
@@ -185,320 +195,13 @@ if [ -x "$KASA" ]; then
     ma=$(( now - $(stat -c %Y "$mc" 2>/dev/null || echo "$now") )); [ "$ma" -ge 0 ] || ma=0
     meter="console meter: $(cat "$mc" 2>/dev/null) (read ${ma}s ago)"
 fi
-echo "### Lanes: every row on the board ($(tz_abbr))"
+echo "### Lanes: what each one is doing ($(tz_abbr))"
 echo
 rm -f "$S/lanes.json"      # the dashboard must not show last tick's lanes as this tick's
-STATUS_METER="$meter" WORK="$WORK" D="$D" REPO="$REPO" GH_REPO="$GH_REPO" J="$J" S="$S" \
-HAVE_GH=$have_gh HAVE_SD=$have_sd UNITS="$units" python3 - <<'PY' 2>&1 || echo "(the lane table could not be computed)"
-# Everything here fails soft, row by row: a source that cannot be read says so
-# and the rest of the table still renders.
-import datetime, glob, json, os, re, subprocess, sys
-sys.path.insert(0, os.environ["J"])
-try:
-    import localtime
-    def hm(iso):
-        s = localtime.local_ts(iso)
-        return s[5:16] if s != iso else iso           # "09-25 21:08": the header names the zone
-except Exception:
-    def hm(iso): return iso
-E = os.environ
-W, D, REPO, GH_REPO, S = E["WORK"], E["D"], E["REPO"], E["GH_REPO"], E["S"]
-have_gh, have_sd = E.get("HAVE_GH") == "1", E.get("HAVE_SD") == "1"
-now = datetime.datetime.now(datetime.timezone.utc)
-
-def run(*cmd, timeout=60):
-    try:
-        p = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-        return p.stdout if p.returncode == 0 else ""
-    except Exception:
-        return ""
-
-def cell(s, n=90):
-    s = " ".join(str(s or "").split())
-    return (s[:n] + "...").replace("|", "\\|") if len(s) > n else s.replace("|", "\\|")
-
-def toml_on_board(name):
-    try:
-        import tomllib
-        bd = E.get("STATUS_BOARD_DIR")                  # a fixture's board files; the host reads origin/board
-        t = open(os.path.join(bd, name)).read() if bd else run("git", "-C", REPO, "show", "origin/board:" + name)
-        return tomllib.loads(t) if t else None
-    except Exception:
-        return None
-
-terr = toml_on_board("territory.toml")
-issues = (toml_on_board("nv2a_issues.toml") or {}).get("issue", {})
-units = {u[len("hakux-lane-"):-len(".service")] for u in E.get("UNITS", "").split() if u.startswith("hakux-lane-")}
-timers = set()
-if have_sd:
-    for l in run("systemctl", "--user", "list-timers", "hakux-*", "--no-legend", "--plain").splitlines():
-        m = re.search(r"hakux-([\w.-]+)\.timer", l)
-        if m: timers.add(m.group(1))
-
-# the last session of each lane, from the index every lane run appends to
-last = {}
-try:
-    for l in open(os.path.join(W, "logs/lane/index.tsv"), encoding="utf-8", errors="replace"):
-        f = l.rstrip("\n").split("\t")
-        if len(f) >= 8 and f[1].startswith("lane-"):
-            last[f[1][5:]] = (f[0], f[-1])
-except OSError:
-    pass
-
-# device requests, queued and running, by requester
-reqs, reqd = [], []
-for state in ("queue", "running"):
-    for p in glob.glob(os.path.join(D, state, "*.req")):
-        try:
-            r = json.load(open(p))
-            reqs.append((state, r.get("id") or os.path.basename(p)[:-4], r.get("requester") or ""))
-        except Exception:
-            r = {}
-            reqs.append((state, os.path.basename(p)[:-4], ""))
-        try:
-            r["_owner"] = open(p[:-4] + ".owner").read().strip()     # the device that claimed it
-        except OSError:
-            r["_owner"] = ""
-        reqd.append((state, reqs[-1][1], r))
-def reqs_of(name):
-    pat = re.compile(r"^(lane[.-])?%s$|^arms-%s-" % (re.escape(name), re.escape(name)))
-    return [r for r in reqs if pat.search(r[2])]
-
-prs, decision, prs_ok = {}, set(), False
-if have_gh:
-    try:
-        for p in json.loads(run("gh", "pr", "list", "--repo", GH_REPO, "--state", "all", "--limit", "300",
-                                "--json", "number,state,isDraft,headRefName,labels")):
-            prs.setdefault(p["headRefName"], p)                 # newest first: keep the latest per branch
-        prs_ok = True
-    except Exception:
-        pass
-    try:
-        decision = {str(i["number"]) for i in json.loads(run("gh", "issue", "list", "--repo", GH_REPO, "--state", "open",
-                    "--label", "decision-needed", "--json", "number") or "[]")}
-    except Exception:
-        pass
-
-def state_of(name, row, standing):
-    p = prs.get("lane/" + name)
-    labels = {l["name"] for l in (p or {}).get("labels", [])}
-    if name in units: return "running"
-    rq = reqs_of(name)
-    if rq:
-        return "waiting on device (%d running, %d queued)" % (sum(r[0] == "running" for r in rq), sum(r[0] == "queue" for r in rq))
-    iss = [str(i) for i in row.get("issues", [])]
-    dn = [i for i in iss if i in decision] + (["PR"] if "decision-needed" in labels else [])
-    if dn: return "blocked: decision-needed on " + ", ".join(("#" + i) if i != "PR" else "its PR" for i in dn)
-    if p and p["state"] == "OPEN" and not p.get("isDraft"):
-        for lab, say in (("fold-ready", "fold-ready"), ("needs-remediation", "PR needs remediation"),
-                         ("needs-rebase", "PR needs rebase"), ("needs-audit-2", "PR in audit (2)"), ("needs-audit-1", "PR in audit (1)")):
-            if lab in labels: return say
-        return "PR ready, awaiting a label"
-    bl = [i for i in iss if issues.get(i, {}).get("status") == "open" and issues.get(i, {}).get("blocked_on")]
-    if bl: return "blocked: #%s %s" % (bl[0], cell(issues[bl[0]]["blocked_on"], 50))
-    if p and p["state"] == "MERGED": return "folded (row not yet retired)"
-    if name in timers: return "job (hakux-%s.timer)" % name
-    if standing: return "standing, nothing in flight"
-    # Without the PR list, "no PR" is not known -- and a failed query must not
-    # flag every lane idle in the issue body.
-    return "IDLE" if prs_ok else "not running, nothing on a device (PR state unknown: the PR list could not be read)"
-
-lanes = (terr or {}).get("lane", {})
-rows, idle, blocked = [], [], []
-for name, row in sorted(lanes.items()):
-    if name in ("xbox", "remote"):
-        continue                                        # their own rows below: no unit, a comment channel instead
-    st = state_of(name, row, row.get("standing", False))
-    p = prs.get("lane/" + name)
-    prs_s = ("#%d %s" % (p["number"], "draft" if p.get("isDraft") and p["state"] == "OPEN" else p["state"].lower())) if p else "none"
-    ts, said = last.get(name, ("", ""))
-    if st.startswith("blocked"):
-        blocked.append({"lane": name, "state": st})
-    if st == "IDLE":
-        idle.append(name)
-        st = "**:warning: IDLE, NO WORK**"
-    rows.append((0 if "IDLE" in st else 1, name, st, " ".join("#" + str(i) for i in row.get("issues", [])), prs_s, hm(ts) if ts else "never", cell(said)))
-# a unit running with no row at all is exactly the claim check_territory.py cannot see
-for name in sorted(units - set(lanes)):
-    ts, said = last.get(name, ("", ""))
-    rows.append((1, name, "running, **no territory row**", "", "", hm(ts) if ts else "never", cell(said)))
-# retired in the last day, newest first, so a lane that just finished does not vanish mid-conversation
-retired = []
-for name, row in (terr or {}).get("retired", {}).items():
-    ru = row.get("retired_utc", "")
-    try:
-        age = now - datetime.datetime.strptime(ru, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
-    except (ValueError, TypeError):
-        continue
-    if age.days >= 1 or name in lanes:
-        continue
-    p = prs.get("lane/" + name)
-    ts, said = last.get(name, ("", ""))
-    retired.append((ru, (2, name, "retired %s" % hm(ru), " ".join("#" + str(i) for i in row.get("issues", [])),
-                     ("#%d %s" % (p["number"], p["state"].lower())) if p else "none", hm(ts) if ts else "never", cell(said))))
-retired.sort(reverse=True)
-rows += [r for _, r in retired[:16]]
-
-if terr is None:
-    print("(territory.toml on origin/board could not be read from `%s`; only running units are listed)" % REPO)
-    print()
-if idle:
-    print("> [!WARNING]")
-    print("> **%d lane%s idle with no work:** %s. Unit stopped, nothing queued or running on a device, and its PR is a draft or absent -- nothing will wake it." % (
-        len(idle), "" if len(idle) == 1 else "s", ", ".join(idle)))
-    print()
-print("| lane | state | issue | PR | last session ended | it said |")
-print("|---|---|---|---|---|---|")
-for r in sorted(rows, key=lambda r: (r[0], r[1] if r[0] < 2 else "")):       # retired rows keep newest-first
-    print("| %s |" % " | ".join(r[1:]))
-if len(retired) > 16:
-    print()
-    print("_%d more rows retired in the last 24 h are not listed._" % (len(retired) - 16))
-
-# ---- the two lanes with a comment channel instead of a unit, and the host tick
-comments = []
-if have_gh:
-    since = (now - datetime.timedelta(hours=48)).strftime("%Y-%m-%dT%H:%M:%SZ")      # data: the API's since=, UTC
-    for l in run("gh", "api", "repos/%s/issues/comments?since=%s&per_page=100" % (GH_REPO, since), "--paginate",
-                 "--jq", '.[] | {c: .created_at, i: (.issue_url | split("/") | last), b: .body}', timeout=120).splitlines():
-        try: comments.append(json.loads(l))
-        except Exception: pass
-comments.sort(key=lambda c: c.get("c", ""))
-def is_other(b):
-    return b.startswith("[job.") or re.match(r"^`?\[host\]", b) is not None
-def last_word(pred):
-    m = [c for c in comments if pred(c.get("b") or "")]
-    return m[-1] if m else None
-def first_line(b):
-    return cell(re.sub(r"^`?\[lane\.\w+\]`?\s*[-—:]*\s*", "", (b or "").strip().split("\n")[0]), 110)
-def answered_after(marker, t):
-    a = [c for c in comments if c.get("c", "") > t and (
-        (c.get("b") or "").startswith("[job.deliver] " + marker) or
-        (re.match(r"^`?\[host\]", c.get("b") or "") and marker in (c.get("b") or "")))]
-    return a[-1] if a else None
-
-print()
-if not have_gh:
-    print("- **lane.xbox**, **lane.remote**: (gh not available here)")
-else:
-    xb = last_word(lambda b: not is_other(b) and "[lane.xbox]" in b)
-    xr = [r for r in reqs if "xbox" in r[1]]
-    print("- **lane.xbox** (interactive session; the console): last `[lane.xbox]` comment %s; %s. Device requests: %s. %s." % (
-        ("%s on #%s: %s" % (hm(xb["c"]), xb["i"], first_line(xb["b"]))) if xb else "none in 48h",
-        ("host answered %s" % hm(answered_after("lane.xbox", xb["c"])["c"])) if xb and answered_after("lane.xbox", xb["c"]) else "**no host answer after it**" if xb else "",
-        ("%d running, %d queued (%s)" % (sum(r[0] == "running" for r in xr), sum(r[0] == "queue" for r in xr), ", ".join(r[1] for r in xr[:4]))) if xr else "none queued or running",
-        E.get("STATUS_METER", "console meter: not available")))
-    rm = last_word(lambda b: not is_other(b) and "`[lane.remote]`" in b)
-    ans = answered_after("lane.remote", rm["c"]) if rm else None
-    print("- **lane.remote** (cloud session, one-way): last `` `[lane.remote]` `` comment %s; %s." % (
-        ("%s on #%s: %s" % (hm(rm["c"]), rm["i"], first_line(rm["b"]))) if rm else "none in 48h",
-        ("host answered %s" % hm(ans["c"])) if ans else ("**NOT ANSWERED YET** -- it cannot hear anything else" if rm else "nothing to answer")))
-
-# ---- the host ops tick: its digest header is "=== <UTC stamp>.json rc=..."
-dg = os.path.join(W, "logs/hostops/digest.log")
-try:
-    txt = open(dg, encoding="utf-8", errors="replace").read()
-    blocks = re.split(r"(?m)^=== ", txt)
-    blk = blocks[-1] if len(blocks) > 1 else ""
-    head, _, body = blk.partition("\n")
-    m = re.match(r"(\d{8}T\d{6}Z)", head)
-    t = datetime.datetime.strptime(m.group(1), "%Y%m%dT%H%M%SZ").strftime("%Y-%m-%dT%H:%M:%SZ") if m else ""
-    fl = next((l for l in body.splitlines() if l.strip()), "")
-    print("- **host ops tick** (`hakux-hostops.timer`, every 20 min): last tick %s: %s" % (hm(t) if t else "unknown", cell(fl, 140)))
-except OSError:
-    print("- **host ops tick**: not available on this host (`$WORK/logs/hostops/digest.log`)")
-
-try:
-    with open(os.path.join(S, "idle-lanes"), "w") as f:
-        f.write(", ".join(idle) + ("\n" if idle else ""))
-except OSError:
-    pass
-
-# ---- the dashboard's first screen (status_html.py reads this as lanes.json)
-def age_s(secs):
-    secs = int(max(0, secs))
-    return "%dm" % (secs // 60) if secs < 7200 else "%dh %dm" % (secs // 3600, (secs % 3600) // 60)
-def utc(s):
-    try:
-        return datetime.datetime.strptime(s, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=datetime.timezone.utc)
-    except (ValueError, TypeError):
-        return None
-
-# Each handheld: the run it owns, else its hold, else idle.
-devices = []
-for dev in E.get("STATUS_DEVICES", "thor nova").split():
-    run_ = [(i, r) for s, i, r in reqd if s == "running" and r.get("_owner") == dev]
-    held = os.path.exists(os.path.join(D, "hold", dev))
-    why = ""
-    if held:
-        try: why = open(os.path.join(D, "hold", dev + ".why")).read().strip().splitlines()[0]
-        except (OSError, IndexError): pass
-    if run_:
-        i, r = run_[0]
-        devices.append({"name": dev, "state": "running", "detail": "%s: %s%s" % (r.get("requester") or "?", i, " (held after it)" if held else "")})
-    elif held:
-        devices.append({"name": dev, "state": "held", "detail": cell(why or "hold file present, no reason given", 120)})
-    else:
-        devices.append({"name": dev, "state": "idle", "detail": ""})
-
-# Runs waiting over an hour, the z- idle tier excepted: waiting is its design.
-queued_old = []
-for s, i, r in reqd:
-    t = utc(r.get("queued_utc", ""))
-    if s != "queue" or i.startswith("z-") or not t:
-        continue
-    a = (now - t).total_seconds()
-    if a > 3600:
-        queued_old.append((a, {"id": i, "requester": r.get("requester", ""), "age": age_s(a), "device": r.get("device", "")}))
-queued_old = [q for _, q in sorted(queued_old, key=lambda x: -x[0])]
-
-# Fold-ready PRs not folded within the hour, and why. The 2026-09-26 jam: a
-# CONFLICTING head gets no CI run from GitHub, fold.sh waits for CI forever,
-# and every surface said "waiting" for 2.5 h. `gh pr list` reports mergeable
-# UNKNOWN, so each PR is asked on its own.
-fold_stuck = []
-if have_gh:
-    for br, p in prs.items():
-        if p.get("state") != "OPEN" or p.get("isDraft") or "fold-ready" not in {l["name"] for l in p.get("labels", [])}:
-            continue
-        n = p["number"]
-        la = run("gh", "api", "repos/%s/issues/%d/events?per_page=100" % (GH_REPO, n), "--paginate", "--jq",
-                 '.[] | select(.event == "labeled" and .label.name == "fold-ready") | .created_at').split()
-        t = utc(la[-1]) if la else None
-        if t is None or (now - t).total_seconds() < 3600:
-            continue
-        v = {}
-        try: v = json.loads(run("gh", "pr", "view", str(n), "--repo", GH_REPO, "--json", "mergeable,statusCheckRollup") or "{}")
-        except Exception: pass
-        roll = v.get("statusCheckRollup") or []
-        bad = sorted({c.get("name") or c.get("context") or "?" for c in roll
-                      if (c.get("conclusion") or c.get("state") or "").upper() in ("FAILURE", "ERROR", "CANCELLED", "TIMED_OUT", "ACTION_REQUIRED", "STARTUP_FAILURE")})
-        pend = [c for c in roll if (c.get("status") or "").upper() in ("QUEUED", "IN_PROGRESS", "PENDING", "WAITING") or (c.get("state") or "").upper() == "PENDING"]
-        mg = (v.get("mergeable") or "UNKNOWN").upper()
-        if mg == "CONFLICTING":
-            why = "CONFLICTING with master; GitHub runs no CI on it, so the fold waits forever. Merge master into it"
-        elif not v:
-            why = "its mergeability and CI could not be read"
-        elif not roll:
-            why = "CI never ran on its head"
-        elif bad:
-            why = "CI red (%s)" % ", ".join(bad)[:80]
-        elif pend:
-            why = "CI still running"
-        elif mg == "UNKNOWN":
-            why = "GitHub has not computed mergeability yet"
-        else:
-            why = "green and mergeable, yet unfolded; read the fold job's log"
-        fold_stuck.append({"number": n, "branch": br, "age": age_s((now - t).total_seconds()), "reason": why})
-
-try:
-    with open(os.path.join(S, "lanes.json.tmp"), "w") as f:
-        json.dump({"idle": idle, "blocked": blocked, "fold_stuck": fold_stuck, "queued_old": queued_old,
-                   "devices": devices, "prs_ok": prs_ok, "terr_ok": terr is not None}, f, indent=1)
-    os.replace(os.path.join(S, "lanes.json.tmp"), os.path.join(S, "lanes.json"))
-except OSError:
-    pass
-PY
+STATUS_METER="$meter" WORK="$WORK" D="$D" REPO="$REPO" GH_REPO="$GH_REPO" J="$J" S="$S" STATUS_NOW="$now" \
+HAVE_GH=$have_gh HAVE_SD=$have_sd UNITS="$units" timeout 300 python3 "$J/status_html.py" lanes \
+    --json "$S/lanes.json" --idle "$S/idle-lanes" 2>"$S/lanes.err" \
+    || echo "(the lane table could not be computed: $(tail -1 "$S/lanes.err" 2>/dev/null))"
 echo
 
 # ------------------------------------------------- the account's windows
@@ -543,6 +246,9 @@ echo
 if [ -f "$WORK/logs/lane/index.tsv" ]; then
     cut=$(since_iso)
     rows=$(awk -F'\t' -v c="$cut" '$1 >= c' "$WORK/logs/lane/index.tsv" | tail -12)
+    # The index keeps a 120-character head of each result: print only what ends
+    # at a sentence stop inside it, never a word cut in half (#432).
+    first_sentence_of() { printf '%s' "$1" | sed -E 's/^(.*[.!?])( .*)?$/\1/; t; s/.*/-/' | sed 's/|/\\|/g'; }
     if [ -n "$rows" ]; then
         echo "| when ($(tz_abbr)) | lane | model | turns | min | result | PR | said |"; echo "|---|---|---|---|---|---|---|---|"
         while IFS=$'\t' read -r ts job model turns secs cost ok log head; do
@@ -552,7 +258,7 @@ if [ -f "$WORK/logs/lane/index.tsv" ]; then
             # $ts is UTC on disk and converted HERE, at the point of printing.
             # The column it comes from is what since_iso() filters on above,
             # so the stored field must stay UTC; only the reader sees local.
-            echo "| $(local_hm "$ts") | $n | ${model#claude-} | $turns | $mins | $ok | $(pr_for_branch "lane/$n") | $(echo "$head" | cut -c1-90 | sed 's/|/\\|/g') |"
+            echo "| $(local_hm "$ts") | $n | ${model#claude-} | $turns | $mins | $ok | $(pr_for_branch "lane/$n") | $(first_sentence_of "$head") |"
         done <<< "$rows"
     else
         echo "none in the window."
@@ -680,7 +386,7 @@ echo "### Open lane PRs"
 echo
 if [ $have_gh = 1 ]; then
     gh pr list --repo "$GH_REPO" --state open --json number,title,isDraft,headRefName,labels,updatedAt \
-        --jq '.[] | "- #\(.number) \(if .isDraft then "(draft) " else "" end)`\(.headRefName)` \(.title | .[0:80]) -- labels: \(.labels | map(.name) | join(", ") | if . == "" then "none" else . end)"' 2>/dev/null
+        --jq '.[] | "- #\(.number) \(if .isDraft then "(draft) " else "" end)`\(.headRefName)` \(.title) -- labels: \(.labels | map(.name) | join(", ") | if . == "" then "none" else . end)"' 2>/dev/null
 fi
 echo
 echo "### Job errors (last 24h, from the units' logs)"
@@ -728,16 +434,9 @@ lf=$(git -C "$REPO" log -1 --format='%ct%x09%s' --grep='^fold: PR' origin/master
 [ -n "$lf" ] && { fact last_fold "${lf%%$'\t'*}"; fact last_fold_subject "$(printf '%s' "${lf#*$'\t'}" | sed 's/^fold: //' | cut -c1-90)"; }
 [ -x "$KASA" ] && fact console "${meter#console meter: }"
 [ "$lapse" -gt 0 ] && attn page "the roll-up itself lapsed for $(ago "$prev_run" | sed 's/ ago$//') before this tick (previous $(local_ts "@$prev_run")); nothing was observed across that window"
-# Escalations the host-ops tick could not decide (owner-level). Only OPEN lines count: host ops marks a
-# decided line RESOLVED in place, and counting those kept "awaiting the owner" up with nothing awaiting
-# him (6 lines, 0 open, 2026-09-26). grep -c exits 1 on a zero count, hence the `|| true`.
-ESC="$WORK/host-tools/escalations.md"
-if [ -s "$ESC" ]; then
-    open_esc=$(grep -E '^\s*[-*] ' "$ESC" | grep -v 'RESOLVED' || true)
-    ne=$(printf '%s' "$open_esc" | grep -c . || true)
-    el=$(printf '%s\n' "$open_esc" | tail -1 | sed 's/^[-*# ]*//' | cut -c1-160)
-    [ "${ne:-0}" -gt 0 ] && attn escalation "$ne escalation line(s) from host ops awaiting the owner; latest: $el"
-fi
+# The owner's open decisions (host-tools/escalations.md, one per line) are read by status_html.py's
+# gather() into "What needs a person", each line whole. This block used to count only lines starting
+# "- ", and the host writes them without a bullet: six open decisions read as zero at 16:24 PDT.
 if [ $have_gh = 1 ]; then
     # A red CI on master: the newest COMPLETED run of each workflow. Reading run
     # state costs no Actions minutes.
@@ -749,15 +448,32 @@ if [ $have_gh = 1 ]; then
     # The release gate. Blockers are open issues carrying the label; the gate's
     # text is the owner's (hostops-poll item 10) and overridable in limits.env.
     fact release_name "${STATUS_RELEASE_NAME:-0.5}"
-    fact release_gate "${STATUS_RELEASE_GATE:-Ghoulies median >= 25 gfps over a 240 s soak on the candidate APK, both handhelds}"
+    fact release_gate "${STATUS_RELEASE_GATE:-Ghoulies median >= 25 gfps over 90-240 s on the candidate APK, both handhelds}"
     rc=$(gh release list --repo "$GH_REPO" --limit 30 --json tagName --jq ".[] | .tagName | select(startswith(\"${STATUS_RELEASE_TAG:-v0.5}\"))" 2>/dev/null | head -1)
     fact release_candidate "${rc:-none cut yet}"
+    # Whether a gate soak ran the candidate is a ref comparison, so the page needs the tag's commit.
+    [ -n "$rc" ] && fact release_candidate_sha "$(gh api "repos/$GH_REPO/commits/$rc" --jq .sha 2>/dev/null)"
     BL="${STATUS_BLOCKER_LABEL:-release-blocker}"; fact blocker_label "$BL"
     if bl=$(gh issue list --repo "$GH_REPO" --state open --label "$BL" --limit 20 --json number,title --jq '.[] | "\(.number)\t\(.title)"' 2>/dev/null); then
         fact blockers_known 1
         printf '%s\n' "$bl" | while IFS=$'\t' read -r bn bt; do [ -n "$bn" ] && printf 'blocker\t%s\t%s\n' "$bn" "$(printf '%s' "$bt" | cut -c1-100)"; done
     fi
+    # The 0.5 panel's issues (#432): every open issue carrying the release's
+    # label, and the lane on it (its `lane:` label; cloud when claimed there).
+    if ri=$(gh issue list --repo "$GH_REPO" --state open --label "${STATUS_RELEASE_NAME:-0.5}" --limit 50 --json number,title,labels \
+            --jq '.[] | "\(.number)\t\([.labels[].name | select(startswith("lane:")) | .[5:]] + [.labels[].name | select(. == "claimed:cloud") | "cloud"] | join(",") | if . == "" then "no lane" else "lane." + . end)\t\(.title)"' 2>/dev/null); then
+        echo "r05issues_known"
+        printf '%s\n' "$ri" | while IFS=$'\t' read -r rn rl rt; do [ -n "$rn" ] && printf 'r05issue\t%s\t%s\t%s\n' "$rn" "$rl" "$(printf '%s' "$rt" | cut -c1-100)"; done
+    fi
 fi
+# The Ghoulies gate's measurement (#432), from the soaks that carry it. The
+# title counts are NOT facts here any more: they are computed on the page from
+# the 0.5 title table itself (status_html.py titles05), so a count can never
+# disagree with its rows, and there is no "of 145" -- 145 is the per-minor quota
+# from 0.6 on, not 0.5's target, which is release-0.5.toml's sentence.
+fact release_gate_min "${STATUS_RELEASE_GATE_MIN:-25}"
+timeout 60 python3 "$J/status_html.py" release05 --titles "${STATUS_TITLES_DIR:-$WORK/titles}" \
+    --results "$D/results" --xiso "${HAKUX_XISO_DIR:-/mnt/d/hakux-staging/xiso}"
 if [ $have_sd = 1 ]; then
     systemctl --user list-units 'hakux-*' --state=failed --no-legend --plain 2>/dev/null | awk '{print $1}' \
         | while read -r u; do [ -n "$u" ] && attn timer "$u has FAILED (systemctl --user status $u)"; done
@@ -769,7 +485,7 @@ if [ $have_sd = 1 ]; then
         | while read -r u; do
             [ -n "$u" ] || continue
             case "$(systemctl --user is-active "${u%.timer}.service" 2>/dev/null)" in active|activating|reloading) continue ;; esac
-            attn timer "$u is active but has no next run: it will never fire again"
+            attn timer "$u is active but has no next run: it will not fire again until someone restarts it"
         done
 fi
 } > "$FACTS" 2>/dev/null
@@ -918,7 +634,7 @@ echo
 echo "**Written $(say_time).** $summary."
 # The condition the owner kept finding by hand, lifted from the lane table
 # below (lanes_section writes it) to the first thing the page shows.
-[ -s "$S/idle-lanes" ] && { echo; echo "**Idle with no work:** $(cat "$S/idle-lanes") -- unit stopped, nothing on a device, PR draft or none. See the lane table in the comment."; }
+[ -s "$S/idle-lanes" ] && { echo; echo "**Stranded:** $(cat "$S/idle-lanes") -- no session, nothing on a device, not parked: nothing will wake it. See the lane table in the comment."; }
 echo
 echo "Next roll-up due by **$due** ($(( FLOOR / 60 ))-minute floor, plus one at the end of every job tick). If the clock above is older than that, \`status.sh\` itself has stopped -- the page cannot report its own silence, so judge it by this line."
 if [ "$lapse" -gt 0 ]; then
