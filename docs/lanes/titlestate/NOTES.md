@@ -610,6 +610,18 @@ and before the look-right step. 420 s covers the whole route.
 5. If the image has no save directory under `UDATA\4541005D`, record
    what the frames showed and do not record a save.
 
+### Coverage at 13:15 PDT
+
+`scratch/cover8.py` reads the title ID in every `routes/*.route` header and
+looks it up in both devices' registry JSON. Of 34 route files, 30 name a
+title ID. GoldenEye: Rogue Agent's two routes are the only ones whose title
+has neither a save nor a no-save record. `gta-sa.route` writes its ID
+without parentheses, and the registry has it (54540082, no-save).
+`forza414.route`, `generic.route` and `survey.route` name no title.
+
+**Waiting** (PR #501): request `1790539523-titlestate-1846315` on the Nova.
+The signal is its directory in `dispatch/results/` with a `DONE` file.
+
 - Do not pick a ref for a save run by habit: look in `dispatch/builds/` for
   an APK first. A docs-only fold has the emulator of the commit before it.
 - `flush` takes whole seconds only (a fractional timeout broke the
