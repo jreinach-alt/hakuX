@@ -555,6 +555,64 @@ When they land: `o4read.py --show` on each, judge every leg, read the shots
 for the scene, post on #474, #414 and #462, and mark the PR ready. The three
 are 19.5 min of device time with setup, under the pilot rule's 30.
 
+## Why the last session did not finish, and this one (resumed 2026-09-27 17:22Z)
+
+The last session ended on a wait, correctly: the three Nova requests above
+had been queued at 16:40Z, outside the session. At 17:23Z all three were
+still in the queue, seventh to ninth, behind tbflip424, retreason425's arms
+and forza414. The resume notice named #475, which had folded at 16:30Z; the
+live PR is #485. This session merged master (23 behind; no hw/ change) and
+built Addendum 3's instrument while the DOA runs wait.
+
+### 13. `[cblat]`: kick -> push-buffer callback, split by the PFIFO thread's waits
+
+The request (host delivery on #474, 17:22Z): retreason425 found AUF, Blinx and
+Blinx 2 idle until the PGRAPH ERROR interrupt that `NV097_NO_OPERATION` with a
+parameter raises. So their frame is set by how soon the puller dispatches that
+callback after the guest publishes it.
+
+`dad7864b73`, pfifo.c only, compiled only in Android perflog builds. It writes
+one `hakuX-perf cblat` line per 2 s window.
+
+- **Which kick.** A 128-entry ring of (DMA_PUT, time, split snapshot) is filled
+  at the vCPU's DMA_PUT store (the `fsk_note_submit` site). It is retired as
+  the pusher's DMA_GET walks past each put: a linear step retires the puts in
+  (before, after]; a jump, call or return retires only a put equal to its
+  target. Reaching DMA_PUT retires everything. At a callback's dispatch, the
+  oldest unretired entry is the submission that made the marker visible.
+- **The split.** This is cumulative time per category, kept by the PFIFO
+  thread. Every update and both snapshots are under `pfifo.lock`: the kick
+  holds it (user.c), and the thread holds it at each park and method boundary.
+  So a snapshot sees an in-progress category from its published start.
+  - Parks, by the reason at park time: `pflip` (waiting_for_flip), `pnop`
+    (waiting_for_nop, i.e. the previous callback unacknowledged), `pidle`.
+  - Method dispatches by class, each including its `pgraph.lock` wait:
+    `mflip`, `msema` (semaphore release), `mclear`, `mdraw` (SET_BEGIN_END),
+    `mother`.
+  - `rest` is the remainder.
+  - Nested and overlapping: `dl` is surf_working df_flush+df_read, i.e.
+    `download_surface_complete_deferred`: DOA's cdef and Forza's surfupd finish.
+    `fin` is phase finish_ns, which is every `pgraph_vk_finish`.
+  - The profile's per-flip reset happens inside FLIP_STALL, so that method's
+    nested time is dropped (`rst` counts it).
+  - A method in progress at the kick has its nested wait counted whole, so
+    `dl` and `fin` are each capped at the interval's method time.
+- **Non-overlapping.** A callback's split starts at the later of its kick and
+  the previous callback's dispatch (`shared` counts those), so the per-frame
+  sums cannot exceed the frame. `lat` is the full kick -> dispatch.
+- `dup` is read before the dispatch, because the NOP handler sets the ERROR bit
+  itself. It counts callbacks the Android handler drops.
+- **Checks.** `ndkcheck.py` passes on pfifo.c in both NV2A_PERF_LOG modes with
+  no warnings in the file; it now prints the file's warnings too. A `#error`
+  in the block fails perflog=1 and passes perflog=0. `check_android_guards.py`
+  is ok. `cblread.py --selftest` passes, and the reader parses a line generated
+  from the C format string itself.
+- **Not checked.** The desktop build (none on this host). Off Android, the
+  only added code is two locals and a flag the macros cast to void.
+- **Predictions:** `flip474-cblat-auf.json`, `flip474-cblat-blinx.json` (one
+  arm each; M1 ties the count to retreason425's ERROR interrupts per frame; M2
+  is the no-overlap check; S1 is labelled a guess).
+
 ## Do not repeat
 
 - Do not read "the same call site" as "the same fix". A completion with three
