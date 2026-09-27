@@ -213,7 +213,8 @@ struct OptBisectStats {
     int txr_sc;                 /* surface-range scans run */
     int txr_scdl;               /* surface downloads those scans started */
     int txr_s2tc;               /* surface-to-texture copies */
-    int txr_s2td;               /* surfaces bound directly as a texture */
+    int txr_s2td;               /* direct binds made: the view changed; a
+                                 * reused view is not counted */
 #endif
 };
 extern struct OptBisectStats g_opt_stats;

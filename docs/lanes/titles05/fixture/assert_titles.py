@@ -246,6 +246,14 @@ def c_fold():
     return int(m.group(1)) == inner == 2 and shown == 10, "%s folded (%d rows), %d shown" % (m.group(1), inner, shown)
 
 
+def c_nameless():
+    """a verdict with no name and no title_id joins its title's row by the ISO's title-ID prefix, and its passing confirmation makes that row Playable"""
+    rs = [(title_of(tds), status_of(tds)[0]) for _, tds in rows()]
+    phantom = [t for t, _ in rs if t != "Zz Nameless" and re.search(r"5A5A0009|Zz.Nameless", t)]
+    got = [w for t, w in rs if t == "Zz Nameless"]
+    return got == ["Playable"] and not phantom, "Zz Nameless rows %s; rows of its own: %s" % (got, phantom or "none")
+
+
 def c_order():
     """measured titles first, highest fps first; then red, green, orange, yellow, purple, blue, grey"""
     order = ["blocked", "Playable", "soak pending", "below 30", "inputs ready", "copied", "not copied"]
@@ -294,7 +302,7 @@ def c_watch():
 
 
 CHECKS = {"word": c_word, "counts": c_counts, "lines": c_lines, "nocut": c_nocut, "pipe": c_pipe, "target": c_target, "nodate": c_nodate,
-          "fold": c_fold, "order": c_order, "forecast": c_forecast, "flight": c_flight, "watch": c_watch}
+          "fold": c_fold, "nameless": c_nameless, "order": c_order, "forecast": c_forecast, "flight": c_flight, "watch": c_watch}
 
 if __name__ == "__main__":
     want = sys.argv[2:] or list(CHECKS)

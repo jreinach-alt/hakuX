@@ -560,6 +560,229 @@ Waiting (PR #466 comment 5855932850): dispatch request
 been seen: in Otogi (Restart Stage) and Midtown Madness 3 (the race) START
 opens a pause menu the moment control starts.
 
+## Attempt 5 (resumed 2026-09-27 06:09 PDT)
+
+Why attempt 4 did not finish: it did finish its batch, and it ended
+correctly on a `waiting:` for the Burnout soak (1-1790513065). The host
+resumed the lane once that soak was done. PR #466 was folded during this
+session, so batch 5 is on a new PR, #476.
+
+Burnout's result: 304 s of gameplay, fps window median 10.85 (min 7.68),
+7.0% at >= 30, no hang; target 30.
+
+### Session 19: HELD Nova, 06:09-06:27 PDT (18 min), battery 80% -> 75%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| 50 Cent: Bulletproof (56550042) | nova | `50cent.route` | yes (06:15) | the Intro level: an alley at night, two G-Unit allies, enemies behind an SUV; walks, turns, fires (15/20 -> 5/20) |
+| WWE Raw 2 (5451000D) | nova | `wwe-raw-2.route` | yes (06:25) | Quick Start singles match, The Rock (1P) vs The Undertaker (CPU); the clock runs, both health bars show |
+
+**50 Cent.** Logos (A) -> Title Screen, New Game (A) -> Thug (Normal)
+(A) -> "- Create New Profile -": X is Continue without saving, and it
+avoids the profile keyboard the old note warned about. The confirm's cursor
+is on No, so flick LY up once, then A -> the intro cutscene (A skips) -> the
+Intro level. Nav frames `~/hakux-work/nav/50cent.first-run-20260927T061007/`
+(009-pre -> 010-moved). Replay `scratch/replay/50cent-061258/zz-end.png`.
+
+**WWE Raw 2.** No profile step. START skips the intro FMV. At the title,
+START -> "Now checking free blocks." -> Main Menu on Quick Start (A) -> 1P
+vs CPU (A, A) -> default superstars (A, A) -> "start the next match?" (A)
+-> two entrances, each skipped with A -> the match. The nav mark was at
+00:14 on the match clock and the replay's at 00:41. Both are in the match,
+so the soak (560 s) scores about 276 s of it. Nav frames
+`~/hakux-work/nav/wwe-raw-2.first-run-20260927T061604/` (014-gameplay ->
+015-moved). Replay `scratch/replay/wwe-raw-2-062043/zz-end.png` (01:01).
+
+Benchmarks (Nova, 0.5 priority, ref 2ce8f4a985), judged with
+`scratch/judge.py` (apk 397ae7dca16a):
+
+| title | request | seconds | fps median / share >= 30 |
+|---|---|---|---|
+| 50 Cent: Bulletproof | 1-1790515600-titleroutes-1194351 | 440 | 309 s of gameplay; median 29.97 (min 19.07), 95.9% at >= 30; no hang; target 30 |
+| WWE Raw 2 | 1-1790515603-titleroutes-1194477 | 560 | 278 s of gameplay; median 59.94 (min 39.97), 100% at >= 30; no hang; target 30 |
+
+### Session 20: HELD Thor, 06:46-06:59 PDT (13 min; hold taken 06:27 while lane.local's Alien Hominid soak ran), battery 55% -> 54%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Battlefield 2: Modern Combat (45410062) | thor | `bf2mc.route` | yes (06:59) | mission 1, first person in a snowy square at night, "Fight Through To The Rendezvous"; walks, turns, fires (23 -> 15) |
+
+**BF2: MC.** Its ISO is on the Thor's INTERNAL storage
+(`/storage/emulated/0/ROMS/xbox/`), and so are Alias and Azurik. Launching
+the SD-card path opens the app's library instead. The campaign-name
+keyboard ignores the left stick and START; the hat moves it (HATX left
+from A wraps to BACKSPACE, then HATY down x2 reaches ENTER). "Do you want to
+save?" -> No keeps the disk unchanged. The mission load takes about 2
+minutes, and B on the first Help box turns help off. Nav frames
+`~/hakux-work/nav/bf2mc.first-run-20260927T064649/` (019-gameplay ->
+020-moved). Replay `scratch/replay/bf2mc-065258/zz-end.png`. Benchmark
+1-1790517591-titleroutes-1523259 (thor, 640 s, ref 3ea9cd9a34). The
+replay's mark came 375 s after launch, so the soak scores about 265 s.
+
+### Session 21: HELD Thor, 07:02-07:28 PDT (26 min; the hold was taken the moment lane.titlestate's hdd.img pull released it), battery 54% -> 48%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Azurik: Rise of Perathia (4D530007) | thor | `azurik.route` | yes (07:07) | the Arena after the "first challenge" box; Azurik runs out through the far arch |
+| Alias (41430016) | thor | `alias.route` | yes (07:14) | Operation Casino, Sydney on the casino floor; the replay walked her the length of the bar at 19 fps |
+| Dungeons & Dragons Heroes (49470013) | thor | draft only (`scratch/dnd-heroes.draft.route`) | two replays, both failed | ARADIN (Fighter) in the ruins after the dwarves' cutscene |
+
+**Azurik.** FMV (A) -> START -> Start New Game (A) -> A presses through the
+opening and the Arena tutorial box (A is jab in play). Nav frames
+`~/hakux-work/nav/azurik.first-run-20260927T070214/` (006-gameplay ->
+007-moved). Replay `scratch/replay/azurik-070456/zz-end.png`.
+
+**Alias.** Intro (A) -> NEW GAME (A) -> briefing (A) -> Operation Casino
+load -> door cutscene (A) -> the casino. Vaughn's radio box does not stop
+movement. The nav session ran at 5-7 fps (first run) and the replay at 19.
+Nav frames `~/hakux-work/nav/alias.first-run-20260927T070810/` (006-gameplay
+-> 008-walk). Replay `scratch/replay/alias-071116/zz-end.png`.
+
+**D&D Heroes (not done).** Three A presses 5 s apart go from the logos to
+the hero select without showing the menus. Fighter (A) -> name "ARADIN" (A)
+-> load -> a dwarves' cutscene that neither A nor START ends (~40 s). In the
+nav session one START landed in the cutscene. Replay 1 marked inside a
+slower cutscene (2 fps). Replay 2 (+60 s before the mark) was in play when
+that START landed, so it opened Game Options, and the play pattern's A then
+picked Save Game. Next time: drop the START press, wait out the cutscene,
+and replay again. Frames `scratch/replay/dnd-heroes-071819/` and
+`scratch/replay/dnd-heroes-072237/`.
+
+Benchmarks (thor, ref c6e2be0936): Azurik 1-1790519286-titleroutes-2112912
+(440 s), Alias 1-1790519290-titleroutes-2113140 (450 s).
+
+### State at the end of attempt 5 (07:35 PDT)
+
+Five titles routed and replayed in this attempt: 50 Cent, WWE Raw 2
+(Nova, both measured), BF2: MC, Azurik and Alias (Thor, soaks queued). PR
+#476 is ready; preflight passed at 07:33. Both devices are at rest with no
+hold of mine.
+
+Waiting on the three Thor soaks: 1-1790517591-titleroutes-1523259 (BF2),
+1-1790519286-titleroutes-2112912 (Azurik) and
+1-1790519290-titleroutes-2113140 (Alias). About 75 min of other Thor work is
+queued ahead of or alongside them (lane.local's 1500 s soak, flip474,
+tbflip424). Next session: judge them (`scratch/judge.py <id>`), add the rows
+to the #397 table, then:
+- Thor: finish D&D Heroes (see session 21), then the Japanese-only titles,
+  All-Star Baseball 2003/2004/2005, AMF Bowling 2004, AMF Xtreme Bowling,
+  AFL Live and American Chopper 2, then the older open list (SMT Nine,
+  Capcom Classics 2, Castlevania: CoD, THPS2x, Panzer Dragoon Orta,
+  Psychonauts, MechAssault, DOA3, RalliSport 2, Amped 2, Phantom Dust,
+  ToeJam & Earl III, Spikeout, Ninja Gaiden, Deathrow, Tork, Tron 2.0).
+- Nova-only titles still without a route (work-list rows 11, 13, 15,
+  20-24, 27, 28, 32, 33, 39, 41, 45): Burnout Revenge, Midnight Club 3,
+  187: Ride or Die, Crash: Wrath of Cortex, Black Stone, Star Wars Ep. III,
+  Bloody Roar: Extreme, Gunvalkyrie, Dino Crisis 3, Buffy, Fuzion Frenzy,
+  Halo, Conker, Halo 2, Ninja Gaiden Black. Each needs a held Nova session
+  in a gap in the #462 work (Addendum 3: the Nova is #462's first).
+- Check a new title's ISO path first. Titles lane.xbox pushed after 09-26
+  sit on the Thor's internal storage (`/storage/emulated/0/ROMS/xbox/`).
+
+### Attempt 6, 2026-09-27 10:00-10:40 PDT (offline: no device free)
+
+**Why attempt 5 did not finish.** It did not fail. It ended on a `waiting:`
+for three Thor soaks, as the lane rules require, and PR #476 folded.
+Hostops resumed this attempt once the soaks were done. No held session was
+possible. The Thor was at 9% under the `battery-hostops` hold, which lifts
+at 80%, and the Nova is reserved for #462 today.
+
+Readings (Thor, apk 17eff0363df9, `scratch/judge.py` on a copy of each
+result dir):
+
+| title | request | fps median (min) / share >= 30 | gameplay | route-frames at the mark |
+|---|---|---|---|---|
+| Battlefield 2: MC | 1-1790517591-titleroutes-1523259 | 19.14 (3.64) / 0% | 270 s; ten 12.7-16.5 s hangs | `081338-gameplay.png`: mission 1, first person in the snowy square, overlay FPS 10 |
+| Azurik | 1-1790519287-titleroutes-2112912r | **void** (29.97 flat) | 285 s of the attract demo | `092535-gameplay.png`: "Press START to play. Press X for Game Demos" |
+| Alias | 1-1790519290-titleroutes-2113140 | 20.80 (19.69) / 0% | 305 s; no hang | `093303-gameplay.png`: Sydney on the casino floor, overlay FPS 19 |
+
+**Azurik's soak never left the title.** The boot was cold, and at `a2` the
+Adrenium logo was still up at 8 fps. In the warm nav session the title was
+already showing by then. The route's one START went to the intro, and every
+later frame is the attract demo, which runs at a flat 29.97. The route now
+presses A once more and START twice, with 20 s more slack. The title shows
+"Press START to play" over the demo, so a late START still works. Two more A
+presses come before the mark. It has not replayed yet. Its soak is the
+replay: 1-1790527983-titleroutes-2100312 (480 s, ref 0dadfc79c5).
+
+**D&D Heroes** is now `routes/dnd-heroes.route` with a targets.toml entry.
+The START is gone, it waits 150 s after `skip` for the cutscene (cold runs
+play it at 2 fps), and the play pattern presses A only, because X opens the
+skill list. It has not replayed yet either. Its soak is
+1-1790527983-titleroutes-2100395 (580 s, ref 0dadfc79c5). If the frames at
+the mark are not the ruins, the reading is void and the route goes back to a
+held session.
+
+I did not draft the next Thor titles. A route without a nav session is a
+guess, and a guess costs a soak slot.
+
+**Do not repeat:** a route made in a warm nav session can miss its presses
+on a cold boot. The nav session is warm (its shaders are cached), and a soak
+may not be. Before trusting a reading, open the route-frame at the mark. A
+flat 29.97 with min = median is what an attract demo looks like.
+
+### Attempt 7, 2026-09-27 12:20-12:50 PDT (offline: both soaks void, no Thor input until a focus guard is live)
+
+**Why attempt 6 did not finish.** It did not fail. It ended on a `waiting:`
+for the Azurik and D&D Heroes soaks, and PR #487 folded. This attempt was
+resumed when both were DONE.
+
+Both readings are void, and neither says anything about its route.
+
+| title | request | verdict's number | what the run was | evidence |
+|---|---|---|---|---|
+| Azurik | 1-1790527983-titleroutes-2100312 (thor, 11:05-11:13 PDT, apk 6ed0b8d20937) | 28.32 median (min 20.42), 43.1% at >= 30, 288.7 s after the mark: **void** | display 0 covered by the AYN dual-screen assistant's overlay; hakuX without input focus | 7 of 7 route frames are 10,899 B, a 1920x1080 all-black PNG with no FPS overlay |
+| D&D Heroes | 0-0-x-1790527983-titleroutes-2100395 (thor, 12:11-12:21 PDT, apk 6ed0b8d20937) | no mark, 0 s of gameplay: **void** | hakuX rendered on display 0, but no press reached it; devwatch stopped the route at 12:14:30, 187 s in, because Lime3DS was the app in front | `121221-a3.png`: main menu. `121257-name.png`, `121324-load.png`, `121347-skip.png`: the attract demo (heroes with keys and potions already collected) |
+
+What happened on the Thor (hostops-inbox.md, 11:50 to 12:14 PDT; #397
+deliveries at 11:53 and 12:12):
+- The Thor came back from a USB drop at about 11:05 with the launcher in
+  front. Azurik's soak launched hakuX, but gamepad events go to the focused
+  window. The route's first A came at 11:05:53 and Lime3DS started at
+  11:06:02. The presses most likely opened it from the launcher. Route input
+  also changed `dual_screen_display_mode` to 2, and the assistant's overlay
+  then covered display 0 until hostops set the mode back at 12:10.
+- D&D Heroes ran after that fix. Its frames are real, so the display was
+  clear. Its input still went elsewhere. The logcat's frame rate alternates
+  between 59-60 (menu, about 40 s) and 28-31 (demo, about 80 s) for the
+  whole 580 s, in step, including across the route's presses at 12:12:31,
+  12:12:50, 12:13:34 and 12:13:40. An A that reached the game would have
+  left the demo or chosen NEW GAME. lane.gta482 read the focus on display
+  1's launcher at 12:10 (SecondaryDisplayLauncher), which fits.
+- So the display-covered check (PR #495) would have refused the Azurik run
+  and would NOT have refused the D&D Heroes run. That one needs the focus
+  check (hostops 12:07, item 2: abort the route when hakuX is not in front).
+
+Azurik's number looks like play, and that is the trap. It is not flat like
+the attract demo (16 to 30 after 11:09). I still cannot say what was on the
+screen, and the presses went to another app, so it is not a reading.
+
+**I queued nothing on the Thor in this attempt.** A route soak presses
+buttons into whatever holds the focus. Twice today that was the owner's own
+apps, and devwatch needs 90 s to notice, which is three to five presses.
+Azurik and D&D Heroes go back in the queue when a soak refuses to press
+without the focus (the signal is in the `waiting:` comment on the PR). The
+Nova is reserved for the fps-focus work today, so no held Nova session
+either. Every title left on the work list is behind one of those two.
+
+Offline work done: the two route headers say what the void soaks showed;
+`python3 scratch/chk431.py` confirms all 35 of #431's targets are in
+targets.toml with the same `target_fps` (61 titles, 27 with a route).
+
+Board request (dispatch/board-requests/titleroutes.md, 12:40 PDT): the D&D
+Heroes run as the case the display-covered check misses.
+
+**Waiting (PR #497, 12:50 PDT).** Nothing of mine is queued or running.
+The signal is outside this lane: issue #494 (lane.displayguard; PR #495 is
+its display-covered half) landing a check that hakuX holds the input focus
+before a route presses, live on the Thor's dispatcher, and hostops saying
+so on #397. Then: re-queue Azurik (480 s) and D&D Heroes (580 s) with
+`scratch/bench.sh`, open the frame at the mark before reading either
+number, and go on down the Thor list in a held session (the Japanese-only
+titles, All-Star Baseball 2003/2004/2005, AMF Bowling 2004, AMF Xtreme
+Bowling, AFL Live, American Chopper 2, then the older open list).
+#397 comment for this batch: 5859098639.
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
@@ -622,3 +845,11 @@ copy of the result dir (`scratch/judge.py`), apk 397ae7dca16a.
   both ways.
 - Do not assume a force-stop loses a save: PGR's driver, saved through the
   game's own save screen, was on the disk at the next launch.
+- Do not read a soak's fps before its frames AND its input. Black frames
+  (10,899 B each) mean a covered display. Real frames with a menu/demo
+  rhythm in the logcat's `gfps` (D&D Heroes: 40 s at 60, 80 s at 30,
+  repeating) mean no press reached the game. `scratch/timeline.py <dir>`
+  prints that rhythm.
+- Do not queue a route soak on a device that has just reconnected or
+  rebooted until something has checked that hakuX holds the input focus. The
+  presses go to the focused window, whoever owns it.

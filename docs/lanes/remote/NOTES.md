@@ -2597,3 +2597,187 @@ built:
   `bov` or `srf` large means M3.
 - **Blinx's upload:** a decode path (`s3tc`, `pal`, `cvt`) large means the
   decode; `new` large with images made and pool misses means cache churn.
+
+## #461, second: the soaks, and the memo fix (2026-09-27)
+
+### The soaks: R5 passed on all four counts
+
+The host ran both soaks at #473's head (47a3ce8e85, apk 8841eaf0a665) on the
+Thor: perflog, 240 s, read from 90 to 240 s. I1 to I4 held on all 172 groups.
+- **Blinx:** 5853163772, 84 groups, no route.
+- **Crimson Skies:** 5853252841, 88 groups, on the `crimson-skies` route, gfps
+  median 26.
+
+R5 was registered at 03:27:42Z, before the count existed, so it is a clean
+registration.
+
+| | bar | read | |
+|---|---|---|---|
+| **R5.1:** Crimson's found-binding hashes that compare equal | 90% or more | 99.7% by count, 99.9% by KiB | PASS |
+| **R5.2:** the memo's share of Crimson's hashed KiB | 50% or more | 69.1% (`mk` 29.8%, `bit` 1.1%) | PASS |
+| **R5.3:** Blinx's uploaded KiB that goes through a CPU decode | 50% or more | 100.0% (`cvt` 99.9%) | PASS |
+| **R5.4:** Crimson's downloads plus new images, per `create_texture()` call | under 0.1 | 0.000 | PASS |
+
+**Crimson, per frame.** It made 338 `create_texture()` calls and 262 content
+hashes, 59,399 KiB in all. It uploaded 0.94 textures. 91.4% of the hashes
+repeated a hash already taken on the same node in the same flip. Binds cost
+8.78 ms of the PFIFO thread's 23.29 ms busy time, and the hash (`TxH`) is 6.71
+ms of that.
+
+**Blinx is parked.** Its binds cost 0.55 ms/frame on this run (71% upload),
+against 3.76 ms in #449's. Neither run followed a route, so the 90 to 240 s
+window covered a different part of the game each time. Of what it did
+upload, 99.9% of the KiB went through a CPU conversion (`cvt`). That is the
+fix to price once the title has a gameplay route; it is recorded here for
+lane.local.
+
+### The fix: retire the memo once a hash has used it (M1)
+
+**The route.** A bind that finds a texture's pages dirty stamps the node's memo
+"dirty in this flip", and the content hash follows in the same call. Nothing
+cleared that stamp afterwards. So every later bind of the node in the flip took
+the memo's word and hashed the texture again, without asking the bitmap. That
+is what `memo` and `rep` counted on Crimson.
+
+**The change**, in `create_texture()` (`vk/texture.c`). Once a hash has
+settled the node's verdict, the memo is set to the previous flip, meaning "no
+verdict yet this flip":
+- on the found path, after the compare and any upload, when a hash ran;
+- on the miss path, for a node that was hashed (not a surface-to-texture bind).
+
+A later bind in the same flip then tests the bitmap, as the first bind of a
+flip always does. If nothing wrote the pages since, the bitmap reads clean and
+nothing is hashed. That verdict also re-arms the bind loop's fast path, which
+needs a clean memo.
+
+**Why nothing is missed.** Only `check_texture_dirty()` consumes the
+texture-dirty bits (`DIRTY_MEMORY_NV2A_TEX`):
+- `vk/draw.c`'s reader is compiled only with `HAKUX_VRAM_RACE_PROBE`, which is
+  off.
+- The generic clear in `system/physmem.c` runs only on a RAM resize, which then
+  marks everything dirty.
+
+`check_texture_dirty()` marks every cached binding over the range it tests.
+So a write after the hash is either still in the bitmap, or it has already
+marked this node, and that mark forces the next hash. The super-fast path's
+memo read in `vk/draw.c` only touches bindings still marked possibly dirty,
+and a hash clears that mark.
+
+**Registered as F461** at 06:15:46Z on #461 (5853293806), before any code:
+- **F1:** Crimson B: `memo` under 5% of hashed KiB (high).
+- **F2:** Crimson B: `TxH` at most 0.5 times A's (moderate-low).
+- **F3:** Crimson B: hashed KiB per frame at most 0.5 times A's (moderate-low).
+- **F4:** Crimson B: gfps median at least A's minus 1 (high). A gain is not
+  predicted: PFIFO has 11.6 ms/frame idle, so a saving on the render thread
+  may not reach the frame rate.
+- **Correctness:** every capture of the 21 texture suites is bit-identical, A
+  against B, on desktop Vulkan (high).
+- **KILL:** `TxH`(B) above 0.8 times A's refutes M1 as the lever. The memo was
+  then covering real rewrites (M2), and the next step is page attribution of
+  the bitmap hits.
+
+### Desktop: the correctness leg FAILED, on one capture that flickers
+
+A is master 55a82867 and B is the fix. Both ran on desktop Vulkan
+(lavapipe), one run each, over every texture disc: the 21 registered suites,
+plus Texgen, Texgen with texture matrix and Volume texture as extras. Every
+run exited 0 with its captures, and the captures were compared byte for byte.
+
+- **20 of the 21 registered suites are bit-identical on every capture**:
+  560 of the 561 captures in all. So are the three extras (94 captures).
+  The identical suites include Texture CPU Update, Texture cubemap (73),
+  Texture 3D as 2D, Texture border (19) and Texture shadow comparator (289).
+- **Texture signed component tests: 19 of 20.**
+  `txt_A8R8G8B8_ADD` differs in 76,740 pixels. **The prediction said every
+  capture, so this FAILS as registered.**
+
+**Why it differed**, measured after the FAIL. The capture is
+nondeterministic on both binaries: four more runs of each on that disc gave
+
+| | runs | distinct images | vs the hardware golden (px) |
+|---|---:|---:|---|
+| A (master) | 5 | 5 | 153,420 to 168,960 |
+| B (the fix) | 5 | 4 | 131,616 to 168,960 |
+
+- Run 2 of A and run 2 of B produced the same image.
+- The other 19 captures on the disc were identical in all ten runs.
+- The goldens are `abaire/nxdk_pgraph_tests_golden_results` at 053605a.
+- Earlier runs on this container show the same thing. C61 and C61b have the
+  same `hw/` and differ only by an exit print, yet they gave different images
+  of this capture.
+
+So a one-run A/B cannot see the fix on this capture either way. The FAIL
+stands as recorded. The device arm registers three runs per arm, so this
+capture's band is measured there rather than assumed.
+
+The capture is not on `ab_compare.py`'s KNOWN_UNSTABLE list. Whether it
+flickers on the handhelds too is for the arm to show; on desktop, it does.
+
+### C62: the memo goes to zero, and nothing else moves
+
+This is the count control, registered at 06:33:19Z before either binary
+existed. It is the C61b instrument (never committed) on master (C62A) and on
+the fix (C62B), over C61b's seven discs. All 14 runs exited 0 with their
+captures.
+
+- **C62.1 PASS:** B's `memo` is 0 in every group on all seven discs.
+- **C62.2 PASS:** A's `memo` is 5 (1,280 KiB) on the signed-component disc,
+  as C61b read. This is the positive control: the instrument sees the memo
+  there on master.
+- **C62.3 PASS:** B hashes no more than A on every disc. Six discs are
+  equal, and signed component is 77 against 82.
+- **C62.4 PASS:** I1 to I4 hold on every group of both binaries.
+
+On the signed-component disc, A to B: `memo` 5 to 0, `eq` 13 to 8, `rep` 31
+to 26. Every other count is equal (`new` 35, `mk` 41, `bit` 1). So the five
+hashes the fix removed were exactly the memo's forced repeats, and all five
+had compared equal.
+
+### The LOWs from #473's audit
+
+- **LOW-1: `s2td` says what it counts.** It counts direct binds made, where
+  the view changed. A bind that reuses the view already bound goes through one
+  assignment and is not counted, so `s2td` near 0 does not mean a title rarely
+  samples a surface. The wording is fixed in `renderer.h`, `vk/draw.c`'s
+  comment and the reader's label. No count changed.
+- **LOW-2 and LOW-3: the reader's stamps.** Logcat stamps carry no year.
+  - **Before:** the reader parsed them in 1900. So 29 February did not parse
+    (LOW-3), and a window across New Year dropped every line after midnight
+    (LOW-2).
+  - **The fix I described on #473 was wrong in one case.** It said to parse
+    in a leap year. Then a common year's 28 February to 1 March reads as two
+    days, and a window across that midnight drops its lines. It does so
+    silently, which is worse than the crash it replaces.
+  - **What landed:** stamps are read in a leap year only when a 29 February
+    stamp is in the input, and in a common year otherwise. A stamp more than
+    half a year from the window's first line is read in the neighbouring
+    year.
+  - **The positive control.** The new selftest cases were run against the
+    old reader and a fixed-leap-year variant: each fails its case, and the
+    new reader passes all three.
+
+| window across midnight | old reader (1900) | fixed leap year | as landed |
+|---|---|---|---|
+| 29 February to 1 March, leap year | crashes | right | right |
+| 28 February to 1 March, common year | right | drops the group | right |
+| 31 December to 1 January | drops the group | right | right |
+
+### What the device A/B decides
+
+Both arms are on file: `remote-461-memo-texture.json` and
+`remote-461-memo-perf-crimson.json`. They name A = f131dd11 and B = 8f9c74f0,
+the fix. f131dd11 was master when the PR opened; it moved docs-only from the
+desktop legs' 55a82867, so A is the same code.
+- **The correctness arm:** the 21 suites on the handhelds, three runs per
+  arm, judged by `ab_compare.py`. The arms job queues it.
+- **The Crimson A/B:** the Thor, both arms perflog, on the `crimson-skies`
+  route, 240 s. Hostops queues it by hand, as with every soak.
+
+It is scored against F1 to F4 and the kill, using A's own run for every
+ratio:
+- **F1:** `memo` under 5%.
+- **F2 and F3:** `TxH` and hashed KiB each at most half of A's.
+- **F4:** gfps no lower than A's minus 1.
+- **The kill:** `TxH` above 0.8 times A's means the memo was covering real
+  rewrites. The next step would then be page attribution of the bitmap hits
+  (M2), not a re-reading of this run.

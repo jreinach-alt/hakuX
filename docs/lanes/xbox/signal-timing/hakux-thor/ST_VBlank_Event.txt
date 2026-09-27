@@ -1,0 +1,5 @@
+# hakuX #462 signal timing: ST_VBlank_Event
+freq_hz 3375000
+skipped: ST_VBlank_Spin did not see 301 vblanks without a timeout
+# raw, counter ticks unless named
+
