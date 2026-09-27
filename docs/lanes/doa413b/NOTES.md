@@ -171,3 +171,66 @@ section says: fight-window median gfps and `[surf413] cdef`, `[lazy413] enabled=
 default off and name the next lever on #413: the GPU's own 40-48 ms.
 
 Merged origin/master at 2026-09-26 (#396 had folded), so the blinx372d files left this PR's diff.
+
+## Why attempt 4 did not finish
+
+Attempt 4 re-queued the soak pair on the Nova, posted a `waiting:` comment naming it, and ended.
+That was correct. While it waited, the arms job judged the first arm FAIL on the known-noise row
+(`Blend_surface/R5G6B5_Add_SrcA_DstA`, see above) and labelled the PR `regressed`. The soak pair
+finished at 20:12 and 20:20 PDT, and `handback.sh` resumed the lane as attempt 5.
+
+## A/B soak pair: the cut is refuted (Nova, 7f01f7f157, survey route, 300 s)
+
+Read with `docs/lanes/doa413b/ab_read.py <result dir>`. It computes fps as 60 / (the gap between
+`[surf413]` lines). The fight window is the lines with 6 active surfaces and under 25 fps.
+
+| arm | request | env | `[lazy413]` at end | fight lines | median fps (min-max) | median `cdef` ms/frame | median frame ms |
+|---|---|---|---|---|---|---|---|
+| A | `1790473771-doa413b-1386898` | `XEMU_SURF_LAZY_COMPLETE=0` | enabled=0 skips=0 | 46 | **14.9** (4.3-24.4) | 48.4 | 67.1 |
+| B | `1790473773-doa413b-1387399` | `=1` | enabled=1 skips=503 reads=0 | 48 | **13.6** (9.6-24.7) | 52.2 | 73.4 |
+| pilot | `1790456253-doa413b-520408` | (no lazy code) | | 41 | 12.6 (4.2-23.7) | 54.7 | 79.3 |
+
+B does not beat A. The cause is in B's per-line `lazy` column: all 503 skips fall in a 3-surface
+interlude at 20:16:54-20:17:11. There B ran 36-50 fps with `cdef` 0.02 ms, so the path works
+where it fires. On every 6-surface fight line `lazy` is 0. So `deferred_downloads_submitted()` is
+false at every `surface_update` in the fight, and each one completes the batch as before. The
+cut does not reach the wait it was built for. The 1.3 fps gap between A and B is inside the
+spread of single runs (the pilot, with no lazy code, read 12.6), so it is not a regression either.
+
+**Default is now OFF** (6cd9507d07): `XEMU_SURF_LAZY_COMPLETE=1` opts in.
+
+## The next lever on #413 (not taken here)
+
+The price stands: in the fight, `Surf` is `cdef`, about 48-55 ms/frame, and `fin` is 0. The probe
+cannot tell which of `complete_deferred`'s three branches waits in the fight. Two things fit
+`deferred_downloads_submitted()` being false while `cdef` is long:
+
+1. `display_predownload_pending` with `frame_submitted[fi]` false when checked, then true by
+   the time `complete_deferred` checks it. That flag is set by the submit worker after
+   `vkQueueSubmit` returns, and with the GPU 40-48 ms behind, that submit can block.
+2. `deferred_downloads_frame == -1`, a batch recorded into the current command buffer (`dn` is
+   ~130 download records per frame in the fight), which goes to `pgraph_vk_finish(SURFACE_DOWN)`.
+   `fin`=0 argues against this, unless `fin` misses that caller.
+
+The next lane should count the three branches per 60 frames (display/submitted, coalesced,
+finish) and log `frame_submitted[fi]` at the skip check. Then it can decide between (a) a
+predicate that treats "enqueued to the submit worker" as submitted, and (b) not recording the
+~130 downloads per frame at all. Also, the GPU in this fight is 40-48 ms/frame, so even a full
+overlap caps it at about 21-25 fps, not 30.
+
+## Must-not-move arm, re-registered for the default-off build
+
+`docs/testing/predictions/doa413b-defoff-mnm.json`: a_ref a593d8eb85 (master, after the last
+merge), b_ref 6cd9507d07. The eight suites of the first arm (`--disc-from` its base request) are
+guarded, except `Blend_surface/R5G6B5_Add_SrcA_DstA`. Globs have no exclusion, so the other 31
+Blend_surface keys are listed one by one (`register_defoff.py`). A dry judge of a ref-swapped copy
+against the first arm's result dirs: `PASS -- all 205 registered checks hold`, so every guard
+matches a capture. The arms job runs it from this push. It supersedes the FAIL on the first
+file (same issue, newer registration).
+
+## Do not repeat
+
+- Soaks of DOA2U go to the Nova. The Thor has no DOA2U (attempt 3's pair errored at once).
+- `LOGCAT_SPEC_OVERRIDE` is the dispatcher's environment, not a request field. Print under `hakuX`.
+- Do not "fix" `cdef` by skipping the completion without first logging which branch waits.
+  This lane's predicate was false for the whole fight.
