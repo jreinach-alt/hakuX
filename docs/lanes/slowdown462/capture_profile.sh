@@ -31,7 +31,10 @@ case $DEV in nova) S=ee317437 MIN_BATT=${MIN_BATT:-20} ;; thor) S=bdc158a5 MIN_B
 PKG=com.jreinach.hakux.debug
 D=/home/justin/hakux-work/dispatch
 OUT=/home/justin/hakux-work/perf/2026-09-26-slowdown462/$SHORT
-APK=$D/builds/a593d8eb85.apk
+# APK_REF: another build in dispatch/builds (#474's PFIFO profiles, 09-27 13:18
+# PDT: 76cba82fd2-perflog, the APK of lane.flip474's [cblat] runs)
+APK_REF=${APK_REF:-a593d8eb85}
+APK=$D/builds/$APK_REF.apk
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../testing" && pwd)"
 HOLDSH="$HERE/jobs/hold.sh"
 TAG=lane.slowdown462
@@ -51,7 +54,7 @@ running_dev() { grep -lx $DEV "$D"/running/*.owner 2>/dev/null; }
 # request finishes untouched (nothing below touches the device until running/
 # is empty of the Nova), and the session then has the gap.
 bash "$HOLDSH" wait $DEV $TAG "${HOLD_WAIT_S:-3600}" \
-    "lane.slowdown462 #462: held $DEV session, 1 x 30 s simpleperf of $SHORT (apk a593d8eb85), <10 min of device time; waits for the running request first; capture_profile.sh releases on every exit" \
+    "lane.slowdown462 #462: held $DEV session, 1 x 30 s simpleperf of $SHORT (apk $APK_REF), <10 min of device time; waits for the running request first; capture_profile.sh releases on every exit" \
     || { say "could not take hold/$DEV: $(bash "$HOLDSH" who $DEV)"; exit 3; }
 say "hold taken"
 
