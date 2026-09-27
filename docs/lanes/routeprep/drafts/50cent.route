@@ -1,0 +1,71 @@
+# 50 Cent: Bulletproof (56550042), Nova. DRAFT by lane.routeprep, 2026-09-26,
+# not played. One file for both variants: the route never writes a profile
+# (see "Continue without saving" below), so a first run and a later run see
+# the same screens.
+#
+# Evidence: pass 1 (0-0-y-1790433159-titleplay-p1-50cent, Nova), frames in
+# its route-frames/:
+#   073540 intro FMV at 60 s; START -> 073546 title art (START skipped the FMV)
+#   073552 "Title Screen" menu: New Game (highlighted) / Load Game / Options
+#   073603 "Choose Difficulty", cursor on Thug (Normal)
+#   073618 "- Create New Profile -" list, with the button bar
+#          "X Continue without saving" and "A Create Profile"
+#   073629.. A on it opens the keyboard; pass 1's A then typed "a" forever.
+#
+# The profile keyboard is not needed at all: X on the Create New Profile list
+# is "Continue without saving". Nothing past that screen has been seen.
+#
+# Confidence per step: [seen] = the screen is in a pass-1 frame;
+# [inferred] = follows from the frames; [guess] = not on disk.
+wait 55
+shot boot55
+wait 5
+mark booted
+press START                 # [seen 073540->073546] skips the intro FMV
+wait 6
+shot title
+press START                 # [inferred] pass 1 used A here; START is the title's own prompt
+wait 6
+shot title-menu             # expect: New Game highlighted [seen 073552]
+press A                     # [seen 073552->073603] New Game
+wait 6
+shot difficulty             # expect: Thug (Normal) highlighted [seen 073603]
+press A                     # [seen 073603->073618] Thug
+wait 8
+shot create-profile         # expect: "- Create New Profile -" [seen 073618]
+press X                     # [seen: button bar] Continue without saving
+wait 5
+shot no-save                # OPEN: a "continue without saving? YES/NO" confirm may show here
+press A                     # [guess] confirm; if there was no dialog this lands on the next screen
+wait 8
+shot after-confirm
+mark profile-skipped
+# [guess] from here: the opening cutscene. START/A are tried to skip it; the
+# first mission's control is not seen, so this part surveys and the mark is
+# a placeholder to move to where the frames show control.
+repeat 8 {
+    press A
+    wait 8
+    shot story
+}
+mark gameplay               # [guess] placeholder: move to the first frame with a HUD and 50 under control
+repeat forever {
+    axis LY min
+    wait 1.5
+    axis LY mid
+    axis RX max
+    wait 0.5
+    axis RX mid
+    axis RT max
+    wait 0.3
+    axis RT min
+    axis LY min
+    wait 1.5
+    axis LY mid
+    axis RX min
+    wait 0.5
+    axis RX mid
+    axis RT max
+    wait 0.3
+    axis RT min
+}
