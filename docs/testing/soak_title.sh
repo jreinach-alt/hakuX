@@ -277,7 +277,9 @@ if [ -n "$CAPTURE_LOG" ]; then
     LOGCAT_PID=$!
 fi
 
-a shell "am start -a android.intent.action.VIEW -n $ACT --es rom_path '$ISO'" >/dev/null 2>&1
+# Quoted for the device's sh by devices.sh: a bare '...' broke on a title
+# with an apostrophe ("Tom Clancy's ...").
+a shell "am start -a android.intent.action.VIEW -n $ACT --es rom_path $(_dev_sq "$ISO")" >/dev/null 2>&1
 # In logcat, not only here: the verdict works in device time, and this line
 # and the `soak end` below bound the run in that clock.
 a shell log -t hakuX-route "'soak start'" >/dev/null 2>&1

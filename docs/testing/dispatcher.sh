@@ -749,9 +749,10 @@ serve_one() {
     # it -- and no human has to hold the handheld.
     if [ -n "$title" ]; then
         log "  soak: $title for ${seconds}s"
-        local tpath="$DEVICE_ISO_ROOT/$title"
-        if ! adb_call "$ADB_QUICK_TIMEOUT" "title check" shell "[ -f '$tpath' ] && echo yes" 2>/dev/null | tr -d '\r' | grep -q yes; then
-            adb_error "title not on device: $tpath" > "$rdir/ERROR"
+        # Under the first of the device's roots that has it (devices.sh).
+        local tpath
+        if ! tpath=$(device_title_path "$title"); then
+            adb_error "$(device_title_miss "$title")" > "$rdir/ERROR"
             log "  TITLE NOT FOUND"; mv "$req" "$rdir/request.json"; return 0
         fi
         touch "$LEASE"
