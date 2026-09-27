@@ -65,13 +65,46 @@
 - The Thor read hot (cpu-1-9 95 C, xo-therm 77.2 C) with nothing in running/.
   titleroutes' nav.py session was active on it.
 
-### Nova ee317437
+### Nova ee317437, 2026-09-27 15:03 PDT, idle (nothing in running/ for it)
 
-(pending: the Nova was running notify488's arm, then held for the host update)
+The bindings match the Thor's. `thermal-pause-F8` (cooling_device9 on
+the Nova) is bound to xo-therm trip 2 at **78.0 C, hyst 8 C**, to
+pm8550vs_c_tz at 95 C, and to socd at 99. Trip 3 at 80 C hotplugs cpu3-7. The
+per-cluster pause devices trip at 108 C (big cores) and 110 C (cpu-0-1 and
+cpu-0-2). Idle readings: xo-therm 41.3 C, hottest zone 46 C.
 
-## Pilot soak
+- **socd read 76 on the Nova (battery 24%) against 18 on the Thor (82%).** Its
+  trip is 99, and it drives the same `thermal-pause-F8` and kgsl devfreq. If
+  socd tracks battery drain, a low-battery Nova may pause without being hot.
+  Unverified. thermal.jsonl records socd in every sample, so the first Nova run
+  that pauses with a cool xo-therm will answer it.
 
-(pending)
+## Pilot soak: blocked, and it cannot exercise this PR before the fold
+
+- Dispatcher workers run `soak_title.sh` from the main tree at master
+  (`TREE=/home/justin/hakuX`, snapshot to `$SNAP`), not from a request's ref.
+  The soak-side wiring can only run on a device after #508 folds and the
+  dispatcher's update window re-snapshots. The selftest's soak leg (fake adb)
+  covers it until then.
+- To test the instrument on real data before that, two Thor soaks were queued
+  (GTA SA, gta-sa route, 600 s, MAX, battery 82%). A host-side loop ran
+  `thermal_state.py` every 30 s beside them (`.scratch/pilot_sampler.py`, not
+  committed).
+  **Both aborted at ~45 s on #495's foreground guard**:
+  `0-0-x-1790542932-thermal507-3310387` and `0-0-x-1790545608-thermal507-66494`.
+  Each logged `not-foreground: com.magneticchen.daijishou (... display 0 ...)`
+  with hakuX running (perf lines, audio). They were the first two Thor soaks
+  since the guard went live (~14:34 PDT), and so far every Thor route soak
+  aborts this way. Reported on #495 (comments 5860115223, 5860169304). Their
+  thermal samples (3 per run) were all clean and prove nothing about the pause.
+- The request id gains a `0-0-x-` prefix when promoted. A watcher keyed on the
+  queued id never sees it run: glob `running/*<id>.req`.
+- **Pilot to run after the fold:** one Thor GTA SA soak, gta-sa route, 600 s,
+  MAX, battery >= 30%. Its `thermal.jsonl` should show `thermal-pause-F8` 1/1
+  from ~4-6 min, `run.log` should carry `THERMAL: pause ...`, and verdict.json
+  should be `void: thermal-pause: ...` if the pause lands after the mark
+  (~225 s). Only if that is clean: fan_mode 5 vs 4, time to pause (report only;
+  the regimen is perfregimen's).
 
 ## Existing Thor title benchmarks (brief item 4)
 
