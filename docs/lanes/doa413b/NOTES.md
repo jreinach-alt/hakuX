@@ -234,3 +234,9 @@ file (same issue, newer registration).
 - `LOGCAT_SPEC_OVERRIDE` is the dispatcher's environment, not a request field. Print under `hakuX`.
 - Do not "fix" `cdef` by skipping the completion without first logging which branch waits.
   This lane's predicate was false for the whole fight.
+
+## Attempt 5 ends waiting (2026-09-26 ~20:40 PDT)
+
+Waiting on the `[job.arms]` verdict for `doa413b-defoff-mnm.json` (a593d8eb85 vs 6cd9507d07), and
+on CI for the pushed head. On PASS: `gh pr ready 440`. Nothing else is left: preflight passes, the
+body's `Files:` matches the diff, and the prediction is committed with its refs.
