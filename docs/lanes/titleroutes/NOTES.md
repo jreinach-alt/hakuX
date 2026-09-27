@@ -593,9 +593,31 @@ so the soak (560 s) scores about 276 s of it. Nav frames
 `~/hakux-work/nav/wwe-raw-2.first-run-20260927T061604/` (014-gameplay ->
 015-moved). Replay `scratch/replay/wwe-raw-2-062043/zz-end.png` (01:01).
 
-Benchmarks (Nova, 0.5 priority, ref 2ce8f4a985): 50 Cent
-1-1790515600-titleroutes-1194351 (440 s), WWE Raw 2
-1-1790515603-titleroutes-1194477 (560 s).
+Benchmarks (Nova, 0.5 priority, ref 2ce8f4a985), judged with
+`scratch/judge.py` (apk 397ae7dca16a):
+
+| title | request | seconds | fps median / share >= 30 |
+|---|---|---|---|
+| 50 Cent: Bulletproof | 1-1790515600-titleroutes-1194351 | 440 | 309 s of gameplay; median 29.97 (min 19.07), 95.9% at >= 30; no hang; target 30 |
+| WWE Raw 2 | 1-1790515603-titleroutes-1194477 | 560 | 278 s of gameplay; median 59.94 (min 39.97), 100% at >= 30; no hang; target 30 |
+
+### Session 20: HELD Thor, 06:46-06:59 PDT (13 min; hold taken 06:27 while lane.local's Alien Hominid soak ran), battery 55% -> 54%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Battlefield 2: Modern Combat (45410062) | thor | `bf2mc.route` | yes (06:59) | mission 1, first person in a snowy square at night, "Fight Through To The Rendezvous"; walks, turns, fires (23 -> 15) |
+
+**BF2: MC.** Its ISO is on the Thor's INTERNAL storage
+(`/storage/emulated/0/ROMS/xbox/`), and so are Alias and Azurik. Launching
+the SD-card path opens the app's library instead. The campaign-name
+keyboard ignores the left stick and START; the hat moves it (HATX left
+from A wraps to BACKSPACE, then HATY down x2 reaches ENTER). "Do you want to
+save?" -> No keeps the disk unchanged. The mission load takes about 2
+minutes, and B on the first Help box turns help off. Nav frames
+`~/hakux-work/nav/bf2mc.first-run-20260927T064649/` (019-gameplay ->
+020-moved). Replay `scratch/replay/bf2mc-065258/zz-end.png`. Benchmark
+1-1790517591-titleroutes-1523259 (thor, 640 s, ref 3ea9cd9a34). The
+replay's mark came 375 s after launch, so the soak scores about 265 s.
 
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
