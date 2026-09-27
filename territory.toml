@@ -1188,6 +1188,8 @@ note = "RETIRED (job.board 2026-09-27T00:30Z): PR #447 MERGED 2026-09-27T00:17:0
 [lane.handbackpark]
 issues = []
 files = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-parked.sh", "docs/lanes/handbackpark/**"]
+released = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-parked.sh", "docs/lanes/handbackpark/**"]
+released_at_ready = 452
 standing = false
 note = "CREATED (hostops, 2026-09-27T00:20Z). Harness defect, no tracker issue: handback.sh's draft-strand cause resumes drafts the host parked on purpose under the 0.5 policy (label blocked:after-0.5). #436 (visual404) was resumed 20:22Z/21:50Z/23:53Z and #439 (fmv303c) 21:52Z/23:55Z, each session only re-posting 'blocked: parked until after 0.5'. STRAND_STALE lists blocked:needs-owner but no other blocked:* label. Interim: hostops set handback/strand/<lane> to DRAFT_STRAND_MAX for both."
 [retired.pilotgate]
@@ -1306,6 +1308,8 @@ note = "STARTED (hostops 2026-09-27T00:30Z), briefs/holdtake.md: harness defect,
 [lane.holdlease]
 issues = []
 files = ["docs/testing/stop-emulator.sh", "docs/testing/jobs/selftest.d/79-stop-hook-hold.sh", "docs/lanes/holdlease/NOTES.md"]
+released = ["docs/testing/stop-emulator.sh", "docs/testing/jobs/selftest.d/79-stop-hook-hold.sh", "docs/lanes/holdlease/NOTES.md"]
+released_at_ready = 450
 standing = false
 note = "STARTED (hostops 2026-09-26 16:37 PDT), briefs/holdlease.md: harness defect, no tracker issue (toolsmith defect 21 of 2026-09-25, never landed). stop-emulator.sh, every session's Stop hook, ignores dispatch/hold/<label>, so a HELD handheld's app is force-stopped at any other session's turn end: it killed buildflags427's profile arm B on the held Nova at 16:24:25 PDT and voided perfregimen's first Nova pilot. Interim: host-only hakux-holdlease.service keeps a held device's per-device lease fresh (battery holds excluded); it retires when this lands. stop-emulator.sh was on no row."
 
