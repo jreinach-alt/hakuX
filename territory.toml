@@ -804,6 +804,7 @@ retired_utc = "2026-09-25T23:55:00Z"
 note = "RETIRED (job.board, wave 210): PR #323 MERGED (fold 2dc5d1b884), unit gone, no open PR on lane/zclamp276. Analysis plus a named hunk (docs/lanes/zclamp276/nearfar_cull.diff: pgraph.c SET_ZMIN_MAX_CONTROL drops CULL_NEAR_FAR_EN, plus psh.c / psh.h / nv2a_regs.h). #276 stays open; the code lane waits on the host queue (pgraph.c after #273 fix, psh.c after #266 and #283). No file held."
 
 [lane.remote]
+remote = "claude/docs-tooling-agentic-coding-u152m1"
 issues = ["426", "184", "109", "274", "461"]
 files = ["hw/xbox/nv2a/pgraph/profile.c", "hw/xbox/nv2a/pgraph/vk/draw.c", "hw/xbox/nv2a/pgraph/vk/renderer.h", "hw/xbox/nv2a/pgraph/vk/command.c", "hw/xbox/nv2a/pgraph/vk/render_thread.c", "hw/xbox/nv2a/pgraph/vk/submit_worker.c", "docs/testing/predictions/remote-109-*.json", "docs/lanes/remote/**", "docs/testing/predictions/remote-184-*.json", "docs/testing/predictions/remote-274-*.json", "docs/testing/predictions/remote-426-*.json", "hw/xbox/nv2a/debug.h", "docs/testing/phase_read_split.py", "docs/testing/phase_read_split_check.py", "hw/xbox/nv2a/pgraph/vk/texture.c", "docs/testing/predictions/remote-461-*.json"]
 standing = false
