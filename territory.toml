@@ -392,6 +392,7 @@ note = "STARTED (hostops 2026-09-26 18:45 PDT), briefs/tbflip424.md: #424 0.5 le
 [lane.isoroots]
 issues = ["397"]
 files = ["docs/testing/devices.sh", "docs/testing/dispatcher.sh", "docs/testing/soak_title.sh", "docs/testing/jobs/selftest.d/99-iso-roots.sh", "docs/lanes/isoroots/NOTES.md"]
+released = ["docs/testing/devices.sh", "docs/testing/dispatcher.sh", "docs/testing/soak_title.sh", "docs/testing/jobs/selftest.d/99-iso-roots.sh", "docs/lanes/isoroots/NOTES.md"]
 standing = false
 note = "STARTED (hostops 2026-09-26 18:50 PDT), briefs/isoroots.md: #397 / 0.5 (#433) title storage. Owner 18:15 authorized Thor internal storage for titles; the runner knows one DEVICE_ISO_ROOT per device (dispatcher.sh:752), and the Thor SD card is 94% full (64 GB free). devices.sh (orphaned when lane.perfregimen retired without returning it) and soak_title.sh from unclaimed; dispatcher.sh moved from lane.doa413b (its hunk is committed). Serve path: needs-audit-1 and the host's update window after fold."
 
