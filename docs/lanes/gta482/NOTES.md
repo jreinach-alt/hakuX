@@ -16,6 +16,8 @@ blocked 61.9 ms/frame, cause unmeasured).
 | `cpuof.py` | which host CPUs each thread's samples are on, per event, from `simpleperf dump` (`--selftest`) |
 | `hoststate.sh` | device side, read-only: online/isolated CPUs, per-CPU frequency and cap, cpusets, the emulator's cpuset, per-thread `stat` and `schedstat`, thermal zones, active cooling devices; `full` adds process state, power, thermalservice, battery |
 | `hoststate.py` | reads `hoststate.sh`'s output: one row per read, then per interval each thread's run share and run-queue wait share (`--selftest`) |
+| `offsplit.py` | one thread's off-CPU time from a `--trace-offcpu` record, split by why it left the CPU: blocked in a syscall (with the emulator frames) or preempted while running (`--selftest`) |
+| `unitcost.py` | per window of a logcat: draws and PFIFO methods per frame (the guest's work) and the host's time per method and per draw. Needs `hakuX-cpu` and `hakuX-phase` lines, which a593d8eb85 does not print |
 
 How a guest pc is recovered without instrumenting the build: `tcg_tb_alloc`
 puts the header at the aligned `code_gen_ptr` and the code right after it
@@ -328,14 +330,18 @@ lifts).
 
 ### Found offline while waiting for the Thor: the slow record ran on the little cores only
 
-`cpuof.py` over the three GTA records on disk (all a593d8eb85, Thor, MAX
+`cpuof.py` over the GTA records on disk (all a593d8eb85, Thor, MAX
 regimen `perf_mode` 2 / `fan_mode` 4 in every `perf_regimen.json`):
 
 | record | regime | samples | vCPU thread | every other emulator thread |
 |---|---|---:|---|---|
 | slowdown462 `gta-open.data` | slow, 4.8 fps | 62,706 | cpu0-2: 36.2 / 32.2 / 31.5%; cpu3-7: 0 | cpu0-2 only |
-| slowdown462 `gta.data` | alley, 26.6 fps | 69,092 | cpu7 96.9% | cpu3-6 (PFIFO 94.1%, the rest ~100%) |
+| slowdown462 `gta.data` | alley, 26.6 fps | 69,092 | cpu7 96.9% | cpu3-6 (PFIFO 94.2%, the rest ~100%) |
 | gta482 s4 `rec-on.data` | wall, 28.8 fps | 55,277 | cpu7 92.3% | cpu3-6 |
+| gta482 s1 `rec-on.data` | display covered, game stalled | 40,876 | cpu7 99.3% | cpu3-6 |
+
+s1 is the control for the cpuset idea: hakuX was covered by another app's
+full-screen window and its threads stayed on the big cores.
 
 Not one of the slow record's 62,706 samples is on cpu3-7. In the fast
 records only `Thread-6`, the binder threads and part of the app's main
@@ -378,3 +384,157 @@ What this does and does not establish:
 So the session records the host's state as well: `hoststate.sh` full reads
 before launch, at the mark, at `prof start` and after the records, and a
 light read every 5 s in between.
+
+### Session 5 (held, addendum 3, 20:30:25-20:38:16Z, 471 s of device time): the slow regime, recorded
+
+Hold taken 20:25:35Z, as soon as lane.titleroutes released it. A Thor
+request ran until 20:30:13; the session started after it. Battery 84%,
+harden 0 / paranoid 1 (so `PERF_HARDEN0=1` changed nothing; read back 0 on
+exit). REST restored (`perf_restored: true`), caches cleared, screen asleep,
+hold released. Data: `perf/2026-09-27-gta482/s5/` (`session.log` is the
+script's output).
+
+The focus guard read hakuX in front at +12 s. `mark gameplay` came at
+13:34:24 PDT. The trigger fired 100 s after it (gfps 3, 3).
+
+#### The slow regime starts when the Thor pauses cpu3-7
+
+| PDT | what | source |
+|---|---|---|
+| 13:30:36 | before launch: CPU zones 64.5-67.4 C, no cooling device active but the backlights | `hoststate-prelaunch.txt` |
+| 13:30:56 | 20 s after launch: hottest zone 95 C (`cpu-1-9`), and 92-95 C in every read until the pause | `hoststate-timeline.txt` |
+| 13:34:28 | the mark: `cpu-1-9` 94.6 C; all 8 CPUs online; `thermal-pause-F8` 0; GPU devfreq 0 | `hoststate-mark.txt` |
+| 13:35:58-13:36:00 | 60 flips in 2.4 s = 25.4 fps. The vCPU over 13:35:40-13:35:53: on cpu7, running 95.6%, waiting for a CPU 1.5% | logcat, timeline |
+| 13:36:00-13:36:06 | 60 flips in 5.8 s: the fall is inside this window | logcat |
+| 13:36:07 | first read with `thermal-pause-F8` 1/1 and `devfreq-3d00000.qcom,kgsl-3d0` 5/8; hottest zone 88 C; vCPU on cpu0 | timeline |
+| 13:36:06-13:36:23 | 60 flips in 16.8 s = 3.57 fps, 280.5 ms/flip (no simpleperf yet) | logcat |
+| 13:36:26 | `core_ctl` for the cluster at cpu3: `Active CPUs: 0` | `hoststate-profstart.txt` |
+
+`thermal-pause-F8` is a kernel cooling device; 0xF8 is the mask of cpu3-7.
+While it is on, `online` still reads 0-7, the emulator is still in
+`/top-app` with `Cpus_allowed_list: 0-7`, and `scaling_cur_freq` still reads
+each cluster's maximum. Android's thermal service reports `Thermal Status: 0`
+and `HAL Ready: false`, so nothing above the kernel sees the state.
+
+After the pause every emulator thread is on cpu0-2 (`cpuof.py`: 40,329 of
+40,329 samples of the on-CPU record and 207,034 of 207,034 of the off-CPU
+record). That is the signature of slowdown462's `gta-open.data`.
+lane.vcpuprime428 met the same state in 2 of its 3 pinned runs (its NOTES,
+"a thermal state ejects the pinned vCPU") and put it down to the pin.
+a593d8eb85 does not pin, so the state does not need one.
+
+The vCPU (tid 29879) from `/proc` schedstat, per interval between reads:
+
+| window | on cpu | running | waiting for a CPU | neither (asleep) |
+|---|---|---:|---:|---:|
+| 13:34:46-13:35:53, fast, 5 intervals | 7 | 88.9-96.3% | 1.0-2.0% | 2.7-10.1% |
+| 13:36:07-13:36:40, paused, no record | 0-2 | 37.7-53.8% | 46.2-59.7% | -0.1-2.6% |
+| 13:36:40-13:37:15, paused, off-CPU record | 0-2 | 22.0-30.8% | 48.9-69.9% | -0.7-29.1% |
+| 13:37:15-13:37:48, paused, on-CPU record | 0-2 | 43.8-46.3% | 38.4-54.8% | 1.4-15.3% |
+
+So **the vCPU does not block in the slow regime. It is runnable nearly all
+the time and waits for one of three little cores about half of it.** Row 2
+of the #482 table ("vCPU blocked 61.9 ms/frame") was run-queue wait.
+
+#### What the guest runs: the fast regime's code, without its idle loop
+
+`tbmap.py` on `rec-on.data` (s5, paused, vCPU 12,973 samples, 6,447 JIT,
+99.7% mapped) against s4 (fast, 23,492 samples, 12,662 JIT, 99.9% mapped).
+Known-answer check: 7 of 7 and 6 of 6 tier-1 promote pcs are header pcs.
+
+| | s4, fast, 28.8 fps | s5, paused, 2.05 fps |
+|---|---|---|
+| JIT samples in 4 KB pages that the other run also sampled | 98.3% | 98.8% |
+| `0x273686` + `0x27368e` (TBs of 2 and 3 instructions) | 11.8% | 0 (page `0x273000`: 2 samples) |
+| `0x2ad100`, `0x25e0c2`, `0x25e078` | 3.9, 3.3, 3.0% | 1.5, 1.5, 1.4% |
+| `0x13940c`, `0x2dad22` | 0.7, 0.7% | 1.7, 1.6% |
+| guest kernel share | 0.8% | 4.3% |
+| spread: pcs holding 50% of samples | 195 | 429 |
+| TB headers in the buffer / extra translations / CF_INVALID | 141,436 / 753 / 7,421 | 154,673 / 769 / 7,446 |
+
+- No function is hot in the slow regime that the fast regime did not run.
+  The largest page absent from s4 has 8 samples.
+- The fast regime spends 11.8% of its JIT samples in two tiny blocks at
+  `0x273686`. It reads as the guest waiting out its frame time, and the slow
+  regime has none of it. Not disassembled: the RAM dump's mapping is
+  unverified (session 4).
+- New code does not keep arriving: 16 more retranslations and 25 more
+  invalid blocks than s4, in a run 132 s longer. slowdown462's "`tb_gen_code`
+  x10 per frame" is #424's churn, flat per second, over frames that last 4 to
+  12 times as long. It is not self-modifying code and not streaming.
+- The kernel share rises because per-second guest work (the 60 Hz vblank
+  interrupt, audio) is a larger part of a longer frame.
+
+#### Off-CPU record (`offsplit.py`, vCPU, 25.06 s, paused)
+
+| | ms | share |
+|---|---:|---:|
+| on-CPU | 6,911 | 27.6% |
+| left the CPU in a syscall | 9,104 | 36.3% |
+| of it: `qemu_mutex_lock_impl` <- `pgraph_read` | 4,941 | 19.7% |
+| of it: `qemu_mutex_lock_impl` <- `cpu_exec_loop` | 2,439 | 9.7% |
+| of it: `qemu_mutex_lock_impl` <- `mttcg_cpu_thread_fn` | 620 | 2.5% |
+| preempted while running | 4,662 | 18.6% |
+| switch-out with kernel frames only | 2,125 | 8.5% |
+| switch-out with no sample | 2,261 | 9.0% |
+
+Read it with two limits. An interval runs from the switch-out to the next
+switch-in, so a "syscall" interval holds the wait for a CPU after the
+wake-up too; schedstat puts true sleep at 0-29% of this window. And the
+record itself loaded the three cores (the vCPU ran 22-31%, against 38-54%
+just before). So the 19.7% on `pgraph.lock` is an upper bound, in a state
+where the lock's holder is preempted too. It is #474's lock, and it has not
+been measured in GTA's fast regime.
+
+#### What this session could not measure
+
+- Which zone trips `thermal-pause-F8`, and at what temperature. The script
+  did not read trip points or the cooling device's bindings.
+- s5's paused fps (3.57 before the records, 1.28 and 2.05 during them) are
+  below slowdown462's 4.4-4.8. `hoststate.sh`'s light read took about 12 of
+  every 17 s in the paused state and ran on the same three cores, so s5's
+  ms per frame are not the workload's. s5 also had the GPU at devfreq 5/8;
+  slowdown462's runs did not record it.
+- a593d8eb85 prints no `hakuX-cpu` or `hakuX-phase` line, so the unit-cost
+  table exists only for slowdown462's soak (e5db66fa37, `unitcost.py`): 1.32
+  -> 3.87 us per PFIFO method and 0.232 -> 0.884 ms per draw, at 53.1 -> 56.9
+  draws and 14,567 -> 17,144 methods per frame.
+- The ten 11-15 s hangs per 500 s benchmark. They stay as slowdown462 priced
+  them.
+
+### The #482 table, as measured (2026-09-27)
+
+| # | cost | measured | evidence | candidate fix | owner |
+|---|---|---|---|---|---|
+| 1 | the slow regime: the Thor pauses cpu3-7 (`thermal-pause-F8`) and caps the GPU (devfreq 5/8) about 5.5 min after launch, with CPU zones at 92-95 C from 20 s after launch | 25.4 -> 3.57 fps; 39 -> 280 ms/flip | s5 timeline and logcat; `cpuof.py` on 6 records; vcpuprime428 B2, B3 | keep the device out of the state (fan mode: MAX uses 4 = SMART; less heat from hakuX), and record the cooling devices in every soak so a paused window is never scored as the title's fps | new issue |
+| 2 | guest code (was 77.6 ms/frame, 37%) | the fast regime's code on little cores; 98.8% of samples in pages the fast regime ran; no new hot pc; retranslations equal | `tbmap.py` s5 against s4 | none of its own; follows row 1 | #482 |
+| 3 | vCPU "blocked" (was 61.9 ms/frame, 30%) | run-queue wait: 46-60% of the wall, asleep 0-3% | `hoststate.py` schedstat | none of its own; follows row 1 | #482 |
+| 4 | vCPU waits for `pgraph.lock` in `pgraph_read` | <= 19.7% of the vCPU's wall, paused and under record load | `offsplit.py` | #474's lock; measure it in the fast regime first | #474 |
+| 5 | fast regime: 11.8% of JIT samples in a 2-block guest wait at `0x273686`, vCPU 89-99% busy on cpu7 | s4, s5 before the pause | `tbmap.py` s4; schedstat | a guest-idle lever would cut heat, not frame time | #425 |
+| 6 | indirect-jump lookup, exec loop | 21.3% and 4.2% of vCPU samples | slowdown462 `gta-open.data` | the jump cache | #425 |
+| 7 | code-write churn | 6.3% of vCPU samples; flat per second | `codewrites.py` | the range test | #424 |
+
+Rows 6 and 7 keep their shares. Their ms/frame in the earlier table (31.2,
+6.2, 9.2) were little-core milliseconds in the paused state, and the fps
+bounds built on them (<= 6.7 fps) describe that state only.
+
+Unpaused, GTA on the Thor ran 22-29 gfps from 7 to 50 s after the mark and
+18-26 for the next 46 s in s5, and 20-30 for 107 s in s4 (28.8 fps over its
+record).
+slowdown462's soak frame `f00022.png` shows the street at 27 fps.
+
+## Do not repeat (attempt 4)
+
+- Do not read a slow window as the title's before `cpuof.py` says which
+  cores its threads ran on. Every sample on cpu0-2 is the paused state.
+- Do not trust `online`, `Cpus_allowed_list`, the cpuset or
+  `scaling_cur_freq` to show the pause: all four read as normal. Read
+  `/sys/class/thermal/cooling_device*/cur_state` (type `thermal-pause-F8`)
+  or the `core_ctl` `Active CPUs` line.
+- Do not run a sampler that forks per file on a paused device: the light
+  read cost about 12 of every 17 s on the three cores the emulator had left.
+  One `cat` of a few files, or a reader in the app, is the right size.
+- Do not read a `--trace-offcpu` interval as sleep. It ends at the next
+  switch-in, so it holds the wait for a CPU. Check it against schedstat.
+- a593d8eb85 has no `hakuX-cpu`/`hakuX-phase` lines; use a build that prints
+  them when the unit cost matters.
