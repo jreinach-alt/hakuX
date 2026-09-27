@@ -119,3 +119,32 @@ puller was doing when the wait began (FLIP_STALL's surface_update, its
 flip_stall op, anything else), and the top registers read with their wait.
 The pilot reads it on the Nova; the A/B prediction is registered on that
 answer, before the fix is written.
+
+## 3. The counter and the pilot
+
+- `523612b5de`: `[lock474]` in pgraph.c (perflog-only; shipping builds take
+  the lock exactly as before). `7f13054916` re-spells its guard as a literal
+  `defined(__ANDROID__)` for `check_android_guards.py`; same behaviour.
+  Syntax-checked with the NDK compile command in both modes.
+- `lockread.py` reads it over a window (default 151-288 s, slowdown462's
+  fight). On slowdown462's own DOA soak it reads gfps 13.0 (their reader:
+  13.19), so the window and the gfps parse agree.
+- Pilot legs registered in `docs/testing/predictions/flip474-pilot.json`
+  (M0 instrument, P0 premise >= 0.25 of wall, P1 behind FLIP_STALL >= 0.6,
+  P2 op vs surface_update, P3 the register and the decision rule for design
+  R, P4 counter cost).
+- Queued `1790491858-flip474-658414` (Nova, 300 s, survey, perflog). At queue
+  time the Nova carried lane.xbox's title-push hold and the owner's
+  charger-swap hold before it; ten requests ahead.
+
+## Waiting
+
+On `1790491858-flip474-658414`. When it lands: `lockread.py` on it, judge the
+pilot legs, write `pilots/flip474.ok`, then pick R or F by P1-P3, register
+`flip474-ab.json` (A = 7f13054916, B = the fix) and only then write the fix.
+
+## Do not repeat
+
+- Do not make every PGRAPH read lockless without knowing the polled register:
+  STATUS always reads idle, so the lock is the only thing holding an idle
+  poll off mid-batch.
