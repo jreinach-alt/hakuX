@@ -1289,8 +1289,10 @@ note = "RETIRED (job.board 2026-09-27T01:30Z): PR #437 MERGED, no open PR on lan
 [lane.doa413b]
 issues = ["413"]
 files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/lanes/doa413b/**", "docs/testing/predictions/doa413b-*.json"]
+released = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/lanes/doa413b/**", "docs/testing/predictions/doa413b-*.json"]
+released_at_ready = 440
 standing = false
-note = "MOVED (hostops 2026-09-26 18:50 PDT): docs/testing/dispatcher.sh to [lane.isoroots]; this lane's committed xemu-surf hunk (PR #440, ~line 1376) stays on its branch and folds as is; make no further dispatcher.sh edits. STARTED (hostops 2026-09-26 14:10 PDT), briefs/doa413b.md: #413 (0.5) step 2 after PR #417: add xemu-surf:I to the soak logcat, pilot one Nova soak, price surface_update's sub-split (33-52 ms/frame in the fight) and cut it. vk/surface.c taken from lane.blinx372d's released-at-ready list (PR #396): merge that branch or master and re-run the arm before ready. dispatcher.sh is the serve path: needs audit and the host's update window."
+note = "RELEASED AT READY (job.board 2026-09-27T04:15Z): PR #440 is out of draft, CI green, unit gone; it is in audit pass 1 and its files stay in `files` for the audit and the fold. MOVED (hostops 2026-09-26 18:50 PDT): docs/testing/dispatcher.sh to [lane.isoroots]; this lane's committed xemu-surf hunk (PR #440, ~line 1376) stays on its branch and folds as is; make no further dispatcher.sh edits. STARTED (hostops 2026-09-26 14:10 PDT), briefs/doa413b.md: #413 (0.5) step 2 after PR #417: add xemu-surf:I to the soak logcat, pilot one Nova soak, price surface_update's sub-split (33-52 ms/frame in the fight) and cut it. vk/surface.c taken from lane.blinx372d's released-at-ready list (PR #396): merge that branch or master and re-run the arm before ready. dispatcher.sh is the serve path: needs audit and the host's update window."
 
 
 [lane.fmv303c]
