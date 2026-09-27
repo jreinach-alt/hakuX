@@ -572,7 +572,7 @@ these (Ask 4).
   disc read or a lock under the same frame would not show in either run.
   That needs the off-CPU record.
 
-### GTA answer (Thor, MAX, e5db66fa37 perflog, slow regime, 197.5 ms/frame = 5.1 fps)
+### GTA answer, attempt 4 (superseded in attempt 5: the slow regime it prices is a cutscene on this build)
 
 | # | cost | ms/frame | share | evidence | candidate fix | owner |
 |---|---|---|---|---|---|---|
@@ -609,6 +609,79 @@ build, on a screen no frame identifies.
   ISO under the device's `DEVICE_ISO_ROOTS` from `devices.sh`, and refuses
   the Thor below 30% battery (the Nova below 20%, as before).
 
+### GTA's held profile (Thor, a593d8eb85, 08:18-08:23 PDT)
+
+`DEV=thor ROUTE=gta-sa ANCHOR="mark gameplay" SOAK_S=360 OFFCPU=1
+capture_profile.sh gta ... 15`, output `perf/2026-09-26-slowdown462/gta/`.
+Hold taken during the Thor's running request (titleroutes), used only after
+`running/` emptied of the Thor; REST restored (`perf_regimen.json`
+`perf_restored: true`), caches cleared, hold released; battery 38%.
+
+- **`--trace-offcpu` cannot open on the Thor**: harden=1, paranoid=3 ("Event
+  type 'cpu-clock' is not supported"). The record fell back to on-CPU only.
+  The Nova had paranoid 1. The off-CPU half of GTA is not measurable on this
+  device without root.
+- **The window is gameplay, at 26.6 fps.** Frame `082206-gameplay`: CJ in
+  the Jefferson alley, HUD, 24 fps on the overlay. `profwin.py`: 840 flips
+  in 31.6 s = 26.62 fps, 37.6 ms/flip (gfps 19-31 after the first line).
+- vCPU (tid 29568) 28,045 of 30,000 ms sampled = 93.5% on-CPU = 35.1 ms per
+  frame. Self: guest JIT 49.8%, `tb_lookup` 10.4%, `helper_lookup_tb_ptr`
+  6.8%, `qht_lookup_custom` 4.8%, `voice_lock` 2.0%, `tb_lookup_cmp` 1.9%,
+  softmmu (`tlb_set_page_full`, `tlb_reset_dirty`, `probe_access_internal`)
+  3.9%, SSE helpers 4.3%. Inclusive: **27.9% under `helper_lookup_tb_ptr`**
+  (the indirect-jump lookup), 4.9% under `cpu_exec_loop`, 2.2% `tb_gen_code`.
+  Unlike AUF and Blinx, `cpu_exec_loop` self is not in the top: GTA's
+  dispatch cost is the indirect-jump lookup (Forza's variant).
+- PFIFO (tid 29579) 14,848 ms = 49.5% on-CPU: `memcpy_opt` 25.9% (of it
+  `pgraph_vk_snapshot_state` 36%, `pgraph_vk_finish` at FLIP_STALL 18%,
+  `apply_uniform_updates` 18%), `rewrite_indices` 4.5%. Not the frame's
+  setter at half a core.
+- Audio: four `voice_worker_thread`s 3.1-4.0 s each (~48% of a core in
+  total), the DSP thread 3.9 s, SDLThread 4.0 s of which 68% is
+  `__kernel_clock_gettime` (a poll).
+
+### GTA's 5 fps is the build, as far as the runs on record show
+
+| run | ref | `HAKUX_TCG68_JC` | gfps median after 230 s |
+|---|---|---|---|
+| benchmark `0-0-x-1790493356-titleroutes-734802` | ca54a41dd1 | on (#465 default) | 4 |
+| soak `0-0-x-1790517499-slowdown462-1484367` | e5db66fa37 | off | 27 |
+| held profile | a593d8eb85 | off | 26.6 |
+
+ca54a41dd1 descends from a593d8eb85. The code between them is #465 (JC on by
+default), #461's texture-bind counters and doa413b's `[surf413]` probe.
+Both runs whose alley frames exist show the same alley: 7-8 fps (benchmark,
+JC on), 24 fps (profile, JC off). This is a correlation, not an A/B. **Ask
+6** (board) asks for one Thor A/B, master vs master `HAKUX_TCG68_JC=0`,
+because this lane's grant allows nothing more on the Thor. The finding went
+to #425 (`deliver.sh`, lane.tbflip424), #482 and #462 at 08:25 PDT.
+
+This changes how the attempt-4 soak reads. Its "slow regime" (5 fps) was the
+police-stop cutscene at 230-291 s and an unseen stretch at 470-505 s. Its
+"fast regime" (28 fps) matches the alley gameplay in the profile. The
+attempt-4 table priced the slow regime as if it were gameplay. That is
+withdrawn below.
+
+### GTA answer, attempt 5 (Thor, a593d8eb85, JC off, MAX, alley gameplay, 37.6 ms/frame = 26.6 fps)
+
+The vCPU sets the frame (93.5% on-CPU; PFIFO 49.5%). ms = share of the
+vCPU's samples x 35.1 ms of vCPU per frame.
+
+| # | cost | ms/frame | share of frame | evidence | candidate fix | owner |
+|---|---|---|---|---|---|---|
+| 0 | **#465's jump cache on (master's default), if Ask 6 confirms it** | ~180 (4 vs 27 gfps) | ~85% of a JC-on frame | the three runs above; not an A/B | `HAKUX_TCG68_JC=0` default for GTA, or fix the JC path | #425 |
+| 1 | guest JIT code | 17.5 | 47% | gta.data tid 29568: 49.8% of samples | none: the guest's own work | -- |
+| 2 | indirect-jump TB lookup (`helper_lookup_tb_ptr` inclusive) | 9.8 | 26% | 27.9% of kept callchain samples; `tb_lookup` + `qht` + `tb_lookup_cmp` 17.1% self | the jump cache (#425), once it does not cost row 0 | #425 |
+| 3 | softmmu / TLB fills and dirty resets | 1.4 | 4% | `tlb_set_page_full`, `tlb_reset_dirty`, `probe_access_internal` 3.9% | none at this size | -- |
+
+Bound, not a value: with row 2 at zero the vCPU needs ~25 ms, under the
+title's 2-VBLANK pacing (33.4 ms), so **<= 30 fps**. The frame is 26.6 fps
+now with the jump cache off. If row 0 holds, master reads ~4.5 fps and the
+first bound is **~27 fps from switching the JC off for GTA**.
+
+The 11-15 s stalls (attempt 4) stay as priced there: 2.0-4.6% of the wall,
+with shader or pipeline compiles. They are not the steady frame.
+
 ## Summary (Nova, MAX, e5db66fa37 soaks / a593d8eb85 profiles)
 
 | title | fps (soak window) | sets the frame | top cost (ms/frame, share) | owner | bound if it goes |
@@ -618,7 +691,7 @@ build, on a screen no frame identifies.
 | Blinx | 17.2 | vCPU (73% on-CPU, 27% blocked) | exec-loop returns 21.7 (36%) | #425 | <= 26 fps (<= 30 with the blocked time too) |
 | Blinx 2 | 28.9 | at its 2-VBLANK cap | exec-loop returns 13.5 (40%) | #425 | none above the 30 cap |
 | Forza | 23.0 | PFIFO (waits on deferred downloads) | deferred download finishes 18.1 (51%) | #414 | <= 30 fps (pacing) |
-| GTA: San Andreas (**Thor**, soak only) | 5.1 (slow regime; 28.0 in the fast one) | the guest: the renderer is starved 100 ms/frame | vCPU on-CPU 138 (70%), not split: no profile | new issue (Ask 5) | <= 30 fps (pacing) |
+| GTA: San Andreas (**Thor**, a593d8eb85 profile) | 26.6 with JC off; 4 on ca54a41dd1 (JC on) | vCPU (93.5% on-CPU) | guest JIT 17.5 (47%); indirect-jump lookup 9.8 (26%); JC-on regression ~180 if Ask 6 confirms | #425, #482 | <= 30 fps (pacing) |
 
 Two mechanisms cover four titles: the exec loop between TBs on the vCPU (AUF,
 Blinx, Blinx 2; Forza's variant is the indirect-jump lookup), and PFIFO waits
