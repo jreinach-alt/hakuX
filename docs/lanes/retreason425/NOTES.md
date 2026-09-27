@@ -157,6 +157,18 @@ Next, only after the pilot is read: Blinx and Blinx 2, one title at a time,
 Nova, MAX. Their A arms also carry `[rr425]`, which says whether their
 exec-loop share is the same idle loop before any B is judged.
 
+## 5. Waiting (2026-09-27, attempt 2)
+
+The split has been posted to #425, #412 and #462. The PR body is current and preflight passes on
+d1fab17eb0. Waiting on two things outside this session: the AUF pilot
+`1790515915-retreason425-1213003` / `1790515918-retreason425-1213231`
+(queued on the Nova behind titleroutes and lanelocal), and the arms job's
+verdict on `retreason425-idlehlt-inert.json`. Next: read the pilot with
+`rr425.py --from 299 --to 400` on both ids (fps and `ih`), and write
+`pilots/retreason425.ok`. If B has halts and fps is not worse, queue Blinx, then Blinx 2
+(A off / B on, same ref, Nova, one title at a time). Report ms/frame and fps
+on #425 and #462.
+
 ## Files outside this lane
 
 None edited. cputlb.c / tb-maint.c / tb-internal.h untouched; the `[rr425]`
