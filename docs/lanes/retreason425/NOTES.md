@@ -169,6 +169,50 @@ verdict on `retreason425-idlehlt-inert.json`. Next: read the pilot with
 (A off / B on, same ref, Nova, one title at a time). Report ms/frame and fps
 on #425 and #462.
 
+## 6. The idle-halt pilot: B wedged the guest at boot (attempt 3)
+
+Why attempt 2 did not finish: it ended correctly, waiting on the pilot and the
+arms verdict (both outside the session). Both have come back.
+
+| arm | request | build | result |
+|---|---|---|---|
+| A, flag off | `1790515915-retreason425-1213003` | d259abab29 (has #465, JC on) | ran; mission ~15 fps (gfps 13-16, G ~62 ms); 398 `[rr425]` windows |
+| B, `HAKUX_IDLE_HLT=1` | `1-1790515918-retreason425-1213231` | d259abab29 | **wedged at boot**: `env: HAKUX_IDLE_HLT=1` logged, then no `[rr425]` line, no `gfps` line, `refresh ... flip=0 ... no nv2a fb` for all 400 s |
+| pixels must-not-move | `retreason425-idlehlt-inert.json` | f131dd11c6 vs d259abab29 | PASS, 593 checks (flag off by default) |
+
+Arm A with the #465 jump cache on (the overnight split runs were built before
+#465 folded, on 6a598c5404) gives the same split: `8001b02e sti` and
+`8001b02f nop` at 49.72% each of all returns, 3.36e9 of each over 400 s, and
+`hm` (lookup misses) 29,729 in total. The jump cache does not touch the idle loop's
+returns, as expected: they are gen_eob plain exits, not lookups.
+
+B stopped inside the first 2 s `[rr425]` window, so the vCPU halted in an
+early idle window and nothing woke it. With one vCPU, a halt that no interrupt
+ends is a deadlock. Unverified candidates, for the next lane: (a) the first
+`fb 90 90 fa` STI the guest runs is an early-boot idle before the PIT/PIC are
+live, so no interrupt ever comes; (b) halting from `rr425_book` (after the TB
+has returned, outside helper context) leaves state that `cpu_handle_halt`
+does not expect; (c) a hakuX interrupt source that sets `interrupt_request`
+without kicking a halted vCPU. The only direct `qatomic_or` on
+`interrupt_request` in hw/, system/ and target/i386 is `system/cpus.c:260`
+(the generic `cpu_interrupt` path), which argues against (c).
+
+**Verdict.** No fps number for the lever: the B arm has none. The flag stays
+default off and pixels-inert (arms PASS). Blinx and Blinx 2 were not queued:
+the pilot's purpose was to show a halt that wakes, and it does not.
+
+**The finding stands without the lever.** The exec-loop share that
+slowdown462 books as 42 ms/frame (AUF), 21.7 (Blinx) and 13.5 (Blinx 2) is,
+on AUF, the guest idling. Chaining or cheapening those returns moves fps by
+0. On AUF the most a halt could gain is freeing a host core; the vCPU's own
+work is at most ~26 ms of the frame, which is a bound. The Blinx titles'
+split is unmeasured: run an A arm with `[rr425]` on each before any lever is
+priced for them.
+
+Do not repeat: pricing a return-path lever (jump cache, EOB chaining, barrier)
+against the exec-loop share of a title before its `[rr425]` top pcs have been
+read. If they are `sti; nop` pairs, that share is idle time.
+
 ## Files outside this lane
 
 None edited. cputlb.c / tb-maint.c / tb-internal.h untouched; the `[rr425]`
