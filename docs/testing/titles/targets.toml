@@ -398,3 +398,8 @@ notes = "Own target 60 from #431 (comment 5853568091): medium confidence. GameSp
 name = "Dungeons & Dragons Heroes"
 iso = { thor = "49470013-Dungeons_Dragons_Heroes.xiso.iso" }
 route = "dnd-heroes"
+
+[titles."4D4A0001"]
+name = "BloodRayne"
+iso = { thor = "4D4A0001-BloodRayne.xiso.iso" }
+route = "bloodrayne"

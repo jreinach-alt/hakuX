@@ -802,6 +802,49 @@ resumed this attempt at 12:48 PDT with two changes:
   hakuX. If any of the three fails, nothing is sent and the hold is
   released. Queued Thor route soaks still wait for PR #495's guard.
 
+### Session 22: HELD Thor, 12:59-13:25 PDT (26 min; hold taken 12:56 while a sweep disc ran), battery 86% -> 84%
+
+Every input in this session was sent behind `scratch/focus.py thor`. It
+reads `settings get system screen_focus_lock` (0) and `dumpsys input`
+(`FocusedDisplayId: 0`, and display 0's `FocusedWindows` entry naming
+`com.jreinach.hakux`), and it sends nothing itself. The nav steps read it
+before each group of inputs (`scratch/step.sh`), and the replays read it
+before the launch, 6 s after it, and every 20 s while the route plays
+(`scratch/replay.sh`). All 43 reads in the three replays passed. Display 4's
+focused window was the secondary launcher throughout; that is the second
+screen and takes no pad input while `FocusedDisplayId` is 0.
+
+`dumpsys input` prints the dispatcher state twice (the second copy is the
+last ANR's). The first copy is the live one.
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Azurik: Rise of Perathia (4D530007) | thor | `azurik.route` | yes (13:00, warm) | the Arena; the training box is still up at the mark and the pattern's first A closes it; 40 s later Azurik is at the far arch, overlay FPS 29 |
+| Dungeons & Dragons Heroes (49470013) | thor | `dnd-heroes.route` | yes (13:04, warm) | ARADIN in the ruins at the mark (FPS 15); 40 s later at a torch-lit sign (FPS 11) |
+| BloodRayne (4D4A0001) | thor | `bloodrayne.route` | draft: the pre-mark part replayed (13:20), the play pattern was changed after it | Act 1, Rayne on the grass below the church; the stick walks her, RX turns the camera; 18-29 fps |
+
+Frames: `scratch/replay/azurik-130014/`, `scratch/replay/dnd-heroes-130437/`,
+`scratch/replay/bloodrayne-132018/`; nav frames
+`~/hakux-work/nav/bloodrayne.first-run-20260927T131543/` (005-cut3 ->
+006-moved). 640x480 copies: `frames/azurik-replay-end.jpg`,
+`frames/dnd-heroes-replay-gameplay.jpg`,
+`frames/bloodrayne-replay-gameplay.jpg`.
+
+**BloodRayne.** Two A presses pass the logos and open New Game. The
+highlighted entry in its menus is the DIM one, which reads backwards: my
+first pass pressed A on "Training" while reading the bright "Act 1 -
+Louisiana" as selected, and landed in the training level, whose tutorial
+cutscenes interrupt control every few seconds. The left stick does not move
+these menus; the hat does. The opening cutscene with Mynce takes about 70 s
+and A does not end it. The replay's forward-only pattern walked Rayne into
+the swamp water in 40 s, and water drains her health (the bar was at about
+60% in `zz-end.png`), so a 300 s window would have ended in a death screen.
+The committed pattern walks 1 s forward and 1 s back around a turn. It has
+not replayed.
+
+The leave state at 13:25: app stopped, performance_mode 0, fan_mode 4,
+dual_screen_display_mode 0, screen_focus_lock 0, screen asleep, 84%.
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
