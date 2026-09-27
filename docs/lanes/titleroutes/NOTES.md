@@ -252,6 +252,39 @@ overshot: two 0.15 s stick flicks moved the menu cursor THREE items at
 press, if the game reads the hat as the D-pad), and wait for the title
 rather than counting presses.
 
+### Session 7: HELD Thor, 22:15-22:40 PDT (25 min), battery 85% -> 84%
+
+The Thor was under the host's dispatcher update window 21:51-22:15, so the
+PGR benchmark waited and this session started when the window lifted.
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Bruce Lee: Quest of the Dragon (56550016) | thor | `bruce-lee.route` | yes (22:39; two replays before it failed, see below) | first fight, a dojo, two ninjas; Bruce runs and trades blows, health bar falls |
+| Project Gotham Racing 2 (4D53004B) | thor | none | - | still no replayable path to Instant Action |
+
+**Menu inputs that do not depend on the frame rate.** A menu either steps
+once per push (edge-triggered) or auto-repeats while held; a quick stick
+flick or hat tap is ambiguous across frame rates in the second kind and can
+be lost in the first.
+- Bruce Lee's Player Info / Purchase Moves / Continue menu is
+  edge-triggered: LY held 3 s moved one item. So the route pushes the stick
+  down twice, each held 1.5-3 s. Quick hat taps (HATY max, mid at once)
+  stepped it in the nav session and were ignored in the replay (replay
+  `scratch/replay/bruce-lee-222946/`, ended on the Player Info screen).
+- PGR2's main menu auto-repeats and does not wrap (it stops at Xbox
+  Demos). B at the menu returns to the title and B at the title does
+  nothing, so B, B, A reaches the menu from either. A quick hat tap is one
+  step at 59 fps, and 0.2 s held is two. But "5 right, 1 left" still landed
+  on Profile Manager: taps are lost while the menu animates. Untried: right
+  held for 3 s (saturates at Xbox Demos), then one tap left.
+- One Bruce Lee replay (22:25) was void: WSL interop failed
+  (`UtilAcceptVsock accept4 failed 110`), and three pad presses and two
+  shots never reached the device. Read `route.log` for `failed` before
+  judging a replay.
+
+Frames: nav `~/hakux-work/nav/bruce-lee.first-run-20260926T223411/`
+(003-fight.png), replay `scratch/replay/bruce-lee-223619/zz-end.png`.
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
@@ -272,6 +305,7 @@ request.
 | Black | black.returning | 1-1790482534-titleroutes-3347838 | 300 | void: no gameplay reached |
 | Black | black.returning | 1-1790482599-titleroutes-3358750 | 760 | 291 s of gameplay; fps window median 7.45 (min 6.52), 0% of gameplay time at >= 30; target 30. The mark frame's overlay reads FPS 7 |
 | Project Gotham Racing | pgr.returning | 1-1790483525-titleroutes-3587419 | 480 | pending |
+| Bruce Lee | bruce-lee | 1-1790487611-titleroutes-261841 | 420 | pending |
 
 ## Do not repeat
 
