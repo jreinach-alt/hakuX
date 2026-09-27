@@ -401,6 +401,17 @@ idle_now() {
 # resting state -- and so are remote lanes, which this host does not drive,
 # and a lane whose issue carries `decision-needed`, which is the owner's.
 # Emits the same eight fields as the other pickups, with PR `none`.
+#
+# MERGED IS DONE ONLY IF NOTHING CAME BACK AFTER IT. A multi-batch lane folds
+# one PR per batch and keeps its territory row: lane.titleroutes (#397) merged
+# batch 5 as #476, queued three Thor soaks for batch 6, and ended its session
+# at 07:31 PDT 2026-09-27 with no open PR. No draft pickup could see it and
+# this one skipped it as merged, so the soaks finished and woke nobody. A lane
+# with a live row, a MERGED PR on its branch and no OPEN one is therefore
+# emitted too, marked `merged=1`, and the `merged-runs` cause below resumes it
+# only when `lane_requests_of` says nothing of its is in flight AND a run has
+# finished since its last session ended. A merged lane with no such run is
+# done, and is left for the board to retire.
 idle_lanes() {
     local prs dn
     prs=$(gh pr list --repo "$GH_REPO" --state all --limit 300 --json number,state,headRefName \
@@ -430,9 +441,12 @@ for name, row in sorted((t.get("lane") or {}).items()):
         continue
     if not (os.path.isdir(os.path.join(W, "wt", name)) and os.path.isfile(os.path.join(W, "briefs", name + ".md"))):
         continue
-    if states.get("lane/" + name, set()) & {"OPEN", "MERGED"}:
-        continue
     if {str(i) for i in row.get("issues", [])} & dn:
+        continue
+    st = states.get("lane/" + name, set())
+    if "MERGED" in st and "OPEN" not in st:
+        print("none\tlane/%s\tnone\tisDraft=none ci=NONE quiet=0 merged=1\t" % name)
+    if states.get("lane/" + name, set()) & {"OPEN", "MERGED"}:
         continue
     print("none\tlane/%s\tnone\tisDraft=none ci=NONE quiet=0\t" % name)
 PY
@@ -652,23 +666,7 @@ EOF
     # THE RUNS CAUSE NAMES ITS RESULT DIRS, because they are the whole of the
     # news: a lane told "your runs finished" without where to read them goes
     # looking in the queue it left, and the requests are not there any more.
-    [ -z "${RUNS_BRIEF:-}" ] || {
-        cat <<EOF
-
-**Your device requests have all finished** since your last session ended, and
-none of yours is still queued or running. Read these before anything else:
-
-| request | state | result dir |
-|---|---|---|
-EOF
-        while IFS=$'\t' read -r rid st dir; do
-            [ -n "$rid" ] && printf '| `%s` | %s | `%s` |\n' "$rid" "$st" "$dir"
-        done <<< "$RUNS_BRIEF"
-        cat <<EOF
-
-An \`ERROR\` is a result too: read its \`run.log\`/\`run1.log\` before re-queueing.
-EOF
-    }
+    [ -z "${RUNS_BRIEF:-}" ] || runs_text
     [ -z "${IDLE_BRIEF:-}" ] || idle_text "$4"
     [ "$arm" = none ] || cat <<EOF
 
@@ -695,6 +693,44 @@ Anything else, it finds you again on the quiet clock.
 EOF
 }
 
+# The runs table, shared by the draft brief above and the merged brief below.
+runs_text() {
+    cat <<EOF
+
+**Your device requests have all finished** since your last session ended, and
+none of yours is still queued or running. Read these before anything else:
+
+| request | state | result dir |
+|---|---|---|
+EOF
+    while IFS=$'\t' read -r rid st dir; do
+        [ -n "$rid" ] && printf '| `%s` | %s | `%s` |\n' "$rid" "$st" "$dir"
+    done <<< "$RUNS_BRIEF"
+    cat <<EOF
+
+An \`ERROR\` is a result too: read its \`run.log\`/\`run1.log\` before re-queueing.
+EOF
+}
+resume_merged() {
+    cat <<EOF
+
+---
+
+## Resumed $(date -u '+%FT%TZ'): your last PR merged and your next runs are back
+
+Your last PR on \`$2\` has merged and you have no open one, but your territory
+row is still live and device requests you queued after it have finished.
+EOF
+    runs_text
+    cat <<EOF
+
+Bring \`origin/$TIP\` into your branch with \`git merge\` (your merged work is
+there), open the next batch's draft PR (\`gh pr create --draft --base $TIP\`
+with the lane template) before anything else, then carry on with the brief.
+If the brief is finished, say so in \`NOTES.md\` and stop. **This is not
+counted as a failed attempt.**
+EOF
+}
 # The idle cause's own paragraph, shared by the draft brief above and the
 # no-PR brief below. $1 is the lane name. It says what the lane most likely
 # did, because the lane that did it will read its own last words and believe
@@ -921,7 +957,11 @@ while IFS=$'\t' read -r pr branch head extra labels; do
 done <<< "$(stranded_drafts)"
 while IFS=$'\t' read -r pr branch head extra labels; do
     [ -n "${pr:-}" ] || continue
-    rows+="idle-no-pr"$'\t'"resume_idle"$'\t'"-"$'\t'"$pr"$'\t'"$branch"$'\t'"$head"$'\t'"$extra"$'\t'"$labels"$'\n'
+    case "$extra" in
+        *merged=1*) rows+="merged-runs"$'\t'"resume_merged" ;;
+        *)          rows+="idle-no-pr"$'\t'"resume_idle" ;;
+    esac
+    rows+=$'\t'"-"$'\t'"$pr"$'\t'"$branch"$'\t'"$head"$'\t'"$extra"$'\t'"$labels"$'\n'
 done <<< "$(idle_lanes)"
 
 PARKED_LANES=$(parked_lanes)
@@ -953,7 +993,7 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
                 *) say "#${pr:-?} came back from the draft pickup on branch ${branch:-none}, which is not lane/*; the filter did not happen"
                    continue ;;
             esac ;;
-        idle-no-pr)
+        idle-no-pr|merged-runs)
             # A row that names a PR did not come from the no-PR pickup, and a
             # no-PR resume on a lane that has one would skip every PR guard.
             case "$pr/$branch" in
@@ -1061,6 +1101,7 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
         case "$label" in
             draft-strand-*) said="this PR is a draft and lane \`${branch#lane/}\`'s unit is not running" ;;
             idle-no-pr)     said="lane \`${branch#lane/}\` has no open PR and its unit is not running" ;;
+            merged-runs)    said="lane \`${branch#lane/}\`'s PR merged, its device runs have finished since, and its unit is not running" ;;
             *)              said="\`$label\` is set on this PR" ;;
         esac
 
@@ -1134,6 +1175,22 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
                 continue
             fi
             marker="$H/done/$label-$name-s$SESS_STAMP"; keyed="on session $SESS_STAMP" ;;
+        merged-runs)
+            # The draft runs cause's rule, with no PR to hang it on: nothing
+            # in flight, and a finished run newer than the last session end.
+            # Keyed on that SET of runs, so a second tick on it is not news.
+            systemctl --user is-active --quiet "hakux-lane-$name" 2>/dev/null && continue
+            lane_requests_of "$branch" "$name"
+            if [ -n "$INFLIGHT" ]; then
+                [ "$mode" = list ] && echo "$branch: merged, but its device request is in flight ($INFLIGHT); waiting on it"
+                continue
+            fi
+            if [ -z "$RKEY" ]; then
+                [ "$mode" = list ] && echo "$branch: merged, and no run of its has finished since its last session; done"
+                continue
+            fi
+            marker="$H/done/$label-$name-r$RKEY"; keyed="on finished runs $RSET"
+            RUNS_BRIEF="$RLIST" ;;
         esac
         if [ -f "$marker" ]; then
             [ "$mode" = list ] && echo "#$pr $branch: $label already actioned $keyed ($(head -1 "$marker"))"
@@ -1157,6 +1214,8 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
             [ -z "$IDLE_BRIEF" ] || cause+=" idle=$SESS_STAMP" ;;
         idle-no-pr)
             cause="no PR, idle=$SESS_STAMP" ;;
+        merged-runs)
+            cause="PR merged, runs=$(grep -c . <<< "$RUNS_BRIEF")" ;;
         *)
             # `files=` is what fold.sh's conflict branch has always written;
             # `detail=` is the general field a newer cause uses. Either is the
@@ -1273,8 +1332,9 @@ It wants a person now. Either the lane is waiting on something this job cannot s
                 continue
             fi
             uncounted=1 ;;
-        idle-no-pr)
-            # Its gates ran at the pickup (idle_now); waiting is not failing.
+        idle-no-pr|merged-runs)
+            # Its gates ran at the pickup (idle_now, lane_requests_of);
+            # waiting is not failing.
             uncounted=1 ;;
         esac
 
@@ -1309,7 +1369,7 @@ It wants a person now. Either the lane is waiting on something this job cannot s
         if [ "$rc" -eq 0 ] && [ -n "$uncounted" ]; then
             printf '%s\n' "$attempts_before" > "$WORK/attempts/$name"
             case "$label" in
-                draft-strand-runs) ;;
+                draft-strand-runs|merged-runs) ;;
                 draft-strand-idle|idle-no-pr)
                     printf '%s\n' "$(( $(cat "$H/idle/$name-$head" 2>/dev/null || echo 0) + 1 ))" > "$H/idle/$name-$head" ;;
                 *)  printf '%s\n' "$(( $(cat "$H/strand/$name" 2>/dev/null || echo 0) + 1 ))" > "$H/strand/$name" ;;
@@ -1370,6 +1430,6 @@ done <<< "$rows"
 # in $WORK/logs/handback/tick.log that somebody reads at a distance. It names
 # every cause it looked for, including the two that are not labels -- otherwise
 # a draft pickup that silently stopped working reads exactly like a quiet day.
-CAUSES="${HANDBACK_ROWS[*]%% *} draft-strand-arm draft-strand-runs draft-strand-idle draft-strand-quiet idle-no-pr"
+CAUSES="${HANDBACK_ROWS[*]%% *} draft-strand-arm draft-strand-runs draft-strand-idle draft-strand-quiet idle-no-pr merged-runs"
 [ "$seen" -eq 0 ] && { [ "$mode" = list ] && echo "nothing handed back ($CAUSES)" || say "nothing handed back ($CAUSES)"; }
 exit 0
