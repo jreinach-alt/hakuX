@@ -378,6 +378,25 @@ NEW GAME, and does nothing in the dialogue. Then it presses A every 3 s,
 twelve times. Nav frames `~/hakux-work/nav/jsrf.first-run-20260927T011434/`
 (002-moved.png), replay `scratch/replay/jsrf-011802/zz-end.png`.
 
+### Session 13: HELD Thor, 01:33-01:58 PDT (25 min; hold taken 01:33 after lane.xbox's title push), battery 65%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Grabbed by the Ghoulies (4D530053) | thor | `ghoulies.route` | yes (01:57; one failed replay before it) | the Grand Hallway: Cooper among Ghoulies, heart counter; he walks and fights with the right stick |
+
+**Ghoulies.** "Choose A Game" slot 1 -> name keyboard ("My Game", DONE)
+-> Play Chapter 1 -> a storybook intro of pages and cards that wait on A.
+The nav session's slot was saved at once: the first replay found slot 1
+holding "My Game", skipped the keyboard and most of the storybook, and a
+START I had pressed in the storybook landed in the hallway and paused the
+game (`scratch/replay/ghoulies-014106/`). With that START made an A, the
+second replay reached the hallway ~3 min before the mark and was in play
+through it (`scratch/replay/ghoulies-014945/zz-end.png`). So one route
+covers the empty and the saved slot; on a saved slot Cooper stands in the
+hallway for those minutes before the mark (heart 14-36 there, so he
+takes hits and is not killed). Nav frames
+`~/hakux-work/nav/ghoulies.first-run-20260927T013324/` (016-moved2.png).
+
 **A pattern for titles whose boot timing drifts (MechAssault 2, JSRF,
 Galleon, GTA):** when START or A also means "select", replace single timed
 presses with a train of them spaced wider than the slowest transition. Check
@@ -407,7 +426,8 @@ request.
 | Crash Twinsanity | crash-twinsanity | 1-1790489396-titleroutes-512742 | 540 | 268 s of gameplay; fps window median 15.72 (min 9.38), 0% at >= 30; target 60 |
 | MechAssault 2 | mechassault-2 | 1-1790492206-titleroutes-681960 | 530 | 315 s of gameplay; fps window median 29.97 (min 15.81), 91.7% at >= 30; target 30 |
 | GTA: San Andreas | gta-sa | 0-0-x-1790493356-titleroutes-734802 (promoted from 1-1790493356-titleroutes-734802) | 500 | 279 s of gameplay; fps window median 4.56 (min 3.91), 0% at >= 30; target 30. Ten 11-15 s hangs, 80% of audio callbacks short. apk 397ae7dca16a. Posted on #397 (comment 5853851696) |
-| JSRF | jsrf | 1-1790497366-titleroutes-886445 | 500 | pending |
+| JSRF | jsrf | 1-1790497366-titleroutes-886445 | 500 | 284 s of gameplay (the Garage); fps window median 24.23 (min 16.85), 11.3% at >= 30; target 60 |
+| Grabbed by the Ghoulies | ghoulies | 1-1790499526-titleroutes-925659 | 730 | pending |
 
 ## Do not repeat
 
