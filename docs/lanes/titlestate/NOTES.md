@@ -560,6 +560,58 @@ window fast-forwards `dispatch/bin`, then
   parser, and the dispatcher plays it with its own.
 - Do not put `flush` in a measured route: it pauses the title, and the
   verdict calls the rest of the window a hang.
+
+## Attempt 8 (resumed 2026-09-27 13:02 PDT): GoldenEye's save run is queued
+
+Why the previous session did not finish: it ended on a wait outside the
+session. The save route needed `flush` in the dispatcher's own `route.sh`,
+so it needed PR #496's fold and then a dispatcher update window. Both came:
+#496 folded as `795ea6b3af` at 13:00, and the window ran at 13:02.
+
+Checked before queuing, all at 13:03-13:05 PDT:
+
+| check | result |
+|---|---|
+| `dispatch/bin/titles/route.sh` against master's | the same file (sha256 `822d0000...`), `flush` included |
+| where the route text comes from | the request: `request.sh` reads `routes/goldeneye-ra.save.route` from the queuing tree and stores its text. `dispatch/bin/titles/` holds `route.sh` only |
+| `route.sh --check` on the save route | ok, 116 lines, ends `shot control`, `flush 20`, `wait 5`, `shot flushed` |
+| the route's length | 298.8 s of waits, plus 19 shots and the flush: about 330 s, inside 420 s |
+| requests of mine in `queue/`, `running/` | none |
+| holds | `hold/thor` (lane.titleroutes). None on the Nova |
+
+**Queued: `1790539523-titlestate-1846315`**, 13:05:23 PDT. Nova, 420 s,
+route `goldeneye-ra.save`, ref `8fde5c2f78`. It sorts below the 11 requests
+already in the queue (`0-0-x-`, then `1-`, then a bare epoch). Its estimate
+is 510 s, under the pilot gate.
+
+The ref is `8fde5c2f78` and not master's head because `builds/` has its APK
+and has none for `795ea6b3af`. The 6 files that differ between `8fde5c2f78`
+and master's head are all under `docs/`, so it is the same emulator and
+costs no build.
+
+The 23:30 titlebench run of the first-run route on the Nova
+(`y-1790481308-titlebench-2893125`) does not show that the route reaches
+control there: its 300 s ended the route at `wait 9.4`, after `shot fmv4`
+and before the look-right step. 420 s covers the whole route.
+
+### On resume, when the request has a result
+
+1. Read `run.log` for `flush: bdrv_flush_all completed after Ns`. The line
+   `flush NOT confirmed` means the disk may not hold the profile.
+2. Look at the route frames `profile-created`, `control` and `flushed`. The
+   route is timed, and the shader cache is cleared when the APK changes, so
+   the steps can land late. If `control` is not player control, the run
+   made whatever the frames show, not necessarily PLAYER1.
+3. Pull the Nova's disk between runs: `scratch/pullnova.sh take`, `pull`,
+   `release`. About 150 s.
+4. `saves.py list` on the image, then `titlestate.py harvest --device nova
+   --title-id 4541005D --image IMG --run 1790539523-titlestate-1846315`,
+   then `saves.py verify`.
+5. If the image has no save directory under `UDATA\4541005D`, record
+   what the frames showed and do not record a save.
+
+- Do not pick a ref for a save run by habit: look in `dispatch/builds/` for
+  an APK first. A docs-only fold has the emulator of the commit before it.
 - `flush` takes whole seconds only (a fractional timeout broke the
   integer poll count after one poll), and the "last step" rule runs from
   the FIRST flush, so input between two flushes is refused. Both are
