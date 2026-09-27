@@ -309,3 +309,20 @@ the waits gone, the frame is at least the vCPU's time: <= 33 fps, and <= 30 fps 
   hand (arms.sh skips title soaks). Queue it with request.sh after the pilot is read, one arm
   per ref: `--title 4D53006E-Forza_Motorsport.xiso.iso --seconds 420 --device nova --perflog
   --route survey --expect docs/testing/predictions/forza414-coalesce-soak.json`.
+
+## Attempt 2 ends waiting (2026-09-27 07:30 PDT)
+
+Pushed at 44519b7ec1 and preflight passes. PR #479 stays a draft, waiting on two things outside
+this session:
+
+- The Nova pilot `1790518618-forza414-1930404`, for the `[sdcall]` caller split (section 9).
+- The goldens must-not-move arm from `forza414-coalesce-mnm.json`, a `[job.arms]` verdict.
+
+On resume:
+1. Read the pilot's `[sdcall]` lines over t = 243-414 s. Name the dominant `fin` caller and
+   compare `su_upl` with `surfupd`'s `fin`.
+2. If `surfupd` dominates, queue the soak A/B (section 11) as two requests on the Nova, one per
+   ref.
+3. If `range` dominates, the cut is aimed wrong. Say so, and re-aim the cut before queueing
+   anything.
+4. Read the arm verdict and every scores1.tsv `status`.
