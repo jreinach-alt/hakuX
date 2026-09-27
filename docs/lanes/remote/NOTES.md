@@ -2426,3 +2426,174 @@ The host ran three perflog soaks of #449's head (`932ab47186`) on the Thor,
   sign.
 - **Item 4's split** (`TxH`, `Tex` and the rest of `Tx` + `FTx`) is in the
   same runs' `hakuX-phase` lines. It was asked for on #426 in 5851189295.
+
+## #461: what a texture bind spends its time on (2026-09-27)
+
+Item 4 of #426, filed as #461 by the host (5852307495) once the Thor numbers
+were in. Scope, in order: a perf-only count, one Crimson Skies and one Blinx
+soak at its head, then one registered fix per confirmed cause.
+
+### The numbers that opened it
+
+The host's readers over the three soaks of #449's head, 90 to 240 s
+(5851245674), in ms per frame:
+
+| title | binds (`Tx`+`FTx`) | `TxH` hash | `Tex` upload | rest |
+|---|---:|---:|---:|---:|
+| Crimson Skies | 8.90 | 6.49 (73%) | 0.17 (2%) | 2.24 (25%) |
+| Blinx | 3.76 | 0.06 (2%) | 3.38 (90%) | 0.31 (8%) |
+| Grabbed by the Ghoulies | 0.32 | 0.08 | 0.06 | 0.18 |
+
+Crimson's hash alone is 19.9% of its PFIFO thread's busy time (32.69 ms).
+
+**What they already say, read with the source.** Every `upload_texture_image()`
+is preceded by a content hash of the same bytes: a new node is always hashed,
+and a found one uploads only when its hash changes (a replacement upload is the
+exception, and the feature is off in soaks). So:
+- **Crimson hashes textures that have not changed.** It spends 6.49 ms hashing
+  and 0.17 ms uploading, and an upload costs at least as much per byte as a
+  hash, so almost none of its hashed bytes led to an upload.
+- **Blinx's uploads cost about 56 times a hash per byte** for the same bytes.
+  The cost is decoding or per-upload overhead, not copying.
+
+### R4 failed on all three counts
+
+R4, registered at 02:28Z, predicted `TxH` under 25% of binds and under
+1.0 ms/frame on all three titles, and the rest largest on two of three.
+Crimson broke all three (73%, 6.49 ms, `TxH` largest); Ghoulies' `TxH` was
+25.2%. The priors came from the desktop test discs, where `TxH` is 2 to 4% of
+binds; they do not carry over to titles.
+
+**R4 is not a clean blind registration.** The host had posted the numbers at
+00:24Z. This lane missed that delivery for three hours: its checks read the
+thread up to 00:15Z and then from 00:44Z, so the comment fell between two query
+windows. The transcript first shows the comment's id at 03:21Z, so R4 was
+written without it, but the thread cannot show that. Each check now queries
+from the previous query's start time, not from the last comment seen.
+
+My 02:29Z correction (5851970680) was half right. The rest of `Tx` does hold
+no descriptor work. But "the hash already skips unwritten memory" was wrong in
+effect: the gate exists, and on Crimson these hashes get through it.
+
+### Three ways an unchanged texture gets through the gate
+
+`create_texture()` hashes a binding only while it is possibly dirty. Read from
+the source, three routes let an unchanged texture through, and each needs a
+different fix:
+
+- **M1, the per-frame memo.** Once a texture's pages read dirty within a flip,
+  `dirty_check_result` stays true until the next flip. Nothing clears it after
+  a hash finds the content unchanged, so every later bind of that texture in
+  the flip hashes it again. Fix: clear the verdict once a hash has resolved it.
+- **M2, page-granular dirt.** The dirty bitmap works per 4 KiB page. A guest
+  write to a page the texture shares with other data, or a rewrite of the same
+  bytes, marks the whole texture. Fix: hash only the pages written.
+- **M3, surface write-backs.** Five download-completion paths in
+  `vk/surface.c` set the texture-dirty bits over a surface's whole range. Fix:
+  narrower marking.
+
+A flush (`RCMD_FLUSH`) marks every texture in VRAM possibly dirty, but flushes
+come only from a surface-scale change, a renderer switch, a reset or a snapshot
+load, so it is not a per-frame route.
+
+### The count (this PR)
+
+Three lines on `hakuX-stall` every 60 frames, all under `NV2A_PERF_LOG`. They
+go on `hakuX-stall` because the dispatcher's logcat spec is an allow-list, and
+`hakuX-tex`, the texture cache's own line, is not on it.
+
+- **`txh[]`:** content hashes and KiB by the first reason that applies: a new
+  node, a rebuild, a draw-dirty surface downloaded, a mark (the per-draw poll
+  or an aliasing write), the memo (M1), or a fresh bitmap hit without (`bit`)
+  or with (`bov`) a surface over the texture's range. `oth` is none of them and
+  must be 0. Also `eq`, found bindings whose hash compared equal, and `rep`,
+  nodes already hashed in the same flip.
+  - The reason is taken at the hash, not where it is raised: the
+    confirmed-clean check can cancel a raised reason before any hash runs.
+- **`txu[]`:** uploads by cause (new, rebuilt, changed, other), their guest
+  KiB, and the KiB each decode path in `get_texture_layout()` read: linear
+  copy, native BC copy, CPU S3TC decompress, palette, other conversion, and
+  unswizzle only.
+- **`txr[]`:** `create_texture()` and bind calls, surface downloads a bind
+  started directly or through its range scan, images made (pool hits), and
+  surface-to-texture copies and direct binds.
+  - A scan's downloads are counted in `vk/surface.c`, which this lane does not
+    hold. The bind's share is the difference across the call, so that file is
+    unchanged.
+
+`docs/lanes/remote/tex461_read.py` reads the lines, checks four identities on
+every 60-frame group, and prints the shares R5 is scored on. The identities
+hold because a hash and its upload happen in one `create_texture()` call, and
+the counters reset only at a flip:
+- **I1:** `oth` is 0.
+- **I2:** `txh` new and rebuilt equal `txu` new and rebuilt.
+- **I3:** found-binding hashes equal `eq` plus the changed uploads.
+- **I4:** the uploads equal the sum of their causes.
+
+### Inertness
+
+- **Default build.** All 18 objects that depend on the changed files are
+  byte-identical to master's with `__LINE__` pinned. Both builds keep master's
+  warning set (43 = 43).
+- **The Android print.** It sits under `__ANDROID__` and this container has no
+  NDK. So `vk/draw.c` was compiled syntax-only with `__ANDROID__`, the perf
+  switch, and a stub `android/log.h` that carries printf's format attribute:
+  no format warning.
+  - The positive control: the same compile with one specifier deliberately
+    wrong (`%d` for a 64-bit KiB value) warns.
+
+### The desktop controls: one FAIL, then a pass
+
+Both controls ran the count's commit plus a local patch, never committed: the
+perf switch on for desktop and a `stderr` copy of the lines. They used Vulkan
+on lavapipe over seven texture discs. Every run exited 0 with its captures
+(3, 3, 16, 41, 3, 42 and 20). Predictions were registered before each binary
+existed.
+
+**C61: the identities held, but the tests were not seen.**
+- **Passed.** I1 to I4 held on all 13 printed groups. Texture CPU Update's
+  rewrite showed as a fresh bitmap hit uploaded as changed content.
+- **Failed.** The palette disc read `pal` 0, and the format disc read `cvt` 0.
+  C5 failed too: no `memo` or `rep` on any disc.
+- **The cause**, from the discs' progress logs: each suite's tests run in its
+  last frames. Lines print only on every 60th frame, and a run is about 160
+  frames, so the tests fell in the unprinted tail. Every printed group was the
+  test program's own start-up.
+- On a 240 s soak, about 120 groups, the unprinted tail is under 1%. An Android
+  soak is killed, not exited, so the committed instrument keeps the 60-frame
+  cadence. The FAIL is recorded as a FAIL.
+
+**C61b: the same, plus one print of the partial window at exit.** All five
+predictions passed:
+
+| disc | what the tests' groups showed |
+|---|---|
+| Texture CPU Update | 7 changed uploads from 6 marks and 1 fresh bit |
+| Texture palette | `pal` 192 KiB |
+| Texture format | `cvt` 1,152 KiB, `pal` 256 KiB, `swz` and `s3tc` |
+| Texture DXT | native BC 52 KiB, CPU S3TC 13 KiB |
+| Texture render target | `srf` 2, with 3 surface downloads started by binds |
+| Texture signed component | `memo` 5, `rep` 36, `eq` 18: 52 found-binding hashes = 18 equal + 34 changed |
+
+- **The identities held on all 21 groups**, the exit groups included.
+- **The memo route is reachable.** The signed-component disc rewrites one
+  texture several times in a flip. It re-hashed nodes already hashed in that
+  flip 36 times, and 18 of its found-binding hashes bought nothing. That is M1's
+  shape on a test. Whether it carries Crimson's 6.49 ms is R5.2's question.
+
+### What the soaks decide
+
+R5 was registered at 03:27Z, before any of this existed:
+- **R5.1:** 90% or more of Crimson's found-binding hashes compare equal.
+- **R5.2:** the memo (M1) forces at least half of Crimson's hashed KiB.
+- **R5.3:** at least half of Blinx's uploaded KiB goes through a CPU decode
+  other than a plain copy.
+- **R5.4:** Crimson's surface downloads from binds plus new images come to
+  fewer than 1 per 10 `create_texture()` calls.
+
+The fix follows the dominant cause, and each fix is registered before it is
+built:
+- **Crimson's hash:** `memo` or `rep` large means M1; `bit` large means M2;
+  `bov` or `srf` large means M3.
+- **Blinx's upload:** a decode path (`s3tc`, `pal`, `cvt`) large means the
+  decode; `new` large with images made and pool misses means cache churn.
