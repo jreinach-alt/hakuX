@@ -1368,12 +1368,6 @@ standing = false
 retired_utc = "2026-09-27T14:15:00Z"
 note = "RETIRED (hostops 2026-09-27 07:15 PDT): the lane ended blocked with its registered demo A/B refuted (P3: gfps 11.87 -> 12.06, B/A 1.016 against >= 1.10), recorded, not re-fit. PR #467 was closed unmerged, and branch lane/blinx372e is kept. vk/surface.c went to [lane.forza414]. What #372 still needs is the per-frame GPU cost and the last synchronous finish, which sit with lane.flip474 (#474) and lane.retreason425 (#425)."
 
-[lane.slowdown462]
-issues = ["462", "482"]
-files = ["docs/lanes/slowdown462/**"]
-standing = false
-note = "RESUMED (hostops 2026-09-27 08:12 PDT) after PR #477 folded: Ask 4 granted in the brief (one held Thor session and one Thor perflog soak, GTA only); Ask 5 filed as #482 (GTA). STARTED (lane.local 2026-09-26 21:02 PDT), briefs/slowdown462.md: the owner's pivot (about 21:10 PDT) to per-title slowdown investigation on Blinx, Blinx 2, Forza, Agent Under Fire and DOA Ultimate, on the NOVA ONLY. It measures and attributes; code fixes go to the per-title lanes. Serves 0.5 (#433)."
-
 [retired.routeprep]
 issues = []
 retired_utc = "2026-09-27T06:40:00Z"
@@ -1408,5 +1402,7 @@ note = "RELEASED at PR-ready (hostops 2026-09-27 09:09 PDT): PR #475 ready, CI g
 [lane.handbackmerged]
 issues = []
 files = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-merged.sh", "docs/lanes/handbackmerged/**"]
+released = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-merged.sh", "docs/lanes/handbackmerged/**"]
+released_at_ready = 484
 standing = false
-note = "STARTED (hostops 2026-09-27 08:10 PDT), briefs/handbackmerged.md. Harness defect, no tracker issue: handback.sh idle_lanes() skips any lane with a MERGED PR, so a multi-batch lane (lane.titleroutes after PR #476, soaks queued for the next batch) is never resumed when its runs finish. docs/testing/jobs/handback.sh taken from [free]."
+note = "RELEASED AT READY (hostops 2026-09-27 09:55 PDT): PR #484 is out of draft, CI green, unit gone; labelled fold-ready. STARTED (hostops 2026-09-27 08:10 PDT), briefs/handbackmerged.md. Harness defect, no tracker issue: handback.sh idle_lanes() skips any lane with a MERGED PR, so a multi-batch lane (lane.titleroutes after PR #476, soaks queued for the next batch) is never resumed when its runs finish. docs/testing/jobs/handback.sh taken from [free]."
