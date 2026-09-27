@@ -1273,12 +1273,6 @@ files = ["docs/lanes/fmv303c/**", "docs/testing/predictions/fmv303c-*.json"]
 standing = false
 note = "WRITTEN (job.board 2026-09-26T21:58Z): lane was RUNNING with no row -- jobs/handback.sh resumed it at 21:52Z from a draft PR #439 (its unit had been stopped by hostops under the 0.5-first policy, label blocked:after-0.5) and the lane answered `blocked:` at 21:53Z, which handback honours, so it does not resume again. It holds NO code file: its probe hunk is in hw/xbox/nv2a/pgraph/vk/surface.c, which lane.doa413b holds (PR #440) after lane.blinx372d released it at ready (PR #396), and a third unreleased holder is not allowed. When 0.5 ships and #303 is lifted, re-grant surface.c on this row and merge master before ready."
 
-[lane.perfregimen]
-issues = []
-files = ["docs/testing/soak_title.sh", "docs/testing/devices.sh", "docs/lanes/perfregimen/**", "docs/testing/jobs/selftest.d/99-perf-regimen.sh"]
-standing = false
-note = "STARTED (hostops 2026-09-26 15:00 PDT, runbook 6n one-shot), briefs/perfregimen.md: harness, serves 0.5 (#433). Gameplay (title) soaks at max performance and fan, REST restored on every exit path. devices.sh LENT from [lane.toolsmith]. Short HELD device sessions granted by the owner (under 30 min, above 30% battery, pilot first): the host runs them."
-
 [retired.titlestate]
 issues = []
 files = []
