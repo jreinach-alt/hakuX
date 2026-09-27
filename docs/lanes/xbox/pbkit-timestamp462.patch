@@ -1,0 +1,41 @@
+--- nxdk_pgraph_tests/third_party/nxdk/lib/pbkit/pbkit.c	2026-09-20 00:14:01.306499238 -0700
++++ nxdk-cb462/lib/pbkit/pbkit.c	2026-09-27 10:54:13.059733414 -0700
+@@ -57,6 +57,12 @@
+ #define PB_SETOUTER                 0xB2A
+ #define PB_SETNOISE                 0xBAA
+ #define PB_FINISHED                 0xFAB
++#define PB_TIMESTAMP                0xFA0   //hakuX #462 (private build): the DPC records when it handled this callback
++
++//hakuX #462 (private build, lane.xbox): the KeQueryPerformanceCounter tick at which the DPC handled each
++//PB_TIMESTAMP callback, in a ring of 64 indexed by pb_callback_seq. RAM stores only; no register access.
++volatile ULONGLONG pb_callback_time[64];
++volatile DWORD pb_callback_seq=0;
+ 
+ unsigned int pb_ColorFmt = NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8;
+ static unsigned int pb_DepthFmt = NV097_SET_SURFACE_FORMAT_ZETA_Z24S8;
+@@ -336,6 +342,11 @@
+             VIDEOREG(NV_PGRAPH_RDI_DATA)=paramA;
+             break;
+ 
++        case PB_TIMESTAMP: //hakuX #462: when the DPC handled this callback (RAM stores only)
++            pb_callback_time[pb_callback_seq&63]=KeQueryPerformanceCounter();
++            pb_callback_seq++;
++            break;
++
+         case PB_FINISHED: //warns that all drawing has been finished for the frame
+             next=pb_BackBufferNxt;
+             pb_BackBufferIndex[next]=paramA;
+--- nxdk_pgraph_tests/third_party/nxdk/lib/pbkit/pbkit.h	2026-09-20 00:14:01.306499238 -0700
++++ nxdk-cb462/lib/pbkit/pbkit.h	2026-09-27 10:54:13.059733414 -0700
+@@ -48,6 +48,11 @@
+ void    pb_erase_depth_stencil_buffer(int x, int y, int w, int h);
+ 
+ void    pb_reset(void); //forces a jump to push buffer head (do it at frame start)
++//hakuX #462 (private build): NV097_NO_OPERATION with PB_TIMESTAMP makes the DPC record its handling time here
++#define PB_TIMESTAMP 0xFA0
++extern volatile ULONGLONG pb_callback_time[64];
++extern volatile DWORD pb_callback_seq;
++
+ int pb_finished(void);  //prepare screen swapping at VBlank (do it at frame end)
+                 //if it returns 1 it failed (too early, just wait & retry)
+                 //that means you can draw more details in your scene
