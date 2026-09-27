@@ -105,6 +105,66 @@ M2MF class, so it falls back to a CPU memcpy through the same watch.
 
 Session 1 ended waiting on the pilot: a headless session cannot outwait a 12-deep queue.
 
+### Why attempt 1 did not finish
+
+It ended correctly on a `[lane.notify488] waiting:` for the pilot and the arms pair, both outside the session.
+The resume came after hostops promoted the pilot to the device head (`0-0-x-1790529854-notify488-2739010`, done 10:39 PDT).
+No background task was lost: session 1 started none.
+
+Two of the three registrations were refused by the arms job. That is by design: `timing` has no goldens, and `doa-ab` is
+a hand-read soak. Both are queued by hand, per their `queue_order`.
+
+## 5. The pilot (B alone, Nova, 2026-09-27 10:35 PDT)
+
+`timing_judge.py --pilot`: **every B-only leg passes.**
+
+| leg | B on the Nova |
+|---|---|
+| I1 clock / reps | 1.000017; 300 reps in every Done test, 0 busy timeouts |
+| N1 NOTIFY written, Tiny / DOA / DOA_Read | 0 timeouts; kick->notify median 23.7 / 16.9 / 15.7 us (console 4.1; hakuX master: never) |
+| N2 timestamp is PTIMER ns | 0.9987 over 299 rep pairs (console 0.9996) |
+| H0 | completed, 0 fatal lines |
+| kick->semaphore, Tiny / DOA / DOA_Read | 23.1 / 15.4 / 13.9 us median (Thor master: 275 / 13768 / 13790 us) |
+| CPU read of the back buffer (DOA_Read) | 28.5 ms median (Thor master 23.3; console 31.1) |
+
+**The finding the judge's legs did not cover: the 500-quad submit.**
+
+`submit(first_draw_to_kick)` for 500 quads plus the RT switch is **99.0 ms median** on B (Nova). The Thor's master dry run
+read 11.0 ms (`rep_cycle.py` reads the raw rows).
+
+The two runs are not comparable as they stand:
+- Master never writes the notifier, so every master rep waits out the 250 ms notify timeout. The host GPU is idle when
+  the next rep starts; the Thor rep cycle is 261 ms.
+- B's reps run back to back: the cycle is 99.4 ms, and Tiny's is 0.3 ms. The next rep's draws are recorded while the host
+  may still be executing the previous rep's.
+
+Two worlds fit the numbers:
+- **(i) Moved, not added.** The 500 quads cost the Nova's host GPU about 99 ms however they are timed. B moved that cost
+  from the release into the next submission, where a title keeps working in parallel. Master's Nova start->semaphore
+  (submit + kick->semaphore) would then also be about 99 ms.
+- **(ii) B made it worse.** Something on B's path serializes the next rep: a command-buffer or fence wait, or the
+  re-armed surface watch. Master's Nova start->semaphore would then stay near the Thor's 25 ms.
+
+The timing A arm on the Nova (`1-1790531584-notify488-3150101`) separates them:
+- start->semaphore in A (submit + kick_to_semaphore) >= 80 ms: world (i).
+- A <= 50 ms: world (ii). **B's semaphore half then does not ship as is**, whatever S1 says.
+
+S1/S2 (B/A kick->semaphore) will pass either way, so they cannot decide this. The per-rep total can.
+
+**What the pending runs still have to show:**
+- timing A arm: M1 (A never writes the notifier), S1/S2/S3 against B, and the start->semaphore total above.
+- pgraph arms pair (`1-1790530526-arms-notify488-base/fix`): bit-identical captures A vs B, including
+  `texture_cpu_update_tests` and `zpass_pixel_count_tests`, the two suites that send releases.
+- DOA A1 B1 A2 B2 (`1-1790531595-notify488-3150971`, `-1790531596-notify488-3151021`, `-3151064`, `-3151101`):
+  - F0: does DOA release semaphores at all? If not, the DOA A/B is inert for the semaphore half.
+  - P1: B >= A - 1 gfps (no regression). This also catches world (ii) in a real title.
+  - H0: no new hang.
+
+Pilot verdict written to `$DISPATCH_DIR/pilots/notify488.ok` at 17:55Z.
+
+Master merged at `1f5e4b6eb7`. The index was regenerated with `--support fold-pins/pbkitplusplus`: without `--support`,
+5 suites read as changed. `preflight.sh --allow-tracker` passes.
+
 ## For the next lane
 
 - Do not look for NOTIFY in DOA or AUF; they do not send it (section 1).
