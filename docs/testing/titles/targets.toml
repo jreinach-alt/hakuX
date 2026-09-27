@@ -152,6 +152,7 @@ notes = "#431 (comment 5849938891): 30, medium confidence. IGN (Xbox, 2005): loc
 [titles."56550042"]
 name = "50 Cent: Bulletproof"
 iso = { nova = "56550042-50_Cent_Bulletproof.xiso.iso" }
+route = "50cent"
 notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
 
 [titles."45530018"]
@@ -163,6 +164,7 @@ notes = "#431 (comment 5849938891): 60 from the hakuX swap interval: reviewed ga
 [titles."5451000D"]
 name = "WWE Raw 2"
 iso = { nova = "5451000D-WWE_Raw_2.xiso.iso" }
+route = "wwe-raw-2"
 notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
 
 [titles."4541005B"]
@@ -229,41 +231,49 @@ notes = "Route by lane.titleroutes 2026-09-26 (Nova): Tour Mode fight vs CPU, no
 
 [titles."54430003"]
 name = "Ninja Gaiden"
+iso = { thor = "Ninja Gaiden (Europe) (En,Fr,De,Es,It).iso" }
 target_fps = 60
-notes = "#431 (comment 5851536933): 60, high confidence. Digital Foundry 2019 and 2007; lawrence.com (Xbox, 2004)"
+notes = "#431 (comment 5851536933): 60, high confidence. Digital Foundry 2019 and 2007; lawrence.com (Xbox, 2004). European image: the target assumes hakuX's default EEPROM (NTSC-M), under which it runs its 60 Hz modes; a 50 Hz run would read as below target."
 
 [titles."5443000D"]
 name = "Ninja Gaiden Black"
+iso = { nova = "Ninja Gaiden Black.iso" }
 target_fps = 60
 notes = "#431 (comment 5851536933): 60, medium confidence. WorthPlaying (Xbox, 2005)"
 
 [titles."5345000F"]
 name = "ToeJam & Earl III: Mission to Earth"
+iso = { nova = "ToeJam & Earl III - Mission to Earth (USA).iso" }
 target_fps = 60
 notes = "#431 (comment 5851536933): 60, medium confidence. TeamXbox (2003); split-screen also 60"
 
 [titles."41560001"]
 name = "Tony Hawk's Pro Skater 2x"
+iso = { thor = "Tony Hawk's Pro Skater 2x (USA).xiso.iso" }
 target_fps = 60
 notes = "#431 (comment 5851536933): 60, medium confidence. TeamXbox (2001, two reviews), ActiveXbox (2002)"
 
 [titles."4947002B"]
 name = "Panzer Dragoon Orta"
+iso = { nova = "Panzer Dragoon Orta (Europe).iso" }
 target_fps = 60
-notes = "#431 (comment 5851536933): 60, medium confidence. 1UP retrospective (2007)"
+notes = "#431 (comment 5851536933): 60, medium confidence. 1UP retrospective (2007). European image: the target assumes hakuX's default EEPROM (NTSC-M), under which it runs its 60 Hz modes; a 50 Hz run would read as below target."
 
 [titles."4D530041"]
 name = "Amped 2"
+iso = { nova = "Amped 2 (USA).xiso.iso" }
 target_fps = 60
 notes = "#431 (comment 5851536933): 60, medium confidence. GMR (Dec 2003)"
 
 [titles."48550001"]
 name = "Bloody Roar: Extreme"
+iso = { nova = "48550001-Bloody_Roar_Extreme.xiso.iso" }
 target_fps = 60
 notes = "#431 (comment 5851536933): 60, medium confidence. IGN, GameSpot, TeamXbox (Xbox, 2003)"
 
 [titles."49470017"]
 name = "Gunvalkyrie"
+iso = { nova = "5345000B-Gunvalkyrie.xiso.iso" }
 target_fps = 60
 notes = "#431 (comment 5851536933): 60, medium confidence. Evolution, Italy (May 2002)"
 
@@ -279,26 +289,31 @@ notes = "#431 (comment 5851536933): 60, medium confidence. Prima official guide 
 
 [titles."56550003"]
 name = "Crash Bandicoot: The Wrath of Cortex"
+iso = { nova = "56550003-Crash_Bandicoot_The_Wrath_of_Cortex.xiso.iso" }
 target_fps = 60
 notes = "#431 (comment 5851536933): 60, low confidence. two user captures of a real Xbox (average 59.78)"
 
 [titles."4D530004"]
 name = "Halo: Combat Evolved"
+iso = { nova = "Halo Combat Evolved.iso" }
 target_fps = 30
 notes = "#431 (comment 5851536933): 30, high confidence. Digital Foundry Retro (2017)"
 
 [titles."4D530046"]
 name = "Phantom Dust"
+iso = { thor = "Phantom Dust (USA) (En,Ja).xiso.iso" }
 target_fps = 30
 notes = "#431 (comment 5851536933): 30, high confidence. Microsoft's remaster creative director (2017): the engine was built around 30"
 
 [titles."4D530064"]
 name = "Halo 2"
+iso = { nova = "Halo 2.iso" }
 target_fps = 30
 notes = "#431 (comment 5851536933): 30, medium confidence. IGN (Xbox, 2004); capped at 30 per a 2024 reverse-engineering write-up"
 
 [titles."4D530005"]
 name = "Amped: Freestyle Snowboarding"
+iso = { thor = "4D530005-Amped_Freestyle_Snowboarding.xiso.iso" }
 target_fps = 30
 notes = "#431 (comment 5851536933): 30, medium confidence. ActiveXbox (2002)"
 
@@ -316,6 +331,8 @@ route = "gta-sa"
 name = "Alien Hominid"
 iso = { thor = "5A440004-Alien_Hominid.xiso.iso" }
 route = "alien-hominid"
+target_fps = 60
+notes = "Own target 60 from hakuX: it runs at 59.94 fps median over 302 windows on the Thor (run 1-1790505449-titleroutes-1023605), so it is not capped below 60. A PAL-only image: under hakuX's default EEPROM (NTSC-M) it runs its 60 Hz modes, not 50 Hz."
 
 [titles."4D53002A"]
 name = "Midtown Madness 3"
@@ -341,3 +358,38 @@ route = "otogi"
 name = "Burnout"
 iso = { thor = "41430006-Burnout.xiso.iso" }
 route = "burnout"
+
+[titles."45410062"]
+name = "Battlefield 2: Modern Combat"
+iso = { thor = "45410062-Battlefield_2_Modern_Combat.xiso.iso" }
+route = "bf2mc"
+
+[titles."494C0006"]
+name = "Aoi Namida"
+iso = { thor = "494C0006-Aoi_Namida.xiso.iso" }
+target_fps = 60
+notes = "Own target 60 from #431 (comment 5853568091): low confidence. xemu user report."
+
+[titles."4D530007"]
+name = "Azurik: Rise of Perathia"
+iso = { thor = "4D530007-Azurik_Rise_of_Perathia.xiso.iso" }
+route = "azurik"
+target_fps = 30
+notes = "Own target 30 from #431 (comment 5853568091): low confidence. Cxbx developer's blog (2010)."
+
+[titles."41430016"]
+name = "Alias"
+iso = { thor = "41430016-Alias.xiso.iso" }
+route = "alias"
+
+[titles."4D570002"]
+name = "Arctic Thunder"
+iso = { thor = "4D570002-Arctic_Thunder.xiso.iso" }
+target_fps = 60
+notes = "Own target 60 from #431 (comment 5853568091): medium confidence. IGN Xbox review (2001)."
+
+[titles."4D570005"]
+name = "Area 51"
+iso = { thor = "4D570005-Area_51.xiso.iso" }
+target_fps = 60
+notes = "Own target 60 from #431 (comment 5853568091): medium confidence. GameSpy Xbox preview (2004, pre-release build)."

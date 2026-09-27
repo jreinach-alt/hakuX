@@ -1,0 +1,65 @@
+# Azurik: Rise of Perathia (4D530007): one route for the first run (no
+# save is written before control). PLAYED by nav.py on the Thor, 2026-09-27
+# 07:02 PDT (lane.titleroutes HELD session azurik.first-run-20260927T070214).
+#
+#   the intro FMV (A skips it) -> the title, "Press START to play" (START)
+#   -> the save screen, cursor on "Start New Game" (A) -> the in-engine
+#   opening in the temple (A presses) -> the Arena, "For your first
+#   challenge, destroy the five orange vases ... Continue (A)" (A) -> player
+#   control in the Arena, health and elemental gauges shown.
+#
+# In play A is jab, so a spare A in the tutorial boxes is harmless.
+#
+# Player control: LY min ran Azurik across the Arena and out through the
+# far arch, LX turned him, A and X attacked (nav frames 006-gameplay ->
+# 007-moved, in the room past the arch).
+wait 25.1
+shot boot
+wait 8.4
+press A
+wait 5.3
+press A
+wait 5.1
+shot a2
+wait 6.9
+press START
+wait 6.1
+shot st
+wait 9.8
+press A
+wait 8.1
+shot new
+wait 7.6
+press A
+wait 5.4
+press A
+wait 5.4
+press A
+wait 6.9
+shot cut
+wait 8.2
+press A
+wait 4.3
+press A
+wait 4.1
+shot tut
+wait 19.5
+mark gameplay
+repeat forever {
+    axis LY min
+    wait 2
+    press A
+    axis LX max
+    wait 1
+    press X
+    axis LX mid
+    axis LY max
+    wait 2
+    press A
+    axis LX min
+    wait 1
+    press X
+    axis LX mid
+    axis LY mid
+    wait 0.5
+}
