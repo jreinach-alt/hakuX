@@ -414,6 +414,47 @@ route reached `mark gameplay` (02:08:58), then adb failed from 02:12 to the
 end (`UtilAcceptVsock: accept4 failed 110`, adb_failures=6). Re-queued as
 1-1790503792-titleroutes-997141 (thor, 730 s, ref 6bfce4a685).
 
+New on the Thor since the work list (`adb shell ls`, 03:15): 22 titles
+lane.xbox pushed to internal storage (`/storage/emulated/0/ROMS/xbox/`) and
+Dungeons & Dragons: Heroes on the SD card. By xemu rating, then rank:
+Alien Hominid (Perfect, 13), Midtown Madness 3 (17), Aoi Namida (18), Blood
+Wake (31), D&D Heroes (59), Brute Force (61), Angelic Concert (65), Bistro
+Cupid (Perfect, 69), Otogi (83), Burnout (91), Battlefield 2: MC (95), Azurik
+(96), Alias (104), Ex-Chaser (110), Innocent Tears (144), KOF Maximum Impact
+Maniax (148), Bistro Cupid 2 (149), then unranked AFL Live, All-Star Baseball
+2003 and 2004, AMF Bowling 2004, AMF Xtreme Bowling (Perfect).
+
+### Session 14: HELD Thor, 03:30-03:55 PDT (25 min; hold taken 03:20 while the Ghoulies soak ran), battery 64% -> 63%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Alien Hominid (5A440004) | thor | `alien-hominid.route` | yes (03:36) | level 1, the FBI street; the alien runs, jumps and shoots agents, 59 fps |
+| Midtown Madness 3 (4D53002A) | thor | `midtown-madness-3.returning.route` | yes (03:54; one failed replay before it) | Washington, pizza delivery vs Angelina, timer running; the Cadillac drives at 16-18 fps |
+
+**Alien Hominid.** Logo (START) -> on the first run only a "No save games
+found ... press A" card (it writes the save) -> GAME -> NEW GAME -> a
+controls picture (A skips) -> the intro cutscene, which A does not skip and
+which ends by itself in ~24 s -> level 1. The route is an A train 5 s apart,
+so the missing save card on later runs costs nothing. A blind player loses
+a life in ~20 s; after the continue countdown the game goes back to the NEW
+GAME menu, and the pattern's A presses start a new game from there (tested
+in the nav session: menu A, A, cutscene, level). Nav frames
+`~/hakux-work/nav/alien-hominid.first-run-20260927T033039/` (009-moved ->
+010-left), replay `scratch/replay/alien-hominid-033438/zz-end.png` (30 s past
+the mark, score 400).
+
+**Midtown Madness 3.** Profile Player1 was already on the disk (returning
+route). Warning (A) -> profile (A) -> WORK UNDERCOVER -> Washington D.C. ->
+job FMV (A) -> PIZZA DELIVERER -> text -> STANDARD DELIVERY -> Cadillac ->
+mission card, "PRESS START" when loaded. The first replay was faster than the
+nav session: the race was already running when START came, and START paused
+it (`scratch/replay/midtown-madness-3.returning-034245/`). An A 4 s after the
+START picks RESUME RACE (the default); on the second replay the race ran
+through the mark (`scratch/replay/midtown-madness-3.returning-034845/`,
+035336-e1.png, zz-end.png at 1:09 race time). Angelina delivered 4 of 14
+pizzas in 70 s, so the mission may end ~4 min after the mark; the last
+minute of a 300 s window may be a results screen.
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
@@ -440,7 +481,9 @@ request.
 | GTA: San Andreas | gta-sa | 0-0-x-1790493356-titleroutes-734802 (promoted from 1-1790493356-titleroutes-734802) | 500 | 279 s of gameplay; fps window median 4.56 (min 3.91), 0% at >= 30; target 30. Ten 11-15 s hangs, 80% of audio callbacks short. apk 397ae7dca16a. Posted on #397 (comment 5853851696) |
 | JSRF | jsrf | 1-1790497366-titleroutes-886445 | 500 | 284 s of gameplay (the Garage); fps window median 24.23 (min 16.85), 11.3% at >= 30; target 60 |
 | Grabbed by the Ghoulies | ghoulies | 1-1790499526-titleroutes-925659 | 730 | void: adb lost after the mark (vsock accept4 failures), no verdict |
-| Grabbed by the Ghoulies | ghoulies | 1-1790503792-titleroutes-997141 | 730 | pending |
+| Grabbed by the Ghoulies | ghoulies | 1-1790503792-titleroutes-997141 | 730 | ran clean (mark 03:18:51, adb_failures=0); verdict pending |
+| Alien Hominid | alien-hominid | 1-1790505449-titleroutes-1023605 | 410 | pending |
+| Midtown Madness 3 | midtown-madness-3.returning | 1-1790506491-titleroutes-1032854 | 580 | pending |
 
 ## Do not repeat
 
