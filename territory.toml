@@ -1342,12 +1342,11 @@ retired_utc = "2026-09-27T01:40:46Z"
 files = []
 note = "RETIRED (lane.local 2026-09-26 18:40 PDT): PR #448 folded as deb0903b51 at 18:35 PDT, and the unit is gone (its session ended 18:39). Its dashboard files (status.sh, status_html.py, the 60-65 status fragments, and docs/lanes/dash432/release-0.5.toml) pass to [lane.titles05], which turns the 0.5 section into the owner's title table."
 
-[lane.titles05]
+[retired.titles05]
 issues = []
-files = ["docs/testing/jobs/status.sh", "docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/60-status.sh", "docs/testing/jobs/selftest.d/62-status-freshness.sh", "docs/testing/jobs/selftest.d/63-status-lanes.sh", "docs/testing/jobs/selftest.d/64-status-html.sh", "docs/testing/jobs/selftest.d/65-status-objective.sh", "docs/testing/jobs/selftest.d/66-status-titles.sh", "docs/testing/release-0.5.toml", "docs/lanes/dash432/release-0.5.toml", "docs/lanes/titles05/**"]
-released = ["docs/testing/jobs/status.sh", "docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/60-status.sh", "docs/testing/jobs/selftest.d/62-status-freshness.sh", "docs/testing/jobs/selftest.d/63-status-lanes.sh", "docs/testing/jobs/selftest.d/64-status-html.sh", "docs/testing/jobs/selftest.d/65-status-objective.sh", "docs/testing/jobs/selftest.d/66-status-titles.sh", "docs/testing/release-0.5.toml", "docs/lanes/dash432/release-0.5.toml", "docs/lanes/titles05/**"]
-standing = false
-note = "STARTED (lane.local 2026-09-26 18:40 PDT), briefs/titles05.md: the status page's 0.5 section becomes the owner's title table. The owner, about 17:50 PDT: a list of the titles with FPS, a colour, the related issue, whether it is in flight. It is measured against the 0.5 target set at 17:15 (145 benchmarked + 50 Playable, fps on ONE handheld; #433). issues = [] on purpose: #433 is the release tracker, and this lane serves its status view. Serves 0.5."
+retired_utc = "2026-09-27T04:54:58Z"
+files = []
+note = "RETIRED (lane.local 2026-09-26 21:54 PDT): PR #458 folded at 21:29 PDT, and the unit is gone. Its dashboard files pass to [lane.measured05] (the owner's 'Measured N / 145' top line and chart)."
 
 [lane.retreason425]
 issues = ["425"]
@@ -1387,3 +1386,9 @@ files = ["docs/lanes/aufdispatch/**"]
 released = ["docs/lanes/aufdispatch/**"]
 standing = false
 note = "STARTED (lane.local 2026-09-26 21:27 PDT), briefs/aufdispatch.md: #412 (AUF) with #425: it ranks why AUF's TBs return to the exec loop (54% of the vCPU thread) and designs the fixes, ready for lane.retreason425's counter. Analysis only. The owner asked at about 21:25 PDT to step on the gas (weekly usage), so these lanes add parallel offline work that needs no device and no code file. issues = [] on purpose: the issue's owner row keeps it. Serves 0.5."
+
+[lane.measured05]
+issues = []
+files = ["docs/testing/jobs/status.sh", "docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/60-status.sh", "docs/testing/jobs/selftest.d/62-status-freshness.sh", "docs/testing/jobs/selftest.d/63-status-lanes.sh", "docs/testing/jobs/selftest.d/64-status-html.sh", "docs/testing/jobs/selftest.d/65-status-objective.sh", "docs/testing/jobs/selftest.d/66-status-titles.sh", "docs/testing/release-0.5.toml", "docs/lanes/dash432/release-0.5.toml", "docs/testing/jobs/selftest.d/67-status-measured.sh", "docs/lanes/measured05/**"]
+standing = false
+note = "STARTED (lane.local 2026-09-26 21:54 PDT), briefs/measured05.md: the owner, about 21:55 PDT, asked for 'Measured N / 145' (titles with any fps reading) at the top of the status page, and a chart of it in How close is 0.5. issues = [] on purpose: #433 is the release tracker. Serves 0.5."
