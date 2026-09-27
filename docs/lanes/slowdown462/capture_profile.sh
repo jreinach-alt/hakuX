@@ -20,8 +20,9 @@
 # request already running on the Nova finishes first. The per-device lease is
 # kept fresh while this script lives (the Stop hook reads only the lease).
 # Every exit path force-stops the app, clears this APK's shader caches, drops
-# the dispatcher's shader-cache and env markers for the Nova (so its next run
-# reinstalls and re-applies prefs), sleeps the screen and releases the hold.
+# the dispatcher's shader-cache marker (so its next run reinstalls), sleeps the
+# screen and releases the hold. The env marker is dropped only after this
+# script has cleared a leftover env pref and read the clear back.
 set -u
 SHORT=$1 ISO=$2 DELAY=${3:-60}
 # DEV: nova (the five titles) or thor (GTA SA only: hostops grant, 09-27 08:20 PDT)
@@ -66,7 +67,9 @@ cleanup() {
     fi
     a shell am force-stop $PKG >/dev/null 2>&1
     a shell "run-as $PKG rm -rf files/spv_cache files/vk_pipeline_cache.bin files/shader_module_keys.bin" >/dev/null 2>&1
-    rm -f "$D/.shader_cache_apk.$DEV" "$D/.env_pref.$DEV"
+    # Not .env_pref.$DEV: that marker is how the dispatcher knows to clear a
+    # previous request's env, and it goes only after a read-back clear above.
+    rm -f "$D/.shader_cache_apk.$DEV"
     a shell input keyevent KEYCODE_SLEEP >/dev/null 2>&1
     fi
     [ -n "$LEASE_PID" ] && kill "$LEASE_PID" 2>/dev/null && rm -f "$LEASE"
@@ -107,7 +110,26 @@ a shell "run-as $PKG rm -rf files/spv_cache files/vk_pipeline_cache.bin files/sh
 a exec-out run-as $PKG cat shared_prefs/x1box_prefs.xml > "$OUT/prefs.xml"
 grep -q 'name="validation_layers" value="true"' "$OUT/prefs.xml" && { say "validation_layers on; refusing"; exit 6; }
 # A previous request's --env left in the pref would run this profile under it.
-grep -Eq '<string name="env_vars">[^<]+' "$OUT/prefs.xml" && { say "env_vars pref not empty; refusing: $(grep 'name="env_vars"' "$OUT/prefs.xml")"; exit 6; }
+# Clear it the dispatcher's way (apply_env_pref: drop the key, write, read
+# back) and only then drop its marker. On 09-27 09:08 this script refused
+# here, and its cleanup dropped the marker with the env still set: the next
+# Thor request (titleroutes Azurik) ran under HAKUX_TCG424_RANGE=1.
+if grep -Eq '<string name="env_vars">[^<]+' "$OUT/prefs.xml"; then
+    say "clearing a previous request's env_vars: $(grep 'name="env_vars"' "$OUT/prefs.xml" | sed 's/^ *//')"
+    python3 - "$OUT/prefs.xml" "$OUT/prefs.noenv.xml" <<'PYENV' || { say "could not edit prefs; refusing"; exit 6; }
+import re, sys
+s = open(sys.argv[1]).read()
+if "</map>" not in s:
+    sys.exit("prefs file has no </map>")
+open(sys.argv[2], "w").write(re.sub(r'\n?[ \t]*<string name="env_vars">.*?</string>', "", s, flags=re.S))
+PYENV
+    a shell "run-as $PKG sh -c 'cat > shared_prefs/x1box_prefs.xml'" < "$OUT/prefs.noenv.xml"
+    a exec-out run-as $PKG cat shared_prefs/x1box_prefs.xml > "$OUT/prefs.xml"
+    grep -Eq '<string name="env_vars">[^<]+' "$OUT/prefs.xml" && { say "env_vars still set after the clear; refusing"; exit 6; }
+    grep -q '</map>' "$OUT/prefs.xml" || { say "prefs read back truncated; refusing"; exit 6; }
+    rm -f "$D/.env_pref.$DEV"
+    say "env_vars cleared (read back)"
+fi
 a shell "rm -f /data/local/tmp/$SHORT.data"
 # ROUTE: the five titles ran survey; GTA SA (added 09-27) runs its own gta-sa
 cp "$HERE/titles/routes/${ROUTE:-survey}.route" "$OUT/route.txt" || { say "no route ${ROUTE:-survey}"; exit 5; }

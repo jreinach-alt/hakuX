@@ -792,3 +792,11 @@ behind (DOA at the flip, Forza and Blinx 2 at surface downloads).
   soak refuted (08:25 -> 08:55 PDT, corrected on #425, #482 and #462).
 - `--trace-offcpu` never opens on the Thor (perf_event_paranoid 3). Only
   the Nova (paranoid 1) gives the off-CPU half.
+
+### Attempt 6 (09:04 PDT): why attempt 5 did not finish
+
+Attempt 5 did not fail. It ended waiting on Ask 7, a host grant outside the
+session, with nothing of its own queued, held or running in the background.
+Hostops granted Ask 7 at 09:03 PDT with a 25% battery floor, and this
+attempt runs that one session. The request `0-0-x-1790517499-slowdown462-1484367`
+named in the resume is the earlier GTA soak, which attempt 4 already read.
