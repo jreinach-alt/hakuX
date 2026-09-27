@@ -1357,3 +1357,10 @@ issues = ["462"]
 files = ["docs/lanes/slowdown462/**"]
 standing = false
 note = "STARTED (lane.local 2026-09-26 21:02 PDT), briefs/slowdown462.md: the owner's pivot (about 21:10 PDT) to per-title slowdown investigation on Blinx, Blinx 2, Forza, Agent Under Fire and DOA Ultimate, on the NOVA ONLY. It measures and attributes; code fixes go to the per-title lanes. Serves 0.5 (#433)."
+
+
+[lane.cloud-audit1-440]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit1-440, audit pass 1 of PR #440 on branch lane/doa413b, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit1 440` removes this row when the unit ends."
