@@ -402,6 +402,18 @@ Galleon, GTA):** when START or A also means "select", replace single timed
 presses with a train of them spaced wider than the slowest transition. Check
 first that the extra presses are harmless at the screen they end on.
 
+## Attempt 4 (resumed 2026-09-27 03:09 PDT)
+
+Why attempt 3 did not finish: it hit the 300-turn cap at about 02:00 PDT,
+right after queueing the Ghoulies benchmark and writing session 13's notes.
+Nothing was lost; the hold had been released. From here: fewer turns per
+title (one nav script per screen, not one call per press).
+
+The Ghoulies benchmark 1-1790499526-titleroutes-925659 has no verdict: the
+route reached `mark gameplay` (02:08:58), then adb failed from 02:12 to the
+end (`UtilAcceptVsock: accept4 failed 110`, adb_failures=6). Re-queued as
+1-1790503792-titleroutes-997141 (thor, 730 s, ref 6bfce4a685).
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
@@ -427,7 +439,8 @@ request.
 | MechAssault 2 | mechassault-2 | 1-1790492206-titleroutes-681960 | 530 | 315 s of gameplay; fps window median 29.97 (min 15.81), 91.7% at >= 30; target 30 |
 | GTA: San Andreas | gta-sa | 0-0-x-1790493356-titleroutes-734802 (promoted from 1-1790493356-titleroutes-734802) | 500 | 279 s of gameplay; fps window median 4.56 (min 3.91), 0% at >= 30; target 30. Ten 11-15 s hangs, 80% of audio callbacks short. apk 397ae7dca16a. Posted on #397 (comment 5853851696) |
 | JSRF | jsrf | 1-1790497366-titleroutes-886445 | 500 | 284 s of gameplay (the Garage); fps window median 24.23 (min 16.85), 11.3% at >= 30; target 60 |
-| Grabbed by the Ghoulies | ghoulies | 1-1790499526-titleroutes-925659 | 730 | pending |
+| Grabbed by the Ghoulies | ghoulies | 1-1790499526-titleroutes-925659 | 730 | void: adb lost after the mark (vsock accept4 failures), no verdict |
+| Grabbed by the Ghoulies | ghoulies | 1-1790503792-titleroutes-997141 | 730 | pending |
 
 ## Do not repeat
 
