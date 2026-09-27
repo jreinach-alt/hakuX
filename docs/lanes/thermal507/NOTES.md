@@ -75,7 +75,26 @@
 
 ## Existing Thor title benchmarks (brief item 4)
 
-(pending)
+Posted on #507 (comment 5859894811). 122 Thor title soaks of the last 48 h
+were binned at 30 s from `soak start`. A run is flagged when, at 200 s or
+later, the median of the three preceding bins is >= 10 fps and every later bin
+is < a third of it. Each flagged run is then checked against other runs of the
+same title past the same second.
+
+Probable pause: slowdown462-3573620 (GTA, 270 s), titleplay-p1-crimson
+(300 s), **titleroutes-1074940 Blood Wake (300 s; its verdict scored the
+paused windows: share 0.295, and 37-40 fps before the fall)**,
+titleroutes-1523259 (BF2, 480 s), and two Forza runs (ambiguous: 2 of 3
+Forza runs fall at 240-300 s). vcpuprime428-3939754 sits just under the
+threshold, at 390 s.
+
+Not the shape: falls before `mark gameplay` (loads), falls that recur at the
+same second across runs (Blinx and PGR at 180 s), and 0-fps bins (no perf
+line). Midtown Madness 3 holds 3 fps from before its mark; this trace cannot
+tell a hot device from the title.
+
+- A fps-only detector without the same-title check flags every Blinx run
+  (60 -> 12 at ~100-200 s, content). Always compare against sibling runs.
 
 ## For the next lane
 
