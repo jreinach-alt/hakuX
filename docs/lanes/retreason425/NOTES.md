@@ -269,3 +269,13 @@ Idle ms/frame by the key of the stretch's end says how long it waited.
 
 Read with `python3 docs/lanes/retreason425/rr425.py --from 299 --to 420 <id>`
 (AUF); for the Blinx titles read the windows after the route's `mark play`.
+
+### Waiting (attempt 4, 2026-09-27 09:05 PDT)
+
+On the three `[rr425w]` soaks above (queued at priority 1 behind seven
+requests) and the arms job's verdict on `retreason425-wake-inert.json`. The
+index regeneration for the nv2a.c accessor is a6a12af6bf; preflight passes.
+Next: read each soak with `rr425.py`; name the wake key with the long busy
+periods per title, its idle ms/frame, and its owner (#474 for PFIFO waits
+and pacing); check the Blinx titles' `[rr425pc]` for `sti; nop`; post on
+#425 and #462; then mark #460 ready.
