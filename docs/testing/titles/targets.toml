@@ -124,7 +124,8 @@ notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 
 [titles."4541005D"]
 name = "GoldenEye: Rogue Agent"
 iso = { nova = "4541005D-GoldenEye_Rogue_Agent.xiso.iso" }
-notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+route = "goldeneye-ra"
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default. Route by lane.titleroutes 2026-09-26 (Nova): first-run only (profile keyboard -> Campaign, Fort Knox)."
 
 [titles."4D53006E"]
 name = "Forza Motorsport"

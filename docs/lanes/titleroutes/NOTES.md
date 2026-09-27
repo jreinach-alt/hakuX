@@ -141,3 +141,28 @@ Two traps:
   `frames/nightfire-replay-gameplay.jpg`). What the 420 s window holds
   after those 75 s is not seen: if the prologue ends in a free-roam
   section, fire-only input will stand still there.
+
+### Session 3: HELD Nova, 19:19-19:38 PDT (hold; device used from 19:25), battery 54% -> 50%
+
+The Thor was at **9%** at 19:18 while running a titlebench soak at MAX
+perf, so it could not be held (and is a device risk; written to
+`host-tools/hostops-inbox.md`, 19:18).
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| GoldenEye: Rogue Agent (4541005D) | nova | `goldeneye-ra.first-run.route` | yes (19:32) | first person in the helicopter of Fort Knox; the view turns with RX |
+
+**GoldenEye: Rogue Agent.** The profile keyboard (CREATE NEW PROFILE,
+PLAYER1 pre-filled) comes up on every boot, because the profile the nav
+session made was never flushed to the disk (the launch force-stops the app).
+So the first-run route replays on this disk as it is. **pad.sh's D-pad
+buttons did not move the keyboard cursor** (nor Kabuki's map); the left
+stick does, one key per 0.15 s flick. pad.sh sends `press LEFT` as the
+BTN_DPAD_LEFT key (code 546); it also has `axis HATX|HATY`, which is likely
+what these games read as the D-pad (not yet tried).
+
+**Variant choice:** `titlestate.py choose` for 4541005D on the Nova gives
+`first-run` ("known to have no profile") once targets.toml names the
+route. For a single-file route (Kabuki, Nightfire) it answers `survey.route`
+with variant first-run, since it only looks for `<route>.<variant>.route`.
+The soak must use targets.toml's `route` for those; on the board request.
