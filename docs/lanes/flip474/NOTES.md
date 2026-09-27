@@ -435,8 +435,126 @@ out almost equal in every run, which looks like an instrument artefact
 before anyone relies on it, and `GPU` is a per-frame sum over command
 buffers.
 
+## Why the last session did not finish, and this one (2026-09-27, from 09:23 PDT)
+
+The last session did finish what it had. It logged the audit decisions and
+the next lever, pushed `117b3b56d1` at 16:21Z and left #475 ready. One
+minute later the host's delivery on #474/#414 (09:22 PDT) asked for three
+more things: a DOA A/B on lane.forza414's fix build, the O4 split pilot, and
+a check of the R/X artefact. No session was running to read it.
+
+#475 folded at 16:30Z as `bf60a2b5b8` and the fold deleted the lane branch.
+This session fast-forwarded to master and works on a **second PR** from the
+same branch name. Its net diff is docs only.
+
+### 9. lane.forza414's fix and DOA: the same call, not the same branch
+
+The delivery's premise is that DOA's `cdef` and Forza's `surfupd` are the
+same completion, so one fix frees both. Read against `94f002d309`, they are
+the same call in `pgraph_vk_surface_update` and different branches of
+`download_surface_complete_deferred` (vk/surface.c):
+
+| branch | who waits there | what 94f002d309 does |
+|---|---|---|
+| `display_predownload_pending`: wait on the flip's submitted command buffer | **DOA**: #475's B released the lock only around the fence waits and the vCPU's wait went 0.69 -> 0.004; surf413 `fin` is 0.00 ms in all four runs | nothing: `surface_update_may_defer_downloads()` returns false when the flag is set |
+| `deferred_downloads_frame >= 0`: wait on an earlier finish's fence | neither, measurably | nothing: the gate returns false, "a fence wait, not a finish" |
+| neither: `pgraph_vk_finish(SURFACE_DOWN)` | **Forza**: `[sdcall]` surfupd fin 7.0 per frame, 20.9 ms | defers it unless a binding is about to upload |
+
+So by reading, `94f002d309` completes DOA's flip download exactly where its
+base does. The A/B is registered on that reading
+(`flip474-doa-forza414-ab.json`): C1 says cdef does **not** fall (B/A >= 0.8),
+and B/A <= 0.5 kills the reading. It is one run per arm, because the two
+outcomes are ~51 ms and ~0. Both refs print `[sdcall]`, which no DOA run has
+had, so G0 measures the branch directly.
+
+What DOA needs is the deferral extended to the first row: leave
+`display_predownload_pending` set across draws and complete on a consumer
+(O1). That is a second gate in the same function, in lane.forza414's file.
+This lane does not write a second copy of the deferral.
+
+### 10. What the logs on disk already say about the ~18 ms (`o4read.py`)
+
+| DOA fight, 151-288 s | A1 | B1 | A2 | B2 |
+|---|---|---|---|---|
+| cdef, ms/frame | 52.3 | 51.0 | 61.6 | 50.4 |
+| dfF, the completion's wait | 53.7 | 51.0 | 62.1 | 50.8 |
+| dfR, the staged copy and flags | 0.4 | 0.2 | 0.4 | 0.2 |
+| GPU span | 34.8 | 33.0 | 39.9 | 33.0 |
+| R, inside render passes | 17.4 | 16.5 | 20.0 | 16.5 |
+| X, outside them | 17.4 | 16.4 | 19.9 | 16.6 |
+| MxG, the longest gap between two passes | 16.8 | 16.2 | 19.5 | 16.3 |
+| wait / R | 3.09 | 3.09 | 3.10 | 3.08 |
+
+- **The excess is not the copy.** dfR is 0.2 to 0.4 ms.
+- **It is not the render thread's submit.** `pgraph_vk_finish(FLIP_STALL)`
+  spins until `frame_submitted` is set, which `process_finish`
+  (render_thread.c) does after `vkQueueSubmit` returns. The wait cannot start
+  before that.
+- **It scales with the frame's work.** The wait is 3.08 to 3.10 x R in all
+  four runs, A2's replay scene included. A fixed wake-up or queue latency
+  would not scale. This is a pattern, not an explanation.
+
+### 11. The R/X check: the equality is real, and it is DOA's long-wait scenes
+
+| run | device | X/R per line, median (p10 to p90) |
+|---|---|---|
+| DOA fight, four runs | Nova | 0.99 to 1.01 (0.93 to 1.01) |
+| DOA, scenes with no long gap (B1, 08:35:28-40) | Nova | 0.03 to 0.05 |
+| Crimson Skies A, B | Thor | 0.09 (0.07 to 0.17) |
+| Forza, two runs | Nova | 0.13, 0.20 (0.11 to 0.62) |
+
+- The instrument does not force X = R: the same code reads 0.09 and 0.13
+  on other titles, and 0.03 on DOA's own scenes without the long wait.
+- In DOA, every line with one large gap (`g:n/0/1`) has X = R within 2%,
+  from the menus (R 6.4 ms) to the fight (R 18.1 ms), and every such line
+  has the long `Surf` wait. Lines with no large gap have neither.
+- X is one gap: MxG is X less 0.3 ms. So one gap between two render passes
+  is as long as all the passes together.
+- Not decided here: whether the GPU does the passes' work twice, or whether
+  timestamps written inside a pass misplace it, as they can on a tiling GPU.
+  Until the pilot's S2 answers, **do not use the phase line's R/X split for
+  DOA**. The span (first to last timestamp) does not depend on the passes'
+  timestamps and is kept.
+
+### 12. The O4 pilot
+
+- `3112e410db` is master `bf60a2b5b8` plus the `[o4]` probe (vk/surface.c,
+  vk/renderer.c, perflog only). `e8ed36413e` reverts it: vk/surface.c is
+  lane.forza414's file, and the probe is for one pilot.
+- One line per waited flip: the PFIFO thread's clock around the flip's
+  finish and the fence wait, the command buffer's first and last GPU
+  timestamp raw, and each render pass as an offset.
+- No extension is needed to compare the clocks. A command buffer cannot end
+  after its fence was seen signalled, so the smallest (fence seen - last
+  timestamp) in the window is the offset plus the smallest signal latency.
+  `start` is an upper bound by that much; K0 checks drift.
+- `ndkcheck.py` passes on both files in both NV2A_PERF_LOG modes, and a
+  `#error` placed in the block fails perflog=1 and passes perflog=0, so the
+  check does compile it. `check_android_guards.py` ok.
+- `o4read.py --selftest` recovers a synthetic split (every part a different
+  size, GPU clock 7 s off) and drops a short and a malformed line.
+- Legs in `flip474-o4-pilot.json`: M0, K0, S0, S1 (start or end; a labelled
+  guess), S2 (is gap = R per flip), P4 (probe cost).
+
+### Waiting (this session)
+
+Three Nova requests, priority 1, each 300 s, survey route, perflog:
+
+| request | ref | prediction |
+|---|---|---|
+| see the `[lane.flip474] waiting:` comment on the PR for the ids | `4b22f2526b` (A) | `flip474-doa-forza414-ab.json` |
+| | `94f002d309` (B) | `flip474-doa-forza414-ab.json` |
+| | `3112e410db` (pilot) | `flip474-o4-pilot.json` |
+
+When they land: `o4read.py --show` on each, judge every leg, read the shots
+for the scene, post on #474, #414 and #462, and mark the PR ready. The three
+are 19.5 min of device time with setup, under the pilot rule's 30.
+
 ## Do not repeat
 
+- Do not read "the same call site" as "the same fix". A completion with three
+  branches has three waits; check which branch each title takes before
+  measuring one title on another's fix.
 - Do not make every PGRAPH read lockless without knowing the polled register:
   STATUS always reads idle, so the lock is the only thing holding an idle
   poll off mid-batch.
