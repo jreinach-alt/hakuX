@@ -4,6 +4,8 @@
     status_html.py build  --facts F.tsv --lanes L.json --md STATUS.md --json OUT.json --html OUT.html
     status_html.py render IN.json -o OUT.html
     status_html.py key    OUT.html          # the page's content key, clock masked out
+    status_html.py release05 --titles DIR --results DIR --xiso DIR   # the 0.5 panel's facts rows
+    status_html.py panel  IN.json           # the 0.5 panel as text
 
 WHY A PAGE AND NOT THE ISSUE. The roll-up lived in a comment on #107. A comment
 renders below the issue's timeline, and status.sh retitled the issue every
@@ -81,10 +83,150 @@ def _hm(epoch):
     return s[11:] if len(s) > 11 else s                 # "22:40 PDT"
 
 
+# ------------------------------------------------------------------ the 0.5 panel (#432)
+#
+# What #433 measures the release by, read from the files that carry it. A
+# count with no file behind it is printed as "no source" and names the file
+# that would carry it: a zero would read as a measurement.
+#   copied    titles/already-on-handhelds.json: the titles on the handhelds.
+#             Staged ISOs (the xiso dir's manifest.csv, stage_xiso.py) are
+#             counted beside it; nothing records a staged ISO reaching a
+#             handheld yet (#430).
+#   tested    results/*/verdict.json (title_verdict.py, as titles/table.py
+#             reads them): a title with a verdict on either handheld.
+#   Playable  the same, the latest verdict per (title, device) passing with a
+#             Playable rating, on every handheld that has one.
+#   Ghoulies  the newest finished soak per handheld whose request names
+#             Grabbed by the Ghoulies: the median of its hakuX-perf gfps over
+#             90-240 s from the first perf line (fix311/read_soak.py's clock).
+# Printed as facts.tsv rows: `r05<TAB>key<TAB>value` and
+# `r05gate<TAB>device<TAB>median<TAB>n<TAB>result id<TAB>ref<TAB>epoch`.
+
+def _jload(p):
+    try:
+        with open(p, encoding="utf-8") as fh:
+            return json.load(fh)
+    except (OSError, ValueError):
+        return None
+
+
+def _soak_median(rdir, lo=90.0, hi=240.0):
+    """(median gfps over lo..hi s, n) from a result dir's logcat, or (None, 0)."""
+    stamp = re.compile(r"(\d\d-\d\d \d\d:\d\d:\d\d\.\d+).*?hakuX-perf.*?\bgfps=(\d+(?:\.\d+)?)")
+    perf = []
+    for p in sorted(os.listdir(rdir)):
+        if not (p.startswith("logcat") and p.endswith(".txt")):
+            continue
+        try:
+            fh = open(os.path.join(rdir, p), encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        with fh:
+            for line in fh:
+                m = stamp.match(line)
+                if m:
+                    try:
+                        t = datetime.datetime.strptime("2026-" + m.group(1), "%Y-%m-%d %H:%M:%S.%f")
+                    except ValueError:
+                        continue
+                    perf.append((t, float(m.group(2))))
+    if not perf:
+        return None, 0
+    perf.sort()
+    t0 = perf[0][0]
+    win = sorted(g for t, g in perf if lo <= (t - t0).total_seconds() <= hi)
+    if not win:
+        return None, 0
+    n = len(win)
+    med = win[n // 2] if n % 2 else (win[n // 2 - 1] + win[n // 2]) / 2
+    return med, n
+
+
+def release05(titles, results, xiso, devices=("thor", "nova")):
+    """The panel's facts, as (kind, fields...) tuples."""
+    out = []
+    oh = _jload(os.path.join(titles, "already-on-handhelds.json"))
+    if isinstance(oh, list):
+        out.append(("r05", "copied", str(len(oh))))
+    else:
+        out.append(("r05", "copied", "no source: titles/already-on-handhelds.json"))
+    man = os.path.join(xiso, "manifest.csv")
+    try:
+        with open(man, encoding="utf-8", newline="") as fh:
+            import csv
+            out.append(("r05", "staged", str(sum(1 for _ in csv.DictReader(fh)))))
+    except OSError:
+        out.append(("r05", "staged", "no source: <xiso dir>/manifest.csv"))
+
+    latest = {}
+    for p in _glob(results, "verdict.json"):
+        v = _jload(p)
+        if not isinstance(v, dict):
+            continue
+        key = (v.get("name") or v.get("title") or "?", v.get("device") or "?")
+        order = (v.get("judged_utc") or "", v.get("request_id") or "")
+        if key not in latest or order > latest[key][0]:
+            latest[key] = (order, v)
+    by_title = {}
+    for (title, dev), (_, v) in latest.items():
+        by_title.setdefault(title, {})[dev] = bool(v.get("pass")) and \
+            str(v.get("rating_candidate") or "").startswith("Playable")
+    if not os.path.isdir(results):
+        out.append(("r05", "tested", "no source: dispatch results/*/verdict.json"))
+        out.append(("r05", "playable", "no source: dispatch results/*/verdict.json"))
+    else:
+        out.append(("r05", "tested", str(len(by_title))))
+        out.append(("r05", "playable", str(sum(1 for d in by_title.values() if d and all(d.values())))))
+
+    # Newest first per handheld, and the first one with gfps in the window
+    # wins: a soak on an APK that logs no hakuX-perf (the v0.4.1-j1 candidate,
+    # 2026-09-26) cannot be read, and saying "no gfps" there would hide the
+    # newest soak that can. The ones passed over are counted, never dropped.
+    soaks = {}
+    try:
+        names = os.listdir(results)
+    except OSError:
+        names = []
+    for n in names:
+        rdir = os.path.join(results, n)
+        q = _jload(os.path.join(rdir, "request.json"))
+        if not isinstance(q, dict) or "ghoulies" not in str(q.get("title") or "").lower():
+            continue
+        try:
+            t = os.path.getmtime(os.path.join(rdir, "DONE"))
+        except OSError:
+            continue
+        soaks.setdefault(q.get("device") or "?", []).append((t, n, rdir, q))
+    for dev in devices:
+        found, unread = None, 0
+        for t, n, rdir, q in sorted(soaks.get(dev, []), reverse=True)[:12]:
+            med, cnt = _soak_median(rdir)
+            if med is not None:
+                found = (t, n, q, med, cnt)
+                break
+            unread += 1
+        if not found:
+            out.append(("r05gate", dev, "", "0", "", "", "", str(unread)))
+            continue
+        t, n, q, med, cnt = found
+        out.append(("r05gate", dev, "%g" % med, str(cnt), n, str(q.get("ref") or "")[:10],
+                    str(int(t)), str(unread)))
+    return out
+
+
+def _glob(d, leaf):
+    try:
+        names = os.listdir(d)
+    except OSError:
+        return []
+    return [os.path.join(d, n, leaf) for n in names if os.path.exists(os.path.join(d, n, leaf))]
+
+
 def build(facts_path, lanes_path, md_path):
     """Merge status.sh's facts.tsv, the lane block's lanes.json and STATUS.md."""
     f = {"devices": [], "attention": [], "blockers": [], "timers": []}
     kv = {}
+    r05 = {"facts": {}, "gate": [], "issues": [], "issues_known": False}
     try:
         for line in open(facts_path, encoding="utf-8", errors="replace"):
             p = line.rstrip("\n").split("\t")
@@ -94,6 +236,14 @@ def build(facts_path, lanes_path, md_path):
                 f["attention"].append({"kind": p[1], "text": p[2]})
             elif p[0] == "blocker" and len(p) >= 3:
                 f["blockers"].append({"number": p[1], "title": p[2]})
+            elif p[0] == "r05" and len(p) >= 3:
+                r05["facts"][p[1]] = p[2]
+            elif p[0] == "r05gate" and len(p) >= 7:
+                r05["gate"].append(dict(zip(("device", "median", "n", "id", "ref", "at", "unread"), p[1:8])))
+            elif p[0] == "r05issue" and len(p) >= 4:
+                r05["issues"].append({"number": p[1], "lane": p[2], "title": p[3]})
+            elif p[0] == "r05issues_known":
+                r05["issues_known"] = True
             elif len(p) >= 2:
                 kv[p[0]] = p[1]
     except OSError:
@@ -161,6 +311,8 @@ def build(facts_path, lanes_path, md_path):
             "blockers": f["blockers"],
             "blockers_known": kv.get("blockers_known", "0") == "1",
             "blocker_label": kv.get("blocker_label", "release-blocker"),
+            "panel": dict(r05, target=kv.get("release_titles_target", ""),
+                          gate_min=kv.get("release_gate_min", "25")),
         },
         "details_md": md,
     }
@@ -238,6 +390,63 @@ def tile(k, v, d="", cls=""):
         cls, esc(k), esc(v), esc(v), ('<div class="d" title="%s">%s</div>' % (esc(d), esc(d))) if d else "")
 
 
+def panel_lines(p, name, now):
+    """The 0.5 panel as plain lines: the page escapes them, NOTES pastes them."""
+    f = p.get("facts", {})
+    tgt = p.get("target") or "?"
+
+    def count(k, what):
+        v = f.get(k)
+        if v is None:
+            return "%s: not gathered this tick" % what
+        if not v.isdigit():
+            return "%s: %s" % (what, v)                  # "no source: <file>"
+        return "%s: %s of %s" % (what, v, tgt)
+    lines = ["Release %s: titles and the Ghoulies gate" % name]
+    c = count("copied", "Titles on the handhelds")
+    if f.get("staged", "").isdigit():
+        c += " (+%s staged on the host; a staged ISO's copy to a handheld has no record yet, #430)" % f["staged"]
+    lines.append(c)
+    lines.append(count("tested", "Tested (a title_verdict on either handheld)"))
+    lines.append(count("playable", "Playable (latest verdict passes on every handheld tested)"))
+    try:
+        gmin = float(p.get("gate_min") or 25)
+    except ValueError:
+        gmin = 25.0
+    gate = p.get("gate", [])
+    if not gate:
+        lines.append("Ghoulies gate (median gfps 90-240 s >= %g, both handhelds): not gathered this tick" % gmin)
+    else:
+        bits, verdict = [], True
+        for g in gate:
+            dev = g.get("device", "?")
+            un = int(g.get("unread") or 0) if str(g.get("unread") or "0").isdigit() else 0
+            skipped = ("; %d newer soak%s logged no gfps in 90-240 s" % (un, "" if un == 1 else "s")) if un else ""
+            try:
+                med = float(g.get("median"))
+            except (TypeError, ValueError):
+                med = None
+            if not g.get("id") or med is None:
+                bits.append("%s no finished Ghoulies soak with gfps in 90-240 s%s" % (dev, skipped))
+                verdict = False
+                continue
+            at = int(g.get("at") or 0)
+            bits.append("%s %g (n=%s; %s, ref %s, %s%s)" % (dev, med, g.get("n"), g.get("id"), g.get("ref") or "?",
+                                                           _ago(now, at) if now else _local(at), skipped))
+            verdict = verdict and med >= gmin
+        lines.append("Ghoulies gate (median gfps 90-240 s >= %g, both handhelds): %s -- %s" % (
+            gmin, "met on these soaks (check the ref is the candidate's)" if verdict else "NOT MET", "; ".join(bits)))
+    iss = p.get("issues", [])
+    if not p.get("issues_known"):
+        lines.append("%s issues: could not be read" % name)
+    elif not iss:
+        lines.append("%s issues: none open" % name)
+    else:
+        lines.append("%s issues (%d open): %s" % (name, len(iss), "; ".join(
+            "#%s %s -- %s" % (i.get("number"), i.get("lane") or "no lane", (i.get("title") or "")[:50]) for i in iss)))
+    return lines
+
+
 def render(j):
     now = int(j.get("now") or 0)
     st = j.get("strip", {})
@@ -292,6 +501,10 @@ def render(j):
     else:
         bits.append("Open blockers: none labelled <code>%s</code>" % esc(r.get("blocker_label", "release-blocker")))
     out.append('<div class="rel">%s</div>' % "<br>".join(bits))
+    if r.get("panel"):
+        lines = panel_lines(r["panel"], r.get("name") or "0.5", now)
+        out.append('<div class="rel"><b>%s</b><br>%s</div>' % (
+            esc(lines[0]), "<br>".join(esc(l) for l in lines[1:])))
 
     out.append('<div class="fold">details</div>')
     out.append('<section class="md">%s</section>' % md_to_html(_below_fold(j.get("details_md", ""))))
@@ -440,6 +653,16 @@ def main(argv):
             _write(dst, page)
         else:
             sys.stdout.write(page)
+        return 0
+    if len(argv) >= 2 and argv[1] == "release05":
+        a = dict(zip(argv[2::2], argv[3::2]))
+        for row in release05(a.get("--titles", ""), a.get("--results", ""), a.get("--xiso", "")):
+            print("\t".join(str(x).replace("\t", " ").replace("\n", " ") for x in row))
+        return 0
+    if len(argv) >= 2 and argv[1] == "panel":
+        j = json.load(open(argv[2], encoding="utf-8"))
+        r = j.get("release", {})
+        print("\n".join(panel_lines(r.get("panel") or {}, r.get("name") or "0.5", int(j.get("now") or 0))))
         return 0
     if len(argv) >= 2 and argv[1] == "build":
         a = dict(zip(argv[2::2], argv[3::2]))

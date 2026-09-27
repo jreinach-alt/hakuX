@@ -728,11 +728,15 @@ lf=$(git -C "$REPO" log -1 --format='%ct%x09%s' --grep='^fold: PR' origin/master
 [ -n "$lf" ] && { fact last_fold "${lf%%$'\t'*}"; fact last_fold_subject "$(printf '%s' "${lf#*$'\t'}" | sed 's/^fold: //' | cut -c1-90)"; }
 [ -x "$KASA" ] && fact console "${meter#console meter: }"
 [ "$lapse" -gt 0 ] && attn page "the roll-up itself lapsed for $(ago "$prev_run" | sed 's/ ago$//') before this tick (previous $(local_ts "@$prev_run")); nothing was observed across that window"
-# Escalations the host-ops tick could not decide (owner-level).
+# Escalations the host-ops tick could not decide (owner-level). Only OPEN lines count: host ops marks a
+# decided line RESOLVED in place, and counting those kept "awaiting the owner" up with nothing awaiting
+# him (6 lines, 0 open, 2026-09-26). grep -c exits 1 on a zero count, hence the `|| true`.
 ESC="$WORK/host-tools/escalations.md"
 if [ -s "$ESC" ]; then
-    ne=$(grep -c '^\s*[-*#]' "$ESC"); el=$(grep -v '^\s*$' "$ESC" | tail -1 | sed 's/^[-*# ]*//' | cut -c1-160)
-    attn escalation "${ne:-some} escalation line(s) from host ops awaiting the owner; latest: $el"
+    open_esc=$(grep -E '^\s*[-*] ' "$ESC" | grep -v 'RESOLVED' || true)
+    ne=$(printf '%s' "$open_esc" | grep -c . || true)
+    el=$(printf '%s\n' "$open_esc" | tail -1 | sed 's/^[-*# ]*//' | cut -c1-160)
+    [ "${ne:-0}" -gt 0 ] && attn escalation "$ne escalation line(s) from host ops awaiting the owner; latest: $el"
 fi
 if [ $have_gh = 1 ]; then
     # A red CI on master: the newest COMPLETED run of each workflow. Reading run
@@ -753,7 +757,22 @@ if [ $have_gh = 1 ]; then
         fact blockers_known 1
         printf '%s\n' "$bl" | while IFS=$'\t' read -r bn bt; do [ -n "$bn" ] && printf 'blocker\t%s\t%s\n' "$bn" "$(printf '%s' "$bt" | cut -c1-100)"; done
     fi
+    # The 0.5 panel's issues (#432): every open issue carrying the release's
+    # label, and the lane on it (its `lane:` label; cloud when claimed there).
+    if ri=$(gh issue list --repo "$GH_REPO" --state open --label "${STATUS_RELEASE_NAME:-0.5}" --limit 50 --json number,title,labels \
+            --jq '.[] | "\(.number)\t\([.labels[].name | select(startswith("lane:")) | .[5:]] + [.labels[].name | select(. == "claimed:cloud") | "cloud"] | join(",") | if . == "" then "no lane" else "lane." + . end)\t\(.title)"' 2>/dev/null); then
+        echo "r05issues_known"
+        printf '%s\n' "$ri" | while IFS=$'\t' read -r rn rl rt; do [ -n "$rn" ] && printf 'r05issue\t%s\t%s\t%s\n' "$rn" "$rl" "$(printf '%s' "$rt" | cut -c1-100)"; done
+    fi
 fi
+# The 0.5 panel's counts and the Ghoulies gate (#432), from the files that
+# carry them (status_html.py release05 names each and says "no source" when
+# one is missing). The target is the 0.5 set: 23 titles already on the
+# handhelds plus batch 1 of titles/download-priority-2026-09-25.md.
+fact release_titles_target "${STATUS_RELEASE_TITLES:-145}"
+fact release_gate_min "${STATUS_RELEASE_GATE_MIN:-25}"
+timeout 60 python3 "$J/status_html.py" release05 --titles "${STATUS_TITLES_DIR:-$WORK/titles}" \
+    --results "$D/results" --xiso "${HAKUX_XISO_DIR:-/mnt/d/hakux-staging/xiso}"
 if [ $have_sd = 1 ]; then
     systemctl --user list-units 'hakux-*' --state=failed --no-legend --plain 2>/dev/null | awk '{print $1}' \
         | while read -r u; do [ -n "$u" ] && attn timer "$u has FAILED (systemctl --user status $u)"; done
