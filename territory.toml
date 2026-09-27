@@ -414,8 +414,10 @@ note = "RETIRED (hostops 2026-09-26 23:40 PDT): PR #464 folded as 55a82867dd; un
 [lane.notify488]
 issues = ["488"]
 files = ["hw/xbox/nv2a/pgraph/pgraph.c", "docs/lanes/notify488/**", "docs/testing/predictions/notify488-*.json"]
+released = ["hw/xbox/nv2a/pgraph/pgraph.c", "docs/lanes/notify488/**", "docs/testing/predictions/notify488-*.json"]
+released_at_ready = 490
 standing = false
-note = "STARTED (hostops 2026-09-27 10:00 PDT), briefs/notify488.md: #488 (fps-focus), hakuX never writes NV097 NOTIFY notifiers and BACK_END_WRITE_SEMAPHORE_RELEASE waits for a full surface download (13.8 ms vs 2.7 us on silicon; lane.xbox signal-timing suite, PR #486). pgraph.c taken from [lane.flip474]'s released files (PR #475 folded; its PR #485 is docs only)."
+note = "STARTED (hostops 2026-09-27 10:00 PDT), briefs/notify488.md: #488 (fps-focus), hakuX never writes NV097 NOTIFY notifiers and BACK_END_WRITE_SEMAPHORE_RELEASE waits for a full surface download (13.8 ms vs 2.7 us on silicon; lane.xbox signal-timing suite, PR #486). pgraph.c taken from [lane.flip474]'s released files (PR #475 folded; its PR #485 is docs only). RELEASED AT READY (job.board 2026-09-27T21:24 PDT): PR #490 out of draft, CI green, unit gone; files free for the next lane per roles/board.md. Next lane on pgraph.c: merge master (lane.flip474's PR #475 already folded) and re-run its arm before marking its own PR ready."
 
 [lane.slowdown462]
 issues = ["462", "482"]
