@@ -809,7 +809,7 @@ void nv2a_profile_get_cpu_timing_str(char *buf, int bufsize)
     snprintf(buf, bufsize,
              "CPU: K:%.0f W:%.1fK M:%.0f(Fh:%.0f Ni:%.0f) "
              "Push:%.1fms [Pull:%.1f(Lk:%.1f Mth:%.1f Fst:%.1f)] "
-             "SpH:%.0f%% TbH:%.1f%%",
+             "SpH:%.0f%% TbH:%.1f%% Lw:%.1f",
              p->kick_count,
              p->pusher_words / 1000.0f,
              p->method_count,
@@ -821,7 +821,8 @@ void nv2a_profile_get_cpu_timing_str(char *buf, int bufsize)
              p->puller_method_ms,
              p->method_exec_ms,
              spin_pct,
-             p->tb_hit_pct);
+             p->tb_hit_pct,
+             p->lock_wait_ms);
 }
 
 void nv2a_profile_get_vsync_timing_str(char *buf, int bufsize)
