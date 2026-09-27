@@ -469,8 +469,9 @@ fi
 # The Ghoulies gate's measurement (#432), from the soaks that carry it. The
 # title counts are NOT facts here any more: they are computed on the page from
 # the 0.5 title table itself (status_html.py titles05), so a count can never
-# disagree with its rows, and there is no "of 145" -- 145 is the per-minor quota
-# from 0.6 on, not 0.5's target, which is release-0.5.toml's sentence.
+# disagree with its rows. The targets they are counted against (145
+# benchmarked, 50 Playable; the owner, 2026-09-26, #433) are
+# docs/testing/release-0.5.toml's, which STATUS_RELEASE_CONF overrides.
 fact release_gate_min "${STATUS_RELEASE_GATE_MIN:-25}"
 timeout 60 python3 "$J/status_html.py" release05 --titles "${STATUS_TITLES_DIR:-$WORK/titles}" \
     --results "$D/results" --xiso "${HAKUX_XISO_DIR:-/mnt/d/hakux-staging/xiso}"
