@@ -203,6 +203,14 @@ removing them makes the wait cheaper and fps does not move (aufire412b).
 - 23:36 waiting: the owner's charger-swap hold on the Nova (hold/nova,
   "only the owner lifts it") and lane.xbox's "verified on the Nova" notes for
   Blinx, Blinx 2 and Forza on #462. Neither had happened by 23:36.
+- Attempt 1 ended at 23:36 on that wait, trusting a background watcher to
+  resume it. The watcher died with the session (a headless lane's background
+  tasks end with its turn), so nothing resumed the lane when the hold lifted
+  (23:50) and the three copies landed (23:52-23:57, on #462).
+- 23:58 attempt 2: merged origin/master; queued, on the same ref e5db66fa37,
+  shape and priority as DOA/AUF: Blinx `1-1790492277-slowdown462-690144`,
+  Blinx 2 `1-1790492277-slowdown462-690171`, Forza
+  `1-1790492278-slowdown462-690198`. Waits are polled in the foreground.
 - Next: Blinx, Blinx 2, Forza once lane.xbox posts "verified on the Nova";
   one soak each (release priority, pinned nova, survey), then one `OFFCPU=1`
   session each at `mark play` + 60 s (their pass-1 shots show gameplay after
