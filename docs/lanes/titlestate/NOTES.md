@@ -628,3 +628,37 @@ The signal is its directory in `dispatch/results/` with a `DONE` file.
   integer poll count after one poll), and the "last step" rule runs from
   the FIRST flush, so input between two flushes is refused. Both are
   selftest rows in `selftest.d/99-title-state.sh` (pass-1 audit of #496).
+
+## Attempt 9 (resumed 15:04 PDT): the GoldenEye run made the profile; the pull waits on the Nova's battery
+
+Attempt 8 did not finish because it ended on a deliberate wait: request
+`1790539523-titlestate-1846315` sat 111 min behind fps-focus work on the
+Nova. hostops promoted it to `0-0-x-1790539523-titlestate-1846315`, and it
+finished at about 15:02 PDT.
+
+What the run shows (the "On resume" steps 1 and 2):
+
+| check | result |
+|---|---|
+| flush | `flush: bdrv_flush_all completed after 1s` (15:02:58), before the HOME step |
+| `kb-ok` | CREATE NEW PROFILE, name `PLAYER1`, OK highlighted |
+| `profile-created` | MAIN MENU, PLAYER1, Campaign highlighted |
+| `control` | first mission, in the aircraft: crosshair and the health arcs of the HUD. Player control |
+| end of soak | `ROUTE ABORTED: not foreground (org.es_de.frontend)` at 330 s of 420 s. That is the HOME step backgrounding the app after the flush, as designed. logcat also has `app entering background, flush requested` / `deferred bdrv_flush_all completed` at 15:03:00 |
+
+Step 3 (the pull) did not happen. At 15:05 PDT I took the Nova's hold while
+flip474's 300 s DOA run finished, and at 15:09:02 the Nova was idle, the app
+was stopped, and the battery read **21%** on USB power. `pullnova.sh` refuses
+below 30% (brief rule), so I released the hold at 15:09:03 with nothing read.
+
+**Waiting** (PR #501): board request item 10 in
+`dispatch/board-requests/titlestate.md`, a Nova pull window when it is idle,
+unheld and at 30% or more. On resume, run "On resume" steps 3 to 5 above
+unchanged: `pullnova.sh take` / `pull` / `release`, then `saves.py list`,
+`titlestate.py harvest --device nova --title-id 4541005D ... --run
+0-0-x-1790539523-titlestate-1846315` (the promoted id), and `saves.py verify`.
+
+- A request that is promoted gets a new id (`0-0-x-` prefix). Use the id in
+  `results/`, not the one `request.sh` printed.
+- Queue use drains the Nova faster than 500 mA charges it. Read the battery
+  before taking a hold, not after waiting out a run.
