@@ -466,6 +466,10 @@
 #   define NV_PGRAPH_CONTROL_0_RED_WRITE_ENABLE                 (1 << 27)
 #   define NV_PGRAPH_CONTROL_0_GREEN_WRITE_ENABLE               (1 << 28)
 #   define NV_PGRAPH_CONTROL_0_BLUE_WRITE_ENABLE                (1 << 29)
+/* SET_CONTROL0's colour-space field (method bits 28-31); bits 28-29 here are
+ * already the green and blue write enables, and the field's three values fit
+ * the two left. */
+#   define NV_PGRAPH_CONTROL_0_CSCONVERT                        0xC0000000
 #define NV_PGRAPH_CONTROL_1                              0x00001950
 #   define NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE              (1 << 0)
 #   define NV_PGRAPH_CONTROL_1_STENCIL_FUNC                     0x000000F0
@@ -1001,7 +1005,11 @@
 #       define NV097_SET_CONTROL0_Z_FORMAT                        (1 << 12)
 #       define NV097_SET_CONTROL0_Z_PERSPECTIVE_ENABLE            (1 << 16)
 #       define NV097_SET_CONTROL0_TEXTURE_PERSPECTIVE_ENABLE      (1 << 20)
-#   define NV097_SET_LIGHT_CONTROL                            0x00000294
+#       define NV097_SET_CONTROL0_COLOR_SPACE_CONVERT             0xF0000000
+#           define NV097_SET_CONTROL0_COLOR_SPACE_CONVERT_PASS          0
+#           define NV097_SET_CONTROL0_COLOR_SPACE_CONVERT_CRYCB_TO_RGB  1
+#           define NV097_SET_CONTROL0_COLOR_SPACE_CONVERT_SCRYSCB_TO_RGB 2
+#   define NV097_SET_LIGHT_CONTROL                           0x00000294
 #       define NV097_SET_LIGHT_CONTROL_SEPARATE_SPECULAR          1
 #       define NV097_SET_LIGHT_CONTROL_LOCALEYE                   (1 << 16)
 #       define NV097_SET_LIGHT_CONTROL_ALPHA_FROM_MATERIAL_SPECULAR (1 << 17)

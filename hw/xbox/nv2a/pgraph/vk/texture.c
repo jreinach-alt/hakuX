@@ -2119,10 +2119,12 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
 
     uint64_t content_hash = 0;
     if (!surface_to_texture && possibly_dirty) {
+        NV2A_PHASE_TIMER_BEGIN(tex_hash);
         content_hash = fast_hash(texture_data, texture_length);
         if (is_indexed) {
             content_hash ^= fast_hash(palette_data, texture_palette_data_size);
         }
+        NV2A_PHASE_TIMER_END(tex_hash);
     }
 
     if (binding_found) {

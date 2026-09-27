@@ -84,6 +84,12 @@ static void snapshot_phase_timing(void)
     SMOOTH(gpu_pre_rp);
     SMOOTH(gpu_post_rp);
     SMOOTH(gpu_max_gap);
+#if NV2A_PERF_LOG
+    SMOOTH(draw_sfp);
+    SMOOTH(draw_mfp);
+    SMOOTH(draw_ftx);
+    SMOOTH(tex_hash);
+#endif
 #undef SMOOTH
 
 #define SMOOTH_CNT(dst, src) \
@@ -724,17 +730,35 @@ void nv2a_profile_get_pacing_str(char *buf, int bufsize)
     p->defers_total = 0;
 }
 
+/*
+ * Perf-only fields, spliced in so that without NV2A_PERF_LOG the format and
+ * its arguments are exactly what they were. TxH (texture content hash) nests
+ * in Tx and FTx as Tex does; Sfp, Mfp and FTx are children of Draw.
+ */
+#if NV2A_PERF_LOG
+#define PHASE_TXH_FMT " TxH:%.1f"
+#define PHASE_TXH_ARGS p->tex_hash_ms,
+#define PHASE_FAST_FMT " Sfp:%.1f Mfp:%.1f FTx:%.1f"
+#define PHASE_FAST_ARGS p->draw_sfp_ms, p->draw_mfp_ms, p->draw_ftx_ms,
+#else
+#define PHASE_TXH_FMT ""
+#define PHASE_TXH_ARGS
+#define PHASE_FAST_FMT ""
+#define PHASE_FAST_ARGS
+#endif
+
 void nv2a_profile_get_phase_timing_str(char *buf, int bufsize)
 {
     FramePhaseTimingStats *p = &g_nv2a_stats.phase;
     snprintf(buf, bufsize,
-             "Surf:%.1f Tex:%.1f Shd:%.1f Draw:%.1f "
+             "Surf:%.1f Tex:%.1f" PHASE_TXH_FMT " Shd:%.1f Draw:%.1f "
              "[Vtx:%.1f Syn:%.1f Prw:%.1f Pipe:%.1f(Tx:%.1f Sh:%.1f Lu:%.1f) "
-             "Desc:%.1f Setup:%.1f Cmd:%.1f] "
+             "Desc:%.1f Setup:%.1f Cmd:%.1f" PHASE_FAST_FMT "] "
              "Fin:%.1f(Sub:%.1f Fen:%.1f) Flip:%.1f Idle:%.1f(Fr:%.1f St:%.1f) "
              "| Tot:%.1f GPU:%.1f(R:%.1f X:%.1f RP:%.0f Pre:%.1f Post:%.1f MxG:%.1f g:%.0f/%.0f/%.0f) ms",
              p->surface_update_ms,
              p->texture_upload_ms,
+             PHASE_TXH_ARGS
              p->shader_compile_ms,
              p->draw_dispatch_ms,
              p->draw_vtx_attr_ms,
@@ -747,6 +771,7 @@ void nv2a_profile_get_phase_timing_str(char *buf, int bufsize)
              p->draw_desc_set_ms,
              p->draw_setup_ms,
              p->draw_vk_cmd_ms,
+             PHASE_FAST_ARGS
              p->finish_ms,
              p->finish_submit_ms,
              p->finish_fence_ms,
@@ -766,6 +791,11 @@ void nv2a_profile_get_phase_timing_str(char *buf, int bufsize)
              p->gpu_gap_count_medium,
              p->gpu_gap_count_large);
 }
+
+#undef PHASE_TXH_FMT
+#undef PHASE_TXH_ARGS
+#undef PHASE_FAST_FMT
+#undef PHASE_FAST_ARGS
 
 void nv2a_profile_get_cpu_timing_str(char *buf, int bufsize)
 {

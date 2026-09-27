@@ -698,7 +698,13 @@ else
     echo "cannot resolve --ref $REF to a commit" >&2; exit 2
 fi
 
-ID="$(date +%s)-$WHO-$$"
+# The id is the request's only priority: the dispatcher serves queue/*.req in
+# glob (ASCII) order. HAKUX_RELEASE_PRIO=1 (set by ab_run.sh and arms.sh for an
+# issue labelled for the current release, #432) names it 1-<epoch>-..., which
+# sorts after every 0-* probe and host-promoted 0-0-x-* head, and ahead of
+# every plain <epoch>-... request ('-' is 0x2d, below any digit) and every
+# z-* sweep. Readers of an id that want the epoch strip a leading "1-" first.
+ID="${HAKUX_RELEASE_PRIO:+1-}$(date +%s)-$WHO-$$"
 mkdir -p "$D/queue"
 # Written to a dotfile and renamed into place, because the dispatcher globs
 # `queue/*.req` and a claim is an atomic rename of whatever it finds. Writing
