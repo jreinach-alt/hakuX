@@ -110,23 +110,94 @@ locally; the dispatcher builds each ref.
 | `1790454916-lane.tbchurn424-3970610` | A | Blinx r2 |
 | `1790454917-lane.tbchurn424-3970654` | B | Blinx r2 |
 
+## Why attempt 1 did not finish
+
+It ended correctly, waiting: the ten soaks and the pixel arm were still on
+the device (posted as `[lane.tbchurn424] waiting:` on #434). `jobs/handback.sh`
+resumed it at 2026-09-27T00:42Z with CI green on `f30456813e` and the arm
+judged. All ten soaks carry DONE.
+
+## 4. Results (Thor, A = `7e6a4ac88a`, B = `1d1251aa4b`)
+
+Read with `python3 docs/lanes/tbchurn424/churn.py <ids>`.
+
+### Crimson Skies, crimson-skies route (3 runs per arm, interleaved)
+
+| request | arm | gfps | G ms | jc% | rd% | **churn%** | di/s | pr/s | slow/s | inv/s | cb/s |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `1790454893-lane.tbchurn424-3968865` | A | 27 | 35.9 | 10.2 | 10.5 | **20.7** | 42,118 | 5,606 | 12,666 | 5,606 | - |
+| `1790454909-lane.tbchurn424-3969958` | A | 5 | 159.9 | 9.1 | 13.1 | **22.2** | 8,965 | 1,398 | 2,994 | 1,398 | - |
+| `1790454911-lane.tbchurn424-3970176` | A | 26 | 36.9 | 10.4 | 10.6 | **21.0** | 40,405 | 5,384 | 12,247 | 5,384 | - |
+| `1790454908-lane.tbchurn424-3969831` | B | 29 | 33.5 | 0.0 | 0.0 | **0.0** | 0 | 0 | 52,159 | 46,320 | 46,638 |
+| `1790454910-lane.tbchurn424-3970059` | B | 29 | 33.7 | 0.0 | 0.0 | **0.0** | 0 | 0 | 53,463 | 47,313 | 47,206 |
+| `1790454912-lane.tbchurn424-3970253` | B | 29 | 33.5 | 0.0 | 0.0 | **0.0** | 0 | 0 | 54,337 | 48,191 | 47,471 |
+| **median** | A | **26** | 36.9 | | | **21.0** | 40,405 | 5,384 | 12,247 | | |
+| **median** | B | **29** | 33.5 | | | **0.0** | 0 | 0 | 53,463 | | 47,206 |
+
+A's second run was slow for the whole span (gfps 1-8, 28 perf lines). Its
+churn share is the same as the other two A runs. The median does not use it.
+
+### Blinx, survey route (2 runs per arm, the cost side)
+
+| request | arm | span gfps | gameplay-tail gfps* | churn% | di/s | slow/s | inv/s | cb/s |
+|---|---|---|---|---|---|---|---|---|
+| `1790454914-lane.tbchurn424-3970398` | A | 30.5 | 9 | 2.0 | 410 | 68,343 | 390 | - |
+| `1790454916-lane.tbchurn424-3970610` | A | 56 | 9 | 2.0 | 421 | 66,232 | 402 | - |
+| `1790454915-lane.tbchurn424-3970555` | B | 29.0 | 7 | 0.0 | 0 | 98,611 | 32,935 | 33,382 |
+| `1790454917-lane.tbchurn424-3970654` | B | 31 | 9 | 0.0 | 0 | 103,159 | 34,057 | 34,069 |
+
+\* Post hoc, not registered: the median of the hakuX-perf gfps samples after
+the last sample >= 40 (the survey route's menus run at 59; its play phase at
+the end runs at 6-19). There are 27-29 samples per run.
+
+### Legs
+
+| leg | as registered | result |
+|---|---|---|
+| M0 instrument | [tlb68] in >= 90% of windows, xx = 0, rt=1 on B only | **PASS**: 143-151 lines per run, xx 0, rt=1 on every B line and on no A line |
+| M1 the counter (falsifier) | Crimson churn% on B <= 5.0; di/s and pr/s fall >= 10x | **PASS**: 21.0 -> 0.0; di/s 40,405 -> 0; pr/s 5,384 -> 0 |
+| M2 cost side | cb/s >= 0.8 x slow/s on both titles; slow/s rise < 20x | **Crimson PASS** (0.87-0.89; slow/s 4.4x). **Blinx FAILS as written** (0.33-0.34; slow/s 1.5x) |
+| M3 fps | Crimson B median >= A + 2 and >= 26, G_B < G_A | **PASS**: 26 -> 29 (the game's 30 cap); G 36.9 -> 33.5 ms |
+| M4 no regression | Blinx B span median >= A - 1; no crash | **FAILS as written** on gfps (30.0 vs 43.25); no crash or FATAL line in any run |
+| pgraph must-not-move | 8 suites identical | **PASS**: `[job.arms]`, 593 of 593 captures byte-identical (`1790459680-arms-tbchurn424-base-40829` / `-fix-65417`) |
+
+**The two failures, diagnosed. Neither is refitted here: the legs stay as registered.**
+
+- **M2 on Blinx: the denominator counted stores the invalidator never sees.**
+  On A, Blinx takes 66-68k slow stores a second, and only 390-400 of them
+  reach the invalidator. The rest are a notdirty class that has nothing to do
+  with code pages. On B the bitmap answers as many stores as reach the
+  invalidator (cb/inv = 1.00-1.01 on both titles), so the walk it exists to
+  remove is not happening. The leg should have read cb/s against inv/s. The
+  real cost is +33k invalidator entries a second on Blinx (390 -> 33k). Each
+  is answered under one page lock. The vCPU CPU over the span did not rise
+  (A 190k/202k ms, B 188k/195k ms).
+- **M4 on Blinx: the span median measures the menu/gameplay mix, not speed.**
+  The survey route is mostly 59-fps menus with a short play phase at the end.
+  A's second run's span landed more menu samples (56 gfps median). On the
+  play phase alone (post hoc), A reads 9/9 and B reads 7/9. That is two runs
+  per arm on a 6-19 fps phase. It does not show a regression, and it cannot
+  rule out a 1-2 fps one. A Blinx gameplay route (#397) is the instrument
+  that could settle it; the survey route cannot.
+
+**Verdict.** The lever moves its counter. On the crimson-skies route, 21% of
+the vCPU thread (median; 23.9% on the older on-disk run) goes to 0.0%. Crimson
+reaches the game's 30 cap (26 -> 29). 21% was a bound; the fps gain is capped
+by the game, so this is what it returned here, not the bound. The cost side
+is priced on Crimson, and on Blinx it shows no CPU rise. Blinx fps on B
+is unmeasured on gameplay by a registered leg. That is said here and on the PR,
+not tuned around.
+
 ## For the next lane
 
 - **Measure on the route, not hands-off.** Hands-off Crimson sits at the
   game's 30 cap and churns about 0.2-1.4%. The `crimson-skies` route churns
-  23.9%. lane.tcgchurn's "the premise does not hold" came from the
+  21-24%. lane.tcgchurn's "the premise does not hold" came from the
   hands-off workload.
 - The soak path has no simpleperf. The `[tlb68]` timers (`jcus`, `rdus`,
   `cpu`) time the two mechanisms directly, and `churn.py` reads them.
-
-## State at session end (2026-09-26): WAITING
-
-Waiting on:
-- the ten soaks above;
-- the arms job's verdict on `tbchurn424-pixels-inert.json`;
-- CI.
-
-Posted as `[lane.tbchurn424] waiting:` on #434 and #424. The next session:
-- judges M0-M4 with `churn.py`;
-- fills in the before/after table here;
-- marks #434 ready, or records the refutation.
+- **A cost leg on slow stores needs `inv/s` as its denominator**, not
+  `slow/s`: most slow stores on Blinx never reach the invalidator on either arm.
+- **The survey route is not an fps instrument.** Its span median is set by
+  how many menu samples it holds. Use a title route with a gameplay mark.
+- Field kill switch if a title shows stale code: `HAKUX_TCG424_WHOLEPAGE=1`.
