@@ -845,6 +845,63 @@ not replayed.
 The leave state at 13:25: app stopped, performance_mode 0, fan_mode 4,
 dual_screen_display_mode 0, screen_focus_lock 0, screen asleep, 84%.
 
+### Session 23: HELD Thor, 13:38-14:00 PDT (22 min; hold taken 13:38 after lane.gta482's), battery 83% -> 82%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| BloodRayne (4D4A0001) | thor | `bloodrayne.route` | yes (13:38, as a held soak) | Rayne at the church wall at the mark, overlay FPS 22 |
+| AMF Bowling 2004 (42530009) | thor | none | - | not reached: the title does not take START |
+| Baldur's Gate: Dark Alliance (5655001A) | thor | `baldurs-gate-da.route` | no: a draft | the Human Archer on the Elfsong Tavern's floor, bars top left; the stick walks him and the camera follows; 59 fps |
+
+**The same-pass fps reading, inside the hold.** Queued Thor route soaks are
+closed until PR #495's guard is live, so BloodRayne's replay was run as a
+soak in the hold (Addendum 2's second option). `scratch/heldsoak.sh` runs
+`docs/testing/soak_title.sh` itself (MAX regimen, REST on the way out, the
+dispatcher's logcat spec) with the route, and reads the input focus before
+the launch, 8 s after it and every 15 s. A failed read TERMs the soak. It
+runs in a transient user unit (`scratch/heldunit.sh`), because a soak of
+pre-mark + 300 s does not fit a 10-minute tool call. `title_verdict.py`
+then judges the dir.
+
+| title | held result | apk | gameplay | fps median (min) / share >= 30 | notes |
+|---|---|---|---|---|---|
+| BloodRayne | `scratch/held/bloodrayne-20260927T133838` | f5abfa521745 (= ref a593d8eb85) | 288.2 s | 22.89 (5.48) / 0% | target 30. Four gaps of 10.1-10.9 s without 60 guest flips, which the verdict calls a hang. 22-25 fps for the first 130 s, then 6-7 to the end |
+
+What this reading is not:
+- It is not a dispatch result. It is in the lane's scratch, and the status
+  page does not count it. The title is still owed a queued soak.
+- The build is whatever the device's last request installed. Here that was
+  f5abfa521745, which is the apk of my benchmarks on ref a593d8eb85
+  (`scratch/heldread.py` finds the dispatch results with the same apk_sha).
+  Before session 22 the device had a8dd8484d799. Read the apk before
+  comparing a held reading with anything.
+- No frame shows the last 150 s, where the rate fell to 6-7. The route takes
+  no frame after the mark. `heldsoak.sh` now takes one frame 10 s before the
+  end (`end-frame.png`); this run was before that change.
+
+**AMF Bowling 2004: blocked at the title.** The intro video ends on A. The
+title says "Press START". START (300 ms and 1 s) and A do nothing there that
+I could see: the title and its attract demo (a bowler at the lane, "Press
+START" over it) alternate whatever is pressed. Six presses, frames
+`~/hakux-work/nav/amf-bowling-2004.first-run-20260927T134830/` (001 to 008).
+Not tried: BACK, the triggers, or a second pad. On the board request file.
+
+**Baldur's Gate: Dark Alliance.** The logos need no press: the main menu is
+up about 60 s after launch. Four A presses pick Start New Game, One Player,
+Normal and Human Archer. A ends the Act I video. The tavern conversation
+with Alyth is a tree: A picks the bright line, and the first line of each
+choice loops back, so my 18 A presses went round it several times. B does
+not leave it. The way out is the second line of the last choice ("I'll go
+speak to him, then."): hat down, A. The pre-mark time is 422 s, most of it
+that conversation. The play pattern is a square walk with the stick only,
+because A talks to whoever is near. Nav frames
+`~/hakux-work/nav/baldurs-gate-da.first-run-20260927T135112/` (016-free ->
+017-moved -> 019-played); 640x480 copy `frames/baldurs-gate-da-nav-played.jpg`.
+
+The leave state at 14:00: app stopped, performance_mode 0, fan_mode 4,
+dual_screen_display_mode 0, screen_focus_lock 0, screen asleep, 82%. At
+13:58:47 PDT the host's update window took both handhelds (bounded 30 min).
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
