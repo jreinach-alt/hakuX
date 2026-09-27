@@ -63,6 +63,9 @@ The five that pass on master are the negative checks (no double start, no
 worker for unknown/unauthorized/failed listing), which master satisfies by
 never rescanning at all -- the positive checks are what separate the two.
 
+Whole jobs selftest on this branch: `selftest: 2081 passed, 0 failed`
+(~35 min on the host). `bash -n` clean; `preflight.sh` passed.
+
 ## Do not repeat
 
 - Do not shim the worker by editing `$SNAP`: point `DISPATCH_SRC` at a stub
