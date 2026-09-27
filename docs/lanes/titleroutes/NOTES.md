@@ -651,6 +651,34 @@ and replay again. Frames `scratch/replay/dnd-heroes-071819/` and
 Benchmarks (thor, ref c6e2be0936): Azurik 1-1790519286-titleroutes-2112912
 (440 s), Alias 1-1790519290-titleroutes-2113140 (450 s).
 
+### State at the end of attempt 5 (07:35 PDT)
+
+Five titles routed and replayed in this attempt: 50 Cent, WWE Raw 2
+(Nova, both measured), BF2: MC, Azurik and Alias (Thor, soaks queued). PR
+#476 is ready; preflight passed at 07:33. Both devices are at rest with no
+hold of mine.
+
+Waiting on the three Thor soaks: 1-1790517591-titleroutes-1523259 (BF2),
+1-1790519286-titleroutes-2112912 (Azurik) and
+1-1790519290-titleroutes-2113140 (Alias). About 75 min of other Thor work is
+queued ahead of or alongside them (lane.local's 1500 s soak, flip474,
+tbflip424). Next session: judge them (`scratch/judge.py <id>`), add the rows
+to the #397 table, then:
+- Thor: finish D&D Heroes (see session 21), then the Japanese-only titles,
+  All-Star Baseball 2003/2004/2005, AMF Bowling 2004, AMF Xtreme Bowling,
+  AFL Live and American Chopper 2, then the older open list (SMT Nine,
+  Capcom Classics 2, Castlevania: CoD, THPS2x, Panzer Dragoon Orta,
+  Psychonauts, MechAssault, DOA3, RalliSport 2, Amped 2, Phantom Dust,
+  ToeJam & Earl III, Spikeout, Ninja Gaiden, Deathrow, Tork, Tron 2.0).
+- Nova-only titles still without a route (work-list rows 11, 13, 15,
+  20-24, 27, 28, 32, 33, 39, 41, 45): Burnout Revenge, Midnight Club 3,
+  187: Ride or Die, Crash: Wrath of Cortex, Black Stone, Star Wars Ep. III,
+  Bloody Roar: Extreme, Gunvalkyrie, Dino Crisis 3, Buffy, Fuzion Frenzy,
+  Halo, Conker, Halo 2, Ninja Gaiden Black. Each needs a held Nova session
+  in a gap in the #462 work (Addendum 3: the Nova is #462's first).
+- Check a new title's ISO path first. Titles lane.xbox pushed after 09-26
+  sit on the Thor's internal storage (`/storage/emulated/0/ROMS/xbox/`).
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
