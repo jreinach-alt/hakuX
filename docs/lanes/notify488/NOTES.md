@@ -162,6 +162,13 @@ S1/S2 (B/A kick->semaphore) will pass either way, so they cannot decide this. Th
 
 Pilot verdict written to `$DISPATCH_DIR/pilots/notify488.ok` at 17:55Z.
 
+Session 2 ended waiting on those six dispatch requests. The next session:
+1. Run `timing_judge.py <A> 0-0-x-1790529854-notify488-2739010` and `rep_cycle.py <A>`.
+2. Read the `[job.arms]` pgraph verdict.
+3. Read the DOA soaks against `notify488-doa-ab.json`.
+4. Post the before/after table on #488 and #462.
+5. If world (ii) holds, drop the semaphore half from the PR and ship NOTIFY alone (`46aff48301`).
+
 Master merged at `1f5e4b6eb7`. The index was regenerated with `--support fold-pins/pbkitplusplus`: without `--support`,
 5 suites read as changed. `preflight.sh --allow-tracker` passes.
 
