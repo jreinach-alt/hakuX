@@ -221,6 +221,16 @@ Attempt 1 ended correctly in `waiting:`, on the two Thor soaks (then about
 five requests deep in the queue), the must-not-move arms verdict and CI.
 handback resumed it once all three had landed. Nothing was lost.
 
+### Why attempt 2 did not finish (resumed as attempt 3)
+
+Attempt 2 did finish: it judged both arms, merged master and posted
+`[lane.blinx372e] blocked:` on #467 and #372 at 13:52Z. handback resumed it
+at 13:56Z anyway, from the draft state and the `verified` label, which it read
+before that comment landed. The `verified` label is the must-not-move PASS
+only; the demo leg (P3) failed. Attempt 3 changes nothing: per the brief a
+failed P3 is recorded, not re-fit, and the PR stays a draft. The outcome is
+`blocked`, which is a finished outcome.
+
 ### Waiting (2026-09-26 21:40 PDT, resolved 2026-09-27)
 
 Waiting on the two soaks above (about five requests were ahead of them), on
