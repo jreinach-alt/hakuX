@@ -156,10 +156,12 @@ tbflip424-doa1u.json stays on file as registered: piloted, not completed, no ver
 |---|---|---|---|---|---|---|---|
 | `1-1790517344-lane.tbflip424-1425036` | A | r1 (pilot) | 19 | 2.5 | 81 | 29 | rt 0, fatal 0, tail 0.3 s; G 51.9 ms, di/s 520, slow/s 894; stage play in `route-frames/085757-play.png` |
 | `1-1790517350-lane.tbflip424-1433200` | B | r1 (pilot) | 17.0 | 0.0 | 74 | 25 | rt 1, fatal 0, tail 2.8 s; G 53.0 ms, di/s 0, slow/s 31,384, fs/s 31,561; stage play in `route-frames/090705-play.png` |
-| `1-1790525434-lane.tbflip424-730013` | A | r2 | | | | | queued 16:17Z |
-| `1-1790525435-lane.tbflip424-730250` | B | r2 | | | | | queued 16:17Z |
-| `1-1790525435-lane.tbflip424-730605` | A | r3 | | | | | queued 16:17Z |
-| `1-1790525435-lane.tbflip424-730719` | B | r3 | | | | | queued 16:17Z |
+| `1-1790525434-lane.tbflip424-730013` | A | r2 (**Nova**) | 23.0 | 0.9 | 88 | 30 | rt 0, fatal 0, tail 1.6 s; G 43.8 ms, di/s 564, slow/s 929 |
+| `1-1790525435-lane.tbflip424-730250` | B | r2 (**Nova**) | 21 | 0.0 | 89 | 31 | rt 1, fatal 0, tail 1.3 s; G 46.2 ms, di/s 0, slow/s 35,784, fs/s 35,671 |
+| `0-0-x-1790525435-lane.tbflip424-730605` | A | r3 (**Nova**) | 19.0 | 0.8 | 86 | 30 | rt 0, fatal 0, tail 2.4 s; G 49.6 ms, di/s 533, slow/s 1237 |
+| `0-0-x-1790525435-lane.tbflip424-730719` | B | r3 (**Nova**) | 21.5 | 0.0 | 92 | 30 | rt 1, fatal 0, tail 1.0 s; G 46.0 ms, di/s 0, slow/s 37,615, fs/s 36,672 |
+| `1-1790532976-lane.tbflip424-3375310` | A | r4 (Nova) | | | | | queued 18:16Z |
+| `1-1790532976-lane.tbflip424-3375824` | B | r4 (Nova) | | | | | queued 18:16Z |
 
 ## 8. Attempt 5 (2026-09-27 ~16:10Z): the Blinx pilot, reviewed
 
@@ -191,3 +193,29 @@ Thor at 14:09Z and ran ~15:50-16:08Z.
   character it picks changes from run to run.
 - tbchurn424's "66-68k slow stores a second on Blinx" is over the survey span. In the gameplay
   window A takes ~800-900 a second and B 32-42k.
+
+## 9. Attempt 6 (2026-09-27 ~18:10Z): r2/r3 read, on the Nova; r4 queued
+
+Why attempt 5 did not finish: it ended on a correct wait for r2/r3. hostops resumed the lane at
+11:15 PDT once all four had run.
+
+- **Device change.** The Thor went off USB at 10:01 PDT with a flat battery, so hostops re-pinned
+  r2 and r3 to the **Nova**. Each run.log confirms it: r1 ran on serial bdc158a5 (Thor), and r2/r3
+  on ee317437 (Nova). gfps from the two handhelds is not pooled.
+- The amendment is on #424 (issuecomment-5858473673), posted before r4 was queued. The verdict
+  comes from the Nova only: the per-arm median of r2, r3 and r4, with thresholds, reader and window
+  unchanged. r1 is reported on its own as a Thor pair (A 19, B 17.0).
+- All four Nova runs pass M0: ng 86-92, m50 30-31, rt as expected, fatal 0, tail <= 2.4 s.
+- **Where it stands after two Nova pairs:** gfps A 23.0 / 19.0, B 21 / 21.5. **The Nova's A churn
+  reads 0.9 and 0.8, under M1's registered floor of 1.0.** The Thor's A read 2.5. The floor is not
+  moved. If A's Nova median stays under 1.0, M1 fails as registered and the rule says do not flip
+  on this arm: Blinx gameplay on the Nova cannot price the lever. The counter itself engages fully
+  (di/s ~550 -> 0, B churn 0.0).
+- r4 is queued at priority 1: A `1-1790532976-lane.tbflip424-3375310`, B `...-3375824`.
+
+### On resume
+
+1. `python3 docs/lanes/tbflip424/playread.py 730013 730250 730605 730719 3375310 3375824`, then
+   check M0 on r4 and take Nova medians over r2-r4.
+2. M1 A floor < 1.0 -> no flip; report on #424 (with M4' as read, labelled inert). All legs pass
+   -> flip `hakux_tcg424_range_on()` and run the pgraph byte-identity check.
