@@ -294,7 +294,70 @@ by ISO file name (`4D530010-Blood_Wake.xiso.i...`, Burnout, Otogi, Brute
 Force, Alien Hominid, Midtown Madness 3), and the ISO-named row carries the
 measurement with `inputs False`. That is the page's title join (lane.local's).
 
+## Attempt 4 (resumed 2026-09-27 07:26 PDT): PR #478's selftest was red
+
+Why attempt 3 did not finish: its work was done and PR #478 was marked ready,
+but the jobs selftest on it failed one check in `66-status-titles.sh`, `the
+'not copied' tail folds after 10 rows, with its count -- 8 folded (8 rows), 10
+shown`, and the host put the PR back to draft. Attempt 3 ran its own new
+checks and `titlestate_selftest.py`, not fragment 66's fixture checks, so it
+marked the PR ready on a head it had not run the gate on.
+
+### The cause is not in #478's code
+
+The resume brief says the check passes on master f131dd11c6. It does not; it
+had not been run there. Measured, fragment 66 alone (`scratch/run66.sh`, a
+driver that defines `check` and sources one fragment):
+
+| tree | `targets.toml` | fold check |
+|---|---|---|
+| #478's head c7d0113008 | its own (= f131dd11c6's) | FAIL, 8 folded, 10 shown |
+| c7d0113008 with master f131dd11c6's `status_html.py`, fragment 66, `titlestate.py` | the same | FAIL, 8 folded, 10 shown |
+| c7d0113008 | 84d2e83cef's | pass, 16 of 16 |
+| c7d0113008 + master 9aa05616a8 merged (#481) | 9aa05616a8's | FAIL, 4 folded, 10 shown |
+
+- The fixture (`docs/lanes/titles05/fixture/synth.py`) added its synthetic
+  titles to the LIVE `docs/testing/titles/targets.toml`. The page lists every
+  title the registry names, and one with no `iso` map, on no handheld in the
+  16:24 tree, renders "not copied".
+- 4943ea546f (this lane, #431's targets, "15 added") added six such titles:
+  Amped: Freestyle Snowboarding, Bloody Roar: Extreme, Crash Bandicoot: The
+  Wrath of Cortex, Gunvalkyrie, Mortal Kombat: Armageddon, Sega GT 2002 +
+  JSRF. So the tail was 18 rows, not the 12 the assertion counts. #481 gave
+  four of them `iso` maps, and the count moved again, to 14.
+- `jobs-selftest.yml` runs on `docs/testing/jobs/**`, `request.sh`, `lane.sh`
+  and `nv2a_index.py`. A change to `targets.toml` does not run it. Its last
+  run on master was 84d2e83cef (the #472 fold, 2026-09-26 23:25 PDT); the
+  folds after it changed `targets.toml` only. #478 was the first PR to touch
+  `jobs/` since, so it was the first to run the check.
+
+### The fix
+
+- `docs/lanes/titles05/fixture/targets.toml`: the registry as of 84d2e83cef,
+  with a note on top. `synth.py` adds the synthetic titles to that copy.
+- `assert_titles.py` is untouched: the check still wants 2 folded and 10
+  shown.
+- Fragment 66's no-save check reads Black from the same copy
+  (`TITLE_TARGETS`), not from the live file.
+- Proof that the live file no longer reaches the fixture: with a title with
+  no `iso` map appended to the live `targets.toml`, fragment 66 is 16 of 16.
+  Fragment 67 (`measured05`, which shares `synth.py`) is 14 of 14.
+- The two fixture paths are outside this lane's territory row. Both sat in
+  `[free]` (lane.titles05 and lane.measured05 are retired). Board request
+  item 6 asks for them on the row.
+
+Not fixed here, the board's: a `targets.toml` change still does not run the
+jobs selftest. The fixture no longer reads that file, so this check cannot go
+red that way again; any other fragment that reads live title data can.
+
 ## Do not repeat
+
+- Do not mark a PR that touches `docs/testing/jobs/**` ready on the lane's own
+  new checks alone. Run the whole of `docs/testing/jobs/selftest.sh` on the
+  head first: a fragment is sourced by it and cannot be run by itself.
+- Do not read "green on master" as "this check passed on master". Look for
+  the workflow's run on that sha (`gh run list --workflow jobs-selftest.yml`):
+  a path-filtered workflow does not run on every fold.
 
 - Do not `request.sh --pull` anything under `x1box/`: it deletes the file.
 - Do not move a device's `hdd.img` to carry a profile: 4.8 GB and it carries
