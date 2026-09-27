@@ -552,6 +552,10 @@ MechAssault, DOA3, RalliSport 2, Amped 2, Phantom Dust, ToeJam & Earl III,
 Spikeout, Ninja Gaiden, Deathrow, Tork, Tron 2.0; Galleon and PGR2 are
 parked (see sessions 6-7 and 11-12).
 
+Waiting (PR #466 comment 5855932850): dispatch request
+1-1790513065-titleroutes-1150288, the Burnout soak, running on the Thor at
+05:46. PR #466 marked ready; preflight passed at 05:47.
+
 **Do not skip with START in an action game** unless its pause menu has
 been seen: in Otogi (Restart Stage) and Midtown Madness 3 (the race) START
 opens a pause menu the moment control starts.
