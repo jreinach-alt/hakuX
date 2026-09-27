@@ -220,6 +220,80 @@ Burnout 3, PGR, GoldenEye RA) and the single-route titles whose route relies
 on a save the nav session left on the Thor (Alien Hominid, Blood Wake, Brute
 Force, Burnout, Otogi, Ghoulies, Midtown Madness 3).
 
+### The pull: HELD Thor 06:59:41-07:01:56 PDT
+
+`scratch/pullthor.sh` (not committed): `hold.sh wait` (the Thor was under
+lane.titleroutes' hold until 06:59), wait for `running/` to hold nothing on
+the Thor, check the app is stopped (no pid, so nothing unflushed to lose by
+reading), device md5, `adb pull`, host md5, release. Battery 54%. Screen and
+perf values untouched (the app was never started).
+
+| step | measured |
+|---|---|
+| device `md5sum` of hdd.img | 15 s |
+| `adb pull`, 4,327,800,832 B | 104 s, 39.6 MB/s |
+| host md5 | matches (`6d128b75...`) |
+| `saves.py list` of the whole image | 0.06 s, 31 titles on E: |
+
+Host copy: `~/hakux-work/titlestate-pull/thor-hdd-20260927T135944Z.img`.
+
+**EEPROMs differ**: Thor `f52cf53a866814e402fbd48aa23af522`, Nova
+`7eb04a8797832812f6632ccd26e307e1`. So a save signed with the HDD key will not
+move between the handhelds as-is; whether a given title signs its save is still
+per title, and a failed load is recorded as `rejected`.
+
+### What the disk holds, per routed title (addendum list)
+
+`titlestate.py harvest --device thor` into `$DISPATCH_DIR/titlestate/saves/`,
+run id `pull:thor-hdd-20260927T135944Z`; every stored save `saves.py verify`s
+byte for byte against the pulled image.
+
+| title | TID | on the Thor's disk | registry |
+|---|---|---|---|
+| Alien Hominid | 5A440004 | save 2BBB66D72945, 137 KB | harvested c50c0ad5b571 |
+| MechAssault 2 | 4D53006B | save 59E5F0453F4D, 3.1 MB (the route saw no profile step; the game writes one anyway) | harvested aeffd81ffd76 |
+| Bruce Lee | 56550016 | no save; 5 settings files in TDATA | no-save (New Game route) |
+| Blood Wake | 4D530010 | save 514A848BC678 | harvested d37699733a14 |
+| JSRF | 49470018 | nothing (no UDATA, no TDATA) | no-save |
+| Ghoulies | 4D530053 | save 1C4407D127C7 | harvested 55758513a9e3 (replaces the label "slot 1 My Game") |
+| Crimson Skies | 4D530021 | save 126216BC1B2A | harvested 42b0f68410a3 |
+| Burnout | 41430006 | save 2A823CBA7496 | harvested bc52aa2f6fd8 |
+| Brute Force | 4D53001E | save 0F2B11F2A1AC + 4 TDATA files | harvested 6e97d00a8a46 |
+| Otogi | 46530002 | save 6D36723E1C71 | harvested 247ba69fcbc2 |
+| Midtown Madness 3 | 4D53002A | save 194916D15BE4 | harvested 424a68037d87 |
+| Crash Twinsanity | 56550036 | no save | no-save (route declines saving) |
+| GTA: San Andreas | 54540082 | no save | no-save (saves only at save points) |
+| Black | 45410083 | no save: UDATA has only TitleMeta/TitleImage/SaveImage | no-save (returning route reaches the mission from this disk) |
+| PGR | 4D530003 | save 12E9194916CD | harvested c151b9a02c1b |
+| (also) Burnout 3 | 4541005B | save 57BD267AFF58 | harvested 3853ca5a2387 |
+
+Not done: **GoldenEye: Rogue Agent** (Nova). Its registry row says the
+PLAYER1 profile is not on the disk after a force-stop, so there is no save to
+extract; it needs a first-run that ends with the HOME flush (board request
+item 3), then a pull. The Nova titles with one route (Kabuki, Nightfire, DOAX)
+were not recorded no-save: I did not read the Nova's disk, and their one route
+already reads "not needed" on the page.
+
+### Code
+
+- `titlestate.py no-save --device D --title-id T --reason TEXT --run ID`: the
+  "not applicable" record, `save_na` on the row; a later `harvest` clears it.
+- `choose` returns the title's own route (`variant: single`) for a title
+  with one `routes/<route>.route` and no variants. It used to answer
+  `returning` + `survey.route` for them (Alien Hominid with its profile on
+  the Thor did exactly that). No dispatcher calls `choose` yet (board item 4).
+- `status_html.py _registry`: a `save_na` reason makes a title's save
+  not needed, and the detail line reads `save: not needed: <reason>`. Black is
+  the only two-route title this changes today.
+- Selftests: 4 checks in `titlestate_selftest.py` (both single-route checks
+  fail on the old `choose`), one in `selftest.d/66-status-titles.sh` (fails on
+  master's page: no `save_na`, Black still `needs_save`).
+
+Seen, not mine: the 06:26 page lists some titles twice, once by name and once
+by ISO file name (`4D530010-Blood_Wake.xiso.i...`, Burnout, Otogi, Brute
+Force, Alien Hominid, Midtown Madness 3), and the ISO-named row carries the
+measurement with `inputs False`. That is the page's title join (lane.local's).
+
 ## Do not repeat
 
 - Do not `request.sh --pull` anything under `x1box/`: it deletes the file.
