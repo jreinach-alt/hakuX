@@ -40,6 +40,9 @@ def main():
     ap.add_argument("rid")
     ap.add_argument("--from", dest="frm", type=float, default=30.0)
     ap.add_argument("--to", type=float, default=None)
+    ap.add_argument("--window", default=None,
+                    help="lo,hi seconds after logcat line 1, picked from timeline.py and the shots; "
+                         "overrides the route mark (the survey route's `mark play` can fall after the gameplay)")
     a = ap.parse_args()
     rdir = f"{D}/results/{a.rid}"
     res = json.load(open(f"{rdir}/result.json"))
@@ -75,14 +78,18 @@ def main():
             mark = marks[key]
             print("window mark: %s at +%.1f s (logcat line 1 base)" % (key, mark - first))
             break
-    if mark is None:
-        sys.exit("no `mark play`/`mark gameplay` in the logcat: the route never reached play; no window")
-    end = marks.get("soak end")
-    lo = mark + a.frm
-    hi = mark + a.to if a.to is not None else ((end - 10) if end else None)
-    if hi is None:
-        sys.exit("no `soak end` mark and no --to")
-    print("window: %.1f-%.1f s after line 1 (%.0f s of play, from mark+%.0f)" % (lo - first, hi - first, hi - lo, a.frm))
+    if a.window:
+        lo, hi = (first + float(x) for x in a.window.split(","))
+        print("window: %.1f-%.1f s after line 1 (%.0f s), given explicitly" % (lo - first, hi - first, hi - lo))
+    else:
+        if mark is None:
+            sys.exit("no `mark play`/`mark gameplay` in the logcat: the route never reached play; no window")
+        end = marks.get("soak end")
+        lo = mark + a.frm
+        hi = mark + a.to if a.to is not None else ((end - 10) if end else None)
+        if hi is None:
+            sys.exit("no `soak end` mark and no --to")
+        print("window: %.1f-%.1f s after line 1 (%.0f s of play, from mark+%.0f)" % (lo - first, hi - first, hi - lo, a.frm))
     runs = [
         ["aufire412/splitread.py", log, "--window", "%.1f,%.1f" % (lo - first_hx, hi - first_hx)],
         ["aufire412b/pace.py", "%.1f" % (lo - first), "%.1f" % (hi - first), a.rid],

@@ -40,9 +40,18 @@ say() { echo "CAP $(date -u +%H:%M:%S) $*"; }
 running_nova() { grep -lx $DEV "$D"/running/*.owner 2>/dev/null; }
 
 [ -f "$APK" ] || { say "no apk $APK"; exit 1; }
-bash "$HOLDSH" wait $DEV $TAG "${HOLD_WAIT_S:-3600}" \
-    "lane.slowdown462 #462: held Nova session, 1 x 30 s simpleperf of $SHORT (apk a593d8eb85), <=12 min; capture_profile.sh releases on every exit" \
-    || { say "could not take hold/$DEV"; exit 3; }
+# The grant (#462, 21:10 PDT): take the hold only between runs. Wait for
+# running/ to hold nothing for the Nova, then take; a request the dispatcher
+# claims in the gap between the check and the take finishes first (below).
+for i in $(seq 1 "${IDLE_WAIT_POLLS:-1800}"); do
+    running_nova >/dev/null || break
+    [ $((i % 30)) = 1 ] && say "waiting for the Nova to be between runs: $(running_nova | xargs -n1 basename)"
+    sleep 2
+done
+running_nova >/dev/null && { say "the Nova never came between runs"; exit 3; }
+bash "$HOLDSH" take $DEV $TAG \
+    "lane.slowdown462 #462: held Nova session, 1 x 30 s simpleperf of $SHORT (apk a593d8eb85), <10 min; capture_profile.sh releases on every exit" \
+    || { say "could not take hold/$DEV: $(bash "$HOLDSH" who $DEV)"; exit 3; }
 say "hold taken"
 
 LEASE_PID="" SOAK_PID=""
@@ -50,6 +59,11 @@ LEASE_PID="" SOAK_PID=""
 cleanup() {
     rc=$?
     [ -n "$SOAK_PID" ] && kill "$SOAK_PID" 2>/dev/null && wait "$SOAK_PID" 2>/dev/null
+    # soak_title.sh restores REST on its own exit; if it never ran or did not, do it here
+    if ! grep -q '"perf_restored": true' "$OUT/perf_regimen.json" 2>/dev/null; then
+        ( . "$HERE/devices.sh"; read -r _ _ pr fr <<<"$(device_perf_values $S)"
+          [ -n "$pr" ] && SERIAL=$S device_perf_set "$pr" "$fr" >/dev/null && say "REST set by cleanup" )
+    fi
     a shell am force-stop $PKG >/dev/null 2>&1
     a shell "run-as $PKG rm -rf files/spv_cache files/vk_pipeline_cache.bin files/shader_module_keys.bin" >/dev/null 2>&1
     rm -f "$D/.shader_cache_apk.$DEV" "$D/.env_pref.$DEV"
