@@ -187,6 +187,29 @@ Not done, with the reason:
 Waiting on: the host's `[host]` comment on PR #451 with p1/p2.data, and the
 board's answer to the profile.c grant.
 
+## Session 2 (2026-09-26 PDT, attempt 2)
+
+**Why attempt 1 did not finish.** It ended waiting on the host's answer to
+the two board asks (section 4). Both were outside the lane, so the wait was
+real, but the session named no resolvable signal the handback could see, and
+the lane sat idle until the host resumed it. Both asks came back granted at
+17:49 PDT: profile.c lent for the one field, and the profile as a held Nova
+session this lane runs itself (<= 15 min, APK 1b557ff6a4).
+
+Done in this session:
+
+- `hakuX-cpu` now ends with `Lw:%.1f`, the guest's `pfifo.lock` wait in
+  `user_write`, ms per guest frame (EMA, alpha 0.2), commit 9aff9caf99.
+  Perflog-gated like the rest of the line. `splitread.py --selftest` parses it
+  (`cpu_Lw`). No pixel leg is possible, so no golden prediction.
+- `capture_p1p2.sh` (this dir): the held session. The survey route verbatim,
+  run through `soak_title.sh` with a private lease path, p1 5 s after the 11th
+  menu `press START`, p2 40 s after `mark play`, both 30 s of
+  `simpleperf record --app ... -e cpu-clock --call-graph dwarf,8192 -f 1000`.
+  The `p1 start`/`p2 start` marks go to logcat (`hakuX-route`) so the windows
+  can be cut from the session logcat. Output:
+  `~/hakux-work/perf/2026-09-26-aufire412b/`.
+
 ## Do not repeat
 
 - The brief's premise that "the vCPU is saturated in both arms" came from the
