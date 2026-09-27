@@ -1302,6 +1302,7 @@ note = "STARTED (hostops 2026-09-26 15:00 PDT, 0.5 order 00(a)), briefs/jcache42
 issues = []
 files = ["docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/73-cloud-claim.sh", "docs/lanes/claimrace/NOTES.md"]
 standing = false
+released = ["docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/73-cloud-claim.sh", "docs/lanes/claimrace/NOTES.md"]
 note = "STARTED (hostops 2026-09-26 15:10 PDT), briefs/claimrace.md: harness defect, no tracker issue. The audit outlet re-picked PR #420 50 s after claiming it (gh pr list --label lags a fresh claimed:cloud), systemd-run collided with the running unit, and the drop path removed the running session's row (restored, board ca46342888). Interim: the host's outlet loop skips a PR whose cloud unit is active."
 
 [lane.dash432]
