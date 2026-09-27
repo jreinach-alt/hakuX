@@ -244,7 +244,7 @@ def selftest():
         "09-26 05:17:35.968 I/hakuX-perf(1): gfps=15 G:62.0(30.0-73.0) D:16.7(16.7-16.7) S:4.9 J:4.4 Df:46 Vd:0.0 Ul:N Vpf:3.70 Ri:8.0 Tq:0",
         "09-26 05:17:36.968 I/hakuX-phase(1): Surf:2.0 Tex:1.0 Shd:0.0 Draw:40.0 [Vtx:5.0 Syn:1.0 Prw:0.0 Pipe:10.0(Tx:3.0 Sh:2.0 Lu:1.0) Desc:4.0 Setup:3.0 Cmd:9.0] Fin:6.0(Sub:5.0 Fen:1.0) Flip:0.0 Idle:8.0(Fr:6.0 St:2.0) | Tot:62.0 GPU:20.0(R:18.0 X:2.0 RP:4 Pre:0.0 Post:0.1 MxG:0.0 g:0/0/0) ms",
         "09-26 05:17:36.968 I/xemu-work(1): BE:2000 DA:1500 IE:500 IB:0 IA:0 Clr:3 QS:4/0 PGen:0 PBnd:300 PNd:1700 RP:4 SGen:0 SBnd:1 SNd:0 UBOd:1900 UBOn:100 TexU:2 S2T:0/0 GBU:1/1/0/0/0 Fin:Vbd0 Sc0 Sd0 Bs0 Fbd0 Pr0 Fl1 Flu0 St0",
-        "09-26 05:17:36.968 I/hakuX-cpu(1): CPU: K:3 W:0.4K M:115(Fh:139 Ni:1) Push:0.8ms [Pull:0.8(Lk:0.0 Mth:0.7 Fst:0.0)] SpH:138% TbH:98.9%",
+        "09-26 05:17:36.968 I/hakuX-cpu(1): CPU: K:3 W:0.4K M:115(Fh:139 Ni:1) Push:0.8ms [Pull:0.8(Lk:0.0 Mth:0.7 Fst:0.0)] SpH:138% TbH:98.9% Lw:2.5",
         "09-26 05:17:36.968 I/hakuX-stall(1): RPBreaks:195 Finish:73(vtx0 sc0 sd9 buf0 fb0 pres2 flip58 flu1 stl3 stlDef58 stlBat0) InlClr:0/68 PreDL:28 sd[ev0 noCb0 dl1 cDef8 cDefC0 pDl0 dDl0] dlSrc[defFb0 ppdFb0 dirtyIf1] dif[ovl1 ovlSh0 exp11 expSh0 blt1 flu0 dds0 oth0]",
         # Built from vk/draw.c's and vk/shaders.c's format strings.
         "09-26 05:17:36.968 I/hakuX-stall(1): buf_detail: ds42 ubo0 fb0 stg0 comp0 vtx0",
@@ -265,6 +265,7 @@ def selftest():
     assert st["fin_sd"] == 9 and st["sd_cDef"] == 8 and st["RPBreaks"] == 195 and st["fin_stlDef"] == 58, st
     assert abs(r["gfps"][0][1]["busy"] - (1 - 8 / 62)) < 1e-9
     assert r["buf"][0][1] == {"ds": 42, "ubo": 0, "fb": 0, "stg": 0, "comp": 0, "vtx": 0}, r["buf"]
+    assert r["cpu"][0][1]["cpu_Lw"] == 2.5 and r["cpu"][0][1]["cpu_TbH"] == 98.9, r["cpu"]
     assert r["grow"][0][1] == {"n": 3, "pools": 1, "sets": 5120}, r["grow"]
     print("selftest ok")
 
