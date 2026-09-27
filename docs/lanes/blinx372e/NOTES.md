@@ -9,6 +9,8 @@ Base origin/master e5db66fa37 (PR #396 folded). One source file:
 | eedeeb3a81 | The quadrant copy, its guard and the `[quad372]` counter (sec 1, 2). |
 | d979c58234 | Merge of `lane/doa413b` (PR #440, not folded) as the brief asks. One conflict, at `pgraph_vk_surface_update`'s completion: #440's env-gated lazy completion is kept, and the arm runs after it. |
 | c5dc70c577 | Row-fit guard: a binding whose row is wider than its pitch is declined (sec 2). |
+| 489394939f | Review fixes: the watch is handed over at the flip with no unwatched moment, and the guard gets a hash with no blind bits (sec 1). |
+| f03876f0df | Both predictions registered (sec 4). |
 
 ## 1. The CPU-write gap: closed by a hash, and counted
 
@@ -44,13 +46,28 @@ Two things came out of reading the code:
   armed P. Each one disarms the guard.
 - `vram_changed`: flips where the hash differed. Each one takes the old path.
 
-The one residual window is after the check. The shelf watch is removed at
-the unshelve, and `surface_put`'s new watch is inserted asynchronously. A
-store in between is not trapped. That window is master's too, for every
-unshelve. Here it is measured, not assumed: a surfwatch382 gap item is
-queued behind the insert with the hash the guard matched, and a store in the
-window shows as `lost_writes`. It is an upper bound: a download of P before
-the item runs also counts.
+**The flip itself hands the watch over with no gap (489394939f).** Both
+the watch insert and its removal are queued to the vCPU as safe work, in
+FIFO order. The first version removed the shelf watches of P and X before
+`surface_put` queued P's new insert. That left a moment in which nothing
+watched the range. Master has the same moment at every unshelve. It
+mattered more here, because after the copy VRAM's corner is *older* than
+P's image until P's download: a guest read in that moment would get stale
+depth, where the old path had already downloaded X. The partner now must
+still hold its shelf watch. That watch and X's are detached
+(`surface_watch_detach`) and their removal is queued after `surface_put`
+(`surface_watch_retire`), so some watch is always up. Every watch runs
+`surface_access_callback`, which finds P by range. An independent review
+found this; its second finding is below.
+
+**The guard hash is its own (`surface_quad_hash`).** surfwatch382's
+`surface_watch_hash` multiplies without rotating. A multiply carries a
+word's top bit only into the product's top bit, and the final shifts drop
+that bit. So a change confined to bit 63 of some words (a D24S8 pixel's
+depth MSB) hashes the same. The guard's hash rotates by 29 at each step and
+combines the four lanes with rotations. surfwatch382's hash has the same
+blind spot for its gap check. That is left alone here, because it is outside
+this brief.
 
 **Measurement: pending the arm** (sec 4, P2). What would show the gap is real
 in the demo: `cpu_writes` > 0 or `vram_changed` > 0 in B's window. Either
@@ -119,7 +136,52 @@ drain (GPU 31 to 46 ms), and then B stays near A.
 
 ## 4. Arms
 
-Pending registration.
+Both predictions were registered at 2026-09-27T04:34Z, after the last merge
+and before any run. Both use A = 988e51328e (lane/doa413b's head: master's
+`hw/` plus #440, lazy completion off) and B = 489394939f (this lane).
+`git diff 988e51328e 489394939f -- hw/` is this hunk and nothing else. The 6
+master commits A lacks do not touch `hw/`.
+
+- `docs/testing/predictions/blinx372e-demo-ab.json`: the same-session Thor
+  soak A/B, 240 s, perflog, frames every 30 s. It is judged by `abquad.py`
+  over 135-265 s. Queued by this lane:
+  - A `1790483694-blinx372e-3615063`
+  - B `1790483698-blinx372e-3616042`
+- `docs/testing/predictions/blinx372e-mnm.json`: must-not-move, byte identity
+  over Surface_clip, 3D_primitive, Depth_buffer_fixed_function,
+  Color_zeta_overlap, Surface_format, Texture_CPU_Update and
+  Texture_render_update_in_place. The arms job queues it.
+
+The must-not-move set is from a search of the nxdk sources
+(`fold-pins/nxdk_pgraph_tests`, tests 6743b6a). Zeta at two sizes at one
+address inside a test:
+- `Surface_clip/rt_*` (seven tests) go small -> 640x480.
+  `rt_x320y240_w320h240` is Blinx's exact 320x240 -> 640x480 pair. All 47
+  Surface_clip rows are ok and exact on current code.
+- `XemuBug420` and `DebugTextShouldClip` go large -> small.
+- `3D_primitive/*-ls|-ps` go 640x480 -> 1280x480 under AA x2 at pitch 2560.
+  These are the rows the row-fit guard declines. 52 of the 120 read
+  white-content (unreadable) on current code.
+- `Color_zeta_overlap/AdjacentWithClipOffset_*` go 128 -> 126 at pitch 512,
+  in texture memory.
+
+Results: pending.
+
+### Waiting (2026-09-26 21:40 PDT)
+
+Waiting on the two soaks above (about five requests were ahead of them), on
+the arms job's `[job.arms]` verdict for `blinx372e-mnm.json`, and on CI for
+f03876f0df. On resume:
+1. `python3 docs/lanes/blinx372e/abquad.py <A>/logcat.txt <B>/logcat.txt
+   --window 135,265 --spec-a <A>/result.json --spec-b <B>/result.json
+   --prediction docs/testing/predictions/blinx372e-demo-ab.json`. Look at
+   B's frames at 150-240 s by eye for depth garbage in the top-left quarter.
+2. Must-not-move: check B's `[quad372] copies=` > 0 (otherwise the arm is
+   inert) and `[evict372] handoffs=` > 0, and read white-content rows as
+   unreadable.
+3. If #440 has folded by then, merge master (no rebase). If the merge
+   changes `hw/`, re-register on the new refs and re-run. Then fill in sec
+   1's measurement and mark the PR ready.
 
 ## Tools
 
@@ -138,3 +200,8 @@ Pending registration.
 - Do not assume a shelved binding has no watch. One shelved draw-dirty keeps
   its watch until it is unshelved or freed.
 - Do not judge this change on sd/frame. Use sd per flip (Tools).
+- Do not remove a watch and then register its replacement when the range
+  holds pixels newer than VRAM. Both are queued to the vCPU, so queue the
+  insert first (sec 1).
+- Do not use `surface_watch_hash` as a guard on depth data. It cannot see
+  bit 63 of some words (sec 1).
