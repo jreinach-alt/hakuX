@@ -309,6 +309,9 @@ comparison (section 2), and three designs with bounds, files and legs
 (`1790477867-retreason425-2004056` and `-2004282` have no result directory),
 so nothing here uses `[rr425]`.
 
+Posted on #412 (issuecomment-5852701461) and #462 (issuecomment-5852701584).
+preflight passes.
+
 Not done: no code. Every fix touches another lane's file: cpu-exec.c
 (retreason425), cputlb.c and tb-maint.c (tbflip424), translate.c. Fix 0 is
 the one to queue first: it is independent of the split, and cpu-exec.c-only.
