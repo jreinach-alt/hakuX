@@ -188,7 +188,39 @@ at least the GPU's 29 ms: **<= 34 fps**, and **<= 30 fps** at the title's
 VBLANK pacing (2 VBLANKs = 33.4 ms). If the returns are a guest wait loop,
 removing them makes the wait cheaper and fps does not move (aufire412b).
 
-## Log
+## Log (PDT, 2026-09-26)
 
-- 2026-09-26 21:04 PDT: pilot queued, DOA1U, `1-1790481863-slowdown462-3154279`,
-  behind three titlebench soaks. Nova at 36%, on a 500 mA port.
+- 21:04 pilot queued (DOA1U); ran 21:12-21:25; reviewed and
+  `pilots/slowdown462.ok` written 21:40.
+- 21:10 hostops granted five held profile sessions (board request Ask 1).
+- 21:32 AUF soak `1-1790483186-slowdown462-3496610`.
+- 21:39 `doa` session: missed the fight (anchored on `mark play`); unused.
+- 21:54 `doa2` (on-CPU, anchored on the 8th `press START`).
+- 22:15 `auf` (off-CPU). 22:33 `doa3` (off-CPU; owner's 21:45 override to
+  finish DOA; Ask 2). 22:37 "Nova free" posted on #462.
+- 22:47 DOA and AUF answers posted on #462, #413, #412. Ask 3 (new issue for
+  the flip's lock-held GPU wait) filed.
+- Next: Blinx, Blinx 2, Forza once lane.xbox posts "verified on the Nova";
+  one soak each (release priority, pinned nova, survey), then one `OFFCPU=1`
+  session each at `mark play` + 60 s (their pass-1 shots show gameplay after
+  the mark: Blinx and Blinx 2 in a level, Forza's race clock starting ~30 s
+  after it).
+
+## Do not repeat
+
+- Do not take a window from the survey route's `mark play` without the
+  shots: DOA fights before it.
+- Do not price a wait from the perflog phase timers. DOA's `Surf` (60 ms) and
+  AUF's renderer "busy 79%" are wall time; the shipping build's PFIFO thread
+  is on-CPU 21-24% in both.
+- Do not read `simpleperf report`'s weighting under `--trace-offcpu` as
+  blocked time: it charges each switch-out the time to the thread's next
+  sample. Use `offcpu.py` (switch records). Under `--trace-offcpu` the
+  cpu-clock sampler also drops samples (AUF vCPU: 9.3 s sampled of 12.4 s
+  on-CPU), so read on-CPU ms from the switch records and only shares from
+  samples. The `record` can end early (AUF: 13.5 s of 30).
+- The vendor driver has no unwind info: a GPU wait's chain ends at
+  `wait_timestamp_safe`. Match it to the thread's last on-CPU sample (median
+  0.9 ms before) to find the emulator caller.
+- A poll for an empty `running/` never sees the gap between Nova runs; take
+  the hold during a run and touch nothing until `running/` empties.
