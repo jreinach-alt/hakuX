@@ -12,7 +12,8 @@
 # title as a paragraph (several screens at 400 px) under a target that still
 # said "~2026-09-28". This renders lane.dash432's 16:24 fixture plus the pass-1
 # backfill plus a synthetic registry with one title at each stage of the scale
-# (docs/lanes/titles05/fixture/synth.py) and asserts on the words a reader
+# (docs/lanes/titles05/fixture/synth.py, added to the fixture's own
+# targets.toml, never the live one) and asserts on the words a reader
 # sees. Every check fails on #448's renderer (docs/lanes/titles05/NOTES.md,
 # "Proof", shows both runs).
 #
@@ -38,6 +39,26 @@ check "the header forecasts from the last 48 h rate" st_check forecast
 check "each issue shows its state and what is in flight; an unowned open one is an alarm" st_check flight
 check "Q4 shows the device watchdog's word and last hour; a stale watchdog is lane.local's alarm" st_check watch
 for st_f in "$T"/status-titles-*.txt; do grep -q '^FAIL' "$st_f" && sed 's/^/    /' "$st_f"; done
+
+# titlestate.py no-save: a two-route title (Black) whose disk was read and holds
+# no save stops reading "none extracted", and says why; the same registry
+# without the record still asks for a save. Black's entry is read from the
+# fixture's registry, like every row above: the live targets.toml changes
+# under this check without running it.
+check "a no-save record stands in for a save, with its reason; without it the save is still asked for" python3 -c '
+import json, os, sys
+sys.path.insert(0, sys.argv[1]); import status_html as S
+d = os.path.join(sys.argv[2], "status-nosave", "devices"); os.makedirs(d, exist_ok=True)
+os.environ["TITLESTATE_DIR"] = os.path.dirname(d)
+os.environ["TITLE_TARGETS"] = sys.argv[3]
+class F: D = ""
+def reg(row):
+    json.dump({"device": "thor", "image": None, "rejected": {}, "titles": {"45410083": row}}, open(os.path.join(d, "thor.json"), "w"))
+    return S._registry(F)[0]["45410083"]
+g = reg({"profile": True, "save_na": {"reason": "UDATA holds no save", "by_run": "r", "utc": "t"}})
+det = S._title_detail(dict(g, inputs=True, devices=["thor"], next="-"), 0)
+g0 = reg({"profile": True})
+sys.exit(0 if not g["needs_save"] and "save: not needed: UDATA holds no save" in det and g0["needs_save"] and not g0["save_na"] else 1)' "$HERE" "$T" "$ST_F/targets.toml"
 
 # The config's new home is the default, and it is the owner's two numbers.
 check "release-0.5.toml at docs/testing is the default and states 145 and 50" python3 -c '

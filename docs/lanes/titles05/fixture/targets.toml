@@ -1,0 +1,223 @@
+# THE FIXTURE'S REGISTRY: docs/testing/titles/targets.toml as of 84d2e83cef
+# (2026-09-26 23:25 PDT), byte for byte below this note. synth.py adds the
+# synthetic titles to THIS copy, never to the live file.
+#
+# WHY A COPY. The page lists every title the registry names, and one with no
+# `iso` map that the 16:24 tree has on no handheld renders "not copied". The
+# live file gained such titles (#431's targets), so the fixture's tail went
+# from the twelve staged titles to eighteen, then to fourteen at the next
+# fold, and "folds after 10 rows" counted 8 and then 4 for 2. A change to
+# targets.toml does not run the jobs selftest, so master carried that red
+# unseen from 4943ea546f until a PR touching jobs/ ran it (#478). Do not
+# refresh this copy from the live file without re-reading assert_titles.py's
+# counts against it.
+#
+# Per-title targets for title_verdict.py, keyed on the canonical title_id of
+# /home/justin/hakux-work/titles/xemu-compat-2026-09-25.csv (the XBE
+# certificate's id; `canonical_title_id` column, which folds regional ids).
+#
+# A title with no entry here is judged on [defaults] with the generic route;
+# the verdict still finds nothing to key it on, so title_id is null until an
+# entry names its ISO. Entries need only what differs from the defaults.
+#
+#   name        the CSV's name
+#   iso         the ISO's file name per device, under that device's
+#               DEVICE_ISO_ROOT (devices.sh); this is how a run is matched
+#   target_fps  the title's OWN frame target. The Playable bar is 30 for
+#               every title; a title whose own target is 60 and that runs at
+#               30 is flagged below_own_target, not failed -- many Xbox games
+#               tie game speed to frame rate, so it may be in slow motion,
+#               and a human decides.
+#   route       its own route in routes/<route>.route (else generic); or,
+#               for a title whose way in depends on a saved profile, the
+#               variants routes/<route>.first-run.route and
+#               routes/<route>.returning.route, which titlestate.py picks
+#               between from the device's title state
+#   notes       free text; where a value came from
+
+[defaults]
+playable_fps = 30          # the owner's bar, 2026-09-25
+fps_share_min = 0.90       # of gameplay TIME at or above the bar
+# A window counts as at the bar at >= bar * this. Guest vblank is not
+# exactly 60 Hz everywhere (NTSC is 59.94), and a title locked to half of it
+# measures 29.97, which is the bar met, not missed.
+fps_tolerance = 0.95
+# "No dropouts in audio", made mechanical: the share of APU sink callbacks
+# that came up short after the first 10 s of gameplay. 0.1% of callbacks is
+# about one 5 ms shortfall every five seconds; set 0.0 for literal zero.
+audio_starve_max_share = 0.001
+screening_s = 600
+confirmation_s = 1200
+
+[titles."4D530021"]
+name = "Crimson Skies: High Road to Revenge"
+iso = { nova = "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso", thor = "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso" }
+target_fps = 30
+route = "crimson-skies"
+notes = "Paces itself to 30 (perf/run_perf.sh). Route from run_perf.sh."
+
+[titles."4D530002"]
+name = "Fuzion Frenzy"
+iso = { nova = "Fuzion Frenzy (USA).xiso.iso" }
+target_fps = 60
+route = "fuzion-frenzy"
+notes = "Asks for every VBLANK (perf/bench_ff.sh). Route from bench_ff.sh."
+
+[titles."41540004"]
+name = "Galleon"
+iso = { nova = "Galleon (USA).xiso.iso", thor = "Galleon (USA).xiso.iso" }
+notes = "A §11 soak title; own target not yet measured, so the 30 default. Route: PR 2."
+
+[titles."4D53002D"]
+name = "Dead or Alive 3"
+iso = { thor = "Dead or Alive 3 (USA) (En,Ja).xiso.iso" }
+target_fps = 60
+notes = "A §11 soak title; a 60 fps fighter. Route: PR 2."
+
+[titles."49470018"]
+name = "JSRF: Jet Set Radio Future"
+iso = { thor = "JSRF - Jet Set Radio Future (USA).xiso.iso" }
+notes = "A §11 soak title; own target not yet measured, so the 30 default. Route: PR 2."
+
+[titles."4D530053"]
+name = "Grabbed by the Ghoulies"
+iso = { nova = "Grabbed by the Ghoulies (USA) (En,Fr,De,Es,It).xiso.iso" }
+
+[titles."4D530051"]
+name = "Conker: Live & Reloaded"
+iso = { nova = "Conker Live & Reloaded.iso" }
+
+[titles."4D530039"]
+name = "RalliSport Challenge 2"
+iso = { nova = "RalliSport Challenge 2 (Japan, Europe).iso" }
+
+[titles."53450029"]
+name = "Spikeout: Battle Street"
+iso = { nova = "Spikeout - Battle Street (Europe).iso", thor = "Spikeout - Battle Street (Europe).iso" }
+
+[titles."55530040"]
+name = "Tork: Prehistoric Punk"
+iso = { nova = "Tork - Prehistoric Punk (USA).iso" }
+
+# Population 1 of #397 (lane.titleplay): the 20 titles staged on 2026-09-26.
+[titles."4541000D"]
+name = "007: Agent Under Fire"
+iso = { nova = "4541000D-007_Agent_Under_Fire.xiso.iso" }
+target_fps = 60
+notes = "Staged 2026-09-26 (#265 batch). Own target 60 from #431: documented, medium confidence (IGN Xbox 2002, GameCritics Xbox 2002)."
+
+[titles."4D530013"]
+name = "Blinx: The Time Sweeper"
+iso = { thor = "4D530013-Blinx_The_Time_Sweeper.xiso.iso" }
+target_fps = 30
+notes = "Staged 2026-09-26 (#265 batch). Own target 30 from #431: documented, high confidence (Digital Foundry 2026)."
+
+[titles."54430007"]
+name = "Dead or Alive Xtreme Beach Volleyball"
+iso = { nova = "54430007-Dead_or_Alive_Xtreme_Beach_Volleyball.xiso.iso" }
+target_fps = 60
+route = "doax"
+notes = "Staged 2026-09-26 (#265 batch). Own target 60 from #431: low confidence, one user review. Set to 60 because a false below_own_target costs one look, while a missed 60 would publish a half-speed title as Playable."
+
+[titles."45410083"]
+name = "Black"
+iso = { thor = "45410083-Black.xiso.iso" }
+route = "black"
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."45410026"]
+name = "007: Nightfire"
+iso = { nova = "45410026-007_Nightfire.xiso.iso" }
+route = "nightfire"
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default. Route by lane.titleroutes 2026-09-26 (Nova): Paris prologue, on-rails sniping with auto-aim."
+
+[titles."4D530003"]
+name = "Project Gotham Racing"
+iso = { thor = "4D530003-Project_Gotham_Racing.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."4541005D"]
+name = "GoldenEye: Rogue Agent"
+iso = { nova = "4541005D-GoldenEye_Rogue_Agent.xiso.iso" }
+route = "goldeneye-ra"
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default. Route by lane.titleroutes 2026-09-26 (Nova): first-run only (profile keyboard -> Campaign, Fort Knox)."
+
+[titles."4D53006E"]
+name = "Forza Motorsport"
+iso = { thor = "4D53006E-Forza_Motorsport.xiso.iso" }
+target_fps = 30
+notes = "Staged 2026-09-26 (#265 batch). Own target 30 from #431: documented, medium confidence (IGN Xbox 2005, 'locks at 30 fps')."
+
+[titles."56550042"]
+name = "50 Cent: Bulletproof"
+iso = { nova = "56550042-50_Cent_Bulletproof.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."45530018"]
+name = "25 to Life"
+iso = { thor = "45530018-25_to_Life.xiso.iso" }
+target_fps = 60
+notes = "Staged 2026-09-26 (#265 batch). Own target 60 from #431: hakuX swap interval, reviewed gameplay averages 1.75 VBLANKs per flip, so not capped at 30."
+
+[titles."5451000D"]
+name = "WWE Raw 2"
+iso = { nova = "5451000D-WWE_Raw_2.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."4541005B"]
+name = "Burnout 3: Takedown"
+iso = { thor = "4541005B-Burnout_3_Takedown.xiso.iso" }
+route = "burnout3"
+target_fps = 60
+notes = "Staged 2026-09-26 (#265 batch). Own target 60 from #431: documented, high confidence (Criterion in GamesTM, IGN Xbox 2004). Crash cams and 2-player split-screen run at 30."
+
+[titles."4156005D"]
+name = "Call of Duty 3"
+iso = { nova = "4156005D-Call_of_Duty_3.xiso.iso" }
+target_fps = 30
+notes = "Staged 2026-09-26 (#265 batch). Own target 30 from #431: a capture on an original Xbox (max 30, average 29.3); hakuX swap interval 2.02."
+
+[titles."4D53004B"]
+name = "Project Gotham Racing 2"
+iso = { thor = "4D53004B-Project_Gotham_Racing_2.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."45410076"]
+name = "Burnout Revenge"
+iso = { nova = "45410076-Burnout_Revenge.xiso.iso" }
+target_fps = 60
+notes = "Staged 2026-09-26 (#265 batch). Own target 60 from #431: documented, high confidence (Criterion to Digital Foundry; DarkZero Xbox)."
+
+[titles."4D530065"]
+name = "Blinx 2: Battle of Time & Space ~ Blinx 2: Masters of Time & Space"
+iso = { thor = "4D530065-Blinx_2_Battle_of_Time_Space_Blinx_2_Masters_of_Time_Space.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."54430006"]
+name = "Dead or Alive 1 Ultimate"
+iso = { nova = "54430006-Dead_or_Alive_1_Ultimate.xiso.iso" }
+target_fps = 60
+notes = "Staged 2026-09-26 (#265 batch). Own target 60 from #431: hakuX swap interval, reviewed gameplay averages 1.77 VBLANKs per flip."
+
+[titles."56550016"]
+name = "Bruce Lee: Quest of the Dragon"
+iso = { thor = "56550016-Bruce_Lee_Quest_of_the_Dragon.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."54540079"]
+name = "Midnight Club 3: DUB Edition"
+iso = { nova = "54540079-Midnight_Club_3_DUB_Edition.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+[titles."56550036"]
+name = "Crash Twinsanity"
+iso = { thor = "56550036-Crash_Twinsanity.xiso.iso" }
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+
+# lane.titleroutes (#397, 0.5 benchmark stage 2): routes programmed with nav.py in HELD sessions.
+[titles."43560001"]
+name = "Kabuki Warriors"
+iso = { nova = "43560001-Kabuki_Warriors.xiso.iso" }
+route = "kabuki-warriors"
+notes = "Route by lane.titleroutes 2026-09-26 (Nova): Tour Mode fight vs CPU, no profile step. Own target not yet measured, so the 30 default."
+

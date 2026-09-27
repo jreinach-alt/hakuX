@@ -1119,8 +1119,14 @@ def _registry(F):
             routes = {"single": "%s.route" % t["route"]}
         held = {d: (states[d].get("titles") or {}).get(tid, {}).get("save") for d in states}
         stored = titlestate.store_saves(tid)
+        # A disk that was read and holds no save for a title whose route
+        # reaches gameplay anyway (titlestate.py no-save): the reason stands
+        # in for a save until one is harvested.
+        na = [((states[d].get("titles") or {}).get(tid, {}).get("save_na") or {}).get("reason") for d in states]
+        na = "" if stored or any(held.values()) else next((r for r in na if r), "")
         out[tid] = {"name": t.get("name") or tid, "iso": dict(t.get("iso") or {}), "route": t.get("route") or "",
-                    "inputs": bool(routes), "routes": routes, "needs_save": "single" not in routes,
+                    "inputs": bool(routes), "routes": routes, "needs_save": "single" not in routes and not na,
+                    "save_na": na,
                     "save": bool(stored or any(held.values())),
                     "save_id": (stored[0] if stored else next((s for s in held.values() if s), "")),
                     "profile": {d: (states[d].get("titles") or {}).get(tid, {}).get("profile") for d in states}}
@@ -1473,7 +1479,7 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
             nxt = "done"
         out.append({"title": n, "tid": tid, "stage": st, "word": STAGE_WORD[st], "chip": STAGE_CHIP[st],
                     "blocker": blocker, "devices": devs, "somewhere": n in somewhere, "inputs": inputs, "save": save, "needs_save": needs_save, "benchmarked": st in BENCHMARKED,
-                    "fps_read": n in measured, "measured_at": first.get(n), "soak_read": soakr.get(n), "need": need, "routes": g.get("routes") or {}, "save_id": g.get("save_id") or "",
+                    "fps_read": n in measured, "measured_at": first.get(n), "soak_read": soakr.get(n), "need": need, "routes": g.get("routes") or {}, "save_id": g.get("save_id") or "", "save_na": g.get("save_na") or "",
                     "prim": prim, "cross": cross, "measured": [m[d] for d in sorted(m)],
                     "issues": flight, "runs": runs, "next": nxt, "alarm": alarm})
     order = {k: i for i, (k, _, _) in enumerate(STAGES)}
@@ -2057,7 +2063,8 @@ def _title_detail(x, now):
         d.append("title id %s" % x["tid"])
     r = x.get("routes") or {}
     d.append("routes: %s" % (", ".join("%s %s" % (k, v) for k, v in sorted(r.items())) or "none of its own"))
-    d.append("save: %s" % (x.get("save_id") or ("not needed (no profile step)" if not x.get("needs_save", True) and x.get("inputs") else "none extracted")))
+    d.append("save: %s" % (x.get("save_id") or (("not needed: " + x["save_na"]) if x.get("save_na") and x.get("inputs") else
+                                                 "not needed (no profile step)" if not x.get("needs_save", True) and x.get("inputs") else "none extracted")))
     for m in x.get("measured") or []:
         d.append("%s: %s fps, %s at 30+, reached gameplay %s; %s (%s, %s, ref %s, %s%s)" % (
             m.get("device"), ("%g" % m["fps"]) if m.get("fps") is not None else "-",
