@@ -196,6 +196,29 @@ static bool framebuffer_dirty(PGRAPHState const *pg)
         fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while (0)
 #endif
 
+/*
+ * [sdcall] Which caller of the deferred-download completion pays for it
+ * (#414). Forza Motorsport's race spends 20-37 ms of each frame in ~6
+ * completions that submit a finish of their own (the stall line's cDef), and
+ * that line cannot say whose they are. Callers outside this file share
+ * SDC_EXTERNAL. Counted in download_surface_complete_deferred().
+ */
+enum {
+    SDC_RANGE,          /* pgraph_vk_download_surfaces_in_range_if_dirty */
+    SDC_TO_BUFFER,      /* download_surface_to_buffer                    */
+    SDC_DEFER_FULL,     /* download_surface_deferred, staging full       */
+    SDC_PENDING,        /* pgraph_vk_process_pending_downloads, entry    */
+    SDC_PENDING_FB,     /*   and its synchronous fallback                */
+    SDC_DIRTY,          /* pgraph_vk_download_dirty_surfaces, entry      */
+    SDC_DIRTY_FB,       /*   and its synchronous fallback                */
+    SDC_EXPIRE,         /* expire_old_surfaces                           */
+    SDC_SURF_UPDATE,    /* pgraph_vk_surface_update                      */
+    SDC_EXTERNAL,
+    SDC__COUNT
+};
+
+static void download_surface_complete_deferred(NV2AState *d, int caller);
+
 static struct {
     unsigned long updates;      /* upload-side update_surface_part() calls   */
     unsigned long shape_dirty;  /* framebuffer_dirty() said true             */
@@ -433,7 +456,7 @@ bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
     if (found_overlap && r->num_deferred_downloads > 0) {
         /* Downloads just recorded but not yet submitted — must complete
          * now since the caller needs the data in VRAM. */
-        pgraph_vk_download_surface_complete_deferred(d);
+        download_surface_complete_deferred(d, SDC_RANGE);
     }
 
     return found_overlap;
@@ -923,7 +946,63 @@ void pgraph_vk_complete_staged_downloads(NV2AState *d, PGRAPHVkState *r)
     r->deferred_downloads_frame = -1;
 }
 
+/*
+ * [sdcall] counters, summed over 60 guest frames and printed by
+ * sdcall_log(): per caller, the completions that submitted a finish of
+ * their own (fin), waited an earlier finish's fence (fence) or the flip's
+ * pre-download (pre), the downloads they retired (dl), and the wall time of
+ * the wait. su_upl splits pgraph_vk_surface_update's own fin: the calls
+ * where an upload that reads VRAM followed in the same surface_update.
+ * NV2A_PERF_LOG builds only.
+ */
+#if NV2A_PERF_LOG && defined(__ANDROID__)
+static struct {
+    int frame0;
+    unsigned long fin[SDC__COUNT], fence[SDC__COUNT], pre[SDC__COUNT];
+    unsigned long dl[SDC__COUNT];
+    int64_t wait_ns[SDC__COUNT];
+    unsigned long su_upl;
+} g_sdcall;
+
+static void sdcall_log(PGRAPHState *pg)
+{
+    static const char *const names[SDC__COUNT] = {
+        "range", "tobuf", "deffull", "pend", "pendfb", "dirty", "dirtyfb",
+        "expire", "surfupd", "ext",
+    };
+    int frames = pg->frame_time - g_sdcall.frame0;
+    if (frames < 60) {
+        return;
+    }
+    char buf[640];
+    int n = snprintf(buf, sizeof(buf), "[sdcall] frames=%d", frames);
+    for (int i = 0; i < SDC__COUNT && n < (int)sizeof(buf); i++) {
+        if (!g_sdcall.fin[i] && !g_sdcall.fence[i] && !g_sdcall.pre[i]) {
+            continue;
+        }
+        n += snprintf(buf + n, sizeof(buf) - n,
+                      " %s=fin%lu/fence%lu/pre%lu/dl%lu/%.1fms", names[i],
+                      g_sdcall.fin[i], g_sdcall.fence[i], g_sdcall.pre[i],
+                      g_sdcall.dl[i], (double)g_sdcall.wait_ns[i] / 1e6);
+    }
+    if (n < (int)sizeof(buf)) {
+        snprintf(buf + n, sizeof(buf) - n, " su_upl=%lu", g_sdcall.su_upl);
+    }
+    SURF92_LOG("%s", buf);
+    memset(&g_sdcall, 0, sizeof(g_sdcall));
+    g_sdcall.frame0 = pg->frame_time;
+}
+#define SDCALL_DO(stmt) do { stmt; } while (0)
+#else
+#define SDCALL_DO(stmt) ((void)0)
+#endif
+
 void pgraph_vk_download_surface_complete_deferred(NV2AState *d)
+{
+    download_surface_complete_deferred(d, SDC_EXTERNAL);
+}
+
+static void download_surface_complete_deferred(NV2AState *d, int caller)
 {
     PGRAPHState *pg = &d->pgraph;
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -934,6 +1013,14 @@ void pgraph_vk_download_surface_complete_deferred(NV2AState *d)
 
     int64_t _t0 = 0, _t1 = 0;
     if (NV2A_PERF_LOG) _t0 = nv2a_clock_ns();
+    SDCALL_DO(g_sdcall.dl[caller] += r->num_deferred_downloads;
+              if (r->display_predownload_pending) {
+                  g_sdcall.pre[caller]++;
+              } else if (r->deferred_downloads_frame >= 0) {
+                  g_sdcall.fence[caller]++;
+              } else {
+                  g_sdcall.fin[caller]++;
+              });
 
     if (r->display_predownload_pending) {
         /*
@@ -958,6 +1045,7 @@ void pgraph_vk_download_surface_complete_deferred(NV2AState *d)
     }
 
     if (NV2A_PERF_LOG) _t1 = nv2a_clock_ns();
+    SDCALL_DO(g_sdcall.wait_ns[caller] += _t1 - _t0);
 
     pgraph_vk_complete_staged_downloads(d, r);
 
@@ -997,7 +1085,7 @@ static void download_surface_to_buffer(NV2AState *d, SurfaceBinding *surface,
     PGRAPHState *pg = &d->pgraph;
     PGRAPHVkState *r = pg->vk_renderer_state;
 
-    pgraph_vk_download_surface_complete_deferred(d);
+    download_surface_complete_deferred(d, SDC_TO_BUFFER);
 
     VK_LOG("download_surface: %s addr=0x%x %ux%u pitch=%d bpp=%d swizzle=%d",
            surface->color ? "COLOR" : "ZETA", surface->vram_addr,
@@ -1610,7 +1698,7 @@ static void download_surface_deferred(NV2AState *d, SurfaceBinding *surface)
 
     /* Deferred path failed (buffer full or limit reached). Complete pending
      * deferred downloads first, then retry. */
-    pgraph_vk_download_surface_complete_deferred(d);
+    download_surface_complete_deferred(d, SDC_DEFER_FULL);
     if (download_surface_record_deferred(
             d, surface, d->vram_ptr + surface->vram_addr)) {
         return;
@@ -1712,7 +1800,7 @@ void pgraph_vk_process_pending_downloads(NV2AState *d)
     PGRAPHVkState *r = pg->vk_renderer_state;
     SurfaceBinding *surface;
 
-    pgraph_vk_download_surface_complete_deferred(d);
+    download_surface_complete_deferred(d, SDC_PENDING);
 
     bool can_defer = true;
     int pending_count = 0;
@@ -1748,7 +1836,7 @@ void pgraph_vk_process_pending_downloads(NV2AState *d)
     }
 
     if (!can_defer || r->num_deferred_downloads == 0) {
-        pgraph_vk_download_surface_complete_deferred(d);
+        download_surface_complete_deferred(d, SDC_PENDING_FB);
         QTAILQ_FOREACH(surface, &r->surfaces, entry) {
             OPT_STAT_INC(dl_from_ppd_fb);
             download_surface(d, surface, false);
@@ -1795,7 +1883,7 @@ void pgraph_vk_download_dirty_surfaces(NV2AState *d)
     PGRAPHState *pg = &d->pgraph;
     PGRAPHVkState *r = pg->vk_renderer_state;
 
-    pgraph_vk_download_surface_complete_deferred(d);
+    download_surface_complete_deferred(d, SDC_DIRTY);
 
     bool can_defer = true;
     int pending_count = 0;
@@ -1832,7 +1920,7 @@ void pgraph_vk_download_dirty_surfaces(NV2AState *d)
     }
 
     if (!can_defer || r->num_deferred_downloads == 0) {
-        pgraph_vk_download_surface_complete_deferred(d);
+        download_surface_complete_deferred(d, SDC_DIRTY_FB);
         QTAILQ_FOREACH(surface, &r->surfaces, entry) {
             OPT_STAT_INC(dif_dds_fb);
             pgraph_vk_surface_download_if_dirty(d, surface);
@@ -3071,7 +3159,7 @@ static void expire_old_surfaces(NV2AState *d)
 
     /* Complete batched active-surface downloads before processing shelved
      * surfaces, which destroy their VkImages on free. */
-    pgraph_vk_download_surface_complete_deferred(d);
+    download_surface_complete_deferred(d, SDC_EXPIRE);
 
     /* Shelved surfaces: use inline path since images are destroyed here. */
     int shelved_count = 0;
@@ -4627,7 +4715,14 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     }
 
     SURF413_ACC(part_ns, _s413);
-    pgraph_vk_download_surface_complete_deferred(d);
+    SDCALL_DO(if (r->num_deferred_downloads > 0 &&
+                  !r->display_predownload_pending &&
+                  r->deferred_downloads_frame < 0 && upload &&
+                  ((r->color_binding && r->color_binding->upload_pending) ||
+                   (r->zeta_binding && r->zeta_binding->upload_pending))) {
+                  g_sdcall.su_upl++;
+              });
+    download_surface_complete_deferred(d, SDC_SURF_UPDATE);
     SURF413_ACC(cdef_ns, _s413);
 
     if (upload) {
@@ -4688,6 +4783,7 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     SURF413_DO(g_surf413.fin_ns +=
                    g_nv2a_stats.phase_working.finish_ns - _s413_fin;
                surf413_log(pg, r));
+    SDCALL_DO(sdcall_log(pg));
 
     NV2A_PHASE_TIMER_END_EXCL(surface_update);
 }
