@@ -401,3 +401,31 @@ The PIT takes 79-93% of the idle time on every title and readies nothing.
 Master is merged (576b4b6faf; the only conflict was `nv2a_index.json`,
 rebuilt over the pinned trees in aae68b4aed) and the four TUs compile with
 the NDK arm64 line. The result is posted on #425, #462 and #412.
+
+## 9. The wake counter's pixel arm (attempt 5, 2026-09-27 11:50 PDT)
+
+Why the previous attempt did not finish: nothing was left undone in the
+session. PR #460 folded (c91697f116) while the arms job was still running
+`retreason425-wake-inert.json`, so no session read the verdict, and section
+8 still says the arm was queued.
+
+Verdict: **PASS**. On the Nova, 593 of 593 shared captures in 8 suites are
+byte-identical between master 6e4dee6a28 and e156fcdf02. Both arms have 0
+unreadable rows and no UtilAcceptVsock in `run1.log`. Differing pixels total
+6,204,451 in both arms (+0).
+
+| arm | result dir | apk |
+|---|---|---|
+| A, 6e4dee6a28 | `0-0-x-1790525482-arms-retreason425-base-786885` | 465829f4cf3d |
+| B, e156fcdf02 | `0-0-x-1790525482-arms-retreason425-fix-787164` | db778d39b622 |
+
+This leaves section 8 unchanged, and the verdict is posted on #425. Every
+open ask in the brief's addenda is answered in sections 7-8 and on #425,
+#462 and #412. The next measurement (the callback NOP's parameter, and the
+latency from the kick to the callback) is in pgraph.c/pfifo.c, outside this
+lane's files. lane.xbox's signal-timing v3 (#462) covers the callback from
+the console side.
+
+`ab_compare.py` prints UNBOUND for this pair because no hand-queued arm
+named the prediction. The arms job queued both arms from the file, which
+their `purpose` fields record, so the binding holds.

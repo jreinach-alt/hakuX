@@ -73,8 +73,11 @@ def main(argv):
             out.append('-DNV2A_PERF_LOG=' + perflog)
         r = subprocess.run(out, cwd=ent['directory'], capture_output=True, text=True)
         errs = [l for l in r.stderr.splitlines() if 'error' in l]
-        print(f'{rel} perflog={perflog}: exit {r.returncode}, {len(errs)} error lines')
-        for l in errs[:20]:
+        warns = [l for l in r.stderr.splitlines()
+                 if 'warning:' in l and os.path.basename(rel) in l]
+        print(f'{rel} perflog={perflog}: exit {r.returncode}, {len(errs)} error lines, '
+              f'{len(warns)} warnings in the file')
+        for l in (errs + warns)[:20]:
             print('   ', l)
         rc |= r.returncode
     return rc

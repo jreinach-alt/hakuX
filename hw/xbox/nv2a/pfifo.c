@@ -725,6 +725,362 @@ static void fsk_maybe_dump(int64_t now)
 #define fsk_maybe_dump(now)                   ((void)0)
 #endif
 
+/*
+ * KICK -> CALLBACK LATENCY (#474, #425), and what this thread did in between.
+ *
+ * AUF, Blinx and Blinx 2 sleep until the puller reaches the guest's
+ * NV097_NO_OPERATION software callback (a non-zero parameter raises the
+ * PGRAPH ERROR interrupt the guest's frame work waits on). So their frame is
+ * set by how long the PFIFO thread takes to get from the submission that
+ * published the marker to dispatching it. This times that interval per
+ * callback and splits it by what this thread was doing, so the wait that
+ * makes the callback late is a number rather than a reading.
+ *
+ * - The kick that made a marker visible is the oldest submission whose
+ *   DMA_PUT the pusher has not yet walked past: submissions are consumed in
+ *   order, so every earlier one ended at or before the marker. A ring of
+ *   (put, time, split snapshot) is filled at the DMA_PUT store and retired
+ *   as DMA_GET passes each put, or all at once when DMA_GET reaches DMA_PUT.
+ * - The split is cumulative time per category, kept by this thread and
+ *   snapshotted at the kick (by the vCPU) and at the dispatch (here). Every
+ *   update and both snapshots happen under pfifo.lock, so a snapshot sees a
+ *   category either finished or in progress from its published start.
+ * - Categories: parked (FLIP_STALL waiting for the VBLANK; the previous
+ *   callback not yet acknowledged; anything else), and inside a method by
+ *   class (FLIP_STALL, semaphore release, clear, SET_BEGIN_END, other). A
+ *   method's time includes its wait for pgraph.lock. `rest` is the interval
+ *   less all of them: parsing, pending work, reports.
+ * - Nested in a method, from the renderer's own counters: `dl` is
+ *   download_surface_complete_deferred (surf413 cdef, and Forza's surfupd
+ *   finish), `fin` is pgraph_vk_finish for every reason. They OVERLAP: a
+ *   SURFACE_DOWN finish is in both. A method in progress at the kick has its
+ *   nested wait counted whole, so each is capped at the methods' total. The
+ *   profile's per-flip reset lands inside FLIP_STALL, so that method's nested
+ *   time is not counted (`rst`); FLIP_STALL's own time is `mflip`.
+ * - A callback is stamped after its own dispatch, when the interrupt has
+ *   been raised; the NOP method's time (its BQL wait included) is `mother`.
+ * - The split is over non-overlapping intervals: from the later of the kick
+ *   and the previous callback's dispatch. Two callbacks in one submission
+ *   would otherwise count the same wait twice, and per-frame sums would
+ *   exceed the frame. `lat` is the full kick -> dispatch, per callback.
+ *
+ * Perf-log builds on Android only. Cost: a clock read per method dispatch
+ * and per park, which the perf log's own `_meth_t0` already pays.
+ */
+#if defined(__ANDROID__) && NV2A_PERF_LOG
+
+enum {
+    CBL_PARK_FLIP,
+    CBL_PARK_NOP,
+    CBL_PARK_IDLE,
+    CBL_M_FLIP,
+    CBL_M_SEMA,
+    CBL_M_CLEAR,
+    CBL_M_DRAW,
+    CBL_M_OTHER,
+    CBL_DL,
+    CBL_FIN,
+    CBL_NCAT,
+    CBL_NONE = -1,
+};
+
+#define CBL_RING        128
+#define CBL_BUCKET_NS   250000     /* 0.25 ms */
+#define CBL_BUCKETS     400        /* 0 .. 100 ms, then one overflow bin */
+#define CBL_NPARAM      8
+
+typedef struct CblSnap {
+    int64_t ts;
+    int64_t cum[CBL_NCAT];
+} CblSnap;
+
+static struct {
+    /* Published by the PFIFO thread under pfifo.lock. */
+    int      cur;
+    int64_t  cur_t0;
+    int64_t  cum[CBL_NCAT];
+    int64_t  nest_dl0, nest_fin0;
+
+    /* Submissions not yet walked past, oldest first. */
+    uint32_t ring_put[CBL_RING];
+    CblSnap  ring[CBL_RING];
+    uint32_t head, tail;
+
+    CblSnap  last_cb;          /* the previous callback's dispatch */
+
+    int64_t  window_start_ns;
+    uint32_t n, nokick, dup, lost, shared, flips, rst;
+    uint64_t lat_sum_ns;
+    int64_t  lat_max_ns;
+    uint32_t lat_bucket[CBL_BUCKETS + 1];
+    int64_t  split_ns[CBL_NCAT];
+    int64_t  span_ns;          /* sum of the non-overlapping intervals */
+    uint32_t param[CBL_NPARAM], param_n[CBL_NPARAM], param_other;
+} s_cbl = { .cur = CBL_NONE };
+
+static inline int64_t cbl_nest_dl(void)
+{
+    return g_nv2a_stats.surf_working.df_flush_ns +
+           g_nv2a_stats.surf_working.df_read_ns;
+}
+
+static int cbl_method_cat(uint32_t method)
+{
+    switch (method) {
+    case NV097_FLIP_STALL:                       return CBL_M_FLIP;
+    case NV097_BACK_END_WRITE_SEMAPHORE_RELEASE: return CBL_M_SEMA;
+    case NV097_CLEAR_SURFACE:                    return CBL_M_CLEAR;
+    case NV097_SET_BEGIN_END:                    return CBL_M_DRAW;
+    default:                                     return CBL_M_OTHER;
+    }
+}
+
+static void cbl_snap(CblSnap *s, int64_t now)
+{
+    s->ts = now;
+    memcpy(s->cum, s_cbl.cum, sizeof(s->cum));
+    if (s_cbl.cur != CBL_NONE) {
+        s->cum[s_cbl.cur] += now - s_cbl.cur_t0;
+    }
+}
+
+static void cbl_enter(int cat)
+{
+    s_cbl.cur_t0 = nv2a_clock_ns();
+    s_cbl.cur = cat;
+    if (cat >= CBL_M_FLIP) {
+        s_cbl.nest_dl0 = cbl_nest_dl();
+        s_cbl.nest_fin0 = g_nv2a_stats.phase_working.finish_ns;
+    }
+}
+
+static void cbl_leave(void)
+{
+    int cat = s_cbl.cur;
+
+    if (cat == CBL_NONE) {
+        return;
+    }
+    s_cbl.cum[cat] += nv2a_clock_ns() - s_cbl.cur_t0;
+    s_cbl.cur = CBL_NONE;
+    if (cat >= CBL_M_FLIP) {
+        int64_t dl = cbl_nest_dl() - s_cbl.nest_dl0;
+        int64_t fin = g_nv2a_stats.phase_working.finish_ns - s_cbl.nest_fin0;
+        if (dl < 0 || fin < 0) {
+            s_cbl.rst++;
+        } else {
+            s_cbl.cum[CBL_DL] += dl;
+            s_cbl.cum[CBL_FIN] += fin;
+        }
+    }
+}
+
+/* The vCPU's DMA_PUT store, under pfifo.lock. */
+static void cbl_note_kick(uint32_t put)
+{
+    if (s_cbl.head - s_cbl.tail >= CBL_RING) {
+        s_cbl.lost++;
+        return;
+    }
+    uint32_t i = s_cbl.head % CBL_RING;
+    s_cbl.ring_put[i] = put;
+    cbl_snap(&s_cbl.ring[i], nv2a_clock_ns());
+    s_cbl.head++;
+}
+
+/* The pusher moved DMA_GET from `before` to `after` in one step. A linear
+ * step walked past every put in (before, after]; a jump, call or return
+ * walked past nothing but its own word, and lands on a put only if nothing
+ * follows it. */
+static void cbl_note_advance(uint32_t before, uint32_t after, bool jumped)
+{
+    while (s_cbl.tail != s_cbl.head) {
+        uint32_t p = s_cbl.ring_put[s_cbl.tail % CBL_RING];
+        if (!((!jumped && p > before && p <= after) || p == after)) {
+            break;
+        }
+        s_cbl.tail++;
+    }
+}
+
+static void cbl_note_caught_up(void)
+{
+    s_cbl.tail = s_cbl.head;
+}
+
+static void cbl_note_callback(uint32_t param, bool dup)
+{
+    int64_t now = nv2a_clock_ns();
+    CblSnap cb;
+    const CblSnap *from;
+    bool has_kick = s_cbl.tail != s_cbl.head;
+
+    cbl_snap(&cb, now);
+    if (!s_cbl.window_start_ns) {
+        s_cbl.window_start_ns = now;
+    }
+
+    /* The Android NOP handler drops a callback while the previous one's
+     * interrupt is still pending; count those, they never reach the guest.
+     * `dup` is read before the dispatch: the handler sets the bit itself. */
+    if (dup) {
+        s_cbl.dup++;
+    }
+
+    int k;
+    for (k = 0; k < CBL_NPARAM; k++) {
+        if (s_cbl.param_n[k] && s_cbl.param[k] == param) {
+            s_cbl.param_n[k]++;
+            break;
+        }
+        if (!s_cbl.param_n[k]) {
+            s_cbl.param[k] = param;
+            s_cbl.param_n[k] = 1;
+            break;
+        }
+    }
+    if (k == CBL_NPARAM) {
+        s_cbl.param_other++;
+    }
+
+    if (!has_kick) {
+        s_cbl.nokick++;
+        s_cbl.last_cb = cb;
+        return;
+    }
+
+    const CblSnap *kick = &s_cbl.ring[s_cbl.tail % CBL_RING];
+    int64_t lat = now - kick->ts;
+    if (lat < 0) {
+        lat = 0;
+    }
+    s_cbl.n++;
+    s_cbl.lat_sum_ns += lat;
+    if (lat > s_cbl.lat_max_ns) {
+        s_cbl.lat_max_ns = lat;
+    }
+    int idx = (int)(lat / CBL_BUCKET_NS);
+    s_cbl.lat_bucket[idx > CBL_BUCKETS ? CBL_BUCKETS : idx]++;
+
+    from = kick;
+    if (s_cbl.last_cb.ts > kick->ts) {
+        from = &s_cbl.last_cb;
+        s_cbl.shared++;
+    }
+    int64_t span = now - from->ts;
+    int64_t meth = 0;
+    for (int c = 0; c < CBL_NCAT; c++) {
+        int64_t v = cb.cum[c] - from->cum[c];
+        if (v < 0) {
+            v = 0;
+        }
+        if (c == CBL_DL || c == CBL_FIN) {
+            v = MIN(v, meth);
+        } else if (c >= CBL_M_FLIP) {
+            meth += v;
+        }
+        s_cbl.split_ns[c] += v;
+    }
+    s_cbl.span_ns += span > 0 ? span : 0;
+    s_cbl.last_cb = cb;
+}
+
+static int64_t cbl_pct(uint32_t pct)
+{
+    uint32_t want = (s_cbl.n * pct + 99) / 100, acc = 0;
+    if (!want) {
+        want = 1;
+    }
+    for (int i = 0; i <= CBL_BUCKETS; i++) {
+        acc += s_cbl.lat_bucket[i];
+        if (acc >= want) {
+            return (int64_t)(i + 1) * CBL_BUCKET_NS;
+        }
+    }
+    return (int64_t)(CBL_BUCKETS + 1) * CBL_BUCKET_NS;
+}
+
+#define CBL_MS(ns) ((double)(ns) / 1e6)
+
+static void cbl_maybe_dump(int64_t now)
+{
+    if (!s_cbl.window_start_ns || now - s_cbl.window_start_ns < FSK_WINDOW_NS) {
+        return;
+    }
+
+    char params[CBL_NPARAM * 20 + 1];
+    int off = 0;
+    params[0] = 0;
+    for (int k = 0; k < CBL_NPARAM && s_cbl.param_n[k]; k++) {
+        off += snprintf(params + off, sizeof(params) - off, "%s%x:%u",
+                        k ? "," : "", s_cbl.param[k], s_cbl.param_n[k]);
+        if (off >= (int)sizeof(params)) {
+            break;
+        }
+    }
+
+    const int64_t *s = s_cbl.split_ns;
+    int64_t known = 0;
+    for (int c = 0; c < CBL_DL; c++) {
+        known += s[c];
+    }
+
+    __android_log_print(
+        ANDROID_LOG_INFO, "hakuX-perf",
+        "cblat win=%lldms flips=%u n=%u nokick=%u shared=%u dup=%u lost=%u "
+        "rst=%u lat(mean=%.2f p50=%.2f p90=%.2f max=%.2f) "
+        "split(span=%.1f pflip=%.1f pnop=%.1f pidle=%.1f mflip=%.1f "
+        "msema=%.1f mclear=%.1f mdraw=%.1f mother=%.1f rest=%.1f "
+        "dl=%.1f fin=%.1f) params=%s other=%u",
+        (long long)((now - s_cbl.window_start_ns) / 1000000), s_cbl.flips,
+        s_cbl.n, s_cbl.nokick, s_cbl.shared, s_cbl.dup, s_cbl.lost, s_cbl.rst,
+        s_cbl.n ? CBL_MS(s_cbl.lat_sum_ns / s_cbl.n) : 0.0,
+        s_cbl.n ? CBL_MS(cbl_pct(50)) : 0.0,
+        s_cbl.n ? CBL_MS(cbl_pct(90)) : 0.0, CBL_MS(s_cbl.lat_max_ns),
+        CBL_MS(s_cbl.span_ns), CBL_MS(s[CBL_PARK_FLIP]),
+        CBL_MS(s[CBL_PARK_NOP]), CBL_MS(s[CBL_PARK_IDLE]),
+        CBL_MS(s[CBL_M_FLIP]), CBL_MS(s[CBL_M_SEMA]), CBL_MS(s[CBL_M_CLEAR]),
+        CBL_MS(s[CBL_M_DRAW]), CBL_MS(s[CBL_M_OTHER]),
+        CBL_MS(s_cbl.span_ns - known), CBL_MS(s[CBL_DL]), CBL_MS(s[CBL_FIN]),
+        params, s_cbl.param_other);
+
+    s_cbl.n = s_cbl.nokick = s_cbl.dup = s_cbl.lost = s_cbl.shared = 0;
+    s_cbl.flips = s_cbl.rst = 0;
+    s_cbl.lat_sum_ns = 0;
+    s_cbl.lat_max_ns = 0;
+    s_cbl.span_ns = 0;
+    s_cbl.param_other = 0;
+    memset(s_cbl.lat_bucket, 0, sizeof(s_cbl.lat_bucket));
+    memset(s_cbl.split_ns, 0, sizeof(s_cbl.split_ns));
+    memset(s_cbl.param_n, 0, sizeof(s_cbl.param_n));
+    s_cbl.window_start_ns = now;
+}
+
+static int cbl_park_cat(NV2AState *d)
+{
+    if (qatomic_read(&d->pgraph.waiting_for_flip)) {
+        return CBL_PARK_FLIP;
+    }
+    if (qatomic_read(&d->pgraph.waiting_for_nop)) {
+        return CBL_PARK_NOP;
+    }
+    return CBL_PARK_IDLE;
+}
+
+#define CBL_ON 1
+#else
+#define CBL_ON 0
+#define cbl_method_cat(m)                     ((void)(m), 0)
+#define cbl_enter(cat)                        ((void)(cat))
+#define cbl_leave()                           ((void)0)
+#define cbl_note_kick(put)                    ((void)(put))
+#define cbl_note_advance(b, a, j)             ((void)(b), (void)(a), (void)(j))
+#define cbl_note_caught_up()                  ((void)0)
+#define cbl_note_callback(param, dup)         ((void)(param), (void)(dup))
+#define cbl_maybe_dump(now)                   ((void)0)
+#define cbl_park_cat(d)                       0
+#endif
+
 #if defined(__ANDROID__) && XEMU_OPT_THREAD_AFFINITY
 #include <sys/syscall.h>
 #include <sys/resource.h>
@@ -1221,6 +1577,7 @@ void pfifo_kick(NV2AState *d)
     d->pfifo.skew_last_put = put;
 
     fsk_note_submit(d, put, FSK_NOW());
+    cbl_note_kick(put);
 
     int mode = fifo_skew_bound_mode();
 
@@ -1557,6 +1914,7 @@ static void pfifo_run_pusher(NV2AState *d)
              * a hang. One broadcast at the call site covers all of them.
              */
             fsk_note_caught_up(nv2a_clock_ns());
+            cbl_note_caught_up();
             break;
         }
         if (dma_get_v >= dma_len) {
@@ -1572,6 +1930,8 @@ static void pfifo_run_pusher(NV2AState *d)
 
         uint32_t *word_ptr = (uint32_t*)(dma + dma_get_v);
         uint32_t word = ldl_le_p(word_ptr);
+        uint32_t cbl_before = dma_get_v;
+        bool cbl_jumped = false;
         dma_get_v += 4;
 
         uint32_t method_type =
@@ -1599,13 +1959,26 @@ static void pfifo_run_pusher(NV2AState *d)
 
             *status &= ~NV_PFIFO_CACHE1_STATUS_LOW_MARK;
 
+            bool cbl_nop = CBL_ON && method == NV097_NO_OPERATION && word;
+            bool cbl_dup = cbl_nop && (qatomic_read(&d->pgraph.pending_interrupts)
+                                       & NV_PGRAPH_INTR_ERROR);
+            cbl_enter(cbl_method_cat(method));
             ssize_t num_words_processed =
                 pfifo_run_puller(d, method_entry, word, word_ptr,
                                  MIN(method_count, num_words_available),
                                  num_words_available);
+            cbl_leave();
             if (num_words_processed < 0) {
                 break;
             }
+            if (cbl_nop) {
+                cbl_note_callback(word, cbl_dup);
+            }
+#if CBL_ON
+            if (method == NV097_FLIP_STALL) {
+                s_cbl.flips++;
+            }
+#endif
 
             dma_get_v += (num_words_processed-1)*4;
 
@@ -1627,12 +2000,14 @@ static void pfifo_run_pusher(NV2AState *d)
                 d->pfifo.regs[NV_PFIFO_CACHE1_DMA_GET_JMP_SHADOW] =
                     dma_get_v;
                 dma_get_v = word & 0x1fffffff;
+                cbl_jumped = true;
                 NV2A_DPRINTF("pb OLD_JMP 0x%x\n", dma_get_v);
             } else if ((word & 3) == 1) {
                 /* jump */
                 d->pfifo.regs[NV_PFIFO_CACHE1_DMA_GET_JMP_SHADOW] =
                     dma_get_v;
                 dma_get_v = word & 0xfffffffc;
+                cbl_jumped = true;
                 NV2A_DPRINTF("pb JMP 0x%x\n", dma_get_v);
             } else if ((word & 3) == 2) {
                 /* call */
@@ -1645,6 +2020,7 @@ static void pfifo_run_pusher(NV2AState *d)
                     SET_MASK(*dma_subroutine,
                              NV_PFIFO_CACHE1_DMA_SUBROUTINE_STATE, 1);
                     dma_get_v = word & 0xfffffffc;
+                    cbl_jumped = true;
                     NV2A_DPRINTF("pb CALL 0x%x\n", dma_get_v);
                 }
             } else if (word == 0x00020000) {
@@ -1655,6 +2031,7 @@ static void pfifo_run_pusher(NV2AState *d)
                     // break;
                 } else {
                     dma_get_v = *dma_subroutine & 0xfffffffc;
+                    cbl_jumped = true;
                     SET_MASK(*dma_subroutine,
                              NV_PFIFO_CACHE1_DMA_SUBROUTINE_STATE, 0);
                     NV2A_DPRINTF("pb RET 0x%x\n", dma_get_v);
@@ -1692,6 +2069,7 @@ static void pfifo_run_pusher(NV2AState *d)
         }
 
         *dma_get = dma_get_v;
+        cbl_note_advance(cbl_before, dma_get_v, cbl_jumped);
 
         if (GET_MASK(*dma_state, NV_PFIFO_CACHE1_DMA_STATE_ERROR)) {
             break;
@@ -1787,6 +2165,7 @@ void *pfifo_thread(void *arg)
          * when there is anything to measure. Emitted whether or not the bound
          * is enabled, because the unbounded numbers are the finding. */
         fsk_maybe_dump(nv2a_clock_ns());
+        cbl_maybe_dump(nv2a_clock_ns());
 
         /* When a diag capture is pending or active and the PFIFO has no
          * more commands to process, force a flip_stall so the capture
@@ -1805,6 +2184,7 @@ void *pfifo_thread(void *arg)
 
         if (!d->pfifo.fifo_kick) {
             int64_t idle_t0 = nv2a_clock_ns();
+            cbl_enter(cbl_park_cat(d));
 
 #if XEMU_OPT_FIFO_SPIN
             if (was_active) {
@@ -1845,6 +2225,7 @@ void *pfifo_thread(void *arg)
             qemu_cond_wait(&d->pfifo.fifo_cond, &d->pfifo.lock);
 #endif
 
+            cbl_leave();
             {
                 /* Always on: idle_t0 above is read unconditionally, so this
                  * costs one more clock read per wait and answers the
