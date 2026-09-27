@@ -454,3 +454,12 @@ first-run first.
   Burnout 3 and Black on the Thor.
 - Do not trust a save written in a soak until the disk it is on has been
   pulled and `saves.py verify`'d: soaks end with SIGKILL and no flush.
+
+## Attempt 6 (resumed 2026-09-27 11:11 PDT): Azurik's and Alias's saves from the Thor
+
+Why the previous session of this resume did not finish: it left nothing
+behind. There is no commit, no scratch file and no Thor image newer than
+10:01, and no PR. At 11:11 a titleroutes Azurik soak held the Thor, so that
+session most likely ended while waiting for the Thor, before taking the grant.
+This session waits for the Thor in the foreground and does the pull in one
+call.
