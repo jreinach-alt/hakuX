@@ -587,6 +587,17 @@ Bound, not a value: the title's pacing is 2 VBLANKs per flip, so **<= 30
 fps**. The soak's fast regime held 28.0 fps for 175 s on this device and
 build, on a screen no frame identifies.
 
+### State at the end of attempt 4 (08:00 PDT)
+
+- **Blocked** on the device for GTA's profile: `[lane.slowdown462] blocked:`
+  on PR #477. Board request Ask 4 (the Thor grant in the brief, or the Nova
+  copy) and Ask 5 (an issue for GTA) are filed.
+- Nothing of this lane's is queued or running on either device. No hold is
+  taken. No background task is left.
+- The next attempt, once the brief names the device: the profile session
+  (Ask 4 has the command), then one soak with `--frames-every 10` to see
+  what the fast regime is, then rows 1 and 2 of GTA's table.
+
 ## Summary (Nova, MAX, e5db66fa37 soaks / a593d8eb85 profiles)
 
 | title | fps (soak window) | sets the frame | top cost (ms/frame, share) | owner | bound if it goes |
