@@ -1,0 +1,27 @@
+{
+  "registered_utc": "2026-09-27T16:36:00Z",
+  "who": "lane.flip474",
+  "issue": "474",
+  "title": "54430006-Dead_or_Alive_1_Ultimate.xiso.iso",
+  "device": "nova",
+  "seconds": 300,
+  "route": "survey",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "3112e410dbcb000ab2845b587ecf994e28f53a7c",
+  "b_ref": null,
+  "judge": "python3 docs/lanes/flip474/o4read.py --from 151 --to 288 --show <result-id>; lockread.py for gfps; the route's shots in the window, by eye",
+  "prediction": "PILOT, one arm, no B. The ref is master bf60a2b5b8 (with #475) plus the perflog-only [o4] probe in vk/surface.c and vk/renderer.c; the next commit reverts it. DOA Ultimate's fight waits ~51 ms a frame for the flip's command buffer, whose own GPU timestamps span ~33 ms. The ~18 ms between them is not the staged copy (xemu-surf dfR is 0.2 to 0.4 ms in #475's four runs) and not the render thread's submit (pgraph_vk_finish spins until vkQueueSubmit has returned, draw.c, before the wait can start). What is left is time before the command buffer's first timestamp or after its last, and nothing on disk says which. The probe prints, per waited flip, the PFIFO thread's clock around the flip's finish and the fence wait and the command buffer's raw GPU timestamps, each render pass as an offset. The GPU clock is placed on the CPU's by the smallest (fence seen - last timestamp) in the window, so no extension is needed and `start` is an upper bound by that smallest latency. The second question is the phase line's R/X split: in every DOA scene that has the long wait, X equals R to within 2% (one gap between two passes as long as all the passes together), while Crimson Skies on the Thor reads X/R 0.09 and Forza on the Nova 0.13 to 0.20. Seen before the run, from #475's four runs: the wait (dfF) is 3.08 to 3.10 x R and the span 2.0 x R in every one, the replay scene included (R 16.5 to 20.0 ms). So the excess scales with the frame's work, which a fixed wake-up or queue latency would not.",
+  "legs": {
+    "M0 (instrument)": ">= 500 [o4] lines with a wait of 4 ms or more in 151-288 s (about 15 flips a second for 137 s would be ~2,000), at least 95% of the [o4] lines parse, and the route's shots in that window show the fight. Otherwise VOID, not a zero.",
+    "K0 (the clocks)": "the offset's drift over the window's thirds is <= 1.0 ms. FAILS if the GPU's clock and the CPU's drift apart faster than that; then start and end are good only to the drift and are reported with it.",
+    "S0 (agrees with the instruments already there)": "[o4] wait median within 10% of xemu-surf dfF in the same run, and [o4] span median within 10% of hakuX-phase GPU. FAILS for span in the world where a frame's GPU time is spread over more than one command buffer; submits per flip is printed for that and is measured, not predicted.",
+    "S1 (the question; a guess, labelled as one)": "start >= 0.7 x (finish + to_wait + wait - span): most of the excess is before the command buffer's first timestamp (about 60% confident). The rival is after the last timestamp. Decision rule, written now: start-dominant means the next measurement is a timestamp in the aux command buffer, which is submitted ahead of the main one and carries none (vk/draw.c, lane.remote's file), to tell its work from the GPU waking; end-dominant means reading what is recorded after the last timestamp. Either way the size found is O4's bound, replacing the 18 ms this lane estimated from medians of two instruments.",
+    "S2 (the R/X equality; a guess, labelled as one)": "per flip, the longest gap is within 5% of the passes' sum on >= 80% of the long-wait flips, and follows the same pass on >= 90% of them (about 70% confident). If so the equality is structural -- the same work twice, or timestamps written inside a pass on a tiler -- and the phase line's R/X split is not to be used for DOA until the gap is explained by what is recorded there. If the equality holds only for the averages, the split stands.",
+    "P4 (probe cost)": "gfps median in the window between 13 and 17 (#475's B runs: 15) and surf413 cdef between 43 and 59 ms (B: 50.4, 51.0). FAILS if one log line a flip moves the frame; then the probe samples instead."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off [o4], [surf413], hakuX-phase and gfps lines by o4read.py and lockread.py, and the shots by eye."
+}

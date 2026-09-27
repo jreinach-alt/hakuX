@@ -398,3 +398,15 @@ notes = "Own target 60 from #431 (comment 5853568091): medium confidence. GameSp
 name = "Dungeons & Dragons Heroes"
 iso = { thor = "49470013-Dungeons_Dragons_Heroes.xiso.iso" }
 route = "dnd-heroes"
+
+[titles."56550009"]
+name = "Antz Extreme Racing"
+iso = { thor = "56550009-Antz_Extreme_Racing.xiso.iso" }
+target_fps = 60
+notes = "Own target 60 from #431 (comment 5853568091): low confidence. xemu user report."
+
+[titles."5655001A"]
+name = "Baldur's Gate: Dark Alliance"
+iso = { thor = "5655001A-Baldur_s_Gate_Dark_Alliance.xiso.iso" }
+target_fps = 60
+notes = "Own target 60 from #431 (comment 5853568091): medium confidence. IGN Xbox review (2002)."
