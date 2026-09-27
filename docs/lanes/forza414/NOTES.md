@@ -206,3 +206,106 @@ No hunk and no arm on this PR, so `Prediction: none`.
   race without it (section 6). The steady cost is the ~5.5 uncoalesced
   `SURFACE_DOWN` finishes per frame. Fix those first.
 - Do not queue the Nova half until the ISO is on the Nova's card.
+
+## Why the previous attempt did not finish (resume of 2026-09-27 07:12 PDT)
+
+It did finish its own PR. #418 folded, and its deliverables (sections 1-7) are on master. The lane
+then ended on a `waiting:` for the vk/surface.c grant. That file went from lane.blinx372d (#396)
+to lane.doa413b (#440) and then to lane.blinx372e (#467). hostops granted it to this lane at
+07:15 PDT, after lane.blinx372e retired. This attempt merged origin/master (398 commits, f131dd11c6)
+and opened PR #479 for the step section 7 named.
+
+## 8. The caller, from the Nova soak already on disk
+
+lane.slowdown462's Nova perflog soak `1-1790492278-slowdown462-690198` (e5db66fa37, survey route)
+already carries the recorder counters. Last 30 s of its race, per ~53-flip stall window:
+
+| counter | per window | per frame |
+|---|---|---|
+| `cDef` (completion that submitted a finish) | 336-389 | ~7 |
+| `cDefC` (completion that waited an earlier fence) | 0 | 0 |
+| `evict[dl:]` (download recorded at an eviction) | 528-613 | ~11 |
+| `evict[unshelve:]` | 384-448 | ~8 |
+| `evict[stale:]` (unshelved surface must re-upload) | 96-110 | ~2 |
+| `dif[ovl]` (texture/vertex/blit range lookup found a dirty surface) | 96-110 | ~2 |
+| `pDl`, `dDl` (guest CPU or dirty-surfaces request) | 0 | 0 |
+
+Downloads recorded at evictions complete in `pgraph_vk_surface_update`. That function calls
+the completion unconditionally, at 4630 on master, and `expire_old_surfaces`, which runs at the
+end of every update, calls it again. Either call submits a finish when the batch is still in the
+open command buffer. Only ~2 of the ~8 unshelves per frame re-upload from VRAM (`stale`), so most
+of those finishes feed no reader in the update that paid for them. That is the hypothesis. The
+probe below tests it.
+
+## 9. The probe: `[sdcall]` (4b22f2526b, perflog + Android only)
+
+Each in-file caller of the completion passes a tag: range, tobuf, deffull, pend, pendfb, dirty,
+dirtyfb, expire, surfupd. renderer.c's frame-dump call is `ext`, since renderer.c is lane.flip474's.
+Every 60 guest frames the line prints, per caller:
+
+- `fin`: completions that submitted a finish;
+- `fence`: completions that waited an earlier fence;
+- `pre`: completions that waited the flip pre-download;
+- `dl`: downloads retired;
+- wall ms of the wait.
+
+`su_upl` counts the surface_update finishes that had a VRAM-reading upload after them, and
+`su_deferred` counts the updates the cut let go (0 in A by construction).
+
+Nova pilot: **`1790518618-forza414-1930404`** (4b22f2526b, perflog, survey route, 420 s), queued
+07:17 PDT at queue position 14. The prediction is that `surfupd` carries most of the `fin` and
+that `su_upl` is well under `surfupd`'s `fin`. If `range` carries it instead, the cut targets
+the wrong caller. Then the next step is to coalesce the range lookup's finish (texture scans of
+render targets), not this one.
+
+## 10. The cut (94f002d309)
+
+doa413b's refuted cut ("lazy completion", docs/lanes/doa413b) left only an already-submitted
+batch for later. In DOA's fight such a batch never existed at a surface_update (`skips` 0 on every
+fight line), so it could not reach the wait. This cut is the other branch, the one Forza's
+counters show: a batch still in the open command buffer, whose completion submits a finish.
+
+- `pgraph_vk_surface_update` leaves the batch to the next finish (`surface_update_may_defer_downloads`)
+  unless one of these holds: a binding is about to upload from VRAM (`upload_pending`), the batch
+  was already submitted, a display pre-download is pending, or TCG is off (no watch).
+- `expire_old_surfaces` completes only when a surface expires or a shelved one is freed.
+- Readers of guest memory complete an overlapping pending batch first
+  (`deferred_downloads_overlap_range`):
+  - `pgraph_vk_download_surfaces_in_range_if_dirty` (texture, vertex, blit). An evicted
+    surface is shelved with `shelved_dirty` cleared, so the old surface scan did not see it.
+  - `surface_access_callback`, via the existing `wait_for_downloads` hand-off. The evicted
+    binding keeps its watch while `draw_dirty`, so the access traps. The download lands
+    before a read, and before a write, which is today's order.
+- `pgraph_vk_prerecord_display_download` may now share a batch still in its command buffer. It
+  used to refuse any non-empty batch, which would have switched off the flip's pre-download (53
+  per window) whenever a deferred batch was pending.
+
+These readers were checked and need no guard:
+- Image lifetime: `destroy_surface_image` releases on the frame's fence, and
+  `deferred_downloads_clear_surface` handles a freed struct.
+- texture.c's two `pgraph_vk_upload_surface_data` calls are unreachable
+  (`surface_to_texture && upload_pending` right after that pair is forced false).
+- display.c's upload runs its own PRESENTING finish when the display surface was drawn in the
+  open command buffer.
+
+Residual, named: a display.c upload with `upload_pending` over an evicted surface's range with no
+draw in the open command buffer would read VRAM before the pending copy. It is rare, since the
+display surface is active and an eviction of its range makes it the new binding.
+
+**Price (a bound).** lane.slowdown462's Nova profile has the PFIFO thread waiting 18.1 ms per
+frame in `pgraph_vk_finish` <- this completion, out of 35.7 ms. The vCPU is on-CPU 30.5 ms. With
+the waits gone, the frame is at least the vCPU's time: <= 33 fps, and <= 30 fps at the title's
+2-VBLANK pacing, against 23.0 fps in the soak. The registered mover asks for >= 1.15x (about
+26.5 fps).
+
+## 11. Predictions and runs
+
+- `docs/testing/predictions/forza414-coalesce-mnm.json` (sha256 9ebf563f2a56...): goldens A/B
+  4b22f2526b vs 94f002d309. The must-not-move suites are Depth_buffer_fixed_function,
+  Color_zeta_overlap, Surface_format, Surface_clip, Clear, Texture_render_target,
+  Texture_CPU_Update, Texture_render_update_in_place (PR #387's guard), Image_blit and
+  Texture_Framebuffer_Blit. The arms job queues it from the commit.
+- `docs/testing/predictions/forza414-coalesce-soak.json`: the same-session Nova soak A/B, read by
+  hand (arms.sh skips title soaks). Queue it with request.sh after the pilot is read, one arm
+  per ref: `--title 4D53006E-Forza_Motorsport.xiso.iso --seconds 420 --device nova --perflog
+  --route survey --expect docs/testing/predictions/forza414-coalesce-soak.json`.
