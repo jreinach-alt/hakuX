@@ -454,3 +454,52 @@ first-run first.
   Burnout 3 and Black on the Thor.
 - Do not trust a save written in a soak until the disk it is on has been
   pulled and `saves.py verify`'d: soaks end with SIGKILL and no flush.
+
+## Attempt 6 (resumed 2026-09-27 11:11 PDT): Azurik's and Alias's saves from the Thor
+
+Why the previous session of this resume did not finish: it left nothing
+behind. There is no commit, no scratch file and no Thor image newer than
+10:01, and no PR. At 11:11 a titleroutes Azurik soak held the Thor, so that
+session most likely ended while waiting for the Thor, before taking the grant.
+This session waits for the Thor in the foreground and does the pull in one
+call.
+
+### The Thor, HELD 11:35:04-11:37:24 PDT
+
+The Thor was busy from 11:12 to 11:35: the titleroutes Azurik soak, then
+lane.xbox's #462 dry run. lane.xbox held it from 11:16 for a title push that
+followed the dry run. `scratch/thor6.sh` polls once a second and takes the
+hold only when `running/` has no Thor request and `hold/thor` is absent. It
+then runs `pullthor.sh pull`, and on every exit it sleeps the screen and
+releases the hold. The app was never started. Battery was 87%.
+
+| step | measured |
+|---|---|
+| device `md5sum` | 12 s |
+| `adb pull`, 4,487,249,920 B | 119 s, 36.4 MB/s |
+| host md5 | matches (`eca6a84c...`) |
+
+Host copy: `~/hakux-work/titlestate-pull/thor-hdd-20260927T183504Z.img`.
+The eeprom md5s have not changed: Thor `f52cf53a...`, Nova `7eb04a87...`.
+
+| title | TID | disk read | on its disk | registry |
+|---|---|---|---|---|
+| Azurik | 4D530007 | Thor 11:35, after the 07:02 nav session and the 11:05 soak | UDATA metadata only (2 files), no TDATA | no-save: Start New Game writes nothing before control |
+| Alias | 41430016 | Thor 11:35, after the 07:08 nav session | the same | no-save: NEW GAME writes nothing before control |
+| D&D Heroes | 49470013 | Thor 11:35, after the 07:14 nav session | the same | no-save: the default hero is not saved before control |
+| Fuzion Frenzy | 4D530002 | Nova 09:58 | the same | no-save: the route mashes Start/A into play |
+
+D&D Heroes and Fuzion Frenzy were not on the 08:29 list. They are the two
+routes on master that the registry did not know about at all (a check of
+every `routes/*.route` title ID against both devices' JSON).
+
+Still open: GoldenEye: Rogue Agent (4541005D, Nova). Its first run makes
+PLAYER1, but the nav session's force-stop never flushed it. It needs a
+first run that ends with the HOME flush, then a pull. That is device work on
+the Nova, which is below #462 work. Every other routed title now has a
+profile save or a recorded no-save.
+
+- Do not wait for a device only on `running/` being empty: another lane's
+  hold can sit on it through the gap (lane.xbox's title push at 11:16).
+  Wait for both, and poll once a second, because the dispatcher claims the
+  next request within seconds of a run ending.
