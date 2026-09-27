@@ -819,12 +819,36 @@ static bool download_surface_record_deferred(NV2AState *d,
     return true;
 }
 
+/*
+ * #372: the shelved binding a size flip may hand a quadrant back to (see
+ * surface_quad_partner), and the hash of the VRAM under it taken the moment
+ * its eviction download landed, when its image and that memory were known to
+ * agree. One slot: the demo it was written for has one such binding.
+ */
+static struct {
+    SurfaceBinding *s;          /* noted at its eviction download, or NULL */
+    bool armed;                 /* the download landed and hash is valid   */
+    uint32_t draw_generation;
+    uint64_t hash;
+} surface_quad_ref;
+static unsigned long surface_quad_copies, surface_quad_arms,
+                     surface_quad_cpu_writes, surface_quad_vram_changed;
+
+static void surface_quad_forget(SurfaceBinding const *s)
+{
+    if (surface_quad_ref.s == s) {
+        surface_quad_ref.s = NULL;
+        surface_quad_ref.armed = false;
+    }
+}
+
 /* Clear deferred download references to a surface that is about to be
  * freed. The download data in staging_dst is still valid and will be
  * copied, but the surface flags will not be updated. */
 static void deferred_downloads_clear_surface(PGRAPHVkState *r,
                                              SurfaceBinding *surface)
 {
+    surface_quad_forget(surface);
     for (int i = 0; i < r->num_deferred_downloads; i++) {
         if (r->deferred_downloads[i].surface == surface) {
             r->deferred_downloads[i].surface = NULL;
@@ -2141,6 +2165,12 @@ static void surface_access_callback(void *opaque, MemoryRegion *mr, hwaddr addr,
                 retained->draw_dirty = false;
                 retained->shelved_dirty = false;
                 retained->download_generation = retained->draw_generation;
+                /* Its image no longer matches the memory (#372). The hash
+                 * would see this too; the count says it was the CPU. */
+                if (retained == surface_quad_ref.s) {
+                    surface_quad_cpu_writes++;
+                    surface_quad_forget(retained);
+                }
             }
         }
         QTAILQ_FOREACH(retained, &r->invalid_surfaces, entry) {
@@ -2291,6 +2321,9 @@ static void evict372_log(void)
                "fallbacks=%lu",
                masks, g_evict372.pair_overflow, surface_handoffs,
                surface_handoff_fallbacks);
+    SURF92_LOG("[quad372] copies=%lu arms=%lu cpu_writes=%lu vram_changed=%lu",
+               surface_quad_copies, surface_quad_arms, surface_quad_cpu_writes,
+               surface_quad_vram_changed);
     for (int i = 0; i < EVICT_PAIRS && g_evict372.pair[i].n; i++) {
         EvictSide const *f = &g_evict372.pair[i].from;
         EvictSide const *t = &g_evict372.pair[i].to;
@@ -4029,6 +4062,188 @@ static void surface_handoff_record(NV2AState *d, SurfaceBinding *src,
     surface_handoffs++;
 }
 
+/*
+ * #372: a zeta surface that changes size at one address and pitch. Blinx's
+ * attract demo flips one D24S8 binding between 640x480 and 320x240 twice a
+ * frame, and each flip was a synchronous download and a re-upload. At one
+ * pitch, pixel (x, y) is at y * pitch + x * bpp in both bindings, so the
+ * small one is the top-left corner of the large one in VRAM, and on the flip
+ * back to the large binding the old path's upload produced: the small
+ * binding's pixels in that corner, and elsewhere whatever VRAM held.
+ *
+ * So small to large copies the corner image to image instead, when the large
+ * binding's image is known to equal VRAM everywhere else. It is known when:
+ * its own eviction download landed (it was noted then, and the hash of the
+ * memory taken in the same surface_update, before anything else ran), and
+ * the memory hashes the same at the flip. The hash sees any writer -- the
+ * guest's CPU, a download of the small binding, a blit -- and a change
+ * declines to the old path. The watch the large binding kept on the shelf
+ * (it was shelved draw-dirty) also counts the guest's CPU writes on its own.
+ *
+ * After the copy the large binding owes the download, as a handed-off
+ * partner does (surface_handoff_partner), and the small one is shelved clean
+ * and stale. Large to small is not done this way: the evicted large binding
+ * would still owe VRAM the rest of its area from the shelf, and the watch
+ * does not answer a read of a shelved binding.
+ */
+static bool surface_quad_eligible(PGRAPHState *pg, SurfaceBinding const *s)
+{
+    return tcg_enabled() && pg->surface_scale_factor == 1 && !s->color &&
+           surface_is_ds(s) && surface_stages_guest_bytes(s) && !s->swizzle &&
+           s->width && s->height;
+}
+
+/* An eviction download was recorded for s: remember it until it lands. */
+static void surface_quad_note(PGRAPHState *pg, SurfaceBinding *s)
+{
+    if (surface_quad_eligible(pg, s)) {
+        surface_quad_ref.s = s;
+        surface_quad_ref.armed = false;
+    }
+}
+
+/*
+ * After this surface_update's deferred downloads completed: if the noted
+ * binding's download landed and nothing else was recorded over it, its image
+ * is what VRAM now holds. A note that does not arm here is dropped; a later
+ * landing could follow some other write.
+ */
+static void surface_quad_arm(NV2AState *d)
+{
+    PGRAPHVkState *r = d->pgraph.vk_renderer_state;
+    SurfaceBinding *s = surface_quad_ref.s;
+    if (!s || surface_quad_ref.armed) {
+        return;
+    }
+    SurfaceBinding *shelved;
+    bool on_shelf = false;
+    QTAILQ_FOREACH(shelved, &r->shelved_surfaces, entry) {
+        on_shelf |= shelved == s;
+    }
+    if (on_shelf && !s->draw_dirty && !s->upload_pending && !s->vram_newer &&
+        s->download_generation == s->draw_generation) {
+        surface_quad_ref.armed = true;
+        surface_quad_ref.draw_generation = s->draw_generation;
+        surface_quad_ref.hash =
+            surface_watch_hash(d->vram_ptr + s->vram_addr, s->size);
+        surface_quad_arms++;
+    } else {
+        surface_quad_forget(s);
+    }
+}
+
+static SurfaceBinding *surface_quad_partner(NV2AState *d, SurfaceBinding *held,
+                                            SurfaceBinding const *target,
+                                            bool mem_dirty)
+{
+    PGRAPHState *pg = &d->pgraph;
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    if (mem_dirty || !held->draw_dirty || held->upload_pending ||
+        held->download_pending || !surface_quad_eligible(pg, held) ||
+        !surface_quad_eligible(pg, target)) {
+        return NULL;
+    }
+    if (held->color != target->color ||
+        held->host_fmt.vk_format != target->host_fmt.vk_format ||
+        held->pitch != target->pitch ||
+        held->fmt.bytes_per_pixel != target->fmt.bytes_per_pixel ||
+        held->width > target->width || held->height > target->height ||
+        (held->width == target->width && held->height == target->height)) {
+        return NULL;
+    }
+    if (r->display_predownload_pending &&
+        r->display_predownload_surface == held) {
+        return NULL;
+    }
+
+    /* The binding get_shelved_surface will take, and nothing that could
+     * write the range before it is bound (as surface_handoff_partner). */
+    SurfaceBinding *s, *partner = NULL;
+    QTAILQ_FOREACH(s, &r->shelved_surfaces, entry) {
+        if (!partner && surface_shelf_matches(s, target)) {
+            partner = s;
+        } else if (s->vram_addr != target->vram_addr && s->draw_dirty &&
+                   check_surface_overlaps_range(s, target->vram_addr,
+                                                target->size)) {
+            return NULL;
+        }
+    }
+    if (!partner || partner != surface_quad_ref.s || !surface_quad_ref.armed ||
+        partner->draw_generation != surface_quad_ref.draw_generation ||
+        partner->draw_dirty || partner->upload_pending || partner->vram_newer) {
+        return NULL;
+    }
+    QTAILQ_FOREACH(s, &r->surfaces, entry) {
+        if (s != held &&
+            check_surface_overlaps_range(s, target->vram_addr, target->size)) {
+            return NULL;
+        }
+    }
+    if (surface_watch_hash(d->vram_ptr + partner->vram_addr, partner->size) !=
+        surface_quad_ref.hash) {
+        surface_quad_vram_changed++;
+        surface_quad_forget(partner);
+        return NULL;
+    }
+    return partner;
+}
+
+/* src's image into the top-left corner of dst's, depth and stencil. */
+static void surface_quad_record(NV2AState *d, SurfaceBinding *src,
+                                SurfaceBinding *dst)
+{
+    PGRAPHState *pg = &d->pgraph;
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    /* As download_surface_record_deferred: queued draws to src first. */
+    if (r->reorder_window.count > 0) {
+        pgraph_vk_flush_reorder_window(d);
+    }
+    if (r->draw_queue.count > 0) {
+        pgraph_vk_flush_draw_queue(d);
+    }
+
+    VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
+    pgraph_vk_begin_debug_marker(r, cmd, RGBA_RED, __func__);
+
+    VkImageLayout src_layout = src->image_layout;
+    VkImageLayout dst_layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    pgraph_vk_transition_image_layout(pg, cmd, src->image,
+                                      src->host_fmt.vk_format, src_layout,
+                                      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+    pgraph_vk_transition_image_layout(pg, cmd, dst->image,
+                                      dst->host_fmt.vk_format,
+                                      dst->image_layout,
+                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    surface_handoff_barrier(cmd);
+
+    VkImageCopy region = {
+        .srcSubresource = { src->host_fmt.aspect, 0, 0, 1 },
+        .dstSubresource = { dst->host_fmt.aspect, 0, 0, 1 },
+        .extent = { src->width, src->height, 1 },
+    };
+    vkCmdCopyImage(cmd, src->image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                   dst->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
+                   &region);
+    surface_handoff_barrier(cmd);
+
+    pgraph_vk_transition_image_layout(pg, cmd, src->image,
+                                      src->host_fmt.vk_format,
+                                      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                                      src_layout);
+    pgraph_vk_transition_image_layout(pg, cmd, dst->image,
+                                      dst->host_fmt.vk_format,
+                                      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                      dst_layout);
+    dst->image_layout = dst_layout;
+    surface_handoff_barrier(cmd);
+
+    pgraph_vk_end_debug_marker(r, cmd);
+    pgraph_vk_end_nondraw_commands(pg, cmd);
+    surface_quad_copies++;
+}
+
 static void update_surface_part(NV2AState *d, bool upload, bool color)
 {
     PGRAPHState *pg = &d->pgraph;
@@ -4159,6 +4374,8 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
 
         bool should_create = true;
         SurfaceBinding *handoff_src = NULL, *handoff_dst = NULL;
+        bool handoff_quad = false;
+        uint64_t quad_hash = 0;
 
         if (surface != NULL) {
             bool is_compatible =
@@ -4303,6 +4520,12 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                 surface->shelved_dirty = surface->draw_dirty;
                 handoff_dst = surface_handoff_partner(d, surface, &target,
                                                       mem_dirty);
+                if (!handoff_dst) {
+                    handoff_dst = surface_quad_partner(d, surface, &target,
+                                                       mem_dirty);
+                    handoff_quad = handoff_dst != NULL;
+                    quad_hash = surface_quad_ref.hash;
+                }
                 if (handoff_dst) {
                     /* Recorded once the partner is off the shelf, below. */
                     handoff_src = surface;
@@ -4310,6 +4533,7 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                     OPT_STAT_INC(sd_eviction_dl);
                     download_surface_deferred(d, surface);
                     surface->shelved_dirty = false;
+                    surface_quad_note(pg, surface);
                 }
                 shelve_surface(d, surface);
                 SURF_TIMER_ACC(lk_evict_ns, _gt1);
@@ -4353,6 +4577,7 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
              * address and draw_dirty, so the old writeback is gone anyway.
              */
             unregister_cpu_access_callback(surface);
+            surface_quad_forget(surface);
             *surface = target;
             set_surface_label(pg, surface);
 
@@ -4360,7 +4585,11 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
             if (handoff_src && surface == handoff_dst) {
                 /* See surface_handoff_partner. The evicted binding owes
                  * nothing now, and its image is older than the memory. */
-                surface_handoff_record(d, handoff_src, surface);
+                if (handoff_quad) {
+                    surface_quad_record(d, handoff_src, surface);
+                } else {
+                    surface_handoff_record(d, handoff_src, surface);
+                }
                 handoff_src->draw_dirty = false;
                 handoff_src->shelved_dirty = false;
                 handoff_src->download_generation =
@@ -4410,6 +4639,23 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                  * the download now, with its watch live. */
                 surface->draw_generation++;
                 pgraph_vk_surface_watch_mark_dirty(d, surface);
+                /* The shelf's watch was dropped above and surface_put's is
+                 * inserted asynchronously: a guest store in between is not
+                 * trapped. surfwatch382's gap check counts one (lost_writes)
+                 * against the memory the partner was matched to. */
+                qemu_rec_mutex_lock(&surface_watch_lock);
+                if (handoff_quad && surface->access_cb) {
+                    SurfaceWatchRearm *w = g_new(SurfaceWatchRearm, 1);
+                    w->d = d;
+                    w->vram_addr = surface->vram_addr;
+                    w->size = surface->size;
+                    w->cb = surface->access_cb;
+                    w->hash = quad_hash;
+                    async_safe_run_on_cpu(qemu_get_cpu(0),
+                                          surface_watch_rearmed,
+                                          RUN_ON_CPU_HOST_PTR(w));
+                }
+                qemu_rec_mutex_unlock(&surface_watch_lock);
             }
 
             // FIXME: Refactor
@@ -4531,6 +4777,7 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     }
 
     pgraph_vk_download_surface_complete_deferred(d);
+    surface_quad_arm(d);
 
     if (upload) {
         pg->draw_time++;
