@@ -1075,6 +1075,62 @@ static void opt_stats_log_and_reset(void)
                 plc->num_used, plc->num_used + plc->num_free);
         }
         {
+            /*
+             * #461: what a texture bind spends its time on, counted in
+             * vk/texture.c; on hakuX-stall for the reason pipe[] is. Counts
+             * and KiB over the 60 frames:
+             *   txh  content hashes by the first reason that applies: a new
+             *        node, a rebuild, a draw-dirty surface downloaded, a mark
+             *        (per-draw poll, aliasing write), this flip's earlier
+             *        dirty verdict (memo), a fresh bitmap hit with no surface
+             *        over the texture (bit) or with one (bov); oth is none of
+             *        them and must be 0. eq: found bindings whose hash came
+             *        out equal. rep: nodes already hashed this flip.
+             *   txu  uploads (n = tex_cache_uploads) by cause, their guest
+             *        KiB, and the KiB each decode path read: linear copy,
+             *        native BC copy, CPU S3TC decompress, palette, other
+             *        conversion, unswizzle only.
+             *   txr  create_texture calls, bind calls and those that ran the
+             *        loop, direct surface downloads, range scans and the
+             *        downloads they started, images made (pool hits),
+             *        surface-to-texture copies and direct binds.
+             */
+            const struct OptBisectStats *s = &g_opt_stats;
+#define TX_KIB(b) ((unsigned long long)((b) >> 10))
+            __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
+                "txh[new%d/%lluK rb%d/%lluK srf%d/%lluK mk%d/%lluK "
+                "memo%d/%lluK bit%d/%lluK bov%d/%lluK oth%d/%lluK "
+                "eq%d/%lluK rep%d/%lluK]",
+                s->txh_n[TXH_NEW], TX_KIB(s->txh_b[TXH_NEW]),
+                s->txh_n[TXH_RB], TX_KIB(s->txh_b[TXH_RB]),
+                s->txh_n[TXH_SRF], TX_KIB(s->txh_b[TXH_SRF]),
+                s->txh_n[TXH_MK], TX_KIB(s->txh_b[TXH_MK]),
+                s->txh_n[TXH_MEMO], TX_KIB(s->txh_b[TXH_MEMO]),
+                s->txh_n[TXH_BIT], TX_KIB(s->txh_b[TXH_BIT]),
+                s->txh_n[TXH_BOV], TX_KIB(s->txh_b[TXH_BOV]),
+                s->txh_n[TXH_OTH], TX_KIB(s->txh_b[TXH_OTH]),
+                s->txh_eq, TX_KIB(s->txh_eq_b),
+                s->txh_rep, TX_KIB(s->txh_rep_b));
+            __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
+                "txu[n%d/%lluK new%d rb%d chg%d oth%d lin%lluK bc%lluK "
+                "s3tc%lluK pal%lluK cvt%lluK swz%lluK]",
+                s->tex_cache_uploads, TX_KIB(s->txu_b),
+                s->txu_n[TXU_NEW], s->txu_n[TXU_RB],
+                s->txu_n[TXU_CHG], s->txu_n[TXU_OTH],
+                TX_KIB(s->txk_b[TXK_LIN]), TX_KIB(s->txk_b[TXK_BC]),
+                TX_KIB(s->txk_b[TXK_S3TC]), TX_KIB(s->txk_b[TXK_PAL]),
+                TX_KIB(s->txk_b[TXK_CVT]), TX_KIB(s->txk_b[TXK_SWZ]));
+            __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
+                "txr[ct%d bt%d/%d dl%d/%lluK sc%d scdl%d img%d pool%d "
+                "s2tc%d s2td%d]",
+                s->txr_ct, s->txr_bt, s->txr_btl,
+                s->txr_dl, TX_KIB(s->txr_dl_b),
+                s->txr_sc, s->txr_scdl,
+                s->tex_pool_hits + s->tex_pool_misses, s->tex_pool_hits,
+                s->txr_s2tc, s->txr_s2td);
+#undef TX_KIB
+        }
+        {
             extern struct FPUProfileCounters {
                 int x87_arith, x87_load_store, x87_transcendental, x87_stack;
                 int sse_arith_packed, sse_arith_scalar, sse_cmp, sse_cvt, sse_other;

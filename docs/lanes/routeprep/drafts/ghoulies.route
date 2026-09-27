@@ -1,0 +1,55 @@
+# Grabbed by the Ghoulies (4D530053), Nova and Thor. DRAFT by lane.routeprep,
+# 2026-09-26, not played. One file: New Game with a fresh slot is the same
+# path whether or not an older save exists [guess: a slot list may then
+# highlight the used slot first; A still starts a game in it].
+#
+# Evidence: ghoul311 hands-off 240 s (0-0-c-1790370153-ghoul311-3053340,
+# Nova, ~2.8 s per frame): f06 a candle and "Press START" (~15 s), then the
+# storybook attract with "Press START" on every page (f10-f87, to 240 s),
+# including comic panels of Cooper and a Ghoulie. So START is taken almost
+# from boot. Nothing past it is on disk.
+#
+# Controls [recalled]: the left stick moves Cooper and the RIGHT stick
+# attacks in the direction pushed (Rare's scheme for this game), so the play
+# pattern works both sticks.
+wait 20
+shot boot20                 # expect "Press START" [seen f06]
+press START
+wait 8
+shot after-title            # [guess] the storybook menu: New Game first
+mark booted
+press A                     # [guess] New Game
+wait 8
+shot slot                   # OPEN: a save-slot choice
+press A
+wait 8
+shot after-slot
+press A                     # [guess] confirm / name / difficulty default
+wait 10
+shot intro
+repeat 10 {
+    press A                 # [guess] advance the opening comic pages
+    wait 6
+    shot intro-a
+}
+mark gameplay               # [guess] placeholder: move to the first frame with Cooper in a room with ghoulies
+repeat forever {
+    axis LY min
+    axis RX max
+    wait 0.5
+    axis RX mid
+    axis RY min
+    wait 0.5
+    axis RY mid
+    axis LY mid
+    axis LX max
+    axis RX min
+    wait 0.5
+    axis RX mid
+    axis RY max
+    wait 0.5
+    axis RY mid
+    axis LX min
+    wait 1
+    axis LX mid
+}

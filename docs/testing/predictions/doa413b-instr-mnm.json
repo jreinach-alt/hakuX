@@ -1,10 +1,10 @@
 {
-  "registered_utc": "2026-09-27T03:24:43Z",
+  "registered_utc": "2026-09-27T04:30:44Z",
   "who": "lane.doa413b",
   "issue": "413",
-  "prediction": "MUST-NOT-MOVE guard for #413, lazy completion OFF by default. A is a593d8eb85 (master), B is 6cd9507d07 (master plus this lane: the [surf413] probe and the lazy-completion path behind XEMU_SURF_LAZY_COMPLETE=1, default off). The arm sets no env, so B runs the old completion in every surface_update and the display tail's old else-branch; the probe only reads clocks and counters in perflog builds. Prediction: every guarded capture is byte-identical between arms, and B's logcat reads [lazy413] enabled=0 skips=0. What would move each: Depth_buffer_fixed_function if a readback found VRAM a batch behind (the tail's generation retire changed); Color_zeta_overlap, Surface_format, Blend_surface and Clear if an upload from VRAM ran ahead of its download; Texture_render_target if a range read missed a pending batch; Texture_CPU_Update and Texture_render_update_in_place if a memcpy clobbered a CPU write. With the flag off none of those paths differs from master, so any mover is a wrong default, not the lazy path. Blend_surface/R5G6B5_Add_SrcA_DstA is unguarded: on the first arm (1790463182-arms-doa413b-*) its fix capture was byte-identical to the base legs of arms-zrtz272 and arms-pshqueue, a known two-state row. Read every scores1.tsv status for unreadable.",
-  "a_ref": "a593d8eb85",
-  "b_ref": "6cd9507d07",
+  "prediction": "MUST-NOT-MOVE guard for #413, instrumentation only. A is e5db66fa37 (master), B is 14ed3ff573 (master plus the [surf413] surface_update sub-split probe; the refuted lazy-completion path is removed). Every added line is inside NV2A_PERF_LOG && __ANDROID__ macros that only read clocks and bump counters, and the arm's build runs the same surface_update, completion and upload order as master. Prediction: every guarded capture is byte-identical between arms. What would move each: Depth_buffer_fixed_function, Color_zeta_overlap, Surface_format, Blend_surface and Clear if a probe macro changed statement order or skipped the deferred-download completion; Texture_render_target, Texture_CPU_Update and Texture_render_update_in_place if the probe's hash counter in surface_watch_resume changed the re-arm path. Blend_surface/R5G6B5_Add_SrcA_DstA is unguarded: on the first arm (1790463182-arms-doa413b-*) its fix capture was byte-identical to the base legs of arms-zrtz272 and arms-pshqueue, a known two-state row. Read every scores1.tsv status for unreadable.",
+  "a_ref": "e5db66fa37",
+  "b_ref": "14ed3ff573",
   "must_not_move": [
     "Depth_buffer_fixed_function/*",
     "Color_zeta_overlap/*",
