@@ -4375,3 +4375,19 @@ impact_px = 0
 impact_onestep_px = 0
 game_visible = false
 impact_basis = "harness (hostops 2026-09-27): 20-90 min of A/B latency per starved pair"
+
+[issue."507"]
+title = "Thor: thermal mitigation pauses cpu3-7 a few minutes into a MAX run; fps falls from 25 to 3-5"
+component = "harness"
+disposition = "defect"
+suites = []
+no_suites = "A HARNESS/measurement defect on the handheld (thermal state); no pgraph suite covers it."
+status = "open"
+dispatch_state = "blocked"
+blocker_tested = "confirmed 2026-09-27T20:58Z: [lane.thermal507] row on origin/board, hakux-lane-thermal507 started."
+blocked_on = "IN FLIGHT (hostops 2026-09-27T20:58Z): lane.thermal507 holds it (briefs/thermal507.md)."
+status_note = "FILED 2026-09-27T20:46Z by lane.gta482 (session 5): thermal-pause-F8 1/1 at 13:36:07 PDT, every emulator thread on cpu0-2, GTA 25.4 -> 3.57 fps. Same signature in slowdown462 gta-open and vcpuprime428 B2/B3. Any Thor benchmark over ~4-6 min at MAX may measure the pause."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "harness (hostops 2026-09-27): validity of every Thor title benchmark longer than ~4 min"

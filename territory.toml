@@ -420,6 +420,7 @@ note = "STARTED (hostops 2026-09-27 10:00 PDT), briefs/notify488.md: #488 (fps-f
 [lane.gta482]
 issues = ["482"]
 files = ["docs/lanes/gta482/**", "docs/testing/predictions/gta482-*.json"]
+released = ["docs/lanes/gta482/**", "docs/testing/predictions/gta482-*.json"]
 standing = false
 note = "STARTED (hostops 2026-09-27 11:20 PDT), briefs/gta482.md: #482 (fps-focus) GTA open world ~4.5 fps; guest-PC + off-CPU profiles on the Thor (two held sessions <10 min, >=30% battery), then route each lever. Follows lane.slowdown462 (PR #483)."
 
@@ -432,12 +433,14 @@ note = "RESUMED (job.board 2026-09-27T20:18 PDT), attempt 3: #462/#482 per-title
 [lane.scoresplit]
 issues = ["500"]
 files = ["docs/testing/score_sweep.py", "docs/testing/jobs/selftest.d/99-score-sweep-flat-split.sh", "docs/lanes/scoresplit/**"]
+released = ["docs/testing/score_sweep.py", "docs/testing/jobs/selftest.d/99-score-sweep-flat-split.sh", "docs/lanes/scoresplit/**"]
 standing = false
 note = "STARTED (hostops 2026-09-27 13:00 PDT), briefs/scoresplit.md: #500, score_sweep --flat scores a whole-suite run in one worker while the device stays held (~10 min per pgraph arm on the Nova). docs/testing/score_sweep.py LENT from lane.toolsmith for this fix; it RETURNS to [lane.toolsmith] when this row retires."
 
 [lane.displayguard]
 issues = ["494"]
 files = ["docs/testing/soak_title.sh", "docs/testing/devices.sh", "docs/testing/jobs/selftest.d/99-display-covered.sh", "docs/lanes/displayguard/**"]
+released = ["docs/testing/soak_title.sh", "docs/testing/devices.sh", "docs/testing/jobs/selftest.d/99-display-covered.sh", "docs/lanes/displayguard/**"]
 standing = false
 note = "STARTED (hostops 2026-09-27 11:58 PDT), briefs/displayguard.md: #494, a title soak must refuse to run (status display-covered, void) when a foreign full-screen overlay covers hakuX on display 0; 09-27 11:06-11:51 PDT the AYN dual-screen assistant voided every Thor run. soak_title.sh and devices.sh from [free]; run_disc.sh stays with lane.toolsmith. RESUMED (hostops 2026-09-27 12:33 PDT): add a focus guard (route input went to display 4's launcher and launched Lime3DS, 09-27 12:12); files un-released until PR #495 is ready again."
 
@@ -452,6 +455,11 @@ issues = []
 files = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-branch.sh"]
 standing = false
 note = "STARTED (hostops 2026-09-27 13:40 PDT), briefs/handbackbranch.md: handback.sh lane_name() maps lane/flip474-ts to a lane flip474-ts that does not exist, so it labelled PR #504 blocked:needs-owner while lane.flip474 (worktree wt/flip474 on that branch) was alive; resolve the lane from the worktree that has the branch checked out. handback.sh taken from [free]."
+
+[lane.thermal507]
+issues = ["507"]
+files = ["docs/testing/thermal_state.py", "docs/testing/soak_title.sh", "docs/testing/jobs/selftest.d/99-thermal-pause.sh", "docs/lanes/thermal507/**"]
+note = "STARTED (hostops 2026-09-27 13:58 PDT), briefs/thermal507.md: #507 (0.5, fps-focus), Thor thermal-pause-F8 parks cpu3-7 ~4-6 min into a MAX run; fps falls 5-7x. Detect it in every soak (thermal_state.py, thermal.jsonl, status thermal-pause), name the trip zone, audit recent Thor benchmarks. soak_title.sh taken from lane.displayguard's release at PR #495 ready."
 
 [free]
 # RELEASED (hostops 2026-09-27T19:00Z) by retiring lane.retreason425 (PRs #460 #493 folded): accel/tcg/cpu-exec.c, accel/tcg/tb-jmp-cache.h, target/i386/tcg/translate.c.
