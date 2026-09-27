@@ -76,7 +76,12 @@ The three sub-checks under (1) that pass on master are guards: nothing is
 commented, no attempt is spent, and an OPEN+MERGED lane is left alone. They
 are not the cases the brief asks for.
 
-Full `bash docs/testing/jobs/selftest.sh`: see the PR body for the result.
+Full `bash docs/testing/jobs/selftest.sh` after merging origin/master
+(6e4dee6a28): **2130 passed, 0 failed**. At the original base (49ca6d319d),
+one check in `66-status-titles.sh` failed: `fold`, "4 folded (4 rows), 10
+shown". It fails the same way with that fragment run on its own, and
+master's `001b8166c0` (the titles05 fixture gets its own registry) fixes it.
+It was not caused by this change.
 
 ## For the next lane
 
