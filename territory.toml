@@ -1402,3 +1402,10 @@ issues = ["474"]
 files = ["hw/xbox/nv2a/pgraph/vk/renderer.c", "hw/xbox/nv2a/pfifo.c", "hw/xbox/nv2a/pgraph/pgraph.c", "docs/lanes/flip474/**", "docs/testing/predictions/flip474-*.json"]
 standing = false
 note = "STARTED (hostops 2026-09-27T06:45Z), briefs/flip474.md: #474, pgraph.lock held across the flip-stall GPU wait (DOA Ultimate fight ~35 ms/frame, ceiling <= 26 fps), filed from lane.slowdown462 board request Ask 3. renderer.c and pfifo.c from [free]; pgraph.c was unclaimed. Serves 0.5 (DOA Ultimate is on the 0.5 list)."
+
+
+[lane.cloud-audit2-480]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-480, audit pass 2 of PR #480 on branch claude/docs-tooling-agentic-coding-u152m1, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 480` removes this row when the unit ends."
