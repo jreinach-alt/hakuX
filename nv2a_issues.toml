@@ -4295,3 +4295,19 @@ impact_px = 0
 impact_onestep_px = 0
 game_visible = true
 impact_basis = "game-visible (lane.slowdown462 #462, 2026-09-26): DOA Ultimate's fight at ~14 fps; the lock-held flip wait costs ~49% of the frame"
+
+[issue."482"]
+title = "GTA: San Andreas runs at ~5 fps in gameplay: the guest is late and the renderer waits ~100 ms a frame"
+component = "games"
+disposition = "defect"
+suites = []
+no_suites = "A PERFORMANCE DEFECT in one title. No pgraph suite measures frame rate, so none is named."
+status = "open"
+dispatch_state = "blocked"
+blocker_tested = "confirmed 2026-09-27T15:20Z: lane.slowdown462 holds the attribution (#462) and is resumed with the Thor profile grant."
+blocked_on = "IN FLIGHT (hostops 2026-09-27T15:20Z): lane.slowdown462 prices it first (one held Thor simpleperf session for GTA, one perflog soak with frames); a fix lane follows the attribution."
+status_note = "FILED 2026-09-27T15:15Z by hostops from lane.slowdown462's board request Ask 5 (soak 0-0-x-1790517499-slowdown462-1484367; benchmark 0-0-x-1790493356-titleroutes-734802)."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "game-visible (lane.slowdown462 #462, 2026-09-27): GTA: San Andreas gameplay at a 4.56 fps median on the Thor, 0% at >= 30, ten 11-15 s hangs"
