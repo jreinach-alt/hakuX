@@ -112,6 +112,12 @@ def _jload(p):
 
 def _soak_median(rdir, lo=90.0, hi=240.0):
     """(median gfps over lo..hi s, n) from a result dir's logcat, or (None, 0)."""
+    return _soak_read(rdir, lo, hi)[:2]
+
+
+def _soak_read(rdir, lo=90.0, hi=240.0):
+    """(median gfps over lo..hi s, n, share of those samples at 30+) from a
+    result dir's logcat, or (None, 0, None)."""
     stamp = re.compile(r"(\d\d-\d\d \d\d:\d\d:\d\d\.\d+).*?hakuX-perf.*?\bgfps=(\d+(?:\.\d+)?)")
     perf = []
     for p in sorted(os.listdir(rdir)):
@@ -131,15 +137,15 @@ def _soak_median(rdir, lo=90.0, hi=240.0):
                         continue
                     perf.append((t, float(m.group(2))))
     if not perf:
-        return None, 0
+        return None, 0, None
     perf.sort()
     t0 = perf[0][0]
     win = sorted(g for t, g in perf if lo <= (t - t0).total_seconds() <= hi)
     if not win:
-        return None, 0
+        return None, 0, None
     n = len(win)
     med = win[n // 2] if n % 2 else (win[n // 2 - 1] + win[n // 2]) / 2
-    return med, n
+    return med, n, round(sum(1 for g in win if g >= 30) / float(n), 3)
 
 
 def release05(titles, results, xiso, devices=("thor", "nova")):
@@ -1318,16 +1324,16 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
         if not isinstance(q, dict) or not q.get("title"):
             continue
         n = req_title(q) or _iso_name(q["title"])
-        if rid not in cache:
-            cache[rid] = list(_soak_median(rdir))
+        if len(cache.get(rid) or ()) < 3:      # a two-field entry predates the share
+            cache[rid] = list(_soak_read(rdir))
             fresh = True
-        med, cnt = cache[rid]
+        med, cnt, shr = cache[rid][:3]
         if med is None:
             continue
         d = q.get("device") or "?"
         add(n, "", d)
         seen(n, med, at)
-        x = {"device": d, "fps": med, "share": None, "reached": "unconfirmed", "blocker": "", "crash": False,
+        x = {"device": d, "fps": med, "share": shr, "reached": "unconfirmed", "blocker": "", "crash": False,
              "hang": False, "verdict": "soak, %d gfps samples in 90-240 s" % cnt, "at": at,
              "ref": str(q.get("ref") or "")[:10], "mode": _perf_mode(rdir), "src": "soak", "hand": False,
              "url": "", "id": rid, "route": ""}
@@ -1831,10 +1837,9 @@ section.md td{min-width:4.5em} section.md td:last-child{min-width:18em}
  table.lanes td.lbl:before{content:attr(data-l) " "}
  table.lanes td.lbl:nth-child(n+3):not(:last-child):before{content:" \\00b7 " attr(data-l) " "}
 }
-/* the 0.5 title table (#433): fixed columns, nothing truncated. Each title is a
-   tbody of two rows: status | title, then fps | next step and in flight | four
-   pipeline marks. A title and its next step wrap in their own column; short
-   tokens (status words, fps figures, Thor, Nova) never wrap. */
+/* the 0.5 title table (#433): fixed columns, nothing truncated. One row per
+   title: title and next step | status | fps | four pipeline marks. A title and
+   its next step wrap in their own column; no word is wider than its column. */
 .goal{display:flex;align-items:center;gap:8px;margin:3px 0}
 .goal .gl{min-width:11em;font-size:15px}
 .goal .bar{flex:1;height:10px;border-radius:5px;background:var(--card);border:1px solid var(--line);overflow:hidden}
@@ -1847,14 +1852,20 @@ section.md td{min-width:4.5em} section.md td:last-child{min-width:18em}
 .k-purple{background:#8250df} .k-blue{background:#0969da} .k-grey{background:#8c959f}
 .legend{font-size:11px;color:var(--mut);margin:4px 0 2px}
 table.tt{table-layout:fixed;width:100%;min-width:0;font-size:13px}
-table.tt col.w-s{width:116px} table.tt col.w-p{width:22px}
+table.tt col.w-s{width:76px} table.tt col.w-f{width:82px} table.tt col.w-p{width:18px}
 table.tt th,table.tt td{padding:2px 4px;overflow-wrap:break-word;word-break:normal}
 table.tt tbody{border-top:2px solid var(--line)}
-table.tt tr.a td{border-bottom:0} table.tt tr.b td{border-top:0}
-table.tt .nw{white-space:nowrap} table.tt .sw{display:block;font-weight:600}
-table.tt tr.a td{padding-top:4px}
+table.tt td{vertical-align:top;padding-top:4px}
+table.tt td.c-s{font-size:12px} table.tt .sw{display:block;font-weight:600}
+table.tt .c-f{text-align:right}
+table.tt td.c-f .fm{display:block;font-size:19px;line-height:1.1;font-variant-numeric:tabular-nums}
+table.tt td.c-f .fsh{display:block;font-size:11px;white-space:nowrap;font-variant-numeric:tabular-nums}
+table.tt td.c-f .fsub{display:block;font-size:10.5px;color:var(--mut);line-height:1.25}
+table.tt td.c-f.nm{color:var(--mut);font-size:12px}
+table.tt .nx{display:block;font-size:12px;margin-top:2px}
+.ctl{font-size:13px;margin:4px 0} .ctl label{white-space:nowrap;margin-right:6px}
 table.tt .ln{display:block;white-space:nowrap}
-table.tt td.c-m{text-align:center;padding:2px 0;white-space:nowrap}
+table.tt td.c-m{text-align:center;padding:4px 0 2px;white-space:nowrap;font-size:11px}
 table.tt td.c-m.no{color:var(--mut)}
 table.tt th.v{height:4.4em;vertical-align:bottom;padding:2px 0;text-align:center}
 table.tt th.v span{writing-mode:vertical-rl;transform:rotate(180deg);white-space:nowrap;font-size:11px;font-weight:600}
@@ -1865,8 +1876,7 @@ table.tt .td{font-size:12px;color:var(--mut);white-space:normal;overflow-wrap:an
 table.tt .xc{color:var(--mut);font-size:12px}
 table.lv td{font-size:12px}
 .wd{font-size:13px}
-@media (max-width:640px){ table.tt .sub{display:none} }
-@media (min-width:641px){ table.tt col.w-s{width:170px} table.tt col.w-p{width:30px} }
+@media (min-width:641px){ table.tt col.w-s{width:130px} table.tt col.w-f{width:150px} table.tt col.w-p{width:30px} }
 details.note{display:inline} details.note summary{display:inline;cursor:pointer;color:var(--mut);font-size:12px}
 details.note[open]{display:block;font-size:12px;color:var(--mut)}
 pre{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:6px 8px;overflow-x:auto;font-size:12px;line-height:1.3}
@@ -1971,24 +1981,31 @@ def _fps_cls(v):
     return "good" if v >= 30 else "warnc" if v >= 25 else "bad"
 
 
-def _fps_cell(x):
-    """35.7 · 54% on its own line, the device (Thor / Nova) under it, the
-    cross-check under that, and a small line with the measurement's provenance."""
+def _fps_read(x):
+    """The reading a row shows: the stage's run, else (it had no fps) the newest soak."""
     p = x.get("prim")
     if (not p or p.get("fps") is None) and x.get("soak_read"):
-        p = x["soak_read"]      # the stage's run had no fps; a soak did
-    if not p or p.get("fps") is None:
-        return '<span class="ln xc">no fps yet</span>'
-    s = '<b class="%s">%s</b>' % (_fps_cls(p["fps"]), esc("%g" % p["fps"]))
-    if p.get("share") is not None:
-        s += " &middot; %d%%" % round(100 * p["share"])
-    s = '<span class="ln">%s</span><span class="ln">%s</span>' % (s, esc(str(p["device"]).capitalize()))
+        p = x["soak_read"]
+    return p if p and p.get("fps") is not None else None
+
+
+def _fps_cell(x):
+    """The fps column, on every row with no tap (the owner, 22:45 PDT): the
+    gameplay median large, the share of play at 30+ under it, then one small
+    line with the device, date and mode, and any other handheld's median."""
+    p = _fps_read(x)
+    if not p:
+        return '<td class="c-f nm">not measured</td>'
+    s = '<b class="fm %s">%s</b>' % (_fps_cls(p["fps"]), esc("%.1f" % p["fps"]))
+    s += '<span class="fsh">%s</span>' % (
+        ("%d%% at 30+" % round(100 * p["share"])) if p.get("share") is not None else "share at 30+ not recorded")
+    how = "hand-reviewed" if p.get("hand") else "soak" if p.get("src") == "soak" else ""
+    sub = " &middot; ".join(esc(b) for b in (str(p["device"]).capitalize(), _lt(p.get("at"), "md")[:5] if p.get("at") else "date ?",
+                                              (p.get("mode") or "unrecorded") + (", " + how if how else "")))
     for c in x.get("cross") or []:
-        s += '<span class="ln xc">%s <span class="%s">%s</span></span>' % (
-            esc(str(c["device"]).capitalize()), _fps_cls(c["fps"]), esc("%g" % c["fps"]))
-    sub = "%s, %s, %s%s" % (_lt(p.get("at"), "md")[:5] if p.get("at") else "date ?", p.get("ref") or "build ?",
-                            p.get("mode") or "unrecorded", ", hand-reviewed" if p.get("hand") else ", soak" if p.get("src") == "soak" else "")
-    return s + '<span class="sub">%s</span>' % esc(sub)
+        if c is not p:
+            sub += '<br>%s <span class="%s">%s</span>' % (esc(str(c["device"]).capitalize()), _fps_cls(c["fps"]), esc("%.1f" % c["fps"]))
+    return '<td class="c-f">%s<span class="fsub">%s</span></td>' % (s, sub)
 
 
 # The pipeline's four labelled mini-columns, in order, and what a tick in each means.
@@ -2058,9 +2075,12 @@ def _title_detail(x, now):
 
 
 def _title_rows(xs, now):
-    """Each title is one tbody of two rows; its title and next step are never shortened."""
+    """One row per title: title (tap for detail) with its next step under it,
+    status, fps, and the four pipeline marks. data-* carry the sort keys."""
+    order = {k: i for i, (k, _, _) in enumerate(STAGES)}
     out = []
     for x in xs:
+        p = _fps_read(x)
         st = '<span class="chip k-%s"></span>%s' % (x["chip"], esc(x["word"]))
         ti = '<details><summary>%s</summary><div class="td">%s</div></details>' % (esc(x["title"]), _title_detail(x, now))
         nx = '<span class="nx%s">%s</span>' % (" bad" if x["stage"] == "blocked" else "", esc(x["next"]))
@@ -2069,16 +2089,35 @@ def _title_rows(xs, now):
         fl = _flight(x)
         if fl:
             nx += '<span class="fl">%s</span>' % fl
-        out.append('<tbody class="st-%s"><tr class="a"><td class="c-t" colspan="6">%s</td></tr>'
-                   '<tr class="b"><td class="c-s"><span class="sw nw">%s</span>%s</td><td class="c-n">%s</td>%s</tr></tbody>' % (
-                       x["stage"], ti, st, _fps_cell(x), nx, _marks(x)))
+        out.append('<tbody class="st-%s" data-f="%s" data-o="%d" data-a="%s"><tr><td class="c-t">%s%s</td>'
+                   '<td class="c-s"><span class="sw">%s</span></td>%s%s</tr></tbody>' % (
+                       x["stage"], ("%.1f" % p["fps"]) if p else "", order.get(x["stage"], 9), esc(x["title"].lower()),
+                       ti, nx, st, _fps_cell(x), _marks(x)))
     return out
 
 
-_TT_HEAD = ('<colgroup><col class="w-s"><col><col class="w-p"><col class="w-p"><col class="w-p"><col class="w-p"></colgroup>'
-            '<thead><tr><th colspan="6">title (tap for detail)</th></tr>'
-            '<tr><th>status, fps &middot; play at 30+</th><th>next step &middot; issue, in flight</th>%s</tr></thead>' % "".join(
+def _by_fps(xs):
+    """Measured titles first, highest fps first; then the rest in status order."""
+    def key(x):
+        p = _fps_read(x)
+        return (0, -p["fps"], x["title"].lower()) if p else (1, 0, "")
+    return sorted(xs, key=key)
+
+
+_TT_HEAD = ('<colgroup><col><col class="w-s"><col class="w-f"><col class="w-p"><col class="w-p"><col class="w-p"><col class="w-p"></colgroup>'
+            '<thead><tr><th>title (tap for detail) &middot; next step</th><th>status</th><th class="c-f">fps</th>%s</tr></thead>' % "".join(
                 '<th class="v" title="%s"><span>%s</span></th>' % (esc(say), esc(k)) for k, say in PIPE))
+
+# The sort control. With scripts off the server's order (measured first) stands.
+TT_JS = """
+(function(){var t=document.querySelector('#ttw table');if(!t)return;var c=document.getElementById('ttc');c.hidden=false;
+var ks={f:function(b){var v=b.dataset.f;return v===''?[1,0,b.dataset.a]:[0,-v,b.dataset.a]},
+o:function(b){return [+b.dataset.o,b.dataset.a,'']},a:function(b){return [b.dataset.a,'','']}};
+function cmp(x,y){for(var i=0;i<3;i++){if(x[i]<y[i])return -1;if(x[i]>y[i])return 1}return 0}
+c.addEventListener('change',function(){var k=c.querySelector('input[name=ttk]:checked').value,m=document.getElementById('ttm').checked;
+var bs=[].slice.call(t.tBodies);bs.sort(function(x,y){return cmp(ks[k](x),ks[k](y))});
+bs.forEach(function(b){t.appendChild(b);b.hidden=m&&b.dataset.f===''})})})();
+"""
 
 
 _SERIES = (("measured", "Measured", "var(--link)", ""), ("benchmarked", "Benchmarked", "var(--amb)", "7 4"),
@@ -2197,15 +2236,18 @@ def _q1(j, now):
         out.append('<p class="bad">No target is stated: <code>%s</code> could not be read.</p>' % esc(fs.get("conf_path") or "release-0.5.toml"))
     # the table: every title in the pipeline, the "not copied" tail folded after 10
     if rows:
-        grey = [x for x in rows if x["stage"] == "none"]
-        shown = [x for x in rows if x["stage"] != "none"] + grey[:10]
+        grey = [x for x in rows if x["stage"] == "none" and not _fps_read(x)]
+        shown = _by_fps([x for x in rows if x["stage"] != "none" or _fps_read(x)] + grey[:10])
         out.append('<p class="legend">Pipeline: Copied, Inputs, Save, Bench. %s</p>' % PIPE_LEGEND)
-        out.append('<div class="tw"><table class="tt">%s%s</table></div>' % (_TT_HEAD, "".join(_title_rows(shown, now))))
+        out.append('<div class="ctl" id="ttc" hidden>Sort: <label><input type="radio" name="ttk" value="f" checked> fps, measured first</label> '
+                   '<label><input type="radio" name="ttk" value="o"> status</label> <label><input type="radio" name="ttk" value="a"> A-Z</label> '
+                   '<label><input type="checkbox" id="ttm"> Measured only</label></div>')
+        out.append('<div class="tw" id="ttw"><table class="tt">%s%s</table></div>' % (_TT_HEAD, "".join(_title_rows(shown, now))))
         if grey[10:]:
             out.append('<details class="more"><summary>%d more not copied</summary><div class="tw"><table class="tt">%s%s</table></div></details>' % (
                 len(grey) - 10, _TT_HEAD, "".join(_title_rows(grey[10:], now))))
         c = t.get("counts") or {}
-        out.append('<p class="src">%d titles: %s. Benchmarked = below 30 + soak pending + Playable. Measured = any gameplay fps reading, on either handheld, any build or mode. Pipeline: Copied to a handheld; Inputs, the title\'s own route (profile setup and gameplay); Save, the profile save extracted (n/a when the route has no profile step); Bench, fps measured at MAX. fps: gameplay median &middot; share of play at 30+, and the handheld it was measured on; on a desk the small line is date, build, performance mode. Sources: %s; registry: %s.</p>' % (
+        out.append('<p class="src">%d titles: %s. Benchmarked = below 30 + soak pending + Playable. Measured = any gameplay fps reading, on either handheld, any build or mode. Pipeline: Copied to a handheld; Inputs, the title\'s own route (profile setup and gameplay); Save, the profile save extracted (n/a when the route has no profile step); Bench, fps measured at MAX. fps: the gameplay median (30+ green, 25-29.9 amber, under 25 red), the share of play at 30+, then the handheld, date and performance mode; the build is in the title\'s detail. Sources: %s; registry: %s.</p>' % (
             len(rows), esc(", ".join("%d %s" % (c.get(k, 0), w) for k, w, _ in STAGES if c.get(k))),
             esc(", ".join(t.get("sources") or []) or "none"), esc(t.get("registry_src") or "not read")))
         bp = t.get("backfill") or {}
@@ -2417,7 +2459,7 @@ def render(j):
                'Every time here is %s. Next tick due by %s.</footer>' % (
                    int(j.get("floor_secs") or 1800) // 60, int(j.get("heartbeat_secs") or 1800) // 60,
                    esc(j.get("tz", "")), esc(j.get("next_due", "") or "?")))
-    out.append("<script>%s</script></main></body></html>" % JS)
+    out.append("<script>%s%s</script></main></body></html>" % (JS, TT_JS))
     return "\n".join(out) + "\n"
 
 
@@ -2519,7 +2561,12 @@ def md_to_html(md):
         if not l.strip():
             i += 1
             continue
-        buf = []
+        # Always consume the first line: a "|" line with no separator after it
+        # (a table header cut off mid-write) matched no branch above and none
+        # here, so i never moved and out grew until the host ran out of memory
+        # (the board tick of 2026-09-26 21:55 PDT, 41 min and 5.2 GB).
+        buf = [l]
+        i += 1
         while i < n and lines[i].strip() and not re.match(r"^(#{2,4}\s|\||>|```|\s*[-*] )", lines[i]):
             buf.append(lines[i])
             i += 1

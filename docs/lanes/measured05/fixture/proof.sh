@@ -10,6 +10,6 @@ HERE_P=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 REPO=$(cd "$HERE_P/../../../.." && pwd)
 bash "$HERE_P/render.sh" "$1" "$2" "$REPO" > /dev/null 2>&1
 echo "render exit $?"
-for c in glance order bar chart json copied; do
+for c in glance order bar chart json copied fpscol; do
     python3 "$HERE_P/assert_measured.py" "$2" "$c"
 done

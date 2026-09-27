@@ -28,6 +28,7 @@ check "How close shows a Measured bar first, above Benchmarked and Playable" sm_
 check "the chart is inline SVG under the bars; its Measured line ends at N; three dashes" sm_check chart
 check "status.json carries the three series" sm_check json
 check "Copied is a tick on one handheld, never a half, and nothing says 'copied to both handhelds'" sm_check copied
+check "every measured row shows its median and share at 30+ with no tap, one row per title, no fps in a status cell" sm_check fpscol
 for sm_f in "$T"/status-measured-*.txt; do grep -q '^FAIL' "$sm_f" && sed 's/^/    /' "$sm_f"; done
 
 # One handheld's measurement is enough (the owner, 18:10 PDT, #433 comment 5851512534).
@@ -37,3 +38,30 @@ sys.path.insert(0, sys.argv[1]); import status_html as S
 os.environ.pop("STATUS_RELEASE_CONF", None)
 c, p = S._conf({})
 sys.exit(0 if c.get("benchmark_copies") == 1 and "copied to both" not in open(p).read() else 1)' "$HERE"
+
+# A build on inputs cut off mid-write finishes (hostops, 2026-09-26 22:39 PDT: the
+# 21:55 board tick hung 41 min at 5.2 GB in status_html.py build). The cause:
+# md_to_html never advanced past a "|" line with no separator after it, so a
+# STATUS.md cut just before its last table's separator (a table below the fold)
+# looped forever; master's renderer is killed at the bound on that input. The
+# truncated facts.tsv and lanes.json finish on master too; they stay as guards.
+SM_R="$SM_OUT/render"; SM_C="$T/status-measured-cut"; mkdir -p "$SM_C"
+head -c "$(( $(wc -c < "$SM_R/facts.tsv") / 2 ))" "$SM_R/facts.tsv" > "$SM_C/facts.tsv"
+head -c "$(( $(wc -c < "$SM_R/lanes.json") / 2 ))" "$SM_R/lanes.json" > "$SM_C/lanes.json"
+python3 -c '
+import re, sys
+ls = open(sys.argv[1]).read().splitlines()
+k = max(i for i, l in enumerate(ls) if re.match(r"^\|[\s:|-]+\|?\s*$", l))
+open(sys.argv[2], "w").write("\n".join(ls[:k]) + "\n")' "$SM_R/STATUS.md" "$SM_C/STATUS.md"
+sm_cut() {
+    timeout 30 python3 "$HERE/status_html.py" build --facts "$1" --lanes "$2" --md "$3" \
+        --json "$SM_C/status.json" --html "$SM_C/index.html" > /dev/null 2>&1
+}
+check "a build on a truncated facts.tsv finishes" sm_cut "$SM_C/facts.tsv" "$SM_R/lanes.json" "$SM_R/STATUS.md"
+check "a build on a truncated lanes.json finishes" sm_cut "$SM_R/facts.tsv" "$SM_C/lanes.json" "$SM_R/STATUS.md"
+check "a build on a STATUS.md cut before its last table's separator finishes" \
+    sm_cut "$SM_R/facts.tsv" "$SM_R/lanes.json" "$SM_C/STATUS.md"
+check "md_to_html finishes on a table header with nothing after it" timeout 10 python3 -c '
+import sys; sys.path.insert(0, sys.argv[1]); import status_html as S
+sys.exit(0 if "<p>| a | b |</p>" in S.md_to_html("## x\n| a | b |") else 1)' "$HERE"
+check "status.sh bounds the build with a timeout that it logs" grep -q 'timeout "${STATUS_BUILD_TIMEOUT:-120}" python3 "$J/status_html.py" build' "$HERE/status.sh"

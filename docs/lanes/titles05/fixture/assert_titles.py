@@ -126,46 +126,46 @@ def wrap(words, width_px, px):
 
 
 def c_lines():
-    """fixed columns: at 360 px (and so at 400) no title and no next step wraps past two lines in its own column, and short tokens never wrap"""
+    """fixed columns: at 360 and 400 px one row per title (title and next step | status | fps | four marks); no word is wider than its column, and the fps figures never wrap"""
     rs = rows()
     if not rs:
         return False, "no title rows"
     tt = rule("table.tt") or ""
-    ws, wp = rule("table.tt col.w-s") or "", rule("table.tt col.w-p") or ""
-    ms, mp = re.search(r"width:(\d+)px", ws), re.search(r"width:(\d+)px", wp)
-    if "table-layout:fixed" not in tt or not ms or not mp or '<col class="w-s">' not in q1():
-        return False, "no fixed layout: table.tt needs table-layout:fixed and a colgroup with pixel widths"
-    main = 24                                   # main{padding:10px 12px}
-    pad = 8                                     # a cell's 4 px each side
-    out = {}
-    for vw in (360, 400):
-        full = vw - main
-        # the title spans the row; the next step sits between the status column and the four marks
-        out[vw] = (full - pad, full - int(ms.group(1)) - 4 * int(mp.group(1)) - pad)
+    ws, wf, wp = rule("table.tt col.w-s") or "", rule("table.tt col.w-f") or "", rule("table.tt col.w-p") or ""
+    ms, mf, mp = (re.search(r"width:(\d+)px", w) for w in (ws, wf, wp))
+    if "table-layout:fixed" not in tt or not ms or not mf or not mp or '<col class="w-f">' not in q1():
+        return False, "no fixed layout: table.tt needs table-layout:fixed and a colgroup with pixel widths, fps its own"
+    S, F, P = int(ms.group(1)), int(mf.group(1)), int(mp.group(1))
+    main, pad = 24, 8                           # main{padding:10px 12px}; a cell's 4 px each side
     bad = []
     for r, tds in rs:
         t = title_of(tds)
+        if len(re.findall(r"<tr\b", r)) != 1:
+            bad.append(t + ": more than one row")
         nxm = re.search(r'(?s)<span class="nx[^"]*">(.*?)</span>', r)
         if not nxm:
             bad.append(t + ": no next-step span")
             continue
         nx = html.unescape(nxm.group(1))
-        for vw, (tw, nw) in out.items():
-            if wrap(t, tw, 13) > 2:
-                bad.append("%s: title is %d lines at %d px" % (t, wrap(t, tw, 13), vw))
-            if wrap(nx, nw, 13) > 2:
-                bad.append("%s: next step %r is %d lines at %d px" % (t, nx, wrap(nx, nw, 13), vw))
+        for vw in (360, 400):
+            tw = vw - main - S - F - 4 * P - pad
+            for w in (t + " " + nx).split():
+                if len(w) * EM * 13 > tw:
+                    bad.append("%s: %r is wider than the title column at %d px" % (t, w, vw))
         st, _ = status_of(tds)
-        if not re.search(r'<span class="sw nw">', r):
-            bad.append(t + ": the status word can wrap")
-        if len(st) * EM * 13 + 13 > int(ms.group(1)) - pad + 8:
-            bad.append("%s: %r does not fit its column" % (t, st))
-        f = [h for a, h in tds if "c-s" in a]
-        if not f or not re.search(r'class="ln', f[0]):
-            bad.append(t + ": the fps figures can wrap")
+        for w in st.split():
+            if len(w) * EM * 12 + (13 if w == st.split()[0] else 0) > S - pad + 4:
+                bad.append("%s: %r does not fit the status column" % (t, w))
+        f = [h for a, h in tds if "c-f" in a]
+        if not f:
+            bad.append(t + ": no fps cell")
+        else:
+            fm = re.search(r'<b class="fm[^"]*">([^<]*)</b>', f[0])
+            if fm and len(fm.group(1)) * EM * 19 > F - pad:
+                bad.append("%s: the median %r does not fit its column" % (t, fm.group(1)))
         if re.search(r"<details\b[^>]*\bopen\b", r):
             bad.append(t + ": detail open by default")
-    return not bad, ("%d titles; title and next step at most two lines at 360 and 400 px" % len(rs) if not bad else "; ".join(bad[:4]))
+    return not bad, ("%d titles, one row each; every word fits its column at 360 and 400 px" % len(rs) if not bad else "; ".join(bad[:4]))
 
 
 def c_nocut():
@@ -247,13 +247,22 @@ def c_fold():
 
 
 def c_order():
-    """red first, then green, orange, yellow, purple, blue, grey"""
+    """measured titles first, highest fps first; then red, green, orange, yellow, purple, blue, grey"""
     order = ["blocked", "Playable", "soak pending", "below 30", "inputs ready", "copied", "not copied"]
-    ws = [status_of(tds)[0] for _, tds in rows()]
-    idx = [order.index(w) for w in ws if w in order]
-    if not idx:
-        return False, "no title rows"
-    return idx == sorted(idx), "in order" if idx == sorted(idx) else "out of order"
+    fs, ix = [], []
+    for r, tds in rows():
+        m = re.search(r'<b class="fm[^"]*">([\d.]+)</b>', r)
+        w = status_of(tds)[0]
+        if m and not ix:
+            fs.append(float(m.group(1)))
+        elif m:
+            return False, "a measured title after an unmeasured one"
+        elif w in order:
+            ix.append(order.index(w))
+    if not fs or not ix:
+        return False, "no measured rows or no unmeasured rows"
+    ok = fs == sorted(fs, reverse=True) and ix == sorted(ix)
+    return ok, "%d measured by fps, then %d by status" % (len(fs), len(ix)) if ok else "out of order"
 
 
 def c_forecast():

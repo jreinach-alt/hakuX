@@ -3,7 +3,7 @@
 
     assert_measured.py <out dir> <check>     prints PASS/FAIL and a reason; exit 0 on PASS
 
-checks: glance, order, bar, chart, json, copied
+checks: glance, order, bar, chart, json, copied, fpscol
 """
 import html, json, os, re, sys
 
@@ -71,15 +71,48 @@ def c_json():
     return bool(ms) and ms[-1][1] == N and set(se) == {"measured", "benchmarked", "playable"}, "measured %s" % ms[-3:]
 
 
+def title_rows():
+    """[(stage, title, row html)] for every title in the 0.5 table (one tbody each)."""
+    out = []
+    for m in re.finditer(r'(?s)<tbody class="st-(\w+)"[^>]*>(.*?)</tbody>', page):
+        s = re.search(r"(?s)<summary>(.*?)</summary>", m.group(2))
+        out.append((m.group(1), html.unescape(s.group(1)).strip() if s else "", m.group(2)))
+    return out
+
+
 def copied_cells():
     """{title: (stage, Copied mark, Copied hover)} for every table row."""
     rows = {}
-    for m in re.finditer(r'<tbody class="st-(\w+)"><tr class="a"><td class="c-t" colspan="6">(.*?)</td></tr>(.*?)</tbody>', page, re.S):
-        c = re.search(r'<td class="c-m[^"]*" title="Copied: ([^"]*)">([^<]*)</td>', m.group(3))
-        s = re.search(r"<summary>(.*?)</summary>", m.group(2), re.S)
-        t = text(s.group(1) if s else m.group(2)).strip()
-        rows[t] = (m.group(1), html.unescape(c.group(2)) if c else None, html.unescape(c.group(1)) if c else None)
+    for st, t, r in title_rows():
+        c = re.search(r'<td class="c-m[^"]*" title="Copied: ([^"]*)">([^<]*)</td>', r)
+        rows[t] = (st, html.unescape(c.group(2)) if c else None, html.unescape(c.group(1)) if c else None)
     return rows
+
+
+def c_fpscol():
+    """every measured title's row shows its median and share at 30+ in its own fps cell,
+    outside any details element, one row per title; no row puts fps in the status cell"""
+    st = json.load(open(os.path.join(OUT, "render", "status.json")))
+    want = {x["title"] for x in (((st.get("first") or {}).get("titles") or {}).get("rows") or []) if x.get("fps_read")}
+    bad, seen = [], 0
+    for stage, t, r in title_rows():
+        bare = re.sub(r"(?s)<details\b.*?</details>", "", r)
+        f = re.search(r'(?s)<td class="c-f[^"]*">(.*?)</td>', bare)
+        s = re.search(r'(?s)<td class="c-s[^"]*">(.*?)</td>', bare)
+        if len(re.findall(r"<tr\b", r)) != 1:
+            bad.append("%s: %d rows" % (t, len(re.findall(r"<tr\b", r))))
+        if s and re.search(r"\d+\.\d|fps|at 30\+", text(s.group(1))):
+            bad.append("%s: fps in the status cell %r" % (t, text(s.group(1))))
+        if t in want:
+            seen += 1
+            ft = text(f.group(1)) if f else ""
+            if not re.match(r"\s*\d+\.\d\s+\d+% at 30\+", ft):
+                bad.append("%s: fps cell %r" % (t, ft))
+        elif f and "not measured" not in text(f.group(1)):
+            bad.append("%s: unmeasured but its fps cell reads %r" % (t, text(f.group(1))))
+    if seen != len(want) or not want:
+        bad.append("%d measured titles on the page, %d in status.json" % (seen, len(want)))
+    return not bad, ("%d measured rows show median and share; no fps in a status cell" % seen if not bad else "; ".join(bad[:4]))
 
 
 def c_copied():
