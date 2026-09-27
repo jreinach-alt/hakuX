@@ -1,0 +1,66 @@
+# RalliSport Challenge 2 (4D530039, PAL ISO), Nova and Thor. DRAFT by
+# lane.routeprep, 2026-09-26, not played. One file: the profile step is
+# [guess], and a later run whose profile list is not empty would highlight
+# the saved profile, which A also takes.
+#
+# Evidence: gamecheck hands-off 240 s (1790364698-gamecheck-354879, Nova,
+# ~2.4 s per frame): f06 the RSC2 logo, f10 Microsoft Game Studios, f14-f50
+# the intro FMV (rally cars), f54-f74 the title "PRESS START TO BEGIN"
+# (~130-180 s), f78-f98 attract replays. Nothing past the title is on disk.
+#
+# Past the title [recalled, low]: a profile screen (create a new profile with
+# a name keyboard), then the main menu with Career first and a single race
+# below it; a single race picks a discipline, a track and a car.
+wait 45
+shot boot45
+press START                 # [guess] try to skip the intro FMV
+wait 30
+shot boot75
+wait 55
+shot boot130                # expect PRESS START TO BEGIN [seen f54]
+mark booted
+press START
+wait 8
+shot after-title            # OPEN: profile screen / storage prompt
+press A                     # [guess] create new profile (or the saved one)
+wait 6
+shot keyboard
+press START                 # [guess] accept the default name
+wait 6
+shot after-keyboard
+press A                     # [guess] confirm / save
+wait 8
+shot main-menu
+mark profile-ready
+axis LY max                 # [guess] down from Career to a single race
+wait 0.15
+axis LY mid
+wait 0.6
+shot on-single
+press A
+wait 6
+shot discipline
+press A
+wait 6
+shot track
+press A
+wait 6
+shot car
+press A
+wait 6
+shot confirm
+press A
+wait 30
+shot loading
+wait 10
+shot start
+mark gameplay               # [guess] placeholder: move to the first frame with the car moving under RT
+repeat forever {
+    axis RT max
+    axis LX min
+    wait 1.5
+    axis LX max
+    wait 1.5
+    axis LX mid
+    wait 3
+}

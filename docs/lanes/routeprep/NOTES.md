@@ -65,6 +65,14 @@ reached its gameplay; it is blocked on combat, not on a route).
 - route draft: `smt-nine.route` (Thor) -- evidence: **none on disk**; a Japan-only release, so its menus are in Japanese. New Game (first item), default name (START), then dialogue with A. Worth a nav session.
 - route draft: `capcom-classics2.route` (Thor) -- evidence: **none on disk**. First game in the list, Play, BACK = coin, START = 1P start [recalled]; the play pattern feeds coins so a game over continues. Open: every menu; that BACK is the coin.
 
+### Batch 3 (posted on #397, 2026-09-26): titles lower on the list that have frames on disk
+
+- route draft: `galleon.route` (Nova, Thor) -- evidence: pass-1 frames 115331-120004. **The title times out fast**: at t40 it shows "Please press the START button", by t63 it is in a 0-fps "Loading..." that goes to a 2.5 min attract demo. START at 38/44/50 s. After a START+A pass 1 reached an in-game load (tips), the deck at the wheel, a cutscene, a jetty. Open: the main-menu items (New Game assumed first); where control starts.
+- route draft: `doa3.route` (Thor) -- evidence: pass-1 frames 113257-113830. The copyright warning scrolls for ~200 s at 3-14 fps and START/A every ~6 s did not skip it; TECMO; PRESS START BUTTON at ~305 s, which A does not pass. The route waits 300 s untouched, then START x2 -> Story -> character -> fight [recalled]. Open: whether the second START already enters Story; the costume step.
+- route draft: `jsrf.first-run.route`, `.returning.route` (Nova, Thor) -- evidence: hotfix041-09 hands-off frames: PLEASE PRESS START TO BEGIN at ~60-70 s, and the prompt stays up during the attract. Past it [guess]: save creation, the opening scene, the Garage. Open: all menus.
+- route draft: `spikeout.route` (Nova, Thor) -- evidence: fmv303b and gamecheck hands-off frames: a long subtitled story FMV, then "Please press START to begin" at ~180 s, looping back to the FMV. START at 45/60 s tries to skip the FMV, then START at ~170 s. Open: whether the FMV skips (the route's frames will show which START landed); all menus.
+- route draft: `rallisport2.route` (Nova, Thor) -- evidence: gamecheck-354879 hands-off frames: intro FMV, PRESS START TO BEGIN at ~130-180 s, attract replays. Past it [recalled, low]: profile + keyboard, Career then single race, discipline/track/car. Open: all menus.
+
 ## Do not repeat
 
 - Do not read the titlebench `frames/` as if they had input: they are
