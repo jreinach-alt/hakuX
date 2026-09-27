@@ -82,6 +82,10 @@ hooks with the same result as above (new 16/0; master's hook 14/2, both
 FAILs leg (a)), and ran the full suite to completion inside the session,
 polling its log, before marking the PR ready.
 
+Results on the merged tree (d7e21b8a6d): `bash -n` clean on both files;
+`jobs/selftest.sh` 1956 passed, 0 failed (fragment 79: 16 ok);
+`preflight.sh --allow-tracker` passed.
+
 ## Do not repeat
 
 - The full `jobs/selftest.sh` runs past the Bash tool's 10-minute limit.
