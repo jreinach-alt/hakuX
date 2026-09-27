@@ -1,0 +1,27 @@
+{
+  "registered_utc": "2026-09-27T13:40:00Z",
+  "who": "lane.flip474",
+  "issue": "474",
+  "title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso",
+  "device": "thor",
+  "seconds": 240,
+  "route": "crimson-skies",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "16b7e14ec9d4d787a1d29ca5d5e03f03caf94f56",
+  "b_ref": "ef66174066448dd4d0a9cf7d4a1734f937439276",
+  "queue_order": "A1 B1, each request.sh --title, --device thor, --route crimson-skies, --seconds 240, --perflog, --expect this file",
+  "judge": "python3 docs/lanes/flip474/lockread.py --from 110 --to 240 <A1> <B1>; logcat -b crash in each result",
+  "prediction": "#474 cross-check on a second title, Crimson Skies on the Thor (the brief's choice). Whether Crimson's vCPU waits on pgraph.lock at the deferred-download completion is NOT known: nothing on disk measures it. So this pair first measures it (A), then asks only that B does no harm and, if A shows the wait, that B removes it. Same refs as flip474-doa-ab.json.",
+  "legs": {
+    "M0 (instrument)": ">= 30 [lock474] lines and >= 30 gfps lines in 110-240 s in each run, route reached gameplay. Otherwise VOID, rerun once.",
+    "P0 (the question)": "A's read lock wait share of wall, and its rd_unl (== 0). If A's share < 0.05 the cross-check cannot show a gain and L1 is read as not applicable, not as a pass.",
+    "L1": "if A's share >= 0.05: B's share <= 0.5 x A's. KILL (for this title): B / A > 0.8 with B's rd_unl > 0 (the release ran and did not help).",
+    "P1 (no regression)": "B gfps median >= A - 1.",
+    "H0 (no new hang)": "B: longest gap between hakuX-perf lines in the window <= 3 s, lines to the end, no tombstone in logcat -b crash."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures."
+}
