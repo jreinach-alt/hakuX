@@ -110,9 +110,11 @@ validate() {
                     [ "${w[2]:-}" = '{' ] || err "$i" "repeat wants '{' on the same line"
                     depth=$((depth+1)) ;;
             '}') [ "$depth" -gt 0 ] || err "$i" "unmatched '}'"; depth=$((depth-1)) ;;
-            flush) [ -z "${w[1]:-}" ] || isnum "${w[1]}" || err "$i" "flush wants a timeout in seconds"
+            flush) # whole seconds: flush_disk counts its polls with an integer test
+                   [ -z "${w[1]:-}" ] || [[ "${w[1]}" =~ ^[0-9]+$ ]] || err "$i" "flush wants a timeout in whole seconds"
                    [ "$depth" = 0 ] || err "$i" "flush inside a repeat block"
-                   FLUSH_AT=$i ;;
+                   # the FIRST flush: everything after it is checked, a second flush included
+                   [ -n "$FLUSH_AT" ] || FLUSH_AT=$i ;;
             *) err "$i" "unknown step '${w[0]}'" ;;
         esac
         i=$((i+1))

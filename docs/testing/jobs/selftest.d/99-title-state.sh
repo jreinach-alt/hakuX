@@ -54,4 +54,19 @@ case "$fr" in *"flush NOT confirmed"*) ok "a flush line older than the request i
     || bad "an unconfirmed flush polled $(cat "$RF/n" 2>/dev/null) times, not 4"
 case "$fr" in *"ROUTE "*" done"*) ok "an unconfirmed flush does not stop the route" ;;
               *) bad "the route stopped at an unconfirmed flush" ;; esac
+# The parser: a fractional timeout would break flush_disk's integer poll
+# count after one poll, and "flush is the last step" must hold from the
+# FIRST flush, not the last (pass-1 audit of #496).
+printf 'wait 0\nflush 2.5\n' > "$RF/frac.route"
+fr=$(bash "$TESTING/titles/route.sh" --check "$RF/frac.route" 2>&1)
+case "$fr" in *"flush wants a timeout in whole seconds"*) ok "a fractional flush timeout is refused by --check" ;;
+              *) bad "a fractional flush timeout passed --check: $fr" ;; esac
+printf 'flush 1\npress A\nflush 1\n' > "$RF/two.route"
+fr=$(bash "$TESTING/titles/route.sh" --check "$RF/two.route" 2>&1)
+case "$fr" in *":2: 'press' after flush"*) ok "input between two flushes is refused by --check" ;;
+              *) bad "input between two flushes passed --check: $fr" ;; esac
+printf 'wait 0\nflush 1\nwait 1\nshot done\n' > "$RF/tail.route"
+fr=$(bash "$TESTING/titles/route.sh" --check "$RF/tail.route" 2>&1)
+case "$fr" in "route ok: "*) ok "waits and shots after a flush still pass --check" ;;
+              *) bad "a flush followed by wait/shot was refused: $fr" ;; esac
 rm -rf "$RF"

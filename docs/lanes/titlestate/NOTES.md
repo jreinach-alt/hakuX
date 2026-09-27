@@ -560,3 +560,7 @@ window fast-forwards `dispatch/bin`, then
   parser, and the dispatcher plays it with its own.
 - Do not put `flush` in a measured route: it pauses the title, and the
   verdict calls the rest of the window a hang.
+- `flush` takes whole seconds only (a fractional timeout broke the
+  integer poll count after one poll), and the "last step" rule runs from
+  the FIRST flush, so input between two flushes is refused. Both are
+  selftest rows in `selftest.d/99-title-state.sh` (pass-1 audit of #496).
