@@ -3,7 +3,7 @@
 # Adapted from docs/lanes/slowdown462/capture_profile.sh (same hold, lease,
 # env-pref and cleanup handling; read that file's comments for why).
 #
-#   capture_gta.sh [delay after `mark gameplay`, s, default 60]
+#   capture_gta.sh [max wait after `mark gameplay` for the slow regime, s, default 150]
 #
 # What it takes, in order, starting <delay> s after the gta-sa route's
 # `mark gameplay` (slowdown462's soak with frames: the open world starts
@@ -30,7 +30,8 @@
 # session. DEADLINE_S (default 500) is counted from the moment the Thor is
 # free; steps 4 and 6 are skipped rather than run past it.
 set -u
-DELAY=${1:-60}
+DELAY=${1:-150}
+SLOW_GFPS=${SLOW_GFPS:-8}
 DEV=thor S=bdc158a5 MIN_BATT=${MIN_BATT:-30}
 PKG=com.jreinach.hakux.debug
 D=/home/justin/hakux-work/dispatch
@@ -42,7 +43,7 @@ HOLDSH="$HERE/jobs/hold.sh"
 TAG=lane.gta482
 LEASE=/tmp/hakux-device-lease.$DEV
 SOAK_S=${SOAK_S:-450}
-DEADLINE_S=${DEADLINE_S:-500}
+DEADLINE_S=${DEADLINE_S:-540}
 mkdir -p "$OUT"
 a() { timeout "${T:-120}" adb -s $S "$@"; }
 say() { echo "CAP $(date -u +%H:%M:%S) $*"; }
@@ -115,6 +116,7 @@ if [ "${PERF_HARDEN0:-0}" = 1 ]; then
     a shell setprop security.perf_harden 0
     say "perf_harden set 0 (was $HARDEN_WAS): paranoid=$(a shell cat /proc/sys/kernel/perf_event_paranoid | tr -d '\r')"
 fi
+PARANOID=$(a shell cat /proc/sys/kernel/perf_event_paranoid | tr -d '\r'); PARANOID=${PARANOID:-3}
 
 ROOTS=$( . "$HERE/devices.sh"; device_env $S >/dev/null; echo "$DEVICE_ISO_ROOTS")
 ISOPATH=""
@@ -234,23 +236,43 @@ if wait_for "ROUTE .* mark gameplay" 1 420 && wait_for "ROUTE .* shot gameplay" 
     say "gameplay frame $g $gs bytes"
     # session 1: every frame 10,899 B (all black), and the game stopped flipping
     [ "$gs" -gt 100000 ] || { say "the gameplay frame is black: not the open world; stopping"; exit 8; }
-    sleep "$DELAY"
+    # Session 4 (19:50Z): a fixed 60 s after the mark profiled CJ facing a
+    # wall at 28.8 fps. The slow regime is a place the route may or may not
+    # reach (slowdown462's soak reached it at +43 s, its profile at +90 s), so
+    # wait for it: two hakuX-perf lines in a row at gfps <= SLOW_GFPS, read
+    # from the live logcat, for at most <arg 1> s. Never reached: record
+    # nothing and end the session.
+    n0=$(wc -l < "$OUT/logcat.txt"); t=0; slow=""
+    while [ $t -lt "$DELAY" ] && kill -0 $SOAK_PID 2>/dev/null; do
+        slow=$(tail -n +$((n0 + 1)) "$OUT/logcat.txt" | grep 'hakuX-perf.*gfps=' | sed 's/.*gfps=\([0-9]*\).*/\1/' | tail -2 | tr '\n' ' ')
+        set -- $slow
+        [ $# = 2 ] && [ "$1" -le "$SLOW_GFPS" ] && [ "$2" -le "$SLOW_GFPS" ] && break
+        slow=""; sleep 2; t=$((t + 2))
+    done
+    [ -n "$slow" ] || { shot shot-noregime; say "slow regime (gfps <= $SLOW_GFPS twice) never came in $DELAY s; recording nothing"; exit 9; }
+    say "slow regime at +$t s: gfps $slow"
     a shell log -t hakuX-route "'prof start'" >/dev/null
     say "prof start (left $(left) s)"
     shot shot1
-    record on "" && ok_on=1
-    a shell log -t hakuX-route "'prof on end'" >/dev/null
-    shot shot2
-    if [ "$(left)" -gt 150 ]; then
+    # Off-CPU first: a --trace-offcpu record holds the on-CPU samples too, so
+    # it answers rows 1 and 2 of the #482 table when paranoid <= 1.
+    if [ "$PARANOID" -le 1 ]; then
         for attempt in 1 2; do
             record off "--trace-offcpu" && { ok_off=1; break; }
             say "off-CPU record attempt $attempt failed"; sleep 2
             [ "$(left)" -gt 130 ] || break
         done
         a shell log -t hakuX-route "'prof off end'" >/dev/null
+        shot shot2
+    else
+        say "paranoid $PARANOID: no off-CPU record"
+    fi
+    if [ $ok_off = 0 ] || [ "$(left)" -gt 110 ]; then
+        record on "" && ok_on=1
+        a shell log -t hakuX-route "'prof on end'" >/dev/null
         shot shot3
     else
-        say "skipping the off-CPU record: $(left) s left"
+        say "skipping the on-CPU record: $(left) s left"
     fi
     if [ "$(left)" -gt 70 ]; then
         PID=$(a shell "pidof $PKG:xemu" | tr -d '\r' | awk '{print $1}')
@@ -305,4 +327,4 @@ done
 [ -f "$OUT/rec-on.data" ] || ok_on=0
 [ -f "$OUT/rec-off.data" ] || ok_off=0
 say "on=$ok_on off=$ok_off dump=$ok_dump done"
-[ $ok_on = 1 ]
+[ $ok_on = 1 ] || [ $ok_off = 1 ]

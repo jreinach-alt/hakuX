@@ -233,3 +233,83 @@ No saved real `dumpsys input` from the Thor was on disk (hostops's inbox
 quotes the excerpt only), so the session now saves one before launch
 (`dumpsys-input-prelaunch.txt`) and refuses to launch if the reader cannot
 find `FocusedDisplayId`/`FocusedWindows` in it; every guard read is saved too.
+
+### Session 4 (held, addendum 2, 19:50:17-19:55:56Z, 339 s of device time): the guard read hakuX, but the window was the fast regime
+
+Hold taken at 19:48:18Z; waited out `z-8fde5c2f78-001-2D_Lines` (Thor free
+19:50:13). Battery 86%, harden 0 / paranoid 1, uptime 2,830 s. Data:
+`perf/2026-09-27-gta482/s4/`.
+
+- **The new focus read works on the real Thor.** Pre-launch
+  (`dumpsys-input-prelaunch.txt`): `miss: display 0 focus is ...daijishou...
+  MainActivity` (so the reader parsed FocusedDisplayId and FocusedWindows).
+  At +12 s: `in-front: ...com.jreinach.hakux.debug/...MainActivity`, and every
+  one of the 59 guard reads after that (`dumpsys-input-*.txt`) was in front.
+  No re-issue was needed. This confirms hostops: sessions 2 and 3 were voided
+  by the misread.
+- **The route reached gameplay** (`mark gameplay` 12:54:08 PDT, frame
+  1.54 MB: the Jefferson alley mouth, street and traffic ahead). The records
+  started at a fixed +60 s, when CJ was facing a wall corner (`shot2.png`).
+- **The window was NOT the slow regime.** `winfps.py`: 720 flips in 25.0 s =
+  28.76 fps (gfps 23-30). The whole session after the mark ran 26-31 gfps.
+  slowdown462's slow window was a place the route happened to reach (its soak
+  at +43 s, its profile at +90 s); this run never got there. So rows 1 and 2
+  of the #482 table are still not measured.
+- **The off-CPU record was skipped by my own deadline** (`DEADLINE_S=430`:
+  102 s left after the on-CPU record, the rule needed 150). The grant allowed
+  under 600 s; the session used 339. Paranoid was 1, so it would have opened.
+- What was recorded: `rec-on.data` (55,277 samples, 0 lost), the full 128 MiB
+  code buffer and two 64 MiB RAM candidates.
+
+#### The fast regime's guest mix (tbmap.py, s4, vCPU tid 16027)
+
+Self-checks: known-answer 6 of 6 tier-1 promote pcs are header pcs [ok];
+99.9% of JIT samples map to a TB; no `buffer full`. The header-delta check
+prints FAIL: delta 192 holds all 141,436 headers found, but other 64-byte
+multiples (512: 6,048, 640: 5,595, ...) from non-header words dilute its
+"share of frequent deltas" to 76.9%. That check's 95% bar is too strict for
+a full buffer; the two checks that test the mapping pass.
+
+- vCPU: 23,492 samples, 12,662 JIT (53.9%); guest kernel 0.8% of JIT.
+- Spread: 4,441 guest pcs (50% in 195); 472 pages (50% in 21).
+- Top: TBs 0x273686 (6.2%) and 0x27368e (5.6%), 8 and 11 guest bytes;
+  0x2ad100 3.9%; 0x25e0c2 3.3%, 0x25e078 3.0%. Pages 0x273000 11.8%,
+  0x25e000 7.4%.
+- Retranslation: 753 extra translations in the buffer, 7,421 TBs with
+  CF_INVALID; the most-retranslated pages are 0x2e4000 (133) and the
+  0x8004xxxx-0x8005xxxx kernel range. This is the alley; the open world's
+  x10 `tb_gen_code` is what row 1 still has to compare against it.
+- The RAM dump at 0x273686 falls mid-instruction (`call 0x2463da` spans
+  0x273682-0x273686), so which dump is guest RAM, or whether pc = physical,
+  is unverified. Do not read those bytes as the hot code without checking.
+
+#### Tool change for the next session
+
+`capture_gta.sh` now waits for the regime instead of a fixed delay: from the
+mark, two hakuX-perf lines in a row at `gfps <= SLOW_GFPS` (8), read from the
+live logcat, within `<arg 1>` s (default 150); otherwise it records nothing
+and ends (exit 9). Dry run (`.scratch`-free replay of the same loop over a
+logcat, line by line): slowdown462 `gta-open` fires at 09:21:05 (gfps 4, 5,
+~35 s after its mark); slowdown462 `gta` (alley) and this s4 never fire.
+Off-CPU is now recorded first when paranoid <= 1 (a `--trace-offcpu` record
+has the on-CPU samples too), on-CPU second if time allows; `DEADLINE_S`
+default 540.
+
+## State at the end of attempt 3 (2026-09-27 13:05 PDT): waiting on a grant
+
+- Rows 1 and 2 are not measured: the one granted session's window was the
+  fast regime (28.8 fps). Asked hostops for one more held Thor session with
+  the regime-triggered script; recorded on #482 and the PR.
+- Next session: `env OUT=~/hakux-work/perf/2026-09-27-gta482/s5
+  timeout 590 bash docs/lanes/gta482/capture_gta.sh 150` (hold first, wait
+  out the running request in an earlier call). Then `winfps.py <dir> 'prof
+  start' 'prof off end'` (must read ~4-5 fps), `tbmap.py <dir> --data
+  rec-off.data`, `offcpu.py`-style split of `rec-off.data`.
+- Nothing of this lane's is queued, running or held.
+
+## Do not repeat (attempt 3)
+
+- Do not start records a fixed time after the mark: the slow regime is a
+  place, and the route does not always reach it. Trigger on live gfps.
+- Do not set `DEADLINE_S` below what the grant allows when the second
+  record is the one the brief needs most.
