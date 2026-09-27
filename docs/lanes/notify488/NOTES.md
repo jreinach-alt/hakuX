@@ -96,7 +96,14 @@ M2MF class, so it falls back to a CPU memcpy through the same watch.
 
 ## 4. Runs
 
-(pending)
+- **Pilot** (timing suite, B alone, Nova): `1-1790529854-notify488-2739010`, queued 2026-09-27 17:25Z behind 12
+  requests. Judge: `timing_judge.py --pilot <id>`.
+- **Next, after the pilot is read** (`pilots/notify488.ok` first; the rest exceeds 30 min): the timing A arm, then the
+  DOA A/B (A1 B1 A2 B2), per the `queue_order` fields of the two hand-read predictions.
+- **pgraph disc**: `notify488-pgraph.json` is on the branch, so the arms job queues its pair itself
+  (`arms-notify488-base/fix`) and posts a `[job.arms]` verdict on PR #490.
+
+Session 1 ended waiting on the pilot: a headless session cannot outwait a 12-deep queue.
 
 ## For the next lane
 
