@@ -42,6 +42,9 @@ AUDIO_MARKER="$GUEST_FILES/audio_capture.on"
 AUDIO_PCM="$GUEST_FILES/apu_monitor.s16le48k2ch.pcm"
 ROUTE_FILE="${ROUTE_FILE:-}"
 ROUTE_PID=""
+FG_WATCH_PID=""
+# Written by the foreground watcher (fg_watch below) when it aborts the route.
+FG_FLAG="${TMPDIR:-/tmp}/soak-fg.$$"; rm -f "$FG_FLAG"
 
 a() { timeout "${ADB_TIMEOUT:-120}" adb -s "$SERIAL" "$@"; }
 
@@ -210,7 +213,7 @@ release() {
     disarm_audio
     perf_leave
     a shell input keyevent KEYCODE_SLEEP >/dev/null 2>&1
-    rm -f "$LEASE"
+    rm -f "$LEASE" "$FG_FLAG"
 }
 # A signal EXITS, and the exit runs release() once. This was
 # `trap release EXIT INT TERM`, under which a TERM ran release() and then
@@ -323,19 +326,108 @@ start_route() {
         echo "ROUTE NOT PLAYED: $ROUTE_FILE is missing or empty"
         return 0
     fi
+    fg_wait || return 1
     SERIAL="$SERIAL" bash "$HERE/titles/route.sh" "$ROUTE_FILE" &
     ROUTE_PID=$!
     echo "ROUTE started pid $ROUTE_PID from $ROUTE_FILE"
+    [ -n "${ROUTE_DRY:-}" ] && return 0
+    fg_watch &
+    FG_WATCH_PID=$!
 }
 # By PID, never by pattern (CLAUDE.md). route.sh traps TERM, releases any
 # held button, recentres any moved stick, and logs `end`.
 stop_route() {
+    [ -n "$FG_WATCH_PID" ] && kill "$FG_WATCH_PID" 2>/dev/null && wait "$FG_WATCH_PID" 2>/dev/null
+    FG_WATCH_PID=""
     [ -n "$ROUTE_PID" ] || return 0
     kill "$ROUTE_PID" 2>/dev/null
     wait "$ROUTE_PID" 2>/dev/null
     ROUTE_PID=""
 }
-start_route
+
+# THE ROUTE DRIVES hakuX AND NOTHING ELSE. Its input is evdev events on the
+# pad node, delivered to whichever window holds input focus. On 2026-09-27 a
+# route pressed buttons into the Thor's launcher and started Lime3DS, and
+# after a reboot focus sat on display 4's launcher while hakuX was display
+# 0's top activity (devices.sh hakux_in_front has both). So before the first
+# input, and every FG_POLL_S (2 s) while the route runs, hakuX must be the
+# top resumed activity and hold input focus on display 0.
+#
+# Before the first input: wait up to FG_WAIT_S for hakuX to come up, then
+# try ONE remedy that sends no input -- `am start` of hakuX on display 0 --
+# and wait FG_REMEDY_S more. Never a tap or a key to move focus: that first
+# input is exactly what drives the wrong app. Then abort.
+#
+# While the route runs: one `not-foreground` answer, or two unknowns in a
+# row, TERMs route.sh at once, logs `ROUTE ABORTED: not foreground
+# (<pkg>)` and a `not-foreground:` line, and ends the hold. It aborts; it
+# never pauses and resumes. title_verdict.py voids a run on that line, and
+# the soak exits 5.
+#
+# route.sh by PID, not its process group: a `press` is pad.sh sending
+# key-down, sleeping 60 ms, then key-up, and a group kill in that gap leaves
+# the button held down on the app in front. route.sh's TERM trap runs as soon
+# as the press in flight returns (its `wait` on a sleep returns at once),
+# stops the route there, and sends only releases for held buttons.
+FG_POLL_S="${FG_POLL_S:-2}"
+fg_abort() {   # <hakux_in_front line>
+    local pkg="${1#not-foreground: }"; pkg="${pkg%% *}"
+    echo "ROUTE ABORTED: not foreground ($pkg)"
+    echo "$1"
+    : > "$FG_FLAG"
+}
+fg_wait() {
+    local st rc last="" deadline remedy=0
+    if [ -n "${ROUTE_DRY:-}" ]; then
+        echo "FOREGROUND: not checked: ROUTE_DRY, the route sends no input"
+        return 0
+    fi
+    deadline=$(( $(date +%s) + ${FG_WAIT_S:-30} ))
+    while :; do
+        st=$(hakux_in_front "$SERIAL"); rc=$?
+        if [ "$rc" = 0 ]; then echo "$st"; return 0; fi
+        [ "$st" = "$last" ] || echo "FOREGROUND: waiting: $st"; last="$st"
+        if [ "$(date +%s)" -ge "$deadline" ]; then
+            [ "$remedy" = 1 ] && break
+            remedy=1
+            echo "FOREGROUND: re-issuing am start on display 0 (no input is sent)"
+            a shell "am start --display 0 -a android.intent.action.VIEW -n $ACT --es rom_path $(_dev_sq "$ISO")" >/dev/null 2>&1
+            deadline=$(( $(date +%s) + ${FG_REMEDY_S:-15} ))
+        fi
+        sleep "$FG_POLL_S"
+    done
+    [ "$rc" = 1 ] || st="not-foreground: unknown (${st#foreground-unknown: })"
+    fg_abort "$st"
+    echo "ROUTE NOT PLAYED: hakuX did not hold display 0 and input focus; no input was sent"
+    return 1
+}
+fg_watch() {
+    local st rc unk=0 state
+    trap 'exit 0' TERM
+    while :; do
+        sleep "$FG_POLL_S"
+        # A finished route is a zombie until stop_route reaps it: stop there.
+        state=$(awk '{print $3}' "/proc/$ROUTE_PID/stat" 2>/dev/null)
+        [ -n "$state" ] && [ "$state" != Z ] || return 0
+        st=$(hakux_in_front "$SERIAL"); rc=$?
+        if [ "$rc" = 2 ]; then
+            unk=$((unk+1)); echo "FOREGROUND: $st ($unk/2)"
+            [ "$unk" -ge 2 ] || continue
+            st="not-foreground: unknown (${st#foreground-unknown: })"
+        elif [ "$rc" = 0 ]; then
+            unk=0; continue
+        fi
+        kill "$ROUTE_PID" 2>/dev/null
+        fg_abort "$st"
+        return 0
+    done
+}
+
+if ! start_route; then
+    a shell log -t hakuX-route "'soak end'" >/dev/null 2>&1
+    echo "soak aborted: not-foreground before the route's first input"
+    exit 5
+fi
 
 # Hold, but stop early if the guest dies -- a title that fails to boot should
 # not burn the whole window, and "it exited" is itself a result worth having.
@@ -376,12 +468,18 @@ alive() {   # 0 running, 1 not running, 2 unknown after three adb failures
 # 20-minute confirmation run should be 20 minutes whatever adb is doing.
 s=0
 appeared=0
+SOAK_RC=0
 t0=$(date +%s)
 while [ "$s" -lt "$SECONDS_TO_HOLD" ]; do
     # SOAK_POLL_S / SOAK_RETRY_S exist for selftest.d/89, which drives this
     # loop against a fake adb in seconds rather than minutes.
     sleep "${SOAK_POLL_S:-5}"; s=$(( $(date +%s) - t0 ))
     touch "$LEASE"
+    if [ -f "$FG_FLAG" ]; then
+        echo "soak aborted: not-foreground after ${s}s of ${SECONDS_TO_HOLD}s"
+        SOAK_RC=5
+        break
+    fi
     alive; r=$?
     if [ "$r" = 0 ]; then
         appeared=1
@@ -449,3 +547,4 @@ if [ -n "${PULL_GLOB:-}" ] && [ -n "${PULL_DEST:-}" ]; then
         done
     fi
 fi
+exit "$SOAK_RC"

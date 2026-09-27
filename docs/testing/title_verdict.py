@@ -57,6 +57,9 @@ soak_title.sh refused to start (`display-covered:` in run.log, from
 devices.sh display_clear), or every route frame is under 12 KB (a 1920x1080
 all-black PNG is 10,899 B; `display-black:` in run.log, or the frames
 themselves). On 2026-09-27 a foreign overlay on the Thor's display 0 did both.
+A third: the route was aborted because hakuX did not hold display 0 and
+input focus (`not-foreground:` in run.log, from soak_title.sh's foreground
+guard); its input went to, or would have gone to, another app.
 
 AUDIO: the APU's `starve:` lines (hakuX-audiocap) each carry the callbacks
 and the short callbacks since the previous line. The share is short/total
@@ -234,11 +237,12 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
     route_marks_host = re.findall(r"^ROUTE \S+ mark ([A-Za-z0-9_.-]+)$", runlog, re.M)
     route_marks_failed = re.findall(r"^ROUTE \S+ mark ([A-Za-z0-9_.-]+): logcat write FAILED$", runlog, re.M)
 
-    # VOID: the display was not hakuX's (see DISPLAY above). The frames on
-    # disk decide too, so a run.log older than the guard is judged the same.
+    # VOID: the display or the input was not hakuX's (see DISPLAY above). The
+    # frames on disk decide too, so a run.log older than the guard is judged
+    # the same.
     void = None
     rframes = glob.glob(os.path.join(rdir, "route-frames", "*.png"))
-    m = re.search(r"^(display-covered|display-black): .*$", runlog, re.M)
+    m = re.search(r"^(display-covered|display-black|not-foreground): .*$", runlog, re.M)
     if m:
         void = m.group(0)
     elif rframes and all(os.path.getsize(f) < BLACK_FRAME_B for f in rframes):

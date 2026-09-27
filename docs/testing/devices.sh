@@ -320,6 +320,74 @@ display_clear() {
     return 0
 }
 
+# hakux_in_front <serial>  ->  one line on stdout, and
+#   0  `in-front: ...`                hakuX is the top resumed activity AND
+#                                     holds input focus, on display 0
+#   1  `not-foreground: <pkg> (...)`  something else is in front, or has focus
+#   2  `foreground-unknown: ...`      adb did not answer with both lines
+#
+# WHY. Route input is evdev events on the pad node, and Android delivers them
+# to the FOCUSED window, whatever app that is. On 2026-09-27 the Thor came
+# back at ~11:05 PDT with its launcher in front; a soak's route pressed
+# buttons into it and started Lime3DS (Animal Crossing), then drove it to a
+# name prompt. After the 12:03 reboot hakuX was display 0's top activity, but
+# focus sat on display 4's SecondaryDisplayLauncher (mTopFocusedDisplayId=4),
+# and a route launched Lime3DS there too. So the top activity alone is not
+# enough: the focused window must be hakuX's, on display 0.
+#
+# Read: the first `topResumedActivity=` of `dumpsys activity activities`
+# (harness_health.py's not-foreground check reads the same line), and from
+# `dumpsys window` the `mTopFocusedDisplayId=` line and the `mCurrentFocus=`
+# of that display (the per-display blocks start `Display: mDisplayId=N`;
+# without them, the first mCurrentFocus). One adb call: soak_title.sh runs
+# this every 2 s while a route plays, so it does not retry; the caller counts
+# unknowns.
+hakux_in_front() {
+    local SERIAL="$1" out
+    out=$(ADB_RETRIES=0 adb_call "${ADB_QUICK_TIMEOUT:-10}" "foreground read" shell \
+        "dumpsys activity activities | grep -m1 topResumedActivity=; dumpsys window | grep -E 'WINDOW MANAGER|Display: mDisplayId=|mCurrentFocus=|mTopFocusedDisplayId='; true" \
+        2>/dev/null | tr -d '\r')
+    printf '%s\n' "$out" | awk -v serial="$SERIAL" '
+        function owner(s,   i) {     # "...{hash u0 pkg/cls ...}" -> pkg
+            i = index(s, "{"); if (!i) return s
+            s = substr(s, i + 1); sub(/}.*/, "", s)
+            sub(/^[^ ]+ [^ ]+ /, "", s); sub(/[\/ ].*/, "", s)
+            return s
+        }
+        function ours(p) { return p ~ /^com\.jreinach\.hakux/ }
+        /topResumedActivity=/ && top == "" { top = owner($0) }
+        /WINDOW MANAGER/ { cur = "" }
+        match($0, /Display: mDisplayId=[0-9]+/) { cur = substr($0, RSTART + 20, RLENGTH - 20) }
+        match($0, /mTopFocusedDisplayId=-?[0-9]+/) { tfd = substr($0, RSTART + 21, RLENGTH - 21) }
+        /mCurrentFocus=/ {
+            f = $0; sub(/.*mCurrentFocus=/, "", f)
+            f = (f ~ /^null/) ? "null" : owner(f)
+            if (first == "") first = f
+            if (cur != "" && !(cur in foc)) foc[cur] = f
+        }
+        END {
+            focus = (tfd != "" && (tfd in foc)) ? foc[tfd] : first
+            if (top == "" || focus == "") {
+                printf "foreground-unknown: %s answered top=%s focus=%s\n", serial, \
+                    (top == "" ? "(none)" : top), (focus == "" ? "(none)" : focus)
+                exit 2
+            }
+            if (!ours(top)) {
+                printf "not-foreground: %s (the top resumed activity on %s, not hakuX)\n", top, serial
+                exit 1
+            }
+            if (tfd != "" && tfd != "0") {
+                printf "not-foreground: %s (input focus is on display %s of %s, not display 0)\n", focus, tfd, serial
+                exit 1
+            }
+            if (!ours(focus)) {
+                printf "not-foreground: %s (holds input focus on %s; hakuX is only the top activity)\n", focus, serial
+                exit 1
+            }
+            printf "in-front: %s top=%s focus=%s display=%s\n", serial, top, focus, (tfd == "" ? "0?" : tfd)
+        }'
+}
+
 device_default() {
     # Resolve a serial when the caller gave none -- and REFUSE when the answer
     # is ambiguous.

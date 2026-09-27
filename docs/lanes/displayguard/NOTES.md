@@ -1,5 +1,113 @@
 # lane.displayguard (#494)
 
+## Attempt 2 (2026-09-27, from 12:35 PDT): why attempt 1 stopped short
+
+Attempt 1 started at 11:55 PDT from the brief as it stood then: the display
+check only. It built that, marked #495 ready at ~12:18, and ended. Addendum 1
+(the route drives other apps; 12:05) and Addendum 2 (check input focus;
+12:35) were written into the brief after the session had read it, and a
+running lane does not re-read its brief. hostops put #495 back in draft at
+12:31 and resumed the lane. Attempt 2 builds the foreground guard below in
+the same PR.
+
+## The foreground guard (attempt 2)
+
+| where | what |
+|---|---|
+| `docs/testing/devices.sh` `hakux_in_front <serial>` | one adb call: the first `topResumedActivity=` of `dumpsys activity activities`, and from `dumpsys window` the `mTopFocusedDisplayId=` line and the `mCurrentFocus=` of that display (the per-display blocks start `Display: mDisplayId=N`; with no blocks, the first `mCurrentFocus`). Prints `in-front:` (0), `not-foreground: <pkg> (<why>)` (1) or `foreground-unknown:` (2). In front means: top activity is `com.jreinach.hakux*`, top-focused display is 0, and the focused window is hakuX's. No retries: the caller polls. |
+| `docs/testing/soak_title.sh` `fg_wait` | before the route's first input: poll every `FG_POLL_S` (2 s) for up to `FG_WAIT_S` (30 s), then ONE remedy that sends no input (the same `am start` with `--display 0`), then `FG_REMEDY_S` (15 s) more. Still not in front: `ROUTE ABORTED: not foreground (<pkg>)`, a `not-foreground:` line, `ROUTE NOT PLAYED`, no route process at all, exit 5 through `release()` (force-stop hakuX, REST, lease). Never a tap or a key. |
+| `docs/testing/soak_title.sh` `fg_watch` | beside the route, every `FG_POLL_S` while route.sh is alive (not a zombie): one `not-foreground`, or two unknowns in a row, TERMs route.sh, logs the same two lines and writes a flag. The hold loop sees the flag at its next poll, logs `soak aborted: not-foreground after Ns`, and the soak exits 5. It aborts; it never resumes. |
+| `docs/testing/title_verdict.py` | a `not-foreground:` line voids the run the same way as `display-covered:` / `display-black:`. |
+| `99-display-covered.sh` | legs (a) Lime3DS on top, (b) hakuX on top with focus on display 4's SecondaryDisplayLauncher, a flat-focus and a null-focus variant, (c) both hakuX, silence; the soak legs for (a), (b), (c) and mid-route; the verdict. |
+
+**route.sh is TERMed by PID, not by process group.** The brief says "kill
+the route process group". A group kill reaches pad.sh between a press's
+key-down and key-up (pad.sh sleeps 60 ms between them) and leaves the button
+held down on the owner's app. TERM to route.sh alone runs its trap as soon
+as the press in flight returns (its `wait` on a sleep returns at once),
+stops there, and sends only releases for buttons the route was holding. The
+worst case after the abort is one press already in flight, which a group
+kill cannot prevent either: the adb call carrying it has already been sent.
+
+**Dry routes are not checked.** `ROUTE_DRY=1` sends no input, and
+89-title-verdict drives a dry route against a fake adb that answers no
+dumpsys. Under the guard those legs would wait 45 s and abort. The soak logs
+`FOREGROUND: not checked: ROUTE_DRY, the route sends no input`.
+
+**Unknown is not in front.** Before the first input, an unknown answer
+waits like a wrong one, then aborts. While the route plays, two unknowns in a
+row (about 4 s) abort. A WSL vsock drop can therefore void a route soak; a
+void run costs a re-queue, and input with nobody watching can cost the
+owner's save.
+
+### Measured (attempt 2)
+
+- `99-display-covered.sh` standalone: 18 of 18 under gawk, mawk and busybox
+  awk (10 display legs from attempt 1, 8 foreground legs).
+- Mutants, each run in a scratch copy:
+  - the focus checks removed from `hakux_in_front` (the top activity only):
+    leg (b) reads `in-front:` and turns red.
+  - the watcher not started (`fg_watch &` -> `: &`): the route presses B
+    into Lime3DS 2 s in, and the mid-route leg turns red on `B-PRESSED`.
+  - the pre-route wait removed (`fg_wait || return 1` -> `: || return 1`):
+    soak legs (a) and (b) turn red on `INPUT-SENT route-started`, and (c)
+    turns red on its missing `in-front:` line. 15 of 18.
+- Neighbours unchanged against master: 84-perf-regimen 21/21,
+  89-title-verdict 36/36, 99-iso-roots 10/10.
+
+### The dual-screen overlay after the reboot (Addendum 1's last paragraph)
+
+hostops found the root cause at 12:10-12:15 PDT:
+`settings system dual_screen_display_mode` was 2, set, it seems, by injected
+route input. It persists across a reboot, and under it the assistant's
+`primaryScreenTopLayout` covers display 0 (display-0 screencaps are black
+with hakuX on top). hostops set it to 0, and `harness_health.py`'s
+`covered:` check, the same rule `display_clear` ports, cleared. gta482 then
+saw GTA render at 59 fps. So the window attributes the rule keys on do
+separate the two states: under mode 2 the window really covers hakuX, and
+refusing the run is right. A lane cannot read the device, so I have not
+compared the window's attributes in both states myself. If a clean-display
+soak is ever refused with `display-covered: primaryScreenTopLayout`, that is
+the case to compare, with the black-screencap test as the fallback.
+
+### Not verified on a device
+
+- The dump format. The fixtures follow AOSP's `dumpsys window` layout
+  (per-display `Display: mDisplayId=N` blocks with their own
+  `mCurrentFocus`, `mTopFocusedDisplayId=` in the windows section) and the
+  `topResumedActivity=ActivityRecord{h u0 pkg/cls t}` line that
+  harness_health already parses live. gta482's `grep -m1 mCurrentFocus=`
+  (PR #491) read display 4's launcher on the Thor. If the real text differs,
+  the answer is `foreground-unknown`, and every route soak aborts with no
+  input sent. That fails loudly and safely.
+- **The first route soak after the fold is the pilot.** Its run.log must show
+  `in-front: <serial> top=com.jreinach.hakux... focus=com.jreinach.hakux...
+  display=0` before `ROUTE started`, and no `FOREGROUND:` lines while the
+  route plays. If every route soak ends `not-foreground: unknown`, the parse
+  is wrong: fix `hakux_in_front`, and do not remove the call.
+- A hakuX popup or dialog that takes focus under a window title without the
+  package (`PopupWindow:...`) would read as not ours and abort. None is
+  known.
+- Cost: every 2 s while a route plays, one `dumpsys activity activities`
+  and one full `dumpsys window` run on the device. Neither is measured
+  against gfps. A route soak's fps should be compared with one from before
+  the guard on the same handheld and the same window before anyone reads a
+  small fps change as the title's.
+
+### Follow-ups (other lanes' files)
+
+- **route.sh per-step check** (lane.titlestate's, PR #496): call
+  `hakux_in_front "$SERIAL"` before each input step, and exit on rc != 0.
+  The soak's 2 s watcher bounds the exposure to one poll. A per-step check
+  bounds it to one step.
+- **run_disc.sh** (lane.toolsmith's): the pgraph path sends no route input,
+  so only `display_clear` applies there (see below).
+- `perf/pad.sh` callers outside the soak (`capture_gta.sh` and other
+  lane-local scripts) have no guard unless they call `hakux_in_front`
+  themselves.
+
+## Attempt 1: the display check
+
 ## What changed
 
 | where | what |

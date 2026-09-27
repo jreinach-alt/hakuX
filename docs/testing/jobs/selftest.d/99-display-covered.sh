@@ -26,6 +26,25 @@
 #              are all under 12 KB, are void with every fps field null; the
 #              same run with one real frame is judged. Fails if a void run
 #              carries a frame rate.
+#
+# THE FOREGROUND LEGS (hakux_in_front, and the soak's route guard):
+#   (a) lime   Lime3DS is the top resumed activity. Fails if a route may
+#              start, or its input reach that app.
+#   (b) focus  hakuX is display 0's top activity, but input focus is display
+#              4's SecondaryDisplayLauncher (mTopFocusedDisplayId=4), the
+#              12:10 PDT Thor. Fails if only the top activity is read: the
+#              focus mutant turns it green, and the leg red.
+#       flat   the same with no per-display blocks: one global mCurrentFocus.
+#       null   hakuX on top, mCurrentFocus=null. Fails if no focus is ours.
+#   (c) ours   both hakuX, focus on display 0: the route plays.
+#       silent adb answers nothing: unknown, never in front.
+#   soak (a) and (b): exit 5, `ROUTE ABORTED: not foreground (<pkg>)`, one
+#              `am start --display 0` remedy, and not one sendevent.
+#   soak (c):  the route starts and sends input; nothing is aborted.
+#   mid-route: in front for the first reads, then Lime3DS: the route is
+#              stopped before its second press, the hold ends early, exit 5.
+#              Fails if the watcher is gone (the watcher mutant).
+#   verdict:   a not-foreground run is void.
 
 echo "== display guard: a foreign overlay on display 0 refuses the soak (#494)"
 DG="$T/displayguard"; rm -rf "$DG"; mkdir -p "$DG/bin" "$DG/t"
@@ -34,6 +53,11 @@ cat > "$DG/bin/adb" <<'EOF'
 [ "$1" = -s ] && shift 2
 echo "$*" >> "$DG_FAKE/calls"
 case "$*" in
+    # hakux_in_front's one call. The Nth read serves fg.N when there is one,
+    # else fg: a fixture can change what is in front partway through a route.
+    *topResumedActivity*)
+        n=$(( $(cat "$DG_FAKE/fgn" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$DG_FAKE/fgn"
+        if [ -f "$DG_FAKE/fg.$n" ]; then cat "$DG_FAKE/fg.$n"; else cat "$DG_FAKE/fg" 2>/dev/null; fi ;;
     *"dumpsys power"*)            cat "$DG_FAKE/power" 2>/dev/null ;;
     *"dumpsys window windows"*)   cat "$DG_FAKE/windows" 2>/dev/null ;;
     *"settings get system performance_mode"*) echo "0 4" ;;
@@ -197,3 +221,155 @@ sed -i '/^display-black/d' "$PV/run.log"
 r=$(dg_verdict "$PV")
 case "$r" in "None|1.0|60.0|39|"*) ok "control: the same run with a real frame is judged, 39 windows at 60 fps" ;;
     *) bad "control verdict: [$r]" ;; esac
+
+echo "== foreground guard: route input only while hakuX holds display 0 and focus (#494)"
+HX=com.jreinach.hakux.debug/com.rfandango.haku_x.EmulationActivity
+LIME=io.github.lime3ds.android/org.citra.citra_emu.activities.EmulationActivity
+L3=com.android.launcher3/com.android.launcher3.secondarydisplay.SecondaryDisplayLauncher
+# What the device prints for hakux_in_front's call: <top> <top-focused display>
+# <display 0 focus> <display 4 focus>. `-` for a line that is not there.
+fg_fix() {
+    [ "$1" = - ] || printf '  topResumedActivity=ActivityRecord{8c1f2a u0 %s t41}\r\n' "$1"
+    printf 'WINDOW MANAGER DISPLAY CONTENTS (dumpsys window displays)\r\n'
+    printf '  Display: mDisplayId=0 rootTasks=4\r\n'
+    [ "$3" = - ] || printf '    mCurrentFocus=Window{51d0e7 u0 %s}\r\n' "$3"
+    printf '  Display: mDisplayId=4 rootTasks=1\r\n'
+    [ "$4" = - ] || printf '    mCurrentFocus=Window{a0e4c2 u0 %s}\r\n' "$4"
+    printf 'WINDOW MANAGER WINDOWS (dumpsys window windows)\r\n'
+    [ "$2" = - ] || printf '  mTopFocusedDisplayId=%s\r\n' "$2"
+}
+fg_fix "$LIME" 0 "$LIME" "$L3" > "$DG/f.lime"
+fg_fix "$HX" 4 "$HX" "$L3" > "$DG/f.focus"
+printf '  topResumedActivity=ActivityRecord{8c1f2a u0 %s t41}\r\n  mCurrentFocus=Window{a0e4c2 u0 %s}\r\n' "$HX" "$L3" > "$DG/f.flat"
+printf '  topResumedActivity=ActivityRecord{8c1f2a u0 %s t41}\r\n  mCurrentFocus=null\r\n  mTopFocusedDisplayId=0\r\n' "$HX" > "$DG/f.null"
+fg_fix "$HX" 0 "$HX" "$L3" > "$DG/f.ours"
+: > "$DG/f.silent"
+
+fg_check() {   # <devices.sh> <fixture> -> "rc|line"
+    local out rc
+    rm -f "${DG:?}/fgn" "$DG"/fg.[0-9]*; cp "$DG/f.$2" "$DG/fg"
+    out=$(PATH="$DG/bin:$PATH" DG_FAKE="$DG" ADB_RETRY_SLEEP=0 \
+        bash -c '. "$1" >/dev/null 2>&1; hakux_in_front ee317437' _ "$1" 2>/dev/null); rc=$?
+    printf '%s|%s\n' "$rc" "$out"
+}
+fg_legs() {    # <devices.sh> -> one "FAIL <why>" per unmet leg
+    local d="$1" r
+    r=$(fg_check "$d" lime)
+    case "$r" in "1|not-foreground: io.github.lime3ds.android (the top resumed activity on ee317437, not hakuX)") ;;
+        *) echo "FAIL (a) lime: [$r]" ;; esac
+    r=$(fg_check "$d" focus)
+    case "$r" in "1|not-foreground: com.android.launcher3 (input focus is on display 4 of ee317437, not display 0)") ;;
+        *) echo "FAIL (b) focus: [$r]" ;; esac
+    r=$(fg_check "$d" flat)
+    case "$r" in "1|not-foreground: com.android.launcher3 (holds input focus on ee317437; hakuX is only the top activity)") ;;
+        *) echo "FAIL flat: [$r]" ;; esac
+    r=$(fg_check "$d" null)
+    case "$r" in "1|not-foreground: null (holds input focus"*) ;; *) echo "FAIL null: [$r]" ;; esac
+    r=$(fg_check "$d" ours)
+    case "$r" in "0|in-front: ee317437 top=com.jreinach.hakux.debug focus=com.jreinach.hakux.debug display=0") ;;
+        *) echo "FAIL (c) ours: [$r]" ;; esac
+    r=$(fg_check "$d" silent)
+    case "$r" in "2|foreground-unknown: ee317437 answered top=(none) focus=(none)") ;;
+        *) echo "FAIL silent: [$r]" ;; esac
+}
+out=$(fg_legs "$TESTING/devices.sh")
+[ -z "$out" ] && ok "hakux_in_front: Lime3DS on top, focus on display 4, a flat focus, null focus, hakuX, and silence each read as they should" \
+    || bad "hakux_in_front: $(printf '%s; ' "$out")"
+
+echo "== foreground guard mutant: read the top activity only, not the focus"
+if python3 - "$TESTING/devices.sh" "$DG/t/devices.sh" <<'PY'
+import sys
+s = open(sys.argv[1]).read()
+olds = ['if (tfd != "" && tfd != "0") {', 'if (!ours(focus)) {']
+if any(s.count(o) != 1 for o in olds):
+    sys.exit(3)
+for o in olds:
+    s = s.replace(o, "if (0) {", 1)
+open(sys.argv[2], "w").write(s)
+PY
+then
+    out=$(fg_legs "$DG/t/devices.sh")
+    case "$out" in *"FAIL (b) focus: [0|in-front: "*) ok "focus mutant: display 4's launcher with focus reads as in front, and leg (b) turns red" ;;
+        *) bad "focus mutant: the legs did not catch it: [$out]" ;; esac
+else
+    bad "focus mutant: its anchors are gone from devices.sh -- update the mutant"
+fi
+
+echo "== foreground guard: soak_title.sh plays the route only while hakuX is in front"
+printf 'press A\nwait 2\npress B\nwait 30\n' > "$DG/fg.route"
+fg_soak() {    # <soak_title.sh> <hold s> <fixture> [<fixture for read 1> ...] -> rc; run.log in $DG/run
+    local s="$1" hold="$2" f="$3" i=1 rc; shift 3
+    rm -rf "${DG:?}/run"; mkdir -p "$DG/run"; : > "$DG/calls"; rm -f "$DG/started" "$DG/fgn" "$DG"/fg.[0-9]*
+    cp "$DG/p.awake" "$DG/power"; cp "$DG/w.clear" "$DG/windows"; cp "$DG/f.$f" "$DG/fg"
+    for f in "$@"; do cp "$DG/f.$f" "$DG/fg.$i"; i=$((i+1)); done
+    PATH="$DG/bin:$PATH" DG_FAKE="$DG" SERIAL=ee317437 DISPLAY_WAKE_S=0 ADB_RETRY_SLEEP=0 \
+        HAKUX_DEVICE_LEASE="$DG/lease" SOAK_POLL_S=0.2 SOAK_RETRY_S=0.1 HAKUX_WORK="$DG" \
+        PAD_DEV=/dev/input/event7 FG_POLL_S=0.2 FG_WAIT_S=1 FG_REMEDY_S=1 \
+        PERF_RESULT="$DG/run/perf_regimen.json" ROUTE_FILE="$DG/fg.route" ROUTE_FRAMES="$DG/run/rf" \
+        timeout 60 bash "$s" /fake/iso.iso "$hold" > "$DG/run/run.log" 2>&1; rc=$?
+    echo "$rc"
+}
+fg_refused() {   # <label> <pkg> <rc>: the pre-route abort, asserted on the words
+    local why=""
+    [ "$3" = 5 ] || why="$why rc=$3"
+    grep -qxF "ROUTE ABORTED: not foreground ($2)" "$DG/run/run.log" || why="$why no-ABORTED-line"
+    grep -q "^not-foreground: $2 " "$DG/run/run.log" || why="$why no-not-foreground-line"
+    [ "$(grep -c 'am start --display 0' "$DG/calls")" = 1 ] || why="$why remedy-count=$(grep -c 'am start --display 0' "$DG/calls")"
+    ! grep -q sendevent "$DG/calls" || why="$why INPUT-SENT"
+    ! grep -q '^ROUTE started' "$DG/run/run.log" || why="$why route-started"
+    grep -q '^soak aborted: not-foreground before' "$DG/run/run.log" || why="$why no-soak-aborted"
+    [ -z "$why" ] && ok "$1: exit 5, ROUTE ABORTED ($2), one --display 0 remedy, no input sent" \
+        || bad "$1:$why | $(tr '\n' '|' < "$DG/run/run.log" | tail -c 500)"
+}
+rc=$(fg_soak "$TESTING/soak_title.sh" 5 lime); fg_refused "soak (a) Lime3DS on top" io.github.lime3ds.android "$rc"
+rm -rf "${DG:?}/fgrefused"; cp -r "$DG/run" "$DG/fgrefused"
+rc=$(fg_soak "$TESTING/soak_title.sh" 5 focus); fg_refused "soak (b) focus on display 4" com.android.launcher3 "$rc"
+rc=$(fg_soak "$TESTING/soak_title.sh" 2 ours)
+if [ "$rc" = 0 ] && grep -q '^in-front: ee317437' "$DG/run/run.log" && grep -q '^ROUTE started' "$DG/run/run.log" \
+        && grep -q 'sendevent /dev/input/event7 1 304 1' "$DG/calls" && ! grep -q 'ROUTE ABORTED\|^not-foreground' "$DG/run/run.log" \
+        && ! grep -q 'am start --display 0' "$DG/calls"; then
+    ok "soak (c) hakuX in front: the route starts, presses A, and nothing is aborted"
+else
+    bad "soak (c): rc=$rc $(tr '\n' '|' < "$DG/run/run.log" | tail -c 500)"
+fi
+fg_midroute() {   # <soak_title.sh> -> "" or the reasons it failed
+    local rc t0 dt why=""
+    t0=$(date +%s)
+    rc=$(fg_soak "$1" 8 lime ours ours); dt=$(( $(date +%s) - t0 ))
+    [ "$rc" = 5 ] || why="$why rc=$rc"
+    grep -qxF "ROUTE ABORTED: not foreground (io.github.lime3ds.android)" "$DG/run/run.log" || why="$why no-ABORTED-line"
+    grep -q 'sendevent /dev/input/event7 1 304 1' "$DG/calls" || why="$why A-not-pressed"
+    ! grep -q 'sendevent /dev/input/event7 1 305 1' "$DG/calls" || why="$why B-PRESSED"
+    grep -q '^soak aborted: not-foreground after' "$DG/run/run.log" || why="$why hold-not-ended"
+    [ "$dt" -lt 6 ] || why="$why took-${dt}s"
+    echo "$why"
+}
+why=$(fg_midroute "$TESTING/soak_title.sh")
+[ -z "$why" ] && ok "mid-route: Lime3DS comes to the front, the route stops before its second press, the hold ends, exit 5" \
+    || bad "mid-route:$why | $(tr '\n' '|' < "$DG/run/run.log" | tail -c 500)"
+
+echo "== foreground guard mutant: no watcher while the route plays"
+if python3 - "$TESTING" "$DG/t" <<'PY'
+import os, shutil, sys
+src, dst = sys.argv[1], sys.argv[2]
+for d in ("titles", "perf"):
+    shutil.rmtree(os.path.join(dst, d), ignore_errors=True)
+    shutil.copytree(os.path.join(src, d), os.path.join(dst, d))
+shutil.copy(os.path.join(src, "devices.sh"), os.path.join(dst, "devices.sh"))
+s = open(os.path.join(src, "soak_title.sh")).read()
+old = "    fg_watch &\n"
+if s.count(old) != 1:
+    sys.exit(3)
+open(os.path.join(dst, "soak_title.sh"), "w").write(s.replace(old, "    : &\n", 1))
+PY
+then
+    why=$(fg_midroute "$DG/t/soak_title.sh")
+    case "$why" in *B-PRESSED*) ok "watcher mutant: the route presses B into Lime3DS, and the mid-route leg turns red" ;;
+        *) bad "watcher mutant: the mid-route leg did not catch it: [$why]" ;; esac
+else
+    bad "watcher mutant: its anchor is gone from soak_title.sh -- update the mutant"
+fi
+
+r=$(dg_verdict "$DG/fgrefused")
+case "$r" in "not-foreground: io.github.lime3ds.android "*"|None|None|0|False|void: not-foreground: "*) ok "verdict: a not-foreground run is void, with no frame rate" ;;
+    *) bad "not-foreground verdict: [$r]" ;; esac
