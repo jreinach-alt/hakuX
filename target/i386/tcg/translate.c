@@ -248,6 +248,9 @@ typedef struct DisasContext {
     sigjmp_buf jmpbuf;
     TCGOp *prev_insn_start;
     TCGOp *prev_insn_end;
+#ifdef XBOX
+    target_ulong hakux_insn_pc; /* #425: start of the insn being translated */
+#endif
 
     /* Floating point */
     bool flcr_set;
@@ -2875,6 +2878,33 @@ static void gen_bnd_jmp(DisasContext *s)
     }
 }
 
+#ifdef XBOX
+/*
+ * #425: mark a plain exit_tb(NULL, 0) so cpu_exec_loop can tell it from a
+ * helper_lookup_tb_ptr miss, which returns the same way. One constant store
+ * just before the exit; the loop reads and clears it (cpu-exec.c, [rr425]).
+ * Tag: bit 63 set, bit 40 the TB began in an interrupt shadow, bits 32-34 the
+ * mode (1 EOB_NEXT, 2 EOB_INHIBIT_IRQ, 3 EOB_ONLY, 4 RECHECK_TF, 5 DISAS_JUMP,
+ * 6 other), bits 0-31 the pc of the TB's last instruction.
+ */
+extern uint64_t hakux_rr425_eob;
+
+static void gen_rr425_eob_tag(DisasContext *s, int mode, bool shadow)
+{
+    uint64_t why = mode == DISAS_EOB_NEXT ? 1
+                 : mode == DISAS_EOB_INHIBIT_IRQ ? 2
+                 : mode == DISAS_EOB_ONLY ? 3
+                 : mode == DISAS_EOB_RECHECK_TF ? 4
+                 : mode == DISAS_JUMP ? 5 : 6;
+    uint64_t tag = 1ull << 63 | (uint64_t)shadow << 40 | why << 32
+                 | (uint32_t)s->hakux_insn_pc;
+    TCGv_ptr p = tcg_temp_new_ptr();
+
+    tcg_gen_movi_ptr(p, (uintptr_t)&hakux_rr425_eob);
+    tcg_gen_st_i64(tcg_constant_i64(tag), p, 0);
+}
+#endif
+
 /*
  * Generate an end of block, including common tasks such as generating
  * single step traps, resetting the RF flag, and handling the interrupt
@@ -2901,6 +2931,9 @@ gen_eob(DisasContext *s, int mode)
     }
     if (mode == DISAS_EOB_RECHECK_TF) {
         gen_helper_rechecking_single_step(tcg_env);
+#ifdef XBOX
+        gen_rr425_eob_tag(s, mode, inhibit_reset);
+#endif
         tcg_gen_exit_tb(NULL, 0);
     } else if (s->flags & HF_TF_MASK) {
         gen_helper_single_step(tcg_env);
@@ -2909,6 +2942,9 @@ gen_eob(DisasContext *s, int mode)
                !inhibit_reset) {
         tcg_gen_lookup_and_goto_ptr();
     } else {
+#ifdef XBOX
+        gen_rr425_eob_tag(s, mode, inhibit_reset);
+#endif
         tcg_gen_exit_tb(NULL, 0);
     }
 
@@ -4470,6 +4506,9 @@ static void i386_tr_insn_start(DisasContextBase *dcbase, CPUState *cpu)
 
     dc->prev_insn_start = dc->base.insn_start;
     dc->prev_insn_end = tcg_last_op();
+#ifdef XBOX
+    dc->hakux_insn_pc = dc->base.pc_next;
+#endif
     if (tb_cflags(dcbase->tb) & CF_PCREL) {
         pc_arg &= ~TARGET_PAGE_MASK;
     }

@@ -920,49 +920,49 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/nv2a.c:90",
+   "loc": "hw/xbox/nv2a/nv2a.c:120",
    "symbols": [],
    "text": "/* TODO: Handle targets and classes properly */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/nv2a.c:114",
+   "loc": "hw/xbox/nv2a/nv2a.c:144",
    "symbols": [],
    "text": "// TODO: Determine HW behavior if tiles are consecutive."
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/nv2a.c:161",
+   "loc": "hw/xbox/nv2a/nv2a.c:191",
    "symbols": [],
    "text": "/* FIXME: This case is sometimes hit during early Xbox startup."
   },
   {
    "kind": "HEDGE",
-   "loc": "hw/xbox/nv2a/nv2a.c:162",
+   "loc": "hw/xbox/nv2a/nv2a.c:192",
    "symbols": [],
    "text": "*        Presumably a race-condition where VGA isn't initialized, yet."
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/nv2a.c:180",
+   "loc": "hw/xbox/nv2a/nv2a.c:210",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/nv2a.c:1310",
+   "loc": "hw/xbox/nv2a/nv2a.c:1340",
    "symbols": [],
    "text": "// memory_region_unref(&vga->vram); // FIXME: Is ths right?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/nv2a.c:1517",
+   "loc": "hw/xbox/nv2a/nv2a.c:1547",
    "symbols": [],
    "text": "// FIXME"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/nv2a.c:1542",
+   "loc": "hw/xbox/nv2a/nv2a.c:1572",
    "symbols": [],
    "text": "// FIXME: Split this up into subsections"
   },
@@ -4649,18 +4649,18 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "76cba82fd2da6274b3a9fa839d69d2e09ccd5d0b",
+  "emulator_commit": "940c77e866e51c39dedba85f1de4d62d36a68919",
   "gaps": 497,
   "resolved_tables": 1,
-  "sites": 2957,
+  "sites": 2965,
   "suites": 104,
   "support_dirs": [
-   "/home/justin/pbkitplusplus"
+   "/home/justin/hakux-work/fold-pins/pbkitplusplus"
   ],
   "symbols": 958,
   "tests_commit": "6743b6ab164e760e8b995e969c762d829af5d52e",
-  "tests_root": "/home/justin/nxdk_pgraph_tests",
-  "unread": 145
+  "tests_root": "/home/justin/hakux-work/fold-pins/nxdk_pgraph_tests",
+  "unread": 142
  },
  "schema": 1,
  "sites": {
@@ -17611,7 +17611,29 @@
     "text": "case NV_PGRAPH_INTR:"
    }
   ],
+  "NV_PGRAPH_INTR_BUFFER_NOTIFY": [
+   {
+    "loc": "hw/xbox/nv2a/nv2a.c:85",
+    "role": "REF",
+    "text": "u |= (pg & NV_PGRAPH_INTR_BUFFER_NOTIFY) ? 32 : 0;"
+   },
+   {
+    "loc": "hw/xbox/nv2a/nv2a.c:89",
+    "role": "REF",
+    "text": "| NV_PGRAPH_INTR_BUFFER_NOTIFY"
+   }
+  ],
   "NV_PGRAPH_INTR_CONTEXT_SWITCH": [
+   {
+    "loc": "hw/xbox/nv2a/nv2a.c:84",
+    "role": "REF",
+    "text": "u |= (pg & NV_PGRAPH_INTR_CONTEXT_SWITCH) ? 16 : 0;"
+   },
+   {
+    "loc": "hw/xbox/nv2a/nv2a.c:88",
+    "role": "REF",
+    "text": "| NV_PGRAPH_INTR_CONTEXT_SWITCH"
+   },
    {
     "loc": "hw/xbox/nv2a/pgraph/pgraph.c:1191",
     "role": "REF",
@@ -17642,6 +17664,16 @@
   ],
   "NV_PGRAPH_INTR_ERROR": [
    {
+    "loc": "hw/xbox/nv2a/nv2a.c:86",
+    "role": "REF",
+    "text": "u |= (pg & NV_PGRAPH_INTR_ERROR) ? 64 : 0;"
+   },
+   {
+    "loc": "hw/xbox/nv2a/nv2a.c:90",
+    "role": "REF",
+    "text": "| NV_PGRAPH_INTR_ERROR)) ? 128 : 0;"
+   },
+   {
     "loc": "hw/xbox/nv2a/pfifo.c:1964",
     "role": "REF",
     "text": "& NV_PGRAPH_INTR_ERROR);"
@@ -17665,6 +17697,18 @@
     "loc": "hw/xbox/nv2a/pgraph/pgraph.c:2535",
     "role": "REF",
     "text": "pg->pending_interrupts |= NV_PGRAPH_INTR_ERROR;"
+   }
+  ],
+  "NV_PGRAPH_INTR_NOTIFY": [
+   {
+    "loc": "hw/xbox/nv2a/nv2a.c:83",
+    "role": "REF",
+    "text": "u |= (pg & NV_PGRAPH_INTR_NOTIFY) ? 8 : 0;"
+   },
+   {
+    "loc": "hw/xbox/nv2a/nv2a.c:87",
+    "role": "REF",
+    "text": "u |= (pg & ~(uint32_t)(NV_PGRAPH_INTR_NOTIFY"
    }
   ],
   "NV_PGRAPH_NSOURCE": [
@@ -29970,13 +30014,10 @@
    "defined_at": "hw/xbox/nv2a/nv2a_regs.h:270",
    "kind": "field"
   },
-  "NV_PGRAPH_INTR_BUFFER_NOTIFY": {
-   "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:201",
-   "kind": "field"
-  },
   "NV_PGRAPH_INTR_EN_BUFFER_NOTIFY": {
-   "aliases": [],
+   "aliases": [
+    "NV_PGRAPH_INTR_BUFFER_NOTIFY"
+   ],
    "defined_at": "hw/xbox/nv2a/nv2a_regs.h:216",
    "kind": "field"
   },
@@ -30041,11 +30082,6 @@
   "NV_PGRAPH_INTR_MISSING_HW": {
    "aliases": [],
    "defined_at": "hw/xbox/nv2a/nv2a_regs.h:193",
-   "kind": "field"
-  },
-  "NV_PGRAPH_INTR_NOTIFY": {
-   "aliases": [],
-   "defined_at": "hw/xbox/nv2a/nv2a_regs.h:192",
    "kind": "field"
   },
   "NV_PGRAPH_INTR_SINGLE_STEP": {

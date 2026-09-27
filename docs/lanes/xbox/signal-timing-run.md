@@ -123,3 +123,58 @@ write-then-awaken NOTIFY and times kick -> interrupt handled. That is a separate
 - **The result:** a thread woken by `pb_wait_for_vbl()` sees vblank intervals that vary by 0.3 us p95 on silicon, and by 141.6 us p95 on hakuX (range 16303-17107 us).
   - The Nova's event-wake spread is smaller than the Thor's spin spread (v1). That is two devices and two methods, so the two figures are not compared.
 - The raw files are in `signal-timing/console-v2` and `signal-timing/hakux-nova-v2`.
+
+## v3: the push-buffer callback (PRE-REGISTERED before its dry run)
+
+**Why:** retreason425 (#425, 09-27 10:20 PDT) found that AUF, Blinx and Blinx 2 wake at the PGRAPH ERROR interrupt. It comes from `NV097_NO_OPERATION` with a non-zero parameter: the puller raises it at that marker and stalls until the guest's handler clears it. Nobody has measured the time from the guest's kick to the callback being handled, or from the handler to the puller's resume. flip474's host-side `[cblat]` stops at the puller dispatching the NOP.
+
+**The private pbkit:** pbkit already routes NOP-with-data to `pb_subprog()` in its DPC. [`pbkit-timestamp462.patch`](pbkit-timestamp462.patch) adds one case:
+- `PB_TIMESTAMP` (0xFA0) stores `KeQueryPerformanceCounter()` into `pb_callback_time[seq & 63]` and increments `pb_callback_seq`. RAM stores only, with no register access.
+- The copy is `~/nxdk-cb462`. Only `libpbkit.lib` was rebuilt there; the pristine nxdk is untouched.
+- The existing IDs were no use: SETOUTER and SETNOISE write registers, FINISHED changes the flip state, and an unknown ID runs debugPrint in the DPC.
+
+**The tests** (tests branch `hakux/signal-timing462-cb`, commit `509fe90`, patch [`signal-timing462-cb.patch`](signal-timing462-cb.patch); XBE sha256 `11f5cb27e78d…`, ISO `58ffba708d48…`, in `hardware/runs/2026-09-27-callback462/`), 300 repetitions each:
+- `ST_CB_1_Empty`: one callback with no drawing, then a semaphore release.
+- `ST_CB_2_DOA`: 500 quads with one render-target switch, then one callback and the semaphore.
+- `ST_CB_3_DOA15`: the same 500 quads with 15 callbacks interleaved (Blinx takes 14.66 a frame), then the semaphore.
+
+Each callback's kick time is taken just BEFORE its kick, so no callback can precede its own kick. The measured legs are:
+- kick -> callback handled in the DPC;
+- the last callback handled -> the semaphore behind it visible (the puller resumed after the handler cleared it);
+- the frame, from first draw -> semaphore visible;
+- the overhead per extra callback, (15-callback frame - 1-callback frame) / 14.
+
+**The session:** `Alpha func::AlphaFuncAlways_Disabled`, then `ST_CB_1_Empty`, `ST_CB_2_DOA`, `ST_CB_3_DOA15`, `ST_Calibrate` (name order). The same order applies: a hakuX dry run on the Nova first, then the console, with PAUSE. If the console stops answering, stop, do not retry, and tell lane.local.
+
+**Instrument legs** (console; under hakuX only I1):
+- **I1:** the clock, as before.
+- **I7:** `ST_CB_1_Empty` has 300 reps, 0 timeouts and 0 stale callback times. Every callback's DPC time is newer than the one before it (the must-move check).
+- **I8:** `ST_CB_3_DOA15` has 300 reps, 0 timeouts and 0 stale times, and all 15 callbacks seen in every frame.
+
+No values are predicted.
+
+### v3 amendment, before any silicon: the dry run bugchecked the guest; v3b
+
+- **What happened:** the v3 dry run `0-0-x-1790531870-xbox-callback462-dry-3197659` (Thor) ran `ST_CB_1_Empty` to completion and wrote `ST_CB_2_DOA.txt`. Then the guest bugchecked: 0x1E, access violation, CR2 `0x3d78616d`, which is the bytes "max=".
+- **The cause is the suite's own `Finish()`, not the callback.** It printed the whole summary through `pb_printat()`, which formats into a 512-byte stack buffer with `vsprintf` (`pbkit_print.c`). v3's longer summaries overflowed it. v1 and v2 stayed under 512 bytes.
+- **v3b:** only the test name goes on screen. The measurement code is unchanged. Tests commit `c9a473c`, XBE sha256 `d4796af3d408…`, ISO `1b5ffbabae6e…`, in `hardware/runs/2026-09-27-callback462b/`, with output `e:/callback462b`.
+- The legs, the session and the order are as registered above. A new dry run comes first.
+- **The v3 dry run's data is void.** A full-screen overlay had covered hakuX on the Thor's display since 11:06 PDT (hostops, #462 comment 5858742140). Its 500-quad frames took a median 139 ms, where the same Thor took about 25 ms at 09:45. v3b's dry run replaces all of it. v1 (09:45, Thor) and v2 (09:58, Nova) ran before the overlay.
+
+### v3b result (2026-09-27)
+
+- **hakuX:** the dry run `0-0-x-1790534090-xbox-callback462b-dry-3973639` completed normally on the **Thor** at 12:27 PDT, with no BugCheck.
+- **Console:** 12:27-12:28 PDT, 56 s, completed normally.
+- **Legs:** I1, I7 and I8 hold on the console, and I1 holds on hakuX (1.000520).
+- The raw files are in `signal-timing/console-v3b` and `signal-timing/hakux-thor-v3b`. The table is in [`signal-timing/table-v3b.md`](signal-timing/table-v3b.md).
+
+**On silicon:**
+- A push-buffer callback is handled 13-14.5 us after its kick, whatever the workload: the GPU keeps up with the CPU.
+- The puller resumes, and the semaphore behind the callback is visible, 8.0 us after the handler.
+- An extra callback costs 16.1 us of frame time.
+
+**On hakuX (Thor):**
+- **Kick -> handled** grows with the queued work: 23.7 us on an empty frame, 293 us after 500 quads (p95 2.0 ms), and 160 us per callback in the 15-callback frame (p95 0.92 ms).
+- **Handled -> resumed** is on the same order as silicon: 6.8 us empty, 31.7 us after 500 quads (p95 151), and 18.8 us with 15 callbacks.
+
+**Caveat on hakuX's frame and submission rows (corrected):** the Thor submitted the 500-quad frame about 17 times slower than at 09:45 (187 ms against 11 ms, same APK). The device was not degraded. lane.local read it at 12:31: thermal status 0, low_power 0, performance_mode 0, GPU at its 401 MHz floor. The dispatcher's pgraph program applies no perf regimen, and neither run recorded the device mode, so each ran in whatever mode the Thor was in. The 09:45 and 12:27 frame rows are therefore not comparable, and their difference is not a device change. The callback latencies are the comparison. Any later hakuX timing leg records performance_mode, fan_mode and the GPU cur_freq at its start and end, and says in the table which regimen it ran under.
