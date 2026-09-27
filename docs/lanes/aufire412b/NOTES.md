@@ -166,6 +166,27 @@ What this does **not** establish, and what would:
 title's frame is counted in VBLANKs. If it is not, the late VBLANK is a
 symptom and gives nothing.
 
+## Status (2026-09-26, session 1)
+
+Filed: `dispatch/board-requests/aufire412b.md` (asks 4.1 and 4.2). Posted on
+#412 (issuecomment-5851252069). Delivered to lane.tbchurn424 on #424 and to
+lane.jcache425 on #425. #427's lane is finished (PR #435 is ready), and its
+bound (~3% of vCPU on Crimson) is quoted in section 5 rather than sent.
+
+Not done, with the reason:
+
+- **The simpleperf profile.** The dispatcher cannot take it, and it is filed
+  with the host (4.1).
+- **The wait-excluded timer on Surf/Tx.** It needs vk/surface.c and
+  vk/texture.c, which are not this lane's. The `lock_wait_ms` print (4.2) is
+  cheaper and tests the contention reading first. If the guest's `pfifo.lock`
+  wait is ~0 in B, the Surf/Tx timer is the next ask.
+- **No prediction.** No code changed. The first arm this lane would register is
+  the `lock_wait_ms` print (instrument only, no pixel leg), after the grant.
+
+Waiting on: the host's `[host]` comment on PR #451 with p1/p2.data, and the
+board's answer to the profile.c grant.
+
 ## Do not repeat
 
 - The brief's premise that "the vCPU is saturated in both arms" came from the
