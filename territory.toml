@@ -1267,9 +1267,9 @@ note = "RETIRED (job.board 2026-09-26T20:40Z): PR #417 MERGED (fold 7e6a4ac88a),
 
 [lane.forza414]
 issues = ["414"]
-files = ["docs/testing/predictions/forza414-*.json", "docs/lanes/forza414/**"]
+files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/testing/predictions/forza414-*.json", "docs/lanes/forza414/**"]
 standing = false
-note = "STARTED (job.board 2026-09-26T19:20Z), briefs/forza414.md: #414 (Forza Motorsport) gameplay fps. Profile-first: docs and prediction only until the lane names the code file and the board grants it."
+note = "GRANTED hw/xbox/nv2a/pgraph/vk/surface.c (hostops 2026-09-27 07:15 PDT) from retired lane.blinx372e: the per-caller split of the uncoalesced SURFACE_DOWN finishes, then coalesce the dominant caller. Stay out of lane.flip474's pg->lock files. RESUMED. || STARTED (job.board 2026-09-26T19:20Z), briefs/forza414.md: #414 (Forza Motorsport) gameplay fps. Profile-first: docs and prediction only until the lane names the code file and the board grants it."
 
 [retired.tbchurn424]
 issues = ["424"]
@@ -1358,11 +1358,12 @@ files = ["accel/tcg/cpu-exec.c", "accel/tcg/tb-jmp-cache.h", "target/i386/tcg/tr
 standing = false
 note = "STARTED (job.board 2026-09-27T02:55Z), briefs/retreason425.md: #425/#412, 0.5 perf lever. The split counter for why AUF's TBs return to cpu_exec_loop unchained (lookup miss vs gen_eob exit vs requested exit vs page-span), per the 09-27 01:45Z hand-off and the 02:04Z job.cloud correction. cpu-exec.c and tb-jmp-cache.h came free with PR #443 and PR #459 (both folded); translate.c was released to [free] by lane.tcgchurn. cputlb.c/tb-maint.c/tb-internal.h stay with lane.tbflip424."
 
-[lane.blinx372e]
+[retired.blinx372e]
 issues = ["372"]
-files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/lanes/blinx372e/**", "docs/testing/predictions/blinx372e-*.json"]
+files = []
 standing = false
-note = "STARTED (job.board 2026-09-27T04:20Z), briefs/blinx372e.md: #372 / 0.5, Blinx demo size flip 640x480 to 320x240, small to big quadrant copy only, after closing the CPU-write gap (blinx372d NOTES sec 5). vk/surface.c taken from lane.doa413b's released-at-ready list (PR #440, in audit): merge master or that branch and re-run the arm before ready."
+retired_utc = "2026-09-27T14:15:00Z"
+note = "RETIRED (hostops 2026-09-27 07:15 PDT): the lane ended blocked with its registered demo A/B refuted (P3: gfps 11.87 -> 12.06, B/A 1.016 against >= 1.10), recorded, not re-fit. PR #467 was closed unmerged, and branch lane/blinx372e is kept. vk/surface.c went to [lane.forza414]. What #372 still needs is the per-frame GPU cost and the last synchronous finish, which sit with lane.flip474 (#474) and lane.retreason425 (#425)."
 
 [lane.slowdown462]
 issues = ["462"]
