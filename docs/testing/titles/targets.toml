@@ -70,7 +70,8 @@ notes = "#431 (comment 5851536933): 60, medium confidence. GameSpot review and p
 [titles."4D530053"]
 name = "Grabbed by the Ghoulies"
 target_fps = 30
-iso = { nova = "Grabbed by the Ghoulies (USA) (En,Fr,De,Es,It).xiso.iso" }
+iso = { nova = "Grabbed by the Ghoulies (USA) (En,Fr,De,Es,It).xiso.iso", thor = "Grabbed by the Ghoulies (USA) (En,Fr,De,Es,It).xiso.iso" }
+route = "ghoulies"
 notes = "#431 (comment 5851536933): 30, high confidence. Digital Foundry (2015): originally 480p30; hakuX swap interval 2.01-2.04"
 
 [titles."4D530051"]
