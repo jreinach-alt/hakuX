@@ -93,6 +93,12 @@ shows this fold:
 
 (the file lane.xbox waits for before pushing Thor titles to internal storage).
 
+## State at session end (2026-09-26 ~19:00 PDT)
+
+Waiting on CI for this head (the full jobs selftest runs only there). When CI
+is green, mark #457 ready; it then goes to needs-audit-1 (serve path). The
+internal-only soak happens after the fold, per the board request.
+
 ## Do not repeat
 
 - Do not test the soak lookup by grepping dispatcher.sh for `device_title_path`:
