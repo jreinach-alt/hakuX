@@ -25,8 +25,15 @@
 # 14 reads: gameplay at the mark (scratch/replay/bloodrayne-132018/). That
 # replay's play pattern walked forward only, and in 40 s it took her into
 # the swamp water, which drains her health. The pattern below walks forward
-# 1 s and back 1 s around a turn, so she stays by the church. THIS PATTERN
-# HAS NOT REPLAYED YET: the route is a draft until it has.
+# 1 s and back 1 s around a turn, so she stays by the church.
+#
+# REPLAYED with this pattern 2026-09-27 13:38 PDT, as a held soak
+# (soak_title.sh in our hold, MAX regimen, apk f5abfa521745 = ref
+# a593d8eb85; scratch/held/bloodrayne-20260927T133838): the mark frame is
+# Rayne at the church wall, overlay FPS 22, and hakuX held the input focus
+# on all 34 reads. 288 s of gameplay, fps window median 22.89 (min 5.48),
+# 0% at >= 30. The frame rate fell from 22-25 to 6-7 about 130 s after the
+# mark, and no frame shows what was on the screen then.
 wait 35.1
 press A 300
 wait 8.6

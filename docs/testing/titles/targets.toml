@@ -403,3 +403,8 @@ route = "dnd-heroes"
 name = "BloodRayne"
 iso = { thor = "4D4A0001-BloodRayne.xiso.iso" }
 route = "bloodrayne"
+
+[titles."5655001A"]
+name = "Baldur's Gate: Dark Alliance"
+iso = { thor = "5655001A-Baldur_s_Gate_Dark_Alliance.xiso.iso" }
+route = "baldurs-gate-da"
