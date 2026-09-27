@@ -447,6 +447,7 @@ note = "STARTED (hostops 2026-09-27 11:58 PDT), briefs/displayguard.md: #494, a 
 [lane.affinitybacklog]
 issues = ["502"]
 files = ["docs/testing/affinity.py", "docs/testing/jobs/arms.sh", "docs/testing/jobs/selftest.d/99-affinity-backlog.sh", "docs/lanes/affinitybacklog/**"]
+released = ["docs/testing/affinity.py", "docs/testing/jobs/arms.sh", "docs/testing/jobs/selftest.d/99-affinity-backlog.sh", "docs/lanes/affinitybacklog/**"]
 standing = false
 note = "STARTED (hostops 2026-09-27 13:25 PDT), briefs/affinitybacklog.md: #502, affinity.py rule 3 hashes an unpinned A/B pair onto a handheld with ~2 h of pinned work queued while the other serves z- sweeps (forza414 pair waited 94 min, 09-27). affinity.py and jobs/arms.sh LENT from lane.toolsmith."
 
