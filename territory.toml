@@ -1370,6 +1370,7 @@ note = "STARTED (lane.local 2026-09-26 21:02 PDT), briefs/slowdown462.md: the ow
 [lane.routeprep]
 issues = []
 files = ["docs/lanes/routeprep/**"]
+released = ["docs/lanes/routeprep/**"]
 standing = false
 note = "STARTED (lane.local 2026-09-26 21:27 PDT), briefs/routeprep.md: #397 (the tested-titles list): it drafts boot-to-gameplay routes OFFLINE for lane.titleroutes' next titles, so its Thor sessions only validate. No device. The owner asked at about 21:25 PDT to step on the gas (weekly usage), so these lanes add parallel offline work that needs no device and no code file. issues = [] on purpose: the issue's owner row keeps it. Serves 0.5."
 
@@ -1383,5 +1384,6 @@ note = "STARTED (lane.local 2026-09-26 21:27 PDT), briefs/forzaclock.md: #414 (F
 [lane.aufdispatch]
 issues = []
 files = ["docs/lanes/aufdispatch/**"]
+released = ["docs/lanes/aufdispatch/**"]
 standing = false
 note = "STARTED (lane.local 2026-09-26 21:27 PDT), briefs/aufdispatch.md: #412 (AUF) with #425: it ranks why AUF's TBs return to the exec loop (54% of the vCPU thread) and designs the fixes, ready for lane.retreason425's counter. Analysis only. The owner asked at about 21:25 PDT to step on the gas (weekly usage), so these lanes add parallel offline work that needs no device and no code file. issues = [] on purpose: the issue's owner row keeps it. Serves 0.5."
