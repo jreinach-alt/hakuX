@@ -48,7 +48,9 @@ REPO="${HAKUX_REPO_DIR:-/home/justin/hakuX}"
 D="${DISPATCH_DIR:-$WORK/dispatch}"
 GH_REPO="${GH_REPO:-jreinach-alt/hakuX}"
 J="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-S="$WORK/status"; mkdir -p "$S"
+# STATUS_OUT_DIR renders somewhere else: `--print` against the live host from a lane, without
+# overwriting the pages, stamps and caches the real tick owns.
+S="${STATUS_OUT_DIR:-$WORK/status}"; mkdir -p "$S"
 OUT="$S/STATUS.md"
 . "$J/models.env" 2>/dev/null; . "$J/window.sh" 2>/dev/null; [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
 . "$J/localtime.sh"   # say_time/local_ts/tz_abbr: this page is read by a person, so it is shown in the display zone
@@ -632,7 +634,7 @@ echo
 echo "**Written $(say_time).** $summary."
 # The condition the owner kept finding by hand, lifted from the lane table
 # below (lanes_section writes it) to the first thing the page shows.
-[ -s "$S/idle-lanes" ] && { echo; echo "**Idle with no work:** $(cat "$S/idle-lanes") -- unit stopped, nothing on a device, PR draft or none. See the lane table in the comment."; }
+[ -s "$S/idle-lanes" ] && { echo; echo "**Stranded:** $(cat "$S/idle-lanes") -- no session, nothing on a device, not parked: nothing will wake it. See the lane table in the comment."; }
 echo
 echo "Next roll-up due by **$due** ($(( FLOOR / 60 ))-minute floor, plus one at the end of every job tick). If the clock above is older than that, \`status.sh\` itself has stopped -- the page cannot report its own silence, so judge it by this line."
 if [ "$lapse" -gt 0 ]; then

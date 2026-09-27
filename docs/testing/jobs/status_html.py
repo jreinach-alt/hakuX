@@ -398,11 +398,17 @@ def _conf(E):
 
 
 def _expected_secs(r):
-    """A request's expected wall time: its title seconds plus install, boot and
-    pull (~3 min), or ~5 min per suite run. An estimate, labelled so."""
-    runs = max(1, int(r.get("runs") or 1)) if str(r.get("runs") or "1").isdigit() else 1
-    secs = int(r.get("seconds") or 0) if str(r.get("seconds") or "0").isdigit() else 0
-    return (secs + 180) * runs if secs else 300 * runs
+    """A request's expected wall time, an estimate and labelled so: a title run is
+    its seconds plus ~8 min of install, boot and pull; a suite run ~5 min plus
+    ~1.5 min per suite. Deliberately generous: it prices the drain, and twice it
+    is the "run past its time" alarm, which must not fire on a slow normal run."""
+    def n(k, d):
+        v = str(r.get(k) or d)
+        return int(v) if v.isdigit() else d
+    runs, secs = max(1, n("runs", 1)), n("seconds", 0)
+    if secs:
+        return (secs + 480) * runs
+    return (300 + 90 * max(1, len(r.get("suites") or []))) * runs
 
 
 def _hold_of(F, dev):
@@ -413,7 +419,8 @@ def _hold_of(F, dev):
     who = (F.read(hp) or "").strip().splitlines()
     why = (F.read(hp + ".why") or "").strip()
     start = F.mtime(hp + ".why") or F.mtime(hp)
-    holder = who[0].strip() if who and who[0].strip() else ""
+    # the hold file's first word is its owner ("lane.xbox title push 827868 <stamp>")
+    holder = who[0].split()[0] if who and who[0].strip() else ""
     m = re.match(r"^\s*([\w.-]+(?:\s*\([^)]*\))?)\s*:\s*(.*)$", why, re.S)
     if m:
         holder = holder or m.group(1).split("(")[0].strip()
@@ -484,7 +491,9 @@ def gather(E):
                          "device": r.get("device") or "", "title": r.get("title") or "",
                          "owner": (F.read(p[:-4] + ".owner") or "").strip(),
                          "queued": _stamp(r.get("queued_utc") or "") or F.mtime(p),
-                         "since": F.mtime(p), "expected": _expected_secs(r)})
+                         # a claim moves the .req (its mtime stays the queue time) and writes
+                         # .owner: the run started when the .owner was written
+                         "since": F.mtime(p[:-4] + ".owner") or F.mtime(p), "expected": _expected_secs(r)})
     devices_all = E.get("STATUS_DEVICES", "thor nova").split()
     holds = {d: _hold_of(F, d) for d in devices_all}
 
@@ -622,7 +631,7 @@ def gather(E):
         return None
 
     # ---- each lane, one state from the fixed vocabulary
-    rows, parked, finished, stranded = [], [], [], []
+    rows, parked, finished, stranded, standing_rows = [], [], [], [], []
     jobs = set(timers)
     for name, row in sorted(lanes_rows.items()):
         if name in ("xbox", "remote"):
@@ -632,7 +641,8 @@ def gather(E):
         labels = {l["name"] for l in (p or {}).get("labels", [])}
         standing = bool(row.get("standing"))
         if name in jobs or (standing and not iss and not p and name not in units):
-            continue                                            # a job's row, not a lane: the automation box
+            standing_rows.append(name)                          # a job's row, not a lane: the automation box
+            continue
         s, l_ago = said(name)
         base = {"lane": name, "kind": "local lane", "issues": iss,
                 "issue": "; ".join(issue_words(i) for i in iss) if iss else "(harness work, no tracker issue)",
@@ -685,8 +695,8 @@ def gather(E):
         else:
             why = "no session, nothing queued or running on a device, not parked"
             if not prs_ok:
-                st = dict(base, state="waiting on audit", waiting="(PR state unknown: the PR list could not be read)",
-                          since=base["result_at"], step="")
+                # without the PR list "no PR" is not known, and a failed query must not strand every lane
+                st = dict(base, state="unknown (the PR list could not be read)", waiting="", since=base["result_at"], step="")
             else:
                 st = dict(base, state="stranded", waiting=why + ("; PR %s is a %s" % (base["pr"], base["pr_state"]) if p else "; no PR"),
                           since=base["result_at"], step="")
@@ -716,8 +726,10 @@ def gather(E):
                          "src": ("PR #%d merged" % p["number"]) if p and p.get("mergedAt") else "row retired",
                          "result": s, "result_src": src})
     finished.sort(key=lambda r: -(r.get("merged") or 0))
-    today = _lt(now, "full")[:10]                        # "today" is the reader's day, in the display zone
-    finished = [r for r in finished if r.get("merged") and _lt(r["merged"], "full")[:10] == today]
+    # "today" is the reader's day in the display zone -- and at least the last six
+    # hours, so a lane that finished at 23:50 does not vanish at midnight
+    today = _lt(now, "full")[:10]
+    finished = [r for r in finished if r.get("merged") and (_lt(r["merged"], "full")[:10] == today or now - r["merged"] <= 6 * 3600)]
 
     # ---- the two sessions without a unit
     def is_other(b):
@@ -764,7 +776,9 @@ def gather(E):
     rows.sort(key=lambda r: (rank.get(r["state"], 7), r["kind"] != "local lane", r["lane"]))
 
     # ---- automation
-    automation = _automation(F, timers, lanes_rows, now)
+    automation = _automation(F, timers, lanes_rows, now) + [
+        {"job": n, "last": None, "next": None, "outcome": "a standing board row; it runs when the board dispatches it",
+         "src": "territory.toml", "timer": False} for n in standing_rows if n not in timers]
 
     # ---- devices
     devices = []
@@ -803,7 +817,7 @@ def gather(E):
     queue = {"queued": len(nz), "queued_05": len(q05), "idle_tier": len(zq), "running": sum(r["state"] == "running" for r in reqs),
              "oldest_05": oldest05, "oldest_05_age": (now - oldest05) if oldest05 else None,
              "drain_secs": drain, "constraint": constraint,
-             "src": "dispatch/queue and running; durations estimated (title seconds + 3 min, 5 min per suite run)"}
+             "src": "dispatch/queue and running; durations estimated: a title run its seconds + 8 min, a suite run 5 min + 1.5 min per suite"}
 
     # ---- what needs a person
     person = []
@@ -1209,6 +1223,10 @@ def lanes_main(E, out_json, idle_path):
         print()
         print("**Parked until %s ships** (gate: %s): %s." % (g["release_name"], g["parked"][0]["gate"], "; ".join(
             "lane.%s (%s)" % (r["lane"], r["issue"]) for r in g["parked"])))
+    push = g["console"]["push"]
+    print()
+    print("- lane.xbox's console: %s; title push: %s." % (_md(g["console"]["meter"] or "console meter: not available"),
+                                                       _md(push.get("progress") or "no push recorded")))
     print()
     print("### Finished today")
     print()
@@ -1573,6 +1591,11 @@ def _q1(j, now):
             for d in g["devices"]))
     else:
         gl.append(esc(g.get("summary") or "not measured this tick"))
+    if r.get("blockers"):
+        gl.append('<br><b class="bad">Open release blockers:</b> ' + ", ".join(
+            "#%s %s" % (esc(b.get("number")), esc(b.get("title", ""))) for b in r["blockers"]))
+    elif r.get("blockers_known"):
+        gl.append("<br>Open release blockers: none labelled <code>%s</code>." % esc(r.get("blocker_label", "release-blocker")))
     gl.append('<br><span class="src">Candidate: %s. Measured from each handheld\'s newest Ghoulies soak with perf lines, 90-240 s after the first.</span>' % esc(g.get("candidate") or r.get("candidate") or "none cut yet"))
     out.append("<p>%s</p>" % " ".join(gl))
     # the title table
@@ -1645,6 +1668,8 @@ def _q2(j, now):
         st = r["state"] + ((" (%s)" % r["step"]) if r.get("step") else "")
         cls = "bad" if r["state"] == "stranded" else "good" if r["state"] == "running" else ""
         res = esc(r.get("result") or "-")
+        if not r.get("result") and r["state"] == "running" and r.get("since"):
+            res = esc("First session, running since %s; no result yet." % _lt(r["since"]))
         if r.get("result_url"):
             res = '<a href="%s">%s</a>' % (esc(r["result_url"]), res)
         elif r.get("pr"):
@@ -1707,16 +1732,17 @@ def _q4(j, now):
             txt = '<span class="warnc">in use by %s</span>: %s. Since %s, until %s%s' % (
                 esc(d["who"]), esc(d["purpose"]), esc(_lt(d["since"])) if d.get("since") else "?",
                 ('<span class="bad">%s, %s ago</span>' % (esc(_lt(end)), esc(_dur(now - end)))) if late else (esc(_lt(end)) if end else "no end time stated"),
-                (' <span class="src">(%s)</span>' % esc(d["until_src"])) if end and d.get("until_src") != "stated" else "")
+                (' <span class="src">(%s)</span>' % esc(d.get("until_src") or "")) if end and d.get("until_src") not in ("stated", None, "") else "")
         else:
             txt = "idle" + (" since %s" % esc(_when(now, d["since"], "hm")) if d.get("since") else "")
         out.append('<div class="dev"><b>%s</b>%s <span class="src">(%s)</span></div>' % (esc(label), txt, esc(d.get("src", ""))))
     q = fs.get("queue") or {}
     if q:
-        out.append("<p><b>Queue:</b> %s. %d queued, %d of them %s work%s; the %d-run idle tier (the z- sweeps) waits behind them by design. Estimated drain: %s.</p>" % (
+        out.append("<p><b>Queue:</b> %s. %d queued, %d of them %s work%s; %s. Estimated drain: %s.</p>" % (
             esc(q.get("constraint", "")), q.get("queued", 0), q.get("queued_05", 0), esc(fs.get("release_name", "0.5")),
             ("; the oldest %s run has waited %s" % (esc(fs.get("release_name", "0.5")), esc(_dur(q["oldest_05_age"])))) if q.get("oldest_05_age") else "",
-            q.get("idle_tier", 0), esc(_dur(q.get("drain_secs"))) if q.get("drain_secs") else "nothing to drain"))
+            ("the %d-run idle tier (the z- sweeps) waits behind them by design" % q["idle_tier"]) if q.get("idle_tier") else "no idle-tier sweep is queued",
+            esc(_dur(q.get("drain_secs"))) if q.get("drain_secs") else "nothing to drain"))
         out.append('<p class="src">%s.</p>' % esc(q.get("src", "")))
     con = fs.get("console") or {}
     if con:
@@ -1774,11 +1800,13 @@ def render(j):
         now, stale, esc(j.get("generated", "")), esc(j.get("generated", ""))))
     if (j.get("strip") or {}).get("window"):
         out.append('<p class="warnc">%s</p>' % esc(j["strip"]["window"]))
-    out.append(_glance(j, now))
-    out.append(_q1(j, now))
-    out.append(_q2(j, now))
-    out.append(_q3(j, now))
-    out.append(_q4(j, now))
+    # A section that cannot be laid out says so; the rest of the page still renders.
+    for i, part in enumerate((_glance, _q1, _q2, _q3, _q4)):
+        try:
+            out.append(part(j, now))
+        except Exception as e:
+            out.append('<p class="bad">%s could not be rendered this tick (%s).</p>' % (
+                "The summary" if i == 0 else "Section %d" % i, esc(type(e).__name__)))
     out.append('<div class="fold">details</div>')
     out.append('<section class="md">%s</section>' % md_to_html(_below_fold(j.get("details_md", ""))))
     out.append('<footer>Written by <code>docs/testing/jobs/status.sh</code> on the host every job tick and every %d min; '
