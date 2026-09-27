@@ -1,0 +1,34 @@
+{
+  "registered_utc": "2026-09-27T17:22:43Z",
+  "who": "lane.notify488",
+  "issue": "488",
+  "title": "54430006-Dead_or_Alive_1_Ultimate.xiso.iso",
+  "device": "nova",
+  "seconds": 300,
+  "route": "survey",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 2,
+  "a_ref": "dffb7a8a660e1fc367dbb27ee0c30a17b1f8269b",
+  "b_ref": "9f80bc887aee554dec249e2c3978853faec3f44d",
+  "window_s": [
+    151,
+    288
+  ],
+  "queue_order": "after the timing pilot is read: A1 B1 A2 B2, each HAKUX_RELEASE_PRIO=1 request.sh --title <above> --device nova --route survey --seconds 300 --perflog --ref <ref> --no-expect (hand-read soak)",
+  "judge": "python3 docs/lanes/notify488/notify_read.py --from 151 --to 288 <A1> <B1> <A2> <B2>",
+  "prediction": "#488 on DOA Ultimate's fight (#474; lane.flip474's window 151-288 s on the survey route). Before any run: DOA never sends NV097 NOTIFY -- 'method 0x0104' is absent from the unhandled lines of every DOA and AUF soak on disk (1790491858-flip474-658414, the aufire412 and slowdown462 soaks) -- so the NOTIFY half cannot move this title, and this arm is about the semaphore half. Whether DOA sends BACK_END_WRITE_SEMAPHORE_RELEASE at all is not known: the perflog method histogram (hakuX-mhist) never reached the dispatcher's logcat filter. Both arms now print [notify488] sem_release/notify counts per 60 frames, so A answers it. flip474 placed DOA's 51-56 ms/frame PFIFO wait in the first surface_update after each flip (the flip's display download), not in a semaphore; if that is the whole wait, B cannot move the frame rate.",
+  "legs": {
+    "M0 (instrument)": ">= 20 gfps lines and >= 2 [notify488] lines in 151-288 s in every run. Otherwise VOID, rerun once.",
+    "F0 (the mechanism is reachable)": "A's sem_release sum in the window >= 1 per [notify488] line (one release a second or more). If it is 0 the arm is INERT for DOA: P2 is not judged, P1 and H0 still are. notify == 0 in both arms (the prior above); a nonzero notify count refutes that prior.",
+    "P1 (no regression)": "median over runs of each run's gfps median in the window: B >= A - 1.",
+    "P2 (the mover, a guess labelled as one; judged only if F0 holds)": "if A's sem_release is >= 30 per line (about one per frame): B - A >= +1 fps. KILL with F0 holding: B - A < 0.5 -- DOA's releases do not carry its wait. About 35% confident, because flip474 put the wait in the flip's download.",
+    "H0 (no new hang)": "in every B run: longest gap between hakuX-perf lines in the window <= 3 s, and no fatal signal."
+  },
+  "must_not_move": [
+    "pgraph: docs/testing/predictions/notify488-pgraph.json"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read by notify_read.py."
+}
