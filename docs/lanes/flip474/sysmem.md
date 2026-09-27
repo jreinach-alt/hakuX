@@ -75,7 +75,10 @@ Not yet run. The change is Android-only (`#ifdef __ANDROID__`), so the
 desktop pgraph suites cannot see it; its pixel check is the Nova pair
 above and the arms job's pair for `flip474-sysmemfix-pgraph.json`.
 
-## Waiting (from 2026-09-27 23:05Z)
+## Waiting (from 2026-09-27 22:46Z)
+
+At 22:46Z the Nova was under hostops' battery hold (13%, lifted at 80% on
+a 500 mA port, hours), so the Nova requests wait for that.
 
 On the eleven requests above, all outside this session, and the arms job's
 pair. When they land: judge each file's legs, post the table on #474 and
