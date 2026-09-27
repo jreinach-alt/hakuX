@@ -64,3 +64,20 @@ sessions. On resume:
    rt 0 on A and 1 on B, fatal 0, tail <= 15 s) and look at one play frame per arm.
 2. Write `pilots/lane.tbflip424.ok` (with python3), then queue A B A B for r2 and r3.
 3. Do not push the range flip until M4' is read.
+
+## 6. Attempt 3 (2026-09-27 ~04:10Z)
+
+Why attempt 2 did not finish: it ended on a correct wait. The Nova pilot pair was queued behind
+#412, #413 and lane.titleroutes' sessions and had not run. At 04:12Z both `.req` files were still
+in `dispatch/queue/`, next in line behind `slowdown462`. Attempt 2 also ended before the 21:11 PDT
+addendum arrived.
+
+- The JC default-on (#425) is now its own PR, #465 (`lane/tbflip424-jc`, cf09ea47a1 = af6fffdc0c
+  cherry-picked onto e5db66fa37). accel/tcg/cputlb.c compiles clean with the desktop build's
+  command under `-Werror`, and with the Android arm64 NDK clang command from
+  `android/app/.cxx/Release/3z4l2q3k` (no diagnostics on the changed lines; that file already had
+  `-Wshift-negative-value` warnings, which is why that check runs without `-Werror`). #456 still
+  carries the same commit. The two changes are identical, so whichever folds first leaves the other
+  merging cleanly.
+- Merged origin/master (e5db66fa37) into this branch. The DOA1U prediction's refs (231d04df51)
+  are still ancestors, since this was a merge and not a rebase.
