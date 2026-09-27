@@ -343,3 +343,8 @@ route = "otogi"
 name = "Burnout"
 iso = { thor = "41430006-Burnout.xiso.iso" }
 route = "burnout"
+
+[titles."45410062"]
+name = "Battlefield 2: Modern Combat"
+iso = { thor = "45410062-Battlefield_2_Modern_Combat.xiso.iso" }
+route = "bf2mc"
