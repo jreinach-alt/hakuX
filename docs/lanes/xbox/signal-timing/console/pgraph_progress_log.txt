@@ -1,0 +1,17 @@
+Starting [1/1] Alpha func::AlphaFuncAlways_Disabled
+  Completed [1/1] 'AlphaFuncAlways_Disabled' in 88ms
+Starting [1/7] Signal timing::ST_Calibrate
+  Completed [1/7] 'ST_Calibrate' in 2095ms
+Starting [2/7] Signal timing::ST_Done_DOA
+  Completed [2/7] 'ST_Done_DOA' in 2206ms
+Starting [3/7] Signal timing::ST_Done_DOA_Read
+  Completed [3/7] 'ST_Done_DOA_Read' in 11548ms
+Starting [4/7] Signal timing::ST_Done_Tiny
+  Completed [4/7] 'ST_Done_Tiny' in 305ms
+Starting [5/7] Signal timing::ST_Flip
+  Completed [5/7] 'ST_Flip' in -9881ms
+Starting [6/7] Signal timing::ST_VBlank_Event
+  Completed [6/7] 'ST_VBlank_Event' in 91ms
+Starting [7/7] Signal timing::ST_VBlank_Spin
+  Completed [7/7] 'ST_VBlank_Spin' in 5239ms
+Testing completed normally, closing log.
