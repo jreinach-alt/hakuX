@@ -533,6 +533,9 @@ slowdown462's soak frame `f00022.png` shows the street at 27 fps.
   (new; labels 0.5, fps-focus, harness).
 - Asked hostops (inbox, 13:48 PDT) for #507's tracker row, a harness lane
   for the cooling-device detection, and a read of the trip points.
+- `preflight.sh --allow-tracker`: every gate passes but `coverage`, which
+  fails on "#507 with neither a lane nor a blocker". That row is the board's:
+  the request is in `dispatch/board-requests/gta482.md` (13:55 PDT).
 - Nothing of this lane's is queued, running or held. No further device
   session is asked for.
 
