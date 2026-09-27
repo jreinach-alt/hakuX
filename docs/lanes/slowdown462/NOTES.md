@@ -1101,3 +1101,44 @@ frames, so AUF cannot pass ~21.5 fps on its GPU work as it stands.
 Both sessions are done, and this lane holds no hold and has nothing queued.
 The answer is posted on #474 and #462, and the #462 summary is corrected in
 place.
+
+## Attempt 8 (2026-09-27, from 14:40 PDT): the bind_textures wall probe (#474)
+
+Why attempt 7 did not carry this: attempt 7 finished its brief (the #474
+breakdown, PR #509, ready). The texture.c grant (hostops, 14:11 PDT) arrived
+after that session ended. The resume header naming PR #477 as a draft was
+stale: #477 had already folded.
+
+The probe is on its own branch and PR, as the grant asked:
+`lane/slowdown462-bindtex`, PR #512, commit 26936d9639. It branches from
+this lane's #509 head merged with master (0e0ba23fb9), so the NOTES here do
+not conflict with #509's copy.
+
+- `hw/xbox/nv2a/pgraph/vk/texture.c`, `NV2A_PERF_LOG` only (lent from
+  lane.remote; its #461 counters are untouched). One `hakuX-stall` line per
+  60 guest flips: `txw[f<flips> <s> bt res ct sdl scan faf bs flq nd cp up]`,
+  each `ms/flip` and most with `/calls per flip`. Nesting: bt holds res and
+  ct; ct holds sdl, scan, faf, bs, cp, up; bs holds flq (draw and reorder
+  queue flush) and nd (`pgraph_vk_begin_nondraw_commands`).
+- The prime suspect going in, from reading the code: `create_texture` calls
+  `pgraph_vk_flush_all_frames` (render-thread idle wait plus every frame
+  fence) before a surface-to-texture rebind whenever the node was used in
+  the last `num_active_frames` submits. That is a full GPU drain, and it is
+  not a `pgraph_vk_finish`, which fits `[cblat]` `fin` reading ~0. `faf`
+  measures it. The two `pgraph_vk_upload_surface_data` calls at the top of
+  `create_texture` are dead (the line before them clears their condition),
+  so they are not probed.
+- Pilot: a perflog soak, not a held session. The dispatcher builds
+  `26936d9639-perflog` only from a queued request, so a held session would
+  have needed the soak first anyway, and the soak's logcat carries `txw[]`
+  directly. AUF first: `1-1790543757-slowdown462-3565156` (Nova, 420 s,
+  survey route, window 299-420 s as before). Blinx (255-411 s) follows
+  once the pilot's lines are read. Both together are under the 30 min
+  pilot budget.
+- Not compile-checked here: no NDK is reachable from the lane sandbox. The
+  dispatcher's build is the compile; an `ERROR` there is the first thing to
+  read.
+
+State at the end of this session: waiting on
+`1-1790543757-slowdown462-3565156` (eleven requests were ahead of it on
+the Nova at 14:56 PDT). No hold held.
