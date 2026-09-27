@@ -373,3 +373,104 @@ needs one more counter (overlap vs not), so it waits for this arm's verdict.
 On resume: read both soaks' gfps and `[sdcall]` over the race (the fix arm's `su_deferred` should be
 about 4.0 per frame and `surfupd` `fin` about 3.0), then the `[job.arms]` verdict and every
 scores1.tsv `status`. Then merge master, and mark #479 ready when both hold.
+
+## Why attempt 3 did not finish (resume of 2026-09-27, attempt 4)
+
+It ended on a `waiting:` (PR #479, 16:19Z) for four device requests outside the session: the Nova
+soak A/B and the goldens must-not-move arm pair. All four have finished. The host promoted the soak
+pair, so its result directories are `0-0-x-1790525921-forza414-1054756` and
+`0-0-x-1790525923-forza414-1055334`. Nothing was stuck; the session could not wait ~90 min.
+
+## 14. Verdicts on 4b22f2526b vs 94f002d309
+
+### Goldens must-not-move (`forza414-coalesce-mnm.json`): PASS
+
+`[job.arms]` on PR #479, 10:16 PDT: all 266 captures in the 10 guarded suites are byte-identical
+between the arms (`1-1790519668-arms-forza414-base-2225156`, `...-fix-2225522`). Image_blit scored
+41 of 42 goldens in both arms, so that suite is a floor. The arm's logcat is not perflog, so it
+does not show that the deferral fired on the discs. The soak below does show it on Forza.
+
+### Nova soak A/B (`forza414-coalesce-soak.json`), read by hand: the mover is REFUTED
+
+Reader: `abread.py <A logcat> <B logcat> [--from s --to s] [--bucket 30]`. A is apk 1a8d9178e52c,
+10:40-10:46 PDT. B is apk dc9da6bd022b, 10:47-10:54 PDT. Same device, MAX regimen, survey route,
+shader cache cleared for both. No crash or validation line in either.
+
+Registered window, t = 243-414 s, medians:
+
+| leg | rule | A | B | B/A | result |
+|---|---|---|---|---|---|
+| M0 | both reach the race; B `su_deferred` > 0; A prints none | race from t = 120 | 302 per frame | | holds |
+| P1 | uncoalesced finishes (`cDef` per 60 flips) <= 0.5 | 429 | 240 | 0.559 | **fails** |
+| P2 | `Sub` ms/frame <= 0.6 | 16.10 | 12.05 | 0.748 | **fails** |
+| P3 | fps >= 1.15x | 29.34 | 29.49 | 1.005 | **fails** |
+
+**P3 could not have passed in that window.** Arm A is already at the title's 30 fps cap there
+(2.02 VBLANKs per flip). The route creeps the car off the pit straight, and from t = 300 s both arms
+face a fence and trees (frames 104619 and 105345). The same window read 26.7 fps in the pilot, where
+the car faced the grandstand (frame 085512), and 24.1 fps in lane.slowdown462's soak. So the base
+alone spans 24.1-29.3 fps in the registered window, across three runs of the same route. The
+window was chosen from one run and it is not one place.
+
+The race's first two minutes are one place in all four runs (start line and pit straight, AI field
+in view). Window t = 125-240 s, medians:
+
+| | pilot (A ref) | slowdown462 (e5db66fa37) | arm A | arm B | B / arm A |
+|---|---|---|---|---|---|
+| fps | 18.43 | 19.17 | 19.22 | 19.77 | 1.029 |
+| `Tot` ms/frame | 45.8 | 43.9 | 43.9 | 42.1 | 0.959 |
+| `Sub` | 23.5 | 23.3 | 23.5 | 17.7 | 0.753 |
+| `Surf` | | | 4.1 | 7.5 | 1.83 |
+| `Draw` | 16.4 | 16.2 | 15.6 | 15.5 | 0.99 |
+| GPU `R` | 21.6 | 20.3 | 20.9 | 18.5 | 0.885 |
+| `cDef` per 60 flips | 357 | 371 | 367.5 | 179 | 0.487 |
+| vCPU ms per 2 s | 1923 | 1927 | 1954 | 1924 | 0.985 |
+
+`[sdcall]` per guest frame, same window:
+
+| caller | A fin | A wait ms | B fin | B fence | B wait ms |
+|---|---|---|---|---|---|
+| `surfupd` | 6.82 | 23.45 | 3.08 | 0.00 | 20.26 |
+| `range` | 0.00 | 0.00 | 0.14 | 0 | 0.27 |
+| `expire` | 0 | 0 | 0.14 | 0 | 0.68 |
+| total | 6.82 | 23.45 | 3.36 | 0.00 | 21.21 |
+
+`su_upl` is 2.92 per frame in A and 3.08 in B. B's `surfupd` fin equals its `su_upl`: every finish
+the update still pays is one where a binding was about to upload from VRAM.
+
+What the two tables say:
+
+- **The cut does what it was built to do.** Finishes fall from 6.8 to 3.4 per frame. They did not
+  move to another caller: `range` and `expire` together gain 0.28 per frame.
+- **The wait did not follow the count.** Finishes fall 51%, `Sub` falls 25% (5.8 ms), and the frame
+  falls 4% (1.8 ms). B's fps of 19.77 is above all three base runs (18.43, 19.17, 19.22), by 3-7%.
+  The base's own spread is 4%, and B is one run. That is not the >= 1.15x the prediction asked for.
+- **Why the price in section 12 was wrong.** It assumed each finish costs the same wait, so that
+  removing 57% of the finishes removes 57% of the wait. A finish waits for the GPU to catch up with
+  every draw submitted so far. `Sub` tracks the GPU's render time in every run (23.5 vs `R` 20.9 in
+  A, 17.7 vs 18.5 in B). With fewer sync points each one waits longer: 3.5 ms per finish in A,
+  5.8 ms in B. While one synchronous completion remains late in the frame, the PFIFO thread waits
+  for most of the frame's GPU work.
+- **3.4 ms of the gain went back into `Surf`.** Inside `pgraph_vk_surface_update`, `[surf413]` has
+  `cdef` - `fin` (the completion's time outside `pgraph_vk_finish`) rising from 1.65 to 4.33
+  ms/frame, and `exp` from 0.16 to 0.85. The first is the pre-download branch: the deferred batch
+  now rides the flip's command buffer, and the first update after the flip waits on that fence
+  (`pre` 0.85 per frame). That is the branch lane.flip474 named for DOA. Forza pays it too, once
+  the eviction finishes are out of the way.
+
+**What the next lane should not repeat:** do not price a cut in sync points. Price it in the wait
+that is left after the last sync point in the frame. And do not register a window on a creeping
+route from one run's fps: read the frames for the place first.
+
+### What is left, per frame (arm B, t = 125-240 s)
+
+| sync point | per frame | wait ms/frame | what frees it |
+|---|---|---|---|
+| `surfupd` with an `upload_pending` binding | 3.08 | 17.9 | completing only when the upload's range overlaps a pending download (section 12's next cut), if most do not overlap |
+| the flip pre-download, waited at the first update | 0.85 | ~2.7 | leaving `display_predownload_pending` set until a consumer (lane.flip474's list) |
+| `range` + `expire` | 0.28 | 0.95 | real readers; they stay |
+
+The bound with both gone is the larger of the PFIFO thread's CPU side (`Surf` + `Draw`, about
+20-23 ms), the GPU (22.5 ms) and the vCPU, which is 96% on-CPU in this window: at most ~27 fps here
+if the vCPU's time is the guest's own work. lane.slowdown462's profile was taken at 28 fps, not in
+this window, so the vCPU's share here is not measured.
