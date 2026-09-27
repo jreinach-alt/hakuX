@@ -4279,3 +4279,19 @@ impact_px = 0
 impact_onestep_px = 0
 game_visible = true
 impact_basis = "game-visible: five commercial titles' gameplay at 12-22 fps, under the 1.0 bar of 30 fps"
+
+[issue.474]
+title = "pgraph.lock is held across the flip-stall GPU wait, so guest PGRAPH reads block on the GPU (DOA Ultimate fight: ~35 ms/frame)"
+component = "games"
+disposition = "defect"
+suites = []
+no_suites = "A PERFORMANCE DEFECT (lock held across a GPU wait). No pgraph suite measures frame rate, so none is named; the fix must keep every suite bit-identical."
+status = "open"
+dispatch_state = "blocked"
+blocker_tested = "confirmed 2026-09-27T06:45Z: hakux-lane-flip474 started by hostops."
+blocked_on = "IN FLIGHT (hostops 2026-09-27T06:45Z): lane.flip474 holds it (briefs/flip474.md): locking analysis, prediction, then a Nova A/B on DOA Ultimate's fight."
+status_note = "FILED 2026-09-27T06:44Z by hostops from lane.slowdown462's board request Ask 3 (off-CPU profile of DOA1U's fight, Nova a593d8eb85)."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "game-visible (lane.slowdown462 #462, 2026-09-26): DOA Ultimate's fight at ~14 fps; the lock-held flip wait costs ~49% of the frame"
