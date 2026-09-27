@@ -443,6 +443,51 @@ PY
 # A draft carrying one of them is not unowned, which is the only thing this
 # cause is about.
 STRAND_STALE="folded fold-ready needs-rebase needs-audit-1 needs-audit-2 needs-remediation blocked:needs-owner"
+# AND EVERY `blocked:*` LABEL, BY PREFIX, FOR EVERY CAUSE. A label that says
+# blocked already names its actor -- a person, or a release gate such as
+# `blocked:after-0.5` -- so a PR carrying one is parked, not stranded. The list
+# above named only `blocked:needs-owner`, and on 2026-09-26 the host's parked
+# drafts #436 and #439 (`blocked:after-0.5`, #433's policy) were strand-resumed
+# twice each to re-post "blocked: parked until after 0.5". A prefix, not one
+# more literal, so the next `blocked:<x>` does not reopen it. The same holds for
+# the lane's ISSUE: a lane whose territory issue carries `blocked:*` is parked
+# whatever its PR says, and a lane with no PR is not idle while it is.
+parked_label() {   # <labels,comma,separated> -> the first blocked:* label, or nothing
+    local l
+    local IFS=,
+    for l in $1; do case "$l" in blocked:*) printf '%s\n' "$l"; return 0 ;; esac; done
+    return 0
+}
+parked_lanes() {   # -> "name<TAB>#<issue> <label>" for every lane with an open issue labelled blocked:*
+    local bi
+    bi=$(gh issue list --repo "$GH_REPO" --state open --limit 300 --json number,labels \
+        --jq '.[] | ([.labels[].name | select(startswith("blocked:"))] | first // empty) as $l | "\(.number)\t\($l)"' 2>/dev/null)
+    [ -n "$bi" ] || return 0
+    BI="$bi" python3 - "$T" <<'PY' 2>/dev/null
+import os, sys, tomllib
+testing = sys.argv[1]
+path = os.environ.get("HAKUX_TERRITORY")
+try:
+    if path:
+        t = tomllib.load(open(path, "rb"))
+    else:
+        sys.path.insert(0, testing)
+        import board_files
+        t = board_files.load("territory.toml")
+except Exception:
+    sys.exit(0)
+parked = {}
+for l in os.environ.get("BI", "").splitlines():
+    n, _, lab = l.partition("\t")
+    if lab.startswith("blocked:"):         # a line with no label is not an answer to this question
+        parked.setdefault(n.strip(), lab.strip())
+for name, row in sorted((t.get("lane") or {}).items()):
+    for i in row.get("issues", []):
+        if str(i) in parked:
+            print("%s\t#%s %s" % (name, i, parked[str(i)]))
+            break
+PY
+}
 # Four fold ticks: long enough to outlast a ~90-minute device arm, so a lane
 # that ended while its arm was in flight is not resumed to be told nothing.
 DRAFT_STRAND_SECS="${DRAFT_STRAND_SECS:-7200}"
@@ -879,6 +924,7 @@ while IFS=$'\t' read -r pr branch head extra labels; do
     rows+="idle-no-pr"$'\t'"resume_idle"$'\t'"-"$'\t'"$pr"$'\t'"$branch"$'\t'"$head"$'\t'"$extra"$'\t'"$labels"$'\n'
 done <<< "$(idle_lanes)"
 
+PARKED_LANES=$(parked_lanes)
 resumed=0; seen=0
 while IFS=$'\t' read -r label action stale pr branch head extra labels; do
         [ -n "${pr:-}" ] || continue
@@ -928,6 +974,18 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
         for s in $stale; do case ",$labels," in *",$s,"*) skip="$s" ;; esac; done
         if [ -n "$skip" ]; then
             [ "$mode" = list ] && echo "#$pr $branch: $label but also $skip; already moved on"
+            continue
+        fi
+        # PARKED: the PR's own `blocked:*` label first, then its lane's issue.
+        # Silent in the tick log: it is a standing state, not news each tick.
+        park=$(parked_label "$labels")
+        if [ -z "$park" ]; then
+            case "$branch" in lane/?*)
+                park=$(awk -F'\t' -v n="${branch#lane/}" '$1 == n { print "issue " $2; exit }' <<< "$PARKED_LANES") ;;
+            esac
+        fi
+        if [ -n "$park" ]; then
+            [ "$mode" = list ] && echo "#$pr $branch: $label, skipped: parked by $park (a blocked:* label has its own actor)"
             continue
         fi
 

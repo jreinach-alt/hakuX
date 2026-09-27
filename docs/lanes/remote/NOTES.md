@@ -2400,3 +2400,29 @@ perflog build, on Crimson. lane.local read it (5850579748).
   `begin_pre_draw()` outside `Draw`. With either on, I3 can fail by design;
   the checker says so.
 - The inline clear stays untimed, as it was.
+- Comparing with older soaks (audit pass 1, LOW-2). On a line from before
+  this fix, the children of `Draw` and `Pipe` read higher, by the nested
+  finish they counted twice. `Draw`, and so `BUSY`, reads lower on a title
+  that clears through the fall-through path, whose pre-draw and recording
+  were outside `Draw`. Neither difference is the title's.
+
+### #426 item 2, closed on the soaks: no title evicted a pipeline (2026-09-27)
+
+The host ran three perflog soaks of #449's head (`932ab47186`) on the Thor,
+240 s each, and counted the `pipe[...]` lines in the pulled logcats
+(5851064863):
+
+| title | `pipe[]` lines | with `ev` > 0 | with `pend` > 0 | peak `used` of 2,048 |
+|---|---:|---:|---:|---:|
+| Crimson Skies | 118 | 0 | 0 | 77 |
+| Blinx | 131 | 0 | 0 | 88 |
+| Grabbed by the Ghoulies | 67 | 0 | 0 | 153 |
+
+- **Recorded and stopped**, by lane.local's rule (5850280192). There is no
+  fix PR and no issue.
+- **The hazard is latent, not gone.** A title that fills the cache would reach
+  it, and the forced control above shows it is fatal on llvmpipe when reached.
+  The `pipe[...]` line stays in every perflog soak, so `ev` > 0 is the first
+  sign.
+- **Item 4's split** (`TxH`, `Tex` and the rest of `Tx` + `FTx`) is in the
+  same runs' `hakuX-phase` lines. It was asked for on #426 in 5851189295.
