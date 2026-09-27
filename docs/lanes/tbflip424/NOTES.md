@@ -154,8 +154,8 @@ tbflip424-doa1u.json stays on file as registered: piloted, not completed, no ver
 
 | request | arm | round | gameplay gfps | churn% | ng | m50 | note |
 |---|---|---|---|---|---|---|---|
-| PILOT_A | A | r1 (pilot) | | | | | queued |
-| PILOT_B | B | r1 (pilot) | | | | | queued |
+| `1790517344-lane.tbflip424-1425036` | A | r1 (pilot) | | | | | queued 14:09Z |
+| `1790517350-lane.tbflip424-1433200` | B | r1 (pilot) | | | | | queued 14:09Z |
 
 ### On resume
 
