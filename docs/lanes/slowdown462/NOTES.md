@@ -1219,3 +1219,76 @@ and #462 and Ask 8 (the fix lane) is on the board. Waiting on
 `1-1790549006-slowdown462-1787985` (Blinx). On resume: read it with
 `txwwin.py`/`phasesoak.py` over 255-411 s, check the frames, post on #474
 and #462, run preflight, and mark #512 ready. No hold held.
+
+## Attempt 10 (2026-09-27, from 16:10 PDT): Blinx's `txw[]` read
+
+Why attempt 9 did not finish: it ended correctly, waiting on the Blinx soak.
+The soak finished at 15:56 PDT (promoted to
+`0-0-x-1790549006-slowdown462-1787985`), and this session is the resume.
+
+**The soak ran on the Thor, not the Nova.** Its `request.json` says
+`"device": "thor"` (serial bdc158a5), although attempt 9's NOTES said "pinned
+to the Nova". That was a mistake in the enqueue. Blinx has a copy on each
+handheld (the Thor's original and the Nova's #462 investigation copy), so the
+run is valid, but its ms figures are Thor figures. They are not comparable
+one-to-one with AUF's Nova run, and the Thor may have hit a thermal pause
+(fps swings 9 -> 25 -> 11 -> 24 inside the window; this soak has no cooling
+read to say whether it did). The mechanism answers below do not depend on the
+device. The ms figures do.
+
+### Blinx: `txw[]` over 255-411 s (Thor, MAX, `26936d9639-perflog`, apk 3883925fc5c0)
+
+`txwwin.py <result> 255 411`: 41 lines, 2460 flips in 155.9 s = 15.8 fps,
+63.4 ms/flip. The frames at 15:54:43 (FPS 26, stage timer 0'40") and 15:56:06
+(FPS 22, timer 1'16") are stage play: gameplay. `phasesoak.py`, same seconds:
+`Pipe` 15.6, `Tx` 4.0, `Draw` 27.5, `Fin` 14.4 (`Fen` 14.0), GPU 21.5
+(Thor timestamps; the x1.573 correction is the Nova's, not applied).
+
+| step | ms/flip | calls/flip | share of `bt` |
+|---|---:|---:|---:|
+| `bt` whole `pgraph_vk_bind_textures` | **3.36** | | 100% |
+| `res` resolve_possibly_dirty | 0.02 | | 1% |
+| `ct` create_texture, all slots | 3.18 | 362 | 95% |
+| **`faf` `pgraph_vk_flush_all_frames`** | **2.99** | **1.81** | **89%** |
+| `bs` direct surface bind (flq 0.00 + nd 0.02) | 0.02 | 2.70 | 1% |
+| `scan` / `sdl` downloads | 0.02 / 0.00 | 357 / 0 | 1% |
+| `cp` surface copy / `up` upload | 0.00 / 0.00 | 0 / 0 | 0% |
+
+(`bt`'s calls column reads 3112/flip in `txwwin.py`; that is its counter's
+own unit, not bind calls, and is not used here.)
+
+Split by the window's fps (`.cap/txwregime.py`, scratch, not committed):
+
+| stretch | lines | fps | ms/flip | `faf` ms/flip | drains/flip | ms/drain | share of flip |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| slow (<14 fps) | 14 | 11.0 | 90.6 | 1.78 | 1.52 | 1.17 | 2.0% |
+| mid | 13 | 17.7 | 56.4 | 2.73 | 1.79 | 1.52 | 4.8% |
+| fast (>=20 fps) | 14 | 23.5 | 42.6 | 4.46 | 2.12 | 2.10 | 10.5% |
+| AUF (Nova), for scale | 34 | 16.6 | 60.1 | 4.47 | 0.27 | 16.5 | 7.4% |
+
+- **Same dominant step as AUF: `faf`.** Blinx drains ~1.8 times per flip
+  for ~1.7 ms each. AUF drains once per ~3.7 flips for ~16.5 ms each. A
+  drain waits for the GPU work in flight. Blinx has little queued at each
+  one, and the drain grows when the frame is fast, because more GPU work is
+  still in flight.
+- **Direct binds, not copies.** `cp` 0 and `up` 0 over the whole window,
+  `bs` 2.0-3.0 per flip. So every `faf` in the window is the s2t drain before
+  a **direct** bind of the surface's own image view, and that bind writes
+  nothing into the texture node's image. The drain protects nothing on this
+  path, as on AUF.
+- **flip474's drain-only-on-copy fix (addendum 8) reaches Blinx:** with no
+  copies, it removes every drain in the window.
+
+**Bound (a bound, not a value; Thor figures):** removing 2.99 ms/flip takes
+the window from 63.4 to at most 60.4 ms/flip, i.e. **at most ~16.6 fps**
+(from 15.8). In the fast stretch it is 42.6 -> 38.1 ms, at most ~26.2 fps
+(from 23.5). Both assume the PFIFO thread sets the frame and nothing refills
+the time. The fix also ends ~2 CPU/GPU serializations per flip, and this
+probe cannot price that lost overlap.
+
+What is not measured: the same probe on the Nova. It would give Nova ms
+beside AUF's, not a different answer. It is not queued. If #474's fix lane
+wants a Nova Blinx baseline, its fix arm's A leg is that baseline.
+
+State at the end of this session: posted on #474 and #462; PR #512 ready.
+No hold held, nothing of this lane's queued.
