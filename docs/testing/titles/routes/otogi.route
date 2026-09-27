@@ -1,0 +1,136 @@
+# Otogi: Myth of Demons (46530002): one route for the first run and later
+# runs. PLAYED by nav.py on the Thor, 2026-09-27 05:12 PDT (lane.titleroutes
+# HELD session otogi.first-run-20260927T051231).
+#
+#   the title (START) -> a menu transition at ~2 fps -> the main menu,
+#   cursor on New Game (A) -> Save, "Please select location to save data
+#   to", slots 01-03, cursor on 01 (A) -> "Create a new save game?" (A:
+#   Yes) -> the story scroll, the Raikoh cutscene and the bamboo-forest
+#   cutscene -> stage 1 in the bamboo forest, "Defeat all of the beasts in
+#   the area".
+#
+# The nav session skipped the intro with A and START in turn. The last
+# START landed in the stage and opened PAUSE (whose default row is Restart
+# Stage), and B closed it. The route uses A alone: it presses A every 5 s
+# through the menus. On later runs slot 01 holds the save, and that adds one
+# prompt (overwrite), which A also answers. Then it presses A every 4 s
+# through the intro and one B at the end. In the stage A is jump and B does
+# nothing harmful.
+#
+# Player control: LY min for 2 s ran Raikoh forward along the path (nav
+# frames 009-pre -> 010-moved). The play pattern walks, turns, attacks (X)
+# and jumps (A).
+#
+wait 48.0
+press START
+wait 25.0
+press A
+wait 5.0
+press A
+wait 5.0
+press A
+wait 5.0
+press A
+wait 5.0
+press A
+wait 5.0
+press A
+wait 5.0
+shot intro
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press B
+wait 3.0
+mark gameplay
+repeat forever {
+    axis LY min
+    wait 1.5
+    press X 150
+    wait 0.3
+    press X 150
+    wait 0.3
+    axis LY mid
+    axis LX max
+    wait 1
+    axis LX mid
+    press A 150
+    wait 0.5
+    press X 150
+    wait 0.3
+    axis LY max
+    wait 1.5
+    axis LY mid
+    axis LX min
+    wait 1
+    axis LX mid
+    press X 150
+    wait 0.5
+}

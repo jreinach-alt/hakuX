@@ -1,0 +1,70 @@
+# MechAssault 2: Lone Wolf (4D53006B): one route. No profile step was seen:
+# Campaign starts from the main menu. PLAYED by nav.py on the Thor,
+# 2026-09-26 23:47 PDT (lane.titleroutes HELD session
+# mechassault-2.first-run-20260926T234710).
+#
+#   intro, then the title "Press START", which waits (still there at 60 s,
+#   no attract demo) -> START -> main menu, CAMPAIGN highlighted (A) ->
+#   campaign FMV (A skips it) -> mission select "Street Sweeper" (A, Start
+#   Mission) -> LOADING -> in-engine intro cutscene (~50 s; A and BACK do
+#   not skip it) -> the first mission, a city street at night, tutorial
+#   boxes ("Pull the Right trigger to fire mortar shells").
+#
+# No input before the title and 10 s between menu presses: an earlier route
+# with START presses during the intro fell one screen behind on replay
+# (the intro ran slower than in the nav session).
+#
+# Player control: LY min for 3 s walked the mech forward toward the APC
+# (nav frames 007-c2 -> 008-moved). The play pattern fires (RT), sweeps
+# the aim (RX) and walks.
+#
+wait 48.4
+shot t45
+wait 15.6
+shot t60
+wait 10.8
+press START 300
+wait 11.7
+shot menu
+wait 1.4
+press A 300
+wait 10.1
+shot globe
+wait 1.3
+press A 300
+wait 10.1
+shot mission
+wait 3.3
+press A 300
+wait 10.1
+shot load
+wait 62.5
+shot c1
+wait 21.7
+shot c2
+wait 11.9
+axis LY min
+wait 3.2
+axis LY mid
+shot moved
+wait 2.1
+mark gameplay
+repeat forever {
+    axis RT max
+    wait 0.3
+    axis RT min
+    wait 0.5
+    axis RX max
+    wait 0.3
+    axis RX mid
+    axis RT max
+    wait 0.3
+    axis RT min
+    wait 0.5
+    axis RX min
+    wait 0.3
+    axis RX mid
+    axis LY min
+    wait 1
+    axis LY mid
+}
