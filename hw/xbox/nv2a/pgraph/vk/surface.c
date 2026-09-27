@@ -923,7 +923,41 @@ void pgraph_vk_complete_staged_downloads(NV2AState *d, PGRAPHVkState *r)
     r->deferred_downloads_frame = -1;
 }
 
-void pgraph_vk_download_surface_complete_deferred(NV2AState *d)
+/*
+ * #474: wait on a submitted frame's fence, with pgraph.lock released across
+ * the wait when the caller allows it.
+ *
+ * DOA Ultimate's fight spends ~56 ms a frame here (surf413 `cdef`), at the
+ * first surface_update after each flip, waiting for the flip's pre-recorded
+ * display download -- i.e. for the GPU to finish the previous frame -- with
+ * the lock held for the whole method. The guest's interrupt handler reads
+ * PGRAPH_INTR in that window and its vCPU blocked ~50 ms a frame on the lock.
+ *
+ * The wait itself reads nothing the lock protects: the fence and its slot
+ * belong to this (PFIFO) thread, and the staged downloads are copied into
+ * VRAM only after the lock is retaken. In the window the guest's PGRAPH
+ * interrupt and register MMIO may run (pgraph_read/pgraph_write name which);
+ * every other taker -- notably the VRAM access callback, which must not let
+ * a guest write land before the staged copy -- waits in pgraph_lock_settled()
+ * until the method ends, as it waited on the lock before. The GPU work and
+ * the frame pacing are unchanged: the PFIFO thread waits exactly as long.
+ */
+static void wait_frame_fence(NV2AState *d, int fi, bool release_lock)
+{
+    PGRAPHVkState *r = d->pgraph.vk_renderer_state;
+
+    if (release_lock) {
+        pgraph_lock_release_for_fence(&d->pgraph);
+    }
+    VK_CHECK(vkWaitForFences(r->device, 1, &r->frame_fences[fi], VK_TRUE,
+                             UINT64_MAX));
+    if (release_lock) {
+        pgraph_lock_retake_after_fence(&d->pgraph);
+    }
+}
+
+static void download_surface_complete_deferred(NV2AState *d,
+                                               bool release_lock)
 {
     PGRAPHState *pg = &d->pgraph;
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -942,16 +976,13 @@ void pgraph_vk_download_surface_complete_deferred(NV2AState *d)
          */
         int fi = r->display_predownload_frame_index;
         if (qatomic_read(&r->frame_submitted[fi])) {
-            VK_CHECK(vkWaitForFences(r->device, 1, &r->frame_fences[fi],
-                                     VK_TRUE, UINT64_MAX));
+            wait_frame_fence(d, fi, release_lock);
         }
     } else if (r->deferred_downloads_frame >= 0) {
         /* Downloads were already submitted as part of a prior finish.
          * Wait for that frame's fence — no new submit needed. */
         OPT_STAT_INC(sd_complete_def_coalesced);
-        VK_CHECK(vkWaitForFences(r->device, 1,
-                                 &r->frame_fences[r->deferred_downloads_frame],
-                                 VK_TRUE, UINT64_MAX));
+        wait_frame_fence(d, r->deferred_downloads_frame, release_lock);
     } else {
         OPT_STAT_INC(sd_complete_def);
         pgraph_vk_finish(pg, VK_FINISH_REASON_SURFACE_DOWN);
@@ -989,6 +1020,11 @@ void pgraph_vk_download_surface_complete_deferred(NV2AState *d)
         g_nv2a_stats.surf_working.df_flush_ns += _t1 - _t0;
         g_nv2a_stats.surf_working.df_read_ns += nv2a_clock_ns() - _t1;
     }
+}
+
+void pgraph_vk_download_surface_complete_deferred(NV2AState *d)
+{
+    download_surface_complete_deferred(d, false);
 }
 
 static void download_surface_to_buffer(NV2AState *d, SurfaceBinding *surface,
@@ -4631,7 +4667,11 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     }
 
     SURF413_ACC(part_ns, _s413);
-    pgraph_vk_download_surface_complete_deferred(d);
+    /* Every caller of surface_update is a method or the flip-stall path on
+     * the PFIFO thread, holding pgraph.lock; the thread test keeps any other
+     * caller on the locked wait. See wait_frame_fence (#474). */
+    download_surface_complete_deferred(d,
+                                       qemu_thread_is_self(&d->pfifo.thread));
     SURF413_ACC(cdef_ns, _s413);
 
     if (upload) {
