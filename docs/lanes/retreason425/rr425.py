@@ -90,7 +90,8 @@ def report(name, tot, nwin, pcs, gfps, bound_ms=37.0):
                                     ('hc', 'lookup_tb_ptr calls'),
                                     ('hm', 'lookup_tb_ptr misses'),
                                     ('ip', 'irq pending at dispatch'),
-                                    ('iq', 'irq taken'), ('xr', 'exit_request')]:
+                                    ('iq', 'irq taken'), ('xr', 'exit_request'),
+                                    ('ih', 'idle halts (HAKUX_IDLE_HLT)')]:
         n = tot[c]
         print('   %-34s %12d %10.0f %10s %6.1f%%' % (
             '%s  %s' % (c, label), n, n / secs,
@@ -107,6 +108,13 @@ def report(name, tot, nwin, pcs, gfps, bound_ms=37.0):
     for label, good, detail in chk:
         print('     %-16s %s  %s' % (label, 'ok' if good else 'FAIL', detail))
         ok &= good
+    # The 1-in-64 timer charges its own get_clock() cost to the sample and
+    # scales it by 64: on the Nova's idle loop (~35 ns a dispatch) the timed
+    # total came to 4x the wall clock. Say so rather than print it as a cost.
+    timed_ok = tot['gapus'] + tot['tbus'] <= 1.05 * tot['dt'] * 1000
+    print('     %-16s %s  timed=%.0f s wall=%.0f s' % (
+        'timed <= wall', 'ok' if timed_ok else 'INVALID (timing only)',
+        (tot['gapus'] + tot['tbus']) / 1e6, secs))
     if frames:
         loop_ms = tot['gapus'] / 1000 / frames
         tb_ms = tot['tbus'] / 1000 / frames

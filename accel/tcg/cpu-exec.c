@@ -1112,7 +1112,7 @@ static bool rr425_miss;
 enum {
     RR_IT, RR_E, RR_EN, RR_ES, RR_EO, RR_ET, RR_EJ, RR_ESH, RR_M, RR_O, RR_R,
     RR_G, RR_GS, RR_GI, RR_GA, RR_X, RR_HC, RR_HM, RR_IP, RR_IQ, RR_XR,
-    RR_GAPNS, RR_TBNS, RR_SN, RR_TBN, RR_N
+    RR_GAPNS, RR_TBNS, RR_SN, RR_TBN, RR_IH, RR_N
 };
 static uint64_t rr425_n[RR_N];
 #define RR425_COUNT(i) (rr425_n[(i)]++)
@@ -1146,6 +1146,65 @@ static void rr425_pc_note(char cause, uint32_t pc)
     rr425_pc_drop++;
 }
 
+/*
+ * HAKUX_IDLE_HLT=1 (default off): halt in the guest kernel's idle window.
+ *
+ * The [rr425] split of Agent Under Fire mission play put 99.9% of the ~28M
+ * returns a second on one loop at 0x8001b02e: sti; nop; nop; cli; ... and
+ * back, NT's idle-loop idiom. The STI TB returns (EOB_INHIBIT_IRQ), the
+ * lone NOP in its shadow returns (EOB_NEXT), the rest chains. Two returns an
+ * iteration, each through cpu_handle_interrupt's barrier: the vCPU spends
+ * its idle time in cpu_exec_loop, spinning a host core.
+ *
+ * One vCPU and only interrupts change what that loop tests, so spinning until
+ * an interrupt arrives and waiting for one are the same to the guest. Once
+ * the NOP in the shadow has returned (IF set, the shadow over, eip at the
+ * second NOP) and no interrupt is pending, do what helper_hlt does: halt, and
+ * leave cpu_exec with EXCP_HLT. The interrupt wakes the vCPU through
+ * cpu_has_work() and is taken at the second NOP, as it would have been.
+ *
+ * The window is recognised by its bytes, fb 90 90 fa, read once per STI pc
+ * (a small cache of STI pcs that are not the idiom), and by the order: an
+ * EOB_INHIBIT_IRQ return at P, then an EOB_NEXT return from a shadow at P+1.
+ */
+static int idle_hlt_on = -1;
+static uint32_t idle_hlt_pc;            /* verified window, 0 none */
+static uint32_t idle_hlt_not[16];       /* STI pcs that are not the idiom */
+static bool idle_hlt_armed;             /* last return was the STI at pc */
+
+static void idle_hlt_check(CPUState *cpu, uint64_t tag)
+{
+    unsigned mode = (tag >> 32) & 7;
+    uint32_t pc = (uint32_t)tag;
+    bool armed = idle_hlt_armed;
+
+    idle_hlt_armed = false;
+    if (mode == 2) {
+        uint32_t *slot = &idle_hlt_not[(pc >> 2) & 15];
+        uint8_t b[4];
+
+        if (pc == idle_hlt_pc) {
+            idle_hlt_armed = true;
+        } else if (*slot != pc
+                   && cpu_memory_rw_debug(cpu, pc, b, sizeof(b), false) == 0
+                   && b[0] == 0xfb && b[1] == 0x90 && b[2] == 0x90
+                   && b[3] == 0xfa) {
+            idle_hlt_pc = pc;
+            idle_hlt_armed = true;
+        } else {
+            *slot = pc;
+        }
+        return;
+    }
+    if (armed && mode == 1 && (tag & (1ull << 40)) && pc == idle_hlt_pc + 1
+        && !cpu_has_work(cpu)) {
+        RR425_COUNT(RR_IH);
+        cpu->halted = 1;
+        cpu->exception_index = EXCP_HLT;
+        cpu_loop_exit(cpu);
+    }
+}
+
 /* Book one return from cpu_loop_exec_tb. @tb is what cpu_tb_exec returned. */
 static inline void rr425_book(CPUState *cpu, TranslationBlock *tb,
                               int tb_exit)
@@ -1155,6 +1214,9 @@ static inline void rr425_book(CPUState *cpu, TranslationBlock *tb,
 
     hakux_rr425_eob = 0;
     rr425_miss = false;
+    if (!tag) {
+        idle_hlt_armed = false;
+    }
     if (tb_exit == TB_EXIT_REQUESTED) {
         RR425_COUNT(RR_R);
         rr425_pc_note('r', cpu->cc->get_pc(cpu));
@@ -1175,6 +1237,13 @@ static inline void rr425_book(CPUState *cpu, TranslationBlock *tb,
             RR425_COUNT(RR_ESH);
         }
         rr425_pc_note('e', (uint32_t)tag);
+        if (unlikely(idle_hlt_on < 0)) {
+            const char *v = getenv("HAKUX_IDLE_HLT");
+            idle_hlt_on = v && atoi(v) > 0;
+        }
+        if (idle_hlt_on) {
+            idle_hlt_check(cpu, tag);
+        }
     } else if (miss) {
         RR425_COUNT(RR_M);
         rr425_pc_note('m', cpu->cc->get_pc(cpu));
@@ -1219,7 +1288,7 @@ static void rr425_tick(CPUState *cpu)
               " hc=%" PRIu64 " hm=%" PRIu64
               " ip=%" PRIu64 " iq=%" PRIu64 " xr=%" PRIu64
               " gapus=%" PRIu64 " tbus=%" PRIu64 " sn=%" PRIu64
-              " tbn=%" PRIu64 " pcdrop=%" PRIu64,
+              " tbn=%" PRIu64 " pcdrop=%" PRIu64 " ih=%" PRIu64,
               window, (now - prev_ns) / 1000000, d[RR_IT], d[RR_E],
               d[RR_EN], d[RR_ES], d[RR_EO], d[RR_ET], d[RR_EJ], d[RR_ESH],
               d[RR_M], d[RR_O], d[RR_R], d[RR_G], d[RR_GS], d[RR_GI],
@@ -1229,7 +1298,7 @@ static void rr425_tick(CPUState *cpu)
               d[RR_HC], d[RR_HM], d[RR_IP], d[RR_IQ], d[RR_XR],
               d[RR_SN] ? d[RR_GAPNS] / d[RR_SN] * d[RR_IT] / 1000 : 0,
               d[RR_TBN] ? d[RR_TBNS] / d[RR_TBN] * d[RR_IT] / 1000 : 0,
-              d[RR_SN], d[RR_TBN], rr425_pc_drop);
+              d[RR_SN], d[RR_TBN], rr425_pc_drop, d[RR_IH]);
 
     /* Top 16 by count: one partial selection pass per slot. */
     for (int i = 0; i < (1 << RR425_PC_BITS); i++) {
@@ -1629,6 +1698,7 @@ static void cpu_exec_longjmp_cleanup(CPUState *cpu)
     assert_no_pages_locked();
 #ifdef XBOX
     RR425_COUNT(RR_X);
+    idle_hlt_armed = false;
     hakux_rr425_eob = 0;
     rr425_miss = false;
     rr425_phase = 0;
