@@ -1336,8 +1336,10 @@ note = "RETIRED (lane.local 2026-09-26 18:40 PDT): PR #448 folded as deb0903b51 
 [lane.aufire412b]
 issues = ["412"]
 files = ["docs/lanes/aufire412b/NOTES.md", "docs/testing/predictions/aufire412b-*.json", "hw/xbox/nv2a/pgraph/profile.c"]
+released = ["docs/lanes/aufire412b/NOTES.md", "docs/testing/predictions/aufire412b-*.json", "hw/xbox/nv2a/pgraph/profile.c"]
+released_at_ready = 451
 standing = false
-note = "LENT 2026-09-27T00:52Z (hostops, board request aufire412b ask 2): hw/xbox/nv2a/pgraph/profile.c from [lane.remote] for the one Lw:%.1f field on the hakuX-cpu line only; returned to lane.remote at ready. STARTED (hostops 2026-09-27T00:16Z), briefs/aufire412b.md: #412 Agent Under Fire ~15 fps on the Nova, profile what paces the frame (vCPU side); lane.aufire412's PR #416 folded and did not move fps. A code site it finds is a board request for that file, not an edit. Serves 0.5 (#433). Row written by job.board 2026-09-27: the lane ran with no row."
+note = "RELEASED AT READY (hostops 2026-09-27T02:14Z): PR #451 is out of draft, CI green, unit gone, needs-audit-2 (cloud remediation of pass-1 M1 done 02:04Z). Files stay listed for audit and fold; profile.c goes back to lane.remote per the loan. PRIOR NOTE: LENT 2026-09-27T00:52Z (hostops, board request aufire412b ask 2): hw/xbox/nv2a/pgraph/profile.c from [lane.remote] for the one Lw:%.1f field on the hakuX-cpu line only; returned to lane.remote at ready. STARTED (hostops 2026-09-27T00:16Z), briefs/aufire412b.md: #412 Agent Under Fire ~15 fps on the Nova, profile what paces the frame (vCPU side); lane.aufire412's PR #416 folded and did not move fps. A code site it finds is a board request for that file, not an edit. Serves 0.5 (#433). Row written by job.board 2026-09-27: the lane ran with no row."
 
 [lane.titles05]
 issues = []
