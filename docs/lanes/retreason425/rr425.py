@@ -15,7 +15,11 @@ frame rate from the hakuX-perf gfps lines in the same span. It prints:
       gs+gi+ga <= g   the goto_tb split does not exceed its parent
   - the loop cost: gapus (sampled loop time, scaled to all dispatches) in ms
     per frame, beside the 37 ms/frame bound from the #412 profile;
-  - the top 16 (cause, pc) pairs summed over the span, with guest bytes.
+  - the top 16 (cause, pc) pairs summed over the span, with guest bytes;
+  - from [rr425w]: the guest's idle time and what ended each idle stretch,
+    by interrupt vector and the NV2A units pending at the wake, with the
+    busy period each wake started, in ms per frame; and the check that
+    idle + busy comes to the wall clock of the span.
 
 --selftest runs it on a built-in two-window logcat.
 """
@@ -29,6 +33,15 @@ from statistics import mean
 R = os.environ.get('DISPATCH_DIR', '/home/justin/hakux-work/dispatch') + '/results/'
 KV = re.compile(r'(\w+)=(-?\d+)')
 PC = re.compile(r' ([a-z]):([0-9a-f]{8}):([0-9a-f]{6}):(\d+)')
+WK = re.compile(r' ([0-9a-f]{2})\.([0-9a-f]{2}):(\d+):(\d+):(\d+)'
+                r':(\d+)/(\d+)/(\d+)/(\d+):(\d+)/(\d+)/(\d+)/(\d+):(\d+)')
+# The Xbox kernel maps IRQ n to vector 0x30 + n (HalGetInterruptVector).
+IRQ = {0: 'PIT timer', 1: 'USB0', 3: 'NV2A', 4: 'NIC', 5: 'APU', 6: 'ACI',
+       9: 'USB1', 11: 'SMBus', 14: 'IDE', 15: 'IDE2'}
+UNITS = ['PFIFO', 'PCRTC(vblank)', 'PGRAPH', 'pg.NOTIFY', 'pg.CTXSW',
+         'pg.BUFNOTIFY', 'pg.ERROR', 'pg.other']
+WF = ['n', 'idle_us', 'busy_us', 'i0', 'i1', 'i2', 'i3',
+      'b0', 'b1', 'b2', 'b3', 'nb']
 CAUSES = [('e', 'gen_eob plain exit_tb'), ('m', 'lookup_tb_ptr miss'),
           ('r', 'TB_EXIT_REQUESTED'), ('g', 'goto_tb not patched'),
           ('o', 'other NULL exit')]
@@ -49,6 +62,7 @@ def read(lines, lo, hi):
     nwin = 0
     pcs = Counter()
     gfps = []
+    wake = defaultdict(Counter)
     for line in lines:
         try:
             t = ts(line)
@@ -63,6 +77,16 @@ def read(lines, lo, hi):
             kv = {k: int(v) for k, v in KV.findall(line.split('[rr425]', 1)[1])}
             tot.update(kv)
             nwin += 1
+        elif '[rr425w] ' in line:
+            body = line.split('[rr425w]', 1)[1]
+            m0 = WK.search(body)
+            kv = {k: int(v) for k, v in KV.findall(body[:m0.start()] if m0 else body)
+                  if k in ('idle_us', 'busy_us', 'n', 'nb', 'drop')}
+            tot.update({'w_' + k: v for k, v in kv.items()})
+            tot['w_lines'] += 1
+            for m in WK.findall(body):
+                key = (int(m[0], 16), int(m[1], 16))
+                wake[key].update(dict(zip(WF, map(int, m[2:]))))
         elif '[rr425pc] ' in line:
             for c, pc, b, n in PC.findall(line):
                 pcs[(c, pc, b)] += int(n)
@@ -71,10 +95,50 @@ def read(lines, lo, hi):
             m = re.search(r' G:([\d.]+)', line)
             if m and float(m.group(1)) > 0:
                 gfps.append(float(m.group(1)))
-    return tot, nwin, pcs, gfps
+    return tot, nwin, pcs, gfps, wake
 
 
-def report(name, tot, nwin, pcs, gfps, bound_ms=37.0):
+def label(vec, units):
+    irq = vec - 0x30
+    s = 'v%02x' % vec + (' irq%d %s' % (irq, IRQ.get(irq, '?'))
+                         if 0 <= irq < 16 else ' (not a PIC irq)')
+    u = [UNITS[i] for i in range(8) if units >> i & 1]
+    return s + (' [' + ' '.join(u) + ']' if u else '')
+
+
+def report_wake(tot, wake, secs, frames):
+    if not tot['w_lines']:
+        print('   [rr425w]: none in the span (a build without the wake counter)')
+        return True
+    idle, busy = tot['w_idle_us'], tot['w_busy_us']
+    wall = secs * 1e6
+    per = (lambda us: '%.2f' % (us / 1000 / frames)) if frames else (lambda us: 'n/a')
+    print('   idle: %.1f%% of wall, %s ms/frame; busy %.1f%%, %s ms/frame;'
+          ' wakes %.0f/s' % (100 * idle / wall, per(idle), 100 * busy / wall,
+                             per(busy), tot['w_n'] / secs))
+    # Every microsecond of the vCPU thread is in an idle stretch or in the
+    # busy period after a wake; stretches are booked whole in the window they
+    # end in, so over many windows the two sum to the wall clock.
+    good = abs(idle + busy - wall) <= 0.05 * wall and not tot['w_drop']
+    print('     %-16s %s  idle+busy=%.1f s wall=%.1f s drop=%d' % (
+        'idle+busy~wall', 'ok' if good else 'FAIL', (idle + busy) / 1e6,
+        secs, tot['w_drop']))
+    print('   %-44s %8s %8s %9s %8s %9s  %-15s %-15s %7s' % (
+        'wake key (vector, NV2A units pending)', 'wakes/s', '/frame',
+        'idle ms/f', 'mean us', 'busy ms/f', 'idle <.1/<1/<4/>=4ms',
+        'busy <20u/<.2/<2/>=2ms', 'nb/s'))
+    for key, w in sorted(wake.items(), key=lambda kv: -(kv[1]['idle_us'] + kv[1]['busy_us'])):
+        print('   %-44s %8.0f %8s %9s %8.0f %9s  %-15s %-15s %7.0f' % (
+            label(*key), w['n'] / secs,
+            '%.2f' % (w['n'] / frames) if frames else 'n/a',
+            per(w['idle_us']), w['idle_us'] / w['n'] if w['n'] else 0,
+            per(w['busy_us']),
+            '/'.join(str(w['i%d' % i]) for i in range(4)),
+            '/'.join(str(w['b%d' % i]) for i in range(4)), w['nb'] / secs))
+    return good
+
+
+def report(name, tot, nwin, pcs, gfps, wake=None, bound_ms=37.0):
     print('== %s: %d [rr425] windows, %.1f s' % (name, nwin, tot['dt'] / 1000))
     if not nwin:
         print('   VOID: no [rr425] line in the span')
@@ -90,8 +154,7 @@ def report(name, tot, nwin, pcs, gfps, bound_ms=37.0):
                                     ('hc', 'lookup_tb_ptr calls'),
                                     ('hm', 'lookup_tb_ptr misses'),
                                     ('ip', 'irq pending at dispatch'),
-                                    ('iq', 'irq taken'), ('xr', 'exit_request'),
-                                    ('ih', 'idle halts (HAKUX_IDLE_HLT)')]:
+                                    ('iq', 'irq taken'), ('xr', 'exit_request')]:
         n = tot[c]
         print('   %-34s %12d %10.0f %10s %6.1f%%' % (
             '%s  %s' % (c, label), n, n / secs,
@@ -125,6 +188,7 @@ def report(name, tot, nwin, pcs, gfps, bound_ms=37.0):
     print('   top (cause, pc, guest bytes at pc): count, share of returns')
     for (c, pc, b), n in pcs.most_common(16):
         print('     %s %s %s %10d %6.2f%%' % (c, pc, b, n, 100.0 * n / ret if ret else 0))
+    ok &= report_wake(tot, wake or {}, secs, frames)
     return ok
 
 
@@ -135,16 +199,23 @@ SELFTEST = """\
 09-27 03:00:02.500 I/hakuX-perf(1): gfps=20 G:50.0(3.3-340.2) D:16.7
 09-27 03:00:04.000  1  2 W hakuX   : [rr425] w=1 dt=2000 it=100 e=60 en=10 es=20 eo=30 et=0 ej=0 esh=5 m=10 o=5 r=5 g=20 gs=4 gi=0 ga=16 x=0 d=0 hc=500 hm=10 ip=7 iq=6 xr=1 gapus=40000 tbus=60000 sn=2 tbn=2 pcdrop=0
 09-27 03:00:04.000  1  2 W hakuX   : [rr425pc] w=1 e:80010000:fbc3cc:20 e:80030000:cf0000:20
+09-27 03:00:04.000  1  2 W hakuX   : [rr425w] w=1 idlepc=8001b02e idle_us=3000000 busy_us=1000000 n=1100 nb=10 drop=0 30.00:1000:2000000:200000:900/100/0/0:1000/0/0/0:0 33.02:100:1000000:800000:0/0/100/0:0/0/0/100:10
 """
 
 
 def selftest():
-    tot, nwin, pcs, gfps = read(SELFTEST.splitlines(), 0, 1e9)
+    tot, nwin, pcs, gfps, wake = read(SELFTEST.splitlines(), 0, 1e9)
     assert nwin == 2 and tot['it'] == 200 and tot['e'] == 120, tot
     assert pcs[('e', '80010000', 'fbc3cc')] == 60, pcs
     assert gfps == [50.0]
-    ok = report('selftest', tot, nwin, pcs, gfps)
+    assert tot['w_idle_us'] == 3000000 and tot['w_n'] == 1100, tot
+    assert wake[(0x33, 0x02)]['n'] == 100 and wake[(0x33, 0x02)]['b3'] == 100, wake
+    assert wake[(0x30, 0)]['nb'] == 0 and wake[(0x33, 2)]['nb'] == 10
+    ok = report('selftest', tot, nwin, pcs, gfps, wake)
     assert ok
+    short = Counter(tot)
+    short['w_busy_us'] = 0          # idle + busy falls 25% short of wall
+    assert not report('selftest-short', short, nwin, pcs, gfps, wake)
     # 4 s at 20 fps = 80 frames; e = 120 returns -> 1.5 per frame
     bad = Counter(tot)
     bad['d'] = 5

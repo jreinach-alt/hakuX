@@ -15,7 +15,8 @@ import shlex
 import subprocess
 import sys
 
-FILES = ["accel/tcg/cpu-exec.c", "target/i386/tcg/translate.c"]
+FILES = ["accel/tcg/cpu-exec.c", "target/i386/tcg/translate.c",
+         "target/i386/tcg/system/seg_helper.c", "hw/xbox/nv2a/nv2a.c"]
 OLD = [
     "hw/xbox/nv2a/pgraph/glsl/psh.c",
     "hw/xbox/nv2a/pgraph/vk/texture.c",

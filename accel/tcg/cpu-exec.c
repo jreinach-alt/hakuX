@@ -1112,7 +1112,7 @@ static bool rr425_miss;
 enum {
     RR_IT, RR_E, RR_EN, RR_ES, RR_EO, RR_ET, RR_EJ, RR_ESH, RR_M, RR_O, RR_R,
     RR_G, RR_GS, RR_GI, RR_GA, RR_X, RR_HC, RR_HM, RR_IP, RR_IQ, RR_XR,
-    RR_GAPNS, RR_TBNS, RR_SN, RR_TBN, RR_IH, RR_N
+    RR_GAPNS, RR_TBNS, RR_SN, RR_TBN, RR_N
 };
 static uint64_t rr425_n[RR_N];
 #define RR425_COUNT(i) (rr425_n[(i)]++)
@@ -1147,62 +1147,183 @@ static void rr425_pc_note(char cause, uint32_t pc)
 }
 
 /*
- * HAKUX_IDLE_HLT=1 (default off): halt in the guest kernel's idle window.
+ * [rr425w]: what wakes the idle guest. The [rr425] split of Agent Under Fire
+ * mission play put 99.9% of the returns on the kernel's idle loop at
+ * 0x8001b02e (sti; nop; nop; cli; ... and back). Time there is the vCPU
+ * waiting, so the frame is set by what it waits for. This books each idle
+ * stretch against the interrupt that ends it.
  *
- * The [rr425] split of Agent Under Fire mission play put 99.9% of the ~28M
- * returns a second on one loop at 0x8001b02e: sti; nop; nop; cli; ... and
- * back, NT's idle-loop idiom. The STI TB returns (EOB_INHIBIT_IRQ), the
- * lone NOP in its shadow returns (EOB_NEXT), the rest chains. Two returns an
- * iteration, each through cpu_handle_interrupt's barrier: the vCPU spends
- * its idle time in cpu_exec_loop, spinning a host core.
+ * An idle stretch starts at an STI return (EOB_INHIBIT_IRQ) from the window,
+ * recognised by its bytes fb 90 90 fa (checked again in each 2 s window,
+ * since the code at a pc can change across a reboot into a title; a failed
+ * read is not cached), and ends when cpu_handle_interrupt takes an
+ * interrupt. The wake key is the vector (hakux_rr425_vec, set by the i386
+ * hook; ff when it was not a PIC interrupt) and, from hakux_nv2a_irq_units(),
+ * which NV2A units had an enabled interrupt pending at that moment. The busy
+ * period after a wake, up to the next idle entry, is charged to the same
+ * key: an ISR that goes straight back to idle is short, a wake that readies
+ * a thread is long. Interrupts taken while not idle are counted as nb.
  *
- * One vCPU and only interrupts change what that loop tests, so spinning until
- * an interrupt arrives and waiting for one are the same to the guest. Once
- * the NOP in the shadow has returned (IF set, the shadow over, eip at the
- * second NOP) and no interrupt is pending, do what helper_hlt does: halt, and
- * leave cpu_exec with EXCP_HLT. The interrupt wakes the vCPU through
- * cpu_has_work() and is taken at the second NOP, as it would have been.
- *
- * The window is recognised by its bytes, fb 90 90 fa, read once per STI pc
- * (a small cache of STI pcs that are not the idiom), and by the order: an
- * EOB_INHIBIT_IRQ return at P, then an EOB_NEXT return from a shadow at P+1.
+ * Per key and window: n wakes, idle and busy us, and 4-bucket histograms of
+ * the idle length (<100us <1ms <4ms >=4ms) and of the busy length (<20us
+ * <200us <2ms >=2ms). An idle stretch is booked, whole, in the window it
+ * ends in; a busy period open at a window edge is split there (its time on
+ * both sides, its whole length in the histogram of the window it ends in). So idle + busy
+ * over a span of windows comes to the wall clock of that span.
  */
-static int idle_hlt_on = -1;
-static uint32_t idle_hlt_pc;            /* verified window, 0 none */
-static uint32_t idle_hlt_not[16];       /* STI pcs that are not the idiom */
-static bool idle_hlt_armed;             /* last return was the STI at pc */
+int hakux_rr425_vec = -1;
+uint32_t hakux_nv2a_irq_units(void);
 
-static void idle_hlt_check(CPUState *cpu, uint64_t tag)
+#define RRW_N 64
+typedef struct {
+    uint32_t key;       /* vec | units << 8 | 1 << 31; 0 is empty */
+    uint32_t n, nb;
+    uint32_t ih[4], bh[4];
+    uint64_t idle_ns, busy_ns;
+} RR425Wake;
+static RR425Wake rrw[RRW_N];
+static uint64_t rrw_drop;
+static uint32_t rrw_idle_pc;            /* the window's STI pc, 0 none */
+static bool rrw_idle_ok;                /* its bytes checked this window */
+static uint32_t rrw_not[16];            /* STI pcs that are not the window */
+static bool rrw_idle;                   /* in an idle stretch */
+static int64_t rrw_t;                   /* its start, or the open wake's */
+static int64_t rrw_busy0;               /* the open busy period's start */
+static RR425Wake *rrw_open;             /* wake whose busy period is open */
+
+static RR425Wake *rrw_slot(uint32_t key)
 {
-    unsigned mode = (tag >> 32) & 7;
-    uint32_t pc = (uint32_t)tag;
-    bool armed = idle_hlt_armed;
+    for (int i = 0; i < RRW_N; i++) {
+        if (rrw[i].key == key) {
+            return &rrw[i];
+        }
+        if (!rrw[i].key) {
+            rrw[i].key = key;
+            return &rrw[i];
+        }
+    }
+    rrw_drop++;
+    return NULL;
+}
 
-    idle_hlt_armed = false;
-    if (mode == 2) {
-        uint32_t *slot = &idle_hlt_not[(pc >> 2) & 15];
-        uint8_t b[4];
+static int rrw_bucket(int64_t ns, int64_t b0, int64_t b1, int64_t b2)
+{
+    return ns < b0 ? 0 : ns < b1 ? 1 : ns < b2 ? 2 : 3;
+}
 
-        if (pc == idle_hlt_pc) {
-            idle_hlt_armed = true;
-        } else if (*slot != pc
-                   && cpu_memory_rw_debug(cpu, pc, b, sizeof(b), false) == 0
-                   && b[0] == 0xfb && b[1] == 0x90 && b[2] == 0x90
-                   && b[3] == 0xfa) {
-            idle_hlt_pc = pc;
-            idle_hlt_armed = true;
-        } else {
+/* An STI return at @pc: if it is the idle window, a stretch starts. */
+static void rrw_sti(CPUState *cpu, uint32_t pc)
+{
+    uint32_t *slot = &rrw_not[(pc >> 2) & 15];
+    uint8_t b[4];
+    int64_t now;
+
+    if (rrw_idle) {
+        return;
+    }
+    if (pc != rrw_idle_pc || !rrw_idle_ok) {
+        if (*slot == pc) {
+            return;
+        }
+        if (cpu_memory_rw_debug(cpu, pc, b, sizeof(b), false) != 0) {
+            return;
+        }
+        if (b[0] != 0xfb || b[1] != 0x90 || b[2] != 0x90 || b[3] != 0xfa) {
             *slot = pc;
+            if (pc == rrw_idle_pc) {
+                rrw_idle_pc = 0;
+            }
+            return;
+        }
+        rrw_idle_pc = pc;
+        rrw_idle_ok = true;
+    }
+    now = get_clock();
+    if (rrw_open) {
+        rrw_open->busy_ns += now - rrw_t;
+        rrw_open->bh[rrw_bucket(now - rrw_busy0, 20000, 200000, 2000000)]++;
+        rrw_open = NULL;
+    }
+    rrw_idle = true;
+    rrw_t = now;
+}
+
+/* cpu_handle_interrupt took an interrupt. */
+static void rrw_wake(void)
+{
+    uint32_t key = (uint8_t)hakux_rr425_vec
+                   | (hakux_nv2a_irq_units() & 0xff) << 8 | 1u << 31;
+    RR425Wake *w = rrw_slot(key);
+    int64_t now;
+
+    if (!rrw_idle) {
+        if (w) {
+            w->nb++;
         }
         return;
     }
-    if (armed && mode == 1 && (tag & (1ull << 40)) && pc == idle_hlt_pc + 1
-        && !cpu_has_work(cpu)) {
-        RR425_COUNT(RR_IH);
-        cpu->halted = 1;
-        cpu->exception_index = EXCP_HLT;
-        cpu_loop_exit(cpu);
+    now = get_clock();
+    rrw_idle = false;
+    if (w) {
+        int64_t idle = now - rrw_t;
+        w->n++;
+        w->idle_ns += idle;
+        w->ih[rrw_bucket(idle, 100000, 1000000, 4000000)]++;
     }
+    rrw_open = w;
+    rrw_t = rrw_busy0 = now;
+}
+
+static int rrw_cmp(const void *a, const void *b)
+{
+    const RR425Wake *x = a, *y = b;
+    uint64_t xs = x->idle_ns + x->busy_ns, ys = y->idle_ns + y->busy_ns;
+    return xs < ys ? 1 : xs > ys ? -1 : 0;
+}
+
+static void rrw_tick(unsigned window, int64_t now)
+{
+    uint32_t open_key = 0;
+    RR425Wake w[RRW_N];
+    uint64_t idle = 0, busy = 0, n = 0, nb = 0;
+    char buf[2048];
+    int off = 0;
+
+    if (rrw_open) {
+        rrw_open->busy_ns += now - rrw_t;
+        rrw_t = now;
+        open_key = rrw_open->key;
+        rrw_open = NULL;
+    }
+    memcpy(w, rrw, sizeof(w));
+    qsort(w, RRW_N, sizeof(w[0]), rrw_cmp);
+    buf[0] = 0;
+    for (int i = 0; i < RRW_N && w[i].key; i++) {
+        idle += w[i].idle_ns;
+        busy += w[i].busy_ns;
+        n += w[i].n;
+        nb += w[i].nb;
+        if (off < (int)sizeof(buf) - 96) {
+            off += snprintf(buf + off, sizeof(buf) - off,
+                            " %02x.%02x:%u:%" PRIu64 ":%" PRIu64
+                            ":%u/%u/%u/%u:%u/%u/%u/%u:%u",
+                            w[i].key & 0xff, (w[i].key >> 8) & 0xff,
+                            w[i].n, w[i].idle_ns / 1000,
+                            w[i].busy_ns / 1000, w[i].ih[0], w[i].ih[1],
+                            w[i].ih[2], w[i].ih[3], w[i].bh[0], w[i].bh[1],
+                            w[i].bh[2], w[i].bh[3], w[i].nb);
+        }
+    }
+    JC425_LOG("[rr425w] w=%u idlepc=%08x idle_us=%" PRIu64
+              " busy_us=%" PRIu64 " n=%" PRIu64 " nb=%" PRIu64
+              " drop=%" PRIu64 "%s", window, rrw_idle_pc, idle / 1000,
+              busy / 1000, n, nb, rrw_drop, buf);
+    memset(rrw, 0, sizeof(rrw));
+    rrw_drop = 0;
+    if (open_key) {
+        rrw_open = rrw_slot(open_key);
+    }
+    rrw_idle_ok = false;
 }
 
 /* Book one return from cpu_loop_exec_tb. @tb is what cpu_tb_exec returned. */
@@ -1214,9 +1335,6 @@ static inline void rr425_book(CPUState *cpu, TranslationBlock *tb,
 
     hakux_rr425_eob = 0;
     rr425_miss = false;
-    if (!tag) {
-        idle_hlt_armed = false;
-    }
     if (tb_exit == TB_EXIT_REQUESTED) {
         RR425_COUNT(RR_R);
         rr425_pc_note('r', cpu->cc->get_pc(cpu));
@@ -1237,12 +1355,8 @@ static inline void rr425_book(CPUState *cpu, TranslationBlock *tb,
             RR425_COUNT(RR_ESH);
         }
         rr425_pc_note('e', (uint32_t)tag);
-        if (unlikely(idle_hlt_on < 0)) {
-            const char *v = getenv("HAKUX_IDLE_HLT");
-            idle_hlt_on = v && atoi(v) > 0;
-        }
-        if (idle_hlt_on) {
-            idle_hlt_check(cpu, tag);
+        if (mode == 2) {
+            rrw_sti(cpu, (uint32_t)tag);
         }
     } else if (miss) {
         RR425_COUNT(RR_M);
@@ -1288,7 +1402,7 @@ static void rr425_tick(CPUState *cpu)
               " hc=%" PRIu64 " hm=%" PRIu64
               " ip=%" PRIu64 " iq=%" PRIu64 " xr=%" PRIu64
               " gapus=%" PRIu64 " tbus=%" PRIu64 " sn=%" PRIu64
-              " tbn=%" PRIu64 " pcdrop=%" PRIu64 " ih=%" PRIu64,
+              " tbn=%" PRIu64 " pcdrop=%" PRIu64,
               window, (now - prev_ns) / 1000000, d[RR_IT], d[RR_E],
               d[RR_EN], d[RR_ES], d[RR_EO], d[RR_ET], d[RR_EJ], d[RR_ESH],
               d[RR_M], d[RR_O], d[RR_R], d[RR_G], d[RR_GS], d[RR_GI],
@@ -1298,7 +1412,7 @@ static void rr425_tick(CPUState *cpu)
               d[RR_HC], d[RR_HM], d[RR_IP], d[RR_IQ], d[RR_XR],
               d[RR_SN] ? d[RR_GAPNS] / d[RR_SN] * d[RR_IT] / 1000 : 0,
               d[RR_TBN] ? d[RR_TBNS] / d[RR_TBN] * d[RR_IT] / 1000 : 0,
-              d[RR_SN], d[RR_TBN], rr425_pc_drop, d[RR_IH]);
+              d[RR_SN], d[RR_TBN], rr425_pc_drop);
 
     /* Top 16 by count: one partial selection pass per slot. */
     for (int i = 0; i < (1 << RR425_PC_BITS); i++) {
@@ -1325,7 +1439,8 @@ static void rr425_tick(CPUState *cpu)
                         (char)(top[i].key >> 32), pc, b[0], b[1], b[2],
                         top[i].n);
     }
-    JC425_LOG("[rr425pc] w=%u%s", window++, buf);
+    JC425_LOG("[rr425pc] w=%u%s", window, buf);
+    rrw_tick(window++, now);
 
 reset:
     memcpy(prev, rr425_n, sizeof(prev));
@@ -1698,7 +1813,6 @@ static void cpu_exec_longjmp_cleanup(CPUState *cpu)
     assert_no_pages_locked();
 #ifdef XBOX
     RR425_COUNT(RR_X);
-    idle_hlt_armed = false;
     hakux_rr425_eob = 0;
     rr425_miss = false;
     rr425_phase = 0;
@@ -2012,8 +2126,14 @@ static inline bool cpu_handle_interrupt(CPUState *cpu,
              * True when it is, and we should restart on a new TB,
              * and via longjmp via cpu_loop_exit.
              */
+#ifdef XBOX
+            hakux_rr425_vec = -1;
+#endif
             if (tcg_ops->cpu_exec_interrupt(cpu, interrupt_request)) {
                 RR425_COUNT(RR_IQ);
+#ifdef XBOX
+                rrw_wake();
+#endif
                 if (!tcg_ops->need_replay_interrupt ||
                     tcg_ops->need_replay_interrupt(interrupt_request)) {
                     replay_interrupt();
