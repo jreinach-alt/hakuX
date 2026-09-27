@@ -326,3 +326,50 @@ On resume:
 3. If `range` dominates, the cut is aimed wrong. Say so, and re-aim the cut before queueing
    anything.
 4. Read the arm verdict and every scores1.tsv `status`.
+
+## Why attempt 2 did not finish (resume of 2026-09-27 09:17 PDT)
+
+It ended on a `waiting:` (PR #479, 14:25Z) for two requests outside the session: the Nova pilot and
+the goldens must-not-move arm. The pilot finished at 08:56 PDT. The arm pair
+(`1-1790519668-arms-forza414-base/fix`) is still queued. The two older requests from attempt 1
+(`1790450265`, DONE, and `1790450270`, ERROR) belong to #418, which folded. They are not re-read here.
+
+## 12. The split: `surfupd` pays every finish (pilot `1-1790518618-forza414-1930404`)
+
+Pilot run: Nova, apk 1a8d9178e52c (4b22f2526b), perflog, survey route. The race is the 111 `[sdcall]`
+lines from 08:51:30 to 08:56:08 PDT, each summing 60 guest frames: 6660 frames at gfps 23.
+
+| caller | fin | fence | pre | dl | wait ms | fin / frame | wait ms / frame |
+|---|---|---|---|---|---|---|---|
+| `surfupd` | 46620 | 0 | 6647 | 147232 | 139378 | **7.00** | **20.9** |
+| `range` | 13 | 0 | 0 | 36 | 39 | 0.002 | 0.01 |
+| all others | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+
+- `pgraph_vk_surface_update`'s completion is 99.97% of the finishes and of the wait. It waits 20.9 ms
+  per frame, which matches lane.slowdown462's 18.1 ms of `pgraph_vk_finish` per frame. `expire` has none.
+  `range` has 13, so the section 9 alternative is refuted.
+- `su_upl` = 19993, which is 42.9% of `surfupd`'s `fin` and 3.0 per frame. In those updates a
+  binding was about to upload from VRAM, so the cut at 94f002d309 still completes there. The cut can
+  let go of at most the other 57%: 4.0 finishes and about 12 ms of wait per frame, if the waits are
+  uniform. The deferred batches then ride the next finish that does happen.
+- **The queued fix arm coalesces this caller.** 94f002d309's change is in
+  `surface_update_may_defer_downloads`, the `SDC_SURF_UPDATE` site. The arms stay queued.
+
+**Price, revised (a bound).** Finishes per frame fall from 7.0 to about 3.0, and the wait falls by up to
+~12 ms of the ~43 ms frame: about 23 -> 30 fps at best, if the 3 remaining finishes wait no longer
+carrying larger batches. The soak prediction's >= 1.15x mover (~26.5 fps) sits inside that bound.
+
+**Next cut, not in this PR.** `su_upl` counts any `upload_pending` binding, whether or not its range
+overlaps a pending download. Restricting the check to `deferred_downloads_overlap_range(binding)`
+would free those of the 3.0 per frame that read VRAM the pending copies do not write. How many that is
+needs one more counter (overlap vs not), so it waits for this arm's verdict.
+
+## 13. Runs queued this session (priority 1, Nova)
+
+- Soak A/B, `forza414-coalesce-soak.json`, read by hand: base `1-1790525921-forza414-1054756`
+  (4b22f2526b), fix `1-1790525923-forza414-1055334` (94f002d309). Both are 420 s, perflog, survey route.
+- The goldens must-not-move arm pair is still `1-1790519668-arms-forza414-base/fix`, judged by the arms job.
+
+On resume: read both soaks' gfps and `[sdcall]` over the race (the fix arm's `su_deferred` should be
+about 4.0 per frame and `surfupd` `fin` about 3.0), then the `[job.arms]` verdict and every
+scores1.tsv `status`. Then merge master, and mark #479 ready when both hold.
