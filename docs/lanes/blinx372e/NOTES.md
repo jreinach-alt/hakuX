@@ -69,10 +69,12 @@ combines the four lanes with rotations. surfwatch382's hash has the same
 blind spot for its gap check. That is left alone here, because it is outside
 this brief.
 
-**Measurement: pending the arm** (sec 4, P2). What would show the gap is real
-in the demo: `cpu_writes` > 0 or `vram_changed` > 0 in B's window. Either
-one still takes the old path, so a nonzero count costs speed, not
-correctness.
+**Measurement (B, `1-1790483698-blinx372e-3616042`, window 135-265 s):**
+`arms=1282 copies=1282 cpu_writes=0 vram_changed=0 lost_writes=0`. In the
+demo the guard armed at every big-to-small flip, and every small-to-big flip
+copied. No guest CPU store reached the shelved large binding's range, and its
+memory hash never changed. The gap exists in the code but does not occur in
+the demo. Its guard costs two hashes of 1.2 MB per frame (sec 3).
 
 ## 2. The hunk
 
@@ -165,9 +167,61 @@ address inside a test:
 - `Color_zeta_overlap/AdjacentWithClipOffset_*` go 128 -> 126 at pitch 512,
   in texture memory.
 
-Results: pending.
+### Results (judged 2026-09-27)
 
-### Waiting (2026-09-26 21:40 PDT)
+**Demo A/B: FAIL as registered, on P3 only.** A `1790483694-blinx372e-3615063`
+and B `1-1790483698-blinx372e-3616042` both ran on the Thor, judged by
+`abquad.py` over 135-265 s.
+
+| | A (988e51328e) | B (489394939f) |
+|---|---|---|
+| gfps | 11.87 | 12.06 |
+| sd/frame | 1.90 | 0.975 |
+| sd per flip | 0.989 | 0.502 |
+| quad copies / small-to-big flips | - | 1282 / 1282 |
+| Tot ms median | 61.6 | 64.9 |
+| GPU ms median | 35.6 | 40.1 |
+| Sub ms median | 28.6 | 31.8 |
+
+M0, M1, P0, P1 and P2 pass. P3 fails: B/A = 1.016 (at least 1.10 was
+registered), and B is at 12.06 fps (13.5 to 20 was registered). 1.016 is the
+blinx372c no-change spread exactly.
+
+The mechanism works: one of the two synchronous downloads per flip is gone,
+on every flip. The frame did not get faster. Sub **rose** by 3.2 ms and GPU
+by 4.5 ms. This is sec 3's named rival world. The remaining big-to-small
+`pgraph_vk_finish` now waits for all the GPU work the removed wait used to
+drain. So the frame is bound by GPU work behind one synchronous point, not
+by the number of synchronous points. Taking out one wait of two does not
+halve the waiting when the GPU queue is the long pole. The 1.2 MB CPU hashes
+(sec 3) may account for part of the Tot rise. They are not separated here.
+
+B's frames at 150-240 s show no depth corruption in the top-left quarter
+(f00006 looked at by eye).
+
+**Must-not-move: PASS, 309/309, but inert for the copy.** The arms job's
+verdict is on PR #467 (base `1-1790483754-arms-blinx372e-base-3630491`, fix
+`1-1790483755-arms-blinx372e-fix-3630543`). B's logcat ends
+`[quad372] copies=0 arms=4 cpu_writes=0 vram_changed=0`. The guard armed 4
+times and never copied, and `[evict372] handoffs=2` held in both arms. The
+arm shows that the hunk leaves those 309 captures alone. It does **not** show
+that the copy draws correctly, because no nxdk test took the copy.
+`Surface_clip/rt_x320y240_w320h240` did not copy. Why it declined was not
+read; a lane that takes this hunk further must find out first.
+
+**Outcome.** Per the brief, the result is not re-fit and the PR is not marked
+ready. The hunk removes half the synchronous downloads with no fps gain, and
+only the demo's frames exercise its correctness. That does not justify landing
+it. The branch stays open as the measured record. master was merged at the
+end (#440 folded), and `hw/` in the diff is this hunk alone.
+
+### Why attempt 1 did not finish
+
+Attempt 1 ended correctly in `waiting:`, on the two Thor soaks (then about
+five requests deep in the queue), the must-not-move arms verdict and CI.
+handback resumed it once all three had landed. Nothing was lost.
+
+### Waiting (2026-09-26 21:40 PDT, resolved 2026-09-27)
 
 Waiting on the two soaks above (about five requests were ahead of them), on
 the arms job's `[job.arms]` verdict for `blinx372e-mnm.json`, and on CI for
@@ -203,5 +257,11 @@ f03876f0df. On resume:
 - Do not remove a watch and then register its replacement when the range
   holds pixels newer than VRAM. Both are queued to the vCPU, so queue the
   insert first (sec 1).
+- Do not expect fewer synchronous finishes to mean more fps on Blinx. Halving
+  them (sd per flip 0.99 to 0.50) moved gfps 11.87 to 12.06, and Sub rose.
+  The remaining wait absorbs the GPU work. The next lever is the GPU work
+  per frame (GPU 36-40 ms), or removing the last wait entirely, not the
+  wait count.
+- Do not count the must-not-move arm as coverage for the copy: it made 0.
 - Do not use `surface_watch_hash` as a guard on depth data. It cannot see
   bit 63 of some words (sec 1).
