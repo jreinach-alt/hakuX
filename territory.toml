@@ -1316,3 +1316,10 @@ issues = ["412"]
 files = ["docs/lanes/aufire412b/NOTES.md", "docs/testing/predictions/aufire412b-*.json", "hw/xbox/nv2a/pgraph/profile.c"]
 standing = false
 note = "LENT 2026-09-27T00:52Z (hostops, board request aufire412b ask 2): hw/xbox/nv2a/pgraph/profile.c from [lane.remote] for the one Lw:%.1f field on the hakuX-cpu line only; returned to lane.remote at ready. STARTED (hostops 2026-09-27T00:16Z), briefs/aufire412b.md: #412 Agent Under Fire ~15 fps on the Nova, profile what paces the frame (vCPU side); lane.aufire412's PR #416 folded and did not move fps. A code site it finds is a board request for that file, not an edit. Serves 0.5 (#433). Row written by job.board 2026-09-27: the lane ran with no row."
+
+
+[lane.cloud-audit2-434]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-434, audit pass 2 of PR #434 on branch lane/tbchurn424, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 434` removes this row when the unit ends."
