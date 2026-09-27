@@ -93,7 +93,7 @@ min held the gap to the CPU grew (nav frames 016 -> 017), with LX max it
 closed (021 -> 022). Frames:
 `~/hakux-work/nav/kabuki.first-run-20260926T183708/022-forward5.png` (nav)
 and `scratch/replay/kabuki-warriors-184913/185256-gameplay.png` (replay;
-copied to `docs/lanes/titleroutes/frames/`).
+640x480 copy in `docs/lanes/titleroutes/frames/`).
 
 - The first fight of the nav session ran at 2-16 fps with the game clock at
   about 1/20 of real time (shaders compiling for the first time); both
@@ -106,3 +106,38 @@ copied to `docs/lanes/titleroutes/frames/`).
   starts by itself (probe session `kabuki-after.probe-20260926T185342`), so
   the 420 s window holds fights plus a few seconds of KO/winner poses per
   round.
+
+### Session 2: HELD Nova, 19:02-19:17 PDT (15 min), battery 61% -> 56%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Batman: Dark Tomorrow (4B420001) | nova | none | - | alley fight vs three thugs; Batman is down in 5-15 s whatever is pressed |
+| 007: Nightfire (45410026) | nova | `nightfire.route` | yes (19:14; one failed replay before it, 19:10) | Paris prologue: scoped on-rails sniping, auto-aim on, in-engine cutscenes between sections |
+
+**Batman: Dark Tomorrow: no route (blocked on combat).** DC logo -> START ->
+title -> START -> intro FMV (A, START) -> an alley with three thugs and a
+HUD (health 53/91). The stick moves Batman, so it is gameplay, but he is
+knocked out in 5-15 s idle and in ~5 s mashing X, then GAME OVER ->
+CONTINUE (A) -> BATGEAR SELECTION (START) -> "start with this equipment?"
+YES (A) -> the same alley. A soak would be mostly those menus. What would
+unblock it: the button map for block/attack (A, B, X, Y and the triggers
+were not tried one by one), or a later chapter reached by a save. Draft
+inputs: `scratch/batman.draft.route` (not committed).
+
+**007: Nightfire.** No profile step and no main menu: title START -> gun
+barrel (A) -> the Paris prologue, "Tutorial: Limited weapon control". The
+first RT pull shot a car's tyre (crash cutscene), so RT drives the game.
+Two traps:
+
+- Sweeping the aim (RX) while firing is not what fails the mission; idling
+  is. Both the nav session and replay 1 failed ("Mission Failed: REPLAY
+  TUTORIAL") during a 16 s idle before the mark with a target up.
+- The prologue ran ahead of the nav session's timing in replay 1, so a
+  timed shot missed its target. The route now marks gameplay right after
+  the unpause and pulls RT every 0.8 s from there; auto-aim does the aiming
+  and a pull during a cutscene does nothing. Replay 2: sniping at the mark,
+  an in-engine cutscene and no failure 75 s later
+  (`scratch/replay/nightfire-191407/`, 640x480 copy of the mark frame in
+  `frames/nightfire-replay-gameplay.jpg`). What the 420 s window holds
+  after those 75 s is not seen: if the prologue ends in a free-roam
+  section, fire-only input will stand still there.

@@ -113,7 +113,8 @@ notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 
 [titles."45410026"]
 name = "007: Nightfire"
 iso = { nova = "45410026-007_Nightfire.xiso.iso" }
-notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+route = "nightfire"
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default. Route by lane.titleroutes 2026-09-26 (Nova): Paris prologue, on-rails sniping with auto-aim."
 
 [titles."4D530003"]
 name = "Project Gotham Racing"
@@ -203,3 +204,4 @@ name = "Kabuki Warriors"
 iso = { nova = "43560001-Kabuki_Warriors.xiso.iso" }
 route = "kabuki-warriors"
 notes = "Route by lane.titleroutes 2026-09-26 (Nova): Tour Mode fight vs CPU, no profile step. Own target not yet measured, so the 30 default."
+
