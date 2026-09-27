@@ -571,7 +571,8 @@ Blinx 2 idle until the PGRAPH ERROR interrupt that `NV097_NO_OPERATION` with a
 parameter raises. So their frame is set by how soon the puller dispatches that
 callback after the guest publishes it.
 
-`dad7864b73`, pfifo.c only, compiled only in Android perflog builds. It writes
+`dad7864b73` plus `76cba82fd2`, pfifo.c only, compiled only in Android perflog
+builds. It writes
 one `hakuX-perf cblat` line per 2 s window.
 
 - **Which kick.** A 128-entry ring of (DMA_PUT, time, split snapshot) is filled
@@ -602,6 +603,11 @@ one `hakuX-perf cblat` line per 2 s window.
   sums cannot exceed the frame. `lat` is the full kick -> dispatch.
 - `dup` is read before the dispatch, because the NOP handler sets the ERROR bit
   itself. It counts callbacks the Android handler drops.
+- A callback is stamped after its own dispatch (`76cba82fd2`). The first cut
+  stamped it before, while the counters already held the NOP method's time
+  (its BQL wait included), so `rest` would have read negative by that much.
+  Both predictions were re-registered on `76cba82fd2`, and the two requests on
+  `dad7864b73` were withdrawn unrun.
 - **Checks.** `ndkcheck.py` passes on pfifo.c in both NV2A_PERF_LOG modes with
   no warnings in the file; it now prints the file's warnings too. A `#error`
   in the block fails perflog=1 and passes perflog=0. `check_android_guards.py`
@@ -612,6 +618,61 @@ one `hakuX-perf cblat` line per 2 s window.
 - **Predictions:** `flip474-cblat-auf.json`, `flip474-cblat-blinx.json` (one
   arm each; M1 ties the count to retreason425's ERROR interrupts per frame; M2
   is the no-overlap check; S1 is labelled a guess).
+
+### 14. O1's consumers (lazy completion of the flip's display download), by reading
+
+This is the list promised to lane.forza414 on #474. O1 would keep
+`display_predownload_pending` set across draws and complete on a consumer.
+Line numbers are this branch's (master 5ec9b2267f + pfifo.c). An Explore pass
+did the read; rows 2 and 4 were checked by hand (draw.c:3590 tags
+`deferred_downloads_frame` only while it is < 0, and a record goes into
+`r->command_buffer`, draw.c:3981).
+
+**O1 is not a one-gate change.** The completion assumes the display download
+is completed within a method of the flip:
+
+| # | where | what breaks if completion is later |
+|---|---|---|
+| 1 | surface.c:4673 `pgraph_vk_surface_update` (today's site) | must still complete when this update itself recorded downloads (evict 4360/4428, overlap 2626, 4513, expire 3103): the uploads at 4692/4706 read VRAM |
+| 2 | surface.c:972-980, display branch of `download_surface_complete_deferred` | waits only on the flip's fence, then copies ALL staged entries, including ones recorded after the flip into the unsubmitted current CB: stale bytes, and 912-916 clears `draw_dirty`. 1010-1013 marks the display surface clean at its *current* generation, overriding 912-916. Reachable today when `update_surface_part` records before 4673; O1 makes it the normal case |
+| 3 | surface.c:392 `pgraph_vk_download_surfaces_in_range_if_dirty` (texture.c:1938, vertex.c:50, blit.c:558/560/900) | calls `pgraph_vk_complete_staged_downloads` raw: the flag stays set; 436 later waits on the old fence (row 2) |
+| 4 | draw.c:3590 finish | never re-tags post-flip entries; the cause of row 2 |
+| 5 | draw.c:3785-3797 rotation into the flip's slot (and 3656, 3724) | completes staging but never clears `display_predownload_*`: prerecord is off for good (1665), and the next completion waits on a reused slot `fi`. With 3 slots and several finishes a frame, O1 hits this nearly every frame |
+| 7 | surface.c:1660-1716 prerecord at the next flip (renderer.c:2309) | a second flip finds the flag set and records nothing; entries pile toward MAX 64 (470) |
+| 11 | surface.c:2186-2200 access callback, write to a shelved/invalid surface | clears `draw_dirty`, then the late staged copy overwrites the guest's write |
+| 12 | surface frees: 3078, 2647, 3131, 4900; reuse 3058+4405 | `deferred_downloads_clear_surface` (825) does not clear `display_predownload_surface`: use-after-free at 996-1013 |
+| 17 | renderer.c:377-420 `diag_download_surface` | writes staging offset 0 without completing (diagnostic only) |
+
+Already complete first, and so are as correct as row 2: `download_surface_to_buffer`
+(1036, retry 1649), `pgraph_vk_process_pending_downloads` (1751, from the vCPU access
+callback and the display thread's wait), `pgraph_vk_download_dirty_surfaces` (1834,
+savevm and scale), expire (3114), fdump (renderer.c:2192), reset/post_load flush.
+Unaffected: scan-out reads the VkImage (display.c:1729); `surface_handoff_partner`
+(3920) only declines longer.
+
+**What O1 needs, in order:** (a) row 2/4: split the display entry from later
+entries, each completed on its own fence, and drop 1010-1013's override; (b)
+row 3: go through `download_surface_complete_deferred`; (c) rows 5/6: clear the
+display bookkeeping at slot rotation, which is also the natural lazy completion
+point, since that fence has just been waited; (d) row 7: complete before the next
+prerecord; (e) row 1: complete when the update recorded downloads; (f) rows 11,
+12, 17.
+
+### Waiting (resumed session, from 17:36Z)
+
+Five Nova requests, priority 1, perflog, survey route:
+
+| request | ref | what | read with |
+|---|---|---|---|
+| `1-1790527182-flip474-1639694` | `4b22f2526b` | DOA A, forza414's base | `o4read.py --from 151 --to 288` |
+| `1-1790527188-flip474-1640231` | `94f002d309` | DOA B, forza414's fix | same |
+| `1-1790527190-flip474-1640480` | `3112e410db` | DOA O4 pilot | same, `--show` |
+| `1-1790530526-flip474-2801414` | `76cba82fd2` | AUF `[cblat]`, 420 s | `cblread.py --from 299 --to 420 --show` |
+| `1-1790530526-flip474-2807172` | `76cba82fd2` | Blinx `[cblat]`, 420 s | `cblread.py --from 255 --to 411 --show` |
+
+The pilot gate admitted the last two on `pilots/flip474.ok` (36 min held).
+When they land: judge every leg of the five predictions, post on #474, #462,
+#414 (DOA) and #425 (cblat), then mark #485 ready.
 
 ## Do not repeat
 
