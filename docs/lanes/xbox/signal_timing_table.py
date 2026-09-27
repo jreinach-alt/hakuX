@@ -100,6 +100,53 @@ def signals(root):
     return out
 
 
+CB = (("ST_CB_1_Empty", "empty frame, 1 callback"), ("ST_CB_2_DOA", "500 quads + RT switch, 1 callback"),
+      ("ST_CB_3_DOA15", "500 quads + RT switch, 15 callbacks"))
+
+
+def cb_signals(root):
+    """v3, the push-buffer callback (NV097_NO_OPERATION with PB_TIMESTAMP): {signal: stats in us}, plus frame medians."""
+    out, frames = {}, {}
+    for test, label in CB:
+        d = load(root, test)
+        if not d or not d[2]:
+            continue
+        freq, summ, cols, rows = d
+        n = int(summ.get("callbacks_per_frame", "1"))
+        ok = [r for r in rows if r[cols.index("semaphore_seen")] and r[cols.index("callbacks_seen")] >= n]
+        k2c, c2s, fr = [], [], []
+        for r in ok:
+            for c in range(n):
+                k2c.append(us(r[cols.index("dpc_%d" % c)] - r[cols.index("kick_%d" % c)], freq))
+            c2s.append(us(r[cols.index("semaphore_seen")] - r[cols.index("dpc_%d" % (n - 1))], freq))
+            fr.append(us(r[cols.index("semaphore_seen")] - r[cols.index("start")], freq))
+        out["callback: its kick -> DPC handled, " + label] = stats(k2c)
+        out["callback: DPC handled -> the semaphore after it visible (puller resumed), " + label] = stats(c2s)
+        out["frame: first draw -> semaphore visible, " + label] = stats(fr)
+        frames[test] = statistics.median(fr) if fr else None
+    if frames.get("ST_CB_2_DOA") and frames.get("ST_CB_3_DOA15"):
+        out["per extra callback: (15-callback frame - 1-callback frame) / 14, medians"] = dict(
+            n=1, median=(frames["ST_CB_3_DOA15"] - frames["ST_CB_2_DOA"]) / 14, p95=float("nan"),
+            p5=float("nan"), min=float("nan"), max=float("nan"))
+    return out
+
+
+def cb_legs(root):
+    res = []
+    for test, leg, need in (("ST_CB_1_Empty", "I7", 1), ("ST_CB_3_DOA15", "I8", 15)):
+        d = load(root, test)
+        if not d:
+            res.append((leg, False, "no %s.txt" % test))
+            continue
+        freq, s, cols, rows = d
+        seen_all = all(r[cols.index("callbacks_seen")] >= need for r in rows) if rows else False
+        holds = s.get("timeouts") == "0" and s.get("stale_callback_times") == "0" and s.get("reps") == "300" and seen_all
+        res.append(("%s %s: 300 reps, 0 timeouts, 0 stale callback times, %d callback(s) seen each" % (leg, test, need),
+                    holds, "reps %s, timeouts %s, stale %s" % (s.get("reps"), s.get("timeouts"),
+                                                               s.get("stale_callback_times"))))
+    return res
+
+
 def legs(root, console):
     """The instrument legs. Returns [(leg, holds, detail)]."""
     res = []
@@ -137,7 +184,22 @@ def main(argv=None):
     ap.add_argument("--console", required=True)
     ap.add_argument("--hakux", required=True)
     ap.add_argument("--device", default="handheld")
+    ap.add_argument("--callbacks", action="store_true", help="v3: the push-buffer callback rows and legs I7, I8")
     a = ap.parse_args(argv)
+    if a.callbacks:
+        ok = True
+        for name, root, console in (("console", a.console, True), ("hakuX " + a.device, a.hakux, False)):
+            for leg, holds, detail in legs(root, False) + (cb_legs(root) if console else []):
+                print("%s %s: %s (%s)" % (name, leg, "holds" if holds else "FAILS", detail))
+                ok = ok and holds
+        c, h = cb_signals(a.console), cb_signals(a.hakux)
+        fmt = lambda s: ("%.1f / %.1f (n=%d)" % (s["median"], s["p95"], s["n"]) if s["n"] > 1 else "%.1f" % s["median"]) if s else "no data"
+        print()
+        print("| signal | console median / p95 (us) | hakuX %s median / p95 (us) |" % a.device)
+        print("|---|---:|---:|")
+        for k in list(c) + [k for k in h if k not in c]:
+            print("| %s | %s | %s |" % (k, fmt(c.get(k)), fmt(h.get(k))))
+        return 0 if ok else 1
     ok = True
     for name, root, console in (("console", a.console, True), ("hakuX " + a.device, a.hakux, False)):
         for leg, holds, detail in legs(root, console):

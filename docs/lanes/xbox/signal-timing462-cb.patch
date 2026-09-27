@@ -1,0 +1,760 @@
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 91453be..7c1d9a6 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -195,6 +195,8 @@ add_dependencies(
+ add_executable(
+         nxdk_pgraph_tests
+         tests/alpha_func_tests.cpp
++        tests/signal_timing_tests.cpp
++        tests/signal_timing_tests.h
+         tests/alpha_func_tests.h
+         tests/antialiasing_tests.cpp
+         tests/antialiasing_tests.h
+diff --git a/src/main.cpp b/src/main.cpp
+index 1dfd467..dde0b4c 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -38,6 +38,7 @@
+ #include "test_driver.h"
+ #include "test_host.h"
+ #include "tests/alpha_func_tests.h"
++#include "tests/signal_timing_tests.h"
+ #include "tests/antialiasing_tests.h"
+ #include "tests/attribute_carryover_tests.h"
+ #include "tests/attribute_explicit_setter_tests.h"
+@@ -473,6 +474,7 @@ static void RegisterSuites(TestHost& host, RuntimeConfig& runtime_config,
+   // -- Begin REG_TEST --
+ 
+   REG_TEST(AlphaFuncTests)
++  REG_TEST(SignalTimingTests)
+   REG_TEST(AntialiasingTests)
+   REG_TEST(AttributeCarryoverTests)
+   REG_TEST(AttributeExplicitSetterTests)
+diff --git a/src/tests/signal_timing_tests.cpp b/src/tests/signal_timing_tests.cpp
+new file mode 100644
+index 0000000..57bdb27
+--- /dev/null
++++ b/src/tests/signal_timing_tests.cpp
+@@ -0,0 +1,641 @@
++#include "signal_timing_tests.h"
++
++#include <pbkit/pbkit.h>
++#include <xboxkrnl/xboxkrnl.h>
++
++#include <algorithm>
++#include <cstdio>
++#include <cstring>
++#include <memory>
++#include <utility>
++
++#include "debug_output.h"
++#include "shaders/passthrough_vertex_shader.h"
++#include "test_host.h"
++
++#define SET_MASK(mask, val) (((val) << (__builtin_ffs(mask) - 1)) & (mask))
++
++static constexpr char kSuiteName[] = "Signal timing";
++
++static constexpr char kCalibrate[] = "ST_Calibrate";
++static constexpr char kVBlankSpin[] = "ST_VBlank_Spin";
++static constexpr char kVBlankEvent[] = "ST_VBlank_Event";
++static constexpr char kDoneTiny[] = "ST_Done_Tiny";
++static constexpr char kDoneDOA[] = "ST_Done_DOA";
++static constexpr char kDoneDOARead[] = "ST_Done_DOA_Read";
++static constexpr char kFlip[] = "ST_Flip";
++static constexpr char kCB1[] = "ST_CB_1_Empty";
++static constexpr char kCB2[] = "ST_CB_2_DOA";
++static constexpr char kCB3[] = "ST_CB_3_DOA15";
++
++static constexpr int kVBlanks = 301;  // 300 intervals
++static constexpr int kReps = 300;
++static constexpr int kDOAQuads = 500;
++static constexpr uint32_t kTarget = 256;  // the render target, square, A8R8G8B8, linear
++static constexpr uint32_t kTargetPitch = kTarget * 4;
++
++// NV097 method 0x104 (NOTIFY): the notification is written when the next method (NO_OPERATION) completes.
++// Type 0 is WRITE_ONLY: no NOTIFY interrupt is raised.
++static constexpr uint32_t kNV097Notify = 0x00000104;
++static constexpr uint32_t kNotifyWriteOnly = 0;
++static constexpr uint32_t kArmed = 0xFFFFFFFF;
++
++// pbkit's own context DMA handles for the 3D object (pb_init): notifies 2, semaphore 8, color 9.
++static constexpr uint32_t kPbkitNotifies = 2;
++static constexpr uint32_t kPbkitSemaphore = 8;
++static constexpr uint32_t kPbkitColor = 9;
++
++// NV_PCRTC_START, read only: pbkit's vblank ISR writes the next back buffer's address here.
++static volatile uint32_t *const kPCRTCStart = reinterpret_cast<volatile uint32_t *>(0xFD600800);
++
++static volatile uint32_t g_sink;
++
++static inline uint64_t Now() { return KeQueryPerformanceCounter(); }
++
++static inline uint64_t Tsc() {
++  uint32_t lo, hi;
++  __asm__ __volatile__("rdtsc" : "=a"(lo), "=d"(hi));
++  return (static_cast<uint64_t>(hi) << 32) | lo;
++}
++
++//! Spins until done() or timeout_ticks pass. On success, *when is the counter at the first poll that saw done().
++template <typename F>
++static bool WaitFor(F done, uint64_t timeout_ticks, uint64_t *when) {
++  const uint64_t start = Now();
++  for (;;) {
++    if (done()) {
++      *when = Now();
++      return true;
++    }
++    if (Now() - start > timeout_ticks) {
++      return false;
++    }
++  }
++}
++
++static std::string Describe(const char *label, std::vector<double> us) {
++  char buf[256];
++  if (us.empty()) {
++    snprintf(buf, sizeof(buf), "%s n=0\n", label);
++    return buf;
++  }
++  std::sort(us.begin(), us.end());
++  auto at = [&us](double p) { return us[static_cast<size_t>(p * static_cast<double>(us.size() - 1) + 0.5)]; };
++  snprintf(buf, sizeof(buf), "%s n=%u median=%.3f p5=%.3f p95=%.3f min=%.3f max=%.3f us\n", label,
++           static_cast<unsigned>(us.size()), at(0.5), at(0.05), at(0.95), us.front(), us.back());
++  return buf;
++}
++
++static double Us(uint64_t ticks, uint64_t freq) {
++  return static_cast<double>(ticks) * 1e6 / static_cast<double>(freq);
++}
++
++SignalTimingTests::SignalTimingTests(TestHost &host, std::string output_dir, const Config &config)
++    : TestSuite(host, std::move(output_dir), kSuiteName, config) {
++  tests_[kCalibrate] = [this]() { TestCalibrate(kCalibrate); };
++  tests_[kVBlankSpin] = [this]() { TestVBlankSpin(kVBlankSpin); };
++  tests_[kVBlankEvent] = [this]() { TestVBlankEvent(kVBlankEvent); };
++  tests_[kDoneTiny] = [this]() { TestDone(kDoneTiny, 1, false, false); };
++  tests_[kDoneDOA] = [this]() { TestDone(kDoneDOA, kDOAQuads, true, false); };
++  tests_[kDoneDOARead] = [this]() { TestDone(kDoneDOARead, kDOAQuads, true, true); };
++  tests_[kFlip] = [this]() { TestFlip(kFlip); };
++  tests_[kCB1] = [this]() { TestCallback(kCB1, 0, false, 1); };
++  tests_[kCB2] = [this]() { TestCallback(kCB2, kDOAQuads, true, 1); };
++  tests_[kCB3] = [this]() { TestCallback(kCB3, kDOAQuads, true, 15); };
++}
++
++void SignalTimingTests::Initialize() {
++  TestSuite::Initialize();
++
++  // Uncached, as gpu_m2m.cpp's notifier: every CPU poll reads DRAM, never a stale line.
++  semaphore_page_ = static_cast<uint8_t *>(
++      MmAllocateContiguousMemoryEx(4096, 0, MAXRAM, 0, PAGE_READWRITE | PAGE_NOCACHE));
++  notifier_page_ = static_cast<uint8_t *>(
++      MmAllocateContiguousMemoryEx(4096, 0, MAXRAM, 0, PAGE_READWRITE | PAGE_NOCACHE));
++  target_ = static_cast<uint8_t *>(MmAllocateContiguousMemoryEx(kTargetPitch * kTarget, 0, MAXRAM, 0x1000,
++                                                                PAGE_WRITECOMBINE | PAGE_READWRITE));
++  ASSERT(semaphore_page_ && notifier_page_ && target_ && "Failed to allocate signal timing memory");
++  memset(semaphore_page_, 0, 32);
++  memset(notifier_page_, 0xFF, 32);
++
++  auto channel = kNextContextChannel;
++  pb_create_dma_ctx(channel++, DMA_CLASS_3D, reinterpret_cast<DWORD>(semaphore_page_), 0x1F, &semaphore_ctx_);
++  pb_create_dma_ctx(channel++, DMA_CLASS_3D, reinterpret_cast<DWORD>(notifier_page_), 0x1F, &notifier_ctx_);
++  pb_create_dma_ctx(channel++, DMA_CLASS_3D, 0, MAXRAM, &target_ctx_);
++  pb_bind_channel(&semaphore_ctx_);
++  pb_bind_channel(&notifier_ctx_);
++  pb_bind_channel(&target_ctx_);
++  pb_set_dma_address(&target_ctx_, target_, kTargetPitch * kTarget - 1);
++
++  Pushbuffer::Begin();
++  Pushbuffer::Push(NV097_SET_CONTEXT_DMA_SEMAPHORE, semaphore_ctx_.ChannelID);
++  Pushbuffer::Push(NV097_SET_CONTEXT_DMA_NOTIFIES, notifier_ctx_.ChannelID);
++  Pushbuffer::Push(NV097_SET_ALPHA_TEST_ENABLE, false);
++  Pushbuffer::Push(NV097_SET_CULL_FACE_ENABLE, false);
++  Pushbuffer::End();
++
++  auto shader = std::make_shared<PassthroughVertexShader>();
++  host_.SetVertexShaderProgram(shader);
++}
++
++void SignalTimingTests::Deinitialize() {
++  Pushbuffer::Begin();
++  Pushbuffer::Push(NV097_SET_CONTEXT_DMA_SEMAPHORE, kPbkitSemaphore);
++  Pushbuffer::Push(NV097_SET_CONTEXT_DMA_NOTIFIES, kPbkitNotifies);
++  Pushbuffer::Push(NV097_NO_OPERATION, 0);
++  Pushbuffer::Push(NV097_WAIT_FOR_IDLE, 0);
++  Pushbuffer::End();
++  uint64_t when;
++  WaitFor([]() { return !pb_busy(); }, KeQueryPerformanceFrequency(), &when);
++
++  if (semaphore_page_) {
++    MmFreeContiguousMemory(semaphore_page_);
++    semaphore_page_ = nullptr;
++  }
++  if (notifier_page_) {
++    MmFreeContiguousMemory(notifier_page_);
++    notifier_page_ = nullptr;
++  }
++  if (target_) {
++    MmFreeContiguousMemory(target_);
++    target_ = nullptr;
++  }
++  TestSuite::Deinitialize();
++}
++
++void SignalTimingTests::SetupDraw() {
++  host_.SetBlend(false);
++  for (uint32_t stage = 0; stage < 4; ++stage) {
++    host_.SetTextureStageEnabled(stage, false);
++  }
++  host_.SetShaderStageProgram(TestHost::STAGE_NONE);
++  host_.SetFinalCombiner0Just(TestHost::SRC_DIFFUSE);
++  host_.SetFinalCombiner1Just(TestHost::SRC_DIFFUSE, true);
++}
++
++// count screen-space quads of size x size pixels in a row-major grid from (left, top), one draw call each.
++void SignalTimingTests::Quads(int count, float left, float top, float size, float r, float g, float b) {
++  const int per_row = 16;
++  for (int i = 0; i < count; ++i) {
++    const float x = left + static_cast<float>(i % per_row) * size;
++    const float y = top + static_cast<float>((i / per_row) % 16) * size;
++    host_.Begin(TestHost::PRIMITIVE_QUADS);
++    host_.SetDiffuse(r, g, b, 1.0f);
++    host_.SetVertex(x, y, 1.0f);
++    host_.SetVertex(x + size - 1.0f, y, 1.0f);
++    host_.SetVertex(x + size - 1.0f, y + size - 1.0f, 1.0f);
++    host_.SetVertex(x, y + size - 1.0f, 1.0f);
++    host_.End();
++  }
++}
++
++// As texture_render_target_tests.cpp redirects color output to its target (the sequence proven on the console,
++// including its NO_OPERATION + WAIT_FOR_IDLE after the offset change).
++void SignalTimingTests::ToTarget() {
++  const uint32_t fb_pitch = host_.GetFramebufferWidth() * 4;
++  host_.SetSurfaceFormatImmediate(TestHost::SCF_A8R8G8B8, TestHost::SZF_Z24S8, kTarget, kTarget);
++  Pushbuffer::Begin();
++  Pushbuffer::Push(NV097_SET_SURFACE_PITCH, SET_MASK(NV097_SET_SURFACE_PITCH_COLOR, kTargetPitch) |
++                                                SET_MASK(NV097_SET_SURFACE_PITCH_ZETA, fb_pitch));
++  Pushbuffer::Push(NV097_SET_CONTEXT_DMA_COLOR, target_ctx_.ChannelID);
++  Pushbuffer::Push(NV097_SET_SURFACE_COLOR_OFFSET, 0);
++  Pushbuffer::Push(NV097_NO_OPERATION, 0);
++  Pushbuffer::Push(NV097_WAIT_FOR_IDLE, 0);
++  Pushbuffer::End();
++  TestHost::SetWindowClip(kTarget - 1, kTarget - 1);
++}
++
++// Back to the back buffer: pbkit's color DMA (9) still points at it, since no flip happens inside a test.
++void SignalTimingTests::ToBackBuffer() {
++  const uint32_t fb_pitch = host_.GetFramebufferWidth() * 4;
++  host_.SetSurfaceFormatImmediate(TestHost::SCF_A8R8G8B8, TestHost::SZF_Z24S8, host_.GetFramebufferWidth(),
++                                  host_.GetFramebufferHeight());
++  Pushbuffer::Begin();
++  Pushbuffer::Push(NV097_SET_SURFACE_PITCH, SET_MASK(NV097_SET_SURFACE_PITCH_COLOR, fb_pitch) |
++                                                SET_MASK(NV097_SET_SURFACE_PITCH_ZETA, fb_pitch));
++  Pushbuffer::Push(NV097_SET_CONTEXT_DMA_COLOR, kPbkitColor);
++  Pushbuffer::Push(NV097_SET_SURFACE_COLOR_OFFSET, 0);
++  Pushbuffer::End();
++  TestHost::SetWindowClip(host_.GetFramebufferWidth() - 1, host_.GetFramebufferHeight() - 1);
++}
++
++void SignalTimingTests::Write(const std::string &name, const std::string &summary,
++                              const std::vector<std::string> &columns, const std::vector<std::vector<uint64_t>> &rows) {
++  TestHost::EnsureFolderExists(output_dir_);
++  const std::string path = output_dir_ + "\\" + name + ".txt";
++  FILE *f = fopen(path.c_str(), "w");
++  if (!f) {
++    PrintMsg("Signal timing: cannot write %s\n", path.c_str());
++    return;
++  }
++  fprintf(f, "# hakuX #462 signal timing: %s\n", name.c_str());
++  fprintf(f, "freq_hz %llu\n", static_cast<unsigned long long>(KeQueryPerformanceFrequency()));
++  fputs(summary.c_str(), f);
++  fprintf(f, "# raw, counter ticks unless named\n");
++  for (size_t i = 0; i < columns.size(); ++i) {
++    fprintf(f, "%s%s", i ? "\t" : "", columns[i].c_str());
++  }
++  fputc('\n', f);
++  for (const auto &row : rows) {
++    for (size_t i = 0; i < row.size(); ++i) {
++      fprintf(f, "%s%llu", i ? "\t" : "", static_cast<unsigned long long>(row[i]));
++    }
++    fputc('\n', f);
++  }
++  fclose(f);
++}
++
++void SignalTimingTests::Finish(const std::string &name, const std::string &line) {
++  host_.PrepareDraw(0xFF202020);
++  pb_printat(0, 0, "%s\n%s", name.c_str(), line.c_str());
++  pb_draw_text_screen();
++  FinishDraw(name);
++}
++
++void SignalTimingTests::TestCalibrate(const std::string &name) {
++  const uint64_t f = KeQueryPerformanceFrequency();
++  const DWORD v0 = pb_get_vbl_counter();
++  const uint64_t q0 = Now(), t0 = Tsc(), i0 = KeQueryInterruptTime();
++  while (Now() - q0 < 2 * f) {
++  }
++  const uint64_t q1 = Now(), t1 = Tsc(), i1 = KeQueryInterruptTime();
++  const DWORD v1 = pb_get_vbl_counter();
++
++  const double s_qpc = static_cast<double>(q1 - q0) / static_cast<double>(f);
++  const double s_int = static_cast<double>(i1 - i0) / 1e7;
++  char buf[512];
++  snprintf(buf, sizeof(buf),
++           "counter_s %.6f\ninterrupt_time_s %.6f\ncounter_over_interrupt %.6f\ntsc_mhz %.3f\nvblanks %u\n"
++           "vblank_hz %.4f\n",
++           s_qpc, s_int, s_int > 0 ? s_qpc / s_int : 0.0, static_cast<double>(t1 - t0) / s_qpc / 1e6,
++           static_cast<unsigned>(v1 - v0), static_cast<double>(v1 - v0) / s_qpc);
++  Write(name, buf, {"q0", "q1", "tsc0", "tsc1", "int0_100ns", "int1_100ns", "vbl0", "vbl1"},
++        {{q0, q1, t0, t1, i0, i1, v0, v1}});
++  Finish(name, buf);
++}
++
++void SignalTimingTests::TestVBlankSpin(const std::string &name) {
++  const uint64_t f = KeQueryPerformanceFrequency();
++  const uint64_t timeout = f / 10;  // 100 ms, six vblanks
++  std::vector<std::vector<uint64_t>> rows;
++  std::vector<double> intervals;
++  unsigned timeouts = 0, skipped = 0;
++  uint64_t when, prev_when = 0;
++  DWORD last = pb_get_vbl_counter();
++  if (!WaitFor([&last]() { return pb_get_vbl_counter() != last; }, timeout, &when)) {
++    ++timeouts;
++  }
++  last = pb_get_vbl_counter();
++  DWORD prev_count = 0;
++  while (rows.size() < static_cast<size_t>(kVBlanks) && timeouts < 5) {
++    if (!WaitFor([&last]() { return pb_get_vbl_counter() != last; }, timeout, &when)) {
++      ++timeouts;
++      continue;
++    }
++    const DWORD count = pb_get_vbl_counter();
++    if (!rows.empty()) {
++      if (count - prev_count == 1) {
++        intervals.push_back(Us(when - prev_when, f));
++      } else {
++        ++skipped;  // a vblank was not seen (the thread was preempted); that interval spans more than one
++      }
++    }
++    rows.push_back({when, count});
++    prev_when = when;
++    prev_count = count;
++    last = count;
++  }
++  vblank_ok_ = timeouts == 0 && rows.size() == static_cast<size_t>(kVBlanks);
++
++  char buf[160];
++  snprintf(buf, sizeof(buf), "timeouts %u\nintervals_spanning_a_missed_vblank %u\n", timeouts, skipped);
++  const std::string summary = std::string(buf) + Describe("interval", intervals);
++  Write(name, summary, {"seen", "vbl_count"}, rows);
++  Finish(name, summary);
++}
++
++void SignalTimingTests::TestVBlankEvent(const std::string &name) {
++  const uint64_t f = KeQueryPerformanceFrequency();
++  // pb_wait_for_vbl() has no timeout, so it runs only after three vblanks have been seen to arrive by spinning, each
++  // within 100 ms. The guard is here, not in ST_VBlank_Spin: the suite runs its tests in name order, so this test
++  // runs first.
++  {
++    uint64_t when;
++    DWORD last = pb_get_vbl_counter();
++    for (int i = 0; i < 3; ++i) {
++      if (!WaitFor([&last]() { return pb_get_vbl_counter() != last; }, f / 10, &when)) {
++        const std::string summary = "skipped: a vblank did not arrive within 100 ms in the guard\n";
++        Write(name, summary, {}, {});
++        Finish(name, summary);
++        return;
++      }
++      last = pb_get_vbl_counter();
++    }
++  }
++  std::vector<std::vector<uint64_t>> rows;
++  std::vector<double> intervals;
++  unsigned skipped = 0;
++  pb_wait_for_vbl();
++  for (int i = 0; i < kVBlanks; ++i) {
++    const DWORD count = pb_wait_for_vbl();
++    const uint64_t when = Now();
++    if (!rows.empty()) {
++      if (count - static_cast<DWORD>(rows.back()[1]) == 1) {
++        intervals.push_back(Us(when - rows.back()[0], f));
++      } else {
++        ++skipped;
++      }
++    }
++    rows.push_back({when, count});
++  }
++  char buf[160];
++  snprintf(buf, sizeof(buf), "intervals_spanning_a_missed_vblank %u\n", skipped);
++  const std::string summary = std::string(buf) + Describe("interval", intervals);
++  Write(name, summary, {"woke", "vbl_count"}, rows);
++  Finish(name, summary);
++}
++
++void SignalTimingTests::TestDone(const std::string &name, int quads, bool target_switch, bool readback) {
++  const uint64_t f = KeQueryPerformanceFrequency();
++  const uint64_t timeout = f / 4;  // 250 ms
++  auto sem = reinterpret_cast<volatile uint32_t *>(semaphore_page_);
++  auto ntf = reinterpret_cast<volatile uint32_t *>(notifier_page_);
++
++  SetupDraw();
++  host_.PrepareDraw(0xFF101010);
++
++  std::vector<std::vector<uint64_t>> rows;
++  std::vector<double> kick_to_sem, kick_to_ntf, submit, read;
++  unsigned sem_timeouts = 0, ntf_timeouts = 0, busy_timeouts = 0;
++  for (int rep = 0; rep < kReps; ++rep) {
++    uint64_t when;
++    // Start each repetition from an idle GPU, so the time measured is this repetition's.
++    if (!WaitFor([]() { return !pb_busy(); }, timeout, &when)) {
++      ++busy_timeouts;
++      break;
++    }
++    for (int i = 0; i < 8; ++i) {
++      ntf[i] = kArmed;
++    }
++    const uint32_t value = ++semaphore_value_;
++
++    const uint64_t s0 = Now();
++    if (target_switch) {
++      ToTarget();
++      Quads(quads / 2, 0.f, 0.f, 16.f, 0.2f, 0.4f, 0.8f);
++      ToBackBuffer();
++      Quads(quads - quads / 2, 64.f, 64.f, 16.f, 0.8f, 0.4f, 0.2f);
++    } else {
++      Quads(quads, 64.f, 64.f, 16.f, 0.8f, 0.4f, 0.2f);
++    }
++    Pushbuffer::Begin();
++    Pushbuffer::Push(NV097_SET_SEMAPHORE_OFFSET, 0);
++    Pushbuffer::Push(NV097_BACK_END_WRITE_SEMAPHORE_RELEASE, value);
++    Pushbuffer::Push(kNV097Notify, kNotifyWriteOnly);
++    Pushbuffer::Push(NV097_NO_OPERATION, 0);
++    Pushbuffer::End();  // pb_end kicks the GPU
++    const uint64_t kick = Now();
++
++    uint64_t t_sem = 0, t_ntf = 0;
++    uint32_t slot = 9;
++    while ((!t_sem || !t_ntf) && Now() - kick < timeout) {
++      if (!t_sem && *sem == value) {
++        t_sem = Now();
++      }
++      if (!t_ntf && (ntf[3] != kArmed || ntf[7] != kArmed)) {
++        t_ntf = Now();
++        slot = ntf[3] != kArmed ? 0 : 1;
++      }
++    }
++    uint64_t t_read = 0;
++    if (readback && t_sem) {
++      const auto fb = reinterpret_cast<volatile uint32_t *>(pb_back_buffer());
++      const uint32_t pitch_words = pb_back_buffer_pitch() / 4;
++      const uint32_t w = pb_back_buffer_width(), h = pb_back_buffer_height();
++      const uint64_t r0 = Now();
++      uint32_t sum = 0;
++      for (uint32_t y = 0; y < h; ++y) {
++        for (uint32_t x = 0; x < w; ++x) {
++          sum += fb[y * pitch_words + x];
++        }
++      }
++      g_sink = sum;
++      t_read = Now() - r0;
++      read.push_back(Us(t_read, f));
++    }
++
++    submit.push_back(Us(kick - s0, f));
++    if (t_sem) {
++      kick_to_sem.push_back(Us(t_sem - kick, f));
++    } else {
++      ++sem_timeouts;
++    }
++    if (t_ntf) {
++      kick_to_ntf.push_back(Us(t_ntf - kick, f));
++    } else {
++      ++ntf_timeouts;
++    }
++    rows.push_back({s0, kick, t_sem, t_ntf, slot, ntf[0], ntf[1], ntf[4], ntf[5], t_read});
++    if (sem_timeouts >= 3 && ntf_timeouts >= 3 && !t_sem && !t_ntf) {
++      break;  // neither signal is arriving: stop here rather than spend 300 timeouts
++    }
++  }
++
++  char buf[256];
++  snprintf(buf, sizeof(buf),
++           "quads %d\ntarget_switch %d\nreadback %d\nreps %u\nsemaphore_timeouts %u\nnotify_timeouts %u\n"
++           "busy_timeouts %u\n",
++           quads, target_switch ? 1 : 0, readback ? 1 : 0, static_cast<unsigned>(rows.size()), sem_timeouts,
++           ntf_timeouts, busy_timeouts);
++  std::string summary = buf;
++  summary += Describe("submit(first_draw_to_kick)", submit);
++  summary += Describe("kick_to_semaphore", kick_to_sem);
++  summary += Describe("kick_to_notify", kick_to_ntf);
++  if (readback) {
++    summary += Describe("cpu_read_back_buffer", read);
++  }
++  Write(name, summary,
++        {"start", "kick", "semaphore_seen", "notify_seen", "notify_slot", "ntf0_ts_lo", "ntf0_ts_hi", "ntf1_ts_lo",
++         "ntf1_ts_hi", "read_ticks"},
++        rows);
++  Finish(name, summary);
++}
++
++void SignalTimingTests::TestFlip(const std::string &name) {
++  const uint64_t f = KeQueryPerformanceFrequency();
++  const uint64_t timeout = f / 5;  // 200 ms, twelve vblanks
++  SetupDraw();
++
++  std::vector<std::vector<uint64_t>> rows;
++  std::vector<double> to_start, to_count, isr_to_dpc;
++  unsigned start_timeouts = 0, count_timeouts = 0, queue_timeouts = 0;
++  for (int rep = 0; rep < kReps; ++rep) {
++    uint64_t when;
++    host_.PrepareDraw(rep & 1 ? 0xFF303030 : 0xFF404040);
++    const uint32_t start0 = *kPCRTCStart;
++    if (!WaitFor([]() { return pb_finished() == 0; }, timeout, &when)) {
++      ++queue_timeouts;
++      break;
++    }
++    const uint64_t req = Now();
++    const DWORD count0 = pb_get_vbl_counter();
++
++    uint64_t t_start = 0, t_count = 0;
++    if (WaitFor([start0]() { return *kPCRTCStart != start0; }, timeout, &when)) {
++      t_start = when;
++      to_start.push_back(Us(t_start - req, f));
++      const DWORD count_at_start = pb_get_vbl_counter();
++      if (WaitFor([count_at_start]() { return pb_get_vbl_counter() != count_at_start; }, timeout, &when)) {
++        t_count = when;
++        to_count.push_back(Us(t_count - req, f));
++        isr_to_dpc.push_back(Us(t_count - t_start, f));
++      } else {
++        ++count_timeouts;
++      }
++    } else {
++      ++start_timeouts;
++    }
++    rows.push_back({req, t_start, t_count, count0, pb_get_vbl_counter(), start0, *kPCRTCStart});
++    if (start_timeouts >= 3 && !t_start) {
++      break;
++    }
++  }
++
++  char buf[160];
++  snprintf(buf, sizeof(buf), "reps %u\nstart_timeouts %u\ncount_timeouts %u\nqueue_timeouts %u\n",
++           static_cast<unsigned>(rows.size()), start_timeouts, count_timeouts, queue_timeouts);
++  std::string summary = buf;
++  summary += Describe("request_to_pcrtc_start", to_start);
++  summary += Describe("request_to_vbl_count", to_count);
++  summary += Describe("pcrtc_start_to_vbl_count", isr_to_dpc);
++  Write(name, summary, {"request", "start_seen", "count_seen", "vbl_at_request", "vbl_after", "start_before",
++                        "start_after"},
++        rows);
++  Finish(name, summary);
++}
++
++// A push-buffer callback: NV097_NO_OPERATION with a non-zero parameter raises the PGRAPH ERROR interrupt when the
++// puller reaches it, and the puller stalls until pbkit's handler clears it. PB_TIMESTAMP makes this build's pbkit DPC
++// store when it handled the callback (pb_callback_time[], RAM only). A semaphore release after the last callback shows
++// when the puller resumed. Each kick time is taken just BEFORE the kick, so no callback can precede its own kick.
++void SignalTimingTests::TestCallback(const std::string &name, int quads, bool target_switch, int callbacks) {
++  const uint64_t f = KeQueryPerformanceFrequency();
++  const uint64_t timeout = f / 4;  // 250 ms
++  auto sem = reinterpret_cast<volatile uint32_t *>(semaphore_page_);
++
++  SetupDraw();
++  host_.PrepareDraw(0xFF101010);
++
++  std::vector<std::string> columns = {"start", "final_kick", "semaphore_seen", "callbacks_seen"};
++  for (int c = 0; c < callbacks; ++c) {
++    columns.push_back("kick_" + std::to_string(c));
++    columns.push_back("dpc_" + std::to_string(c));
++  }
++  std::vector<std::vector<uint64_t>> rows;
++  std::vector<double> kick_to_cb, cb_gap, cb_to_sem, kick_to_sem, frame;
++  unsigned timeouts = 0, busy_timeouts = 0, stale = 0;
++  uint64_t last_cb = 0;
++  const int per = callbacks > 0 ? quads / callbacks : quads;
++  for (int rep = 0; rep < kReps; ++rep) {
++    uint64_t when;
++    if (!WaitFor([]() { return !pb_busy(); }, timeout, &when)) {
++      ++busy_timeouts;
++      break;
++    }
++    const DWORD seq0 = pb_callback_seq;
++    const uint32_t value = ++semaphore_value_;
++    std::vector<uint64_t> kicks;
++
++    const uint64_t s0 = Now();
++    int remaining = quads;
++    bool switched = !target_switch;
++    if (target_switch) {
++      ToTarget();
++    }
++    for (int c = 0; c < callbacks; ++c) {
++      int chunk = (c == callbacks - 1) ? remaining : per;
++      while (chunk > 0) {
++        const int done = quads - remaining;
++        int take = chunk;
++        if (!switched && done + take > quads / 2) {
++          take = quads / 2 - done;
++        }
++        if (take > 0) {
++          Quads(take, 0.f, 0.f, 16.f, 0.2f, 0.6f, 0.4f);
++          remaining -= take;
++          chunk -= take;
++        }
++        if (!switched && quads - remaining >= quads / 2) {
++          ToBackBuffer();
++          switched = true;
++        }
++      }
++      Pushbuffer::Begin();
++      Pushbuffer::Push(NV097_NO_OPERATION, PB_TIMESTAMP);
++      kicks.push_back(Now());
++      Pushbuffer::End();
++    }
++    Pushbuffer::Begin();
++    Pushbuffer::Push(NV097_SET_SEMAPHORE_OFFSET, 0);
++    Pushbuffer::Push(NV097_BACK_END_WRITE_SEMAPHORE_RELEASE, value);
++    const uint64_t kick = Now();
++    Pushbuffer::End();
++
++    uint64_t t_sem = 0;
++    while (Now() - kick < timeout) {
++      if (!t_sem && *sem == value) {
++        t_sem = Now();
++      }
++      if (t_sem && pb_callback_seq - seq0 >= static_cast<DWORD>(callbacks)) {
++        break;
++      }
++    }
++    const DWORD got = pb_callback_seq - seq0;
++    std::vector<uint64_t> row = {s0, kick, t_sem, got};
++    if (!t_sem || got < static_cast<DWORD>(callbacks)) {
++      ++timeouts;
++      row.resize(columns.size(), 0);
++      rows.push_back(row);
++      if (timeouts >= 3) {
++        break;  // the callbacks are not coming back: stop rather than spend 300 timeouts
++      }
++      continue;
++    }
++    uint64_t prev = 0;
++    for (int c = 0; c < callbacks; ++c) {
++      const uint64_t t_cb = pb_callback_time[(seq0 + c) & 63];
++      if (t_cb <= last_cb) {
++        ++stale;  // must move: every callback is handled after the one before it
++      }
++      last_cb = t_cb;
++      kick_to_cb.push_back(Us(t_cb - kicks[c], f));
++      if (c > 0) {
++        cb_gap.push_back(Us(t_cb - prev, f));
++      }
++      prev = t_cb;
++      row.push_back(kicks[c]);
++      row.push_back(t_cb);
++    }
++    cb_to_sem.push_back(Us(t_sem - prev, f));
++    kick_to_sem.push_back(Us(t_sem - kick, f));
++    frame.push_back(Us(t_sem - s0, f));
++    rows.push_back(row);
++  }
++
++  char buf[256];
++  snprintf(buf, sizeof(buf),
++           "quads %d\ntarget_switch %d\ncallbacks_per_frame %d\nreps %u\ntimeouts %u\nbusy_timeouts %u\n"
++           "stale_callback_times %u\n",
++           quads, target_switch ? 1 : 0, callbacks, static_cast<unsigned>(rows.size()), timeouts, busy_timeouts,
++           stale);
++  std::string summary = buf;
++  summary += Describe("kick_to_callback_handled", kick_to_cb);
++  if (callbacks > 1) {
++    summary += Describe("callback_to_next_callback", cb_gap);
++  }
++  summary += Describe("last_callback_handled_to_semaphore_seen", cb_to_sem);
++  summary += Describe("final_kick_to_semaphore", kick_to_sem);
++  summary += Describe("frame(first_draw_to_semaphore)", frame);
++  Write(name, summary, columns, rows);
++  Finish(name, summary);
++}
+diff --git a/src/tests/signal_timing_tests.h b/src/tests/signal_timing_tests.h
+new file mode 100644
+index 0000000..172553e
+--- /dev/null
++++ b/src/tests/signal_timing_tests.h
+@@ -0,0 +1,74 @@
++#ifndef NXDK_PGRAPH_TESTS_SIGNAL_TIMING_TESTS_H
++#define NXDK_PGRAPH_TESTS_SIGNAL_TIMING_TESTS_H
++
++#include <pbkit/pbkit.h>
++#include <pbkit/pbkit_dma.h>
++
++#include <cstdint>
++#include <string>
++#include <vector>
++
++#include "test_suite.h"
++
++class TestHost;
++
++/**
++ * hakuX #462 / #474: how soon the NV2A delivers the end-of-frame signals games wait for, timed from the CPU.
++ *
++ * Every time is KeQueryPerformanceCounter (the kernel's clock; KeQueryPerformanceFrequency gives its rate), and every
++ * wait is bounded. Each test writes <name>.txt beside its capture: a summary, then every raw sample in counter ticks.
++ *
++ *   ST_Calibrate     the counter against the kernel interrupt time, rdtsc and the vblank count, over ~2 s.
++ *   ST_VBlank_Spin   301 vblanks seen by spinning on pb_get_vbl_counter() (incremented in pbkit's vblank DPC).
++ *   ST_VBlank_Event  301 vblanks seen by waking from pb_wait_for_vbl() (the event pbkit pulses in that DPC).
++ *   ST_Done_Tiny     300 x: one quad, then a semaphore release and a NOTIFY (write only, no interrupt); the time from
++ *                    the last kick until each is visible to the CPU.
++ *   ST_Done_DOA      the same after 500 quads with one render-target switch (250 to a 256x256 target, 250 to the
++ *                    back buffer).
++ *   ST_Done_DOA_Read the same, then the CPU reads the whole back buffer.
++ *   ST_Flip          300 x: pb_finished(), then the vblank ISR's write of NV_PCRTC_START (a read-only poll) and the
++ *                    vblank DPC's counter increment.
++ *   ST_CB_1_Empty    300 x: a push-buffer callback (NV097_NO_OPERATION with PB_TIMESTAMP, which raises the PGRAPH
++ *                    ERROR interrupt and stalls the puller until pbkit's handler clears it), then a semaphore release.
++ *                    Needs the private pbkit whose DPC records when it handled the callback (pb_callback_time[]).
++ *   ST_CB_2_DOA      the same after 500 quads with one render-target switch.
++ *   ST_CB_3_DOA15    the 500-quad frame with 15 callbacks interleaved (Blinx takes 14.66 a frame).
++ *
++ * pbkit and pushbuffer methods only. The one MMIO access added is a READ of NV_PCRTC_START. The semaphore and notifier
++ * contexts are pbkit DMA objects over this suite's own uncached pages (as gpu_m2m.cpp does), and pbkit's own bindings
++ * (semaphore 8, notifies 2) are restored in Deinitialize.
++ */
++class SignalTimingTests : public TestSuite {
++ public:
++  SignalTimingTests(TestHost &host, std::string output_dir, const Config &config);
++
++  void Initialize() override;
++  void Deinitialize() override;
++
++ private:
++  void TestCalibrate(const std::string &name);
++  void TestVBlankSpin(const std::string &name);
++  void TestVBlankEvent(const std::string &name);
++  void TestDone(const std::string &name, int quads, bool target_switch, bool readback);
++  void TestFlip(const std::string &name);
++  void TestCallback(const std::string &name, int quads, bool target_switch, int callbacks);
++
++  void SetupDraw();
++  void Quads(int count, float left, float top, float size, float r, float g, float b);
++  void ToTarget();
++  void ToBackBuffer();
++  void Finish(const std::string &name, const std::string &line);
++  void Write(const std::string &name, const std::string &summary, const std::vector<std::string> &columns,
++             const std::vector<std::vector<uint64_t>> &rows);
++
++  struct s_CtxDma semaphore_ctx_ {};
++  struct s_CtxDma notifier_ctx_ {};
++  struct s_CtxDma target_ctx_ {};
++  uint8_t *semaphore_page_{nullptr};
++  uint8_t *notifier_page_{nullptr};
++  uint8_t *target_{nullptr};
++  uint32_t semaphore_value_{0};
++  bool vblank_ok_{false};
++};
++
++#endif  // NXDK_PGRAPH_TESTS_SIGNAL_TIMING_TESTS_H

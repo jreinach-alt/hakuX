@@ -123,3 +123,32 @@ write-then-awaken NOTIFY and times kick -> interrupt handled. That is a separate
 - **The result:** a thread woken by `pb_wait_for_vbl()` sees vblank intervals that vary by 0.3 us p95 on silicon, and by 141.6 us p95 on hakuX (range 16303-17107 us).
   - The Nova's event-wake spread is smaller than the Thor's spin spread (v1). That is two devices and two methods, so the two figures are not compared.
 - The raw files are in `signal-timing/console-v2` and `signal-timing/hakux-nova-v2`.
+
+## v3: the push-buffer callback (PRE-REGISTERED before its dry run)
+
+**Why:** retreason425 (#425, 09-27 10:20 PDT) found that AUF, Blinx and Blinx 2 wake at the PGRAPH ERROR interrupt. It comes from `NV097_NO_OPERATION` with a non-zero parameter: the puller raises it at that marker and stalls until the guest's handler clears it. Nobody has measured the time from the guest's kick to the callback being handled, or from the handler to the puller's resume. flip474's host-side `[cblat]` stops at the puller dispatching the NOP.
+
+**The private pbkit:** pbkit already routes NOP-with-data to `pb_subprog()` in its DPC. [`pbkit-timestamp462.patch`](pbkit-timestamp462.patch) adds one case:
+- `PB_TIMESTAMP` (0xFA0) stores `KeQueryPerformanceCounter()` into `pb_callback_time[seq & 63]` and increments `pb_callback_seq`. RAM stores only, with no register access.
+- The copy is `~/nxdk-cb462`. Only `libpbkit.lib` was rebuilt there; the pristine nxdk is untouched.
+- The existing IDs were no use: SETOUTER and SETNOISE write registers, FINISHED changes the flip state, and an unknown ID runs debugPrint in the DPC.
+
+**The tests** (tests branch `hakux/signal-timing462-cb`, commit `509fe90`, patch [`signal-timing462-cb.patch`](signal-timing462-cb.patch); XBE sha256 `11f5cb27e78d…`, ISO `58ffba708d48…`, in `hardware/runs/2026-09-27-callback462/`), 300 repetitions each:
+- `ST_CB_1_Empty`: one callback with no drawing, then a semaphore release.
+- `ST_CB_2_DOA`: 500 quads with one render-target switch, then one callback and the semaphore.
+- `ST_CB_3_DOA15`: the same 500 quads with 15 callbacks interleaved (Blinx takes 14.66 a frame), then the semaphore.
+
+Each callback's kick time is taken just BEFORE its kick, so no callback can precede its own kick. The measured legs are:
+- kick -> callback handled in the DPC;
+- the last callback handled -> the semaphore behind it visible (the puller resumed after the handler cleared it);
+- the frame, from first draw -> semaphore visible;
+- the overhead per extra callback, (15-callback frame - 1-callback frame) / 14.
+
+**The session:** `Alpha func::AlphaFuncAlways_Disabled`, then `ST_CB_1_Empty`, `ST_CB_2_DOA`, `ST_CB_3_DOA15`, `ST_Calibrate` (name order). The same order applies: a hakuX dry run on the Nova first, then the console, with PAUSE. If the console stops answering, stop, do not retry, and tell lane.local.
+
+**Instrument legs** (console; under hakuX only I1):
+- **I1:** the clock, as before.
+- **I7:** `ST_CB_1_Empty` has 300 reps, 0 timeouts and 0 stale callback times. Every callback's DPC time is newer than the one before it (the must-move check).
+- **I8:** `ST_CB_3_DOA15` has 300 reps, 0 timeouts and 0 stale times, and all 15 callbacks seen in every frame.
+
+No values are predicted.
