@@ -447,7 +447,7 @@ note = "STARTED (hostops 2026-09-27 13:58 PDT), briefs/thermal507.md: #507 (0.5,
 [lane.focusanr]
 issues = ["513"]
 files = ["docs/testing/devices.sh", "docs/testing/jobs/selftest.d/99-display-covered.sh", "docs/lanes/focusanr/**"]
-note = "STARTED (hostops 2026-09-27 15:20 PDT), briefs/focusanr.md: #513 (0.5, fps-focus). hakux_in_front parses dumpsys input's stale 'at time of last ANR' block, so every Thor title soak since PR #495 voided as daijishou. The interim patch is in $DISPATCH_DIR/bin/devices.sh and is lost at the next re-exec. Files taken from [free] (released by lane.displayguard)."
+note = "STARTED (hostops 2026-09-27 15:14 PDT, from lane log focusanr.20260927T221433Z), briefs/focusanr.md: #513 (0.5, fps-focus). hakux_in_front parses dumpsys input's stale 'at time of last ANR' block, so every Thor title soak since PR #495 voided as daijishou. The interim patch is in $DISPATCH_DIR/bin/devices.sh and is lost at the next re-exec. Files taken from [free] (released by lane.displayguard)."
 
 [free]
 # CLAIMED (hostops 2026-09-27T22:38Z): hw/xbox/nv2a/pgraph/vk/instance.c -> lane.flip474 (#474 Addendum 7: the sysmem render-mode fix is configured there).
