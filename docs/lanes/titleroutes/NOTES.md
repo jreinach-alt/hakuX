@@ -1161,6 +1161,29 @@ SD-card list from attempt 4 is still open as well.
   `scratch/fpsbins.py` and the cooling devices before writing a median down.
 - A black 10,899 B frame means stop: read the focus, send nothing.
 
+### State at the end of attempt 8 (15:30 PDT)
+
+Six routes replayed on the Thor in this attempt (Azurik, D&D Heroes,
+BloodRayne, Baldur's Gate: Dark Alliance, KOF: Maximum Impact, Arctic
+Thunder), four of them new titles, with a held reading for four. Three
+titles are blocked (AMF Bowling 2004, Mercenaries, Barbarian's Quest mode).
+Nothing of mine is queued or running, and I hold no device.
+
+Merging origin/master at 15:25 brought #431's target for Baldur's Gate into
+targets.toml: 60, not the default 30 my session 24 table names. Its held
+reading (59.94, min 58.31) is at that target.
+
+PR #499 is marked ready. `preflight.sh --allow-tracker` passed on
+92560461c5 (14:45) and again after the merge.
+
+**Waiting (PR #499, 15:30 PDT).** The signal is outside this lane: a fix to
+`hakux_in_front` (devices.sh) so that it reads the live dispatcher state and
+not the last-ANR copy, live on the Thor's dispatcher, with hostops saying
+so on #397 (the defect is on #494, comment 5860177923). Then the six soaks
+in the hand-over table can be queued. This was the lane's last attempt, so
+that is a successor's or the host's to do; everything it needs is in
+"Hand-over" above.
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
