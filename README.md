@@ -104,6 +104,11 @@ Android. hakuX tuned that port for Adreno devices.
 Download the APK from [Releases](../../releases). It installs beside an
 official hakuX build and appears as **hakuX (fork)**.
 
+It needs Android 10 or later and a 64-bit ARMv8.2 CPU with LSE atomics
+(Snapdragon 845 / 865 class or newer). Older ARMv8.0 parts such as the
+Snapdragon 835, 660, 665 and 460 are not supported; on them the app shows an
+"Unsupported CPU" message and exits.
+
 To launch it from ES-DE, two configuration files are needed —
 see [`docs/es-de/`](docs/es-de/). Without them ES-DE has no way to find this
 build, since its bundled rules target the official package.
