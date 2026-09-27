@@ -455,6 +455,31 @@ through the mark (`scratch/replay/midtown-madness-3.returning-034845/`,
 pizzas in 70 s, so the mission may end ~4 min after the mark; the last
 minute of a 300 s window may be a results screen.
 
+### Session 15: HELD Thor, 04:15-04:29 PDT (14 min; hold taken 04:05 while the MM3 soak ran), battery 63% -> 62%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Blood Wake (4D530010) | thor | `blood-wake.route` | yes (04:27; one failed replay before it) | mission 1 "Fish in a Barrel", the speedboat on the bay with minimap and hull bar; it throttles and turns |
+
+**Blood Wake.** START -> Story Mode -> Create Game -> CREATE GAME, whose
+focus starts on "Select Storage" (A keeps the hard disk; a left-stick flick
+down moves to the slot list) -> NEW GAME -> sketchbook pages -> difficulty
+(Ensign) -> boat -> briefing pages -> MISSION GOALS -> the bay. The nav
+session's NEW GAME wrote a slot, so the first replay met "You are about to
+overwrite an existing saved game" (A), fell one A short and stopped on
+MISSION GOALS (`scratch/replay/blood-wake-041915/`). Every screen after the
+slot list takes A, so the route now presses A every 4.5 s, 14 times; the
+second replay was on the water at the mark and under way 40 s later
+(`scratch/replay/blood-wake-042419/zz-end.png`). Nav frames
+`~/hakux-work/nav/blood-wake.first-run-20260927T041516/` (012-q2 -> 013-turn).
+
+**Nav session vs soak frame rate.** The overlay read 16-18 fps in MM3's nav
+session and 3 in its soak's mark frame (the race running, not paused);
+Blood Wake's nav session read 37 and its replay 5-6. Alien Hominid and
+Ghoulies read the same in both. Not investigated here (the nav launch sets
+performance_mode 2, fan 5; the soak runs the MAX regimen); the numbers
+below are what the soaks measured.
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
@@ -481,9 +506,13 @@ request.
 | GTA: San Andreas | gta-sa | 0-0-x-1790493356-titleroutes-734802 (promoted from 1-1790493356-titleroutes-734802) | 500 | 279 s of gameplay; fps window median 4.56 (min 3.91), 0% at >= 30; target 30. Ten 11-15 s hangs, 80% of audio callbacks short. apk 397ae7dca16a. Posted on #397 (comment 5853851696) |
 | JSRF | jsrf | 1-1790497366-titleroutes-886445 | 500 | 284 s of gameplay (the Garage); fps window median 24.23 (min 16.85), 11.3% at >= 30; target 60 |
 | Grabbed by the Ghoulies | ghoulies | 1-1790499526-titleroutes-925659 | 730 | void: adb lost after the mark (vsock accept4 failures), no verdict |
-| Grabbed by the Ghoulies | ghoulies | 1-1790503792-titleroutes-997141 | 730 | ran clean (mark 03:18:51, adb_failures=0); verdict pending |
-| Alien Hominid | alien-hominid | 1-1790505449-titleroutes-1023605 | 410 | pending |
-| Midtown Madness 3 | midtown-madness-3.returning | 1-1790506491-titleroutes-1032854 | 580 | pending |
+| Grabbed by the Ghoulies | ghoulies | 1-1790503792-titleroutes-997141 | 730 | 224 s of gameplay; fps window median 29.96 (min 11.88), 59.0% at >= 30; target 30 (*) |
+| Alien Hominid | alien-hominid | 1-1790505449-titleroutes-1023605 | 410 | 306 s of gameplay; fps window median 59.94 (min 31.15), 100% at >= 30; target 30 (*) |
+| Midtown Madness 3 | midtown-madness-3.returning | 1-1790506491-titleroutes-1032854 | 580 | 264 s of gameplay; fps window median 3.13 (min 2.85), 0% at >= 30; ten 12-20 s hangs; target 30 (*). The mark frame shows the race running at FPS 3 |
+| Blood Wake | blood-wake | 1-1790508532-titleroutes-1074940 | 480 | pending |
+
+(*) No host verdict.json yet at 04:30; these are `title_verdict.py` run on a
+copy of the result dir (`scratch/judge.py`), apk 397ae7dca16a.
 
 ## Do not repeat
 
