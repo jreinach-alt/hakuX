@@ -84,8 +84,51 @@ pause menu). Session #1 (`doa/`) missed the fight and is not used.
 - vCPU on-CPU: 40% guest JIT, `cpu_exec_loop` 12%, TB lookup (`tb_lookup`,
   `helper_lookup_tb_ptr`, qht) ~22%.
 - doa413b's lazy-surface cut (PR #440) was refuted on this fight (14.9 fps
-  off vs 13.6 on) and ships default-off. That fits: it cut work inside
-  `surface_update`, and the time there is a wait.
+  off vs 13.6 on) and ships default-off. That fits: it cut CPU work inside
+  `surface_update`, and the frame is not CPU work (below).
+
+**Off-CPU profile** `perf/2026-09-26-slowdown462/doa3/doa3.data` (a593d8eb85,
+`--trace-offcpu`, fight 22:36:13-22:36:48 PDT, 13-14 fps with two ~25 fps
+windows, 30 s). On/off time from the context-switch records (exact);
+attribution from the switch-out samples (`offcpu.py`):
+
+| thread | on-CPU | off-CPU | where the off-CPU time goes |
+|---|---|---|---|
+| vCPU (tid 18019) | 7,753 ms (26%) | 22,204 ms | **14,556 ms `qemu_mutex_lock` in `pgraph_read`** (`pg->lock`, pgraph.c:898); `user_read` 650, BQL in `cpu_exec_loop` 486; 27% unsampled |
+| PFIFO (tid 18033) | 6,315 ms (21%) | 23,653 ms | sampled 33%: **`wait_timestamp_safe` 5,593 ms** (Turnip/KGSL GPU-timestamp wait), `pfifo_thread` mutex 722, idle cond-wait 575 |
+
+The GPU waits' emulator caller (the unwinder stops in the vendor driver, so
+each wait is matched to the thread's last on-CPU sample before it, median 0.9
+ms earlier): **79% `pgraph_vk_finish` <- `pgraph_vk_flip_stall` <-
+FLIP_STALL**, 2.7% uniform updates, 0.9% `WaitForFences` in
+`download_surface_complete_deferred`. 272 sampled waits, median 12.3 ms, p90
+53 ms.
+
+The mechanism, from the code: FLIP_STALL runs inside the pusher's batch hold
+of `pgraph.lock` (pfifo.c:1427, `XEMU_OPT_PFIFO_LOCK_BATCH`); its handler calls
+`pgraph_vk_flip_stall` -> `pgraph_vk_finish(FLIP_STALL)` (renderer.c:2311),
+and nothing in `vk/` drops `pgraph.lock` around the wait. `pgraph_read` takes
+the same lock. So at every flip the PFIFO waits for the GPU with the lock held,
+and the guest's PGRAPH register reads wait behind it, holding the BQL (the
+perflog soak's VBLANK 17 Hz with 1,786 clamps is that BQL hold). CPU record,
+GPU execution and the guest are serialised.
+
+The perflog `Surf` 60 ms does not show up as work in the shipping build
+(`surface_update` inclusive is 4.7% of the PFIFO's on-CPU time: 263 ms in
+30 s, ~0.6 ms per frame); the perflog build's timers put the waits there, not in `Fin`. Price
+DOA from the profiles, not from `Surf`.
+
+**DOA1U answer** (frame ~71 ms at ~14 fps, shipping build, fight):
+
+| # | cost | ms/frame | share | evidence | candidate fix | owner |
+|---|---|---|---|---|---|---|
+| 1 | the flip's GPU wait under `pgraph.lock`; the guest blocks on it in `pgraph_read` | 34 (vCPU blocked 14.6 of 30 s) | 49% | doa3 `offcpu.py` tid 18019/18033; renderer.c:2311, pfifo.c:1427, pgraph.c:898 | drop `pgraph.lock` across the flip-stall wait (or defer the flip's finish so the next frame records while the GPU runs) | new issue (board Ask 3) |
+| 2 | GPU transfer work (`Xfr`) | 19.3 of GPU 38.6 | 27% | soak `xemu-gpu` Rnd 19.4 / Xfr 19.3; 7 surface-reason render-pass breaks/frame | stop re-uploading surfaces each switch | #413 (lane.doa413b's successor; needs `xemu-surf` in the spec) |
+| 3 | PFIFO CPU | ~15 | 21% | doa2: memcpy 30% (36% of it the flip's display download, 20% state snapshot), `sync_vertex_ram_buffer` TLB reset 9%, index rewrite 7% | per item; none dominant | #413 |
+
+Bounds, not values: with (1) gone and CPU and GPU overlapping, the frame is
+at least the GPU's 38.6 ms: **<= 26 fps**. With (2) also gone, at least
+max(GPU render 19.4, vCPU ~18, PFIFO ~15) ms: **<= ~51 fps**.
 
 ## AUF (4541000D, #412)
 
@@ -129,6 +172,21 @@ is on-CPU ~16 ms of it (24%). The phase timers are wall time and include
 time the thread is switched out inside a timed section; and the perflog build
 reads a clock around every method. Read `Surf`/`Draw` as upper bounds on
 cost, never as CPU.
+
+**AUF answer** (frame 66.1 ms at 15.1 fps; vCPU-bound, 94% on-CPU; ms =
+share of vCPU on-CPU samples x 62 ms of vCPU time per frame):
+
+| # | cost | ms/frame | share | evidence | candidate fix | owner |
+|---|---|---|---|---|---|---|
+| 1 | exec-loop returns: `cpu_exec_loop` self + `cpu_tb_exec` | 42 | 63% | auf.data tid 15470: 61.3% + 6.2%; aufire412b p2 54% + 7% | chain the returning TBs (cause per retreason425's split counter; aufdispatch's three designs, PR #469) | #425 lane.retreason425; #412 |
+| 2 | guest JIT code | 13 | 19% | 20.4% of vCPU samples | none: the guest's own work | -- |
+| 3 | TB lookup + lock waits (BQL, `pgraph_read`/`write`) | 4 + 4 | 12% | lookup 6.5% of samples; off-CPU 808 of 13,214 ms | #425 lookup path; lock waits not a lever at 6% | #425 |
+
+Bound, not a value, and conditional: if cost 1 went to zero and it is
+overhead (not a guest poll), the vCPU needs ~20 ms per frame and the frame is
+at least the GPU's 29 ms: **<= 34 fps**, and **<= 30 fps** at the title's
+VBLANK pacing (2 VBLANKs = 33.4 ms). If the returns are a guest wait loop,
+removing them makes the wait cheaper and fps does not move (aufire412b).
 
 ## Log
 
