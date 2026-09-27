@@ -20,7 +20,14 @@
 # health bar drops (nav frames 008-round -> 011-played; the timer runs 58 ->
 # 53). The mark is 10 s into round 1. 30-33 fps in the fight.
 #
-# NOT yet replayed.
+# REPLAYED 2026-09-27 14:29 PDT, as a held soak (soak_title.sh in our hold,
+# MAX regimen, apk f5abfa521745 = ref a593d8eb85;
+# scratch/held/kof-mi.returning-20260927T142953): hakuX held the input
+# focus on all 35 reads. Story mode drew a different first opponent, Leona,
+# on an airfield stage. The mark frame is that fight (timer 46, overlay FPS
+# 33) and a frame 20 s before the end is a later round of it (timer 54, FPS
+# 11). 319 s of gameplay, fps window median 14.56 (min 11.34), 17.2% at
+# >= 30, no hang.
 wait 49.4
 press START 300
 wait 8.5

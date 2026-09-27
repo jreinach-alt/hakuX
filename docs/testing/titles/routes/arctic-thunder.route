@@ -1,0 +1,99 @@
+# Arctic Thunder (4D570002): one route for every run (no profile step and
+# nothing is saved before the race). PLAYED by nav.py on the Thor,
+# 2026-09-27 14:39 PDT (lane.titleroutes HELD session
+# arctic-thunder.first-run-20260927T143956).
+#
+#   the "Snowmobile Renegades" intro video (START ends it) -> the title
+#   menu, START / OPTIONS (A) -> SELECT GAME MODE, cursor on RACE (A) ->
+#   PLAYER SELECT (A joins player 1; stick down to DONE; A) -> SELECT A
+#   DRIVER, Agent 5 (A) -> the track (A) -> load -> the race: position 8 of
+#   8, a checkpoint countdown and the race clock.
+#
+# On PLAYER SELECT the hat does nothing; the left stick moves to DONE.
+# A spare A there is what the third A of the nav session was.
+#
+# Player control: A is the throttle (RT is not). With A held the sled left
+# the start line, reached the first ramp and passed the first checkpoint
+# (nav frames 012-m11 -> 014-gas -> 016-played, "CHECK POINT", race clock
+# 00:53.82). 14-26 fps.
+#
+# The pattern holds A, steers a little each way, and lets A go for 0.2 s
+# each round, so that A is also PRESSED: a held button alone would not
+# answer a results or continue screen when the race or its countdown ends.
+#
+# NOT yet replayed.
+wait 50.8
+shot boot
+wait 9.9
+press START 300
+wait 7.1
+shot title
+wait 11.0
+press A 300
+wait 6.1
+shot m1
+wait 11.3
+press A 300
+wait 5.1
+shot m2
+wait 1.8
+press A 300
+wait 5.1
+shot m3
+wait 1.8
+press A 300
+wait 8.3
+shot m4
+wait 16.4
+axis HATY max
+wait 0.4
+axis HATY mid
+wait 1.6
+shot m5
+wait 1.2
+shot m6
+wait 12.8
+axis LY max
+wait 0.4
+axis LY mid
+wait 1.6
+shot m7
+wait 1.8
+press A 300
+wait 5.1
+shot m8
+wait 11.4
+press A 300
+wait 6.1
+shot m9
+wait 1.7
+press A 300
+wait 10.4
+shot m10
+wait 10.9
+shot m11
+wait 11.3
+axis RT max
+wait 5.8
+shot rt
+wait 1.0
+axis RT min
+wait 0.2
+hold A
+wait 3.1
+shot gas
+wait 16.3
+mark gameplay
+repeat forever {
+    hold A
+    axis LX min
+    wait 0.4
+    axis LX mid
+    wait 2
+    axis LX max
+    wait 0.4
+    axis LX mid
+    wait 2
+    release A
+    wait 0.2
+}

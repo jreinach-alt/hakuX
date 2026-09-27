@@ -953,6 +953,35 @@ The leave state at 14:28: HOME flush, app stopped, performance_mode 0,
 fan_mode 4, dual_screen_display_mode 0, screen_focus_lock 0, screen asleep,
 80%.
 
+### Session 25: HELD Thor, 14:29-14:44 PDT (15 min; hold taken 14:29 after lane.xbox's title push), battery 80% -> 80%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| KOF: Maximum Impact - Maniax (534E0007) | thor | `kof-mi.returning.route` | yes (14:29, as a held soak) | a fight against Leona on the airfield stage, at the mark and 20 s before the end |
+| Arctic Thunder (4D570002) | thor | `arctic-thunder.route` | no: a draft | a snowmobile race, position 8 of 8; with A held the sled passes the first checkpoint; 14-26 fps |
+
+Held reading (same instrument and caveats as session 23's):
+
+| title | held result | apk | gameplay | fps median (min) / share >= 30 | notes |
+|---|---|---|---|---|---|
+| KOF: Maximum Impact - Maniax | `scratch/held/kof-mi.returning-20260927T142953` | f5abfa521745 (= ref a593d8eb85) | 319.3 s | 14.56 (11.34) / 17.2% | target 30 (none from #431). No hang. The stage was the airfield (FPS 33 at the mark, 11 near the end); the nav session's cage stage ran at 30-33. Story mode does not draw the same opponent each run, so two runs of this route are not the same place |
+
+`end-frame.png` works now that the loop takes it (the last 25 s of the
+soak). KOF's is a round in progress, so the window ended in play.
+
+**Arctic Thunder.** START ends the intro video. A on START, A on RACE. On
+PLAYER SELECT, A joins player 1; the hat does nothing there and the left
+stick moves to DONE. A on the driver, A on the track. In the race RT does
+nothing and A is the throttle. The race has a checkpoint countdown, so an
+idle sled runs out of time. #431's target for it is 60.
+
+I gave the Thor back after 15 minutes. Five requests pinned to it were
+waiting (thermal507's GTA soak, two of flip474's, two arms), and I had held
+it for 93 of the 105 minutes since 12:59.
+
+The leave state at 14:44: app stopped, performance_mode 0, fan_mode 4,
+dual_screen_display_mode 0, screen_focus_lock 0, screen asleep, 80%.
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
