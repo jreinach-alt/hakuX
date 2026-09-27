@@ -1,0 +1,38 @@
+{
+ "provenance": {
+  "what": "Pass 1 of #397: the 17 finished title runs, reviewed by hand, frame by frame. No title_verdict.py verdict.json exists for them, so without this file the page counted them as untested.",
+  "source": "https://github.com/jreinach-alt/hakuX/issues/397#issuecomment-5849041338",
+  "source_author": "[lane.titleplay]",
+  "source_utc": "2026-09-26T19:09:38Z",
+  "label": "hand-reviewed, pass 1",
+  "ref": "a5b5b628f2",
+  "apk": "25abcaccbf45",
+  "mode": "unrecorded",
+  "speed": "1x",
+  "notes": [
+   "reached: yes = a player-controlled scene confirmed from the frames (the table's `review` and `route` rows); late = gameplay only in the last frames, not measured; no = the run never left the menus.",
+   "Titles are named as on the handhelds (logs/titlepipe/batch-20260925.tsv, titles/already-on-handhelds.json); `as_reported` keeps pass 1's short name.",
+   "DOA Ultimate (DOA2U) is the Dead or Alive 1 Ultimate disc: [lane.xbox] correction on #397, 2026-09-26T21:14:04Z, from the soak's request.json.",
+   "No run reached the 600 s screening length and none ran the 20-minute soak, so every soak cell is 'not run'."
+  ]
+ },
+ "rows": [
+  {"title": "25 to Life", "as_reported": "25 to Life", "device": "thor", "reached": "yes", "play_s": 91, "fps_median": 35.7, "share_30": 0.54, "verdict": "fails: 46% of play under 30 fps", "issue": ""},
+  {"title": "Blinx 2: Battle of Time & Space ~ Blinx 2: Masters of Time & Space", "as_reported": "Blinx 2", "device": "thor", "reached": "yes", "play_s": 169, "fps_median": 21.7, "share_30": 0.0, "verdict": "fails: gameplay median under 30 fps", "issue": ""},
+  {"title": "Crimson Skies: High Road to Revenge", "as_reported": "Crimson Skies", "device": "thor", "reached": "yes", "play_s": 306, "fps_median": 23.4, "share_30": 0.09, "verdict": "fails: gameplay median under 30 fps; last ~2 min at 2-8 fps with 7 hangs of 10-25 s", "issue": ""},
+  {"title": "007: Agent Under Fire", "as_reported": "007: Agent Under Fire", "device": "nova", "reached": "yes", "play_s": 90, "fps_median": 16.2, "share_30": 0.0, "verdict": "fails: gameplay median under the 20 fps floor", "issue": "412"},
+  {"title": "Blinx: The Time Sweeper", "as_reported": "Blinx", "device": "thor", "reached": "yes", "play_s": 160, "fps_median": 14.8, "share_30": 0.0, "verdict": "fails: gameplay median under the 20 fps floor", "issue": "372"},
+  {"title": "Forza Motorsport", "as_reported": "Forza Motorsport", "device": "thor", "reached": "yes", "play_s": 174, "fps_median": 16.7, "share_30": 0.0, "verdict": "fails: gameplay median under the 20 fps floor; the game clock runs at 26% of real time", "issue": "414"},
+  {"title": "Dead or Alive 1 Ultimate", "as_reported": "DOA Ultimate (DOA2U)", "device": "nova", "reached": "yes", "play_s": 191, "fps_median": 12.6, "share_30": 0.0, "verdict": "fails: gameplay median under the 20 fps floor, with hangs of up to 76 s", "issue": "413"},
+  {"title": "Call of Duty 3", "as_reported": "Call of Duty 3", "device": "nova", "reached": "late", "blocker": "gameplay only in the last 2 frames, about 29 fps over the last 60 s; not measured", "verdict": "not measured: gameplay reached too late in the run", "issue": ""},
+  {"title": "50 Cent: Bulletproof", "as_reported": "50 Cent: Bulletproof", "device": "nova", "reached": "no", "blocker": "stops at the profile keyboard", "verdict": "fails: gameplay not reached", "issue": ""},
+  {"title": "Black", "as_reported": "Black", "device": "thor", "reached": "no", "blocker": "stops at the profile keyboard", "verdict": "fails: gameplay not reached", "issue": ""},
+  {"title": "Bruce Lee: Quest of the Dragon", "as_reported": "Bruce Lee", "device": "thor", "reached": "no", "blocker": "stops at the Player Info screen", "verdict": "fails: gameplay not reached", "issue": ""},
+  {"title": "Burnout Revenge", "as_reported": "Burnout Revenge", "device": "nova", "reached": "no", "blocker": "loops between Load Profile and 'no profiles'", "verdict": "fails: gameplay not reached", "issue": ""},
+  {"title": "Burnout 3: Takedown", "as_reported": "Burnout 3", "device": "thor", "reached": "no", "blocker": "loops on the profile YES/NO prompt, then plays the Race Training videos", "verdict": "fails: gameplay not reached", "issue": ""},
+  {"title": "Dead or Alive 3", "as_reported": "DOA3", "device": "thor", "reached": "no", "blocker": "the copyright warning runs at 3-14 fps for ~3 min, then the title screen", "verdict": "fails: gameplay not reached", "issue": ""},
+  {"title": "Dead or Alive Xtreme Beach Volleyball", "as_reported": "DOA Xtreme", "device": "nova", "reached": "no", "blocker": "stops in the accessory shop menu", "verdict": "fails: gameplay not reached", "issue": ""},
+  {"title": "Galleon", "as_reported": "Galleon", "device": "thor", "reached": "no", "blocker": "~3 min of 'Loading...' at 0 fps, then an ambiguous ship-deck scene", "verdict": "fails: gameplay not reached", "issue": ""},
+  {"title": "Fuzion Frenzy", "as_reported": "Fuzion Frenzy", "device": "", "reached": "not run", "blocker": "the re-pinned request still named the Nova card path (title not on device)", "verdict": "not run", "issue": ""}
+ ]
+}

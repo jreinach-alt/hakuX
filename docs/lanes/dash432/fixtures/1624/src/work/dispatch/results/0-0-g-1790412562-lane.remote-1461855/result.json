@@ -1,0 +1,7 @@
+{
+ "requester": "lane.remote",
+ "purpose": "#274 GPUAA device cost leg: arm B, ghoulies 240 s (nova)",
+ "ref": "4a369ed1ee",
+ "device_label": "nova",
+ "apk_sha": "e6b0c2f12787"
+}

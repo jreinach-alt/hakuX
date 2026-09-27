@@ -1,0 +1,7 @@
+{
+ "requester": "host-bisect311",
+ "purpose": "#311 bisect round 4 probe 1: 9094472fae (2026-09-08 nv2a/vk: wipe the shader cache when the state layout changes)",
+ "ref": "d3bb48f79645",
+ "device_label": "nova",
+ "apk_sha": "5dd65e61af7d"
+}
