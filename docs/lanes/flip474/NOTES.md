@@ -256,6 +256,79 @@ hold and the suite arm is identical. If F0 fails (B's `rd_unl` ~0), the wait
 is at another completion call: find it with the v2 counter before touching
 code again.
 
+## Why attempt 2 did not finish
+
+It ended correctly, waiting on the six soaks and the arms job's pgraph pair,
+with a `[lane.flip474] waiting:` comment on #475. All of them landed while
+no session was running. `jobs/handback.sh` resumed the lane (attempt 3) with
+CI green on `9c96893b26` and the pgraph arm judged `verified`.
+
+## 8. Results (attempt 3, 2026-09-27)
+
+`lockread.py --from 151 --to 288` (DOA) and `--from 110 --to 240` (Crimson).
+Crash markers from `crashcheck.py`, lines-to-the-end from `tailcheck.py`.
+
+| run | ref | read lock wait / wall | rd_unl | gfps median | cdef ms/frame | longest gap | crash |
+|---|---|---|---|---|---|---|---|
+| DOA A1 `1-1790516325-flip474-1235330` | 16b7e14ec9 | 0.692 (93.9 s) | 0 | 14 | 52.3 | 1.9 s | 0 |
+| DOA B1 `1-1790516329-flip474-1235504` | ef66174066 | **0.005** (0.64 s) | 2292 | 15 | 51.0 | 1.6 s | 0 |
+| DOA A2 `1-1790516335-flip474-1235784` | 16b7e14ec9 | 0.698 (95.5 s) | 0 | 12 | 61.6 | 2.0 s | 0 |
+| DOA B2 `1-1790516335-flip474-1235822` | ef66174066 | **0.004** (0.51 s) | 2314 | 15 | 50.4 | 2.0 s | 0 |
+| Crimson A `0-0-x-1790516335-flip474-1235863` | 16b7e14ec9 | 0.047 | 0 | 29 | 0.5 | 1.4 s | 0 |
+| Crimson B `0-0-x-1790516335-flip474-1235910` | ef66174066 | 0.054 | 283 | 28 | 0.5 | 1.5 s | 0 |
+
+DOA legs (`flip474-doa-ab.json`):
+
+- **M0 holds.** 66-67 `[lock474]` and 27-35 gfps lines per run. B1's shots in
+  the window show STAGE 01 with two fighters. A2's shots include a KO
+  **REPLAY** against a different opponent, so A2 was not in A1's scene (see P2).
+- **F0 holds.** A has `rd_unl` 0 in both runs; B has 2292 and 2314 (the leg
+  needs >= 500).
+- **L1 holds by far more than the leg asks.** Pooled lock wait share: A 0.695,
+  B 0.0042, so B/A = 0.006 (leg <= 0.5, kill > 0.8). The vCPU's 94 s of
+  PGRAPH lock wait per 137 s became 0.6 s.
+- **Q: the guess was wrong, and it does not matter for L1.** The hidden register
+  is `0x0b10 PGRAPH_PATT_COLOR0`: 0.55 and 0.65 of A's read wait, n ~1700,
+  about one read per frame, which is not an interrupt-service register. It
+  is not STATUS. In B its wait is 0.11 s and 0.00 s.
+- **P1 holds.** Median of the run medians: A 13, B 15.
+- **P2, the labelled guess, is falsified at its boundary.** B - A = 2.0 and
+  the leg said < 2. It is confounded, though. The same-scene pair A1/B1 is
+  14 -> 15 (+1). A2's 12 comes from a window that includes a replay scene.
+  The reading is +1 to +2 fps (7-15%). The PFIFO thread's own GPU wait
+  still bounds the frame, as P3 shows.
+- **P3 holds.** cdef in B is 51.0/50.4 ms against A's 52.3/61.6, so the
+  PFIFO wait is unchanged.
+- **H0 holds.** Gaps are <= 2.0 s, `[lock474]` lines run to 298.7/303.9 s of
+  a 300 s soak, and no run has a crash marker.
+
+Crimson (`flip474-crimson-ab.json`):
+
+- **P0.** A's share is 0.047, below the 0.05 floor, so L1 is **not
+  applicable**. It is not a pass. Crimson's vCPU waits 96% on `PATT_COLOR0`
+  in "other" phases, not at a fence.
+- **P1 holds.** 29 -> 28, and the leg allows >= A - 1.
+- **H0 holds.**
+- B's `rd_unl` of 283 shows that the release ran on this title too, without
+  harm.
+
+Suite arm (`flip474-pgraph-inert.json`, c5e7460372 vs ef66174066, 12 suites,
+682 captures): **PASS**, labelled `verified`. 678 captures are byte-identical.
+The 4 that differ are all `Vertex_shader_rounding_tests/GeometrySuperscreen_*`,
+the one-run drift family that buildflags427 and dpforce345 already
+documented. The prediction excluded that family.
+
+**Merge.** origin/master (31 commits) was merged at `b38118c94a`, with no
+rebase, so every prediction ref is still an ancestor. The only conflict was
+`docs/testing/nv2a_index.json`, rebuilt with `nv2a_index.py build --tests
+/home/justin/nxdk_pgraph_tests` (tests_commit 6743b6ab, as master's).
+`nv2a_index.py check` and `preflight.sh` pass.
+
+**What remains for DOA** is the PFIFO thread's own ~51 ms/frame wait for the
+previous frame's GPU work (cdef). This change was never meant to touch it.
+The next lever is that wait itself: complete the display download without
+blocking the next method, or pipeline it a frame (#413/#414).
+
 ## Do not repeat
 
 - Do not make every PGRAPH read lockless without knowing the polled register:
@@ -265,3 +338,5 @@ code again.
   *began* and stop there: the wait lasts until the method ends. Read
   `[surf413]`/`hakuX-phase` in the same logcat for what the method spent.
 - Do not rank a counter's registers by count when the question is wait.
+- Do not compare fps across A/B runs without looking at the shots: DOA's
+  survey route can land a window on a KO replay (A2), and that moves gfps.
