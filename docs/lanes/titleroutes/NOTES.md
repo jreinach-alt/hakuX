@@ -679,6 +679,48 @@ to the #397 table, then:
 - Check a new title's ISO path first. Titles lane.xbox pushed after 09-26
   sit on the Thor's internal storage (`/storage/emulated/0/ROMS/xbox/`).
 
+### Attempt 6, 2026-09-27 10:00-10:40 PDT (offline: no device free)
+
+**Why attempt 5 did not finish.** It did not fail. It ended on a `waiting:`
+for three Thor soaks, as the lane rules require, and PR #476 folded.
+Hostops resumed this attempt once the soaks were done. No held session was
+possible. The Thor was at 9% under the `battery-hostops` hold, which lifts
+at 80%, and the Nova is reserved for #462 today.
+
+Readings (Thor, apk 17eff0363df9, `scratch/judge.py` on a copy of each
+result dir):
+
+| title | request | fps median (min) / share >= 30 | gameplay | route-frames at the mark |
+|---|---|---|---|---|
+| Battlefield 2: MC | 1-1790517591-titleroutes-1523259 | 19.14 (3.64) / 0% | 270 s; ten 12.7-16.5 s hangs | `081338-gameplay.png`: mission 1, first person in the snowy square, overlay FPS 10 |
+| Azurik | 1-1790519287-titleroutes-2112912r | **void** (29.97 flat) | 285 s of the attract demo | `092535-gameplay.png`: "Press START to play. Press X for Game Demos" |
+| Alias | 1-1790519290-titleroutes-2113140 | 20.80 (19.69) / 0% | 305 s; no hang | `093303-gameplay.png`: Sydney on the casino floor, overlay FPS 19 |
+
+**Azurik's soak never left the title.** The boot was cold, and at `a2` the
+Adrenium logo was still up at 8 fps. In the warm nav session the title was
+already showing by then. The route's one START went to the intro, and every
+later frame is the attract demo, which runs at a flat 29.97. The route now
+presses A once more and START twice, with 20 s more slack. The title shows
+"Press START to play" over the demo, so a late START still works. Two more A
+presses come before the mark. It has not replayed yet. Its soak is the
+replay: 1-1790527983-titleroutes-2100312 (480 s, ref 0dadfc79c5).
+
+**D&D Heroes** is now `routes/dnd-heroes.route` with a targets.toml entry.
+The START is gone, it waits 150 s after `skip` for the cutscene (cold runs
+play it at 2 fps), and the play pattern presses A only, because X opens the
+skill list. It has not replayed yet either. Its soak is
+1-1790527983-titleroutes-2100395 (580 s, ref 0dadfc79c5). If the frames at
+the mark are not the ruins, the reading is void and the route goes back to a
+held session.
+
+I did not draft the next Thor titles. A route without a nav session is a
+guess, and a guess costs a soak slot.
+
+**Do not repeat:** a route made in a warm nav session can miss its presses
+on a cold boot. The nav session is warm (its shaders are cached), and a soak
+may not be. Before trusting a reading, open the route-frame at the mark. A
+flat 29.97 with min = median is what an attract demo looks like.
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only

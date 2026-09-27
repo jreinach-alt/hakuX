@@ -32,7 +32,13 @@ SYN = [
     # no save, so it is inputs ready; a first-run route alone still needs one.
     ("Zz Purple Single Route", "5A5A0007", ("nova",), "kabuki-warriors", False, [], "inputs ready"),
     ("Zz Blue First Run: Tom Clancy's Rainbow Six 3 Black Arrow", "5A5A0008", ("nova",), "goldeneye-ra", False, [], "copied"),
+    # Scored before its registry entry landed: its verdicts carry no name and
+    # no title_id, and name an ISO the registry's map does not (the #397 08:05
+    # delivery). The file name's title-ID prefix puts them in this row.
+    ("Zz Nameless", "5A5A0009", ("thor",), "burnout3", True, [("thor", "screening", 59.0, 0.99, True, True, False),
+                                                             ("thor", "confirmation", 58.5, 0.99, True, True, False)], "Playable"),
 ]
+NAMELESS = {"5A5A0009"}
 GREY = [("Zz Grey %02d" % i, "5A5A01%02d" % i) for i in range(1, 13)]
 
 # The registry the synthetic titles join is the fixture's own copy, not the
@@ -62,6 +68,8 @@ for name, tid, devs, route, save, verdicts, _ in SYN:
              "crash": crash, "hang": False, "fps_window_median": fps, "fps_ok_share": share, "pass": ok,
              "pass_kind": kind, "failing": "crash: SIGSEGV in the guest" if crash else (None if ok else "fps: 12% of play at >= 30"),
              "failures": [], "rating_candidate": "Playable" if ok else None}
+        if tid in NAMELESS:
+            v.update(name=None, title_id=None, title="%s-%s_(USA).xiso.iso" % (tid, name.replace(" ", "_")))
         json.dump(v, open(os.path.join(rd, "verdict.json"), "w"))
         json.dump({"regimen": "max", "perf_mode": 2, "fan_mode": 4, "max": {"perf_mode": 2, "fan_mode": 4},
                    "rest": {"perf_mode": 0, "fan_mode": 4}}, open(os.path.join(rd, "perf_regimen.json"), "w"))
