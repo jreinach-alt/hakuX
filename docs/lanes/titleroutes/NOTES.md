@@ -229,6 +229,50 @@ through the game's own save flow did reach the disk. `titlestate.py record`
 says `created` for PGR on the Thor. Next: a `pgr.returning.route` (load
 existing -> hard disk -> the driver -> main menu), then replay it.
 
+### Session 6: HELD Thor, 21:23-21:45 PDT (22 min; hold taken 21:17 while a soak finished), battery 88% -> 86%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Project Gotham Racing (4D530003) | thor | `pgr.returning.route` | yes (21:31) | quick race, San Francisco, MINI; 46 mph on lap 1 at the replay's end |
+| Project Gotham Racing 2 (4D53004B) | thor | none yet (`scratch/pgr2.draft.route`) | **failed** | Instant Action race in Florence reached in the nav session; the replay took another path |
+
+**PGR returning.** Load existing driver -> hard disk -> Player -> the same
+main menu, then the first-run's path. Nav frames
+`~/hakux-work/nav/pgr.returning-20260926T212324/` (009-moving.png: 37 mph
+at +5 s), replay `scratch/replay/pgr.returning-212807/zz-end.png`.
+
+**PGR2: a route that depends on the frame rate.** Instant Action needs no
+profile, so one route would do. The nav session ran cold (4 fps: shaders
+compiling), its START at the title was dropped and A (held 400 ms) opened
+the menu. The replay ran warm (50 fps): the second START already reached
+the menu, so the route's next A chose Create New Profile. A second nav
+session (no START until the intro FMV, one START, A at the title) then
+overshot: two 0.15 s stick flicks moved the menu cursor THREE items at
+59 fps (to Xbox Demos). Next: step the menu with `axis HATX` (one item per
+press, if the game reads the hat as the D-pad), and wait for the title
+rather than counting presses.
+
+### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
+
+`soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
+after `mark gameplay`. The first Black soak (1-1790482534-titleroutes-3347838,
+300 s) ended in the briefing FMV: its logcat has `mark profile-loaded` and
+no `mark gameplay`. Pre-mark times: kabuki-warriors 200 s, doax 254 s,
+goldeneye-ra.first-run 299 s, nightfire 78 s, black.returning 456 s,
+pgr.first-run 269 s, pgr.returning 173 s. So the batch-1 soaks the host
+queued at 300 s (20:55) score about 100 s (Kabuki), 46 s (DOAX), 1 s
+(GoldenEye) and 222 s (Nightfire). `scratch/bench.sh` queues
+`--seconds` = pre-mark + 300, rounded up to 10 s. Written to the board
+request.
+
+### Benchmarks queued (Thor, 0.5 priority, ref a593d8eb85)
+
+| title | route | request | seconds | fps median / share >= 30 |
+|---|---|---|---|---|
+| Black | black.returning | 1-1790482534-titleroutes-3347838 | 300 | void: no gameplay reached |
+| Black | black.returning | 1-1790482599-titleroutes-3358750 | 760 | pending |
+| Project Gotham Racing | pgr.returning | 1-1790483525-titleroutes-3587419 | 480 | pending |
+
 ## Do not repeat
 
 - Do not take a device under 30%: the Thor runs titlebench soaks at MAX and
@@ -244,3 +288,11 @@ existing -> hard disk -> the driver -> main menu), then replay it.
   start.
 - Do not assume a first-run's profile persisted: a force-stop without the
   HOME flush leaves the disk as it was (GoldenEye).
+- Do not queue a title soak for 300 s: `--seconds` counts from boot and
+  the verdict scores only after the mark. Queue pre-mark + 300.
+- Do not count presses through a title's intro, or count stick flicks in a
+  menu: both depend on the frame rate, which differs between a cold (first
+  run, shaders compiling) and a warm launch. PGR2's replay went elsewhere
+  both ways.
+- Do not assume a force-stop loses a save: PGR's driver, saved through the
+  game's own save screen, was on the disk at the next launch.
