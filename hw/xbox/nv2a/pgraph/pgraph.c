@@ -277,6 +277,13 @@ void pgraph_method_histogram_log_and_reset(void)
             top[6].idx << 2, top[6].count, top[7].idx << 2, top[7].count,
             top[8].idx << 2, top[8].count, top[9].idx << 2, top[9].count);
     }
+    /* #488: the two end-of-frame signals, always, so an arm can tell a title
+     * that never sends them from one the change did not help. hakuX-perf,
+     * because the dispatcher's logcat filter drops hakuX-mhist. */
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-perf",
+        "[notify488] sem_release %u notify %u",
+        method_slow_histogram[NV097_BACK_END_WRITE_SEMAPHORE_RELEASE >> 2],
+        method_slow_histogram[NV097_NOTIFY >> 2]);
 #endif
     memset(method_slow_histogram, 0, sizeof(method_slow_histogram));
     method_slow_histogram_frames = 0;
