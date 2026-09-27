@@ -152,6 +152,7 @@ notes = "#431 (comment 5849938891): 30, medium confidence. IGN (Xbox, 2005): loc
 [titles."56550042"]
 name = "50 Cent: Bulletproof"
 iso = { nova = "56550042-50_Cent_Bulletproof.xiso.iso" }
+route = "50cent"
 notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
 
 [titles."45530018"]
@@ -163,6 +164,7 @@ notes = "#431 (comment 5849938891): 60 from the hakuX swap interval: reviewed ga
 [titles."5451000D"]
 name = "WWE Raw 2"
 iso = { nova = "5451000D-WWE_Raw_2.xiso.iso" }
+route = "wwe-raw-2"
 notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
 
 [titles."4541005B"]
@@ -357,6 +359,11 @@ name = "Burnout"
 iso = { thor = "41430006-Burnout.xiso.iso" }
 route = "burnout"
 
+[titles."45410062"]
+name = "Battlefield 2: Modern Combat"
+iso = { thor = "45410062-Battlefield_2_Modern_Combat.xiso.iso" }
+route = "bf2mc"
+
 [titles."494C0006"]
 name = "Aoi Namida"
 iso = { thor = "494C0006-Aoi_Namida.xiso.iso" }
@@ -366,8 +373,14 @@ notes = "Own target 60 from #431 (comment 5853568091): low confidence. xemu user
 [titles."4D530007"]
 name = "Azurik: Rise of Perathia"
 iso = { thor = "4D530007-Azurik_Rise_of_Perathia.xiso.iso" }
+route = "azurik"
 target_fps = 30
 notes = "Own target 30 from #431 (comment 5853568091): low confidence. Cxbx developer's blog (2010)."
+
+[titles."41430016"]
+name = "Alias"
+iso = { thor = "41430016-Alias.xiso.iso" }
+route = "alias"
 
 [titles."4D570002"]
 name = "Arctic Thunder"
