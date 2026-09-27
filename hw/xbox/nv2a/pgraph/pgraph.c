@@ -2549,6 +2549,90 @@ DEF_METHOD(NV097, NO_OPERATION)
     qemu_mutex_lock(&pg->lock);
 }
 
+/*
+ * #488: NOTIFY writes a 16-byte notification at offset 0 of the
+ * SET_CONTEXT_DMA_NOTIFIES object: an 8-byte timestamp, info32, then info16
+ * and status in the last word. The console (lane.xbox's signal-timing suite,
+ * docs/lanes/xbox/signal-timing/console) writes it 4.1 us after the kick,
+ * 1.4 us after a BACK_END_WRITE_SEMAPHORE_RELEASE ahead of it; slot 1
+ * (offset 16) is never touched, and the timestamp is PTIMER's nanosecond
+ * count, TIME_1:TIME_0. Before this handler the method fell through to
+ * "unhandled" and the notifier was never written: a guest polling it waited
+ * for a fallback. Status 0 is "done". WRITE_THEN_AWAKEN also raises the
+ * PGRAPH NOTIFY interrupt; unlike the NO_OPERATION trap it does not stall
+ * the FIFO, because no measurement says silicon does and a stall the guest
+ * never acknowledges would hang it.
+ *
+ * Silicon delivers the notification when the method after NOTIFY completes.
+ * It is written here, when NOTIFY itself is processed: every method before it
+ * has been processed, and the method after it (NO_OPERATION, in every use
+ * seen) does no work a poller could observe.
+ */
+DEF_METHOD(NV097, NOTIFY)
+{
+    if (!pg->dma_notifies) {
+        return;
+    }
+
+    hwaddr notify_dma_len;
+    uint8_t *notify_data = (uint8_t *)nv_dma_map(d, pg->dma_notifies,
+                                                 &notify_dma_len);
+    /* The limit is inclusive: a 16-byte notification needs limit >= 15. */
+    if (notify_dma_len < 15) {
+        return;
+    }
+
+    /* PTIMER's clock (ptimer.c's ptimer_get_clock); TIME_0/TIME_1 read it
+     * shifted left by 5. */
+    uint64_t ptimer_time = 0;
+    if (d->ptimer.numerator) {
+        uint64_t clock = muldiv64(
+            muldiv64(qemu_clock_get_ns(QEMU_CLOCK_VIRTUAL),
+                     d->pramdac.core_clock_freq, NANOSECONDS_PER_SECOND),
+            d->ptimer.denominator, d->ptimer.numerator);
+        ptimer_time = clock << 5;
+    }
+
+    stl_le_p(notify_data + 0, (uint32_t)ptimer_time);
+    stl_le_p(notify_data + 4, (uint32_t)(ptimer_time >> 32) & 0x1fffffff);
+    stl_le_p(notify_data + 8, 0);
+    /* The status word last, so a poller that sees it sees the rest. */
+    smp_wmb();
+    stl_le_p(notify_data + 12, 0);
+
+    if (parameter != NV097_NOTIFY_WRITE_THEN_AWAKEN) {
+        return;
+    }
+
+#ifdef __ANDROID__
+    static bool logged_awaken;
+    if (!logged_awaken) {
+        logged_awaken = true;
+        __android_log_print(ANDROID_LOG_INFO, "hakuX",
+                            "[notify488] NOTIFY write-then-awaken seen, "
+                            "intr_en 0x%08x",
+                            pg->enabled_interrupts);
+    }
+#endif
+
+    unsigned channel_id =
+        PG_GET_MASK(NV_PGRAPH_CTX_USER, NV_PGRAPH_CTX_USER_CHID);
+    PG_SET_MASK(NV_PGRAPH_TRAPPED_ADDR, NV_PGRAPH_TRAPPED_ADDR_CHID,
+             channel_id);
+    PG_SET_MASK(NV_PGRAPH_TRAPPED_ADDR, NV_PGRAPH_TRAPPED_ADDR_SUBCH,
+             subchannel);
+    PG_SET_MASK(NV_PGRAPH_TRAPPED_ADDR, NV_PGRAPH_TRAPPED_ADDR_MTHD,
+             method);
+    pgraph_reg_w(pg, NV_PGRAPH_TRAPPED_DATA_LOW, parameter);
+    pg->pending_interrupts |= NV_PGRAPH_INTR_NOTIFY;
+
+    qemu_mutex_unlock(&pg->lock);
+    bql_lock();
+    nv2a_update_irq(d);
+    bql_unlock();
+    qemu_mutex_lock(&pg->lock);
+}
+
 DEF_METHOD(NV097, WAIT_FOR_IDLE)
 {
     d->pgraph.renderer->ops.surface_update(d, false, true, true);
