@@ -53,7 +53,7 @@ Attempt 2 (2026-09-27 ~03:00Z) did the following:
 
 | request | arm | round | gameplay gfps | churn% | ng | note |
 |---|---|---|---|---|---|---|
-| `1790477688-lane.tbflip424-1974728` | A | r1 (pilot) | | | | queued |
+| `1790477688-lane.tbflip424-1974728` | A | r1 (pilot) | 30 | 1.4 | 53 | rt 0, fatal 0, tail 4.9 s; G 33.5 ms, slow/s 1320, inv/s 260; STAGE 01 fight in `route-frames/213116-play.png` |
 | `1790477690-lane.tbflip424-1974936` | B | r1 (pilot) | | | | queued |
 
 ## 5. Waiting (2026-09-27 ~03:15Z)
@@ -81,3 +81,8 @@ addendum arrived.
   merging cleanly.
 - Merged origin/master (e5db66fa37) into this branch. The DOA1U prediction's refs (231d04df51)
   are still ancestors, since this was a merge and not a rebase.
+- Pilot A ran 04:25-04:34Z and passes M0: `mark play` present, ng 53, rt 0, fatal 0, tail 4.9 s.
+  A's churn of 1.4% is above M1's 0.5 floor. The play frames are a STAGE 01 fight. At 05:16Z pilot B
+  (`1974936`) was still queued. Ahead of it on the Nova were lane.slowdown462's repeated short holds
+  (the battery is under 15%, on an owner override until 23:30 PDT) and three 60 s arms. r2/r3 stay
+  unqueued until B shows rt 1 and a lower churn, per the pilot rule.
