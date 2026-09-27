@@ -1,5 +1,5 @@
 {
-  "registered_utc": "2026-09-27T17:31:28Z",
+  "registered_utc": "2026-09-27T17:34:31Z",
   "who": "lane.flip474",
   "issue": "474",
   "title": "4541000D-007_Agent_Under_Fire.xiso.iso",
@@ -9,10 +9,10 @@
   "perflog": true,
   "frames_every": 0,
   "runs_per_arm": 1,
-  "a_ref": "dad7864b73adbd9c5fd3250136ede00a4c108591",
+  "a_ref": "76cba82fd2da6274b3a9fa839d69d2e09ccd5d0b",
   "b_ref": null,
   "judge": "python3 docs/lanes/flip474/cblread.py --from 299 --to 420 --show <result-id>; gfps from the same logcat; the route's play shots in the window, by eye",
-  "prediction": "READOUT, one arm, no B. The ref is this branch's merge of master 5ec9b2267f plus pfifo.c's perflog-only [cblat] instrument (dad7864b73): per push-buffer callback (NV097_NO_OPERATION with a parameter), the time from the DMA_PUT store that made it visible to its dispatch, split over non-overlapping intervals into the PFIFO thread's parks (FLIP_STALL waiting for the VBLANK; the previous callback not yet acknowledged; other) and its method time by class (FLIP_STALL, semaphore release, clear, SET_BEGIN_END, other), with the deferred surface download (dl) and pgraph_vk_finish (fin) nested in the methods and overlapping each other. retreason425 (e156fcdf02, same device, route and length) found the guest idle until the PGRAPH ERROR interrupt this callback raises. This run says which PFIFO wait delays that interrupt, in ms per frame, and so which fix removes it: #474 lazy completion (dl), #488 semaphore/notifier (msema), flip-stall pacing (pflip), forza414's deferral (dl/fin on SURFACE_DOWN), or the guest's own acknowledgement (pnop). The default build compiles the instrument out (every added line outside the #if is a local that is never read), so there is no pixels arm; the build that runs is a perflog build, as the earlier readouts were.",
+  "prediction": "READOUT, one arm, no B. The ref is this branch's merge of master 5ec9b2267f plus pfifo.c's perflog-only [cblat] instrument (dad7864b73, with 76cba82fd2 stamping each callback after its own dispatch; registered first on dad7864b73 and withdrawn before any run): per push-buffer callback (NV097_NO_OPERATION with a parameter), the time from the DMA_PUT store that made it visible to its dispatch, split over non-overlapping intervals into the PFIFO thread's parks (FLIP_STALL waiting for the VBLANK; the previous callback not yet acknowledged; other) and its method time by class (FLIP_STALL, semaphore release, clear, SET_BEGIN_END, other), with the deferred surface download (dl) and pgraph_vk_finish (fin) nested in the methods and overlapping each other. retreason425 (e156fcdf02, same device, route and length) found the guest idle until the PGRAPH ERROR interrupt this callback raises. This run says which PFIFO wait delays that interrupt, in ms per frame, and so which fix removes it: #474 lazy completion (dl), #488 semaphore/notifier (msema), flip-stall pacing (pflip), forza414's deferral (dl/fin on SURFACE_DOWN), or the guest's own acknowledgement (pnop). The default build compiles the instrument out (every added line outside the #if is a local that is never read), so there is no pixels arm; the build that runs is a perflog build, as the earlier readouts were.",
   "legs": {
     "M0 (instrument)": ">= 40 cblat lines in 299-420 s, all parse, flips > 0, and the route's play shots show level play. Otherwise VOID, not a zero.",
     "M1 (it sees the callbacks retreason425 counted)": "(n + nokick - dup) per flip within 25% of 1.97 (retreason425's PGRAPH ERROR interrupts taken per frame), and nokick <= 5% of n. FAILS in the world where the pusher dispatches a callback the kick ring cannot place, or retreason425's count and this one are not the same event.",
