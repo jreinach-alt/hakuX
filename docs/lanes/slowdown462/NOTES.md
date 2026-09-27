@@ -216,36 +216,37 @@ between the vCPU (78% busy) and the renderer's `Pipe` waits the profile.
 **Profile** `perf/2026-09-26-slowdown462/blinx/blinx.data` (a593d8eb85, not
 perflog, **on-CPU only**: the `--trace-offcpu` attempt failed at once with
 "Event type 'cpu-clock' is not supported", and the script's fallback recorded
-without it). 00:23:11-00:23:42 PDT, `mark play`+15 s, level play at 13-23 fps
-(the session logcat's gfps lines: 8 x 60 flips in 30.3 s = 15.8 fps, 63
-ms/flip). Per-thread on-CPU from cpu-clock samples (1 sample = 1 ms):
+without it). 00:23:11-00:23:42 PDT, `mark play`+15 s, level play
+(`profwin.py`: 540 flips in 32.3 s = 16.7 fps, 59.9 ms/flip; gfps 13-18,
+then 23 and 29 in the last 5 s). Per-thread on-CPU from cpu-clock samples (1
+sample = 1 ms; ~501 frames in the 30 s record):
 
-| thread | on-CPU (of 30.3 s) | ms/frame | top self |
+| thread | on-CPU (of 30 s) | ms/frame | top self |
 |---|---|---|---|
-| vCPU (tid 17669) | 22,046 ms (73%) | 45.9 | `cpu_exec_loop` 44.6%, guest JIT 30.8%, `cpu_tb_exec` 4.8%, TB lookup (`tb_lookup`, `helper_lookup_tb_ptr`, `x86_get_tb_cpu_state`, `curr_cflags`, qht) 12.2% |
-| PFIFO (tid 17677) | 13,080 ms (44%) | 27.3 | `memcpy_opt` 30.5% (47% of it `pgraph_vk_snapshot_state` per draw pass, 27% `apply_uniform_updates`, 11% `pgraph_vk_finish` <- process_pending_reports), `apply_uniform_updates` 8.5%, `fast_hash` 4.7% (95% the uniform hash) |
+| vCPU (tid 17669) | 22,046 ms (73%) | 44.0 | `cpu_exec_loop` 44.6%, guest JIT 30.8%, `cpu_tb_exec` 4.8%, TB lookup (`tb_lookup`, `helper_lookup_tb_ptr`, `x86_get_tb_cpu_state`, `curr_cflags`, qht) 12.2% |
+| PFIFO (tid 17677) | 13,080 ms (44%) | 26.1 | `memcpy_opt` 30.5% (47% of it `pgraph_vk_snapshot_state` per draw pass, 27% `apply_uniform_updates`, 11% `pgraph_vk_finish` <- process_pending_reports), `apply_uniform_updates` 8.5%, `fast_hash` 4.7% (95% the uniform hash) |
 | DSP (tid 17675) | 3,028 ms | | kernel 60% |
 
-The vCPU is off-CPU ~8.3 s of 30 (16.6 ms/frame). The soak's FLIP_STALL
+The vCPU is off-CPU ~8.0 s of 30 (15.9 ms/frame). The soak's FLIP_STALL
 deferred finishes (77.5 per 60 flips, `Fen` 8.6 ms) are DOA's mechanism
 (#474), but without the switch records that is a candidate, not a finding.
 
-**Blinx answer** (frame 63 ms at 15.8 fps, shipping build, level play):
+**Blinx answer** (frame 59.9 ms at 16.7 fps, shipping build, level play):
 
 | # | cost | ms/frame | share | evidence | candidate fix | owner |
 |---|---|---|---|---|---|---|
-| 1 | exec-loop returns (`cpu_exec_loop` self + `cpu_tb_exec`) | 22.7 | 36% | blinx.data tid 17669: 44.6% + 4.8% of 22,046 ms | chain the returning TBs (retreason425's split, aufdispatch's designs PR #469); same shape as AUF | #425 (retreason425) |
-| 2 | vCPU blocked | 16.6 | 26% | 30.3 s wall - 22.0 s on-CPU; cause not captured (no switch records) | if it is `pgraph.lock` at the flip (DOA's `pgraph_read` wait), #474's fix | #474 (flip474), to be confirmed |
-| 3 | TB lookup | 5.6 | 9% | 12.2% of vCPU samples | #425 jump cache (default off) | #425 |
+| 1 | exec-loop returns (`cpu_exec_loop` self + `cpu_tb_exec`) | 21.7 | 36% | blinx.data tid 17669: 44.6% + 4.8% of 22,046 ms | chain the returning TBs (retreason425's split, aufdispatch's designs PR #469); same shape as AUF | #425 (retreason425) |
+| 2 | vCPU blocked | 15.9 | 27% | 30 s - 22.0 s on-CPU; cause not captured (no switch records) | if it is `pgraph.lock` at the flip (DOA's `pgraph_read` wait; Blinx 2's vCPU blocks there too), #474's fix | #474 (flip474), to be confirmed |
+| 3 | TB lookup | 5.4 | 9% | 12.2% of vCPU samples | #425 jump cache (default off) | #425 |
 
-The guest's own JIT code is 14.1 ms/frame (22%) and not a lever. The PFIFO
-(27.3 ms on-CPU) is not the bound; its per-draw snapshot and uniform upload
+The guest's own JIT code is 13.6 ms/frame (23%) and not a lever. The PFIFO
+(26.1 ms on-CPU) is not the bound; its per-draw snapshot and uniform upload
 are ~12 ms of it.
 
 Bounds, not values: with (1) gone and the blocked time unchanged, the vCPU
-still needs 23.2 on + 16.6 blocked = 39.8 ms per frame: **<= 25 fps**. With
-(1) and (2) both gone, the frame is at least max(vCPU 23.2, GPU 23.3, PFIFO
-on-CPU 27.3) ms: **<= 36 fps**, and the title's 2-VBLANK pacing (33.4 ms) caps
+still needs 22.3 on + 15.9 blocked = 38.2 ms per frame: **<= 26 fps**. With
+(1) and (2) both gone, the frame is at least max(vCPU 22.3, GPU 23.3, PFIFO
+on-CPU 26.1) ms: **<= 38 fps**, and the title's 2-VBLANK pacing (33.4 ms) caps
 it at **<= 30 fps**.
 
 ## Blinx 2 (4D530065, no issue)
@@ -273,6 +274,33 @@ another run; fps is compared on one handheld, so this lane's figure is 28.8.
 The vCPU is at 92%, so a heavier scene would drop below the cap. The one
 synchronous download per frame (`sd_dl` 60/60, `Sub` 13.6 ms) is
 blinx372d's zeta-download shape, the same as Blinx 1's attract demo.
+
+**Profile** `perf/2026-09-26-slowdown462/blinx2/blinx2.data` (a593d8eb85,
+`--trace-offcpu`, 00:35:31-00:36:06 PDT, `mark play`+20 s, the same mission;
+`profwin.py`: 1,020 flips in 34.2 s = 29.85 fps, 33.5 ms/flip; ~896 frames
+in the 30 s record). From the switch records (`offcpu.py`):
+
+| thread | on-CPU | off-CPU | where the off-CPU time goes |
+|---|---|---|---|
+| vCPU (tid 22890) | 26,451 ms (88%) = 29.5 ms/frame | 3,562 ms | `pgraph_read` `pg->lock` 1,293; BQL in `cpu_exec_loop` 1,054; `pgraph_write` 143; unsampled 825 |
+| PFIFO (tid 22900) | 13,553 ms (45%) = 15.1 ms/frame | 16,459 ms | **`pgraph_vk_finish` <- `download_surface` 7,559** and <- `download_surface_complete_deferred` 3,306 (together 12.1 ms/frame); idle cond-wait 4,819 |
+
+vCPU on-CPU shares (samples): `cpu_exec_loop` 41.3%, guest JIT 36.5%,
+`cpu_tb_exec` 4.6%, TB lookup 9.0%. PFIFO on-CPU: `memcpy_opt` 31.5%,
+`tlb_reset_dirty` 8.2%, `apply_uniform_updates` 6.0%.
+
+**Blinx 2 answer** (frame 33.5 ms at 29.85 fps: at the 2-VBLANK cap; the
+costs below are the headroom a heavier scene would eat):
+
+| # | cost | ms/frame | share | evidence | candidate fix | owner |
+|---|---|---|---|---|---|---|
+| 1 | exec-loop returns | 13.5 | 40% | blinx2.data tid 22890: 41.3% + 4.6% of 26,451 ms | as AUF and Blinx | #425 |
+| 2 | PFIFO waits for synchronous surface downloads | 12.1 | 36% | tid 22900: `download_surface` + deferred completion, 10.9 s of 30; soak `sd_dl` 60/60 flips, `Sub` 13.6 | blinx372d's zeta download made asynchronous | #372 (the Blinx lane; same engine) |
+| 3 | vCPU blocked on `pg->lock` + BQL | 2.6 | 8% | tid 22890 off-CPU 2,347 of 3,562 ms | #474 | #474 |
+
+Bound, not a value: none above the cap. The frame is at the title's 2-VBLANK
+pacing (33.4 ms); removing any of these leaves it at **<= 30 fps**. No new
+issue is asked for Blinx 2: it is not slow on this build and device.
 
 ## Log (PDT, 2026-09-26)
 
