@@ -4,11 +4,12 @@ This is its own PR (#504), off master, because the addendum asked for one.
 The lane's investigation is in `NOTES.md`; sections 16 and 17 are on this
 PR too.
 
-**Status, 2026-09-27 22:30Z: the first cut was wrong on the Thor, and the
-change on this branch is a second cut.** The first cut (`902cf1ab53`) read
-4636.591 ns per tick at start-up on the Thor, 89 times the true period. The
-second cut (`36d2a6faaf`, merged head `253148451f`) has not run on a device
-yet.
+**Status, 2026-09-27 22:20Z: the first cut was wrong, and the change on
+this branch is a second cut.** The first cut (`902cf1ab53`) read 4636.591 ns
+per tick at start-up on the Thor, 89 times the true period, and measured
+nothing on the Nova. The second cut (`36d2a6faaf`, merged head
+`253148451f`) read 52.047 ns on the Thor and every Thor leg holds. Its Nova
+run and its pgraph pair have not run.
 
 ## Why the sessions before this one did not finish
 
@@ -150,12 +151,32 @@ G1 replaces the first cut's B/A ratio. The route is blind and DOA draws its
 opponent per run, so two runs are not the same scene; GPU and cdef in one
 run are. On `795ea6b3af` the ratio read 0.65, 0.65 and 0.66 in three runs.
 
-## Waiting (from 2026-09-27 22:15Z)
+## Results for the second cut
+
+**The Thor, `1-1790546971-flip474-641838`** (Crimson Skies, 120 s; this
+time the route played):
+
+`init: GPU timestamp period reported=33.113 ns measured=52.047 ns (+-0.20%, span 119.4 ms, samples 316 of 319, halves differ 0.00%) using=52.047 ns (measured)`
+
+| leg | verdict |
+|---|---|
+| K0 | holds: one line |
+| K1, the guess | **holds: 52.047 ns, 0.07% under 52.083**, and it is the value used |
+| K3, the guess | **holds: the halves differ 0.00%**, scatter 0.20%. The Thor's counter keeps time across 300 us of idle |
+| G2 | holds: the largest GPU is 7.2 ms, of a 40.2 ms frame |
+| G3 | **holds: 0.3 ms on the unattended screen** (RP:2). The first cut read 28 to 30 there, and master prints 0.2, which is 0.31 true |
+| H0 | holds: no crash marker |
+
+In play Crimson reads GPU 7.0, R 6.4, X 0.6 (true ms). Its X/R is 0.09, so
+it is not a title whose passes run twice.
+
+**The Nova and the pgraph pair: not run yet.**
+
+## Waiting (from 2026-09-27 22:20Z)
 
 | request | device | ref | for |
 |---|---|---|---|
 | `1-1790546971-flip474-641697` | Nova | `253148451f` | `flip474-tsperiod2-doa-nova.json` |
-| `1-1790546971-flip474-641838` | Thor | `253148451f` | `flip474-tsperiod2-thor.json` |
 | the arms job's pair | either | `57e2a7107c` / `253148451f` | `flip474-tsperiod2-pgraph-inert.json` |
 | `1-1790546289-flip474-398286` | Nova | `795ea6b3af` | NOTES section 16, the base's one rerun |
 
@@ -165,8 +186,7 @@ queued by running the queue script twice. They were withdrawn unclaimed
 
 When they land: read each start-up line, run `phaseread.py`, `lockread.py`
 and `gfpsseries.py`, judge every leg, post on #474 and #462, and mark #504
-ready only if K1 and G1 hold on the Nova, the Thor's line is either a
-measured 52.08 or a refusal, and the pgraph pair is identical.
+ready only if K1 and G1 hold on the Nova and the pgraph pair is identical.
 
 ## Not done here
 
