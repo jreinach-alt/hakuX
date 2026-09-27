@@ -336,3 +336,8 @@ route = "brute-force"
 name = "Otogi: Myth of Demons"
 iso = { thor = "46530002-Otogi_Myth_of_Demons.xiso.iso" }
 route = "otogi"
+
+[titles."41430006"]
+name = "Burnout"
+iso = { thor = "41430006-Burnout.xiso.iso" }
+route = "burnout"
