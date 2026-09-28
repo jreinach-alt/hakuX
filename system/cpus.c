@@ -550,7 +550,7 @@ bool hakux_idle_halt_enabled(void)
 {
     if (ih_enabled < 0) {
         const char *v = getenv("HAKUX_IDLE_HALT");
-        ih_enabled = !v || v[0] != '0';    /* pixel arm only: default on */
+        ih_enabled = v && v[0] == '1';
         if (ih_enabled) {
             IH_LOG("[idlehalt] on: timeout %d ms, armed at the first PIT",
                    IH_TIMEOUT_MS);
