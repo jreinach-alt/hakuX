@@ -230,3 +230,54 @@ wants a start well under the gate (see above).
   variable that matters there.
 - A Thor soak's `mark gameplay` lands 2-4 min into the run. A "30 minutes after the mark" window
   at these starts is 60-76 % paused, whatever the regimen.
+
+## 7. Session 4, 2026-09-28 11:00Z: Part C, the idle halt from a cold start
+
+**Why the previous attempt did not finish.** It did finish its brief. Session 3 read Part A and
+#424 r3, posted on #507, #433 and #424, and marked #537 ready. #537 folded as 9d777502fa. The
+brief then gained Part C (lane.local, 04:05 PDT), and this session is that new work. It goes on
+a second branch, `lane/sustain507-levers`, off master, because #537 had already folded.
+
+### Instruments
+
+- **The #519 gate cannot be lowered from a request.** `THERMAL_COOL_C` is a shell variable of
+  `soak_title.sh`. A request's `--env` goes to the app's `env_vars` pref (dispatcher.sh
+  `apply_env_pref`). Only `PERF_REGIMEN` is read back from the request, by name. So, as the
+  brief's fallback says: the runs must be the first on each device after a cold period. The
+  start temperatures are read from thermal.jsonl, and a warm start is reported, not scored.
+- Both handhelds name the battery sensor `battery` in `tz`, beside `xo-therm`. Both expose the
+  same `thermal-pause-*` cooling devices, so a Nova pause is visible. `pause_census.py`: 0 of 42
+  Nova soaks with a thermal.jsonl have paused, against 12 of 35 on the Thor.
+- The halt logs `[idlehalt] w=.. on=<0|1> span_us run_us rq_us halts=..` every 2 s, under tag
+  `hakuX` at W. `hakuX:W` is in the soak's default LOGCAT_SPEC, so no `--perflog` is needed.
+- `regimen_read.py` gained `--mark play` (the survey route, which is all Blinx and AUF have),
+  `battery_start_c`, the halt read-back (`ih_on`, `ih_halts`, `ih_run_pct`) and `--halt ON OFF`
+  (net_w over the span before either run paused). It reproduces #525's AUF pair (4.75 vs
+  7.02 W) and Part A's Crimson cut (-0.338 W).
+
+### Prediction and queue
+
+`docs/testing/predictions/sustain507-levers.json` (sha256 4c5b3f7b...), registered before
+queueing. Legs: L0, H1 (ON pauses later or never), H2 (a Thor ON plateau at 70-77 C by min 15),
+H3 (ON 2 C cooler at min 10), P (pre-pause cut >= 1.5 W), F (reported), and a falsifier.
+Admission: xo <= 50 C and battery <= 36 C at the start sample.
+
+| request | what |
+|---|---|
+| `1-1790593205-lane.sustain507-3238469` | Thor Blinx, halt ON, default, 2160 s (first) |
+| `1-1790593205-lane.sustain507-3238578` | Thor Blinx, halt OFF, default (second) |
+| `1-1790593206-lane.sustain507-3238659` | Nova AUF, halt OFF, default (first) |
+| `1-1790593206-lane.sustain507-3238806` | Nova AUF, halt ON, default (second) |
+
+All four on 9d777502fa (`queue_part_c.sh`). The pilot file has a Part C addendum. Each
+run needs its own cold slot, and the second of a pair cannot follow the first directly. hostops
+was asked on #507 to place them. The session ends on that wait.
+
+### On resume
+
+1. `python3 docs/lanes/sustain507/regimen_read.py --mark play --json 1-1790593205-lane.sustain507-3238469
+   1-1790593205-lane.sustain507-3238578 1-1790593206-lane.sustain507-3238659 1-1790593206-lane.sustain507-3238806`.
+   Check admission first (xo_start_c, battery_start_c), then L0.
+2. `--mark play --halt <ON> <OFF>` per device for P. Judge H1-H3 as registered.
+3. Post the Part A-style table, with the start xo and battery, on #507 and #525.
+4. #424's Thor leg continues as registered: it wants one more valid pair, from a cold start.
