@@ -3260,6 +3260,24 @@ void pgraph_vk_drain_deferred_surface_releases(PGRAPHVkState *r, int frame)
     if (!retired) {
         return;
     }
+
+    /*
+     * The same fence ends the in-flight window of every surface invalidated
+     * while this slot was recording. invalidation_frame is a slot index, and
+     * surface_in_flight() reads a slot that is current or submitted as busy;
+     * in steady state every slot is one or the other, so a stamp that is
+     * never cleared keeps its surface unprunable for good. The one flush
+     * that used to reset every slot at once ran on each surface-to-texture
+     * bind until #517 moved it to the copy branch, and on Forza's race
+     * invalid_surfaces then grew to ~4000 entries, each walked on every
+     * texture bind: 29 fps fell to 3 over a race (#414).
+     */
+    SurfaceBinding *surface;
+    QTAILQ_FOREACH(surface, &r->invalid_surfaces, entry) {
+        if (surface->invalidation_frame == frame) {
+            surface->invalidation_frame = -1;
+        }
+    }
     for (guint i = 0; i < retired->len; i++) {
         DeferredSurfaceRelease *s =
             &g_array_index(retired, DeferredSurfaceRelease, i);
