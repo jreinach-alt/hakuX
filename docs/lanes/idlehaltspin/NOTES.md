@@ -9,7 +9,7 @@ SKIPPED `idlehalt-spin-{auf,blinx}.json` (`a_ref == b_ref`), and that part is
 true. But lane.idlehalt had already queued all six arms directly with
 `request.sh`, at 40fabbaacc, with each arm's env (its NOTES section 8). Five
 had finished when this lane started. Blinx A1 (`-2124441`) was running on the
-Nova at 17:4xZ.
+Nova at 17:4xZ; this session waited for it and read it.
 
 C against B on one binary and one device is a real A/B. arms.sh cannot
 express it, because it compares refs and not env. So this lane reads the
@@ -25,17 +25,17 @@ the windows the registrations name. J/frame comes from `title_verdict.py`
 | | AUF C (spin 100) | AUF B (halt) | AUF A (off) | Blinx C | Blinx B | Blinx A |
 |---|---|---|---|---|---|---|
 | result | `2124008` | `2124125` | `2124199` | `2124275` | `2124356` | `2124441` |
-| windows, checks | 60 ok | 60 ok | 60 ok | 82 ok | 84 ok | BLX_A_WIN |
-| gfps | 19.93 | 19.85 | 19.78 | 19.92 | 20.20 | BLX_A_FPS |
-| vCPU on-CPU | 29.4% | 25.3% | 59.7% | 43.5% | 37.9% | BLX_A_RUN |
+| windows, checks | 60 ok | 60 ok | 60 ok | 82 ok | 84 ok | 85 ok |
+| gfps | 19.93 | 19.85 | 19.78 | 19.92 | 20.20 | 19.47 |
+| vCPU on-CPU | 29.4% | 25.3% | 59.7% | 43.5% | 37.9% | 73.8% |
 | halts/s | 483 | 492 | 0 | 601 | 543 | 0 |
 | tp / xpc | 0 / 0 | 0 / 0 | | 0 / 0 | 0 / 0 | |
 | sh (kicks inside the spin) | 2951 | 0 | | 19454 | 0 | |
 | spinning | 4.7% | 0 | | 4.9% | 0 | |
 | **pg raise-to-run >= 50 us** | **5.4%** | **7.5%** | n/a | **2.4%** | **3.3%** | n/a |
-| net W | 6.14 | 6.02 | 7.27 | 6.64 | 6.49 | BLX_A_W |
-| j_per_frame | 0.308 | 0.298 | 0.365 | 0.334 | 0.327 | BLX_A_J |
-| thermal_status_max | 0 | 0 | 0 | 0 | 0 | BLX_A_TH |
+| net W | 6.14 | 6.02 | 7.27 | 6.64 | 6.49 | 8.32 |
+| j_per_frame | 0.308 | 0.298 | 0.365 | 0.334 | 0.327 | 0.434 |
+| thermal_status_max | 0 | 0 | 0 | 0 | 0 | 0 |
 
 The pg kick's time from halt entry (`kpg`, in the B arms, spin 0):
 
@@ -48,13 +48,13 @@ The pg kick's time from halt entry (`kpg`, in the B arms, spin 0):
 
 | leg | AUF | Blinx |
 |---|---|---|
-| V | holds | holds (A: BLX_A_V) |
+| V | holds (ihread checks; C's last play shot is level play) | holds (same; C's and A's last play shots are level play) |
 | **L** (C's >= 50 us share at most half of B's) | **fails**: 5.4 vs 7.5 (0.72 x) | **fails**: 2.4 vs 3.3 (0.73 x) |
 | L against the first prediction's <= 1% | fails | fails |
-| H (C <= B + 12 points, >= 25 under A) | holds: +4.1; 30.3 under A | +5.6 over B holds; under A: BLX_A_H |
+| H (C <= B + 12 points, >= 25 under A) | holds: +4.1; 30.3 under A | holds: +5.6; 30.3 under A |
 | C (tp = 0, xpc = 0, sh > 0) | holds | holds |
-| F (C, B >= 0.95 x A) | holds: 1.008, 1.004 | BLX_A_F |
-| J (C <= 0.85 x A) | holds, barely: 0.844 (B 0.815) | BLX_A_J2 |
+| F (C, B >= 0.95 x A) | holds: 1.008, 1.004 | holds: 1.023, 1.037 |
+| J (C <= 0.85 x A) | holds, barely: 0.844 (B 0.815) | holds: 0.768 (B 0.752) |
 
 The halt with a 100 us spin keeps the saving and costs no fps. It does not
 fix the callback tail.
