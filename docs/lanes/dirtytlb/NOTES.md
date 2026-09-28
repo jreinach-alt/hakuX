@@ -289,10 +289,32 @@ shortens every caller's walk on both threads.
 - `dirtytlb-rd.json`: the Crimson soak pair on the Thor, hand-queued, B
   first. Judge: `walk_read.py --pair A B`, K1 from pair461_read.py, J from
   jpf.py.
-- `dirtytlb-rd-pixels.json`: the counter arm's 12 suites, three runs per
-  arm, queued by the arms job.
+- `dirtytlb-rd-pixels.json`: 11 of the counter arm's 12 suites, one run per
+  arm, queued by the arms job. `dirtytlb-rd-signed.json`: the twelfth, three
+  runs per arm, because its capture moved in a one-run arm.
 - Black and Midtown Madness 3 (lane.slowtier2's ask) wait for the Crimson
   pair: it is the pilot, and four more soaks would pass the 30 min gate.
+
+### On `lane/dirtytlb-rd` (A `249ea8fd05`, B `052551bdd3`)
+
+- The change is one line: `hakux_tlb68_rd_on()` reads 1 when
+  `HAKUX_TCG68_RD` is unset, as `hakux_tlb68_jc_on()` does since #425.
+  `HAKUX_TCG68_RD=0` restores the full walk.
+- Why it is exact was argued in #68 and read again by PR #309's audit; read
+  a third time here against the head: `c.dirty` is set under `c.lock` in
+  `tlb_set_page_full()` before an entry is installed, and cleared only in
+  `tlb_flush_by_mmuidx_async_work()` together with the flush of the same
+  modes. The walk reads it under the same lock.
+- Leg X is the device check of that argument: hits per walk and `sd` per
+  flip must not drop. A faster walk that re-arms fewer entries is a walk
+  that skipped work.
+- Two refs, not one binary with `--env`: a second arm on the same APK keeps
+  the first arm's shader cache, and a new APK clears it in both.
+- Type-check (`typecheck.py`): no error, the same TARGET_PAGE_MASK shift
+  warnings as before. `check_android_guards.py` ok. `walk_read.py
+  --selftest` ok; its fixtures cover the switch not taking (W), a walk that
+  stays wide (E), a walk that got faster by skipping (X), time that does not
+  follow entries (T, U) and a render thread whose CPU does not move (C).
 
 ## Waiting (2026-09-28 ~18:30Z, attempt 3)
 
