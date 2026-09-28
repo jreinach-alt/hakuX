@@ -83,12 +83,15 @@ notes = "#431 (comment 5851536933): 30, high confidence. Digital Foundry (2026)"
 [titles."4D530039"]
 name = "RalliSport Challenge 2"
 target_fps = 60
-iso = { nova = "RalliSport Challenge 2 (Japan, Europe).iso" }
+iso = { nova = "RalliSport Challenge 2 (Japan, Europe).iso", thor = "RalliSport Challenge 2 (Japan, Europe).iso" }
+route = "rallisport-2.returning"
 notes = "#431 (comment 5851536933): 60, medium confidence. Eurogamer (Xbox, 2004)"
 
 [titles."53450029"]
 name = "Spikeout: Battle Street"
-iso = { nova = "Spikeout - Battle Street (Europe).iso", thor = "Spikeout - Battle Street (Europe).iso" }
+iso = { nova = "Spikeout - Battle Street (Europe).iso", thor = "Spikeout - Battle Street (USA) (En,Ja,Fr,De,Es,It).xiso.iso" }
+route = "spikeout.returning"
+notes = "Route by lane.titleroutes 2026-09-27 on the Thor's USA disc (the Europe disc may add a language or 50/60 Hz prompt). Own target not yet measured, so the 30 default."
 
 [titles."55530040"]
 name = "Tork: Prehistoric Punk"
@@ -184,6 +187,7 @@ notes = "#431 (comment 5849938891): 30, documented. a capture on an original Xbo
 name = "Project Gotham Racing 2"
 target_fps = 30
 iso = { thor = "4D53004B-Project_Gotham_Racing_2.xiso.iso" }
+route = "pgr2"
 notes = "#431 (comment 5851536933): 30, medium confidence. GameSpot and Eurogamer (Xbox, 2003): locked at 30"
 
 [titles."45410076"]
