@@ -289,10 +289,74 @@ shortens every caller's walk on both threads.
 - `dirtytlb-rd.json`: the Crimson soak pair on the Thor, hand-queued, B
   first. Judge: `walk_read.py --pair A B`, K1 from pair461_read.py, J from
   jpf.py.
-- `dirtytlb-rd-pixels.json`: the counter arm's 12 suites, three runs per
-  arm, queued by the arms job.
+- `dirtytlb-rd-pixels.json`: 11 of the counter arm's 12 suites, one run per
+  arm, queued by the arms job. `dirtytlb-rd-signed.json`: the twelfth, three
+  runs per arm, because its capture moved in a one-run arm.
 - Black and Midtown Madness 3 (lane.slowtier2's ask) wait for the Crimson
   pair: it is the pilot, and four more soaks would pass the 30 min gate.
+
+### On `lane/dirtytlb-rd` (A `249ea8fd05`, B `052551bdd3`)
+
+- The change is one line: `hakux_tlb68_rd_on()` reads 1 when
+  `HAKUX_TCG68_RD` is unset, as `hakux_tlb68_jc_on()` does since #425.
+  `HAKUX_TCG68_RD=0` restores the full walk.
+- Why it is exact was argued in #68 and read again by PR #309's audit; read
+  a third time here against the head: `c.dirty` is set under `c.lock` in
+  `tlb_set_page_full()` before an entry is installed, and cleared only in
+  `tlb_flush_by_mmuidx_async_work()` together with the flush of the same
+  modes. The walk reads it under the same lock.
+- Leg X is the device check of that argument: hits per walk and `sd` per
+  flip must not drop. A faster walk that re-arms fewer entries is a walk
+  that skipped work.
+- Two refs, not one binary with `--env`: a second arm on the same APK keeps
+  the first arm's shader cache, and a new APK clears it in both.
+- Type-check (`typecheck.py`): no error, the same TARGET_PAGE_MASK shift
+  warnings as before. `check_android_guards.py` ok. `walk_read.py
+  --selftest` ok; its fixtures cover the switch not taking (W), a walk that
+  stays wide (E), a walk that got faster by skipping (X), time that does not
+  follow entries (T, U) and a render thread whose CPU does not move (C).
+- `preflight.sh --allow-tracker` on `c137d97dfc`: every step ok except
+  `territory`, which fails on two rows of `origin/board:territory.toml` that
+  are not this lane's (draw.c claimed by pacing and shaderfb569, debug.h by
+  shaderfb569 and remote). No file of this lane is in either row.
+
+### What the next session should not repeat
+
+- Do not look for the fix in draw.c first. The counts say the callers are
+  doing needed work (hits per walk 1.09, `vr` 0); the waste is inside the
+  walk, and `[tlb68]`'s `rdm` and `rdoe` had shown 22 modes per walk since
+  #68. Read `fx=` on a `[tlb68]` line before pricing any TLB lever: it says
+  which switches the run had on.
+- Do not judge a walk lever by `rdous` per flip alone. The two rd0 Crimson
+  runs differ by 20% in it (3584 and 4292) because their tables differ in
+  size; us per entry is the figure that agrees.
+
+## Waiting (2026-09-28 ~18:50Z, attempt 4)
+
+All outside this session. Both handhelds are on holds (the Nova on battery,
+the Thor on lane.fanduty507's), so nothing of this lane's has run yet.
+
+| what | id | resolves |
+|---|---|---|
+| fix pair B, Crimson, Thor | `1-1790620928-lane.dirtytlb-1386630` | `dirtytlb-rd.json` |
+| fix pair A, Crimson, Thor | `1-1790620928-lane.dirtytlb-1387249` | `dirtytlb-rd.json` |
+| counter, signed suite x3 | `1-1790620563-arms-dirtytlb-base-1288042`, `-fix-1288213` | the `[job.arms]` verdict on `dirtytlb-counter-signed.json`, PR #549 |
+| fix, 11 suites | not queued yet (next arms tick) | the `[job.arms]` verdict on `dirtytlb-rd-pixels.json`, PR #575 |
+| fix, signed suite x3 | not queued yet (next arms tick) | the `[job.arms]` verdict on `dirtytlb-rd-signed.json`, PR #575 |
+
+Then:
+- `walk_read.py --pair 1387249 1386630`, `pair461_read.py --pair` for K1,
+  `jpf.py` for J. Read run.log for UtilAcceptVsock and the gameplay frame
+  of each arm first: 936387 lost a press to it.
+- #549 goes ready when the signed-suite verdict supersedes the one-capture
+  FAIL. If that arm is refuted (A's three runs agree and B's three all
+  differ), the counter does not land as it stands, and #575 carries it, so
+  #575 waits on the same verdict.
+- #575 goes ready when its pair and both pixel arms are read. Put the
+  measured figure in its `Release note` line then.
+- Then Black and Midtown Madness 3 on the Thor, both refs, for
+  lane.slowtier2: write `pilots/lane.dirtytlb.ok` from the Crimson pair
+  first.
 
 ## Waiting (2026-09-28 ~18:30Z, attempt 3)
 
