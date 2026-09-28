@@ -128,3 +128,56 @@ timers, and the guest spins waiting on the GPU.** Readings and predictions:
 PFIFO thread under 30% on-CPU in the stall (`taskio`), which voids session 1's 85%; R4 spread
 with no call path over 25% (no single mechanism to name). The session measured nothing about R1
 if `tbmap.py`'s self-checks fail.
+
+## 4. Session 2 (2026-09-27 20:46-20:51 PDT, 286 s of device time): cold launch, then warm
+
+Data: `~/hakux-work/perf/2026-09-27-doa413c/s2/`. Both stall records were recorded (14,611 and
+9,445 samples) and then **lost to a script bug**: `dump()` set the byte count in `n`, bash's
+dynamic scoping handed that to `launch()`'s `local n`, the pull asked for
+`doa413c-134213632.data`, and cleanup deleted the real files. The same bug skipped the RAM
+dump. Fixed (`dump()`'s variables are local). The logcats and `taskio` of both launches stand.
+
+`stalls.py` over both launches (a gap = consecutive `fifoskew`/`gfps` lines >= 3 s apart):
+
+| launch | the menu -> first fight load, ~85 s after the route starts | vCPU in it | closing `fifoskew` |
+|---|---|---|---|
+| 1, caches cleared | **12.9 s** (20:47:46.9-20:47:59.8) | 1828-1973 of 2000 | kicks 198, drained 127, mean 37 ms, max 226 ms |
+| 2, launch 1's caches kept | **3.1 s** (20:49:58.2-20:50:01.2) | 1962-1968 | kicks 115, drained 47, mean 91 ms, max 219 ms |
+
+**R5: the warm load stalls 76% less than the cold one** (3.1 s against 12.9 s), past the
+pre-registered "at most half". The per-60-flip line that closes the cold stall reads
+`G:27.2(0.4-12402.3)`: **one guest frame took 12.4 s**.
+
+`taskio` over the cold stall's inner 11.5 s, and the warm load's gap:
+
+| window | vCPU CPU | its ISO reads | PFIFO thread CPU |
+|---|---|---|---|
+| launch 1 menus, 37 s | 94.3% | 1,467 KB/s | 5.3% |
+| **launch 1 stall, 11.5 s** | **98.6%** | **0.0 KB/s** | **96.7%** |
+| launch 1 fight after, 19 s | 66.5% | 717 KB/s | 35.5% |
+| launch 2 menus, 40 s | 94.2% | 1,514 KB/s | (not among the top 5) |
+| launch 2 load gap, 2.1 s | 99.5% | 3,605 KB/s | 56.2% |
+
+The cold stall reads **nothing** from the disc (session 1's 531 KB/s window must have taken in
+an edge of it). The PFIFO thread is pegged through it. With a warm cache the same load
+reads the disc at 3.6 MB/s and is over in about 3 s.
+
+Offline, from session 1's fight record 2 (`tbmap.py`: 94% of the vCPU's JIT samples map; 5 of 5
+tier-1 promote pcs are header pcs; the frequent-delta share is 74.9%, under gta482's 95% bar):
+**48% of the vCPU's JIT samples are one 5-instruction title TB at `0x0034a197`**, disassembled
+from the RAM dump (`guestcode.py`):
+
+```
+34a18d: mov edx,[esi+0x30]   ; pointer to the GPU's read position
+34a190: mov esi,[esi+0x2c]
+34a193: mov eax,esi
+34a195: sub eax,edi
+34a197: mov ecx,[edx]        ; <- spin: re-read it
+34a199: mov edi,esi
+34a19b: sub edi,ecx
+34a19d: cmp eax,edi
+34a19f: jb  34a197           ; until the GPU has consumed enough pushbuffer
+```
+
+A pushbuffer-space wait: the title spins until the GPU's read position has moved far enough.
+Its read is of RAM, not a register: 2.7% of the vCPU's samples are in MMIO helpers.

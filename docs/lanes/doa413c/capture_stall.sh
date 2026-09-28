@@ -35,7 +35,7 @@ set -u
 DEV=nova S=ee317437 MIN_BATT=${MIN_BATT:-20}
 PKG=com.jreinach.hakux.debug
 D=/home/justin/hakux-work/dispatch
-OUT=${OUT:-/home/justin/hakux-work/perf/2026-09-27-doa413c/s2}
+OUT=${OUT:-/home/justin/hakux-work/perf/2026-09-27-doa413c/s3}
 APK_REF=${APK_REF:-a593d8eb85}
 APK=$D/builds/$APK_REF.apk
 ISO=54430006-Dead_or_Alive_1_Ultimate.xiso.iso
@@ -142,6 +142,9 @@ cp "$HERE/titles/routes/survey.route" "$OUT/route.txt" || { say "no route survey
 a shell "run-as $PKG sh -c 'cat > files/doa413c-taskio.sh'" < "$LANE/taskio.sh"
 
 dump() {  # <kind: codebuf|ram> <label>
+    # every variable local: session 2 (2026-09-27) set launch()'s n to the
+    # byte count here, pulled rec-134213632.data, and lost both records
+    local lo hi sk ct nb
     [ -n "$PID" ] || PID=$(a shell "ps -A -o PID,NAME" | tr -d '\r' | awk -v n="$PKG:xemu" '$2 == n {print $1; exit}')
     [ -n "$PID" ] || { say "no emulator pid; no $1 dump"; return 1; }
     a exec-out "run-as $PKG cat /proc/$PID/maps" > "$OUT/maps-$2.txt"
@@ -166,8 +169,8 @@ PYMAPS
     while read -r lo hi; do
         sk=$(( 0x$lo / 4096 )); ct=$(( (0x$hi - 0x$lo) / 4096 ))
         T=180 a exec-out "run-as $PKG sh -c 'dd if=/proc/$PID/mem bs=4096 skip=$sk count=$ct 2>/dev/null | gzip -1'" > "$OUT/$1-$2-$lo.bin.gz" < /dev/null
-        n=$(gzip -dc "$OUT/$1-$2-$lo.bin.gz" 2>/dev/null | wc -c)
-        say "dump $1 $2 $lo: $n of $(( ct * 4096 )) bytes"
+        nb=$(gzip -dc "$OUT/$1-$2-$lo.bin.gz" 2>/dev/null | wc -c)
+        say "dump $1 $2 $lo: $nb of $(( ct * 4096 )) bytes"
     done < "$OUT/regions-$2.txt"
 }
 
