@@ -74,3 +74,20 @@ Pilot (the 30 min gate): AUF B1 then A1. After reading them, write
 - An unbounded wait for an idiom halt.
 - Reading `[rr425w]` idle time by wake key as "what the guest waits for"
   (retreason425): the PIT ends most idle stretches and readies nothing.
+
+## 4. Waiting (session 1, 2026-09-27 18:5x PDT)
+
+Preflight passes on dd8a09522e. Waiting on things outside this session:
+- the AUF pilot, B1 `1790559837-idlehalt-2274611` (HAKUX_IDLE_HALT=1) and
+  A1 `1790559849-idlehalt-2278164`, both Nova, queued behind ~6 Nova
+  requests;
+- the arms job's pixel verdict on `idlehalt-pixels.json` (a `[job.arms]`
+  comment on PR #528);
+- CI on the head.
+
+Next: `python3 docs/lanes/idlehalt/ihread.py --from 299 --to 420 <B1> <A1>`,
+check B1 booted (gfps lines, `[idlehalt] armed`, play shots), and read the
+cooling state. If B1 wedged, the halt is refuted as built: read its logcat for
+the last `[idlehalt]` window (tp, to, halts) before changing anything. If it
+passes, write `pilots/idlehalt.ok` (python3) and queue Blinx B1/A1, then the
+B2-B5 boot runs (300 s) for both titles, per the predictions' queue_order.
