@@ -176,6 +176,68 @@ hysteresis). A fall that clears within one or two bins is not the pause.
 - Session 3 ended **waiting on `1790554531-thermal507-3751184`** (a dispatch
   request, outside this session).
 
+### The GTA pilot's result (session 4, 2026-09-27 17:35 PDT)
+
+- Why session 3 did not finish: it ended correctly, waiting on the dispatch
+  request `3751184`. That request finished at 17:27, and handback resumed
+  this lane.
+- `0-0-x-1790554531-thermal507-3751184`: this is the brief's Proof, and it
+  is clean. The run started cool (xo-therm 54.3 C, after the owner's ~10 min
+  port move). xo-therm rose 59.3 (+40 s), 66.2 (+138), 69.8 (+204), 72.9
+  (+271), 75.1 (+337), 77.0 (+437) and 78.03 (+538). The rate fell from
+  ~2.3 to ~0.7 C/min but never flattened. `thermal-pause-F8` read 1/1 by
+  +573 s (device 17:26:59) and held to the end. The hottest CPU zone went
+  95.8 -> 85 C. run.log: `THERMAL: pause ... began after +535 s and by +569
+  s`. verdict: `void: thermal-pause`, fps fields null.
+- fps in 30 s bins, with the mark at +226 s: 28 28 26 28 26 23 25 26 24 21
+  (mean 25.5) over +240..+540 s, then 4 4 while paused (6.4x).
+- **A 20-min soak at MAX/fan 4 cannot be valid**: it gets ~9 min clean from
+  cool, then a pause/unpause cycle (70 -> 78 C takes ~5.5 min at MAX), and
+  #508 voids the whole window. A cool-down gate fixes short benchmarks only.
+- Posted on #507 (5861276514) and #482 (5861276643).
+
+### The cool-down gate (commit 4124a609e9)
+
+- `soak_title.sh`, before `perf_enter` (MAX) with the title stopped: it
+  samples (`cool` lines in thermal.jsonl) every THERMAL_COOL_EVERY_S (30 s)
+  while xo-therm >= THERMAL_COOL_C (65) or any pause device is set, for at
+  most THERMAL_COOL_MAX_S (360 s). One `THERMAL: cool-down:` line goes to
+  run.log. A missing zone or an unread sample is not gated.
+  `THERMAL_COOL_C=off` disables it.
+- Why a 360 s cap: harness_health.py calls a soak overrunning at `seconds`
+  + 10 min. A run that is still hot at the cap starts anyway, and says so;
+  the verdict voids it if it pauses.
+- Why 65 C: hostops' ask (hostops-inbox 17:14). At MAX, 66 -> 78 C took
+  ~6.7 min in the pilot, so a title gated at 65 C gets ~3 min of scored
+  window after GTA's ~4 min route. From 54 C it gets ~5 min. A lower limit
+  buys more scored time for a longer wait. The pilot measured the paused
+  device cooling at ~2-3 C/min just below 78 C. How fast an idle device
+  cools from 75 to 65 C is not measured yet; the gate's `cool` lines will
+  measure it.
+- `thermal_state.py --cool FILE ZONE C` is the check. The summary and
+  `--window` now count offsets from the `start` sample, so the cool samples
+  do not shift them.
+- selftest 99: the --cool legs (cool, hot at the limit, paused below it, no
+  zone, unread) and two fake-adb soaks (it waits: three `cool` samples
+  before the first perf write and am start; the cap: gives up at 2 s and
+  starts). Siblings 84, 89, 97, 99-display-covered and 99-iso-roots pass.
+- Live only after this PR folds and a dispatcher update window runs.
+
+### The regimen comparison (addendum item 4), queued 17:44 PDT
+
+- `soak_title.sh` offers only `PERF_REGIMEN=max|rest|off`. fan_mode comes
+  from device_rest.conf (Thor: 4 at MAX and at REST). **fan 5 cannot be
+  selected without a regimen edit**, which this lane may not make. So the
+  comparison is MAX/fan 4 against REST (perf 0)/fan 4.
+- `1790555882-thermal507-352176` (REST) then `1790555883-thermal507-352252`
+  (MAX): GTA gta-sa, 1200 s, ref 8a54dcf1b2, the pilot's apk. The master
+  soak has no gate yet, so each start temperature is whatever its queue
+  neighbour left. thermal.jsonl records it; compare from the start
+  temperature. pilots/thermal507.ok admits the 43 min.
+- Read: sustained fps after the mark, paused minutes, time to pause, and
+  xo-therm at start. Then report on #507, with the data for perfregimen's
+  successor.
+
 ## Existing Thor title benchmarks (brief item 4)
 
 Posted on #507 (comment 5859894811). 122 Thor title soaks of the last 48 h
