@@ -4,9 +4,16 @@
     thermal557_replay.py --selftest
     thermal557_replay.py FILE... [--tau S] [--history] [--score]
 
-It builds docs/lanes/remote/thermal557_harness.c, which includes
-android/app/src/main/cpp/thermal_governor.c whole, with the host's cc ($CC).
-Nothing here needs a device or an NDK.
+It builds docs/lanes/remote/thermal557_harness.c, which includes the
+governor core whole, with the host's cc ($CC). Nothing here needs a device or
+an NDK.
+
+THE CORE IS NOT IN THE TREE. The owner stopped #557 on 2026-09-28
+(5875955590) and the core was reverted, so no inert governor code stays in
+the build. This script is kept as the record of the replay. It takes
+thermal_governor.c and .h from git history, as they stood at the fold that
+carried them (CORE_REF below, PR #560), and writes them beside the build. A
+checkout without that commit (a shallow clone) says so and stops.
 
 --selftest runs four groups:
   sysfs     the harness's own checks: the reader against a fake
@@ -59,8 +66,9 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 HARNESS = os.path.join(HERE, "thermal557_harness.c")
-CORE = os.path.join(HERE, "..", "..", "..", "android", "app", "src", "main",
-                    "cpp", "thermal_governor.c")
+# The fold of PR #560, the audited core the replay was scored against.
+CORE_REF = "3a5d79e3ea225fd1a7673de28657b6eb14cc058c"
+CORE_DIR = "android/app/src/main/cpp"
 
 # thermal_governor_params_default()
 DEFAULTS = dict(tau_s=210.0, window_s=60.0, min_span_s=45.0, down_c=72.0,
@@ -75,12 +83,29 @@ PLATEAU = "810152"   # hostops-810152: MechAssault 2 MAX from 46.9 C, 74.2 max
 PILOT = "1257857"    # GTA default from 57.4 C, 450 s: read, not scored
 
 
+def fetch_core(out_dir):
+    """Write the reverted core, from git history at CORE_REF, into out_dir."""
+    for name in ("thermal_governor.c", "thermal_governor.h"):
+        r = subprocess.run(["git", "-C", HERE, "show",
+                            "%s:%s/%s" % (CORE_REF, CORE_DIR, name)],
+                           capture_output=True)
+        if r.returncode:
+            sys.exit("the governor core was reverted (#557 stopped), and this "
+                     "record builds it from git history at %s, which this "
+                     "checkout does not have (%s). Fetch that commit, or use a "
+                     "full clone." % (CORE_REF[:10],
+                                      r.stderr.decode(errors="replace").strip()))
+        with open(os.path.join(out_dir, name), "wb") as f:
+            f.write(r.stdout)
+
+
 def build(cc=None, out_dir=None):
     cc = cc or os.environ.get("CC") or "cc"
     out_dir = out_dir or tempfile.mkdtemp(prefix="thermal557-")
+    fetch_core(out_dir)
     exe = os.path.join(out_dir, "thermal557_harness")
-    cmd = [cc, "-std=gnu11", "-O2", "-Wall", "-Wextra", "-Werror", "-o", exe,
-           HARNESS, "-lm"]
+    cmd = [cc, "-std=gnu11", "-O2", "-Wall", "-Wextra", "-Werror", "-I", out_dir,
+           "-o", exe, HARNESS, "-lm"]
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode:
         sys.exit("build failed: %s\n%s" % (" ".join(cmd), r.stderr))

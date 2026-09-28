@@ -3036,6 +3036,10 @@ scene difference cannot hide a cost again.
 
 ## #557: the thermal governor core (2026-09-28)
 
+> **Stopped the same day, and the core reverted.** See "#557 stopped" below.
+> Nothing in this section is to be hooked in. It stays as the record of the
+> replay.
+
 Delivered 15:00Z (5872612441, owner-approved, board wave 277). An opt-in
 governor that steps quality down before the Thor's thermal pause, instead of
 letting the kernel park cpu3-7. This change is the core only: nothing calls
@@ -3312,3 +3316,51 @@ run as a known risk.
 - **What each rung saves in heat is unknown.** #557's "done when" device run
   is what measures it. Open-loop, the replay can only show when the governor
   would act.
+
+## #557 stopped (2026-09-28)
+
+The owner stopped #557 at 18:20Z (5875955590).
+- **Why:** the predictive governor steps down on every run, paused or not
+  (L4a), so it would throttle play that never needed it.
+- **What handles heat instead:** measured temperatures, by scripts: #519's
+  cool-down gate, the cold-start slot tool and the device watchdog.
+
+**Done for the stop:**
+- **The core is reverted** in one PR that closes #557:
+  `android/app/src/main/cpp/thermal_governor.c` and `.h` are removed, and
+  `CMakeLists.txt` is back byte for byte to its state before #560
+  (0f4002eb). No inert governor code stays in the build.
+- **PR #568, the audit's five LOW fixes, is closed unmerged** (5875976002).
+  Its commits stay reachable in that PR's history:
+  - 387ae0a2: the fixes, each with a check that goes red when it is
+    reverted;
+  - 318ee209: 4130875's NOTES rows.
+- **No hook PR, no further replay, and no device runs.**
+
+**Kept, as the record:**
+- **This file, `thermal557_harness.c` and `thermal557_replay.py`.**
+  - The replay script now takes the core from git history at the fold
+    that carried it (3a5d79e3, PR #560), and writes it beside its build.
+  - `--selftest` still passes all 17 checks.
+  - A shallow clone without that commit says so and stops.
+- **`docs/testing/predictions/remote-557-replay.json`,** the registration.
+
+**The final scoring.** hostops re-extracted 4130875 on the host clock
+(5874270083). Its start sample is unread, so it replays from its first
+reading, at 75 s: first step at 189 s, lead +253 s, three steps before t78.
+With all eight paused runs:
+- L1, L2 and L3 hold 8/8 (leads 168-321 s);
+- **L4a is KILLED** (93.76 C against a 74.2 C plateau), and that kill is
+  the finding the stop rests on;
+- L4b holds.
+
+This was posted on #557 (5875291526).
+
+**For whoever picks this up again.** Start from L4a and the specificity
+note above, not from the core:
+- a single time constant cannot follow the launch climb;
+- the 72 C threshold sits at the bottom of the 72-78 C band, where a title
+  can plateau without ever pausing (hostops-810152 at 74.2 C).
+
+The tau = 60 s result in "tau, unregistered and in-sample" is not
+evidence. It was fitted on these same traces.
