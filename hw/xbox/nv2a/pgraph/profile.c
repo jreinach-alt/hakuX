@@ -636,9 +636,11 @@ void nv2a_profile_flip_stall(void)
          * #413: the shader and pipeline cache counters the overlay shows,
          * with their deltas since the last line, so a soak can put a scene
          * load's stall (the gap to this line, and max= on hakuX-pace) beside
-         * the compiles inside it. p = graphics pipelines (a miss is a
-         * vkCreateGraphicsPipelines, or an async enqueue), s = shader
-         * modules, v = SPIR-V cache; h/m = hits/misses, dh/dm the deltas.
+         * the compiles inside it. p = graphics pipelines (a miss is counted
+         * only when vkCreateGraphicsPipelines runs inline; an async-compile
+         * enqueue returns before the count, so an async run shows dpm near
+         * 0 in the stall), s = shader modules, v = SPIR-V cache; h/m =
+         * hits/misses, dh/dm the deltas.
          * dt_ms is wall time since the last line. L = pipeline cache loaded
          * from disk, W = saves to it. Wall ms inside the compile is not here:
          * its only timer is NV2A_PERF_LOG's, compiled out of a normal build.

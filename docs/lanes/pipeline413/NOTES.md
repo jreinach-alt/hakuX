@@ -11,8 +11,10 @@ always on, no NV2A_PERF_LOG):
 
     [shd413] f=<flips> dt_ms=<wall ms since last line> ph= pm= dph= dpm= sh= sm= dsh= dsm= vh= vm= dvh= dvm= L=Y|N W=<saves>
 
-p = graphics pipelines (`vk/draw.c`: a miss is a `vkCreateGraphicsPipelines`, or an async
-enqueue), s = shader modules (`vk/shaders.c`), v = SPIR-V cache (`vk/glsl.c`); h/m = running
+p = graphics pipelines (`vk/draw.c`: a miss is counted only when `vkCreateGraphicsPipelines`
+runs inline; both `OPT_ASYNC_COMPILE` early returns come before `pipeline_cache_misses++`, so an
+async-compile run shows `dpm` near 0 in a stall window and must not be read as P1's "time goes
+elsewhere" world; both runs here were synchronous, the default), s = shader modules (`vk/shaders.c`), v = SPIR-V cache (`vk/glsl.c`); h/m = running
 hits/misses, dh/dm the deltas since the last line. Because it is emitted per 60 flips, **a stall
 is the gap before a line**, and that line's deltas are the compiles inside the stall.
 
@@ -156,15 +158,20 @@ wrong. The menu -> first fight load comes after `mark play` in this route: a bla
 | 09:37:54-09:38:10, 4 windows | the fight, 11 fps | 5257-5492 | 0 | 0 | 0 |
 | 09:38:25.663 | **mid-fight hitch** (Ryu knocked down, `2 HIT COMBO`, clock 95) | 15238 | 8 | 8 | 4 |
 
-Prices, subtracting the neighbouring zero-miss windows as the non-compile floor:
+Prices, subtracting the neighbouring low-miss windows as the non-compile floor. Each is the
+excess over the floor divided by the misses, so it is an **upper bound** on compile cost per
+pipeline, not a measurement of it: the non-stall miss rate is 0 in both runs, so co-occurrence
+cannot separate compile time from other load work in the same window. The `dpc_ms` falsifier
+(§9) is what measures it. (The title-stage 2105 ms floor window carries `dpm=2`; the post-stall
+windows, 1.7-2.5 s, give nearly the same floor.)
 
-- Title-stage load: (13751 - 2105) / 24 = **485 ms per pipeline** (the pilot's was 414 ms with doa413c's
+- Title-stage load: (13751 - 2105) / 24 = **<= 485 ms per pipeline** (upper bound: excess / miss) (the pilot's was 414 ms with doa413c's
   3.1 s floor).
 - Menu -> first fight: the three miss windows hold 19 misses in 22.6 s. Against the 2.5-2.6 s
-  zero-miss windows between them, the excess is 14.8 s, or **780 ms per pipeline**. The whole load
+  zero-miss windows between them, the excess is 14.8 s, or **<= 780 ms per pipeline** (upper bound). The whole load
   from black to `GET READY` is 27.8 s. That is longer than doa413c's 12.8-13.0 s, and this
   instrument cannot say whether doa413c timed the same span.
-- Mid-fight hitch: (15238 - 5300) / 8 = **1.24 s per pipeline**. The fight's four windows before it
+- Mid-fight hitch: (15238 - 5300) / 8 = **<= 1.24 s per pipeline** (upper bound). The fight's four windows before it
   run 5.3 s per 60 flips with 0 misses.
 
 **P4 scored as written:** two windows of 8 s or more follow `mark play`. 09:37:30 carries dpm 11
@@ -226,3 +233,7 @@ shrinks to `dpc_ms`.
 - Do not read the fight's 5.3 s per 60 flips as a stall. It is 11 fps with zero misses.
 - The survey route does not reach a ring-out in 440 s. P4 for the ring-out needs a route that wins
   or loses round 1 by ring-out, or a longer soak. 440 s cold ends at round 1, 95 s on the clock.
+- Do not quote §7's per-pipeline figures as measured compile cost. They are excess / miss, upper
+  bounds until `dpc_ms` (§9) exists.
+- Do not read `dpm` from an async-compile run as "no compiles in the stall". An async enqueue is
+  not counted (§1).

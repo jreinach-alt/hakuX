@@ -37,11 +37,19 @@ def secs(line):
 
 
 def parse(lines):
+    # The stamp has no year and secs() drops the date, so a soak that crosses
+    # 00:00 on the device clock would jump back 86400 s; carry a day offset
+    # whenever the clock goes backwards by more than half a day.
     wins, marks, bad = [], [], 0
+    day, last = 0.0, None
     for line in lines:
         t = secs(line)
         if t is None:
             continue
+        if last is not None and t + day < last - 43200:
+            day += 86400
+        t += day
+        last = t
         m = MARK.search(line)
         if m:
             marks.append((t, m.group(1)))
@@ -161,6 +169,20 @@ def selftest():
     check(abs(s["x_base"] - 100 / 13.0) < 1e-9, "stall rate 7.7/s = 7.7x base")
     wins2, _, _ = parse(lines[:3] + [lines[0].replace("pm=5", "pm=1")])
     check(not analyse(wins2, 5000, 3100)["monotonic"], "a decreasing total is caught")
+    # The same soak shifted to start at 23:59:00: every window after 00:00
+    # keeps its offset from t0, so the base rate and the stall are unchanged
+    # and the mark still falls after the first window.
+    def shift(line):
+        h, m, sec = line[6:18].split(":")
+        t = (int(h) * 3600 + int(m) * 60 + float(sec) - 5 * 3600 + 23 * 3600 + 59 * 60) % 86400
+        return line[:6] + "%02d:%02d:%06.3f" % (t // 3600, t % 3600 // 60, t % 60) + line[18:]
+    wins3, marks3, _ = parse([shift(x) for x in lines])
+    check(wins3[1]["hms"].startswith("00:00") and wins3[0]["hms"].startswith("23:59"),
+          "the shifted soak crosses midnight")
+    a3 = analyse(wins3, 5000, 3100)
+    check(abs(a3["base_rate"] - 1.0) < 1e-9 and len(a3["stalls"]) == 1,
+          "across midnight: base rate 1.0/s, one stall")
+    check(marks3[0][0] - wins3[0]["t"] == 64.0, "across midnight: the mark stays 64 s after t0")
     print("selftest %s" % ("PASSED" if ok else "FAILED"))
     return 0 if ok else 1
 
