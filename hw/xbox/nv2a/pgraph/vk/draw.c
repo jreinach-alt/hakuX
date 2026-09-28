@@ -7226,47 +7226,107 @@ static void clr91_probe(PGRAPHState *pg, bool write_color, bool write_zeta)
 }
 
 /*
- * #414: mark a binding the clear left uniform, as gl/draw.c does, so that
- * update_surface_part's second rescue ("a fully cleared linear surface to be
- * marked swizzled") can fire in this renderer too. Without it a title that
- * clears a small target as linear and then draws it as swizzled (Forza, ~3.75
- * times a frame) evicts both bindings, downloads the cleared pixels and
- * uploads them straight back, with a finish in between.
- *
- * The rect is the clip-bounded clear rect, before the binding clamp and the
- * scale factor, compared in anti-aliased units as the binding's size is.
- * Stricter than GL's rule, because the rescue relies on the content being
- * uniform: colour counts only when all four channels are cleared, zeta only
- * when Z is, and stencil too if the format has one. Must run after
- * pgraph_vk_set_surface_dirty, which resets cleared.
+ * The clear rect from CLEARRECTX/Y, bounded by the surface clip rectangle.
+ * The surface clip rectangle bounds a clear as it bounds a draw: the memory
+ * outside it is left alone whatever the clear rect says. The surface image
+ * here spans the clip offset plus its size, so a clear rect reaching above or
+ * left of the clip would otherwise land in it. pbkit paints its debug text
+ * with clears, and Surface clip's DebugTextShouldClip expects the lines above
+ * a half-height clip to stay invisible; its rt_ tests fill the memory around
+ * the clip from the CPU and expect a full-surface clear to leave that fill
+ * alone. A zero clip size is not a hardware case that has been measured (the
+ * suite sends the surface size instead), so it bounds nothing here. Returns
+ * false when the clear lies entirely outside the clip and writes nothing.
  */
-static void mark_clear_full(PGRAPHState *pg, uint32_t parameter,
-                            unsigned int xmin, unsigned int ymin,
-                            unsigned int xmax, unsigned int ymax)
+static bool clear_rect_clipped(PGRAPHState *pg, unsigned int *xmin,
+                               unsigned int *ymin, unsigned int *xmax,
+                               unsigned int *ymax)
 {
-    PGRAPHVkState *r = pg->vk_renderer_state;
+    uint32_t clearrectx = pgraph_vk_reg_r(pg, NV_PGRAPH_CLEARRECTX);
+    uint32_t clearrecty = pgraph_vk_reg_r(pg, NV_PGRAPH_CLEARRECTY);
+
+    unsigned int x0 = GET_MASK(clearrectx, NV_PGRAPH_CLEARRECTX_XMIN);
+    unsigned int x1 = GET_MASK(clearrectx, NV_PGRAPH_CLEARRECTX_XMAX);
+    unsigned int y0 = GET_MASK(clearrecty, NV_PGRAPH_CLEARRECTY_YMIN);
+    unsigned int y1 = GET_MASK(clearrecty, NV_PGRAPH_CLEARRECTY_YMAX);
+
+    unsigned int cx = pg->surface_shape.clip_x;
+    unsigned int cy = pg->surface_shape.clip_y;
+    unsigned int cw = pg->surface_shape.clip_width;
+    unsigned int ch = pg->surface_shape.clip_height;
+    if (cw) {
+        x0 = MAX(x0, cx);
+        x1 = MIN(x1, cx + cw - 1);
+    }
+    if (ch) {
+        y0 = MAX(y0, cy);
+        y1 = MIN(y1, cy + ch - 1);
+    }
+    *xmin = x0;
+    *ymin = y0;
+    *xmax = x1;
+    *ymax = y1;
+    return x0 <= x1 && y0 <= y1;
+}
+
+/*
+ * #414: whether a clear with this parameter leaves binding b uniform, over
+ * every texel. The rect is the clip-bounded clear rect, before the binding
+ * clamp and the scale factor, compared in anti-aliased units as the binding's
+ * size is. Stricter than GL's rule, because both users rely on the content
+ * being uniform: colour counts only when all four channels are cleared, zeta
+ * only when Z is, and stencil too if the format has one.
+ *
+ * Two users, one rule: mark_clear_full after the clear, and surface.c's
+ * clearing update before it, which drops the upload of a binding the clear is
+ * about to overwrite whole (and so the completion that upload forces).
+ */
+bool pgraph_vk_clear_covers_binding(PGRAPHState *pg, SurfaceBinding *b,
+                                    uint32_t parameter)
+{
+    unsigned int xmin, ymin, xmax, ymax;
+    if (!b || !clear_rect_clipped(pg, &xmin, &ymin, &xmax, &ymax)) {
+        return false;
+    }
 
     unsigned int x = xmin, y = ymin;
     unsigned int w = xmax - xmin + 1, h = ymax - ymin + 1;
     pgraph_apply_anti_aliasing_factor(pg, &x, &y);
     pgraph_apply_anti_aliasing_factor(pg, &w, &h);
 
+    bool all;
+    if (b->color) {
+        all = (parameter & NV097_CLEAR_SURFACE_COLOR) ==
+              (NV097_CLEAR_SURFACE_R | NV097_CLEAR_SURFACE_G |
+               NV097_CLEAR_SURFACE_B | NV097_CLEAR_SURFACE_A);
+    } else {
+        bool has_stencil = b->host_fmt.aspect & VK_IMAGE_ASPECT_STENCIL_BIT;
+        all = (parameter & NV097_CLEAR_SURFACE_Z) &&
+              (!has_stencil || (parameter & NV097_CLEAR_SURFACE_STENCIL));
+    }
+    return all && !x && !y && w >= b->width && h >= b->height;
+}
+
+/*
+ * #414: mark a binding the clear left uniform, as gl/draw.c does, so that
+ * update_surface_part's second rescue ("a fully cleared linear surface to be
+ * marked swizzled") can fire in this renderer too. Without it a title that
+ * clears a small target as linear and then draws it as swizzled (Forza, ~3.75
+ * times a frame) evicts both bindings, downloads the cleared pixels and
+ * uploads them straight back, with a finish in between. Must run after
+ * pgraph_vk_set_surface_dirty, which resets cleared.
+ */
+static void mark_clear_full(PGRAPHState *pg, uint32_t parameter)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
     if (r->color_binding) {
-        SurfaceBinding *b = r->color_binding;
-        bool all_channels = (parameter & NV097_CLEAR_SURFACE_COLOR) ==
-                            (NV097_CLEAR_SURFACE_R | NV097_CLEAR_SURFACE_G |
-                             NV097_CLEAR_SURFACE_B | NV097_CLEAR_SURFACE_A);
-        b->cleared = all_channels && !x && !y && w >= b->width &&
-                     h >= b->height;
+        r->color_binding->cleared =
+            pgraph_vk_clear_covers_binding(pg, r->color_binding, parameter);
     }
     if (r->zeta_binding) {
-        SurfaceBinding *b = r->zeta_binding;
-        bool has_stencil = b->host_fmt.aspect & VK_IMAGE_ASPECT_STENCIL_BIT;
-        bool all_aspects = (parameter & NV097_CLEAR_SURFACE_Z) &&
-                           (!has_stencil ||
-                            (parameter & NV097_CLEAR_SURFACE_STENCIL));
-        b->cleared = all_aspects && !x && !y && w >= b->width &&
-                     h >= b->height;
+        r->zeta_binding->cleared =
+            pgraph_vk_clear_covers_binding(pg, r->zeta_binding, parameter);
     }
 }
 
@@ -7297,8 +7357,9 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
 
     pg->clearing = true;
 
-    // FIXME: If doing a full surface clear, mark the surface for full clear
-    // and we can just do the clear as part of the surface load.
+    /* Before the update: it drops the upload of a binding this clear covers
+     * whole (pgraph_vk_clear_covers_binding, #414). */
+    r->clear_parameter = parameter;
     pgraph_vk_surface_update(d, true, write_color, write_zeta);
 
     clr91_probe(pg, write_color, write_zeta);
@@ -7310,49 +7371,12 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
         return;
     }
 
-    r->clear_parameter = parameter;
-
-    uint32_t clearrectx = pgraph_vk_reg_r(pg, NV_PGRAPH_CLEARRECTX);
-    uint32_t clearrecty = pgraph_vk_reg_r(pg, NV_PGRAPH_CLEARRECTY);
-
-    unsigned int xmin = GET_MASK(clearrectx, NV_PGRAPH_CLEARRECTX_XMIN);
-    unsigned int xmax = GET_MASK(clearrectx, NV_PGRAPH_CLEARRECTX_XMAX);
-    unsigned int ymin = GET_MASK(clearrecty, NV_PGRAPH_CLEARRECTY_YMIN);
-    unsigned int ymax = GET_MASK(clearrecty, NV_PGRAPH_CLEARRECTY_YMAX);
-
-    /*
-     * The surface clip rectangle bounds a clear as it bounds a draw: the
-     * memory outside it is left alone whatever the clear rect says. The
-     * surface image here spans the clip offset plus its size, so a clear
-     * rect reaching above or left of the clip would otherwise land in it.
-     * pbkit paints its debug text with clears, and Surface clip's
-     * DebugTextShouldClip expects the lines above a half-height clip to
-     * stay invisible; its rt_ tests fill the memory around the clip from
-     * the CPU and expect a full-surface clear to leave that fill alone.
-     * A zero clip size is not a hardware case that has been measured (the
-     * suite sends the surface size instead), so it bounds nothing here.
-     */
-    {
-        unsigned int cx = pg->surface_shape.clip_x;
-        unsigned int cy = pg->surface_shape.clip_y;
-        unsigned int cw = pg->surface_shape.clip_width;
-        unsigned int ch = pg->surface_shape.clip_height;
-        if (cw) {
-            xmin = MAX(xmin, cx);
-            xmax = MIN(xmax, cx + cw - 1);
-        }
-        if (ch) {
-            ymin = MAX(ymin, cy);
-            ymax = MIN(ymax, cy + ch - 1);
-        }
-        if (xmin > xmax || ymin > ymax) {
-            /* Entirely outside the clip: nothing is written. */
-            pg->clearing = false;
-            return;
-        }
+    unsigned int xmin, ymin, xmax, ymax;
+    if (!clear_rect_clipped(pg, &xmin, &ymin, &xmax, &ymax)) {
+        /* Entirely outside the clip: nothing is written. */
+        pg->clearing = false;
+        return;
     }
-    const unsigned int clip_xmin = xmin, clip_ymin = ymin,
-                       clip_xmax = xmax, clip_ymax = ymax;
 
     NV2A_VK_DGROUP_BEGIN("CLEAR min=(%d,%d) max=(%d,%d)%s%s", xmin, ymin, xmax,
                          ymax, write_color ? " color" : "",
@@ -7452,8 +7476,7 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
 
             pg->clearing = false;
             pgraph_vk_set_surface_dirty(pg, write_color, write_zeta);
-            mark_clear_full(pg, parameter, clip_xmin, clip_ymin, clip_xmax,
-                            clip_ymax);
+            mark_clear_full(pg, parameter);
             mark_clear_drawn(pg, write_color, write_zeta);
             NV2A_VK_DGROUP_END();
             return;
@@ -7553,7 +7576,7 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
     pg->clearing = false;
 
     pgraph_vk_set_surface_dirty(pg, write_color, write_zeta);
-    mark_clear_full(pg, parameter, clip_xmin, clip_ymin, clip_xmax, clip_ymax);
+    mark_clear_full(pg, parameter);
     mark_clear_drawn(pg, write_color, write_zeta);
     NV2A_PHASE_TIMER_END_EXCL(draw_dispatch);
 

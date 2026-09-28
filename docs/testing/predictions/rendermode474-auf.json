@@ -1,0 +1,39 @@
+{
+  "registered_utc": "2026-09-28T01:45:00Z",
+  "who": "lane.rendermode474",
+  "issue": "474",
+  "title": "4541000D-007_Agent_Under_Fire.xiso.iso",
+  "device": "nova",
+  "seconds": 420,
+  "route": "survey",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "59d478911ec90f379efe789377b90963aef82a59",
+  "b_ref": "61e0edf87c6a95f555c6a000dfcfae2eec4b805e",
+  "window_s": [299, 420],
+  "arms": {
+    "A": "master 59d478911e, no env",
+    "B": "this branch 61e0edf87c, no env"
+  },
+  "queue_order": "A then B; each request.sh --who rendermode474 --title <this title> --device nova --route survey --seconds 420 --perflog --ref <arm ref> --expect this file",
+  "judge": "grep 'render_mode:' and 'env: TU_DEBUG' in each logcat; python3 docs/lanes/flip474/sysmemjudge.py (PR #516) over 299-420 s on each arm; the cooling devices and thermal samples of each run; power.j_per_frame from each result.json if power.measured is true",
+  "units": "GPU, R and X as printed use limits.timestampPeriod; the legs are ratios inside one pair on one device, or gfps.",
+  "must_not_move": [
+    "pgraph: docs/testing/predictions/rendermode474-pgraph.json"
+  ],
+  "prediction": "#474: with no env and no per-game value, B reads AUF's title ID from the disc, finds it in the table and sets TU_DEBUG=sysmem; A does not. B reproduces flip474's sysmem-by-env arm (X/R 0.02, GPU 13.2, gfps 24) and A its base (X/R 1.01, GPU 24.9, gfps 16).",
+  "legs": {
+    "M0 (instrument)": ">= 15 hakuX-phase lines with GPU > 0 in 299-420 s in each arm, and the screen shows play. Otherwise VOID for that arm, rerun once.",
+    "E0 (engaged line)": "B's logcat has exactly one hakuX-build line 'render_mode: sysmem (table) title=4541000D TU_DEBUG=sysmem'; A has no render_mode line; neither arm has an 'env: TU_DEBUG' line. KILL: B has no such line, or it says auto/default, or a title other than 4541000D. VOID if either arm has an env TU_DEBUG line.",
+    "D1 (the driver took it)": "B's X/R median <= 0.25 and A's >= 0.8. Confidence 90%. KILL of 'the default reaches the driver': B's X/R >= 0.8 with E0 holding.",
+    "S2 (GPU falls)": "B's phase GPU median <= 0.75 x A's. Confidence 75% (flip474: 0.53 x).",
+    "F1 (fps)": "B's gfps median >= 22 (flip474's sysmem arm read 24) and >= A's + 4. Confidence 65%.",
+    "T0 (heat)": "neither arm shows the cpu3-7 thermal pause inside the window, and the smallest gfps line in the window is >= 0.6 x the median unless the screen shows a scene change. Otherwise VOID that arm (#507), rerun once after a cool-down.",
+    "P0 (energy, reported not gated)": "if both result.json files say power.measured true: report j_per_frame for both. Guess: B <= A, confidence 55%. A gain in gfps with a loss in J/frame is reported as such.",
+    "H0 (no hang)": "each arm: hakuX-perf lines to the end of the run, no crash marker, and no gap between them longer than 2 x the arm's median gap (flip474's fixed 3 s bound was wrong under 19 gfps)."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures."
+}

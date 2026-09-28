@@ -58,6 +58,36 @@ that stages records in a private `DISPATCH_DIR` must set `PILOT_DISPATCH_DIR`
 to the real one, or the gate counts an empty tempdir. Rule text and the
 estimate's other home: AGENTS.md, "Working with a device".
 
+## Ranking options: probability times the size of the win, not cheapness
+
+When you rank options (a research lane's plan, or your own next step), sort
+by **expected impact**: the probability it works times the size of the win
+at full scale. State both, and the evidence for the probability. Effort is a
+constraint and a tiebreaker, not the sort key.
+
+- **Name the approach that fits the hardware**, and the one proven in
+  comparable emulators, and start it no later than any quick option. #569's
+  plan (`docs/lanes/shaderplan569/NOTES.md` section 7) ranked by gain per
+  unit of work and put the ubershader last, though it is the only option
+  that removes a first-time compile stall with no dropped draw.
+- **A cheap step goes first only when it decides something**: a measurement
+  that separates hypotheses, or a check that a proposed fix's mechanism
+  touches the measured cause. A hoped-for fix is not a reason to spend
+  device time. #413's async setting still waited on pipeline creation, the
+  96% it was meant to remove, and the code said so before any run.
+
+The source is the owner, as project manager, on 2026-09-28:
+
+> I've noticed a recurring theme with this project, where we tend to favor
+> cheap quick fixes that rarely pan out. We waste cycles attempting those
+> first before realizing we actually need to do the hard work that fits the
+> tech we're working on. This ubershader is a perfect example, and I wish we
+> had opened with that. I'm not saying everything needs to go right after
+> the hardest alternative in every scenario, but, a more balanced approach
+> would serve this project well. If you're evaluating options and you have
+> low effort, low probability options, they should not be the first thing
+> you reach for.
+
 ## Definition of done (all of these, or say which is missing)
 
 1. Your branch is pushed and `preflight.sh` passes on it (the tracker gate

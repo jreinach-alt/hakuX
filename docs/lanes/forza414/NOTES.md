@@ -1146,3 +1146,226 @@ State on resume: CI green on 0c56689783, `[job.arms]` PASS (266 of 266 byte-iden
 is mergeable. Since the merge at 0e938db24f, master's only code change is to vk/texture.c, which
 this PR does not touch. Nothing is re-measured here. The PR is marked ready and `needs-audit-1` is
 restored. Hunk 5 and the uniform-block skip stay with the next PR (section 32).
+
+## 35. Why attempt 1 of this resume did not finish (lane/forza414-c, 2026-09-28)
+
+The session before this one did everything its brief asked: #518 was marked ready at 06:03Z
+(section 34), and it ended with nothing queued. The hostops addendum that grants vk/shaders.c and
+lends vk/renderer.h is dated 23:11 PDT, which is 06:11Z, eight minutes after that session ended.
+It asks for a third branch. So no session had read it, and lane/forza414-c did not exist. This
+session starts that branch.
+
+Also found on resume: the audit of #518 (docs/audits/2026-09-27-forza414b-pass1.md, 08f09e3d19)
+came back needs-remediation with one MEDIUM. M1: a diag session's per-draw dump
+(`diag_download_surface`, vk/renderer.c:580) writes BUFFER_STAGING_DST at offset 0 while the flip's
+pre-download batch can now be pending. The fix is one call in vk/renderer.c, which is on [free]
+and not on this lane's row. A grant is requested in `$DISPATCH_DIR/board-requests/forza414.md`.
+Nothing is pushed to lane/forza414b until it is granted.
+
+## 36. Hunk 5: a covering clear drops the binding's upload (b991fb4c21)
+
+Section 33 found that 0.96 of Forza's 2.86 forced surfupd finishes per frame are on a clearing
+update, and that every one is followed by a clear that covers the binding whole.
+
+- `pgraph_vk_clear_covers_binding(pg, b, parameter)` (draw.c, one prototype in renderer.h) is now
+  the one coverage rule. It uses the clip-bounded rect from (0,0) over the binding's
+  anti-aliased size. Colour counts only with all four channels; zeta only with Z, plus stencil if
+  the format has one. `mark_clear_full` calls it, and so does surface.c. The clip-bounded clear
+  rect is one helper too, `clear_rect_clipped`, which `pgraph_vk_clear_surface` also uses.
+- `pgraph_vk_clear_surface` sets `r->clear_parameter` before `pgraph_vk_surface_update` rather
+  than after. Its other reader, the clear pipeline key, runs later still.
+- `surface_drop_covered_upload` (surface.c) runs in a clearing update after the bindings are
+  settled and before the deferral gate reads `upload_pending`. For a covered binding it does
+  what the upload does besides the copy: it re-arms the CPU-write watch under
+  `surface_watch_lock`, clears `upload_pending`, and marks the binding initialized, which
+  begin_draw asserts. The render pass may then load undefined texels, and the clear overwrites
+  every one of them. Zeta layout is handled by begin_render_pass's own transition; colour stays
+  GENERAL.
+- perflog: `clrskip` on the `[sdcall]` line counts the dropped uploads.
+- Not changed: a clear the clip excludes entirely still returns after the update. The coverage
+  test says no to it, so its upload runs as before.
+
+No local compile exists for these files on this host (section 18); CI builds the head.
+
+## 37. The uniform hash skip, part (a) only (79f0102478)
+
+Section 26 named two parts. **(a) is in:** a draw whose constant or light flags are dirty no
+longer hashes both whole layouts. A file-static `uniform_hashes_stale` makes the next clean draw
+count as changed once. The same data is uploaded, so pixels cannot move. The one extra upload per
+dirty run is the cost.
+
+**(b) is not in, and the next lane should not assume it is cheap.** Skipping the constant and light
+copy on clean draws would need all three of these:
+1. Every writer of `vsh_constants`/`ltctx*`/`ltc1` sets its `*_any_dirty` flag. The method handlers
+   in pgraph.c do. The reset and savevm paths were not audited, and a writer that misses the flag
+   costs nothing today but would leave a stale constant under (b).
+2. A per-layout "copied at generation N" table in shaders.c. It has to survive LRU eviction and
+   pointer reuse of `ShaderBinding` and `module_info`, and modules may be shared between bindings.
+3. The 3 KB memcpy into `VshUniformValues` is in glsl/vsh.c
+   (`pgraph_glsl_set_vsh_uniform_values`), which is not on this row. Without that file, (b) saves
+   only the second copy.
+
+Price anchor: on hunk 3's Blinx pair (0-0-x-1790543736), `Sh` (pipe_bind_shd, which contains
+`pgraph_vk_bind_shaders` and so the uniform update) reads 9-11 ms/frame in level play, inside
+Pipe's 16-20 ms/frame. That is more than slowdown462's 3.5-3.7 ms for apply plus hash, so `Sh`
+holds something else too. `pgraph_glsl_check_shader_state_dirty` is the next candidate to price.
+
+## 38. Predictions and requests (PR #543)
+
+| file | sha256 | pair | device |
+|---|---|---|---|
+| forza414-clrskip-soak.json | e346b1da35ed | fa56a26f1f -> b991fb4c21 | Thor, Forza race |
+| forza414-uhash-soak.json | 33fa46d6ac17 | b991fb4c21 -> 79f0102478 | Nova, Blinx level |
+| forza414-clrskip-mnm.json | 9d005e4f6ff1 | fa56a26f1f -> 79f0102478 | goldens, 17 suites |
+
+A is lane/forza414b @ 08f09e3d19 merged with origin/master 548017f7ba. That is the last merge, and
+every ref is after it. Pilot, under the 30-minute rule: the Forza pair,
+`1-1790576328-forza414-1156305` (A) and `1-1790576328-forza414-1156419` (B), Thor, priority 1.
+The Blinx pair goes in after the pilot is read. The goldens guard is the arms job's.
+
+## 39. #518 folded; M1 was remediated on its branch by someone else; the pilot swap
+
+- #518 folded at 06:25Z (2e36e51d5ed5) with pass 1's M1 fixed in 61e7a0d326, the same one call
+  in `diag_download_surface`, and audit pass 2 clean. The renderer.c grant this lane requested
+  for M1 (board 94108831c8) is not needed. It is released in the board request file, and this
+  PR does not touch renderer.c.
+- lane/forza414-c merged origin/master at 73b9209088, which contains #518. So the PR no longer
+  stacks, and `git diff origin/master...HEAD` is exactly its own nine paths. The merge happened
+  after the predictions were registered; their refs (fa56a26f1f, b991fb4c21, 79f0102478) are
+  unchanged ancestors of the head.
+- After B, only behaviour-identical commits. `clear_rect_clipped` reads into locals. The
+  index read a line that begins with a pointer store (`*xmin = GET_MASK(...)`) as a comment line,
+  so four CLEARRECT READ sites became COMMENT sites. The nv2a index is rebuilt against fold-pins
+  tests 6743b6ab16.
+- **The pilot swap.** The Forza pair on the Thor (`1-1790576328-forza414-1156305/-1156419`) had
+  3.6 h of sustain507 and pacing work ahead of it, and the Thor was under lane.xbox's title-push
+  hold. The 30-minute rule allows one pair in the queue, so the Forza pair was withdrawn unclaimed
+  (`queue/withdrawn/*.why`). The Blinx pair went first as the pilot:
+  `1-1790576971-forza414-1229800` (A) and `-1229835` (B), Nova. The Forza pair is re-queued once
+  the pilot is read. The goldens guard is the arms job's (`1-1790577097-arms-forza414-base-...`).
+
+**Waiting (session end, 2026-09-27 ~23:55 PDT):** on the Blinx pilot `1-1790576971-forza414-1229800`
+/ `-1229835` (Nova, about 2 h of 1- work ahead of it), and on the arms job's goldens guard for
+forza414-clrskip-mnm. On resume: judge forza414-uhash-soak, write `pilots/forza414.ok`, re-queue
+the Forza pair on the Thor at priority 1 (forza414-clrskip-soak, refs fa56a26f1f / b991fb4c21), and
+read the `[job.arms]` verdict.
+
+## 40. Resume 2026-09-28 (attempt 3): the pilot judged, the goldens guard passed, the Forza pair queued
+
+**Why the previous session did not finish.** It ended while it was waiting, which was correct. The
+Blinx pilot pair and the arms job's goldens guard were both still queued on the device (section 39),
+and a lane cannot wait inside a session. Both have now finished.
+
+**Goldens guard, `forza414-clrskip-mnm.json`: PASS** (`[job.arms]`, 08:45 PDT). All 385 captures in
+17 suites are byte-identical between fa56a26f1f and 79f0102478. PR label `verified`.
+
+**Pilot, `forza414-uhash-soak.json` (Blinx, Nova, hand-read):** `1-1790576971-forza414-1229800` (A,
+b991fb4c21) and `-1229835` (B, 79f0102478). Window: mark play + 10 s to the last phase line - 10 s,
+about 165 s. Medians over the window's phase lines and gfps lines:
+
+| | A | B |
+|---|---|---|
+| phase lines (Draw > 0) | 54 | 53 |
+| Sh ms/frame | 6.95 | 7.00 |
+| Pipe | 9.1 | 9.2 |
+| Draw | 14.65 | 14.8 |
+| Tot | 31.35 | 29.6 |
+| gfps | 20.5 | 21.0 |
+| Df (draws/frame) | 74.5 | 75.0 |
+
+- **M0 PASS.** Both arms reach level play. There is no crash or abort line.
+- **P1 FAIL, inert.** A's Sh minus B's is -0.05 ms, against a registered bar of >= 0.5, at the same
+  draw count. This is the world the leg named: on Blinx, dirty-constant draws are too small a share
+  of the draws for skipping their hash to show. The hash on clean draws and the constant copy
+  (section 37, part (b)) are where the cost is. The hunk stays in the PR because its pixels are
+  byte-identical and it removes work, but it claims no fps. **Do not re-measure part (a) alone.**
+
+**Pilot verdict** is written to `pilots/forza414.ok`. **Forza hunk-5 pair re-queued** on the Thor
+at priority 1, judged by `forza414-clrskip-soak.json` (refs fa56a26f1f -> b991fb4c21):
+`1-1790613195-forza414-3088454` (A) and `1-1790613195-forza414-3088504` (B).
+
+**Waiting (session end, 2026-09-28 ~09:55 PDT):** on that pair. On resume: judge
+forza414-clrskip-soak by hand (the arms job skips title soaks), post fps and J/frame on #414 and
+#474, merge origin/master, then `gh pr ready 543` and release vk/draw.c to lane.pacing.
+
+## 41. Resume 2026-09-28 (attempt 3, second resume): arm B aborted, the pair re-queued
+
+**Why the previous session did not finish.** It ended waiting on the Forza hunk-5 pair (section 40),
+which was correct. That pair has finished, but it cannot be judged:
+
+- A, `1-1790613195-forza414-3088454` (fa56a26f1f): valid. The race was reached, with 82 `[sdcall]`
+  lines and 710 hakuX-stall lines, no thermal pause, and a hottest zone of 95.0 C.
+- B, `1-1790613195-forza414-3088504` (b991fb4c21): **aborted before its first input.** The run.log
+  reads `ROUTE ABORTED: not foreground (unknown)`: the Thor had no focused window on display 0, and
+  both displays were OFF at the start. Its logcat is 5 lines, soak start to soak end in 45 s. This
+  is a harness and focus failure, not a result of the code under test: no input was sent and hakuX
+  never drew.
+
+So **forza414-clrskip-soak is VOID on M0** for this pair. Nothing is judged from A alone. A
+one-arm comparison against a different session's B would read the thermal state, not the hunk.
+
+**Re-queued as a fresh adjacent pair** on the Thor at priority 1, with the same refs and the same
+prediction: `1-1790619761-forza414-1092424` (A, fa56a26f1f) and `1-1790619761-forza414-1092523`
+(B, b991fb4c21). Together that is about 17 min of device time.
+
+**Waiting (session end, 2026-09-28 ~11:25 PDT):** on that pair. On resume, judge
+forza414-clrskip-soak by hand (P1 clrskip >= 0.7 per frame, P2 su_upl <= 2.2 per frame, P3 surfupd
+fin B/A <= 0.85, over t = 125-240 s), post fps and J/frame on #414 and #474, merge origin/master,
+then `gh pr ready 543` and release vk/draw.c to lane.pacing. draw.c stays on this row until the
+verdict, because hunk 5's coverage rule lives there.
+
+## 42. Resume 2026-09-28 (attempt 3, third resume): hunk 5 judged on the Thor, PASS
+
+**Why the previous session did not finish.** It ended waiting on the re-queued Forza pair
+(section 41), which was correct: a lane cannot wait on a device inside its session. The pair ran
+back to back on the Thor (`bdc158a5`, regimen max, no thermal pause in either arm) and is judged
+here.
+
+`forza414-clrskip-soak.json`, A `1-1790619761-forza414-1092424` (fa56a26f1f), B
+`1-1790619761-forza414-1092523` (b991fb4c21). Window t = 125-240 s after soak start. Per-frame values
+are `[sdcall]` sums over the window divided by its guest frames (A 960, B 1020). Script:
+`.fzscratch/clrskip_judge.py` (not committed).
+
+| per frame, t = 125-240 s | A | B | leg |
+|---|---:|---:|---|
+| `[sdcall]` lines / hakuX-stall lines with sd > 0 | 16 / 17 | 17 / 18 | M0 PASS (B carries `clrskip`) |
+| **clrskip** | 0 | **1.89** | P1 >= 0.7: PASS |
+| **su_upl** | 2.95 | **1.88** | P2 <= 2.2: PASS |
+| **surfupd fin** | 2.95 | **1.88** (B/A 0.64) | P3 <= 0.85: PASS |
+| clr / clrfull | 0.98 / 0.98 | 0 / 0 | (B skips them before the counter) |
+| surfupd wait, ms | 15.99 | 9.28 | readout |
+| record wait, ms | 4.93 | 4.69 | readout |
+| all `[sdcall]` waits, ms | 20.92 | 18.97 | readout |
+| gfps (median) | 9.0 | 9.0 | readout |
+| Tot (median), ms | 88.7 | 95.7 | readout |
+| net power, W (whole run) / J per frame at 9 fps | 5.36 / 0.60 | 5.35 / 0.59 | readout |
+
+- **The hunk does what it says.** One forced finish per frame is gone (2.95 -> 1.88), slightly
+  more than the 0.96 `clrfull` bound, and `clrskip` counts 1.89 dropped uploads per frame, because
+  a covering clear usually drops both the colour and the zeta binding and only one of them was
+  the forcing one.
+- **The wait mostly moves, as NOTES 14 and 33 said it would.** The surfupd wait falls by 6.7 ms per
+  frame, but all `[sdcall]` waits together fall by only 1.95 ms. The rest reappears at the next
+  sync point (`tobuf` and the others on the same line). fps does not move: 9.0 vs 9.0 in the window,
+  and the two 30-s curves are the same to within a bin
+  (A `29 29 29 29 17 11.5 9 8 5 4 5 4 3 4 3`, B `29 29 29 29 1.5 12 9 7 6 4 5 4 3.5 3 3`; B's 1.5 is
+  its load hang landing one bin earlier). J/frame is the same. **No fps is claimed for hunk 5.**
+- **This session's Forza is slower than NOTES 33's** (9 vs 17 fps in the same window), in both arms
+  alike, and it decays to 3 fps by the end of the run, the brief's original symptom. The hottest
+  zone is 96 C in both (xo 58.5 and 61.7 C at the start); no pause device engaged. So this pair
+  measured the hunk, not the decay. The decay (the brief's item 1) is still open and is not in
+  this PR.
+
+**Merge.** origin/master 01e62d8d1c is merged at 0f99a46264 with no conflict. Since the previous
+merge (73b9209088), master changed no file in this PR. Its only code changes are perflog counters
+in pgraph/profile.c and vk/renderer.c (#413, ecf5e05dd2 and 2f38c02487), so the three verdicts
+(goldens PASS 385/385, Blinx uniform hunk inert, Forza hunk 5 PASS) stand on the merged head. The
+arm is not re-run.
+
+**vk/draw.c is released** to lane.pacing (#526's two sched_yield waits), noted in
+`$DISPATCH_DIR/board-requests/forza414.md`. vk/surface.c, vk/shaders.c and the lent renderer.h line
+are done too.
+
+**For the next lane.** Do not look for fps in hunk 5 or in the uniform hash skip; both remove work
+that the frame does not wait on. Forza's lever is still the decay: 29 fps before the race loads,
+falling to 3 fps with the car standing still.

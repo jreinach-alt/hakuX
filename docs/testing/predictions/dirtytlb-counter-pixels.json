@@ -1,0 +1,25 @@
+{
+  "registered_utc": "2026-09-28T12:42:29Z",
+  "who": "lane.dirtytlb",
+  "issue": "548",
+  "prediction": "#548 counter arm: B adds the [rdc] per-caller count of off-vCPU tlb_reset_dirty walks (system/physmem.c, accel/tcg/cputlb.c, include/system/ram_addr.h) and changes nothing else. Every dirty bit is cleared, and every TLB walk made, exactly as in A: the counter reads thread-locals the walk already computed and adds to its own statics, so no guest-visible state can differ. The suites are the ones whose draws go through the two paths it sits on -- the vertex RAM sync (vertex data the guest writes between draws) and check_texture_dirty (textures the guest rewrites) -- so every capture in them is identical between arms. A moved capture refutes 'counter only', and the counter does not land until the move is explained. Read scores1.tsv for unreadable rows and run1.log for UtilAcceptVsock before trusting a same.",
+  "a_ref": "9d777502fa",
+  "b_ref": "111c7fea74",
+  "must_not_move": [
+    "Texture_CPU_Update/*",
+    "Texture_3D_as_2D/*",
+    "Texture_signed_component_tests/*",
+    "Texture_render_update_in_place/*",
+    "Texture_format/*",
+    "High_vertex_count/*",
+    "SetVertexData/*",
+    "Zero_stride/*",
+    "Attrib_carryover/*",
+    "DMA_corruption_around_surfaces/*",
+    "Inline_array_size_mismatch/*",
+    "3D_primitive/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": []
+}
