@@ -1101,3 +1101,35 @@ pairs) stand on the code hunk 4 ships. The two perflog-only probe commits after 
 2. The uniform-block skip (section 26) once vk/shaders.c is granted.
 3. DOA's next lever, texture.c:2215's all-frames flush (section 28). It is in lane.remote's file,
    so it goes to the board, not here.
+
+## 33. Thor pilot 2: a third of Forza's forced uploads are full clears
+
+`1-1790561602-forza414-3260817` on 53c81b1a7a (B plus `clr`/`clrfull`), Forza race, Thor,
+survey route, 420 s, t = 125-240 s, 1680 guest frames.
+
+| per frame | pilot 1 (A) | pilot 2 (B + probe) |
+|---|---:|---:|
+| fps | 17.38 | 17.24 |
+| `su_upl` (surfupd finishes forced by an uploading binding) | 2.95 | 2.86 |
+| why new / inv / stale | 1.77 / 0.20 / 0.99 | 1.73 / 0.18 / 0.96 |
+| **clr** (on a clearing update) | - | **0.96** |
+| **clrfull** (that clear then covered the binding whole) | - | **0.96** |
+| surfupd wait, ms | 22.36 (incl. the flip batch, pre 0.99) | 16.53 |
+| record wait, ms (hunk 4: the flip batch, completed by the first download recorded after the flip) | - | 5.68 (pre 0.95) |
+| total completion wait, ms | 22.37 | 22.23 |
+
+- **Every forced upload on a clear is a full clear.** 0.96 per frame, a third of `su_upl`,
+  and the same count as `why=stale`. The other ~1.9 per frame, the fresh Z bindings and the
+  invalid reuses, are on draws, where the binding's old content is read, so the upload is needed.
+- **Hunk 5's price, a bound:** it takes at most 0.96 of 2.86 finishes per frame, about 5.5 of
+  the 16.5 ms. Section 14's caveat holds: a finish removed early in the frame moves its wait to
+  the next sync point unless that one is later and shorter.
+- **Hunk 4 is neutral on Forza, as expected.** Forza's first update after each flip evicts, and
+  the eviction's download completes the flip batch (`record`) at nearly the same point as before.
+  The total wait is unchanged (22.4 -> 22.2 ms, two runs on one device, not an A/B).
+- **What hunk 5 needs that this lane does not hold.** The coverage rule must be one function
+  used by both `mark_clear_full` (draw.c, after the clear) and the new pre-upload test (surface.c,
+  inside the update). The two files share only vk/renderer.h (lane.remote's) for a declaration.
+  Requested in `$DISPATCH_DIR/board-requests/forza414.md`: one prototype line in renderer.h, or a
+  new `vk/clear.h`. draw.c also has to set `r->clear_parameter` before the update rather than
+  after, which is one line.
