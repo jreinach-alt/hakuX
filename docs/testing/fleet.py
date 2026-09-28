@@ -438,10 +438,51 @@ def remote_lanes(terr):
     return out
 
 
-def lane_prs(remote=None):
+def branch_lane(ref, rows, units=None, work=None):
+    """The lane a `lane/<rest>` head belongs to. `rows` is territory's [lane].
+
+    A LANE'S SECOND PR IS ON A SUFFIXED BRANCH, `lane/<name>-<suffix>`
+    (AGENTS.md), and stripping the prefix filed it under a lane called
+    `<name>-<suffix>` that has no row and no unit. On 2026-09-28 job.board
+    retired lane.sustain507 as having "no open PR" while #547
+    (`lane/sustain507-levers`) was open with four device runs parked, and a
+    hostops delivery to the lane then had no reader. handback.sh's lane_name()
+    got the worktree half of this for #504 (`lane/flip474-ts`); this is the
+    same question asked of the rows first, because the board reads rows.
+
+    In order: `<rest>` when it is a row or a live unit; else the LONGEST row
+    `x` with `<rest>` starting `x-` (so rows `foo` and `foo-bar` send
+    `lane/foo-bar-2` to `foo-bar`); else the one `$WORK/wt/<x>` worktree with
+    this head checked out; else `<rest>`, as before.
+    """
+    rest = ref[len("lane/"):]
+    # A cloud session's branch names itself; it has no row or worktree here.
+    if rest.startswith("cloud-") or rest in rows or rest in (units or {}):
+        return rest
+    pre = [x for x in rows if rest.startswith(x + "-")]
+    if pre:
+        return max(pre, key=len)
+    work = work or os.environ.get("HAKUX_WORK", "/home/justin/hakux-work")
+    wt = os.path.join(work, "wt")
+    hits = []
+    try:
+        names = sorted(os.listdir(wt))
+    except OSError:
+        names = []
+    for x in names:
+        r = subprocess.run(["git", "-C", os.path.join(wt, x), "symbolic-ref",
+                            "--short", "HEAD"], capture_output=True, text=True)
+        if r.returncode == 0 and r.stdout.strip() == ref:
+            hits.append(x)
+    # Two worktrees on one branch is a question this report cannot settle.
+    return hits[0] if len(hits) == 1 else rest
+
+
+def lane_prs(remote=None, lane_rows=None, units=None):
     """Open PRs a lane owns, or None if gh could not answer.
 
     A `lane/*` head, or a head some territory row names as its remote lane's.
+    `lane/*` heads are filed under branch_lane(), not the stripped name.
     One LIST, not a call per lane: everything the READY-NOT-FOLDED and BLOCKED
     sections need comes out of it. (One HTTP call per hundred PRs, since REST
     pages -- see gh_rest.)
@@ -473,7 +514,7 @@ def lane_prs(remote=None):
             p["lane"] = remote[ref]
             p["remote"] = True
         elif ref.startswith("lane/"):
-            p["lane"] = ref[len("lane/"):]
+            p["lane"] = branch_lane(ref, lane_rows or {}, units)
             p["remote"] = False
         else:
             continue
@@ -744,7 +785,7 @@ def main():
               "until it answers.", file=sys.stderr)
 
     remote = remote_lanes(terr)
-    prs = lane_prs(remote)
+    prs = lane_prs(remote, terr.get("lane") or {}, units)
     pr_blind = prs is None
     if pr_blind:
         prs = []
@@ -945,24 +986,31 @@ def main():
         elif not b and st != "blocked":
             unclassified.append((n, lane, titles.get(n, "")[:52]))
 
-    pr_of = {}
+    # EVERY open PR per lane, not the first: a lane with a merged PR and an
+    # open suffixed one, or two open, must show both wherever it is named.
+    prs_of = {}
     for p in prs:
-        pr_of.setdefault(p["lane"], p)
+        prs_of.setdefault(p["lane"], []).append(p)
+
+    def pr_words(lane, none):
+        ps = prs_of.get(lane)
+        if not ps:
+            return none
+        return ", ".join("PR #%d%s" % (p["number"], " draft" if p.get("isDraft")
+                                       else " READY") for p in ps)
 
     print("=== RUNNING (%d)%s" % (len(running),
                                   "  -- NOT COMPUTED, see FLEET-BLIND above"
                                   if fleet_blind else ""))
     for lane in running:
         f = fleet.get(lane, {})
-        p = pr_of.get(lane)
         print("  %-12s %-18s #%-10s %-7s %s"
               % (lane,
                  ("attempt %s/%s" % (f.get("attempt", "?"),
                                      (f.get("model") or "?").replace("claude-", "")))[:18],
                  ",".join(str(i) for i in (f.get("issues") or [])) or "-",
                  age_s(units.get(lane)),
-                 ("PR #%d%s" % (p["number"], " draft" if p.get("isDraft") else " READY"))
-                 if p else "no PR yet"))
+                 pr_words(lane, "no PR yet")))
         print("      asked: %s" % ((f.get("asked") or
                                     "(no registry entry -- started before "
                                     "lane.sh wrote one, or not by lane.sh)")[:96]))
@@ -985,11 +1033,8 @@ def main():
         print("\n=== REMOTE LANES (%d) -- no local unit, and that is not a fault"
               % len(remote))
         for branch, lane in sorted(remote.items(), key=lambda kv: kv[1]):
-            p = pr_of.get(lane)
             print("  %-12s %-44s %s"
-                  % (lane, branch,
-                     ("PR #%d%s" % (p["number"], " draft" if p.get("isDraft") else " READY"))
-                     if p else "no open PR"))
+                  % (lane, branch, pr_words(lane, "no open PR")))
         print("  Its routine wakes it; `lane.sh resume` refuses these by name "
               "(two agents, one branch, no lock). fold.sh never prunes their "
               "branches.")
@@ -1039,10 +1084,13 @@ def main():
     print("\n=== LANE CLAIMED WITH NO RUNNING AGENT (%d)%s"
           % (len(ghost),
              "  -- NOT COMPUTED, see FLEET-BLIND above" if fleet_blind else ""))
+    # WITH ITS OPEN PRS. This list is what a reader retires rows from, and a
+    # row whose lane still has an open PR (sustain507, #547) is not abandoned.
     for lane in ghost:
-        print("  %-12s holds %d file(s), issues %s"
+        print("  %-12s holds %d file(s), issues %s, %s"
               % (lane, len((terr["lane"][lane].get("files") or [])),
-                 ",".join(str(i) for i in (terr["lane"][lane].get("issues") or []))))
+                 ",".join(str(i) for i in (terr["lane"][lane].get("issues") or [])),
+                 pr_words(lane, "no open PR")))
     print("\n=== RUNNING WITH NO TERRITORY ROW (%d)" % len(unclaimed))
     if unclaimed:
         print("  Invisible to every guard: check_territory.py cannot see a "
