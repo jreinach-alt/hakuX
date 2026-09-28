@@ -202,6 +202,98 @@ handheld runs (#461). One run per arm cannot separate the two; so:
   check_texture_dirty (page-aligned), so the next lane should look at the
   texture cache's own upload ordering before the TLB.
 
+## Attempt 4 (2026-09-28 ~18:30Z)
+
+Why attempt 3 did not finish: it ended on a correct `waiting:`, on Crimson B
+(`936387`) and on the signed-suite arm. Handback resumed the lane when the
+arms job posted its `[job.arms]` verdict on dirtytlb-counter-pixels.json
+(FAIL 1 of 337, label `regressed`). That is the verdict attempt 3 had
+already read by hand, so the resume carried nothing new about it. Crimson B
+finished at 18:20Z, five minutes after the wait was posted. The signed-suite
+arm was registered at 18:13Z, after the arms job's 18:10Z tick, so it was
+not queued yet.
+
+### Crimson pair (Thor, A 479870 master `559ea2fc07` / B 936387 `9d33d2dac2`)
+
+`rdc_read.py --pair 479870 936387`, window 90 to 240 s, B over 4,140 flips:
+
+| per flip (B) | calls | us | pages | hits | us/call |
+|---|---|---|---|---|---|
+| vtx | 126.3 | 3052 | 262.4 | 137.9 | 24.2 |
+| tex | 50.1 | 1228 | 6626.7 | 74.3 | 24.5 |
+| rdo / rdous | 176.4 | 4280 | | | |
+
+- tcpu 21.58 ms per flip, so the walks are 19.8% of the render thread's CPU
+  and the vertex sync's are 14.1%. `vr` 0, `tm` 0, `oth` 0, `dx` 0, vga 0.
+- **Every leg passes**: V, C1, C2, H (216 ns per call, 38.8 us per flip,
+  0.91% of rdous), N1 (vtx + tex 100%), N2, X, F (gfps 29 / 29), K1 (39
+  cooling devices, every highest state equal), K2 (M 12028 / 12000).
+- j_per_frame A 0.193 / B 0.190 (`jpf.py`; net 5.64 W / 5.51 W).
+- **The brief's question, answered**: of 176 off-vCPU walks per flip the
+  vertex sync makes 126 (72%) and `check_texture_dirty` 50 (28%). Nobody
+  else makes any. lane.remote's offline bound for the vertex sync was 98 to
+  165.
+- Limits of this pair. B lost one A press of the intro mash to a WSL
+  `UtilAcceptVsock` timeout (run.log line 14), so its gameplay frame is one
+  tutorial prompt behind A's; both frames are the same flight over water and
+  K2 agrees. B started at xo 60.0 C and A at 56.6 C; neither run has a
+  thermal pause. A is master, so A has no tcpu: the counter's cost on the
+  render thread is H's 38.8 us per flip, not a tcpu difference.
+
+### The levers, priced from Crimson
+
+- **Span walk per draw: nothing.** `vr` is 0 on both titles: a sync call
+  that walks at all walks once.
+- **One walk per flip with a pending bitmap: up to 3.0 ms per flip, not
+  priced further.** It would remove 125 of the 126 vertex walks. But hits
+  per walk are 1.09: nearly every walk re-arms an entry the guest had
+  written through, so these walks do needed work and the repeat uploads it
+  trades them for are real (2.08 pages, 8.3 KB, per upload today). The
+  count it needs is the draws per flip that read a page dirtied earlier in
+  the same flip. That count lives in draw.c, and `[rdc]` cannot see a draw
+  that does not walk.
+- **The walk itself: 2.7 to 2.9 ms per flip off the vCPU thread, and 2.5 to
+  2.7 ms on it.** `walk_read.py` reads `[tlb68]` beside `[rdc]`:
+
+| run | live entries | entries per walk | modes per walk | us per walk, off-vCPU | us per walk, vCPU |
+|---|---|---|---|---|---|
+| Crimson A 479870 | 1793 | 7204 | 22 | 21.11 | 14.19 |
+| Crimson B 936387 | 2620 | 7992 | 22 | 24.25 | 16.44 |
+| Blinx A 480001 | 606 | 5882 | 22 | 14.53 | 13.98 |
+| Blinx B 479942 | 612 | 5881 | 22 | 12.83 | 13.04 |
+
+  Every walk scans all 22 MMU modes. Two hold entries (`dm=0x60`); the other
+  20 are empty 256-entry tables plus their victims, 5,280 entries, 67 to 75%
+  of each Crimson walk and 90% of each Blinx walk. `HAKUX_TCG68_RD` (#68, PR
+  #309) walks only the modes that can hold a live entry. It was audited
+  exact (docs/audits/2026-09-25-tcgchurn-pass1.md) and turned off by default
+  for #311's arms, and it never got an arm of its own.
+- Why the time should follow the entries: the two Crimson runs have
+  different table sizes and read 2.93 and 3.03 ns per entry off the vCPU
+  thread (1.98 and 2.05 on it). That is two runs, not a fit; legs T and U
+  test it.
+- **The vCPU thread walks more than the render thread does**: 237 to 242
+  walks per flip, every one of them code arming (`rdc` = `rd`), 3.4 to 4.0
+  ms per flip, 10.6 to 12.1% of the vCPU thread's CPU. That answers
+  lane.slowtier2's request for a split by thread (#548, 15:11Z): `[rdc]`'s
+  `v` and `[tlb68]`'s `rd`, `rdc` and `rdus` already carry it.
+
+### The fix: walk only the live modes, by default
+
+In `accel/tcg/cputlb.c`, this lane's file, so no board request. It removes
+no walk and clears every bit as before, so there is no upload trade. It
+shortens every caller's walk on both threads.
+
+- Branch `lane/dirtytlb-rd`, stacked on this one, with its own PR: the
+  default flips there and nowhere else, so #549 stays the counter.
+- `dirtytlb-rd.json`: the Crimson soak pair on the Thor, hand-queued, B
+  first. Judge: `walk_read.py --pair A B`, K1 from pair461_read.py, J from
+  jpf.py.
+- `dirtytlb-rd-pixels.json`: the counter arm's 12 suites, three runs per
+  arm, queued by the arms job.
+- Black and Midtown Madness 3 (lane.slowtier2's ask) wait for the Crimson
+  pair: it is the pilot, and four more soaks would pass the 30 min gate.
+
 ## Waiting (2026-09-28 ~18:30Z, attempt 3)
 
 On: `1-1790619096-lane.dirtytlb-936387` (Crimson B, Thor), then
