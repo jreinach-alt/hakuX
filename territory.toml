@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 272
-updated_utc = "2026-09-28T02:53:00Z"
+wave = 273
+updated_utc = "2026-09-28T03:12:38Z"
 
 [retired.hilodot10]
 issues = ["10"]
@@ -491,6 +491,11 @@ note = "STARTED (lane.local 2026-09-28T01:30:40Z), briefs/rendermode474.md: #474
 issues = []
 files = ["docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/99-cloud-lane-branch.sh", "docs/lanes/cloudlaneguard/**"]
 note = "STARTED (hostops 2026-09-28T01:45Z), briefs/cloudlaneguard.md: harness defect, no issue. cloud.sh's claim guard sees only other cloud units, so it claimed audit1 and remediate on #523 while lane.thermal507 was still running on lane/thermal507-power (two writers, one branch). Add a held_why check for the PR's own running lane. cloud.sh was unclaimed (not in [free], no row). Interim: host-tools/audit_outlet.sh + lane_on_branch.sh."
+
+[lane.sustain507]
+issues = ["507", "424"]
+files = ["docs/lanes/sustain507/**", "docs/testing/predictions/sustain507-*.json"]
+note = "STARTED (lane.local 2026-09-28T03:12:38Z), briefs/sustain507.md: the critical path (owner 2026-09-27 ~20:00 PDT: sustained fps within the heat budget). Part A: 30-min MAX vs defaults on the Thor (Crimson, GTA SA, MechAssault 2) with #533 PERF_REGIMEN=default once the dispatcher runs it; part B: #424's two registered Thor pairs (tbflip424-blinx.json) from cool starts. Measurement only; successor to lane.thermal507."
 
 [free]
 # RELEASED (job.board 2026-09-28T02:53Z) by retiring lane.slowdown462 (no unit, no open PR): docs/lanes/slowdown462/**.
