@@ -28,3 +28,75 @@ path (`tb_lookup`, `helper_lookup_tb_ptr`, `tb_lookup_cmp`,
 inline cache removes the first and the JC default already cut the second;
 `jitmix.py`'s `tlb` and `preamble` roles (lane.memfast ranks 1 and 3); `pw`
 from the perflog.
+
+Requested from lane.local on #507 (issuecomment-5878355210), 20:54Z;
+OUT=/home/justin/hakux-work/perf/2026-09-28-ibcache-r1.
+
+## The change (built while R1 waits): an inline jump-cache probe
+
+Commit 27554f7145. At the one `lookup_and_goto_ptr` site in the x86 front
+end (`gen_eob`, `DISAS_JUMP`: RET, JMP/CALL r/m, a direct jump to another
+page), `gen_ibc_probe()` emits `tb_lookup()`'s hit test as TCG IR before the
+helper call. A hit does `goto_ptr tb->tc.ptr`, and a miss falls through to the
+unchanged `helper_lookup_tb_ptr`.
+
+- **Why the existing jump cache, not a new table.** The probe reads
+  `cpu->tb_jmp_cache` with the same hash, and compares the same key
+  (pc, cs_base, flags, cflags) against the same fields. So it inherits every
+  invalidation `tb_lookup` already honours: a wiped slot (tlb flush,
+  `tcg_flush_jmp_cache`, `tb_flush`) is empty, and a discarded TB left in a
+  slot by the JC default carries `CF_INVALID`, which fails the cflags compare.
+  A new table would need its own invalidation hooks in tb-maint.c and
+  cputlb.c, the correctness risk the brief's first leg is about.
+- **Every key field is read at run time.** eip and the CS base come from
+  their TCG globals, flags are rebuilt as `x86_get_tb_cpu_state()` builds them
+  from `env->hflags`/`env->eflags`, and cflags come from `cpu->tcg_cflags`.
+  None of them is assumed to be the source TB's. (This TB's own cflags can
+  carry `CF_TIER1`/`CF_SUPERBLOCK` while it is translated, and the stored TBs
+  have them stripped.)
+- **Left to the helper:**
+  - breakpoints and gdb single-step, checked at run time;
+  - 64-bit code (`HF_CS64`);
+  - TBs made with a count, `CF_NO_GOTO_TB`/`CF_NO_GOTO_PTR`/`CF_SINGLE_STEP`, or `-d exec,cpu,nochain`, decided at translate time.
+- **Known gap, host-debug only.** Turning `one-insn-per-tb` or `-d nochain` on at run time
+  from the monitor is not seen by probes already translated. Android has no
+  monitor. Guest exceptions and interrupts are unaffected: the probe can
+  neither fault nor skip the target TB's own exit check.
+- **Not touched:** `tcg/aarch64/tcg-target.c.inc`. The probe is generic IR,
+  so lane.memfast has that file to itself. The one new primitive is
+  `tcg_gen_goto_ptr()` in `tcg/tcg-op.c`.
+- **Switch:** `HAKUX_IBC`. Unset or `1` is on, `0` is off, and `2` is on
+  with a hit counter (`[ibc507] hits=` at the `[jc425]` cadence). One
+  `[ibc507] on=… layout=ok` line at the first translation. `hakux_ibc_enabled()`
+  checks the probe's hash formula against `tb_jmp_cache_hash_func()` and
+  refuses on a mismatch.
+- **Checked by compiling:** `ccheck.py` compiles the three files with the
+  NDK command lines of the host's last Android build. No new warnings.
+
+### Return-address stack: not built. Ranked below the probe, and why
+
+The probe already serves RET: a return target is a TB start that sits in the
+jump cache after its first execution. A RAS would save only the hash and the
+key compares on a return (about 10 of the probe's host instructions; ~35 in all, counted from the
+IR, not from emitted code), and
+it needs its own invalidation. By probability times win it comes after the
+probe's measured hit rate. If the B profile shows returns missing the jump
+cache (`[jc425]` `ip` collisions on returns), that is the evidence for it.
+
+## Legs, registered 2026-09-28 before any run of 27554f7145
+
+1. **Share (profile; R1b).** The same session as R1, on 27554f7145 (a debug
+   build, default switch). The `lookup` bucket share of the vCPU thread is
+   **at most half of R1's**, and `helper_lookup_tb_ptr` self time is at most
+   a third of R1's. The void rules are R1's.
+2. **Counter (the same R1b logcat).** `[rr425]` `hc` (helper calls) per
+   second of the vCPU is **down at least 70%** against R1's, and the
+   `[ibc507]` line reads `on=1 layout=ok`.
+3. **Pixels (pgraph, registered with `ab_compare.py --register` only after
+   R1 is go).** The full sweep, all 100 golden suites, `must_not_move` every
+   suite: every capture identical between master and B. The probe changes
+   only how the next TB is found, never which TB runs.
+4. **Title soaks.** At least three titles reach gameplay, with no new crash
+   or hang against their last master soak.
+5. **J/frame and fps.** GTA, and Forza after #583. Registered with the pixel
+   leg once R1b gives the share.
