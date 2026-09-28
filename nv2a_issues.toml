@@ -4445,7 +4445,8 @@ component = "pgraph"
 disposition = "defect"
 suites = ["ZPass pixel count"]
 status = "open"
-dispatch_state = "available"
+dispatch_state = "blocked"
+blocked_on = "PR #535 (lane/cloud-527, cloud outlet) already carries this issue's work: docs/lanes/cloud-527/NOTES.md, docs/testing/predictions/cloud527-zpass-report.json, hw/xbox/nv2a/pgraph/vk/reports.c. Draft, CI green (checked 2026-09-28T03:38Z); the issue's `lane:cloud-527` label matches this branch and is not stale. Not startable again until #535 folds or is abandoned."
 status_note = "CORRECTED 2026-09-28T02:11:39Z (lane.local, from lane.flip474 on #474/#527 02:10Z): the constant is 40,960 on BOTH handhelds; the one run that printed 65,536 differed in two ways (TU_DEBUG=sysmem and a kept shader cache), so sysmem is NOT shown to move it and this row no longer blocks a global sysmem default by itself; two separating runs queued by lane.flip474. || FILED 2026-09-28T01:27:49Z by lane.local from lane.flip474 (#474 comment, 01:21Z): pgraph pair 0-0-x-1790549038-flip474-1817562 / -1817704, binary 09fdca3ba1; 35 of 36 ZPass captures read a constant; it blocks a global TU_DEBUG=sysmem default."
 impact_px = 0
 impact_onestep_px = 0
