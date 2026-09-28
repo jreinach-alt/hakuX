@@ -1,0 +1,21 @@
+{
+  "registered_utc": "2026-09-28T01:42:00Z",
+  "who": "lane.idlehalt",
+  "issue": "525",
+  "prediction": "#525 idle halt, pixels leg. 056eea9aaf adds HAKUX_IDLE_HALT (default off); 0ff391f8e5 differs only in turning it on by default, so B runs every test with the guest kernel's idle idiom (sti; nop; nop; cli) halting the vCPU for at most 1 ms per halt, and A spins as master does. A halt changes only when the guest's instructions run, not which run or in what order relative to interrupts (an interrupt is taken at the cli, where the spinning loop takes it), and the pgraph tests' captures do not depend on timing, so every capture in these 8 suites scores identically between A and B. FAILS in the world where the halt changes guest-visible behaviour: a test that hangs or times out (a wake the bounded wait does not deliver soon enough), a capture that moves, or an unreadable row in B only. A VOID arm (unreadable rows in both, UtilAcceptVsock in run1.log) is not a pass.",
+  "a_ref": "056eea9aaf",
+  "b_ref": "0ff391f8e5",
+  "must_not_move": [
+    "Blend_tests/*",
+    "Depth_buffer/*",
+    "Texture_format/*",
+    "Texture_DXT/*",
+    "Surface_clip/*",
+    "3D_primitive/*",
+    "Fog_gen/*",
+    "Specular/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": []
+}

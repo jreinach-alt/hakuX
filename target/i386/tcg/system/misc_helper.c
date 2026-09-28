@@ -521,6 +521,31 @@ G_NORETURN void helper_hlt(CPUX86State *env)
     cpu_loop_exit(cs);
 }
 
+#ifdef XBOX
+extern int hakux_rr425_vec;     /* accel/tcg/cpu-exec.c: last vector taken */
+
+/*
+ * #525 HAKUX_IDLE_HALT: the second nop of the kernel's idle idiom
+ * (sti; nop; nop; cli), translated with hlt semantics. EIP is already past
+ * it. Halts when IF = 1 and system/cpus.c has armed the halt; otherwise it
+ * returns and the nop stays a nop. The sleep that follows is bounded there.
+ */
+void helper_hakux_idle_hlt(CPUX86State *env)
+{
+    CPUState *cs = env_cpu(env);
+
+    if (!(env->eflags & IF_MASK)
+        || !hakux_idle_halt_enter(cs, hakux_rr425_vec,
+                                  (uint32_t)(env->segs[R_CS].base + env->eip))) {
+        return;
+    }
+    do_end_instruction(env);
+    cs->halted = 1;
+    cs->exception_index = EXCP_HLT;
+    cpu_loop_exit(cs);
+}
+#endif
+
 void helper_monitor(CPUX86State *env, target_ulong ptr)
 {
     if ((uint32_t)env->regs[R_ECX] != 0) {

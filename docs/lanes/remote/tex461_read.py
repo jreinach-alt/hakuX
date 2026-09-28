@@ -5,7 +5,18 @@
     tex461_read.py --selftest
 
 A perflog build (NV2A_PERF_LOG) from the #461 count commit onward prints three
-lines on hakuX-stall every 60 frames. Each counts the same 60 frames:
+lines on hakuX-stall every 60 FINISHES: a finish at a flip stall or at a present
+(opt_stats_log_and_reset() in vk/draw.c). Each counts the same 60 finishes.
+
+A FINISH IS NOT A GUEST FLIP. A flip ends with one flip-stall finish and a
+present adds another, so 60 finishes are fewer than 60 flips: Crimson Skies'
+pair-1 soaks ran 1.47 and 1.38 finishes per flip. Figures "per finish" are what
+the lines count. When the input carries hakuX-pace lines (one per 60 flips, with
+the flips counted in v0..v4), the report adds the totals per guest flip, which
+is the unit a frame rate and the phase line's ms/frame use. #461's R5 and F3
+figures were per finish.
+
+The three lines:
 
   txh[]  content hashes and KiB, by the first reason that applies:
            new   a new cache node          rb   a node rebuilt (format, pad alpha)
@@ -37,15 +48,21 @@ A violation means the instrument is wrong, not the title.
 
 --window A,B keeps lines from A to B seconds after the first hakuX-perf line
 (or the first line, if there is none); it needs logcat timestamps. Lines
-already cut to a window, as the host posts them, need no --window. Logcat
-stamps carry no year: they are read in a leap year only when a 29 February
-stamp is present, and a stamp more than half a year from the window's first
-is read in the neighbouring year, so a window may cross New Year.
+already cut to a window, as the host posts them, need no --window. The cut is
+docs/testing/phase_read_split.py's THE WINDOW, so this reader and that one
+read a soak's lines over the same window: logcat stamps carry no year, and
+that is where the year a stamp is read in is decided.
 """
 import argparse
+import contextlib
+import io
+import os
 import re
 import sys
-from datetime import datetime
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "..", "..", "testing"))
+from phase_read_split import window_lines  # noqa: E402
 
 TXH = ["new", "rb", "srf", "mk", "memo", "bit", "bov", "oth", "eq", "rep"]
 TXU_CAUSE = ["new", "rb", "chg", "oth"]
@@ -57,46 +74,23 @@ RE_TXU = re.compile(r"txu\[n(\d+)/(\d+)K " + " ".join(r"%s(\d+)" % n for n in TX
                     " " + " ".join(r"%s(\d+)K" % n for n in TXK) + r"\]")
 RE_TXR = re.compile(r"txr\[ct(\d+) bt(\d+)/(\d+) dl(\d+)/(\d+)K sc(\d+) scdl(\d+) "
                     r"img(\d+) pool(\d+) s2tc(\d+) s2td(\d+)\]")
-RE_TS = re.compile(r"^(\d\d-\d\d \d\d:\d\d:\d\d\.\d+)")
-EPOCH = datetime(2000, 1, 1)
-HALF_YEAR = 183 * 86400.0
+RE_PACE = re.compile(r"hakuX-pace.*?v0=(\d+) v1=(\d+) v2=(\d+) v3=(\d+) v4=(\d+)")
 
 
-def stamp(line, year=2001):
-    """The line's logcat stamp as seconds since 2000, read in `year`."""
-    m = RE_TS.match(line)
-    if not m:
-        return None
-    t = datetime.strptime("%d-%s" % (year, m.group(1)), "%Y-%m-%d %H:%M:%S.%f")
-    return (t - EPOCH).total_seconds()
+def flips(lines):
+    """The guest flips the hakuX-pace lines among these lines count."""
+    return sum(sum(int(x) for x in m.groups()) for m in map(RE_PACE.search, lines) if m)
 
 
 def parse(lines, window=None):
     """Group the three lines of each 60-frame block. Returns (groups, dropped)."""
-    t0 = None
     if window:
-        # A fixed leap year would read a common year's 28 February to 1 March
-        # as two days, and a fixed common year cannot parse 29 February.
-        year = 2000 if any(RE_TS.match(l) and l.startswith("02-29") for l in lines) else 2001
-        for l in lines:
-            if "hakuX-perf" in l and stamp(l, year) is not None:
-                t0 = stamp(l, year)
-                break
-        if t0 is None:
-            t0 = next((stamp(l, year) for l in lines if stamp(l, year) is not None), None)
-        if t0 is None:
-            sys.exit("--window needs logcat timestamps, and these lines have none")
+        lines = window_lines(lines, window)
     groups, cur, dropped = [], {}, 0
     for l in lines:
         kind = "txh" if "txh[" in l else "txu" if "txu[" in l else "txr" if "txr[" in l else None
         if not kind:
             continue
-        if window:
-            t = stamp(l, year)
-            if t is not None and abs(t - t0) > HALF_YEAR:    # New Year between them
-                t = stamp(l, year + (1 if t < t0 else -1))
-            if t is None or not window[0] <= t - t0 <= window[1]:
-                continue
         m = {"txh": RE_TXH, "txu": RE_TXU, "txr": RE_TXR}[kind].search(l)
         if not m:
             dropped += 1        # truncated mid-write: counted, never used
@@ -137,8 +131,8 @@ def pct(a, b):
     return "%5.1f%%" % (100.0 * a / b) if b else "   n/a"
 
 
-def report(name, groups, dropped):
-    print("\n=== %s: %d groups of 60 frames%s ===" % (
+def report(name, groups, dropped, n_flips=0):
+    print("\n=== %s: %d groups of 60 finishes%s ===" % (
         name, len(groups), ", %d line(s) dropped" % dropped if dropped else ""))
     if not groups:
         return 0
@@ -156,7 +150,7 @@ def report(name, groups, dropped):
     hk = {n: sum(g["txh"][n][1] for g in groups) for n in TXH}
     reasons = [n for n in TXH if n not in ("eq", "rep")]
     tn, tk = sum(hn[n] for n in reasons), sum(hk[n] for n in reasons)
-    print("\n  CONTENT HASHES   %d (%.1f per frame), %d KiB (%.1f KiB per frame)" % (
+    print("\n  CONTENT HASHES   %d (%.1f per finish), %d KiB (%.1f KiB per finish)" % (
         tn, tn / (60.0 * k), tk, tk / (60.0 * k)))
     for n in reasons:
         print("    %-5s %8d  %10d KiB  %s of KiB" % (n, hn[n], hk[n], pct(hk[n], tk)))
@@ -170,7 +164,7 @@ def report(name, groups, dropped):
     uk = sum(g["txu"]["kib"] for g in groups)
     kk = {n: sum(g["txu"]["k"][n] for g in groups) for n in TXK}
     kt = sum(kk.values())
-    print("\n  UPLOADS          %d (%.2f per frame), %d guest KiB" % (un, un / (60.0 * k), uk))
+    print("\n  UPLOADS          %d (%.2f per finish), %d guest KiB" % (un, un / (60.0 * k), uk))
     print("    by cause: " + "  ".join("%s %d" % (c, sum(g["txu"][c] for g in groups)) for c in TXU_CAUSE))
     print("    KiB by decode path (%d KiB read):" % kt)
     for n in TXK:
@@ -180,7 +174,7 @@ def report(name, groups, dropped):
           "%s without unswizzle" % (pct(dec, kt), pct(dec - kk["swz"], kt)))
 
     r = {n: sum(g["txr"][n] for g in groups) for n in groups[0]["txr"]}
-    print("\n  THE REST OF A BIND, per frame")
+    print("\n  THE REST OF A BIND, per finish")
     print("    create_texture %.1f   bind calls %.1f (ran the loop %.1f)" % (
         r["ct"] / (60.0 * k), r["bt"] / (60.0 * k), r["btl"] / (60.0 * k)))
     print("    surface downloads: direct %.2f (%d KiB total), by range scan %.2f of %.1f scans" % (
@@ -190,6 +184,16 @@ def report(name, groups, dropped):
         r["img"] / (60.0 * k), r["pool"] / (60.0 * k), r["s2tc"] / (60.0 * k), r["s2td"] / (60.0 * k)))
     print("    downloads + images per create_texture call: %.3f" % (
         (r["dl"] + r["scdl"] + r["img"]) / float(r["ct"]) if r["ct"] else float("nan")))
+
+    if n_flips:
+        f = float(n_flips)
+        print("\n  PER GUEST FLIP (%d flips on hakuX-pace; %.2f finishes per flip)" % (
+            n_flips, 60.0 * k / f))
+        print("    content hashes %.1f, %.0f KiB; by reason: %s" % (
+            tn / f, tk / f, "  ".join("%s %.1f/%.0fK" % (n, hn[n] / f, hk[n] / f)
+                                      for n in reasons if hn[n])))
+        print("    uploads %.2f   create_texture %.1f   bind calls %.1f" % (
+            un / f, r["ct"] / f, r["bt"] / f))
     return viol
 
 
@@ -229,6 +233,26 @@ def selftest():
         s = SAMPLE.replace("09-27 05:00:01.000", first).replace("09-27 05:00:02.000", then)
         g6, _ = parse(s.splitlines(), window=(1.5, 2.5))
         ok &= len(g6) == 1
+    # #480 audit LOW-2: a 29 February more than half a year from the origin
+    # is re-read in the neighbouring, common year, where it does not exist.
+    # It is outside the window, and must not raise: the reader before this
+    # case raised ValueError here.
+    s = (SAMPLE.replace("09-27 05:00:01.000", "12-31 23:59:59.000")
+               .replace("09-27 05:00:02.000", "01-01 00:00:01.000")
+               .replace("09-27 05:00:04.000", "02-29 00:00:01.000"))
+    g7, _ = parse(s.splitlines(), window=(0.0, 1e9))
+    ok &= len(g7) == 1 and g7[0]["txr"]["ct"] == 40
+    # Flips come from hakuX-pace, never from the groups: 60 finishes are not
+    # 60 flips. 40 flips under 2 groups of 60 finishes is 3 finishes per flip,
+    # and the two groups' 11 hashes and 208 KiB are 0.275 and 5.2 per flip.
+    pace = "09-27 05:00:03.000 I/hakuX-pace( 1): f=60 v0=0 v1=0 v2=30 v3=10 v4=0 vb=90 max=50.0 ms=2000.0"
+    lines = (SAMPLE + pace).splitlines()
+    ok &= flips(lines) == 40 and flips(SAMPLE.splitlines()) == 0
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        report("sample", parse(lines)[0], 0, flips(lines))
+    ok &= "PER GUEST FLIP (40 flips on hakuX-pace; 3.00 finishes per flip)" in out.getvalue()
+    ok &= "content hashes 0.3, 5 KiB" in out.getvalue()
     print("selftest: %s" % ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
 
@@ -246,9 +270,12 @@ def main():
     w = tuple(float(x) for x in a.window.split(",")) if a.window else None
     viol, total = 0, 0
     for f in a.files:
-        groups, dropped = parse(open(f, errors="replace").read().splitlines(), w)
+        lines = open(f, errors="replace").read().splitlines()
+        if w:
+            lines = window_lines(lines, w)
+        groups, dropped = parse(lines)
         total += len(groups)
-        viol += report(f.split("/")[-1], groups, dropped)
+        viol += report(f.split("/")[-1], groups, dropped, flips(lines))
     # A stock build prints none of these lines, which is not a measurement.
     if not total:
         print("\nNO txh/txu/txr LINES. This reader needs an NV2A_PERF_LOG build "
