@@ -7230,24 +7230,28 @@ static bool clear_rect_clipped(PGRAPHState *pg, unsigned int *xmin,
     uint32_t clearrectx = pgraph_vk_reg_r(pg, NV_PGRAPH_CLEARRECTX);
     uint32_t clearrecty = pgraph_vk_reg_r(pg, NV_PGRAPH_CLEARRECTY);
 
-    *xmin = GET_MASK(clearrectx, NV_PGRAPH_CLEARRECTX_XMIN);
-    *xmax = GET_MASK(clearrectx, NV_PGRAPH_CLEARRECTX_XMAX);
-    *ymin = GET_MASK(clearrecty, NV_PGRAPH_CLEARRECTY_YMIN);
-    *ymax = GET_MASK(clearrecty, NV_PGRAPH_CLEARRECTY_YMAX);
+    unsigned int x0 = GET_MASK(clearrectx, NV_PGRAPH_CLEARRECTX_XMIN);
+    unsigned int x1 = GET_MASK(clearrectx, NV_PGRAPH_CLEARRECTX_XMAX);
+    unsigned int y0 = GET_MASK(clearrecty, NV_PGRAPH_CLEARRECTY_YMIN);
+    unsigned int y1 = GET_MASK(clearrecty, NV_PGRAPH_CLEARRECTY_YMAX);
 
     unsigned int cx = pg->surface_shape.clip_x;
     unsigned int cy = pg->surface_shape.clip_y;
     unsigned int cw = pg->surface_shape.clip_width;
     unsigned int ch = pg->surface_shape.clip_height;
     if (cw) {
-        *xmin = MAX(*xmin, cx);
-        *xmax = MIN(*xmax, cx + cw - 1);
+        x0 = MAX(x0, cx);
+        x1 = MIN(x1, cx + cw - 1);
     }
     if (ch) {
-        *ymin = MAX(*ymin, cy);
-        *ymax = MIN(*ymax, cy + ch - 1);
+        y0 = MAX(y0, cy);
+        y1 = MIN(y1, cy + ch - 1);
     }
-    return *xmin <= *xmax && *ymin <= *ymax;
+    *xmin = x0;
+    *ymin = y0;
+    *xmax = x1;
+    *ymax = y1;
+    return x0 <= x1 && y0 <= y1;
 }
 
 /*
