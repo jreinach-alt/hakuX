@@ -3,11 +3,18 @@
 This file is #516's notes. `NOTES.md` has a pointer to it (section 17).
 
 **Outcome (2026-09-28): the global default does not ship, and #516 no
-longer carries it** (`1a8f16ef16` is reverted by `d0efa4c1f3`). Under
-`TU_DEBUG=sysmem` the ZPASS report a guest reads changes value, and Blinx
-reads one in every line of its window. The gain is real where a title is
-rendered twice: AUF 16 -> 24 gfps, DOA 13 -> 21. Results are in "Results"
-below; the policy section is corrected in place.
+longer carries it** (`1a8f16ef16` is reverted by `d0efa4c1f3`). The gain is
+real where a title is rendered twice: AUF 16 -> 24 gfps, DOA 13 -> 21.
+Whether sysmem moves pixels is **not settled**: the env run on the Thor
+printed a different ZPASS report in all 36 `ZPass_pixel_count` captures, and
+the default build's arm on the Nova, which sets the same flag, printed the
+base's in all 36 ("The second pair", below). The env run was also the only
+one with a kept shader cache, so its 37 moved captures have two candidate
+causes. Results are in "Results" below; the policy section is corrected in
+place.
+
+The per-title default is lane.rendermode474's (board wave 271), keyed by
+title id, below user overrides. The ZPASS report's constant is #527.
 
 ## Why the last session did not finish, and this one (resumed 2026-09-27 22:38Z)
 
@@ -60,11 +67,13 @@ The three policies, after the data:
 
 | policy | verdict | why |
 |---|---|---|
-| global sysmem (what `1a8f16ef16` did) | **no** | the ZPASS report changes value in all 36 ZPass captures; Blinx and Crimson read 2 gfps lower, not separated from scene and run order |
+| global sysmem (what `1a8f16ef16` did) | **no** | pixels are not shown identical: the env run moved 37 captures and the default build's arm moved none of them, and the two are not reconciled ("The second pair"); Blinx and Crimson read 2 gfps lower, not separated from scene and run order |
 | per title | **the one the data supports** | AUF 16 -> 24 and DOA 13 -> 21 gfps, both X/R 1.0; AUF ends no render pass for a query in its window, DOA in 3 of 56 lines |
 | per pass | the driver's | Turnip's autotuner chooses; a fix is in lane.turnipfork's Mesa tree, and so is the sysmem occlusion count |
 
-Per title needs files this lane does not hold: `PerGameSettingsManager.kt`,
+Per title is lane.rendermode474's since board wave 271; it is not
+implemented here. It needs files this lane does not hold:
+`PerGameSettingsManager.kt`,
 `PerGameSettingsActivity.kt`, `activity_per_game_settings.xml`,
 `strings.xml` and `xemu_android.cpp`. Its default is "the driver's choice",
 so it moves no pixel for a title nobody set. Those overrides are keyed by
@@ -120,24 +129,27 @@ not (`capgroups.py`).
 
 | captures | n | what differs | cause |
 |---|---:|---|---|
-| `ZPass_pixel_count::*` | 36 | the printed ZPASS report: `0xA000 (40960)` in all 36 of A, `0x10000 (65536)` in all 36 of B (`zpassread.py`) | the render mode |
+| `ZPass_pixel_count::*` | 36 | the printed ZPASS report: `0xA000 (40960)` in all 36 of A, `0x10000 (65536)` in all 36 of B (`zpassread.py`) | something B alone had: the env or its kept shader cache (first written here as "the render mode"; see "The second pair") |
 | `Stencil::Stencil_{REPLACE,ZERO}_*` | 5 | 30,000 to 40,000 px, in both directions (A wrong in one, B in two) | run to run: the lost draw of #39/#75, band [0, 40000] |
 | `Blend_tests::#spot_0_ADD` | 1 | A is 16,384 px off its golden; B is exact and equals six earlier GMEM runs | run to run, in A |
 | `Vertex_shader_rounding_tests::GeometrySuperscreen_{0.5000,0.5626}` | 2 | 0.5000 has three contents over eight runs of one mode | run to run |
-| `Antialiasing_tests::GPUAAWriteAfterCPUWrite`, `Surface_pitch::Swizzle` | 2 | 134 against 138 px, 5607 against 6144 px | **not classified**: no second run of either mode has these suites |
+| `Antialiasing_tests::GPUAAWriteAfterCPUWrite` | 1 | 134 against 138 px | moves with the ZPass block, in B alone (classified by the second pair) |
+| `Surface_pitch::Swizzle` | 1 | 5607 against 6144 px | run to run (classified by the second pair) |
 
-So 36 captures move with the render mode, 8 move run to run, and 2 wait on
-the arms job's pair, which is a second run of each mode on the same disc.
+So 37 captures moved in B alone and 9 move run to run. This pair cannot
+say what in B moved the 37: B had the env, and B was the second run of one
+apk, so the dispatcher kept A's shader cache for it (`shader_cache: kept`,
+260 modules warmed up at start). A started from a cleared cache.
 
-**What the ZPass captures show.** The report is one value per mode,
-whatever the test draws: `ZPassPointSize-0x0040` expects 16,448 and
+**What the ZPass captures show** (filed as #527). The report is one value
+per run, whatever the test draws: `ZPassPointSize-0x0040` expects 16,448 and
 `ZPassLineWidth-0x0040` expects 16,896, and both print 40,960 in A and
 65,536 in B. `ZPass` itself expects 40,960, so it prints `[PASS]` in A and
 `[FAIL]` in B; the other 35 print `[FAIL]` in both. 65,536 is four whole
 128 x 128 quads: `ZPass` draws four, one hidden behind another and one half
 off the screen. So the report was already wrong on master in 35 of 36
-tests, and sysmem makes it wrong in the 36th and changes the value a guest
-reads in all of them. This lane did not find why either value is constant.
+tests, and in B it is wrong in the 36th and is another value in all of
+them. This lane did not find why either value is constant.
 hakuX begins and ends its occlusion queries outside render passes
 (`draw.c:4606-4622`), and on this GPU Turnip closes such a query with a
 pair of `ZPASS_DONE` events (`tu_query_pool.cc:1128-1152`, `:1574-1586`);
@@ -151,6 +163,116 @@ ended for a query, in each run's window):
 | Blinx, base and sysmem | 40 of 40, 39 of 39 | 1815, 1847 |
 | DOA, the default | 3 of 56 | 36 |
 | DOA base, AUF, Forza, Crimson | 0 | 0 |
+
+### The second pair: `flip474-sysmemfix-pgraph.json` (judged 2026-09-28 02:30Z)
+
+The arms job's pair, both on the Nova, each from a cleared shader cache:
+base `1-1790549941-arms-flip474-base-2298159` (`09fdca3ba1`, apk
+`6d334facad15`, the binary of A and B above) and fix
+`1-1790549941-arms-flip474-fix-2298254` (`1a8f16ef16`, apk `77fb07c81a93`,
+the default). 1059 captures each; 1053 byte-identical, 6 not.
+
+By the letter the prediction FAILS: every suite is in `must_not_move`, and
+six captures moved. All six are in the run-to-run set:
+
+| capture | base, px off its golden | fix |
+|---|---:|---:|
+| `Blend_tests::#spot_0_ADD` | 0 | 16,384 |
+| `Stencil::Stencil_REPLACE` | 40,000 | 0 |
+| `Stencil::Stencil_ZERO_DT` | 40,000 | 0 |
+| `Stencil::Stencil_REPLACE_ST_DT` | 0 | 30,000 |
+| `Stencil::Stencil_REPLACE_ST_DT_ZB` | 0 | 30,000 |
+| `Surface_pitch::Swizzle` | 0 | 4,838 |
+
+Its "if and only if" is refuted too, and that is the finding: the env pair
+moved 37 captures that this pair did not.
+
+**The four runs, capture by capture** (`capgroups.py`; columns Thor A, Thor
+B with the env, Nova base, Nova fix; runs that share a letter are
+byte-identical). 49 captures are not the same in all four:
+
+| pattern | n | captures | reading |
+|---|---:|---|---|
+| `abaa` | 37 | the 36 `ZPass_pixel_count` captures, `GPUAAWriteAfterCPUWrite` | moved in Thor B alone |
+| `abba`, `abbb`, `aabb`, `aaba`, `abca` | 10 | Stencil (8), `#spot_0_ADD`, `GeometrySuperscreen_0.5626` | run to run; see below for `aabb` |
+| `abcc` | 1 | `GeometrySuperscreen_0.5000` | run to run |
+| `abcd` | 1 | `Surface_pitch::Swizzle` | run to run |
+
+**The two captures the first pair left open:**
+
+- **`Surface_pitch::Swizzle`: run to run.** Four runs, four contents. The
+  two runs of one binary with no env differ from each other: Thor A is
+  5,607 px off the golden and the Nova's base is exact. The other two are
+  6,144 (Thor B) and 4,838 (Nova fix) off. Both sysmem runs are off and one
+  of the two others is, so four runs do not say whether the mode changes
+  how often it fails.
+- **`Antialiasing_tests::GPUAAWriteAfterCPUWrite`: not run to run. It
+  moves with the ZPass block**, in Thor B alone. Nine runs on disk from
+  2026-09-26 09:26Z hold this capture, over both handhelds and seven apks.
+  Eight are one content, the Nova's fix arm among them; the ninth is Thor B
+  (`caphistory.py`). It is 134 px off its golden in the eight and 138 in
+  Thor B.
+
+Two Stencil captures split by handheld (`aabb`: `Stencil_REPLACE_ST`,
+`Stencil_REPLACE_ST_ZB`). Every Stencil capture here is 0, 30,000 or 40,000
+px off its golden, which is the lost draw of #39/#75, and six others flip
+inside one handheld. Four runs cannot tell a split by handheld from two
+flips that fell that way.
+
+**The 37 did not move under the default.** The Nova's fix arm prints
+`0xA000 (40960)` in all 36 ZPass captures, byte-identical to its base and to
+Thor A. That is not what "the render mode moves them" predicts, so what is
+known about that arm matters:
+
+| question | answer | how it was read |
+|---|---|---|
+| Is the default in that binary? | yes | `77fb07c81a93`'s `libxemu.so` holds the `init: TU_DEBUG=sysmem (default` string; `6d334facad15`'s holds no `TU_DEBUG` |
+| Was `TU_DEBUG` already set, so the default stood aside? | no | no `env:` line in its logcat, and the request's env is empty |
+| Does the driver honour the default on the Nova? | yes, on DOA | the perflog build of the same ref (`230d78fd17ea`) reads X/R 0.02 with no env |
+| Did the driver render **this** run in sysmem? | **not shown** | the arm is not a perflog build, so it prints no `hakuX-phase` line, and the start-up line is under `xemu-vk`, which the logcat list does not hold |
+| Same GPU and driver as the Thor? | yes | Adreno 740 and PurpleVK git-62ac221a33 in all four logcats |
+
+**What Thor B alone had.** Two things, not one:
+
+| | Thor A | Thor B | Nova base | Nova fix |
+|---|---|---|---|---|
+| sysmem asked for | no | the env pref | no | `setenv` in `create_instance` |
+| shader cache at start | cleared | **kept, 260 modules warmed up** | cleared | cleared |
+| ZPASS report | 40,960 | 65,536 | 40,960 | 40,960 |
+
+Since 2026-09-26, 13 runs on disk hold the ZPass suite, over both handhelds
+and nine apks. 11 print one content, one is an older ref's
+(`8e683b3a26`), and one is Thor B. Thor B is the only one that started from
+a kept cache, and the only one with the env. No run on disk separates the
+two. For `GPUAAWriteAfterCPUWrite` two runs of that suite alone started
+from a kept cache (35 modules) with no env and printed the usual content,
+so a kept cache by itself did not move that capture there. No such run
+exists for ZPass.
+
+So the first pair's "36 captures move with the render mode" was a cause
+named from one run that differed in two ways. What stands: the ZPASS report
+is a constant whatever the test draws (#527), and one run printed another
+constant.
+
+**The two runs that separate it**, `ZPass_pixel_count` and
+`Antialiasing_tests` only, master, one handheld, queued in this order:
+
+1. `--env TU_DEBUG=sysmem`, as the first run of its apk on the device
+   (`shader_cache: cleared`).
+2. no env, straight after it (`shader_cache: kept`).
+
+| run 1 | run 2 | reading |
+|---|---|---|
+| 65,536 | 40,960 | the env moves the report. Then the default build's arm either was not in sysmem or `setenv` differs from the pref, and a perflog build of the default on the same two suites says which |
+| 40,960 | 65,536 | the kept shader cache moves it. Then sysmem is not shown to move any pixel, and every pair whose B arm reuses A's apk has this confound |
+| 65,536 | 65,536 | both can; run the no-env arm again from a cleared cache |
+| 40,960 | 40,960 | neither alone; Thor B was something else, and the full 27-suite disc is the next thing to repeat |
+
+Read `shader_cache` in each `result.json` before reading the captures: a
+request of another apk that lands between the two clears the cache and
+makes run 2 a plain repeat. They are not queued from here: both handhelds
+have a queue of soaks and arms, and this lane has no session left to read
+them. They are small (two suites, about two minutes each).
 
 ### Steps 2 and 3, the soaks (`sysmemjudge.py`, each over its registered window)
 
@@ -279,12 +401,36 @@ captures move again. Its verdict is expected to be a FAIL on
 marked ready after it, as the record of a measured change that was taken
 back.
 
+(That expectation was wrong: the pair is byte-identical in every ZPass
+capture. See "The second pair".)
+
+## Attempt 5 (resumed 2026-09-28 01:57Z)
+
+Attempt 4 did not finish because it ended waiting on the arms job's pair,
+which was in the queue behind lane.drain474's. That was the right call. The
+pair finished at 01:42Z and 01:56Z, both arms on the Nova.
+
+What this attempt did:
+
+- Read the pair and grouped it with the first ("The second pair", above).
+  `Swizzle` is run to run. `GPUAAWriteAfterCPUWrite` moves with the ZPass
+  block.
+- Found that the block did not move under the default, and that the env
+  run was also the only run from a kept shader cache. Corrected "the render
+  mode" to "something B alone had" wherever this file named the cause.
+- Added `caphistory.py`, merged master (`d34b77d76d`).
+- Did not queue the two runs that separate the causes: they are named
+  above for whoever holds the render mode next (lane.rendermode474) or
+  #527.
+
 **What would make a global default right**, in order:
 
-1. The ZPASS report prints the value the test expects in GMEM in all 36
-   ZPass captures (35 do not today), then the same in sysmem.
-2. The pgraph pair is then byte-identical outside the run-to-run set.
-3. Blinx and Crimson on the Thor with the sysmem arm first, from a cool
+1. The two runs of "The second pair" say what moved the 37 captures.
+2. If it is the mode: the ZPASS report (#527) prints the value each test
+   expects, in both modes, and `GPUAAWriteAfterCPUWrite` is explained.
+3. A pgraph pair with the sysmem arm first, both arms from a cleared
+   cache, byte-identical outside the run-to-run set.
+4. Blinx and Crimson on the Thor with the sysmem arm first, from a cool
    start, both arms in the same view: sysmem within 1 gfps.
 
 ## Do not repeat
@@ -302,6 +448,16 @@ back.
   a 2 gfps difference. Alternate the order, or run each arm twice.
 - Do not read `ZPass_pixel_count::ZPass` printing `[PASS]` as the report
   working: it prints the same 40,960 in tests that expect 16,448.
+- Do not name a cause from a pair whose second arm reuses the first arm's
+  apk. The dispatcher keeps the shader cache for it, so the second arm
+  differs in the cache as well as in what was set. Read `shader_cache` in
+  both `result.json` files; run the changed arm first, or the control twice.
+- Do not leave a pixel finding on one run when a second run of the same
+  setting is already queued: the first pair's cause was posted, filed
+  (#527) and acted on 35 minutes before the pair that contradicts it
+  finished.
+- Do not judge a change that a non-perflog arm cannot see taking effect:
+  the fix arm prints nothing that says which mode it rendered in.
 - Do not copy a skip spec from a hand-queued request (spaced suite names)
   into a registered prediction (underscored): the arms job's `request.sh`
   gate compares them literally and refuses.
