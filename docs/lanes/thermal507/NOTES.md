@@ -115,6 +115,28 @@ cpu-0-2). Idle readings: xo-therm 41.3 C, hottest zone 46 C.
 - Queued `1790551730-thermal507-2943941`: GTA SA, gta-sa route, 600 s, Thor,
   ref 8a54dcf1b2. It claims after the update window.
 
+### The first field records (flip474's Thor soaks, 16:38-17:01 PDT, merged tree)
+
+The three flip474 soaks queued ahead of the pilot ran the merged sampler.
+Samples came every ~33 s: 30 s plus the read.
+
+| run | title, s | xo-therm at pause | pause | THERMAL line |
+|---|---|---|---|---|
+| 1818830 | Forza, 423 | 77.3 -> 78.1 C (+269/+302 s) | set by +337 s, held to end (xo 73.8) | `began after +303 s and by +337 s` |
+| 1819047 | Forza, 427 | 77.4 -> 78.0 C (+304/+337 s) | **paused at start** (the previous run's heat) until +172 s (xo 70.2 -> 71.3); set again by +373 s | two episodes |
+| 1819312 | Crimson Skies, 248 | peak 75.9 C | none | `no thermal-pause device above 0` |
+
+- The trip is **xo-therm 78.0 C**, set within one sample of reaching it, and
+  cleared near 70 C (hyst 8), as the trip read above predicted. The hottest
+  CPU zone then drops from ~95 C to ~84 C, the cpu3-7 pause.
+- At MAX from ~62-67 C, xo-therm climbs ~2 C/min, so reaching 78 C takes
+  5-6 min. A run queued right after a hot run starts paused. So a benchmark's
+  exposure depends on its **queue neighbour**, not only its length.
+- `title_verdict.py` on a copy of 1818830 (flip474's own dir left untouched):
+  `FAIL(void: thermal-pause: thermal-pause-F8 1/1 began after +49 s and by
+  +83 s ... relative to the mark)`, `thermal.in_window: true`, every fps
+  field null. The whole chain works on a real run.
+
 ## Existing Thor title benchmarks (brief item 4)
 
 Posted on #507 (comment 5859894811). 122 Thor title soaks of the last 48 h
