@@ -414,12 +414,9 @@ flip, which is most of B's 0.276. The bar did not budget the poll. It
 stays as registered; the batch pools two runs per title. **H2 was
 unreadable** (below). E1: B 6% lower J/frame on one run each, inside
 what two runs of one arm could differ by; the batch has four per title.
-The rotate site never waited in either arm (`waits=0`): all of the wait
-is the deferred finish.
-
-The rotate site's zero is itself a finding. The frame-rotation wait
-(:3953) is never reached with the next slot unsubmitted on this title, so
-only the deferred-finish wait carries the lever.
+The rotate site never waited in either arm (`waits=0`). On this title
+the frame-rotation wait (:3953) never finds the next slot unsubmitted, so
+the whole lever is the deferred finish.
 
 ### The instrument defect: `thr_cpu_ms` diffed two threads' clocks
 
