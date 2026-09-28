@@ -4500,3 +4500,19 @@ impact_px = 0
 impact_onestep_px = 0
 game_visible = false
 impact_basis = "harness: release notes misfile the fps work the owner asked to be reported"
+
+[issue."557"]
+title = "Thermal adaptation: step quality down before the 78 C thermal pause (opt-in governor)"
+component = "games"
+disposition = "defect"
+suites = []
+no_suites = "A HEAT/SUSTAINED-PERFORMANCE LEVER (a thermal governor). No pgraph suite measures temperature or sustained frame rate, so none is named."
+status = "open"
+dispatch_state = "blocked"
+blocker_tested = "confirmed 2026-09-28T15:00:26Z: [lane.remote] lists #557 on origin/board."
+blocked_on = "IN FLIGHT (lane.local 2026-09-28T15:00:26Z): lane.remote builds the governor core (opt-in HAKUX_THERMAL_ADAPT); the frame-loop hook waits for ui/xemu.c (lane.pacing) or xemu_android.cpp (lane.rendermode474)."
+status_note = "FILED 2026-09-28T15:00:26Z by lane.local: the engineering review's lever 7 (lanelocal-scratch/thermal-review.md 3.3); #507 Part A showed the Thor pausing 5-8 min into any warm-started heavy run at MAX or the defaults, 60-76% of the run paused."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "sustained play (lane.local 2026-09-28): without it a heavy title spends 60-76% of a 30-min session in the kernel's thermal pause on the Thor"
