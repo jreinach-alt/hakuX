@@ -844,22 +844,8 @@ def gather(E):
 
     # ---- what needs a person
     person = []
-    esc_src = os.path.join(F.W, "host-tools/escalations.md")
-    for l in (F.read(esc_src) or "").splitlines():       # one decision per line, whole
-        l = l.strip()
-        if not l or l.startswith("#") or "RESOLVED" in l:
-            continue
-        l = re.sub(r"^[-*]\s+", "", l)
-        m = re.match(r"^(OWNER ONLY[^(:]*)?\(([^)]*)\)\s*:\s*(.*)$", l)
-        at = None
-        if m:
-            meta, text = m.group(2), m.group(3)
-            mt = re.search(r"(\d{2}-\d{2}) (\d{1,2}:\d{2}) ?([A-Z]{3})?", meta)
-            if mt:
-                at = _stamp("%s-%s %s %s" % (_lt(now, "full")[:4], mt.group(1), mt.group(2), mt.group(3) or "PDT"))
-        else:
-            meta, text = "", l
-        person.append({"kind": "decision", "who": "owner", "action": text, "src": "host-tools/escalations.md" + (", %s" % meta if meta else ""), "at": at})
+    for it in escalation_items(F.read(os.path.join(F.W, "host-tools/escalations.md")) or "", now):
+        person.append(dict(it, kind="decision", who="owner", src="host-tools/escalations.md" + (", %s" % it["meta"] if it["meta"] else "")))
     for i in dn_issues:
         person.append({"kind": "decision", "who": "owner", "action": "decide #%s: %s" % (i["number"], i["title"]),
                        "src": "issue #%s, label decision-needed" % i["number"], "at": None})
@@ -901,6 +887,70 @@ def gather(E):
             "titles": titles,
             "r05_issues": r05_issues, "board_ok": terr is not None, "prs_ok": prs_ok, "board_src": board_src,
             "reqs": reqs}
+
+
+ESC_RECHECK_SECS = 2 * 3600
+
+
+def _items(text, opens):
+    """Group lines into items: a line for which opens(line) is true starts one, and the indented
+    lines under it belong to it (UPDATE, RESOLVED and re-checked notes are written there). Other
+    lines are no item's and end none. As host-tools/harness_health.py groups escalations."""
+    out = []
+    for l in text.splitlines():
+        if l[:1] in (" ", "\t"):
+            if out and l.strip():
+                out[-1].append(l.strip())
+        elif opens(l):
+            out.append([l.strip()])
+    return out
+
+
+def escalation_items(text, now):
+    """The open owner items in host-tools/escalations.md. An item is an unindented "- " line plus
+    its indented continuation lines; it is resolved when any of its lines says RESOLVED. The page
+    shows its first line, and the newest "re-checked HH:MM" among its lines (hostops re-verifies each
+    open item every tick); an item neither opened nor re-checked in the last 2 h is marked unverified."""
+    out = []
+    today = _lt(now, "full")[:10]
+    for lines in _items(text, lambda l: re.match(r"^[-*]\s", l)):
+        if any("RESOLVED" in l for l in lines):
+            continue
+        l = re.sub(r"^[-*]\s+", "", lines[0])
+        m = re.match(r"^(OWNER ONLY[^(:]*)?\(([^)]*)\)\s*:\s*(.*)$", l)
+        at = None
+        if m:
+            meta, text_ = m.group(2), m.group(3)
+            mt = re.search(r"(\d{2}-\d{2}) (\d{1,2}:\d{2}) ?([A-Z]{3})?", meta)
+            if mt:
+                at = _stamp("%s-%s %s %s" % (_lt(now, "full")[:4], mt.group(1), mt.group(2), mt.group(3) or "PDT"))
+        else:
+            meta, text_ = "", l
+        if not at:          # "- 09-27 10:36 PDT (hostops) ...": the stamp leads the line
+            mt = re.match(r"^(\d{2}-\d{2}) (\d{1,2}:\d{2}) ?([A-Z]{3})?", l)
+            if mt:
+                at = _stamp("%s-%s %s %s" % (_lt(now, "full")[:4], mt.group(1), mt.group(2), mt.group(3) or "PDT"))
+        checked = None
+        for c in lines[1:]:
+            mc = re.search(r"\bre-checked (?:(\d{2}-\d{2}) )?(\d{1,2}:\d{2}) ?([A-Z]{3})?", c, re.I)
+            if not mc:
+                continue
+            day = ("%s-%s" % (today[:4], mc.group(1))) if mc.group(1) else today
+            t = _stamp("%s %s %s" % (day, mc.group(2), mc.group(3) or "PDT"))
+            if t and not mc.group(1) and t > now + 300:     # "23:50" read just after midnight is yesterday's
+                t -= 86400
+            if t and (checked is None or t > checked):
+                checked = t
+        fresh = max(x for x in (checked, at, 0) if x is not None)
+        if checked:
+            detail = "re-checked %s (%s ago)" % (_lt(checked), _dur(now - checked))
+        else:
+            detail = ""
+        if now - fresh > ESC_RECHECK_SECS:
+            detail = "UNVERIFIED: no re-check in the last 2 h" + ("; last " + detail if detail else "")
+        out.append({"action": text_, "meta": meta, "at": at, "checked": checked,
+                    "unverified": now - fresh > ESC_RECHECK_SECS, "detail": detail})
+    return out
 
 
 def glob_(d, ext):
@@ -978,9 +1028,9 @@ def _needs_hands(F, E, now, decisions):
     out = []
     def words(s):
         return {w for w in re.findall(r"[a-z]{4,}", s.lower())}
-    for l in (F.read(p) or "").splitlines():
-        l = l.strip()
-        if not l or l.startswith("(") or "RESOLVED" in l:
+    for lines in _items(F.read(p) or "", lambda l: l.strip()):     # a line and its indented notes are one ask
+        l = lines[0]
+        if l.startswith("(") or any("RESOLVED" in x for x in lines):
             continue
         w = words(l)
         # the same ask already on the owner's list is one item, not two
