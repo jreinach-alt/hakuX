@@ -200,6 +200,13 @@ def read(rdir):
     bz = [thermal_state.zone_c(r, "battery") for r in ok if thermal_state.dev_ts(r) >= t0]
     out["battery_start_c"] = next((c for c in bz if c is not None), None)
     out["xo_max_c"] = max(c for _, c in xo) if xo else None
+    # H3 of sustain507-levers.json: xo at minute 10 from the mark, linear
+    # between the two samples around it.
+    t10 = m0 + 600.0
+    around = [(a, b) for a, b in zip(xo, xo[1:]) if a[0] <= t10 <= b[0]]
+    if around:
+        (ta, ca), (tb, cb) = around[0]
+        out["xo_m10_c"] = round(ca if tb == ta else ca + (cb - ca) * (t10 - ta) / (tb - ta), 1)
     tail = [c for t, c in xo if t >= hi - PLATEAU_TAIL_S]
     out["plateau_min"] = None
     if len(tail) >= 3 and max(tail) - min(tail) <= 2 * PLATEAU_BAND_C:
