@@ -1388,3 +1388,40 @@ soaks, which score little or no gameplay (see "Soak length" above):
 | 007: Nightfire | thor | nightfire | 1-1790563604-titleroutes-373432 | 400 |
 | Burnout 3: Takedown | thor | burnout3.returning | 1-1790563604-titleroutes-374056 | 620 |
 | Kabuki Warriors | nova | kabuki-warriors | 1-1790563605-titleroutes-374601 | 550 |
+
+### Session 27: HELD Thor, 20:09-20:27 PDT (18 min), battery 72%
+
+**First, an error of mine (20:01-20:03).** The arm
+1-1790560694-arms-pacing-base-2707775 claimed the Thor at 20:01:23. I took
+the hold at 20:01:24. `hold.sh take` does not wait for a running request, and
+I did not re-read running/ before I launched. My launch at 20:01:39 and
+my second one at 20:02:53 went to a device the arm owned, and the second
+killed its fast.iso process. I stopped, released, and reported it on PR #529
+(comment 5862515829) and in hostops-inbox.md. `scratch/takeloop.sh` now takes
+the hold and prints READY only once no running/*.owner names the device.
+The hold covering 20:04-20:27 was taken that way.
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| RalliSport Challenge 2 (4D530039) | thor | `rallisport-2.returning.route` | yes (20:22, warm, 15/15 focus reads) | Time Attack on Australia / Copperhead. At the mark the car is on the start straight with the race clock at 00:25.55 (overlay FPS 22). At the end (01:08.95) it is off the track by a stand after reversing and steering |
+
+Frames: nav `~/hakux-work/nav/rallisport-2.first-run-20260927T200957/`
+(profile creation), `~/hakux-work/nav/rallisport-2.returning-20260927T201734/`
+(s-015-p1: 27 mph on the banked turn); replay
+`scratch/replay/rallisport-2.returning-202218/` (202650-gameplay.png,
+zz-end.png). The profile "00" is on the Thor's disk (flushed with HOME at 20:17).
+
+What the title taught:
+- The letter grid and the main menu's carousel both auto-repeat. A stick flick
+  registered one move in two. A hat held 0.6-0.9 s moved 2-4 entries. A short
+  hat tap moves one. The carousel stops at both ends, so seven left taps
+  always land on TIME ATTACK.
+- START on the name grid types a character. Done needs the hat.
+- The **triggers rest at `min`**. `axis LT mid` is a half-pressed brake, and
+  it held the car at 0 mph with the engine revving. That cost 3 minutes.
+- In Time Attack the car starts nosed into the first-turn barrier. LT full
+  reverses it off.
+
+Benchmark queued: 1-1790566122-titleroutes-1417504 (thor, 570 s, ref
+023e26510f). targets.toml: the existing 4D530039 entry (#431 target 60) now
+has a thor ISO and the route.
