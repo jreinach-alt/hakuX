@@ -269,6 +269,84 @@ hysteresis). A fall that clears within one or two bins is not the pause.
   `lane/thermal507-power`, so #519 (the gate hostops waits on for
   MechAssault 2) can fold without it.
 
+### Power and J per frame (PR #523, branch `lane/thermal507-power`)
+
+- `thermal_state.py`: the same single adb call now also reads battery
+  `status`, `capacity`, `current_now`, `voltage_now`; the USB input's
+  `online`, `usb_type`, `current_now`, `voltage_now`, `current_max`,
+  `input_current_limit`; and `dumpsys -t 3 thermalservice`'s `Thermal
+  Status`. They land in the sample as `pw`. A field that did not read is
+  left out, never 0. `--power FILE LO HI` prints the window's averages, and
+  the `THERMAL:` line in run.log gains `battery +x W (+ is discharging),
+  usb in y W, net z W`. soak_title.sh is unchanged: it already runs the
+  sampler and the summary.
+- **Sign: battery W is + while discharging, - while charging.** The
+  kernel's `current_now` runs the other way on both handhelds (AGENTS.md
+  and docs/testing/device-power.md: below zero under the emulator), so
+  battery W = -(current_now x voltage_now) / 1e12.
+- Net W = battery W + USB input W, the device's draw. The USB input is
+  `usb/current_now` x `usb/voltage_now` when both read. With only
+  `input_current_limit`, it is limit x 5 V and `usb_from` calls it an upper
+  bound.
+- The average is time-weighted: linear between samples, flat outside them,
+  integrated over the window. With samples 30 s apart a mean of the
+  in-window samples ignores up to 30 s at each edge.
+- `title_verdict.py`: a `power` block over the scored window (battery_w,
+  usb_w, usb_from, net_w, scored_s, flips, j_per_frame,
+  j_per_frame_battery, sign_suspect, thermal_status_max) and
+  `thermal.first_pause_s` {after, by}, counted from the `start` sample.
+  Reported, never judged; no bar exists yet.
+- J per frame is null in a void run (the flips are not the title's) and in
+  a window with a `sign_suspect` reading: the battery charging at more
+  than 0.25 W with no USB input. That row cannot happen under the sign
+  above, so it is the check for a kernel with the other sign.
+- selftest `99-power-per-frame.sh`, 11 legs, each with the world it fails
+  in. The fixture is -2 A at 4 V with 0.5 A at 5 V of USB over a 60 fps
+  run: battery +8.0 W, net 10.5 W, 2340 flips in 39.0 s, 0.175 J per
+  frame. A sign mutant turns the drain leg red.
+- On a copy of the GTA pilot (3751184, recorded before `pw` existed):
+  `first_pause_s` after 535, by 569, as the run.log line says, and
+  `power.measured` false.
+- **Not yet run on a device.** The `ps` and `ths` lines were parsed from a
+  fake adb. The sysfs paths are the ones measured on 09-10 and 09-26; the
+  `Thermal Status:` line is AOSP's dumpsys format and is unverified on
+  these two devices. The first soak after the fold and a dispatcher update
+  window is the check: its thermal.jsonl must carry `pw` with a battery
+  current, and its verdict `power.measured` true. If `thermal_status` is
+  missing there, the dumpsys line differs on this firmware.
+- **#519's audit LOWs, fixed here** (docs/audits/2026-09-27-thermal507-519-
+  pass1.md; #519 folds without them):
+  - L1: offsets print with `%+`, so a pause in the cool-down reads `-60 s`,
+    and the `THERMAL:` line marks it `[in the cool-down, over before the
+    start]`. `first_pause_s` skips such an episode.
+  - L2: with no mark, the verdict's pauses count from `origin()` (the
+    `start` sample), as the `THERMAL:` line does.
+  - L3: the gate's wait is wall time (`$SECONDS`), read before each sample,
+    so a device cool at the first read waited 0 s.
+  - L4: a sampler that wrote no line ends the gate as `COOLDOWN: not gated
+    ...: the sampler wrote no line`; the previous hot line is not re-read.
+  - selftest 99-thermal-pause: legs `no-line` and `waited-out` (15 of 15).
+    The wait legs accept 2 to 9 s, since the wait is now wall time.
+- **#523's audit pass 1** (docs/audits/2026-09-27-thermal507-power-
+  pass1.md, on head 4d8ba75b63) found the same first_pause and offset
+  defects as M1, L1 and L2; ea4675ae72 had fixed them before the audit
+  file arrived. Its two other points are fixed after it: `--power` takes
+  its origin from the same readable set as the other modes, and
+  `power.usb_bound` is true when any sample behind the USB average was a
+  bound (legs `mixed` and `measured`; 99-power-per-frame is 13 of 13).
+- 99-display-covered's "guest exit mid-route" leg failed once in six
+  local runs (`no-STOPPED-line`: the 2 s route ended in the same second
+  the guest exit was seen), then passed four times running on the same
+  tree. It is a race in that leg, not a change here.
+- CI on 4d8ba75b63 was red on one check outside this lane's files:
+  76-pr-sweep.sh, "a stale failure ALONGSIDE a live one is a live red"
+  (2230 passed, 1 failed). The same tree's fragments 99-power-per-frame and
+  99-thermal-pause passed in that run. Its fixture is built from the trunk
+  head's commit time.
+- For the next lane: 30 s samples of an instantaneous `current_now` are
+  coarse. A 240 s benchmark has about five readings in its window. Compare
+  J per frame between runs of at least 5 min, and read `power.samples`.
+
 ## Existing Thor title benchmarks (brief item 4)
 
 Posted on #507 (comment 5859894811). 122 Thor title soaks of the last 48 h

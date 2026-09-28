@@ -202,6 +202,16 @@ echo "== thermal pause: the cool-down gate holds a hot device before MAX and am 
 #   cap        xo-therm stuck at 80 C, THERMAL_COOL_MAX_S=2: `gave up at 80.0
 #              C after 2 s ... starting hot`, and the title still starts. Fails
 #              if the gate can hold a run past the cap or refuses it.
+#   no-line    the second cool sample's sampler dies and writes no line: `not
+#              gated ... the sampler wrote no line`, and the title starts.
+#              Fails if --cool re-reads the 80 C line before it, and the gate
+#              waits to the cap on a reading it never took.
+#   waited-out a pause set and cleared in the cool-down reads `-60 s ...
+#              [in the cool-down, over before the start]`, and first_pause_s
+#              is the later pause, after 30 s and by 60 s. With no mark the
+#              verdict's pauses count from `start` too. Fails if offsets run
+#              from the first cool sample (+90 and +120), or print `+-60 s`.
+# The waits are wall time, so the legs accept 2 to 9 s where the sleeps sum to 2.
 tp_cool() {   # <tz 90 temp> <pause 0|1> [error] -> "rc|phrase"
     local f="$TP/cool.jsonl" out rc
     python3 -c 'import json,sys
@@ -221,7 +231,7 @@ r="$(tp_cool 64000 0);$(tp_cool 65000 0);$(tp_cool 60000 1);$(tp_cool 0 0);$(tp_
 tp_soak TP_XO_START=70000 TP_XO_STEP=-3000 TP_PAUSE_FROM=99
 case "$order" in "thermal thermal thermal perf"*"am"*) ord_ok=1 ;; *) ord_ok=0 ;; esac
 if [ "$ord_ok" = 1 ] && case "$labels" in "cool cool cool start hold"*" end") true ;; *) false ;; esac \
-        && grep -qxF 'COOLDOWN: waited 2 s, xo 70.0 -> 64.0 C [xo-therm 64.0 C < 65 C]' "$TP/run/run.log"; then
+        && grep -qxE 'COOLDOWN: waited [2-9] s, xo 70\.0 -> 64\.0 C \[xo-therm 64\.0 C < 65 C\]' "$TP/run/run.log"; then
     ok "gate waits: [$labels], three cool samples before MAX and am start, run.log names the wait"
 else
     bad "gate waits: labels [$labels] order [$order] run.log: $(tr '\n' '|' < "$TP/run/run.log" | tail -c 400)"
@@ -236,11 +246,65 @@ else
 fi
 tp_soak TP_XO_START=80000 TP_XO_STEP=0 TP_PAUSE_FROM=99 THERMAL_COOL_MAX_S=2
 if case "$order" in *"am"*) true ;; *) false ;; esac \
-        && grep -qxF 'COOLDOWN: gave up at 80.0 C after 2 s, xo 80.0 -> 80.0 C [xo-therm 80.0 C >= 65 C]; starting hot' "$TP/run/run.log"; then
-    ok "gate cap: gave up after 2 s at 80 C and started the title hot"
+        && grep -qxE 'COOLDOWN: gave up at 80\.0 C after [2-9] s, xo 80\.0 -> 80\.0 C \[xo-therm 80\.0 C >= 65 C\]; starting hot' "$TP/run/run.log"; then
+    ok "gate cap: gave up at the 2 s cap at 80 C and started the title hot"
 else
     bad "gate cap: labels [$labels] order [$order] run.log: $(tr '\n' '|' < "$TP/run/run.log" | tail -c 400)"
 fi
+# A python3 that, from the TP_NOLINE_FROM'th cool sample on, dies as a sampler
+# with a traceback would: no line written. Every other call is the real one.
+TP_PY=$(command -v python3)
+cat > "$TP/bin/python3" <<EOF
+#!/usr/bin/env bash
+case " \$* " in *" --label cool "*)
+    if [ -n "\${TP_NOLINE_FROM:-}" ]; then
+        n=\$(( \$(cat "\$TP_FAKE/pyn" 2>/dev/null || echo 0) + 1 )); echo "\$n" > "\$TP_FAKE/pyn"
+        [ "\$n" -ge "\$TP_NOLINE_FROM" ] && { echo "Traceback (fixture)" >&2; exit 1; }
+    fi ;;
+esac
+exec "$TP_PY" "\$@"
+EOF
+chmod +x "$TP/bin/python3"
+rm -f "$TP/pyn"
+tp_soak TP_XO_START=80000 TP_XO_STEP=0 TP_PAUSE_FROM=99 TP_NOLINE_FROM=2
+rm -f "$TP/bin/python3"
+if case "$order" in *"am"*) true ;; *) false ;; esac \
+        && case "$labels" in "cool start hold"*) true ;; *) false ;; esac \
+        && grep -qxE 'COOLDOWN: not gated after [0-9]+ s: the sampler wrote no line' "$TP/run/run.log"; then
+    ok "gate no-line: a sampler that wrote nothing is unread, and the 80 C read before it is not read again"
+else
+    bad "gate no-line: labels [$labels] order [$order] run.log: $(tr '\n' '|' < "$TP/run/run.log" | tail -c 400)"
+fi
+
+echo "== thermal pause: a pause the cool-down waited out is not the run's"
+# cool samples at -60 and -40 s paused, -20 s clean, start at +0, a pause
+# first seen at +60 s after a clean +30 s.
+python3 - "$TP/cooled.jsonl" <<'PY'
+import json, sys, datetime as dt
+base = dt.datetime(2000, 9, 27, 13, 0, 0)
+out = []
+for sec, label, p in [(0, "cool", 1), (20, "cool", 1), (40, "cool", 0), (60, "start", 0),
+                      (90, "hold", 0), (120, "hold", 1), (150, "end", 1)]:
+    out.append(json.dumps({"t": 1790000000 + sec, "label": label, "up": 100.0 + sec,
+        "dev_time": (base + dt.timedelta(seconds=sec)).strftime("%m-%d %H:%M:%S"),
+        "tz": [[90, "xo-therm", 70000]], "cool": [[10, "thermal-pause-F8", p, 1]], "pause": bool(p)}))
+open(sys.argv[1], "w").write("\n".join(out) + "\n")
+PY
+r=$(python3 "$TESTING/thermal_state.py" --summary "$TP/cooled.jsonl" 2>&1)
+case "$r" in "THERMAL: pause thermal-pause-F8 1/1 began by -60 s (paused in the first reading) (device 09-27 13:00:00); cleared by -20 s [in the cool-down, over before the start] | thermal-pause-F8 1/1 began after +30 s and by +60 s (device 09-27 13:02:00); still paused at the last reading; 7 samples"*)
+        ok "summary: the cool-down's pause reads -60 s and is named as over before the start" ;;
+    *) bad "cool-down summary: [$r]" ;; esac
+CV="$TP/nomark"; rm -rf "$CV"; mkdir -p "$CV"
+cp "$TP/cooled.jsonl" "$CV/thermal.jsonl"
+printf '09-27 13:01:00.000 I/hakuX-route( 100): soak start\n09-27 13:01:05.000 I/hakuX-perf( 200): gfps=60 G:16.7(16.0-17.0)\n' > "$CV/logcat.txt"
+printf 'held iso.iso for 90s\nadb_failures=0\n' > "$CV/run.log"
+echo '{"title": "iso.iso"}' > "$CV/request.json"
+python3 "$TESTING/title_verdict.py" "$CV" --targets /dev/null >/dev/null 2>&1
+r=$(python3 -c 'import json,sys; t=json.load(open(sys.argv[1]+"/verdict.json"))["thermal"]
+print(t["pauses"][1][:64], "|", t["first_pause_s"])' "$CV" 2>&1)
+[ "$r" = "thermal-pause-F8 1/1 began after +30 s and by +60 s (device 09-2 | {'after': 30.0, 'by': 60.0}" ] \
+    && ok "verdict with no mark: pauses count from the start sample, and the first pause is the run's, after 30 s and by 60 s" \
+    || bad "no-mark verdict: [$r]"
 
 echo "== thermal pause: title_verdict.py voids a scored window a pause overlaps"
 tp_verdict() {   # <rdir> -> "void|fps_ok_share|fps_window_median|fps_windows|pass|failing|thermal"
