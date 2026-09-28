@@ -995,3 +995,36 @@ section 14 says a price in finishes is not a price in ms: the last sync point in
 waits for the GPU.
 
 Posted on #414, #462 and #474 with the first DOA pair (section 28).
+
+## 30. DOA replicate pair: the result repeats, and the first B's short tail was the KO
+
+`1-1790561463-forza414-3120192` (A 35ee65562a) and `1-1790561465-forza414-3121451` (B
+32657e9719), same window, same readers.
+
+| | A1 | B1 | A2 | B2 |
+|---|---:|---:|---:|---:|
+| fps | 15.13 | 16.14 | 13.90 | 15.80 |
+| Tot | 60.7 | 53.3 | 64.9 | 55.7 |
+| s413 cdef | 51.18 | 0.03 | 55.54 | 0.03 |
+| `[sdcall]` total wait, ms/frame | 50.40 | 0.00 | 56.16 | 0.00 |
+| where the batch completes | surfupd, pre 0.98 | prerec, pre 0.91, 0 ms | surfupd, pre 1.00 | prerec, pre 0.89, 0 ms |
+| Pipe (Tx inside it) | 2.9 | 46.7 | 3.0 | 47.4 |
+| vCPU ms per 2 s | 1830 | 711 | 1817 | 741 |
+| last phase line / log end, s | 309.5 / 310.4 | **296.0 / 314.7** | 311.7 / 313.7 | 313.5 / 315.5 |
+
+| leg | pair 1 | pair 2 |
+|---|---|---|
+| M0 | holds | holds (31 / 36 lines, 0 crash lines) |
+| G1 surfupd pre <= 0.1 | holds (0) | holds (0) |
+| C1 cdef B/A <= 0.3 | holds (0.001) | holds (0.001) |
+| W1 total wait B/A <= 0.5 | holds (0.00) | holds (0.00) |
+| H0 as written | fails in both arms (loading-screen gaps; mis-specified) and B's tail | the gap part fails in both arms as before; **the tail holds** (2.0 s) |
+
+**Verdict on DOA:** the hunk does what it claims. The flip's post-flip wait is gone in both
+pairs, and fps rises by 1.0 and 1.9 (+7% and +14%), inside flip474's bound (+1 to +2). The first
+B's short tail was not reproduced. Its last frame is a KO, and a KO transition that flips fewer
+than 60 times in 13 s prints no per-frame line. **What moved** is section 28's texture-bind flush,
+`pgraph_vk_flush_all_frames` at texture.c:2215. It waits for all in-flight frames whenever a
+render-to-texture surface is re-bound, so DOA stays GPU-bound. Replacing that all-frames wait
+with the surface's own last-use fence is the next DOA lever. It is in texture.c, which is not
+this lane's file.
