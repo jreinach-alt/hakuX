@@ -1,0 +1,46 @@
+{
+  "registered_utc": "2026-09-27T20:22:37Z",
+  "who": "lane.flip474",
+  "issue": "474",
+  "prediction": "#474: measure the GPU timestamp period at start-up (renderer.c gpu_ts_calibrate). a_ref is master 795ea6b3af, b_ref adds only the calibration: at init, before any guest work, eight one-timestamp command buffers on the aux command buffer and a separate one-query pool (created and destroyed there), a 100 ms sleep between the two groups, and the chosen period stored in gpu_ts_period_ns, which only gpu_ts_readback's phase stats read. No rendering state, pipeline, surface or guest-visible register is touched, so every capture is identical. What this cannot see: a start-up submit that leaves the aux command buffer or its fence in a changed state would show here only if a later aux use depends on it; the helpers reset both on every use.",
+  "a_ref": "795ea6b3af",
+  "b_ref": "902cf1ab53",
+  "must_not_move": [
+    "3D_primitive/*",
+    "Blend_tests/*",
+    "Depth_buffer/*",
+    "Texture_format/*",
+    "Texture_DXT/*",
+    "Surface_clip/*",
+    "Fog_gen/*",
+    "Specular/*",
+    "Vertex_shader_rounding_tests/[!G]*",
+    "Vertex_shader_rounding_tests/Geometry_*",
+    "Vertex_shader_rounding_tests/GeometrySubscreen_*",
+    "Attrib_float/*",
+    "Texture_CPU_Update/*",
+    "Lighting_spotlight/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "3D_primitive",
+      "Attrib_float",
+      "Blend_tests",
+      "Depth_buffer",
+      "Fog_gen",
+      "Lighting_spotlight",
+      "Specular",
+      "Surface_clip",
+      "Texture_CPU_Update",
+      "Texture_DXT",
+      "Texture_format",
+      "Vertex_shader_rounding_tests"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

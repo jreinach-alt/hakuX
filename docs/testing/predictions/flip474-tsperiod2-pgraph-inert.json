@@ -1,0 +1,46 @@
+{
+  "registered_utc": "2026-09-27T22:07:18Z",
+  "who": "lane.flip474",
+  "issue": "474",
+  "prediction": "#474: the GPU timestamp period measured at start-up, second cut (renderer.c gpu_ts_calibrate). b_ref adds only the calibration, and only in perflog builds: one-timestamp command buffers on the aux command buffer for ~120 ms at init, before any guest work, on a one-query pool created and destroyed there. The period feeds only the GPU phase stats. Every capture is identical in A and B.",
+  "a_ref": "57e2a7107c",
+  "b_ref": "253148451f",
+  "must_not_move": [
+    "3D_primitive/*",
+    "Blend_tests/*",
+    "Depth_buffer/*",
+    "Texture_format/*",
+    "Texture_DXT/*",
+    "Surface_clip/*",
+    "Fog_gen/*",
+    "Specular/*",
+    "Vertex_shader_rounding_tests/[!G]*",
+    "Vertex_shader_rounding_tests/Geometry_*",
+    "Vertex_shader_rounding_tests/GeometrySubscreen_*",
+    "Attrib_float/*",
+    "Texture_CPU_Update/*",
+    "Lighting_spotlight/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "3D_primitive",
+      "Attrib_float",
+      "Blend_tests",
+      "Depth_buffer",
+      "Fog_gen",
+      "Lighting_spotlight",
+      "Specular",
+      "Surface_clip",
+      "Texture_CPU_Update",
+      "Texture_DXT",
+      "Texture_format",
+      "Vertex_shader_rounding_tests"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

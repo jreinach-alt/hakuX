@@ -3,6 +3,10 @@
 
     affinity.py <dispatch-dir> <request.req>     -> prints a device label, or ""
     affinity.py <dispatch-dir> --serving         -> prints the live lane labels
+    affinity.py <dispatch-dir> --choose <key> <before-id>
+                                                 -> the pooled device with the
+                                                    least work queued ahead of
+                                                    <before-id>, or "" (CHOOSE)
 
 With more than one handheld, the scheduler's first duty is not throughput --
 it is making sure the two arms of an A/B land on the SAME device.
@@ -18,13 +22,31 @@ commits stale while every row's apk_sha agreed with every other.
 Three rules, in order:
 
 1. An explicit `device` field in the request wins. That is for work only one
-   device can do -- a soak on a title only one of them has.
+   device can do -- a soak on a title only one of them has -- and for the
+   arms job's LOAD PIN (see CHOOSE below), which is the one explicit device
+   that is a preference rather than a requirement: an `arms-*` request pinned
+   to a pooled device that is not serving falls through to the rules below,
+   exactly as a rule-2 pin to a gone device does, instead of stalling. And
+   because it is only a preference, a load pin ranks BELOW a sibling that is
+   running or has run on a live device: an arm that fell through while the
+   pinned device was held pulls its partner after it when the hold lifts,
+   rather than the partner going back to the pin and splitting the pair.
 
 2. Otherwise, a request naming a registered prediction (`expect`) is pinned to
    whichever device already ran another request naming the same prediction.
    The arms of an A/B always share their prediction file, so this pins a pair
    without anyone having to say so, and it pins it to wherever the first arm
    happened to land rather than to a device chosen in advance.
+
+   2b. A QUEUED sibling with an explicit `device` pins this request to that
+   device. That covers a pair queued by hand with one arm given --device, and
+   it is what keeps an arms-job pair together if only one arm carries the pin.
+
+   The siblings are read in the order a request MOVES -- queue/, then
+   running/, then results/ -- so a sibling that is being claimed while this
+   runs is seen in one place or the next, never in neither. A sibling found in
+   running/ before its owner file is written is pinned by its own `device`
+   field if it has one.
 
 3. Otherwise, a request naming a prediction -- or a SOAK, which has none, and
    is then keyed on its requester -- is pinned by HASHING that key over the
@@ -47,6 +69,26 @@ Three rules, in order:
 
 A request naming no prediction is free and any idle device may take it.
 
+CHOOSE. The hash is race-free and blind: it never looks at what is queued.
+On 2026-09-27 forza414's pair hashed to the nova behind nine `device: nova`
+soaks (~2 h), while the thor served idle-tier `z-*` sweep legs, and the pair
+waited 94 min until hostops re-pinned it by hand. flip474's pair starved the
+same way that morning. So the arms job, which queues both arms of a pair in
+one tick, asks `--choose` for the pooled device with the least work queued
+AHEAD of the pair (requests whose id sorts before the pair's, plus what is
+still running), and passes that device to request.sh --device for BOTH arms.
+One writer decides once and writes the answer into both requests before
+either can be claimed, so there is no read-read race to bring back: every
+worker afterwards reads rule 1.
+
+Work is priced with request.sh's pilot-gate estimate -- `seconds` + 90 s of
+setup, times `runs`, 180 s with no `seconds` -- and a running request by what
+remains of that estimate since its owner file was written. A queued request
+counts on the device this file would send it to (rule 1, 2 or 3); a request
+this file leaves free counts on neither, since either worker may take it. A
+tie goes to the device rule 3 would have picked, so an empty queue changes
+nothing.
+
 NOT EVERY LANE IS A HANDHELD. `desktop` is this host's own xemu build, and it
 is reachable ONLY through rule 1. See OFFPOOL below.
 """
@@ -54,6 +96,7 @@ import hashlib
 import json
 import os
 import sys
+import time
 
 # Lanes that serve requests but must never be CHOSEN for a request.
 #
@@ -248,30 +291,8 @@ def load(p):
         return {}
 
 
-def main():
-    d, reqpath = sys.argv[1], sys.argv[2]
-    # `serving()` is the one input every rule here is decided over, and until
-    # now nothing outside this file could ask for it. The dispatcher log and
-    # the status roll-up both need the answer to say "pairs are not being
-    # pinned right now", so expose it rather than have two callers each
-    # reimplement a pid check that took three attempts to get right.
-    if reqpath == "--serving":
-        print(" ".join(serving(d)))
-        return
-    # The pool rule 3 actually hashes over. A reader asking "why did this pair
-    # not get pinned" needs THIS set, not the one above: with only the desktop
-    # lane alive, `--serving` prints a lane and `--serving-pooled` prints
-    # nothing, and the second is the one that explains the empty pin.
-    if reqpath == "--serving-pooled":
-        print(" ".join(pooled(d)))
-        return
-    req = load(reqpath)
-
-    explicit = (req.get("device") or "").strip()
-    if explicit:
-        print(explicit)
-        return
-
+def _key(req):
+    """The name a request is pinned on: its prediction, or a soak's requester."""
     expect = (req.get("expect") or "").strip()
     key = os.path.basename(expect) if expect else ""
     if not key and (req.get("title") or "").strip():
@@ -293,9 +314,130 @@ def main():
         who = (req.get("requester") or "").strip()
         if who:
             key = "who:" + who
-    if not key:
-        print("")
+    return key
+
+
+def _hash_pick(key, devs):
+    # sha256 rather than hash() because hash() of a str is salted per
+    # process -- two workers would compute different answers for the same
+    # name, which is the race again wearing a hat.
+    h = int(hashlib.sha256(key.encode()).hexdigest()[:8], 16)
+    return h % len(devs)
+
+
+def _is_load_pin(req, label):
+    """Is this explicit `device` the arms job's preference, not a requirement?
+
+    `arms-*` is the arms job's requester namespace (request.sh's pilot gate
+    keys on the same prefix). The arms job queues disc A/Bs only -- soaks are
+    hand-read and it skips them -- and the two handhelds measure identical on
+    a disc, so the device it writes is CHOOSE's load pick and nothing else.
+    Honouring it past the device's death would turn "run where the queue is
+    shorter" into "never run", which is the stall `_live` exists to prevent.
+    Off-pool lanes are never a load pick, so a pin to one stays absolute.
+    """
+    return ((req.get("requester") or "").startswith("arms-")
+            and not (req.get("title") or "").strip()
+            and label not in OFFPOOL)
+
+
+def _result_labels(d, key):
+    """device_label of every result naming `key`, newest first."""
+    results = os.path.join(d, "results")
+    try:
+        entries = sorted(os.scandir(results), key=lambda e: e.stat().st_mtime,
+                         reverse=True)
+    except OSError:
         return
+    for e in entries:
+        if not e.is_dir():
+            continue
+        sib = load(os.path.join(e.path, "request.json"))
+        if os.path.basename((sib.get("expect") or "").strip()) != key:
+            continue
+        meta = load(os.path.join(e.path, "result.json"))
+        label = (meta.get("device_label") or "").strip()
+        # A result from before device labels existed cannot pin anything, and
+        # guessing would be worse than leaving the pair free.
+        if label:
+            yield label
+
+
+def _results_index(d):
+    """`_result_labels` for every key at once, for CHOOSE's many lookups."""
+    idx = {}
+    results = os.path.join(d, "results")
+    try:
+        entries = sorted(os.scandir(results), key=lambda e: e.stat().st_mtime,
+                         reverse=True)
+    except OSError:
+        return idx
+    for e in entries:
+        if not e.is_dir():
+            continue
+        sib = load(os.path.join(e.path, "request.json"))
+        k = os.path.basename((sib.get("expect") or "").strip())
+        if not k:
+            continue
+        label = (load(os.path.join(e.path, "result.json")).get("device_label")
+                 or "").strip()
+        if label:
+            idx.setdefault(k, []).append(label)
+    return idx
+
+
+def decide(d, req, me, notes=True, labels_for=None):
+    """The device `req` (file name `me`) is pinned to, or "".
+
+    `notes` False is a question asked on the request's behalf (CHOOSE pricing
+    the queue), not a claim, and must not write split or blind notes.
+    """
+    note_split = _note_split if notes else (lambda *a: None)
+
+    # A LOAD PIN RANKS BELOW A SIBLING THAT HAS LANDED. It was written before
+    # either arm was claimed, as a guess at the shorter queue; a sibling that
+    # is running or has run is ground truth. Returning a live load pin first
+    # split a pair: thor held, the nova took the base arm, the hold lifted,
+    # and the thor took the fix arm on its own pin (audit of #503, H1). So a
+    # live load pin is kept aside and answered only once no sibling has
+    # landed on a live device. A hand pin stays absolute (rule 1).
+    explicit = (req.get("device") or "").strip()
+    load_pin = ""
+    if explicit:
+        if not _is_load_pin(req, explicit):
+            return explicit
+        if _live(d, explicit):
+            load_pin = explicit
+        else:
+            note_split(d, me, _key(req) or "(none)", explicit)
+
+    key = _key(req)
+    if not key:
+        return load_pin
+
+    # Rule 2b, read FIRST because queue/ is where a sibling is before it is
+    # anywhere else (see the module docstring). Sorted, so two explicit
+    # siblings that disagree -- a hand edit -- still give every reader one
+    # answer.
+    queued_pin = ""
+    qdir = os.path.join(d, "queue")
+    try:
+        qnames = sorted(os.listdir(qdir))
+    except OSError:
+        qnames = []
+    for name in qnames:
+        if not name.endswith(".req") or name == me:
+            continue
+        sib = load(os.path.join(qdir, name))
+        if os.path.basename((sib.get("expect") or "").strip()) != key:
+            continue
+        dev = (sib.get("device") or "").strip()
+        if not dev:
+            continue
+        if _is_load_pin(sib, dev) and not _live(d, dev):
+            continue  # the sibling falls through too; follow it there
+        queued_pin = dev
+        break
 
     # A sibling that is RUNNING pins just as hard as one that has finished,
     # and this is the common case rather than the rare one: both arms of a
@@ -306,9 +448,8 @@ def main():
     # second device arriving -- base on the Nova, fix on the Thor -- which is
     # precisely the comparison-with-two-variables this file exists to stop.
     running = os.path.join(d, "running")
-    me = os.path.basename(reqpath)
     try:
-        for name in os.listdir(running):
+        for name in sorted(os.listdir(running)):
             if not name.endswith(".req") or name == me:
                 continue  # a request does not pin to itself
             sib = load(os.path.join(running, name))
@@ -321,58 +462,143 @@ def main():
                     owner = f.read().strip()
             except OSError:
                 pass
+            # Claimed a moment ago: renamed into running/, owner file not yet
+            # written. Its own explicit device is where it is running.
+            owner = owner or (sib.get("device") or "").strip()
             if owner:
                 if _live(d, owner):
-                    print(owner)
-                    return
-                _note_split(d, me, key, owner)
+                    return owner
+                note_split(d, me, key, owner)
     except OSError:
         pass
+
+    # A queued sibling has not landed, so it does not outrank a live load pin
+    # (which, for an arms-job pair, it normally equals anyway).
+    if queued_pin and not load_pin:
+        return queued_pin
 
     # Then any completed result whose request named the same prediction.
     # Newest first, so a re-run of a pair follows its most recent arm rather
     # than one from hours ago.
-    results = os.path.join(d, "results")
-    try:
-        entries = sorted(os.scandir(results), key=lambda e: e.stat().st_mtime,
-                         reverse=True)
-    except OSError:
-        print("")
-        return
+    labels = labels_for(key) if labels_for else _result_labels(d, key)
+    for label in labels:
+        if _live(d, label):
+            return label
+        note_split(d, me, key, label)
 
-    for e in entries:
-        if not e.is_dir():
-            continue
-        sib = load(os.path.join(e.path, "request.json"))
-        if os.path.basename((sib.get("expect") or "").strip()) != key:
-            continue
-        meta = load(os.path.join(e.path, "result.json"))
-        label = (meta.get("device_label") or "").strip()
-        if label:
-            if _live(d, label):
-                print(label)
-                return
-            _note_split(d, me, key, label)
-        # A result from before device labels existed cannot pin anything, and
-        # guessing would be worse than leaving the pair free.
+    # No sibling has landed on a live device: now the load pin decides.
+    if load_pin:
+        return load_pin
 
     # Rule 3: no sibling anywhere, so this is the pair's first arm. Decide by
     # hash, so the second arm decides the same way without having to see this
-    # one. sha256 rather than hash() because hash() of a str is salted per
-    # process -- two workers would compute different answers for the same
-    # name, which is the race again wearing a hat.
+    # one.
     devs = pooled(d)
     if len(devs) > 1:
-        h = int(hashlib.sha256(key.encode()).hexdigest()[:8], 16)
-        print(devs[h % len(devs)])
-        return
+        return devs[_hash_pick(key, devs)]
     # One serving device needs no pin -- everything lands there anyway, which
     # is the same answer the hash would give. NO serving device is different
     # in kind: it means this file's only input is missing and every rule above
     # was decided over an empty set. Say so.
-    if not devs:
+    if not devs and notes:
         _note_blind(d, me, key)
-    print("")
+    return ""
+
+
+def _est(rq):
+    """request.sh's pilot-gate estimate, in seconds. Change both or neither."""
+    try:
+        sec = int(rq.get("seconds") or 0)
+        return (sec + 90) * int(rq.get("runs") or 1) if sec > 0 else 180
+    except (TypeError, ValueError):
+        return 180
+
+
+def backlog(d, before, devs=None):
+    """Seconds of work each pooled device has ahead of an id `before`.
+
+    Byte order, as request.sh documents the queue's priority order. A request
+    that sorts at or after `before` does not delay it and is not counted.
+    """
+    devs = pooled(d) if devs is None else devs
+    load_s = {x: 0 for x in devs}
+    idx = _results_index(d)
+    labels_for = lambda k: idx.get(k, [])
+    qdir = os.path.join(d, "queue")
+    try:
+        qnames = sorted(os.listdir(qdir))
+    except OSError:
+        qnames = []
+    for name in qnames:
+        if not name.endswith(".req") or (before and name >= before):
+            continue
+        rq = load(os.path.join(qdir, name))
+        dev = decide(d, rq, name, notes=False, labels_for=labels_for)
+        if dev in load_s:
+            load_s[dev] += _est(rq)
+    rdir = os.path.join(d, "running")
+    try:
+        rnames = os.listdir(rdir)
+    except OSError:
+        rnames = []
+    now = time.time()
+    for name in rnames:
+        if not name.endswith(".req"):
+            continue
+        opath = os.path.join(rdir, name[:-4] + ".owner")
+        try:
+            with open(opath) as f:
+                owner = f.read().strip()
+            began = os.path.getmtime(opath)
+        except OSError:
+            continue
+        if owner in load_s:
+            rq = load(os.path.join(rdir, name))
+            load_s[owner] += max(0, _est(rq) - (now - began))
+    return load_s
+
+
+def choose(d, key, before):
+    """CHOOSE: the pooled device with the least work ahead of `before`.
+
+    "" with fewer than two pooled devices: there is nothing to choose, and a
+    pin written into a request then would outlive the moment it was right.
+    """
+    devs = pooled(d)
+    if len(devs) < 2:
+        return ""
+    load_s = backlog(d, before, devs)
+    h = _hash_pick(key, devs)
+    n = len(devs)
+    return devs[min(range(n), key=lambda i: (load_s[devs[i]], (i - h) % n))]
+
+
+def main():
+    d, reqpath = sys.argv[1], sys.argv[2]
+    # `serving()` is the one input every rule here is decided over, and until
+    # now nothing outside this file could ask for it. The dispatcher log and
+    # the status roll-up both need the answer to say "pairs are not being
+    # pinned right now", so expose it rather than have two callers each
+    # reimplement a pid check that took three attempts to get right.
+    if reqpath == "--serving":
+        print(" ".join(serving(d)))
+        return
+    # The pool rule 3 actually hashes over. A reader asking "why did this pair
+    # not get pinned" needs THIS set, not the one above: with only the desktop
+    # lane alive, `--serving` prints a lane and `--serving-pooled` prints
+    # nothing, and the second is the one that explains the empty pin.
+    if reqpath == "--serving-pooled":
+        print(" ".join(pooled(d)))
+        return
+    if reqpath == "--choose":
+        print(choose(d, sys.argv[3], sys.argv[4] if len(sys.argv) > 4 else ""))
+        return
+    if reqpath == "--backlog":   # for a reader: "<device> <seconds>" per line
+        before = sys.argv[3] if len(sys.argv) > 3 else ""
+        for dev, s in sorted(backlog(d, before).items()):
+            print("%s %d" % (dev, s))
+        return
+    print(decide(d, load(reqpath), os.path.basename(reqpath)))
 
 
 if __name__ == "__main__":
