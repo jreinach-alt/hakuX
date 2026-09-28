@@ -783,6 +783,407 @@ titles, All-Star Baseball 2003/2004/2005, AMF Bowling 2004, AMF Xtreme
 Bowling, AFL Live, American Chopper 2, then the older open list).
 #397 comment for this batch: 5859098639.
 
+### Attempt 8, 2026-09-27 12:48 PDT (held Thor sessions behind an input-focus read)
+
+**Why attempt 7 did not finish.** It did not fail. It ended on a `waiting:`
+for a focus check (#494), with nothing queued, and PR #497 folded. Hostops
+resumed this attempt at 12:48 PDT with two changes:
+
+- The Thor's "focus on display 1" was a misread. `dumpsys window | grep -m1
+  mCurrentFocus` prints the second screen's line first. `dumpsys input` is
+  the input dispatcher's own view, and on a cold launch at 12:43 PDT it read
+  `FocusedDisplayId: 0` with hakuX as display 0's focused window. The AYN
+  setting `screen_focus_lock` read 2 after the 12:03 reboot; hostops set it
+  to 0 at 12:41. Whether that setting sent the 12:12 D&D Heroes presses to
+  display 4's launcher is unproven.
+- Held sessions are allowed again, behind a read before the first input and
+  between steps (`scratch/focus.sh`): `screen_focus_lock` is 0,
+  `FocusedDisplayId` is 0, and display 0's `FocusedWindows` entry names
+  hakuX. If any of the three fails, nothing is sent and the hold is
+  released. Queued Thor route soaks still wait for PR #495's guard.
+
+### Session 22: HELD Thor, 12:59-13:25 PDT (26 min; hold taken 12:56 while a sweep disc ran), battery 86% -> 84%
+
+Every input in this session was sent behind `scratch/focus.py thor`. It
+reads `settings get system screen_focus_lock` (0) and `dumpsys input`
+(`FocusedDisplayId: 0`, and display 0's `FocusedWindows` entry naming
+`com.jreinach.hakux`), and it sends nothing itself. The nav steps read it
+before each group of inputs (`scratch/step.sh`), and the replays read it
+before the launch, 6 s after it, and every 20 s while the route plays
+(`scratch/replay.sh`). All 43 reads in the three replays passed. Display 4's
+focused window was the secondary launcher throughout; that is the second
+screen and takes no pad input while `FocusedDisplayId` is 0.
+
+`dumpsys input` prints the dispatcher state twice (the second copy is the
+last ANR's). The first copy is the live one.
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Azurik: Rise of Perathia (4D530007) | thor | `azurik.route` | yes (13:00, warm) | the Arena; the training box is still up at the mark and the pattern's first A closes it; 40 s later Azurik is at the far arch, overlay FPS 29 |
+| Dungeons & Dragons Heroes (49470013) | thor | `dnd-heroes.route` | yes (13:04, warm) | ARADIN in the ruins at the mark (FPS 15); 40 s later at a torch-lit sign (FPS 11) |
+| BloodRayne (4D4A0001) | thor | `bloodrayne.route` | draft: the pre-mark part replayed (13:20), the play pattern was changed after it | Act 1, Rayne on the grass below the church; the stick walks her, RX turns the camera; 18-29 fps |
+
+Frames: `scratch/replay/azurik-130014/`, `scratch/replay/dnd-heroes-130437/`,
+`scratch/replay/bloodrayne-132018/`; nav frames
+`~/hakux-work/nav/bloodrayne.first-run-20260927T131543/` (005-cut3 ->
+006-moved). 640x480 copies: `frames/azurik-replay-end.jpg`,
+`frames/dnd-heroes-replay-gameplay.jpg`,
+`frames/bloodrayne-replay-gameplay.jpg`.
+
+**BloodRayne.** Two A presses pass the logos and open New Game. The
+highlighted entry in its menus is the DIM one, which reads backwards: my
+first pass pressed A on "Training" while reading the bright "Act 1 -
+Louisiana" as selected, and landed in the training level, whose tutorial
+cutscenes interrupt control every few seconds. The left stick does not move
+these menus; the hat does. The opening cutscene with Mynce takes about 70 s
+and A does not end it. The replay's forward-only pattern walked Rayne into
+the swamp water in 40 s, and water drains her health (the bar was at about
+60% in `zz-end.png`), so a 300 s window would have ended in a death screen.
+The committed pattern walks 1 s forward and 1 s back around a turn. It has
+not replayed.
+
+The leave state at 13:25: app stopped, performance_mode 0, fan_mode 4,
+dual_screen_display_mode 0, screen_focus_lock 0, screen asleep, 84%.
+
+### Session 23: HELD Thor, 13:38-14:00 PDT (22 min; hold taken 13:38 after lane.gta482's), battery 83% -> 82%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| BloodRayne (4D4A0001) | thor | `bloodrayne.route` | yes (13:38, as a held soak) | Rayne at the church wall at the mark, overlay FPS 22 |
+| AMF Bowling 2004 (42530009) | thor | none | - | not reached: the title does not take START |
+| Baldur's Gate: Dark Alliance (5655001A) | thor | `baldurs-gate-da.route` | no: a draft | the Human Archer on the Elfsong Tavern's floor, bars top left; the stick walks him and the camera follows; 59 fps |
+
+**The same-pass fps reading, inside the hold.** Queued Thor route soaks are
+closed until PR #495's guard is live, so BloodRayne's replay was run as a
+soak in the hold (Addendum 2's second option). `scratch/heldsoak.sh` runs
+`docs/testing/soak_title.sh` itself (MAX regimen, REST on the way out, the
+dispatcher's logcat spec) with the route, and reads the input focus before
+the launch, 8 s after it and every 15 s. A failed read TERMs the soak. It
+runs in a transient user unit (`scratch/heldunit.sh`), because a soak of
+pre-mark + 300 s does not fit a 10-minute tool call. `title_verdict.py`
+then judges the dir.
+
+| title | held result | apk | gameplay | fps median (min) / share >= 30 | notes |
+|---|---|---|---|---|---|
+| BloodRayne | `scratch/held/bloodrayne-20260927T133838` | f5abfa521745 (= ref a593d8eb85) | 288.2 s | 22.89 (5.48) / 0% | target 30. Four gaps of 10.1-10.9 s without 60 guest flips, which the verdict calls a hang. 22-25 fps for the first 130 s, then 6-7 to the end |
+
+What this reading is not:
+- It is not a dispatch result. It is in the lane's scratch, and the status
+  page does not count it. The title is still owed a queued soak.
+- The build is whatever the device's last request installed. Here that was
+  f5abfa521745, which is the apk of my benchmarks on ref a593d8eb85
+  (`scratch/heldread.py` finds the dispatch results with the same apk_sha).
+  Before session 22 the device had a8dd8484d799. Read the apk before
+  comparing a held reading with anything.
+- No frame shows the last 150 s, where the rate fell to 6-7. The route takes
+  no frame after the mark. `heldsoak.sh` now takes one frame 10 s before the
+  end (`end-frame.png`); this run was before that change.
+
+**AMF Bowling 2004: blocked at the title.** The intro video ends on A. The
+title says "Press START". START (300 ms and 1 s) and A do nothing there that
+I could see: the title and its attract demo (a bowler at the lane, "Press
+START" over it) alternate whatever is pressed. Six presses, frames
+`~/hakux-work/nav/amf-bowling-2004.first-run-20260927T134830/` (001 to 008).
+Not tried: BACK, the triggers, or a second pad. On the board request file.
+
+**Baldur's Gate: Dark Alliance.** The logos need no press: the main menu is
+up about 60 s after launch. Four A presses pick Start New Game, One Player,
+Normal and Human Archer. A ends the Act I video. The tavern conversation
+with Alyth is a tree: A picks the bright line, and the first line of each
+choice loops back, so my 18 A presses went round it several times. B does
+not leave it. The way out is the second line of the last choice ("I'll go
+speak to him, then."): hat down, A. The pre-mark time is 422 s, most of it
+that conversation. The play pattern is a square walk with the stick only,
+because A talks to whoever is near. Nav frames
+`~/hakux-work/nav/baldurs-gate-da.first-run-20260927T135112/` (016-free ->
+017-moved -> 019-played); 640x480 copy `frames/baldurs-gate-da-nav-played.jpg`.
+
+The leave state at 14:00: app stopped, performance_mode 0, fan_mode 4,
+dual_screen_display_mode 0, screen_focus_lock 0, screen asleep, 82%. At
+13:58:47 PDT the host's update window took both handhelds (bounded 30 min).
+
+### Session 24: HELD Thor, 14:02-14:28 PDT (26 min; hold taken 14:02 as the host's update window lifted), battery 82% -> 80%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Baldur's Gate: Dark Alliance (5655001A) | thor | `baldurs-gate-da.route` | yes (14:02, as a held soak) | the archer on the tavern floor at the mark, overlay FPS 59 |
+| Mercenaries (4C410015) | thor | none | - | not reached: the first load never ends |
+| KOF: Maximum Impact - Maniax (534E0007) | thor | `kof-mi.returning.route` | no: a draft | round 1, Alba Meira against Soiree Meira; the pattern's kick lands and Soiree's bar drops; 30-33 fps |
+
+Held reading (same instrument and caveats as session 23's):
+
+| title | held result | apk | gameplay | fps median (min) / share >= 30 | notes |
+|---|---|---|---|---|---|
+| Baldur's Gate: Dark Alliance | `scratch/held/baldurs-gate-da-20260927T140214` | f5abfa521745 (= ref a593d8eb85) | 245.5 s | 59.94 (58.31) / 100% | target 30 (none from #431). No hang. The tavern is an indoor room with five characters, so this is the title's light end |
+
+The soak was sized at pre-mark + 300 s from the route's waits (422 s), but
+the replay reached the mark 487 s after the launch: each `shot` costs about
+3 s and this route has 19. So the window was 245 s. `premark.py` should add
+3 s per `shot`; until it does, add it by hand for a route with many frames.
+`end-frame.png` was not written in this run either (the frame step in
+`heldsoak.sh` did not fire; not looked into).
+
+**Mercenaries: blocked at the first load.** The title needs no press up to
+"PRESS START". START, then A on NEW GAME, A on JACOBS, A on ACCEPT, and A
+ends the news-footage video. The loading screen ("Allied M1025 Scout") then
+never ends. Three frames over 95 s (14:19:41 to 14:21:16) are identical
+pixel for pixel below the FPS overlay, spinner included
+(`scratch/same.py`), while the overlay reads 59. The logcat's `fifoskew`
+lines read `kicks=0` over the same time, so the guest submits nothing to
+the GPU; the vblank keeps its 59.94 Hz. Frames
+`~/hakux-work/nav/mercenaries.first-run-20260927T141501/` (007 to 010),
+640x480 copy `frames/mercenaries-loading-frozen.jpg`, logcat tail
+`scratch/merc-logcat-tail.txt`. The menus before it ran at 12-14 fps.
+
+**KOF: Maximum Impact.** START ends the intro video. The first box asks to
+create option data. I meant to answer NO twice over (NO, then "begin game
+play anyway" YES), which would have left the disk alone and given one route
+for every run. The hat moved the cursor down on the first box and did not
+move it on the next ones, up or down, so an A meant for NO landed on YES and
+the data was saved. It persisted (HOME flush, then a relaunch showed "OPTION
+DATA ALREADY EXISTS"). So the Thor's disk now has KOF's option data, and the
+committed route is the returning one. lane.titlestate's registry does not
+know about this save yet; it is on the board request file.
+
+**Do not repeat:** do not answer a save prompt by moving the cursor blind.
+Take a frame after the move and before the A. `step.sh` takes its frame
+after the last step, so put `shot` between the move and the press.
+
+The leave state at 14:28: HOME flush, app stopped, performance_mode 0,
+fan_mode 4, dual_screen_display_mode 0, screen_focus_lock 0, screen asleep,
+80%.
+
+### Session 25: HELD Thor, 14:29-14:44 PDT (15 min; hold taken 14:29 after lane.xbox's title push), battery 80% -> 80%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| KOF: Maximum Impact - Maniax (534E0007) | thor | `kof-mi.returning.route` | yes (14:29, as a held soak) | a fight against Leona on the airfield stage, at the mark and 20 s before the end |
+| Arctic Thunder (4D570002) | thor | `arctic-thunder.route` | no: a draft | a snowmobile race, position 8 of 8; with A held the sled passes the first checkpoint; 14-26 fps |
+
+Held reading (same instrument and caveats as session 23's):
+
+| title | held result | apk | gameplay | fps median (min) / share >= 30 | notes |
+|---|---|---|---|---|---|
+| KOF: Maximum Impact - Maniax | `scratch/held/kof-mi.returning-20260927T142953` | f5abfa521745 (= ref a593d8eb85) | 319.3 s | 14.56 (11.34) / 17.2% | target 30 (none from #431). No hang. The stage was the airfield (FPS 33 at the mark, 11 near the end); the nav session's cage stage ran at 30-33. Story mode does not draw the same opponent each run, so two runs of this route are not the same place |
+
+`end-frame.png` works now that the loop takes it (the last 25 s of the
+soak). KOF's is a round in progress, so the window ended in play.
+
+**Arctic Thunder.** START ends the intro video. A on START, A on RACE. On
+PLAYER SELECT, A joins player 1; the hat does nothing there and the left
+stick moves to DONE. A on the driver, A on the track. In the race RT does
+nothing and A is the throttle. The race has a checkpoint countdown, so an
+idle sled runs out of time. #431's target for it is 60.
+
+I gave the Thor back after 15 minutes. Five requests pinned to it were
+waiting (thermal507's GTA soak, two of flip474's, two arms), and I had held
+it for 89 of the 105 minutes since 12:59.
+
+The leave state at 14:44: app stopped, performance_mode 0, fan_mode 4,
+dual_screen_display_mode 0, screen_focus_lock 0, screen asleep, 80%.
+
+### The held readings against the Thor's thermal pause (#507), 14:50 PDT
+
+Hostops, 14:26 PDT on #397: PR #495's guard is live on the dispatcher
+(folded as a04b5c59fc, dispatcher tree at 0800f26eec), so queued Thor route
+soaks are open again and held sessions are for nav work only. The same note
+says the Thor's thermal pause (#507) voids fps after 4 to 6 minutes at MAX.
+#507: the kernel pauses cpu3-7, every emulator thread moves to cpu0-2, and
+the frame rate falls by 5 to 7 times for the rest of the run.
+
+`scratch/fpsbins.py <result dir>` bins a soak's fps at 30 s from `soak
+start` (60-flip windows, as `title_verdict.py` counts them) and applies
+lane.thermal507's test: at 200 s or later, the three preceding bins' median
+is 10 or more and every later bin is under a third of it.
+
+| title | mark at | bins before the fall | fall | bins after | #507 shape |
+|---|---|---|---|---|---|
+| BloodRayne | 245 s | 20-26 fps from 30 s to 389 s | 390 s (mark +144 s) | 6-7 to the end (534 s) | **yes**: 23.1 -> 6.5 |
+| Baldur's Gate: Dark Alliance | 486 s | 60 in every bin, 0 s to 731 s | none | - | no |
+| KOF: Maximum Impact | 234 s | 33-34 from 210 s to 299 s | 300 s (mark +66 s) | 13-15 to the end (553 s) | no by the test (the fall is to 0.42 of the rate before, not under a third) |
+
+So:
+- **BloodRayne's title rate is the 20-26 fps before 390 s.** The verdict's
+  median of 22.89 happens to sit there, because the fall came halfway
+  through the window. Its 5.48 minimum and its four "hang" gaps are the
+  pause. Session 23's question (what was on the screen in the last 150 s)
+  has this answer: the same place, on three cores.
+- **Baldur's Gate held 60 for 12 minutes at MAX.** Either the pause did not
+  happen or the tavern fits in what is left. I did not read the cooling
+  device, so I cannot say which.
+- **KOF's 14.56 median is not the title's rate, and I cannot say what is.**
+  The same fight on the same stage ran at 33-34 for 66 s and at 13-15 for
+  the 253 s after. A fall at 300 s fits #507's 4 to 6 minutes. It fails the
+  one-third test, and nothing else I have separates the pause from the
+  fight getting heavier. The cooling device's state was not read.
+
+**What to do differently.** Read `thermal-pause-F8` (the cooling device
+#507 names) at the end of a Thor soak, or run `fpsbins.py` on the result,
+before writing a median down. For a title whose mark comes late, the window
+is after the 4 to 6 minutes by construction: Baldur's Gate's mark is at
+486 s. A shorter way in (a returning route from a save in play) is the fix
+on the route side; the rest is #507's.
+
+**Older Thor readings of mine, same test** (lane.thermal507's scan on #507,
+PR #508): Blood Wake `1-1790508532-titleroutes-1074940` falls at 300 s
+(mark +98 s), 38.5 -> 6.2, and its scored median 37.4 is from before the
+fall; Battlefield 2: MC `1-1790517591-titleroutes-1523259` falls at 480 s
+(mark +90 s), 19.3 -> 4.1. Midtown Madness 3's 3.13 with ten 12-20 s hangs
+(against 16-18 in its nav session) has the same look and was not in that
+table; I did not re-scan it.
+
+### Queued soaks after the guard went live (ref 92560461c5, 0.5 priority, Thor)
+
+`scratch/bench8.sh` sizes a soak as the route's pre-mark waits + 3 s per
+`shot` before the mark + 300 s.
+
+| title | route | request | seconds | reading |
+|---|---|---|---|---|
+| Azurik | `azurik` | 1-1790545605-titleroutes-65853 | 500 | **void**: refused by the guard before the first input (14:52 PDT), with hakuX in front. See "The guard reads the last-ANR copy" |
+| D&D Heroes | `dnd-heroes` | 1-1790545622-titleroutes-76653 | 600 | **void**: the same (14:53 PDT) |
+
+### The guard reads the last-ANR copy of the dispatcher state (15:00 PDT)
+
+Both re-queued soaks ran 45 s and were refused: `not-foreground:
+com.magneticchen.daijishou (the focused application on display 0 of
+bdc158a5, not hakuX)`, then `soak aborted: not-foreground before the route's
+first input`. No input was sent. hakuX was running: Azurik's logcat has its
+`gfps=29` lines.
+
+On the Thor `dumpsys input` prints the dispatcher state twice. At 14:54:31
+PDT, during the D&D Heroes run, line 593 (`Input Dispatcher State:`) named
+hakuX as display 0's focused application and window, and line 805 (`Input
+Dispatcher State at time of last ANR:`) named Daijishou as the application,
+with `FocusedWindows: <none>`. `hakux_in_front` (devices.sh, PR #495) keeps
+the last entry per display, so it answers from the ANR copy.
+
+Until that is fixed or the Thor reboots, no route soak runs on the Thor,
+for any requester. Reported: #494 comment 5860177923, #397 comment
+5860180117, and an ASK on the board request file. `scratch/focus.py` reads
+the first copy; it met the same dump at 12:59 and failed on it until I
+looked at why.
+
+### Session 26: HELD Thor, 14:56-15:11 PDT (15 min; the Thor was idle), battery 80% -> 79%
+
+I had written on the board file that I would not take the Thor before
+15:15. I took it at 14:56 because nothing was running on it and its route
+soaks were being refused.
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Arctic Thunder (4D570002) | thor | `arctic-thunder.route` | yes (14:56, as a held soak) | the race, at the mark and 15 s before the end (race clock 02:01.22, the lava section, overlay FPS 18) |
+| Barbarian (54530002) | thor | none | - | not reached: Quest needs a save slot, and the session ended on a lost focus before Training was tried |
+
+Held reading (same instrument as session 23's; `heldsoak.sh` now reads the
+cooling devices at the start and in the last 25 s, `thermal.txt`):
+
+| title | held result | apk | gameplay | fps median (min) / share >= 30 | notes |
+|---|---|---|---|---|---|
+| Arctic Thunder | `scratch/held/arctic-thunder-20260927T145652` | de1f28453e96 (the build the two refused soaks installed, ref 92560461c5) | 317.2 s | 20.29 (14.67) / 8.9% | target 60 (#431). No hang. 18-22 fps in most bins after the mark, 34 in one. No thermal pause: every `thermal-pause-*` device read 0/1 at 15:06:36, hottest cpu zone 93.9 C (66.7 C at the start) |
+
+**Barbarian.** START ends the intro video and a second START opens QUEST's
+box (NEW GAME / LOAD GAME). A, then Warrior Select (Keela, A), then three
+initials on a letter wheel (A three times gives AAA, and a fourth A on END
+accepts). Then SAVE GAME: the hard disk and five EMPTY slots. B goes back to
+Warrior Select, so Quest cannot start without writing a save. I did not
+write one. VERSUS and TRAINING are on the main menu and should need none.
+On the main menu the hat did not move the cursor.
+
+**The focus was lost at 15:10:53, and I stopped.** What I have:
+
+| host time (PDT) | what |
+|---|---|
+| 15:10:39.6 | frame `010-mm.png`: Barbarian's main menu |
+| about 15:10:48 | `focus.py` passes (the read before the next inputs) |
+| 15:10:49.5-15:10:51.6 | I send two left-stick flicks down (`axis LY max`, 0.2 s, `axis LY mid`). No button |
+| 15:10:53.2 | frame `011-mm2.png` is 10,899 B: the all-black frame |
+| 15:11:00 | `focus.py` fails: `screen_focus_lock` 2, `FocusedDisplayId: 4`, display 0's focused window `primaryScreenTopLayout`; `dual_screen_display_mode` 2 |
+
+The Thor's logcat (device clock; `scratch/thor-focusloss-151100.logcat.txt`)
+has `PhoneWindowManager.interceptKeyBeforeDispatching` sending a broadcast
+at 15:10:52.886 and 15:10:53.028, and the `com.odin.dualscreen.assistant`
+window opening at 15:10:53.175. That is a KEY, down and up, 140 ms apart. My
+steps in those seconds were stick axis events, and nav.py sent no button
+after the B at about 15:10:30. I did not measure the offset between the host's
+clock and the device's, so I cannot place my last axis event against that
+key to better than a second or two. A second pair of the same lines is at
+15:11:00.196 and 15:11:00.425, when I was sending nothing at all (a
+`dumpsys` read and a `settings get`). So a key that is not mine reached the
+policy at least once. Whether the first one was mine is open: a hand on the
+device and an AYN hotkey both fit.
+
+I sent nothing after the failed read. Release: app stopped,
+performance_mode 0, fan_mode 4, `dual_screen_display_mode` put back to 0
+(device_rest.conf), KEYCODE_SLEEP. `screen_focus_lock` read 0 afterwards
+without my touching it, so it follows the dual-screen mode. Battery 79%.
+
+### Hand-over (15:20 PDT, the end of this lane's last attempt)
+
+**Routes committed today, all replayed on the Thor:**
+
+| title | route | pre-mark + shots | queued soak it still needs | held reading |
+|---|---|---|---|---|
+| Azurik | `azurik` | 177 s + 6 | 500 s | none |
+| D&D Heroes | `dnd-heroes` | 279 s + 7 | 600 s | none |
+| BloodRayne | `bloodrayne` | 218 s + 7 | 540 s | 20-26 fps before the thermal pause |
+| Baldur's Gate: Dark Alliance | `baldurs-gate-da` | 422 s + 18 | 780 s | 59.94 |
+| KOF: Maximum Impact | `kof-mi.returning` | 205 s + 10 | 540 s | 33-34 for 66 s, then 13-15; not settled |
+| Arctic Thunder | `arctic-thunder` | 238 s + 15 | 590 s | 20.29, no thermal pause |
+
+Queue them with `scratch/bench8.sh <iso> <stem> <ref> thor` once the guard
+reads the live copy. None is in `dispatch/results` with a reading, so none
+counts as benchmarked on the status page.
+
+**Blocked, with what would unblock each:**
+- AMF Bowling 2004: the title does not take START or A. Try BACK, the
+  triggers, a second pad.
+- Mercenaries: the first load never ends (frozen frame, `kicks=0`). An
+  emulation defect, not a route problem.
+- Barbarian: route TRAINING or VERSUS. Quest needs a save slot.
+- Batman: Dark Tomorrow (Nova), from session 2: the combat button map.
+
+**Next on the Thor's internal storage, by xemu rating** (`scratch/thorlist.py`):
+Bicycle Casino, Breeders' Cup, AMF Xtreme Bowling (Perfect); The Lord of the
+Rings: The Third Age, The Urbz, Area 51, The Bard's Tale, Bad Boys: Miami
+Takedown, Backyard Wrestling 2, Arena Football, Battlestar Galactica,
+American Chopper 1 and 2, All-Star Baseball 2003/2004/2005, AFL Live,
+AFL Premiership 2005 (Playable); then the Japanese text titles (Bistro
+Cupid 1 and 2, Aoi Namida, Angelic Concert, Ex-Chaser, Innocent Tears),
+where "an input moves the player" needs a definition first; Antz Extreme
+Racing (Starts). Big Bumpin' landed at 14:27 and is not in that list. The
+SD-card list from attempt 4 is still open as well.
+
+**For whoever drives the Thor next:**
+- Read the focus from the FIRST dispatcher state in `dumpsys input`.
+- A title's menus may take the hat, the stick, or neither. Take a frame
+  after the move and before the A, above all on a save prompt.
+- Size a soak with 3 s per `shot`, and check the result with
+  `scratch/fpsbins.py` and the cooling devices before writing a median down.
+- A black 10,899 B frame means stop: read the focus, send nothing.
+
+### State at the end of attempt 8 (15:30 PDT)
+
+Six routes replayed on the Thor in this attempt (Azurik, D&D Heroes,
+BloodRayne, Baldur's Gate: Dark Alliance, KOF: Maximum Impact, Arctic
+Thunder), four of them new titles, with a held reading for four. Three
+titles are blocked (AMF Bowling 2004, Mercenaries, Barbarian's Quest mode).
+Nothing of mine is queued or running, and I hold no device.
+
+Merging origin/master at 15:25 brought #431's target for Baldur's Gate into
+targets.toml: 60, not the default 30 my session 24 table names. Its held
+reading (59.94, min 58.31) is at that target.
+
+PR #499 is marked ready. `preflight.sh --allow-tracker` passed on
+92560461c5 (14:45) and again after the merge.
+
+**Waiting (PR #499, 15:30 PDT).** The signal is outside this lane: a fix to
+`hakux_in_front` (devices.sh) so that it reads the live dispatcher state and
+not the last-ANR copy, live on the Thor's dispatcher, with hostops saying
+so on #397 (the defect is on #494, comment 5860177923). Then the six soaks
+in the hand-over table can be queued. This was the lane's last attempt, so
+that is a successor's or the host's to do; everything it needs is in
+"Hand-over" above.
+
 ### Soak length: a 300 s soak is not 300 s of gameplay (21:16)
 
 `soak_title.sh --seconds` counts from boot; `title_verdict.py` scores only
@@ -853,3 +1254,13 @@ copy of the result dir (`scratch/judge.py`), apk 397ae7dca16a.
 - Do not queue a route soak on a device that has just reconnected or
   rebooted until something has checked that hakuX holds the input focus. The
   presses go to the focused window, whoever owns it.
+
+### Attempt 9 (resumed 2026-09-27 15:19 PDT)
+
+Why attempt 8 did not finish: it ended on purpose, waiting on something
+outside the lane. The focus guard read the last-ANR copy of the dispatcher
+state (#513), so no route soak could be queued. Hostops put an interim patch
+on the dispatcher's devices.sh at 15:13 and queued the pilot soak
+1-1790547557-titleroutes-979135 (Arctic Thunder, 590 s, Thor, ref
+677ae13af8). This attempt reads that pilot first. If it plays, the other five
+hand-over soaks go in the queue, and the lane goes on down the Thor list.

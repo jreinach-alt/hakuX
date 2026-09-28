@@ -48,6 +48,78 @@ static void image_pool_drain(PGRAPHVkState *r);
 #define TEX_PERF(...) do { } while (0)
 #endif
 
+/*
+ * #474: wall time of each step of pgraph_vk_bind_textures(), NV2A_PERF_LOG
+ * only. The phase line's Pipe.Tx is ~9 ms/frame of wall on AUF and Blinx
+ * against ~0.1 ms on-CPU, with no uploads or hashes in the window, so the
+ * call is waiting somewhere; these name where. Wall, not CPU, and nested:
+ * bt holds res and ct; ct holds sdl, scan, faf, bs, cp and up; bs holds
+ * flq (the draw and reorder queue flush) and nd (the command-buffer begin).
+ * Printed per window of 60 guest flips as ms/flip and calls/flip.
+ */
+#if NV2A_PERF_LOG
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
+enum {
+    TXW_BT, TXW_RES, TXW_CT, TXW_SDL, TXW_SCAN, TXW_FAF,
+    TXW_BS, TXW_FLQ, TXW_ND, TXW_CP, TXW_UP, TXW__N
+};
+static struct {
+    int64_t ns[TXW__N];
+    int n[TXW__N];
+    unsigned int frame0;
+    int64_t t0;
+} txw;
+#define TXW_BEGIN(k) int64_t _txw_t0_##k = nv2a_clock_ns()
+#define TXW_END(k) do { \
+    txw.ns[TXW_##k] += nv2a_clock_ns() - _txw_t0_##k; \
+    txw.n[TXW_##k]++; \
+} while (0)
+
+static void txw_log_window(PGRAPHState *pg)
+{
+    int64_t now = nv2a_clock_ns();
+    unsigned int frames = pg->frame_time - txw.frame0;
+
+    if (txw.t0 == 0 || frames > 100000) {   /* first call, or a reset */
+        memset(&txw, 0, sizeof(txw));
+        txw.frame0 = pg->frame_time;
+        txw.t0 = now;
+        return;
+    }
+    if (frames < 60) {
+        return;
+    }
+#define TXW_MS(k) (txw.ns[TXW_##k] / 1e6 / frames)
+#define TXW_N(k) ((double)txw.n[TXW_##k] / frames)
+#define TXW_FMT "txw[f%u %.1fs bt%.2f/%.0f res%.2f ct%.2f/%.1f sdl%.2f/%.2f " \
+    "scan%.2f/%.1f faf%.2f/%.2f bs%.2f/%.2f flq%.2f nd%.2f cp%.2f/%.2f " \
+    "up%.2f/%.2f]"
+#define TXW_ARGS frames, (now - txw.t0) / 1e9, \
+    TXW_MS(BT), TXW_N(BT), TXW_MS(RES), TXW_MS(CT), TXW_N(CT), \
+    TXW_MS(SDL), TXW_N(SDL), TXW_MS(SCAN), TXW_N(SCAN), \
+    TXW_MS(FAF), TXW_N(FAF), TXW_MS(BS), TXW_N(BS), \
+    TXW_MS(FLQ), TXW_MS(ND), TXW_MS(CP), TXW_N(CP), TXW_MS(UP), TXW_N(UP)
+#ifdef __ANDROID__
+    /* hakuX-stall: the dispatcher's logcat allow-list names it */
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-stall", TXW_FMT, TXW_ARGS);
+#else
+    fprintf(stderr, "[hakuX-stall] " TXW_FMT "\n", TXW_ARGS);
+#endif
+#undef TXW_ARGS
+#undef TXW_FMT
+#undef TXW_N
+#undef TXW_MS
+    memset(&txw, 0, sizeof(txw));
+    txw.frame0 = pg->frame_time;
+    txw.t0 = now;
+}
+#else
+#define TXW_BEGIN(k) do { } while (0)
+#define TXW_END(k) do { } while (0)
+#endif
+
 
 static const VkImageType dimensionality_to_vk_image_type[] = {
     0,
@@ -1056,6 +1128,7 @@ static void bind_surface_as_texture(PGRAPHState *pg, SurfaceBinding *surface,
     PGRAPHVkState *r = pg->vk_renderer_state;
     TEX_PERF(g_opt_stats.txr_s2td++);
 
+    TXW_BEGIN(FLQ);
     if (r->reorder_window.count > 0) {
         NV2AState *d = container_of(pg, NV2AState, pgraph);
         pgraph_vk_flush_reorder_window(d);
@@ -1064,11 +1137,14 @@ static void bind_surface_as_texture(PGRAPHState *pg, SurfaceBinding *surface,
         NV2AState *d = container_of(pg, NV2AState, pgraph);
         pgraph_vk_flush_draw_queue(d);
     }
+    TXW_END(FLQ);
 
     nv2a_profile_inc_counter(NV2A_PROF_SURF_TO_TEX);
 
     // End render pass to flush tile writes, then barrier for shader reads
+    TXW_BEGIN(ND);
     VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
+    TXW_END(ND);
 
     VkImageMemoryBarrier barrier = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -1111,6 +1187,7 @@ static void bind_zeta_surface_as_texture(PGRAPHState *pg,
     assert(!surface->color);
     assert(!(surface->host_fmt.aspect & VK_IMAGE_ASPECT_STENCIL_BIT));
 
+    TXW_BEGIN(FLQ);
     if (r->reorder_window.count > 0) {
         NV2AState *d = container_of(pg, NV2AState, pgraph);
         pgraph_vk_flush_reorder_window(d);
@@ -1119,10 +1196,13 @@ static void bind_zeta_surface_as_texture(PGRAPHState *pg,
         NV2AState *d = container_of(pg, NV2AState, pgraph);
         pgraph_vk_flush_draw_queue(d);
     }
+    TXW_END(FLQ);
 
     nv2a_profile_inc_counter(NV2A_PROF_SURF_TO_TEX);
 
+    TXW_BEGIN(ND);
     VkCommandBuffer cmd = pgraph_vk_begin_nondraw_commands(pg);
+    TXW_END(ND);
 
     VkImageMemoryBarrier barrier = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -1890,7 +1970,9 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
         TEX_PERF(g_opt_stats.txr_dl++;
                  g_opt_stats.txr_dl_b += (uint64_t)surface->pitch * surface->height;
                  tx_srf = true);
+        TXW_BEGIN(SDL);
         pgraph_vk_surface_download_if_dirty(d, surface);
+        TXW_END(SDL);
         possibly_dirty = true;
     }
 
@@ -1935,8 +2017,10 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
              * vk/surface.c; this call's share is the difference */
             int tx_dl0 = g_opt_stats.dif_other + g_opt_stats.sd_shelved_lazy_dl;
 #endif
+            TXW_BEGIN(SCAN);
             bool had_overlap = pgraph_vk_download_surfaces_in_range_if_dirty(
                 pg, texture_vram_offset, texture_length);
+            TXW_END(SCAN);
             TEX_PERF(g_opt_stats.txr_sc++;
                      g_opt_stats.txr_scdl += g_opt_stats.dif_other +
                                              g_opt_stats.sd_shelved_lazy_dl -
@@ -2214,7 +2298,9 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
         if (surface_to_texture) {
             if (surface->draw_time != snode->draw_time) {
                 if (snode->submit_time + r->num_active_frames > r->submit_count) {
+                    TXW_BEGIN(FAF);
                     pgraph_vk_flush_all_frames(pg);
+                    TXW_END(FAF);
                 }
                 bool can_direct_bind =
                     (surface->color ||
@@ -2224,6 +2310,7 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
 
                 if (can_direct_bind) {
                     VkImageLayout direct_layout;
+                    TXW_BEGIN(BS);
                     if (surface->color) {
                         bind_surface_as_texture(pg, surface, snode);
                         direct_layout = VK_IMAGE_LAYOUT_GENERAL;
@@ -2232,13 +2319,16 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
                         direct_layout =
                             VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
                     }
+                    TXW_END(BS);
                     r->tex_surface_direct[texture_idx] = true;
                     r->tex_surface_direct_views[texture_idx] =
                         surface->image_view;
                     r->tex_surface_direct_layout[texture_idx] = direct_layout;
                     r->texture_bindings_changed = true;
                 } else {
+                    TXW_BEGIN(CP);
                     copy_surface_to_texture(pg, surface, snode);
+                    TXW_END(CP);
                 }
                 did_s2t_copy = true;
             } else if ((surface->color ||
@@ -2269,9 +2359,13 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
                     OPT_STAT_INC(tex_zero_reupload);
                 }
                 if (snode->submit_time + r->num_active_frames > r->submit_count) {
+                    TXW_BEGIN(FAF);
                     pgraph_vk_flush_all_frames(pg);
+                    TXW_END(FAF);
                 }
+                TXW_BEGIN(UP);
                 upload_texture_image(pg, texture_idx, snode);
+                TXW_END(UP);
                 TEX_PERF(g_opt_stats.txu_n[vram_changed ? TXU_CHG : TXU_OTH]++);
                 /* Only update hash when VRAM actually changed,
                  * not when replacement triggered the re-upload */
@@ -2688,6 +2782,7 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
 
         if (can_direct_bind) {
             VkImageLayout direct_layout;
+            TXW_BEGIN(BS);
             if (surface->color) {
                 bind_surface_as_texture(pg, surface, snode);
                 direct_layout = VK_IMAGE_LAYOUT_GENERAL;
@@ -2696,14 +2791,19 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
                 direct_layout =
                     VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
             }
+            TXW_END(BS);
             r->tex_surface_direct[texture_idx] = true;
             r->tex_surface_direct_views[texture_idx] = surface->image_view;
             r->tex_surface_direct_layout[texture_idx] = direct_layout;
         } else {
+            TXW_BEGIN(CP);
             copy_surface_to_texture(pg, surface, snode);
+            TXW_END(CP);
         }
     } else {
+        TXW_BEGIN(UP);
         upload_texture_image(pg, texture_idx, snode);
+        TXW_END(UP);
         TEX_PERF(g_opt_stats.txu_n[tx_rb ? TXU_RB : TXU_NEW]++);
         snode->draw_time = 0;
     }
@@ -2803,6 +2903,9 @@ void pgraph_vk_bind_textures(NV2AState *d)
     PGRAPHVkState *r = pg->vk_renderer_state;
 
 
+    TEX_PERF(txw_log_window(pg));
+    TXW_BEGIN(BT);
+
     r->texture_bindings_changed = retired_view_rebuild_pending;
     retired_view_rebuild_pending = false;
     TEX_PERF(g_opt_stats.txr_bt++);
@@ -2811,11 +2914,14 @@ void pgraph_vk_bind_textures(NV2AState *d)
         NV2A_VK_DPRINTF("Not dirty");
         NV2A_VK_DGROUP_END();
         update_timestamps(r);
+        TXW_END(BT);
         return;
     }
     TEX_PERF(g_opt_stats.txr_btl++);
 
+    TXW_BEGIN(RES);
     resolve_possibly_dirty_textures(d);
+    TXW_END(RES);
 
     for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
         if (!pgraph_is_texture_enabled(pg, i) ||
@@ -2881,7 +2987,9 @@ void pgraph_vk_bind_textures(NV2AState *d)
          */
         TextureBinding *prev_binding = r->texture_bindings[i];
         SlotView prev_view = slot_view(r, i);
+        TXW_BEGIN(CT);
         bool bound = create_texture(pg, i);
+        TXW_END(CT);
 
         /*
          * create_texture binds nothing when the texture LRU can serve no
@@ -2967,6 +3075,7 @@ void pgraph_vk_bind_textures(NV2AState *d)
         r->pipeline_state_dirty = true;
     }
     update_timestamps(r);
+    TXW_END(BT);
     NV2A_VK_DGROUP_END();
 }
 
