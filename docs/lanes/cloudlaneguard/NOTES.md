@@ -120,11 +120,91 @@ With master already that close to the cap, a small addition, or a slow runner,
 tips a run over. This fragment adds 5 `cloud.sh list` calls, about a second on
 this host. The next push is the retry.
 
-- **Waiting on:** the `jobs selftest` check on this PR's new head.
-- **Resolved by:** that check going green. The PR is then marked ready.
+The retry on 39494188b9 passed in 24m06s.
 - The headroom itself belongs to whoever owns `.github/workflows/`. The fix is
   a higher `timeout-minutes` or a split suite. This lane's brief does not grant
   that file.
+
+## Attempt 2: the board's focus (addendum 2026-09-27 20:07 PDT)
+
+### Why attempt 1 did not finish
+
+Attempt 1 finished the brief as it read when it started, got CI green on
+39494188b9, and marked the PR ready. The hostops addendum arrived after that
+session had ended, so it never read it. The PR went back to draft, and this
+session was resumed to do the addendum.
+
+### The defect
+
+With `BOARD_FOCUS_LABEL=fps-focus` in `limits.env`, `board.sh` offers only
+issues that carry the label (board.sh:148-189). `cloud.sh`'s issue pickup had
+no such filter. `cloud.sh list` said "would claim issue #527"
+(accuracy,needs-triage,cloud), so the cloud outlet was a way around the focus.
+
+### The change
+
+- `FOCUS` is `BOARD_FOCUS_LABEL` with whitespace stripped, as board.sh strips
+  it. It comes from `limits.env`, which cloud.sh already sources, or from the
+  environment, the same two sources board.sh reads.
+- `issue_cloud`'s `--jq` now appends the issue's labels to each row, after a
+  unit separator (0x1f). The loop strips them off again before the row reaches
+  `first_free`, so the row keeps its old shape.
+  - A tab would not work here: tab is IFS whitespace, so `read` would collapse
+    the row's existing empty head column.
+  - 73-cloud-claim's stub row (`271\t\t...`, with no labels part) still passes
+    through unchanged when no focus is set.
+- If the focus is set and an issue lacks it, the issue is dropped. `list`
+  names all the drops in one line on stderr:
+  `skip issue #527: not in the fps-focus focus (BOARD_FOCUS_LABEL=fps-focus)`.
+  A claiming run writes the same line through `say`.
+- PR audits and remediations are not filtered. The claim order and the cap are
+  unchanged.
+
+### Proof
+
+Legs f, g and h in `99-cloud-lane-branch.sh` assert on the words `list` prints:
+
+```
+== cloud.sh: an issue outside the board's focus is not offered
+  ok   f: with the fps-focus focus, non-focus #527 is not offered
+  ok   f: and list names the drop in one line
+  ok   f: and the focus issue #530 is offered
+  ok   g: with only non-focus #527 open, nothing is claimed
+  ok   h: with no focus set, #527 is offered
+```
+
+| cloud.sh under test | legs that FAIL |
+|---|---|
+| attempt 1's (39494188b9 + master merge, no focus filter) | f, f, f, g (4 of 5) |
+| the filter applied even when no focus is set | h |
+
+The fragment against attempt 1's `cloud.sh`:
+
+```
+  FAIL f: with the fps-focus focus, non-focus #527 is not offered
+  FAIL f: and list names the drop in one line
+  FAIL f: and the focus issue #530 is offered
+  FAIL g: with only non-focus #527 open, nothing is claimed
+  ok   h: with no focus set, #527 is offered
+```
+
+`cloud.sh list` on the real host, 2026-09-27, after the change:
+
+```
+cap: LANE_MAX=24 (/home/justin/hakux-work/limits.env, default from lane.sh); 7 lane/audit session(s) active
+skip audit1 #518: its lane hakux-lane-forza414 is still running on lane/forza414b
+nothing to claim
+```
+
+No focus-drop line appears, and that is expected. #527 now carries
+`claimed:cloud,lane:cloud-527`, so it is already claimed by a cloud session.
+`issue_cloud`'s jq already excludes it on those labels, so it
+never reaches the focus check. The live line also shows the lane guard from
+attempt 1 holding a second PR, #518, whose lane `forza414` is still running.
+
+- Staging a subset of fragments in a copy that is not a git tree breaks
+  99-limits-env on its own (3 FAIL), with or without this change. Run the full
+  suite in the real worktree.
 
 ## For the next lane
 
