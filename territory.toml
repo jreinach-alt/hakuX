@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 273
-updated_utc = "2026-09-28T03:12:38Z"
+wave = 274
+updated_utc = "2026-09-28T03:16:44Z"
 
 [retired.hilodot10]
 issues = ["10"]
@@ -496,6 +496,11 @@ note = "STARTED (hostops 2026-09-28T01:45Z), briefs/cloudlaneguard.md: harness d
 issues = ["507", "424"]
 files = ["docs/lanes/sustain507/**", "docs/testing/predictions/sustain507-*.json"]
 note = "STARTED (lane.local 2026-09-28T03:12:38Z), briefs/sustain507.md: the critical path (owner 2026-09-27 ~20:00 PDT: sustained fps within the heat budget). Part A: 30-min MAX vs defaults on the Thor (Crimson, GTA SA, MechAssault 2) with #533 PERF_REGIMEN=default once the dispatcher runs it; part B: #424's two registered Thor pairs (tbflip424-blinx.json) from cool starts. Measurement only; successor to lane.thermal507."
+
+[lane.doa413c]
+issues = ["413"]
+files = ["docs/lanes/doa413c/**", "docs/testing/predictions/doa413c-*.json"]
+note = "STARTED (job.board 2026-09-27T20:16 PDT), briefs/doa413c.md: #413 (0.5, fps-focus), DOA2 Ultimate stage-transition stall (0-2 fps, up to 76 s hang after a ring-out) on the Nova, run 0-0-y-1790433159. Distinct from #462's general-slowdown remedies (lane.rendermode474 PR #530, lane.drain474 PR #517, lane.forza414 PR #518, lane.idlehalt #525), none of which names this transition hang, and from PR #440 (doa413b)'s already-refuted surface_update lazy-completion theory. Measurement-first: no code file claimed yet; a fix mechanism asks for its file by name at that point (vk/surface.c, vk/texture.c, vk/draw.c are lent/held elsewhere -- see [lane.remote], [lane.forza414])."
 
 [free]
 # RELEASED (job.board 2026-09-28T02:53Z) by retiring lane.slowdown462 (no unit, no open PR): docs/lanes/slowdown462/**.
