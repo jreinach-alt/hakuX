@@ -6,18 +6,28 @@
 #
 #   capture_stall.sh
 #
-# What it takes:
-#   - the soak's logcat (soak_title.sh, the survey route: the source run's);
-#   - taskio.txt: every emulator thread's read counters and CPU ticks, once a
-#     second, launch to exit (taskio.sh, read by taskio.py);
-#   - up to two stall records. stallwatch.py waits for a stall on the live
-#     logcat (no fifoskew/gfps line for GAP s while the vCPU is pegged), then
+# LAUNCHES (default 2) launches of the title in one session, each a
+# soak_title.sh of SOAK_S s on the survey route (the source run's). The
+# shader and pipeline caches are cleared once, before launch 1, and NOT
+# between launches: launch 1 is cold, launch 2 meets the pipelines launch 1
+# built. The first scene-load stall comes ~90 s after the route starts
+# (session 1, 2026-09-27: the menu -> first fight load, 14 s).
+# Per launch N:
+#   - logcat-N.txt and soak-N.log;
+#   - taskio-N.txt: every emulator thread's read counters and CPU ticks, every
+#     ~2 s, launch to exit (taskio.sh, read by taskio.py);
+#   - one stall record. stallwatch.py waits for a stall on the live logcat (no
+#     fifoskew/gfps line for GAP s and two pegged vCPU windows), then
 #     rec-N.data: simpleperf record -e cpu-clock --call-graph dwarf,8192
 #     --duration REC_S -f 1000 over the app, marked 'prof N start/end' in the
-#     logcat, and straight after it the TCG code buffer (codebuf-N-<start>.bin.gz)
-#     so tbmap.py maps that record's JIT samples to guest pcs;
-#   - the guest RAM (ram-<start>.bin.gz) once, after the last record, so the
-#     hot pcs can be disassembled.
+#     logcat (up to 3 attempts: session 1's first failed at once with "Event
+#     type 'cpu-clock' is not supported", its second worked), and straight
+#     after it the TCG code buffer (codebuf-N-<start>.bin.gz) so tbmap.py maps
+#     that record's JIT samples to guest pcs;
+#   - the launch then runs until the pusher is back plus TAIL_S, so the
+#     stall's whole length is in the logcat.
+# After the last record, once: the guest RAM (ram-<start>.bin.gz) so the hot
+# pcs can be disassembled.
 # APK: dispatch/builds/a593d8eb85.apk (slowdown462's DOA profiles;
 # include/exec/translation-block.h is unchanged from it to f82e7e87fe, the
 # layout tbmap.py reads).
@@ -25,7 +35,7 @@ set -u
 DEV=nova S=ee317437 MIN_BATT=${MIN_BATT:-20}
 PKG=com.jreinach.hakux.debug
 D=/home/justin/hakux-work/dispatch
-OUT=${OUT:-/home/justin/hakux-work/perf/2026-09-27-doa413c/s1}
+OUT=${OUT:-/home/justin/hakux-work/perf/2026-09-27-doa413c/s2}
 APK_REF=${APK_REF:-a593d8eb85}
 APK=$D/builds/$APK_REF.apk
 ISO=54430006-Dead_or_Alive_1_Ultimate.xiso.iso
@@ -34,10 +44,11 @@ LANE="$HERE/../lanes/doa413c"
 HOLDSH="$HERE/jobs/hold.sh"
 TAG=lane.doa413c
 LEASE=/tmp/hakux-device-lease.$DEV
-SOAK_S=${SOAK_S:-330}
-GAP=${GAP:-3}
+SOAK_S=${SOAK_S:-180}
+GAP=${GAP:-4}
 REC_S=${REC_S:-6}
-NREC=${NREC:-2}
+LAUNCHES=${LAUNCHES:-2}
+TAIL_S=${TAIL_S:-15}
 mkdir -p "$OUT"
 a() { timeout "${T:-120}" adb -s $S "$@"; }
 say() { echo "CAP $(date -u +%H:%M:%S) $*"; }
@@ -50,7 +61,7 @@ case "$w" in
 *" by $TAG -- "*) say "hold already ours" ;;
 held:*) say "hold/$DEV held by someone else: $w; not waiting"; exit 3 ;;
 *) bash "$HOLDSH" take $DEV $TAG \
-    "lane.doa413c #413: held Nova session, DOA Ultimate scene-load stall: <=2 x ${REC_S} s simpleperf + code-buffer/RAM dump, apk $APK_REF, <10 min of device time; waits for the running request first; capture_stall.sh releases on every exit" \
+    "lane.doa413c #413: held Nova session, DOA Ultimate scene-load stall: $LAUNCHES launches (cold then warm shader cache), one ${REC_S} s simpleperf + code-buffer dump each, apk $APK_REF, <10 min of device time; waits for the running request first; capture_stall.sh releases on every exit" \
     || { say "could not take hold/$DEV: $(bash "$HOLDSH" who $DEV)"; exit 3; }
    say "hold taken" ;;
 esac
@@ -60,7 +71,8 @@ cleanup() {
     rc=$?
     if [ "$USED" = 1 ]; then
     [ -n "$SOAK_PID" ] && kill "$SOAK_PID" 2>/dev/null && wait "$SOAK_PID" 2>/dev/null
-    if ! grep -q '"perf_restored": true' "$OUT/perf_regimen.json" 2>/dev/null; then
+    last_pr=$(ls -t "$OUT"/perf_regimen-*.json 2>/dev/null | head -1)
+    if ! grep -q '"perf_restored": true' "${last_pr:-/nonexistent}" 2>/dev/null; then
         ( . "$HERE/devices.sh"; read -r _ _ pr fr <<<"$(device_perf_values $S)"
           [ -n "$pr" ] && SERIAL=$S device_perf_set "$pr" "$fr" >/dev/null && say "REST set by cleanup" )
     fi
@@ -127,18 +139,8 @@ fi
 a shell "rm -f /data/local/tmp/doa413c-*.data"
 cp "$HERE/titles/routes/survey.route" "$OUT/route.txt" || { say "no route survey"; exit 5; }
 
-LOGCAT_SPEC="hakuX-crash:V hakuX-unhandled:W hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-tier1:D hakuX-pages:I hakuX:I hakuX-stderr:E hakuX-vk:I hakuX-route:I hakuX-pace:I hakuX-stall:I hakuX-rpbrk:I hakuX-cpu:I xemu-gpu:I xemu-sfp:I libc:F DEBUG:F *:S" \
-HAKUX_DEVICE_LEASE="$OUT/soak.lease" CAPTURE_LOG="$OUT/logcat.txt" ROUTE_FILE="$OUT/route.txt" SERIAL=$S \
-PERF_RESULT="$OUT/perf_regimen.json" \
-    setsid bash "$HERE/soak_title.sh" "$ISOPATH" $SOAK_S > "$OUT/soak.log" 2>&1 &
-SOAK_PID=$!
-say "soak pid $SOAK_PID"
-# the sampler waits (up to 120 s) for the emulator process to appear; it is
-# written into the app's files/ the way the prefs are (stdin through run-as)
 a shell "run-as $PKG sh -c 'cat > files/doa413c-taskio.sh'" < "$LANE/taskio.sh"
-( T=$((SOAK_S + 200)) a shell "run-as $PKG sh files/doa413c-taskio.sh $PKG:xemu" < /dev/null > "$OUT/taskio.txt" 2>&1 ) & IO_PID=$!
 
-PID=""
 dump() {  # <kind: codebuf|ram> <label>
     [ -n "$PID" ] || PID=$(a shell "ps -A -o PID,NAME" | tr -d '\r' | awk -v n="$PKG:xemu" '$2 == n {print $1; exit}')
     [ -n "$PID" ] || { say "no emulator pid; no $1 dump"; return 1; }
@@ -169,32 +171,55 @@ PYMAPS
     done < "$OUT/regions-$2.txt"
 }
 
-nrec=0
-deadline=$(( $(date +%s) + SOAK_S + 60 ))
-while [ $nrec -lt "$NREC" ] && kill -0 $SOAK_PID 2>/dev/null; do
+launch() {  # <n>: one soak; its stall record and code buffer
+    local n=$1 st rec t left deadline ok=0
+    PID=""
+    LOGCAT_SPEC="hakuX-crash:V hakuX-unhandled:W hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-tier1:D hakuX-pages:I hakuX:I hakuX-stderr:E hakuX-vk:I hakuX-route:I hakuX-pace:I hakuX-stall:I hakuX-rpbrk:I hakuX-cpu:I xemu-gpu:I xemu-sfp:I libc:F DEBUG:F *:S" \
+    HAKUX_DEVICE_LEASE="$OUT/soak.lease" CAPTURE_LOG="$OUT/logcat-$n.txt" ROUTE_FILE="$OUT/route.txt" SERIAL=$S \
+    PERF_RESULT="$OUT/perf_regimen-$n.json" \
+        setsid bash "$HERE/soak_title.sh" "$ISOPATH" $SOAK_S > "$OUT/soak-$n.log" 2>&1 &
+    SOAK_PID=$!
+    say "launch $n: soak pid $SOAK_PID"
+    # the sampler waits (up to 120 s) for the emulator process to appear
+    ( T=$((SOAK_S + 200)) a shell "run-as $PKG sh files/doa413c-taskio.sh $PKG:xemu" < /dev/null > "$OUT/taskio-$n.txt" 2>&1 ) &
+    IO_PID=$!
+    deadline=$(( $(date +%s) + SOAK_S + 60 ))
     left=$(( deadline - $(date +%s) ))
-    [ $left -gt 20 ] || break
-    st=$(python3 "$LANE/stallwatch.py" "$OUT/logcat.txt" $left --gap "$GAP" --after "mark booted" --runlog "$OUT/soak.log") || { say "no stall before the deadline"; break; }
-    nrec=$((nrec + 1))
-    a shell log -t hakuX-route "'prof $nrec start'" >/dev/null
-    say "rec $nrec: $st"
-    rec=$(T=60 a shell "simpleperf record --app $PKG -e cpu-clock --call-graph dwarf,8192 --duration $REC_S -f 1000 -o /data/local/tmp/doa413c-$nrec.data" 2>&1)
-    a shell log -t hakuX-route "'prof $nrec end'" >/dev/null
-    echo "$rec" | grep -v 'symbol table' | tail -4 | sed "s/^/CAP rec-$nrec: /"
-    dump codebuf $nrec
-    a exec-out screencap -p > "$OUT/shot-$nrec.png" 2>/dev/null
-    # the next stall must be a new one: wait for the pusher to come back first
-    t=0
-    while [ $t -lt 60 ] && kill -0 $SOAK_PID 2>/dev/null; do
-        python3 "$LANE/stallwatch.py" "$OUT/logcat.txt" 1 --gap "$GAP" >/dev/null || break
-        sleep 2; t=$((t + 2))
-    done
+    if st=$(python3 "$LANE/stallwatch.py" "$OUT/logcat-$n.txt" $left --gap "$GAP" --after "mark booted" --runlog "$OUT/soak-$n.log"); then
+        a shell log -t hakuX-route "'prof $n start'" >/dev/null
+        say "rec $n: $st"
+        for attempt in 1 2 3; do
+            rec=$(T=60 a shell "simpleperf record --app $PKG -e cpu-clock --call-graph dwarf,8192 --duration $REC_S -f 1000 -o /data/local/tmp/doa413c-$n.data" 2>&1)
+            echo "$rec" | grep -v 'symbol table' | tail -3 | sed "s/^/CAP rec-$n.$attempt: /"
+            echo "$rec" | grep -q "Recorded for" && { ok=1; break; }
+            sleep 0.5
+        done
+        a shell log -t hakuX-route "'prof $n end'" >/dev/null
+        dump codebuf $n
+        a exec-out screencap -p > "$OUT/shot-$n.png" 2>/dev/null
+        [ "$n" = "$LAUNCHES" ] && dump ram last
+        # run on to the stall's end (the pusher back) plus TAIL_S
+        t=0
+        while [ $t -lt 120 ] && kill -0 $SOAK_PID 2>/dev/null; do
+            python3 "$LANE/stallwatch.py" "$OUT/logcat-$n.txt" 1 --gap "$GAP" >/dev/null || break
+            sleep 2; t=$((t + 2))
+        done
+        say "launch $n: pusher back after +$t s; tail $TAIL_S s"
+        sleep "$TAIL_S"
+    else
+        say "launch $n: no stall before the deadline"
+    fi
+    kill $SOAK_PID 2>/dev/null; wait $SOAK_PID 2>/dev/null; SOAK_PID=""
+    a shell am force-stop $PKG >/dev/null 2>&1
+    sleep 3
+    kill $IO_PID 2>/dev/null; IO_PID=""
+    [ $ok = 1 ] && ( cd "$OUT" && T=300 a pull /data/local/tmp/doa413c-$n.data ./rec-$n.data 2>&1 | tail -1 )
+    [ -f "$OUT/rec-$n.data" ]
+}
+
+good=0
+for n in $(seq 1 "$LAUNCHES"); do
+    launch $n && good=$((good + 1))
 done
-[ $nrec -gt 0 ] && dump ram last
-# let the soak run on to its end (the fight is taskio's control window)
-wait $SOAK_PID 2>/dev/null; SOAK_PID=""
-for n in $(seq 1 $nrec); do
-    ( cd "$OUT" && T=300 a pull /data/local/tmp/doa413c-$n.data ./rec-$n.data 2>&1 | tail -1 )
-done
-say "records=$nrec done"
-[ $nrec -gt 0 ]
+say "records=$good of $LAUNCHES done"
+[ $good -gt 0 ]

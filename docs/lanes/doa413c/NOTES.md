@@ -60,3 +60,71 @@ stall's length.
   mapped share < 50% of JIT samples): the session measured nothing about R1, and says so.
 
 No arm is registered: a profile moves no pixels, and no code is changed here.
+
+## 2. Session 1 (2026-09-27 20:30-20:36 PDT, Nova, apk a593d8eb85, 370 s of device time)
+
+Data: `~/hakux-work/perf/2026-09-27-doa413c/s1/`. The first scene-load stall came where the
+soak's did: the menu -> first fight load, device 20:32:01.8 to 20:32:15.9 (**14.1 s** with no
+`fifoskew` and no `gfps` line; the `fifoskew` line that closes it reads `win=14121ms kicks=180`,
+110 drained, drain mean 47.6 ms, max 444 ms).
+
+**The profile of that stall was lost.** The trigger fired 5.9 s into it and `simpleperf record`
+failed at once (`Event type 'cpu-clock' is not supported on the device`); the second record,
+which worked, fired on a 4.1 s pusher gap *inside the fight* that followed (one `[tlb68]` window
+at 1814 after it). So R1 and R3 were not read in session 1. `stallwatch.py` now needs two pegged
+vCPU windows after the last work line (replayed: it rejects that gap and still catches the real
+stall 5.8 s in), and the record retries.
+
+**What session 1 did read, from `taskio.txt` (`taskio.py --win`), uptime windows mapped from
+the device clock (the device's logcat clock ran ~3 s ahead of the host's):**
+
+| window | vCPU thread (tid 32681) CPU | its ISO reads | PFIFO thread (tid 32689) CPU |
+|---|---|---|---|
+| menus, 45 s | 93.3% | 1,318 KB/s, 23.1 calls/s, 57 KB per call | 5.2% |
+| **stall, 12.8 s** | **95.7%** | **531 KB/s**, 6.4 calls/s, 83 KB per call | **85.0%** |
+| fight just after, 26 s | 57.8% | 852 KB/s, 20.4 calls/s | 53.9% |
+| fight, 180 s | 24.3% | 281 KB/s, 8.0 calls/s | 20.1% |
+
+The tids are named from record 2's stacks: 32681 is the only thread with JIT samples (the vCPU),
+and 32689's leaves are `pfifo_thread`, `pgraph_method` and Mesa NIR passes (the PFIFO/render
+thread). The ISO reads sit on the vCPU thread, as doa413 read from the code
+(`XEMU_ANDROID_INLINE_AIO=1`: a read runs synchronously in the thread that issues it).
+
+- **R2: the stall reads the disc at 531 KB/s, below the fight right after it (852 KB/s) and
+  under half the menus' rate (1,318 KB/s), and the reading thread stays 96% on-CPU** (a thread
+  blocked in `pread` is off-CPU). **M1 (the guest waiting on the disc) is refuted by its own
+  R2 leg**, whatever R1 turns out to be: the stall is not the disc delivering slowly.
+- **New: the PFIFO thread is busy through the stall** (85% on-CPU, against 5% in the menus).
+  PR #417 read the stall's renderer as idle from `Ri` and `vblphase`. `Ri` is printed per 60
+  flips, and its stall row read `Ri 0.0` (no idle time), and the perflog soak's `hakuX-phase`
+  line whose 60-flip window spans its 14 s stall (12:52:57.863) accounts for only
+  60 x 28.2 ms = 1.7 s, with `Shd 0.0` and `Idle 0.1`: **about 12 s of that stall is outside
+  every phase timer**. So "renderer idle" was never measured; the renderer is on-CPU doing
+  something the phase timers do not cover.
+- **`[jc425] lh` (TB lookups through `helper_lookup_tb_ptr` that hit) runs at 57-81 M per 2 s in
+  the stall, against 0.13 M in the menus** (20:32:06-14 against 20:32:02). The vCPU goes around
+  a very small guest loop ~40 M times a second. That is a spin, not a load's compute.
+
+## 3. Pre-registration for session 2 (committed before it runs)
+
+Session 2 (`capture_stall.sh`, `LAUNCHES=2`): launch 1 with the shader and pipeline caches
+cleared, launch 2 straight after with launch 1's caches kept, each with one stall record and a
+code-buffer dump; RAM after launch 2.
+
+**Mechanism M2: at a scene load the PFIFO thread is busy on CPU in work outside the phase
+timers, and the guest spins waiting on the GPU.** Readings and predictions:
+
+- **R1 (vCPU, `tbmap.py`)**: >= 50% of the vCPU's mapped JIT samples in one small spin
+  (<= 4 guest pcs), either the kernel idle loop (`0x8001b000-0x8001b0ff`) or a title loop whose
+  hot TB is an MMIO/port read (a GPU poll).
+- **R4 (PFIFO thread, `hostsplit.py --tid <pfifo>`)**: >= 50% of its stall samples under one
+  host call path. I do not predict which. Candidates, each named by the frames it would show:
+  pipeline/shader compile (`vkCreateGraphicsPipelines`, `tu_`, `ir3_`, `nir_`), texture upload
+  or swizzle (`pgraph_vk_*texture*`, `swizzle`, `memcpy`), or a spin/poll inside the renderer.
+- **R5 (cold vs warm)**: if R4 is compile, the warm launch's first stall is at most half the
+  cold one's; if R4 is not compile, the two are within 30% of each other.
+
+**Refutations:** R1 < 20% in a spin (the guest computes: M2's "guest waits" half is wrong); the
+PFIFO thread under 30% on-CPU in the stall (`taskio`), which voids session 1's 85%; R4 spread
+with no call path over 25% (no single mechanism to name). The session measured nothing about R1
+if `tbmap.py`'s self-checks fail.

@@ -28,8 +28,9 @@ def secs(line):
 
 
 def state(lines):
-    """(newest, last_work, last_cpu) over the lines; any may be None."""
-    newest = last_work = last_cpu = None
+    """(newest, last_work, [cpu of every [tlb68] line after last_work])."""
+    newest = last_work = None
+    cpus = []
     for line in lines:
         t = secs(line)
         if t is None:
@@ -37,18 +38,23 @@ def state(lines):
         newest = t if newest is None else max(newest, t)
         if "fifoskew win=" in line or "gfps=" in line:
             last_work = t
+            cpus = []
         m = re.search(r"\[tlb68\] w=\d+ dt=\d+ cpu=(\d+)", line)
         if m:
-            last_cpu = int(m.group(1))
-    return newest, last_work, last_cpu
+            cpus.append(int(m.group(1)))
+    return newest, last_work, cpus
 
 
 def stalled(lines, gap, cpu):
-    newest, last_work, last_cpu = state(lines)
-    if newest is None or last_work is None or last_cpu is None:
+    """Session 1 (2026-09-27) fired on a 4.1 s pusher gap inside a fight whose
+    one [tlb68] window after the gap read 1814. So two whole vCPU windows
+    after the last work line must both be pegged."""
+    newest, last_work, cpus = state(lines)
+    if newest is None or last_work is None or len(cpus) < 2:
         return None
-    if newest - last_work >= gap and last_cpu >= cpu:
-        return f"stall: {newest - last_work:.1f} s since the last fifoskew/gfps line, vCPU cpu={last_cpu}"
+    if newest - last_work >= gap and min(cpus[-2:]) >= cpu:
+        return (f"stall: {newest - last_work:.1f} s since the last fifoskew/gfps line, "
+                f"vCPU cpu={','.join(map(str, cpus))}")
     return None
 
 
@@ -67,6 +73,13 @@ def selftest():
     ]
     r = stalled(gap, 4, 1500)
     assert r and "4.4 s" in r, r
+    # session 1's false fire: a pusher gap in a fight, one pegged window
+    fight2 = fight + [
+        "09-27 20:32:34.665 W/hakuX   (1): [tlb68] w=52 dt=2263 cpu=1068 ff=0",
+        "09-27 20:32:36.665 W/hakuX   (1): [tlb68] w=53 dt=2000 cpu=1814 ff=0",
+    ]
+    assert stalled([l.replace("09-26 12:52", "09-27 20:32") for l in fight] + fight2[-2:], 4, 1500) is None, \
+        "one pegged window after a fight gap is not a stall"
     idle = fight + [
         "09-26 12:52:45.933 W/hakuX   (1): [tlb68] w=3 dt=2000 cpu=400 ff=0",
         "09-26 12:52:47.933 W/hakuX   (1): [tlb68] w=4 dt=2000 cpu=300 ff=0",
