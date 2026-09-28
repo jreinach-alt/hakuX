@@ -466,7 +466,7 @@ lane.slowtier2's readings (Thor, regimen max) carry `[tlb68]`, so
 ### The Black pair (registered, then queued)
 
 - A `68cfc51e10` (`lane/dirtytlb`'s head: the counter, master merged, rd0),
-  B this branch's head at registration (the same tree with rd1). Both
+  B `a0d75c9a40` (this branch: the same tree with rd1). Both
   carry master `503b901ee4`, so neither is the APK of the Crimson pair.
 - Route `black.returning`, 760 s, Thor, B first. The window is 500 to 760 s
   after the first hakuX-perf line: the route's `mark gameplay` comes at
@@ -479,7 +479,7 @@ lane.slowtier2's readings (Thor, regimen max) carry `[tlb68]`, so
     and the run log's THERMAL line say whether it did. E, X, T and U are
     read either way; C, F and J only on a pair with no pause in the window.
 
-## Waiting (2026-09-28 ~20:40Z, attempt 4 resumed)
+## Waiting (2026-09-28 ~20:10Z, attempt 4 resumed)
 
 All outside this session.
 
