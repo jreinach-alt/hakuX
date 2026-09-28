@@ -59,6 +59,36 @@ its nearest cached neighbour.
 
 TODO: table from the sweep.
 
+## 4. Independent review: an Adreno/Turnip driver engineer
+
+A subagent was briefed as a Snapdragon/Adreno driver engineer (Turnip/ir3 and Qualcomm's
+driver). It got the measured facts (the 13.8 / 14.8 / 15.2 s stalls, dsm ~ dpm, upper-bound
+prices, the three caches, the async setting) and the code paths, and not this lane's
+conclusions. Its web access failed (Bash and WebSearch denied; gitlab.freedesktop.org
+bot-walled), so it tagged every Turnip/ir3 statement **(B, unverified)**. The one URL it relied
+on: https://docs.mesa3d.org/drivers/freedreno.html (the `TU_DEBUG` / `IR3_SHADER_DEBUG` option
+names). Its findings, condensed, each with this lane's verdict:
+
+| # | finding | verdict |
+|---|---|---|
+| R1 | **Measure per phase before building.** Timers around GLSL gen, glslang, SPIR-V write; chain `VkPipelineCreationFeedback` (core 1.3) into `vkCreateGraphicsPipelines` for per-stage driver time and the cache-hit bit; `IR3_SHADER_DEBUG=disasm` for instruction counts and private-memory use | **Agree.** Feedback is a better instrument than pipeline413 §9's clock pair: it separates a Turnip cache hit from a compile with no guesswork. |
+| R1' | "ir3 should take 2-10 ms per fragment shader, 10-50 ms per vertex shader; the measured stall is 10-100x that, so look at glslang, fsync, whole-cache saves, or non-shader work" | **Disagree with the conclusion, agree with the surprise.** doa413c already profiled the stall: 96% of the PFIFO thread is inside Turnip (`tu_spirv_to_nir` 65%, `tu_shader_create` 21%, `link_opts` 10%), and glslang is 63 samples of 13,230. So the time IS in Turnip. If the expert's per-shader expectation is right, what that says is that **our generated shaders are pathological for NIR/ir3**, not that the time is elsewhere. That makes "why is one shader ~400 ms in Turnip" the most valuable unknown on the path (plan item P2). |
+| R2 | Worker pool of 3-4 on cpu3-6 (A715/A710; keep cpu7 for the vCPU, avoid the in-order A510s), pipeline jobs ahead of module jobs, a condvar instead of the `usleep(100)` spin, `wait_idle` counting completions (it counts dequeues: `compile_worker.c:164`, `:218`, read) | **Agree**, with the thermal caveat it names: the Thor pauses cpu3-7 when hot (#507), so the pool must not assume those cores exist. |
+| R3 | Take disk I/O off the compile path: `g_file_set_contents` per SPIR-V miss (`vk/glsl.c:438`), fopen/fclose per key (`vk/shaders.c:1058`), whole-cache serialise on the draw thread every 30 s (`vk/draw.c:1498-1511`) | **Agree, small.** Bounded by doa413c: all of libxemu's own samples in the stall are under 3%. Worth doing inside the pool change, not as its own lane. |
+| R4 | glslang `validate=false` in release; measure `disable_optimizer` | **Agree it is cheap; disagree it matters for the stall** (<1% share, above). The optimizer question is really about Turnip's input: smaller, pre-optimised SPIR-V may make `tu_spirv_to_nir` cheaper. Fold into P2's measurement. |
+| R5 | Keep `spv_cache/` and `shader_module_keys.bin` across a driver change (SPIR-V is driver-independent; `renderer.c:125-146` wipes all three, read); persist **pipeline** keys and pre-build pipelines in the background at boot | **Agree strongly.** This is the plan's P3. The expert found the second wipe path (driver identity) that this lane's brief did not name; the brief's (`dispatcher.sh:296-331`) is the test harness's. |
+| R6 | `VK_EXT_graphics_pipeline_library` with four libraries, fast link without LTO, optional LTO swap in the background; needs one fixed pipeline layout with `INDEPENDENT_SETS` (today a layout is created per miss, sized by the uniform-attribute count: `vk/draw.c:2750-2768`, read) | **Agree, and the size of the win hangs on one unverified driver fact.** dsm/dpm of 0.73-1.0 means a missed pipeline brings about ONE new module; its other one or two stages already exist. If Turnip recompiles an unchanged stage whenever its partner changes (the expert's (B) claim: monolithic stage keys hash the whole pipeline), GPL removes 1/2 to 2/3 of each miss's ir3 work. If Turnip already caches stages independently, GPL removes nearly nothing. `VkPipelineCreationFeedback`'s per-stage cache-hit bit (R1) decides it on the first run, so P1 carries it and GPL is ranked after that reading. |
+| R7 | More dynamic state (topology class, polygon mode, vertex input), load ops out of the key | **Agree it is low value for the cold stall:** the misses are new shaders. |
+| R8 | `VK_EXT_shader_object`: check `vulkaninfo`; bigger rewrite than GPL; more draw-time CPU | **Agree.** PFIFO is the busy thread at play time (48%, `docs/investigations/frame-pacing-and-parallelism.md:97-105`), so more draw-time CPU is the wrong trade. |
+| R9 | Move data-only fields out of `ShaderState` into uniforms | **Agree as a direction.** This lane found the float fields (`point_size`, `point_params`, `aa_offset_x`, `border_*`); none is shown to split DOA's keys. A key-diff counter (P1) is what would show it. |
+| R10 | The 192-`vec4` local copy for constant-writing vertex programs (`glsl/vsh-prog.c:866-875`) forces private memory in ir3 | **Agree it is costly, disagree it is DOA's cause:** the copy is emitted only for programs that write a constant (#233; read at `:855-870`), which is rare. Check it in P2's disasm. |
+| R11 | Ubershader as a fallback only; fragment side 3-6x ALU, vertex interpreter 10x+ (estimates) | **Agree**, see option (d). |
+| R12 | Qualcomm's compiler is slower to compile than ir3 (B) | **Unverified.** Not needed for the plan. |
+
+The expert also pointed at a zero-rebuild lever this lane had not: the `env_vars` preference is
+`setenv`'d at startup (`xemu_android.cpp:796-806`, read), so `IR3_SHADER_DEBUG`, `TU_DEBUG` and
+`MESA_SHADER_CACHE_DIR` can be set for a run without a new apk.
+
 ## 6. The visual-cost question: "permanently missing textures"
 
 **Where the claim comes from.** `git blame` puts the comment at `vk/draw.c:4343-4348` in
