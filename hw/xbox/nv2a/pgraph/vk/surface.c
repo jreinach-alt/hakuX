@@ -214,6 +214,8 @@ enum {
     SDC_EXPIRE,         /* expire_old_surfaces                           */
     SDC_SURF_UPDATE,    /* pgraph_vk_surface_update                      */
     SDC_REUSE,          /* update_surface_part, unshelving a pending one */
+    SDC_RECORD,         /* a new download, after a submitted batch       */
+    SDC_PREREC,         /* the next flip's pre-record                    */
     SDC_EXTERNAL,
     SDC__COUNT
 };
@@ -436,18 +438,9 @@ bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
     SurfaceBinding *surface;
     bool found_overlap = false;
 
-    /* If prior downloads were already submitted by a previous finish,
-     * complete them now before recording new ones. This ensures the
-     * deferred_downloads[] array only contains entries from the current
-     * (unsubmitted) aux CB. */
-    if (r->num_deferred_downloads > 0 && r->deferred_downloads_frame >= 0) {
-        OPT_STAT_INC(sd_complete_def_coalesced);
-        VK_CHECK(vkWaitForFences(r->device, 1,
-                                 &r->frame_fences[r->deferred_downloads_frame],
-                                 VK_TRUE, UINT64_MAX));
-        pgraph_vk_complete_staged_downloads(d, r);
-    }
-
+    /* A batch a previous finish submitted completes only if a new download
+     * is recorded below (complete_submitted_downloads) or if it overlaps the
+     * range (the test at the end), not on every lookup. */
     QTAILQ_FOREACH(surface, &r->surfaces, entry) {
         if (check_surface_overlaps_range(surface, start, size)) {
             found_overlap = true;
@@ -494,6 +487,26 @@ bool pgraph_vk_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
 }
 
 
+static void download_surface_complete_deferred(NV2AState *d, int caller);
+
+/*
+ * #474: the recorded downloads are one batch, and every completion waits on
+ * one fence for all of them. Once a finish has submitted the batch (the
+ * flip's pre-download included), a download recorded now goes into the next,
+ * unsubmitted command buffer, and a wait on the batch's fence would copy its
+ * staging before the GPU wrote it. So the submitted batch completes first.
+ * Its fence is usually long signalled by then: the batch is left pending
+ * across draws until something needs it (surface_update_may_defer_downloads).
+ */
+static void complete_submitted_downloads(NV2AState *d)
+{
+    PGRAPHVkState *r = d->pgraph.vk_renderer_state;
+
+    if (r->num_deferred_downloads > 0 && r->deferred_downloads_frame >= 0) {
+        download_surface_complete_deferred(d, SDC_RECORD);
+    }
+}
+
 static bool download_surface_record_deferred(NV2AState *d,
                                              SurfaceBinding *surface,
                                              uint8_t *pixels)
@@ -504,6 +517,8 @@ static bool download_surface_record_deferred(NV2AState *d,
     if (!surface->width || !surface->height) {
         return true;
     }
+
+    complete_submitted_downloads(d);
 
     bool is_ds =
         surface->host_fmt.vk_format == VK_FORMAT_D24_UNORM_S8_UINT ||
@@ -884,6 +899,9 @@ static void deferred_downloads_clear_surface(PGRAPHVkState *r,
             r->deferred_downloads[i].surface = NULL;
         }
     }
+    if (r->display_predownload_surface == surface) {
+        r->display_predownload_surface = NULL;
+    }
 }
 
 /*
@@ -1013,6 +1031,12 @@ void pgraph_vk_complete_staged_downloads(NV2AState *d, PGRAPHVkState *r)
     r->num_deferred_downloads = 0;
     r->staging_dst_offset = 0;
     r->deferred_downloads_frame = -1;
+    /* The flip's pre-recorded batch is one of these, wherever it completes:
+     * here from a finish or the frame-slot rotation (vk/draw.c) as much as
+     * from download_surface_complete_deferred. Its entries retired the
+     * display surface above, at the generation the copy captured. */
+    r->display_predownload_pending = false;
+    r->display_predownload_surface = NULL;
 }
 
 /*
@@ -1023,8 +1047,16 @@ void pgraph_vk_complete_staged_downloads(NV2AState *d, PGRAPHVkState *r)
  * the wait. su_upl splits pgraph_vk_surface_update's own fin: the calls
  * where an upload that reads VRAM followed in the same surface_update;
  * su_deferred counts the updates that left their downloads to the next
- * finish (surface_update_may_defer_downloads). NV2A_PERF_LOG builds only.
+ * finish (surface_update_may_defer_downloads). why= splits su_upl's bindings
+ * by the site that last set their upload_pending (#414): a new or reused
+ * invalid slot, a shelf hit stale by vram_newer or by a handoff fallback, the
+ * CPU-write watch or its gap check, and "oth" for a setter this file does not
+ * tag (blit.c). NV2A_PERF_LOG builds only.
  */
+enum {
+    UPW_NONE, UPW_NEW, UPW_INVALID, UPW_STALE, UPW_HANDOFF, UPW_CPUW, UPW_GAP,
+    UPW__COUNT
+};
 #if NV2A_PERF_LOG && defined(__ANDROID__)
 static struct {
     int frame0;
@@ -1032,19 +1064,71 @@ static struct {
     unsigned long dl[SDC__COUNT];
     int64_t wait_ns[SDC__COUNT];
     unsigned long su_upl, su_deferred;
+    unsigned long why[UPW__COUNT];
+    unsigned long clr, clrfull;
 } g_sdcall;
+
+/* The bindings a clearing update counted in why=, until the next update
+ * reads whether the clear marked them cleared (mark_clear_full, vk/draw.c). */
+static SurfaceBinding *g_upw_clr[2];
+
+/* Binding -> the UPW_ that last set its upload_pending; cleared by the
+ * upload. Touched only under pgraph.lock. */
+static GHashTable *g_upw_map;
+
+static void upw_set(SurfaceBinding *s, int why)
+{
+    if (!g_upw_map) {
+        g_upw_map = g_hash_table_new(NULL, NULL);
+    }
+    if (why == UPW_NONE) {
+        g_hash_table_remove(g_upw_map, s);
+    } else {
+        g_hash_table_insert(g_upw_map, s, GINT_TO_POINTER(why));
+    }
+}
+
+static void upw_count(PGRAPHState *pg, SurfaceBinding *s, int slot)
+{
+    if (s && s->upload_pending) {
+        g_sdcall.why[g_upw_map ? GPOINTER_TO_INT(
+                         g_hash_table_lookup(g_upw_map, s)) : UPW_NONE]++;
+        if (pg->clearing) {
+            g_sdcall.clr++;
+            g_upw_clr[slot] = s;
+        }
+    }
+}
+
+/* At the next update: did the clear that followed cover the binding whole? */
+static void upw_clear_read(PGRAPHVkState *r)
+{
+    for (int i = 0; i < 2; i++) {
+        SurfaceBinding *s = g_upw_clr[i];
+        if (s && (s == r->color_binding || s == r->zeta_binding) &&
+            s->cleared) {
+            g_sdcall.clrfull++;
+        }
+        g_upw_clr[i] = NULL;
+    }
+}
+#define UPW_SET(s, why) upw_set((s), (why))
+#else
+#define UPW_SET(s, why) ((void)(s), (void)(why))
+#endif
+#if NV2A_PERF_LOG && defined(__ANDROID__)
 
 static void sdcall_log(PGRAPHState *pg)
 {
     static const char *const names[SDC__COUNT] = {
         "range", "tobuf", "deffull", "pend", "pendfb", "dirty", "dirtyfb",
-        "expire", "surfupd", "reuse", "ext",
+        "expire", "surfupd", "reuse", "record", "prerec", "ext",
     };
     int frames = pg->frame_time - g_sdcall.frame0;
     if (frames < 60) {
         return;
     }
-    char buf[640];
+    char buf[800];
     int n = snprintf(buf, sizeof(buf), "[sdcall] frames=%d", frames);
     for (int i = 0; i < SDC__COUNT && n < (int)sizeof(buf); i++) {
         if (!g_sdcall.fin[i] && !g_sdcall.fence[i] && !g_sdcall.pre[i]) {
@@ -1056,8 +1140,14 @@ static void sdcall_log(PGRAPHState *pg)
                       g_sdcall.dl[i], (double)g_sdcall.wait_ns[i] / 1e6);
     }
     if (n < (int)sizeof(buf)) {
-        snprintf(buf + n, sizeof(buf) - n, " su_upl=%lu su_deferred=%lu",
-                 g_sdcall.su_upl, g_sdcall.su_deferred);
+        snprintf(buf + n, sizeof(buf) - n,
+                 " su_upl=%lu su_deferred=%lu why=new%lu/inv%lu/stale%lu/"
+                 "hoff%lu/cpuw%lu/gap%lu/oth%lu clr=%lu clrfull=%lu",
+                 g_sdcall.su_upl, g_sdcall.su_deferred,
+                 g_sdcall.why[UPW_NEW], g_sdcall.why[UPW_INVALID],
+                 g_sdcall.why[UPW_STALE], g_sdcall.why[UPW_HANDOFF],
+                 g_sdcall.why[UPW_CPUW], g_sdcall.why[UPW_GAP],
+                 g_sdcall.why[UPW_NONE], g_sdcall.clr, g_sdcall.clrfull);
     }
     SURF92_LOG("%s", buf);
     memset(&g_sdcall, 0, sizeof(g_sdcall));
@@ -1144,31 +1234,15 @@ static void download_surface_complete_deferred_at(NV2AState *d, int caller,
     if (NV2A_PERF_LOG) _t1 = nv2a_clock_ns();
     SDCALL_DO(g_sdcall.wait_ns[caller] += _t1 - _t0);
 
+    /*
+     * This also retires the flip's pre-download. The display surface is one
+     * of the entries, so it is marked clean at the generation the flip's copy
+     * captured. It used to be marked clean here again at its current
+     * generation, which dropped any draw since the flip from the next
+     * download. With the batch left pending across draws (#474), that is the
+     * normal case, not a corner.
+     */
     pgraph_vk_complete_staged_downloads(d, r);
-
-    if (r->display_predownload_pending) {
-        SurfaceBinding *s = r->display_predownload_surface;
-        if (s) {
-            memory_region_set_client_dirty(d->vram, s->vram_addr,
-                                           s->pitch * s->height,
-                                           DIRTY_MEMORY_VGA);
-            memory_region_set_client_dirty(d->vram, s->vram_addr,
-                                           s->pitch * s->height,
-                                           DIRTY_MEMORY_NV2A_TEX);
-            /* See download_surface: a partial download leaves the rows it
-             * did not copy stale, so it must not retire the generation. */
-            bool was_partial = s->download_row_count > 0 &&
-                               s->download_row_count < s->height;
-            s->download_pending = false;
-            s->download_row_count = 0;
-            if (!was_partial) {
-                s->draw_dirty = false;
-                s->download_generation = s->draw_generation;
-            }
-        }
-        r->display_predownload_pending = false;
-        r->display_predownload_surface = NULL;
-    }
 
     if (NV2A_PERF_LOG) {
         g_nv2a_stats.surf_working.df_flush_ns += _t1 - _t0;
@@ -1795,6 +1869,14 @@ static void download_surface_deferred(NV2AState *d, SurfaceBinding *surface)
         return;
     }
 
+    /* The submitted batch may hold this surface's copy of this very
+     * generation: complete it before asking again. */
+    complete_submitted_downloads(d);
+    if (!surface->draw_dirty ||
+        surface->download_generation == surface->draw_generation) {
+        return;
+    }
+
     /* Try deferred path — records download into nondraw CB without
      * finishing. Multiple deferred downloads are batched into a single
      * finish call when pgraph_vk_download_surface_complete_deferred() runs. */
@@ -1821,11 +1903,16 @@ bool pgraph_vk_prerecord_display_download(NV2AState *d)
     PGRAPHState *pg = &d->pgraph;
     PGRAPHVkState *r = pg->vk_renderer_state;
 
-    if (r->display_predownload_pending) {
+    if (!r->in_command_buffer) {
         return false;
     }
 
-    if (!r->in_command_buffer) {
+    /* The last flip's batch, left pending across the frame (#474): complete
+     * it here at the latest. Its fence is a frame old. */
+    if (r->display_predownload_pending) {
+        download_surface_complete_deferred(d, SDC_PREREC);
+    }
+    if (r->display_predownload_pending) {
         return false;
     }
 
@@ -2177,6 +2264,7 @@ static void surface_watch_rearmed(CPUState *cpu, run_on_cpu_data data)
             surface_watch_lost_writes++;
         } else {
             s->upload_pending = true;
+            UPW_SET(s, UPW_GAP);
             surface_watch_gap_writes++;
         }
     }
@@ -2331,6 +2419,7 @@ static void surface_access_callback(void *opaque, MemoryRegion *mr, hwaddr addr,
         if (write) {
             qemu_rec_mutex_lock(&surface_watch_lock);
             surface->upload_pending = true;
+            UPW_SET(surface, UPW_CPUW);
             /* Owes no download: the rest of this generation's traps would
              * only repeat the line above. See surface_watch_resume. */
             if (!surface->draw_dirty && surface->access_cb) {
@@ -3383,6 +3472,7 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
     qemu_rec_mutex_lock(&surface_watch_lock);
     surface_watch_resume(d, surface);
     surface->upload_pending = false;
+    UPW_SET(surface, UPW_NONE);
     qemu_rec_mutex_unlock(&surface_watch_lock);
     surface->draw_time = pg->draw_time;
 
@@ -4558,15 +4648,18 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
             SURF_TIMER_INIT(_gt2);
             bool unshelved = false;
             bool shelf_stale = false;
+            int upw = UPW_NEW;
             surface = get_shelved_surface(r, target.vram_addr, &target);
             if (surface) {
                 shelf_stale = surface->vram_newer;
                 migrate_surface_image(&target, surface);
                 unshelved = true;
+                upw = UPW_STALE;
             } else {
                 surface = get_any_compatible_invalid_surface(r, &target);
                 if (surface) {
                     migrate_surface_image(&target, surface);
+                    upw = UPW_INVALID;
                 } else {
                     surface = g_malloc0(sizeof(SurfaceBinding));
                     create_surface_image(pg, &target);
@@ -4624,6 +4717,9 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                 OPT_STAT_INC(sd_eviction_dl);
                 download_surface_deferred(d, handoff_src);
                 handoff_src->shelved_dirty = false;
+                if (unshelved && !shelf_stale) {
+                    upw = UPW_HANDOFF;
+                }
                 shelf_stale = true;
             }
 
@@ -4646,6 +4742,7 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                     OPT_STAT_INC(sd_shelved_unshelved);
                 }
             }
+            UPW_SET(surface, surface->upload_pending ? upw : UPW_NONE);
 
             SURF_TIMER_INIT(_gt3);
             surface_put(d, surface);
@@ -4812,8 +4909,19 @@ static void surf413_log(PGRAPHState *pg, PGRAPHVkState *r)
  * else that reads guest memory completes an overlapping pending download
  * first (deferred_downloads_overlap_range), and every finish, the flip's
  * included, carries the recorded copies and retires them once its fence
- * signals. Already-submitted downloads cost a fence wait, not a finish, so
- * they complete here as before.
+ * signals. Downloads an earlier finish submitted cost a fence wait, not a
+ * finish, so they complete here as before.
+ *
+ * #474: except the flip's pre-download. DOA Ultimate's fight waited ~51 ms a
+ * frame here, at the first update after each flip, for the GPU to finish the
+ * frame it had just been given (lane.flip474, surf413 `cdef`). That batch now
+ * stays pending across draws until something reads what it holds: a trapped
+ * CPU access or an overlapping texture, vertex or blit range (both test
+ * deferred_downloads_overlap_range), the scanout's download request, a new
+ * download recorded behind it (complete_submitted_downloads), the rotation
+ * into its frame slot (vk/draw.c), or the next flip's pre-record at the
+ * latest. No download this update records can join it, so the update has
+ * nothing of its own to complete unless a binding uploads.
  *
  * Without TCG there is no CPU-access watch, and VRAM has to be current when
  * the update returns.
@@ -4823,7 +4931,8 @@ static bool surface_update_may_defer_downloads(NV2AState *d, bool upload)
     PGRAPHVkState *r = d->pgraph.vk_renderer_state;
 
     if (!tcg_enabled() || r->num_deferred_downloads == 0 ||
-        r->display_predownload_pending || r->deferred_downloads_frame >= 0) {
+        (r->deferred_downloads_frame >= 0 &&
+         !r->display_predownload_pending)) {
         return false;
     }
     if (upload &&
@@ -4843,6 +4952,7 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     PGRAPHVkState *r = pg->vk_renderer_state;
     SURF413_T(_s413);
     SURF413_FIN(_s413_fin);
+    SDCALL_DO(upw_clear_read(r));
     SURF413_DO(if (upload) { g_surf413.calls_up++; }
                else { g_surf413.calls_dn++; });
 
@@ -4906,6 +5016,8 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
                   ((r->color_binding && r->color_binding->upload_pending) ||
                    (r->zeta_binding && r->zeta_binding->upload_pending))) {
                   g_sdcall.su_upl++;
+                  upw_count(pg, r->color_binding, 0);
+                  upw_count(pg, r->zeta_binding, 1);
               });
     if (surface_update_may_defer_downloads(d, upload)) {
         SDCALL_DO(g_sdcall.su_deferred++);

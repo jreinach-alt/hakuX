@@ -483,7 +483,8 @@ stop_route() {
 # Before the first input: wait up to FG_WAIT_S for hakuX to come up, then
 # try ONE remedy that sends no input -- `am start` of hakuX on display 0 --
 # and wait FG_REMEDY_S more. Never a tap or a key to move focus: that first
-# input is exactly what drives the wrong app. Then abort.
+# input is exactly what drives the wrong app (one exception, the USB dialog,
+# is under FG_POLL_S). Then abort.
 #
 # While the route runs: one `not-foreground` answer, or two unknowns in a
 # row, TERMs route.sh at once, logs `ROUTE ABORTED: not foreground
@@ -497,6 +498,70 @@ stop_route() {
 # as the press in flight returns (its `wait` on a sleep returns at once),
 # stops the route there, and sends only releases for held buttons.
 FG_POLL_S="${FG_POLL_S:-2}"
+# ONE EXCEPTION to "never a key": a replugged handheld raises Android's "Use
+# USB for" dialog, a bare system-alert window of the vendor settings package
+# (com.rp.settings on the Nova, com.odin.settings on the Thor) that holds
+# input focus on display 0 over hakuX. `am start` cannot close it, so on
+# 2026-09-27 22:30 PDT every soak on both handhelds aborted until someone
+# pressed BACK. One KEYCODE_BACK closes it and focus returns to hakuX. So the
+# foreground wait, and only the wait (no route input has been sent), sends
+# ONE BACK when display 0's focused window is exactly `<hash> <pkg>` for one
+# of these packages: no `/`, so not an activity. An activity of any app, and
+# a bare window of any other package, get nothing.
+USB_DIALOG_PKGS="com.rp.settings com.odin.settings"
+usb_dialog() {   # <hakux_in_front line> -> the package, if its window is the dialog
+    local pkg="${1#not-foreground: }" p name
+    case "$1" in "not-foreground: "*" (holds input focus on display 0 of "*) ;; *) return 1 ;; esac
+    pkg="${pkg%% *}"
+    for p in $USB_DIALOG_PKGS; do [ "$p" = "$pkg" ] && break; p=""; done
+    [ -n "$p" ] || return 1
+    # hakux_in_front keeps only the owner; re-read the raw name to see the `/`.
+    # The live block only, as there: stop at the last ANR's snapshot.
+    name=$(ADB_RETRIES=1 adb_call "${ADB_QUICK_TIMEOUT:-10}" "usb dialog read" shell "dumpsys input" \
+            2>/dev/null | tr -d '\r' | awk '
+        stop { next }
+        /^  ANR:/ || (seen && /FocusedDisplayId:/) { stop = 1; next }
+        /FocusedDisplayId:/ { seen = 1 }
+        /^  [A-Za-z]+:/ { sec = $1; sub(/:.*/, "", sec) }
+        sec == "FocusedWindows" && /displayId=0, name=\047/ {
+            e = $0; sub(/.*displayId=0, name=\047/, "", e); sub(/\047.*/, "", e); print e; exit
+        }')
+    [[ "$name" =~ ^[0-9a-f]+\ ([^/\ ]+)$ ]] && [ "${BASH_REMATCH[1]}" = "$pkg" ] || return 1
+    echo "$pkg"
+}
+# The BACK is read-then-act across two adb calls, and Android delivers a key
+# to whatever holds focus when it is dispatched. If anything else closes the
+# dialog in that gap (a person, or the host's interim dismisser timer), our
+# BACK reaches hakuX, whose BACK toggles its pause menu: emulation paused, and
+# the overlay is a view in hakuX's own window, so hakux_in_front still reads
+# in-front and the route would play into the menu. The same holds for the
+# other dismisser's BACK after ours. So after a BACK, before the route starts,
+# read the overlay's visibility from `dumpsys activity top` (the view
+# hierarchy: `PauseMenuOverlay{<hash> V...` shown, `G`/`I` not). Shown: one
+# BACK, now to hakuX, resumes it; still shown, or no overlay line at all,
+# aborts rather than play a route whose pause state is not known.
+hakux_paused() {   # -> 0 paused, 1 not paused, 2 unknown
+    local v
+    v=$(ADB_RETRIES=1 adb_call "${ADB_QUICK_TIMEOUT:-10}" "pause menu read" shell \
+            "dumpsys activity top | grep -F 'PauseMenuOverlay{'; true" 2>/dev/null \
+        | tr -d '\r' | sed -n 's/.*PauseMenuOverlay{[0-9a-f]* \(.\).*/\1/p' | tr -d '\n')
+    case "$v" in *V*) return 0 ;; ?*) return 1 ;; *) return 2 ;; esac
+}
+fg_unpaused() {   # after the dialog BACK, hakuX in front: 0 when it is not paused
+    hakux_paused; case $? in
+        1) return 0 ;;
+        2) echo "FOREGROUND: hakuX's pause menu state is unreadable after the BACK"; return 1 ;;
+    esac
+    echo "FOREGROUND: hakuX is paused (a BACK reached it after the dialog closed); one BACK resumes it"
+    a shell input keyevent KEYCODE_BACK >/dev/null 2>&1
+    sleep "$FG_POLL_S"
+    hakux_paused; case $? in
+        1) echo "FOREGROUND: hakuX resumed"; return 0 ;;
+        0) echo "FOREGROUND: hakuX is still paused after one BACK" ;;
+        *) echo "FOREGROUND: hakuX's pause menu state is unreadable after the resume BACK" ;;
+    esac
+    return 1
+}
 fg_abort() {   # <hakux_in_front line>
     local pkg="${1#not-foreground: }"; pkg="${pkg%% *}"
     echo "ROUTE ABORTED: not foreground ($pkg)"
@@ -504,7 +569,7 @@ fg_abort() {   # <hakux_in_front line>
     : > "$FG_FLAG"
 }
 fg_wait() {
-    local st rc last="" deadline remedy=0
+    local st rc last="" deadline remedy=0 back=0 pkg
     if [ -n "${ROUTE_DRY:-}" ]; then
         echo "FOREGROUND: not checked: ROUTE_DRY, the route sends no input"
         return 0
@@ -512,8 +577,22 @@ fg_wait() {
     deadline=$(( $(date +%s) + ${FG_WAIT_S:-30} ))
     while :; do
         st=$(hakux_in_front "$SERIAL"); rc=$?
-        if [ "$rc" = 0 ]; then echo "$st"; return 0; fi
+        if [ "$rc" = 0 ]; then
+            echo "$st"
+            [ "$back" = 0 ] && return 0
+            fg_unpaused && return 0
+            fg_abort "not-foreground: hakuX-paused (its pause menu may hold input after the USB dialog BACK)"
+            echo "ROUTE NOT PLAYED: hakuX's pause state after the USB dialog BACK is not known clear; no route input was sent"
+            return 1
+        fi
         [ "$st" = "$last" ] || echo "FOREGROUND: waiting: $st"; last="$st"
+        if [ "$rc" = 1 ] && [ "$back" = 0 ] && pkg=$(usb_dialog "$st"); then
+            back=1
+            a shell input keyevent KEYCODE_BACK >/dev/null 2>&1
+            echo "FOREGROUND: dismissed $pkg dialog (KEYCODE_BACK)"
+            sleep "$FG_POLL_S"
+            continue
+        fi
         if [ "$(date +%s)" -ge "$deadline" ]; then
             [ "$remedy" = 1 ] && break
             remedy=1

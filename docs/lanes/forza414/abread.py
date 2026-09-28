@@ -21,6 +21,10 @@ names. One column per logcat, so an A/B is `abread.py A/logcat.txt B/logcat.txt`
   <caller>.fin/.fence/.pre/.dl/.ms   [sdcall], summed over the window and
            divided by the guest frames it covers (per frame)
   su_upl, su_deferred   the same, per frame
+  why.*    [sdcall] why=: su_upl's bindings by the setter of upload_pending
+           (new, inv, stale, hoff, cpuw, gap, oth), per frame
+  clr, clrfull   of those, the ones on a clearing update, and the ones that
+           clear then covered whole (SurfaceBinding.cleared), per frame
 
 Medians are over lines; [sdcall] is a sum over frames, because a caller that
 is absent from a line prints nothing rather than a zero.
@@ -32,6 +36,8 @@ import sys
 
 TS = re.compile(r'^\d\d-\d\d (\d\d):(\d\d):(\d\d)\.(\d\d\d) ')
 CALL = re.compile(r'(\w+)=fin(\d+)/fence(\d+)/pre(\d+)/dl(\d+)/([\d.]+)ms')
+WHY = ('new', 'inv', 'stale', 'hoff', 'cpuw', 'gap', 'oth')
+WHY_RE = re.compile(r'why=' + '/'.join(w + r'(\d+)' for w in WHY))
 
 
 def secs(line):
@@ -59,7 +65,7 @@ def read(path, lo, hi, bucket):
     med = {}
     calls = {}
     frames = 0
-    su = {'su_upl': 0, 'su_deferred': 0}
+    su = {'su_upl': 0, 'su_deferred': 0, 'clr': 0, 'clrfull': 0}
     su_seen = set()
     per = {}
 
@@ -128,11 +134,16 @@ def read(path, lo, hi, bucket):
                 c[2] += int(pre)
                 c[3] += int(dl)
                 c[4] += float(ms)
-            for k in su:
-                v = num(r'%s=(\d+)' % k, l)
+            for k in ('su_upl', 'su_deferred', 'clr', 'clrfull'):
+                v = num(r' %s=(\d+)' % k, l)
                 if v is not None:
                     su[k] += int(v)
                     su_seen.add(k)
+            m = WHY_RE.search(l)
+            if m:
+                for w, v in zip(WHY, m.groups()):
+                    su['why.' + w] = su.get('why.' + w, 0) + int(v)
+                    su_seen.add('why.' + w)
     out = {}
     for k, v in med.items():
         out[k] = (statistics.median(v), min(v), max(v), len(v))
@@ -198,7 +209,7 @@ def main(argv):
                 c = r['_calls'].get(n, [0, 0, 0, 0, 0.0])
             row.append('fin %.3f fence %.3f pre %.3f dl %.2f ms %.2f' % tuple(x / f for x in c))
         print('%-8s %s' % (n, '   |   '.join(row)))
-    for k in ('su_upl', 'su_deferred'):
+    for k in ('su_upl', 'su_deferred') + tuple('why.' + w for w in WHY) + ('clr', 'clrfull'):
         row = []
         for r in runs:
             f = r['_frames'] or 1
