@@ -3225,10 +3225,12 @@ All 17 checks pass. The harness's sysfs group has 18 checks of its own.
   (5873610104).
   - My extract command's `ls` would have missed eight of them: they sit under
     `1-...`, not `0-0-x-...`. hostops fixed that.
-  - **4130875 (Crimson, default) could not be replayed.** Its `start` sample
-    is unread (`- start - -`), so the extract has no time base for it, though
-    its xo series is intact. As registered, it drops and L3 scales to 5 of 7.
-    I asked for it again, keyed on the host clock `t`.
+  - **4130875 (Crimson, default) came later.** Its `start` sample is unread
+    (`- start - -`), so the first extract had no time base for it. hostops
+    re-extracted it keyed on the host clock `t` (16:31Z, 5874270083). Its
+    first reading after `start` is at 75 s, so its replay starts there, which
+    is conservative by those 75 s. With it, all eight paused runs are
+    scored.
 - **The run:** `thermal557_replay.py EXTRACT --score --history`, at the
   registered defaults. The feed is causal, so each sample arrives about 30 s
   late.
@@ -3236,6 +3238,7 @@ All 17 checks pass. The harness's sysfs group has 18 checks of its own.
 | run | title, regimen | xo at start | t78 | T_eq > 72 first | first step | lead | steps before t78 |
 |---|---|---|---|---|---|---|---|
 | 4130828 | Crimson, max | 63.7 | 365 s | 61 s | 121 s | +244 s | 3 |
+| 4130875 | Crimson, default | 65.7 at 75 s | 442 s | 129 s | 189 s | +253 s | 3 |
 | 4130912 | GTA, default | 61.9 | 355 s | 63 s | 123 s | +232 s | 2 |
 | 4130959 | GTA, max | 63.5 | 288 s | 60 s | 120 s | +168 s | 2 |
 | 4130999 | MechAssault 2, max | 64.7 | 287 s | 59 s | 119 s | +168 s | 2 |
@@ -3245,9 +3248,9 @@ All 17 checks pass. The harness's sysfs group has 18 checks of its own.
 | 1257857, pilot | GTA, default | 57.3 | never (max 74.4) | 72 s | 132 s | | 3 steps in 460 s |
 | hostops-810152 | MechAssault 2, max | 47.1 | never (plateau 74.2) | 76 s | 136 s | | 4 steps by 496 s |
 
-- **L1 HOLDS** (high): the first step-down comes before t78 on all seven.
+- **L1 HOLDS** (high): the first step-down comes before t78 on all eight.
 - **L2 HOLDS** (moderate): every lead is at least 60 s. The smallest is 168 s.
-- **L3 HOLDS** (low): all seven have two or more steps before t78.
+- **L3 HOLDS** (low): all eight have two or more steps before t78.
 - **L4a is KILLED** (moderate). On hostops-810152, `T_eq` peaks at 93.76 C,
   19.6 C above the plateau the run actually reached.
   - It overshoots in the first minutes of a cool start. In the history,
@@ -3302,12 +3305,19 @@ run as a known risk.
   it matters more than tau. A title whose equilibrium sits between 72 and
   78 C steps down to the floor although it would never pause.
 
-### Audit pass 1: five LOWs, all five fixed
+### The audits' five LOWs, all five fixed in the follow-up to #560
 
-Pass 1 (8727eaaae2, `docs/audits/2026-09-28-claude/docs-tooling-agentic-coding-u152m1-pass1.md`)
-found no HIGH or MEDIUM. I fixed all five LOWs rather than defer them. Each
-fix has a check that goes red when the fix is reverted: four mutants, each
-killed, run in a scratch copy and not committed.
+- **Pass 1** (8727eaaae2,
+  `docs/audits/2026-09-28-claude/docs-tooling-agentic-coding-u152m1-pass1.md`)
+  found no HIGH or MEDIUM, and five LOWs.
+- **Pass 2** (928182cbc2) found #560 clean. It deferred the five LOWs to the
+  hook PR, with LOW-1 and LOW-2 to be fixed before that PR's device run.
+- **#560 folded as audited** (3a5d79e3).
+- **These fixes** were finished before pass 2 landed, and follow #560 in
+  their own PR. Pushing them onto the audited, fold-ready head would have put
+  unaudited code there. The hook PR therefore starts with all five closed.
+- **Each fix has a check** that goes red when the fix is reverted: four
+  mutants, each killed, run in a scratch copy and not committed.
 - **LOW-1, the `off:` line came on the first tick,** before any gfps line.
   It now waits one status interval, as the config line does: state 2,
   "off with its line still to log". The harness checks that there is no
