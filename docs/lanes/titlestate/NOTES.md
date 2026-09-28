@@ -674,3 +674,44 @@ PR #501 carries only these notes, so it is marked ready and folds now. The
 GoldenEye save (pull, `titlestate.py harvest`, `saves.py verify`) comes as a
 new PR when hostops resumes this lane for item 10. Nothing on the device
 changed since attempt 9.
+
+## Attempt 11 (resumed 2026-09-27 17:31 PDT): GoldenEye's save does not exist at control
+
+Attempt 10 finished: PR #501 went ready and folded at 17:30 PDT. What was left
+was board request item 10, the Nova pull, which waited on its battery. At
+17:31 hostops said the Nova was ready (71%, USB, nothing running, the app
+stopped). `hold/nova` was the automatic `battery-hostops` hold, which gates
+only the dispatcher, so I did not take or touch it. I ran `pullnova.sh`'s
+`pull` phase without its own-hold check (`scratch/pullnova_nohold.sh`), in
+the foreground.
+
+| step | measured |
+|---|---|
+| device `md5sum` | 14 s |
+| `adb pull`, 5,538,054,144 B | 181 s, 29.5 MB/s |
+| host md5 | matches (`ec708fb4...`) |
+
+Host copy: `~/hakux-work/titlestate-pull/nova-hdd-20260928T003154Z.img`.
+The Nova eeprom md5 is still `7eb04a87...`.
+
+**What the disk holds for 4541005D:** only UDATA metadata, `TitleMeta.xbx`,
+`TitleImage.xbx` and `SaveImage.xbx` (3 files, 14,640 B), with no save
+directory and an empty TDATA. `saves.py pull` of those files gives
+`e7c6806bb0a9` from this image and from the 09:58 image read before the run,
+so the run did not change them. `saves.py list` of the whole E: is the same
+line for line in both images.
+
+The run made PLAYER1 and reached player control, and its flush was
+confirmed (attempt 9's table). So GoldenEye: Rogue Agent does not write its
+profile when the profile is created or when control starts. It writes it
+later, probably at a mission checkpoint. I recorded it as **no-save** in
+`nova.json`, run `0-0-x-1790539523-titlestate-1846315`, with that evidence.
+No save id was invented. Every routed title now has either a save or a
+no-save record.
+
+- Do not read "flush confirmed" as "the profile is on disk". The flush
+  writes what the game has written, and some titles write nothing until
+  later. Pull the disk and read the files.
+- `pullnova.sh pull` refuses to run under another owner's hold. A hostops
+  battery hold gates only the dispatcher. When hostops grants the window,
+  run the pull without taking a hold. Do not write the hold by hand.
