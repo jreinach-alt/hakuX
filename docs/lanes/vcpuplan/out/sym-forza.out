@@ -1,0 +1,24 @@
+tid 26799: 58678 samples
+  jit        10685   18.2%
+  lookup      6899   11.8%
+  softmmu     2594    4.4%
+  fp          1350    2.3%
+  mmio         181    0.3%
+  translate    194    0.3%
+  loop        1590    2.7%
+  kernel     33369   56.9%
+  other       1816    3.1%
+
+top symbols outside the JIT
+  56.21%  kernel    *[kernel.kallsyms][+ffffffd127e3e364]  [[kernel.kallsyms]]
+   4.37%  lookup    tb_lookup  [libxemu.so]
+   3.09%  lookup    qht_lookup_custom  [libxemu.so]
+   2.79%  lookup    helper_lookup_tb_ptr  [libxemu.so]
+   2.25%  loop      cpu_exec_loop  [libxemu.so]
+   1.49%  softmmu   mem_access_callback_address_matches  [libxemu.so]
+   1.00%  lookup    tb_lookup_cmp  [libxemu.so]
+   0.90%  fp        helper_mulss  [libxemu.so]
+   0.53%  softmmu   probe_access_internal  [libxemu.so]
+   0.47%  softmmu   tlb_reset_dirty  [libxemu.so]
+   0.47%  softmmu   do_ld4_mmu  [libxemu.so]
+   0.40%  fp        helper_subss  [libxemu.so]
