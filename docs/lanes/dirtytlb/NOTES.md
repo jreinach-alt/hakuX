@@ -76,4 +76,13 @@ What the counts would point to:
 
 ## Runs
 
-(pending: devices on battery holds, 2026-09-28 morning)
+Queued 2026-09-28 ~12:45Z behind the battery holds (docs/lanes/dirtytlb/queue.log):
+
+| request | title | device | arm |
+|---|---|---|---|
+| 1-1790599436-lane.dirtytlb-41378 | Crimson Skies | thor | B 111c7fea74 |
+| 1-1790599437-lane.dirtytlb-41484 | Crimson Skies | thor | A 9d777502fa |
+| 1-1790599438-lane.dirtytlb-41557 | Blinx | nova | B 111c7fea74 |
+| 1-1790599438-lane.dirtytlb-41609 | Blinx | nova | A 9d777502fa |
+
+The pixel arm is the arms job's (dirtytlb-counter-pixels.json).
