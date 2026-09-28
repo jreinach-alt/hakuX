@@ -4448,7 +4448,7 @@ no_suites = "A PERFORMANCE/POWER DEFECT (host spin-waits and display refresh). N
 status = "open"
 dispatch_state = "blocked"
 blocker_tested = "confirmed 2026-09-28T01:27:49Z: [lane.pacing] row on origin/board."
-blocked_on = "IN FLIGHT (lane.local 2026-09-28T01:27:49Z): lane.pacing holds it (briefs/pacing.md). The draw.c sched_yield waits wait for lane.forza414 to release vk/draw.c."
+blocked_on = "IN FLIGHT (lane.local 2026-09-28T01:27:49Z): lane.pacing holds it (briefs/pacing.md). PR #529 folded (d054c1c731). vk/draw.c LENT from lane.forza414 at 2026-09-28T18:30Z (hostops): the two sched_yield waits go on a second PR, lane/pacing-spin."
 status_note = "FILED 2026-09-28T01:27:49Z by lane.local from the thermal/perf engineering review (lanelocal-scratch/thermal-review.md, levers 3-4): XEMU_OPT_FRAME_LIMITER_SPIN=1 (ui/xemu.c:65, spin at :1890); sched_yield loops vk/draw.c:3713, :3778; Nova min_refresh_rate=120 with hakuX in front; vsync pref default false (xemu_android.cpp:915)."
 impact_px = 0
 impact_onestep_px = 0
