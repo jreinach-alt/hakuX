@@ -1049,6 +1049,10 @@ found:
  *          with no hit changed nothing: its cost bought nothing this time.
  *   v      walks on the vCPU thread (all sites; [tlb68] rd, not rdo)
  *   dra, dx      DIRECT's return address, and calls from any other one
+ *   ovh    the counter's own cost: ns/n over the walks it timed, one in 64
+ *          (two clock reads around rdc_account(); the reads' own cost is in
+ *          it, so it is an upper bound on the untimed calls)
+ *   tk     the previous line's own cost in us, snprintf and log included
  *   tm     pages whose dirty bits were cleared but which the walk did not
  *          cover. tlb_reset_dirty_range_all() rounds start down to a page
  *          and passes length unchanged (as upstream does), so a range that
@@ -1091,6 +1095,8 @@ static uint64_t rdc_h[RDC_NSITE];   /* entries the walks set TLB_NOTDIRTY on */
 static uint64_t rdc_v;           /* walks on the vCPU thread, all sites */
 static uint64_t rdc_dx;          /* DIRECT walks from a second return address */
 static uint64_t rdc_tm;          /* pages cleared that the walk did not cover */
+static uint64_t rdc_ovh_ns, rdc_ovh_n;   /* timed rdc_account() calls */
+static __thread unsigned rdc_k;
 static uintptr_t rdc_ra0;        /* the first DIRECT return address seen */
 static unsigned rdc_frame0;      /* frame_count at the last line */
 
@@ -1098,14 +1104,15 @@ static void rdc_tick(void)
 {
     static uint64_t p_n[RDC_NSITE], p_ns[RDC_NSITE], p_pg[RDC_NSITE];
     static uint64_t p_h[RDC_NSITE];
-    static uint64_t p_v, p_dx, p_tm, p_rdo, p_rdons;
+    static uint64_t p_v, p_dx, p_tm, p_rdo, p_rdons, p_ovns, p_ovn;
+    static int64_t tk_ns;   /* the previous line's own cost */
     static int64_t p_clk, p_tcpu;
     static int p_tid;
     unsigned f = qatomic_read(&g_nv2a_stats.frame_count);
     unsigned f0 = qatomic_read(&rdc_frame0);
     char buf[512], tcpu_s[24];
     int off, tid;
-    uint64_t rdo, rdons, v, dx, tm;
+    uint64_t rdo, rdons, v, dx, tm, ovns, ovn;
     int64_t clk, tcpu;
     struct timespec ts;
 
@@ -1139,6 +1146,8 @@ static void rdc_tick(void)
         p_v = qatomic_read(&rdc_v);
         p_dx = qatomic_read(&rdc_dx);
         p_tm = qatomic_read(&rdc_tm);
+        p_ovns = qatomic_read(&rdc_ovh_ns);
+        p_ovn = qatomic_read(&rdc_ovh_n);
         p_rdo = qatomic_read(&hakux_tlb68_rdo);
         p_rdons = qatomic_read(&hakux_tlb68_rdo_ns);
         p_clk = clk;
@@ -1149,6 +1158,8 @@ static void rdc_tick(void)
     v = qatomic_read(&rdc_v);
     dx = qatomic_read(&rdc_dx);
     tm = qatomic_read(&rdc_tm);
+    ovns = qatomic_read(&rdc_ovh_ns);
+    ovn = qatomic_read(&rdc_ovh_n);
     off = snprintf(buf, sizeof(buf),
                    "[rdc] f=%u dt=%" PRId64 " tid=%d tcpu=%s"
                    " rdo=%" PRIu64 " rdous=%" PRIu64,
@@ -1174,18 +1185,23 @@ static void rdc_tick(void)
     }
     if (off < (int)sizeof(buf) - 64) {
         snprintf(buf + off, sizeof(buf) - off,
-                 " v=%" PRIu64 " dra=%" PRIdPTR " dx=%" PRIu64 " tm=%" PRIu64,
+                 " v=%" PRIu64 " dra=%" PRIdPTR " dx=%" PRIu64 " tm=%" PRIu64
+                 " ovh=%" PRIu64 "/%" PRIu64 " tk=%" PRId64,
                  v - p_v,
                  qatomic_read(&rdc_ra0)
                      ? (intptr_t)(qatomic_read(&rdc_ra0) -
                                   (uintptr_t)&tlb_reset_dirty_range_all)
                      : (intptr_t)0,
-                 dx - p_dx, tm - p_tm);
+                 dx - p_dx, tm - p_tm, ovns - p_ovns, ovn - p_ovn,
+                 tk_ns / 1000);
     }
     p_v = v;
     p_dx = dx;
     p_tm = tm;
+    p_ovns = ovns;
+    p_ovn = ovn;
     RDC_LOG("%s", buf);
+    tk_ns = get_clock() - clk;
 }
 
 static void rdc_account(ram_addr_t span, ram_addr_t length)
@@ -1213,7 +1229,6 @@ static void rdc_account(ram_addr_t span, ram_addr_t length)
             qatomic_add(&rdc_dx, 1);
         }
     }
-    rdc_tick();
 }
 #endif
 
@@ -1235,9 +1250,21 @@ void tlb_reset_dirty_range_all(ram_addr_t start, ram_addr_t length)
     CPU_FOREACH(cpu) {
         tlb_reset_dirty(cpu, start1, length);
 #ifdef XBOX
-        rdc_account(end - start, length);
+        if (!current_cpu && !(++rdc_k & 63)) {
+            int64_t t = get_clock();
+            rdc_account(end - start, length);
+            qatomic_add(&rdc_ovh_ns, get_clock() - t);
+            qatomic_add(&rdc_ovh_n, 1);
+        } else {
+            rdc_account(end - start, length);
+        }
 #endif
     }
+#ifdef XBOX
+    if (!current_cpu) {
+        rdc_tick();
+    }
+#endif
 }
 
 #ifdef XBOX
