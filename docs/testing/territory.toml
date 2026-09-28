@@ -58,7 +58,6 @@ files = ["docs/testing/ab_compare.py",
          "docs/testing/check_coverage.py",
          "docs/testing/check_territory.py",
          "docs/testing/idle-watchdog.sh",
-         "docs/testing/request.sh",
          "docs/testing/sweep_agreement.py",
          "docs/testing/dispatcher.sh",
          "docs/testing/sweep_diff.py"]
@@ -308,3 +307,9 @@ files = ["accel/tcg/tb-maint.c", "accel/tcg/cputlb.c", "accel/**/*.h",
          "hw/xbox/nv2a/pgraph/vk/surface-compute.c",
          "hw/xbox/nv2a/pramdac.c",
          "include/exec/**"]
+
+[lane.reqprio]
+issues = [432]
+files = ["docs/testing/request.sh",
+         "docs/testing/jobs/selftest.d/99-request-release-prio.sh"]
+note = "Created by hostops 2026-09-27 19:55 PDT. request.sh LENT from lane.toolsmith (return it to that row at retirement), as for lane.pilotgate. Why: request.sh gives the release `1-` priority only when the caller exports HAKUX_RELEASE_PRIO, so lanes queueing directly with request.sh got plain ids for 0.5/fps-focus work; 11 Nova requests (#474 #525 #526) waited 60-73 min behind later-queued work. Brief: briefs/reqprio.md."
