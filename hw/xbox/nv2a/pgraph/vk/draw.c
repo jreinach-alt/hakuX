@@ -20,6 +20,8 @@
 #include "qemu/osdep.h"
 #include "qemu/fast-hash.h"
 #include "qemu/error-report.h"
+#include "qemu/processor.h"
+#include "qemu/timer.h"
 #include "renderer.h"
 #include "system/physmem.h"
 #include "ui/xemu-settings.h"
@@ -3449,6 +3451,183 @@ void pgraph_vk_flush_all_frames(PGRAPHState *pg)
     }
 }
 
+/*
+ * Waiting for the render thread to submit a frame slot (#526). Two places in
+ * pgraph_vk_finish wait until the render thread has run vkQueueSubmit for a
+ * slot this thread queued: the deferred finish, and the frame rotation when
+ * the next slot is still queued. Both used to loop on sched_yield(), which
+ * returns at once on a core with nothing else to run, so the wait was a spin
+ * at full clock for as long as the render thread's backlog took to drain.
+ *
+ * Now the wait polls for up to RWAIT_SPIN_NS with cpu_relax(), which covers
+ * the waits that end quickly, then blocks on the render thread's idle_event.
+ * The render thread sets that event after every command it completes
+ * (render_thread.c), so the waiter wakes once per drained command and checks
+ * again; the finish it waits for is still queued, so a set always follows.
+ * Resetting the event here can swallow a set that
+ * pgraph_vk_render_thread_wait_idle() on another thread has not observed yet,
+ * so the event is set again on the way out. An extra set costs that caller
+ * one more look at its queue. HAKUX_RENDER_WAIT=yield selects the old loop
+ * for an A/B on one binary.
+ *
+ * The [rwait526] line (tag hakuX-lane, every 10 s) carries what judges it:
+ * per site, how many waits found the slot already submitted, ended inside the
+ * poll, or blocked; the wall time of the waits (10 us bins); and this
+ * thread's CPU time, in total and inside the waits.
+ */
+#define RWAIT_SPIN_NS 30000
+#define RWAIT_BIN_NS 10000
+#define RWAIT_BINS 200          /* 0-2 ms; one more bin holds the rest */
+#define RWAIT_WINDOW_NS (10 * NANOSECONDS_PER_SECOND)
+
+enum { RWAIT_BLOCK, RWAIT_YIELD };
+enum { RWAIT_DEFERRED, RWAIT_ROTATE, RWAIT_SITES };
+
+static struct {
+    int mode;
+    int64_t t0_ns, thr_cpu0_ns, wait_cpu_ns;
+    unsigned int flips0;
+    unsigned int calls[RWAIT_SITES], waits[RWAIT_SITES];
+    unsigned int spun[RWAIT_SITES], blocked[RWAIT_SITES], wakes[RWAIT_SITES];
+    int64_t wait_ns[RWAIT_SITES], wait_max_ns[RWAIT_SITES];
+    unsigned int hist[RWAIT_SITES][RWAIT_BINS + 1];
+} rwait526 = { .mode = -1 };
+
+static int rwait_mode(void)
+{
+    if (rwait526.mode < 0) {
+        const char *env = getenv("HAKUX_RENDER_WAIT");
+        rwait526.mode = env && !strcmp(env, "yield") ? RWAIT_YIELD
+                                                     : RWAIT_BLOCK;
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-lane",
+                            "[rwait526] render wait mode=%s env=%s spin_us=%d",
+                            rwait526.mode == RWAIT_YIELD ? "yield" : "block",
+                            env ? env : "(unset)", RWAIT_SPIN_NS / 1000);
+#endif
+    }
+    return rwait526.mode;
+}
+
+static int64_t rwait_thread_cpu_ns(void)
+{
+    struct timespec ts;
+    if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts) != 0) {
+        return 0;
+    }
+    return ts.tv_sec * NANOSECONDS_PER_SECOND + ts.tv_nsec;
+}
+
+#ifdef __ANDROID__
+static double rwait_pct_us(int site, double q)
+{
+    unsigned int n = rwait526.waits[site];
+    unsigned int want = (unsigned int)(q * n + 0.999999), acc = 0;
+    for (int i = 0; i <= RWAIT_BINS && n; i++) {
+        acc += rwait526.hist[site][i];
+        if (acc >= want) {
+            /* the bin's upper edge: a bound on the percentile, not a value */
+            return (double)(i + 1) * RWAIT_BIN_NS / 1000.0;
+        }
+    }
+    return -1.0;
+}
+#endif
+
+static void rwait_report(int64_t now)
+{
+    int64_t thr = rwait_thread_cpu_ns();
+    unsigned int flips = g_nv2a_stats.frame_count;
+
+#ifdef __ANDROID__
+    if (rwait526.t0_ns) {
+        char site_txt[RWAIT_SITES][192];
+        for (int s = 0; s < RWAIT_SITES; s++) {
+            snprintf(site_txt[s], sizeof(site_txt[s]),
+                     "calls=%u waits=%u spun=%u blocked=%u wakes=%u "
+                     "wait_ms=%.2f p50_us=%.0f p99_us=%.0f max_us=%.0f",
+                     rwait526.calls[s], rwait526.waits[s], rwait526.spun[s],
+                     rwait526.blocked[s], rwait526.wakes[s],
+                     rwait526.wait_ns[s] / 1e6, rwait_pct_us(s, 0.50),
+                     rwait_pct_us(s, 0.99), rwait526.wait_max_ns[s] / 1e3);
+        }
+        __android_log_print(
+            ANDROID_LOG_INFO, "hakuX-lane",
+            "[rwait526] mode=%s s=%.2f flips=%u thr_cpu_ms=%.1f "
+            "wait_cpu_ms=%.2f | deferred %s | rotate %s",
+            rwait_mode() == RWAIT_YIELD ? "yield" : "block",
+            (now - rwait526.t0_ns) / 1e9, flips - rwait526.flips0,
+            (thr - rwait526.thr_cpu0_ns) / 1e6, rwait526.wait_cpu_ns / 1e6,
+            site_txt[RWAIT_DEFERRED], site_txt[RWAIT_ROTATE]);
+    }
+#endif
+    rwait526.t0_ns = now;
+    rwait526.thr_cpu0_ns = thr;
+    rwait526.flips0 = flips;
+    rwait526.wait_cpu_ns = 0;
+    memset(rwait526.calls, 0, sizeof(rwait526.calls));
+    memset(rwait526.waits, 0, sizeof(rwait526.waits));
+    memset(rwait526.spun, 0, sizeof(rwait526.spun));
+    memset(rwait526.blocked, 0, sizeof(rwait526.blocked));
+    memset(rwait526.wakes, 0, sizeof(rwait526.wakes));
+    memset(rwait526.wait_ns, 0, sizeof(rwait526.wait_ns));
+    memset(rwait526.wait_max_ns, 0, sizeof(rwait526.wait_max_ns));
+    memset(rwait526.hist, 0, sizeof(rwait526.hist));
+}
+
+/* Return once the render thread has submitted `frame`. */
+static void wait_frame_submitted(PGRAPHVkState *r, int frame, int site)
+{
+    int64_t t0 = get_clock();
+
+    if (!rwait526.t0_ns || t0 - rwait526.t0_ns >= RWAIT_WINDOW_NS) {
+        rwait_report(t0);
+    }
+    rwait526.calls[site]++;
+    if (qatomic_read(&r->frame_submitted[frame])) {
+        return;
+    }
+
+    int64_t cpu0 = rwait_thread_cpu_ns();
+
+    if (rwait_mode() == RWAIT_YIELD || r->is_render_thread_context) {
+        while (!qatomic_read(&r->frame_submitted[frame])) {
+            sched_yield();
+        }
+    } else {
+        bool done = false;
+        while (get_clock() - t0 < RWAIT_SPIN_NS) {
+            if (qatomic_read(&r->frame_submitted[frame])) {
+                done = true;
+                break;
+            }
+            cpu_relax();
+        }
+        if (done) {
+            rwait526.spun[site]++;
+        } else {
+            QemuEvent *ev = &r->render_thread.idle_event;
+            rwait526.blocked[site]++;
+            while (true) {
+                qemu_event_reset(ev);
+                if (qatomic_read(&r->frame_submitted[frame])) {
+                    break;
+                }
+                qemu_event_wait(ev);
+                rwait526.wakes[site]++;
+            }
+            qemu_event_set(ev);
+        }
+    }
+
+    int64_t dt = get_clock() - t0;
+    rwait526.wait_cpu_ns += rwait_thread_cpu_ns() - cpu0;
+    rwait526.waits[site]++;
+    rwait526.wait_ns[site] += dt;
+    rwait526.wait_max_ns[site] = MAX(rwait526.wait_max_ns[site], dt);
+    rwait526.hist[site][MIN(dt / RWAIT_BIN_NS, RWAIT_BINS)]++;
+}
+
 static void flush_reorder_window_internal(NV2AState *d);
 static void flush_draw_queue_internal(NV2AState *d);
 
@@ -3707,12 +3886,8 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
             pgraph_vk_render_thread_enqueue(r, cmd);
 
             if (deferred) {
-                /* Spin-wait for render thread to complete vkQueueSubmit.
-                 * Faster than QemuEvent (no futex/eventfd syscall overhead).
-                 * Typically completes in <100μs. */
-                while (!qatomic_read(&r->frame_submitted[deferred_frame])) {
-                    sched_yield();
-                }
+                /* Wait for the render thread to complete vkQueueSubmit. */
+                wait_frame_submitted(r, deferred_frame, RWAIT_DEFERRED);
             }
 
             if (!deferred) {
@@ -3772,13 +3947,10 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
 
             /* If the next frame slot was enqueued for deferred submission
              * but the render thread hasn't completed vkQueueSubmit yet,
-             * spin-wait until it does. With 3 frame slots this rarely
+             * wait until it does. With 3 frame slots this rarely
              * triggers since there's 2 frames of pipeline headroom. */
-            if (r->frame_enqueued[next_frame] &&
-                !qatomic_read(&r->frame_submitted[next_frame])) {
-                while (!qatomic_read(&r->frame_submitted[next_frame])) {
-                    sched_yield();
-                }
+            if (r->frame_enqueued[next_frame]) {
+                wait_frame_submitted(r, next_frame, RWAIT_ROTATE);
             }
             r->frame_enqueued[next_frame] = false;
 
