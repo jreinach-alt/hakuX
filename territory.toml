@@ -512,6 +512,11 @@ issues = ["413"]
 files = ["hw/xbox/nv2a/pgraph/profile.c", "docs/lanes/pipeline413/**", "docs/testing/predictions/pipeline413-*.json"]
 note = "STARTED (hostops 2026-09-28T04:58Z), briefs/pipeline413.md: #413 (0.5, fps-focus). lane.doa413c (PR #536) measured the DOA Ultimate scene-load stall as synchronous Turnip pipeline compilation on the PFIFO thread (12.9 s cold, 3.1 s warm). This lane logs the existing shader_stats counters on the hakuX-perf line (profile.c, LENT from [lane.remote], RETURN there at fold) and prices doa413c's fix options 2-4 from a cold Nova soak. QUEUED FOR draw.c (skip a pending pipeline in async mode): after lane.forza414 releases it, lane.pacing (#526) first, then #413's follow-up. compile_worker.c is in no row."
 
+[lane.suffixpr]
+issues = []
+files = ["docs/testing/fleet.py", "docs/testing/jobs/selftest.d/99-fleet-suffixed-pr.sh", "docs/lanes/suffixpr/**"]
+note = "STARTED (hostops 2026-09-28T13:00Z), briefs/suffixpr.md: harness defect, no issue. fleet.py open_lane_prs() maps lane/<name>-<suffix> to a lane <name>-<suffix>, so job.board retired [lane.sustain507] at 12:45Z while its PR #547 (lane/sustain507-levers) was open with cold-slot runs queued. Resolve suffixed heads to the longest matching row (then the worktree), like handback.sh lane_name(). fleet.py was unclaimed (not in [free], no row). Interim: host-tools/harness_health.py orphan-pr check."
+
 [lane.dirtytlb]
 issues = ["548"]
 files = ["system/physmem.c", "include/exec/ram_addr.h", "accel/tcg/cputlb.c", "docs/lanes/dirtytlb/**", "docs/testing/predictions/dirtytlb-*.json"]
