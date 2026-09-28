@@ -560,7 +560,117 @@ window fast-forwards `dispatch/bin`, then
   parser, and the dispatcher plays it with its own.
 - Do not put `flush` in a measured route: it pauses the title, and the
   verdict calls the rest of the window a hang.
+
+## Attempt 8 (resumed 2026-09-27 13:02 PDT): GoldenEye's save run is queued
+
+Why the previous session did not finish: it ended on a wait outside the
+session. The save route needed `flush` in the dispatcher's own `route.sh`,
+so it needed PR #496's fold and then a dispatcher update window. Both came:
+#496 folded as `795ea6b3af` at 13:00, and the window ran at 13:02.
+
+Checked before queuing, all at 13:03-13:05 PDT:
+
+| check | result |
+|---|---|
+| `dispatch/bin/titles/route.sh` against master's | the same file (sha256 `822d0000...`), `flush` included |
+| where the route text comes from | the request: `request.sh` reads `routes/goldeneye-ra.save.route` from the queuing tree and stores its text. `dispatch/bin/titles/` holds `route.sh` only |
+| `route.sh --check` on the save route | ok, 116 lines, ends `shot control`, `flush 20`, `wait 5`, `shot flushed` |
+| the route's length | 298.8 s of waits, plus 19 shots and the flush: about 330 s, inside 420 s |
+| requests of mine in `queue/`, `running/` | none |
+| holds | `hold/thor` (lane.titleroutes). None on the Nova |
+
+**Queued: `1790539523-titlestate-1846315`**, 13:05:23 PDT. Nova, 420 s,
+route `goldeneye-ra.save`, ref `8fde5c2f78`. It sorts below the 11 requests
+already in the queue (`0-0-x-`, then `1-`, then a bare epoch). Its estimate
+is 510 s, under the pilot gate.
+
+The ref is `8fde5c2f78` and not master's head because `builds/` has its APK
+and has none for `795ea6b3af`. The 6 files that differ between `8fde5c2f78`
+and master's head are all under `docs/`, so it is the same emulator and
+costs no build.
+
+The 23:30 titlebench run of the first-run route on the Nova
+(`y-1790481308-titlebench-2893125`) does not show that the route reaches
+control there: its 300 s ended the route at `wait 9.4`, after `shot fmv4`
+and before the look-right step. 420 s covers the whole route.
+
+### On resume, when the request has a result
+
+1. Read `run.log` for `flush: bdrv_flush_all completed after Ns`. The line
+   `flush NOT confirmed` means the disk may not hold the profile.
+2. Look at the route frames `profile-created`, `control` and `flushed`. The
+   route is timed, and the shader cache is cleared when the APK changes, so
+   the steps can land late. If `control` is not player control, the run
+   made whatever the frames show, not necessarily PLAYER1.
+3. Pull the Nova's disk between runs: `scratch/pullnova.sh take`, `pull`,
+   `release`. About 150 s.
+4. `saves.py list` on the image, then `titlestate.py harvest --device nova
+   --title-id 4541005D --image IMG --run 1790539523-titlestate-1846315`,
+   then `saves.py verify`.
+5. If the image has no save directory under `UDATA\4541005D`, record
+   what the frames showed and do not record a save.
+
+### Coverage at 13:15 PDT
+
+`scratch/cover8.py` reads the title ID in every `routes/*.route` header and
+looks it up in both devices' registry JSON. Of 34 route files, 30 name a
+title ID. GoldenEye: Rogue Agent's two routes are the only ones whose title
+has neither a save nor a no-save record. `gta-sa.route` writes its ID
+without parentheses, and the registry has it (54540082, no-save).
+`forza414.route`, `generic.route` and `survey.route` name no title.
+
+**Waiting** (PR #501): request `1790539523-titlestate-1846315` on the Nova.
+The signal is its directory in `dispatch/results/` with a `DONE` file.
+
+- Do not pick a ref for a save run by habit: look in `dispatch/builds/` for
+  an APK first. A docs-only fold has the emulator of the commit before it.
 - `flush` takes whole seconds only (a fractional timeout broke the
   integer poll count after one poll), and the "last step" rule runs from
   the FIRST flush, so input between two flushes is refused. Both are
   selftest rows in `selftest.d/99-title-state.sh` (pass-1 audit of #496).
+
+## Attempt 9 (resumed 15:04 PDT): the GoldenEye run made the profile; the pull waits on the Nova's battery
+
+Attempt 8 did not finish because it ended on a deliberate wait: request
+`1790539523-titlestate-1846315` sat 111 min behind fps-focus work on the
+Nova. hostops promoted it to `0-0-x-1790539523-titlestate-1846315`, and it
+finished at about 15:02 PDT.
+
+What the run shows (the "On resume" steps 1 and 2):
+
+| check | result |
+|---|---|
+| flush | `flush: bdrv_flush_all completed after 1s` (15:02:58), before the HOME step |
+| `kb-ok` | CREATE NEW PROFILE, name `PLAYER1`, OK highlighted |
+| `profile-created` | MAIN MENU, PLAYER1, Campaign highlighted |
+| `control` | first mission, in the aircraft: crosshair and the health arcs of the HUD. Player control |
+| end of soak | `ROUTE ABORTED: not foreground (org.es_de.frontend)` at 330 s of 420 s. That is the HOME step backgrounding the app after the flush, as designed. logcat also has `app entering background, flush requested` / `deferred bdrv_flush_all completed` at 15:03:00 |
+
+Step 3 (the pull) did not happen. At 15:05 PDT I took the Nova's hold while
+flip474's 300 s DOA run finished, and at 15:09:02 the Nova was idle, the app
+was stopped, and the battery read **21%** on USB power. `pullnova.sh` refuses
+below 30% (brief rule), so I released the hold at 15:09:03 with nothing read.
+
+**Waiting** (PR #501): board request item 10 in
+`dispatch/board-requests/titlestate.md`, a Nova pull window when it is idle,
+unheld and at 30% or more. On resume, run "On resume" steps 3 to 5 above
+unchanged: `pullnova.sh take` / `pull` / `release`, then `saves.py list`,
+`titlestate.py harvest --device nova --title-id 4541005D ... --run
+0-0-x-1790539523-titlestate-1846315` (the promoted id), and `saves.py verify`.
+
+- A request that is promoted gets a new id (`0-0-x-` prefix). Use the id in
+  `results/`, not the one `request.sh` printed.
+- Queue use drains the Nova faster than 500 mA charges it. Read the battery
+  before taking a hold, not after waiting out a run.
+
+## Attempt 10 (resumed 2026-09-28 00:20 UTC): PR #501 goes ready; the pull moves to its own PR
+
+Attempt 9 did not finish because it ended on a deliberate wait (board
+request item 10, a Nova pull window at 30% or more), with PR #501 still in
+draft. At this resume the Nova has a `battery-hostops` hold (13% < 15%,
+lifted at 80% on the 500 mA port), so the pull still cannot run.
+
+PR #501 carries only these notes, so it is marked ready and folds now. The
+GoldenEye save (pull, `titlestate.py harvest`, `saves.py verify`) comes as a
+new PR when hostops resumes this lane for item 10. Nothing on the device
+changed since attempt 9.
