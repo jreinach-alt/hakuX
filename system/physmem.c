@@ -1040,10 +1040,22 @@ found:
  * LOGCAT_SPEC), written by whichever thread's walk first sees the frame
  * counter cross the window. Every field is this window's, not cumulative:
  *   f      guest flips in the window (>= 60; more when no walk fell due)
+ *   dt     the window's wall ms
+ *   tid, tcpu    the printing thread, and its CPU ms over the window (see
+ *          rdc_tick; the render thread's when it prints every line)
  *   rdo, rdous   [tlb68]'s rdo and rdous over the same window
- *   <site>=calls/us/pages   walks, walk time and pages cleared per site
+ *   <site>=calls/us/pages/hits   walks, walk time, pages cleared, and TLB
+ *          entries the walks re-armed (set TLB_NOTDIRTY on), per site. A walk
+ *          with no hit changed nothing: its cost bought nothing this time.
  *   v      walks on the vCPU thread (all sites; [tlb68] rd, not rdo)
  *   dra, dx      DIRECT's return address, and calls from any other one
+ *   tm     pages whose dirty bits were cleared but which the walk did not
+ *          cover. tlb_reset_dirty_range_all() rounds start down to a page
+ *          and passes length unchanged (as upstream does), so a range that
+ *          starts mid-page and ends in a later page within the same offset
+ *          walks one page short: that page keeps a writable TLB entry while
+ *          its bits read clean, and the guest's next stores to it through
+ *          that entry set no dirty bit. Counted, not changed (#548).
  */
 #include "hw/xbox/nv2a/debug.h"
 #ifdef __ANDROID__
@@ -1075,36 +1087,58 @@ extern uint64_t hakux_tlb68_rdo, hakux_tlb68_rdo_ns;   /* accel/tcg/cputlb.c */
 static __thread int rdc_site = RDC_OTHER;
 static __thread uintptr_t rdc_ra;
 static uint64_t rdc_n[RDC_NSITE], rdc_ns[RDC_NSITE], rdc_pg[RDC_NSITE];
+static uint64_t rdc_h[RDC_NSITE];   /* entries the walks set TLB_NOTDIRTY on */
 static uint64_t rdc_v;           /* walks on the vCPU thread, all sites */
 static uint64_t rdc_dx;          /* DIRECT walks from a second return address */
+static uint64_t rdc_tm;          /* pages cleared that the walk did not cover */
 static uintptr_t rdc_ra0;        /* the first DIRECT return address seen */
 static unsigned rdc_frame0;      /* frame_count at the last line */
 
 static void rdc_tick(void)
 {
     static uint64_t p_n[RDC_NSITE], p_ns[RDC_NSITE], p_pg[RDC_NSITE];
-    static uint64_t p_v, p_dx, p_rdo, p_rdons;
-    static int64_t p_clk;
+    static uint64_t p_h[RDC_NSITE];
+    static uint64_t p_v, p_dx, p_tm, p_rdo, p_rdons;
+    static int64_t p_clk, p_tcpu;
+    static int p_tid;
     unsigned f = qatomic_read(&g_nv2a_stats.frame_count);
     unsigned f0 = qatomic_read(&rdc_frame0);
-    char buf[512];
-    int off;
-    uint64_t rdo, rdons, v, dx;
-    int64_t clk;
+    char buf[512], tcpu_s[24];
+    int off, tid;
+    uint64_t rdo, rdons, v, dx, tm;
+    int64_t clk, tcpu;
+    struct timespec ts;
 
     if (f - f0 < 60 || qatomic_cmpxchg(&rdc_frame0, f0, f) != f0) {
         return;
     }
     clk = get_clock();
+    /*
+     * tcpu: this thread's CPU time over the window, which is the render
+     * thread's when the render thread printed both this line and the last
+     * (tid says which; "-" when they differ, since then it is no thread's).
+     */
+    tid = qemu_get_thread_id();
+    clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts);
+    tcpu = ts.tv_sec * NANOSECONDS_PER_SECOND + ts.tv_nsec;
+    if (p_clk && tid == p_tid) {
+        snprintf(tcpu_s, sizeof(tcpu_s), "%.1f", (tcpu - p_tcpu) / 1e6);
+    } else {
+        snprintf(tcpu_s, sizeof(tcpu_s), "-");
+    }
+    p_tid = tid;
+    p_tcpu = tcpu;
     if (!p_clk) {
         /* First window only sets the baseline. */
         for (int i = 0; i < RDC_NSITE; i++) {
             p_n[i] = qatomic_read(&rdc_n[i]);
             p_ns[i] = qatomic_read(&rdc_ns[i]);
             p_pg[i] = qatomic_read(&rdc_pg[i]);
+            p_h[i] = qatomic_read(&rdc_h[i]);
         }
         p_v = qatomic_read(&rdc_v);
         p_dx = qatomic_read(&rdc_dx);
+        p_tm = qatomic_read(&rdc_tm);
         p_rdo = qatomic_read(&hakux_tlb68_rdo);
         p_rdons = qatomic_read(&hakux_tlb68_rdo_ns);
         p_clk = clk;
@@ -1114,43 +1148,51 @@ static void rdc_tick(void)
     rdons = qatomic_read(&hakux_tlb68_rdo_ns);
     v = qatomic_read(&rdc_v);
     dx = qatomic_read(&rdc_dx);
+    tm = qatomic_read(&rdc_tm);
     off = snprintf(buf, sizeof(buf),
-                   "[rdc] f=%u dt=%" PRId64 " rdo=%" PRIu64 " rdous=%" PRIu64,
-                   f - f0, (clk - p_clk) / 1000000, rdo - p_rdo,
-                   (rdons - p_rdons) / 1000);
+                   "[rdc] f=%u dt=%" PRId64 " tid=%d tcpu=%s"
+                   " rdo=%" PRIu64 " rdous=%" PRIu64,
+                   f - f0, (clk - p_clk) / 1000000, tid, tcpu_s,
+                   rdo - p_rdo, (rdons - p_rdons) / 1000);
     p_rdo = rdo;
     p_rdons = rdons;
     p_clk = clk;
-    /* site=calls/us/pages */
+    /* site=calls/us/pages/hits */
     for (int i = 0; i < RDC_NSITE && off < (int)sizeof(buf) - 64; i++) {
         uint64_t n = qatomic_read(&rdc_n[i]);
         uint64_t ns = qatomic_read(&rdc_ns[i]);
         uint64_t pg = qatomic_read(&rdc_pg[i]);
+        uint64_t h = qatomic_read(&rdc_h[i]);
         off += snprintf(buf + off, sizeof(buf) - off,
-                        " %s=%" PRIu64 "/%" PRIu64 "/%" PRIu64, rdc_name[i],
-                        n - p_n[i], (ns - p_ns[i]) / 1000, pg - p_pg[i]);
+                        " %s=%" PRIu64 "/%" PRIu64 "/%" PRIu64 "/%" PRIu64,
+                        rdc_name[i], n - p_n[i], (ns - p_ns[i]) / 1000,
+                        pg - p_pg[i], h - p_h[i]);
         p_n[i] = n;
         p_ns[i] = ns;
         p_pg[i] = pg;
+        p_h[i] = h;
     }
     if (off < (int)sizeof(buf) - 64) {
         snprintf(buf + off, sizeof(buf) - off,
-                 " v=%" PRIu64 " dra=%" PRIdPTR " dx=%" PRIu64,
+                 " v=%" PRIu64 " dra=%" PRIdPTR " dx=%" PRIu64 " tm=%" PRIu64,
                  v - p_v,
                  qatomic_read(&rdc_ra0)
                      ? (intptr_t)(qatomic_read(&rdc_ra0) -
                                   (uintptr_t)&tlb_reset_dirty_range_all)
                      : (intptr_t)0,
-                 dx - p_dx);
+                 dx - p_dx, tm - p_tm);
     }
     p_v = v;
     p_dx = dx;
+    p_tm = tm;
     RDC_LOG("%s", buf);
 }
 
-static void rdc_account(ram_addr_t length)
+static void rdc_account(ram_addr_t span, ram_addr_t length)
 {
     int site = rdc_site;
+    uint64_t pages = span >> TARGET_PAGE_BITS;
+    uint64_t walked = TARGET_PAGE_ALIGN(length) >> TARGET_PAGE_BITS;
 
     if (current_cpu) {
         qatomic_add(&rdc_v, 1);
@@ -1158,8 +1200,11 @@ static void rdc_account(ram_addr_t length)
     }
     qatomic_add(&rdc_n[site], 1);
     qatomic_add(&rdc_ns[site], hakux_rdc_last_ns);
-    qatomic_add(&rdc_pg[site],
-                TARGET_PAGE_ALIGN(length) >> TARGET_PAGE_BITS);
+    qatomic_add(&rdc_h[site], hakux_rdc_last_hits);
+    qatomic_add(&rdc_pg[site], pages);
+    if (pages > walked) {
+        qatomic_add(&rdc_tm, pages - walked);
+    }
     if (site == RDC_DIRECT) {
         uintptr_t ra0 = qatomic_read(&rdc_ra0);
         if (!ra0) {
@@ -1190,7 +1235,7 @@ void tlb_reset_dirty_range_all(ram_addr_t start, ram_addr_t length)
     CPU_FOREACH(cpu) {
         tlb_reset_dirty(cpu, start1, length);
 #ifdef XBOX
-        rdc_account(length);
+        rdc_account(end - start, length);
 #endif
     }
 }

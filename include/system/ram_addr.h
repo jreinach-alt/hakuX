@@ -136,9 +136,11 @@ static inline void qemu_ram_block_writeback(RAMBlock *block)
 /*
  * #548: tlb_reset_dirty() leaves the length of the walk it just timed here,
  * on the calling thread, so tlb_reset_dirty_range_all() can charge it to its
- * caller without reading the clock a second time.
+ * caller without reading the clock a second time; and the entries that walk
+ * set TLB_NOTDIRTY on (its [tlb68] rdh), the walk's actual work.
  */
 extern __thread int64_t hakux_rdc_last_ns;
+extern __thread uint64_t hakux_rdc_last_hits;
 #endif
 
 #endif
