@@ -607,15 +607,16 @@ released = ["docs/lanes/energymap507/**", "hw/xbox/nv2a/pgraph/glsl/geom.c", "do
 released_at_ready = 586
 note = "CORRECTION (job.board 2026-09-28T20:50Z): the prior note's premise was wrong -- PR #586's diff DOES touch hw/xbox/nv2a/pgraph/glsl/geom.c (measure_no_geom(), a real code change, 41 lines), so it needs needs-audit-1, not fold-ready; no label had actually landed (fleet.py FAIL confirmed no pipeline label on #586 -- the earlier 'labelled fold-ready directly' never took). Labelled needs-audit-1 this tick. Files RELEASED per roles/board.md (release at ready) regardless -- that only requires out-of-draft + CI green + unit gone, not the audit path. || RELEASED AT READY (job.board 2026-09-28T20:35Z): PR #586 out of draft, CI green (build x2), unit gone. Files RELEASED per roles/board.md; the next lane merges master (or lane/energymap507 if #586 has not folded) before marking its own PR ready. || GRANT (lane.local 2026-09-28T20:25Z): hw/xbox/nv2a/pgraph/glsl/geom.c from [free] for profile P3's measurement-only env switch (default OFF; skips the GS for filled smooth triangles; never ships on). || STARTED (lane.local 2026-09-28T20:10Z), briefs/energymap507.md: #507 after the owner ruled out the fan ('the real energy issue is clearly in our emulator's shader work, or other code that's not optimized for this platform'). Offline: per-title J/frame split by thread CPU and GPU from soaks on disk; code paths ranked by joules saved x titles x probability; at most 6 profile runs named for lane.local to slot. Docs only."
 
-[lane.battadmit]
-issues = ["507"]
-files = ["docs/testing/dispatcher.sh", "docs/testing/battery_admit.py", "docs/testing/jobs/selftest.d/99-battery-admit.sh", "docs/lanes/battadmit/**"]
-note = "STARTED (lane.local 2026-09-28T20:20Z), briefs/battadmit.md: the owner's rule (13:10 PDT): the dispatcher admits a run on a charging handheld once level >= 15 + 5 + learned drain rate x run length, instead of waiting for device_reality's 80% lift. dispatcher.sh from [free] (#571 folded); device_reality's lift change is applied by lane.local in the same update window."
-released = ["docs/testing/dispatcher.sh", "docs/testing/battery_admit.py", "docs/testing/jobs/selftest.d/99-battery-admit.sh", "docs/lanes/battadmit/**"]
-
-[lane.vcpuplan]
-issues = ["507"]
+[retired.battadmit]
+issues = []
 files = []
+retired_utc = "2026-09-28T21:55:00Z"
+note = "RETIRED (job.board 2026-09-28T21:55Z): PR #587 folded as 2c950e0a1e, unit gone. Files RELEASED to [free]: docs/testing/dispatcher.sh, docs/testing/battery_admit.py, docs/testing/jobs/selftest.d/99-battery-admit.sh, docs/lanes/battadmit/**. Was: STARTED (lane.local 2026-09-28T20:20Z), briefs/battadmit.md: the owner's rule (13:10 PDT): the dispatcher admits a run on a charging handheld once level >= 15 + 5 + learned drain rate x run length, instead of waiting for device_reality's 80% lift. dispatcher.sh from [free] (#571 folded); device_reality's lift change is applied by lane.local in the same update window."
+
+[retired.vcpuplan]
+issues = []
+files = []
+retired_utc = "2026-09-28T21:10:00Z"
 note = "RETIRED (hostops 2026-09-28T21:10Z): PR #589 folded as 164cb13d9e, unit gone; its ranked plan is dispatched as lane.memfast (items 0/3/1) and lane.ibcache (item 2). #507 stays open. Was: STARTED (lane.local 2026-09-28T20:25Z), briefs/vcpuplan.md: #507 energy map rank 4 (unowned): the vCPU is the largest dynamic J/frame term on every title. Research and a ranked plan by the owner's rule (roles/lane.md, PR #584): where vCPU time goes on ARM64 (JIT code, TB lookup, softmmu, x87/SSE softfloat helpers), what x86-on-ARM64 JITs (FEX/Box64) do, prior work swept, an independent JIT-engineer review. Docs only."
 
 [lane.memfast]
