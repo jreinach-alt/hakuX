@@ -1516,3 +1516,15 @@ State at 05:48 PDT:
 Next titles are unchanged from session 30: 25 to Life, Call of Duty 3,
 Midnight Club 3: DUB Edition, Tork: Prehistoric Punk, Blinx 2, then Bruce
 Lee, Galleon, GoldenEye RA (returning) and Burnout Revenge.
+
+### Session 32: 2026-09-28 06:05 PDT, no device work
+
+Why session 31 did not finish: it posted its `waiting:` comment and stopped
+with PR #550 still a draft. A draft is skipped by board, fleet and fold, so
+the NOTES could not land. The waiting itself was right; the draft was not.
+This session marks #550 ready.
+
+State at 06:05 PDT is unchanged from session 31: both handhelds under
+`battery-hostops` holds (Nova since 01:10, Thor since 04:49; each lifts at
+80%), running/ empty, and all eight benchmarks still in queue/. Next titles
+are unchanged.
