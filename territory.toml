@@ -517,14 +517,8 @@ issues = ["548"]
 files = ["system/physmem.c", "include/exec/ram_addr.h", "accel/tcg/cputlb.c", "docs/lanes/dirtytlb/**", "docs/testing/predictions/dirtytlb-*.json"]
 note = "STARTED (lane.local 2026-09-28T12:31:22Z), briefs/dirtytlb.md: #548 (0.5, fps-focus), from lane.remote's #461 pair 1: on master at least 103 of the render thread's 175 TLB dirty-range resets per flip (~2.7 ms) come from callers outside the texture path. Step 1: a per-caller count at tlb_reset_dirty_range_all() (physmem.c); step 2: remove or batch the dominant caller (its file may be another lane's: ask by name)."
 
-[lane.slowtier2]
-issues = ["462"]
-files = ["docs/lanes/slowtier2/**"]
-released = ["docs/lanes/slowtier2/**"]
-released_at_ready = 556
-note = "RELEASED AT READY (job.board 2026-09-28T15:24Z): PR #556 is out of draft, CI green, unit gone; docs-only diff. || STARTED (lane.local 2026-09-28T14:53:52Z), briefs/slowtier2.md: #462 phase 2 (0.5, fps-focus; the owner asked 2026-09-28 07:4x). An OFFLINE attribution of the next tier of titles below 30 fps from existing soak results (no device time today: both handhelds are battery-limited until the owner's ~18:00 top-up). It separates thermal-pause readings from real bottlenecks and ranks cross-title causes. Docs only."
-
 [free]
+# RELEASED (hostops 2026-09-28T15:31Z) by retiring lane.slowtier2 (PR #556 merged): docs/lanes/slowtier2/**.
 # CLAIMED (lane.local 2026-09-28T15:00:26Z): android/app/src/main/cpp/CMakeLists.txt -> lane.remote (#557 thermal governor core); thermal_governor.c/.h are new.
 # CLAIMED (hostops 2026-09-28T14:45Z): docs/testing/jobs/roles/lane.md -> lane.relnote (#553).
 # RELEASED (hostops 2026-09-28T13:50Z) by retiring lane.suffixpr (PR #551 merged): docs/testing/fleet.py, docs/testing/jobs/selftest.d/99-fleet-suffixed-pr.sh, docs/lanes/suffixpr/**.
