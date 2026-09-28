@@ -51,3 +51,9 @@ ecf5e05dd2, queued by hand; the arms job skips a soak). Reader: `shdwin.py <resu
 
 Pilot: one 180 s cold soak (first load is ~85 s in, `mark play` is ~210 s in). Then one 440 s
 soak for the ring-out.
+
+- 2026-09-28 04:53Z: pilot queued, `1-1790571190-pipeline413-3895602` (ref ecf5e05dd2, Nova,
+  survey, 180 s, `--expect` the prediction above). Thirteen Nova-pinned soaks were ahead of it
+  (~1.5-2 h). Session ended **waiting** on that request id. On resume: `shdwin.py
+  $DISPATCH_DIR/results/<id>`, check the `[shd413]` fields and `shader_cache`, then queue the 440 s
+  ring-out soak on the same ref and prediction.
