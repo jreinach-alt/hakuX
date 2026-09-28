@@ -4,6 +4,17 @@ Built the knob #507 D.3 needs: a title soak can run at any fan setting a
 player can select in the handheld's own menu, and at nothing else.
 lane.sustain507 runs D.3 with it; this lane measured no fps.
 
+## Attempt 4 (2026-09-28): why attempt 3 did not finish
+
+Attempt 3 finished its work (the screen-wake fix, section 5) and ended at
+19:11 UTC with the PR still a draft, waiting on CI for e63056ac50 and on the
+Nova's battery hold. It held the PR for the Nova proof when it did not need
+to. Addendum 3 (lane.local, 19:20 UTC) settled that: D.3 is Thor-only, so the
+Thor proof is enough to mark #571 ready, and the Nova proof follows as a
+queued request. Attempt 4 queued the Nova soaks (section 4, Nova) and marks
+the PR ready on green CI. origin/master had not moved since attempt 3's merge
+(6b7eb8b6a5), so there was nothing to merge.
+
 ## Attempt 3 (2026-09-28): why attempt 2 did not finish
 
 Attempt 2 built and proved the fan-mode knob (below), pushed it, and ended
@@ -261,11 +272,43 @@ Read back from the device 5 s after the soak:
 
     after +5s: performance_mode=0 fan_mode=4 fan_speed=null duty=24500 battery=78
 
-### Nova: not run yet
+### Nova: queued, pending the top-up
 
 The Nova has been under hostops' battery hold since 18:10 UTC (14%; it lifts
-at 80% on the 500 mA port, hours). Its proof soak and idle mode reads are
-the one open item. The commands for when it is idle:
+at 80% on the 500 mA port, hours; the owner's top-up is about 18:00 PDT).
+Per Addendum 3 the PR does not wait for it. Two 180 s Blinx soaks are queued,
+pinned to the Nova, at ref ff9f8824ac (origin/master; the ref only picks the
+APK):
+
+| request | env | the menu shows it at | expect in every sample from `start` to `end` |
+|---|---|---|---|
+| `1-1790623244-lane.fanduty507-2553125` | `FAN_MODE=customize:100` (MAX) | HIGH (2) | fan_mode 6, duty 35000 (decoded, never measured) |
+| `1-1790623251-lane.fanduty507-2563259` | `PERF_REGIMEN=default FAN_MODE=quiet` | NORMAL (0) | fan_mode 1, duty 12000 (decoded) |
+
+The first is the discriminating one. The Nova's MAX fan is already Sport
+(5), so `FAN_MODE=sport` under MAX would read the same with the knob and
+without it.
+
+**These soaks only count if the dispatcher serves this PR's soak_title.sh
+when they run.** At 19:20 UTC the dispatcher's snapshot
+(`$DISPATCH_DIR/bin/soak_title.sh`, 07:13 UTC) has no `FAN_MODE`. It gets
+this code from the fold and the host's update window after it. How to read
+each result:
+- `perf_regimen.json` has a non-null `fan_request`: the knob ran. Read
+  `ran`, `restored`, `fan_restored`, `moved`, and `fan.mode` and the duty in
+  every thermal.jsonl sample.
+- `perf_regimen.json` has no `fan_request` key: the old script served it and
+  ignored `FAN_MODE`. The run says nothing about the knob. Queue it again
+  after the update window.
+
+A 35000 that reads otherwise is a wrong decode of the Nova's Customize
+slope, not a broken knob: the knob's claim is the `fan_mode` and
+`fan_speed` it sets and restores. Correct the table in section 1 from the
+measured value. If the knob itself fails on the Nova, the fix goes in a new
+PR on `lane/fanduty507-mode-nova`.
+
+The idle reads of every mode on the Nova (`modeprobe.sh`) need a held device
+and are still open. For when it is idle:
 
     docs/testing/jobs/hold.sh take nova lane.fanduty507 "<why>"
     bash docs/lanes/fanduty507/modeprobe.sh ee317437 20 3 5 smart=4 quiet=1 sport=5 \
@@ -329,19 +372,18 @@ No real soak exercised this fix. The Thor was running
 dispatched soak on either device runs it, once the host's update window has
 restarted the dispatcher.
 
-## Status (2026-09-28, attempt 3): waiting
+## Status (2026-09-28, attempt 4)
 
-The PR stays a draft, waiting on two things outside this session:
-- CI on the pushed head.
-- The Nova's battery hold, set by hostops at 18:10 UTC (14%) and lifted by
-  device_reality at 80%.
-
-When CI is green: mark #571 ready.
-- If the Nova is idle by then, run its probe and proof soak (commands
-  above) first, and add them here.
-- If it is not, mark ready anyway. The Nova's proof is the one listed gap,
-  and the Nova runs the same code path the Thor proof exercised. The Nova
-  differs only in the option table's data, which the selftest covers.
+- #571 is marked ready once CI is green on the pushed head (Addendum 3). CI
+  on attempt 3's head e63056ac50: Desktop build, Android build and three of
+  four selftest shards passed; the fourth was still running at 19:21 UTC.
+- Open, outside this session: the two queued Nova soaks (section 4). They
+  run after the Nova's battery hold lifts. Their reading goes on #507 as a
+  follow-up, and the Nova column of the table in section 1 gets its
+  measured values then.
+- Open: the Nova's idle per-mode reads (`modeprobe.sh`), which need a hold.
+- No real soak has run the screen-wake fix yet (section 5). The first
+  dispatched soak after the update window does.
 
 ## For the next lane
 
