@@ -6,7 +6,15 @@ each frame's time across the threads and the GPU, converts that time to
 joules as far as the data allows, and ranks the code paths by
 J/frame saved x titles affected x probability.
 
-No device runs were queued. Section 4 names six runs for lane.local.
+Section 4 names the profile runs. lane.local's addendum (09-28 13:25 PDT) had
+this lane queue them and build P3's switch; section 6 has the ids.
+
+**Attempt 1 did not finish (attempt 2, 09-28 13:30 PDT).** It pushed the map
+and ranking (`b1798d0d76`), CI went green on it, and it posted the ranking on
+#507 (20:20Z). It ended there without `gh pr ready`, so PR #586 stayed a
+draft, which the board and the fold job skip. Attempt 2 merged master, built
+P3's switch, queued P3 and P4, asked the board for P1 and P2, and marks the PR
+ready when CI is green on the new head.
 
 ## 0. Method, and what the instruments can and cannot see
 
@@ -206,7 +214,7 @@ What the ranking says:
   execution is a material share of R. P2 says what a vCPU ms is worth in watts
   on the Thor.
 
-## 4. Profiles where the logs cannot decide (not queued; lane.local slots them)
+## 4. Profiles where the logs cannot decide (queued or requested: section 6)
 
 At most six device runs. Each names what it decides.
 
@@ -238,3 +246,53 @@ PFIFO/GPU field (section 1). One soak each fills the GPU column that #8 needs.
   `em_summary.py` (all runs), `em_split.py` (the representative rows and the
   joule model), `em_breakdown.py`, `em_baseline.py` (idle watts),
   `em_invalid.py` (the leak census). Point `ENERGYMAP_RUNS` at the copies.
+
+## 6. The profile runs (attempt 2, per lane.local's addendum)
+
+| # | state | ids / where |
+|---|---|---|
+| P1 Kabuki, Nova, simpleperf | **needs a held session**: `request.sh` has no simpleperf option, and `simpleperf record --app` is an adb session (`docs/testing/perf/profile_guest.sh`). Asked in `$DISPATCH_DIR/board-requests/energymap507.md`; lane.local arranges the hold | - |
+| P2 Otogi, Thor, halt on vs unset, defaults | **needs a cold slot** (xo-therm <= 50 C, battery <= 36 C at the first sample). A request's `--env` cannot lower soak_title.sh's cool gate, so it is not queued plain. Same board request | - |
+| P3 Blinx, Nova, geometry stage skipped | queued, priority 1-, B first | B1 `1-1790627552-lane.energymap507-1224865` (`HAKUX_MEASURE_NO_GEOM=1`), A1 `1-1790627557-lane.energymap507-1227971`; both `5af7b13ee5` |
+| P4 DOA 1 Ultimate, Nova, survey | queued, priority 1- | `1-1790627558-lane.energymap507-1228751`, `28d39fc5ce` |
+
+**P3's switch.** `HAKUX_MEASURE_NO_GEOM=1`, default off, measurement only
+(`5af7b13ee5`). `pgraph_glsl_need_geom()` in `glsl/geom.c` returns false for a
+filled, smooth-shaded `TRIANGLES` draw when it is set, and logs
+`hakuX-perf [nogeom507] skipped=N` at powers of two, so an arm can prove the
+switch acted.
+- It touches `geom.c` only. `vk/shaders.c` (VS `prefix_outputs`, no geometry
+  module) and `gl/shaders.c` already follow `need_geom`, and a module key
+  written with the switch on regenerates cleanly with it off: the VS without
+  the prefix is the one points already use.
+- What moves, on purpose: with no stage, the VS's own `vtxPos0..2` all hold
+  the provoking vertex (`vsh.c:1093`). So depth is flat per triangle,
+  `triMZ`'s slope offset is 0, and a one-negative-w triangle goes to the host
+  clipper instead of #223's wedge. Flat triangles and flat quads keep the
+  stage.
+- The fragment shader writes `gl_FragDepth`, so there is no early-z either
+  way, and the fragment work is about the same. A fall in R is the stage's own
+  cost: `calc_triz`, the wedge, and on a tiler the GS in the binning pass.
+- Never a default, never shipped on. Release note: none.
+
+**P3's prediction** is `docs/testing/predictions/energymap507-nogeom-blinx.json`,
+against Blinx's baseline R of 31.4 ms/f (`2124441`). The guess is that R falls
+by less than 25% (p 0.75). A fall of 25% or more makes the geometry stage a
+top energy lever. A fall of 10% or less drops #3, which leaves #580's lit-VS
+helpers as the remaining execution question.
+
+**P4 stays on the Nova.** The reading is PFIFO `Surf` wall time, which is CPU
+work on the PFIFO thread. The baseline (17.4 ms/f, `966037`) is a Nova run, and
+the two devices' CPU clocks and thermal pauses differ. A Thor run would
+compare two devices as well as two builds. The Nova is under a battery hold
+(14%, until 80%), so the runs go after the top-up.
+
+**Pilot budget.** 3 x (420 + 90) s = 25.5 min, inside the 30-minute pilot.
+P1 and P2 run in held or slotted sessions, outside `request.sh`.
+
+### Waiting on
+
+- P3 and P4 results: the three ids above, after the Nova's top-up.
+- P1 and P2: lane.local's hold and cold slot (board request).
+- The next session reads P3 with the prediction's judge, P4 with
+  `em_extract.py`/`em_breakdown.py`, and re-scores #3 and #9 of section 3.
