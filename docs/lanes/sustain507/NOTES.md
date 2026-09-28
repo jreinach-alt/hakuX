@@ -390,3 +390,78 @@ live once a dispatcher update window has taken that snapshot.
    run (`--mark play` and `--halt <ON> <OFF>`). Check admission first, then judge H1, H2, H3 and P
    for the Thor as registered.
 2. #424's Thor leg still wants one more valid pair, from a cold start (section 6).
+
+## 9. Session 6, 2026-09-28 16:50Z: the Thor pair, scored
+
+**Why the previous attempt did not finish.** It ended on purpose, waiting on something outside the
+session. The Thor ON re-run (`1-1790607334-lane.sustain507-589340`) sat parked until hostops' cold
+slot could admit it, and the `waiting:` comment on #547 named it. The run finished at 16:32Z.
+
+### Admission
+
+`logs/coldslot-thor.log`: the hold was taken at 15:51Z at xo 56.5 C, and the run was queued at
+15:54Z once xo read 48.7 C with the battery at 34 C. The run's first sample reads **xo 48.3 C,
+battery 34.0 C, so it is admitted.** The OFF run (`3238578`) started at 43.5 / 36.0, so the ON arm
+started 4.8 C warmer. Both ran in the morning, 07:18 and 08:56 PDT. Both runs were at 83-85 % charge.
+
+L0 holds. The read-back is 0/4 (default, SMART). `ih_on` is [1] with 468,411 halts. `mark play`
+fell at 275 s, with a full 1800 s window and `sign_suspect` 0. The mid-run play frames show level
+play (`091758-play.png`, 18 fps).
+
+### Part C table, all runs (`partc-read.json`, `partc-thor-read.json`, `partc-thor-zones.txt`)
+
+| run | dev | halt | xo / bat start | scored | fps med (p10) | stab | 1st pause from mark | xo min 10 | xo max | plateau | net W | J/frame |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `3238469` | Thor | ON | 53.8 / 36.0 | no | 16.5 (5.6) | 0.76 | 1462-1494 s | 74.8 | 78.0 | none | 4.64 | 0.288 |
+| **`589340`** | Thor | ON | **48.3 / 34.0** | **yes** | 17.8 (14.1) | 1.02 | **none** | **68.6** | 72.5 | 72.2 C from min 20.6 | 4.86 | 0.257 |
+| `3238578` | Thor | OFF | 43.5 / 36.0 | yes | 17.9 (14.3) | 1.05 | none | 73.4 | 75.2 | 74.7 C from min 9.4 | 4.99 | 0.262 |
+| `3238659` | Nova | OFF | 34.2 / 30.0 | yes | 22.1 (21.0) | 1.00 | none | 48.7 | 49.4 | 49.3 C from min 4.0 | 6.52 | 0.297 |
+| `3238806` | Nova | ON | 44.8 / 36.0 | yes | 22.3 (21.9) | 1.00 | none | 46.8 | 51.5 | 46.7 C | 5.94 | 0.267 |
+
+Battery hours stay blank. The pooled capacity range is 56-280 Wh (3 % for 2.8 Wh), as before.
+
+### The Thor legs, as registered
+
+| leg | Thor (Blinx) |
+|---|---|
+| H1 | not judged: neither arm paused in 30 min |
+| H2 | **value refuted:** the ON plateau is 72.2 C, inside 70-77 C, but it came at min 20.6. The leg says a plateau after min 20 refutes the value |
+| H3 | **holds:** ON 68.6 vs OFF 73.4 C at min 10, 4.8 C cooler, from a 4.8 C *warmer* start |
+| P | **REFUTED:** the cut is **0.13 W** (ON 4.86, OFF 4.99 W over 1800 s), against the 1.5 W the leg requires |
+| F | holds: 17.8 >= 0.9 x 17.9 |
+
+**The falsifier fires on both devices, through P.** At the defaults the halt cuts 0.13 W on the
+Thor and 0.58 W on the Nova. That is the world the falsifier names: the heat xo-therm sees at the
+defaults does not come from the idle vCPU's spin.
+
+**H3 holding does not rescue the halt.** The ON run read cooler on every zone for the whole run:
+pa 3-6 C, gpuss-0 2-5 C and ddr 2-7 C (`partc-thor-zones.txt`). That is too much for 0.13 W. At
+this chassis's slope, about 30 C over ambient at ~5 W, or ~6 C/W, 0.13 W is under 1 C. So the
+two cold periods differed in something the instrument does not record: room ambient, or where the
+heat sat in the chassis. The prediction's `what_this_cannot_see` names that confound. One pair per
+device cannot separate it, and P, the leg that measures the halt's own effect, says there is almost
+nothing to find.
+
+### What the two scored Thor runs say together
+
+- **Blinx at the defaults from a cold start does not pause in 30 min.** It did not pause twice: at
+  74.7 C (OFF) and at 72.2 C (ON). Both plateaus sit 3-6 C under the 78 C trip. The one paused run
+  started at 53.8 C and ran from 18 % charge.
+- **The confirmation length.** One plateau came at min 9.4 and the other at min 20.6. At the
+  defaults, a 30 min window after the mark covers both with 10 min of plateau. Nothing here
+  supports a shorter one.
+- **fps is flat.** Median 17.8-17.9 fps, stability 1.02-1.05. At the defaults the Thor holds
+  Blinx's fps once it is not paused. The title sits under the 30 fps bar for reasons other than heat.
+
+### What is left, and where it goes
+
+- **Part D.3** waits on **lane.fanduty507** (hostops, 09:38 PDT), which puts a per-request soak fan
+  duty into the dispatcher. It needs that lane's fold plus a dispatcher update window. No D.3 soak
+  is queued. It goes on a suffixed branch (`lane/sustain507-fanduty` or similar) once the knob is live.
+- **#424's Thor leg** still wants one more valid pair from a cold start (section 6). It needs two
+  cold slots, so it is left for a follow-up and not queued from this PR.
+
+### Next lane should not repeat
+
+- Do not re-test the idle halt as a heat lever at the defaults. It is refuted on both devices (P).
+- Do not read a pair's xo difference as the lever without its `net_w`. Here 4.8 C came with 0.13 W.
