@@ -629,6 +629,11 @@ issues = ["507"]
 files = ["accel/tcg/cpu-exec.c", "accel/tcg/tb-jmp-cache.h", "target/i386/tcg/translate.c", "docs/lanes/ibcache/**", "docs/testing/predictions/ibcache-*.json"]
 note = "QUEUED FILE (hostops 2026-09-28T20:56Z): tcg/aarch64/tcg-target.c.inc is held by lane.memfast (check_territory allows one holder); ibcache gets it when memfast releases it at PR-ready, or earlier by a host grant once R1 says go -- ask on #507. STARTED (lane.local 2026-09-28T20:55Z), briefs/ibcache.md: #507 vCPU plan (PR #589) rank 2, owner-endorsed: R1 (cold GTA Thor profile on master) decides go or no-go, then an inline indirect-branch cache and a return-address stack (P 0.5, -7 to -11% J/f). SHARED: tcg-target.c.inc goto_ptr/indirect-lookup region only (lane.memfast holds qemu_ld/st); translate.c call/ret emission (released by idlehaltspin)."
 
+[lane.fgunknown]
+issues = ["592"]
+files = ["docs/testing/devices.sh", "docs/testing/soak_title.sh", "docs/testing/jobs/selftest.d/99-fg-unreadable.sh", "docs/lanes/fgunknown/**"]
+note = "STARTED (hostops 2026-09-28T23:20Z), briefs/fgunknown.md: #592, the soak foreground watch aborts on two HUNG dumpsys reads (read as foreground-unknown). devices.sh and soak_title.sh were unclaimed; RELEASE them to [free] at PR-ready."
+
 [free]
 # CLAIMED (hostops 2026-09-28T20:56Z): accel/tcg/tb-jmp-cache.h -> lane.ibcache (#507; removed from [free], which still listed it). tcg/aarch64/tcg-target.c.inc goes to lane.memfast alone (qemu_ld/st, items 0/3 first); QUEUED for lane.ibcache after it (the gate has no shared claim).
 # CLAIMED (hostops 2026-09-28T19:58Z): android/app/src/main/java/com/rfandango/haku_x/TitleDefaults.kt -> lane.gmem474 (#474).

@@ -4532,3 +4532,19 @@ impact_px = 0
 impact_onestep_px = 0
 game_visible = true
 impact_basis = "sustained play (lane.local 2026-09-28): without it a heavy title spends 60-76% of a 30-min session in the kernel's thermal pause on the Thor"
+
+[issue."592"]
+title = "Soak foreground watch voids runs when a dumpsys read hangs (adb timeout reads as no FocusedDisplayId)"
+component = "harness"
+disposition = "harness"
+suites = []
+no_suites = "A HARNESS defect in the soak foreground watch (devices.sh hakux_in_front, soak_title.sh fg_watch); no pgraph suite covers it."
+status = "open"
+dispatch_state = "in-flight"
+blocker_tested = "confirmed 2026-09-28T23:20Z: [lane.fgunknown] row added by hostops; lane started the same tick."
+blocked_on = ""
+status_note = "FILED 2026-09-28T23:20Z by hostops: two hung dumpsys reads in a row read as foreground-unknown and abort the soak; 7 critical-path runs voided since 09-27 23:12 PDT (forzadecay414 x2 today on the Nova). INTERIM: the dispatcher snapshot aborts at 5 unknowns (bin/soak_title.sh) until a SCRIPT_DEPS change re-snapshots."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = false
+impact_basis = "harness: each void costs a 6-min critical-path device slot"
