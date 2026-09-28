@@ -362,6 +362,15 @@ hakux_in_front() {
             return s
         }
         function ours(p) { return p ~ /^com\.jreinach\.hakux/ }
+        # Only the live block. `dumpsys input` then prints a second dispatcher
+        # block, "Input Dispatcher State at time of last ANR:", with its own
+        # FocusedDisplayId, FocusedApplications and FocusedWindows: a stale
+        # snapshot that a last-value read would take as the state now (#513:
+        # the Thor read its 11:06 ANR, Daijishou on display 0, for hours).
+        # That header is at column 0 and the grep above drops it, so stop at
+        # the first line of its body, `  ANR:`, or at a second FocusedDisplayId.
+        stop { next }
+        /^  ANR:/ || (fd != "" && /FocusedDisplayId:/) { stop = 1; next }
         # Section headers sit at two spaces; entries are indented deeper.
         /^  [A-Za-z]+:/ { sec = $1; sub(/:.*/, "", sec) }
         /FocusedDisplayId: *-?[0-9]/ { fd = $0; sub(/.*FocusedDisplayId: */, "", fd); sub(/[^-0-9].*/, "", fd) }

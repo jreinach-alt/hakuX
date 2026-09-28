@@ -1,0 +1,40 @@
+{
+  "registered_utc": "2026-09-27T21:14:49Z",
+  "who": "lane.forza414",
+  "issue": "414",
+  "prediction": "MUST-NOT-MOVE guard for #414 hunk 3. A is 6ab1c50643 (lane/forza414 after merging origin/master 940c77e866: hunk 1, cleared after a full Vulkan clear, and the surfupd deferral, both guarded by PASSing arms). B is 72de98abd1 (A plus: flush_draw_one_pass saves the four fields its #ifndef NDEBUG asserts compare, primitive_mode, clearing, CONTROL_0 and SETUPRASTER, in scalars, instead of copying a whole RenderCommandSnapshot per draw pass; plus the nv2a index rebuild). Nothing reads the snapshot except those asserts, so no draw input changes. PREDICTION: every guarded capture is byte-identical between the arms. What would move each, in the world where the hunk is wrong: any suite, if the snapshot copy had a side effect the draw relied on (it has none: pgraph_vk_snapshot_state only reads PGRAPHState); a crash or abort in any suite, if an assert now reads a different value than the snapshot held (the four fields are copied the same way, so an abort would mean the draw changed one of them, which the old code would have aborted on too). Read every scores1.tsv status for unreadable.",
+  "a_ref": "6ab1c50643",
+  "b_ref": "72de98abd1",
+  "must_not_move": [
+    "Depth_buffer_fixed_function/*",
+    "Color_zeta_overlap/*",
+    "Surface_format/*",
+    "Surface_clip/*",
+    "Clear/*",
+    "Texture_render_target/*",
+    "Texture_CPU_Update/*",
+    "Texture_render_update_in_place/*",
+    "Image_blit/*",
+    "Texture_Framebuffer_Blit/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Clear",
+      "Color zeta overlap",
+      "Depth buffer fixed function",
+      "Image blit",
+      "Surface clip",
+      "Surface format",
+      "Texture CPU Update",
+      "Texture Framebuffer Blit",
+      "Texture render target",
+      "Texture render update in place"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

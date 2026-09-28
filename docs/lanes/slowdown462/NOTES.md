@@ -1101,3 +1101,226 @@ frames, so AUF cannot pass ~21.5 fps on its GPU work as it stands.
 Both sessions are done, and this lane holds no hold and has nothing queued.
 The answer is posted on #474 and #462, and the #462 summary is corrected in
 place.
+
+## Attempt 8 (2026-09-27, from 14:40 PDT): the bind_textures wall probe (#474)
+
+Why attempt 7 did not carry this: attempt 7 finished its brief (the #474
+breakdown, PR #509, ready). The texture.c grant (hostops, 14:11 PDT) arrived
+after that session ended. The resume header naming PR #477 as a draft was
+stale: #477 had already folded.
+
+The probe is on its own branch and PR, as the grant asked:
+`lane/slowdown462-bindtex`, PR #512, commit 26936d9639. It branches from
+this lane's #509 head merged with master (0e0ba23fb9), so the NOTES here do
+not conflict with #509's copy.
+
+- `hw/xbox/nv2a/pgraph/vk/texture.c`, `NV2A_PERF_LOG` only (lent from
+  lane.remote; its #461 counters are untouched). One `hakuX-stall` line per
+  60 guest flips: `txw[f<flips> <s> bt res ct sdl scan faf bs flq nd cp up]`,
+  each `ms/flip` and most with `/calls per flip`. Nesting: bt holds res and
+  ct; ct holds sdl, scan, faf, bs, cp, up; bs holds flq (draw and reorder
+  queue flush) and nd (`pgraph_vk_begin_nondraw_commands`).
+- The prime suspect going in, from reading the code: `create_texture` calls
+  `pgraph_vk_flush_all_frames` (render-thread idle wait plus every frame
+  fence) before a surface-to-texture rebind whenever the node was used in
+  the last `num_active_frames` submits. That is a full GPU drain, and it is
+  not a `pgraph_vk_finish`, which fits `[cblat]` `fin` reading ~0. `faf`
+  measures it. The two `pgraph_vk_upload_surface_data` calls at the top of
+  `create_texture` are dead (the line before them clears their condition),
+  so they are not probed.
+- Pilot: a perflog soak, not a held session. The dispatcher builds
+  `26936d9639-perflog` only from a queued request, so a held session would
+  have needed the soak first anyway, and the soak's logcat carries `txw[]`
+  directly. AUF first: `1-1790543757-slowdown462-3565156` (Nova, 420 s,
+  survey route, window 299-420 s as before). Blinx (255-411 s) follows
+  once the pilot's lines are read. Both together are under the 30 min
+  pilot budget.
+- Not compile-checked here: no NDK is reachable from the lane sandbox. The
+  dispatcher's build is the compile; an `ERROR` there is the first thing to
+  read.
+
+State at the end of this session: waiting on
+`1-1790543757-slowdown462-3565156` (eleven requests were ahead of it on
+the Nova at 14:56 PDT). No hold held.
+
+## Attempt 9 (2026-09-27, from 15:45 PDT): the AUF pilot read; Blinx queued
+
+Why attempt 8 did not finish: it ended correctly, waiting on the pilot
+`1-1790543757-slowdown462-3565156` behind eleven Nova requests. The pilot
+finished at 15:39 PDT and this session is the resume. `origin/master` was
+merged at the start of this session (#509 had folded, so the PR diff is now
+texture.c and these NOTES only).
+
+### AUF: `txw[]` over 299-420 s (Nova, MAX, `26936d9639-perflog`, apk 3883925fc5c0)
+
+`txwwin.py <result> 299 420` (seconds from the first `hakuX-route` line;
+34 lines, 2040 flips in 122.6 s = 16.6 fps, 60.1 ms/flip). The frames at
+15:38:02 and 15:38:58 are first-person mission play at FPS 16-17: gameplay.
+`phasesoak.py` over the same seconds gives phase `Tx` 5.8 ms, `Pipe` 9.8,
+`Draw` 18.3, `Surf` 21.1, GPU 25.6 (x1.573 = 40.3).
+
+| step | ms/flip | calls/flip | share of `bt` |
+|---|---:|---:|---:|
+| `bt` whole `pgraph_vk_bind_textures` | **4.57** | 78 | 100% |
+| `res` resolve_possibly_dirty | 0.02 | | 0% |
+| `ct` create_texture, all slots | 4.54 | 88 | 99% |
+| **`faf` `pgraph_vk_flush_all_frames`** | **4.47** | **0.27** | **98%** |
+| `bs` direct surface bind (flq 0.00 + nd 0.01) | 0.02 | 1.00 | 0% |
+| `sdl` / `scan` downloads | 0.00 / 0.00 | 0 / 86 | 0% |
+| `cp` surface copy / `up` upload | 0.00 / 0.00 | 0 / 0 | 0% |
+
+- **The dominant step is `faf`: 16.6 ms per call (4.47 / 0.27), once every
+  ~3.7 flips.** That is a full drain: the render thread's idle wait, then
+  every in-flight frame fence. No finish is involved (`[cblat]` `fin` ~0
+  agrees), no upload, no copy, no download.
+- `up` and `cp` are 0 in the window, so every `faf` in it is the
+  surface-to-texture one (texture.c `create_texture`, the
+  `snode->submit_time + num_active_frames > submit_count` test before the
+  s2t branch), not the upload one. And `bs` is 1.00/flip with `cp` 0:
+  every s2t bind here is a **direct** bind of the surface's own image view.
+- The direct bind writes nothing into the texture node's image. It ends the
+  render pass and puts its own COLOR_ATTACHMENT_WRITE -> SHADER_READ barrier
+  on the surface image (`bind_surface_as_texture`). So the drain before it
+  protects nothing that path writes. It is needed only before
+  `copy_surface_to_texture`, which does write the node's image.
+- **Descriptor sets, checked (code reading, line numbers at lane head
+  `3d3c22f8c0`).** The direct bind also changes what slot `i`'s
+  descriptor points at (`tex_surface_direct_views`,
+  `texture_bindings_changed`), so the image-write argument alone does not
+  cover it. The descriptor side, from
+  `shaders.c:596-750`:
+  - A changed binding takes a fresh ring set (`descriptor_sets[index]`,
+    written by `vkUpdateDescriptorSets`, then `index++`). The ring rewinds
+    to 0 only when nothing submitted is pending and nothing is recording:
+    `draw.c:3663` and `3730` after the frame's fence or finish event,
+    `draw.c:3838` only with no frame in flight, `draw.c:3446`
+    (`flush_all_frames`) only when `!in_command_buffer`, and the ring-full
+    paths `shaders.c:604-608`, `713-717` only after `pgraph_vk_finish` +
+    `flush_all_frames`. So a fresh set is never one an in-flight frame
+    holds, drain or no drain.
+  - A cache hit (`shaders.c:699-710`) calls no `vkUpdateDescriptorSets`; it
+    binds `ce->descriptor_set` as it is.
+  - The s2t drain (`texture.c:2300-2303`) runs inside a recording command
+    buffer, so its `flush_all_frames` does not rewind the ring; it changes
+    nothing the descriptor path reads.
+  So the drain protects no descriptor write either. **One hazard exists on
+  this path with or without the drain, and removing the drain does not
+  touch it:** a cache hit stores the cached handle into the ring array
+  (`descriptor_sets[index] = ce->descriptor_set`), aliasing that ring slot
+  to a set another slot owns, and no rewind clears `tex_desc_cache` (only
+  the `shaders.c:713-717` ring-full path does). After a rewind, a stale hit
+  can bind set S early in the new command buffer and a later miss whose
+  ring slot aliases S rewrites S while that command buffer still holds it.
+  That is a use-while-recording write in the existing cache, not in the
+  drain; it is noted for the fix lane, not measured.
+- The whole-soak figure (0-298 s: bt 2.90, faf 2.82 at 0.44/flip) shows the
+  same shape in the menus and the early mission.
+- The addendum's "~9 ms/frame" was attempt 7's `Pipe.Tx` 8.7 on
+  `76cba82fd2-perflog`. In this run the phase `Tx` reads 5.8 and the probe
+  reads 4.57 inside it. The remaining ~1.2 ms is in the `Tx` timer but
+  outside `pgraph_vk_bind_textures`.
+
+**Candidate fix:** in `create_texture`, take the `flush_all_frames` only on
+the copy path (`!can_direct_bind`), not before a direct bind. Owner: a #474
+fix lane. texture.c belongs to lane.remote (#461), so the fix lane needs it
+lent the way this probe's was. Asked for as Ask 8 in
+`dispatch/board-requests/slowdown462.md`.
+
+**Bound (a bound, not a value):** removing the 4.47 ms/flip of PFIFO wall
+takes AUF from 60.1 to at most 55.6 ms/flip, i.e. **at most ~18.0 fps**
+(from 16.6), if the PFIFO thread sets the frame and nothing refills the
+time. The corrected GPU time is 40.3 of the 60.1 ms, so the GPU does not
+cap it first. The drain also serializes the CPU and the GPU for ~16 ms
+each time, and this probe cannot price the overlap that is lost.
+
+### Blinx: queued
+
+`1-1790549006-slowdown462-1787985`: Blinx, 420 s, survey route, perflog,
+`26936d9639`, pinned to the Nova, release priority, no prediction
+(attribution probe). The window is 255-411 s, as before. The AUF pilot plus
+this soak total about 17 min of device time, which is inside the pilot budget.
+When it queued, a forza414 arm was running on the Nova and three Nova
+requests (forza414 fix arm, flip474, flip474 fix arm) were ahead of it.
+Read it with `txwwin.py <result> 255 411` and `phasesoak.py` over the same
+seconds.
+
+State at the end of this session (15:58 PDT): the AUF split is posted on #474
+and #462 and Ask 8 (the fix lane) is on the board. Waiting on
+`1-1790549006-slowdown462-1787985` (Blinx). On resume: read it with
+`txwwin.py`/`phasesoak.py` over 255-411 s, check the frames, post on #474
+and #462, run preflight, and mark #512 ready. No hold held.
+
+## Attempt 10 (2026-09-27, from 16:10 PDT): Blinx's `txw[]` read
+
+Why attempt 9 did not finish: it ended correctly, waiting on the Blinx soak.
+The soak finished at 15:56 PDT (promoted to
+`0-0-x-1790549006-slowdown462-1787985`), and this session is the resume.
+
+**The soak ran on the Thor, not the Nova.** Its `request.json` says
+`"device": "thor"` (serial bdc158a5), although attempt 9's NOTES said "pinned
+to the Nova". That was a mistake in the enqueue. Blinx has a copy on each
+handheld (the Thor's original and the Nova's #462 investigation copy), so the
+run is valid, but its ms figures are Thor figures. They are not comparable
+one-to-one with AUF's Nova run, and the Thor may have hit a thermal pause
+(fps swings 9 -> 25 -> 11 -> 24 inside the window; this soak has no cooling
+read to say whether it did). The mechanism answers below do not depend on the
+device. The ms figures do.
+
+### Blinx: `txw[]` over 255-411 s (Thor, MAX, `26936d9639-perflog`, apk 3883925fc5c0)
+
+`txwwin.py <result> 255 411`: 41 lines, 2460 flips in 155.9 s = 15.8 fps,
+63.4 ms/flip. The frames at 15:54:43 (FPS 26, stage timer 0'40") and 15:56:06
+(FPS 22, timer 1'16") are stage play: gameplay. `phasesoak.py`, same seconds:
+`Pipe` 15.6, `Tx` 4.0, `Draw` 27.5, `Fin` 14.4 (`Fen` 14.0), GPU 21.5
+(Thor timestamps; the x1.573 correction is the Nova's, not applied).
+
+| step | ms/flip | calls/flip | share of `bt` |
+|---|---:|---:|---:|
+| `bt` whole `pgraph_vk_bind_textures` | **3.36** | | 100% |
+| `res` resolve_possibly_dirty | 0.02 | | 1% |
+| `ct` create_texture, all slots | 3.18 | 362 | 95% |
+| **`faf` `pgraph_vk_flush_all_frames`** | **2.99** | **1.81** | **89%** |
+| `bs` direct surface bind (flq 0.00 + nd 0.02) | 0.02 | 2.70 | 1% |
+| `scan` / `sdl` downloads | 0.02 / 0.00 | 357 / 0 | 1% |
+| `cp` surface copy / `up` upload | 0.00 / 0.00 | 0 / 0 | 0% |
+
+(`bt`'s calls column reads 3112/flip in `txwwin.py`; that is its counter's
+own unit, not bind calls, and is not used here.)
+
+Split by the window's fps (`.cap/txwregime.py`, scratch, not committed):
+
+| stretch | lines | fps | ms/flip | `faf` ms/flip | drains/flip | ms/drain | share of flip |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| slow (<14 fps) | 14 | 11.0 | 90.6 | 1.78 | 1.52 | 1.17 | 2.0% |
+| mid | 13 | 17.7 | 56.4 | 2.73 | 1.79 | 1.52 | 4.8% |
+| fast (>=20 fps) | 14 | 23.5 | 42.6 | 4.46 | 2.12 | 2.10 | 10.5% |
+| AUF (Nova), for scale | 34 | 16.6 | 60.1 | 4.47 | 0.27 | 16.5 | 7.4% |
+
+- **Same dominant step as AUF: `faf`.** Blinx drains ~1.8 times per flip
+  for ~1.7 ms each. AUF drains once per ~3.7 flips for ~16.5 ms each. A
+  drain waits for the GPU work in flight. Blinx has little queued at each
+  one, and the drain grows when the frame is fast, because more GPU work is
+  still in flight.
+- **Direct binds, not copies.** `cp` 0 and `up` 0 over the whole window,
+  `bs` 2.0-3.0 per flip. So every `faf` in the window is the s2t drain before
+  a **direct** bind of the surface's own image view, and that bind writes
+  nothing into the texture node's image. The drain protects nothing on this
+  path, as on AUF: neither an image write nor a descriptor write (see the
+  AUF "Descriptor sets, checked" bullet for the ring and cache lines read,
+  and the cache-aliasing hazard that exists with or without the drain).
+- **flip474's drain-only-on-copy fix (addendum 8) reaches Blinx:** with no
+  copies, it removes every drain in the window.
+
+**Bound (a bound, not a value; Thor figures):** removing 2.99 ms/flip takes
+the window from 63.4 to at most 60.4 ms/flip, i.e. **at most ~16.6 fps**
+(from 15.8). In the fast stretch it is 42.6 -> 38.1 ms, at most ~26.2 fps
+(from 23.5). Both assume the PFIFO thread sets the frame and nothing refills
+the time. The fix also ends ~2 CPU/GPU serializations per flip, and this
+probe cannot price that lost overlap.
+
+What is not measured: the same probe on the Nova. It would give Nova ms
+beside AUF's, not a different answer. It is not queued. If #474's fix lane
+wants a Nova Blinx baseline, its fix arm's A leg is that baseline.
+
+State at the end of this session: posted on #474 and #462; PR #512 ready.
+No hold held, nothing of this lane's queued.
