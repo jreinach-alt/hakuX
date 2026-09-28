@@ -1313,3 +1313,59 @@ forza414-clrskip-soak by hand (P1 clrskip >= 0.7 per frame, P2 su_upl <= 2.2 per
 fin B/A <= 0.85, over t = 125-240 s), post fps and J/frame on #414 and #474, merge origin/master,
 then `gh pr ready 543` and release vk/draw.c to lane.pacing. draw.c stays on this row until the
 verdict, because hunk 5's coverage rule lives there.
+
+## 42. Resume 2026-09-28 (attempt 3, third resume): hunk 5 judged on the Thor, PASS
+
+**Why the previous session did not finish.** It ended waiting on the re-queued Forza pair
+(section 41), which was correct: a lane cannot wait on a device inside its session. The pair ran
+back to back on the Thor (`bdc158a5`, regimen max, no thermal pause in either arm) and is judged
+here.
+
+`forza414-clrskip-soak.json`, A `1-1790619761-forza414-1092424` (fa56a26f1f), B
+`1-1790619761-forza414-1092523` (b991fb4c21). Window t = 125-240 s after soak start. Per-frame values
+are `[sdcall]` sums over the window divided by its guest frames (A 960, B 1020). Script:
+`.fzscratch/clrskip_judge.py` (not committed).
+
+| per frame, t = 125-240 s | A | B | leg |
+|---|---:|---:|---|
+| `[sdcall]` lines / hakuX-stall lines with sd > 0 | 16 / 17 | 17 / 18 | M0 PASS (B carries `clrskip`) |
+| **clrskip** | 0 | **1.89** | P1 >= 0.7: PASS |
+| **su_upl** | 2.95 | **1.88** | P2 <= 2.2: PASS |
+| **surfupd fin** | 2.95 | **1.88** (B/A 0.64) | P3 <= 0.85: PASS |
+| clr / clrfull | 0.98 / 0.98 | 0 / 0 | (B skips them before the counter) |
+| surfupd wait, ms | 15.99 | 9.28 | readout |
+| record wait, ms | 4.93 | 4.69 | readout |
+| all `[sdcall]` waits, ms | 20.92 | 18.97 | readout |
+| gfps (median) | 9.0 | 9.0 | readout |
+| Tot (median), ms | 88.7 | 95.7 | readout |
+| net power, W (whole run) / J per frame at 9 fps | 5.36 / 0.60 | 5.35 / 0.59 | readout |
+
+- **The hunk does what it says.** One forced finish per frame is gone (2.95 -> 1.88), slightly
+  more than the 0.96 `clrfull` bound, and `clrskip` counts 1.89 dropped uploads per frame, because
+  a covering clear usually drops both the colour and the zeta binding and only one of them was
+  the forcing one.
+- **The wait mostly moves, as NOTES 14 and 33 said it would.** The surfupd wait falls by 6.7 ms per
+  frame, but all `[sdcall]` waits together fall by only 1.95 ms. The rest reappears at the next
+  sync point (`tobuf` and the others on the same line). fps does not move: 9.0 vs 9.0 in the window,
+  and the two 30-s curves are the same to within a bin
+  (A `29 29 29 29 17 11.5 9 8 5 4 5 4 3 4 3`, B `29 29 29 29 1.5 12 9 7 6 4 5 4 3.5 3 3`; B's 1.5 is
+  its load hang landing one bin earlier). J/frame is the same. **No fps is claimed for hunk 5.**
+- **This session's Forza is slower than NOTES 33's** (9 vs 17 fps in the same window), in both arms
+  alike, and it decays to 3 fps by the end of the run, the brief's original symptom. The hottest
+  zone is 96 C in both (xo 58.5 and 61.7 C at the start); no pause device engaged. So this pair
+  measured the hunk, not the decay. The decay (the brief's item 1) is still open and is not in
+  this PR.
+
+**Merge.** origin/master 01e62d8d1c is merged at 0f99a46264 with no conflict. Since the previous
+merge (73b9209088), master changed no file in this PR. Its only code changes are perflog counters
+in pgraph/profile.c and vk/renderer.c (#413, ecf5e05dd2 and 2f38c02487), so the three verdicts
+(goldens PASS 385/385, Blinx uniform hunk inert, Forza hunk 5 PASS) stand on the merged head. The
+arm is not re-run.
+
+**vk/draw.c is released** to lane.pacing (#526's two sched_yield waits), noted in
+`$DISPATCH_DIR/board-requests/forza414.md`. vk/surface.c, vk/shaders.c and the lent renderer.h line
+are done too.
+
+**For the next lane.** Do not look for fps in hunk 5 or in the uniform hash skip; both remove work
+that the frame does not wait on. Forza's lever is still the decay: 29 fps before the race loads,
+falling to 3 fps with the car standing still.
