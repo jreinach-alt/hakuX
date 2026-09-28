@@ -442,17 +442,18 @@ retired_utc = "2026-09-27T21:45:00Z"
 files = []
 note = "RETIRED (hostops 2026-09-27 14:40 PDT): PR #510 folded as 2e00efa205 (handback.sh resolves a lane from the worktree its PR branch is checked out in). Its files go to [free]."
 
-[lane.thermal507]
-issues = ["507"]
-files = ["docs/testing/thermal_state.py", "docs/testing/soak_title.sh", "docs/testing/title_verdict.py", "docs/testing/jobs/selftest.d/99-thermal-pause.sh", "docs/lanes/thermal507/**"]
-released = ["docs/testing/thermal_state.py", "docs/testing/soak_title.sh", "docs/testing/title_verdict.py", "docs/testing/jobs/selftest.d/99-thermal-pause.sh", "docs/lanes/thermal507/**"]
-released_at_ready = 508
+[retired.thermal507]
+issues = []
+retired_utc = "2026-09-28T03:25:00Z"
+files = []
 standing = false
-note = "RESUMED (job.board 2026-09-27T19:36 PDT), attempt 2: NOTES.md's own 'for the next lane' section names remaining work (device verification of the power/thermal reads post-fold, and the cooling-device cur_state lead on the actual pause mechanism) -- PR #523 folded with nothing further queued in territory, but the lane's own notes are not done. || STARTED (hostops 2026-09-27 13:58 PDT), briefs/thermal507.md: #507 (0.5, fps-focus), Thor thermal-pause-F8 parks cpu3-7 ~4-6 min into a MAX run; fps falls 5-7x. Detect it in every soak (thermal_state.py, thermal.jsonl, status thermal-pause), name the trip zone, audit recent Thor benchmarks. soak_title.sh taken from lane.displayguard's release at PR #495 ready. RELEASED at PR-ready (job.board 2026-09-27): PR #508 out of draft, CI green, unit gone; files stay in `files` for audit/fold, released to [free] for the next lane."
+note = "RETIRED (hostops 2026-09-27 20:25 PDT): PRs #508/#519/#523/#533 all MERGED (#533 folded f82e7e87fe at 03:10Z), unit inactive, no open PR on lane/thermal507*. The brief's one unfinished step (the 30-min MAX vs defaults comparison) passed to lane.sustain507 (lane.local 03:12Z). Files RELEASED to [free]: docs/testing/thermal_state.py, docs/testing/soak_title.sh, docs/testing/title_verdict.py, docs/testing/jobs/selftest.d/99-thermal-pause.sh, docs/lanes/thermal507/**."
 
 [lane.drain474]
 issues = ["474"]
 files = ["hw/xbox/nv2a/pgraph/vk/texture.c", "docs/lanes/drain474/**", "docs/testing/predictions/drain474-*.json"]
+released = ["hw/xbox/nv2a/pgraph/vk/texture.c", "docs/lanes/drain474/**", "docs/testing/predictions/drain474-*.json"]
+released_at_ready = 517
 note = "STARTED (hostops 2026-09-27 15:48 PDT), briefs/drain474.md: #474 (0.5, fps-focus), lane.slowdown462 Ask 8. pgraph_vk_bind_textures drains all frames (4.47 of 4.57 ms/flip, AUF 1-1790543757) before a DIRECT s2t bind that writes nothing into the snode image; move the drain under !can_direct_bind. vk/texture.c passed on from lane.slowdown462 (lent by [lane.remote]); returns to [lane.remote] at fold. Base lane/slowdown462-bindtex (PR #512)."
 
 [retired.escitems]
@@ -501,6 +502,12 @@ note = "STARTED (lane.local 2026-09-28T03:12:38Z), briefs/sustain507.md: the cri
 issues = ["413"]
 files = ["docs/lanes/doa413c/**", "docs/testing/predictions/doa413c-*.json"]
 note = "STARTED (job.board 2026-09-27T20:16 PDT), briefs/doa413c.md: #413 (0.5, fps-focus), DOA2 Ultimate stage-transition stall (0-2 fps, up to 76 s hang after a ring-out) on the Nova, run 0-0-y-1790433159. Distinct from #462's general-slowdown remedies (lane.rendermode474 PR #530, lane.drain474 PR #517, lane.forza414 PR #518, lane.idlehalt #525), none of which names this transition hang, and from PR #440 (doa413b)'s already-refuted surface_update lazy-completion theory. Measurement-first: no code file claimed yet; a fix mechanism asks for its file by name at that point (vk/surface.c, vk/texture.c, vk/draw.c are lent/held elsewhere -- see [lane.remote], [lane.forza414])."
+
+[lane.fpsshare]
+issues = []
+files = ["docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/66-status-titles.sh", "docs/testing/jobs/selftest.d/67-status-measured.sh", "docs/lanes/fpsshare/**", "docs/lanes/measured05/fixture/assert_measured.py"]
+standing = false
+note = "Created by hostops 2026-09-27 20:25 PDT (harness defect, no issue; briefs/fpsshare.md). lane.local 19:56 PDT (hostops-inbox): the status page title table shows 0% at 30+ for full-speed 30 fps titles (Galleon verdict: median 29.97, fps_ok_share 0.85 at the 28.5 bar); _soak_read counts a strict g >= 30. This table is the owner's read of the sustained-fps critical path. Files claimed from [free]."
 
 [free]
 # RELEASED (job.board 2026-09-28T02:53Z) by retiring lane.slowdown462 (no unit, no open PR): docs/lanes/slowdown462/**.
@@ -729,90 +736,7 @@ note = "STARTED (job.board 2026-09-27T20:16 PDT), briefs/doa413c.md: #413 (0.5, 
 # CLAIMED (hostops, 2026-09-26 3:00 PM PDT): docs/testing/titles/** -> lane.titlestate (runbook 6n).
 # CLAIMED (hostops, 2026-09-26 6:45 AM PDT): gl/texture.c -> lane.pshaniso284 (granted 6:40 AM; [free] still listed it, failing check_territory).
 # CLAIMED (job.board, 2026-09-27T13:48Z): docs/testing/titles/**, docs/lanes/titlestate/**, docs/testing/jobs/selftest.d/99-title-state.sh -> lane.titlestate (RUNNING with no row, fleet.py FAIL; PR #478).
-files = ["hw/xbox/nv2a/pgraph/vk/renderer.c", "hw/xbox/nv2a/pgraph/vk/instance.c", "hw/xbox/nv2a/pfifo.c", "hw/xbox/nv2a/pgraph/pgraph.c", "docs/lanes/flip474/**", "docs/testing/predictions/flip474-*.json", "docs/testing/jobs/selftest.d/99-affinity-backlog.sh", "docs/lanes/affinitybacklog/**", "docs/testing/titles/**", "docs/lanes/titlestate/**", "docs/testing/jobs/selftest.d/99-title-state.sh", "docs/testing/jobs/selftest.d/66-status-titles.sh", "docs/lanes/titles05/fixture/assert_titles.py", "docs/lanes/titles05/fixture/synth.py", "docs/lanes/titles05/fixture/targets.toml", "docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-lane-line.sh", "docs/lanes/handbacklane/**", "docs/lanes/notify488/**", "docs/testing/predictions/notify488-*.json", "accel/tcg/tb-maint.c", "accel/tcg/tb-internal.h", "accel/tcg/cputlb.c", "docs/testing/predictions/tbflip424-blinx.json", "docs/lanes/tbflip424/NOTES.md", "docs/testing/jobs/selftest.d/99-handback-branch.sh", "docs/lanes/displayguard/**", "docs/lanes/gta482/**", "docs/testing/predictions/gta482-*.json", "docs/testing/jobs/selftest.d/99-score-sweep-flat-split.sh", "docs/lanes/scoresplit/**", "accel/tcg/cpu-exec.c", "accel/tcg/tb-jmp-cache.h", "docs/testing/jobs/selftest.d/99-handback-merged.sh", "docs/lanes/handbackmerged/**", "docs/testing/dispatcher.sh", "docs/testing/jobs/selftest.d/98-dispatch-late-device.sh", "docs/lanes/dispsuper/**", "docs/lanes/doa413b/**", "docs/testing/predictions/doa413b-*.json", "docs/lanes/routeprep/**", "docs/lanes/forzaclock/**", "docs/lanes/aufdispatch/**", "docs/testing/jobs/status.sh", "docs/testing/jobs/selftest.d/60-status.sh", "docs/testing/jobs/selftest.d/62-status-freshness.sh", "docs/testing/jobs/selftest.d/63-status-lanes.sh", "docs/testing/jobs/selftest.d/64-status-html.sh", "docs/testing/jobs/selftest.d/65-status-objective.sh", "docs/testing/release-0.5.toml", "docs/lanes/dash432/release-0.5.toml", "docs/testing/jobs/selftest.d/67-status-measured.sh", "docs/lanes/measured05/**", "docs/testing/jobs/selftest.d/99-iso-roots.sh", "docs/lanes/isoroots/NOTES.md", "docs/testing/predictions/tbchurn424-*.json", "docs/lanes/tbchurn424/**", "android/app/build.gradle.kts", "android/app/src/main/cpp/CMakeLists.txt", "docs/testing/predictions/buildflags427-*.json", "docs/lanes/buildflags427/**", "docs/testing/predictions/vcpuprime428-*.json", "docs/lanes/vcpuprime428/**", "hw/xbox/nv2a/pgraph/prim_rewrite.c", "docs/testing/predictions/flatlm13-*.json", "docs/lanes/flatlm13/**", "hw/xbox/nv2a/pgraph/pgraph.h", "hw/xbox/nv2a/pgraph/glsl/vsh.h", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/ring53impl-*.json", "docs/lanes/ring53impl/**", "docs/testing/predictions/blinx372d-*.json", "docs/lanes/blinx372d/**", "docs/testing/jobs/selftest.d/99-handback-parked.sh", "docs/lanes/handbackpark/**", "docs/testing/jobs/hold.sh", "docs/testing/jobs/selftest.d/99-hold-take.sh", "docs/testing/jobs/roles/lane.md", "docs/lanes/holdtake/NOTES.md", "docs/testing/stop-emulator.sh", "docs/testing/jobs/selftest.d/79-stop-hook-hold.sh", "docs/lanes/holdlease/NOTES.md", "docs/testing/jobs/selftest.d/97-release-prio.sh", "docs/lanes/relprio432/**", "AGENTS.md", "docs/testing/jobs/selftest.d/99-pilot-gate.sh", "docs/lanes/pilotgate/**", "docs/testing/jobs/selftest.d/99-visual-score.sh", "docs/lanes/visual404/**", "docs/testing/predictions/visual404-*.json", "docs/testing/jobs/fold.sh", "docs/testing/jobs/selftest.d/74-fold-multi.sh", "docs/lanes/foldcancel/NOTES.md", "docs/lanes/titleplay/**", "docs/lanes/cloudclaim/**", "docs/testing/nightly_build.sh", "docs/testing/jobs/selftest.d/86-nightly-notes.sh", "docs/lanes/nightlynotes/**", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**", "tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "docs/testing/predictions/doa413-*.json", "docs/lanes/doa413/**", "hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/glsl/geom.h", "docs/testing/predictions/cull13-*.json", "docs/lanes/cull13/**", "subprojects/nv2a_vsh_cpu.wrap", "subprojects/packagefiles/nv2a_vsh_cpu/**", "docs/testing/predictions/vshcpu345-*.json", "docs/lanes/vshcpu345/**", "docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/99-status-escalation-items.sh", "docs/lanes/escitems/**",
-# RELEASED AT WAVE 158 by retiring lane.cloud190: PR #211 folded as f2e8ef8ba8 (#190 fixed).
-    "hw/xbox/nv2a/pmc.c",
-# RELEASED (job.board wave 249) by retiring lane.fmv303 (PR #317 folded bb1f437bb7): vk/display.c.
-    # RELEASED AT WAVE 147 (host session): vk/draw.c + vk/surface.c by retiring lane.clrsurf91
-# (PR #148 closed, #207); the other paths were dropped by 19f97aa4 into NEITHER a row nor
-# [free] (lane.remote, #184 comment 5762957253).
-# TAKEN 2026-09-25 by [lane.clrwb91] (#91 write-back): vk/surface.c.
-    "hw/xbox/nv2a/pgraph/vk/surface-compute.c",
-    "docs/lanes/clrvk184/NOTES.md",
-    "docs/lanes/clrsurf91/NOTES.md",
-    "docs/lanes/blendarm50/NOTES.md",
-    "docs/testing/swatchorder50_readings.py",
-# RELEASED AT WAVE 146 by retiring lane.remote (decision-needed #213):
-    "hw/xbox/nv2a/pgraph/gl/blit.c",
-    "hw/xbox/nv2a/pgraph/gl/renderer.c",
-    "hw/xbox/nv2a/pgraph/gl/debug.c",
-    "hw/xbox/nv2a/pgraph/glsl/common.c",
-    "target/**",
-    "ui/**",
-    "audio/**",
-    "tests/**",
-# RELEASED AT WAVE 97 by retiring lane.tier81fix: its two issues are closed and the
-# files were claimed by a lane with no agent. #90's second contributor is unimplemented
-# and lives in translate-all.c -- see [retired.tier81fix].
-#
-# NAMED OUT AT WAVE 102: glsl/geom.c, granted to lane.linecap13 for #13's
-# cap/join residual (job.board). It had sat here unreclaimed since lane.lineext
-# retired at wave ~32; check_territory.py caught the duplicate the moment the
-# new row was pushed.
-"accel/**/*.h",
-         "hw/xbox/nv2a/pgraph/swizzle.c",
-# NAMED OUT (hostops, 2026-09-26T07:10Z): vk/shaders.c, granted to lane.vkpointsize34
-# for #34 (set GenGeomGlslOptions.no_point_size); vk/instance.c released here by that lane.
-         "hw/xbox/mcpx/**",
-         "hw/xbox/nv2a/nv2a_int.h",
-# NAMED OUT AT WAVE 135, RELEASED AT WAVE 144: nv2a_regs.h, granted to
-# lane.pmc188 alongside pmc.c for #188's NV_PMC_ENABLE read model, folded as
-# 01538395b7 (job.board). pmc.c itself is NOT here -- reclaimed the same
-# tick by [lane.cloud190] below, so it never touches [free].
-# NAMED OUT AT WAVE 133: prim_rewrite.c, granted to lane.primpv13 for #13's
-# provoking-vertex trade (rewrite_triangle_fan's emit_tri_pv rotation vs.
-# geom.c's edge-priority order, 32,628 decisive px) (job.board).
-         "hw/xbox/nv2a/pgraph/s3tc.c",
-         "hw/xbox/nv2a/pgraph/vk/buffer.c",
-# NAMED OUT AT WAVE 135 (job.board): vk/surface-compute.c, granted to
-# lane.clrvk184 alongside vk/texture.c for #184's Clear-suite X1A7 read.
-         "hw/xbox/nv2a/pramdac.c",
-         "include/exec/**",
-# RELEASED AT WAVE 108 (job.board) by retiring lane.swizzle87 (PR #139
-# merged, #85/#87 both closed): vk/texture.c, gl/surface.c. And by
-# retiring lane.ciskip (PR #140 merged): roles/lane.md, roles/cloud.md.
-# backlogstate (PR #134 merged) held only its own NOTES.md, nothing to
-# release. None of the three had a running agent; all three still showed
-# as claimed-with-no-agent in fleet.py before this tick.
-# vk/texture.c NAMED OUT AT WAVE 135 (job.board): granted to lane.clrvk184,
-# see [lane.clrvk184] below.
-# roles/lane.md NAMED OUT AT WAVE 119 (job.board): granted to lane.draftstrand,
-# which is fixing item 5's unachievable wording as part of its own brief.
-         "docs/testing/jobs/roles/cloud.md",
-# RELEASED AT WAVE 110 (job.board) by retiring lane.blitsafe (PR #102 merged
-# 2026-09-19T10:56:48Z): vk/blit.c, vk/surface.c, vk/draw.c, surface.h. #88 and
-# #91 are REOPENED (see [retired.blitsafe]) and both still need these files;
-# a fresh lane picking them up should read nv2a_issues.toml's #88/#91 rows
-# first, not start from the issue title.
-         "hw/xbox/nv2a/pgraph/vk/blit.c",
-         "hw/xbox/nv2a/pgraph/surface.h",
-         "hw/xbox/nv2a/pgraph/gl/shaders.c",
-# RELEASED AT WAVE 123 (job.board) by retiring lane.vblank65 (PR #160 merged,
-# #65 closed) and lane.diagdump77 (PR #143 merged, claim outlived the lane):
-         "hw/xbox/nv2a/nv2a.c",
-         "docs/testing/vblank_report.py",
-         "docs/testing/vblank_ab.py",
-         "android/app/src/main/java/com/rfandango/haku_x/LauncherActivity.kt",
-# RELEASED (job.board, board tick 2026-09-20T14:57:11Z) by retiring
-# hilodot10 (PR #168 merged), indexcheck (PR #159 merged), wbufclip (PR #156
-# merged) and linecap13 (PR #141 merged): all four folded, no running agent.
-         "docs/testing/bump_sign_quads.py",
-         "docs/lanes/hilodot10/NOTES.md",
-         "docs/lanes/indexcheck/NOTES.md",
-         "docs/lanes/wbufclip/NOTES.md",
-  "docs/testing/jobs/selftest.d/99-handback-strand.sh",
-# CLAIMED (hostops 2026-09-27T00:20Z) by lane.handbackpark: docs/testing/jobs/handback.sh.
-]
+files = ["hw/xbox/nv2a/pgraph/vk/renderer.c", "hw/xbox/nv2a/pgraph/vk/instance.c", "hw/xbox/nv2a/pfifo.c", "hw/xbox/nv2a/pgraph/pgraph.c", "docs/lanes/flip474/**", "docs/testing/predictions/flip474-*.json", "docs/testing/jobs/selftest.d/99-affinity-backlog.sh", "docs/lanes/affinitybacklog/**", "docs/testing/titles/**", "docs/lanes/titlestate/**", "docs/testing/jobs/selftest.d/99-title-state.sh", "docs/lanes/titles05/fixture/assert_titles.py", "docs/lanes/titles05/fixture/synth.py", "docs/lanes/titles05/fixture/targets.toml", "docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-lane-line.sh", "docs/lanes/handbacklane/**", "docs/lanes/notify488/**", "docs/testing/predictions/notify488-*.json", "accel/tcg/tb-maint.c", "accel/tcg/tb-internal.h", "accel/tcg/cputlb.c", "docs/testing/predictions/tbflip424-blinx.json", "docs/lanes/tbflip424/NOTES.md", "docs/testing/jobs/selftest.d/99-handback-branch.sh", "docs/lanes/displayguard/**", "docs/lanes/gta482/**", "docs/testing/predictions/gta482-*.json", "docs/testing/jobs/selftest.d/99-score-sweep-flat-split.sh", "docs/lanes/scoresplit/**", "accel/tcg/cpu-exec.c", "accel/tcg/tb-jmp-cache.h", "docs/testing/jobs/selftest.d/99-handback-merged.sh", "docs/lanes/handbackmerged/**", "docs/testing/dispatcher.sh", "docs/testing/jobs/selftest.d/98-dispatch-late-device.sh", "docs/lanes/dispsuper/**", "docs/lanes/doa413b/**", "docs/testing/predictions/doa413b-*.json", "docs/lanes/routeprep/**", "docs/lanes/forzaclock/**", "docs/lanes/aufdispatch/**", "docs/testing/jobs/status.sh", "docs/testing/jobs/selftest.d/60-status.sh", "docs/testing/jobs/selftest.d/62-status-freshness.sh", "docs/testing/jobs/selftest.d/63-status-lanes.sh", "docs/testing/jobs/selftest.d/64-status-html.sh", "docs/testing/jobs/selftest.d/65-status-objective.sh", "docs/testing/release-0.5.toml", "docs/lanes/dash432/release-0.5.toml", "docs/lanes/measured05/**", "docs/testing/jobs/selftest.d/99-iso-roots.sh", "docs/lanes/isoroots/NOTES.md", "docs/testing/predictions/tbchurn424-*.json", "docs/lanes/tbchurn424/**", "android/app/build.gradle.kts", "android/app/src/main/cpp/CMakeLists.txt", "docs/testing/predictions/buildflags427-*.json", "docs/lanes/buildflags427/**", "docs/testing/predictions/vcpuprime428-*.json", "docs/lanes/vcpuprime428/**", "hw/xbox/nv2a/pgraph/prim_rewrite.c", "docs/testing/predictions/flatlm13-*.json", "docs/lanes/flatlm13/**", "hw/xbox/nv2a/pgraph/pgraph.h", "hw/xbox/nv2a/pgraph/glsl/vsh.h", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/ring53impl-*.json", "docs/lanes/ring53impl/**", "docs/testing/predictions/blinx372d-*.json", "docs/lanes/blinx372d/**", "docs/testing/jobs/selftest.d/99-handback-parked.sh", "docs/lanes/handbackpark/**", "docs/testing/jobs/hold.sh", "docs/testing/jobs/selftest.d/99-hold-take.sh", "docs/testing/jobs/roles/lane.md", "docs/lanes/holdtake/NOTES.md", "docs/testing/stop-emulator.sh", "docs/testing/jobs/selftest.d/79-stop-hook-hold.sh", "docs/lanes/holdlease/NOTES.md", "docs/testing/jobs/selftest.d/97-release-prio.sh", "docs/lanes/relprio432/**", "AGENTS.md", "docs/testing/jobs/selftest.d/99-pilot-gate.sh", "docs/lanes/pilotgate/**", "docs/testing/jobs/selftest.d/99-visual-score.sh", "docs/lanes/visual404/**", "docs/testing/predictions/visual404-*.json", "docs/testing/jobs/fold.sh", "docs/testing/jobs/selftest.d/74-fold-multi.sh", "docs/lanes/foldcancel/NOTES.md", "docs/lanes/titleplay/**", "docs/lanes/cloudclaim/**", "docs/testing/nightly_build.sh", "docs/testing/jobs/selftest.d/86-nightly-notes.sh", "docs/lanes/nightlynotes/**", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**", "tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "docs/testing/predictions/doa413-*.json", "docs/lanes/doa413/**", "hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/glsl/geom.h", "docs/testing/predictions/cull13-*.json", "docs/lanes/cull13/**", "subprojects/nv2a_vsh_cpu.wrap", "subprojects/packagefiles/nv2a_vsh_cpu/**", "docs/testing/predictions/vshcpu345-*.json", "docs/lanes/vshcpu345/**", "docs/testing/jobs/selftest.d/99-status-escalation-items.sh", "docs/lanes/escitems/**", "hw/xbox/nv2a/pmc.c", "hw/xbox/nv2a/pgraph/vk/surface-compute.c", "docs/lanes/clrvk184/NOTES.md", "docs/lanes/clrsurf91/NOTES.md", "docs/lanes/blendarm50/NOTES.md", "docs/testing/swatchorder50_readings.py", "hw/xbox/nv2a/pgraph/gl/blit.c", "hw/xbox/nv2a/pgraph/gl/renderer.c", "hw/xbox/nv2a/pgraph/gl/debug.c", "hw/xbox/nv2a/pgraph/glsl/common.c", "target/**", "ui/**", "audio/**", "tests/**", "accel/**/*.h", "hw/xbox/nv2a/pgraph/swizzle.c", "hw/xbox/mcpx/**", "hw/xbox/nv2a/nv2a_int.h", "hw/xbox/nv2a/pgraph/s3tc.c", "hw/xbox/nv2a/pgraph/vk/buffer.c", "hw/xbox/nv2a/pramdac.c", "include/exec/**", "docs/testing/jobs/roles/cloud.md", "hw/xbox/nv2a/pgraph/vk/blit.c", "hw/xbox/nv2a/pgraph/surface.h", "hw/xbox/nv2a/pgraph/gl/shaders.c", "hw/xbox/nv2a/nv2a.c", "docs/testing/vblank_report.py", "docs/testing/vblank_ab.py", "android/app/src/main/java/com/rfandango/haku_x/LauncherActivity.kt", "docs/testing/bump_sign_quads.py", "docs/lanes/hilodot10/NOTES.md", "docs/lanes/indexcheck/NOTES.md", "docs/lanes/wbufclip/NOTES.md", "docs/testing/jobs/selftest.d/99-handback-strand.sh", "docs/testing/thermal_state.py", "docs/testing/soak_title.sh", "docs/testing/title_verdict.py", "docs/testing/jobs/selftest.d/99-thermal-pause.sh", "docs/lanes/thermal507/**"]
 
 [retired.selftest86]
 issues = []
@@ -1511,10 +1435,3 @@ issues = ["474"]
 retired_utc = "2026-09-28T02:40:00Z"
 files = []
 note = "RETIRED (hostops 2026-09-28T02:40Z): PRs #475, #485 and #516 folded (the [lock474] counter, the flip lock analysis, Turnip sysmem measured: AUF 16 -> 24 and DOA 13 -> 21 gfps on the Nova); attempt 4 was its last session, unit gone, nothing queued. #474 continues with lane.rendermode474 (per-title sysmem default, PR #530), lane.drain474 (PR #517) and lane.forza414 (display pre-download deferral, PR #518). Files RELEASED to [free]: hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/instance.c, hw/xbox/nv2a/pfifo.c, hw/xbox/nv2a/pgraph/pgraph.c, docs/lanes/flip474/**, docs/testing/predictions/flip474-*.json."
-
-
-[lane.cloud-issue-527]
-issues = ["527"]
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-issue-527, a cloud-class lane on issue #527, branch lane/cloud-527, attempt 1 of 4 on claude-opus-5-5. Claims no files: the session's brief is the issue and the files it will touch are not known at claim time -- the row exists so check_territory.py and fleet.py can SEE the session, which they could not before. `cloud.sh finish issue 527` removes this row when the unit ends."
