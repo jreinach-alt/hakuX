@@ -44,6 +44,10 @@
 #              judged and `thermal.measured` is false; with the samples
 #              after the mark all failed it is void `thermal-unread:` and
 #              `thermal.window_covered` is false.
+#   fan        the sample script, run here with FAN_DIR on a fake node, reads
+#              its duty, period and state, and --summary ends `fan duty lo-hi
+#              of period`. Fails if the fan loop's quoting breaks, the parse
+#              drops the lines, or the summary never reads them.
 
 echo "== thermal pause: thermal_state.py bounds a sampled pause and tests a window (#507)"
 TP="$T/thermalpause"; rm -rf "$TP"; mkdir -p "$TP/bin" "$TP/t"
@@ -347,3 +351,25 @@ case "$r" in "thermal-unread: no reading at or after the window's end +45 s (las
     *) bad "unread-window verdict: [$r]" ;; esac
 wc=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]+"/verdict.json"))["thermal"]["window_covered"])' "$PV")
 [ "$wc" = False ] && ok "unread window: thermal.window_covered is false" || bad "unread window: window_covered [$wc]"
+
+echo "== thermal pause: the sample reads the fan's PWM, and the summary names its range (#507 D)"
+FD="$TP/fan"; mkdir -p "$FD"; echo 29000 > "$FD/duty"; echo 50000 > "$FD/period"; echo 1 > "$FD/state"
+r=$(python3 - "$TESTING" "$FD" "$TP/fan.jsonl" <<'PY' 2>&1
+import json, subprocess, sys
+sys.path.insert(0, sys.argv[1]); import thermal_state as t
+sh = t.SAMPLE_SH.replace(t.FAN_DIR, sys.argv[2])
+if sh == t.SAMPLE_SH:
+    sys.exit("SAMPLE_SH does not read FAN_DIR")
+s = t.parse_sample(subprocess.run(["sh", "-c", sh], capture_output=True, text=True).stdout)
+fan = s.get("fan") or {}
+recs = [dict(s, dev_time="09-27 13:00:%02d" % sec, label=lab, error=None,
+             cool=[[10, "thermal-pause-F8", 0, 1]], fan=dict(fan, duty=duty))
+        for sec, lab, duty in [(0, "start", 13700), (30, "hold", fan.get("duty", -1))]]
+open(sys.argv[3], "w").write("\n".join(json.dumps(r) for r in recs) + "\n")
+print(fan.get("duty"), fan.get("period"), fan.get("state"), "speed" in fan)
+PY
+)
+sm=$(python3 "$TESTING/thermal_state.py" --summary "$TP/fan.jsonl" 2>&1)
+case "$r|$sm" in "29000 50000 1 False|THERMAL: no thermal-pause device above 0; 2 samples, 0 unread"*"; fan duty 13700-29000 of 50000")
+        ok "fan: the sample reads duty/period/state from the PWM node; the summary reads [fan duty 13700-29000 of 50000]" ;;
+    *) bad "fan: sample [$r] summary [$sm]" ;; esac
