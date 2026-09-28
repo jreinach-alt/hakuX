@@ -7,7 +7,7 @@ section 8):
 
   M0   took G >= 40 ms as the mark of the race. A race that does not decay
        runs at G 33-36 ms, so the leg voids exactly the arm that is fixed.
-  B3   capped txw `scan` at 3.0 ms/flip. Since #518 the scan's time holds a
+  B3   capped txw `scan` at 3.0 ms/flip. Since #543 the scan's time holds a
        download completion it triggers ([sdcall] range=), 3.8-7.5 ms a frame
        on master and on the fix alike; the walk of the list is what is left.
   D2   names the master arm's first request, which was voided twice.

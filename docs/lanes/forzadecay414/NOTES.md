@@ -238,8 +238,134 @@ tree (dispatcher.sh `snapshot_scripts`), not the request's ref. If #588 folds be
 soaks run, they carry the fields, and one sample gets quoted on #414. If it folds after, any
 later soak will show them.
 
+## 8. Attempt 4: the Nova soaks, read (2026-09-28 16:45-17:10 PDT)
+
+**Why attempt 3 did not finish.** It ended in a correct wait on the Nova, which was under its
+battery hold. The soaks ran 15:44-16:37 PDT, and handback resumed the lane at 16:42 PDT. The resume
+brief said none of the lane's requests was still queued. That was stale by a minute: hostops had
+re-queued the two cut arms as `-3394828-r3` and `-3394871-r4` at 16:43 PDT, and put the Nova on a
+charge hold (`hold/nova.why`: USB write errors at low charge on the 500 mA port).
+
+**Reader:** `docs/lanes/forzadecay414/judge.py <result dir>...` prints every number below.
+
+### 8.1 The seven runs
+
+All on the Nova, survey route, regimen max. No cooling device above 0 in any sample. xo-therm
+35 -> 54 C (A) and 44 -> 55 C (fix), with `cpu-1-9` at 92-95 C.
+
+| result | ref | ran | fps, rows t = 150..330 | invalid max / last | faf calls/flip | scan ms/flip first -> last | of which range completion | walk |
+|---|---|---|---|---|---|---|---|---|
+| `1-1790624588-forzadecay414-3394734` | f82e7e87fe, before #517 | 360 s | 16 20 20 28 26 26 28 | 199 / 17 | 0.15 | 0.15 -> 0.12 | 0.07 -> 0.00 | 0.08 -> 0.12 |
+| `1-1790625108-forzadecay414-3486226` | 10fe2f59a7, **the fix** | 360 s | 20 20 28 28 26 28 26 | **10 / 9** | 0.00 | 6.04 -> 3.84 | 5.98 -> 3.78 | **0.06 -> 0.06** |
+| `1-1790624588-forzadecay414-3394828` | 09050ddbe5, #517 | cut at 261 s, VOID | 12 10 6 | 1996 (t = 233) | 0.00 | 1.68 -> 8.96 | 0.00 | 1.68 -> 8.96 |
+| `1-1790624588-forzadecay414-3394828-r2` | 09050ddbe5 | cut at 276 s | 12 10 4 | 1954 (t = 227) | 0.00 | 1.97 -> 8.59 | 0.00 | 1.97 -> 8.59 |
+| `1-1790624589-forzadecay414-3394871` | 85347ffbd1, master | cut at 245 s, VOID | 12 10 2 | 1969 (t = 253) | 0.00 | 7.78 -> 14.52 | 5.31 -> 5.74 | 2.47 -> 8.78 |
+| `-3394871-r2` | 85347ffbd1 | cut at 77 s, VOID | never left the boot | - | - | - | - | - |
+| `-3394871-r3` | 85347ffbd1 | cut at 66 s | never left the boot | - | - | - | - | - |
+
+- **Only two runs are whole: the one before #517 and the fix.** Every run of a leaking build was cut
+  by the Nova's USB link. Three were cut in the race, at 245-276 s. Two were cut in the boot, at 66
+  and 77 s, before any list could grow, so the link and not the build is what cuts them.
+- **The fix holds the list at 9-10 for the whole race, and its fps matches the build before #517**:
+  26.7 against 26.7 over rows t = 270-330. The three leaking runs read 8.0-9.3 over rows
+  t = 150-210, where the fix reads 22.7 and the build before #517 reads 18.7.
+- **The route frames show the race in both whole runs.** `155038-play.png` (A) and
+  `160858-play.png` (fix) have the race HUD with the race clock at 2:07 and 2:31. The car stands at
+  0 mph in both, at different spots on the pit straight, so the two views are not the same scene.
+
+### 8.2 The registered legs, by the letter
+
+Three thresholds in the registered files were wrong. They are reported as written, not re-read.
+
+| file | leg | reads | by the letter |
+|---|---|---|---|
+| fix-forza | M0 race reached (G >= 40 ms in rows 180-330) | fix: G 47.8 38.2 33.4 41.4 33.3 41.0 | **fails its G clause, so the file reads VOID**. 45 `[watch311]` lines after t = 150. |
+| fix-forza | B0 faf <= 0.02 | 0.00 (78 lines) | holds |
+| fix-forza | B1 max invalid <= 400 | 10 | holds |
+| fix-forza | B2 last invalid <= max(60, 2 x median) | 9 against 60 | holds |
+| fix-forza | B3 scan <= 3.0 ms/flip on the last race line, and <= 2 x the first | 3.84, first 6.04 | **fails the 3.0 cap** |
+| fix-forza | D1 fps late / early >= 0.8 | 26.67 / 22.67 = 1.18 | holds |
+| fix-forza | D2 fix / master fps >= 1.5 | no whole master run | not read |
+| bisect | M0 | A: G 50.5 48.3 35.8 33.8 36.6 33.5 | **fails its G clause, VOID** |
+| bisect | P0 A's faf >= 0.2, B's <= 0.02 | A 0.15, B 0.00 (cut runs) | **A's clause fails**: A flushes once in 7 flips, not once in 5 |
+| bisect | P1 B's last invalid >= 1000 | 1996 and 1954 by t = 233, in cut runs | not read: no whole B run |
+| bisect | P2 A's max invalid <= 400 | 199 | holds |
+| bisect | P3 B / A fps, rows 270-330, <= 0.6 | B has no such rows. Rows 150-210: 0.50 and 0.46 | not read |
+| master | M0, P1, P3 | one cut run: invalid 1969 by t = 253 | not read |
+
+**What was wrong with each threshold.**
+- **M0 took a slow frame as the mark of the race.** A race that does not decay runs at G 33-36 ms,
+  so the clause voids exactly the arm that is fixed. Section 1's Nova rows showed 28-30 fps late in
+  the race before this was registered. The race is marked by the scan's calls per flip instead:
+  685-931 in the race, 0-85 in the menus, in all five runs that got there.
+- **B3 capped the scan's time, which is not the walk's time.** On master and on the fix, the scan
+  triggers one download completion a frame and waits on it: `[sdcall] range=fin60/.../dl60/447.9ms`
+  per 60 frames. It arrived between fa56a26f1f and b991fb4c21, which is PR #543's hunk 5: the
+  Thor pair `1092424` / `1092523` reads `surfupd=fin180` with no `range=`, then `surfupd=fin120
+  range=fin46`. So the Thor's 0.84 ms/flip, which B3's cap was set from, had no completion in it.
+  (Commit a55cd900f2's message names #518 for this. That was wrong.) Less the completion, the
+  fix's walk is 0.06 ms/flip on the first race line and on the last. Master's cut run read
+  2.47 -> 8.78 by t = 213.
+- **P0's 0.2 was a guess.** A flushes 0.13-0.15 times a flip and its list is pruned from 199 back
+  to 16-86. The leg's failing world was "A does not flush either", and that is not what A shows.
+
+**The download time did not move with the fix.** All `[sdcall]` sites together read a median of
+18.6 ms/frame on the fix (100 lines) and 20.1 on master's cut run (17 lines). `why=` does change: master reads
+`new120/inv0`, the fix `new0/inv120`. With the stamp cleared, the two surfaces a frame come back
+from the invalid list instead of being created new. That is the recycling the list exists for, and
+it is what the pixel arm tests.
+
+### 8.3 The re-cut file and what is queued
+
+`forzadecay414-fix-forza2.json` (sha256 99a1521a6497, registered 2026-09-28T23:50:43Z, committed
+a55cd900f2 before either of its runs): A 85347ffbd1, B 10fe2f59a7. M0 by scan calls per flip and
+the route frame. A1 master's last invalid >= 1000, A3 master's walk >= 5.0 ms/flip. B1, B2 and D1 as
+before. B3 the fix's walk <= 0.5 ms/flip, first and last race line. D2 fix / master fps >= 1.5.
+Its thresholds were set from `-3486226`, which it does not judge. The bisect and master files were
+not re-cut: their A run has happened.
+
+| request | ref | what | judged by |
+|---|---|---|---|
+| `1-1790624588-forzadecay414-3394828-r3` | 09050ddbe5 | #517, hostops re-run | bisect (P1, P3) |
+| `1-1790624589-forzadecay414-3394871-r4` | 85347ffbd1 | master, hostops re-run | master; A of fix-forza2 |
+| `1-1790639501-forzadecay414-151099` | 10fe2f59a7 | the fix, second run | B of fix-forza2 |
+| `1-1790639505-forzadecay414-151975` | 85347ffbd1 | AUF, master | A of fix-auf |
+| `1-1790639505-forzadecay414-152037` | 10fe2f59a7 | AUF, the fix | B of fix-auf |
+| `1-1790625714-arms-forzadecay414-base-3793108`, `-fix-3793166` | 85347ffbd1, 10fe2f59a7 | full sweep, arms job | fix-pixels |
+
+`pilots/forzadecay414.ok` was written from the two whole runs before the AUF pair was queued. The
+five soaks are about 40 min of Nova time.
+
+### 8.4 The clock instrument's device proof (PR #588, folded 4e3d69a69b)
+
+These soaks ran after the fold, so every sample carries `clk`. From `-3486226`'s `thermal.jsonl`,
+the `hold` sample at 16:05:39 PDT, with `cpu-1-9` at 93.5 C:
+
+```
+"clk": {"cpu0": {"scaling_cur_freq": 2016000, "cpuinfo_max_freq": 2016000},
+        "cpu3": {"scaling_cur_freq": 2803200, "scaling_max_freq": 2803200, "cpuinfo_max_freq": 2803200},
+        "cpu7": {"scaling_cur_freq": 3187200, "scaling_max_freq": 3187200, "cpuinfo_max_freq": 3187200},
+        "gpu": {"gpuclk": 615000000, "max_gpuclk": 680000000, "throttling": 0}}
+```
+
+run.log: `clock MHz cpu0 1786-2016 of 2016, cpu3 1651-2803 of 2803, cpu7 1843-3187 of 3187, gpu
+401-615 of 680`. The low ends are the `cool` sample, taken before the title starts. Every `hold`
+sample in the three runs read has cpu7 at 3187 MHz and cpu3 at its ceiling, with the hottest core
+at 92-95 C. `scaling_cur_freq` is the governor's request, so this does not rule LMh out (#588's
+caveat). It does not need to: the fix holds 26-28 fps with `cpu-1-9` at 93-95 C.
+
+**Waiting (session end, 2026-09-28 ~17:15 PDT)** on the five soaks and the pixel pair in 8.3. The
+Nova is on hostops' charge hold until 50% or the owner's top-up, bound 19:00 PDT. On resume: run
+`judge.py` on `-r3`, `-r4` and `-151099`, and `docs/lanes/slowdown462/txwwin.py <dir> 255 411` on
+the AUF pair. Look at each run's last `play` frame. Write the verdicts here and on #414. Mark #583
+ready only if fix-forza2, fix-auf and fix-pixels all hold.
+
 ## Do not repeat
 
+- Do not mark the race by G or by fps. A race that runs well reads like a menu. Use the txw scan's
+  calls per flip (>= 500) and the route frame.
+- Do not cap the txw `scan` time to bound the list walk. Since #543 it holds a download completion
+  (`[sdcall] range=`). Subtract it; `judge.py` prints the walk.
 - Do not read the Thor's 2-4 fps step with audio starving as the decay. That is the xo-78 C pause
   (#507): it lands with `thermal-pause-F8`, and the vCPU and audio lose their cores.
 - Do not look for H1 in core temperatures. The big cores sit at 94-96 C in runs that hold 18-24
