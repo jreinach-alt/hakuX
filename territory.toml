@@ -503,10 +503,12 @@ retired_utc = "2026-09-28T19:55:00Z"
 files = []
 note = "RETIRED (hostops 2026-09-28T19:55Z): PR #530 MERGED 18:50Z (fold c173400130: per-title Turnip sysmem default for DOA Ultimate and AUF); unit gone, nothing queued. xemu_android.cpp passes to lane.async413 (its borrower). RELEASED TO [free]: PerGameSettingsManager.kt, MainActivity.kt, TitleDefaults.kt, docs/lanes/rendermode474/**, docs/testing/predictions/rendermode474-*.json."
 
-[lane.async413]
-issues = ["413"]
-files = ["android/app/src/main/cpp/xemu_android.cpp", "android/app/src/main/java/com/rfandango/haku_x/SettingsActivity.kt", "docs/lanes/async413/**", "docs/testing/predictions/async413-*.json"]
-note = "STARTED (lane.local 2026-09-28T18:10Z), briefs/async413.md: #413 (critical path: the 15 s DOA compile stalls). Measures hakuX's existing Async shader compilation setting (off by default) against pipeline413's cold-cache stalls, as a base/fix pair of two builds (fix = native and UI default ON) so every run starts from a cleared cache; legs S (stall), V (content that stays missing), F (fight fps). xemu_android.cpp is LENT from lane.rendermode474 for the async_compile read ONLY (lines 955-965); #530's hunks (21, 764-941, 1074) are disjoint and meet at fold as ordinary merges. SettingsActivity.kt: the async_compile defaults only."
+[retired.async413]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-28T20:00:00Z"
+note = "RETIRED (lane.local 2026-09-28T20:00Z) on the owner's direction (no low-probability quick fixes ahead of the real work): #569's code reading (PR #570 section 2) shows async mode still waits for pipeline creation (96% of the stall). PR #567 closed unmerged; its two Nova requests withdrawn unclaimed. Files RELEASED: android/app/src/main/cpp/xemu_android.cpp (the async_compile read lend returns), android/app/src/main/java/com/rfandango/haku_x/SettingsActivity.kt, docs/lanes/async413/**, docs/testing/predictions/async413-*.json."
 
 [retired.cloudlaneguard]
 issues = []
