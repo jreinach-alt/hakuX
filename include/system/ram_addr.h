@@ -132,4 +132,13 @@ static inline void qemu_ram_block_writeback(RAMBlock *block)
     qemu_ram_msync(block, 0, block->used_length);
 }
 
+#ifdef XBOX
+/*
+ * #548: tlb_reset_dirty() leaves the length of the walk it just timed here,
+ * on the calling thread, so tlb_reset_dirty_range_all() can charge it to its
+ * caller without reading the clock a second time.
+ */
+extern __thread int64_t hakux_rdc_last_ns;
+#endif
+
 #endif
