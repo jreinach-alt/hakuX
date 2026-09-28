@@ -91,10 +91,17 @@ not a playable one, so every fix is judged on energy per frame as well as fps.
 
 CLOCKS (`clk` in a sample, #414). Every cpufreq policy's scaling_cur_freq and
 whichever of scaling_max_freq / cpuinfo_max_freq read (kHz), and the GPU's
-gpuclk, max_gpuclk (Hz) and `throttling`. The kernel's junction-limit clock
-cap (LMh/DCVS) sets no cooling device, so without these a core held at a
-fraction of its clock at 95 C reads exactly like one at full speed. --summary
-names each domain's range against its ceiling.
+gpuclk, max_gpuclk (Hz) and `throttling`. --summary names each domain's range
+against its ceiling. scaling_cur_freq is the clock the governor REQUESTED, not
+the one delivered: on qcom-cpufreq-hw the junction-limit cap (LMh) is fed to
+the scheduler as thermal pressure and moves neither it nor scaling_max_freq.
+A CPU reading at its ceiling therefore does NOT rule out LMh (gta482 NOTES:
+under thermal-pause-F8 "scaling_cur_freq still reads each cluster's
+maximum"). A CPU minimum under the ceiling is evidence of a cap or an idle
+core; a ceiling reading is no evidence either way. Unsettled on a device: a
+hot soak where fps falls with no cooling device set, and whether the cpu7
+minimum moves in that window (#414's post-fold check). The GPU half is
+kgsl's devfreq clock and does show a cap.
 """
 import datetime as dt
 import json
@@ -125,8 +132,9 @@ FAN_DIR = "/sys/class/gpio5_pwm2"
 # CLOCKS (#414). Qualcomm's LMh/DCVS caps a core's clock near its junction
 # limit without setting any cooling device, so no `cd` line shows it. Every
 # cpufreq policy (policy0/3/7 on both handhelds: little, mid, big) is read
-# for its current clock and both ceilings, and the GPU for its clock, its
-# ceiling and kgsl's `throttling` switch. scaling_max_freq is permission-
+# for its requested clock (scaling_cur_freq: LMh may cap below it unseen, see
+# the module doc) and both ceilings, and the GPU for its clock, its ceiling
+# and kgsl's `throttling` switch (enabled, not throttling now). scaling_max_freq is permission-
 # denied on the Thor's policy0: a field that does not read is left out.
 CPUFREQ_DIR = "/sys/devices/system/cpu/cpufreq"
 KGSL_DIR = "/sys/class/kgsl/kgsl-3d0"
@@ -246,11 +254,14 @@ def clk_mhz(domain, hz):
 
 def clock_range(recs):
     """'clock MHz cpu0 300-2016, cpu7 1037-3187 of 3187, gpu 220-719 of 719,
-    gpu throttling 1' over every sample that read a clock, or None. Each
-    domain: min-max of its current clock, then `of` the lowest ceiling any
-    sample read (scaling_max_freq, else cpuinfo_max_freq; max_gpuclk). A
-    minimum well under that ceiling with no cooling device set is LMh/DCVS
-    at work, or an idle core: the fps beside it says which."""
+    gpu throttle-switch 1' over every sample that read a clock, or None. Each
+    domain: min-max of its current clock (requested, for a CPU), then `of`
+    the lowest ceiling any sample read (scaling_max_freq, else
+    cpuinfo_max_freq; max_gpuclk). A minimum well under that ceiling with no
+    cooling device set is a cap or an idle core: the fps beside it says
+    which. A CPU maximum AT the ceiling does not rule out LMh: the CPU
+    figure is the governor's request, and LMh caps below it without moving
+    it (module doc). throttle-switch is kgsl's enable, not a live state."""
     cur, cap, thr = {}, {}, set()
     for r in recs:
         for dom, f in (r.get("clk") or {}).items():
@@ -269,7 +280,7 @@ def clock_range(recs):
                                  " of %.0f" % clk_mhz(d, cap[d]) if d in cap else "")
              for d, v in sorted(cur.items(), key=lambda kv: key(kv[0]))]
     if thr:
-        parts.append("gpu throttling %s" % "/".join(map(str, sorted(thr))))
+        parts.append("gpu throttle-switch %s" % "/".join(map(str, sorted(thr))))
     return "clock MHz " + ", ".join(parts)
 
 

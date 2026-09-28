@@ -405,6 +405,6 @@ print(json.dumps(clk, sort_keys=True))
 PY
 )
 sm=$(python3 "$TESTING/thermal_state.py" --summary "$TP/clk.jsonl" 2>&1)
-case "$r|$sm" in '{"cpu0": {"cpuinfo_max_freq": 2016000, "scaling_cur_freq": 1804800}, "cpu7": {"cpuinfo_max_freq": 3187200, "scaling_cur_freq": 1036800, "scaling_max_freq": 2803200}, "gpu": {"gpuclk": 220000000, "max_gpuclk": 719000000, "throttling": 1}}|THERMAL: no thermal-pause device above 0; 2 samples, 0 unread'*'; clock MHz cpu0 1805-1805 of 2016, cpu7 1037-3187 of 2803, gpu 220-719 of 719, gpu throttling 1')
-        ok "clock: the sample reads each policy's clock and ceilings and the GPU's; the summary reads [clock MHz cpu0 1805-1805 of 2016, cpu7 1037-3187 of 2803, gpu 220-719 of 719, gpu throttling 1]" ;;
+case "$r|$sm" in '{"cpu0": {"cpuinfo_max_freq": 2016000, "scaling_cur_freq": 1804800}, "cpu7": {"cpuinfo_max_freq": 3187200, "scaling_cur_freq": 1036800, "scaling_max_freq": 2803200}, "gpu": {"gpuclk": 220000000, "max_gpuclk": 719000000, "throttling": 1}}|THERMAL: no thermal-pause device above 0; 2 samples, 0 unread'*'; clock MHz cpu0 1805-1805 of 2016, cpu7 1037-3187 of 2803, gpu 220-719 of 719, gpu throttle-switch 1')
+        ok "clock: the sample reads each policy's clock and ceilings and the GPU's; the summary reads [clock MHz cpu0 1805-1805 of 2016, cpu7 1037-3187 of 2803, gpu 220-719 of 719, gpu throttle-switch 1]" ;;
     *) bad "clock: sample [$r] summary [$sm]" ;; esac
