@@ -1425,3 +1425,23 @@ What the title taught:
 Benchmark queued: 1-1790566122-titleroutes-1417504 (thor, 570 s, ref
 023e26510f). targets.toml: the existing 4D530039 entry (#431 target 60) now
 has a thor ISO and the route.
+
+### Session 28: HELD Thor, 20:39-20:50 PDT (11 min; hold taken 20:30 while the pacing FIX arm ran), battery 68%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Spikeout: Battle Street (53450029, USA disc) | thor | `spikeout.returning.route` | yes (20:46, warm, 10/10 focus reads) | Story 1 "Reunion": Spike Jr. fighting Grasshopper's gang on the dock, 59 fps. At the end the score reads 250 |
+
+Frames: nav `~/hakux-work/nav/spikeout.first-run-20260927T203923/` (player
+creation; s-013-walk, s-015-fought) and
+`~/hakux-work/nav/spikeout.returning-20260927T204333/`; replay
+`scratch/replay/spikeout.returning-204621/` (204903-gameplay.png, zz-end.png).
+The player "A" is on the Thor's disk (flushed with HOME at 20:43).
+
+- targets.toml had the Europe disc for the Thor. The route was recorded on the
+  USA disc, which is also on the Thor, so the entry now names that one.
+- The story FMVs decode as green blocks (#303). A still skips them.
+- On the name grid, START types a letter (as it did in RalliSport 2). Two hat
+  taps up reach Done.
+
+Benchmark queued: 1-1790567423-titleroutes-2191714 (thor, 460 s, ref 5b4294aa5d).
