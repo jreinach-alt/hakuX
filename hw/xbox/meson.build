@@ -3,6 +3,7 @@ specific_ss.add(files(
 	# never listed here. See accel/tcg/meson.build.
 	'game-compat.c',
 	'acpi_xbox.c',
+	'adpf.c',
 	'amd_smbus.c',
 	# 'chihiro-usb.c',
 	# 'chihiro.c',

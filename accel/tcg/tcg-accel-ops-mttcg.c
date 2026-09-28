@@ -36,6 +36,9 @@
 #include "tcg-accel-ops.h"
 #include "tcg-accel-ops-mttcg.h"
 #ifdef XBOX
+#include "hw/xbox/adpf.h"
+#endif
+#ifdef XBOX
 /* nv2a_int.h no longer drags in cpu.h, and on the desktop build this file
  * lands in the target-agnostic system sourceset, where cpu.h will not
  * resolve. The Android build compiles it per target and the __ANDROID__
@@ -93,6 +96,9 @@ static void *mttcg_cpu_thread_fn(void *arg)
     qemu_thread_get_self(cpu->thread);
 
     cpu->thread_id = qemu_get_thread_id();
+#ifdef XBOX
+    hakux_adpf_thread_start(HAKUX_ADPF_VCPU);   /* #544 */
+#endif
     cpu->neg.can_do_io = true;
     current_cpu = cpu;
     cpu_thread_signal_created(cpu);

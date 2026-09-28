@@ -28,6 +28,11 @@
 #include <android/log.h>
 #include "target/i386/cpu.h"
 #endif
+#include "hw/xbox/adpf.h"
+#if defined(__ANDROID__) && defined(CONFIG_VULKAN)
+/* #544: the render thread's QemuThread, for its ADPF session. */
+#include "pgraph/vk/renderer.h"
+#endif
 
 #ifndef XEMU_OPT_THREAD_AFFINITY
 #define XEMU_OPT_THREAD_AFFINITY 0
@@ -1979,6 +1984,9 @@ static void pfifo_run_pusher(NV2AState *d)
                 s_cbl.flips++;
             }
 #endif
+            if (method == NV097_FLIP_STALL) {
+                hakux_adpf_flip(nv2a_get_vblank_period_ns());   /* #544 */
+            }
 
             dma_get_v += (num_words_processed-1)*4;
 
@@ -2112,6 +2120,18 @@ void *pfifo_thread(void *arg)
                         "tid=%d role=pfifo (pusher, puller, pgraph methods, "
                         "vulkan translation)", (int)gettid());
 #endif
+
+    /* #544: this thread and the render thread are ADPF session 1. The
+     * renderer's init above created the render thread, if it has one. */
+    hakux_adpf_thread_start(HAKUX_ADPF_PFIFO);
+#if defined(__ANDROID__) && defined(CONFIG_VULKAN)
+    if (d->pgraph.renderer->type == CONFIG_DISPLAY_RENDERER_VULKAN &&
+        d->pgraph.vk_renderer_state) {
+        hakux_adpf_thread_add(HAKUX_ADPF_RENDER,
+            &d->pgraph.vk_renderer_state->render_thread.thread);
+    }
+#endif
+    hakux_adpf_gpu_threads_done();
 
     rcu_register_thread();
 

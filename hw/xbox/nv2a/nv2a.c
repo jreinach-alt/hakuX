@@ -311,6 +311,12 @@ static int64_t nv2a_calc_vblank_period_ns(NV2AState *d)
     return 16683750;
 }
 
+/* #544: the guest VBLANK period, for the ADPF target (from the PFIFO thread). */
+int64_t nv2a_get_vblank_period_ns(void)
+{
+    return g_nv2a ? nv2a_calc_vblank_period_ns(g_nv2a) : 16683750;
+}
+
 /*
  * Guest-visible VBLANK timing instrument.
  *
