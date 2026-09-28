@@ -187,6 +187,7 @@ notes = "#431 (comment 5849938891): 30, documented. a capture on an original Xbo
 name = "Project Gotham Racing 2"
 target_fps = 30
 iso = { thor = "4D53004B-Project_Gotham_Racing_2.xiso.iso" }
+route = "pgr2"
 notes = "#431 (comment 5851536933): 30, medium confidence. GameSpot and Eurogamer (Xbox, 2003): locked at 30"
 
 [titles."45410076"]
