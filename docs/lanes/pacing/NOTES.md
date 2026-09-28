@@ -375,3 +375,107 @@ is small on this title: say so and do not queue the rest of the Crimson runs.
 If the pilot reads, write `pilots/lane.pacing.ok` (python3) and run
 `bash docs/lanes/pacing/queue_rwait.sh rest` (Otogi A1/B1, Crimson A2/B2,
 Otogi A2/B2; 6 x 330 s).
+
+## Attempt 5 (2026-09-28 12:20 PDT): the pilot read, an instrument defect, the batch queued
+
+### Why attempt 4 did not finish
+
+It ended correctly, waiting: the Crimson pilot pair was queued on the Thor
+and a `[lane.pacing] waiting:` comment named both ids. The handback job
+resumed the lane once both were DONE (CI green on 0673e39c1b, no arm
+verdict yet). The brief counts that resume as "attempt 2"; it is the same
+PR.
+
+### Pilot (Crimson Skies, Thor, 240 s, ref 23f0ee233f, `PERF_REGIMEN=default`)
+
+`rwait_judge.py` over `mark gameplay` to the soak end (129 s, 13 windows,
+62 gfps lines per run). No crash or ANR, no thermal pause (every cooling
+device at 0 at the end), no VOID.txt.
+
+| | A1 yield (…-1207085) | B1 block (…-1207159) |
+|---|---|---|
+| gfps median | 29 | 29 |
+| wait CPU, ms per guest flip | 0.783 | 0.276 |
+| deferred waits per flip | 4.96 | 6.22 |
+| deferred wait wall, ms per flip | 0.79 | 1.19 |
+| waits ended inside the 30 us poll / blocked | - | 3290 / 20023 |
+| wakes per blocked wait | - | 1.0 |
+| wait p50 / p99 (median of windows), us | 120 / 1110 | 160 / 1090 |
+| perf-line gap max, s | 1.4 | 1.7 |
+| net_w (battery + USB) | 5.96 | 5.60 |
+| J per guest frame | 0.2055 | 0.1936 |
+
+Legs on the pilot (one run per arm; the prediction's legs are pooled over
+two): M0, F0 hold. W1 holds (A 0.783 >= 0.5). K1 holds (B p99 is not above
+A's). P1 holds (29 / 29). H0 holds. **H1 missed**: B/A = 0.35, above the
+0.25 bar. It is not a futex storm (1.0 wake per blocked wait). About six
+waits per flip each poll up to 30 us before blocking, about 0.18 ms per
+flip, which is most of B's 0.276. The bar did not budget the poll. It
+stays as registered; the batch pools two runs per title. **H2 was
+unreadable** (below). E1: B 6% lower J/frame on one run each, inside
+what two runs of one arm could differ by; the batch has four per title.
+The rotate site never waited in either arm (`waits=0`): all of the wait
+is the deferred finish.
+
+The rotate site's zero is itself a finding. The frame-rotation wait
+(:3953) is never reached with the next slot unsubmitted on this title, so
+only the deferred-finish wait carries the lever.
+
+### The instrument defect: `thr_cpu_ms` diffed two threads' clocks
+
+The window's thread-CPU delta went negative (-5639, -36137, -66839 ms) and
+above the window length (23398, 45619, 73718 ms in 10 s) once gameplay
+began, in both arms. `wait_frame_submitted` is reached from more than one
+thread: `pgraph_vk_finish` is called from the PFIFO thread, the render
+thread (FLUSH), the display's present (display.c:1729) and the
+surface-download paths. The 10 s window is closed by whichever thread
+crosses it, and each close diffed its own `CLOCK_THREAD_CPUTIME_ID`
+against the previous closer's. `wait_cpu_ms` is sound, because both of
+each wait's reads are on the waiting thread.
+
+Fixed in f53000f7e4 (log fields only): each thread keeps a thread-local
+span and reports `tid= thr_s= thr_flips= thr_cpu_ms=` for its own span
+when it closes a window (-1 on its first). The judge sums each thread's
+CPU rate, then over threads, and divides by flips per second. Lines
+without `tid=` read as UNREADABLE, never as a number. It was checked on a
+synthetic fixture (two threads, one first-report -1): 2.0 ms per flip, as
+constructed. Limit: a thread whose waits never close a window is not in
+the thread-CPU sum. `threads` in the judge output names the tids that were.
+
+The judge also reads power and heat now. A request.sh soak writes no
+verdict.json, so it runs `title_verdict.py` on a temp copy of the result
+dir (the dispatch dir is never written).
+
+### Re-registered, and queued (Thor, ref f53000f7e4, `1-` priority)
+
+Both predictions were re-registered on f53000f7e4 (df12e07bbf) with the
+legs and thresholds unchanged. The old pilot's read is recorded in the soak
+prediction's `reregistered` field. The pixel arm had not run on the old
+refs. `pilots/lane.pacing.ok` carries this pilot's verdict (the previous
+one kept below it).
+
+| id | arm |
+|---|---|
+| 1-1790623012-lane.pacing-2311381 | Crimson A1, yield |
+| 1-1790623012-lane.pacing-2311486 | Crimson B1, block |
+| 1-1790623013-lane.pacing-2311543 | Otogi A1, yield |
+| 1-1790623013-lane.pacing-2311591 | Otogi B1, block |
+| 1-1790623013-lane.pacing-2311638 | Crimson A2, yield |
+| 1-1790623014-lane.pacing-2311725 | Crimson B2, block |
+| 1-1790623014-lane.pacing-2311827 | Otogi A2, yield |
+| 1-1790623015-lane.pacing-2311898 | Otogi B2, block |
+
+On resume: read VOID.txt in each, then
+`python3 docs/lanes/pacing/rwait_judge.py --a <Crimson A1 A2> --b <Crimson B1 B2>`,
+and the same for Otogi. First check that the new window lines carry
+`tid=` and that `thr_cpu_ms` is non-negative and under `thr_s` x 1000. If
+not, H2 stays unreadable: say so, and do not re-run for it. Apply the legs
+as registered, post the table on #526 and the PR, and mark #572 ready.
+
+### For the next lane
+
+- Do not diff a per-thread clock across a window that any thread can close.
+- `title_verdict.py` gives a soak's power (`net_w`, `j_per_frame`) from
+  thermal.jsonl. A soak's result has no verdict.json of its own.
+- A request.sh soak's power is 5 samples over about 130 s of gameplay. One
+  run per arm is not a J/frame comparison.

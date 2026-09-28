@@ -29,8 +29,8 @@ rest)
     q "#526 render wait B2: block, Otogi" "$O" otogi PERF_REGIMEN=default
     ;;
 all)
-    "$0" pilot
-    "$0" rest
+    bash "$0" pilot
+    bash "$0" rest
     ;;
 *) echo "pilot|rest|all" >&2; exit 2 ;;
 esac
