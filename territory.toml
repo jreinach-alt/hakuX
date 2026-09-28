@@ -520,6 +520,7 @@ note = "STARTED (lane.local 2026-09-28T12:31:22Z), briefs/dirtytlb.md: #548 (0.5
 [lane.relnote]
 issues = ["553"]
 files = ["docs/testing/jobs/roles/lane.md", "docs/testing/jobs/selftest.d/99-release-note-line.sh", "docs/lanes/relnote/**"]
+released = ["docs/testing/jobs/roles/lane.md", "docs/testing/jobs/selftest.d/99-release-note-line.sh", "docs/lanes/relnote/**"]
 note = "STARTED (hostops 2026-09-28T14:45Z), briefs/relnote.md: #553 from lane.local's hostops-inbox ask (07:20 PDT): the lane definition of done requires a `Release note (<category>): <line>` on every PR that changes emulator code, so nightly_build.sh's body_line() files fps fixes correctly. roles/lane.md from [free]; the selftest fragment and lane NOTES are new."
 
 [lane.slowtier2]
