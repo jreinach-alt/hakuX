@@ -1,0 +1,66 @@
+{
+  "regimen": "rest",
+  "perf_mode": 0,
+  "fan_mode": 6,
+  "perf_restored": true,
+  "before": {
+    "perf_mode": 0,
+    "fan_mode": 4
+  },
+  "restored": {
+    "perf_mode": 0,
+    "fan_mode": 4
+  },
+  "max": {
+    "perf_mode": 2,
+    "fan_mode": 5
+  },
+  "rest": {
+    "perf_mode": 0,
+    "fan_mode": 4
+  },
+  "default": {
+    "perf_mode": 0,
+    "fan_mode": 4
+  },
+  "display": {
+    "start": {
+      "displays": {
+        "0": "ON"
+      },
+      "dual_screen_display_mode": "null",
+      "min_refresh_rate": 120.00001,
+      "peak_refresh_rate": 120.00001,
+      "screen_brightness": 6,
+      "screen_brightness_mode": 0
+    },
+    "end": {
+      "displays": {
+        "0": "ON"
+      },
+      "dual_screen_display_mode": "null",
+      "min_refresh_rate": 120.00001,
+      "peak_refresh_rate": 120.00001,
+      "screen_brightness": 6,
+      "screen_brightness_mode": 0
+    }
+  },
+  "fan_duty": {
+    "requested": 50000,
+    "period": 50000,
+    "refused": null,
+    "ran": {
+      "fan_mode": 6,
+      "duty": 50000,
+      "period": 50000
+    },
+    "restored": {
+      "fan_mode": 4,
+      "duty": 12294,
+      "period": 50000
+    },
+    "fan_restored": true,
+    "rewrites": 5,
+    "moved": 0
+  }
+}
