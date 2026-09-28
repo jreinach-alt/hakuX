@@ -21,6 +21,7 @@
 #include <vector>
 #include <fcntl.h>
 #include <pthread.h>
+#include <strings.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
@@ -764,6 +765,178 @@ static bool WriteConfigToml(const std::string& config_path,
   return true;
 }
 
+static uint32_t ReadLe32(const uint8_t* p) {
+  return uint32_t(p[0]) | (uint32_t(p[1]) << 8) | (uint32_t(p[2]) << 16) |
+         (uint32_t(p[3]) << 24);
+}
+
+static bool PreadFully(int fd, void* buf, size_t len, uint64_t off) {
+  uint8_t* p = static_cast<uint8_t*>(buf);
+  while (len > 0) {
+    ssize_t n = pread(fd, p, len, static_cast<off_t>(off));
+    if (n < 0 && errno == EINTR) continue;
+    if (n <= 0) return false;
+    p += n;
+    off += static_cast<uint64_t>(n);
+    len -= static_cast<size_t>(n);
+  }
+  return true;
+}
+
+/*
+ * The title ID in default.xbe's certificate, read from the disc image, or 0.
+ *
+ * The file name is not used: pipeline images are named <TID>-..., users'
+ * images are not. The XDVDFS partition sits at 0 in an xiso and further in
+ * in a full redump image; each known start is tried for the volume magic.
+ * The root directory is a binary tree, walked in full rather than by name
+ * order, so a tree sorted differently still finds default.xbe.
+ */
+static uint32_t ReadDiscTitleId(int fd) {
+  static const uint64_t kPartitionStarts[] = {0, 0x18300000ull, 0xFD90000ull,
+                                              0x2080000ull};
+  static const char kMagic[] = "MICROSOFT*XBOX*MEDIA";
+  constexpr uint64_t kSector = 2048;
+  constexpr size_t kMagicLen = sizeof(kMagic) - 1;
+
+  for (uint64_t base : kPartitionStarts) {
+    uint8_t vd[kSector];
+    if (!PreadFully(fd, vd, sizeof(vd), base + 32 * kSector)) continue;
+    if (memcmp(vd, kMagic, kMagicLen) != 0 ||
+        memcmp(vd + 0x7EC, kMagic, kMagicLen) != 0) {
+      continue;
+    }
+    const uint32_t root_sector = ReadLe32(vd + 0x14);
+    const uint32_t root_size = ReadLe32(vd + 0x18);
+    if (root_size < 14 || root_size > (1u << 20)) return 0;
+    std::vector<uint8_t> dir(root_size);
+    if (!PreadFully(fd, dir.data(), dir.size(), base + root_sector * kSector)) {
+      return 0;
+    }
+
+    uint32_t xbe_sector = 0, xbe_size = 0;
+    std::vector<uint32_t> stack{0};
+    for (int visits = 0; !stack.empty() && visits < 4096; ++visits) {
+      const uint32_t off = stack.back();
+      stack.pop_back();
+      if (off + 14 > root_size) continue;
+      const uint8_t* e = dir.data() + off;
+      const uint16_t left = uint16_t(e[0] | (e[1] << 8));
+      const uint16_t right = uint16_t(e[2] | (e[3] << 8));
+      if (left == 0xFFFF) continue;  // padding
+      const uint8_t name_len = e[13];
+      if (off + 14 + name_len <= root_size && name_len == 11 &&
+          strncasecmp(reinterpret_cast<const char*>(e + 14), "default.xbe", 11) == 0) {
+        xbe_sector = ReadLe32(e + 4);
+        xbe_size = ReadLe32(e + 8);
+        break;
+      }
+      if (left) stack.push_back(uint32_t(left) * 4);
+      if (right) stack.push_back(uint32_t(right) * 4);
+    }
+    if (xbe_size < 0x180) return 0;
+
+    const uint64_t xbe = base + xbe_sector * kSector;
+    uint8_t hdr[0x180];
+    if (!PreadFully(fd, hdr, sizeof(hdr), xbe) || memcmp(hdr, "XBEH", 4) != 0) {
+      return 0;
+    }
+    const uint32_t base_addr = ReadLe32(hdr + 0x104);
+    const uint32_t cert_addr = ReadLe32(hdr + 0x118);
+    if (cert_addr < base_addr || cert_addr - base_addr + 12 > xbe_size) return 0;
+    uint8_t tid[4];
+    if (!PreadFully(fd, tid, sizeof(tid), xbe + (cert_addr - base_addr) + 8)) {
+      return 0;
+    }
+    return ReadLe32(tid);
+  }
+  return 0;
+}
+
+/*
+ * Titles whose default render mode is not the driver's (#474).
+ *
+ * Turnip's autotuner renders DOA's and AUF's heavy pass in GMEM with too few
+ * tiles to bin, so the whole draw stream runs once per tile (X/R near 1);
+ * sysmem runs it once. On the Nova: AUF 16 -> 24 gfps, DOA 13 -> 21
+ * (docs/lanes/flip474/sysmem.md). It is not a global default because the
+ * ZPASS report a guest reads changes value in sysmem (#527), and titles that
+ * read it, such as Blinx, are left to the driver. IDs are from the staging
+ * manifest; xemu's compatibility list maps no other release to either.
+ */
+struct TitleRenderMode {
+  uint32_t title_id;
+  const char* mode;
+};
+constexpr TitleRenderMode kTitleRenderModes[] = {
+    {0x4541000D, "sysmem"},  // 007: Agent Under Fire
+    {0x54430006, "sysmem"},  // Dead or Alive 1 Ultimate
+};
+
+static bool HasCsvToken(const std::string& list, const char* token) {
+  std::istringstream stream(list);
+  std::string item;
+  while (std::getline(stream, item, ',')) {
+    if (item == token) return true;
+  }
+  return false;
+}
+
+/*
+ * Choose the Turnip render mode for this launch and put it in TU_DEBUG
+ * before the Vulkan instance exists (Turnip parses TU_DEBUG once, in
+ * vkCreateInstance). Runs on every launch path, since it reads the disc the
+ * emulator is about to boot, not a screen's state.
+ *
+ * Order: the per-game `render_mode` override (auto, sysmem or gmem), then
+ * the title table, then auto. "auto" and "gmem" add nothing, which leaves the
+ * driver's choice; for the tabled titles that is GMEM. sysmem is appended to
+ * any TU_DEBUG the env_vars pref already set, never replacing it. A table
+ * default also yields to an env TU_DEBUG that already names a render mode.
+ * The line is on hakuX-build, which every harness logcat spec keeps.
+ */
+static void ApplyRenderMode(JNIEnv* env, jobject activity, const std::string& dvd) {
+  uint32_t title_id = 0;
+  if (dvd == "/dev/fdset/0" && g_dvd_fd >= 0) {
+    title_id = ReadDiscTitleId(g_dvd_fd);
+  } else if (!dvd.empty()) {
+    int fd = open(dvd.c_str(), O_RDONLY | O_CLOEXEC);
+    if (fd >= 0) {
+      title_id = ReadDiscTitleId(fd);
+      close(fd);
+    }
+  }
+
+  std::string mode = GetRuntimeOverride(env, activity, "render_mode");
+  const char* source = "per-game";
+  if (mode != "auto" && mode != "sysmem" && mode != "gmem") {
+    mode = "auto";
+    source = "default";
+    for (const auto& t : kTitleRenderModes) {
+      if (title_id != 0 && t.title_id == title_id) {
+        mode = t.mode;
+        source = "table";
+        break;
+      }
+    }
+  }
+
+  const char* cur_c = getenv("TU_DEBUG");
+  std::string cur = cur_c ? cur_c : "";
+  const bool env_names_mode = HasCsvToken(cur, "sysmem") || HasCsvToken(cur, "gmem");
+  if (mode == "sysmem" && strcmp(source, "table") == 0 && env_names_mode) {
+    source = "table, env wins";
+  } else if (mode == "sysmem" && !HasCsvToken(cur, "sysmem")) {
+    cur = cur.empty() ? "sysmem" : cur + ",sysmem";
+    setenv("TU_DEBUG", cur.c_str(), 1);
+  }
+
+  const char* now = getenv("TU_DEBUG");
+  __android_log_print(ANDROID_LOG_INFO, "hakuX-build",
+                      "render_mode: %s (%s) title=%08X TU_DEBUG=%s (#474)",
+                      mode.c_str(), source, title_id, now ? now : "(unset)");
+}
+
 static SetupFiles SyncSetupFiles() {
   SetupFiles out{};
   JNIEnv* env = GetEnv();
@@ -900,6 +1073,8 @@ static SetupFiles SyncSetupFiles() {
       }
     }
   }
+
+  ApplyRenderMode(env, activity, out.dvd);
 
   out.config_path = base + "/xemu.toml";
   int tbSize = GetPrefInt(env, activity, "tcg_tb_size", 128);
