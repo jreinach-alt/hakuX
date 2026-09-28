@@ -1,0 +1,30 @@
+15:30:45Z hold already ours
+15:30:47Z device nova ee317437; before: mode=4 duty=12000 period=50000 state=1 speed=5100 xo=43851
+15:30:47Z fan-named keys before: backup_agent_timeout_parameters=kv_backup_agent_timeout_millis=45000,custom_kv_backup_timeout_ms_map=android=60000 sysui_qs_tiles=internet,performancemode,fan,custom(james.dsp/me.timschneeberger.rootlessjamesdsp.service.QuickTileService),ledlights,controllerStyle,triggerInputMode,peak_refresh_rate,charging,charge_limit,bt,screenrecord,rotation,airplane,dnd,cast,hotspot,screenshot,custom(com.rp.gameassistant/com.ro.gameassistant.service.FloatingWindowTileService),custom(com.rp.settings/com.ro.settings.service.KeepScreenOnTileService),custom(com.rp.settings/com.ro.settings.service.ForceLandscapeTileService),battery,night,dark,inversion,location theme_customization_overlay_packages={"_applied_timestamp":1788671604788,"android.theme.customization.color_source":"home_wallpaper","android.theme.customization.color_index":"1","android.theme.customization.theme_style":"SPRITZ","android.theme.customization.color_both":"1"} fan_mode=4 
+15:30:47Z == fan_mode 6
+15:30:54Z   +5 s mode=6 duty=25000 period=50000 state=1 speed=8700 xo=42441
+15:31:01Z   +10 s mode=6 duty=25000 period=50000 state=1 speed=9000 xo=41384
+15:31:07Z   +15 s mode=6 duty=25000 period=50000 state=1 speed=9000 xo=40484
+15:31:16Z   +20 s mode=6 duty=25000 period=50000 state=1 speed=9000 xo=39783
+15:31:22Z   +25 s mode=6 duty=25000 period=50000 state=1 speed=9000 xo=39145
+15:31:29Z   +30 s mode=6 duty=25000 period=50000 state=1 speed=9000 xo=38589
+15:31:35Z   +35 s mode=6 duty=25000 period=50000 state=1 speed=9300 xo=38146
+15:31:44Z   +40 s mode=6 duty=25000 period=50000 state=1 speed=9000 xo=37694
+15:31:50Z   +45 s mode=6 duty=25000 period=50000 state=1 speed=9000 xo=37285
+15:31:57Z   +50 s mode=6 duty=25000 period=50000 state=1 speed=9000 xo=36913
+15:32:04Z   +55 s mode=6 duty=25000 period=50000 state=1 speed=9000 xo=36600
+15:32:10Z   +60 s mode=6 duty=25000 period=50000 state=1 speed=9000 xo=36303
+15:32:11Z settings system changed under mode 6: < fan_mode=4 > fan_mode=6 
+15:32:11Z settings global changed under mode 6: none
+15:32:11Z settings secure changed under mode 6: none
+15:32:11Z == can the shell hold duty 50000?
+15:32:12Z   write:  (duty was 25000)
+15:32:18Z   +3 s mode=6 duty=50000 period=50000 state=1 speed=13800 xo=36040
+15:32:23Z   +6 s mode=6 duty=50000 period=50000 state=1 speed=13800 xo=35772
+15:32:27Z   +9 s mode=6 duty=50000 period=50000 state=1 speed=14100 xo=35529
+15:32:27Z == packages and providers
+15:32:28Z   packages: package:com.retroidpocket.setupwizard package:de.langerhans.odintools package:com.retroidpocket.gamelauncher 
+15:32:28Z   fan-named providers: 
+15:32:28Z   node perms: total 0|-rw-r--r-- 1 root root 4096 2026-09-28 08:32 dp_state|-rw-rw-rw- 1 root root 4096 2026-09-28 08:32 duty|-rw-r--r-- 1 root root 4096 2026-09-27 22:30 en_backlight|-rw-r--r-- 1 root root 4096 2026-09-28 08:32 hdmi_state|-rw-r--r-- 1 root root 4096 2026-09-28 08:30 period|-rw-r--r-- 1 root root 4096 2026-09-28 08:32 secondary_en_backlight|-rw-rw-rw- 1 root root 4096 2026-09-27 22:30 speed|-rw-rw-rw- 1 root root 4096 2026-09-28 08:30 state|-rw-r--r-- 1 root root 4096 2026-09-28 08:32 thermal|
+15:32:33Z restored: mode=4 duty=12000 period=50000 state=1 speed=6000 xo=35348
+15:32:33Z hold released
