@@ -491,20 +491,22 @@ issues = ["474"]
 files = ["android/app/src/main/java/com/rfandango/haku_x/PerGameSettingsManager.kt", "android/app/src/main/cpp/xemu_android.cpp", "android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt", "android/app/src/main/java/com/rfandango/haku_x/TitleDefaults.kt", "docs/lanes/rendermode474/**", "docs/testing/predictions/rendermode474-*.json"]
 note = "STARTED (lane.local 2026-09-28T01:30:40Z), briefs/rendermode474.md: #474 (0.5, fps-focus). Ship Turnip sysmem as the default render mode for DOA Ultimate and AUF only, keyed by title ID and below any user per-game override (flip474 verdict 01:21Z: DOA 13 -> 21 gfps, AUF 16 -> 24; global sysmem refused, #527). PerGameSettingsManager.kt and xemu_android.cpp moved from flip474; MainActivity.kt was unlisted; TitleDefaults.kt is new."
 
-[lane.cloudlaneguard]
+[retired.cloudlaneguard]
 issues = []
-files = ["docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/99-cloud-lane-branch.sh", "docs/lanes/cloudlaneguard/**"]
-note = "STARTED (hostops 2026-09-28T01:45Z), briefs/cloudlaneguard.md: harness defect, no issue. cloud.sh's claim guard sees only other cloud units, so it claimed audit1 and remediate on #523 while lane.thermal507 was still running on lane/thermal507-power (two writers, one branch). Add a held_why check for the PR's own running lane. cloud.sh was unclaimed (not in [free], no row). Interim: host-tools/audit_outlet.sh + lane_on_branch.sh."
+files = []
+retired_utc = "2026-09-28T04:41:00Z"
+note = "RETIRED (job.board): PR #532 MERGED 2026-09-28T04:33:36Z (cloud.sh does not claim a PR its lane is still running on). RELEASED TO [free]: docs/testing/jobs/cloud.sh, docs/testing/jobs/selftest.d/99-cloud-lane-branch.sh, docs/lanes/cloudlaneguard/**. PRIOR: STARTED (hostops 2026-09-28T01:45Z), briefs/cloudlaneguard.md: harness defect, no issue. cloud.sh's claim guard sees only other cloud units, so it claimed audit1 and remediate on #523 while lane.thermal507 was still running on lane/thermal507-power (two writers, one branch). Add a held_why check for the PR's own running lane. cloud.sh was unclaimed (not in [free], no row). Interim: host-tools/audit_outlet.sh + lane_on_branch.sh."
 
 [lane.sustain507]
 issues = ["507", "424"]
 files = ["docs/lanes/sustain507/**", "docs/testing/predictions/sustain507-*.json"]
 note = "STARTED (lane.local 2026-09-28T03:12:38Z), briefs/sustain507.md: the critical path (owner 2026-09-27 ~20:00 PDT: sustained fps within the heat budget). Part A: 30-min MAX vs defaults on the Thor (Crimson, GTA SA, MechAssault 2) with #533 PERF_REGIMEN=default once the dispatcher runs it; part B: #424's two registered Thor pairs (tbflip424-blinx.json) from cool starts. Measurement only; successor to lane.thermal507."
 
-[lane.doa413c]
-issues = ["413"]
-files = ["docs/lanes/doa413c/**", "docs/testing/predictions/doa413c-*.json"]
-note = "STARTED (job.board 2026-09-27T20:16 PDT), briefs/doa413c.md: #413 (0.5, fps-focus), DOA2 Ultimate stage-transition stall (0-2 fps, up to 76 s hang after a ring-out) on the Nova, run 0-0-y-1790433159. Distinct from #462's general-slowdown remedies (lane.rendermode474 PR #530, lane.drain474 PR #517, lane.forza414 PR #518, lane.idlehalt #525), none of which names this transition hang, and from PR #440 (doa413b)'s already-refuted surface_update lazy-completion theory. Measurement-first: no code file claimed yet; a fix mechanism asks for its file by name at that point (vk/surface.c, vk/texture.c, vk/draw.c are lent/held elsewhere -- see [lane.remote], [lane.forza414])."
+[retired.doa413c]
+issues = []
+files = []
+retired_utc = "2026-09-28T04:41:00Z"
+note = "RETIRED (job.board): PR #536 MERGED 2026-09-28T04:34:13Z (DOA Ultimate stage-transition stall, measurement -- #413 stays open, no fix landed). RELEASED TO [free]: docs/lanes/doa413c/**, docs/testing/predictions/doa413c-*.json. PRIOR: STARTED (job.board 2026-09-27T20:16 PDT), briefs/doa413c.md: #413 (0.5, fps-focus), DOA2 Ultimate stage-transition stall (0-2 fps, up to 76 s hang after a ring-out) on the Nova, run 0-0-y-1790433159. Distinct from #462's general-slowdown remedies (lane.rendermode474 PR #530, lane.drain474 PR #517, lane.forza414 PR #518, lane.idlehalt #525), none of which names this transition hang, and from PR #440 (doa413b)'s already-refuted surface_update lazy-completion theory. Measurement-first: no code file claimed yet; a fix mechanism asks for its file by name at that point (vk/surface.c, vk/texture.c, vk/draw.c are lent/held elsewhere -- see [lane.remote], [lane.forza414])."
 
 [lane.selftestshard]
 issues = []
@@ -513,6 +515,8 @@ standing = false
 note = "Created by hostops 2026-09-27 20:45 PDT (harness defect, no issue; briefs/selftestshard.md). jobs selftest runs 20-25 min against its 25-min cap: master f82e7e87fe's run 36372679047 CANCELLED at 25:18, and 4 of the last 20 runs; fold.sh counts CANCELLED as RED. Shard the suite. Files were unclaimed."
 
 [free]
+# RELEASED (job.board 2026-09-28T04:41Z) by retiring lane.doa413c (PR #536 merged, measurement only, #413 stays open): docs/lanes/doa413c/**, docs/testing/predictions/doa413c-*.json.
+# RELEASED (job.board 2026-09-28T04:41Z) by retiring lane.cloudlaneguard (PR #532 merged): docs/testing/jobs/cloud.sh, docs/testing/jobs/selftest.d/99-cloud-lane-branch.sh, docs/lanes/cloudlaneguard/**.
 # RELEASED (hostops 2026-09-28T04:10Z) by retiring lane.fpsshare (PR #538 folded): docs/testing/jobs/status_html.py, docs/testing/jobs/selftest.d/66-status-titles.sh, docs/testing/jobs/selftest.d/67-status-measured.sh, docs/lanes/fpsshare/**, docs/lanes/measured05/fixture/assert_measured.py.
 # RELEASED (job.board 2026-09-28T02:53Z) by retiring lane.slowdown462 (no unit, no open PR): docs/lanes/slowdown462/**.
 # RELEASED (hostops 2026-09-28T02:40Z) by retiring lane.flip474 (PRs #475/#485/#516 folded): hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/instance.c, hw/xbox/nv2a/pfifo.c, hw/xbox/nv2a/pgraph/pgraph.c, docs/lanes/flip474/**, docs/testing/predictions/flip474-*.json.
