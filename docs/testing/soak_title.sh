@@ -216,7 +216,8 @@ for line in sys.stdin:
     i, st = re.search(r"displayId (\d+)", line), re.search(r", state (\w+)", line)
     if i:
         disp[i.group(1)] = st.group(1) if st else None
-if disp:
+# {} when adb answered but no display line matched: this firmware prints another shape.
+if disp or out:
     out["displays"] = disp
 print(json.dumps(out, sort_keys=True, separators=(",", ":")))'
 }

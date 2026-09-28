@@ -358,9 +358,9 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
     thermal["failed_sustained"] = (fp is not None) if at_defaults and read else None
     sustained_fail = None
     if thermal["failed_sustained"]:
-        e0 = [e for e in eps if e["before"] is None or e["before"] > thermal_state.origin(read)][0]
+        e0, t0 = thermal_state.first_episode(therm or [])
         sustained_fail = ("thermal: sustained play failed at the device's defaults -- %s, from the run's start"
-                          % thermal_state.describe(e0, thermal_state.origin(read)))
+                          % thermal_state.describe(e0, t0))
     if hit and void is None and not at_defaults:
         void = "thermal-pause: %s, relative to the mark" % thermal_state.describe(hit[0], mark_t)
     elif gap and void is None:
