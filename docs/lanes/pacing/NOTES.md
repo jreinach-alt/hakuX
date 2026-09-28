@@ -10,7 +10,7 @@ frame limiter's busy spin, the 120 Hz panel under a 60 Hz presenter, and
 |---|---|---|
 | limiter waits with `clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME)` to the deadline | `ui/xemu.c` `android_limiter_wait` | `HAKUX_LIMITER=spin` = master's wait |
 | `[pace526]` line every 10 s (tag `hakuX-lane`) | `ui/xemu.c` | always on, Android only |
-| game surface asks for 60 Hz (`setFrameRate`, FIXED_SOURCE, CHANGE_FRAME_RATE_ALWAYS) | `SDLSurface.java` `requestGameFrameRate` | `HAKUX_SURFACE_RATE=off` = no request; `=mode` also sets `preferredDisplayModeId` |
+| game surface asks for 60 Hz (`setFrameRate`, FIXED_SOURCE, CHANGE_FRAME_RATE_ALWAYS) | `SDLSurface.java` `requestGameFrameRate` | opt-in: unset or `off` = no request (the default); `=on` = the request; `=mode` also sets `preferredDisplayModeId` |
 | `[rate526]` display mode before / on change / 2 s after | `SDLSurface.java` | always, API 30+ |
 | `HAKUX_VSYNC=0\|1` overrides the vsync pref for one run | `ui/xemu.c` at the Android `SDL_GL_SetSwapInterval` | default unchanged (pref, false) |
 
@@ -171,7 +171,13 @@ before anyone quotes it. Pilot file: `pilots/lane.pacing.ok`.
 proc CPU per flip 20.71 / 20.78 / 20.88. So the user-level minimum outranks
 `setFrameRate` on this Nova (Android 13, sdk=33), and the window's base-mode
 vote outranks the user minimum. On the Nova, `HAKUX_SURFACE_RATE=mode` is the
-lever. `off` (the default) and plain `setFrameRate` leave the panel at 120 Hz.
+lever. `off` and plain `setFrameRate` leave the panel at 120 Hz.
+
+These arms ran on ead1086cb5, where an unset `HAKUX_SURFACE_RATE` made the
+request, so B's `b_env: []` selected `setFrameRate`. Since the pass-1 audit
+(MEDIUM 1) the request is opt-in: unset behaves as `off`, and `=on` is what
+B's empty env was. The prediction file stays as registered because its refs
+pin that binary.
 The pairs below measure CPU, not panel power. No power record exists yet
 (#523), so what the 60 Hz panel saves in watts is still unmeasured.
 
@@ -283,7 +289,8 @@ flip 26.46 / 26.54. The Thor has no 120 Hz panel to fix.
 Every leg is read. What is still open, and not this PR's to close:
 - Panel and limiter power in watts: needs #523's power record live on the
   dispatcher. Re-run the Kabuki pair and the display A/C pair then.
-- The `HAKUX_SURFACE_RATE` default is `off`. On the Nova the lever that
+- The `HAKUX_SURFACE_RATE` default is `off` (unset makes no request; the
+  code agrees since the pass-1 remediation). On the Nova the lever that
   moves the panel is `mode`. Making it the default is a product call,
   because it overrides the user's own 120 Hz minimum.
 - vk/draw.c: still lane.forza414's; the proposal above stands.

@@ -198,10 +198,13 @@ public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
      * software timer, so a 120 Hz panel refreshes twice per frame for nothing.
      * FIXED_SOURCE because that timer does not adapt to the rate the system
      * picks. HAKUX_SURFACE_RATE in the env_vars pref selects the behaviour:
-     * unset requests 60 Hz; "off" makes no request (the A arm on one binary);
-     * "mode" also sets the window's preferredDisplayModeId to a 60 Hz mode of
-     * the current size, the app vote that outranks the user's minimum refresh
-     * rate setting. Every step logs [rate526] on hakuX-lane.
+     * unset (or "off", or any other value) makes no request, the default;
+     * "on" requests 60 Hz; "mode" also sets the window's preferredDisplayModeId
+     * to a 60 Hz mode of the current size, the app vote that outranks the
+     * user's minimum refresh rate setting. The default makes no request because
+     * on an unpinned 120 Hz panel the request's effect is unmeasured, and
+     * "mode" overrides the user's own minimum. Every step logs [rate526] on
+     * hakuX-lane.
      */
     private static final String RATE_TAG = "hakuX-lane";
     private DisplayManager.DisplayListener mRateListener;
@@ -277,7 +280,7 @@ public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
                 dm.registerDisplayListener(mRateListener, new Handler(Looper.getMainLooper()));
             }
         }
-        if ("off".equals(how)) {
+        if (!"on".equals(how) && !"mode".equals(how)) {
             return;
         }
         Surface surface = holder.getSurface();
