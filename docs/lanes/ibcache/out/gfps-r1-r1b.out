@@ -1,0 +1,8 @@
+2026-09-28-ibcache-r1: 150 gfps lines, mark 14:17:15, prof start 14:18:32
+  mark+10 .. prof start (no profiler)        n=32 gfps median 29.0 mean 27.6 (min 11 max 30), G median 33.5 ms
+  prof start .. +30 s (rec-off)              n=14 gfps median 28.0 mean 27.4 (min 22 max 29), G median 34.5 ms
+  prof +30 .. +62 s (rec-on, the profile)    n=12 gfps median 22.5 mean 23.4 (min 18 max 29), G median 43.2 ms
+2026-09-28-ibcache-r1b: 158 gfps lines, mark 16:05:14, prof start 16:06:35
+  mark+10 .. prof start (no profiler)        n=32 gfps median 28.0 mean 27.4 (min 17 max 29), G median 35.2 ms
+  prof start .. +30 s (rec-off)              n=14 gfps median 27.5 mean 26.8 (min 16 max 29), G median 35.5 ms
+  prof +30 .. +62 s (rec-on, the profile)    n=14 gfps median 27.0 mean 26.2 (min 21 max 29), G median 35.5 ms

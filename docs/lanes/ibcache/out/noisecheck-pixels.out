@@ -1,0 +1,149 @@
+A 0-0-x-1-1790631507-arms-ibcache-base-2313748  B 0-0-x-1-1790631507-arms-ibcache-fix-2313775
+shared captures 3379, differing byte for byte 10
+other pgraph result dirs holding one of these captures: 51 (59 runs)
+excluded refs: ['a6ec5ec0ab']
+
+Stencil::Stencil_REPLACE_DT.png
+  A image 320276882771: drawn by 6 other run(s), 5 ref(s), {'nova': 1, 'thor': 5}
+      1790359589-xbox-full6743-dry2-2802408 ref=84a67b9cf8 apk=a7b9d28e6b84 dev=thor env=- captures1
+      z-a-now-8e683b3a26-059-Stencil ref=8e683b3a26 apk=423469eb5d42 dev=thor env=- captures1
+      z-b-v040j1-059-Stencil ref=aeb4a096b6 apk=6655bdec171e dev=thor env=- captures1
+  B image eb9853835beb: drawn by 1 other run(s), 1 ref(s), {'thor': 1}
+      0-0-x-1790575473-rendermode474-966130 ref=61e0edf87c apk=ba0eafaead0a dev=thor env=- captures1
+  other images of this capture elsewhere: 2 distinct, 17 runs
+  apks run more than once: 6; drew more than one image: 2; drew both the A and the B image: 1
+      apk ba0eafaead0a: fb286de6db58 x2, eb9853835beb x1 (B), 320276882771 x1 (A), 909b47a9672c x1
+      apk 8d38739bc784: fb286de6db58 x4, 320276882771 x1 (A)
+
+Stencil::Stencil_REPLACE_ST_DT.png
+  A image df8078068ff8: drawn by 15 other run(s), 8 ref(s), {'thor': 10, 'nova': 5}
+      1790410947-arms-zrtz272-fix-885784 ref=e603fb3540 apk=7c6260f3f710 dev=nova env=- captures1
+      1790417358-arms-zrtz272-base-3007455 ref=6550967a5e apk=b5f276b45557 dev=nova env=- captures1
+      1790417358-arms-zrtz272-fix-3007793 ref=e603fb3540 apk=7c6260f3f710 dev=nova env=- captures1
+  B image c8bed30093a8: drawn by 3 other run(s), 3 ref(s), {'thor': 3}
+      0-0-x-1790549039-flip474-1817704 ref=09fdca3ba1 apk=6d334facad15 dev=thor env=TU_DEBUG=sysmem captures1
+      0-0-x-1790575473-rendermode474-966130 ref=61e0edf87c apk=ba0eafaead0a dev=thor env=- captures2
+      1-1790561511-arms-rendermode474-base-3147198 ref=59d478911e apk=8d38739bc784 dev=thor env=- captures1
+  other images of this capture elsewhere: 1 distinct, 6 runs
+  apks run more than once: 6; drew more than one image: 3; drew both the A and the B image: 3
+      apk 6d334facad15: df8078068ff8 x1 (A), c8bed30093a8 x1 (B), b8652c062c5d x1
+      apk ba0eafaead0a: df8078068ff8 x3 (A), c8bed30093a8 x1 (B), b8652c062c5d x1
+      apk 8d38739bc784: df8078068ff8 x4 (A), c8bed30093a8 x1 (B)
+
+Stencil::Stencil_REPLACE_ST_DT_ZB.png
+  A image b0eef562c186: drawn by 15 other run(s), 8 ref(s), {'thor': 10, 'nova': 5}
+      1790410947-arms-zrtz272-fix-885784 ref=e603fb3540 apk=7c6260f3f710 dev=nova env=- captures1
+      1790417358-arms-zrtz272-base-3007455 ref=6550967a5e apk=b5f276b45557 dev=nova env=- captures1
+      1790417358-arms-zrtz272-fix-3007793 ref=e603fb3540 apk=7c6260f3f710 dev=nova env=- captures1
+  B image fbe45ebcb04a: drawn by 9 other run(s), 6 ref(s), {'thor': 7, 'nova': 2}
+      1790359589-xbox-full6743-dry2-2802408 ref=84a67b9cf8 apk=a7b9d28e6b84 dev=thor env=- captures1
+      z-a-now-8e683b3a26-059-Stencil ref=8e683b3a26 apk=423469eb5d42 dev=thor env=- captures1
+      z-b-v040j1-059-Stencil ref=aeb4a096b6 apk=6655bdec171e dev=thor env=- captures1
+  other images of this capture elsewhere: 0 distinct, 0 runs
+  apks run more than once: 6; drew more than one image: 3; drew both the A and the B image: 3
+      apk 6d334facad15: fbe45ebcb04a x2 (B), b0eef562c186 x1 (A)
+      apk ba0eafaead0a: b0eef562c186 x3 (A), fbe45ebcb04a x2 (B)
+      apk 8d38739bc784: b0eef562c186 x4 (A), fbe45ebcb04a x1 (B)
+
+Stencil::Stencil_ZERO_DT.png
+  A image 23a6c9e77b02: drawn by 1 other run(s), 1 ref(s), {'thor': 1}
+      0-0-x-1790575473-rendermode474-966130 ref=61e0edf87c apk=ba0eafaead0a dev=thor env=- captures1
+  B image 3cbab659fc16: drawn by 16 other run(s), 7 ref(s), {'thor': 11, 'nova': 5}
+      1790410947-arms-zrtz272-fix-885784 ref=e603fb3540 apk=7c6260f3f710 dev=nova env=- captures1
+      1790417358-arms-zrtz272-base-3007455 ref=6550967a5e apk=b5f276b45557 dev=nova env=- captures1
+      1790417358-arms-zrtz272-fix-3007793 ref=e603fb3540 apk=7c6260f3f710 dev=nova env=- captures1
+  other images of this capture elsewhere: 1 distinct, 7 runs
+  apks run more than once: 6; drew more than one image: 2; drew both the A and the B image: 1
+      apk 6d334facad15: 3cbab659fc16 x2 (B), 127778d74f3c x1
+      apk ba0eafaead0a: 3cbab659fc16 x3 (B), 23a6c9e77b02 x1 (A), 127778d74f3c x1
+
+Stencil::Stencil_ZERO_ST.png
+  A image a009c64ee0e6: drawn by 17 other run(s), 8 ref(s), {'thor': 12, 'nova': 5}
+      1790410947-arms-zrtz272-fix-885784 ref=e603fb3540 apk=7c6260f3f710 dev=nova env=- captures1
+      1790417358-arms-zrtz272-base-3007455 ref=6550967a5e apk=b5f276b45557 dev=nova env=- captures1
+      1790417358-arms-zrtz272-fix-3007793 ref=e603fb3540 apk=7c6260f3f710 dev=nova env=- captures1
+  B image 246921161bac: drawn by 2 other run(s), 2 ref(s), {'nova': 1, 'thor': 1}
+      1790410947-arms-zrtz272-base-885745 ref=6550967a5e apk=b5f276b45557 dev=nova env=- captures1
+      z-a-now-8e683b3a26-059-Stencil ref=8e683b3a26 apk=423469eb5d42 dev=thor env=- captures1
+  other images of this capture elsewhere: 1 distinct, 5 runs
+  apks run more than once: 6; drew more than one image: 3; drew both the A and the B image: 1
+      apk ba0eafaead0a: a009c64ee0e6 x4 (A), d3b4d0470b61 x1
+      apk 8d38739bc784: a009c64ee0e6 x4 (A), d3b4d0470b61 x1
+      apk b5f276b45557: 246921161bac x1 (B), a009c64ee0e6 x1 (A)
+
+Stencil::Stencil_ZERO_ST_DT.png
+  A image 6186066d4dfd: drawn by 14 other run(s), 7 ref(s), {'thor': 8, 'nova': 6}
+      1790410947-arms-zrtz272-fix-885784 ref=e603fb3540 apk=7c6260f3f710 dev=nova env=- captures1
+      1790417358-arms-zrtz272-base-3007455 ref=6550967a5e apk=b5f276b45557 dev=nova env=- captures1
+      1790417358-arms-zrtz272-fix-3007793 ref=e603fb3540 apk=7c6260f3f710 dev=nova env=- captures1
+  B image 7b097f8f52a4: drawn by 5 other run(s), 5 ref(s), {'thor': 4, 'nova': 1}
+      1790359589-xbox-full6743-dry2-2802408 ref=84a67b9cf8 apk=a7b9d28e6b84 dev=thor env=- captures1
+      1790402845-arms-zrtz272-base-1549230 ref=b2cf2a6624 apk=ec360b31873f dev=thor env=- captures1
+      z-b-v040j1-059-Stencil ref=aeb4a096b6 apk=6655bdec171e dev=thor env=- captures1
+  other images of this capture elsewhere: 3 distinct, 5 runs
+  apks run more than once: 6; drew more than one image: 4; drew both the A and the B image: 2
+      apk 6d334facad15: 6186066d4dfd x2 (A), 08606e1e127e x1
+      apk ba0eafaead0a: 6186066d4dfd x3 (A), 08606e1e127e x1, 7b097f8f52a4 x1 (B)
+      apk 8d38739bc784: 6186066d4dfd x3 (A), 7b097f8f52a4 x1 (B), 08606e1e127e x1
+      apk a7b9d28e6b84: e2249b5a9a16 x1, 7b097f8f52a4 x1 (B)
+
+Stencil::Stencil_ZERO_ST_DT_ZB.png
+  A image ee01dea515d4: drawn by 14 other run(s), 7 ref(s), {'thor': 8, 'nova': 6}
+      1790410947-arms-zrtz272-fix-885784 ref=e603fb3540 apk=7c6260f3f710 dev=nova env=- captures1
+      1790417358-arms-zrtz272-base-3007455 ref=6550967a5e apk=b5f276b45557 dev=nova env=- captures1
+      1790417358-arms-zrtz272-fix-3007793 ref=e603fb3540 apk=7c6260f3f710 dev=nova env=- captures1
+  B image 2d61decffce3: drawn by 8 other run(s), 6 ref(s), {'thor': 7, 'nova': 1}
+      1790359589-xbox-full6743-dry2-2802408 ref=84a67b9cf8 apk=a7b9d28e6b84 dev=thor env=- captures1
+      1790402845-arms-zrtz272-base-1549230 ref=b2cf2a6624 apk=ec360b31873f dev=thor env=- captures1
+      z-b-v040j1-059-Stencil ref=aeb4a096b6 apk=6655bdec171e dev=thor env=- captures1
+  other images of this capture elsewhere: 2 distinct, 2 runs
+  apks run more than once: 6; drew more than one image: 4; drew both the A and the B image: 3
+      apk 6d334facad15: ee01dea515d4 x2 (A), 2d61decffce3 x1 (B)
+      apk ba0eafaead0a: ee01dea515d4 x3 (A), 2d61decffce3 x2 (B)
+      apk 8d38739bc784: ee01dea515d4 x3 (A), 2d61decffce3 x2 (B)
+      apk a7b9d28e6b84: 334b9a006275 x1, 2d61decffce3 x1 (B)
+
+Stencil::Stencil_ZERO_ST_ZB.png
+  A image ee01dea515d4: drawn by 17 other run(s), 8 ref(s), {'thor': 12, 'nova': 5}
+      1790410947-arms-zrtz272-fix-885784 ref=e603fb3540 apk=7c6260f3f710 dev=nova env=- captures1
+      1790417358-arms-zrtz272-base-3007455 ref=6550967a5e apk=b5f276b45557 dev=nova env=- captures1
+      1790417358-arms-zrtz272-fix-3007793 ref=e603fb3540 apk=7c6260f3f710 dev=nova env=- captures1
+  B image 2d61decffce3: drawn by 7 other run(s), 6 ref(s), {'nova': 2, 'thor': 5}
+      1790410947-arms-zrtz272-base-885745 ref=6550967a5e apk=b5f276b45557 dev=nova env=- captures1
+      z-a-now-8e683b3a26-059-Stencil ref=8e683b3a26 apk=423469eb5d42 dev=thor env=- captures1
+      z-b-v040j1-059-Stencil ref=aeb4a096b6 apk=6655bdec171e dev=thor env=- captures1
+  other images of this capture elsewhere: 0 distinct, 0 runs
+  apks run more than once: 6; drew more than one image: 3; drew both the A and the B image: 3
+      apk ba0eafaead0a: ee01dea515d4 x4 (A), 2d61decffce3 x1 (B)
+      apk 8d38739bc784: ee01dea515d4 x4 (A), 2d61decffce3 x1 (B)
+      apk b5f276b45557: 2d61decffce3 x1 (B), ee01dea515d4 x1 (A)
+
+Vertex_shader_rounding_tests::GeometrySuperscreen_0.5000.png
+  A image 6a9a586b7e5e: drawn by 43 other run(s), 27 ref(s), {'nova': 19, 'thor': 24}
+      1790455260-arms-buildflags427-base-4129766 ref=15d9406b81 apk=acb81bbaa1d1 dev=nova env=- captures1
+      1790455261-arms-buildflags427-fix-4129802 ref=6cd1a58b64 apk=460b947a4109 dev=nova env=- captures1
+      z-a-now-8e683b3a26-090-Vertex_shader_rounding_tests ref=8e683b3a26 apk=423469eb5d42 dev=thor env=- captures1
+  B image 4a0b81e585db: drawn by 4 other run(s), 4 ref(s), {'thor': 3, 'nova': 1}
+      1-1790516912-arms-flip474-fix-1267378 ref=ef66174066 apk=1283672dfd95 dev=nova env=- captures1
+      1790347943-arms-vshnobegin242-base-3411865 ref=21946df29b apk=8ea98adcbe88 dev=thor env=- captures1
+      1790353899-arms-vshnobegin242-base-1226684 ref=a8691063e6 apk=66a3ac8ef636 dev=thor env=- captures3
+  other images of this capture elsewhere: 1 distinct, 4 runs
+  apks run more than once: 11; drew more than one image: 2; drew both the A and the B image: 2
+      apk 6d334facad15: 4a0b81e585db x1 (B), d88cf1421338 x1, 6a9a586b7e5e x1 (A)
+      apk 66a3ac8ef636: 6a9a586b7e5e x2 (A), 4a0b81e585db x1 (B)
+
+Vertex_shader_rounding_tests::GeometrySuperscreen_0.9990.png
+  A image a50a0324b194: drawn by 41 other run(s), 27 ref(s), {'nova': 19, 'thor': 22}
+      1790455260-arms-buildflags427-base-4129766 ref=15d9406b81 apk=acb81bbaa1d1 dev=nova env=- captures1
+      1790455261-arms-buildflags427-fix-4129802 ref=6cd1a58b64 apk=460b947a4109 dev=nova env=- captures1
+      z-a-now-8e683b3a26-090-Vertex_shader_rounding_tests ref=8e683b3a26 apk=423469eb5d42 dev=thor env=- captures1
+  B image f42fa7224af5: drawn by 8 other run(s), 8 ref(s), {'nova': 3, 'thor': 5}
+      1-1790620564-arms-pacing-fix-1289133 ref=23f0ee233f apk=a4ad977177e9 dev=thor env=- captures1
+      1790347943-arms-vshnobegin242-base-3411865 ref=21946df29b apk=8ea98adcbe88 dev=thor env=- captures1
+      1790353899-arms-vshnobegin242-base-1226684 ref=a8691063e6 apk=66a3ac8ef636 dev=thor env=- captures3
+  other images of this capture elsewhere: 1 distinct, 2 runs
+  apks run more than once: 11; drew more than one image: 6; drew both the A and the B image: 4
+      apk ba0eafaead0a: a50a0324b194 x4 (A), 60f7139fdb42 x1
+      apk acb81bbaa1d1: f42fa7224af5 x1 (B), a50a0324b194 x1 (A)
+      apk 460b947a4109: f42fa7224af5 x1 (B), a50a0324b194 x1 (A)
+      apk 8d38739bc784: a50a0324b194 x4 (A), f42fa7224af5 x1 (B)

@@ -224,3 +224,175 @@ expand `"*"`.
 - **Next, on resume:** unchanged from attempt 2. Read R1b against legs 1-2,
   and the `[job.arms]` verdict against the pixel leg. If both pass, queue
   legs 4-5 and mark the PR ready.
+
+## Attempt 4 (resumed 2026-09-28 16:24 PDT, hostops addendum: both waits resolved)
+
+**Why attempt 3 did not finish.** It ended on a `waiting:` for the pixel arm
+and R1b, both outside the session. The arm was judged 90 minutes late: its
+request ids were renamed when lane.local promoted the pair, and the arms job
+no longer matched them (hostops fixed that at 16:25 PDT). R1b finished at
+16:08 PDT. Nothing of this lane's was wrong or lost.
+
+### The pixel arm (FAIL, 9 of 3381 checks): read as run-to-run noise, with the evidence
+
+Verdict `arms/pairs/d357732ea1….verdict.txt`, A `…arms-ibcache-base-2313748`
+(4e3d69a69b), B `…arms-ibcache-fix-2313775` (a6ec5ec0ab), one run per arm,
+Thor. 3379 captures compared: **3369 byte-identical, 10 differing**. Eight are
+in Stencil (REPLACE/ZERO with DT, ST, ZB) and two in
+Vertex_shader_rounding_tests (`GeometrySuperscreen_0.5000`, `_0.9990`). Seven
+changed score (4 better, 3 worse), and three held their score and moved bytes.
+
+The addendum also names `Clear/SFC_X1R5G5B5_Z1R5G5B5`. It did not move: all 32
+Clear captures are byte-identical. The name is in the verdict's explanatory
+text (#59's example), not in its movers.
+
+**The probe did run in arm B.** B's logcat has `[ibc507] on=1 layout=ok`, and
+`[jc425] ih=0` in all 682 windows (A: non-zero in all 732): no helper lookup
+hits the jump cache, because the inline probe takes every hit first. Over the
+whole sweep `[rr425] hc` is 31,354 helper calls per second against A's
+1,198,992 (-97.4%). So the 3369 identical captures are a measurement of the
+probe, not of a switch that was off.
+
+**Why the 10 are noise** (`noisecheck.py`, `out/noisecheck-pixels.out`; 51
+other pgraph result dirs, 59 runs, none at a6ec5ec0ab):
+
+| capture | B image drawn by builds without the probe | apks without the probe that drew both the A and the B image |
+|---|---:|---:|
+| Stencil_REPLACE_DT | 1 run | 1 |
+| Stencil_REPLACE_ST_DT | 3 runs, 3 refs | 3 |
+| Stencil_REPLACE_ST_DT_ZB | 9 runs, 6 refs | 3 |
+| Stencil_ZERO_DT | 16 runs, 7 refs | 1 |
+| Stencil_ZERO_ST | 2 runs, 2 refs | 1 |
+| Stencil_ZERO_ST_DT | 5 runs, 5 refs | 2 |
+| Stencil_ZERO_ST_DT_ZB | 8 runs, 6 refs | 3 |
+| Stencil_ZERO_ST_ZB | 7 runs, 6 refs | 3 |
+| GeometrySuperscreen_0.5000 | 4 runs, 4 refs | 2 |
+| GeometrySuperscreen_0.9990 | 8 runs, 8 refs | 4 |
+
+- Every B image is byte-identical to an image a build without the probe drew.
+- For every one of the 10, at least one apk without the probe drew both this
+  arm's A image and its B image in repeated runs. For example apk
+  8d38739bc784 (rendermode474's base, 59d478911e) drew
+  `Stencil_ZERO_ST_DT_ZB` as the A image 3 times and the B image twice.
+- Stencil REPLACE/ZERO and GeometrySuperscreen captures are movers in 17
+  other arms' verdicts under `arms/pairs/`, in both directions. rendermode474
+  registered around "the run-to-run band flip474 measured (Stencil
+  REPLACE/ZERO, Blend spot_0_ADD, GeometrySuperscreen)".
+- The direction is not the probe's either: 4 better and 3 worse.
+
+This is evidence for noise, not a measurement of the band in this pair. One
+run per arm cannot give that. So the band is now a registered arm.
+
+**Do not repeat:** a full-sweep `must_not_move` at one run per arm. These two
+suites flip between runs of one binary, so that arm can fail whatever the
+change. Register the flip band's suites at three runs per arm from the start.
+
+### The band leg, registered on the merged refs
+
+Master was merged first (2c950e0a1e, battadmit: harness files only). The head
+is c8e95ed539, and `git diff a6ec5ec0ab c8e95ed539` is empty over accel/, tcg/,
+target/, include/, hw/, ui/, audio/ and android/. So the full sweep's 3369
+identical captures carry over to this head.
+
+`docs/testing/predictions/ibcache-probe-band.json` (sha256 d7a7ddaa4c…):
+- A 2c950e0a1e, B c8e95ed539, suites Stencil and
+  Vertex_shader_rounding_tests, **three runs per arm**.
+- Legs: no capture moves outside the band measured in the arms (better 0,
+  worse 0), and no capture that is self-identical in each arm differs between
+  them.
+- What kills the change: a capture self-identical in A, self-identical in B,
+  and different between them.
+- What leaves the question open: neither arm flips in three runs. Then the
+  band on this two-suite disc is unmeasured, and the noise reading rests on
+  the table above.
+
+### R1b, read: legs 1 and 2 PASS
+
+Session `/home/justin/hakux-work/perf/2026-09-28-ibcache-r1b`: a6ec5ec0ab,
+Thor, cold start (xo-therm 43.6 C, battery 34.0 C), regimen max, no
+`thermal-pause`, focused, 427 s of device time, 21,911 vCPU samples. Outputs:
+`out/sym-r1b.out`, `out/jitmix-r1b.out`, `out/counters-r1b.out`.
+
+| leg | registered | R1 (master) | R1b (probe) | |
+|---|---|---:|---:|---|
+| 1 share: `lookup` bucket, of the vCPU thread | at most half of R1's (12.45%) | 24.9% | **7.3%** | PASS |
+| 1 `helper_lookup_tb_ptr` self | at most a third of R1's (2.38%) | 7.15% | **0.83%** | PASS |
+| 2 counter: `[rr425] hc` | down at least 70% | 5.27M/s | **0.39M/s (-92.6%)** | PASS |
+| 2 `[ibc507]` | `on=1 layout=ok` | - | `on=1 layout=ok` | PASS |
+
+What is left in the lookup bucket is the miss path: `qht_lookup_custom` 4.17%
+(R1 4.39%), `tb_lookup_cmp` 1.51%, `helper_lookup_tb_ptr` 0.83%, `tb_lookup`
+0.54%. Of the helper calls that remain, **97.9% are pc collisions** in the
+jump cache (`ip`), 1.5% empty slots, 0.6% key mismatches.
+
+`pw`: the battery supplied 3.83 W and the USB port 2.11 W (medians, 13
+samples).
+
+### Is it a net win? The share cannot say, so two more readings
+
+The JIT share rose from 50.9% to 70.7%. Removing 17.6 points of lookup
+renormalises 50.9 to 61.8, so about 9 points are new JIT time. That is either
+the probe's inline cost or guest code that ran more. Two readings separate
+them.
+
+**1. The frame limiter's spin** (`spinshare.py`, `out/spinshare-r1-r1b.out`).
+GTA SA caps itself at 30 fps by spinning on a word until the second vblank
+(guest 0x273686 / 0x27368e; vcpuplan NOTES section 4, targets.toml). Time
+spent there is time the frame did not need.
+
+| profile window (rec-on, 25 s) | R1 (master) | R1b (probe) |
+|---|---:|---:|
+| samples in the limiter's spin, of the vCPU thread | 0.35% (75) | **8.42% (1845)** |
+| gfps, median (`out/gfps-r1-r1b.out`) | 22.5 | **27.0** |
+
+Under the profiler's load master was vCPU-bound below the cap and never
+waited. The probe build reached the cap's neighbourhood and still had 8.4% of
+the vCPU left over. `tbmap.py` prints `FAIL` on its "share of frequent deltas"
+check in both sessions (76.9%, 77.0%). That is the known over-strict check
+(gta482 NOTES:273); its known-answer check passes, 7 of 7.
+
+**2. fps without the profiler** (the 67 s between the mark and `prof start`):
+median 29.0 against 28.0, mean 27.6 against 27.4. **No difference.** Both
+builds sit at the cap there, so fps cannot show a saving on this route. Guest
+idle is under 0.7% in both over the last 75 windows
+(`out/rrcmp-r1-r1b-75.out`): the guest spins, it does not halt.
+
+This is one pair of captures taken two hours apart, not an A/B. It says the
+saving is real where the title is vCPU-bound, and that on a capped scene it
+goes into the guest's spin, where neither fps nor J/frame can see it.
+
+### Leg 5, amended before any A/B run
+
+Leg 5 as registered in attempt 2 (median fps up 5%, J/frame down 4%, on the
+`gta` route) assumed GTA was below its cap on that route. R1 shows it is not:
+29.0 fps median against a cap of 30. A rise of 5% is not available to any
+change there, so the leg as written would fail whether the probe works or
+not. It is replaced, before any A/B has run:
+
+- **5a, GTA SA (capped on this route): no regression.** `gta-sa` route, Thor,
+  one binary (c8e95ed539), `HAKUX_IBC=0` against unset, 430 s each. Over the
+  window from the mark plus 10 s to the end: time-weighted fps with the probe
+  is no lower than 0.5 fps under the arm without, and J/frame no higher than
+  +3.6% (the Thor's J/frame spread over 5 Crimson runs, energymap507; GTA's
+  own spread is not measured). The gain on this title is the spin share
+  above, which a soak cannot see.
+- **5b, a title below its cap: the original numbers stand.** Median fps up at
+  least 5% and J/frame down at least 4%. Forza is the brief's title and waits
+  on #583, which is still open. Crimson Skies (near-bound: vCPU share 0.94,
+  guest idle 0.15) runs now on the same env A/B, and is reported as a
+  near-bound title, not as a substitute for Forza.
+- An env A/B has one binary, so arms.sh cannot queue it (it compares refs).
+  These go through `request.sh`, as lane.idlehalt's did.
+
+### The next lever, ranked: jump-cache collisions, then the RAS
+
+| option | P | win | evidence |
+|---|---:|---|---|
+| A larger or 2-way jump cache (`TB_JMP_CACHE_BITS` is 12) | 0.6 | up to 5% of the vCPU | 97.9% of the 0.39M/s remaining helper calls are pc collisions, and they carry the 7.3% that is left. 4096 slots against 148,834 TBs in the buffer |
+| Return-address stack | 0.3 | under 2% of the vCPU | A return that hits the jump cache already stays inline. The RAS would save only the returns that collide, which the larger cache also removes |
+
+The larger cache costs a bigger wipe on every `tcg_flush_jmp_cache`. The JC
+default already replaced most wipes with `CF_INVALID`, and `[jc425] ie` (empty
+slots, 1.5%) bounds what wipes cost today. It is a second change with its own
+legs, so it goes on a stacked branch (`lane/ibcache-jcsize`) after this PR's
+legs are in, not into this head.
