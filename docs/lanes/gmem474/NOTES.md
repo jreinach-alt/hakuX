@@ -86,4 +86,22 @@ which reads everything from the prediction.
 
 ## 5. Runs
 
-(pending)
+Pilot, queued 2026-09-28 ~20:30Z (13:30 PDT), Thor, release priority:
+Crimson C `1-1790625696-lane.gmem474-3784417`, then Crimson D
+`1-1790625696-lane.gmem474-3784577`. About 1.5 h of Thor queue is ahead of
+them (lane.pacing's eight Crimson/Otogi soaks, titleroutes).
+
+What the pilot must show before the other 13 runs are queued (pilot rule):
+the Mesa log is pulled and reads `TU_DEBUG=0x1011` (C) and
+`TU_AUTOTUNE_ALGO=1 (profiled)` (D); the `render_mode:` line carries the
+env's `TU_DEBUG`; `gmemread.py --from 120 --to 350` prints J/frame from >= 3
+power samples, GPU from hakuX-phase, and no pause; the shots show flight.
+Then write `pilots/lane.gmem474.ok` and queue the Nova interleave (DOA A1,
+AUF A1, DOA B, ... AUF A2) and Crimson A1, B, A2. The Nova is on
+hostops' battery hold (14% at 18:10Z, lifted at >= 80%).
+
+## 6. Waiting (2026-09-28 ~20:35Z, attempt 1)
+
+On the two pilot requests above, outside this session. When they land:
+read them with `gmemread.py --from 120 --to 350 3784417 3784577`, write the
+pilot verdict, queue the rest with `queue.py`.
