@@ -696,9 +696,12 @@ battery_admit() {
            return 0 ;;
     esac
     # Level and need change slowly; say it again only when the words change.
-    # The head's refusal line carries a running clock, so compare without it.
-    if [ "${BATT_SAID[$id]:-}" != "${line%%; head, refused*}" ]; then
-        BATT_SAID[$id]="${line%%; head, refused*}"
+    # The head's refusal line and the hold line each carry a running clock,
+    # so compare without it.
+    local key
+    key=$(printf '%s\n' "$line" | sed 's/; head, refused for [0-9]*s$//; s/ (refused for [0-9]*s >= [0-9]*s)//')
+    if [ "${BATT_SAID[$id]:-}" != "$key" ]; then
+        BATT_SAID[$id]="$key"
         log "$line"
     fi
     return 1

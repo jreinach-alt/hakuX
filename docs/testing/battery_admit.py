@@ -49,8 +49,18 @@ the charge the head is waiting for, and the level would hover at the short
 runs' need forever. The reservation is a file, .battery_head.<label>, naming
 the head and when it was first refused; a different head starts a new clock.
 
-Exit: 0 admit, 1 does not fit, 3 fits but the head holds the device. Line one
-of stdout is the dispatcher's log text; line two is the JSON it records.
+A NEED IS CAPPED AT CEILING (75). Uncapped, a long enough run needs more than
+the device ever reaches: a nova soak over about 2.5 h at the learned rate
+needs over 100, and the Thor stops charging at 77-85 %. Such a request would
+never fit, and once it became the head it would reserve the handheld forever.
+At the cap it is admitted at a level the device does reach -- what the
+dispatcher did before admission, when a handheld came back at 80 % and served
+anything -- and the line says the need was capped.
+
+Exit: 0 admit, 1 does not fit, 3 fits but the head holds the device, 2 the
+helper itself failed (usage, a malformed request, an exception): the
+dispatcher admits unchecked and logs line one. Line one of stdout is the
+dispatcher's log text; line two is the JSON it records.
 """
 import glob
 import json
@@ -60,11 +70,16 @@ import time
 
 FLOOR = float(os.environ.get("BATTERY_FLOOR", "15"))
 MARGIN = float(os.environ.get("BATTERY_MARGIN", "5"))
+CEILING = float(os.environ.get("BATTERY_CEILING", "75"))
 HEAD_WAIT_S = float(os.environ.get("BATTERY_HEAD_WAIT_S", "1800"))
 RATES_TTL_S = float(os.environ.get("BATTERY_RATES_TTL_S", "300"))
 HISTORY = 10
 MIN_HISTORY = 3
 MIN_SPAN_S = 180
+# Past HISTORY overheads, stop after this many results of the device and kind
+# even if rates are short: a test disc writes no thermal.jsonl, so without it
+# the pgraph lookup reads every finished result for a rate it cannot find.
+SCAN_MAX = 5 * HISTORY
 LEARN_BELOW = float(os.environ.get("BATTERY_LEARN_BELOW", "60"))
 PCTL = 0.75
 # %/h. devwatch's measured soak drains; a test disc at half.
@@ -161,13 +176,19 @@ def history(d, label, kind, n=HISTORY):
         except OSError:
             continue
     dirs.sort(reverse=True)
-    rates, overheads = [], []
+    rates, overheads, matched = [], [], 0
     for _, rdir in dirs:
-        if len(rates) >= n and len(overheads) >= n:
+        if len(overheads) >= n and (len(rates) >= n or matched >= SCAN_MAX):
             break
-        rec = run_record(rdir)
+        # One result that cannot be read (a dangling file, a malformed
+        # request) is one result not learned from, not a device refused.
+        try:
+            rec = run_record(rdir)
+        except (OSError, ValueError, TypeError, AttributeError):
+            continue
         if rec is None or rec["label"] != label or rec["kind"] != kind:
             continue
+        matched += 1
         if rec["rate"] is not None and len(rates) < n:
             rates.append((rec["id"], rec["rate"]))
         if rec["overhead"] is not None and len(overheads) < n:
@@ -217,17 +238,23 @@ def check(d, label, req_path, level, head):
     dev_s = runs * (seconds + lv["overhead_s"])
     need = FLOOR + MARGIN + lv["rate"] * dev_s / 3600.0
     need = round(need + 0.049, 1)          # rounded up: never admit on a rounding
+    uncapped = need
+    need = min(need, CEILING)
     now = time.time()
     state_path = os.path.join(d, ".battery_head.%s" % label)
     state = load(state_path) or {}
     inputs = "rate %.1f %%/h %s n=%d, %s x (%ds + overhead %ds %s n=%d)" % (
         lv["rate"], lv["rate_src"], lv["rate_n"], runs, seconds,
         lv["overhead_s"], lv["overhead_src"], lv["overhead_n"])
+    if uncapped > need:
+        inputs += "; need %.1f capped at ceiling %.0f" % (uncapped, CEILING)
     rec = dict(battery_start=level, need=need, rate=lv["rate"],
                rate_src=lv["rate_src"], rate_n=lv["rate_n"],
                overhead_s=lv["overhead_s"], overhead_src=lv["overhead_src"],
                overhead_n=lv["overhead_n"], kind=kind, runs=runs,
                seconds=seconds, floor=FLOOR, margin=MARGIN, t_admit=now)
+    if uncapped > need:
+        rec["need_uncapped"] = uncapped
     if level < need:
         waited = 0
         if not head:
@@ -274,4 +301,12 @@ def main(argv):
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv))
+    # An uncaught exception exits 1, which is "does not fit": a request with
+    # "seconds": "90s" would be refused on every tick, silently, and become
+    # the head. Exit 2 instead, with the reason as the log line.
+    try:
+        rc = main(sys.argv)
+    except Exception as e:           # noqa: BLE001 -- any failure is exit 2
+        print("battery_admit.py failed: %s: %s" % (type(e).__name__, e))
+        rc = 2
+    sys.exit(rc)

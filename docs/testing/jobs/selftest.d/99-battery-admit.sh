@@ -37,9 +37,12 @@ export DISPATCH_DIR="$2" SERIAL=ee317437
 . "$1/dispatcher.sh" selftest-not-a-subcommand >/dev/null 2>&1
 build_ref() { return 4; }
 shopt -s nullglob
-reqs=("$2"/queue/*.req)
-serve_queue "${reqs[@]}"
-echo "walk=$?"
+for _w in $(seq "${BA_WALKS:-1}"); do   # several walks in one worker, as its loop does
+    reqs=("$2"/queue/*.req)
+    serve_queue "${reqs[@]}"
+    echo "walk=$?"
+    [ "$_w" = "${BA_WALKS:-1}" ] || sleep 1.1   # so a running clock in a line moves
+done
 EOF
 
 ba_hist() {   # <dispatch dir>: the fixture history above
@@ -82,8 +85,8 @@ ba_case() {   # <tree> <dir> <level> <req-id:seconds>... -> set up, walk once
     ba_setup "$@"
     ba_walk "$tree" "$1"
 }
-ba_walk() {   # <tree> <dir>: one more walk over what is queued now
-    PATH="$BA/bin:$PATH" BA_ADB_LOG="$2/adb.log" BA_LEVEL="$2/level" ADB_QUICK_TIMEOUT=5 ADB_RETRY_SLEEP=0 \
+ba_walk() {   # <tree> <dir> [walks]: one more worker over what is queued now
+    BA_WALKS="${3:-1}" PATH="$BA/bin:$PATH" BA_ADB_LOG="$2/adb.log" BA_LEVEL="$2/level" ADB_QUICK_TIMEOUT=5 ADB_RETRY_SLEEP=0 \
         timeout -k 2 60 bash "$BA/drive.sh" "$1" "$2" >>"$2/drive.out" 2>&1
 }
 ba_claimed() { [ -f "$1/results/$2/request.json" ] && [ ! -e "$1/queue/$2.req" ]; }
@@ -150,6 +153,56 @@ ba_walk "$TESTING" "$BA/e"
 check "starve: at level 39 >= 38.3 the head is claimed first" ba_claimed "$BA/e" 0-long
 check "starve: and the reservation is cleared" test ! -e "$BA/e/.battery_head.nova"
 
+# ------------------------------------------- a head that can never fit
+# Uncapped, 20000 s needs 15 + 5 + 27 x 20340 / 3600 = 172.6: more than any
+# level. Capped at BATTERY_CEILING 75, it is claimed at 80 even after holding
+# the device past HEAD_WAIT_S (pass 1 on #587, M2).
+ba_ceiling() {   # <tree> <dir>
+    ba_setup "$2" 80 0-huge:20000 1-short:300
+    python3 -c 'import json,sys,time; json.dump(dict(id="0-huge", since=time.time()-2000), open(sys.argv[1],"w"))' "$2/.battery_head.nova"
+    ba_walk "$1" "$2"
+}
+ba_ceiling "$TESTING" "$BA/g"
+check "ceiling: a head needing 172.6 is claimed at level 80 >= the ceiling 75" ba_claimed "$BA/g" 0-huge
+check "ceiling: the admit line says the need was capped" \
+    ba_logged "$BA/g" "; need 172.6 capped at ceiling 75)"
+check "ceiling: battery.json records need 75 and need_uncapped 172.6" \
+    python3 -c 'import json,sys; b=json.load(open(sys.argv[1])); sys.exit(0 if (b["need"], b["need_uncapped"]) == (75.0, 172.6) else 1)' "$BA/g/results/0-huge/battery.json"
+
+# ------------------------------------------------ the helper itself fails
+# A request the helper cannot read ("seconds": "90s") exits 2 with the reason
+# and is admitted unchecked, not refused on every tick as "does not fit"
+# (pass 1 on #587, M1).
+ba_bad() {   # <tree> <dir>
+    ba_setup "$2" 50
+    printf '{"id":"0-bad","requester":"selftest","purpose":"battery","ref":"HEAD","title":"Fixture.iso","seconds":"90s","runs":1}\n' > "$2/queue/0-bad.req"
+    ba_walk "$1" "$2"
+}
+ba_bad "$TESTING" "$BA/h"
+check "helper fails: the malformed request is claimed" ba_claimed "$BA/h" 0-bad
+check "helper fails: logged as exited 2, admitting unchecked, with the reason" \
+    ba_logged "$BA/h" "BATTERY: battery_admit.py exited 2 on 0-bad; admitting unchecked: battery_admit.py failed: ValueError"
+# One history result that raises is one result not learned from.
+ba_setup "$BA/i" 0
+mkdir -p "$BA/i/results/h-bad"
+printf '{"id":"h-bad","title":"Fixture.iso","seconds":300,"runs":"x"}\n' > "$BA/i/results/h-bad/request.json"
+printf '{"device_label":"nova","kind":"soak"}\n' > "$BA/i/results/h-bad/result.json"
+: > "$BA/i/results/h-bad/DONE"
+if ba_learned "$(python3 "$TESTING/battery_admit.py" learn "$BA/i" nova soak)"; then
+    ok "helper fails: a history result that raises is skipped; nova soak still learns 27 %/h, 340 s"
+else bad "helper fails: a history result that raises broke the learning"; fi
+
+# ------------------------------------------------ each line logged once
+ba_hold3() {   # <tree> <dir>: three walks in one worker, holding for the head
+    ba_setup "$2" 30 0-long:2100 1-short:300
+    python3 -c 'import json,sys,time; json.dump(dict(id="0-long", since=time.time()-2000), open(sys.argv[1],"w"))' "$2/.battery_head.nova"
+    ba_walk "$1" "$2" 3
+}
+ba_holds() { grep -c 'BATTERY: hold for head 0-long' "$1/logs/dispatcher.log"; }
+ba_hold3 "$TESTING" "$BA/j"
+check "log once: three walks holding for the head log the hold line once" \
+    test "$(ba_holds "$BA/j")" -eq 1
+
 # ------------------------------------------------------------ the cache
 ba_case "$TESTING" "$BA/f" 22 0-long:2100 1-short:300
 echo 90 > "$BA/f/level"; ba_walk "$TESTING" "$BA/f"
@@ -208,3 +261,18 @@ M=$(ba_mut dispatcher.sh 's/-lt "\${BATTERY_CACHE_S:-60}"/-lt 0/' m-cache)
 if [ -z "$M" ]; then bad "MUTANT cache: sed matched nothing"
 else ba_case "$M" "$BA/mf" 22 0-long:2100 1-short:300; ba_walk "$M" "$BA/mf"
      if [ "$(grep -c 'dumpsys battery' "$BA/mf/adb.log")" -eq 1 ]; then bad "MUTANT cache (never cached): still one read"; else ok "MUTANT cache (never cached): red"; fi; fi
+# ceiling: no cap -> the head that can never fit holds the device; nothing is claimed
+M=$(ba_mut battery_admit.py 's/^    need = min(need, CEILING)$/    pass/' m-ceiling)
+if [ -z "$M" ]; then bad "MUTANT ceiling: sed matched nothing"
+else ba_ceiling "$M" "$BA/mg"
+     if ba_claimed "$BA/mg" 0-huge || ba_claimed "$BA/mg" 1-short; then bad "MUTANT ceiling (no cap): still claimed"; else ok "MUTANT ceiling (no cap): red"; fi; fi
+# helper fails: the exception reaches the interpreter -> exit 1, refused
+M=$(ba_mut battery_admit.py 's/^    except Exception as e: .*$/    except KeyboardInterrupt as e:/' m-exc)
+if [ -z "$M" ]; then bad "MUTANT helper-fails: sed matched nothing"
+else ba_bad "$M" "$BA/mh"
+     if ba_claimed "$BA/mh" 0-bad; then bad "MUTANT helper-fails (no handler): still claimed"; else ok "MUTANT helper-fails (no handler): red"; fi; fi
+# log once: the key is the raw line -> the hold line's clock logs it every walk
+M=$(ba_mut dispatcher.sh 's/^    key=\$(printf .*$/    key="$line"/' m-once)
+if [ -z "$M" ]; then bad "MUTANT log-once: sed matched nothing"
+else ba_hold3 "$M" "$BA/mj"
+     if [ "$(ba_holds "$BA/mj")" -eq 1 ]; then bad "MUTANT log-once (clock in the key): still once"; else ok "MUTANT log-once (clock in the key): red"; fi; fi
