@@ -96,7 +96,13 @@ The whole run was 18-25 min before this. The longest shard is under 15 min
 but not by much (shard 0, the arms chain): the next lane to make it faster
 has to shorten 40-arms-refusal, 50-arms-requeue or 94-arms-label-state.
 
-### Locally, the same tree (all five runs at once, so wall times are inflated)
+After those runs master brought in two new fragments (99-cloud-lane-branch,
+99-request-release-prio; 95 in all) and a change to 92. Each new one passes
+alone (16 and 20 checks, 0 failed), so neither needs a chain; they take the
+default weight. The guard covers 95. The final head's CI run is the check for
+the merged tree.
+
+### Locally, the tree before that merge (all five runs at once, so wall times are inflated)
 
 | run | fragments (`NN-*.sh took` lines) | passed | failed | wall |
 |---|---|---|---|---|
