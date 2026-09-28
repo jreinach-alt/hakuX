@@ -305,7 +305,8 @@ def coverage(recs, lo, hi, t0=None):
 
 def describe(ep, t0=None):
     """`thermal-pause-F8 1/1 began after +220 s and by +250 s (device 09-27 13:04:10)`"""
-    rel = (lambda t: "+%.0f s" % (t - t0)) if t0 is not None else (lambda t: "%.0f" % t)
+    # %+: an episode in the cool-down samples lies before +0 and reads -60 s.
+    rel = (lambda t: "%+.0f s" % (t - t0)) if t0 is not None else (lambda t: "%.0f" % t)
     began = ("after %s and by %s" % (rel(ep["after"]), rel(ep["first"]))
              if ep["after"] is not None else "by %s (paused in the first reading)" % rel(ep["first"]))
     ended = ("; cleared by %s" % rel(ep["before"])) if ep["before"] is not None \
@@ -340,7 +341,11 @@ def summary(recs):
             tail += ", usb in %.2f W, net %.2f W" % (pw["usb_w"], pw["net_w"])
     if not eps:
         return "THERMAL: no thermal-pause device above 0" + tail
-    return "THERMAL: pause " + " | ".join(describe(e, t0) for e in eps) + tail
+    # An episode the cool-down gate waited out cannot touch a scored window.
+    return "THERMAL: pause " + " | ".join(
+        describe(e, t0) + (" [in the cool-down, over before the start]"
+                           if e["before"] is not None and e["before"] <= t0 else "")
+        for e in eps) + tail
 
 
 def diff(a, b):
@@ -375,14 +380,19 @@ def cool(rec, zone, limit_c):
 
 def first_pause(recs):
     """(after, by): the first pause's onset bounds in seconds from the run's
-    origin() (after is None when the first reading was already paused), or
-    None when no pause was sampled. See A PAUSE EPISODE."""
+    origin() (after is None when the run started paused), or None when no
+    pause was sampled. An episode the cool-down gate waited out, over before
+    the start, is not the run's. See A PAUSE EPISODE."""
     ok = [r for r in recs if paused(r) is not None and dev_ts(r) is not None]
-    eps = episodes(recs)
-    if not ok or not eps:
+    if not ok:
         return None
     t0 = origin(ok)
+    eps = [e for e in episodes(recs) if e["before"] is None or e["before"] > t0]
+    if not eps:
+        return None
     e = eps[0]
+    if e["first"] <= t0:
+        return (None, 0.0)
     return (round(e["after"] - t0, 1) if e["after"] is not None else None, round(e["first"] - t0, 1))
 
 

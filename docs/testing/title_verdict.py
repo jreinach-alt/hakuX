@@ -331,7 +331,7 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
     gap = thermal_state.coverage(therm, mark_t, end_t) if windowed and not hit else None
     thermal = dict(measured=bool(read), samples=len(therm or []), unread=len(therm or []) - len(read),
                    pauses=[thermal_state.describe(e, mark_t if mark_t is not None else
-                                                  min(thermal_state.dev_ts(r) for r in read))
+                                                  thermal_state.origin(read))
                            for e in eps], in_window=bool(hit),
                    window_covered=(None if not windowed else gap is None), gap=gap)
     fp = thermal_state.first_pause(therm or [])

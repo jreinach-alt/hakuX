@@ -283,11 +283,24 @@ thermal_sample() {   # <label>
 # run.log gets one `COOLDOWN:` line, at the start of a line: `waited <s> s,
 # xo <start> -> <end> C` (0 s when the first read was cool), `gave up at <C>
 # C`, or `not gated`. The bracket holds --cool's own words for the last read.
+#
+# The wait is wall time ($SECONDS): each pass also costs an adb call and two
+# python3 starts, and the overrun line counts those too. `--cool` reads the
+# file's last line, so a sampler that wrote none (a traceback) would have the
+# gate re-read the previous, hot sample: no new line is unread, not hot.
 if [ "${THERMAL_COOL_C:-65}" != off ]; then
-    cool_waited=0; cool_from=""
+    cool_lines() { if [ -f "$THERMAL_OUT" ]; then wc -l < "$THERMAL_OUT"; else echo 0; fi; }
+    cool_t0=$SECONDS; cool_from=""
     while :; do
+        # Taken before the read, so a device that is cool at once waited 0 s.
+        cool_waited=$((SECONDS - cool_t0))
+        cool_n=$(cool_lines)
         thermal_sample cool
         [ -n "$THERMAL_OUT" ] || break
+        if [ "$(cool_lines)" -le "$cool_n" ]; then
+            echo "COOLDOWN: not gated after ${cool_waited} s: the sampler wrote no line"
+            break
+        fi
         cool_is=$(python3 "$HERE/thermal_state.py" --cool "$THERMAL_OUT" \
             "${THERMAL_COOL_ZONE:-xo-therm}" "${THERMAL_COOL_C:-65}" 2>&1); cool_rc=$?
         if [ "$cool_rc" = 2 ]; then
@@ -306,7 +319,6 @@ if [ "${THERMAL_COOL_C:-65}" != off ]; then
             break
         fi
         sleep "${THERMAL_COOL_EVERY_S:-20}"
-        cool_waited=$((cool_waited + ${THERMAL_COOL_EVERY_S:-20}))
     done
 fi
 

@@ -314,6 +314,24 @@ hysteresis). A fall that clears within one or two bins is not the pause.
   window is the check: its thermal.jsonl must carry `pw` with a battery
   current, and its verdict `power.measured` true. If `thermal_status` is
   missing there, the dumpsys line differs on this firmware.
+- **#519's audit LOWs, fixed here** (docs/audits/2026-09-27-thermal507-519-
+  pass1.md; #519 folds without them):
+  - L1: offsets print with `%+`, so a pause in the cool-down reads `-60 s`,
+    and the `THERMAL:` line marks it `[in the cool-down, over before the
+    start]`. `first_pause_s` skips such an episode.
+  - L2: with no mark, the verdict's pauses count from `origin()` (the
+    `start` sample), as the `THERMAL:` line does.
+  - L3: the gate's wait is wall time (`$SECONDS`), read before each sample,
+    so a device cool at the first read waited 0 s.
+  - L4: a sampler that wrote no line ends the gate as `COOLDOWN: not gated
+    ...: the sampler wrote no line`; the previous hot line is not re-read.
+  - selftest 99-thermal-pause: legs `no-line` and `waited-out` (15 of 15).
+    The wait legs accept 2 to 9 s, since the wait is now wall time.
+- CI on 4d8ba75b63 was red on one check outside this lane's files:
+  76-pr-sweep.sh, "a stale failure ALONGSIDE a live one is a live red"
+  (2230 passed, 1 failed). The same tree's fragments 99-power-per-frame and
+  99-thermal-pause passed in that run. Its fixture is built from the trunk
+  head's commit time.
 - For the next lane: 30 s samples of an instantaneous `current_now` are
   coarse. A 240 s benchmark has about five readings in its window. Compare
   J per frame between runs of at least 5 min, and read `power.samples`.
