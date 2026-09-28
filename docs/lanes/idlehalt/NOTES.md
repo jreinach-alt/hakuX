@@ -157,3 +157,65 @@ the Nova (~04:45Z).
 A1; posted as `[lane.idlehalt] waiting:` on #528. On resume: `ihread.py
 --from 299 --to 420` on each B/A pair, the boot shots of B2-B5, then legs F
 and B, then post on #525 and #462.
+
+## 7. Session 3 (2026-09-28 07:4xZ): the batch read, the verdict
+
+Why session 2 did not finish: it ended correctly on a `waiting:` for the
+device batch. The Nova dropped off adb at 23:11 PDT, partway through Blinx
+A1. hostops voided that run and re-queued it as `-r2` on the Nova, and
+re-pinned Blinx B2-B5 to the Thor. When the last run finished,
+`job.handback` resumed this lane. There was nothing to fix, only the read.
+
+All at 6554f06175. AUF uses `ihread.py --from 299 --to 420` and Blinx uses
+`ihread.py --play` (252-418 s), each the window its prediction names:
+
+| | AUF B1 (on) | AUF A1 (off) | Blinx B1 (on) | Blinx A1-r2 (off) |
+|---|---|---|---|---|
+| result | `2274611` | `2278164` | `3064707` | `3064828-r2` |
+| device | Nova | Nova | Nova | Nova |
+| windows, checks | 60 ok | 60 ok | 82 ok | 83 ok |
+| gfps | 17.05 | 17.28 | 18.57 | 18.75 |
+| vCPU on-CPU (schedstat) | **26.9%** | 95.1% | **35.5%** | 76.4% |
+| guest idle (`[rr425w]`) | 71.9% | 80.1% | 40.3% | 47.6% |
+| slept | 71.5% | 0 | 40.1% | 0 |
+| halts/s | 1006 | 0 | 677 | 0 |
+| to / tp / xpc | 344 / 0 / 0 | 0 | 218 / 0 / 0 | 0 |
+| pg raise-to-run >= 50 us | **14.2%** | n/a | **3.7%** | n/a |
+| thermal pause in window | none | none | none | none |
+
+Legs:
+
+| leg | AUF | Blinx |
+|---|---|---|
+| V | holds | holds |
+| H | holds: A 95.1 >= 85; B 26.9 <= 43.1; slept is within 0.4 points of idle | **A fails**: A 76.4 < 85, so the spin is not ~94% on this build in Blinx. B holds: 35.5 <= 74.7, slept within 0.2 points |
+| C | holds | holds |
+| L | **fails**: 14.2% >= 1% | **fails**: 3.7% >= 1% |
+| F | holds: 0.987 x A | holds: 0.990 x A |
+| B (boots) | 5 of 5 reach level play, armed in each | 4 of 4 valid runs reach level play (B1 on the Nova, B2-B4 on the Thor). B5 (`3065390`, Thor) is VOID: the route aborted not-foreground before any input, with 5 logcat lines and no emulator start, so it is a harness abort, not a wedge. |
+| heat (B at least 25 points under A) | holds: 68.2 points | holds: 40.9 points |
+| J/frame | pending (#523): no power record in these results | pending |
+
+**Verdict.** The halt frees the core: on-CPU share falls 68 points on AUF
+and 41 on Blinx, with fps within 1.3%, no missed wake (tp = 0), no stray
+halt (xpc = 0), and no boot wedge in 9 valid boots. Leg L is refuted in
+both titles, and by the registered falsifier that keeps the halt **default
+off**. This PR ships it opt-in (`HAKUX_IDLE_HALT=1`) with its counters. I
+did not re-queue Blinx B5: leg L already decides the default, so a fifth
+boot cannot change the outcome.
+
+What L costs is a condvar wake of a sleeping thread (futex, scheduler, core
+out of idle). On these two titles F shows no fps cost. L's 50 us bound was
+a guess, but it was registered, and it is not moved after the fact.
+
+The guest's own idle share falls with the halt on (AUF 80.1 -> 71.9, Blinx
+47.6 -> 40.3). The guest is not doing more work: its wake reaches it later,
+so less of the wall clock is spent in the idle loop. That matches L.
+
+For the next lane (to flip the default):
+- Spin on `interrupt_request` for tens of us before the condvar sleep, or
+  skip the halt while PFIFO is in `waiting_for_nop` (a callback is coming).
+  Register a new prediction with an L bound argued from F, not 50 us.
+- Measure J/frame once #523's power record is in the dispatcher.
+- Do not repeat: judging Blinx A against the ~94% spin figure. On this
+  build it spins at 76%.
