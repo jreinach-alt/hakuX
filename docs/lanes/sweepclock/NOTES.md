@@ -62,3 +62,7 @@ The master+mutant result is #523's failure: the same single check.
 
 - Do not fix this with a `fetch` no-op shim alone: the shared worktree refs
   can still move under it on the host.
+
+## Status
+
+Waiting on CI (jobs selftest) for this head on PR #531. Once it is green, mark the PR ready.
