@@ -193,3 +193,23 @@ the jump cache already hits 92.5% of lookups.
     fps and J/frame, A/B), then mark the PR ready.
   - A moved capture or a failed share leg is a diagnosis. Read the probe's
     key against `tb_lookup()` first.
+
+## Attempt 3 (resumed 2026-09-28, hostops addendum 14:36 PDT)
+
+**Why attempt 2 did not finish.** It ended correctly on a `waiting:` for the
+pixel arm and R1b, but the arm it waited on could never be queued:
+`arms.sh list` skipped `ibcache-probe-pixels.json` with "no suite with goldens
+in its keys or disc". A bare `"*"` in `must_not_move` names no suite, so the
+arms job cannot derive a sweep, and lane.local's R1b waited on that pair
+being claimed.
+
+**Fix.** `must_not_move` is now one `<Suite>/*` key for each of the 100
+suites with goldens, plus `disc.suites` listing the same suites. Both are
+copied from lane.memfast's `memfast-drop-pixels.json`, along with its
+`skip_tests` (`Texture_render_target::RenderTextureLoop`). The refs
+(a 4e3d69a69b, b a6ec5ec0ab), the claim, and `expect_counts` (better 0,
+worse 0) are unchanged. Master has not moved since the merge (0 behind), so
+nothing was rebased.
+
+Do not repeat: a prediction key has to name a suite. The arms job does not
+expand `"*"`.
