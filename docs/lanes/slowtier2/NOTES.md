@@ -6,14 +6,14 @@ cut down to the lines these runs actually carry (section 1). The first
 pass's six titles are cited, not re-read.
 
 Files here:
-- `statusrows.py` (+ `.out.txt`): the status page's row for each title
+- `statusrows.py` (+ `statusrows.out`): the status page's row for each title
   (status.json, 2026-09-28 08:02 PDT), and the result id each reading came from.
-- `index.py` (+ `.out.txt`): every result of the sixteen titles on disk.
+- `index.py` (+ `index.out`): every result of the sixteen titles on disk.
 - `condread.py`: one reading, with its conditions and the always-on counters
   over the verdict's own window. `readall.sh` runs it over every reading;
-  its output is `readall.out.txt`. **Cites below of the form `ro:N` are
-  lines of `readall.out.txt`.**
-- `levers.sh` (+ `.out.txt`): which lever fold commits each reading's ref
+  its output is `readall.out`. **Cites below of the form `ro:N` are
+  lines of `readall.out`.** (Outputs are `.out`: the repo ignores `*.txt`.)
+- `levers.sh` (+ `levers.out`): which lever fold commits each reading's ref
   contains.
 - `perflogscan.py`: which results of these titles carry perflog lines.
 
@@ -46,7 +46,7 @@ These are the first pass's top-level categories. The next level (exec loop
 vs TB lookup vs guest code; PFIFO CPU vs GPU vs downloads vs compiles)
 needs a profile or a perflog soak: section 4.
 
-**The builds predate the levers.** `levers.out.txt`: of the thirteen refs
+**The builds predate the levers.** `levers.out`: of the thirteen refs
 behind the listed readings, none carries #479, #518, #528 or #536, and only
 two carry #475: Arctic's (677ae13af8) and Arctic's rerun and BloodRayne's
 (e884ad260e). The later MechAssault 2 and Crimson runs used for conditions
