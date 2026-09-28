@@ -956,7 +956,7 @@ static SetupFiles SyncSetupFiles() {
   __android_log_print(ANDROID_LOG_INFO, "hakuX",
                       "draw merge: %s", draw_merge ? "ON" : "OFF");
 
-  bool async_compile = GetPrefBool(env, activity, "async_compile", false);
+  bool async_compile = GetPrefBool(env, activity, "async_compile", true);
   xemu_set_async_compile(async_compile);
   __android_log_print(ANDROID_LOG_INFO, "hakuX",
                       "async compile: %s", async_compile ? "ON" : "OFF");

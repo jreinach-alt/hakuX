@@ -66,7 +66,7 @@ class SettingsActivity : AppCompatActivity() {
     "fp_safe" to true, "fp_jit" to true, "unlock_framerate" to true,
     "fast_fences" to false, "skip_occlusion_queries" to false,
     "draw_reorder" to false, "draw_merge" to false,
-    "async_compile" to false, "frame_skip" to false,
+    "async_compile" to true, "frame_skip" to false,
     "use_dsp" to false,
     "skip_boot_anim" to true,
     "texture_dump_enabled" to false,
@@ -540,7 +540,7 @@ class SettingsActivity : AppCompatActivity() {
     setupSwitch(R.id.switch_skip_occlusion, "skip_occlusion_queries", false)
     setupSwitch(R.id.switch_draw_reorder, "draw_reorder", false) { nativeSetDrawReorder(it) }
     setupSwitch(R.id.switch_draw_merge, "draw_merge", false) { nativeSetDrawMerge(it) }
-    setupSwitch(R.id.switch_async_compile, "async_compile", false) { nativeSetAsyncCompile(it) }
+    setupSwitch(R.id.switch_async_compile, "async_compile", true) { nativeSetAsyncCompile(it) }
     setupSwitch(R.id.switch_frame_skip, "frame_skip", false) { nativeSetFrameSkip(it) }
 
     setupIntPicker(R.id.btn_texture_cache, "texture_cache_size", 0,
