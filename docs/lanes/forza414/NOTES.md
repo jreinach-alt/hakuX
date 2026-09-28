@@ -1077,3 +1077,27 @@ Depth_buffer_fixed_function, eight TexFmt Texture_render_target), identical in b
 | AUF | 30.4 -> 1.0 ms/frame | **+16%** |
 
 The pixel suites are byte-identical, with no hang and no crash.
+
+## 32. The merge of origin/master (0e938db24f), and what is left
+
+origin/master 4fcbe0262e merged without conflict. Its only code changes since 6eb7b1115c:
+- #504's GPU timestamp period, measured at start-up (vk/renderer.c). This is an instrument: it
+  changes the phase line's GPU figures, not what is drawn or waited on.
+- A perflog-only wall probe in `pgraph_vk_bind_textures` (vk/texture.c).
+
+Neither reaches the deferred-download path or anything hunk 4 calls. **The arms were not re-run
+on the merge**, as in section 23. The three judged results (the goldens PASS and the DOA and AUF
+pairs) stand on the code hunk 4 ships. The two perflog-only probe commits after B, `clr`/`clrfull`
+(53c81b1a7a) and abread/txline, change no non-perflog line.
+
+**Next, in the next PR (not this one):**
+1. Read Thor pilot 2 (`1-1790561602-forza414-3260817`, 53c81b1a7a): `clr` and `clrfull` per frame
+   against `su_upl`. If the forced uploads are full clears, build hunk 5, draw.c's FIXME in
+   `pgraph_vk_clear_surface`: skip the upload, and so the completion, for a binding the coming
+   clear covers whole. It needs `r->clear_parameter` set before `pgraph_vk_surface_update` rather
+   than after (draw.c), and the coverage test in surface.c. That test must match `mark_clear_full`
+   (draw.c), so share one helper rather than writing a second copy. Register first: surfupd fin
+   and `su_upl` fall by `clrfull`'s share; pixels bit-identical.
+2. The uniform-block skip (section 26) once vk/shaders.c is granted.
+3. DOA's next lever, texture.c:2215's all-frames flush (section 28). It is in lane.remote's file,
+   so it goes to the board, not here.
