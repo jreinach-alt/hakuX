@@ -508,12 +508,11 @@ files = []
 standing = false
 note = "RETIRED (hostops 2026-09-27 22:45 PDT): PR #540 MERGED, unit gone, no open PR on lane/selftestshard*. Files RELEASED to [free]: .github/workflows/jobs-selftest.yml, docs/testing/jobs/selftest.sh, docs/lanes/selftestshard/**."
 
-[lane.pipeline413]
-issues = ["413"]
-files = ["hw/xbox/nv2a/pgraph/profile.c", "docs/lanes/pipeline413/**", "docs/testing/predictions/pipeline413-*.json"]
-released = ["hw/xbox/nv2a/pgraph/profile.c", "docs/lanes/pipeline413/**", "docs/testing/predictions/pipeline413-*.json"]
-released_at_ready = 541
-note = "RELEASED AT READY (job.board 2026-09-28T16:55Z): PR #541 is out of draft, CI green on 973d3b1 (build x2, check), unit gone; carries needs-audit-1, which does not block release. The next lane names PR #541 and merges master (or lane/pipeline413 if it has not folded) before marking its own PR ready. PRIOR: STARTED (hostops 2026-09-28T04:58Z), briefs/pipeline413.md: #413 (0.5, fps-focus). lane.doa413c (PR #536) measured the DOA Ultimate scene-load stall as synchronous Turnip pipeline compilation on the PFIFO thread (12.9 s cold, 3.1 s warm). This lane logs the existing shader_stats counters on the hakuX-perf line (profile.c, LENT from [lane.remote], RETURN there at fold) and prices doa413c's fix options 2-4 from a cold Nova soak. QUEUED FOR draw.c (skip a pending pipeline in async mode): after lane.forza414 releases it, lane.pacing (#526) first, then #413's follow-up. compile_worker.c is in no row."
+[retired.pipeline413]
+issues = []
+files = []
+retired_utc = "2026-09-28T17:35:00Z"
+note = "RETIRED (hostops 2026-09-28T17:35Z): PR #541 MERGED, no open PR on lane/pipeline413, unit gone. Files already RELEASED to [free] at ready. #413 stays open (measurement; the price of options 2-4 is in the PR). PRIOR: RELEASED AT READY (job.board 2026-09-28T16:55Z): PR #541 is out of draft, CI green on 973d3b1 (build x2, check), unit gone; carries needs-audit-1, which does not block release. The next lane names PR #541 and merges master (or lane/pipeline413 if it has not folded) before marking its own PR ready. PRIOR: STARTED (hostops 2026-09-28T04:58Z), briefs/pipeline413.md: #413 (0.5, fps-focus). lane.doa413c (PR #536) measured the DOA Ultimate scene-load stall as synchronous Turnip pipeline compilation on the PFIFO thread (12.9 s cold, 3.1 s warm). This lane logs the existing shader_stats counters on the hakuX-perf line (profile.c, LENT from [lane.remote], RETURN there at fold) and prices doa413c's fix options 2-4 from a cold Nova soak. QUEUED FOR draw.c (skip a pending pipeline in async mode): after lane.forza414 releases it, lane.pacing (#526) first, then #413's follow-up. compile_worker.c is in no row."
 
 [lane.dirtytlb]
 issues = ["548"]
