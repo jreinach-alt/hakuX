@@ -65,8 +65,39 @@ SHARD_CHAINS=(
     "86-nightly-notes 87-nightly-trunk"
     "99-handback-draft 99-handback-runs 99-handback-strand"
 )
+# Measured 2026-09-27, each fragment alone on the host (SELFTEST_ONLY); the
+# CI runner is about 2x faster. 84 and 92 have no alone time (84 printed a
+# clobbered one, 92 needs its chain) and weigh SHARD_SECS_NEW.
 SHARD_SECS_NEW=15
-SHARD_SECS=""
+SHARD_SECS="
+    10-arms-list:65 20-arms-queue:140 30-arms-error:71 40-arms-refusal:333
+    50-arms-requeue:204 51-dispatch-hardening:24 55-affinity-offpool:7
+    55-localtime:5 56-desktop-worker:31 57-vsh-disc:10 58-pull-verify:59
+    60-status:3 62-status-freshness:17 63-status-lanes:12 64-status-html:37
+    65-fold-cloud-list:3 65-status-objective:17 66-deliveries:11
+    66-status-titles:14 67-status-measured:14 70-cloud-audit:0
+    71-cloud-territory:12 72-cloud-tail:29 73-cloud-claim:17 73-fold-repair:21
+    74-fold-multi:101 75-fold-exact:2 75-nv2a-index:1 75-nv2a-index-drift:2
+    76-pr-sweep:19 76-x1a7-model:1 77-issue-sweep:43 78-sweep-remote:9
+    79-stop-hook-hold:1 80-labels:0 83-blank-rule:9 85-fold-ci:41
+    86-fold-regressed:68 86-nightly-notes:7 87-fold-stale-ci:52
+    87-nightly-trunk:4 88-sweep-cover:5 88-window-budget:20
+    89-title-verdict:49 90-fold-index:22 90-fold-notes:0 91-fold-transient:37
+    93-backlog-state:4 94-arms-disc-narrow:186 94-arms-idle-tier:250
+    94-arms-label-state:164 94-arms-verdict-scope:18 94-arms-withdrawn:21
+    95-affinity:6 96-fleet-registry:3 97-board-gate:5 97-board-priority:3
+    97-board-push-gate:4 97-board-release:1 97-dispatch-deploy:1
+    97-dispatch-snapshot-rename:4 97-fold-branch-prune:3 97-preflight-tmp:3
+    97-release-prio:239 98-audit-outlet:3 98-coverage-rest:1
+    98-dispatch-late-device:14 98-fleet-queue-stall:3 98-lane-shape:24
+    99-affinity-backlog:87 99-default-regimen:3 99-display-covered:41
+    99-handback:29 99-handback-branch:18 99-handback-draft:28
+    99-handback-idle:175 99-handback-lane-line:17 99-handback-merged:29
+    99-handback-parked:46 99-handback-resolved:13 99-handback-runs:12
+    99-handback-strand:6 99-hold-take:5 99-iso-roots:1 99-limits-env:12
+    99-pilot-gate:3 99-power-per-frame:4 99-score-sweep-flat-split:3
+    99-status-escalation-items:1 99-thermal-pause:34 99-title-state:5
+"
 shard_frags() {   # <k> <n> -> the basenames of shard k, sorted, one per line
     printf '%s\n' "${frags[@]##*/}" | python3 -c '
 import sys
@@ -248,10 +279,12 @@ if [ -n "${SELFTEST_ONLY:-}" ]; then
 elif [ -n "${SELFTEST_SHARD:-}" ]; then
     mapfile -t run < <(shard_frags "$SHARD_K" "$SHARD_N" | sed "s|^|$HERE/selftest.d/|")
 fi
-for f in "${run[@]}"; do
-    t0=$SECONDS
-    . "$f"
-    echo "selftest: ${f##*/} took $((SECONDS - t0))s"
+# The loop's names are private: fragments run in this shell, and some set `f`
+# and `t0` for themselves, which printed the wrong name and time.
+for _st_frag in "${run[@]}"; do
+    _st_t0=$SECONDS
+    . "$_st_frag"
+    echo "selftest: ${_st_frag##*/} took $((SECONDS - _st_t0))s"
 done
 
 echo
