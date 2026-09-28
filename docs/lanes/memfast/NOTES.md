@@ -457,6 +457,9 @@ the cause split into F0a. P stays 0.4. The largest risk remaining is M6
   lane.local's 21:20Z comment (R1 on disk) became the newest word on the PR,
   and the addendum asks to read R1 now. This attempt merged origin/master
   (20 commits; a merge, so the registered refs stand) and read R1, below.
+  It posted R1 on #507 (issuecomment-5878914281) and ended on a `waiting:`
+  on #590 for the arms verdict, the two pilot soaks (both still queued) and
+  the held b_ref capture.
 
 ## R1: master's shares, from lane.local's cold GTA capture
 
