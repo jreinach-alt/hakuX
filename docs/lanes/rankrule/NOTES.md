@@ -15,3 +15,7 @@ Both examples were checked against the record before writing:
   from the code before async413's arm ran.
 
 No device time, no prediction (no arm).
+
+## Status
+
+Preflight PASS (--allow-tracker). Waiting on CI for PR #584; mark ready when green.
