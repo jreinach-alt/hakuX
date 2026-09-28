@@ -13,6 +13,40 @@
 # 92 because it needs those and nothing after it needs this.
 
 echo "== arms.sh: a STRUCTURAL skip reaches the lane too, exactly once"
+# WHICH COMMENT, NOT WHETHER ANY. Every tick fetches the real origin/lane/*
+# and the watermark is only a minute older than this run, so a lane that
+# registers a prediction while the selftest runs makes it live here: its keys
+# name no fixture golden, it is skipped or refused, and that posts a comment.
+# Asserting "no comment at all" failed on exactly that (8a54dcf1b2: forza414b's
+# 23:43Z registration; 0e0ba23fb9: forza414's at 21:14Z). So a leg names the
+# prediction it is about. post() is always `--body-file <file>`, and every body
+# arms.sh writes for a prediction is named <sha>.<kind>.md and carries the
+# sha's first 12 characters, so either one identifies it.
+posted_for() {   # <sha>: a comment in gh.log belongs to that prediction
+    local b
+    while read -r b; do
+        case "${b##*/}" in "$1".*) return 0 ;; esac
+        [ -f "$b" ] && grep -qF "${1:0:12}" "$b" && return 0
+    done < <(sed -nE 's/^(pr|issue) comment .*--body-file ([^ ]+).*/\2/p' "$SELFTEST_GH_LOG")
+    return 1
+}
+nothing_posted_for() { ! posted_for "$1"; }
+# A comment for any prediction registered before the watermark: history that
+# must stay silent. A body names its sha; $A/expect/<sha>.json is the copy
+# collect() exported, so its registered_utc says which side of the fence it is.
+posted_behind_watermark() {
+    local b s e r since
+    since=$(cat "$HAKUX_WORK/arms/since")
+    while read -r b; do
+        s=${b##*/}; s=${s%%.*}; e="$HAKUX_WORK/arms/expect/$s.json"
+        [ -f "$e" ] || continue
+        r=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("registered_utc",""))' "$e" 2>/dev/null)
+        [ -n "$r" ] && [[ "$r" < "$since" ]] && return 0
+    done < <(sed -nE 's/^(pr|issue) comment .*--body-file ([^ ]+).*/\2/p' "$SELFTEST_GH_LOG")
+    return 1
+}
+nothing_posted_behind_watermark() { ! posted_behind_watermark; }
+
 # Until 2026-09-19 only a request.sh refusal was posted; the six structural
 # refusals wrote a marker under $WORK/arms/skipped and said nothing. PR #115's
 # registration had English prose where the a_ref belonged -- "4129a349e6 with
@@ -35,7 +69,7 @@ sha4=$(sha256sum "$EXP4" | cut -d' ' -f1)
 : > "$SELFTEST_GH_LOG"
 bash "$HERE/arms.sh" >/dev/null 2>&1
 check "the prose a_ref is recorded as a structural skip" grep -q "a_ref .* does not resolve" "$HAKUX_WORK/arms/skipped/$sha4"
-check "the structural skip was posted as a comment" grep -qE '^(pr|issue) comment' "$SELFTEST_GH_LOG"
+check "the structural skip was posted as a comment" posted_for "$sha4"
 check "the comment says SKIPPED, not REFUSED" grep -q '^\[job.arms\] SKIPPED' "$HAKUX_WORK/arms/log/$sha4.skipped.md"
 check "the comment carries the same reason the marker holds" grep -q "does not resolve" "$HAKUX_WORK/arms/log/$sha4.skipped.md"
 check "the marker records that the lane was told" grep -q '^told=' "$HAKUX_WORK/arms/skipped/$sha4"
@@ -44,7 +78,7 @@ check "the marker records that the lane was told" grep -q '^told=' "$HAKUX_WORK/
 # which is what makes this "once", not "once ever".
 : > "$SELFTEST_GH_LOG"
 bash "$HERE/arms.sh" >/dev/null 2>&1
-check "a second tick does not tell it again" bash -c '! grep -qE "^(pr|issue) comment" "$SELFTEST_GH_LOG"'
+check "a second tick does not tell it again" nothing_posted_for "$sha4"
 
 # The backlog. Both markers on the host when this shipped were written by a
 # version that told nobody -- including #115's, the one it exists for. Had the
@@ -55,7 +89,7 @@ check "a second tick does not tell it again" bash -c '! grep -qE "^(pr|issue) co
 sed -i '/^told=/d' "$HAKUX_WORK/arms/skipped/$sha4"
 : > "$SELFTEST_GH_LOG"
 bash "$HERE/arms.sh" >/dev/null 2>&1
-check "a structural marker written before told= existed is announced" grep -qE '^(pr|issue) comment' "$SELFTEST_GH_LOG"
+check "a structural marker written before told= existed is announced" posted_for "$sha4"
 check "and stamped, so it is announced only that once" grep -q '^told=' "$HAKUX_WORK/arms/skipped/$sha4"
 
 # A request.sh refusal must NOT get a second comment: refused() posts its own,
@@ -82,5 +116,6 @@ sha5=$(sha256sum "$EXP5" | cut -d' ' -f1)
 bash "$HERE/arms.sh" >/dev/null 2>&1
 check "a broken prediction behind the watermark is counted as history, not skipped" \
     [ ! -f "$HAKUX_WORK/arms/skipped/$sha5" ]
-check "and nothing is posted for it" bash -c '! grep -qE "^(pr|issue) comment" "$SELFTEST_GH_LOG"'
+check "and nothing is posted for it" nothing_posted_for "$sha5"
+check "nor for any other prediction behind the watermark" nothing_posted_behind_watermark
 
