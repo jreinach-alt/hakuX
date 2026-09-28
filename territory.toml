@@ -610,6 +610,11 @@ issues = ["507"]
 files = ["docs/testing/dispatcher.sh", "docs/testing/battery_admit.py", "docs/testing/jobs/selftest.d/99-battery-admit.sh", "docs/lanes/battadmit/**"]
 note = "STARTED (lane.local 2026-09-28T20:20Z), briefs/battadmit.md: the owner's rule (13:10 PDT): the dispatcher admits a run on a charging handheld once level >= 15 + 5 + learned drain rate x run length, instead of waiting for device_reality's 80% lift. dispatcher.sh from [free] (#571 folded); device_reality's lift change is applied by lane.local in the same update window."
 
+[lane.vcpuplan]
+issues = ["507"]
+files = ["docs/lanes/vcpuplan/**"]
+note = "STARTED (lane.local 2026-09-28T20:25Z), briefs/vcpuplan.md: #507 energy map rank 4 (unowned): the vCPU is the largest dynamic J/frame term on every title. Research and a ranked plan by the owner's rule (roles/lane.md, PR #584): where vCPU time goes on ARM64 (JIT code, TB lookup, softmmu, x87/SSE softfloat helpers), what x86-on-ARM64 JITs (FEX/Box64) do, prior work swept, an independent JIT-engineer review. Docs only."
+
 [free]
 # CLAIMED (hostops 2026-09-28T19:58Z): android/app/src/main/java/com/rfandango/haku_x/TitleDefaults.kt -> lane.gmem474 (#474).
 # RELEASED (hostops 2026-09-28T19:55Z) by retiring lane.forza414 (PRs #518/#543 merged) and lane.rendermode474 (PR #530 merged): hw/xbox/nv2a/pgraph/vk/renderer.c, docs/testing/predictions/forza414-*.json, docs/lanes/forza414/**, android/app/src/main/java/com/rfandango/haku_x/PerGameSettingsManager.kt, android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt, android/app/src/main/java/com/rfandango/haku_x/TitleDefaults.kt, docs/lanes/rendermode474/**, docs/testing/predictions/rendermode474-*.json.
