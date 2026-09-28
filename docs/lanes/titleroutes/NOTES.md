@@ -1341,3 +1341,156 @@ Azurik 1-1790560999-titleroutes-2862460 (500 s) and D&D Heroes
 first). Then go on down the Thor list in held nav sessions under the focus
 read: Bicycle Casino, Breeders' Cup, AMF Xtreme Bowling, then the Playable
 list in the hand-over.
+
+### Attempt 11 (resumed 2026-09-27 19:30 PDT, handback)
+
+Why attempt 10 did not finish: it did. Its NOTES (the batch 9 table above)
+were in 9020dc32cd, and PR #515 folded with them. The handback that started
+this attempt listed #515 as a draft, but #515 had already merged. All seven
+results it named were already read and recorded above.
+
+State at 19:36 PDT: nothing of mine is running, and the Thor has no hold. My
+two re-queued soaks are still in the queue, behind arms and forza414 work:
+Azurik 1-1790560999-titleroutes-2862460 and D&D Heroes
+1-1790560999-titleroutes-2862610. I did not take a held nav session, because
+a hold would stop the Thor from claiming those two. This attempt ends
+`waiting:` on them.
+
+Next, once they land: read each mark frame first, then the fps. Then take
+held nav sessions for Bicycle Casino, Breeders' Cup and AMF Xtreme Bowling,
+then the Playable list in the hand-over.
+
+### Attempt 12 (resumed 2026-09-27 19:45 PDT, handback)
+
+Why attempt 11 did not finish: it did; it ended `waiting:` on the Azurik
+and D&D Heroes re-queues (still in the queue at 19:45). This handback listed
+the seven batch 9 results again, which attempt 10 had already read and
+recorded above, and PR #515 had already folded. Nothing to re-read.
+
+**lane.local's 19:55 list, "queue every ready benchmark now".** Five of its
+eight titles already have a benchmark result with a reading, so they were
+not queued again:
+
+| title | device | request (already DONE) | reading |
+|---|---|---|---|
+| Baldur's Gate: DA | thor | 1-1790548501-titleroutes-1530514 | 59.94 / 100% (batch 9) |
+| KOF: Maximum Impact | thor | 1-1790548502-titleroutes-1531011 | 32.89 / 99.0% (batch 9) |
+| WWE Raw 2 | nova | 1-1790515603-titleroutes-1194477 | 59.94 / 100% (attempt 5) |
+| 50 Cent: Bulletproof | nova | 1-1790515600-titleroutes-1194351 | 29.97 / 95.9% (attempt 5) |
+| Battlefield 2: MC | thor | 1-1790517591-titleroutes-1523259 | 19.14 / 0%, ten hangs (attempt 6) |
+
+Queued at 19:47 PDT (0.5 priority, ref 4fcbe0262e, `scratch/q12.sh`, log
+`scratch/q12.log`). Their only earlier readings were the 300 s titlebench
+soaks, which score little or no gameplay (see "Soak length" above):
+
+| title | device | route | request | seconds |
+|---|---|---|---|---|
+| 007: Nightfire | thor | nightfire | 1-1790563604-titleroutes-373432 | 400 |
+| Burnout 3: Takedown | thor | burnout3.returning | 1-1790563604-titleroutes-374056 | 620 |
+| Kabuki Warriors | nova | kabuki-warriors | 1-1790563605-titleroutes-374601 | 550 |
+
+### Session 27: HELD Thor, 20:09-20:27 PDT (18 min), battery 72%
+
+**First, an error of mine (20:01-20:03).** The arm
+1-1790560694-arms-pacing-base-2707775 claimed the Thor at 20:01:23. I took
+the hold at 20:01:24. `hold.sh take` does not wait for a running request, and
+I did not re-read running/ before I launched. My launch at 20:01:39 and
+my second one at 20:02:53 went to a device the arm owned, and the second
+killed its fast.iso process. I stopped, released, and reported it on PR #529
+(comment 5862515829) and in hostops-inbox.md. `scratch/takeloop.sh` now takes
+the hold and prints READY only once no running/*.owner names the device.
+The hold covering 20:04-20:27 was taken that way.
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| RalliSport Challenge 2 (4D530039) | thor | `rallisport-2.returning.route` | yes (20:22, warm, 15/15 focus reads) | Time Attack on Australia / Copperhead. At the mark the car is on the start straight with the race clock at 00:25.55 (overlay FPS 22). At the end (01:08.95) it is off the track by a stand after reversing and steering |
+
+Frames: nav `~/hakux-work/nav/rallisport-2.first-run-20260927T200957/`
+(profile creation), `~/hakux-work/nav/rallisport-2.returning-20260927T201734/`
+(s-015-p1: 27 mph on the banked turn); replay
+`scratch/replay/rallisport-2.returning-202218/` (202650-gameplay.png,
+zz-end.png). The profile "00" is on the Thor's disk (flushed with HOME at 20:17).
+
+What the title taught:
+- The letter grid and the main menu's carousel both auto-repeat. A stick flick
+  registered one move in two. A hat held 0.6-0.9 s moved 2-4 entries. A short
+  hat tap moves one. The carousel stops at both ends, so seven left taps
+  always land on TIME ATTACK.
+- START on the name grid types a character. Done needs the hat.
+- The **triggers rest at `min`**. `axis LT mid` is a half-pressed brake, and
+  it held the car at 0 mph with the engine revving. That cost 3 minutes.
+- In Time Attack the car starts nosed into the first-turn barrier. LT full
+  reverses it off.
+
+Benchmark queued: 1-1790566122-titleroutes-1417504 (thor, 570 s, ref
+023e26510f). targets.toml: the existing 4D530039 entry (#431 target 60) now
+has a thor ISO and the route.
+
+### Session 28: HELD Thor, 20:39-20:50 PDT (11 min; hold taken 20:30 while the pacing FIX arm ran), battery 68%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Spikeout: Battle Street (53450029, USA disc) | thor | `spikeout.returning.route` | yes (20:46, warm, 10/10 focus reads) | Story 1 "Reunion": Spike Jr. fighting Grasshopper's gang on the dock, 59 fps. At the end the score reads 250 |
+
+Frames: nav `~/hakux-work/nav/spikeout.first-run-20260927T203923/` (player
+creation; s-013-walk, s-015-fought) and
+`~/hakux-work/nav/spikeout.returning-20260927T204333/`; replay
+`scratch/replay/spikeout.returning-204621/` (204903-gameplay.png, zz-end.png).
+The player "A" is on the Thor's disk (flushed with HOME at 20:43).
+
+- targets.toml had the Europe disc for the Thor. The route was recorded on the
+  USA disc, which is also on the Thor, so the entry now names that one.
+- The story FMVs decode as green blocks (#303). A still skips them.
+- On the name grid, START types a letter (as it did in RalliSport 2). Two hat
+  taps up reach Done.
+
+Benchmark queued: 1-1790567423-titleroutes-2191714 (thor, 460 s, ref 5b4294aa5d).
+
+### Session 29: HELD Thor, 21:01-21:16 PDT (15 min; hold taken 20:53 while a sustain507 run finished), battery 62%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Project Gotham Racing 2 (4D53004B) | thor | `pgr2.route` | yes (21:11, the second replay; 14/14 focus reads) | Instant Action in Florence. At the end the clock reads 4:12, LAP 1 of 2, and the car is further down the street, by the Duomo |
+
+**PGR2 is unparked.** The earlier failures (sessions 6-7) came from counting
+menu moves in a menu that auto-repeats. This route holds the hat right for
+3 s, which stops at Xbox Demos, then taps left once to Instant Action. It
+does not depend on the frame rate or on where the cursor started. The first
+replay (`scratch/replay/pgr2-210557`) reached Xbox Demos and then went two
+left, to Profile Manager, because the tap was replayed as recorded, a 0.3 s
+hold (the time nav.py's own round trip took). The route now holds the tap
+0.1 s, and the second replay (`scratch/replay/pgr2-211124`) went into the
+race. B, B, A after the first A handles a START that lands early.
+
+Frames: nav `~/hakux-work/nav/pgr2.first-run-20260927T210151/` (s-009-gas:
+37 mph); replay `scratch/replay/pgr2-211124/` (211518-gameplay.png, zz-end.png).
+
+Benchmark queued: 1-1790569004-titleroutes-3006458 (thor, 530 s, ref
+29420ebf48). targets.toml: route added to the existing entry (#431 target 30).
+
+**A general rule for a menu that auto-repeats:** push to a stop, then step
+back with taps held 0.1 s *in the route file*. A tap sent through nav.py is
+recorded with nav.py's own round trip, 0.3-0.6 s, so correct it by hand.
+
+### Session 30: 2026-09-27 ~22:00 PDT, no device work
+
+Why session 29 did not finish: it hit the 300-turn cap at 21:43 PDT while it
+still held the Thor, and hostops lifted the hold. The PGR2 work it had left
+was already done before the cap. The second replay reached the race
+(`scratch/replay/pgr2-211124/211518-gameplay.png`), and its benchmark
+1-1790569004-titleroutes-3006458 was queued.
+
+State at the start of session 30:
+- The Thor is held by `cooldown-devwatch` (xo-therm 74.1 C, #507). It waits
+  until the Thor is at 65 C, so there is no held nav session.
+- Nothing of mine has run. The seven earlier benchmarks were renamed
+  `1-9-...` in queue/ (lowered within priority 1), and their results/ entries
+  are dangling symlinks. They are Azurik 2862460, D&D Heroes 2862610,
+  Nightfire 373432, Burnout 3 374056, Kabuki (nova) 374601, RalliSport 2
+  1417504 and Spikeout 2191714. PGR2 3006458 is queued as well.
+- Merged origin/master (43 commits).
+
+Next titles, on the Thor once it is cool and running/ is empty for it: 25 to
+Life, Call of Duty 3, Midnight Club 3: DUB Edition, Tork: Prehistoric Punk,
+Blinx 2. After those: Bruce Lee (a load inside the scored window), Galleon,
+GoldenEye RA (returning route) and Burnout Revenge (the profile loop).

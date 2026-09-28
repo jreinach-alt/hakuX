@@ -1,0 +1,119 @@
+# RalliSport Challenge 2 (4D530039): returning route (the profile "00" is on the Thor's disk).
+# PLAYED by nav.py on the Thor, 2026-09-27 20:09 PDT (first run, lane.titleroutes HELD session
+# rallisport-2.first-run-20260927T200957: Create new Profile, name "00" on the letter grid, Done), then flushed
+# with HOME and played again as this returning session (rallisport-2.returning-20260927T201734).
+#
+#   the logo FMVs (A skips) -> "PRESS START TO BEGIN" (START) -> SELECT PROFILE, "00" highlighted (A) -> MAIN,
+#   cursor on CAREER -> hat taps left: the carousel stops at TIME ATTACK and does not wrap, so seven taps land
+#   there from any start (A) -> RACE TYPE, CROSSOVER (A) -> Australia / Copperhead (A) -> RACE SETTINGS (A) ->
+#   CAR, Hyundai Accent Evo 3 (A) -> loading tips, START RACE (A) -> the flyover, then the race clock runs.
+#
+# Menu moves use the hat: a stick flick or a held hat auto-repeats at a rate that depends on the frame rate.
+# One A in the menus was absorbed in the nav session (the Copperhead screen was still loading); the car
+# screen's second A covers it.
+#
+# Player control: the car starts nosed into the first-turn barrier. LT (full) reverses it off, RT with the
+# stick drives: 27 mph at the frame after the mark (nav frame s-015-p1, "WRONG WAY" on the banked turn).
+# The triggers REST AT min; `axis LT mid` is a half-pressed brake and holds the car still.
+wait 35.4
+shot boot
+wait 8.1
+press A
+wait 7.4
+shot a1
+wait 2.4
+press START
+wait 5.3
+shot start
+wait 7.0
+press A
+wait 5.2
+shot prof
+wait 1.8
+axis HATX min
+wait 0.9
+axis HATX mid
+wait 1.7
+shot ta
+wait 13.8
+axis HATX max
+wait 0.5
+axis HATX mid
+wait 1.1
+shot tap
+wait 9.0
+axis HATX max
+wait 0.6
+axis HATX mid
+wait 1.2
+shot tap2
+wait 12.7
+axis HATX min
+wait 0.4
+axis HATX mid
+wait 3.2
+axis HATX min
+wait 0.5
+axis HATX mid
+wait 0.8
+axis HATX min
+wait 0.5
+axis HATX mid
+wait 0.9
+axis HATX min
+wait 0.4
+axis HATX mid
+wait 0.9
+axis HATX min
+wait 0.4
+axis HATX mid
+wait 0.9
+axis HATX min
+wait 0.4
+axis HATX mid
+wait 0.8
+axis HATX min
+wait 0.4
+axis HATX mid
+wait 1.5
+shot left7
+wait 8.3
+press A
+wait 4.2
+shot rtype
+wait 1.9
+press A
+wait 4.2
+shot track
+wait 2.4
+press A
+wait 6.5
+shot settings
+wait 2.3
+press A
+wait 8.2
+shot car
+wait 10.9
+press A
+wait 8.2
+shot car2
+wait 11.0
+press A
+wait 14.2
+shot go
+wait 16.5
+mark gameplay
+repeat forever {
+    axis RT min
+    axis LT max
+    wait 2.5
+    axis LT min
+    axis RT max
+    axis LX min
+    wait 2.5
+    axis LX max
+    wait 2.5
+    axis LX mid
+    wait 2
+    axis RT min
+}
