@@ -21,6 +21,10 @@ Per result it prints, over the [idlehalt] windows whose line falls inside:
   lpg, lall         raise-to-run histogram (us: <5 <10 <20 <50 <100 <200
                     >=200), share at >= 50 us, and the maximum
   pc, xpc           the idiom's cli, and halts at any other pc
+  spin              HAKUX_IDLE_HALT_SPIN_US, halts whose kick came inside the
+                    spin (sh), the share of wall time spent spinning, and kpg,
+                    halt entry to pg kick (us: <20 <50 <100 <200 <500 <1000
+                    >=1000); absent (n/a) on a build before the spin
 And from [rr425w] in the same span, the guest's idle share (idle_us /
 (idle_us + busy_us)), which is what run% should fall towards.
 
@@ -39,6 +43,8 @@ from datetime import datetime
 R = os.environ.get('DISPATCH_DIR', '/home/justin/hakux-work/dispatch') + '/results/'
 KV = re.compile(r'(\w+)=(-?[0-9a-f]+)')
 BINS = ['<5', '<10', '<20', '<50', '<100', '<200', '>=200']
+KBINS = ['<20', '<50', '<100', '<200', '<500', '<1000', '>=1000']
+HISTS = ('lpg', 'lall', 'kpg')
 CLASSES = ['pg', 'pgo', 'vb', 'fifo', 'ot']
 
 
@@ -49,13 +55,13 @@ def ts(line):
 def parse(body):
     out = {}
     for k, v in KV.findall(body):
-        if k in ('lpg', 'lall', 'pc'):
+        if k in HISTS + ('pc',):
             continue
         try:
             out[k] = int(v)
         except ValueError:
             pass
-    for k in ('lpg', 'lall'):
+    for k in HISTS:
         m = re.search(r' %s=([\d/]+)' % k, body)
         out[k] = [int(x) for x in m.group(1).split('/')] if m else [0] * 7
     m = re.search(r' pc=([0-9a-f]{8})', body)
@@ -111,6 +117,7 @@ def summarize(d):
                 tot[k] = tot.get(k, 0) + v
     lpg = [sum(r['lpg'][i] for r in ih) for i in range(7)]
     lall = [sum(r['lall'][i] for r in ih) for i in range(7)]
+    kpg = [sum(r['kpg'][i] for r in ih) for i in range(7)]
     span = tot.get('span_us', 0)
     wall_us = (d['hi'] - d['lo']) * 1e6
     checks = [
@@ -126,7 +133,9 @@ def summarize(d):
                rq=tot.get('rq_us', 0) / span if span else None,
                slept=tot.get('slept_us', 0) / span if span else None,
                halts_s=tot.get('halts', 0) / (span / 1e6) if span else None,
-               tot=tot, lpg=lpg, lall=lall,
+               tot=tot, lpg=lpg, lall=lall, kpg=kpg,
+               spin_us=sorted({r['spin_us'] for r in ih if 'spin_us' in r}),
+               spinning=tot.get('spn_us', 0) / span if span else None,
                pcs=sorted({r['pc'] for r in ih}),
                guest_idle=(d['idle'] / (d['idle'] + d['busy'])
                            if d['idle'] + d['busy'] else None))
@@ -163,6 +172,13 @@ def report(name, s):
         print('   %-4s %s  >=50us %s' % (
             k, ' '.join('%s:%d' % (b, n) for b, n in zip(BINS, h)),
             pct(at_or_above_50(h))))
+    if s['spin_us']:
+        print('   spin %s us  sh %d  spinning %s  kpg %s' % (
+            ','.join(map(str, s['spin_us'])), t.get('sh', 0),
+            pct(s['spinning']),
+            ' '.join('%s:%d' % (b, n) for b, n in zip(KBINS, s['kpg']))))
+    else:
+        print('   spin n/a (a build before the spin)')
     return ok
 
 
@@ -177,7 +193,8 @@ SELFTEST = """09-27 20:00:00.000 I/boot: start
     '09-27 20:00:%02d.000 W/hakuX(1): [idlehalt] w=%d on=1 span_us=2000000 '
     'run_us=900000 rq_us=20000 halts=1000 pc=8001b031 xpc=0 imm=10 pg=4 '
     'pgo=0 vb=6 fifo=0 ot=980 to=5 tp=0 tr=1 slept_us=1100000 pit=990 '
-    'lpg=0/2/2/0/0/0/0 lpgmax=15 lall=100/800/80/10/0/0/0 lallmax=60\n'
+    'lpg=0/2/2/0/0/0/0 lpgmax=15 lall=100/800/80/10/0/0/0 lallmax=60 '
+    'spin_us=40 sh=3 spn_us=40000 kpg=1/2/0/0/0/0/1\n'
     '09-27 20:00:%02d.500 I/hakuX-perf(1): gfps=20 G:50.0(3.3-340.2) D:16.7\n'
     '09-27 20:00:%02d.600 W/hakuX(1): [rr425w] w=%d idlepc=8001b02e '
     'idle_us=1200000 busy_us=800000 n=1 nb=0 drop=0\n'
@@ -194,6 +211,13 @@ def selftest():
     assert abs(s['guest_idle'] - 0.6) < 1e-9, s['guest_idle']
     assert s['tot']['halts'] == 29000 and s['tot']['tr'] == 29
     assert s['lpg'] == [0, 58, 58, 0, 0, 0, 0]
+    assert s['kpg'] == [29, 58, 0, 0, 0, 0, 29], s['kpg']
+    assert s['spin_us'] == [40] and s['tot']['sh'] == 87
+    assert abs(s['spinning'] - 0.02) < 1e-9, s['spinning']
+    # A line from before the spin reads as no spin, not as zeros.
+    old = re.sub(r' spin_us=.*', '', SELFTEST)
+    d, _ = read(old.splitlines(), 0, 1e9, play=(0, 0))
+    assert summarize(d)['spin_us'] == []
     assert at_or_above_50(s['lall']) == 0.0
     assert abs(s['fps'] - 20.0) < 1e-9
     assert all(c for _, c in s['checks']), s['checks']
