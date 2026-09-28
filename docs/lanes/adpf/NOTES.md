@@ -85,3 +85,72 @@ dumpsys; that is not a lane's tool.
 Waiting on dispatch request `1-1790589652-adpf-2928981`; the waiting comment
 is posted on #545. The PR stays a draft until the pilot is read and, if the
 HAL acts on hints, the arms are read.
+
+## Session 2 (2026-09-28, attempt 2): the pilot says the HAL ignores hints
+
+### Why attempt 1 did not finish
+
+It ended correctly on a `waiting:` for the pilot, a dispatch request outside
+the session. Hostops then renamed the request to `1-1790572033-adpf-2928981`
+to move it up the Thor queue and pushed an nv2a index regen (4c910092a3) onto
+the branch. The pilot finished at 03:47 PDT; this resume reads it. Nothing
+was lost.
+
+### The pilot
+
+`1-1790572033-adpf-2928981`: Thor, Crimson Skies, 240 s, ref 8a64c7d41e,
+apk 02eb07c3bcdd, `HAKUX_ADPF=probe PERF_REGIMEN=default HAKUX_IDLE_HALT=1`
+(perf_mode 0, fan_mode 4 per perf_regimen.json). 24 phases of 10 s, 8 of
+each. Summary by `probe_summary.py` (this directory):
+
+| phase | reports | ipus mean [range] | CPU share cpu0..7 (%) | uclamp.min | err | p3 cur MHz | p7 cur MHz | p3/p7 min |
+|---|---|---|---|---|---|---|---|---|
+| none | none | 297.8 [268.3-342.9] | 0/0/0/31/31/17/21/0 | 0 | 0 | 1831 | 2898 | 0/0 |
+| low | target/4 | 292.8 [265.5-321.8] | 0/0/0/34/32/13/21/0 | 0 | 0 | 1774 | 2914 | 0/0 |
+| high | 4 x target | 285.1 [266.8-305.0] | 0/0/0/32/33/25/10/0 | 0 | 0 | 1739 | 2948 | 0/0 |
+
+`high - none` spin rate per cycle: -37.9 -7.0 -8.2 +8.2 -3.0 -49.1 -2.7
+-1.5 (mean -12.7; higher in 1 of 8 cycles). The whole soak drifts down
+(343 -> 268 over 4 min), which is the device warming, common to all phases.
+
+Read against the stated test (a hint that acts makes `high` differ from
+`none` and `low` in speed, placement, uclamp.min or the policy floors):
+
+- **API: reachable.** `manager=ok`, `preferred_rate_ns=16666666`, the probe
+  session created (`session=ok`), and `err=0` on all ~9600 reports. The
+  service accepts the session and every report.
+- **Speed: no.** The probe is not faster under `high`; if anything slower,
+  inside the phase-to-phase noise.
+- **uclamp.min: no.** 0 on the probe thread in every phase (readable: -1
+  would mean it was not).
+- **Floors: no.** scaling_min_freq on policy0/3/7 reads below 1 MHz in every
+  phase; a QTI perf lock through cpufreq QoS would raise it.
+- **cur MHz: no.** p3 is lower under `high`, p7 moves 50 MHz inside a
+  2393-3187 range.
+- **Placement: no promotion.** The probe never ran on cpu7 in any phase.
+  cpu6 carries fewer of its periods under `high` (10% vs 21%), but cpu3-6
+  are one policy (p3), so that is not a faster core.
+
+**Result: on the Thor at device defaults, the QTI Performance Hint HAL
+accepts sessions and reports and does nothing with them.** Per the brief,
+the lane stops here: no prediction, no arms.
+
+### What the next lane should not repeat
+
+- Do not run fps/energy arms of `HAKUX_ADPF=1` on the Thor: with no HAL
+  action they measure only the reporting overhead.
+- The one unexplained reading: scaling_min_freq reads 0 (below 1000 kHz) on
+  all three policies at defaults. It did not change between phases, which is
+  all this test needs, but a host session with adb could confirm the raw
+  value and run `dumpsys performance_hint` during a probe to see whether the
+  service forwards sessions to a HAL at all.
+- The Nova (a different SoC) is untested. `HAKUX_ADPF=probe` is the
+  instrument: one 240 s soak, then `probe_summary.py <id>`.
+- A future firmware or Android 14+ HAL could change this. The probe answers
+  that in four minutes.
+
+### The PR
+
+The module stays opt-in and default off; outside Android it is a no-op.
+The PR is marked ready with this result. The audit decides whether to fold
+it as the probe instrument (the reason to keep it) or close it.
