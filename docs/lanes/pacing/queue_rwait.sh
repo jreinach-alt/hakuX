@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Queue #526 render-wait soaks. Usage: queue_rwait.sh pilot|rest  Log: docs/lanes/pacing/.queue_rwait.log (not committed)
+# Queue #526 render-wait soaks. Usage: queue_rwait.sh pilot|rest|all  Log: docs/lanes/pacing/.queue_rwait.log (not committed)
 set -u
 cd /home/justin/hakux-work/wt/pacing
 P=docs/testing/predictions/pacing-rwait-soak.json
@@ -11,7 +11,7 @@ q() { # purpose title route env...
     for e in "$@"; do envs+=(--env "$e"); done
     echo "== $purpose"
     env HAKUX_RELEASE_PRIO=1 docs/testing/request.sh --who lane.pacing --purpose "$purpose" \
-        --title "$title" --route "$route" --seconds 240 --device thor --ref 23f0ee233f \
+        --title "$title" --route "$route" --seconds 240 --device thor --ref f53000f7e4 \
         "${envs[@]}" --expect "$P"
     echo "rc=$?"
 }
@@ -28,5 +28,9 @@ rest)
     q "#526 render wait A2: yield, Otogi" "$O" otogi HAKUX_RENDER_WAIT=yield PERF_REGIMEN=default
     q "#526 render wait B2: block, Otogi" "$O" otogi PERF_REGIMEN=default
     ;;
-*) echo "pilot|rest" >&2; exit 2 ;;
+all)
+    "$0" pilot
+    "$0" rest
+    ;;
+*) echo "pilot|rest|all" >&2; exit 2 ;;
 esac
