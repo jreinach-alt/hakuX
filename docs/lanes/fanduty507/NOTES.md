@@ -265,6 +265,20 @@ the one open item. The commands for when it is idle:
         /storage/E6C6-D7AA/Games/XBox/4D530013-Blinx_The_Time_Sweeper.xiso.iso 180
     docs/testing/jobs/hold.sh release nova lane.fanduty507
 
+## Status (2026-09-28 19:10 UTC): waiting
+
+The PR stays a draft, waiting on two things outside this session:
+- CI on the pushed head.
+- The Nova's battery hold, set by hostops and lifted by device_reality at
+  80%.
+
+When CI is green: mark #571 ready.
+- If the Nova is idle by then, run its probe and proof soak (commands
+  above) first, and add them here.
+- If it is not, mark ready anyway. The Nova's proof is the one listed gap,
+  and the Nova runs the same code path the Thor proof exercised. The Nova
+  differs only in the option table's data, which the selftest covers.
+
 ## For the next lane
 
 - The fan menu lives in SystemUI, not in the OEM settings app. Read
