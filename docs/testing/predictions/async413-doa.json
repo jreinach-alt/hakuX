@@ -1,0 +1,28 @@
+{
+  "registered_utc": "2026-09-28T18:04:00Z",
+  "who": "lane.async413",
+  "issue": "413",
+  "title": "54430006-Dead_or_Alive_1_Ultimate.xiso.iso",
+  "device": "nova",
+  "route": "survey",
+  "perflog": false,
+  "frames_every": 0,
+  "runs_per_arm": 2,
+  "seconds": 440,
+  "a_ref": "01e62d8d1c1614a90b8c126e02e91993e3bbb2e0",
+  "b_ref": "d1e52783111fbd6bba212c0809ddaf8d093c2378",
+  "judge": "python3 docs/lanes/async413/asyncwin.py <result dir> for S and F (T, FL, H, F per run; --selftest passes), and the route-frames by eye for V, paired by shot index. result.json shader_cache and the logcat 'async compile:' line gate every run.",
+  "prediction": "TWO BUILDS, cold, interleaved on the Nova (queued fix, base, fix, base so that every run follows a different apk). A = master 01e62d8d1c (async_compile default false). B = d1e5278311, the same tree with the async_compile default flipped to true (xemu_android.cpp:959, SettingsActivity.kt:69/:543); the prefs on the Nova carry no async_compile key, so the default is what runs. Soak routed by the survey route (the one lane.pipeline413 used), 440 s. The expectation is doa413c's section 9 (MODEL M): with async on, only the GLSL generation, glslang and vkCreateShaderModule move to the worker and the draw is skipped meanwhile; the draw then WAITS (vk/draw.c:4342-4351) for vkCreateGraphicsPipelines on the single FIFO worker, and on Turnip that call is where the SPIR-V -> NIR -> ir3 compile runs (96% of the stalled PFIFO thread's samples in doa413c; glslang about 1%). So M predicts the stalls barely shrink. S below is worded as the claim the flip must meet to ship; M's own numbers are stated with it.",
+  "legs": {
+    "VOID (per run)": "a run is void, not a zero, unless: result.json shader_cache starts 'cleared', device_label is nova, the logcat says 'async compile: OFF' in A and 'async compile: ON' in B, and asyncwin.py finds T. A void run is re-queued, never scored.",
+    "S-T (stall, title-screen stage load)": "T's longest flip gap (hakuX-pace max= over windows T-1..T+3) in EACH B run is <= 0.5 x the mean of the A runs'. A reference from pipeline413's two cold runs of the same route: 12.2 and 12.3 s. FAILS in the world M describes, where the compile is inside vkCreateGraphicsPipelines and the draw waits for it anyway.",
+    "S-FL (stall, menu -> first fight)": "FL's frozen_ms (sum of the per-window longest gaps >= 1 s, from the first window after mark play with dsm >= 5 to the steady fight) in EACH B run is <= 0.5 x the mean of the A runs'. Reference: 21.2 s (longest single gap 7.6 s) in pipeline413's run. Fails in the same world as S-T. If either arm's FL is OPEN (no steady fight reached) the leg is INCONCLUSIVE for that run.",
+    "S-H (stall, mid-fight hitch)": "only if both arms show a window after the steady fight with dsm >= 3: the B runs' worst such window dt_ms is <= 0.5 x the A runs'. Reference 15.2 s. If either arm has none, INCONCLUSIVE (the hitch depends on the blind route's fight).",
+    "M (the model's own numbers, the falsifier of doa413c s.9)": "B/A for S-T's longest gap and S-FL's frozen_ms is >= 0.8 in the mean of the runs: the remaining pipeline-creation wait costs >= 80% of the stall (>= 9.8 s at T). REFUTED if the ratio is <= 0.5 (then either the compile is not mostly in pipeline creation, or the async path overlaps it with flips: the stall is removed and the doa413c profile was misread). 0.5-0.8 is PARTIAL: glslang or queueing is a larger share than profiled.",
+    "V (visuals, both arms)": "route frames paired by shot index (boot20, boot40, booted, menu-start/menu-a x14, play xN). FAIL if content present in the A frame of a pair is absent in the B frame of the same screen in >= 2 consecutive shots (>= 5 s apart, so it did not resolve within a second), in both B runs: a menu background, a HUD element, a render-to-texture. A missing element seen in A but not B is recorded the same way. Pairs whose screens differ (the blind route landed elsewhere) are not scored, and are listed. Pop-in at a single shot is recorded, not a failure.",
+    "F (steady fight fps)": "the B runs' steady-fight median dt_ms per 60 flips (dsm-0 windows after the steady fight starts) is within +-10% of the A runs' mean (reference 5314 ms, 11.3 fps). FAILS slow if the async path adds per-draw cost; FAILS FAST (> 10% more fps) if draws are being skipped for good, which is a V failure in the fight and is read as one."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. S and F are read off [shd413] and hakuX-pace lines by asyncwin.py, V off the route frames. Hand-queued with request.sh --title; the arms job skips soaks."
+}

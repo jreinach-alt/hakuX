@@ -1,0 +1,23 @@
+{
+  "registered_utc": "2026-09-28T18:04:00Z",
+  "who": "lane.async413",
+  "issue": "413",
+  "title": "4D530013-Blinx_The_Time_Sweeper.xiso.iso",
+  "device": "nova",
+  "route": "survey",
+  "perflog": false,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "seconds": 240,
+  "a_ref": "01e62d8d1c1614a90b8c126e02e91993e3bbb2e0",
+  "b_ref": "d1e52783111fbd6bba212c0809ddaf8d093c2378",
+  "judge": "route-frames by eye, paired by shot index; result.json shader_cache and the logcat 'async compile:' line gate each run; asyncwin.py for the T window only as context.",
+  "prediction": "Breadth for V only: one cold pair of Blinx on the Nova, survey route, 240 s (the 'Press START' title screen over a blurred background, the front-end menus, then the first level with its HUD, per the 240 s survey run 1-1790606270-lane.dirtytlb-479942). A = master 01e62d8d1c, B = d1e5278311 (async_compile default true). Screens drawn once, or drawn into a texture once and reused, are where a skipped draw would stay missing.",
+  "legs": {
+    "VOID": "shader_cache not 'cleared', device not nova, or the 'async compile:' line not OFF in A / ON in B: void and re-queued.",
+    "V2": "FAIL if content present in A (title-screen background or logo, menu panels, the level's HUD hearts / timer / time-control bar) is absent in B at the same screen in >= 2 consecutive shots. Absent in A too: recorded, not scored against the flip. Pairs on different screens are listed, not scored."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures; read by eye off the route frames. Hand-queued with request.sh --title."
+}
