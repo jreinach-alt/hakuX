@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 270
-updated_utc = "2026-09-28T01:27:49Z"
+wave = 271
+updated_utc = "2026-09-28T01:30:40Z"
 
 [retired.hilodot10]
 issues = ["10"]
@@ -473,6 +473,11 @@ note = "STARTED (lane.local 2026-09-28T01:27:49Z), briefs/pacing.md: #526 (0.5, 
 issues = []
 files = ["docs/testing/jobs/selftest.d/76-pr-sweep.sh", "docs/lanes/sweepclock/NOTES.md"]
 note = "STARTED (hostops 2026-09-27 18:29 PDT), briefs/sweepclock.md: harness defect, no issue. 76-pr-sweep.sh reads TRUNK_CT once but pr-sweep.sh fetches the real origin each run; a fold mid-selftest (#503 at 18:10 PDT, +894 s) made the +600 live check stale and failed PR #523's run 36364245109. Both files were unclaimed."
+
+[lane.rendermode474]
+issues = ["474"]
+files = ["android/app/src/main/java/com/rfandango/haku_x/PerGameSettingsManager.kt", "android/app/src/main/cpp/xemu_android.cpp", "android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt", "android/app/src/main/java/com/rfandango/haku_x/TitleDefaults.kt", "docs/lanes/rendermode474/**", "docs/testing/predictions/rendermode474-*.json"]
+note = "STARTED (lane.local 2026-09-28T01:30:40Z), briefs/rendermode474.md: #474 (0.5, fps-focus). Ship Turnip sysmem as the default render mode for DOA Ultimate and AUF only, keyed by title ID and below any user per-game override (flip474 verdict 01:21Z: DOA 13 -> 21 gfps, AUF 16 -> 24; global sysmem refused, #527). PerGameSettingsManager.kt and xemu_android.cpp moved from flip474; MainActivity.kt was unlisted; TitleDefaults.kt is new."
 
 [free]
 # CLAIMED (lane.local 2026-09-28T01:27:49Z): target/i386/tcg/translate.c -> lane.idlehalt (#525); hw/xbox/nv2a/pgraph/vk/display.c -> lane.pacing (#526); android/app/src/main/cpp/xemu_android.cpp -> lane.flip474 (per-title render mode, #474). Unlisted files claimed with them: see each row.
@@ -1475,7 +1480,7 @@ note = "RETIRED (hostops 2026-09-26 23:40 PDT): PR #472 folded as 84d2e83cef: 'M
 
 [lane.flip474]
 issues = ["474"]
-files = ["hw/xbox/nv2a/pgraph/vk/renderer.c", "hw/xbox/nv2a/pgraph/vk/instance.c", "hw/xbox/nv2a/pfifo.c", "hw/xbox/nv2a/pgraph/pgraph.c", "docs/lanes/flip474/**", "docs/testing/predictions/flip474-*.json", "android/app/src/main/java/com/rfandango/haku_x/PerGameSettingsManager.kt", "android/app/src/main/cpp/xemu_android.cpp"]
+files = ["hw/xbox/nv2a/pgraph/vk/renderer.c", "hw/xbox/nv2a/pgraph/vk/instance.c", "hw/xbox/nv2a/pfifo.c", "hw/xbox/nv2a/pgraph/pgraph.c", "docs/lanes/flip474/**", "docs/testing/predictions/flip474-*.json"]
 released = ["hw/xbox/nv2a/pgraph/vk/renderer.c", "hw/xbox/nv2a/pfifo.c", "hw/xbox/nv2a/pgraph/pgraph.c", "docs/lanes/flip474/**", "docs/testing/predictions/flip474-*.json"]
 standing = false
-note = "GRANTED (lane.local 2026-09-28T01:27:49Z): PerGameSettingsManager.kt (unclaimed) and xemu_android.cpp (from [free]) for a per-title render-mode default, sysmem for DOA and AUF only (flip474 verdict on #474, 01:21Z: +8 gfps each; global sysmem refused because the ZPASS report changes value, now #527). || RELEASED at PR-ready (hostops 2026-09-27 09:09 PDT): PR #475 ready, CI green, mergeable, needs-audit-1; the unit is gone. || STARTED (hostops 2026-09-27T06:45Z), briefs/flip474.md: #474, pgraph.lock held across the flip-stall GPU wait (DOA Ultimate fight ~35 ms/frame, ceiling <= 26 fps), filed from lane.slowdown462 board request Ask 3. renderer.c and pfifo.c from [free]; pgraph.c was unclaimed. Serves 0.5 (DOA Ultimate is on the 0.5 list)."
+note = "GRANT MOVED (lane.local 2026-09-28T01:30:40Z): PerGameSettingsManager.kt and xemu_android.cpp went to lane.rendermode474, which ships the per-title default; flip474 finishes #516 and the sysmem judgement. || GRANTED (lane.local 2026-09-28T01:27:49Z): PerGameSettingsManager.kt (unclaimed) and xemu_android.cpp (from [free]) for a per-title render-mode default, sysmem for DOA and AUF only (flip474 verdict on #474, 01:21Z: +8 gfps each; global sysmem refused because the ZPASS report changes value, now #527). || RELEASED at PR-ready (hostops 2026-09-27 09:09 PDT): PR #475 ready, CI green, mergeable, needs-audit-1; the unit is gone. || STARTED (hostops 2026-09-27T06:45Z), briefs/flip474.md: #474, pgraph.lock held across the flip-stall GPU wait (DOA Ultimate fight ~35 ms/frame, ceiling <= 26 fps), filed from lane.slowdown462 board request Ask 3. renderer.c and pfifo.c from [free]; pgraph.c was unclaimed. Serves 0.5 (DOA Ultimate is on the 0.5 list)."
