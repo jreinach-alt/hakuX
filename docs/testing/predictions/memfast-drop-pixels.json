@@ -214,7 +214,7 @@
       "Zero_stride"
     ],
     "skip_tests": [
-      "Texture render target::RenderTextureLoop"
+      "Texture_render_target::RenderTextureLoop"
     ],
     "only_tests": [],
     "source": "stated on the --register command line"

@@ -444,6 +444,14 @@ the cause split into F0a. P stays 0.4. The largest risk remaining is M6
   `tcg-target.c.inc` and needs no reserved register, so X26 is free for
   fastmem. Preflight passes. The phase report and the design are on #507
   (comment 5878543877). The design review was folded in (section 7).
+- 2026-09-28 (attempt 2): attempt 1 did not finish because it ended on a
+  `waiting:` comment (21:13Z) posted seven minutes after the arms job had
+  already REFUSED `memfast-drop-pixels.json` (21:06Z): its `skip_tests` named
+  `Texture render target::RenderTextureLoop` with spaces, and skip names use
+  the underscored suite, `Texture_render_target::RenderTextureLoop`. Attempt
+  1 waited on a verdict that could not come. Fixed in the file only (refs
+  unchanged, 31515f9751 -> 82e0ef1fa9); the arms job re-registers it on its
+  next tick. Read the newest PR comments before posting a `waiting:`.
 
 ## Next, for whoever resumes this lane
 
