@@ -1577,3 +1577,34 @@ on the overlay in the fight, which fits the same stalls.
 The 300 s titlebench reading ("Nova 59") scored about 100 s after the mark
 and carries the same window median. Read the share of time (22.4%), not the
 median, for this title.
+
+**Bruce Lee's 59.94 is not a reading of the fight
+(1-1790487611-titleroutes-261841, Thor, 09-26).** lane.local's 19:55 list
+asked for the frames behind "21.2 s without 60 guest flips". The run has no
+frame after the mark, so this is from the perf lines
+(`scratch/scoredscan.py`, 30 s bins from the mark):
+
+| after the mark | guest fps | what it is |
+|---|---|---|
+| 0 - 60 s | 16-19 | the fight. The 21.2 s gap is here (12 s to 34 s): slow frames, the worst 6.6 s. It is not a load |
+| 60 - 150 s | 42-47 | the fight |
+| 150 - 289 s | 59, no vblank defers (`Df:0`) | not known |
+
+More than half of the window is the flat 59 stretch, so the median is that
+stretch. `Df` is `defers_total`, a pacing count. It says nothing about what
+was drawn, so it cannot tell a menu from a light scene. Queued to see the
+screens: 1790608228-titleroutes-824349 (Thor, 420 s, `--frames-every 15`,
+plain priority, ref 29420ebf48, `scratch/q33.sh`). It is a route check, not
+a benchmark. If the frames show a menu or a game-over screen, the route's
+play pattern needs an answer to it, and the title needs a new benchmark.
+
+The same scan over my other 27 scored results shows no other window that
+changes level upward like this. The downward falls (Blood Wake, Battlefield
+2: MC, PGR, BloodRayne) are the #507 shape already recorded above.
+
+Posted on #397: comment 5872826156 (Kabuki and Bruce Lee).
+
+Device state at 08:11 PDT: lane.xbox holds the Thor for a title push (ESPN
+MLS ExtraTime 2002) that follows the running rendermode474 request. The
+Thor's queue then holds Azurik 2862460, two remote461 runs, two dirtytlb
+runs and four arms before my six `1-9-` benchmarks.
