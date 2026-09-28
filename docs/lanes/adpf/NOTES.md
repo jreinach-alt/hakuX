@@ -79,3 +79,9 @@ dumpsys; that is not a lane's tool.
    GTA 25 -> 3.6 fps throttle; its own busy-wait is 11.8% of JIT samples, so
    its vCPU session will read busy whatever the hint does). Not Blinx: the
    guest idles 52-66% of wall time there (idlehalt), so it is not CPU-bound.
+
+### State at the end of session 1
+
+Waiting on dispatch request `1-1790589652-adpf-2928981`; the waiting comment
+is posted on #545. The PR stays a draft until the pilot is read and, if the
+HAL acts on hints, the arms are read.
