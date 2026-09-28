@@ -553,10 +553,13 @@ note = "RETIRED (job.board 2026-09-28T16:55Z): PR #562 carries `folded` and its 
 
 [lane.fanduty507]
 issues = ["507"]
-files = ["docs/testing/dispatcher.sh", "docs/testing/soak_title.sh", "docs/testing/devices.sh", "docs/testing/thermal_state.py", "docs/testing/jobs/selftest.d/99-fan-duty.sh", "docs/lanes/fanduty507/**"]
-released = ["docs/testing/dispatcher.sh", "docs/testing/soak_title.sh", "docs/testing/devices.sh", "docs/testing/thermal_state.py", "docs/testing/jobs/selftest.d/99-fan-duty.sh", "docs/lanes/fanduty507/**"]
-released_at_ready = 563
-note = "CREATED BY HOSTOPS 2026-09-28 09:45 PDT: a per-request fan duty for soaks, which #507 Part D.3 (lane.sustain507, PR #547) is blocked on (its 15:36Z report: the duty node is writable, CUSTOM is a fixed 25000). dispatcher.sh, soak_title.sh, thermal_state.py from [free]; devices.sh was unclaimed. Serve path: dispatcher update window after the fold. Brief: briefs/fanduty507.md."
+files = ["docs/testing/dispatcher.sh", "docs/testing/soak_title.sh", "docs/testing/devices.sh", "docs/testing/thermal_state.py", "docs/testing/jobs/selftest.d/99-fan-duty.sh", "docs/testing/jobs/selftest.d/99-fan-mode.sh", "docs/lanes/fanduty507/**"]
+note = "REWORK (lane.local 2026-09-28T18:45Z): PR #563 CLOSED unmerged on the owner's order (fan: only user-selectable modes; no raw duty writes). Files RE-ACQUIRED for a new PR on lane/fanduty507-mode: a per-request FAN_MODE limited to the vendor app's options (Thor: Quiet/Balanced/Smart/Sport) plus Smart's user curve as the app stores it; brief addendum 11:40 PDT. || CREATED BY HOSTOPS 2026-09-28 09:45 PDT: a per-request fan duty for soaks, which #507 Part D.3 (lane.sustain507, PR #547) is blocked on (its 15:36Z report: the duty node is writable, CUSTOM is a fixed 25000). dispatcher.sh, soak_title.sh, thermal_state.py from [free]; devices.sh was unclaimed. Serve path: dispatcher update window after the fold. Brief: briefs/fanduty507.md."
+
+[lane.shaderplan569]
+issues = ["569"]
+files = ["docs/lanes/shaderplan569/**"]
+note = "STARTED (lane.local 2026-09-28T18:45Z), briefs/shaderplan569.md: #569 (fps-focus), research and plan, docs only. The owner's questions on shader compile stalls (native hardware vs hakuX, undispatched fixes, an Adreno/Turnip expert review, precompile and predictive compile on idle cores, ubershaders, per-title options, the visual cost of skipping). Output: NOTES with a ranked, priced plan of dispatchable items; lane.local dispatches them."
 
 [free]
 # CLAIMED (lane.local 2026-09-28T15:00:26Z): android/app/src/main/cpp/CMakeLists.txt -> lane.remote (#557 thermal governor core); thermal_governor.c/.h are new.

@@ -1,3 +1,19 @@
+[issue."569"]
+title = "Shader compile stalls: a compile path that uses the handheld's idle cores and GPU so a new shader never stalls or drops a draw"
+component = "renderer"
+disposition = "defect"
+suites = []
+no_suites = "A COMPILE-STALL / FRAME-TIME DEFECT: pgraph captures single frames after compiles finish, so no suite measures the stall; #413's [shd413] line and soaks do."
+status = "open"
+dispatch_state = "blocked"
+blocker_tested = "confirmed 2026-09-28T18:45:00Z: [lane.shaderplan569] lists #569 on this board push."
+blocked_on = "IN FLIGHT (lane.local 2026-09-28T18:45Z): lane.shaderplan569, briefs/shaderplan569.md -- research and a ranked, priced plan; its items are dispatched by lane.local."
+status_note = "FILED 2026-09-28T18:45Z by lane.local on the owner's questions (native hardware vs hakuX, undispatched fixes, Adreno/Turnip review, precompile/predictive compile on idle cores, ubershaders, per-title options, visual cost of skipping). Evidence: pipeline413 PR #541 (13.8 / 14.8 / 15.2 s DOA cold-cache stalls)."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "every title's first play: a new shader stalls the frame for its compile (DOA: 14.8 s entering the first fight, 15.2 s mid-fight)"
+
 # Tracker issue -> pgraph test suites.
 #
 # This is the ONE hand-maintained table in the index. Everything else in
@@ -4510,7 +4526,7 @@ no_suites = "A HEAT/SUSTAINED-PERFORMANCE LEVER (a thermal governor). No pgraph 
 status = "open"
 dispatch_state = "blocked"
 blocker_tested = "confirmed 2026-09-28T15:00:26Z: [lane.remote] lists #557 on origin/board."
-blocked_on = "IN FLIGHT (lane.local 2026-09-28T15:00:26Z): lane.remote builds the governor core (opt-in HAKUX_THERMAL_ADAPT); the frame-loop hook waits for ui/xemu.c (lane.pacing) or xemu_android.cpp (lane.rendermode474)."
+blocked_on = "STOPPED (owner 2026-09-28 ~11:25 PDT): the predictive governor steps down on every run, paused or not (L4a killed), and the owner ruled it out: heat is handled with measured temperatures by scripts (the #519 cool-down gate, coldslot.sh, devwatch). lane.remote reverts the inert core (PR #560) in one PR that closes this issue. || PRIOR: IN FLIGHT (lane.local 2026-09-28T15:00:26Z): lane.remote builds the governor core (opt-in HAKUX_THERMAL_ADAPT); the frame-loop hook waits for ui/xemu.c (lane.pacing) or xemu_android.cpp (lane.rendermode474)."
 status_note = "FILED 2026-09-28T15:00:26Z by lane.local: the engineering review's lever 7 (lanelocal-scratch/thermal-review.md 3.3); #507 Part A showed the Thor pausing 5-8 min into any warm-started heavy run at MAX or the defaults, 60-76% of the run paused."
 impact_px = 0
 impact_onestep_px = 0
