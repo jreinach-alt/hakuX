@@ -4406,3 +4406,48 @@ impact_px = 0
 impact_onestep_px = 0
 game_visible = true
 impact_basis = "harness (hostops 2026-09-27): every Thor title benchmark, Playable soak and GTA run voids while it holds"
+
+[issue."525"]
+title = "Guest idle loop keeps a host core busy: halt the vCPU on the kernel idle idiom (sti; nop; nop; cli), with a bounded wait"
+component = "games"
+disposition = "defect"
+suites = []
+no_suites = "A PERFORMANCE/POWER DEFECT (the vCPU spins through guest idle). No pgraph suite measures frame rate or power, so none is named."
+status = "open"
+dispatch_state = "blocked"
+blocker_tested = "confirmed 2026-09-28T01:27:49Z: [lane.idlehalt] row on origin/board."
+blocked_on = "IN FLIGHT (lane.local 2026-09-28T01:27:49Z): lane.idlehalt holds it (briefs/idlehalt.md)."
+status_note = "FILED 2026-09-28T01:27:49Z by lane.local from the thermal/perf engineering review (lanelocal-scratch/thermal-review.md 3.1) and lane.retreason425 NOTES 6-8: vCPU on-CPU ~94% while the guest is idle 52-66% of wall time in AUF, Blinx and Blinx 2; the HAKUX_IDLE_HLT pilot wedged at boot."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "power/heat (lane.local 2026-09-27): sustained play is limited by the thermal budget (#507); a spinning vCPU is most of a big core on idle-heavy titles"
+
+[issue."526"]
+title = "Frame pacing burns power: the frame limiter and two render waits busy-spin, and the Nova panel runs at 120 Hz during play"
+component = "games"
+disposition = "defect"
+suites = []
+no_suites = "A PERFORMANCE/POWER DEFECT (host spin-waits and display refresh). No pgraph suite measures frame pacing or power, so none is named."
+status = "open"
+dispatch_state = "blocked"
+blocker_tested = "confirmed 2026-09-28T01:27:49Z: [lane.pacing] row on origin/board."
+blocked_on = "IN FLIGHT (lane.local 2026-09-28T01:27:49Z): lane.pacing holds it (briefs/pacing.md). The draw.c sched_yield waits wait for lane.forza414 to release vk/draw.c."
+status_note = "FILED 2026-09-28T01:27:49Z by lane.local from the thermal/perf engineering review (lanelocal-scratch/thermal-review.md, levers 3-4): XEMU_OPT_FRAME_LIMITER_SPIN=1 (ui/xemu.c:65, spin at :1890); sched_yield loops vk/draw.c:3713, :3778; Nova min_refresh_rate=120 with hakuX in front; vsync pref default false (xemu_android.cpp:915)."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "power/heat (lane.local 2026-09-27): per-frame spin on every title; 120 Hz panel refresh for 60 Hz content"
+
+[issue."527"]
+title = "ZPASS_PIXEL_CNT report returns a per-render-mode constant on the Thor (40,960 default, 65,536 in sysmem)"
+component = "pgraph"
+disposition = "defect"
+suites = ["ZPass pixel count"]
+status = "open"
+dispatch_state = "available"
+status_note = "FILED 2026-09-28T01:27:49Z by lane.local from lane.flip474 (#474 comment, 01:21Z): pgraph pair 0-0-x-1790549038-flip474-1817562 / -1817704, binary 09fdca3ba1; 35 of 36 ZPass captures read a constant; it blocks a global TU_DEBUG=sysmem default."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = false
+impact_basis = "accuracy (lane.local 2026-09-27): occlusion-query results a guest reads; not yet shown in a game"
