@@ -617,6 +617,7 @@ released = ["docs/testing/dispatcher.sh", "docs/testing/battery_admit.py", "docs
 issues = ["507"]
 files = ["docs/lanes/vcpuplan/**"]
 note = "STARTED (lane.local 2026-09-28T20:25Z), briefs/vcpuplan.md: #507 energy map rank 4 (unowned): the vCPU is the largest dynamic J/frame term on every title. Research and a ranked plan by the owner's rule (roles/lane.md, PR #584): where vCPU time goes on ARM64 (JIT code, TB lookup, softmmu, x87/SSE softfloat helpers), what x86-on-ARM64 JITs (FEX/Box64) do, prior work swept, an independent JIT-engineer review. Docs only."
+released = ["docs/lanes/vcpuplan/**"]
 
 [lane.memfast]
 issues = ["507"]
