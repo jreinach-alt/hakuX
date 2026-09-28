@@ -218,7 +218,10 @@ bool hakux_tlb68_jc_on(void)
  * VA and PA. The armed share is the wall time with the path activated and no
  * mem-access callback live (physmem.c). vCPU thread only, like tlb68.
  */
-#define HAKUX_MF0_MAXPAGES (128u << (20 - TARGET_PAGE_BITS))
+/* The Xbox page is 4 KiB. cputlb.c is target-independent, where
+ * TARGET_PAGE_BITS is a runtime value, so the bitmaps use a constant. */
+#define HAKUX_MF0_PAGE_BITS 12
+#define HAKUX_MF0_MAXPAGES (128u << (20 - HAKUX_MF0_PAGE_BITS))
 enum { MF0_ID, MF0_NID, MF0_IO, MF0_N };
 static uint64_t hakux_mf0_l[MF0_N], hakux_mf0_v[MF0_N];
 static unsigned long hakux_mf0_lmap[BITS_TO_LONGS(HAKUX_MF0_MAXPAGES)];
@@ -258,8 +261,8 @@ static void hakux_mf0_install(vaddr addr_page, hwaddr paddr_page,
     if (cls == MF0_ID) {
         return;
     }
-    if ((off >> TARGET_PAGE_BITS) < HAKUX_MF0_MAXPAGES &&
-        !test_and_set_bit(off >> TARGET_PAGE_BITS, map)) {
+    if ((off >> HAKUX_MF0_PAGE_BITS) < HAKUX_MF0_MAXPAGES &&
+        !test_and_set_bit(off >> HAKUX_MF0_PAGE_BITS, map)) {
         ++*nd;
     }
     if (hakux_mf0_logged < 8) {

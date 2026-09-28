@@ -460,6 +460,18 @@ the cause split into F0a. P stays 0.4. The largest risk remaining is M6
   It posted R1 on #507 (issuecomment-5878914281) and ended on a `waiting:`
   on #590 for the arms verdict, the two pilot soaks (both still queued) and
   the held b_ref capture.
+- 2026-09-28 (attempt 4): attempt 3 did not finish because its head never
+  built on Desktop. It waited on the device while CI's Desktop build had been
+  red since f49f39b859: `cputlb.c` is built into the target-independent
+  `libsystem`, where `TARGET_PAGE_BITS` is a runtime value, so the census
+  bitmaps sized with it were variably modified at file scope. Android builds
+  it with a constant and was green, so the registered refs' APKs are
+  unaffected and the refs stand. Fix: the bitmaps use a constant 12-bit shift
+  (the Xbox page). Checked by a `gcc -fsyntax-only` stub with a runtime
+  `TARGET_PAGE_BITS`: the old lines give both CI errors, the new ones none.
+  A full local configure was not permitted in this sandbox; CI's Desktop
+  build is the check. Read every CI job on the head, not only Android,
+  before posting a `waiting:`.
 
 ## R1: master's shares, from lane.local's cold GTA capture
 
