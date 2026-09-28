@@ -84,7 +84,22 @@ prediction (`log/<sha>.skipped.md`, `log/<sha>.refused.md`,
 
 ## Proof
 
-PROOF-TABLE
+All runs are local, on f68fbf1018 (the fix), using the reduced harness unless
+the row says "full". A mutant edited arms.sh in the worktree for one run and
+was restored with `git checkout` after it. It was never committed.
+
+| run | result |
+|---|---|
+| fixed 92, watermark moved before the second tick | 34 passed, 0 failed (unfixed: FAIL) |
+| fixed 92, watermark moved before the sha5 tick | 34 passed, 0 failed (unfixed: FAIL) |
+| mutant: tell_skip's `grep -q '^told='` line deleted (sha4 re-posted every tick) | FAIL a second tick does not tell it again (33/1) |
+| mutant: that, plus the `registered_utc < SINCE` fence removed (history re-posted every tick) | FAIL a second tick ..., FAIL ... counted as history, FAIL and nothing is posted for it, FAIL nor for any other prediction behind the watermark (30/4) |
+| 20 consecutive loop runs of the fixed fragment | 20 of 20: 34 passed, 0 failed |
+| full `bash docs/testing/jobs/selftest.sh` | 2217 passed, 0 failed |
+
+The 20-run loop did not reproduce the natural flake either before or after
+the fix: it needs a real lane push between two particular ticks, and none
+happened. The injected runs are the reproduction.
 
 ## For the next lane
 
