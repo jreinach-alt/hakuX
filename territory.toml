@@ -473,7 +473,8 @@ note = "STARTED (lane.local 2026-09-28T01:27:49Z), briefs/pacing.md: #526 (0.5, 
 [lane.sweepclock]
 issues = []
 files = ["docs/testing/jobs/selftest.d/76-pr-sweep.sh", "docs/lanes/sweepclock/NOTES.md"]
-note = "STARTED (hostops 2026-09-27 18:29 PDT), briefs/sweepclock.md: harness defect, no issue. 76-pr-sweep.sh reads TRUNK_CT once but pr-sweep.sh fetches the real origin each run; a fold mid-selftest (#503 at 18:10 PDT, +894 s) made the +600 live check stale and failed PR #523's run 36364245109. Both files were unclaimed."
+released = ["docs/testing/jobs/selftest.d/76-pr-sweep.sh", "docs/lanes/sweepclock/NOTES.md"]
+note = "RELEASED at PR-ready (hostops 2026-09-27 19:05 PDT): PR #531 ready + fold-ready, CI green. || STARTED (hostops 2026-09-27 18:29 PDT), briefs/sweepclock.md: harness defect, no issue. 76-pr-sweep.sh reads TRUNK_CT once but pr-sweep.sh fetches the real origin each run; a fold mid-selftest (#503 at 18:10 PDT, +894 s) made the +600 live check stale and failed PR #523's run 36364245109. Both files were unclaimed."
 
 [lane.rendermode474]
 issues = ["474"]
