@@ -2,7 +2,7 @@
  * gen: hakuX's real shader generators on the host, GLSL -> SPIR-V with the
  * device's glslang options, for a fixed catalogue of shader states.
  *
- *   gen <outdir> [--no-opt-flag]
+ *   gen <outdir> <vshinc dir> [--optimize-size]
  *
  * Writes <outdir>/<stage>_<name>.{glsl,spv} and <outdir>/manifest.txt (one
  * pipeline per line, vkharness's format).
@@ -11,8 +11,8 @@
  * so nothing reads PGRAPHState, and optionally patched by a variant
  * (variants/*.sh). The GLSL options are vk/shaders.c:862-902's. The glslang
  * call is vk/glsl.c:195-289's: Vulkan 1.3 / SPIR-V 1.6 (Turnip reports 1.4,
- * vk/glsl.c:183), validate on, optimizer requested -- which is a no-op in a
- * glslang built with ENABLE_OPT=OFF, as the Android build's is.
+ * vk/glsl.c:183), validate on, disable_optimizer false -- which runs no
+ * optimizer at all (see compile()).
  */
 #include "qemu/osdep.h"
 #include "hw/xbox/nv2a/pgraph/pgraph.h"
@@ -27,7 +27,7 @@ void psh_differ_record_unimpl(const char *fmt, ...) { (void)fmt; }
 
 #include "resource_limits.inc"   /* extracted from vk/glsl.c at build time */
 
-static int g_disable_opt;
+static int g_optimize_size;
 
 static size_t compile(glslang_stage_t stage, const char *src, const char *path)
 {
@@ -55,7 +55,12 @@ static size_t compile(glslang_stage_t stage, const char *src, const char *path)
         fprintf(stderr, "%s: link: %s\n", path, glslang_program_get_info_log(pr));
         exit(1);
     }
-    glslang_spv_options_t o = { .validate = true, .disable_optimizer = g_disable_opt };
+    /* vk/glsl.c sets validate and leaves disable_optimizer false, which for
+     * GLSL input runs nothing: glslang calls SPIRV-Tools only when
+     * optimize_size is set (SPIRV/GlslangToSpv.cpp:11551). --optimize-size is
+     * C1's "on". */
+    glslang_spv_options_t o = { .validate = true, .disable_optimizer = false,
+                                .optimize_size = g_optimize_size };
     glslang_program_SPIRV_generate_with_options(pr, stage, &o);
     const char *msg = glslang_program_SPIRV_get_messages(pr);
     if (msg && *msg) fprintf(stderr, "%s: %s\n", path, msg);
@@ -357,12 +362,12 @@ static const PsCase ps_cases[] = {
 int main(int argc, char **argv)
 {
     if (argc < 3) {
-        fprintf(stderr, "usage: gen <outdir> <vshinc dir> [--no-opt-flag]\n");
+        fprintf(stderr, "usage: gen <outdir> <vshinc dir> [--optimize-size]\n");
         return 2;
     }
     g_out = argv[1];
     g_vsh_dir = argv[2];
-    g_disable_opt = argc > 3 && !strcmp(argv[3], "--no-opt-flag");
+    g_optimize_size = argc > 3 && !strcmp(argv[3], "--optimize-size");
     g_config.display.renderer = CONFIG_DISPLAY_RENDERER_VULKAN;
     g_mkdir_with_parents(g_out, 0755);
     glslang_initialize_process();

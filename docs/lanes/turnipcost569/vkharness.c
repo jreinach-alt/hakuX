@@ -14,8 +14,9 @@
  * 16 B at 0 for the geometry stage and, if the vertex shader declares a push
  * block, a vertex range after it. The vertex inputs are read from the SPIR-V.
  *
- * Output, one TSV row per compile:
- *   name rep wall_ms fb_pipeline_ms fb_vs_ms fb_fs_ms fb_gs_ms
+ * Output, one TSV row per compile (cpu_ms is this thread's CPU time; the
+ * fb_* columns are VkPipelineCreationFeedback's durations):
+ *   name rep wall_ms cpu_ms fb_pipeline_ms fb_vs_ms fb_fs_ms fb_gs_ms
  *
  * With [samples.bin], a SIGPROF sampler (ITIMER_PROF, 200 us) records the
  * call chain of every sample taken inside vkCreateGraphicsPipelines, as
@@ -125,6 +126,14 @@ static double now_ms(void)
 {
     struct timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
+    return ts.tv_sec * 1e3 + ts.tv_nsec / 1e6;
+}
+
+/* This thread's CPU time: what the compile cost, minus time preempted. */
+static double cpu_ms(void)
+{
+    struct timespec ts;
+    clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts);
     return ts.tv_sec * 1e3 + ts.tv_nsec / 1e6;
 }
 
@@ -253,8 +262,13 @@ int main(int argc, char **argv)
     if (sample_path) {
         start_sampler();
     }
-    printf("name\trep\twall_ms\tfb_pipeline_ms\tfb_vs_ms\tfb_fs_ms\tfb_gs_ms\n");
+    printf("name\trep\twall_ms\tcpu_ms\tfb_pipeline_ms\tfb_vs_ms\tfb_fs_ms\tfb_gs_ms\n");
     char line[4096];
+    /* Reps are the OUTER loop: rep r of every pipeline runs before rep r+1 of
+     * any, so a variant pair placed on adjacent lines is measured under the
+     * same machine load. */
+    for (int rep = 0; rep < reps; rep++) {
+    rewind(mf);
     int pipeline_idx = -1;
     while (fgets(line, sizeof(line), mf)) {
         char name[512], vp[1024], fp[1024], gp[1024];
@@ -290,7 +304,7 @@ int main(int argc, char **argv)
             nattr++;
         }
 
-        for (int rep = 0; rep < reps; rep++) {
+        {
             VkShaderModule mods[3] = { 0 };
             Spv *srcs[3] = { &vs, &fs, gs.w ? &gs : NULL };
             VkShaderStageFlagBits stg[3] = { VK_SHADER_STAGE_VERTEX_BIT,
@@ -361,18 +375,18 @@ int main(int argc, char **argv)
                 .pDepthStencilState = &ds, .pColorBlendState = &cb,
                 .pDynamicState = &dy, .layout = layout, .renderPass = rp };
             VkPipeline pipe;
-            double t0 = now_ms();
+            double t0 = now_ms(), c0 = cpu_ms();
             sampling = sample_path != NULL;
             VkResult r = vkCreateGraphicsPipelines(dev, VK_NULL_HANDLE, 1, &gpci, NULL, &pipe);
             sampling = 0;
-            double t1 = now_ms();
+            double t1 = now_ms(), c1 = cpu_ms();
             if (r != VK_SUCCESS) {
                 fprintf(stderr, "%s: vkCreateGraphicsPipelines -> %d\n", name, r);
                 exit(1);
             }
             double gsms = gs.w ? fb_st[2].duration / 1e6 : 0.0;
-            printf("%s\t%d\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\n", name, rep, t1 - t0,
-                   fb_pipe.duration / 1e6, fb_st[0].duration / 1e6,
+            printf("%s\t%d\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\n", name, rep, t1 - t0,
+                   c1 - c0, fb_pipe.duration / 1e6, fb_st[0].duration / 1e6,
                    fb_st[1].duration / 1e6, gsms);
             fflush(stdout);
             vkDestroyPipeline(dev, pipe, NULL);
@@ -382,6 +396,7 @@ int main(int argc, char **argv)
         }
         vkDestroyPipelineLayout(dev, layout, NULL);
         free(vs.w); free(fs.w); free(gs.w);
+    }
     }
 
     if (sample_path) {
