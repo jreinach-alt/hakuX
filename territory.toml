@@ -452,6 +452,8 @@ note = "RETIRED (hostops 2026-09-27 20:25 PDT): PRs #508/#519/#523/#533 all MERG
 [lane.drain474]
 issues = ["474"]
 files = ["hw/xbox/nv2a/pgraph/vk/texture.c", "docs/lanes/drain474/**", "docs/testing/predictions/drain474-*.json"]
+released = ["hw/xbox/nv2a/pgraph/vk/texture.c", "docs/lanes/drain474/**", "docs/testing/predictions/drain474-*.json"]
+released_at_ready = 517
 note = "STARTED (hostops 2026-09-27 15:48 PDT), briefs/drain474.md: #474 (0.5, fps-focus), lane.slowdown462 Ask 8. pgraph_vk_bind_textures drains all frames (4.47 of 4.57 ms/flip, AUF 1-1790543757) before a DIRECT s2t bind that writes nothing into the snode image; move the drain under !can_direct_bind. vk/texture.c passed on from lane.slowdown462 (lent by [lane.remote]); returns to [lane.remote] at fold. Base lane/slowdown462-bindtex (PR #512)."
 
 [retired.escitems]
