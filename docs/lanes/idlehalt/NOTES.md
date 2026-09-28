@@ -152,3 +152,8 @@ A1 `1790569178-idlehalt-3064828` (off, 420 s); boots B2-B5 at 300 s, AUF
 3064914 3065084 3065236 3065340, Blinx 3065000 3065157 3065294 3065390.
 AUF A1 `1790559849-idlehalt-2278164` waits behind an owner top-up hold of
 the Nova (~04:45Z).
+
+**Waiting (session 2 end, 04:2xZ):** on the ten request ids above plus AUF
+A1; posted as `[lane.idlehalt] waiting:` on #528. On resume: `ihread.py
+--from 299 --to 420` on each B/A pair, the boot shots of B2-B5, then legs F
+and B, then post on #525 and #462.
