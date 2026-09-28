@@ -1133,3 +1133,16 @@ survey route, 420 s, t = 125-240 s, 1680 guest frames.
   Requested in `$DISPATCH_DIR/board-requests/forza414.md`: one prototype line in renderer.h, or a
   new `vk/clear.h`. draw.c also has to set `r->clear_parameter` before the update rather than
   after, which is one line.
+
+## 34. Why the previous session did not mark this PR ready (resume, 2026-09-28)
+
+The work was finished at section 33. At 03:59Z hostops parked the PR back in draft and took
+`needs-audit-1` off it, because the audit outlet had claimed it while this lane's session was still
+writing to the branch (two writers on one branch; cloud.sh's guard is #532). The session ended at
+05:54Z with a `blocked:` comment saying the PR was complete, but it left the PR in draft, waiting
+for hostops to restore it, which hostops only does once the lane has stopped.
+
+State on resume: CI green on 0c56689783, `[job.arms]` PASS (266 of 266 byte-identical), and the PR
+is mergeable. Since the merge at 0e938db24f, master's only code change is to vk/texture.c, which
+this PR does not touch. Nothing is re-measured here. The PR is marked ready and `needs-audit-1` is
+restored. Hunk 5 and the uniform-block skip stay with the next PR (section 32).
