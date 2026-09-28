@@ -452,9 +452,50 @@ the cause split into F0a. P stays 0.4. The largest risk remaining is M6
   1 waited on a verdict that could not come. Fixed in the file only (refs
   unchanged, 31515f9751 -> 82e0ef1fa9); the arms job re-registers it on its
   next tick. Read the newest PR comments before posting a `waiting:`.
+- 2026-09-28 (attempt 3): attempt 2 did finish its work: it pushed the fix
+  (d6ef986b59) and ended on a `waiting:` at 21:14Z. It was resumed because
+  lane.local's 21:20Z comment (R1 on disk) became the newest word on the PR,
+  and the addendum asks to read R1 now. This attempt merged origin/master
+  (20 commits; a merge, so the registered refs stand) and read R1, below.
+
+## R1: master's shares, from lane.local's cold GTA capture
+
+- **Capture.** `/home/justin/hakux-work/perf/2026-09-28-ibcache-r1`: master
+  01e62d8d1c, Thor, cold start (xo 49.9 C), no thermal pause, recorded
+  about 77 s after `mark gameplay`. Captured for lane.ibcache (PR #591);
+  shared here, not repeated.
+- **Readers.** `jitmix.py` and `symsplit.py --tid 19768` from
+  `docs/lanes/vcpuplan/`. Outputs: `out/jitmix-r1.out`, `out/sym-r1.out`.
+- **vCPU thread:** 21,168 samples (over lane.ibcache's 10,000 floor);
+  10,773 in the JIT (50.9%), 95% of the mapped JIT samples disassembled.
+
+| share of the vCPU | R1 (master, cold) | vcpuplan s4 (#589) | reading |
+|---|---|---|---|
+| inline softmmu compare (`tlb` role, at-ip) | 34.4% of JIT = **17.5%** | 17.4% | phase 2's main target |
+| preamble + per-load test (`preamble` 14.3 + `xboxchk` 1.5 of JIT, at-ip) | **8.0%** | 8.5% | phase 1's target, at-ip |
+| the same, static (`xbox_fp` class) | 4.9% of JIT = **2.5%** | - | phase 1's target, skid-free |
+| softmmu helpers (`softmmu` bucket) | **7.0%** | 7.9% | `tlb_set_page_full` 1.8, `tlb_reset_dirty` 1.2, `probe_access_internal` 0.8, `mem_access_callback_address_matches` 0.5 |
+| TB lookup (lane.ibcache's) | 24.9% | - | not this lane's |
+
+- **The preamble was armed in 0 of 43 samples** that landed on its outcome
+  branch, and **0 samples fell inside a load fast-path block.** On master,
+  cold, in gameplay, the path is dead, as the plan said.
+- **Phase 1 is sized at 2.5-8.0% of the vCPU.** The static weighting counts
+  the preamble's instructions; the at-ip one counts where the stalls land,
+  and the preamble's first load (`ldr w16,[x27,#8]`) is where a TB-entry
+  stall is billed. The truth is between. The registered soak leg does not
+  depend on which, since it measures J/frame and fps.
+- **Phase 2's ceiling on master** is the 17.5% compare plus the refill part
+  of the 7.0% helpers (`tlb_set_page_full`, `mmu_translate`, `mmu_lookup1`:
+  about 2.6%). `tlb_reset_dirty` at 1.2% is the cost the design's M6 (re-arm
+  churn) turns into `mprotect`s, so it is a live term on GTA too, not only on
+  the NV2A-heavy titles.
 
 ## Next, for whoever resumes this lane
 
+0. R1 (master's A side) is read; do not re-run jitmix on it. The B side is
+   the held b_ref capture lane.local schedules once `builds/82e0ef1fa9.apk`
+   exists; read it with the same two scripts and fill the table's b column.
 1. When the pilot lands, run `mf0_read.py` on A1 and `title_verdict.py` on a
    COPY of both dirs. Check that gameplay was reached, power was measured, and
    the `[mf0]` lines are present. Write `pilots/lane.memfast.ok` with python3,
