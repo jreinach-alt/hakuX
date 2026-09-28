@@ -1,0 +1,24 @@
+before  16:46:41 mode=4 duty=12000 period=50000 speed=5700 bat=34 xo=41773
+set     16:46:44 +0s mode=6 duty=50000 period=50000 speed=12600 bat=34 xo=41339
+hold    16:47:01 +17s mode=6 duty=50000 period=50000 speed=13800 bat=34 xo=38632
+hold    16:47:19 +35s mode=6 duty=50000 period=50000 speed=14100 bat=34 xo=37047
+hold    16:47:35 +51s mode=6 duty=50000 period=50000 speed=14400 bat=34 xo=36088
+hold    16:47:54 +70s mode=6 duty=50000 period=50000 speed=14100 bat=34 xo=35413
+hold    16:48:10 +86s mode=6 duty=50000 period=50000 speed=14100 bat=34 xo=34847
+hold    16:48:28 +104s mode=6 duty=50000 period=50000 speed=14100 bat=34 xo=34447
+hold    16:48:45 +121s mode=6 duty=50000 period=50000 speed=14400 bat=34 xo=34164
+hold    16:49:03 +139s mode=6 duty=50000 period=50000 speed=14100 bat=34 xo=33832
+hold    16:49:20 +156s mode=6 duty=50000 period=50000 speed=14100 bat=34 xo=33578
+hold    16:49:38 +174s mode=6 duty=50000 period=50000 speed=14400 bat=34 xo=33403
+hold    16:49:55 +191s mode=6 duty=50000 period=50000 speed=14100 bat=34 xo=33187
+hold    16:50:13 +209s mode=6 duty=50000 period=50000 speed=14400 bat=34 xo=33032
+hold    16:50:31 +227s mode=6 duty=50000 period=50000 speed=14100 bat=34 xo=32865
+hold    16:50:48 +244s mode=6 duty=50000 period=50000 speed=14400 bat=34 xo=32756
+hold    16:51:06 +262s mode=6 duty=50000 period=50000 speed=14100 bat=34 xo=32629
+hold    16:51:23 +279s mode=6 duty=50000 period=50000 speed=14100 bat=34 xo=32535
+hold    16:51:41 +297s mode=6 duty=50000 period=50000 speed=14100 bat=34 xo=32490
+hold    16:51:58 +314s mode=6 duty=50000 period=50000 speed=14100 bat=34 xo=32362
+rest    16:52:01 +1s-step mode=4 duty=12000 period=50000 speed=6000 bat=34 xo=32407
+rest    16:52:05 +3s-step mode=4 duty=12000 period=50000 speed=6000 bat=34 xo=32479
+rest    16:52:18 +10s-step mode=4 duty=12000 period=50000 speed=5700 bat=34 xo=32623
+rest    16:52:52 +30s-step mode=4 duty=12000 period=50000 speed=5100 bat=34 xo=32684
