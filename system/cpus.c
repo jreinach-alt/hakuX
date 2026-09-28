@@ -508,6 +508,7 @@ void qemu_process_cpu_events_common(CPUState *cpu)
  *   and maximum for pg (lpg, lpgmax) and for all kicked wakes (lall).
  */
 #include "qemu/timer.h"
+#include "exec/cpu-interrupt.h"
 #ifdef __ANDROID__
 #include <android/log.h>
 #define IH_LOG(...) __android_log_print(ANDROID_LOG_WARN, "hakuX", __VA_ARGS__)
