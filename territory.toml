@@ -515,7 +515,9 @@ note = "STARTED (hostops 2026-09-28T04:58Z), briefs/pipeline413.md: #413 (0.5, f
 [lane.suffixpr]
 issues = []
 files = ["docs/testing/fleet.py", "docs/testing/jobs/selftest.d/99-fleet-suffixed-pr.sh", "docs/lanes/suffixpr/**"]
-note = "STARTED (hostops 2026-09-28T13:00Z), briefs/suffixpr.md: harness defect, no issue. fleet.py open_lane_prs() maps lane/<name>-<suffix> to a lane <name>-<suffix>, so job.board retired [lane.sustain507] at 12:45Z while its PR #547 (lane/sustain507-levers) was open with cold-slot runs queued. Resolve suffixed heads to the longest matching row (then the worktree), like handback.sh lane_name(). fleet.py was unclaimed (not in [free], no row). Interim: host-tools/harness_health.py orphan-pr check."
+released = ["docs/testing/fleet.py", "docs/testing/jobs/selftest.d/99-fleet-suffixed-pr.sh", "docs/lanes/suffixpr/**"]
+released_at_ready = 551
+note = "RELEASED AT READY (job.board 2026-09-28T13:15Z): PR #551 is out of draft, CI green (build x2, selftest 0-3 all SUCCESS), unit gone; docs/harness-only diff, no audit needed -- see fold-ready comment on the PR. STARTED (hostops 2026-09-28T13:00Z), briefs/suffixpr.md: harness defect, no issue. fleet.py open_lane_prs() maps lane/<name>-<suffix> to a lane <name>-<suffix>, so job.board retired [lane.sustain507] at 12:45Z while its PR #547 (lane/sustain507-levers) was open with cold-slot runs queued. Resolve suffixed heads to the longest matching row (then the worktree), like handback.sh lane_name(). fleet.py was unclaimed (not in [free], no row). Interim: host-tools/harness_health.py orphan-pr check. NOTE: this fix is fleet.py's open_lane_prs() only; issue-sweep.sh may have the same exact-branch blind spot (see [lane.forza414]'s note on #414) -- unverified, check on its next false-positive."
 
 [lane.dirtytlb]
 issues = ["548"]
