@@ -465,3 +465,28 @@ nothing to find.
 
 - Do not re-test the idle halt as a heat lever at the defaults. It is refuted on both devices (P).
 - Do not read a pair's xo difference as the lever without its `net_w`. Here 4.8 C came with 0.13 W.
+
+## 10. Session 7, 2026-09-28 20:15Z: Part D.3, Customize 100 at MAX (branch `lane/sustain507-fan100`)
+
+**Why the previous attempt did not finish.** It did finish its PR: #547 (Part C) folded as
+3ca1e6809e. What was left, D.3, waited on lane.fanduty507's fan knob. That knob folded as #571,
+and the dispatcher restarted on 503b901ee4 at 12:55 PDT. So this session is D.3 only, on a
+suffixed branch off master.
+
+- **The knob.** The dispatcher's `soak_title.sh` reads `FAN_MODE=<name>` from the request's env,
+  refuses any option the fan tile does not show at the title's performance mode, and records
+  `fan_request` in perf_regimen.json. At HIGH (MAX) the tile shows Smart, Sport and Customize.
+  lane.fanduty507 measured Customize 100 on the Thor as duty 50000, which is full fan.
+- **The prediction.** `docs/testing/predictions/sustain507-fan100.json` (sha256 fb3fffbb...),
+  registered before any run. B = f82e7e87fe, `PERF_REGIMEN=max`, `FAN_MODE=customize:100`. A = Part
+  A's MAX runs, not re-run (Crimson `4130828`, GTA `4130959`; Smart fan). Legs: L0 (fan read-back
+  and duty >= 45000 in >= 90 % of samples), H1 (no pause in 30 min), H2 (a pause, if any, comes 5 min
+  later than A's), H3 (plateau 70-76.5 C), F (fps), P (the fan costs -0.3 to +0.6 W), and the
+  falsifier: duty 50000 throughout and still a pause within 5 min of A's, on both titles.
+- **Scoring admission.** H1/H2 are scored only from a warm start: xo >= 56 C or battery >= 37 C.
+  Part C showed a cold Thor sustains at Smart, so a cold B run cannot separate the fan from the start.
+- **The reader.** `regimen_read.py` now also reports `fan_duty_median`, `fan_duty_ge45000_pct` and
+  `fan_request`. Part A's runs predate the duty column, so they read None there.
+- **Not run.** Sport at the defaults, the optional leg: its fixed 25000 is below Smart's hot median
+  of 38000, so it cannot beat Smart. The cold-start pair waits on the owner's top-up.
+- **Queued** with `queue_part_d3.sh`. The request ids are below and on #507.

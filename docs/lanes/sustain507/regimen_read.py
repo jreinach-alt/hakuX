@@ -220,6 +220,14 @@ def read(rdir):
                 break
         if start_idx < len(xo):
             out["plateau_min"] = round((xo[start_idx][0] - m0) / 60.0, 1)
+    # D.3 of sustain507-fan100.json: the fan's PWM duty over the window, and
+    # what soak_title.sh says it asked for and ran at.
+    duty = [r["fan"]["duty"] for r in ok
+            if isinstance((r.get("fan") or {}).get("duty"), int) and m0 <= thermal_state.dev_ts(r) <= hi]
+    if duty:
+        out["fan_duty_median"] = statistics.median(duty)
+        out["fan_duty_ge45000_pct"] = round(100.0 * sum(d >= 45000 for d in duty) / len(duty), 1)
+    out["fan_request"] = reg.get("fan_request")
     pw = thermal_state.power_over(therm, m0, hi)
     out.update(battery_w=pw["battery_w"], usb_w=pw["usb_w"], net_w=pw["net_w"],
                usb_bound=pw["usb_bound"], sign_suspect=pw["sign_suspect"])
