@@ -196,9 +196,12 @@ echo "== thermal pause: the cool-down gate holds a hot device before MAX and am 
 #              lines before the first perf write and am start, then `start`,
 #              and `waited 2 s` in run.log. Fails if the gate runs after MAX is
 #              set (the title's own heat is then waited out) or not at all.
-#   cap        xo-therm stuck at 80 C, THERMAL_COOL_MAX_S=2: `gave up after
-#              2 s ... starting hot`, and the title still starts. Fails if the
-#              gate can hold a run past the cap or refuses it.
+#   at-once    xo-therm 54 C: one `cool` sample, then MAX and am start, and
+#              `waited 0 s`. Fails if a cool device is made to wait a period,
+#              which would cost every run in the queue 20 s.
+#   cap        xo-therm stuck at 80 C, THERMAL_COOL_MAX_S=2: `gave up at 80.0
+#              C after 2 s ... starting hot`, and the title still starts. Fails
+#              if the gate can hold a run past the cap or refuses it.
 tp_cool() {   # <tz 90 temp> <pause 0|1> [error] -> "rc|phrase"
     local f="$TP/cool.jsonl" out rc
     python3 -c 'import json,sys
@@ -218,14 +221,22 @@ r="$(tp_cool 64000 0);$(tp_cool 65000 0);$(tp_cool 60000 1);$(tp_cool 0 0);$(tp_
 tp_soak TP_XO_START=70000 TP_XO_STEP=-3000 TP_PAUSE_FROM=99
 case "$order" in "thermal thermal thermal perf"*"am"*) ord_ok=1 ;; *) ord_ok=0 ;; esac
 if [ "$ord_ok" = 1 ] && case "$labels" in "cool cool cool start hold"*" end") true ;; *) false ;; esac \
-        && grep -qF 'THERMAL: cool-down: waited 2 s, from [xo-therm 70.0 C >= 65 C] to [xo-therm 64.0 C < 65 C]' "$TP/run/run.log"; then
+        && grep -qxF 'COOLDOWN: waited 2 s, xo 70.0 -> 64.0 C [xo-therm 64.0 C < 65 C]' "$TP/run/run.log"; then
     ok "gate waits: [$labels], three cool samples before MAX and am start, run.log names the wait"
 else
     bad "gate waits: labels [$labels] order [$order] run.log: $(tr '\n' '|' < "$TP/run/run.log" | tail -c 400)"
 fi
+tp_soak TP_XO_START=54000 TP_XO_STEP=0 TP_PAUSE_FROM=99
+if case "$labels" in "cool start hold"*" end") true ;; *) false ;; esac \
+        && case "$order" in "thermal perf"*"am"*) true ;; *) false ;; esac \
+        && grep -qxF 'COOLDOWN: waited 0 s, xo 54.0 -> 54.0 C [xo-therm 54.0 C < 65 C]' "$TP/run/run.log"; then
+    ok "gate cool: a 54 C read starts at once, with one cool sample and a 0 s wait in run.log"
+else
+    bad "gate cool: labels [$labels] order [$order] run.log: $(tr '\n' '|' < "$TP/run/run.log" | tail -c 400)"
+fi
 tp_soak TP_XO_START=80000 TP_XO_STEP=0 TP_PAUSE_FROM=99 THERMAL_COOL_MAX_S=2
 if case "$order" in *"am"*) true ;; *) false ;; esac \
-        && grep -qF 'THERMAL: cool-down: gave up after 2 s, from [xo-therm 80.0 C >= 65 C] to [xo-therm 80.0 C >= 65 C]; starting hot' "$TP/run/run.log"; then
+        && grep -qxF 'COOLDOWN: gave up at 80.0 C after 2 s, xo 80.0 -> 80.0 C [xo-therm 80.0 C >= 65 C]; starting hot' "$TP/run/run.log"; then
     ok "gate cap: gave up after 2 s at 80 C and started the title hot"
 else
     bad "gate cap: labels [$labels] order [$order] run.log: $(tr '\n' '|' < "$TP/run/run.log" | tail -c 400)"

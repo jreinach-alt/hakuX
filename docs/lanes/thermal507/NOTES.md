@@ -199,14 +199,24 @@ hysteresis). A fall that clears within one or two bins is not the pause.
 ### The cool-down gate (commit 4124a609e9)
 
 - `soak_title.sh`, before `perf_enter` (MAX) with the title stopped: it
-  samples (`cool` lines in thermal.jsonl) every THERMAL_COOL_EVERY_S (30 s)
+  samples (`cool` lines in thermal.jsonl) every THERMAL_COOL_EVERY_S (20 s)
   while xo-therm >= THERMAL_COOL_C (65) or any pause device is set, for at
-  most THERMAL_COOL_MAX_S (360 s). One `THERMAL: cool-down:` line goes to
-  run.log. A missing zone or an unread sample is not gated.
+  most THERMAL_COOL_MAX_S (360 s). One `COOLDOWN:` line goes to run.log, in
+  the words of hostops' spec (#507 comment 5861274869):
+  `COOLDOWN: waited <s> s, xo <start> -> <end> C [...]` (0 s when the first
+  read was cool), `COOLDOWN: gave up at <C> C after <s> s, ...; starting
+  hot`, or `COOLDOWN: not gated ...` for a missing zone or an unread sample.
   `THERMAL_COOL_C=off` disables it.
-- Why a 360 s cap: harness_health.py calls a soak overrunning at `seconds`
-  + 10 min. A run that is still hot at the cap starts anyway, and says so;
-  the verdict voids it if it pauses.
+- **The cap is 360 s, not the spec's 10 min.** harness_health.py calls a
+  soak overrunning at `seconds` + 10 min from the run's first artifact, and
+  its remedy line tells the reader to force-stop a hung guest. A 10 min wait
+  plus the soak would cross that line on every run that reached the cap.
+  `THERMAL_COOL_MAX_S=600` selects the spec's cap once the overrun rule
+  counts a logged cool-down as expected time. A run that is still hot at
+  the cap starts anyway, and says so; the verdict voids it if it pauses.
+- devwatch (lane.local, 17:35 PDT) holds a device from xo-therm 74 C until
+  65 C once nothing runs. That is the first gate; this one is the backstop
+  for a request claimed between 65 and 74 C, and the record in the run.
 - Why 65 C: hostops' ask (hostops-inbox 17:14). At MAX, 66 -> 78 C took
   ~6.7 min in the pilot, so a title gated at 65 C gets ~3 min of scored
   window after GTA's ~4 min route. From 54 C it gets ~5 min. A lower limit
@@ -218,9 +228,10 @@ hysteresis). A fall that clears within one or two bins is not the pause.
   `--window` now count offsets from the `start` sample, so the cool samples
   do not shift them.
 - selftest 99: the --cool legs (cool, hot at the limit, paused below it, no
-  zone, unread) and two fake-adb soaks (it waits: three `cool` samples
-  before the first perf write and am start; the cap: gives up at 2 s and
-  starts). Siblings 84, 89, 97, 99-display-covered and 99-iso-roots pass.
+  zone, unread) and three fake-adb soaks (it waits: three `cool` samples
+  before the first perf write and am start; at once: a 54 C read starts
+  with a 0 s wait; the cap: gives up at 2 s and starts). Siblings 84, 89,
+  97, 99-display-covered and 99-iso-roots pass.
 - Live only after this PR folds and a dispatcher update window runs.
 
 ### The regimen comparison (addendum item 4), queued 17:44 PDT
@@ -237,6 +248,26 @@ hysteresis). A fall that clears within one or two bins is not the pause.
 - Read: sustained fps after the mark, paused minutes, time to pause, and
   xo-therm at start. Then report on #507, with the data for perfregimen's
   successor.
+- **WITHDRAWN 17:47 PDT (session 5), both unclaimed.** The brief's addenda
+  (hostops 17:31, lane.local 17:45) say the comparison must not start: it
+  waits on the owner's reply about the fan and on an engineering review of
+  mobile thermal practice that may change the modes compared. The requests
+  are in `queue/withdrawn/` with a `.why` each. Do not re-queue them until
+  the brief says which modes to compare.
+
+### Session 5 (2026-09-27 17:45 PDT)
+
+- Why session 4 did not finish: it marked #519 ready, which was right, but
+  left two things against the brief. It queued the regimen comparison the
+  addenda hold back (withdrawn, above). And it built the gate from the
+  hostops-inbox ask, not from the 17:31 spec, so run.log said
+  `THERMAL: cool-down:` every 30 s where the spec names `COOLDOWN:` lines
+  every 20 s. Both are fixed in this session; the cap stays at 360 s (see
+  the gate section for why). The power addendum (17:45) arrived after it
+  ended.
+- Power and energy per frame go in their own PR, from branch
+  `lane/thermal507-power`, so #519 (the gate hostops waits on for
+  MechAssault 2) can fold without it.
 
 ## Existing Thor title benchmarks (brief item 4)
 

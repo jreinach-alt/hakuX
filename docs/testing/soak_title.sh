@@ -280,27 +280,33 @@ thermal_sample() {   # <label>
 # THERMAL_COOL_MAX_S (a run then starts hot, and says so) because
 # harness_health.py calls a soak overrunning at `seconds` + 10 min. The
 # samples are `cool` lines in thermal.jsonl. THERMAL_COOL_C=off turns it off.
+# run.log gets one `COOLDOWN:` line, at the start of a line: `waited <s> s,
+# xo <start> -> <end> C` (0 s when the first read was cool), `gave up at <C>
+# C`, or `not gated`. The bracket holds --cool's own words for the last read.
 if [ "${THERMAL_COOL_C:-65}" != off ]; then
-    cool_waited=0; cool_first=""
+    cool_waited=0; cool_from=""
     while :; do
         thermal_sample cool
         [ -n "$THERMAL_OUT" ] || break
         cool_is=$(python3 "$HERE/thermal_state.py" --cool "$THERMAL_OUT" \
             "${THERMAL_COOL_ZONE:-xo-therm}" "${THERMAL_COOL_C:-65}" 2>&1); cool_rc=$?
-        [ -n "$cool_first" ] || cool_first="$cool_is"
         if [ "$cool_rc" = 2 ]; then
-            echo "THERMAL: cool-down: not gated after ${cool_waited} s: $cool_is"
+            echo "COOLDOWN: not gated after ${cool_waited} s: $cool_is"
             break
-        elif [ "$cool_rc" = 0 ]; then
-            echo "THERMAL: cool-down: waited ${cool_waited} s, from [$cool_first] to [$cool_is]"
+        fi
+        # --cool's phrase opens `<zone> <C> C`.
+        cool_c=$(printf '%s\n' "$cool_is" | sed -n 's/^[^ ]* \(-\{0,1\}[0-9.]*\) C.*/\1/p')
+        [ -n "$cool_from" ] || cool_from="$cool_c"
+        if [ "$cool_rc" = 0 ]; then
+            echo "COOLDOWN: waited ${cool_waited} s, xo $cool_from -> $cool_c C [$cool_is]"
             break
         fi
         if [ "$cool_waited" -ge "${THERMAL_COOL_MAX_S:-360}" ]; then
-            echo "THERMAL: cool-down: gave up after ${cool_waited} s, from [$cool_first] to [$cool_is]; starting hot"
+            echo "COOLDOWN: gave up at $cool_c C after ${cool_waited} s, xo $cool_from -> $cool_c C [$cool_is]; starting hot"
             break
         fi
-        sleep "${THERMAL_COOL_EVERY_S:-30}"
-        cool_waited=$((cool_waited + ${THERMAL_COOL_EVERY_S:-30}))
+        sleep "${THERMAL_COOL_EVERY_S:-20}"
+        cool_waited=$((cool_waited + ${THERMAL_COOL_EVERY_S:-20}))
     done
 fi
 
