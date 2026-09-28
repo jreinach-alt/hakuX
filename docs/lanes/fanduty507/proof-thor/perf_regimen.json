@@ -1,0 +1,78 @@
+{
+  "regimen": "max",
+  "perf_mode": 2,
+  "fan_mode": 6,
+  "perf_restored": true,
+  "before": {
+    "perf_mode": 0,
+    "fan_mode": 4
+  },
+  "restored": {
+    "perf_mode": 0,
+    "fan_mode": 4
+  },
+  "max": {
+    "perf_mode": 2,
+    "fan_mode": 4
+  },
+  "rest": {
+    "perf_mode": 0,
+    "fan_mode": 4
+  },
+  "default": {
+    "perf_mode": 0,
+    "fan_mode": 4
+  },
+  "display": {
+    "start": {
+      "displays": {
+        "0": "ON",
+        "4": "ON"
+      },
+      "dual_screen_display_mode": 0,
+      "min_refresh_rate": 60.0,
+      "peak_refresh_rate": 60.0,
+      "screen_brightness": 158,
+      "screen_brightness_mode": 0
+    },
+    "end": {
+      "displays": {
+        "0": "ON",
+        "4": "ON"
+      },
+      "dual_screen_display_mode": 0,
+      "min_refresh_rate": 60.0,
+      "peak_refresh_rate": 60.0,
+      "screen_brightness": 158,
+      "screen_brightness_mode": 0
+    }
+  },
+  "fan_request": {
+    "requested": "customize:100",
+    "want": {
+      "fan_mode": 6,
+      "fan_speed": 100
+    },
+    "refused": null,
+    "perf_mode": 2,
+    "offered": [
+      "smart",
+      "sport",
+      "customize:<0-100>"
+    ],
+    "prior": {
+      "fan_mode": 4,
+      "fan_speed": null
+    },
+    "ran": {
+      "fan_mode": 6,
+      "fan_speed": 100
+    },
+    "restored": {
+      "fan_mode": 4,
+      "fan_speed": null
+    },
+    "fan_restored": true,
+    "moved": 0
+  }
+}
