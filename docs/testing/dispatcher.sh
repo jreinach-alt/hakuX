@@ -88,7 +88,8 @@ SRC="${DISPATCH_SRC:-$TREE/docs/testing}"
 # pass 1 on #206, M2). selftest.d/97 checks the closure, not only equality.
 SCRIPT_DEPS="dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
 affinity.py captures.py make_test_iso.py extract_results.py sweep_queue.sh \
-make_isolation_discs.py vsh_score.py thermal_state.py titles/route.sh perf/pad.sh"
+make_isolation_discs.py vsh_score.py thermal_state.py titles/route.sh perf/pad.sh \
+battery_admit.py"
 # WHERE BUILDS HAPPEN, AND IT IS NEVER $TREE.
 #
 # Until 2026-09-19 a build detached the SHARED checkout onto the requested
@@ -116,7 +117,7 @@ snapshot_scripts() {
     for f in dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
              affinity.py captures.py make_test_iso.py extract_results.py \
              sweep_queue.sh make_isolation_discs.py vsh_score.py thermal_state.py \
-             titles/route.sh perf/pad.sh; do
+             titles/route.sh perf/pad.sh battery_admit.py; do
         # Two of these live in subdirectories. Each file is resolved against
         # its own directory, so the write-beside-and-rename below stays in one
         # directory, and cp gets a directory that exists. (Reassigning $f
@@ -640,6 +641,83 @@ lane_blind_check() {
     fi
 }
 
+# PER-RUN BATTERY ADMISSION (#507, owner 2026-09-28). A handheld on its 500 mA
+# port was taken out of service below 15 % and put back only at 80 %, about
+# eleven hours, while a queue of 6-8 minute runs it could have served at 24 %
+# waited. So each request is admitted on its own: only when the level covers
+# 15 % + 5 % + the learned drain over the run. battery_admit.py has the rule,
+# the learning, and why a long head is not starved by the short runs behind it.
+#
+# battery_level: dumpsys's `level:`, read at most once a minute (the queue walk
+# asks once per request per tick). Empty when it cannot be read; the caller
+# then admits unchecked and says so, because an unreadable level on a device
+# that is present is an adb transient, and an absent device is requeued by
+# serve_one's own device_present check anyway. hostops's hold below 15 % is
+# still the floor under all of this.
+battery_level() {
+    local f="$D/.battery_level.$DEVICE_LABEL" now t l
+    now=$(date +%s)
+    if read -r t l < "$f" 2>/dev/null && [ -n "$l" ] \
+       && [ $((now - t)) -lt "${BATTERY_CACHE_S:-60}" ]; then
+        printf '%s\n' "$l"; return 0
+    fi
+    l=$(ADB_RETRIES=0 adb_call "${ADB_QUICK_TIMEOUT:-30}" "battery level" shell dumpsys battery 2>/dev/null \
+        | tr -d '\r' | sed -n 's/^ *level: *\([0-9][0-9]*\) *$/\1/p' | head -1)
+    [ -n "$l" ] || return 0
+    printf '%s %s\n' "$now" "$l" > "$f"
+    printf '%s\n' "$l"
+}
+
+# battery_admit <req> <id> -> 0 to claim it, 1 not now. Sets BATT_JSON (what
+# result.json records) on 0, and BATT_HEAD -- the first request this tick
+# refused, the device's head -- on the first refusal. Each distinct line is
+# logged once per request, not every five seconds.
+declare -A BATT_SAID=()
+battery_admit() {
+    local req="$1" id="$2" level out rc line
+    BATT_JSON=""
+    [ "${BATTERY_ADMIT:-on}" = off ] && return 0
+    level=$(battery_level)
+    if [ -z "$level" ]; then
+        log "BATTERY: level unreadable on $DEVICE_LABEL; admitting $id unchecked"
+        BATT_JSON='{"battery_start": null, "unchecked": "level unreadable"}'
+        return 0
+    fi
+    out=$(python3 "$HERE/battery_admit.py" check "$D" "$DEVICE_LABEL" "$req" "$level" "${BATT_HEAD:-}")
+    rc=$?
+    line=$(printf '%s\n' "$out" | sed -n 1p)
+    case "$rc" in
+        0) BATT_JSON=$(printf '%s\n' "$out" | sed -n 2p); log "$line"; unset "BATT_SAID[$id]"; return 0 ;;
+        1) [ -n "${BATT_HEAD:-}" ] || BATT_HEAD="$id" ;;
+        3) ;;
+        *) # The helper itself failed: admit, as for an unreadable level.
+           log "BATTERY: battery_admit.py exited $rc on $id; admitting unchecked: $line"
+           BATT_JSON='{"battery_start": '"$level"', "unchecked": "battery_admit.py failed"}'
+           return 0 ;;
+    esac
+    # Level and need change slowly; say it again only when the words change.
+    # The head's refusal line and the hold line each carry a running clock,
+    # so compare without it.
+    local key
+    key=$(printf '%s\n' "$line" | sed 's/; head, refused for [0-9]*s$//; s/ (refused for [0-9]*s >= [0-9]*s)//')
+    if [ "${BATT_SAID[$id]:-}" != "$key" ]; then
+        BATT_SAID[$id]="$key"
+        log "$line"
+    fi
+    return 1
+}
+
+# serve_queue <req>... -> 0 once one is served. The queue walk, in priority
+# order; BATT_HEAD is per walk, so a head is the first refusal of THIS tick.
+serve_queue() {
+    BATT_HEAD=""
+    local r
+    for r in "$@"; do
+        serve_one "$r" && return 0
+    done
+    return 1
+}
+
 serve_one() {
     local req="$1" id
     id=$(basename "$req" .req)
@@ -654,6 +732,10 @@ serve_one() {
         # concluding it served something and sleeping.
         return 1
     fi
+    # Battery after affinity (a request pinned elsewhere costs no adb read) and
+    # before the claim, so a refusal leaves it in the queue for the next tick,
+    # or for the other handheld.
+    battery_admit "$req" "$id" || return 1
     # Losing this rename means the other worker claimed it first, which is the
     # mutex working. Also non-zero: try the next one.
     mv "$req" "$D/running/$id.req" 2>/dev/null || return 1
@@ -684,6 +766,10 @@ serve_one() {
     log "request $id from $requester: $purpose (ref=$ref arm=$arm runs=$runs)"
 
     local rdir="$D/results/$id"; mkdir -p "$rdir"
+    # What admitted it: level, need, rate. Both result.json writers carry it as
+    # `battery`, so a later check can ask whether a low-charge run measured
+    # differently. battery_admit.py learns overhead from its `t_device`.
+    [ -z "$BATT_JSON" ] || printf '%s\n' "$BATT_JSON" > "$rdir/battery.json"
     local apk rc
     # `a || b && c || d` is a precedence trap in shell and this value decides
     # which binary runs, so spell it out.
@@ -718,6 +804,10 @@ serve_one() {
         log "  device absent; requeueing"
         mv "$req" "$D/queue/$id.req"; sleep 30; return 0
     fi
+    # The device's part of this request starts here, not at the claim: the
+    # build before it drains nothing.
+    [ ! -f "$rdir/battery.json" ] || python3 -c 'import json,sys,time
+p=sys.argv[1]; b=json.load(open(p)); b["t_device"]=time.time(); json.dump(b,open(p,"w"))' "$rdir/battery.json" 2>/dev/null
     adb_call "$ADB_INSTALL_TIMEOUT" "adb install -r" install -r "$apk" 2>&1 | grep -q Success || {
         adb_error "install failed" > "$rdir/ERROR"; log "  INSTALL FAILED: $(cat "$rdir/ERROR")"
         mv "$req" "$rdir/request.json"; return 0
@@ -795,6 +885,11 @@ if os.path.isdir(pdir):
 # cost a phase survey exactly this way. No fallback literal: if LOGCAT_SPEC is
 # unset, say so rather than inventing the string it probably was.
 _spec = os.environ.get("LOGCAT_SPEC", "(LOGCAT_SPEC UNSET -- spec unknown)")
+def _battery(rdir):
+    try:
+        return json.load(open(os.path.join(rdir, "battery.json")))
+    except (OSError, ValueError):
+        return None
 json.dump(dict(apk_sha=sha, kind="soak", title=title, seconds=int(seconds),
                requester=who, purpose=purpose, ref=ref,
                logcat=dict(spec=_spec, lines=int(lines)),
@@ -820,7 +915,10 @@ json.dump(dict(apk_sha=sha, kind="soak", title=title, seconds=int(seconds),
                            count=len(_frames),
                            bytes=sum(os.path.getsize(os.path.join(_fdir, f))
                                      for f in _frames),
-                           dir="frames" if _frames else None)),
+                           dir="frames" if _frames else None),
+               # What admitted it (battery_admit.py): battery_start, need,
+               # rate. None when the run predates admission or it was off.
+               battery=_battery(rdir)),
           open(os.path.join(rdir, "result.json"), "w"), indent=2)
 print("soak done:", title, lines, "log lines")
 PYEOF
@@ -1185,6 +1283,11 @@ for j in sorted(glob.glob(os.path.join(rdir, "vsh*.json"))):
 meta["device_serial"] = os.environ.get("SERIAL", "")
 meta["device_label"] = os.environ.get("DEVICE_LABEL", "")
 meta["runs"] = runs
+# What admitted it (battery_admit.py): battery_start, need, rate.
+try:
+    meta["battery"] = json.load(open(os.path.join(rdir, "battery.json")))
+except (OSError, ValueError):
+    meta["battery"] = None
 
 # Name the log explicitly, so "we captured nothing" and "the suite dropped
 # nothing" are different answers. They looked identical before, which is the
@@ -1634,10 +1737,9 @@ case "${1:-status}" in
         # Walk the queue in priority order rather than taking [0] blindly:
         # the first request may be pinned to the other handheld, and stopping
         # there would idle this one behind work it is not allowed to do.
+        # serve_queue, so the battery head (battery_admit) is per walk.
         served=0
-        for r in "${reqs[@]}"; do
-            if serve_one "$r"; then served=1; break; fi
-        done
+        serve_queue "${reqs[@]}" && served=1
         [ "$served" = 1 ] || sleep 5
 
         # Drop my own owner files whose request has left running/. serve_one
