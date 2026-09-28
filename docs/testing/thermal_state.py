@@ -380,19 +380,27 @@ def cool(rec, zone, limit_c):
     return 0, "%s %.1f C < %g C" % (zone, c, limit_c)
 
 
-def first_pause(recs):
-    """(after, by): the first pause's onset bounds in seconds from the run's
-    origin() (after is None when the run started paused), or None when no
-    pause was sampled. An episode the cool-down gate waited out, over before
-    the start, is not the run's. See A PAUSE EPISODE."""
+def first_episode(recs):
+    """(episode, origin): the run's first pause episode and the origin() it is
+    timed from, or None when no pause was sampled. An episode the cool-down
+    gate waited out, over before the start, is not the run's. See A PAUSE
+    EPISODE."""
     ok = [r for r in recs if paused(r) is not None and dev_ts(r) is not None]
     if not ok:
         return None
     t0 = origin(ok)
     eps = [e for e in episodes(recs) if e["before"] is None or e["before"] > t0]
-    if not eps:
+    return (eps[0], t0) if eps else None
+
+
+def first_pause(recs):
+    """(after, by): first_episode()'s onset bounds in seconds from the run's
+    origin() (after is None when the run started paused), or None when no
+    pause was sampled."""
+    fe = first_episode(recs)
+    if fe is None:
         return None
-    e = eps[0]
+    e, t0 = fe
     if e["first"] <= t0:
         return (None, 0.0)
     return (round(e["after"] - t0, 1) if e["after"] is not None else None, round(e["first"] - t0, 1))

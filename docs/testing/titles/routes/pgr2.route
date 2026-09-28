@@ -1,0 +1,74 @@
+# Project Gotham Racing 2 (4D53004B): one route. Instant Action writes no profile, so the path is the same on
+# every boot. PLAYED by nav.py on the Thor, 2026-09-27 21:01 PDT (lane.titleroutes HELD session
+# pgr2.first-run-20260927T210151), to gameplay.
+#
+#   Bizarre Creations logo, then the intro FMV (START skips) -> the title, "Play PGR 2 / PRESS START" (A held
+#   400 ms) -> the menu: Start Player's Game (or Create New Profile) / Profile Manager / Instant Action / Xbox
+#   Demos -> the hat held right 3 s (the menu auto-repeats and stops at Xbox Demos), then ONE hat tap left:
+#   Instant Action (A) -> loading -> "Welcome to Florence" flyby, which ends by itself -> the race, LAP 1 of 2,
+#   TIME 4:56.
+#
+# Why the menu moves are not counted: the menu auto-repeats and drops taps while it animates, and at 4 fps
+# (cold) against 59 fps (warm) a counted route went elsewhere (sessions 6-7). Pushing to the stop and stepping
+# back once does not depend on the rate. B, B, A after the first A puts either the title or the menu on the
+# menu (B at the menu returns to the title; B at the title does nothing), in case the START landed early and
+# the A only ended the FMV.
+#
+# The tap left is held 0.1 s: the replay of the nav session's 0.3 s hold stepped twice (to Profile Manager,
+# scratch/replay/pgr2-210557).
+#
+# Player control: RT drove the car to 37 mph on the Florence street (nav frame s-009-gas, TIME 4:50). The
+# pattern reverses, then drives with the stick left, right and centred. The triggers rest at `min`.
+# Instant Action's clock is 5 min; after it, what follows is not seen.
+wait 33.6
+shot boot
+wait 30.3
+shot t1
+wait 7.5
+press START
+wait 10.1
+shot t2
+wait 8.8
+press A 400
+wait 4
+press B
+wait 2
+press B
+wait 2
+press A 400
+wait 6.7
+shot menu
+wait 8.1
+axis HATX max
+wait 3.3
+axis HATX mid
+wait 2.1
+shot end
+wait 6.6
+axis HATX min
+wait 0.1
+axis HATX mid
+wait 2.1
+shot ia
+wait 10.2
+press A
+wait 30.2
+shot go
+wait 24.6
+shot load2
+wait 8.3
+mark gameplay
+repeat forever {
+    axis RT min
+    axis LT max
+    wait 2.5
+    axis LT min
+    axis RT max
+    axis LX min
+    wait 2.5
+    axis LX max
+    wait 2.5
+    axis LX mid
+    wait 2
+    axis RT min
+}
