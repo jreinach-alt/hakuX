@@ -56,3 +56,27 @@ present) on the Thor, asked of the host on #507.
   default). The registration names no regimen, so these pairs run at the default, max, with no env
   beyond the registered one. The reader's window runs from `mark play` (~257 s) + 30 s to 540 s,
   and MAX trips in 5-9 min from cool. **A pause before 540 s voids the run.** It is not read.
+
+## 4. Queued, 2026-09-28 03:25Z (session 1 ends on a wait)
+
+| request | what |
+|---|---|
+| `1-1790565669-lane.sustain507-1255824` | #424 Blinx r2 A, 00c2840810, no env, 540 s, MAX |
+| `1-1790565676-lane.sustain507-1257645` | #424 Blinx r2 B, `HAKUX_TCG424_RANGE=1` |
+| `1-1790565677-lane.sustain507-1257857` | #507 pilot: GTA SA at `default`, 450 s, f82e7e87fe (not scored) |
+
+About seven Thor requests are ahead (titleroutes, forza414, arms-pacing), and lane.titleroutes holds
+a <=30 min nav session. Posted on #507 (issuecomment-5862704287, which includes the charge_full ask) and #424.
+
+### On resume
+
+1. Pilot: `python3 docs/lanes/sustain507/regimen_read.py --json 1257857`. Check that perf_regimen reads
+   default / perf 0 / fan 4, COOLDOWN is present, `mark gameplay` is present, power is measured, and
+   the gameplay frame shows CJ on foot. Write `pilots/lane.sustain507.ok` with python3.
+2. Queue Part A in the registered order, `HAKUX_RELEASE_PRIO=1`, `--device thor --ref f82e7e87fe
+   --expect docs/testing/predictions/sustain507-regimen.json`: Crimson (1950 s, route crimson-skies)
+   max then default; GTA (2100 s, gta-sa) default then max; MechAssault 2 (2100 s, mechassault-2)
+   max then default. Then #424's r3 pair.
+3. #424 r2: `python3 docs/lanes/tbflip424/playread.py 1255824 1257645`, plus each run's
+   verdict-style first pause (`regimen_read.py --json` has `pause_from_start`). A pause before 540 s
+   voids the run.
