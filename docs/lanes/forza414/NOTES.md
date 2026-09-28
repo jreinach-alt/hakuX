@@ -1243,3 +1243,9 @@ The Blinx pair goes in after the pilot is read. The goldens guard is the arms jo
   (`queue/withdrawn/*.why`). The Blinx pair went first as the pilot:
   `1-1790576971-forza414-1229800` (A) and `-1229835` (B), Nova. The Forza pair is re-queued once
   the pilot is read. The goldens guard is the arms job's (`1-1790577097-arms-forza414-base-...`).
+
+**Waiting (session end, 2026-09-27 ~23:55 PDT):** on the Blinx pilot `1-1790576971-forza414-1229800`
+/ `-1229835` (Nova, about 2 h of 1- work ahead of it), and on the arms job's goldens guard for
+forza414-clrskip-mnm. On resume: judge forza414-uhash-soak, write `pilots/forza414.ok`, re-queue
+the Forza pair on the Thor at priority 1 (forza414-clrskip-soak, refs fa56a26f1f / b991fb4c21), and
+read the `[job.arms]` verdict.
