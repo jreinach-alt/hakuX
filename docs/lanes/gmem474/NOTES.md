@@ -156,3 +156,51 @@ Still on the Crimson pilot (`3784417`, `3784577`). When they land: read them wit
 `gmemread.py --from 120 --to 350 3784417 3784577`, write the pilot verdict to
 `pilots/lane.gmem474.ok` with python3, then `queue.py doa`/`auf` in the
 interleave order, `queue.py kabuki A1 B C D A2`, `queue.py crimson A1 B A2`.
+
+## 9. Attempt 3 (2026-09-28 ~23:45Z): why attempt 2 did not finish, pilot read, rest queued
+
+Attempt 2 did not fail either. It ended on a `waiting:` for the same two Crimson
+pilot soaks, which sat behind about 1.5 h of Thor queue and finished at 16:36
+and 16:45 PDT. hostops' addendum resumed the lane on them.
+
+**Pilot (Thor, Crimson, apk db1e8a7f12 = b400e9693dd7, window 120-350 s):**
+
+| run | arm | Mesa log | gfps med | p10 | GPU ms | X/R | net W | J/frame | samples | xo start/max C | pause |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 3784417 | C gmem,forcebin | `TU_DEBUG=0x1011` | 29.5 | 24.2 | 13.9 | 3.0 | 5.37 | 0.191 | 7 | 52.0 / 73.6 | none |
+| 3784577 | D profiled | `TU_DEBUG=0x1`, `TU_AUTOTUNE_ALGO=1 (profiled)` | 29.8 | 25.7 | 10.0 | 0.09 | 5.81 | 0.203 | 7 | 60.9 / 75.4 | none |
+
+Every pilot criterion from section 5 holds: both options are live in the driver
+(not inert controls), `render_mode:` carries the env `TU_DEBUG`, 7 power samples,
+no pause, no crash, and the play frames show flight with no corruption. The arms
+really change the pass structure: C bins (X/R 3.0), and profiled autotune sends
+Crimson to sysmem almost entirely (X/R 0.09). No arm is judged on the pilot alone.
+D started 9 C hotter than C (it ran straight after C), which is why A runs first
+and last. Verdict written to `pilots/lane.gmem474.ok`.
+
+**Queued 23:47Z (release tier, apk db1e8a7f12, device pins read back from the .req files):**
+
+| title | device | A1 | B | C | D | A2 |
+|---|---|---|---|---|---|---|
+| DOA | nova | 123962 | 124548 | 125078 | 125499 | 125576 |
+| AUF | nova | 124258 | 124832 | 125336 | 125537 | 125640 |
+| Kabuki | nova | 125693 | 125740 | 125795 | 125996 | 126084 |
+| Crimson | thor | 126136 | 126177 | - (pilot) | - (pilot) | 126215 |
+
+Ids are `1-17906392xx-lane.gmem474-<n>`. The Nova was on hostops' low-charge
+hold (USB write errors at low charge) at queue time, lifted at >= 50% or by 19:00
+PDT; tonight's order is full, so these run after it. Nova time about 2.2 h, Thor
+about 23 min.
+
+## 10. Waiting (2026-09-28 ~23:50Z, attempt 3)
+
+On the 18 requests above, outside this session. When they land, read each title
+over its registered window:
+
+    gmemread.py --from 151 --to 288 <doa runs>
+    gmemread.py --from 299 --to 590 <auf runs>
+    gmemread.py --from 230 --to 415 <kabuki runs>   (W1, decides); --from 30 --to 180 (W2, reported)
+    gmemread.py --from 120 --to 350 <crimson A1 B A2> 3784417 3784577
+
+then score the legs by each file's `decision_rule`, post the table on #474, and
+open `lane/gmem474-default` only if a decision differs from what ships.
