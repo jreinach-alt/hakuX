@@ -651,7 +651,8 @@ void nv2a_profile_flip_stall(void)
          * dfb creates with valid feedback, dfbh whole-pipeline cache hits,
          * dfb_ms its duration, dvs/dgs/dfs_ms per stage; for draw pipelines,
          * dsru/dsrum stages whose module an earlier pipeline used / of those
-         * the driver missed in its cache, dsnu/dsnum the same for new modules;
+         * the driver missed in its cache, dsru_ms their stage durations,
+         * dsnu/dsnum/dsnu_ms the same for new modules;
          * dgl_ms glslang, dsmod_ms the whole GLSL -> module, dsv_ms pipeline
          * cache saves; kd= sync draw misses per ShaderState class that
          * differs from the pipeline bound before (VP/FF/CB/TX/FL/PO/GE, then
@@ -668,7 +669,7 @@ void nv2a_profile_flip_stall(void)
                 "L=%c W=%u "
                 "pc_ms=%.1f dpc_ms=%.1f dpn=%u dfb=%u dfbh=%u dfb_ms=%.1f "
                 "dvs_ms=%.1f dgs_ms=%.1f dfs_ms=%.1f "
-                "dsru=%u dsrum=%u dsnu=%u dsnum=%u "
+                "dsru=%u dsrum=%u dsru_ms=%.1f dsnu=%u dsnum=%u dsnu_ms=%.1f "
                 "dgl_ms=%.1f dsmod_ms=%.1f dsv_ms=%.1f "
                 "kd=%u/%u/%u/%u/%u/%u/%u/%u/%u dins_us=%.1f",
                 g_nv2a_stats.frame_count,
@@ -695,8 +696,10 @@ void nv2a_profile_flip_stall(void)
                 (s.stage_fb_us[2] - prev.stage_fb_us[2]) / 1000.0,
                 s.stage_reused - prev.stage_reused,
                 s.stage_reused_miss - prev.stage_reused_miss,
+                (s.stage_reused_us - prev.stage_reused_us) / 1000.0,
                 s.stage_new - prev.stage_new,
                 s.stage_new_miss - prev.stage_new_miss,
+                (s.stage_new_us - prev.stage_new_us) / 1000.0,
                 (s.glslang_us - prev.glslang_us) / 1000.0,
                 (s.shader_module_us - prev.shader_module_us) / 1000.0,
                 (s.plc_save_us - prev.plc_save_us) / 1000.0,

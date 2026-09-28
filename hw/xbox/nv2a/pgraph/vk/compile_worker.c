@@ -112,9 +112,11 @@ VkResult pgraph_vk_create_graphics_pipeline_fb(
             if (g_hash_table_contains(pcfb_modules, &handle)) {
                 s->stage_reused++;
                 s->stage_reused_miss += miss;
+                s->stage_reused_us += stage_fb[i].duration / 1000;
             } else {
                 s->stage_new++;
                 s->stage_new_miss += miss;
+                s->stage_new_us += stage_fb[i].duration / 1000;
                 g_hash_table_add(pcfb_modules, g_memdup2(&handle, sizeof(handle)));
             }
         }

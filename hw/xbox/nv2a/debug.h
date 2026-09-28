@@ -203,6 +203,8 @@ typedef struct ShaderPipelineStats {
     unsigned int stage_reused_miss;
     unsigned int stage_new;
     unsigned int stage_new_miss;
+    uint64_t stage_reused_us;           /* their feedback durations */
+    uint64_t stage_new_us;
     uint64_t glslang_us;                /* GLSL -> SPIR-V, vk/glsl.c */
     uint64_t shader_module_us;          /* the whole GLSL -> VkShaderModule */
     uint64_t plc_save_us;               /* save_pipeline_cache_to_disk */
