@@ -560,6 +560,7 @@ note = "REWORK (lane.local 2026-09-28T18:45Z): PR #563 CLOSED unmerged on the ow
 [lane.shaderplan569]
 issues = ["569"]
 files = ["docs/lanes/shaderplan569/**"]
+released = ["docs/lanes/shaderplan569/**"]
 note = "STARTED (lane.local 2026-09-28T18:45Z), briefs/shaderplan569.md: #569 (fps-focus), research and plan, docs only. The owner's questions on shader compile stalls (native hardware vs hakuX, undispatched fixes, an Adreno/Turnip expert review, precompile and predictive compile on idle cores, ubershaders, per-title options, the visual cost of skipping). Output: NOTES with a ranked, priced plan of dispatchable items; lane.local dispatches them."
 
 [lane.shaderfb569]
@@ -1385,7 +1386,7 @@ note = "RETIRED (job.board 2026-09-26T20:40Z): PR #417 MERGED (fold 7e6a4ac88a),
 [lane.forza414]
 issues = ["414"]
 files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "hw/xbox/nv2a/pgraph/vk/draw.c", "hw/xbox/nv2a/pgraph/vk/shaders.c", "hw/xbox/nv2a/pgraph/vk/renderer.h", "hw/xbox/nv2a/pgraph/vk/renderer.c", "docs/testing/predictions/forza414-*.json", "docs/lanes/forza414/**"]
-released = ["hw/xbox/nv2a/pgraph/vk/draw.c"]
+released = ["hw/xbox/nv2a/pgraph/vk/draw.c", "hw/xbox/nv2a/pgraph/vk/surface.c", "hw/xbox/nv2a/pgraph/vk/shaders.c", "hw/xbox/nv2a/pgraph/vk/renderer.h", "hw/xbox/nv2a/pgraph/vk/renderer.c", "docs/testing/predictions/forza414-*.json", "docs/lanes/forza414/**"]
 # NOT STALE (job.board 2026-09-28T13:10Z): issue-sweep flagged #414 as owned by a dead
 # lane (no unit, no open PR) -- checked: PR #543 is OPEN and draft on lane/forza414-c,
 # the same suffixed-branch blind spot lane.suffixpr fixed in fleet.py but issue-sweep.sh
