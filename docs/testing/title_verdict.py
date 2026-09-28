@@ -72,6 +72,17 @@ run with no thermal.jsonl is judged as before, with `thermal.measured` false.
 `thermal.first_pause_s` is the time from the run's start (the `start` sample,
 just before `am start`) to the first pause, as the two bounds sampling gives:
 `after` (the last clean reading) and `by` (the first paused one).
+UNDER THE DEVICE'S DEFAULTS the pause is not a fault of the measurement but
+the thing measured. A run whose perf_regimen.json says `regimen: default`
+(soak_title.sh PERF_REGIMEN=default: performance_mode 0, fan SMART) is not
+voided by a pause; it FAILS, `thermal.failed_sustained` is true, and the
+failure names the pause and when it began, from the run's start. Its fps
+windows stand: they are what a player at the defaults got. Any pause from the
+start on counts, in or out of the scored window (one the cool-down gate waited
+out before the start does not). The owner's ruling, 2026-09-27 (#433):
+Playable is sustained play in the heat budget, and the fps bar is unchanged.
+`failed_sustained` is null when the run is not a `default` run or no sample
+read; a `default` run whose window is `thermal-unread` is still void.
 
 POWER (`power`, from the same samples; thermal_state.py, POWER). Reaching the
 frame rate by heating the handheld until it pauses is not playing, so a run
@@ -337,7 +348,20 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
                    window_covered=(None if not windowed else gap is None), gap=gap)
     fp = thermal_state.first_pause(therm or [])
     thermal["first_pause_s"] = dict(after=fp[0], by=fp[1]) if fp else None
-    if hit and void is None:
+    try:
+        with open(os.path.join(rdir, "perf_regimen.json")) as f:
+            regimen = json.load(f).get("regimen")
+    except (OSError, ValueError, AttributeError):
+        regimen = None
+    thermal["regimen"] = regimen
+    at_defaults = regimen == "default"
+    thermal["failed_sustained"] = (fp is not None) if at_defaults and read else None
+    sustained_fail = None
+    if thermal["failed_sustained"]:
+        e0 = [e for e in eps if e["before"] is None or e["before"] > thermal_state.origin(read)][0]
+        sustained_fail = ("thermal: sustained play failed at the device's defaults -- %s, from the run's start"
+                          % thermal_state.describe(e0, thermal_state.origin(read)))
+    if hit and void is None and not at_defaults:
         void = "thermal-pause: %s, relative to the mark" % thermal_state.describe(hit[0], mark_t)
     elif gap and void is None:
         void = "thermal-unread: %s, relative to the mark" % gap
@@ -482,6 +506,8 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
         fails.append("void: " + void)
     elif render_black:
         fails.append(render_black.group(0))
+    if sustained_fail and not void:
+        fails.append(sustained_fail)
     if truncated:
         at = ("%.0f s after the mark" % (open_break - mark_t)) if mark_t is not None \
             else "before any `mark gameplay` was captured"
