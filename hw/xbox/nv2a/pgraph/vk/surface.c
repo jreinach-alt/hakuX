@@ -1051,7 +1051,8 @@ void pgraph_vk_complete_staged_downloads(NV2AState *d, PGRAPHVkState *r)
  * by the site that last set their upload_pending (#414): a new or reused
  * invalid slot, a shelf hit stale by vram_newer or by a handoff fallback, the
  * CPU-write watch or its gap check, and "oth" for a setter this file does not
- * tag (blit.c). NV2A_PERF_LOG builds only.
+ * tag (blit.c). clrskip counts the uploads a covering clear dropped
+ * (surface_drop_covered_upload). NV2A_PERF_LOG builds only.
  */
 enum {
     UPW_NONE, UPW_NEW, UPW_INVALID, UPW_STALE, UPW_HANDOFF, UPW_CPUW, UPW_GAP,
@@ -1065,7 +1066,7 @@ static struct {
     int64_t wait_ns[SDC__COUNT];
     unsigned long su_upl, su_deferred;
     unsigned long why[UPW__COUNT];
-    unsigned long clr, clrfull;
+    unsigned long clr, clrfull, clrskip;
 } g_sdcall;
 
 /* The bindings a clearing update counted in why=, until the next update
@@ -1142,12 +1143,14 @@ static void sdcall_log(PGRAPHState *pg)
     if (n < (int)sizeof(buf)) {
         snprintf(buf + n, sizeof(buf) - n,
                  " su_upl=%lu su_deferred=%lu why=new%lu/inv%lu/stale%lu/"
-                 "hoff%lu/cpuw%lu/gap%lu/oth%lu clr=%lu clrfull=%lu",
+                 "hoff%lu/cpuw%lu/gap%lu/oth%lu clr=%lu clrfull=%lu "
+                 "clrskip=%lu",
                  g_sdcall.su_upl, g_sdcall.su_deferred,
                  g_sdcall.why[UPW_NEW], g_sdcall.why[UPW_INVALID],
                  g_sdcall.why[UPW_STALE], g_sdcall.why[UPW_HANDOFF],
                  g_sdcall.why[UPW_CPUW], g_sdcall.why[UPW_GAP],
-                 g_sdcall.why[UPW_NONE], g_sdcall.clr, g_sdcall.clrfull);
+                 g_sdcall.why[UPW_NONE], g_sdcall.clr, g_sdcall.clrfull,
+                 g_sdcall.clrskip);
     }
     SURF92_LOG("%s", buf);
     memset(&g_sdcall, 0, sizeof(g_sdcall));
@@ -4943,6 +4946,36 @@ static bool surface_update_may_defer_downloads(NV2AState *d, bool upload)
     return true;
 }
 
+/*
+ * #414: a clearing update whose clear will overwrite a binding whole does not
+ * need that binding's VRAM, so its upload is dropped, and with it the
+ * completion surface_update_may_defer_downloads forces for an uploading
+ * binding. On the Thor that was 0.96 of Forza's 2.86 forced surfupd finishes
+ * per frame (lane.forza414 NOTES 33). The rule is draw.c's, shared with
+ * mark_clear_full. What the upload does besides the copy still happens: the
+ * CPU-write watch is re-armed under the lock that sets upload_pending, and
+ * the binding counts as initialized (begin_draw asserts it; the render pass
+ * may load undefined texels, which the clear then covers).
+ */
+static void surface_drop_covered_upload(NV2AState *d, SurfaceBinding *s)
+{
+    PGRAPHState *pg = &d->pgraph;
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    if (!s || !s->upload_pending ||
+        !pgraph_vk_clear_covers_binding(pg, s, r->clear_parameter)) {
+        return;
+    }
+    qemu_rec_mutex_lock(&surface_watch_lock);
+    surface_watch_resume(d, s);
+    s->upload_pending = false;
+    UPW_SET(s, UPW_NONE);
+    qemu_rec_mutex_unlock(&surface_watch_lock);
+    s->draw_time = pg->draw_time;
+    s->initialized = true;
+    SDCALL_DO(g_sdcall.clrskip++);
+}
+
 // FIXME: Move to common?
 void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
                               bool zeta_write)
@@ -5010,6 +5043,10 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     }
 
     SURF413_ACC(part_ns, _s413);
+    if (upload && pg->clearing) {
+        surface_drop_covered_upload(d, r->color_binding);
+        surface_drop_covered_upload(d, r->zeta_binding);
+    }
     SDCALL_DO(if (r->num_deferred_downloads > 0 &&
                   !r->display_predownload_pending &&
                   r->deferred_downloads_frame < 0 && upload &&
