@@ -476,3 +476,80 @@ as registered, post the table on #526 and the PR, and mark #572 ready.
   thermal.jsonl. A soak's result has no verdict.json of its own.
 - A request.sh soak's power is 5 samples over about 130 s of gameplay. One
   run per arm is not a J/frame comparison.
+
+## Attempt 6 (2026-09-28 16:20 PDT): the batch read; Otogi void, re-queued
+
+### Why attempt 5 did not finish
+
+It ended correctly, waiting on its eight Thor soaks. They all finished;
+the handback job resumed this session. Nothing was lost.
+
+### Crimson Skies (Thor, f53000f7e4, 2 runs per arm, all valid)
+
+Order A1 B1 A2 B2. Start xo-therm: A1 46.9 C (cold), B1 66.1, A2 69.3,
+B2 68.5. No run paused; no crash or ANR; 13 windows each, all with
+`tid=`, `thr_cpu_ms` inside `thr_s` x 1000.
+
+| | A yield | B block | leg |
+|---|---|---|---|
+| gfps median | 29 / 29 | 29 / 29 | P1 holds |
+| wait CPU, ms per flip | 0.853 | 0.259 | W1 holds (A >= 0.5); H1 B/A 0.30, bar 0.25: **misses** |
+| thread CPU, ms per flip (all reporting tids) | 17.48 | 18.38 | H2: needs A-B >= 0.36; got -0.90: **fails** |
+| the PFIFO tid alone, ms per flip | 16.77 | 16.77 | (not a leg) |
+| deferred wait p99 us (median of windows) | 1025 | 1065 | K1 holds (<= A+100) |
+| perf gap max s | 1.65 | 1.9 | H0 holds |
+| net_w per run | 5.95, 5.33 | 6.47, 6.28 | |
+| J/frame pooled | 0.1976 | 0.2232 | E1 (a guess): **misses** |
+
+Reading:
+- The mechanism does what it says: 87% of B's waits block, 1.0 wake
+  per blocked wait, and the time spent spinning in the waits falls by
+  0.59 ms per flip (70%). H1 misses its 0.25 bar as it did in the pilot:
+  the residual is the 30 us poll on the ~13% of waits that end inside it
+  plus the futex call on the rest.
+- The removal does not show in the thread's CPU. The 0.59 ms falls inside
+  the run-to-run spread (A1 vs A2 on the PFIFO tid: 15.9 vs 17.6 ms per
+  flip). The "all tids" row is higher in B because a second tid reports in
+  both B runs and in only one A run; it is not a like-for-like sum.
+- Power: B minus A net_w per pair is +0.52 and +0.95 W (pilot: -0.36 W).
+  0.59 ms per flip at 28.4 flips/s is 17 ms/s of CPU, about 1.7% of one
+  core, which is tens of mW. The pair differences are 20-40 times that and
+  change sign across pairs. The 5-sample power record cannot see this
+  change, in either direction. It is not a power win on this evidence, and
+  the release note now says so.
+
+### Otogi: all four runs VOID, re-queued at 400 s
+
+`mark gameplay` is about 270 s into the otogi route (48 s boot wait, START,
+25 s, 6 A presses at 5 s, 35 at 4 s, B, 3 s, plus the 2 fps menu). The
+soaks were 240 s, so none reached it. The intro frames match
+lane.slowtier2's 550 s run, which marked gameplay 165 s after the intro
+shot, so the route itself works. That was my registration error: I did
+not add up the route's waits against `seconds`.
+
+P2 (a renderer-bound title's fps does not fall by more than 1) is the
+safety leg for the wake-up latency. B's waits take 0.25 ms longer per flip
+on Crimson, and that is harmless there because the title is capped. So it
+gets read before the PR folds. New prediction
+`docs/testing/predictions/pacing-rwait-otogi.json` (8f073fd457): same
+binary, arms and legs, 400 s, M0 at >= 8 windows. Queued A1 B1 B2 A2:
+
+| id | arm |
+|---|---|
+| 1-1790637578-lane.pacing-3957178 | A1 yield |
+| 1-1790637578-lane.pacing-3957219 | B1 block |
+| 1-1790637578-lane.pacing-3957257 | B2 block |
+| 1-1790637579-lane.pacing-3957294 | A2 yield |
+
+On resume: `python3 docs/lanes/pacing/rwait_judge.py --a <A1 A2> --b <B1 B2>`,
+apply P2, F0, K1 and H0 (a run with `first_pause_s` inside the window
+is not read for P2), post on #526 and #572, and mark #572 ready if P2
+holds. If P2 fails, the next step is a longer poll bound (K1's note), not
+reverting the block.
+
+### For the next lane
+
+- Add up a route's waits before choosing `seconds`. A soak that ends
+  before `mark gameplay` is VOID in every arm.
+- A 1-2% of one core CPU saving is below what the 5-sample power record
+  resolves. Price one with thread CPU over longer runs, not with J/frame.
