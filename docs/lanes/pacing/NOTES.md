@@ -113,8 +113,8 @@ grow, not that blocking is wrong.
 
 ## Status and what the next lane should not repeat
 
-- Code and predictions are pushed; arms not yet read. See the PR for the
-  current state.
+- Code and predictions are pushed. Pilot, display and pixel arms are read
+  (attempt 2, below). The second runs are queued.
 - 2026-09-27 18:45 PDT, WAITING on the Nova (about an hour of other
   lanes' work ahead):
   - limiter pilot, pacing-limiter-kabuki.json: A1 spin
@@ -131,3 +131,81 @@ grow, not that blocking is wrong.
 - A lone host-side compile of the limiter helpers (stubs, `-Wall -Wextra`)
   was clean; running it needs approval a headless lane cannot get, so the
   device arm is the first run.
+
+## Attempt 2 (2026-09-27 late PDT): why attempt 1 did not finish
+
+Attempt 1 ended correctly, with `waiting:` on dispatch ids, but its runs sat
+about an hour behind other lanes' work. Several then had to be re-run: the
+Nova dropped off adb, a "Use USB for" dialog took focus after the replug,
+and lane.titleroutes force-stopped the first base pgraph arm on the Thor.
+Nothing resumes a lane when a run finishes, so the reading waited for
+hostops' addendum. No code was left unfinished.
+
+### Pilot (Kabuki, Nova, 30 s to `mark gameplay`, 1 run per arm): passes
+
+| field | A spin (…2276057) | B sleep (…2277012) |
+|---|---|---|
+| windows / pause samples | 21 / 0 | 21 / 0 |
+| gfps median | 59 | 59 |
+| wait_cpu_ms per display frame (H1) | 1.367 | 0.011 |
+| thr_cpu_ms per display frame (H2) | 1.713 | 0.572 |
+| proc_cpu_ms per flip (H3) | 26.19 | 25.61 |
+| late p99 median / max bin, us | 50 / 50 | 200 / 250 |
+| late_max_us, frames > 1 ms | 80, 0 | 1189, 1 of 12612 |
+| pres within 1 ms of 16.67 | 0.993 | 0.991 |
+| flips taking 2+ VBLANKs | 0.25% | 0.22% |
+
+H2: 1.14 ms fell out of 1.36 ms of removed wait (ratio 0.84, band 0.6-1.4).
+H3 holds by a hair: 0.58 against a floor of 0.57. It needs the second runs
+before anyone quotes it. Pilot file: `pilots/lane.pacing.ok`.
+
+### Display (Nova, Kabuki, 30-140 s): the prediction's guess held
+
+| arm | request | before | after |
+|---|---|---|---|
+| A (…2288269-r2) | none | mode 2, 120 Hz | (no change) |
+| B (…2288358-r2) | `setFrameRate(60, FIXED_SOURCE)` | mode 2, 120 Hz | **120 Hz** (overridden) |
+| C (…2288430) | + `preferredDisplayModeId=1` | mode 2, 120 Hz | **mode 1, 60 Hz** (`changed` line) |
+
+`min_refresh_rate` read 120.00001 in all three. gfps 59 / 59 / 59, and
+proc CPU per flip 20.71 / 20.78 / 20.88. So the user-level minimum outranks
+`setFrameRate` on this Nova (Android 13, sdk=33), and the window's base-mode
+vote outranks the user minimum. On the Nova, `HAKUX_SURFACE_RATE=mode` is the
+lever. `off` (the default) and plain `setFrameRate` leave the panel at 120 Hz.
+The pairs below measure CPU, not panel power. No power record exists yet
+(#523), so what the 60 Hz panel saves in watts is still unmeasured.
+
+### Pixel arm (pacing-pgraph-inert.json): holds, but on a cross-device pair
+
+Base re-run 1-1790565197-arms-pacing-base-rr ran on the **Nova**, and fix
+1-1790560695-arms-pacing-fix-2707884 on the **Thor**. That happened because
+the re-run was not pinned to the first arm's device. Both arms have 682 rows,
+all `ok`/`white-content` in the same places, 0 unreadable, and 0
+UtilAcceptVsock lines. 681 rows are identical in differing/max_rgb/max_a/
+off_by_one. The one that moved, `Vertex_shader_rounding_tests/GeometrySuperscreen_0.0010`
+(0 → 400 px, max 255), is outside must_not_move on purpose. It also scored
+both 0 and 800 at one ref (2dc2b5c49a, the dpforce345 base arms). I did not
+spend a same-device re-run on it.
+
+### Queued 2026-09-27 ~23:52 PDT (ref ead1086cb5, `1-` priority)
+
+| id | device | what |
+|---|---|---|
+| 1-1790575938-lane.pacing-1078186 | nova | Kabuki A2 spin |
+| 1-1790575939-lane.pacing-1078233 | nova | Kabuki B2 sleep |
+| 1-1790575939-lane.pacing-1078282 / -1078334 | nova | DOA1U A1 spin / B1 sleep |
+| 1-1790575939-lane.pacing-1078381 / -1078429 | nova | DOA1U A2 spin / B2 sleep |
+| 1-1790575940-lane.pacing-1078477 / -1078524 | nova | vsync Kabuki swap 0 / 1, at 60 Hz (`mode`) |
+| 1-1790575940-lane.pacing-1078573 / -1078630 | nova | vsync DOA1U swap 0 / 1, at 60 Hz |
+| 1-1790575941-lane.pacing-1078684 / -1078761 | thor | display TA1 off / TB1 setFrameRate |
+
+Judge commands are in each prediction's `judge` field. The arms job SKIPPED
+the soak predictions (`a_ref == b_ref`). That is expected: they are env A/Bs
+on one binary, and I queue them myself.
+
+### For the next lane
+
+- Pin every re-run of an A/B arm to the other arm's device. An unpinned
+  re-run is how the pixel pair above ended up Nova against Thor.
+- On a Nova with `min_refresh_rate=120`, `Surface.setFrameRate` alone does
+  nothing. Do not measure the panel's power with it.
