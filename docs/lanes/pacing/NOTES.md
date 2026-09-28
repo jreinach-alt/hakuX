@@ -1,8 +1,9 @@
 # lane.pacing (#526)
 
 Host work that does no emulation, removed for power at zero fps cost: the
-frame limiter's busy spin, the 120 Hz panel under a 60 Hz presenter, and
-(proposed only) the two render waits in vk/draw.c.
+frame limiter's busy spin, the 120 Hz panel under a 60 Hz presenter
+(PR #529, folded as d054c1c731), and the two render waits in vk/draw.c
+(PR #572, branch lane/pacing-spin; see "Attempt 4" at the end).
 
 ## What changed (branch lane/pacing)
 
@@ -294,3 +295,83 @@ Every leg is read. What is still open, and not this PR's to close:
   moves the panel is `mode`. Making it the default is a product call,
   because it overrides the user's own 120 Hz minimum.
 - vk/draw.c: still lane.forza414's; the proposal above stands.
+
+## Attempt 4 (2026-09-28): the vk/draw.c render waits, PR #572
+
+### Why attempt 3 did not finish
+
+It did, as far as it could: every leg of PR #529 was read, CI was green, and
+the session ended with the PR in draft waiting on the arms job's verdict.
+The handback job resumed the lane (arms label `verified`), and #529 folded
+as d054c1c731. Hostops then lent `hw/xbox/nv2a/pgraph/vk/draw.c` from
+lane.forza414 for the two `sched_yield` waits only, on a second PR on
+`lane/pacing-spin`. That is this attempt.
+
+### What changed (23f0ee233f)
+
+Both waits in `pgraph_vk_finish` (the deferred finish, and the frame
+rotation when the next slot is still queued) call `wait_frame_submitted()`:
+
+1. return at once if `frame_submitted[frame]` is already set (counted as a
+   call, not a wait);
+2. poll the flag for up to 30 us with `cpu_relax()`;
+3. then block on the render thread's `idle_event`: reset, check, wait,
+   loop. `render_thread.c` sets that event after every command it
+   completes, so the waiter wakes once per drained command and checks again.
+   The finish being waited on is still queued or running, so another set
+   always follows. On the way out the waiter sets the event again, because
+   `pgraph_vk_render_thread_wait_idle()` shares it: a reset here could swallow a
+   set that a caller on another thread had not observed yet. An extra set
+   costs that caller one more check of its queue.
+
+`HAKUX_RENDER_WAIT=yield` keeps the old loop. The render-thread context
+keeps the old loop too: it cannot wait on itself, and `wait_idle` returns
+early there.
+
+Why `idle_event` and not a new per-frame event, which the proposal above
+named: the setters of `frame_submitted` are in `render_thread.c` (:153) and
+`submit_worker.c` (:61). Neither file is lent to this lane, so a new event
+could not be set. The submit worker is dead code (nothing calls
+`pgraph_vk_submit_worker_enqueue`), and `idle_event` is the render thread's
+only per-command signal. `pending_post_fence_cb` is never set to non-NULL
+anywhere. If it were, a deferred finish would wait for its fence before the
+idle set, and the block would return later than the spin.
+
+`[rwait526]` (tag `hakuX-lane`, every 10 s, from the PFIFO thread): flips,
+`thr_cpu_ms` and `wait_cpu_ms` of that thread, and per site calls, waits,
+spun, blocked, wakes, wait wall-time p50/p99/max (10 us bins). The wait's CPU
+is two `CLOCK_THREAD_CPUTIME_ID` reads per non-trivial wait, in both modes
+alike.
+
+No host compile of draw.c exists here. The helper compiled standalone
+(`gcc -Wall -Wextra`, desktop and `-D__ANDROID__` with a log stub,
+`.rwait_test.c`, not committed) with no warnings. Running that harness
+needs an approval a headless lane cannot get, so the device run is the
+first execution.
+
+### Predictions (registered 18:31Z, before any run)
+
+- `pacing-rwait-pgraph-inert.json`: 12 pgraph suites byte-identical,
+  01e62d8d1c vs 23f0ee233f. Queued by the arms job.
+- `pacing-rwait-soak.json`: one binary (23f0ee233f), A
+  `HAKUX_RENDER_WAIT=yield`, B unset, both `PERF_REGIMEN=default`, Thor,
+  240 s. Crimson Skies (30-capped) and Otogi (renderer-bound), 2 runs per arm.
+  Legs M0, F0, W1 (premise: A spends >= 0.5 ms of wait CPU per flip on
+  Crimson), H1, H2, K1 (wake-up cost <= 100 us at p99), P1, P2, H0 (no
+  hang), E1 (J/frame, a labelled guess), T. Judge:
+  `docs/lanes/pacing/rwait_judge.py --a ... --b ...`.
+
+### Queued (pilot, Thor)
+
+| id | arm |
+|---|---|
+| 1-1790620342-lane.pacing-1207085 | Crimson A1, yield |
+| 1-1790620342-lane.pacing-1207159 | Crimson B1, block |
+
+On resume: `python3 docs/lanes/pacing/rwait_judge.py --a <A1> --b <B1>`.
+Check that F0 holds, that the windows are there, that B blocked, and that A's
+wait CPU per flip is not ~0. If W1 fails (A under 0.5 ms per flip), the lever
+is small on this title: say so and do not queue the rest of the Crimson runs.
+If the pilot reads, write `pilots/lane.pacing.ok` (python3) and run
+`bash docs/lanes/pacing/queue_rwait.sh rest` (Otogi A1/B1, Crimson A2/B2,
+Otogi A2/B2; 6 x 330 s).
