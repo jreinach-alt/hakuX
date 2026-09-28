@@ -96,3 +96,9 @@ line (E0).
    `queue_order`).
 3. Read the arms job's `[job.arms]` verdict for the pgraph pair, and grep
    B's logcat for the `render_mode: auto (default)` line.
+
+## Waiting (2026-09-28 ~02:00Z)
+
+Waiting on three things: the pilot (A `-2188053`, B `-2188203`), CI on
+`e2f5c22c1b`, and the arms job's pgraph pair. Posted as
+`[lane.rendermode474] waiting:` on #530.
