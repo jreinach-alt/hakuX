@@ -50,6 +50,7 @@
 #include "internal-common.h"
 #include "tb-cache-hints.h"
 #include "accel/tcg/hakux-tlb68.h"
+#include "accel/tcg/hakux-ibc.h"
 #ifdef __ANDROID__
 #include <android/log.h>
 #endif
@@ -1023,6 +1024,7 @@ static void jc425_tick(void)
 {
     static const char cname[JC425_NCALLER] = { 'i', 'l', 'a' };
     static uint64_t prev[JC425_NCALLER][JC425_NOUT];
+    static uint64_t prev_ibc;
     static int64_t prev_ns;
     static unsigned window;
     int64_t now = get_clock();
@@ -1049,9 +1051,16 @@ static void jc425_tick(void)
                             cname[c], d[JC425_KEY], cname[c],
                             d[JC425_QHT_FOUND], cname[c], d[JC425_QHT_NONE]);
         }
-        JC425_LOG("[jc425] w=%u dt=%" PRId64 " jc=%d%s", window++,
+        JC425_LOG("[jc425] w=%u dt=%" PRId64 " jc=%d%s", window,
                   (now - prev_ns) / 1000000, hakux_tlb68_jc_on(), buf);
+        /* #507, HAKUX_IBC=2 only: inline probe hits, beside the ih above */
+        if (hakux_ibc_hits != prev_ibc) {
+            JC425_LOG("[ibc507] w=%u dt=%" PRId64 " hits=%" PRIu64, window,
+                      (now - prev_ns) / 1000000, hakux_ibc_hits - prev_ibc);
+        }
+        window++;
     }
+    prev_ibc = hakux_ibc_hits;
     memcpy(prev, jc425_n, sizeof(prev));
     prev_ns = now;
 }
@@ -1670,6 +1679,56 @@ const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
 
     return tb->tc.ptr;
 }
+
+#ifdef XBOX
+/*
+ * #507: the layout the front end's inline jump-cache probe reads
+ * (hakux-ibc.h). The probe skips the helper's hit path above: the call,
+ * get_tb_cpu_state, curr_cflags and the key compares in tb_lookup (18.4% of
+ * the vCPU on GTA, docs/lanes/vcpuplan/NOTES.md). A miss still calls the
+ * helper, so the qht, breakpoints and translation stay here.
+ */
+uint64_t hakux_ibc_hits;
+
+bool hakux_ibc_enabled(HakuxIbcLayout *l)
+{
+    static const vaddr probe[] = {
+        0, 0x3f, 0x40, 0xfff, 0x1000, 0x10abc, 0x80012345, 0xfffff000,
+        0xffffffff, 0x7ffe0,
+    };
+    const char *e = getenv("HAKUX_IBC");
+    bool on = !(e && e[0] == '0');
+    bool ok = true;
+
+    l->array_ofs = offsetof(CPUJumpCache, array);
+    l->entry_shift = ctz32(sizeof(((CPUJumpCache *)0)->array[0]));
+    l->tb_ofs = offsetof(CPUJumpCache, array[0].tb)
+                - offsetof(CPUJumpCache, array[0]);
+    l->pc_ofs = offsetof(CPUJumpCache, array[0].pc)
+                - offsetof(CPUJumpCache, array[0]);
+    l->hash_shift = TARGET_PAGE_BITS - TB_JMP_PAGE_BITS;
+    l->page_mask = TB_JMP_PAGE_MASK;
+    l->addr_mask = TB_JMP_ADDR_MASK;
+    l->count = e && e[0] == '2';
+
+    /* The probe computes this formula; it must be the jump cache's hash. */
+    if (sizeof(((CPUJumpCache *)0)->array[0]) != 1u << l->entry_shift) {
+        ok = false;
+    }
+    for (size_t i = 0; i < ARRAY_SIZE(probe); i++) {
+        vaddr pc = probe[i];
+        vaddr t = pc ^ (pc >> l->hash_shift);
+        uint32_t h = ((t >> l->hash_shift) & l->page_mask)
+                     | (t & l->addr_mask);
+        if (h != tb_jmp_cache_hash_func(pc)) {
+            ok = false;
+        }
+    }
+    JC425_LOG("[ibc507] on=%d layout=%s count=%d HAKUX_IBC=%s",
+              on && ok, ok ? "ok" : "MISMATCH", l->count, e ? e : "(unset)");
+    return on && ok;
+}
+#endif
 
 /* Return the current PC from CPU, which may be cached in TB. */
 static vaddr log_pc(CPUState *cpu, const TranslationBlock *tb)
