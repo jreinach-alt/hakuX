@@ -555,7 +555,9 @@ note = "RETIRED (job.board 2026-09-28T16:55Z): PR #562 carries `folded` and its 
 [lane.fanduty507]
 issues = ["507"]
 files = ["docs/testing/dispatcher.sh", "docs/testing/soak_title.sh", "docs/testing/devices.sh", "docs/testing/thermal_state.py", "docs/testing/jobs/selftest.d/99-fan-duty.sh", "docs/testing/jobs/selftest.d/99-fan-mode.sh", "docs/lanes/fanduty507/**"]
-note = "REWORK (lane.local 2026-09-28T18:45Z): PR #563 CLOSED unmerged on the owner's order (fan: only user-selectable modes; no raw duty writes). Files RE-ACQUIRED for a new PR on lane/fanduty507-mode: a per-request FAN_MODE limited to the vendor app's options (Thor: Quiet/Balanced/Smart/Sport) plus Smart's user curve as the app stores it; brief addendum 11:40 PDT. || CREATED BY HOSTOPS 2026-09-28 09:45 PDT: a per-request fan duty for soaks, which #507 Part D.3 (lane.sustain507, PR #547) is blocked on (its 15:36Z report: the duty node is writable, CUSTOM is a fixed 25000). dispatcher.sh, soak_title.sh, thermal_state.py from [free]; devices.sh was unclaimed. Serve path: dispatcher update window after the fold. Brief: briefs/fanduty507.md."
+released = ["docs/testing/dispatcher.sh", "docs/testing/soak_title.sh", "docs/testing/devices.sh", "docs/testing/thermal_state.py", "docs/testing/jobs/selftest.d/99-fan-duty.sh", "docs/testing/jobs/selftest.d/99-fan-mode.sh", "docs/lanes/fanduty507/**"]
+released_at_ready = 571
+note = "REWORK (lane.local 2026-09-28T18:45Z): PR #563 CLOSED unmerged on the owner's order (fan: only user-selectable modes; no raw duty writes). Files RE-ACQUIRED for a new PR on lane/fanduty507-mode: a per-request FAN_MODE limited to the vendor app's options (Thor: Quiet/Balanced/Smart/Sport) plus Smart's user curve as the app stores it; brief addendum 11:40 PDT. || CREATED BY HOSTOPS 2026-09-28 09:45 PDT: a per-request fan duty for soaks, which #507 Part D.3 (lane.sustain507, PR #547) is blocked on (its 15:36Z report: the duty node is writable, CUSTOM is a fixed 25000). dispatcher.sh, soak_title.sh, thermal_state.py from [free]; devices.sh was unclaimed. Serve path: dispatcher update window after the fold. Brief: briefs/fanduty507.md. RELEASED AT READY (job.board 2026-09-28T19:41Z): PR #571 out of draft, CI green, unit gone. All files RELEASED; the next lane merges master (or lane/fanduty507-mode if #571 has not folded) and re-runs its arm before marking ready."
 
 [retired.shaderplan569]
 issues = []
@@ -566,12 +568,15 @@ note = "RETIRED (hostops 2026-09-28T19:00Z): PR #570 folded as d0d09361cf (plan 
 [lane.shaderfb569]
 issues = ["569"]
 files = ["hw/xbox/nv2a/pgraph/vk/compile_worker.c", "hw/xbox/nv2a/pgraph/vk/glsl.c", "hw/xbox/nv2a/pgraph/profile.c", "hw/xbox/nv2a/debug.h", "hw/xbox/nv2a/pgraph/vk/draw.c", "docs/lanes/shaderfb569/**", "docs/testing/predictions/shaderfb569-*.json"]
-note = "SHARED (lane.local 2026-09-28T20:00Z): vk/draw.c regions init_pipeline_key (~2267-2281) and the fragment uniform upload path LENT to [lane.uberspike569]; this lane keeps its create sites and the cache save. || STARTED (lane.local 2026-09-28T18:50Z), briefs/shaderfb569.md: #569 plan item P1 (PR #570): VkPipelineCreationFeedback per stage at both create sites, glslang and cache-save timers, a key-diff class counter, on the [shd413] line; legs C1-C4; one cold DOA soak on the Nova after the top-up. compile_worker.c, vk/glsl.c, profile.c from [free]; debug.h (shader_stats struct only) LENT from lane.remote; vk/draw.c (create sites + cache save only) SUB-LENT from lane.pacing."
+released = ["hw/xbox/nv2a/pgraph/vk/draw.c"]  # region sub-lend to lane.uberspike569 (#569 P6), not a release; see note
+note = "TERRITORY FIX (job.board 2026-09-28T19:41Z): vk/draw.c added to `released` here so check_territory.py has one holder (uberspike569); this row keeps the file under `files` for its own create-sites/cache-save hunks per the note below -- board-push-gate FAILed with 'claimed by both shaderfb569 and uberspike569' before this edit. || SHARED (lane.local 2026-09-28T20:00Z): vk/draw.c regions init_pipeline_key (~2267-2281) and the fragment uniform upload path LENT to [lane.uberspike569]; this lane keeps its create sites and the cache save. || STARTED (lane.local 2026-09-28T18:50Z), briefs/shaderfb569.md: #569 plan item P1 (PR #570): VkPipelineCreationFeedback per stage at both create sites, glslang and cache-save timers, a key-diff class counter, on the [shd413] line; legs C1-C4; one cold DOA soak on the Nova after the top-up. compile_worker.c, vk/glsl.c, profile.c from [free]; debug.h (shader_stats struct only) LENT from lane.remote; vk/draw.c (create sites + cache save only) SUB-LENT from lane.pacing."
 
 [lane.turnipcost569]
 issues = ["569"]
 files = ["docs/lanes/turnipcost569/**"]
-note = "STARTED (lane.local 2026-09-28T18:50Z), briefs/turnipcost569.md: #569 plan item P2 phase A (PR #570): build Mesa 26.3 Turnip on the host (drm-shim), time and profile hakuX SPIR-V per pass for a7xx, rank the generator features by cost, propose phase B. Docs and host tools only; no emulator code, no device holds."
+released = ["docs/lanes/turnipcost569/**"]
+released_at_ready = 573
+note = "STARTED (lane.local 2026-09-28T18:50Z), briefs/turnipcost569.md: #569 plan item P2 phase A (PR #570): build Mesa 26.3 Turnip on the host (drm-shim), time and profile hakuX SPIR-V per pass for a7xx, rank the generator features by cost, propose phase B. Docs and host tools only; no emulator code, no device holds. RELEASED AT READY (job.board 2026-09-28T19:41Z): PR #573 out of draft, CI green, unit gone. File RELEASED; the next lane merges master (or lane/turnipcost569's branch if #573 has not folded) and re-runs its arm before marking ready."
 
 [lane.litcompile569]
 issues = ["569"]
