@@ -164,3 +164,81 @@ path. Read the time-weighted rate, not a line median.
 
 Next lane: do not re-queue either Blinx arm or the pixel arm. Do not read P1
 off gfps line medians.
+
+## Why attempt 2 did not finish
+
+It also ended as a wait, correctly. The AUF pair was queued on the Nova
+behind other device work. Attempt 2 posted `[lane.drain474] waiting:` on #517
+naming both requests. The pair finished at about 20:15 PDT on 09-27, and
+handback resumed the lane.
+
+## Results (attempt 3, 2026-09-28): AUF pair, and energy per frame
+
+**AUF pair** (Nova `ee317437`, both arms, MAX regimen, 420 s survey, window
+255-411 s). A is `1-1790559191-drain474-1881273` on 3b5c577e9c, and B is
+`1-1790559196-drain474-1882754` on 73a4126325. Power is from `title_verdict.py`
+(master), run on copies in /tmp. Its scored window is mark to soak end, not
+255-411 s.
+
+| | A 3b5c577e9c | B 73a4126325 |
+|---|---|---|
+| txw lines / flips (255-411 s) | 43 / 2580 | 44 / 2640 |
+| flips/s (time-weighted) | 16.68 | 16.97 (+1.7%) |
+| ms/flip | 60.0 | 58.9 |
+| `bt` bind_textures wall | 4.55 ms/flip | 0.10 ms/flip |
+| `faf` flush_all_frames | 0.30 calls, 4.45 ms/flip | 0.00, 0.00 |
+| `bs` direct binds | 1.00 /flip | 1.00 /flip |
+| `cp` / `up` | 0 / 0 | 0 / 0 |
+| gfps line median (n) | 16 (43) | 17 (44) |
+| title_verdict fps window median | 16.63 | 16.93 |
+| thermal pauses (whole run) | none | none |
+| validation / crash / device-lost lines | 0 | 0 |
+| battery_w (discharging) | 4.96 W | 4.42 W |
+| usb_w (measured) | 2.11 W | 2.11 W |
+| net_w | 7.07 W | 6.53 W |
+| **j_per_frame** | **0.4245 J** | **0.3842 J (-9.5%)** |
+| power samples in the window | 5 | 6 |
+
+Legs of `drain474-auf-soak.json`:
+- M0 holds. Both arms have 43-44 txw lines, and the play shots (A 200622,
+  B 201407) show the same spot in the first level.
+- M1 holds.
+- F2 holds. The two shots match, with no stale, torn or black quads. Neither
+  logcat has a validation, device-lost or crash line.
+- P0 holds: `faf` 0.30 is in 0.15-0.40, and `cp` is 0.
+- F1 holds: `faf` is 0.00, and `bs` is 1.00 in both arms.
+- P1 holds: 17 >= 16 - 0.5.
+- P2 holds: the bound is 1000/(60.0 - 4.45) + 0.5 = 18.5, and B is at 16.97.
+
+So AUF shows the same thing as Blinx. The drain is gone, and fps moves by
++0.3 (+1.7%), about a fifth of the 4.45 ms the drain took. That is within what
+one survey run per arm can resolve.
+
+**Blocking wait or CPU work.** The drain was a blocking wait.
+`pgraph_vk_flush_all_frames` (draw.c) is `pgraph_vk_render_thread_wait_idle`,
+which calls `qemu_event_wait` on the render thread's idle event, followed by
+`vkWaitForFences(..., UINT64_MAX)` on each submitted frame. The only work
+after that is per-slot bookkeeping. So the 4.45 ms/flip (AUF) and
+7.91 ms/flip (Blinx) removed were time the PGRAPH thread spent asleep. Each
+drain waited out the GPU work already in flight, and that GPU work still
+bounds the frame once the drain is gone. Removing a sleep should save little
+CPU energy.
+
+**Energy.** AUF's net power fell 0.53 W and J/frame fell 9.5%, from one pair
+with 5-6 power samples each. The USB input was identical (2.11 W), so the
+difference is on the battery side. A blocking wait does not explain a 0.5 W
+drop. What could: fewer wake/sleep cycles on the PGRAPH thread, a GPU that
+stays busy instead of idling and re-clocking at every drain, or the battery's
+state of charge moving between the two runs. This measurement cannot tell
+those apart. Read it as "not worse, possibly better", not as a 9.5% saving.
+A replicate pair would be needed to claim a number.
+
+**Blinx has no power record.** Both Blinx arms (`1-1790549563-drain474-2135431`
+and `-2135559`) ran before #523 went live. `title_verdict.py` reports
+`power.measured: false` with 0 samples for both, so Blinx has no J/frame, and
+none is estimated here. The same reasoning covers it: its 7.9 ms/flip was the
+same blocking drain.
+
+Next lane: do not re-queue the AUF pair, the Blinx pair or the pixel arm. If
+an energy claim is wanted, queue one replicate AUF pair on the Nova and read
+`power` with `title_verdict.py`. Do not change code for it.
