@@ -2297,11 +2297,6 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
         bool did_upload = false;
         if (surface_to_texture) {
             if (surface->draw_time != snode->draw_time) {
-                if (snode->submit_time + r->num_active_frames > r->submit_count) {
-                    TXW_BEGIN(FAF);
-                    pgraph_vk_flush_all_frames(pg);
-                    TXW_END(FAF);
-                }
                 bool can_direct_bind =
                     (surface->color ||
                      !(surface->host_fmt.aspect &
@@ -2326,6 +2321,26 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
                     r->tex_surface_direct_layout[texture_idx] = direct_layout;
                     r->texture_bindings_changed = true;
                 } else {
+                    /*
+                     * #474: only the copy writes the node's image, so only
+                     * the copy waits for the frames that may still sample it.
+                     * A direct bind writes nothing into the node: it barriers
+                     * the surface's own image in queue order and points the
+                     * slot at the surface's view. In-flight frames keep the
+                     * descriptors they were recorded with (pushed, or a set
+                     * from a ring that is only reused after its own drain),
+                     * and the node's view and layout are untouched. The
+                     * cache-miss bind and the same-draw_time rebind already
+                     * bind directly without this drain. On AUF (Nova) it ran
+                     * 0.27 times a flip at 16.6 ms each, every one of them
+                     * ahead of a direct bind.
+                     */
+                    if (snode->submit_time + r->num_active_frames >
+                        r->submit_count) {
+                        TXW_BEGIN(FAF);
+                        pgraph_vk_flush_all_frames(pg);
+                        TXW_END(FAF);
+                    }
                     TXW_BEGIN(CP);
                     copy_surface_to_texture(pg, surface, snode);
                     TXW_END(CP);
