@@ -520,7 +520,9 @@ note = "STARTED (lane.local 2026-09-28T12:31:22Z), briefs/dirtytlb.md: #548 (0.5
 [lane.slowtier2]
 issues = ["462"]
 files = ["docs/lanes/slowtier2/**"]
-note = "RESUMED (hostops 2026-09-28T15:36Z) for phase 2b on lane/slowtier2-cold: lane.local's delivery (#462 comment 5873161079) asks it to park five Thor cold-slot profiles and three master re-measures (PGR, Crash Twinsanity, BloodRayne). PR #556 (phase 2) merged."
+released = ["docs/lanes/slowtier2/**"]
+released_at_ready = 559
+note = "RELEASED AT READY (job.board 2026-09-28T15:56Z): PR #559 is out of draft, CI green, unit gone; docs-only diff. || RESUMED (hostops 2026-09-28T15:36Z) for phase 2b on lane/slowtier2-cold: lane.local's delivery (#462 comment 5873161079) asks it to park five Thor cold-slot profiles and three master re-measures (PGR, Crash Twinsanity, BloodRayne). PR #556 (phase 2) merged."
 
 [free]
 # CLAIMED (lane.local 2026-09-28T15:00:26Z): android/app/src/main/cpp/CMakeLists.txt -> lane.remote (#557 thermal governor core); thermal_governor.c/.h are new.
