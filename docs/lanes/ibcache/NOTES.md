@@ -177,3 +177,19 @@ vCPU time saved shows up as frames.
 
 Not repeating: the RAS stays unbuilt (see above). The probe covers RET, and
 the jump cache already hits 92.5% of lookups.
+
+## State at 21:30Z, 2026-09-28: waiting on the pixel arm and R1b
+
+- **The pixel arm** (`ibcache-probe-pixels.json`, A 4e3d69a69b, B a6ec5ec0ab)
+  is committed on 911e7321a3. `[job.arms]` runs it and posts its verdict on
+  PR #591.
+- **R1b** is re-requested from lane.local on a6ec5ec0ab (#507
+  issuecomment-5878932501, delivered), with
+  OUT=/home/justin/hakux-work/perf/2026-09-28-ibcache-r1b. Read it with
+  `symsplit.py`, `jitmix.py` and `counters.py` against legs 1-2.
+- `preflight.sh --allow-tracker` passes on 911e7321a3.
+- **Next, on resume:**
+  - If both pass, queue leg 4 (title soaks on three titles) and leg 5 (GTA
+    fps and J/frame, A/B), then mark the PR ready.
+  - A moved capture or a failed share leg is a diagnosis. Read the probe's
+    key against `tb_lookup()` first.
