@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 271
-updated_utc = "2026-09-28T01:30:40Z"
+wave = 272
+updated_utc = "2026-09-28T02:53:00Z"
 
 [retired.hilodot10]
 issues = ["10"]
@@ -411,11 +411,17 @@ retired_utc = "2026-09-27T06:40:00Z"
 files = []
 note = "RETIRED (hostops 2026-09-26 23:40 PDT): PR #464 folded as 55a82867dd; unit gone. The dispatcher now serves a handheld that attaches after it started."
 
-[lane.slowdown462]
-issues = ["462", "482"]
-files = ["docs/lanes/slowdown462/**"]
+[retired.slowdown462]
+issues = []
+retired_utc = "2026-09-28T02:53:00Z"
+files = []
 standing = false
-note = "PASSED ON (hostops 2026-09-27 15:48 PDT): hw/xbox/nv2a/pgraph/vk/texture.c -> lane.drain474 (Ask 8: the #474 fix for the drain before a direct s2t bind), based on lane/slowdown462-bindtex so PR #512's probe rides along; PR #512 needs no further texture.c edits (Blinx read + ready only). GRANTED (hostops 2026-09-27 14:10 PDT): hw/xbox/nv2a/pgraph/vk/texture.c LENT from [lane.remote], perflog-only probe hunk in pgraph_vk_bind_textures (#474, texture-bind wait ~9 ms/frame AUF/Blinx); no default-build change; return at fold. RESUMED (job.board 2026-09-27T20:18 PDT), attempt 3: #462/#482 per-title frame-time attribution on the Nova (AUF, Blinx, Blinx 2, Forza, DOA1U, GTA); Ask 7 grant covers one more held Thor session for GTA open-world. PRs #463/#477/#483 merged; row was missing from territory.toml -- written by job.board from briefs/slowdown462.md and fleet.py's report."
+note = "RETIRED (job.board, issue sweep): no hakux-lane-* unit and no open PR on lane/slowdown462 (PRs #463/#477/#483/#509/#512 all MERGED); the row was still claiming #462 and #482 with nothing running. Both issues stay dispatch_state=blocked, not reopened to dispatch -- their own blocked_on already names the real current owners: #462's remedies are lane.rendermode474 (PR #530), lane.drain474 (PR #517), lane.forza414 (PR #518) and lane.idlehalt (#525); #482's GTA attribution is done (PR #483) and its open-world regime is lane.thermal507's (#507). docs/lanes/slowdown462/** RELEASED TO [free]."
+
+[lane.reqprio]
+issues = ["432"]
+files = ["docs/testing/request.sh", "docs/testing/jobs/selftest.d/99-request-release-prio.sh"]
+note = "Created by hostops 2026-09-27 19:55 PDT. request.sh LENT from lane.toolsmith (return it to that row at retirement), as for lane.pilotgate. Why: request.sh gives the release `1-` priority only when the caller exports HAKUX_RELEASE_PRIO, so lanes queueing directly with request.sh got plain ids for 0.5/fps-focus work; 11 Nova requests (#474 #525 #526) waited 60-73 min behind later-queued work. Brief: briefs/reqprio.md. ROW WRITTEN BY job.board (board tick 2026-09-28T02:53Z): lane was RUNNING (attempt 1/opus-5-5, no PR yet) with no row in root territory.toml -- it existed only in docs/testing/territory.toml, a path check_territory.py/board_files.py does not read (the live file is root-level territory.toml as committed on origin/board); invisible to check_territory.py until now."
 
 [retired.displayguard]
 issues = []
@@ -487,6 +493,7 @@ files = ["docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/99-cloud-la
 note = "STARTED (hostops 2026-09-28T01:45Z), briefs/cloudlaneguard.md: harness defect, no issue. cloud.sh's claim guard sees only other cloud units, so it claimed audit1 and remediate on #523 while lane.thermal507 was still running on lane/thermal507-power (two writers, one branch). Add a held_why check for the PR's own running lane. cloud.sh was unclaimed (not in [free], no row). Interim: host-tools/audit_outlet.sh + lane_on_branch.sh."
 
 [free]
+# RELEASED (job.board 2026-09-28T02:53Z) by retiring lane.slowdown462 (no unit, no open PR): docs/lanes/slowdown462/**.
 # RELEASED (hostops 2026-09-28T02:40Z) by retiring lane.flip474 (PRs #475/#485/#516 folded): hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/instance.c, hw/xbox/nv2a/pfifo.c, hw/xbox/nv2a/pgraph/pgraph.c, docs/lanes/flip474/**, docs/testing/predictions/flip474-*.json.
 # RELEASED (hostops 2026-09-28T02:06Z) by retiring lane.sweepclock (PR #531 folded 7b94a74caf): docs/testing/jobs/selftest.d/76-pr-sweep.sh, docs/lanes/sweepclock/**.
 # RELEASED (job.board 2026-09-28T01:46Z) by retiring lane.escitems (PR #521 folded 1a6b0f83a7): docs/testing/jobs/status_html.py, docs/testing/jobs/selftest.d/99-status-escalation-items.sh, docs/lanes/escitems/**.
