@@ -136,6 +136,32 @@ Samples came every ~33 s: 30 s plus the read.
   `FAIL(void: thermal-pause: thermal-pause-F8 1/1 began after +49 s and by
   +83 s ... relative to the mark)`, `thermal.in_window: true`, every fps
   field null. The whole chain works on a real run.
+- A 4th run, 1819530 (Crimson Skies, 248 s), started at xo 75.1 C, 4 s after
+  the previous soak. It paused at +238..250 s. **Even a 240 s benchmark pauses
+  when it follows a hot run.**
+- The GTA pilot did not claim. At 17:03 PDT the owner took an OWNER hold on
+  the Thor to move it to a rear USB port. Only the owner lifts it.
+
+### Addendum item 3: older readings, from their saved traces (no thermal record)
+
+Method: 30 s fps bins from `soak start` (`.scratch/bins.py`) and the Thor's
+previous run with the gap before it (result mtimes). Rule from the field
+records: from a cool start the pause needs 5-6 min at MAX; a run within
+seconds of a hot one can pause in 2-4 min. Once set, it holds for minutes (8 C
+hysteresis). A fall that clears within one or two bins is not the pause.
+
+| reading | run | before it | trace | verdict |
+|---|---|---|---|---|
+| MechAssault 2 20-min, ~11/~30 | lanelocal-1258823 | GTA 500 s MAX, **gap 4 s** | 11 fps +150..+540 s, 30 fps +540..+780 (4 min), 11 fps +810..+1500 | **consistent with the pause**: hot start; the 30 fps spell lasts as long as 70 -> 78 C takes (~4 min); 2.7x fall |
+| MechAssault 2 530 s | titleroutes-681960 | gap 632 s | 30 fps flat after the mark | no pause |
+| Midtown Madness 3, 3.1 | titleroutes-1032854 | Alien Hominid, **gap 4 s** | 60 -> 12 -> 3 at +120..+180 s (before the mark at +323), 3 to the end | hot start, so a pause is possible, but a 20x fall exceeds the pause's 5-7x. **The pause alone does not make 3 fps** |
+| Black, 7.45 | titleroutes-3358750 | gap 1387 s (cool) | 30 -> 4 at +210 s (same second in 3347838 and titleplay-p1-black: content), 7-9 fps +510..+780 s after the mark at +493 | the +210 fall is content. The post-mark 7-9 falls where a cool start reaches 78 C, so **undecidable** |
+| #462 Nova soaks (DOA, AUF x2, Blinx x2, Forza) | slowdown462-* | Nova, not read | falls at +60..+120 s, the same second per title | too early for the pause, and they recur: **content** |
+| GTA (#482's 4-5 fps) | slowdown462-3573620 | Crimson, **gap 2 s** | 19-28 fps to +270 s, then 3-5 to the end | **the #507 shape**: hot start, 5-7x fall, held |
+| GTA | slowdown462-1484367 | gap 2543 s | low before and just after the mark, 27 fps +300..+450, 5 in the last bin | mixed, no clean pause |
+
+The GTA pilot, queued as `1790551730-thermal507-2943941`, answers #482
+directly.
 
 ## Existing Thor title benchmarks (brief item 4)
 
