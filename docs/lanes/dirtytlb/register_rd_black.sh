@@ -1,0 +1,57 @@
+#!/bin/bash
+# Registers dirtytlb-rd-black.json: #548's fix arm on a second title, Black,
+# where the render thread's tlb_reset_dirty walks cost the most on record
+# (17.1 ms per flip on titleroutes-3358750). A soak pair, hand-queued by
+# queue_rd_black.sh; the pixel half is dirtytlb-rd-pixels.json and
+# dirtytlb-rd-signed.json.
+# Usage: register_rd_black.sh A_REF B_REF   (A: the counter, RD off; B: RD on)
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+A=$1; B=$2
+P=docs/testing/predictions
+
+python3 - "$A" "$B" $P/dirtytlb-rd-black.json <<'EOF'
+import json, sys, time
+a, b, soak = sys.argv[1:4]
+d = dict(
+    registered_utc=time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    who="lane.dirtytlb",
+    issue="548",
+    title="45410083-Black.xiso.iso",
+    route="black.returning",
+    device="thor",
+    seconds=760,
+    frames_every=0,
+    runs_per_arm=1,
+    perflog=True,
+    a_ref=a,
+    b_ref=b,
+    queue_order="B FIRST, then A, both on the Thor, each through the soak's COOLDOWN gate: docs/lanes/dirtytlb/queue_rd_black.sh. Both arms carry [rdc] and [tlb68] and master 503b901ee4; they differ in one line of accel/tcg/cputlb.c and in docs.",
+    window="500 to 760 s after the first hakuX-perf line: black.returning marks gameplay at about +489 s (titleroutes-3358750). Pass --window 500,760 to every judge.",
+    judge="python3 docs/lanes/dirtytlb/walk_read.py --pair <A result dir> <B result dir> --window 500,760 for V, W, E, X, T, U, C, F and K2; K1 from docs/lanes/remote/pair461_read.py --pair A B --window 500,760; J from docs/lanes/dirtytlb/jpf.py A B. Before any leg: each arm's route-frames gameplay frame and run.log's THERMAL line.",
+    prediction="#548 FIX ARM, SECOND TITLE. B walks only the MMU modes that can hold a live TLB entry (HAKUX_TCG68_RD on by default); A walks all 22. MEASURED BEFORE, on one rd0 Black soak on the Thor (titleroutes-3358750, a593d8eb85, window 500 to 770 s, gfps 7): 235.7 off-vCPU walks per flip at 72.7 us, 17.15 ms per flip; 41.3 vCPU walks per flip at 86.8 us, 3.59 ms per flip; 9,456 entries scanned per walk, of which 4,176 are in the two modes that hold any (44%). MEASURED on Crimson with the same switch (dirtytlb-rd.json, every leg passed): entries x0.25, us per walk x0.22 off the vCPU thread and x0.16 on it. A Black walk costs 7.7 to 9.2 ns per entry against Crimson's 1.3 to 2.8, which is not explained, so Crimson's ratio is not carried over. EXPECTED on B: about 4,200 entries per walk (x0.44 of A's); us per walk x0.40 to x0.65 of A's on both threads; render-thread CPU per flip down 5 to 10 ms; gfps 7 to 8, not down.",
+    legs={
+        "G (the route, read first)": "Each arm's route-frames gameplay frame shows the first mission in first person with the HUD, as 215426-gameplay.png of titleroutes-3358750 does. An arm that shows a menu, an FMV or a title screen did not reach the scene: the pair is VOID, not refuted, and no leg below is read. The route is timed presses recorded on a593d8eb85.",
+        "V (validity)": "Each arm has at least 20 [tlb68] lines and 20 [rdc] lines in the window. A run failing V is VOID, re-queued once and reported either way. A run whose thermal record shows cpu3-7 paused inside the window is VOID for C, F and J (#507), not for E, X, T and U.",
+        "W (the switch, read off the arm's own lines)": "Every [tlb68] line of A reads fx=rd0 and every one of B reads fx=rd1. A pair failing W did not run what it names: VOID, not refuted, and no leg below is read.",
+        "E (mechanism, high)": "B's entries per off-vCPU walk (rdoe over rdo) are within 15% of B's live entries and at most 0.6 x A's entries per walk.",
+        "X (exactness)": "Per walk, the entries B re-arms are within 15% of A's, for the vertex sync ([rdc] vtx hits over calls) and for the vCPU thread ([tlb68] rdh over rd); and tlb_set_dirty per flip (sd; 319.1 before) is within 15% of A's. X failing means the switch is not exact here and it does not land, whatever T, U and C read.",
+        "T (the price off the vCPU thread, moderate)": "us per off-vCPU walk (rdous over rdo): B at most 0.75 x A. Fails in the world where Black's high cost per entry sits in the live 4,096-entry table (written by the vCPU on another core between walks), so skipping the empty tables saves little.",
+        "U (the price on the vCPU thread, moderate)": "us per vCPU walk (rdus over rd): B at most 0.75 x A. Same world as T.",
+        "C (render-thread CPU, moderate)": "[rdc] tcpu per flip: B at most A - 1.0 ms (walk_read.py's bar; the expectation above is 5 to 10 ms).",
+        "F": "B's gfps median is at least A's minus 1.",
+        "J (energy per frame)": "j_per_frame (title_verdict.py, #523's power record): B at most 1.03 x A.",
+        "K1 (control)": "Thermal parity: every cooling device's highest cur_state inside the window is the same in both arms. A pair failing K1 is thermally confounded; C, F and J are not read on it.",
+        "K2 (control, weak here)": "The larger hakuX-cpu M median is within 10% of the smaller. The route's play pattern walks, turns and fires on timers, so the two arms' scenes can drift apart; a K2 failure voids C, F and J, not E, X, T and U.",
+        "Reported, not judged": "walks and ms per flip on both threads; the vCPU thread's walk share of its CPU; [rdc] per-site calls, us and hits per flip (which caller makes Black's 236 walks is not on record); flips taking 3+ VBLANKs; net W."
+    },
+    falsifier="Not exact: X fails. Wrong mechanism: E fails. Time does not follow entries on this title: T and U both fail with E passing. Right mechanism, no gain: T passes and C fails, or F or J fails. G or W failing voids the pair.",
+    expect={},
+    expect_counts={},
+    expect_note="EMPTY ON PURPOSE: a soak writes no captures, so there is no golden key; the legs are read off [tlb68], [rdc], hakuX-perf, hakuX-pace and hakuX-cpu lines by walk_read.py. The pixel half is dirtytlb-rd-pixels.json and dirtytlb-rd-signed.json, which the arms job queues."
+)
+json.dump(d, open(soak, "w"), indent=2)
+open(soak, "a").write("\n")
+json.load(open(soak))
+EOF
+sha256sum $P/dirtytlb-rd-black.json
