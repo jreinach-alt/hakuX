@@ -80,3 +80,58 @@ a <=30 min nav session. Posted on #507 (issuecomment-5862704287, which includes 
 3. #424 r2: `python3 docs/lanes/tbflip424/playread.py 1255824 1257645`, plus each run's
    verdict-style first pause (`regimen_read.py --json` has `pause_from_start`). A pause before 540 s
    voids the run.
+
+## 5. Session 2, 2026-09-28 05:10Z
+
+**Why session 1 did not finish.** It ended on a wait, as section 4 says: the pilot and #424's r2
+pair were queued behind about seven Thor requests, and a lane session cannot outlast them. It was
+not a failure. handback.sh resumed this lane once all three were DONE.
+
+### Pilot (`0-0-x-1790565677-lane.sustain507-1257857`, GTA SA, default, 450 s): clean
+
+| check | read |
+|---|---|
+| regimen | `PERF: regimen=default before=[2 4] running=[0 4]`, restored |
+| gate | `COOLDOWN: waited 0 s, xo 57.4 C < 65 C` |
+| mark | `mark gameplay` at 234 s from start; `220152-gameplay.png` shows CJ on foot, HUD up |
+| power | battery 3.44 W + usb 2.13 W = net 5.57 W; j/frame 0.245 |
+| fps (226 s window) | median 22.4, p10 19.1; no pause, no mitigation, xo max 74.4 C |
+
+The pilot verdict is in `pilots/lane.sustain507.ok`. Battery: 2 % of capacity for 0.216 Wh pools
+to a 7.2-21.6 Wh pack. The range is too wide, so the hours column stays blank. charge_full is still the ask.
+
+### #424 r2 (MAX, 00c2840810): valid, no pause in either run
+
+| run | arm | gate | mark play | ng | rt | m50 | gfps | churn% | di/s | slow/s | pause |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| `...-1255824` | A | 61.6 C, 0 s | yes | 81 | 0 | 31 | 19 | 1.7 | 522.6 | 1217 | none (19 samples) |
+| `...-1257645` | B | 70.3 -> 63.9 C, 78 s | yes | 79 | 1 | 29 | 19 | 0.0 | 0.0 | 34503 | none (22 samples) |
+
+M0 holds on both runs. The legs are per-arm medians of three runs, so they are not judged on two.
+r1 (A 19, B 17.0) + r2 (A 19, B 19) is two of three. r3 is queued. regimen_read.py does not read
+these runs ("no mark gameplay": the survey route marks `play`), so the pause was read from run.log's
+THERMAL line.
+
+### Queued, 2026-09-28 05:14Z (`queue_part_a.sh`, HAKUX_RELEASE_PRIO=1, Thor)
+
+| request | what |
+|---|---|
+| `1-1790572030-lane.sustain507-4130828` | Crimson A (max), 1950 s |
+| `1-1790572031-lane.sustain507-4130875` | Crimson B (default), 1950 s |
+| `1-1790572031-lane.sustain507-4130912` | GTA SA B (default), 2100 s |
+| `1-1790572031-lane.sustain507-4130959` | GTA SA A (max), 2100 s |
+| `1-1790572031-lane.sustain507-4130999` | MechAssault 2 A (max), 2100 s |
+| `1-1790572031-lane.sustain507-4131051` | MechAssault 2 B (default), 2100 s |
+| `1-1790572032-lane.sustain507-4131088` | #424 Blinx r3 A, 00c2840810, 540 s |
+| `1-1790572032-lane.sustain507-4131123` | #424 Blinx r3 B, `HAKUX_TCG424_RANGE=1` |
+
+About 4 h of Thor time. The Thor was under the owner's top-up hold at queue time.
+
+### On resume
+
+1. Part A: `regimen_read.py --json <6 full ids>` (the `1-` names are symlinks, so pass the full
+   `0-0-x-` id; a short id matches two dirs), then `--pair` per title for P1. Apply the repeat rule
+   (|dfps| <= 1.0 or |cut| <= 0.3 W: one more pair, reverse order). Post the table on #507 and a
+   summary on #433.
+2. #424 r3: `playread.py` on all six runs (r1 ids are in tbflip424's NOTES), with the pause read from
+   run.log. Judge M0/M1/M4' on the per-arm medians and post on #424.
