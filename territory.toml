@@ -600,6 +600,11 @@ issues = ["569"]
 files = ["docs/testing/jobs/roles/lane.md", "docs/testing/jobs/roles/board.md", "docs/lanes/rankrule/**"]
 note = "STARTED (lane.local 2026-09-28T20:05Z), briefs/rankrule.md: the owner's (PM) ranking rule, 2026-09-28 -- rank options by probability x size of the win, lead with the approach that fits the tech, cheap steps first only when they decide something -- added to roles/lane.md and roles/board.md. Docs only. roles/lane.md from [free]; roles/board.md was unlisted."
 
+[lane.energymap507]
+issues = ["507"]
+files = ["docs/lanes/energymap507/**"]
+note = "STARTED (lane.local 2026-09-28T20:10Z), briefs/energymap507.md: #507 after the owner ruled out the fan ('the real energy issue is clearly in our emulator's shader work, or other code that's not optimized for this platform'). Offline: per-title J/frame split by thread CPU and GPU from soaks on disk; code paths ranked by joules saved x titles x probability; at most 6 profile runs named for lane.local to slot. Docs only."
+
 [free]
 # CLAIMED (hostops 2026-09-28T19:58Z): android/app/src/main/java/com/rfandango/haku_x/TitleDefaults.kt -> lane.gmem474 (#474).
 # RELEASED (hostops 2026-09-28T19:55Z) by retiring lane.forza414 (PRs #518/#543 merged) and lane.rendermode474 (PR #530 merged): hw/xbox/nv2a/pgraph/vk/renderer.c, docs/testing/predictions/forza414-*.json, docs/lanes/forza414/**, android/app/src/main/java/com/rfandango/haku_x/PerGameSettingsManager.kt, android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt, android/app/src/main/java/com/rfandango/haku_x/TitleDefaults.kt, docs/lanes/rendermode474/**, docs/testing/predictions/rendermode474-*.json.
