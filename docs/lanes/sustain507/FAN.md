@@ -20,13 +20,10 @@ A device without the node gives no `fan` key and no change to the line.
 It reaches soaks only after the dispatcher's next update window takes the
 merged `docs/testing/` snapshot. It is not live on the merge.
 
-## D.1: CUSTOM (fan_mode 6), not yet probed
+## D.1 and D.3
 
-Probing needs an idle device and a short held session under
-`jobs/hold.sh take <dev> lane.sustain507`. At 14:30Z neither device was idle.
-The Thor was held by lane.xbox for a title push, and the Nova was running
-Part C's AUF OFF arm. So the probe is still open.
+These are in NOTES.md section 8. The Nova was probed at 15:30Z:
+- CUSTOM (fan_mode 6) is a fixed 25000 duty.
+- The duty node is world-writable, and a shell write of 50000 held.
 
-## D.3: not started
-
-It is gated on D.1 finding a setting that holds more than 29000 duty.
+D.3 needs a dispatcher fan knob.
