@@ -517,7 +517,8 @@ usb_dialog() {   # <hakux_in_front line> -> the package, if its window is the di
     [ -n "$p" ] || return 1
     # hakux_in_front keeps only the owner; re-read the raw name to see the `/`.
     # The live block only, as there: stop at the last ANR's snapshot.
-    name=$(a shell "dumpsys input" 2>/dev/null | tr -d '\r' | awk '
+    name=$(ADB_RETRIES=1 adb_call "${ADB_QUICK_TIMEOUT:-10}" "usb dialog read" shell "dumpsys input" \
+            2>/dev/null | tr -d '\r' | awk '
         stop { next }
         /^  ANR:/ || (seen && /FocusedDisplayId:/) { stop = 1; next }
         /FocusedDisplayId:/ { seen = 1 }
@@ -527,6 +528,39 @@ usb_dialog() {   # <hakux_in_front line> -> the package, if its window is the di
         }')
     [[ "$name" =~ ^[0-9a-f]+\ ([^/\ ]+)$ ]] && [ "${BASH_REMATCH[1]}" = "$pkg" ] || return 1
     echo "$pkg"
+}
+# The BACK is read-then-act across two adb calls, and Android delivers a key
+# to whatever holds focus when it is dispatched. If anything else closes the
+# dialog in that gap (a person, or the host's interim dismisser timer), our
+# BACK reaches hakuX, whose BACK toggles its pause menu: emulation paused, and
+# the overlay is a view in hakuX's own window, so hakux_in_front still reads
+# in-front and the route would play into the menu. The same holds for the
+# other dismisser's BACK after ours. So after a BACK, before the route starts,
+# read the overlay's visibility from `dumpsys activity top` (the view
+# hierarchy: `PauseMenuOverlay{<hash> V...` shown, `G`/`I` not). Shown: one
+# BACK, now to hakuX, resumes it; still shown, or no overlay line at all,
+# aborts rather than play a route whose pause state is not known.
+hakux_paused() {   # -> 0 paused, 1 not paused, 2 unknown
+    local v
+    v=$(ADB_RETRIES=1 adb_call "${ADB_QUICK_TIMEOUT:-10}" "pause menu read" shell \
+            "dumpsys activity top | grep -F 'PauseMenuOverlay{'; true" 2>/dev/null \
+        | tr -d '\r' | sed -n 's/.*PauseMenuOverlay{[0-9a-f]* \(.\).*/\1/p' | tr -d '\n')
+    case "$v" in *V*) return 0 ;; ?*) return 1 ;; *) return 2 ;; esac
+}
+fg_unpaused() {   # after the dialog BACK, hakuX in front: 0 when it is not paused
+    hakux_paused; case $? in
+        1) return 0 ;;
+        2) echo "FOREGROUND: hakuX's pause menu state is unreadable after the BACK"; return 1 ;;
+    esac
+    echo "FOREGROUND: hakuX is paused (a BACK reached it after the dialog closed); one BACK resumes it"
+    a shell input keyevent KEYCODE_BACK >/dev/null 2>&1
+    sleep "$FG_POLL_S"
+    hakux_paused; case $? in
+        1) echo "FOREGROUND: hakuX resumed"; return 0 ;;
+        0) echo "FOREGROUND: hakuX is still paused after one BACK" ;;
+        *) echo "FOREGROUND: hakuX's pause menu state is unreadable after the resume BACK" ;;
+    esac
+    return 1
 }
 fg_abort() {   # <hakux_in_front line>
     local pkg="${1#not-foreground: }"; pkg="${pkg%% *}"
@@ -543,7 +577,14 @@ fg_wait() {
     deadline=$(( $(date +%s) + ${FG_WAIT_S:-30} ))
     while :; do
         st=$(hakux_in_front "$SERIAL"); rc=$?
-        if [ "$rc" = 0 ]; then echo "$st"; return 0; fi
+        if [ "$rc" = 0 ]; then
+            echo "$st"
+            [ "$back" = 0 ] && return 0
+            fg_unpaused && return 0
+            fg_abort "not-foreground: hakuX-paused (its pause menu may hold input after the USB dialog BACK)"
+            echo "ROUTE NOT PLAYED: hakuX's pause state after the USB dialog BACK is not known clear; no route input was sent"
+            return 1
+        fi
         [ "$st" = "$last" ] || echo "FOREGROUND: waiting: $st"; last="$st"
         if [ "$rc" = 1 ] && [ "$back" = 0 ] && pkg=$(usb_dialog "$st"); then
             back=1
