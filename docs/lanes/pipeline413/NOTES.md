@@ -124,3 +124,105 @@ name on #413.
   not comparable to the pilot's. The ring-out pipelines were never compiled in the pilot, so they
   are cold either way. On resume, run `shdwin.py` on it and score P4 against windows after
   `mark play`.
+
+**Why attempt 2 did not finish:** it ended correctly on the ring-out soak, which was a device
+request outside the session, but again without a `waiting:` comment. The soak finished, and
+handback resumed the lane (attempt 3, 2026-09-28).
+
+## 7. Ring-out soak result (`1-1790579572-pipeline413-1715785`)
+
+`shader_cache=cleared: apk 609a183e76fa -> 8196a7015b52` (cold: another apk ran on the Nova
+between the two soaks), Nova, 440 s. The full reader output is in `ringout-shdwin.txt`. It has 163
+lines, 0 unparsed, and the totals are monotonic. `mark booted` is at 58 s and `mark play` at 231 s.
+
+**A correction to §4, from this run's frames.** The 13.8 s window the pilot called the "first load"
+is not the menu -> fight load. It closes about 80 s after launch in both runs, between the DOA2U
+title card (frame `093213`, black background) and the title screen with its 3D stage (frame
+`093224`). It is the **title screen's background stage** loading. It still meets the registered
+definition (a >= 8 s window within 200 s of launch), so the §4 scores stand, but its label was
+wrong. The menu -> first fight load comes after `mark play` in this route: a black screen at
+59 fps (frame `093722`), then `GET READY` in stage 1 (frame `093747`).
+
+| window closes | what (frames) | dt_ms | dpm | dsm | dvm |
+|---|---|---|---|---|---|
+| 09:32:25.885 | title-screen stage load (the pilot's "first load") | 13751 | 24 | 21 | 23 |
+| 09:32:46-09:33:15 | menus, 4 windows | 5322-7071 | 5-14 | 5-13 | 3-9 |
+| 09:37:00.210 | DOA2U title -> mode select | 6025 | 10 | 9 | 6 |
+| 09:37:30.587 | **menu -> first fight**, black screen | 9322 | 11 | 11 | 9 |
+| 09:37:33.091 | (same load) | 2504 | 0 | 0 | 0 |
+| 09:37:40.319 | (same load) | 7228 | 5 | 5 | 3 |
+| 09:37:42.954 | (same load) | 2635 | 0 | 0 | 0 |
+| 09:37:49.046 | `GET READY` | 6091 | 3 | 3 | 1 |
+| 09:37:54-09:38:10, 4 windows | the fight, 11 fps | 5257-5492 | 0 | 0 | 0 |
+| 09:38:25.663 | **mid-fight hitch** (Ryu knocked down, `2 HIT COMBO`, clock 95) | 15238 | 8 | 8 | 4 |
+
+Prices, subtracting the neighbouring zero-miss windows as the non-compile floor:
+
+- Title-stage load: (13751 - 2105) / 24 = **485 ms per pipeline** (the pilot's was 414 ms with doa413c's
+  3.1 s floor).
+- Menu -> first fight: the three miss windows hold 19 misses in 22.6 s. Against the 2.5-2.6 s
+  zero-miss windows between them, the excess is 14.8 s, or **780 ms per pipeline**. The whole load
+  from black to `GET READY` is 27.8 s. That is longer than doa413c's 12.8-13.0 s, and this
+  instrument cannot say whether doa413c timed the same span.
+- Mid-fight hitch: (15238 - 5300) / 8 = **1.24 s per pipeline**. The fight's four windows before it
+  run 5.3 s per 60 flips with 0 misses.
+
+**P4 scored as written:** two windows of 8 s or more follow `mark play`. 09:37:30 carries dpm 11
+(>= 10, PASS), and 09:38:25 carries dpm 8 (< 10, FAIL by 2). **For the ring-out it is
+INCONCLUSIVE.** The frames show no ring-out: the last frame is round 1 at 95 s on the clock. The
+leg's premise, a >= 8 s window standing in for the ring-out, did not hold. The 76 s post-ring-out
+hang was not reproduced in 440 s. What the run does show, on the P1 falsifier's side:
+
+- **Every stall window of 5 s or more carries misses, except in the steady fight.** 14 stall
+  windows are >= 5 s. Ten carry 3-24 misses. The four without misses are the fight's steady
+  11 fps, where each 60-flip window takes 5.3 s whether or not anything compiles.
+- **The one in-play hitch is a miss burst.** It is 15.2 s against a 5.3 s floor, with 8 new
+  pipelines and 8 new shader modules, after 20 s of zero misses. A hitch inside a fight is the
+  same mechanism as the loads. It is the nearest this run comes to the ring-out case.
+- **The fight's 11 fps is not compile.** It has zero misses per window. That slowness is a
+  separate cost, outside #413's stall. Do not price it with these numbers.
+
+## 8. Price of options 2-4, both runs (bounds)
+
+The per-pipeline cost is 414-485 ms at the title-stage load, 780 ms at the fight load, and 1.24 s
+mid-fight. dsm/dpm is 0.73-1.0 in every window, so almost every missed pipeline brings a new shader
+module. What a load costs is how many shaders it brings, times the compile per shader.
+
+| option | bound | needs |
+|---|---|---|
+| 2. skip a pending pipeline in async mode | saves <= the excess: 10.8-11.6 s at the title-stage load, <= 14.8 s at the fight load, and <= 9.9 s per mid-fight hitch. The cost is up to 24 / 19 / 8 pipelines' draws missing until each compile lands | `vk/draw.c` (the miss path returns pending), `vk/compile_worker.c` |
+| 3. more compile workers (only with 2) | saves <= excess x (1 - 1/N): at N=4, 8.7 s / 11.1 s / 7.4 s | `vk/compile_worker.c` plus option 2's `vk/draw.c` |
+| 4. fewer or cheaper pipelines | fewer: dedup saves <= (dpm - dsm) x cost. That is 3 x 485 ms = 1.5 s at the title-stage load, 0 at the fight load (19 of 19 new modules), and 0 mid-fight. Cheaper shaders scale the excess linearly | `vk/draw.c` (pipeline key), `vk/shaders.c` and the GLSL generators |
+
+**Decided by hostops (2026-09-28): draw.c and compile_worker.c are not granted to this PR.** draw.c
+is lane.forza414's, then lane.pacing's (#526). So this PR ships the measurement and the price table
+without the compile timer.
+
+## 9. The one-timer patch for the next holder of `vk/draw.c`
+
+This gives `dpc_ms` (wall ms inside pipeline creation) so the price above stops needing a
+subtracted floor. In `hw/xbox/nv2a/pgraph/vk/draw.c`, around the synchronous
+`vkCreateGraphicsPipelines` call on each miss path. At this merge there are two sites that bump
+`pipeline_cache_misses++`, and the second is followed by `NV2A_PHASE_TIMER_BEGIN_EXCL(shader_compile)`.
+Time the create call after each of them:
+
+```c
+int64_t t0 = nv2a_clock_ns();                 /* before vkCreateGraphicsPipelines */
+VkResult result = vkCreateGraphicsPipelines(...);   /* existing call, unchanged */
+g_nv2a_stats.shader_stats.pipeline_create_us += (nv2a_clock_ns() - t0) / 1000;
+```
+
+It also needs `uint64_t pipeline_create_us;` in the shader_stats struct in `debug.h`, and, in this
+lane's `[shd413]` emitter in `profile.c`, a `dpc_ms=` delta beside `dpm=`. It adds two clock reads
+per miss and nothing on a hit. The falsifier to carry with it: at the fight load, `dpc_ms` should
+be within about 20% of the 14.8 s excess. If it is far below that, the stall's time is somewhere
+other than in the create call (for example, a wait on the async worker), and option 2's bound
+shrinks to `dpc_ms`.
+
+## Do not repeat
+
+- Do not call the ~80 s window the "first load". It is the title screen's stage. The fight load
+  comes after `mark play` on the survey route.
+- Do not read the fight's 5.3 s per 60 flips as a stall. It is 11 fps with zero misses.
+- The survey route does not reach a ring-out in 440 s. P4 for the ring-out needs a route that wins
+  or loses round 1 by ring-out, or a longer soak. 440 s cold ends at round 1, 95 s on the clock.
