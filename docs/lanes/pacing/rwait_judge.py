@@ -16,13 +16,14 @@ logcat.txt:
             range (the line reports the 10 s before it).
   hakuX-perf gfps in the window, and the largest gap between hakuX-perf
             lines after the mark (leg H0).
-and verdict.json's thermal and power blocks, when the verdict has run.
+and verdict.json's thermal and power blocks (title_verdict.py on a temp copy
+when the result has no verdict.json).
 
 SILENCE IS VOID: a run with no [rwait526] window in range is reported VOID,
 never as zero. Nothing here reads the prediction file; the legs are applied
 by a person against the printed table.
 """
-import argparse, json, os, re, statistics
+import argparse, json, os, re, shutil, statistics, subprocess, sys, tempfile
 from datetime import datetime
 
 D = os.environ.get("DISPATCH_DIR", "/home/justin/hakux-work/dispatch")
@@ -46,6 +47,20 @@ def parse_window(msg):
         if name in SITES:
             w[name] = kv(p)
     return w
+
+
+def load_verdict(d):
+    """verdict.json, or, since a request.sh soak writes none, title_verdict.py
+    run on a copy of the result dir (the dispatch dir is never written)."""
+    p = os.path.join(d, "verdict.json")
+    if os.path.exists(p):
+        return json.load(open(p))
+    tv = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "testing", "title_verdict.py")
+    with tempfile.TemporaryDirectory() as tmp:
+        c = os.path.join(tmp, os.path.basename(d))
+        shutil.copytree(d, c, ignore=shutil.ignore_patterns("route-frames"))
+        subprocess.run([sys.executable, tv, c], capture_output=True, text=True)
+        return json.load(open(os.path.join(c, "verdict.json")))
 
 
 def read_run(rid, mark):
@@ -134,7 +149,7 @@ def read_run(rid, mark):
         )
 
     try:
-        v = json.load(open(os.path.join(d, "verdict.json")))
+        v = load_verdict(d)
         th, pw = v.get("thermal") or {}, v.get("power") or {}
         out["thermal"] = dict(regimen=th.get("regimen"), first_pause_s=th.get("first_pause_s"),
                               failed_sustained=th.get("failed_sustained"), in_window=th.get("in_window"))
@@ -190,6 +205,8 @@ def main():
                   "p99_us_median", "max_us"):
             print("   %-34s %12s %12s" % (site + "." + k, pooled(arms["A"], k, site),
                                          pooled(arms["B"], k, site)))
+    for k in ("net_w", "j_per_frame", "j_per_frame_battery"):
+        print("   %-34s %12s %12s" % ("power." + k, pooled(arms["A"], k, "power"), pooled(arms["B"], k, "power")))
     if o.json:
         json.dump(arms, open(o.json, "w"), indent=1)
 
