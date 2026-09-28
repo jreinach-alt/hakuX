@@ -662,3 +662,15 @@ unchanged: `pullnova.sh take` / `pull` / `release`, then `saves.py list`,
   `results/`, not the one `request.sh` printed.
 - Queue use drains the Nova faster than 500 mA charges it. Read the battery
   before taking a hold, not after waiting out a run.
+
+## Attempt 10 (resumed 2026-09-28 00:20 UTC): PR #501 goes ready; the pull moves to its own PR
+
+Attempt 9 did not finish because it ended on a deliberate wait (board
+request item 10, a Nova pull window at 30% or more), with PR #501 still in
+draft. At this resume the Nova has a `battery-hostops` hold (13% < 15%,
+lifted at 80% on the 500 mA port), so the pull still cannot run.
+
+PR #501 carries only these notes, so it is marked ready and folds now. The
+GoldenEye save (pull, `titlestate.py harvest`, `saves.py verify`) comes as a
+new PR when hostops resumes this lane for item 10. Nothing on the device
+changed since attempt 9.
