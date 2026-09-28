@@ -1,0 +1,22 @@
+{
+  "registered_utc": "2026-09-27T18:15:51Z",
+  "who": "lane.forza414",
+  "issue": "414",
+  "title": "4D53006E-Forza_Motorsport.xiso.iso",
+  "device": "nova",
+  "seconds": 420,
+  "route": "survey",
+  "perflog": true,
+  "runs_per_arm": 1,
+  "a_ref": "7787feb2ae",
+  "b_ref": "51721e36aa",
+  "prediction": "SAME-SESSION NOVA SOAK A/B of #414 hunk 1, hand-read (arms.sh skips title soaks). A is 7787feb2ae (lane/forza414 head: master c91697f116 with the [sdcall] probe and the surfupd deferral). B is 51721e36aa (A plus: pgraph_vk_clear_surface sets SurfaceBinding.cleared after a full clear, colour only when all four channels are cleared, zeta only when Z and any stencil are). NOTES section 15: about 3.75 times a frame Forza clears a small target as linear and draws it as swizzled; with cleared never true the draw evicts colour and zeta (swizzle mismatch, mask m10), the partner comes back upload_pending, and surface_update finishes the downloads before uploading them back. Both arms perflog, survey route, 420 s. WINDOW t = 125-240 s after soak start: the start line and pit straight, one place in all four earlier runs (NOTES section 14), and the only window where arm A sits below the title's 30 fps cap (18.4-19.2 fps in three base runs). Per-arm figures are medians over the window's 2 s / 60-flip lines; [evict372] counters are growth over the window divided by guest frames. Legs, and the world each fails in: M0 both arms reach the race in the window (hakuX-stall lines with sd > 0) and print [evict372] and [sdcall]; else VOID. P1 the named resource: B's m10 (swizzle) evictions per frame <= 25% of A's (A about 7.5). It fails in the world where Forza's clears of these targets are not full clears (clear rect or clip short of the binding, or a masked channel): cleared stays false, m10 does not move, and B is inert, not refuted; the logcat does not carry the clear rect, so this leg is also the only reading of that. P2 B's su_upl per frame <= 1.9 (A about 3.1), i.e. what is left is the Z 640/1280 flips (m08/m40). It fails if the rescued bindings still come back upload_pending (the watch marks them dirty another way), which [evict372] m10 falling while su_upl holds would show. P3 B's surfupd fin per frame <= 60% of A's (A about 3.1). READOUTS, not judged: fps, Tot, Sub, Surf, GPU R. NOTES section 14 showed that removing half the finishes moved fps 3% because the last sync point in the frame still waits for the GPU; no fps figure is claimed. The brief's mover (fps at t = 150-174 s toward the t = 60 s value on the Thor, and the clock ratio) is carried by fps and not judged here; the Nova does not show the Thor's step (NOTES section 6), and lane.forzaclock showed the clock is min(fps,30)/30.",
+  "expect": {
+    "M0/both_reach_race_is": true,
+    "P1/b_over_a_evict_m10_per_frame_max": 0.25,
+    "P2/b_su_upl_per_frame_max": 1.9,
+    "P3/b_over_a_surfupd_fin_per_frame_max": 0.6
+  },
+  "expect_counts": {},
+  "expect_note": "Named rules read by hand from the two logcats ([evict372] mask m10 growth, [sdcall] surfupd fin, [surf413] su_upl, hakuX-stall, gfps); a soak writes no captures and ab_compare never judges it."
+}

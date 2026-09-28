@@ -206,3 +206,570 @@ No hunk and no arm on this PR, so `Prediction: none`.
   race without it (section 6). The steady cost is the ~5.5 uncoalesced
   `SURFACE_DOWN` finishes per frame. Fix those first.
 - Do not queue the Nova half until the ISO is on the Nova's card.
+
+## Why the previous attempt did not finish (resume of 2026-09-27 07:12 PDT)
+
+It did finish its own PR. #418 folded, and its deliverables (sections 1-7) are on master. The lane
+then ended on a `waiting:` for the vk/surface.c grant. That file went from lane.blinx372d (#396)
+to lane.doa413b (#440) and then to lane.blinx372e (#467). hostops granted it to this lane at
+07:15 PDT, after lane.blinx372e retired. This attempt merged origin/master (398 commits, f131dd11c6)
+and opened PR #479 for the step section 7 named.
+
+## 8. The caller, from the Nova soak already on disk
+
+lane.slowdown462's Nova perflog soak `1-1790492278-slowdown462-690198` (e5db66fa37, survey route)
+already carries the recorder counters. Last 30 s of its race, per ~53-flip stall window:
+
+| counter | per window | per frame |
+|---|---|---|
+| `cDef` (completion that submitted a finish) | 336-389 | ~7 |
+| `cDefC` (completion that waited an earlier fence) | 0 | 0 |
+| `evict[dl:]` (download recorded at an eviction) | 528-613 | ~11 |
+| `evict[unshelve:]` | 384-448 | ~8 |
+| `evict[stale:]` (unshelved surface must re-upload) | 96-110 | ~2 |
+| `dif[ovl]` (texture/vertex/blit range lookup found a dirty surface) | 96-110 | ~2 |
+| `pDl`, `dDl` (guest CPU or dirty-surfaces request) | 0 | 0 |
+
+Downloads recorded at evictions complete in `pgraph_vk_surface_update`. That function calls
+the completion unconditionally, at 4630 on master, and `expire_old_surfaces`, which runs at the
+end of every update, calls it again. Either call submits a finish when the batch is still in the
+open command buffer. Only ~2 of the ~8 unshelves per frame re-upload from VRAM (`stale`), so most
+of those finishes feed no reader in the update that paid for them. That is the hypothesis. The
+probe below tests it.
+
+## 9. The probe: `[sdcall]` (4b22f2526b, perflog + Android only)
+
+Each in-file caller of the completion passes a tag: range, tobuf, deffull, pend, pendfb, dirty,
+dirtyfb, expire, surfupd. renderer.c's frame-dump call is `ext`, since renderer.c is lane.flip474's.
+Every 60 guest frames the line prints, per caller:
+
+- `fin`: completions that submitted a finish;
+- `fence`: completions that waited an earlier fence;
+- `pre`: completions that waited the flip pre-download;
+- `dl`: downloads retired;
+- wall ms of the wait.
+
+`su_upl` counts the surface_update finishes that had a VRAM-reading upload after them, and
+`su_deferred` counts the updates the cut let go (0 in A by construction).
+
+Nova pilot: **`1790518618-forza414-1930404`** (4b22f2526b, perflog, survey route, 420 s), queued
+07:17 PDT at queue position 14. The prediction is that `surfupd` carries most of the `fin` and
+that `su_upl` is well under `surfupd`'s `fin`. If `range` carries it instead, the cut targets
+the wrong caller. Then the next step is to coalesce the range lookup's finish (texture scans of
+render targets), not this one.
+
+## 10. The cut (94f002d309)
+
+doa413b's refuted cut ("lazy completion", docs/lanes/doa413b) left only an already-submitted
+batch for later. In DOA's fight such a batch never existed at a surface_update (`skips` 0 on every
+fight line), so it could not reach the wait. This cut is the other branch, the one Forza's
+counters show: a batch still in the open command buffer, whose completion submits a finish.
+
+- `pgraph_vk_surface_update` leaves the batch to the next finish (`surface_update_may_defer_downloads`)
+  unless one of these holds: a binding is about to upload from VRAM (`upload_pending`), the batch
+  was already submitted, a display pre-download is pending, or TCG is off (no watch).
+- `expire_old_surfaces` completes only when a surface expires or a shelved one is freed.
+- Readers of guest memory complete an overlapping pending batch first
+  (`deferred_downloads_overlap_range`):
+  - `pgraph_vk_download_surfaces_in_range_if_dirty` (texture, vertex, blit). An evicted
+    surface is shelved with `shelved_dirty` cleared, so the old surface scan did not see it.
+  - `surface_access_callback`, via the existing `wait_for_downloads` hand-off. The evicted
+    binding keeps its watch while `draw_dirty`, so the access traps. The download lands
+    before a read, and before a write, which is today's order.
+- `pgraph_vk_prerecord_display_download` may now share a batch still in its command buffer. It
+  used to refuse any non-empty batch, which would have switched off the flip's pre-download (53
+  per window) whenever a deferred batch was pending.
+
+These readers were checked and need no guard:
+- Image lifetime: `destroy_surface_image` releases on the frame's fence, and
+  `deferred_downloads_clear_surface` handles a freed struct.
+- texture.c's two `pgraph_vk_upload_surface_data` calls are unreachable
+  (`surface_to_texture && upload_pending` right after that pair is forced false).
+- display.c's upload runs its own PRESENTING finish when the display surface was drawn in the
+  open command buffer.
+
+Residual, named: a display.c upload with `upload_pending` over an evicted surface's range with no
+draw in the open command buffer would read VRAM before the pending copy. It is rare, since the
+display surface is active and an eviction of its range makes it the new binding.
+
+**Price (a bound).** lane.slowdown462's Nova profile has the PFIFO thread waiting 18.1 ms per
+frame in `pgraph_vk_finish` <- this completion, out of 35.7 ms. The vCPU is on-CPU 30.5 ms. With
+the waits gone, the frame is at least the vCPU's time: <= 33 fps, and <= 30 fps at the title's
+2-VBLANK pacing, against 23.0 fps in the soak. The registered mover asks for >= 1.15x (about
+26.5 fps).
+
+## 11. Predictions and runs
+
+- `docs/testing/predictions/forza414-coalesce-mnm.json` (sha256 9ebf563f2a56...): goldens A/B
+  4b22f2526b vs 94f002d309. The must-not-move suites are Depth_buffer_fixed_function,
+  Color_zeta_overlap, Surface_format, Surface_clip, Clear, Texture_render_target,
+  Texture_CPU_Update, Texture_render_update_in_place (PR #387's guard), Image_blit and
+  Texture_Framebuffer_Blit. The arms job queues it from the commit.
+- `docs/testing/predictions/forza414-coalesce-soak.json`: the same-session Nova soak A/B, read by
+  hand (arms.sh skips title soaks). Queue it with request.sh after the pilot is read, one arm
+  per ref: `--title 4D53006E-Forza_Motorsport.xiso.iso --seconds 420 --device nova --perflog
+  --route survey --expect docs/testing/predictions/forza414-coalesce-soak.json`.
+
+## Attempt 2 ends waiting (2026-09-27 07:30 PDT)
+
+Pushed at 44519b7ec1 and preflight passes. PR #479 stays a draft, waiting on two things outside
+this session:
+
+- The Nova pilot `1790518618-forza414-1930404`, for the `[sdcall]` caller split (section 9).
+- The goldens must-not-move arm from `forza414-coalesce-mnm.json`, a `[job.arms]` verdict.
+
+On resume:
+1. Read the pilot's `[sdcall]` lines over t = 243-414 s. Name the dominant `fin` caller and
+   compare `su_upl` with `surfupd`'s `fin`.
+2. If `surfupd` dominates, queue the soak A/B (section 11) as two requests on the Nova, one per
+   ref.
+3. If `range` dominates, the cut is aimed wrong. Say so, and re-aim the cut before queueing
+   anything.
+4. Read the arm verdict and every scores1.tsv `status`.
+
+## Why attempt 2 did not finish (resume of 2026-09-27 09:17 PDT)
+
+It ended on a `waiting:` (PR #479, 14:25Z) for two requests outside the session: the Nova pilot and
+the goldens must-not-move arm. The pilot finished at 08:56 PDT. The arm pair
+(`1-1790519668-arms-forza414-base/fix`) is still queued. The two older requests from attempt 1
+(`1790450265`, DONE, and `1790450270`, ERROR) belong to #418, which folded. They are not re-read here.
+
+## 12. The split: `surfupd` pays every finish (pilot `1-1790518618-forza414-1930404`)
+
+Pilot run: Nova, apk 1a8d9178e52c (4b22f2526b), perflog, survey route. The race is the 111 `[sdcall]`
+lines from 08:51:30 to 08:56:08 PDT, each summing 60 guest frames: 6660 frames at gfps 23.
+
+| caller | fin | fence | pre | dl | wait ms | fin / frame | wait ms / frame |
+|---|---|---|---|---|---|---|---|
+| `surfupd` | 46620 | 0 | 6647 | 147232 | 139378 | **7.00** | **20.9** |
+| `range` | 13 | 0 | 0 | 36 | 39 | 0.002 | 0.01 |
+| all others | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+
+- `pgraph_vk_surface_update`'s completion is 99.97% of the finishes and of the wait. It waits 20.9 ms
+  per frame, which matches lane.slowdown462's 18.1 ms of `pgraph_vk_finish` per frame. `expire` has none.
+  `range` has 13, so the section 9 alternative is refuted.
+- `su_upl` = 19993, which is 42.9% of `surfupd`'s `fin` and 3.0 per frame. In those updates a
+  binding was about to upload from VRAM, so the cut at 94f002d309 still completes there. The cut can
+  let go of at most the other 57%: 4.0 finishes and about 12 ms of wait per frame, if the waits are
+  uniform. The deferred batches then ride the next finish that does happen.
+- **The queued fix arm coalesces this caller.** 94f002d309's change is in
+  `surface_update_may_defer_downloads`, the `SDC_SURF_UPDATE` site. The arms stay queued.
+
+**Price, revised (a bound).** Finishes per frame fall from 7.0 to about 3.0, and the wait falls by up to
+~12 ms of the ~43 ms frame: about 23 -> 30 fps at best, if the 3 remaining finishes wait no longer
+carrying larger batches. The soak prediction's >= 1.15x mover (~26.5 fps) sits inside that bound.
+
+**Next cut, not in this PR.** `su_upl` counts any `upload_pending` binding, whether or not its range
+overlaps a pending download. Restricting the check to `deferred_downloads_overlap_range(binding)`
+would free those of the 3.0 per frame that read VRAM the pending copies do not write. How many that is
+needs one more counter (overlap vs not), so it waits for this arm's verdict.
+
+## 13. Runs queued this session (priority 1, Nova)
+
+- Soak A/B, `forza414-coalesce-soak.json`, read by hand: base `1-1790525921-forza414-1054756`
+  (4b22f2526b), fix `1-1790525923-forza414-1055334` (94f002d309). Both are 420 s, perflog, survey route.
+- The goldens must-not-move arm pair is still `1-1790519668-arms-forza414-base/fix`, judged by the arms job.
+
+On resume: read both soaks' gfps and `[sdcall]` over the race (the fix arm's `su_deferred` should be
+about 4.0 per frame and `surfupd` `fin` about 3.0), then the `[job.arms]` verdict and every
+scores1.tsv `status`. Then merge master, and mark #479 ready when both hold.
+
+## Why attempt 3 did not finish (resume of 2026-09-27, attempt 4)
+
+It ended on a `waiting:` (PR #479, 16:19Z) for four device requests outside the session: the Nova
+soak A/B and the goldens must-not-move arm pair. All four have finished. The host promoted the soak
+pair, so its result directories are `0-0-x-1790525921-forza414-1054756` and
+`0-0-x-1790525923-forza414-1055334`. Nothing was stuck; the session could not wait ~90 min.
+
+## 14. Verdicts on 4b22f2526b vs 94f002d309
+
+### Goldens must-not-move (`forza414-coalesce-mnm.json`): PASS
+
+`[job.arms]` on PR #479, 10:16 PDT: all 266 captures in the 10 guarded suites are byte-identical
+between the arms (`1-1790519668-arms-forza414-base-2225156`, `...-fix-2225522`). Image_blit scored
+41 of 42 goldens in both arms, so that suite is a floor. The arm's logcat is not perflog, so it
+does not show that the deferral fired on the discs. The soak below does show it on Forza.
+
+### Nova soak A/B (`forza414-coalesce-soak.json`), read by hand: the mover is REFUTED
+
+Reader: `abread.py <A logcat> <B logcat> [--from s --to s] [--bucket 30]`. A is apk 1a8d9178e52c,
+10:40-10:46 PDT. B is apk dc9da6bd022b, 10:47-10:54 PDT. Same device, MAX regimen, survey route,
+shader cache cleared for both. No crash or validation line in either.
+
+Registered window, t = 243-414 s, medians:
+
+| leg | rule | A | B | B/A | result |
+|---|---|---|---|---|---|
+| M0 | both reach the race; B `su_deferred` > 0; A prints none | race from t = 120 | 302 per frame | | holds |
+| P1 | uncoalesced finishes (`cDef` per 60 flips) <= 0.5 | 429 | 240 | 0.559 | **fails** |
+| P2 | `Sub` ms/frame <= 0.6 | 16.10 | 12.05 | 0.748 | **fails** |
+| P3 | fps >= 1.15x | 29.34 | 29.49 | 1.005 | **fails** |
+
+**P3 could not have passed in that window.** Arm A is already at the title's 30 fps cap there
+(2.02 VBLANKs per flip). The route creeps the car off the pit straight, and from t = 300 s both arms
+face a fence and trees (frames 104619 and 105345). The same window read 26.7 fps in the pilot, where
+the car faced the grandstand (frame 085512), and 24.1 fps in lane.slowdown462's soak. So the base
+alone spans 24.1-29.3 fps in the registered window, across three runs of the same route. The
+window was chosen from one run and it is not one place.
+
+The race's first two minutes are one place in all four runs (start line and pit straight, AI field
+in view). Window t = 125-240 s, medians:
+
+| | pilot (A ref) | slowdown462 (e5db66fa37) | arm A | arm B | B / arm A |
+|---|---|---|---|---|---|
+| fps | 18.43 | 19.17 | 19.22 | 19.77 | 1.029 |
+| `Tot` ms/frame | 45.8 | 43.9 | 43.9 | 42.1 | 0.959 |
+| `Sub` | 23.5 | 23.3 | 23.5 | 17.7 | 0.753 |
+| `Surf` | | | 4.1 | 7.5 | 1.83 |
+| `Draw` | 16.4 | 16.2 | 15.6 | 15.5 | 0.99 |
+| GPU `R` | 21.6 | 20.3 | 20.9 | 18.5 | 0.885 |
+| `cDef` per 60 flips | 357 | 371 | 367.5 | 179 | 0.487 |
+| vCPU ms per 2 s | 1923 | 1927 | 1954 | 1924 | 0.985 |
+
+`[sdcall]` per guest frame, same window:
+
+| caller | A fin | A wait ms | B fin | B fence | B wait ms |
+|---|---|---|---|---|---|
+| `surfupd` | 6.82 | 23.45 | 3.08 | 0.00 | 20.26 |
+| `range` | 0.00 | 0.00 | 0.14 | 0 | 0.27 |
+| `expire` | 0 | 0 | 0.14 | 0 | 0.68 |
+| total | 6.82 | 23.45 | 3.36 | 0.00 | 21.21 |
+
+`su_upl` is 2.92 per frame in A and 3.08 in B. B's `surfupd` fin equals its `su_upl`: every finish
+the update still pays is one where a binding was about to upload from VRAM.
+
+What the two tables say:
+
+- **The cut does what it was built to do.** Finishes fall from 6.8 to 3.4 per frame. They did not
+  move to another caller: `range` and `expire` together gain 0.28 per frame.
+- **The wait did not follow the count.** Finishes fall 51%, `Sub` falls 25% (5.8 ms), and the frame
+  falls 4% (1.8 ms). B's fps of 19.77 is above all three base runs (18.43, 19.17, 19.22), by 3-7%.
+  The base's own spread is 4%, and B is one run. That is not the >= 1.15x the prediction asked for.
+- **Why the price in section 12 was wrong.** It assumed each finish costs the same wait, so that
+  removing 57% of the finishes removes 57% of the wait. A finish waits for the GPU to catch up with
+  every draw submitted so far. `Sub` tracks the GPU's render time in every run (23.5 vs `R` 20.9 in
+  A, 17.7 vs 18.5 in B). With fewer sync points each one waits longer: 3.5 ms per finish in A,
+  5.8 ms in B. While one synchronous completion remains late in the frame, the PFIFO thread waits
+  for most of the frame's GPU work.
+- **3.4 ms of the gain went back into `Surf`.** Inside `pgraph_vk_surface_update`, `[surf413]` has
+  `cdef` - `fin` (the completion's time outside `pgraph_vk_finish`) rising from 1.65 to 4.33
+  ms/frame, and `exp` from 0.16 to 0.85. The first is the pre-download branch: the deferred batch
+  now rides the flip's command buffer, and the first update after the flip waits on that fence
+  (`pre` 0.85 per frame). That is the branch lane.flip474 named for DOA. Forza pays it too, once
+  the eviction finishes are out of the way.
+
+**What the next lane should not repeat:** do not price a cut in sync points. Price it in the wait
+that is left after the last sync point in the frame. And do not register a window on a creeping
+route from one run's fps: read the frames for the place first.
+
+### What is left, per frame (arm B, t = 125-240 s)
+
+| sync point | per frame | wait ms/frame | what frees it |
+|---|---|---|---|
+| `surfupd` with an `upload_pending` binding | 3.08 | 17.9 | completing only when the upload's range overlaps a pending download (section 12's next cut), if most do not overlap |
+| the flip pre-download, waited at the first update | 0.85 | ~2.7 | leaving `display_predownload_pending` set until a consumer (lane.flip474's list) |
+| `range` + `expire` | 0.28 | 0.95 | real readers; they stay |
+
+The bound with both gone is the larger of the PFIFO thread's CPU side (`Surf` + `Draw`, about
+20-23 ms), the GPU (22.5 ms) and the vCPU, which is 96% on-CPU in this window: at most ~27 fps here
+if the vCPU's time is the guest's own work. lane.slowdown462's profile was taken at 28 fps, not in
+this window, so the vCPU's share here is not measured.
+
+## 15. What the three remaining finishes are: the Vulkan clear never sets `cleared`
+
+`[evict372]` in arm B, growth over 5 s at ~30 fps (10:54:11 to 10:54:16 PDT), per frame:
+
+| pair | mask | from -> to | per frame |
+|---|---|---|---|
+| 6, 7 | m10 swizzle | C and Z, 128x128 linear -> 128x128 swizzled, same format and pitch | 2.8 each |
+| 0, 1 | m10 swizzle | C and Z, 256x256 linear -> 256x256 swizzled | 0.94 each |
+| 2 | m08 small | Z 640x480 -> Z 1280x480, pitch 5120 | 0.94 |
+| 3 | m40 zdim | Z 1280x480 -> Z 640x480 | 0.94, half of them dirty |
+
+`handoffs=0`: #372's GPU-side handoff declines all of them, because it needs the same swizzle and
+the same size. No pair runs from swizzled to linear.
+
+So about 3.75 times a frame Forza sets up a small render target like this:
+1. It sets the surface type to linear and clears the target. The held binding is swizzled (last
+   frame's). `update_surface_part` rescues that mismatch because `pg->clearing` is set, and the
+   binding becomes linear.
+2. It sets the type to swizzled and draws. The held binding is now linear. The rescue for this
+   direction is `surface->cleared`: "a fully cleared linear surface to be marked swizzled"
+   (surface.c, `update_surface_part`).
+3. **`cleared` is never true in the Vulkan renderer.** `gl/draw.c:401-404` sets
+   `binding->cleared = full_clear && write_color` (and zeta) at the end of the clear.
+   `pgraph_vk_clear_surface` (vk/draw.c:7213-7496) has no such line on either of its two exits (the
+   inline clear at 7391 and the pipeline clear at 7489). The only writers in vk/ set it false
+   (`populate_surface_binding_target_sized`, `pgraph_vk_set_surface_dirty`).
+4. So the draw evicts the colour and the zeta binding. Each records a download of the cleared
+   pixels. The partner comes off the shelf stale (`vram_newer`), so it is `upload_pending`, and the
+   update completes the downloads with a finish before it uploads them back.
+
+That is a GPU -> VRAM -> GPU round trip of a uniform colour, 7.5 evictions of the ~9.5 per frame.
+It is also why section 12's next cut (complete only when the upload overlaps a pending download)
+is dead: these uploads read the very memory the eviction just downloaded. They overlap by
+construction. Do not build it.
+
+**The hunk, in vk/draw.c (not this lane's file):** at both exits of `pgraph_vk_clear_surface`, after
+`pgraph_vk_set_surface_dirty`, set `cleared` as GL does. `full_clear` is the clip-bounded clear
+rect covering the binding, taken before the scale factor is applied, as at `gl/draw.c:374-376`.
+Two conditions are stricter than GL's, because the rescue relies on the content being uniform:
+colour counts only when all four channels are cleared (`clear_all_color_channels`, already
+computed there), and zeta only when Z is cleared, and stencil too if the format has it.
+
+**Price (a bound, in finishes, and section 14 says not to trust a price in finishes).** The
+small-target evictions go: 7.5 of 9.5 per frame, and with them their downloads, their uploads
+(`realupl` 4.15 per frame) and the render-pass breaks around them. `su_upl` falls from 3.1-3.4 to at
+most the Z 640/1280 flips, 0.94-1.9 per frame. What that does to the wait depends on where in the
+frame the Z flips sit. If one is late, the PFIFO thread still waits for most of the GPU's work
+there. The A/B has to say. No fps figure is claimed here.
+
+**Not known:** whether Forza's clears of these targets are full clears. Eight clears a frame all
+take the pipeline path (`InlClr:0/480`), and the logcat does not carry the clear rect. If they are
+partial, `cleared` stays false and the A/B shows no change in `[evict372]` m10.
+
+## 16. lane.flip474's O1 (the pre-download branch) also needs vk/draw.c
+
+flip474's NOTES section 14 lists what lazy completion of the flip's display download needs. Rows 4
+and 5 are in vk/draw.c: the finish at draw.c:3590 tags `deferred_downloads_frame` only while it is
+< 0 and never re-tags entries recorded after the flip, and the slot rotation at draw.c:3785-3797
+completes the staging without clearing `display_predownload_*`. The surface.c rows (1, 2, 3, 7,
+11, 12) are this lane's. They are not safe to land without rows 4 and 5, because row 2's stale
+copy becomes the normal case once the completion is lazy.
+
+Forza pays this branch too (section 14: `pre` 0.85 per frame, ~2.7 ms in arm B).
+
+## 17. Grant request: vk/draw.c
+
+`hw/xbox/nv2a/pgraph/vk/draw.c` is on lane.remote's row (#426, #184, #109, #274, #461). The two
+hunks this lane needs:
+
+| hunk | site | size |
+|---|---|---|
+| set `cleared` after a full clear | `pgraph_vk_clear_surface`, both exits (7391, 7489) | ~15 lines |
+| O1 rows 4 and 5 | the finish's tag (3590) and the slot rotation (3785-3797) | not written yet |
+
+Requested on #414 and in `$DISPATCH_DIR/board-requests/forza414.md`. The first hunk is
+independent of the second and goes first.
+
+## 18. The merge and the re-registered arm
+
+- Merged origin/master c91697f116 at c6bfa6c85a. One conflict, in vk/surface.c, with #475
+  (`ef66174066`, the lock released across the completion's fence waits). Both sides are kept: the
+  completion is `download_surface_complete_deferred_at(d, caller, release_lock)`, the tagged
+  in-file callers go through `download_surface_complete_deferred(d, caller)` with the lock held
+  as on master, and `pgraph_vk_surface_update` passes `qemu_thread_is_self(&d->pfifo.thread)`.
+- No local compile exists on this host for these files. CI builds the head, and the arm's build is
+  the Android one.
+- `docs/testing/predictions/forza414-coalesce-mnm2.json` (sha256 e3771ace4860...): the same ten
+  suites, A = c91697f116 (master), B = c6bfa6c85a. The arms job queues it from the commit. This is
+  the arm the brief asks for before ready.
+- The soak was not re-run on the merged refs. A second pair would measure a 3% effect again, and
+  the Nova's queue is better spent on the `cleared` hunk's A/B.
+
+## Attempt 4 ends waiting
+
+PR #479 stays a draft, waiting on two things outside this session:
+
+- The `[job.arms]` verdict for `forza414-coalesce-mnm2.json`.
+- The board's answer on vk/draw.c.
+
+On resume:
+1. Read the arm verdict and every scores1.tsv `status`. If it passes and CI is green on the head,
+   check the PR body's `Files:` against `git diff --stat origin/master...HEAD` and mark #479 ready.
+2. If vk/draw.c is granted: write the `cleared` hunk, register a Forza soak prediction on the new
+   refs with the window t = 125-240 s (the place all runs share) and a goldens must-not-move with
+   Surface_format, Clear, Texture_render_target and any suite that draws swizzled targets, then
+   queue one pilot. The mover to register is `[evict372]` m10 per frame falling from ~7.5 toward 0
+   and `su_upl` from ~3.1 toward <= 1.9. Register fps as a readout, with the reason from section 14.
+3. When flip474's DOA pair on 4b22f2526b / 94f002d309 lands (`1790527182`, `1790527188`), add DOA's
+   cdef to section 14's table.
+
+## Why attempt 4 did not finish (resume of 2026-09-27, addendum 3)
+
+It ended on a `waiting:` (PR #479, 18:10Z) for the `forza414-coalesce-mnm2.json` arm and the
+vk/draw.c grant. The grant landed at 11:13 PDT (board 5f78b6a5ba). At this resume the arms job had
+not yet queued mnm2 (no `arms-forza414` result after `1-1790519668`), and CI on 7787feb2ae was
+green on `check` with `build` still running.
+
+## 19. Hunk 1: `cleared` after a full clear (51721e36aa)
+
+`mark_clear_full()` in vk/draw.c, called at both exits of `pgraph_vk_clear_surface` after
+`pgraph_vk_set_surface_dirty` (which resets the flag). The rect is the clip-bounded clear rect,
+saved before the inline path's binding clamp. It is compared in anti-aliased units, as the binding's
+size and GL's `surface_binding_dim` are, and before the scale factor. Colour counts only when all
+four channels are cleared. Zeta counts only when Z is cleared, and stencil too if the host format
+has a stencil aspect. There is no local compile for this file on this host, so CI builds it.
+
+Predictions, registered before any device run, on A = 7787feb2ae (the head before the hunk) and
+B = 51721e36aa:
+
+| file | kind | legs |
+|---|---|---|
+| `forza414-cleared-mnm.json` | goldens, arms job | the ten suites of mnm/mnm2, byte-identical |
+| `forza414-cleared-soak.json` | Nova soak, hand-read | M0 race reached; P1 m10 evictions <= 25% of A; P2 `su_upl` <= 1.9/frame; P3 `surfupd` fin <= 60% of A; fps is a readout, window t = 125-240 s |
+
+P1 is also the only reading of whether Forza's clears are full: if they are not, m10 does not
+move and the hunk is inert on Forza, not refuted.
+
+Queued, Nova, priority 1 (a lane cannot make a `0-0-x` id; the host promotes):
+`1-1790533007-forza414-3417242` (base 7787feb2ae) and `1-1790533010-forza414-3422338`
+(fix 51721e36aa). The index was rebuilt for the new CLEAR_SURFACE references against the fold-pins
+trees (tests_commit unchanged). `preflight.sh --allow-tracker` passes on the head.
+
+## Attempt 5 ends waiting
+
+PR #479 stays a draft, waiting on requests outside this session:
+- the soak pair above, read by hand with `abread.py` plus the `[evict372]` m10 growth over the window;
+- the `[job.arms]` verdicts for `forza414-coalesce-mnm2.json` and `forza414-cleared-mnm.json`.
+
+On resume: judge the soak's legs from section 19. Then read both arm verdicts and every scores1.tsv
+`status`. If all hold and CI is green, mark #479 ready. Hunk 2 and the DOA pre-download branch
+(section 16, flip474's consumer list) come after the verdict, in the next PR.
+
+## Why attempt 5 did not finish (resume of 2026-09-27, addendum 4)
+
+It ended on a `waiting:` (PR #479, 18:18Z) for hunk 1's Nova soak pair and two goldens arms, all
+outside the session. At this resume the soak pair had finished (promoted to
+`0-0-x-1790533007-forza414-3417242` and `0-0-x-1790533010-forza414-3422338`), `forza414-cleared-mnm.json`
+was judged PASS (266 of 266 byte-identical, 13:11 PDT), and the mnm2 fix arm
+(`1-1790534057-arms-forza414-fix-3970185`) was still queued behind its base arm.
+
+## 20. Hunk 1's soak, read: the swizzle round trip is gone, the finishes are not
+
+`abread.py` over t = 125-240 s (the start line and pit straight), plus `evictgrow.py` for the
+`[evict372]` masks. Same Nova, MAX, survey route, 2100 guest frames in the window in each arm. No
+crash or validation line in either.
+
+| leg | rule | A (7787feb2ae) | B (51721e36aa) | result |
+|---|---|---|---|---|
+| M0 | both in the race, `[evict372]` and `[sdcall]` printed | yes | yes | holds |
+| P1 | m10 evictions per frame, B/A <= 0.25 | 16,088 in the window, ~7.7/frame | 0 | **holds** |
+| P2 | B `su_upl` per frame <= 1.9 | 3.09 | 2.98 | **fails** |
+| P3 | B/A `surfupd` fin per frame <= 0.6 | 3.086 | 2.982 (0.966) | **fails** |
+
+Readouts: fps 19.52 -> 20.28 (1.039), `Sub` 18.8 -> 17.3, `Tot` 43.0 -> 41.5, `Surf` 8.1 -> 8.7,
+`ev.dl` 586 -> 156 per 60 flips (0.27), `unshelve` 420 -> 0, `s413.exp` 0.93 -> 0.15, `realupl` 249
+-> 249, `stale` 106 -> 104, `PreDL` 45 -> 52.
+
+**So Forza's clears of the small targets are full clears, and the hunk does what it says.** Every
+m10 eviction is gone, and with them the downloads (`ev.dl` -73%) and the shelf round trip
+(`unshelve` to 0). The m08/m40 Z flips are unchanged (2,010 vs 2,006), as registered.
+
+**But section 15's model of the finishes was wrong.** It said the unshelved partner comes back
+`upload_pending` and the update finishes the eviction's downloads before uploading it. With every
+unshelve gone, `su_upl` and `realupl` do not move at all: the ~3 `upload_pending` bindings per frame
+come from somewhere else. The failure is P2's registered world, "the rescued bindings still come
+back upload_pending (the watch marks them dirty another way)", seen as m10 falling while `su_upl`
+holds. The surfupd fin per frame is the same 3.0 in both arms. P3 fails with it.
+
+**What the next lane should not repeat:** do not attribute an `upload_pending` completion to the
+eviction that happens to sit next to it. Read what set `upload_pending` (a `[sdcall]` split by the
+setter: the VRAM watch on a CPU write, `vram_newer` on a shelf hit, the surface's creation) before
+pricing a cut in these finishes. `stale` at ~105 per 60 flips in both arms is the first candidate.
+
+The hunk stays: it is correct, it removes a real GPU -> VRAM -> GPU round trip per small target,
+and its goldens arm is byte-identical. It is inert on the frame's wait on Forza.
+
+## 21. Hunk 3: the per-pass state snapshot (addendum 4)
+
+`flush_draw_one_pass` copied a whole `RenderCommandSnapshot` (`regs[0x2000]`, 32 KB, plus program
+data, constants and lights, about 40 KB) on every draw pass, only to assert four fields at the end
+under `#ifndef NDEBUG`. Android release configs pass `-UNDEBUG`, so shipped builds pay it.
+5f07b1d542 keeps the four asserts and saves only `primitive_mode`, `clearing`, `CONTROL_0` and
+`SETUPRASTER` in scalars. Nothing else in draw.c read `snap`. `pgraph_vk_snapshot_state` keeps its
+other caller (render_thread.c). No local compile of this file on this host: CI builds it.
+
+Price, two figures that disagree, and the arm decides between them:
+- lane.slowdown462's Blinx profile: 47% of the PFIFO thread's `memcpy_opt` (30.5% of 13,080 ms
+  on-CPU in 30 s, ~501 frames) is under the snapshot, about 3.7 ms/frame. #474's note says 2.2-2.5.
+- Its size: ~40 KB per pass at a few GB/s is 5-10 us. At ~47 draw passes a frame that is 0.3-0.5
+  ms/frame.
+
+The time lands in `Draw` and outside every bracketed child timer, so the leg reads Draw's self time
+(`Draw` - `Vtx` - `Syn` - `Prw` - `Pipe` - `Desc` - `Setup` - `Cmd`).
+
+Predictions, registered before any device run, on A = 6ab1c50643 (the merge of origin/master
+940c77e866) and B = 72de98abd1 (hunk 3 plus the index rebuild):
+
+| file | kind | legs |
+|---|---|---|
+| `forza414-snap-mnm.json` | goldens, arms job | the same ten suites, byte-identical |
+| `forza414-snap-soak.json` | Blinx Nova soak, hand-read | M0 level play reached, no abort; P1 Draw self falls by >= 1.0 ms/frame. It fails in the world where the size-based price is right (a 0.2-0.6 ms fall): the hunk is correct and small |
+
+Queued, Nova, priority 1: `1-1790543736-forza414-3560854` (base 6ab1c50643) and
+`1-1790543737-forza414-3561797` (fix 72de98abd1).
+
+## Attempt 6 ends waiting
+
+PR #479 stays a draft, waiting on requests outside this session:
+- the Blinx soak pair above, read by hand: `abread.py` for the readouts, and Draw self from the
+  perflog phase lines, window mark play + 10 s to the last line - 10 s;
+- the `[job.arms]` verdicts for `forza414-coalesce-mnm2.json` (fix arm queued) and
+  `forza414-snap-mnm.json` (queued by the arms job from this push).
+
+On resume: judge P1 and M0, read both verdicts and every scores1.tsv `status`, post the verdict on
+#414 and #474, then mark ready. After that, in the next PR: the setter split for `upload_pending`
+(section 20), the DOA pre-download branch with flip474's consumer list, and addendum 4's uniform-block
+skip (`apply_uniform_updates` / `fast_hash`).
+
+## Why attempt 6 did not finish (resume of 2026-09-27, addendum 5)
+
+It ended on a `waiting:` (PR #479, 21:17Z) for hunk 3's Blinx Nova soak pair and two goldens arms,
+all outside the session. At this resume all had finished: the soak pair as
+`0-0-x-1790543736-forza414-3560854` / `0-0-x-1790543737-forza414-3561797`, the mnm2 arm (judged
+PASS, 15:22 PDT), and the snap-mnm arms `1-1790543810-arms-forza414-base-3588648` /
+`1-1790543811-arms-forza414-fix-3588699` (DONE, no `[job.arms]` comment yet at this resume).
+
+## 22. Hunk 3's verdicts: Draw self falls 4.1 ms/frame, pixels byte-identical
+
+`drawself.py` (this directory) over both logcats, window mark play + 10 s to the last phase line
+- 10 s, medians over the phase lines. Same Nova, MAX, survey route. No crash, abort or assert line
+in either arm.
+
+| | A (6ab1c50643) | B (72de98abd1) |
+|---|---|---|
+| window | 150.9 s, 39 lines | 152.7 s, 43 lines |
+| Draw | 27.8 | 25.5 |
+| **Draw self** (Draw - Vtx Syn Prw Pipe Desc Setup Cmd) | **5.8** | **1.7** |
+| Draw self, also minus Sfp Mfp FTx | 5.6 | 1.5 |
+| Pipe | 16.6 | 18.8 |
+| Tot | 45.4 | 37.7 |
+| GPU | 24.5 | 22.0 |
+| Sub | 0.1 | 0.1 |
+| fps (pace lines) | 16.81 | 17.16 |
+
+| leg | rule | result |
+|---|---|---|
+| M0 | both arms reach level play, Draw > 0 in the window, no abort | **holds** (39/39 and 43/43 lines with Draw > 0) |
+| P1 | A - B Draw self >= 1.0 ms/frame | **holds**: 4.1 |
+| snap-mnm | 266 guarded captures byte-identical | **PASS**, 266 of 266 (`ab_compare.py` run by hand; the arms job will post its own) |
+
+Every scores1.tsv row in both snap-mnm arms is `ok` except the same ten `white-content` rows (two
+z16 Depth_buffer_fixed_function, eight TexFmt Texture_render_target). They are identical in both
+arms and in hunk 1's base arm `1-1790534055-arms-forza414-base-3969468`, so they come from before
+this lane.
+
+**The profile's price was right, and the size-based price was wrong**: 4.1 ms against slowdown462's
+~3.7 and the 0.3-0.5 of "40 KB at a few GB/s". The phase line has no draw count, so a scene
+difference between the arms is not ruled out directly. But Pipe rose 2.2 ms in B, so B did not do
+less work, and Draw self is the only child the hunk can reach. Tot fell 7.7 ms and fps rose only
+2%: Blinx's bound is the vCPU (slowdown462), as the prediction said. No fps figure is claimed.
+
+## 23. The merge of origin/master (38e33bae67)
+
+origin/master at this resume was 69 commits ahead. Its only code change is #488's NOTIFY handler
+(pgraph.c, methods.h.inc, nv2a_regs.h), with its own arm. It touches neither vk/draw.c nor
+vk/surface.c. The only conflict was `nv2a_index.json`, rebuilt from the fold-pins trees (tests_commit
+6743b6ab, 104 suites, `check` passes). **The arms were not re-run on the merge:** no line of either
+hunk, nor anything they call, changed. The three judged goldens arms (cleared-mnm, coalesce-mnm2,
+snap-mnm) stand on the code as it is. `preflight.sh --allow-tracker` passes on 38e33bae67.
+
+## Next, in a new PR (not this one)
+
+1. Split the ~3 surfupd finishes per frame by what set `upload_pending` (section 20): the VRAM
+   watch on a CPU write, `vram_newer` on a shelf hit, or the surface's creation. `stale` at ~105 per
+   60 flips is the first candidate.
+2. The DOA/AUF display-predownload branch with flip474's consumer list (section 16, addendum 2).
+3. Addendum 4's uniform-block skip in draw.c (`apply_uniform_updates` / `fast_hash`, 3.5-3.7
+   ms/frame on Blinx and AUF).
