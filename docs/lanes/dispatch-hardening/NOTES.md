@@ -488,6 +488,48 @@ all live in `dispatcher.sh` / `request.sh`. Both are lent to lane.titlerun
 until #307 folds, and #307 was still open at 00:05Z on 2026-09-26. It was not
 started here.
 
+### 2026-09-28: the request.sh half
+
+#307 has folded, and request.sh is this lane's again. dispatcher.sh is held by
+lane.fanduty507. So this PR is the half that needs no dispatcher change:
+`request.sh --priority blocker|arm|study|sweep`.
+
+**The id stays the priority.** The brief asked for a JSON field that the
+queue orders by ahead of the epoch. Ordering by a field is a dispatcher
+change. Every reader already handles tier prefixes: the dispatcher's glob,
+arms.sh's and status.sh's `z-*` idle count, and handback's `(?:^|-)\d{9,}-`
+owner regex. The host also already promotes with `0-0-x-` ids. So the flag
+picks the prefix, and the field records what was asked for:
+
+| --priority | id | label read |
+|---|---|---|
+| blocker | `0-<epoch>-...`, behind the host's `0-0-*` heads. It must name an issue (`--issue`, or #N in `--purpose`), or it is refused | no |
+| arm, study (default) | as before: `1-` when the issue carries the release label, else plain | yes |
+| sweep | `z-<epoch>-...`, the idle tier | no |
+
+`arm` and `study` share a tier. The release label already lifts a release
+arm. A separate arm tier would put every arm ahead of release studies, and
+that is the owner's call, not a side effect of a flag.
+
+**Proof** is `selftest.d/99-request-priority-flag.sh`. Each leg asserts on
+the queued file's id and its `priority` field. One leg lays out five ids in
+the dispatcher's glob order: a host `0-0-x` head, the blocker, a release arm,
+a plain arm and a `z-sweep` leg. The blocker must come second.
+- A mutant that names every raised tier `1-` queues its blocker as `1-`, and
+  the order check is red on it.
+- Master's request.sh, run in a scratch symlink tree, refuses the blocker leg
+  with `unknown option --priority`, rc 2, and queues nothing.
+
+**Still open:** the hold `yield` file, so that a blocker is served between
+two hand runs of a hold. It needs dispatcher.sh, which lane.fanduty507 holds.
+
+**Do not repeat.** A fixture helper that echoes "the ids in this leg's
+queue" returns two ids on its second call unless the leg starts from an
+empty queue. The order check first passed with duplicates in it, because
+its globs covered them. Also, a mutant check whose pattern needs the fixed
+behaviour to match is green against any mutant. Run the real output and the
+mutant's through ONE predicate.
+
 ## Defect 15: the pull was holed, not truncated
 
 **The brief's premise was wrong, and so was part A's comment.** Both said
@@ -645,6 +687,31 @@ mutant copied alone into a temp directory queued nothing (`cannot resolve
 --ref`), and it looked like the plain row going wrong. The master column is
 master's arms.sh, copied byte-identical into a scratch worktree at
 origin/master that has only this fragment under `selftest.d/`.
+
+## Defect 29: a red board failed the tracker-source check under its name
+
+Selftest part I checked that check_territory reads the tracker from where
+it reads the territory, from `check_territory.py 2>&1 | head -3`. The FAIL
+lines go to stderr, which is unbuffered, and stdout is block-buffered in a
+pipe. So on a red board every stderr line comes out first, and with two or
+more of them `head -3` holds no `read from` line. The master selftest of
+3a5d79e3ea failed this check while origin/board double-claimed a file. The
+check was about the two source lines, not about the board being green:
+preflight gates that.
+
+The fix reads stdout only and matches the two lines anywhere in it. The
+proof is in the same fragment. It uses a private repo with two orphan board
+branches, read through `HAKUX_BOARD_REF`:
+
+| fixture | what it shows |
+|---|---|
+| `fxred`: both files on the ref, `x.c` held by lanes a and b | stderr names the double claim, and the source check passes |
+| `fxsplit`: the tracker is missing from the ref | stdout says `territory.toml read from fxsplit` and `nv2a_issues.toml read from working tree`, and the check fails |
+| the old `2>&1 \| head -3` on `fxred` | fails, and its first line is `FAIL: territory.toml` |
+
+Seen on the way: fragment 51 sets `SECONDS=0` for its own timers (parts C
+and G), so the runner prints `51-dispatch-hardening.sh took -376s`. That is
+cosmetic, and it is older than this change.
 
 ## For the next lane
 

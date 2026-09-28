@@ -1,0 +1,2925 @@
+tid 16027: 23492 samples, 12662 JIT, 12647 mapped to a TB
+disassembled 3839 TBs holding 12015 samples (95.0% of mapped JIT samples)
+sample-weighted host insns per TB 425.3, guest insns per TB 16.3, host/guest 26.16
+
+class       static %  at-ip %
+env_ld           3.3      4.9
+env_st           6.1     20.7
+irq_chk          2.2      2.2
+tlb              5.2     17.9
+xbox_fp          5.1      3.5
+guest_mem        4.2      5.9
+fp               0.3      1.1
+simd             0.2      1.5
+call             2.6      0.3
+branch          19.6      6.2
+alu             51.1     35.7
+
+per executed TB (sample-weighted): softmmu TLB compares 11.82, XBOX load fast paths 6.76, helper calls 14.43, scalar FP ops 1.51
+samples in TBs with any scalar FP op: 9.0%
+
+--- TB pc 0x273686: 690 samples, 2 guest insns, 69 host insns
+      0    22  alu       hint #0x24
+      4    14  xbox_fp   ldr w16, [x27, #0x8]
+      8    12  branch    cbz w16, 0x1c <_binary__tmp_tmpz_0k84___code_bin_start+0x1c>
+      c    14  xbox_fp   ldr w16, [x27, #0xc]
+     10    10  branch    cbnz w16, 0x1c <_binary__tmp_tmpz_0k84___code_bin_start+0x1c>
+     14     0  xbox_fp   ldr x26, [x27]
+     18     0  branch    b 0x20 <_binary__tmp_tmpz_0k84___code_bin_start+0x20>
+     1c    11  alu       mov w26, #0x0
+     20    21  irq_chk   ldur w20, [x19, #-0x10]
+     24    17  branch    tbnz w20, #0x1f, 0xe4 <_binary__tmp_tmpz_0k84___code_bin_start+0xe4>
+     28    19  irq_chk   sturb wzr, [x19, #-0xc]
+     2c    10  alu       mov w20, #0x2534
+     30     8  alu       movk w20, #0x5f, lsl #16
+     34     5  xbox_fp   cbz x26, 0x64 <_binary__tmp_tmpz_0k84___code_bin_start+0x64>
+     38     0  alu       tst w20, #0xfc000000
+     3c     0  branch    b.ne 0x48 <_binary__tmp_tmpz_0k84___code_bin_start+0x48>
+     40     0  alu       mov x17, x26
+     44     0  branch    b 0x88 <_binary__tmp_tmpz_0k84___code_bin_start+0x88>
+     48     0  xbox_fp   ldr x16, [x27, #0x10]
+     4c     0  branch    cbz x16, 0x64 <_binary__tmp_tmpz_0k84___code_bin_start+0x64>
+     50     0  alu       sub x30, x20, x16
+     54     0  alu       tst w30, #0xfc000000
+     58     0  branch    b.ne 0x64 <_binary__tmp_tmpz_0k84___code_bin_start+0x64>
+     5c     0  alu       sub x17, x26, x16
+     60     0  branch    b 0x88 <_binary__tmp_tmpz_0k84___code_bin_start+0x88>
+     64    13  tlb       ldp x16, x17, [x19, #-0x70]
+     68    15  alu       and x16, x16, x20, lsr #7
+     6c     1  alu       add x17, x17, x16
+     70    13  guest_mem ldr w16, [x17]
+     74    11  tlb       ldr x17, [x17, #0x18]
+     78     9  alu       add w30, w20, #0x3
+     7c     6  alu       and w30, w30, #0xfffff000
+     80    18  alu       cmp w16, w30
+     84     0  branch    b.ne 0xec <_binary__tmp_tmpz_0k84___code_bin_start+0xec>
+     88    13  guest_mem ldr w20, [x17, w20, uxtw]
+     8c    19  env_ld    ldr w21, [x19]
+     90     0  alu       sub w20, w20, w21
+     94    17  env_st    str w20, [x19, #0x28]
+     98    11  env_st    str w21, [x19, #0x2c]
+     9c     7  alu       mov w21, #0x1
+     a0    15  irq_chk   sturb w21, [x19, #-0xc]
+     a4    16  alu       mov w21, #0x12
+     a8    14  env_st    str w21, [x19, #0x34]
+     ac    21  branch    cbz w20, 0xd0 <_binary__tmp_tmpz_0k84___code_bin_start+0xd0>
+     b0    12  env_ld    ldr w20, [x19, #0x20]
+     b4     0  alu       add w20, w20, #0x8
+     b8   283  env_st    str w20, [x19, #0x20]
+     bc    13  branch    b 0xfffffffffff579c0 <_binary__tmp_tmpz_0k84___code_bin_end+0xffffffffffbd7c68>
+     c0     0  branch    br x16
+     c4     0  alu       hint #0x24
+     c8     0  alu       adr x0, 0xffffffffffffff41 <_binary__tmp_tmpz_0k84___code_bin_end+0xffffffffffc801e9>
+     cc     0  branch    b 0xfffffffffd01507c <_binary__tmp_tmpz_0k84___code_bin_end+0xfffffffffcc95324>
+     d0     0  branch    b 0x0 <_binary__tmp_tmpz_0k84___code_bin_start>
+     d4     0  branch    br x16
+     d8     0  alu       hint #0x24
+     dc     0  alu       adr x0, 0xffffffffffffff40 <_binary__tmp_tmpz_0k84___code_bin_end+0xffffffffffc801e8>
+     e0     0  branch    b 0xfffffffffd01507c <_binary__tmp_tmpz_0k84___code_bin_end+0xfffffffffcc95324>
+     e4     0  alu       adr x0, 0xffffffffffffff43 <_binary__tmp_tmpz_0k84___code_bin_end+0xffffffffffc801eb>
+     e8     0  branch    b 0xfffffffffd01507c <_binary__tmp_tmpz_0k84___code_bin_end+0xfffffffffcc95324>
+     ec     0  alu       mov w1, w20
+     f0     0  alu       mov x0, x19
+     f4     0  alu       mov w2, #0x4045
+     f8     0  alu       movk w2, #0x1, lsl #16
+     fc     0  alu       adr x3, 0x8c <_binary__tmp_tmpz_0k84___code_bin_start+0x8c>
+    100     0  alu       adrp x16, 0x1539b000 <_binary__tmp_tmpz_0k84___code_bin_end+0x1501b2a8>
+    104     0  alu       add x16, x16, #0x604
+    108     0  call      blr x16
+    10c     0  alu       mov w20, w0
+    110     0  branch    b 0x8c <_binary__tmp_tmpz_0k84___code_bin_start+0x8c>
+
+--- TB pc 0x27368e: 603 samples, 3 guest insns, 74 host insns
+      0    16  alu       hint #0x24
+      4     9  xbox_fp   ldr w16, [x27, #0x8]
+      8    14  branch    cbz w16, 0x130 <_binary__tmp_tmpz_0k84___code_bin_start+0x130>
+      c    16  xbox_fp   ldr w16, [x27, #0xc]
+     10    12  branch    cbnz w16, 0x130 <_binary__tmp_tmpz_0k84___code_bin_start+0x130>
+     14     0  xbox_fp   ldr x26, [x27]
+     18     0  branch    b 0x134 <_binary__tmp_tmpz_0k84___code_bin_start+0x134>
+     1c    21  alu       mov w26, #0x0
+     20    10  irq_chk   ldur w20, [x19, #-0x10]
+     24    15  branch    tbnz w20, #0x1f, 0x20c <_binary__tmp_tmpz_0k84___code_bin_start+0x20c>
+     28    17  irq_chk   sturb wzr, [x19, #-0xc]
+     2c     7  env_ld    ldr w20, [x19]
+     30     5  alu       add w20, w20, #0x1
+     34     9  env_st    str w20, [x19, #0x4]
+     38    15  alu       mov w21, #0x2534
+     3c     0  alu       movk w21, #0x5f, lsl #16
+     40    14  xbox_fp   cbz x26, 0x184 <_binary__tmp_tmpz_0k84___code_bin_start+0x184>
+     44     0  alu       tst w21, #0xfc000000
+     48     0  branch    b.ne 0x168 <_binary__tmp_tmpz_0k84___code_bin_start+0x168>
+     4c     0  alu       mov x17, x26
+     50     0  branch    b 0x1a8 <_binary__tmp_tmpz_0k84___code_bin_start+0x1a8>
+     54     0  xbox_fp   ldr x16, [x27, #0x10]
+     58     0  branch    cbz x16, 0x184 <_binary__tmp_tmpz_0k84___code_bin_start+0x184>
+     5c     0  alu       sub x30, x21, x16
+     60     0  alu       tst w30, #0xfc000000
+     64     0  branch    b.ne 0x184 <_binary__tmp_tmpz_0k84___code_bin_start+0x184>
+     68     0  alu       sub x17, x26, x16
+     6c     0  branch    b 0x1a8 <_binary__tmp_tmpz_0k84___code_bin_start+0x1a8>
+     70    12  tlb       ldp x16, x17, [x19, #-0x70]
+     74    13  alu       and x16, x16, x21, lsr #7
+     78     0  alu       add x17, x17, x16
+     7c    11  guest_mem ldr w16, [x17]
+     80     7  tlb       ldr x17, [x17, #0x18]
+     84     0  alu       add w30, w21, #0x3
+     88     9  alu       and w30, w30, #0xfffff000
+     8c    11  alu       cmp w16, w30
+     90     0  branch    b.ne 0x214 <_binary__tmp_tmpz_0k84___code_bin_start+0x214>
+     94    10  guest_mem ldr w21, [x17, w21, uxtw]
+     98     1  alu       sub w21, w21, w20
+     9c    14  env_st    str w21, [x19, #0x28]
+     a0    14  env_st    str w20, [x19, #0x2c]
+     a4    17  alu       mov w20, #0x1
+     a8    11  irq_chk   sturb w20, [x19, #-0xc]
+     ac    13  alu       mov w20, #0x12
+     b0     6  env_st    str w20, [x19, #0x34]
+     b4    17  branch    cbz w21, 0x1ec <_binary__tmp_tmpz_0k84___code_bin_start+0x1ec>
+     b8     0  env_ld    ldr w20, [x19, #0x20]
+     bc     0  alu       add w20, w20, #0xb
+     c0     0  env_st    str w20, [x19, #0x20]
+     c4     0  branch    b 0xfffffffffe26e194 <_binary__tmp_tmpz_0k84___code_bin_end+0xfffffffffdeee43c>
+     c8     0  branch    br x16
+     cc     0  alu       hint #0x24
+     d0     0  alu       adr x0, 0x55 <_binary__tmp_tmpz_0k84___code_bin_start+0x55>
+     d4     0  branch    b 0xfffffffffd0bd7d0 <_binary__tmp_tmpz_0k84___code_bin_end+0xfffffffffcd3da78>
+     d8    20  env_ld    ldr w20, [x19, #0x20]
+     dc     0  alu       sub w20, w20, #0x8
+     e0   222  env_st    str w20, [x19, #0x20]
+     e4    15  branch    b 0xa8754 <_binary__tmp_tmpz_0k84___code_bin_start+0xa8754>
+     e8     0  branch    br x16
+     ec     0  alu       hint #0x24
+     f0     0  alu       adr x0, 0x54 <_binary__tmp_tmpz_0k84___code_bin_start+0x54>
+     f4     0  branch    b 0xfffffffffd0bd7d0 <_binary__tmp_tmpz_0k84___code_bin_end+0xfffffffffcd3da78>
+     f8     0  alu       adr x0, 0x57 <_binary__tmp_tmpz_0k84___code_bin_start+0x57>
+     fc     0  branch    b 0xfffffffffd0bd7d0 <_binary__tmp_tmpz_0k84___code_bin_end+0xfffffffffcd3da78>
+    100     0  alu       mov w1, w21
+    104     0  alu       mov x0, x19
+    108     0  alu       mov w2, #0x4045
+    10c     0  alu       movk w2, #0x1, lsl #16
+    110     0  alu       adr x3, 0x1ac <_binary__tmp_tmpz_0k84___code_bin_start+0x1ac>
+    114     0  alu       adrp x16, 0x15444000 <_binary__tmp_tmpz_0k84___code_bin_end+0x150c42a8>
+    118     0  alu       add x16, x16, #0x604
+    11c     0  call      blr x16
+    120     0  alu       mov w21, w0
+    124     0  branch    b 0x1ac <_binary__tmp_tmpz_0k84___code_bin_start+0x1ac>
+
+--- TB pc 0x2ad100: 488 samples, 14 guest insns, 296 host insns
+      0     2  alu       hint #0x24
+      4     0  xbox_fp   ldr w16, [x27, #0x8]
+      8     0  branch    cbz w16, 0x258 <_binary__tmp_tmpz_0k84___code_bin_start+0x258>
+      c     3  xbox_fp   ldr w16, [x27, #0xc]
+     10     0  branch    cbnz w16, 0x258 <_binary__tmp_tmpz_0k84___code_bin_start+0x258>
+     14     0  xbox_fp   ldr x26, [x27]
+     18     0  branch    b 0x25c <_binary__tmp_tmpz_0k84___code_bin_start+0x25c>
+     1c     2  alu       mov w26, #0x0
+     20     2  irq_chk   ldur w20, [x19, #-0x10]
+     24     2  branch    tbnz w20, #0x1f, 0x56c <_binary__tmp_tmpz_0k84___code_bin_start+0x56c>
+     28     1  irq_chk   sturb wzr, [x19, #-0xc]
+     2c     5  env_ld    ldr w20, [x19, #0x4]
+     30     7  xbox_fp   cbz x26, 0x29c <_binary__tmp_tmpz_0k84___code_bin_start+0x29c>
+     34     0  alu       tst w20, #0xfc000000
+     38     0  branch    b.ne 0x280 <_binary__tmp_tmpz_0k84___code_bin_start+0x280>
+     3c     0  alu       mov x17, x26
+     40     0  branch    b 0x2c0 <_binary__tmp_tmpz_0k84___code_bin_start+0x2c0>
+     44     0  xbox_fp   ldr x16, [x27, #0x10]
+     48     0  branch    cbz x16, 0x29c <_binary__tmp_tmpz_0k84___code_bin_start+0x29c>
+     4c     0  alu       sub x30, x20, x16
+     50     0  alu       tst w30, #0xfc000000
+     54     0  branch    b.ne 0x29c <_binary__tmp_tmpz_0k84___code_bin_start+0x29c>
+     58     0  alu       sub x17, x26, x16
+     5c     0  branch    b 0x2c0 <_binary__tmp_tmpz_0k84___code_bin_start+0x2c0>
+     60     2  tlb       ldp x16, x17, [x19, #-0x70]
+     64     3  alu       and x16, x16, x20, lsr #7
+     68     0  alu       add x17, x17, x16
+     6c     5  guest_mem ldr w16, [x17]
+     70    47  tlb       ldr x17, [x17, #0x18]
+     74     0  alu       add w30, w20, #0x3
+     78     4  alu       and w30, w30, #0xfffff000
+     7c     6  alu       cmp w16, w30
+     80     1  branch    b.ne 0x574 <_binary__tmp_tmpz_0k84___code_bin_start+0x574>
+     84    10  guest_mem ldr w21, [x17, w20, uxtw]
+     88    49  env_st    str w21, [x19, #0x14]
+     8c     1  env_ld    ldr w22, [x19]
+     90     0  alu       sub w23, w22, #0x8
+     94     1  tlb       ldp x16, x17, [x19, #-0x70]
+     98     2  alu       and x16, x16, x23, lsr #7
+     9c     0  alu       add x17, x17, x16
+     a0     1  tlb       ldr w16, [x17, #0x8]
+     a4     6  tlb       ldr x17, [x17, #0x18]
+     a8     0  alu       add w30, w23, #0x3
+     ac     5  alu       and w30, w30, #0xfffff000
+     b0     1  alu       cmp w16, w30
+     b4     0  branch    b.ne 0x59c <_binary__tmp_tmpz_0k84___code_bin_start+0x59c>
+     b8     3  guest_mem str w21, [x17, w23, uxtw]
+     bc     7  alu       add w21, w20, #0x4
+     c0     0  xbox_fp   cbz x26, 0x32c <_binary__tmp_tmpz_0k84___code_bin_start+0x32c>
+     c4     0  alu       tst w21, #0xfc000000
+     c8     0  branch    b.ne 0x310 <_binary__tmp_tmpz_0k84___code_bin_start+0x310>
+     cc     0  alu       mov x17, x26
+     d0     0  branch    b 0x350 <_binary__tmp_tmpz_0k84___code_bin_start+0x350>
+     d4     0  xbox_fp   ldr x16, [x27, #0x10]
+     d8     0  branch    cbz x16, 0x32c <_binary__tmp_tmpz_0k84___code_bin_start+0x32c>
+     dc     0  alu       sub x30, x21, x16
+     e0     0  alu       tst w30, #0xfc000000
+     e4     0  branch    b.ne 0x32c <_binary__tmp_tmpz_0k84___code_bin_start+0x32c>
+     e8     0  alu       sub x17, x26, x16
+     ec     0  branch    b 0x350 <_binary__tmp_tmpz_0k84___code_bin_start+0x350>
+     f0     4  tlb       ldp x16, x17, [x19, #-0x70]
+     f4     2  alu       and x16, x16, x21, lsr #7
+     f8     0  alu       add x17, x17, x16
+     fc     1  guest_mem ldr w16, [x17]
+    100     4  tlb       ldr x17, [x17, #0x18]
+    104     0  alu       add w30, w21, #0x3
+    108     4  alu       and w30, w30, #0xfffff000
+    10c     4  alu       cmp w16, w30
+    110     0  branch    b.ne 0x5c4 <_binary__tmp_tmpz_0k84___code_bin_start+0x5c4>
+    114     1  guest_mem ldr w21, [x17, w21, uxtw]
+    118    19  env_st    str w21, [x19, #0x14]
+    11c     2  alu       sub w23, w22, #0x4
+    120     0  tlb       ldp x16, x17, [x19, #-0x70]
+    124     0  alu       and x16, x16, x23, lsr #7
+    128     0  alu       add x17, x17, x16
+    12c     4  tlb       ldr w16, [x17, #0x8]
+    130     1  tlb       ldr x17, [x17, #0x18]
+    134     2  alu       add w30, w23, #0x3
+    138     3  alu       and w30, w30, #0xfffff000
+    13c     1  alu       cmp w16, w30
+    140     0  branch    b.ne 0x5ec <_binary__tmp_tmpz_0k84___code_bin_start+0x5ec>
+    144     8  guest_mem str w21, [x17, w23, uxtw]
+    148     0  alu       add w21, w20, #0x8
+    14c     1  xbox_fp   cbz x26, 0x3b8 <_binary__tmp_tmpz_0k84___code_bin_start+0x3b8>
+    150     0  alu       tst w21, #0xfc000000
+    154     0  branch    b.ne 0x39c <_binary__tmp_tmpz_0k84___code_bin_start+0x39c>
+    158     0  alu       mov x17, x26
+    15c     0  branch    b 0x3dc <_binary__tmp_tmpz_0k84___code_bin_start+0x3dc>
+    160     0  xbox_fp   ldr x16, [x27, #0x10]
+    164     0  branch    cbz x16, 0x3b8 <_binary__tmp_tmpz_0k84___code_bin_start+0x3b8>
+    168     0  alu       sub x30, x21, x16
+    16c     0  alu       tst w30, #0xfc000000
+    170     0  branch    b.ne 0x3b8 <_binary__tmp_tmpz_0k84___code_bin_start+0x3b8>
+    174     0  alu       sub x17, x26, x16
+    178     0  branch    b 0x3dc <_binary__tmp_tmpz_0k84___code_bin_start+0x3dc>
+    17c     1  tlb       ldp x16, x17, [x19, #-0x70]
+    180     2  alu       and x16, x16, x21, lsr #7
+    184     0  alu       add x17, x17, x16
+    188     4  guest_mem ldr w16, [x17]
+    18c     3  tlb       ldr x17, [x17, #0x18]
+    190     0  alu       add w30, w21, #0x3
+    194     3  alu       and w30, w30, #0xfffff000
+    198     0  alu       cmp w16, w30
+    19c     0  branch    b.ne 0x614 <_binary__tmp_tmpz_0k84___code_bin_start+0x614>
+    1a0     3  guest_mem ldr w21, [x17, w21, uxtw]
+    1a4    11  env_st    str w21, [x19, #0x14]
+    1a8     2  tlb       ldp x16, x17, [x19, #-0x70]
+    1ac     4  alu       and x16, x16, x22, lsr #7
+    1b0     0  alu       add x17, x17, x16
+    1b4     5  tlb       ldr w16, [x17, #0x8]
+    1b8     6  tlb       ldr x17, [x17, #0x18]
+    1bc     0  alu       add w30, w22, #0x3
+    1c0     5  alu       and w30, w30, #0xfffff000
+    1c4     5  alu       cmp w16, w30
+    1c8     0  branch    b.ne 0x63c <_binary__tmp_tmpz_0k84___code_bin_start+0x63c>
+    1cc     7  guest_mem str w21, [x17, w22, uxtw]
+    1d0     7  alu       add w21, w20, #0x18
+    1d4     0  xbox_fp   cbz x26, 0x440 <_binary__tmp_tmpz_0k84___code_bin_start+0x440>
+    1d8     0  alu       tst w21, #0xfc000000
+    1dc     0  branch    b.ne 0x424 <_binary__tmp_tmpz_0k84___code_bin_start+0x424>
+    1e0     0  alu       mov x17, x26
+    1e4     0  branch    b 0x464 <_binary__tmp_tmpz_0k84___code_bin_start+0x464>
+    1e8     0  xbox_fp   ldr x16, [x27, #0x10]
+    1ec     0  branch    cbz x16, 0x440 <_binary__tmp_tmpz_0k84___code_bin_start+0x440>
+    1f0     0  alu       sub x30, x21, x16
+    1f4     0  alu       tst w30, #0xfc000000
+    1f8     0  branch    b.ne 0x440 <_binary__tmp_tmpz_0k84___code_bin_start+0x440>
+    1fc     0  alu       sub x17, x26, x16
+    200     0  branch    b 0x464 <_binary__tmp_tmpz_0k84___code_bin_start+0x464>
+    204     1  tlb       ldp x16, x17, [x19, #-0x70]
+    208     2  alu       and x16, x16, x21, lsr #7
+    20c     0  alu       add x17, x17, x16
+    210     0  guest_mem ldr w16, [x17]
+    214     3  tlb       ldr x17, [x17, #0x18]
+    218     0  alu       add w30, w21, #0x3
+    21c     3  alu       and w30, w30, #0xfffff000
+    220     4  alu       cmp w16, w30
+    224     0  branch    b.ne 0x664 <_binary__tmp_tmpz_0k84___code_bin_start+0x664>
+    228     2  guest_mem ldr w21, [x17, w21, uxtw]
+    22c    17  env_st    str w21, [x19, #0x14]
+    230     5  alu       add w23, w22, #0x4
+    234     3  tlb       ldp x16, x17, [x19, #-0x70]
+    238     6  alu       and x16, x16, x23, lsr #7
+    23c     1  alu       add x17, x17, x16
+    240     3  tlb       ldr w16, [x17, #0x8]
+    244     8  tlb       ldr x17, [x17, #0x18]
+    248     0  alu       add w30, w23, #0x3
+    24c     0  alu       and w30, w30, #0xfffff000
+    250     2  alu       cmp w16, w30
+    254     0  branch    b.ne 0x68c <_binary__tmp_tmpz_0k84___code_bin_start+0x68c>
+    258     3  guest_mem str w21, [x17, w23, uxtw]
+    25c     3  env_ld    ldr w21, [x19, #0x18]
+    260     1  xbox_fp   cbz x26, 0x4cc <_binary__tmp_tmpz_0k84___code_bin_start+0x4cc>
+    264     0  alu       tst w21, #0xfc000000
+    268     0  branch    b.ne 0x4b0 <_binary__tmp_tmpz_0k84___code_bin_start+0x4b0>
+    26c     0  alu       mov x17, x26
+    270     0  branch    b 0x4f0 <_binary__tmp_tmpz_0k84___code_bin_start+0x4f0>
+    274     0  xbox_fp   ldr x16, [x27, #0x10]
+    278     0  branch    cbz x16, 0x4cc <_binary__tmp_tmpz_0k84___code_bin_start+0x4cc>
+    27c     0  alu       sub x30, x21, x16
+    280     0  alu       tst w30, #0xfc000000
+    284     0  branch    b.ne 0x4cc <_binary__tmp_tmpz_0k84___code_bin_start+0x4cc>
+    288     0  alu       sub x17, x26, x16
+    28c     0  branch    b 0x4f0 <_binary__tmp_tmpz_0k84___code_bin_start+0x4f0>
+    290     0  tlb       ldp x16, x17, [x19, #-0x70]
+    294     2  alu       and x16, x16, x21, lsr #7
+    298     0  alu       add x17, x17, x16
+    29c     1  guest_mem ldr w16, [x17]
+    2a0    11  tlb       ldr x17, [x17, #0x18]
+    2a4     0  alu       add w30, w21, #0x1
+    2a8     8  alu       and w30, w30, #0xfffff000
+    2ac     2  alu       cmp w16, w30
+    2b0     0  branch    b.ne 0x6b4 <_binary__tmp_tmpz_0k84___code_bin_start+0x6b4>
+    2b4     4  guest_mem ldrh w21, [x17, w21, uxtw]
+    2b8    35  env_st    str w21, [x19, #0x14]
+    2bc     6  alu       add w20, w20, #0x24
+    2c0     1  env_st    str w20, [x19, #0x4]
+    2c4     2  alu       add w20, w22, #0x10
+    2c8     3  env_st    str w20, [x19]
+    2cc     2  env_ld    ldr w20, [x19, #0x8]
+    2d0     1  alu       add w20, w20, #0x1
+    2d4     4  env_st    str w20, [x19, #0x8]
+    2d8     5  alu       sub w22, w20, w21
+    2dc     1  env_st    str w22, [x19, #0x28]
+    2e0     1  env_st    str w21, [x19, #0x2c]
+    2e4     4  alu       mov w22, #0x1
+    2e8     2  irq_chk   sturb w22, [x19, #-0xc]
+    2ec     4  alu       mov w22, #0x12
+    2f0     6  env_st    str w22, [x19, #0x34]
+    2f4     4  alu       cmp w20, w21
+    2f8     0  branch    b.lo 0x558 <_binary__tmp_tmpz_0k84___code_bin_start+0x558>
+    2fc     0  env_ld    ldr w20, [x19, #0x20]
+    300     0  alu       add w20, w20, #0x24
+    304     0  env_st    str w20, [x19, #0x20]
+    308     0  branch    b 0xffffffffffff033c <_binary__tmp_tmpz_0k84___code_bin_end+0xffffffffffc705e4>
+    30c     0  branch    br x16
+    310     0  alu       hint #0x24
+    314     0  alu       adr x0, 0x17d <_binary__tmp_tmpz_0k84___code_bin_start+0x17d>
+    318     0  branch    b 0xfffffffffbec00f8 <_binary__tmp_tmpz_0k84___code_bin_end+0xfffffffffbb403a0>
+    31c     5  branch    b 0x23c <_binary__tmp_tmpz_0k84___code_bin_start+0x23c>
+    320     0  branch    br x16
+    324     0  alu       hint #0x24
+    328     0  alu       adr x0, 0x17c <_binary__tmp_tmpz_0k84___code_bin_start+0x17c>
+    32c     0  branch    b 0xfffffffffbec00f8 <_binary__tmp_tmpz_0k84___code_bin_end+0xfffffffffbb403a0>
+    330     0  alu       adr x0, 0x17f <_binary__tmp_tmpz_0k84___code_bin_start+0x17f>
+    334     0  branch    b 0xfffffffffbec00f8 <_binary__tmp_tmpz_0k84___code_bin_end+0xfffffffffbb403a0>
+    338     0  alu       mov w1, w20
+    33c     0  alu       mov x0, x19
+    340     0  alu       mov w2, #0x4045
+    344     0  alu       movk w2, #0x1, lsl #16
+    348     0  alu       adr x3, 0x2c4 <_binary__tmp_tmpz_0k84___code_bin_start+0x2c4>
+    34c     0  alu       adrp x16, 0x14246000 <_binary__tmp_tmpz_0k84___code_bin_end+0x13ec62a8>
+    350     0  alu       add x16, x16, #0x604
+    354     0  call      blr x16
+    358     0  alu       mov w21, w0
+    35c     0  branch    b 0x2c4 <_binary__tmp_tmpz_0k84___code_bin_start+0x2c4>
+    360     0  alu       mov w1, w23
+    364     0  alu       mov w2, w21
+    368     0  alu       mov x0, x19
+    36c     0  alu       mov w3, #0x4045
+    370     0  alu       movk w3, #0x1, lsl #16
+    374     0  alu       adr x4, 0x2f8 <_binary__tmp_tmpz_0k84___code_bin_start+0x2f8>
+    378     0  alu       adrp x16, 0x14247000 <_binary__tmp_tmpz_0k84___code_bin_end+0x13ec72a8>
+
+--- TB pc 0x25e0c2: 412 samples, 66 guest insns, 1606 host insns
+      0     0  alu       hint #0x24
+      4     0  xbox_fp   ldr w16, [x27, #0x8]
+      8     0  branch    cbz w16, 0x6f8 <_binary__tmp_tmpz_0k84___code_bin_start+0x6f8>
+      c     1  xbox_fp   ldr w16, [x27, #0xc]
+     10     0  branch    cbnz w16, 0x6f8 <_binary__tmp_tmpz_0k84___code_bin_start+0x6f8>
+     14     0  xbox_fp   ldr x26, [x27]
+     18     0  branch    b 0x6fc <_binary__tmp_tmpz_0k84___code_bin_start+0x6fc>
+     1c     0  alu       mov w26, #0x0
+     20     0  irq_chk   ldur w20, [x19, #-0x10]
+     24     2  branch    tbnz w20, #0x1f, 0x1754 <_binary__tmp_tmpz_0k84___code_bin_start+0x1754>
+     28     1  irq_chk   sturb wzr, [x19, #-0xc]
+     2c     0  alu       mov w20, #0x757c
+     30     0  alu       movk w20, #0x5c, lsl #16
+     34     0  xbox_fp   cbz x26, 0x740 <_binary__tmp_tmpz_0k84___code_bin_start+0x740>
+     38     0  alu       tst w20, #0xfc000000
+     3c     0  branch    b.ne 0x724 <_binary__tmp_tmpz_0k84___code_bin_start+0x724>
+     40     0  alu       mov x17, x26
+     44     0  branch    b 0x764 <_binary__tmp_tmpz_0k84___code_bin_start+0x764>
+     48     0  xbox_fp   ldr x16, [x27, #0x10]
+     4c     0  branch    cbz x16, 0x740 <_binary__tmp_tmpz_0k84___code_bin_start+0x740>
+     50     0  alu       sub x30, x20, x16
+     54     0  alu       tst w30, #0xfc000000
+     58     0  branch    b.ne 0x740 <_binary__tmp_tmpz_0k84___code_bin_start+0x740>
+     5c     0  alu       sub x17, x26, x16
+     60     0  branch    b 0x764 <_binary__tmp_tmpz_0k84___code_bin_start+0x764>
+     64     0  tlb       ldp x16, x17, [x19, #-0x70]
+     68     1  alu       and x16, x16, x20, lsr #7
+     6c     0  alu       add x17, x17, x16
+     70     0  guest_mem ldr w16, [x17]
+     74     0  tlb       ldr x17, [x17, #0x18]
+     78     0  alu       add w30, w20, #0x3
+     7c     1  alu       and w30, w30, #0xfffff000
+     80     0  alu       cmp w16, w30
+     84     0  branch    b.ne 0x175c <_binary__tmp_tmpz_0k84___code_bin_start+0x175c>
+     88     0  guest_mem ldr w21, [x17, w20, uxtw]
+     8c     1  env_st    str w21, [x19, #0x8]
+     90     0  alu       lsl w22, w21, #1
+     94     0  alu       mov w23, #0x7580
+     98     0  alu       movk w23, #0x5c, lsl #16
+     9c     0  alu       add w22, w22, w23
+     a0     0  env_st    str w22, [x19]
+     a4     0  env_ld    ldr w23, [x19, #0x14]
+     a8     1  alu       add w24, w23, #0x50
+     ac     1  xbox_fp   cbz x26, 0x7b8 <_binary__tmp_tmpz_0k84___code_bin_start+0x7b8>
+     b0     0  alu       tst w24, #0xfc000000
+     b4     0  branch    b.ne 0x79c <_binary__tmp_tmpz_0k84___code_bin_start+0x79c>
+     b8     0  alu       mov x17, x26
+     bc     0  branch    b 0x7dc <_binary__tmp_tmpz_0k84___code_bin_start+0x7dc>
+     c0     0  xbox_fp   ldr x16, [x27, #0x10]
+     c4     0  branch    cbz x16, 0x7b8 <_binary__tmp_tmpz_0k84___code_bin_start+0x7b8>
+     c8     0  alu       sub x30, x24, x16
+     cc     0  alu       tst w30, #0xfc000000
+     d0     0  branch    b.ne 0x7b8 <_binary__tmp_tmpz_0k84___code_bin_start+0x7b8>
+     d4     0  alu       sub x17, x26, x16
+     d8     0  branch    b 0x7dc <_binary__tmp_tmpz_0k84___code_bin_start+0x7dc>
+     dc     0  tlb       ldp x16, x17, [x19, #-0x70]
+     e0     0  alu       and x16, x16, x24, lsr #7
+     e4     1  alu       add x17, x17, x16
+     e8     0  guest_mem ldr w16, [x17]
+     ec     2  tlb       ldr x17, [x17, #0x18]
+     f0     0  alu       add w30, w24, #0x3
+     f4     2  alu       and w30, w30, #0xfffff000
+     f8     0  alu       cmp w16, w30
+     fc     0  branch    b.ne 0x1784 <_binary__tmp_tmpz_0k84___code_bin_start+0x1784>
+    100     0  guest_mem ldr w24, [x17, w24, uxtw]
+    104     1  simd      movi v0.16b, #0x0
+    108     0  env_st    str q0, [x19, #0x290]
+    10c     0  alu       add x25, x19, #0x290
+    110     0  guest_mem str w24, [x25]
+    114     0  env_ld    ldr w24, [x19, #0x10]
+    118     0  xbox_fp   cbz x26, 0x824 <_binary__tmp_tmpz_0k84___code_bin_start+0x824>
+    11c     0  alu       tst w24, #0xfc000000
+    120     0  branch    b.ne 0x808 <_binary__tmp_tmpz_0k84___code_bin_start+0x808>
+    124     0  alu       mov x17, x26
+    128     0  branch    b 0x848 <_binary__tmp_tmpz_0k84___code_bin_start+0x848>
+    12c     0  xbox_fp   ldr x16, [x27, #0x10]
+    130     0  branch    cbz x16, 0x824 <_binary__tmp_tmpz_0k84___code_bin_start+0x824>
+    134     0  alu       sub x30, x24, x16
+    138     0  alu       tst w30, #0xfc000000
+    13c     0  branch    b.ne 0x824 <_binary__tmp_tmpz_0k84___code_bin_start+0x824>
+    140     0  alu       sub x17, x26, x16
+    144     0  branch    b 0x848 <_binary__tmp_tmpz_0k84___code_bin_start+0x848>
+    148     1  tlb       ldp x16, x17, [x19, #-0x70]
+    14c     1  alu       and x16, x16, x24, lsr #7
+    150     1  alu       add x17, x17, x16
+    154     1  guest_mem ldr w16, [x17]
+    158     0  tlb       ldr x17, [x17, #0x18]
+    15c     0  alu       add w30, w24, #0x3
+    160     0  alu       and w30, w30, #0xfffff000
+    164     1  alu       cmp w16, w30
+    168     0  branch    b.ne 0x17ac <_binary__tmp_tmpz_0k84___code_bin_start+0x17ac>
+    16c     0  guest_mem ldr w25, [x17, w24, uxtw]
+    170     0  alu       add w24, w24, #0x4
+    174     0  env_st    str w24, [x19, #0x10]
+    178     0  alu       mov w24, w21
+    17c     1  env_st    str w24, [x19, #0x4]
+    180     1  alu       add w21, w21, #0x6
+    184     0  env_st    str w21, [x19, #0x8]
+    188     0  env_st    str w21, [x19, #0x28]
+    18c     0  alu       mov w25, #0x6
+    190     0  env_st    str w25, [x19, #0x2c]
+    194     1  tlb       ldp x16, x17, [x19, #-0x70]
+    198     2  alu       and x16, x16, x20, lsr #7
+    19c     0  alu       add x17, x17, x16
+    1a0     2  tlb       ldr w16, [x17, #0x8]
+    1a4     1  tlb       ldr x17, [x17, #0x18]
+    1a8     0  alu       add w30, w20, #0x3
+    1ac     0  alu       and w30, w30, #0xfffff000
+    1b0     0  alu       cmp w16, w30
+    1b4     0  branch    b.ne 0x17d4 <_binary__tmp_tmpz_0k84___code_bin_start+0x17d4>
+    1b8     1  guest_mem str w21, [x17, w20, uxtw]
+    1bc     0  alu       add w20, w24, #0x1
+    1c0     1  env_st    str w20, [x19, #0x8]
+    1c4     0  alu       add w21, w22, #0x2
+    1c8     0  tlb       ldp x16, x17, [x19, #-0x70]
+    1cc     1  alu       and x16, x16, x21, lsr #7
+    1d0     0  alu       add x17, x17, x16
+    1d4     0  tlb       ldr w16, [x17, #0x8]
+    1d8     1  tlb       ldr x17, [x17, #0x18]
+    1dc     0  alu       add w30, w21, #0x1
+    1e0     1  alu       and w30, w30, #0xfffff000
+    1e4     2  alu       cmp w16, w30
+    1e8     0  branch    b.ne 0x17fc <_binary__tmp_tmpz_0k84___code_bin_start+0x17fc>
+    1ec     1  guest_mem strh w20, [x17, w21, uxtw]
+    1f0     0  alu       add w20, w24, #0x2
+    1f4     0  env_st    str w20, [x19, #0x8]
+    1f8     2  alu       add w21, w22, #0x4
+    1fc     0  tlb       ldp x16, x17, [x19, #-0x70]
+    200     2  alu       and x16, x16, x21, lsr #7
+    204     0  alu       add x17, x17, x16
+    208     0  tlb       ldr w16, [x17, #0x8]
+    20c     0  tlb       ldr x17, [x17, #0x18]
+    210     0  alu       add w30, w21, #0x1
+    214     0  alu       and w30, w30, #0xfffff000
+    218     0  alu       cmp w16, w30
+    21c     0  branch    b.ne 0x1824 <_binary__tmp_tmpz_0k84___code_bin_start+0x1824>
+    220     1  guest_mem strh w20, [x17, w21, uxtw]
+    224     0  alu       add w20, w24, #0x3
+    228     0  env_st    str w20, [x19, #0x8]
+    22c     0  tlb       ldp x16, x17, [x19, #-0x70]
+    230     0  alu       and x16, x16, x22, lsr #7
+    234     1  alu       add x17, x17, x16
+    238     1  tlb       ldr w16, [x17, #0x8]
+    23c     1  tlb       ldr x17, [x17, #0x18]
+    240     0  alu       add w30, w22, #0x1
+    244     0  alu       and w30, w30, #0xfffff000
+    248     1  alu       cmp w16, w30
+    24c     0  branch    b.ne 0x184c <_binary__tmp_tmpz_0k84___code_bin_start+0x184c>
+    250     0  guest_mem strh w24, [x17, w22, uxtw]
+    254     0  alu       add w21, w22, #0x6
+    258     1  tlb       ldp x16, x17, [x19, #-0x70]
+    25c     0  alu       and x16, x16, x21, lsr #7
+    260     1  alu       add x17, x17, x16
+    264     2  tlb       ldr w16, [x17, #0x8]
+    268     0  tlb       ldr x17, [x17, #0x18]
+    26c     0  alu       add w30, w21, #0x1
+    270     1  alu       and w30, w30, #0xfffff000
+    274     0  alu       cmp w16, w30
+    278     0  branch    b.ne 0x1874 <_binary__tmp_tmpz_0k84___code_bin_start+0x1874>
+    27c     0  guest_mem strh w20, [x17, w21, uxtw]
+    280     0  alu       add w20, w24, #0x4
+    284     0  env_st    str w20, [x19, #0x8]
+    288     1  alu       add w21, w24, #0x5
+    28c     1  env_st    str w21, [x19, #0x4]
+    290     1  env_st    str w21, [x19, #0x28]
+    294     0  alu       mov w24, #0x5
+    298     1  env_st    str w24, [x19, #0x2c]
+    29c     0  alu       add w24, w22, #0xa
+    2a0     0  tlb       ldp x16, x17, [x19, #-0x70]
+    2a4     0  alu       and x16, x16, x24, lsr #7
+    2a8     0  alu       add x17, x17, x16
+    2ac     0  tlb       ldr w16, [x17, #0x8]
+    2b0     1  tlb       ldr x17, [x17, #0x18]
+    2b4     0  alu       add w30, w24, #0x1
+    2b8     2  alu       and w30, w30, #0xfffff000
+    2bc     0  alu       cmp w16, w30
+    2c0     0  branch    b.ne 0x189c <_binary__tmp_tmpz_0k84___code_bin_start+0x189c>
+    2c4     1  guest_mem strh w21, [x17, w24, uxtw]
+    2c8     0  alu       mov w21, #0x7578
+    2cc     0  alu       movk w21, #0x5c, lsl #16
+    2d0     1  xbox_fp   cbz x26, 0x9dc <_binary__tmp_tmpz_0k84___code_bin_start+0x9dc>
+    2d4     0  alu       tst w21, #0xfc000000
+    2d8     0  branch    b.ne 0x9c0 <_binary__tmp_tmpz_0k84___code_bin_start+0x9c0>
+    2dc     0  alu       mov x17, x26
+    2e0     0  branch    b 0xa00 <_binary__tmp_tmpz_0k84___code_bin_start+0xa00>
+    2e4     0  xbox_fp   ldr x16, [x27, #0x10]
+    2e8     0  branch    cbz x16, 0x9dc <_binary__tmp_tmpz_0k84___code_bin_start+0x9dc>
+    2ec     0  alu       sub x30, x21, x16
+    2f0     0  alu       tst w30, #0xfc000000
+    2f4     0  branch    b.ne 0x9dc <_binary__tmp_tmpz_0k84___code_bin_start+0x9dc>
+    2f8     0  alu       sub x17, x26, x16
+    2fc     0  branch    b 0xa00 <_binary__tmp_tmpz_0k84___code_bin_start+0xa00>
+    300     0  tlb       ldp x16, x17, [x19, #-0x70]
+    304     1  alu       and x16, x16, x21, lsr #7
+    308     0  alu       add x17, x17, x16
+    30c     0  guest_mem ldr w16, [x17]
+    310     0  tlb       ldr x17, [x17, #0x18]
+    314     0  alu       add w30, w21, #0x3
+    318     1  alu       and w30, w30, #0xfffff000
+    31c     0  alu       cmp w16, w30
+    320     0  branch    b.ne 0x18c4 <_binary__tmp_tmpz_0k84___code_bin_start+0x18c4>
+    324     0  guest_mem ldr w24, [x17, w21, uxtw]
+    328     1  env_st    str w24, [x19, #0x4]
+    32c     0  alu       add w22, w22, #0x8
+    330     0  tlb       ldp x16, x17, [x19, #-0x70]
+    334     1  alu       and x16, x16, x22, lsr #7
+    338     0  alu       add x17, x17, x16
+    33c     0  tlb       ldr w16, [x17, #0x8]
+    340     1  tlb       ldr x17, [x17, #0x18]
+    344     1  alu       add w30, w22, #0x1
+    348     2  alu       and w30, w30, #0xfffff000
+    34c     1  alu       cmp w16, w30
+    350     0  branch    b.ne 0x18ec <_binary__tmp_tmpz_0k84___code_bin_start+0x18ec>
+    354     0  guest_mem strh w20, [x17, w22, uxtw]
+    358     0  alu       lsl w20, w24, #3
+    35c     0  alu       add w20, w20, w24
+    360     0  alu       lsl w20, w20, #2
+    364     0  alu       mov w22, #0x9580
+    368     1  alu       movk w22, #0x5c, lsl #16
+    36c     0  alu       add w20, w20, w22
+    370     0  env_st    str w20, [x19]
+    374     0  alu       add x22, x19, #0x290
+    378     0  guest_mem ldr w22, [x22]
+    37c     0  tlb       ldp x16, x17, [x19, #-0x70]
+    380     1  alu       and x16, x16, x20, lsr #7
+    384     0  alu       add x17, x17, x16
+    388     0  tlb       ldr w16, [x17, #0x8]
+    38c     8  tlb       ldr x17, [x17, #0x18]
+    390     1  alu       add w30, w20, #0x3
+    394     0  alu       and w30, w30, #0xfffff000
+    398     0  alu       cmp w16, w30
+    39c     0  branch    b.ne 0x1914 <_binary__tmp_tmpz_0k84___code_bin_start+0x1914>
+    3a0     1  guest_mem str w22, [x17, w20, uxtw]
+    3a4     3  alu       add w22, w23, #0x54
+    3a8     1  xbox_fp   cbz x26, 0xab4 <_binary__tmp_tmpz_0k84___code_bin_start+0xab4>
+    3ac     0  alu       tst w22, #0xfc000000
+    3b0     0  branch    b.ne 0xa98 <_binary__tmp_tmpz_0k84___code_bin_start+0xa98>
+    3b4     0  alu       mov x17, x26
+    3b8     0  branch    b 0xad8 <_binary__tmp_tmpz_0k84___code_bin_start+0xad8>
+    3bc     0  xbox_fp   ldr x16, [x27, #0x10]
+    3c0     0  branch    cbz x16, 0xab4 <_binary__tmp_tmpz_0k84___code_bin_start+0xab4>
+    3c4     0  alu       sub x30, x22, x16
+    3c8     0  alu       tst w30, #0xfc000000
+    3cc     0  branch    b.ne 0xab4 <_binary__tmp_tmpz_0k84___code_bin_start+0xab4>
+    3d0     0  alu       sub x17, x26, x16
+    3d4     0  branch    b 0xad8 <_binary__tmp_tmpz_0k84___code_bin_start+0xad8>
+    3d8     1  tlb       ldp x16, x17, [x19, #-0x70]
+    3dc     0  alu       and x16, x16, x22, lsr #7
+    3e0     1  alu       add x17, x17, x16
+    3e4     1  guest_mem ldr w16, [x17]
+    3e8     0  tlb       ldr x17, [x17, #0x18]
+    3ec     0  alu       add w30, w22, #0x3
+    3f0     1  alu       and w30, w30, #0xfffff000
+    3f4     0  alu       cmp w16, w30
+    3f8     0  branch    b.ne 0x193c <_binary__tmp_tmpz_0k84___code_bin_start+0x193c>
+    3fc     0  guest_mem ldr w22, [x17, w22, uxtw]
+    400     1  simd      movi v0.16b, #0x0
+    404     0  env_st    str q0, [x19, #0x290]
+    408     0  alu       add x25, x19, #0x290
+    40c     0  guest_mem str w22, [x25]
+    410     0  alu       add w22, w20, #0x4
+    414     1  alu       add x25, x19, #0x290
+    418     0  guest_mem ldr w25, [x25]
+    41c     3  tlb       ldp x16, x17, [x19, #-0x70]
+    420     0  alu       and x16, x16, x22, lsr #7
+    424     0  alu       add x17, x17, x16
+    428     1  tlb       ldr w16, [x17, #0x8]
+    42c     0  tlb       ldr x17, [x17, #0x18]
+    430     0  alu       add w30, w22, #0x3
+    434     0  alu       and w30, w30, #0xfffff000
+    438     0  alu       cmp w16, w30
+    43c     0  branch    b.ne 0x1964 <_binary__tmp_tmpz_0k84___code_bin_start+0x1964>
+    440     1  guest_mem str w25, [x17, w22, uxtw]
+    444     1  alu       add w22, w23, #0x58
+    448     0  xbox_fp   cbz x26, 0xb54 <_binary__tmp_tmpz_0k84___code_bin_start+0xb54>
+    44c     0  alu       tst w22, #0xfc000000
+    450     0  branch    b.ne 0xb38 <_binary__tmp_tmpz_0k84___code_bin_start+0xb38>
+    454     0  alu       mov x17, x26
+    458     0  branch    b 0xb78 <_binary__tmp_tmpz_0k84___code_bin_start+0xb78>
+    45c     0  xbox_fp   ldr x16, [x27, #0x10]
+    460     0  branch    cbz x16, 0xb54 <_binary__tmp_tmpz_0k84___code_bin_start+0xb54>
+    464     0  alu       sub x30, x22, x16
+    468     0  alu       tst w30, #0xfc000000
+    46c     0  branch    b.ne 0xb54 <_binary__tmp_tmpz_0k84___code_bin_start+0xb54>
+    470     0  alu       sub x17, x26, x16
+    474     0  branch    b 0xb78 <_binary__tmp_tmpz_0k84___code_bin_start+0xb78>
+    478     0  tlb       ldp x16, x17, [x19, #-0x70]
+    47c     0  alu       and x16, x16, x22, lsr #7
+    480     0  alu       add x17, x17, x16
+    484     0  guest_mem ldr w16, [x17]
+    488     1  tlb       ldr x17, [x17, #0x18]
+    48c     0  alu       add w30, w22, #0x3
+    490     0  alu       and w30, w30, #0xfffff000
+    494     0  alu       cmp w16, w30
+    498     0  branch    b.ne 0x198c <_binary__tmp_tmpz_0k84___code_bin_start+0x198c>
+    49c     0  guest_mem ldr w22, [x17, w22, uxtw]
+    4a0     1  simd      movi v0.16b, #0x0
+    4a4     0  env_st    str q0, [x19, #0x290]
+    4a8     0  alu       add x25, x19, #0x290
+    4ac     1  guest_mem str w22, [x25]
+    4b0     1  alu       add w22, w20, #0x8
+    4b4     0  alu       add x25, x19, #0x290
+    4b8     0  guest_mem ldr w25, [x25]
+    4bc     2  tlb       ldp x16, x17, [x19, #-0x70]
+    4c0     0  alu       and x16, x16, x22, lsr #7
+    4c4     0  alu       add x17, x17, x16
+    4c8     0  tlb       ldr w16, [x17, #0x8]
+    4cc     1  tlb       ldr x17, [x17, #0x18]
+    4d0     0  alu       add w30, w22, #0x3
+    4d4     2  alu       and w30, w30, #0xfffff000
+    4d8     0  alu       cmp w16, w30
+    4dc     0  branch    b.ne 0x19b4 <_binary__tmp_tmpz_0k84___code_bin_start+0x19b4>
+    4e0     0  guest_mem str w25, [x17, w22, uxtw]
+    4e4     0  alu       add w22, w23, #0x14
+    4e8     0  xbox_fp   cbz x26, 0xbf4 <_binary__tmp_tmpz_0k84___code_bin_start+0xbf4>
+    4ec     0  alu       tst w22, #0xfc000000
+    4f0     0  branch    b.ne 0xbd8 <_binary__tmp_tmpz_0k84___code_bin_start+0xbd8>
+    4f4     0  alu       mov x17, x26
+    4f8     0  branch    b 0xc18 <_binary__tmp_tmpz_0k84___code_bin_start+0xc18>
+    4fc     0  xbox_fp   ldr x16, [x27, #0x10]
+    500     0  branch    cbz x16, 0xbf4 <_binary__tmp_tmpz_0k84___code_bin_start+0xbf4>
+    504     0  alu       sub x30, x22, x16
+    508     0  alu       tst w30, #0xfc000000
+    50c     0  branch    b.ne 0xbf4 <_binary__tmp_tmpz_0k84___code_bin_start+0xbf4>
+    510     0  alu       sub x17, x26, x16
+    514     0  branch    b 0xc18 <_binary__tmp_tmpz_0k84___code_bin_start+0xc18>
+    518     1  tlb       ldp x16, x17, [x19, #-0x70]
+    51c     0  alu       and x16, x16, x22, lsr #7
+    520     0  alu       add x17, x17, x16
+    524     0  guest_mem ldr w16, [x17]
+    528     0  tlb       ldr x17, [x17, #0x18]
+    52c     1  alu       add w30, w22, #0x3
+    530     0  alu       and w30, w30, #0xfffff000
+    534     0  alu       cmp w16, w30
+    538     0  branch    b.ne 0x19dc <_binary__tmp_tmpz_0k84___code_bin_start+0x19dc>
+    53c     1  guest_mem ldr w22, [x17, w22, uxtw]
+    540     1  simd      movi v0.16b, #0x0
+    544     2  env_st    str q0, [x19, #0x290]
+    548     1  alu       add x25, x19, #0x290
+    54c     0  guest_mem str w22, [x25]
+    550     0  alu       add w22, w20, #0x18
+    554     1  env_ld    ldr w25, [x19, #0xc]
+    558     1  tlb       ldp x16, x17, [x19, #-0x70]
+    55c     0  alu       and x16, x16, x22, lsr #7
+    560     0  alu       add x17, x17, x16
+    564     0  tlb       ldr w16, [x17, #0x8]
+    568     0  tlb       ldr x17, [x17, #0x18]
+    56c     0  alu       add w30, w22, #0x3
+    570     0  alu       and w30, w30, #0xfffff000
+    574     0  alu       cmp w16, w30
+    578     0  branch    b.ne 0x1a04 <_binary__tmp_tmpz_0k84___code_bin_start+0x1a04>
+    57c     0  guest_mem str w25, [x17, w22, uxtw]
+    580     0  alu       add w22, w20, #0x24
+    584     0  alu       add x28, x19, #0x290
+    588     0  guest_mem ldr w28, [x28]
+    58c     4  tlb       ldp x16, x17, [x19, #-0x70]
+    590     0  alu       and x16, x16, x22, lsr #7
+    594     0  alu       add x17, x17, x16
+    598     1  tlb       ldr w16, [x17, #0x8]
+    59c     1  tlb       ldr x17, [x17, #0x18]
+    5a0     1  alu       add w30, w22, #0x3
+    5a4     1  alu       and w30, w30, #0xfffff000
+    5a8     0  alu       cmp w16, w30
+    5ac     0  branch    b.ne 0x1a2c <_binary__tmp_tmpz_0k84___code_bin_start+0x1a2c>
+    5b0     0  guest_mem str w28, [x17, w22, uxtw]
+    5b4     2  alu       add w22, w23, #0x18
+    5b8     0  xbox_fp   cbz x26, 0xcc4 <_binary__tmp_tmpz_0k84___code_bin_start+0xcc4>
+    5bc     0  alu       tst w22, #0xfc000000
+    5c0     0  branch    b.ne 0xca8 <_binary__tmp_tmpz_0k84___code_bin_start+0xca8>
+    5c4     0  alu       mov x17, x26
+    5c8     0  branch    b 0xce8 <_binary__tmp_tmpz_0k84___code_bin_start+0xce8>
+    5cc     0  xbox_fp   ldr x16, [x27, #0x10]
+    5d0     0  branch    cbz x16, 0xcc4 <_binary__tmp_tmpz_0k84___code_bin_start+0xcc4>
+    5d4     0  alu       sub x30, x22, x16
+    5d8     0  alu       tst w30, #0xfc000000
+    5dc     0  branch    b.ne 0xcc4 <_binary__tmp_tmpz_0k84___code_bin_start+0xcc4>
+    5e0     0  alu       sub x17, x26, x16
+    5e4     0  branch    b 0xce8 <_binary__tmp_tmpz_0k84___code_bin_start+0xce8>
+    5e8     0  tlb       ldp x16, x17, [x19, #-0x70]
+    5ec     1  alu       and x16, x16, x22, lsr #7
+    5f0     0  alu       add x17, x17, x16
+    5f4     0  guest_mem ldr w16, [x17]
+    5f8     1  tlb       ldr x17, [x17, #0x18]
+    5fc     0  alu       add w30, w22, #0x3
+    600     2  alu       and w30, w30, #0xfffff000
+    604     0  alu       cmp w16, w30
+    608     0  branch    b.ne 0x1a54 <_binary__tmp_tmpz_0k84___code_bin_start+0x1a54>
+    60c     1  guest_mem ldr w22, [x17, w22, uxtw]
+    610     0  simd      movi v0.16b, #0x0
+    614     0  env_st    str q0, [x19, #0x290]
+    618     0  alu       add x28, x19, #0x290
+    61c     1  guest_mem str w22, [x28]
+    620     0  alu       add w22, w20, #0x28
+    624     0  alu       add x28, x19, #0x290
+    628     0  guest_mem ldr w28, [x28]
+    62c     6  tlb       ldp x16, x17, [x19, #-0x70]
+    630     0  alu       and x16, x16, x22, lsr #7
+    634     0  alu       add x17, x17, x16
+    638     1  tlb       ldr w16, [x17, #0x8]
+    63c     1  tlb       ldr x17, [x17, #0x18]
+    640     1  alu       add w30, w22, #0x3
+    644     0  alu       and w30, w30, #0xfffff000
+    648     0  alu       cmp w16, w30
+    64c     0  branch    b.ne 0x1a7c <_binary__tmp_tmpz_0k84___code_bin_start+0x1a7c>
+    650     1  guest_mem str w28, [x17, w22, uxtw]
+    654     1  alu       add w22, w23, #0x1c
+    658     0  xbox_fp   cbz x26, 0xd64 <_binary__tmp_tmpz_0k84___code_bin_start+0xd64>
+    65c     0  alu       tst w22, #0xfc000000
+    660     0  branch    b.ne 0xd48 <_binary__tmp_tmpz_0k84___code_bin_start+0xd48>
+    664     0  alu       mov x17, x26
+    668     0  branch    b 0xd88 <_binary__tmp_tmpz_0k84___code_bin_start+0xd88>
+    66c     0  xbox_fp   ldr x16, [x27, #0x10]
+    670     0  branch    cbz x16, 0xd64 <_binary__tmp_tmpz_0k84___code_bin_start+0xd64>
+    674     0  alu       sub x30, x22, x16
+    678     0  alu       tst w30, #0xfc000000
+    67c     0  branch    b.ne 0xd64 <_binary__tmp_tmpz_0k84___code_bin_start+0xd64>
+    680     0  alu       sub x17, x26, x16
+    684     0  branch    b 0xd88 <_binary__tmp_tmpz_0k84___code_bin_start+0xd88>
+    688     0  tlb       ldp x16, x17, [x19, #-0x70]
+    68c     0  alu       and x16, x16, x22, lsr #7
+    690     1  alu       add x17, x17, x16
+    694     0  guest_mem ldr w16, [x17]
+    698     1  tlb       ldr x17, [x17, #0x18]
+    69c     0  alu       add w30, w22, #0x3
+    6a0     1  alu       and w30, w30, #0xfffff000
+    6a4     1  alu       cmp w16, w30
+    6a8     0  branch    b.ne 0x1aa4 <_binary__tmp_tmpz_0k84___code_bin_start+0x1aa4>
+    6ac     0  guest_mem ldr w22, [x17, w22, uxtw]
+    6b0     2  simd      movi v0.16b, #0x0
+    6b4     1  env_st    str q0, [x19, #0x290]
+    6b8     1  alu       add x28, x19, #0x290
+    6bc     0  guest_mem str w22, [x28]
+    6c0     0  alu       add w22, w20, #0x2c
+    6c4     1  alu       add x28, x19, #0x290
+    6c8     0  guest_mem ldr w28, [x28]
+    6cc     6  tlb       ldp x16, x17, [x19, #-0x70]
+    6d0     0  alu       and x16, x16, x22, lsr #7
+    6d4     0  alu       add x17, x17, x16
+    6d8     1  tlb       ldr w16, [x17, #0x8]
+    6dc     0  tlb       ldr x17, [x17, #0x18]
+    6e0     0  alu       add w30, w22, #0x3
+    6e4     1  alu       and w30, w30, #0xfffff000
+    6e8     0  alu       cmp w16, w30
+    6ec     0  branch    b.ne 0x1acc <_binary__tmp_tmpz_0k84___code_bin_start+0x1acc>
+    6f0     1  guest_mem str w28, [x17, w22, uxtw]
+    6f4     1  alu       add w22, w23, #0x2c
+    6f8     0  xbox_fp   cbz x26, 0xe04 <_binary__tmp_tmpz_0k84___code_bin_start+0xe04>
+    6fc     0  alu       tst w22, #0xfc000000
+    700     0  branch    b.ne 0xde8 <_binary__tmp_tmpz_0k84___code_bin_start+0xde8>
+    704     0  alu       mov x17, x26
+    708     0  branch    b 0xe28 <_binary__tmp_tmpz_0k84___code_bin_start+0xe28>
+    70c     0  xbox_fp   ldr x16, [x27, #0x10]
+    710     0  branch    cbz x16, 0xe04 <_binary__tmp_tmpz_0k84___code_bin_start+0xe04>
+    714     0  alu       sub x30, x22, x16
+    718     0  alu       tst w30, #0xfc000000
+    71c     0  branch    b.ne 0xe04 <_binary__tmp_tmpz_0k84___code_bin_start+0xe04>
+    720     0  alu       sub x17, x26, x16
+    724     0  branch    b 0xe28 <_binary__tmp_tmpz_0k84___code_bin_start+0xe28>
+    728     0  tlb       ldp x16, x17, [x19, #-0x70]
+    72c     0  alu       and x16, x16, x22, lsr #7
+    730     0  alu       add x17, x17, x16
+    734     0  guest_mem ldr w16, [x17]
+    738     0  tlb       ldr x17, [x17, #0x18]
+    73c     1  alu       add w30, w22, #0x3
+    740     0  alu       and w30, w30, #0xfffff000
+    744     0  alu       cmp w16, w30
+    748     0  branch    b.ne 0x1af4 <_binary__tmp_tmpz_0k84___code_bin_start+0x1af4>
+    74c     0  guest_mem ldr w22, [x17, w22, uxtw]
+    750     3  simd      movi v0.16b, #0x0
+    754     1  env_st    str q0, [x19, #0x290]
+    758     0  alu       add x28, x19, #0x290
+    75c     0  guest_mem str w22, [x28]
+    760     1  alu       add w22, w20, #0x3c
+    764     0  tlb       ldp x16, x17, [x19, #-0x70]
+    768     0  alu       and x16, x16, x22, lsr #7
+    76c     0  alu       add x17, x17, x16
+    770     0  tlb       ldr w16, [x17, #0x8]
+    774     0  tlb       ldr x17, [x17, #0x18]
+    778     0  alu       add w30, w22, #0x3
+    77c     0  alu       and w30, w30, #0xfffff000
+    780     0  alu       cmp w16, w30
+    784     0  branch    b.ne 0x1b1c <_binary__tmp_tmpz_0k84___code_bin_start+0x1b1c>
+    788     0  guest_mem str w25, [x17, w22, uxtw]
+    78c     1  alu       add w22, w20, #0x48
+    790     1  alu       add x28, x19, #0x290
+    794     0  guest_mem ldr w28, [x28]
+    798     4  tlb       ldp x16, x17, [x19, #-0x70]
+    79c     1  alu       and x16, x16, x22, lsr #7
+    7a0     0  alu       add x17, x17, x16
+    7a4     0  tlb       ldr w16, [x17, #0x8]
+    7a8     0  tlb       ldr x17, [x17, #0x18]
+    7ac     0  alu       add w30, w22, #0x3
+    7b0     0  alu       and w30, w30, #0xfffff000
+    7b4     0  alu       cmp w16, w30
+    7b8     0  branch    b.ne 0x1b44 <_binary__tmp_tmpz_0k84___code_bin_start+0x1b44>
+    7bc     0  guest_mem str w28, [x17, w22, uxtw]
+    7c0     1  alu       add w22, w23, #0x30
+    7c4     1  xbox_fp   cbz x26, 0xed0 <_binary__tmp_tmpz_0k84___code_bin_start+0xed0>
+    7c8     0  alu       tst w22, #0xfc000000
+    7cc     0  branch    b.ne 0xeb4 <_binary__tmp_tmpz_0k84___code_bin_start+0xeb4>
+    7d0     0  alu       mov x17, x26
+    7d4     0  branch    b 0xef4 <_binary__tmp_tmpz_0k84___code_bin_start+0xef4>
+    7d8     0  xbox_fp   ldr x16, [x27, #0x10]
+    7dc     0  branch    cbz x16, 0xed0 <_binary__tmp_tmpz_0k84___code_bin_start+0xed0>
+    7e0     0  alu       sub x30, x22, x16
+    7e4     0  alu       tst w30, #0xfc000000
+    7e8     0  branch    b.ne 0xed0 <_binary__tmp_tmpz_0k84___code_bin_start+0xed0>
+    7ec     0  alu       sub x17, x26, x16
+    7f0     0  branch    b 0xef4 <_binary__tmp_tmpz_0k84___code_bin_start+0xef4>
+    7f4     0  tlb       ldp x16, x17, [x19, #-0x70]
+    7f8     0  alu       and x16, x16, x22, lsr #7
+    7fc     1  alu       add x17, x17, x16
+    800     0  guest_mem ldr w16, [x17]
+    804     0  tlb       ldr x17, [x17, #0x18]
+    808     0  alu       add w30, w22, #0x3
+    80c     1  alu       and w30, w30, #0xfffff000
+    810     0  alu       cmp w16, w30
+    814     0  branch    b.ne 0x1b6c <_binary__tmp_tmpz_0k84___code_bin_start+0x1b6c>
+    818     0  guest_mem ldr w22, [x17, w22, uxtw]
+    81c     2  simd      movi v0.16b, #0x0
+    820     2  env_st    str q0, [x19, #0x290]
+    824     3  alu       add x28, x19, #0x290
+    828     0  guest_mem str w22, [x28]
+    82c     0  alu       add w22, w20, #0x4c
+    830     0  alu       add x28, x19, #0x290
+    834     0  guest_mem ldr w28, [x28]
+    838     6  tlb       ldp x16, x17, [x19, #-0x70]
+    83c     0  alu       and x16, x16, x22, lsr #7
+    840     0  alu       add x17, x17, x16
+    844     2  tlb       ldr w16, [x17, #0x8]
+    848     0  tlb       ldr x17, [x17, #0x18]
+    84c     0  alu       add w30, w22, #0x3
+    850     1  alu       and w30, w30, #0xfffff000
+    854     0  alu       cmp w16, w30
+    858     0  branch    b.ne 0x1b94 <_binary__tmp_tmpz_0k84___code_bin_start+0x1b94>
+    85c     1  guest_mem str w28, [x17, w22, uxtw]
+    860     0  alu       add w22, w23, #0x34
+    864     0  xbox_fp   cbz x26, 0xf70 <_binary__tmp_tmpz_0k84___code_bin_start+0xf70>
+    868     0  alu       tst w22, #0xfc000000
+    86c     0  branch    b.ne 0xf54 <_binary__tmp_tmpz_0k84___code_bin_start+0xf54>
+    870     0  alu       mov x17, x26
+    874     0  branch    b 0xf94 <_binary__tmp_tmpz_0k84___code_bin_start+0xf94>
+    878     0  xbox_fp   ldr x16, [x27, #0x10]
+    87c     0  branch    cbz x16, 0xf70 <_binary__tmp_tmpz_0k84___code_bin_start+0xf70>
+    880     0  alu       sub x30, x22, x16
+    884     0  alu       tst w30, #0xfc000000
+    888     0  branch    b.ne 0xf70 <_binary__tmp_tmpz_0k84___code_bin_start+0xf70>
+    88c     0  alu       sub x17, x26, x16
+    890     0  branch    b 0xf94 <_binary__tmp_tmpz_0k84___code_bin_start+0xf94>
+    894     0  tlb       ldp x16, x17, [x19, #-0x70]
+    898     0  alu       and x16, x16, x22, lsr #7
+    89c     0  alu       add x17, x17, x16
+    8a0     1  guest_mem ldr w16, [x17]
+    8a4     1  tlb       ldr x17, [x17, #0x18]
+    8a8     0  alu       add w30, w22, #0x3
+    8ac     0  alu       and w30, w30, #0xfffff000
+    8b0     0  alu       cmp w16, w30
+    8b4     0  branch    b.ne 0x1bbc <_binary__tmp_tmpz_0k84___code_bin_start+0x1bbc>
+    8b8     2  guest_mem ldr w22, [x17, w22, uxtw]
+    8bc     1  simd      movi v0.16b, #0x0
+    8c0     1  env_st    str q0, [x19, #0x290]
+    8c4     1  alu       add x28, x19, #0x290
+    8c8     0  guest_mem str w22, [x28]
+    8cc     1  alu       add w22, w24, #0x6
+    8d0     0  env_st    str w22, [x19, #0x4]
+    8d4     1  alu       mov w24, w22
+    8d8     1  env_st    str w24, [x19, #0x28]
+    8dc     1  alu       mov w28, #0x6
+    8e0     1  env_st    str w28, [x19, #0x2c]
+    8e4     0  alu       add w28, w20, #0x50
+    8e8     0  alu       add x8, x19, #0x290
+    8ec     0  guest_mem ldr w8, [x8]
+    8f0     2  tlb       ldp x16, x17, [x19, #-0x70]
+    8f4     0  alu       and x16, x16, x28, lsr #7
+    8f8     0  alu       add x17, x17, x16
+    8fc     0  tlb       ldr w16, [x17, #0x8]
+    900     0  tlb       ldr x17, [x17, #0x18]
+    904     0  alu       add w30, w28, #0x3
+    908     0  alu       and w30, w30, #0xfffff000
+    90c     0  alu       cmp w16, w30
+    910     0  branch    b.ne 0x1be4 <_binary__tmp_tmpz_0k84___code_bin_start+0x1be4>
+    914     1  guest_mem str w8, [x17, w28, uxtw]
+    918     0  alu       sub w28, w23, #0x4
+    91c     0  xbox_fp   cbz x26, 0x1028 <_binary__tmp_tmpz_0k84___code_bin_start+0x1028>
+    920     0  alu       tst w28, #0xfc000000
+    924     0  branch    b.ne 0x100c <_binary__tmp_tmpz_0k84___code_bin_start+0x100c>
+    928     0  alu       mov x17, x26
+    92c     0  branch    b 0x104c <_binary__tmp_tmpz_0k84___code_bin_start+0x104c>
+    930     0  xbox_fp   ldr x16, [x27, #0x10]
+    934     0  branch    cbz x16, 0x1028 <_binary__tmp_tmpz_0k84___code_bin_start+0x1028>
+    938     0  alu       sub x30, x28, x16
+    93c     0  alu       tst w30, #0xfc000000
+    940     0  branch    b.ne 0x1028 <_binary__tmp_tmpz_0k84___code_bin_start+0x1028>
+    944     0  alu       sub x17, x26, x16
+    948     0  branch    b 0x104c <_binary__tmp_tmpz_0k84___code_bin_start+0x104c>
+    94c     1  tlb       ldp x16, x17, [x19, #-0x70]
+    950     0  alu       and x16, x16, x28, lsr #7
+    954     0  alu       add x17, x17, x16
+    958     1  guest_mem ldr w16, [x17]
+    95c     2  tlb       ldr x17, [x17, #0x18]
+    960     3  alu       add w30, w28, #0x3
+    964     0  alu       and w30, w30, #0xfffff000
+    968     0  alu       cmp w16, w30
+    96c     0  branch    b.ne 0x1c0c <_binary__tmp_tmpz_0k84___code_bin_start+0x1c0c>
+    970     2  guest_mem ldr w28, [x17, w28, uxtw]
+    974     1  simd      movi v0.16b, #0x0
+    978     0  env_st    str q0, [x19, #0x290]
+    97c     0  alu       add x8, x19, #0x290
+    980     0  guest_mem str w28, [x8]
+    984     0  tlb       ldp x16, x17, [x19, #-0x70]
+    988     0  alu       and x16, x16, x21, lsr #7
+    98c     0  alu       add x17, x17, x16
+    990     1  tlb       ldr w16, [x17, #0x8]
+    994     0  tlb       ldr x17, [x17, #0x18]
+    998     1  alu       add w30, w21, #0x3
+    99c     0  alu       and w30, w30, #0xfffff000
+    9a0     1  alu       cmp w16, w30
+    9a4     0  branch    b.ne 0x1c34 <_binary__tmp_tmpz_0k84___code_bin_start+0x1c34>
+    9a8     1  guest_mem str w22, [x17, w21, uxtw]
+    9ac     0  alu       add w21, w20, #0x60
+    9b0     2  tlb       ldp x16, x17, [x19, #-0x70]
+    9b4     1  alu       and x16, x16, x21, lsr #7
+    9b8     0  alu       add x17, x17, x16
+    9bc     0  tlb       ldr w16, [x17, #0x8]
+    9c0     0  tlb       ldr x17, [x17, #0x18]
+    9c4     0  alu       add w30, w21, #0x3
+    9c8     0  alu       and w30, w30, #0xfffff000
+    9cc     1  alu       cmp w16, w30
+    9d0     0  branch    b.ne 0x1c5c <_binary__tmp_tmpz_0k84___code_bin_start+0x1c5c>
+    9d4     0  guest_mem str w25, [x17, w21, uxtw]
+    9d8     0  alu       add w21, w23, #0x6c
+    9dc     1  xbox_fp   cbz x26, 0x10e8 <_binary__tmp_tmpz_0k84___code_bin_start+0x10e8>
+    9e0     0  alu       tst w21, #0xfc000000
+    9e4     0  branch    b.ne 0x10cc <_binary__tmp_tmpz_0k84___code_bin_start+0x10cc>
+    9e8     0  alu       mov x17, x26
+    9ec     0  branch    b 0x110c <_binary__tmp_tmpz_0k84___code_bin_start+0x110c>
+    9f0     0  xbox_fp   ldr x16, [x27, #0x10]
+    9f4     0  branch    cbz x16, 0x10e8 <_binary__tmp_tmpz_0k84___code_bin_start+0x10e8>
+    9f8     0  alu       sub x30, x21, x16
+    9fc     0  alu       tst w30, #0xfc000000
+    a00     0  branch    b.ne 0x10e8 <_binary__tmp_tmpz_0k84___code_bin_start+0x10e8>
+    a04     0  alu       sub x17, x26, x16
+    a08     0  branch    b 0x110c <_binary__tmp_tmpz_0k84___code_bin_start+0x110c>
+    a0c     0  tlb       ldp x16, x17, [x19, #-0x70]
+    a10     0  alu       and x16, x16, x21, lsr #7
+    a14     0  alu       add x17, x17, x16
+    a18     0  guest_mem ldr w16, [x17]
+    a1c     0  tlb       ldr x17, [x17, #0x18]
+    a20     2  alu       add w30, w21, #0x3
+    a24     0  alu       and w30, w30, #0xfffff000
+    a28     0  alu       cmp w16, w30
+    a2c     0  branch    b.ne 0x1c84 <_binary__tmp_tmpz_0k84___code_bin_start+0x1c84>
+    a30     2  guest_mem ldr w22, [x17, w21, uxtw]
+    a34     2  alu       sub w22, w22, #0x1
+    a38     1  alu       cmp w24, #0x6
+    a3c     0  alu       cset w24, lo
+    a40     0  tlb       ldp x16, x17, [x19, #-0x70]
+    a44     1  alu       and x16, x16, x21, lsr #7
+    a48     0  alu       add x17, x17, x16
+    a4c     0  tlb       ldr w16, [x17, #0x8]
+    a50     0  tlb       ldr x17, [x17, #0x18]
+    a54     0  alu       add w30, w21, #0x3
+    a58     0  alu       and w30, w30, #0xfffff000
+    a5c     0  alu       cmp w16, w30
+    a60     0  branch    b.ne 0x1cac <_binary__tmp_tmpz_0k84___code_bin_start+0x1cac>
+    a64     0  guest_mem str w22, [x17, w21, uxtw]
+    a68     1  env_st    str w22, [x19, #0x28]
+    a6c     0  env_st    str w24, [x19, #0x2c]
+    a70     0  alu       add w21, w20, #0x6c
+    a74     0  alu       add x24, x19, #0x290
+    a78     0  guest_mem ldr w24, [x24]
+    a7c     0  tlb       ldp x16, x17, [x19, #-0x70]
+    a80     1  alu       and x16, x16, x21, lsr #7
+    a84     0  alu       add x17, x17, x16
+    a88     1  tlb       ldr w16, [x17, #0x8]
+    a8c     0  tlb       ldr x17, [x17, #0x18]
+    a90     0  alu       add w30, w21, #0x3
+    a94     0  alu       and w30, w30, #0xfffff000
+    a98     0  alu       cmp w16, w30
+    a9c     0  branch    b.ne 0x1cd4 <_binary__tmp_tmpz_0k84___code_bin_start+0x1cd4>
+    aa0     0  guest_mem str w24, [x17, w21, uxtw]
+    aa4     2  xbox_fp   cbz x26, 0x11b0 <_binary__tmp_tmpz_0k84___code_bin_start+0x11b0>
+    aa8     0  alu       tst w23, #0xfc000000
+    aac     0  branch    b.ne 0x1194 <_binary__tmp_tmpz_0k84___code_bin_start+0x1194>
+    ab0     0  alu       mov x17, x26
+    ab4     0  branch    b 0x11d4 <_binary__tmp_tmpz_0k84___code_bin_start+0x11d4>
+    ab8     0  xbox_fp   ldr x16, [x27, #0x10]
+    abc     0  branch    cbz x16, 0x11b0 <_binary__tmp_tmpz_0k84___code_bin_start+0x11b0>
+    ac0     0  alu       sub x30, x23, x16
+    ac4     0  alu       tst w30, #0xfc000000
+    ac8     0  branch    b.ne 0x11b0 <_binary__tmp_tmpz_0k84___code_bin_start+0x11b0>
+    acc     0  alu       sub x17, x26, x16
+    ad0     0  branch    b 0x11d4 <_binary__tmp_tmpz_0k84___code_bin_start+0x11d4>
+    ad4     1  tlb       ldp x16, x17, [x19, #-0x70]
+    ad8     1  alu       and x16, x16, x23, lsr #7
+    adc     0  alu       add x17, x17, x16
+    ae0     0  guest_mem ldr w16, [x17]
+    ae4     1  tlb       ldr x17, [x17, #0x18]
+    ae8     0  alu       add w30, w23, #0x3
+    aec     0  alu       and w30, w30, #0xfffff000
+    af0     0  alu       cmp w16, w30
+    af4     0  branch    b.ne 0x1cfc <_binary__tmp_tmpz_0k84___code_bin_start+0x1cfc>
+    af8     0  guest_mem ldr w21, [x17, w23, uxtw]
+    afc     1  simd      movi v0.16b, #0x0
+    b00     2  env_st    str q0, [x19, #0x290]
+    b04     0  alu       add x24, x19, #0x290
+    b08     0  guest_mem str w21, [x24]
+    b0c     0  alu       add w21, w20, #0x70
+    b10     1  alu       add x24, x19, #0x290
+    b14     2  guest_mem ldr w24, [x24]
+    b18     7  tlb       ldp x16, x17, [x19, #-0x70]
+    b1c     1  alu       and x16, x16, x21, lsr #7
+    b20     1  alu       add x17, x17, x16
+    b24     0  tlb       ldr w16, [x17, #0x8]
+    b28     1  tlb       ldr x17, [x17, #0x18]
+    b2c     1  alu       add w30, w21, #0x3
+    b30     1  alu       and w30, w30, #0xfffff000
+    b34     1  alu       cmp w16, w30
+    b38     0  branch    b.ne 0x1d24 <_binary__tmp_tmpz_0k84___code_bin_start+0x1d24>
+    b3c     1  guest_mem str w24, [x17, w21, uxtw]
+    b40     0  alu       add w21, w23, #0x4
+    b44     0  xbox_fp   cbz x26, 0x1250 <_binary__tmp_tmpz_0k84___code_bin_start+0x1250>
+    b48     0  alu       tst w21, #0xfc000000
+    b4c     0  branch    b.ne 0x1234 <_binary__tmp_tmpz_0k84___code_bin_start+0x1234>
+    b50     0  alu       mov x17, x26
+    b54     0  branch    b 0x1274 <_binary__tmp_tmpz_0k84___code_bin_start+0x1274>
+    b58     0  xbox_fp   ldr x16, [x27, #0x10]
+    b5c     0  branch    cbz x16, 0x1250 <_binary__tmp_tmpz_0k84___code_bin_start+0x1250>
+    b60     0  alu       sub x30, x21, x16
+    b64     0  alu       tst w30, #0xfc000000
+    b68     0  branch    b.ne 0x1250 <_binary__tmp_tmpz_0k84___code_bin_start+0x1250>
+    b6c     0  alu       sub x17, x26, x16
+    b70     0  branch    b 0x1274 <_binary__tmp_tmpz_0k84___code_bin_start+0x1274>
+    b74     0  tlb       ldp x16, x17, [x19, #-0x70]
+    b78     2  alu       and x16, x16, x21, lsr #7
+    b7c     0  alu       add x17, x17, x16
+    b80     0  guest_mem ldr w16, [x17]
+    b84     0  tlb       ldr x17, [x17, #0x18]
+    b88     0  alu       add w30, w21, #0x3
+    b8c     0  alu       and w30, w30, #0xfffff000
+    b90     0  alu       cmp w16, w30
+    b94     0  branch    b.ne 0x1d4c <_binary__tmp_tmpz_0k84___code_bin_start+0x1d4c>
+    b98     2  guest_mem ldr w21, [x17, w21, uxtw]
+    b9c     2  simd      movi v0.16b, #0x0
+    ba0     0  env_st    str q0, [x19, #0x290]
+    ba4     0  alu       add x24, x19, #0x290
+    ba8     0  guest_mem str w21, [x24]
+    bac     3  alu       add w21, w20, #0x74
+    bb0     0  alu       add x24, x19, #0x290
+    bb4     0  guest_mem ldr w24, [x24]
+    bb8     5  tlb       ldp x16, x17, [x19, #-0x70]
+    bbc     0  alu       and x16, x16, x21, lsr #7
+    bc0     1  alu       add x17, x17, x16
+    bc4     1  tlb       ldr w16, [x17, #0x8]
+    bc8     0  tlb       ldr x17, [x17, #0x18]
+    bcc     0  alu       add w30, w21, #0x3
+    bd0     0  alu       and w30, w30, #0xfffff000
+    bd4     0  alu       cmp w16, w30
+    bd8     0  branch    b.ne 0x1d74 <_binary__tmp_tmpz_0k84___code_bin_start+0x1d74>
+    bdc     0  guest_mem str w24, [x17, w21, uxtw]
+    be0     0  alu       add w21, w23, #0x44
+    be4     1  xbox_fp   cbz x26, 0x12f0 <_binary__tmp_tmpz_0k84___code_bin_start+0x12f0>
+    be8     0  alu       tst w21, #0xfc000000
+    bec     0  branch    b.ne 0x12d4 <_binary__tmp_tmpz_0k84___code_bin_start+0x12d4>
+    bf0     0  alu       mov x17, x26
+    bf4     0  branch    b 0x1314 <_binary__tmp_tmpz_0k84___code_bin_start+0x1314>
+    bf8     0  xbox_fp   ldr x16, [x27, #0x10]
+    bfc     0  branch    cbz x16, 0x12f0 <_binary__tmp_tmpz_0k84___code_bin_start+0x12f0>
+    c00     0  alu       sub x30, x21, x16
+    c04     0  alu       tst w30, #0xfc000000
+    c08     0  branch    b.ne 0x12f0 <_binary__tmp_tmpz_0k84___code_bin_start+0x12f0>
+    c0c     0  alu       sub x17, x26, x16
+    c10     0  branch    b 0x1314 <_binary__tmp_tmpz_0k84___code_bin_start+0x1314>
+    c14     0  tlb       ldp x16, x17, [x19, #-0x70]
+    c18     0  alu       and x16, x16, x21, lsr #7
+    c1c     0  alu       add x17, x17, x16
+    c20     0  guest_mem ldr w16, [x17]
+    c24     1  tlb       ldr x17, [x17, #0x18]
+    c28     0  alu       add w30, w21, #0x3
+    c2c     0  alu       and w30, w30, #0xfffff000
+    c30     2  alu       cmp w16, w30
+    c34     0  branch    b.ne 0x1d9c <_binary__tmp_tmpz_0k84___code_bin_start+0x1d9c>
+    c38     0  guest_mem ldr w21, [x17, w21, uxtw]
+    c3c     1  simd      movi v0.16b, #0x0
+    c40     1  env_st    str q0, [x19, #0x290]
+    c44     0  alu       add x24, x19, #0x290
+    c48     0  guest_mem str w21, [x24]
+    c4c     0  alu       add w21, w20, #0x84
+    c50     0  tlb       ldp x16, x17, [x19, #-0x70]
+    c54     2  alu       and x16, x16, x21, lsr #7
+    c58     0  alu       add x17, x17, x16
+    c5c     0  tlb       ldr w16, [x17, #0x8]
+    c60     0  tlb       ldr x17, [x17, #0x18]
+    c64     1  alu       add w30, w21, #0x3
+    c68     0  alu       and w30, w30, #0xfffff000
+    c6c     1  alu       cmp w16, w30
+    c70     0  branch    b.ne 0x1dc4 <_binary__tmp_tmpz_0k84___code_bin_start+0x1dc4>
+    c74     1  guest_mem str w25, [x17, w21, uxtw]
+    c78     1  alu       add w21, w20, #0x90
+    c7c     0  alu       add x24, x19, #0x290
+    c80     1  guest_mem ldr w24, [x24]
+    c84     3  tlb       ldp x16, x17, [x19, #-0x70]
+    c88     0  alu       and x16, x16, x21, lsr #7
+    c8c     0  alu       add x17, x17, x16
+    c90     0  tlb       ldr w16, [x17, #0x8]
+    c94     0  tlb       ldr x17, [x17, #0x18]
+    c98     2  alu       add w30, w21, #0x3
+    c9c     0  alu       and w30, w30, #0xfffff000
+    ca0     1  alu       cmp w16, w30
+    ca4     0  branch    b.ne 0x1dec <_binary__tmp_tmpz_0k84___code_bin_start+0x1dec>
+    ca8     0  guest_mem str w24, [x17, w21, uxtw]
+    cac     0  alu       add w21, w23, #0x48
+    cb0     0  xbox_fp   cbz x26, 0x13bc <_binary__tmp_tmpz_0k84___code_bin_start+0x13bc>
+    cb4     0  alu       tst w21, #0xfc000000
+    cb8     0  branch    b.ne 0x13a0 <_binary__tmp_tmpz_0k84___code_bin_start+0x13a0>
+    cbc     0  alu       mov x17, x26
+    cc0     0  branch    b 0x13e0 <_binary__tmp_tmpz_0k84___code_bin_start+0x13e0>
+    cc4     0  xbox_fp   ldr x16, [x27, #0x10]
+    cc8     0  branch    cbz x16, 0x13bc <_binary__tmp_tmpz_0k84___code_bin_start+0x13bc>
+    ccc     0  alu       sub x30, x21, x16
+    cd0     0  alu       tst w30, #0xfc000000
+    cd4     0  branch    b.ne 0x13bc <_binary__tmp_tmpz_0k84___code_bin_start+0x13bc>
+    cd8     0  alu       sub x17, x26, x16
+    cdc     0  branch    b 0x13e0 <_binary__tmp_tmpz_0k84___code_bin_start+0x13e0>
+    ce0     0  tlb       ldp x16, x17, [x19, #-0x70]
+    ce4     1  alu       and x16, x16, x21, lsr #7
+    ce8     0  alu       add x17, x17, x16
+    cec     0  guest_mem ldr w16, [x17]
+    cf0     0  tlb       ldr x17, [x17, #0x18]
+    cf4     0  alu       add w30, w21, #0x3
+    cf8     0  alu       and w30, w30, #0xfffff000
+    cfc     0  alu       cmp w16, w30
+    d00     0  branch    b.ne 0x1e14 <_binary__tmp_tmpz_0k84___code_bin_start+0x1e14>
+    d04     3  guest_mem ldr w21, [x17, w21, uxtw]
+    d08     3  simd      movi v0.16b, #0x0
+    d0c     1  env_st    str q0, [x19, #0x290]
+    d10     1  alu       add x24, x19, #0x290
+    d14     1  guest_mem str w21, [x24]
+    d18     0  alu       add w21, w20, #0x94
+    d1c     0  alu       add x24, x19, #0x290
+    d20     0  guest_mem ldr w24, [x24]
+    d24     6  tlb       ldp x16, x17, [x19, #-0x70]
+    d28     0  alu       and x16, x16, x21, lsr #7
+    d2c     0  alu       add x17, x17, x16
+    d30     1  tlb       ldr w16, [x17, #0x8]
+    d34     0  tlb       ldr x17, [x17, #0x18]
+    d38     0  alu       add w30, w21, #0x3
+    d3c     3  alu       and w30, w30, #0xfffff000
+    d40     0  alu       cmp w16, w30
+    d44     0  branch    b.ne 0x1e3c <_binary__tmp_tmpz_0k84___code_bin_start+0x1e3c>
+    d48     2  guest_mem str w24, [x17, w21, uxtw]
+    d4c     0  alu       add w21, w23, #0x4c
+    d50     0  xbox_fp   cbz x26, 0x145c <_binary__tmp_tmpz_0k84___code_bin_start+0x145c>
+    d54     0  alu       tst w21, #0xfc000000
+    d58     0  branch    b.ne 0x1440 <_binary__tmp_tmpz_0k84___code_bin_start+0x1440>
+    d5c     0  alu       mov x17, x26
+    d60     0  branch    b 0x1480 <_binary__tmp_tmpz_0k84___code_bin_start+0x1480>
+    d64     0  xbox_fp   ldr x16, [x27, #0x10]
+    d68     0  branch    cbz x16, 0x145c <_binary__tmp_tmpz_0k84___code_bin_start+0x145c>
+    d6c     0  alu       sub x30, x21, x16
+    d70     0  alu       tst w30, #0xfc000000
+    d74     0  branch    b.ne 0x145c <_binary__tmp_tmpz_0k84___code_bin_start+0x145c>
+    d78     0  alu       sub x17, x26, x16
+    d7c     0  branch    b 0x1480 <_binary__tmp_tmpz_0k84___code_bin_start+0x1480>
+    d80     0  tlb       ldp x16, x17, [x19, #-0x70]
+    d84     0  alu       and x16, x16, x21, lsr #7
+    d88     0  alu       add x17, x17, x16
+    d8c     0  guest_mem ldr w16, [x17]
+    d90     2  tlb       ldr x17, [x17, #0x18]
+    d94     0  alu       add w30, w21, #0x3
+    d98     1  alu       and w30, w30, #0xfffff000
+    d9c     0  alu       cmp w16, w30
+    da0     0  branch    b.ne 0x1e64 <_binary__tmp_tmpz_0k84___code_bin_start+0x1e64>
+    da4     0  guest_mem ldr w21, [x17, w21, uxtw]
+    da8     4  simd      movi v0.16b, #0x0
+    dac     2  env_st    str q0, [x19, #0x290]
+    db0     0  alu       add x24, x19, #0x290
+    db4     0  guest_mem str w21, [x24]
+    db8     0  alu       add w21, w20, #0x98
+    dbc     0  alu       add x24, x19, #0x290
+    dc0     0  guest_mem ldr w24, [x24]
+    dc4     5  tlb       ldp x16, x17, [x19, #-0x70]
+    dc8     0  alu       and x16, x16, x21, lsr #7
+    dcc     0  alu       add x17, x17, x16
+    dd0     1  tlb       ldr w16, [x17, #0x8]
+    dd4     1  tlb       ldr x17, [x17, #0x18]
+    dd8     0  alu       add w30, w21, #0x3
+    ddc     0  alu       and w30, w30, #0xfffff000
+    de0     1  alu       cmp w16, w30
+    de4     0  branch    b.ne 0x1e8c <_binary__tmp_tmpz_0k84___code_bin_start+0x1e8c>
+    de8     1  guest_mem str w24, [x17, w21, uxtw]
+    dec     1  alu       add w21, w23, #0x38
+    df0     0  xbox_fp   cbz x26, 0x14fc <_binary__tmp_tmpz_0k84___code_bin_start+0x14fc>
+    df4     0  alu       tst w21, #0xfc000000
+    df8     0  branch    b.ne 0x14e0 <_binary__tmp_tmpz_0k84___code_bin_start+0x14e0>
+    dfc     0  alu       mov x17, x26
+    e00     0  branch    b 0x1520 <_binary__tmp_tmpz_0k84___code_bin_start+0x1520>
+    e04     0  xbox_fp   ldr x16, [x27, #0x10]
+    e08     0  branch    cbz x16, 0x14fc <_binary__tmp_tmpz_0k84___code_bin_start+0x14fc>
+    e0c     0  alu       sub x30, x21, x16
+    e10     0  alu       tst w30, #0xfc000000
+    e14     0  branch    b.ne 0x14fc <_binary__tmp_tmpz_0k84___code_bin_start+0x14fc>
+    e18     0  alu       sub x17, x26, x16
+    e1c     0  branch    b 0x1520 <_binary__tmp_tmpz_0k84___code_bin_start+0x1520>
+    e20     2  tlb       ldp x16, x17, [x19, #-0x70]
+    e24     0  alu       and x16, x16, x21, lsr #7
+    e28     2  alu       add x17, x17, x16
+    e2c     0  guest_mem ldr w16, [x17]
+    e30     0  tlb       ldr x17, [x17, #0x18]
+    e34     1  alu       add w30, w21, #0x3
+    e38     1  alu       and w30, w30, #0xfffff000
+    e3c     0  alu       cmp w16, w30
+    e40     1  branch    b.ne 0x1eb4 <_binary__tmp_tmpz_0k84___code_bin_start+0x1eb4>
+    e44     1  guest_mem ldr w21, [x17, w21, uxtw]
+    e48     0  simd      movi v0.16b, #0x0
+    e4c     0  env_st    str q0, [x19, #0x290]
+    e50     0  alu       add x24, x19, #0x290
+    e54     0  guest_mem str w21, [x24]
+    e58     2  alu       add w21, w20, #0xa8
+    e5c     1  tlb       ldp x16, x17, [x19, #-0x70]
+    e60     0  alu       and x16, x16, x21, lsr #7
+    e64     0  alu       add x17, x17, x16
+    e68     0  tlb       ldr w16, [x17, #0x8]
+    e6c     0  tlb       ldr x17, [x17, #0x18]
+    e70     0  alu       add w30, w21, #0x3
+    e74     0  alu       and w30, w30, #0xfffff000
+    e78     1  alu       cmp w16, w30
+    e7c     0  branch    b.ne 0x1edc <_binary__tmp_tmpz_0k84___code_bin_start+0x1edc>
+    e80     0  guest_mem str w25, [x17, w21, uxtw]
+    e84     1  alu       add w21, w20, #0xb4
+    e88     0  alu       add x24, x19, #0x290
+    e8c     0  guest_mem ldr w24, [x24]
+    e90     3  tlb       ldp x16, x17, [x19, #-0x70]
+    e94     0  alu       and x16, x16, x21, lsr #7
+    e98     1  alu       add x17, x17, x16
+    e9c     0  tlb       ldr w16, [x17, #0x8]
+    ea0     1  tlb       ldr x17, [x17, #0x18]
+    ea4     0  alu       add w30, w21, #0x3
+    ea8     0  alu       and w30, w30, #0xfffff000
+    eac     1  alu       cmp w16, w30
+    eb0     0  branch    b.ne 0x1f04 <_binary__tmp_tmpz_0k84___code_bin_start+0x1f04>
+    eb4     0  guest_mem str w24, [x17, w21, uxtw]
+    eb8     0  alu       add w21, w23, #0x3c
+    ebc     0  xbox_fp   cbz x26, 0x15c8 <_binary__tmp_tmpz_0k84___code_bin_start+0x15c8>
+    ec0     0  alu       tst w21, #0xfc000000
+    ec4     0  branch    b.ne 0x15ac <_binary__tmp_tmpz_0k84___code_bin_start+0x15ac>
+    ec8     0  alu       mov x17, x26
+    ecc     0  branch    b 0x15ec <_binary__tmp_tmpz_0k84___code_bin_start+0x15ec>
+    ed0     0  xbox_fp   ldr x16, [x27, #0x10]
+    ed4     0  branch    cbz x16, 0x15c8 <_binary__tmp_tmpz_0k84___code_bin_start+0x15c8>
+    ed8     0  alu       sub x30, x21, x16
+    edc     0  alu       tst w30, #0xfc000000
+    ee0     0  branch    b.ne 0x15c8 <_binary__tmp_tmpz_0k84___code_bin_start+0x15c8>
+    ee4     0  alu       sub x17, x26, x16
+    ee8     0  branch    b 0x15ec <_binary__tmp_tmpz_0k84___code_bin_start+0x15ec>
+    eec     0  tlb       ldp x16, x17, [x19, #-0x70]
+    ef0     0  alu       and x16, x16, x21, lsr #7
+    ef4     1  alu       add x17, x17, x16
+    ef8     0  guest_mem ldr w16, [x17]
+    efc     2  tlb       ldr x17, [x17, #0x18]
+    f00     0  alu       add w30, w21, #0x3
+    f04     0  alu       and w30, w30, #0xfffff000
+    f08     0  alu       cmp w16, w30
+    f0c     0  branch    b.ne 0x1f2c <_binary__tmp_tmpz_0k84___code_bin_start+0x1f2c>
+    f10     2  guest_mem ldr w21, [x17, w21, uxtw]
+    f14     1  simd      movi v0.16b, #0x0
+    f18     1  env_st    str q0, [x19, #0x290]
+    f1c     0  alu       add x24, x19, #0x290
+    f20     0  guest_mem str w21, [x24]
+    f24     1  alu       add w21, w20, #0xb8
+    f28     0  alu       add x24, x19, #0x290
+    f2c     1  guest_mem ldr w24, [x24]
+    f30     4  tlb       ldp x16, x17, [x19, #-0x70]
+    f34     2  alu       and x16, x16, x21, lsr #7
+    f38     1  alu       add x17, x17, x16
+    f3c     0  tlb       ldr w16, [x17, #0x8]
+    f40     0  tlb       ldr x17, [x17, #0x18]
+    f44     0  alu       add w30, w21, #0x3
+    f48     0  alu       and w30, w30, #0xfffff000
+    f4c     1  alu       cmp w16, w30
+    f50     0  branch    b.ne 0x1f54 <_binary__tmp_tmpz_0k84___code_bin_start+0x1f54>
+    f54     0  guest_mem str w24, [x17, w21, uxtw]
+    f58     1  alu       add w21, w23, #0x40
+    f5c     2  xbox_fp   cbz x26, 0x1668 <_binary__tmp_tmpz_0k84___code_bin_start+0x1668>
+    f60     0  alu       tst w21, #0xfc000000
+    f64     0  branch    b.ne 0x164c <_binary__tmp_tmpz_0k84___code_bin_start+0x164c>
+    f68     0  alu       mov x17, x26
+    f6c     0  branch    b 0x168c <_binary__tmp_tmpz_0k84___code_bin_start+0x168c>
+    f70     0  xbox_fp   ldr x16, [x27, #0x10]
+    f74     0  branch    cbz x16, 0x1668 <_binary__tmp_tmpz_0k84___code_bin_start+0x1668>
+    f78     0  alu       sub x30, x21, x16
+    f7c     0  alu       tst w30, #0xfc000000
+    f80     0  branch    b.ne 0x1668 <_binary__tmp_tmpz_0k84___code_bin_start+0x1668>
+    f84     0  alu       sub x17, x26, x16
+    f88     0  branch    b 0x168c <_binary__tmp_tmpz_0k84___code_bin_start+0x168c>
+    f8c     0  tlb       ldp x16, x17, [x19, #-0x70]
+    f90     0  alu       and x16, x16, x21, lsr #7
+    f94     0  alu       add x17, x17, x16
+    f98     1  guest_mem ldr w16, [x17]
+    f9c     1  tlb       ldr x17, [x17, #0x18]
+    fa0     1  alu       add w30, w21, #0x3
+    fa4     1  alu       and w30, w30, #0xfffff000
+    fa8     0  alu       cmp w16, w30
+    fac     0  branch    b.ne 0x1f7c <_binary__tmp_tmpz_0k84___code_bin_start+0x1f7c>
+    fb0     0  guest_mem ldr w21, [x17, w21, uxtw]
+    fb4     3  simd      movi v0.16b, #0x0
+    fb8     0  env_st    str q0, [x19, #0x290]
+    fbc     0  alu       add x23, x19, #0x290
+    fc0     0  guest_mem str w21, [x23]
+    fc4     0  alu       add w21, w20, #0xbc
+    fc8     0  alu       add x23, x19, #0x290
+    fcc     1  guest_mem ldr w23, [x23]
+    fd0     6  tlb       ldp x16, x17, [x19, #-0x70]
+    fd4     0  alu       and x16, x16, x21, lsr #7
+    fd8     2  alu       add x17, x17, x16
+    fdc     1  tlb       ldr w16, [x17, #0x8]
+    fe0     3  tlb       ldr x17, [x17, #0x18]
+    fe4     0  alu       add w30, w21, #0x3
+    fe8     1  alu       and w30, w30, #0xfffff000
+    fec     0  alu       cmp w16, w30
+    ff0     1  branch    b.ne 0x1fa4 <_binary__tmp_tmpz_0k84___code_bin_start+0x1fa4>
+    ff4     0  guest_mem str w23, [x17, w21, uxtw]
+    ff8     1  alu       add w20, w20, #0xcc
+    ffc     1  tlb       ldp x16, x17, [x19, #-0x70]
+   1000     0  alu       and x16, x16, x20, lsr #7
+   1004     0  alu       add x17, x17, x16
+   1008     0  tlb       ldr w16, [x17, #0x8]
+   100c     1  tlb       ldr x17, [x17, #0x18]
+   1010     0  alu       add w30, w20, #0x3
+   1014     1  alu       and w30, w30, #0xfffff000
+   1018     1  alu       cmp w16, w30
+   101c     0  branch    b.ne 0x1fcc <_binary__tmp_tmpz_0k84___code_bin_start+0x1fcc>
+   1020     0  guest_mem str w25, [x17, w20, uxtw]
+   1024     1  alu       mov w20, #0x1
+   1028     0  irq_chk   sturb w20, [x19, #-0xc]
+   102c     1  alu       mov w20, #0x22
+   1030     1  env_st    str w20, [x19, #0x34]
+   1034     1  branch    cbnz w22, 0x1734 <_binary__tmp_tmpz_0k84___code_bin_start+0x1734>
+   1038     0  env_ld    ldr w20, [x19, #0x20]
+   103c     0  alu       add w20, w20, #0x141
+   1040     0  env_st    str w20, [x19, #0x20]
+   1044     0  branch    b 0x369c <_binary__tmp_tmpz_0k84___code_bin_start+0x369c>
+   1048     0  branch    br x16
+   104c     0  alu       hint #0x24
+   1050     0  alu       adr x0, 0x61d <_binary__tmp_tmpz_0k84___code_bin_start+0x61d>
+   1054     0  branch    b 0xfffffffffb5ec458 <_binary__tmp_tmpz_0k84___code_bin_end+0xfffffffffb26c700>
+   1058     0  env_ld    ldr w20, [x19, #0x20]
+   105c     1  alu       sub w20, w20, #0x4a
+   1060     1  env_st    str w20, [x19, #0x20]
+   1064     0  branch    b 0x21dc <_binary__tmp_tmpz_0k84___code_bin_start+0x21dc>
+   1068     0  branch    br x16
+   106c     0  alu       hint #0x24
+   1070     0  alu       adr x0, 0x61c <_binary__tmp_tmpz_0k84___code_bin_start+0x61c>
+   1074     0  branch    b 0xfffffffffb5ec458 <_binary__tmp_tmpz_0k84___code_bin_end+0xfffffffffb26c700>
+   1078     0  alu       adr x0, 0x61f <_binary__tmp_tmpz_0k84___code_bin_start+0x61f>
+   107c     0  branch    b 0xfffffffffb5ec458 <_binary__tmp_tmpz_0k84___code_bin_end+0xfffffffffb26c700>
+   1080     0  alu       mov w1, w20
+   1084     0  alu       mov x0, x19
+   1088     0  alu       mov w2, #0x4045
+   108c     0  alu       movk w2, #0x1, lsl #16
+   1090     0  alu       adr x3, 0x768 <_binary__tmp_tmpz_0k84___code_bin_start+0x768>
+   1094     0  alu       adrp x16, 0x13972000 <_binary__tmp_tmpz_0k84___code_bin_end+0x135f22a8>
+   1098     0  alu       add x16, x16, #0x604
+   109c     0  call      blr x16
+   10a0     0  alu       mov w21, w0
+   10a4     0  branch    b 0x768 <_binary__tmp_tmpz_0k84___code_bin_start+0x768>
+   10a8     0  alu       mov w1, w24
+   10ac     0  alu       mov x0, x19
+   10b0     0  alu       mov w2, #0x4045
+   10b4     0  alu       movk w2, #0x1, lsl #16
+   10b8     0  alu       adr x3, 0x7e0 <_binary__tmp_tmpz_0k84___code_bin_start+0x7e0>
+   10bc     0  alu       adrp x16, 0x13972000 <_binary__tmp_tmpz_0k84___code_bin_end+0x135f22a8>
+
+--- TB pc 0x25e078: 373 samples, 38 guest insns, 1232 host insns
+      0     0  alu       hint #0x24
+      4     0  xbox_fp   ldr w16, [x27, #0x8]
+      8     1  branch    cbz w16, 0x2010 <_binary__tmp_tmpz_0k84___code_bin_start+0x2010>
+      c     1  xbox_fp   ldr w16, [x27, #0xc]
+     10     0  branch    cbnz w16, 0x2010 <_binary__tmp_tmpz_0k84___code_bin_start+0x2010>
+     14     0  xbox_fp   ldr x26, [x27]
+     18     0  branch    b 0x2014 <_binary__tmp_tmpz_0k84___code_bin_start+0x2014>
+     1c     0  alu       mov w26, #0x0
+     20     1  irq_chk   ldur w20, [x19, #-0x10]
+     24     0  branch    tbnz w20, #0x1f, 0x2c9c <_binary__tmp_tmpz_0k84___code_bin_start+0x2c9c>
+     28     0  irq_chk   sturb wzr, [x19, #-0xc]
+     2c     0  env_ld    ldr w20, [x19, #0x14]
+     30     0  alu       add w21, w20, #0x68
+     34     0  xbox_fp   cbz x26, 0x2058 <_binary__tmp_tmpz_0k84___code_bin_start+0x2058>
+     38     0  alu       tst w21, #0xfc000000
+     3c     0  branch    b.ne 0x203c <_binary__tmp_tmpz_0k84___code_bin_start+0x203c>
+     40     0  alu       mov x17, x26
+     44     0  branch    b 0x207c <_binary__tmp_tmpz_0k84___code_bin_start+0x207c>
+     48     0  xbox_fp   ldr x16, [x27, #0x10]
+     4c     0  branch    cbz x16, 0x2058 <_binary__tmp_tmpz_0k84___code_bin_start+0x2058>
+     50     0  alu       sub x30, x21, x16
+     54     0  alu       tst w30, #0xfc000000
+     58     0  branch    b.ne 0x2058 <_binary__tmp_tmpz_0k84___code_bin_start+0x2058>
+     5c     0  alu       sub x17, x26, x16
+     60     0  branch    b 0x207c <_binary__tmp_tmpz_0k84___code_bin_start+0x207c>
+     64     0  tlb       ldp x16, x17, [x19, #-0x70]
+     68     0  alu       and x16, x16, x21, lsr #7
+     6c     0  alu       add x17, x17, x16
+     70     1  guest_mem ldr w16, [x17]
+     74     0  tlb       ldr x17, [x17, #0x18]
+     78     0  alu       add w30, w21, #0x3
+     7c     1  alu       and w30, w30, #0xfffff000
+     80     0  alu       cmp w16, w30
+     84     0  branch    b.ne 0x2ca4 <_binary__tmp_tmpz_0k84___code_bin_start+0x2ca4>
+     88     1  guest_mem ldr w21, [x17, w21, uxtw]
+     8c     1  env_st    str w21, [x19, #0x4]
+     90     0  alu       sub w22, w21, #0x18
+     94     0  env_st    str w22, [x19, #0x18]
+     98     0  alu       add w23, w20, #0x50
+     9c     1  env_st    str w23, [x19, #0x1c]
+     a0     0  env_ld    ldr w24, [x19, #0x38]
+     a4     1  alu       lsl w24, w24, #2
+     a8     0  xbox_fp   cbz x26, 0x20cc <_binary__tmp_tmpz_0k84___code_bin_start+0x20cc>
+     ac     0  alu       tst w22, #0xfc000000
+     b0     0  branch    b.ne 0x20b0 <_binary__tmp_tmpz_0k84___code_bin_start+0x20b0>
+     b4     0  alu       mov x17, x26
+     b8     0  branch    b 0x20f0 <_binary__tmp_tmpz_0k84___code_bin_start+0x20f0>
+     bc     0  xbox_fp   ldr x16, [x27, #0x10]
+     c0     0  branch    cbz x16, 0x20cc <_binary__tmp_tmpz_0k84___code_bin_start+0x20cc>
+     c4     0  alu       sub x30, x22, x16
+     c8     0  alu       tst w30, #0xfc000000
+     cc     0  branch    b.ne 0x20cc <_binary__tmp_tmpz_0k84___code_bin_start+0x20cc>
+     d0     0  alu       sub x17, x26, x16
+     d4     0  branch    b 0x20f0 <_binary__tmp_tmpz_0k84___code_bin_start+0x20f0>
+     d8     0  tlb       ldp x16, x17, [x19, #-0x70]
+     dc     1  alu       and x16, x16, x22, lsr #7
+     e0     0  alu       add x17, x17, x16
+     e4     0  guest_mem ldr w16, [x17]
+     e8    16  tlb       ldr x17, [x17, #0x18]
+     ec     2  alu       add w30, w22, #0x3
+     f0     1  alu       and w30, w30, #0xfffff000
+     f4     0  alu       cmp w16, w30
+     f8     0  branch    b.ne 0x2ccc <_binary__tmp_tmpz_0k84___code_bin_start+0x2ccc>
+     fc     1  guest_mem ldr w25, [x17, w22, uxtw]
+    100    20  tlb       ldp x16, x17, [x19, #-0x70]
+    104     0  alu       and x16, x16, x23, lsr #7
+    108     0  alu       add x17, x17, x16
+    10c     1  tlb       ldr w16, [x17, #0x8]
+    110     3  tlb       ldr x17, [x17, #0x18]
+    114     0  alu       add w30, w23, #0x3
+    118     0  alu       and w30, w30, #0xfffff000
+    11c     1  alu       cmp w16, w30
+    120     0  branch    b.ne 0x2cf4 <_binary__tmp_tmpz_0k84___code_bin_start+0x2cf4>
+    124     1  guest_mem str w25, [x17, w23, uxtw]
+    128     0  alu       add w22, w22, w24
+    12c     1  env_st    str w22, [x19, #0x18]
+    130     0  alu       add w23, w23, w24
+    134     0  env_st    str w23, [x19, #0x1c]
+    138     0  env_ld    ldr w24, [x19, #0x38]
+    13c     1  alu       lsl w24, w24, #2
+    140     0  xbox_fp   cbz x26, 0x2164 <_binary__tmp_tmpz_0k84___code_bin_start+0x2164>
+    144     0  alu       tst w22, #0xfc000000
+    148     0  branch    b.ne 0x2148 <_binary__tmp_tmpz_0k84___code_bin_start+0x2148>
+    14c     0  alu       mov x17, x26
+    150     0  branch    b 0x2188 <_binary__tmp_tmpz_0k84___code_bin_start+0x2188>
+    154     0  xbox_fp   ldr x16, [x27, #0x10]
+    158     0  branch    cbz x16, 0x2164 <_binary__tmp_tmpz_0k84___code_bin_start+0x2164>
+    15c     0  alu       sub x30, x22, x16
+    160     0  alu       tst w30, #0xfc000000
+    164     0  branch    b.ne 0x2164 <_binary__tmp_tmpz_0k84___code_bin_start+0x2164>
+    168     0  alu       sub x17, x26, x16
+    16c     0  branch    b 0x2188 <_binary__tmp_tmpz_0k84___code_bin_start+0x2188>
+    170     0  tlb       ldp x16, x17, [x19, #-0x70]
+    174     1  alu       and x16, x16, x22, lsr #7
+    178     0  alu       add x17, x17, x16
+    17c     0  guest_mem ldr w16, [x17]
+    180     0  tlb       ldr x17, [x17, #0x18]
+    184     0  alu       add w30, w22, #0x3
+    188     0  alu       and w30, w30, #0xfffff000
+    18c     1  alu       cmp w16, w30
+    190     0  branch    b.ne 0x2d1c <_binary__tmp_tmpz_0k84___code_bin_start+0x2d1c>
+    194     0  guest_mem ldr w25, [x17, w22, uxtw]
+    198     1  tlb       ldp x16, x17, [x19, #-0x70]
+    19c     0  alu       and x16, x16, x23, lsr #7
+    1a0     0  alu       add x17, x17, x16
+    1a4     0  tlb       ldr w16, [x17, #0x8]
+    1a8     1  tlb       ldr x17, [x17, #0x18]
+    1ac     0  alu       add w30, w23, #0x3
+    1b0     0  alu       and w30, w30, #0xfffff000
+    1b4     0  alu       cmp w16, w30
+    1b8     0  branch    b.ne 0x2d44 <_binary__tmp_tmpz_0k84___code_bin_start+0x2d44>
+    1bc     0  guest_mem str w25, [x17, w23, uxtw]
+    1c0     0  alu       add w22, w22, w24
+    1c4     1  env_st    str w22, [x19, #0x18]
+    1c8     0  alu       add w23, w23, w24
+    1cc     0  env_st    str w23, [x19, #0x1c]
+    1d0     0  xbox_fp   cbz x26, 0x21f4 <_binary__tmp_tmpz_0k84___code_bin_start+0x21f4>
+    1d4     0  alu       tst w22, #0xfc000000
+    1d8     0  branch    b.ne 0x21d8 <_binary__tmp_tmpz_0k84___code_bin_start+0x21d8>
+    1dc     0  alu       mov x17, x26
+    1e0     0  branch    b 0x2218 <_binary__tmp_tmpz_0k84___code_bin_start+0x2218>
+    1e4     0  xbox_fp   ldr x16, [x27, #0x10]
+    1e8     0  branch    cbz x16, 0x21f4 <_binary__tmp_tmpz_0k84___code_bin_start+0x21f4>
+    1ec     0  alu       sub x30, x22, x16
+    1f0     0  alu       tst w30, #0xfc000000
+    1f4     0  branch    b.ne 0x21f4 <_binary__tmp_tmpz_0k84___code_bin_start+0x21f4>
+    1f8     0  alu       sub x17, x26, x16
+    1fc     0  branch    b 0x2218 <_binary__tmp_tmpz_0k84___code_bin_start+0x2218>
+    200     0  tlb       ldp x16, x17, [x19, #-0x70]
+    204     1  alu       and x16, x16, x22, lsr #7
+    208     0  alu       add x17, x17, x16
+    20c     1  guest_mem ldr w16, [x17]
+    210     0  tlb       ldr x17, [x17, #0x18]
+    214     1  alu       add w30, w22, #0x3
+    218     1  alu       and w30, w30, #0xfffff000
+    21c     2  alu       cmp w16, w30
+    220     0  branch    b.ne 0x2d6c <_binary__tmp_tmpz_0k84___code_bin_start+0x2d6c>
+    224     1  guest_mem ldr w22, [x17, w22, uxtw]
+    228     4  tlb       ldp x16, x17, [x19, #-0x70]
+    22c     0  alu       and x16, x16, x23, lsr #7
+    230     0  alu       add x17, x17, x16
+    234     0  tlb       ldr w16, [x17, #0x8]
+    238     0  tlb       ldr x17, [x17, #0x18]
+    23c     0  alu       add w30, w23, #0x3
+    240     1  alu       and w30, w30, #0xfffff000
+    244     1  alu       cmp w16, w30
+    248     0  branch    b.ne 0x2d94 <_binary__tmp_tmpz_0k84___code_bin_start+0x2d94>
+    24c     1  guest_mem str w22, [x17, w23, uxtw]
+    250     1  alu       sub w22, w21, #0xc
+    254     1  env_st    str w22, [x19, #0x18]
+    258     0  alu       add w23, w20, #0x14
+    25c     1  env_st    str w23, [x19, #0x1c]
+    260     0  env_ld    ldr w24, [x19, #0x38]
+    264     0  alu       lsl w24, w24, #2
+    268     0  xbox_fp   cbz x26, 0x228c <_binary__tmp_tmpz_0k84___code_bin_start+0x228c>
+    26c     0  alu       tst w22, #0xfc000000
+    270     0  branch    b.ne 0x2270 <_binary__tmp_tmpz_0k84___code_bin_start+0x2270>
+    274     0  alu       mov x17, x26
+    278     0  branch    b 0x22b0 <_binary__tmp_tmpz_0k84___code_bin_start+0x22b0>
+    27c     0  xbox_fp   ldr x16, [x27, #0x10]
+    280     0  branch    cbz x16, 0x228c <_binary__tmp_tmpz_0k84___code_bin_start+0x228c>
+    284     0  alu       sub x30, x22, x16
+    288     0  alu       tst w30, #0xfc000000
+    28c     0  branch    b.ne 0x228c <_binary__tmp_tmpz_0k84___code_bin_start+0x228c>
+    290     0  alu       sub x17, x26, x16
+    294     0  branch    b 0x22b0 <_binary__tmp_tmpz_0k84___code_bin_start+0x22b0>
+    298     1  tlb       ldp x16, x17, [x19, #-0x70]
+    29c     2  alu       and x16, x16, x22, lsr #7
+    2a0     0  alu       add x17, x17, x16
+    2a4     0  guest_mem ldr w16, [x17]
+    2a8     0  tlb       ldr x17, [x17, #0x18]
+    2ac     1  alu       add w30, w22, #0x3
+    2b0     1  alu       and w30, w30, #0xfffff000
+    2b4     1  alu       cmp w16, w30
+    2b8     0  branch    b.ne 0x2dbc <_binary__tmp_tmpz_0k84___code_bin_start+0x2dbc>
+    2bc     0  guest_mem ldr w25, [x17, w22, uxtw]
+    2c0     0  tlb       ldp x16, x17, [x19, #-0x70]
+    2c4     2  alu       and x16, x16, x23, lsr #7
+    2c8     0  alu       add x17, x17, x16
+    2cc     1  tlb       ldr w16, [x17, #0x8]
+    2d0     0  tlb       ldr x17, [x17, #0x18]
+    2d4     1  alu       add w30, w23, #0x3
+    2d8     0  alu       and w30, w30, #0xfffff000
+    2dc     1  alu       cmp w16, w30
+    2e0     0  branch    b.ne 0x2de4 <_binary__tmp_tmpz_0k84___code_bin_start+0x2de4>
+    2e4     3  guest_mem str w25, [x17, w23, uxtw]
+    2e8     0  alu       add w22, w22, w24
+    2ec     2  env_st    str w22, [x19, #0x18]
+    2f0     0  alu       add w23, w23, w24
+    2f4     0  env_st    str w23, [x19, #0x1c]
+    2f8     0  env_ld    ldr w24, [x19, #0x38]
+    2fc     0  alu       lsl w24, w24, #2
+    300     0  xbox_fp   cbz x26, 0x2324 <_binary__tmp_tmpz_0k84___code_bin_start+0x2324>
+    304     0  alu       tst w22, #0xfc000000
+    308     0  branch    b.ne 0x2308 <_binary__tmp_tmpz_0k84___code_bin_start+0x2308>
+    30c     0  alu       mov x17, x26
+    310     0  branch    b 0x2348 <_binary__tmp_tmpz_0k84___code_bin_start+0x2348>
+    314     0  xbox_fp   ldr x16, [x27, #0x10]
+    318     0  branch    cbz x16, 0x2324 <_binary__tmp_tmpz_0k84___code_bin_start+0x2324>
+    31c     0  alu       sub x30, x22, x16
+    320     0  alu       tst w30, #0xfc000000
+    324     0  branch    b.ne 0x2324 <_binary__tmp_tmpz_0k84___code_bin_start+0x2324>
+    328     0  alu       sub x17, x26, x16
+    32c     0  branch    b 0x2348 <_binary__tmp_tmpz_0k84___code_bin_start+0x2348>
+    330     0  tlb       ldp x16, x17, [x19, #-0x70]
+    334     0  alu       and x16, x16, x22, lsr #7
+    338     0  alu       add x17, x17, x16
+    33c     0  guest_mem ldr w16, [x17]
+    340     1  tlb       ldr x17, [x17, #0x18]
+    344     0  alu       add w30, w22, #0x3
+    348     0  alu       and w30, w30, #0xfffff000
+    34c     1  alu       cmp w16, w30
+    350     0  branch    b.ne 0x2e0c <_binary__tmp_tmpz_0k84___code_bin_start+0x2e0c>
+    354     0  guest_mem ldr w25, [x17, w22, uxtw]
+    358    12  tlb       ldp x16, x17, [x19, #-0x70]
+    35c     0  alu       and x16, x16, x23, lsr #7
+    360     0  alu       add x17, x17, x16
+    364     1  tlb       ldr w16, [x17, #0x8]
+    368     0  tlb       ldr x17, [x17, #0x18]
+    36c     0  alu       add w30, w23, #0x3
+    370     0  alu       and w30, w30, #0xfffff000
+    374     1  alu       cmp w16, w30
+    378     0  branch    b.ne 0x2e34 <_binary__tmp_tmpz_0k84___code_bin_start+0x2e34>
+    37c     0  guest_mem str w25, [x17, w23, uxtw]
+    380     0  alu       add w22, w22, w24
+    384     1  env_st    str w22, [x19, #0x18]
+    388     1  alu       add w23, w23, w24
+    38c     0  env_st    str w23, [x19, #0x1c]
+    390     0  xbox_fp   cbz x26, 0x23b4 <_binary__tmp_tmpz_0k84___code_bin_start+0x23b4>
+    394     0  alu       tst w22, #0xfc000000
+    398     0  branch    b.ne 0x2398 <_binary__tmp_tmpz_0k84___code_bin_start+0x2398>
+    39c     0  alu       mov x17, x26
+    3a0     0  branch    b 0x23d8 <_binary__tmp_tmpz_0k84___code_bin_start+0x23d8>
+    3a4     0  xbox_fp   ldr x16, [x27, #0x10]
+    3a8     0  branch    cbz x16, 0x23b4 <_binary__tmp_tmpz_0k84___code_bin_start+0x23b4>
+    3ac     0  alu       sub x30, x22, x16
+    3b0     0  alu       tst w30, #0xfc000000
+    3b4     0  branch    b.ne 0x23b4 <_binary__tmp_tmpz_0k84___code_bin_start+0x23b4>
+    3b8     0  alu       sub x17, x26, x16
+    3bc     0  branch    b 0x23d8 <_binary__tmp_tmpz_0k84___code_bin_start+0x23d8>
+    3c0     2  tlb       ldp x16, x17, [x19, #-0x70]
+    3c4     1  alu       and x16, x16, x22, lsr #7
+    3c8     1  alu       add x17, x17, x16
+    3cc     0  guest_mem ldr w16, [x17]
+    3d0     1  tlb       ldr x17, [x17, #0x18]
+    3d4     0  alu       add w30, w22, #0x3
+    3d8     0  alu       and w30, w30, #0xfffff000
+    3dc     0  alu       cmp w16, w30
+    3e0     0  branch    b.ne 0x2e5c <_binary__tmp_tmpz_0k84___code_bin_start+0x2e5c>
+    3e4     0  guest_mem ldr w22, [x17, w22, uxtw]
+    3e8     4  tlb       ldp x16, x17, [x19, #-0x70]
+    3ec     0  alu       and x16, x16, x23, lsr #7
+    3f0     0  alu       add x17, x17, x16
+    3f4     0  tlb       ldr w16, [x17, #0x8]
+    3f8     0  tlb       ldr x17, [x17, #0x18]
+    3fc     0  alu       add w30, w23, #0x3
+    400     0  alu       and w30, w30, #0xfffff000
+    404     0  alu       cmp w16, w30
+    408     0  branch    b.ne 0x2e84 <_binary__tmp_tmpz_0k84___code_bin_start+0x2e84>
+    40c     0  guest_mem str w22, [x17, w23, uxtw]
+    410     0  alu       mov w22, w21
+    414     0  env_st    str w22, [x19, #0x18]
+    418     1  alu       add w23, w20, #0x2c
+    41c     0  env_st    str w23, [x19, #0x1c]
+    420     1  env_ld    ldr w24, [x19, #0x38]
+    424     1  alu       lsl w24, w24, #2
+    428     0  xbox_fp   cbz x26, 0x244c <_binary__tmp_tmpz_0k84___code_bin_start+0x244c>
+    42c     0  alu       tst w21, #0xfc000000
+    430     0  branch    b.ne 0x2430 <_binary__tmp_tmpz_0k84___code_bin_start+0x2430>
+    434     0  alu       mov x17, x26
+    438     0  branch    b 0x2470 <_binary__tmp_tmpz_0k84___code_bin_start+0x2470>
+    43c     0  xbox_fp   ldr x16, [x27, #0x10]
+    440     0  branch    cbz x16, 0x244c <_binary__tmp_tmpz_0k84___code_bin_start+0x244c>
+    444     0  alu       sub x30, x21, x16
+    448     0  alu       tst w30, #0xfc000000
+    44c     0  branch    b.ne 0x244c <_binary__tmp_tmpz_0k84___code_bin_start+0x244c>
+    450     0  alu       sub x17, x26, x16
+    454     0  branch    b 0x2470 <_binary__tmp_tmpz_0k84___code_bin_start+0x2470>
+    458     0  tlb       ldp x16, x17, [x19, #-0x70]
+    45c     0  alu       and x16, x16, x21, lsr #7
+    460     0  alu       add x17, x17, x16
+    464     1  guest_mem ldr w16, [x17]
+    468     1  tlb       ldr x17, [x17, #0x18]
+    46c     0  alu       add w30, w21, #0x3
+    470     0  alu       and w30, w30, #0xfffff000
+    474     0  alu       cmp w16, w30
+    478     0  branch    b.ne 0x2eac <_binary__tmp_tmpz_0k84___code_bin_start+0x2eac>
+    47c     1  guest_mem ldr w25, [x17, w21, uxtw]
+    480     5  tlb       ldp x16, x17, [x19, #-0x70]
+    484     0  alu       and x16, x16, x23, lsr #7
+    488     0  alu       add x17, x17, x16
+    48c     0  tlb       ldr w16, [x17, #0x8]
+    490     0  tlb       ldr x17, [x17, #0x18]
+    494     0  alu       add w30, w23, #0x3
+    498     1  alu       and w30, w30, #0xfffff000
+    49c     0  alu       cmp w16, w30
+    4a0     0  branch    b.ne 0x2ed4 <_binary__tmp_tmpz_0k84___code_bin_start+0x2ed4>
+    4a4     0  guest_mem str w25, [x17, w23, uxtw]
+    4a8     1  alu       add w22, w22, w24
+    4ac     1  env_st    str w22, [x19, #0x18]
+    4b0     0  alu       add w23, w23, w24
+    4b4     0  env_st    str w23, [x19, #0x1c]
+    4b8     1  env_ld    ldr w24, [x19, #0x38]
+    4bc     0  alu       lsl w24, w24, #2
+    4c0     0  xbox_fp   cbz x26, 0x24e4 <_binary__tmp_tmpz_0k84___code_bin_start+0x24e4>
+    4c4     0  alu       tst w22, #0xfc000000
+    4c8     0  branch    b.ne 0x24c8 <_binary__tmp_tmpz_0k84___code_bin_start+0x24c8>
+    4cc     0  alu       mov x17, x26
+    4d0     0  branch    b 0x2508 <_binary__tmp_tmpz_0k84___code_bin_start+0x2508>
+    4d4     0  xbox_fp   ldr x16, [x27, #0x10]
+    4d8     0  branch    cbz x16, 0x24e4 <_binary__tmp_tmpz_0k84___code_bin_start+0x24e4>
+    4dc     0  alu       sub x30, x22, x16
+    4e0     0  alu       tst w30, #0xfc000000
+    4e4     0  branch    b.ne 0x24e4 <_binary__tmp_tmpz_0k84___code_bin_start+0x24e4>
+    4e8     0  alu       sub x17, x26, x16
+    4ec     0  branch    b 0x2508 <_binary__tmp_tmpz_0k84___code_bin_start+0x2508>
+    4f0     3  tlb       ldp x16, x17, [x19, #-0x70]
+    4f4     0  alu       and x16, x16, x22, lsr #7
+    4f8     0  alu       add x17, x17, x16
+    4fc     0  guest_mem ldr w16, [x17]
+    500     1  tlb       ldr x17, [x17, #0x18]
+    504     0  alu       add w30, w22, #0x3
+    508     0  alu       and w30, w30, #0xfffff000
+    50c     0  alu       cmp w16, w30
+    510     0  branch    b.ne 0x2efc <_binary__tmp_tmpz_0k84___code_bin_start+0x2efc>
+    514     0  guest_mem ldr w25, [x17, w22, uxtw]
+    518     4  tlb       ldp x16, x17, [x19, #-0x70]
+    51c     0  alu       and x16, x16, x23, lsr #7
+    520     0  alu       add x17, x17, x16
+    524     0  tlb       ldr w16, [x17, #0x8]
+    528     0  tlb       ldr x17, [x17, #0x18]
+    52c     1  alu       add w30, w23, #0x3
+    530     0  alu       and w30, w30, #0xfffff000
+    534     0  alu       cmp w16, w30
+    538     0  branch    b.ne 0x2f24 <_binary__tmp_tmpz_0k84___code_bin_start+0x2f24>
+    53c     0  guest_mem str w25, [x17, w23, uxtw]
+    540     0  alu       add w22, w22, w24
+    544     1  env_st    str w22, [x19, #0x18]
+    548     1  alu       add w23, w23, w24
+    54c     0  env_st    str w23, [x19, #0x1c]
+    550     0  xbox_fp   cbz x26, 0x2574 <_binary__tmp_tmpz_0k84___code_bin_start+0x2574>
+    554     0  alu       tst w22, #0xfc000000
+    558     0  branch    b.ne 0x2558 <_binary__tmp_tmpz_0k84___code_bin_start+0x2558>
+    55c     0  alu       mov x17, x26
+    560     0  branch    b 0x2598 <_binary__tmp_tmpz_0k84___code_bin_start+0x2598>
+    564     0  xbox_fp   ldr x16, [x27, #0x10]
+    568     0  branch    cbz x16, 0x2574 <_binary__tmp_tmpz_0k84___code_bin_start+0x2574>
+    56c     0  alu       sub x30, x22, x16
+    570     0  alu       tst w30, #0xfc000000
+    574     0  branch    b.ne 0x2574 <_binary__tmp_tmpz_0k84___code_bin_start+0x2574>
+    578     0  alu       sub x17, x26, x16
+    57c     0  branch    b 0x2598 <_binary__tmp_tmpz_0k84___code_bin_start+0x2598>
+    580     1  tlb       ldp x16, x17, [x19, #-0x70]
+    584     0  alu       and x16, x16, x22, lsr #7
+    588     0  alu       add x17, x17, x16
+    58c     0  guest_mem ldr w16, [x17]
+    590     0  tlb       ldr x17, [x17, #0x18]
+    594     0  alu       add w30, w22, #0x3
+    598     2  alu       and w30, w30, #0xfffff000
+    59c     0  alu       cmp w16, w30
+    5a0     0  branch    b.ne 0x2f4c <_binary__tmp_tmpz_0k84___code_bin_start+0x2f4c>
+    5a4     0  guest_mem ldr w22, [x17, w22, uxtw]
+    5a8    11  tlb       ldp x16, x17, [x19, #-0x70]
+    5ac     0  alu       and x16, x16, x23, lsr #7
+    5b0     0  alu       add x17, x17, x16
+    5b4     0  tlb       ldr w16, [x17, #0x8]
+    5b8     1  tlb       ldr x17, [x17, #0x18]
+    5bc     0  alu       add w30, w23, #0x3
+    5c0     1  alu       and w30, w30, #0xfffff000
+    5c4     0  alu       cmp w16, w30
+    5c8     0  branch    b.ne 0x2f74 <_binary__tmp_tmpz_0k84___code_bin_start+0x2f74>
+    5cc     0  guest_mem str w22, [x17, w23, uxtw]
+    5d0     0  alu       add w22, w21, #0xc
+    5d4     1  env_st    str w22, [x19, #0x18]
+    5d8     0  alu       sub w23, w20, #0x4
+    5dc     0  env_st    str w23, [x19, #0x1c]
+    5e0     1  env_ld    ldr w24, [x19, #0x38]
+    5e4     1  alu       lsl w24, w24, #2
+    5e8     1  xbox_fp   cbz x26, 0x260c <_binary__tmp_tmpz_0k84___code_bin_start+0x260c>
+    5ec     0  alu       tst w22, #0xfc000000
+    5f0     0  branch    b.ne 0x25f0 <_binary__tmp_tmpz_0k84___code_bin_start+0x25f0>
+    5f4     0  alu       mov x17, x26
+    5f8     0  branch    b 0x2630 <_binary__tmp_tmpz_0k84___code_bin_start+0x2630>
+    5fc     0  xbox_fp   ldr x16, [x27, #0x10]
+    600     0  branch    cbz x16, 0x260c <_binary__tmp_tmpz_0k84___code_bin_start+0x260c>
+    604     0  alu       sub x30, x22, x16
+    608     0  alu       tst w30, #0xfc000000
+    60c     0  branch    b.ne 0x260c <_binary__tmp_tmpz_0k84___code_bin_start+0x260c>
+    610     0  alu       sub x17, x26, x16
+    614     0  branch    b 0x2630 <_binary__tmp_tmpz_0k84___code_bin_start+0x2630>
+    618     0  tlb       ldp x16, x17, [x19, #-0x70]
+    61c     1  alu       and x16, x16, x22, lsr #7
+    620     1  alu       add x17, x17, x16
+    624     1  guest_mem ldr w16, [x17]
+    628     0  tlb       ldr x17, [x17, #0x18]
+    62c     0  alu       add w30, w22, #0x3
+    630     0  alu       and w30, w30, #0xfffff000
+    634     0  alu       cmp w16, w30
+    638     0  branch    b.ne 0x2f9c <_binary__tmp_tmpz_0k84___code_bin_start+0x2f9c>
+    63c     1  guest_mem ldr w25, [x17, w22, uxtw]
+    640     2  tlb       ldp x16, x17, [x19, #-0x70]
+    644     0  alu       and x16, x16, x23, lsr #7
+    648     0  alu       add x17, x17, x16
+    64c     0  tlb       ldr w16, [x17, #0x8]
+    650     2  tlb       ldr x17, [x17, #0x18]
+    654     0  alu       add w30, w23, #0x3
+    658     0  alu       and w30, w30, #0xfffff000
+    65c     0  alu       cmp w16, w30
+    660     0  branch    b.ne 0x2fc4 <_binary__tmp_tmpz_0k84___code_bin_start+0x2fc4>
+    664     3  guest_mem str w25, [x17, w23, uxtw]
+    668     0  alu       add w22, w22, w24
+    66c     1  env_st    str w22, [x19, #0x18]
+    670     0  alu       add w23, w23, w24
+    674     0  env_st    str w23, [x19, #0x1c]
+    678     0  env_ld    ldr w24, [x19, #0x38]
+    67c     1  alu       lsl w24, w24, #2
+    680     1  xbox_fp   cbz x26, 0x26a4 <_binary__tmp_tmpz_0k84___code_bin_start+0x26a4>
+    684     0  alu       tst w22, #0xfc000000
+    688     0  branch    b.ne 0x2688 <_binary__tmp_tmpz_0k84___code_bin_start+0x2688>
+    68c     0  alu       mov x17, x26
+    690     0  branch    b 0x26c8 <_binary__tmp_tmpz_0k84___code_bin_start+0x26c8>
+    694     0  xbox_fp   ldr x16, [x27, #0x10]
+    698     0  branch    cbz x16, 0x26a4 <_binary__tmp_tmpz_0k84___code_bin_start+0x26a4>
+    69c     0  alu       sub x30, x22, x16
+    6a0     0  alu       tst w30, #0xfc000000
+    6a4     0  branch    b.ne 0x26a4 <_binary__tmp_tmpz_0k84___code_bin_start+0x26a4>
+    6a8     0  alu       sub x17, x26, x16
+    6ac     0  branch    b 0x26c8 <_binary__tmp_tmpz_0k84___code_bin_start+0x26c8>
+    6b0     0  tlb       ldp x16, x17, [x19, #-0x70]
+    6b4     0  alu       and x16, x16, x22, lsr #7
+    6b8     0  alu       add x17, x17, x16
+    6bc     0  guest_mem ldr w16, [x17]
+    6c0     1  tlb       ldr x17, [x17, #0x18]
+    6c4     0  alu       add w30, w22, #0x3
+    6c8     0  alu       and w30, w30, #0xfffff000
+    6cc     0  alu       cmp w16, w30
+    6d0     0  branch    b.ne 0x2fec <_binary__tmp_tmpz_0k84___code_bin_start+0x2fec>
+    6d4     1  guest_mem ldr w25, [x17, w22, uxtw]
+    6d8    10  tlb       ldp x16, x17, [x19, #-0x70]
+    6dc     1  alu       and x16, x16, x23, lsr #7
+    6e0     1  alu       add x17, x17, x16
+    6e4     0  tlb       ldr w16, [x17, #0x8]
+    6e8     1  tlb       ldr x17, [x17, #0x18]
+    6ec     0  alu       add w30, w23, #0x3
+    6f0     0  alu       and w30, w30, #0xfffff000
+    6f4     0  alu       cmp w16, w30
+    6f8     0  branch    b.ne 0x3014 <_binary__tmp_tmpz_0k84___code_bin_start+0x3014>
+    6fc     1  guest_mem str w25, [x17, w23, uxtw]
+    700     0  alu       add w22, w22, w24
+    704     0  env_st    str w22, [x19, #0x18]
+    708     1  alu       add w23, w23, w24
+    70c     0  env_st    str w23, [x19, #0x1c]
+    710     1  xbox_fp   cbz x26, 0x2734 <_binary__tmp_tmpz_0k84___code_bin_start+0x2734>
+    714     0  alu       tst w22, #0xfc000000
+    718     0  branch    b.ne 0x2718 <_binary__tmp_tmpz_0k84___code_bin_start+0x2718>
+    71c     0  alu       mov x17, x26
+    720     0  branch    b 0x2758 <_binary__tmp_tmpz_0k84___code_bin_start+0x2758>
+    724     0  xbox_fp   ldr x16, [x27, #0x10]
+    728     0  branch    cbz x16, 0x2734 <_binary__tmp_tmpz_0k84___code_bin_start+0x2734>
+    72c     0  alu       sub x30, x22, x16
+    730     0  alu       tst w30, #0xfc000000
+    734     0  branch    b.ne 0x2734 <_binary__tmp_tmpz_0k84___code_bin_start+0x2734>
+    738     0  alu       sub x17, x26, x16
+    73c     0  branch    b 0x2758 <_binary__tmp_tmpz_0k84___code_bin_start+0x2758>
+    740     0  tlb       ldp x16, x17, [x19, #-0x70]
+    744     1  alu       and x16, x16, x22, lsr #7
+    748     1  alu       add x17, x17, x16
+    74c     0  guest_mem ldr w16, [x17]
+    750     0  tlb       ldr x17, [x17, #0x18]
+    754     0  alu       add w30, w22, #0x3
+    758     0  alu       and w30, w30, #0xfffff000
+    75c     0  alu       cmp w16, w30
+    760     0  branch    b.ne 0x303c <_binary__tmp_tmpz_0k84___code_bin_start+0x303c>
+    764     2  guest_mem ldr w22, [x17, w22, uxtw]
+    768     2  tlb       ldp x16, x17, [x19, #-0x70]
+    76c     0  alu       and x16, x16, x23, lsr #7
+    770     1  alu       add x17, x17, x16
+    774     0  tlb       ldr w16, [x17, #0x8]
+    778     0  tlb       ldr x17, [x17, #0x18]
+    77c     1  alu       add w30, w23, #0x3
+    780     0  alu       and w30, w30, #0xfffff000
+    784     1  alu       cmp w16, w30
+    788     0  branch    b.ne 0x3064 <_binary__tmp_tmpz_0k84___code_bin_start+0x3064>
+    78c     0  guest_mem str w22, [x17, w23, uxtw]
+    790     1  alu       add w22, w21, #0x18
+    794     1  env_st    str w22, [x19, #0x18]
+    798     0  alu       add w23, w20, #0x44
+    79c     0  env_st    str w23, [x19, #0x1c]
+    7a0     1  env_ld    ldr w24, [x19, #0x38]
+    7a4     1  alu       lsl w24, w24, #2
+    7a8     0  xbox_fp   cbz x26, 0x27cc <_binary__tmp_tmpz_0k84___code_bin_start+0x27cc>
+    7ac     0  alu       tst w22, #0xfc000000
+    7b0     0  branch    b.ne 0x27b0 <_binary__tmp_tmpz_0k84___code_bin_start+0x27b0>
+    7b4     0  alu       mov x17, x26
+    7b8     0  branch    b 0x27f0 <_binary__tmp_tmpz_0k84___code_bin_start+0x27f0>
+    7bc     0  xbox_fp   ldr x16, [x27, #0x10]
+    7c0     0  branch    cbz x16, 0x27cc <_binary__tmp_tmpz_0k84___code_bin_start+0x27cc>
+    7c4     0  alu       sub x30, x22, x16
+    7c8     0  alu       tst w30, #0xfc000000
+    7cc     0  branch    b.ne 0x27cc <_binary__tmp_tmpz_0k84___code_bin_start+0x27cc>
+    7d0     0  alu       sub x17, x26, x16
+    7d4     0  branch    b 0x27f0 <_binary__tmp_tmpz_0k84___code_bin_start+0x27f0>
+    7d8     3  tlb       ldp x16, x17, [x19, #-0x70]
+    7dc     0  alu       and x16, x16, x22, lsr #7
+    7e0     1  alu       add x17, x17, x16
+    7e4     2  guest_mem ldr w16, [x17]
+    7e8     0  tlb       ldr x17, [x17, #0x18]
+    7ec     0  alu       add w30, w22, #0x3
+    7f0     0  alu       and w30, w30, #0xfffff000
+    7f4     0  alu       cmp w16, w30
+    7f8     0  branch    b.ne 0x308c <_binary__tmp_tmpz_0k84___code_bin_start+0x308c>
+    7fc     0  guest_mem ldr w25, [x17, w22, uxtw]
+    800     9  tlb       ldp x16, x17, [x19, #-0x70]
+    804     1  alu       and x16, x16, x23, lsr #7
+    808     0  alu       add x17, x17, x16
+    80c     0  tlb       ldr w16, [x17, #0x8]
+    810     0  tlb       ldr x17, [x17, #0x18]
+    814     0  alu       add w30, w23, #0x3
+    818     0  alu       and w30, w30, #0xfffff000
+    81c     1  alu       cmp w16, w30
+    820     1  branch    b.ne 0x30b4 <_binary__tmp_tmpz_0k84___code_bin_start+0x30b4>
+    824     2  guest_mem str w25, [x17, w23, uxtw]
+    828     2  alu       add w22, w22, w24
+    82c     1  env_st    str w22, [x19, #0x18]
+    830     1  alu       add w23, w23, w24
+    834     1  env_st    str w23, [x19, #0x1c]
+    838     0  env_ld    ldr w24, [x19, #0x38]
+    83c     1  alu       lsl w24, w24, #2
+    840     1  xbox_fp   cbz x26, 0x2864 <_binary__tmp_tmpz_0k84___code_bin_start+0x2864>
+    844     0  alu       tst w22, #0xfc000000
+    848     0  branch    b.ne 0x2848 <_binary__tmp_tmpz_0k84___code_bin_start+0x2848>
+    84c     0  alu       mov x17, x26
+    850     0  branch    b 0x2888 <_binary__tmp_tmpz_0k84___code_bin_start+0x2888>
+    854     0  xbox_fp   ldr x16, [x27, #0x10]
+    858     0  branch    cbz x16, 0x2864 <_binary__tmp_tmpz_0k84___code_bin_start+0x2864>
+    85c     0  alu       sub x30, x22, x16
+    860     0  alu       tst w30, #0xfc000000
+    864     0  branch    b.ne 0x2864 <_binary__tmp_tmpz_0k84___code_bin_start+0x2864>
+    868     0  alu       sub x17, x26, x16
+    86c     0  branch    b 0x2888 <_binary__tmp_tmpz_0k84___code_bin_start+0x2888>
+    870     0  tlb       ldp x16, x17, [x19, #-0x70]
+    874     0  alu       and x16, x16, x22, lsr #7
+    878     0  alu       add x17, x17, x16
+    87c     0  guest_mem ldr w16, [x17]
+    880     2  tlb       ldr x17, [x17, #0x18]
+    884     2  alu       add w30, w22, #0x3
+    888     0  alu       and w30, w30, #0xfffff000
+    88c     0  alu       cmp w16, w30
+    890     0  branch    b.ne 0x30dc <_binary__tmp_tmpz_0k84___code_bin_start+0x30dc>
+    894     1  guest_mem ldr w25, [x17, w22, uxtw]
+    898     4  tlb       ldp x16, x17, [x19, #-0x70]
+    89c     0  alu       and x16, x16, x23, lsr #7
+    8a0     0  alu       add x17, x17, x16
+    8a4     1  tlb       ldr w16, [x17, #0x8]
+    8a8     0  tlb       ldr x17, [x17, #0x18]
+    8ac     1  alu       add w30, w23, #0x3
+    8b0     1  alu       and w30, w30, #0xfffff000
+    8b4     0  alu       cmp w16, w30
+    8b8     0  branch    b.ne 0x3104 <_binary__tmp_tmpz_0k84___code_bin_start+0x3104>
+    8bc     1  guest_mem str w25, [x17, w23, uxtw]
+    8c0     0  alu       add w22, w22, w24
+    8c4     0  env_st    str w22, [x19, #0x18]
+    8c8     0  alu       add w23, w23, w24
+    8cc     0  env_st    str w23, [x19, #0x1c]
+    8d0     0  xbox_fp   cbz x26, 0x28f4 <_binary__tmp_tmpz_0k84___code_bin_start+0x28f4>
+    8d4     0  alu       tst w22, #0xfc000000
+    8d8     0  branch    b.ne 0x28d8 <_binary__tmp_tmpz_0k84___code_bin_start+0x28d8>
+    8dc     0  alu       mov x17, x26
+    8e0     0  branch    b 0x2918 <_binary__tmp_tmpz_0k84___code_bin_start+0x2918>
+    8e4     0  xbox_fp   ldr x16, [x27, #0x10]
+    8e8     0  branch    cbz x16, 0x28f4 <_binary__tmp_tmpz_0k84___code_bin_start+0x28f4>
+    8ec     0  alu       sub x30, x22, x16
+    8f0     0  alu       tst w30, #0xfc000000
+    8f4     0  branch    b.ne 0x28f4 <_binary__tmp_tmpz_0k84___code_bin_start+0x28f4>
+    8f8     0  alu       sub x17, x26, x16
+    8fc     0  branch    b 0x2918 <_binary__tmp_tmpz_0k84___code_bin_start+0x2918>
+    900     0  tlb       ldp x16, x17, [x19, #-0x70]
+    904     0  alu       and x16, x16, x22, lsr #7
+    908     0  alu       add x17, x17, x16
+    90c     0  guest_mem ldr w16, [x17]
+    910     0  tlb       ldr x17, [x17, #0x18]
+    914     1  alu       add w30, w22, #0x3
+    918     2  alu       and w30, w30, #0xfffff000
+    91c     0  alu       cmp w16, w30
+    920     0  branch    b.ne 0x312c <_binary__tmp_tmpz_0k84___code_bin_start+0x312c>
+    924     1  guest_mem ldr w22, [x17, w22, uxtw]
+    928     8  tlb       ldp x16, x17, [x19, #-0x70]
+    92c     0  alu       and x16, x16, x23, lsr #7
+    930     0  alu       add x17, x17, x16
+    934     1  tlb       ldr w16, [x17, #0x8]
+    938     1  tlb       ldr x17, [x17, #0x18]
+    93c     0  alu       add w30, w23, #0x3
+    940     0  alu       and w30, w30, #0xfffff000
+    944     1  alu       cmp w16, w30
+    948     1  branch    b.ne 0x3154 <_binary__tmp_tmpz_0k84___code_bin_start+0x3154>
+    94c     4  guest_mem str w22, [x17, w23, uxtw]
+    950     1  alu       add w22, w21, #0x24
+    954     0  env_st    str w22, [x19, #0x18]
+    958     0  alu       add w23, w20, #0x38
+    95c     0  env_st    str w23, [x19, #0x1c]
+    960     0  env_ld    ldr w24, [x19, #0x38]
+    964     0  alu       lsl w24, w24, #2
+    968     1  xbox_fp   cbz x26, 0x298c <_binary__tmp_tmpz_0k84___code_bin_start+0x298c>
+    96c     0  alu       tst w22, #0xfc000000
+    970     0  branch    b.ne 0x2970 <_binary__tmp_tmpz_0k84___code_bin_start+0x2970>
+    974     0  alu       mov x17, x26
+    978     0  branch    b 0x29b0 <_binary__tmp_tmpz_0k84___code_bin_start+0x29b0>
+    97c     0  xbox_fp   ldr x16, [x27, #0x10]
+    980     0  branch    cbz x16, 0x298c <_binary__tmp_tmpz_0k84___code_bin_start+0x298c>
+    984     0  alu       sub x30, x22, x16
+    988     0  alu       tst w30, #0xfc000000
+    98c     0  branch    b.ne 0x298c <_binary__tmp_tmpz_0k84___code_bin_start+0x298c>
+    990     0  alu       sub x17, x26, x16
+    994     0  branch    b 0x29b0 <_binary__tmp_tmpz_0k84___code_bin_start+0x29b0>
+    998     1  tlb       ldp x16, x17, [x19, #-0x70]
+    99c     2  alu       and x16, x16, x22, lsr #7
+    9a0     1  alu       add x17, x17, x16
+    9a4     2  guest_mem ldr w16, [x17]
+    9a8     1  tlb       ldr x17, [x17, #0x18]
+    9ac     0  alu       add w30, w22, #0x3
+    9b0     0  alu       and w30, w30, #0xfffff000
+    9b4     2  alu       cmp w16, w30
+    9b8     0  branch    b.ne 0x317c <_binary__tmp_tmpz_0k84___code_bin_start+0x317c>
+    9bc     0  guest_mem ldr w25, [x17, w22, uxtw]
+    9c0     4  tlb       ldp x16, x17, [x19, #-0x70]
+    9c4     0  alu       and x16, x16, x23, lsr #7
+    9c8     0  alu       add x17, x17, x16
+    9cc     0  tlb       ldr w16, [x17, #0x8]
+    9d0     0  tlb       ldr x17, [x17, #0x18]
+    9d4     1  alu       add w30, w23, #0x3
+    9d8     0  alu       and w30, w30, #0xfffff000
+    9dc     1  alu       cmp w16, w30
+    9e0     0  branch    b.ne 0x31a4 <_binary__tmp_tmpz_0k84___code_bin_start+0x31a4>
+    9e4     0  guest_mem str w25, [x17, w23, uxtw]
+    9e8     0  alu       add w22, w22, w24
+    9ec     0  env_st    str w22, [x19, #0x18]
+    9f0     0  alu       add w23, w23, w24
+    9f4     0  env_st    str w23, [x19, #0x1c]
+    9f8     0  alu       add w21, w21, #0x48
+    9fc     0  env_st    str w21, [x19, #0x4]
+    a00     0  env_st    str w21, [x19, #0x28]
+    a04     1  alu       mov w24, #0x48
+    a08     3  env_st    str w24, [x19, #0x2c]
+    a0c     1  env_ld    ldr w24, [x19, #0x10]
+    a10     1  alu       sub w24, w24, #0x4
+    a14     0  alu       mov w25, w24
+    a18     0  tlb       ldp x16, x17, [x19, #-0x70]
+    a1c     1  alu       and x16, x16, x25, lsr #7
+    a20     0  alu       add x17, x17, x16
+    a24     0  tlb       ldr w16, [x17, #0x8]
+    a28     1  tlb       ldr x17, [x17, #0x18]
+    a2c     1  alu       add w30, w25, #0x3
+    a30     0  alu       and w30, w30, #0xfffff000
+    a34     0  alu       cmp w16, w30
+    a38     0  branch    b.ne 0x31cc <_binary__tmp_tmpz_0k84___code_bin_start+0x31cc>
+    a3c     3  guest_mem str wzr, [x17, w25, uxtw]
+    a40     0  env_st    str w24, [x19, #0x10]
+    a44     0  env_ld    ldr w25, [x19, #0x38]
+    a48     1  alu       lsl w25, w25, #2
+    a4c     1  xbox_fp   cbz x26, 0x2a70 <_binary__tmp_tmpz_0k84___code_bin_start+0x2a70>
+    a50     0  alu       tst w22, #0xfc000000
+    a54     0  branch    b.ne 0x2a54 <_binary__tmp_tmpz_0k84___code_bin_start+0x2a54>
+    a58     0  alu       mov x17, x26
+    a5c     0  branch    b 0x2a94 <_binary__tmp_tmpz_0k84___code_bin_start+0x2a94>
+    a60     0  xbox_fp   ldr x16, [x27, #0x10]
+    a64     0  branch    cbz x16, 0x2a70 <_binary__tmp_tmpz_0k84___code_bin_start+0x2a70>
+    a68     0  alu       sub x30, x22, x16
+    a6c     0  alu       tst w30, #0xfc000000
+    a70     0  branch    b.ne 0x2a70 <_binary__tmp_tmpz_0k84___code_bin_start+0x2a70>
+    a74     0  alu       sub x17, x26, x16
+    a78     0  branch    b 0x2a94 <_binary__tmp_tmpz_0k84___code_bin_start+0x2a94>
+    a7c     0  tlb       ldp x16, x17, [x19, #-0x70]
+    a80     1  alu       and x16, x16, x22, lsr #7
+    a84     0  alu       add x17, x17, x16
+    a88     0  guest_mem ldr w16, [x17]
+    a8c     2  tlb       ldr x17, [x17, #0x18]
+    a90     1  alu       add w30, w22, #0x3
+    a94     0  alu       and w30, w30, #0xfffff000
+    a98     1  alu       cmp w16, w30
+    a9c     1  branch    b.ne 0x31f4 <_binary__tmp_tmpz_0k84___code_bin_start+0x31f4>
+    aa0     0  guest_mem ldr w28, [x17, w22, uxtw]
+    aa4     8  tlb       ldp x16, x17, [x19, #-0x70]
+    aa8     0  alu       and x16, x16, x23, lsr #7
+    aac     0  alu       add x17, x17, x16
+    ab0     1  tlb       ldr w16, [x17, #0x8]
+    ab4     3  tlb       ldr x17, [x17, #0x18]
+    ab8     0  alu       add w30, w23, #0x3
+    abc     1  alu       and w30, w30, #0xfffff000
+    ac0     1  alu       cmp w16, w30
+    ac4     0  branch    b.ne 0x321c <_binary__tmp_tmpz_0k84___code_bin_start+0x321c>
+    ac8     1  guest_mem str w28, [x17, w23, uxtw]
+    acc     0  alu       add w22, w22, w25
+    ad0     0  env_st    str w22, [x19, #0x18]
+    ad4     0  alu       add w23, w23, w25
+    ad8     0  env_st    str w23, [x19, #0x1c]
+    adc     0  alu       add w20, w20, #0x68
+    ae0     0  tlb       ldp x16, x17, [x19, #-0x70]
+    ae4     0  alu       and x16, x16, x20, lsr #7
+    ae8     0  alu       add x17, x17, x16
+    aec     2  tlb       ldr w16, [x17, #0x8]
+    af0     1  tlb       ldr x17, [x17, #0x18]
+    af4     0  alu       add w30, w20, #0x3
+    af8     0  alu       and w30, w30, #0xfffff000
+    afc     0  alu       cmp w16, w30
+    b00     1  branch    b.ne 0x3244 <_binary__tmp_tmpz_0k84___code_bin_start+0x3244>
+    b04     1  guest_mem str w21, [x17, w20, uxtw]
+    b08     2  alu       sub w20, w24, #0x4
+    b0c     1  alu       mov w21, w20
+    b10     0  alu       mov w24, #0x6
+    b14     0  tlb       ldp x16, x17, [x19, #-0x70]
+    b18     0  alu       and x16, x16, x21, lsr #7
+    b1c     1  alu       add x17, x17, x16
+    b20     1  tlb       ldr w16, [x17, #0x8]
+    b24     0  tlb       ldr x17, [x17, #0x18]
+    b28     0  alu       add w30, w21, #0x3
+    b2c     3  alu       and w30, w30, #0xfffff000
+    b30     1  alu       cmp w16, w30
+    b34     0  branch    b.ne 0x326c <_binary__tmp_tmpz_0k84___code_bin_start+0x326c>
+    b38     1  guest_mem str w24, [x17, w21, uxtw]
+    b3c     1  env_st    str w20, [x19, #0x10]
+    b40     0  xbox_fp   cbz x26, 0x2b64 <_binary__tmp_tmpz_0k84___code_bin_start+0x2b64>
+    b44     0  alu       tst w20, #0xfc000000
+    b48     0  branch    b.ne 0x2b48 <_binary__tmp_tmpz_0k84___code_bin_start+0x2b48>
+    b4c     0  alu       mov x17, x26
+    b50     0  branch    b 0x2b88 <_binary__tmp_tmpz_0k84___code_bin_start+0x2b88>
+    b54     0  xbox_fp   ldr x16, [x27, #0x10]
+    b58     0  branch    cbz x16, 0x2b64 <_binary__tmp_tmpz_0k84___code_bin_start+0x2b64>
+    b5c     0  alu       sub x30, x20, x16
+    b60     0  alu       tst w30, #0xfc000000
+    b64     0  branch    b.ne 0x2b64 <_binary__tmp_tmpz_0k84___code_bin_start+0x2b64>
+    b68     0  alu       sub x17, x26, x16
+    b6c     0  branch    b 0x2b88 <_binary__tmp_tmpz_0k84___code_bin_start+0x2b88>
+    b70     1  tlb       ldp x16, x17, [x19, #-0x70]
+    b74     1  alu       and x16, x16, x20, lsr #7
+    b78     0  alu       add x17, x17, x16
+    b7c     0  guest_mem ldr w16, [x17]
+    b80     1  tlb       ldr x17, [x17, #0x18]
+    b84     0  alu       add w30, w20, #0x3
+    b88     0  alu       and w30, w30, #0xfffff000
+    b8c     0  alu       cmp w16, w30
+    b90     0  branch    b.ne 0x3294 <_binary__tmp_tmpz_0k84___code_bin_start+0x3294>
+    b94     0  guest_mem ldr w21, [x17, w20, uxtw]
+    b98     4  alu       add w20, w20, #0x4
+    b9c     1  env_st    str w20, [x19, #0x10]
+    ba0     0  env_st    str w21, [x19, #0x4]
+    ba4     0  env_st    str w21, [x19, #0x8]
+    ba8     0  env_ld    ldr w21, [x19, #0x38]
+    bac     1  alu       lsl w21, w21, #2
+    bb0     0  xbox_fp   cbz x26, 0x2bd4 <_binary__tmp_tmpz_0k84___code_bin_start+0x2bd4>
+    bb4     0  alu       tst w22, #0xfc000000
+    bb8     0  branch    b.ne 0x2bb8 <_binary__tmp_tmpz_0k84___code_bin_start+0x2bb8>
+    bbc     0  alu       mov x17, x26
+    bc0     0  branch    b 0x2bf8 <_binary__tmp_tmpz_0k84___code_bin_start+0x2bf8>
+    bc4     0  xbox_fp   ldr x16, [x27, #0x10]
+    bc8     0  branch    cbz x16, 0x2bd4 <_binary__tmp_tmpz_0k84___code_bin_start+0x2bd4>
+    bcc     0  alu       sub x30, x22, x16
+    bd0     0  alu       tst w30, #0xfc000000
+    bd4     0  branch    b.ne 0x2bd4 <_binary__tmp_tmpz_0k84___code_bin_start+0x2bd4>
+    bd8     0  alu       sub x17, x26, x16
+    bdc     0  branch    b 0x2bf8 <_binary__tmp_tmpz_0k84___code_bin_start+0x2bf8>
+    be0     1  tlb       ldp x16, x17, [x19, #-0x70]
+    be4     0  alu       and x16, x16, x22, lsr #7
+    be8     0  alu       add x17, x17, x16
+    bec     0  guest_mem ldr w16, [x17]
+    bf0     0  tlb       ldr x17, [x17, #0x18]
+    bf4     1  alu       add w30, w22, #0x3
+    bf8     0  alu       and w30, w30, #0xfffff000
+    bfc     0  alu       cmp w16, w30
+    c00     0  branch    b.ne 0x32bc <_binary__tmp_tmpz_0k84___code_bin_start+0x32bc>
+    c04     0  guest_mem ldr w24, [x17, w22, uxtw]
+    c08     4  tlb       ldp x16, x17, [x19, #-0x70]
+    c0c     0  alu       and x16, x16, x23, lsr #7
+    c10     0  alu       add x17, x17, x16
+    c14     0  tlb       ldr w16, [x17, #0x8]
+    c18     2  tlb       ldr x17, [x17, #0x18]
+    c1c     0  alu       add w30, w23, #0x3
+    c20     2  alu       and w30, w30, #0xfffff000
+    c24     0  alu       cmp w16, w30
+    c28     0  branch    b.ne 0x32e4 <_binary__tmp_tmpz_0k84___code_bin_start+0x32e4>
+    c2c     0  guest_mem str w24, [x17, w23, uxtw]
+    c30     0  alu       add w22, w22, w21
+    c34     0  env_st    str w22, [x19, #0x18]
+    c38     1  alu       add w21, w23, w21
+    c3c     0  env_st    str w21, [x19, #0x1c]
+    c40     0  alu       mov w21, #0x1
+    c44     1  irq_chk   sturb w21, [x19, #-0xc]
+    c48     1  env_ld    ldr w21, [x19, #0x20]
+    c4c     0  alu       add w22, w21, #0x4a
+    c50     0  alu       sub w20, w20, #0x4
+    c54     0  alu       mov w23, w20
+    c58     1  tlb       ldp x16, x17, [x19, #-0x70]
+    c5c     1  alu       and x16, x16, x23, lsr #7
+    c60     2  alu       add x17, x17, x16
+    c64     0  tlb       ldr w16, [x17, #0x8]
+    c68     0  tlb       ldr x17, [x17, #0x18]
+    c6c     0  alu       add w30, w23, #0x3
+    c70     0  alu       and w30, w30, #0xfffff000
+    c74     1  alu       cmp w16, w30
+    c78     0  branch    b.ne 0x330c <_binary__tmp_tmpz_0k84___code_bin_start+0x330c>
+    c7c     1  guest_mem str w22, [x17, w23, uxtw]
+    c80     1  env_st    str w20, [x19, #0x10]
+    c84     0  alu       mov w20, #0xa
+    c88     0  env_st    str w20, [x19, #0x34]
+    c8c     1  alu       add w20, w21, #0x933
+    c90     0  env_st    str w20, [x19, #0x20]
+    c94     0  branch    b 0xffffffffff8a9b34 <_binary__tmp_tmpz_0k84___code_bin_end+0xffffffffff529ddc>
+    c98     0  branch    br x16
+    c9c     0  alu       hint #0x24
+    ca0     0  alu       adr x0, 0x1f34 <_binary__tmp_tmpz_0k84___code_bin_start+0x1f34>
+    ca4     0  branch    b 0xfffffffffb5ec270 <_binary__tmp_tmpz_0k84___code_bin_end+0xfffffffffb26c518>
+    ca8     0  alu       adr x0, 0x1f37 <_binary__tmp_tmpz_0k84___code_bin_start+0x1f37>
+    cac     0  branch    b 0xfffffffffb5ec270 <_binary__tmp_tmpz_0k84___code_bin_end+0xfffffffffb26c518>
+    cb0     0  alu       mov w1, w21
+    cb4     0  alu       mov x0, x19
+    cb8     0  alu       mov w2, #0x4045
+    cbc     0  alu       movk w2, #0x1, lsl #16
+    cc0     0  alu       adr x3, 0x2080 <_binary__tmp_tmpz_0k84___code_bin_start+0x2080>
+    cc4     0  alu       adrp x16, 0x13972000 <_binary__tmp_tmpz_0k84___code_bin_end+0x135f22a8>
+    cc8     0  alu       add x16, x16, #0x604
+    ccc     0  call      blr x16
+    cd0     0  alu       mov w21, w0
+    cd4     0  branch    b 0x2080 <_binary__tmp_tmpz_0k84___code_bin_start+0x2080>
+    cd8     0  alu       mov w1, w22
+    cdc     0  alu       mov x0, x19
+    ce0     0  alu       mov w2, #0x4045
+    ce4     0  alu       movk w2, #0x1, lsl #16
+    ce8     0  alu       adr x3, 0x20f4 <_binary__tmp_tmpz_0k84___code_bin_start+0x20f4>
+    cec     0  alu       adrp x16, 0x13972000 <_binary__tmp_tmpz_0k84___code_bin_end+0x135f22a8>
+    cf0     0  alu       add x16, x16, #0x604
+    cf4     0  call      blr x16
+    cf8     0  alu       mov w25, w0
+    cfc     0  branch    b 0x20f4 <_binary__tmp_tmpz_0k84___code_bin_start+0x20f4>
+    d00     0  alu       mov w1, w23
+    d04     0  alu       mov w2, w25
+    d08     0  alu       mov x0, x19
+    d0c     0  alu       mov w3, #0x4045
+    d10     0  alu       movk w3, #0x1, lsl #16
+    d14     0  alu       adr x4, 0x211c <_binary__tmp_tmpz_0k84___code_bin_start+0x211c>
+    d18     0  alu       adrp x16, 0x13973000 <_binary__tmp_tmpz_0k84___code_bin_end+0x135f32a8>
+    d1c     0  alu       add x16, x16, #0x104
+    d20     0  call      blr x16
+    d24     0  branch    b 0x211c <_binary__tmp_tmpz_0k84___code_bin_start+0x211c>
+    d28     0  alu       mov w1, w22
+    d2c     0  alu       mov x0, x19
+    d30     0  alu       mov w2, #0x4045
+    d34     0  alu       movk w2, #0x1, lsl #16
+    d38     0  alu       adr x3, 0x218c <_binary__tmp_tmpz_0k84___code_bin_start+0x218c>
+    d3c     0  alu       adrp x16, 0x13972000 <_binary__tmp_tmpz_0k84___code_bin_end+0x135f22a8>
+    d40     0  alu       add x16, x16, #0x604
+    d44     0  call      blr x16
+    d48     0  alu       mov w25, w0
+    d4c     0  branch    b 0x218c <_binary__tmp_tmpz_0k84___code_bin_start+0x218c>
+    d50     0  alu       mov w1, w23
+    d54     0  alu       mov w2, w25
+    d58     0  alu       mov x0, x19
+    d5c     0  alu       mov w3, #0x4045
+    d60     0  alu       movk w3, #0x1, lsl #16
+    d64     0  alu       adr x4, 0x21b4 <_binary__tmp_tmpz_0k84___code_bin_start+0x21b4>
+    d68     0  alu       adrp x16, 0x13973000 <_binary__tmp_tmpz_0k84___code_bin_end+0x135f32a8>
+    d6c     0  alu       add x16, x16, #0x104
+    d70     0  call      blr x16
+    d74     0  branch    b 0x21b4 <_binary__tmp_tmpz_0k84___code_bin_start+0x21b4>
+    d78     0  alu       mov w1, w22
+    d7c     1  alu       mov x0, x19
+    d80     0  alu       mov w2, #0x4045
+    d84     0  alu       movk w2, #0x1, lsl #16
+    d88     0  alu       adr x3, 0x221c <_binary__tmp_tmpz_0k84___code_bin_start+0x221c>
+    d8c     0  alu       adrp x16, 0x13972000 <_binary__tmp_tmpz_0k84___code_bin_end+0x135f22a8>
+    d90     0  alu       add x16, x16, #0x604
+    d94     0  call      blr x16
+    d98     0  alu       mov w22, w0
+    d9c     0  branch    b 0x221c <_binary__tmp_tmpz_0k84___code_bin_start+0x221c>
+    da0     0  alu       mov w1, w23
+    da4     0  alu       mov w2, w22
+    da8     0  alu       mov x0, x19
+    dac     0  alu       mov w3, #0x4045
+    db0     0  alu       movk w3, #0x1, lsl #16
+    db4     0  alu       adr x4, 0x2244 <_binary__tmp_tmpz_0k84___code_bin_start+0x2244>
+    db8     0  alu       adrp x16, 0x13973000 <_binary__tmp_tmpz_0k84___code_bin_end+0x135f32a8>
+    dbc     0  alu       add x16, x16, #0x104
+    dc0     0  call      blr x16
+    dc4     0  branch    b 0x2244 <_binary__tmp_tmpz_0k84___code_bin_start+0x2244>
+    dc8     0  alu       mov w1, w22
+    dcc     0  alu       mov x0, x19
+    dd0     0  alu       mov w2, #0x4045
+    dd4     0  alu       movk w2, #0x1, lsl #16
+    dd8     0  alu       adr x3, 0x22b4 <_binary__tmp_tmpz_0k84___code_bin_start+0x22b4>
+
+--- TB pc 0x360550: 143 samples, 24 guest insns, 624 host insns
+      0     1  alu       hint #0x24
+      4     0  xbox_fp   ldr w16, [x27, #0x8]
+      8     0  branch    cbz w16, 0x3350 <_binary__tmp_tmpz_0k84___code_bin_start+0x3350>
+      c     0  xbox_fp   ldr w16, [x27, #0xc]
+     10     1  branch    cbnz w16, 0x3350 <_binary__tmp_tmpz_0k84___code_bin_start+0x3350>
+     14     0  xbox_fp   ldr x26, [x27]
+     18     0  branch    b 0x3354 <_binary__tmp_tmpz_0k84___code_bin_start+0x3354>
+     1c     0  alu       mov w26, #0x0
+     20     0  irq_chk   ldur w20, [x19, #-0x10]
+     24     0  branch    tbnz w20, #0x1f, 0x3a6c <_binary__tmp_tmpz_0k84___code_bin_start+0x3a6c>
+     28     1  irq_chk   sturb wzr, [x19, #-0xc]
+     2c     0  env_st    str wzr, [x19, #0x188]
+     30     0  env_st    strb wzr, [x19, #0x190]
+     34     0  env_st    strb wzr, [x19, #0x191]
+     38     0  env_st    strb wzr, [x19, #0x192]
+     3c     0  env_st    strb wzr, [x19, #0x193]
+     40     0  env_st    strb wzr, [x19, #0x194]
+     44     0  env_st    strb wzr, [x19, #0x195]
+     48     0  env_st    strb wzr, [x19, #0x196]
+     4c     1  env_st    strb wzr, [x19, #0x197]
+     50     1  env_ld    ldr w20, [x19, #0x18]
+     54     0  xbox_fp   cbz x26, 0x33b8 <_binary__tmp_tmpz_0k84___code_bin_start+0x33b8>
+     58     0  alu       tst w20, #0xfc000000
+     5c     0  branch    b.ne 0x339c <_binary__tmp_tmpz_0k84___code_bin_start+0x339c>
+     60     0  alu       mov x17, x26
+     64     0  branch    b 0x33dc <_binary__tmp_tmpz_0k84___code_bin_start+0x33dc>
+     68     0  xbox_fp   ldr x16, [x27, #0x10]
+     6c     0  branch    cbz x16, 0x33b8 <_binary__tmp_tmpz_0k84___code_bin_start+0x33b8>
+     70     0  alu       sub x30, x20, x16
+     74     0  alu       tst w30, #0xfc000000
+     78     0  branch    b.ne 0x33b8 <_binary__tmp_tmpz_0k84___code_bin_start+0x33b8>
+     7c     0  alu       sub x17, x26, x16
+     80     0  branch    b 0x33dc <_binary__tmp_tmpz_0k84___code_bin_start+0x33dc>
+     84     0  tlb       ldp x16, x17, [x19, #-0x70]
+     88     0  alu       and x16, x16, x20, lsr #7
+     8c     0  alu       add x17, x17, x16
+     90     0  guest_mem ldr w16, [x17]
+     94     6  tlb       ldr x17, [x17, #0x18]
+     98     0  alu       add w30, w20, #0x7
+     9c     0  alu       and w30, w30, #0xfffff000
+     a0     0  alu       cmp w16, w30
+     a4     0  branch    b.ne 0x3a74 <_binary__tmp_tmpz_0k84___code_bin_start+0x3a74>
+     a8     0  guest_mem ldr x21, [x17, w20, uxtw]
+     ac     6  env_st    str x21, [x19, #0x4d0]
+     b0     0  env_st    str x21, [x19, #0x1a0]
+     b4     0  env_st    strb wzr, [x19, #0x190]
+     b8     0  env_st    strb wzr, [x19, #0x191]
+     bc     0  env_st    strb wzr, [x19, #0x192]
+     c0     0  env_st    strb wzr, [x19, #0x193]
+     c4     1  env_st    strb wzr, [x19, #0x194]
+     c8     1  env_st    strb wzr, [x19, #0x195]
+     cc     0  env_st    strb wzr, [x19, #0x196]
+     d0     0  env_st    strb wzr, [x19, #0x197]
+     d4     0  alu       add w22, w20, #0x8
+     d8     0  xbox_fp   cbz x26, 0x343c <_binary__tmp_tmpz_0k84___code_bin_start+0x343c>
+     dc     0  alu       tst w22, #0xfc000000
+     e0     0  branch    b.ne 0x3420 <_binary__tmp_tmpz_0k84___code_bin_start+0x3420>
+     e4     0  alu       mov x17, x26
+     e8     0  branch    b 0x3460 <_binary__tmp_tmpz_0k84___code_bin_start+0x3460>
+     ec     0  xbox_fp   ldr x16, [x27, #0x10]
+     f0     0  branch    cbz x16, 0x343c <_binary__tmp_tmpz_0k84___code_bin_start+0x343c>
+     f4     0  alu       sub x30, x22, x16
+     f8     0  alu       tst w30, #0xfc000000
+     fc     0  branch    b.ne 0x343c <_binary__tmp_tmpz_0k84___code_bin_start+0x343c>
+    100     0  alu       sub x17, x26, x16
+    104     0  branch    b 0x3460 <_binary__tmp_tmpz_0k84___code_bin_start+0x3460>
+    108     0  tlb       ldp x16, x17, [x19, #-0x70]
+    10c     0  alu       and x16, x16, x22, lsr #7
+    110     0  alu       add x17, x17, x16
+    114     1  guest_mem ldr w16, [x17]
+    118     1  tlb       ldr x17, [x17, #0x18]
+    11c     0  alu       add w30, w22, #0x7
+    120     0  alu       and w30, w30, #0xfffff000
+    124     0  alu       cmp w16, w30
+    128     0  branch    b.ne 0x3a9c <_binary__tmp_tmpz_0k84___code_bin_start+0x3a9c>
+    12c     1  guest_mem ldr x22, [x17, w22, uxtw]
+    130     2  env_st    str x22, [x19, #0x4d0]
+    134     0  env_st    str x22, [x19, #0x1b0]
+    138     0  env_st    strb wzr, [x19, #0x190]
+    13c     0  env_st    strb wzr, [x19, #0x191]
+    140     1  env_st    strb wzr, [x19, #0x192]
+    144     0  env_st    strb wzr, [x19, #0x193]
+    148     1  env_st    strb wzr, [x19, #0x194]
+    14c     0  env_st    strb wzr, [x19, #0x195]
+    150     0  env_st    strb wzr, [x19, #0x196]
+    154     0  env_st    strb wzr, [x19, #0x197]
+    158     0  alu       add w23, w20, #0x10
+    15c     0  xbox_fp   cbz x26, 0x34c0 <_binary__tmp_tmpz_0k84___code_bin_start+0x34c0>
+    160     0  alu       tst w23, #0xfc000000
+    164     0  branch    b.ne 0x34a4 <_binary__tmp_tmpz_0k84___code_bin_start+0x34a4>
+    168     0  alu       mov x17, x26
+    16c     0  branch    b 0x34e4 <_binary__tmp_tmpz_0k84___code_bin_start+0x34e4>
+    170     0  xbox_fp   ldr x16, [x27, #0x10]
+    174     0  branch    cbz x16, 0x34c0 <_binary__tmp_tmpz_0k84___code_bin_start+0x34c0>
+    178     0  alu       sub x30, x23, x16
+    17c     0  alu       tst w30, #0xfc000000
+    180     0  branch    b.ne 0x34c0 <_binary__tmp_tmpz_0k84___code_bin_start+0x34c0>
+    184     0  alu       sub x17, x26, x16
+    188     0  branch    b 0x34e4 <_binary__tmp_tmpz_0k84___code_bin_start+0x34e4>
+    18c     0  tlb       ldp x16, x17, [x19, #-0x70]
+    190     0  alu       and x16, x16, x23, lsr #7
+    194     0  alu       add x17, x17, x16
+    198     0  guest_mem ldr w16, [x17]
+    19c     0  tlb       ldr x17, [x17, #0x18]
+    1a0     0  alu       add w30, w23, #0x7
+    1a4     0  alu       and w30, w30, #0xfffff000
+    1a8     0  alu       cmp w16, w30
+    1ac     0  branch    b.ne 0x3ac4 <_binary__tmp_tmpz_0k84___code_bin_start+0x3ac4>
+    1b0     1  guest_mem ldr x23, [x17, w23, uxtw]
+    1b4    10  env_st    str x23, [x19, #0x4d0]
+    1b8     0  env_st    str x23, [x19, #0x1c0]
+    1bc     0  env_st    strb wzr, [x19, #0x190]
+    1c0     0  env_st    strb wzr, [x19, #0x191]
+    1c4     1  env_st    strb wzr, [x19, #0x192]
+    1c8     0  env_st    strb wzr, [x19, #0x193]
+    1cc     0  env_st    strb wzr, [x19, #0x194]
+    1d0     1  env_st    strb wzr, [x19, #0x195]
+    1d4     0  env_st    strb wzr, [x19, #0x196]
+    1d8     0  env_st    strb wzr, [x19, #0x197]
+    1dc     2  alu       add w24, w20, #0x18
+    1e0     0  xbox_fp   cbz x26, 0x3544 <_binary__tmp_tmpz_0k84___code_bin_start+0x3544>
+    1e4     0  alu       tst w24, #0xfc000000
+    1e8     0  branch    b.ne 0x3528 <_binary__tmp_tmpz_0k84___code_bin_start+0x3528>
+    1ec     0  alu       mov x17, x26
+    1f0     0  branch    b 0x3568 <_binary__tmp_tmpz_0k84___code_bin_start+0x3568>
+    1f4     0  xbox_fp   ldr x16, [x27, #0x10]
+    1f8     0  branch    cbz x16, 0x3544 <_binary__tmp_tmpz_0k84___code_bin_start+0x3544>
+    1fc     0  alu       sub x30, x24, x16
+    200     0  alu       tst w30, #0xfc000000
+    204     0  branch    b.ne 0x3544 <_binary__tmp_tmpz_0k84___code_bin_start+0x3544>
+    208     0  alu       sub x17, x26, x16
+    20c     0  branch    b 0x3568 <_binary__tmp_tmpz_0k84___code_bin_start+0x3568>
+    210     0  tlb       ldp x16, x17, [x19, #-0x70]
+    214     0  alu       and x16, x16, x24, lsr #7
+    218     0  alu       add x17, x17, x16
+    21c     0  guest_mem ldr w16, [x17]
+    220     0  tlb       ldr x17, [x17, #0x18]
+    224     0  alu       add w30, w24, #0x7
+    228     0  alu       and w30, w30, #0xfffff000
+    22c     2  alu       cmp w16, w30
+    230     0  branch    b.ne 0x3aec <_binary__tmp_tmpz_0k84___code_bin_start+0x3aec>
+    234     0  guest_mem ldr x24, [x17, w24, uxtw]
+    238     2  env_st    str x24, [x19, #0x4d0]
+    23c     0  env_st    str x24, [x19, #0x1d0]
+    240     1  env_st    strb wzr, [x19, #0x190]
+    244     0  env_st    strb wzr, [x19, #0x191]
+    248     1  env_st    strb wzr, [x19, #0x192]
+    24c     0  env_st    strb wzr, [x19, #0x193]
+    250     0  env_st    strb wzr, [x19, #0x194]
+    254     0  env_st    strb wzr, [x19, #0x195]
+    258     0  env_st    strb wzr, [x19, #0x196]
+    25c     0  env_st    strb wzr, [x19, #0x197]
+    260     1  alu       add w25, w20, #0x20
+    264     0  xbox_fp   cbz x26, 0x35c8 <_binary__tmp_tmpz_0k84___code_bin_start+0x35c8>
+    268     0  alu       tst w25, #0xfc000000
+    26c     0  branch    b.ne 0x35ac <_binary__tmp_tmpz_0k84___code_bin_start+0x35ac>
+    270     0  alu       mov x17, x26
+    274     0  branch    b 0x35ec <_binary__tmp_tmpz_0k84___code_bin_start+0x35ec>
+    278     0  xbox_fp   ldr x16, [x27, #0x10]
+    27c     0  branch    cbz x16, 0x35c8 <_binary__tmp_tmpz_0k84___code_bin_start+0x35c8>
+    280     0  alu       sub x30, x25, x16
+    284     0  alu       tst w30, #0xfc000000
+    288     0  branch    b.ne 0x35c8 <_binary__tmp_tmpz_0k84___code_bin_start+0x35c8>
+    28c     0  alu       sub x17, x26, x16
+    290     0  branch    b 0x35ec <_binary__tmp_tmpz_0k84___code_bin_start+0x35ec>
+    294     0  tlb       ldp x16, x17, [x19, #-0x70]
+    298     0  alu       and x16, x16, x25, lsr #7
+    29c     0  alu       add x17, x17, x16
+    2a0     0  guest_mem ldr w16, [x17]
+    2a4     0  tlb       ldr x17, [x17, #0x18]
+    2a8     0  alu       add w30, w25, #0x7
+    2ac     0  alu       and w30, w30, #0xfffff000
+    2b0     0  alu       cmp w16, w30
+    2b4     0  branch    b.ne 0x3b14 <_binary__tmp_tmpz_0k84___code_bin_start+0x3b14>
+    2b8     0  guest_mem ldr x25, [x17, w25, uxtw]
+    2bc     5  env_st    str x25, [x19, #0x4d0]
+    2c0     0  env_st    str x25, [x19, #0x1e0]
+    2c4     0  env_st    strb wzr, [x19, #0x190]
+    2c8     0  env_st    strb wzr, [x19, #0x191]
+    2cc     0  env_st    strb wzr, [x19, #0x192]
+    2d0     0  env_st    strb wzr, [x19, #0x193]
+    2d4     0  env_st    strb wzr, [x19, #0x194]
+    2d8     0  env_st    strb wzr, [x19, #0x195]
+    2dc     0  env_st    strb wzr, [x19, #0x196]
+    2e0     1  env_st    strb wzr, [x19, #0x197]
+    2e4     1  alu       add w28, w20, #0x28
+    2e8     0  xbox_fp   cbz x26, 0x364c <_binary__tmp_tmpz_0k84___code_bin_start+0x364c>
+    2ec     0  alu       tst w28, #0xfc000000
+    2f0     0  branch    b.ne 0x3630 <_binary__tmp_tmpz_0k84___code_bin_start+0x3630>
+    2f4     0  alu       mov x17, x26
+    2f8     0  branch    b 0x3670 <_binary__tmp_tmpz_0k84___code_bin_start+0x3670>
+    2fc     0  xbox_fp   ldr x16, [x27, #0x10]
+    300     0  branch    cbz x16, 0x364c <_binary__tmp_tmpz_0k84___code_bin_start+0x364c>
+    304     0  alu       sub x30, x28, x16
+    308     0  alu       tst w30, #0xfc000000
+    30c     0  branch    b.ne 0x364c <_binary__tmp_tmpz_0k84___code_bin_start+0x364c>
+    310     0  alu       sub x17, x26, x16
+    314     0  branch    b 0x3670 <_binary__tmp_tmpz_0k84___code_bin_start+0x3670>
+    318     0  tlb       ldp x16, x17, [x19, #-0x70]
+    31c     1  alu       and x16, x16, x28, lsr #7
+    320     1  alu       add x17, x17, x16
+    324     0  guest_mem ldr w16, [x17]
+    328     1  tlb       ldr x17, [x17, #0x18]
+    32c     0  alu       add w30, w28, #0x7
+    330     0  alu       and w30, w30, #0xfffff000
+    334     0  alu       cmp w16, w30
+    338     0  branch    b.ne 0x3b3c <_binary__tmp_tmpz_0k84___code_bin_start+0x3b3c>
+    33c     0  guest_mem ldr x28, [x17, w28, uxtw]
+    340     4  env_st    str x28, [x19, #0x4d0]
+    344     0  env_st    str x28, [x19, #0x1f0]
+    348     0  env_st    strb wzr, [x19, #0x190]
+    34c     0  env_st    strb wzr, [x19, #0x191]
+    350     0  env_st    strb wzr, [x19, #0x192]
+    354     0  env_st    strb wzr, [x19, #0x193]
+    358     1  env_st    strb wzr, [x19, #0x194]
+    35c     0  env_st    strb wzr, [x19, #0x195]
+    360     0  env_st    strb wzr, [x19, #0x196]
+    364     0  env_st    strb wzr, [x19, #0x197]
+    368     0  alu       add w8, w20, #0x30
+    36c     0  xbox_fp   cbz x26, 0x36d0 <_binary__tmp_tmpz_0k84___code_bin_start+0x36d0>
+    370     0  alu       tst w8, #0xfc000000
+    374     0  branch    b.ne 0x36b4 <_binary__tmp_tmpz_0k84___code_bin_start+0x36b4>
+    378     0  alu       mov x17, x26
+    37c     0  branch    b 0x36f4 <_binary__tmp_tmpz_0k84___code_bin_start+0x36f4>
+    380     0  xbox_fp   ldr x16, [x27, #0x10]
+    384     0  branch    cbz x16, 0x36d0 <_binary__tmp_tmpz_0k84___code_bin_start+0x36d0>
+    388     0  alu       sub x30, x8, x16
+    38c     0  alu       tst w30, #0xfc000000
+    390     0  branch    b.ne 0x36d0 <_binary__tmp_tmpz_0k84___code_bin_start+0x36d0>
+    394     0  alu       sub x17, x26, x16
+    398     0  branch    b 0x36f4 <_binary__tmp_tmpz_0k84___code_bin_start+0x36f4>
+    39c     0  tlb       ldp x16, x17, [x19, #-0x70]
+    3a0     0  alu       and x16, x16, x8, lsr #7
+    3a4     0  alu       add x17, x17, x16
+    3a8     0  guest_mem ldr w16, [x17]
+    3ac     0  tlb       ldr x17, [x17, #0x18]
+    3b0     0  alu       add w30, w8, #0x7
+    3b4     0  alu       and w30, w30, #0xfffff000
+    3b8     1  alu       cmp w16, w30
+    3bc     0  branch    b.ne 0x3b64 <_binary__tmp_tmpz_0k84___code_bin_start+0x3b64>
+    3c0     1  guest_mem ldr x8, [x17, w8, uxtw]
+    3c4     3  env_st    str x8, [x19, #0x4d0]
+    3c8     0  env_st    str x8, [x19, #0x200]
+    3cc     0  env_st    strb wzr, [x19, #0x190]
+    3d0     0  env_st    strb wzr, [x19, #0x191]
+    3d4     0  env_st    strb wzr, [x19, #0x192]
+    3d8     0  env_st    strb wzr, [x19, #0x193]
+    3dc     1  env_st    strb wzr, [x19, #0x194]
+    3e0     0  env_st    strb wzr, [x19, #0x195]
+    3e4     0  env_st    strb wzr, [x19, #0x196]
+    3e8     1  env_st    strb wzr, [x19, #0x197]
+    3ec     1  alu       add w9, w20, #0x38
+    3f0     0  guest_mem str x8, [sp, #0x80]
+    3f4     2  xbox_fp   cbz x26, 0x3758 <_binary__tmp_tmpz_0k84___code_bin_start+0x3758>
+    3f8     0  alu       tst w9, #0xfc000000
+    3fc     0  branch    b.ne 0x373c <_binary__tmp_tmpz_0k84___code_bin_start+0x373c>
+    400     0  alu       mov x17, x26
+    404     0  branch    b 0x377c <_binary__tmp_tmpz_0k84___code_bin_start+0x377c>
+    408     0  xbox_fp   ldr x16, [x27, #0x10]
+    40c     0  branch    cbz x16, 0x3758 <_binary__tmp_tmpz_0k84___code_bin_start+0x3758>
+    410     0  alu       sub x30, x9, x16
+    414     0  alu       tst w30, #0xfc000000
+    418     0  branch    b.ne 0x3758 <_binary__tmp_tmpz_0k84___code_bin_start+0x3758>
+    41c     0  alu       sub x17, x26, x16
+    420     0  branch    b 0x377c <_binary__tmp_tmpz_0k84___code_bin_start+0x377c>
+    424     0  tlb       ldp x16, x17, [x19, #-0x70]
+    428     1  alu       and x16, x16, x9, lsr #7
+    42c     0  alu       add x17, x17, x16
+    430     0  guest_mem ldr w16, [x17]
+    434     0  tlb       ldr x17, [x17, #0x18]
+    438     0  alu       add w30, w9, #0x7
+    43c     0  alu       and w30, w30, #0xfffff000
+    440     0  alu       cmp w16, w30
+    444     0  branch    b.ne 0x3b8c <_binary__tmp_tmpz_0k84___code_bin_start+0x3b8c>
+    448     0  guest_mem ldr x8, [x17, w9, uxtw]
+    44c     5  env_st    str x8, [x19, #0x4d0]
+    450     1  env_st    str x8, [x19, #0x210]
+    454     0  env_st    strb wzr, [x19, #0x190]
+    458     1  env_st    strb wzr, [x19, #0x191]
+    45c     1  env_st    strb wzr, [x19, #0x192]
+    460     1  env_st    strb wzr, [x19, #0x193]
+    464     0  env_st    strb wzr, [x19, #0x194]
+    468     0  env_st    strb wzr, [x19, #0x195]
+    46c     0  env_st    strb wzr, [x19, #0x196]
+    470     0  env_st    strb wzr, [x19, #0x197]
+    474     0  env_ld    ldr w9, [x19, #0x1c]
+    478     0  guest_mem str x8, [sp, #0x88]
+    47c     0  tlb       ldp x16, x17, [x19, #-0x70]
+    480     0  alu       and x16, x16, x9, lsr #7
+    484     0  alu       add x17, x17, x16
+    488     0  tlb       ldr w16, [x17, #0x8]
+    48c     0  tlb       ldr x17, [x17, #0x18]
+    490     0  alu       add w30, w9, #0x7
+    494     1  alu       and w30, w30, #0xfffff000
+    498     0  alu       cmp w16, w30
+    49c     0  branch    b.ne 0x3bb4 <_binary__tmp_tmpz_0k84___code_bin_start+0x3bb4>
+    4a0     0  guest_mem str x21, [x17, w9, uxtw]
+    4a4     2  env_st    strb wzr, [x19, #0x190]
+    4a8     0  env_st    strb wzr, [x19, #0x191]
+    4ac     1  env_st    strb wzr, [x19, #0x192]
+    4b0     0  env_st    strb wzr, [x19, #0x193]
+    4b4     0  env_st    strb wzr, [x19, #0x194]
+    4b8     0  env_st    strb wzr, [x19, #0x195]
+    4bc     0  env_st    strb wzr, [x19, #0x196]
+    4c0     1  env_st    strb wzr, [x19, #0x197]
+    4c4     2  env_ld    ldr w21, [x19, #0x1c]
+    4c8     0  alu       add w8, w21, #0x8
+    4cc     0  tlb       ldp x16, x17, [x19, #-0x70]
+    4d0     0  alu       and x16, x16, x8, lsr #7
+    4d4     0  alu       add x17, x17, x16
+    4d8     0  tlb       ldr w16, [x17, #0x8]
+    4dc     1  tlb       ldr x17, [x17, #0x18]
+    4e0     0  alu       add w30, w8, #0x7
+    4e4     0  alu       and w30, w30, #0xfffff000
+    4e8     0  alu       cmp w16, w30
+    4ec     0  branch    b.ne 0x3bdc <_binary__tmp_tmpz_0k84___code_bin_start+0x3bdc>
+    4f0     0  guest_mem str x22, [x17, w8, uxtw]
+    4f4     0  env_st    strb wzr, [x19, #0x190]
+    4f8     0  env_st    strb wzr, [x19, #0x191]
+    4fc     1  env_st    strb wzr, [x19, #0x192]
+    500     0  env_st    strb wzr, [x19, #0x193]
+    504     1  env_st    strb wzr, [x19, #0x194]
+    508     1  env_st    strb wzr, [x19, #0x195]
+    50c     0  env_st    strb wzr, [x19, #0x196]
+    510     0  env_st    strb wzr, [x19, #0x197]
+    514     1  alu       add w22, w21, #0x10
+    518     1  tlb       ldp x16, x17, [x19, #-0x70]
+    51c     0  alu       and x16, x16, x22, lsr #7
+    520     0  alu       add x17, x17, x16
+    524     0  tlb       ldr w16, [x17, #0x8]
+    528     0  tlb       ldr x17, [x17, #0x18]
+    52c     0  alu       add w30, w22, #0x7
+    530     0  alu       and w30, w30, #0xfffff000
+    534     0  alu       cmp w16, w30
+    538     0  branch    b.ne 0x3c04 <_binary__tmp_tmpz_0k84___code_bin_start+0x3c04>
+    53c     0  guest_mem str x23, [x17, w22, uxtw]
+    540     1  env_st    strb wzr, [x19, #0x190]
+    544     0  env_st    strb wzr, [x19, #0x191]
+    548     0  env_st    strb wzr, [x19, #0x192]
+    54c     0  env_st    strb wzr, [x19, #0x193]
+    550     0  env_st    strb wzr, [x19, #0x194]
+    554     1  env_st    strb wzr, [x19, #0x195]
+    558     1  env_st    strb wzr, [x19, #0x196]
+    55c     0  env_st    strb wzr, [x19, #0x197]
+    560     1  alu       add w22, w21, #0x18
+    564     0  tlb       ldp x16, x17, [x19, #-0x70]
+    568     1  alu       and x16, x16, x22, lsr #7
+    56c     0  alu       add x17, x17, x16
+    570     0  tlb       ldr w16, [x17, #0x8]
+    574     1  tlb       ldr x17, [x17, #0x18]
+    578     0  alu       add w30, w22, #0x7
+    57c     0  alu       and w30, w30, #0xfffff000
+    580     0  alu       cmp w16, w30
+    584     0  branch    b.ne 0x3c2c <_binary__tmp_tmpz_0k84___code_bin_start+0x3c2c>
+    588     0  guest_mem str x24, [x17, w22, uxtw]
+    58c     4  env_st    strb wzr, [x19, #0x190]
+    590     0  env_st    strb wzr, [x19, #0x191]
+    594     3  env_st    strb wzr, [x19, #0x192]
+    598     0  env_st    strb wzr, [x19, #0x193]
+    59c     1  env_st    strb wzr, [x19, #0x194]
+    5a0     1  env_st    strb wzr, [x19, #0x195]
+    5a4     0  env_st    strb wzr, [x19, #0x196]
+    5a8     0  env_st    strb wzr, [x19, #0x197]
+    5ac     2  alu       add w22, w21, #0x20
+    5b0     0  tlb       ldp x16, x17, [x19, #-0x70]
+    5b4     0  alu       and x16, x16, x22, lsr #7
+    5b8     0  alu       add x17, x17, x16
+    5bc     0  tlb       ldr w16, [x17, #0x8]
+    5c0     0  tlb       ldr x17, [x17, #0x18]
+    5c4     0  alu       add w30, w22, #0x7
+    5c8     0  alu       and w30, w30, #0xfffff000
+    5cc     1  alu       cmp w16, w30
+    5d0     0  branch    b.ne 0x3c54 <_binary__tmp_tmpz_0k84___code_bin_start+0x3c54>
+    5d4     0  guest_mem str x25, [x17, w22, uxtw]
+    5d8     0  env_st    strb wzr, [x19, #0x190]
+    5dc     0  env_st    strb wzr, [x19, #0x191]
+    5e0     3  env_st    strb wzr, [x19, #0x192]
+    5e4     0  env_st    strb wzr, [x19, #0x193]
+    5e8     1  env_st    strb wzr, [x19, #0x194]
+    5ec     0  env_st    strb wzr, [x19, #0x195]
+    5f0     0  env_st    strb wzr, [x19, #0x196]
+    5f4     3  env_st    strb wzr, [x19, #0x197]
+    5f8     1  alu       add w22, w21, #0x28
+    5fc     0  tlb       ldp x16, x17, [x19, #-0x70]
+    600     0  alu       and x16, x16, x22, lsr #7
+    604     0  alu       add x17, x17, x16
+    608     0  tlb       ldr w16, [x17, #0x8]
+    60c     1  tlb       ldr x17, [x17, #0x18]
+    610     0  alu       add w30, w22, #0x7
+    614     0  alu       and w30, w30, #0xfffff000
+    618     0  alu       cmp w16, w30
+    61c     0  branch    b.ne 0x3c7c <_binary__tmp_tmpz_0k84___code_bin_start+0x3c7c>
+    620     0  guest_mem str x28, [x17, w22, uxtw]
+    624     0  env_st    strb wzr, [x19, #0x190]
+    628     1  env_st    strb wzr, [x19, #0x191]
+    62c     0  env_st    strb wzr, [x19, #0x192]
+    630     0  env_st    strb wzr, [x19, #0x193]
+    634     0  env_st    strb wzr, [x19, #0x194]
+    638     0  env_st    strb wzr, [x19, #0x195]
+    63c     0  env_st    strb wzr, [x19, #0x196]
+    640     0  env_st    strb wzr, [x19, #0x197]
+    644     1  alu       add w22, w21, #0x30
+    648     0  guest_mem ldr x23, [sp, #0x80]
+    64c     0  tlb       ldp x16, x17, [x19, #-0x70]
+    650     0  alu       and x16, x16, x22, lsr #7
+    654     1  alu       add x17, x17, x16
+    658     0  tlb       ldr w16, [x17, #0x8]
+    65c     1  tlb       ldr x17, [x17, #0x18]
+    660     0  alu       add w30, w22, #0x7
+    664     0  alu       and w30, w30, #0xfffff000
+    668     0  alu       cmp w16, w30
+    66c     0  branch    b.ne 0x3ca4 <_binary__tmp_tmpz_0k84___code_bin_start+0x3ca4>
+    670     2  guest_mem str x23, [x17, w22, uxtw]
+    674     1  env_st    strb wzr, [x19, #0x190]
+    678     0  env_st    strb wzr, [x19, #0x191]
+    67c     2  env_st    strb wzr, [x19, #0x192]
+    680     0  env_st    strb wzr, [x19, #0x193]
+    684     0  env_st    strb wzr, [x19, #0x194]
+    688     0  env_st    strb wzr, [x19, #0x195]
+    68c     0  env_st    strb wzr, [x19, #0x196]
+    690     1  env_st    strb wzr, [x19, #0x197]
+    694     1  alu       add w22, w21, #0x38
+    698     0  guest_mem ldr x23, [sp, #0x88]
+    69c     0  tlb       ldp x16, x17, [x19, #-0x70]
+    6a0     0  alu       and x16, x16, x22, lsr #7
+    6a4     0  alu       add x17, x17, x16
+    6a8     0  tlb       ldr w16, [x17, #0x8]
+    6ac     1  tlb       ldr x17, [x17, #0x18]
+    6b0     0  alu       add w30, w22, #0x7
+    6b4     0  alu       and w30, w30, #0xfffff000
+    6b8     0  alu       cmp w16, w30
+    6bc     0  branch    b.ne 0x3ccc <_binary__tmp_tmpz_0k84___code_bin_start+0x3ccc>
+    6c0     0  guest_mem str x23, [x17, w22, uxtw]
+    6c4     0  alu       add w20, w20, #0x40
+    6c8     0  env_st    str w20, [x19, #0x18]
+    6cc     0  alu       add w20, w21, #0x40
+    6d0     1  env_st    str w20, [x19, #0x1c]
+    6d4     0  env_ld    ldr w21, [x19, #0x4]
+    6d8     1  alu       sub w21, w21, #0x1
+    6dc     0  alu       cmp w20, #0x40
+    6e0     1  alu       cset w20, lo
+    6e4     0  env_st    str w21, [x19, #0x4]
+    6e8     0  env_st    str w21, [x19, #0x28]
+    6ec     0  env_st    str w20, [x19, #0x2c]
+    6f0     0  alu       mov w20, #0x1
+    6f4     0  irq_chk   sturb w20, [x19, #-0xc]
+    6f8     0  alu       mov w20, #0x22
+    6fc     1  env_st    str w20, [x19, #0x34]
+    700     1  branch    cbnz w21, 0x3a58 <_binary__tmp_tmpz_0k84___code_bin_start+0x3a58>
+    704     0  env_ld    ldr w20, [x19, #0x20]
+    708     1  alu       add w20, w20, #0x51
+    70c     0  env_st    str w20, [x19, #0x20]
+    710     0  branch    b 0x3e34 <_binary__tmp_tmpz_0k84___code_bin_start+0x3e34>
+    714     0  branch    br x16
+    718     0  alu       hint #0x24
+    71c     0  alu       adr x0, 0x3275 <_binary__tmp_tmpz_0k84___code_bin_start+0x3275>
+    720     0  branch    b 0xfffffffffe83fa30 <_binary__tmp_tmpz_0k84___code_bin_end+0xfffffffffe4bfcd8>
+    724     1  branch    b 0x3334 <_binary__tmp_tmpz_0k84___code_bin_start+0x3334>
+    728     0  branch    br x16
+    72c     0  alu       hint #0x24
+    730     0  alu       adr x0, 0x3274 <_binary__tmp_tmpz_0k84___code_bin_start+0x3274>
+    734     0  branch    b 0xfffffffffe83fa30 <_binary__tmp_tmpz_0k84___code_bin_end+0xfffffffffe4bfcd8>
+    738     0  alu       adr x0, 0x3277 <_binary__tmp_tmpz_0k84___code_bin_start+0x3277>
+    73c     0  branch    b 0xfffffffffe83fa30 <_binary__tmp_tmpz_0k84___code_bin_end+0xfffffffffe4bfcd8>
+    740     0  alu       mov w1, w20
+    744     0  alu       mov x0, x19
+    748     0  alu       mov w2, #0x4065
+    74c     0  alu       movk w2, #0x1, lsl #16
+    750     0  alu       adr x3, 0x33e0 <_binary__tmp_tmpz_0k84___code_bin_start+0x33e0>
+    754     0  alu       adrp x16, 0x16bc5000 <_binary__tmp_tmpz_0k84___code_bin_end+0x168452a8>
+    758     0  alu       add x16, x16, #0x85c
+    75c     0  call      blr x16
+    760     0  alu       mov x21, x0
+    764     0  branch    b 0x33e0 <_binary__tmp_tmpz_0k84___code_bin_start+0x33e0>
+    768     0  alu       mov w1, w22
+    76c     0  alu       mov x0, x19
+    770     0  alu       mov w2, #0x4065
+    774     0  alu       movk w2, #0x1, lsl #16
+    778     0  alu       adr x3, 0x3464 <_binary__tmp_tmpz_0k84___code_bin_start+0x3464>
+    77c     0  alu       adrp x16, 0x16bc5000 <_binary__tmp_tmpz_0k84___code_bin_end+0x168452a8>
+    780     0  alu       add x16, x16, #0x85c
+    784     0  call      blr x16
+    788     0  alu       mov x22, x0
+    78c     0  branch    b 0x3464 <_binary__tmp_tmpz_0k84___code_bin_start+0x3464>
+    790     0  alu       mov w1, w23
+    794     0  alu       mov x0, x19
+    798     0  alu       mov w2, #0x4065
+    79c     0  alu       movk w2, #0x1, lsl #16
+    7a0     0  alu       adr x3, 0x34e8 <_binary__tmp_tmpz_0k84___code_bin_start+0x34e8>
+    7a4     0  alu       adrp x16, 0x16bc5000 <_binary__tmp_tmpz_0k84___code_bin_end+0x168452a8>
+    7a8     0  alu       add x16, x16, #0x85c
+    7ac     0  call      blr x16
+    7b0     0  alu       mov x23, x0
+    7b4     0  branch    b 0x34e8 <_binary__tmp_tmpz_0k84___code_bin_start+0x34e8>
+    7b8     0  alu       mov w1, w24
+    7bc     0  alu       mov x0, x19
+    7c0     0  alu       mov w2, #0x4065
+    7c4     0  alu       movk w2, #0x1, lsl #16
+    7c8     0  alu       adr x3, 0x356c <_binary__tmp_tmpz_0k84___code_bin_start+0x356c>
+    7cc     0  alu       adrp x16, 0x16bc5000 <_binary__tmp_tmpz_0k84___code_bin_end+0x168452a8>
+    7d0     0  alu       add x16, x16, #0x85c
+    7d4     0  call      blr x16
+    7d8     0  alu       mov x24, x0
+    7dc     0  branch    b 0x356c <_binary__tmp_tmpz_0k84___code_bin_start+0x356c>
+    7e0     0  alu       mov w1, w25
+    7e4     0  alu       mov x0, x19
+    7e8     0  alu       mov w2, #0x4065
+    7ec     0  alu       movk w2, #0x1, lsl #16
+    7f0     0  alu       adr x3, 0x35f0 <_binary__tmp_tmpz_0k84___code_bin_start+0x35f0>
+    7f4     0  alu       adrp x16, 0x16bc5000 <_binary__tmp_tmpz_0k84___code_bin_end+0x168452a8>
+    7f8     0  alu       add x16, x16, #0x85c
+    7fc     0  call      blr x16
+    800     0  alu       mov x25, x0
+    804     0  branch    b 0x35f0 <_binary__tmp_tmpz_0k84___code_bin_start+0x35f0>
+    808     0  alu       mov w1, w28
+    80c     0  alu       mov x0, x19
+    810     0  alu       mov w2, #0x4065
+    814     0  alu       movk w2, #0x1, lsl #16
+    818     0  alu       adr x3, 0x3674 <_binary__tmp_tmpz_0k84___code_bin_start+0x3674>
+    81c     0  alu       adrp x16, 0x16bc5000 <_binary__tmp_tmpz_0k84___code_bin_end+0x168452a8>
+    820     0  alu       add x16, x16, #0x85c
+    824     0  call      blr x16
+    828     0  alu       mov x28, x0
+    82c     0  branch    b 0x3674 <_binary__tmp_tmpz_0k84___code_bin_start+0x3674>
+    830     0  alu       mov w1, w8
+    834     0  alu       mov x0, x19
+    838     0  alu       mov w2, #0x4065
+    83c     0  alu       movk w2, #0x1, lsl #16
+    840     0  alu       adr x3, 0x36f8 <_binary__tmp_tmpz_0k84___code_bin_start+0x36f8>
+    844     0  alu       adrp x16, 0x16bc5000 <_binary__tmp_tmpz_0k84___code_bin_end+0x168452a8>
+    848     0  alu       add x16, x16, #0x85c
+    84c     0  call      blr x16
+    850     0  alu       mov x8, x0
+    854     0  branch    b 0x36f8 <_binary__tmp_tmpz_0k84___code_bin_start+0x36f8>
+    858     0  alu       mov w1, w9
+    85c     0  alu       mov x0, x19
+    860     0  alu       mov w2, #0x4065
+    864     0  alu       movk w2, #0x1, lsl #16
+    868     0  alu       adr x3, 0x3780 <_binary__tmp_tmpz_0k84___code_bin_start+0x3780>
+    86c     0  alu       adrp x16, 0x16bc5000 <_binary__tmp_tmpz_0k84___code_bin_end+0x168452a8>
+    870     0  alu       add x16, x16, #0x85c
+    874     0  call      blr x16
+    878     0  alu       mov x8, x0
+    87c     0  branch    b 0x3780 <_binary__tmp_tmpz_0k84___code_bin_start+0x3780>
+    880     0  alu       mov w1, w9
+    884     1  alu       mov x2, x21
+    888     0  alu       mov x0, x19
+    88c     0  alu       mov w3, #0x4065
+    890     0  alu       movk w3, #0x1, lsl #16
+    894     0  alu       adr x4, 0x37d8 <_binary__tmp_tmpz_0k84___code_bin_start+0x37d8>
+    898     0  alu       adrp x16, 0x16bc6000 <_binary__tmp_tmpz_0k84___code_bin_end+0x168462a8>
+    89c     0  alu       add x16, x16, #0x40c
+    8a0     0  call      blr x16
+    8a4     0  branch    b 0x37d8 <_binary__tmp_tmpz_0k84___code_bin_start+0x37d8>
+    8a8     0  alu       mov w1, w8
+    8ac     0  alu       mov x2, x22
+    8b0     0  alu       mov x0, x19
+    8b4     0  alu       mov w3, #0x4065
+    8b8     0  alu       movk w3, #0x1, lsl #16
+    8bc     0  alu       adr x4, 0x3828 <_binary__tmp_tmpz_0k84___code_bin_start+0x3828>
+    8c0     0  alu       adrp x16, 0x16bc6000 <_binary__tmp_tmpz_0k84___code_bin_end+0x168462a8>
+    8c4     0  alu       add x16, x16, #0x40c
+    8c8     0  call      blr x16
+    8cc     0  branch    b 0x3828 <_binary__tmp_tmpz_0k84___code_bin_start+0x3828>
+    8d0     0  alu       mov w1, w22
+    8d4     0  alu       mov x2, x23
+    8d8     0  alu       mov x0, x19
+    8dc     0  alu       mov w3, #0x4065
+    8e0     0  alu       movk w3, #0x1, lsl #16

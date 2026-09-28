@@ -1,0 +1,22 @@
+{
+  "registered_utc": "2026-09-28T06:18:34Z",
+  "who": "lane.forza414",
+  "issue": "414",
+  "title": "4D53006E-Forza_Motorsport.xiso.iso",
+  "device": "thor",
+  "seconds": 420,
+  "route": "survey",
+  "perflog": true,
+  "runs_per_arm": 1,
+  "a_ref": "fa56a26f1f",
+  "b_ref": "b991fb4c21",
+  "prediction": "SAME-SESSION THOR SOAK A/B of #414 hunk 5, read by hand (arms.sh skips title soaks). A is fa56a26f1f (lane/forza414b @ 08f09e3d19, which is PR #518, merged with origin/master 548017f7ba). B is b991fb4c21 (A plus: a clearing surface_update drops the upload of a bound binding that the coming clear covers whole, via pgraph_vk_clear_covers_binding, the rule mark_clear_full uses; so that binding no longer forces the deferred-download completion surface_update_may_defer_downloads demands for an uploading binding. perflog adds clrskip to [sdcall]). Thor pilot 2 (1-1790561602-forza414-3260817, NOTES 33) on B's parent code: su_upl 2.86 per frame, clr 0.96, clrfull 0.96, surfupd wait 16.5 ms, total completion wait 22.2 ms, 17.2 fps. Forza race, Thor, survey route, 420 s, perflog, as that pilot. WINDOW t = 125-240 s after soak start, the window of NOTES 14 and 33. Per-frame counters are [sdcall] sums over the window divided by its guest frames; fps and ms are medians of the window's lines. Legs, and the world each fails in: M0 both arms reach the race in the window (hakuX-stall lines with sd > 0), print [sdcall], and B's lines carry clrskip; else VOID. P1 B's clrskip per frame >= 0.7. It fails in the world where the clear the update sees is not the clear that follows (the clip, the rect or the parameter differ before the update, which mark_clear_full, reading after, could not show). Then B is inert, not refuted. P2 B's su_upl per frame <= 2.2. It fails if the dropped bindings' finish is re-forced by the other bound binding still uploading in the same update: clrskip up with su_upl flat would show that. P3 B's surfupd fin per frame <= 0.85 x A's. READOUTS, not judged: fps, total completion wait (surfupd + record + the rest of [sdcall]'s ms), Fen, Tot. No fps figure is claimed. NOTES 14 and 33: a finish removed early in the frame moves its wait to the next sync point unless that one is later and shorter, so the bound on the saving is at most 0.96 of 2.86 finishes, about 5.5 of 16.5 ms, and fps may not move. The brief's mover (fps at t = 150-174 s, the clock ratio) is carried by fps and not judged here.",
+  "expect": {
+    "M0/both_reach_race_is": true,
+    "P1/b_clrskip_per_frame_min": 0.7,
+    "P2/b_su_upl_per_frame_max": 2.2,
+    "P3/b_over_a_surfupd_fin_per_frame_max": 0.85
+  },
+  "expect_counts": {},
+  "expect_note": "Named rules read by hand from the two logcats ([sdcall] clrskip, su_upl and surfupd fin, hakuX-stall, gfps); a soak writes no captures, so ab_compare never judges it."
+}
