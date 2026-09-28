@@ -492,6 +492,7 @@ note = "RETIRED (job.board): PR #532 MERGED 2026-09-28T04:33:36Z (cloud.sh does 
 [lane.sustain507]
 issues = ["507", "424"]
 files = ["docs/lanes/sustain507/**", "docs/testing/predictions/sustain507-*.json"]
+released = ["docs/lanes/sustain507/**", "docs/testing/predictions/sustain507-*.json"]
 note = "STARTED (lane.local 2026-09-28T03:12:38Z), briefs/sustain507.md: the critical path (owner 2026-09-27 ~20:00 PDT: sustained fps within the heat budget). Part A: 30-min MAX vs defaults on the Thor (Crimson, GTA SA, MechAssault 2) with #533 PERF_REGIMEN=default once the dispatcher runs it; part B: #424's two registered Thor pairs (tbflip424-blinx.json) from cool starts. Measurement only; successor to lane.thermal507."
 
 [retired.doa413c]
