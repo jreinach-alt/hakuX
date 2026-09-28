@@ -165,4 +165,9 @@ Not on the list, and why:
   `condread.py`, and reproduced every verdict median exactly (after matching
   title_verdict's window filter and its `fs[n//2]` element).
 - Found no perflog run for 15 of 16 titles. Read the always-on counters,
-  the lever ancestry and the MM3 frames.
+  the lever ancestry and the MM3 and Black frames.
+- Corrected the claim time (route.txt, not request.json): Alias and MM3
+  were warm starts, and PGR was cold.
+- 08:1x posted the ranking and the profile list on #462
+  (issuecomment-5872807130). preflight passed. No device run was queued and
+  no hold was taken.
