@@ -147,9 +147,9 @@ On resume:
    - power and audio are measured.
 3. Write `pilots/lane.idlehaltdefault.ok` with python3.
 4. Queue the other ten in this order:
-   `.lane-scratch/q.sh fuzion B 1`, `fuzion A 1`, `forza A 1`, `forza B 1`,
+   `bash docs/lanes/idlehaltdefault/queue.sh fuzion B 1`, `fuzion A 1`, `forza A 1`, `forza B 1`,
    `doa1u B 1`, `doa1u A 1`, `blinx2 A 1`, `blinx2 B 1`, `ghoulies B 1`,
-   `ghoulies A 1`. `q.sh` is not committed. Each call is `request.sh --who
+   `ghoulies A 1`. Each call is `request.sh --who
    lane.idlehaltdefault --title <T> --route <R> --seconds <S> --perflog
    --device nova --ref 3a5d79e3ea [--env HAKUX_IDLE_HALT=1] --expect
    docs/testing/predictions/idlehaltdefault-<key>.json --issue 525`, run with
