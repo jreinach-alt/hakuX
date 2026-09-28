@@ -543,7 +543,9 @@ note = "RETIRED (hostops 2026-09-28T17:35Z): PR #541 MERGED, no open PR on lane/
 [lane.dirtytlb]
 issues = ["548"]
 files = ["system/physmem.c", "include/exec/ram_addr.h", "accel/tcg/cputlb.c", "docs/lanes/dirtytlb/**", "docs/testing/predictions/dirtytlb-*.json"]
-note = "STARTED (lane.local 2026-09-28T12:31:22Z), briefs/dirtytlb.md: #548 (0.5, fps-focus), from lane.remote's #461 pair 1: on master at least 103 of the render thread's 175 TLB dirty-range resets per flip (~2.7 ms) come from callers outside the texture path. Step 1: a per-caller count at tlb_reset_dirty_range_all() (physmem.c); step 2: remove or batch the dominant caller (its file may be another lane's: ask by name)."
+released = ["system/physmem.c", "include/exec/ram_addr.h", "accel/tcg/cputlb.c", "docs/lanes/dirtytlb/**", "docs/testing/predictions/dirtytlb-*.json"]
+released_at_ready = 549
+note = "RELEASED AT READY (hostops 2026-09-28T20:25Z): PR #549 is out of draft, CI green, unit gone. || STARTED (lane.local 2026-09-28T12:31:22Z), briefs/dirtytlb.md: #548 (0.5, fps-focus), from lane.remote's #461 pair 1: on master at least 103 of the render thread's 175 TLB dirty-range resets per flip (~2.7 ms) come from callers outside the texture path. Step 1: a per-caller count at tlb_reset_dirty_range_all() (physmem.c); step 2: remove or batch the dominant caller (its file may be another lane's: ask by name)."
 
 [lane.slowtier2]
 issues = ["462"]
