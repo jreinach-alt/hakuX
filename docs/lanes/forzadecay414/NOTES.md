@@ -124,9 +124,10 @@ vk/surface.c: make "in flight" a submission count rather than a slot index (stam
 `r->submit_count` at invalidation, and treat the surface as in flight while fewer than
 `num_active_frames` submissions have completed since), or reset `invalidation_frame` to -1 for
 every surface stamped with a slot when that slot's fence is waited. Either keeps #517's saving.
-Putting the flush back would undo #517.
+Putting the flush back would undo #517. (lane.local's addendum of 12:50 PDT then gave this lane
+the file. The fix is PR #583, the second shape.)
 
-## 4. The instrument: clocks in every thermal sample (blocked on #571)
+## 4. The instrument: clocks in every thermal sample (done: PR #588, see the end of section 5)
 
 `docs/testing/thermal_state.py` is in lane.fanduty507's PR #571, which is open (ready, not folded).
 Per the brief, it is not edited before then. Board request:
@@ -163,14 +164,60 @@ request's expect_sha was read back and matches its file (f7c4565c56dc bisect, ce
 | `1-1790624588-forzadecay414-3394828` | 09050ddbe5 | bisect B |
 | `1-1790624589-forzadecay414-3394871` | 85347ffbd1 | master B |
 
-**Waiting (session end, 2026-09-28 ~12:45 PDT)** on those three. The Nova is held by
-battery-hostops (14% at 18:10Z, lifted at >= 80%), so they run after the owner's evening top-up.
-On resume: judge both predictions by hand from the three logcats (timeline.py rows, `[watch311]
-invalid=`, `txw` faf/scan), post the verdict on #414, and mark this PR ready. The instrument
-(section 4) goes on its own branch once #571 folds and the board grants the file.
+### 5.1 What ran (2026-09-28 15:44-16:37 PDT), read with `judge.py`
+
+`docs/lanes/forzadecay414/judge.py <result dir>...` prints every number here. No cooling device
+rose above 0 in any sample, and xo-therm stayed under 55 C.
+
+| result | ref | ran | fps, rows t = 150..330 | invalid max / last | faf calls/flip | list walk ms/flip, first -> last race line |
+|---|---|---|---|---|---|---|
+| `1-1790624588-forzadecay414-3394734` | f82e7e87fe, before #517 | 360 s | 16 20 20 28 26 26 28 | 199 / 17 | 0.15 | 0.08 -> 0.12 |
+| `1-1790624588-forzadecay414-3394828` | 09050ddbe5, #517 | cut at 261 s, VOID | 12 10 6 | 1996 (t = 233) | 0.00 | 1.68 -> 8.96 |
+| `1-1790624588-forzadecay414-3394828-r2` | 09050ddbe5 | cut at 276 s | 12 10 4 | 1954 (t = 227) | 0.00 | 1.97 -> 8.59 |
+| `1-1790624589-forzadecay414-3394871` | 85347ffbd1, master | cut at 245 s, VOID | 12 10 2 | 1969 (t = 253) | 0.00 | 2.47 -> 8.78 |
+| `-3394871-r2`, `-r3` | 85347ffbd1 | cut at 77 s and 66 s | never left the boot | - | - | - |
+
+- **On the cool device, the build before #517 does not leak and both builds after it do.** The list
+  reaches about 2000 entries 100 s into the race on 09050ddbe5 and on master, against 16-199 before
+  #517. Over rows t = 150-210 the leaking builds run 8.0-9.3 fps against 18.7.
+- **No run of a leaking build is whole.** The Nova's USB link dropped in each (hostops:
+  `hold/nova.why`, write errors at low charge). Two of the drops came in the boot, before any list
+  could grow, so the link and not the build is what cuts them. Hostops re-queued the two arms as
+  `-3394828-r3` and `-3394871-r4`.
+
+### 5.2 The legs, by the letter
+
+| file | leg | reads | by the letter |
+|---|---|---|---|
+| bisect | M0 race reached (G >= 40 ms in rows 180-330) | A: G 50.5 48.3 35.8 33.8 36.6 33.5 | **fails its G clause, so the file reads VOID** |
+| bisect | P0 A's faf >= 0.2, B's <= 0.02 | A 0.15, B 0.00 (cut runs) | **A's clause fails** |
+| bisect | P1 B's last invalid >= 1000 | 1996 and 1954 by t = 233, cut runs | not read: no whole B run |
+| bisect | P2 A's max invalid <= 400 | 199 | holds |
+| bisect | P3 B / A fps, rows 270-330, <= 0.6 | B has no such rows. Rows 150-210: 0.50, 0.46 | not read |
+| master | M0, P1, P3 | one cut run: invalid 1969 by t = 253 | not read |
+
+Two of these thresholds were wrong when registered, and are reported as written.
+- **M0 took a slow frame as the mark of the race.** A race that does not decay runs at G 33-36 ms,
+  so the clause voids the one arm that is healthy. Section 1's Nova rows already showed 28-30 fps
+  late in the race. The race is marked by the txw scan's calls per flip instead: 685-931 in the
+  race and 0-85 in the menus, in every run that got there. A's last route frame
+  (`155038-play.png`) shows the race HUD with the race clock at 2:07.
+- **P0's 0.2 was a guess.** A flushes 0.13-0.15 times a flip, once in 7 flips, and its list is
+  pruned from 199 back to 16-86. The leg's failing world was "A does not flush either". That is
+  not what A shows.
+
+**The verdict of section 2 stands, and the commit is #517**, on the evidence of one whole run and
+three cut ones. What is still owed is P1 and P3 on whole runs of `-r3` and `-r4`. They are
+reported in PR #583, which carries the fix and reads the same two runs for its own legs.
+
+The instrument (section 4) is PR #588, folded as 4e3d69a69b. These soaks ran after it, so their
+`thermal.jsonl` samples carry `clk`. With `cpu-1-9` at 92-95 C, every `hold` sample reads cpu7 at
+3187 MHz of 3187 and the GPU at 615 of 680 MHz.
 
 ## Do not repeat
 
+- Do not mark the race by G or by fps. A race that runs well reads like a menu. Use the txw scan's
+  calls per flip (>= 500) and the route frame.
 - Do not read the Thor's 2-4 fps step with audio starving as the decay. That is the xo-78 C pause
   (#507): it lands with `thermal-pause-F8`, and the vCPU and audio lose their cores.
 - Do not look for H1 in core temperatures. The big cores sit at 94-96 C in runs that hold 18-24
