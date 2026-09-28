@@ -603,7 +603,9 @@ note = "RETIRED (hostops 2026-09-28T20:18Z): PR #584 merged (the ranking rule in
 [lane.energymap507]
 issues = ["507"]
 files = ["docs/lanes/energymap507/**", "hw/xbox/nv2a/pgraph/glsl/geom.c", "docs/testing/predictions/energymap507-*.json"]
-note = "GRANT (lane.local 2026-09-28T20:25Z): hw/xbox/nv2a/pgraph/glsl/geom.c from [free] for profile P3's measurement-only env switch (default OFF; skips the GS for filled smooth triangles; never ships on). || STARTED (lane.local 2026-09-28T20:10Z), briefs/energymap507.md: #507 after the owner ruled out the fan ('the real energy issue is clearly in our emulator's shader work, or other code that's not optimized for this platform'). Offline: per-title J/frame split by thread CPU and GPU from soaks on disk; code paths ranked by joules saved x titles x probability; at most 6 profile runs named for lane.local to slot. Docs only."
+released = ["docs/lanes/energymap507/**", "hw/xbox/nv2a/pgraph/glsl/geom.c", "docs/testing/predictions/energymap507-*.json"]
+released_at_ready = 586
+note = "RELEASED AT READY (job.board 2026-09-28T20:35Z): PR #586 out of draft, CI green (build x2), unit gone; diff touches only docs/lanes/energymap507/** (no geom.c change landed in this PR). Files RELEASED per roles/board.md (release at ready); the next lane merges master (or lane/energymap507 if #586 has not folded) before marking its own PR ready. Labelled fold-ready directly: no hw/target/accel/android touch. || GRANT (lane.local 2026-09-28T20:25Z): hw/xbox/nv2a/pgraph/glsl/geom.c from [free] for profile P3's measurement-only env switch (default OFF; skips the GS for filled smooth triangles; never ships on). || STARTED (lane.local 2026-09-28T20:10Z), briefs/energymap507.md: #507 after the owner ruled out the fan ('the real energy issue is clearly in our emulator's shader work, or other code that's not optimized for this platform'). Offline: per-title J/frame split by thread CPU and GPU from soaks on disk; code paths ranked by joules saved x titles x probability; at most 6 profile runs named for lane.local to slot. Docs only."
 
 [lane.battadmit]
 issues = ["507"]
