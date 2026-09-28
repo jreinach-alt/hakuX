@@ -69,6 +69,25 @@ window that span may overlap is void (thermal_state.py, A PAUSE EPISODE). So
 is a window the readable samples do not cover (`thermal-unread:`, A WINDOW IS
 COVERED): adb failing after a pause began would otherwise read as clean. A
 run with no thermal.jsonl is judged as before, with `thermal.measured` false.
+`thermal.first_pause_s` is the time from the run's start (the `start` sample,
+just before `am start`) to the first pause, as the two bounds sampling gives:
+`after` (the last clean reading) and `by` (the first paused one).
+
+POWER (`power`, from the same samples; thermal_state.py, POWER). Reaching the
+frame rate by heating the handheld until it pauses is not playing, so a run
+reports what its frames cost, over the scored window (mark to `soak end`):
+  - `battery_w`: average battery power. SIGN: + the battery is DISCHARGING,
+    - it is CHARGING.
+  - `usb_w`: the USB input, and `usb_from`, how it was read (a measurement,
+    or an upper bound from the input current limit).
+  - `net_w` = battery_w + usb_w: what the device drew.
+  - `j_per_frame` = net_w x scored seconds / guest flips, and
+    `j_per_frame_battery` the same from battery_w alone. Scored seconds and
+    flips are those of the fps windows, so a capture gap costs both alike.
+Reported, never judged: no bar is set on it yet. A void run reports its
+watts and no J per frame (its flips are not the title's), and so does a
+window holding a reading the sign convention cannot explain (`sign_suspect`).
+Samples older than this field give `power.measured` false, never 0 W.
 Black frames are NOT void when run.log says `render-black:`: the soak
 re-ran display_clear and hakux_in_front at the end of the hold and both were
 clear, so hakuX itself drew black. That run is judged (its fps stands) and
@@ -315,6 +334,8 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
                                                   min(thermal_state.dev_ts(r) for r in read))
                            for e in eps], in_window=bool(hit),
                    window_covered=(None if not windowed else gap is None), gap=gap)
+    fp = thermal_state.first_pause(therm or [])
+    thermal["first_pause_s"] = dict(after=fp[0], by=fp[1]) if fp else None
     if hit and void is None:
         void = "thermal-pause: %s, relative to the mark" % thermal_state.describe(hit[0], mark_t)
     elif gap and void is None:
@@ -401,6 +422,18 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
     v["below_own_target"] = bool(own_target > bar_fps and v["fps_ok_share"] is not None
                                  and v["fps_ok_share"] >= share_min
                                  and (own_share or 0) < share_min)
+
+    # POWER over the scored window (see POWER above). Reported, never judged.
+    power = thermal_state.power_over(therm or [], mark_t, end_t) \
+        if mark_t is not None and end_t is not None else thermal_state.power_over([], 0, 0)
+    scored_s = float(sum(w[0] for w in windows))
+    flips = FRAMES_PER_LINE * len(windows)
+    power.update(scored_s=round(scored_s, 1), flips=flips, j_per_frame=None, j_per_frame_battery=None)
+    if power["measured"] and flips and not power["sign_suspect"]:
+        power["j_per_frame_battery"] = round(power["battery_w"] * scored_s / flips, 4)
+        if power["net_w"] is not None:
+            power["j_per_frame"] = round(power["net_w"] * scored_s / flips, 4)
+    v["power"] = power
 
     starve = []
     for t, lv, tag, msg in lc:
@@ -523,13 +556,16 @@ def main(argv=None):
         json.dump(v, f, indent=2)
     json.load(open(tmp))
     os.replace(tmp, os.path.join(a.rdir, "verdict.json"))
-    print("VERDICT %s %s %s gameplay=%ss fps_ok=%s crash=%s hang=%s audio_short=%s%s%s%s" % (
+    pw = v["power"]
+    print("VERDICT %s %s %s gameplay=%ss fps_ok=%s crash=%s hang=%s audio_short=%s%s%s%s%s" % (
         v["name"] or v["title"] or "?", v["device"] or "?",
         ("PASS " + str(v["rating_candidate"])) if v["pass"] else "FAIL(%s)" % v["failing"],
         v["gameplay_s"], v["fps_ok_share"], v["crash"], v["hang"], v["audio_starve_share"],
         " below_own_target" if v["below_own_target"] else "",
         (" capture_lost=%ss" % v["capture_lost_s"]) if v["capture_lost_s"] else "",
-        " capture_truncated" if v["capture_truncated"] else ""))
+        " capture_truncated" if v["capture_truncated"] else "",
+        (" battery_w=%+.2f net_w=%s j_per_frame=%s" % (pw["battery_w"], pw["net_w"], pw["j_per_frame"]))
+        if pw["measured"] else ""))
     return 0
 
 
