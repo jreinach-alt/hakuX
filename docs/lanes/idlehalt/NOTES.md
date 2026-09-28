@@ -91,3 +91,20 @@ cooling state. If B1 wedged, the halt is refuted as built: read its logcat for
 the last `[idlehalt]` window (tp, to, halts) before changing anything. If it
 passes, write `pilots/idlehalt.ok` (python3) and queue Blinx B1/A1, then the
 B2-B5 boot runs (300 s) for both titles, per the predictions' queue_order.
+
+## 5. Session 2 (2026-09-27 20:3x PDT): why session 1 did not finish
+
+Session 1 ended correctly on a `waiting:` (the pilot was behind ~6 Nova
+requests), but its head was red: the Desktop build failed with
+`system/cpus.c: 'CPU_INTERRUPT_HARD' undeclared`. system/cpus.c is compiled
+target-independent on the desktop, and nothing in its include chain there
+brings in `exec/cpu-interrupt.h`; the Android build and `typecheck_ih.py`
+(NDK flags) reached it transitively, so the local check could not see it.
+Fixed in 6dabebe883 by including the header (it is target-independent: only
+the flag `#define`s). No behaviour change, so the queued pilot APKs (built at
+6554f06175) and the predictions' refs stand.
+
+The pixel arm is in: PASS, all 593 checks (`[job.arms]` on #528, 02:43Z).
+
+Do not repeat: `typecheck_ih.py` checks the Android TUs only; a new use of a
+target header's name in a libsystem file needs the header named explicitly.
