@@ -21,7 +21,7 @@ C="$H/build/ccost"
 mkdir -p "$C"
 
 gcc -O2 -g -Wall -I"$S/mesa/include" -o "$C/vkharness" \
-    "$TC/docs/lanes/turnipcost569/vkharness.c" -ldl
+    "$H/../../turnipcost569/vkharness.c" -ldl
 
 # Baseline k=0 of each psh_differ baseline, by uberhost's manifest id.
 declare -A FS=([basic]=0060 [stages8]=0121 [textures]=0182 [border]=0365 [bumpenv]=0426)

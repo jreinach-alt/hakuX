@@ -252,6 +252,12 @@ int main(int argc, char **argv)
             } else if (k > 0) {
                 /* k == 0 is the baseline's own program. */
                 randomise_combiners(&s);
+                /* A random program over a baseline that discards every
+                 * pixel checks nothing (render_check's drawn column):
+                 * `textures` kills on stage 2's constant zero alpha, and
+                 * `clipplane`'s alternating compare modes cannot all hold. */
+                memset(s.alphakill, 0, sizeof(s.alphakill));
+                memset(s.compare_mode, 0, sizeof(s.compare_mode));
             }
             if (!pgraph_glsl_psh_uber_covers(&s)) {
                 uncovered++;
