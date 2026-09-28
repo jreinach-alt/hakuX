@@ -327,6 +327,17 @@ hysteresis). A fall that clears within one or two bins is not the pause.
     ...: the sampler wrote no line`; the previous hot line is not re-read.
   - selftest 99-thermal-pause: legs `no-line` and `waited-out` (15 of 15).
     The wait legs accept 2 to 9 s, since the wait is now wall time.
+- **#523's audit pass 1** (docs/audits/2026-09-27-thermal507-power-
+  pass1.md, on head 4d8ba75b63) found the same first_pause and offset
+  defects as M1, L1 and L2; ea4675ae72 had fixed them before the audit
+  file arrived. Its two other points are fixed after it: `--power` takes
+  its origin from the same readable set as the other modes, and
+  `power.usb_bound` is true when any sample behind the USB average was a
+  bound (legs `mixed` and `measured`; 99-power-per-frame is 13 of 13).
+- 99-display-covered's "guest exit mid-route" leg failed once in six
+  local runs (`no-STOPPED-line`: the 2 s route ended in the same second
+  the guest exit was seen), then passed four times running on the same
+  tree. It is a race in that leg, not a change here.
 - CI on 4d8ba75b63 was red on one check outside this lane's files:
   76-pr-sweep.sh, "a stale failure ALONGSIDE a live one is a live red"
   (2230 passed, 1 failed). The same tree's fragments 99-power-per-frame and

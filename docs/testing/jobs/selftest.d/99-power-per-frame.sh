@@ -43,6 +43,10 @@
 #              every reading would otherwise be negated without a word.
 #   bound      only input_current_limit read (0.5 A): usb_w 2.5 W, named an
 #              upper bound. Fails if a limit is reported as a measurement.
+#   mixed      one sample of six has only the limit: usb_bound true. Fails if
+#              a window averaging a bound with measurements reads as measured.
+#   measured   six measured samples: usb_bound false. Fails if every window
+#              is called a bound, which would make the flag say nothing.
 
 echo "== power per frame: thermal_state.py reads power, title_verdict.py prices a frame (#507)"
 PW="$T/powerframe"; rm -rf "$PW"; mkdir -p "$PW/bin" "$PW/t" "$PW/run"
@@ -190,10 +194,24 @@ r=$(pw_verdict "$TESTING" "$PWV")
 pw_fix "$PWV/thermal.jsonl" 0:c:-2000000:4000000:lim 10:c:-2000000:4000000:lim 20:c:-2000000:4000000:lim \
     30:c:-2000000:4000000:lim 40:c:-2000000:4000000:lim 51:c:-2000000:4000000:lim
 r=$(pw_verdict "$TESTING" "$PWV")
-uf=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]+"/verdict.json"))["power"]["usb_from"])' "$PWV" 2>&1)
-[ "$r" = "$PW_DRAIN" ] && [ "$uf" = "upper bound: input_current_limit x 5 V" ] \
+pw_usb() { python3 -c 'import json,sys; p=json.load(open(sys.argv[1]+"/verdict.json"))["power"]
+print("%s|%s" % (p["usb_bound"], p["usb_from"]))' "$PWV" 2>&1; }
+uf=$(pw_usb)
+[ "$r" = "$PW_DRAIN" ] && [ "$uf" = "True|upper bound: input_current_limit x 5 V" ] \
     && ok "bound: with only the input limit read, usb_w is 2.5 W and usb_from calls it an upper bound" \
     || bad "bound verdict: [$r] usb_from [$uf]"
+pw_fix "$PWV/thermal.jsonl" 0:c:-2000000:4000000:500000,5000000 10:c:-2000000:4000000:500000,5000000 \
+    20:c:-2000000:4000000:lim 30:c:-2000000:4000000:500000,5000000 \
+    40:c:-2000000:4000000:500000,5000000 51:c:-2000000:4000000:500000,5000000
+r=$(pw_verdict "$TESTING" "$PWV"); uf=$(pw_usb)
+[ "$r" = "$PW_DRAIN" ] && [ "$uf" = "True|upper bound: input_current_limit x 5 V; usb current_now x voltage_now" ] \
+    && ok "mixed: one bounded sample among measured ones makes the window's USB figure a bound" \
+    || bad "mixed verdict: [$r] usb [$uf]"
+pw_drain
+r=$(pw_verdict "$TESTING" "$PWV"); uf=$(pw_usb)
+[ "$uf" = "False|usb current_now x voltage_now" ] \
+    && ok "measured: a window of measured USB readings is not a bound" \
+    || bad "measured verdict: [$r] usb [$uf]"
 
 echo "== power per frame mutant: battery power without the sign flip"
 cp "$TESTING/title_verdict.py" "$PW/t/title_verdict.py"

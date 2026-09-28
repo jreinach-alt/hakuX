@@ -79,7 +79,8 @@ reports what its frames cost, over the scored window (mark to `soak end`):
   - `battery_w`: average battery power. SIGN: + the battery is DISCHARGING,
     - it is CHARGING.
   - `usb_w`: the USB input, and `usb_from`, how it was read (a measurement,
-    or an upper bound from the input current limit).
+    or an upper bound from the input current limit). `usb_bound` true means
+    usb_w, net_w and j_per_frame are upper bounds.
   - `net_w` = battery_w + usb_w: what the device drew.
   - `j_per_frame` = net_w x scored seconds / guest flips, and
     `j_per_frame_battery` the same from battery_w alone. Scored seconds and

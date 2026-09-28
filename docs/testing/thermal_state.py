@@ -76,6 +76,8 @@ not a playable one, so every fix is judged on energy per frame as well as fps.
   - USB INPUT is `usb/current_now` x `usb/voltage_now` when both read: a
     measurement. With neither, `input_current_limit` x 5 V is an upper
     bound, and is named as one (`usb_from`); a bound is not a value.
+    `usb_bound` is true when any sample behind the average was a bound:
+    usb_w, net_w and J per frame are then upper bounds too.
   - NET W = battery W + USB input W: what the device draws. On the 500 mA
     PC port that is about 2 W of input plus whatever the battery gives.
   - THE AVERAGE is time-weighted: power is taken as linear between two
@@ -448,7 +450,7 @@ def power_over(recs, lo, hi):
     inside = [p for p in pts if lo <= p[0] <= hi]
     out = dict(measured=bool(inside), samples=len(inside),
                sign="battery_w: + discharging, - charging; net_w = battery_w + usb_w",
-               battery_w=None, usb_w=None, usb_from=None, net_w=None,
+               battery_w=None, usb_w=None, usb_from=None, usb_bound=None, net_w=None,
                sign_suspect=sum(1 for p in inside if p[1]["suspect"]),
                thermal_status_max=max((p[2]["pw"]["thermal_status"] for p in inside
                                        if isinstance(p[2]["pw"].get("thermal_status"), int)),
@@ -461,6 +463,8 @@ def power_over(recs, lo, hi):
     if froms and all(p["usb_w"] is not None for _, p, _ in pts):
         out["usb_w"] = round(mean_over([(t, p["usb_w"]) for t, p, _ in pts], lo, hi), 3)
         out["usb_from"] = "; ".join(froms)
+        # One bounded sample makes the average, and net_w with it, a bound.
+        out["usb_bound"] = any(f.startswith("upper bound") for f in froms)
         out["net_w"] = round(out["battery_w"] + out["usb_w"], 3)
     return out
 
@@ -535,7 +539,7 @@ def main(argv):
         return rc
     if argv[0] == "--power" and len(argv) == 4:
         recs = load(argv[1]) or []
-        ok = [r for r in recs if dev_ts(r) is not None and not r.get("error")]
+        ok = [r for r in recs if paused(r) is not None and dev_ts(r) is not None]
         if not ok:
             print("unread: no sample with a reading")
             return 2
