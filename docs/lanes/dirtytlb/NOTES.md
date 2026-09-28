@@ -130,6 +130,85 @@ sync) bounds walks per draw only loosely. So:
 - **VGA**: the addendum expects 3-5 walks per flip in `vga`; `[rdc]` reports
   them as their own site, not `oth`.
 
+## Attempt 3 (2026-09-28 ~18:10Z)
+
+Why attempt 2 did not finish: it also ended on a correct `waiting:` (the
+four soaks and the pixel arm behind the battery holds). All five results
+landed while no session was running, but no `[job.arms]` verdict was posted
+on the PR, so handback's resume came as attempt 3 rather than as a
+resolved wait. Nothing was lost; every result dir was DONE.
+
+What attempt 3 found in them:
+
+**Crimson B voided, requeued.** 479803 aborted before the route's first
+input: both Thor displays read OFF at start, "not-foreground: unknown", 5
+logcat lines. That is infrastructure, not the build (V: re-queued once).
+Requeued as `1-1790619096-lane.dirtytlb-936387` (queue.log,
+requeue_crimson_b.sh). Crimson A (479870, master) is valid: gfps 29,
+Tq 1161, M 12028, j_per_frame 0.193 (title_verdict.py; 131 s of gameplay).
+
+**Blinx pair (Nova, A 480001 / B 479942): read.** `read-blinx.txt`
+(rdc_read.py --pair) and `read-blinx-pair461.txt` (K1).
+
+| per flip (B, 1620 flips in the window) | calls | us | pages | hits | us/call |
+|---|---|---|---|---|---|
+| vtx | 23.0 | 293 | 42.7 | 5.8 | 12.7 |
+| tex | 0.2 | 3 | 19.6 | 6.0 | 20.8 |
+| snap | 0.2 | 4 | 68.9 | 0.0 | 16.0 |
+| rdo / rdous | 23.4 | 300 | | | |
+
+- tcpu 49.2 ms per flip; gfps 10 in both arms; `vr` 0.0; `oth` 0, `dx` 0;
+  vga 0 (no VGA walks at all on this scene).
+- Legs: V, C1, C2, N1, N2, X, F, K1, K2 PASS. **H FAILS as registered**: the
+  counter costs 129 ns per call, 3.6 us per flip, which is 1.21% of rdous
+  (bar 1%). The 500 ns-per-call clause passes. The ratio fails because
+  Blinx's walks are cheap (12.7 us, against Crimson's 27), so 129 ns is
+  already 1% of one; in absolute terms it is 0.007% of the render thread's
+  49 ms per flip.
+- **What it says about the fix on this scene: nothing to win.** The walks
+  are 0.3 ms of 49 ms render CPU per flip (0.6%), vtx makes 99% of them,
+  and `vr` 0 means one walk per draw already: the span lever saves nothing.
+  Only 25% of vtx walks re-arm any entry (5.8 hits in 23 calls).
+- **Limit:** Blinx's `survey` route never marks gameplay (title_verdict:
+  "no `mark gameplay`"), so there is no j_per_frame, and this is a
+  hands-off scene at 10 gfps, not play. No route exists for Blinx or AUF
+  (docs/testing/titles/routes/). The brief's #462 leg is measured on that
+  scene only.
+
+**The pixel arm (dirtytlb-counter-pixels.json): FAIL as registered, 1 of
+337.** Read by hand with ab_compare.py (`read-pixels.txt`); no `[job.arms]`
+comment had been posted. No `unreadable` rows, no UtilAcceptVsock in either
+run1.log. 336 captures byte-identical. The one move:
+`Texture_signed_component_tests/txt_A8R8G8B8_ADD`, A 168,960
+`label-differs`, B 153,427 `white-content`. It is a visible move: B's upper
+quads show the header's red gradient and blue stripes, a stale texture
+sampled. The counter adds no walk and skips none (the diff wraps the same
+`tlb_reset_dirty_range_all()` calls); what it adds on the render thread is
+time. This capture moved 12,544 px under tiecode282's unrelated change and
+varies run to run on lavapipe, but read byte-stable in lane.remote's six
+handheld runs (#461). One run per arm cannot separate the two; so:
+
+- **`dirtytlb-counter-signed.json`** (register_signed.sh): three runs per
+  arm, that suite only, A master `01e62d8d1c`, B `0794c79011` (this branch
+  with master merged; A..B is the counter and docs only). Refuted if A's
+  three runs agree byte for byte and B's three all differ from them: the
+  counter's timing reliably exposes a texture-upload race, and it does not
+  land as it stands. Queued by the arms job on push.
+- If it is refuted, the race is itself a finding: a stale texture under a
+  timing change is what the tail-page gap above would produce if a texture
+  range ever reached it unaligned. That is not the case for
+  check_texture_dirty (page-aligned), so the next lane should look at the
+  texture cache's own upload ordering before the TLB.
+
+## Waiting (2026-09-28 ~18:30Z, attempt 3)
+
+On: `1-1790619096-lane.dirtytlb-936387` (Crimson B, Thor), then
+`rdc_read.py --pair 479870 936387` and pair461_read.py K1, which name the
+dominant Crimson caller and price `vr`; and the arms job's verdict on
+`dirtytlb-counter-signed.json`. The fix (dirtytlb-fix-*.json, draw.c by
+board request) is chosen from Crimson, not Blinx: on Blinx there is no walk
+cost worth removing.
+
 ## Waiting (2026-09-28 ~15:00Z)
 
 On things outside this session: the four soaks above (both handhelds on
