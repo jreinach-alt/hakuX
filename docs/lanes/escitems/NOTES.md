@@ -28,8 +28,8 @@ the same way.
   (meta): text` line. The first cut opened items on `- ` only, as the brief and
   `harness_health.py` do, and the selftest's 16:24 fixture (65, dash432)
   lost all six of its owner decisions, which are written in the unbulleted
-  format. So `harness_health.py` does not count an unbulleted item as open.
-  Its escalation check is blind to that format; that file is outside this
+  format. Note that `harness_health.py` does not count an unbulleted item as
+  open. Its escalation check is blind to that format; that file is outside this
   lane's scope, and the live file uses bullets only today.
 - `escalation_items(text, now)`: skips any item with RESOLVED on any line;
   shows its first line as before; reads the newest `re-checked [MM-DD ]HH:MM
@@ -51,7 +51,7 @@ the same way.
 |---|---|---|
 | live escalations.md (17:06 stopgap applied) | 0 | 0 |
 | `escalations.md.bak-20260927-resolve` (before the stopgap) | 2: the 10:36 Nova and 11:51 Thor items, both resolved on continuation lines | 0 |
-| selftest fixture escalations (3 open items) | 9 (includes the resolved alpha item, 2 UPDATE lines, 3 re-checked lines) | 3 |
+| selftest fixture escalations (4 open items) | 10 (includes the resolved alpha item, 2 UPDATE lines, 3 re-checked lines) | 4 |
 | selftest fixture needs-hands (1 open ask) | 2 (includes foxtrot, resolved below) | 1 |
 
 Selftest `99-status-escalation-items.sh`: legs (a) resolved-on-continuation,
