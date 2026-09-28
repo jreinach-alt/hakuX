@@ -57,3 +57,70 @@ soak for the ring-out.
   (~1.5-2 h). Session ended **waiting** on that request id. On resume: `shdwin.py
   $DISPATCH_DIR/results/<id>`, check the `[shd413]` fields and `shader_cache`, then queue the 440 s
   ring-out soak on the same ref and prediction.
+
+**Why attempt 1 did not finish:** it ended correctly on a device wait (the pilot sat behind 13
+Nova soaks), but it posted no `[lane.pipeline413] waiting:` comment, so its PR stayed a draft.
+handback.sh resumed it at 07:12Z, after the pilot was DONE.
+
+## 4. Pilot result (`1-1790571190-pipeline413-3895602`)
+
+`shader_cache=cleared: apk 6818e127bd17 -> 8196a7015b52` (cold), Nova, 180 s. The full reader output
+is in `pilot-shdwin.txt`. A perf-line sample:
+
+    00:07:55.277 f=3360 dt=13870 ms  p 30071/40 +15809/+26  s 3047/35 +2878/+23  v 0/54 +0/+24
+
+It has 89 lines, 0 unparsed, and the totals are monotonic. The route reached `mark booted` but not
+`mark play` in 180 s. The non-stall miss rate after 60 s is 0.00/s.
+
+| window closes | dt_ms | dpm | dsm | dvm | (dt-3100)/dpm |
+|---|---|---|---|---|---|
+| 07:55.277 (first load) | 13870 | 26 | 23 | 24 | 414 ms |
+| 08:15.219 | 5660 | 8 | 8 | 8 | 320 ms |
+| 08:25.197 | 7014 | 11 | 8 | 3 | 356 ms |
+| 08:41.761 | 6187 | 14 | 13 | 9 | 220 ms |
+| 09:09.881 | 5710 | 2 | 2 | 0 | (1305: not compile) |
+| 08:51-09:37, 10 windows | 3848-5710 each | 0-3 | | | 60 flips per 4.5 s, **0 misses** |
+
+The 3100 ms warm subtraction is doa413c's figure for the first load only. For the later windows,
+the raw dt_ms/dpm (442-708 ms) is the upper bound.
+
+Scored against the registered legs:
+
+- **M0 PASS.** The run is cold, has 89 lines, and has a 13.87 s window at about 77 s after launch.
+- **P1 FAIL, as written.** The rate clause holds: the load's 1.9 misses/s is against a base of 0.
+  The count clause fails: dpm is 26, not >= 30. The stall does line up with a miss burst. Every
+  window of 5 s or more but one carries 8-26 misses, and every 1-2 s window carries 0-1. So the
+  compile explanation for this load stands, but the registered threshold was too high by 4.
+- **P2 FAIL (above 300).** The price is 414 ms per missed pipeline. The leg said to read dsm to
+  split "few expensive pipelines" from "cost outside pipelines". dsm = 23 of dpm = 26, and dvm = 24
+  (glslang). So almost every missed pipeline brings a new shader, and the per-pipeline cost is
+  that new shader's compile.
+- **P3 FAIL (below 30).** The first load has 26 misses, and 77 misses come after boot in 180 s.
+- **P4 INCONCLUSIVE.** The route did not reach `mark play`.
+- The post-load windows at 4.5 s per 60 flips (about 13 fps) carry **zero** misses. That slowness is
+  not compile, and a ring-out "hang" that looks like it is not this mechanism either. The 440 s soak
+  is what tests that (P4).
+
+## 5. Price of doa413c's options 2-4, from the pilot (bounds per first load)
+
+The compile share is 13870 - 3100 = 10.8 s over 26 misses, or 414 ms each. The 3.1 s warm floor is
+not compile, and no option below touches it.
+
+| option | bound per first load | needs |
+|---|---|---|
+| 2. skip a pending pipeline in async mode (draw nothing and do not block) | saves <= 10.8 s. The load drops toward 3.1 s, at the cost of up to 26 pipelines' draws missing for the frames until each compile lands | `vk/draw.c` (the miss path must return "pending" and not call `vkCreateGraphicsPipelines` inline), `vk/compile_worker.c` (the queue) |
+| 3. more compile workers | only acts together with 2. With N parallel workers the compile share is at least 10.8/N s, so it saves <= 10.8(1-1/N) s: 8.1 s at N=4. The per-pipeline 414 ms does not shrink | `vk/compile_worker.c` (the worker count), plus option 2's `vk/draw.c` |
+| 4. fewer or cheaper pipelines | fewer: dsm/dpm = 23/26, so only about 3 of 26 reuse shader modules. Deduplicating keys saves <= 3 x 414 ms = 1.2 s. Cheaper: the cost is per new shader, so it scales at most linearly with shader compile time (10.8 s x the fraction cut) | `vk/draw.c` (the pipeline key), `vk/shaders.c` / the GLSL generators (shader size and variant count) |
+
+The pilot does not measure wall ms inside `vkCreateGraphicsPipelines`. §1 names the one-line
+draw.c accumulator that would. None of these files is this lane's to take. They are asked for by
+name on #413.
+
+## 6. Ring-out soak
+
+- 2026-09-28: pilot verdict written to `$DISPATCH_DIR/pilots/pipeline413.ok`. Queued
+  `1-1790579572-pipeline413-1715785` (ref ecf5e05dd2, Nova, survey, 440 s, same prediction). Record
+  its `shader_cache`. If the Nova ran no other apk since the pilot, the first load is WARM and is
+  not comparable to the pilot's. The ring-out pipelines were never compiled in the pilot, so they
+  are cold either way. On resume, run `shdwin.py` on it and score P4 against windows after
+  `mark play`.
