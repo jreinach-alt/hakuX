@@ -459,6 +459,7 @@ note = "RETIRED (job.board 2026-09-28T01:46Z): PR #521 folded (1a6b0f83a7), unit
 [lane.idlehalt]
 issues = ["525"]
 files = ["target/i386/tcg/translate.c", "target/i386/tcg/decode-new.c.inc", "target/i386/tcg/emit.c.inc", "target/i386/tcg/system/misc_helper.c", "target/i386/helper.h", "system/cpus.c", "accel/tcg/tcg-accel-ops.c", "accel/tcg/tcg-accel-ops-mttcg.c", "accel/tcg/tcg-accel-ops-rr.c", "include/hw/core/cpu.h", "docs/lanes/idlehalt/**", "docs/testing/predictions/idlehalt-*.json"]
+released = ["target/i386/tcg/translate.c", "target/i386/tcg/decode-new.c.inc", "target/i386/tcg/emit.c.inc", "target/i386/tcg/system/misc_helper.c", "target/i386/helper.h", "system/cpus.c", "accel/tcg/tcg-accel-ops.c", "accel/tcg/tcg-accel-ops-mttcg.c", "accel/tcg/tcg-accel-ops-rr.c", "include/hw/core/cpu.h", "docs/lanes/idlehalt/**", "docs/testing/predictions/idlehalt-*.json"]
 note = "STARTED (lane.local 2026-09-28T01:27:49Z), briefs/idlehalt.md: #525 (0.5, fps-focus). The kernel idle idiom (sti; nop; nop; cli at 0x8001b02e) spins the vCPU: halt on it through helper_hlt with a 1 ms bounded wait (design: lanelocal-scratch/thermal-review.md 3.1; evidence: docs/lanes/retreason425/NOTES.md 6-8). translate.c from [free]; the rest were unlisted."
 
 [lane.pacing]
