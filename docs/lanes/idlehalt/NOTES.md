@@ -219,3 +219,78 @@ For the next lane (to flip the default):
 - Measure J/frame once #523's power record is in the dispatcher.
 - Do not repeat: judging Blinx A against the ~94% spin figure. On this
   build it spins at 76%.
+
+## 8. Session 4 (2026-09-28 08:xxZ): J/frame, and the latency variant
+
+Why session 3 is not the end: it did finish (verdict, PR ready at 07:45Z).
+lane.local's addendum (00:52 PDT) then extended the brief. #523's power
+record has been live since 2026-09-27 19:20 PDT, so J/frame was never
+pending: section 7's "no power record" was wrong. The addendum also asked
+for a latency variant under a new prediction.
+
+### J/frame (first batch, 6554f06175)
+
+`title_verdict.py` (master) on copies of the result dirs (in
+`.lanelog/rc/`, not committed). Its scored window runs from the mark to the
+soak's end, so it is not ihread's window:
+
+| | AUF on | AUF off | Blinx on | Blinx off |
+|---|---|---|---|---|
+| result | `2274611` | `2278164` | `3064707` | `3064828-r2` |
+| power samples | 7 | 5 | 6 | 6 |
+| battery_w | 2.63 | 4.92 | 4.16 | 6.34 |
+| usb_w | 2.11 | 2.11 | 2.12 | 2.12 |
+| net_w | **4.74** | 7.02 | **6.28** | 8.46 |
+| flips / scored s | 3420 / 199.8 | 3180 / 183.5 | 3360 / 181.0 | 3300 / 181.5 |
+| **j_per_frame** | **0.277** | 0.405 | **0.339** | 0.465 |
+| on / off | **0.68 (-32%)** | | **0.73 (-27%)** | |
+
+- The halt takes 2.3 W off AUF and 2.2 W off Blinx.
+- AUF with the halt on runs at 4.7 W, which is inside the 3.5-5.8 W
+  sustainable band. With the halt off it runs at 7.0 W, which is above it.
+- The sample counts are small (5-7 per run) and each title is one pair.
+  No run had a thermal pause (`thermal_status_max` 0).
+
+### Latency variant: a spin before the sleep (40fabbaacc)
+
+- `HAKUX_IDLE_HALT_SPIN_US=<n>`, default 0, capped at 1000.
+- Each idiom halt first spins up to n us, polling `ih_kick_ns` and
+  `exit_request` with the BQL dropped. After that it takes the 1 ms condvar
+  wait.
+- A kick that lands inside the spin runs without a futex wake. The caller
+  re-tests `cpu_thread_is_idle` under the BQL, so a kick that arrives after
+  the last poll is still seen.
+- New counters on the line: `spin_us`, `sh` (kicks that landed inside the
+  spin), `spn_us`, and `kpg`. `kpg` is the time from halt entry to the pg
+  kick, recorded at any spin setting, so a spin-0 run shows which spin
+  length would catch which share of callbacks.
+
+**Why not "skip the halt while PFIFO waits on a callback".**
+`pg->waiting_for_nop` is set at pgraph.c:2543, at the same point the
+callback interrupt is raised. So it does not predict a callback: it holds
+only once the kick is already on its way. A predictor that could see a
+callback coming would have to read pushbuffer state (put != get) from
+nv2a.c or pfifo.c, and neither file is on this lane's row.
+
+Predictions: `idlehalt-spin-auf.json` @ 7c31b9a0,
+`idlehalt-spin-blinx.json` @ 59a8083d. The arms are A = off, B = halt, and
+C = halt + spin 100, all at 40fabbaacc, which is after the master merge
+f840d5c25e. The point is leg L: C's pg >= 50 us share is at most half of
+B's. The legs also bound C's cost: run% at most B + 12 points, J/frame at
+most 0.85 x A, gfps at least 0.95 x A.
+
+Queued on the Nova (release priority), in C, B, A order:
+- AUF: `1-1790582078-idlehalt-2124008` (C1), `-2124125` (B1),
+  `1-1790582079-idlehalt-2124199` (A1).
+- Blinx: `1-1790582079-idlehalt-2124275` (C1),
+  `1-1790582080-idlehalt-2124356` (B1), `-2124441` (A1).
+
+To read them: `ihread.py --from 299 --to 420 <C1> <B1> <A1>` for AUF and
+`--play` for Blinx, then `title_verdict.py` on a copy of each dir.
+
+Do not repeat: reading "power.measured false" off an old verdict. Run
+`title_verdict.py` on the dir; since 2026-09-27 19:20 PDT every soak has
+`thermal.jsonl` power samples.
+
+**Waiting (session 4 end):** on the six request ids above. They are
+outside this session.
