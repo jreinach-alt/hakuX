@@ -180,6 +180,66 @@ Pilot: run 1 is the pilot, and the README says runs 3-8 wait for
 the tags are present and the route reached the mark. Device time is about
 80 min: 4,060 s of soak plus 8 x 90 s of setup.
 
+## 6. The failed pilot and the route check (2026-09-28, attempt 3)
+
+**What failed.** Run 1, `0-0-s-1-1790609660-lane.slowtier2-otogi762702`
+(97a6fa2b51, Thor, MAX, cold at xo 49.6 C per hostops), has every tag
+but never left Otogi's title: `route-frames/095419-intro.png` and
+`095703-gameplay.png` both show "PRESS START BUTTON" at FPS 29. Its
+renderer split describes the title loop, so it is not used.
+
+**Why (timing, partly inferred).** master's `otogi.route` presses START once,
+at +48 s. Times are from the route start (`routecheck.py`, from run.log's
+`ROUTE` lines and the first `hakuX-perf gfps=` line in logcat.txt):
+
+| run | ref | first frame | frame-time spike (title up) | START | START into the title | gameplay frame |
+|---|---|---|---|---|---|---|
+| titleroutes-1129571 | 9e7f8418dc | +12 s (05:24:07.166) | +22.5 s (05:24:17.261, G max 168.5) | +50 s (05:24:44.673) | ~28 s | play (bamboo forest, FPS 9) |
+| pilot 762702 | 97a6fa2b51 perflog | +4 s (09:52:33.418) | +14 s (09:52:43.797, G max 437.3) | +51 s (09:53:20.949) | ~37 s | title |
+
+Both runs show a transition after START: G max 172.1 at 05:24:47.492 in the good run, and 316.6 to 50.6
+at 09:53:24-09:53:31 in the pilot. So in the pilot START did land on
+something. My reading, which no frame confirms: by +37 s the title had given
+way to its attract loop, START returned to the title, and the 40 A presses
+after it never leave the title. The pilot also cleared the shader cache
+(result.json `shader_cache: cleared: apk 6d334facad15 -> f2626e7ecd88`), so
+the 8 s earlier boot is not obviously the perflog build's doing.
+
+**The fix.** `routes/otogi.cold.route` (route.sh --check: ok, 154 lines)
+presses START four times, 6 s apart, from +22 s. For a title at +14..+22.5 s
+(the two runs above), at least one START lands on it within ~26 s. It
+adds `shot title` (+20 s) and `shot menu` (+50 s) and four more intro A
+presses. `mark gameplay` falls at ~+258 s, against ~+274 s on master.
+master's `docs/testing/titles/routes/otogi.route` is not this lane's file:
+lane.titleroutes should take the same fix there if the re-pilot's frames
+show play.
+
+**The other seven routes** (`routecheck.out`, `routecmp.py`). Every
+parked route is byte-identical to the one its last run played, and every
+one of those `mark gameplay` frames shows play:
+
+| route | last run | first frame | gameplay frame |
+|---|---|---|---|
+| midtown-madness-3.returning | 1-1790506491-titleroutes-1032854 | +54 s (the FMV before it is uncounted; `boot30` is FMV, `s1` LOADING) | driving, pizza timer 01:37, FPS 3 |
+| black.returning | 1-1790482599-titleroutes-3358750 | +5 s | first-person, HUD, FPS 7 |
+| burnout | 1-1790513065-titleroutes-1150288 | +4 s | race countdown "3", 0 mph, FPS 28 (play starts seconds later) |
+| alias | 1-1790519290-titleroutes-2113140 | +5 s | casino floor, player in control, FPS 19 |
+| pgr.returning | 1-1790483525-titleroutes-3587419 | +22 s | race, "GO", FPS 14 |
+| crash-twinsanity | 1-1790489396-titleroutes-512742 | +4 s | Crash on the beach, FPS 10 |
+| bloodrayne | 1-1790548501-titleroutes-1530145r | +4 s | Rayne outside the church, FPS 26 |
+
+The five runs that booted in +4..+6 s match the pilot's boot, so the pilot's
+failure mode does not carry to them. PGR's route presses START three
+times, 12-15 s apart, and MM3's START at +39 s skips an FMV that its
+`boot30` frame (+32.5 s) shows still playing. Neither depends on a single
+START landing in a narrow window. None of the seven needed a change.
+
+**Re-pilot parked.** `1-1790615781-lane.slowtier2-otogi2870269.req`
+(`park_otogi2.py`) is in the parked dir: the same ref, seconds, regimen and
+device as run 1, with the fixed route. `readme_append.py` added the order to
+the parked README. This lane writes `pilots/lane.slowtier2.ok` and deletes
+`PILOT-FAILED` only after reading its `gameplay` frame.
+
 ## Do not repeat
 
 - Do not read a benchmark soak for `hakuX-phase` or GPU rows. Only perflog
@@ -199,6 +259,11 @@ the tags are present and the route reached the mark. Device time is about
   called Alias and MM3 cold; both were claimed 3-5 s after another soak
   ended. The claim is `route.txt`'s mtime (written at the claim), and the
   end is `DONE`'s. The reader prints the two runs before each claim.
+- Do not park a route whose only good run booted at a different pace
+  without reading when its first START lands against the title. Otogi's
+  route was timed on a +12 s boot and failed on a +4 s one. Compare the
+  first `hakuX-perf gfps=` line with the route's START lines first
+  (`routecheck.py`).
 
 ## Log (PDT, 2026-09-28)
 
@@ -225,3 +290,14 @@ the tags are present and the route reached the mark. Device time is about
 - Do not repeat: `request.sh` has no simpleperf mode, so a profile that
   needs one cannot be parked as a request. Plan it as a held session from
   the start.
+
+### Attempt 3 (the failed pilot, branch lane/slowtier2-routes)
+
+- Why attempt 2 did not carry on: it finished phase 2b and stopped.
+  #559 merged, and the next step was the pilot's result, which lay outside
+  the session. The pilot landed at 10:01. At 10:12 hostops found its
+  gameplay frame on the title and resumed this lane to fix the routes.
+- 10:4x read the pilot's frames and timeline, checked all eight routes
+  (section 6), wrote `routes/otogi.cold.route`, and parked the re-pilot
+  `1-1790615781-lane.slowtier2-otogi2870269`. No hold was taken and nothing
+  was queued. `pilots/lane.slowtier2.ok` is not written yet.
