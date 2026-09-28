@@ -52,8 +52,8 @@ writing that field (board-requests/fanduty507.md).
 ## The probe (step 2): 50000 holds with no re-write
 
 Nova (ee317437), under `hold.sh take nova lane.fanduty507`, idle, screen off,
-battery 34%, 2026-09-28 16:46-16:53 UTC. `probe.sh ee317437 300 15`, full log
-in probe-nova.log:
+battery 34%, 2026-09-28 16:46-16:53 UTC. `probe.sh ee317437 300 15`, full output
+in probe-nova.txt:
 
 | t | fan_mode | duty | rpm | xo-therm |
 |---|---|---|---|---|
@@ -129,7 +129,7 @@ lost the fan restore. The neighbouring soak fragments (84-perf-regimen,
 Nova, same hold, right after the probe: this worktree's soak_title.sh run
 by hand (proof-run.sh; the dispatcher's snapshot does not have the change
 yet), Blinx, 180 s, PERF_REGIMEN=rest (battery was 34%; the fan is what is
-tested), FAN_DUTY=50000. Files in proof-nova/.
+tested), FAN_DUTY=50000. Files in proof-nova/ (run.log as run.txt).
 
 thermal.jsonl, per sample:
 
