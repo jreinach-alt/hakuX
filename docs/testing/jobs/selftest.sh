@@ -48,7 +48,8 @@ done < <(printf '%s\n' "$HERE/selftest.d/"* | LC_ALL=C sort)
 #
 # A SHARD IS NOT i % n. Fragments share state on purpose: 10..64 drive arms.sh
 # and status.sh over one dispatcher queue in sequence, 92/94 read what 40 and
-# 50 left, 99-handback-{runs,strand} copy 99-handback-draft's shims. A CHAIN
+# 50 left, 87 calls a predicate 86 defines, 99-handback-{runs,strand} copy
+# 99-handback-draft's shims. A CHAIN
 # below is a set that must land in one shard; everything else is a unit of
 # one. Units go to shards by longest-first onto the lightest shard, weighted by
 # SHARD_SECS (seconds, measured; a fragment not listed weighs SHARD_SECS_NEW).
@@ -61,6 +62,7 @@ done < <(printf '%s\n' "$HERE/selftest.d/"* | LC_ALL=C sort)
 # fragment that passes alone needs no chain).
 SHARD_CHAINS=(
     "10-arms-list 20-arms-queue 30-arms-error 40-arms-refusal 50-arms-requeue 51-dispatch-hardening 55-localtime 60-status 62-status-freshness 63-status-lanes 64-status-html 92-arms-skip-told 94-arms-label-state"
+    "86-nightly-notes 87-nightly-trunk"
     "99-handback-draft 99-handback-runs 99-handback-strand"
 )
 SHARD_SECS_NEW=15
