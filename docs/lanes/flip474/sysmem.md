@@ -164,7 +164,7 @@ ended for a query, in each run's window):
 | DOA, the default | 3 of 56 | 36 |
 | DOA base, AUF, Forza, Crimson | 0 | 0 |
 
-### The second pair: `flip474-sysmemfix-pgraph.json` (judged 2026-09-28 02:30Z)
+### The second pair: `flip474-sysmemfix-pgraph.json` (judged 2026-09-28 02:05Z)
 
 The arms job's pair, both on the Nova, each from a cleared shader cache:
 base `1-1790549941-arms-flip474-base-2298159` (`09fdca3ba1`, apk
