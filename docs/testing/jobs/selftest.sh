@@ -21,6 +21,116 @@
 # runs for real.
 set -u
 export HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; TESTING="$(dirname "$HERE")"; REPO="$(cd "$TESTING/../.." && pwd)"
+
+# ------------------------------------------------------------ the fragments
+# Collected first, before any fixture, so the shard check below can run on its
+# own. Why fragments, and how to add one: see "the checks" further down.
+frags=()
+while IFS= read -r f; do                         # LC_ALL=C: the runner's
+    [ -e "$f" ] || continue                      # collation is not this box's
+    case "${f##*/}" in
+        [0-9][0-9]-*.sh) frags+=("$f") ;;
+        *.md|*~)         ;;                      # a README, an editor backup
+        *) echo "selftest: $f is not selftest.d/NN-<concern>.sh and would never be sourced" >&2
+           exit 2 ;;
+    esac
+done < <(printf '%s\n' "$HERE/selftest.d/"* | LC_ALL=C sort)
+[ "${#frags[@]}" -gt 0 ] || {
+    echo "selftest: no fragments under $HERE/selftest.d -- nothing would be checked" >&2
+    exit 2
+}
+
+# --------------------------------------------------------------- the shards
+# SELFTEST_SHARD=k/n runs shard k (0-based) of n. WHY: run whole, this took
+# 18-25 min on the CI runner against a 25-min cap, and a capped run concludes
+# CANCELLED, which fold.sh reads as RED -- 4 of 20 runs on 2026-09-27. The
+# workflow runs one job per shard (.github/workflows/jobs-selftest.yml).
+#
+# A SHARD IS NOT i % n. Fragments share state on purpose: 10..64 drive arms.sh
+# and status.sh over one dispatcher queue in sequence, 92/94 read what 40 and
+# 50 left, 99-handback-{runs,strand} copy 99-handback-draft's shims. A CHAIN
+# below is a set that must land in one shard; everything else is a unit of
+# one. Units go to shards by longest-first onto the lightest shard, weighted by
+# SHARD_SECS (seconds, measured; a fragment not listed weighs SHARD_SECS_NEW).
+# A stale weight costs balance, never coverage. Inside a shard, fragments run
+# in the global sorted order.
+#
+# A NEW FRAGMENT THAT READS ANOTHER'S LEFTOVERS goes into that fragment's
+# chain here. If it is not, it may land in another shard and fail there --
+# loud, and the fix is one line. Verify with SELFTEST_ONLY="<it>" (a
+# fragment that passes alone needs no chain).
+SHARD_CHAINS=(
+    "10-arms-list 20-arms-queue 30-arms-error 40-arms-refusal 50-arms-requeue 51-dispatch-hardening 55-localtime 60-status 62-status-freshness 63-status-lanes 64-status-html 92-arms-skip-told 94-arms-label-state"
+    "99-handback-draft 99-handback-runs 99-handback-strand"
+)
+SHARD_SECS_NEW=15
+SHARD_SECS=""
+shard_frags() {   # <k> <n> -> the basenames of shard k, sorted, one per line
+    printf '%s\n' "${frags[@]##*/}" | python3 -c '
+import sys
+k, n, new, secs = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
+chains = [c.split() for c in sys.argv[5:]]
+names = [l.strip() for l in sys.stdin if l.strip()]
+have = set(names)
+w = {}
+for tok in secs.split():
+    f, s = tok.rsplit(":", 1); w[f] = int(s)
+def wt(f): return w.get(f[:-3], new)
+units, seen = [], set()
+for c in chains:
+    bad = [m for m in c if m + ".sh" not in have]
+    if bad:
+        sys.exit("selftest: SHARD_CHAINS names %s, not under selftest.d" % " ".join(bad))
+    units.append([m + ".sh" for m in c]); seen.update(units[-1])
+units += [[f] for f in names if f not in seen]
+units.sort(key=lambda u: (-sum(map(wt, u)), u[0]))
+load, owner = [0] * n, {}
+for u in units:
+    s = min(range(n), key=lambda i: (load[i], i))
+    load[s] += sum(map(wt, u))
+    for f in u: owner[f] = s
+print("\n".join(f for f in names if owner[f] == k))
+' "$1" "$2" "$SHARD_SECS_NEW" "$SHARD_SECS" "${SHARD_CHAINS[@]}"
+}
+# THE GUARD. A fragment in no shard is a check silently gone, which is worse
+# than a slow run. So before a shard runs anything: the n shards, each asked
+# for exactly as a run asks for it, must together be the full fragment list,
+# each fragment exactly once, every chain inside one shard; and the workflow's
+# matrix must name shards 0..n-1 with this n. `selftest.sh --check-shards n`
+# runs only this.
+shard_check() {   # <n>
+    local n=$1 k all="" f wf="$REPO/.github/workflows/jobs-selftest.yml" m err=0 c
+    for ((k = 0; k < n; k++)); do
+        f=$(shard_frags "$k" "$n") || return 1
+        all+="$f"$'\n'
+        for c in "${SHARD_CHAINS[@]}"; do
+            m=$(comm -12 <(tr ' ' '\n' <<< "$c" | sed 's/$/.sh/' | LC_ALL=C sort) <(LC_ALL=C sort <<< "$f") | wc -l)
+            [ "$m" -eq 0 ] || [ "$m" -eq "$(wc -w <<< "$c")" ] || { echo "selftest: shard $k/$n splits the chain: $c" >&2; err=1; }
+        done
+    done
+    m=$(diff <(printf '%s\n' "${frags[@]##*/}") <(grep . <<< "$all" | LC_ALL=C sort)) \
+        || { echo "selftest: shards 0..$((n-1)) of $n are not the fragment list, each once (< missing, > extra):" >&2; echo "$m" >&2; err=1; }
+    if [ -f "$wf" ]; then
+        m=$(sed -n 's/^ *shard: *\[\(.*\)\] *$/\1/p' "$wf" | tr -d ' ')
+        c=$(sed -n 's|^ *SELFTEST_SHARD: *\${{ *matrix\.shard *}}/\([0-9]*\) *$|\1|p' "$wf")
+        [ "$m" = "$(seq -s, 0 $((n-1)))" ] && [ "$c" = "$n" ] \
+            || { echo "selftest: $wf runs shards [$m] of '$c', not 0..$((n-1)) of $n" >&2; err=1; }
+    fi
+    [ "$err" -eq 0 ] && echo "selftest: shards 0..$((n-1)) of $n cover all ${#frags[@]} fragments, each once"
+    return "$err"
+}
+case "${1:-}" in
+    --check-shards) shard_check "${2:?--check-shards <n>}"; exit ;;
+    --list-shards)  for ((k = 0; k < ${2:?--list-shards <n>}; k++)); do
+                        echo "shard $k/$2: $(shard_frags "$k" "$2" | tr '\n' ' ')"
+                    done; exit ;;
+esac
+if [ -n "${SELFTEST_SHARD:-}" ]; then
+    [[ "$SELFTEST_SHARD" =~ ^([0-9]+)/([0-9]+)$ ]] && [ "${BASH_REMATCH[1]}" -lt "${BASH_REMATCH[2]}" ] \
+        || { echo "selftest: SELFTEST_SHARD=$SELFTEST_SHARD is not k/n with k < n" >&2; exit 2; }
+    SHARD_K=${BASH_REMATCH[1]} SHARD_N=${BASH_REMATCH[2]}
+    shard_check "$SHARD_N" || exit 2
+fi
 T="${SELFTEST_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/hakux-selftest.XXXXXX")}"
 export HAKUX_WORK="$T/work" HAKUX_REPO_DIR="$REPO" DISPATCH_DIR="$T/work/dispatch" GOLDENS="$T/goldens" GH_REPO="example/hakux"
 export HOME="${HOME:-$T}"
@@ -122,24 +232,28 @@ mkdir -p "$HAKUX_WORK/arms"
 #   - Fragments are sourced, not executed: no shebang, no exit. `pass`, `fail`
 #     and the fixtures are shared state, so a failing check in a fragment
 #     fails the whole run, which is the point.
-frags=()
-while IFS= read -r f; do                         # LC_ALL=C: the runner's
-    [ -e "$f" ] || continue                      # collation is not this box's
-    case "${f##*/}" in
-        [0-9][0-9]-*.sh) frags+=("$f") ;;
-        *.md|*~)         ;;                      # a README, an editor backup
-        *) echo "selftest: $f is not selftest.d/NN-<concern>.sh and would never be sourced" >&2
-           exit 2 ;;
-    esac
-done < <(printf '%s\n' "$HERE/selftest.d/"* | LC_ALL=C sort)
-[ "${#frags[@]}" -gt 0 ] || {
-    echo "selftest: no fragments under $HERE/selftest.d -- nothing would be checked" >&2
-    exit 2
-}
-for f in "${frags[@]}"; do
+#
+# SHARDS. CI runs this as a matrix (SELFTEST_SHARD=k/n, see the header of
+# shard_plan below); with no selector every fragment runs, in order, as the
+# host runs it. The fragment list was collected above, before any fixture.
+run=("${frags[@]}")
+if [ -n "${SELFTEST_ONLY:-}" ]; then
+    run=()
+    for f in "${frags[@]}"; do
+        case " $SELFTEST_ONLY " in *" ${f##*/} "*|*" $(basename "$f" .sh) "*) run+=("$f") ;; esac
+    done
+    [ "${#run[@]}" -gt 0 ] || { echo "selftest: SELFTEST_ONLY names no fragment under selftest.d" >&2; exit 2; }
+elif [ -n "${SELFTEST_SHARD:-}" ]; then
+    mapfile -t run < <(shard_frags "$SHARD_K" "$SHARD_N" | sed "s|^|$HERE/selftest.d/|")
+fi
+for f in "${run[@]}"; do
+    t0=$SECONDS
     . "$f"
+    echo "selftest: ${f##*/} took $((SECONDS - t0))s"
 done
 
 echo
-echo "selftest: $pass passed, $fail failed (fake host in $T)"
+scope="all ${#frags[@]} fragments"
+[ "${#run[@]}" -eq "${#frags[@]}" ] || scope="PARTIAL: ${#run[@]} of ${#frags[@]} fragments${SELFTEST_SHARD:+, shard $SELFTEST_SHARD}"
+echo "selftest: $pass passed, $fail failed, $scope (fake host in $T)"
 [ "$fail" -eq 0 ]
