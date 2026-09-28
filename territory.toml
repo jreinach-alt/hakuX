@@ -1411,8 +1411,8 @@ note = "RELEASED (hostops 2026-09-28T18:30Z): vk/draw.c lent to [lane.pacing] fo
 
 [lane.forzadecay414]
 issues = ["414"]
-files = ["docs/lanes/forzadecay414/**", "docs/testing/predictions/forzadecay414-*.json"]
-note = "STARTED (lane.local 2026-09-28T19:45Z), briefs/forzadecay414.md: #414 item 1, Forza's 29 -> 3 fps decay. H1 hardware clock throttling (LMh; no cooling device engaged in 1-1790619761-forza414-1092424 while the big cores sat at 94-96 C) vs H2 a game-state regime (NOTES section 1: audio starving). Existing data first; then per-policy cpufreq and GPU clock in thermal_state.py samples (requested after #571 folds); then cold vs warm Thor and Nova runs after the top-up."
+files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/lanes/forzadecay414/**", "docs/testing/predictions/forzadecay414-*.json"]
+note = "FIX GRANTED (lane.local 2026-09-28T19:50Z): hw/xbox/nv2a/pgraph/vk/surface.c (released by lane.forza414) for the invalid_surfaces fix (#517 regression: the ring-slot stamp never resets, so prune never runs); lane/forzadecay414-fix, gates: bounded list, no decay, #517 saving kept, full-sweep pixel-inert. || STARTED (lane.local 2026-09-28T19:45Z), briefs/forzadecay414.md: #414 item 1, Forza's 29 -> 3 fps decay. H1 hardware clock throttling (LMh; no cooling device engaged in 1-1790619761-forza414-1092424 while the big cores sat at 94-96 C) vs H2 a game-state regime (NOTES section 1: audio starving). Existing data first; then per-policy cpufreq and GPU clock in thermal_state.py samples (requested after #571 folds); then cold vs warm Thor and Nova runs after the top-up."
 
 [retired.tbchurn424]
 issues = ["424"]
