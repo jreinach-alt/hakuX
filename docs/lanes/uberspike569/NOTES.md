@@ -3,7 +3,12 @@
 Brief: `/home/justin/hakux-work/briefs/uberspike569.md`. Research: `docs/lanes/shaderplan569/NOTES.md`
 option (d) and section 7's P6. PR #581.
 
-Status: IN PROGRESS. The sections below say which numbers are measured and which are pending.
+Status (2026-09-28): the host legs are measured. The device legs are registered and queued:
+- E is queued by the arms job from the push.
+- The P/C pilot soak pair is behind the Nova's battery hold.
+- The DOA key file (section 3) has not been pulled yet.
+
+Verdict so far (section 7): the hybrid as briefed is not supported. The C leg kills it.
 
 ## 0. What was built
 
@@ -210,9 +215,88 @@ the same 2 pairs in 8 bits (9 and 422 px), against 456 / 92 / 2 for the shape tr
 bought nothing measurable and cost 25-30x at compile. **The generator now emits v3** (see the
 comment block in `psh-uber.c`); section 5.2 re-measures it as shipped.
 
+### 5.2 The shipped generator (lean interpreter), C on the host
+
+`host/ccost.sh 3` against commit 2ca713adec's generator, 3 reps, medians
+(`host/build/ccost/ccost.tsv`; run log `.cache/final_host.log`):
+
+| pipeline | cpu ms spec | cpu ms uber | x | FS ms spec | FS ms uber | x |
+|---|---|---|---|---|---|---|
+| prog_pass + {basic, border, bumpenv, stages8, textures} | 37-43 | 420-465 | 10.5-11.9 | 20-24 | 338-373 | 15-17 |
+| ff_unlit + GS + the same five | 247-321 | 840-938 | 2.7-3.7 | 84-100 | 567-690 | 6-7 |
+| ff_lit2 + GS + the same five | 972-1517 | 1909-2275 | 1.3-2.3 | 90-125 | 577-717 | 5-7 |
+
+With a GS in the pipeline the uber fragment stage costs more (0.57-0.72 s, against 0.34-0.37 s
+behind prog_pass). Linking through a geometry stage keeps more of it live.
+
+On the Nova, lane.shaderfb569's `dpc_ms` beside this table will give the host-to-device scale.
+B's soak logs the glslang+module time per family (`psh-uber: family module`).
+
+## 6. Legs registered, and device runs
+
+| leg | what | registration | runs |
+|---|---|---|---|
+| E | twelve combiner suites, byte-identical, X vs the test variant, 2 runs per arm | `docs/testing/predictions/uberspike569-exact.json` (a 2ca713adec, b e677a46a66) | queued by the arms job from the push |
+| P, C | DOA1U on the Nova, survey route, 440 s, one binary (2ca713adec), B with `HAKUX_PSH_UBER=1`; fight fps B/A >= 0.90, plus family compile lines and pm/sm | `docs/testing/predictions/uberspike569-doa-soak.json` (hand-read, `soak_read.py --judge`) | pilot pair `1790629190-uberspike569-1700121` (A), `1790629194-uberspike569-1700918` (B), behind the Nova's battery hold |
+
+**The test variant has all three mechanisms** (see the build-variant rule):
+- **Artifact:** e677a46a66 is its own sha, so it builds its own APK.
+- **Rebuild trigger:** the default is a `#define` in `psh-uber.h`, which the commit changes. The
+  dispatcher builds per ref.
+- **Runtime reader:** `psh-uber: ON` on `hakuX-stderr` and `hakuX-perf`, both in the pgraph
+  `LOGCAT_SPEC`. The E prediction voids the arm without it.
+
+Z (5f6cb7e69b) reverts the variant, so the branch head is default-off. X and Z have identical trees.
+
+**Next, after the pilot pair lands:** read it with
+`soak_read.py --a <A dir> --b <B dir>`. If both reached the fight and the B arm shows the `ON`
+line, write `$DISPATCH_DIR/pilots/uberspike569.ok` (with python3) and queue the second pair (the
+same two commands, "pair 2 of 2"). Then judge all four with `--judge`.
+
+## 7. Verdict (host legs measured; device E and P pending)
+
+**The hybrid as briefed is not supported. C kills it, and section 2 says why structurally.**
+
+- **The stand-in costs more to build than what it stands in for.** On Turnip the compile unit is
+  the pipeline (VS + GS + FS + state). The lean uber fragment stage makes a realistic pipeline
+  1.3-3.7x as expensive as the specialised one (host 0.84-2.3 s against 0.25-1.5 s). A miss whose
+  uber pipeline does not yet exist stalls LONGER through the hybrid, not shorter. It pays the uber
+  pipeline, then the specialised one in the background.
+- **What it can hide:** only a miss that differs from an already-built uber pipeline in the
+  combiner program alone (P1's key-diff class `CB`), within one VS/GS/render-state/texture-mode
+  family. In each such group the first miss pays more; the rest are free. The value is
+  (CB-only misses - groups) x `dpc`. P1's DOA soak (`1790621694-shaderfb569-1529058`) measures
+  the CB share. The DOA key file (section 3) measures the module-level share. Neither exists on
+  this host yet.
+- **How many frames it would draw per hidden miss:** pipeline413 measured DOA's fight load as 19
+  misses and 14.9 s of excess, about 0.78 s per miss. That is about 47 frames at 60 fps, or about
+  12 at the fight's 15 fps, per miss while its specialised pipeline compiles. P1's `dpc_ms` gives
+  the per-miss figure directly.
+- **E (host):** the interpreter's LOGIC is exact (548 random programs; mutant caught). Its
+  ROUNDING is not bit-identical. The specialised compiler folds constants and reassociates
+  (section 4.1), leaving 1-LSB differences on rare boundary pixels: 2 of 548 programs, 431 of
+  ~1.3 M drawn px. At a swap-in that is a pop of at most one LSB on those pixels. The device arm
+  decides whether ir3 does the same.
+
+**What survives, and what to do instead:**
+- **A narrower ubershader does not help.** The cost is control flow (5.1), and the pipeline cost
+  is dominated by the VS/GS it must be linked with. Fewer combiner features would shave part of
+  0.3-0.7 s off a 1-2 s pipeline.
+- **The one design where a fragment ubershader pays is with pipeline libraries (P5/GPL).** The
+  uber fragment stage is compiled once per family as a fragment-shader library, and a first-sight
+  pipeline becomes a link of an existing VS library with it. Its value is bounded by how cheap
+  Turnip's GPL link is (not measured here) and by the family count (section 3).
+- **Where key sets exist (P3), prebuild the specialised pipelines instead.** No interpreter, no pop.
+- **Exactness, if a hybrid is built after all:** compile the combiner arithmetic exact
+  (`NoContraction`) on BOTH paths (section 4.1). That is a default-path change with its own pixel
+  arm.
+
 ## Do not repeat
 
-- Do not judge an interpreter by "same ops". The specialised compiler sees constants and equal
+- Do not build a Turnip ubershader out of switches. Register access and mapping by `switch`, inlined
+  per input, cost 4-10 s per pipeline on the host; an array register file and arithmetic mappings
+  cost 0.3-0.7 s for the same exactness (5.1).
+- Do not judge an interpreter by "same ops, same order". The specialised compiler sees constants and equal
   operands the interpreter cannot, and rewrites inexactly on them (section 4.1).
 - A render check whose inputs discard everything passes vacuously. The first run here had 217 of
   479 "ok" pairs with no drawn pixel (window clip regions covering the target under an exclusive
