@@ -476,3 +476,9 @@ drops a draw by default. Each item is one lane.
   own profile says the time is in Turnip. The gap between the two is P2's question.
 - The per-pipeline figures (414-485 ms, <= 780 ms, <= 1.24 s) are pipeline413's upper bounds, not
   compile times.
+
+## Status
+
+2026-09-28: the NOTES are complete, preflight passes, PR #570's body is current, and the summary
+is posted on #569. The PR waits on CI for this head, and then it is marked ready. No device
+request is outstanding.
