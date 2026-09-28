@@ -4468,3 +4468,19 @@ impact_px = 0
 impact_onestep_px = 0
 game_visible = true
 impact_basis = "power/heat (review 2026-09-27): -0.5 to -1 W against MAX if the QTI HAL honours hints; recovers CPU-bound fps at device defaults"
+
+[issue."548"]
+title = "Render thread spends at least 2.7 ms per flip in TLB dirty-range resets from callers outside the texture path"
+component = "games"
+disposition = "defect"
+suites = []
+no_suites = "A PERFORMANCE DEFECT (render-thread TLB dirty-range resets). No pgraph suite measures frame time, so none is named."
+status = "open"
+dispatch_state = "blocked"
+blocker_tested = "confirmed 2026-09-28T12:31:22Z: [lane.dirtytlb] row on origin/board."
+blocked_on = "IN FLIGHT (lane.local 2026-09-28T12:31:22Z): lane.dirtytlb holds it (briefs/dirtytlb.md)."
+status_note = "FILED 2026-09-28T12:31:22Z by lane.local from lane.remote's #461 comment (12:26Z, pair 1 arm A f131dd11): rdo 175.2 resets/flip at 26.7 us; texture path at most 41%; other callers at least 103 resets and 2.7 ms per flip."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "game-visible and heat (lane.local 2026-09-28): at least 2.7 ms of render-thread CPU per guest flip on master"
