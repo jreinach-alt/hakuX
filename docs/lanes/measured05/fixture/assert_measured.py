@@ -90,7 +90,7 @@ def copied_cells():
 
 
 def c_fpscol():
-    """every measured title's row shows its median and share at 30+ in its own fps cell,
+    """every measured title's row shows its median and share at the bar it names in its own fps cell,
     outside any details element, one row per title; no row puts fps in the status cell"""
     st = json.load(open(os.path.join(OUT, "render", "status.json")))
     want = {x["title"] for x in (((st.get("first") or {}).get("titles") or {}).get("rows") or []) if x.get("fps_read")}
@@ -101,12 +101,12 @@ def c_fpscol():
         s = re.search(r'(?s)<td class="c-s[^"]*">(.*?)</td>', bare)
         if len(re.findall(r"<tr\b", r)) != 1:
             bad.append("%s: %d rows" % (t, len(re.findall(r"<tr\b", r))))
-        if s and re.search(r"\d+\.\d|fps|at 30\+", text(s.group(1))):
+        if s and re.search(r"\d+\.\d|fps|at \d+(\.\d+)?\+", text(s.group(1))):
             bad.append("%s: fps in the status cell %r" % (t, text(s.group(1))))
         if t in want:
             seen += 1
             ft = text(f.group(1)) if f else ""
-            if not re.match(r"\s*\d+\.\d\s+\d+% at 30\+", ft):
+            if not re.match(r"\s*\d+\.\d\s+\d+% at \d+(\.\d+)?\+", ft):
                 bad.append("%s: fps cell %r" % (t, ft))
         elif f and "not measured" not in text(f.group(1)):
             bad.append("%s: unmeasured but its fps cell reads %r" % (t, text(f.group(1))))

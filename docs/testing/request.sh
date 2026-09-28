@@ -5,7 +5,12 @@
 #   request.sh --who bump-agent --purpose "bump map baseline" \
 #              --suites "Bump map,Bump env lum" [--ref HEAD] [--runs 1] [--wait] \
 #              [--skip-tests "Suite::Test,..."] [--device nova|thor|desktop] \
-#              (--expect predictions/x.json | --no-expect "why not")
+#              (--expect predictions/x.json | --no-expect "why not") \
+#              [--issue 474[,525]]    # else the first #N in --purpose
+#
+# An issue labelled for the release (HAKUX_RELEASE_LABEL, default 0.5) queues
+# the request as 1-<epoch>-..., ahead of plain requests; see "release
+# priority" at the id below.
 #
 #   request.sh --who audio --purpose "baseline" --title "Galleon (USA).xiso.iso" \
 #              --seconds 90 --pull 'apu_monitor.s16le48k2ch.pcm*' \
@@ -103,6 +108,7 @@ AUDIO_CAPTURE=""; BASE_ISO=""; PERFLOG=""; ONLY_TESTS=""; PROGRAM="pgraph"
 ENV_VARS=()
 FRAMES_EVERY=0
 ROUTE=""; ROUTE_TEXT=""
+ISSUE=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --who) WHO="$2"; shift 2;;
@@ -158,6 +164,9 @@ while [ $# -gt 0 ]; do
         --expect) EXPECT="$2"; shift 2;;
         --no-expect) NO_EXPECT="$2"; shift 2;;
         --wait) WAIT=1; shift;;
+        # The issue(s) this request serves, for its release priority only
+        # (below, at the id). Without it, the first #N in --purpose.
+        --issue) ISSUE="${ISSUE:+$ISSUE,}$2"; shift 2;;
         *) echo "unknown option $1" >&2; exit 2;;
     esac
 done
@@ -704,7 +713,47 @@ fi
 # sorts after every 0-* probe and host-promoted 0-0-x-* head, and ahead of
 # every plain <epoch>-... request ('-' is 0x2d, below any digit) and every
 # z-* sweep. Readers of an id that want the epoch strip a leading "1-" first.
-ID="${HAKUX_RELEASE_PRIO:+1-}$(date +%s)-$WHO-$$"
+#
+# A LANE QUEUING DIRECTLY GETS IT TOO (2026-09-27). Only ab_run.sh and arms.sh
+# read the label, so a pilot or soak queued straight through here got a plain
+# id even for an issue labelled for the release: at 19:46 PDT eleven such
+# requests (#474, #525, #526, all 0.5 + fps-focus) sat 60-73 min on the Nova
+# behind arms queued up to 45 min later, until the host renamed them by hand.
+# So this reads the label itself, the way arms.sh's release_prio() does: the
+# issue is --issue (a list, "88,91"), else the first #N in --purpose; one
+# `gh api` read per issue; any one labelled is enough; a failed read is said
+# and the request queues at normal priority -- a label never refuses.
+#   HAKUX_RELEASE_PRIO=1        release priority, no read
+#   HAKUX_RELEASE_PRIO=0        plain id, no read
+#   HAKUX_RELEASE_PRIO= (set, empty)  plain id, no read: ab_run.sh and arms.sh
+#                               pass their own reader's answer this way
+#   unset                       read the label
+RELEASE_LABEL="${HAKUX_RELEASE_LABEL:-0.5}"
+PRIO=""
+if [ "${HAKUX_RELEASE_PRIO+set}" = set ]; then
+    case "$HAKUX_RELEASE_PRIO" in
+        ""|0) PRIO_WHY="plain: HAKUX_RELEASE_PRIO='$HAKUX_RELEASE_PRIO' set by the caller" ;;
+        *) PRIO=1; PRIO_WHY="release: HAKUX_RELEASE_PRIO=$HAKUX_RELEASE_PRIO set by the caller" ;;
+    esac
+else
+    PRIO_ISSUES="$ISSUE"
+    [ -n "$PRIO_ISSUES" ] || PRIO_ISSUES=$(printf '%s' "$PURPOSE" | grep -o '#[0-9][0-9]*' | head -1)
+    if [ -z "$PRIO_ISSUES" ]; then
+        PRIO_WHY="plain: no --issue and no #N in --purpose"
+    else
+        PRIO_WHY="plain: '$RELEASE_LABEL' not on $PRIO_ISSUES"
+        for n in $(printf '%s' "$PRIO_ISSUES" | tr ',#' '  '); do
+            [[ "$n" =~ ^[0-9]+$ ]] || continue
+            if ! labels=$(gh api "repos/${GH_REPO:-jreinach-alt/hakuX}/issues/$n" --jq '.labels[].name' 2>/dev/null); then
+                echo "release priority: could not read #$n's labels; queueing at normal priority" >&2
+                PRIO_WHY="plain: #$n's labels unreadable"; continue
+            fi
+            grep -qxF -- "$RELEASE_LABEL" <<<"$labels" && { PRIO=1; PRIO_WHY="release: '$RELEASE_LABEL' on #$n"; break; }
+        done
+    fi
+fi
+echo "priority $PRIO_WHY" >&2
+ID="${PRIO:+1-}$(date +%s)-$WHO-$$"
 mkdir -p "$D/queue"
 # Written to a dotfile and renamed into place, because the dispatcher globs
 # `queue/*.req` and a claim is an atomic rename of whatever it finds. Writing

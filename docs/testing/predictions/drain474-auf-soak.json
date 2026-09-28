@@ -1,0 +1,28 @@
+{
+  "registered_utc": "2026-09-27T22:51:34Z",
+  "who": "lane.drain474",
+  "issue": "474",
+  "title": "4541000D-007_Agent_Under_Fire.xiso.iso",
+  "device": "nova",
+  "seconds": 420,
+  "route": "survey",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "3b5c577e9c348a814cc114457c608ece3bb33801",
+  "b_ref": "73a4126325fedd089ff3cfbdd55024c15b04ba19",
+  "judge": "python3 docs/lanes/slowdown462/txwwin.py <A dir> 255 411; the same on <B dir>; gfps; play shots; cooling devices",
+  "prediction": "SAME-DEVICE A/B, two 420 s perflog MAX soaks on the survey route, one per arm, window 255-411 s. A is 3b5c577e9c (master 09fdca3ba1 plus PR #512's perflog-only txw[] probe on pgraph_vk_bind_textures). B is 73a4126325: A with the flush_all_frames in create_texture's surface-to-texture rebind moved from ahead of can_direct_bind into the copy branch, so a direct bind no longer drains the frames in flight. The probe is the same in both arms, so faf/bs/cp read the same counters. Judge: python3 docs/lanes/slowdown462/txwwin.py <result dir> 255 411 on each arm; gfps from the same logcat; the route's play shots in the window by eye; the cooling devices (thermal-pause, #507) read in both arms before a low or alternating fps is trusted. Premise from lane.slowdown462 (run 1-1790543757-slowdown462-3565156, ref 26936d9639, AUF, Nova, 299-420 s): faf 0.27 calls/flip at 4.47 ms/flip, bs 1.00/flip, cp 0, up 0, 16.6 fps. With the drain gone from the direct path the frame loses at most faf's 4.47 ms of 60.2, which bounds B at about 18.0 fps. A bound, not a value: the drain also absorbed GPU work the next wait now sees.",
+  "legs": {
+    "M0 (instrument)": ">= 10 txw lines in 255-411 s in each arm, all parse, flips > 0, and the play shots show level play in both. Otherwise that arm is VOID, not a zero.",
+    "M1 (thermal)": "no thermal-pause of cpu3-7 in the window in either arm (#507). A paused arm is VOID for the fps legs P1/P2; F1 and F2 still read.",
+    "F2 (no corruption; the falsifier)": "B's play shots show no stale, torn or black textured quads that A's do not, and B's logcat has no validation error, device-lost or crash. FAILS in the world where an in-flight frame still read the texture node through a descriptor the drain was protecting, or the zeta layout transition raced a prior copy's read; then the move is wrong and the condition must be narrowed, not dropped.",
+    "P0 (premise, re-measured in A)": "A's faf is between 0.15 and 0.40 calls/flip and A's cp is <= 0.02 calls/flip (the drains ran ahead of direct binds). FAILS if the scene no longer has this shape; then P1/P2 are not about this lever.",
+    "F1 (the mover)": "B's faf <= 0.02 calls/flip, and B's bs within 25% of A's (the direct binds still happen; only their drain is gone).",
+    "P1 (fps, not worse)": "B's gfps median in the window >= A's minus 0.5.",
+    "P2 (fps, bounded)": "B's gfps <= 1000 / (A's ms/flip - A's faf ms/flip) + 0.5 (about 18.0 on the premise). A B above the bound means the gain is not this lever's and is read as noise or scene drift."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off txw and gfps lines, and the shots by eye."
+}
