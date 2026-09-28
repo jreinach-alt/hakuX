@@ -347,6 +347,73 @@ hysteresis). A fall that clears within one or two bins is not the pause.
   coarse. A 240 s benchmark has about five readings in its window. Compare
   J per frame between runs of at least 5 min, and read `power.samples`.
 
+### Session 6 (2026-09-27 19:05 PDT): the device-defaults regimen (branch `lane/thermal507-default`)
+
+- Why session 5 did not finish: it ended correctly, waiting on #523's CI
+  and audit pass 2 (both came back green and clean). The two addenda of
+  18:31 and 18:37 PDT (a `default` regimen, and the owner's ruling that a
+  pause at the defaults fails the run) arrived after it started, so it
+  never read them. #523 is left as it is, fold-ready; this work is stacked
+  on its head as a second PR.
+- `soak_title.sh PERF_REGIMEN=default`: performance_mode 0 and fan_mode 4
+  (SMART) before `am start`, REST after. These are the settings library's
+  defaults on both handhelds (devices.sh). They equal today's REST values,
+  but are a separate constant: REST is where a handheld is left, and may
+  move; `default` is where a player who never opens the OEM menu plays.
+  `perf_regimen.json` gains `default` (the modes asked for) and `display`
+  {start, end}: min/peak_refresh_rate, screen_brightness and its mode,
+  dual_screen_display_mode, and `displays` {id: state} from `dumpsys
+  display`'s `mBaseDisplayInfo=` lines (the Thor's second screen is one).
+  One adb call each, after the modes are set and after `soak end`, for
+  every regimen.
+- **Not yet run on a device.** The `mBaseDisplayInfo=DisplayInfo{...,
+  displayId N, ..., state ON, ...}` shape is AOSP's toString, unverified on
+  these firmwares. The first `default` soak is the check: `display.start
+  .displays` must hold two ids on the Thor. If it is empty, the line
+  differs here.
+- `title_verdict.py`: with `perf_regimen.json` `regimen: default`, a pause
+  from the run's start on (in or out of the window; not one the cool-down
+  gate waited out) is not a void. `thermal.failed_sustained` is true, the
+  failure `thermal: sustained play failed at the device's defaults -- <the
+  episode, from the start>` is listed, so no rating candidate, and the fps
+  windows stand. At MAX, and with no perf_regimen.json, the pause voids as
+  before. `thermal-unread` voids in both.
+- selftest `99-default-regimen.sh`, 7 legs, each with the world it fails
+  in. Three mutants on a copy (no `default` in the regimen case, no end
+  display read, a `default` pause voided) turn soak, display and fails red.
+  84-perf-regimen (21), 99-thermal-pause (15), 99-power-per-frame (13) and
+  99-display-covered (23) still pass.
+- **Step 2 (30-min MAX vs `default` soaks on the Thor: Crimson, GTA SA, DOA
+  Ultimate or another GPU-heavy title on the Thor) is not started.** It
+  waits until #523 and this PR have folded and the dispatcher tree carries
+  them (`git -C /home/justin/hakuX merge-base --is-ancestor <fold sha>
+  HEAD`): a `default` request run on the current dispatcher tree would read
+  as `max` (its case sends an unknown regimen to MAX). Pilot first: one
+  pair (Crimson, MAX and `default`), reviewed, then the rest. Report per
+  run: fps median and p10, minutes 20-30 over 2-10 median, seconds to the
+  first mitigation event, max xo-therm, net_w, j_per_frame, battery hours,
+  and the minute xo-therm plateaus at the defaults.
+
+### #533 audit pass 1 (2026-09-27, attempt 2)
+
+Attempt 1 did finish: #533 was marked ready and its `waiting:` comment
+posted. The audit then pushed pass 1 (LOWs only) onto the branch, and the
+lane was resumed to answer it.
+
+- L1 (the display reads can add up to ADB_QUICK_TIMEOUT to a run): accepted.
+  The delay is bounded, and nothing is scored wrong.
+- L2: `displays` is now `{}` when adb answered the settings but no
+  `mBaseDisplayInfo=` line matched. On the first `default` soak, `{}` means
+  this firmware prints a different line. A missing key means adb gave nothing.
+- L3: `thermal_state.first_episode()` now holds the one copy of the
+  "not the cool-down's episode" filter. Both `first_pause()` and the
+  verdict's sustained failure read it.
+- origin/master merged in (#523 folded as 1577a31604). 99-default-regimen
+  (7), 99-power-per-frame (13), 99-thermal-pause (15), 89-title-verdict (36),
+  99-display-covered (23) and 84-perf-regimen (21) pass. 89's "treat one adb
+  failure as an exit" mutant survived once. It was caught in two reruns: a
+  timing flake that does not touch these lines.
+
 ## Existing Thor title benchmarks (brief item 4)
 
 Posted on #507 (comment 5859894811). 122 Thor title soaks of the last 48 h

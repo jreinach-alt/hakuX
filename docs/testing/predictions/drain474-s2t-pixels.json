@@ -1,0 +1,34 @@
+{
+  "registered_utc": "2026-09-27T22:50:47Z",
+  "who": "lane.drain474",
+  "issue": "474",
+  "prediction": "Pixel arm for moving the flush_all_frames in create_texture's surface-to-texture rebind (vk/texture.c) from ahead of can_direct_bind into the copy branch. A is 3b5c577e9c (master 09fdca3ba1 plus PR #512's perflog-only txw[] probe; its default build is master's). B is 73a4126325 (A plus the move). Prediction: 0 captures better and 0 worse in every suite here, all of which bind a surface as a texture (render target, render update in place, framebuffer blit, antialiasing, shadow comparator, surface format, colour/zeta overlap); a capture inside its run-to-run band is noise, not movement. Why: a direct bind writes nothing into the texture node's image (bind_surface_as_texture and bind_zeta_surface_as_texture barrier the surface's own image in queue order and set texture->draw_time), in-flight frames keep the descriptors they were recorded with (pushed, or a ring set reused only after its own drain), and the copy branch keeps its drain. The cache-miss bind and the same-draw_time rebind already bind directly with no drain. Falsifier: the world where an in-flight frame read the node through a descriptor changed under it, or the zeta layout transition raced a previous copy's read of the node. That world shows a capture here moving (a stale or torn region, typically a whole quad of the previous render), or a validation error or device-lost in run1.log. Rows scored unreadable in scores1.tsv are VOID, not exact, and a UtilAcceptVsock in run1.log voids that arm.",
+  "a_ref": "3b5c577e9c",
+  "b_ref": "73a4126325",
+  "must_not_move": [
+    "Texture_render_target/*",
+    "Texture_render_update_in_place/*",
+    "Texture_Framebuffer_Blit/*",
+    "Antialiasing_tests/*",
+    "Texture_shadow_comparator/*",
+    "Surface_format/*",
+    "Color_zeta_overlap/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Antialiasing tests",
+      "Color zeta overlap",
+      "Surface format",
+      "Texture Framebuffer Blit",
+      "Texture render target",
+      "Texture render update in place",
+      "Texture shadow comparator"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
