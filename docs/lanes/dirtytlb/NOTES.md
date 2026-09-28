@@ -147,8 +147,9 @@ Requeued as `1-1790619096-lane.dirtytlb-936387` (queue.log,
 requeue_crimson_b.sh). Crimson A (479870, master) is valid: gfps 29,
 Tq 1161, M 12028, j_per_frame 0.193 (title_verdict.py; 131 s of gameplay).
 
-**Blinx pair (Nova, A 480001 / B 479942): read.** `read-blinx.txt`
-(rdc_read.py --pair) and `read-blinx-pair461.txt` (K1).
+**Blinx pair (Nova, A 480001 / B 479942): read.** By `rdc_read.py --pair 480001 479942` and, for K1,
+`docs/lanes/remote/pair461_read.py --pair` (outputs not committed: `*.txt`
+is ignored; rerun them on the result dirs).
 
 | per flip (B, 1620 flips in the window) | calls | us | pages | hits | us/call |
 |---|---|---|---|---|---|
@@ -176,7 +177,8 @@ Tq 1161, M 12028, j_per_frame 0.193 (title_verdict.py; 131 s of gameplay).
   scene only.
 
 **The pixel arm (dirtytlb-counter-pixels.json): FAIL as registered, 1 of
-337.** Read by hand with ab_compare.py (`read-pixels.txt`); no `[job.arms]`
+337.** Read by hand with `ab_compare.py --a <base-88080> --b <fix-88112>
+--expect` the prediction; no `[job.arms]`
 comment had been posted. No `unreadable` rows, no UtilAcceptVsock in either
 run1.log. 336 captures byte-identical. The one move:
 `Texture_signed_component_tests/txt_A8R8G8B8_ADD`, A 168,960
