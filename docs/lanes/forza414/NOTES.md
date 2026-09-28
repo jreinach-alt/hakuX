@@ -1287,3 +1287,29 @@ at priority 1, judged by `forza414-clrskip-soak.json` (refs fa56a26f1f -> b991fb
 **Waiting (session end, 2026-09-28 ~09:55 PDT):** on that pair. On resume: judge
 forza414-clrskip-soak by hand (the arms job skips title soaks), post fps and J/frame on #414 and
 #474, merge origin/master, then `gh pr ready 543` and release vk/draw.c to lane.pacing.
+
+## 41. Resume 2026-09-28 (attempt 3, second resume): arm B aborted, the pair re-queued
+
+**Why the previous session did not finish.** It ended waiting on the Forza hunk-5 pair (section 40),
+which was correct. That pair has finished, but it cannot be judged:
+
+- A, `1-1790613195-forza414-3088454` (fa56a26f1f): valid. The race was reached, with 82 `[sdcall]`
+  lines and 710 hakuX-stall lines, no thermal pause, and a hottest zone of 95.0 C.
+- B, `1-1790613195-forza414-3088504` (b991fb4c21): **aborted before its first input.** The run.log
+  reads `ROUTE ABORTED: not foreground (unknown)`: the Thor had no focused window on display 0, and
+  both displays were OFF at the start. Its logcat is 5 lines, soak start to soak end in 45 s. This
+  is a harness and focus failure, not a result of the code under test: no input was sent and hakuX
+  never drew.
+
+So **forza414-clrskip-soak is VOID on M0** for this pair. Nothing is judged from A alone. A
+one-arm comparison against a different session's B would read the thermal state, not the hunk.
+
+**Re-queued as a fresh adjacent pair** on the Thor at priority 1, with the same refs and the same
+prediction: `1-1790619761-forza414-1092424` (A, fa56a26f1f) and `1-1790619761-forza414-1092523`
+(B, b991fb4c21). Together that is about 17 min of device time.
+
+**Waiting (session end, 2026-09-28 ~11:25 PDT):** on that pair. On resume, judge
+forza414-clrskip-soak by hand (P1 clrskip >= 0.7 per frame, P2 su_upl <= 2.2 per frame, P3 surfupd
+fin B/A <= 0.85, over t = 125-240 s), post fps and J/frame on #414 and #474, merge origin/master,
+then `gh pr ready 543` and release vk/draw.c to lane.pacing. draw.c stays on this row until the
+verdict, because hunk 5's coverage rule lives there.
