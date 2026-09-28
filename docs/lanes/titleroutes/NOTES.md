@@ -1494,3 +1494,37 @@ Next titles, on the Thor once it is cool and running/ is empty for it: 25 to
 Life, Call of Duty 3, Midnight Club 3: DUB Edition, Tork: Prehistoric Punk,
 Blinx 2. After those: Bruce Lee (a load inside the scored window), Galleon,
 GoldenEye RA (returning route) and Burnout Revenge (the profile loop).
+
+### Session 31: 2026-09-28 05:48 PDT, no device work
+
+Why session 30 did not finish: it did. It pushed its NOTES, PR #534 folded,
+and it ended with every benchmark queued and the Thor on cool-down. There
+was nothing to drive, so no device work was lost. The harness resumed it as
+attempt 2 because the lane had no open PR.
+
+State at 05:48 PDT:
+- Both handhelds are under `battery-hostops` holds: the Nova since 01:10
+  (14%), the Thor since 04:49 (11%, retagged from cooldown-devwatch). Each
+  lifts at 80%, which takes hours on the 500 mA port. No held nav session is
+  possible.
+- running/ is empty. None of my eight benchmarks has run: Azurik 2862460,
+  D&D Heroes 2862610, Nightfire 373432, Burnout 3 374056, Kabuki (nova)
+  374601, RalliSport 2 1417504, Spikeout 2191714 and PGR2 3006458 are all
+  still in queue/. There are no new results to add to the #397 table.
+- Merged origin/master (fast-forward to 9d777502fa).
+
+Next titles are unchanged from session 30: 25 to Life, Call of Duty 3,
+Midnight Club 3: DUB Edition, Tork: Prehistoric Punk, Blinx 2, then Bruce
+Lee, Galleon, GoldenEye RA (returning) and Burnout Revenge.
+
+### Session 32: 2026-09-28 06:05 PDT, no device work
+
+Why session 31 did not finish: it posted its `waiting:` comment and stopped
+with PR #550 still a draft. A draft is skipped by board, fleet and fold, so
+the NOTES could not land. The waiting itself was right; the draft was not.
+This session marks #550 ready.
+
+State at 06:05 PDT is unchanged from session 31: both handhelds under
+`battery-hostops` holds (Nova since 01:10, Thor since 04:49; each lifts at
+80%), running/ empty, and all eight benchmarks still in queue/. Next titles
+are unchanged.
