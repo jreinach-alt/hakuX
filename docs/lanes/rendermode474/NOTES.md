@@ -245,6 +245,16 @@ Not re-queued: this is a visual leg, and the brief says to report
 rather than gate. #527 (the ZPASS value) is where a real difference
 would be chased.
 
+### Waiting (2026-09-28 ~15:35Z, session 3)
+
+Waiting on the arms job's `[job.arms]` verdict for
+`rendermode474-pgraph-onedev.json` (committed in `70a2fd94b4`), and on
+CI for the branch head. The numbers are posted on #474 and #462. When
+a PASS supersedes the thor/nova FAIL, the label leaves `regressed` and
+the PR is marked ready. Do not re-run the soaks. If the one-device pair
+FAILS, read which captures moved against the 8-capture noise set of the
+by-hand thor pair before calling it a regression.
+
 ## Waiting (2026-09-28 ~02:00Z, attempt 1)
 
 Waiting on three things: the pilot (A `-2188053`, B `-2188203`), CI on
