@@ -354,7 +354,9 @@ Three thresholds in the registered files were wrong. They are reported as writte
 - **P0's 0.2 was a guess.** A flushes 0.13-0.15 times a flip and its list is pruned from 199 back
   to 16-86. The leg's failing world was "A does not flush either", and that is not what A shows.
 
-**The download time did not move with the fix.** All `[sdcall]` sites together read a median of
+**The download time did not move with the fix.** The range completion alone reads 2.4-7.8 ms a
+frame on the fix (median 6.3, 98 lines) and 3.5-5.8 on master's cut run (median 5.4, 16 lines).
+All `[sdcall]` sites together read a median of
 18.6 ms/frame on the fix (100 lines) and 20.1 on master's cut run (17 lines). `why=` does change: master reads
 `new120/inv0`, the fix `new0/inv120`. With the stamp cleared, the two surfaces a frame come back
 from the invalid list instead of being created new. That is the recycling the list exists for, and
