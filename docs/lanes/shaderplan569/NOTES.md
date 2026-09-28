@@ -89,6 +89,39 @@ The expert also pointed at a zero-rebuild lever this lane had not: the `env_vars
 `setenv`'d at startup (`xemu_android.cpp:796-806`, read), so `IR3_SHADER_DEBUG`, `TU_DEBUG` and
 `MESA_SHADER_CACHE_DIR` can be set for a run without a new apk.
 
+## 5. Options
+
+Bounds are from pipeline413 §7-8 (upper bounds, excess / miss) and doa413c's cold/warm pair.
+"Excess" per event: title-stage load 10.8-11.6 s (24-26 misses), menu -> fight load <= 14.8 s
+(19 misses), mid-fight hitch <= 9.9 s (8 misses). Holders are from `origin/board:territory.toml`
+(wave 277): `vk/draw.c` lane.pacing (after lane.forza414 released it); `vk/shaders.c`,
+`vk/renderer.c`, `vk/renderer.h` lane.forza414; `hw/xbox/nv2a/debug.h` lane.remote;
+`xemu_android.cpp` lines 955-965 and `SettingsActivity.kt` lent to lane.async413;
+`vk/compile_worker.c`, `vk/glsl.c`, `pgraph/profile.c`, `glsl/psh.c`, `glsl/vsh-prog.c`
+unclaimed; `vk/instance.c`, `glsl/vsh.c`, `glsl/vsh-ff.c`, `glsl/geom.c` in `[free]`.
+
+**Idle capacity, what is known.** Gameplay thread loads: vCPU ~85%, PFIFO ~48%, render ~4%,
+compile worker "small" (`docs/investigations/frame-pacing-and-parallelism.md:97-105`; that table
+cites no result dir, so treat it as indicative). In DOA's cold stall: PFIFO 96.7-98.1% on-CPU,
+vCPU 78-99% but 91% of it the guest's idle loop, every other thread under 10% (doa413c
+NOTES:151-159, 192). So during a stall about two cores are busy, one of them doing nothing
+useful, and five to six are idle [inferred: 8 cores minus the threads measured busy]. Where the
+idle ones are: on the Thor, fast records put the vCPU on cpu7 92-99% and the other emulator
+threads on cpu3-6 (gta482 NOTES:336-341); per-core busy % during play is **unmeasured** for
+both handhelds. Constraint: the Thor's thermal mitigation pauses cpu3-7 a few minutes into a MAX
+run (#507; gta482 NOTES:400-437), so a pool must work on cpu0-2 as well.
+
+| | what | bound (DOA, per event) | visual effect | files (holder) | effort / risk |
+|---|---|---|---|---|---|
+| **(a) parallel compile on idle cores** | a pool of 3-4 workers, pipeline jobs first, condvar not spin, `wait_idle` counting completions | today, sync mode compiles on demand, one at a time, so a pool alone saves **~0**: nothing asks for the second pipeline until the first is built. With something that submits misses early ((b), (c), or a non-blocking pending path), it saves <= excess x (1 - 1/N): **8.7 / 11.1 / 7.4 s at N=4** (pipeline413 §8) | none by itself | `compile_worker.c` (unclaimed), `renderer.h` (forza414), `draw.c:4342-4352` (pacing) | small / low; thermal on the Thor |
+| **(b) predictive compile** | compile a key before the draw that needs it | lead time from state writes alone is **near zero**: NV2A state methods sit just before their draw in the same pushbuffer run. The only lead is pushbuffer the puller has not reached: during DOA's stall a submission waited up to 425-444 ms from publication to consumption (`fifoskew` drain max, doa413c NOTES:64-68, :188). A lookahead that decodes that backlog into a shadow register file could find the next draws' keys and feed (a). Bound = (a)'s, only for misses inside the backlog; the backlog's draw count is unmeasured | none | `pfifo.c`/`pgraph.c` (a shadow decoder), `compile_worker.c`, the key builders in `glsl/*.c` | high / medium: a second decoder of every state method is a second copy that can drift from the first |
+| **(c) warm pipelines, not modules; per-title key sets** | persist **pipeline** keys; at boot, build them on the pool into the VkPipelineCache in the background; keep `spv_cache/` and the key files across a driver change (`renderer.c:125-146` wipes them); save the pipeline cache from the worker and on pause, not only at teardown; optionally ship per-title key sets built from our own soaks | a replay of something already seen: **the load drops to its warm floor**. doa413c: 12.9 s cold vs 3.1 s warm, ~9.8 s saved on that load. First-ever sight of a shader: **0** | none | `shaders.c`, `renderer.c`, `renderer.h` (forza414), `draw.c` (pacing), `compile_worker.c` | medium / low; a pipeline key holds `VkRenderPass` handles, rebuilt from `RenderPassState` at boot |
+| **(d) ubershader (Dolphin hybrid)** | an interpreter vertex + fragment shader driven by uniforms, drawn while the specialised pipeline compiles, then swapped | removes the whole excess on a cold cache, the only option that does so **with no dropped draw**: <= 10.8 / 14.8 / 9.9 s | none if exact; any divergence from the specialised shader shows as a pop when it swaps in | a new generator next to `glsl/psh.c` (4,610 lines of specialised semantics to mirror) and `glsl/vsh-prog.c`; `draw.c` (pacing) | **very high** / high: exactness against the goldens is the whole difficulty. Fps cost on the Adreno 740 is an estimate: fragment 3-6x ALU plus register pressure (expert R11, (C)); at the NV2A's 640x480 the A740 has room [inferred, unmeasured] |
+| **(e) fewer pipelines** | GPL (four libraries, fast link), more dynamic state, one pipeline layout, dedup float fields out of the key | dedup: <= (dpm - dsm) x cost = **1.5 s / 0 / 0** (pipeline413 §8). GPL: 1/2-2/3 of each miss's ir3 work **if** Turnip recompiles unchanged partner stages (unverified; P1 decides) | none (fast-linked pipelines may run marginally slower until an LTO swap) | `draw.c` (pacing), `compile_worker.c`, `instance.c` (free), `shaders.c` (forza414) | GPL high / medium; dynamic state low / low |
+| **(f) skip while compiling (the setting)** | as built: skips only while the cheap half runs, then waits on the Turnip half | as built: **<= ~1% of the stall** (glslang's share, doa413c). Extended to skip a pending *pipeline* too: <= the whole excess | missing geometry for the frames each compile takes (x 400-1240 ms per pipeline, upper bounds); whether any stays missing is section 6 | `draw.c` (pacing), `compile_worker.c` | small / the visual cost is the owner's decision |
+| **(g) per-title** | per-title key sets (part of (c)); per-title `async_compile` already exists (`PerGameSettingsActivity.kt:104`) | as (c) / (f), per title | as (c) / (f) | as (c) | the general fixes above cover every title; per-title only for titles where (f)'s cost is shown invisible |
+| **(h) cheaper shaders** (not in the brief; from section 2 and R1') | find why one shader costs ~400 ms in Turnip, then change the GLSL generators so Turnip's NIR passes do less | **scales every other bound**: the excess is linear in per-shader cost (pipeline413 §8 row 4). A 4x cheaper shader takes the fight load's <= 14.8 s to <= 3.7 s, with no other change | none if the generated code is equivalent (the goldens check it) | `glsl/psh.c`, `glsl/vsh-prog.c` (unclaimed), `glsl/vsh.c`, `vsh-ff.c`, `geom.c` (free), `vk/glsl.c` | unknown until measured / low for pixels (goldens) |
+
 ## 6. The visual-cost question: "permanently missing textures"
 
 **Where the claim comes from.** `git blame` puts the comment at `vk/draw.c:4343-4348` in
