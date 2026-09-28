@@ -559,13 +559,11 @@ files = []
 retired_utc = "2026-09-28T16:55:00Z"
 note = "RETIRED (job.board 2026-09-28T16:55Z): PR #562 carries `folded` and its head (b970cee9f5) is an ancestor of origin/master (folded as 64de24698e: 'fleet.py: never ask a standing row to release at ready'), unit gone. Files RELEASED to [free]: docs/testing/fleet.py, docs/testing/jobs/selftest.d/99-fleet-standing-release.sh, docs/lanes/fleetstanding/**. PRIOR: CREATED BY HOSTOPS 2026-09-28 09:36 PDT (harness defect, no issue): fleet.py's release-at-ready check asks a STANDING row (lane.xbox, no unit) to release all its files whenever one of its PRs goes ready (#561, 09:24 PDT, touched only targets.toml). fleet.py from [free]. Brief: briefs/fleetstanding.md."
 
-[lane.fanduty507]
-issues = ["507"]
-files = ["docs/testing/dispatcher.sh", "docs/testing/soak_title.sh", "docs/testing/devices.sh", "docs/testing/thermal_state.py", "docs/testing/jobs/selftest.d/99-fan-duty.sh", "docs/testing/jobs/selftest.d/99-fan-mode.sh", "docs/lanes/fanduty507/**"]
-released = ["docs/testing/dispatcher.sh", "docs/testing/soak_title.sh", "docs/testing/devices.sh", "docs/testing/thermal_state.py", "docs/testing/jobs/selftest.d/99-fan-duty.sh", "docs/testing/jobs/selftest.d/99-fan-mode.sh", "docs/lanes/fanduty507/**"]
-released_at_ready = 571
-note = "REWORK (lane.local 2026-09-28T18:45Z): PR #563 CLOSED unmerged on the owner's order (fan: only user-selectable modes; no raw duty writes). Files RE-ACQUIRED for a new PR on lane/fanduty507-mode: a per-request FAN_MODE limited to the vendor app's options (Thor: Quiet/Balanced/Smart/Sport) plus Smart's user curve as the app stores it; brief addendum 11:40 PDT. || CREATED BY HOSTOPS 2026-09-28 09:45 PDT: a per-request fan duty for soaks, which #507 Part D.3 (lane.sustain507, PR #547) is blocked on (its 15:36Z report: the duty node is writable, CUSTOM is a fixed 25000). dispatcher.sh, soak_title.sh, thermal_state.py from [free]; devices.sh was unclaimed. Serve path: dispatcher update window after the fold. Brief: briefs/fanduty507.md. RELEASED AT READY (job.board 2026-09-28T19:41Z): PR #571 out of draft, CI green, unit gone. All files RELEASED; the next lane merges master (or lane/fanduty507-mode if #571 has not folded) and re-runs its arm before marking ready."
-
+[retired.fanduty507]
+issues = []
+files = []
+retired_utc = "2026-09-28T20:15:00Z"
+note = "RETIRED (hostops 2026-09-28T20:15Z): PR #571 (per-request FAN_MODE, user-selectable modes only) folded; the owner ruled the fan out as a lever (#507, 20:00Z), lane.local withdrew its Nova proofs; unit gone, nothing queued. FAN_MODE stays as an A/B control. Files to [free]. || PRIOR: REWORK (lane.local 2026-09-28T18:45Z): PR #563 CLOSED unmerged on the owner's order (fan: only user-selectable modes; no raw duty writes). Files RE-ACQUIRED for a new PR on lane/fanduty507-mode: a per-request FAN_MODE limited to the vendor app's options (Thor: Quiet/Balanced/Smart/Sport) plus Smart's user curve as the app stores it; brief addendum 11:40 PDT. || CREATED BY HOSTOPS 2026-09-28 09:45 PDT: a per-request fan duty for soaks, which #507 Part D.3 (lane.sustain507, PR #547) is blocked on (its 15:36Z report: the duty node is writable, CUSTOM is a fixed 25000). dispatcher.sh, soak_title.s"
 [retired.shaderplan569]
 issues = []
 retired_utc = "2026-09-28T19:00:00Z"
@@ -598,6 +596,8 @@ note = "STARTED (lane.local 2026-09-28T20:00Z), briefs/uberspike569.md: #569 P6 
 [lane.rankrule]
 issues = ["569"]
 files = ["docs/testing/jobs/roles/lane.md", "docs/testing/jobs/roles/board.md", "docs/lanes/rankrule/**"]
+released = ["docs/testing/jobs/roles/lane.md", "docs/testing/jobs/roles/board.md", "docs/lanes/rankrule/**"]
+released_at_ready = 584
 note = "STARTED (lane.local 2026-09-28T20:05Z), briefs/rankrule.md: the owner's (PM) ranking rule, 2026-09-28 -- rank options by probability x size of the win, lead with the approach that fits the tech, cheap steps first only when they decide something -- added to roles/lane.md and roles/board.md. Docs only. roles/lane.md from [free]; roles/board.md was unlisted."
 
 [lane.energymap507]
