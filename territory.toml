@@ -566,7 +566,7 @@ note = "RETIRED (hostops 2026-09-28T19:00Z): PR #570 folded as d0d09361cf (plan 
 [lane.shaderfb569]
 issues = ["569"]
 files = ["hw/xbox/nv2a/pgraph/vk/compile_worker.c", "hw/xbox/nv2a/pgraph/vk/glsl.c", "hw/xbox/nv2a/pgraph/profile.c", "hw/xbox/nv2a/debug.h", "hw/xbox/nv2a/pgraph/vk/draw.c", "docs/lanes/shaderfb569/**", "docs/testing/predictions/shaderfb569-*.json"]
-note = "STARTED (lane.local 2026-09-28T18:50Z), briefs/shaderfb569.md: #569 plan item P1 (PR #570): VkPipelineCreationFeedback per stage at both create sites, glslang and cache-save timers, a key-diff class counter, on the [shd413] line; legs C1-C4; one cold DOA soak on the Nova after the top-up. compile_worker.c, vk/glsl.c, profile.c from [free]; debug.h (shader_stats struct only) LENT from lane.remote; vk/draw.c (create sites + cache save only) SUB-LENT from lane.pacing."
+note = "SHARED (lane.local 2026-09-28T20:00Z): vk/draw.c regions init_pipeline_key (~2267-2281) and the fragment uniform upload path LENT to [lane.uberspike569]; this lane keeps its create sites and the cache save. || STARTED (lane.local 2026-09-28T18:50Z), briefs/shaderfb569.md: #569 plan item P1 (PR #570): VkPipelineCreationFeedback per stage at both create sites, glslang and cache-save timers, a key-diff class counter, on the [shd413] line; legs C1-C4; one cold DOA soak on the Nova after the top-up. compile_worker.c, vk/glsl.c, profile.c from [free]; debug.h (shader_stats struct only) LENT from lane.remote; vk/draw.c (create sites + cache save only) SUB-LENT from lane.pacing."
 
 [lane.turnipcost569]
 issues = ["569"]
@@ -577,6 +577,11 @@ note = "STARTED (lane.local 2026-09-28T18:50Z), briefs/turnipcost569.md: #569 pl
 issues = ["569"]
 files = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/lanes/litcompile569/**", "docs/testing/predictions/litcompile569-*.json"]
 note = "STARTED (lane.local 2026-09-28T19:50Z), briefs/litcompile569.md: #569 P2 phase B1 (PR #573 section 6): rewrite the lighting unit helpers (vsh-ff.c:128-283) loop-free and bit-exact so Turnip compiles lit pipelines 1.9-5.8x faster; gates: CPU bit-exactness with mutants, host compile factor, full-sweep pixel-inert arms, then a cold DOA dpc_ms soak once P1 (PR #574) lands. vsh-ff.c from [free]."
+
+[lane.uberspike569]
+issues = ["569"]
+files = ["hw/xbox/nv2a/pgraph/glsl/psh-uber.c", "hw/xbox/nv2a/pgraph/glsl/psh-uber.h", "hw/xbox/nv2a/pgraph/glsl/meson.build", "hw/xbox/nv2a/pgraph/vk/shaders.c", "hw/xbox/nv2a/pgraph/vk/renderer.h", "hw/xbox/nv2a/pgraph/vk/draw.c", "docs/lanes/uberspike569/**", "docs/testing/predictions/uberspike569-*.json"]
+note = "STARTED (lane.local 2026-09-28T20:00Z), briefs/uberspike569.md: #569 P6 on the owner's ask ('most interested in the Dolphin style' ubershader): a fragment-side combiner interpreter behind HAKUX_PSH_UBER=1 (default OFF), legs E (per-capture exactness vs the specialised path), P (fps cost forced on a DOA fight, Nova), C (its own compile cost), then a verdict on building the hybrid. vk/shaders.c and vk/renderer.h released by forza414; vk/draw.c LENT regions only (init_pipeline_key ~2267-2281 and the fragment uniform upload path) -- lane.shaderfb569 holds its create sites and cache save."
 
 [free]
 # CLAIMED (lane.local 2026-09-28T15:00:26Z): android/app/src/main/cpp/CMakeLists.txt -> lane.remote (#557 thermal governor core); thermal_governor.c/.h are new.
