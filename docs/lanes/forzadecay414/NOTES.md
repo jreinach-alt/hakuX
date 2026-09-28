@@ -126,7 +126,7 @@ vk/surface.c: make "in flight" a submission count rather than a slot index (stam
 every surface stamped with a slot when that slot's fence is waited. Either keeps #517's saving.
 Putting the flush back would undo #517.
 
-## 4. The instrument: clocks in every thermal sample (blocked on #571)
+## 4. The instrument: clocks in every thermal sample (done in attempt 3, PR #588: section 7)
 
 `docs/testing/thermal_state.py` is in lane.fanduty507's PR #571, which is open (ready, not folded).
 Per the brief, it is not edited before then. Board request:
@@ -212,6 +212,31 @@ then `queue_fix.sh auf`. The pixel file is the arms job's to queue.
 after the owner's top-up) and on the arms job's pixel verdict. The thermal_state.py clock instrument
 (section 4) is still ungranted on the board: #571 folded (30695ba1a9), and the file goes on its own
 branch once granted.
+
+## 7. Attempt 3: the clock instrument (PR #588)
+
+**Why attempt 2 did not finish.** It finished in a correct wait. The four Nova soaks and the arms
+job's pixel pair (`1-1790625714-arms-forzadecay414-base-3793108`, `-fix-3793166`, queued by the
+arms job at 13:01 PDT) are all behind the Nova's battery hold, which lifts after the owner's
+top-up at about 18:00 PDT. The session was resumed because hostops granted `thermal_state.py`
+at 13:16 PDT, not because any result had arrived. The arms job's AUF skip (20:01Z) is expected.
+That file is hand-read, and `queue_fix.sh auf` queues it after the pilot soaks.
+
+**The instrument** is on branch `lane/forzadecay414-clk`, stacked on master at 97c72e2a91, as PR
+#588. Each `thermal.jsonl` sample gains `clk`, read in the same `adb shell` call:
+- **CPU:** every cpufreq policy's `scaling_cur_freq`, `scaling_max_freq` and `cpuinfo_max_freq`,
+  in kHz. Fields that do not read are left out; `scaling_max_freq` is denied on the Thor's policy0.
+- **GPU:** kgsl's `gpuclk`, `max_gpuclk` and `throttling`.
+
+`--summary` adds the clause `clock MHz cpu0 lo-hi of <ceiling>, ..., gpu ...`. The selftest leg
+`clock` in `99-thermal-pause.sh` runs the real sample script on fake nodes. It fails in any of
+three worlds: the policy loop's quoting breaks, an unreadable ceiling is stored as 0 (a mutant
+gives `of 0`), or the summary drops the clocks. preflight passes on it.
+
+**The device proof can only come after the fold.** Soaks run the dispatcher's snapshot of the host
+tree (dispatcher.sh `snapshot_scripts`), not the request's ref. If #588 folds before the Nova
+soaks run, they carry the fields, and one sample gets quoted on #414. If it folds after, any
+later soak will show them.
 
 ## Do not repeat
 
