@@ -2781,3 +2781,146 @@ ratio:
 - **The kill:** `TxH` above 0.8 times A's means the memo was covering real
   rewrites. The next step would then be page attribution of the bitmap hits
   (M2), not a re-reading of this run.
+
+## #461, third: the device verdicts, and F4's FAIL (2026-09-28)
+
+### The correctness arm passed on the handhelds
+
+`remote-461-memo-texture.json`, judged by the arms job at 16:44Z on 09-27
+(5857785184): **PASS, all 542 registered checks.**
+- **The runs:** A f131dd11 and B 8f9c74f0, three runs per arm, 540 captures
+  each over the 21 suites.
+- **The counts:** better 0, worse 0, same 539, noise 1. The noise is
+  `Texture_border/2D_BorderTex_SZ`, which is on the KNOWN_UNSTABLE list: it
+  went from 16,268 to 4,933 px, inside its measured band of 21,577.
+- **Byte for byte:** the verdict's byte-level check reports every checked
+  capture byte-identical between the arms (540 of 540 hashed, three run
+  directories each).
+- **The desktop FAIL's suite:** Texture signed component tests reads `same`
+  on all 19 of its device captures. It is 168,960 px from the goldens,
+  summed over the suite, in both arms. The verdict does not say whether its
+  captures varied between the runs of one arm, as they did on lavapipe.
+
+### The Thor A/B: F1 to F3 pass, F4 FAILS
+
+Hostops read the pair by hand (5866342003): the `crimson-skies` route, 240 s,
+perflog, read from 90 to 240 s after the first `hakuX-perf` line. Both runs
+reached gameplay, and neither logcat has a thermal-pause line.
+
+| | A f131dd11 | B 8f9c74f0 (the fix) |
+|---|---|---|
+| gfps median (n) | 26 (58) | 22 (47) |
+| TxH, ms/frame (window mean) | 6.93 | 3.23 |
+| hashed KiB/frame | 59,676 | 25,227 |
+| memo share of hashed KiB | 66.9% | 0.0% |
+
+| leg | bar | read | |
+|---|---|---|---|
+| F1: B's memo share | under 5% | 0.0% | PASS |
+| F2: B's TxH over A's | 0.5 or less | 0.47 | PASS, marginal: the window median reads 0.55, whole-run 0.43 |
+| F3: B's hashed KiB over A's | 0.5 or less | 0.42 | PASS |
+| F4: B's gfps median minus A's | −1 or more | −4 | **FAIL** |
+| KILL: B's TxH over A's | above 0.8 | 0.47 | not triggered |
+
+- **M1 was the lever.** The memo went to zero, hashed KiB fell by 58% and
+  TxH by 3.7 ms/frame.
+- **A reproduced #473's soak on a later master:** 26 gfps both times, TxH
+  6.93 against 6.71, 59,676 against 59,399 KiB, memo 66.9% against 69.1%.
+- **The drop covers the window.** n is the count of `gfps` lines the median
+  is taken over, and the line prints every 60 flips. So 58 lines against 47
+  in the same 150 s is about 3,480 flips against 2,820: B drew 19% fewer
+  frames, not just a lower median.
+
+**F4 was registered high and it failed.** The registration said a gain was
+not predicted, because PFIFO had 11.6 ms/frame idle. It did not foresee a
+loss.
+
+### What the code says, and what the pair did not control
+
+A reading of both refs finds one narrow route by which B could cost more:
+- **The poll is the same on both.** Before every draw,
+  `pgraph_vk_poll_bound_textures()` tests every bound texture that is not
+  marked.
+- **On A**, a memo hash at a rebind tested nothing, so a write made while the
+  texture was unbound stayed in the bitmap. The next draw's poll cleared it
+  and marked the node. The super-fast path missed on the mark, and the node's
+  next bind hashed it again (`mk`).
+- **On B**, the rebind's own test clears those bits, and one hash replaces
+  two.
+- **The exception** is when the guest writes the pages again between the
+  rebind and the next poll.
+  - A's poll then clears both writes at once, and B clears twice.
+  - A clear that finds a bit set calls `tlb_reset_dirty_range_all()`, which
+    re-arms the guest's not-dirty write trap on those pages. The guest's next
+    store to each such page then takes the slow path.
+  - So the cost needs pages the guest keeps writing while their textures hash
+    equal.
+
+That predicts less render-thread work on B, and a guest-side cost only on
+continuously written pages. It is a reading, not a measurement.
+
+**The pair's order was not controlled.** A ran first. B started about four
+minutes later, straight after A's 240 s at MAX.
+- On the Thor, the kernel pauses cpu3-7 at xo-therm's 78 °C trip (#507).
+  Other cooling devices may act before that.
+- **Pair 1 carries no thermal record.** I wrote on #461 that each run's
+  `thermal.jsonl` would show whether B ran throttled. Hostops corrected it
+  (5867529398): both runs predate the thermal logging, and neither has a
+  `thermal.jsonl` or a `COOLDOWN:` line. `perf_regimen.json` shows only that
+  both ran at MAX and were restored to REST. So K1 is unread on pair 1, not
+  failed, and pair 2 is the first pair it can judge.
+
+### F4b and its controls, registered before any of it was read
+
+Registered on #461 at 09:41:38Z (5867400666), and filed with the text
+unchanged as `remote-461-memo-perf-crimson-2.json`. At registration, pair 2
+did not exist, and I had read none of pair 1's figures below.
+- **F4b (moderate-low):** a second pair, **B run first**, then A. Same refs,
+  route and window. B's gfps median is at least A's minus 1.
+- **K1, thermal parity** (a control): every cooling device's highest
+  `cur_state` over the samples inside the window is the same in both arms. A
+  pair that fails it is thermally confounded, and its F4 is not attributed
+  to the fix.
+- **K2, same scene** (a control): the window medians of hakuX-cpu's `M`
+  (PGRAPH methods per frame) are within 10% of each other.
+- **P1 (high, given K2):** B's `Tq` (bitmap tests per frame) is at least A's,
+  because the fix trades memo hashes for bitmap tests.
+- **P2 (moderate), on pair 1's lines:** B's `mk` KiB per frame is below A's,
+  and its `bit`+`bov` KiB per frame above A's.
+- **R, where the frame went,** read when F4 fails with K1 and K2 holding.
+  Take BUSY − TxH per frame, with BUSY = Surf + Draw + Fin. If B's is more
+  than 2 ms/frame above A's, the time is on the render thread. Otherwise it
+  is not, and what is left is the guest (the route above) or the display.
+- **V, how it shows:** the share of flips that took 3 or more VBLANKs. The
+  route file notes that the title paces itself to 30.
+
+**What follows:**
+- **F4b passes, with K1 and K2 holding:** the fix stays, and F4 stays FAIL as
+  recorded. Pair 1 has no thermal record, so its drop stays unexplained.
+- **F4b fails, with K1 and K2 holding:** the fix costs frame rate on Crimson,
+  in the order that favours B. Its `create_texture()` hunks are reverted from
+  master, or a replacement is registered first, if R and V point to one.
+
+### The reader for the pairs, and the window it shares
+
+- **`pair461_read.py`** reads one run, or a pair with `--pair A_RUN B_RUN`,
+  from a soak's result directory: `logcat.txt`, `thermal.jsonl` and
+  `run.log`. It prints every figure above over the window, then the legs.
+  - A leg whose inputs are missing reads UNREAD, never PASS.
+  - Its selftest builds pairs from the emitters' own formats. It includes
+    positive controls for K1 (a cpufreq cap inside B's window fails it, and
+    one after the window does not), K2 (15% more methods), P1, P2, and R's
+    two outcomes.
+- **One window for every reader.** `phase_read_split.py` now takes
+  `--window A,B`, so F2's statistic comes from the registered tool, not by
+  hand. Its window code is the one `tex461_read.py` and `pair461_read.py`
+  import.
+- **#480's audit LOW-2** is fixed in that shared code.
+  - **The bug:** a 29 February stamp re-read in a common neighbouring year
+    raised `ValueError`.
+  - **The fix:** such a stamp is now outside every window. It is more than
+    half a year from the origin in the year it parses in, so it cannot fall
+    inside a window a few minutes long.
+  - **The positive control:** the reader before the fix raises on the new
+    selftest case, and gives the same answer as the new one on the three
+    midnight crossings.
