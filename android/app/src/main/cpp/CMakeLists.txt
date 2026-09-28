@@ -1060,8 +1060,6 @@ add_library(xemu SHARED
   vmstate_if_android.c
   xemu_fatx_import.c
   xemu_hdd_tools_jni.c
-  # #557: opt-in (HAKUX_THERMAL_ADAPT=1) and not yet called from the frame loop
-  thermal_governor.c
 )
 
 target_compile_definitions(xemu PRIVATE ANDROID __ANDROID__ XBOX CONFIG_SDL CONFIG_OPENGL
