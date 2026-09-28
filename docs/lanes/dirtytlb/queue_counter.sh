@@ -3,7 +3,7 @@
 # handheld per title. Logs each request id to docs/lanes/dirtytlb/queue.log.
 set -u
 cd "$(dirname "$0")/../../.."
-A=9d777502fa; B=111c7fea74
+A=559ea2fc07; B=9d33d2dac2
 P=docs/testing/predictions/dirtytlb-counter.json
 LOG=docs/lanes/dirtytlb/queue.log
 CRIMSON='Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso'
