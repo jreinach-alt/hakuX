@@ -3058,7 +3058,10 @@ it yet, and it does nothing unless `HAKUX_THERMAL_ADAPT=1`.
 - **Where the design was silent, these choices:**
   - **A set pause device counts as hot.** The pause makes xo-therm fall, and
     the slope would otherwise read that fall as cooling.
-  - **No step up while a pause device is set, or while its state is unread.**
+  - **No step up while a pause device is set, or while no pause device can be
+    read.** One unreadable device among readable ones is counted apart, as
+    `pbad=`, and does not block (audit LOW-2).
+  - **A set pause counts even when xo-therm is unread** (audit LOW-3).
   - **A rung nobody registered is skipped.** Stepping to a rung that does
     nothing would spend a 2-minute change slot on nothing.
   - **The prediction waits** until the window spans 45 s.
@@ -3093,15 +3096,16 @@ it yet, and it does nothing unless `HAKUX_THERMAL_ADAPT=1`.
 - **The lines,** all on `hakuX-perf`, because the dispatcher's LOGCAT_SPEC
   ends in `*:S`:
   - `[thermal557] config zone= tz= pause_dev= cdev= skipped= tau= window= span= down= up= gap= wired=`
-  - `[thermal557] state rung=L/W t= xo= dTdt= teq= pause= cdev= hot_s= cool_s= rd_us= n= bad= down= up=`,
+  - `[thermal557] state rung=L/W t= xo= dTdt= teq= pause= pbad= cdev= hot_s= cool_s= rd_us= n= bad= down= up=`,
     every 30 s. `rd_us` is what the sysfs read cost on the display thread.
-  - `[thermal557] down|up rung=L/W NAME t= xo= dTdt= teq= pause= cdev= why=`,
+  - `[thermal557] down|up rung=L/W NAME t= xo= dTdt= teq= pause= pbad= cdev= why=`,
     on every change. It is logged before the callback runs.
   - `[thermal557] floor ...`, once, when it would step down but no wired rung
     is left.
-  - `[thermal557] off: no readable zone of type T under R (errno text)`, once.
-  - **Timing:** the config line and the first state line wait one status
-    interval (30 s). They therefore come after the first `gfps=` line, and a
+  - `[thermal557] off: no readable zone of type T under R (errno text)`, once,
+    after one status interval.
+  - **Timing:** the config line, the first state line and the `off:` line
+    wait one status interval (30 s). They therefore come after the first `gfps=` line, and a
     reader that starts its clock at the first `hakuX-perf` line
     (`phase_read_split.py`) keeps its origin. Off, it logs nothing at all.
 - **Turning it on, on a device:** add `HAKUX_THERMAL_ADAPT=1` to the app's
@@ -3297,6 +3301,48 @@ run as a known risk.
 - **What the threshold does to specificity** is the design's own choice, and
   it matters more than tau. A title whose equilibrium sits between 72 and
   78 C steps down to the floor although it would never pause.
+
+### Audit pass 1: five LOWs, all five fixed
+
+Pass 1 (8727eaaae2, `docs/audits/2026-09-28-claude/docs-tooling-agentic-coding-u152m1-pass1.md`)
+found no HIGH or MEDIUM. I fixed all five LOWs rather than defer them. Each
+fix has a check that goes red when the fix is reverted: four mutants, each
+killed, run in a scratch copy and not committed.
+- **LOW-1, the `off:` line came on the first tick,** before any gfps line.
+  It now waits one status interval, as the config line does: state 2,
+  "off with its line still to log". The harness checks that there is no
+  line at 1029 s and one at 1030 s.
+- **LOW-2, one unreadable cooling device blocked every step up.**
+  `count_set()` now counts the set devices among those it can read, and
+  counts the unreadable ones apart. The pause reads -1 only when there are
+  pause devices and none can be read. The unreadable count is logged as
+  `pbad=` on every change and state line.
+  - **The harness:** a `cur_state` that is a directory opens but fails every
+    `pread()`, like an erroring driver.
+    - Beside a readable pause device, it reads clear (0) and then set (1),
+      with `pbad=1`.
+    - Alone, it reads -1.
+- **LOW-3, a set pause was dropped when xo-therm was unread.** A reading
+  with no temperature now still counts when a pause device is set: it is a
+  reading, not a silence, and it is hot. With no pause set, an unread
+  temperature is still no reading at all.
+  - **S11:** 600 s of paused, unread samples step down at 60/180/300/420 s,
+    and bring nothing back up.
+  - **The other half of S11:** 30 s of unread samples with no pause is a
+    silence (first step at 215 s, as S7).
+  - **The Python model** follows the same rule, and R1 still agrees on all
+    60 random traces.
+- **LOW-4, CLOCK_MONOTONIC stops in suspend.** The tick now reads
+  `CLOCK_BOOTTIME` (with `CLOCK_MONOTONIC` as a fallback if it is not
+  defined). A suspend then reads as a silence and restarts the window,
+  instead of splicing the samples before and after it into one slope. No
+  desktop test can suspend; bionic and glibc both define `CLOCK_BOOTTIME`.
+- **LOW-5, registering NULL stranded an engaged rung.** NULL is now ignored
+  by both registration functions, and the header says a rung cannot be
+  unregistered. The harness checks that after `register_rung(cap30, NULL)`
+  the engaged rung keeps its callback.
+- **After the fixes:** the selftest has 19 checks (S11 is new) and the sysfs
+  group 24, all passing.
 
 ### Device prerequisites and open risks
 

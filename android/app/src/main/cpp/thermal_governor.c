@@ -95,7 +95,8 @@ void thermal_governor_init(ThermalGovernor *g, const ThermalGovernorParams *p)
 void thermal_governor_set_rung_fn(ThermalGovernor *g, ThermalRung rung,
                                   ThermalRungFn fn, void *opaque)
 {
-    if ((int)rung >= 0 && rung < THERMAL_RUNG_COUNT) {
+    /* NULL is ignored: an engaged rung must keep its release (audit LOW-5). */
+    if ((int)rung >= 0 && rung < THERMAL_RUNG_COUNT && fn) {
         rungs_store(g->rungs, rung, fn, opaque);
     }
 }
@@ -233,11 +234,11 @@ static void log_event(ThermalGovernor *g, double now, const char *what,
                       int rung, const char *why)
 {
     gov_log(g, "[thermal557] %s rung=%d/%d %s t=%.0f xo=%.2f dTdt=%+.2f "
-            "teq=%.2f pause=%d cdev=%d why=%s",
+            "teq=%.2f pause=%d pbad=%d cdev=%d why=%s",
             what, g->level, thermal_governor_wired(g),
             rung >= 0 ? thermal_governor_rung_name(rung) : "-", now - g->t0,
             g->last.xo_c, g->slope_c_s * 60.0, g->teq_c, g->last.pause,
-            g->last.mitig, why);
+            g->last.pause_bad, g->last.mitig, why);
 }
 
 static void step_down(ThermalGovernor *g, double now, int r, bool paused)
@@ -283,10 +284,11 @@ static void maybe_status(ThermalGovernor *g, double now)
     }
     g->next_status_t = now + g->p.status_every_s;
     gov_log(g, "[thermal557] state rung=%d/%d t=%.0f xo=%.2f dTdt=%+.2f "
-            "teq=%.2f pause=%d cdev=%d hot_s=%.0f cool_s=%.0f rd_us=%d "
-            "n=%u bad=%u down=%u up=%u",
+            "teq=%.2f pause=%d pbad=%d cdev=%d hot_s=%.0f cool_s=%.0f "
+            "rd_us=%d n=%u bad=%u down=%u up=%u",
             g->level, thermal_governor_wired(g), now - g->t0, g->last.xo_c,
-            g->slope_c_s * 60.0, g->teq_c, g->last.pause, g->last.mitig,
+            g->slope_c_s * 60.0, g->teq_c, g->last.pause, g->last.pause_bad,
+            g->last.mitig,
             isnan(g->hot_since) ? 0.0 : now - g->hot_since,
             isnan(g->cool_since) ? 0.0 : now - g->cool_since,
             g->last.read_us, g->n_samples, g->n_bad, g->n_down, g->n_up);
@@ -295,7 +297,7 @@ static void maybe_status(ThermalGovernor *g, double now)
 int thermal_governor_feed(ThermalGovernor *g, double now,
                           const ThermalSample *s)
 {
-    bool valid, paused, hot, cool, may_change;
+    bool have_xo, valid, paused, hot, cool, may_change;
     double slope;
     int change = 0;
 
@@ -309,12 +311,19 @@ int thermal_governor_feed(ThermalGovernor *g, double now,
     }
     g->n_samples++;
     g->last = *s;
-    if (!isfinite(s->xo_c)) {
-        /* No reading. A run of these longer than gap_reset_s is a silence. */
+    have_xo = isfinite(s->xo_c);
+    if (!have_xo) {
         g->n_bad++;
         g->slope_c_s = g->teq_c = NAN;
-        maybe_status(g, now);
-        return 0;
+        /*
+         * No temperature. Unless a pause device is set, which counts on its
+         * own (audit LOW-3), this is no reading at all, and a run of them
+         * longer than gap_reset_s is a silence.
+         */
+        if (s->pause <= 0) {
+            maybe_status(g, now);
+            return 0;
+        }
     }
     /*
      * The dwell times measure an unbroken stretch, so a silence (the app
@@ -324,12 +333,14 @@ int thermal_governor_feed(ThermalGovernor *g, double now,
         window_reset(g);
     }
     g->last_t = now;
-    window_push(g, now, s->xo_c);
-    if (window_slope(g, &slope)) {
-        g->slope_c_s = slope;
-        g->teq_c = s->xo_c + g->p.tau_s * slope;
-    } else {
-        g->slope_c_s = g->teq_c = NAN;
+    if (have_xo) {
+        window_push(g, now, s->xo_c);
+        if (window_slope(g, &slope)) {
+            g->slope_c_s = slope;
+            g->teq_c = s->xo_c + g->p.tau_s * slope;
+        } else {
+            g->slope_c_s = g->teq_c = NAN;
+        }
     }
     valid = isfinite(g->teq_c);
     /*
@@ -511,19 +522,25 @@ int thermal_sensors_open(ThermalSensors *s, const char *root,
     return s->temp_fd >= 0 ? 0 : -1;
 }
 
-/* Devices above 0, or -1 when any of them could not be read. */
-static int count_set(const int *fds, int n)
+/*
+ * The devices above 0 among those read, with the unreadable ones counted in
+ * *bad. -1 only when there are devices and none could be read: one device
+ * that errors must not blind the rest (audit LOW-2).
+ */
+static int count_set(const int *fds, int n, int *bad)
 {
     int set = 0;
     long v;
 
+    *bad = 0;
     for (int i = 0; i < n; i++) {
         if (!pread_long(fds[i], &v)) {
-            return -1;
+            (*bad)++;
+            continue;
         }
         set += v > 0;
     }
-    return set;
+    return n > 0 && *bad == n ? -1 : set;
 }
 
 void thermal_sensors_read(const ThermalSensors *s, ThermalSample *out)
@@ -536,8 +553,10 @@ void thermal_sensors_read(const ThermalSensors *s, ThermalSample *out)
         v < 130000) {
         out->xo_c = v / 1000.0;
     }
-    out->pause = count_set(s->pause_fd, s->n_pause);
-    out->mitig = count_set(s->other_fd, s->n_other);
+    int other_bad;
+
+    out->pause = count_set(s->pause_fd, s->n_pause, &out->pause_bad);
+    out->mitig = count_set(s->other_fd, s->n_other, &other_bad);
     out->read_us = -1;
 }
 
@@ -561,8 +580,10 @@ void thermal_sensors_close(ThermalSensors *s)
 static ThermalRungs registry;
 static ThermalGovernor gov;
 static ThermalSensors sens;
-static int gov_state; /* 0 before the first tick, 1 on, -1 off */
-static double gov_start_t, gov_next_t;
+static int gov_state; /* 0 before the first tick, 1 on, 2 off with its
+                         line still to log, -1 off */
+static double gov_start_t, gov_next_t, gov_off_at;
+static char gov_off_line[256];
 static bool gov_config_logged;
 static const char *gov_root = "/sys/class/thermal";
 static char gov_zone[64] = "xo-therm";
@@ -572,16 +593,25 @@ static void *gov_log_opaque;
 void thermal_governor_register_rung(ThermalRung rung, ThermalRungFn fn,
                                     void *opaque)
 {
-    if ((int)rung >= 0 && rung < THERMAL_RUNG_COUNT) {
+    if ((int)rung >= 0 && rung < THERMAL_RUNG_COUNT && fn) {
         rungs_store(&registry, rung, fn, opaque);
     }
 }
 
-static double monotonic_s(void)
+/*
+ * CLOCK_BOOTTIME keeps counting while the device is suspended, so a suspend
+ * reads as a silence and restarts the window (audit LOW-4). CLOCK_MONOTONIC
+ * would stop, and splice the samples before and after it into one slope.
+ */
+static double clock_s(void)
 {
     struct timespec ts;
 
+#ifdef CLOCK_BOOTTIME
+    clock_gettime(CLOCK_BOOTTIME, &ts);
+#else
     clock_gettime(CLOCK_MONOTONIC, &ts);
+#endif
     return ts.tv_sec + ts.tv_nsec * 1e-9;
 }
 
@@ -590,8 +620,6 @@ static void gov_start(double now)
     const char *on = getenv("HAKUX_THERMAL_ADAPT");
     const char *e;
     ThermalGovernorParams p;
-    char line[256];
-
     if (!on || strcmp(on, "1") != 0) {
         gov_state = -1;
         return;
@@ -610,15 +638,19 @@ static void gov_start(double now)
         snprintf(gov_zone, sizeof(gov_zone), "%s", e);
     }
     if (thermal_sensors_open(&sens, gov_root, gov_zone) < 0) {
-        /* An enforcing SELinux policy that denies untrusted_app sysfs_thermal
-         * ends here with EACCES: said once, then silent. */
-        snprintf(line, sizeof(line),
+        /*
+         * An enforcing SELinux policy that denies untrusted_app sysfs_thermal
+         * ends here with EACCES. The line is said once, and held one status
+         * interval like the config line, so it never comes before the first
+         * gfps line (audit LOW-1).
+         */
+        snprintf(gov_off_line, sizeof(gov_off_line),
                  "[thermal557] off: no readable zone of type %s under %s (%s)",
                  gov_zone, gov_root,
                  sens.err ? strerror(sens.err) : "not found");
-        emit(gov_log_fn, gov_log_opaque, line);
         thermal_sensors_close(&sens);
-        gov_state = -1;
+        gov_off_at = now + p.status_every_s;
+        gov_state = 2;
         return;
     }
     thermal_governor_init(&gov, &p);
@@ -656,13 +688,20 @@ static void tick_at(double now)
     if (gov_state == 0) {
         gov_start(now);
     }
+    if (gov_state == 2) {
+        if (now >= gov_off_at) {
+            emit(gov_log_fn, gov_log_opaque, gov_off_line);
+            gov_state = -1;
+        }
+        return;
+    }
     if (gov_state < 0 || now < gov_next_t) {
         return;
     }
     gov_next_t = now + THERMAL_TICK_PERIOD_S;
-    r0 = monotonic_s();
+    r0 = clock_s();
     thermal_sensors_read(&sens, &smp);
-    smp.read_us = (int)((monotonic_s() - r0) * 1e6);
+    smp.read_us = (int)((clock_s() - r0) * 1e6);
     /*
      * The first line waits one status interval, so it comes after the first
      * gfps line and readers that start their clock at the first hakuX-perf
@@ -680,5 +719,5 @@ void thermal_governor_tick(void)
     if (gov_state < 0) {
         return;
     }
-    tick_at(monotonic_s());
+    tick_at(clock_s());
 }

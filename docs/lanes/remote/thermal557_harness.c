@@ -251,6 +251,51 @@ static int run_sysfs(void)
           s.err == ENOENT, "open reports an unreadable root with its errno");
     thermal_sensors_close(&s);
 
+    /*
+     * A pause device that cannot be read (audit LOW-2). A directory opens
+     * read-only but fails every pread(), like a driver that errors.
+     */
+    {
+        char broot[480], path[560];
+        int bad;
+
+        for (int only = 0; only < 2; only++) {
+            snprintf(broot, sizeof(broot), "%s/broken%d", root, only);
+            mkdir(broot, 0755);
+            put(broot, "thermal_zone1", "type", "xo-therm\n");
+            put(broot, "thermal_zone1", "temp", "70000\n");
+            if (!only) {
+                put(broot, "cooling_device0", "type", "thermal-pause-F8\n");
+                put(broot, "cooling_device0", "cur_state", "0\n");
+            }
+            put(broot, "cooling_device1", "type", "pause-cpu4\n");
+            snprintf(path, sizeof(path), "%s/cooling_device1/cur_state", broot);
+            mkdir(path, 0755);
+        }
+        snprintf(broot, sizeof(broot), "%s/broken0", root);
+        thermal_sensors_open(&s, broot, "xo-therm");
+        thermal_sensors_read(&s, &smp);
+        CHECK(s.n_pause == 2 && smp.pause == 0 && smp.pause_bad == 1,
+              "an unreadable pause device is counted apart, and the readable "
+              "one still reads clear (pause=%d pbad=%d)", smp.pause,
+              smp.pause_bad);
+        put(broot, "cooling_device0", "cur_state", "1\n");
+        thermal_sensors_read(&s, &smp);
+        CHECK(smp.pause == 1 && smp.pause_bad == 1,
+              "... and still reads set (pause=%d pbad=%d)", smp.pause,
+              smp.pause_bad);
+        thermal_sensors_close(&s);
+        snprintf(broot, sizeof(broot), "%s/broken1", root);
+        thermal_sensors_open(&s, broot, "xo-therm");
+        thermal_sensors_read(&s, &smp);
+        CHECK(s.n_pause == 1 && smp.pause == -1 && smp.pause_bad == 1,
+              "with no pause device readable, the pause is unread (pause=%d "
+              "pbad=%d)", smp.pause, smp.pause_bad);
+        thermal_sensors_close(&s);
+        CHECK(count_set(NULL, 0, &bad) == 0 && bad == 0,
+              "a device with no pause devices reads the pause as clear");
+    }
+
     /* The tick: off unless HAKUX_THERMAL_ADAPT=1, and then silent. */
     put(root, "thermal_zone90", "temp", "60000\n");
     put(root, "cooling_device10", "cur_state", "0\n");
@@ -305,14 +350,24 @@ static int run_sysfs(void)
     CHECK(engaged_calls == 1 && gov.level == 1,
           "the climb engages the first rung through the registry "
           "(calls=%d level=%d)", engaged_calls, gov.level);
+    thermal_governor_register_rung(THERMAL_RUNG_PRESENT_CAP_30, NULL, NULL);
+    CHECK(rungs_fn(&registry, THERMAL_RUNG_PRESENT_CAP_30) == count_rung &&
+          thermal_governor_wired(&gov) == 2,
+          "registering NULL leaves an engaged rung wired, so it can still be "
+          "released (audit LOW-5)");
 
     setenv("HAKUX_THERMAL_ZONE", "no-such-zone", 1);
     reset_singleton(root);
     tick_at(1000.0);
     tick_at(1001.0);
+    tick_at(1029.0);
+    CHECK(gov_state == 2 && n_captured == 0 && sens.temp_fd == -1,
+          "a missing zone says nothing for one status interval (audit LOW-1)");
+    tick_at(1030.0);
+    tick_at(1031.0);
     CHECK(gov_state == -1 && n_captured == 1 &&
           strstr(captured[0], "off: no readable zone of type no-such-zone"),
-          "a missing zone turns it off with one line: %s",
+          "... then turns it off with one line: %s",
           n_captured ? captured[0] : "(none)");
     unsetenv("HAKUX_THERMAL_ZONE");
     unsetenv("HAKUX_THERMAL_TAU_S");

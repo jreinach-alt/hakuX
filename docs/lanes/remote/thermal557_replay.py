@@ -160,19 +160,23 @@ def REF(samples, p, wire=(0, 1, 2, 3)):
     for t, xo, pause in samples:
         if last_t is None:
             last_t = t
-        if xo is None or math.isnan(xo):
+        have_xo = not (xo is None or math.isnan(xo))
+        # No temperature is no reading, unless a pause device is set: that
+        # counts on its own (audit LOW-3).
+        if not have_xo and pause <= 0:
             teqs.append(math.nan)
             continue
         if t - last_t > p["gap_reset_s"]:
             win, hot_since, cool_since = [], None, None
         last_t = t
-        win = [(a, c) for a, c in win if t - a <= p["window_s"]][-255:]
-        win.append((t, xo))
         teq = math.nan
-        if len(win) >= 3 and win[-1][0] - win[0][0] >= p["min_span_s"]:
-            s = ls_slope(win)
-            if s is not None:
-                teq = xo + p["tau_s"] * s
+        if have_xo:
+            win = [(a, c) for a, c in win if t - a <= p["window_s"]][-255:]
+            win.append((t, xo))
+            if len(win) >= 3 and win[-1][0] - win[0][0] >= p["min_span_s"]:
+                s = ls_slope(win)
+                if s is not None:
+                    teq = xo + p["tau_s"] * s
         valid = not math.isnan(teq)
         hot = pause > 0 or (valid and teq > p["down_c"])
         cool = pause == 0 and valid and teq < p["up_c"]
@@ -341,6 +345,23 @@ def scenarios(exe, res):
     check(res, abs(t72 - 180.0) <= 1.0 and r.downs() and abs(r.downs()[0] - 240) <= 1,
           "S10 the same with tau 60 s: T_eq = T + 0.5 crosses 72 at %.0f s "
           "(180), first step at %s (240)" % (t72, r.downs()[:1]))
+
+
+    # S11: a pause while xo-therm cannot be read (audit LOW-3). The pause
+    # counts on its own, so the rungs go down on the dwell alone at
+    # 60/180/300/420 s, as in S6. With the temperature gone as well, nothing
+    # may come back up.
+    blind = [(float(t), float("nan"), 1) for t in range(600)]
+    r = feed(exe, blind)
+    check(res, approx(r.downs(), [60, 180, 300, 420]) and not r.ups(),
+          "S11 a pause with xo-therm unread still steps down: %s s" % r.downs())
+    # ... but unread samples with no pause set are no reading at all: a
+    # 30 s run of them is a silence, and restarts S1's window (first step at
+    # 215 s, as S7).
+    r = feed(exe, [(t, float("nan") if 80 < t < 110 else c, 0) for t, c in climb])
+    check(res, r.downs() and abs(r.downs()[0] - 215) <= 1,
+          "S11 30 s of unread samples with no pause is a silence: first step "
+          "at %s s" % r.downs()[:1])
 
 
 def math_group(exe, res):

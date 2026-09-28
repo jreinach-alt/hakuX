@@ -73,10 +73,12 @@ typedef struct ThermalGovernorParams {
 
 /* One reading. */
 typedef struct ThermalSample {
-    double xo_c; /* the zone's temperature in C; NAN when unread */
-    int pause;   /* pause-class cooling devices above 0; -1 when unread */
-    int mitig;   /* other cooling devices above 0 (logged only); -1 unread */
-    int read_us; /* what the read cost (logged only); -1 when unknown */
+    double xo_c;   /* the zone's temperature in C; NAN when unread */
+    int pause;     /* pause-class cooling devices above 0 among those read;
+                      -1 when there are some and none could be read */
+    int pause_bad; /* pause-class devices that could not be read (logged) */
+    int mitig;     /* other cooling devices above 0 (logged only); -1 unread */
+    int read_us;   /* what the read cost (logged only); -1 when unknown */
 } ThermalSample;
 
 #define THERMAL_GOVERNOR_MAX_SAMPLES 256
@@ -157,7 +159,8 @@ void thermal_sensors_close(ThermalSensors *s);
 void thermal_governor_tick(void);
 /*
  * For the rungs' owners: register each rung once, from any thread, before or
- * after the first tick.
+ * after the first tick. A rung cannot be unregistered: NULL is ignored, so an
+ * engaged rung always keeps the function that releases it.
  */
 void thermal_governor_register_rung(ThermalRung rung, ThermalRungFn fn,
                                     void *opaque);
