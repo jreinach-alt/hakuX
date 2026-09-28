@@ -303,6 +303,128 @@ F1 can pay; nothing else below is a probe.
 | F2 | stores, with code, dirty and watched pages protected; the watch-insert flush made per page | the fps382 case bounded by backpatch; Conker's flush rate priced |
 | F3 | default on, with the release note | the full pgraph sweep, title soaks across the benchmark set, and a stress run on the titles with the most surface watches |
 
+### 7. Adversarial review (2026-09-28): amendments that supersede sections 1-6
+
+A review subagent checked the design against the code. It found 4 HIGH, 6
+MEDIUM and 5 LOW. **Where a line below conflicts with the sections above, this
+section wins.**
+
+**HIGH**
+
+- **H1: revalidation cannot run inside the flush.**
+  - **Old state.** CR0, CR4 and A20 call `tlb_flush` *before* writing the
+    new value (`target/i386/helper.c:143-146` vs `:165`, `:202-206` vs
+    `:236`, `:130`), so a walk there reads the old mode. Only CR3 is written
+    first.
+  - **Deadlock.** The walker probes PTEs through `MMU_PHYS_IDX`, whose fill
+    takes `tlb_c.lock`, and the flush already holds that lock.
+  - **Amendment:**
+    - the flush only sets `shadow_pending`, and revalidation runs at the next
+      `cpu_exec` iteration, outside the lock (MOV CRn and INVLPG already end
+      the TB);
+    - PTEs are read through `xbox.ram`'s host pointer, and a page whose PT
+      page is outside that block is dropped;
+    - CR0, CR4 and A20 flushes drop the whole shadow.
+- **H2: fastmem makes the flush skip itself.**
+  - `to_clean = asked & c.dirty` (`cputlb.c:734`), and `c.dirty` is set only
+    by a fill. Shadow hits never fill, so a later CR3 flush would find the
+    mode clean and skip the hook.
+  - **Amendment:** the shadow hook runs unconditionally, outside the
+    `to_clean` loop.
+- **H3: "is RAM" is not "is `xbox.ram`".**
+  - `nv2a-ramin` (`nv2a.c:1302`), `xbox.mcpx` (`xbox.c:170`) and the ROMD
+    flash are also RAM or ROMD. Mapping by `ram_addr` into the memfd would
+    alias the wrong bytes.
+  - QEMU also falls back silently to fd-less shared memory
+    (`physmem.c:3019`).
+  - **Amendment:**
+    - map only when `section->mr->ram_block == xbox_ram_block`, at the
+      offset within that block;
+    - assert `block->fd >= 0` at init, or keep fastmem off.
+- **H4: revalidation was priced on the wrong set.**
+  - With no capacity eviction, the mapped set is every page since boot, up to
+    the cap. That is 20-30k pages against softmmu's 8k-entry cap
+    (`hakux-tlb68.h:41`), so revalidating it at 514 flushes/s costs 0.1-0.3 s
+    per second.
+  - Conker's 514/s has not been split by cause. `[tlb68]` does split it:
+    `cr3n`, `cr3s`, `cr0`, `cr4`, `a20`, `other`, and `other` includes the
+    watch-insert flushes that F2 removes anyway.
+  - **Amendment:**
+    - bound the mapped set to about softmmu's size;
+    - **write-track the page-table pages.** Record each PT/PD page's PA at
+      fill time and protect those pages with a dirty client. A CR3_SAME flush
+      with no PT page written is then a no-op, and only entries under written
+      PT pages are re-walked. This follows HSPT's idea, which was not read at
+      source here.
+    - **F0a must split the flush rate by cause first**, on GTA and Conker.
+
+**MEDIUM**
+
+- **M1: large pages.** A shadow piece of a 4 MB page outlives softmmu's
+  large-page record, so an INVLPG inside it drops one 4K piece and leaves 1023
+  stale.
+  - **Amendment:**
+    - store `lg_page_size` and the base address with each shadow page;
+    - INVLPG unmaps the whole covering large page;
+    - revalidation also requires PDE.A.
+- **M2: a fault can reach the stub without a remap.** If softmmu still holds
+  the entry, the stub's compare hits and no fill runs, so the page is never
+  mapped again.
+  - **Amendment:**
+    - the fault entry calls a helper that maps from the existing TLB entry;
+    - faults are counted as cold vs protection, and only protection faults
+      count toward K;
+    - patched sites decay back to fast after a quiet interval.
+- **M3: watch-insert ordering.** The list insert is deferred to safe work
+  (`physmem.c:956`).
+  - **Amendment:** the re-protect runs inside the same safe-work item, after
+    the insert.
+  - Watches are always R|W (`physmem.c:866`), so the "PROT_READ for write-only
+    watches" case in section 3 does not exist.
+- **M4: a fill against a cross-thread dirty clear.**
+  - **Amendment:**
+    - the fill inserts into the reverse map first, then checks `is_clean`,
+      then maps, all under an rmap mutex (not the `tlb_c` spinlock);
+    - `tlb_set_dirty`'s upgrade re-checks `is_clean` under that mutex;
+    - no syscall runs under `tlb_c.lock`.
+- **M5: VMA and mm costs.**
+  - A scattered 4K page splits the reservation into about two VMAs, so the
+    cap is on VMAs, not pages.
+  - "Unmap" is `mmap(PROT_NONE, MAP_FIXED|MAP_ANONYMOUS)`, never `munmap`.
+  - Use `MADV_POPULATE_*`, since a fresh map costs a host minor fault on
+    first touch.
+  - **Per-VMA locks (Linux 6.4+):** check both handhelds' kernels. Without
+    them, every `mmap`/`mprotect` stalls page faults in the Vulkan and NV2A
+    threads. F0a runs with the other threads busy.
+- **M6: the re-arm rate is unpriced.**
+  - NV2A logs all of RAM for two dirty clients (`nv2a.c:1313`). Each clear
+    becomes an `mprotect` of every alias, then a fault and an upgrade on the
+    next store.
+  - Conker re-translates code 1695 times/s.
+  - F0a prices this from `[tlb68]` `rdo`/`rdh`/`sd`.
+
+**LOW**
+
+- **L1: the handler takes a lock.** `tcg_tb_lookup` takes `rt->lock`
+  (`region.c:258`), which is safe only because the vCPU thread is its sole
+  user; state that in the code. The handler first checks that the PC is in
+  the rx buffer and `si_addr` is in the shadow, and chains otherwise.
+- **L2: a misaligned store can be partly written.** arm64 may partly perform
+  one whose second page aborts. Gate the inline form on a naturally aligned
+  memop or document the case, and count it in F1x.
+- **L3: unmap on #PF.** A fill that raises #PF unmaps the shadow page.
+- **L4: whitelist the flags.** Map only when the flags are 0, or exactly
+  `TLB_NOTDIRTY` for a `PROT_READ` mapping.
+- **L5: where it cannot apply, additions:**
+  - loadvm and reset (`machine.c:404`): drop the shadow and the rmap;
+  - gdbstub read watchpoints count as watches;
+  - fastmem stays off when TCG plugins are active.
+
+**Net effect on P and the order of work.** The review does not change the
+mechanism. It adds one piece of real work, PT-page write tracking, and moves
+the cause split into F0a. P stays 0.4. The largest risk remaining is M6
+(re-arm churn) on NV2A-heavy titles, which F0a prices before any F1 code.
+
 **Needs outside this lane's grant**, to be requested before F1:
 - `hw/xbox/xbox.c` (RAM_SHARED);
 - `target/i386/tcg/system/excp_helper.c` (the side-effect-free walk);
@@ -315,3 +437,24 @@ F1 can pay; nothing else below is a probe.
   new warnings in `physmem.c`, `cputlb.c` or `tcg.c`, which includes the
   backend). Predictions registered. Both devices were held at the start
   (Nova battery 14%, Thor host maintenance).
+- 2026-09-28: the pilot was queued, GTA A1 `1-1790629267-lane.memfast-1718274`
+  and B1 `1-1790629267-lane.memfast-1718333`, with 20 requests ahead of it. A
+  board request (`board-requests/memfast.md`) asks lane.local for a held Thor
+  simpleperf window on b_ref. lane.ibcache confirmed it no longer edits
+  `tcg-target.c.inc` and needs no reserved register, so X26 is free for
+  fastmem. Preflight passes. The phase report and the design are on #507
+  (comment 5878543877). The design review was folded in (section 7).
+
+## Next, for whoever resumes this lane
+
+1. When the pilot lands, run `mf0_read.py` on A1 and `title_verdict.py` on a
+   COPY of both dirs. Check that gameplay was reached, power was measured, and
+   the `[mf0]` lines are present. Write `pilots/lane.memfast.ok` with python3,
+   then queue the rest per `memfast-drop-soak.json`'s queue_order. The Nova
+   titles wait for the battery hold to lift.
+2. Read the `[job.arms]` verdict on `memfast-drop-pixels.json`. A moved
+   capture is read against that run's `[mf0]` lines before it is called
+   anything.
+3. Post the census and the J/frame results on #507, then mark PR #590 ready.
+4. Phase 2 code waits for #590's merge. Do F0a first, and do not build F1
+   before F0a prices the overhead.
