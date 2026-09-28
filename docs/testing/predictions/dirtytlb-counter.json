@@ -1,0 +1,36 @@
+{
+  "registered_utc": "2026-09-28T12:43:00Z",
+  "who": "lane.dirtytlb",
+  "issue": "548",
+  "titles": {
+    "crimson": {"title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso", "route": "crimson-skies", "device": "thor"},
+    "blinx": {"title": "4D530013-Blinx_The_Time_Sweeper.xiso.iso", "route": "survey", "device": "nova"}
+  },
+  "seconds": 240,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "perflog": true,
+  "a_ref": "9d777502fa",
+  "b_ref": "111c7fea74",
+  "queue_order": "Per title, B FIRST, then A, same device, each through the soak's COOLDOWN gate: request.sh --who lane.dirtytlb --title <title> --route <route> --seconds 240 --perflog --device <device> --ref 111c7fea74, then the same at --ref 9d777502fa. Crimson on the Thor (the #461 pairs' device), Blinx on the Nova (#525's device). One handheld per title.",
+  "window": "90 to 240 s after the first hakuX-perf line (phase_read_split.py THE WINDOW), as #461's pairs",
+  "judge": "python3 docs/lanes/dirtytlb/rdc_read.py --pair <A result dir> <B result dir> for every leg but K1; K1 by hand from each thermal.jsonl (or docs/lanes/remote/pair461_read.py --pair A B, whose K1 is this K1); j_per_frame from docs/testing/title_verdict.py on a copy of each dir, reported beside the legs.",
+  "prediction": "#548 COUNTER ARM. B adds one hakuX-perf line, [rdc], every 60+ guest flips, naming the caller of every tlb_reset_dirty() walk made off the vCPU thread (the walks [tlb68] counts as rdo): vtx is physical_memory_dirty_bits_cleared() called from outside physmem, which on Xbox is only the Vulkan vertex RAM sync (pgraph/vk/draw.c); tex is memory_region_test_and_clear_dirty() on DIRTY_MEMORY_NV2A_TEX, which is only check_texture_dirty() (pgraph/vk/texture.c); nv2a, vga, code, mig and snap are the other physmem doors; oth is a walk that reached tlb_reset_dirty_range_all() untagged. The walk time charged to each site is the one tlb_reset_dirty() already measured for rdous. WHY: #461 pair 1 read ~175 rdo per flip at ~27 us each (4.7 ms per flip) with the texture path at most 41% of them; lane.remote named the per-draw vertex sync and the surface checks as candidates. Reading the code: the Vulkan surface check clears its bits only when !tcg_enabled() (surface.c ~4377), which is never, so it makes no walk; the only render-thread clears left are the vertex sync and check_texture_dirty.",
+  "legs": {
+    "V (validity)": "On B, at least 20 [rdc] lines in the window, none malformed, and tcpu present (the render thread printed consecutive lines) on at least 80% of them. A run failing V is VOID, re-queued once and reported either way. A run whose thermal record shows cpu3-7 paused inside the window is VOID for gfps and tcpu (#507), not for the counts.",
+    "C1 (the sum; an instrument check, near-tautological by construction)": "Over the window, the sites' calls sum to rdo within 1% and the sites' us to rdous within 2%, and at most 5% of lines miss the per-line calls identity by more than max(3, 1% of rdo). This can only fail if [rdc] counts walks [tlb68] does not, or misses some: e.g. a second vCPU, or a walk whose current_cpu differs between the two counters.",
+    "C2 (the impossible row)": "oth = 0 and dx = 0 on every line: no walk reaches tlb_reset_dirty_range_all() except through a tagged door, and the vtx door has exactly one caller. A non-zero oth is a door the comment in physmem.c missed; a non-zero dx is a second outside caller of physical_memory_dirty_bits_cleared(). Either voids N1 and N2.",
+    "H (the counter's cost, measured)": "The counter's own cost per flip (timed ns per call x calls, plus each line's tk, over the flips) is at most 1% of rdous per flip, and at most 500 ns per call.",
+    "N1 (moderate-high)": "vtx + tex carry at least 95% of rdo calls per flip, on each title. Refuted by any other site (nv2a, vga, code, mig, snap) holding more than 5%: a caller not on #461's list.",
+    "N2 (moderate, the naming)": "vtx calls per flip exceed tex calls per flip on Crimson: the vertex sync, not the texture path, is the dominant caller. Refuted by tex >= vtx. On Blinx the same comparison is reported and judged the same way, with lower confidence (no prior count on that title).",
+    "X (independent cross-check)": "tex walks per flip are at most 1.2 x hakuX-perf's Tq median + 1: check_texture_dirty() makes at most one walk per test, and Tq counts its tests. More walks than tests means the tex tag is wrong.",
+    "F (the counter is not a slowdown)": "B's gfps median is at least A's minus 1, on each title.",
+    "K1 (control)": "Thermal parity: every cooling device's highest cur_state inside the window is the same in both arms. A pair failing K1 is thermally confounded; F is not read on it.",
+    "K2 (control)": "Same scene: the larger hakuX-cpu M median is within 10% of the smaller.",
+    "Reported, not judged": "per site: calls, us, pages and hits (TLB entries re-armed) per flip, and us per call; tcpu (render-thread CPU ms per flip); v (vCPU-thread walks per flip); tm (pages of a physmem-site range the walk did not cover, the start-rounding gap in tlb_reset_dirty_range_all); dra (vtx's return address, for addr2line); j_per_frame in both arms. These choose the fix: many vtx walks with few hits says clear once per flip or skip the walk; hits near pages says the walks are doing needed work and only fewer, larger clears help."
+  },
+  "falsifier": "The counter is refuted as an instrument in any of these worlds: C1 fails (it does not see the walks rdo sees), C2 fails (an untagged door or a second vtx caller), X fails (the tex tag is wrong), or H fails (it costs more than it measures). The naming is refuted by N1 failing (a third caller carries >5%) or N2 failing on Crimson (texture, not vertex, dominates). A pixel move in dirtytlb-counter-pixels.json refutes 'counter only' outright.",
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures, so there is no golden key; the legs are read off [rdc], hakuX-perf and hakuX-cpu lines by rdc_read.py. The pixel half is dirtytlb-counter-pixels.json, which the arms job queues."
+}
