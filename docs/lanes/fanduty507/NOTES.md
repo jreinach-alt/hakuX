@@ -13,7 +13,11 @@ duty. lane.sustain507 runs D.3 with it; this lane measured nothing about fps.
   `period` (read from `/sys/class/gpio5_pwm2`). Otherwise the soak is refused
   before anything is set or started: `fan-duty-refused: <why>` in run.log,
   exit 6. The reason: a run at a fan other than the one asked for measures
-  the wrong arm and looks like the right one.
+  the wrong arm and looks like the right one. More than 9 digits is refused
+  before any arithmetic (past 64 bits `test -gt` errors, reads as false, and
+  the duty was accepted: audit pass 1 MEDIUM-1). Leading zeros are dropped,
+  so 0050000 is written and read back as 50000. `FAN_DUTY=0` (fan stopped,
+  the kernel's thermal trips still armed) is allowed on purpose, as a control.
 - After the cool-down gate and the regimen (so both D.3 arms start from the
   same gate-admitted temperature), before `am start`: `settings put system
   fan_mode 6; sleep 1; echo <duty> > duty`, then a read-back.

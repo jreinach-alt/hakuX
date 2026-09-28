@@ -306,6 +306,13 @@ fan_check() {
     case "$FAN_DUTY" in
         *[!0-9]*) FAN_REFUSED="fan_duty '$FAN_DUTY' is not a whole number"; return 1 ;;
     esac
+    # Bounded before any arithmetic: `test -gt` on a number past 64 bits
+    # errors, the `if` reads that as false, and the duty would be accepted.
+    if [ "${#FAN_DUTY}" -gt 9 ]; then
+        FAN_REFUSED="fan_duty $FAN_DUTY is more than 9 digits"; return 1
+    fi
+    # One spelling of the number: 0050000 is written, and read back, as 50000.
+    FAN_DUTY=$((10#$FAN_DUTY))
     got=$(device_fan_get)
     FAN_PERIOD=$(printf '%s\n' "$got" | awk '{print $3}')
     case "$FAN_PERIOD" in

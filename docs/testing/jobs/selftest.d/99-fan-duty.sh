@@ -27,9 +27,13 @@
 #              not restore, or restores only on the happy path's end.
 #   killed     the same, TERM half a second after `am start`. Fails if the
 #              restore is not reached from the EXIT trap.
-#   refused    FAN_DUTY=60000 (above the period) and `fast`: exit 6, a
-#              `fan-duty-refused:` line, no `am start`, no fan write. Fails if
-#              a run the fan cannot hold goes ahead at another fan.
+#   refused    FAN_DUTY=60000 (above the period), `fast`, and a 20-digit
+#              number (past 64 bits, where `test -gt` errors and reads as
+#              false): exit 6, a `fan-duty-refused:` line, no `am start`, no
+#              fan write. Fails if a run the fan cannot hold goes ahead at
+#              another fan.
+#   zeros      FAN_DUTY=0050000 starts at 6/50000 and counts moved 0. Fails
+#              if the request string, not the number, is compared on read-back.
 #   none       no FAN_DUTY: no duty write, no re-write. Fails if a run that
 #              asked for nothing has its fan moved.
 #   request    `"fan_duty": 50000` in the running request, then `FAN_DUTY=
@@ -180,8 +184,8 @@ lr=$(fan_last "settings put system fan_mode 4"); lw=$(fan_last "> /sys/class/gpi
     && ok "killed: no duty write after the restore; the firmware's 12000 is on the node" \
     || bad "killed: duty write line $lw after restore line $lr; node reads $(cat "$FD/duty")"
 
-# refused: above the period, then not a number.
-for want in 60000 fast; do
+# refused: above the period, not a number, past 64 bits (test -gt errors).
+for want in 60000 fast 99999999999999999999; do
     rc=$(FAN_DUTY="$want" fan_soak "$TESTING/soak_title.sh" 1)
     if [ "$rc" = 6 ] && grep -q '^fan-duty-refused: ' "$FD/run.log" && [ ! -f "$FD/started" ] \
         && ! grep -q 'fan_mode 6\|> /sys/class/gpio5_pwm2/duty\|performance_mode 2' "$FD/adb.log"; then
@@ -190,6 +194,16 @@ for want in 60000 fast; do
         bad "refused: FAN_DUTY=$want rc=$rc; $(grep -m1 'fan-duty' "$FD/run.log"); started=$([ -f "$FD/started" ] && echo yes || echo no)"
     fi
 done
+
+# zeros: a leading zero is the same duty, written and compared as 50000.
+rc=$(FAN_DUTY=0050000 fan_soak "$TESTING/soak_title.sh" 2)
+if [ "$rc" = 0 ] && [ "$(cat "$FD/at_start" 2>/dev/null)" = "6 50000" ] \
+    && [ "$(fan_json 'd["fan_duty"]["requested"], d["fan_duty"]["moved"]')" = "(50000, 0)" ] \
+    && ! grep -q 'did NOT read back' "$FD/run.log"; then
+    ok "zeros: FAN_DUTY=0050000 starts at 6/50000, reads back, moved 0"
+else
+    bad "zeros: rc=$rc at_start [$(cat "$FD/at_start" 2>/dev/null)]; $(fan_json 'd["fan_duty"]'); $(grep -m1 '^FAN:' "$FD/run.log")"
+fi
 
 # none: no FAN_DUTY, the fan is the regimen's.
 fan_soak "$TESTING/soak_title.sh" 2 >/dev/null
