@@ -154,3 +154,70 @@ On resume:
    --device nova --ref 3a5d79e3ea [--env HAKUX_IDLE_HALT=1] --expect
    docs/testing/predictions/idlehaltdefault-<key>.json --issue 525`, run with
    `env HAKUX_RELEASE_PRIO=1`.
+
+## Session 2 (2026-09-28 ~15:45 PDT): pilot read, ten queued
+
+Why session 1 did not finish: it ended correctly, waiting on the two pilot
+requests above, which had not run yet. hostops resumed this lane once both
+were DONE.
+
+### Pilot reading (Kabuki pair, `ihd_judge.py`)
+
+| | A1 off `-845673` | B1 on `-846115` |
+|---|---|---|
+| window (mark gameplay to end), s | 204.1 | 199.8 |
+| 60-flip windows | 82 | 61 |
+| fps median | 58.88 | 58.25 |
+| frame-time p99 est. (median `max`), ms | 45.5 | 46.0 |
+| `[pace526]` held / late >1 ms | 12009 / 0 | 12014 / 2 (0.00017) |
+| audio starve | 0 | 0 |
+| net_w | 7.952 | 7.565 |
+| J/frame | 0.2879 | 0.3969 |
+| `[idlehalt]` on / halts | 0 / 0 | 1 / 175980 |
+| no-flip gaps (title_verdict `hang_gaps_s`) | 22.1, 61.6, 21.6, 11.3 | 118.2, 17.6 |
+
+The pilot meets its purpose: both arms reach `mark gameplay`, both arms
+have the fps, pace, audio, power and idlehalt lines, and the arm check reads
+right. So `pilots/lane.idlehaltdefault.ok` was written and the other ten
+were queued.
+
+**Finding: on this route, J/frame is set by screen time, not by the halt.**
+- In both arms, 58-68% of the scored window is a static screen with no
+  flips. The perf lines stop and `refresh` keeps ticking at 60 Hz with
+  `flip=0`. `[rr425w]` shows the guest idle about 95% at `idlepc=8001b02e`,
+  and `[idlehalt] pg` reads 0-1, so the guest is not waiting on pgraph.
+  These are round-end, continue or loading screens that follow the fight's
+  random outcome.
+- lane.pacing's Kabuki run `1078233` has the same kind of gaps (11, 11,
+  22 s).
+- J/frame divides energy by flips, so the arm that happens to spend longer
+  on a static screen reads worse. B's J/frame is 38% higher, while its
+  net_w is 4.9% lower.
+- Fuzion `1059623` and DOA1U `3225184` also carry `hang` gaps on their
+  routes. Their J/frame will be confounded the same way.
+
+The registered E leg reads J/frame, and it stays as registered: it is not
+edited after the data. Beside it, the table will carry net_w and the no-flip
+seconds of each run, labelled post-pilot and descriptive. If E fails only
+on titles whose arms differ in no-flip time, that is reported as the
+instrument, not as the halt.
+
+H, P1, P2 and A on the Kabuki pair all read inside their bounds. The
+formal verdict comes with the batch.
+
+### Queued (release prio `1-`, Nova, ref 3a5d79e3ea, 15:45 PDT)
+
+| title | first | second |
+|---|---|---|
+| Fuzion | B1 `1-1790634702-lane.idlehaltdefault-3051928` | A1 `1-1790634702-lane.idlehaltdefault-3052286` |
+| Forza | A1 `1-1790634702-lane.idlehaltdefault-3052521` | B1 `1-1790634703-lane.idlehaltdefault-3052915` |
+| DOA1U | B1 `1-1790634703-lane.idlehaltdefault-3053271` | A1 `1-1790634703-lane.idlehaltdefault-3053613` |
+| Blinx 2 | A1 `1-1790634703-lane.idlehaltdefault-3053911` | B1 `1-1790634704-lane.idlehaltdefault-3054293` |
+| Ghoulies | B1 `1-1790634704-lane.idlehaltdefault-3054732` | A1 `1-1790634704-lane.idlehaltdefault-3055105` |
+
+The device pin, env, ref and seconds were read back from each `.req`.
+
+On resume, run `ihd_judge.py` over all twelve (`--a` the six A ids, `--b`
+the six B ids), with `hang_gaps_s` read beside it. Then fill the per-title
+table, judge the six predictions, and decide whether a second pair is
+needed (only for a title whose leg fails or sits inside the bound).
