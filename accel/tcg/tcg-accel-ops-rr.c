@@ -109,10 +109,25 @@ static void rr_wait_io_event(void)
 {
     CPUState *cpu;
 
+#ifdef XBOX
+    bool slept = false;
+#endif
+
     while (all_cpu_threads_idle()) {
         rr_stop_kick_timer();
+#ifdef XBOX
+        slept = true;
+        /* #525: bounded for an idle-idiom halt (system/cpus.c). */
+        if (hakux_idle_halt_wait(first_cpu, first_cpu->halt_cond)) {
+            break;
+        }
+#else
         qemu_cond_wait_bql(first_cpu->halt_cond);
+#endif
     }
+#ifdef XBOX
+    hakux_idle_halt_after_wait(first_cpu, slept);
+#endif
 
     rr_start_kick_timer();
 

@@ -37,15 +37,19 @@ A violation means the instrument is wrong, not the title.
 
 --window A,B keeps lines from A to B seconds after the first hakuX-perf line
 (or the first line, if there is none); it needs logcat timestamps. Lines
-already cut to a window, as the host posts them, need no --window. Logcat
-stamps carry no year: they are read in a leap year only when a 29 February
-stamp is present, and a stamp more than half a year from the window's first
-is read in the neighbouring year, so a window may cross New Year.
+already cut to a window, as the host posts them, need no --window. The cut is
+docs/testing/phase_read_split.py's THE WINDOW, so this reader and that one
+read a soak's lines over the same window: logcat stamps carry no year, and
+that is where the year a stamp is read in is decided.
 """
 import argparse
+import os
 import re
 import sys
-from datetime import datetime
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                "..", "..", "testing"))
+from phase_read_split import window_lines  # noqa: E402
 
 TXH = ["new", "rb", "srf", "mk", "memo", "bit", "bov", "oth", "eq", "rep"]
 TXU_CAUSE = ["new", "rb", "chg", "oth"]
@@ -57,46 +61,17 @@ RE_TXU = re.compile(r"txu\[n(\d+)/(\d+)K " + " ".join(r"%s(\d+)" % n for n in TX
                     " " + " ".join(r"%s(\d+)K" % n for n in TXK) + r"\]")
 RE_TXR = re.compile(r"txr\[ct(\d+) bt(\d+)/(\d+) dl(\d+)/(\d+)K sc(\d+) scdl(\d+) "
                     r"img(\d+) pool(\d+) s2tc(\d+) s2td(\d+)\]")
-RE_TS = re.compile(r"^(\d\d-\d\d \d\d:\d\d:\d\d\.\d+)")
-EPOCH = datetime(2000, 1, 1)
-HALF_YEAR = 183 * 86400.0
-
-
-def stamp(line, year=2001):
-    """The line's logcat stamp as seconds since 2000, read in `year`."""
-    m = RE_TS.match(line)
-    if not m:
-        return None
-    t = datetime.strptime("%d-%s" % (year, m.group(1)), "%Y-%m-%d %H:%M:%S.%f")
-    return (t - EPOCH).total_seconds()
 
 
 def parse(lines, window=None):
     """Group the three lines of each 60-frame block. Returns (groups, dropped)."""
-    t0 = None
     if window:
-        # A fixed leap year would read a common year's 28 February to 1 March
-        # as two days, and a fixed common year cannot parse 29 February.
-        year = 2000 if any(RE_TS.match(l) and l.startswith("02-29") for l in lines) else 2001
-        for l in lines:
-            if "hakuX-perf" in l and stamp(l, year) is not None:
-                t0 = stamp(l, year)
-                break
-        if t0 is None:
-            t0 = next((stamp(l, year) for l in lines if stamp(l, year) is not None), None)
-        if t0 is None:
-            sys.exit("--window needs logcat timestamps, and these lines have none")
+        lines = window_lines(lines, window)
     groups, cur, dropped = [], {}, 0
     for l in lines:
         kind = "txh" if "txh[" in l else "txu" if "txu[" in l else "txr" if "txr[" in l else None
         if not kind:
             continue
-        if window:
-            t = stamp(l, year)
-            if t is not None and abs(t - t0) > HALF_YEAR:    # New Year between them
-                t = stamp(l, year + (1 if t < t0 else -1))
-            if t is None or not window[0] <= t - t0 <= window[1]:
-                continue
         m = {"txh": RE_TXH, "txu": RE_TXU, "txr": RE_TXR}[kind].search(l)
         if not m:
             dropped += 1        # truncated mid-write: counted, never used
@@ -229,6 +204,15 @@ def selftest():
         s = SAMPLE.replace("09-27 05:00:01.000", first).replace("09-27 05:00:02.000", then)
         g6, _ = parse(s.splitlines(), window=(1.5, 2.5))
         ok &= len(g6) == 1
+    # #480 audit LOW-2: a 29 February more than half a year from the origin
+    # is re-read in the neighbouring, common year, where it does not exist.
+    # It is outside the window, and must not raise: the reader before this
+    # case raised ValueError here.
+    s = (SAMPLE.replace("09-27 05:00:01.000", "12-31 23:59:59.000")
+               .replace("09-27 05:00:02.000", "01-01 00:00:01.000")
+               .replace("09-27 05:00:04.000", "02-29 00:00:01.000"))
+    g7, _ = parse(s.splitlines(), window=(0.0, 1e9))
+    ok &= len(g7) == 1 and g7[0]["txr"]["ct"] == 40
     print("selftest: %s" % ("PASS" if ok else "FAIL"))
     return 0 if ok else 1
 

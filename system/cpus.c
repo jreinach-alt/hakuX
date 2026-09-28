@@ -466,6 +466,338 @@ void qemu_process_cpu_events_common(CPUState *cpu)
     process_queued_cpu_work(cpu);
 }
 
+#ifdef XBOX
+/*
+ * #525 HAKUX_IDLE_HALT: sleep the vCPU in the guest kernel's idle loop.
+ *
+ * The kernel idles in NT's idiom, sti; nop; nop; cli; <test>; jz, and never
+ * executes hlt, so the vCPU thread spins at ~94% on-CPU while the guest is
+ * idle 52-66% of the time (docs/lanes/retreason425/NOTES.md, sections 6-8).
+ * With HAKUX_IDLE_HALT=1 the translator gives the second nop hlt semantics
+ * (helper_hakux_idle_hlt): EIP past it, halted = 1, EXCP_HLT. The sti shadow
+ * is over and IF = 1 there, so an interrupt is taken before the cli, where
+ * the spinning loop would have taken it.
+ *
+ * The sleep is bounded. An idiom halt waits on halt_cond for at most
+ * IH_TIMEOUT_MS; on a timeout the vCPU is un-halted and runs the loop once
+ * more (and halts again), so a wake nothing delivers costs at most 1 ms
+ * instead of hanging the guest. The halt is armed only once the PIT (vector
+ * 0x30) has been taken, so an early-boot idle before the timer runs spins as
+ * before. A real hlt keeps QEMU's unbounded wait.
+ *
+ * Wakes come through the ordinary path: device IRQ -> PIC -> cpu_interrupt
+ * (asserts the BQL) -> tcg_handle_interrupt -> qemu_cpu_kick -> halt_cond.
+ * tcg_handle_interrupt reports the first kick of each halt here, with the
+ * NV2A units that had an enabled interrupt pending (hakux_nv2a_irq_units),
+ * which classes the wake; the time from that kick to the vCPU leaving the
+ * wait is the raise-to-run latency the halt adds.
+ *
+ * One [idlehalt] line per 2 s (tag hakuX), from the vCPU thread, whether
+ * the halt is on or not (so an A arm reads the same host columns):
+ *   on (HAKUX_IDLE_HALT), run_us and rq_us (this thread's on-CPU and
+ *   run-queue wait time from /proc/thread-self/schedstat; run_us / span_us
+ *   is the vCPU's on-CPU share), halts, pc (the cli of the first armed
+ *   halt) and xpc (halts at any other pc: the idiom found somewhere that is
+ *   not the idle loop), imm (halted with work already pending: no sleep),
+ *   wake classes pg (PGRAPH ERROR, the push-buffer callback), pgo (other
+ *   PGRAPH), vb (vblank), fifo (PFIFO), ot (no NV2A unit: PIT, USB, ...),
+ *   to (timeouts, idle), tp (timeouts with work pending and no kick seen:
+ *   a missed wake), tr (timeouts with work pending after a kick: the
+ *   timedwait race), slept_us, pit (halts whose last interrupt was the PIT),
+ *   and the raise-to-run histogram (us: <5 <10 <20 <50 <100 <200 >=200)
+ *   and maximum for pg (lpg, lpgmax) and for all kicked wakes (lall).
+ *
+ * HAKUX_IDLE_HALT_SPIN_US=<n> (default 0, the build as first measured): each
+ * idiom halt first spins up to n us without the BQL, polling for its kick,
+ * before the condvar sleep. A kick inside the spin is taken without a futex
+ * wake, so it does not pay the sleeping thread's wake-up (the pg raise-to-run
+ * tail, #525 leg L); a kick after it costs what it did. The line adds spin_us
+ * (the setting), sh (halts whose kick came inside the spin), spn_us (time
+ * spent spinning) and kpg, the time from halt entry to a pg kick (us: <20 <50
+ * <100 <200 <500 <1000 >=1000), which says what spin would catch how many
+ * callbacks whatever the setting.
+ */
+#include "qemu/timer.h"
+#include "qemu/processor.h"
+#include "exec/cpu-interrupt.h"
+#ifdef __ANDROID__
+#include <android/log.h>
+#define IH_LOG(...) __android_log_print(ANDROID_LOG_WARN, "hakuX", __VA_ARGS__)
+#else
+#define IH_LOG(...) do { \
+        fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while (0)
+#endif
+
+#define IH_TIMEOUT_MS 1
+/* Raise-to-run buckets, us: <5 <10 <20 <50 <100 <200 >=200. */
+#define IH_LAT_BINS 7
+static const int ih_lat_edge[IH_LAT_BINS - 1] = { 5, 10, 20, 50, 100, 200 };
+/* Halt-entry-to-pg-kick buckets, us: <20 <50 <100 <200 <500 <1000 >=1000. */
+static const int ih_kpg_edge[IH_LAT_BINS - 1] = { 20, 50, 100, 200, 500, 1000 };
+#define IH_WINDOW_NS 2000000000LL
+#define IH_SPIN_MAX_US 1000
+
+uint32_t hakux_nv2a_irq_units(void);
+
+enum { IH_PG, IH_PGO, IH_VB, IH_FIFO, IH_OT, IH_NCLASS };
+static const char *const ih_class_name[IH_NCLASS] = {
+    "pg", "pgo", "vb", "fifo", "ot"
+};
+
+static int ih_enabled = -1;         /* HAKUX_IDLE_HALT, read once */
+static bool ih_armed;               /* the PIT has been taken */
+static bool ih_on;                  /* an idiom halt is in force */
+static int64_t ih_t0;               /* its start */
+static int64_t ih_kick_ns;          /* its first kick, 0 none */
+static int ih_kick_class;
+static uint32_t ih_pc;              /* the cli of the first armed halt */
+static int ih_spin_us;              /* HAKUX_IDLE_HALT_SPIN_US */
+static bool ih_spun;                /* this halt has had its spin */
+
+static struct {
+    uint64_t halts, xpc, imm, pit, to, tp, tr, slept_ns, sh, spin_ns;
+    uint64_t wake[IH_NCLASS];
+    uint32_t lat_pg[IH_LAT_BINS], lat_all[IH_LAT_BINS], kpg[IH_LAT_BINS];
+    uint64_t lat_pg_max, lat_all_max;
+} ih;
+static int64_t ih_window_t;
+static unsigned ih_window;
+
+bool hakux_idle_halt_enabled(void)
+{
+    if (ih_enabled < 0) {
+        const char *v = getenv("HAKUX_IDLE_HALT");
+        ih_enabled = v && v[0] == '1';
+        v = getenv("HAKUX_IDLE_HALT_SPIN_US");
+        ih_spin_us = v ? MIN(MAX(atoi(v), 0), IH_SPIN_MAX_US) : 0;
+        if (ih_enabled) {
+            IH_LOG("[idlehalt] on: timeout %d ms, spin %d us, armed at the "
+                   "first PIT", IH_TIMEOUT_MS, ih_spin_us);
+        }
+    }
+    return ih_enabled;
+}
+
+static int ih_bin(const int *edge, uint64_t ns)
+{
+    int i = 0;
+
+    while (i < IH_LAT_BINS - 1 && ns >= edge[i] * 1000ull) {
+        i++;
+    }
+    return i;
+}
+
+static int ih_hist(char *buf, size_t len, const uint32_t *h)
+{
+    return snprintf(buf, len, "%u/%u/%u/%u/%u/%u/%u",
+                    h[0], h[1], h[2], h[3], h[4], h[5], h[6]);
+}
+
+/* This thread's schedstat: on-CPU ns and run-queue wait ns; false if none. */
+static bool ih_schedstat(uint64_t *run, uint64_t *wait)
+{
+    char buf[96];
+    FILE *f = fopen("/proc/thread-self/schedstat", "r");
+    bool ok;
+
+    if (!f) {
+        return false;
+    }
+    ok = fgets(buf, sizeof(buf), f)
+         && sscanf(buf, "%" SCNu64 " %" SCNu64, run, wait) == 2;
+    fclose(f);
+    return ok;
+}
+
+static void ih_tick(void)
+{
+    static uint64_t run0, wait0;
+    static bool have0;
+    int64_t now = get_clock();
+    uint64_t run = 0, wait = 0;
+    int64_t drun = -1, dwait = -1;
+    bool have;
+    char wk[128], lpg[64], lall[64], kpg[64];
+    int off = 0;
+
+    if (ih_window_t && now - ih_window_t < IH_WINDOW_NS) {
+        return;
+    }
+    have = ih_schedstat(&run, &wait);
+    if (!ih_window_t) {
+        hakux_idle_halt_enabled();
+        ih_window_t = now;
+        run0 = run;
+        wait0 = wait;
+        have0 = have;
+        return;
+    }
+    if (have && have0) {
+        drun = (run - run0) / 1000;
+        dwait = (wait - wait0) / 1000;
+    }
+    run0 = run;
+    wait0 = wait;
+    have0 = have;
+    for (int i = 0; i < IH_NCLASS; i++) {
+        off += snprintf(wk + off, sizeof(wk) - off, " %s=%" PRIu64,
+                        ih_class_name[i], ih.wake[i]);
+    }
+    ih_hist(lpg, sizeof(lpg), ih.lat_pg);
+    ih_hist(lall, sizeof(lall), ih.lat_all);
+    ih_hist(kpg, sizeof(kpg), ih.kpg);
+    IH_LOG("[idlehalt] w=%u on=%d span_us=%" PRId64 " run_us=%" PRId64
+           " rq_us=%" PRId64 " halts=%" PRIu64 " pc=%08x xpc=%" PRIu64
+           " imm=%" PRIu64 "%s to=%" PRIu64 " tp=%" PRIu64 " tr=%" PRIu64
+           " slept_us=%" PRIu64 " pit=%" PRIu64
+           " lpg=%s lpgmax=%" PRIu64 " lall=%s lallmax=%" PRIu64
+           " spin_us=%d sh=%" PRIu64 " spn_us=%" PRIu64 " kpg=%s",
+           ih_window, ih_enabled > 0, (now - ih_window_t) / 1000, drun, dwait,
+           ih.halts, ih_pc, ih.xpc, ih.imm, wk,
+           ih.to, ih.tp, ih.tr, ih.slept_ns / 1000, ih.pit,
+           lpg, ih.lat_pg_max / 1000, lall, ih.lat_all_max / 1000,
+           ih_spin_us, ih.sh, ih.spin_ns / 1000, kpg);
+    memset(&ih, 0, sizeof(ih));
+    ih_window_t = now;
+    ih_window++;
+}
+
+/*
+ * helper_hakux_idle_hlt, at the idiom's second nop with IF = 1: true to halt.
+ * @last_vec is the vector of the last interrupt taken (hakux_rr425_vec),
+ * @pc the EIP the halt resumes at (the idiom's cli).
+ */
+bool hakux_idle_halt_enter(CPUState *cpu, int last_vec, uint32_t pc)
+{
+    if (!ih_armed) {
+        if (last_vec != 0x30) {
+            return false;
+        }
+        ih_armed = true;
+        ih_pc = pc;
+        IH_LOG("[idlehalt] armed at %08x", pc);
+    }
+    ih.halts++;
+    ih.xpc += pc != ih_pc;
+    ih.pit += last_vec == 0x30;
+    ih_t0 = get_clock();
+    ih_spun = false;
+    qatomic_set(&ih_kick_ns, 0);
+    /* Read by the kicking thread; the halt itself is ordered by the BQL. */
+    qatomic_set_mb(&ih_on, true);
+    return true;
+}
+
+/* tcg_handle_interrupt is kicking @cpu from another thread (BQL held). */
+void hakux_idle_halt_kick(CPUState *cpu, int mask)
+{
+    uint32_t u;
+
+    if (!qatomic_read(&ih_on) || ih_kick_ns
+        || !(mask & CPU_INTERRUPT_HARD)) {
+        return;
+    }
+    u = hakux_nv2a_irq_units();
+    ih_kick_class = (u & 64) ? IH_PG : (u & 4) ? IH_PGO : (u & 2) ? IH_VB
+                    : (u & 1) ? IH_FIFO : IH_OT;
+    /* Last: a spinning vCPU polls it without the BQL. */
+    qatomic_set_mb(&ih_kick_ns, get_clock());
+}
+
+/* The idiom halt ended with the vCPU runnable. */
+static void ih_wake(CPUState *cpu, bool slept)
+{
+    int64_t now = get_clock();
+
+    ih_on = false;
+    ih.slept_ns += now - ih_t0;
+    if (!slept) {
+        ih.imm++;
+    } else if (ih_kick_ns) {
+        uint64_t lat = now - ih_kick_ns;
+        int bin = ih_bin(ih_lat_edge, lat);
+
+        ih.wake[ih_kick_class]++;
+        ih.lat_all[bin]++;
+        ih.lat_all_max = MAX(ih.lat_all_max, lat);
+        if (ih_kick_class == IH_PG) {
+            ih.kpg[ih_bin(ih_kpg_edge, ih_kick_ns - ih_t0)]++;
+            ih.lat_pg[bin]++;
+            ih.lat_pg_max = MAX(ih.lat_pg_max, lat);
+        }
+    } else {
+        ih.wake[IH_OT]++;       /* runnable with no HARD kick seen */
+    }
+}
+
+/*
+ * One wait of a halted @cpu on @cond (BQL held): QEMU's unbounded wait for a
+ * real hlt, a bounded one for an idiom halt. True when the bounded wait timed
+ * out and the vCPU was un-halted to run the idle loop again.
+ */
+bool hakux_idle_halt_wait(CPUState *cpu, QemuCond *cond)
+{
+    if (!ih_on) {
+        qemu_cond_wait(cond, &bql);
+        return false;
+    }
+    if (ih_spin_us && !ih_spun) {
+        /*
+         * Bounded by ih_spin_us. Without the BQL, so the raiser can take it;
+         * the caller re-tests cpu_thread_is_idle under the BQL afterwards,
+         * so a kick that lands after the last poll is not lost: it is seen
+         * there, or it signals the condvar wait that follows.
+         */
+        int64_t t0 = get_clock(), t = t0, end = t0 + ih_spin_us * 1000LL;
+
+        ih_spun = true;
+        bql_unlock();
+        while (!qatomic_read(&ih_kick_ns)
+               && !qatomic_read(&cpu->exit_request)
+               && (t = get_clock()) < end) {
+            cpu_relax();
+        }
+        bql_lock();
+        ih.spin_ns += t - t0;
+        ih.sh += ih_kick_ns != 0;
+        return false;
+    }
+    if (qemu_cond_timedwait(cond, &bql, IH_TIMEOUT_MS)) {
+        return false;
+    }
+    if (!cpu->halted || !ih_on) {
+        return false;
+    }
+    if (cpu_has_work(cpu)) {
+        /* Runnable although no signal arrived. */
+        if (ih_kick_ns) {
+            ih.tr++;
+        } else {
+            ih.tp++;
+        }
+        return false;
+    }
+    ih.to++;
+    ih.slept_ns += get_clock() - ih_t0;
+    ih_on = false;
+    cpu->halted = 0;
+    return true;
+}
+
+/*
+ * After the wait loop, each pass of the vCPU thread's loop: account an idiom
+ * halt that has ended, and print the window when it is due.
+ */
+void hakux_idle_halt_after_wait(CPUState *cpu, bool slept)
+{
+    if (ih_on && (!cpu->halted || cpu_has_work(cpu))) {
+        ih_wake(cpu, slept);
+    }
+    ih_tick();
+}
+#endif
+
 void qemu_process_cpu_events(CPUState *cpu)
 {
     bool slept = false;
@@ -476,8 +808,17 @@ void qemu_process_cpu_events(CPUState *cpu)
             slept = true;
             qemu_plugin_vcpu_idle_cb(cpu);
         }
+#ifdef XBOX
+        if (hakux_idle_halt_wait(cpu, cpu->halt_cond)) {
+            break;
+        }
+#else
         qemu_cond_wait(cpu->halt_cond, &bql);
+#endif
     }
+#ifdef XBOX
+    hakux_idle_halt_after_wait(cpu, slept);
+#endif
     if (slept) {
         qemu_plugin_vcpu_resume_cb(cpu);
     }
