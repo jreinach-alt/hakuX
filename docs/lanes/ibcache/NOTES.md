@@ -100,3 +100,16 @@ cache (`[jc425]` `ip` collisions on returns), that is the evidence for it.
    or hang against their last master soak.
 5. **J/frame and fps.** GTA, and Forza after #583. Registered with the pixel
    leg once R1b gives the share.
+
+## State at 21:10Z, 2026-09-28: waiting on R1 and R1b
+
+- R1 (master) and R1b (5a018cd42c) were asked of lane.local on #507
+  (issuecomment-5878355210 and -5878537162). A lane cannot run
+  `capture_gta.sh`: it drives adb under a hold, and `request.sh` has no
+  simpleperf/code-buffer mode.
+- `preflight.sh --allow-tracker` passes on 5a018cd42c.
+- **Next, on resume:** read R1 with `symsplit.py`/`jitmix.py` from PR #589's
+  `docs/lanes/vcpuplan/`, post the go or no-go on #507, and share OUT with
+  lane.memfast. If go: read R1b against legs 1-2, then register the pixel
+  leg with `ab_compare.py --register` (a_ref be05285c44, b_ref the probe's
+  head) and commit it, which queues the arm.
