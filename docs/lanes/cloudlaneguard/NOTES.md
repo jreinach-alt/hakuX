@@ -101,6 +101,31 @@ This is the incident PR. Its lane is still running, so the repo's outlet now
 refuses it, as the host's interim guard (`audit_outlet.sh` ->
 `lane_on_branch.sh`) already did.
 
+### The full suite and preflight
+
+- `selftest.sh`, run locally: `2253 passed, 0 failed`. That includes the other
+  `cloud.sh` consumers, 70-73, 98-audit-outlet and 99-limits-env.
+- `preflight.sh` passed.
+
+### CI headroom
+
+The first CI `jobs selftest` run on this PR (36367749352, on a0ee77d688) was
+**cancelled at the job's `timeout-minutes: 25`**. No check in it failed.
+
+| Workflow | Runs | Duration |
+|---|---|---|
+| master's `jobs selftest` | three consecutive runs on 2026-09-28 | 22-24 min each |
+
+With master already that close to the cap, a small addition, or a slow runner,
+tips a run over. This fragment adds 5 `cloud.sh list` calls, about a second on
+this host. The next push is the retry.
+
+- **Waiting on:** the `jobs selftest` check on this PR's new head.
+- **Resolved by:** that check going green. The PR is then marked ready.
+- The headroom itself belongs to whoever owns `.github/workflows/`. The fix is
+  a higher `timeout-minutes` or a split suite. This lane's brief does not grant
+  that file.
+
 ## For the next lane
 
 - A lane unit whose worktree is detached (`symbolic-ref` fails) never matches.
