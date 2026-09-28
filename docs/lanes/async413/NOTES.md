@@ -85,3 +85,16 @@ order fix, base, fix, base, so every run follows a different apk and starts cold
 Device time: 4 x (440 + 90) + 2 x (240 + 90) = 2780 s, or 46 min. That is over the 30-minute
 pilot line, so the pilot is the first pair (B1, A1: 1060 s). The rest is queued once its frames
 and logcat show T located, the cold cache, and the async line read.
+
+- 2026-09-28 18:12Z (11:12 PDT): pilot queued. B1 = `1-1790618748-async413-847565` (fix
+  d1e5278311), A1 = `1-1790618752-async413-854601` (base 01e62d8d1c). Both are Nova, survey,
+  440 s, `--expect async413-doa.json`. In the Nova queue a Kabuki run from another lane
+  (idlehaltdefault) sits between them, so each follows a different apk. The Nova is on its
+  battery hold until the owner's ~18:00 PDT top-up. The session ended **waiting** on these two
+  ids.
+- **On resume:** run `asyncwin.py` on both. Check the VOID gates (`cleared`, nova, the
+  `async compile:` line) and read the frames. Write `$DISPATCH_DIR/pilots/async413.ok` (with
+  python3) with the verdict. Then queue B2, A2 (DOA) and B, A (Blinx, 240 s,
+  `--expect async413-blinx.json`), fix first each time. If the pilot pair already puts M's
+  ratio >= 0.8 on T and FL, S cannot pass. Queue the rest anyway, because V and F still need
+  two runs, but say so on the PR.
