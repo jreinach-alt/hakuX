@@ -373,9 +373,9 @@ start, and a warm start loses that margin. A fan at 50000 may buy it back.
 
 ### Part D.2: fan duty in every soak sample
 
-This is PR #554 (`lane/sustain507-fan`): `thermal_state.py` samples `gpio5_pwm2`
-duty/period/state/speed, and the `THERMAL:` line ends `fan duty lo-hi of period`. It is live after
-the update window following its fold.
+This is PR #554 (`lane/sustain507-fan`), folded as 0f4002ebe8 at 15:20Z. `thermal_state.py` samples
+`gpio5_pwm2` duty/period/state/speed, and the `THERMAL:` line ends `fan duty lo-hi of period`. It is
+live once a dispatcher update window has taken that snapshot.
 
 ### Next lane should not repeat
 
