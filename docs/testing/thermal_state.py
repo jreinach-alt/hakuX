@@ -6,7 +6,10 @@
     thermal_state.py --diff A B                 cooling devices whose cur_state rose from A to B
     thermal_state.py --summary FILE.jsonl       one `THERMAL:` line for run.log
     thermal_state.py --window FILE.jsonl LO HI  is a pause possible inside LO..HI s after
-                                                FILE's first sample? exit 0 yes, 1 no, 2 unread
+                                                FILE's `start` sample (else its first)?
+                                                exit 0 yes, 1 no, 2 unread
+    thermal_state.py --cool FILE.jsonl ZONE C   is FILE's last sample cool enough to start a
+                                                title? exit 0 yes, 1 no (hot or paused), 2 unread
 
 WHY. On the Thor under the MAX regimen the kernel's thermal mitigation pauses
 cpu3-7 a few minutes into a run: cooling device `thermal-pause-F8` goes 1/1,
@@ -49,6 +52,14 @@ counts as covered; two failures in a row do not. The window's end needs a
 readable sample at or after it, less END_SLACK_S: dev_time is whole seconds
 and `soak end` is a millisecond logcat stamp, so the `end` sample taken just
 after it can read up to a second earlier.
+
+THE COOL-DOWN GATE (--cool). The pause trips at xo-therm 78 C and clears near
+70 C (8 C hysteresis). At MAX from 54 C, GTA took 9 min to reach the trip.
+A run queued seconds after a hot one starts at 75 C or already paused, and
+pauses in 2-4 min (#507). soak_title.sh therefore samples before it sets MAX
+and waits while the named zone reads at or above the limit, or any pause
+device is set. A device without the zone, or a sample with no reading, is
+not gated (exit 2): the gate may cost minutes, but it must never cost the run.
 """
 import datetime as dt
 import json
@@ -253,11 +264,18 @@ def describe(ep, t0=None):
         began, ep["first_rec"].get("dev_time"), ended)
 
 
+def origin(ok):
+    """+0 s: the readable `start` sample (just before `am start`), not a
+    cool-down sample before it; else the first readable sample."""
+    starts = [dev_ts(r) for r in ok if r.get("label") == "start"]
+    return min(starts) if starts else min(dev_ts(r) for r in ok)
+
+
 def summary(recs):
     ok = [r for r in recs if paused(r) is not None and dev_ts(r) is not None]
     if not ok:
         return "THERMAL: unread -- no sample with a reading in %d lines" % len(recs)
-    t0 = min(dev_ts(r) for r in ok)
+    t0 = origin(ok)
     eps = episodes(recs)
     hot = max((z[2] for r in ok for z in r.get("tz") or []), default=None)
     fails = len(recs) - len(ok)
@@ -273,6 +291,29 @@ def diff(a, b):
     before = {(c[0], c[1]): c[2] for c in a.get("cool") or []}
     return ["%s(cd%d) %d->%d/%d" % (c[1], c[0], before.get((c[0], c[1]), 0), c[2], c[3])
             for c in b.get("cool") or [] if c[2] > before.get((c[0], c[1]), 0)]
+
+
+def zone_c(rec, zone):
+    """The first zone of this type in a sample, in C, or None."""
+    for z in rec.get("tz") or []:
+        if z[1] == zone:
+            return z[2] / 1000.0 if abs(z[2]) > 1000 else float(z[2])
+    return None
+
+
+def cool(rec, zone, limit_c):
+    """(exit code, phrase) for THE COOL-DOWN GATE."""
+    if paused(rec) is None:
+        return 2, "unread: %s" % (rec.get("error") or "no reading")
+    c = zone_c(rec, zone)
+    if c is None:
+        return 2, "no %s zone" % zone
+    if paused(rec):
+        return 1, "%s %.1f C, paused (%s)" % (
+            zone, c, ",".join("%s %d/%d" % d for d in pause_devices(rec)))
+    if c >= limit_c:
+        return 1, "%s %.1f C >= %g C" % (zone, c, limit_c)
+    return 0, "%s %.1f C < %g C" % (zone, c, limit_c)
 
 
 def read_one(arg):
@@ -321,11 +362,11 @@ def main(argv):
         return 0
     if argv[0] == "--window" and len(argv) == 4:
         recs = load(argv[1])
-        ok = [dev_ts(r) for r in recs or [] if paused(r) is not None and dev_ts(r) is not None]
+        ok = [r for r in recs or [] if paused(r) is not None and dev_ts(r) is not None]
         if not ok:
             print("unread: no sample with a reading")
             return 2
-        t0 = min(ok)
+        t0 = origin(ok)
         lo, hi = t0 + float(argv[2]), t0 + float(argv[3])
         hit = in_window(recs, lo, hi)
         for e in hit:
@@ -338,6 +379,11 @@ def main(argv):
             return 2
         print("no pause may overlap +%s..+%s s" % (argv[2], argv[3]))
         return 1
+    if argv[0] == "--cool" and len(argv) == 4:
+        recs = load(argv[1]) or []
+        rc, phrase = cool(recs[-1], argv[2], float(argv[3])) if recs else (2, "unread: no sample")
+        print(phrase)
+        return rc
     if argv[0] == "--trips" and len(argv) == 2:
         zones = trips(argv[1])
         print(json.dumps({"serial": argv[1], "zones": zones}, sort_keys=True))

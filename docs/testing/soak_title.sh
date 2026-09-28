@@ -248,6 +248,68 @@ if [ "$display_rc" = 1 ]; then
     echo "soak refused: display 0 is not hakuX's to draw on; nothing was started"
     exit 4
 fi
+
+# THE THERMAL RECORD (#507). Under MAX the Thor's kernel pauses cpu3-7 a few
+# minutes in (`thermal-pause-F8`, bound to xo-therm's 78 C trip) and fps falls
+# 5-7x; no other readout shows it. thermal_state.py reads every cooling device
+# and zone in one adb call and appends one JSON line to thermal.jsonl beside
+# the capture: once just before `am start`, once every THERMAL_EVERY_S (30 s)
+# from the hold loop below (no second poller), and once at the end.
+# title_verdict.py voids a scored window a pause may overlap; the `THERMAL:`
+# line in run.log is for a reader.
+THERMAL_OUT="${THERMAL_OUT:-${CAPTURE_LOG:+$(dirname "$CAPTURE_LOG")/thermal.jsonl}}"
+thermal_sample() {   # <label>
+    [ -n "$THERMAL_OUT" ] || return 0
+    if [ ! -f "$HERE/thermal_state.py" ]; then
+        # An older snapshot (see ROUTE NOT PLAYED below): say so once; no
+        # thermal.jsonl then reads as `unread`, never as `no pause`.
+        echo "THERMAL: not recorded: $HERE/thermal_state.py is missing from this snapshot"
+        THERMAL_OUT=""
+        return 0
+    fi
+    # stderr to run.log: a sampler traceback writes no line, and a reader
+    # should see why a gap is there (the verdict voids it either way).
+    python3 "$HERE/thermal_state.py" "$SERIAL" --label "$1" >>"$THERMAL_OUT"
+    return 0
+}
+[ -n "$THERMAL_OUT" ] && rm -f "$THERMAL_OUT"
+
+# THE COOL-DOWN GATE (#507; thermal_state.py has why). Before MAX is set, and
+# with the title stopped, wait while THERMAL_COOL_ZONE reads at or above
+# THERMAL_COOL_C or a pause device is set. The wait is capped at
+# THERMAL_COOL_MAX_S (a run then starts hot, and says so) because
+# harness_health.py calls a soak overrunning at `seconds` + 10 min. The
+# samples are `cool` lines in thermal.jsonl. THERMAL_COOL_C=off turns it off.
+# run.log gets one `COOLDOWN:` line, at the start of a line: `waited <s> s,
+# xo <start> -> <end> C` (0 s when the first read was cool), `gave up at <C>
+# C`, or `not gated`. The bracket holds --cool's own words for the last read.
+if [ "${THERMAL_COOL_C:-65}" != off ]; then
+    cool_waited=0; cool_from=""
+    while :; do
+        thermal_sample cool
+        [ -n "$THERMAL_OUT" ] || break
+        cool_is=$(python3 "$HERE/thermal_state.py" --cool "$THERMAL_OUT" \
+            "${THERMAL_COOL_ZONE:-xo-therm}" "${THERMAL_COOL_C:-65}" 2>&1); cool_rc=$?
+        if [ "$cool_rc" = 2 ]; then
+            echo "COOLDOWN: not gated after ${cool_waited} s: $cool_is"
+            break
+        fi
+        # --cool's phrase opens `<zone> <C> C`.
+        cool_c=$(printf '%s\n' "$cool_is" | sed -n 's/^[^ ]* \(-\{0,1\}[0-9.]*\) C.*/\1/p')
+        [ -n "$cool_from" ] || cool_from="$cool_c"
+        if [ "$cool_rc" = 0 ]; then
+            echo "COOLDOWN: waited ${cool_waited} s, xo $cool_from -> $cool_c C [$cool_is]"
+            break
+        fi
+        if [ "$cool_waited" -ge "${THERMAL_COOL_MAX_S:-360}" ]; then
+            echo "COOLDOWN: gave up at $cool_c C after ${cool_waited} s, xo $cool_from -> $cool_c C [$cool_is]; starting hot"
+            break
+        fi
+        sleep "${THERMAL_COOL_EVERY_S:-20}"
+        cool_waited=$((cool_waited + ${THERMAL_COOL_EVERY_S:-20}))
+    done
+fi
+
 arm_audio
 perf_enter
 
@@ -303,30 +365,6 @@ if [ -n "$CAPTURE_LOG" ]; then
     LOGCAT_PID=$!
 fi
 
-# THE THERMAL RECORD (#507). Under MAX the Thor's kernel pauses cpu3-7 a few
-# minutes in (`thermal-pause-F8`, bound to xo-therm's 78 C trip) and fps falls
-# 5-7x; no other readout shows it. thermal_state.py reads every cooling device
-# and zone in one adb call and appends one JSON line to thermal.jsonl beside
-# the capture: once here, before `am start`, once every THERMAL_EVERY_S (30 s)
-# from the hold loop below (no second poller), and once at the end.
-# title_verdict.py voids a scored window a pause may overlap; the `THERMAL:`
-# line in run.log is for a reader.
-THERMAL_OUT="${THERMAL_OUT:-${CAPTURE_LOG:+$(dirname "$CAPTURE_LOG")/thermal.jsonl}}"
-thermal_sample() {   # <label>
-    [ -n "$THERMAL_OUT" ] || return 0
-    if [ ! -f "$HERE/thermal_state.py" ]; then
-        # An older snapshot (see ROUTE NOT PLAYED below): say so once; no
-        # thermal.jsonl then reads as `unread`, never as `no pause`.
-        echo "THERMAL: not recorded: $HERE/thermal_state.py is missing from this snapshot"
-        THERMAL_OUT=""
-        return 0
-    fi
-    # stderr to run.log: a sampler traceback writes no line, and a reader
-    # should see why a gap is there (the verdict voids it either way).
-    python3 "$HERE/thermal_state.py" "$SERIAL" --label "$1" >>"$THERMAL_OUT"
-    return 0
-}
-[ -n "$THERMAL_OUT" ] && rm -f "$THERMAL_OUT"
 thermal_sample start
 
 # Quoted for the device's sh by devices.sh: a bare '...' broke on a title
