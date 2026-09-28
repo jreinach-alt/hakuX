@@ -1052,6 +1052,29 @@ predicted from this table; it is the next measurement.
 See `tsperiod.md` for #504's requests. Section 16's base rerun is
 `1-1790546289-flip474-398286`.
 
+## Why the last session did not finish, and this one (resumed 2026-09-28 01:02Z)
+
+The last session ended waiting on the sysmem batch, which was on the
+device. That was the right call. All twelve requests finished by 00:59Z,
+and #504 folded at 01:12Z.
+
+## 17. Turnip's render mode: measured, and the default taken back (#516)
+
+Everything is in `sysmem.md`. In short:
+
+| | |
+|---|---|
+| pixels, no env against `TU_DEBUG=sysmem` (Thor, 1059 captures) | 46 differ: 36 with the render mode (every `ZPass_pixel_count` capture prints a ZPASS report of 65,536 instead of 40,960), 8 run to run, 2 not classified |
+| AUF, Nova | GPU 0.53 x, gfps 16 -> 24 |
+| DOA, Nova, the default with no env | X/R 0.02, gfps 13 -> 21 |
+| Forza, Thor | GPU 0.91 x, gfps 14 -> 15 |
+| Blinx, Thor | GPU 1.05 x, gfps 16 -> 14, not separated from the view |
+| Crimson, Thor, capped | GPU 1.00 x, gfps 29 -> 27, not separated from run order |
+
+A global default is not pixel-inert, so `1a8f16ef16` is reverted. The
+policy the data supports is per title, and the app has the place for it
+(per-game overrides); those files are not this lane's.
+
 ## Do not repeat
 
 - Do not read a median of timing reps without looking at the rows. The
