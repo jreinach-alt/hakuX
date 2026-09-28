@@ -51,7 +51,7 @@
  * docs/lanes/uberspike569/NOTES.md.
  */
 #ifndef HAKUX_PSH_UBER_DEFAULT
-#define HAKUX_PSH_UBER_DEFAULT 0
+#define HAKUX_PSH_UBER_DEFAULT 1
 #endif
 
 /* The uniform the interpreter reads: 9 uvec4, std140. Element i < 8 is stage
