@@ -52,6 +52,7 @@ static PFN_vkGetDeviceProcAddr gdpa;
 static void **sbuf;          /* MAX_SAMPLES * (MAX_DEPTH + 1): [n, frames...] */
 static volatile size_t nsamples;
 static volatile int sampling;
+static volatile int cur_pipeline;   /* manifest line index, tagged on each sample */
 
 static void on_prof(int sig, siginfo_t *si, void *uc)
 {
@@ -61,7 +62,7 @@ static void on_prof(int sig, siginfo_t *si, void *uc)
     }
     void **slot = &sbuf[nsamples * (MAX_DEPTH + 1)];
     int n = backtrace(slot + 1, MAX_DEPTH);
-    slot[0] = (void *)(intptr_t)n;
+    slot[0] = (void *)(((intptr_t)cur_pipeline << 32) | n);
     nsamples++;
 }
 
@@ -254,6 +255,7 @@ int main(int argc, char **argv)
     }
     printf("name\trep\twall_ms\tfb_pipeline_ms\tfb_vs_ms\tfb_fs_ms\tfb_gs_ms\n");
     char line[4096];
+    int pipeline_idx = -1;
     while (fgets(line, sizeof(line), mf)) {
         char name[512], vp[1024], fp[1024], gp[1024];
         gp[0] = 0;
@@ -261,6 +263,7 @@ int main(int argc, char **argv)
             sscanf(line, "%511s %1023s %1023s %1023s", name, vp, fp, gp) < 3) {
             continue;
         }
+        cur_pipeline = ++pipeline_idx;
         Spv vs = load_spv(vp), fs = load_spv(fp), gs = { 0 };
         if (gp[0]) gs = load_spv(gp);
         uint32_t loc_mask; int has_push;
@@ -389,8 +392,9 @@ int main(int argc, char **argv)
         fwrite(hdr, sizeof(hdr), 1, sf);
         for (size_t i = 0; i < nsamples; i++) {
             void **slot = &sbuf[i * (MAX_DEPTH + 1)];
-            uint64_t n = (uint64_t)(intptr_t)slot[0];
-            fwrite(&n, 8, 1, sf);
+            uint64_t tag = (uint64_t)(intptr_t)slot[0];
+            uint64_t n = tag & 0xffffffff;
+            fwrite(&tag, 8, 1, sf);
             for (uint64_t k = 0; k < n; k++) {
                 uint64_t a = (uint64_t)(uintptr_t)slot[1 + k];
                 fwrite(&a, 8, 1, sf);

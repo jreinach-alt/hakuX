@@ -64,6 +64,15 @@ sources, and need not be pixel-correct: it is a cost probe.
 | C5 | psh texture modes and stage count | ranking of the pixel states against `basic` | `stages8` and `border` are the costliest, each >= 2x `basic` |
 | C6 | the geometry stage | VS + FS with no GS (and unprefixed VS) | the GS adds >= 30% per pipeline |
 
+**Added after the base run (commit 7ba8c8d8ba's run), before either was run.** The base run
+showed two costs the table above did not name, so two more probes, predictions written here
+first:
+
+| id | feature | "off" means | prediction |
+|---|---|---|---|
+| C7 | the fixed-function lighting unit's bit-exact arithmetic (`vsh-ff.c:128-283`, #224: `lt`, `ltMulCore`, `ltA3`, `ltsA`, `ltR`) | float32 arithmetic (the approximation #224 replaced; NOT pixel-inert) | lit pipelines' VS time drops >= 3x |
+| C8 | the triangle geometry stage's negative-w wedge (`geom.c:436-449`, #223) | three plain emits, `max_vertices = 3` (NOT pixel-inert on the W_param goldens) | the GS stage's time drops >= 2x |
+
 ## 1. Build recipe
 
 (filled in after the runs)

@@ -76,9 +76,12 @@ static char *emit(const char *stage, const char *name, glslang_stage_t gs, MStri
     char *gp = g_strdup_printf("%s/%s_%s.glsl", g_out, stage, name);
     char *sp = g_strdup_printf("%s/%s_%s.spv", g_out, stage, name);
     g_file_set_contents(gp, mstring_get_str(m), -1, NULL);
+    gint64 t0 = g_get_monotonic_time();
     size_t bytes = compile(gs, mstring_get_str(m), sp);
-    fprintf(stderr, "%-5s %-22s glsl %6zu B  spv %7zu B\n", stage, name,
-            strlen(mstring_get_str(m)), bytes);
+    gint64 t1 = g_get_monotonic_time();
+    /* the glslang (and, in an ENABLE_OPT build, spirv-opt) time, for C1 */
+    fprintf(stderr, "%-5s %-22s glsl %6zu B  spv %7zu B  glslang %7.1f ms\n", stage, name,
+            strlen(mstring_get_str(m)), bytes, (t1 - t0) / 1000.0);
     mstring_unref(m);
     g_free(gp);
     return sp;
