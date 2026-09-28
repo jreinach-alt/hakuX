@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Queue #526 render-wait soaks. Usage: queue_rwait.sh pilot|rest|all  Log: docs/lanes/pacing/.queue_rwait.log (not committed)
+# Queue #526 render-wait soaks. Usage: queue_rwait.sh pilot|rest|otogi|all  Log: docs/lanes/pacing/.queue_rwait.log (not committed)
 set -u
 cd /home/justin/hakux-work/wt/pacing
 P=docs/testing/predictions/pacing-rwait-soak.json
@@ -11,8 +11,8 @@ q() { # purpose title route env...
     for e in "$@"; do envs+=(--env "$e"); done
     echo "== $purpose"
     env HAKUX_RELEASE_PRIO=1 docs/testing/request.sh --who lane.pacing --purpose "$purpose" \
-        --title "$title" --route "$route" --seconds 240 --device thor --ref f53000f7e4 \
-        "${envs[@]}" --expect "$P"
+        --title "$title" --route "$route" --seconds "${SECS:-240}" --device thor --ref f53000f7e4 \
+        "${envs[@]}" --expect "${PRED:-$P}"
     echo "rc=$?"
 }
 case "${1:-}" in
@@ -28,9 +28,17 @@ rest)
     q "#526 render wait A2: yield, Otogi" "$O" otogi HAKUX_RENDER_WAIT=yield PERF_REGIMEN=default
     q "#526 render wait B2: block, Otogi" "$O" otogi PERF_REGIMEN=default
     ;;
+otogi)
+    # Otogi's route marks gameplay at ~246 s: the 240 s runs were all VOID. A1 B1 B2 A2.
+    export SECS=400 PRED=docs/testing/predictions/pacing-rwait-otogi.json
+    q "#526 render wait A1: yield, Otogi 400 s" "$O" otogi HAKUX_RENDER_WAIT=yield PERF_REGIMEN=default
+    q "#526 render wait B1: block, Otogi 400 s" "$O" otogi PERF_REGIMEN=default
+    q "#526 render wait B2: block, Otogi 400 s" "$O" otogi PERF_REGIMEN=default
+    q "#526 render wait A2: yield, Otogi 400 s" "$O" otogi HAKUX_RENDER_WAIT=yield PERF_REGIMEN=default
+    ;;
 all)
     bash "$0" pilot
     bash "$0" rest
     ;;
-*) echo "pilot|rest|all" >&2; exit 2 ;;
+*) echo "pilot|rest|otogi|all" >&2; exit 2 ;;
 esac
