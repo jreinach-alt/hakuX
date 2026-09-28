@@ -35,7 +35,7 @@ set -u
 DEV=nova S=ee317437 MIN_BATT=${MIN_BATT:-20}
 PKG=com.jreinach.hakux.debug
 D=/home/justin/hakux-work/dispatch
-OUT=${OUT:-/home/justin/hakux-work/perf/2026-09-27-doa413c/s3}
+OUT=${OUT:-/home/justin/hakux-work/perf/2026-09-27-doa413c/s4}
 APK_REF=${APK_REF:-a593d8eb85}
 APK=$D/builds/$APK_REF.apk
 ISO=54430006-Dead_or_Alive_1_Ultimate.xiso.iso
@@ -49,6 +49,10 @@ GAP=${GAP:-4}
 REC_S=${REC_S:-6}
 LAUNCHES=${LAUNCHES:-2}
 TAIL_S=${TAIL_S:-15}
+# the route line a stall must come after: "mark booted" takes the menu -> first
+# fight load; "mark play" skips it and waits for a load inside the fights
+# (the source run's 76 s hang followed a ring-out ~50 s after `mark play`)
+AFTER=${AFTER:-mark booted}
 mkdir -p "$OUT"
 a() { timeout "${T:-120}" adb -s $S "$@"; }
 say() { echo "CAP $(date -u +%H:%M:%S) $*"; }
@@ -188,7 +192,7 @@ launch() {  # <n>: one soak; its stall record and code buffer
     IO_PID=$!
     deadline=$(( $(date +%s) + SOAK_S + 60 ))
     left=$(( deadline - $(date +%s) ))
-    if st=$(python3 "$LANE/stallwatch.py" "$OUT/logcat-$n.txt" $left --gap "$GAP" --after "mark booted" --runlog "$OUT/soak-$n.log"); then
+    if st=$(python3 "$LANE/stallwatch.py" "$OUT/logcat-$n.txt" $left --gap "$GAP" --after "$AFTER" --runlog "$OUT/soak-$n.log"); then
         a shell log -t hakuX-route "'prof $n start'" >/dev/null
         say "rec $n: $st"
         for attempt in 1 2 3; do

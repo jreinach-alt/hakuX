@@ -181,3 +181,71 @@ from the RAM dump (`guestcode.py`):
 
 A pushbuffer-space wait: the title spins until the GPU's read position has moved far enough.
 Its read is of RAM, not a register: 2.7% of the vCPU's samples are in MMIO helpers.
+
+## 5. Session 3 (2026-09-27 20:57-20:59 PDT, 125 s of device time): the cold stall, profiled
+
+Data: `~/hakux-work/perf/2026-09-27-doa413c/s3/`. One launch with the caches cleared. The same
+load stalled **12.8 s** (20:58:44.9-20:58:57.7; closing `fifoskew`: kicks 95, drained 28, mean
+169 ms, max 425 ms). `rec-1.data`: 6.0 s from 5.0 s into the stall, 13,230 samples.
+Code buffer and RAM dumped straight after.
+
+**Threads (`hostsplit.py`):** tid 28143 is on-CPU 98.1% of the record, the vCPU (28132) 78.3%,
+and every other thread under 10%.
+
+**R4, the busy thread is compiling shaders in the Vulkan driver.** 97.9% of 28143's samples
+have a `vulkan.purple.so` (Turnip) frame; the chains are truncated inside the driver (no unwind
+info past it), and their outermost frames are `tu_spirv_to_nir` (3,824, 65%), `tu_shader_create`
+(1,229, 21%) and `link_opts` (568, 10%). The leaves are Mesa NIR passes (`match_expression`,
+`nir_algebraic_impl`, `dce_cf_list`, ...). **So 96% of the thread is Turnip turning SPIR-V into
+GPU code**, which is what `vkCreateGraphicsPipelines` does for a pipeline it has not seen. The
+63 samples whose chain does reach libxemu go through `pgraph_vk_bind_shaders` ->
+`shader_cache_entry_init` -> `pgraph_vk_create_shader_module_from_glsl` (glslang) on the same
+thread: the PFIFO thread's own draw-time bind path, not the compile worker. `async_compile` is
+off (the default, `SettingsActivity.kt:69`; not set in the prefs), so every new pipeline is
+compiled synchronously, inside the pusher, before its draw is recorded.
+
+Why the perflog soak's phase line did not show it (`Shd 0.0` over its 14 s stall) is not
+resolved here. Whatever the reason, the phase timers under-count this stall, and a phase line
+cannot be used to rule compile work out of it.
+
+**R1, the guest is idle.** 5,891 vCPU samples; `tbmap.py` maps 682 of its 1,096 JIT samples
+(62%; 4 of 4 promote pcs are headers; frequent-delta share 75.8%, the same shortfall as
+session 1). **91% of the mapped samples (621 of 682) are the kernel idle loop's TBs**:
+`8001b030` 226, `8001b043` 161, `8001b02e` 145, `8001b02f` 89. Title code is 5.3%. The host
+side agrees: 77% of the vCPU's samples are leaf `cpu_exec_loop`, half of all of them on two
+instructions (`0x447824`/`0x447828` in this apk's `libxemu.so`: the `dmb ish; ldar
+interrupt_request` at `cpu_handle_interrupt`'s head), which the idle loop's `sti` (a TB end with
+an inhibit-IRQ exit) runs on every pass. `[jc425]` in the stall: exec-loop lookups 58 k per 2 s,
+`lookup_tb_ptr` hits 79-82 M per 2 s. So the vCPU at 98% is the guest idling, not loading.
+
+**The mechanism (M2, confirmed on this load):** the scene load's first draws need pipelines
+that are not in the Vulkan pipeline cache. With `async_compile` off, the PFIFO thread compiles
+each one synchronously in Turnip (96% of its time, one core pegged). The pushbuffer drains only
+between compiles (the closing `fifoskew` of each stall: 28-127 kicks drained in 13-14 s, up to
+425 ms per kick). The title's thread blocks in a kernel wait for the GPU, the guest drops into
+the kernel idle loop, and nothing flips: **one guest frame of 12.4 s** (`G` max 12402.3 ms in
+session 2's cold launch). With the pipelines already in the cache (session 2, launch 2) the same
+load stalls **3.1 s instead of 12.9 s**: about 9.8 s of the 12.9 s (76%) is compile.
+
+| reading | pre-registered | measured | verdict |
+|---|---|---|---|
+| R1 idle share | >= 50% in one small spin | 91% in the 4 idle-loop TBs | holds |
+| PFIFO on-CPU in the stall | refuted if < 30% | 96.7% (s2 taskio), 98.1% (s3 record) | holds |
+| R4 one call path | >= 50% | 96% under Turnip's SPIR-V -> NIR -> ir3 compile | holds |
+| R5 warm vs cold | compile: warm <= half | 3.1 s vs 12.9 s | holds |
+| M1 disc | R2 above the fight's rate | 0.0 KB/s in the cold stall | refuted |
+
+## 6. Pre-registration for session 4 (committed before it runs)
+
+The stall profiled above is the menu -> first fight load. The brief's is the one after a
+ring-out, which the source run hit 44 s after `mark play`. Session 4: one cold launch, a 440 s
+soak, recording the first stall *after* `mark play` (`AFTER="mark play"`).
+
+**Prediction:** if a stall of >= 8 s comes after `mark play`, it has the same mechanism: the
+PFIFO thread >= 80% on-CPU with >= 80% of its samples under `vulkan.purple.so`, and >= 50% of the
+vCPU's mapped JIT samples in the kernel idle loop.
+**Refuted if** the PFIFO thread's samples under the driver are < 50%, or the vCPU's idle share
+is < 20%: the ring-out hang is then another mechanism, and this lane's fix does not cover it.
+**Inconclusive if** no stall of >= 8 s comes after `mark play` (the fight did not ring out), or
+the only one is shorter: then the ring-out case stays inferred from the source run's counters,
+not measured.
