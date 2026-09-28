@@ -23,6 +23,8 @@ names. One column per logcat, so an A/B is `abread.py A/logcat.txt B/logcat.txt`
   su_upl, su_deferred   the same, per frame
   why.*    [sdcall] why=: su_upl's bindings by the setter of upload_pending
            (new, inv, stale, hoff, cpuw, gap, oth), per frame
+  clr, clrfull   of those, the ones on a clearing update, and the ones that
+           clear then covered whole (SurfaceBinding.cleared), per frame
 
 Medians are over lines; [sdcall] is a sum over frames, because a caller that
 is absent from a line prints nothing rather than a zero.
@@ -63,7 +65,7 @@ def read(path, lo, hi, bucket):
     med = {}
     calls = {}
     frames = 0
-    su = {'su_upl': 0, 'su_deferred': 0}
+    su = {'su_upl': 0, 'su_deferred': 0, 'clr': 0, 'clrfull': 0}
     su_seen = set()
     per = {}
 
@@ -132,8 +134,8 @@ def read(path, lo, hi, bucket):
                 c[2] += int(pre)
                 c[3] += int(dl)
                 c[4] += float(ms)
-            for k in ('su_upl', 'su_deferred'):
-                v = num(r'%s=(\d+)' % k, l)
+            for k in ('su_upl', 'su_deferred', 'clr', 'clrfull'):
+                v = num(r' %s=(\d+)' % k, l)
                 if v is not None:
                     su[k] += int(v)
                     su_seen.add(k)
@@ -207,7 +209,7 @@ def main(argv):
                 c = r['_calls'].get(n, [0, 0, 0, 0, 0.0])
             row.append('fin %.3f fence %.3f pre %.3f dl %.2f ms %.2f' % tuple(x / f for x in c))
         print('%-8s %s' % (n, '   |   '.join(row)))
-    for k in ('su_upl', 'su_deferred') + tuple('why.' + w for w in WHY):
+    for k in ('su_upl', 'su_deferred') + tuple('why.' + w for w in WHY) + ('clr', 'clrfull'):
         row = []
         for r in runs:
             f = r['_frames'] or 1

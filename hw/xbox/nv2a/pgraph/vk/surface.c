@@ -1065,7 +1065,12 @@ static struct {
     int64_t wait_ns[SDC__COUNT];
     unsigned long su_upl, su_deferred;
     unsigned long why[UPW__COUNT];
+    unsigned long clr, clrfull;
 } g_sdcall;
+
+/* The bindings a clearing update counted in why=, until the next update
+ * reads whether the clear marked them cleared (mark_clear_full, vk/draw.c). */
+static SurfaceBinding *g_upw_clr[2];
 
 /* Binding -> the UPW_ that last set its upload_pending; cleared by the
  * upload. Touched only under pgraph.lock. */
@@ -1083,11 +1088,28 @@ static void upw_set(SurfaceBinding *s, int why)
     }
 }
 
-static void upw_count(SurfaceBinding *s)
+static void upw_count(PGRAPHState *pg, SurfaceBinding *s, int slot)
 {
     if (s && s->upload_pending) {
         g_sdcall.why[g_upw_map ? GPOINTER_TO_INT(
                          g_hash_table_lookup(g_upw_map, s)) : UPW_NONE]++;
+        if (pg->clearing) {
+            g_sdcall.clr++;
+            g_upw_clr[slot] = s;
+        }
+    }
+}
+
+/* At the next update: did the clear that followed cover the binding whole? */
+static void upw_clear_read(PGRAPHVkState *r)
+{
+    for (int i = 0; i < 2; i++) {
+        SurfaceBinding *s = g_upw_clr[i];
+        if (s && (s == r->color_binding || s == r->zeta_binding) &&
+            s->cleared) {
+            g_sdcall.clrfull++;
+        }
+        g_upw_clr[i] = NULL;
     }
 }
 #define UPW_SET(s, why) upw_set((s), (why))
@@ -1120,12 +1142,12 @@ static void sdcall_log(PGRAPHState *pg)
     if (n < (int)sizeof(buf)) {
         snprintf(buf + n, sizeof(buf) - n,
                  " su_upl=%lu su_deferred=%lu why=new%lu/inv%lu/stale%lu/"
-                 "hoff%lu/cpuw%lu/gap%lu/oth%lu",
+                 "hoff%lu/cpuw%lu/gap%lu/oth%lu clr=%lu clrfull=%lu",
                  g_sdcall.su_upl, g_sdcall.su_deferred,
                  g_sdcall.why[UPW_NEW], g_sdcall.why[UPW_INVALID],
                  g_sdcall.why[UPW_STALE], g_sdcall.why[UPW_HANDOFF],
                  g_sdcall.why[UPW_CPUW], g_sdcall.why[UPW_GAP],
-                 g_sdcall.why[UPW_NONE]);
+                 g_sdcall.why[UPW_NONE], g_sdcall.clr, g_sdcall.clrfull);
     }
     SURF92_LOG("%s", buf);
     memset(&g_sdcall, 0, sizeof(g_sdcall));
@@ -4930,6 +4952,7 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
     PGRAPHVkState *r = pg->vk_renderer_state;
     SURF413_T(_s413);
     SURF413_FIN(_s413_fin);
+    SDCALL_DO(upw_clear_read(r));
     SURF413_DO(if (upload) { g_surf413.calls_up++; }
                else { g_surf413.calls_dn++; });
 
@@ -4993,8 +5016,8 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
                   ((r->color_binding && r->color_binding->upload_pending) ||
                    (r->zeta_binding && r->zeta_binding->upload_pending))) {
                   g_sdcall.su_upl++;
-                  upw_count(r->color_binding);
-                  upw_count(r->zeta_binding);
+                  upw_count(pg, r->color_binding, 0);
+                  upw_count(pg, r->zeta_binding, 1);
               });
     if (surface_update_may_defer_downloads(d, upload)) {
         SDCALL_DO(g_sdcall.su_deferred++);
