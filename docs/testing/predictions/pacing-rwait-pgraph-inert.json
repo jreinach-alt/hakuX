@@ -1,0 +1,46 @@
+{
+  "registered_utc": "2026-09-28T18:30:04Z",
+  "who": "lane.pacing",
+  "issue": "526",
+  "prediction": "#526 pixel leg for the vk/draw.c render waits: b_ref 23f0ee233f against its master base 01e62d8d1c on the pgraph suite. b changes HOW the PFIFO thread waits for the render thread's vkQueueSubmit of a frame slot (a 30 us poll, then a block on the render thread's idle_event, instead of a sched_yield loop) and adds a [rwait526] log line. It does not change WHAT is submitted, in what order, or when the wait returns relative to the submit: the wait still returns only once frame_submitted is true, and everything after it (the fence wait, the slot's recycling, the downloads) runs as before. So every capture is identical. FAILS in the world where a capture depends on how long the PFIFO thread takes to notice the submit (a readback that races the render thread's queue, or a VBLANK-timed test whose interleaving shifts by the wake-up latency); such a capture moves in B and in the band of neither arm, and names a timing dependency to chase, not a pixel bug in this change. A hang in B (a lost wake-up) shows as a suite that stops producing captures: unreadable or missing rows in B only. What this cannot see: a timing-dependent difference that lands identically in one run per arm.",
+  "a_ref": "01e62d8d1c",
+  "b_ref": "23f0ee233f",
+  "must_not_move": [
+    "3D_primitive/*",
+    "Blend_tests/*",
+    "Depth_buffer/*",
+    "Texture_format/*",
+    "Texture_DXT/*",
+    "Surface_clip/*",
+    "Fog_gen/*",
+    "Specular/*",
+    "Vertex_shader_rounding_tests/[!G]*",
+    "Vertex_shader_rounding_tests/Geometry_*",
+    "Vertex_shader_rounding_tests/GeometrySubscreen_*",
+    "Attrib_float/*",
+    "Texture_CPU_Update/*",
+    "Lighting_spotlight/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "3D_primitive",
+      "Attrib_float",
+      "Blend_tests",
+      "Depth_buffer",
+      "Fog_gen",
+      "Lighting_spotlight",
+      "Specular",
+      "Surface_clip",
+      "Texture_CPU_Update",
+      "Texture_DXT",
+      "Texture_format",
+      "Vertex_shader_rounding_tests"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

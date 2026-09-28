@@ -1,0 +1,56 @@
+{
+  "registered_utc": "2026-09-28T18:31:21Z",
+  "who": "lane.pacing",
+  "issue": "526",
+  "titles": {
+    "crimson": {
+      "title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso",
+      "route": "crimson-skies",
+      "device": "thor",
+      "seconds": 240
+    },
+    "otogi": {
+      "title": "46530002-Otogi_Myth_of_Demons.xiso.iso",
+      "route": "otogi",
+      "device": "thor",
+      "seconds": 240
+    }
+  },
+  "device": "thor",
+  "perflog": false,
+  "runs_per_arm": {
+    "crimson": 2,
+    "otogi": 2
+  },
+  "a_ref": "23f0ee233fc0b1f40cd83bf0852d7df53a4788b7",
+  "b_ref": "23f0ee233fc0b1f40cd83bf0852d7df53a4788b7",
+  "a_env": [
+    "HAKUX_RENDER_WAIT=yield",
+    "PERF_REGIMEN=default"
+  ],
+  "b_env": [
+    "PERF_REGIMEN=default"
+  ],
+  "queue_order": "PILOT: crimson A1 then B1. After the pilot is read and pilots/lane.pacing.ok written: otogi A1 B1, crimson A2 B2, otogi A2 B2. Each: request.sh --who lane.pacing --title <title> --route <route> --seconds 240 --device thor --ref 23f0ee233f --env <arm env...> --expect this file",
+  "judge": "python3 docs/lanes/pacing/rwait_judge.py --a <A runs> --b <B runs> (reads [rwait526] from logcat.txt between `mark gameplay` and the soak end, hakuX-perf gfps in the same window, and verdict.json's thermal and power blocks); logcat -b crash in each result",
+  "prediction": "#526 RENDER WAITS, vk/draw.c. ONE BINARY (23f0ee233f), the env is the variable: A selects the old wait (HAKUX_RENDER_WAIT=yield: loop on sched_yield until the render thread has submitted the slot), B the new default (poll 30 us with cpu_relax, then block on the render thread's idle_event). Both at the device's defaults (PERF_REGIMEN=default), on the Thor, 240 s from a gate-admitted start. Crimson Skies is 30-capped on the Thor (29.7 fps, renderer ~50% busy), so the PFIFO thread waits for the render thread's backlog every frame and has headroom to lose nothing by sleeping; Otogi is renderer-bound (renderer idle 9%, 12.6 fps), the case where a slower wake-up could show up as fps. POINT PREDICTION: on Crimson B removes at least half a millisecond of PFIFO-thread CPU per guest flip (the spin), with gfps unchanged, and the blocked waits cost under 100 us each at the 99th percentile over what the same waits took spinning. On Otogi gfps does not fall by more than 1.",
+  "legs": {
+    "M0 (instrument, VOID not fail)": "every run has a `[rwait526] render wait mode=` line, >= 10 `[rwait526] mode=` windows after `mark gameplay`, a `mark gameplay` line, and hakuX-perf gfps lines in the window. A run missing any is VOID and rerun once on the Thor.",
+    "F0 (the mechanism ran)": "A's mode line says mode=yield env=yield and every A window mode=yield; B's says mode=block env=(unset) and every B window mode=block. B has blocked > 0 in the window (summed over both sites). FAILS if the env did not reach the process, or if B never blocked (then every wait ended inside 30 us, the spin was never long, and the change is inert: see W1).",
+    "W1 (THE PREMISE: the old waits spin for long)": "Crimson A: wait_cpu_ms per guest flip (sum of wait_cpu_ms over the windows / sum of flips) >= 0.5. BELOW 0.5 REFUTES the premise that these waits burn a meaningful share of a core on this title; the change is then inert here and H1-H2 are not read as a gain. Otogi A is reported, not judged.",
+    "H1 (THE COUNTER THAT MUST MOVE)": "wait_cpu_ms per flip: B <= 0.25 x A, per title, pooled over runs. ABOVE that the block is not blocking: wake-ups per blocked wait (wakes/blocked) are reported beside it, and a ratio far above the render queue's depth would say the idle_event is being set so often that the waiter is a spin of futex calls.",
+    "H2 (the thread's CPU falls by about the wait's)": "thr_cpu_ms per flip (the PFIFO thread, all its work): A - B >= 0.6 x (A - B of wait_cpu_ms per flip), per title, pooled. BELOW FAILS in the world where the removed spin reappears as other work on that thread (more cache misses after a sleep, a slower first draw after the wake).",
+    "K1 (wake-up cost)": "per site, B's wait p99_us (median over windows) <= A's + 100. A's waits are the pure time to the submit (a spin notices at once); B's add the futex wake-up. ABOVE FAILS: the wake path costs more than 100 us at the tail, and the next step is a longer poll bound, not reverting the block.",
+    "P1 (fps unchanged, the capped title)": "Crimson gfps median over the window: A >= 29 and B >= 29 in every non-void, non-paused run. A B run below 29 with its A pair at 29+ FAILS.",
+    "P2 (fps, the renderer-bound title)": "Otogi pooled gfps median: B >= A - 1. FAILS in the world where the PFIFO thread's wake-up after a blocked wait delays its next command enough to starve the renderer.",
+    "H0 (no hang)": "no B run shows a stall the A pair does not: no `hakuX-perf` gap over 5 s after the mark in B unless the A pair has one, and no ANR or native crash (logcat -b crash). A lost wake-up would hang the PFIFO thread until the next render command, a stall of a frame or more.",
+    "E1 (power, a guess labelled as one)": "when verdict.json has power.measured true: j_per_frame B <= A pooled per title (about 70% confident on Crimson, where flips are fixed at 30 and a lower clock is the only way to show it; 50% on Otogi). net_w is reported for every run. Not a pass/fail on the change.",
+    "T (heat, reported)": "thermal.first_pause_s and failed_sustained per run, and each run's start xo-therm. A run that paused is not read for P1/P2 or E1; its H1/H2 windows before the pause stand."
+  },
+  "must_not_move": [
+    "pgraph: docs/testing/predictions/pacing-rwait-pgraph-inert.json (12 suites, 01e62d8d1c vs 23f0ee233f)"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off [rwait526], hakuX-perf and verdict.json by rwait_judge.py."
+}
