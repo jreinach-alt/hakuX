@@ -173,7 +173,18 @@ The harness carves `hw/xbox/nv2a/pgraph/glsl/*.c` from the tree it sits in. Its 
 glslang are large (~10 min to build), so `mesa`, `mesa-build`, `glslang-noopt` and `vshinc` were
 symlinked from lane.turnipcost569's `.scratch` rather than rebuilt.
 
-## 4. For the next lane
+## 4. State at the end of session 1 (2026-09-28): waiting
+
+- **Waiting on gate 3:** the arms job's `[job.arms]` verdict on PR #580 for
+  `litcompile569-arms.json` (full sweep, a=`503b901ee4`, b=`fb80d7e793`).
+- **Waiting on CI:** CI for the PR head.
+- **Next:**
+  - If the verdict is PASS and CI is green, mark #580 ready.
+  - If a lit capture moved, see the prediction's "world in which it fails" for which helper to
+    suspect. Re-run `lt_check.c` with that helper's GPU semantics in mind.
+  - Gate 4 follows P1 (#574) as its own post.
+
+## 5. For the next lane
 
 - **Gate 4 (device) waits on P1** (PR #574, lane.shaderfb569: `dpc_ms` per stage). The leg
   is: the fight load's `dpc_ms` falls by (2.5-2.7x factor) x (the lit share of the stall),
