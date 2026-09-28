@@ -1,0 +1,22 @@
+{
+  "registered_utc": "2026-09-27T23:43:12Z",
+  "who": "lane.forza414b",
+  "issue": "474",
+  "title": "4541000D-007_Agent_Under_Fire.xiso.iso",
+  "device": "nova",
+  "seconds": 420,
+  "route": "survey",
+  "perflog": true,
+  "runs_per_arm": 1,
+  "a_ref": "35ee65562a",
+  "b_ref": "32657e9719",
+  "prediction": "SAME-SESSION NOVA SOAK A/B of the #474 display pre-download deferral, hand-read (arms.sh skips title soaks). A is 35ee65562a (origin/master with PR #479 folded, plus the perflog-only [sdcall] why= probe). B is 32657e9719 (A plus: the flip's pre-recorded download batch stays pending across draws until a consumer reads it -- an overlapping range or trapped CPU access, the scanout's download request, a new download recorded behind it, the rotation into its frame slot, or the next flip's pre-record at the latest). Both arms perflog, survey route. Per-arm figures are medians over the window's [surf413]/[sdcall]/phase lines, per guest frame. GPU figures use the corrected 52.05 ns period (#504). AUF WINDOW t = 299-420 s (level play in lane.flip474's [cblat] run). flip474's cblat: of mdraw's 50.1 ms per frame, 19.3 ms is the nested deferred-download completion, fin 0.00, so it is a fence wait and not a finish; which branch (the flip's pre-download or an earlier finish's batch) is not measured. Legs: M0 both arms in level play, printing [surf413] and [sdcall], no crash; else VOID. G0 A's [sdcall] pre completions per frame >= 0.5: AUF waits in the branch this hunk defers. If A shows fence and not pre, the hunk does not reach AUF: B is inert on AUF, not refuted, and W1 is VOID. W1 B/A of the total download-completion wait per frame, summed over every [sdcall] caller, <= 0.5; fails in the world where a consumer completes the batch soon after the flip anyway (the per-caller line names it). H0 no hang, as for DOA. READOUTS: gfps (bound: 19.3 ms of a 71.4 ms frame, at most 14 -> 19 fps if nothing else waits), Tot, Draw. RE-REGISTERED 2026-09-27T23:43:12Z before any arm ran: PR #479 folded with its audit fix (vk/surface.c: a pending download's struct is kept out of reuse and prune, completed first on a shelf reuse, `reuse` caller), so the branch merged origin/master at 6eb7b1115c. A is now 35ee65562a (the merge with hunk 4 taken out), B is 32657e9719 (hunk 4 put back; its tree equals the merge's). The requests queued on d04973ce9b/ee830484bb were withdrawn unrun.",
+  "expect": {
+    "M0/both_in_play_is": true,
+    "G0/a_pre_per_frame_min": 0.5,
+    "W1/b_over_a_total_dl_wait_per_frame_max": 0.5,
+    "H0/longest_gap_s_max": 3.0
+  },
+  "expect_counts": {},
+  "expect_note": "Named rules read by hand from the two logcats ([surf413] cdef, [sdcall] per-caller pre/fence/fin and wait ms, hakuX-phase, gfps); a soak writes no captures and ab_compare never judges it."
+}

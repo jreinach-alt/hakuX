@@ -108,6 +108,13 @@ EVERY_S = 30
 MAX_GAP_S = 3 * EVERY_S
 END_SLACK_S = 1.0
 
+# FAN (#507 Part D). Both handhelds drive the fan through this PWM, the node
+# the OEM apps write. duty/period is the share of full speed (period 50000 on
+# both: SPORT holds 25000, SMART follows a temperature curve). `speed` is the
+# Nova's tach rpm; the Thor's reads 0. Sampled so SMART's real curve under
+# load is on record beside every temperature it answers.
+FAN_DIR = "/sys/class/gpio5_pwm2"
+
 # One sh script, one adb call. `2>/dev/null` per read: a zone whose temp
 # read fails (some sensors return EINVAL while powered down) must not end the
 # loop or leak an error line into the parse.
@@ -127,6 +134,9 @@ SAMPLE_SH = (
     "[ -f $d/$f ] && echo \"ps $p $f $(cat $d/$f 2>/dev/null)\"; "
     "done; done; "
     "echo \"ths $(dumpsys -t 3 thermalservice 2>/dev/null | grep -m1 'Thermal Status')\"; "
+    # FAN. `fan <field> <value>`; see FAN_DIR.
+    "for f in duty period state speed; do [ -f " + FAN_DIR + "/$f ] && "
+    "echo \"fan $f $(cat " + FAN_DIR + "/$f 2>/dev/null)\"; done; "
     "echo end"
 )
 
@@ -192,7 +202,22 @@ def parse_sample(text):
         m = re.match(r"ths .*Thermal Status:\s*(\d+)", line)
         if m:
             s.setdefault("pw", {})["thermal_status"] = int(m.group(1))
+            continue
+        m = re.match(r"fan (\S+) (-?\d+)$", line)
+        if m:
+            s.setdefault("fan", {})[m.group(1)] = int(m.group(2))
     return s
+
+
+def fan_range(recs):
+    """'fan duty 13700-29000 of 50000' over every sample that read the fan, or None."""
+    fs = [r["fan"] for r in recs if isinstance((r.get("fan") or {}).get("duty"), int)]
+    if not fs:
+        return None
+    ds = [f["duty"] for f in fs]
+    periods = sorted({f["period"] for f in fs if isinstance(f.get("period"), int)})
+    return "fan duty %d-%d%s" % (min(ds), max(ds),
+                                 " of %s" % "/".join(map(str, periods)) if periods else "")
 
 
 def sample(serial, label=None):
@@ -341,6 +366,9 @@ def summary(recs):
         tail += "; battery %+.2f W (+ is discharging)" % pw["battery_w"]
         if pw["net_w"] is not None:
             tail += ", usb in %.2f W, net %.2f W" % (pw["usb_w"], pw["net_w"])
+    fan = fan_range(ok)
+    if fan:
+        tail += "; " + fan
     if not eps:
         return "THERMAL: no thermal-pause device above 0" + tail
     # An episode the cool-down gate waited out cannot touch a scored window.

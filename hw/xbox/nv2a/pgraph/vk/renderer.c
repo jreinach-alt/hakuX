@@ -586,6 +586,13 @@ static void diag_download_surface(NV2AState *d, PGRAPHState *pg,
     /* Only handle simple color surfaces (4bpp, no swizzle, no depth/stencil) */
     if (!surface->color || surface->swizzle) return;
 
+    /* The copy below writes BUFFER_STAGING_DST at offset 0. A submitted
+     * download batch (the flip's pre-download stays pending across draws
+     * since #474) still has its copies there, and the caller's finish does
+     * not complete a batch from an earlier frame slot. Retire it first, or
+     * it later writes this surface's pixels into its own surfaces' VRAM. */
+    pgraph_vk_download_surface_complete_deferred(d);
+
     VkCommandBuffer cmd = pgraph_vk_begin_single_time_commands(pg);
 
     /* Transition to TRANSFER_SRC */

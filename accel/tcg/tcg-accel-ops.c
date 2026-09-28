@@ -102,6 +102,9 @@ void tcg_handle_interrupt(CPUState *cpu, int mask)
      * case its halted.
      */
     if (!qemu_cpu_is_self(cpu)) {
+#ifdef XBOX
+        hakux_idle_halt_kick(cpu, mask);    /* #525: the wake's source */
+#endif
         qemu_cpu_kick(cpu);
     } else {
         qatomic_set(&cpu->neg.icount_decr.u16.high, -1);

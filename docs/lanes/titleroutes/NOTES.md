@@ -1494,3 +1494,151 @@ Next titles, on the Thor once it is cool and running/ is empty for it: 25 to
 Life, Call of Duty 3, Midnight Club 3: DUB Edition, Tork: Prehistoric Punk,
 Blinx 2. After those: Bruce Lee (a load inside the scored window), Galleon,
 GoldenEye RA (returning route) and Burnout Revenge (the profile loop).
+
+### Session 31: 2026-09-28 05:48 PDT, no device work
+
+Why session 30 did not finish: it did. It pushed its NOTES, PR #534 folded,
+and it ended with every benchmark queued and the Thor on cool-down. There
+was nothing to drive, so no device work was lost. The harness resumed it as
+attempt 2 because the lane had no open PR.
+
+State at 05:48 PDT:
+- Both handhelds are under `battery-hostops` holds: the Nova since 01:10
+  (14%), the Thor since 04:49 (11%, retagged from cooldown-devwatch). Each
+  lifts at 80%, which takes hours on the 500 mA port. No held nav session is
+  possible.
+- running/ is empty. None of my eight benchmarks has run: Azurik 2862460,
+  D&D Heroes 2862610, Nightfire 373432, Burnout 3 374056, Kabuki (nova)
+  374601, RalliSport 2 1417504, Spikeout 2191714 and PGR2 3006458 are all
+  still in queue/. There are no new results to add to the #397 table.
+- Merged origin/master (fast-forward to 9d777502fa).
+
+Next titles are unchanged from session 30: 25 to Life, Call of Duty 3,
+Midnight Club 3: DUB Edition, Tork: Prehistoric Punk, Blinx 2, then Bruce
+Lee, Galleon, GoldenEye RA (returning) and Burnout Revenge.
+
+### Session 32: 2026-09-28 06:05 PDT, no device work
+
+Why session 31 did not finish: it posted its `waiting:` comment and stopped
+with PR #550 still a draft. A draft is skipped by board, fleet and fold, so
+the NOTES could not land. The waiting itself was right; the draft was not.
+This session marks #550 ready.
+
+State at 06:05 PDT is unchanged from session 31: both handhelds under
+`battery-hostops` holds (Nova since 01:10, Thor since 04:49; each lifts at
+80%), running/ empty, and all eight benchmarks still in queue/. Next titles
+are unchanged.
+
+### Session 33: 2026-09-28 08:05 PDT
+
+Why session 32 did not finish: it did. It marked PR #550 ready, #550 folded,
+and it ended `waiting:` on the battery holds. The harness resumed the lane
+because it had no open PR and one benchmark had landed.
+
+State at 08:05 PDT:
+- The Thor reads 84% and has no hold. It is running
+  0-0-x-1790575473-rendermode474-966130 (critical path), with Azurik
+  1-1790560999-titleroutes-2862460, two remote461 runs, two dirtytlb runs and
+  four arms queued ahead of my six `1-9-` benchmarks. No held nav session
+  until running/ has nothing for the Thor (hostops, 09-27 21:54).
+- The Nova reads 70% and is held by lane.sustain507.
+- Merged origin/master (11 commits).
+
+**Kabuki Warriors on the Nova (1-1790563605-titleroutes-374601, 550 s, MAX,
+apk 5910c8c41dd3, ref 4fcbe0262e).** The route reached the fight: the mark
+frame `route-frames/074815-gameplay.png` shows round 1, timer 60, the
+player's fighter mid-strike, overlay FPS 0. adb_failures 0, no thermal pause
+(19 samples, hottest zone 95.1 C).
+
+| gameplay s | window median | window min | time at >= 30 | flips | target |
+|---|---|---|---|---|---|
+| 329.1 | 58.71 | 0.68 | 22.4% | 4320 (13.5 per s over 320.9 s) | 30 |
+
+**The median is not the title's rate.** It is the median of the 72 windows
+of 60 flips, and a window only exists while the guest flips. The guest
+flipped at 59 for about 80 s and 40 s, and did not flip at all for the rest:
+
+| after the mark | guest flips |
+|---|---|
+| 0 - 80 s | none (one perf line, `gfps=0`, worst frame 9667.7 ms) |
+| 80 - 160 s | 51-60 per s, with single seconds at 17-35 |
+| 160 - 290 s | none |
+| 290 - 330 s | 54-59 per s |
+
+The verdict counts five gaps: 71.8, 21.4, 11.5, 88.2 and 53.4 s. In the
+first gap the guest is idle, not busy: `[rr425w]` reads `idlepc=8001b02e
+idle_us=1906607 busy_us=92760` of each 2 s window, the vblank timer runs at
+59.94 Hz, and the emulator keeps presenting the same surface (`refresh ...
+flip=0`). So the game is waiting for something that does not arrive. It is
+not short of CPU. The route has no frame after the mark, so which screens
+the two 59 fps stretches show is not known. Session 1's nav frames read 2-16
+on the overlay in the fight, which fits the same stalls.
+
+The 300 s titlebench reading ("Nova 59") scored about 100 s after the mark
+and carries the same window median. Read the share of time (22.4%), not the
+median, for this title.
+
+**Bruce Lee's 59.94 is not a reading of the fight
+(1-1790487611-titleroutes-261841, Thor, 09-26).** lane.local's 19:55 list
+asked for the frames behind "21.2 s without 60 guest flips". The run has no
+frame after the mark, so this is from the perf lines
+(`scratch/scoredscan.py`, 30 s bins from the mark):
+
+| after the mark | guest fps | what it is |
+|---|---|---|
+| 0 - 60 s | 16-19 | the fight. The 21.2 s gap is here (12 s to 34 s): slow frames, the worst 6.6 s. It is not a load |
+| 60 - 150 s | 42-47 | the fight |
+| 150 - 289 s | 59, no vblank defers (`Df:0`) | not known |
+
+More than half of the window is the flat 59 stretch, so the median is that
+stretch. `Df` is `defers_total`, a pacing count. It says nothing about what
+was drawn, so it cannot tell a menu from a light scene. Queued to see the
+screens: 1790608228-titleroutes-824349 (Thor, 420 s, `--frames-every 15`,
+plain priority, ref 29420ebf48, `scratch/q33.sh`). It is a route check, not
+a benchmark. If the frames show a menu or a game-over screen, the route's
+play pattern needs an answer to it, and the title needs a new benchmark.
+
+The same scan over my other 27 scored results shows no other window that
+changes level upward like this. The downward falls (Blood Wake, Battlefield
+2: MC, PGR, BloodRayne) are the #507 shape already recorded above.
+
+Posted on #397: comment 5872826156 (Kabuki and Bruce Lee).
+
+Device state at 08:11 PDT: lane.xbox holds the Thor for a title push (ESPN
+MLS ExtraTime 2002) that follows the running rendermode474 request. The
+Thor's queue then holds Azurik 2862460, two remote461 runs, two dirtytlb
+runs and four arms before my six `1-9-` benchmarks.
+
+**Waiting (PR #558, 08:15 PDT)** on eight requests of mine, all pinned to
+the Thor, none of which has run:
+
+| title | request | kind |
+|---|---|---|
+| Azurik | 1-1790560999-titleroutes-2862460 | benchmark, 500 s |
+| D&D Heroes | 1-9-1790560999-titleroutes-2862610 | benchmark, 600 s |
+| 007: Nightfire | 1-9-1790563604-titleroutes-373432 | benchmark, 400 s |
+| Burnout 3: Takedown | 1-9-1790563604-titleroutes-374056 | benchmark, 620 s |
+| RalliSport Challenge 2 | 1-9-1790566122-titleroutes-1417504 | benchmark, 570 s |
+| Spikeout: Battle Street | 1-9-1790567423-titleroutes-2191714 | benchmark, 460 s |
+| Project Gotham Racing 2 | 1-9-1790569004-titleroutes-3006458 | benchmark, 530 s |
+| Bruce Lee | 1790608228-titleroutes-824349 | route check with frames, 420 s |
+
+I took no held nav session. Eight critical-path requests of other lanes are
+queued for the Thor, and a hold would put title work ahead of them.
+`scratch/thorgap.py` reads that state without touching a device: it exits 0
+when the Thor has no hold, runs nothing, and no other requester's `0-` or
+`1-` request is queued for it.
+
+**Next, in this order:**
+1. Read the eight results. Look at the mark frame and the fps bins
+   (`scratch/scoredscan.py`, `scratch/fpsbins.py`) before the median, and at
+   the thermal line in run.log.
+2. Bruce Lee: read `frames/` of 824349. If the flat 59 stretch is a menu,
+   fix the play pattern in a held session and queue a new benchmark.
+3. Held Thor sessions (focus read first, hold by `scratch/takeloop.sh`):
+   25 to Life, then Blinx 2. Then the Thor list in the hand-over (Bicycle
+   Casino, Breeders' Cup, AMF Xtreme Bowling, then the Playable list).
+4. Nova titles wait for the Nova: Call of Duty 3, Midnight Club 3, Tork,
+   GoldenEye RA (returning), Burnout Revenge. The Nova is on fps-focus work.
+5. Kabuki Warriors: a second run with `--frames-every` would show what the
+   59 fps stretches are. Not queued, because the Nova's queue is full.
