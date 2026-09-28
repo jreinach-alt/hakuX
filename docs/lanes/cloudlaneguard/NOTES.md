@@ -217,3 +217,10 @@ attempt 1 holding a second PR, #518, whose lane `forza414` is still running.
   empty string and exit 0. A new REST read in `held_why` has to either tolerate
   an empty answer or update those stubs. The list-row fallback here is the
   first of those options.
+
+### Waiting
+
+- **Waiting on:** CI (`build`, `jobs selftest`) on the head that carries this line.
+- **Resolved by:** those checks going green. The PR is then marked ready. The
+  selftest job runs close to its 25-minute cap, so a CANCELLED run is the
+  timeout and should be rerun, not debugged.
