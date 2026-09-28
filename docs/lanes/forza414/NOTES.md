@@ -1222,3 +1222,24 @@ A is lane/forza414b @ 08f09e3d19 merged with origin/master 548017f7ba. That is t
 every ref is after it. Pilot, under the 30-minute rule: the Forza pair,
 `1-1790576328-forza414-1156305` (A) and `1-1790576328-forza414-1156419` (B), Thor, priority 1.
 The Blinx pair goes in after the pilot is read. The goldens guard is the arms job's.
+
+## 39. #518 folded; M1 was remediated on its branch by someone else; the pilot swap
+
+- #518 folded at 06:25Z (2e36e51d5ed5) with pass 1's M1 fixed in 61e7a0d326, the same one call
+  in `diag_download_surface`, and audit pass 2 clean. The renderer.c grant this lane requested
+  for M1 (board 94108831c8) is not needed. It is released in the board request file, and this
+  PR does not touch renderer.c.
+- lane/forza414-c merged origin/master at 73b9209088, which contains #518. So the PR no longer
+  stacks, and `git diff origin/master...HEAD` is exactly its own nine paths. The merge happened
+  after the predictions were registered; their refs (fa56a26f1f, b991fb4c21, 79f0102478) are
+  unchanged ancestors of the head.
+- After B, only behaviour-identical commits. `clear_rect_clipped` reads into locals. The
+  index read a line that begins with a pointer store (`*xmin = GET_MASK(...)`) as a comment line,
+  so four CLEARRECT READ sites became COMMENT sites. The nv2a index is rebuilt against fold-pins
+  tests 6743b6ab16.
+- **The pilot swap.** The Forza pair on the Thor (`1-1790576328-forza414-1156305/-1156419`) had
+  3.6 h of sustain507 and pacing work ahead of it, and the Thor was under lane.xbox's title-push
+  hold. The 30-minute rule allows one pair in the queue, so the Forza pair was withdrawn unclaimed
+  (`queue/withdrawn/*.why`). The Blinx pair went first as the pilot:
+  `1-1790576971-forza414-1229800` (A) and `-1229835` (B), Nova. The Forza pair is re-queued once
+  the pilot is read. The goldens guard is the arms job's (`1-1790577097-arms-forza414-base-...`).
