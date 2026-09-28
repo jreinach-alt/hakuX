@@ -23,8 +23,14 @@ the same way.
 ## Change
 
 - `_items(text, opens)`: an opening line plus the indented lines under it is
-  one item; other unindented lines belong to no item. Same rule as
-  `host-tools/harness_health.py` `# ---- escalations`.
+  one item. For escalations.md any unindented, non-blank, non-`#` line opens
+  one: a `- ` bullet, or the older unbulleted `OWNER ONLY, do not act
+  (meta): text` line. The first cut opened items on `- ` only, as the brief and
+  `harness_health.py` do, and the selftest's 16:24 fixture (65, dash432)
+  lost all six of its owner decisions, which are written in the unbulleted
+  format. So `harness_health.py` does not count an unbulleted item as open.
+  Its escalation check is blind to that format; that file is outside this
+  lane's scope, and the live file uses bullets only today.
 - `escalation_items(text, now)`: skips any item with RESOLVED on any line;
   shows its first line as before; reads the newest `re-checked [MM-DD ]HH:MM
   [ZONE]` among its lines (no date = today in the display zone, a time more
@@ -51,7 +57,9 @@ the same way.
 Selftest `99-status-escalation-items.sh`: legs (a) resolved-on-continuation,
 (b) UPDATE is not its own item, (e) needs-hands resolved-on-continuation fail
 on master's reader per the table above; (c) re-checked 30 min ago shows the
-time and is not unverified; (d) unchecked 3 h is listed and marked UNVERIFIED.
+time and is not unverified; (d) unchecked 3 h is listed and marked UNVERIFIED;
+(f) an unbulleted `OWNER ONLY` line is still an item (fails on a bullet-only
+opener, which is what broke fragment 65).
 
 ## For the next lane
 

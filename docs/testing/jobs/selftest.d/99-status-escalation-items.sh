@@ -22,6 +22,8 @@
 #   (d) the staleness rule is missing or too loose: a 3 h old unchecked item
 #       carries no visible marker (or is dropped from the list).
 #   (e) recovery/needs-hands.txt keys RESOLVED on the line, as (a).
+#   (f) only "- " bullets open an item: the older unbulleted "OWNER ONLY ... (meta): text"
+#       line (the dash432 16:24 fixture's whole file) drops off the page.
 # (a), (b) and (e) fail on master at 59abda3c9b (docs/lanes/escitems/NOTES.md);
 # (c) and (d) test the re-check rule this lane adds.
 
@@ -39,6 +41,7 @@ cat > "$SE_D/host-tools/escalations.md" <<'EOF'
   re-checked 09:00 PDT (hostops) older
   re-checked 11:30 PDT (hostops) charlie-evidence C: 98 GB free
 - 09-27 08:30 PDT (hostops) OWNER CALL: delta-stale no re-check for three hours.
+OWNER ONLY, do not act (recorded 09-27 11:45 PDT by lane.local): golf-unbulleted an older-format item.
 EOF
 cat > "$SE_D/recovery/needs-hands.txt" <<'EOF'
 (updated 11:00 PDT by lane.local: header, not an ask)
@@ -76,6 +79,10 @@ elif leg == "d":
     x = first("delta-stale")
     ok = len(x) == 1 and x[0]["unverified"] and "UNVERIFIED" in x[0]["detail"] and "delta-stale" in page() \
         and page().count("UNVERIFIED") == 1
+elif leg == "f":
+    g = first("golf-unbulleted")
+    ok = len(g) == 1 and g[0]["action"] == "golf-unbulleted an older-format item." and g[0]["meta"].startswith("recorded 09-27 11:45") \
+        and not g[0]["unverified"] and len(items) == 4
 elif leg == "e":
     class F:
         W = d
@@ -95,5 +102,6 @@ check "(a) an item RESOLVED only on a continuation line is not listed" se_leg a
 check "(b) an open item with an UPDATE continuation is listed once; the UPDATE line is no item" se_leg b
 check "(c) an item re-checked 30 min ago shows 're-checked 11:30' and is not unverified" se_leg c
 check "(d) an item unchecked for 3 h stays listed, marked UNVERIFIED" se_leg d
+check "(f) an unbulleted 'OWNER ONLY ... (meta): text' line is still an item" se_leg f
 check "(e) needs-hands.txt: an ask RESOLVED on its indented line is not listed" se_leg e
 for se_f in "$T"/status-escitems-*.txt; do [ "$(tail -n 1 "$se_f")" = ok ] || sed 's/^/    /' "$se_f"; done

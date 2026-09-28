@@ -907,13 +907,14 @@ def _items(text, opens):
 
 
 def escalation_items(text, now):
-    """The open owner items in host-tools/escalations.md. An item is an unindented "- " line plus
-    its indented continuation lines; it is resolved when any of its lines says RESOLVED. The page
+    """The open owner items in host-tools/escalations.md. An item is an unindented line (a "- " bullet,
+    or the older unbulleted "OWNER ONLY ...(meta): text" line; not a "#" heading) plus its indented
+    continuation lines; it is resolved when any of its lines says RESOLVED. The page
     shows its first line, and the newest "re-checked HH:MM" among its lines (hostops re-verifies each
     open item every tick); an item neither opened nor re-checked in the last 2 h is marked unverified."""
     out = []
     today = _lt(now, "full")[:10]
-    for lines in _items(text, lambda l: re.match(r"^[-*]\s", l)):
+    for lines in _items(text, lambda l: l.strip() and not l.startswith("#")):
         if any("RESOLVED" in l for l in lines):
             continue
         l = re.sub(r"^[-*]\s+", "", lines[0])
