@@ -69,6 +69,37 @@ window that span may overlap is void (thermal_state.py, A PAUSE EPISODE). So
 is a window the readable samples do not cover (`thermal-unread:`, A WINDOW IS
 COVERED): adb failing after a pause began would otherwise read as clean. A
 run with no thermal.jsonl is judged as before, with `thermal.measured` false.
+`thermal.first_pause_s` is the time from the run's start (the `start` sample,
+just before `am start`) to the first pause, as the two bounds sampling gives:
+`after` (the last clean reading) and `by` (the first paused one).
+UNDER THE DEVICE'S DEFAULTS the pause is not a fault of the measurement but
+the thing measured. A run whose perf_regimen.json says `regimen: default`
+(soak_title.sh PERF_REGIMEN=default: performance_mode 0, fan SMART) is not
+voided by a pause; it FAILS, `thermal.failed_sustained` is true, and the
+failure names the pause and when it began, from the run's start. Its fps
+windows stand: they are what a player at the defaults got. Any pause from the
+start on counts, in or out of the scored window (one the cool-down gate waited
+out before the start does not). The owner's ruling, 2026-09-27 (#433):
+Playable is sustained play in the heat budget, and the fps bar is unchanged.
+`failed_sustained` is null when the run is not a `default` run or no sample
+read; a `default` run whose window is `thermal-unread` is still void.
+
+POWER (`power`, from the same samples; thermal_state.py, POWER). Reaching the
+frame rate by heating the handheld until it pauses is not playing, so a run
+reports what its frames cost, over the scored window (mark to `soak end`):
+  - `battery_w`: average battery power. SIGN: + the battery is DISCHARGING,
+    - it is CHARGING.
+  - `usb_w`: the USB input, and `usb_from`, how it was read (a measurement,
+    or an upper bound from the input current limit). `usb_bound` true means
+    usb_w, net_w and j_per_frame are upper bounds.
+  - `net_w` = battery_w + usb_w: what the device drew.
+  - `j_per_frame` = net_w x scored seconds / guest flips, and
+    `j_per_frame_battery` the same from battery_w alone. Scored seconds and
+    flips are those of the fps windows, so a capture gap costs both alike.
+Reported, never judged: no bar is set on it yet. A void run reports its
+watts and no J per frame (its flips are not the title's), and so does a
+window holding a reading the sign convention cannot explain (`sign_suspect`).
+Samples older than this field give `power.measured` false, never 0 W.
 Black frames are NOT void when run.log says `render-black:`: the soak
 re-ran display_clear and hakux_in_front at the end of the hold and both were
 clear, so hakuX itself drew black. That run is judged (its fps stands) and
@@ -312,10 +343,25 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
     gap = thermal_state.coverage(therm, mark_t, end_t) if windowed and not hit else None
     thermal = dict(measured=bool(read), samples=len(therm or []), unread=len(therm or []) - len(read),
                    pauses=[thermal_state.describe(e, mark_t if mark_t is not None else
-                                                  min(thermal_state.dev_ts(r) for r in read))
+                                                  thermal_state.origin(read))
                            for e in eps], in_window=bool(hit),
                    window_covered=(None if not windowed else gap is None), gap=gap)
-    if hit and void is None:
+    fp = thermal_state.first_pause(therm or [])
+    thermal["first_pause_s"] = dict(after=fp[0], by=fp[1]) if fp else None
+    try:
+        with open(os.path.join(rdir, "perf_regimen.json")) as f:
+            regimen = json.load(f).get("regimen")
+    except (OSError, ValueError, AttributeError):
+        regimen = None
+    thermal["regimen"] = regimen
+    at_defaults = regimen == "default"
+    thermal["failed_sustained"] = (fp is not None) if at_defaults and read else None
+    sustained_fail = None
+    if thermal["failed_sustained"]:
+        e0, t0 = thermal_state.first_episode(therm or [])
+        sustained_fail = ("thermal: sustained play failed at the device's defaults -- %s, from the run's start"
+                          % thermal_state.describe(e0, t0))
+    if hit and void is None and not at_defaults:
         void = "thermal-pause: %s, relative to the mark" % thermal_state.describe(hit[0], mark_t)
     elif gap and void is None:
         void = "thermal-unread: %s, relative to the mark" % gap
@@ -402,6 +448,18 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
                                  and v["fps_ok_share"] >= share_min
                                  and (own_share or 0) < share_min)
 
+    # POWER over the scored window (see POWER above). Reported, never judged.
+    power = thermal_state.power_over(therm or [], mark_t, end_t) \
+        if mark_t is not None and end_t is not None else thermal_state.power_over([], 0, 0)
+    scored_s = float(sum(w[0] for w in windows))
+    flips = FRAMES_PER_LINE * len(windows)
+    power.update(scored_s=round(scored_s, 1), flips=flips, j_per_frame=None, j_per_frame_battery=None)
+    if power["measured"] and flips and not power["sign_suspect"]:
+        power["j_per_frame_battery"] = round(power["battery_w"] * scored_s / flips, 4)
+        if power["net_w"] is not None:
+            power["j_per_frame"] = round(power["net_w"] * scored_s / flips, 4)
+    v["power"] = power
+
     starve = []
     for t, lv, tag, msg in lc:
         if tag == "hakuX-audiocap" and mark_t is not None and t >= mark_t + AUDIO_SKIP_S:
@@ -448,6 +506,8 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
         fails.append("void: " + void)
     elif render_black:
         fails.append(render_black.group(0))
+    if sustained_fail and not void:
+        fails.append(sustained_fail)
     if truncated:
         at = ("%.0f s after the mark" % (open_break - mark_t)) if mark_t is not None \
             else "before any `mark gameplay` was captured"
@@ -523,13 +583,16 @@ def main(argv=None):
         json.dump(v, f, indent=2)
     json.load(open(tmp))
     os.replace(tmp, os.path.join(a.rdir, "verdict.json"))
-    print("VERDICT %s %s %s gameplay=%ss fps_ok=%s crash=%s hang=%s audio_short=%s%s%s%s" % (
+    pw = v["power"]
+    print("VERDICT %s %s %s gameplay=%ss fps_ok=%s crash=%s hang=%s audio_short=%s%s%s%s%s" % (
         v["name"] or v["title"] or "?", v["device"] or "?",
         ("PASS " + str(v["rating_candidate"])) if v["pass"] else "FAIL(%s)" % v["failing"],
         v["gameplay_s"], v["fps_ok_share"], v["crash"], v["hang"], v["audio_starve_share"],
         " below_own_target" if v["below_own_target"] else "",
         (" capture_lost=%ss" % v["capture_lost_s"]) if v["capture_lost_s"] else "",
-        " capture_truncated" if v["capture_truncated"] else ""))
+        " capture_truncated" if v["capture_truncated"] else "",
+        (" battery_w=%+.2f net_w=%s j_per_frame=%s" % (pw["battery_w"], pw["net_w"], pw["j_per_frame"]))
+        if pw["measured"] else ""))
     return 0
 
 

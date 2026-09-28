@@ -28,9 +28,21 @@ on:
       - '.github/workflows/jobs-selftest.yml'
 
 jobs:
+  # One job per shard (selftest.sh, "the shards"): run whole it took 18-25 min
+  # against this same cap, and a capped run is CANCELLED, which fold.sh reads
+  # as red. Each shard builds its own fake host. Every `selftest (k)` check
+  # must be green; fold.sh's ci_green() reads every check in the rollup.
+  # Changing the shard count: the list and the /N below together, or
+  # selftest.sh's guard refuses every shard.
   selftest:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    env:
+      SELFTEST_SHARD: ${{ matrix.shard }}/4
     steps:
       - uses: actions/checkout@v5
         with:
