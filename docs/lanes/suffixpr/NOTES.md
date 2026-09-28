@@ -79,6 +79,11 @@ open:
   sustain507   holds 2 file(s), issues 507,424,525, PR #547 draft
 ```
 
+## State
+
+PR #551, draft. preflight passes on 3359db731a. Waiting for CI on that head,
+then mark ready.
+
 ## Limits, for the next lane
 
 - The prefix rule wins over the worktree rule, so a NEW lane `foo-x` that has
