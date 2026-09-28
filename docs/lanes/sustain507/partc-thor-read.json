@@ -1,0 +1,97 @@
+{
+ "runs": [
+  {
+   "id": "0-0-s-1-1790607334-lane.sustain507-589340",
+   "title": "4D530013-Blinx_The_Time_Sweeper.xiso.iso",
+   "device": "thor",
+   "regimen": "default",
+   "perf_mode": 0,
+   "fan_mode": 4,
+   "ih_lines": 897,
+   "ih_on": [
+    1
+   ],
+   "ih_halts": 468411,
+   "ih_run_pct": 42.8,
+   "window_s": 1800.0,
+   "short_s": 0.0,
+   "fps_median": 17.825311644987234,
+   "fps_p10": 14.097744221906746,
+   "fps_min2_10": 17.761989232486275,
+   "fps_min20_30": 18.088634136487197,
+   "stability": 1.018,
+   "mark_from_start_s": 275.0,
+   "mitigation_from_start": null,
+   "pause_from_start": null,
+   "xo_start_c": 48.286,
+   "battery_start_c": 34.0,
+   "xo_max_c": 72.509,
+   "xo_m10_c": 68.6,
+   "plateau_min": 20.6,
+   "xo_tail_c": 72.2,
+   "battery_w": 2.732,
+   "usb_w": 2.123,
+   "net_w": 4.855,
+   "usb_bound": false,
+   "sign_suspect": 0,
+   "j_per_frame": 0.2565,
+   "battery_wh": 1.366,
+   "capacity_pct": [
+    83,
+    81
+   ],
+   "hours": null
+  },
+  {
+   "id": "0-0-s-1-1790593205-lane.sustain507-3238578",
+   "title": "4D530013-Blinx_The_Time_Sweeper.xiso.iso",
+   "device": "thor",
+   "regimen": "default",
+   "perf_mode": 0,
+   "fan_mode": 4,
+   "ih_lines": 898,
+   "ih_on": [
+    0
+   ],
+   "ih_halts": 0,
+   "ih_run_pct": 60.2,
+   "window_s": 1800.0,
+   "short_s": 0.0,
+   "fps_median": 17.942583829281173,
+   "fps_p10": 14.268727963999417,
+   "fps_min2_10": 17.276130493156792,
+   "fps_min20_30": 18.220467753651704,
+   "stability": 1.055,
+   "mark_from_start_s": 255.3,
+   "mitigation_from_start": null,
+   "pause_from_start": null,
+   "xo_start_c": 43.486,
+   "battery_start_c": 36.0,
+   "xo_max_c": 75.158,
+   "xo_m10_c": 73.4,
+   "plateau_min": 9.4,
+   "xo_tail_c": 74.7,
+   "battery_w": 2.864,
+   "usb_w": 2.122,
+   "net_w": 4.986,
+   "usb_bound": false,
+   "sign_suspect": 0,
+   "j_per_frame": 0.2623,
+   "battery_wh": 1.432,
+   "capacity_pct": [
+    85,
+    84
+   ],
+   "hours": null
+  }
+ ],
+ "pool": {
+  "e_full_wh": 93.27,
+  "pct": 3,
+  "wh": 2.798,
+  "range_wh": [
+   55.96,
+   279.8
+  ]
+ }
+}

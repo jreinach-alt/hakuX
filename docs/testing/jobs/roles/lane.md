@@ -63,6 +63,12 @@ estimate's other home: AGENTS.md, "Working with a device".
 1. Your branch is pushed and `preflight.sh` passes on it (the tracker gate
    is the board's; `--allow-tracker` is fine when only that fails).
 2. The PR body's `Files:` matches `git diff --stat origin/master...HEAD`.
+   A PR that changes emulator code (hw/ target/ accel/ android/ tcg/ ui/
+   audio/) carries one line in its body:
+   `Release note (performance|stability|rendering|other|none): <what a player notices>`.
+   Use `none` for instrumentation and for opt-in switches that are off by
+   default. The nightly notes read it (`body_line()` in nightly_build.sh);
+   without it a speed fix is filed by keyword guess.
 3. `docs/lanes/<your lane name>/NOTES.md` records what you tried, what you
    measured, and what the next lane should not repeat. **Not the branch
    root**: every lane writing root `NOTES.md` means the first fold lands one

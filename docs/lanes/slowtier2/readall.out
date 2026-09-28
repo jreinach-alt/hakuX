@@ -1,0 +1,421 @@
+######## JSRF --under 45
+== 1-1790497366-titleroutes-886445: JSRF - Jet Set Radio Future (USA).xiso.iso | thor ref 02299ec656 apk 397ae7dca16a | titleroutes | 500s | env [] | shader_cache cleared: apk 33a55a09fe05 -> 397ae7dca16a on this device
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 222, soak end 505; window 222-505 s (verdict (mark gameplay -> soak end))
+thermal: no thermal.jsonl. Claim (route.txt mtime): previous thor runs: 1790483694-blinx372e-3615063 (4D530013-Blinx_The_Time_Sweepe, 240s) ended 1309 s before; 0-0-x-1790493356-titleroutes-734802 (54540082-Grand_Theft_Auto_San_, 500s) ended 2923 s before
+bins (30s from soak start, median fps): 0:59.9 30:59.9 60:49.2 90:59.9 120:59.9 150:59.9 180:59.9 210:59.9 240:22.1 270:23.3 300:22.1 330:23.4 360:20.7 390:24.5 420:24.9 450:26.7 480:26.5
+#507 shape: no
+  counters from the 103 windows under 45 fps (268 s of 284)
+  window 222-505 s: fps median 24.23 (title_verdict's element; n=116, min 16.8, p10/25/75/90 19.3/21.3/27.7/59.0) = 41.3 ms/frame | G 41.8 Ri 23.9 busy 17.9 Vpf 2.50
+    vcpu 74.2% (30.6 ms/frame on-CPU) | TLB resets vCPU 1.33 ms/frame, other threads 0.39 ms/frame | ff/s 0 pf/s 0
+    fifoskew kicks/s 347 backlog mean 29028 B
+    #424 churn: 500 invalidations/s, 4038 TBs discarded/s
+    audio zero-filled 0.1%
+
+######## MA2 
+== 1-1790516796-lanelocal-1258823: 4D53006B-MechAssault_2_Lone_Wolf.xiso.iso | thor ref c0db2c0bdc apk 397ae7dca16a | lanelocal | 1500s | env [] | shader_cache cleared: apk c4b30cf46bd6 -> 397ae7dca16a on this device
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 254, soak end 1639; window 254-1639 s (verdict (mark gameplay -> soak end))
+thermal: no thermal.jsonl. Claim (route.txt mtime): previous thor runs: 0-0-x-1790517499-slowdown462-1484367 (54540082-Grand_Theft_Auto_San_, 500s) ended 5 s before; 1-1790515369-lanelocal-1183547 (5A440004-Alien_Hominid.xiso.is, 1380s) ended 3056 s before
+bins (30s from soak start, median fps): 30:6.6 60:25.3 120:0.8 150:11.1 180:11.8 210:12.5 240:12.4 270:11.2 300:11.1 330:11.0 360:11.1 390:11.0 420:10.9 450:10.8 480:10.8 510:10.9 540:30.0 570:30.0 600:30.0 630:30.0 660:30.0 690:30.0 720:30.0 750:30.0 780:23.7 810:10.7 840:10.7 870:10.8 900:10.7 930:10.7 960:10.8 990:10.7 1020:10.8 1050:10.7 1080:10.7 1110:10.9 1140:10.9 1170:10.9 1200:10.9 1230:11.0 1260:10.9 1290:11.1 1320:11.2 1350:11.3 1380:11.3 1410:11.3 1440:11.0 1470:11.1 1500:30.0 1530:30.0 1560:30.0 1590:30.0 1620:30.0
+#507 shape: no
+  window 254-1639 s: fps median 23.89 (title_verdict's element; n=370, min 9.9, p10/25/75/90 10.7/10.9/30.0/30.0) = 41.9 ms/frame | G 34.9 Ri 32.2 busy 2.7 Vpf 2.64
+    vcpu 76.6% (32.1 ms/frame on-CPU) | TLB resets vCPU 0.98 ms/frame, other threads 0.27 ms/frame | ff/s 0 pf/s 0
+    fifoskew kicks/s 106 backlog mean 97430 B
+    #424 churn: 419 invalidations/s, 577 TBs discarded/s
+    audio zero-filled 0.1%
+
+######## MA2 --under 20
+== 1-1790516796-lanelocal-1258823: 4D53006B-MechAssault_2_Lone_Wolf.xiso.iso | thor ref c0db2c0bdc apk 397ae7dca16a | lanelocal | 1500s | env [] | shader_cache cleared: apk c4b30cf46bd6 -> 397ae7dca16a on this device
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 254, soak end 1639; window 254-1639 s (verdict (mark gameplay -> soak end))
+thermal: no thermal.jsonl. Claim (route.txt mtime): previous thor runs: 0-0-x-1790517499-slowdown462-1484367 (54540082-Grand_Theft_Auto_San_, 500s) ended 5 s before; 1-1790515369-lanelocal-1183547 (5A440004-Alien_Hominid.xiso.is, 1380s) ended 3056 s before
+bins (30s from soak start, median fps): 30:6.6 60:25.3 120:0.8 150:11.1 180:11.8 210:12.5 240:12.4 270:11.2 300:11.1 330:11.0 360:11.1 390:11.0 420:10.9 450:10.8 480:10.8 510:10.9 540:30.0 570:30.0 600:30.0 630:30.0 660:30.0 690:30.0 720:30.0 750:30.0 780:23.7 810:10.7 840:10.7 870:10.8 900:10.7 930:10.7 960:10.8 990:10.7 1020:10.8 1050:10.7 1080:10.7 1110:10.9 1140:10.9 1170:10.9 1200:10.9 1230:11.0 1260:10.9 1290:11.1 1320:11.2 1350:11.3 1380:11.3 1410:11.3 1440:11.0 1470:11.1 1500:30.0 1530:30.0 1560:30.0 1590:30.0 1620:30.0
+#507 shape: no
+  counters from the 185 windows under 20 fps (1011 s of 1385)
+  window 254-1639 s: fps median 23.89 (title_verdict's element; n=370, min 9.9, p10/25/75/90 10.7/10.9/30.0/30.0) = 41.9 ms/frame | G 90.3 Ri 65.8 busy 24.5 Vpf 5.41
+    vcpu 75.5% (31.6 ms/frame on-CPU) | TLB resets vCPU 1.00 ms/frame, other threads 0.29 ms/frame | ff/s 0 pf/s 0
+    fifoskew kicks/s 105 backlog mean 96997 B
+    #424 churn: 419 invalidations/s, 577 TBs discarded/s
+    audio zero-filled 0.2%
+
+######## MA2 --window 540,780
+== 1-1790516796-lanelocal-1258823: 4D53006B-MechAssault_2_Lone_Wolf.xiso.iso | thor ref c0db2c0bdc apk 397ae7dca16a | lanelocal | 1500s | env [] | shader_cache cleared: apk c4b30cf46bd6 -> 397ae7dca16a on this device
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 254, soak end 1639; window 540-780 s (given)
+thermal: no thermal.jsonl. Claim (route.txt mtime): previous thor runs: 0-0-x-1790517499-slowdown462-1484367 (54540082-Grand_Theft_Auto_San_, 500s) ended 5 s before; 1-1790515369-lanelocal-1183547 (5A440004-Alien_Hominid.xiso.is, 1380s) ended 3056 s before
+bins (30s from soak start, median fps): 30:6.6 60:25.3 120:0.8 150:11.1 180:11.8 210:12.5 240:12.4 270:11.2 300:11.1 330:11.0 360:11.1 390:11.0 420:10.9 450:10.8 480:10.8 510:10.9 540:30.0 570:30.0 600:30.0 630:30.0 660:30.0 690:30.0 720:30.0 750:30.0 780:23.7 810:10.7 840:10.7 870:10.8 900:10.7 930:10.7 960:10.8 990:10.7 1020:10.8 1050:10.7 1080:10.7 1110:10.9 1140:10.9 1170:10.9 1200:10.9 1230:11.0 1260:10.9 1290:11.1 1320:11.2 1350:11.3 1380:11.3 1410:11.3 1440:11.0 1470:11.1 1500:30.0 1530:30.0 1560:30.0 1590:30.0 1620:30.0
+#507 shape: no
+  window 540-780 s: fps median 29.97 (title_verdict's element; n=120, min 29.7, p10/25/75/90 30.0/30.0/30.0/30.0) = 33.4 ms/frame | G 33.4 Ri 26.9 busy 6.5 Vpf 2.00
+    vcpu 98.0% (32.7 ms/frame on-CPU) | TLB resets vCPU 0.32 ms/frame, other threads 0.17 ms/frame | ff/s 0 pf/s 0
+    fifoskew kicks/s 291 backlog mean 180012 B
+    #424 churn: 511 invalidations/s, 856 TBs discarded/s
+    audio zero-filled 0.0%
+
+######## MA2 
+== 1-1790492206-titleroutes-681960: 4D53006B-MechAssault_2_Lone_Wolf.xiso.iso | thor ref c0db2c0bdc apk 397ae7dca16a | titleroutes | 530s | env [] | shader_cache cleared: apk f5abfa521745 -> 397ae7dca16a on this device
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 249, soak end 564; window 249-564 s (verdict (mark gameplay -> soak end))
+thermal: no thermal.jsonl. Claim (route.txt mtime): previous thor runs: 1-1790489396-titleroutes-512742 (56550036-Crash_Twinsanity.xiso, 540s) ended 632 s before; 1-1790487611-titleroutes-261841 (56550016-Bruce_Lee_Quest_of_th, 420s) ended 2381 s before
+bins (30s from soak start, median fps): 0:14.5 30:23.2 120:30.0 150:30.0 180:30.0 210:30.0 240:30.0 270:30.0 300:30.0 330:30.0 360:30.0 390:30.0 420:30.0 450:30.0 480:30.0 510:30.0 540:19.0
+#507 shape: no
+  window 249-564 s: fps median 29.97 (title_verdict's element; n=151, min 15.8, p10/25/75/90 29.9/30.0/30.0/30.0) = 33.4 ms/frame | G 33.3 Ri 28.9 busy 4.4 Vpf 2.00
+    vcpu 98.1% (32.7 ms/frame on-CPU) | TLB resets vCPU 0.36 ms/frame, other threads 0.16 ms/frame | ff/s 0 pf/s 0
+    fifoskew kicks/s 190 backlog mean 137689 B
+    #424 churn: 531 invalidations/s, 891 TBs discarded/s
+    audio zero-filled 0.0%
+
+######## MA2 
+== 0-0-x-1790557233-hostops-810152: 4D53006B-MechAssault_2_Lone_Wolf.xiso.iso | thor ref 37b1b81931 apk 8b9f80b9bcf9 | hostops | 1500s | env [] | shader_cache cleared: apk 123dd87bd51b -> 8b9f80b9bcf9 on this device
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / THERMAL: no thermal-pause device above 0; 47 samples, 0 unread, hottest zone 95.8 C; battery +3.20 W (+ is discharging), usb in 2.12 W, net 5.32 W / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 255, soak end 1718; window 255-1718 s (verdict (mark gameplay -> soak end))
+thermal: start xo-therm 46.9 C, at the mark 68.2 C, max 74.2 C, 47 samples; no pause device above 0
+bins (30s from soak start, median fps): 0:30.0 30:30.0 60:30.0 90:30.0 120:30.0 150:30.0 180:30.0 210:30.0 240:30.0 270:30.0 300:30.0 330:30.0 360:30.0 390:30.0 420:30.0 450:30.0 480:30.0 510:30.0 540:30.0 570:30.0 600:30.0 630:30.0 660:30.0 690:30.0 720:30.0 750:30.0 780:30.0 810:30.0 840:30.0 870:30.0 900:30.0 930:30.0 960:30.0 990:30.0 1020:30.0 1050:30.0 1080:30.0 1110:30.0 1140:30.0 1170:30.0 1200:30.0 1230:30.0 1260:30.0 1290:30.0 1320:30.0 1350:30.0 1380:30.0 1410:30.0 1440:30.0 1470:30.0 1500:30.0 1530:30.0 1560:30.0 1590:30.0 1620:30.0 1650:30.0 1680:30.0 1710:30.0
+#507 shape: no
+  window 255-1718 s: fps median 29.97 (title_verdict's element; n=730, min 29.8, p10/25/75/90 30.0/30.0/30.0/30.0) = 33.4 ms/frame | G 33.3 Ri 28.7 busy 4.6 Vpf 2.00
+    vcpu 98.1% (32.7 ms/frame on-CPU) | TLB resets vCPU 0.30 ms/frame, other threads 0.14 ms/frame | ff/s 0 pf/s 0
+    fifoskew kicks/s 210 backlog mean 150702 B
+    #424 churn: 536 invalidations/s, 904 TBs discarded/s
+    audio zero-filled 0.0%
+
+######## MA2 --under 10
+== 1-1790572031-lane.sustain507-4130999: 4D53006B-MechAssault_2_Lone_Wolf.xiso.iso | thor ref f82e7e87fe apk 8d38739bc784 | lane.sustain507 | 2100s | env ['PERF_REGIMEN=max'] | shader_cache kept: same apk as this device's previous run
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / PERF: display at start {"displays":{"0":"ON","4":"ON"},"dual_screen_display_mode":0,"min_refresh_rate":60.0,"peak_refresh_rate":60.0,"screen_brightness":158,"screen_brightness_mode":0} / PERF: display at end {"displays":{"0":"ON","4":"ON"},"dual_screen_display_mode":0,"min_refresh_rate":60.0,"peak_refresh_rate":60.0,"screen_brightness":158,"screen_brightness_mode":0} / THERMAL: pause thermal-pause-F8 1/1 began after +286 s and by +318 s (device 09-28 01:54:05); cleared by +1012 s | thermal-pause-F8 1/1 began after +1201 s and by +1233 s (device 09-28 02:09:20); cleared by +1896 s | thermal-pause-F8 1/1 began after +2054 s and by +2085 s (device 09-28 02:23:32); still paused at the last reading; 68 samples, 0 unread, hottest zone 95.8 C; battery +1.73 W (+ is discharging), usb in 2.12 W, net 3.85 W / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 237, soak end 2342; window 237-2342 s (verdict (mark gameplay -> soak end))
+thermal: start xo-therm 65.7 C, at the mark 77.0 C, max 78.0 C, 68 samples; FIRST PAUSE thermal-pause-F8 at mark+81 s (label hold)
+bins (30s from soak start, median fps): 0:30.0 30:30.0 60:30.0 90:30.0 120:27.3 150:19.1 180:19.5 210:21.8 240:21.5 270:30.0 300:29.8 330:7.0 360:6.8 390:6.3 420:7.0 450:6.8 480:6.2 510:4.8 540:6.0 570:7.1 600:6.5 630:7.6 660:5.9 690:5.5 720:6.5 750:5.8 780:3.6 810:4.2 840:3.6 870:4.0 900:4.6 930:4.3 960:7.5 990:30.0 1020:30.0 1050:29.9 1080:26.6 1110:19.8 1140:26.1 1170:29.9 1200:7.2 1230:7.2 1260:5.5 1290:4.4 1320:4.8 1350:4.7 1380:4.8 1410:3.8 1440:4.8 1470:4.3 1500:4.7 1530:4.4 1560:4.7 1590:4.3 1620:4.9 1650:4.6 1680:5.1 1710:7.2 1740:5.1 1770:5.2 1800:4.7 1830:4.3 1860:29.5 1890:28.5 1920:28.3 1950:22.3 1980:19.5 2010:15.3 2040:16.2 2070:22.5 2160:2.0 2190:3.3 2220:3.5 2250:4.2 2280:4.3 2310:3.8 2340:4.0
+#507 shape: YES, fall at 2160 s from soak start: 16.2 -> 3.8 fps
+  counters from the 138 windows under 10 fps (1755 s of 2105)
+  window 237-2342 s: fps median 13.98 (title_verdict's element; n=282, min 0.8, p10/25/75/90 4.1/5.1/29.9/30.0) = 71.5 ms/frame | G 179.7 Ri 126.8 busy 52.9 Vpf 10.12
+    vcpu 71.7% (51.2 ms/frame on-CPU) | TLB resets vCPU 2.39 ms/frame, other threads 0.32 ms/frame | ff/s 19 pf/s 6
+    fifoskew kicks/s 50 backlog mean 88388 B
+    #424 churn: 392 invalidations/s, 611 TBs discarded/s
+    audio zero-filled 10.9%
+
+######## MA2 --under 10
+== 1-1790572031-lane.sustain507-4131051: 4D53006B-MechAssault_2_Lone_Wolf.xiso.iso | thor ref f82e7e87fe apk 8d38739bc784 | lane.sustain507 | 2100s | env ['PERF_REGIMEN=default'] | shader_cache kept: same apk as this device's previous run
+run.log: PERF: regimen=default before=[0 4] running=[0 4] / PERF: display at start {"displays":{"0":"ON","4":"ON"},"dual_screen_display_mode":0,"min_refresh_rate":60.0,"peak_refresh_rate":60.0,"screen_brightness":158,"screen_brightness_mode":0} / PERF: display at end {"displays":{"0":"ON","4":"ON"},"dual_screen_display_mode":0,"min_refresh_rate":60.0,"peak_refresh_rate":60.0,"screen_brightness":158,"screen_brightness_mode":0} / THERMAL: pause thermal-pause-F8 1/1 began after +386 s and by +418 s (device 09-28 02:40:39); cleared by +849 s | thermal-pause-F8 1/1 began after +1007 s and by +1039 s (device 09-28 02:51:00); cleared by +1536 s | thermal-pause-F8 1/1 began after +1695 s and by +1727 s (device 09-28 03:02:28); cleared by +2329 s; 67 samples, 0 unread, hottest zone 95.8 C; battery +1.96 W (+ is discharging), usb in 2.12 W, net 4.08 W / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 237, soak end 2325; window 237-2325 s (verdict (mark gameplay -> soak end))
+thermal: start xo-therm 58.3 C, at the mark 75.5 C, max 77.9 C, 67 samples; FIRST PAUSE thermal-pause-F8 at mark+180 s (label hold)
+bins (30s from soak start, median fps): 0:30.0 30:30.0 60:30.0 90:30.0 120:25.0 150:24.3 180:24.7 210:25.5 240:24.0 270:28.1 300:25.3 330:22.0 360:22.7 390:18.9 420:4.3 450:4.2 480:3.5 510:4.1 540:4.5 570:4.9 600:5.8 630:6.3 660:5.7 690:5.7 720:7.2 750:6.7 780:6.2 810:29.9 840:30.0 870:30.0 900:29.9 930:25.6 960:28.0 990:29.9 1020:29.9 1050:7.5 1080:3.8 1110:3.9 1140:4.5 1170:4.0 1200:4.2 1230:4.2 1260:4.3 1290:4.5 1320:4.5 1350:5.5 1380:6.3 1410:6.7 1440:6.7 1470:6.5 1500:29.8 1530:29.9 1560:27.5 1590:28.4 1620:29.3 1650:27.4 1680:25.6 1710:6.6 1740:7.1 1770:4.6 1800:3.9 1830:4.6 1860:4.3 1890:4.5 1920:5.6 1950:6.4 1980:4.9 2010:5.8 2040:7.5 2070:4.8 2100:4.2 2130:4.3 2160:23.3 2190:23.2 2220:24.3 2250:23.7 2280:23.6 2310:23.1
+#507 shape: no
+  counters from the 118 windows under 10 fps (1371 s of 2087)
+  window 237-2325 s: fps median 24.15 (title_verdict's element; n=425, min 3.3, p10/25/75/90 4.7/7.1/29.7/30.0) = 41.4 ms/frame | G 177.0 Ri 137.5 busy 39.5 Vpf 10.52
+    vcpu 70.8% (29.3 ms/frame on-CPU) | TLB resets vCPU 1.56 ms/frame, other threads 0.21 ms/frame | ff/s 22 pf/s 6
+    fifoskew kicks/s 50 backlog mean 88275 B
+    #424 churn: 435 invalidations/s, 747 TBs discarded/s
+    audio zero-filled 13.6%
+
+######## Arctic --under 45
+== 1-1790547557-titleroutes-979135: 4D570002-Arctic_Thunder.xiso.iso | thor ref 677ae13af8 apk 5cc9d88172f4 | titleroutes | 590s | env [] | shader_cache cleared: apk c486dd705060 -> 5cc9d88172f4 on this device
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 278, soak end 598; window 278-598 s (verdict (mark gameplay -> soak end))
+thermal: no thermal.jsonl. Claim (route.txt mtime): previous thor runs: 1-1790546971-flip474-641838 (Crimson Skies - High Road to R, 120s) ended 315 s before; 1-1790545622-titleroutes-76653 (49470013-Dungeons_Dragons_Hero, 600s) ended 1518 s before
+bins (30s from soak start, median fps): 0:55.6 30:55.6 60:59.9 90:39.4 120:38.5 150:36.9 180:35.7 210:26.5 240:29.4 270:31.4 300:19.1 330:19.3 360:19.6 390:19.5 420:59.9 450:23.2 480:21.1 510:21.5 540:20.8 570:25.2
+#507 shape: no
+  counters from the 107 windows under 45 fps (301 s of 320)
+  window 278-598 s: fps median 21.37 (title_verdict's element; n=124, min 15.2, p10/25/75/90 18.7/19.7/25.3/59.9) = 46.8 ms/frame | G 47.5 Ri 24.2 busy 23.3 Vpf 2.81
+    vcpu 87.1% (40.8 ms/frame on-CPU) | TLB resets vCPU 5.95 ms/frame, other threads 2.94 ms/frame | ff/s 0 pf/s 1
+    fifoskew kicks/s 265 backlog mean 32236 B
+    #424 churn: 7332 invalidations/s, 37431 TBs discarded/s
+    audio zero-filled 0.0%
+
+######## Arctic --under 45
+== 1-1790548502-titleroutes-1531400: 4D570002-Arctic_Thunder.xiso.iso | thor ref e884ad260e apk 6d334facad15 | titleroutes | 550s | env [] | shader_cache kept: same apk as this device's previous run
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / THERMAL: no thermal-pause device above 0; 18 samples, 0 unread, hottest zone 95.8 C / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 244, soak end 554; window 244-554 s (verdict (mark gameplay -> soak end))
+thermal: start xo-therm 62.4 C, at the mark 72.5 C, max 74.2 C, 18 samples; no pause device above 0
+bins (30s from soak start, median fps): 0:55.6 30:55.6 60:59.9 90:38.0 120:37.2 150:36.1 180:35.4 210:31.8 240:22.8 270:22.8 300:22.4 330:21.2 360:59.9 390:24.1 420:24.9 450:23.8 480:24.2 510:34.4 540:25.1
+#507 shape: no
+  counters from the 115 windows under 45 fps (289 s of 310)
+  window 244-554 s: fps median 24.04 (title_verdict's element; n=134, min 18.2, p10/25/75/90 21.2/22.4/27.7/59.9) = 41.6 ms/frame | G 42.0 Ri 20.8 busy 21.2 Vpf 2.52
+    vcpu 86.4% (35.9 ms/frame on-CPU) | TLB resets vCPU 5.34 ms/frame, other threads 2.55 ms/frame | ff/s 0 pf/s 1
+    fifoskew kicks/s 299 backlog mean 32745 B
+    #424 churn: 8259 invalidations/s, 41863 TBs discarded/s
+    audio zero-filled 0.0%
+
+######## BloodRayne 
+== 1-1790548501-titleroutes-1530145r: 4D4A0001-BloodRayne.xiso.iso | thor ref e884ad260e apk 6d334facad15 | titleroutes | 540s | env [] | shader_cache kept: same apk as this device's previous run
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / THERMAL: no thermal-pause device above 0; 18 samples, 0 unread, hottest zone 97.0 C / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 247, soak end 570; window 247-570 s (verdict (mark gameplay -> soak end))
+thermal: start xo-therm 63.0 C, at the mark 71.8 C, max 74.2 C, 18 samples; no pause device above 0
+bins (30s from soak start, median fps): 0:30.0 30:27.5 60:27.3 90:27.2 120:22.3 150:23.8 180:20.9 210:21.0 240:24.1 270:25.5 300:26.7 330:25.8 360:24.3 390:24.9 420:25.4 450:25.2 480:24.2 510:24.2 540:24.8 570:24.1
+#507 shape: no
+  window 247-570 s: fps median 24.90 (title_verdict's element; n=133, min 20.5, p10/25/75/90 22.4/23.6/26.5/27.6) = 40.2 ms/frame | G 40.0 Ri 11.0 busy 29.0 Vpf 2.39
+    vcpu 70.4% (28.3 ms/frame on-CPU) | TLB resets vCPU 0.34 ms/frame, other threads 0.03 ms/frame | ff/s 66 pf/s 0
+    fifoskew kicks/s 4234 backlog mean 37420 B
+    #424 churn: 451 invalidations/s, 1323 TBs discarded/s
+    audio zero-filled 0.0%
+
+######## BloodRayne --status
+== 1-1790548501-titleroutes-1530145r: 4D4A0001-BloodRayne.xiso.iso | thor ref e884ad260e apk 6d334facad15 | titleroutes | 540s | env [] | shader_cache kept: same apk as this device's previous run
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / THERMAL: no thermal-pause device above 0; 18 samples, 0 unread, hottest zone 97.0 C / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 247, soak end 570; window 93-243 s (status soak (90-240 s after the first perf line))
+thermal: start xo-therm 63.0 C, at the mark 71.8 C, max 74.2 C, 18 samples; no pause device above 0
+bins (30s from soak start, median fps): 0:30.0 30:27.5 60:27.3 90:27.2 120:22.3 150:23.8 180:20.9 210:21.0 240:24.1 270:25.5 300:26.7 330:25.8 360:24.3 390:24.9 420:25.4 450:25.2 480:24.2 510:24.2 540:24.8 570:24.1
+#507 shape: no
+  window 93-243 s: fps median 22.34 (title_verdict's element; n=56, min 11.5, p10/25/75/90 19.5/20.9/27.2/28.3) = 44.8 ms/frame | G 44.4 Ri 12.5 busy 31.9 Vpf 2.66
+    vcpu 73.9% (33.1 ms/frame on-CPU) | TLB resets vCPU 0.39 ms/frame, other threads 0.06 ms/frame | ff/s 123 pf/s 0
+    fifoskew kicks/s 3522 backlog mean 38785 B
+    #424 churn: 487 invalidations/s, 1113 TBs discarded/s
+    audio zero-filled 0.0%
+
+######## Alias 
+== 1-1790519290-titleroutes-2113140: 41430016-Alias.xiso.iso | thor ref c6e2be0936 apk 17eff0363df9 | titleroutes | 450s | env [] | shader_cache kept: same apk as this device's previous run
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 158, soak end 463; window 158-463 s (verdict (mark gameplay -> soak end))
+thermal: no thermal.jsonl. Claim (route.txt mtime): previous thor runs: 1-1790519287-titleroutes-2112912r (4D530007-Azurik_Rise_of_Perath, 440s) ended 3 s before; 1-1790519286-titleroutes-2112912 (4D530007-Azurik_Rise_of_Perath, 440s) ended 833 s before
+bins (30s from soak start, median fps): 0:59.9 30:30.0 60:30.0 90:20.8 120:20.1 150:20.4 180:21.6 210:21.4 240:20.8 270:20.7 300:20.7 330:21.6 360:20.4 390:20.7 420:20.3 450:20.3
+#507 shape: no
+  window 158-463 s: fps median 20.80 (title_verdict's element; n=105, min 19.7, p10/25/75/90 20.2/20.4/21.2/21.7) = 48.1 ms/frame | G 48.2 Ri 19.6 busy 28.5 Vpf 2.88
+    vcpu 95.1% (45.7 ms/frame on-CPU) | TLB resets vCPU 0.51 ms/frame, other threads 0.00 ms/frame | ff/s 0 pf/s 0
+    fifoskew kicks/s 518 backlog mean 165540 B
+    #424 churn: 412 invalidations/s, 1203 TBs discarded/s
+    audio zero-filled 0.0%
+
+######## DOAX --status
+== y-1790481308-titlebench-2893458: 54430007-Dead_or_Alive_Xtreme_Beach_Volleyball.xiso.iso | nova ref a593d8eb85 apk f5abfa521745 | titlebench | 300s | env [] | shader_cache kept: same apk as this device's previous run
+run.log: PERF: regimen=max before=[0 4] running=[2 5] / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 301, soak end 304; window 93-243 s (status soak (90-240 s after the first perf line))
+thermal: no thermal.jsonl. Claim (route.txt mtime): previous nova runs: y-1790481308-titlebench-2893125 (4541005D-GoldenEye_Rogue_Agent, 300s) ended 3 s before; 1790491858-flip474-658414 (54430006-Dead_or_Alive_1_Ultim, 300s) ended 312 s before
+bins (30s from soak start, median fps): 0:59.9 30:30.9 60:20.0 90:59.9 120:19.8 150:19.9 180:18.9 210:19.9 240:18.5 270:18.7 300:20.6
+#507 shape: no
+  window 93-243 s: fps median 19.99 (title_verdict's element; n=53, min 3.7, p10/25/75/90 18.9/19.7/59.9/59.9) = 50.0 ms/frame | G 49.8 Ri 2.2 busy 47.6 Vpf 1.07
+    vcpu 50.2% (25.1 ms/frame on-CPU) | TLB resets vCPU 0.29 ms/frame, other threads 0.21 ms/frame | ff/s 0 pf/s 101
+    fifoskew kicks/s 602 backlog mean 117154 B
+    #424 churn: 402 invalidations/s, 402 TBs discarded/s
+    audio zero-filled 0.0%
+
+######## DOAX 
+== 0-0-y-1790433159-titleplay-p1-doax: 54430007-Dead_or_Alive_Xtreme_Beach_Volleyball.xiso.iso | nova ref a5b5b628f2 apk 25abcaccbf45 | titleplay | 420s | env [] | shader_cache kept: same apk as this device's previous run
+run.log: no PERF line (regimen unrecorded)
+marks: soak start 0, mark play 271, soak end 423; window 271-423 s (verdict (mark play -> soak end))
+thermal: no thermal.jsonl. Claim (route.txt mtime): previous nova runs: 0-0-y-1790433159-titleplay-p1-doa1u (54430006-Dead_or_Alive_1_Ultim, 420s) ended 5 s before; 0-0-y-1790433159-titleplay-p1-cod3 (4156005D-Call_of_Duty_3.xiso.i, 420s) ended 445 s before
+bins (30s from soak start, median fps): 0:59.9 30:30.0 60:31.4 90:26.5 120:15.8 150:26.7 180:25.7 210:18.4 240:17.4 270:17.2 300:17.2 330:16.1 360:16.5 390:17.5 420:16.9
+#507 shape: no
+  window 271-423 s: fps median 17.05 (title_verdict's element; n=40, min 6.4, p10/25/75/90 15.9/16.2/17.5/17.8) = 58.7 ms/frame | G 59.0 Ri 1.3 busy 57.7 Vpf 2.19
+    vcpu 50.2% (29.4 ms/frame on-CPU) | TLB resets vCPU 0.36 ms/frame, other threads 0.25 ms/frame | ff/s 441 pf/s 90
+    fifoskew kicks/s 540 backlog mean 118685 B
+    #424 churn: 387 invalidations/s, 387 TBs discarded/s
+    audio zero-filled 0.0%
+
+######## Conker --under 45
+== 0-0-y-1790395182-rtdbench-3: Conker Live & Reloaded.iso | nova ref 06e73e9f5e apk a00704d02eb0 | host-rtdbench | 240s | env [] | shader_cache kept: same apk as this device's previous run
+run.log: no PERF line (regimen unrecorded)
+marks: soak start 0, None -, soak end 259; window 100-250 s (status soak (90-240 s after the first perf line))
+thermal: no thermal.jsonl. Claim (run.log mtime): previous nova runs: 0-0-y-1790395182-rtdbench-2 (RalliSport Challenge 2 (Japan,, 240s) ended 265 s before; 0-0-y-1790395182-rtdbench-1 (Grabbed by the Ghoulies (USA) , 240s) ended 529 s before
+bins (30s from soak start, median fps): 0:56.8 30:59.9 60:59.9 90:18.7 120:19.1 150:19.3 180:19.2 210:59.8 240:59.9
+#507 shape: no
+  counters from the 40 windows under 45 fps (126 s of 150)
+  window 100-250 s: fps median 19.39 (title_verdict's element; n=62, min 15.4, p10/25/75/90 18.9/19.1/59.9/59.9) = 51.6 ms/frame | G 52.3 Ri 10.5 busy 41.8 Vpf 3.13
+    vcpu 84.9% (43.8 ms/frame on-CPU) | TLB resets vCPU 1.27 ms/frame, other threads 1.05 ms/frame | ff/s 514 pf/s 0
+    fifoskew kicks/s 370 backlog mean 63108 B
+    #424 churn: 1695 invalidations/s, 1814 TBs discarded/s
+    audio zero-filled 0.0%
+
+######## Crash --under 45
+== 1-1790489396-titleroutes-512742: 56550036-Crash_Twinsanity.xiso.iso | thor ref a593d8eb85 apk f5abfa521745 | titleroutes | 540s | env [] | shader_cache kept: same apk as this device's previous run
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 275, soak end 543; window 275-543 s (verdict (mark gameplay -> soak end))
+thermal: no thermal.jsonl. Claim (route.txt mtime): previous thor runs: 1-1790487611-titleroutes-261841 (56550016-Bruce_Lee_Quest_of_th, 420s) ended 1202 s before; 0-0-x-1790487799-lane.remote-3832071 (Crimson Skies - High Road to R, 240s) ended 3430 s before
+bins (30s from soak start, median fps): 0:59.9 30:59.9 60:24.2 90:22.0 120:21.7 150:59.9 180:29.8 210:28.2 240:8.5 270:9.0 300:11.1 330:15.9 360:18.2 390:15.6 420:9.6 450:10.9 480:15.9 510:18.2 540:17.8
+#507 shape: no
+  counters from the 60 windows under 45 fps (258 s of 268)
+  window 275-543 s: fps median 15.72 (title_verdict's element; n=60, min 9.4, p10/25/75/90 9.8/11.8/17.8/18.6) = 63.6 ms/frame | G 67.5 Ri 18.1 busy 49.4 Vpf 3.95
+    vcpu 68.1% (43.3 ms/frame on-CPU) | TLB resets vCPU 1.02 ms/frame, other threads 0.00 ms/frame | ff/s 0 pf/s 0
+    fifoskew kicks/s 66 backlog mean 125410 B
+    #424 churn: 197 invalidations/s, 197 TBs discarded/s
+    audio zero-filled 0.2%
+
+######## DOA3 --status
+== 0-0-y-1790433159-titleplay-p1-doa3: Dead or Alive 3 (USA) (En,Ja).xiso.iso | thor ref a5b5b628f2 apk 25abcaccbf45 | titleplay | 420s | env [] | shader_cache kept: same apk as this device's previous run
+run.log: no PERF line (regimen unrecorded)
+marks: soak start 0, mark play 248, soak end 421; window 101-251 s (status soak (90-240 s after the first perf line))
+thermal: no thermal.jsonl. Claim (route.txt mtime): previous thor runs: 0-0-y-1790433159-titleplay-p1-crimson (Crimson Skies - High Road to R, 420s) ended 5 s before; 0-0-y-1790433159-titleplay-p1-burnout3 (4541005B-Burnout_3_Takedown.xi, 420s) ended 436 s before
+bins (30s from soak start, median fps): 0:3.7 30:3.8 60:3.5 90:9.4 120:13.1 150:13.2 180:28.4 270:59.9 300:30.0 330:25.6 360:53.0
+#507 shape: no
+  window 101-251 s: fps median 15.41 (title_verdict's element; n=29, min 12.4, p10/25/75/90 12.8/13.2/26.9/59.9) = 64.9 ms/frame | G 64.5 Ri 54.8 busy 9.7 Vpf 3.88
+    vcpu 91.1% (59.1 ms/frame on-CPU) | TLB resets vCPU 10.81 ms/frame, other threads 0.00 ms/frame | ff/s 0 pf/s 68
+    fifoskew kicks/s 58 backlog mean 41859 B
+    #424 churn: 15490 invalidations/s, 158526 TBs discarded/s
+    audio zero-filled 0.0%
+
+######## DOA3 
+== 0-0-y-1790433159-titleplay-p1-doa3: Dead or Alive 3 (USA) (En,Ja).xiso.iso | thor ref a5b5b628f2 apk 25abcaccbf45 | titleplay | 420s | env [] | shader_cache kept: same apk as this device's previous run
+run.log: no PERF line (regimen unrecorded)
+marks: soak start 0, mark play 248, soak end 421; window 248-421 s (verdict (mark play -> soak end))
+thermal: no thermal.jsonl. Claim (route.txt mtime): previous thor runs: 0-0-y-1790433159-titleplay-p1-crimson (Crimson Skies - High Road to R, 420s) ended 5 s before; 0-0-y-1790433159-titleplay-p1-burnout3 (4541005B-Burnout_3_Takedown.xi, 420s) ended 436 s before
+bins (30s from soak start, median fps): 0:3.7 30:3.8 60:3.5 90:9.4 120:13.1 150:13.2 180:28.4 270:59.9 300:30.0 330:25.6 360:53.0
+#507 shape: no
+  window 248-421 s: fps median 47.39 (title_verdict's element; n=31, min 3.3, p10/25/75/90 20.4/26.4/59.9/59.9) = 21.1 ms/frame | G 20.5 Ri 9.3 busy 11.1 Vpf 1.17
+    vcpu 88.8% (18.7 ms/frame on-CPU) | TLB resets vCPU 0.99 ms/frame, other threads 0.03 ms/frame | ff/s 0 pf/s 63
+    fifoskew kicks/s 258 backlog mean 209278 B
+    #424 churn: 2865 invalidations/s, 6177 TBs discarded/s
+    audio zero-filled 0.0%
+
+######## PGR --split 360
+== 1-1790483525-titleroutes-3587419: 4D530003-Project_Gotham_Racing.xiso.iso | thor ref a593d8eb85 apk f5abfa521745 | titleroutes | 480s | env [] | shader_cache kept: same apk as this device's previous run
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 197, soak end 495; window 197-495 s (verdict (mark gameplay -> soak end))
+thermal: no thermal.jsonl. Claim (route.txt mtime): previous thor runs: 1-1790482599-titleroutes-3358750 (45410083-Black.xiso.iso, 760s) ended 2476 s before; 1-1790482534-titleroutes-3347838 (45410083-Black.xiso.iso, 300s) ended 4649 s before
+bins (30s from soak start, median fps): 0:7.0 30:59.9 60:59.9 90:59.9 120:59.9 150:41.8 180:13.4 210:14.3 240:16.2 270:17.2 300:12.3 330:10.1 360:5.4 390:6.2 420:5.4 450:5.5 480:5.3
+#507 shape: no
+  window 197-495 s: fps median 14.27 (title_verdict's element; n=49, min 5.1, p10/25/75/90 5.3/6.3/16.1/17.9) = 70.1 ms/frame | G 72.7 Ri 9.4 busy 63.3 Vpf 4.30
+    vcpu 69.7% (48.9 ms/frame on-CPU) | TLB resets vCPU 1.39 ms/frame, other threads 0.24 ms/frame | ff/s 67 pf/s 0
+    fifoskew kicks/s 119 backlog mean 187538 B
+    #424 churn: 394 invalidations/s, 487 TBs discarded/s
+    audio zero-filled 70.6%
+  before 197-360 s: fps median 15.12 (title_verdict's element; n=37, min 5.2, p10/25/75/90 12.1/13.4/16.5/18.2) = 66.1 ms/frame | G 66.8 Ri 8.4 busy 58.4 Vpf 4.04
+    vcpu 86.6% (57.3 ms/frame on-CPU) | TLB resets vCPU 0.67 ms/frame, other threads 0.28 ms/frame | ff/s 113 pf/s 0
+    fifoskew kicks/s 196 backlog mean 281320 B
+    #424 churn: 432 invalidations/s, 561 TBs discarded/s
+    audio zero-filled 0.0%
+  after 360-495 s: fps median 5.52 (title_verdict's element; n=11, min 5.2, p10/25/75/90 5.3/5.3/5.8/6.2) = 181.1 ms/frame | G 181.4 Ri 45.1 busy 136.3 Vpf 10.79
+    vcpu 61.2% (110.8 ms/frame on-CPU) | TLB resets vCPU 3.81 ms/frame, other threads 0.59 ms/frame | ff/s 44 pf/s 0
+    fifoskew kicks/s 72 backlog mean 115308 B
+    #424 churn: 352 invalidations/s, 403 TBs discarded/s
+    audio zero-filled 70.9%
+
+######## Brute 
+== 1-1790510457-titleroutes-1101937: 4D53001E-Brute_Force.xiso.iso | thor ref 9d3656f263 apk 397ae7dca16a | titleroutes | 570s | env [] | shader_cache kept: same apk as this device's previous run
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 296, soak end 589; window 296-589 s (verdict (mark gameplay -> soak end))
+thermal: no thermal.jsonl. Claim (route.txt mtime): previous thor runs: 1-1790508532-titleroutes-1074940 (4D530010-Blood_Wake.xiso.iso, 480s) ended 1363 s before; 1-1790506491-titleroutes-1032854 (4D53002A-Midtown_Madness_3.xis, 580s) ended 2844 s before
+bins (30s from soak start, median fps): 0:30.0 30:30.0 60:30.0 90:30.0 120:30.0 150:30.0 180:30.0 210:30.0 240:29.2 270:28.4 300:13.2 330:13.3 360:13.4 390:12.8 420:13.3 450:13.1 480:13.3 510:13.2 540:12.9 570:10.4
+#507 shape: no
+  window 296-589 s: fps median 13.16 (title_verdict's element; n=60, min 7.6, p10/25/75/90 11.3/12.3/13.5/13.9) = 76.0 ms/frame | G 76.1 Ri 49.4 busy 26.7 Vpf 4.57
+    vcpu 72.9% (55.4 ms/frame on-CPU) | TLB resets vCPU 1.06 ms/frame, other threads 0.39 ms/frame | ff/s 1 pf/s 0
+    fifoskew kicks/s 235 backlog mean 787530 B
+    #424 churn: 146 invalidations/s, 146 TBs discarded/s
+    audio zero-filled 0.3%
+
+######## Otogi --under 45
+== 1-1790511808-titleroutes-1129571: 46530002-Otogi_Myth_of_Demons.xiso.iso | thor ref 9e7f8418dc apk 397ae7dca16a | titleroutes | 550s | env [] | shader_cache kept: same apk as this device's previous run
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 278, soak end 550; window 278-550 s (verdict (mark gameplay -> soak end))
+thermal: no thermal.jsonl. Claim (route.txt mtime): previous thor runs: 1-1790510457-titleroutes-1101937 (4D53001E-Brute_Force.xiso.iso, 570s) ended 703 s before; 1-1790508532-titleroutes-1074940 (4D530010-Blood_Wake.xiso.iso, 480s) ended 2657 s before
+bins (30s from soak start, median fps): 0:30.0 30:30.0 60:30.0 90:29.8 120:12.8 150:11.4 180:11.3 210:11.8 240:11.8 270:11.8 300:13.2 330:12.0 360:16.6 390:16.8 420:12.6 450:10.9 480:10.2 510:10.7 540:11.1
+#507 shape: no
+  counters from the 56 windows under 45 fps (264 s of 273)
+  window 278-550 s: fps median 12.62 (title_verdict's element; n=56, min 9.5, p10/25/75/90 10.1/10.7/16.1/17.5) = 79.3 ms/frame | G 82.2 Ri 7.3 busy 74.9 Vpf 4.41
+    vcpu 59.0% (46.7 ms/frame on-CPU) | TLB resets vCPU 2.70 ms/frame, other threads 0.00 ms/frame | ff/s 0 pf/s 0
+    fifoskew kicks/s 46 backlog mean 1399615 B
+    #424 churn: 492 invalidations/s, 492 TBs discarded/s
+    audio zero-filled 0.8%
+
+######## Burnout --under 45
+== 1-1790513065-titleroutes-1150288: 41430006-Burnout.xiso.iso | thor ref 3540bf2a69 apk 397ae7dca16a | titleroutes | 460s | env [] | shader_cache kept: same apk as this device's previous run
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 167, soak end 471; window 167-471 s (verdict (mark gameplay -> soak end))
+thermal: no thermal.jsonl. Claim (route.txt mtime): previous thor runs: 1-1790511808-titleroutes-1129571 (46530002-Otogi_Myth_of_Demons., 550s) ended 704 s before; 1-1790510457-titleroutes-1101937 (4D53001E-Brute_Force.xiso.iso, 570s) ended 1960 s before
+bins (30s from soak start, median fps): 0:59.9 30:59.9 60:59.9 90:31.1 120:31.6 150:28.5 180:29.1 210:8.6 240:14.6 270:10.5 300:10.0 330:8.4 360:12.6 390:10.8 420:10.0 450:8.6
+#507 shape: no
+  counters from the 62 windows under 45 fps (301 s of 304)
+  window 167-471 s: fps median 10.85 (title_verdict's element; n=62, min 7.7, p10/25/75/90 8.4/9.3/21.9/29.7) = 92.2 ms/frame | G 92.7 Ri 21.6 busy 71.1 Vpf 5.48
+    vcpu 59.5% (54.8 ms/frame on-CPU) | TLB resets vCPU 2.73 ms/frame, other threads 0.12 ms/frame | ff/s 0 pf/s 0
+    fifoskew kicks/s 408 backlog mean 75444 B
+    #424 churn: 469 invalidations/s, 1818 TBs discarded/s
+    audio zero-filled 55.6%
+
+######## Black 
+== 1-1790482599-titleroutes-3358750: 45410083-Black.xiso.iso | thor ref a593d8eb85 apk f5abfa521745 | titleroutes | 760s | env [] | shader_cache kept: same apk as this device's previous run
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 493, soak end 784; window 493-784 s (verdict (mark gameplay -> soak end))
+thermal: no thermal.jsonl. Claim (route.txt mtime): previous thor runs: 1-1790482534-titleroutes-3347838 (45410083-Black.xiso.iso, 300s) ended 1388 s before; 1790469733-titlebench-3698247 (4541005B-Burnout_3_Takedown.xi, 420s) ended 8561 s before
+bins (30s from soak start, median fps): 0:26.8 30:30.0 60:30.0 90:30.0 120:30.0 150:30.0 180:29.8 210:3.7 240:20.2 270:4.5 300:5.2 330:5.1 360:4.7 390:5.1 420:20.0 450:25.2 480:22.4 510:7.3 540:7.1 570:6.9 600:7.1 630:7.6 660:9.4 690:7.3 720:6.8 750:9.3 780:9.3
+#507 shape: no
+  window 493-784 s: fps median 7.45 (title_verdict's element; n=36, min 6.5, p10/25/75/90 6.7/7.0/8.2/9.6) = 134.3 ms/frame | G 134.9 Ri 56.3 busy 78.6 Vpf 7.95
+    vcpu 68.7% (92.3 ms/frame on-CPU) | TLB resets vCPU 3.59 ms/frame, other threads 17.84 ms/frame | ff/s 41 pf/s 0
+    fifoskew kicks/s 35 backlog mean 328039 B
+    #424 churn: 311 invalidations/s, 311 TBs discarded/s
+    audio zero-filled 0.1%
+
+######## MM3 
+== 1-1790506491-titleroutes-1032854: 4D53002A-Midtown_Madness_3.xiso.iso | thor ref 6aaa8197c5 apk 397ae7dca16a | titleroutes | 580s | env [] | shader_cache kept: same apk as this device's previous run
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 323, soak end 587; window 323-587 s (verdict (mark gameplay -> soak end))
+thermal: no thermal.jsonl. Claim (route.txt mtime): previous thor runs: 1-1790505449-titleroutes-1023605 (5A440004-Alien_Hominid.xiso.is, 410s) ended 5 s before; 1-1790503792-titleroutes-997141 (Grabbed by the Ghoulies (USA) , 730s) ended 2554 s before
+bins (30s from soak start, median fps): 30:59.9 60:59.9 90:59.9 120:51.9 150:12.7 210:2.3 240:3.1 270:3.3 300:3.2 330:3.1 360:3.0 390:3.2 420:3.2 450:3.1 480:3.0 510:3.1 540:2.9
+#507 shape: YES, fall at 210 s from soak start: 51.9 -> 3.1 fps
+  window 323-587 s: fps median 3.13 (title_verdict's element; n=12, min 2.9, p10/25/75/90 2.9/3.0/3.2/3.3) = 320.0 ms/frame | G 336.2 Ri 260.1 busy 76.1 Vpf 15.52
+    vcpu 71.4% (228.3 ms/frame on-CPU) | TLB resets vCPU 9.34 ms/frame, other threads 1.69 ms/frame | ff/s 32 pf/s 4
+    fifoskew kicks/s 20 backlog mean 48900 B
+    #424 churn: 356 invalidations/s, 356 TBs discarded/s
+    audio zero-filled 49.0%
+
+######## Crimson --split 270
+== 0-0-y-1790433159-titleplay-p1-crimson: Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso | thor ref a5b5b628f2 apk 25abcaccbf45 | titleplay | 420s | env [] | shader_cache kept: same apk as this device's previous run
+run.log: no PERF line (regimen unrecorded)
+marks: soak start 0, mark gameplay 119, soak end 424; window 119-424 s (verdict (mark gameplay -> soak end))
+thermal: no thermal.jsonl. Claim (route.txt mtime): previous thor runs: 0-0-y-1790433159-titleplay-p1-burnout3 (4541005B-Burnout_3_Takedown.xi, 420s) ended 3 s before; 0-0-y-1790433159-titleplay-p1-brucelee (56550016-Bruce_Lee_Quest_of_th, 420s) ended 427 s before
+bins (30s from soak start, median fps): 0:29.9 30:30.0 60:30.0 90:18.3 120:20.4 150:26.8 180:25.1 210:27.3 240:22.6 270:8.1 300:6.2 330:3.0 360:3.4 390:7.2
+#507 shape: YES, fall at 270 s from soak start: 25.1 -> 6.2 fps
+  window 119-424 s: fps median 23.37 (title_verdict's element; n=72, min 2.4, p10/25/75/90 6.9/18.3/27.4/29.9) = 42.8 ms/frame | G 43.8 Ri 12.9 busy 30.9 Vpf 2.59
+    vcpu 80.9% (34.6 ms/frame on-CPU) | TLB resets vCPU 3.81 ms/frame, other threads 4.05 ms/frame | ff/s 0 pf/s 0
+    fifoskew kicks/s 542 backlog mean 42076 B
+    #424 churn: 3348 invalidations/s, 24279 TBs discarded/s
+    audio zero-filled 1.0%
+  before 119-270 s: fps median 25.31 (title_verdict's element; n=59, min 16.8, p10/25/75/90 18.1/20.5/28.0/30.0) = 39.5 ms/frame | G 39.5 Ri 12.3 busy 27.2 Vpf 2.39
+    vcpu 86.8% (34.3 ms/frame on-CPU) | TLB resets vCPU 3.85 ms/frame, other threads 5.03 ms/frame | ff/s 0 pf/s 0
+    fifoskew kicks/s 739 backlog mean 57728 B
+    #424 churn: 5227 invalidations/s, 39104 TBs discarded/s
+    audio zero-filled 0.0%
+  after 270-424 s: fps median 5.71 (title_verdict's element; n=12, min 2.4, p10/25/75/90 3.0/4.4/8.6/9.3) = 175.2 ms/frame | G 185.3 Ri 93.9 busy 91.4 Vpf 10.49
+    vcpu 52.2% (91.5 ms/frame on-CPU) | TLB resets vCPU 15.04 ms/frame, other threads 12.56 ms/frame | ff/s 0 pf/s 0
+    fifoskew kicks/s 136 backlog mean 24682 B
+    #424 churn: 1201 invalidations/s, 7330 TBs discarded/s
+    audio zero-filled 1.5%
+
+######## Crimson 
+== 1790467153-titlebench-2601931: Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso | thor ref d0e30924f8 apk a8e066134ade | titlebench | 420s | env [] | shader_cache cleared: apk 71fc10954ce6 -> a8e066134ade on this device
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 113, soak end 421; window 113-421 s (verdict (mark gameplay -> soak end))
+thermal: no thermal.jsonl. Claim (route.txt mtime): previous thor runs: 1790461337-arms-jcache425-fix-436872 (8-suites:1b7a732f:3D primitive, Nones) ended 86 s before; 1-1790469653-arms-buildflags427-fix-3674597 (12-suites:1d788126:3D_primitiv, Nones) ended 916 s before
+bins (30s from soak start, median fps): 0:29.9 30:30.0 60:30.0 90:28.7 120:29.4 150:26.6 180:29.9 210:30.0 240:29.5 270:29.9 300:30.0 330:23.5 360:30.0 390:28.7
+#507 shape: no
+  window 113-421 s: fps median 29.73 (title_verdict's element; n=143, min 22.5, p10/25/75/90 24.4/27.3/30.0/30.0) = 33.6 ms/frame | G 33.4 Ri 11.9 busy 21.5 Vpf 2.00
+    vcpu 90.0% (30.3 ms/frame on-CPU) | TLB resets vCPU 2.92 ms/frame, other threads 3.71 ms/frame | ff/s 0 pf/s 0
+    fifoskew kicks/s 939 backlog mean 70876 B
+    #424 churn: 6404 invalidations/s, 48379 TBs discarded/s
+    audio zero-filled 0.0%
+
+######## Crimson 
+== 1790467160-titlebench-2612149: Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso | nova ref d0e30924f8 apk a8e066134ade | titlebench | 420s | env [] | shader_cache cleared: apk f5abfa521745 -> a8e066134ade on this device
+run.log: PERF: regimen=max before=[0 4] running=[2 5] / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 116, soak end 423; window 116-423 s (verdict (mark gameplay -> soak end))
+thermal: no thermal.jsonl. Claim (route.txt mtime): previous nova runs: y-1790481308-titlebench-2893458 (54430007-Dead_or_Alive_Xtreme_, 300s) ended 7049 s before; y-1790481308-titlebench-2893125 (4541005D-GoldenEye_Rogue_Agent, 300s) ended 7358 s before
+bins (30s from soak start, median fps): 0:30.0 30:30.0 60:30.0 90:28.7 120:29.5 150:27.8 180:29.9 210:30.0 240:30.0 270:30.0 300:30.0 330:29.0 360:30.0 390:30.0 420:29.9
+#507 shape: no
+  window 116-423 s: fps median 29.97 (title_verdict's element; n=150, min 25.6, p10/25/75/90 27.9/29.4/30.0/30.0) = 33.4 ms/frame | G 33.4 Ri 15.5 busy 17.9 Vpf 2.00
+    vcpu 93.9% (31.3 ms/frame on-CPU) | TLB resets vCPU 2.57 ms/frame, other threads 2.83 ms/frame | ff/s 0 pf/s 0
+    fifoskew kicks/s 948 backlog mean 80223 B
+    #424 churn: 6750 invalidations/s, 51089 TBs discarded/s
+    audio zero-filled 0.0%
+
+######## Crimson 
+== 1-1790572033-adpf-2928981: Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso | thor ref 8a64c7d41e apk 02eb07c3bcdd | adpf | 240s | env ['HAKUX_ADPF=probe', 'PERF_REGIMEN=default', 'HAKUX_IDLE_HALT=1'] | shader_cache cleared: apk 397ae7dca16a -> 02eb07c3bcdd on this device
+run.log: PERF: regimen=default before=[0 4] running=[0 4] / PERF: display at start {"displays":{"0":"ON","4":"ON"},"dual_screen_display_mode":0,"min_refresh_rate":60.0,"peak_refresh_rate":60.0,"screen_brightness":158,"screen_brightness_mode":0} / PERF: display at end {"displays":{"0":"ON","4":"ON"},"dual_screen_display_mode":0,"min_refresh_rate":60.0,"peak_refresh_rate":60.0,"screen_brightness":158,"screen_brightness_mode":0} / THERMAL: no thermal-pause device above 0; 10 samples, 0 unread, hottest zone 95.0 C; battery +2.66 W (+ is discharging), usb in 2.12 W, net 4.79 W / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, None -, soak end 241; window 100-250 s (status soak (90-240 s after the first perf line))
+thermal: start xo-therm 61.5 C, max 73.5 C, 10 samples; no pause device above 0
+bins (30s from soak start, median fps): 0:29.9 30:30.0 60:30.0 90:29.9 120:30.0 150:30.0 180:30.0 210:30.0 240:29.9
+#507 shape: no
+  window 100-250 s: fps median 29.99 (title_verdict's element; n=73, min 25.4, p10/25/75/90 29.7/29.9/30.0/30.1) = 33.3 ms/frame | G 33.4 Ri 30.9 busy 2.5 Vpf 2.00
+    vcpu 97.7% (32.6 ms/frame on-CPU) | TLB resets vCPU 0.89 ms/frame, other threads 0.13 ms/frame | ff/s 0 pf/s 0
+    fifoskew kicks/s 94 backlog mean 1459 B
+    #424 churn: 522 invalidations/s, 683 TBs discarded/s
+    audio zero-filled 0.0%
+    idlehalt 74 lines, last: [idlehalt] w=122 on=1 span_us=2000233 run_us=1945528 rq_us=967 halts=384 pc=8001b031 xpc=0 imm=58 pg=14 pgo=0 vb=0 fifo=0 ot=312 to=0 tp=0 tr=0 slept_us=27883 pit=74 lpg=0/1/7/4/1/0/1 lpgmax=452 lall=
+
+######## Crimson 
+== 0-0-x-1790549042-flip474-1819312: Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso | thor ref 09fdca3ba1 apk ed09c45dcca2 | flip474 | 240s | env [] | shader_cache kept: same apk as this device's previous run
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / THERMAL: no thermal-pause device above 0; 9 samples, 0 unread, hottest zone 95.8 C / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 120, soak end 244; window 120-244 s (verdict (mark gameplay -> soak end))
+thermal: start xo-therm 62.4 C, at the mark 72.7 C, max 75.9 C, 9 samples; no pause device above 0
+bins (30s from soak start, median fps): 0:29.9 30:30.0 60:30.0 90:26.1 120:25.7 150:29.3 180:29.2 210:30.0 240:29.2
+#507 shape: no
+  window 120-244 s: fps median 29.72 (title_verdict's element; n=57, min 21.1, p10/25/75/90 24.1/25.8/30.0/30.0) = 33.7 ms/frame | G 33.4 Ri 11.6 busy 21.8 Vpf 2.00
+    vcpu 92.6% (31.2 ms/frame on-CPU) | TLB resets vCPU 2.85 ms/frame, other threads 3.39 ms/frame | ff/s 0 pf/s 0
+    fifoskew kicks/s 926 backlog mean 79462 B
+    #424 churn: 6147 invalidations/s, 46347 TBs discarded/s
+    audio zero-filled 0.0%
+

@@ -1,0 +1,25 @@
+{
+  "registered_utc": "2026-09-28T04:53:04Z",
+  "who": "lane.pipeline413",
+  "issue": "413",
+  "title": "54430006-Dead_or_Alive_1_Ultimate.xiso.iso",
+  "device": "nova",
+  "route": "survey",
+  "perflog": false,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "ecf5e05dd290d748804a19852e8d40ec430c0f12",
+  "b_ref": "ecf5e05dd290d748804a19852e8d40ec430c0f12",
+  "judge": "python3 docs/lanes/pipeline413/shdwin.py <result dir>: every [shd413] window (dt_ms, dpm, dsm, dvm), the stall windows (dt_ms >= 5000) and the non-stall median miss rate; shader_cache from result.json",
+  "prediction": "ONE-ARM MEASUREMENT, not an A/B: a_ref == b_ref on purpose (the arms job skips it; it is queued by hand with request.sh --expect). Cold-cache soaks of DOA Ultimate on the Nova, survey route, build ecf5e05dd2 (master 59fe489a77 plus a [shd413] hakuX-perf line from profile.c, emitted beside hakuX-pace every 60 flips: pipeline/shader-module/SPIR-V cache hits and misses and their deltas since the last line, and dt_ms, the wall time since the last line). lane.doa413c measured the menu -> first fight load at 12.8-13.0 s cold and 3.1 s warm, with the PFIFO thread 97% on-CPU and 96% of it inside Turnip's compiler in vkCreateGraphicsPipelines. So the stall is a burst of synchronous pipeline creations, and the [shd413] line that closes it carries that burst as dpm. Stall window = one [shd413] window with dt_ms >= 5000 (60 flips at the fight's rate take ~1-2 s, so such a window holds a stall). The compile share of a stall is its dt_ms minus 3100 ms (doa413c's warm figure for the same load), and ms per missed pipeline is that share / dpm.",
+  "legs": {
+    "M0 (instrument)": "result.json shader_cache says cold (cleared); >= 20 [shd413] lines, every one parses, and the running totals never decrease. The first-load stall window exists: one window with dt_ms >= 8000 within 200 s of launch. Otherwise the run is VOID for P1-P3, not a zero.",
+    "P1 (the falsifier: stalls line up with miss bursts)": "the first-load stall window carries dpm >= 30, AND its miss rate dpm / (dt_ms / 1000) is >= 5x the median rate over the non-stall windows after the first 60 s. FAILS in the world where the load's time goes somewhere other than creating pipelines (the pusher waiting on the GPU, a lock, a device): then the stall's closing line carries a handful of misses or none, and the compile explanation for this load -- and for the inferred 76 s ring-out hang -- is wrong.",
+    "P2 (price)": "(dt_ms - 3100) / dpm for the first-load stall window is between 20 and 300 ms per pipeline. Below 20: the pipelines are cheap and the stall is their number (option 4's lever). Above 300: few very expensive pipelines, or a cost outside the pipelines (shader modules; dsm says which).",
+    "P3 (count)": "the first-load stall window's dpm is between 30 and 500.",
+    "P4 (ring-out, only if reached)": "if the route reaches mark play and a window with dt_ms >= 8000 comes after it, that window carries dpm >= 10. Refuted if it carries dpm < 10: the ring-out hang is then not this mechanism. If no such window comes, INCONCLUSIVE, as doa413c's session 4 was."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off [shd413] lines by shdwin.py."
+}

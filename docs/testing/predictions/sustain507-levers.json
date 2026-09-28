@@ -1,0 +1,30 @@
+{
+  "registered_utc": "2026-09-28T11:00:00Z",
+  "who": "lane.sustain507",
+  "issue": "507",
+  "related": ["525", "433"],
+  "device": "thor, nova (one title each; see runs)",
+  "frames_every": 0,
+  "title": "4D530013-Blinx_The_Time_Sweeper.xiso.iso (Thor), 4541000D-007_Agent_Under_Fire.xiso.iso (Nova)",
+  "a_ref": "9d777502fad74be5933aac4330fb4cdd9fc1b51e",
+  "b_ref": "9d777502fad74be5933aac4330fb4cdd9fc1b51e",
+  "arms": "One apk (9d777502fa, master with #528's idle halt, default off). A = OFF: --env PERF_REGIMEN=default. B = ON: --env PERF_REGIMEN=default --env HAKUX_IDLE_HALT=1. The regimen is the device's defaults in both arms (performance_mode 0, fan SMART).",
+  "runs": "request.sh --route survey --seconds 2160 --ref 9d777502fa, one run per arm per device, HAKUX_RELEASE_PRIO=1. Thor, Blinx: ON then OFF. Nova, AUF: OFF then ON. Each run must be the first on its device after a cold period (a charge hold or a long idle), because the #519 gate's 65 C cannot be lowered from a request (the request's env goes to the app's prefs, not to soak_title.sh).",
+  "admission": "A run is SCORED only if its start sample reads xo-therm <= 50.0 C and the battery zone <= 36.0 C (regimen_read.py's xo_start_c and battery_start_c). A run that starts warmer is REPORTED, NOT SCORED, and a pair with an unscored run is not judged; its arm is re-queued for the next cold slot.",
+  "reader": "python3 docs/lanes/sustain507/regimen_read.py --mark play --json <ON> <OFF>, and --mark play --halt <ON> <OFF> for P. The window is [mark play, mark play + 1800 s]. Pauses are thermal_state.first_episode(), bounded `after X by Y` on the 30 s samples.",
+  "legs": {
+    "L0 (instrument; a run failing it is VOID and re-queued once)": "perf_regimen.json reads regimen default, perf_mode 0; `mark play` present; window >= 1700 s; power measured with sign_suspect 0; ON: ih_on == [1] and ih_halts > 0; OFF: ih_on == [0] and ih_halts == 0. The route's play shot shows level play.",
+    "H1 (the halt delays the pause, or removes it)": "Per device: if OFF pauses inside the window, ON pauses later (ON's `after` >= OFF's `by`, from the mark) or not at all. REFUTED if ON pauses and OFF does not, or both pause and ON's `by` <= OFF's `after`. Within one sample of each other is INDETERMINATE and is reported as such. If neither arm pauses, H1 is not judged on that device (that is the expected Nova outcome: no Nova soak on disk has paused) and H3 carries it.",
+    "H2 (the plateau, if ON never pauses)": "Thor ON, if it never pauses: xo-therm plateaus at 70-77 C, by minute 15 from the mark (regimen_read.py's plateau_min and xo_tail_c). A plateau above 77 C or after minute 20 refutes the value, not H1. Nova: both arms plateau under the Thor's 78 C trip; the value is reported, not predicted.",
+    "H3 (the halt runs cooler)": "Per device, when both runs are scored: xo-therm at minute 10 from the mark reads at least 2.0 C lower in ON than in OFF. REFUTED if ON is not lower by 2.0 C. Reported with each run's start xo, since two cold starts can still differ by a few C.",
+    "P (the power cut before any pause)": "net_w over [mark, mark + S], S = the earlier of the two runs' clean spans (1800 s for a run that never paused; regimen_read.py --halt's cut_w = OFF - ON): cut_w >= 1.5 W on each device. REFUTED if cut_w < 1.5 W. On the Nova at MAX #525 measured 2.28 W (AUF) and 2.18 W (Blinx); at the defaults the device draws less, and the risk to this leg is a cut that shrinks with it.",
+    "F (fps, reported)": "fps median over the pre-pause span: ON >= 0.9 x OFF (#525's F leg). Reported, not the point of this prediction.",
+    "M (measured, not predicted)": "Per run: fps median and p10, stability (min 20-30 / min 2-10), the first mitigation and first pause from the start and from the mark, xo max, xo plateau and its minute, net_w, J/frame, start xo and start battery zone."
+  },
+  "falsifier": "The halt is refuted as a heat lever on a device in any of these worlds: from a scored cold start ON pauses no later than OFF (H1 refuted); the pre-pause cut is under 1.5 W (P refuted); or ON's xo at minute 10 is not 2 C below OFF's (H3 refuted). The world each describes: at the defaults, the heat that trips xo-therm is not the vCPU's idle spin (it is the GPU, the display or the charger), so freeing that core buys nothing the thermistor sees.",
+  "what_this_cannot_see": "One pair per device. A delay under one 30 s sample reads as indeterminate. The two runs of a pair start from different cold periods, so ambient and the battery's charge state can differ between them. The apk is new to both devices, so the first arm on each rebuilds the shader cache (against ON on the Thor, against OFF on the Nova).",
+  "must_not_move": [],
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures, so there is no golden key. The legs are read with regimen_read.py off logcat.txt, thermal.jsonl and perf_regimen.json. arms.sh skips soak predictions (a_ref == b_ref); this lane queues them with request.sh."
+}
