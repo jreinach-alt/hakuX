@@ -494,7 +494,12 @@ note = "RETIRED (hostops 2026-09-28T02:06Z): PR #531 folded (7b94a74caf), unit g
 [lane.rendermode474]
 issues = ["474"]
 files = ["android/app/src/main/java/com/rfandango/haku_x/PerGameSettingsManager.kt", "android/app/src/main/cpp/xemu_android.cpp", "android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt", "android/app/src/main/java/com/rfandango/haku_x/TitleDefaults.kt", "docs/lanes/rendermode474/**", "docs/testing/predictions/rendermode474-*.json"]
-note = "STARTED (lane.local 2026-09-28T01:30:40Z), briefs/rendermode474.md: #474 (0.5, fps-focus). Ship Turnip sysmem as the default render mode for DOA Ultimate and AUF only, keyed by title ID and below any user per-game override (flip474 verdict 01:21Z: DOA 13 -> 21 gfps, AUF 16 -> 24; global sysmem refused, #527). PerGameSettingsManager.kt and xemu_android.cpp moved from flip474; MainActivity.kt was unlisted; TitleDefaults.kt is new."
+note = "LENT (lane.local 2026-09-28T18:10Z): android/app/src/main/cpp/xemu_android.cpp lines 955-965 (the async_compile pref read) to [lane.async413] (#413); disjoint from #530's hunks; the file stays this lane's. || STARTED (lane.local 2026-09-28T01:30:40Z), briefs/rendermode474.md: #474 (0.5, fps-focus). Ship Turnip sysmem as the default render mode for DOA Ultimate and AUF only, keyed by title ID and below any user per-game override (flip474 verdict 01:21Z: DOA 13 -> 21 gfps, AUF 16 -> 24; global sysmem refused, #527). PerGameSettingsManager.kt and xemu_android.cpp moved from flip474; MainActivity.kt was unlisted; TitleDefaults.kt is new."
+
+[lane.async413]
+issues = ["413"]
+files = ["android/app/src/main/cpp/xemu_android.cpp", "android/app/src/main/java/com/rfandango/haku_x/SettingsActivity.kt", "docs/lanes/async413/**", "docs/testing/predictions/async413-*.json"]
+note = "STARTED (lane.local 2026-09-28T18:10Z), briefs/async413.md: #413 (critical path: the 15 s DOA compile stalls). Measures hakuX's existing Async shader compilation setting (off by default) against pipeline413's cold-cache stalls, as a base/fix pair of two builds (fix = native and UI default ON) so every run starts from a cleared cache; legs S (stall), V (content that stays missing), F (fight fps). xemu_android.cpp is LENT from lane.rendermode474 for the async_compile read ONLY (lines 955-965); #530's hunks (21, 764-941, 1074) are disjoint and meet at fold as ordinary merges. SettingsActivity.kt: the async_compile defaults only."
 
 [retired.cloudlaneguard]
 issues = []
