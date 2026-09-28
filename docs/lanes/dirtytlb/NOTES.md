@@ -86,3 +86,12 @@ Queued 2026-09-28 ~12:45Z behind the battery holds (docs/lanes/dirtytlb/queue.lo
 | 1-1790599438-lane.dirtytlb-41609 | Blinx | nova | A 9d777502fa |
 
 The pixel arm is the arms job's (dirtytlb-counter-pixels.json).
+
+## Waiting (2026-09-28 ~12:55Z)
+
+On things outside this session: the four soaks above (dispatch request ids
+in the table; the Thor and Nova are on battery holds until charged), the
+arms job's `[job.arms]` verdict on dirtytlb-counter-pixels.json, and CI on
+the head. Next session: `rdc_read.py --pair A B` on each title, K1 from
+thermal.jsonl, j_per_frame from title_verdict.py; then pick the fix from
+vtx's hits per call and register dirtytlb-fix-*.json before its arms.
