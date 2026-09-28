@@ -490,3 +490,14 @@ suffixed branch off master.
 - **Not run.** Sport at the defaults, the optional leg: its fixed 25000 is below Smart's hot median
   of 38000, so it cannot beat Smart. The cold-start pair waits on the owner's top-up.
 - **Queued** with `queue_part_d3.sh`. The request ids are below and on #507.
+  - `1-1790625504-lane.sustain507-3647029`: Crimson Skies, 1950 s, MAX, Customize 100 (first).
+  - `1-1790625504-lane.sustain507-3647503`: GTA SA, 2100 s, MAX, Customize 100 (second).
+  Both are Thor-pinned at priority 1, and lane.local promotes them to the device head.
+
+### On resume
+
+1. Check L0 first: `fan_request` non-null in perf_regimen.json, fan_mode 6 ran, `moved` 0, and
+   `fan_duty_ge45000_pct` >= 90. Read the start xo and battery for the admission rule.
+2. `regimen_read.py <B>` per run. `regimen_read.py --halt <B> <A>` for P (Crimson: A `4130828`,
+   GTA: A `4130959`). Run title_verdict.py on a copy of each result dir. Judge H1-H3, F, P and the
+   falsifier as registered, then post on #507.
