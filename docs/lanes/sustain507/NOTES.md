@@ -135,3 +135,98 @@ About 4 h of Thor time. The Thor was under the owner's top-up hold at queue time
    summary on #433.
 2. #424 r3: `playread.py` on all six runs (r1 ids are in tbflip424's NOTES), with the pause read from
    run.log. Judge M0/M1/M4' on the per-arm medians and post on #424.
+
+## 6. Session 3, 2026-09-28 10:45Z: Part A and #424 r3 read
+
+**Why session 2 did not finish.** Like session 1, it ended on a wait, as section 5 says. The six
+Part A runs and #424's r3 pair were about 4 h of Thor time, queued behind other work. A lane
+session cannot outlast that. handback.sh resumed the lane once all eight were DONE.
+
+### Headline: both regimens pause, on every title, in 5-8 minutes
+
+On the Thor, from the starts the #519 gate admits (xo-therm 58-65 C), **every run paused, at MAX
+and at the defaults alike**. Each first pause came 4.8-7.4 min after the run's start and 0.7-4.7
+min after `mark gameplay`. After that, both regimens settle into the same limit cycle:
+thermal-pause-F8 holds for ~8-15 min, clears for ~2-3 min, and trips again. xo-therm is pinned at
+78 C, and **60-76 % of every run is spent paused**. On the Thor, `performance_mode` 0 vs 2 does not
+change whether a title can be sustained: neither regimen sustains any of these three titles.
+
+### Per run (`regimen_read.py`, window = mark + 1800 s, not voided after a pause)
+
+| run | title | reg | order | xo start | fps med | p10 | clean med (span) | m2-10 | m20-30 | stab | 1st pause from start | xo max | paused | net W | J/frame |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| `...4130828` | Crimson | max | 1st | 63.8 | 7.6 | 5.0 | 29.6 (242 s) | 9.2 | 7.1 | 0.77 | 364-399 s | 78.0 | 68 % | 3.90 | 0.322 |
+| `...4130875` | Crimson | default | 2nd | 62.2 | 8.2 | 4.8 | 29.7 (281 s) | 11.2 | 7.2 | 0.64 | 444-478 s | 78.0 | 62 % | 3.96 | 0.308 |
+| `...4130912` | GTA SA | default | 1st | 61.9 | 4.8 | 3.5 | 23.7 (138 s) | 4.2 | 4.8 | 1.15 | 355-387 s | 78.0 | 63 % | 4.00 | 0.409 |
+| `...4130959` | GTA SA | max | 2nd | 63.5 | 4.2 | 3.4 | 25.0 (71 s) | 4.1 | 4.9 | 1.21 | 288-321 s | 78.0 | 76 % | 3.64 | 0.532 |
+| `...4130999` | MechAssault 2 | max | 1st | 64.8 (25 s wait) | 5.2 | 3.6 | 2.1 (45 s, loading) | 6.0 | 4.8 | 0.79 | 286-318 s | 78.0 | 63 % | 3.77 | 0.434 |
+| `...4131051` | MechAssault 2 | default | 2nd | 58.3 | 5.9 | 3.9 | 23.7 (144 s) | 5.8 | 6.3 | 1.09 | 386-418 s | 77.9 | 60 % | 3.87 | 0.327 |
+
+The full ids are `1-179057203{0,1}-lane.sustain507-<n>`. In every run, the first mitigation event
+is the pause itself, with kgsl devfreq in the same sample. So mitigation and pause share one
+number. "paused" is the share of thermal.jsonl samples with the pause set. Whole-window net_w is
+3.6-4.0 W: it is the paused draw, and not a regimen property. A stability over 1.0 means minutes
+2-10 were already paused. Battery hours: the pool over these six plus the pilot is 16.9-30.1 Wh
+(max/min 1.78 > 1.3), so the column stays blank as registered. charge_full is still unread.
+
+### The legs, as registered
+
+| leg | result |
+|---|---|
+| L0 | **holds** on all six: read-backs max 2/4 and default 0/4, mark present, window 1800 s, coverage None, sign_suspect 0, gate xo < 65 C |
+| P1 (cut 0.5-1.5 W) | **not judgeable**. GTA and MechAssault 2 are unreadable: MAX's clean span is 71 s and 45 s, under 120 s. The one readable title, Crimson, over its 242 s span: MAX 5.36 W, default 5.70 W, **cut -0.34 W**. That is the refuting direction: the defaults do not draw less. |
+| P2 Crimson | **REFUTED as written**: B's window median is 8.2, against A's clean 29.6 - 1. The named world ("MAX bought frames") is not the cause, though: before the pause B ran 29.7 against A's 29.6. The cause is B's own pause. |
+| P2 MechAssault 2 | passes as written (5.9 >= 2.1 - 1). **Not counted**, because A's clean span is 45 s of loading at 2.1 fps, not a gameplay rate |
+| P3 GTA | **REFUTED** by its named world: B paused at 355-387 s, inside 30 min. (a) holds: A paused, 4.2 <= 25.0/3. (b) fails: B paused, stability 1.15 over a paused baseline. (c) fails: B 4.8 vs A 4.9 in minutes 20-30. |
+| M plateau at B | none below the trip. Wherever xo "plateaus" (Crimson B 24.7 min), it is pinned at 78 C by the pause cycle, so the plateau cannot set a confirmation length |
+
+**The repeat rule fired and was not run.** All three pairs have |Δ median fps| <= 1.0 (0.6, 0.6,
+0.7). A repeat pair would cost ~3.7 h of Thor time at priority 1. It could not change P3: one B
+pause refutes it, and all three B runs paused. It could not change P2 Crimson either: that leg fails
+by 21 fps, through the pause. The small Δ is the signature of two arms held in the same pause limit
+cycle, not noise around a real difference. This departs from the registered rule, and the
+departure is on purpose.
+
+### What does differ: the first pause, and the start temperature (confounded)
+
+- In all three pairs, the defaults paused 80-100 s later: 444 vs 364, 355 vs 288, and 386 vs 286 s.
+  But in all three pairs the default run also started cooler (62.2/63.8, 61.9/63.5, 58.3/64.8 C).
+  The alternating order did not decorrelate this, so the delay is not attributable to the regimen.
+- **Start temperature is the stronger lever on this data.** The one MechAssault 2 MAX run on disk that
+  never paused (`0-0-x-1790557233-hostops-810152`, 24 min, xo max 74.2 C) started at xo **46.9 C**,
+  battery zone 34 C. Tonight's MechAssault 2 MAX run started at 64.8 C, battery 40 C, and paused at
+  286 s. The pilot (GTA default, 57.4 C start) did not pause in 450 s. The gate's 65 C admits a
+  heat-soaked chassis: the battery zone reads 38-40 C at every start tonight. Ambient is not
+  recorded, so a warmer room is not excluded.
+
+### What this means for #433 and #519 (proposals, not measured)
+
+- Moving confirmations to the defaults costs no fps on this data before the pause (Crimson clean
+  29.7 vs 29.6). By itself, it also buys no sustained play on the Thor.
+- Under #533's rule (a pause fails a defaults run), **every one of these titles fails any
+  confirmation longer than ~8 min from a 58-65 C start.** The length question therefore reduces
+  to the start condition. The next measurement is the same defaults soak from a truly cool start
+  (xo <= 50 C, battery zone <= 35 C), on one title: does it reach an equilibrium under 78 C, as
+  hostops-810152 did at MAX?
+- For #519: gate on the battery zone (the slow sensor), not only on xo-therm, which recovers in
+  minutes while the chassis stays soaked.
+
+### #424 r3: both runs VOID
+
+| run | arm | gate | first pause from start |
+|---|---|---|---|
+| `1-1790572032-lane.sustain507-4131088` | A | 60.5 C, 0 s | 443-475 s, before 540 s: **VOID** |
+| `1-1790572032-lane.sustain507-4131123` | B | 63.1 C, 0 s | 411-444 s, before 540 s: **VOID** |
+
+Not read, per the brief. The valid Thor pairs are r1 (A 19, B 17.0 gfps) and r2 (A 19, B 19). The legs
+are per-arm medians of three runs, so **M0/M1/M4' are not judged**. One more valid pair judges
+them. At MAX, 2 of the 4 Thor Blinx runs since r1 voided. The route's `mark play` lands at ~3 min,
+so the window ends at 9 min, which is right where these starts trip the pause. The next pair
+wants a start well under the gate (see above).
+
+### Next lane should not repeat
+
+- Do not run MAX vs defaults on the Thor again from gate-admitted starts. The regimen is not the
+  variable that matters there.
+- A Thor soak's `mark gameplay` lands 2-4 min into the run. A "30 minutes after the mark" window
+  at these starts is 60-76 % paused, whatever the regimen.
