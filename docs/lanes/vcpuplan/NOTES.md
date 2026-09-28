@@ -75,6 +75,12 @@ Reproduce with:
 - `python3 docs/lanes/vcpuplan/symsplit.py <rec-on.data> [--tid T]`
 - `python3 docs/lanes/vcpuplan/jitmix.py <session dir> [--dump 6]`
 
+The outputs behind the table are in `out/`:
+- `sym-s4.out`, `sym-gta-alley.out`, `sym-forza.out`;
+- `jitmix-s4.out`, `jitmix-s5.out`;
+- `jitmix-s4-dump.out`, the annotated listings of the six hottest G4 TBs,
+  written by an earlier revision of the script without the role table.
+
 **Guest-address translation totals 33.8% of GTA's vCPU:** the inline compare
 (17.4), the slow path (7.9) and the preamble plus per-load test (8.5).
 
