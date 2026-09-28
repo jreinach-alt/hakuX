@@ -396,10 +396,41 @@ unit_busy() {   # <num> -> the hakux-lane-cloud-*-<num> unit(s) running, stoppin
     systemctl --user list-units "hakux-lane-cloud-*-$1.service" --all --plain --no-legend \
         --state=active,activating,deactivating,reloading 2>/dev/null | awk '{print $1}'
 }
-held_why() {    # <num> <kind> -> prints why it may not be claimed; exit 0 when held
-    local busy have
+# A PR'S OWN LANE IS A SESSION ON ITS BRANCH TOO (measured 2026-09-27).
+# unit_busy only sees hakux-lane-cloud-*. PR #523 (lane/thermal507-power) was
+# claimed for audit1 at 01:24Z and for remediate at 01:34Z while
+# hakux-lane-thermal507 was still running in $WORK/wt/thermal507 on that
+# branch; the remediation (fe5940a6e2) and the lane's master merge
+# (20502ec594) landed minutes apart, with a rejected push the only thing
+# between them and a clobber -- and the audit had graded a moving target.
+# A lane's unit is hakux-lane-<x> and its worktree $WORK/wt/<x> (lane.sh), so
+# the branch that worktree has checked out is the branch that session writes.
+lane_on_branch() {   # <branch> -> each non-cloud hakux-lane-<x> unit running in a worktree on it
+    local u x b
+    systemctl --user list-units 'hakux-lane-*.service' --all --plain --no-legend \
+        --state=active,activating,deactivating,reloading 2>/dev/null | awk '{print $1}' |
+    while read -r u; do
+        x=${u#hakux-lane-}; x=${x%.service}
+        case "$x" in ''|cloud-*) continue ;; esac
+        b=$(git -C "$WORK/wt/$x" symbolic-ref -q --short HEAD 2>/dev/null) || continue
+        [ "$b" = "$1" ] && echo "hakux-lane-$x"
+    done
+}
+held_why() {    # <num> <kind> [<head from the list>] -> prints why it may not be claimed; exit 0 when held
+    local busy have head lane
     busy=$(unit_busy "$1")
     [ -n "$busy" ] && { echo "unit $(echo $busy) is running"; return 0; }
+    if [ "$2" != issue ]; then
+        # FAIL CLOSED, as the label read below: a head that could not be read
+        # is not a head no lane is on. An empty answer falls back to the list's
+        # row (a PR's head branch never changes), and to held if that is empty.
+        head=$(gh api "repos/$GH_REPO/pulls/$1" --jq '.head.ref' 2>/dev/null </dev/null) \
+            || { echo "its head branch could not be read by number"; return 0; }
+        head=${head:-${3:-}}
+        [ -n "$head" ] || { echo "its head branch could not be read by number"; return 0; }
+        lane=$(lane_on_branch "$head")
+        [ -n "$lane" ] && { echo "its lane $(echo $lane) is still running on $head"; return 0; }
+    fi
     # FAIL CLOSED: labels that could not be read are not labels that are absent.
     have=$(gh api "repos/$GH_REPO/issues/$1/labels" --jq '.[].name' 2>/dev/null </dev/null) \
         || { echo "its labels could not be read by number"; return 0; }
@@ -412,7 +443,7 @@ first_free() {  # <kind>, candidates on stdin -> the first row nothing holds
     local n h t why
     while IFS=$'\t' read -r n h t <&3; do
         [ -n "$n" ] || continue
-        why=$(held_why "$n" "$1") || { printf '%s\t%s\t%s\n' "$n" "$h" "$t"; return 0; }
+        why=$(held_why "$n" "$1" "$h") || { printf '%s\t%s\t%s\n' "$n" "$h" "$t"; return 0; }
         if [ "$mode" = list ]; then echo "skip $1 #$n: $why" >&2; else say "skip $1 #$n: $why" >&2; fi
     done 3<&0
     return 0
