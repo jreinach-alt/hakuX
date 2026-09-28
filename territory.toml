@@ -421,7 +421,9 @@ note = "RETIRED (job.board, issue sweep): no hakux-lane-* unit and no open PR on
 [lane.reqprio]
 issues = []
 files = ["docs/testing/request.sh", "docs/testing/jobs/selftest.d/99-request-release-prio.sh"]
-note = "Created by hostops 2026-09-27 19:55 PDT. request.sh LENT from lane.toolsmith (return it to that row at retirement), as for lane.pilotgate. Why: request.sh gives the release `1-` priority only when the caller exports HAKUX_RELEASE_PRIO, so lanes queueing directly with request.sh got plain ids for 0.5/fps-focus work; 11 Nova requests (#474 #525 #526) waited 60-73 min behind later-queued work. Brief: briefs/reqprio.md. HARNESS DEFECT lane (issues = []): #432, the release-priority issue it extends, is closed. ROW WRITTEN BY job.board (board tick 2026-09-28T02:53Z): lane was RUNNING (attempt 1/opus-5-5, no PR yet) with no row in root territory.toml -- it existed only in docs/testing/territory.toml, a path check_territory.py/board_files.py does not read (the live file is root-level territory.toml as committed on origin/board); invisible to check_territory.py until now."
+released = ["docs/testing/request.sh", "docs/testing/jobs/selftest.d/99-request-release-prio.sh"]
+released_at_ready = 539
+note = "RELEASED AT READY (job.board 2026-09-28T04:39Z): PR #539 is out of draft, CI green, unit gone; docs/harness-only diff, no audit needed -- fold-ready set. Created by hostops 2026-09-27 19:55 PDT. request.sh LENT from lane.toolsmith (return it to that row at retirement), as for lane.pilotgate. Why: request.sh gives the release `1-` priority only when the caller exports HAKUX_RELEASE_PRIO, so lanes queueing directly with request.sh got plain ids for 0.5/fps-focus work; 11 Nova requests (#474 #525 #526) waited 60-73 min behind later-queued work. Brief: briefs/reqprio.md. HARNESS DEFECT lane (issues = []): #432, the release-priority issue it extends, is closed. ROW WRITTEN BY job.board (board tick 2026-09-28T02:53Z): lane was RUNNING (attempt 1/opus-5-5, no PR yet) with no row in root territory.toml -- it existed only in docs/testing/territory.toml, a path check_territory.py/board_files.py does not read (the live file is root-level territory.toml as committed on origin/board); invisible to check_territory.py until now."
 
 [retired.displayguard]
 issues = []
@@ -464,7 +466,9 @@ note = "RETIRED (job.board 2026-09-28T01:46Z): PR #521 folded (1a6b0f83a7), unit
 [lane.armsflake]
 issues = []
 files = ["docs/testing/jobs/selftest.d/92-arms-skip-told.sh", "docs/lanes/armsflake/**"]
-note = "STARTED (hostops 2026-09-27 17:50 PDT), briefs/armsflake.md: harness defect, no issue. 92-arms-skip-told.sh flaked in 2 of 15 master selftests (8a54dcf1b2 'and nothing is posted for it'; 0e0ba23fb9 'a second tick does not tell it again'); its legs assert that a whole arms.sh tick posts no comment, so another prediction's comment fails them. Fix the test to scope to its own sha; arms.sh stays with lane.affinitybacklog."
+released = ["docs/testing/jobs/selftest.d/92-arms-skip-told.sh", "docs/lanes/armsflake/**"]
+released_at_ready = 524
+note = "RELEASED AT READY (job.board 2026-09-28T04:39Z): PR #524 is out of draft, CI green, unit gone, already labelled fold-ready. STARTED (hostops 2026-09-27 17:50 PDT), briefs/armsflake.md: harness defect, no issue. 92-arms-skip-told.sh flaked in 2 of 15 master selftests (8a54dcf1b2 'and nothing is posted for it'; 0e0ba23fb9 'a second tick does not tell it again'); its legs assert that a whole arms.sh tick posts no comment, so another prediction's comment fails them. Fix the test to scope to its own sha; arms.sh stays with lane.affinitybacklog."
 
 [lane.idlehalt]
 issues = ["525"]
