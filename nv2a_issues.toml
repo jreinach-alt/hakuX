@@ -4452,3 +4452,19 @@ impact_px = 0
 impact_onestep_px = 0
 game_visible = false
 impact_basis = "accuracy (lane.local 2026-09-27): occlusion-query results a guest reads; not yet shown in a game"
+
+[issue."544"]
+title = "Ask the CPU governor for clocks with Android performance-hint (ADPF) sessions instead of MAX floors"
+component = "games"
+disposition = "defect"
+suites = []
+no_suites = "A PERFORMANCE/POWER DEFECT (clock requests). No pgraph suite measures frame rate or power, so none is named."
+status = "open"
+dispatch_state = "blocked"
+blocker_tested = "confirmed 2026-09-28T10:10Z: [lane.adpf] row on origin/board."
+blocked_on = "IN FLIGHT (hostops 2026-09-28T10:10Z): lane.adpf holds it (briefs/adpf.md)."
+status_note = "FILED 2026-09-28T10:10Z by hostops as critical-path step 4 of the thermal/perf engineering review (lanelocal-scratch/thermal-review.md row 5, section 3.2), due once #525 (PR #528, folded 01:40 PDT) and #533 (merged 03:10Z) landed."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "power/heat (review 2026-09-27): -0.5 to -1 W against MAX if the QTI HAL honours hints; recovers CPU-bound fps at device defaults"
