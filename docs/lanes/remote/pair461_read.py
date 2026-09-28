@@ -28,6 +28,15 @@ THE FIGURES, per run:
   heat   run.log's COOLDOWN: line, xo-therm at thermal.jsonl's `start`
          sample, and each cooling device's highest cur_state over the samples
          inside the window
+  tlb    per flip, summed over the window's `[tlb68]` lines (tag hakuX, one
+         every 2 s or so from the vCPU thread, in every build) and divided by
+         the flips the window's hakuX-pace lines count:
+           rdo    tlb_reset_dirty() calls made on any thread but the vCPU's:
+                  each is a dirty-bit clear, such as check_texture_dirty()'s,
+                  that re-armed the guest's not-dirty write trap on its pages
+           rdous  the microseconds those calls spent walking the TLB
+           sd     tlb_set_dirty() calls: guest stores that took the slow path
+                  and re-enabled a page
 
 THE LEGS (--pair), registered on #461 at 2026-09-28T09:41:38Z (comment
 5867400666), each read against A's own run:
@@ -43,6 +52,11 @@ THE LEGS (--pair), registered on #461 at 2026-09-28T09:41:38Z (comment
           more than 2 ms/frame above A's puts the frame on the render thread;
           otherwise the render thread is not where it went.
   V       each run's late share: how a drop shows, not where it came from.
+  G       registered on #461 after the rest, before any `[tlb68]` line of
+          either pair was read: the guest-side route needs B to clear more
+          texture-dirty bits than A. B's rdo per flip above A's leaves the
+          route possible, and sd then says how many slow stores it cost; at
+          or below A's refutes it as the cause of a drop.
 
 A leg whose inputs are missing reads UNREAD, never PASS.
 """
@@ -65,6 +79,8 @@ RE_GFPS = re.compile(r"gfps=(\d+)")
 RE_TQ = re.compile(r"(?<![A-Za-z])Tq:(-?[\d.]+)")
 RE_M = re.compile(r"(?<![A-Za-z])M:(-?[\d.]+)")
 RE_PACE = re.compile(r"f=(\d+) v0=(\d+) v1=(\d+) v2=(\d+) v3=(\d+) v4=(\d+) vb=(\d+)")
+TLB = ("dt", "rd", "rdo", "rdous", "sd")
+RE_TLB = {k: re.compile(r"(?<![A-Za-z])%s=(\d+)" % k) for k in TLB}
 XO = "xo-therm"
 R_MS = 2.0
 K2_RATIO = 1.10
@@ -111,6 +127,14 @@ def read_run(run, window):
             v = [a + int(b) for a, b in zip(v, m.groups()[1:6])]
     r["pace"] = v
     r["late"] = (v[3] + v[4]) / float(sum(v)) if sum(v) else None
+
+    tlb = [l for l in win if "[tlb68]" in l]
+    r["tlb_n"] = len(tlb)
+    got = [{k: RE_TLB[k].search(l) for k in TLB} for l in tlb]
+    got = [{k: int(m.group(1)) for k, m in g.items()} for g in got if all(g.values())]
+    for k in TLB:
+        tot = sum(g[k] for g in got)
+        r["tlb_" + k] = tot / float(sum(v)) if got and sum(v) and k != "dt" else None
 
     rows = prs.parse_lines(win)
     new = [d for d in rows if d["_new"]]
@@ -218,6 +242,14 @@ def legs(a, b):
         else:
             out["R"] = ("not read", detail + "; read only when F4 fails with K1 and K2 passing")
 
+    if a["tlb_rdo"] is None or b["tlb_rdo"] is None:
+        out["G"] = ("UNREAD", "no [tlb68] line, or no hakuX-pace flips, in a window")
+    else:
+        out["G"] = ("route possible" if b["tlb_rdo"] > a["tlb_rdo"] else "route refuted",
+                    "per flip: rdo A %.2f / B %.2f; rdous A %.1f / B %.1f; sd A %.2f / B %.2f"
+                    % (a["tlb_rdo"], b["tlb_rdo"], a["tlb_rdous"], b["tlb_rdous"],
+                       a["tlb_sd"], b["tlb_sd"]))
+
     out["V"] = ("A %s / B %s" % tuple("%.1f%%" % (100 * x["late"]) if x["late"] is not None
                                         else "unread" for x in (a, b)),
                 "flips taking 3+ VBLANKs")
@@ -242,6 +274,9 @@ def report(r):
     print("  txh, %d groups: hashed %s KiB/frame; mk %s, bit+bov %s, memo %s; ct %s, bt %s per frame" % (
         r["txh_groups"], fmt(r["hashed"], "%.0f"), fmt(r["mk"], "%.0f"), fmt(r["bitbov"], "%.0f"),
         fmt(r["memo"], "%.0f"), fmt(r["ct"]), fmt(r["bt"])))
+    print("  tlb68, %d lines: per flip rdo %s, rdous %s, sd %s; vCPU-thread resets (rd) %s" % (
+        r["tlb_n"], fmt(r["tlb_rdo"], "%.2f"), fmt(r["tlb_rdous"], "%.1f"),
+        fmt(r["tlb_sd"], "%.2f"), fmt(r["tlb_rd"], "%.2f")))
     print("  %s" % (r["cooldown"] or "COOLDOWN: no line in run.log"))
     h = r["heat"]
     if h is None:
@@ -293,6 +328,11 @@ TXH = ("txh[new0/0K rb0/0K srf0/0K mk{mk}/{mkk}K memo0/0K bit{bit}/{bitk}K bov0/
        "eq{eq}/{eqk}K rep0/0K]")
 TXU = "txu[n0/0K new0 rb0 chg0 oth0 lin0K bc0K s3tc0K pal0K cvt0K swz0K]"
 TXR = "txr[ct300 bt600/200 dl0/0K sc0 scdl0 img0 pool0 s2tc0 s2td0]"
+# accel/tcg/cputlb.c's hakux_tlb68_tick(), one line per window of about 2 s
+TLB68 = ("[tlb68] w={w} dt=2000 cpu=1990 ff=0 ffe=0 cr3n=0 cr3s=0 cr0=0 cr4=0 a20=0 fo=0 "
+         "pf=0 pfl=0 jc=0 jct=0 jci=0 jcx=0 jcus=0 rd=4 rdc=0 rde=400 rdm=4 rdh=0 rdus=10 "
+         "rdo={rdo} rdoe=40000 rdous={rdous} sd={sd} dm=0x7 sz=0:256 tw=40400 tn=256 rs=0 "
+         "ka=0 kafb=0 fx=rd1jc1ka1tb1 rt=0 cb=0 cbb=0")
 
 
 def stamp_at(s):
@@ -301,7 +341,8 @@ def stamp_at(s):
 
 
 def write_run(d, gfps=26, tq=900, m=20000, txh=6.9, draw=18.0, surf=1.0, late=(40, 20),
-              mk=(10, 1000), bit=(1, 100), cool_in=0, cool_after=0, thermal=True):
+              mk=(10, 1000), bit=(1, 100), cool_in=0, cool_after=0, thermal=True,
+              tlb=(600, 3000, 900)):
     os.makedirs(d, exist_ok=True)
     out = []
     for s in range(10, 260, 5):
@@ -323,6 +364,9 @@ def write_run(d, gfps=26, tq=900, m=20000, txh=6.9, draw=18.0, surf=1.0, late=(4
             mk=mk[0], mkk=mk[1], bit=bit[0], bitk=bit[1], eq=mk[0] + bit[0], eqk=mk[1] + bit[1])))
         out.append("%s I/hakuX-stall( 1): %s" % (stamp_at(t), TXU))
         out.append("%s I/hakuX-stall( 1): %s" % (stamp_at(t), TXR))
+        if tlb:
+            out.append("%s W/hakuX( 1): %s" % (stamp_at(t), TLB68.format(
+                w=s, rdo=tlb[0], rdous=tlb[1], sd=tlb[2])))
     # a line outside the window, which must not move the median
     out.insert(0, "%s I/hakuX-perf( 1): %s" % (stamp_at(5), PERF.format(gfps=1, tq=1)))
     with open(os.path.join(d, "logcat.txt"), "w") as f:
@@ -365,6 +409,14 @@ def selftest():
         ok &= L["P1"][0] == "PASS" and L["P2"][0] == "PASS"
         ok &= L["R"][0] == "not the render thread"
         ok &= L["V"][0] == "A 33.3% / B 75.0%"
+        # G: 30 [tlb68] lines of 600 rdo over 30 pace lines of 60 flips is
+        # 10 per flip on A. The same on B refutes the guest-side route.
+        ok &= L["G"][0] == "route refuted" and "rdo A 10.00 / B 10.00" in L["G"][1]
+        L = pair({}, dict(b_fix, tlb=(900, 4000, 1500)))
+        ok &= L["G"][0] == "route possible" and "sd A 15.00 / B 25.00" in L["G"][1]
+        # no [tlb68] line: G is UNREAD, never a verdict
+        L = pair({}, dict(b_fix, tlb=None))
+        ok &= L["G"][0] == "UNREAD"
         # the same drop with 3 ms/frame more non-hash work on B's render thread
         L = pair({}, dict(b_fix, draw=17.3))
         ok &= L["R"][0] == "render thread"

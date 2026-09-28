@@ -2894,6 +2894,21 @@ did not exist, and I had read none of pair 1's figures below.
 - **V, how it shows:** the share of flips that took 3 or more VBLANKs. The
   route file notes that the title paces itself to 30.
 
+**G, the guest-side route,** was registered on #461 at 10:05:43Z (5867795299).
+At that point no `[tlb68]` line of either pair had been read, and pair 2 did
+not exist.
+- The route needs B to clear more texture-dirty bits than A. Each clear made
+  off the vCPU thread is one `tlb_reset_dirty()` call, counted as `rdo` on the
+  `[tlb68]` line.
+  - The line is on tag `hakuX`, about every 2 s, from
+    `accel/tcg/cputlb.c`'s `hakux_tlb68_tick`.
+  - It is in every build, and the soak's logcat spec keeps it. So pair 1
+    carries it too.
+- **Read per flip:** B's `rdo` above A's leaves the route possible. Then `sd`,
+  the slow-path stores that re-enabled a page, says how many slow stores it
+  cost. B's `rdo` at or below A's refutes the route as the cause of a drop.
+- **It is a discriminator, not a prediction.**
+
 **What follows:**
 - **F4b passes, with K1 and K2 holding:** the fix stays, and F4 stays FAIL as
   recorded. Pair 1 has no thermal record, so its drop stays unexplained.
@@ -2907,10 +2922,14 @@ did not exist, and I had read none of pair 1's figures below.
   from a soak's result directory: `logcat.txt`, `thermal.jsonl` and
   `run.log`. It prints every figure above over the window, then the legs.
   - A leg whose inputs are missing reads UNREAD, never PASS.
-  - Its selftest builds pairs from the emitters' own formats. It includes
-    positive controls for K1 (a cpufreq cap inside B's window fails it, and
-    one after the window does not), K2 (15% more methods), P1, P2, and R's
-    two outcomes.
+  - Its selftest builds pairs from the emitters' own formats, `[tlb68]`
+    included. It has positive controls for:
+    - K1: a cpufreq cap inside B's window fails it, and one after the window
+      does not;
+    - K2: 15% more methods;
+    - P1 and P2;
+    - both of R's outcomes, and both of G's;
+    - G reading UNREAD when there are no `[tlb68]` lines.
 - **One window for every reader.** `phase_read_split.py` now takes
   `--window A,B`, so F2's statistic comes from the registered tool, not by
   hand. Its window code is the one `tex461_read.py` and `pair461_read.py`
