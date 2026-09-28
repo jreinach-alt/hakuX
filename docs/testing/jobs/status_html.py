@@ -115,10 +115,36 @@ def _soak_median(rdir, lo=90.0, hi=240.0):
     return _soak_read(rdir, lo, hi)[:2]
 
 
-def _soak_read(rdir, lo=90.0, hi=240.0):
-    """(median gfps over lo..hi s, n, share of those samples at 30+) from a
-    result dir's logcat, or (None, 0, None)."""
-    stamp = re.compile(r"(\d\d-\d\d \d\d:\d\d:\d\d\.\d+).*?hakuX-perf.*?\bgfps=(\d+(?:\.\d+)?)")
+def _fps_bar(playable=None):
+    """The fps a window must reach to count as at the bar, as title_verdict.py
+    judges it: [defaults] playable_fps x fps_tolerance in targets.toml (the
+    file it reads; TITLE_TARGETS as titlestate.py reads it), with
+    title_verdict.py's own fallbacks for a key the file does not set. A
+    verdict records its playable_fps as fps_bar but not the tolerance: pass
+    it as `playable`."""
+    p = os.environ.get("TITLE_TARGETS") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "titles", "targets.toml")
+    try:
+        import tomllib
+        with open(p, "rb") as fh:
+            d = tomllib.load(fh).get("defaults") or {}
+    except (OSError, ValueError, ImportError):
+        d = {}
+    return round(float(d.get("playable_fps", 30) if playable is None else playable) * float(d.get("fps_tolerance", 0.95)), 3)
+
+
+def _soak_read(rdir, lo=90.0, hi=240.0, bar=None):
+    """(median gfps over lo..hi s, n, share at the bar, fps, bar) from a result
+    dir's logcat, or (None, 0, None, None, bar).
+
+    The first two are the Ghoulies gate's (gfps, an integer quarter-second
+    sample). The share and fps are title_verdict.py's reading: one pacing line
+    (`gfps=N G:...`) per 60 guest flips, so 60 / dt between two consecutive
+    lines inside lo..hi is that window's frame rate; fps is their median and
+    the share is the TIME-weighted share of windows at `bar` (_fps_bar()). A
+    30 fps title logs gfps=29 on every line and 29.97 on its windows. With no
+    pacing lines (an older format) both fall back to the gfps samples."""
+    bar = _fps_bar() if bar is None else bar
+    stamp = re.compile(r"(\d\d-\d\d \d\d:\d\d:\d\d\.\d+).*?hakuX-perf.*?\bgfps=(\d+(?:\.\d+)?)(\s+G:[\d.]+\()?")
     perf = []
     for p in sorted(os.listdir(rdir)):
         if not (p.startswith("logcat") and p.endswith(".txt")):
@@ -128,24 +154,37 @@ def _soak_read(rdir, lo=90.0, hi=240.0):
         except OSError:
             continue
         with fh:
+            brk = False
             for line in fh:
+                if line.startswith("# hakuX-capture: stream ended"):     # soak_title.sh's CAPTURE_BREAK
+                    brk = True
+                    continue
                 m = stamp.match(line)
                 if m:
                     try:
                         t = datetime.datetime.strptime("2026-" + m.group(1), "%Y-%m-%d %H:%M:%S.%f")
                     except ValueError:
                         continue
-                    perf.append((t, float(m.group(2))))
+                    perf.append((t, float(m.group(2)), bool(m.group(3)), brk))
+                    brk = False
     if not perf:
-        return None, 0, None
-    perf.sort()
+        return None, 0, None, None, bar
+    perf = sorted(set(perf))           # a restarted stream reprints lines
     t0 = perf[0][0]
-    win = sorted(g for t, g in perf if lo <= (t - t0).total_seconds() <= hi)
+    inw = [p for p in perf if lo <= (p[0] - t0).total_seconds() <= hi]
+    win = sorted(p[1] for p in inw)
     if not win:
-        return None, 0, None
+        return None, 0, None, None, bar
     n = len(win)
     med = win[n // 2] if n % 2 else (win[n // 2 - 1] + win[n // 2]) / 2
-    return med, n, round(sum(1 for g in win if g >= 30) / float(n), 3)
+    # windows: consecutive pacing lines both inside lo..hi, none across a capture break
+    pace = [p for p in inw if p[2]]
+    ws = [(dt, 60.0 / dt) for dt, b in (((b[0] - a[0]).total_seconds(), b[3]) for a, b in zip(pace, pace[1:]))
+          if dt > 0 and not b]
+    if ws:
+        fs = sorted(f for _, f in ws)
+        return med, n, round(sum(dt for dt, f in ws if f >= bar) / sum(dt for dt, _ in ws), 4), round(fs[len(fs) // 2], 2), bar
+    return med, n, round(sum(1 for g in win if g >= bar) / float(n), 3), med, bar
 
 
 def release05(titles, results, xiso, devices=("thor", "nova")):
@@ -1313,7 +1352,7 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
         seen(n, r.get("fps_median"), _stamp(prov.get("source_utc")))
         reached = r.get("reached")
         meas.setdefault(n, {})[r.get("device") or "?"] = {
-            "device": r.get("device") or "?", "fps": r.get("fps_median"), "share": r.get("share_30"),
+            "device": r.get("device") or "?", "fps": r.get("fps_median"), "share": r.get("share_30"), "bar": 30,
             "reached": reached, "blocker": r.get("blocker") or "", "crash": False, "hang": False,
             "verdict": r.get("verdict") or "", "at": _stamp(prov.get("source_utc")), "ref": prov.get("ref", ""),
             "mode": prov.get("mode", "unrecorded"), "src": prov.get("label", "backfill"), "hand": True,
@@ -1351,6 +1390,7 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
         fails = [str(x) for x in (v.get("failures") or [])]
         meas.setdefault(n, {})[d] = {
             "device": d, "fps": v.get("fps_window_median"), "share": v.get("fps_ok_share"),
+            "bar": _fps_bar(v["fps_bar"]) if isinstance(v.get("fps_bar"), (int, float)) else None,
             "reached": "yes" if rg else ("no" if rg is False else "unconfirmed"),
             "blocker": (v.get("failing") or "") if (rg is False or v.get("crash") or v.get("hang")) else "",
             "crash": bool(v.get("crash")), "hang": bool(v.get("hang")),
@@ -1372,6 +1412,7 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
     # $S/soak-gfps.json.
     cache_p = os.path.join(F.E["S"], "soak-gfps.json") if F.E.get("S") else ""
     cache = (_jload(cache_p) if cache_p else None) or {}
+    bar = _fps_bar()
     fresh, soakr = False, {}
     rdir0 = os.path.join(F.D, "results")
     try:
@@ -1387,16 +1428,17 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
         if not isinstance(q, dict) or not q.get("title"):
             continue
         n = req_title(q) or _iso_name(q["title"])
-        if len(cache.get(rid) or ()) < 3:      # a two-field entry predates the share
-            cache[rid] = list(_soak_read(rdir))
+        c = cache.get(rid) or ()
+        if len(c) < 5 or c[4] != bar:      # a shorter entry predates the verdict's reading
+            cache[rid] = list(_soak_read(rdir, bar=bar))
             fresh = True
-        med, cnt, shr = cache[rid][:3]
+        med, cnt, shr, fps = cache[rid][:4]
         if med is None:
             continue
         d = q.get("device") or "?"
         add(n, "", d)
-        seen(n, med, at)
-        x = {"device": d, "fps": med, "share": shr, "reached": "unconfirmed", "blocker": "", "crash": False,
+        seen(n, fps, at)
+        x = {"device": d, "fps": fps, "share": shr, "bar": bar, "reached": "unconfirmed", "blocker": "", "crash": False,
              "hang": False, "verdict": "soak, %d gfps samples in 90-240 s" % cnt, "at": at,
              "ref": str(q.get("ref") or "")[:10], "mode": _perf_mode(rdir), "src": "soak", "hand": False,
              "url": "", "id": rid, "route": ""}
@@ -1529,7 +1571,7 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
             else:
                 nxt = "benchmark at MAX"
         elif st == "below":
-            nxt = "raise fps (%s at 30+)" % (("%d%%" % round(100 * prim["share"])) if prim.get("share") is not None else "median %g" % prim["fps"])
+            nxt = "raise fps (%s)" % (_share_at(prim) if prim.get("share") is not None else "median %g" % prim["fps"])
         elif st == "soak":
             nxt = "20-min soak"
         else:
@@ -1566,7 +1608,7 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
         else:
             fc[goal] = {"target": tgt, "eta": None, "recent": 0}
     return {"rows": out, "counts": counts, "forecast": fc, "rate_hours": hrs, "series": series,
-            "sources": srcs + ([os.path.basename(bf_path)] if bf else []) + ["dispatch results/*/verdict.json", "soaks (results/*/logcat, gfps 90-240 s)"],
+            "sources": srcs + ([os.path.basename(bf_path)] if bf else []) + ["dispatch results/*/verdict.json", "soaks (results/*/logcat, 60-flip windows 90-240 s)"],
             "registry_src": reg_src, "backfill": prov, "list_rule": conf.get("test_list", "")}
 
 
@@ -2040,8 +2082,15 @@ def _when(now, t, fmt="md"):
     return "%s (%s)" % (_lt(t, fmt), _ago(now, t))
 
 
-def _fps_cls(v):
-    return "good" if v >= 30 else "warnc" if v >= 25 else "bad"
+def _fps_cls(v, bar=None):
+    return "good" if v >= (bar or 30) else "warnc" if v >= 25 else "bad"
+
+
+def _share_at(p):
+    """"85% at 28.5+": the share with the bar it was scored at (a verdict and a
+    soak at title_verdict.py's playable_fps x fps_tolerance, the backfill at 30)."""
+    at = ("at %g+" % p["bar"]) if p.get("bar") else "at the bar"
+    return ("%d%% %s" % (round(100 * p["share"]), at)) if p.get("share") is not None else "share %s not recorded" % at
 
 
 def _fps_read(x):
@@ -2059,15 +2108,14 @@ def _fps_cell(x):
     p = _fps_read(x)
     if not p:
         return '<td class="c-f nm">not measured</td>'
-    s = '<b class="fm %s">%s</b>' % (_fps_cls(p["fps"]), esc("%.1f" % p["fps"]))
-    s += '<span class="fsh">%s</span>' % (
-        ("%d%% at 30+" % round(100 * p["share"])) if p.get("share") is not None else "share at 30+ not recorded")
+    s = '<b class="fm %s">%s</b>' % (_fps_cls(p["fps"], p.get("bar")), esc("%.1f" % p["fps"]))
+    s += '<span class="fsh">%s</span>' % esc(_share_at(p))
     how = "hand-reviewed" if p.get("hand") else "soak" if p.get("src") == "soak" else ""
     sub = " &middot; ".join(esc(b) for b in (str(p["device"]).capitalize(), _lt(p.get("at"), "md")[:5] if p.get("at") else "date ?",
                                               (p.get("mode") or "unrecorded") + (", " + how if how else "")))
     for c in x.get("cross") or []:
         if c is not p:
-            sub += '<br>%s <span class="%s">%s</span>' % (esc(str(c["device"]).capitalize()), _fps_cls(c["fps"]), esc("%.1f" % c["fps"]))
+            sub += '<br>%s <span class="%s">%s</span>' % (esc(str(c["device"]).capitalize()), _fps_cls(c["fps"], c.get("bar")), esc("%.1f" % c["fps"]))
     return '<td class="c-f">%s<span class="fsub">%s</span></td>' % (s, sub)
 
 
@@ -2123,9 +2171,9 @@ def _title_detail(x, now):
     d.append("save: %s" % (x.get("save_id") or (("not needed: " + x["save_na"]) if x.get("save_na") and x.get("inputs") else
                                                  "not needed (no profile step)" if not x.get("needs_save", True) and x.get("inputs") else "none extracted")))
     for m in x.get("measured") or []:
-        d.append("%s: %s fps, %s at 30+, reached gameplay %s; %s (%s, %s, ref %s, %s%s)" % (
+        d.append("%s: %s fps, %s, reached gameplay %s; %s (%s, %s, ref %s, %s%s)" % (
             m.get("device"), ("%g" % m["fps"]) if m.get("fps") is not None else "-",
-            ("%d%%" % round(100 * m["share"])) if m.get("share") is not None else "-", m.get("reached") or "?",
+            _share_at(m), m.get("reached") or "?",
             m.get("verdict") or "-", m.get("src"), _lt(m.get("at"), "md") if m.get("at") else "date ?", m.get("ref") or "?",
             m.get("mode") or "unrecorded", (", " + m["id"]) if m.get("id") else ""))
     if x.get("blocker"):
@@ -2277,7 +2325,7 @@ def _q1(j, now):
         out.append('<div class="goal"><span class="gl">%s <b>%d</b> / %d</span><span class="bar"><i style="width:%.1f%%;background:%s"></i></span></div>' % (
             label, n, tg, min(100.0, 100.0 * n / tg) if tg else 0, col))
     out.append(_chart(t.get("series") or {}, now, bt, pt))
-    out.append('<p class="src">Measured: any gameplay fps reading (median gfps in the play window) on either handheld, at any build and mode. '
+    out.append('<p class="src">Measured: any gameplay fps reading (the median frame rate in the play window) on either handheld, at any build and mode. '
                'Each title is plotted at its first reading (a soak\'s finish, a verdict, or the pass-1 review\'s date).</p>')
     fc = t.get("forecast") or {}
     hrs = int(t.get("rate_hours") or 48)
@@ -2311,7 +2359,7 @@ def _q1(j, now):
             out.append('<details class="more"><summary>%d more not copied</summary><div class="tw"><table class="tt">%s%s</table></div></details>' % (
                 len(grey) - 10, _TT_HEAD, "".join(_title_rows(grey[10:], now))))
         c = t.get("counts") or {}
-        out.append('<p class="src">%d titles: %s. Benchmarked = below 30 + soak pending + Playable. Measured = any gameplay fps reading, on either handheld, any build or mode. Pipeline: Copied to a handheld; Inputs, the title\'s own route (profile setup and gameplay); Save, the profile save extracted (n/a when the route has no profile step); Bench, fps measured at MAX. fps: the gameplay median (30+ green, 25-29.9 amber, under 25 red), the share of play at 30+, then the handheld, date and performance mode; the build is in the title\'s detail. Sources: %s; registry: %s.</p>' % (
+        out.append('<p class="src">%d titles: %s. Benchmarked = below 30 + soak pending + Playable. Measured = any gameplay fps reading, on either handheld, any build or mode. Pipeline: Copied to a handheld; Inputs, the title\'s own route (profile setup and gameplay); Save, the profile save extracted (n/a when the route has no profile step); Bench, fps measured at MAX. fps: the gameplay median (at the bar green, 25 to the bar amber, under 25 red), the share of play at the bar it names (title_verdict.py\'s playable_fps x fps_tolerance, which a soak is scored at too), then the handheld, date and performance mode; the build is in the title\'s detail. Sources: %s; registry: %s.</p>' % (
             len(rows), esc(", ".join("%d %s" % (c.get(k, 0), w) for k, w, _ in STAGES if c.get(k))),
             esc(", ".join(t.get("sources") or []) or "none"), esc(t.get("registry_src") or "not read")))
         bp = t.get("backfill") or {}
