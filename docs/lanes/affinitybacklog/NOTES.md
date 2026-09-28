@@ -104,3 +104,7 @@ Attempt 1 finished the work: audited, green, labelled fold-ready at
 a PR's checks are not re-run when its base moves. Nothing in the lane's
 code was at fault. This attempt merged `origin/master` (clean, no
 conflicts), re-ran the selftest, and pushed; the work itself is unchanged.
+
+Selftest on the merged tree: first run 2225 passed, 1 failed (only the
+summary was kept, so the leg is unknown); a full-log rerun of the same
+tree gave 2226 passed, 0 failed. The one failure did not reproduce.
