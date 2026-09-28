@@ -1390,7 +1390,7 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
         fails = [str(x) for x in (v.get("failures") or [])]
         meas.setdefault(n, {})[d] = {
             "device": d, "fps": v.get("fps_window_median"), "share": v.get("fps_ok_share"),
-            "bar": _fps_bar(v["fps_bar"]) if isinstance(v.get("fps_bar"), (int, float)) else None,
+            "bar": _fps_bar(v["fps_bar"] if isinstance(v.get("fps_bar"), (int, float)) else None),
             "reached": "yes" if rg else ("no" if rg is False else "unconfirmed"),
             "blocker": (v.get("failing") or "") if (rg is False or v.get("crash") or v.get("hang")) else "",
             "crash": bool(v.get("crash")), "hang": bool(v.get("hang")),
@@ -1406,10 +1406,11 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
             return iso_title[t]
         m = re.match(r"^([0-9A-Fa-f]{8})-", t)
         return by_tid.get(m.group(1).upper()) if m else (t if t in where else None)
-    # ---- soaks: a finished run whose request names the title, read as the
-    # Ghoulies gate reads it (median gfps over 90-240 s from the first perf
-    # line). Results do not change once DONE, so each is read once and kept in
-    # $S/soak-gfps.json.
+    # ---- soaks: a finished run whose request names the title, over the
+    # Ghoulies gate's 90-240 s from the first perf line, scored as
+    # title_verdict.py scores a run (_soak_read: 60-flip windows, time-weighted
+    # share at its bar). Results do not change once DONE, so each is read once
+    # and kept in $S/soak-gfps.json, keyed by result id with the bar it used.
     cache_p = os.path.join(F.E["S"], "soak-gfps.json") if F.E.get("S") else ""
     cache = (_jload(cache_p) if cache_p else None) or {}
     bar = _fps_bar()
@@ -2103,7 +2104,7 @@ def _fps_read(x):
 
 def _fps_cell(x):
     """The fps column, on every row with no tap (the owner, 22:45 PDT): the
-    gameplay median large, the share of play at 30+ under it, then one small
+    gameplay median large, the share of play at its bar under it, then one small
     line with the device, date and mode, and any other handheld's median."""
     p = _fps_read(x)
     if not p:
