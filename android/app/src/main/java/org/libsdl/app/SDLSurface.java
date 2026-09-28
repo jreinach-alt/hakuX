@@ -7,7 +7,11 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.hardware.display.DisplayManager;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Looper;
+import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.util.Log;
 import android.view.Display;
@@ -177,6 +181,8 @@ public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
            return;
         }
 
+        requestGameFrameRate(holder);
+
         /* If the surface has been previously destroyed by onNativeSurfaceDestroyed, recreate it here */
         SDLActivity.onNativeSurfaceChanged();
 
@@ -185,6 +191,134 @@ public class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
 
         SDLActivity.mNextNativeState = SDLActivity.NativeState.RESUMED;
         SDLActivity.handleNativeState();
+    }
+
+    /*
+     * #526: ask for 60 Hz on the game surface. hakuX presents on a 60 Hz
+     * software timer, so a 120 Hz panel refreshes twice per frame for nothing.
+     * FIXED_SOURCE because that timer does not adapt to the rate the system
+     * picks. HAKUX_SURFACE_RATE in the env_vars pref selects the behaviour:
+     * unset requests 60 Hz; "off" makes no request (the A arm on one binary);
+     * "mode" also sets the window's preferredDisplayModeId to a 60 Hz mode of
+     * the current size, the app vote that outranks the user's minimum refresh
+     * rate setting. Every step logs [rate526] on hakuX-lane.
+     */
+    private static final String RATE_TAG = "hakuX-lane";
+    private DisplayManager.DisplayListener mRateListener;
+
+    private String envPref(String key) {
+        try {
+            String all = getContext().getSharedPreferences("x1box_prefs", Context.MODE_PRIVATE)
+                    .getString("env_vars", "");
+            for (String line : all.split("\n")) {
+                if (line.startsWith(key + "=")) {
+                    return line.substring(key.length() + 1).trim();
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
+    }
+
+    private Display gameDisplay() {
+        Display d = getDisplay();
+        return d != null ? d : mDisplay;
+    }
+
+    private String systemSetting(String key) {
+        try {
+            return Settings.System.getString(getContext().getContentResolver(), key);
+        } catch (Exception e) {
+            return "unreadable(" + e.getClass().getSimpleName() + ")";
+        }
+    }
+
+    private void logDisplay(String when) {
+        Display d = gameDisplay();
+        if (d == null) {
+            Log.i(RATE_TAG, "[rate526] " + when + " display=null");
+            return;
+        }
+        Display.Mode m = d.getMode();
+        StringBuilder modes = new StringBuilder();
+        for (Display.Mode s : d.getSupportedModes()) {
+            modes.append(' ').append(s.getModeId()).append(':').append(s.getPhysicalWidth())
+                 .append('x').append(s.getPhysicalHeight()).append('@')
+                 .append(String.format(java.util.Locale.ROOT, "%.2f", s.getRefreshRate()));
+        }
+        Log.i(RATE_TAG, String.format(java.util.Locale.ROOT,
+                "[rate526] %s display=%d mode=%d %dx%d mode_hz=%.2f display_hz=%.2f"
+                + " min_refresh_rate=%s peak_refresh_rate=%s modes=[%s ]",
+                when, d.getDisplayId(), m.getModeId(), m.getPhysicalWidth(),
+                m.getPhysicalHeight(), m.getRefreshRate(), d.getRefreshRate(),
+                systemSetting("min_refresh_rate"), systemSetting("peak_refresh_rate"),
+                modes.toString()));
+    }
+
+    private void requestGameFrameRate(SurfaceHolder holder) {
+        if (Build.VERSION.SDK_INT < 30 /* Android 11 (R) */) {
+            return;
+        }
+        String how = envPref("HAKUX_SURFACE_RATE");
+        logDisplay("before how=" + (how == null ? "(unset)" : how));
+        if (mRateListener == null) {
+            mRateListener = new DisplayManager.DisplayListener() {
+                @Override public void onDisplayAdded(int displayId) {}
+                @Override public void onDisplayRemoved(int displayId) {}
+                @Override public void onDisplayChanged(int displayId) {
+                    Display d = gameDisplay();
+                    if (d != null && d.getDisplayId() == displayId) {
+                        logDisplay("changed");
+                    }
+                }
+            };
+            DisplayManager dm = (DisplayManager) getContext().getSystemService(Context.DISPLAY_SERVICE);
+            if (dm != null) {
+                dm.registerDisplayListener(mRateListener, new Handler(Looper.getMainLooper()));
+            }
+        }
+        if ("off".equals(how)) {
+            return;
+        }
+        Surface surface = holder.getSurface();
+        if (surface == null || !surface.isValid()) {
+            Log.i(RATE_TAG, "[rate526] surface not valid; no request");
+            return;
+        }
+        try {
+            if (Build.VERSION.SDK_INT >= 31 /* Android 12 (S) */) {
+                surface.setFrameRate(60.0f, Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE,
+                                     Surface.CHANGE_FRAME_RATE_ALWAYS);
+            } else {
+                surface.setFrameRate(60.0f, Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE);
+            }
+            Log.i(RATE_TAG, "[rate526] setFrameRate(60, FIXED_SOURCE) sdk=" + Build.VERSION.SDK_INT);
+        } catch (Exception e) {
+            Log.i(RATE_TAG, "[rate526] setFrameRate failed: " + e);
+        }
+        if ("mode".equals(how) && SDLActivity.mSingleton != null) {
+            Display d = gameDisplay();
+            Display.Mode cur = d != null ? d.getMode() : null;
+            int want = 0;
+            if (cur != null) {
+                for (Display.Mode s : d.getSupportedModes()) {
+                    if (s.getPhysicalWidth() == cur.getPhysicalWidth()
+                            && s.getPhysicalHeight() == cur.getPhysicalHeight()
+                            && Math.abs(s.getRefreshRate() - 60.0f) < 1.0f) {
+                        want = s.getModeId();
+                        break;
+                    }
+                }
+            }
+            if (want != 0) {
+                WindowManager.LayoutParams lp = SDLActivity.mSingleton.getWindow().getAttributes();
+                lp.preferredDisplayModeId = want;
+                SDLActivity.mSingleton.getWindow().setAttributes(lp);
+            }
+            Log.i(RATE_TAG, "[rate526] preferredDisplayModeId=" + want
+                    + (want == 0 ? " (no 60 Hz mode at this size)" : ""));
+        }
+        new Handler(Looper.getMainLooper()).postDelayed(() -> logDisplay("after+2s"), 2000);
     }
 
     // Key events
