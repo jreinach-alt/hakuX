@@ -396,3 +396,30 @@ default already replaced most wipes with `CF_INVALID`, and `[jc425] ie` (empty
 slots, 1.5%) bounds what wipes cost today. It is a second change with its own
 legs, so it goes on a stacked branch (`lane/ibcache-jcsize`) after this PR's
 legs are in, not into this head.
+
+## State at 23:55Z, 2026-09-28: waiting on the band arm and the GTA pilot pair
+
+- **The band arm** (`ibcache-probe-band.json`, A 2c950e0a1e, B c8e95ed539,
+  three runs per arm) is committed on 1ecd644937. `arms.sh list` prints
+  `WOULD QUEUE d7a7ddaa4c… suites=[Stencil,Vertex_shader_rounding_tests]`.
+  `[job.arms]` posts its verdict on PR #591.
+- **The GTA pilot pair** (leg 5a, and GTA for leg 4), queued with
+  `request.sh`, Thor, c8e95ed539, `gta-sa` route, 450 s, `--perflog`:
+  - A, probe off (`HAKUX_IBC=0`): `1-1790638705-lane.ibcache-66240`
+  - B, probe on (unset): `1-1790638712-lane.ibcache-67880`
+  - That is 18 min of device time, inside the 30 min a requester has before a
+    reviewed pilot. About 30 requests were ahead of it in the queue, and the
+    Thor was under a hold.
+- `preflight.sh --allow-tracker` passes on 1ecd644937.
+- **Next, on resume:**
+  1. Read the band arm's verdict against the three outcomes named above.
+  2. Read the pilot pair with `title_verdict.py` on copies of the result
+     dirs, and `gfps.py`: both reach the `gameplay` mark, no crash or hang,
+     fps and J/frame against leg 5a. Check `[ibc507] on=0` in A's logcat and
+     `on=1` in B's, or the pair measured nothing.
+  3. Write the pilot's verdict to `$DISPATCH_DIR/pilots/lane.ibcache.ok`
+     (with `python3`), then queue the rest: the GTA pair again in the order
+     B, A; Crimson Skies (`crimson-skies`, 240 s) and Otogi (`otogi`, 240 s)
+     as env pairs, for leg 4's three titles and leg 5b's near-bound title.
+  4. Forza (leg 5b as the brief names it) waits on #583.
+  5. Then the jump-cache size, on `lane/ibcache-jcsize`.
