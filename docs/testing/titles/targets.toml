@@ -89,7 +89,9 @@ notes = "#431 (comment 5851536933): 60, medium confidence. Eurogamer (Xbox, 2004
 
 [titles."53450029"]
 name = "Spikeout: Battle Street"
-iso = { nova = "Spikeout - Battle Street (Europe).iso", thor = "Spikeout - Battle Street (Europe).iso" }
+iso = { nova = "Spikeout - Battle Street (Europe).iso", thor = "Spikeout - Battle Street (USA) (En,Ja,Fr,De,Es,It).xiso.iso" }
+route = "spikeout.returning"
+notes = "Route by lane.titleroutes 2026-09-27 on the Thor's USA disc (the Europe disc may add a language or 50/60 Hz prompt). Own target not yet measured, so the 30 default."
 
 [titles."55530040"]
 name = "Tork: Prehistoric Punk"
