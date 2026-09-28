@@ -505,7 +505,7 @@ note = "STARTED (job.board 2026-09-27T20:16 PDT), briefs/doa413c.md: #413 (0.5, 
 
 [lane.fpsshare]
 issues = []
-files = ["docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/66-status-titles.sh", "docs/testing/jobs/selftest.d/67-status-measured.sh", "docs/lanes/fpsshare/**"]
+files = ["docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/66-status-titles.sh", "docs/testing/jobs/selftest.d/67-status-measured.sh", "docs/lanes/fpsshare/**", "docs/lanes/measured05/fixture/assert_measured.py"]
 standing = false
 note = "Created by hostops 2026-09-27 20:25 PDT (harness defect, no issue; briefs/fpsshare.md). lane.local 19:56 PDT (hostops-inbox): the status page title table shows 0% at 30+ for full-speed 30 fps titles (Galleon verdict: median 29.97, fps_ok_share 0.85 at the 28.5 bar); _soak_read counts a strict g >= 30. This table is the owner's read of the sustained-fps critical path. Files claimed from [free]."
 
