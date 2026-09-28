@@ -147,12 +147,14 @@ cat > "$TP/bin/adb" <<'EOF'
 echo "$*" >> "$TP_FAKE/calls"
 case "$*" in
     *thermal_zone*)
-        # The Nth sample pauses cpu3-7 from the 3rd on.
+        # The Nth sample pauses cpu3-7 from the TP_PAUSE_FROM'th (3rd) on;
+        # xo-therm reads TP_XO_START + TP_XO_STEP * (n-1) millidegrees.
         n=$(( $(cat "$TP_FAKE/thn" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$TP_FAKE/thn"
-        echo "start" >> "$TP_FAKE/order"
+        echo "thermal" >> "$TP_FAKE/order"
         printf 'now %s up %s\r\n' "$(date +'%m-%d %H:%M:%S')" "$((1000 + n))"
-        printf 'cd 10 %d 1 thermal-pause-F8\r\ncd 34 0 8 devfreq-3d00000.qcom,kgsl-3d0\r\n' "$([ "$n" -ge 3 ] && echo 1 || echo 0)"
-        printf 'tz 90 %d xo-therm\r\nend\r\n' "$((70000 + 1000 * n))" ;;
+        printf 'cd 10 %d 1 thermal-pause-F8\r\ncd 34 0 8 devfreq-3d00000.qcom,kgsl-3d0\r\n' "$([ "$n" -ge "${TP_PAUSE_FROM:-3}" ] && echo 1 || echo 0)"
+        printf 'tz 90 %d xo-therm\r\nend\r\n' "$(( ${TP_XO_START:-71000} + ${TP_XO_STEP:-1000} * (n - 1) ))" ;;
+    *"settings put"*) echo "perf" >> "$TP_FAKE/order"; exit 0 ;;
     *"am start"*) echo "am" >> "$TP_FAKE/order"; exit 0 ;;
     *"ps -A -o NAME"*) printf 'NAME                       \r\ncom.jreinach.hakux.debug:xemu\r\n' ;;
     *"settings get system performance_mode"*) echo "0 4" ;;
@@ -160,19 +162,73 @@ case "$*" in
 esac
 EOF
 chmod +x "$TP/bin/adb"
-rm -rf "$TP/run"; mkdir -p "$TP/run"; : > "$TP/run/logcat.txt"
-PATH="$TP/bin:$PATH" TP_FAKE="$TP" SERIAL=ee317437 DISPLAY_WAKE_S=0 ADB_RETRY_SLEEP=0 \
-    HAKUX_DEVICE_LEASE="$TP/lease" SOAK_POLL_S=0.2 SOAK_RETRY_S=0.1 THERMAL_EVERY_S=1 \
-    PERF_RESULT="$TP/run/perf_regimen.json" THERMAL_OUT="$TP/run/thermal.jsonl" \
-    timeout 60 bash "$TESTING/soak_title.sh" /fake/iso.iso 3 > "$TP/run/run.log" 2>&1
-labels=$(python3 -c 'import json,sys
+tp_soak() {   # <env...>: one fake soak into a fresh $TP/run; env such as THERMAL_COOL_C=off
+    rm -rf "$TP/run" "$TP/thn" "$TP/order" "$TP/calls"; mkdir -p "$TP/run"; : > "$TP/run/logcat.txt"
+    env PATH="$TP/bin:$PATH" TP_FAKE="$TP" SERIAL=ee317437 DISPLAY_WAKE_S=0 ADB_RETRY_SLEEP=0 \
+        HAKUX_DEVICE_LEASE="$TP/lease" SOAK_POLL_S=0.2 SOAK_RETRY_S=0.1 THERMAL_EVERY_S=1 \
+        THERMAL_COOL_EVERY_S=1 PERF_RESULT="$TP/run/perf_regimen.json" \
+        THERMAL_OUT="$TP/run/thermal.jsonl" "$@" \
+        timeout 60 bash "$TESTING/soak_title.sh" /fake/iso.iso 3 > "$TP/run/run.log" 2>&1
+    labels=$(python3 -c 'import json,sys
 print(" ".join(json.loads(l)["label"] for l in open(sys.argv[1]) if l.strip()))' "$TP/run/thermal.jsonl" 2>/dev/null)
+    order=$(tr '\n' ' ' < "$TP/order" 2>/dev/null)
+}
+tp_soak THERMAL_COOL_C=off
 case "$labels" in "start hold"*" end") lab_ok=1 ;; *) lab_ok=0 ;; esac
-if [ "$lab_ok" = 1 ] && [ "$(head -1 "$TP/order")" = start ] \
+if [ "$lab_ok" = 1 ] && case "$order" in "perf thermal am "*) true ;; *) false ;; esac \
         && grep -q '^THERMAL: pause thermal-pause-F8 1/1 began after +' "$TP/run/run.log"; then
     ok "soak: thermal.jsonl reads [$labels], the first sample before am start, and run.log names the pause"
 else
-    bad "soak: labels [$labels] order [$(tr '\n' ' ' < "$TP/order" 2>/dev/null)] run.log: $(tr '\n' '|' < "$TP/run/run.log" | tail -c 400)"
+    bad "soak: labels [$labels] order [$order] run.log: $(tr '\n' '|' < "$TP/run/run.log" | tail -c 400)"
+fi
+
+echo "== thermal pause: the cool-down gate holds a hot device before MAX and am start"
+# THE LEGS, and the world in which each one fails:
+#   cool       a cool sample (xo-therm 64 C, limit 65 C) exits 0, a hot one
+#              (65 C) 1. Fails if the limit is not inclusive or the zone's
+#              millidegrees are compared with degrees.
+#   paused     xo-therm 60 C with thermal-pause-F8 1/1 exits 1. Fails in a
+#              world where the pause is bound to another zone (socd on a
+#              low-battery Nova): the gate would start a run already paused.
+#   no-zone    no xo-therm zone, or an adb failure, exits 2 (not gated).
+#              Fails if a device without the zone is held for the whole cap.
+#   waits      xo-therm 70 -> 67 -> 64 C, one sample a second: three `cool`
+#              lines before the first perf write and am start, then `start`,
+#              and `waited 2 s` in run.log. Fails if the gate runs after MAX is
+#              set (the title's own heat is then waited out) or not at all.
+#   cap        xo-therm stuck at 80 C, THERMAL_COOL_MAX_S=2: `gave up after
+#              2 s ... starting hot`, and the title still starts. Fails if the
+#              gate can hold a run past the cap or refuses it.
+tp_cool() {   # <tz 90 temp> <pause 0|1> [error] -> "rc|phrase"
+    local f="$TP/cool.jsonl" out rc
+    python3 -c 'import json,sys
+t, p, e = int(sys.argv[1]), int(sys.argv[2]), sys.argv[3]
+r = {"t": 1, "label": "cool", "dev_time": "09-27 13:00:00", "up": 1.0,
+     "cool": [[10, "thermal-pause-F8", p, 1]], "tz": [[90, "xo-therm", t]] if t else []}
+if e:
+    r.update(error=e, cool=[], tz=[], dev_time=None)
+print(json.dumps(r))' "$1" "$2" "${3:-}" > "$f"
+    out=$(python3 "$TESTING/thermal_state.py" --cool "$f" xo-therm 65 2>&1); rc=$?
+    printf '%s|%s\n' "$rc" "$out"
+}
+r="$(tp_cool 64000 0);$(tp_cool 65000 0);$(tp_cool 60000 1);$(tp_cool 0 0);$(tp_cool 64000 0 'adb: exit 1')"
+[ "$r" = "0|xo-therm 64.0 C < 65 C;1|xo-therm 65.0 C >= 65 C;1|xo-therm 60.0 C, paused (thermal-pause-F8 1/1);2|no xo-therm zone;2|unread: adb: exit 1" ] \
+    && ok "--cool: cool, hot at the limit, paused below it, no zone and unread each read as they should" \
+    || bad "--cool legs: [$r]"
+tp_soak TP_XO_START=70000 TP_XO_STEP=-3000 TP_PAUSE_FROM=99
+case "$order" in "thermal thermal thermal perf"*"am"*) ord_ok=1 ;; *) ord_ok=0 ;; esac
+if [ "$ord_ok" = 1 ] && case "$labels" in "cool cool cool start hold"*" end") true ;; *) false ;; esac \
+        && grep -qF 'THERMAL: cool-down: waited 2 s, from [xo-therm 70.0 C >= 65 C] to [xo-therm 64.0 C < 65 C]' "$TP/run/run.log"; then
+    ok "gate waits: [$labels], three cool samples before MAX and am start, run.log names the wait"
+else
+    bad "gate waits: labels [$labels] order [$order] run.log: $(tr '\n' '|' < "$TP/run/run.log" | tail -c 400)"
+fi
+tp_soak TP_XO_START=80000 TP_XO_STEP=0 TP_PAUSE_FROM=99 THERMAL_COOL_MAX_S=2
+if case "$order" in *"am"*) true ;; *) false ;; esac \
+        && grep -qF 'THERMAL: cool-down: gave up after 2 s, from [xo-therm 80.0 C >= 65 C] to [xo-therm 80.0 C >= 65 C]; starting hot' "$TP/run/run.log"; then
+    ok "gate cap: gave up after 2 s at 80 C and started the title hot"
+else
+    bad "gate cap: labels [$labels] order [$order] run.log: $(tr '\n' '|' < "$TP/run/run.log" | tail -c 400)"
 fi
 
 echo "== thermal pause: title_verdict.py voids a scored window a pause overlaps"
