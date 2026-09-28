@@ -201,6 +201,18 @@ touches nothing on the bind path. #517's move of the flush into the copy branch 
 The failing world for each leg is in its file. A of the Forza file is the master arm already queued
 (`-3394871`), so it is read once for both.
 
+**Queued** 2026-09-28 12:53 PDT by `queue_fix.sh forza`: `1-1790625108-forzadecay414-3486226`
+(10fe2f59a7, Nova, 360 s; read back: device nova, expect_sha 7a94c4f53ce8). That makes four Nova
+soaks, 4 x (360 + 90) s = 30 min, the whole pilot allowance. **The AUF pair is not queued yet:** it
+takes the requester past 30 min. On resume, read the four Forza soaks, write
+`$DISPATCH_DIR/pilots/forzadecay414.ok` (result ids, whether the route reached the race, the date),
+then `queue_fix.sh auf`. The pixel file is the arms job's to queue.
+
+**Waiting (session end, 2026-09-28 ~12:57 PDT)** on the four Nova soaks (behind the battery hold,
+after the owner's top-up) and on the arms job's pixel verdict. The thermal_state.py clock instrument
+(section 4) is still ungranted on the board: #571 folded (30695ba1a9), and the file goes on its own
+branch once granted.
+
 ## Do not repeat
 
 - Do not read the Thor's 2-4 fps step with audio starving as the decay. That is the xo-78 C pause
