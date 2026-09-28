@@ -134,14 +134,59 @@ disarm_audio() {
 # $D/results/<id>/logcat.txt and the request is $D/running/<id>.req while it
 # runs. PERF_REQUEST names it directly. The shell's PERF_REGIMEN wins over
 # both, and anything but max|rest|off|default is max.
+PERF_REQUEST="${PERF_REQUEST:-${CAPTURE_LOG:+$(dirname "$(dirname "$(dirname "$CAPTURE_LOG")")")/running/$(basename "$(dirname "$CAPTURE_LOG")").req}}"
 if [ -z "${PERF_REGIMEN:-}" ]; then
-    PERF_REQUEST="${PERF_REQUEST:-${CAPTURE_LOG:+$(dirname "$(dirname "$(dirname "$CAPTURE_LOG")")")/running/$(basename "$(dirname "$CAPTURE_LOG")").req}}"
     [ -n "$PERF_REQUEST" ] && [ -f "$PERF_REQUEST" ] &&
         PERF_REGIMEN=$(python3 -c 'import json,sys
 for e in json.load(open(sys.argv[1])).get("env") or []:
     if e.startswith("PERF_REGIMEN="): print(e.split("=", 1)[1])' "$PERF_REQUEST" 2>/dev/null | tail -1)
 fi
 case "${PERF_REGIMEN:-}" in max|rest|off|default) ;; *) PERF_REGIMEN=max ;; esac
+
+# THE FAN MODE (#507 D.3). FAN_MODE=<name> runs the title at one of the fan
+# settings the handheld's own menu offers (devices.sh DEVICE_FAN_OPTIONS:
+# off, quiet, smart, sport, and customize:<0-100>, the slider), over
+# whatever fan mode the regimen picked. Only an option the menu SHOWS at the
+# performance mode the title runs at (the regimen's; the device's own under
+# PERF_REGIMEN=off): at HIGH, the MAX regimen's, the menu shows smart, sport
+# and customize, and hides quiet and off. The owner (2026-09-28) will not
+# have a soak measure a fan a player cannot select, so anything else REFUSES
+# the soak before anything is set or started (`fan-mode-refused:` in
+# run.log, exit 6). A run at another fan than the one asked for would
+# measure the wrong arm and look like the right one.
+#
+# Set after the cool-down gate and the regimen, before `am start`, so an arm
+# at another fan starts from the same gate-admitted temperature, and read
+# back again FAN_SETTLE_S later: SystemUI's fan tile rewrites fan_mode when
+# performance_mode changes, and that must not land after the write. Only the
+# settings the menu writes are written (`fan_mode`, and `fan_speed` for the
+# slider); the OEM service drives the fan from them, and nothing here writes
+# the fan's PWM node. thermal.jsonl reads the node and fan_mode at every
+# sample, and a hold sample whose fan_mode is not the one asked for is named
+# in run.log (`FAN: fan_mode read [x] at <s>s`) and counted `moved`: the
+# OEM app puts Smart on when a charger's plug type changes. On every exit,
+# from release(), fan_mode and fan_speed go back to what the device read
+# before the soak touched them (`prior`), and then the regimen's restore, if
+# it set anything, leaves fan_mode at REST as before. perf_regimen.json
+# `fan_request` holds what was asked, the options shown, and the settings it
+# ran at and was left at.
+#
+# From the shell's FAN_MODE, else the running request's top-level `fan_mode`
+# (a name), else a `FAN_MODE=<name>` in its env (`request.sh --env
+# FAN_MODE=sport`, read as PERF_REGIMEN is; the app ignores the name).
+if [ -z "${FAN_MODE:-}" ] && [ -n "$PERF_REQUEST" ] && [ -f "$PERF_REQUEST" ]; then
+    FAN_MODE=$(python3 -c 'import json,sys
+r = json.load(open(sys.argv[1]))
+v = r.get("fan_mode")
+if v is None:
+    for e in r.get("env") or []:
+        if str(e).startswith("FAN_MODE="): v = str(e).split("=", 1)[1]
+print("" if v is None else v)' "$PERF_REQUEST" 2>/dev/null | tail -1)
+fi
+FAN_MODE="${FAN_MODE:-}"
+FAN_OPTIONS=$(device_fan_options "$SERIAL" 2>/dev/null)
+FAN_WANT=""; FAN_PERF=""; FAN_OFFERED=""; FAN_SET=0; FAN_PRIOR=""; FAN_RAN=""
+FAN_AFTER=""; FAN_RESTORED=""; FAN_REFUSED=""; FAN_MOVED=0
 PERF_DEFAULT=0; FAN_DEFAULT=4
 PERF_DISPLAY_START=""; PERF_DISPLAY_END=""
 PERF_RESULT="${PERF_RESULT:-${CAPTURE_LOG:+$(dirname "$CAPTURE_LOG")/perf_regimen.json}}"
@@ -153,9 +198,21 @@ perf_write_result() {
     python3 - "$PERF_RESULT" "$PERF_REGIMEN" "$PERF_BEFORE" "$PERF_RAN" \
         "$PERF_AFTER" "$PERF_RESTORED" "${PERF_MAX:-} ${FAN_MAX:-}" \
         "${PERF_REST:-} ${FAN_REST:-}" "$PERF_DEFAULT $FAN_DEFAULT" \
-        "$PERF_DISPLAY_START" "$PERF_DISPLAY_END" <<'PY' 2>/dev/null
+        "$PERF_DISPLAY_START" "$PERF_DISPLAY_END" \
+        "$FAN_MODE" "$FAN_WANT" "$FAN_PERF" "$FAN_OFFERED" "$FAN_PRIOR" \
+        "$FAN_RAN" "$FAN_AFTER" "$FAN_RESTORED" "$FAN_REFUSED" \
+        "$FAN_MOVED" <<'PY' 2>/dev/null
 import json, sys
 path, regimen, before, ran, after, restored, want_max, want_rest, want_default = sys.argv[1:10]
+(f_name, f_want, f_perf, f_offered, f_prior, f_ran, f_after, f_restored,
+ f_refused, f_moved) = sys.argv[12:22]
+def num(w):
+    return int(w) if w.lstrip("-").isdigit() else None
+def fan2(s):
+    # "6 100" -> fan_mode, fan_speed as read back; fan_speed "null" is a
+    # setting never written, and anything adb could not answer is null too.
+    w = (s.split() + ["", ""])[:2]
+    return dict(fan_mode=num(w[0]), fan_speed=num(w[1])) if s else None
 def disp(s):
     try:
         return json.loads(s) if s else None
@@ -176,7 +233,14 @@ json.dump(dict(regimen=regimen,
                max=dict(zip(("perf_mode", "fan_mode"), pair(want_max))),
                rest=dict(zip(("perf_mode", "fan_mode"), pair(want_rest))),
                default=dict(zip(("perf_mode", "fan_mode"), pair(want_default))),
-               display=dict(start=disp(sys.argv[10]), end=disp(sys.argv[11]))),
+               display=dict(start=disp(sys.argv[10]), end=disp(sys.argv[11])),
+               # null when the request named no fan mode: the fan ran at the regimen's.
+               fan_request=None if not f_name else dict(
+                   requested=f_name, want=fan2(f_want), refused=f_refused or None,
+                   perf_mode=num(f_perf), offered=f_offered.split(", ") if f_offered else [],
+                   prior=fan2(f_prior), ran=fan2(f_ran), restored=fan2(f_after),
+                   fan_restored={"1": True, "0": False}.get(f_restored),
+                   moved=num(f_moved))),
           open(path, "w"), indent=2)
 PY
 }
@@ -246,6 +310,118 @@ perf_leave() {
     perf_write_result
 }
 
+# fan_check: FAN_REFUSED says why the requested fan mode cannot be run; empty
+# when it can, or none was asked for. Reads the prior fan settings (one adb
+# call), and the device's performance mode when the regimen sets none.
+fan_check() {
+    [ -n "$FAN_MODE" ] || return 0
+    local rc
+    if [ -z "$FAN_OPTIONS" ]; then
+        FAN_REFUSED="no fan options for $SERIAL in devices.sh"; return 1
+    fi
+    # The performance mode the title will run at decides what the menu shows.
+    if [ -z "$PERF_MAX" ] || [ -z "$FAN_REST" ]; then
+        FAN_PERF=""
+    else
+        case "$PERF_REGIMEN" in
+            max) FAN_PERF="$PERF_MAX" ;;
+            rest) FAN_PERF="$PERF_REST" ;;
+            default) FAN_PERF="$PERF_DEFAULT" ;;
+            *) FAN_PERF="" ;;
+        esac
+    fi
+    if [ -z "$FAN_PERF" ]; then
+        FAN_PERF=$(device_perf_get); FAN_PERF="${FAN_PERF%% *}"
+        case "$FAN_PERF" in ''|*[!0-9]*)
+            FAN_REFUSED="performance_mode did not read [$FAN_PERF], so which fan settings the menu shows is unknown"
+            FAN_PERF=""; return 1 ;;
+        esac
+    fi
+    FAN_OFFERED=$(device_fan_names "$SERIAL" "$FAN_PERF")
+    FAN_WANT=$(device_fan_mode_of "$SERIAL" "$FAN_MODE" "$FAN_PERF"); rc=$?
+    case "$rc" in
+        0) ;;
+        2) FAN_REFUSED="fan_mode '$FAN_MODE' is not shown at performance_mode $FAN_PERF (shown: $FAN_OFFERED)" ;;
+        3) FAN_REFUSED="fan_mode '$FAN_MODE' is not a position the menu's control can take (shown: $FAN_OFFERED)" ;;
+        *) FAN_REFUSED="fan_mode '$FAN_MODE' is not a fan setting this device offers (shown at performance_mode $FAN_PERF: $FAN_OFFERED)" ;;
+    esac
+    [ "$rc" = 0 ] || { FAN_WANT=""; return 1; }
+    # Before the soak touches anything: what fan_leave puts back.
+    FAN_PRIOR=$(device_fan_get)
+    return 0
+}
+
+# fan_matches <"MODE SPEED" read back>  ->  0 when it is FAN_WANT: the mode,
+# and the slider's position when one was asked for.
+fan_matches() {
+    [ "${1%% *}" = "${FAN_WANT%% *}" ] || return 1
+    [ "$FAN_WANT" = "${FAN_WANT%% *}" ] || [ "${1#* }" = "${FAN_WANT#* }" ]
+}
+
+# After perf_enter: the regimen's fan is replaced by the one asked for, and
+# read back again FAN_SETTLE_S later (see THE FAN MODE); a setting that moved
+# in between is written once more, and says so.
+fan_enter() {
+    [ -n "$FAN_WANT" ] || return 0
+    FAN_SET=1
+    # shellcheck disable=SC2086  # "MODE [SPEED]": one or two arguments
+    FAN_RAN=$(device_fan_mode_set $FAN_WANT)
+    sleep "${FAN_SETTLE_S:-2}"
+    FAN_RAN=$(device_fan_get)
+    if ! fan_matches "$FAN_RAN"; then
+        echo "FAN: read [$FAN_RAN] ${FAN_SETTLE_S:-2}s after the write, not [$FAN_WANT]; written again"
+        # shellcheck disable=SC2086
+        FAN_RAN=$(device_fan_mode_set $FAN_WANT)
+    fi
+    if fan_matches "$FAN_RAN"; then
+        echo "FAN: mode=$FAN_MODE want=[$FAN_WANT] at performance_mode $FAN_PERF running=[$FAN_RAN] prior=[$FAN_PRIOR]"
+    else
+        echo "FAN: mode=$FAN_MODE want=[$FAN_WANT] did NOT read back: running=[$FAN_RAN] prior=[$FAN_PRIOR]"
+    fi
+    PERF_RAN=$(device_perf_get)
+    perf_write_result
+}
+
+# After each hold-loop thermal sample: the fan_mode the sample read (no adb
+# call of its own). A mode other than the one asked for is named and counted,
+# not written back: the run is then not the arm it was asked to be, and the
+# record says so.
+fan_hold() {
+    [ "$FAN_SET" = 1 ] && [ -n "$THERMAL_OUT" ] && [ -f "$THERMAL_OUT" ] || return 0
+    local got
+    got=$(tail -1 "$THERMAL_OUT" | python3 -c 'import json,sys
+print((json.loads(sys.stdin.read()).get("fan") or {}).get("mode"))' 2>/dev/null)
+    if [ "$got" != "${FAN_WANT%% *}" ]; then
+        FAN_MOVED=$((FAN_MOVED + 1))
+        echo "FAN: fan_mode read [$got] at ${s:-?}s, not ${FAN_WANT%% *}"
+    fi
+}
+
+# Idempotent, like perf_leave; from release(), so every exit restores. Back
+# to the prior fan_mode (and fan_speed, when the slider was moved), or to
+# REST when the prior read was not a mode.
+fan_leave() {
+    [ "$FAN_SET" = 1 ] || return 0
+    FAN_SET=0
+    local to="${FAN_PRIOR%% *}" speed=""
+    case "$to" in ''|*[!0-9]*) to="$FAN_REST" ;; esac
+    if [ "$FAN_WANT" != "${FAN_WANT%% *}" ]; then
+        speed="${FAN_PRIOR#* }"
+        case "$speed" in null|[0-9]*) ;; *) speed="" ;; esac
+    fi
+    if [ -z "$to" ]; then
+        echo "FAN: NOT RESTORED -- no prior fan mode read and no REST for $SERIAL in devices.sh"
+        FAN_RESTORED=0
+    elif FAN_AFTER=$(device_fan_mode_set "$to" "$speed"); then
+        FAN_RESTORED=1
+    else
+        sleep "${SOAK_RETRY_S:-2}"
+        if FAN_AFTER=$(device_fan_mode_set "$to" "$speed"); then FAN_RESTORED=1; else FAN_RESTORED=0; fi
+    fi
+    echo "FAN: restored=[$FAN_AFTER] to=[$to${speed:+ $speed}] fan_restored=$([ "$FAN_RESTORED" = 1 ] && echo true || echo false) moved=$FAN_MOVED"
+    perf_write_result
+}
+
 # Always force-stop on the way out. The handheld does not charge over the adb
 # cable, so a title left running flattens it -- and a game, unlike a test disc,
 # never exits on its own.
@@ -262,6 +438,7 @@ release() {
     [ -n "$LOGCAT_PID" ] && kill "$LOGCAT_PID" 2>/dev/null
     a shell am force-stop "$PKG" >/dev/null 2>&1
     disarm_audio
+    fan_leave
     perf_leave
     a shell input keyevent KEYCODE_SLEEP >/dev/null 2>&1
     rm -f "$LEASE" "$FG_FLAG"
@@ -325,6 +502,13 @@ thermal_sample() {   # <label>
 }
 [ -n "$THERMAL_OUT" ] && rm -f "$THERMAL_OUT"
 
+# See THE FAN MODE. Before the cool-down, so a refused run costs no wait.
+if ! fan_check; then
+    echo "fan-mode-refused: $FAN_REFUSED; nothing was set or started"
+    perf_write_result
+    exit 6
+fi
+
 # THE COOL-DOWN GATE (#507; thermal_state.py has why). Before MAX is set, and
 # with the title stopped, wait while THERMAL_COOL_ZONE reads at or above
 # THERMAL_COOL_C or a pause device is set. The wait is capped at
@@ -375,6 +559,7 @@ fi
 
 arm_audio
 perf_enter
+fan_enter
 
 if [ -n "$CAPTURE_LOG" ]; then
     a logcat -c >/dev/null 2>&1
@@ -694,6 +879,7 @@ while [ "$s" -lt "$SECONDS_TO_HOLD" ]; do
     touch "$LEASE"
     if [ $((s - thermal_s)) -ge "${THERMAL_EVERY_S:-30}" ]; then
         thermal_sample hold; thermal_s=$s
+        fan_hold
     fi
     if [ -f "$FG_FLAG" ]; then
         echo "soak aborted: not-foreground after ${s}s of ${SECONDS_TO_HOLD}s"
