@@ -108,3 +108,47 @@ The pixel arm is in: PASS, all 593 checks (`[job.arms]` on #528, 02:43Z).
 
 Do not repeat: `typecheck_ih.py` checks the Android TUs only; a new use of a
 target header's name in a libsystem file needs the header named explicitly.
+
+## 6. AUF B1 read (session 2, 04:20Z)
+
+`1-1790559837-idlehalt-2274611`, Nova, 6554f06175 + `HAKUX_IDLE_HALT=1`,
+survey, 420 s; `ihread.py --from 299 --to 420`:
+
+| | B1 (halt on) | retreason425 AUF (spin, older build) |
+|---|---|---|
+| windows / checks | 60, all ok | n/a |
+| fps | 17.05 | 14.96 |
+| vCPU on-CPU (schedstat) | **26.9%** | ~94% |
+| run-queue wait | 0.3% | |
+| guest idle (`[rr425w]`) | 71.9% | 65.1% |
+| slept | 71.5% | |
+| halts/s | 1006 (xpc 0, imm 180) | |
+| wakes pg / vb / ot | 3276 / 5170 / 111891 | |
+| timeouts to / tp / tr | 344 / **0** / 337 | |
+| pg raise-to-run >= 50 us | **14.2%** (<20: 1599, <50: 1211, <100: 392, <200: 59, >=200: 15) | |
+| all kicked wakes >= 50 us | 3.6% | |
+
+- Boot: level play in every play shot (204247-204557), `armed at 8001b031`
+  20:38:50, one second after the first line. No thermal pause in
+  thermal.jsonl (cpuss 53-67 C, no pause/hotplug device set).
+- Legs H (<= 50%, slept within 10 points of idle), C (tp = 0, xpc = 0) hold
+  on B1. F waits on A1.
+- **Leg L fails as registered**: the pg callback's raise-to-run p99 is in
+  the 100-200 us bin (14.2% of pg wakes at >= 50 us, not <= 1%). By the
+  prediction's falsifier the halt stays default off. It is a condvar wake of
+  a sleeping thread on Android (futex + scheduler + core exit from idle);
+  the spin had no such cost. What it costs a frame is what leg F measures:
+  ~1.6 pg wakes per frame at ~30 us median is ~0.1% of a 58 ms frame, so F
+  may well hold while L fails. That would say the 50 us bound was the
+  wrong threshold, but it was registered, and it is not moved after the fact.
+- Next design lever for L, if the audit wants the default flipped: spin
+  briefly (tens of us) on `interrupt_request` before the condvar sleep, or
+  skip the halt when a PGRAPH callback is predicted (PFIFO in
+  `waiting_for_nop`). Both trade some of the 67-point on-CPU drop for latency.
+
+Pilot verdict written to `pilots/idlehalt.ok` 04:19Z. Queued the rest
+(all Nova, 6554f06175): Blinx B1 `1790569178-idlehalt-3064707` (on, 420 s),
+A1 `1790569178-idlehalt-3064828` (off, 420 s); boots B2-B5 at 300 s, AUF
+3064914 3065084 3065236 3065340, Blinx 3065000 3065157 3065294 3065390.
+AUF A1 `1790559849-idlehalt-2278164` waits behind an owner top-up hold of
+the Nova (~04:45Z).
