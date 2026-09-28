@@ -457,9 +457,31 @@ pr_by_label() {   # <label> -> every "num<TAB>head<TAB>title" match, oldest firs
     gh pr list --repo "$GH_REPO" --state open --label "$1" --json number,headRefName,title,labels \
         --jq 'sort_by(.number)[] | select((.labels | map(.name) | map(select(. == "claimed:cloud" or . == "blocked:needs-owner")) | length) == 0) | "\(.number)\t\(.headRefName)\t\(.title)"' 2>/dev/null
 }
+# THE BOARD'S FOCUS (2026-09-27): with BOARD_FOCUS_LABEL set in limits.env,
+# board.sh offers only the issues that carry it, and this outlet offered #527
+# (accuracy,needs-triage,cloud) anyway -- a way around the focus. Read it the
+# way board.sh does (limits.env, sourced above, or the environment), and drop
+# a non-focus issue here, before first_free. PR audits and remediations are
+# not issues and are not filtered.
+FOCUS=$(printf '%s' "${BOARD_FOCUS_LABEL:-}" | tr -d '[:space:]')
 issue_cloud() {
-    gh issue list --repo "$GH_REPO" --state open --label cloud --json number,title,labels \
-        --jq 'sort_by(.number)[] | select((.labels | map(.name) | map(select(startswith("lane:") or . == "claimed:cloud" or . == "blocked:needs-owner")) | length) == 0) | "\(.number)\t\t\(.title)"' 2>/dev/null
+    local row l dropped="" us=$'\x1f'
+    # A row is "num<TAB><TAB>title<US>labels": the labels ride after a unit
+    # separator so the row first_free reads is the one it always read.
+    while IFS= read -r row; do
+        [ -n "$row" ] || continue
+        l=""; [[ "$row" == *"$us"* ]] && l=${row##*"$us"}
+        row=${row%"$us"*}
+        if [ -n "$FOCUS" ] && ! tr ',' '\n' <<< "$l" | grep -qFx -- "$FOCUS"; then
+            dropped="$dropped #${row%%$'\t'*}"; continue
+        fi
+        printf '%s\n' "$row"
+    done < <(gh issue list --repo "$GH_REPO" --state open --label cloud --json number,title,labels \
+        --jq 'sort_by(.number)[] | select((.labels | map(.name) | map(select(startswith("lane:") or . == "claimed:cloud" or . == "blocked:needs-owner")) | length) == 0) | "\(.number)\t\t\(.title)\u001f\(.labels | map(.name) | join(","))"' 2>/dev/null)
+    # One line on stderr; the rows go down the pipe to first_free.
+    [ -n "$dropped" ] || return 0
+    local msg="skip issue$dropped: not in the $FOCUS focus (BOARD_FOCUS_LABEL=$FOCUS)"
+    if [ "$mode" = list ]; then echo "$msg" >&2; else say "$msg" >&2; fi
 }
 kind=""; row=""
 row=$(pr_by_label needs-remediation | first_free remediate); [ -n "$row" ] && kind=remediate

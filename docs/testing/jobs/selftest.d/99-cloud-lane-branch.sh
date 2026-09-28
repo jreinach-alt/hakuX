@@ -124,4 +124,45 @@ git -C "$CL/repo" worktree repair "$CL/work/wt/thermal507" >/dev/null 2>&1
 cl_out=$(cl_list CL_API_FAIL=1)
 check "e: a head that cannot be read by number holds the PR" cl_unclaimed
 check "e: and list says why" grep -qF "skip audit1 #523: its head branch could not be read by number" <<< "$cl_out"
-unset CL_JOBS cl_out
+
+echo "== cloud.sh: an issue outside the board's focus is not offered"
+# MEASURED 2026-09-27 20:07 PDT. With BOARD_FOCUS_LABEL=fps-focus in
+# limits.env, `cloud.sh list` said "would claim issue #527" (labels
+# accuracy,needs-triage,cloud): board.sh drops a non-focus issue and this
+# outlet did not. This gh shim offers no PR, so the issue pickup is reached,
+# and answers `issue list` with $CL_ISSUES, rows as issue_cloud's --jq writes
+# them (num, two tabs, title, a unit separator, the labels).
+cat > "$CL/bin/gh" <<'EOF'
+#!/usr/bin/env bash
+case "$1 $2" in
+    "issue list") [[ "$*" == *"--label cloud"* ]] && printf '%b' "${CL_ISSUES:-}"; exit 0 ;;
+esac
+exit 0
+EOF
+chmod +x "$CL/bin/gh"
+: > "$CL_ACTIVE"
+cl_527='527\t\taccuracy: a non-focus issue\x1faccuracy,needs-triage,cloud\n'
+cl_530='530\t\tfps: a focus issue\x1fcloud,fps-focus\n'
+cl_no527()   { ! grep -q "would claim issue #527" <<< "$cl_out"; }
+cl_skip527() { grep -qFx "skip issue #527: not in the fps-focus focus (BOARD_FOCUS_LABEL=fps-focus)" <<< "$cl_out"; }
+
+# f: the focus in limits.env (where board.sh reads it), a non-focus issue and
+# a focus one -> the focus one is offered and the other named as dropped.
+# FAILS in the world before the filter: #527 is older, so list says
+# "would claim issue #527".
+echo "BOARD_FOCUS_LABEL=fps-focus" > "$CL/work/limits.env"
+cl_out=$(cl_list CL_ISSUES="$cl_527$cl_530")
+check "f: with the fps-focus focus, non-focus #527 is not offered" cl_no527
+check "f: and list names the drop in one line" cl_skip527
+check "f: and the focus issue #530 is offered" grep -q "would claim issue #530" <<< "$cl_out"
+
+# g: the focus, and only the non-focus issue open -> nothing is claimed.
+cl_out=$(cl_list CL_ISSUES="$cl_527")
+check "g: with only non-focus #527 open, nothing is claimed" grep -qx "nothing to claim" <<< "$cl_out"
+
+# h: no focus set -> #527 is offered as before. FAILS in the world where the
+# filter drops every issue whatever the focus.
+rm -f "$CL/work/limits.env"
+cl_out=$(cl_list CL_ISSUES="$cl_527$cl_530")
+check "h: with no focus set, #527 is offered" grep -q "would claim issue #527" <<< "$cl_out"
+unset CL_JOBS cl_out cl_527 cl_530
