@@ -1,0 +1,20 @@
+{
+  "registered_utc": "2026-09-28T06:18:34Z",
+  "who": "lane.forza414",
+  "issue": "474",
+  "title": "4D530013-Blinx_The_Time_Sweeper.xiso.iso",
+  "device": "nova",
+  "seconds": 420,
+  "route": "survey",
+  "perflog": true,
+  "runs_per_arm": 1,
+  "a_ref": "b991fb4c21",
+  "b_ref": "79f0102478",
+  "prediction": "SAME-SESSION NOVA SOAK A/B of #474's dirty-draw uniform hash skip, read by hand (arms.sh skips title soaks). A is b991fb4c21 (hunk 5 on lane/forza414b merged with origin/master 548017f7ba). B is 79f0102478 (A plus: pgraph_vk_update_shader_uniforms no longer hashes the two whole uniform layouts on a draw whose constant or light flags are dirty; it marks the saved hashes stale, and the next clean draw uploads once). lane.slowdown462 priced apply_uniform_updates plus fast_hash at 3.5-3.7 ms/frame on Blinx and AUF. The hunk takes only the hash on dirty draws, and the dirty share of draws is not measured. Blinx's level play on hunk 3's pair (0-0-x-1790543736) read Pipe 16-20 ms/frame, and Sh (pipe_bind_shd, which holds pgraph_vk_bind_shaders and so the uniform update) 9-11 ms/frame. Title Blinx (4D530013), Nova, survey route, 420 s, perflog, as that pair. WINDOW: mark play + 10 s to the last perflog line - 10 s (level play). Per-arm figures are medians over the window's phase lines. Legs, and the world each fails in: M0 both arms reach level play (mark play, phase lines with Draw > 0 in the window), with no crash or abort line; else VOID. P1 A's Sh median - B's >= 0.5 ms/frame. It fails in the world where dirty draws are a small share of Blinx's draws, most draws are clean, and the hash stays on them; then B is inert, not refuted, and the clean-draw copy (NOTES 26 part (b), not in this hunk) is where the cost is. READOUTS, not judged: fps, Tot, Draw, Pipe, draws per frame (a scene difference moves Sh with the draw count; read it before judging P1). No fps figure is claimed.",
+  "expect": {
+    "M0/both_reach_level_play_is": true,
+    "P1/a_minus_b_sh_ms_per_frame_min": 0.5
+  },
+  "expect_counts": {},
+  "expect_note": "Named rules read by hand from the two logcats (perflog phase lines, mark play); a soak writes no captures, so ab_compare never judges it."
+}
