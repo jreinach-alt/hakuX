@@ -501,3 +501,6 @@ suffixed branch off master.
 2. `regimen_read.py <B>` per run. `regimen_read.py --halt <B> <A>` for P (Crimson: A `4130828`,
    GTA: A `4130959`). Run title_verdict.py on a copy of each result dir. Judge H1-H3, F, P and the
    falsifier as registered, then post on #507.
+
+Session 7 ends on a wait, on purpose: the two D.3 requests above are queued on the Thor, about
+75 min of device time behind the queue. A `waiting:` comment on #585 names them.
