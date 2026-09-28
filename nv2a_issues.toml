@@ -4484,3 +4484,19 @@ impact_px = 0
 impact_onestep_px = 0
 game_visible = true
 impact_basis = "game-visible and heat (lane.local 2026-09-28): at least 2.7 ms of render-thread CPU per guest flip on master"
+
+[issue."553"]
+title = "Nightly notes misfile fps fixes: no PR carries a Release note line"
+component = "harness"
+disposition = "defect"
+suites = []
+no_suites = "A HARNESS DEFECT (release-note categorisation). No pgraph suite applies."
+status = "open"
+dispatch_state = "blocked"
+blocker_tested = "confirmed 2026-09-28T14:45Z: [lane.relnote] row on origin/board."
+blocked_on = "IN FLIGHT (hostops 2026-09-28T14:45Z): lane.relnote holds it (briefs/relnote.md)."
+status_note = "FILED 2026-09-28T14:45Z by hostops from lane.local's inbox ask (07:20 PDT): no PR carries the Release note line nightly_build.sh body_line() reads, so fps fixes fell to guess_cat() (#518 under Other). lane.local hand-corrected 27 PRs and republished nightly-2026-09-27/-28."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = false
+impact_basis = "harness: release notes misfile the fps work the owner asked to be reported"
