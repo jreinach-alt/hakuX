@@ -23,8 +23,12 @@ THE FIGURES, per run:
          defines it. TxH, Idle, Fr and St are the means of those fields.
   late   the share of flips that took 3 or more VBLANKs: v3 + v4 over
          v0 + ... + v4, summed over the window's hakuX-pace lines
-  txh    hashed KiB per frame by reason, from tex461_read.py: mk, bit + bov,
-         memo, and all reasons; txr's ct and bt per frame
+  txh    hashed KiB per flip by reason, from tex461_read.py's parse: mk,
+         bit + bov, memo, and all reasons; txr's ct and bt per flip. The
+         txh/txu/txr lines count per 60 finishes (flip stalls and presents),
+         which is not per flip, so their window totals are divided by the
+         flips the window's hakuX-pace lines count (tex461_read.py's
+         docstring has the unit)
   heat   run.log's COOLDOWN: line, xo-therm at thermal.jsonl's `start`
          sample, and each cooling device's highest cur_state over the samples
          inside the window
@@ -47,7 +51,7 @@ THE LEGS (--pair), registered on #461 at 2026-09-28T09:41:38Z (comment
           thermally confounded, and its F4 is not attributed to the fix.
   K2      same scene: the larger M median is within 10% of the smaller.
   P1      B's Tq median is at least A's.
-  P2      B's mk KiB per frame is below A's, and its bit + bov above A's.
+  P2      B's mk KiB per flip is below A's, and its bit + bov above A's.
   R       read only when F4 fails with K1 and K2 passing. B's BUSY - TxH
           more than 2 ms/frame above A's puts the frame on the render thread;
           otherwise the render thread is not where it went.
@@ -147,13 +151,14 @@ def read_run(run, window):
 
     groups, _ = tex461_read.parse(win)
     r["txh_groups"] = len(groups)
-    if groups:
-        frames = 60.0 * len(groups)
-        kib = {n: sum(g["txh"][n][1] for g in groups) / frames for n in tex461_read.TXH}
+    if groups and sum(v):
+        # per guest flip: the groups are 60 finishes each, not 60 flips
+        flips = float(sum(v))
+        kib = {n: sum(g["txh"][n][1] for g in groups) / flips for n in tex461_read.TXH}
         r["mk"], r["bitbov"], r["memo"] = kib["mk"], kib["bit"] + kib["bov"], kib["memo"]
         r["hashed"] = sum(kib[n] for n in tex461_read.TXH if n not in ("eq", "rep"))
-        r["ct"] = sum(g["txr"]["ct"] for g in groups) / frames
-        r["bt"] = sum(g["txr"]["bt"] for g in groups) / frames
+        r["ct"] = sum(g["txr"]["ct"] for g in groups) / flips
+        r["bt"] = sum(g["txr"]["bt"] for g in groups) / flips
     else:
         r["mk"] = r["bitbov"] = r["memo"] = r["hashed"] = r["ct"] = r["bt"] = None
 
@@ -225,10 +230,10 @@ def legs(a, b):
         out["P1"] = (verdict(b["Tq"] >= a["Tq"]), "Tq A %.0f / B %.0f" % (a["Tq"], b["Tq"]))
 
     if a["mk"] is None or b["mk"] is None:
-        out["P2"] = ("UNREAD", "no txh lines in a window")
+        out["P2"] = ("UNREAD", "no txh lines, or no hakuX-pace flips, in a window")
     else:
         out["P2"] = (verdict(b["mk"] < a["mk"] and b["bitbov"] > a["bitbov"]),
-                     "mk KiB/frame A %.0f / B %.0f; bit+bov A %.0f / B %.0f"
+                     "mk KiB/flip A %.0f / B %.0f; bit+bov A %.0f / B %.0f"
                      % (a["mk"], b["mk"], a["bitbov"], b["bitbov"]))
 
     if a["busy_less_txh"] is None or b["busy_less_txh"] is None:
@@ -271,7 +276,7 @@ def report(r):
     print("  phase, %d lines: BUSY %s  TxH %s  BUSY-TxH %s  Idle %s (Fr %s St %s) ms/frame" % (
         r["phase_n"], fmt(r["BUSY"], "%.2f"), fmt(r["TxH"], "%.2f"), fmt(r["busy_less_txh"], "%.2f"),
         fmt(r["Idle"], "%.2f"), fmt(r["Fr"], "%.2f"), fmt(r["St"], "%.2f")))
-    print("  txh, %d groups: hashed %s KiB/frame; mk %s, bit+bov %s, memo %s; ct %s, bt %s per frame" % (
+    print("  txh, %d groups: hashed %s KiB/flip; mk %s, bit+bov %s, memo %s; ct %s, bt %s per flip" % (
         r["txh_groups"], fmt(r["hashed"], "%.0f"), fmt(r["mk"], "%.0f"), fmt(r["bitbov"], "%.0f"),
         fmt(r["memo"], "%.0f"), fmt(r["ct"]), fmt(r["bt"])))
     print("  tlb68, %d lines: per flip rdo %s, rdous %s, sd %s; vCPU-thread resets (rd) %s" % (
@@ -417,6 +422,12 @@ def selftest():
         # no [tlb68] line: G is UNREAD, never a verdict
         L = pair({}, dict(b_fix, tlb=None))
         ok &= L["G"][0] == "UNREAD"
+        # The hashes are per flip: 30 groups of mk 1000 KiB over pace lines
+        # counting 40 flips each is 25 KiB per flip, not 16.7 per finish.
+        d = os.path.join(tmp, "F")
+        write_run(d, late=(30, 10))
+        rf = read_run(d, w)
+        ok &= abs(rf["mk"] - 25.0) < 1e-9 and abs(rf["ct"] - 7.5) < 1e-9
         # the same drop with 3 ms/frame more non-hash work on B's render thread
         L = pair({}, dict(b_fix, draw=17.3))
         ok &= L["R"][0] == "render thread"
