@@ -456,11 +456,11 @@ retired_utc = "2026-09-28T01:46:00Z"
 files = []
 note = "RETIRED (job.board 2026-09-28T01:46Z): PR #521 folded (1a6b0f83a7), unit gone. Files RELEASED to [free]: docs/testing/jobs/status_html.py, docs/testing/jobs/selftest.d/99-status-escalation-items.sh, docs/lanes/escitems/**."
 
-[lane.idlehalt]
+[retired.idlehalt]
 issues = ["525"]
-files = ["target/i386/tcg/translate.c", "target/i386/tcg/decode-new.c.inc", "target/i386/tcg/emit.c.inc", "target/i386/tcg/system/misc_helper.c", "target/i386/helper.h", "system/cpus.c", "accel/tcg/tcg-accel-ops.c", "accel/tcg/tcg-accel-ops-rr.c", "include/hw/core/cpu.h", "docs/lanes/idlehalt/**", "docs/testing/predictions/idlehalt-*.json"]
-released = ["target/i386/tcg/translate.c", "target/i386/tcg/decode-new.c.inc", "target/i386/tcg/emit.c.inc", "target/i386/tcg/system/misc_helper.c", "target/i386/helper.h", "system/cpus.c", "accel/tcg/tcg-accel-ops.c", "accel/tcg/tcg-accel-ops-rr.c", "include/hw/core/cpu.h", "docs/lanes/idlehalt/**", "docs/testing/predictions/idlehalt-*.json"]
-note = "STARTED (lane.local 2026-09-28T01:27:49Z), briefs/idlehalt.md: #525 (0.5, fps-focus). The kernel idle idiom (sti; nop; nop; cli at 0x8001b02e) spins the vCPU: halt on it through helper_hlt with a 1 ms bounded wait (design: lanelocal-scratch/thermal-review.md 3.1; evidence: docs/lanes/retreason425/NOTES.md 6-8). translate.c from [free]; the rest were unlisted."
+files = []
+retired_utc = "2026-09-28T12:45:00Z"
+note = "RETIRED (job.board): PR #528 MERGED 2026-09-28T08:40:37Z, no open PR on lane/idlehalt, unit gone. Files already RELEASED to [free] (see prior note). #525 stays open: HAKUX_IDLE_HALT ships opt-in, default OFF -- the L leg (p99 raise-to-run < 50 us) failed on both AUF (14.2%) and Blinx (3.7%) though H/C/F/heat/J-per-frame all held. A latency variant (spin-then-sleep, HAKUX_IDLE_HALT_SPIN_US, sha 40fabbaacc) is already registered as docs/testing/predictions/idlehalt-spin-{auf,blinx}.json for arms.sh to judge on its own; see nv2a_issues.toml #525 for the tracker update. PRIOR: STARTED (lane.local 2026-09-28T01:27:49Z), briefs/idlehalt.md: #525 (0.5, fps-focus). The kernel idle idiom (sti; nop; nop; cli at 0x8001b02e) spins the vCPU: halt on it through helper_hlt with a 1 ms bounded wait (design: lanelocal-scratch/thermal-review.md 3.1; evidence: docs/lanes/retreason425/NOTES.md 6-8). translate.c from [free]; the rest were unlisted."
 
 [retired.adpf]
 issues = ["544"]
@@ -490,11 +490,11 @@ files = []
 retired_utc = "2026-09-28T04:41:00Z"
 note = "RETIRED (job.board): PR #532 MERGED 2026-09-28T04:33:36Z (cloud.sh does not claim a PR its lane is still running on). RELEASED TO [free]: docs/testing/jobs/cloud.sh, docs/testing/jobs/selftest.d/99-cloud-lane-branch.sh, docs/lanes/cloudlaneguard/**. PRIOR: STARTED (hostops 2026-09-28T01:45Z), briefs/cloudlaneguard.md: harness defect, no issue. cloud.sh's claim guard sees only other cloud units, so it claimed audit1 and remediate on #523 while lane.thermal507 was still running on lane/thermal507-power (two writers, one branch). Add a held_why check for the PR's own running lane. cloud.sh was unclaimed (not in [free], no row). Interim: host-tools/audit_outlet.sh + lane_on_branch.sh."
 
-[lane.sustain507]
+[retired.sustain507]
 issues = ["507", "424"]
-files = ["docs/lanes/sustain507/**", "docs/testing/predictions/sustain507-*.json"]
-released = ["docs/lanes/sustain507/**", "docs/testing/predictions/sustain507-*.json"]
-note = "STARTED (lane.local 2026-09-28T03:12:38Z), briefs/sustain507.md: the critical path (owner 2026-09-27 ~20:00 PDT: sustained fps within the heat budget). Part A: 30-min MAX vs defaults on the Thor (Crimson, GTA SA, MechAssault 2) with #533 PERF_REGIMEN=default once the dispatcher runs it; part B: #424's two registered Thor pairs (tbflip424-blinx.json) from cool starts. Measurement only; successor to lane.thermal507."
+files = []
+retired_utc = "2026-09-28T12:45:00Z"
+note = "RETIRED (job.board): PR #537 MERGED 2026-09-28T10:55:32Z, no open PR on lane/sustain507, unit gone. Files already RELEASED to [free]. #507 stays open, no mechanism recovered: MAX and the defaults hit the same Thor thermal pause 5-8 min into all six 30-min runs (Crimson/GTA SA/MechAssault 2), P1 not judgeable, P2/P3 refuted -- see nv2a_issues.toml #507. #424 stays open, unfinished not refuted: Part B's two r3 Thor pairs are void (paused before the 540 s window), r1/r2 valid; the legs need a median of three, so one more valid Thor r3 pair is needed before judging -- see nv2a_issues.toml #424. PRIOR: STARTED (lane.local 2026-09-28T03:12:38Z), briefs/sustain507.md: the critical path (owner 2026-09-27 ~20:00 PDT: sustained fps within the heat budget). Part A: 30-min MAX vs defaults on the Thor (Crimson, GTA SA, MechAssault 2) with #533 PERF_REGIMEN=default once the dispatcher runs it; part B: #424's two registered Thor pairs (tbflip424-blinx.json) from cool starts. Measurement only; successor to lane.thermal507."
 
 [retired.doa413c]
 issues = []
