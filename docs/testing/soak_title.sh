@@ -468,14 +468,29 @@ a shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1
 # The refusal skips release(): nothing it undoes has happened yet, and its
 # KEYCODE_SLEEP would put the screen out under the owner's app, which is
 # whatever raised the overlay. That is their session, not ours to put away.
-DISPLAY_STATE=$(display_clear "$SERIAL"); display_rc=$?
-echo "$DISPLAY_STATE"
-if [ "$display_rc" = 1 ]; then
-    trap - EXIT
-    rm -f "$LEASE"
-    echo "soak refused: display 0 is not hakuX's to draw on; nothing was started"
-    exit 4
-fi
+#
+# Checked twice: here, before the screen is put out for the cool-down gate
+# (so a covered display is never slept over), and again after the gate's
+# KEYCODE_WAKEUP, immediately before anything is armed.
+display_gate() {
+    DISPLAY_STATE=$(display_clear "$SERIAL"); display_rc=$?
+    echo "$DISPLAY_STATE"
+    if [ "$display_rc" = 1 ]; then
+        trap - EXIT
+        rm -f "$LEASE"
+        echo "soak refused: display 0 is not hakuX's to draw on; nothing was started"
+        exit 4
+    fi
+}
+display_gate
+
+# Dark through the cool-down gate, and woken after it (below). The gate can
+# wait minutes, and a wake sent only before it outlived a 60 s screen timeout
+# on the Thor on 2026-09-28: the display was OFF at `am start`, hakuX had no
+# focused window, and the route aborted "not foreground (unknown)"
+# (1-1790606269-lane.dirtytlb-479803, 1-1790613195-forza414-3088504). A dark
+# device also cools faster, and an idle handheld's screen is to be dark.
+a shell input keyevent KEYCODE_SLEEP >/dev/null 2>&1
 
 # THE THERMAL RECORD (#507). Under MAX the Thor's kernel pauses cpu3-7 a few
 # minutes in (`thermal-pause-F8`, bound to xo-therm's 78 C trip) and fps falls
@@ -556,6 +571,11 @@ if [ "${THERMAL_COOL_C:-65}" != off ]; then
         sleep "${THERMAL_COOL_EVERY_S:-20}"
     done
 fi
+
+# Woken after the gate, so the screen timeout runs from here, and the display
+# checked again before anything is armed.
+a shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1
+display_gate
 
 arm_audio
 perf_enter
