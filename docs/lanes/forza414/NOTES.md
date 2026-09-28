@@ -1185,7 +1185,7 @@ update, and that every one is followed by a clear that covers the binding whole.
 - Not changed: a clear the clip excludes entirely still returns after the update. The coverage
   test says no to it, so its upload runs as before.
 
-No local compile exists for these files on this host (section 13); CI builds the head.
+No local compile exists for these files on this host (section 18); CI builds the head.
 
 ## 37. The uniform hash skip, part (a) only (79f0102478)
 
