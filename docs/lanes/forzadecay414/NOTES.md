@@ -154,6 +154,21 @@ pre-download or the Thor is part of it. P2 fails if the leak predates #517. P3 f
 costs the Nova no fps. The master legs fail if a later fold already stopped it. The three soaks
 are 3 x (360 + 90) s = 22.5 min of device time, under the 30-min pilot line.
 
+Queued 2026-09-28 ~12:43 PDT at release priority by `docs/lanes/forzadecay414/queue.sh`. Each
+request's expect_sha was read back and matches its file (f7c4565c56dc bisect, ce4ca9775edd master):
+
+| request | ref | role |
+|---|---|---|
+| `1-1790624588-forzadecay414-3394734` | f82e7e87fe | A of both |
+| `1-1790624588-forzadecay414-3394828` | 09050ddbe5 | bisect B |
+| `1-1790624589-forzadecay414-3394871` | 85347ffbd1 | master B |
+
+**Waiting (session end, 2026-09-28 ~12:45 PDT)** on those three. The Nova is held by
+battery-hostops (14% at 18:10Z, lifted at >= 80%), so they run after the owner's evening top-up.
+On resume: judge both predictions by hand from the three logcats (timeline.py rows, `[watch311]
+invalid=`, `txw` faf/scan), post the verdict on #414, and mark this PR ready. The instrument
+(section 4) goes on its own branch once #571 folds and the board grants the file.
+
 ## Do not repeat
 
 - Do not read the Thor's 2-4 fps step with audio starving as the decay. That is the xo-78 C pause
