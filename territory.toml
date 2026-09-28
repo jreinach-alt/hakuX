@@ -509,6 +509,12 @@ files = ["docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/66-st
 standing = false
 note = "Created by hostops 2026-09-27 20:25 PDT (harness defect, no issue; briefs/fpsshare.md). lane.local 19:56 PDT (hostops-inbox): the status page title table shows 0% at 30+ for full-speed 30 fps titles (Galleon verdict: median 29.97, fps_ok_share 0.85 at the 28.5 bar); _soak_read counts a strict g >= 30. This table is the owner's read of the sustained-fps critical path. Files claimed from [free]."
 
+[lane.selftestshard]
+issues = []
+files = [".github/workflows/jobs-selftest.yml", "docs/testing/jobs/selftest.sh", "docs/lanes/selftestshard/**"]
+standing = false
+note = "Created by hostops 2026-09-27 20:45 PDT (harness defect, no issue; briefs/selftestshard.md). jobs selftest runs 20-25 min against its 25-min cap: master f82e7e87fe's run 36372679047 CANCELLED at 25:18, and 4 of the last 20 runs; fold.sh counts CANCELLED as RED. Shard the suite. Files were unclaimed."
+
 [free]
 # RELEASED (job.board 2026-09-28T02:53Z) by retiring lane.slowdown462 (no unit, no open PR): docs/lanes/slowdown462/**.
 # RELEASED (hostops 2026-09-28T02:40Z) by retiring lane.flip474 (PRs #475/#485/#516 folded): hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/instance.c, hw/xbox/nv2a/pfifo.c, hw/xbox/nv2a/pgraph/pgraph.c, docs/lanes/flip474/**, docs/testing/predictions/flip474-*.json.
