@@ -909,3 +909,50 @@ Re-queued at priority 1:
 
 `preflight.sh --allow-tracker` on 24c705df60 passes every gate but `coverage`. That one is the
 board's tracker row for #513 (status open, issue closed).
+
+## 28. Hunk 4 on DOA, first pair: the post-flip wait is gone, and the GPU bound takes its place
+
+`abread.py --from 151 --to 288` and `txline.py` (this directory) over
+`1-1790552638-forza414-3224848` (A 35ee65562a) and `1-1790552639-forza414-3225184` (B
+32657e9719). Both runs are the survey route on the Nova, MAX, and both are in the fight in the
+window (route frames at 19:01:49 and 19:07:19). The stages and opponents differ: DOA picks them.
+
+| | A | B |
+|---|---:|---:|
+| fps (pace lines) | 15.13 | 16.14 (B/A 1.066) |
+| Tot | 60.7 | 53.3 |
+| Surf | 52.4 | 0.8 |
+| s413 cdef | 51.18 | 0.03 |
+| `[sdcall]` surfupd pre per frame, wait ms | 0.981, 50.40 | 0, 0 |
+| `[sdcall]` prerec pre per frame, wait ms | 0, 0 | 0.909, **0.00** |
+| `[sdcall]` total completion wait, ms/frame | 50.40 | **0.00** |
+| Draw | 6.6 | 50.7 |
+| Pipe (Tx) | 2.9 (0.4) | 46.7 (~44) |
+| GPU (phase line, uncorrected period) | 33.4 | 37.2 |
+| vCPU ms per 2 s (`[tlb68]` cpu) | 1830 | 711 |
+
+| leg | rule | result |
+|---|---|---|
+| M0 | both in the fight, lines printed, no crash | holds (34 / 37 lines, 0 crash lines) |
+| G1 | B surfupd pre <= 0.1/frame | **holds**: 0.000 |
+| C1 | B/A cdef <= 0.3 | **holds**: 0.001 |
+| W1 | B/A total completion wait <= 0.5 | **holds as written**: 0.00. The flip batch now completes at the next pre-record with a 0 ms wait. **But the leg's instrument cannot see where the PFIFO thread's wait went.** It went into texture binding, which `[sdcall]` does not count (below) |
+| H0 | longest phase-line gap <= 3 s; last line within 5 s of the end | **fails as written, in both arms.** The gap part fails in A too: 14 s loading gaps before the window, so it was mis-specified; it should have been scoped to the window. The tail part fails in B only: its last per-frame line is at 296.0 s against a soak end at 309.5, while A's lines run to the end. B's last route frame (19:07:46) is a KO, the loser falling through the stage floor at 9 fps. One run cannot separate a KO transition that flips fewer than 60 times from a hang. A replicate pair is queued |
+
+**Where the wait went.** Tx (`pipe_bind_tex`) rises in every scene of B, the menus included (t =
+95-115 s: Tx 11-18 ms in B, 0.3-2.8 in A), and it tracks the GPU time. The site is texture.c:2215:
+a render-to-texture surface that was drawn since its texture node's last bind calls
+`pgraph_vk_flush_all_frames` if that node was used within `num_active_frames` submits. That waits
+every in-flight frame's fence. In A those fences had already been waited at the first surfupd after
+the flip, so the flush found them signalled. In B the GPU is still on the previous frame when the
+texture is bound, so the PFIFO thread waits there instead.
+
+This is lane.flip474's section 15 bound. DOA is GPU-bound, and O1 moves the wait but cannot
+shorten it. The fps gain, 15.13 -> 16.14 (+1.0), is inside the registered bound (+1 to +2). The
+vCPU's on-CPU time fell from 1830 to 711 ms per 2 s: the guest now waits on the GPU instead of
+spinning. The next lever for DOA is its GPU work, or the flush at texture.c:2215 (a per-surface
+fence instead of all frames). texture.c is lane.remote's file, lent to lane.slowdown462.
+
+**What the next lane should not repeat:** a completion-wait counter proves the wait left the
+completion. It cannot prove the wait left the thread. Register the thread's total (Surf + Draw's
+children, or Tot against the GPU) as the claim, and the per-caller counter as the mechanism.
