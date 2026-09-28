@@ -119,4 +119,38 @@ The whole batch is about 112 min of device time: 5 pairs x 2 x (420 + 90) s,
 plus 2 x (730 + 90) s. So the pilot is the Kabuki pair (17 min). Once it is
 read, `pilots/lane.idlehaltdefault.ok` goes in and the other ten are queued.
 
-(queue ids and the read follow below)
+Queued at `1-` (release) priority, pinned to the Nova, at ref 3a5d79e3ea (no
+cached build yet, so the first claim builds it):
+- Kabuki A1 (off): `1-1790618696-lane.idlehaltdefault-845673`
+- Kabuki B1 (on): `1-1790618748-lane.idlehaltdefault-846115`
+
+async413's DOA1U request `1-1790618748-async413-847565` sorts between them.
+That costs the pair about 9 min of drift. It does not change the arms.
+
+Preflight on 68be6fd1fc passes everything except `territory`. That failure
+is on the board's `territory.toml` (origin/board: `xemu_android.cpp` is
+claimed by both rendermode474 and async413), which is not this lane's
+file.
+
+## Session 1 end (2026-09-28 ~11:45 PDT): waiting
+
+Waiting on the two pilot request ids above.
+
+On resume:
+1. Run `python3 docs/lanes/idlehaltdefault/ihd_judge.py --a
+   1-1790618696-lane.idlehaltdefault-845673 --b
+   1-1790618748-lane.idlehaltdefault-846115 > <log>`.
+2. Check the pilot:
+   - V holds (not VOID, a window of >= 120 s, >= 20 windows);
+   - `[idlehalt]` reads on=1/0;
+   - `[pace526]` held counts are present;
+   - power and audio are measured.
+3. Write `pilots/lane.idlehaltdefault.ok` with python3.
+4. Queue the other ten in this order:
+   `.lane-scratch/q.sh fuzion B 1`, `fuzion A 1`, `forza A 1`, `forza B 1`,
+   `doa1u B 1`, `doa1u A 1`, `blinx2 A 1`, `blinx2 B 1`, `ghoulies B 1`,
+   `ghoulies A 1`. `q.sh` is not committed. Each call is `request.sh --who
+   lane.idlehaltdefault --title <T> --route <R> --seconds <S> --perflog
+   --device nova --ref 3a5d79e3ea [--env HAKUX_IDLE_HALT=1] --expect
+   docs/testing/predictions/idlehaltdefault-<key>.json --issue 525`, run with
+   `env HAKUX_RELEASE_PRIO=1`.
