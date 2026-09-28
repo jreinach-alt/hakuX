@@ -454,6 +454,11 @@ issues = []
 files = ["docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/99-status-escalation-items.sh", "docs/lanes/escitems/**"]
 note = "STARTED (hostops 2026-09-27 17:20 PDT), briefs/escitems.md: harness defect, no issue (owner 17:00 PDT via lane.local's hostops-inbox item). status_html.py reads escalations.md line by line, so a RESOLVED on a continuation line leaves the item on 'what needs a person'. Fix: group items with their continuation lines (as harness_health.py does) and show a re-checked stamp. status_html.py claimed from lane.titlestate's released list."
 
+[lane.armsflake]
+issues = []
+files = ["docs/testing/jobs/selftest.d/92-arms-skip-told.sh", "docs/lanes/armsflake/**"]
+note = "STARTED (hostops 2026-09-27 17:50 PDT), briefs/armsflake.md: harness defect, no issue. 92-arms-skip-told.sh flaked in 2 of 15 master selftests (8a54dcf1b2 'and nothing is posted for it'; 0e0ba23fb9 'a second tick does not tell it again'); its legs assert that a whole arms.sh tick posts no comment, so another prediction's comment fails them. Fix the test to scope to its own sha; arms.sh stays with lane.affinitybacklog."
+
 [free]
 # RELEASED (hostops 2026-09-28T00:35Z) by retiring lane.handbacklane (PR #520 folded 27249dff29): docs/testing/jobs/handback.sh, docs/testing/jobs/selftest.d/99-handback-lane-line.sh, docs/lanes/handbacklane/**.
 # CLAIMED (hostops 2026-09-28T00:20Z): docs/testing/jobs/status_html.py (released by lane.titlestate) -> lane.escitems (escalation items with continuation lines).
