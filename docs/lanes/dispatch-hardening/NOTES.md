@@ -488,6 +488,48 @@ all live in `dispatcher.sh` / `request.sh`. Both are lent to lane.titlerun
 until #307 folds, and #307 was still open at 00:05Z on 2026-09-26. It was not
 started here.
 
+### 2026-09-28: the request.sh half
+
+#307 has folded, and request.sh is this lane's again. dispatcher.sh is held by
+lane.fanduty507. So this PR is the half that needs no dispatcher change:
+`request.sh --priority blocker|arm|study|sweep`.
+
+**The id stays the priority.** The brief asked for a JSON field that the
+queue orders by ahead of the epoch. Ordering by a field is a dispatcher
+change. Every reader already handles tier prefixes: the dispatcher's glob,
+arms.sh's and status.sh's `z-*` idle count, and handback's `(?:^|-)\d{9,}-`
+owner regex. The host also already promotes with `0-0-x-` ids. So the flag
+picks the prefix, and the field records what was asked for:
+
+| --priority | id | label read |
+|---|---|---|
+| blocker | `0-<epoch>-...`, behind the host's `0-0-*` heads. It must name an issue (`--issue`, or #N in `--purpose`), or it is refused | no |
+| arm, study (default) | as before: `1-` when the issue carries the release label, else plain | yes |
+| sweep | `z-<epoch>-...`, the idle tier | no |
+
+`arm` and `study` share a tier. The release label already lifts a release
+arm. A separate arm tier would put every arm ahead of release studies, and
+that is the owner's call, not a side effect of a flag.
+
+**Proof** is `selftest.d/99-request-priority-flag.sh`. Each leg asserts on
+the queued file's id and its `priority` field. One leg lays out five ids in
+the dispatcher's glob order: a host `0-0-x` head, the blocker, a release arm,
+a plain arm and a `z-sweep` leg. The blocker must come second.
+- A mutant that names every raised tier `1-` queues its blocker as `1-`, and
+  the order check is red on it.
+- Master's request.sh, run in a scratch symlink tree, refuses the blocker leg
+  with `unknown option --priority`, rc 2, and queues nothing.
+
+**Still open:** the hold `yield` file, so that a blocker is served between
+two hand runs of a hold. It needs dispatcher.sh, which lane.fanduty507 holds.
+
+**Do not repeat.** A fixture helper that echoes "the ids in this leg's
+queue" returns two ids on its second call unless the leg starts from an
+empty queue. The order check first passed with duplicates in it, because
+its globs covered them. Also, a mutant check whose pattern needs the fixed
+behaviour to match is green against any mutant. Run the real output and the
+mutant's through ONE predicate.
+
 ## Defect 15: the pull was holed, not truncated
 
 **The brief's premise was wrong, and so was part A's comment.** Both said
