@@ -465,7 +465,9 @@ note = "RETIRED (job.board): PR #528 MERGED 2026-09-28T08:40:37Z, no open PR on 
 [lane.idlehaltspin]
 issues = ["525"]
 files = ["target/i386/tcg/translate.c", "docs/lanes/idlehaltspin/**", "docs/testing/predictions/idlehaltspin-*.json"]
-note = "STARTED (job.board 2026-09-28T17:33Z), briefs/idlehaltspin.md: #525 (0.5, fps-focus). arms.sh SKIPPED docs/testing/predictions/idlehalt-spin-{auf,blinx}.json 2026-09-28T17:21Z, a_ref == b_ref -- the registration lane.idlehalt left behind at sha 40fabbaacc is structurally broken (an env-var toggle, not two shas) and nothing will judge it on its own. This lane registers a real base/fix pair for HAKUX_IDLE_HALT_SPIN_US and judges leg L (p99 raise-to-run < 50 us, failed at SPIN_US=0: AUF 14.2%, Blinx 3.7%) properly. Distinct from lane.sustain507's PR #547 (folded), which measured halt ON/OFF at the defaults as a heat lever (not a heat lever, P refuted) and never touched the spin variant or leg L. translate.c from [free]."
+released = ["target/i386/tcg/translate.c", "docs/lanes/idlehaltspin/**", "docs/testing/predictions/idlehaltspin-*.json"]
+released_at_ready = 565
+note = "STARTED (job.board 2026-09-28T17:33Z), briefs/idlehaltspin.md: #525 (0.5, fps-focus). arms.sh SKIPPED docs/testing/predictions/idlehalt-spin-{auf,blinx}.json 2026-09-28T17:21Z, a_ref == b_ref -- the registration lane.idlehalt left behind at sha 40fabbaacc is structurally broken (an env-var toggle, not two shas) and nothing will judge it on its own. This lane registers a real base/fix pair for HAKUX_IDLE_HALT_SPIN_US and judges leg L (p99 raise-to-run < 50 us, failed at SPIN_US=0: AUF 14.2%, Blinx 3.7%) properly. Distinct from lane.sustain507's PR #547 (folded), which measured halt ON/OFF at the defaults as a heat lever (not a heat lever, P refuted) and never touched the spin variant or leg L. translate.c from [free]. RELEASED (job.board 2026-09-28T17:54Z): PR #565 ready (out of draft, CI green, unit gone); files released to the next lane per roles/board.md (release at ready). Still held in files: audit/fold still read the diff."
 
 [lane.idlehaltdefault]
 issues = ["525"]
