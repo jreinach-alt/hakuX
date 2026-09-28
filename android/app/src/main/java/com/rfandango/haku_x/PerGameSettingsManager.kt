@@ -33,6 +33,9 @@ object PerGameSettingsManager {
         "use_dsp",
         "texture_dump_enabled",
         "texture_replace_enabled",
+        // "auto", "sysmem" or "gmem". Unset falls back to the title table in
+        // xemu_android.cpp (ApplyRenderMode), which reads the disc's title ID.
+        "render_mode",
     )
 
     fun hasOverrides(context: Context, relativePath: String): Boolean {
