@@ -12,8 +12,9 @@ docs/testing/phase_read_split.py's THE WINDOW, as pair461_read.py's is.
 
 THE LINE (system/physmem.c, tag hakuX-perf, one per 60+ guest flips):
   [rdc] f= dt= tid= tcpu= rdo= rdous= vtx=n/us/pg/h nv2a=.. tex=.. vga=..
-        code=.. mig=.. snap=.. oth=.. v= dra= dx= tm= ovh=ns/n tk=
-  Every field is the line's own window. <site>=calls/us/pages/hits.
+        code=.. mig=.. snap=.. oth=.. v= dra= dx= vr= tm= ovh=ns/n tk=
+  Every field is the line's own window. <site>=calls/us/pages/hits. vr is
+  absent from lines built before it (111c7fea74); they read as vr unknown.
 
 THE FIGURES, per run, over the window's [rdc] lines:
   flips        the sum of f
@@ -24,6 +25,9 @@ THE FIGURES, per run, over the window's [rdc] lines:
                the window's calls, plus tk, over the flips
   sum          (sites' calls - rdo) and (sites' us - rdous), window totals
   gfps, M, Tq  medians of hakuX-perf's gfps and Tq and hakuX-cpu's M
+  span lever   vr per flip, and vr x vtx us per call: the walks and us one
+               walk per draw over the span of its dirty ranges would save
+               (a walk scans the whole TLB whatever its length)
 
 THE LEGS, registered in docs/testing/predictions/dirtytlb-counter.json
 before any [rdc] line existed. A leg whose inputs are missing reads UNREAD,
@@ -45,7 +49,7 @@ SITES = ["vtx", "nv2a", "tex", "vga", "code", "mig", "snap", "oth"]
 RE_RDC = re.compile(
     r"\[rdc\] f=(\d+) dt=(-?\d+) tid=(-?\d+) tcpu=(-|[\d.]+) rdo=(\d+) rdous=(\d+) "
     + " ".join(r"%s=(\d+)/(\d+)/(\d+)/(\d+)" % s for s in SITES)
-    + r" v=(\d+) dra=(-?\d+) dx=(\d+) tm=(\d+) ovh=(\d+)/(\d+) tk=(-?\d+)")
+    + r" v=(\d+) dra=(-?\d+) dx=(\d+)(?: vr=(\d+))? tm=(\d+) ovh=(\d+)/(\d+) tk=(-?\d+)")
 RE_GFPS = re.compile(r"gfps=(\d+)")
 RE_TQ = re.compile(r"(?<![A-Za-z])Tq:(-?[\d.]+)")
 RE_M = re.compile(r"(?<![A-Za-z])M:(-?[\d.]+)")
@@ -62,8 +66,9 @@ def parse_rdc(line):
     for i, s in enumerate(SITES):
         d[s] = tuple(int(x) for x in g[6 + 4 * i: 10 + 4 * i])
     k = 6 + 4 * len(SITES)
-    d["v"], d["dra"], d["dx"], d["tm"] = (int(x) for x in g[k:k + 4])
-    d["ovns"], d["ovn"], d["tk"] = (int(x) for x in g[k + 4:k + 7])
+    d["v"], d["dra"], d["dx"] = (int(x) for x in g[k:k + 3])
+    d["vr"] = None if g[k + 3] is None else int(g[k + 3])
+    d["tm"], d["ovns"], d["ovn"], d["tk"] = (int(x) for x in g[k + 4:k + 8])
     return d
 
 
@@ -113,6 +118,9 @@ def summarise(rows):
     r["dra"] = sorted(set(d["dra"] for d in rows))
     r["tm"] = sum(d["tm"] for d in rows) / flips
     r["v"] = sum(d["v"] for d in rows) / flips
+    vr = [d for d in rows if d["vr"] is not None]
+    vrf = sum(d["f"] for d in vr)
+    r["vr"] = sum(d["vr"] for d in vr) / vrf if vr and vrf else None
     return r
 
 
@@ -219,6 +227,13 @@ def report(r):
             print("  %-5s %8.1f %8.0f %8.1f %8.1f %8.1f" % (s, n, us, pg, h, us / n))
     print("  overhead %s ns/call, %s us/flip; oth %d dx %d dra %s"
           % (fmt(r["ovh_ns_call"], "%.0f"), fmt(r["ovh_us_flip"]), r["oth"], r["dx"], r["dra"]))
+    n, us = r["site"]["vtx"][:2]
+    if r["vr"] is None:
+        print("  span lever: vr not on these lines")
+    else:
+        print("  span lever: vr %.1f of vtx %.1f walks per flip, %.2f ms per flip at %s us/walk"
+              % (r["vr"], n, r["vr"] * (us / n if n else 0) / 1000.0,
+                 fmt(us / n if n else None)))
 
 
 def main():
@@ -247,14 +262,15 @@ def main():
     return 0
 
 
-def fake_line(t, f=60, rdo=10500, vtx=6000, tex=4500, oth=0, dx=0, tcpu="210.5", us=27):
+def fake_line(t, f=60, rdo=10500, vtx=6000, tex=4500, oth=0, dx=0, tcpu="210.5", us=27,
+              vr=" vr=1800"):
     sites = {"vtx": vtx, "tex": tex, "oth": oth}
     parts = " ".join("%s=%d/%d/%d/%d" % (s, sites.get(s, 0), sites.get(s, 0) * us,
                                          sites.get(s, 0), sites.get(s, 0) // 2)
                      for s in SITES)
     return ("09-28 10:%02d:%02d.000  1234  1300 I hakuX-perf: [rdc] f=%d dt=2000 tid=1300 "
-            "tcpu=%s rdo=%d rdous=%d %s v=3 dra=-1234 dx=%d tm=0 ovh=6000/40 tk=30"
-            % (t // 60, t % 60, f, tcpu, rdo, rdo * us, parts, dx))
+            "tcpu=%s rdo=%d rdous=%d %s v=3 dra=-1234 dx=%d%s tm=0 ovh=6000/40 tk=30"
+            % (t // 60, t % 60, f, tcpu, rdo, rdo * us, parts, dx, vr))
 
 
 def selftest():
@@ -283,6 +299,10 @@ def selftest():
         # 26 lines of 60 flips: rdo 175 per flip
         ok &= abs(good["rdo"] - 175) < 1e-9 and good["lines"] == 26
         ok &= abs(good["tcpu"] - 210.5 / 60) < 1e-9
+        ok &= abs(good["vr"] - 30) < 1e-9 and good["tm"] == 0
+        # a line from before vr parses, and reads vr unknown, not 0
+        old = run("old", lambda t: fake_line(t, vr=""))
+        ok &= old["vr"] is None and old["lines"] == 26 and legs_b(old)["C1"][0] == "PASS"
         # the impossible row: an untagged walk fails C2, and C1 on rdo mismatch
         bad = run("bad", lambda t: fake_line(t, vtx=5400, oth=600))
         Lb = legs_b(bad)

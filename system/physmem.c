@@ -1053,6 +1053,12 @@ found:
  *          (two clock reads around rdc_account(); the reads' own cost is in
  *          it, so it is an upper bound on the untimed calls)
  *   tk     the previous line's own cost in us, snprintf and log included
+ *   vr     vtx walks made in the same vertex sync call (same flip, same
+ *          vsync_working.calls) as the vtx walk before them: the walks one
+ *          walk per draw over the span of its dirty ranges would save. A
+ *          walk scans the whole TLB whatever its length, so vr x vtx's us per
+ *          call is that lever's price, before its wider span's extra
+ *          NOTDIRTY entries
  *   tm     pages whose dirty bits were cleared but which the walk did not
  *          cover. tlb_reset_dirty_range_all() rounds start down to a page
  *          and passes length unchanged (as upstream does), so a range that
@@ -1098,6 +1104,8 @@ static uint64_t rdc_h[RDC_NSITE];   /* entries the walks set TLB_NOTDIRTY on */
 static uint64_t rdc_v;           /* walks on the vCPU thread, all sites */
 static uint64_t rdc_dx;          /* DIRECT walks from a second return address */
 static uint64_t rdc_tm;          /* pages cleared that the walk did not cover */
+static uint64_t rdc_vr;          /* DIRECT walks repeating within one sync */
+static uint64_t rdc_vkey;        /* the last DIRECT walk's (flip, sync call) */
 static uint64_t rdc_ovh_ns, rdc_ovh_n;   /* timed rdc_account() calls */
 static __thread unsigned rdc_k;
 static uintptr_t rdc_ra0;        /* the first DIRECT return address seen */
@@ -1107,7 +1115,7 @@ static void rdc_tick(void)
 {
     static uint64_t p_n[RDC_NSITE], p_ns[RDC_NSITE], p_pg[RDC_NSITE];
     static uint64_t p_h[RDC_NSITE];
-    static uint64_t p_v, p_dx, p_tm, p_rdo, p_rdons, p_ovns, p_ovn;
+    static uint64_t p_v, p_dx, p_tm, p_vr, p_rdo, p_rdons, p_ovns, p_ovn;
     static int64_t tk_ns;   /* the previous line's own cost */
     static int64_t p_clk, p_tcpu;
     static int p_tid;
@@ -1115,7 +1123,7 @@ static void rdc_tick(void)
     unsigned f0 = qatomic_read(&rdc_frame0);
     char buf[512], tcpu_s[24];
     int off, tid;
-    uint64_t rdo, rdons, v, dx, tm, ovns, ovn;
+    uint64_t rdo, rdons, v, dx, tm, vr, ovns, ovn;
     int64_t clk, tcpu;
     struct timespec ts;
 
@@ -1149,6 +1157,7 @@ static void rdc_tick(void)
         p_v = qatomic_read(&rdc_v);
         p_dx = qatomic_read(&rdc_dx);
         p_tm = qatomic_read(&rdc_tm);
+        p_vr = qatomic_read(&rdc_vr);
         p_ovns = qatomic_read(&rdc_ovh_ns);
         p_ovn = qatomic_read(&rdc_ovh_n);
         p_rdo = qatomic_read(&hakux_tlb68_rdo);
@@ -1161,6 +1170,7 @@ static void rdc_tick(void)
     v = qatomic_read(&rdc_v);
     dx = qatomic_read(&rdc_dx);
     tm = qatomic_read(&rdc_tm);
+    vr = qatomic_read(&rdc_vr);
     ovns = qatomic_read(&rdc_ovh_ns);
     ovn = qatomic_read(&rdc_ovh_n);
     off = snprintf(buf, sizeof(buf),
@@ -1188,19 +1198,21 @@ static void rdc_tick(void)
     }
     if (off < (int)sizeof(buf) - 64) {
         snprintf(buf + off, sizeof(buf) - off,
-                 " v=%" PRIu64 " dra=%" PRIdPTR " dx=%" PRIu64 " tm=%" PRIu64
+                 " v=%" PRIu64 " dra=%" PRIdPTR " dx=%" PRIu64 " vr=%" PRIu64
+                 " tm=%" PRIu64
                  " ovh=%" PRIu64 "/%" PRIu64 " tk=%" PRId64,
                  v - p_v,
                  qatomic_read(&rdc_ra0)
                      ? (intptr_t)(qatomic_read(&rdc_ra0) -
                                   (uintptr_t)&tlb_reset_dirty_range_all)
                      : (intptr_t)0,
-                 dx - p_dx, tm - p_tm, ovns - p_ovns, ovn - p_ovn,
+                 dx - p_dx, vr - p_vr, tm - p_tm, ovns - p_ovns, ovn - p_ovn,
                  tk_ns / 1000);
     }
     p_v = v;
     p_dx = dx;
     p_tm = tm;
+    p_vr = vr;
     p_ovns = ovns;
     p_ovn = ovn;
     RDC_LOG("%s", buf);
@@ -1226,6 +1238,14 @@ static void rdc_account(ram_addr_t span, ram_addr_t length)
     }
     if (site == RDC_DIRECT) {
         uintptr_t ra0 = qatomic_read(&rdc_ra0);
+        uint64_t key =
+            (uint64_t)qatomic_read(&g_nv2a_stats.frame_count) << 32 |
+            g_nv2a_stats.vsync_working.calls;
+
+        if (key == rdc_vkey) {
+            qatomic_add(&rdc_vr, 1);
+        }
+        rdc_vkey = key;
         if (!ra0) {
             qatomic_cmpxchg(&rdc_ra0, (uintptr_t)0, rdc_ra);
         } else if (ra0 != rdc_ra) {
