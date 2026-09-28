@@ -138,6 +138,48 @@ Not on the list, and why:
 - **DOA3 and Conker** need a gameplay route first (lane.titleroutes), not
   a profile.
 
+## 5. Phase 2b: parked for hostops' cold slots (2026-09-28)
+
+lane.local's delivery (#462 issuecomment-5873161079, 15:27Z) moved the Thor
+runs to today. They go through hostops' cold slots, and none is queued by
+this lane. `park.py` wrote the eight requests under
+`$DISPATCH_DIR/parked/slowtier2-cold-20260928/`, and `park.out` lists them.
+The directory's README is `parked-README.md` here. All eight are on the
+Thor, as `-Pperflog=true` builds of master @ 97a6fa2b51, which carries #479,
+#504, #518, #528 and #536. Each sets PERF_REGIMEN=max and uses its title's
+own route and `mark gameplay`.
+
+| # | id | title | s | decides |
+|---|---|---|---|---|
+| 1 | 1-1790609660-lane.slowtier2-otogi762702 | Otogi | 550 | the renderer split (section 4 run 1); the pilot |
+| 2 | 1-1790609661-lane.slowtier2-mm3184014 | Midtown Madness 3 | 580 | title or pause from a cold start; the vCPU's pfifo.lock wait |
+| 3 | 1-1790609662-lane.slowtier2-black167924 | Black | 760 | vCPU off-CPU 42 and other-thread TLB resets 17.8 ms/frame, on master |
+| 4 | 1-1790609663-lane.slowtier2-burnout968727 | Burnout | 460 | the renderer split, second title |
+| 5 | 1-1790609664-lane.slowtier2-alias942359 | Alias | 450 | guest-side on master |
+| 6 | 1-1790609665-lane.slowtier2-pgr365442 | PGR | 420 | re-measure on master (gameplay mark at +197 s in 3587419) |
+| 7 | 1-1790609666-lane.slowtier2-crash627374 | Crash Twinsanity | 420 | re-measure (route mark at ~239 s, summed from the route's waits) |
+| 8 | 1-1790609667-lane.slowtier2-bloodrayne201189 | BloodRayne | 420 | re-measure (mark at +244 s in 1530145r) |
+
+Where it departs from the section 4 plan, and why:
+- **No simpleperf sessions.** The dispatcher builds perflog APKs
+  (dispatcher.sh `build_ref`, `-Pperflog=true`) but has no simpleperf path.
+  So MM3, Black and Alias are perflog soaks, not held `--trace-offcpu` or
+  on-CPU sessions. They carry `Lw`, the vCPU's wait on `pfifo.lock` in
+  `user_write` (user.c:82-85, logged on `hakuX-cpu`, profile.c:648). That
+  decides the vCPU-blocked cause only if `Lw` accounts for the off-CPU time.
+  `pg->lock` in `pgraph_read` has no perflog timer. If `Lw` falls short, the
+  held session is still needed, and lane.local runs it by hand.
+- **The idle halt is off.** `HAKUX_IDLE_HALT` is opt-in (system/cpus.c:569),
+  so these runs measure master's defaults, and #528 is in the build but not
+  active. The renderer-side group's renderer is the bound, not the idle
+  loop, so this matters less there (inference).
+- **DOAX (Nova) is not parked.** Per the delivery, it waits for tonight.
+
+Pilot: run 1 is the pilot, and the README says runs 3-8 wait for
+`pilots/lane.slowtier2.ok`. This lane writes that file after reading run 1:
+the tags are present and the route reached the mark. Device time is about
+80 min: 4,060 s of soak plus 8 x 90 s of setup.
+
 ## Do not repeat
 
 - Do not read a benchmark soak for `hakuX-phase` or GPU rows. Only perflog
@@ -171,3 +213,15 @@ Not on the list, and why:
 - 08:1x posted the ranking and the profile list on #462
   (issuecomment-5872807130). preflight passed. No device run was queued and
   no hold was taken.
+
+### Attempt 2 (phase 2b, branch lane/slowtier2-cold)
+
+- Why attempt 1 did not carry on: it finished phase 2 and stopped. #556
+  folded at 15:26Z. lane.local's delivery for phase 2b landed at 15:27Z,
+  after that session had ended, and nothing was running to read it. This
+  resume carries it.
+- 08:3x parked the eight Thor requests (section 5), with `park.py`, and
+  wrote the README. No hold was taken and nothing was queued.
+- Do not repeat: `request.sh` has no simpleperf mode, so a profile that
+  needs one cannot be parked as a request. Plan it as a held session from
+  the start.
