@@ -1488,7 +1488,23 @@ void xemu_android_display_loop(void)
         }
     }
 #ifdef __ANDROID__
-    SDL_GL_SetSwapInterval(g_config.display.window.vsync ? 1 : 0);
+    {
+        /*
+         * HAKUX_VSYNC=0|1 overrides the vsync pref for one run (#526). A
+         * dispatch request can write the env_vars pref and no other, so this
+         * is how an A/B selects vsync. The pref and its default are untouched.
+         */
+        const char *ev = getenv("HAKUX_VSYNC");
+        int interval = g_config.display.window.vsync ? 1 : 0;
+        if (ev && (!strcmp(ev, "0") || !strcmp(ev, "1"))) {
+            interval = ev[0] - '0';
+        }
+        int rc = SDL_GL_SetSwapInterval(interval);
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-lane",
+                            "[pace526] swap interval=%d pref=%d env=%s rc=%d",
+                            interval, g_config.display.window.vsync ? 1 : 0,
+                            ev ? ev : "(unset)", rc);
+    }
     if (false /* HUD disabled on Android */) {
         xemu_hud_init(m_window, m_context);
     }
