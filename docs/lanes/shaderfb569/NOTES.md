@@ -101,7 +101,19 @@ Also:
 
 ## 4. Result
 
-Pending.
+Pending. Preflight passed at this head (2026-09-28).
+
+**Waiting (2026-09-28 ~19:00Z)** on two things outside this session:
+- dispatch request `1790621694-shaderfb569-1529058`, which runs once the Nova's battery hold
+  lifts. Resolves when its `results/<id>/result.json` exists.
+- the arms job's `[job.arms]` verdict on `shaderfb569-pixels-inert.json`.
+
+On resume:
+1. Run `fbwin.py $DISPATCH_DIR/results/1790621694-shaderfb569-1529058` into
+   `docs/lanes/shaderfb569/soak-fbwin.txt`.
+2. Check the load span against the route frames.
+3. Fill the per-window table and C1-C4 and O here, each with its result dir and log line.
+4. File the board request for the `spv_cache/` pull. Post on #569, then mark the PR ready.
 
 ## Do not repeat
 
