@@ -1,0 +1,32 @@
+{
+  "registered_utc": "2026-09-27T22:07:18Z",
+  "who": "lane.flip474",
+  "issue": "474",
+  "title": "54430006-Dead_or_Alive_1_Ultimate.xiso.iso",
+  "device": "nova",
+  "seconds": 300,
+  "route": "survey",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "57e2a7107c06eee5b51eae9f62e40728be390e30",
+  "b_ref": "253148451f2dbcb8fad092572dcc89250ea57867",
+  "arms": "B only. No leg compares against an A run: each is read off B's own start-up line or compares two clocks inside B.",
+  "must_not_move": [
+    "pgraph: docs/testing/predictions/flip474-tsperiod2-pgraph-inert.json (12 suites, identical captures, same refs)"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off the start-up 'GPU timestamp period' line, hakuX-phase and [surf413] lines.",
+  "judge": "grep 'GPU timestamp' logcat.txt; python3 docs/lanes/flip474/phaseread.py --from 151 --to 288 <B>; lockread.py on the same window for cdef and gfps; gfpsseries.py for the cut at a scene change; crashcheck.py, tailcheck.py",
+  "prediction": "#474: the second cut measures the period with the GPU kept busy. The first cut slept 100 ms between its samples and read 4636 ns on the Thor. On the Nova the counter ticks every 52.083 ns (o4clock.py's fit under load, and upstream Turnip's constant) and the driver reports 33.11. DOA's fight is GPU-bound, so its GPU span and the PFIFO thread's wait for the same command buffer (cdef, CPU clock) are the same interval read on two clocks.",
+  "legs": {
+    "M0 (instrument)": ">= 15 hakuX-phase lines with GPU > 0 in 151-288 s, and the shots show the fight. Otherwise VOID, rerun once.",
+    "K0 (the line)": "exactly one 'init: GPU timestamp period reported= measured= (+-%, span, samples k of n, halves differ %) using= (measured|reported[; not measured: why])' in the logcat. KILL: none.",
+    "K1 (the value)": "measured= is 52.08 ns +-1% (51.56 to 52.60) and using= is the measured value. KILL: using= is a measured value outside 49.5 to 54.7 ns.",
+    "K3 (the self-check, a guess)": "halves differ < 2% and the scatter (+-) < 2%, so the line says (measured). Confidence 70%: nothing on disk says how this counter behaves across a 300 us idle gap. If it says '(reported; not measured: ...)', the change is safe and useless on this device: K1 is then not met, the reason is the finding, and G1 must show GPU at 0.64 of cdef.",
+    "G1 (two clocks, one interval)": "B's phase GPU median over the fight is within 8% of B's cdef median. With the reported period it reads 0.64 of cdef (today's three runs on 795ea6b3af: 0.65, 0.65, 0.66). KILL: using= is a measured value and GPU is outside 0.85 to 1.15 of cdef.",
+    "P1 (no regression)": "B's gfps median in the fight >= 12. Today's master runs read 13 to 16. The change is ~120 ms at start-up.",
+    "H0 (no hang)": "longest gap between hakuX-perf lines in the window <= 3 s, lines to the end, no crash marker."
+  }
+}

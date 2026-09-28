@@ -6,7 +6,12 @@
     thermal_state.py --diff A B                 cooling devices whose cur_state rose from A to B
     thermal_state.py --summary FILE.jsonl       one `THERMAL:` line for run.log
     thermal_state.py --window FILE.jsonl LO HI  is a pause possible inside LO..HI s after
-                                                FILE's first sample? exit 0 yes, 1 no, 2 unread
+                                                FILE's `start` sample (else its first)?
+                                                exit 0 yes, 1 no, 2 unread
+    thermal_state.py --cool FILE.jsonl ZONE C   is FILE's last sample cool enough to start a
+                                                title? exit 0 yes, 1 no (hot or paused), 2 unread
+    thermal_state.py --power FILE.jsonl LO HI   average power over LO..HI s after FILE's
+                                                `start` sample, as JSON; exit 2 unread
 
 WHY. On the Thor under the MAX regimen the kernel's thermal mitigation pauses
 cpu3-7 a few minutes into a run: cooling device `thermal-pause-F8` goes 1/1,
@@ -49,6 +54,40 @@ counts as covered; two failures in a row do not. The window's end needs a
 readable sample at or after it, less END_SLACK_S: dev_time is whole seconds
 and `soak end` is a millisecond logcat stamp, so the `end` sample taken just
 after it can read up to a second earlier.
+
+THE COOL-DOWN GATE (--cool). The pause trips at xo-therm 78 C and clears near
+70 C (8 C hysteresis). At MAX from 54 C, GTA took 9 min to reach the trip.
+A run queued seconds after a hot one starts at 75 C or already paused, and
+pauses in 2-4 min (#507). soak_title.sh therefore samples before it sets MAX
+and waits while the named zone reads at or above the limit, or any pause
+device is set. A device without the zone, or a sample with no reading, is
+not gated (exit 2): the gate may cost minutes, but it must never cost the run.
+
+POWER (`pw` in a sample, --power). The same adb call reads the battery's
+`current_now` (uA) and `voltage_now` (uV), the USB input's, and Android's
+thermal status. A frame rate reached by heating the device until it pauses is
+not a playable one, so every fix is judged on energy per frame as well as fps.
+  - SIGN. Both handhelds' kernels report battery `current_now` BELOW zero
+    while the battery drains and above it while it charges (AGENTS.md: the
+    Nova -459 mA under the emulator, +122 uA asleep). Battery power here is
+    the opposite, so that the number grows with the load:
+        battery W = -(current_now x voltage_now) / 1e12
+        + the battery is DISCHARGING, - it is CHARGING.
+  - USB INPUT is `usb/current_now` x `usb/voltage_now` when both read: a
+    measurement. With neither, `input_current_limit` x 5 V is an upper
+    bound, and is named as one (`usb_from`); a bound is not a value.
+    `usb_bound` is true when any sample behind the average was a bound:
+    usb_w, net_w and J per frame are then upper bounds too.
+  - NET W = battery W + USB input W: what the device draws. On the 500 mA
+    PC port that is about 2 W of input plus whatever the battery gives.
+  - THE AVERAGE is time-weighted: power is taken as linear between two
+    samples and held flat before the first and after the last, then
+    integrated over the window. A plain mean of the samples inside the
+    window would ignore up to 30 s at each edge.
+  - IMPOSSIBLE ROW. A sample that says the battery is charging at more than
+    SIGN_SLACK_W with no USB input cannot be true under the sign above. It
+    is counted (`sign_suspect`), and a window holding one gives no J per
+    frame: on a kernel with the other sign every number would be negated.
 """
 import datetime as dt
 import json
@@ -79,8 +118,22 @@ SAMPLE_SH = (
     "done; "
     "for z in /sys/class/thermal/thermal_zone*; do "
     "echo \"tz ${z##*thermal_zone} $(cat $z/temp 2>/dev/null) $(cat $z/type 2>/dev/null)\"; "
-    "done; echo end"
+    "done; "
+    # POWER. `ps <supply> <field> <value>`: the value goes last, usb_type
+    # holds spaces. `dumpsys -t 3`: a thermal HAL that does not answer must
+    # cost three seconds, not the sample.
+    "for p in battery usb; do d=/sys/class/power_supply/$p; "
+    "for f in status capacity current_now voltage_now online usb_type current_max input_current_limit; do "
+    "[ -f $d/$f ] && echo \"ps $p $f $(cat $d/$f 2>/dev/null)\"; "
+    "done; done; "
+    "echo \"ths $(dumpsys -t 3 thermalservice 2>/dev/null | grep -m1 'Thermal Status')\"; "
+    "echo end"
 )
+
+# See POWER. The USB input assumed when only its limit was read, and the
+# charging power with no input above which a sample's sign is suspect.
+USB_NOMINAL_V = 5.0
+SIGN_SLACK_W = 0.25
 
 # Read-only: each zone's trips, and which cooling devices each zone binds
 # (thermal_zoneN/cdevM -> ../cooling_deviceK, with cdevM_trip_point naming
@@ -128,6 +181,17 @@ def parse_sample(text):
         m = re.match(r"tz (\d+) (-?\d+) (.*)$", line)
         if m:
             s["tz"].append([int(m.group(1)), m.group(3).strip(), int(m.group(2))])
+            continue
+        # An empty value is a field that did not read: left out, never 0.
+        m = re.match(r"ps (\S+) (\S+) (\S.*)$", line)
+        if m:
+            val = m.group(3).strip()
+            s.setdefault("pw", {}).setdefault(m.group(1), {})[m.group(2)] = \
+                int(val) if re.fullmatch(r"-?\d+", val) else val
+            continue
+        m = re.match(r"ths .*Thermal Status:\s*(\d+)", line)
+        if m:
+            s.setdefault("pw", {})["thermal_status"] = int(m.group(1))
     return s
 
 
@@ -243,7 +307,8 @@ def coverage(recs, lo, hi, t0=None):
 
 def describe(ep, t0=None):
     """`thermal-pause-F8 1/1 began after +220 s and by +250 s (device 09-27 13:04:10)`"""
-    rel = (lambda t: "+%.0f s" % (t - t0)) if t0 is not None else (lambda t: "%.0f" % t)
+    # %+: an episode in the cool-down samples lies before +0 and reads -60 s.
+    rel = (lambda t: "%+.0f s" % (t - t0)) if t0 is not None else (lambda t: "%.0f" % t)
     began = ("after %s and by %s" % (rel(ep["after"]), rel(ep["first"]))
              if ep["after"] is not None else "by %s (paused in the first reading)" % rel(ep["first"]))
     ended = ("; cleared by %s" % rel(ep["before"])) if ep["before"] is not None \
@@ -253,19 +318,36 @@ def describe(ep, t0=None):
         began, ep["first_rec"].get("dev_time"), ended)
 
 
+def origin(ok):
+    """+0 s: the readable `start` sample (just before `am start`), not a
+    cool-down sample before it; else the first readable sample."""
+    starts = [dev_ts(r) for r in ok if r.get("label") == "start"]
+    return min(starts) if starts else min(dev_ts(r) for r in ok)
+
+
 def summary(recs):
     ok = [r for r in recs if paused(r) is not None and dev_ts(r) is not None]
     if not ok:
         return "THERMAL: unread -- no sample with a reading in %d lines" % len(recs)
-    t0 = min(dev_ts(r) for r in ok)
+    t0 = origin(ok)
     eps = episodes(recs)
     hot = max((z[2] for r in ok for z in r.get("tz") or []), default=None)
     fails = len(recs) - len(ok)
     tail = "; %d samples, %d unread, hottest zone %s" % (
         len(recs), fails, ("%.1f C" % (hot / 1000.0 if abs(hot) > 1000 else hot)) if hot is not None else "-")
+    # From `start` to the last reading: the run, not the cool-down before it.
+    pw = power_over(recs, t0, max(dev_ts(r) for r in ok))
+    if pw["measured"]:
+        tail += "; battery %+.2f W (+ is discharging)" % pw["battery_w"]
+        if pw["net_w"] is not None:
+            tail += ", usb in %.2f W, net %.2f W" % (pw["usb_w"], pw["net_w"])
     if not eps:
         return "THERMAL: no thermal-pause device above 0" + tail
-    return "THERMAL: pause " + " | ".join(describe(e, t0) for e in eps) + tail
+    # An episode the cool-down gate waited out cannot touch a scored window.
+    return "THERMAL: pause " + " | ".join(
+        describe(e, t0) + (" [in the cool-down, over before the start]"
+                           if e["before"] is not None and e["before"] <= t0 else "")
+        for e in eps) + tail
 
 
 def diff(a, b):
@@ -273,6 +355,118 @@ def diff(a, b):
     before = {(c[0], c[1]): c[2] for c in a.get("cool") or []}
     return ["%s(cd%d) %d->%d/%d" % (c[1], c[0], before.get((c[0], c[1]), 0), c[2], c[3])
             for c in b.get("cool") or [] if c[2] > before.get((c[0], c[1]), 0)]
+
+
+def zone_c(rec, zone):
+    """The first zone of this type in a sample, in C, or None."""
+    for z in rec.get("tz") or []:
+        if z[1] == zone:
+            return z[2] / 1000.0 if abs(z[2]) > 1000 else float(z[2])
+    return None
+
+
+def cool(rec, zone, limit_c):
+    """(exit code, phrase) for THE COOL-DOWN GATE."""
+    if paused(rec) is None:
+        return 2, "unread: %s" % (rec.get("error") or "no reading")
+    c = zone_c(rec, zone)
+    if c is None:
+        return 2, "no %s zone" % zone
+    if paused(rec):
+        return 1, "%s %.1f C, paused (%s)" % (
+            zone, c, ",".join("%s %d/%d" % d for d in pause_devices(rec)))
+    if c >= limit_c:
+        return 1, "%s %.1f C >= %g C" % (zone, c, limit_c)
+    return 0, "%s %.1f C < %g C" % (zone, c, limit_c)
+
+
+def first_pause(recs):
+    """(after, by): the first pause's onset bounds in seconds from the run's
+    origin() (after is None when the run started paused), or None when no
+    pause was sampled. An episode the cool-down gate waited out, over before
+    the start, is not the run's. See A PAUSE EPISODE."""
+    ok = [r for r in recs if paused(r) is not None and dev_ts(r) is not None]
+    if not ok:
+        return None
+    t0 = origin(ok)
+    eps = [e for e in episodes(recs) if e["before"] is None or e["before"] > t0]
+    if not eps:
+        return None
+    e = eps[0]
+    if e["first"] <= t0:
+        return (None, 0.0)
+    return (round(e["after"] - t0, 1) if e["after"] is not None else None, round(e["first"] - t0, 1))
+
+
+def power(rec):
+    """One sample's power, see POWER: dict(battery_w, usb_w, usb_from,
+    suspect), or None when the battery's current or voltage did not read."""
+    pw = rec.get("pw") or {}
+    bat, usb = pw.get("battery") or {}, pw.get("usb") or {}
+    i, v = bat.get("current_now"), bat.get("voltage_now")
+    if not isinstance(i, int) or not isinstance(v, int):
+        return None
+    out = {"battery_w": -(i * v) / 1e12, "usb_w": None, "usb_from": None}
+    ui, uv = usb.get("current_now"), usb.get("voltage_now")
+    if isinstance(ui, int) and isinstance(uv, int):
+        out.update(usb_w=(ui * uv) / 1e12, usb_from="usb current_now x voltage_now")
+    elif usb.get("online") == 0:
+        out.update(usb_w=0.0, usb_from="usb offline")
+    elif isinstance(usb.get("input_current_limit"), int):
+        out.update(usb_w=usb["input_current_limit"] * USB_NOMINAL_V / 1e6,
+                   usb_from="upper bound: input_current_limit x %g V" % USB_NOMINAL_V)
+    out["suspect"] = bool(out["usb_w"] is not None and out["usb_w"] < SIGN_SLACK_W
+                          and out["battery_w"] < -SIGN_SLACK_W)
+    return out
+
+
+def mean_over(pts, lo, hi):
+    """Time-weighted mean over (lo, hi) of the piecewise-linear curve through
+    pts [(t, value)], held flat outside them. See POWER, THE AVERAGE."""
+    pts = sorted(pts)
+    if not pts or hi <= lo:
+        return None
+
+    def at(t):
+        if t <= pts[0][0]:
+            return pts[0][1]
+        if t >= pts[-1][0]:
+            return pts[-1][1]
+        for (a, va), (b, vb) in zip(pts, pts[1:]):
+            if a <= t <= b:
+                return va if b == a else va + (vb - va) * (t - a) / (b - a)
+
+    ts = [lo] + [t for t, _ in pts if lo < t < hi] + [hi]
+    area = sum((at(a) + at(b)) / 2.0 * (b - a) for a, b in zip(ts, ts[1:]))
+    return area / (hi - lo)
+
+
+def power_over(recs, lo, hi):
+    """Average power over device-time window (lo, hi), see POWER. `samples`
+    counts the readings inside the window; with none, the window's power was
+    not measured, whatever the readings outside it say."""
+    pts = [(dev_ts(r), power(r), r) for r in recs or [] if dev_ts(r) is not None]
+    pts = [p for p in pts if p[1] is not None]
+    inside = [p for p in pts if lo <= p[0] <= hi]
+    out = dict(measured=bool(inside), samples=len(inside),
+               sign="battery_w: + discharging, - charging; net_w = battery_w + usb_w",
+               battery_w=None, usb_w=None, usb_from=None, usb_bound=None, net_w=None,
+               sign_suspect=sum(1 for p in inside if p[1]["suspect"]),
+               thermal_status_max=max((p[2]["pw"]["thermal_status"] for p in inside
+                                       if isinstance(p[2]["pw"].get("thermal_status"), int)),
+                                      default=None))
+    if not inside or hi <= lo:
+        out["measured"] = False
+        return out
+    out["battery_w"] = round(mean_over([(t, p["battery_w"]) for t, p, _ in pts], lo, hi), 3)
+    froms = sorted({p["usb_from"] for _, p, _ in pts if p["usb_from"]})
+    if froms and all(p["usb_w"] is not None for _, p, _ in pts):
+        out["usb_w"] = round(mean_over([(t, p["usb_w"]) for t, p, _ in pts], lo, hi), 3)
+        out["usb_from"] = "; ".join(froms)
+        # One bounded sample makes the average, and net_w with it, a bound.
+        out["usb_bound"] = any(f.startswith("upper bound") for f in froms)
+        out["net_w"] = round(out["battery_w"] + out["usb_w"], 3)
+    return out
 
 
 def read_one(arg):
@@ -321,11 +515,11 @@ def main(argv):
         return 0
     if argv[0] == "--window" and len(argv) == 4:
         recs = load(argv[1])
-        ok = [dev_ts(r) for r in recs or [] if paused(r) is not None and dev_ts(r) is not None]
+        ok = [r for r in recs or [] if paused(r) is not None and dev_ts(r) is not None]
         if not ok:
             print("unread: no sample with a reading")
             return 2
-        t0 = min(ok)
+        t0 = origin(ok)
         lo, hi = t0 + float(argv[2]), t0 + float(argv[3])
         hit = in_window(recs, lo, hi)
         for e in hit:
@@ -338,6 +532,21 @@ def main(argv):
             return 2
         print("no pause may overlap +%s..+%s s" % (argv[2], argv[3]))
         return 1
+    if argv[0] == "--cool" and len(argv) == 4:
+        recs = load(argv[1]) or []
+        rc, phrase = cool(recs[-1], argv[2], float(argv[3])) if recs else (2, "unread: no sample")
+        print(phrase)
+        return rc
+    if argv[0] == "--power" and len(argv) == 4:
+        recs = load(argv[1]) or []
+        ok = [r for r in recs if paused(r) is not None and dev_ts(r) is not None]
+        if not ok:
+            print("unread: no sample with a reading")
+            return 2
+        t0 = origin(ok)
+        pw = power_over(recs, t0 + float(argv[2]), t0 + float(argv[3]))
+        print(json.dumps(pw, sort_keys=True))
+        return 0 if pw["measured"] else 2
     if argv[0] == "--trips" and len(argv) == 2:
         zones = trips(argv[1])
         print(json.dumps({"serial": argv[1], "zones": zones}, sort_keys=True))

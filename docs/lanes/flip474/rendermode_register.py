@@ -1,0 +1,96 @@
+#!/usr/bin/env python3
+"""Write the prediction for DOA's render-mode A/B (NOTES.md section 16).
+
+    python3 docs/lanes/flip474/rendermode_register.py <ref>
+
+One binary, three arms: no env (base), TU_DEBUG=sysmem, TU_DEBUG=gmem. The
+env is the independent variable, so a_ref and b_ref are the same sha. The
+file is serialised and parsed back before it is written.
+"""
+import json
+import subprocess
+import sys
+
+REF = subprocess.check_output(['git', 'rev-parse', sys.argv[1]]).decode().strip()
+NOW = subprocess.check_output(['date', '-u', '+%Y-%m-%dT%H:%M:%SZ']).decode().strip()
+
+d = {
+    "registered_utc": NOW, "who": "lane.flip474", "issue": "474",
+    "title": "54430006-Dead_or_Alive_1_Ultimate.xiso.iso", "device": "nova",
+    "seconds": 300, "route": "survey", "perflog": True, "frames_every": 0,
+    "runs_per_arm": 1,
+    "a_ref": REF, "b_ref": REF,
+    "arms": {
+        "base": "no env. This is request 1-1790540673-flip474-2311172, "
+                "queued for flip474-tsperiod-doa-nova.json as its A arm on "
+                "the same sha. It had not run when this file was registered.",
+        "sysmem": "--env TU_DEBUG=sysmem",
+        "gmem": "--env TU_DEBUG=gmem",
+    },
+    "queue_order": "sysmem, gmem; each request.sh --title, --device nova, "
+                   "--route survey, --seconds 300, --perflog, --env, --expect "
+                   "this file",
+    "judge": "python3 docs/lanes/flip474/phaseread.py --from 151 --to 288 "
+             "<base> <sysmem> <gmem>; python3 docs/lanes/flip474/lockread.py "
+             "--from 151 --to 288 on each; grep 'env: TU_DEBUG' in each "
+             "logcat; crashcheck.py and tailcheck.py on each; the route's "
+             "shots in the window, by eye",
+    "units": "The binary reports GPU times with limits.timestampPeriod "
+             "(33.11 ns). The Nova's counter ticks every 52.083 ns, so true "
+             "ms = printed x 1.573. Every leg below is a ratio or a CPU-clock "
+             "time, so the factor cancels.",
+    "must_not_move": [],
+    "prediction": (
+        "#474, Addendum 5 item 2: why DOA's fight costs the Nova's GPU 64 ms "
+        "a frame. The O4 pilot's per-pass table (passread.py) puts 62.3 of "
+        "63.6 ms in one render pass: a 31.2 ms gap before it and 31.1 ms "
+        "inside it, equal within 2% at p10 and p90. The driver is a Turnip "
+        "build. Turnip writes an in-pass timestamp into the pass's draw "
+        "command stream, which GMEM rendering replays once per tile "
+        "(tu_query_pool.cc, tu_CmdWriteTimestamp2), so the value read back "
+        "is the last replay's. The guess: the pass is rendered in two "
+        "replays of the same draw stream, each about 31 ms, and sysmem "
+        "rendering runs the stream once."),
+    "legs": {
+        "M0 (instrument)": ">= 15 hakuX-phase lines with GPU > 0 in 151-288 s "
+        "in each arm, and the shots show the fight. Otherwise VOID for that "
+        "arm, rerun once. (A line is 60 guest frames, so a 12 fps arm writes "
+        "about 27 in the window and a faster arm more.)",
+        "E0 (the env reached the app)": "each env arm's logcat has the app's "
+        "'env: TU_DEBUG=<value>' line and the base has none. Otherwise VOID.",
+        "T0 (steady)": "in each arm, the smallest gfps in the window is at "
+        "least 0.6 of the median (no thermal on/off collapse). Otherwise "
+        "VOID for that arm.",
+        "S1 (the guess: replays)": "sysmem's phase GPU median <= 0.70 x the "
+        "base's. Confidence 60%. KILL of the replay reading: sysmem's GPU "
+        ">= 0.90 x the base's while G1 holds.",
+        "S2 (the gap goes with the replays)": "sysmem's X/R median <= 0.25. "
+        "The base's is 0.98. With one execution of the stream, a pass's two "
+        "timestamps bracket the whole pass, and nothing is left outside it.",
+        "G1 (the default is GMEM)": "gmem's phase GPU median is within 15% "
+        "of the base's, and its X/R median is 0.85 to 1.10.",
+        "F1 (the frame follows the GPU)": "sysmem's Tot median <= the base's "
+        "- 12 ms, and its gfps median >= the base's + 2. Conditional on S1; "
+        "confidence 80% given S1. If S1 holds and F1 fails, DOA's frame is "
+        "not GPU-bound, which is a finding against NOTES section 15.",
+        "R0 (reach, the ambiguous world)": "if sysmem, gmem and base agree "
+        "within 10% on GPU and on X/R, the run cannot tell 'render mode does "
+        "not matter' from 'this driver build ignores TU_DEBUG': VOID for "
+        "reach, not a refutation. The captured logcat has no driver tag, so "
+        "nothing else in the result shows the driver's half.",
+        "H0 (no hang)": "each arm: longest gap between hakuX-perf lines in "
+        "the window <= 3 s, lines to the end, no crash marker.",
+    },
+    "not_claimed": "Pixels. A soak writes no captures, and sysmem is a "
+                   "driver mode. Before any change ships that asks the driver "
+                   "for sysmem, the pgraph suites run under the same env.",
+    "expect": {}, "expect_counts": {},
+    "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are "
+                   "read off hakuX-phase, hakuX-perf and the app's env lines.",
+}
+
+s = json.dumps(d, indent=2) + "\n"
+json.loads(s)
+with open("docs/testing/predictions/flip474-doa-rendermode.json", "w") as f:
+    f.write(s)
+print("flip474-doa-rendermode.json", REF[:10])
