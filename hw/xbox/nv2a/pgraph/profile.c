@@ -631,6 +631,42 @@ void nv2a_profile_flip_stall(void)
                             g_nv2a_stats.frame_count, pace_vb[0], pace_vb[1],
                             pace_vb[2], pace_vb[3], pace_vb[4], pace_vsum,
                             pace_max_us / 1000.0, pace_span_us / 1000.0);
+
+        /*
+         * #413: the shader and pipeline cache counters the overlay shows,
+         * with their deltas since the last line, so a soak can put a scene
+         * load's stall (the gap to this line, and max= on hakuX-pace) beside
+         * the compiles inside it. p = graphics pipelines (a miss is a
+         * vkCreateGraphicsPipelines, or an async enqueue), s = shader
+         * modules, v = SPIR-V cache; h/m = hits/misses, dh/dm the deltas.
+         * dt_ms is wall time since the last line. L = pipeline cache loaded
+         * from disk, W = saves to it. Wall ms inside the compile is not here:
+         * its only timer is NV2A_PERF_LOG's, compiled out of a normal build.
+         */
+        {
+            static ShaderPipelineStats prev;
+            static int64_t prev_us;
+            ShaderPipelineStats s = g_nv2a_stats.shader_stats;
+            __android_log_print(ANDROID_LOG_INFO, "hakuX-perf",
+                "[shd413] f=%u dt_ms=%lld ph=%u pm=%u dph=%u dpm=%u "
+                "sh=%u sm=%u dsh=%u dsm=%u vh=%u vm=%u dvh=%u dvm=%u "
+                "L=%c W=%u",
+                g_nv2a_stats.frame_count,
+                prev_us ? (long long)((now - prev_us) / 1000) : 0LL,
+                s.pipeline_cache_hits, s.pipeline_cache_misses,
+                s.pipeline_cache_hits - prev.pipeline_cache_hits,
+                s.pipeline_cache_misses - prev.pipeline_cache_misses,
+                s.shader_cache_hits, s.shader_cache_misses,
+                s.shader_cache_hits - prev.shader_cache_hits,
+                s.shader_cache_misses - prev.shader_cache_misses,
+                s.spv_cache_hits, s.spv_cache_misses,
+                s.spv_cache_hits - prev.spv_cache_hits,
+                s.spv_cache_misses - prev.spv_cache_misses,
+                s.pipeline_cache_disk_loaded ? 'Y' : 'N',
+                s.pipeline_cache_disk_saved);
+            prev = s;
+            prev_us = now;
+        }
     }
 #endif
     if ((g_nv2a_stats.frame_count % 60) == 0) {
