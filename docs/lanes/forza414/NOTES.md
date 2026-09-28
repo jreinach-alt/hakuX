@@ -1028,3 +1028,52 @@ than 60 times in 13 s prints no per-frame line. **What moved** is section 28's t
 render-to-texture surface is re-bound, so DOA stays GPU-bound. Replacing that all-frames wait
 with the surface's own last-use fence is the next DOA lever. It is in texture.c, which is not
 this lane's file.
+
+## 31. Hunk 4 on AUF, and the goldens: +16% fps, pixels byte-identical
+
+AUF A `1-1790561467-forza414-3123358` (35ee65562a) and B `0-0-x-1790561468-forza414-3125441`
+(32657e9719; the host promoted it, and `1-...` is a symlink to it). Window t = 299-420 s, level
+play in both: the same vault door, rendered the same (route frames 19:52:03 and 19:59:41).
+
+| | A | B |
+|---|---:|---:|
+| **fps** | **17.25** | **19.99** (B/A 1.159) |
+| Tot | 52.7 | 37.8 |
+| Surf | 35.3 | 2.2 |
+| s413 cdef | 31.32 | 0.09 |
+| `[sdcall]` surfupd pre per frame, wait ms | 0.951, 30.44 | 0, 0 |
+| `[sdcall]` prerec pre per frame, wait ms | 0, 0 | 0.115, 1.01 |
+| `[sdcall]` total wait, ms/frame | 30.44 | 1.01 |
+| Draw (Pipe) | 9.2 (4.3) | 18.7 (13.6) |
+| Fin (Fen) | 0.6 (0.2) | 2.7 (2.6) |
+| Idle | 7.6 | 14.0 |
+| GPU (uncorrected) | 25.7 | 24.0 |
+| vCPU ms per 2 s | 1917 | 1607 |
+
+| leg | rule | result |
+|---|---|---|
+| M0 | both in level play, lines printed, no crash | holds (34 / 40 lines, 0 crash lines) |
+| G0 | A's pre per frame >= 0.5 | **holds**: 0.951. AUF waits in the branch the hunk defers |
+| W1 | B/A total completion wait <= 0.5 | **holds**: 0.033 |
+| H0 | as for DOA | the gap part fails in both arms (loading gaps of 9.6 and 12.0 s; mis-specified as before); the tail holds in both (3.0 and 0.1 s) |
+
+In B the flip batch mostly completes where `[sdcall]` does not count: prerec takes only 0.115 per
+frame. The rest retires at the frame-slot rotation or a non-deferred finish, whose fence has
+already been waited (`pgraph_vk_complete_staged_downloads`, vk/draw.c). About 12 ms of the 30
+moved into Pipe, Fen and Idle. Idle is the PFIFO thread waiting for the guest, so AUF's frame is
+now bound by something other than this completion. lane.flip474's `[cblat]` priced it at 19.3
+ms/frame of AUF's 71.4 ms frame: at most 14 -> 19 fps. **B reads 17.25 -> 19.99.**
+
+**Goldens, `forza414-predl-mnm.json`:** `[job.arms]` VERDICT PASS, 266 of 266 byte-identical
+(base `1-1790552915-arms-forza414b-base-3330273`, fix `...-fix-3330409`). Every scores1.tsv row is
+`ok` except the same ten `white-content` rows as every earlier forza414 arm (two z16
+Depth_buffer_fixed_function, eight TexFmt Texture_render_target), identical in both arms.
+
+**Hunk 4's verdict:**
+
+| title | wait before -> after | fps |
+|---|---|---|
+| DOA, two pairs | 50-56 -> 0 ms/frame | +7%, +14%. GPU-bound: the wait moves to texture.c:2215's all-frames flush |
+| AUF | 30.4 -> 1.0 ms/frame | **+16%** |
+
+The pixel suites are byte-identical, with no hang and no crash.
