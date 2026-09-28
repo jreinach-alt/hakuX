@@ -470,11 +470,11 @@ issues = ["526"]
 files = ["ui/xemu.c", "hw/xbox/nv2a/pgraph/vk/display.c", "android/app/src/main/java/org/libsdl/app/SDLSurface.java", "docs/lanes/pacing/**", "docs/testing/predictions/pacing-*.json"]
 note = "STARTED (lane.local 2026-09-28T01:27:49Z), briefs/pacing.md: #526 (0.5, fps-focus). Sleep-based frame limiter (no XEMU_OPT_FRAME_LIMITER_SPIN tail), 60 Hz surface frame-rate request, vsync-aligned present measured. display.c from [free]; ui/xemu.c under the ui/** glob; SDLSurface.java was unlisted. The two sched_yield waits are in vk/draw.c, held by lane.forza414: propose them, claim at its release."
 
-[lane.sweepclock]
+[retired.sweepclock]
 issues = []
-files = ["docs/testing/jobs/selftest.d/76-pr-sweep.sh", "docs/lanes/sweepclock/NOTES.md"]
-released = ["docs/testing/jobs/selftest.d/76-pr-sweep.sh", "docs/lanes/sweepclock/NOTES.md"]
-note = "RELEASED at PR-ready (hostops 2026-09-27 19:05 PDT): PR #531 ready + fold-ready, CI green. || STARTED (hostops 2026-09-27 18:29 PDT), briefs/sweepclock.md: harness defect, no issue. 76-pr-sweep.sh reads TRUNK_CT once but pr-sweep.sh fetches the real origin each run; a fold mid-selftest (#503 at 18:10 PDT, +894 s) made the +600 live check stale and failed PR #523's run 36364245109. Both files were unclaimed."
+retired_utc = "2026-09-28T02:06:00Z"
+files = []
+note = "RETIRED (hostops 2026-09-28T02:06Z): PR #531 folded (7b94a74caf), unit gone. Files RELEASED to [free]: docs/testing/jobs/selftest.d/76-pr-sweep.sh, docs/lanes/sweepclock/**."
 
 [lane.rendermode474]
 issues = ["474"]
@@ -487,6 +487,7 @@ files = ["docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/99-cloud-la
 note = "STARTED (hostops 2026-09-28T01:45Z), briefs/cloudlaneguard.md: harness defect, no issue. cloud.sh's claim guard sees only other cloud units, so it claimed audit1 and remediate on #523 while lane.thermal507 was still running on lane/thermal507-power (two writers, one branch). Add a held_why check for the PR's own running lane. cloud.sh was unclaimed (not in [free], no row). Interim: host-tools/audit_outlet.sh + lane_on_branch.sh."
 
 [free]
+# RELEASED (hostops 2026-09-28T02:06Z) by retiring lane.sweepclock (PR #531 folded 7b94a74caf): docs/testing/jobs/selftest.d/76-pr-sweep.sh, docs/lanes/sweepclock/**.
 # RELEASED (job.board 2026-09-28T01:46Z) by retiring lane.escitems (PR #521 folded 1a6b0f83a7): docs/testing/jobs/status_html.py, docs/testing/jobs/selftest.d/99-status-escalation-items.sh, docs/lanes/escitems/**.
 # CLAIMED (hostops 2026-09-28T01:45Z): docs/testing/jobs/cloud.sh (unclaimed) -> lane.cloudlaneguard.
 # CLAIMED (lane.local 2026-09-28T01:27:49Z): target/i386/tcg/translate.c -> lane.idlehalt (#525); hw/xbox/nv2a/pgraph/vk/display.c -> lane.pacing (#526); android/app/src/main/cpp/xemu_android.cpp -> lane.flip474 (per-title render mode, #474). Unlisted files claimed with them: see each row.
