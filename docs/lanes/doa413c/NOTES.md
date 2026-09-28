@@ -310,7 +310,7 @@ rings out reliably.
 
 `async_compile` exists (off by default, `SettingsActivity.kt:69`), but it **would not remove
 this stall**. With it on, a draw whose shader modules are still compiling is skipped. A draw
-whose *pipeline* is pending **waits** (`vk/draw.c:4344-4352`, `while (pending) g_usleep(100)`),
+whose *pipeline* is pending **waits** (`vk/draw.c:4342-4351`, `while (pending) g_usleep(100)`),
 on the stated assumption that pipeline creation is fast. On Turnip, pipeline creation is where
 the whole compile happens (`tu_spirv_to_nir`, `tu_shader_create`, `link_opts`).
 
@@ -326,7 +326,7 @@ In order, each to be priced before the next:
 2. **Do not block the pusher on a pending pipeline in async mode.** Skip the draw, as the
    shader-module case already does, and compile on the worker. Enable `async_compile` for titles
    (not for the pgraph test discs, whose goldens need every draw). The cost is that geometry is
-   missing for the frames its pipeline compiles in; the comment at `draw.c:4346` records that
+   missing for the frames its pipeline compiles in; the comment at `draw.c:4347` records that
    skipping "causes permanently missing textures on screens that only draw once". So the claim
    must carry a guard for those, for example a bounded wait before the skip. Files:
    `hw/xbox/nv2a/pgraph/vk/draw.c` (held by [lane.forza414]) and
