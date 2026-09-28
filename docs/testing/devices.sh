@@ -69,6 +69,8 @@ device_env() {
         # Fan MAX 5 (SPORT), not 3 (PERFORMANCE): measured 2026-09-26, 3
         # holds SMART's idle duty (12000) and 5 drives 25000 / 8100 rpm.
         export DEVICE_PERF_MAX=2 DEVICE_FAN_MAX=5 DEVICE_PERF_REST=0 DEVICE_FAN_REST=4
+        # The fan settings a player can select: DEVICE_FAN_OPTIONS below.
+        export DEVICE_FAN_OPTIONS="off=0@0 quiet=1@0,1 smart=4@0,1,2 sport=5@0,1,2 customize=6:0-100@2"
         ;;
     bdc158a5)   # AYN Thor
         export SERIAL=bdc158a5
@@ -84,6 +86,8 @@ device_env() {
         # gameplay (NOTES 5d). Revisit once CUSTOM (6) and the PWM period
         # are read.
         export DEVICE_PERF_MAX=2 DEVICE_FAN_MAX=4 DEVICE_PERF_REST=0 DEVICE_FAN_REST=4
+        # The fan settings a player can select: DEVICE_FAN_OPTIONS below.
+        export DEVICE_FAN_OPTIONS="off=0@0 quiet=1@0,1 smart=4@0,1,2 sport=5@0,1,2 customize=6:0-100@2"
         ;;
     *)  echo "unknown device $1 -- add it to devices.sh rather than guessing" >&2
         return 2 ;;
@@ -236,6 +240,111 @@ device_perf_set() {
     got=$(device_perf_get)
     printf '%s\n' "$got"
     [ "$got" = "$1 $2" ]
+}
+
+# ------------------------------------------------------------ fan options
+#
+# DEVICE_FAN_OPTIONS (per row above): the fan settings a player can select
+# on this handheld. Only these may be requested (soak_title.sh FAN_MODE;
+# owner, 2026-09-28: "only use available modes. I don't want to test on a
+# fan speed that's user inaccessible"). One word per option:
+#
+#   <name>=<fan_mode>[:<lo>-<hi>]@<performance_modes>
+#
+# <performance_modes> are the performance_mode values at which the menu
+# shows the option; `:<lo>-<hi>` is a slider whose position goes to
+# `settings system fan_speed`. Read out of each handheld's SystemUI.apk
+# (the Quick Settings fan tile, the only fan-mode selector either has; the
+# OEM settings apps hold only the Smart curve editor) and checked on the
+# Thor by measurement: docs/lanes/fanduty507/NOTES.md. Both handhelds ship
+# the same tile, so the rows carry the same list:
+#
+#   off        0     the tile's switch, shown at NORMAL (0) only
+#   quiet      1     NORMAL and STANDARD; hidden at HIGH
+#   smart      4     all three; the OEM app's temperature curve
+#   sport      5     all three
+#   customize  6     HIGH only; the slider 0-100 is `fan_speed`, and the
+#                    duty is 25000 + 250 x it on the Thor (25000-50000),
+#                    25000 + 100 x it on the Nova (25000-35000)
+#
+# device_fan_options <serial>  ->  the option words, one line.
+# In a subshell, for the reason device_perf_values is.
+device_fan_options() {
+    ( device_env "$1" >/dev/null || exit 2
+      printf '%s\n' "${DEVICE_FAN_OPTIONS:-}" )
+}
+
+# device_fan_names <serial> <performance_mode>  ->  the options the menu
+# shows at that performance mode, as a request spells them
+# ("smart, sport, customize:<0-100>").
+device_fan_names() {
+    local w name at out=""
+    for w in $(device_fan_options "$1"); do
+        name="${w%%=*}"; at="${w##*@}"
+        case ",$at," in *",$2,"*) ;; *) continue ;; esac
+        case "${w%@*}" in *:*) name="$name:<${w#*:}"; name="${name%@*}>" ;; esac
+        out="${out:+$out, }$name"
+    done
+    printf '%s\n' "$out"
+}
+
+# device_fan_mode_of <serial> <request> <performance_mode>  ->  "MODE" or
+# "MODE SPEED" for a request of `<name>` or `<name>:<position>`, matched
+# without regard to case. Non-zero, and nothing on stdout, when the device
+# has no option of that name (1), does not show it at that performance mode
+# (2), or the slider position is missing, not a whole number, or outside the
+# slider's range (3), or a position was given to an option with no slider (3).
+device_fan_mode_of() {
+    local want pos="" colon=0 w name spec mode range lo hi
+    want=$(printf '%s' "${2:-}" | tr '[:upper:]' '[:lower:]')
+    case "$want" in *:*) colon=1; pos="${want#*:}"; want="${want%%:*}" ;; esac
+    [ -n "$want" ] || return 1
+    for w in $(device_fan_options "$1"); do
+        name="${w%%=*}"
+        [ "$name" = "$want" ] || continue
+        case ",${w##*@}," in *",${3:-},"*) ;; *) return 2 ;; esac
+        spec="${w#*=}"; spec="${spec%@*}"; mode="${spec%%:*}"
+        if [ "$spec" = "$mode" ]; then
+            [ "$colon" = 0 ] || return 3
+            printf '%s\n' "$mode"; return 0
+        fi
+        range="${spec#*:}"; lo="${range%-*}"; hi="${range#*-}"
+        case "$pos" in ''|*[!0-9]*) return 3 ;; esac
+        [ "${#pos}" -le 3 ] || return 3
+        pos=$((10#$pos))
+        [ "$pos" -ge "$lo" ] && [ "$pos" -le "$hi" ] || return 3
+        printf '%s %s\n' "$mode" "$pos"; return 0
+    done
+    return 1
+}
+
+# device_fan_get  ->  "MODE SPEED": fan_mode and fan_speed as the device
+# reads them ("null" for a setting never written), ONE adb call.
+device_fan_get() {
+    adb_call "${ADB_QUICK_TIMEOUT:-20}" "fan mode read" shell \
+        'echo "fan $(settings get system fan_mode) $(settings get system fan_speed)"' \
+        2>/dev/null | tr -d '\r' | sed -n 's/^fan //p' | tail -1
+}
+
+# device_fan_mode_set <fan_mode> [<fan_speed>|null]  ->  0 when both read
+# back as asked. Echoes the read-back "MODE SPEED". In the menu's order: the
+# mode, then the slider's position (the tile sets fan_mode 6, then writes
+# fan_speed). `null` deletes fan_speed, which is how a device that never had
+# the slider moved reads, so a restore can put that back too. Writes the
+# settings only: the OEM service drives the fan from them, and nothing here
+# writes the fan's PWM node.
+device_fan_mode_set() {
+    local got cmd="settings put system fan_mode $1"
+    case "${2:-}" in
+        '') ;;
+        null) cmd="$cmd; settings delete system fan_speed" ;;
+        *) cmd="$cmd; settings put system fan_speed $2" ;;
+    esac
+    adb_call "${ADB_QUICK_TIMEOUT:-20}" "fan mode write $1 ${2:-}" shell "$cmd" >/dev/null 2>&1
+    got=$(device_fan_get)
+    printf '%s\n' "$got"
+    [ "${got%% *}" = "$1" ] || return 1
+    [ -z "${2:-}" ] || [ "${got#* }" = "$2" ]
 }
 
 # ------------------------------------------------------------ display 0

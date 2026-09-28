@@ -1346,6 +1346,11 @@ static void update_carried_fog_coord(PGRAPHState *pg, PGRAPHVkState *r,
     }
 }
 
+/* Set by a dirty draw, which skips the hashes: last_*_uniform_hash no longer
+ * describe the layouts, so the next clean draw counts as changed. Touched
+ * only on the thread that draws, as the hashes are. */
+static bool uniform_hashes_stale = true;
+
 void pgraph_vk_update_shader_uniforms(PGRAPHState *pg)
 {
     NV2A_VK_DGROUP_BEGIN("%s", __func__);
@@ -1405,12 +1410,16 @@ void pgraph_vk_update_shader_uniforms(PGRAPHState *pg)
                           PshUniform__COUNT);
 
     if (constants_dirty) {
-        /* Dirty flags already tell us uniforms changed — skip hash */
+        /*
+         * Dirty flags already tell us uniforms changed — skip the hash. It
+         * used to be taken anyway, of both whole layouts, only so the next
+         * draw had something to compare against (#474: apply_uniform_updates
+         * plus fast_hash were 3.5-3.7 ms/frame on Blinx and AUF). The saved
+         * hashes are marked stale instead, and the next clean draw uploads
+         * once whatever it hashes to.
+         */
         r->uniforms_changed = true;
-        r->last_vsh_uniform_hash = fast_hash(vsh_layout->allocation,
-                                             vsh_layout->total_size);
-        r->last_psh_uniform_hash = fast_hash(psh_layout->allocation,
-                                             psh_layout->total_size);
+        uniform_hashes_stale = true;
         pg->vsh_constants_any_dirty = false;
         pg->ltctxa_any_dirty = false;
         pg->ltctxb_any_dirty = false;
@@ -1423,12 +1432,13 @@ void pgraph_vk_update_shader_uniforms(PGRAPHState *pg)
                                       vsh_layout->total_size);
         uint64_t psh_hash = fast_hash(psh_layout->allocation,
                                       psh_layout->total_size);
-        if (vsh_hash != r->last_vsh_uniform_hash ||
+        if (uniform_hashes_stale || vsh_hash != r->last_vsh_uniform_hash ||
             psh_hash != r->last_psh_uniform_hash) {
             r->uniforms_changed = true;
         }
         r->last_vsh_uniform_hash = vsh_hash;
         r->last_psh_uniform_hash = psh_hash;
+        uniform_hashes_stale = false;
     }
 
     NV2A_VK_DGROUP_END();

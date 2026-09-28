@@ -331,6 +331,53 @@ shortens every caller's walk on both threads.
   runs differ by 20% in it (3584 and 4292) because their tables differ in
   size; us per entry is the figure that agrees.
 
+## Attempt 4, resumed (2026-09-28 ~19:55Z)
+
+Why the previous session did not finish: it ended on a correct `waiting:`,
+on the signed-suite verdict for this PR and on the fix pair and its two
+pixel arms for #575. Nothing of it had run when it ended (the Thor was on
+lane.fanduty507's hold). The signed-suite verdict was posted at 19:29Z and
+the fix pair finished at 19:55Z; handback resumed the lane then.
+
+### The signed-suite arm: PASS, and it supersedes the one-capture FAIL
+
+`dirtytlb-counter-signed.json` (`[job.arms]` on #549, 19:29Z; A
+`01e62d8d1c` result `arms-dirtytlb-base-1288042`, B `0794c79011` result
+`arms-dirtytlb-fix-1288213`; three runs per arm, 19 captures each, progress
+log proof in all six):
+
+- All 19 registered checks hold: 18 captures exact in both arms, no capture
+  outside A's band, no `unreadable` row in the six scores files, no
+  UtilAcceptVsock in the six run logs.
+- `txt_A8R8G8B8_ADD` scores 168,960 px against the golden in all six runs,
+  and **it varies inside arm A**, which is master with no counter: A's run
+  1 differs from A's runs 2 and 3 in 512 px (two rows, x 64 to 319, y 118
+  to 119, largest channel difference 191; sha256 `906cb7f2` against
+  `5a303ebf`). B's three runs are all `5a303ebf`. Read here with PIL on the
+  captures; the score cannot see it because those rows differ from the
+  golden either way.
+- So the capture moves run to run on a build that has no counter, which is
+  the prediction's claim. The 15,533 px move of the one-run arm is larger
+  than the 512 seen here and was not reproduced in three runs of B.
+- The PR label is `verified`: the arms job counts the FAIL as superseded.
+
+So #549 is done: counter measured on both titles, overhead measured (H
+passes on Crimson, fails its 1% ratio on Blinx at 3.6 us per flip), pixel
+arm superseded by a PASS. It goes ready.
+
+### What the next lane should not repeat
+
+- Do not read a one-run pixel FAIL on `Texture_signed_component_tests` as
+  the change's. `txt_A8R8G8B8_ADD` moved once under this lane's counter,
+  once under tiecode282's unrelated change, and between two runs of one
+  master build here. Register that suite with three runs per arm from the
+  start, and compare its captures by pixel, not by score: the score read
+  168,960 for two different images.
+- H's bar is a ratio to `rdous`. With the fix of #575 the walks cost a
+  fifth of what they did, so the same 180 to 216 ns per call reads 3.8% of
+  rdous. The cost to watch is the absolute one (30 to 39 us per flip on
+  Crimson).
+
 ## Waiting (2026-09-28 ~18:50Z, attempt 4)
 
 All outside this session. Both handhelds are on holds (the Nova on battery,

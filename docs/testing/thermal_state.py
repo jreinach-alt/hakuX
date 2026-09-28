@@ -137,6 +137,9 @@ SAMPLE_SH = (
     # FAN. `fan <field> <value>`; see FAN_DIR.
     "for f in duty period state speed; do [ -f " + FAN_DIR + "/$f ] && "
     "echo \"fan $f $(cat " + FAN_DIR + "/$f 2>/dev/null)\"; done; "
+    # The OEM fan mode (devices.sh), so every sample says which mode drove
+    # the duty beside it; soak_title.sh FAN_MODE is checked against this.
+    "echo \"fan mode $(settings get system fan_mode 2>/dev/null)\"; "
     "echo end"
 )
 
@@ -210,14 +213,17 @@ def parse_sample(text):
 
 
 def fan_range(recs):
-    """'fan duty 13700-29000 of 50000' over every sample that read the fan, or None."""
+    """'fan duty 13700-29000 of 50000[ at fan_mode 4]' over every sample that
+    read the fan, or None. The modes are every fan_mode a sample read."""
     fs = [r["fan"] for r in recs if isinstance((r.get("fan") or {}).get("duty"), int)]
     if not fs:
         return None
     ds = [f["duty"] for f in fs]
     periods = sorted({f["period"] for f in fs if isinstance(f.get("period"), int)})
-    return "fan duty %d-%d%s" % (min(ds), max(ds),
-                                 " of %s" % "/".join(map(str, periods)) if periods else "")
+    modes = sorted({f["mode"] for f in fs if isinstance(f.get("mode"), int)})
+    return "fan duty %d-%d%s%s" % (min(ds), max(ds),
+                                   " of %s" % "/".join(map(str, periods)) if periods else "",
+                                   " at fan_mode %s" % "/".join(map(str, modes)) if modes else "")
 
 
 def sample(serial, label=None):
