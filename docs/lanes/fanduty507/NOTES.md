@@ -4,6 +4,15 @@ Built the knob #507 D.3 needs: a title soak can run at any fan setting a
 player can select in the handheld's own menu, and at nothing else.
 lane.sustain507 runs D.3 with it; this lane measured no fps.
 
+## Attempt 3 (2026-09-28): why attempt 2 did not finish
+
+Attempt 2 built and proved the fan-mode knob (below), pushed it, and ended
+waiting on two things outside its session: CI on 105e8cbaf0, and the
+Nova's battery hold. It never started Addendum 2 (the screen wake across
+the cool-down gate). Nothing it pushed was lost. Attempt 3 added that fix as
+its own commit (section 5), merged origin/master, and waits on the same two
+things.
+
 ## Attempt 2 (2026-09-28): why attempt 1 did not land
 
 Attempt 1 built `FAN_DUTY=<pwm>`, a raw write to the fan's PWM duty node
@@ -265,12 +274,67 @@ the one open item. The commands for when it is idle:
         /storage/E6C6-D7AA/Games/XBox/4D530013-Blinx_The_Time_Sweeper.xiso.iso 180
     docs/testing/jobs/hold.sh release nova lane.fanduty507
 
-## Status (2026-09-28 19:10 UTC): waiting
+## 5. The screen across the cool-down gate (Addendum 2, its own commit)
+
+**The bug.** soak_title.sh sent KEYCODE_WAKEUP, then ran the cool-down gate
+(which can wait minutes), then `am start`. On 2026-09-28 the Thor's screen
+timeout was 60 s. Two runs cooled for 77 s and 78 s, found the display OFF at
+`am start` (`display at start {"0":"OFF","4":"OFF"}`), and aborted "not
+foreground (unknown)": `1-1790606269-lane.dirtytlb-479803` and
+`1-1790613195-forza414-3088504`.
+
+**The fix** (dded7e06b1, `Release note (none): test harness.`):
+1. force-stop, KEYCODE_WAKEUP, and the display check (`display_gate`). A
+   covered display is still refused here, and no KEYCODE_SLEEP reaches the
+   owner's screen, as #494 requires.
+2. KEYCODE_SLEEP, then the fan-mode check and the cool-down gate, dark.
+3. KEYCODE_WAKEUP, then `display_gate` again, immediately before
+   `arm_audio`, `perf_enter`, `fan_enter` and `am start`. A cover that appears
+   during the gate is refused here (exit 4, before anything is armed).
+
+The brief asked for the sleep before the gate and the wake after it. It did
+not ask for the first check. I kept it because otherwise the sleep would go
+out before the covered-display refusal, and 99-display-covered's `covered` leg
+(no KEYCODE_SLEEP over the owner's screen) would go red.
+
+**Selftest `99-wake-after-gate.sh`.** The fake adb models a screen with a
+1.5 s timeout. xo-therm reads 70 C for three samples, then 50 C, so the gate
+waits about 3 s. The legs and the world each fails in are in its header. On
+this branch:
+
+    ok   on: the gate waited 3 s against a 1.5 s screen timeout, and the display read ON at am start
+    ok   order: adb saw [wake sleep cool cool cool cool wake cool am cool cool sleep ]
+    ok   recheck: a cover that appears during the gate is refused after it: exit 4, display-covered, no am start
+    ok   covered: a display covered from the start is refused before any sleep; adb saw [wake ]
+    ok   old-order mutant: the display is OFF at am start, and the on leg turns red
+    selftest: 5 passed, 0 failed
+
+Against the real old-order soak_title.sh (HEAD before the fix, copied back
+after):
+
+    FAIL on: display-OFF-at-am-start | ... COOLDOWN: waited 3 s, xo 70.0 -> 50.0 C ...
+    FAIL order: adb saw [wake cool cool cool cool cool am cool cool sleep ], not wake, sleep, ...
+    FAIL recheck: rc=0 at_start=OFF | ...
+    ok   covered: ...
+    FAIL old-order mutant: its anchors are gone from soak_title.sh -- update the mutant
+    selftest: 1 passed, 4 failed
+
+Neighbouring fragments on this branch, each run alone: 99-display-covered
+23/0, 99-thermal-pause 16/0, 99-fan-mode 33/0, 84-perf-regimen 21/0,
+89-title-verdict 81/0, 99-default-regimen 7/0, 99-usb-dialog 9/0,
+99-iso-roots 10/0.
+
+No real soak exercised this fix. The Thor was running
+`1-1790620563-arms-dirtytlb-base-1288042` and the Nova was held. The next
+dispatched soak on either device runs it, once the host's update window has
+restarted the dispatcher.
+
+## Status (2026-09-28, attempt 3): waiting
 
 The PR stays a draft, waiting on two things outside this session:
 - CI on the pushed head.
-- The Nova's battery hold, set by hostops and lifted by device_reality at
-  80%.
+- The Nova's battery hold, set by hostops at 18:10 UTC (14%) and lifted by
+  device_reality at 80%.
 
 When CI is green: mark #571 ready.
 - If the Nova is idle by then, run its probe and proof soak (commands
@@ -289,3 +353,5 @@ When CI is green: mark #571 ready.
 - The Thor's Sport is not its maximum. Under load, Smart runs above it.
 - Do not write the PWM node. Every user-reachable duty on the Thor,
   including full fan, is a `settings` write (`customize:100`).
+- Do not put a KEYCODE_WAKEUP before anything that can wait. The screen
+  timeout starts at the wake, and a soak needs the display lit at `am start`.
