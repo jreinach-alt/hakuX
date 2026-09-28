@@ -477,3 +477,18 @@ the repository at `$0/../..`. Every row reads UNQUEUED, which looks like
 a fixture fault. Build the mutant inside a symlink tree of `docs/testing`,
 with the repository's `.git` linked two levels up.
 
+
+## 2026-09-28 (attempt 1 of this resume): dispatch-hardening defect 29
+
+**Why the previous attempt did not finish, in this lane's terms.** It did
+finish. PR #386 (defect 27) was marked ready and has folded. This resume
+came from the host adding defect 29 at the head of the order, not from a
+failure.
+
+**This PR is defect 29**, on its own branch `lane/toolsmith-selftestboard`
+from `origin/master` @ 01e62d8d1c. The record is under "Defect 29" in
+`docs/lanes/dispatch-hardening/NOTES.md`.
+
+**Do not repeat.** A check that reads a tool's output through `2>&1 | head`
+depends on buffering, not on the tool. Read the stream the lines are printed
+on, and match them anywhere in it.

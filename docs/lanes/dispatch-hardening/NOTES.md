@@ -646,6 +646,31 @@ mutant copied alone into a temp directory queued nothing (`cannot resolve
 master's arms.sh, copied byte-identical into a scratch worktree at
 origin/master that has only this fragment under `selftest.d/`.
 
+## Defect 29: a red board failed the tracker-source check under its name
+
+Selftest part I checked that check_territory reads the tracker from where
+it reads the territory, from `check_territory.py 2>&1 | head -3`. The FAIL
+lines go to stderr, which is unbuffered, and stdout is block-buffered in a
+pipe. So on a red board every stderr line comes out first, and with two or
+more of them `head -3` holds no `read from` line. The master selftest of
+3a5d79e3ea failed this check while origin/board double-claimed a file. The
+check was about the two source lines, not about the board being green:
+preflight gates that.
+
+The fix reads stdout only and matches the two lines anywhere in it. The
+proof is in the same fragment. It uses a private repo with two orphan board
+branches, read through `HAKUX_BOARD_REF`:
+
+| fixture | what it shows |
+|---|---|
+| `fxred`: both files on the ref, `x.c` held by lanes a and b | stderr names the double claim, and the source check passes |
+| `fxsplit`: the tracker is missing from the ref | stdout says `territory.toml read from fxsplit` and `nv2a_issues.toml read from working tree`, and the check fails |
+| the old `2>&1 \| head -3` on `fxred` | fails, and its first line is `FAIL: territory.toml` |
+
+Seen on the way: fragment 51 sets `SECONDS=0` for its own timers (parts C
+and G), so the runner prints `51-dispatch-hardening.sh took -376s`. That is
+cosmetic, and it is older than this change.
+
 ## For the next lane
 
 - Do not match the WSL interop signature on a call's stderr; it bypasses
