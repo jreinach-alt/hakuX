@@ -472,7 +472,7 @@ note = "STARTED (lane.local 2026-09-28T01:27:49Z), briefs/pacing.md: #526 (0.5, 
 [lane.sweepclock]
 issues = []
 files = ["docs/testing/jobs/selftest.d/76-pr-sweep.sh", "docs/lanes/sweepclock/NOTES.md"]
-note = "STARTED (hostops 2026-09-27 18:48 PDT), briefs/sweepclock.md: harness defect, no issue. 76-pr-sweep.sh reads TRUNK_CT once but pr-sweep.sh fetches the real origin each run; a fold mid-selftest (#503 at 18:10 PDT, +894 s) made the +600 live check stale and failed PR #523's run 36364245109. Both files were unclaimed."
+note = "STARTED (hostops 2026-09-27 18:29 PDT), briefs/sweepclock.md: harness defect, no issue. 76-pr-sweep.sh reads TRUNK_CT once but pr-sweep.sh fetches the real origin each run; a fold mid-selftest (#503 at 18:10 PDT, +894 s) made the +600 live check stale and failed PR #523's run 36364245109. Both files were unclaimed."
 
 [free]
 # CLAIMED (lane.local 2026-09-28T01:27:49Z): target/i386/tcg/translate.c -> lane.idlehalt (#525); hw/xbox/nv2a/pgraph/vk/display.c -> lane.pacing (#526); android/app/src/main/cpp/xemu_android.cpp -> lane.flip474 (per-title render mode, #474). Unlisted files claimed with them: see each row.
