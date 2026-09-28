@@ -1249,3 +1249,41 @@ The Blinx pair goes in after the pilot is read. The goldens guard is the arms jo
 forza414-clrskip-mnm. On resume: judge forza414-uhash-soak, write `pilots/forza414.ok`, re-queue
 the Forza pair on the Thor at priority 1 (forza414-clrskip-soak, refs fa56a26f1f / b991fb4c21), and
 read the `[job.arms]` verdict.
+
+## 40. Resume 2026-09-28 (attempt 3): the pilot judged, the goldens guard passed, the Forza pair queued
+
+**Why the previous session did not finish.** It ended while it was waiting, which was correct. The
+Blinx pilot pair and the arms job's goldens guard were both still queued on the device (section 39),
+and a lane cannot wait inside a session. Both have now finished.
+
+**Goldens guard, `forza414-clrskip-mnm.json`: PASS** (`[job.arms]`, 08:45 PDT). All 385 captures in
+17 suites are byte-identical between fa56a26f1f and 79f0102478. PR label `verified`.
+
+**Pilot, `forza414-uhash-soak.json` (Blinx, Nova, hand-read):** `1-1790576971-forza414-1229800` (A,
+b991fb4c21) and `-1229835` (B, 79f0102478). Window: mark play + 10 s to the last phase line - 10 s,
+about 165 s. Medians over the window's phase lines and gfps lines:
+
+| | A | B |
+|---|---|---|
+| phase lines (Draw > 0) | 54 | 53 |
+| Sh ms/frame | 6.95 | 7.00 |
+| Pipe | 9.1 | 9.2 |
+| Draw | 14.65 | 14.8 |
+| Tot | 31.35 | 29.6 |
+| gfps | 20.5 | 21.0 |
+| Df (draws/frame) | 74.5 | 75.0 |
+
+- **M0 PASS.** Both arms reach level play. There is no crash or abort line.
+- **P1 FAIL, inert.** A's Sh minus B's is -0.05 ms, against a registered bar of >= 0.5, at the same
+  draw count. This is the world the leg named: on Blinx, dirty-constant draws are too small a share
+  of the draws for skipping their hash to show. The hash on clean draws and the constant copy
+  (section 37, part (b)) are where the cost is. The hunk stays in the PR because its pixels are
+  byte-identical and it removes work, but it claims no fps. **Do not re-measure part (a) alone.**
+
+**Pilot verdict** is written to `pilots/forza414.ok`. **Forza hunk-5 pair re-queued** on the Thor
+at priority 1, judged by `forza414-clrskip-soak.json` (refs fa56a26f1f -> b991fb4c21):
+`1-1790613195-forza414-3088454` (A) and `1-1790613195-forza414-3088504` (B).
+
+**Waiting (session end, 2026-09-28 ~09:55 PDT):** on that pair. On resume: judge
+forza414-clrskip-soak by hand (the arms job skips title soaks), post fps and J/frame on #414 and
+#474, merge origin/master, then `gh pr ready 543` and release vk/draw.c to lane.pacing.
