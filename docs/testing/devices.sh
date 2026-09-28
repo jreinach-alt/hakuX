@@ -238,6 +238,63 @@ device_perf_set() {
     [ "$got" = "$1 $2" ]
 }
 
+# ------------------------------------------------------------ fan duty
+#
+# The fan's PWM, the node the OEM apps write, on both handhelds (#507 Part D;
+# thermal_state.py FAN_DIR samples the same node into thermal.jsonl, and
+# selftest.d/99-fan-duty.sh fails if the two paths part). duty/period is the
+# share of full speed; period reads 50000 on both. fan_mode 6 (CUSTOM) is a
+# fixed 25000 until something writes `duty`, and the adb shell may write it
+# (lane.sustain507, 2026-09-28: 50000 read ~14,000 rpm against SPORT's
+# ~9,000).
+DEVICE_FAN_PWM_DIR="/sys/class/gpio5_pwm2"
+DEVICE_FAN_CUSTOM=6
+
+# device_fan_get  ->  "MODE DUTY PERIOD" as the device reads them, ONE adb
+# call; a field adb could not read is a word that is not a number.
+device_fan_get() {
+    adb_call "${ADB_QUICK_TIMEOUT:-20}" "fan read" shell \
+        "echo \"fan \$(settings get system fan_mode) \$(cat $DEVICE_FAN_PWM_DIR/duty 2>/dev/null || echo null) \$(cat $DEVICE_FAN_PWM_DIR/period 2>/dev/null || echo null)\"" \
+        2>/dev/null | tr -d '\r' | sed -n 's/^fan //p' | tail -1
+}
+
+# device_fan_duty_set <duty>  ->  0 when mode reads CUSTOM and duty reads
+# <duty>, else 1. fan_mode CUSTOM first, a second for the settings service to
+# act on it, then the duty: the mode change is where the firmware writes its
+# own 25000, and a duty written before it is overwritten. Echoes the
+# read-back "MODE DUTY PERIOD", so a caller records what the device says.
+device_fan_duty_set() {
+    local got
+    adb_call "${ADB_QUICK_TIMEOUT:-20}" "fan duty write $1" shell \
+        "settings put system fan_mode $DEVICE_FAN_CUSTOM; sleep 1; echo $1 > $DEVICE_FAN_PWM_DIR/duty" \
+        >/dev/null 2>&1
+    got=$(device_fan_get)
+    printf '%s\n' "$got"
+    set -- "$1" $got
+    [ "${2:-}" = "$DEVICE_FAN_CUSTOM" ] && [ "${3:-}" = "$1" ]
+}
+
+# device_fan_duty_rewrite <duty>  ->  the duty the node held BEFORE this
+# write, then writes <duty> again. ONE adb call. The read comes first so a
+# caller sees whether the last write held, not the write it just made.
+device_fan_duty_rewrite() {
+    adb_call "${ADB_QUICK_TIMEOUT:-20}" "fan duty rewrite $1" shell \
+        "echo \"was \$(cat $DEVICE_FAN_PWM_DIR/duty 2>/dev/null || echo null)\"; echo $1 > $DEVICE_FAN_PWM_DIR/duty" \
+        2>/dev/null | tr -d '\r' | sed -n 's/^was //p' | tail -1
+}
+
+# device_fan_rest <fan_mode>  ->  puts fan_mode back and writes NO duty: the
+# firmware owns the duty under every mode but CUSTOM. Echoes the read-back
+# "MODE DUTY PERIOD"; 0 when the mode reads back.
+device_fan_rest() {
+    local got
+    adb_call "${ADB_QUICK_TIMEOUT:-20}" "fan mode write $1" shell \
+        "settings put system fan_mode $1" >/dev/null 2>&1
+    got=$(device_fan_get)
+    printf '%s\n' "$got"
+    [ "${got%% *}" = "$1" ]
+}
+
 # ------------------------------------------------------------ display 0
 #
 # display_clear <serial>  ->  one line on stdout, and

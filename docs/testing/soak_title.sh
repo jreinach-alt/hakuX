@@ -134,14 +134,48 @@ disarm_audio() {
 # $D/results/<id>/logcat.txt and the request is $D/running/<id>.req while it
 # runs. PERF_REQUEST names it directly. The shell's PERF_REGIMEN wins over
 # both, and anything but max|rest|off|default is max.
+PERF_REQUEST="${PERF_REQUEST:-${CAPTURE_LOG:+$(dirname "$(dirname "$(dirname "$CAPTURE_LOG")")")/running/$(basename "$(dirname "$CAPTURE_LOG")").req}}"
 if [ -z "${PERF_REGIMEN:-}" ]; then
-    PERF_REQUEST="${PERF_REQUEST:-${CAPTURE_LOG:+$(dirname "$(dirname "$(dirname "$CAPTURE_LOG")")")/running/$(basename "$(dirname "$CAPTURE_LOG")").req}}"
     [ -n "$PERF_REQUEST" ] && [ -f "$PERF_REQUEST" ] &&
         PERF_REGIMEN=$(python3 -c 'import json,sys
 for e in json.load(open(sys.argv[1])).get("env") or []:
     if e.startswith("PERF_REGIMEN="): print(e.split("=", 1)[1])' "$PERF_REQUEST" 2>/dev/null | tail -1)
 fi
 case "${PERF_REGIMEN:-}" in max|rest|off|default) ;; *) PERF_REGIMEN=max ;; esac
+
+# THE FAN DUTY (#507 D.3). FAN_DUTY=<pwm> holds the fan at that PWM duty for
+# the title's run, over whatever fan mode the regimen picked: fan_mode 6
+# (CUSTOM), then the duty (devices.sh device_fan_duty_set), after the
+# cool-down gate and before `am start`, so an arm at full fan starts from the
+# same gate-admitted temperature as one without it. The duty is WRITTEN AGAIN
+# after every hold-loop thermal sample: the sample reads the node first, so
+# thermal.jsonl shows whether the last write held for the interval, not the
+# write just made, and a `FAN: duty read <x>` line names any interval it did
+# not. On every exit, from release(), fan_mode goes back to the device's REST
+# (DEVICE_FAN_REST) and no duty is written: under every mode but CUSTOM the
+# firmware owns the node. perf_regimen.json `fan_duty` holds what was asked,
+# the node's period, the mode and duty the title ran at and was left at, and
+# how many re-writes found the duty moved.
+#
+# From the shell's FAN_DUTY, else the running request's top-level `fan_duty`
+# (an integer), else a `FAN_DUTY=<n>` in its env (`request.sh --env
+# FAN_DUTY=50000`, read from the request as PERF_REGIMEN is; the app ignores
+# the name). Not a whole number, or above the node's period, or a node that
+# does not read: the soak is REFUSED before anything is set or started
+# (`fan-duty-refused:` in run.log, exit 6), because a run at a fan other than
+# the one asked for measures the wrong arm and looks like the right one.
+if [ -z "${FAN_DUTY:-}" ] && [ -n "$PERF_REQUEST" ] && [ -f "$PERF_REQUEST" ]; then
+    FAN_DUTY=$(python3 -c 'import json,sys
+r = json.load(open(sys.argv[1]))
+v = r.get("fan_duty")
+if v is None:
+    for e in r.get("env") or []:
+        if str(e).startswith("FAN_DUTY="): v = str(e).split("=", 1)[1]
+print("" if v is None else v)' "$PERF_REQUEST" 2>/dev/null | tail -1)
+fi
+FAN_DUTY="${FAN_DUTY:-}"
+FAN_SET=0; FAN_PERIOD=""; FAN_RAN=""; FAN_AFTER=""; FAN_RESTORED=""
+FAN_REWRITES=0; FAN_MOVED=0; FAN_REFUSED=""
 PERF_DEFAULT=0; FAN_DEFAULT=4
 PERF_DISPLAY_START=""; PERF_DISPLAY_END=""
 PERF_RESULT="${PERF_RESULT:-${CAPTURE_LOG:+$(dirname "$CAPTURE_LOG")/perf_regimen.json}}"
@@ -153,9 +187,19 @@ perf_write_result() {
     python3 - "$PERF_RESULT" "$PERF_REGIMEN" "$PERF_BEFORE" "$PERF_RAN" \
         "$PERF_AFTER" "$PERF_RESTORED" "${PERF_MAX:-} ${FAN_MAX:-}" \
         "${PERF_REST:-} ${FAN_REST:-}" "$PERF_DEFAULT $FAN_DEFAULT" \
-        "$PERF_DISPLAY_START" "$PERF_DISPLAY_END" <<'PY' 2>/dev/null
+        "$PERF_DISPLAY_START" "$PERF_DISPLAY_END" \
+        "$FAN_DUTY" "$FAN_PERIOD" "$FAN_RAN" "$FAN_AFTER" "$FAN_RESTORED" \
+        "$FAN_REWRITES" "$FAN_MOVED" "$FAN_REFUSED" <<'PY' 2>/dev/null
 import json, sys
 path, regimen, before, ran, after, restored, want_max, want_rest, want_default = sys.argv[1:10]
+(f_want, f_period, f_ran, f_after, f_restored, f_rewrites, f_moved,
+ f_refused) = sys.argv[12:20]
+def num(w):
+    return int(w) if w.lstrip("-").isdigit() else None
+def fan3(s):
+    # "6 50000 50000" -> mode, duty, period as read back; null where adb said nothing.
+    w = (s.split() + ["", "", ""])[:3]
+    return dict(fan_mode=num(w[0]), duty=num(w[1]), period=num(w[2]))
 def disp(s):
     try:
         return json.loads(s) if s else None
@@ -176,7 +220,15 @@ json.dump(dict(regimen=regimen,
                max=dict(zip(("perf_mode", "fan_mode"), pair(want_max))),
                rest=dict(zip(("perf_mode", "fan_mode"), pair(want_rest))),
                default=dict(zip(("perf_mode", "fan_mode"), pair(want_default))),
-               display=dict(start=disp(sys.argv[10]), end=disp(sys.argv[11]))),
+               display=dict(start=disp(sys.argv[10]), end=disp(sys.argv[11])),
+               # null when the request asked for no duty: the fan ran at fan_mode.
+               fan_duty=None if not f_want else dict(
+                   requested=num(f_want) if num(f_want) is not None else f_want,
+                   period=num(f_period), refused=f_refused or None,
+                   ran=fan3(f_ran) if f_ran else None,
+                   restored=fan3(f_after) if f_after else None,
+                   fan_restored={"1": True, "0": False}.get(f_restored),
+                   rewrites=num(f_rewrites), moved=num(f_moved))),
           open(path, "w"), indent=2)
 PY
 }
@@ -246,6 +298,68 @@ perf_leave() {
     perf_write_result
 }
 
+# fan_check: FAN_REFUSED says why a requested duty cannot be run; empty when
+# it can, or none was asked for. Reads the node's period (one adb call).
+fan_check() {
+    [ -n "$FAN_DUTY" ] || return 0
+    local got
+    case "$FAN_DUTY" in
+        *[!0-9]*) FAN_REFUSED="fan_duty '$FAN_DUTY' is not a whole number"; return 1 ;;
+    esac
+    got=$(device_fan_get)
+    FAN_PERIOD=$(printf '%s\n' "$got" | awk '{print $3}')
+    case "$FAN_PERIOD" in
+        ''|*[!0-9]*) FAN_REFUSED="the fan node $DEVICE_FAN_PWM_DIR did not read [$got]"
+                     FAN_PERIOD=""; return 1 ;;
+    esac
+    if [ "$FAN_DUTY" -gt "$FAN_PERIOD" ]; then
+        FAN_REFUSED="fan_duty $FAN_DUTY is above the node's period $FAN_PERIOD"; return 1
+    fi
+    return 0
+}
+
+fan_enter() {
+    [ -n "$FAN_DUTY" ] || return 0
+    FAN_SET=1
+    if FAN_RAN=$(device_fan_duty_set "$FAN_DUTY"); then
+        echo "FAN: duty=$FAN_DUTY of $FAN_PERIOD running=[$FAN_RAN]"
+    else
+        echo "FAN: duty=$FAN_DUTY of $FAN_PERIOD did NOT read back: running=[$FAN_RAN]"
+    fi
+    # The fan mode the title runs at is CUSTOM now, whatever the regimen set.
+    PERF_RAN=$(device_perf_get)
+    perf_write_result
+}
+
+# After each hold-loop thermal sample. Reads the duty, then writes it again.
+fan_hold() {
+    [ "$FAN_SET" = 1 ] || return 0
+    local was
+    was=$(device_fan_duty_rewrite "$FAN_DUTY")
+    FAN_REWRITES=$((FAN_REWRITES + 1))
+    if [ "$was" != "$FAN_DUTY" ]; then
+        FAN_MOVED=$((FAN_MOVED + 1))
+        echo "FAN: duty read [$was] at ${s:-?}s, not $FAN_DUTY; written again"
+    fi
+}
+
+# Idempotent, like perf_leave; from release(), so every exit restores.
+fan_leave() {
+    [ "$FAN_SET" = 1 ] || return 0
+    FAN_SET=0
+    if [ -z "$FAN_REST" ]; then
+        echo "FAN: NOT RESTORED -- no REST fan mode for $SERIAL in devices.sh"
+        FAN_RESTORED=0
+    elif FAN_AFTER=$(device_fan_rest "$FAN_REST"); then
+        FAN_RESTORED=1
+    else
+        sleep "${SOAK_RETRY_S:-2}"
+        if FAN_AFTER=$(device_fan_rest "$FAN_REST"); then FAN_RESTORED=1; else FAN_RESTORED=0; fi
+    fi
+    echo "FAN: restored=[$FAN_AFTER] fan_restored=$([ "$FAN_RESTORED" = 1 ] && echo true || echo false) rewrites=$FAN_REWRITES moved=$FAN_MOVED"
+    perf_write_result
+}
+
 # Always force-stop on the way out. The handheld does not charge over the adb
 # cable, so a title left running flattens it -- and a game, unlike a test disc,
 # never exits on its own.
@@ -262,6 +376,7 @@ release() {
     [ -n "$LOGCAT_PID" ] && kill "$LOGCAT_PID" 2>/dev/null
     a shell am force-stop "$PKG" >/dev/null 2>&1
     disarm_audio
+    fan_leave
     perf_leave
     a shell input keyevent KEYCODE_SLEEP >/dev/null 2>&1
     rm -f "$LEASE" "$FG_FLAG"
@@ -325,6 +440,13 @@ thermal_sample() {   # <label>
 }
 [ -n "$THERMAL_OUT" ] && rm -f "$THERMAL_OUT"
 
+# See THE FAN DUTY. Before the cool-down, so a refused run costs no wait.
+if ! fan_check; then
+    echo "fan-duty-refused: $FAN_REFUSED; nothing was set or started"
+    perf_write_result
+    exit 6
+fi
+
 # THE COOL-DOWN GATE (#507; thermal_state.py has why). Before MAX is set, and
 # with the title stopped, wait while THERMAL_COOL_ZONE reads at or above
 # THERMAL_COOL_C or a pause device is set. The wait is capped at
@@ -375,6 +497,7 @@ fi
 
 arm_audio
 perf_enter
+fan_enter
 
 if [ -n "$CAPTURE_LOG" ]; then
     a logcat -c >/dev/null 2>&1
@@ -694,6 +817,7 @@ while [ "$s" -lt "$SECONDS_TO_HOLD" ]; do
     touch "$LEASE"
     if [ $((s - thermal_s)) -ge "${THERMAL_EVERY_S:-30}" ]; then
         thermal_sample hold; thermal_s=$s
+        fan_hold
     fi
     if [ -f "$FG_FLAG" ]; then
         echo "soak aborted: not-foreground after ${s}s of ${SECONDS_TO_HOLD}s"
