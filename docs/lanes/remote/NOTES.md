@@ -2943,3 +2943,93 @@ not exist.
   - **The positive control:** the reader before the fix raises on the new
     selftest case, and gives the same answer as the new one on the three
     midnight crossings.
+
+## #461, fourth: pair 1 through the reader, and the render thread's TLB walks (2026-09-28)
+
+### Pair 1, scored as registered
+
+Hostops ran `pair461_read.py` on pair 1 (5868152015); I scored it on #461
+(5868935481). A is f131dd11, which ran first; B is 8f9c74f0, the fix.
+
+| leg | read | |
+|---|---|---|
+| F4 | B 22 − A 26 = −4 | **FAIL**, as recorded |
+| K1, thermal parity | no `thermal.jsonl` on pair 1 | UNREAD |
+| K2, same scene | `M` A 10,812 / B 12,301, +13.8%, bar 10% | **FAIL** |
+| P1 | `Tq` A 1,051 / B 1,186 | PASS, the scene's: tests per method are flat, 0.097 and 0.096 |
+| P2 | `mk` KiB per flip A 28,031 / B 31,839 (+14%); `bit`+`bov` A 908 / B 3,046 | **FAIL** |
+| R | BUSY − TxH A 17.05 / B 23.54 ms/frame | not read: K1 unread, K2 failed |
+| G | `rdo` per flip A 175.2 / B 221.1 (+26%) | route possible |
+| V | 3+ VBLANK flips A 43.8% / B 50.2%; 4+ VBLANK flips 112 → 441 | |
+
+- **K2 fails, so pair 1 drew different scenes.** F4's FAIL stands as recorded,
+  but it is not attributed to the fix.
+- **P2 fails, and it corrects my model.** I expected the rebind test to find,
+  earlier, the bits A's next poll would have found. Instead B made more
+  discoveries in total: `bit`+`bov` ×3.4 and `mk` +14% per flip. The guest keeps
+  writing pages that textures sit on, so the route my code reading called the
+  exception is the common case.
+- **G: the guest-side route is possible.** Per flip, B's `rdo` is +26%, its
+  walk time `rdous` +2.45 ms and `sd` +17%. Per method they are +11%, +34% and
+  +3%, but K2's scene difference is inside every one of them.
+
+### The render thread's TLB walks, on master's own path
+
+Unregistered, read off `[tlb68]` in pair 1's A arm.
+- **The cost.** Each dirty-bit clear made off the vCPU thread calls
+  `tlb_reset_dirty()`, which walks the vCPU's TLB under its lock.
+  - A: 175 walks per flip at 26.7 µs, **4.7 ms per flip**, about 11% of the
+    window's 43 ms mean frame.
+  - B: 221 walks at 32.2 µs, 7.1 ms.
+- **The texture path is not most of it** (per-reason counts, 5868986208).
+  - Nearly every texture discovery shows up as at least one `mk` or `bit`
+    hash. A discovery that marks aliases shows up as several, and one whose
+    node is evicted as none. So `mk` + `bit` roughly bounds the discoveries
+    from above.
+  - A: 72.2 per flip against 175 walks, **at most 41%**. B: 98.1 against 221,
+    at most 44%.
+  - So at least about 103 walks and 2.7 ms per flip on A come from other
+    callers: the NV2A client's per-draw tests, most likely the vertex RAM sync
+    and the surface checks.
+  - Raised on #461 for lane.local (5869799922). A per-caller count at
+    `tlb_reset_dirty_range_all()` in `system/physmem.c` would name the callers,
+    and that is TCG territory, not this lane's.
+- **Not built:** a per-caller count in `vk/texture.c`. It would size only the
+  smaller share.
+
+### W1 and W2, registered for pair 2 before it runs
+
+Registered on #461 at 11:27:22Z (5868935481). They are per-work legs, so a
+scene difference cannot hide a cost again.
+- **W1 (moderate):** (BUSY − TxH) per method, B over A.
+  - Above 1.10: the fix costs the render thread per unit of work.
+  - At or below 1.05: it does not.
+  - Pair 1 reads 1.21.
+- **W2 (moderate):** `rdous` per method, B over A.
+  - Above 1.15: the fix adds TLB-walk time per unit of work.
+  - At or below 1.05: it does not.
+  - Pair 1 reads 1.34.
+- **If K2 fails on pair 2 as well:**
+  - both show a cost: a replacement is registered;
+  - both show none: the fix stays;
+  - otherwise: one more pair.
+
+### A unit correction: `tex461_read.py`'s "per frame" was per finish
+
+- **What the lines count.** The txh/txu/txr lines tick once per 60 finishes at
+  a flip stall or a present (`opt_stats_log_and_reset()` in `vk/draw.c`), not
+  once per 60 guest flips.
+  - Pair 1 ran 85 × 60 = 5,100 finishes against 3,480 flips on A, 1.47 per
+    flip.
+  - B ran 3,900 against 2,820, 1.38 per flip.
+- **What was affected.**
+  - The rates in "#461: what a texture bind spends its time on" and "#461,
+    second" were per finish: for example 338 `create_texture()` calls and 262
+    hashes "per frame". Their shares and ratios within one run are unchanged.
+  - F3 reads 0.40 per flip, against 0.42 per finish: still PASS.
+  - P2 is FAIL in either unit.
+- **What changed in the readers.**
+  - `tex461_read.py` now says "per finish". When the input carries hakuX-pace
+    lines, it adds a per-flip block from the flips they count.
+  - `pair461_read.py` reads the hash figures per flip, the unit the registered
+    legs name.
