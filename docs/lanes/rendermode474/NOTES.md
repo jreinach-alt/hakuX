@@ -255,6 +255,22 @@ the PR is marked ready. Do not re-run the soaks. If the one-device pair
 FAILS, read which captures moved against the 8-capture noise set of the
 by-hand thor pair before calling it a regression.
 
+## Session 4 (resumed 2026-09-28 18:12Z): done
+
+**Why the previous session did not finish:** it ended on a `waiting:`
+for the arms job's one-device pgraph pair, which is outside the session.
+That pair was judged at 18:11Z: **PASS, all 1059 checks hold**
+(A `1-1790610287-arms-rendermode474-base-1969525`, B
+`1-1790610287-arms-rendermode474-fix-1969603`). It supersedes the
+thor/nova FAIL, and the label is now `verified`. CI is green on
+`a92f6c9823`. `preflight.sh --allow-tracker` passes. The PR is
+mergeable against current master, so no merge was needed.
+
+Every leg is read except P0 (J/frame). No arm had a `power` field. The
+next lane should not re-run the soaks for fps. J/frame for DOA and AUF
+needs a DOA or AUF A/B pair on a device where the #523 power record is
+live.
+
 ## Waiting (2026-09-28 ~02:00Z, attempt 1)
 
 Waiting on three things: the pilot (A `-2188053`, B `-2188203`), CI on
