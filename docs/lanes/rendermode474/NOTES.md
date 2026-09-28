@@ -97,7 +97,65 @@ line (E0).
 3. Read the arms job's `[job.arms]` verdict for the pgraph pair, and grep
    B's logcat for the `render_mode: auto (default)` line.
 
-## Waiting (2026-09-28 ~02:00Z)
+## Attempt 2 (resumed 2026-09-28 06:02Z)
+
+**Why attempt 1 did not finish:** it ended correctly on a `waiting:`, for
+the DOA pilot, CI and the arms job's pgraph pair, all outside the session.
+All three resolved. CI is green on `b4612beec5`. The pilot landed, and the
+pgraph pair was judged FAIL (label `regressed`).
+
+### pgraph verdict: FAIL, 13 of 1059, not attributable
+
+The arms job queued the pair unpinned (`request.json` `device` empty). A
+ran on the **thor** and B on the **nova**. `ab_compare` says so itself:
+"a leg that FAILS is NOT attributable". The 13 byte movers are 6 Stencil
+REPLACE/ZERO captures, 4 Vertex_shader_rounding Geometry{Sub,Super}screen
+captures, Blend_tests `#spot_0_ADD`, Antialiasing
+`FramebufferNotModifiedBySurfaceState` and Surface_pitch `Swizzle`. These
+are the captures the prediction already named as flip474's run-to-run
+band, plus known thor/nova differences. The discriminating leg holds.
+None of the 78 ZPass_pixel_count captures moved, so sysmem did not engage
+on a pgraph disc. B's logcat has
+`render_mode: auto (default) title=FFFF0002 TU_DEBUG=(unset)`. Neither arm
+has `unreadable` rows in scores1.tsv or UtilAcceptVsock in run1.log. A
+same-device replicate is queued: thor, 2 runs per arm, same prediction and
+composition (below).
+
+### DOA pilot: every leg holds
+
+`sysmemjudge.py` (PR #516) over 151-288 s, nova, no env in either arm:
+
+| arm | line | phase lines | GPU ms | X/R | gfps median (min) |
+|---|---|---:|---:|---:|---|
+| A master `59d478911e` | none | 30 | 59.2 | 1.00 | 13 (12) |
+| B `61e0edf87c` | `render_mode: sysmem (table) title=54430006 TU_DEBUG=sysmem` | 50 | 31.6 | 0.02 | 20 (19) |
+
+- E0, D1 (0.02 <= 0.25, 1.00 >= 0.8) and F1 (20 >= 19 and >= 13 + 4) hold.
+- M0 holds (>= 15 lines each) and H0 holds: the longest gap is 4.6 / 3.9 s,
+  with no crash.
+- T0 holds. No `pause-*` or `thermal-pause-*` cooling device is engaged in
+  any of the 12 samples of either arm. The hottest zone peaks at
+  66.8 / 67.9 C, and min/median gfps is 0.92 / 0.95. The regimen is MAX.
+- P0 cannot be read: `power` is absent from both result.json files, so no
+  J/frame was measured.
+
+The pilot verdict is written to `pilots/rendermode474.ok`.
+
+### Queued 2026-09-28 ~06:25Z, `--who rendermode474`
+
+| id | what |
+|---|---|
+| `1790575471-rendermode474-965765` / `1790575472-rendermode474-965811` | AUF A / B, nova, 420 s (`rendermode474-auf.json`) |
+| `1790575472-rendermode474-965903` | Blinx B, thor, 180 s (`rendermode474-blinx.json`) |
+| `1790575472-rendermode474-965991` / `1790575472-rendermode474-966037` | DOA frames A / B, nova, every 5 s (`rendermode474-doa-frames.json`) |
+| `1790575472-rendermode474-966088` / `1790575473-rendermode474-966130` | pgraph A / B, **thor, runs 2**, `rendermode474-pgraph.json`, same suites and skip |
+
+Judge the pgraph replicate by hand: `ab_compare.py` on the two ids with
+`--expect docs/testing/predictions/rendermode474-pgraph.json`. The arms
+job's thor/nova FAIL is superseded only by this same-device pair; state
+that on the PR.
+
+## Waiting (2026-09-28 ~02:00Z, attempt 1)
 
 Waiting on three things: the pilot (A `-2188053`, B `-2188203`), CI on
 `e2f5c22c1b`, and the arms job's pgraph pair. Posted as
