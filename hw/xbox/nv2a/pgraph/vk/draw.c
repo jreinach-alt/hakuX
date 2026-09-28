@@ -3485,13 +3485,24 @@ enum { RWAIT_DEFERRED, RWAIT_ROTATE, RWAIT_SITES };
 
 static struct {
     int mode;
-    int64_t t0_ns, thr_cpu0_ns, wait_cpu_ns;
+    int64_t t0_ns, wait_cpu_ns;
     unsigned int flips0;
     unsigned int calls[RWAIT_SITES], waits[RWAIT_SITES];
     unsigned int spun[RWAIT_SITES], blocked[RWAIT_SITES], wakes[RWAIT_SITES];
     int64_t wait_ns[RWAIT_SITES], wait_max_ns[RWAIT_SITES];
     unsigned int hist[RWAIT_SITES][RWAIT_BINS + 1];
 } rwait526 = { .mode = -1 };
+
+/*
+ * The waits are reached from more than one thread (the PFIFO thread, the
+ * display's present, surface downloads), and the window is closed by
+ * whichever of them crosses it. A thread's CPU clock is only comparable
+ * with itself, so each thread keeps its own span and reports it when it
+ * closes a window: tid, seconds, guest flips and CPU since its own last
+ * report.
+ */
+static __thread int64_t rwait_tl_t0_ns, rwait_tl_cpu0_ns;
+static __thread unsigned int rwait_tl_flips0;
 
 static int rwait_mode(void)
 {
@@ -3551,19 +3562,27 @@ static void rwait_report(int64_t now)
                      rwait526.wait_ns[s] / 1e6, rwait_pct_us(s, 0.50),
                      rwait_pct_us(s, 0.99), rwait526.wait_max_ns[s] / 1e3);
         }
+        /* thr_*: this thread's own span; -1 on its first report */
         __android_log_print(
             ANDROID_LOG_INFO, "hakuX-lane",
-            "[rwait526] mode=%s s=%.2f flips=%u thr_cpu_ms=%.1f "
-            "wait_cpu_ms=%.2f | deferred %s | rotate %s",
+            "[rwait526] mode=%s s=%.2f flips=%u tid=%d thr_s=%.2f "
+            "thr_flips=%d thr_cpu_ms=%.1f wait_cpu_ms=%.2f "
+            "| deferred %s | rotate %s",
             rwait_mode() == RWAIT_YIELD ? "yield" : "block",
             (now - rwait526.t0_ns) / 1e9, flips - rwait526.flips0,
-            (thr - rwait526.thr_cpu0_ns) / 1e6, rwait526.wait_cpu_ns / 1e6,
+            qemu_get_thread_id(),
+            rwait_tl_t0_ns ? (now - rwait_tl_t0_ns) / 1e9 : -1.0,
+            rwait_tl_t0_ns ? (int)(flips - rwait_tl_flips0) : -1,
+            rwait_tl_t0_ns ? (thr - rwait_tl_cpu0_ns) / 1e6 : -1.0,
+            rwait526.wait_cpu_ns / 1e6,
             site_txt[RWAIT_DEFERRED], site_txt[RWAIT_ROTATE]);
     }
 #endif
     rwait526.t0_ns = now;
-    rwait526.thr_cpu0_ns = thr;
     rwait526.flips0 = flips;
+    rwait_tl_t0_ns = now;
+    rwait_tl_cpu0_ns = thr;
+    rwait_tl_flips0 = flips;
     rwait526.wait_cpu_ns = 0;
     memset(rwait526.calls, 0, sizeof(rwait526.calls));
     memset(rwait526.waits, 0, sizeof(rwait526.waits));

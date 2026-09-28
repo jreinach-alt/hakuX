@@ -8,8 +8,9 @@ The window runs from the route's `mark <NAME>` line to its `soak end` line
 (to the end of the logcat if there is none). Per run it reads, from
 logcat.txt:
   [rwait526] render wait mode=...: the mode actually in force.
-  [rwait526] mode=... (hakuX-lane, every 10 s): flips, thr_cpu_ms and
-            wait_cpu_ms of the PFIFO thread, and per site (deferred, rotate)
+  [rwait526] mode=... (hakuX-lane, every 10 s): flips, wait_cpu_ms, the
+            closing thread's own tid/thr_s/thr_cpu_ms (summed as a rate
+            per thread, then over threads), and per site (deferred, rotate)
             calls, waits, spun, blocked, wakes, wait_ms, p50_us, p99_us,
             max_us. A window counts when its line's timestamp is inside the
             range (the line reports the 10 s before it).
@@ -94,13 +95,30 @@ def read_run(rid, mark):
     def s(site, key, f=float):
         return sum(f(w.get(site, {}).get(key, 0)) for w in win)
     flips = s("all", "flips", int)
+    fps = flips / s("all", "s") if s("all", "s") else None
     out.update(
         windows=len(win), modes=sorted({w["all"].get("mode") for w in win}), flips=flips,
-        flips_per_s=round(flips / s("all", "s"), 2) if s("all", "s") else None,
-        thr_cpu_ms_per_flip=round(s("all", "thr_cpu_ms") / flips, 4) if flips else None,
+        flips_per_s=round(fps, 2) if fps else None,
         wait_cpu_ms_per_flip=round(s("all", "wait_cpu_ms") / flips, 4) if flips else None,
-        thr_cpu_share=round(s("all", "thr_cpu_ms") / (1000.0 * s("all", "s")), 4),
     )
+    # Thread CPU: each line carries the closing thread's own span (tid=,
+    # thr_s=, thr_cpu_ms=). Lines before 2026-09-28's fix have no tid= and
+    # diffed two threads' clocks: UNREADABLE, never a number.
+    if any("tid" not in w["all"] for w in win):
+        out.update(thr_cpu_ms_per_flip=None, thr_cpu_share=None,
+                   thr_note="no tid= on the window lines: thread CPU unreadable")
+    else:
+        per = {}
+        for w in win:
+            a = w["all"]
+            if float(a["thr_s"]) > 0:
+                p = per.setdefault(a["tid"], [0.0, 0.0])
+                p[0] += float(a["thr_cpu_ms"])
+                p[1] += float(a["thr_s"])
+        rate = sum(c / sec for c, sec in per.values() if sec)  # ms of CPU per s
+        out.update(thr_cpu_ms_per_flip=round(rate / fps, 4) if fps else None,
+                   thr_cpu_share=round(rate / 1000.0, 4),
+                   threads={t: dict(cpu_ms=round(c, 1), s=round(sec, 1)) for t, (c, sec) in per.items()})
     for site in SITES:
         waits, blocked = s(site, "waits", int), s(site, "blocked", int)
         p99 = [float(w[site]["p99_us"]) for w in win if site in w and int(w[site].get("waits", 0))]
@@ -147,7 +165,7 @@ def main():
     o = ap.parse_args()
     arms = {"A": [read_run(r, o.mark) for r in o.a], "B": [read_run(r, o.mark) for r in o.b]}
     keys = ["modes", "window_s", "windows", "gfps_median", "gfps_lines", "perf_gap_max_s", "flips_per_s",
-            "thr_cpu_ms_per_flip", "wait_cpu_ms_per_flip", "thr_cpu_share"]
+            "thr_cpu_ms_per_flip", "wait_cpu_ms_per_flip", "thr_cpu_share", "thr_note", "threads"]
     for arm, runs in arms.items():
         for r in runs:
             print("%s %s dev=%s apk=%s env=%s" % (arm, r["id"], r.get("device"), r.get("apk"), r.get("env")))
@@ -165,7 +183,7 @@ def main():
                 print("   %-24s %s" % (site, r.get(site)))
     print("\npooled (mean over non-void runs)")
     print("   %-34s %12s %12s" % ("", "A", "B"))
-    for k in keys[3:]:
+    for k in keys[3:-2]:
         print("   %-34s %12s %12s" % (k, pooled(arms["A"], k), pooled(arms["B"], k)))
     for site in SITES:
         for k in ("waits_per_flip", "wait_ms_per_flip", "wakes_per_blocked", "p50_us_median",
