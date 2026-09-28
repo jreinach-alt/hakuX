@@ -1359,3 +1359,32 @@ a hold would stop the Thor from claiming those two. This attempt ends
 Next, once they land: read each mark frame first, then the fps. Then take
 held nav sessions for Bicycle Casino, Breeders' Cup and AMF Xtreme Bowling,
 then the Playable list in the hand-over.
+
+### Attempt 12 (resumed 2026-09-27 19:45 PDT, handback)
+
+Why attempt 11 did not finish: it did; it ended `waiting:` on the Azurik
+and D&D Heroes re-queues (still in the queue at 19:45). This handback listed
+the seven batch 9 results again, which attempt 10 had already read and
+recorded above, and PR #515 had already folded. Nothing to re-read.
+
+**lane.local's 19:55 list, "queue every ready benchmark now".** Five of its
+eight titles already have a benchmark result with a reading, so they were
+not queued again:
+
+| title | device | request (already DONE) | reading |
+|---|---|---|---|
+| Baldur's Gate: DA | thor | 1-1790548501-titleroutes-1530514 | 59.94 / 100% (batch 9) |
+| KOF: Maximum Impact | thor | 1-1790548502-titleroutes-1531011 | 32.89 / 99.0% (batch 9) |
+| WWE Raw 2 | nova | 1-1790515603-titleroutes-1194477 | 59.94 / 100% (attempt 5) |
+| 50 Cent: Bulletproof | nova | 1-1790515600-titleroutes-1194351 | 29.97 / 95.9% (attempt 5) |
+| Battlefield 2: MC | thor | 1-1790517591-titleroutes-1523259 | 19.14 / 0%, ten hangs (attempt 6) |
+
+Queued at 19:47 PDT (0.5 priority, ref 4fcbe0262e, `scratch/q12.sh`, log
+`scratch/q12.log`). Their only earlier readings were the 300 s titlebench
+soaks, which score little or no gameplay (see "Soak length" above):
+
+| title | device | route | request | seconds |
+|---|---|---|---|---|
+| 007: Nightfire | thor | nightfire | 1-1790563604-titleroutes-373432 | 400 |
+| Burnout 3: Takedown | thor | burnout3.returning | 1-1790563604-titleroutes-374056 | 620 |
+| Kabuki Warriors | nova | kabuki-warriors | 1-1790563605-titleroutes-374601 | 550 |
