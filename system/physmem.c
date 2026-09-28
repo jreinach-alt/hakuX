@@ -1059,7 +1059,10 @@ found:
  *          starts mid-page and ends in a later page within the same offset
  *          walks one page short: that page keeps a writable TLB entry while
  *          its bits read clean, and the guest's next stores to it through
- *          that entry set no dirty bit. Counted, not changed (#548).
+ *          that entry set no dirty bit. Counted, not changed (#548), and
+ *          only for physmem's own sites, whose bitmap clear is page-rounded:
+ *          the vertex sync's own clear loop stops short of a partial last
+ *          page, so for it the uncovered page may not have been cleared.
  */
 #include "hw/xbox/nv2a/debug.h"
 #ifdef __ANDROID__
@@ -1218,7 +1221,7 @@ static void rdc_account(ram_addr_t span, ram_addr_t length)
     qatomic_add(&rdc_ns[site], hakux_rdc_last_ns);
     qatomic_add(&rdc_h[site], hakux_rdc_last_hits);
     qatomic_add(&rdc_pg[site], pages);
-    if (pages > walked) {
+    if (site != RDC_DIRECT && pages > walked) {
         qatomic_add(&rdc_tm, pages - walked);
     }
     if (site == RDC_DIRECT) {
