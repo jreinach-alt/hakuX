@@ -1,0 +1,17 @@
+tid 29568: 28045 samples
+  jit        13959   49.8%
+  lookup      6957   24.8%
+  softmmu     2319    8.3%
+  fp          1332    4.7%
+  mmio         184    0.7%
+  translate    139    0.5%
+  loop         327    1.2%
+  kernel       636    2.3%
+  other       2192    7.8%
+
+top symbols outside the JIT
+  10.37%  lookup    tb_lookup  [libxemu.so]
+   6.80%  lookup    helper_lookup_tb_ptr  [libxemu.so]
+   4.75%  lookup    qht_lookup_custom  [libxemu.so]
+   2.04%  other     voice_lock  [libxemu.so]
+   1.92%  lookup    tb_lookup_cmp  [libxemu.so]

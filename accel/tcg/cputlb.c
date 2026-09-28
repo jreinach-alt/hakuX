@@ -146,6 +146,8 @@ uint64_t hakux_tlb68_rs;        /* dynamic TLB resizes, any mode (#311 rs) */
 uint64_t hakux_tlb68_ka;        /* hunk (a): pages kept armed on emptying */
 uint64_t hakux_tlb68_kafb;      /* hunk (a): ... disarmed by the fallback */
 static __thread bool hakux_tlb68_arming;
+__thread int64_t hakux_rdc_last_ns;   /* #548, see system/ram_addr.h */
+__thread uint64_t hakux_rdc_last_hits;
 /* #424, defined in tb-maint.c: bitmap-answered stores, builds */
 extern uint64_t hakux_tcg424_cb;
 extern uint64_t hakux_tcg424_cbb;
@@ -1254,9 +1256,12 @@ void tlb_reset_dirty(CPUState *cpu, uintptr_t start, uintptr_t length)
         hakux_tlb68_rdh += hits;
         hakux_tlb68_rd_ns += get_clock() - t0;
     } else {
+        int64_t ns = get_clock() - t0;
         qatomic_add(&hakux_tlb68_rdo, 1);
         qatomic_add(&hakux_tlb68_rdoe, entries);
-        qatomic_add(&hakux_tlb68_rdo_ns, get_clock() - t0);
+        qatomic_add(&hakux_tlb68_rdo_ns, ns);
+        hakux_rdc_last_ns = ns;   /* #548: charged to a caller in physmem.c */
+        hakux_rdc_last_hits = hits;
     }
 #endif
 }

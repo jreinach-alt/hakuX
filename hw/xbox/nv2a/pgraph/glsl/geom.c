@@ -20,6 +20,10 @@
  */
 
 #include "qemu/osdep.h"
+#include "qemu/atomic.h"
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
 #include "hw/xbox/nv2a/pgraph/pgraph.h"
 #include "hw/xbox/nv2a/pgraph/prim_rewrite.h"
 #include "geom.h"
@@ -78,10 +82,47 @@ void pgraph_glsl_set_geom_state(PGRAPHState *pg, GeomState *state)
     }
 }
 
+/*
+ * #507 P3, MEASUREMENT ONLY, default off: HAKUX_MEASURE_NO_GEOM=1 drops the
+ * geometry stage from filled, smooth-shaded triangles, so an A/B of one
+ * binary prices what that stage (calc_triz and #223's wedge) costs the GPU
+ * per frame.  Pixels change on purpose: with no stage the vertex shader's
+ * own vtxPos0..2 all hold the provoking vertex (vsh.c), so depth is flat
+ * per triangle, triMZ's slope offset is 0, and a one-negative-w triangle
+ * goes to the host clipper instead of the wedge.  Never a default, never
+ * shipped on.  Flat triangles and flat quads (adjacency) keep the stage,
+ * because it is what gives them their provoking vertex.
+ */
+static bool measure_no_geom(void)
+{
+    static int on = -1;
+    if (on == -1) {
+        const char *e = getenv("HAKUX_MEASURE_NO_GEOM");
+        on = (e && e[0] && e[0] != '0') ? 1 : 0;
+    }
+    return on;
+}
+
 bool pgraph_glsl_need_geom(const GeomState *state)
 {
     /* FIXME: Missing support for 2-sided-poly mode */
     assert(state->polygon_front_mode == state->polygon_back_mode);
+
+    if (state->primitive_mode == PRIM_TYPE_TRIANGLES &&
+        state->polygon_front_mode == POLY_MODE_FILL &&
+        state->smooth_shading && measure_no_geom()) {
+        static unsigned skipped;
+        unsigned n = qatomic_fetch_inc(&skipped) + 1;
+        if ((n & (n - 1)) == 0) {
+#ifdef __ANDROID__
+            __android_log_print(ANDROID_LOG_INFO, "hakuX-perf",
+                                "[nogeom507] skipped=%u", n);
+#else
+            fprintf(stderr, "[nogeom507] skipped=%u\n", n);
+#endif
+        }
+        return false;
+    }
 
     switch (state->primitive_mode) {
     case PRIM_TYPE_LINES:
