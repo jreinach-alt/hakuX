@@ -99,6 +99,215 @@ names it.
   - the census on the A runs, plus AUF;
   - the jitmix vCPU-share leg (needs a held simpleperf window: board request).
 
+## Phase 2 design: guest memory through the host MMU ("fastmem")
+
+Status: **design, no code.** The code waits for phase 1's merge (brief).
+Sources were read by a research subagent on 2026-09-28. Dolphin, libsigchain,
+PPSSPP and Eden were read at source. **ESPT/HSPT were NOT reached** (ACM 403,
+no search), so no figure below comes from them. The plan's 1.51-1.59x is
+theirs and is unverified here.
+
+### Goal and the win it can reach
+
+After phase 1, the vCPU's translation cost on GTA is two parts (vcpuplan §1):
+- the inline softmmu compare, **17.4%**: `ldp` mask/table, `and`, `add`, two
+  dependent loads, `and`, `cmp`, `b.ne`;
+- the slow-path helpers, **7.9%**.
+
+Fastmem replaces the compare with one instruction, `ldr wD, [x26, wA, uxtw]`,
+and lets the host MMU do the translation. Its ceiling is the 17.4% plus the
+part of the 7.9% that is TLB refill. Its cost is the faults and remaps it adds.
+**The design exists to keep that cost well under the win.** Every choice below
+is made against that cost.
+
+### 1. Layout
+
+- **Guest RAM moves to a memfd.**
+  - Today it is anonymous and private: `hw/xbox/xbox.c:195`
+    `memory_region_init_ram`, down to `qemu_anon_ram_alloc(shared=false)`.
+    A private page cannot be aliased at a second address.
+  - With `RAM_SHARED`, QEMU backs it with a memfd. `memory_region_get_ram_ptr`
+    still returns one host mapping, so NV2A, DMA and every host-pointer path
+    are unchanged.
+  - **Risk:** a shared mapping loses THP. The measurement is an A/B of
+    memfd RAM with fastmem off (step F0b).
+- **The shadow:** reserve 4 GiB + 64 KiB of host VA, `PROT_NONE`, once at
+  init. Shadow + VA stands for guest linear address VA, for ONE mmu_idx.
+  - `uxtw` bounds the index to 4 GiB.
+  - The 64 KiB tail is a guard for an access that starts below 4 GiB and
+    ends above it.
+- **Which mmu_idx.** Xbox titles run at CPL0. The shadow mirrors the
+  kernel-mode, no-SMAP 32-bit index.
+  - An op's mmu_idx is a translation-time constant (`get_mmuidx(oi)`), so
+    ops on any other index simply keep the compare. There is no runtime test.
+  - This must be confirmed with a counter of fills per mmu_idx before F1.
+- **X26 holds the shadow base.** Phase 1 frees it. It is set in the prologue
+  and never changes.
+
+### 2. Coherence: the shadow is a view of what the TLB may hold
+
+**Invariant.** A shadow page is mapped only with a translation and
+permissions that the softmmu TLB would install for that VA at that moment.
+A present entry must never be staler than x86 allows a TLB entry to be.
+Then fastmem is exactly as correct as softmmu.
+
+- **The single map point is `tlb_set_page_full`.** It is the only TLB fill,
+  and tcgchurn relies on the same invariant. When `mmu_idx` is the shadow's:
+  - **readable** (`PROT_READ`): the section is RAM, there is no read watch,
+    and neither `TLB_INVALID_MASK` nor `lg_page_size < TARGET_PAGE_BITS` holds;
+  - **writable** (`PROT_READ|PROT_WRITE`): also `prot & PAGE_WRITE`, and the
+    write flags carry none of `TLB_NOTDIRTY`, `TLB_DISCARD_WRITE`,
+    `TLB_WATCHPOINT` or `TLB_INVALID_MASK`;
+  - otherwise `PROT_NONE`.
+
+  The call is `mmap(shadow+VA, 4K, prot, MAP_SHARED|MAP_FIXED, memfd, ram_offset)`.
+  A remap at the same offset with new permissions is an `mprotect`.
+- **Capacity eviction does NOT unmap.** A direct-mapped TLB slot can be
+  overwritten by another page while the translation stays valid. x86 lets a
+  TLB keep any translation until an invalidation, so the shadow keeps it too.
+  The shadow is then a TLB with no capacity misses, which Dolphin #13768
+  describes as "effectively infinitely large".
+- **Invalidations the shadow must follow:**
+
+| event | where | shadow action |
+|---|---|---|
+| INVLPG | `tlb_flush_page*` | unmap the page (a large page: its 4 MB) |
+| full flush: MOV CR3, CR0, CR4, A20, `tcg_commit` | `tlb_flush_by_mmuidx_async_work` | **revalidate**, below |
+| watch insert/remove | `physmem.c` `mem_access_callback_*` | per page: re-protect the watched range's aliases. Today this is a full flush ("FIXME: flush only applicable pages"), which must become per page first (plan step 2) |
+| dirty clear: CODE (SMC), NV2A, NV2A_TEX, VGA | `tlb_reset_dirty_range_all` | downgrade every alias of those RAM pages to `PROT_READ` (reverse map) |
+| notdirty store re-enables a page | `tlb_set_dirty` | upgrade the aliases to RW |
+
+- **A reverse map** takes a RAM page to its shadow VAs. Most pages have one or
+  two: the kernel's `0x80000000+PA` alias and the title's VA. A dirty clear can
+  come from another thread (the `[tlb68]` `rdo` counts it), so the map is under
+  a lock, and the `mprotect` runs on the caller's thread.
+  - The race: a store between the dirty-bit clear and the `mprotect` lands
+    unflagged. Today's cross-thread `tlb_reset_dirty` has the same window
+    against the atomic TLB-entry update, so this adds no new race. It needs a
+    written argument in the code.
+- **Full flushes are the cost that decides the project.**
+  - The rates: GTA does 0-96 same-value CR3 reloads/s, and Conker does 514
+    full flushes/s (`docs/lanes/slowtier2/readall.out:211`).
+  - **Unmap-and-refault is ruled out.** Every touched page costs a signal, a
+    fill and an mmap after every flush. 514/s times a few hundred pages is
+    most of a second per second.
+  - **The design: revalidate.** For each mapped page, re-walk the guest page
+    table without side effects. Keep the mapping only if the PA, the
+    permissions and the watch/dirty state are unchanged, PTE.A is set, and
+    PTE.D is set if the page is mapped writable. Otherwise unmap it.
+    - This is exact: the kept page is what the refill would install, and a
+      guest that cleared A (or D) gets a fault and a refill that sets it.
+    - The cost is one page walk (~2 cached loads) per mapped page per flush.
+      No syscall unless something changed.
+    - It needs a non-mutating walk in `target/i386`. That file is outside
+      this lane's grant, so a board request comes before F3.
+  - **The alternative, if revalidation is too slow at Conker's rate,** is
+    Dolphin PR #14649's lazy view swap. A second 4 GiB view is swapped in on
+    the flush and rebuilt lazily, which costs faults instead of walks.
+    Dolphin measured it at about the same speed and about 1% faster.
+
+### 3. Self-modifying code and NV2A watches map onto page protection
+
+- **Code pages.** `tlb_protect_code` clears DIRTY_MEMORY_CODE, and the shadow
+  alias drops to read-only.
+  1. A store faults and goes to the site's softmmu stub. The stub takes the
+     notdirty path, which invalidates the TBs and calls `tlb_set_dirty`.
+  2. The shadow goes back to RW.
+  3. The guest sees the same behaviour it sees today.
+- **NV2A surface watches** (`mem_access_callback`). The watched pages go to
+  `PROT_NONE` (or `PROT_READ` for write-only watches). The stub reaches
+  `TLB_WATCHPOINT` and the callback, as today.
+- **The pathological case is measured.**
+  - fps382: 2,505,844 notdirty slow stores/s into 7 pages during Blinx's movie
+    decode (`docs/lanes/fps382/NOTES.md:49`). Each store re-armed the page.
+  - A signal per store would be fatal, so faults are bounded per site
+    (section 4). A site that keeps faulting is backpatched to its stub after K
+    faults. It then costs what it costs today: a compare in the stub and a
+    helper call.
+
+### 4. Faults and backpatching on arm64 Android
+
+- **Emission.** For each guest load or store on the shadow's mmu_idx:
+  - **Inline:** one instruction, `ldr/str w, [x26, wA, uxtw]`. Under
+    `hakux_tso_rcpc` it is two: `add x17, x26, wA, uxtw; ldapr/stlr [x17]`,
+    since LDAPR/STLR take a base register only.
+  - **Out of line** (in the TB's slow-path area, where the ldst labels already
+    go): the full softmmu sequence as emitted today, meaning the compare, the
+    fast host access, the slow helper call on a miss, and a branch back to
+    the instruction after the inline access.
+
+  The instruction count moves the compare off the hot path; the code size is
+  about today's plus one instruction.
+- **Fault → stub, not fault → patch.**
+  - The `SIGSEGV`/`SIGBUS` handler looks up the faulting PC in the owning
+    TB's site table (a compact table after the TB's code, like QEMU's restore
+    search data). It sets the context PC to that site's stub, bumps the site's
+    fault count, and returns.
+  - The stub runs in normal context. Its helper does the fill, and the fill
+    maps the page, so the next access hits.
+  - After K faults (K about 4-8) the stub's helper rewrites the inline
+    instruction to `b stub` through the RW alias (splitwx) and flushes the
+    icache. That is Dolphin's permanent patch, taken only for sites that
+    prove to be MMIO, watched or flapping.
+  - All of this is async-signal-safe: a table lookup and a context write. No
+    locks are taken in the handler.
+- **Misaligned LDAPR/STLR** raise `SIGBUS` (the reason the TSO mode is marked
+  not runnable as built, tcg-target.c.inc ~1962). The same handler sends them
+  to the stub. That makes the TSO mode runnable as a side effect.
+- **Android signal chaining.**
+  - ART's libsigchain interposes `sigaction`. Our handler is recorded as the
+    user action and runs after ART's special handlers. ART's `FaultManager`
+    declines a fault that is not in managed code after one TLS check (read in
+    `runtime/fault_handler.cc`), and libsigchain adds one `sigprocmask` per
+    fault.
+  - `AddSpecialSignalHandlerFn` would run ahead of ART and skip that syscall,
+    if the microbenchmark shows it matters.
+  - Our crash handler (`android/app/src/main/cpp/android_crash_handler.cpp:169`)
+    installs `SA_RESETHAND` from a constructor and keeps no old action. The
+    fastmem handler installs after it, saves it, and chains to it for any
+    fault outside the shadow. A test must show that a deliberate wild pointer
+    still produces a tombstone.
+  - Dolphin, PPSSPP and Eden all use plain `sigaction` on Android with no ART
+    code, which is some evidence that this works.
+
+### 5. Where it cannot apply, and the fallback
+
+- **The fallback everywhere is today's code**, the softmmu compare, reached
+  per site.
+- **Host page size must be 4 KiB** (`getpagesize()==4096`, checked at init).
+  On 16 KiB hosts a shadow unit spans 4 guest pages, so the fast path stays
+  off. Coalescing aligned, contiguous runs as Dolphin does is future work.
+  Both handhelds must be checked; the build reads the page size at runtime.
+- **Ops on other mmu_idxes, atomics and cmpxchg** (these go through helpers
+  already) and 128-bit ops keep the compare.
+- **`vm.max_map_count`** is 65530. Scattered 4K aliases are one VMA each, and
+  128 MB is 32768 pages. The design keeps a mapped-page counter, evicts LRU
+  above a cap of about 30k, and logs the `/proc/self/maps` line count per
+  soak.
+- **A global off switch** (the env switch; later an automatic one if
+  faults/s exceed a ceiling) stops mapping new pages. Every site then faults
+  K times and patches itself to its stub, which converges to today's cost.
+
+### 6. Steps, each gated on the one before
+
+The owner's rule applies here: the hard work fits the platform, and cheap
+steps come first only when they decide something. F0a and F0b decide whether
+F1 can pay; nothing else below is a probe.
+
+| step | what | decides / leg |
+|---|---|---|
+| F0a | a device microbenchmark (a native test binary via `request.sh`, or a debug entry point): SIGSEGV round trip under libsigchain; `mmap`/`mprotect` of one memfd 4K page; one page walk | the constants. With `[tlb68]` ff/pf/sd and fills per flush it prices the overhead per title **before** building F1. Kill if the predicted overhead on GTA is over a third of 17.4% |
+| F0b | RAM on memfd, fastmem off | no fps/J change beyond noise (the THP risk); pixels identical |
+| F1 | loads only, behind `HAKUX_FASTMEM=1` (default off). Stores keep the compare. Revalidate by walking | jitmix: `tlb` role on loads down; fps up on GTA and Forza; faults/s and remaps/s under a stated ceiling; pixels identical |
+| F1x | `HAKUX_FASTMEM=2`, an equivalence mode: every fast load also runs the compare path and counts mismatches | 0 mismatches over soaks on the watch-heavy titles |
+| F2 | stores, with code, dirty and watched pages protected; the watch-insert flush made per page | the fps382 case bounded by backpatch; Conker's flush rate priced |
+| F3 | default on, with the release note | the full pgraph sweep, title soaks across the benchmark set, and a stress run on the titles with the most surface watches |
+
+**Needs outside this lane's grant**, to be requested before F1:
+- `hw/xbox/xbox.c` (RAM_SHARED);
+- `target/i386/tcg/system/excp_helper.c` (the side-effect-free walk);
+- a new `accel/tcg/fastmem.c` and `.h`, and their meson entry (granted).
+
 ## Log
 
 - 2026-09-28: branch, both commits, a type check against the NDK compile
