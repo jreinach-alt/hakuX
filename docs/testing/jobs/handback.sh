@@ -813,9 +813,27 @@ EOF
 # `99-handback-draft.sh` counts that exact string to prove there is ONE call
 # site, and a comment quoting it makes the count read 2. A grep anchored on a
 # call matches the prose too.)
-NAME=""; REASON=""
-lane_name() {   # <head branch> -> 0 with $NAME set, or 1 with $REASON set
-    NAME=""; REASON=""
+NAME=""; REASON=""; NAME_VIA=""; BODY_WHY=""
+# <pr> -> 0 with NAME set and NAME_VIA=body, or 1 with BODY_WHY saying why not.
+# The body is read once per PR per tick; the rejected text is never echoed,
+# because it is about to go into a PR comment.
+declare -A PR_BODY=()
+lane_from_body() {
+    local b n
+    if [ -z "${PR_BODY[$1]+x}" ]; then
+        PR_BODY[$1]=$(gh pr view "$1" --repo "$GH_REPO" --json body --jq .body 2>/dev/null)
+    fi
+    b=$(sed -n 's/\r$//; s/^Lane:[[:space:]]*//p' <<< "${PR_BODY[$1]}" | head -1)
+    n="${b%%[[:space:]]*}"; n="${n#lane.}"
+    if [ -z "$b" ]; then BODY_WHY="the PR body has no \`Lane:\` line"; return 1; fi
+    if ! [[ "$n" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then BODY_WHY="the PR body's \`Lane:\` line does not name a lane"; return 1; fi
+    if [ ! -d "$WORK/wt/$n" ] || [ ! -f "$WORK/briefs/$n.md" ]; then
+        BODY_WHY="the PR body's \`Lane: $n\` has no worktree and brief on this host"; return 1
+    fi
+    NAME="$n"; NAME_VIA=body; return 0
+}
+lane_name() {   # <head branch> [<pr>] -> 0 with $NAME set, or 1 with $REASON set
+    NAME=""; REASON=""; NAME_VIA=""; BODY_WHY=""
     local rl; rl=$(remote_lane_of "$1")
     if [ -n "$rl" ]; then
         REASON="\`$1\` is \`lane.$rl\`'s branch, and that lane runs somewhere this host cannot see (\`remote\` in \`territory.toml\`). Nothing local resumes it and nothing local should: its routine picks this up on its next fire. The work is unchanged -- merge \`origin/$TIP\` into the branch, resolve, push, then re-apply \`fold-ready\`."
@@ -849,7 +867,15 @@ lane_name() {   # <head branch> -> 0 with $NAME set, or 1 with $REASON set
                 hits+="${hits:+ }${d##*/}"
             done
             case "$hits" in
-                "") ;;
+                "")
+                    # A LANE MAY ALSO HAVE MOVED ON. lane.flip474 then switched
+                    # wt/flip474 to `lane/flip474-sysmem` (#516), so nothing had
+                    # `lane/flip474-ts` checked out and #504 was labelled
+                    # `blocked:needs-owner` every tick. Every lane PR body opens
+                    # with `Lane: <name>`; that is the third resolver. The body
+                    # is untrusted text about to name a unit, so the name must
+                    # be a plain lane name AND have a worktree and a brief here.
+                    [ -n "${2:-}" ] && [ "$2" != none ] && lane_from_body "$2" && return 0 ;;
                 *" "*)
                     NAME=""
                     REASON="\`$1\` has no worktree of its own name, and it is checked out in more than one lane's worktree (\`$hits\`, under \`\$WORK/wt/\`). Not guessing which lane it is; the one that does not own it should switch branch."
@@ -1048,7 +1074,7 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
         park=$(parked_label "$labels")
         if [ -z "$park" ]; then
             case "$branch" in lane/?*)
-                lane_name "$branch" && pn="$NAME" || pn="${branch#lane/}"
+                lane_name "$branch" "$pr" && pn="$NAME" || pn="${branch#lane/}"
                 park=$(awk -F'\t' -v n="$pn" '$1 == n { print "issue " $2; exit }' <<< "$PARKED_LANES") ;;
             esac
         fi
@@ -1127,7 +1153,7 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
         # at, so they have to be said in words or the comment names a label
         # that does not exist. The lane named is the one the branch RESOLVED
         # to, which is not always the branch minus `lane/`.
-        lane_name "$branch"; named=$?
+        lane_name "$branch" "$pr"; named=$?
         ln="${NAME:-${branch#lane/}}"
         case "$label" in
             draft-strand-*) said="this PR is a draft and lane \`$ln\`'s unit is not running" ;;
@@ -1149,6 +1175,20 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
             continue
         fi
         name="$NAME"
+
+        # A LANE NAMED BY THE BODY HAS MOVED ON, so this PR is not stranded:
+        # the lane is live on its other branch (its worktree cannot be on this
+        # one, or the worktree resolver would have found it). Resuming it here
+        # would hand a session on that branch a cause about this one, and the
+        # dead end below would label a lane that exists. Silent in the tick log:
+        # a standing state, not news. Only `list` says it.
+        if [ "$NAME_VIA" = body ]; then
+            other=$(git -C "$WORK/wt/$name" symbolic-ref --short HEAD 2>/dev/null)
+            other="${other:-a detached HEAD}"
+            systemctl --user is-active --quiet "hakux-lane-$name" 2>/dev/null && other+=" (unit running)"
+            [ "$mode" = list ] && echo "#$pr $branch: $label, lane $name (from the PR body's Lane: line) is live on $other; not stranded"
+            continue
+        fi
 
         # RESUME ONLY ON A NEW CAUSE. Keyed on the head sha the handback was
         # found at, the way fold.sh already keys $F/failed/$pr-$head: a lane
@@ -1281,7 +1321,7 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
             # the attempts-exhausted path sets, and appears in status.sh's
             # roll-up instead of only in a comment nobody is looking at.
             [ "$pr" = none ] || label_add "$pr" blocked:needs-owner || say "  WARNING: could not label #$pr blocked:needs-owner"
-            comment "$pr" "[job.handback] $said and lane \`$name\` (resolved from branch \`$branch\`; no worktree under \`$WORK/wt/\` with a brief has that branch checked out) has its worktree or brief gone from this host (\`$WORK/wt/$name\`), so \`lane.sh resume\` cannot run. It needs \`lane.sh start $name <brief>\`, which is the board's call, not this job's. Labelled \`blocked:needs-owner\` so this PR is not waiting in silence: **nothing will act on it until someone does.**"
+            comment "$pr" "[job.handback] $said and lane \`$name\` (resolved from branch \`$branch\`; no worktree under \`$WORK/wt/\` with a brief has that branch checked out; ${BODY_WHY:-the PR body was not read}) has its worktree or brief gone from this host (\`$WORK/wt/$name\`), so \`lane.sh resume\` cannot run. It needs \`lane.sh start $name <brief>\`, which is the board's call, not this job's. Labelled \`blocked:needs-owner\` so this PR is not waiting in silence: **nothing will act on it until someone does.**"
             continue
         fi
 

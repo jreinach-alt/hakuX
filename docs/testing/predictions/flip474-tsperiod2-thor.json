@@ -1,0 +1,31 @@
+{
+  "registered_utc": "2026-09-27T22:07:18Z",
+  "who": "lane.flip474",
+  "issue": "474",
+  "title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso",
+  "device": "thor",
+  "seconds": 120,
+  "route": "crimson-skies",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "57e2a7107c06eee5b51eae9f62e40728be390e30",
+  "b_ref": "253148451f2dbcb8fad092572dcc89250ea57867",
+  "arms": "B only. No leg compares against an A run: each is read off B's own start-up line or compares two clocks inside B.",
+  "must_not_move": [
+    "pgraph: docs/testing/predictions/flip474-tsperiod2-pgraph-inert.json (12 suites, identical captures, same refs)"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off the start-up 'GPU timestamp period' line, hakuX-phase and [surf413] lines.",
+  "judge": "grep 'GPU timestamp' logcat.txt; python3 docs/lanes/flip474/gfpsseries.py --from 0 --to 120 <B>; crashcheck.py",
+  "prediction": "#474, the Thor check. The first cut read 4636.591 ns here (1-1790540677-flip474-2313275): its counter advanced 1.2 ms over a 110 ms span with a 100 ms sleep in it. The Thor's SoC and driver are the Nova's, so the guess is the same 52.083 ns counter. The route need not play: both Thor runs of the first cut were refused input focus, and every leg here is read off the start-up line or off whatever the title draws unattended.",
+  "legs": {
+    "K0 (the line)": "exactly one 'init: GPU timestamp period reported= measured= (+-%, span, samples k of n, halves differ %) using= (measured|reported[; not measured: why])' in the logcat. KILL: none.",
+    "K1 (the value, a guess)": "measured= is 52.08 ns +-1% and using= is the measured value. KILL: using= is a measured value outside 49.5 to 54.7 ns; the first cut's 4636 would be that.",
+    "K3 (the self-check, a guess)": "as on the Nova, confidence 70%. If the line says '(reported; not measured: ...)', the Thor's counter depends on idle gaps of 300 us; that is the finding and using= is 33.11.",
+    "G2 (physically possible)": "every hakuX-phase line has GPU <= 1.05 x Tot. The first cut read GPU 28 to 30 ms of a 32.5 ms frame on a two-pass screen that reads 0.2 ms with the reported period.",
+    "G3 (the screen the first cut got wrong)": "on the unattended screen (RP:2), GPU is under 1 ms. KILL: over 5 ms.",
+    "H0": "no crash marker."
+  }
+}

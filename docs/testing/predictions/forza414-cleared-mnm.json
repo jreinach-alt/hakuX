@@ -1,0 +1,40 @@
+{
+  "registered_utc": "2026-09-27T18:15:44Z",
+  "who": "lane.forza414",
+  "issue": "414",
+  "prediction": "MUST-NOT-MOVE guard for #414 hunk 1. A is 7787feb2ae (lane/forza414 head: master c91697f116 merged with the [sdcall] probe and the surfupd deferral, itself guarded by forza414-coalesce-mnm.json, PASS 266/266). B is 51721e36aa (A plus: pgraph_vk_clear_surface sets SurfaceBinding.cleared at both exits after set_surface_dirty when the clip-bounded clear rect, in anti-aliased units, starts at 0,0 and covers the binding; colour only when all four channels are cleared, zeta only when Z and, if the format has stencil, stencil are). The flag's one reader is update_surface_part's swizzle rescue: a fully cleared linear binding is reused as swizzled (strict size match) instead of evicted, downloaded and re-uploaded. GL has set it since upstream. PREDICTION: every guarded capture is byte-identical between the arms. What would move each, in the world where the hunk is wrong: Texture_render_target and Surface_format, if a test clears a linear target and then draws it swizzled with content the clear did not make uniform (a partial clear judged full: a clip, AA or clear-rect unit error), so the reused binding shows linear-ordered texels where swizzled ones were uploaded from VRAM; Clear, if a channel-masked or Z-only clear is judged full; Depth_buffer_fixed_function and Color_zeta_overlap, if a zeta binding with stencil keeps a stale stencil through the rescue; Surface_clip, if the clip-bounded rect is compared wrongly against a clip-offset binding; Texture_CPU_Update, Texture_render_update_in_place (PR #387 guard), Image_blit and Texture_Framebuffer_Blit, if a rescued binding skips a VRAM upload a CPU write or blit put there between the clear and the draw (the flag is reset by every draw, not by a CPU write). Read every scores1.tsv status for unreadable.",
+  "a_ref": "7787feb2ae",
+  "b_ref": "51721e36aa",
+  "must_not_move": [
+    "Depth_buffer_fixed_function/*",
+    "Color_zeta_overlap/*",
+    "Surface_format/*",
+    "Surface_clip/*",
+    "Clear/*",
+    "Texture_render_target/*",
+    "Texture_CPU_Update/*",
+    "Texture_render_update_in_place/*",
+    "Image_blit/*",
+    "Texture_Framebuffer_Blit/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Clear",
+      "Color zeta overlap",
+      "Depth buffer fixed function",
+      "Image blit",
+      "Surface clip",
+      "Surface format",
+      "Texture CPU Update",
+      "Texture Framebuffer Blit",
+      "Texture render target",
+      "Texture render update in place"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
