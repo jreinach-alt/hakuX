@@ -202,6 +202,8 @@ No focus-drop line appears, and that is expected. #527 now carries
 never reaches the focus check. The live line also shows the lane guard from
 attempt 1 holding a second PR, #518, whose lane `forza414` is still running.
 
+- The full `selftest.sh`, run in this worktree on 0de96ac0ac:
+  `2288 passed, 0 failed`. `preflight.sh` passed.
 - Staging a subset of fragments in a copy that is not a git tree breaks
   99-limits-env on its own (3 FAIL), with or without this change. Run the full
   suite in the real worktree.
