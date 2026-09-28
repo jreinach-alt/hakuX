@@ -58,14 +58,14 @@ notes = "A §11 soak title; own target not yet measured, so the 30 default. Rout
 name = "Dead or Alive 3"
 iso = { thor = "Dead or Alive 3 (USA) (En,Ja).xiso.iso" }
 target_fps = 60
-notes = "A §11 soak title; a 60 fps fighter. Route: PR 2."
+notes = "A §11 soak title; a 60 fps fighter. Route: PR 2. #431 (09-28; documented, not measured here): Impulse Gamer (2002): \"a consistent 60 frames per second\"; HonestGamers: \"flawless framerates\"; a frame-rate video of the original: youtube.com/watch?v=djgZg-FqeQs (\"Xbox Original | Dead or Alive 3 | Review Gameplay Framerate\")."
 
 [titles."49470018"]
 name = "JSRF: Jet Set Radio Future"
 target_fps = 60
 iso = { thor = "JSRF - Jet Set Radio Future (USA).xiso.iso" }
 route = "jsrf"
-notes = "#431 (comment 5851536933): 60, medium confidence. GameSpot review and preview (Xbox, 2002); its slowdown is slow motion"
+notes = "#431 (comment 5851536933): 60, medium confidence. GameSpot review and preview (Xbox, 2002); its slowdown is slow motion. #431 (09-28; documented, not measured here): confirmed 60 by reports from original hardware (a Time Extension comment, ResetEra) and reviews; it chugs in the Garage hub, more as characters unlock."
 
 [titles."4D530053"]
 name = "Grabbed by the Ghoulies"
@@ -78,7 +78,7 @@ notes = "#431 (comment 5851536933): 30, high confidence. Digital Foundry (2015):
 name = "Conker: Live & Reloaded"
 target_fps = 30
 iso = { nova = "Conker Live & Reloaded.iso" }
-notes = "#431 (comment 5851536933): 30, high confidence. Digital Foundry (2026)"
+notes = "#431 (comment 5851536933): 30, high confidence. Digital Foundry (2026). #431 (09-28; documented, not measured here): VG Tech (2018; original Xbox, from disc, single player), from its published data sheet: median 30, mean 29.15, 5th percentile 23, minimum 20; 5.83% of frames took 50 ms."
 
 [titles."4D530039"]
 name = "RalliSport Challenge 2"
@@ -117,13 +117,14 @@ name = "Dead or Alive Xtreme Beach Volleyball"
 iso = { nova = "54430007-Dead_or_Alive_Xtreme_Beach_Volleyball.xiso.iso" }
 target_fps = 60
 route = "doax"
-notes = "#431 (comment 5849938891): 60, low confidence. a user review only (set it so a person checks)"
+notes = "#431 (comment 5849938891): 60, low confidence. a user review only (set it so a person checks). #431 (09-28; documented, not measured here): NOT confirmed: eight reviews do not name a frame rate, and the one 30 fps claim found (a forum post) is about the pre-rendered opening video."
 
 [titles."45410083"]
 name = "Black"
 iso = { thor = "45410083-Black.xiso.iso" }
 route = "black"
-notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default. #431 (09-28; documented, not measured here): low confidence: playday.one retro review, on Series X back-compat, which keeps the original cap: \"stuck to a floaty feeling 30 frames per second\"; HonestGamers: \"a solid framerate\"."
+target_fps = 30
 
 [titles."45410026"]
 name = "007: Nightfire"
@@ -137,7 +138,7 @@ name = "Project Gotham Racing"
 target_fps = 60
 iso = { thor = "4D530003-Project_Gotham_Racing.xiso.iso" }
 route = "pgr"
-notes = "#431 (comment 5851536933): 60, medium confidence. GameSpot (Xbox, 2001)"
+notes = "#431 (comment 5851536933): 60, medium confidence. GameSpot (Xbox, 2001). #431 (09-28; documented, not measured here): also The Pixel Empire: \"the 60fps driving\"."
 
 [titles."4541005D"]
 name = "GoldenEye: Rogue Agent"
@@ -199,7 +200,8 @@ notes = "#431 (comment 5849938891): 60, high confidence. Criterion to Digital Fo
 [titles."4D530065"]
 name = "Blinx 2: Battle of Time & Space ~ Blinx 2: Masters of Time & Space"
 iso = { thor = "4D530065-Blinx_2_Battle_of_Time_Space_Blinx_2_Masters_of_Time_Space.xiso.iso" }
-notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default. #431 (09-28; documented, not measured here): low confidence: ogxbox.co.uk (2025): \"targeting 30 frames per second, though complex sequences with multiple effects can cause noticeable slowdown\"."
+target_fps = 30
 
 [titles."54430006"]
 name = "Dead or Alive 1 Ultimate"
@@ -224,7 +226,7 @@ name = "Crash Twinsanity"
 target_fps = 60
 iso = { thor = "56550036-Crash_Twinsanity.xiso.iso" }
 route = "crash-twinsanity"
-notes = "#431 (comment 5851536933): 60, medium confidence. Play Magazine (Oct 2004) via Metacritic's Xbox excerpt"
+notes = "#431 (comment 5851536933): 60, medium confidence. Play Magazine (Oct 2004) via Metacritic's Xbox excerpt. #431 (09-28; documented, not measured here): the game has 50 Hz and 60 Hz modes (beyondtwinsanity.com)."
 
 # lane.titleroutes (#397, 0.5 benchmark stage 2): routes programmed with nav.py in HELD sessions.
 [titles."43560001"]
@@ -330,6 +332,8 @@ route = "mechassault-2"
 name = "Grand Theft Auto: San Andreas"
 iso = { thor = "54540082-Grand_Theft_Auto_San_Andreas.xiso.iso" }
 route = "gta-sa"
+target_fps = 30
+notes = "#431 (09-28; documented, not measured here): high confidence, from the game's own code: its frame limiter (default.xbe 0x273678) waits 2 vblanks per frame, a 30 fps cap at 60 Hz (#482 comment 5872722950)."
 
 [titles."5A440004"]
 name = "Alien Hominid"
@@ -342,6 +346,8 @@ notes = "Own target 60 from hakuX: it runs at 59.94 fps median over 302 windows 
 name = "Midtown Madness 3"
 iso = { thor = "4D53002A-Midtown_Madness_3.xiso.iso" }
 route = "midtown-madness-3.returning"
+target_fps = 30
+notes = "#431 (09-28; documented, not measured here): medium confidence: a GameSpot hands-on preview (Dec 2002), as a web search summarizes it: the developer was working to lock the frame rate at 30 frames per second."
 
 [titles."4D530010"]
 name = "Blood Wake"
@@ -352,16 +358,22 @@ route = "blood-wake"
 name = "Brute Force"
 iso = { thor = "4D53001E-Brute_Force.xiso.iso" }
 route = "brute-force"
+target_fps = 30
+notes = "#431 (09-28; documented, not measured here): low confidence: ogxbox.co.uk (2025, a templated spec box): \"Frame Rate: 30 fps\"; reviews disagree on dips in heavy fights and 4-player split screen."
 
 [titles."46530002"]
 name = "Otogi: Myth of Demons"
 iso = { thor = "46530002-Otogi_Myth_of_Demons.xiso.iso" }
 route = "otogi"
+target_fps = 30
+notes = "#431 (09-28; documented, not measured here): low confidence: a community 60 FPS patch exists for it (github icup321/XboxGraphicalPatches), so the native cap is below 60; reviews note occasional dropped frames."
 
 [titles."41430006"]
 name = "Burnout"
 iso = { thor = "41430006-Burnout.xiso.iso" }
 route = "burnout"
+target_fps = 60
+notes = "#431 (09-28; documented, not measured here): medium confidence: 3rdvoicegaming: \"a rock-solid 60 frames per second\", and \"The Xbox and GameCube ports ... retain the excellent performance\"; ogxbox.co.uk (2025): 60, and \"particularly crash heavy sequences can cause occasional slowdown\"."
 
 [titles."45410062"]
 name = "Battlefield 2: Modern Combat"
@@ -385,13 +397,15 @@ notes = "Own target 30 from #431 (comment 5853568091): low confidence. Cxbx deve
 name = "Alias"
 iso = { thor = "41430016-Alias.xiso.iso" }
 route = "alias"
+target_fps = 30
+notes = "#431 (09-28; documented, not measured here): low confidence: ogxbox.co.uk (2025): \"a mostly stable 30 frames per second at 480p\", with occasional dips in combat-heavy sequences; a community 60 FPS patch exists (github icup321/XboxGraphicalPatches)."
 
 [titles."4D570002"]
 name = "Arctic Thunder"
 iso = { thor = "4D570002-Arctic_Thunder.xiso.iso" }
 route = "arctic-thunder"
 target_fps = 60
-notes = "Own target 60 from #431 (comment 5853568091): medium confidence. IGN Xbox review (2001)."
+notes = "Own target 60 from #431 (comment 5853568091): medium confidence. IGN Xbox review (2001). #431 (09-28; documented, not measured here): also GameRevolution: \"the framerate is solid and smooth\"; ogxbox.co.uk's templated \"30 fps\" contradicts the rest."
 
 [titles."4D570005"]
 name = "Area 51"
@@ -408,6 +422,8 @@ route = "dnd-heroes"
 name = "BloodRayne"
 iso = { thor = "4D4A0001-BloodRayne.xiso.iso" }
 route = "bloodrayne"
+target_fps = 30
+notes = "#431 (09-28; documented, not measured here): low confidence: ogxbox.co.uk (2025): \"a generally stable 30fps frame rate with occasional dips during intense combat sequences\"."
 
 [titles."56550009"]
 name = "Antz Extreme Racing"
