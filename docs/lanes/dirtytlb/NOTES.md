@@ -488,7 +488,8 @@ All outside this session.
 | fix, 11 suites, A | `1-1790621866-arms-dirtytlb-base-1593889` (running at 19:56Z) | the `[job.arms]` verdict on `dirtytlb-rd-pixels.json`, PR #575 |
 | fix, 11 suites, B | `1-1790621867-arms-dirtytlb-fix-1593943` | the same |
 | fix, signed suite x3 | `1-1790621868-arms-dirtytlb-base-1594519`, `1-1790621869-arms-dirtytlb-fix-1594555` | the `[job.arms]` verdict on `dirtytlb-rd-signed.json`, PR #575 |
-| Black pair | in `queue.log`, under `rd-black` | `dirtytlb-rd-black.json` |
+| Black pair B (`a0d75c9a40`), Thor | `1-1790625918-lane.dirtytlb-4014114` | `dirtytlb-rd-black.json` |
+| Black pair A (`68cfc51e10`), Thor | `1-1790625921-lane.dirtytlb-4014378` | `dirtytlb-rd-black.json` |
 
 Then:
 - #575 goes ready when both pixel verdicts are PASS. The Black pair adds a
