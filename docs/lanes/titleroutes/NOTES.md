@@ -1471,3 +1471,26 @@ Benchmark queued: 1-1790569004-titleroutes-3006458 (thor, 530 s, ref
 **A general rule for a menu that auto-repeats:** push to a stop, then step
 back with taps held 0.1 s *in the route file*. A tap sent through nav.py is
 recorded with nav.py's own round trip, 0.3-0.6 s, so correct it by hand.
+
+### Session 30: 2026-09-27 ~22:00 PDT, no device work
+
+Why session 29 did not finish: it hit the 300-turn cap at 21:43 PDT while it
+still held the Thor, and hostops lifted the hold. The PGR2 work it had left
+was already done before the cap. The second replay reached the race
+(`scratch/replay/pgr2-211124/211518-gameplay.png`), and its benchmark
+1-1790569004-titleroutes-3006458 was queued.
+
+State at the start of session 30:
+- The Thor is held by `cooldown-devwatch` (xo-therm 74.1 C, #507). It waits
+  until the Thor is at 65 C, so there is no held nav session.
+- Nothing of mine has run. The seven earlier benchmarks were renamed
+  `1-9-...` in queue/ (lowered within priority 1), and their results/ entries
+  are dangling symlinks. They are Azurik 2862460, D&D Heroes 2862610,
+  Nightfire 373432, Burnout 3 374056, Kabuki (nova) 374601, RalliSport 2
+  1417504 and Spikeout 2191714. PGR2 3006458 is queued as well.
+- Merged origin/master (43 commits).
+
+Next titles, on the Thor once it is cool and running/ is empty for it: 25 to
+Life, Call of Duty 3, Midnight Club 3: DUB Edition, Tork: Prehistoric Punk,
+Blinx 2. After those: Bruce Lee (a load inside the scored window), Galleon,
+GoldenEye RA (returning route) and Burnout Revenge (the profile loop).
