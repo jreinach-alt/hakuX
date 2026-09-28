@@ -35,7 +35,7 @@ walks per flip at ~27 us each, 4.7 ms per flip, with the texture path at most
 `[rdc]` on hakuX-perf, one line per 60+ flips, every field this window's:
 
     [rdc] f= dt= tid= tcpu= rdo= rdous= vtx=n/us/pg/h nv2a= tex= vga= code=
-          mig= snap= oth= v= dra= dx= tm= ovh=ns/n tk=
+          mig= snap= oth= v= dra= dx= vr= tm= ovh=ns/n tk=
 
 - `<site>=calls/us/pages/hits`. The us are the walk time `tlb_reset_dirty()`
   already took for rdous (a thread-local, no second clock read); hits are the
@@ -57,7 +57,8 @@ walks per flip at ~27 us each, 4.7 ms per flip, with the texture path at most
   paths, must not move, A master `9d777502fa`, B `111c7fea74`. Queued by the
   arms job.
 - `dirtytlb-counter.json`: the soak legs (V, C1, C2, H, N1, N2, X, F, K1, K2),
-  hand-queued, B first then A, 240 s perflog: Crimson on the Thor, Blinx on
+  hand-queued (queue_counter.sh), B first then A, 240 s perflog; re-registered
+  in attempt 2 on A `559ea2fc07`, B `9d33d2dac2`: Crimson on the Thor, Blinx on
   the Nova. Judge: `rdc_read.py --pair A B` (selftest: `--selftest`).
 
 ## The fix (not yet chosen)
@@ -76,22 +77,65 @@ What the counts would point to:
 
 ## Runs
 
-Queued 2026-09-28 ~12:45Z behind the battery holds (docs/lanes/dirtytlb/queue.log):
+Attempt 1 queued four soaks at 2026-09-28 ~12:45Z (A 9d777502fa, B
+111c7fea74). They never ran: withdrawn unclaimed at 14:55Z (queue/withdrawn/)
+when attempt 2 added `vr`, and requeued (docs/lanes/dirtytlb/queue.log):
 
 | request | title | device | arm |
 |---|---|---|---|
-| 1-1790599436-lane.dirtytlb-41378 | Crimson Skies | thor | B 111c7fea74 |
-| 1-1790599437-lane.dirtytlb-41484 | Crimson Skies | thor | A 9d777502fa |
-| 1-1790599438-lane.dirtytlb-41557 | Blinx | nova | B 111c7fea74 |
-| 1-1790599438-lane.dirtytlb-41609 | Blinx | nova | A 9d777502fa |
+| 1-1790606269-lane.dirtytlb-479803 | Crimson Skies | thor | B 9d33d2dac2 |
+| 1-1790606269-lane.dirtytlb-479870 | Crimson Skies | thor | A 559ea2fc07 |
+| 1-1790606270-lane.dirtytlb-479942 | Blinx | nova | B 9d33d2dac2 |
+| 1-1790606270-lane.dirtytlb-480001 | Blinx | nova | A 559ea2fc07 |
 
-The pixel arm is the arms job's (dirtytlb-counter-pixels.json).
+A is master 559ea2fc07, which differs from the old A only in docs/ and jobs/.
+The pixel arm is the arms job's (dirtytlb-counter-pixels.json, still on
+9d777502fa / 111c7fea74, queued as arms-dirtytlb-base/fix); `vr` is a read of
+a render-thread counter plus one static, so it moves no pixel, but that arm
+covers the counter without it.
 
-## Waiting (2026-09-28 ~12:55Z)
+## Attempt 2 (2026-09-28 ~14:35Z)
 
-On things outside this session: the four soaks above (dispatch request ids
-in the table; the Thor and Nova are on battery holds until charged), the
-arms job's `[job.arms]` verdict on dirtytlb-counter-pixels.json, and CI on
-the head. Next session: `rdc_read.py --pair A B` on each title, K1 from
-thermal.jsonl, j_per_frame from title_verdict.py; then pick the fix from
-vtx's hits per call and register dirtytlb-fix-*.json before its arms.
+Why attempt 1 did not finish: it did what it could and stopped on a correct
+`waiting:`. Both handhelds were on battery holds, so its four soaks and the
+pixel arm sat queued; handback resumed the lane with them still unclaimed.
+
+What attempt 2 added: hostops' addendum (07:31 PDT) asks to price "one walk
+per draw over the span of its dirty ranges" from the runs. `[rdc]` as queued
+could not: vtx calls per flip against the Vsyn line's C (draws that reach the
+sync) bounds walks per draw only loosely. So:
+
+- **`vr`** (physmem.c): a vtx walk whose (flip, `vsync_working.calls`) equals
+  the previous vtx walk's, i.e. a second or later walk inside one
+  `pgraph_vk_sync_vertex_ram_buffer()` call. Only the render thread makes vtx
+  walks, so a plain static key is enough. `tlb_reset_dirty()` scans every
+  entry of every live mode whatever the length (cputlb.c ~1221), so the span
+  lever saves exactly `vr` walks: `vr x vtx us/call` per flip, less whatever
+  the wider span's extra NOTDIRTY entries cost the vCPU in slow-path stores.
+- `rdc_read.py` reads `vr` (optional, so pre-vr lines still parse and read
+  "unknown", not 0) and prints the price. Selftest covers both.
+- Type-check as before: `typecheck.py <worktree>`, rc 0 on both files, the
+  only warnings the pre-existing TARGET_PAGE_MASK shifts.
+
+## The addendum's levers, to price from the runs
+
+- **Span walk per draw** (safe as it stands): saves `vr` walks. It lives in
+  draw.c (lane.forza414's): collect the dirty merged ranges of one sync, then
+  one `physical_memory_dirty_bits_cleared(min_start, max_end - min_start)`
+  after the loop, before the uploads are relied on. The bitmap test-and-clear
+  stays per range, so no bit is lost; the span only re-arms more entries.
+- **One walk per flip** needs a render-side pending bitmap (addendum); trades
+  walks for repeat uploads. Only worth it if vtx calls per flip minus vr is
+  still large.
+- **VGA**: the addendum expects 3-5 walks per flip in `vga`; `[rdc]` reports
+  them as their own site, not `oth`.
+
+## Waiting (2026-09-28 ~15:00Z)
+
+On things outside this session: the four soaks above (both handhelds on
+battery holds; the Nova lifts near 16:15Z), the arms job's `[job.arms]`
+verdict on dirtytlb-counter-pixels.json, and CI on the head. Next session:
+`rdc_read.py --pair A B` per title, K1 from thermal.jsonl, j_per_frame from
+title_verdict.py; then choose between the levers above from vtx's calls, vr
+and hits per flip, register dirtytlb-fix-*.json, and ask for draw.c by board
+request.
