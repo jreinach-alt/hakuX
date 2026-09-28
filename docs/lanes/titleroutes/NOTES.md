@@ -1301,3 +1301,43 @@ for about 70 min, so a held nav session would only block them. After they
 land: read them, then go on down the Thor list in held sessions (Bicycle
 Casino, Breeders' Cup, AMF Xtreme Bowling, then the Playable list in the
 hand-over).
+
+### Attempt 10 (resumed 2026-09-27 19:02 PDT, handback)
+
+Why attempt 9 did not finish: it ended on purpose, waiting on the six batch 9
+requests above. Those requests were outside the session, but it left PR #515
+in draft, so no job could fold it. Handback resumed the lane once all seven
+results (six plus hostops' BloodRayne re-queue) had landed.
+
+**Batch 9 results (Thor, MAX regimen, apk 6d334facad15, ref e884ad260e).**
+Scored with `scratch/judge.py` (title_verdict.py on a copy). Each mark frame
+was read before its fps. None of the four scored runs hit the thermal pause:
+every run.log reads `no thermal-pause device above 0`, and the hottest zone
+was 95-97 C.
+
+| title | request | mark frame | gameplay s | median fps | >= 30 | target |
+|---|---|---|---|---|---|---|
+| BloodRayne | 1-1790548501-titleroutes-1530145r | 183450-gameplay: Rayne at the church wall, overlay 26 | 323 | 24.89 (min 20.53) | 4.4% | 30 |
+| Baldur's Gate: DA | 1-1790548501-titleroutes-1530514 | 182353-gameplay: the archer on the tavern floor, overlay 59 | 298 | 59.94 (min 56.55) | 100% | 60 |
+| KOF: Maximum Impact | 1-1790548502-titleroutes-1531011 | 184428-gameplay: Alba vs Soiree, round timer 50, 2 hits, overlay 32 | 311 | 32.89 (min 19.47) | 99.0% | 30 |
+| Arctic Thunder | 1-1790548502-titleroutes-1531400 | 185625-gameplay: in the race, clock 00:20.61, overlay 26 | 310 | 24.07 (min 18.24) | 14.2% | 60 |
+
+The Arctic fix (f57c1e3b05) worked: this time the mark lands mid-race rather
+than on TIME IS UP. This queued KOF run held 33 fps where the 14:29 held soak
+fell to 13-15 after 300 s, so that held soak's median (14.56) was not the
+title's rate either.
+
+**Did not run:** Azurik (1-1790548501-titleroutes-1529314), D&D Heroes
+(1-1790548501-titleroutes-1529756) and the first BloodRayne run
+(1-1790548501-titleroutes-1530145) all read `soak aborted: not-foreground
+before the route's first input`. `com.odin.settings`, a stale USB-debugging
+dialog, held display 0's focus. The guard refused them as it should. These
+are not route failures. Hostops re-queued BloodRayne. This session re-queued
+the other two on the same ref:
+Azurik 1-1790560999-titleroutes-2862460 (500 s) and D&D Heroes
+1-1790560999-titleroutes-2862610 (600 s), Thor, `scratch/q9b.log`.
+
+**Next (for this lane or a successor):** read those two results (mark frame
+first). Then go on down the Thor list in held nav sessions under the focus
+read: Bicycle Casino, Breeders' Cup, AMF Xtreme Bowling, then the Playable
+list in the hand-over.
