@@ -249,3 +249,131 @@ is < 20%: the ring-out hang is then another mechanism, and this lane's fix does 
 **Inconclusive if** no stall of >= 8 s comes after `mark play` (the fight did not ring out), or
 the only one is shorter: then the ring-out case stays inferred from the source run's counters,
 not measured.
+
+## 7. Session 4 (2026-09-27 21:05-21:13 PDT, 510 s of device time): inconclusive
+
+One cold launch, 440 s asked. The menu -> first fight load stalled cold again (**13.0 s**,
+21:06:37.9-21:06:50.9, vCPU 1842-1976, closing `fifoskew` drained 41, max 422 ms: the fourth
+cold measurement of this load, all 12.8-13.0 s). Then, at 21:06:51, inside the tail of that
+stall, **the Nova dropped off adb** (`device offline`, three liveness probes failed; hottest
+thermal zone 92.3 C; battery 27%, discharging 4.2 W against 2.1 W in), and `soak_title.sh`
+aborted the run at 103 s (`not-foreground: unknown`). It was back for the cleanup a few minutes
+later (REST set, hold released). The route never reached `mark play`, so **the ring-out case was
+not measured**. Per section 6 this is inconclusive, not a refutation.
+
+Device time for the lane: 370 + 286 + 125 + 510 = **1,291 s (21.5 min)**, four held sessions.
+No more was taken: the Nova went straight to the owner's top-up (hold `topup-lanelocal`).
+
+## 8. Result
+
+**Mechanism (measured on the menu -> first fight load, four cold occurrences, one profiled):**
+synchronous Vulkan pipeline compilation on the PFIFO thread. When a scene load first draws with
+pipelines the `VkPipelineCache` does not hold, the PFIFO thread compiles each one inside
+`vkCreateGraphicsPipelines` before recording its draw. That is Turnip's SPIR-V -> NIR -> ir3
+compile, 96% of a thread that is 97-98% on-CPU. The pushbuffer drains only between compiles, the
+title blocks on the GPU, and the guest sits in the kernel idle loop (91% of the vCPU's mapped JIT
+samples). Nothing flips until the compiles finish.
+
+| quantity | value | source |
+|---|---|---|
+| cold stall, menu -> first fight load | 12.8, 12.9, 13.0 s (sessions 1-4; 12.6 s in the Sept. 26 perflog soak) | `stalls.py` |
+| the same load with the caches warm | 3.1 s | session 2, launch 2 |
+| share of the cold stall that is compile | ~9.8 s of 12.9 s (76%) | cold minus warm |
+| longest guest frame in it | 12,402 ms | `G` max, session 2 launch 1 |
+| PFIFO thread on-CPU / in Turnip's compiler | 96.7-98.1% / 96% of its samples | `taskio`, `hostsplit`, `callers` |
+| vCPU in the kernel idle loop | 91% of mapped JIT samples | `tbmap.py` |
+| disc reads during the cold stall | 0.0 KB/s | `taskio` |
+
+**The ring-out hang (the brief's 76 s) is not measured here; it is inferred.** Session 4's run
+never reached the fights. What the source run's own logcat says fits this mechanism and nothing
+else this lane measured. From 08:10:16 to 08:12:06 the `fifoskew` lines keep coming with
+kicks > 0 and **drained 0** (the pusher never finishes a kick for a minute), and the one window
+that does drain (08:11:28) reports a kick-to-drain **mean of 29.7 s and a max of 37.7 s**: the
+PFIFO thread was inside one long piece of work for over half a minute. The vCPU reads
+1750-1813 of 2000 throughout. The source run's shader cache was "kept: same apk as this
+device's previous run", and titleplay pass 1 ran a different title before each, so DOA's
+lower-stage pipelines had not been compiled before. **What would confirm it:** the pipeline
+miss count across such a hang (see fix step 1), or a profile of one, which needs a route that
+rings out reliably.
+
+**Corrections to PR #417's reading** (docs/lanes/doa413/NOTES.md, section 1(b) and 3(b)):
+
+- "the renderer is idle" in the stall: it is not. The PFIFO thread is 97% on-CPU. `Ri` is printed
+  per 60 flips and read 0.0 (no idle) over the stall. The perflog phase line that spans a stall
+  accounts for 1.7 s of its 14 s, with `Shd 0.0` (open: why the `shader_compile` timer misses it).
+- "the guest runs flat out": the vCPU thread does, but the guest is idle. The kernel idle loop
+  never halts (#525), so a 98% vCPU thread is an idle guest.
+- "not a shader storm, because kicks are ~0": kicks are low *because* the pusher is compiling.
+  The shader/pipeline compile is the stall.
+
+## 9. Proposed fix (a separate claim; this lane takes no code file)
+
+`async_compile` exists (off by default, `SettingsActivity.kt:69`), but it **would not remove
+this stall**. With it on, a draw whose shader modules are still compiling is skipped. A draw
+whose *pipeline* is pending **waits** (`vk/draw.c:4344-4352`, `while (pending) g_usleep(100)`),
+on the stated assumption that pipeline creation is fast. On Turnip, pipeline creation is where
+the whole compile happens (`tu_spirv_to_nir`, `tu_shader_create`, `link_opts`).
+
+In order, each to be priced before the next:
+
+1. **Instrument (no pixels): log the pipeline hit/miss counters.** `g_nv2a_stats.shader_stats`
+   already counts pipeline, shader-module and SPIR-V cache hits and misses
+   (`profile.c:nv2a_profile_get_shader_stats_str`), but only the on-screen overlay reads them
+   (`xemu_android.cpp:1473`). One `hakuX-perf` line per window with the deltas would give the
+   pipeline count per stall and the ms per pipeline (97% of a core over the stall / count), and
+   would confirm or refute the ring-out case from any soak that hits it. File:
+   `hw/xbox/nv2a/pgraph/profile.c` (held by [lane.remote]).
+2. **Do not block the pusher on a pending pipeline in async mode.** Skip the draw, as the
+   shader-module case already does, and compile on the worker. Enable `async_compile` for titles
+   (not for the pgraph test discs, whose goldens need every draw). The cost is that geometry is
+   missing for the frames its pipeline compiles in; the comment at `draw.c:4346` records that
+   skipping "causes permanently missing textures on screens that only draw once". So the claim
+   must carry a guard for those, for example a bounded wait before the skip. Files:
+   `hw/xbox/nv2a/pgraph/vk/draw.c` (held by [lane.forza414]) and
+   `hw/xbox/nv2a/pgraph/vk/compile_worker.c` (in no row). Bound on the win: the ~9.8 s of this
+   load's 12.9 s that is compile. The compile itself does not get shorter unless step 3 lands.
+3. **More than one compile worker.** `compile_worker.c:199` starts one `pgraph.vk.compile`
+   thread. With step 2, a scene load's burst could compile on 3-4 of the Nova's big cores at once.
+4. **Fewer, cheaper pipelines** (larger change, after step 1's count): more dynamic state, or
+   `VK_EXT_graphics_pipeline_library` fast-link, so a new blend/depth combination does not
+   recompile its shaders.
+
+An arm is registered with step 2's claim, not here: skipping draws moves pixels in any capture
+taken while a pipeline compiles.
+
+**For the harness:** the dispatcher clears the shader and pipeline caches whenever a device's
+apk changes (`dispatcher.sh:300-323`). So every title soak on a new build measures cold-cache
+scene loads. That is the right choice for correctness, but a soak's worst-frame and hang-gap
+numbers at scene loads include this compile, and they are not comparable between two runs
+unless both caches were in the same state. `result.json`'s `shader_cache` field says which.
+
+## 10. Tools (docs/lanes/doa413c/)
+
+| file | what |
+|---|---|
+| `capture_stall.sh` | held Nova session: `LAUNCHES` launches (caches cleared once, before the first), a stall-triggered 6 s `simpleperf` record per launch (retries), code-buffer dump right after it, RAM after the last; `AFTER` picks the route anchor |
+| `stallwatch.py` | waits on a live logcat for a stall: no `fifoskew`/`gfps` line for `--gap` s and two pegged `[tlb68]` windows after it (`--selftest`) |
+| `stalls.py` | every pusher gap in a logcat, with the vCPU readings and the closing `fifoskew` drain |
+| `taskio.sh` / `taskio.py` | per-thread read bytes, read calls and CPU from `/proc/<pid>/task/*`, every ~2 s; windows and a timeline (`--selftest`) |
+| `hostsplit.py` | per-thread sample counts; one thread's leaves and "chain contains" classes |
+| `callers.py` | one thread's libxemu frames (innermost, outermost, inclusive) and its share in the Vulkan driver |
+| `guestcode.py` | disassembles the guest code behind TB pcs from the code-buffer and RAM dumps (`page_addr` is a `ram_addr_t`; main RAM sits at 0x4000000 on this build) |
+
+`gta482/tbmap.py` maps the vCPU's JIT samples to guest pcs. Its frequent-delta check reads 75%
+here against its 95% bar, and its known-answer check (promote pcs) passes. The RAM decode of the
+hot TBs agrees with it.
+
+## Do not repeat
+
+- Do not read a 90-99% vCPU thread as a busy guest on this kernel: map the samples first
+  (`tbmap.py`). Here it was 91% idle loop.
+- Do not read "no kicks / no gfps line" as an idle renderer. Both are printed by work the PFIFO
+  thread finishes. Read the thread's CPU (`taskio`) instead.
+- Do not read a stall's `hakuX-phase` line as its whole account: it covered 1.7 s of 14 s.
+- Do not propose turning `async_compile` on as the fix without changing the pending-pipeline
+  wait: the wait is where this stall's time goes.
+- Do not chase the disc for these stalls: 0 KB/s during the cold one.
+- Do not compare a stall's length across runs without the shader-cache state: cold 12.9 s, warm
+  3.1 s for the same load.
+- In a capture script, make every variable of a helper function `local` (session 2 lost both
+  records to one).
