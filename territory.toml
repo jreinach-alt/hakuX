@@ -520,7 +520,9 @@ note = "STARTED (lane.local 2026-09-28T12:31:22Z), briefs/dirtytlb.md: #548 (0.5
 [lane.slowtier2]
 issues = ["462"]
 files = ["docs/lanes/slowtier2/**"]
-note = "STARTED (lane.local 2026-09-28T14:53:52Z), briefs/slowtier2.md: #462 phase 2 (0.5, fps-focus; the owner asked 2026-09-28 07:4x). An OFFLINE attribution of the next tier of titles below 30 fps from existing soak results (no device time today: both handhelds are battery-limited until the owner's ~18:00 top-up). It separates thermal-pause readings from real bottlenecks and ranks cross-title causes. Docs only."
+released = ["docs/lanes/slowtier2/**"]
+released_at_ready = 556
+note = "RELEASED AT READY (job.board 2026-09-28T15:24Z): PR #556 is out of draft, CI green, unit gone; docs-only diff. || STARTED (lane.local 2026-09-28T14:53:52Z), briefs/slowtier2.md: #462 phase 2 (0.5, fps-focus; the owner asked 2026-09-28 07:4x). An OFFLINE attribution of the next tier of titles below 30 fps from existing soak results (no device time today: both handhelds are battery-limited until the owner's ~18:00 top-up). It separates thermal-pause readings from real bottlenecks and ranks cross-title causes. Docs only."
 
 [free]
 # CLAIMED (lane.local 2026-09-28T15:00:26Z): android/app/src/main/cpp/CMakeLists.txt -> lane.remote (#557 thermal governor core); thermal_governor.c/.h are new.
