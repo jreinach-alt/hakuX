@@ -632,6 +632,7 @@ note = "QUEUED FILE (hostops 2026-09-28T20:56Z): tcg/aarch64/tcg-target.c.inc is
 [lane.fgunknown]
 issues = ["592"]
 files = ["docs/testing/devices.sh", "docs/testing/soak_title.sh", "docs/testing/jobs/selftest.d/99-fg-unreadable.sh", "docs/lanes/fgunknown/**"]
+released = ["docs/testing/devices.sh", "docs/testing/soak_title.sh", "docs/testing/jobs/selftest.d/99-fg-unreadable.sh", "docs/lanes/fgunknown/**"]
 note = "STARTED (hostops 2026-09-28T23:20Z), briefs/fgunknown.md: #592, the soak foreground watch aborts on two HUNG dumpsys reads (read as foreground-unknown). devices.sh and soak_title.sh were unclaimed; RELEASE them to [free] at PR-ready."
 
 [free]
