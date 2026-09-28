@@ -1146,3 +1146,79 @@ State on resume: CI green on 0c56689783, `[job.arms]` PASS (266 of 266 byte-iden
 is mergeable. Since the merge at 0e938db24f, master's only code change is to vk/texture.c, which
 this PR does not touch. Nothing is re-measured here. The PR is marked ready and `needs-audit-1` is
 restored. Hunk 5 and the uniform-block skip stay with the next PR (section 32).
+
+## 35. Why attempt 1 of this resume did not finish (lane/forza414-c, 2026-09-28)
+
+The session before this one did everything its brief asked: #518 was marked ready at 06:03Z
+(section 34), and it ended with nothing queued. The hostops addendum that grants vk/shaders.c and
+lends vk/renderer.h is dated 23:11 PDT, which is 06:11Z, eight minutes after that session ended.
+It asks for a third branch. So no session had read it, and lane/forza414-c did not exist. This
+session starts that branch.
+
+Also found on resume: the audit of #518 (docs/audits/2026-09-27-forza414b-pass1.md, 08f09e3d19)
+came back needs-remediation with one MEDIUM. M1: a diag session's per-draw dump
+(`diag_download_surface`, vk/renderer.c:580) writes BUFFER_STAGING_DST at offset 0 while the flip's
+pre-download batch can now be pending. The fix is one call in vk/renderer.c, which is on [free]
+and not on this lane's row. A grant is requested in `$DISPATCH_DIR/board-requests/forza414.md`.
+Nothing is pushed to lane/forza414b until it is granted.
+
+## 36. Hunk 5: a covering clear drops the binding's upload (b991fb4c21)
+
+Section 33 found that 0.96 of Forza's 2.86 forced surfupd finishes per frame are on a clearing
+update, and that every one is followed by a clear that covers the binding whole.
+
+- `pgraph_vk_clear_covers_binding(pg, b, parameter)` (draw.c, one prototype in renderer.h) is now
+  the one coverage rule. It uses the clip-bounded rect from (0,0) over the binding's
+  anti-aliased size. Colour counts only with all four channels; zeta only with Z, plus stencil if
+  the format has one. `mark_clear_full` calls it, and so does surface.c. The clip-bounded clear
+  rect is one helper too, `clear_rect_clipped`, which `pgraph_vk_clear_surface` also uses.
+- `pgraph_vk_clear_surface` sets `r->clear_parameter` before `pgraph_vk_surface_update` rather
+  than after. Its other reader, the clear pipeline key, runs later still.
+- `surface_drop_covered_upload` (surface.c) runs in a clearing update after the bindings are
+  settled and before the deferral gate reads `upload_pending`. For a covered binding it does
+  what the upload does besides the copy: it re-arms the CPU-write watch under
+  `surface_watch_lock`, clears `upload_pending`, and marks the binding initialized, which
+  begin_draw asserts. The render pass may then load undefined texels, and the clear overwrites
+  every one of them. Zeta layout is handled by begin_render_pass's own transition; colour stays
+  GENERAL.
+- perflog: `clrskip` on the `[sdcall]` line counts the dropped uploads.
+- Not changed: a clear the clip excludes entirely still returns after the update. The coverage
+  test says no to it, so its upload runs as before.
+
+No local compile exists for these files on this host (section 13); CI builds the head.
+
+## 37. The uniform hash skip, part (a) only (79f0102478)
+
+Section 26 named two parts. **(a) is in:** a draw whose constant or light flags are dirty no
+longer hashes both whole layouts. A file-static `uniform_hashes_stale` makes the next clean draw
+count as changed once. The same data is uploaded, so pixels cannot move. The one extra upload per
+dirty run is the cost.
+
+**(b) is not in, and the next lane should not assume it is cheap.** Skipping the constant and light
+copy on clean draws would need all three of these:
+1. Every writer of `vsh_constants`/`ltctx*`/`ltc1` sets its `*_any_dirty` flag. The method handlers
+   in pgraph.c do. The reset and savevm paths were not audited, and a writer that misses the flag
+   costs nothing today but would leave a stale constant under (b).
+2. A per-layout "copied at generation N" table in shaders.c. It has to survive LRU eviction and
+   pointer reuse of `ShaderBinding` and `module_info`, and modules may be shared between bindings.
+3. The 3 KB memcpy into `VshUniformValues` is in glsl/vsh.c
+   (`pgraph_glsl_set_vsh_uniform_values`), which is not on this row. Without that file, (b) saves
+   only the second copy.
+
+Price anchor: on hunk 3's Blinx pair (0-0-x-1790543736), `Sh` (pipe_bind_shd, which contains
+`pgraph_vk_bind_shaders` and so the uniform update) reads 9-11 ms/frame in level play, inside
+Pipe's 16-20 ms/frame. That is more than slowdown462's 3.5-3.7 ms for apply plus hash, so `Sh`
+holds something else too. `pgraph_glsl_check_shader_state_dirty` is the next candidate to price.
+
+## 38. Predictions and requests (PR #543)
+
+| file | sha256 | pair | device |
+|---|---|---|---|
+| forza414-clrskip-soak.json | e346b1da35ed | fa56a26f1f -> b991fb4c21 | Thor, Forza race |
+| forza414-uhash-soak.json | 33fa46d6ac17 | b991fb4c21 -> 79f0102478 | Nova, Blinx level |
+| forza414-clrskip-mnm.json | 9d005e4f6ff1 | fa56a26f1f -> 79f0102478 | goldens, 17 suites |
+
+A is lane/forza414b @ 08f09e3d19 merged with origin/master 548017f7ba. That is the last merge, and
+every ref is after it. Pilot, under the 30-minute rule: the Forza pair,
+`1-1790576328-forza414-1156305` (A) and `1-1790576328-forza414-1156419` (B), Thor, priority 1.
+The Blinx pair goes in after the pilot is read. The goldens guard is the arms job's.
