@@ -1608,3 +1608,37 @@ Device state at 08:11 PDT: lane.xbox holds the Thor for a title push (ESPN
 MLS ExtraTime 2002) that follows the running rendermode474 request. The
 Thor's queue then holds Azurik 2862460, two remote461 runs, two dirtytlb
 runs and four arms before my six `1-9-` benchmarks.
+
+**Waiting (PR #558, 08:15 PDT)** on eight requests of mine, all pinned to
+the Thor, none of which has run:
+
+| title | request | kind |
+|---|---|---|
+| Azurik | 1-1790560999-titleroutes-2862460 | benchmark, 500 s |
+| D&D Heroes | 1-9-1790560999-titleroutes-2862610 | benchmark, 600 s |
+| 007: Nightfire | 1-9-1790563604-titleroutes-373432 | benchmark, 400 s |
+| Burnout 3: Takedown | 1-9-1790563604-titleroutes-374056 | benchmark, 620 s |
+| RalliSport Challenge 2 | 1-9-1790566122-titleroutes-1417504 | benchmark, 570 s |
+| Spikeout: Battle Street | 1-9-1790567423-titleroutes-2191714 | benchmark, 460 s |
+| Project Gotham Racing 2 | 1-9-1790569004-titleroutes-3006458 | benchmark, 530 s |
+| Bruce Lee | 1790608228-titleroutes-824349 | route check with frames, 420 s |
+
+I took no held nav session. Eight critical-path requests of other lanes are
+queued for the Thor, and a hold would put title work ahead of them.
+`scratch/thorgap.py` reads that state without touching a device: it exits 0
+when the Thor has no hold, runs nothing, and no other requester's `0-` or
+`1-` request is queued for it.
+
+**Next, in this order:**
+1. Read the eight results. Look at the mark frame and the fps bins
+   (`scratch/scoredscan.py`, `scratch/fpsbins.py`) before the median, and at
+   the thermal line in run.log.
+2. Bruce Lee: read `frames/` of 824349. If the flat 59 stretch is a menu,
+   fix the play pattern in a held session and queue a new benchmark.
+3. Held Thor sessions (focus read first, hold by `scratch/takeloop.sh`):
+   25 to Life, then Blinx 2. Then the Thor list in the hand-over (Bicycle
+   Casino, Breeders' Cup, AMF Xtreme Bowling, then the Playable list).
+4. Nova titles wait for the Nova: Call of Duty 3, Midnight Club 3, Tork,
+   GoldenEye RA (returning), Burnout Revenge. The Nova is on fps-focus work.
+5. Kabuki Warriors: a second run with `--frames-every` would show what the
+   59 fps stretches are. Not queued, because the Nova's queue is full.
