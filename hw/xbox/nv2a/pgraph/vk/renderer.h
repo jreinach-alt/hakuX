@@ -433,6 +433,13 @@ typedef struct ShaderModuleCacheKey {
         struct {
             PshState state;
             GenPshGlslOptions glsl_opts;
+            /* #569 P6: generate the family's combiner ubershader
+             * (glsl/psh-uber.h) instead of psh.c's shader. Only ever set
+             * under HAKUX_PSH_UBER; zero in every key a default build makes
+             * or has persisted. It sits inside the union's vsh-sized
+             * footprint, so the key's size, and the persisted key file's
+             * record size, do not change. */
+            bool uber;
         } psh;
     };
 } ShaderModuleCacheKey;
@@ -465,6 +472,8 @@ typedef struct ShaderBinding {
     struct {
         ShaderModuleInfo *module_info;
         PshUniformLocs uniform_locs;
+        /* The ubershader's combiner uniform; -1 on a specialised module. */
+        int uber_comb_loc;
     } psh;
 } ShaderBinding;
 
