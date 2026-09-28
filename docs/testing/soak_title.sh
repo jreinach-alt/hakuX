@@ -691,11 +691,24 @@ stop_route() {
 # input is exactly what drives the wrong app (one exception, the USB dialog,
 # is under FG_POLL_S). Then abort.
 #
-# While the route runs: one `not-foreground` answer, or two unknowns in a
-# row, TERMs route.sh at once, logs `ROUTE ABORTED: not foreground
-# (<pkg>)` and a `not-foreground:` line, and ends the hold. It aborts; it
-# never pauses and resumes. title_verdict.py voids a run on that line, and
-# the soak exits 5.
+# While the route runs: one `not-foreground` answer, two unknowns in a row,
+# or FG_UNREADABLE_MAX unreadable reads in a row, TERMs route.sh at once,
+# logs `ROUTE ABORTED: not foreground (<pkg>)` and a `not-foreground:` line,
+# and ends the hold. It aborts; it never pauses and resumes. title_verdict.py
+# voids a run on that line, and the soak exits 5.
+#
+# UNKNOWN AND UNREADABLE ARE COUNTED APART (#592). Unknown (hakux_in_front
+# exit 2) is a device that answered without a focused window: two in a row
+# abort. Unreadable (exit 3) is an adb that hung or failed, so nothing was
+# read. On a hot Nova (95 C, 09-28) the read hung twice in a row, 10 s each,
+# while hakuX was drawing, and seven runs were aborted in front. So
+# unreadable gets its own, longer bound: FG_UNREADABLE_MAX (5) reads in a
+# row, about 60 s when each one hangs for its 10 s timeout plus the 2 s
+# poll. An unreadable read is never taken as in front, and it neither adds
+# to nor clears the unknown count. Any answer that was read (in front,
+# unknown, not in front) clears the unreadable count; only in front clears
+# the unknown count. Before the first input, fg_wait treats unreadable like
+# unknown: it waits, re-issues am start, and aborts with no input sent.
 #
 # route.sh by PID, not its process group: a `press` is pad.sh sending
 # key-down, sleeping 60 ms, then key-up, and a group kill in that gap leaves
@@ -703,6 +716,7 @@ stop_route() {
 # as the press in flight returns (its `wait` on a sleep returns at once),
 # stops the route there, and sends only releases for held buttons.
 FG_POLL_S="${FG_POLL_S:-2}"
+FG_UNREADABLE_MAX="${FG_UNREADABLE_MAX:-5}"
 # ONE EXCEPTION to "never a key": a replugged handheld raises Android's "Use
 # USB for" dialog, a bare system-alert window of the vendor settings package
 # (com.rp.settings on the Nova, com.odin.settings on the Thor) that holds
@@ -807,13 +821,16 @@ fg_wait() {
         fi
         sleep "$FG_POLL_S"
     done
-    [ "$rc" = 1 ] || st="not-foreground: unknown (${st#foreground-unknown: })"
+    case "$rc" in
+        2) st="not-foreground: unknown (${st#foreground-unknown: })" ;;
+        3) st="not-foreground: unreadable (${st#foreground-unreadable: })" ;;
+    esac
     fg_abort "$st"
     echo "ROUTE NOT PLAYED: hakuX did not hold display 0 and input focus; no input was sent"
     return 1
 }
 fg_watch() {
-    local st rc unk=0 state ps_out
+    local st rc unk=0 unr=0 state ps_out
     trap 'exit 0' TERM
     while :; do
         sleep "$FG_POLL_S"
@@ -821,12 +838,16 @@ fg_watch() {
         state=$(awk '{print $3}' "/proc/$ROUTE_PID/stat" 2>/dev/null)
         [ -n "$state" ] && [ "$state" != Z ] || return 0
         st=$(hakux_in_front "$SERIAL"); rc=$?
-        if [ "$rc" = 2 ]; then
-            unk=$((unk+1)); echo "FOREGROUND: $st ($unk/2)"
+        if [ "$rc" = 3 ]; then
+            unr=$((unr+1)); echo "FOREGROUND: $st ($unr/$FG_UNREADABLE_MAX)"
+            [ "$unr" -ge "$FG_UNREADABLE_MAX" ] || continue
+            st="not-foreground: unreadable (${st#foreground-unreadable: })"
+        elif [ "$rc" = 2 ]; then
+            unr=0; unk=$((unk+1)); echo "FOREGROUND: $st ($unk/2)"
             [ "$unk" -ge 2 ] || continue
             st="not-foreground: unknown (${st#foreground-unknown: })"
         elif [ "$rc" = 0 ]; then
-            unk=0; continue
+            unr=0; unk=0; continue
         fi
         kill "$ROUTE_PID" 2>/dev/null
         # A guest that died closes hakuX to whatever is behind it, which then
