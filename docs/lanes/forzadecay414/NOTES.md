@@ -169,6 +169,38 @@ On resume: judge both predictions by hand from the three logcats (timeline.py ro
 invalid=`, `txw` faf/scan), post the verdict on #414, and mark this PR ready. The instrument
 (section 4) goes on its own branch once #571 folds and the board grants the file.
 
+## 6. The fix (attempt 2, branch `lane/forzadecay414-fix`, stacked on #579)
+
+**Why attempt 1 did not finish.** It ended as a correct wait on the three Nova soaks (section 5),
+which cannot run before the owner's evening top-up. lane.local's addendum (12:50 PDT) then gave
+this lane `vk/surface.c` and the fix, and the resume carried it.
+
+**The change** (10fe2f59a7, one hunk in vk/surface.c): `pgraph_vk_drain_deferred_surface_releases(r,
+frame)` also sets `invalidation_frame = -1` on every surface in `r->invalid_surfaces` stamped with
+that slot. Of section 3's two options, this is the fence-wait reset, for two reasons:
+- **The drain already runs exactly when a slot's fence is known complete.** Its callers are the
+  frame rotation (after `vkWaitForFences` on `next_frame`), `pgraph_vk_flush_all_frames` (slots
+  other than the current one), and the two finalizers. That is the lifetime the stamp models, and
+  it is the lifetime this function already gives the retired images.
+- **A submission count does not bound a slot's completion here.** `submit_count` also counts the
+  render thread's inline submits (FLUSH, downloads), which wait their own fence but do not rotate
+  the slot. A "fewer than `num_active_frames` submits since" test could then read a deferred,
+  unwaited slot as done after a couple of inline submits.
+
+It walks the invalid list once per rotation (bounded, ~10 entries once the leak is gone), and
+touches nothing on the bind path. #517's move of the flush into the copy branch stays.
+
+**Registered before any run, 2026-09-28T19:50:59Z, refs A 85347ffbd1 (master), B 10fe2f59a7:**
+
+| file | sha256 | device | legs |
+|---|---|---|---|
+| `forzadecay414-fix-forza.json` | 7a94c4f53ce8 | Nova soak, 360 s | M0; B0 faf <= 0.02; B1 max invalid <= 400; B2 not growing; B3 scan <= 3.0 ms/flip and flat; D1 fps t 270-330 >= 0.8 x t 150-210; D2 B/A >= 1.5 |
+| `forzadecay414-fix-auf.json` | 1f7a76a9f942 | Nova soak, 420 s, window 255-411 | M0; M1; K1 faf <= 0.02, bs 1.00; K2 bt <= A + 0.5 ms; K3 flips/s >= 0.95 A; K4 invalid <= 20 |
+| `forzadecay414-fix-pixels.json` | a4436529a25c | arms job, all 100 golden suites, 2 runs/arm | every capture byte-identical within its band |
+
+The failing world for each leg is in its file. A of the Forza file is the master arm already queued
+(`-3394871`), so it is read once for both.
+
 ## Do not repeat
 
 - Do not read the Thor's 2-4 fps step with audio starving as the decay. That is the xo-78 C pause
