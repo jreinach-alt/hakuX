@@ -1445,3 +1445,29 @@ The player "A" is on the Thor's disk (flushed with HOME at 20:43).
   taps up reach Done.
 
 Benchmark queued: 1-1790567423-titleroutes-2191714 (thor, 460 s, ref 5b4294aa5d).
+
+### Session 29: HELD Thor, 21:01-21:16 PDT (15 min; hold taken 20:53 while a sustain507 run finished), battery 62%
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Project Gotham Racing 2 (4D53004B) | thor | `pgr2.route` | yes (21:11, the second replay; 14/14 focus reads) | Instant Action in Florence. At the end the clock reads 4:12, LAP 1 of 2, and the car is further down the street, by the Duomo |
+
+**PGR2 is unparked.** The earlier failures (sessions 6-7) came from counting
+menu moves in a menu that auto-repeats. This route holds the hat right for
+3 s, which stops at Xbox Demos, then taps left once to Instant Action. It
+does not depend on the frame rate or on where the cursor started. The first
+replay (`scratch/replay/pgr2-210557`) reached Xbox Demos and then went two
+left, to Profile Manager, because the tap was replayed as recorded, a 0.3 s
+hold (the time nav.py's own round trip took). The route now holds the tap
+0.1 s, and the second replay (`scratch/replay/pgr2-211124`) went into the
+race. B, B, A after the first A handles a START that lands early.
+
+Frames: nav `~/hakux-work/nav/pgr2.first-run-20260927T210151/` (s-009-gas:
+37 mph); replay `scratch/replay/pgr2-211124/` (211518-gameplay.png, zz-end.png).
+
+Benchmark queued: 1-1790569004-titleroutes-3006458 (thor, 530 s, ref
+29420ebf48). targets.toml: route added to the existing entry (#431 target 30).
+
+**A general rule for a menu that auto-repeats:** push to a stop, then step
+back with taps held 0.1 s *in the route file*. A tap sent through nav.py is
+recorded with nav.py's own round trip, 0.3-0.6 s, so correct it by hand.
