@@ -94,7 +94,8 @@ def read_run(run, window):
     if clock.t0 is None:
         sys.exit("%s: no logcat timestamps, so no window" % logcat)
     win = prs.window_lines(lines, window)
-    r = {"name": run.rstrip("/").split("/")[-1]}
+    # the result directory names the run; a bare logcat.txt would not
+    r = {"name": os.path.basename(os.path.dirname(os.path.abspath(logcat)))}
 
     perf = [l for l in win if "hakuX-perf" in l and RE_GFPS.search(l)]
     r["gfps"] = median([int(RE_GFPS.search(l).group(1)) for l in perf])
