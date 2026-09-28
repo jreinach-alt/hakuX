@@ -48,6 +48,13 @@
 #              its duty, period and state, and --summary ends `fan duty lo-hi
 #              of period`. Fails if the fan loop's quoting breaks, the parse
 #              drops the lines, or the summary never reads them.
+#   clock      the sample script, run here with CPUFREQ_DIR and KGSL_DIR on
+#              fake nodes (policy0 with no scaling_max_freq, as on the Thor;
+#              policy7 with both ceilings), reads every policy's clock and the
+#              GPU's, and --summary names `clock MHz cpu0 lo-hi of cpuinfo,
+#              cpu7 lo-hi of scaling_max, gpu ...`. Fails if the policy loop's
+#              quoting breaks, if an unreadable ceiling is read as 0 (`of 0`),
+#              or if the summary never reads the clocks (LMh stays invisible).
 
 echo "== thermal pause: thermal_state.py bounds a sampled pause and tests a window (#507)"
 TP="$T/thermalpause"; rm -rf "$TP"; mkdir -p "$TP/bin" "$TP/t"
@@ -373,3 +380,31 @@ sm=$(python3 "$TESTING/thermal_state.py" --summary "$TP/fan.jsonl" 2>&1)
 case "$r|$sm" in "29000 50000 1 False|THERMAL: no thermal-pause device above 0; 2 samples, 0 unread"*"; fan duty 13700-29000 of 50000")
         ok "fan: the sample reads duty/period/state from the PWM node; the summary reads [fan duty 13700-29000 of 50000]" ;;
     *) bad "fan: sample [$r] summary [$sm]" ;; esac
+
+echo "== thermal pause: the sample reads every cpufreq policy's clock and the GPU's, and the summary names them (#414)"
+CK="$TP/clk"; mkdir -p "$CK/cpufreq/policy0" "$CK/cpufreq/policy7" "$CK/kgsl"
+echo 1804800 > "$CK/cpufreq/policy0/scaling_cur_freq"; echo 2016000 > "$CK/cpufreq/policy0/cpuinfo_max_freq"
+echo 1036800 > "$CK/cpufreq/policy7/scaling_cur_freq"; echo 3187200 > "$CK/cpufreq/policy7/cpuinfo_max_freq"
+echo 2803200 > "$CK/cpufreq/policy7/scaling_max_freq"
+echo 220000000 > "$CK/kgsl/gpuclk"; echo 719000000 > "$CK/kgsl/max_gpuclk"; echo 1 > "$CK/kgsl/throttling"
+r=$(python3 - "$TESTING" "$CK" "$TP/clk.jsonl" <<'PY' 2>&1
+import json, subprocess, sys
+sys.path.insert(0, sys.argv[1]); import thermal_state as t
+sh = t.SAMPLE_SH.replace(t.CPUFREQ_DIR, sys.argv[2] + "/cpufreq").replace(t.KGSL_DIR, sys.argv[2] + "/kgsl")
+if t.CPUFREQ_DIR in sh or t.KGSL_DIR in sh or sh == t.SAMPLE_SH:
+    sys.exit("SAMPLE_SH does not read CPUFREQ_DIR and KGSL_DIR")
+s = t.parse_sample(subprocess.run(["sh", "-c", sh], capture_output=True, text=True).stdout)
+clk = s.get("clk") or {}
+big = dict(clk.get("cpu7") or {}, scaling_cur_freq=3187200)
+gpu = dict(clk.get("gpu") or {}, gpuclk=719000000)
+recs = [dict(s, dev_time="09-27 13:00:%02d" % sec, label=lab, error=None, fan=None,
+             cool=[[10, "thermal-pause-F8", 0, 1]], clk=dict(clk, cpu7=b, gpu=g))
+        for sec, lab, b, g in [(0, "start", big, gpu), (30, "hold", clk.get("cpu7"), clk.get("gpu"))]]
+open(sys.argv[3], "w").write("\n".join(json.dumps(r) for r in recs) + "\n")
+print(json.dumps(clk, sort_keys=True))
+PY
+)
+sm=$(python3 "$TESTING/thermal_state.py" --summary "$TP/clk.jsonl" 2>&1)
+case "$r|$sm" in '{"cpu0": {"cpuinfo_max_freq": 2016000, "scaling_cur_freq": 1804800}, "cpu7": {"cpuinfo_max_freq": 3187200, "scaling_cur_freq": 1036800, "scaling_max_freq": 2803200}, "gpu": {"gpuclk": 220000000, "max_gpuclk": 719000000, "throttling": 1}}|THERMAL: no thermal-pause device above 0; 2 samples, 0 unread'*'; clock MHz cpu0 1805-1805 of 2016, cpu7 1037-3187 of 2803, gpu 220-719 of 719, gpu throttling 1')
+        ok "clock: the sample reads each policy's clock and ceilings and the GPU's; the summary reads [clock MHz cpu0 1805-1805 of 2016, cpu7 1037-3187 of 2803, gpu 220-719 of 719, gpu throttling 1]" ;;
+    *) bad "clock: sample [$r] summary [$sm]" ;; esac

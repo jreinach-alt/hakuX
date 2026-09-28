@@ -88,6 +88,13 @@ not a playable one, so every fix is judged on energy per frame as well as fps.
     SIGN_SLACK_W with no USB input cannot be true under the sign above. It
     is counted (`sign_suspect`), and a window holding one gives no J per
     frame: on a kernel with the other sign every number would be negated.
+
+CLOCKS (`clk` in a sample, #414). Every cpufreq policy's scaling_cur_freq and
+whichever of scaling_max_freq / cpuinfo_max_freq read (kHz), and the GPU's
+gpuclk, max_gpuclk (Hz) and `throttling`. The kernel's junction-limit clock
+cap (LMh/DCVS) sets no cooling device, so without these a core held at a
+fraction of its clock at 95 C reads exactly like one at full speed. --summary
+names each domain's range against its ceiling.
 """
 import datetime as dt
 import json
@@ -115,6 +122,15 @@ END_SLACK_S = 1.0
 # load is on record beside every temperature it answers.
 FAN_DIR = "/sys/class/gpio5_pwm2"
 
+# CLOCKS (#414). Qualcomm's LMh/DCVS caps a core's clock near its junction
+# limit without setting any cooling device, so no `cd` line shows it. Every
+# cpufreq policy (policy0/3/7 on both handhelds: little, mid, big) is read
+# for its current clock and both ceilings, and the GPU for its clock, its
+# ceiling and kgsl's `throttling` switch. scaling_max_freq is permission-
+# denied on the Thor's policy0: a field that does not read is left out.
+CPUFREQ_DIR = "/sys/devices/system/cpu/cpufreq"
+KGSL_DIR = "/sys/class/kgsl/kgsl-3d0"
+
 # One sh script, one adb call. `2>/dev/null` per read: a zone whose temp
 # read fails (some sensors return EINVAL while powered down) must not end the
 # loop or leak an error line into the parse.
@@ -140,6 +156,12 @@ SAMPLE_SH = (
     # The OEM fan mode (devices.sh), so every sample says which mode drove
     # the duty beside it; soak_title.sh FAN_MODE is checked against this.
     "echo \"fan mode $(settings get system fan_mode 2>/dev/null)\"; "
+    # CLOCKS. `clk <domain> <field> <value>`, kHz for cpu<N>, Hz for gpu.
+    "for p in " + CPUFREQ_DIR + "/policy*; do [ -d $p ] || continue; "
+    "for f in scaling_cur_freq scaling_max_freq cpuinfo_max_freq; do "
+    "echo \"clk cpu${p##*policy} $f $(cat $p/$f 2>/dev/null)\"; done; done; "
+    "for f in gpuclk max_gpuclk throttling; do [ -f " + KGSL_DIR + "/$f ] && "
+    "echo \"clk gpu $f $(cat " + KGSL_DIR + "/$f 2>/dev/null)\"; done; "
     "echo end"
 )
 
@@ -209,7 +231,46 @@ def parse_sample(text):
         m = re.match(r"fan (\S+) (-?\d+)$", line)
         if m:
             s.setdefault("fan", {})[m.group(1)] = int(m.group(2))
+            continue
+        # A clock that did not read has no value and no match: left out.
+        m = re.match(r"clk (\S+) (\S+) (-?\d+)$", line)
+        if m:
+            s.setdefault("clk", {}).setdefault(m.group(1), {})[m.group(2)] = int(m.group(3))
     return s
+
+
+def clk_mhz(domain, hz):
+    """A clock reading in MHz: cpufreq is in kHz, kgsl in Hz."""
+    return hz / 1e3 if domain.startswith("cpu") else hz / 1e6
+
+
+def clock_range(recs):
+    """'clock MHz cpu0 300-2016, cpu7 1037-3187 of 3187, gpu 220-719 of 719,
+    gpu throttling 1' over every sample that read a clock, or None. Each
+    domain: min-max of its current clock, then `of` the lowest ceiling any
+    sample read (scaling_max_freq, else cpuinfo_max_freq; max_gpuclk). A
+    minimum well under that ceiling with no cooling device set is LMh/DCVS
+    at work, or an idle core: the fps beside it says which."""
+    cur, cap, thr = {}, {}, set()
+    for r in recs:
+        for dom, f in (r.get("clk") or {}).items():
+            c = f.get("scaling_cur_freq", f.get("gpuclk"))
+            if isinstance(c, int):
+                cur.setdefault(dom, []).append(c)
+            m = f.get("scaling_max_freq", f.get("cpuinfo_max_freq", f.get("max_gpuclk")))
+            if isinstance(m, int):
+                cap[dom] = min(cap.get(dom, m), m)
+            if isinstance(f.get("throttling"), int):
+                thr.add(f["throttling"])
+    if not cur:
+        return None
+    key = lambda d: (d == "gpu", int(d[3:]) if d[3:].isdigit() else 0, d)
+    parts = ["%s %.0f-%.0f%s" % (d, clk_mhz(d, min(v)), clk_mhz(d, max(v)),
+                                 " of %.0f" % clk_mhz(d, cap[d]) if d in cap else "")
+             for d, v in sorted(cur.items(), key=lambda kv: key(kv[0]))]
+    if thr:
+        parts.append("gpu throttling %s" % "/".join(map(str, sorted(thr))))
+    return "clock MHz " + ", ".join(parts)
 
 
 def fan_range(recs):
@@ -372,6 +433,9 @@ def summary(recs):
         tail += "; battery %+.2f W (+ is discharging)" % pw["battery_w"]
         if pw["net_w"] is not None:
             tail += ", usb in %.2f W, net %.2f W" % (pw["usb_w"], pw["net_w"])
+    clk = clock_range(ok)
+    if clk:
+        tail += "; " + clk
     fan = fan_range(ok)
     if fan:
         tail += "; " + fan
