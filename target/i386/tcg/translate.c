@@ -4515,6 +4515,33 @@ static void i386_tr_insn_start(DisasContextBase *dcbase, CPUState *cpu)
     tcg_gen_insn_start(pc_arg, dc->cc_op);
 }
 
+#if defined(XBOX) && !defined(CONFIG_USER_ONLY)
+/*
+ * #525 HAKUX_IDLE_HALT: is this TB the shadow of the kernel's idle idiom?
+ * The kernel idles in sti; nop; nop; cli (fb 90 90 fa; 0x8001b02e on the
+ * retail kernel the #425 split read). The sti ends its TB, so the TB after
+ * it starts at the first nop, in the interrupt shadow. Matched by bytes, not
+ * address: ring 0, 32-bit protected mode, the shadow flag, no single step,
+ * and all four bytes on the TB's first page, read from its host page.
+ */
+static bool hakux_idle_idiom(DisasContext *dc)
+{
+    const uint8_t *h = dc->base.host_addr[0];
+    vaddr off = dc->base.pc_first & (TARGET_PAGE_SIZE - 1);
+
+    if (dc->base.pc_next != dc->base.pc_first || !h
+        || dc->base.max_insns < 2
+        || !(dc->flags & HF_INHIBIT_IRQ_MASK)
+        || (dc->flags & (HF_TF_MASK | HF_RF_MASK))
+        || CPL(dc) != 0 || !PE(dc) || VM86(dc) || !CODE32(dc) || CODE64(dc)
+        || off < 1 || off + 3 > TARGET_PAGE_SIZE) {
+        return false;
+    }
+    return h[-1] == 0xfb && h[0] == 0x90 && h[1] == 0x90 && h[2] == 0xfa
+           && hakux_idle_halt_enabled();
+}
+#endif
+
 static void i386_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
 {
     DisasContext *dc = container_of(dcbase, DisasContext, base);
@@ -4529,6 +4556,23 @@ static void i386_tr_translate_insn(DisasContextBase *dcbase, CPUState *cpu)
     if ((dc->base.pc_next & TARGET_PAGE_MASK) == TARGET_VSYSCALL_PAGE) {
         gen_exception(dc, EXCP_VSYSCALL);
         dc->base.pc_next = dc->pc + 1;
+        return;
+    }
+#endif
+
+#if defined(XBOX) && !defined(CONFIG_USER_ONLY)
+    if (hakux_idle_idiom(dc)) {
+        /*
+         * #525: the TB in the shadow of the idiom's sti holds both nops.
+         * The first ends the shadow; the second is a hlt (the helper may
+         * return, and then it is a nop). EIP is past both, at the cli.
+         */
+        dc->pc = dc->base.pc_next + 2;
+        gen_update_cc_op(dc);
+        gen_update_eip_next(dc);
+        gen_helper_hakux_idle_hlt(tcg_env);
+        dc->base.pc_next = dc->pc;
+        gen_eob(dc, DISAS_EOB_ONLY);
         return;
     }
 #endif

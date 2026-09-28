@@ -1,0 +1,40 @@
+{
+  "registered_utc": "2026-09-28T01:40:38Z",
+  "who": "lane.pacing",
+  "issue": "526",
+  "title": "43560001-Kabuki_Warriors.xiso.iso",
+  "device": "nova",
+  "seconds": 150,
+  "route": "kabuki-warriors",
+  "perflog": false,
+  "runs_per_arm": 1,
+  "a_ref": "ead1086cb577928fab98df6fd650fd8c8ac2ef25",
+  "b_ref": "ead1086cb577928fab98df6fd650fd8c8ac2ef25",
+  "a_env": ["HAKUX_SURFACE_RATE=off"],
+  "b_env": [],
+  "c_env": ["HAKUX_SURFACE_RATE=mode"],
+  "thor": {
+    "title": "5A440004-Alien_Hominid.xiso.iso",
+    "route": "alien-hominid",
+    "seconds": 120,
+    "a_env": ["HAKUX_SURFACE_RATE=off"],
+    "b_env": []
+  },
+  "queue_order": "Nova A1 B1 C1, then Thor TA1 TB1; each request.sh --who lane.pacing --title ... --route ... --seconds ... --device nova|thor --ref ead1086cb5 --env ... --expect this file",
+  "judge": "python3 docs/lanes/pacing/pace_judge.py --from 30 --to 150 --a <A1> --b <B1> <C1> (and --a <TA1> --b <TB1> --to 120 for the Thor); the [rate526] lines it prints are the display legs",
+  "prediction": "#526 DISPLAY. The review saw the Nova's panel at 120 Hz while hakuX was in front (SurfaceFlinger VSYNC period 8.33 ms, min_refresh_rate=120 in Settings.System), while hakuX presents on a 60 Hz software timer. B asks for 60 Hz on the game surface: Surface.setFrameRate(60, FRAME_RATE_COMPATIBILITY_FIXED_SOURCE, CHANGE_FRAME_RATE_ALWAYS) on API 31+. C adds the window's preferredDisplayModeId set to a 60 Hz mode of the current size, the app's base-mode vote. A makes no request (master's behaviour). The app logs, as [rate526], the display's mode id, the mode's refresh rate (mode_hz), Display.getRefreshRate() (display_hz, which on Android 14+ can report a render rate below the mode's), min_refresh_rate and peak_refresh_rate as the app can read them, and the supported modes: before the request, on every onDisplayChanged, and 2 s after. The Thor runs record its panel the same way. PREDICTION, a guess labelled as one (55% confident): the user-level min_refresh_rate=120 wins over setFrameRate, so B stays at 120; the base-mode vote in C wins over the user minimum, so C reaches 60. Whichever way it falls, the arms say which lever moves this panel.",
+  "legs": {
+    "D0 (the premise, VOID if absent)": "A's [rate526] lines on the Nova show mode_hz or display_hz ~120 while the game runs. If A already reads 60 there is no 120 Hz panel to fix on this Nova today, and D1/D2 are inert, not passed.",
+    "D1 (setFrameRate honoured?)": "B: a `changed` or `after+2s` [rate526] line with display_hz ~60 or mode_hz ~60. HONOURED if so; OVERRIDDEN if every B line after the request still reads 120 for both. The NOTES and the PR record which, with the min_refresh_rate the app read.",
+    "D2 (the base-mode vote)": "C: a `preferredDisplayModeId=<id>` line naming a nonzero 60 Hz mode, and a later line with mode_hz ~60. FAILS (C also stays 120) in the world where the user setting outranks every app vote; the lever is then the setting itself (Settings, or `settings put system min_refresh_rate 60` by the host around a run), which is outside this app.",
+    "D3 (no cost)": "gfps median over 30-150 s: B and C each >= A - 1 (Kabuki's pre-fight window is capped at 59).",
+    "D4 (the Thor, reported)": "TA's `before` line gives the Thor's mode_hz and the modes it supports. If the Thor supports only 60 Hz, TB is a no-op and says so (no `changed` line).",
+    "F (what the instrument cannot see)": "The app can read the display mode and render rate, not SurfaceFlinger's VSYNC period. A mode_hz of 60 is the panel refreshing at 60; a display_hz of 60 on a 120 Hz mode is a 60 Hz render rate on a panel still refreshing at 120, which saves GPU composition work but not the panel's own refreshes. The reading names which of the two it saw."
+  },
+  "must_not_move": [
+    "pgraph: docs/testing/predictions/pacing-pgraph-inert.json"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. Read from [rate526] lines by pace_judge.py."
+}

@@ -2781,3 +2781,534 @@ ratio:
 - **The kill:** `TxH` above 0.8 times A's means the memo was covering real
   rewrites. The next step would then be page attribution of the bitmap hits
   (M2), not a re-reading of this run.
+
+## #461, third: the device verdicts, and F4's FAIL (2026-09-28)
+
+### The correctness arm passed on the handhelds
+
+`remote-461-memo-texture.json`, judged by the arms job at 16:44Z on 09-27
+(5857785184): **PASS, all 542 registered checks.**
+- **The runs:** A f131dd11 and B 8f9c74f0, three runs per arm, 540 captures
+  each over the 21 suites.
+- **The counts:** better 0, worse 0, same 539, noise 1. The noise is
+  `Texture_border/2D_BorderTex_SZ`, which is on the KNOWN_UNSTABLE list: it
+  went from 16,268 to 4,933 px, inside its measured band of 21,577.
+- **Byte for byte:** the verdict's byte-level check reports every checked
+  capture byte-identical between the arms (540 of 540 hashed, three run
+  directories each).
+- **The desktop FAIL's suite:** Texture signed component tests reads `same`
+  on all 19 of its device captures. It is 168,960 px from the goldens,
+  summed over the suite, in both arms. The verdict does not say whether its
+  captures varied between the runs of one arm, as they did on lavapipe.
+
+### The Thor A/B: F1 to F3 pass, F4 FAILS
+
+Hostops read the pair by hand (5866342003): the `crimson-skies` route, 240 s,
+perflog, read from 90 to 240 s after the first `hakuX-perf` line. Both runs
+reached gameplay, and neither logcat has a thermal-pause line.
+
+| | A f131dd11 | B 8f9c74f0 (the fix) |
+|---|---|---|
+| gfps median (n) | 26 (58) | 22 (47) |
+| TxH, ms/frame (window mean) | 6.93 | 3.23 |
+| hashed KiB/frame | 59,676 | 25,227 |
+| memo share of hashed KiB | 66.9% | 0.0% |
+
+| leg | bar | read | |
+|---|---|---|---|
+| F1: B's memo share | under 5% | 0.0% | PASS |
+| F2: B's TxH over A's | 0.5 or less | 0.47 | PASS, marginal: the window median reads 0.55, whole-run 0.43 |
+| F3: B's hashed KiB over A's | 0.5 or less | 0.42 | PASS |
+| F4: B's gfps median minus A's | −1 or more | −4 | **FAIL** |
+| KILL: B's TxH over A's | above 0.8 | 0.47 | not triggered |
+
+- **M1 was the lever.** The memo went to zero, hashed KiB fell by 58% and
+  TxH by 3.7 ms/frame.
+- **A reproduced #473's soak on a later master:** 26 gfps both times, TxH
+  6.93 against 6.71, 59,676 against 59,399 KiB, memo 66.9% against 69.1%.
+- **The drop covers the window.** n is the count of `gfps` lines the median
+  is taken over, and the line prints every 60 flips. So 58 lines against 47
+  in the same 150 s is about 3,480 flips against 2,820: B drew 19% fewer
+  frames, not just a lower median.
+
+**F4 was registered high and it failed.** The registration said a gain was
+not predicted, because PFIFO had 11.6 ms/frame idle. It did not foresee a
+loss.
+
+### What the code says, and what the pair did not control
+
+A reading of both refs finds one narrow route by which B could cost more:
+- **The poll is the same on both.** Before every draw,
+  `pgraph_vk_poll_bound_textures()` tests every bound texture that is not
+  marked.
+- **On A**, a memo hash at a rebind tested nothing, so a write made while the
+  texture was unbound stayed in the bitmap. The next draw's poll cleared it
+  and marked the node. The super-fast path missed on the mark, and the node's
+  next bind hashed it again (`mk`).
+- **On B**, the rebind's own test clears those bits, and one hash replaces
+  two.
+- **The exception** is when the guest writes the pages again between the
+  rebind and the next poll.
+  - A's poll then clears both writes at once, and B clears twice.
+  - A clear that finds a bit set calls `tlb_reset_dirty_range_all()`, which
+    re-arms the guest's not-dirty write trap on those pages. The guest's next
+    store to each such page then takes the slow path.
+  - So the cost needs pages the guest keeps writing while their textures hash
+    equal.
+
+That predicts less render-thread work on B, and a guest-side cost only on
+continuously written pages. It is a reading, not a measurement.
+
+**The pair's order was not controlled.** A ran first. B started about four
+minutes later, straight after A's 240 s at MAX.
+- On the Thor, the kernel pauses cpu3-7 at xo-therm's 78 °C trip (#507).
+  Other cooling devices may act before that.
+- **Pair 1 carries no thermal record.** I wrote on #461 that each run's
+  `thermal.jsonl` would show whether B ran throttled. Hostops corrected it
+  (5867529398): both runs predate the thermal logging, and neither has a
+  `thermal.jsonl` or a `COOLDOWN:` line. `perf_regimen.json` shows only that
+  both ran at MAX and were restored to REST. So K1 is unread on pair 1, not
+  failed, and pair 2 is the first pair it can judge.
+
+### F4b and its controls, registered before any of it was read
+
+Registered on #461 at 09:41:38Z (5867400666), and filed with the text
+unchanged as `remote-461-memo-perf-crimson-2.json`. At registration, pair 2
+did not exist, and I had read none of pair 1's figures below.
+- **F4b (moderate-low):** a second pair, **B run first**, then A. Same refs,
+  route and window. B's gfps median is at least A's minus 1.
+- **K1, thermal parity** (a control): every cooling device's highest
+  `cur_state` over the samples inside the window is the same in both arms. A
+  pair that fails it is thermally confounded, and its F4 is not attributed
+  to the fix.
+- **K2, same scene** (a control): the window medians of hakuX-cpu's `M`
+  (PGRAPH methods per frame) are within 10% of each other.
+- **P1 (high, given K2):** B's `Tq` (bitmap tests per frame) is at least A's,
+  because the fix trades memo hashes for bitmap tests.
+- **P2 (moderate), on pair 1's lines:** B's `mk` KiB per frame is below A's,
+  and its `bit`+`bov` KiB per frame above A's.
+- **R, where the frame went,** read when F4 fails with K1 and K2 holding.
+  Take BUSY − TxH per frame, with BUSY = Surf + Draw + Fin. If B's is more
+  than 2 ms/frame above A's, the time is on the render thread. Otherwise it
+  is not, and what is left is the guest (the route above) or the display.
+- **V, how it shows:** the share of flips that took 3 or more VBLANKs. The
+  route file notes that the title paces itself to 30.
+
+**G, the guest-side route,** was registered on #461 at 10:05:43Z (5867795299).
+At that point no `[tlb68]` line of either pair had been read, and pair 2 did
+not exist.
+- The route needs B to clear more texture-dirty bits than A. Each clear made
+  off the vCPU thread is one `tlb_reset_dirty()` call, counted as `rdo` on the
+  `[tlb68]` line.
+  - The line is on tag `hakuX`, about every 2 s, from
+    `accel/tcg/cputlb.c`'s `hakux_tlb68_tick`.
+  - It is in every build, and the soak's logcat spec keeps it. So pair 1
+    carries it too.
+- **Read per flip:** B's `rdo` above A's leaves the route possible. Then `sd`,
+  the slow-path stores that re-enabled a page, says how many slow stores it
+  cost. B's `rdo` at or below A's refutes the route as the cause of a drop.
+- **It is a discriminator, not a prediction.**
+
+**What follows:**
+- **F4b passes, with K1 and K2 holding:** the fix stays, and F4 stays FAIL as
+  recorded. Pair 1 has no thermal record, so its drop stays unexplained.
+- **F4b fails, with K1 and K2 holding:** the fix costs frame rate on Crimson,
+  in the order that favours B. Its `create_texture()` hunks are reverted from
+  master, or a replacement is registered first, if R and V point to one.
+
+### The reader for the pairs, and the window it shares
+
+- **`pair461_read.py`** reads one run, or a pair with `--pair A_RUN B_RUN`,
+  from a soak's result directory: `logcat.txt`, `thermal.jsonl` and
+  `run.log`. It prints every figure above over the window, then the legs.
+  - A leg whose inputs are missing reads UNREAD, never PASS.
+  - Its selftest builds pairs from the emitters' own formats, `[tlb68]`
+    included. It has positive controls for:
+    - K1: a cpufreq cap inside B's window fails it, and one after the window
+      does not;
+    - K2: 15% more methods;
+    - P1 and P2;
+    - both of R's outcomes, and both of G's;
+    - G reading UNREAD when there are no `[tlb68]` lines.
+- **One window for every reader.** `phase_read_split.py` now takes
+  `--window A,B`, so F2's statistic comes from the registered tool, not by
+  hand. Its window code is the one `tex461_read.py` and `pair461_read.py`
+  import.
+- **#480's audit LOW-2** is fixed in that shared code.
+  - **The bug:** a 29 February stamp re-read in a common neighbouring year
+    raised `ValueError`.
+  - **The fix:** such a stamp is now outside every window. It is more than
+    half a year from the origin in the year it parses in, so it cannot fall
+    inside a window a few minutes long.
+  - **The positive control:** the reader before the fix raises on the new
+    selftest case, and gives the same answer as the new one on the three
+    midnight crossings.
+
+## #461, fourth: pair 1 through the reader, and the render thread's TLB walks (2026-09-28)
+
+### Pair 1, scored as registered
+
+Hostops ran `pair461_read.py` on pair 1 (5868152015); I scored it on #461
+(5868935481). A is f131dd11, which ran first; B is 8f9c74f0, the fix.
+
+| leg | read | |
+|---|---|---|
+| F4 | B 22 − A 26 = −4 | **FAIL**, as recorded |
+| K1, thermal parity | no `thermal.jsonl` on pair 1 | UNREAD |
+| K2, same scene | `M` A 10,812 / B 12,301, +13.8%, bar 10% | **FAIL** |
+| P1 | `Tq` A 1,051 / B 1,186 | PASS, the scene's: tests per method are flat, 0.097 and 0.096 |
+| P2 | `mk` KiB per flip A 28,031 / B 31,839 (+14%); `bit`+`bov` A 908 / B 3,046 | **FAIL** |
+| R | BUSY − TxH A 17.05 / B 23.54 ms/frame | not read: K1 unread, K2 failed |
+| G | `rdo` per flip A 175.2 / B 221.1 (+26%) | route possible |
+| V | 3+ VBLANK flips A 43.8% / B 50.2%; 4+ VBLANK flips 112 → 441 | |
+
+- **K2 fails, so pair 1 drew different scenes.** F4's FAIL stands as recorded,
+  but it is not attributed to the fix.
+- **P2 fails, and it corrects my model.** I expected the rebind test to find,
+  earlier, the bits A's next poll would have found. Instead B made more
+  discoveries in total: `bit`+`bov` ×3.4 and `mk` +14% per flip. The guest keeps
+  writing pages that textures sit on, so the route my code reading called the
+  exception is the common case.
+- **G: the guest-side route is possible.** Per flip, B's `rdo` is +26%, its
+  walk time `rdous` +2.45 ms and `sd` +17%. Per method they are +11%, +34% and
+  +3%, but K2's scene difference is inside every one of them.
+
+### The render thread's TLB walks, on master's own path
+
+Unregistered, read off `[tlb68]` in pair 1's A arm.
+- **The cost.** Each dirty-bit clear made off the vCPU thread calls
+  `tlb_reset_dirty()`, which walks the vCPU's TLB under its lock.
+  - A: 175 walks per flip at 26.7 µs, **4.7 ms per flip**, about 11% of the
+    window's 43 ms mean frame.
+  - B: 221 walks at 32.2 µs, 7.1 ms.
+- **The texture path is not most of it** (per-reason counts, 5868986208).
+  - Nearly every texture discovery shows up as at least one `mk` or `bit`
+    hash. A discovery that marks aliases shows up as several, and one whose
+    node is evicted as none. So `mk` + `bit` roughly bounds the discoveries
+    from above.
+  - A: 72.2 per flip against 175 walks, **at most 41%**. B: 98.1 against 221,
+    at most 44%.
+  - So at least about 103 walks and 2.7 ms per flip on A come from other
+    callers: the NV2A client's per-draw tests, most likely the vertex RAM sync
+    and the surface checks.
+  - Raised on #461 for lane.local (5869799922). A per-caller count at
+    `tlb_reset_dirty_range_all()` in `system/physmem.c` would name the callers,
+    and that is TCG territory, not this lane's.
+- **Not built:** a per-caller count in `vk/texture.c`. It would size only the
+  smaller share.
+
+### W1 and W2, registered for pair 2 before it runs
+
+Registered on #461 at 11:27:22Z (5868935481). They are per-work legs, so a
+scene difference cannot hide a cost again.
+- **W1 (moderate):** (BUSY − TxH) per method, B over A.
+  - Above 1.10: the fix costs the render thread per unit of work.
+  - At or below 1.05: it does not.
+  - Pair 1 reads 1.21.
+- **W2 (moderate):** `rdous` per method, B over A.
+  - Above 1.15: the fix adds TLB-walk time per unit of work.
+  - At or below 1.05: it does not.
+  - Pair 1 reads 1.34.
+- **If K2 fails on pair 2 as well:**
+  - both show a cost: a replacement is registered;
+  - both show none: the fix stays;
+  - otherwise: one more pair.
+
+### A unit correction: `tex461_read.py`'s "per frame" was per finish
+
+- **What the lines count.** The txh/txu/txr lines tick once per 60 finishes at
+  a flip stall or a present (`opt_stats_log_and_reset()` in `vk/draw.c`), not
+  once per 60 guest flips.
+  - Pair 1 ran 85 × 60 = 5,100 finishes against 3,480 flips on A, 1.47 per
+    flip.
+  - B ran 3,900 against 2,820, 1.38 per flip.
+- **What was affected.**
+  - The rates in "#461: what a texture bind spends its time on" and "#461,
+    second" were per finish: for example 338 `create_texture()` calls and 262
+    hashes "per frame". Their shares and ratios within one run are unchanged.
+  - F3 reads 0.40 per flip, against 0.42 per finish: still PASS.
+  - P2 is FAIL in either unit.
+- **What changed in the readers.**
+  - `tex461_read.py` now says "per finish". When the input carries hakuX-pace
+    lines, it adds a per-flip block from the flips they count.
+  - `pair461_read.py` reads the hash figures per flip, the unit the registered
+    legs name.
+
+## #557: the thermal governor core (2026-09-28)
+
+Delivered 15:00Z (5872612441, owner-approved, board wave 277). An opt-in
+governor that steps quality down before the Thor's thermal pause, instead of
+letting the kernel park cpu3-7. This change is the core only: nothing calls
+it yet, and it does nothing unless `HAKUX_THERMAL_ADAPT=1`.
+
+### What was built
+
+- **`android/app/src/main/cpp/thermal_governor.c` and `.h`**, added to the
+  `xemu` shared library in `CMakeLists.txt`. Plain C on libc, plus
+  `<android/log.h>` on Android. No QEMU headers, so the desktop harness
+  builds it as it is.
+- **The policy**, as #557 states it:
+  - **Prediction:** `T_eq = T + tau * dT/dt`, where dT/dt is the least-squares
+    slope over the last 60 s. tau = 210 s by default (below).
+  - **Down one rung:** `T_eq` > 72 C for 60 s unbroken.
+  - **Up one rung:** `T_eq` < 64 C for 300 s unbroken.
+  - **Rate:** at most one change per 120 s.
+  - **Rungs, in order:** `cap30`, `no-occl`, `scale1x`, `rp-mode`. They are
+    released last engaged first.
+- **Where the design was silent, these choices:**
+  - **A set pause device counts as hot.** The pause makes xo-therm fall, and
+    the slope would otherwise read that fall as cooling.
+  - **No step up while a pause device is set, or while its state is unread.**
+  - **A rung nobody registered is skipped.** Stepping to a rung that does
+    nothing would spend a 2-minute change slot on nothing.
+  - **The prediction waits** until the window spans 45 s.
+  - **A change restarts both dwells**, so the next one is earned from the
+    change's own effect.
+  - **A silence longer than 10 s restarts the window and both dwells:** the
+    app paused, or the reads failing. The dwell times measure an unbroken
+    stretch.
+- **tau = 210 s** comes from the GTA pilot (#507, thermal507-3751184).
+  - Its xo-therm climbed 54.3 → 78.03 C in 538 s.
+  - The climb rate between samples falls linearly with temperature (3.3 C/min
+    at 68 C, 0.6 at 77.5 C), as a first-order approach does.
+  - A least-squares line through those rates, without the launch interval
+    (40-138 s), gives tau = 210 s toward 80.25 C. With the launch interval it
+    gives 250 s toward 81.3 C.
+  - The registration comment quoted my hand fit, 214 s toward 79.7 C. That was
+    rough, and it does not touch the registered legs, which fix tau = 210 s.
+  - `HAKUX_THERMAL_TAU_S` overrides tau.
+- **The sensors:**
+  - **The zone:** the lowest-numbered zone whose `type` is `xo-therm`, read
+    in milli-C. `HAKUX_THERMAL_ZONE` overrides the type.
+  - **The cooling devices:** every one. Pause-class devices are those that
+    match `thermal_state.py`'s prefixes, `thermal-pause` and `pause-cpu`.
+    They feed the policy, and they get their own slots, so a device with
+    many cooling devices cannot crowd them out.
+  - **How they are read:** the files are opened once and re-read with
+    `pread()`.
+  - **What counts as unread:** a temperature outside -20 to 130 C, text that
+    will not parse, or a failed read.
+  - **Never Android's thermal API,** which reads 0 during a pause on these
+    ROMs.
+- **The lines,** all on `hakuX-perf`, because the dispatcher's LOGCAT_SPEC
+  ends in `*:S`:
+  - `[thermal557] config zone= tz= pause_dev= cdev= skipped= tau= window= span= down= up= gap= wired=`
+  - `[thermal557] state rung=L/W t= xo= dTdt= teq= pause= cdev= hot_s= cool_s= rd_us= n= bad= down= up=`,
+    every 30 s. `rd_us` is what the sysfs read cost on the display thread.
+  - `[thermal557] down|up rung=L/W NAME t= xo= dTdt= teq= pause= cdev= why=`,
+    on every change. It is logged before the callback runs.
+  - `[thermal557] floor ...`, once, when it would step down but no wired rung
+    is left.
+  - `[thermal557] off: no readable zone of type T under R (errno text)`, once.
+  - **Timing:** the config line and the first state line wait one status
+    interval (30 s). They therefore come after the first `gfps=` line, and a
+    reader that starts its clock at the first `hakuX-perf` line
+    (`phase_read_split.py`) keeps its origin. Off, it logs nothing at all.
+- **Turning it on, on a device:** add `HAKUX_THERMAL_ADAPT=1` to the app's
+  `env_vars` setting. `SyncSetupFiles()` in `xemu_android.cpp` `setenv()`s
+  each line before the core starts.
+
+### The hook, for the file's owner (not granted: `ui/xemu.c` is lane.pacing's)
+
+The call goes in `xemu_android_display_loop()`, right after
+`sdl2_gl_refresh()` (ui/xemu.c:1591 at 0f4002eb), inside the
+`#ifdef __ANDROID__` block that is already there:
+
+```c
+        sdl2_gl_refresh(&sdl2_console[0].dcl);
+#ifdef __ANDROID__
+        thermal_governor_tick(); /* #557: returns at once unless HAKUX_THERMAL_ADAPT=1 */
+```
+
+Its declaration goes in the `#ifdef __ANDROID__` include block at line 71.
+`xemu_core`'s include path already has `android/app/src/main/cpp`:
+
+```c
+#include <android/log.h>
+#include "thermal_governor.h"
+```
+
+- **Why here, and not `xemu_android.cpp`:** that file's loop is the bootstrap
+  window ("core not wired yet"). `xemu_android_display_loop()` is the loop
+  that presents.
+- **Paused and hidden:** the loop `continue`s before the refresh when the app
+  is paused or hidden. The governor then does not sample, and on resume its
+  10 s silence rule restarts the window. Engaged rungs stay engaged.
+- **Each rung's owner** registers once with
+  `thermal_governor_register_rung(rung, fn, opaque)`. It is safe from any
+  thread, before or after the first tick. The callback runs on the display
+  thread and should only set a flag that the owner reads at a safe point:
+  - `cap30`: the present cap (the frame limiter);
+  - `no-occl`: occlusion queries;
+  - `scale1x`: the surface scale;
+  - `rp-mode`: the render-pass mode.
+
+  With no rung registered, the hook is a prediction-only run: the state lines
+  record `T_eq` against the pause, and nothing changes.
+
+### The proof on the desktop
+
+`docs/lanes/remote/thermal557_replay.py --selftest` builds
+`thermal557_harness.c`, which includes the core whole, with the host's cc.
+All 17 checks pass. The harness's sysfs group has 18 checks of its own.
+- **sysfs:**
+  - **The reader,** against a fake `/sys/class/thermal`:
+    - it finds the zone by type, taking the lowest number (a decoy of the same
+      type sits at 91, and `thermal_zonex` is not a zone);
+    - it tells pause devices from the others;
+    - it re-reads files changed in place;
+    - it treats unparsable and out-of-range values as unread;
+    - it reports a missing zone, and a missing root with its errno.
+  - **The tick:**
+    - without `HAKUX_THERMAL_ADAPT=1`, it opens and logs nothing;
+    - `=0` is off;
+    - `=1` takes tau from the environment;
+    - a rung registered before the first tick is kept, and one registered
+      after is wired too;
+    - it samples at most once a second;
+    - it logs nothing before 30 s, and then the config line comes first;
+    - a missing zone gives one `off:` line.
+- **Scenarios**, with the times the design fixes:
+  - **S1, a first-order climb 60 → 80 C:** steps at 105/225/345/465 s. The
+    window is valid at 45 s, then the dwell runs 60 s and the gap 120 s. 78 C
+    is reached at 484 s. The floor is logged once, at 585 s.
+  - **S2, a climb to 68 C:** nothing (max `T_eq` 70.11 C).
+  - **S3, plateaus at 70 and 74 C with ±0.3 C of noise:** nothing at 70 C, and
+    the S1 schedule at 74 C.
+  - **S4, the cool-down:** a rung back every 301 s, the last engaged first.
+  - **S5, the dead band:** four rungs down, then nothing for 30 min.
+  - **S6, a pause:** rungs down on the pause alone at 60/180/300/420 s, and none
+    back while it holds, although `T_eq` < 64.
+  - **S7, a 30 s silence:** it restarts the window (first step at 215 s, not 105).
+  - **S8, rungs 0 and 2 wired:** those two, then the floor.
+  - **S9, every fifth sample unread:** the same schedule.
+  - **S10, a steady 0.5 C/min:** checks tau's scale at 210 and 60 s.
+- **Math:** the C `T_eq` matches an independent least-squares fit on 9,000
+  jittered samples, to 5e-10 C.
+- **Model:** the C core and an independent Python model of the policy agree
+  event for event, and on `T_eq`, on 60 seeded random traces. The traces have
+  hot and cool regimes, pauses, unread samples, silences and random wiring:
+  197 steps down, 51 up and 407 floor lines.
+- **Mutants:** twelve mutations of the core, run in a scratch copy and not
+  committed. All twelve turn the selftest red:
+  - the dwell compared with `>`;
+  - an unread pause allowing a step up;
+  - no gap reset;
+  - the floor flag never cleared;
+  - the dwells not restarted on a change;
+  - the pause not counted as hot;
+  - the first-engaged rung released first;
+  - the span check 15 s short;
+  - the window one sample long;
+  - unwired rungs not skipped;
+  - the temperature read in C/100;
+  - the gate accepting any value.
+- **A property worth knowing: the 60 s window lags, so `T_eq` reads early.**
+  - On a first-order climb whose time constant equals tau, `T_eq` reads high
+    by about 15% of the remaining gap, +2.34 C at most on S1. It never reads
+    low.
+  - The prediction errs toward stepping down early: safe for the trip, and a
+    cost in quality.
+  - S2's 68 C plateau peaks at 70.11 C. A plateau near 70 C can therefore brush
+    72 during its climb, but the 60 s dwell absorbs that.
+
+### The replay on #507's traces: L1-L3 hold, L4a is KILLED
+
+- **The registration:** on #557 at 15:35:33Z (5873316950), before any Part A
+  series was read. It is filed unchanged as
+  `docs/testing/predictions/remote-557-replay.json`.
+- **The data:** hostops sent the series of all ten runs at 15:51Z
+  (5873610104).
+  - My extract command's `ls` would have missed eight of them: they sit under
+    `1-...`, not `0-0-x-...`. hostops fixed that.
+  - **4130875 (Crimson, default) could not be replayed.** Its `start` sample
+    is unread (`- start - -`), so the extract has no time base for it, though
+    its xo series is intact. As registered, it drops and L3 scales to 5 of 7.
+    I asked for it again, keyed on the host clock `t`.
+- **The run:** `thermal557_replay.py EXTRACT --score --history`, at the
+  registered defaults. The feed is causal, so each sample arrives about 30 s
+  late.
+
+| run | title, regimen | xo at start | t78 | T_eq > 72 first | first step | lead | steps before t78 |
+|---|---|---|---|---|---|---|---|
+| 4130828 | Crimson, max | 63.7 | 365 s | 61 s | 121 s | +244 s | 3 |
+| 4130912 | GTA, default | 61.9 | 355 s | 63 s | 123 s | +232 s | 2 |
+| 4130959 | GTA, max | 63.5 | 288 s | 60 s | 120 s | +168 s | 2 |
+| 4130999 | MechAssault 2, max | 64.7 | 287 s | 59 s | 119 s | +168 s | 2 |
+| 4131051 | MechAssault 2, default | 58.3 | 386 s | 65 s | 125 s | +261 s | 3 |
+| 4131088 | Blinx r3 A | 60.5 | 443 s | 62 s | 122 s | +321 s | 3 |
+| 4131123 | Blinx r3 B | 63.1 | 411 s | 59 s | 119 s | +292 s | 3 |
+| 1257857, pilot | GTA, default | 57.3 | never (max 74.4) | 72 s | 132 s | | 3 steps in 460 s |
+| hostops-810152 | MechAssault 2, max | 47.1 | never (plateau 74.2) | 76 s | 136 s | | 4 steps by 496 s |
+
+- **L1 HOLDS** (high): the first step-down comes before t78 on all seven.
+- **L2 HOLDS** (moderate): every lead is at least 60 s. The smallest is 168 s.
+- **L3 HOLDS** (low): all seven have two or more steps before t78.
+- **L4a is KILLED** (moderate). On hostops-810152, `T_eq` peaks at 93.76 C,
+  19.6 C above the plateau the run actually reached.
+  - It overshoots in the first minutes of a cool start. In the history,
+    `T_eq` is 84.3 C at 136 s, then 75.6, 73.6 and 74.1 C at 256, 376 and
+    496 s.
+  - It comes within 1.5 C of the plateau only after about 4 minutes.
+- **L4b HOLDS** (high): that run steps down at 136 s, and all four rungs are
+  down by 496 s, on a run that never paused.
+- **The rung history on the paused runs:**
+  - the rungs step down at about 120, 240, 360 and 480 s;
+  - the fourth usually comes during the pause, and the pause counts as hot;
+  - then one `floor` line.
+  - Open-loop, everything after the first step is the recorded device, not
+    what the governor would have made of it.
+
+**What the pass does not show.** L1-L3 do not show the predictor foreseeing
+the pause:
+- Every run, paused or not, first crosses 72 C at 59-76 s and steps at
+  119-136 s, the pilot and the plateau run included.
+- The cause is the launch. Between the first two samples (about 38 s),
+  xo-therm climbs 5.3-7.2 C/min on the paused runs and 8.9 C/min from
+  hostops-810152's 47 C start. By 4-5 min the rate is down to 0.6-2.0 C/min.
+- The climb is not first-order with one time constant. It has a fast early
+  part, and a slow later one that the GTA pilot's 210 s describes.
+
+**tau, unregistered and in-sample** (the same traces; `--tau`):
+
+| tau | leads, paused runs | smallest | max T_eq, hostops-810152 | its first step | pilot's first step |
+|---|---|---|---|---|---|
+| 60 s | 151-302 s | 151 s | **74.28 C** | 580 s | 296 s |
+| 120 s | 160-314 s | 160 s | 78.42 C | 148 s | 229 s |
+| 210 s (default) | 168-321 s | 168 s | 93.76 C | 136 s | 132 s |
+| 300 s | 173-327 s | 173 s | 109.12 C | 131 s | 126 s |
+
+- **At tau = 60 s,** L1-L3 still hold and L4a would too: the plateau run's
+  `T_eq` stays at its plateau.
+- **The threshold still makes that run step,** at 580 s instead of 136 s,
+  because its plateau of 74.2 C is above 72.
+- **Why tau barely moves the leads:** the paused runs climb steeply right up
+  to the pause.
+
+**What follows, as registered.** L4a's overshoot goes to the hook PR's device
+run as a known risk.
+- **The default stays 210 s here.** Changing it to the value these same
+  traces picked would be fitting, not testing.
+- **If tau = 60 s is wanted before the hook,** it is registered first. It
+  would be tested against traces not read here, which have `thermal.jsonl`
+  and paused:
+  - flip474's four Thor soaks (1818830, 1819047, 1819312, 1819530);
+  - thermal507's GTA pilot (3751184).
+- **What the threshold does to specificity** is the design's own choice, and
+  it matters more than tau. A title whose equilibrium sits between 72 and
+  78 C steps down to the floor although it would never pause.
+
+### Device prerequisites and open risks
+
+- **SELinux.** The app, as `untrusted_app`, must be allowed to read
+  `sysfs_thermal`. The handhelds run permissive: perfregimen's NOTES record
+  sysfs reads logging `avc: denied` in permissive mode. An enforcing ROM gives
+  `off: ... (Permission denied)`, and the governor stays off.
+- **The display-thread cost is unmeasured on a device.** Per second, the read
+  is one temperature file plus one `pread()` per cooling device. The Thor's
+  count is in the config line's `pause_dev` and `cdev`, and each read's cost
+  is in `rd_us`. If `rd_us` is large, the non-pause devices can be dropped:
+  they only feed the logs.
+- **What each rung saves in heat is unknown.** #557's "done when" device run
+  is what measures it. Open-loop, the replay can only show when the governor
+  would act.

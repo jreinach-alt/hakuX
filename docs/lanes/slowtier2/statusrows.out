@@ -1,0 +1,72 @@
+status.json generated: 2026-09-28 08:02 PDT
+
+## Dead or Alive 3 (4D53002D) stage=blocked prim= thor fps=None ref=a5b5b628f2 mode=unrecorded src=hand-reviewed, pass 1 (fails: gameplay not reached)
+  soak_read: 0-0-y-1790433159-titleplay-p1-doa3 thor fps=15.41 ref=a5b5b628f2 mode=unrecorded src=soak (soak, 30 gfps samples in 90-240 s)
+  measured:  thor fps=None ref=a5b5b628f2 mode=unrecorded src=hand-reviewed, pass 1 (fails: gameplay not reached)
+
+## Midtown Madness 3 (4D53002A) stage=blocked prim=1-1790506491-titleroutes-1032854 thor fps=3.13 ref=6aaa8197c5 mode=MAX src=title_verdict.py (fails: hang: 12.0 s without 60 guest flips after the mark)
+  soak_read: 1-1790506491-titleroutes-1032854 thor fps=10.57 ref=6aaa8197c5 mode=MAX src=soak (soak, 11 gfps samples in 90-240 s)
+  measured: 1-1790506491-titleroutes-1032854 thor fps=3.13 ref=6aaa8197c5 mode=MAX src=title_verdict.py (fails: hang: 12.0 s without 60 guest flips after the mark)
+
+## Project Gotham Racing (4D530003) stage=blocked prim=1-1790483525-titleroutes-3587419 thor fps=14.27 ref=a593d8eb85 mode=MAX src=title_verdict.py (fails: hang: 11.6 s without 60 guest flips after the mark)
+  soak_read: 1-1790483525-titleroutes-3587419 thor fps=52.08 ref=a593d8eb85 mode=MAX src=soak (soak, 71 gfps samples in 90-240 s)
+  measured: 1-1790483525-titleroutes-3587419 thor fps=14.27 ref=a593d8eb85 mode=MAX src=title_verdict.py (fails: hang: 11.6 s without 60 guest flips after the mark)
+
+## Arctic Thunder (4D570002) stage=below prim=1-1790547557-titleroutes-979135 thor fps=21.37 ref=677ae13af8 mode=MAX src=title_verdict.py (fails: duration: 320 s of gameplay < 600 s screening)
+  soak_read: 1-1790548502-titleroutes-1531400 thor fps=36.74 ref=e884ad260e mode=MAX src=soak (soak, 87 gfps samples in 90-240 s)
+  measured: 1-1790547557-titleroutes-979135 thor fps=21.37 ref=677ae13af8 mode=MAX src=title_verdict.py (fails: duration: 320 s of gameplay < 600 s screening)
+
+## Black (45410083) stage=below prim=1-1790482599-titleroutes-3358750 thor fps=7.45 ref=a593d8eb85 mode=MAX src=title_verdict.py (fails: duration: 291 s of gameplay < 600 s screening)
+  soak_read: 1-1790482599-titleroutes-3358750 thor fps=29.96 ref=a593d8eb85 mode=MAX src=soak (soak, 54 gfps samples in 90-240 s)
+  measured: 1-1790482599-titleroutes-3358750 thor fps=7.45 ref=a593d8eb85 mode=MAX src=title_verdict.py (fails: duration: 291 s of gameplay < 600 s screening)
+
+## Brute Force (4D53001E) stage=below prim=1-1790510457-titleroutes-1101937 thor fps=13.16 ref=9d3656f263 mode=MAX src=title_verdict.py (fails: duration: 294 s of gameplay < 600 s screening)
+  soak_read: 1-1790510457-titleroutes-1101937 thor fps=29.97 ref=9d3656f263 mode=MAX src=soak (soak, 71 gfps samples in 90-240 s)
+  measured: 1-1790510457-titleroutes-1101937 thor fps=13.16 ref=9d3656f263 mode=MAX src=title_verdict.py (fails: duration: 294 s of gameplay < 600 s screening)
+
+## Burnout (41430006) stage=below prim=1-1790513065-titleroutes-1150288 thor fps=10.85 ref=3540bf2a69 mode=MAX src=title_verdict.py (fails: duration: 304 s of gameplay < 600 s screening)
+  soak_read: 1-1790513065-titleroutes-1150288 thor fps=30.41 ref=3540bf2a69 mode=MAX src=soak (soak, 61 gfps samples in 90-240 s)
+  measured: 1-1790513065-titleroutes-1150288 thor fps=10.85 ref=3540bf2a69 mode=MAX src=title_verdict.py (fails: duration: 304 s of gameplay < 600 s screening)
+
+## Crash Twinsanity (56550036) stage=below prim=1-1790489396-titleroutes-512742 thor fps=15.72 ref=a593d8eb85 mode=MAX src=title_verdict.py (fails: duration: 268 s of gameplay < 600 s screening)
+  soak_read: 1-1790489396-titleroutes-512742 thor fps=38.44 ref=a593d8eb85 mode=MAX src=soak (soak, 76 gfps samples in 90-240 s)
+  measured: 1-1790489396-titleroutes-512742 thor fps=15.72 ref=a593d8eb85 mode=MAX src=title_verdict.py (fails: duration: 268 s of gameplay < 600 s screening)
+
+## Crimson Skies: High Road to Revenge (4D530021) stage=below prim=1790467160-titlebench-2612149 nova fps=29.97 ref=d0e30924f8 mode=MAX src=title_verdict.py (fails: duration: 308 s of gameplay < 600 s screening)
+  soak_read: 1-1790572033-adpf-2928981 thor fps=29.99 ref=8a64c7d41e mode=REST src=soak (soak, 74 gfps samples in 90-240 s)
+  measured: 1790467160-titlebench-2612149 nova fps=29.97 ref=d0e30924f8 mode=MAX src=title_verdict.py (fails: duration: 308 s of gameplay < 600 s screening)
+  measured:  thor fps=23.4 ref=a5b5b628f2 mode=unrecorded src=hand-reviewed, pass 1 (fails: gameplay median under 30 fps; last ~2 min at 2-8 fps )
+  run: queued 1-1790588957-remote461-p21b #21
+  run: queued 1-1790588957-remote461-p22a #22
+  run: 2 more
+
+## JSRF: Jet Set Radio Future (49470018) stage=below prim=1-1790497366-titleroutes-886445 thor fps=24.23 ref=02299ec656 mode=MAX src=title_verdict.py (fails: duration: 284 s of gameplay < 600 s screening)
+  soak_read: 1-1790497366-titleroutes-886445 thor fps=59.94 ref=02299ec656 mode=MAX src=soak (soak, 142 gfps samples in 90-240 s)
+  measured: 1-1790497366-titleroutes-886445 thor fps=24.23 ref=02299ec656 mode=MAX src=title_verdict.py (fails: duration: 284 s of gameplay < 600 s screening)
+
+## MechAssault 2: Lone Wolf (4D53006B) stage=below prim=1-1790516796-lanelocal-1258823 thor fps=23.89 ref=c0db2c0bdc mode=MAX src=title_verdict.py (fails: fps: 26.7% of gameplay at >= 30 fps (bar 90%))
+  soak_read: 1-1790572031-lane.sustain507-4131051 thor fps=25.59 ref=f82e7e87fe mode=REST src=soak (soak, 62 gfps samples in 90-240 s)
+  measured: 1-1790516796-lanelocal-1258823 thor fps=23.89 ref=c0db2c0bdc mode=MAX src=title_verdict.py (fails: fps: 26.7% of gameplay at >= 30 fps (bar 90%))
+
+## Otogi: Myth of Demons (46530002) stage=below prim=1-1790511808-titleroutes-1129571 thor fps=12.62 ref=9e7f8418dc mode=MAX src=title_verdict.py (fails: duration: 273 s of gameplay < 600 s screening)
+  soak_read: 1-1790511808-titleroutes-1129571 thor fps=11.83 ref=9e7f8418dc mode=MAX src=soak (soak, 35 gfps samples in 90-240 s)
+  measured: 1-1790511808-titleroutes-1129571 thor fps=12.62 ref=9e7f8418dc mode=MAX src=title_verdict.py (fails: duration: 273 s of gameplay < 600 s screening)
+
+## Alias (41430016) stage=inputs prim=1-1790519290-titleroutes-2113140 thor fps=20.8 ref=c6e2be0936 mode=MAX src=soak (soak, 52 gfps samples in 90-240 s)
+  soak_read: 1-1790519290-titleroutes-2113140 thor fps=20.8 ref=c6e2be0936 mode=MAX src=soak (soak, 52 gfps samples in 90-240 s)
+  measured: 1-1790519290-titleroutes-2113140 thor fps=20.8 ref=c6e2be0936 mode=MAX src=soak (soak, 52 gfps samples in 90-240 s)
+
+## BloodRayne (4D4A0001) stage=inputs prim=1-1790548501-titleroutes-1530145r thor fps=22.34 ref=e884ad260e mode=MAX src=soak (soak, 57 gfps samples in 90-240 s)
+  soak_read: 1-1790548501-titleroutes-1530145r thor fps=22.34 ref=e884ad260e mode=MAX src=soak (soak, 57 gfps samples in 90-240 s)
+  measured: 1-1790548501-titleroutes-1530145r thor fps=22.34 ref=e884ad260e mode=MAX src=soak (soak, 57 gfps samples in 90-240 s)
+
+## Dead or Alive Xtreme Beach Volleyball (54430007) stage=inputs prim=1-1790481308-titlebench-2893458 nova fps=None ref=a593d8eb85 mode=MAX src=title_verdict.py (fails: duration: 3 s of gameplay < 600 s screening)
+  soak_read: y-1790481308-titlebench-2893458 nova fps=20.0 ref=a593d8eb85 mode=MAX src=soak (soak, 53 gfps samples in 90-240 s)
+  measured: 1-1790481308-titlebench-2893458 nova fps=None ref=a593d8eb85 mode=MAX src=title_verdict.py (fails: duration: 3 s of gameplay < 600 s screening)
+
+## Conker: Live & Reloaded (4D530051) stage=copied prim=0-0-y-1790395182-rtdbench-3 nova fps=19.38 ref=06e73e9f5e mode=unrecorded src=soak (soak, 62 gfps samples in 90-240 s)
+  soak_read: 0-0-y-1790395182-rtdbench-3 nova fps=19.38 ref=06e73e9f5e mode=unrecorded src=soak (soak, 62 gfps samples in 90-240 s)
+  measured: 0-0-y-1790395182-rtdbench-3 nova fps=19.38 ref=06e73e9f5e mode=unrecorded src=soak (soak, 62 gfps samples in 90-240 s)
+
+## Sega GT 2002 + JSRF: Jet Set Radio Future (4D53003D) stage=none prim=None
+  soak_read: None
