@@ -13,6 +13,9 @@ import subprocess
 import sys
 
 REF = subprocess.check_output(['git', 'rev-parse', sys.argv[1]]).decode().strip()
+# Optional keys after the ref write only those files, so a title added later
+# (kabuki, 2026-09-28) leaves the already-registered files byte-identical.
+ONLY = set(sys.argv[2:])
 NOW = subprocess.check_output(['date', '-u', '+%Y-%m-%dT%H:%M:%SZ']).decode().strip()
 P = 'docs/testing/predictions/'
 FILES = '/sdcard/Android/data/com.jreinach.hakux.debug/files/'
@@ -85,7 +88,10 @@ JUDGE = ("python3 docs/lanes/gmem474/gmemread.py --from F --to T <A1> <B> "
          "<C> <D> <A2>; the route's shots in the window, by eye")
 
 
-def write(key, title, device, seconds, route, window, basis, legs, order):
+def write(key, title, device, seconds, route, window, basis, legs, order,
+          extra=None):
+    if ONLY and key not in ONLY:
+        return
     runs = {r: dict(arm=ARMS[r[0]][0], env=env_of(key, r),
                     pull="gmem474-%s-%s.log" % (key, r.lower()))
             for r in ("A1", "B", "C", "D", "A2")}
@@ -114,6 +120,7 @@ def write(key, title, device, seconds, route, window, basis, legs, order):
                        "read by gmemread.py off logcat.txt, thermal.jsonl, "
                        "perf_regimen.json and pulled/, and the shots by eye.",
     }
+    d.update(extra or {})
     s = json.dumps(d, indent=2) + "\n"
     json.loads(s)
     with open(P + 'gmem474-%s.json' % key, 'w') as f:
@@ -198,4 +205,58 @@ write('crimson', 'Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko)'
       "unshown; C is the apk's first run on the Thor, so its shader cache is "
       "cleared). After the pilot is read: A1, B, A2")
 
-print('gmem474-{doa,auf,crimson}.json', REF[:10])
+KABUKI_DECISION = (
+    "Registered before any run. Kabuki is not in #530's table, so the "
+    "shipped mode is A (autotune). The FIGHT window (W1) decides: B "
+    "replaces A only if (1) no run is VOID, (2) B's W1 gfps_med >= A's - "
+    "max(|A1 - A2|, 1), and (3) B's W1 J/frame <= A's x (1 - max(n, 0.05)), "
+    "with n from A1/A2 in W1. The menu window (W2, capped 59) is reported "
+    "beside it and never ships a default by itself: its render passes are "
+    "not the fight's. A C or D win is reported, not shipped. No sysmem "
+    "default if B's W1 has qry_lines > 0 (#527). Otherwise keep what ships.")
+
+write('kabuki', '43560001-Kabuki_Warriors.xiso.iso', 'nova', 420,
+      'kabuki-warriors', [230, 415],
+      BASIS + "Added 2026-09-28 on lane.energymap507's finding (#507, PR "
+      "#586): Kabuki is the one untabled title with the GMEM signature, "
+      "X/R 0.77 over its whole soak (1-1790618696-lane.idlehaltdefault-"
+      "845673, Nova MAX, 3a5d79e3ea), priced there at -5 to -8% J/frame for "
+      "sysmem. Read with gmemread.py before registering, that soak is two "
+      "different regimes. Menus (30-180 s) hold gfps=59 on every line. The "
+      "fight (mark gameplay at 227 s; 230-415 s) is 1-s windows at 59 "
+      "separated by stalls of 20-60 s with no perf line (lane.energymap507's "
+      "#5 'stall burn', 1.8-2.25 cores busy, dpm=0): time-weighted gfps_med "
+      "2.78, GPU 10.75 ms, X/R 0.93, J/frame 0.326 (5 samples). So the fight "
+      "is NOT a 60-capped steady state; its J/frame is set by how long the "
+      "stalls last, which the random CPU opponent varies run to run. The "
+      "guess: the render mode moves the menu window's watts a little and "
+      "cannot be separated from stall noise in the fight, unless the stall "
+      "is itself GPU work that sysmem shortens.",
+      {"KW1 (fight: the stall noise swamps the mode)":
+       "every arm's W1 J/frame within max(n, 5%) of A's (mean of A1, A2), "
+       "i.e. 'not separated'. Confidence 60%. Fails in the world where the "
+       "stall is GPU-side work that a mode shortens or lengthens: then that "
+       "arm's W1 gfps_med differs from A's by >= 1.5x.",
+       "KW2 (menus are capped: fps does not move)":
+       "in W2 = 30-180 s every arm's gfps_med is 58-60. Confidence 85%. "
+       "Fails in the world where a mode makes the menus GPU-bound.",
+       "KW3 (energymap507's price, at equal fps)":
+       "B's W2 net_w <= 0.95 x A's. Confidence 45%. Fails in the world "
+       "where sysmem's DRAM traffic costs what the replay saved.",
+       "KW4 (B really removes the replay)":
+       "B's x_over_r <= 0.25 in W1 and W2, A's >= 0.6. Confidence 85%.",
+       "KW5 (forcebin costs a binning pass)":
+       "C's W2 net_w >= A's. Confidence 55%.",
+       "KW6 (profiled finds sysmem by itself)":
+       "D's W2 x_over_r <= 0.25. Confidence 40%."},
+      "Nova, after the DOA/AUF interleave (gmem474-doa.json): Kabuki A1, B, "
+      "C, D, A2. Not the apk's first Nova run, so the shader cache is kept",
+      extra={
+          "window2_s": [30, 180],
+          "judge": "python3 docs/lanes/gmem474/gmemread.py --from 230 --to 415 "
+                   "<A1> <B> <C> <D> <A2> (W1, decides) and --from 30 --to "
+                   "180 (W2, reported); the route's shots, by eye",
+          "decision_rule": KABUKI_DECISION,
+      })
+
+print('gmem474 predictions written for', sorted(ONLY) or 'all', REF[:10])

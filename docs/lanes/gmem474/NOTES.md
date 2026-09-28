@@ -75,6 +75,7 @@ A runs twice (A1 first, A2 last) for the noise floor and the order effect.
 | `gmem474-doa.json` | DOA, Nova | survey 300 s, 151-288 (the fight) | A1 B C D A2 |
 | `gmem474-auf.json` | AUF, Nova | survey 600 s, 299-590 (mission play, ~10 power samples) | A1 B C D A2 |
 | `gmem474-crimson.json` | Crimson, Thor | crimson-skies 360 s, 120-350 | C D (pilot), then A1 B A2 |
+| `gmem474-kabuki.json` (attempt 2) | Kabuki, Nova | kabuki-warriors 420 s, W1 230-415 (fight, decides), W2 30-180 (menus, reported) | A1 B C D A2, after the DOA/AUF interleave |
 
 The decision rule is in each file (`decision_rule`): a non-shipped arm
 replaces the shipped one only if it is not VOID, loses at most 1 gfps, and
@@ -105,3 +106,53 @@ hostops' battery hold (14% at 18:10Z, lifted at >= 80%).
 On the two pilot requests above, outside this session. When they land:
 read them with `gmemread.py --from 120 --to 350 3784417 3784577`, write the
 pilot verdict, queue the rest with `queue.py`.
+
+## 7. Attempt 2 (2026-09-28 ~20:25Z): why attempt 1 did not finish, and Kabuki
+
+Attempt 1 did not fail. It ended correctly on a `waiting:` (PR comment
+20:02Z) for the two Crimson pilot soaks, which are still in the Thor queue
+(`queue/1-1790625696-lane.gmem474-3784417.req`, `-3784577.req`). The
+resume came from the brief's addendum (lane.local 13:25 PDT), which adds
+Kabuki Warriors on lane.energymap507's finding (#507, PR #586: X/R 0.77, priced
+at -5 to -8% J/frame for sysmem).
+
+**Kabuki is not a 60-capped steady state in its fight.** The addendum reads
+it as capped ("a J/frame win shows even where fps cannot move"). Read with
+`gmemread.py` before registering, energymap507's own soak
+(`1-1790618696-lane.idlehaltdefault-845673`, Nova MAX, 3a5d79e3ea) is
+two regimes:
+
+| window (s from soak start) | what it is | gfps (time-weighted median) | GPU ms | X/R | J/frame |
+|---|---|---|---|---|---|
+| 30-180 | menus, map, character select | 59 on every perf line | - | - | - |
+| 230-415 (mark gameplay at 227) | the fight | **2.78**: 1-s windows at 59 separated by 20-60 s stalls with no perf line | 10.75 | 0.93 | 0.326 (5 samples) |
+
+The stalls are energymap507's #5 "stall burn" (1.8-2.25 cores busy, no
+pipeline misses). So the fight's J/frame is set mostly by stall length, and
+the CPU's random opponent varies that run to run. The prediction registers
+the fight as the deciding window (W1) and the capped menus as a second,
+equal-fps reading (W2, reported, never ships a default by itself because its
+passes are not the fight's). Leg KW1 bets the mode does not separate in W1
+(60%), and names the world it fails in: the stall is GPU work a mode changes.
+
+`gmem474_register.py` now takes optional keys after the ref and writes only
+those files: `gmem474_register.py db1e8a7f12 kabuki` wrote
+`gmem474-kabuki.json` and left the three committed files byte-identical.
+
+**Ref.** Kabuki uses the same measurement build `db1e8a7f12` as the other
+three titles (43560001 is not in #530's table, so the env alone picks its
+mode there as on master). The branch is merged with master for the PR; the
+queued apk stays `db1e8a7f12`, so that every arm of every title is one apk.
+
+**Queue.** Kabuki waits for the pilot like the rest (pilot rule): after the
+Crimson pilot is read, `queue.py kabuki A1 B C D A2` goes after the DOA/AUF
+interleave on the Nova. Nova time for all three Nova titles: about 2.2 h
+(DOA 5 x 390 s, AUF 5 x 690 s, Kabuki 5 x 510 s). The Nova is on hostops'
+battery hold (14% at 18:10Z, lifted at >= 80%).
+
+## 8. Waiting (2026-09-28 ~20:40Z, attempt 2)
+
+Still on the Crimson pilot (`3784417`, `3784577`). When they land: read them with
+`gmemread.py --from 120 --to 350 3784417 3784577`, write the pilot verdict to
+`pilots/lane.gmem474.ok` with python3, then `queue.py doa`/`auf` in the
+interleave order, `queue.py kabuki A1 B C D A2`, `queue.py crimson A1 B A2`.
