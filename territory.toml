@@ -503,8 +503,10 @@ note = "RETIRED (hostops 2026-09-27 22:45 PDT): PR #540 MERGED, unit gone, no op
 [lane.usbdialog]
 issues = []
 files = ["docs/testing/soak_title.sh", "docs/testing/jobs/selftest.d/99-usb-dialog.sh", "docs/lanes/usbdialog/**"]
+released = ["docs/testing/soak_title.sh", "docs/testing/jobs/selftest.d/99-usb-dialog.sh", "docs/lanes/usbdialog/**"]
+released_at_ready = 542
 standing = false
-note = "CREATED (hostops 2026-09-27 22:45 PDT, harness defect, no issue; briefs/usbdialog.md): a replugged handheld raises Android's 'Use USB for' SYSTEM_ALERT (com.rp.settings / com.odin.settings) holding focus on display 0; soak_title.sh's foreground wait cannot close it, so every soak aborts not-foreground and the queue burns void runs (2 lane.pacing #526 runs, 22:33 PDT). Build: one KEYCODE_BACK for a bare vendor-settings window in the foreground wait. soak_title.sh taken from [free]; the two new paths were unclaimed. Interim: host-tools/usb_dialog_dismiss.sh on hakux-usbdialog.timer."
+note = "CREATED (hostops 2026-09-27 22:45 PDT, harness defect, no issue; briefs/usbdialog.md): a replugged handheld raises Android's 'Use USB for' SYSTEM_ALERT (com.rp.settings / com.odin.settings) holding focus on display 0; soak_title.sh's foreground wait cannot close it, so every soak aborts not-foreground and the queue burns void runs (2 lane.pacing #526 runs, 22:33 PDT). Build: one KEYCODE_BACK for a bare vendor-settings window in the foreground wait. soak_title.sh taken from [free]; the two new paths were unclaimed. Interim: host-tools/usb_dialog_dismiss.sh on hakux-usbdialog.timer. || RELEASED AT READY (job.board 2026-09-28T06:07Z): PR #542 is out of draft, CI green, unit gone. The next lane on these files must merge master (or lane/usbdialog, if #542 has not folded) and re-run its arm before marking its own PR ready."
 
 [lane.pipeline413]
 issues = ["413"]
