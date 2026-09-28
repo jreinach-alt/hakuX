@@ -1052,6 +1052,53 @@ predicted from this table; it is the next measurement.
 See `tsperiod.md` for #504's requests. Section 16's base rerun is
 `1-1790546289-flip474-398286`.
 
+## Why the last session did not finish, and this one (resumed 2026-09-28 01:02Z)
+
+The last session ended waiting on the sysmem batch, which was on the
+device. That was the right call. All twelve requests finished by 00:59Z,
+and #504 folded at 01:12Z.
+
+## 17. Turnip's render mode: measured, and the default taken back (#516)
+
+Everything is in `sysmem.md`. In short:
+
+| | |
+|---|---|
+| pixels, no env against `TU_DEBUG=sysmem` (Thor, 1059 captures) | 46 differ: 37 in the env run alone (every `ZPass_pixel_count` capture prints a ZPASS report of 65,536 instead of 40,960, and `GPUAAWriteAfterCPUWrite`), 9 run to run |
+| pixels, master against the default `1a8f16ef16` (Nova, 1059 captures) | 6 differ, all run to run; **none of the 37 moved** |
+| AUF, Nova | GPU 0.53 x, gfps 16 -> 24 |
+| DOA, Nova, the default with no env | X/R 0.02, gfps 13 -> 21 |
+| Forza, Thor | GPU 0.91 x, gfps 14 -> 15 |
+| Blinx, Thor | GPU 1.05 x, gfps 16 -> 14, not separated from the view |
+| Crimson, Thor, capped | GPU 1.00 x, gfps 29 -> 27, not separated from run order |
+
+A global default is not shown pixel-inert, so `1a8f16ef16` is reverted. The
+policy the data supports is per title, and the app has the place for it
+(per-game overrides). That is lane.rendermode474's since board wave 271.
+
+**What moved the 37 captures is open.** The env run on the Thor was also
+the only run that started from a kept shader cache, and the default build's
+arm on the Nova, which sets the same flag, moved none of them. `sysmem.md`,
+"The second pair", has the evidence and the two short runs that separate
+the causes. The ZPASS report being a constant is #527.
+
+## Why the last session did not finish, and this one (resumed 2026-09-28 01:57Z)
+
+The last session ended waiting on the arms job's pair for
+`flip474-sysmemfix-pgraph.json`, which was queued behind lane.drain474's
+arms. That was the right call. The pair finished at 01:56Z. This session
+read it, corrected the cause named from the first pair, and took #516 to
+ready. Nothing of this lane's is queued or running.
+
+Open, for whoever is next on the render mode:
+
+- The two runs in `sysmem.md` ("The two runs that separate it").
+- `Surface_pitch::Swizzle` has four contents in the four runs of the
+  27-suite disc. The 18 earlier runs on disk have three, and repeats of one
+  apk agree (`12cad8c22f69`, six runs). So it began to vary run to run on
+  this disc or since 2026-09-26. Nobody holds it.
+- Blinx and Crimson under sysmem, with the sysmem arm first.
+
 ## Do not repeat
 
 - Do not read a median of timing reps without looking at the rows. The
