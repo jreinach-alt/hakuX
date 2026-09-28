@@ -537,6 +537,8 @@ note = "RETIRED (job.board 2026-09-28T16:55Z): PR #562 carries `folded` and its 
 [lane.fanduty507]
 issues = ["507"]
 files = ["docs/testing/dispatcher.sh", "docs/testing/soak_title.sh", "docs/testing/devices.sh", "docs/testing/thermal_state.py", "docs/testing/jobs/selftest.d/99-fan-duty.sh", "docs/lanes/fanduty507/**"]
+released = ["docs/testing/dispatcher.sh", "docs/testing/soak_title.sh", "docs/testing/devices.sh", "docs/testing/thermal_state.py", "docs/testing/jobs/selftest.d/99-fan-duty.sh", "docs/lanes/fanduty507/**"]
+released_at_ready = 563
 note = "CREATED BY HOSTOPS 2026-09-28 09:45 PDT: a per-request fan duty for soaks, which #507 Part D.3 (lane.sustain507, PR #547) is blocked on (its 15:36Z report: the duty node is writable, CUSTOM is a fixed 25000). dispatcher.sh, soak_title.sh, thermal_state.py from [free]; devices.sh was unclaimed. Serve path: dispatcher update window after the fold. Brief: briefs/fanduty507.md."
 
 [free]
