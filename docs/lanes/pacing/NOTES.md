@@ -209,3 +209,81 @@ on one binary, and I queue them myself.
   re-run is how the pixel pair above ended up Nova against Thor.
 - On a Nova with `min_refresh_rate=120`, `Surface.setFrameRate` alone does
   nothing. Do not measure the panel's power with it.
+
+## Attempt 3 (2026-09-28): why attempt 2 did not finish, and the second batch read
+
+Attempt 2 ended correctly on dispatch ids, but the Nova froze off adb at
+23:11 PDT, then sat on a battery hold (11%, 500 mA port) until 80%. Two DOA
+runs were voided when the adb link dropped mid-soak (VOID.txt in
+`...1078282` and `...1078334`; re-run as `-r2`, same device). The Thor pair
+was renamed to `1-1790572033-...`. Every run had finished by the time the
+handback job resumed this lane. No code was left unfinished.
+
+Judge commands are in each prediction's `judge` field. Logs from this read:
+`docs/lanes/pacing/.j_*.log` (not committed). No run had a thermal pause
+sample. No result carries a power record (#523), so `net_w` and
+`j_per_frame` are not reported.
+
+### Limiter, Kabuki (capped, Nova, 2 runs per arm, pilot + A2/B2)
+
+| leg | A spin | B sleep | verdict |
+|---|---|---|---|
+| gfps median | 59 / 59 | 59 / 59 | no change |
+| H1 wait_cpu_ms / display frame | 1.367 / 1.348 | 0.011 / 0.008 | PASS (A in 0.7-2.5, B <= 0.15) |
+| H2 thr_cpu_ms / display frame | 1.720 pooled | 0.486 pooled | PASS: 1.234 of 1.348 removed (0.92) |
+| H3 proc_cpu_ms / flip | 25.85 | 24.76 | PASS: -1.10, floor was -0.62 |
+| L1 late > 1 ms share, p99 | 0, 50 us | 0.0008, 150 us | PASS (bound 1 ms) |
+| pres within 1 ms of 16.67 | 0.992 | 0.991 | no change |
+
+H3 needed the second pair: the pilot alone held by 0.01 ms. With A2/B2 it
+holds by 0.5 ms.
+
+### Limiter, DOA1U (uncapped, Nova, 150-288 s, 2 runs per arm)
+
+| leg | A spin (r2, A2) | B sleep (r2, B2) | verdict |
+|---|---|---|---|
+| gfps median | 15 / 12 | 9.5 / 14 | P1 PASS (11.75 >= 13.5 - 2); P2 PASS (1.75 < 2) |
+| H1 wait_cpu_ms / display frame | 0.860 / 1.047 | 0.011 / 0.007 | PASS |
+| H2 thr_cpu_ms / display frame | 1.412 | 0.495 | PASS: 0.917 of 0.944 removed (0.97) |
+| L1 late > 1 ms share, p99 | 0, 50 us | 0.0002, 150 us | PASS |
+
+P1 and P2 pass, but they carry little weight: runs within one arm spread
+by 3-4.5 gfps (9.5-15). One B run (`1078334-r2`) flipped only 2.35 times a
+second against a gfps median of 9.5, so that window was mostly not in the
+fight. proc_cpu_ms_per_flip (169 vs 448) is dominated by that run and is
+not read. The fps claim rests on Kabuki. DOA shows the render-thread saving
+holds when the guest is the slow side.
+
+### Vsync-aligned present, at the 60 Hz panel (Nova, `HAKUX_SURFACE_RATE=mode`), measure only
+
+| title | swap | gfps | pres within 1 ms | thr_cpu_ms / display frame | proc_cpu_ms / flip | late max us |
+|---|---|---|---|---|---|---|
+| Kabuki (30 s to gameplay) | 0 | 59 | 0.9995 | 0.347 | 24.63 | 1070 |
+| Kabuki | 1 | 59 | 0.9935 | 0.386 | 23.93 | 465 |
+| DOA1U (150-288 s) | 0 | 16 | 0.220 | 0.373 | 79.05 | 2061 |
+| DOA1U | 1 | 15 | 0.236 | 0.433 | 82.02 | 764 |
+
+All four runs reached mode 1 / 60 Hz (`changed` line). Swap interval 1 did
+not make presents more regular (guess 1 refuted on Kabuki: 0.9935 < 0.9995,
+though both are near 1). It did not cost gfps (guess 2, 3 hold). Render
+thread CPU per display frame went up 11-16%, outside guess 4's 10%. With
+swap interval 1 the limiter rarely waits (Kabuki `waited` 379 against
+12013), because the blocking swap is doing the pacing. One run per arm; the
+differences are within what one run can show. No default changed.
+
+### Display, the Thor (Alien Hominid, 30-120 s)
+
+The Thor's panel was already at mode 1, 60 Hz, with `min_refresh_rate=60.0`
+and modes 60/120 available. TB's `setFrameRate(60, FIXED_SOURCE)` logged
+no `changed` line: a no-op, as D4 predicted. gfps 59 / 59, proc CPU per
+flip 26.46 / 26.54. The Thor has no 120 Hz panel to fix.
+
+### State at the end of attempt 3
+
+Every leg is read. What is still open, and not this PR's to close:
+- Panel and limiter power in watts: needs #523's power record live on the
+  dispatcher. Re-run the Kabuki pair and the display A/C pair then.
+- The `HAKUX_SURFACE_RATE` default is `off`. On the Nova the lever that
+  moves the panel is `mode`. Making it the default is a product call,
+  because it overrides the user's own 120 Hz minimum.
+- vk/draw.c: still lane.forza414's; the proposal above stands.
