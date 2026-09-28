@@ -618,7 +618,12 @@ def fold_watch(prs, terr, units, now=None):
         # A remote lane's liveness is not a local unit, so "its unit is gone"
         # is never known of it; its files are released by hand, if at all.
         # And units=None (FLEET-BLIND) means no lane is known to have stopped.
+        # A standing row (standing = true) has no unit to be gone: its
+        # interactive session outlives each PR, and it releases files by its
+        # own board request. On 2026-09-28 lane.xbox's #561, which touched no
+        # file in its row, asked the board to release all 16 it was working in.
         cand = (todo and not p.get("remote") and units is not None
+                and not meta.get("standing")
                 and p["lane"] not in units)
         if not (folding or cand):
             continue
