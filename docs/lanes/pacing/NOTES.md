@@ -115,6 +115,19 @@ grow, not that blocking is wrong.
 
 - Code and predictions are pushed; arms not yet read. See the PR for the
   current state.
+- 2026-09-27 18:45 PDT, WAITING on the Nova (about an hour of other
+  lanes' work ahead):
+  - limiter pilot, pacing-limiter-kabuki.json: A1 spin
+    1790559839-lane.pacing-2276057, B1 sleep 1790559842-lane.pacing-2277012;
+  - display, pacing-display.json: A1 off 1790559882-lane.pacing-2288269,
+    B1 setFrameRate 1790559882-lane.pacing-2288358, C1 +mode
+    1790559882-lane.pacing-2288430;
+  - pixel arm pacing-pgraph-inert.json: the arms job queues it.
+- On resume: read the pilot with `pace_judge.py --from 30 --to
+  mark:gameplay --a <A1> --b <B1>`. If the instrument lines are there and
+  H1 reads the way it should, write `pilots/lane.pacing.ok` (python3) and
+  queue Kabuki A2/B2, DOA1U A1/B1/A2/B2, and the Thor display pair. Queue
+  pacing-vsync.json only if the display arm's B or C reached mode_hz ~60.
 - A lone host-side compile of the limiter helpers (stubs, `-Wall -Wextra`)
   was clean; running it needs approval a headless lane cannot get, so the
   device arm is the first run.
