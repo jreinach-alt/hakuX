@@ -83,6 +83,32 @@ are `SHARD_SECS`. The split they give, in host-seconds:
 | 2 | 26 | 707 |
 | 3 | 25 | 707 |
 
+### CI on #540 (two pushes, runs concurrent)
+
+| job | run 36378023715 @ 1e8b70ec76 | run 36378079077 @ 2dac2e559b |
+|---|---|---|
+| selftest (0) | SUCCESS 9:40 | SUCCESS 11:59 |
+| selftest (1) | SUCCESS 3:32 | SUCCESS 3:58 |
+| selftest (2) | SUCCESS 4:47 | SUCCESS 5:05 |
+| selftest (3) | SUCCESS 4:27 | SUCCESS 3:56 |
+
+The whole run was 18-25 min before this. The longest shard is under 15 min
+but not by much (shard 0, the arms chain): the next lane to make it faster
+has to shorten 40-arms-refusal, 50-arms-requeue or 94-arms-label-state.
+
+### Locally, the same tree (all five runs at once, so wall times are inflated)
+
+| run | fragments (`NN-*.sh took` lines) | passed | failed | wall |
+|---|---|---|---|---|
+| no selector | all 93 (93) | 2278 | 0 | 2174 s |
+| SELFTEST_SHARD=0/4 | 13 | 263 | 0 | 1048 s |
+| 1/4 | 29 | 704 | 0 | 444 s |
+| 2/4 | 26 | 685 | 0 | 440 s |
+| 3/4 | 25 | 626 | 0 | 409 s |
+
+13+29+26+25 = 93 fragments, and 263+704+685+626 = 2278 checks, exactly the
+unsharded run's count: no check is lost or run twice by sharding.
+
 The arms chain is a third of the whole and cannot be split without changing
 fragments, so shard 0 sets the floor; 4 shards is the most that helps.
 
