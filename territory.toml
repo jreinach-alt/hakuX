@@ -516,6 +516,11 @@ files = []
 retired_utc = "2026-09-28T04:41:00Z"
 note = "RETIRED (job.board): PR #532 MERGED 2026-09-28T04:33:36Z (cloud.sh does not claim a PR its lane is still running on). RELEASED TO [free]: docs/testing/jobs/cloud.sh, docs/testing/jobs/selftest.d/99-cloud-lane-branch.sh, docs/lanes/cloudlaneguard/**. PRIOR: STARTED (hostops 2026-09-28T01:45Z), briefs/cloudlaneguard.md: harness defect, no issue. cloud.sh's claim guard sees only other cloud units, so it claimed audit1 and remediate on #523 while lane.thermal507 was still running on lane/thermal507-power (two writers, one branch). Add a held_why check for the PR's own running lane. cloud.sh was unclaimed (not in [free], no row). Interim: host-tools/audit_outlet.sh + lane_on_branch.sh."
 
+[lane.sustain507]
+issues = ["507"]
+files = ["docs/lanes/sustain507/**", "docs/testing/predictions/sustain507-*.json"]
+note = "RESTORED (hostops 2026-09-28T20:00Z): lane.local resumed this lane at 19:56Z for #507 D.3 (Customize 100 fan at MAX, warm starts; brief addenda 12:05 and 13:00 PDT) after [retired.sustain507] (17:05Z, PR #547 merged). A running lane needs a row so deliveries and handback reach it. Retire again when its D.3 PR folds."
+
 [retired.sustain507]
 issues = []
 files = []
