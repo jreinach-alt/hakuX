@@ -127,3 +127,7 @@ The movers are read by hand from the captures:
   write went elsewhere.
 - The sysmem-vs-cache pair explains only ZPass's first report. It does not
   explain the constant.
+
+## State at session end (2026-09-28 ~03:40Z)
+
+Waiting on the arms pair for `cloud527-zpass-report.json` and CI. PR #535 stays a draft until the verdict is read.
