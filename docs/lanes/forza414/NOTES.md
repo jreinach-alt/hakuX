@@ -956,3 +956,42 @@ fence instead of all frames). texture.c is lane.remote's file, lent to lane.slow
 **What the next lane should not repeat:** a completion-wait counter proves the wait left the
 completion. It cannot prove the wait left the thread. Register the thread's total (Surf + Draw's
 children, or Tot against the GPU) as the claim, and the per-caller counter as the mechanism.
+
+## 29. The split: Forza's surfupd finishes are new bindings and stale shelf hits, not CPU writes
+
+Thor pilot `1-1790552636-forza414-3224517` on 35ee65562a (arm A: master with #479 plus the
+probe), Forza race, survey route, 420 s. `abread.py --from 125 --to 240`: 1680 guest frames, 28
+phase lines. `thermal.jsonl` has 14 samples over the run, and none shows a pause.
+
+| | per frame |
+|---|---:|
+| surfupd finishes (fin), all with an uploading binding (`su_upl`) | 2.95 |
+| surfupd wait | 22.4 ms |
+| why = **new** (a fresh `g_malloc0` binding) | **1.77** (60%) |
+| why = **stale** (shelf hit, `vram_newer`) | **0.99** (33%) |
+| why = inv (invalid-list reuse) | 0.20 (7%) |
+| why = cpuw, gap, hoff, oth | 0 |
+
+Readouts: fps 17.4, Tot 44.8, Fin 18.3 (Sub 17.9), GPU 22.8 (uncorrected period), `realupl` 249
+per 60 frames, `stale` 108 per 60 flips.
+
+- **No CPU write is involved.** The watch, its gap check and blit set nothing here. Section
+  20's candidate `stale` is a third of it.
+- **The largest share is a fresh binding every time.** 1.77 per frame matches the two Z flips
+  between 640x480 and 1280x480 at one address (section 15: m08 and m40, 0.94 each). Each flip
+  evicts the Z binding and records its download. The replacement is a size no shelved or invalid
+  slot matches, so it is created and uploads from VRAM, and its upload overlaps the download by
+  construction. So the finish.
+- **The lever, if the flips start with a full clear:** a binding whose first use is a full clear
+  needs no upload. So it needs no completion either, and the deferral applies. This is draw.c's
+  own FIXME at `pgraph_vk_clear_surface` ("If doing a full surface clear, mark the surface for full
+  clear and we can just do the clear as part of the surface load").
+- **Not known yet: whether they do.** `[sdcall]` now also prints `clr` (of those bindings, the
+  ones on a clearing update) and `clrfull` (the ones that clear then covered whole). This is
+  perflog only, 53c81b1a7a. Thor pilot 2: `1-1790561602-forza414-3260817`.
+
+Price, a bound: if every new and stale binding were a full clear, 2.76 of 2.95 finishes go. But
+section 14 says a price in finishes is not a price in ms: the last sync point in the frame still
+waits for the GPU.
+
+Posted on #414, #462 and #474 with the first DOA pair (section 28).
