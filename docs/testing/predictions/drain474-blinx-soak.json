@@ -1,0 +1,28 @@
+{
+  "registered_utc": "2026-09-27T22:51:34Z",
+  "who": "lane.drain474",
+  "issue": "474",
+  "title": "4D530013-Blinx_The_Time_Sweeper.xiso.iso",
+  "device": "thor",
+  "seconds": 420,
+  "route": "survey",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "3b5c577e9c348a814cc114457c608ece3bb33801",
+  "b_ref": "73a4126325fedd089ff3cfbdd55024c15b04ba19",
+  "judge": "python3 docs/lanes/slowdown462/txwwin.py <A dir> 255 411; the same on <B dir>; gfps; play shots; cooling devices",
+  "prediction": "SAME-DEVICE A/B, two 420 s perflog MAX soaks on the survey route, one per arm, window 255-411 s. A is 3b5c577e9c (master 09fdca3ba1 plus PR #512's perflog-only txw[] probe on pgraph_vk_bind_textures). B is 73a4126325: A with the flush_all_frames in create_texture's surface-to-texture rebind moved from ahead of can_direct_bind into the copy branch, so a direct bind no longer drains the frames in flight. The probe is the same in both arms, so faf/bs/cp read the same counters. Judge: python3 docs/lanes/slowdown462/txwwin.py <result dir> 255 411 on each arm; gfps from the same logcat; the route's play shots in the window by eye; the cooling devices (thermal-pause, #507) read in both arms before a low or alternating fps is trusted. On the Thor, because the Nova is held for battery and one handheld runs both arms. No Blinx txw[] split exists yet (lane.slowdown462's request 0-0-x-1790549006-slowdown462-1787985 is pending), so A is also the premise. Level play had Sub 0.1 and no staged downloads (slowdown462 NOTES, Blinx), so whether Blinx rebinds surfaces as textures at all is what P0 asks first.",
+  "legs": {
+    "M0 (instrument)": ">= 10 txw lines in 255-411 s in each arm, all parse, flips > 0, and the play shots show level play in both. Otherwise that arm is VOID, not a zero.",
+    "M1 (thermal)": "no thermal-pause of cpu3-7 in the window in either arm (#507). A paused arm is VOID for the fps legs P1/P2; F1 and F2 still read.",
+    "F2 (no corruption; the falsifier)": "B's play shots show no stale, torn or black textured quads that A's do not, and B's logcat has no validation error, device-lost or crash. FAILS in the world where an in-flight frame still read the texture node through a descriptor the drain was protecting, or the zeta layout transition raced a prior copy's read; then the move is wrong and the condition must be narrowed, not dropped.",
+    "P0 (premise, measured in A)": "A's bs >= 0.1 calls/flip and A's faf >= 0.05 calls/flip. If not, the lever does not reach Blinx's level play: F1 and P1 are read, P2 is labelled INERT (not refuted), and the arm is a control.",
+    "F1 (the mover)": "B's faf <= 0.02 calls/flip plus A's faf share not ahead of a direct bind (A's cp calls/flip bounds that share), and B's bs within 25% of A's.",
+    "P1 (fps, not worse)": "B's gfps median in the window >= A's minus 0.5.",
+    "P2 (fps, bounded)": "if P0 holds: B's gfps <= 1000 / (A's ms/flip - A's faf ms/flip) + 0.5."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off txw and gfps lines, and the shots by eye."
+}
