@@ -452,9 +452,16 @@ note = "STARTED (hostops 2026-09-27 15:48 PDT), briefs/drain474.md: #474 (0.5, f
 [lane.handbacklane]
 issues = []
 files = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-lane-line.sh", "docs/lanes/handbacklane/**"]
-note = "STARTED (hostops 2026-09-27 16:50 PDT), briefs/handbacklane.md: harness defect, no issue. handback.sh resolves a draft's lane only from its branch; lane.flip474 moved from lane/flip474-ts to lane/flip474-sysmem, so #504 got blocked:needs-owner at 22:52Z and again at 23:02Z after hostops removed it. Fix: read the PR body's Lane: line (validated) before calling a lane gone."
+released = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-lane-line.sh", "docs/lanes/handbacklane/**"]
+note = "RELEASED at PR-ready (hostops 2026-09-28T00:20Z): PR #520 ready, unit inactive, labelled fold-ready. || STARTED (hostops 2026-09-27 16:50 PDT), briefs/handbacklane.md: harness defect, no issue. handback.sh resolves a draft's lane only from its branch; lane.flip474 moved from lane/flip474-ts to lane/flip474-sysmem, so #504 got blocked:needs-owner at 22:52Z and again at 23:02Z after hostops removed it. Fix: read the PR body's Lane: line (validated) before calling a lane gone."
+
+[lane.escitems]
+issues = []
+files = ["docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/99-status-escalation-items.sh", "docs/lanes/escitems/**"]
+note = "STARTED (hostops 2026-09-27 17:20 PDT), briefs/escitems.md: harness defect, no issue (owner 17:00 PDT via lane.local's hostops-inbox item). status_html.py reads escalations.md line by line, so a RESOLVED on a continuation line leaves the item on 'what needs a person'. Fix: group items with their continuation lines (as harness_health.py does) and show a re-checked stamp. status_html.py claimed from lane.titlestate's released list."
 
 [free]
+# CLAIMED (hostops 2026-09-28T00:20Z): docs/testing/jobs/status_html.py (released by lane.titlestate) -> lane.escitems (escalation items with continuation lines).
 # RELEASED (hostops 2026-09-27T23:52Z) by retiring lane.focusanr (PR #514 folded 452463704d): docs/testing/devices.sh, docs/testing/jobs/selftest.d/99-display-covered.sh, docs/lanes/focusanr/**.
 # CLAIMED (hostops 2026-09-27T23:50Z): docs/testing/jobs/handback.sh -> lane.handbacklane (handback reads the PR body Lane: line).
 # CLAIMED (hostops 2026-09-27T22:38Z): hw/xbox/nv2a/pgraph/vk/instance.c -> lane.flip474 (#474 Addendum 7: the sysmem render-mode fix is configured there).
