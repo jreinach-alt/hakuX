@@ -869,10 +869,8 @@ struct TitleRenderMode {
   const char* mode;
 };
 constexpr TitleRenderMode kTitleRenderModes[] = {
-    // MEASUREMENT BUILD (lane.gmem474, #474): "auto" so the request's env
-    // alone picks the mode for every arm. Reverted in the next commit.
-    {0x4541000D, "auto"},  // 007: Agent Under Fire
-    {0x54430006, "auto"},  // Dead or Alive 1 Ultimate
+    {0x4541000D, "sysmem"},  // 007: Agent Under Fire
+    {0x54430006, "sysmem"},  // Dead or Alive 1 Ultimate
 };
 
 static bool HasCsvToken(const std::string& list, const char* token) {
