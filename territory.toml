@@ -383,7 +383,7 @@ files = ["docs/testing/titles/routes/**", "docs/testing/titles/targets.toml", "d
 released = ["docs/testing/titles/routes/**", "docs/testing/titles/targets.toml", "docs/lanes/titleroutes/**"]
 released_at_ready = 455
 standing = false
-note = "RELEASED AT READY (job.board 2026-09-27T03:10Z): PR #455 is out of draft, CI green, unit gone; docs-only diff, no audit needed. STARTED (hostops 2026-09-26 18:25 PDT), briefs/titleroutes.md: #397 / 0.5 (#433) benchmark stage 2, profile-setup and gameplay routes for the ~57 titles on the handhelds with none. The stage had no owner after lane.titlestate retired (PR #442). Short HELD sessions (<30 min, >=30% battery; the titlestate grant carried over by hostops under the owner's 16:40 order). Route-ready titles go to dispatch/board-requests/titleroutes.md for the host to queue soaks."
+note = "RESUMED (job.board 2026-09-27T19:36 PDT), attempt 2: PR #515 (batch 9, folded) left Azurik and D&D Heroes re-queued mid-abort (stale USB-debugging dialog stole focus) with their readings promised for 'the lane's next PR' -- more titles remain in the ~57-title sweep. || RELEASED AT READY (job.board 2026-09-27T03:10Z): PR #455 is out of draft, CI green, unit gone; docs-only diff, no audit needed. STARTED (hostops 2026-09-26 18:25 PDT), briefs/titleroutes.md: #397 / 0.5 (#433) benchmark stage 2, profile-setup and gameplay routes for the ~57 titles on the handhelds with none. The stage had no owner after lane.titlestate retired (PR #442). Short HELD sessions (<30 min, >=30% battery; the titlestate grant carried over by hostops under the owner's 16:40 order). Route-ready titles go to dispatch/board-requests/titleroutes.md for the host to queue soaks."
 
 [retired.tbflip424]
 issues = []
@@ -442,7 +442,7 @@ files = ["docs/testing/thermal_state.py", "docs/testing/soak_title.sh", "docs/te
 released = ["docs/testing/thermal_state.py", "docs/testing/soak_title.sh", "docs/testing/title_verdict.py", "docs/testing/jobs/selftest.d/99-thermal-pause.sh", "docs/lanes/thermal507/**"]
 released_at_ready = 508
 standing = false
-note = "STARTED (hostops 2026-09-27 13:58 PDT), briefs/thermal507.md: #507 (0.5, fps-focus), Thor thermal-pause-F8 parks cpu3-7 ~4-6 min into a MAX run; fps falls 5-7x. Detect it in every soak (thermal_state.py, thermal.jsonl, status thermal-pause), name the trip zone, audit recent Thor benchmarks. soak_title.sh taken from lane.displayguard's release at PR #495 ready. RELEASED at PR-ready (job.board 2026-09-27): PR #508 out of draft, CI green, unit gone; files stay in `files` for audit/fold, released to [free] for the next lane."
+note = "RESUMED (job.board 2026-09-27T19:36 PDT), attempt 2: NOTES.md's own 'for the next lane' section names remaining work (device verification of the power/thermal reads post-fold, and the cooling-device cur_state lead on the actual pause mechanism) -- PR #523 folded with nothing further queued in territory, but the lane's own notes are not done. || STARTED (hostops 2026-09-27 13:58 PDT), briefs/thermal507.md: #507 (0.5, fps-focus), Thor thermal-pause-F8 parks cpu3-7 ~4-6 min into a MAX run; fps falls 5-7x. Detect it in every soak (thermal_state.py, thermal.jsonl, status thermal-pause), name the trip zone, audit recent Thor benchmarks. soak_title.sh taken from lane.displayguard's release at PR #495 ready. RELEASED at PR-ready (job.board 2026-09-27): PR #508 out of draft, CI green, unit gone; files stay in `files` for audit/fold, released to [free] for the next lane."
 
 [lane.drain474]
 issues = ["474"]
