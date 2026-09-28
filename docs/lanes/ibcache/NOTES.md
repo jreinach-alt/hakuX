@@ -213,3 +213,14 @@ nothing was rebased.
 
 Do not repeat: a prediction key has to name a suite. The arms job does not
 expand `"*"`.
+
+## State at 21:45Z, 2026-09-28: waiting on the pixel arm and R1b
+
+- `bash docs/testing/jobs/arms.sh list` prints `WOULD QUEUE d357732ea1…
+  lane/ibcache:…/ibcache-probe-pixels.json a=4e3d69a69b b=a6ec5ec0ab`
+  with 100 suites. The PR body carries the new sha256.
+- R1b (a6ec5ec0ab, lane.local, #507 issuecomment-5878932501) waits on
+  the arms job claiming that pair.
+- **Next, on resume:** unchanged from attempt 2. Read R1b against legs 1-2,
+  and the `[job.arms]` verdict against the pixel leg. If both pass, queue
+  legs 4-5 and mark the PR ready.
