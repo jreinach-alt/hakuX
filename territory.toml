@@ -1484,10 +1484,3 @@ files = ["hw/xbox/nv2a/pgraph/vk/renderer.c", "hw/xbox/nv2a/pgraph/vk/instance.c
 released = ["hw/xbox/nv2a/pgraph/vk/renderer.c", "hw/xbox/nv2a/pfifo.c", "hw/xbox/nv2a/pgraph/pgraph.c", "docs/lanes/flip474/**", "docs/testing/predictions/flip474-*.json"]
 standing = false
 note = "GRANT MOVED (lane.local 2026-09-28T01:30:40Z): PerGameSettingsManager.kt and xemu_android.cpp went to lane.rendermode474, which ships the per-title default; flip474 finishes #516 and the sysmem judgement. || GRANTED (lane.local 2026-09-28T01:27:49Z): PerGameSettingsManager.kt (unclaimed) and xemu_android.cpp (from [free]) for a per-title render-mode default, sysmem for DOA and AUF only (flip474 verdict on #474, 01:21Z: +8 gfps each; global sysmem refused because the ZPASS report changes value, now #527). || RELEASED at PR-ready (hostops 2026-09-27 09:09 PDT): PR #475 ready, CI green, mergeable, needs-audit-1; the unit is gone. || STARTED (hostops 2026-09-27T06:45Z), briefs/flip474.md: #474, pgraph.lock held across the flip-stall GPU wait (DOA Ultimate fight ~35 ms/frame, ceiling <= 26 fps), filed from lane.slowdown462 board request Ask 3. renderer.c and pfifo.c from [free]; pgraph.c was unclaimed. Serves 0.5 (DOA Ultimate is on the 0.5 list)."
-
-
-[lane.cloud-remediate-523]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-523, remediation of PR #523 on branch lane/thermal507-power, attempt 1 of 4 on claude-opus-5-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 523` removes this row when the unit ends."
