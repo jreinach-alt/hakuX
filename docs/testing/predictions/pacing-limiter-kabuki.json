@@ -1,0 +1,35 @@
+{
+  "registered_utc": "2026-09-28T01:40:38Z",
+  "who": "lane.pacing",
+  "issue": "526",
+  "title": "43560001-Kabuki_Warriors.xiso.iso",
+  "device": "nova",
+  "seconds": 300,
+  "route": "kabuki-warriors",
+  "perflog": false,
+  "runs_per_arm": 2,
+  "a_ref": "ead1086cb577928fab98df6fd650fd8c8ac2ef25",
+  "b_ref": "ead1086cb577928fab98df6fd650fd8c8ac2ef25",
+  "a_env": ["HAKUX_LIMITER=spin", "HAKUX_SURFACE_RATE=off"],
+  "b_env": ["HAKUX_SURFACE_RATE=off"],
+  "queue_order": "A1 B1 (the pilot), then A2 B2; each request.sh --who lane.pacing --title 43560001-Kabuki_Warriors.xiso.iso --route kabuki-warriors --seconds 300 --device nova --ref ead1086cb5 --env ... --expect this file",
+  "judge": "python3 docs/lanes/pacing/pace_judge.py --from 30 --to mark:gameplay --a <A1> <A2> --b <B1> <B2>; thermal.jsonl pause samples per run; logcat -b crash in each result",
+  "prediction": "#526 LIMITER, THE 60-CAPPED CASE. Kabuki Warriors on the Nova holds 59 gfps with D 16.7 ms from boot to the fight (1-1790481308-titlebench-2892494: every hakuX-perf line from soak start to `mark gameplay` reads gfps=59, G 16.6-16.7), so the display loop's frame limiter holds every display frame and the guest presents once per display frame. That makes this window the case where the limiter's wait is the largest share of the render thread's frame. The window is soak start + 30 s to `mark gameplay` (~190 s); the fight after it runs 2-16 fps and is not judged here. ONE BINARY (ead1086cb5), the env is the variable: A selects the old wait (HAKUX_LIMITER=spin: SDL_Delay to ~1 ms short, then a busy-spin on qemu_clock_get_ns), B the new default (clock_nanosleep TIMER_ABSTIME on CLOCK_MONOTONIC to the deadline). Both arms set HAKUX_SURFACE_RATE=off so the panel stays where master leaves it and the display request is not in this comparison. POINT PREDICTION: B removes 1.0-2.0 ms of render-thread CPU per display frame (the spin), with no change in gfps and a lateness p99 under 1 ms.",
+  "legs": {
+    "M0 (instrument, VOID not fail)": "every run has >= 15 [pace526] windows inside the window, >= 15 hakuX-perf gfps lines, a `mark gameplay` line, and no thermal.jsonl sample with pause=true. A run missing any of these is VOID and rerun once.",
+    "F0 (the mechanism ran)": "A's `[pace526] limiter` line says mode=spin env=spin and every A window says mode=spin; B's says mode=sleep env=(unset) and rt_clock=1. FAILS if the env did not reach the process (a request that wrote env_vars and a limiter that never read it would make the two arms one arm).",
+    "H1 (THE COUNTER THAT MUST MOVE: CPU inside the wait)": "wait_cpu_ms_per_display_frame: A in [0.7, 2.5], B <= 0.15. A below 0.7 REFUTES the premise that the limiter spins 1-2 ms a frame on this build (then the lever is inert and nothing else here is read as a gain). B above 0.15 means the sleep is not sleeping: clock_nanosleep returning early without EINTR would re-enter the limiter at once and become a spin of its own.",
+    "H2 (render-thread CPU per frame falls by about the spin)": "thr_cpu_ms_per_display_frame: A - B >= 0.6 x (A_wait - B_wait) and <= 1.4 x (A_wait - B_wait), pooled over runs. Below the band FAILS in the world where the removed spin reappears as other render-thread work (a busier event poll, a slower swap); above it means something besides the wait moved. thr_cpu_ms_per_flip is reported; here it equals the per-display-frame figure within 5% because gfps ~ display rate.",
+    "H3 (process CPU, a guess labelled as one)": "proc_cpu_ms_per_flip: B <= A - 0.5 x (A - B of H2) (about 70% confident). The spin was one thread's; if the process total falls by less than half of it, the freed core was taken by something else (a vCPU that runs longer when it is not contended would show as more flips, not the same flips).",
+    "P1 (fps unchanged)": "gfps median in the window: A >= 58 and B >= 58 in every non-void run, and |pooled B - pooled A| <= 1. A B run below 58 with A at 59 FAILS: the sleep's wake-up missed deadlines often enough to drop guest frames.",
+    "L1 (lateness bound: p99 <= 1 ms)": "B: late_gt1ms_share <= 0.01 pooled, and the median over windows of late_p99_us <= 1000. A is reported (expected: p99 <= 100 us, the spin is exact). FAILS in the world where the Nova's timer slack or its wake-up latency for this thread exceeds 1 ms at the 99th percentile; the remedy there is a short tail spin after an early sleep, which is a measured half-measure, not this change.",
+    "L2 (guest pacing unchanged)": "hakuX-pace in the window: the share of flips taking 2+ VBLANKs (v2+v3+v4 over all) is <= A's + 0.01 in B, pooled. pres_1ms_share: B >= A - 0.02.",
+    "T (heat, reported)": "thermal.jsonl hottest zone per run and the pause count are printed per run. Arms start in the queue's order; a B run that starts hotter than its A is named in the reading. When the power record (#523) is live and a verdict carries power.measured: true, net_w and j_per_frame are reported for both arms."
+  },
+  "must_not_move": [
+    "pgraph: docs/testing/predictions/pacing-pgraph-inert.json (12 suites, 65eaea9b8c vs ead1086cb5)"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off [pace526], hakuX-perf, hakuX-pace and thermal.jsonl by pace_judge.py."
+}

@@ -1,0 +1,46 @@
+{
+  "registered_utc": "2026-09-28T01:38:52Z",
+  "who": "lane.pacing",
+  "issue": "526",
+  "prediction": "#526 pixel leg: the whole lane change against its master base, on the pgraph suite. a_ref 65eaea9b8c is master; b_ref ead1086cb5 changes (1) the Android frame limiter wait, from sleep-then-busy-spin to clock_nanosleep to the same deadline on the same clock, (2) SDLSurface asks the platform for 60 Hz on the game surface, (3) a HAKUX_VSYNC env override of the swap interval that the disc run does not set, and (4) a [pace526] log line every 10 s. None of these reaches pgraph: the limiter decides WHEN the display loop presents, never what a method computes or what a capture reads back from VRAM, and captures are read from guest surfaces, not from the presented frame. So every capture is identical. FAILS in the world where a suite capture depends on display-loop timing (simple-VBLANK mode fires the guest VBLANK from the display refresh, so a test that samples guest state at a VBLANK count could see a different interleaving); such a capture would move in B and in the band of neither arm. What this cannot see: a timing-dependent difference that happens to land identically in one run per arm.",
+  "a_ref": "65eaea9b8c",
+  "b_ref": "ead1086cb5",
+  "must_not_move": [
+    "3D_primitive/*",
+    "Blend_tests/*",
+    "Depth_buffer/*",
+    "Texture_format/*",
+    "Texture_DXT/*",
+    "Surface_clip/*",
+    "Fog_gen/*",
+    "Specular/*",
+    "Vertex_shader_rounding_tests/[!G]*",
+    "Vertex_shader_rounding_tests/Geometry_*",
+    "Vertex_shader_rounding_tests/GeometrySubscreen_*",
+    "Attrib_float/*",
+    "Texture_CPU_Update/*",
+    "Lighting_spotlight/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "3D_primitive",
+      "Attrib_float",
+      "Blend_tests",
+      "Depth_buffer",
+      "Fog_gen",
+      "Lighting_spotlight",
+      "Specular",
+      "Surface_clip",
+      "Texture_CPU_Update",
+      "Texture_DXT",
+      "Texture_format",
+      "Vertex_shader_rounding_tests"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
