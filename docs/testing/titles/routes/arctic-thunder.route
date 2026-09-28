@@ -30,6 +30,13 @@
 # 8.9% at >= 30, no hang. The Thor's thermal pause (#507) did not engage:
 # every thermal-pause cooling device read 0/1 at the end, with the hottest
 # cpu zone at 93.9 C.
+#
+# QUEUED SOAK 1-1790547557-titleroutes-979135 (2026-09-27 15:19 PDT, Thor,
+# ref 677ae13af8): the race started ~27 s earlier against the route than in
+# the held soak. Frame m10 is already GO! with the checkpoint clock at 54,
+# the sled sat still through m11 and rt, and the mark frame read TIME IS UP.
+# So A is now held from m10 on (a held A repeats nothing, and during the load
+# it is only a throttle), and the RT probe is gone.
 wait 50.8
 shot boot
 wait 9.9
@@ -78,19 +85,10 @@ wait 1.7
 press A 300
 wait 10.4
 shot m10
+hold A
 wait 10.9
 shot m11
-wait 11.3
-axis RT max
-wait 5.8
-shot rt
-wait 1.0
-axis RT min
-wait 0.2
-hold A
-wait 3.1
-shot gas
-wait 16.3
+wait 6.0
 mark gameplay
 repeat forever {
     hold A
