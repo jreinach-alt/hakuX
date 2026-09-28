@@ -91,31 +91,119 @@ Also:
 
 ## 3. Runs
 
-| id | what | state |
+| id (under `$DISPATCH_DIR/results/`) | what | state |
 |---|---|---|
-| `1790621694-shaderfb569-1529058` | cf5144dddb, Nova, DOA, survey, 440 s, cold | queued 2026-09-28 18:5xZ. The Nova is on its battery hold (lifts at >= 80%, after the owner's ~18:00 PDT top-up) |
-| arms pair (arms job) | 01e62d8d1c vs 84c865c37d, 8 suites | queued by the arms job from the committed prediction |
-
-**After the soak:** file a board request asking lane.local to pull the Nova's `files/spv_cache/`
-(via `run-as`) for lane.turnipcost569 (P2).
+| `1-1790621694-shaderfb569-1529058` | cf5144dddb, Nova (ee317437), DOA, survey, 440 s | done; `shader_cache: cleared: apk 32c8a1eb5468 -> 17fff996dc38`; battery start 32% |
+| `1-1790623783-arms-shaderfb569-base-3041077` | A 01e62d8d1c, Thor, 8 suites | done, 593 captures, 257 exact |
+| `1-1790623783-arms-shaderfb569-fix-3041536` | B 84c865c37d, Thor, 8 suites | done, 593 captures, 257 exact |
 
 ## 4. Result
 
-Pending. Preflight passed at this head (2026-09-28).
+### Why the first attempt did not finish
 
-**Waiting (2026-09-28 ~19:00Z)** on two things outside this session:
-- dispatch request `1790621694-shaderfb569-1529058`, which runs once the Nova's battery hold
-  lifts. Resolves when its `results/<id>/result.json` exists.
-- the arms job's `[job.arms]` verdict on `shaderfb569-pixels-inert.json`.
+It did not fail. It ended in a `waiting:` state (PR comment 2026-09-28 18:56Z), on the soak, which
+sat behind the Nova's battery hold, and on the arms verdict. Both runs finished by ~23:25Z, and
+this resume reads them. There is still no `[job.arms]` comment on the PR at 23:30Z, so the
+arms verdict below is this lane's own `ab_compare.py` read of the two result dirs.
 
-On resume:
-1. Run `fbwin.py $DISPATCH_DIR/results/1790621694-shaderfb569-1529058` into
-   `docs/lanes/shaderfb569/soak-fbwin.txt`.
-2. Check the load span against the route frames.
-3. Fill the per-window table and C1-C4 and O here, each with its result dir and log line.
-4. File the board request for the `spv_cache/` pull. Post on #569, then mark the PR ready.
+### Arms: pixel-inert, PASS
+
+`ab_compare.py --a <base> --b <fix> --expect shaderfb569-pixels-inert.json`, output in
+`arms-abcompare.out`. Of 593 captures, 0 better, 0 worse and 593 same. All 593 are
+**byte-identical** between the arms. `VERDICT: PASS -- all 593 registered checks hold.`
+ab_compare exits 1 on its UNBOUND note: the arms job queued the pair from the committed file, so
+no `request.sh --expect` names it. That is the arms job's normal path. The official verdict is the
+`[job.arms]` comment when it posts.
+
+### Soak: the reader's output
+
+`fbwin.py <soak dir> --span 16:20:15 16:20:31` gives `soak-fbwin.out`. `spantotals.py <logcat>`
+gives `soak-spans.out`. The times below are the device's logcat clock. Every number traces to
+`1-1790621694-shaderfb569-1529058/logcat.txt`.
+
+**The registered fight-load rule found nothing.** Both of its assumptions failed on this run:
+- It assumed the load comes after `mark play`. Here the route's menu presses reached Story mode,
+  character select and a fight *before* `mark play`. `mark booted` is at logcat line 1021, 16:19:08.
+  `mark play` is at line 5149, 16:22:05. Frame `162013-menu-start` shows character select,
+  `162019-menu-a` is black, and `162025-menu-start` is the fight's intro pose.
+- It assumed a steady fight window is at least 4000 ms. The fight ran at ~20-30 fps: 60 flips
+  took 2.0-3.1 s after the first load and 3.4-3.9 s in the stage-2 fight. pipeline413's run
+  measured about 11 fps.
+
+So C1, C2 and C4 are **VOID as the rule scores them**. The registered judge covers this case:
+"if the frames place it elsewhere, the frames' span is scored as well and both are reported". The
+frames' span is scored below. The frames put it after the fact, so treat it as a hand-placed
+read, not a blind one.
+
+**The frames' fight load** runs 16:20:15.217 to 16:20:30.886, logcat lines 2319-2602. That is
+character select to the fight, 6 windows, 16.9 s of wall time, 21 misses.
+
+| window closes | line | dt_ms | dpm | dpc_ms | dvs | dgs | dfs | reused stg (miss) | new stg (miss) | dgl_ms | kd VP/FF/CB/TX/FL/PO/GE/NONE/NOPREV |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 16:20:15.217 | 2319 | 1213 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | - |
+| 16:20:20.681 | 2389 | 5463 | 13 | 4061.4 | 2264.7 | 1120.3 | 79.4 | 28 (28) | 8 (8) | 49.8 | 0/10/8/3/1/2/0/1/0 |
+| 16:20:22.646 | 2434 | 1965 | 1 | 499.9 | 321 | | 8 | | | 11.7 | 0/1/1/1/0/0/0/0/0 |
+| 16:20:25.385 | 2483 | 2738 | 2 | 1373.5 | 1051 | | 13 | | | 14.3 | 0/2/2/0/0/0/0/0/0 |
+| 16:20:27.199 | 2531 | 1814 | 1 | 503.6 | 370 | | 7 | | | 7.0 | 0/1/1/1/0/0/0/0/0 |
+| 16:20:30.886 | 2602 | 3687 | 4 | 1838.9 | 1158 | | 25 | | | 21.6 | 0/4/4/1/0/1/0/0/0 |
+| **span** | | 16880 | 21 | **8277.3** | 5165.3 | 1818.8 | 132.4 | 46 (46) | 14 (14) | 104.4 | 0/18/16/6/1/3/0/1/0 |
+
+`soak-fbwin.out` does not print the blank cells (dgs and the reused/new split per window). They
+are on the cited logcat line of each window. Line 2389, as an example of the full field set:
+
+```
+09-28 16:20:20.681 I/hakuX-perf( 5225): [shd413] ... dpm=13 ... pc_ms=28791.0 dpc_ms=4061.4 dpn=13 dfb=13 dfbh=0
+dfb_ms=4061.2 dvs_ms=2264.7 dgs_ms=1120.3 dfs_ms=79.4 dsru=28 dsrum=28 dsru_ms=3023.1 dsnu=8 dsnum=8
+dsnu_ms=441.2 dgl_ms=49.8 dsmod_ms=55.6 dsv_ms=0.0 kd=0/10/8/3/1/2/0/1/0 dins_us=37.2
+```
+
+Two other load-like spans are in `soak-spans.out`:
+- 16:19:30.068 (line 1232), the attract/intro: one window, 26 misses, dpc 12,271 ms in a
+  13,826 ms window.
+- 16:23:21-16:24:08, the win, the title, then the stage-2 load: 59 misses, dpc 19,673 ms.
+
+### The legs
+
+| leg | registered | read | verdict |
+|---|---|---|---|
+| M0 | cold, >= 20 lines, all parse, pc_ms monotonic, feedback reported | cleared; 216 lines, 0 unparsed; monotonic; 164 creates, **164 with valid feedback**. Turnip on the Nova reports creation feedback | PASS |
+| C1 | load dpc_ms within 20% of 14.8 s | the rule's load: VOID. The frames' span: 8,277 ms, ratio 0.56 | rule VOID; frames' span **FAIL** (low) |
+| C1' | load dpc_ms within 20% of this run's own excess | 8,277 vs 9,602 (15,667 of miss-window dt, minus 5 x 1,213), ratio 0.86 | frames' span PASS |
+| N1 (post-hoc, not registered) | - | Each dpc > 0 window's dt against the median of its 2+2 nearest quiet windows. Over 27 windows, dpc 59,851 ms vs excess 50,336 ms (1.19). The largest stalls agree window by window: 16:19:30 has excess 11,984 and dpc 12,271; 16:20:01 has 5,550 and 5,954; 16:23:59 has 5,070 and 4,882 | reading |
+| C2 | glslang <= 5% of load dpc_ms | 104.4 / 8,277 = 1.26%. Over the whole run it is 731 / 59,851 = 1.2% | PASS |
+| C3 | share of reused-module stages Turnip reports as a cache miss | 246 of 246 = **100%**. The cost is real: 164.4 ms per reused stage vs 108.7 per new one. Reused stages are 40,438 of the 52,716 ms of stage time (77%) | **>= 50%: P5 stays, GPL's bound is 1/2-2/3 of a miss** |
+| C4 | the load's key-diff classes | the 21 misses: FF 18, CB 16, TX 6, PO 3, FL 1, NONE 1, VP 0. Over the whole run's 164: CB 115, FF 98, TX 67, PO 32, NOPREV 18, VP 15, FL 4, GE 4, NONE 4 | reading |
+| O | < 100 us of instrument time per create | 416.1 us over 164 creates = **2.54 us each**. A create averages 365 ms | PASS |
+
+What it means:
+- **C1 fails, but not in the world its falsifier named.** The falsifier's world was "the stall's
+  time is outside the create call". That world is refuted two ways. C1' is 0.86 on the load's own
+  excess. N1 puts the whole run's create time at 1.19x the per-window excess, and the big stalls
+  match window by window. C1 fails on size alone: this load cost 8.3 s over 21 misses, 394 ms per
+  miss. pipeline413's 14.8 s over 19 (<= 780 ms each) came from a different run, at ~11 fps and
+  on an older master. So the stall is inside `vkCreateGraphicsPipelines`, and this run's
+  per-miss price is about half pipeline413's upper bound.
+- **The vertex stage is the compile.** Of the stage time, vs is 41.2 s (78%), gs 10.8 s (20%) and
+  fs 0.8 s (1.5%). glslang (0.7 s), module creation (0.8 s) and cache saves (0.3 s) together are
+  3% of dpc.
+- **The misses are fixed-function vsh and combiner variants, not vertex programs.** The load has
+  0 VP diffs. FF 18 and CB 16 of 21 misses are what moves.
+- **C3 limit.** The split is per stage (per `VkShaderModule`). A GPL pre-rasterization library
+  holds vs and gs together, so its reuse needs both unchanged. The fields do not pair them, so
+  77% is an upper bound on what GPL could skip, before link cost. Turnip's monolithic path may
+  never set a per-stage hit bit when the pipeline misses. The duration evidence (reused stages
+  cost full price) is what makes the 100% a real recompile rather than a flag that never sets.
+
+### After the soak
+
+The board request for the Nova's `files/spv_cache/` pull (for lane.turnipcost569, P2) is routed
+to lane.local on #569 with `deliver.sh send`.
 
 ## Do not repeat
+
+- Do not score a DOA load by a fixed "steady fight >= 4000 ms" window. On this build the fight
+  runs at 20-30 fps. On the survey route the menu presses can reach a fight before `mark play`.
+  Place the load from the route frames. `fbwin.py --span` scores a given span.
 
 - Do not define the fight load as "the first miss after `mark play`". On the survey route, the
   menus after the DOA2U title miss first (09:37:00 in pipeline413's run).

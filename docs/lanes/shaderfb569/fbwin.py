@@ -2,7 +2,7 @@
 """#569 P1: the [shd413] windows of a soak, with the pipeline creation feedback
 fields, scored against docs/testing/predictions/shaderfb569-doa-feedback.json.
 
-    fbwin.py <result dir | logcat.txt> [--excess-ms 14800]
+    fbwin.py <result dir | logcat.txt> [--excess-ms 14800] [--span HH:MM:SS HH:MM:SS]
     fbwin.py --selftest
 
 Each [shd413] line closes a window of 60 flips (pgraph/profile.c). This reads
@@ -115,6 +115,46 @@ def kd_sum(ws):
     return [sum(w["kd"][i] for w in ws) for i in range(len(KD))]
 
 
+def score_load(load, excess_ms):
+    """C1, C1', C2 and C4 over a span of windows (the rule's load, or --span's)."""
+    r = {}
+    dpc = total(load, "dpc_ms")
+    miss = [w for w in load if w["dpm"] >= 1]
+    zero = [w for w in load if w["dpm"] == 0]
+    own = (total(miss, "dt_ms") - len(miss) * statistics.median(w["dt_ms"] for w in zero)
+           if zero else None)
+    r.update(load_dpc_ms=dpc, load_dpm=total(load, "dpm"), load_dt_ms=total(load, "dt_ms"),
+             own_excess_ms=own, load_dgl_ms=total(load, "dgl_ms"),
+             load_kd=kd_sum(load), load_dvs_ms=total(load, "dvs_ms"),
+             load_dfs_ms=total(load, "dfs_ms"))
+    r["C1"] = abs(dpc - excess_ms) <= 0.2 * excess_ms
+    r["C1own"] = None if own is None else abs(dpc - own) <= 0.2 * own
+    r["C2"] = dpc > 0 and total(load, "dgl_ms") <= 0.05 * dpc
+    return r
+
+
+def span_of(wins, a, b):
+    """The windows that close at or after hms a and at or before hms b."""
+    return [w for w in wins if a <= w["hms"] <= b]
+
+
+def neighbour_excess(wins, k=2):
+    """Post-hoc, per window: each window with dpc_ms > 0 against a floor of the
+    median dt_ms of the k nearest dpm == 0 windows on each side. Returns
+    [(window, floor, excess)]."""
+    out = []
+    for i, w in enumerate(wins):
+        if w["dpc_ms"] <= 0:
+            continue
+        near = [x["dt_ms"] for x in reversed(wins[:i]) if x["dpm"] == 0][:k]
+        near += [x["dt_ms"] for x in wins[i + 1:] if x["dpm"] == 0][:k]
+        if not near:
+            continue
+        f = statistics.median(near)
+        out.append((w, f, w["dt_ms"] - f))
+    return out
+
+
 def score(wins, marks, bad, shader_cache, excess_ms):
     r = {"lines": len(wins), "unparsed": bad, "shader_cache": shader_cache}
     r["monotonic"] = all(b["pc_ms"] >= a["pc_ms"] for a, b in zip(wins, wins[1:]))
@@ -125,17 +165,7 @@ def score(wins, marks, bad, shader_cache, excess_ms):
     load = fight_load(wins, marks)
     r["load"] = load
     if load:
-        dpc = total(load, "dpc_ms")
-        miss = [w for w in load if w["dpm"] >= 1]
-        zero = [w for w in load if w["dpm"] == 0]
-        own = (total(miss, "dt_ms") - len(miss) * statistics.median(w["dt_ms"] for w in zero)
-               if zero else None)
-        r.update(load_dpc_ms=dpc, load_dpm=total(load, "dpm"), load_dt_ms=total(load, "dt_ms"),
-                 own_excess_ms=own, load_dgl_ms=total(load, "dgl_ms"),
-                 load_kd=kd_sum(load))
-        r["C1"] = abs(dpc - excess_ms) <= 0.2 * excess_ms
-        r["C1own"] = None if own is None else abs(dpc - own) <= 0.2 * own
-        r["C2"] = dpc > 0 and total(load, "dgl_ms") <= 0.05 * dpc
+        r.update(score_load(load, excess_ms))
     ru, rum = total(wins, "dsru"), total(wins, "dsrum")
     nu, num = total(wins, "dsnu"), total(wins, "dsnum")
     r.update(stage_reused=ru, stage_reused_miss=rum, stage_new=nu, stage_new_miss=num,
@@ -144,6 +174,8 @@ def score(wins, marks, bad, shader_cache, excess_ms):
              run_dpc_ms=total(wins, "dpc_ms"), run_dgl_ms=total(wins, "dgl_ms"),
              run_dsmod_ms=total(wins, "dsmod_ms"), run_dsv_ms=total(wins, "dsv_ms"),
              run_dfb_ms=total(wins, "dfb_ms"), run_kd=kd_sum(wins),
+             run_dvs_ms=total(wins, "dvs_ms"), run_dgs_ms=total(wins, "dgs_ms"),
+             run_dfs_ms=total(wins, "dfs_ms"),
              run_dins_us=total(wins, "dins_us"))
     r["C3_share"] = rum / ru if ru else None
     r["C3"] = (None if r["C3_share"] is None else
@@ -164,6 +196,24 @@ def logcat_of(path):
                 sc, j.get("device_label") or j.get("device"), j.get("apk_sha"), j.get("ref")))
         return os.path.join(path, "logcat.txt"), sc
     return path, None
+
+
+def print_load(name, L, r, excess):
+    print("%s: %s .. %s, %d windows, dt %.0f ms, dpm %d" % (
+        name, L[0]["hms"], L[-1]["hms"], len(L), r["load_dt_ms"], r["load_dpm"]))
+    print("C1  %s: load dpc_ms %.0f vs registered excess %.0f (ratio %.2f)" % (
+        "PASS" if r["C1"] else "FAIL", r["load_dpc_ms"], excess, r["load_dpc_ms"] / excess))
+    if r["own_excess_ms"] is not None:
+        print("C1' %s: vs this run's own excess %.0f (ratio %.2f)" % (
+            "PASS" if r["C1own"] else "FAIL", r["own_excess_ms"],
+            r["load_dpc_ms"] / r["own_excess_ms"] if r["own_excess_ms"] else float("inf")))
+    else:
+        print("C1' not computed: no dpm == 0 window inside the load")
+    print("C2  %s: load glslang %.1f ms = %.2f%% of dpc_ms" % (
+        "PASS" if r["C2"] else "FAIL", r["load_dgl_ms"],
+        100 * r["load_dgl_ms"] / r["load_dpc_ms"] if r["load_dpc_ms"] else float("nan")))
+    print("C4  load key-diff classes: %s" % fmt_kd(r["load_kd"]))
+    print("    load stages: vs %.0f ms, fs %.0f ms" % (r["load_dvs_ms"], r["load_dfs_ms"]))
 
 
 def fmt_kd(kd):
@@ -193,23 +243,16 @@ def main():
         "PASS" if r["M0"] else "FAIL", sc, r["lines"], r["unparsed"], r["monotonic"],
         r["creates"], r["fb_valid"]))
     if r["load"]:
-        L = r["load"]
-        print("fight load: %s .. %s, %d windows, dt %.0f ms, dpm %d" % (
-            L[0]["hms"], L[-1]["hms"], len(L), r["load_dt_ms"], r["load_dpm"]))
-        print("C1  %s: load dpc_ms %.0f vs registered excess %.0f (ratio %.2f)" % (
-            "PASS" if r["C1"] else "FAIL", r["load_dpc_ms"], excess, r["load_dpc_ms"] / excess))
-        if r["own_excess_ms"] is not None:
-            print("C1' %s: vs this run's own excess %.0f (ratio %.2f)" % (
-                "PASS" if r["C1own"] else "FAIL", r["own_excess_ms"],
-                r["load_dpc_ms"] / r["own_excess_ms"] if r["own_excess_ms"] else float("inf")))
-        else:
-            print("C1' not computed: no dpm == 0 window inside the load")
-        print("C2  %s: load glslang %.1f ms = %.2f%% of dpc_ms" % (
-            "PASS" if r["C2"] else "FAIL", r["load_dgl_ms"],
-            100 * r["load_dgl_ms"] / r["load_dpc_ms"] if r["load_dpc_ms"] else float("nan")))
-        print("C4  load key-diff classes: %s" % fmt_kd(r["load_kd"]))
+        print_load("fight load (rule)", r["load"], r, excess)
     else:
         print("fight load: NOT FOUND (no mark play, no miss after it, or no steady fight): C1, C2, C4 VOID")
+    if "--span" in sys.argv:
+        k = sys.argv.index("--span")
+        S = span_of(wins, sys.argv[k + 1], sys.argv[k + 2])
+        if S:
+            print_load("fight load (--span, from the frames)", S, score_load(S, excess), excess)
+        else:
+            print("--span %s %s: no windows" % (sys.argv[k + 1], sys.argv[k + 2]))
     print("C3  reused-module stages %d, driver cache misses %d -> share %s: %s" % (
         r["stage_reused"], r["stage_reused_miss"],
         "%.1f%%" % (100 * r["C3_share"]) if r["C3_share"] is not None else "-", r["C3"]))
@@ -220,6 +263,16 @@ def main():
     print("run: dpc %.0f ms, feedback %.0f ms, glslang %.1f ms, module %.1f ms, cache saves %.1f ms, kd %s" % (
         r["run_dpc_ms"], r["run_dfb_ms"], r["run_dgl_ms"], r["run_dsmod_ms"], r["run_dsv_ms"],
         fmt_kd(r["run_kd"])))
+    print("run stages: vs %.0f ms, gs %.0f ms, fs %.0f ms (vs share of the stage sum %.1f%%)" % (
+        r["run_dvs_ms"], r["run_dgs_ms"], r["run_dfs_ms"],
+        100 * r["run_dvs_ms"] / max(1e-9, r["run_dvs_ms"] + r["run_dgs_ms"] + r["run_dfs_ms"])))
+    nb = neighbour_excess(wins)
+    if nb:
+        ex, dp = sum(e for _, _, e in nb), sum(w["dpc_ms"] for w, _, _ in nb)
+        print("N1 (post-hoc) per-window excess over the 2+2 nearest quiet windows, %d windows: "
+              "excess %.0f ms, dpc %.0f ms, dpc/excess %.2f" % (len(nb), ex, dp, dp / ex if ex else float("nan")))
+        for w, f, e in nb:
+            print("    %s dt %6.0f floor %6.0f excess %7.0f dpc %7.1f" % (w["hms"], w["dt_ms"], f, e, w["dpc_ms"]))
     print("O   instrument: %.1f us over %d creates = %s us each" % (
         r["run_dins_us"], r["creates"],
         "%.2f" % r["O_us_per_create"] if r["O_us_per_create"] is not None else "-"))
@@ -287,6 +340,15 @@ def selftest():
     k = next(i for i, x in enumerate(lines) if "05:00:42.500" in x)
     bad_mono = parse(lines[:k] + [lines[k].replace("pc_ms=9000.0", "pc_ms=1.0")] + lines[k + 1:-1])
     check(not score(*bad_mono, "cleared: x", 14800.0)["monotonic"], "a decreasing pc_ms is caught")
+    S = span_of(wins, "05:00:31", "05:00:40.000")
+    check([w["hms"] for w in S] == ["05:00:31.000", "05:00:32.000", "05:00:33.000", "05:00:34.000",
+                                    "05:00:35.000", "05:00:40.000"], "--span keeps the windows closing inside it")
+    rs = score_load(S, 14800.0)
+    # 6000 + 8000 - 2 x 1000 = 12000
+    check(rs["load_dpc_ms"] == 9000.0 and rs["own_excess_ms"] == 12000.0, "--span scores its own windows")
+    nb = {w["hms"]: e for w, _, e in neighbour_excess(wins)}
+    # 05:00:40 (8000): quiet neighbours 1000, 1000 before, 2500, 2500 after -> floor 1750
+    check(nb.get("05:00:40.000") == 6250.0, "N1 floor is the median of the 2+2 nearest quiet windows")
     print("selftest %s" % ("PASSED" if ok else "FAILED"))
     return 0 if ok else 1
 
