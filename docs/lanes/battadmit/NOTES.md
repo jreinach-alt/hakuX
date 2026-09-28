@@ -188,6 +188,11 @@ the Nova would come back at 20 % with no per-run check.
 (60), `BATTERY_CACHE_S` (60) and `BATTERY_RATES_TTL_S` (300, the learned-rate
 cache in `$D/.battery_rates.<label>.<kind>.json`).
 
+## Status
+
+2026-09-28: waiting for CI on PR #587. Once it is green, the PR is marked
+ready.
+
 ## For the next lane
 
 - Do not learn the rate from high-charge runs (see above).
