@@ -1341,3 +1341,21 @@ Azurik 1-1790560999-titleroutes-2862460 (500 s) and D&D Heroes
 first). Then go on down the Thor list in held nav sessions under the focus
 read: Bicycle Casino, Breeders' Cup, AMF Xtreme Bowling, then the Playable
 list in the hand-over.
+
+### Attempt 11 (resumed 2026-09-27 19:30 PDT, handback)
+
+Why attempt 10 did not finish: it did. Its NOTES (the batch 9 table above)
+were in 9020dc32cd, and PR #515 folded with them. The handback that started
+this attempt listed #515 as a draft, but #515 had already merged. All seven
+results it named were already read and recorded above.
+
+State at 19:36 PDT: nothing of mine is running, and the Thor has no hold. My
+two re-queued soaks are still in the queue, behind arms and forza414 work:
+Azurik 1-1790560999-titleroutes-2862460 and D&D Heroes
+1-1790560999-titleroutes-2862610. I did not take a held nav session, because
+a hold would stop the Thor from claiming those two. This attempt ends
+`waiting:` on them.
+
+Next, once they land: read each mark frame first, then the fps. Then take
+held nav sessions for Bicycle Casino, Breeders' Cup and AMF Xtreme Bowling,
+then the Playable list in the hand-over.
