@@ -615,9 +615,8 @@ released = ["docs/testing/dispatcher.sh", "docs/testing/battery_admit.py", "docs
 
 [lane.vcpuplan]
 issues = ["507"]
-files = ["docs/lanes/vcpuplan/**"]
-note = "STARTED (lane.local 2026-09-28T20:25Z), briefs/vcpuplan.md: #507 energy map rank 4 (unowned): the vCPU is the largest dynamic J/frame term on every title. Research and a ranked plan by the owner's rule (roles/lane.md, PR #584): where vCPU time goes on ARM64 (JIT code, TB lookup, softmmu, x87/SSE softfloat helpers), what x86-on-ARM64 JITs (FEX/Box64) do, prior work swept, an independent JIT-engineer review. Docs only."
-released = ["docs/lanes/vcpuplan/**"]
+files = []
+note = "RETIRED (hostops 2026-09-28T21:10Z): PR #589 folded as 164cb13d9e, unit gone; its ranked plan is dispatched as lane.memfast (items 0/3/1) and lane.ibcache (item 2). #507 stays open. Was: STARTED (lane.local 2026-09-28T20:25Z), briefs/vcpuplan.md: #507 energy map rank 4 (unowned): the vCPU is the largest dynamic J/frame term on every title. Research and a ranked plan by the owner's rule (roles/lane.md, PR #584): where vCPU time goes on ARM64 (JIT code, TB lookup, softmmu, x87/SSE softfloat helpers), what x86-on-ARM64 JITs (FEX/Box64) do, prior work swept, an independent JIT-engineer review. Docs only."
 
 [lane.memfast]
 issues = ["507"]
