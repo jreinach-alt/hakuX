@@ -394,6 +394,26 @@ hysteresis). A fall that clears within one or two bins is not the pause.
   first mitigation event, max xo-therm, net_w, j_per_frame, battery hours,
   and the minute xo-therm plateaus at the defaults.
 
+### #533 audit pass 1 (2026-09-27, attempt 2)
+
+Attempt 1 did finish: #533 was marked ready and its `waiting:` comment
+posted. The audit then pushed pass 1 (LOWs only) onto the branch, and the
+lane was resumed to answer it.
+
+- L1 (the display reads can add up to ADB_QUICK_TIMEOUT to a run): accepted.
+  The delay is bounded, and nothing is scored wrong.
+- L2: `displays` is now `{}` when adb answered the settings but no
+  `mBaseDisplayInfo=` line matched. On the first `default` soak, `{}` means
+  this firmware prints a different line. A missing key means adb gave nothing.
+- L3: `thermal_state.first_episode()` now holds the one copy of the
+  "not the cool-down's episode" filter. Both `first_pause()` and the
+  verdict's sustained failure read it.
+- origin/master merged in (#523 folded as 1577a31604). 99-default-regimen
+  (7), 99-power-per-frame (13), 99-thermal-pause (15), 89-title-verdict (36),
+  99-display-covered (23) and 84-perf-regimen (21) pass. 89's "treat one adb
+  failure as an exit" mutant survived once. It was caught in two reruns: a
+  timing flake that does not touch these lines.
+
 ## Existing Thor title benchmarks (brief item 4)
 
 Posted on #507 (comment 5859894811). 122 Thor title soaks of the last 48 h
