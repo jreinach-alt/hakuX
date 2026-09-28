@@ -122,7 +122,7 @@ PS_WORK="$PS/work"
 ps_reset() { rm -rf "$PS_WORK"; mkdir -p "$PS_WORK/logs/board"; : > "$PS_LOG"; : > "$PS/comments.log"
              : > "$PS/active"; : > "$PS/handback.list"; : > "$PS/arms.state"; : > "$PS/claim.body"
              echo active > "$PS/board-timer"; touch "$PS_WORK/logs/board/tick.log"; }
-ps() { ( export PATH="$PS/bin:$PATH" HAKUX_WORK="$PS_WORK" HAKUX_BOARD_REF=
+ps() { ( export PATH="$PS/bin:$PATH" HAKUX_WORK="$PS_WORK" HAKUX_BOARD_REF= HAKUX_REPO_DIR="$PS/repo"
           bash "$PS/jobs/pr-sweep.sh" "$@" 2>&1 ); }
 ps_said()   { grep -qF -- "$1" "$PS/comments.log"; }
 ps_unsaid() { ! grep -qF -- "$1" "$PS/comments.log"; }
@@ -153,8 +153,30 @@ ps_report() { grep -qF -- "$1" "$PS_WORK/status/pr-sweep.md"; }
 # the class stopped being stale, so the whole class went quiet and every
 # NEGATIVE check on it passed for free. Offsets from the trunk head cannot
 # drift: the quantity they are compared against is the one they are built from.
-TRUNK_CT=$(git -C "$REPO" log -1 --format=%ct refs/remotes/origin/master 2>/dev/null \
-           || git -C "$REPO" log -1 --format=%ct HEAD)
+#
+# AND THE TRUNK IS THE FIXTURE'S, NOT THE REPOSITORY'S. Offsets from the head
+# cannot drift only while the head itself holds still, and the real one does
+# not: every `ps` run below does pr-sweep's own `git fetch origin master`, and
+# $REPO's origin is the live one. #523's run went red on 2026-09-27 because
+# #503 folded 894s after the head this line had read, inside the ~23-minute
+# selftest -- the `live:FAILURE:+600` check fell behind the new head and the
+# sweep called it stale. A worktree's refs are also the host checkout's, so
+# any host job's fetch moves them too. So the sweep runs against $PS/repo,
+# whose origin is $PS/origin.git, one commit at a fixed date that nothing but
+# this fragment writes. pr-sweep's fetch still runs, and still reads the ref by
+# name; it just fetches from an origin that no fold can reach.
+rm -rf "$PS/origin.git" "$PS/repo"
+git init -q --bare "$PS/origin.git"
+git init -q -b master "$PS/repo"
+GIT_COMMITTER_DATE=2026-09-19T12:00:00Z GIT_AUTHOR_DATE=2026-09-19T12:00:00Z \
+    git -C "$PS/repo" -c user.name=selftest -c user.email=selftest@example.invalid \
+    commit -q --allow-empty -m "the fixture's trunk"
+git -C "$PS/repo" remote add origin "$PS/origin.git"
+git -C "$PS/repo" push -q origin master:master
+git -C "$PS/repo" fetch -q origin
+TRUNK_CT=$(git -C "$PS/repo" log -1 --format=%ct refs/remotes/origin/master)
+check "the sweep's trunk is the fixture's own, at its fixed date" \
+      test "$TRUNK_CT" = "$(date -u -d 2026-09-19T12:00:00Z +%s)"
 
 # One PR, as `gh pr list --json ...` emits it. <num> <branch> <draft>
 # <mergeable> <labels csv> <quiet secs> [<name:conclusion:offset> ...] where

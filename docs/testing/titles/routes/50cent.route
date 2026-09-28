@@ -1,0 +1,76 @@
+# 50 Cent: Bulletproof (56550042): one route for every run (no profile is
+# saved). PLAYED by nav.py on the Nova, 2026-09-27 06:10 PDT (lane.titleroutes
+# HELD session 50cent.first-run-20260927T061007).
+#
+#   the Genuine Games and publisher logos (A skips each) -> Title Screen,
+#   cursor on New Game (A) -> Choose Difficulty, cursor on Thug (Normal) (A)
+#   -> "- Create New Profile -" with X: Continue without saving (X) -> "Are
+#   you sure ...", cursor on No (LY up, A) -> the intro cutscene (A skips) ->
+#   the Intro level, an alley at night, 50 Cent with a pistol (15/20) and
+#   two G-Unit allies; enemies behind an SUV ahead.
+#
+# Continue without saving keeps the route off the profile keyboard and off
+# the disk, so later runs take the same path as the first.
+#
+# Player control: LY min for 2 s walked him up the alley, RX turned the
+# camera, RT fired (ammo 15/20 -> 13/20; nav frames 009-pre -> 010-moved).
+wait 22.8
+shot boot
+wait 11.2
+press A
+wait 5.3
+press A
+wait 5.4
+press A
+wait 5.1
+shot a3
+wait 4.6
+press A
+wait 4.1
+shot newgame
+wait 6.5
+press A
+wait 5.1
+shot diff
+wait 5.8
+press X
+wait 8.1
+shot nosave
+wait 7.5
+axis LY min
+wait 0.3
+axis LY mid
+wait 0.6
+shot up
+wait 6.4
+press A
+wait 10.1
+shot go
+wait 5.1
+press A
+wait 6.3
+press A
+wait 6.1
+shot skip1
+wait 7.6
+mark gameplay
+repeat forever {
+    axis LY min
+    wait 2
+    axis LY mid
+    axis RX max
+    wait 0.6
+    axis RX mid
+    axis RT max
+    wait 0.3
+    axis RT min
+    axis LY min
+    wait 2
+    axis LY mid
+    axis RX min
+    wait 0.6
+    axis RX mid
+    axis RT max
+    wait 0.3
+    axis RT min
+}

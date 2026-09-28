@@ -1,0 +1,89 @@
+# Dungeons & Dragons Heroes (49470013): first-run route (the default hero
+# is not saved before control). PLAYED by nav.py on the Thor, 2026-09-27
+# 07:14 PDT (lane.titleroutes HELD session dnd-heroes.first-run-20260927T071435).
+#
+#   the Bink and publisher logos -> three A presses 5 s apart, which went
+#   through the title and the menus unseen -> the hero select, FIGHTER
+#   Human, "Press START to Join" for player 2 (A) -> Name Your Hero with the
+#   default "ARADIN" (A) -> "Loading" with a Types of Spells card -> the
+#   opening cutscene with the dwarves (A and START do not end it; it runs
+#   about 40 s warm, much longer cold) -> ARADIN in the ruins, health and
+#   mana bars, keys and potions 0/0/0.
+#
+# The three unseen A presses are the fragile part: if the menus come at a
+# different pace, the replay frames show where it stopped.
+#
+# NOT yet replayed. Two replays of the nav session's draft failed: replay 1
+# marked inside the cutscene, which ran at 2 fps; replay 2 was in play when
+# the draft's START landed, which opened Game Options, and the play
+# pattern's A then chose Save Game. This version drops that START and waits
+# 150 s after `skip` for the cutscene to end. A spare A in play is an attack.
+#
+# Still NOT replayed (2026-09-27 12:30 PDT). This version's soak,
+# 0-0-x-1790527983-titleroutes-2100395, is void for a reason outside the
+# route: hakuX rendered on display 0 but did not have the Thor's input
+# focus, so no press reached the game. The title sat in its own loop, the
+# main menu for about 40 s and then the attract demo for about 80 s, and
+# the frames `name`, `load` and `skip` are that demo (heroes with keys and
+# potions already collected). One thing it did show: on a cold boot the
+# main menu, NEW GAME highlighted, is up about 55 s after launch with no
+# press at all (`a3`).
+#
+# Player control: LY min walked the fighter down the screen, A and X
+# attacked; X also opens the skill list (Avid Pursuit, War Cry, Thrown
+# Dagger), so the play pattern presses A only. Nav frames 008-gameplay ->
+# 009-moved.
+#
+# REPLAYED 2026-09-27 13:04 PDT, in a HELD Thor session, unattended, with
+# hakuX holding the input focus on all 17 reads of `dumpsys input`. The frame
+# at the mark is ARADIN in the ruins, out of the cutscene (overlay FPS 15);
+# 40 s later he stands at the torch-lit sign further on
+# (scratch/replay/dnd-heroes-130437/zz-end.png, FPS 11). The boot was warm.
+wait 26.8
+shot boot
+wait 9.6
+press A
+wait 5.4
+press A
+wait 5.4
+press A
+wait 5.1
+shot a3
+wait 9.2
+press A
+wait 6.1
+shot fighter
+wait 10.9
+press A
+wait 6.1
+shot name
+wait 24.5
+shot load
+wait 9.1
+press A
+wait 5.4
+press A
+wait 5.1
+shot skip
+wait 60
+shot cut2
+wait 90
+mark gameplay
+repeat forever {
+    axis LY min
+    wait 2
+    press A
+    axis LX max
+    wait 1
+    press A
+    axis LX mid
+    axis LY max
+    wait 2
+    press A
+    axis LX min
+    wait 1
+    press A
+    axis LX mid
+    axis LY mid
+    wait 0.5
+}

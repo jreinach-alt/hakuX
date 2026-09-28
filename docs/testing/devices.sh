@@ -238,6 +238,174 @@ device_perf_set() {
     [ "$got" = "$1 $2" ]
 }
 
+# ------------------------------------------------------------ display 0
+#
+# display_clear <serial>  ->  one line on stdout, and
+#   0  `display-clear: ...`    awake, and nothing foreign covers display 0
+#   1  `display-covered: ...`  not Awake after the wake, or a foreign
+#                              full-screen overlay sits on display 0
+#   2  `display-unknown: ...`  adb could not say (no mWakefulness line, or a
+#                              window dump with no `Window #` in it)
+#
+# WHY. On 2026-09-27 the owner started Lime3DS on the Thor at 11:06 PDT, and
+# AYN's dual-screen assistant (com.odin.dualscreen.assistant) raised a
+# full-screen `primaryScreenTopLayout` window of type BOOT_PROGRESS on display
+# 0, above hakuX. It stayed there for at least 45 minutes. The device read
+# Awake with no keyguard; every hakuX frame came out as a 10,899 B all-black
+# PNG, GTA stopped flipping, and the soaks in that window still looked like
+# measurements. A wakefulness check alone cannot see this; the window list can.
+#
+# The rule is host-tools/harness_health.py's `covered:` check, restated here:
+# a window block (from one `  Window #N ` header to the next) covers display 0
+# when it is on mDisplayId=0, laid out fillxfill, has a surface, is visible
+# (mViewVisibility=0x0), is of an overlay type, and its package is neither
+# hakuX nor systemui. An app window of the owner's own game is NOT an overlay
+# type and does not count; that case is hakuX simply not being in front, and
+# the soak's `am start` brings it forward.
+display_clear() {
+    local SERIAL="$1" wake="" try out covers n
+    for try in 1 2 3; do
+        wake=$(adb_call "${ADB_QUICK_TIMEOUT:-20}" "power state read" shell \
+            'dumpsys power | grep mWakefulness=' 2>/dev/null | tr -d '\r' \
+            | sed -n 's/.*mWakefulness=\([A-Za-z]*\).*/\1/p' | head -1)
+        # Unreadable is not a transition: no point waiting for it to settle.
+        [ -z "$wake" ] || [ "$wake" = Awake ] && break
+        [ "$try" = 3 ] || sleep "${DISPLAY_WAKE_S:-1}"
+    done
+    if [ -z "$wake" ]; then
+        echo "display-unknown: no mWakefulness line from dumpsys power on $SERIAL"
+        return 2
+    fi
+    if [ "$wake" != Awake ]; then
+        echo "display-covered: $SERIAL reads mWakefulness=$wake after KEYCODE_WAKEUP, not Awake"
+        return 1
+    fi
+    out=$(adb_call "${ADB_QUICK_TIMEOUT:-20}" "window list read" shell \
+        'dumpsys window windows' 2>/dev/null | tr -d '\r')
+    n=$(printf '%s\n' "$out" | grep -c '^  Window #[0-9]')
+    if [ "$n" = 0 ]; then
+        echo "display-unknown: dumpsys window windows on $SERIAL listed no window"
+        return 2
+    fi
+    covers=$(printf '%s\n' "$out" | awk '
+        function flush() {
+            if (inw && name != "" && pkg != "" && d0 && fill && surf && vis && ty \
+                    && tolower(pkg) !~ /hakux|haku_x|systemui/)
+                printf "%s%s (%s, %s)", (nc++ ? ", " : ""), name, pkg, tyname
+        }
+        /^  Window #[0-9]+ / {
+            flush(); inw = 1; name = ""; pkg = ""; tyname = ""
+            d0 = fill = surf = vis = ty = 0
+            s = $0; i = index(s, "Window{")
+            if (i) {
+                s = substr(s, i + 7); s = substr(s, 1, index(s, "}") - 1)
+                if (sub(/^[^ ]+ [^ ]+ /, "", s)) name = s
+            }
+        }
+        !inw { next }
+        /mDisplayId=0([^0-9]|$)/ { d0 = 1 }
+        index($0, "fillxfill") { fill = 1 }
+        /mHasSurface=true/ { surf = 1 }
+        /mViewVisibility=0x0([^0-9A-Za-z_]|$)/ { vis = 1 }
+        match($0, /ty=(BOOT_PROGRESS|SYSTEM_OVERLAY|APPLICATION_OVERLAY|SYSTEM_ALERT)([^A-Za-z0-9_]|$)/) {
+            ty = 1; tyname = substr($0, RSTART + 3, RLENGTH - 3); sub(/[^A-Za-z_]$/, "", tyname)
+        }
+        pkg == "" && match($0, /package=[^ ]+/) { pkg = substr($0, RSTART + 8, RLENGTH - 8) }
+        END { flush() }')
+    if [ -n "$covers" ]; then
+        echo "display-covered: a foreign full-screen overlay covers display 0 on $SERIAL: $covers"
+        return 1
+    fi
+    echo "display-clear: $SERIAL Awake, no foreign overlay on display 0 ($n windows read)"
+    return 0
+}
+
+# hakux_in_front <serial>  ->  one line on stdout, and
+#   0  `in-front: ...`                input focus is on display 0, and display
+#                                     0's focused window is hakuX's
+#   1  `not-foreground: <pkg> (...)`  focus is on another display, or display
+#                                     0's focused application or window is not
+#                                     hakuX's
+#   2  `foreground-unknown: ...`      adb did not answer, or display 0 has no
+#                                     focused window to read
+#
+# WHY. Route input is evdev events on the pad node, and Android delivers them
+# to the FOCUSED window, whatever app that is. On 2026-09-27 the Thor came
+# back at ~11:05 PDT with its launcher in front; a soak's route pressed
+# buttons into it and started Lime3DS (Animal Crossing), then drove it to a
+# name prompt. At 12:12 a route launched Lime3DS again. So the question is
+# not which activity is on top but which window key and gamepad events reach.
+#
+# Read it from the input system: `dumpsys input` prints `FocusedDisplayId: N`,
+# then `FocusedApplications:` and `FocusedWindows:`, one
+# `displayId=D, name='...'` entry per display. Events go to display N's entry.
+# NOT `dumpsys window | grep -m1 mCurrentFocus`, and not the first
+# `topResumedActivity`: `dumpsys window` prints one mCurrentFocus per display,
+# and on the Thor display 4 (the bottom screen, whose SecondaryDisplayLauncher
+# always holds a focused window) is listed before display 0, so a first-match
+# read names the launcher even when hakuX has focus (hostops, 12:43 PDT: a
+# cold `am start --display 0` of hakuX read FocusedDisplayId 0 with hakuX in
+# FocusedWindows while grep -m1 mCurrentFocus named the launcher). The
+# fixtures in 99-display-covered.sh list display 4 first for that reason.
+#
+# One adb call, with one retry (about 2 s) on an adb failure: soak_title.sh
+# runs this every 2 s while a route plays and counts unknowns itself.
+hakux_in_front() {
+    local SERIAL="$1" out
+    out=$(ADB_RETRIES=1 adb_call "${ADB_QUICK_TIMEOUT:-10}" "foreground read" shell \
+        "dumpsys input | grep -E '^  [A-Za-z][A-Za-z]*:|displayId=[0-9]+, name='; true" \
+        2>/dev/null | tr -d '\r')
+    printf '%s\n' "$out" | awk -v serial="$SERIAL" '
+        function owner(s) {  # "ActivityRecord{h u0 pkg/cls t4}" or "h pkg/cls" -> pkg
+            if (index(s, "{")) { s = substr(s, index(s, "{") + 1); sub(/}.*/, "", s) }
+            sub(/\/.*/, "", s); sub(/.* /, "", s)
+            return s
+        }
+        function ours(p) { return p ~ /^com\.jreinach\.hakux/ }
+        # Only the live block. `dumpsys input` then prints a second dispatcher
+        # block, "Input Dispatcher State at time of last ANR:", with its own
+        # FocusedDisplayId, FocusedApplications and FocusedWindows: a stale
+        # snapshot that a last-value read would take as the state now (#513:
+        # the Thor read its 11:06 ANR, Daijishou on display 0, for hours).
+        # That header is at column 0 and the grep above drops it, so stop at
+        # the first line of its body, `  ANR:`, or at a second FocusedDisplayId.
+        stop { next }
+        /^  ANR:/ || (fd != "" && /FocusedDisplayId:/) { stop = 1; next }
+        # Section headers sit at two spaces; entries are indented deeper.
+        /^  [A-Za-z]+:/ { sec = $1; sub(/:.*/, "", sec) }
+        /FocusedDisplayId: *-?[0-9]/ { fd = $0; sub(/.*FocusedDisplayId: */, "", fd); sub(/[^-0-9].*/, "", fd) }
+        (sec == "FocusedApplications" || sec == "FocusedWindows") && /displayId=[0-9]+, name=\047/ {
+            e = $0; sub(/.*displayId=/, "", e); d = e; sub(/,.*/, "", d)
+            sub(/^[0-9]+, name=\047/, "", e); sub(/\047.*/, "", e)
+            if (sec == "FocusedApplications") app[d] = owner(e); else win[d] = owner(e)
+        }
+        END {
+            if (fd == "") {
+                printf "foreground-unknown: %s answered no FocusedDisplayId\n", serial; exit 2
+            }
+            if (fd != "0") {
+                w = (fd in win) ? win[fd] : ((fd in app) ? app[fd] : "unknown")
+                printf "not-foreground: %s (input focus is on display %s of %s, not display 0)\n", w, fd, serial
+                exit 1
+            }
+            if (("0" in app) && !ours(app["0"])) {
+                printf "not-foreground: %s (the focused application on display 0 of %s, not hakuX)\n", app["0"], serial
+                exit 1
+            }
+            if (!("0" in win)) {
+                printf "foreground-unknown: %s has no focused window on display 0 (app=%s)\n", serial, \
+                    (("0" in app) ? app["0"] : "(none)")
+                exit 2
+            }
+            if (!ours(win["0"])) {
+                printf "not-foreground: %s (holds input focus on display 0 of %s, not hakuX)\n", win["0"], serial
+                exit 1
+            }
+            printf "in-front: %s app=%s focus=%s display=0\n", serial, \
+                (("0" in app) ? app["0"] : "(none)"), win["0"]
+        }'
+}
+
 device_default() {
     # Resolve a serial when the caller gave none -- and REFUSE when the answer
     # is ambiguous.

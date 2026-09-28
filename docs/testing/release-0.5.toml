@@ -15,7 +15,10 @@ target = "0.5 ships when 145 titles are benchmarked and 50 of them are Playable 
 decided = "owner, 2026-09-26 17:15 PDT: https://github.com/jreinach-alt/hakuX/issues/433#issuecomment-5851419837"
 
 # The two numbers the header's progress bars count against.
-#   benchmarked: copied to both handhelds, profile setup and gameplay inputs
+#   measured:    any gameplay-window fps reading on either handheld, at any
+#                build and mode (the owner, 21:55 PDT); counted against the
+#                benchmarked target, shown first so progress shows.
+#   benchmarked: copied to a handheld, profile setup and gameplay inputs
 #                programmed (the first-run and returning routes), the profile
 #                save extracted, and gameplay fps measured at MAX performance on
 #                ONE handheld (the owner, 18:10 PDT: "The hardware is identical
@@ -24,8 +27,9 @@ decided = "owner, 2026-09-26 17:15 PDT: https://github.com/jreinach-alt/hakuX/is
 #                it was measured on, including the 20-minute soak.
 benchmarked_target = 145
 playable_target = 50
-# How many handhelds a benchmarked title must be copied to ("copied to both").
-benchmark_copies = 2
+# How many handhelds a benchmarked title must be on. One: the owner, 18:10 PDT,
+# https://github.com/jreinach-alt/hakuX/issues/433#issuecomment-5851512534
+benchmark_copies = 1
 # The forecast's window: titles benchmarked (or made Playable) in the last N hours.
 rate_hours = 48
 

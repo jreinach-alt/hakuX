@@ -864,11 +864,22 @@ while read -r sha path src; do
     # job ever queued (#89, 02:56Z) was refused for that and nothing else.
     runs=$(field "$path" runs_per_arm); [[ "$runs" =~ ^[0-9]+$ ]] && [ "$runs" -ge 1 ] || runs=1
     prio=$(release_prio "$issue")
-    say "queue $src: $name #$issue a=$a b=$b suites=[$suites]$comp runs=$runs${prio:+ release-prio}"
-    qa=$(cd "$REPO" && HAKUX_RELEASE_PRIO="$prio" DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-base" --ref "$a" --suites "$suites" ${narrow[@]+"${narrow[@]}"} --runs "$runs" \
+    # THE PAIR'S DEVICE IS CHOSEN HERE, ONCE, FROM THE WORK AHEAD OF IT.
+    # Left unpinned, affinity.py rule 3 hashes the prediction's name over the
+    # handhelds without looking at the queue: on 2026-09-27 forza414's pair
+    # hashed to the nova behind nine nova-pinned soaks (~2 h) while the thor
+    # served idle-tier sweep legs, and waited 94 min for a hand re-pin.
+    # `--choose` prices what sorts ahead of this pair's id prefix on each
+    # pooled device and names the lighter one; both arms carry it, so no
+    # worker ever has to agree with another. Empty (one device or none
+    # serving) leaves the pair to affinity.py as before.
+    pin=$(python3 "$T/affinity.py" "$D" --choose "$(basename "$path")" "${prio:+1-}$(date +%s)" 2>/dev/null)
+    pinarg=(); [ -z "$pin" ] || pinarg=(--device "$pin")
+    say "queue $src: $name #$issue a=$a b=$b suites=[$suites]$comp runs=$runs${prio:+ release-prio}${pin:+ device=$pin}"
+    qa=$(cd "$REPO" && HAKUX_RELEASE_PRIO="$prio" DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-base" --ref "$a" --suites "$suites" ${narrow[@]+"${narrow[@]}"} ${pinarg[@]+"${pinarg[@]}"} --runs "$runs" \
             --expect "$path" --purpose "BASE arm ${issue:+#$issue }$who at $a, queued by the arms job from $src" 2>"$A/log/$sha.base.err") \
         || { refused "$sha" "$src" "$issue" base "$A/log/$sha.base.err"; continue; }
-    qb=$(cd "$REPO" && HAKUX_RELEASE_PRIO="$prio" DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-fix" --ref "$b" --suites "$suites" ${narrow[@]+"${narrow[@]}"} --runs "$runs" \
+    qb=$(cd "$REPO" && HAKUX_RELEASE_PRIO="$prio" DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-fix" --ref "$b" --suites "$suites" ${narrow[@]+"${narrow[@]}"} ${pinarg[@]+"${pinarg[@]}"} --runs "$runs" \
             --expect "$path" --purpose "FIX arm ${issue:+#$issue }$who at $b, queued by the arms job from $src" 2>"$A/log/$sha.fix.err") \
         || { refused "$sha" "$src" "$issue" "fix (the base arm ${qa##* } is queued and will run unpaired)" "$A/log/$sha.fix.err"; continue; }
     ida="${qa##* }"; idb="${qb##* }"

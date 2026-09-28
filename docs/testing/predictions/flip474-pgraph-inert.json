@@ -1,0 +1,46 @@
+{
+  "registered_utc": "2026-09-27T13:37:03Z",
+  "who": "lane.flip474",
+  "issue": "474",
+  "prediction": "#474: the whole lane change against master, on the pgraph suite (a shipping, non-perflog build, where the [lock474] counter compiles out). a_ref is master 84d2e83cef merged with 51 later master commits plus the perflog-only counter; b_ref adds pgraph_lock_settled() for every pgraph.lock taker but the guest's interrupt/register MMIO and releases the lock across the two frame-fence waits in surface_update's deferred-download completion. The change moves when a vCPU PGRAPH MMIO access may run, never what a method computes: the fence wait reads no locked state, the staged copies into VRAM run after the lock is retaken, and the VRAM access callback (the path by which a test reads a rendered surface back) still waits for the method to finish. So every capture is identical. What this cannot see: a race needs the guest to touch PGRAPH MMIO inside the ~ms fence window, which a suite's single-threaded test loop rarely does; bit-identity here shows the settle paths keep readback order, not that no interleaving exists. Suites chosen for surface readback (Depth_buffer, Texture_CPU_Update, Surface_clip) plus the 12-suite set buildflags427 already ran on the Nova.",
+  "a_ref": "c5e7460372",
+  "b_ref": "ef66174066",
+  "must_not_move": [
+    "3D_primitive/*",
+    "Blend_tests/*",
+    "Depth_buffer/*",
+    "Texture_format/*",
+    "Texture_DXT/*",
+    "Surface_clip/*",
+    "Fog_gen/*",
+    "Specular/*",
+    "Vertex_shader_rounding_tests/[!G]*",
+    "Vertex_shader_rounding_tests/Geometry_*",
+    "Vertex_shader_rounding_tests/GeometrySubscreen_*",
+    "Attrib_float/*",
+    "Texture_CPU_Update/*",
+    "Lighting_spotlight/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "3D_primitive",
+      "Attrib_float",
+      "Blend_tests",
+      "Depth_buffer",
+      "Fog_gen",
+      "Lighting_spotlight",
+      "Specular",
+      "Surface_clip",
+      "Texture_CPU_Update",
+      "Texture_DXT",
+      "Texture_format",
+      "Vertex_shader_rounding_tests"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

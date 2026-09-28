@@ -1,0 +1,40 @@
+{
+  "registered_utc": "2026-09-27T14:23:14Z",
+  "who": "lane.forza414",
+  "issue": "414",
+  "prediction": "MUST-NOT-MOVE guard for #414's coalescing cut. A is 4b22f2526b (master f131dd11c6 plus the [sdcall] probe, which is inert outside NV2A_PERF_LOG && __ANDROID__). B is 94f002d309. In B, pgraph_vk_surface_update leaves the downloads recorded so far to the next finish instead of submitting one, unless a binding is about to upload from VRAM, the batch was already submitted, a display pre-download is pending, or TCG is off. VRAM readers complete an overlapping pending download first: the range lookup (textures, vertices, blits) and the CPU-access watch. expire_old_surfaces completes only when something expires. The flip pre-download may share a batch still in its command buffer. PREDICTION: every guarded capture is byte-identical between arms. What would move each, in the world where the cut is wrong: Surface_clip and Color_zeta_overlap, if an evicted surface's download lands after the binding that replaced it uploaded or drew over the same memory (the #11 shape); Depth_buffer_fixed_function and Surface_format, if a display pre-download that shares a batch retires the wrong generation, or a readback reads VRAM before the pending copy (the Z16/Z24 flips between tests evict every surface); Texture_render_target and Texture_Framebuffer_Blit, if the range lookup misses a pending download under a texture; Texture_CPU_Update and Texture_render_update_in_place (PR #387's guard), if a CPU write lands under a pending download, or the watch now waits where it did not; Image_blit, if blit.c's source read misses one; Clear, if the gate changes clear ordering. Read every scores1.tsv status for unreadable, and B's logcat is not perflog, so inertness on the discs cannot be shown from [sdcall] here: the Forza soak is where the path is shown to fire.",
+  "a_ref": "4b22f2526b",
+  "b_ref": "94f002d309",
+  "must_not_move": [
+    "Depth_buffer_fixed_function/*",
+    "Color_zeta_overlap/*",
+    "Surface_format/*",
+    "Surface_clip/*",
+    "Clear/*",
+    "Texture_render_target/*",
+    "Texture_CPU_Update/*",
+    "Texture_render_update_in_place/*",
+    "Image_blit/*",
+    "Texture_Framebuffer_Blit/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Clear",
+      "Color zeta overlap",
+      "Depth buffer fixed function",
+      "Image blit",
+      "Surface clip",
+      "Surface format",
+      "Texture CPU Update",
+      "Texture Framebuffer Blit",
+      "Texture render target",
+      "Texture render update in place"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

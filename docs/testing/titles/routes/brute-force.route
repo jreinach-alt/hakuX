@@ -1,0 +1,113 @@
+# Brute Force (4D53001E): one route for the first run and later runs.
+# PLAYED by nav.py on the Thor, 2026-09-27 04:39 PDT (lane.titleroutes HELD
+# session brute-force.first-run-20260927T043949).
+#
+#   ~100 s of loading and the intro FMV (START ends it) -> START / DEMOS,
+#   cursor on START (A) -> main menu, cursor on CAMPAIGN (A) -> CAMPAIGN
+#   TYPE, cursor on CAMPAIGN (A) -> SELECT PROFILE, DEFAULT (A) -> SELECT
+#   CAMPAIGN, New Campaign (A) -> ENTER NAME, "CAMP001" prefilled, cursor
+#   on DONE (A) -> SELECT DIFFICULTY, STANDARD (A) -> JOIN CAMPAIGN, Tex
+#   (A), "Press START to begin" (START) -> two FMVs and the in-engine intro
+#   ("Welcome to the 23rd!"), skipped with A -> mission 1 in the jungle ->
+#   a BASIC CONTROLS card (Y skips all tutorial cards).
+#
+# Menu steps are not counted with the stick: one flick and one hat press
+# each moved the CAMPAIGN TYPE cursor two rows. Every choice on this path
+# is the default row.
+#
+# Player control: RX max turned the view and the radar with it (nav frames
+# 024-y1 -> 025-turned2). The play pattern walks with LY, turns with RX and
+# fires with RT; it presses Y each cycle, because tutorial cards (BASIC
+# CONTROLS, HEADS-UP DISPLAY) keep appearing after the mark and pause the
+# game until A or Y (Y skips all of them).
+#
+wait 100.0
+press START
+wait 8.0
+press A
+wait 8.0
+press A
+wait 8.0
+press A
+wait 8.0
+press A
+wait 8.0
+press A
+wait 8.0
+press A
+wait 8.0
+press A
+wait 8.0
+press A
+wait 8.0
+shot join
+press START
+wait 8.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+press A
+wait 4.0
+shot intro
+press Y
+wait 3.0
+press Y
+wait 5.0
+mark gameplay
+repeat forever {
+    press Y
+    wait 0.5
+    axis LY min
+    wait 2
+    axis LY mid
+    axis RX max
+    wait 0.6
+    axis RX mid
+    axis RT max
+    wait 0.3
+    axis RT min
+    axis LY min
+    wait 2
+    axis LY mid
+    axis RX min
+    wait 0.6
+    axis RX mid
+    axis RT max
+    wait 0.3
+    axis RT min
+}
