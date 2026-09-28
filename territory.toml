@@ -479,7 +479,13 @@ issues = ["474"]
 files = ["android/app/src/main/java/com/rfandango/haku_x/PerGameSettingsManager.kt", "android/app/src/main/cpp/xemu_android.cpp", "android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt", "android/app/src/main/java/com/rfandango/haku_x/TitleDefaults.kt", "docs/lanes/rendermode474/**", "docs/testing/predictions/rendermode474-*.json"]
 note = "STARTED (lane.local 2026-09-28T01:30:40Z), briefs/rendermode474.md: #474 (0.5, fps-focus). Ship Turnip sysmem as the default render mode for DOA Ultimate and AUF only, keyed by title ID and below any user per-game override (flip474 verdict 01:21Z: DOA 13 -> 21 gfps, AUF 16 -> 24; global sysmem refused, #527). PerGameSettingsManager.kt and xemu_android.cpp moved from flip474; MainActivity.kt was unlisted; TitleDefaults.kt is new."
 
+[lane.cloudlaneguard]
+issues = []
+files = ["docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/99-cloud-lane-branch.sh", "docs/lanes/cloudlaneguard/**"]
+note = "STARTED (hostops 2026-09-28T01:45Z), briefs/cloudlaneguard.md: harness defect, no issue. cloud.sh's claim guard sees only other cloud units, so it claimed audit1 and remediate on #523 while lane.thermal507 was still running on lane/thermal507-power (two writers, one branch). Add a held_why check for the PR's own running lane. cloud.sh was unclaimed (not in [free], no row). Interim: host-tools/audit_outlet.sh + lane_on_branch.sh."
+
 [free]
+# CLAIMED (hostops 2026-09-28T01:45Z): docs/testing/jobs/cloud.sh (unclaimed) -> lane.cloudlaneguard.
 # CLAIMED (lane.local 2026-09-28T01:27:49Z): target/i386/tcg/translate.c -> lane.idlehalt (#525); hw/xbox/nv2a/pgraph/vk/display.c -> lane.pacing (#526); android/app/src/main/cpp/xemu_android.cpp -> lane.flip474 (per-title render mode, #474). Unlisted files claimed with them: see each row.
 # RELEASED (hostops 2026-09-28T01:20Z) by retiring lane.affinitybacklog (PR #503 folded 2434dfae4f): docs/testing/jobs/selftest.d/99-affinity-backlog.sh, docs/lanes/affinitybacklog/**; affinity.py and jobs/arms.sh returned to lane.toolsmith.
 # RELEASED (hostops 2026-09-28T00:59Z) by retiring lane.titlestate (PR #522 merged): docs/testing/titles/**, docs/lanes/titlestate/**, docs/testing/jobs/selftest.d/99-title-state.sh, docs/testing/jobs/selftest.d/66-status-titles.sh, docs/lanes/titles05/fixture/assert_titles.py, docs/lanes/titles05/fixture/synth.py, docs/lanes/titles05/fixture/targets.toml.
