@@ -160,8 +160,21 @@ hysteresis). A fall that clears within one or two bins is not the pause.
 | GTA (#482's 4-5 fps) | slowdown462-3573620 | Crimson, **gap 2 s** | 19-28 fps to +270 s, then 3-5 to the end | **the #507 shape**: hot start, 5-7x fall, held |
 | GTA | slowdown462-1484367 | gap 2543 s | low before and just after the mark, 27 fps +300..+450, 5 in the last bin | mixed, no clean pause |
 
-The GTA pilot, queued as `1790551730-thermal507-2943941`, answers #482
-directly.
+### GTA pilot: one abort, retry queued (17:16 PDT)
+
+- `0-0-x-1790551730-thermal507-2943941` claimed at 17:13, the moment the
+  owner lifted their hold. It aborted `not-foreground: com.odin.settings`
+  before any input. Settings was left open from the port move, and the guard
+  worked as designed. Its thermal.jsonl has only pre-launch samples.
+- The retry is `1790554531-thermal507-3751184` (same route, 600 s). It is not
+  promoted. About 2 h of Thor work is ahead of it (six titleroutes soaks of
+  500-780 s, forza414, drain474). Those soaks record thermal.jsonl too, which
+  is more field data for the verdict.
+- The brief's Proof is already met by flip474-1818830 (thermal.jsonl shows the
+  pause; the verdict is `void: thermal-pause`). The GTA run is what #482 asks
+  for. After it: the optional fan_mode 5 vs 4 comparison, as the brief allows.
+- Session 3 ended **waiting on `1790554531-thermal507-3751184`** (a dispatch
+  request, outside this session).
 
 ## Existing Thor title benchmarks (brief item 4)
 
