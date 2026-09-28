@@ -1528,3 +1528,52 @@ State at 06:05 PDT is unchanged from session 31: both handhelds under
 `battery-hostops` holds (Nova since 01:10, Thor since 04:49; each lifts at
 80%), running/ empty, and all eight benchmarks still in queue/. Next titles
 are unchanged.
+
+### Session 33: 2026-09-28 08:05 PDT
+
+Why session 32 did not finish: it did. It marked PR #550 ready, #550 folded,
+and it ended `waiting:` on the battery holds. The harness resumed the lane
+because it had no open PR and one benchmark had landed.
+
+State at 08:05 PDT:
+- The Thor reads 84% and has no hold. It is running
+  0-0-x-1790575473-rendermode474-966130 (critical path), with Azurik
+  1-1790560999-titleroutes-2862460, two remote461 runs, two dirtytlb runs and
+  four arms queued ahead of my six `1-9-` benchmarks. No held nav session
+  until running/ has nothing for the Thor (hostops, 09-27 21:54).
+- The Nova reads 70% and is held by lane.sustain507.
+- Merged origin/master (11 commits).
+
+**Kabuki Warriors on the Nova (1-1790563605-titleroutes-374601, 550 s, MAX,
+apk 5910c8c41dd3, ref 4fcbe0262e).** The route reached the fight: the mark
+frame `route-frames/074815-gameplay.png` shows round 1, timer 60, the
+player's fighter mid-strike, overlay FPS 0. adb_failures 0, no thermal pause
+(19 samples, hottest zone 95.1 C).
+
+| gameplay s | window median | window min | time at >= 30 | flips | target |
+|---|---|---|---|---|---|
+| 329.1 | 58.71 | 0.68 | 22.4% | 4320 (13.5 per s over 320.9 s) | 30 |
+
+**The median is not the title's rate.** It is the median of the 72 windows
+of 60 flips, and a window only exists while the guest flips. The guest
+flipped at 59 for about 80 s and 40 s, and did not flip at all for the rest:
+
+| after the mark | guest flips |
+|---|---|
+| 0 - 80 s | none (one perf line, `gfps=0`, worst frame 9667.7 ms) |
+| 80 - 160 s | 51-60 per s, with single seconds at 17-35 |
+| 160 - 290 s | none |
+| 290 - 330 s | 54-59 per s |
+
+The verdict counts five gaps: 71.8, 21.4, 11.5, 88.2 and 53.4 s. In the
+first gap the guest is idle, not busy: `[rr425w]` reads `idlepc=8001b02e
+idle_us=1906607 busy_us=92760` of each 2 s window, the vblank timer runs at
+59.94 Hz, and the emulator keeps presenting the same surface (`refresh ...
+flip=0`). So the game is waiting for something that does not arrive. It is
+not short of CPU. The route has no frame after the mark, so which screens
+the two 59 fps stretches show is not known. Session 1's nav frames read 2-16
+on the overlay in the fight, which fits the same stalls.
+
+The 300 s titlebench reading ("Nova 59") scored about 100 s after the mark
+and carries the same window median. Read the share of time (22.4%), not the
+median, for this title.
