@@ -113,3 +113,67 @@ cache (`[jc425]` `ip` collisions on returns), that is the evidence for it.
   lane.memfast. If go: read R1b against legs 1-2, then register the pixel
   leg with `ab_compare.py --register` (a_ref be05285c44, b_ref the probe's
   head) and commit it, which queues the arm.
+
+## Attempt 2 (resumed 2026-09-28, after R1 landed)
+
+**Why attempt 1 did not finish.** It ended on a `waiting:` for R1 and R1b,
+which only lane.local could run (a held Thor, `capture_gta.sh`, a cold start).
+That was the right place to stop. R1 landed at 21:20Z (PR #591 comment), and
+the handback resumed this lane. R1b has not been run yet.
+
+### R1, read: GO
+
+Session `/home/justin/hakux-work/perf/2026-09-28-ibcache-r1`: master
+01e62d8d1c (JC default on), Thor, cold start (xo-therm 49.9 C, battery 36.0 C),
+no `thermal-pause`, focused. Outputs: `out/sym-r1.out` (`symsplit.py`),
+`out/jitmix-r1.out` (`jitmix.py`), `out/counters-r1.out` (`counters.py`, new here).
+
+| reading (vCPU tid 19768, 21,168 samples) | share of thread |
+|---|---:|
+| **lookup bucket (the gate: >= 8.0% is go)** | **24.9%** |
+| hit path: `tb_lookup` 10.81, `helper_lookup_tb_ptr` 7.15, `tb_lookup_cmp` 1.55, `x86_get_tb_cpu_state` 0.85 | 20.4% |
+| miss path: `qht_lookup_custom` | 4.4% |
+| JIT (the TCG code buffer) | 50.9% |
+| softmmu helpers | 7.0% |
+| scalar SSE helpers | 5.2% |
+
+**Go: 24.9% is three times the threshold, and higher than the plan's 17-20%
+estimate for master.** The JC default did not shrink the lookup, because the
+hit path is the cost, not the QHT. That is the part an inline probe removes.
+
+Jump-cache counters over the profile window (`[jc425]`, last 40 windows, 81 s):
+5.19M helper lookups/s, **92.5% hits**, 6.4% PC collisions, 1.1% empty slots,
+and 0.04% key mismatches. `[rr425]` `hc` is 5.27M/s. So the probe can take
+about 92% of those calls off the helper. The remaining 7.5% go to the QHT, and
+PC collisions are most of them. A larger or 2-way jump cache is the lever for
+that 4.4%, after the probe.
+
+`pw` (13 samples in the hold): the battery supplied 3.49 W and the 500 mA USB
+port 2.13 W (medians).
+
+For lane.memfast (`jitmix-r1.out`, at-ip by role, share of the disassembled
+JIT samples): tlb 34.4%, preamble 14.3%, body 45.5%. The XBOX preamble was
+armed 0 times and off 43 times.
+
+### The pixel leg: registered
+
+`docs/testing/predictions/ibcache-probe-pixels.json`: a_ref master 4e3d69a69b,
+b_ref a6ec5ec0ab (the probe merged onto that master). The full sweep: every
+capture must not move, and better = 0 and worse = 0. Committing it queues the
+arm.
+
+### Leg 5 (J/frame and fps): the numbers, registered now
+
+The share leg (1) and counter leg (2) above stand as written, measured against
+R1's 24.9% and `hc` 5.27M/s. Leg 5, on the `gta` survey route (Thor) and on
+Forza after #583, with the same regimen in both arms:
+- **median fps up by at least 5%;**
+- **J/frame down by at least 4%.**
+
+Why these numbers: the hit path is 20.4% of a vCPU-bound thread. The probe
+keeps about a quarter of that cost inline, a hash plus compares of about 35
+host instructions. GTA's guest idle share is <= 0.06 (energymap507), so the
+vCPU time saved shows up as frames.
+
+Not repeating: the RAS stays unbuilt (see above). The probe covers RET, and
+the jump cache already hits 92.5% of lookups.
