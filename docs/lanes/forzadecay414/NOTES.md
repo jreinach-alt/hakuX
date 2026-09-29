@@ -472,6 +472,12 @@ device-lost line appears in any of the three logcats.
 is done on the Thor (85347ffbd1). The fix arm `-fix-3483172` is still queued, with no device pin in
 its request. #583 stays draft until the arms job judges it.
 
+**Resume 2026-09-29 18:30Z (why the previous session did not finish):** it ended on a wait outside
+the session: the pixels2 fix arm. That is still the state. hostops re-pinned `-fix-3483172` to the
+Thor at 16:26Z to match its base. It is at the head of the queue, but lane.thorheat has held the
+Thor since 17:50Z (`hold/thor.why`: block-3 fan draw). The arm runs when that hold is released.
+Nothing else on this PR is open.
+
 ## Do not repeat
 
 - Do not re-queue a pre-fix Forza soak on the Nova to read a whole master race. lmkd kills it at
