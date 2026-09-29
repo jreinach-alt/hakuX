@@ -1586,3 +1586,8 @@ issues = ["474"]
 retired_utc = "2026-09-28T02:40:00Z"
 files = []
 note = "RETIRED (hostops 2026-09-28T02:40Z): PRs #475, #485 and #516 folded (the [lock474] counter, the flip lock analysis, Turnip sysmem measured: AUF 16 -> 24 and DOA 13 -> 21 gfps on the Nova); attempt 4 was its last session, unit gone, nothing queued. #474 continues with lane.rendermode474 (per-title sysmem default, PR #530), lane.drain474 (PR #517) and lane.forza414 (display pre-download deferral, PR #518). Files RELEASED to [free]: hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/instance.c, hw/xbox/nv2a/pfifo.c, hw/xbox/nv2a/pgraph/pgraph.c, docs/lanes/flip474/**, docs/testing/predictions/flip474-*.json."
+
+[lane.battadmit]
+issues = ["507"]
+files = []
+note = "WRITTEN LATE (job.board 2026-09-28T22:15Z, fleet.py FAIL: RUNNING WITH NO TERRITORY ROW): fleet.py shows battadmit attempt 2/opus-5-5 on #507, 0.0h, no PR yet, no briefs/battadmit.md in this tree -- started outside the normal board dispatch (the same pattern as the retired vcpuplan/battadmit rows: STARTED directly by lane.local/hostops, not by a board tick). files = [] because this row cannot see what the running attempt is touching; narrow it once a PR or a brief exists. See [retired.battadmit] above for attempt 1 (PR #587, folded as 2c950e0a1e)."
