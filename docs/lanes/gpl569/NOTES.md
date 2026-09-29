@@ -120,6 +120,202 @@ Issue #569, PR #594. Branched from master at 1922ce1cad.
   job queues it.
 - **Preflight** (`--allow-tracker`): passed at 6dd14f86f6.
 
+## Session 2 (2026-09-29, 03:15 PDT): why session 1 stopped, and the addendum
+
+- **Session 1 did not fail; it ended waiting.** The code, legs and judge were
+  pushed and the three DOA soaks were queued. Its last word on PR #594 was a
+  `[lane.gpl569] waiting:` comment (00:38 UTC). The Nova then went on hostops'
+  charge hold, the Thor on a title push, and the queue is about 30 requests
+  deep. None of the runs has started, and none has been re-queued or re-pinned.
+- **This session is design only. It changes no code under `hw/`.** The
+  registered refs (6aaa1142ad, a84fda7ed4) are what the queued arms measure.
+  Code that lands on this branch now would go unmeasured into the PR the legs
+  approve. The uber hooks below land with the uber build and its own arm, on
+  a stacked branch (`lane/gpl569-uber`) or in lane.uberspike569's build PR.
+
+## Design: uber libraries as first-class GPL cache entries
+
+This is the target that lane.uberspike569's NOTES section 8.3 sets: a first
+sight fast-links libraries that already exist, and the specialised libraries
+build behind it and swap in. Below is what the cache in
+`vk/compile_worker.c` needs for that, measured against the code at a84fda7ed4.
+
+### D1. An uber library is already a distinct entry; it needs no new table
+
+- **The FS and PR keys are keyed by module id.** That id is
+  `ShaderModuleInfo::gpl_id`, the SPIR-V hash.
+- **An uber module's SPIR-V differs from every specialised module's.** So its
+  library gets its own key in the same `r->gpl.libs[GPL_FS]` or
+  `libs[GPL_PR]` table, with the same refcount, flush and heap accounting.
+- **Missing: a way to name it without a draw.** The build needs two entry
+  points beside `gpl_get_lib()`:
+  - `gpl_find_lib(kind, key)`: a lookup that never creates, for the
+    first-sight choice (D3);
+  - `gpl_prebuild_lib(kind, key, info)`: queued as a new
+    `COMPILE_JOB_GPL_LIB` on the worker. At boot it builds each uber library
+    from the persisted family list, and after a first sight it builds the
+    specialised library. A second worker thread is worth adding with it, so
+    that a long pre-raster build does not queue behind LTO links.
+- **Uber entries must be exempt from the whole-table flush** at
+  `GPL_MAX_LIBS`, or a flush throws away the libraries that make a first
+  sight free. Flag them `pinned` in `GplLib`, and have
+  `gpl_flush_locked()` skip pinned entries. DOA needs about 3 PR and 11-34 FS
+  uber entries, so pinning cannot grow the table unboundedly.
+
+### D2. The key split: take dynamic state out of the keys
+
+Today every key carries the dynamic-state list, and the stage's fields are
+keyed **even when the draw sets them dynamically**:
+- **PR** keys `cull_mode` and `front_face`, which are always dynamic
+  (`draw.c:2747-2748`).
+- **FS** keys the whole depth/stencil struct, whose test, write, compare and
+  stencil-op fields are dynamic under EDS (`draw.c:2753-2757`).
+- **FO** keys the blend attachment, whose enable, equation and write mask are
+  dynamic under EDS3 (`draw.c:2760-2762`).
+
+For specialised libraries this costs only hit rate: two draws that differ in
+a dynamic field build two identical libraries. S3 will show how much.
+
+**For uber libraries it decides whether build-ahead works at all.** An uber
+FS library built at boot cannot know the depth state of the draw that will
+first need it. If depth state is in its key, it is never hit. So:
+- **Mask each dynamic field to zero** in both the key and the create info.
+  The spec ignores a dynamic field's static value, so the library is the same
+  object. Make `gpl_dynamic()` the one test that both use.
+- **What is left in each key after masking:**
+
+  | Library | Key after masking |
+  |---|---|
+  | VI | bindings, attributes, topology |
+  | PR | vs id, gs id, polygon mode, depth clamp, discard, depth bias enable, line width, formats |
+  | FS | fs id, formats, has_zeta, depth bounds and the static stencil masks (EDS off only) |
+  | FO | formats, has_color; the blend attachment only when EDS3 is off |
+
+- **FO and VI collapse to a few entries per title,** and cost 0 ms (uberspike
+  8.2).
+- **The formats** stay in every key. They are fixed per render target, and
+  DOA uses few pairs. With `dynamicRendering` they could leave the keys too,
+  but hakuX uses render passes today.
+
+### D3. The fast-link path: choose per stage, specialised first
+
+`pgraph_vk_gpl_create_pipeline()` today gets or creates all four libraries
+on the calling thread, then links them. With uber entries it chooses per
+stage, and never builds an expensive library on the draw path when an uber
+one exists:
+
+1. **VI, FO:** get or create, as today. They take 0 ms.
+2. **PR:** `gpl_find_lib` on the specialised key. If it is found, use it.
+   Otherwise, if the uber PR library for (vertex family, GS kind) exists, use
+   that and queue the specialised build. Otherwise create the specialised
+   library inline, as today; that is a first-session miss of a new family.
+3. **FS:** the same, with the fragment family's uber library.
+4. **Link fast.** Record on the `PipelineBinding` which of PR and FS are
+   uber (`gpl_provisional`, 2 bits).
+
+**The binding also records which FS and VS modules its pipeline carries.**
+This is the part that is easy to miss. The uber FS reads the combiner
+program from its uniform block (uberspike `uber_comb_loc`), and the uber VS
+will read the vertex program from its own block. So the uniform data a draw
+writes must use the layout of the module that the **bound pipeline** links,
+not the layout of the specialised `ShaderBinding`.
+- `pgraph_vk_update_shader_uniforms()` must take its `module_info` from the
+  pipeline binding's current modules.
+- The swap (D4) changes pipeline and modules together, at bind time, on the
+  render thread. So a draw never pairs one module's pipeline with another's
+  uniform layout.
+
+**What the fixed layout already covers:** the uber blocks sit in the same
+set and binding as the specialised ones, in UBOs whose size is not part of a
+layout. Samplers are combined image samplers whatever their dimension. So
+`pgraph_vk_gpl_layout` needs no change for the uber paths.
+
+**The stage interface** across independent libraries matches by location.
+The uber VS must write every output any family FS reads, which is allowed.
+The interpolation decorations may differ between the two, because the device
+reports `graphicsPipelineLibraryIndependentInterpolationDecoration` (uberspike
+8.2 on the host; this lane's `[gpl569] interp=` line on the device).
+
+### D4. The swap path: one ladder, not one special case
+
+At a84fda7ed4 the only swap is mode 2's LTO:
+- one `gpl_lto_pipeline` slot;
+- one `gpl_retired_pipeline`, kept until eviction.
+
+Uber libraries add a rung below it, so the swap becomes a ladder:
+
+| Rung | Pipeline | Built by |
+|---|---|---|
+| 0 | fast link, uber PR and/or FS | the draw thread, ~0 ms |
+| 1 | fast link, all specialised | the worker, once the libraries are built |
+| 2 | LTO link, all specialised (mode 2) | the worker, after rung 1 |
+
+**The generalisation:**
+- `gpl_lto_pending` and `gpl_lto_pipeline` become `gpl_next_pending` and
+  `gpl_next_pipeline`, plus the rung it carries.
+- `create_pipeline()`'s check becomes "a better rung is ready: take it".
+- `gpl_retired_pipeline` becomes a short array (at most 2), destroyed at
+  eviction as today.
+  - A better release point is once the binding's `last_use_cb` has
+    completed. That frees the uber-linked pipeline within a frame or two, not
+    at eviction. `last_use_cb` exists only under `NV2A_PERF_LOG` today, so
+    this moves it out of that guard.
+- `pre_evict`'s refusal and `finalize_pipeline_cache`'s wait cover any
+  pending rung, not only LTO.
+- **One job may skip a rung.** In mode 2, the worker that finishes the last
+  specialised library can LTO-link directly and skip rung 1.
+
+**What a rung-0 draw costs** is the uber stages' GPU time (uberspike 8.4,
+item 3), paid only between the first sight and the swap. The instrument needs
+`uber_links=`, `swaps=` and the time spent on rung 0 in the `[gpl569]` line,
+so that a soak can price it.
+
+### D5. How a swap stays exact: `NoContraction` on both paths
+
+A rung swap changes the machine code under a draw that the goldens already
+fixed. Two effects can move a pixel at the swap:
+- **uber against specialised:** constants that the specialised shader folds,
+  and the uber shader reads at run time. NIR then reassociates or contracts
+  differently (uberspike 4.1: 1-2 ulp, one 8-bit LSB on a BIAS boundary);
+- **fast link against LTO or monolithic:** a fast link does no cross-stage
+  optimisation, so an LTO link may fold differently at the boundary between
+  stages.
+
+**The guarantee is the same for both:**
+- Emit the combiner and vertex arithmetic `precise`, which is SPIR-V
+  `NoContraction`, in `psh.c`/`vsh.c` **and** in `psh-uber.c`/`vsh-uber.c`.
+- NIR then applies no inexact rewrite (reassociation, factoring, fma
+  contraction) to either path. Two op-for-op identical expressions round
+  identically, whatever the compiler knows about their inputs, and whatever
+  link built the pipeline.
+
+**Scope:**
+- **It changes the default path's own output.** It needs its own pixel arm
+  against the goldens and its own fps price. It lands with the uber build,
+  not here.
+- **This lane's pixel arm checks the other half:** that a fast link of
+  specialised libraries is pixel-inert against the monolithic create.
+  - If `gpl569-pixels-inert` passes, cross-stage folding does not move a
+    capture.
+  - If it fails only on arithmetic-heavy suites, that is the same mechanism,
+    and `precise` is the remedy there too.
+- **Exactness of the uber FS at rung 0 is already measured:** uberspike 6.1,
+  305 of 305 combiner captures byte-identical on the device, forced.
+
+### D6. The order of the build (the uber lane's section 8.4, mapped onto this cache)
+
+1. **This PR's legs pass.** Then GPL is on by default, and the libraries are
+   the unit that is cached.
+2. **The key masking (D2).** A small change with its own S3-style reading:
+   the hit share before and after, on the same DOA soak. Pixel-inert by
+   construction, because the spec ignores the masked values.
+3. **`gpl_find_lib`, `gpl_prebuild_lib`, pinning and the swap ladder (D1,
+   D3, D4),** with the uber FS as the first rung-0 library. `psh-uber.c`
+   exists; the family list comes from the persisted module keys.
+4. **The uber pre-raster library,** once `vsh-uber.c` is exact enough
+   (uberspike 8.4, item 3).
+5. **`precise` on both paths (D5),** with its own pixel arm.
+
 ## Do not repeat
 
 - Do not read the Turnip `.so` string table for extension support. It is
