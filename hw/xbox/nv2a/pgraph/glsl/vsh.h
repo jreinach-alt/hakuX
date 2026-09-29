@@ -127,6 +127,10 @@ typedef struct GenVshGlslOptions {
 MString *pgraph_glsl_gen_vsh(const VshState *state,
                              GenVshGlslOptions glsl_opts);
 
+/* The text pgraph_glsl_gen_vsh() puts ahead of every body (#569's uber
+ * vertex stage, glsl/vsh-uber.c, carries it too). */
+const char *pgraph_glsl_vsh_common_header(void);
+
 /*
  * How a vertex program writes the fog output register, for #42: hardware
  * never clears oFog, so a program that does not write it renders with the

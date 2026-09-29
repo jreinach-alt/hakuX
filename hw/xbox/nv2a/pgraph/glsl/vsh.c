@@ -517,28 +517,14 @@ bool pgraph_glsl_ring_uniforms_stale(PGRAPHState *pg, const VshState *state)
             pg->ring_gen != pg->ring_upload_gen);
 }
 
-MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
+/*
+ * The helpers every generated vertex shader carries ahead of its body: the
+ * register defines, the colour and position rounding, the output globals.
+ * Shared with #569's uber vertex stage (glsl/vsh-uber.c).
+ */
+const char *pgraph_glsl_vsh_common_header(void)
 {
-    MString *uniforms = mstring_new();
-    const char *u = opts.vulkan ? "" : "uniform ";
-    for (int i = 0; i < ARRAY_SIZE(VshUniformInfo); i++) {
-        const UniformInfo *info = &VshUniformInfo[i];
-        const char *type_str = uniform_element_type_to_str[info->type];
-        if (i == VshUniform_inlineValue &&
-            (!state->uniform_attrs ||
-             opts.use_push_constants_for_uniform_attrs)) {
-            continue;
-        }
-        if (info->count == 1) {
-            mstring_append_fmt(uniforms, "%s%s %s;\n", u, type_str,
-                               info->name);
-        } else {
-            mstring_append_fmt(uniforms, "%s%s %s[%zd];\n", u, type_str,
-                               info->name, info->count);
-        }
-    }
-
-    MString *header = mstring_from_str(
+    return
         GLSL_DEFINE(fogPlane, GLSL_C(NV_IGRAPH_XF_XFCTX_FOG))
         GLSL_DEFINE(texMat0, GLSL_C_MAT4(NV_IGRAPH_XF_XFCTX_T0MAT))
         GLSL_DEFINE(texMat1, GLSL_C_MAT4(NV_IGRAPH_XF_XFCTX_T1MAT))
@@ -680,7 +666,31 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
          */
         "vec2 roundScreenCoords(vec2 pos) {\n"
         "  return trunc(pos * 16.0) / 16.0;\n"
-        "}\n");
+        "}\n";
+}
+
+MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
+{
+    MString *uniforms = mstring_new();
+    const char *u = opts.vulkan ? "" : "uniform ";
+    for (int i = 0; i < ARRAY_SIZE(VshUniformInfo); i++) {
+        const UniformInfo *info = &VshUniformInfo[i];
+        const char *type_str = uniform_element_type_to_str[info->type];
+        if (i == VshUniform_inlineValue &&
+            (!state->uniform_attrs ||
+             opts.use_push_constants_for_uniform_attrs)) {
+            continue;
+        }
+        if (info->count == 1) {
+            mstring_append_fmt(uniforms, "%s%s %s;\n", u, type_str,
+                               info->name);
+        } else {
+            mstring_append_fmt(uniforms, "%s%s %s[%zd];\n", u, type_str,
+                               info->name, info->count);
+        }
+    }
+
+    MString *header = mstring_from_str(pgraph_glsl_vsh_common_header());
 
     pgraph_glsl_get_vtx_header(header, opts.vulkan, state->smooth_shading,
                                state->noperspective, false,
