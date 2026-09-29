@@ -506,6 +506,54 @@ the cause split into F0a. P stays 0.4. The largest risk remaining is M6
   held for charging at the time. The arms job had not posted its verdict yet,
   though both arm result dirs existed.
 
+- 2026-09-29 (attempt 6; the resume header numbers it 3): attempt 5 did
+  finish, ending on a `waiting:` at 10:16Z. It was resumed at 03:29 PDT on
+  a **false premise**. The addendum says the nine soaks had finished, but
+  all nine were still in `queue/`, behind about 44 requests, with the Nova
+  held to charge and the Thor held for a title push. The waiter keys on
+  `-memfast-`, but lane request ids read `lane.memfast-…`, so only the arms
+  ids matched it; the arm pair finishing (03:12 PDT) looked like "nothing
+  left". Check `queue/` before scoring anything. This attempt read the arm
+  pair before the arms job judged it (below) and ended on a `waiting:` for
+  the nine soaks and the verdict.
+
+## The pixel arm, read before its verdict (both arms on the Thor)
+
+`1-1790631509-arms-memfast-base-2314018` (31515f9751) and `-fix-2314089`
+(82e0ef1fa9): 3379 captures each, exact 1386 vs 1384. **6 captures differ**
+on the scoring columns:
+
+| capture | base differing px | fix differing px |
+|---|---|---|
+| `Stencil/Stencil_ZERO` | 40000 | 0 |
+| `Stencil/Stencil_ZERO_ST_DT` | 40000 | 30000 |
+| `Stencil/Stencil_ZERO_ST_DT_ZB` | 10000 | 30000 |
+| `Stencil/Stencil_ZERO_ST_ZB` | 0 | 30000 |
+| `Vertex_shader_rounding_tests/GeometrySuperscreen_0.4999` | 0 | 800 |
+| `Vertex_shader_rounding_tests/GeometrySuperscreen_0.5626` | 0 | 570 |
+
+**The path was never armed during the sweep, in either arm**, so the
+removal cannot have moved these. Evidence from each arm's `logcat1.txt`
+`[mf0]` window lines (774 base, 729 fix): `up` sums to 1 (the first watch
+insert, at boot, while `act=0`), `dn` sums to 0, and `cb` is at least 5 in
+every window with `act=1`. The fast path needs `act=1` with `cb=0`, which
+never held. The moves are noise:
+- Stencil is the #79 flake, and it swaps in both directions here;
+- `GeometrySuperscreen_0.5626` takes several hashes across arms on builds
+  without this code (notify488 NOTES:219, flip474 `sysmem.md`:197).
+  `_0.4999` is the same test family at 800 px, with no prior record found.
+
+My registered prediction said "every capture bit-identical", with no noise
+allowance, so a strict verdict is FAIL on 6 of 3379. The prediction's own
+falsifier ("a moved capture ... a_ref's [mf0] lines say which") reads them
+as unarmed, so not caused by the change. The next pixel prediction from this
+lane should exclude the known-noisy captures up front instead of asserting
+them.
+
+- **An `[mf0]` reader bug:** `cb0ms` prints -1 on every line of these runs.
+  The `cb==0` span opens at the first watch insert, so the closed total stays
+  0 and `p_cb0` never leaves 0. Read `up`/`dn` and `cb` instead.
+
 ## Pilot J/frame (GTA, one pair; not a verdict)
 
 `title_verdict.py` on copies (`.scratch/`, not committed). Both runs reached
@@ -571,9 +619,10 @@ gameplay, power was measured on battery, and neither had a thermal pause.
    `mf0_read.py` on every A run and `title_verdict.py` on a COPY of every dir.
    Judge J as the mean B/A over the pairs per title, and G on every B run. The
    GTA pilot pair counts as GTA's pair 1.
-2. Read the `[job.arms]` verdict on `memfast-drop-pixels.json`. A moved
-   capture is read against that run's `[mf0]` lines before it is called
-   anything.
+2. The arm pair is read (section above): 6 moved captures, all noise,
+   because the path was never armed during the sweep. Quote that section
+   against the `[job.arms]` verdict when it posts; do not re-run the arm
+   unless the verdict names a capture outside those six.
 3. Post the census and the J/frame results on #507, then mark PR #590 ready.
 4. Phase 2 code waits for #590's merge. Do F0a first, and do not build F1
    before F0a prices the overhead.
