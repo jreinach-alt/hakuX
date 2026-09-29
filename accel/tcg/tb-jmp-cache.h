@@ -13,13 +13,13 @@
 #include "exec/cpu-common.h"
 
 /*
- * XBOX (#507, lane.ibcache): 14, not 12. With the inline probe taking every
+ * XBOX (#507, lane.ibcache): 16, not 12. With the inline probe taking every
  * jump-cache hit, the lookups left are pc collisions (97.9% of helper calls
- * on GTA SA): a hot 4 KB page has more TBs than its 64 slots. 14 bits gives
- * each page 128 slots and 128 page groups (256 KB per vCPU).
+ * on GTA SA): a hot 4 KB page has more TBs than its 64 slots. 16 bits gives
+ * each page 256 slots and 256 page groups (1 MB per vCPU).
  */
 #ifdef XBOX
-#define TB_JMP_CACHE_BITS 14
+#define TB_JMP_CACHE_BITS 16
 #else
 #define TB_JMP_CACHE_BITS 12
 #endif
