@@ -713,6 +713,11 @@ issues = ["424"]
 files = ["accel/tcg/tb-maint.c", "accel/tcg/tb-internal.h", "docs/lanes/tcg424flip/**", "docs/testing/predictions/tcg424flip-*.json"]
 note = "STARTED (hostops 2026-09-29T05:35Z), briefs/tcg424flip.md: tbflip424-blinx2.json's three valid Thor pairs pass M0/M1/M4' (A gfps 19 / churn 2.1, B 19 / 0.0; #424 issuecomment-5884276103), so the decision rule flips hakux_tcg424_range_on() to default ON (opt-out HAKUX_TCG424_RANGE=0). Before PR-ready: the Arctic Thunder Thor A/B lane.local routed to the retired lane.sustain507 (never queued), and the pgraph must-not-move arm on the flipped binary."
 
+[lane.hddsplit]
+issues = ["397"]
+files = ["docs/testing/dispatcher.sh", "docs/testing/titles/titlestate.py", "docs/testing/titles/saves.py", "docs/lanes/hddsplit/**"]
+note = "DISPATCHED (hostops 2026-09-29T23:15Z), briefs/hddsplit.md, harness defect (no new issue; attached to #397, the title pipeline's issue): titlestate.py's own docstring designs a titles.qcow2 / hdd.img split (title runs vs nxdk disc runs) but nothing calls build-image or writes a per-run hddPath, so both run kinds share one growing FATX disk. Found via lane.gmem474's Crimson rerun hitting a save-space dialog on the Thor (#474): Thor's hdd.img was 6.9 GB, Nova's 6.5 GB, both near the FATX ceiling, though saves.py list showed a few MB of real save data on each. Interim host mitigation already applied (not this lane's job, already done): both devices' hdd.img rebuilt small via saves.py list/pull/build/verify (43 and 28 titles, all byte-verified, originals backed up on-device as hdd.img.bak-20260929). This lane wires the actual split into dispatcher.sh so it cannot recur. docs/testing/dispatcher.sh taken from [free] (RELEASED 2026-09-28T21:55Z by lane.battadmit's retirement); titlestate.py and saves.py were unclaimed."
+
 [free]
 # RELEASED (hostops 2026-09-29T23:11Z) by retiring lane.kabukistall (PR #616 merged 2dd92568b5): docs/lanes/kabukistall/**, docs/testing/predictions/kabukistall-*.json.
 # RELEASED (hostops 2026-09-29T22:53Z) by retiring lane.gmem474 (PR #582 merged 26e8d1104c): docs/lanes/gmem474/**, docs/testing/predictions/gmem474-*.json, android/app/src/main/java/com/rfandango/haku_x/TitleDefaults.kt.
