@@ -3,12 +3,22 @@
 Brief: `/home/justin/hakux-work/briefs/uberspike569.md`. Research: `docs/lanes/shaderplan569/NOTES.md`
 option (d) and section 7's P6. PR #581.
 
-Status (2026-09-28): the host legs are measured. The device legs are registered and queued:
-- E is queued by the arms job from the push.
-- The P/C pilot soak pair is behind the Nova's battery hold.
-- The DOA key file (section 3) has not been pulled yet.
+Status (2026-09-29 02:00 PDT, attempt 2):
+- **E on the device: PASS.** All 305 captures are byte-identical in both runs (section 6.1).
+- **CB share, measured on the device:** forcing the families cut DOA's pipeline misses from 91 to 61
+  on one route (section 6.2).
+- **P: void.** The pilot pair ran on the Thor, and both arms hit its thermal pause around the fight.
+  Pair 2 is queued on the Nova.
+- **Coverage (section 3):** DOA's 83 pixel-shader modules fall into 34 combiner families.
+- **Addendum** (full uber pipeline, GPL): section 8.
 
-Verdict so far (section 7): the hybrid as briefed is not supported. The C leg kills it.
+Verdict (section 7): the fragment-only hybrid as briefed is not supported, because the C leg kills
+it.
+
+**Why attempt 1 did not finish.** It ended properly, with a `waiting:` comment on PR #581 naming four
+things outside its session: CI, the E arm, the P/C pilot soaks, and DOA's key file. All four
+resolved overnight: the soaks ran on the Thor at 00:42-01:00 PDT, the E arm finished at about
+01:50 PDT, and the key file landed in `$WORK/perf`. handback.sh then resumed the lane.
 
 ## 0. What was built
 
@@ -89,10 +99,26 @@ lane.turnipcost569 (PR #573, folded) measured Turnip per stage on the host (A740
 Tool: `host/keys_coverage.py <shader_module_keys.bin>` (layout from `host/keyinfo.c`, this tree's
 structs; `--selftest` passes on a 12-key fixture with a known answer).
 
-**Pending.** DOA's `shader_module_keys.bin` was to be pulled to
-`$WORK/perf/2026-09-28-turnipcost569/nova/doa-cache.tar`; on 2026-09-28 at the time of writing it
-does not exist on this host (searched all of `~/hakux-work`). The read is one command once it
-lands.
+Input: `$WORK/perf/2026-09-28-turnipcost569/nova/doa-cache.tar` (`files/shader_module_keys.bin`,
+308,112 B = 131 records of 2352 B, which is this tree's record size). It holds 46 vertex, 2
+geometry and 83 fragment modules.
+
+| width | uniform fields | families | served by an existing family |
+|---|---|---|---|
+| L1 | the combiners | 34 | 49 of 83 (59.0%) |
+| L2 | L1, plus alpha test and fog | 28 | 55 of 83 (66.3%) |
+
+"Served" counts modules that are not the first of their family, so an existing family pipeline
+could draw them. These are MODULE counts. They are not pipelines, and they are not first-sight
+events in order.
+
+The fields that split the 34 L1 families (the merge count if that field were a uniform too):
+- `other_stage_input`: 8
+- `fog_enable`: 4
+- `tex_comp0_const`, `fixed_function`, `alphakill`: 2 each
+- `rect_tex`, `alpha_test`, `alpha_func`: 1 each
+
+The texture-shader modes (`shader_stage_program`) and the sampler types are the rest.
 
 ## 4. E, exactness, on the host (lavapipe)
 
@@ -236,8 +262,8 @@ B's soak logs the glslang+module time per family (`psh-uber: family module`).
 
 | leg | what | registration | runs |
 |---|---|---|---|
-| E | twelve combiner suites, byte-identical, X vs the test variant, 2 runs per arm | `docs/testing/predictions/uberspike569-exact.json` (a 2ca713adec, b e677a46a66) | queued by the arms job from the push |
-| P, C | DOA1U on the Nova, survey route, 440 s, one binary (2ca713adec), B with `HAKUX_PSH_UBER=1`; fight fps B/A >= 0.90, plus family compile lines and pm/sm | `docs/testing/predictions/uberspike569-doa-soak.json` (hand-read, `soak_read.py --judge`) | pilot pair `1790629190-uberspike569-1700121` (A), `1790629194-uberspike569-1700918` (B), behind the Nova's battery hold |
+| E | twelve combiner suites, byte-identical, X vs the test variant, 2 runs per arm | `docs/testing/predictions/uberspike569-exact.json` (a 2ca713adec, b e677a46a66) | done on the Thor, **PASS** (6.1) |
+| P, C | DOA1U (pilot pinned to the Thor; pair 2 on the Nova), survey route, 440 s, one binary (2ca713adec), B with `HAKUX_PSH_UBER=1`; fight fps B/A >= 0.90, plus family compile lines and pm/sm | `docs/testing/predictions/uberspike569-doa-soak.json` (hand-read, `soak_read.py --judge`) | pilot pair `1790629190-uberspike569-1700121` (A), `1790629194-uberspike569-1700918` (B), ran on the Thor, P void (6.2); pair 2 queued on the Nova |
 
 **The test variant has all three mechanisms** (see the build-variant rule):
 - **Artifact:** e677a46a66 is its own sha, so it builds its own APK.
@@ -248,12 +274,67 @@ B's soak logs the glslang+module time per family (`psh-uber: family module`).
 
 Z (5f6cb7e69b) reverts the variant, so the branch head is default-off. X and Z have identical trees.
 
-**Next, after the pilot pair lands:** read it with
-`soak_read.py --a <A dir> --b <B dir>`. If both reached the fight and the B arm shows the `ON`
-line, write `$DISPATCH_DIR/pilots/uberspike569.ok` (with python3) and queue the second pair (the
-same two commands, "pair 2 of 2"). Then judge all four with `--judge`.
+### 6.1 E on the device: every capture byte-identical
 
-## 7. Verdict (host legs measured; device E and P pending)
+The arms are `1-1790629564-arms-uberspike569-base-1810388` (A, 2ca713adec) and
+`1-1790629564-arms-uberspike569-fix-1810422` (B, e677a46a66). Both ran on the THOR (Adreno 740,
+PurpleVK, a Turnip fork of Mesa 26.3-devel), with 2 runs each and 305 captures per run. The
+comparison is `sha256` per capture file (`.cache/ecmp.py`).
+
+| check | result |
+|---|---|
+| variant reached the binary | B, both runs: `psh-uber: ON ... (HAKUX_PSH_UBER=unset, build default 1)` on `hakuX-perf` and `hakuX-stderr`, and 242 `psh-uber: family module` lines. A: no `ON` line in either run |
+| run 1, A vs B | **305 of 305 captures byte-identical** (only `pgraph_progress_log.txt` differs, which holds timestamps) |
+| run 2, A vs B | 304 of 305 identical. `Texture_signed_component_tests::txt_A8R8G8B8_ADD` differs |
+| that capture, per run | A run 1 = B run 1 = B run 2; **A run 2 is the odd one** (A's run 1 and run 2 differ, and B's two runs agree). So the difference is noise in the base arm, not a move |
+
+**E passes: 305 of 305 captures are byte-identical wherever the base arm agrees with itself.** The
+registered expectation was the ROUNDING world (some 1-LSB moves, as lavapipe showed in 4.1), so that
+expectation was wrong. On the device's compiler (ir3/NIR on Turnip), the interpreter rounds the
+same as the specialised shader on every capture in the twelve combiner suites. lavapipe's 2 of 548
+random programs are still a warning for programs the suites do not draw. So `NoContraction` on both
+paths remains the way to make "identical" a guarantee rather than an observation.
+
+### 6.2 The P/C pilot pair (Thor): P void, and the CB share measured
+
+| arm | result dir | env | fight fps | pipeline misses (`pm`) | shader modules missed (`sm`) |
+|---|---|---|---|---|---|
+| A | `1-1790629190-uberspike569-1700121` | - | 7.64 | **91** | 79 |
+| B | `1-1790629194-uberspike569-1700918` | `HAKUX_PSH_UBER=1` | 7.70 | **61** | 50 |
+
+- **The pair ran on the Thor, not the Nova.** The requests were pinned to `thor`. Both arms hit
+  `thermal-pause-F8` (hottest zone 95 C): A by +260 s, B by +227 s. Both pauses came before or at
+  the fight. So the fight fps is **void**. The Thor's paused-core fps is 5-7x lower
+  (thermal-pause memory), and 7.6 fps is that regime.
+- **Every miss happened before the pause** (A's last miss at 00:46:07, pause after 00:46:30; B's
+  last at 00:55:25, pause by 00:56:37). So the miss counts and stall times are clean.
+- **The CB share: 30 of A's 91 pipeline misses (33%) vanish when the combiner program is a
+  uniform.** Those are misses whose pipeline differed from an earlier one only in the combiner
+  program. This is the device's direct measure of the P6 hybrid's best case on this route.
+- **What the forced mode says about the hybrid's foreground stall.** Forced, every family pipeline
+  is built at first sight, which is exactly the hybrid's foreground cost (the specialised builds
+  would run in the background). Per-second stall, as the worst frame in each second with a miss
+  (`.cache/stalls.py`, a coarse proxy):
+
+| arm | seconds with misses | misses | sum of worst frames |
+|---|---|---|---|
+| A (specialised) | 17 | 91 | 45.0 s (494 ms per miss) |
+| B (families) | 14 | 61 | 36.0 s (591 ms per miss) |
+
+- The family pipeline costs about 20% more per miss (591 against 494 ms, section 5.2's factor, on
+  the device). It removes a third of the misses. **Net: about 20% less stall time on this route,
+  not "no stall".**
+- B's 19 family modules cost 1.9-86.9 ms each in glslang plus module creation (median 10.2 ms).
+  That is not the pipeline compile, which sits inside the stall figures above.
+
+**Pair 2** is on the Nova, queued 2026-09-29 01:53 PDT behind its charge hold:
+- `1790671992-uberspike569-4114420` (A)
+- `1790671996-uberspike569-4116483` (B, `HAKUX_PSH_UBER=1`)
+
+The pilot verdict is in `pilots/uberspike569.ok`. Read the pair with `soak_read.py`, and check
+the Nova's thermal line before trusting its fps.
+
+## 7. Verdict (host legs and device E measured; P pending on the Nova)
 
 **The hybrid as briefed is not supported. C kills it, and section 2 says why structurally.**
 
@@ -275,8 +356,13 @@ same two commands, "pair 2 of 2"). Then judge all four with `--judge`.
 - **E (host):** the interpreter's LOGIC is exact (548 random programs; mutant caught). Its
   ROUNDING is not bit-identical. The specialised compiler folds constants and reassociates
   (section 4.1), leaving 1-LSB differences on rare boundary pixels: 2 of 548 programs, 431 of
-  ~1.3 M drawn px. At a swap-in that is a pop of at most one LSB on those pixels. The device arm
-  decides whether ir3 does the same.
+  ~1.3 M drawn px. At a swap-in that is a pop of at most one LSB on those pixels.
+- **E (device): PASS.** On the Thor's Turnip, all 305 captures of the twelve combiner suites are
+  byte-identical (6.1). A swap-in would not pop on anything the suites draw.
+- **CB share (device): 30 of 91 pipeline misses (33%)** on the DOA route. Each remaining miss costs
+  about 20% more through a family pipeline, so the forced mode's stall time is 36 s against 45 s
+  (6.2). The hybrid hides a third of the misses and makes the rest dearer. It does not reach a
+  first draw with no stall.
 
 **What survives, and what to do instead:**
 - **A narrower ubershader does not help.** The cost is control flow (5.1), and the pipeline cost
