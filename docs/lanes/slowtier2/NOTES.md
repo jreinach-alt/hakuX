@@ -83,7 +83,7 @@ off" = frame x (1 - on-CPU share). Regimen from run.log `PERF: regimen=`.
 | Otogi (**on master: 29.97, at its cap; section 7**) | 12.62 | titleroutes-1129571, 9e7f8418dc, Thor, MAX | **clean (inferred)**: claimed 703 s after a 570 s run, no record; the fall 30 -> 11 is at 120 s, too early for #507 | 12.62 = 79.3 ms | **renderer, near saturated** | renderer idle 7.3 (9%), busy 74.9; vCPU on 46.7 (59%); backlog 1.4 MB (the pusher far ahead); vCPU TLB resets 2.7 | ro:292-305 |
 | Burnout | 10.85 | titleroutes-1150288, 3540bf2a69, Thor, MAX | **clean (inferred)**: claimed 704 s after a 550 s run, no record; the fall 30 -> 10 is at 210 s, at the mark | 10.85 = 92.2 ms | renderer (idle 23%) | renderer busy 71.1; vCPU on 54.8 (59%); vCPU TLB resets 2.7; zero-filled audio 56% | ro:306-319 |
 | Black | 7.45 | titleroutes-3358750, a593d8eb85, Thor, MAX | **clean (inferred)**: cold (idle 23 min). Frame `215235-f1.png`, 3.5 min in, shows the intro cutscene at FPS 4 before any pause could come. The 26 fps before the mark is a black "4 DAYS EARLIER" card (`215343-f2.png`); `215426-gameplay.png` shows FPS 7. A pause after 8 min is not excluded (no record) | 7.45 = 134 ms | guest (idle 42%), vCPU blocked | vCPU on 92.3 / **off 42**; renderer busy 78.6; **TLB resets on other threads 17.8 ms/frame** (#548's cost, 6x any other title) and 3.6 on the vCPU | ro:320-332 |
-| Midtown Madness 3 | 3.13 | titleroutes-1032854, 6aaa8197c5, Thor, MAX | **unknown, leaning content**: claimed 5 s after a 410 s Alien Hominid run (warm), no record. The #507 test flags the fall at 210 s (51.9 -> 3.1), but it lands on the mission load, which the route frames show: `040703-a3.png` (menu) at FPS 59, `040838-b3.png` (the static mission briefing) at FPS 3, `041030-gameplay.png` (the drive) at FPS 3 | 3.13 = 320 ms | guest, **vCPU blocked** | vCPU on 228 (71%) / **off 92**; renderer idle 260 (81%); vCPU TLB resets 9.3. The verdict's ten 12-20 s "hangs" are its steady frame: 60 flips at 3.1 fps take 19 s, as with GTA in the first pass | ro:333-345 |
+| Midtown Madness 3 (**on master: 17.64, guest-bound; section 8**) | 3.13 | titleroutes-1032854, 6aaa8197c5, Thor, MAX | **unknown, leaning content**: claimed 5 s after a 410 s Alien Hominid run (warm), no record. The #507 test flags the fall at 210 s (51.9 -> 3.1), but it lands on the mission load, which the route frames show: `040703-a3.png` (menu) at FPS 59, `040838-b3.png` (the static mission briefing) at FPS 3, `041030-gameplay.png` (the drive) at FPS 3 | 3.13 = 320 ms | guest, **vCPU blocked** | vCPU on 228 (71%) / **off 92**; renderer idle 260 (81%); vCPU TLB resets 9.3. The verdict's ten 12-20 s "hangs" are its steady frame: 60 flips at 3.1 fps take 19 s, as with GTA in the first pass | ro:333-345 |
 | Crimson Skies (Thor 23.4 / Nova 30) | Thor 23.4 (pass-1 hand review) | titleplay-p1-crimson, a5b5b628f2, Thor, unrecorded | **paused**: the #507 shape at 270 s (25.3 -> 5.7, ro:358-368); lane.thermal507 listed this run as a probable pause | Thor **29.73** (titlebench-2601931, d0e30924f8, MAX, ro:376) and **29.72** (flip474-1819312, recorded no pause, ro:416); Nova **29.97** (titlebench-2612149, the same d0e30924f8, ro:389) | capped at 30 | **The two handhelds do not differ; the Thor's 23.4 is the pause.** On the same ref both read ~30. The Thor's lows are lower (p10 24.4 vs 27.9) with its vCPU on-CPU 90-93% vs the Nova's 94%. The Thor perflog run (flip474-1819312, before #504, so the GPU row is on the uncorrected period): renderer Tot 29.1, idle 11.5, Draw 13.7, GPU 4.5 ms (`regimes.py --from 120 --to 244`) | ro:346-421 |
 
 The first pass's six (Nova/Thor, `docs/lanes/slowdown462/NOTES.md`
@@ -112,6 +112,8 @@ reading), with the ms per frame read above.
 **Update (section 7):** on master Otogi is no longer in row 1. Its renderer
 is busy 5.3 ms of a 33.4 ms frame, at the 30 cap. Whether the rest of row 1
 moved with it is what runs 4, 6, 7 and 8 measure.
+MM3 leaves row 2 for row 3: on master its vCPU is on-CPU 92-96% and the
+blocked time is gone (section 8).
 
 New causes no lever covers: **(6)**, the vCPU thread's own `tlb_reset_dirty`
 time, and **the vCPU-blocked time on #475-less builds**. That time is #475's if
@@ -344,6 +346,67 @@ window is read from the counters. The risk is the same for every route
 timed on a slow build: MM3's mark frame shows a delivery timer at 01:37, and
 the races of Burnout and PGR end.
 
+## 8. Run 2 read: Midtown Madness 3 is guest-bound on master (2026-09-28, attempt 4)
+
+Run: `0-0-s-1-1790609661-lane.slowtier2-mm3184014` (master 97a6fa2b51,
+perflog, Thor, MAX, `midtown-madness-3.returning` as parked, without the two
+added frames). Cites: `mt:N` is a line of `mm3-timeline.out`, `mp:N` of
+`mm3-playsplit.out`, `mc:N` of `mm3-cond-play.out`.
+
+**The route reached play.** `192523-drive.png` and `192539-gameplay.png`
+show the drive with the HUD (timer 01:27 and 01:42, FPS 19 and 18).
+
+**Conditions: clean over play.** Start xo-therm 49.2 C, 74.0 C at the mark,
+max 77.8 C. A pause (`thermal-pause-F8`) began after +574 s, in the run's
+last 24 s (mc:2, mc:4), long after play had ended.
+
+**Play lasts 80 s after the mark.** The drive starts at +204 s, before the
+mark at +315 s (mt:125, mt:161), and runs to about +394 s. From +408 s every
+window to the end draws exactly 242 and runs at 29-30 fps (mt:190-283,
+mp:34, mp:38): a static screen, read from the counters, most likely the end of the delivery.
+The verdict's window (mark to end) reads 29.96, which is that screen. Play
+is read over **+315..+394 s**.
+
+| | old reading (6aaa8197c5, warm start) | run 2 (97a6fa2b51, cold start) | cite |
+|---|---|---|---|
+| fps median | 3.13 | **17.64** (p10/p25/p75/p90 15.0/16.3/18.8/20.2) | ro:333-345, mc:7 |
+| frame | 320 ms | 56.7 ms | section 2, mc:7 |
+| vCPU on-CPU | 71% (228 ms on, **92 off**) | 92-96% (at most 4.6 ms off) | section 2, mp:13, mc:8 |
+| guest idle loop | not logged | 0.0% | mp:14 |
+| renderer idle | 260 ms (81%) | 26.0 ms (46% of the frame) | section 2, mp:2-3 |
+| renderer busy (`Tot - Idle`) | not logged | 24.3: Fin 12.1 (Sub 8.6, Fen 3.4), Draw 8.85, Surf 1.75 | mp:3, mp:15 |
+| GPU | not logged | 13.1 ms (23% of the frame) | mp:3 |
+| vCPU wait on `pfifo.lock` (`Lw`) | not logged | 0.0 | mp:4 |
+| TLB resets, vCPU / other threads | 9.3 / - | 0.92 / 0.70 ms/frame | section 2, mc:8 |
+| full TLB flushes | - | 408/s, about 23 a frame | mc:8 |
+
+**What it decides.**
+- **Title or pause: the title, and it is 17.6 fps on master, not 3.1.** From
+  a cold start, with no pause over play.
+- **The vCPU-blocked cause is gone.** The old reading had the vCPU off-CPU
+  92 ms a frame. Now it is on-CPU 92-96% and never in its idle loop, and
+  `Lw` is 0.0. So the `pfifo.lock` question has no time left to explain,
+  and the held `--trace-offcpu` session of section 4 is not needed for MM3.
+- **The bound is the guest's own work.** The renderer waits 26.0 ms of each
+  56.7 ms frame for the guest, and the GPU is 23% busy. MM3 moves from row 2
+  of section 3 to row 3 (vCPU on-CPU), with Alias and Arctic.
+- **The on-CPU split is not in these lines.** The exec loop, TB lookup,
+  guest code and helpers need cpu-clock samples: the on-CPU held session
+  section 4 planned for Alias, run on MM3's drive as well (lane.local, by
+  hand). Two things to look for in it, neither priced here: the 408 full
+  TLB flushes a second and the refills after them, and the `[rr425pc]` rows,
+  where the top pcs are guest code (`g:00167ffb`, `g:00312ffe`) and one
+  exec-loop return at an `fldcw` (`e:0009b377:d96d0c`, 14,400 a second;
+  logcat.txt:9233).
+- **Second in line is the renderer's Fin.** 12.1 ms a frame goes to finishes:
+  835 in 60 frames, 480 of them for surface downloads and 360 deferred
+  completions (`hakuX-stall` `Finish:835(... sd480 ...)`, `cDef360`;
+  logcat.txt:9190). It is Forza's shape (#479/#518). It does not bound the
+  frame while the renderer idles 26 ms, and it will once the guest is
+  faster.
+- **Heat.** 49.2 C to 74.0 C by the mark and a pause at +574 s, under MAX
+  with the vCPU at 92-96%.
+
 ## Do not repeat
 
 - Do not read a benchmark soak for `hakuX-phase` or GPU rows. Only perflog
@@ -423,3 +486,19 @@ the races of Burnout and PGR end.
   outside the session. hostops gave the re-pilot a cold slot in the evening:
   `0-0-s-1-1790615781-lane.slowtier2-otogi2870269` was claimed at 18:58 PDT
   and finished at 19:07 PDT. This resume reads it.
+- 19:2x read the re-pilot (section 7): play reached, Otogi at its 30 cap on
+  master, play lasting 105 s. Agreed with hostops' `pilots/lane.slowtier2.ok`.
+  Added two frames after the mark to the six requests still parked
+  (`addshots.py`), appended the reading to the parked README, and posted on
+  #462 (issuecomment-5882425216). No hold was taken and nothing was queued.
+- 19:3x run 2 (MM3) finished inside the session and is read (section 8).
+- Waiting on runs 3-8, which hostops slots one at a time from cold starts:
+  `1-1790609662-lane.slowtier2-black167924`,
+  `1-1790609663-lane.slowtier2-burnout968727`,
+  `1-1790609664-lane.slowtier2-alias942359`,
+  `1-1790609665-lane.slowtier2-pgr365442`,
+  `1-1790609666-lane.slowtier2-crash627374`,
+  `1-1790609667-lane.slowtier2-bloodrayne201189`. Each lands in
+  `dispatch/results/<id>/` with a `DONE`. Read each with `timeline.py`,
+  then `playsplit.py` over the span the `play1` and `play2` frames and the
+  draws show to be play.
