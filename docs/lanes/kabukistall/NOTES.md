@@ -12,6 +12,7 @@ Brief: find why Kabuki Warriors (43560001) stops flipping for 20-130 s with abou
 - The busy cores:
   - one core is Turnip compiling on the PFIFO thread;
   - one core is the vCPU spinning in the guest's idle loop, because the idle halt is off.
+- **K1 (section 8), on master with B1 in and a cold cache:** 199 ms per create, half of the pre-B1 cost. The fight stall is still there: 68.6 s, 333 creates, and 97% of the window is `vkCreateGraphicsPipelines` by the driver's own clock. About 3/4 of misses change the vertex program or the fixed-function vertex state.
 - A warm `vk_pipeline_cache.bin` removes the stall. Five same-APK runs, in queue order: the first two stall 114-131 s, the last three do not stall. One of those three meets 627 misses and serves them in 2-3 s windows.
 - **energymap507's "no shader misses" is wrong for these runs.** `[shd413]` reads dpm 82-329 per stall window in every Kabuki stall below (section 2).
 
@@ -126,7 +127,31 @@ What a hit looks like, written before the run:
 - The stall about halves for the same miss count: at 300 misses, 45-70 s.
 - If the stall is absent with dpm of 100 or more, the per-create figure decides. Under 50 ms would mean something besides B1 changed the cost, and the anatomy above would need re-reading.
 
-Status (2026-09-29): queued as `1-1790702688-lane.kabukistall-194847` from `a5b4e27bc7`, release tier via #433 and pinned to the Nova, 600 s. The lane is waiting for its result dir. Posted: #507, #433 and #569 (Kabuki proposed as a leg for P5/P6/P3).
+Status (2026-09-29): queued as `1-1790702688-lane.kabukistall-194847` from `a5b4e27bc7`, release tier via #433 and pinned to the Nova, 600 s. Posted: #507, #433 and #569 (Kabuki proposed as a leg for P5/P6/P3). Result: section 8.
+
+## 8. K1's result: B1 halves the create, the hang stays
+
+Run `1-1790702688-lane.kabukistall-194847`: Nova, APK 41ac0041b93d, `shader_cache: cleared: apk 4db6cd5e6973 -> 41ac0041b93d`, so a cold read. Tool: `docs/lanes/kabukistall/ks_creates.py <result dir>`. It prints each `[shd413]` line with dpn >= 10: dpc_ms, the mean per create, the stage ms and the `kd=` classes.
+
+| t_mark (end) | window s | dpn | dpc_ms | ms per create | dvs_ms | dgs_ms | dfs_ms |
+|---|---|---|---|---|---|---|---|
+| +4.4 | 20.1 | 162 | 18,637 | 115 | 8,988 | 6,754 | 362 |
+| +19.8 | 15.4 | 72 | 14,098 | 196 | 6,619 | 5,268 | 276 |
+| +30.2 | 10.5 | 41 | 9,262 | 226 | 4,386 | 3,438 | 179 |
+| +40.8 | 10.6 | 46 | 9,355 | 203 | 4,460 | 3,438 | 182 |
+| +60.7 | 5.9 | 24 | 4,781 | 199 | 2,212 | 1,830 | 95 |
+| **+151.2** | **68.6** (gfps 0, G max 3.9 s) | **333** | **66,283** | **199** | 31,277 | 24,899 | 1,291 |
+| gameplay total | | 678 | 122,417 | 181 | 57,941 (47%) | 45,628 (37%) | 2,386 (2%) |
+
+- **Hit, as written before the run (section 6).** The 68.6 s window has 333 misses (the stall is still there); per create is 199 ms, in the 150-230 band, against 348-391 before B1; 68.6 s is inside the 45-70 s band.
+- **The stall is create time, now measured rather than inferred.** In the 68.6 s window dpc_ms sums to 66.3 s: 97% of the window is `vkCreateGraphicsPipelines`. Section 2a's per-miss figures were stall seconds over misses; this one is the driver's own clock.
+- **Where the create time goes:** VS 47%, GS 37%, FS 2% over gameplay. The rest is link and pipeline assembly.
+- **What differs on each miss** (`kd=` over gameplay, 678 misses; a miss counts once per differing class): VP 505, FF 489, CB 365, TX 300, PO 377, GE 211, FL 175, NONE 0. So 72-75% of misses change the vertex program or the fixed-function vertex state, and 54% change the combiner. A pixel-only ubershader (#569 P6) would leave most misses paying the VS+GS compile. The vertex side must be covered too: GPL uber libraries (P5) or the key-set prebuild (P3).
+- **Kabuki is still not Playable on a cold cache.** A 68.6 s window with no flip is a hang under the criterion. B1 did what it could: it halved the cost of each create, and it did not remove the compiles.
+
+## 9. Attempt 2 (2026-09-29, resumed by handback)
+
+Attempt 1 ended correctly: it was waiting on K1, a device request outside the session. Its one gap was that it left no `[lane.kabukistall] waiting:` comment, so handback resumed it on the quiet clock. Attempt 2 read K1 (section 8), added `ks_creates.py`, posted the result, and marked #616 ready. There is no emulator change in this PR. The fix belongs to #569's lanes (section 5), so there is no arm and no prediction.
 
 ## 7. For the next lane
 
