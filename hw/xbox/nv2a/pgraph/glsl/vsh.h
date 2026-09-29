@@ -116,6 +116,11 @@ DECL_UNIFORM_TYPES(VshUniform, VSH_UNIFORM_DECL_X)
 typedef struct GenVshGlslOptions {
     bool vulkan;
     bool gles;
+    /* #569: generate the family's uber vertex stage (glsl/vsh-uber.h), not
+     * the state's own shader. Only ever set under HAKUX_GPL=3|4, and never
+     * persisted. It sits in the padding before gles_version, so the struct,
+     * and the persisted module key file's record, keep their size. */
+    bool uber;
     int gles_version;
     bool prefix_outputs;
     bool use_push_constants_for_uniform_attrs;

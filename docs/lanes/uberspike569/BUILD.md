@@ -76,6 +76,66 @@ Checked on the host by rendering both shaders' outputs (all varyings, bit for bi
 states and seeded random states. The device check is the pixel arm with the swap forced off
 (rung 0 held for every draw).
 
-## 3. State
+## 3. What is built
 
-(filled as the work lands)
+The switch is gpl569's `HAKUX_GPL`, two values up. Default 0, as on master:
+- **3, the ladder.** A miss whose vertex state the uber stage covers links the uber pre-raster
+  library and draws this frame. The worker then builds the specialised pipeline (monolithic), and
+  `create_pipeline()` swaps it in.
+- **4, held.** The same, but the uber link is kept, and a missing uber library is built on the
+  draw thread. Every covered draw then runs the uber vertex stage. This is for the exactness and
+  GPU-cost arms only.
+
+| piece | where |
+|---|---|
+| uber vertex stage generator; coverage; family; uniform values | `glsl/vsh-uber.{c,h}` |
+| exported helper text (unchanged output) | `glsl/vsh.c` `pgraph_glsl_vsh_common_header`, `glsl/vsh-ff.c` `pgraph_glsl_append_vsh_ff_header`, `glsl/vsh-prog.c` `pgraph_glsl_vsh_prog_helpers` |
+| module key flag `GenVshGlslOptions.uber` (in padding; static-asserted) | `glsl/vsh.h`, `vk/shaders.c` |
+| a covered binding's uber module; the upload layout (`vsh.upload_info`); `ubVsh` staging | `vk/shaders.c`, `vk/renderer.h` |
+| `pgraph_vk_gpl_uber_create_pipeline`: find the uber PR library, link, queue the swap; the two worker jobs (uber library, specialised next) | `vk/compile_worker.c` |
+| `gpl_get_lib` creates with the lock dropped (gpl569 D7); pinned libraries survive the table flush | `vk/compile_worker.c` |
+| the swap at every place `create_pipeline()` settles (`gpl_take_next_pipeline`) | `vk/draw.c` |
+| the zero vertex buffer at binding 16 for the uber link's missing attribute locations | `vk/draw.c`, `vk/renderer.h` |
+| modes 3 and 4 accepted | `vk/instance.c` |
+
+**The vertex input.** The uber stage declares all 16 attribute inputs, because which ones are
+uniforms is a run-time value. Vulkan requires every input location the vertex shader consumes to
+have a vertex attribute. So the uber link's vertex-input library adds, for every location the
+draw sends as a uniform, an attribute at binding 16 with stride 0, reading a 64-byte zero buffer.
+The stage selects the uniform value there, so what it reads is never used. The specialised
+pipeline's vertex input is unchanged.
+
+**Logs** (tag `hakuX-perf`): `vsh-uber: family module N: B bytes GLSL, T ms` once per family;
+`[uber569] mode= links= cold= libs= lib_fail= lib_ms= next=done/fail/swapped next_ms=
+uncovered= queued=`, running totals, on every uber library built, every cold miss, the first and
+every 32nd link, and at each power-of-two count of swaps.
+
+## 4. Host checks
+
+- **Type-check:** every changed C file compiles with the NDK clang line (`host/typecheck.py`,
+  `-Wall`): rc 0, no new warnings.
+- **Exactness, lavapipe** (`host/vshuber/vshcheck.py`): see 4.1.
+
+### 4.1 Exactness on lavapipe
+
+Each pair is the specialised shader and the family's uber shader for one vertex state, run over
+the same 64 vertices and the same uniform block, with every output dumped word by word (13 vec4
+a vertex: D0 D1 B0 B1, fog/fogSpecial/triMZ/point size, T0-T3, Pos0, gl_Position, gl_PointSize).
+The check can see a wrong answer: with the uber uniform mutated (a flag in fixed function, every
+slot's input-A swizzle in a program), 15 of 15 pairs differ (`--mutate`).
+
+`vshcheck.py --keys <DOA's Nova key file> --random 300`, log in
+`results/vshcheck-doa-rand300.tsv`:
+
+| states | pairs | byte-identical | differ |
+|---|---|---|---|
+| DOA's own (31 fixed function, 15 programs) | 46 | **46** | 0 |
+| random fixed function (skinning, texgen, lights, sources, fog, points) | 150 | **150** | 0 |
+| random programs (1-24 slots, pairing, A0, constant writes) | 150 | 117 | 33 |
+
+The 33 are all random programs, and all of one kind: a signed zero (0 against -0) or 1-2 ulp,
+in the position, a texture coordinate or fog. That is section 4.1 of NOTES.md again, for vertex
+programs: the specialised compiler sees constant registers and operand equalities the
+interpreter cannot see, and folds or reassociates on them. DOA's 15 programs are not affected.
+On the device, the spike's combiner check was exact where lavapipe was not (NOTES 6.1). So the
+device pixel arm decides this. `NoContraction` on both paths is still the way to guarantee it.
