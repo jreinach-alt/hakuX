@@ -149,6 +149,43 @@ tcg424flip-pgraph.json. Next step: `python3 docs/lanes/tcg424flip/arcticread2.py
 registered in tcg424flip-arctic2.json, then check scores1.tsv's status column
 on the pgraph arm.
 
+## Attempt 3 (2026-09-29 ~12:15 PDT): Arctic moves to the Nova
+
+Attempt 2 did not finish because it had nothing left to do: it queued the
+six Thor runs and stopped, waiting on them. None of them ran. lane.local
+withdrew all six on 2026-09-29 12:00 PDT, after the owner moved fps runs
+off the Thor until #507 has a fix: 16 of 66 Thor title runs paused in 30 h,
+and both of this lane's Thor pilot runs paused.
+
+Meanwhile the pgraph arm's first pair ran split (A Nova, B Thor). The arms
+job ruled it CONFOUNDED (43 of 3379 checks, not attributable) and re-queued a
+same-device pair hard-pinned to the Nova:
+`1-1790707670-arms-tcg424flip-base-1207251` / `-fix-1207297`. That pair's
+verdict is the one that counts.
+
+### tcg424flip-arctic-nova.json (supersedes arctic2; no leg threshold changed)
+
+- Registered on `7bcd6e6e2b`: 62ef8bf0fe merged with master (62 commits,
+  clean merge) before registering. A = `--env HAKUX_TCG424_RANGE=0`, B = no env.
+- Device nova, hard pin. Two pairs, A B A B, 420 s, frames every 20 s.
+- Reader `arcticread3.py`: arcticread2.py loaded with one string swapped,
+  the race-over cut `g >= 45` becoming `g >= 55`. Nobody has measured the
+  Nova's race gfps, and 45 could cut a faster race short. The results and
+  menu screens run at 59-60. On the four Thor runs on disk it gives the same
+  windows as arcticread2.py: hi 223p / 100m / 161m / 124m.
+
+### Not queued yet
+
+Arctic Thunder is not on the Nova. At 12:05 PDT `hardware/titlepush/listing-nova.txt`
+on master does not name 4D570002. lane.local requested a Nova investigation
+copy at 12:00 PDT under #507. The four runs get queued once it lands.
+
+**Waiting on (attempt 3):** (1) the Arctic Thunder copy landing on the Nova
+(4D570002 in listing-nova.txt); after that, queue A B A B under
+tcg424flip-arctic-nova.json and read them with arcticread3.py. (2) The
+`[job.arms]` verdict on the Nova pgraph pair above. Check scores1.tsv's status
+column for unreadable captures.
+
 ## For the next lane
 
 - The arctic-thunder race ends 100-160 s after `mark gameplay`, and the route
