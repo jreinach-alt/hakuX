@@ -147,6 +147,48 @@ hp_scenario() {
     hp_reset; hp "$s" >/dev/null
     [ "$(hp_ran "$LL")" -eq 1 ] && echo "i=resumed" || echo "i=quiet"
     [ "$(hp_ran "$LJ")" -eq 0 ] && echo "i_neighbour=left"
+    # (j)-(m) THE IN-FLIGHT EXCEPTION, 2026-09-28. `blocked:in-flight` on an
+    # issue means "lanes are already on this", so it must not park them. Each
+    # leg from clean markers (hp_runs_world), so a quiet leg cannot be the
+    # runs cause's once-per-set marker left by an earlier one. The draft is
+    # quiet only 60 s: a resume can only be the runs cause, and the leg asks
+    # for its marker by name.
+    # (j) our issue carries only blocked:in-flight: resumed on the finished run.
+    hp_runs_world "$P1" "" '961\tblocked:in-flight\n'
+    out=$(hp "$s" list); hp "$s" >/dev/null
+    [ "$(hp_ran "$LK")" -eq 1 ] && echo "j=resumed" || echo "j=quiet"
+    compgen -G "$HAKUX_WORK/handback/done/draft-strand-runs-$PR-r*" >/dev/null && echo "j_cause=runs"
+    grep -qF "#$PR $BR: draft-strand-quiet, skipped: parked" <<< "$out" || echo "j_list=unparked"
+    # (k) the same lane with blocked:after-0.5 on its issue: parked.
+    hp_runs_world "$P2" "" '961\tblocked:after-0.5\n'
+    out=$(hp "$s" list); hp "$s" >/dev/null
+    [ "$(hp_ran "$LK")" -eq 0 ] && echo "k=quiet" || echo "k=resumed"
+    grep -qF "skipped: parked by issue #961 blocked:after-0.5" <<< "$out" && echo "k_list=issue"
+    # (l) both on the issue, in-flight FIRST: the other label still parks.
+    hp_runs_world "$P3" "" '961\tblocked:in-flight,blocked:after-0.5\n'
+    out=$(hp "$s" list); hp "$s" >/dev/null
+    [ "$(hp_ran "$LK")" -eq 0 ] && echo "l=quiet" || echo "l=resumed"
+    grep -qF "skipped: parked by issue #961 blocked:after-0.5" <<< "$out" && echo "l_list=issue"
+    # (m) the PR ITSELF labelled blocked:in-flight (#504's interim), issue
+    # clean: the PR half takes no exception, so it stays parked.
+    hp_runs_world "$P4" blocked:in-flight ''
+    out=$(hp "$s" list); hp "$s" >/dev/null
+    [ "$(hp_ran "$LK")" -eq 0 ] && echo "m=quiet" || echo "m=resumed"
+    grep -qF "#$PR $BR: draft-strand-quiet, skipped: parked by blocked:in-flight" <<< "$out" && echo "m_list=label"
+}
+# <head> <PR labels> <issues.tsv printf format>: a clean world in which our
+# lane's last session ended an hour ago and one of its runs finished since.
+hp_runs_world() {
+    hp_state_reset
+    rm -rf "$DISPATCH_DIR/results/"*-selftestpk-*
+    printf '%s\n' '{"type": "result", "result": "waiting on my soak"}' > "$HP_L/$LK.20260928T200000Z.json"
+    touch -d '-1 hour' "$HP_L/$LK.20260928T200000Z.json"
+    local id=1790009000-$LK-900
+    mkdir -p "$DISPATCH_DIR/results/$id"
+    printf '{"id": "%s", "requester": "%s", "purpose": "a soak"}\n' "$id" "$LK" > "$DISPATCH_DIR/results/$id/request.json"
+    : > "$DISPATCH_DIR/results/$id/DONE"; touch -d '-5 minutes' "$DISPATCH_DIR/results/$id/DONE"
+    printf "$3" > "$HP/issues.tsv"
+    hp_draft "$1" "$2" 60
 }
 
 got=$(hp_scenario "$HERE/handback.sh")
@@ -168,6 +210,15 @@ check "(h) a no-PR lane whose issue is parked is not idle-resumed" hp_has h=quie
 check "(h)   list names the issue" hp_has h_list=issue
 check "(i) the same lane with the label lifted is resumed" hp_has i=resumed
 check "(i)   and the neighbour with no brief is left alone" hp_has i_neighbour=left
+check "(j) a lane whose issue carries blocked:in-flight is resumed when its runs finish" hp_has j=resumed
+check "(j)   by the runs cause" hp_has j_cause=runs
+check "(j)   and list does not report it parked" hp_has j_list=unparked
+check "(k) the same lane with blocked:after-0.5 on its issue is not resumed" hp_has k=quiet
+check "(k)   list names the issue and that label" hp_has k_list=issue
+check "(l) blocked:in-flight beside blocked:after-0.5 on the issue still parks" hp_has l=quiet
+check "(l)   list names the parking label, not in-flight" hp_has l_list=issue
+check "(m) a PR itself labelled blocked:in-flight is not resumed" hp_has m=quiet
+check "(m)   list says it was skipped for that label" hp_has m_list=label
 
 # ---------------------------------------------------------------- mutants
 # Each from a copy beside its sourced helpers; the real file is never touched.
@@ -194,6 +245,17 @@ hp_mut noprefix 'blocked:*) printf' 'blocked:needs-owner) printf' \
        a=resumed "with only the literal list resumes #436's shape"
 hp_mut noissue 'PARKED_LANES=$(parked_lanes)' 'PARKED_LANES=""' \
        h=resumed "without the issue half idle-resumes a lane whose issue is parked"
+# The in-flight exception removed: the world before 2026-09-28, #569's lanes
+# parked by their own issue's in-flight label, never resumed on their runs.
+hp_mut noinflight 'ISSUE_NOT_PARKING="blocked:in-flight"' 'ISSUE_NOT_PARKING=""' \
+       j=quiet "without the in-flight exception parks #569's waiting lanes"
+# The issue read on its first blocked:* label only (the old jq's `first`):
+# in-flight listed first hides the label that does park.
+hp_mut firstonly 'labs.split(",")' 'labs.split(",")[:1]' \
+       l=resumed "reading only the issue's first blocked:* label resumes a lane after-0.5 parks"
+# The exception applied to the PR half too: #504's interim label stops parking.
+hp_mut prinflight 'blocked:*) printf' 'blocked:in-flight) ;; blocked:*) printf' \
+       m=resumed "with the exception on the PR half resumes a PR labelled blocked:in-flight"
 rm -rf "$T"/handback-parked-mut-*
 
-hp_state_reset; rm -f "$HP_L/selftestp"*.json
+hp_state_reset; rm -f "$HP_L/selftestp"*.json; rm -rf "$DISPATCH_DIR/results/"*-selftestpk-*
