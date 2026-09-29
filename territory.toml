@@ -469,10 +469,11 @@ standing = false
 retired_utc = "2026-09-29T02:59:58Z"
 note = "RETIRED (job.board 2026-09-29T02:59:58Z): PR #565 MERGED, no open PR on lane/idlehaltspin*, unit gone (issue-sweep flagged it as owned by a dead lane). Mechanism exhausted per the PR body: no SPIN_US holds leg L (p99 raise-to-run < 50 us) without losing the saving, so idle halt stays opt-in on this axis. #525's next step is already tracked separately as [lane.idlehaltdefault] (PR #566 OPEN, judges default-on across six Nova titles on outcomes H/P/A/E) -- not a new dispatch. GH label lane:idlehaltspin on #525 corrected to lane:idlehaltdefault to match the live lane. Files already RELEASED to [free] at ready; nothing further claimed here."
 
-[lane.idlehaltdefault]
+[retired.idlehaltdefault]
 issues = ["525"]
-files = ["docs/lanes/idlehaltdefault/**", "docs/testing/predictions/idlehaltdefault-*.json"]
-note = "STARTED (lane.local 2026-09-28T17:58Z), briefs/idlehaltdefault.md: #525 (critical path: energy). Judges default-on for HAKUX_IDLE_HALT on outcomes, not leg L: six Nova titles (two 60 fps, two pgraph-sync-heavy, two near 30), env A/B on one master binary, legs H (fps), P (pacing), A (audio), E (J/frame) registered before any run. Distinct from lane.idlehaltspin (PR #565: no spin length fixes L). Docs and predictions only; a default flip, if the legs hold, is a follow-up PR that asks for the file."
+files = []
+retired_utc = "2026-09-29T12:12:00Z"
+note = "RETIRED (hostops 2026-09-29T12:12Z): PR #566 folded 94cf8eb627 (11:55Z). Verdict: HAKUX_IDLE_HALT stays opt-in -- default-on fails H pooled on Fuzion (-6.0 fps) and DOA1U (-5.4), E 2 of 5; no title fails H/P on both pairs, so no opt-out either. Unit gone, no open PR. Files to [free]: docs/lanes/idlehaltdefault/**, predictions idlehaltdefault-*.json."
 
 [retired.adpf]
 issues = ["544"]
@@ -659,6 +660,7 @@ files = ["accel/tcg/tb-maint.c", "accel/tcg/tb-internal.h", "docs/lanes/tcg424fl
 note = "STARTED (hostops 2026-09-29T05:35Z), briefs/tcg424flip.md: tbflip424-blinx2.json's three valid Thor pairs pass M0/M1/M4' (A gfps 19 / churn 2.1, B 19 / 0.0; #424 issuecomment-5884276103), so the decision rule flips hakux_tcg424_range_on() to default ON (opt-out HAKUX_TCG424_RANGE=0). Before PR-ready: the Arctic Thunder Thor A/B lane.local routed to the retired lane.sustain507 (never queued), and the pgraph must-not-move arm on the flipped binary."
 
 [free]
+# RELEASED (hostops 2026-09-29T12:12Z) by retiring lane.idlehaltdefault (PR #566 folded 94cf8eb627): docs/lanes/idlehaltdefault/**, docs/testing/predictions/idlehaltdefault-*.json.
 # RELEASED (hostops 2026-09-29T11:45Z) by retiring lane.pacing (PRs #529, #572 folded): ui/xemu.c, vk/display.c, SDLSurface.java, docs/lanes/pacing/**, predictions pacing-*.json.
 # CLAIMED (hostops 2026-09-29T05:35Z): accel/tcg/tb-maint.c, accel/tcg/tb-internal.h -> lane.tcg424flip (#424: Thor tbflip424-blinx2 r1-r3 verdict = flip, issuecomment-5884276103).
 # RELEASED (hostops 2026-09-29T02:40Z) by retiring lane.soakflake (PR #601 folded ab06f60fe4): docs/testing/soak_title.sh, docs/testing/jobs/selftest.d/89-title-verdict.sh, docs/lanes/soakflake/**.
