@@ -505,3 +505,56 @@ c8e95ed539, whose apk is already built.
 copies and `gfps.py`. Check `[ibc507] on=` in every logcat. If legs 3b, 4 and
 5a pass, mark the PR ready with the release note. 5b on Forza still waits on
 #583, and the jump-cache size goes on `lane/ibcache-jcsize`.
+
+## Attempt 6 (resumed 2026-09-29, lane.local addendum 12:10 PDT)
+
+**Why attempt 5 did not finish.** It ended correctly on a `waiting:` for the
+band arm, four Thor soaks and lane.local's cold GTA soaks. Two of those
+resolved and one was withdrawn:
+- the band arm PASSed (`[job.arms]`, 08:43 PDT, all 69 checks, PR #591), and
+  the PR's label moved from `regressed` to `verified`. Leg 3 is done;
+- the owner moved fps, J/frame and profile runs off the Thor at 11:20 PDT
+  (15 of 66 Thor title runs paused thermally, 0 of 85 on the Nova). lane.local
+  withdrew the four Thor soaks (Crimson `-2131018`/`-2131529`, Alien Hominid
+  `-2131813`/`-2132071`) before they ran.
+
+### Legs 4, 5a and 5b move to the Nova
+
+- **5b, Crimson Skies:** queued on the Nova (`queue_leg4.sh`, now parameterised
+  by device, length and arm order; `out/queue_crimson_nova.out`). c8e95ed539,
+  360 s, `--perflog`, in the order B A A B, so each arm has two runs and
+  neither arm always runs first:
+  `1-1790708501-lane.ibcache-1378207` (B), `-1378258` (A),
+  `1-1790708502-lane.ibcache-1378332` (A), `-1378456` (B). The request files
+  read back `device: nova`. The Thor's 240 s cap existed only to end before
+  its pause at +291 s, so it does not apply on the Nova.
+- **4 and 5a, Alien Hominid and GTA SA:** these are Thor-only titles. Their
+  Nova copies were requested at 12:10 PDT, and neither is in
+  `hardware/titlepush/listing-nova.txt` yet. They are queued the same way when
+  they land.
+- **5a amended (device only, before any run):** the Nova replaces the Thor.
+  The thresholds stand (probe-on fps no more than 0.5 under probe-off, J/frame
+  no more than +3.6% over it). The cold start was there only to avoid the
+  Thor's pause, so the cold-slot request to lane.local (#507
+  issuecomment-5893447927) is withdrawn.
+- Every logcat is still checked for `[ibc507] on=0` in A and `on=1` in B, or
+  the pair measured nothing.
+
+### Master merged
+
+Merged at 4eab8867c6. Master brought the ubershader under hw/xbox/nv2a/pgraph
+and nothing under accel/, tcg/, target/ or include/. The soaks still name
+c8e95ed539, whose apk is built.
+
+## State at 18:25Z, 2026-09-29: waiting on the Nova soaks and two title copies
+
+1. The four Crimson requests above (legs 4 and 5b).
+2. The Nova copies of Alien Hominid (5A440004) and GTA SA (54540082), then
+   their env pairs (leg 4, and 5a on GTA).
+
+**Next, on resume:** read the Crimson pairs with `title_verdict.py` on copies
+and `gfps.py`, checking `[ibc507] on=` in each. Queue Alien Hominid and GTA on
+the Nova with `queue_leg4.sh nova 360 BAAB ...` once
+`listing-nova.txt` names them. When legs 4 and 5a pass, mark the PR ready with
+the release note. 5b on Forza still waits on #583, and the jump-cache size
+still goes on `lane/ibcache-jcsize`.
