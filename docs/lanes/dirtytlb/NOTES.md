@@ -378,6 +378,269 @@ arm superseded by a PASS. It goes ready.
   rdous. The cost to watch is the absolute one (30 to 39 us per flip on
   Crimson).
 
+### The fix pair, read: every registered leg passes (`dirtytlb-rd.json`)
+
+Crimson, Thor, regimen max, 240 s, window 90 to 240 s, 4,320 flips in each
+arm. A `1-1790620928-lane.dirtytlb-1387249` (`249ea8fd05`, rd0), B
+`1-1790620928-lane.dirtytlb-1386630` (`052551bdd3`, rd1); B ran first.
+Judges: `walk_read.py --pair`, `rdc_read.py --pair`, `pair461_read.py
+--pair` (K1), `jpf.py` (J). Their outputs are `rd_*.txt` here, ignored by
+git; rerun them on the result dirs.
+
+| per flip | A (all 22 modes) | B (live modes) | |
+|---|---|---|---|
+| entries scanned per walk | 7,772 | 1,923 (live 1,834) | x0.25 |
+| modes per walk | 22 | 2 | |
+| us per walk, render thread | 21.70 | 4.83 | x0.22 |
+| us per walk, vCPU thread | 15.03 | 2.41 | x0.16 |
+| walks, render thread | 170.4 | 160.5 | |
+| walks, vCPU thread | 236.4 | 242.7 | |
+| walk ms, render thread | 3.70 | 0.77 | -2.92 |
+| walk ms, vCPU thread | 3.55 | 0.58 | -2.97 |
+| render-thread CPU ms (`tcpu`) | 19.79 | 16.44 | -3.35 |
+| vCPU walk share of its CPU | 11.2% | 1.8% | |
+| hits per vertex walk | 1.03 | 0.97 | |
+| hits per vCPU walk | 1.00 | 1.00 | |
+| `sd` (notdirty stores) | 473.3 | 469.1 | |
+| gfps median | 29 | 29 | |
+| flips taking 3+ VBLANKs | 4.3% | 0.8% | |
+| net W / `j_per_frame` | 5.876 / 0.1995 | 5.888 / 0.1977 | x0.991 |
+
+| leg | | read |
+|---|---|---|
+| V | PASS | 75 `[tlb68]` and 72 `[rdc]` lines in each arm |
+| W | PASS | A `fx=rd0`, B `fx=rd1` on every line |
+| E | PASS | B 1,923 entries per walk against 1,834 live (+5%), x0.25 of A |
+| X | PASS | hits per walk vtx 1.03 / 0.97, vCPU 1.00 / 1.00; sd 473.3 / 469.1 |
+| T | PASS | x0.22 (bar 0.75) |
+| U | PASS | x0.16 (bar 0.75) |
+| C | PASS | -3.35 ms (bar -1.0) |
+| F | PASS | 29 / 29 |
+| J | PASS | x0.991 (bar 1.03) |
+| K1 | PASS | 39 cooling devices, every highest state equal |
+| K2 | PASS | M 11360 / 12001, x1.056 (bar 1.10) |
+
+- Both run logs: no UtilAcceptVsock, 12 of 12 mash presses, no thermal
+  pause. Both gameplay frames show the same tutorial prompt over the same
+  water ("Objectives also show up on your map as yellow circles").
+- What the pair does not show:
+  - **No fps gain and no energy gain.** Crimson paces itself to 30 and held
+    29 in both arms. Net power is the same to 0.2% and `j_per_frame` is
+    0.9% lower, inside the 3% band two rd0 runs differ by. 5.9 ms of CPU per
+    flip over two threads did not show in the battery at regimen max.
+  - **C is not all the walk's.** The walks account for 2.92 of the 3.35 ms.
+    B also made 6% fewer render-thread walks and hashed 12% less texture
+    per flip (pair461's P2: mk 23,488 against 20,576 KiB), so the arms'
+    scenes differ a little; K2 passes at 5.6%.
+  - A started at xo 54.5 C and B at 48.5 C.
+- The counter's cost is now a larger share of what it counts: 180 ns per
+  call is 3.8% of B's rdous (leg H of `dirtytlb-counter.json`, bar 1%).
+  That leg is not in `dirtytlb-rd.json`. In absolute terms it fell, 35.0 to
+  29.5 us per flip.
+
+### Black and Midtown Madness 3, priced offline from their rd0 runs
+
+lane.slowtier2's readings (Thor, regimen max) carry `[tlb68]`, so
+`walk_read.py RUN --window` prices them with no device time
+(`price_black.txt`, `price_mm3.txt`):
+
+| run | window | gfps | walks per flip, render / vCPU | us per walk, render / vCPU | walk ms per flip, render / vCPU | entries per walk | live |
+|---|---|---|---|---|---|---|---|
+| Black, titleroutes-3358750, `a593d8eb85` | 500 to 770 s | 7 | 235.7 / 41.3 | 72.7 / 86.8 | 17.15 / 3.59 | 9,456 | 4,176 |
+| MM3, titleroutes-1032854, `6aaa8197c5` | 330 to 575 s | 2 | 20.1 / 111.5 | 85.6 / 82.8 | 1.72 / 9.23 | 9,456 | 4,176 |
+
+- On both the live table is 4,096 entries, so the empty modes are 56% of
+  the walk, not Crimson's 75%. If time follows entries the fix saves 9.6 ms
+  per flip on Black's render thread and 2.0 on its vCPU (of a 134 ms
+  frame), and 5.2 ms on MM3's vCPU (of 320 ms, 1.6%).
+- A walk costs 7.7 to 9.2 ns per entry on these two, against 1.3 to 2.8 on
+  Crimson's fix pair. Not explained. These titles walk a third as often per second
+  (1,650 walks per second on Black's render thread, 4,900 on Crimson's), so
+  the tables may be cold in the cache each time (inference). That is the
+  reason to measure Black and not extrapolate Crimson's x0.22.
+- **Black gets a pair (`dirtytlb-rd-black.json`), MM3 does not.** Black has
+  the largest render-thread walk cost on record. MM3's price is 1.6% of its
+  frame and its route takes 580 s; its bound is a blocked vCPU, which this
+  fix does not address.
+
+### The Black pair (registered, then queued)
+
+- A `68cfc51e10` (`lane/dirtytlb`'s head: the counter, master merged, rd0),
+  B `a0d75c9a40` (this branch: the same tree with rd1). Both
+  carry master `503b901ee4`, so neither is the APK of the Crimson pair.
+- Route `black.returning`, 760 s, Thor, B first. The window is 500 to 760 s
+  after the first hakuX-perf line: the route's `mark gameplay` comes at
+  about +489 s.
+- Two things can void it, and each is read before any leg:
+  - **The route is timed presses recorded on `a593d8eb85`.** lane.slowtier2's
+    Otogi pilot never left the title screen on a newer build. Read
+    `route-frames/*gameplay.png` in each arm first.
+  - **A 760 s run at regimen max can reach the thermal pause (#507).** K1
+    and the run log's THERMAL line say whether it did. E, X, T and U are
+    read either way; C, F and J only on a pair with no pause in the window.
+
+## Attempt 4, resumed again (2026-09-29 ~07:45Z)
+
+Why the previous session did not finish: it ended on a `waiting:` for the
+two pixel verdicts and the Black pair, none of which had run. Both pixel
+verdicts were posted at 20:34Z on 09-28 and the Black pair ran at 07:08Z to
+07:39Z on 09-29; handback resumed the lane at 07:41Z.
+
+### The pixel arms: both PASS
+
+| prediction | A / B result | read |
+|---|---|---|
+| `dirtytlb-rd-pixels.json` | `arms-dirtytlb-base-1593889` / `arms-dirtytlb-fix-1593943` | 318 of 318 captures byte-identical, 11 suites, progress-log proof in both |
+| `dirtytlb-rd-signed.json` | `arms-dirtytlb-base-1594519` / `arms-dirtytlb-fix-1594555` | 19 of 19 byte-identical, three runs per arm, no capture outside A's band |
+
+### The Black pair, read: E, T, U pass; C, F, J void; X FAILS as registered
+
+`dirtytlb-rd-black.json`. A `1-1790625921-lane.dirtytlb-4014378`
+(`68cfc51e10`, rd0), B `1-1790625918-lane.dirtytlb-4014114` (`a0d75c9a40`,
+rd1), Thor, regimen max, 760 s, B first. Judges as registered, with
+`--window 500,760`; outputs are `rd_black_*.txt` here, ignored by git.
+
+Read before any leg:
+- **G holds.** Both gameplay frames show the first mission in first person
+  with the HUD, facing the brick wall. B's view is turned further right than
+  A's, so the arms differ already at the mark.
+- **Both arms reached the thermal pause inside the window.** In the window's
+  seconds (after the first hakuX-perf line) the last unpaused sample and the
+  first paused one are +594 / +627 s in A and +690 / +724 s in B. So A spent
+  about half of the window paused and B about a seventh. By leg V that voids
+  C, F and J. K2 fails too (M 3911 / 4670, x1.19), which voids the same
+  three. `jpf.py` returns no `j_per_frame` for either arm (void: thermal
+  pause).
+- No UtilAcceptVsock in either run log.
+
+| leg | | read over 500 to 760 s |
+|---|---|---|
+| G | PASS | both frames in the first mission |
+| V | PASS | `[tlb68]` / `[rdc]` lines A 129 / 79, B 130 / 97 |
+| W | PASS | A `fx=rd0`, B `fx=rd1` on every line |
+| E | PASS | entries per walk A 9,458, B 4,158 (x0.44); B live 4,176 |
+| X | **FAIL** | hits per walk vtx 0.83 / 0.93 and vCPU 1.00 / 1.00 are inside 15%; `sd` per flip 125.3 / 162.0 is +29% |
+| T | PASS | us per render-thread walk 49.77 / 16.71, x0.34 (bar 0.75) |
+| U | PASS | us per vCPU walk 66.86 / 20.47, x0.31 (bar 0.75) |
+| C | void | `tcpu` 14.66 / 13.85 ms, -0.80 (bar -1.0); it would fail |
+| F | void | gfps 22 / 24 |
+| J | void | no `j_per_frame` in either arm |
+| K1 | PASS | 39 cooling devices, every highest state equal (both paused) |
+| K2 | FAIL | M 3911 / 4670, x1.19 (bar 1.10) |
+
+**X is a registered FAIL and the registration says a failing X means the
+switch does not land.** It is reported as that. What the data says about
+which world it is in, none of it a registered leg:
+
+- The clause that fails is `sd` per flip. The two per-walk clauses pass.
+- `sd` follows the walks, inside one arm and across them. Over the window's
+  `[tlb68]` lines, `sd` over walks (rd + rdo) is **1.209 in A and 1.209 in
+  B**; per line its 10th to 90th percentile is 1.163 to 1.253 in A and 1.185
+  to 1.242 in B. Inside arm A alone, which has no switch, `sd` per line runs
+  from 2,367 to 9,863 as the walks run from 2,019 to 8,038 (r = 0.997). So
+  `sd` per flip measures how much the scene draws (`rd_black_sd_scaling.txt`).
+- The scenes differ: B makes 118.8 render-thread walks per flip against A's
+  85.7 (+39%) and hashes 3,044 KiB of texture per flip against 2,492.
+- The direction is the opposite of the one an inexact walk gives. An entry
+  left writable takes no notdirty store, so an inexact B would show fewer
+  `sd` per walk and fewer hits per walk. B shows the same and more.
+- On Crimson, where K2 passed at 5.6%, `sd` per flip agreed to 1%.
+
+So the leg's `sd` clause is written per flip and cannot tell an inexact walk
+from a heavier scene. That is a fault in the registration, found after the
+run; the registered verdict stays FAIL. A replicate that would test it as a
+registered leg: the same pair with X as `sd` over walks within 5% and hits
+per walk not down by more than 15%, 620 s, window 500 to 590. It costs 24
+min of the Thor and is not queued: the exactness evidence of record is the
+two pixel arms (337 captures byte-identical) and Crimson's X.
+
+**The pause-free part of the window, 500 to 590 s** (2,280 flips in each
+arm, no cooling device above 0 but the backlights; not registered):
+
+| per flip | A (all 22 modes) | B (live modes) | |
+|---|---|---|---|
+| entries scanned per walk | 9,456 | 4,160 | x0.44 |
+| us per walk, render thread | 32.75 | 13.96 | x0.43 |
+| us per walk, vCPU thread | 27.03 | 12.01 | x0.44 |
+| ns per entry, render thread | 3.46 | 3.36 | |
+| walks, render / vCPU | 85.8 / 13.5 | 133.6 / 13.7 | |
+| walk ms, render / vCPU | 2.81 / 0.37 | 1.87 / 0.16 | |
+| render-thread CPU ms (`tcpu`) | 10.70 | 13.56 | +2.86 |
+| `sd` | 120.2 | 177.4 | |
+| texture hashed, KiB | 2,487 | 3,309 | |
+| M | 3,961 | 5,196 | x1.31 |
+| gfps median | 26 | 24.5 | |
+
+- **Time follows entries on Black**: x0.44 entries, x0.43 and x0.44 time.
+  At A's 85.8 walks per flip B's walks would cost 1.20 ms against 2.81, so
+  the price is about 1.6 ms per flip on the render thread and 0.2 on the
+  vCPU, of a 40 ms frame.
+- **No fps or CPU gain is shown.** B's scene is heavier (56% more
+  render-thread walks, 33% more texture hashed), its render thread used 2.86
+  ms more per flip and its gfps was 1.5 lower. With K2 at 31% none of that
+  is the switch's to claim or to answer for.
+- The registered x0.34 and x0.31 overstate the gain: A's window holds more
+  paused time, and a walk costs more than twice as much under the pause.
+
+**The prediction's baseline was stale.** It expected 236 render-thread walks
+and 17 ms per flip at 7 fps, from `titleroutes-3358750` on `a593d8eb85`. On
+master `503b901ee4` arm A reads 86 walks and 2.8 ms per flip at 26 fps
+before the pause. So the expected 5 to 10 ms was not there to save.
+
+**The per-entry cost that was "not explained"** (7.7 to 9.2 ns on the two
+slowtier2 runs): under the pause this pair reads 8.4 ns per entry in A (630
+to 760 s, gfps 13) and 9.2 in B (725 to 760 s, gfps 10), against 3.4 before
+it. Those two runs carry no thermal record, so whether they were paused is
+not known; their gfps of 7 and 2 and their per-entry cost fit it
+(inference).
+
+### What the next lane should not repeat
+
+- Do not register a per-flip count as an exactness leg. Divide by the walks
+  (or by the entries re-armed) so the scene cancels, and give it one side:
+  the side an inexact walk moves it to.
+- Do not register C, F or J on `black.returning` at 760 s, regimen max, on
+  the Thor. Gameplay starts at +489 s and the pause came at +594 to +724 s
+  from a 63 C start, in both arms. 90 to 190 s of the window is usable, and
+  the timed route's scene differs by 19 to 31% between two runs.
+- Do not take a walk's cost per entry from a run without a thermal record.
+- Read the title's current baseline before writing "measured before" into a
+  prediction: Black went from 7 to 26 fps between `a593d8eb85` and
+  `503b901ee4`.
+
+## State (2026-09-29 ~08:30Z): #575 is ready
+
+- Both pixel verdicts PASS; the Crimson pair passed every registered leg;
+  the Black pair is read above, with X a registered FAIL that the PR body
+  states first.
+- master merged at `7e6c069702` (#549 folded there as `be05285c44`, so this
+  PR's diff is now the one line of `cputlb.c`, four predictions, four
+  scripts, `pr-body-rd.md` and this file).
+- Nothing of this lane's is queued or running.
+
+## Waiting (2026-09-28 ~20:10Z, attempt 4 resumed)
+
+All outside this session.
+
+| what | id | resolves |
+|---|---|---|
+| fix, 11 suites, A | `1-1790621866-arms-dirtytlb-base-1593889` (running at 19:56Z) | the `[job.arms]` verdict on `dirtytlb-rd-pixels.json`, PR #575 |
+| fix, 11 suites, B | `1-1790621867-arms-dirtytlb-fix-1593943` | the same |
+| fix, signed suite x3 | `1-1790621868-arms-dirtytlb-base-1594519`, `1-1790621869-arms-dirtytlb-fix-1594555` | the `[job.arms]` verdict on `dirtytlb-rd-signed.json`, PR #575 |
+| Black pair B (`a0d75c9a40`), Thor | `1-1790625918-lane.dirtytlb-4014114` | `dirtytlb-rd-black.json` |
+| Black pair A (`68cfc51e10`), Thor | `1-1790625921-lane.dirtytlb-4014378` | `dirtytlb-rd-black.json` |
+
+Then:
+- #575 goes ready when both pixel verdicts are PASS. The Black pair adds a
+  second title to its release note; it does not gate the PR, because the
+  Crimson pair passed as registered and the switch's exactness is the
+  pixel arms' and leg X's to show.
+- Read the Black pair with `--window 500,760` on all three judges, frames
+  and THERMAL line first.
+- If a pixel arm fails on `txt_A8R8G8B8_ADD` alone, compare the six
+  captures by pixel before reading it as the fix's: it varied inside arm A
+  of the counter's signed arm.
+
 ## Waiting (2026-09-28 ~18:50Z, attempt 4)
 
 All outside this session. Both handhelds are on holds (the Nova on battery,
