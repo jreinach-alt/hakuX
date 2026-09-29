@@ -332,3 +332,10 @@ When `2136264`, `2136324`, `2136418`, `2163487` land:
 A rerun that is VOID again is recorded VOID, not queued a third time. Then
 score DOA's S1/P1/P2/C2/D1, Crimson's K2-K4 and Kabuki's KW1, and post the
 final table on #474.
+
+## 12. Waiting (2026-09-29 ~15:50Z, attempt 4)
+
+On the four requests above, outside this session, about 3-4 h behind the
+queue. The interim table is on #474 (comment 5893498856), which also puts
+DOA's ZPASS question to the owner. My recommendation there is to keep sysmem and
+record the exception. The DOA row is unchanged until the owner rules.
