@@ -21,6 +21,112 @@
 #include "qemu/fast-hash.h"
 #include "qemu/mstring.h"
 
+/*
+ * #569 P1: every graphics pipeline create goes through here. It times the
+ * call and, on a Vulkan 1.3 device, chains VkPipelineCreationFeedback so the
+ * driver says how long the whole pipeline and each stage took, and whether
+ * it found them in the pipeline cache. For draw pipelines it also asks
+ * whether a stage's VkShaderModule was used by an earlier pipeline: a stage
+ * that was, and still misses, is one the driver compiled again for a new
+ * partner or state (what VK_EXT_graphics_pipeline_library would save).
+ *
+ * Module handles are remembered by value and never forgotten, so a module
+ * freed and a new one given the same handle reads as reused. Shader modules
+ * are evicted rarely enough that this is noise, not a bias to design around.
+ */
+VkResult pgraph_vk_create_graphics_pipeline_fb(
+    PGRAPHVkState *r, const VkGraphicsPipelineCreateInfo *info, bool draw,
+    VkPipeline *pipeline);
+
+static GMutex pcfb_lock;
+static GHashTable *pcfb_modules;
+
+static int pcfb_stage_index(VkShaderStageFlagBits stage)
+{
+    switch (stage) {
+    case VK_SHADER_STAGE_VERTEX_BIT:
+        return 0;
+    case VK_SHADER_STAGE_GEOMETRY_BIT:
+        return 1;
+    case VK_SHADER_STAGE_FRAGMENT_BIT:
+        return 2;
+    default:
+        return -1;
+    }
+}
+
+VkResult pgraph_vk_create_graphics_pipeline_fb(
+    PGRAPHVkState *r, const VkGraphicsPipelineCreateInfo *info, bool draw,
+    VkPipeline *pipeline)
+{
+    VkPipelineCreationFeedback pipeline_fb = { 0 };
+    VkPipelineCreationFeedback stage_fb[3] = { { 0 } };
+    VkPipelineCreationFeedbackCreateInfo fb_info = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_CREATION_FEEDBACK_CREATE_INFO,
+        .pNext = info->pNext,
+        .pPipelineCreationFeedback = &pipeline_fb,
+        .pipelineStageCreationFeedbackCount = info->stageCount,
+        .pPipelineStageCreationFeedbacks = stage_fb,
+    };
+    VkGraphicsPipelineCreateInfo chained = *info;
+    bool want_fb = r->device_props.apiVersion >= VK_API_VERSION_1_3 &&
+                   info->stageCount <= ARRAY_SIZE(stage_fb);
+    if (want_fb) {
+        chained.pNext = &fb_info;
+    }
+
+    int64_t t0 = nv2a_clock_ns();
+    VkResult result = vkCreateGraphicsPipelines(r->device, r->vk_pipeline_cache,
+                                                1, &chained, NULL, pipeline);
+    int64_t t1 = nv2a_clock_ns();
+
+    g_mutex_lock(&pcfb_lock);
+    ShaderPipelineStats *s = &g_nv2a_stats.shader_stats;
+    s->pipeline_create_us += (t1 - t0) / 1000;
+    s->pipeline_creates++;
+    if (want_fb &&
+        (pipeline_fb.flags & VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT)) {
+        s->pipeline_fb_valid++;
+        s->pipeline_fb_us += pipeline_fb.duration / 1000;
+        if (pipeline_fb.flags &
+            VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT) {
+            s->pipeline_fb_hit++;
+        }
+        if (!pcfb_modules) {
+            pcfb_modules = g_hash_table_new_full(g_int64_hash, g_int64_equal,
+                                                 g_free, NULL);
+        }
+        for (uint32_t i = 0; i < info->stageCount; i++) {
+            int idx = pcfb_stage_index(info->pStages[i].stage);
+            if (idx < 0 ||
+                !(stage_fb[i].flags & VK_PIPELINE_CREATION_FEEDBACK_VALID_BIT)) {
+                continue;
+            }
+            s->stage_fb_us[idx] += stage_fb[i].duration / 1000;
+            if (!draw) {
+                continue;
+            }
+            bool miss = !(stage_fb[i].flags &
+                          VK_PIPELINE_CREATION_FEEDBACK_APPLICATION_PIPELINE_CACHE_HIT_BIT);
+            gint64 handle = (gint64)(uint64_t)info->pStages[i].module;
+            if (g_hash_table_contains(pcfb_modules, &handle)) {
+                s->stage_reused++;
+                s->stage_reused_miss += miss;
+                s->stage_reused_us += stage_fb[i].duration / 1000;
+            } else {
+                s->stage_new++;
+                s->stage_new_miss += miss;
+                s->stage_new_us += stage_fb[i].duration / 1000;
+                g_hash_table_add(pcfb_modules, g_memdup2(&handle, sizeof(handle)));
+            }
+        }
+    }
+    s->instr_ns += nv2a_clock_ns() - t1;
+    g_mutex_unlock(&pcfb_lock);
+
+    return result;
+}
+
 #if OPT_ASYNC_COMPILE
 
 extern bool xemu_get_async_compile(void);
@@ -128,9 +234,8 @@ static void process_pipeline_job(PGRAPHVkState *r, CompileJob *job)
     };
 
     VkPipeline pipeline;
-    VkResult result = vkCreateGraphicsPipelines(
-        p->device, p->vk_pipeline_cache, 1, &pipeline_create_info, NULL,
-        &pipeline);
+    VkResult result = pgraph_vk_create_graphics_pipeline_fb(
+        r, &pipeline_create_info, true, &pipeline);
 
     if (result == VK_SUCCESS) {
         target->pipeline = pipeline;

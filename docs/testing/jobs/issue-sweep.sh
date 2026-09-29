@@ -132,8 +132,9 @@ if ! remote_authoritative; then
 fi
 
 # WHAT THIS HOST CAN ACTUALLY SEE OF A REMOTE LANE. Not a unit -- there never
-# is one -- so: an open PR on ITS branch (not on `lane/<name>`, which is not
-# its branch and never will be), and the commit time of that branch's tip. A
+# is one -- so: an open PR on ITS branch or a suffixed one (not on
+# `lane/<name>`, which is not its branch and never will be), and the commit
+# time of the newest of those branches' tips. A
 # lane that has pushed is unambiguously working, and a push is the one thing a
 # remote session does that this host can read for free.
 #
@@ -150,11 +151,23 @@ fi
 # and the safe direction here is silence: the cost of a claim held a day too
 # long is a file nobody else may edit, and the cost of the other direction is
 # two agents on one.
+#
+# AND ITS SUFFIXED BRANCHES ARE ITS TOO. A remote lane opens each PR on
+# `<its branch>-<suffix>` (remote-lane.sh's header), so the row's own branch
+# stops moving while the lane works; its tip alone would call a working lane
+# dead three days after its last unsuffixed push. The tip is the newest among
+# the branch and every suffixed branch the rule gives THIS lane -- not every
+# `<branch>-*`: a longer row's branch is that row's.
 remote_rows=""
 while IFS=$'\t' read -r rbranch rlane; do
     [ -n "${rbranch:-}" ] && [ -n "${rlane:-}" ] || continue
     git -C "$REPO" fetch -q origin "+refs/heads/$rbranch:refs/remotes/origin/$rbranch" 2>/dev/null || true
-    rtip=$(git -C "$REPO" log -1 --format=%ct "refs/remotes/origin/$rbranch" 2>/dev/null || echo "")
+    git -C "$REPO" fetch -q origin "+refs/heads/$rbranch-*:refs/remotes/origin/$rbranch-*" 2>/dev/null || true
+    rtip=$( { printf '%s\n' "$rbranch"
+              git -C "$REPO" for-each-ref --format='%(refname:lstrip=3)' "refs/remotes/origin/$rbranch-*" 2>/dev/null; } \
+            | remote_lanes_of | awk -F'\t' -v l="$rlane" '$2 == l { print $1 }' \
+            | while IFS= read -r b; do git -C "$REPO" log -1 --format=%ct "refs/remotes/origin/$b" 2>/dev/null; done \
+            | sort -n | tail -1 )
     case "${rtip:-}" in ''|*[!0-9]*) rtip="" ;; esac
     remote_rows="${remote_rows}${rlane}	${rbranch}	${rtip}
 "
@@ -170,15 +183,18 @@ fi
 # exist. Asked once, here, rather than per finding.
 pr_heads=$(timeout 60 gh pr list --repo "$GH_REPO" --state open --limit 100 \
              --json headRefName --jq '.[].headRefName' 2>/dev/null)
+# "<head>\t<lane>" for each open head a remote lane owns: its own branch or a
+# suffixed one, by remote-lane.sh's rule, on the gate's one board read.
+remote_open=$(printf '%s\n' "$pr_heads" | remote_lanes_of)
 units=$(systemctl --user list-units 'hakux-lane-*' --state=active,activating --no-legend 2>/dev/null \
         | awk '{print $1}' | sed 's/\.service$//')
 
-report=$(python3 - "$TESTING" "$issues" "$pr_heads" "$units" "$AVAIL_SECS" "$remote_rows" "$REMOTE_QUIET_SECS" <<'PY'
+report=$(python3 - "$TESTING" "$issues" "$pr_heads" "$units" "$AVAIL_SECS" "$remote_rows" "$REMOTE_QUIET_SECS" "$remote_open" <<'PY'
 import datetime
 import os
 import sys
 
-testing, issues_raw, heads_raw, units_raw, avail_raw, remote_raw, rquiet_raw = sys.argv[1:8]
+testing, issues_raw, heads_raw, units_raw, avail_raw, remote_raw, rquiet_raw, ropen_raw = sys.argv[1:9]
 sys.path.insert(0, testing)
 import json
 import board_files
@@ -189,14 +205,19 @@ AVAIL = int(avail_raw) if avail_raw.isdigit() else 259200
 RQUIET = int(rquiet_raw) if rquiet_raw.isdigit() else 259200
 
 # lane -> (branch, tip epoch or None), built in bash from remote-lane.sh's map
-# and this repository's refs. Empty is the ordinary case and means every lane
-# is local; it is NOT the "could not read" case, which never reaches here --
-# the tick refuses before this runs.
+# and this repository's refs; the tip is the newest of the branch and its
+# suffixed ones. Empty is the ordinary case and means every lane is local; it
+# is NOT the "could not read" case, which never reaches here -- the tick
+# refuses before this runs.
 REMOTE = {}
 for line in remote_raw.splitlines():
     parts = line.split("\t")
     if len(parts) == 3 and parts[0] and parts[1]:
         REMOTE[parts[0]] = (parts[1], int(parts[2]) if parts[2].isdigit() else None)
+# The remote lanes with an open PR on their own branch or a suffixed one,
+# decided in bash by remote-lane.sh's rule so there is one copy of it.
+ROPEN = set(line.split("\t", 1)[1].strip() for line in ropen_raw.splitlines()
+            if "\t" in line and line.split("\t", 1)[1].strip())
 
 try:
     terr = board_files.load("territory.toml")
@@ -245,7 +266,8 @@ def lane_absence(name):
     a cloud session: no local unit ever, and no open PR between PRs. Asking
     systemd about it is asking the wrong host, and asking for `lane/<name>` is
     asking for a branch that is not its branch. What this host can see of it is
-    an open PR on the branch its territory row names, and that branch's tip.
+    an open PR on the branch its territory row names or on a suffixed one
+    (ROPEN), and the newest of those branches' tips.
 
     It returns a PHRASE rather than a bool because the phrase goes on the
     finding: a reader handed "no unit and no open PR" about a cloud lane is
@@ -260,7 +282,7 @@ def lane_absence(name):
             return None
         return "has no unit and no open PR"
     branch, tip = r
-    if branch in heads:
+    if name in ROPEN:
         return None
     if tip is None:
         # The branch is not on this origin, or could not be fetched. "Cannot
@@ -270,8 +292,9 @@ def lane_absence(name):
     if quiet_for <= RQUIET:
         return None
     return ("is a REMOTE lane on `%s` (it has no local unit by design, so that "
-            "is not evidence), and that branch's tip has not moved in %s and it "
-            "has no open PR" % (branch, days(quiet_for)))
+            "is not evidence), and neither that branch nor any suffixed `%s-*` "
+            "branch of its has moved in %s or has an open PR"
+            % (branch, branch, days(quiet_for)))
 
 
 def lane_live(name):
@@ -395,7 +418,8 @@ w("Board source: %s" % src)
 # tick that has stopped seeing them at all (a marker dropped from the board,
 # say) reads exactly like a tick where there are none.
 if REMOTE:
-    w("Remote lanes, judged by branch tip and not by a unit: %s"
+    w("Remote lanes, judged by branch tip and not by a unit (a suffixed "
+      "branch's tip or open PR counts as the lane's): %s"
       % ", ".join("lane.%s on `%s`%s" % (l, b, "" if t else " (tip unreadable here)")
                   for l, (b, t) in sorted(REMOTE.items())))
 w("")

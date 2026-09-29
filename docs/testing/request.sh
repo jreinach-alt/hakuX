@@ -4,7 +4,7 @@
 #
 #   request.sh --who bump-agent --purpose "bump map baseline" \
 #              --suites "Bump map,Bump env lum" [--ref HEAD] [--runs 1] [--wait] \
-#              [--skip-tests "Suite::Test,..."] [--device nova|thor|desktop] \
+#              [--skip-tests "Suite::Test,..."] [--device nova|thor|desktop [--hard-pin]] \
 #              (--expect predictions/x.json | --no-expect "why not") \
 #              [--issue 474[,525]]    # else the first #N in --purpose
 #              [--priority blocker|arm|study|sweep]   # default study
@@ -111,6 +111,7 @@ ENV_VARS=()
 FRAMES_EVERY=0
 ROUTE=""; ROUTE_TEXT=""
 ISSUE=""
+PIN=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --who) WHO="$2"; shift 2;;
@@ -153,6 +154,11 @@ while [ $# -gt 0 ]; do
         --arm) ARM="$2"; shift 2;;
         --runs) RUNS="$2"; shift 2;;
         --device) DEVICE="$2"; shift 2;;
+        # --hard-pin makes --device absolute for an `arms-*` requester, whose
+        # --device is otherwise a load pin affinity.py lets fall through when
+        # the device is not serving. The arms job's same-device re-run of a
+        # confounded pair uses it: falling through there re-creates the split.
+        --hard-pin) PIN=hard; shift;;
         --title) TITLE="$2"; shift 2;;
         --seconds) SECONDS_HOLD="$2"; shift 2;;
         --pull) PULL_GLOB="$2"; shift 2;;
@@ -212,6 +218,7 @@ fi
 # mentions the variable. It also could not see `desktop`, which is an
 # execution target with NO SERIAL and so has no row in the serial-keyed table
 # for any such regex to find. `devices.sh labels` enumerates both kinds.
+[ -z "$PIN" ] || [ -n "$DEVICE" ] || { echo "--hard-pin needs --device" >&2; exit 2; }
 if [ -n "$DEVICE" ]; then
     KNOWN=$(bash "$(dirname "$0")/devices.sh" labels)
     printf '%s\n' "$KNOWN" | grep -qx "$DEVICE" || {
@@ -1122,7 +1129,7 @@ fi
 # `env` goes LAST and as the remaining argv, because it is the only repeatable
 # option here and packing it into one comma-joined string -- the shape every
 # other list option uses -- would make a value containing a comma unqueueable.
-ROUTE="$ROUTE" ROUTE_TEXT="$ROUTE_TEXT" PRIORITY="$PRIORITY" \
+ROUTE="$ROUTE" ROUTE_TEXT="$ROUTE_TEXT" PRIORITY="$PRIORITY" PIN="$PIN" \
 python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" "$AUDIO_CAPTURE" "$BASE_ISO" "$PERFLOG" "$ONLY_TESTS" "$FRAMES_EVERY" "$PROGRAM" ${ENV_VARS[@]+"${ENV_VARS[@]}"} <<'PY'
 import json, sys
 (p, i, who, purpose, suites, ref, arm, runs, tests, title, seconds,
@@ -1137,6 +1144,8 @@ json.dump({"id": i, "requester": who, "purpose": purpose,
            "ref": ref, "arm": arm, "runs": int(runs),
            "title": title, "seconds": int(seconds),
            "device": device,
+           # "hard" or absent: see --hard-pin and affinity.py _is_load_pin.
+           **({"pin": "hard"} if __import__("os").environ.get("PIN") == "hard" else {}),
            "pull_glob": pull_glob,
            "audio_capture": arm_audio,
            "base_iso": base_iso,

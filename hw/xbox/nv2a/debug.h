@@ -185,6 +185,34 @@ typedef struct ShaderPipelineStats {
     unsigned int spv_cache_misses;
     unsigned int pipeline_cache_disk_loaded;
     unsigned int pipeline_cache_disk_saved;
+    /*
+     * #569 P1: wall time inside the create calls and Turnip's own account of
+     * them (VkPipelineCreationFeedback), always on, written on miss paths
+     * only. Every graphics pipeline create counts, sync, worker and clear.
+     */
+    uint64_t pipeline_create_us;
+    unsigned int pipeline_creates;
+    unsigned int pipeline_fb_valid;     /* creates whose feedback was valid */
+    unsigned int pipeline_fb_hit;       /* ...whole pipeline a cache hit */
+    uint64_t pipeline_fb_us;            /* feedback's whole-pipeline duration */
+    uint64_t stage_fb_us[3];            /* vertex, geometry, fragment */
+    /* Stages of draw (not clear) pipelines with valid stage feedback. A stage
+     * is "reused" when an earlier pipeline already used its VkShaderModule;
+     * "miss" when feedback lacks APPLICATION_PIPELINE_CACHE_HIT. */
+    unsigned int stage_reused;
+    unsigned int stage_reused_miss;
+    unsigned int stage_new;
+    unsigned int stage_new_miss;
+    uint64_t stage_reused_us;           /* their feedback durations */
+    uint64_t stage_new_us;
+    uint64_t glslang_us;                /* GLSL -> SPIR-V, vk/glsl.c */
+    uint64_t shader_module_us;          /* the whole GLSL -> VkShaderModule */
+    uint64_t plc_save_us;               /* save_pipeline_cache_to_disk */
+    /* Sync draw pipeline misses by what differs in ShaderState from the
+     * pipeline bound before, one count per class that differs; the classes
+     * are nv2a_profile_shader_keydiff()'s (pgraph/profile.c). */
+    unsigned int keydiff[9];
+    uint64_t instr_ns;                  /* this instrument's own bookkeeping */
 } ShaderPipelineStats;
 
 /* Before the structs below, whose perf-only fields test it */
