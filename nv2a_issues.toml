@@ -4564,3 +4564,19 @@ impact_px = 0
 impact_onestep_px = 0
 game_visible = false
 impact_basis = "harness: a false incident and a red board gate at every top-up"
+
+[issue."600"]
+title = "selftest 89: soak_title adb-probe checks race the whole-second hold deadline"
+component = "harness"
+disposition = "harness"
+suites = []
+no_suites = "A HARNESS defect in a selftest fixture; no pgraph suite covers it."
+status = "open"
+dispatch_state = "blocked"
+blocker_tested = "confirmed 2026-09-29T02:05Z: [lane.soakflake] row added by hostops; lane started the same tick."
+blocked_on = "lane.soakflake (in flight)."
+status_note = "Master selftest RED on 20f072b240 (adb_failures=0); the fragment passes alone. The 2 s fixture hold rounds to whole seconds and can lose the second alive() call."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = false
+impact_basis = "harness: an intermittent red master selftest gate"
