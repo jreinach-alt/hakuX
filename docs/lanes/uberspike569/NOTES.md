@@ -580,6 +580,13 @@ built behind them and swapped in. It stacks on PR #594 (lane/gpl569), whose file
 is its own PR on `lane/uberspike569-gpl`, and its notes are `docs/lanes/uberspike569/BUILD.md` on
 that branch. This PR stays the spike.
 
+### 9.1 Attempts 3 and 4
+
+Attempt 3 built the ladder and ended as a wait on two smoke soaks (`[lane.uberspike569] waiting:`
+on PR #618). Attempt 4 read them (clean, BUILD.md section 6), merged master and registered the build's
+legs: `uberspike569-gpl-pixels.json` (E, the arms job) and `uberspike569-gpl-doa-soak.json` (N1-N3, G,
+queued by hand). The results go in BUILD.md.
+
 ## Do not repeat
 
 - Do not give an uber shader a constant-bound loop over lights or texgen slots. NIR unrolls it into

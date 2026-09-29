@@ -167,3 +167,43 @@ constant the compiler can see, hits this. `precise` on both paths stops NIR from
 - **Not built, by decision:** the persisted list of uber combinations and a boot prebuild. A
   cold soak clears caches, so a persisted list would make "cold" warm. A canonical set needs
   the GS states, which only a run shows. The smoke's `cold=` count prices it.
+
+## 6. Attempt 4 (2026-09-29): the smoke read, the legs registered
+
+**Why attempt 3 stopped.** It finished as a wait: it posted `[lane.uberspike569] waiting:` on the
+two smoke soaks and stopped, and handback resumed it once both result dirs existed.
+
+**The smoke** (`host/smoke_read.py`, Nova, DOA 150 s, ref 3f61a459c3, apk 177eb15f0904):
+
+| run | mode | crash / VK_ERROR | family module | last counters |
+|---|---|---|---|---|
+| `1790706856-uberspike569-1023537` | 4 (held), cache cleared | none / 0 | 44646 B GLSL, 19.4 ms | gpl links=12, uber libs=2, lib_ms=2122.9 (on the draw thread, as mode 4 does by design) |
+| `1790706856-uberspike569-1023583` | 3 (ladder), cache kept | none / 0 | 44646 B GLSL, 4.8 ms | links=11, cold=2, libs=2, next=11/0/4, next_ms=1219, uncovered=0 |
+
+Both ran to the end with no crash and no Vulkan error. The ladder linked 11 misses, built all 11
+specialised pipelines behind them with no failure, and swapped 4 in. A swap happens at the next bind,
+so the other 7 are read as not bound again before the run ended (not checked per pipeline). `uncovered=0`: the uber stage covered every vertex state DOA reached.
+The smoke was not on the survey route and did not reach `mark play`, so it prices nothing.
+
+**Merged origin/master** at 23543417aa (the index regenerated with the fold pins, 104 suites,
+`check` clean).
+
+**The refs:**
+
+| ref | what |
+|---|---|
+| `23543417aa` | A: the build, `HAKUX_GPL_DEFAULT 0` |
+| `752b4f0f7b` | B: one line, `HAKUX_GPL_DEFAULT 3` (the ladder) |
+| `6bec23c3f4` | H: one line on B, `HAKUX_GPL_DEFAULT 4` (held) |
+| `b93d585979` | the revert: default 0 again (the branch head's code) |
+
+The variants have their three mechanisms: their own sha and apk; the `#define` the commits change;
+and a runtime reader, the `[gpl569] ... mode=` and `[uber569] mode=` lines.
+
+**Registered:**
+- `uberspike569-gpl-pixels.json`, leg E: A 23543417aa against H 6bec23c3f4, runs_per_arm 2, 36
+  suites must not move (the vertex-stage suites, plus 3D_primitive, Clear, Depth_buffer,
+  Texture_format, Window_clip, Shade_model, Front_face, Viewport). The arms job queues it.
+- `uberspike569-gpl-doa-soak.json`, legs N1-N3 and G: A, B and H, cold DOA survey soaks of 440 s on
+  the Nova, judged by `uberjudge.py`. Queued by hand (the arms job leaves soaks to their lane).
+  The three are separate perflog apks, so each starts cleared.
