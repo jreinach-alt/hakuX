@@ -595,6 +595,11 @@ issues = ["433"]
 files = ["docs/lanes/verdict433/**"]
 note = "STARTED (lane.local 2026-09-29T13:45Z), briefs/verdict433.md: the owner's pivot to measurement (09-29 06:3x PDT: 'should we pivot today into measurement to see how many titles have moved into playable?'). Queues the confirmation and benchmark soaks that candidate titles lack: tier A at ~60 fps with no confirming verdict, tier B near 30, tier C re-measured after this week's fixes (#530, #580, #575, #583). Docs only; verdicts land in result dirs."
 
+[lane.statuswindow]
+issues = ["433"]
+files = ["docs/testing/titles/table.py", "docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/99-status-fullwindow.sh", "docs/lanes/statuswindow/**"]
+note = "STARTED (lane.local 2026-09-29T15:05Z) on Sonnet, briefs/statuswindow.md: the dashboard title table shows fps and share from a 90-240 s slice, which overstates titles (lane.verdict433: Kabuki 22-47% over full gameplay against 100% in the slice). Show full-window verdict numbers; label slice-only readings."
+
 [retired.tokentier]
 issues = []
 files = []
