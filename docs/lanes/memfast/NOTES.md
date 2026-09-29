@@ -657,6 +657,32 @@ file); a rate here sizes a design, it does not compare builds.
   GTA's Nova copy has not landed (`hardware/titlepush/listing-nova.txt`), so
   GTA is not queued.
 
+- 2026-09-29 (attempt 9; the resume header numbers it 2): attempt 8 did
+  finish, ending on a `waiting:` at 19:14Z. It was resumed at 16:25 PDT by
+  the hostops waiter's "memfast runs finished", and **that premise was
+  false**. `$DISPATCH_DIR/results/*` and `queue/*.req` had been emptied
+  between 16:23 and 16:26 PDT, and again by 16:29. About 1,250 result dirs
+  and about 50 queued requests were lost, and 8 lanes were resumed on the
+  empty queue. What survived (a dotfile in results/, the `withdrawn/` subdir
+  in queue/) matches `rm -rf "$DISPATCH_DIR"/results/* "$DISPATCH_DIR"/queue/*.req`
+  (`selftest.d/51-dispatch-hardening.sh:286`), run with the real
+  `DISPATCH_DIR`. The cause is not proven. It is reported in the hostops
+  inbox and on PR #622, whose `.st-run.sh` sources fragments with no
+  `DISPATCH_DIR` override and ran at 16:25:10 and 16:28:33.
+  - **Lost for this lane:** Nightfire A2 `-1478752` and AUF A1 `-1478936`
+    (both finished 13:43-13:52 PDT, never copied here); the queued Crimson
+    pair `-1486524`/`-1486748` and Nightfire B2 `-1492075`. Nightfire pair 1
+    and the GTA pilot survive as copies in `.scratch/`.
+  - **The stable pixel arm errored (21:41Z):** a_ref `-1564807` produced 0
+    captures on the Thor. Its `run1.log` went in the wipe, so the cause is
+    unread. The pair's `judged/` and `pairs/` markers were removed as the
+    comment directs, so the arms job queues the pair again.
+  - **Re-queued on the Nova** (`1-1790724657/8-lane.memfast-`): Crimson B
+    `1385791`, A `1385837`; Nightfire B2 `1385890`, A2 `1385939`; AUF A1
+    `1385984`. GTA: still no Nova copy (no `listing-nova.txt` on master).
+  - **Lesson:** copy a finished result into `.scratch/` as soon as it lands.
+    The dispatch dir is not a store.
+
 ## The superseding pixel prediction (2026-09-29)
 
 `docs/testing/predictions/memfast-drop-pixels-stable.json`, on the same refs
@@ -934,10 +960,12 @@ gameplay, power was measured on battery, and neither had a thermal pause.
 0. DONE: leg S is read and passes (section "Leg S"). Do not re-run the
    readers on either capture. Read `preamble` and `xboxchk` with
    `legs_read.py`, never with `jitmix.py`, on any build after this PR.
-1. **Outstanding soaks, all on the Nova** (as of 2026-09-29 19:30Z):
-   - Nightfire A2 `-1478752` and the B2 re-queue `-1492075`;
-   - AUF A1 `-1478936`;
-   - Crimson B1 `-1486524` and A1 `-1486748`;
+1. **Outstanding soaks, all on the Nova** (re-queued 2026-09-29 23:31Z after
+   the dispatch wipe; see the attempt-9 log entry):
+   - Nightfire B2 `1-1790724658-lane.memfast-1385890`, A2 `-1385939`;
+   - AUF A1 `-1385984`;
+   - Crimson B `1-1790724657-lane.memfast-1385791`, A `-1385837`;
+   - the stable pixel arm, re-queued by the arms job (markers removed);
    - GTA: not queued. Queue two Nova pairs under
      `memfast-drop-soak-nova.json` once `listing-nova.txt` names GTA. The
      Thor pilot pair is not pooled with them.
