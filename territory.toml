@@ -595,10 +595,11 @@ issues = ["433"]
 files = ["docs/lanes/verdict433/**"]
 note = "STARTED (lane.local 2026-09-29T13:45Z), briefs/verdict433.md: the owner's pivot to measurement (09-29 06:3x PDT: 'should we pivot today into measurement to see how many titles have moved into playable?'). Queues the confirmation and benchmark soaks that candidate titles lack: tier A at ~60 fps with no confirming verdict, tier B near 30, tier C re-measured after this week's fixes (#530, #580, #575, #583). Docs only; verdicts land in result dirs."
 
-[lane.statuswindow]
-issues = ["433"]
-files = ["docs/testing/titles/table.py", "docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/99-status-fullwindow.sh", "docs/lanes/statuswindow/**"]
-note = "STARTED (lane.local 2026-09-29T15:05Z) on Sonnet, briefs/statuswindow.md: the dashboard title table shows fps and share from a 90-240 s slice, which overstates titles (lane.verdict433: Kabuki 22-47% over full gameplay against 100% in the slice). Show full-window verdict numbers; label slice-only readings."
+[retired.statuswindow]
+issues = []
+files = []
+retired_utc = "2026-09-29T16:22:45Z"
+note = "RETIRED (hostops 2026-09-29T16:22:45Z): PR #615 merged (fold: folded #615, 16:21:08Z), unit gone, no open PR. Brief's build (full-window fps/share in the title table, slice-only readings labelled, status selftest case for a 100%-slice/40%-window title) landed and CI (build + 4 selftest shards) was green. Files to [free]: docs/testing/titles/table.py, docs/testing/jobs/status_html.py, docs/testing/jobs/selftest.d/99-status-fullwindow.sh, docs/lanes/statuswindow/**, docs/testing/title_verdict.py, docs/lanes/statuswindow/NOTES.md."
 
 [lane.thorheat]
 issues = ["507"]
@@ -687,6 +688,7 @@ files = ["accel/tcg/tb-maint.c", "accel/tcg/tb-internal.h", "docs/lanes/tcg424fl
 note = "STARTED (hostops 2026-09-29T05:35Z), briefs/tcg424flip.md: tbflip424-blinx2.json's three valid Thor pairs pass M0/M1/M4' (A gfps 19 / churn 2.1, B 19 / 0.0; #424 issuecomment-5884276103), so the decision rule flips hakux_tcg424_range_on() to default ON (opt-out HAKUX_TCG424_RANGE=0). Before PR-ready: the Arctic Thunder Thor A/B lane.local routed to the retired lane.sustain507 (never queued), and the pgraph must-not-move arm on the flipped binary."
 
 [free]
+# RELEASED (hostops 2026-09-29T16:22:45Z) by retiring lane.statuswindow (PR #615 folded): docs/testing/titles/table.py, docs/testing/jobs/status_html.py, docs/testing/jobs/selftest.d/99-status-fullwindow.sh, docs/lanes/statuswindow/**, docs/testing/title_verdict.py.
 # RELEASED (job.board 2026-09-29T14:47:31Z) by retiring lane.tokentier (PR #612 folded 5053f92847): docs/testing/lane.sh, docs/testing/jobs/cloud.sh, docs/testing/jobs/roles/board.md, docs/testing/jobs/selftest.d/99-lane-model-file.sh, docs/lanes/tokentier/**.
 # RELEASED (hostops 2026-09-29T12:12Z) by retiring lane.idlehaltdefault (PR #566 folded 94cf8eb627): docs/lanes/idlehaltdefault/**, docs/testing/predictions/idlehaltdefault-*.json.
 # RELEASED (hostops 2026-09-29T11:45Z) by retiring lane.pacing (PRs #529, #572 folded): ui/xemu.c, vk/display.c, SDLSurface.java, docs/lanes/pacing/**, predictions pacing-*.json.
