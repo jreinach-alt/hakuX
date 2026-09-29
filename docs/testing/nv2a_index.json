@@ -2806,13 +2806,19 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/renderer.h:1446",
+   "loc": "hw/xbox/nv2a/pgraph/vk/renderer.h:1455",
    "symbols": [],
    "text": "// FIXME: Merge these into a structure"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/vk/shaders.c:1085",
+   "loc": "hw/xbox/nv2a/pgraph/vk/shaders.c:1109",
+   "symbols": [],
+   "text": "abort();"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/vk/shaders.c:1117",
    "symbols": [],
    "text": "assert(!\"Invalid shader module kind\");"
   },
@@ -4646,10 +4652,10 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "be89ee58463df8faf67a7fb76a1b73c031590a09",
-  "gaps": 496,
+  "emulator_commit": "568aa06849a2e1c78682de7a072de9cb1b0f27a7",
+  "gaps": 497,
   "resolved_tables": 1,
-  "sites": 2987,
+  "sites": 2994,
   "suites": 104,
   "support_dirs": [
    "/home/justin/hakux-work/fold-pins/pbkitplusplus"
@@ -5043,7 +5049,7 @@
     "text": "DEF_METHOD(NV097, FLIP_INCREMENT_WRITE)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/renderer.h:825",
+    "loc": "hw/xbox/nv2a/pgraph/vk/renderer.h:834",
     "role": "COMMENT",
     "text": "*                      on NV097_FLIP_INCREMENT_WRITE, so a texture rewritten"
    }
@@ -13374,6 +13380,11 @@
   ],
   "NV_PGRAPH_COMBINEALPHAI0": [
    {
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh-uber.c:117",
+    "role": "READ",
+    "text": "out[i * 4 + 2] = pgraph_reg_r(pg, NV_PGRAPH_COMBINEALPHAI0 + i * 4);"
+   },
+   {
     "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:421",
     "role": "READ",
     "text": "pgraph_reg_r(pg, NV_PGRAPH_COMBINEALPHAI0 + i * 4);"
@@ -13440,6 +13451,11 @@
    }
   ],
   "NV_PGRAPH_COMBINEALPHAO0": [
+   {
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh-uber.c:118",
+    "role": "READ",
+    "text": "out[i * 4 + 3] = pgraph_reg_r(pg, NV_PGRAPH_COMBINEALPHAO0 + i * 4);"
+   },
    {
     "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:423",
     "role": "READ",
@@ -13508,6 +13524,11 @@
   ],
   "NV_PGRAPH_COMBINECOLORI0": [
    {
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh-uber.c:115",
+    "role": "READ",
+    "text": "out[i * 4 + 0] = pgraph_reg_r(pg, NV_PGRAPH_COMBINECOLORI0 + i * 4);"
+   },
+   {
     "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:417",
     "role": "READ",
     "text": "pgraph_reg_r(pg, NV_PGRAPH_COMBINECOLORI0 + i * 4);"
@@ -13570,6 +13591,11 @@
   ],
   "NV_PGRAPH_COMBINECOLORO0": [
    {
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh-uber.c:116",
+    "role": "READ",
+    "text": "out[i * 4 + 1] = pgraph_reg_r(pg, NV_PGRAPH_COMBINECOLORO0 + i * 4);"
+   },
+   {
     "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:419",
     "role": "READ",
     "text": "pgraph_reg_r(pg, NV_PGRAPH_COMBINECOLORO0 + i * 4);"
@@ -13631,6 +13657,11 @@
    }
   ],
   "NV_PGRAPH_COMBINECTL": [
+   {
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh-uber.c:112",
+    "role": "READ",
+    "text": "uint32_t ctl = pgraph_reg_r(pg, NV_PGRAPH_COMBINECTL);"
+   },
    {
     "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:359",
     "role": "READ",
@@ -13783,6 +13814,11 @@
   ],
   "NV_PGRAPH_COMBINESPECFOG0": [
    {
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh-uber.c:120",
+    "role": "READ",
+    "text": "out[8 * 4 + 0] = pgraph_reg_r(pg, NV_PGRAPH_COMBINESPECFOG0);"
+   },
+   {
     "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:362",
     "role": "READ",
     "text": "state->final_inputs_0 = pgraph_reg_r(pg, NV_PGRAPH_COMBINESPECFOG0);"
@@ -13809,6 +13845,11 @@
    }
   ],
   "NV_PGRAPH_COMBINESPECFOG1": [
+   {
+    "loc": "hw/xbox/nv2a/pgraph/glsl/psh-uber.c:121",
+    "role": "READ",
+    "text": "out[8 * 4 + 1] = pgraph_reg_r(pg, NV_PGRAPH_COMBINESPECFOG1);"
+   },
    {
     "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:363",
     "role": "READ",
