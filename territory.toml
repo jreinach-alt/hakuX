@@ -601,6 +601,11 @@ files = []
 retired_utc = "2026-09-29T14:47:31Z"
 note = "RETIRED (job.board 2026-09-29T14:47:31Z): PR #612 folded as 5053f92847 (14:40:27Z), unit gone, no open PR -- issue-sweep flagged it as owned by a dead lane, which it now is: the per-lane model file work landed. #507 itself (the Thor thermal-pause defect) is unaffected and untouched by this row; its own disposition (blocked_on lane.ibcache/lane.memfast) already carries no lane:tokentier label to clear. Files to [free]: docs/testing/lane.sh, docs/testing/jobs/cloud.sh, docs/testing/jobs/roles/board.md, docs/testing/jobs/selftest.d/99-lane-model-file.sh, docs/lanes/tokentier/**."
 
+[lane.handbackwaiter]
+issues = []
+files = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-waiter.sh", "docs/lanes/handbackwaiter/**"]
+note = "STARTED (hostops 2026-09-29T14:57Z), briefs/handbackwaiter.md: harness defect, no tracker issue. handback.sh's PARKED skip (handback.sh:1089-1099, lane.handbackpark's PR #452) correctly stops resuming a blocked:* lane, but arms nothing to wake it when its in-flight dispatch requests finish -- harness_health.py's parked-nowaker check has now fired on lane.shaderfb569/litcompile569 (09-28), lane.memfast/ibcache (09-29 early), and lane.gpl569 (PR #594)/lane.verdict433 (PR #610) this same tick (09-29 07:5x PDT), each needing the identical manual `systemd-run ... resume_when_runs_finish.sh` from hostops. Teaches handback.sh to arm that waiter itself when it finds a lane parked with runs still queued/running under its tag, idempotently, respecting LANE_MAX_ATTEMPTS."
+
 [retired.statusguard]
 issues = []
 files = []
