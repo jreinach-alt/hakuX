@@ -900,6 +900,18 @@ while read -r sha path src; do
     # pooled device and names the lighter one; both arms carry it, so no
     # worker ever has to agree with another. Empty (one device or none
     # serving) leaves the pair to affinity.py as before.
+    #
+    # ONE SERVING DEVICE IS DELIBERATELY NOT PINNED (lane.affinitybatt,
+    # 09-29). The ibcache/gpl569/tcg424flip pairs of 09-28 were queued this
+    # way and then hashed to a nova that refused them on battery for 8-14 h.
+    # A pin to the lone device would buy nothing now -- with one pooled
+    # device rule 3 leaves the pair free and that device takes it -- and
+    # would cost the balance later: when the other handheld comes back, a
+    # pin keeps the pair behind whatever queued on the first (#502's
+    # stall), while the unpinned pair is decided at claim time by rule 3,
+    # which now also passes over a device refusing it on battery. The stall
+    # was the hash's blindness to the battery gate, and that is fixed in
+    # affinity.py, where every free request gets it, not only the arms'.
     pin=$(python3 "$T/affinity.py" "$D" --choose "$(basename "$path")" "${prio:+1-}$(date +%s)" 2>/dev/null)
     pinarg=(); [ -z "$pin" ] || pinarg=(--device "$pin")
     say "queue $src: $name #$issue a=$a b=$b suites=[$suites]$comp runs=$runs${prio:+ release-prio}${pin:+ device=$pin}"
