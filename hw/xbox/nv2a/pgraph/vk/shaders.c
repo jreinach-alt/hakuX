@@ -22,6 +22,7 @@
 #include "qemu/mstring.h"
 #include "renderer.h"
 #include "ui/xemu-settings.h"
+#include "hw/xbox/nv2a/pgraph/glsl/psh-uber.h"
 
 #ifdef __ANDROID__
 #include <android/log.h>
@@ -29,6 +30,15 @@
 
 #if OPT_ASYNC_COMPILE
 extern bool xemu_get_async_compile(void);
+#endif
+
+/* #569 P6's debug switch reports under hakuX-perf on Android: a title
+ * soak's logcat keeps that tag and drops hakuX-vk. */
+#ifdef __ANDROID__
+#define UBER_LOG(fmt, ...) \
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-perf", fmt, ##__VA_ARGS__)
+#else
+#define UBER_LOG(fmt, ...) VK_LOG_ERROR(fmt, ##__VA_ARGS__)
 #endif
 
 #define VSH_UBO_BINDING 0
@@ -765,6 +775,8 @@ static void update_shader_uniform_locs(ShaderBinding *binding)
         binding->psh.uniform_locs[i] = uniform_index(
             &binding->psh.module_info->uniforms, PshUniformInfo[i].name);
     }
+    binding->psh.uber_comb_loc = uniform_index(
+        &binding->psh.module_info->uniforms, PSH_UBER_COMB_NAME);
 }
 
 static uint64_t hash_shader_module_key(const ShaderModuleCacheKey *key)
@@ -899,6 +911,10 @@ static void shader_binding_build_module_keys(
     psh_key->psh.glsl_opts.ubo_binding = 1;
     psh_key->psh.glsl_opts.ubo_set = 1;
     psh_key->psh.glsl_opts.tex_binding = 0;
+    /* #569 P6: a family state only reaches a binding under the switch, and
+     * only then does its module interpret the combiners. */
+    psh_key->psh.uber = pgraph_glsl_psh_uber_enabled() &&
+                        pgraph_glsl_psh_uber_is_family(&binding->state.psh);
 }
 
 #if OPT_ASYNC_COMPILE
@@ -1051,6 +1067,10 @@ void shader_module_key_persist(const ShaderModuleCacheKey *key)
     if (!g_config.perf.cache_shaders || shader_module_warmup_in_progress) {
         return;
     }
+    /* A debug-switch module is not a key a default boot should warm. */
+    if (key->kind == VK_SHADER_STAGE_FRAGMENT_BIT && key->psh.uber) {
+        return;
+    }
 
     const char *base = xemu_settings_get_base_path();
     char *path = g_strdup_printf("%sshader_module_keys.bin", base);
@@ -1078,16 +1098,39 @@ static void shader_module_compile_sync(PGRAPHVkState *r,
                                     module->key.geom.glsl_opts);
         break;
     case VK_SHADER_STAGE_FRAGMENT_BIT:
-        code = pgraph_glsl_gen_psh(&module->key.psh.state,
-                                   module->key.psh.glsl_opts);
+        if (module->key.psh.uber) {
+            code = pgraph_glsl_gen_psh_uber(&module->key.psh.state,
+                                            module->key.psh.glsl_opts);
+            if (!code) {
+                /* The family's template shader would draw the template's
+                 * combiner program, not the guest's. A debug switch may
+                 * stop; it may not draw wrong. */
+                fprintf(stderr, "psh-uber: cannot generate the ubershader\n");
+                abort();
+            }
+        } else {
+            code = pgraph_glsl_gen_psh(&module->key.psh.state,
+                                       module->key.psh.glsl_opts);
+        }
         break;
     default:
         assert(!"Invalid shader module kind");
         code = NULL;
     }
 
+    int64_t uber_t0 = module->key.kind == VK_SHADER_STAGE_FRAGMENT_BIT &&
+                      module->key.psh.uber ? g_get_monotonic_time() : 0;
     module->module_info = pgraph_vk_create_shader_module_from_glsl(
         r, module->key.kind, mstring_get_str(code));
+    if (uber_t0) {
+        /* C leg, device side: glslang plus vkCreateShaderModule for one
+         * family. The pipeline's Turnip compile is timed where pipelines are
+         * created, not here. */
+        static int uber_modules;
+        UBER_LOG("psh-uber: family module %d: %zu bytes GLSL, %.1f ms",
+                     ++uber_modules, mstring_get_length(code),
+                     (g_get_monotonic_time() - uber_t0) / 1000.0);
+    }
     mstring_unref(code);
 
     if (module->module_info) {
@@ -1408,6 +1451,15 @@ void pgraph_vk_update_shader_uniforms(PGRAPHState *pg)
     apply_uniform_updates(psh_layout, PshUniformInfo,
                           binding->psh.uniform_locs, &psh_values,
                           PshUniform__COUNT);
+    if (binding->psh.uber_comb_loc != -1) {
+        /* #569 P6: the live combiner program, which the family binding's
+         * state does not carry. Inside the layout, so the hash below sees a
+         * combiner change as a uniform change. */
+        uint32_t comb[PSH_UBER_COMB_VEC4S * 4];
+        pgraph_glsl_psh_uber_comb_values(pg, comb);
+        uniform_copy(psh_layout, binding->psh.uber_comb_loc, comb,
+                     sizeof(uint32_t), ARRAY_SIZE(comb));
+    }
 
     if (constants_dirty) {
         /*
@@ -1474,6 +1526,27 @@ void pgraph_vk_bind_shaders(PGRAPHState *pg)
             r->cached_shader_state = new_state;
             r->cached_shader_state_gen = pg->shader_state_gen;
             r->cached_shader_state_valid = true;
+        }
+        /*
+         * #569 P6, debug switch: a covered state binds its family, so every
+         * combiner program sharing the rest of the state shares one module
+         * and one pipeline, and the program travels as a uniform. After the
+         * cache above, which keeps the live state.
+         */
+        if (pgraph_glsl_psh_uber_enabled()) {
+            static unsigned long uber_binds, uber_uncovered;
+            if (pgraph_glsl_psh_uber_covers(&new_state.psh)) {
+                PshState family;
+                pgraph_glsl_psh_uber_family(&new_state.psh, &family);
+                new_state.psh = family;
+                uber_binds++;
+            } else {
+                uber_uncovered++;
+            }
+            if (((uber_binds + uber_uncovered) & 0xFFF) == 1) {
+                UBER_LOG("psh-uber: state binds %lu via a family, "
+                             "%lu uncovered", uber_binds, uber_uncovered);
+            }
         }
         if (!r->shader_binding ||
             pgraph_glsl_compare_shader_state(&r->shader_binding->state,
