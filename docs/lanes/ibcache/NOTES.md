@@ -606,3 +606,31 @@ The cache has to stay a compile-time constant. A runtime size would change
 edit there. So the two sizes are two refs, stacked on c8e95ed539 so that each
 differs from the probe build by one constant, and each is compared on the Nova
 against the Crimson B runs of c8e95ed539.
+
+### The jcsize pilot, registered before it is queued
+
+Branch `lane/ibcache-jcsize` (stacked, not yet a PR): **X a987e375db**
+(`TB_JMP_CACHE_BITS` 14 under XBOX) and **Y 9808982fa7** (16), each one
+constant away from c8e95ed539. `ccheck.py` compiles cpu-exec.c, cputlb.c,
+translate-all.c and translate.c at both sizes with no new warnings. An offline
+check of the hash at 12, 14 and 16 bits (200k random pcs) finds no pc whose
+slot falls outside the `TB_JMP_PAGE_SIZE` block that
+`tb_jmp_cache_clear_page()` wipes for its page. So TLB invalidation still
+reaches every slot, and the probe's layout check follows the constant.
+
+Pilot: Crimson Skies, the Nova, 360 s, `--perflog`, probe on (default), one run
+each of X and Y. The comparison rows are the two B runs of c8e95ed539 (12 bits,
+probe on) already queued on the same device. The readings cover the window
+from `mark gameplay` + 10 s to the end:
+- **Correctness gate:** `[ibc507] on=1 layout=ok` in both logcats, and no
+  crash or hang (`title_verdict.py`). A `layout=MISMATCH` means the probe was
+  off, and the run measures nothing.
+- **Counter leg:** the median `[rr425] hc` per second, against the mean of
+  the two 12-bit B runs. **X at most 0.7x, Y at most 0.5x.** The GTA model
+  says 0.36-0.48 for X and 0.15-0.25 for Y. Crimson's pages are not GTA's,
+  so the bars sit well above the model.
+- **Kill:** neither size brings `hc` below 0.7x. Then the leftover lookups are
+  not the page hash's collisions, and the lever is dropped.
+- **Size choice (for the multi-run A/B that follows the pilot):** Y if it
+  passes its bar and its J/frame is not above X's. Otherwise X. J/frame and
+  fps at one run each are recorded, not gated.
