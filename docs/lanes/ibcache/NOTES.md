@@ -634,3 +634,23 @@ from `mark gameplay` + 10 s to the end:
 - **Size choice (for the multi-run A/B that follows the pilot):** Y if it
   passes its bar and its J/frame is not above X's. Otherwise X. J/frame and
   fps at one run each are recorded, not gated.
+
+Queued (`queue_jcsize.sh`, `out/queue_jcsize.out`; the request files read
+back `device: nova`, no env):
+- X, 14 bits: `1-1790709325-lane.ibcache-1530225`
+- Y, 16 bits: `1-1790709326-lane.ibcache-1530486`
+
+## State at 19:25Z, 2026-09-29: waiting on the Nova queue and two title copies
+
+1. Crimson on c8e95ed539: B `1-1790708501-lane.ibcache-1378207`, A
+   `1-1790708502-lane.ibcache-1378332`, B `-1378456` (legs 4 and 5b). A1 is
+   read above.
+2. The jcsize pilot, X `-1530225` and Y `-1530486`.
+3. The Nova copies of Alien Hominid (5A440004) and GTA SA (54540082), then
+   `queue_leg4.sh nova 360 BAAB ...` for each (leg 4, and 5a on GTA).
+
+**Next, on resume:** read the Crimson pairs with `title_verdict.py` on copies
+(`scratch/`, not /tmp) and check `[ibc507] on=` in each. Read the jcsize pilot
+against its registered legs. If it passes, open the stacked PR from
+`lane/ibcache-jcsize` (merge `lane/ibcache` into it first) and queue its
+multi-run A/B. Mark #591 ready when legs 4 and 5a pass.
