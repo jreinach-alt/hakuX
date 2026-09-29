@@ -597,7 +597,9 @@ note = "STARTED (lane.local 2026-09-28T00:20Z+1d), briefs/gpl569.md: #569 P5, de
 [lane.statusguard]
 issues = ["507"]
 files = ["docs/testing/jobs/status.sh", "docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/99-status-degraded.sh", "docs/lanes/statusguard/**"]
-note = "STARTED (lane.local 2026-09-29T00:56Z), briefs/statusguard.md: the owner saw a broken dashboard. At 17:42 PDT board.sh's end-of-tick status.sh published a degraded 20 KB page (0/145, 0 lanes, queue not read) two minutes after both handhelds left USB, and PAGES_MIN_GAP held back the good 17:48 render. lane.local republished at 17:54. Fix: refuse to publish a degraded render over a good one, publish the next good one at once, and log why."
+released = ["docs/testing/jobs/status.sh", "docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/99-status-degraded.sh", "docs/lanes/statusguard/**"]
+released_at_ready = 597
+note = "RELEASED AT READY (job.board 2026-09-29T01:26Z): PR #597 out of draft, CI green (build x2, selftest x4), unit gone. Files RELEASED per roles/board.md; the next lane merges master (or lane/statusguard if #597 has not folded) before marking its own PR ready. || STARTED (lane.local 2026-09-29T00:56Z), briefs/statusguard.md: the owner saw a broken dashboard. At 17:42 PDT board.sh's end-of-tick status.sh published a degraded 20 KB page (0/145, 0 lanes, queue not read) two minutes after both handhelds left USB, and PAGES_MIN_GAP held back the good 17:48 render. lane.local republished at 17:54. Fix: refuse to publish a degraded render over a good one, publish the next good one at once, and log why."
 
 [lane.uberspike569]
 issues = ["569"]
