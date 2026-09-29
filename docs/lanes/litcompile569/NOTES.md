@@ -455,6 +455,35 @@ fix arm:
 - **If it voids again,** score R1-R3 on the voided arm above as the registered V permits (it
   has 20 lines), and say so.
 
+## 9. Session 5 (2026-09-29 16:26 PDT, attempt 4): the queue was wiped
+
+### Why session 4 did not finish
+
+It ended on purpose, waiting on the re-queued fix arm `1790721747-litcompile569-271619`. That
+request never ran. The Nova's per-run battery admission skipped it at 35-36% (need 38.1) until
+16:15 PDT. Between 16:23 and 16:26 PDT, every queued request (32 at the 16:15 recovery
+manifest) and every historical result dir left `$DISPATCH_DIR/queue` and `$DISPATCH_DIR/results`.
+The dispatcher log has no line for it. The hostops waiters read "not in queue/running" as
+"finished" and resumed eight lanes, this one included, at 16:25-16:26. The resume brief's
+table names the gate-4 pair, which section 7 had already read.
+
+- **Lost with the wipe:** the replication base arm `1-1790668956-litcompile569-2678738` (its
+  judge output survives only as a scratch reading, section 8) and the voided fix arm.
+- **Not lost:** gate 4's pair. Both dirs were copied into the worktree's scratch before it was
+  read, and section 7's numbers stand.
+
+### Re-queued
+
+The registered replication (`litcompile569-doa-gpu-rep.json`, unchanged, same refs, fix first),
+both arms fresh on the Nova, survey route (text identical to gate 4's request.json):
+- fix 87ceac5569: `1790724513-litcompile569-1351153`;
+- base bf1ecde346: `1790724517-litcompile569-1352783`.
+
+That is 2 x (440 + 90) s = 17.7 min of device time, inside the pilot budget. **When both are
+DONE:** follow section 7's list (score R1-R3 with `doa_gpu_history.py`, name the opponents,
+post on #569 and #607, mark #607 ready). Section 8's provisional 0.84 is not a pair, and is not
+pooled into R3.
+
 ## 5. For the next lane
 
 - **Gate 4 (device) waits on P1** (PR #574, lane.shaderfb569: `dpc_ms` per stage). The leg
