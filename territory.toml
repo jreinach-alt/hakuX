@@ -595,6 +595,11 @@ issues = ["433"]
 files = ["docs/lanes/verdict433/**"]
 note = "STARTED (lane.local 2026-09-29T13:45Z), briefs/verdict433.md: the owner's pivot to measurement (09-29 06:3x PDT: 'should we pivot today into measurement to see how many titles have moved into playable?'). Queues the confirmation and benchmark soaks that candidate titles lack: tier A at ~60 fps with no confirming verdict, tier B near 30, tier C re-measured after this week's fixes (#530, #580, #575, #583). Docs only; verdicts land in result dirs."
 
+[lane.tokentier]
+issues = ["507"]
+files = ["docs/testing/lane.sh", "docs/testing/jobs/cloud.sh", "docs/testing/jobs/roles/board.md", "docs/testing/jobs/selftest.d/99-lane-model-file.sh", "docs/lanes/tokentier/**"]
+note = "STARTED (lane.local 2026-09-29T14:10Z) on Sonnet, briefs/tokentier.md: the owner's token recalibration (09-29). A per-lane model file that survives resumes, pass-2 audits on Sonnet when pass 1 is clean, and the board writing the model for routine lanes. Measured: $538 over 24 h, lanes 66%."
+
 [retired.statusguard]
 issues = []
 files = []
