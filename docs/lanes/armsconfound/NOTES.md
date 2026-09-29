@@ -189,8 +189,23 @@ The pixels2 verdict then decides the label.
 ### Existing fragments
 
 ```
-PENDING_EXISTING
+selftest, SELFTEST_ONLY batches on this branch (fake host in /tmp):
+batch 1: 10-arms-list 20-arms-queue 30-arms-error 40-arms-refusal 50-arms-requeue
+         51-dispatch-hardening 55-affinity-offpool 60-status 92-arms-skip-told 94-arms-label-state
+         -> selftest: 140 passed, 0 failed, PARTIAL: 10 of 108 fragments
+batch 2: 94-arms-disc-narrow 94-arms-verdict-scope 94-arms-withdrawn 95-affinity
+         99-affinity-backlog 99-handback-resolved
+         -> selftest: 129 passed, 1 failed
+            FAIL mutant anchor no longer matches arms.sh   (94-arms-disc-narrow)
+batch 3 (after renaming the re-run's array to rnarrow; see below):
+         94-arms-disc-narrow 94-arms-idle-tier
+         -> selftest: 15 passed, 0 failed, PARTIAL: 2 of 108 fragments
+preflight.sh -> preflight passed - safe to push
 ```
+
+94-arms-disc-narrow's mutant asserts that the queue loop's
+`${narrow[@]+...}` expansion occurs exactly twice. The re-run's copy is named
+`rnarrow` so that the anchor still names only the queue loop.
 
 ## For the next lane
 
