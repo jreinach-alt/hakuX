@@ -595,10 +595,11 @@ issues = ["433"]
 files = ["docs/lanes/verdict433/**"]
 note = "STARTED (lane.local 2026-09-29T13:45Z), briefs/verdict433.md: the owner's pivot to measurement (09-29 06:3x PDT: 'should we pivot today into measurement to see how many titles have moved into playable?'). Queues the confirmation and benchmark soaks that candidate titles lack: tier A at ~60 fps with no confirming verdict, tier B near 30, tier C re-measured after this week's fixes (#530, #580, #575, #583). Docs only; verdicts land in result dirs."
 
-[lane.tokentier]
-issues = ["507"]
-files = ["docs/testing/lane.sh", "docs/testing/jobs/cloud.sh", "docs/testing/jobs/roles/board.md", "docs/testing/jobs/selftest.d/99-lane-model-file.sh", "docs/lanes/tokentier/**"]
-note = "STARTED (lane.local 2026-09-29T14:10Z) on Sonnet, briefs/tokentier.md: the owner's token recalibration (09-29). A per-lane model file that survives resumes, pass-2 audits on Sonnet when pass 1 is clean, and the board writing the model for routine lanes. Measured: $538 over 24 h, lanes 66%."
+[retired.tokentier]
+issues = []
+files = []
+retired_utc = "2026-09-29T14:47:31Z"
+note = "RETIRED (job.board 2026-09-29T14:47:31Z): PR #612 folded as 5053f92847 (14:40:27Z), unit gone, no open PR -- issue-sweep flagged it as owned by a dead lane, which it now is: the per-lane model file work landed. #507 itself (the Thor thermal-pause defect) is unaffected and untouched by this row; its own disposition (blocked_on lane.ibcache/lane.memfast) already carries no lane:tokentier label to clear. Files to [free]: docs/testing/lane.sh, docs/testing/jobs/cloud.sh, docs/testing/jobs/roles/board.md, docs/testing/jobs/selftest.d/99-lane-model-file.sh, docs/lanes/tokentier/**."
 
 [retired.statusguard]
 issues = []
@@ -670,6 +671,7 @@ files = ["accel/tcg/tb-maint.c", "accel/tcg/tb-internal.h", "docs/lanes/tcg424fl
 note = "STARTED (hostops 2026-09-29T05:35Z), briefs/tcg424flip.md: tbflip424-blinx2.json's three valid Thor pairs pass M0/M1/M4' (A gfps 19 / churn 2.1, B 19 / 0.0; #424 issuecomment-5884276103), so the decision rule flips hakux_tcg424_range_on() to default ON (opt-out HAKUX_TCG424_RANGE=0). Before PR-ready: the Arctic Thunder Thor A/B lane.local routed to the retired lane.sustain507 (never queued), and the pgraph must-not-move arm on the flipped binary."
 
 [free]
+# RELEASED (job.board 2026-09-29T14:47:31Z) by retiring lane.tokentier (PR #612 folded 5053f92847): docs/testing/lane.sh, docs/testing/jobs/cloud.sh, docs/testing/jobs/roles/board.md, docs/testing/jobs/selftest.d/99-lane-model-file.sh, docs/lanes/tokentier/**.
 # RELEASED (hostops 2026-09-29T12:12Z) by retiring lane.idlehaltdefault (PR #566 folded 94cf8eb627): docs/lanes/idlehaltdefault/**, docs/testing/predictions/idlehaltdefault-*.json.
 # RELEASED (hostops 2026-09-29T11:45Z) by retiring lane.pacing (PRs #529, #572 folded): ui/xemu.c, vk/display.c, SDLSurface.java, docs/lanes/pacing/**, predictions pacing-*.json.
 # CLAIMED (hostops 2026-09-29T05:35Z): accel/tcg/tb-maint.c, accel/tcg/tb-internal.h -> lane.tcg424flip (#424: Thor tbflip424-blinx2 r1-r3 verdict = flip, issuecomment-5884276103).
