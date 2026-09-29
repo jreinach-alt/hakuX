@@ -221,3 +221,49 @@ The arms job queues the E pixel arm from `uberspike569-gpl-pixels.json`, and pos
 - read E per capture;
 - read E's B logcat for `[uber569] mode=4 links=N` with N > 0; without it, E is void;
 - then the verdict, the #569 post, and mark the PR ready.
+
+## 7. Attempt 5 (2026-09-29 16:10 PDT): the Kabuki leg
+
+**Why attempt 4 did not finish.** It ended as a wait, correctly: the three DOA soak arms and
+the E pixel arm were queued behind the Nova's release-tier queue. At 16:10 PDT none had run
+(all five requests still in `queue/`, about 23 release-tier requests ahead of them). The
+resume came from the 16:10 addendum (Kabuki as an acceptance title), not from a result.
+
+**Merged origin/master** at 8b15159b2f. It brings no emulator code (docs and jobs only).
+
+**What K1 on master already shows** (lane.kabukistall's cold Kabuki run
+`1-1790702688-lane.kabukistall-194847`, read with `kabjudge.py` as both arms,
+`results/kabjudge-k1-self.json`; the window table in `host/k1_windows.txt`):
+- 718 pipeline misses after `mark gameplay`, 126.4 s of draw-path create, 22 stall windows;
+- **the longest gap between two guest flips is 4.4 s.** The 68.6 s window flips about once a
+  second (60 frames), each gap about 20 creates of ~200 ms.
+
+So the addendum's criterion, "no flipless gap over 5 s", already passes on master since B1
+(#580) halved the create. It cannot show the ladder did anything. It is registered as K1 with
+that said, and the claim rests on K2 and K3.
+
+**Registered** `uberspike569-gpl-kabuki-soak.json` (judge `kabjudge.py`, `--selftest` covers both
+sides of each leg and a pre-mark stall that must not count):
+
+| leg | reads | registered |
+|---|---|---|
+| K0 | validity | A and B cleared, both reach `mark gameplay`, A >= 100 misses after it, B `[uber569] mode=3 links>0` |
+| K1 | B's largest G max after the mark | < 5000 ms (the addendum's wording; not discriminating) |
+| K2 | B's fight create ms / A's | <= 0.25 |
+| K3 | B's longest flip gap / A's | <= 0.50 |
+
+| ref | what |
+|---|---|
+| `8b15159b2f` | A: the merge, `HAKUX_GPL_DEFAULT 0` |
+| `d0152f9c44` | B2: one line, `HAKUX_GPL_DEFAULT 3` |
+| `0818a5f9f4` | the revert: default 0 again |
+
+**Queued on the Nova** (kabuki-warriors route, 600 s, perflog), behind the DOA arms:
+- A `1790723587-uberspike569-1071671`
+- B2 `1790723590-uberspike569-1073743`
+
+The pilot file got this build's verdict appended (the two smokes of section 6, read clean).
+
+**On resume:** `find_results.py` on the seven ids; `uberjudge.py` on the DOA three; `kabjudge.py`
+on the Kabuki two; E per capture from the `[job.arms]` comment; then the verdict, the #569
+post, and ready.

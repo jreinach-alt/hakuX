@@ -17,13 +17,14 @@ def git(*a):
 files = git("diff", "--name-only", "origin/master...HEAD").splitlines()
 base = git("rev-parse", "--short=10", "origin/master")
 preds = ["docs/testing/predictions/uberspike569-gpl-pixels.json",
-         "docs/testing/predictions/uberspike569-gpl-doa-soak.json"]
+         "docs/testing/predictions/uberspike569-gpl-doa-soak.json",
+         "docs/testing/predictions/uberspike569-gpl-kabuki-soak.json"]
 pred = "; ".join("%s @ %s" % (p, hashlib.sha256(open(p, "rb").read()).hexdigest())
                  for p in preds)
 out = []
 for line in old:
     if line.startswith("Base:"):
-        line = "Base: master @ %s (merged in at 23543417aa; #581 and #594 folded)" % base
+        line = "Base: master @ %s (merged in at 8b15159b2f; #581 and #594 folded)" % base
     elif line.startswith("Files:"):
         line = "Files: " + ", ".join(files)
     elif line.startswith("Prediction:"):
