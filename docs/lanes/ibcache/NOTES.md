@@ -558,3 +558,51 @@ the Nova with `queue_leg4.sh nova 360 BAAB ...` once
 `listing-nova.txt` names them. When legs 4 and 5a pass, mark the PR ready with
 the release note. 5b on Forza still waits on #583, and the jump-cache size
 still goes on `lane/ibcache-jcsize`.
+
+## Attempt 7 (resumed 2026-09-29 12:10 PDT, handback)
+
+**Why attempt 6 did not finish.** It ended on a `waiting:` for the four
+Crimson requests on the Nova and the Nova copies of Alien Hominid and GTA SA,
+all outside the session. At 12:10 PDT one of the four had run. The other three
+are still queued, and `listing-nova.txt` is not on master yet, so neither copy
+has landed.
+
+### Crimson on the Nova: the first run (A1)
+
+`1-1790708501-lane.ibcache-1378258`, arm A (`HAKUX_IBC=0`), the Nova,
+c8e95ed539, 360 s. It was backfilled ahead of its B partner, so it ran first.
+Logcat `[ibc507] on=0 layout=ok`, and `mark gameplay` at +113 s.
+`title_verdict.py`: 250.7 s of gameplay, fps_ok 0.941, no crash, no hang,
+**J/frame 0.2448**, battery 5.19 W. The FAIL it prints is the 600 s screening
+length, which is not a leg here. This row is kept for the pair read once B
+runs.
+
+### The next lever, sized offline: jump-cache collisions (`jcmodel.py`)
+
+The model maps each live TB in the code-buffer dump to its vCPU samples
+(tbmap.py's mapping), puts it in its slot under the softmmu hash at each
+`TB_JMP_CACHE_BITS`, and counts misses with the independent-reference model
+(`out/jcmodel-r1.out`, `out/jcmodel-r1b.out`):
+
+| bits | array per vCPU | modelled misses, R1 | R1b | ratio to 12 bits (R1, R1b) |
+|---:|---:|---:|---:|---|
+| 12 (today) | 64 KB | 26.7% | 30.8% | 1.00, 1.00 |
+| 14 | 256 KB | 9.7% | 14.6% | 0.36, 0.48 |
+| 16 | 1 MB | 3.9% | 7.7% | 0.15, 0.25 |
+
+The model's absolute is about 4x the measured pc-collision share (7.3% of
+R1's lookups), because samples measure time in a TB, not how often the jump
+cache is consulted for it. **Only the ratio is read.** Applied to the 7.3% of
+the vCPU that the probe build still spends in lookup, 14 bits would save about
+3.8-4.7 points and 16 bits about 5.5-6.2. From that, 16 bits pays for its host
+cache footprint (1 MB of randomly probed slots, the size of a big core's L2)
+and 14 bits does not have to. The flush cost is small at either size:
+`[tlb68]` `jcus` is about 4 us per full wipe of 4096 slots at ~60 wipes/s
+(0.02%), so 16x is about 0.4%.
+
+The cache has to stay a compile-time constant. A runtime size would change
+`tb_jmp_cache_clear_page()` in `cputlb.c`, which lane.memfast (PR #590) holds.
+`tb-jmp-cache.h`'s constant reaches `cputlb.c` through its macros without an
+edit there. So the two sizes are two refs, stacked on c8e95ed539 so that each
+differs from the probe build by one constant, and each is compared on the Nova
+against the Crimson B runs of c8e95ed539.
