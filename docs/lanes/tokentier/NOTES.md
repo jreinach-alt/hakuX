@@ -84,3 +84,10 @@ is picked up by the directory glob; no shard-table edit needed).
 
 Did not touch `$WORK/limits.env`, `$WORK/briefs/*` outside what the board
 writes per its own new rule, host-tools, or board files, per the brief.
+
+## Status
+
+PR #612 open, pushed at `11aa092448`. Waiting on CI (build + selftest shards
+0-3) before marking it ready -- posted `[lane.tokentier] waiting:` on the PR.
+`handback.sh`'s CI-green resume covers this if the session ends before CI
+finishes.
