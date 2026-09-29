@@ -458,12 +458,46 @@ if [ "${1:-}" = "install-hook" ]; then
     echo "cannot install the board pre-push hook in ${2:-}"; exit 1
 fi
 
+# LAND $WT ON THE TRUNK, OR STOP THE TICK. This was one line,
+# `fetch && checkout --detach FETCH_HEAD`, and a dirty tree makes that checkout
+# refuse. Nothing read the refusal: from 2026-09-28 to 09-29 $WT held 39
+# uncommitted paths (the tree of an old WIP commit, fc7bb08d2a, written in by
+# something that never committed it), every tick ran that stale fleet.py, and
+# its pre-#611 queue_stall() reported nova's battery-gated runs as a FAIL.
+#
+# $WT is a disposable mirror of origin/$TIP and nothing may write to it
+# uncommitted, so dirt here is a defect elsewhere: SAY it, then STASH it (not
+# reset/clean -- the stash keeps what was there for whoever traces the writer)
+# and land anyway. .boardtree is the session's board worktree, nested inside
+# $WT and untracked in it by design; it is not dirt. If the tree still is not
+# at FETCH_HEAD after that, the tick stops: every tool below reads $WT.
+refresh_wt() {   # <worktree> -> 0 at FETCH_HEAD of origin/$TIP, else 1 (said)
+    local wt="$1" dirt tag
+    git -C "$wt" fetch -q origin "$TIP" \
+        || { say "ABORT: cannot fetch origin/$TIP into $wt; not running a tick on a stale trunk"; return 1; }
+    dirt=$(git -C "$wt" status --porcelain -- . ':(exclude).boardtree') \
+        || { say "ABORT: git status failed in $wt"; return 1; }
+    if [ -n "$dirt" ]; then
+        tag="board.sh: auto-cleared dirty $wt at $(date -u +%FT%TZ)"
+        say "NOTE: $wt had $(printf '%s\n' "$dirt" | wc -l) uncommitted path(s), which this private mirror of origin/$TIP must never hold; something wrote to it without committing. First: $(printf '%s\n' "$dirt" | head -3 | tr '\n' ';' | sed 's/;$//'). Stashing as \"$tag\" (git stash list) and checking out the trunk."
+        git -C "$wt" stash push -q -u -m "$tag" -- . ':(exclude).boardtree' \
+            || { say "ABORT: could not stash the dirt in $wt; not running a tick on it"; return 1; }
+    fi
+    git -C "$wt" checkout -q --detach FETCH_HEAD \
+        || { say "ABORT: checkout of origin/$TIP failed in $wt${dirt:+ even after the stash}; not running a tick on a wrong base"; return 1; }
+    [ "$(git -C "$wt" rev-parse HEAD)" = "$(git -C "$wt" rev-parse FETCH_HEAD)" ] \
+        || { say "ABORT: $wt is at $(git -C "$wt" rev-parse --short HEAD), not origin/$TIP"; return 1; }
+}
+
+# `board.sh refresh-wt <worktree>` -- the refresh alone, for the selftest.
+if [ "${1:-}" = "refresh-wt" ]; then refresh_wt "${2:?worktree}"; exit $?; fi
+
 # A private worktree of the trunk, so this job never reads the owner's checkout.
 if [ ! -e "$WT/.git" ]; then
     git -C "$REPO" fetch -q origin "$TIP" && git -C "$REPO" worktree add --quiet --detach "$WT" FETCH_HEAD \
         || { say "cannot create $WT"; exit 1; }
 fi
-git -C "$WT" fetch -q origin "$TIP" && git -C "$WT" checkout -q --detach FETCH_HEAD
+refresh_wt "$WT" || exit 1
 git -C "$WT" fetch -q origin board 2>/dev/null || true
 
 # RUN THE TRUNK'S COPY OF THIS JOB, NOT THE OWNER'S CHECKOUT'S. The unit's
