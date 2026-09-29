@@ -266,7 +266,8 @@ def check(d, label, req_path, level, head):
                rate_src=lv["rate_src"], rate_n=lv["rate_n"],
                overhead_s=lv["overhead_s"], overhead_src=lv["overhead_src"],
                overhead_n=lv["overhead_n"], kind=kind, runs=runs,
-               seconds=seconds, floor=floor, margin=MARGIN, t_admit=now)
+               seconds=seconds, floor=floor, margin=MARGIN, t_admit=now,
+               device=label)
     if uncapped > need:
         rec["need_uncapped"] = uncapped
     if level < need:
@@ -278,27 +279,27 @@ def check(d, label, req_path, level, head):
                 with open(state_path, "w") as fh:
                     json.dump(state, fh)
             waited = now - state["since"]
-        print("BATTERY: skip %s: level %d < need %.1f (%s)%s" % (
-            rid, level, need, inputs,
+        print("BATTERY: skip %s on %s: level %d < need %.1f (%s)%s" % (
+            rid, label, level, need, inputs,
             "" if head else "; head, refused for %ds" % waited))
         print(json.dumps(rec))
         return 1
     if head:
         waited = now - state["since"] if state.get("id") == head else 0
         if waited >= HEAD_WAIT_S:
-            print("BATTERY: hold for head %s (refused for %ds >= %ds): not backfilling %s, level %d >= need %.1f" % (
-                head, waited, HEAD_WAIT_S, rid, level, need))
+            print("BATTERY: hold for head %s on %s (refused for %ds >= %ds): not backfilling %s, level %d >= need %.1f" % (
+                head, label, waited, HEAD_WAIT_S, rid, level, need))
             print(json.dumps(rec))
             return 3
         rec["backfill_for"] = head
-        print("BATTERY: admit %s as backfill for %s (refused %ds of %ds): level %d >= need %.1f (%s)" % (
-            rid, head, waited, HEAD_WAIT_S, level, need, inputs))
+        print("BATTERY: admit %s on %s as backfill for %s (refused %ds of %ds): level %d >= need %.1f (%s)" % (
+            rid, label, head, waited, HEAD_WAIT_S, level, need, inputs))
     else:
         try:
             os.remove(state_path)
         except OSError:
             pass
-        print("BATTERY: admit %s: level %d >= need %.1f (%s)" % (rid, level, need, inputs))
+        print("BATTERY: admit %s on %s: level %d >= need %.1f (%s)" % (rid, label, level, need, inputs))
     print(json.dumps(rec))
     return 0
 
