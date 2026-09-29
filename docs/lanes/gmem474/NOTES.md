@@ -204,3 +204,131 @@ over its registered window:
 
 then score the legs by each file's `decision_rule`, post the table on #474, and
 open `lane/gmem474-default` only if a decision differs from what ships.
+
+## 11. Attempt 4 (2026-09-29 15:30Z): why attempt 3 did not finish, the read
+
+Attempt 3 did not fail. It ended on a `waiting:` for the 18 requests, which
+ran overnight (23:07Z to 06:05Z). The session start carried hostops' earlier
+16:46 PDT addendum again (the pilot, already read in section 9); nothing
+resumed the lane when the 18 landed.
+
+Every run's mode is proven (E0): the `render_mode:` line carries the arm's
+`TU_DEBUG`, the pulled Mesa log reads `0x1` / `0x9` / `0x1011`, and every D
+reads `TU_AUTOTUNE_ALGO=1 (profiled)`. All at regimen `default`, apk
+`b400e9693dd7` (db1e8a7f12). The Nova charged through every run (usb_w 2.1 W,
+battery 30-37 %); J/frame is on net watts (battery + USB), as registered.
+
+**Three runs are VOID and were re-queued once each (V0/T0, as registered):**
+
+| run | why | re-queued |
+|---|---|---|
+| DOA B `124548` | V0: no `gfps` line after 271 s of a 315 s log. From 212 s the guest flips 0-14 times per 2-9 s (`cblat` latencies to 17.8 s, `G:301(..16717)`): the fight ran at 28-33 gfps until then | `1-1790696095-lane.gmem474-2136264` |
+| Kabuki A1 `125693` | V0: no `gfps` line after 389 s of a 431 s log | `1-1790696095-lane.gmem474-2136324` |
+| Crimson A1 `126136` | T0: thermal-pause-F8 began after +323 s, inside 120-350 | `1-1790696096-lane.gmem474-2136418` |
+
+Plus one reported (not deciding) run, Kabuki B again on a warm cache,
+`1-1790696185-lane.gmem474-2163487` (see Kabuki below).
+
+### AUF (Nova, 299-590 s, all five valid): keep sysmem
+
+| arm | gfps med | p10 | GPU ms | X/R | net W | J/frame | qry lines |
+|---|---|---|---|---|---|---|---|
+| A1 autotune | 19.05 | 17.07 | 40.1 | 0.99 | 7.27 | 0.384 | 0 |
+| B sysmem (ships) | 22.63 | 21.35 | 31.7 | 0.00 | 5.58 | 0.240 | 0 |
+| C gmem,forcebin | 20.24 | 18.95 | 34.5 | 4.31 | 5.69 | 0.274 | 0 |
+| D profiled | 22.97 | 21.62 | 31.0 | 0.00 | 5.29 | 0.224 | 0 |
+| A2 autotune | 18.72 | 17.18 | 40.3 | 1.00 | 4.91 | 0.261 | 0 |
+
+Noise: n(J) = 38 % (A1 0.384 against A2 0.261: A1 was the apk's first AUF run,
+cache cleared, and drew 2.4 W more). Legs: S1 FAILS by 0.25 gfps (B 22.63 <
+A 18.89 + 4); P1 holds on its number (0.240 <= 0.274) but is inside N0's 38 %
+noise, so "not separated"; P2 holds (B's watts 0.92 x A's); C1 FAILS (C's GPU
+0.86 x A's: forcebin does cut GPU time); C2 holds; D1 holds (profiled finds
+sysmem, X/R 0.00, 0.34 gfps from B). Decision rule: no arm beats B's J/frame by
+max(n, 5 %), and A1/A2/C lose more than 1 gfps. **Keep sysmem.** Every AUF
+reading points the same way: sysmem is faster by 3.8 gfps and at least as
+cheap per frame. No occlusion queries.
+
+### Crimson (Thor, 120-350 s): keep autotune (decision final; three legs wait on A1)
+
+| arm | gfps med | GPU ms | X/R | net W | J/frame | pause |
+|---|---|---|---|---|---|---|
+| A1 autotune | 28.82 | 9.8 | 0.08 | 5.49 | 0.205 | VOID (+323 s) |
+| B sysmem | 29.54 | 9.75 | 0.08 | 5.36 | 0.194 | none |
+| C gmem,forcebin (pilot) | 29.50 | 13.9 | 3.0 | 5.37 | 0.191 | none |
+| D profiled (pilot) | 29.82 | 10.0 | 0.09 | 5.81 | 0.203 | none |
+| A2 autotune | 29.40 | 9.8 | 0.08 | 5.23 | 0.187 | none |
+
+Against A2, every other arm is dearer per frame (B +3 %, C +2 %, D +8 %), so no
+A1 rerun can make one beat autotune by 5 %: **keep autotune** (nothing is
+tabled for Crimson). K1 holds (all within 1 gfps). K2, K3, K4 need A's mean and
+n, so they wait on the A1 rerun.
+
+### DOA (Nova, 151-288 s): waits on the B rerun
+
+| arm | gfps med | p10 | GPU ms | X/R | net W | J/frame | qry lines |
+|---|---|---|---|---|---|---|---|
+| A1 autotune | 15.58 | 15.31 | 60.0 | 0.99 | 4.83 | 0.308 | 3 of 38 |
+| B sysmem | VOID (8.08) | 1.02 | 29.0 | 0.01 | 6.60 | 0.455 | 8 of 30 |
+| C gmem,forcebin | 19.56 | 16.93 | 47.4 | 6.3 | 7.34 | 0.338 | 5 of 50 |
+| D profiled | **32.35** | 30.72 | 27.4 | 0.02 | 8.88 | **0.233** | 2 of 89 |
+| A2 autotune | 15.65 | 15.24 | 60.0 | 1.00 | 6.50 | 0.392 | 6 of 39 |
+
+Noise n(J) = 24 %, |A1 - A2| = 0.07 gfps. C1 FAILS (C's GPU 0.79 x A's).
+Before its stall B ran at 28-33 gfps, as D did throughout (D is sysmem by
+itself, X/R 0.02): the fight in sysmem is about twice autotune's frame rate
+now, not flip474's 13 -> 21. S1, P1, P2, C2 and D1 all need a valid B.
+
+**The ZPASS caveat applies to DOA.** Every DOA run, in every mode, ends render
+passes for occlusion queries in the fight window (qry lines above; flip474 saw
+3 of 56). The registered decision rule and the brief both say: no sysmem
+default for a title whose sysmem run has `qry_lines > 0` in its window (#527).
+#530 shipped DOA's sysmem default with that reading on file. So unless the B
+rerun shows no queries, the rule removes DOA's sysmem row, at the cost of about
+half its fight frame rate (A 15.6 against sysmem ~31). That is a decision with
+a large player-visible cost made on a caveat whose value is a constant in both
+modes (#527: the report prints 40,960 in GMEM and 65,536 in sysmem, whatever
+is drawn), so it is put on #474 for the owner with the numbers rather than
+shipped silently. Removing the row is NOT done in this attempt.
+
+### Kabuki (Nova): W1 is the shader warm-up, not the mode; W2 does not separate
+
+| arm | W1 gfps | W1 J/frame | W1 X/R | W2 gfps | W2 net W | W2 J/frame |
+|---|---|---|---|---|---|---|
+| A1 autotune | VOID (1.40) | 0.411 | 0.15 | 59.94 | 7.29 | 0.124 |
+| B sysmem | 0.52 | 0.336 | 0.02 | 59.94 | 6.49 | 0.110 |
+| C gmem,forcebin | 58.03 | 0.115 | 8.83 | 59.94 | 6.24 | 0.106 |
+| D profiled | 59.88 | 0.119 | 0.29 | 59.94 | 6.27 | 0.106 |
+| A2 autotune | 59.94 | 0.104 | 1.67 | 59.94 | 6.34 | 0.107 |
+
+The fight's stalls hit the first two Kabuki runs of the apk (A1, B) and none
+of the three after. In each, the stall comes with a jump in hakuX's pipelines
+in use (`pipe[... used]`: A1 163 -> 305 -> 387 across two gaps; B 433 -> 762
+across a 114 s gap). A2 made the same jump (397 -> 730, at 239-241 s) with no
+gap. So the fight's "stall burn" (energymap507's #5) reads here as first-time
+pipeline creation on a cold cache (the #569 ubershader territory), not as GPU
+work a render mode changes. B's W1 is therefore a cold-cache reading and says
+nothing about sysmem; the warm B (`2163487`) is queued as a reported reading
+beside it. The decision rule, on the registered runs, keeps autotune for
+Kabuki (B's W1 gfps is not within max(|A1-A2|, 1) of A's).
+
+W2 (menus, capped): KW2 holds (all 59.94). KW3 FAILS narrowly (B's watts 0.953
+x A's, the leg needed <= 0.95): energymap507's -5 to -8 % sysmem price reads
+here as -4.8 % J/frame, inside the 14 % A1/A2 noise. KW5 FAILS (C's watts 0.92
+x A's: forcebin is not dearer in the menus). KW4 and KW6 FAIL on resolution:
+the menus' GPU time is 0.6 ms, and X and R print to 0.1 ms, so W2's X/R is
+0.5 or 1.0 by rounding, not a pass structure. Recorded, not re-fitted. KW1
+waits on the A1 rerun.
+
+### Next (for whoever resumes)
+
+When `2136264`, `2136324`, `2136418`, `2163487` land:
+
+    gmemread.py --from 151 --to 288 123962 2136264 125078 125499 125576
+    gmemread.py --from 230 --to 415 2136324 125740 125795 125996 126084   (+ 2163487, reported)
+    gmemread.py --from 30 --to 180  (same ids)
+    gmemread.py --from 120 --to 350 2136418 126177 3784417 3784577 126215
+
+A rerun that is VOID again is recorded VOID, not queued a third time. Then
+score DOA's S1/P1/P2/C2/D1, Crimson's K2-K4 and Kabuki's KW1, and post the
+final table on #474.
