@@ -85,6 +85,15 @@ Tier B, same method:
 |---|---|---|---|---|---|---|
 | Azurik | thor | default | 1-1790688705-lane.verdict433-3467502 | queued | | |
 
+## State at the end of session 1 (2026-09-29, about 07:00 PDT)
+
+Waiting on the pilot `1-1790688705-lane.verdict433-3467502`. It sits behind
+about 2 h of 1- requests on the Thor. When `results/<id>/DONE` exists:
+1. Run `title_verdict.py <dir> --require confirmation`.
+2. Read `thermal.first_pause_s`, and the frames from `route-frames/`.
+3. Write `pilots/lane.verdict433.ok` with `python3`.
+4. Run `queue_batch1.sh`.
+
 ## Tools here
 
 - `scan.py PATTERN...` lists every verdict.json in the live results for matching titles.
