@@ -10,6 +10,9 @@ which route variant a title run should use.
     titlestate.py no-save --device D --title-id T --reason TEXT --run ID
     titlestate.py build-image --device D OUT.qcow2 [--add T:SAVE_ID ...]
     titlestate.py pushed --device D --image OUT.qcow2 --device-path PATH
+    titlestate.py plan --device D --device-bytes N [--device-sha SHA]
+    titlestate.py seed|after-run --device D --image IMG --run ID [--device-sha SHA]
+    titlestate.py rebuild --device D
     titlestate.py choose --title-id T [--devices nova,thor]
     titlestate.py route --title-id T --variant first-run|returning|survey
 
@@ -42,6 +45,15 @@ build-image makes from the save store and the dispatcher points `hddPath` at
 for a title run, leaving the nxdk results disk (hdd.img) to the test discs.
 Until a titles disk has been pushed, `image` is null and every title is
 `unknown`: the device's hdd.img carries whatever the pass-1 runs left on it.
+
+THE DISPATCHER DRIVES IT (dispatcher.sh, titles_disk_prepare / _after). Before
+a title run it asks `plan` with the device file's size and sha256: `seed`
+(pull hdd.img once, harvest every title on it), `harvest` (the disk holds
+writes no harvest read), `build` (rebuild from the store, push, `pushed`),
+or `keep`. After the run it pulls the disk and `after-run` harvests it. A
+disk is rebuilt when the store's saves differ from what it was built from,
+or it grew past TITLES_DISK_CAP_BYTES (512 MiB); never over a failed harvest
+below TITLES_DISK_CEILING_BYTES (4 GiB).
 
     {"device": "thor",
      "image": {"host_copy": ".../images/thor-<sha12>.qcow2", "sha256": ...,
@@ -190,15 +202,24 @@ def store_dir(tid, save_id):
 def harvest(device, tid, image, run):
     """Pull T's save off a disk image into the store, and name it as the
     device's current save for T."""
-    tmp = os.path.join(root(), "saves", tid, ".incoming")
+    # Per device and process: both handhelds' workers harvest, and the same
+    # title can come off both at once.
+    tmp = os.path.join(root(), "saves", tid, f".incoming.{device}.{os.getpid()}")
     shutil.rmtree(tmp, ignore_errors=True)
     os.makedirs(tmp)
-    m = saves.pull(image, tid, tmp)
+    try:
+        m = saves.pull(image, tid, tmp)
+    except BaseException:
+        shutil.rmtree(tmp, ignore_errors=True)
+        raise
     dest = store_dir(tid, m["save_id"])
-    if os.path.isdir(dest):
-        shutil.rmtree(tmp)
-    else:
-        os.replace(tmp, dest)
+    try:
+        if not os.path.isdir(dest):
+            os.replace(tmp, dest)
+    except OSError:
+        if not os.path.isdir(dest):     # not the other worker's identical save
+            raise
+    shutil.rmtree(tmp, ignore_errors=True)
     with Registry(device) as st:
         row = st["titles"].setdefault(tid, {"profile": True, "origin": "found",
                                             "since_utc": now()})
@@ -210,11 +231,16 @@ def harvest(device, tid, image, run):
     return m["save_id"]
 
 
+def wanted(st):
+    """What a titles disk for this state carries: every save the device is
+    recorded as holding."""
+    return {t: r["save"] for t, r in st["titles"].items() if r.get("profile") and r.get("save")}
+
+
 def build_image(device, out, add=()):
     """A titles disk for DEVICE: every save the device is recorded as holding,
     plus ADD (T:SAVE_ID pairs to import). Returns built_from."""
-    st = load(device)
-    built = {t: r["save"] for t, r in st["titles"].items() if r.get("profile") and r.get("save")}
+    built = wanted(load(device))
     for pair in add:
         t, _, s = pair.partition(":")
         built[tid_norm(t)] = s
@@ -228,13 +254,22 @@ def build_image(device, out, add=()):
     return built
 
 
-def pushed(device, image, device_path, built_from):
-    """The dispatcher pushed IMAGE to DEVICE_PATH: the device now holds
-    exactly the saves it was built from, and nothing else."""
+def sha256_file(path):
     h = hashlib.sha256()
-    with open(image, "rb") as fh:
+    with open(path, "rb") as fh:
         for chunk in iter(lambda: fh.read(1 << 20), b""):
             h.update(chunk)
+    return h.hexdigest()
+
+
+def pushed(device, image, device_path, built_from):
+    """The dispatcher pushed IMAGE to DEVICE_PATH: the device now holds
+    exactly the saves it was built from, and nothing else.
+
+    A title's `save_na` survives the push: it says the title needs no save,
+    which a disk without one for it does not contradict (status_html.py
+    reads it)."""
+    sha = sha256_file(image)
     with Registry(device) as st:
         old = st["titles"]
         st["titles"] = {}
@@ -245,10 +280,124 @@ def pushed(device, image, device_path, built_from):
                                "origin": "imported" if imported else prev.get("origin", "imported"),
                                "since_utc": now() if imported else prev.get("since_utc", now()),
                                "observed": None, "by_run": None}
-        st["image"] = {"host_copy": os.path.abspath(image), "sha256": h.hexdigest(),
+        for t, prev in old.items():
+            if t not in st["titles"] and prev.get("save_na"):
+                st["titles"][t] = {"profile": False, "save": None, "origin": None,
+                                   "since_utc": None, "save_na": prev["save_na"]}
+        # device_sha256: what the device's file is known to hold, and the
+        # only thing plan() compares the device against. The guest writes
+        # the disk on every boot, so after a run it moves, and after-run
+        # moves it with it once the run's saves are harvested.
+        st["image"] = {"host_copy": os.path.abspath(image), "sha256": sha,
                        "device_path": device_path, "built_from": built_from,
-                       "pushed_utc": now()}
+                       "pushed_utc": now(), "device_sha256": sha, "last_pull": None}
     return st
+
+
+def harvest_all(device, image, run):
+    """Harvest every title on IMAGE (E:\\UDATA, E:\\TDATA) into the store.
+    A save is content-addressed, so a title the run did not touch harvests
+    to the id it already had. Returns ({tid: save_id}, {tid: error})."""
+    got, errors = {}, {}
+    for tid in sorted(saves.list_titles(saves.open_e(image))):
+        try:
+            got[tid] = harvest(device, tid, image, run)
+        except (saves.SaveError, saves.er.ExtractError, OSError) as e:
+            errors[tid] = str(e)[:200]
+    return got, errors
+
+
+def seed(device, image, run):
+    """The first titles disk for DEVICE carries what its hdd.img holds: every
+    title's save on it goes into the store and the registry, so no profile a
+    title made on the shared disk is lost by moving title runs off it."""
+    got, errors = harvest_all(device, image, run)
+    with Registry(device) as st:
+        st["seeded"] = {"utc": now(), "run": run, "image_bytes": os.path.getsize(image),
+                        "harvested": got, "errors": errors}
+    return got, errors
+
+
+def after_run(device, image, run, device_sha):
+    """IMAGE is a pull of DEVICE's titles disk whose sha256 on the device was
+    DEVICE_SHA. Harvest it. Only a clean harvest moves device_sha256: a disk
+    whose saves did not all come off is never rebuilt over (plan)."""
+    if device_sha and sha256_file(image) != device_sha:
+        raise SystemExit(f"titlestate: {image} is not the device's disk (sha256 differs)")
+    got, errors = harvest_all(device, image, run)
+    with Registry(device) as st:
+        img = st.get("image") or {}
+        img["last_pull"] = {"utc": now(), "run": run, "bytes": os.path.getsize(image),
+                            "sha256": device_sha, "harvested": got, "errors": errors}
+        if not errors:
+            img["device_sha256"] = device_sha
+        st["image"] = img
+    return {"harvested": got, "errors": errors}
+
+
+CAP = 512 << 20         # a titles disk grown past this is rebuilt from the store
+CEILING = 4 << 30       # ... and past this even over a failed harvest: E: fills near 5 GB
+
+
+def plan(device, device_bytes, device_sha, cap=CAP, ceiling=CEILING):
+    """What the dispatcher does to DEVICE's titles disk before a title run.
+
+        seed      no titles disk yet: harvest hdd.img into the store first
+        harvest   the device's disk holds writes no harvest has read
+        build     rebuild from the store and push
+        keep      boot the disk that is there
+
+    DEVICE_BYTES < 0 means the file is not on the device. Never `build` over
+    writes that were not harvested, unless the disk is past CEILING."""
+    st = load(device)
+    img = st.get("image")
+    if not img:
+        if not st.get("seeded"):
+            return {"action": "seed", "reason": f"{device} has no titles disk and its hdd.img was never harvested"}
+        return {"action": "build", "reason": f"{device} has no titles disk yet"}
+    if device_bytes < 0:
+        return {"action": "build", "reason": "the titles disk is not on the device"}
+    if device_sha != img.get("device_sha256"):
+        lp = img.get("last_pull") or {}
+        if lp.get("sha256") == device_sha and lp.get("errors"):
+            if device_bytes > ceiling:
+                return {"action": "build", "alert": True,
+                        "reason": f"ALERT: {device_bytes} B > ceiling {ceiling} B; rebuilding over "
+                                  f"unharvested saves of {', '.join(sorted(lp['errors']))}"}
+            return {"action": "keep", "alert": True,
+                    "reason": f"harvest of this disk failed for {', '.join(sorted(lp['errors']))} "
+                              f"(run {lp.get('run')}); not rebuilding over it"}
+        return {"action": "harvest", "reason": "the device's disk changed since its last harvest"}
+    want = wanted(st)
+    if want != img.get("built_from"):
+        diff = sorted(t for t in set(want) | set(img.get("built_from") or {})
+                      if want.get(t) != (img.get("built_from") or {}).get(t))
+        return {"action": "build", "reason": f"the store's saves differ from the disk's for {', '.join(diff)}"}
+    if device_bytes > cap:
+        return {"action": "build", "reason": f"the disk grew to {device_bytes} B > cap {cap} B"}
+    return {"action": "keep", "reason": "the disk carries the store's saves"}
+
+
+def rebuild(device, keep=5):
+    """Build DEVICE's titles disk from the store into images/, verify every
+    save on it, and name it by content. Keeps the newest KEEP per device."""
+    d = os.path.join(root(), "images")
+    os.makedirs(d, exist_ok=True)
+    tmp = os.path.join(d, f".{device}.building.qcow2")
+    built = build_image(device, tmp)
+    for t, s in sorted(built.items()):
+        bad = saves.verify(tmp, store_dir(t, s))
+        if bad:
+            os.remove(tmp)
+            raise SystemExit(f"titlestate: {t}/{s} does not verify on the built disk: {bad[:3]}")
+    sha = sha256_file(tmp)
+    out = os.path.join(d, f"{device}-{sha[:12]}.qcow2")
+    os.replace(tmp, out)
+    old = sorted((p for p in os.listdir(d) if p.startswith(device + "-") and p.endswith(".qcow2")),
+                 key=lambda p: os.path.getmtime(os.path.join(d, p)), reverse=True)
+    for p in old[keep:]:
+        os.remove(os.path.join(d, p))
+    return {"path": out, "sha256": sha, "built_from": built}
 
 
 def store_saves(tid):
@@ -257,6 +406,8 @@ def store_saves(tid):
         return []
     out = []
     for s in os.listdir(d):
+        if s.startswith("."):           # a harvest in flight
+            continue
         p = os.path.join(d, s, "save.json")
         if os.path.exists(p):
             out.append((os.path.getmtime(p), s))
@@ -358,6 +509,18 @@ def main(argv=None):
     s = sub.add_parser("pushed")
     for f in ("--device", "--image", "--device-path", "--built-from"):
         s.add_argument(f, required=True)
+    for name in ("seed", "after-run"):
+        s = sub.add_parser(name)
+        for f in ("--device", "--image", "--run"):
+            s.add_argument(f, required=True)
+        s.add_argument("--device-sha", default="")
+    s = sub.add_parser("plan"); s.add_argument("--device", required=True)
+    s.add_argument("--device-bytes", type=int, required=True)
+    s.add_argument("--device-sha", default="")
+    s.add_argument("--cap", type=int, default=int(os.environ.get("TITLES_DISK_CAP_BYTES") or CAP))
+    s.add_argument("--ceiling", type=int,
+                   default=int(os.environ.get("TITLES_DISK_CEILING_BYTES") or CEILING))
+    s = sub.add_parser("rebuild"); s.add_argument("--device", required=True)
     s = sub.add_parser("choose"); s.add_argument("--title-id", required=True); s.add_argument("--devices")
     s = sub.add_parser("route"); s.add_argument("--title-id", required=True)
     s.add_argument("--variant", required=True, choices=VARIANTS)
@@ -391,6 +554,16 @@ def main(argv=None):
         print(json.dumps(build_image(a.device, a.out, a.add), sort_keys=True))
     elif a.cmd == "pushed":
         pushed(a.device, a.image, a.device_path, json.loads(a.built_from))
+    elif a.cmd == "seed":
+        got, errors = seed(a.device, a.image, a.run)
+        print(json.dumps({"harvested": got, "errors": errors}, sort_keys=True))
+    elif a.cmd == "after-run":
+        print(json.dumps(after_run(a.device, a.image, a.run, a.device_sha), sort_keys=True))
+    elif a.cmd == "plan":
+        print(json.dumps(plan(a.device, a.device_bytes, a.device_sha, a.cap, a.ceiling),
+                         sort_keys=True))
+    elif a.cmd == "rebuild":
+        print(json.dumps(rebuild(a.device), sort_keys=True))
     elif a.cmd == "choose":
         devs = a.devices.split(",") if a.devices else None
         print(json.dumps(choose(tid_norm(a.title_id), devs), indent=1, sort_keys=True))
