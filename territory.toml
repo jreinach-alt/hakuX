@@ -606,6 +606,11 @@ issues = ["507"]
 files = ["docs/lanes/thorheat/**"]
 note = "STARTED (lane.local 2026-09-29T16:00Z), briefs/thorheat.md: the owner's ask (09-29 ~08:50 PDT), a hardware-engineer persona with direct Thor access to find why this device overheats (xo-therm 78 C pause; Azurik paused at +938 s from cold at the defaults, while the Nova plateaus near 49 C) and what counteracts it. DEVICE GRANT (owner): Thor only, direct adb under hold.sh lane.thorheat, blocks of at most 60 min, at most 3 h today, user-accessible settings only, everything restored; no root, flash or fan-duty writes. Docs only."
 
+[lane.kabukistall]
+issues = ["507"]
+files = ["docs/lanes/kabukistall/**", "docs/testing/predictions/kabukistall-*.json"]
+note = "STARTED (lane.local 2026-09-29T17:10Z), briefs/kabukistall.md: the energy map's rank 5, unowned until now: Kabuki and DOA stall for 20-70 s with 1.8-2.25 cores busy and no flips (Kabuki 33.6% at 30 fps over full gameplay in 1-1790639272-lane.gmem474-125693). The owner asked why Kabuki is not Playable. Profile P1 is on disk. Emulator files come by board request once the cause is known."
+
 [retired.tokentier]
 issues = []
 files = []
