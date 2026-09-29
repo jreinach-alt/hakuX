@@ -217,7 +217,7 @@ notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 
 name = "Midnight Club 3: DUB Edition"
 target_fps = 30
 iso = { nova = "54540079-Midnight_Club_3_DUB_Edition.xiso.iso" }
-notes = "#431 (comment 5851536933): 30, medium confidence. IGN (PS2 and Xbox, 2005)"
+notes = "#431 (comment 5851536933): 30, medium confidence. IGN (PS2 and Xbox, 2005). DRAFT route by lane.titleroutes 2026-09-29 (Nova, docs/testing/titles/routes/midnight-club-3.first-run.route): reaches Create Profile -> Arcade/San Diego/Cruise, but the unattended replay stalled on a static post-Start garage frame that A/START/RT could not advance over several minutes; not linked here until it replays clean. See NOTES.md session 34."
 
 [titles."56550036"]
 name = "Crash Twinsanity"

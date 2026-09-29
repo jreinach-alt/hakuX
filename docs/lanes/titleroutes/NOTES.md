@@ -1642,3 +1642,171 @@ when the Thor has no hold, runs nothing, and no other requester's `0-` or
    GoldenEye RA (returning), Burnout Revenge. The Nova is on fps-focus work.
 5. Kabuki Warriors: a second run with `--frames-every` would show what the
    59 fps stretches are. Not queued, because the Nova's queue is full.
+
+### Session 34: 2026-09-29 16:20-17:0x PDT
+
+Why session 33 did not finish on its own: it did finish -- it posted the
+waiting table above on PR #558, #558 merged, and every one of the eight
+requests ran to completion afterward. The harness resumed the lane because
+the PR had merged and the waited-on requests were done.
+
+**Correction to the carry-forward list.** "Call of Duty 3" and "25 to Life"
+have been in section 1's Dropped line (the titlebench batch, already
+benchmarked) since this file's first line -- they were never unstarted work,
+and Addendum 5 in the brief separately assigns Blinx 2 to lane.slowdown462.
+Carrying them in the "next titles" list for four sessions running was a
+brief-premise-from-NOTES error, not a re-check of the actual work list
+(section 1). The real next Nova titles, in row order, are: Burnout Revenge
+(row 11, blocked on the profile loop per Addendum 2), Midnight Club 3
+(row 13, this session), 187: Ride or Die (row 15), Crash Bandicoot: The
+Wrath of Cortex (row 20), Black Stone: Magic & Steel (row 21).
+
+**A live dispatch wipe removed all eight results mid-session, and the
+dispatcher log is the only surviving record of most of them.** Around
+16:25 PDT hostops ran a "dispatch wipe" (dispatcher.log:11805, an
+arms-uberspike569 re-queue note: "the 16:25 dispatch wipe removed arms pair
+c5c0e63aed4e's ..."). I had read `result.json` for two of the eight
+(Azurik, PGR2) and grepped `run.log` for all seven completed ones in the
+few minutes before the wipe; a repeat of the same Glob/Read a minute later
+returned nothing for any of the seven -- `results/<id>/` is a symlink into
+storage the wipe cleared, not a real removal of the directory entry (Glob
+found the DONE dirs, then found nothing, with no directory-listing
+permission change in between). This is the same shape session 30 flagged
+("their results/ entries are dangling symlinks") but live, not just found
+stale. What I got out before it went, from `dispatcher.log` and the two
+`run.log` reads:
+
+| title | request | mark gameplay | adb_failures | thermal after mark |
+|---|---|---|---|---|
+| Azurik | 1-1790560999-titleroutes-2862460 | 08:21:51 (09-28) | 0 | none, hottest 95.8 C |
+| D&D Heroes | 1-1790560999-titleroutes-2862610 | 09:39:08 (09-28) | 0 | none, hottest 95.8 C |
+| 007: Nightfire | 1-1790563604-titleroutes-373432 | 10:32:45 (09-28) | 0 | none, hottest 95.0 C |
+| Burnout 3 (returning) | 1-1790563604-titleroutes-374056 | 13:59:55 (09-28) | 0 | none, hottest 96.6 C |
+| RalliSport Challenge 2 (returning) | 1-1790566122-titleroutes-1417504 | 18:36:58 (09-28) | 0 | pause at +341/375 s of 570 s, hottest 95.0 C |
+| Spikeout (returning) | 0-0-x-1-1790567423-titleroutes-2191714 | 07:57:48 (09-29) | 0 | pause at +356/389 s of 460 s, hottest 95.4 C |
+| PGR2 | 1-1790569004-titleroutes-3006458 | 13:19:59 (09-29) | 0 | pause at +360/392 s of 530 s, hottest 95.4 C |
+
+All seven reached `mark gameplay` with zero adb failures; the batch's
+purpose (routes reach gameplay under MAX and score) holds, same conclusion
+as hostops's 09-28 15:37 PDT pilot-file review. The window median / share
+at >= 30 that would normally go in this table is gone with the wipe and
+cannot be recovered from this session; a later reader who needs those
+numbers has to re-run the soak. **Do not re-queue these seven**: the
+purpose was already proven twice (this session and the 09-28 pilot-file
+review) and a third run is not needed to re-establish it.
+
+Bruce Lee's route-check request (1-1790608228-titleroutes-824349, later
+renamed `1-9-...`) never ran: `BATTERY: skip` on it recurs from 14:18 PDT
+09-29 through 16:22:59 PDT, the Thor never above 21% battery in that
+window. Still queued, still battery-gated. Do not re-queue it either; it is
+already in queue/.
+
+**Device state at 16:30 PDT:** Thor 21% battery (below the 30% held-session
+floor; an arms run, uberspike569, was admitted there at 16:29 and is
+running). Nova 37%, no hold, no running or queued request for it --
+free, and above floor. `nova` had six `charge-hostops` hold/lift cycles
+between 09:00 and 16:16 PDT today (all under `dispatch/hold/lifted/`), so
+its battery has been marginal all day; a HELD session there was kept short.
+
+**Midnight Club 3 (54540079), first-run route, held Nova session
+midnight-club-3.first-run-20260929T163330 (16:33-16:47 PDT, hold
+lane.titleroutes, 37% -> battery not re-read at release):** no title-state
+entry existed for it on the Nova (`titlestate.py show --device nova`), so
+this was a clean start, not a repeat of anyone else's work.
+
+Path: sponsor splash (A) -> Rockstar/legal text (A) -> a night-city
+flythrough FMV with no control (A) -> MC3 logo, "Checking saved games" ->
+four empty CREATE PROFILE slots (A) -> "Enter Profile Name" keyboard,
+default "Player 1", ACCEPT highlighted (A) -> "Saving progress and
+settings" -> main menu (Career/Arcade/Networking/Race Editor/Options,
+Career highlighted).
+
+**The main menu list ignores the digital d-pad.** `press DOWN` and
+`press UP` (pad.sh codes 544/545) did nothing across four tries (confirmed
+by re-shooting the same frame twice with no visible change). Only the left
+stick moves it, and only in fixed jumps: one `axis LY max` (or `min`) then
+`axis LY mid`, with >= 0.3 s between the two calls, reliably moved the
+highlight exactly THREE rows in that direction, wrapping past the ends of
+the 5-row list -- reproduced at gaps of 0.3 s, 1 s and 3 s. A gap of 0 s
+(the two axis calls back to back) moved it only two rows, twice. Two
+down-pulses from Career (row 0) land on Arcade (row 1): 0 -> 3 -> 1 mod 5.
+This is the same family of trap as PGR2's auto-repeating menu (session 29)
+but the unit here is "rows per pulse", not "time held".
+
+Arcade -> "San Diego / Cruise / Players: 1 / P1 Stock: Eclipse" (A) -> a
+settings screen, Time of Day/Weather/Pedestrians/Traffic all Default (A) ->
+"Start" (A) -> LOADING -> **mark gameplay**: a red coupe parked outside
+"SIX-ONE-NINE CUSTOMS", minimap/tach/speedo up. RT accelerates -- the
+speedo read ~50 mph and the camera showed motion blur and passing
+buildings within 1.5 s of `axis RT max`. Frames:
+`~/hakux-work/nav/midnight-club-3.first-run-20260929T163330/031-loaded2.png`
+(control, stationary) and `033-moving.png` (moving, ~50 mph).
+
+Route: `docs/testing/titles/routes/midnight-club-3.first-run.route` (hand-
+written from the nav session, trimming the menu-tick experimentation and
+one broken step nav.py logged verbatim -- `press DPAD_DOWN`, which errors
+against pad.sh -- rather than replaying the exploration literally).
+`route.sh --check` passes.
+
+**REPLAYED unattended, same session, fresh launch -- and it did NOT reach
+the same screen. This is a DRAFT, not a working route.** Frames in
+`scratch/replay/mc3-1640/` (not committed). Up through "Saving progress
+and settings" and the main menu it matched the nav session frame for
+frame. At `mark gameplay` (164134-gameplay.png) it showed a static
+garage/showcase view of the same red car (tire stacks, no minimap/tach/
+speedo), not the street-with-HUD frame the nav session marked. It never
+left that frame: a `press A` probe, a `press START` probe, and the route's
+own `repeat forever { axis RT max ... }` running for over two minutes all
+left the screen pixel-identical (`scratch/replay/mc3-1640/zz-now.png`,
+taken ~3 min after the mark). `hakuX-stall` logcat kept incrementing
+(`flip`, `pres`, texture cache growth) through that whole window, so the
+emulator was rendering, not hung -- the GAME was holding still.
+
+The likely cause: this route marks gameplay only 9.0 s after the Start
+press (`wait 4.0` then `wait 5.0`); the nav session took 13.9 s to reach
+its street-with-HUD frame from the same point
+(`~/hakux-work/nav/midnight-club-3.first-run-20260929T163330/031-loaded2.png`).
+9.0 s is probably mid-transition or lands a `press`/`axis` in a state that
+does not take it. **Not fixed this session** -- time and the Nova's
+battery (37% -> 31% over the ~15 min hold) both had room left, but a third
+guess at the wait without seeing what the extra 5 s actually contains
+would be exactly the kind of cheap-first probe the project has already
+been burned by; the next held session should watch the transition
+directly (shorter waits, more shots) rather than guess a bigger number.
+targets.toml: `54540079`'s notes point at this route and say why it is not
+linked; no `route =` key was added (matching Black's still-draft
+`45410083`, which also has no `route` key). No benchmark was queued --
+Addendum 2 queues a benchmark only once a route replays, and this one has
+not. Do not queue one until it does.
+
+`titlestate.py record` on the Nova: `54540079` observed `created` (the
+profile "Player 1" was made and the run reached "Saving progress and
+settings"), noting the route is still a draft.
+
+Released the Nova hold at 16:47 PDT (battery 37% -> 31%, app stopped,
+asleep). Device state at release: Thor still under the uberspike569 arms
+run from before this session, battery unread since 21%; Nova free, 31%,
+no hold, no queued request.
+
+**Next:**
+1. Fix `midnight-club-3.first-run.route`: re-open a HELD Nova session,
+   relaunch, drive to the Start press, then take shots every 1-2 s (not
+   one long wait) through the garage frame so the actual transition to the
+   street-with-HUD frame is seen and timed, not guessed at. Replay again
+   before trusting it or queuing its benchmark.
+2. Then continue the corrected Nova work list (section 1): Burnout Revenge
+   (row 11, the profile-loop blocker from Addendum 2 -- worth a fresh look
+   since it may share MC3's transition-timing shape), 187: Ride or Die
+   (row 15), Crash Bandicoot: The Wrath of Cortex (row 20), Black Stone:
+   Magic & Steel (row 21).
+3. Thor work resumes once its battery clears 30% and running/ has nothing
+   pinned to it ahead of title work: the hand-over's Bicycle Casino,
+   Breeders' Cup, AMF Xtreme Bowling, then the rest of section 1's Thor
+   column. Bruce Lee's route-check request (1-1790608228-titleroutes-824349)
+   is still queued and battery-gated; do not re-queue it.
+4. The seven results the 16:25 PDT dispatch wipe removed (Azurik through
+   PGR2, table above) do not need a re-run: mark gameplay and zero
+   adb_failures were confirmed for all seven before the wipe, and hostops's
+   09-28 15:37 PDT pilot-file review already reached the same verdict from
+   a different two of them. A re-run would only be for the window-median
+   numbers, which is a job for whoever needs them, not a default action.
