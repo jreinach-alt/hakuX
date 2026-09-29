@@ -3,6 +3,8 @@
 
     affinity.py <dispatch-dir> <request.req>     -> prints a device label, or ""
     affinity.py <dispatch-dir> --serving         -> prints the live lane labels
+    affinity.py <dispatch-dir> --available <label> -> exit 0 if serving or held
+                                                    (and coming back), 1 if gone
     affinity.py <dispatch-dir> --choose <key> <before-id>
                                                  -> the pooled device with the
                                                     least work queued ahead of
@@ -41,6 +43,11 @@ Three rules, in order:
    2b. A QUEUED sibling with an explicit `device` pins this request to that
    device. That covers a pair queued by hand with one arm given --device, and
    it is what keeps an arms-job pair together if only one arm carries the pin.
+
+   A sibling that LANDED (running or run) on a device that is now HELD still
+   pins, for up to HOLD_WAIT_S from the hold's mtime: a held device is coming
+   back, and following the partner elsewhere splits the pair (#583, see
+   `_held`). A device neither serving nor held is gone, and falls through.
 
    The siblings are read in the order a request MOVES -- queue/, then
    running/, then results/ -- so a sibling that is being claimed while this
@@ -283,6 +290,50 @@ def _live(d, label):
     return label in serving(d)
 
 
+# How long a pin waits for a HELD device before it falls through as if the
+# device were gone. From the hold file's mtime. See `_held`.
+HOLD_WAIT_S = int(os.environ.get("AFFINITY_HOLD_WAIT_S") or 3 * 3600)
+
+
+def _held(d, label):
+    """Is that device on a HOLD that is young enough to wait for?
+
+    A HELD DEVICE IS COMING BACK; A GONE ONE IS NOT. `_live` cannot tell them
+    apart, because a held worker drops its own `lanes/<label>` on purpose
+    (dispatcher.sh, the hold check: "affinity must not pin a pair to a device
+    on hold"), so both read as "not serving" and both fell through. That is
+    right for a device that went away and wrong for one taken out of service
+    for a title push or a cold slot: on 2026-09-28 #583's base arm ran on the
+    thor, the thor was under a bounded hold when the fix arm came up, its load
+    pin and its sibling pin both fell through, and the nova ran it. The pair
+    then FAILED on a capture that differs by device, and the PR was labelled
+    `regressed` on a verdict its own judge called unattributable.
+
+    So a pin to a held device WAITS, for up to HOLD_WAIT_S from the hold
+    file's mtime; after that the device is treated as gone and the pin falls
+    through exactly as before. The hold file is the only record that survives
+    a hold (the lane registration does not), which is why it is the test.
+
+    The 09-13 incident `_live` was written for -- the nova out of service for
+    four hours with #50's arm A run on it -- was a hold too. It now waits
+    three hours instead of none, and then falls through and is noted as a
+    split, as it always was. A device with neither a live lane nor a hold is
+    gone and falls through at once.
+    """
+    p = os.path.join(d, "hold", label)
+    try:
+        if not os.path.isfile(p):
+            return False
+        return time.time() - os.path.getmtime(p) < HOLD_WAIT_S
+    except OSError:
+        return False
+
+
+def _available(d, label):
+    """Serving now, or held and coming back: a pin to it is worth keeping."""
+    return _live(d, label) or _held(d, label)
+
+
 def load(p):
     try:
         with open(p) as f:
@@ -325,6 +376,167 @@ def _hash_pick(key, devs):
     return h % len(devs)
 
 
+# BATTERY. Rule 3's hash and a load pin are both blind to the battery gate,
+# and the gate is asked only on the device this file names, so a refusal
+# there is seen by nobody else. On 2026-09-28 three arm pairs (ibcache,
+# gpl569, tcg424flip) hashed to the nova and were refused on every walk for
+# 8-14 h -- level 35 < need 49.6, the nova hovering at 35-39 % on its 500 mA
+# port -- while the thor sat at 80-83 % and would have admitted them at need
+# 29.9. It never saw them: this file had sent them to the nova.
+#
+# So a device that has refused a request of this key for REFUSED_MOVE_S, and
+# whose level is still below the need it refused at, is passed over -- but
+# only for another pooled device whose own level covers its own need, and
+# only where nothing has landed (a sibling that ran is still followed, rule
+# 2). No refusal, or every candidate refusing, and the answer is the one it
+# always was. battery_admit.py writes the record (`.battery_refused.<label>`)
+# and computes the need; see there.
+#
+# PAIRS. Both arms share the key, but a move read from state can flip, and a
+# claim is not the instant of the decision: the dispatcher decides here, then
+# runs the battery gate (a dumpsys read of up to ADB_QUICK_TIMEOUT), and only
+# then moves the arm into running/. For that whole window the arm is still in
+# queue/ and rule 2 cannot see it. If the refusing device's level crossed its
+# need inside the window, the partner would hash back to it and be admitted
+# there: a split pair (audit of #611, M1). So a move is ONE-WAY for the key.
+# The first claim to decide it writes moves/<key>.battery.json naming the
+# target and the key's ids, and from then on every reader follows that note,
+# not the live levels. The note is given up only when its target itself
+# refuses the key, and a refusing device cannot claim, so the one flip left
+# is toward a device that will not take the arm. It lapses once none of its
+# ids is queued or running. The one gap is the instant between a claim
+# computing the move and writing it, the same kind as the
+# rename-to-owner-write instant rule 2 already names.
+#
+# A candidate with no fresh level (nothing asked it for 15 min) counts as
+# admitting: it reads its level when it is offered the request, and if it
+# refuses, that refusal is recorded and the request goes back. That asymmetry
+# is for candidates only. The device refusing a key is judged on the level it
+# refused at once its own reading goes stale, and after a move it is never
+# offered the key again, so an idle refuser that has since recharged keeps
+# passing the key on until other work routed to it refreshes its level. The
+# cost is delay, never a split.
+REFUSED_MOVE_S = float(os.environ.get("AFFINITY_REFUSED_MOVE_S") or 600)
+
+try:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import battery_admit as _ba
+except Exception:        # a copy of this file alone: no battery rule, as before
+    _ba = None
+
+
+def _key_ids(d, key, me):
+    """Ids of the queued or running requests pinned on `key`, `me` included."""
+    ids = {me[:-4] if me.endswith(".req") else me}
+    for sub in ("queue", "running"):
+        p = os.path.join(d, sub)
+        try:
+            names = os.listdir(p)
+        except OSError:
+            continue
+        for name in names:
+            if name.endswith(".req") and _key(load(os.path.join(p, name))) == key:
+                ids.add(name[:-4])
+    return ids
+
+
+def _refusing(d, label, ids, now, age=0.0):
+    """The refusal of one of `ids` on `label` that still holds and is at least
+    `age` old, or None. "Still holds": the device's current level, or the
+    level it refused at if it has not read one since, is below that need."""
+    lvl = _ba.level_now(d, label)
+    for i, r in sorted(_ba.refusals(d, label).items()):
+        try:
+            if i not in ids or now - float(r["since"]) < age:
+                continue
+            at = lvl if lvl is not None else float(r["level"])
+            if at < float(r["need"]):
+                return dict(r, id=i, level_now=at)
+        except (KeyError, TypeError, ValueError):
+            continue
+    return None
+
+
+def _move_path(d, key):
+    return os.path.join(d, "moves", key.replace("/", "_") + ".battery.json")
+
+
+def _battery_alt(d, req, me, key, dev, devs, commit=False):
+    """Where to send `req` instead of `dev`, or "" to leave it on `dev`.
+    `commit` (a claim, not a question) writes and retires the key's move."""
+    if _ba is None or not key or dev not in devs:
+        return ""
+    try:
+        now = time.time()
+        ids = None
+        mp = _move_path(d, key)
+        mv = load(mp) if os.path.exists(mp) else {}
+        if mv:
+            # A move already decided for this key is followed, not re-derived.
+            ids = _key_ids(d, key, me)
+            to = mv.get("to") or ""
+            if ids & set(mv.get("ids") or ()) and to in devs \
+                    and not _refusing(d, to, ids, now):
+                return "" if to == dev else to
+            # Lapsed (its pair has gone), its target has left the pool, or
+            # its target refuses: re-derive, and a claim retires it.
+            if commit:
+                try:
+                    os.remove(mp)
+                except OSError:
+                    pass
+        if not _ba.refusals(d, dev):
+            return ""    # the common case, without listing the queue
+        if ids is None:
+            ids = _key_ids(d, key, me)
+        if not _refusing(d, dev, ids, now, REFUSED_MOVE_S):
+            return ""
+        ok = []
+        for x in devs:
+            if x == dev or _refusing(d, x, ids, now):
+                continue
+            lvl = _ba.level_now(d, x)
+            if lvl is None or lvl >= _ba.need_for(d, x, req)[0]:
+                ok.append(x)
+        if not ok:
+            return ""
+        to = ok[_hash_pick(key, ok)]
+        if commit:
+            _write_move(mp, dict(key=key, frm=dev, to=to, ids=sorted(ids), t=now))
+        return to
+    except Exception:    # never fail a claim over the battery rule
+        return ""
+
+
+def _write_move(path, rec):
+    """The key's one-way move (see PAIRS above), replaced atomically."""
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        tmp = path + ".%d" % os.getpid()
+        with open(tmp, "w") as f:
+            json.dump(rec, f, sort_keys=True)
+        os.replace(tmp, path)
+    except OSError:
+        pass  # never fail a claim over a note
+
+
+def _note_battery_move(d, reqname, key, frm, to):
+    """The move is a decision only this file knows it made: say so once.
+    Not in splits/: the pair stays on one device, and status.sh reads every
+    note there as "may span two devices"."""
+    p = os.path.join(d, "moves", reqname + ".battery.txt")
+    try:
+        if os.path.exists(p):
+            return
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        with open(p, "w") as f:
+            f.write("prediction %s: %s has refused it on battery for %ds or more "
+                    "and %s would admit it, so this request goes to %s\n"
+                    % (key, frm, REFUSED_MOVE_S, to, to))
+    except OSError:
+        pass  # never fail a claim over a note
+
+
 def _is_load_pin(req, label):
     """Is this explicit `device` the arms job's preference, not a requirement?
 
@@ -335,9 +547,16 @@ def _is_load_pin(req, label):
     Honouring it past the device's death would turn "run where the queue is
     shorter" into "never run", which is the stall `_live` exists to prevent.
     Off-pool lanes are never a load pick, so a pin to one stays absolute.
+
+    `"pin": "hard"` (request.sh --hard-pin) makes an arms-job pin absolute
+    too. The arms job writes it on the one arm pair it must NOT let fall
+    through: the same-device re-run of a pair whose FAIL was confounded by
+    running its two arms on two devices. Falling through there would
+    reproduce the confound it exists to remove.
     """
     return ((req.get("requester") or "").startswith("arms-")
             and not (req.get("title") or "").strip()
+            and (req.get("pin") or "").strip() != "hard"
             and label not in OFFPOOL)
 
 
@@ -406,9 +625,18 @@ def decide(d, req, me, notes=True, labels_for=None):
     if explicit:
         if not _is_load_pin(req, explicit):
             return explicit
+        # A load pin to a HELD device still falls through (nothing has
+        # landed, so both arms can go elsewhere together), but it is not a
+        # split: a sibling that did land there is followed below (`_held`).
         if _live(d, explicit):
             load_pin = explicit
-        else:
+            # A load pin to a device refusing it on battery falls through
+            # like one to a held device: nothing has landed, and both arms
+            # carry the same pin, so both go wherever the rules below say.
+            if _battery_alt(d, req, me, _key(req), explicit, pooled(d),
+                            commit=notes):
+                load_pin = ""
+        elif not _held(d, explicit):
             note_split(d, me, _key(req) or "(none)", explicit)
 
     key = _key(req)
@@ -434,7 +662,10 @@ def decide(d, req, me, notes=True, labels_for=None):
         dev = (sib.get("device") or "").strip()
         if not dev:
             continue
-        if _is_load_pin(sib, dev) and not _live(d, dev):
+        if _is_load_pin(sib, dev) and (
+                not _live(d, dev)
+                or _battery_alt(d, sib, name, key, dev, pooled(d),
+                                commit=notes)):
             continue  # the sibling falls through too; follow it there
         queued_pin = dev
         break
@@ -466,7 +697,7 @@ def decide(d, req, me, notes=True, labels_for=None):
             # written. Its own explicit device is where it is running.
             owner = owner or (sib.get("device") or "").strip()
             if owner:
-                if _live(d, owner):
+                if _available(d, owner):
                     return owner
                 note_split(d, me, key, owner)
     except OSError:
@@ -482,7 +713,7 @@ def decide(d, req, me, notes=True, labels_for=None):
     # than one from hours ago.
     labels = labels_for(key) if labels_for else _result_labels(d, key)
     for label in labels:
-        if _live(d, label):
+        if _available(d, label):
             return label
         note_split(d, me, key, label)
 
@@ -495,7 +726,13 @@ def decide(d, req, me, notes=True, labels_for=None):
     # one.
     devs = pooled(d)
     if len(devs) > 1:
-        return devs[_hash_pick(key, devs)]
+        pick = devs[_hash_pick(key, devs)]
+        alt = _battery_alt(d, req, me, key, pick, devs, commit=notes)
+        if alt:
+            if notes:
+                _note_battery_move(d, me, key, pick, alt)
+            return alt
+        return pick
     # One serving device needs no pin -- everything lands there anyway, which
     # is the same answer the hash would give. NO serving device is different
     # in kind: it means this file's only input is missing and every rule above
@@ -590,6 +827,10 @@ def main():
     if reqpath == "--serving-pooled":
         print(" ".join(pooled(d)))
         return
+    # For the arms job's same-device re-run: is this device worth a HARD pin
+    # (serving, or held and coming back), or gone, so CHOOSE should pick?
+    if reqpath == "--available":
+        sys.exit(0 if _available(d, sys.argv[3]) else 1)
     if reqpath == "--choose":
         print(choose(d, sys.argv[3], sys.argv[4] if len(sys.argv) > 4 else ""))
         return

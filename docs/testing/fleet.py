@@ -73,7 +73,7 @@ deletes them; leaving them costs only disk.
   lane, unit, branch, worktree, brief, asked, issues[], attempt, model,
   started_utc   (and ended_utc/rc for the moment between exit and unlink)
 """
-import datetime, json, os, subprocess, sys, time, tomllib
+import datetime, json, os, re, subprocess, sys, time, tomllib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 D = os.environ.get("DISPATCH_DIR", "/home/justin/hakux-work/dispatch")
@@ -313,16 +313,84 @@ def attached_labels():
     return labels, None
 
 
+# battery_admit.py's refusals as dispatcher.sh logs them (#507). Only lines
+# that name their device: before the label was in the line a refusal could not
+# be told from the other handheld's, and a guess here would hide a real stall.
+_BATT_LINE = re.compile(
+    r"^(\d\d-\d\d \d\d:\d\d:\d\d) BATTERY: (?:"
+    r"skip (?P<skip>\S+) on (?P<slab>[^\s:]+): level (?P<slev>\d+) < need (?P<sneed>[\d.]+)"
+    r"|hold for head (?P<head>\S+) on (?P<hlab>[^\s:]+) \([^)]*\): not backfilling "
+    r"(?P<hold>\S+), level (?P<hlev>\d+) >= need (?P<hneed>[\d.]+)"
+    r"|admit (?P<admit>\S+) on (?P<alab>[^\s:]+)[: ])")
+
+
+def battery_refusals(now):
+    """{(id, label): (t, head, level, need)} -- each request's newest battery
+    line per device in $DISPATCH_DIR/logs/dispatcher.log, if that line refused
+    it. `head` is None for a skip, else the head a hold waits on.
+
+    THE WHOLE FILE, NOT A TAIL. dispatcher.sh logs a refusal once, and again
+    only when its words change (BATT_SAID), so a request refused at the same
+    level for six hours has one line, six hours old. An admit clears the
+    entry. The stamps are `date '+%m-%d %H:%M:%S'` in local time, the year
+    taken from `now` (a stamp in the future is last year's).
+    """
+    out = {}
+    try:
+        fh = open(os.path.join(D, "logs", "dispatcher.log"), errors="replace")
+    except OSError:
+        return out
+    year = time.localtime(now).tm_year
+    with fh:
+        for line in fh:
+            if "BATTERY: " not in line:
+                continue
+            m = _BATT_LINE.match(line)
+            if not m:
+                continue
+            try:
+                t = time.mktime(time.strptime("%d-%s" % (year, m.group(1)),
+                                              "%Y-%m-%d %H:%M:%S"))
+            except (ValueError, OverflowError):
+                continue
+            if t > now + 86400:
+                t = time.mktime(time.strptime("%d-%s" % (year - 1, m.group(1)),
+                                              "%Y-%m-%d %H:%M:%S"))
+            if m.group("skip"):
+                out[(m.group("skip"), m.group("slab"))] = (
+                    t, None, int(m.group("slev")), m.group("sneed"))
+            elif m.group("hold"):
+                out[(m.group("hold"), m.group("hlab"))] = (
+                    t, m.group("head"), int(m.group("hlev")), m.group("hneed"))
+            else:
+                out.pop((m.group("admit"), m.group("alab")), None)
+    return out
+
+
+def _battery_level(label):
+    """The level dispatcher.sh last read on `label` (.battery_level.<label>),
+    or None."""
+    try:
+        with open(os.path.join(D, ".battery_level.%s" % label)) as fh:
+            return int(fh.read().split()[1])
+    except (OSError, IndexError, ValueError):
+        return None
+
+
 def queue_stall(now=None, settle_s=None):
     """Queued requests that every live claimer has walked past.
 
-    Returns (stalled, on_hold, absent, blind):
+    Returns (stalled, on_hold, absent, battery_gated, blind):
       stalled  [(id, age_s, evidence)] -- nothing is going to claim these;
       on_hold  [(id, age_s, labels)]   -- only a held device can take these;
       absent   [(id, age_s, label, adb_state)] -- pinned to a handheld with
                no live worker that adb does not list as attached ("absent"
                when adb lists it not at all): hands or a re-pin, not a
                claimer fix;
+      battery_gated [(id, age_s, reason)] -- every live claimer passed it
+               over and at least one of them refused it on its battery level
+               (battery_admit.py): that one claims it when the level covers
+               the run;
       blind    None, or why the queue could not be judged at all.
     All lists oldest first. Never raises: this file also runs from scratch
     copies (selftest.d/93, /55) whose $DISPATCH_DIR has no queue at all.
@@ -333,9 +401,9 @@ def queue_stall(now=None, settle_s=None):
     try:
         queued = sorted(n for n in os.listdir(qdir) if n.endswith(".req"))
     except OSError:
-        return [], [], [], None
+        return [], [], [], [], None
     if not queued:
-        return [], [], [], None
+        return [], [], [], [], None
     # Liveness is affinity.py's own kill -0 test, not a second copy of it: the
     # scheduler decides who is serving, and this has to agree with it.
     # Imported here and not at the top because the scratch copies above carry
@@ -343,7 +411,7 @@ def queue_stall(now=None, settle_s=None):
     try:
         import affinity
     except ImportError as e:
-        return [], [], [], ("affinity.py is not beside fleet.py (%s), so "
+        return [], [], [], [], ("affinity.py is not beside fleet.py (%s), so "
                             "liveness cannot be read the way the scheduler "
                             "reads it" % e)
     live = set(affinity.serving(D))
@@ -428,7 +496,8 @@ def queue_stall(now=None, settle_s=None):
         labels, why = adb
         return (None, why) if labels is None else (labels.get(label, "absent"), None)
 
-    stalled, on_hold, absent = [], [], []
+    stalled, on_hold, absent, gated = [], [], [], []
+    refused = None                     # battery_refusals(), read once if asked
     for name in queued:
         path = os.path.join(qdir, name)
         written = _mtime(path)
@@ -465,7 +534,7 @@ def queue_stall(now=None, settle_s=None):
             continue
         changed = max(epoch, sib.get(key, 0.0))
         quiet_since = max(written, last, epoch)
-        evidence = []
+        evidence, gates = [], []
         for lane in sorted(claimers):
             ev = None
             if lane in busy:
@@ -479,13 +548,39 @@ def queue_stall(now=None, settle_s=None):
                      % (lane, age_s(now - quiet_since))
             if ev is None:
                 break                  # this one may yet take it
+            # A BATTERY REFUSAL IS AN ANSWER (#507). battery_admit.py lets a
+            # live, healthy worker decline every queued request until its
+            # charge covers the run; on 2026-09-29 the nova at 36 % refused 42
+            # of them and this read all 42 as a stall. A refusal counts while
+            # it still holds: a skip while the level the worker last read is
+            # under the line's need, a hold while its head is still queued.
+            if refused is None:
+                refused = battery_refusals(now)
+            r = refused.get((rid, lane))
+            if r and r[0] + 1 >= written:          # stamps are whole seconds
+                t, head, level, need = r
+                cur = _battery_level(lane)
+                if head is None and (cur is None or cur < float(need)):
+                    gates.append("%s: level %d < need %s%s" % (
+                        lane, level, need, "" if cur in (None, level)
+                        else " (reads %d now)" % cur))
+                    continue
+                if head is not None and os.path.exists(
+                        os.path.join(qdir, head + ".req")):
+                    gates.append("%s: held for its head %s (level %d >= "
+                                 "need %s)" % (lane, head, level, need))
+                    continue
             evidence.append(ev)
         else:
-            stalled.append((rid, age, "; ".join(evidence)))
+            if gates:
+                gated.append((rid, age, "; ".join(gates + evidence)))
+            else:
+                stalled.append((rid, age, "; ".join(evidence)))
     stalled.sort(key=lambda r: -r[1])
     on_hold.sort(key=lambda r: -r[1])
     absent.sort(key=lambda r: -r[1])
-    return stalled, on_hold, absent, None
+    gated.sort(key=lambda r: -r[1])
+    return stalled, on_hold, absent, gated, None
 
 
 # A PR the machine has already picked up is not the board's to act on. These
@@ -520,6 +615,40 @@ def remote_lanes(terr):
         elif isinstance(r, str) and r.strip():
             out[r.strip()] = lane
     return out
+
+
+def remote_lane_of(ref, remote, rows=None):
+    """The remote lane whose branch `ref` is, or None. `remote` is remote_lanes().
+
+    A REMOTE LANE OPENS EACH PR ON A SUFFIXED BRANCH, `<remote>-<suffix>`, as a
+    local lane's second PR goes on `lane/<name>-<suffix>`: audit files are
+    named by branch, and #578 collided with #560's audits by reusing one. Only
+    the exact value used to count, so such a PR was in no section at all and
+    the READY-with-no-label check could not see it.
+
+    So: the row's own branch, or else the LONGEST branch `ref` starts with
+    followed by `-` -- branch_lane()'s rule. The longest is taken over every
+    row's branch, local ones included (`lane/<row name>`), so a `remote = true`
+    row `foo` cannot claim `lane/foo-bar`, a local lane's own branch, or that
+    lane's suffixed ones. Remote rows come first, so a branch that a remote
+    and a local row both name goes to the remote lane.
+
+    jobs/remote-lane.sh's remote_lane_of() is the same rule for the shell jobs,
+    and 98-lane-shape.sh runs one table of heads through both. Unlike
+    branch_lane(), it does not consult units or worktrees: the shell cannot
+    see them, and the two readers must give one answer.
+    """
+    bases = [(b, lane, True) for b, lane in remote.items()]
+    bases += [("lane/" + lane, lane, False)
+              for lane, meta in sorted((rows or {}).items()) if not meta.get("remote")]
+    for b, lane, is_remote in bases:
+        if ref == b:
+            return lane if is_remote else None
+    pre = [t for t in bases if ref.startswith(t[0] + "-")]
+    if not pre:
+        return None
+    _, lane, is_remote = max(pre, key=lambda t: len(t[0]))
+    return lane if is_remote else None
 
 
 def branch_lane(ref, rows, units=None, work=None):
@@ -565,8 +694,9 @@ def branch_lane(ref, rows, units=None, work=None):
 def lane_prs(remote=None, lane_rows=None, units=None):
     """Open PRs a lane owns, or None if gh could not answer.
 
-    A `lane/*` head, or a head some territory row names as its remote lane's.
-    `lane/*` heads are filed under branch_lane(), not the stripped name.
+    A `lane/*` head, or a head that is a remote lane's branch or one of its
+    suffixed branches (remote_lane_of(), asked first). Other `lane/*` heads are
+    filed under branch_lane(), not the stripped name.
     One LIST, not a call per lane: everything the READY-NOT-FOLDED and BLOCKED
     sections need comes out of it. (One HTTP call per hundred PRs, since REST
     pages -- see gh_rest.)
@@ -594,8 +724,9 @@ def lane_prs(remote=None, lane_rows=None, units=None):
     out = []
     for p in rows:
         ref = p.get("headRefName") or ""
-        if ref in remote:
-            p["lane"] = remote[ref]
+        rl = remote_lane_of(ref, remote, lane_rows)
+        if rl:
+            p["lane"] = rl
             p["remote"] = True
         elif ref.startswith("lane/"):
             p["lane"] = branch_lane(ref, lane_rows or {}, units)
@@ -1314,7 +1445,7 @@ def main():
     # decision, and waking the board for it every tick would be noise. So is
     # a request pinned to a handheld that is off USB (#598): that needs hands
     # or a re-pin, and harness_health.py `[devices]` already reports it.
-    stalled, on_hold, absent, qblind = queue_stall()
+    stalled, on_hold, absent, gated, qblind = queue_stall()
     if qblind:
         print("FAIL: QUEUE-BLIND -- %s. The dispatch queue was not judged."
               % qblind, file=sys.stderr)
@@ -1336,6 +1467,13 @@ def main():
               "%s, queued %s ago, held: %s. Deliberate, not a stall; `rm "
               "$DISPATCH_DIR/hold/<label>` returns a device to service."
               % (len(on_hold), rid, age_s(age_secs), labels))
+    if gated:
+        rid, age_secs, why = gated[0]
+        print("\nqueue: %d request(s) a live claimer refused on its battery "
+              "level, and no live claimer will take sooner -- oldest %s, queued %s ago: %s. "
+              "Deliberate, not a stall; battery_admit.py claims each one when "
+              "the level covers its run."
+              % (len(gated), rid, age_s(age_secs), why))
     for label in sorted({r[2] for r in absent}):
         rows = [r for r in absent if r[2] == label]
         rid, age_secs, _, st = rows[0]

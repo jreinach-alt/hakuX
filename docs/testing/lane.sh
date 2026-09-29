@@ -186,21 +186,32 @@ PYFLEET
 
 # ATTEMPTS AND ESCALATION. Every start or resume of a lane is one attempt at
 # its issue, counted in $WORK/attempts/<name>. The first LANE_ESCALATE_AFTER
-# attempts run on MODEL_LANE; the next one runs on MODEL_LANE_ESCALATED, the
-# most capable model, because three failed passes on Opus is the signal that
-# the problem needs more reasoning, not more turns. After LANE_MAX_ATTEMPTS
-# the script refuses: the board opens a decision-needed issue instead of
-# spending a fifth session. `lane.sh attempts <name>` shows the count;
-# `lane.sh reset <name>` clears it when the brief itself was the problem.
+# attempts run on MODEL_LANE, or on $WORK/briefs/<name>.model when the board
+# wrote one -- a lane doing docs, measurement or harness work costs the same
+# Opus session as JIT or shader engineering otherwise, on every start AND
+# EVERY RESUME, because job.handback resumes a lane whenever its results land
+# and a lane started on the cheaper model was running on Opus again from its
+# first resume. HAKUX_MODEL still overrides either, for one start. The next
+# attempt after LANE_ESCALATE_AFTER runs on MODEL_LANE_ESCALATED regardless of
+# the per-lane file: three failed passes is the signal that the problem needs
+# more reasoning, not the cheaper model. After LANE_MAX_ATTEMPTS the script
+# refuses: the board opens a decision-needed issue instead of spending a fifth
+# session. `lane.sh attempts <name>` shows the count; `lane.sh reset <name>`
+# clears it when the brief itself was the problem.
 next_attempt() {   # prints the attempt number this start will be, and the model for it
-    local f="$WORK/attempts/$1" n
+    local f="$WORK/attempts/$1" mf="$WORK/briefs/$1.model" n lane_model=""
     mkdir -p "$WORK/attempts"
     n=$(( $(cat "$f" 2>/dev/null || echo 0) + 1 ))
     if [ "$n" -gt "$LANE_MAX_ATTEMPTS" ]; then
         echo "REFUSED: lane $1 has had $(( n - 1 )) attempts (LANE_MAX_ATTEMPTS=$LANE_MAX_ATTEMPTS), the last on $MODEL_LANE_ESCALATED. Open a decision-needed issue; do not start it again." >&2
         return 75
     fi
-    if [ "$n" -gt "$LANE_ESCALATE_AFTER" ]; then MODEL="${HAKUX_MODEL:-$MODEL_LANE_ESCALATED}"; else MODEL="${HAKUX_MODEL:-$MODEL_LANE}"; fi
+    [ -f "$mf" ] && lane_model=$(head -1 "$mf")
+    if [ "$n" -gt "$LANE_ESCALATE_AFTER" ]; then
+        MODEL="${HAKUX_MODEL:-$MODEL_LANE_ESCALATED}"
+    else
+        MODEL="${HAKUX_MODEL:-${lane_model:-$MODEL_LANE}}"
+    fi
     echo "$n" > "$f"
     ATTEMPT=$n
 }
