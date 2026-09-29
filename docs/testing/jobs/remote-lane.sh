@@ -7,6 +7,7 @@
 #   . "$(dirname "${BASH_SOURCE[0]}")/remote-lane.sh"
 #   remote_map                     # <branch>\t<lane> per line; rc 0 board, 2 working tree, 1 unreadable
 #   remote_lane_of   <branch>      # prints the lane name, or nothing; <branch> may be suffixed
+#   remote_lanes_of  < heads       # "<head>\t<lane>" for each head on stdin a remote lane owns
 #   remote_branch_of <lane>        # prints the branch, or nothing (the row's own, unsuffixed)
 #   is_remote_branch <branch>      # rc 0 when some remote lane owns it
 #   remote_source                  # prints board | worktree | unreadable
@@ -186,18 +187,47 @@ remote_authoritative() { remote_map >/dev/null; [ "$_REMOTE_MAP_RC" = 0 ]; }
 # to report, never to decide whether a branch is safe to delete or to start on.
 remote_readable() { remote_map >/dev/null; [ "$_REMOTE_MAP_RC" != 1 ]; }
 
-# THE SUFFIX RULE (see the header). Remote rows are listed first, so where a
-# remote and a local row somehow name the same branch, the answer is the
-# remote lane -- the direction in which every caller refuses to act.
+# THE SUFFIX RULE (see the header), ONCE, for both functions below. The bases
+# come in through the environment -- remote rows "<branch>\t<lane>" first,
+# then local rows with a third field -- and the heads on stdin, one per line.
+# It prints "<head>\t<lane>" for each head a REMOTE lane owns. Remote rows are
+# listed first and the match is strict, so where a remote and a local row
+# somehow name the same branch the answer is the remote lane: the direction in
+# which every caller refuses to act.
+_REMOTE_RULE='
+BEGIN {
+    k = split(ENVIRON["_REMOTE_BASES"], line, "\n")
+    for (j = 1; j <= k; j++) {
+        m = split(line[j], f, "\t")
+        if (m >= 2 && f[1] != "") { n++; B[n] = f[1]; L[n] = f[2]; R[n] = (m == 2) }
+    }
+}
+$0 == "" { next }
+{
+    h = $0; own = 0; bl = 0
+    for (i = 1; i <= n; i++) if (B[i] == h) { own = i; break }
+    if (!own) for (i = 1; i <= n; i++)
+        if (index(h, B[i] "-") == 1 && length(B[i]) > bl) { bl = length(B[i]); own = i }
+    if (own && R[own]) print h "\t" L[own]
+}'
+_remote_owner() {   # heads on stdin -> "<head>\t<lane>"; remote_map must have run in this shell
+    _REMOTE_BASES=$(printf '%s\n%s' "$_REMOTE_MAP" "$_REMOTE_LOCAL") awk "$_REMOTE_RULE"
+}
+
+# Both in a SUBSHELL, so the read stays out of the caller's cache, as it did
+# when this was `remote_map | awk`. A caller that has already read the map
+# (every gate asks remote_authoritative first) hands its cache down and pays
+# for no second read.
 remote_lane_of() {   # <branch> -> the lane name, or nothing
     [ -n "${1:-}" ] || return 1
-    # A pipeline, so the read stays in a subshell as it did when this was
-    # `remote_map | awk`: the caller's cache is not filled as a side effect.
-    { remote_map >/dev/null; printf '%s\n%s\n' "$_REMOTE_MAP" "$_REMOTE_LOCAL"; } | awk -F'\t' -v b="$1" '
-        NF < 2 || $1 == "" { next }
-        $1 == b { ex = 1; if (NF == 2) { print $2; found = 1 }; exit }
-        index(b, $1 "-") == 1 && length($1) > bl { bl = length($1); bn = $2; br = (NF == 2) }
-        END { if (!ex && br) { print bn; found = 1 }; exit !found }'
+    ( remote_map >/dev/null; printf '%s\n' "$1" | _remote_owner ) \
+        | awk -F'\t' 'NR == 1 { print $2; found = 1 } END { exit !found }'
+}
+
+# THE SAME RULE FOR MANY HEADS, ON ONE BOARD READ. The sweeps ask about every
+# open PR's head at once; remote_lane_of per head would be a read per head.
+remote_lanes_of() {   # heads on stdin -> "<head>\t<lane>" for each head a remote lane owns
+    ( remote_map >/dev/null; _remote_owner )
 }
 
 remote_branch_of() {   # <lane> -> the branch, or nothing

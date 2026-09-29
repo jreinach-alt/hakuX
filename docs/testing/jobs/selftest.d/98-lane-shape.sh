@@ -102,15 +102,15 @@ check "an unreadable board is not authoritative either" \
 # that disagree about whose a head is act on two answers.
 #
 # ADDED 2026-09-29 by lane.remote (granted on #461, 5883107753) and measured on
-# its own, outside the 61 above: this block and its legs further down are 27
-# checks, and against master@bf1ecde346's remote-lane.sh and fleet.py 10 fail
-# and 17 pass. The 10 are what a suffix changes: the table's three suffix
-# rows, the fleet.py agreement check, and the fleet (3), handback (1) and fold
-# (2) legs that call a suffixed branch the lane's. The 17 are the table's ten
-# must-not-move rows, remote_map's and remote_branch_of's unchanged answers,
-# and the pairs: the fleet fixture answering, the prefix-only head in fleet
-# and in handback, handback starting nothing, and a local lane's suffixed
-# branch still pruned.
+# its own, outside the 61 above: this block and its legs further down are 28
+# checks, and against master@bf1ecde346's remote-lane.sh and fleet.py 11 fail
+# and 17 pass. The 11 are what a suffix changes: the table's three suffix
+# rows, the batch form, the fleet.py agreement check, and the fleet (3),
+# handback (1) and fold (2) legs that call a suffixed branch the lane's. The
+# 17 are the table's ten must-not-move rows, remote_map's and
+# remote_branch_of's unchanged answers, and the pairs: the fleet fixture
+# answering, the prefix-only head in fleet and in handback, handback starting
+# nothing, and a local lane's suffixed branch still pruned.
 cat > "$LS/suffix.toml" <<'TOML'
 wave = 1
 updated_utc = "2026-09-29T00:00:00Z"
@@ -159,6 +159,13 @@ while IFS='|' read -r sh sx why; do
     got=$( ( . "$HERE/remote-lane.sh"; HAKUX_TERRITORY="$LS/suffix.toml" remote_lane_of "$sh" ) 2>/dev/null )
     check "remote_lane_of $sh -> $sx: $why" [ "${got:--}" = "$sx" ]
 done < "$LS/suffix.tab"
+# The batch form the sweeps call: every head in one call, on one board read,
+# answering exactly the table's six owned rows in the order given.
+awk -F'|' '$2 != "-" { print $1 "\t" $2 }' "$LS/suffix.tab" > "$LS/suffix-want.tsv"
+( . "$HERE/remote-lane.sh"; cut -d'|' -f1 "$LS/suffix.tab" \
+      | HAKUX_TERRITORY="$LS/suffix.toml" remote_lanes_of ) > "$LS/suffix-batch.tsv" 2>/dev/null
+check "remote_lanes_of, the sweeps' batch form, gives the table's six answers in one call" \
+    bash -c '[ "$(wc -l < "$1")" -eq 6 ] && cmp -s "$1" "$2"' _ "$LS/suffix-want.tsv" "$LS/suffix-batch.tsv"
 # remote_map's own output is unchanged: the local rows it now reads for the
 # longest match are not remote lanes, and its callers asked for those only.
 ( . "$HERE/remote-lane.sh"; HAKUX_TERRITORY="$LS/suffix.toml" remote_map ) > "$LS/suffix-map.tsv" 2>/dev/null

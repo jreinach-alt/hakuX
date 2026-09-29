@@ -3406,7 +3406,7 @@ a remote lane's when it equals the row's value or, failing that, starts with
   `fold.sh` prunes only `lane/*` refs, so `claude/*` ones were never pruned.
   A remote lane's suffixed `lane/*` branch is now kept like its own.
 
-**Tests** (`98-lane-shape.sh`, 27 new checks, 89 in the file):
+**Tests** (`98-lane-shape.sh`, 28 new checks, 90 in the file):
 - **One table of 13 heads** is run through both readers:
   - exact values;
   - suffixed branches;
@@ -3416,7 +3416,8 @@ a remote lane's when it equals the row's value or, failing that, starts with
   - prefix-only near misses;
   - an unrelated branch.
 
-  `fleet.py` gives the shell's answer on all 13.
+  `fleet.py` gives the shell's answer on all 13, and the batch form
+  `remote_lanes_of` gives the table's six owned answers in one call.
 - **End-to-end legs:**
   - `fleet.py` counts a ready PR on a suffixed branch as the lane's, lists it
     under READY, NOT FOLDED, and names it in the no-label FAIL;
@@ -3425,21 +3426,49 @@ a remote lane's when it equals the row's value or, failing that, starts with
 
   Each leg has a pair that must not move: a head that only shares the prefix,
   or a local lane's suffixed branch, which is still pruned.
-- **Against master bf1ecde346's two readers,** 10 of the 27 fail and 17 pass.
-  The 10 are what a suffix changes:
+- **Against master bf1ecde346's two readers,** 11 of the 28 fail and 17 pass.
+  The 11 are what a suffix changes:
   - the 3 suffix rows of the table;
-  - the agreement check;
+  - the batch form, and the agreement check;
   - 3 fleet legs, 1 handback leg and 2 fold legs.
 
   All 62 of the file's existing checks pass on both versions.
 
-**Two more readers match exactly, and they are not in the grant**
-(#461, 5883624572; asked whether this PR may take them):
-- **`jobs/issue-sweep.sh`, `lane_absence()`.** It counts a remote lane as
-  live only if an open PR's head equals its branch, or that exact branch's
+**Two more readers matched exactly, and joined the PR** (#461, 5883624572;
+granted at board 8bd1dc46, 5883704276):
+- **`jobs/issue-sweep.sh`, `lane_absence()`.** It counted a remote lane as
+  live only if an open PR's head equalled its branch, or that exact branch's
   tip moved within 3 days.
   - The unsuffixed branch's tip is 6d2b2e49, 09-28 20:20Z.
-  - From about 10-01 20:20Z, the sweep would report this lane as absent even
-    with suffixed PRs open. That is the costly direction.
-- **`jobs/pr-sweep.sh`,** the classifier's `REMOTE.get(branch, "")`: a
-  suffixed draft gets no class. The impact is low.
+  - So from about 10-01 20:20Z, the sweep would have reported this lane as
+    absent even with suffixed PRs open, and handed its claims to the board.
+  - Now an open PR on a suffixed branch counts. The tip is the newest of the
+    branch and the suffixed branches the rule gives this lane; a longer row's
+    `-*` branch is that row's, not this lane's.
+- **`jobs/pr-sweep.sh`, the classifier.** `REMOTE.get(branch, "")` put a
+  suffixed draft in no class at all. It now gets `remote-draft`.
+- **One copy of the rule.** `remote-lane.sh` gains `remote_lanes_of`, which
+  applies it to every head on stdin on one board read, and both sweeps call
+  it. The rule is now one awk program, shared by `remote_lane_of` and
+  `remote_lanes_of`. `fleet.py` is the only other copy, and the table checks
+  that it gives the same answers.
+
+**Their tests** (`78-sweep-remote.sh`, 13 new checks, 78 in the file):
+- **`issue-sweep.sh`:**
+  - a suffixed open PR keeps the claim;
+  - a head that only shares the prefix does not;
+  - a month-old branch with a fresh suffixed branch is live;
+  - a fresh branch that belongs to a longer row keeps only that row alive;
+  - the finding names the suffixed glob it looked at.
+- **`pr-sweep.sh`:** a suffixed draft is `remote-draft`, by lane name, and
+  never reaches `handback.sh`. A draft that only shares the prefix is not.
+- **Against master bf1ecde346,** 6 of the 13 fail and 7 pass. The result is
+  the same against this branch with only `remote-lane.sh` changed, so the
+  sweeps' own edits carry the 6. All 65 of the file's existing checks pass
+  on every version.
+
+**Seen and left alone.** `issue-sweep.sh` has the same gap for local lanes:
+it counts a local lane as having an open PR only on `lane/<name>`. So a local
+lane whose unit is gone and whose PR is open on `lane/<name>-<suffix>`
+(lane.sustain507's #547 shape) still reads as having no open PR. The grant
+covers remote lanes, so this is reported rather than fixed.
