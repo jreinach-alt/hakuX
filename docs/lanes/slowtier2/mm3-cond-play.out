@@ -1,0 +1,12 @@
+== 0-0-s-1-1790609661-lane.slowtier2-mm3184014: 4D53002A-Midtown_Madness_3.xiso.iso | thor ref 97a6fa2b51 apk f2626e7ecd88 | lane.slowtier2 | 580s | env ['PERF_REGIMEN=max'] | shader_cache kept: same apk as this device's previous run
+run.log: PERF: regimen=max before=[0 4] running=[2 4] / PERF: display at start {"displays":{"0":"ON","4":"ON"},"dual_screen_display_mode":0,"min_refresh_rate":60.0,"peak_refresh_rate":60.0,"screen_brightness":158,"screen_brightness_mode":0} / PERF: display at end {"displays":{"0":"ON","4":"ON"},"dual_screen_display_mode":0,"min_refresh_rate":60.0,"peak_refresh_rate":60.0,"screen_brightness":158,"screen_brightness_mode":0} / THERMAL: pause thermal-pause-F8 1/1 began after +574 s and by +603 s (device 09-28 19:30:23); still paused at the last reading; 20 samples, 0 unread, hottest zone 95.4 C; battery +3.31 W (+ is discharging), usb in 2.12 W, net 5.43 W; clock MHz cpu0 2016-2016 of 2016, cpu3 2803-2803 of 2803, cpu7 3187-3187 of 3187, gpu 348-615 of 348, gpu throttle-switch 0; fan duty 14500-38500 of 50000 at fan_mode 4 / PERF: restored=[0 4] perf_restored=true
+marks: soak start 0, mark gameplay 315, soak end 598; window 315-394 s (given)
+thermal: start xo-therm 49.2 C, at the mark 74.0 C, max 77.8 C, 20 samples; FIRST PAUSE thermal-pause-F8 at mark+288 s (label end)
+bins (30s from soak start, median fps): 30:59.9 60:59.9 90:59.9 120:59.9 150:59.9 180:2.2 210:21.3 240:20.9 270:20.4 300:18.8 330:18.1 360:16.4 390:30.0 420:30.0 450:30.0 480:30.0 510:30.0 540:30.0 570:30.0
+#507 shape: no
+  window 315-394 s: fps median 17.64 (title_verdict's element; n=22, min 13.8, p10/25/75/90 15.0/16.3/18.8/20.2) = 56.7 ms/frame | G 56.7 Ri 25.8 busy 30.9 Vpf 3.39
+    vcpu 95.8% (54.3 ms/frame on-CPU) | TLB resets vCPU 0.92 ms/frame, other threads 0.70 ms/frame | ff/s 408 pf/s 1
+    fifoskew kicks/s 252 backlog mean 59735 B
+    #424 churn: 728 invalidations/s, 728 TBs discarded/s
+    audio zero-filled 0.1%
+    idlehalt 39 lines, last: [idlehalt] w=194 on=0 span_us=2000021 run_us=1908932 rq_us=36 halts=0 pc=00000000 xpc=0 imm=0 pg=0 pgo=0 vb=0 fifo=0 ot=0 to=0 tp=0 tr=0 slept_us=0 pit=0 lpg=0/0/0/0/0/0/0 lpgmax=0 lall=0/0/0/0/0/0/0 

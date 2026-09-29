@@ -1,0 +1,23 @@
+{
+  "registered_utc": "2026-09-28T19:41:21Z",
+  "who": "lane.forzadecay414",
+  "issue": "414",
+  "prediction": "NOVA SOAK, read by hand (arms.sh skips title soaks). Forza race, survey route, 360 s, perflog, regimen max, the Nova because it plateaus near 49 C and never reaches the Thor's xo-therm 78 C pause, which is a second, separate 2-4 fps regime (NOTES section 2) that would confound a Thor read. Buckets are docs/lanes/forza414/timeline.py's 30-s rows (t = 0 at `soak start`); `invalid` is the [watch311] line's invalid= (length of r->invalid_surfaces); `faf` and `scan` are the txw probe's ms/flip and calls/flip for pgraph_vk_flush_all_frames and pgraph_vk_download_surfaces_in_range_if_dirty. Mechanism under test (NOTES section 3): invalidate_surface() stamps a surface invalidated inside the open command buffer with invalidation_frame = r->current_frame, a ring-slot index that is never reset; surface_in_flight() is then true whenever that slot is current or submitted, which in steady state is always, so prune_invalid_surfaces() keeps the surface until pgraph_vk_flush_all_frames() clears every frame_submitted[] at once. #517 moved the flush Forza hit on every direct surface-to-texture bind behind the copy branch, so in Forza's race nothing flushes, the list grows, and every texture bind (~800 per flip) walks it in pgraph_vk_download_surfaces_in_range_if_dirty. A is f82e7e87fe (the same A run as forzadecay414-bisect.json, one soak serves both), B is 85347ffbd1 (master at this lane's base, after #518, #543 and every later fold). Legs: M0 as bisect M0 on these two arms; else VOID. P1 B's last [watch311] invalid= at or before t = 360 >= 1000. Fails in the world where a fold after #517 already stopped the growth: then master's Forza does not decay and only the historical refs did. P3 fps (mean of timeline rows t = 270, 300, 330) B/A <= 0.6. Fails in the world where master grows the list without the fps cost. READOUTS: as bisect.",
+  "a_ref": "f82e7e87fe",
+  "b_ref": "85347ffbd1",
+  "must_not_move": [],
+  "expect": {
+    "M0/both_reach_race_is": true,
+    "P1/b_last_invalid_min": 1000,
+    "P3/b_over_a_fps_t270_330_max": 0.6
+  },
+  "expect_counts": {},
+  "must_not_regress": [],
+  "title": "4D53006E-Forza_Motorsport.xiso.iso",
+  "device": "nova",
+  "seconds": 360,
+  "route": "survey",
+  "perflog": true,
+  "runs_per_arm": 1,
+  "expect_note": "Named rules read by hand from the logcats (timeline.py rows, [watch311] invalid=, txw faf/scan); a soak writes no captures, so ab_compare never judges it."
+}

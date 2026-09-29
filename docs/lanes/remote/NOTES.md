@@ -3036,6 +3036,10 @@ scene difference cannot hide a cost again.
 
 ## #557: the thermal governor core (2026-09-28)
 
+> **Stopped the same day, and the core reverted.** See "#557 stopped" below.
+> Nothing in this section is to be hooked in. It stays as the record of the
+> replay.
+
 Delivered 15:00Z (5872612441, owner-approved, board wave 277). An opt-in
 governor that steps quality down before the Thor's thermal pause, instead of
 letting the kernel park cpu3-7. This change is the core only: nothing calls
@@ -3312,3 +3316,159 @@ run as a known risk.
 - **What each rung saves in heat is unknown.** #557's "done when" device run
   is what measures it. Open-loop, the replay can only show when the governor
   would act.
+
+## #557 stopped (2026-09-28)
+
+The owner stopped #557 at 18:20Z (5875955590).
+- **Why:** the predictive governor steps down on every run, paused or not
+  (L4a), so it would throttle play that never needed it.
+- **What handles heat instead:** measured temperatures, by scripts: #519's
+  cool-down gate, the cold-start slot tool and the device watchdog.
+
+**Done for the stop:**
+- **The core is reverted** in one PR that closes #557:
+  `android/app/src/main/cpp/thermal_governor.c` and `.h` are removed, and
+  `CMakeLists.txt` is back byte for byte to its state before #560
+  (0f4002eb). No inert governor code stays in the build.
+- **PR #568, the audit's five LOW fixes, is closed unmerged** (5875976002).
+  Its commits stay reachable in that PR's history:
+  - 387ae0a2: the fixes, each with a check that goes red when it is
+    reverted;
+  - 318ee209: 4130875's NOTES rows.
+- **No hook PR, no further replay, and no device runs.**
+
+**Kept, as the record:**
+- **This file, `thermal557_harness.c` and `thermal557_replay.py`.**
+  - The replay script now takes the core from git history at the fold
+    that carried it (3a5d79e3, PR #560), and writes it beside its build.
+  - `--selftest` still passes all 17 checks.
+  - A shallow clone without that commit says so and stops.
+- **`docs/testing/predictions/remote-557-replay.json`,** the registration.
+
+**The final scoring.** hostops re-extracted 4130875 on the host clock
+(5874270083). Its start sample is unread, so it replays from its first
+reading, at 75 s: first step at 189 s, lead +253 s, three steps before t78.
+With all eight paused runs:
+- L1, L2 and L3 hold 8/8 (leads 168-321 s);
+- **L4a is KILLED** (93.76 C against a 74.2 C plateau), and that kill is
+  the finding the stop rests on;
+- L4b holds.
+
+This was posted on #557 (5875291526).
+
+**For whoever picks this up again.** Start from L4a and the specificity
+note above, not from the core:
+- a single time constant cannot follow the launch climb;
+- the 72 C threshold sits at the bottom of the 72-78 C band, where a title
+  can plateau without ever pausing (hostops-810152 at 74.2 C).
+
+The tau = 60 s result in "tau, unregistered and in-sample" is not
+evidence. It was fitted on these same traces.
+
+## Suffixed branches, and the board's remote-lane rule (2026-09-29)
+
+**The decision.** Both #578 audits (LOW-2, in pass 1 and pass 2) advised
+that this lane's next PR go on a suffixed branch:
+- audit files are named by branch;
+- `claude/docs-tooling-agentic-coding-u152m1` already has #560's and #578's
+  audits on master, and #578's had to carry `-pr578` to avoid overwriting
+  #560's.
+
+The owner approved it in this lane's session on 2026-09-29. From now on each
+PR goes on its own `claude/docs-tooling-agentic-coding-u152m1-<suffix>`,
+started from master. The unsuffixed branch stays where it is (6d2b2e49).
+
+**The gap.** Every reader of `[lane.remote] remote` in `territory.toml`
+compared the head with the row's value exactly (#461, 5883036238):
+- **`fleet.py`,** in `lane_prs()`: a head that was neither a `remote` value
+  nor `lane/*` was skipped. So a suffixed PR was in no lane section, and the
+  READY-with-no-label FAIL could not name it.
+- **`jobs/remote-lane.sh`,** in `remote_lane_of()`, which `is_remote_branch()`,
+  `handback.sh`'s `lane_name()` and both of `fold.sh`'s guards call:
+  - handback could not tell a suffixed head was this lane's;
+  - `fold.sh`'s index-conflict repair would have pushed a merge onto a
+    branch this session pushes to.
+
+**The rule** (granted by hostops, board a64e53e5, #461 5883107753): a head is
+a remote lane's when it equals the row's value or, failing that, starts with
+`<value>-`, and the longest match wins, as in `branch_lane()`.
+- **The longest match is taken over every row's branch, local rows included**
+  (`lane/<row name>`). A `remote = true` row `foo` must not take
+  `lane/foo-bar`, which is a local lane `foo-bar`'s own branch, or that lane's
+  suffixed ones.
+- **Remote rows come first,** so a branch that a remote and a local row both
+  name goes to the remote lane, the direction in which every caller refuses
+  to act.
+- **Both readers implement it:** `fleet.py`'s new `remote_lane_of()` and the
+  shell's. `remote_map` now also reads the local rows for the longest match,
+  but still prints only remote rows, so its callers see no change.
+- **Out of scope, per the grant:** pruning folded suffixed branches.
+  `fold.sh` prunes only `lane/*` refs, so `claude/*` ones were never pruned.
+  A remote lane's suffixed `lane/*` branch is now kept like its own.
+
+**Tests** (`98-lane-shape.sh`, 28 new checks, 90 in the file):
+- **One table of 13 heads** is run through both readers:
+  - exact values;
+  - suffixed branches;
+  - the longest match between two remote rows;
+  - `remote = true` and its suffixes;
+  - a local row whose name extends the remote row's;
+  - prefix-only near misses;
+  - an unrelated branch.
+
+  `fleet.py` gives the shell's answer on all 13, and the batch form
+  `remote_lanes_of` gives the table's six owned answers in one call.
+- **End-to-end legs:**
+  - `fleet.py` counts a ready PR on a suffixed branch as the lane's, lists it
+    under READY, NOT FOLDED, and names it in the no-label FAIL;
+  - handback tells a suffixed head that the lane's own routine picks it up;
+  - `fold.sh` keeps a remote lane's suffixed `lane/*` branch.
+
+  Each leg has a pair that must not move: a head that only shares the prefix,
+  or a local lane's suffixed branch, which is still pruned.
+- **Against master bf1ecde346's two readers,** 11 of the 28 fail and 17 pass.
+  The 11 are what a suffix changes:
+  - the 3 suffix rows of the table;
+  - the batch form, and the agreement check;
+  - 3 fleet legs, 1 handback leg and 2 fold legs.
+
+  All 62 of the file's existing checks pass on both versions.
+
+**Two more readers matched exactly, and joined the PR** (#461, 5883624572;
+granted at board 8bd1dc46, 5883704276):
+- **`jobs/issue-sweep.sh`, `lane_absence()`.** It counted a remote lane as
+  live only if an open PR's head equalled its branch, or that exact branch's
+  tip moved within 3 days.
+  - The unsuffixed branch's tip is 6d2b2e49, 09-28 20:20Z.
+  - So from about 10-01 20:20Z, the sweep would have reported this lane as
+    absent even with suffixed PRs open, and handed its claims to the board.
+  - Now an open PR on a suffixed branch counts. The tip is the newest of the
+    branch and the suffixed branches the rule gives this lane; a longer row's
+    `-*` branch is that row's, not this lane's.
+- **`jobs/pr-sweep.sh`, the classifier.** `REMOTE.get(branch, "")` put a
+  suffixed draft in no class at all. It now gets `remote-draft`.
+- **One copy of the rule.** `remote-lane.sh` gains `remote_lanes_of`, which
+  applies it to every head on stdin on one board read, and both sweeps call
+  it. The rule is now one awk program, shared by `remote_lane_of` and
+  `remote_lanes_of`. `fleet.py` is the only other copy, and the table checks
+  that it gives the same answers.
+
+**Their tests** (`78-sweep-remote.sh`, 13 new checks, 78 in the file):
+- **`issue-sweep.sh`:**
+  - a suffixed open PR keeps the claim;
+  - a head that only shares the prefix does not;
+  - a month-old branch with a fresh suffixed branch is live;
+  - a fresh branch that belongs to a longer row keeps only that row alive;
+  - the finding names the suffixed glob it looked at.
+- **`pr-sweep.sh`:** a suffixed draft is `remote-draft`, by lane name, and
+  never reaches `handback.sh`. A draft that only shares the prefix is not.
+- **Against master bf1ecde346,** 6 of the 13 fail and 7 pass. The result is
+  the same against this branch with only `remote-lane.sh` changed, so the
+  sweeps' own edits carry the 6. All 65 of the file's existing checks pass
+  on every version.
+
+**Seen and left alone.** `issue-sweep.sh` has the same gap for local lanes:
+it counts a local lane as having an open PR only on `lane/<name>`. So a local
+lane whose unit is gone and whose PR is open on `lane/<name>-<suffix>`
+(lane.sustain507's #547 shape) still reads as having no open PR. The grant
+covers remote lanes, so this is reported rather than fixed.
