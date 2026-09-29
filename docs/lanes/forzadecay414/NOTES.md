@@ -407,7 +407,30 @@ Nova is on hostops' charge hold until 50% or the owner's top-up, bound 19:00 PDT
 the AUF pair. Look at each run's last `play` frame. Write the verdicts here and on #414. Mark #583
 ready only if fix-forza2, fix-auf and fix-pixels all hold.
 
+### 8.5 Attempt 5: fix-pixels failed on Stencil only; re-registered as fix-pixels2
+
+Why attempt 4 did not finish: it ended waiting, correctly, on the five Nova soaks and the pixel
+pair. The Nova then sat on hostops' charge hold, so `-151099`, `-151975` and `-152037` are still
+queued (dispatch `queue/`, 01:34 PDT 09-29).
+
+The arms job judged `forzadecay414-fix-pixels.json` at 22:54 PDT: FAIL, 2 of 3379, both
+`Stencil/Stencil_REPLACE_ST` and `Stencil/Stencil_REPLACE_ST_ZB` 0 -> 30000
+(`$WORK/arms/pairs/a4436529a25c...verdict.txt`, line 217). Not attributable to the fix:
+- the pair split: base `1-1790625714-arms-forzadecay414-base-3793108` ran on the Thor, fix
+  `0-0-x-1-1790625714-arms-forzadecay414-fix-3793166` on the Nova;
+- Stencil_REPLACE_ST is bimodal 0/30000 on one apk (8d38739bc784) on the Thor
+  (`1-1790575472-rendermode474-966088` against `1790575472-rendermode474-966088`);
+- tracker #79: Stencil flakes ~8.6% per capture-run on every binary and must not be a
+  must_not_move control. My registration put it under must_not_move. That was the mistake.
+
+`forzadecay414-fix-pixels2.json` (sha256 388ea55c4b19, registered 2026-09-29 ~08:35Z): the same
+claim, A 85347ffbd1, B 10fe2f59a7, 2 runs per arm, same 100-suite disc. Stencil/* still runs but
+is out of must_not_move (99 globs). The old file is left as it is: its sha is bound. #583 stays
+draft until fix-forza2, fix-auf and fix-pixels2 all hold.
+
 ## Do not repeat
+
+- Do not put `Stencil/*` in a must_not_move list (#79). It flakes on every binary.
 
 - Do not mark the race by G or by fps. A race that runs well reads like a menu. Use the txw scan's
   calls per flip (>= 500) and the route frame.
