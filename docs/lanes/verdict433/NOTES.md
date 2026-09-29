@@ -89,6 +89,23 @@ Tier B, same method:
 | 50 Cent: Bulletproof | nova | default | 1-1790693575-lane.verdict433-211666 | queued | | |
 | KOF: Maximum Impact Maniax | thor | default | 1-1790693575-lane.verdict433-211719 | queued | | |
 
+Current state of every confirmation (updated session 4, 2026-09-29 12:15 PDT;
+regimen from each run's `perf_regimen.json` where a run exists):
+
+| Title | Device | Regimen (fan) | Request | Verdict | Share 28.5+ | Gameplay s |
+|---|---|---|---|---|---|---|
+| Azurik | thor | default (fan_mode 4) | 1-1790688705-lane.verdict433-3467502 | **FAIL(thermal)**, pause at +938 s from 48.6 C | 58.9% | 1297 |
+| Azurik (data point, not a verdict) | thor | default (fan_mode 4), `HAKUX_IDLE_HALT=1`, cold slot | 0-0-s-1-1790696366-lane.verdict433-2378176 | reads PASS on a copy; halt is opt-in on master (#566), so not the shipped defaults | 98.6% | 1296 |
+| WWE Raw 2 | nova | default | 1-1790693575-lane.verdict433-211620 | void (adb capture failure) | -- | 272 |
+| 50 Cent: Bulletproof | nova | default | 1-1790693575-lane.verdict433-211666 | ERROR (env pref not set; never ran) | -- | -- |
+| Baldur's Gate DA | thor | max, customize:100 | 1-1790700816-lane.verdict433-3695372 | withdrawn by lane.local (Thor off confirmations) | | |
+| KOF MI | thor | max, customize:100 | 1-1790700816-lane.verdict433-3695988 | withdrawn, same | | |
+| Azurik | thor | max, customize:100 | 1-1790700817-lane.verdict433-3696430 | withdrawn, same | | |
+| WWE Raw 2 | nova | default | 1-1790700817-lane.verdict433-3697079 | queued | | |
+| 50 Cent: Bulletproof | nova | default | 1-1790700818-lane.verdict433-3697712 | queued | | |
+| 007: Agent Under Fire | nova | default | 1-1790709167-lane.verdict433-1492209 | queued | | |
+| Baldur's Gate DA, KOF MI, Azurik | nova | default | -- | waiting on the Nova copies (`queue-investigation.txt`, not yet in `listing-nova.txt`) | | |
+
 ## State at the end of session 1 (2026-09-29, about 07:00 PDT)
 
 Waiting on the pilot `1-1790688705-lane.verdict433-3467502`. It sits behind
@@ -308,3 +325,78 @@ CI on the merge-plus-batch-2 push (`3b2797ee11`) is `in_progress` (both
 `Android` and `Desktop build`) as of this write; also outside this session
 to wait out. Both the device batch and CI are named in the PR/issue
 `waiting:` comments.
+
+## Session 4 (2026-09-29, attempt 4, from ~12:05 PDT)
+
+**Why attempt 3 did not finish.** It was not a failure. It ended on a
+`waiting:` comment for batch 2, which is the documented stopping point.
+The resume came from lane.local's 12:00 PDT addendum, not from a result.
+That addendum moves confirmations off the Thor and withdrew batch 2's three
+Thor requests. Batch 2's two Nova requests (WWE Raw 2 `-3697079`, 50 Cent
+`-3697712`) are still in `queue/` at 12:09 PDT. About ten Nova requests from
+other lanes are ahead of them: ibcache, uberspike569, memfast, gmem474 and
+kabukistall.
+
+Merged `origin/master` (47 commits, including #614 thorheat and #581
+uberspike569; nothing in this lane's files) and pushed as `da4b15ea1a`.
+
+### What the addendum changes
+
+- BG:DA, KOF MI and Azurik move to the Nova at its defaults. Their Nova copies
+  are listed in `hardware/titlepush/queue-investigation.txt` (12:00 PDT) but
+  not yet in `listing-nova.txt`, so nothing can be queued for them yet.
+  When a copy lands, queue it with the title's existing route
+  (`baldurs-gate-da`, `kof-mi.returning`, `azurik`), then check the first
+  run's `route-frames/`. A Thor route may not carry over.
+- Azurik's halt-on cold-slot run is in the table above as a Thor data point.
+  On a copy it reads PASS at 98.6% over 1296 s. `perf_regimen.json` gives
+  regimen default, fan_mode 4. It is not a verdict.
+- No Thor confirmation is queued. This lane had no registered prediction or
+  capture key that names the Thor.
+
+### Sweep: every Nova route soak since 09-28 ~19:00 PDT, judged on copies
+
+`sweep.py` runs `judge_copy.py` over every finished Nova route soak since
+epoch 1790560000. It found 11 titles in 124 runs. Best reading per title:
+
+| Title | Runs | Best share 28.5+ | Reading |
+|---|---|---|---|
+| **007: Agent Under Fire** | 25 | 100% (202 s) | **Every run before #530 (per-title sysmem, folded 09-28 11:50) reads 0%.** That includes sustain507's 1941 s soaks. Both normal builds after #530 (`85347ffbd1`, `10fe2f59a7`, the forzadecay414 pair) read 100%. gmem474's `db1e8a7f12` build turns the #530 table off, and it reads 0-3.6% again. So #530 is the cause. I reviewed the survey frames of `-152037`: first-person, in the level, crosshair and gadget on screen, FPS 59-62. That is gameplay. **Confirmation queued.** |
+| Kabuki Warriors | 14 | 98.7% | Mixed. gmem474's runs read 96-99% with no hang. The pacing, idlehaltdefault and energymap runs hang (3 of the 5 most recent) and read 21-59%. lane.kabukistall's `-194847` is queued on the stall. Not a confirmation until the stall is explained. |
+| Crimson Skies | 1 (since) | 94.1% (251 s) | ibcache's `HAKUX_IBC=0` control (`c8e95ed539`, which includes #575). The 09-28 Nova read was 85%. One short run is marginal against 90%. ibcache has three more Crimson Nova runs queued (`-1378207`, `-1378332`, `-1378456`), so read those before spending 25 min on a confirmation. |
+| DOA Ultimate | 38 | 91.4% | litcompile569's fix build had audio short 0.136%, over the 0.1% bar. **The survey route ends on the User Profiles menu ("There is no profile to import"), not in a fight** (frame `092146-play.png`). So these readings are menu fps, and `--reviewed-gameplay no`. DOA needs its own route to a fight before any verdict means anything. `doax.route` is DOA Xtreme. Route authoring is Thor work per the addendum. |
+| Fuzion Frenzy | 6 | 80.5% | under the bar |
+| Ghoulies | 2 | 72.7% | under the bar |
+| Nightfire | 3 | 65.3% | under the bar |
+| Blinx 2 | 7 | 61.1% | under the bar |
+| Forza | 11 | 52.4% | waits on #583 (still an open draft) |
+| Blinx | 14 | 20.3% | under the bar |
+| WWE Raw 2 | 1 | void | batch-1 run; batch 2 retry is queued |
+
+Tier C: #583 (Forza) and #591 (ibcache, GTA SA) are still open drafts, so
+there is nothing to re-measure for them yet. #530, #575 and #580 have
+merged. AUF is the #530 win. For DOA, see above.
+
+### Queued this session
+
+| Title | Device | Regimen | Route | Request |
+|---|---|---|---|---|
+| 007: Agent Under Fire | nova | default | survey (marks play at about 225 s) | `1-1790709167-lane.verdict433-1492209` |
+
+When it finishes, judge it with `title_verdict.py <dir> --require
+confirmation --reviewed-gameplay yes`. Survey is a generic route, so the
+tool asks for a review. Check first that the frames still show the level:
+the survey input plays blind and could walk into a menu or a death screen
+over 1200 s.
+
+### Next, in order
+
+1. When the batch-2 Nova IDs and AUF finish, judge them and fill in the table.
+2. Once ibcache's three Crimson Nova runs finish, judge copies of them. If
+   they hold at 90% or more, queue a Crimson Nova confirmation on the
+   `crimson-skies` route.
+3. When each of the BG:DA, KOF and Azurik Nova copies lands in
+   `listing-nova.txt`, queue its confirmation (Nova, default).
+4. DOA Ultimate needs a route to a fight (Thor route authoring). Kabuki waits
+   on lane.kabukistall. Forza waits on #583. GTA SA waits on #591.
+
