@@ -1,3 +1,10 @@
+## Status
+
+PR #615 opened (draft), pushed at 5f5b0ea2a8. Waiting on CI (build +
+selftest shards); will `gh pr ready` once green. The pre-existing
+`60-status.sh` flake ("status shows the arms refusal in full") reproduces
+against unmodified `origin/master` and is unrelated to this change.
+
 # lane.statuswindow -- #433: the title table must not overstate a title's fps
 
 ## The mechanism (found by reading, then confirmed with a fixture)
