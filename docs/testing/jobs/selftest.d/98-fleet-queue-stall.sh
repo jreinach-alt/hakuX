@@ -88,7 +88,7 @@ sys.path.insert(0, testing)
 sys.path.insert(0, src)
 import fleet
 assert fleet.D == root, "fleet.py did not read this fixture's DISPATCH_DIR"
-stalled, on_hold, absent, blind = fleet.queue_stall(now=now)
+stalled, on_hold, absent, gated, blind = fleet.queue_stall(now=now)
 print("q=%d stalled=%s held=%s blind=%s" % (
     len(os.listdir(os.path.join(root, "queue"))),
     ",".join(sorted(r[0] for r in stalled)),

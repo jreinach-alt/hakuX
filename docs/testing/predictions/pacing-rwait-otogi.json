@@ -1,0 +1,47 @@
+{
+  "registered_utc": "2026-09-28T23:18:53Z",
+  "who": "lane.pacing",
+  "issue": "526",
+  "titles": {
+    "otogi": {
+      "title": "46530002-Otogi_Myth_of_Demons.xiso.iso",
+      "route": "otogi",
+      "device": "thor",
+      "seconds": 400
+    }
+  },
+  "device": "thor",
+  "perflog": false,
+  "runs_per_arm": {
+    "otogi": 2
+  },
+  "a_ref": "f53000f7e483f0cfffc5db92d7e376a162692427",
+  "b_ref": "f53000f7e483f0cfffc5db92d7e376a162692427",
+  "a_env": [
+    "HAKUX_RENDER_WAIT=yield",
+    "PERF_REGIMEN=default"
+  ],
+  "b_env": [
+    "PERF_REGIMEN=default"
+  ],
+  "queue_order": "otogi A1 B1 B2 A2 (the second pair reversed, so neither arm always starts warmer). Each: request.sh --who lane.pacing --title <title> --route otogi --seconds 400 --device thor --ref f53000f7e4 --env <arm env...> --expect this file",
+  "judge": "python3 docs/lanes/pacing/rwait_judge.py --a <A runs> --b <B runs> (reads [rwait526] from logcat.txt between `mark gameplay` and the soak end, hakuX-perf gfps in the same window, and verdict.json's thermal and power blocks); logcat -b crash in each result",
+  "why": "The Otogi half of pacing-rwait-soak.json never produced a reading: all four runs (1-1790623013-lane.pacing-2311543, -2311591, 1-1790623014-lane.pacing-2311827, 1-1790623015-lane.pacing-2311898) were VOID with no `mark gameplay`, because the otogi route marks gameplay at about 246 s (48+25+6x5+35x4+3) and the soak was 240 s. That was a registration error, not a device fault. Same binary, arms and legs; only seconds (400, a ~150 s window) and M0's window count (8) differ. P2 is the leg this exists for: whether the blocked wait's wake-up costs fps on a renderer-bound title.",
+  "prediction": "#526 RENDER WAITS, vk/draw.c. ONE BINARY (f53000f7e4), the env is the variable: A selects the old wait (HAKUX_RENDER_WAIT=yield: loop on sched_yield until the render thread has submitted the slot), B the new default (poll 30 us with cpu_relax, then block on the render thread's idle_event). Both at the device's defaults (PERF_REGIMEN=default), on the Thor, 240 s from a gate-admitted start. Crimson Skies is 30-capped on the Thor (29.7 fps, renderer ~50% busy), so the PFIFO thread waits for the render thread's backlog every frame and has headroom to lose nothing by sleeping; Otogi is renderer-bound (renderer idle 9%, 12.6 fps), the case where a slower wake-up could show up as fps. POINT PREDICTION (Otogi only): pooled gfps median B >= A - 1; B blocks (F0); H1 is reported, not the purpose.",
+  "legs": {
+    "M0 (instrument, VOID not fail)": "every run has a `[rwait526] render wait mode=` line, >= 8 `[rwait526] mode=` windows after `mark gameplay`, a `mark gameplay` line, and hakuX-perf gfps lines in the window. A run missing any is VOID and rerun once on the Thor.",
+    "F0 (the mechanism ran)": "A's mode line says mode=yield env=yield and every A window mode=yield; B's says mode=block env=(unset) and every B window mode=block. B has blocked > 0 in the window (summed over both sites). FAILS if the env did not reach the process, or if B never blocked (then every wait ended inside 30 us, the spin was never long, and the change is inert: see W1).",
+    "H1 (THE COUNTER THAT MUST MOVE)": "wait_cpu_ms per flip: B <= 0.25 x A, per title, pooled over runs. ABOVE that the block is not blocking: wake-ups per blocked wait (wakes/blocked) are reported beside it, and a ratio far above the render queue's depth would say the idle_event is being set so often that the waiter is a spin of futex calls.",
+    "K1 (wake-up cost)": "per site, B's wait p99_us (median over windows) <= A's + 100. A's waits are the pure time to the submit (a spin notices at once); B's add the futex wake-up. ABOVE FAILS: the wake path costs more than 100 us at the tail, and the next step is a longer poll bound, not reverting the block.",
+    "P2 (fps, the renderer-bound title)": "Otogi pooled gfps median: B >= A - 1. FAILS in the world where the PFIFO thread's wake-up after a blocked wait delays its next command enough to starve the renderer.",
+    "H0 (no hang)": "no B run shows a stall the A pair does not: no `hakuX-perf` gap over 5 s after the mark in B unless the A pair has one, and no ANR or native crash (logcat -b crash). A lost wake-up would hang the PFIFO thread until the next render command, a stall of a frame or more.",
+    "E1 (power, a guess labelled as one)": "when verdict.json has power.measured true: j_per_frame B <= A pooled per title (about 70% confident on Crimson, where flips are fixed at 30 and a lower clock is the only way to show it; 50% on Otogi). net_w is reported for every run. Not a pass/fail on the change.",
+    "T (heat, reported)": "thermal.first_pause_s and failed_sustained per run, and each run's start xo-therm. A run that paused is not read for P1/P2 or E1; its H1/H2 windows before the pause stand."
+  },
+  "must_not_move": [
+    "pgraph: docs/testing/predictions/pacing-rwait-pgraph-inert.json (12 suites, 01e62d8d1c vs f53000f7e4)"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off [rwait526], hakuX-perf and verdict.json by rwait_judge.py."
+}

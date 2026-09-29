@@ -241,7 +241,7 @@ while t <= end + args.step:
     samples += 1
     if os.listdir(os.path.join(S, "queue")):
         queued_samples += 1
-        stalled, on_hold, _absent, blind = fleet.queue_stall(now=t, settle_s=args.settle)
+        stalled, on_hold, _absent, _gated, blind = fleet.queue_stall(now=t, settle_s=args.settle)
         assert blind is None, blind
         verdict = {"new": {r[0]: r[2] for r in stalled},
                    "held": {r[0]: "held: " + r[2] for r in on_hold},

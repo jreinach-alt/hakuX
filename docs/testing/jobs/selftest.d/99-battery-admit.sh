@@ -125,14 +125,14 @@ ba_case "$TESTING" "$BA/a" 50 0-long:2100
 check "fits: level 50 >= need 38.3 -> the 2100 s soak is claimed" ba_claimed "$BA/a" 0-long
 check "fits: battery.json records battery_start 50, need 38.3, rate 27" ba_bjson "$BA/a/results/0-long/battery.json" 50 38.3 27
 check "fits: the admit line names level, need and the learned inputs" \
-    ba_logged "$BA/a" "BATTERY: admit 0-long: level 50 >= need 38.3 (floor 15 + margin 5 + rate 27.0 %/h learned n=4, 1 x (2100s + overhead 340s learned n=5))"
+    ba_logged "$BA/a" "BATTERY: admit 0-long on nova: level 50 >= need 38.3 (floor 15 + margin 5 + rate 27.0 %/h learned n=4, 1 x (2100s + overhead 340s learned n=5))"
 check "fits: the level came from dumpsys battery" grep -q "shell dumpsys battery" "$BA/a/adb.log"
 
 # ------------------------------------------ does not fit -> the shorter one
 ba_case "$TESTING" "$BA/b" 30 0-long:2100 1-short:300
 check "skip: level 30 < need 38.3 -> the long head stays queued" ba_queued "$BA/b" 0-long
 check "skip: the 300 s soak behind it (need 24.8) is claimed instead" ba_claimed "$BA/b" 1-short
-check "skip: logged as BATTERY: skip <id>: level L < need N" ba_logged "$BA/b" "BATTERY: skip 0-long: level 30 < need 38.3"
+check "skip: logged as BATTERY: skip <id> on <device>: level L < need N" ba_logged "$BA/b" "BATTERY: skip 0-long on nova: level 30 < need 38.3"
 check "skip: the backfill records battery_start 30, need 24.8, rate 27" ba_bjson "$BA/b/results/1-short/battery.json" 30 24.8 27
 
 # ---------------------------------------------------------- nothing fits
@@ -153,7 +153,7 @@ ba_starve() {   # <tree> <dir>
 }
 ba_starve "$TESTING" "$BA/e"
 check "starve: head refused 2000 s -> the short soak that fits is held back" ba_queued "$BA/e" 1-short
-check "starve: logged as a hold for the head" ba_logged "$BA/e" "BATTERY: hold for head 0-long"
+check "starve: logged as a hold for the head" ba_logged "$BA/e" "BATTERY: hold for head 0-long on nova"
 echo 39 > "$BA/e/level"; rm -f "$BA/e/.battery_level.nova"
 ba_walk "$TESTING" "$BA/e"
 check "starve: at level 39 >= 38.3 the head is claimed first" ba_claimed "$BA/e" 0-long
@@ -204,7 +204,7 @@ ba_hold3() {   # <tree> <dir>: three walks in one worker, holding for the head
     python3 -c 'import json,sys,time; json.dump(dict(id="0-long", since=time.time()-2000), open(sys.argv[1],"w"))' "$2/.battery_head.nova"
     ba_walk "$1" "$2" 3
 }
-ba_holds() { grep -c 'BATTERY: hold for head 0-long' "$1/logs/dispatcher.log"; }
+ba_holds() { grep -c 'BATTERY: hold for head 0-long on nova' "$1/logs/dispatcher.log"; }
 ba_hold3 "$TESTING" "$BA/j"
 check "log once: three walks holding for the head log the hold line once" \
     test "$(ba_holds "$BA/j")" -eq 1
@@ -233,7 +233,7 @@ ba_novafloor() {   # <tree> <dir>
 }
 ba_novafloor "$TESTING" "$BA/n"
 check "nova floor: level 50 < need 53.3 -> the 2100 s soak stays queued" ba_queued "$BA/n" 0-long
-check "nova floor: the line names floor 30" ba_logged "$BA/n" "BATTERY: skip 0-long: level 50 < need 53.3 (floor 30 + margin 5 + rate 27.0"
+check "nova floor: the line names floor 30" ba_logged "$BA/n" "BATTERY: skip 0-long on nova: level 50 < need 53.3 (floor 30 + margin 5 + rate 27.0"
 check "nova floor: the 300 s soak (need 39.8) is claimed" ba_claimed "$BA/n" 1-short
 check "nova floor: battery.json records need 39.8 and floor 30" \
     python3 -c 'import json,sys; b=json.load(open(sys.argv[1])); sys.exit(0 if (b["need"], b["floor"]) == (39.8, 30.0) else 1)' "$BA/n/results/1-short/battery.json"
