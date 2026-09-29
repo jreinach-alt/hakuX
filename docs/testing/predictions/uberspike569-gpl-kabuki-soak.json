@@ -1,0 +1,27 @@
+{
+ "registered_utc": "2026-09-29T23:12:44Z",
+ "who": "lane.uberspike569",
+ "issue": "569",
+ "title": "43560001-Kabuki_Warriors.xiso.iso",
+ "device": "nova",
+ "route": "kabuki-warriors",
+ "seconds": 600,
+ "perflog": true,
+ "frames_every": 0,
+ "runs_per_arm": 1,
+ "a_ref": "8b15159b2f",
+ "b_ref": "d0152f9c44",
+ "order": "A, then B, on the Nova, each queued with request.sh --title --route kabuki-warriors --seconds 600 --perflog --device nova (lane.kabukistall's K1 request). A is the merge of origin/master at HAKUX_GPL_DEFAULT 0; B is one line on it, HAKUX_GPL_DEFAULT 3. Two apks, so each arm starts with the dispatcher's shader-cache clear (result.json shader_cache 'cleared').",
+ "judge": "python3 docs/lanes/uberspike569/kabjudge.py --a <A dir> --b <B dir> (--selftest passes). Readings, legs and FACTORS are in its docstring, fixed before any run. Read against K1 (1-1790702688-lane.kabukistall-194847, master, cold) as both arms, it gives K0 False, K1 True, K2 False, K3 False: results/kabjudge-k1-self.json.",
+ "prediction": "#569 uber ladder on Kabuki Warriors, cold, the brief's acceptance title beside DOA (addendum 2026-09-29 16:10). K1 on master met 678 pipeline misses in the fight, 181 ms each, 97% of a 68.6 s window in vkCreateGraphicsPipelines, and 72-75% of misses change the vertex program or fixed-function vertex state. In B a miss whose vertex state vsh-uber.c covers fast-links the prebuilt uber pre-raster library with a specialised fragment library (~12 ms) and draws; the specialised pipeline builds on the worker. Only a cold miss (no uber library yet for its family, GS, raster and formats) creates on the draw thread. Registered: K1, B has no gap between guest flips over 5 s in the fight; K2, B's fight create ms <= 0.25 x A's; K3, B's longest flip gap <= 0.50 x A's.",
+ "legs": {
+  "K0 (validity)": "A and B cleared; both reach `mark gameplay`; A meets >= 100 pipeline misses after it (cold content, as K1's 678); B has 'vsh-uber: family module' and a last [uber569] line with mode=3 and links > 0. Without these the legs are VOID.",
+  "K1": "B: no gfps line after mark gameplay with G max >= 5000 ms. This is the addendum's wording. It does NOT discriminate: K1 on master read 4.4 s at most (B1 halved the create), so A is expected to pass it too; K2 and K3 carry the claim. FAILS in the world where cold misses cluster: dozens of first-seen (family, GS, raster, formats) combinations between two flips, each a ~200 ms monolithic create.",
+  "K2": "B gp_dpc_ms <= 0.25 x A's. FAILS in the world where Kabuki's cold misses dominate its create time (the uber libraries keyed too finely for its many GS and raster states), or where its vertex states are uncovered (read [uber569] uncovered=).",
+  "K3": "B gmax_ms <= 0.50 x A's. FAILS in the same world as K2, or where the fight's own frame time (2-16 fps on the Nova) and not creates sets the longest gap, which would make the gap the wrong reading of this stall on this title.",
+  "X (reading)": "B's cold, uncovered, next=done/fail/swapped, and its stall windows (dpc_ms >= 100)."
+ },
+ "expect": {},
+ "expect_counts": {},
+ "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off [shd413], [uber569] and gfps lines by kabjudge.py."
+}
