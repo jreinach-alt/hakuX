@@ -21,6 +21,22 @@ import fbwin  # noqa: E402
 
 K = 1 - 1 / 6.26          # the registered model: B1 removes this share of VS stage time
 GPU = re.compile(r"GPU: Tot:([\d.]+) Rnd:([\d.]+)")
+PRED = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "testing",
+                    "predictions", "litcompile569-doa-soak.json")
+
+
+def bound():
+    """The legs are prose; refuse if the constants above are not the registered ones."""
+    p = json.load(open(PRED))
+    legs = p["legs"]
+    need = [("L1 (the whole run, primary)", "%.3f" % K), ("L2 (the brief's leg: the fight load)", "%.3f" % K),
+            ("L4 (dvs, the mechanism)", "%.1f-%.1fx" % (6.26 / 1.3, 6.26 * 1.3)),
+            ("L3 (control)", "0.75-1.33"), ("L1 (the whole run, primary)", "within 30%")]
+    for leg, s in need:
+        if s not in legs[leg]:
+            sys.exit("refusing: %s does not register %r (judge constants drifted from %s)" % (leg, s, PRED))
+    print("prediction: %s registered %s, a=%s b=%s" % (os.path.basename(PRED), p["registered_utc"],
+                                                        p["a_ref"], p["b_ref"]))
 
 
 def arm(d, span):
@@ -74,6 +90,7 @@ def arm(d, span):
 
 
 def main(argv):
+    bound()
     spans = {"base": None, "fix": None}
     args = []
     i = 0
