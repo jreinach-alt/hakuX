@@ -301,3 +301,11 @@ the parked README. This lane writes `pilots/lane.slowtier2.ok` and deletes
   (section 6), wrote `routes/otogi.cold.route`, and parked the re-pilot
   `1-1790615781-lane.slowtier2-otogi2870269`. No hold was taken and nothing
   was queued. `pilots/lane.slowtier2.ok` is not written yet.
+
+### Attempt 4 (the re-pilot's result, branch lane/slowtier2-repilot)
+
+- Why attempt 3 did not carry on: it finished its step and stopped. #564
+  merged at 17:35Z, and the next step was the re-pilot's result, which lay
+  outside the session. hostops gave the re-pilot a cold slot in the evening:
+  `0-0-s-1-1790615781-lane.slowtier2-otogi2870269` was claimed at 18:58 PDT
+  and finished at 19:07 PDT. This resume reads it.
