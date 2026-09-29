@@ -19,7 +19,7 @@ Issue #569, PR #594. Branched from master at 1922ce1cad.
   `[gpl569] ext= lib= fast= interp= requested= mode=` (tag `hakuX-build`) on
   every start, whatever the switch says.
 
-## The change (6aaa1142ad; default flipped on in a84fda7ed4)
+## The change (6aaa1142ad; default on in a84fda7ed4, off again in 442167bcb7)
 
 - **Switch:** `HAKUX_GPL` in the environment, or `HAKUX_GPL_DEFAULT` at build
   time.
@@ -119,6 +119,67 @@ Issue #569, PR #594. Branched from master at 1922ce1cad.
 - **Pixel arm:** `gpl569-pixels-inert.json`, pushed at 6dd14f86f6; the arms
   job queues it.
 - **Preflight** (`--allow-tracker`): passed at 6dd14f86f6.
+
+### Results (read 2026-09-29, session 3)
+
+- **Pixel arm: PASS.** `[job.arms]` verdict on #594, 10:16 PDT. All 1059
+  registered checks hold: 1052 same, 7 noise inside the measured band, exact
+  598 -> 598. Surface_pitch/Swizzle differs byte for byte, inside its band.
+  A fast link of specialised libraries does not move a capture.
+- **The DOA soaks ran on the Thor, not the Nova**, 05:10-05:40 PDT. The
+  device came from the queue, not from this lane. Every arm started cool, at
+  82-81% battery. `gpljudge.py` output is in `doa-judge.json`, next to this
+  file.
+- **The Thor's thermal pause (`thermal-pause-F8`) was on within 30 s of
+  `mark play` in all three arms** (A 30 s before, B 10 s after, B2 at the
+  mark). Each arm also has 1-13 play samples. **D1 and D2 are void**, so they
+  are not a result either way.
+- **The stall legs fail by far more than any thermal difference.** B's pause
+  came 30 s later than A's.
+
+  | Leg | A (off) | B (mode 1, cold) | B2 (mode 2, warm) | Registered | Verdict |
+  |---|---|---|---|---|---|
+  | S1 create ms per miss | 570 (51.3 s / 90) | 667 (162.8 s / 244) | 195 | B/A <= 0.70 | **FAIL, 1.17** |
+  | S2 first load after play | 8.7 s, 3 misses | 144.9 s, 154 creates | 10.6 s | B/A <= 0.70 | **FAIL, 16.6** |
+  | S3 PR library hit share | | 0.56 (147 hit, 114 new) | 0.67 | >= 0.50 | pass |
+  | D1 GPU ms, gfps | 61.4 ms, 5 | 104 ms, 1 (n=1) | | <= 1.10, >= 0.90 | void (thermal) |
+  | D2 LTO GPU ms / A | | | 60.8 (n=1), 228 swaps | <= 1.03 | void (thermal) |
+
+- **Where B's time goes**, from the `[gpl569]` counters:
+
+  | Per create | B (cold) | B2 (warm, LTO running) |
+  |---|---|---|
+  | VI library | 0.02 ms | 0.02 ms |
+  | **PR library (VS + GS)** | **1607 ms** (183.2 s / 114) | **922 ms** (157.6 s / 171) |
+  | FS library | 12.4 ms | 5.3 ms |
+  | FO library | 0 | 0 |
+  | fast link | **0.06 ms** (15.5 ms / 261) | 0.05 ms |
+  | LTO link (worker) | | 571 ms (194.6 s / 341) |
+
+- **What this says:**
+  - **The fast link is free, and the FS library nearly so.** GPL's mechanism
+    works on T30.
+  - **A pre-raster library costs about 2.8x a whole monolithic pipeline**
+    (1607 against 570 ms). The vertex stage was already 78% of stage time
+    (P1, C3). So a new VS costs more under GPL than without it, and at the
+    fight load most misses bring a new PR key.
+  - An LTO link costs what a monolithic create does (571 against 570 ms), as
+    expected: it compiles again from the retained NIR.
+  - The B2 warm cache did not make PR libraries cheap (922 ms each). Either
+    T30's pipeline cache does not serve libraries, or the LTO jobs on the
+    worker competed for the CPU. This run cannot separate the two.
+  - **S1's unit differs between the arms.** A's `pm` counts pipelines, while
+    B's counts library and link creates through the same wrapper. The summed
+    create time, 51 s against 163 s, is the comparison that counts, and it
+    fails the same way.
+  - **MEM:** `heap_mb` read 2586.8 in both B arms, which is the heap's size,
+    not what the library cache uses. The cache held 190 libraries (B) and 251
+    (B2) at the end. This instrument cannot size it in bytes.
+- **Not run:** the Blinx trio. With the stall legs refuted and D1/D2 void on
+  the Thor, it would price a default that is not shipping.
+- **Consequence: the default is off again** (442167bcb7). The code lands as
+  the opt-in switch `HAKUX_GPL=1|2` and as the base for uber libraries,
+  whose first sight never builds a PR library on the draw path (D3, D4).
 
 ## Session 2 (2026-09-29, 03:15 PDT): why session 1 stopped, and the addendum
 
@@ -316,7 +377,42 @@ fixed. Two effects can move a pixel at the swap:
    (uberspike 8.4, item 3).
 5. **`precise` on both paths (D5),** with its own pixel arm.
 
-## Do not repeat
+### D7. After the soaks: what the uber build must change here
+
+- **`r->gpl.lock` is held across `vkCreateGraphicsPipelines`** in
+  `gpl_get_lib()`. There is one compile worker, so today that serialises
+  only the worker against the render thread. Once D3's prebuild runs on the
+  worker, a render-thread lookup would wait out a 1-1.6 s PR build under
+  that lock. Before the uber build lands, create outside the lock: look up
+  under it, create unlocked, then insert-or-discard under it again.
+- **A first sight must never build a PR library on the draw path.** The
+  soaks priced that at 1.6 s. Rung 0 has to be a prebuilt uber PR library,
+  as D4 already says. Without one, a miss should take the monolithic create
+  (570 ms), not the library path.
+
+## Session 3 (2026-09-29, ~10:30 PDT): why session 2 stopped, and the verdict
+
+- **Session 2 did not fail either; it ended waiting**, on the three DOA soaks
+  and the pixel arm (`[lane.gpl569] waiting:` on #594, 10:12 UTC). Both
+  have now resolved: the soaks finished on the Thor at 05:40 PDT, and the
+  arms job posted PASS at 10:16 PDT.
+- This session read them (section "Results" above), turned the default off
+  again (442167bcb7), merged master (814e092fc9, clean), and re-ran the NDK
+  type-check on the four changed files (rc=0, no new warnings).
+- **Next, in order of expected impact:**
+  1. **lane.uberspike569's uber PR library, prebuilt (D6, items 3-4).** This
+     is the only route to a stall-free first sight, since a specialised PR
+     library costs more than the pipeline it replaces.
+  2. **Why a PR library costs 2.8x, on the host Turnip harness** (drm-shim
+     A740, offline). Compile one DOA VS+GS as a library and as part of a
+     monolithic pipeline, and count the ir3 variants each builds. Likely
+     causes are no cross-stage varying elimination, and variants the library
+     compiles because it does not know the FS. The count tells whether a
+     create flag, or a VS that writes fewer outputs, recovers it. That
+     decides the background cost of the specialise-then-swap rung, and on a
+     device that thermal-pauses, that cost matters.
+  3. **D1/D2 on the Nova, or on a Thor that has not yet paused**, only when
+     a default flip is proposed again.
 
 - Do not read the Turnip `.so` string table for extension support. It is
   Mesa's whole generated registry. The symbol `tu_pipeline_builder_parse_libraries`
@@ -325,3 +421,10 @@ fixed. Two effects can move a pixel at the swap:
 - `git log -S` on `~/hakux-work/mesa-turnipfork` is a blobless clone, so it
   fetches from the network and runs for minutes. Grep the checked-out tree
   instead.
+- **Do not turn on GPL by default on its own.** Refuted on DOA: 163 s of
+  creates against 51 s, and a 145 s first load against 8.7 s.
+- **Do not read fps or GPU ms from a Thor soak past `mark play`** without
+  checking `thermal.jsonl` for `thermal-pause-F8`. All three arms here had
+  paused by then.
+- **Do not compare `[shd413] pm` across GPL modes.** Under GPL it counts
+  library and link creates, not pipelines.
