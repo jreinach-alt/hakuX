@@ -435,8 +435,17 @@ display_clear() {
 #   1  `not-foreground: <pkg> (...)`  focus is on another display, or display
 #                                     0's focused application or window is not
 #                                     hakuX's
-#   2  `foreground-unknown: ...`      adb did not answer, or display 0 has no
+#   2  `foreground-unknown: ...`      the device answered without a
+#                                     FocusedDisplayId, or display 0 has no
 #                                     focused window to read
+#   3  `foreground-unreadable: ...`   adb hung or failed, or answered nothing:
+#                                     nothing was read at all
+#
+# 2 and 3 are both "not known in front", and no caller may play on either.
+# They are split because they are different evidence (#592): 2 is a device
+# that answered, 3 is an adb that did not. A hot Nova's adb hung twice in a
+# row (two 10 s timeouts) while hakuX was drawing, and when both read as 2
+# the soak's two-unknowns rule aborted seven runs that were in front.
 #
 # WHY. Route input is evdev events on the pad node, and Android delivers them
 # to the FOCUSED window, whatever app that is. On 2026-09-27 the Thor came
@@ -460,10 +469,18 @@ display_clear() {
 # One adb call, with one retry (about 2 s) on an adb failure: soak_title.sh
 # runs this every 2 s while a route plays and counts unknowns itself.
 hakux_in_front() {
-    local SERIAL="$1" out
+    local SERIAL="$1" out rc
     out=$(ADB_RETRIES=1 adb_call "${ADB_QUICK_TIMEOUT:-10}" "foreground read" shell \
         "dumpsys input | grep -E '^  [A-Za-z][A-Za-z]*:|displayId=[0-9]+, name='; true" \
-        2>/dev/null | tr -d '\r')
+        2>/dev/null); rc=$?
+    out=$(printf '%s' "$out" | tr -d '\r')
+    if [ "$rc" = 124 ]; then
+        echo "foreground-unreadable: $SERIAL adb hung (no answer in ${ADB_QUICK_TIMEOUT:-10}s)"; return 3
+    elif [ "$rc" != 0 ]; then
+        echo "foreground-unreadable: $SERIAL adb failed (exit $rc)"; return 3
+    elif [ -z "${out//[[:space:]]/}" ]; then
+        echo "foreground-unreadable: $SERIAL adb answered nothing"; return 3
+    fi
     printf '%s\n' "$out" | awk -v serial="$SERIAL" '
         function owner(s) {  # "ActivityRecord{h u0 pkg/cls t4}" or "h pkg/cls" -> pkg
             if (index(s, "{")) { s = substr(s, index(s, "{") + 1); sub(/}.*/, "", s) }

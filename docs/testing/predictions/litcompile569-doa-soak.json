@@ -1,0 +1,28 @@
+{
+ "registered_utc": "2026-09-29T04:43:43Z",
+ "who": "lane.litcompile569",
+ "issue": "569",
+ "title": "54430006-Dead_or_Alive_1_Ultimate.xiso.iso",
+ "device": "nova",
+ "route": "survey",
+ "seconds": 440,
+ "perflog": true,
+ "frames_every": 0,
+ "runs_per_arm": 1,
+ "a_ref": "bf1ecde346",
+ "b_ref": "87ceac5569",
+ "order": "base first, fix second (a warmer second start can only slow the fix arm)",
+ "judge": "python3 docs/lanes/shaderfb569/fbwin.py <result dir> on each arm, plus docs/lanes/litcompile569/doa_soak_judge.py <base dir> <fix dir> (written before either arm ran; it reads the same [shd413] fields, the perflog xemu-gpu lines and thermal.jsonl). title_verdict.py on a COPY of each result dir for j_per_frame. The fight load is placed by fbwin.py's registered rule; where the rule finds none (as on P1's run), by the route frames' black screen -> GET READY span, read by hand and reported as such.",
+ "prediction": "#569 P2 B1 on the device: one cold DOA Ultimate survey soak per arm on the Nova, perflog builds, base = master bf1ecde346, fix = 87ceac5569 (the same tree plus B1's vsh-ff.c; `git diff --stat` outside docs/ is that one file). HOST INPUTS, measured before this registration: gendoa.c regenerated all 131 keys of P1's DOA shader_module_keys.bin; all 44 vertex and 2 geometry modules came out byte-identical to the device's spv_cache SPIR-V (the 21 lit ones included). B1 changes exactly the 18 lit modules that carry the helpers. Timed on lane.turnipcost569's host Turnip (A740 drm-shim, 5 interleaved reps): those 18 pipelines are 2.18-4.96x cheaper (VS stage 310-1187 ms -> 61-114 ms); the 26 unchanged ones read 0.93-1.13x (A/A); summed over the 44 modules the VS stage falls 6.26x and the pipeline 2.36x, and lit modules are 96.7% of VS stage time and 81% of pipeline time (each module weighted once: the keys give modules, not pipelines per module). P1's cold run on the device: dpc 59.9 s over 164 creates, stages vs 41.2 s / gs 10.8 s / fs 0.8 s. MODEL: a fix arm's create time = the base arm's create time minus 0.840 of its VS stage time, per create. From P1's numbers that is 59.9 -> 25.3 s (2.37x).",
+ "legs": {
+  "V (validity, voids the legs it names)": "both result.json shader_cache say cleared; fbwin.py M0 passes on both; neither arm's thermal.jsonl shows thermal-pause active in any window with dpm >= 1 (else L1-L3 are void and the pair is re-run from a cool start); dpn (creates) within +-25%% between arms, else the per-create legs stand and the totals are reported only.",
+  "L1 (the whole run, primary)": "fix's dpc_ms per create is within 30% of base's (dpc_ms - 0.840 * dvs_ms) per create, summed over each arm's whole run. FAILS HIGH in the world where the device's Turnip gains less than the host's from the rewrite (a different ir3/NIR path on the PurpleVK T30 build) or DOA's pipelines reuse its lit modules far less than once each; FAILS LOW if something else in the create shrank too.",
+  "L2 (the brief's leg: the fight load)": "fix's fight-load dpc_ms is within 30% of base's load (dpc_ms - 0.840 * dvs_ms). Reported with each arm's load span and how it was placed.",
+  "L3 (control)": "per create, dgs_ms and dfs_ms fix/base within 0.75-1.33 (B1 does not touch those stages; their SPIR-V is byte-identical on the host).",
+  "L4 (dvs, the mechanism)": "base/fix of dvs_ms per create is 4.8-8.1x (the host's 6.26x +-30%). A pass of L4 with a fail of L1 puts the gap outside the VS stage.",
+  "E (addendum: execution cost, a reading with a stated expectation)": "median over each arm's play windows after `mark play` with dpm == 0 of the perflog xemu-gpu `Tot` ms per frame; and title_verdict.py's j_per_frame. EXPECTED: |fix/base - 1| < 10%% for GPU ms per frame, because the lit VS runs once per vertex and DOA's frame is fragment- and pass-bound; the straight-line forms do more ALU per call (every case computed) but branch less. <= -10%%: the rewrite also cuts GPU time per frame and is an energy lever, stated with the numbers. >= +10%%: computing every case costs per-vertex ALU, and the NOTES price it against the compile saving. j_per_frame is read beside it with no threshold (power moves with thermal state)."
+ },
+ "expect": {},
+ "expect_counts": {},
+ "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off [shd413] and xemu-gpu lines."
+}

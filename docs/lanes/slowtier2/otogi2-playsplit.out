@@ -1,0 +1,64 @@
+0-0-s-1-1790615781-lane.slowtier2-otogi2870269  span 297-392 s after logcat line 1
+gfps      n= 47 logcat.txt:10189-13234  median fps=29 G=33.4 Gmax=35.5 Vpf=2 Ri=22.5
+phase     n= 47 logcat.txt:10191-13236  median Surf=0.5 Tex=0 TxH=0 Shd=0 Draw=4.4 Pipe=2.4 Fin=0.4 Sub=0.2 Fen=0.1 Flip=0 Idle=22.5 Tot=27.8 GPU=15.7 GPU.R=7.7 GPU.X=8
+cpu       n= 47 logcat.txt:10192-13237  median Push=10.2 Pull=9 Lw=0
+surf      n= 47 logcat.txt:10193-13238  median dl_ms=0 upl_ms=0 n_dl=10 n_upl=884
+work      n= 47 logcat.txt:10194-13239  median draws=433 PGen=0 SGen=0
+tlb68     n= 48 logcat.txt:10123-13213  median dt=2001 cpu=1970 rdus=34914 rdous=0
+rr425w    n= 48 logcat.txt:10127-13217  median idle_us=1.42184e+06 busy_us=580042
+sdcall    n= 47 logcat.txt:10188-13233  median su_deferred=14125 dl=90
+lock474   n= 48 logcat.txt:10144-13254  median rd_wait_ms=0.9 wr_wait_ms=0 flip_op_ms=30.2
+idlehalt  n= 47 logcat.txt:10161-13187  median on=0 halts=0
+pipe      n= 47 logcat.txt:10178-13225  median ev=0 pend=0
+derived   vCPU on-CPU 98.2% of wall (sum cpu / sum dt)
+derived   guest idle loop 66.7% of the sampled vCPU time (sum idle_us / sum of idle_us + busy_us)
+derived   renderer busy 5.3 ms/frame (median Tot - median Idle), idle 81% of Tot
+
+0-0-s-1-1790615781-lane.slowtier2-otogi2870269  span 112-295 s after logcat line 1
+gfps      n= 92 logcat.txt:2709-10023  median fps=29 G=33.4 Gmax=36 Vpf=2 Ri=17.8
+phase     n= 92 logcat.txt:2711-10025  median Surf=0.7 Tex=0 TxH=0 Shd=0 Draw=5.95 Pipe=3.3 Fin=0.3 Sub=0.2 Fen=0.1 Flip=0 Idle=17.8 Tot=24.7 GPU=20.4 GPU.R=10 GPU.X=10.4
+cpu       n= 92 logcat.txt:2712-10026  median Push=15 Pull=12.75 Lw=0
+surf      n= 92 logcat.txt:2713-10027  median dl_ms=0 upl_ms=0 n_dl=10 n_upl=1380
+work      n= 92 logcat.txt:2714-10028  median draws=687 PGen=0 SGen=0
+tlb68     n= 91 logcat.txt:2744-9961  median dt=2000 cpu=1967 rdus=26762 rdous=402
+rr425w    n= 91 logcat.txt:2748-9965  median idle_us=1.4582e+06 busy_us=542745
+sdcall    n= 92 logcat.txt:2706-10022  median su_deferred=21465.5 dl=90
+lock474   n= 91 logcat.txt:2754-9981  median rd_wait_ms=0.5 wr_wait_ms=0 flip_op_ms=25.3
+idlehalt  n= 92 logcat.txt:2718-9994  median on=0 halts=0
+pipe      n= 92 logcat.txt:2697-10012  median ev=0 pend=0
+derived   vCPU on-CPU 97.7% of wall (sum cpu / sum dt)
+derived   guest idle loop 72.6% of the sampled vCPU time (sum idle_us / sum of idle_us + busy_us)
+derived   renderer busy 6.9 ms/frame (median Tot - median Idle), idle 72% of Tot
+
+0-0-s-1-1790615781-lane.slowtier2-otogi2870269  span 404-554 s after logcat line 1
+gfps      n= 74 logcat.txt:13669-16780  median fps=29 G=33.4 Gmax=34.8 Vpf=2 Ri=29.6
+phase     n= 74 logcat.txt:13671-16782  median Surf=0.1 Tex=0.1 TxH=0.1 Shd=0 Draw=0.7 Pipe=0.4 Fin=1.3 Sub=1.2 Fen=0.1 Flip=0 Idle=29.6 Tot=31.9 GPU=1.4 GPU.R=0.5 GPU.X=0.9
+cpu       n= 74 logcat.txt:13672-16783  median Push=3.3 Pull=3 Lw=0
+surf      n= 74 logcat.txt:13673-16784  median dl_ms=0 upl_ms=0 n_dl=4 n_upl=50
+work      n= 74 logcat.txt:13674-16785  median draws=26 PGen=0 SGen=0
+tlb68     n= 75 logcat.txt:13680-16793  median dt=2000 cpu=1969 rdus=12449 rdous=2739
+rr425w    n= 75 logcat.txt:13684-16797  median idle_us=1.71518e+06 busy_us=284818
+sdcall    n= 74 logcat.txt:13668-16777  median su_deferred=419 dl=90
+lock474   n= 74 logcat.txt:13691-16761  median rd_wait_ms=0.3 wr_wait_ms=0 flip_op_ms=17.1
+idlehalt  n= 75 logcat.txt:13655-16762  median on=0 halts=0
+pipe      n= 74 logcat.txt:13662-16771  median ev=0 pend=0
+derived   vCPU on-CPU 98.3% of wall (sum cpu / sum dt)
+derived   guest idle loop 71.5% of the sampled vCPU time (sum idle_us / sum of idle_us + busy_us)
+derived   renderer busy 2.3 ms/frame (median Tot - median Idle), idle 93% of Tot
+
+0-0-s-1-1790615781-lane.slowtier2-otogi2870269  span 15-37 s after logcat line 1
+gfps      n= 11 logcat.txt:522-945  median fps=29 G=33.4 Gmax=35.2 Vpf=2 Ri=30.5
+phase     n= 11 logcat.txt:524-947  median Surf=0 Tex=0.1 TxH=0.1 Shd=0 Draw=0.4 Pipe=0.3 Fin=1.3 Sub=1.2 Fen=0.1 Flip=0 Idle=30.5 Tot=32.4 GPU=1.3 GPU.R=0.4 GPU.X=0.9
+cpu       n= 11 logcat.txt:525-948  median Push=2.5 Pull=2.4 Lw=0
+surf      n= 11 logcat.txt:526-949  median dl_ms=0 upl_ms=0 n_dl=4 n_upl=38
+work      n= 11 logcat.txt:527-950  median draws=18 PGen=0 SGen=0
+tlb68     n= 11 logcat.txt:500-918  median dt=2000 cpu=1977 rdus=7904 rdous=1646
+rr425w    n= 11 logcat.txt:504-922  median idle_us=1.80599e+06 busy_us=194570
+sdcall    n= 11 logcat.txt:519-942  median su_deferred=409 dl=90
+lock474   n= 10 logcat.txt:546-917  median rd_wait_ms=0.45 wr_wait_ms=0 flip_op_ms=13.15
+idlehalt  n= 11 logcat.txt:536-953  median on=0 halts=0
+pipe      n= 11 logcat.txt:513-934  median ev=0 pend=0
+derived   vCPU on-CPU 98.6% of wall (sum cpu / sum dt)
+derived   guest idle loop 86.7% of the sampled vCPU time (sum idle_us / sum of idle_us + busy_us)
+derived   renderer busy 1.9 ms/frame (median Tot - median Idle), idle 94% of Tot
+
