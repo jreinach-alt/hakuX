@@ -4571,10 +4571,10 @@ component = "harness"
 disposition = "harness"
 suites = []
 no_suites = "A HARNESS defect in a selftest fixture; no pgraph suite covers it."
-status = "open"
+status = "fixed"
 dispatch_state = "blocked"
 blocker_tested = "confirmed 2026-09-29T02:05Z: [lane.soakflake] row added by hostops; lane started the same tick."
-blocked_on = "lane.soakflake (in flight)."
+blocked_on = "fixed by PR #601 (folded as ab06f60fe4, 2026-09-29T02:20Z); lane.soakflake retired -- nothing to dispatch."
 status_note = "Master selftest RED on 20f072b240 (adb_failures=0); the fragment passes alone. The 2 s fixture hold rounds to whole seconds and can lose the second alive() call."
 impact_px = 0
 impact_onestep_px = 0
