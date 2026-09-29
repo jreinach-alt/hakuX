@@ -67,9 +67,11 @@ hostops-810152 (MAX).
 
 ### What xo-therm is
 
-xo-therm is the NTC thermistor the kalama reference design places at the 38.4
-MHz XO crystal beside the PMK8550/PM8550 power-management complex, a
-board-temperature sensor next to (not inside) the SoC. It moves with pm8550b
+On Qualcomm reference designs, xo-therm is the NTC thermistor at the 38.4 MHz
+XO crystal beside the PMK8550/PM8550 power-management complex. It is a
+board-temperature sensor next to the SoC, not inside it. That placement is
+inferred from the platform. No Thor schematic or teardown photo confirms it.
+The data agree with a board sensor: it moves with pm8550b
 and usb-therm (above), not with the cores, and lags the cores by minutes. It
 is the platform's stand-in for **skin temperature**: the 78 C trip that pauses
 cpu3-7 is a surface-heat limit. It is not a silicon limit. The cores' own trips are 108-110 C
