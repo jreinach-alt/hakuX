@@ -600,6 +600,11 @@ issues = ["433"]
 files = ["docs/testing/titles/table.py", "docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/99-status-fullwindow.sh", "docs/lanes/statuswindow/**"]
 note = "STARTED (lane.local 2026-09-29T15:05Z) on Sonnet, briefs/statuswindow.md: the dashboard title table shows fps and share from a 90-240 s slice, which overstates titles (lane.verdict433: Kabuki 22-47% over full gameplay against 100% in the slice). Show full-window verdict numbers; label slice-only readings."
 
+[lane.thorheat]
+issues = ["507"]
+files = ["docs/lanes/thorheat/**"]
+note = "STARTED (lane.local 2026-09-29T16:00Z), briefs/thorheat.md: the owner's ask (09-29 ~08:50 PDT), a hardware-engineer persona with direct Thor access to find why this device overheats (xo-therm 78 C pause; Azurik paused at +938 s from cold at the defaults, while the Nova plateaus near 49 C) and what counteracts it. DEVICE GRANT (owner): Thor only, direct adb under hold.sh lane.thorheat, blocks of at most 60 min, at most 3 h today, user-accessible settings only, everything restored; no root, flash or fan-duty writes. Docs only."
+
 [retired.tokentier]
 issues = []
 files = []
