@@ -303,3 +303,8 @@ Next lane / next resume, in order:
 4. If WWE Raw 2 or 50 Cent error/void again on the Nova, that is no longer a
    single-run flake; escalate as a board request rather than a third retry.
 5. Move to tier B/C per the existing ranking once batch 2 is read.
+
+CI on the merge-plus-batch-2 push (`3b2797ee11`) is `in_progress` (both
+`Android` and `Desktop build`) as of this write; also outside this session
+to wait out. Both the device batch and CI are named in the PR/issue
+`waiting:` comments.
