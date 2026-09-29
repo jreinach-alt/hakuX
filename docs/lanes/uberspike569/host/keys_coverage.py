@@ -36,6 +36,29 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 L1 = ("combiner_control", "rgb_inputs", "rgb_outputs", "alpha_inputs",
       "alpha_outputs", "final_inputs_0", "final_inputs_1")
 L2 = L1 + ("alpha_test", "alpha_func", "fog_enable", "fog_mode")
+# LF, the full-uber width (#569 addendum, design 1): every field is a uniform
+# except what a shader must DECLARE: the sampler types (the texture mode's
+# sampler class per stage, dim_tex, tex_cubemap, shadow_map, tex_x8y24,
+# tex_depth_float), the interpolation qualifiers, and whether gl_FragDepth is
+# written. Hypothetical: it assumes the texture modes that share a sampler
+# class run behind a branch, which this spike did not build.
+LF_KEEP = ("dim_tex", "tex_cubemap", "shadow_map", "tex_x8y24", "tex_depth_float",
+           "smooth_shading", "noperspective", "depth_needed")
+# PS_TEXTUREMODES_* (psh_regs.h:33-51) -> sampler class: 0 none, 1 2D, 2 3D,
+# 3 cube, 4 DOT_ZW (writes depth, samples nothing).
+MODE_CLASS = {0: 0, 1: 1, 2: 2, 3: 3, 4: 0, 5: 0, 6: 1, 7: 1, 8: 1, 9: 1, 10: 4,
+              11: 3, 12: 3, 13: 2, 14: 3, 15: 1, 16: 1, 17: 0, 18: 3}
+
+
+def lf_family(state, fields):
+    b = bytearray(blank(state, fields, [n for n in fields if n not in LF_KEEP]))
+    off, size = fields["shader_stage_program"]
+    prog = int.from_bytes(state[off:off + size], "little")
+    cls = 0
+    for st in range(4):
+        cls |= MODE_CLASS.get((prog >> (5 * st)) & 0x1f, 7) << (5 * st)
+    b[off:off + size] = cls.to_bytes(size, "little")
+    return bytes(b)
 
 
 def load_layout(path):
@@ -86,20 +109,64 @@ def analyse(states, fields, names):
         if not covered(s, fields):
             unc += 1
             continue
-        f = blank(s, fields, names)
+        f = names(s, fields) if callable(names) else blank(s, fields, names)
         if f in seen_fam:
             served += 1
         seen_fam.add(f)
     return len(seen_mod), len(seen_fam), unc, served
 
 
-def report(path, lay, fields, out=sys.stdout):
+# The vertex side at the full-uber width: what a vertex shader must DECLARE is
+# the interpolation qualifiers on its outputs and how each attribute arrives
+# (compressed attributes are integer inputs; uniform attributes come from push
+# constants, not inputs). Everything else, the program words included, is a
+# uniform to the interpreter (host/uber_vs/gen_uber_vs.py).
+VF_KEEP = ("smooth_shading", "noperspective", "compressed_attrs", "uniform_attrs")
+
+
+def vertex_report(data, lay, vpath, out):
+    v = json.load(open(vpath))
+    rec, ko, ks = lay["record"], lay["kind"][0], lay["kind"][1]
+    vo, vn = lay["vsh_state"], lay["vsh_state_size"]
+    if v["size"] != vn:
+        raise SystemExit("keys_coverage: vshlayout.json's VshState is %d B, the key's %d"
+                         % (v["size"], vn))
+    vf = {k: tuple(x) for k, x in v.items() if isinstance(x, list)}
+    mods, ff, fams, progs = set(), 0, set(), set()
+    served = 0
+    for i in range(0, len(data), rec):
+        if int.from_bytes(data[i + ko:i + ko + ks], "little") != lay["vertex_kind"]:
+            continue
+        s = data[i + vo:i + vo + vn]
+        if s in mods:
+            continue
+        mods.add(s)
+        o, n = vf["is_fixed_function"]
+        if s[o]:
+            ff += 1
+        else:
+            po, pn = vf["program"]
+            progs.add(s[po:po + pn])
+        fam = b"".join(s[vf[k][0]:vf[k][0] + vf[k][1]] for k in VF_KEEP)
+        if fam in fams:
+            served += 1
+        fams.add(fam)
+    print("  vertex modules %d (fixed-function %d, programs %d distinct), full-uber "
+          "vertex families %d, served %d of %d (%.1f%%)"
+          % (len(mods), ff, len(progs), len(fams), served, len(mods),
+             100.0 * served / len(mods) if mods else 0.0), file=out)
+
+
+def report(path, lay, fields, out=sys.stdout, vpath=None):
     data = open(path, "rb").read()
+    if vpath and os.path.exists(vpath):
+        vertex_report(data, lay, vpath, out)
     states, kinds = psh_states(data, lay)
     print("%s: %d records (%s)" % (path, len(data) // lay["record"],
           ", ".join("kind %d: %d" % kv for kv in sorted(kinds.items()))), file=out)
     rows = {}
-    for label, names in (("L1 combiners", L1), ("L2 +alpha test, fog", L2)):
+    for label, names in (("L1 combiners", L1), ("L2 +alpha test, fog", L2),
+                         ("LF full uber", lf_family)):
         mods, fams, unc, served = analyse(states, fields, names)
         rows[label] = (mods, fams, unc, served)
         print("  %-22s modules %d, families %d, uncovered %d, served %d of %d "
@@ -155,7 +222,10 @@ def selftest(lay, fields):
     buf = io.StringIO()
     rows = report(f.name, lay, fields, buf)
     os.unlink(f.name)
-    want = {"L1 combiners": (11, 4, 1, 6), "L2 +alpha test, fog": (11, 3, 1, 7)}
+    # LF: modes 1/2/3 are three sampler classes (2D, 3D, cube), so the three
+    # texture configurations stay three families and the alpha-test key merges.
+    want = {"L1 combiners": (11, 4, 1, 6), "L2 +alpha test, fog": (11, 3, 1, 7),
+            "LF full uber": (11, 3, 1, 7)}
     ok = rows == want
     print(buf.getvalue())
     print("selftest: %s (got %s, want %s)" % ("PASS" if ok else "FAIL", rows, want))
@@ -173,7 +243,7 @@ def main():
         return selftest(lay, fields)
     if not a.keys:
         ap.error("a key file, or --selftest")
-    report(a.keys, lay, fields)
+    report(a.keys, lay, fields, vpath=os.path.join(HERE, "vshlayout.json"))
     return 0
 
 

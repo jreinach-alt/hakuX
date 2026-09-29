@@ -370,14 +370,189 @@ the Nova's thermal line before trusting its fps.
   0.3-0.7 s off a 1-2 s pipeline.
 - **The one design where a fragment ubershader pays is with pipeline libraries (P5/GPL).** The
   uber fragment stage is compiled once per family as a fragment-shader library, and a first-sight
-  pipeline becomes a link of an existing VS library with it. Its value is bounded by how cheap
-  Turnip's GPL link is (not measured here) and by the family count (section 3).
+  pipeline becomes a link of an existing VS library with it. Section 8 measures it: on host Turnip
+  a fast link costs ~0 ms.
 - **Where key sets exist (P3), prebuild the specialised pipelines instead.** No interpreter, no pop.
 - **Exactness, if a hybrid is built after all:** compile the combiner arithmetic exact
   (`NoContraction`) on BOTH paths (section 4.1). That is a default-path change with its own pixel
   arm.
 
+## 8. Addendum: which design gives a first draw with no stall and no drop
+
+The brief's addendum (lane.local, 2026-09-28 14:05 PDT) asked two questions, in order:
+- (1) Does a full uber pipeline work, with vertex and geometry stages too?
+- (2) Does GPL (P5) work, with the fragment ubershader as a prebuilt library linked per vertex
+  stage?
+
+**Answer: (1) alone does not, (2) alone does not, and the two together do.** The design is uber
+LIBRARIES under GPL:
+- one pre-rasterization library per vertex family (uber VS + GS);
+- one fragment library per fragment family (uber FS);
+- a first-sight pipeline is a fast link of libraries that already exist.
+
+On host Turnip that link costs ~0 ms (8.2). The pieces below are measured on the host. The device
+legs that remain are listed in 8.4.
+
+### 8.1 Design 1, a full uber pipeline: C on the host, and the family count
+
+**The prototype.** `host/uber_vs/gen_uber_vs.py` builds it, and `build.sh` compiles it to SPIR-V.
+It takes the prologue of hakuX's generated vertex shader (the uniform block, the `lt*` lighting
+helpers, the interface) and the MAC/ILU op helpers, and swaps `main()` for one of two paths:
+- **vp:** the NV2A vertex-program interpreter. One loop runs over up to 136 microcode slots (the
+  field table at `glsl/vsh-prog.c:49-88`), with the register file as arrays and one MAC switch and
+  one ILU switch per slot.
+- **ff:** fixed function, with the skinning count, texgen modes, texture-matrix enables, light
+  types and fog generation all read from uniforms.
+- `both` is one shader that branches on `vpMode`.
+
+This prototype measures COST. It is not exact against `vsh.c`: material sources, point parameters
+and the ring are left out.
+
+**C, host Turnip.** `host/uber_vs/ccost_vs.sh 3`, 3 reps, median CPU ms. The result copy is
+`results/addendum-ccost_vs.tsv`. The fragment stage is `basic`'s specialised shader (`fs_spec`)
+or its family ubershader (`fs_uber`).
+
+| pipeline | cpu ms | VS | FS | GS |
+|---|---|---|---|---|
+| specialised prog_skin4 (51-slot skinning program) + GS + fs_spec | 376 | 92 | 92 | 144 |
+| specialised ff_unlit + GS + fs_spec | 314 | 16 | 106 | 158 |
+| specialised ff_lit2 (2 lights) + GS + fs_spec | 1334 | 812 | 103 | 156 |
+| **uber vp** + GS + fs_spec | 350 | **73** | 94 | 138 |
+| **uber ff** + GS + fs_spec | 1151 | 754 | 119 | 147 |
+| **uber both** + GS + fs_spec | 1224 | 870 | 92 | 142 |
+| **uber both + GS + fs_uber (the full uber pipeline)** | **1955** | 997 | 655 | 122 |
+| uber both + fs_uber, no GS | 1450 | 929 | 380 | - |
+
+- **The vertex-program interpreter is cheap to compile:** 73 ms, less than the 51-slot
+  specialised program (92 ms). A loop with a uniform trip count stays one body.
+- **The fixed-function path costs what the specialised lit shader costs** (754 against 812 ms), and
+  only after a fix. The first version took 2.7 s of VS: NIR unrolled the constant-bound 8-light loop
+  and the 16 texgen switch copies (section 5.1's lesson again). Uniform trip counts
+  (`ffNumLights`, `ffNumTexgen`) brought it down 3.6x. The remaining cost is the `lt*` soft-float
+  lighting, the same code lane.litcompile569 is shrinking.
+- **A full uber pipeline costs 1.5-2.0 s on the host**, which is 1.5-6x a specialised pipeline.
+  Built on a miss, it stalls longer than the miss. **So design 1 alone fails the same way the
+  fragment-only hybrid did (section 7).** The uber pipeline must exist BEFORE the miss.
+
+**The family count on DOA's keys** (`host/keys_coverage.py`, now with an `LF` width and a vertex
+read; `host/vshinfo.c` supplies the VshState layout):
+
+| stage | modules | families at the full-uber width | what splits them |
+|---|---|---|---|
+| vertex | 46 (31 fixed-function, 9 programs of 2-30 slots) | 15 | **only `uniform_attrs`** (which attributes come from inline values). An interpreter can select that per attribute from a uniform mask, which leaves **1** |
+| geometry | 2 | 2 | primitive and polygon mode |
+| fragment | 83 | **11** (LF), 34 at L1 (what `psh-uber.c` builds) | sampler classes per stage, `dim_tex`, qualifiers, depth write |
+
+LF assumes that the texture modes sharing a sampler class run behind a branch. That is not built,
+so L1's 34 is what exists today.
+
+**GPU cost, static only.** From ir3's statistics (`host/uber_vs/ir3stats.sh`,
+`results/addendum-ir3stats.txt`):
+
+| shader | instructions | full regs | max waves |
+|---|---|---|---|
+| vp interpreter | 1,503 (a loop body run once per slot) | 48 | 4 |
+| specialised 51-slot program | 2,622 (straight-line) | 13 | 14 |
+
+The interpreter also has 197 scratch-memory (cat6) instructions for the register arrays. Expect
+several times the ALU per vertex, at under a third of the occupancy. That matches the expert's
+"10x or more on vertex work" order.
+
+**Not measured on the device.** The GPU cost needs the uber vertex stage wired into the emulator
+(8.4). It is paid only for the frames between the fast link and the swap.
+
+### 8.2 Design 2, GPL: library and link times on host Turnip
+
+`host/gpl/gplharness.c` and `gpl.sh 3`, 3 reps, median CPU ms (`results/addendum-gpl.tsv`). Host
+Turnip reports `GPL ext 1, feature 1, fastLinking 1, independentInterpolationDecoration 1`.
+
+The columns:
+- `mono`: the monolithic create.
+- `pr`, `fs`: the pre-raster (VS+GS) and fragment libraries.
+- `link`: the fast link of all four libraries. The vertex-input and fragment-output libraries cost
+  0.0 ms and are not shown.
+- `lto`: a LINK_TIME_OPTIMIZATION link of RETAIN libraries.
+
+| pipeline | mono | pr | fs | **link** | lto |
+|---|---|---|---|---|---|
+| prog_pass + fs_spec | 39 | 4 | 97 | **0.0** | 17 |
+| prog_pass + fs_uber | 478 | 4 | 627 | **0.0** | 338 |
+| ff_unlit + GS + fs_spec | 305 | 221 | 95 | **0.0** | 220 |
+| ff_unlit + GS + fs_uber | 869 | 206 | 629 | **0.0** | 698 |
+| ff_lit2 + GS + fs_spec | 1305 | 1425 | 90 | **0.0** | 476 |
+| ff_lit2 + GS + fs_uber | 1976 | 1404 | 620 | **0.0** | 1120 |
+| prog_skin4 + GS + fs_spec | 364 | 253 | 100 | **0.0** | 290 |
+| uber both + GS + fs_uber | 1999 | 1178 | 647 | **0.0** | 1044 |
+
+- **A fast link is free** (under the 0.05 ms the print resolves). Turnip compiles each stage at
+  library creation and links without recompiling.
+- **Libraries split the cost by stage.** A miss that changes only the fragment state costs one
+  fragment library: 90-100 ms specialised, against a 305-1976 ms monolithic create. A miss that
+  changes only the vertex state costs one pre-raster library. That alone takes most of the stall
+  off the CB, TX and FF-only misses. shaderfb569's C3 found 100% of reused-module stages recompiled
+  by the monolithic path.
+- **GPL alone does not reach "no stall".** A miss that brings a new VS still pays its pre-raster
+  library (0.2-1.4 s). shaderfb569 C4 counts FF diffs in 98 of DOA's 164 misses.
+
+### 8.3 The design that answers the addendum: uber libraries under GPL
+
+- **Libraries, built ahead:** one uber pre-raster library per (vertex family, GS kind) and one
+  uber fragment library per fragment family. Build them on background threads at boot, and keep
+  them in the on-disk pipeline cache.
+  - For DOA that is about 1 x 3 pre-raster libraries (no GS, and 2 GS kinds) at 1.2-1.7 s each,
+    and 11 (LF) or 34 (L1) fragment libraries at 0.63 s each.
+  - That is about 12 s (LF) or 26 s (L1) of host CPU once, spread over worker threads. From the
+    second boot it is free, because the libraries come from the cache.
+- **A first-sight pipeline:** fast-link the existing libraries:
+  - the uber pre-raster library, or the specialised one if it is already built;
+  - the uber fragment library, or the specialised one if it is already built;
+  - the vertex-input and fragment-output libraries (0 ms each).
+  
+  **The draw happens this frame.** No stall, and no dropped draw.
+- **In the background:** build the specialised libraries (only the stages that are new), then
+  swap in. Either fast-link them, or LTO-link them for the best GPU code.
+- **Where it can still stall:**
+  - a family never seen before, in the first session of a title;
+  - render state that GPL puts inside a library and the device cannot make dynamic.
+
+  Both cases reduce to the vertex-input and fragment-output libraries (0 ms) plus the
+  depth/stencil and multisample state held in the fragment library. EDS3 is already enabled on the
+  device, and makes most of that dynamic.
+- **Where it can pop:** at the swap.
+  - Fragment: E shows none on the twelve suites (6.1).
+  - Vertex: not measured.
+  - A fast link does no cross-stage optimisation, so a specialised FS linked fast may not round
+    like the monolithic one (section 4.1's mechanism, across stages). `NoContraction`/`precise` on
+    both paths is the guarantee, and it is a default-path change with its own pixel arm.
+
+### 8.4 What remains before building it, in order
+
+1. **The device's driver has GPL.** It is PurpleVK, a Turnip fork of Mesa 26.3-devel
+   (git-62ac221a33). Turnip has shipped GPL since Mesa 23.1, but the device must say so. The switch
+   now logs `psh-uber: GPL ext= feature= fastLinking=` once (`vk/shaders.c`, under
+   `HAKUX_PSH_UBER` only). A one-arm B soak on this branch's head reads it.
+2. **The device's fast-link time**, against its monolithic create. It needs GPL in the renderer,
+   which is the build's first step.
+3. **The GPU cost of the uber stages at DOA's loads**, forced (the addendum's measurement). It needs
+   an exact-enough uber vertex stage in the emulator (`glsl/vsh-uber.c`, spliced like
+   `psh-uber.c`).
+4. **Exactness:** `NoContraction` on both paths, and an arm against the goldens.
+
+**The build, as files:**
+- `glsl/vsh-uber.{c,h}`: the interpreter and the uniform fixed-function path, spliced into
+  `vsh.c`'s own prologue and epilogue.
+- `glsl/psh-uber.c`: as built, plus the LF width.
+- `vk/pipeline.c` or `vk/draw.c`'s create sites: libraries and links. lane.shaderfb569 holds those
+  create sites.
+- `vk/shaders.c`: the family keys, library creation on worker threads, and the swap.
+- `vk/instance.c`: enable `VK_EXT_graphics_pipeline_library`.
+
 ## Do not repeat
+
+- Do not give an uber shader a constant-bound loop over lights or texgen slots. NIR unrolls it into
+  N copies, and the fixed-function uber VS then took 2.7 s instead of 0.75 s (8.1).
+- Do not judge an uber design by its monolithic create time alone. Under GPL the same shaders link
+  in ~0 ms once their libraries exist (8.2).
 
 - Do not build a Turnip ubershader out of switches. Register access and mapping by `switch`, inlined
   per input, cost 4-10 s per pipeline on the host; an array register file and arithmetic mappings

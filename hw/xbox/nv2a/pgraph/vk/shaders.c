@@ -41,6 +41,53 @@ extern bool xemu_get_async_compile(void);
 #define UBER_LOG(fmt, ...) VK_LOG_ERROR(fmt, ##__VA_ARGS__)
 #endif
 
+/*
+ * #569 addendum (design 2, GPL): whether this device's driver offers graphics
+ * pipeline libraries and fast linking, the precondition for linking a prebuilt
+ * uber fragment library per vertex library. Logged once, under the debug switch
+ * only; nothing is enabled or created.
+ */
+static void uber_log_gpl_support(PGRAPHVkState *r)
+{
+    uint32_t n = 0;
+    bool ext = false;
+    vkEnumerateDeviceExtensionProperties(r->physical_device, NULL, &n, NULL);
+    VkExtensionProperties *props = g_new0(VkExtensionProperties, n);
+    vkEnumerateDeviceExtensionProperties(r->physical_device, NULL, &n, props);
+    for (uint32_t i = 0; i < n; i++) {
+        if (!strcmp(props[i].extensionName,
+                    VK_EXT_GRAPHICS_PIPELINE_LIBRARY_EXTENSION_NAME)) {
+            ext = true;
+        }
+    }
+    g_free(props);
+    VkPhysicalDeviceGraphicsPipelineLibraryFeaturesEXT feat = {
+        .sType =
+            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_FEATURES_EXT,
+    };
+    VkPhysicalDeviceGraphicsPipelineLibraryPropertiesEXT prop = {
+        .sType =
+            VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_GRAPHICS_PIPELINE_LIBRARY_PROPERTIES_EXT,
+    };
+    if (ext) {
+        VkPhysicalDeviceFeatures2 f2 = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+            .pNext = &feat,
+        };
+        VkPhysicalDeviceProperties2 p2 = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+            .pNext = &prop,
+        };
+        vkGetPhysicalDeviceFeatures2(r->physical_device, &f2);
+        vkGetPhysicalDeviceProperties2(r->physical_device, &p2);
+    }
+    UBER_LOG("psh-uber: GPL ext=%d feature=%d fastLinking=%d "
+             "independentInterpolation=%d",
+             ext, feat.graphicsPipelineLibrary,
+             prop.graphicsPipelineLibraryFastLinking,
+             prop.graphicsPipelineLibraryIndependentInterpolationDecoration);
+}
+
 #define VSH_UBO_BINDING 0
 #define PSH_UBO_BINDING 1
 #define PSH_TEX_BINDING 2
@@ -1535,6 +1582,9 @@ void pgraph_vk_bind_shaders(PGRAPHState *pg)
          */
         if (pgraph_glsl_psh_uber_enabled()) {
             static unsigned long uber_binds, uber_uncovered;
+            if (uber_binds + uber_uncovered == 0) {
+                uber_log_gpl_support(r);
+            }
             if (pgraph_glsl_psh_uber_covers(&new_state.psh)) {
                 PshState family;
                 pgraph_glsl_psh_uber_family(&new_state.psh, &family);
