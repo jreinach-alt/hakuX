@@ -1374,6 +1374,11 @@ static void pipeline_cache_entry_init(Lru *lru, LruNode *node,
     snode->layout = VK_NULL_HANDLE;
     snode->pipeline = VK_NULL_HANDLE;
     snode->draw_time = 0;
+#if OPT_ASYNC_COMPILE
+    snode->gpl_lto_pending = false;
+    snode->gpl_lto_pipeline = VK_NULL_HANDLE;
+    snode->gpl_retired_pipeline = VK_NULL_HANDLE;
+#endif
 #if NV2A_PERF_LOG
     snode->last_use_cb = 0;
 #endif
@@ -1385,7 +1390,7 @@ static bool pipeline_cache_pre_evict(Lru *lru, LruNode *node)
     PipelineBinding *snode = container_of(node, PipelineBinding, node);
 
 #if OPT_ASYNC_COMPILE
-    if (snode->pending) {
+    if (snode->pending || qatomic_read(&snode->gpl_lto_pending)) {
         return false;  /* Still being compiled */
     }
 #endif
@@ -1416,6 +1421,21 @@ static void pipeline_cache_entry_post_evict(Lru *lru, LruNode *node)
         vkDestroyPipeline(r->device, snode->pipeline, NULL);
         snode->pipeline = VK_NULL_HANDLE;
     }
+
+#if OPT_ASYNC_COMPILE
+    if (snode->gpl_lto_pipeline != VK_NULL_HANDLE) {
+        vkDestroyPipeline(r->device, snode->gpl_lto_pipeline, NULL);
+        snode->gpl_lto_pipeline = VK_NULL_HANDLE;
+    }
+    if (snode->gpl_retired_pipeline != VK_NULL_HANDLE) {
+        vkDestroyPipeline(r->device, snode->gpl_retired_pipeline, NULL);
+        snode->gpl_retired_pipeline = VK_NULL_HANDLE;
+    }
+    /* #569 P5's one layout is shared and outlives every entry */
+    if (snode->layout == r->gpl.layout) {
+        snode->layout = VK_NULL_HANDLE;
+    }
+#endif
 
     if (snode->layout != VK_NULL_HANDLE) {
         vkDestroyPipelineLayout(r->device, snode->layout, NULL);
@@ -1523,6 +1543,11 @@ static void maybe_save_pipeline_cache(PGRAPHVkState *r)
 static void finalize_pipeline_cache(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
+
+#if OPT_ASYNC_COMPILE
+    /* An LTO job writes to its entry and uses the pipeline cache */
+    pgraph_vk_gpl_wait_lto_idle(r);
+#endif
 
     if (g_config.perf.cache_shaders) {
         save_pipeline_cache_to_disk(r);
@@ -2198,6 +2223,84 @@ static void init_pipeline_key(PGRAPHState *pg, PipelineKey *key)
 #endif
 }
 
+#if OPT_ASYNC_COMPILE
+/* What a pipeline create needs, for the compile worker or the #569 P5
+ * library path (vk/compile_worker.c) */
+static void fill_pipeline_create_params(
+    PGRAPHVkState *r, PipelineCreateParams *p,
+    const VkPipelineShaderStageCreateInfo *shader_stages,
+    int num_shader_stages, VkPrimitiveTopology topology,
+    const VkPipelineRasterizationStateCreateInfo *rasterizer,
+    const VkPipelineDepthStencilStateCreateInfo *depth_stencil,
+    const VkPipelineColorBlendAttachmentState *color_blend_attachment,
+    const float *blend_constants, const VkDynamicState *dynamic_states,
+    int num_dynamic_states, bool has_dynamic_line_width,
+    VkPipelineLayout layout, VkRenderPass render_pass)
+{
+    p->device = r->device;
+    p->vk_pipeline_cache = r->vk_pipeline_cache;
+    memcpy(p->shader_stages, shader_stages,
+           num_shader_stages * sizeof(shader_stages[0]));
+    p->num_shader_stages = num_shader_stages;
+    memcpy(p->binding_descs, r->vertex_binding_descriptions,
+           r->num_active_vertex_binding_descriptions *
+               sizeof(VkVertexInputBindingDescription));
+    memcpy(p->attr_descs, r->vertex_attribute_descriptions,
+           r->num_active_vertex_attribute_descriptions *
+               sizeof(VkVertexInputAttributeDescription));
+    p->num_binding_descs = r->num_active_vertex_binding_descriptions;
+    p->num_attr_descs = r->num_active_vertex_attribute_descriptions;
+    p->topology = topology;
+    p->rasterizer = *rasterizer;
+    p->depth_stencil = *depth_stencil;
+    p->has_zeta = r->zeta_binding != NULL;
+    p->color_blend_attachment = *color_blend_attachment;
+    p->has_color = r->color_binding != NULL;
+    memcpy(p->blend_constants, blend_constants, sizeof(p->blend_constants));
+    memcpy(p->dynamic_states, dynamic_states,
+           num_dynamic_states * sizeof(VkDynamicState));
+    p->num_dynamic_states = num_dynamic_states;
+    p->has_dynamic_line_width = has_dynamic_line_width;
+    p->layout = layout;
+    p->render_pass = render_pass;
+}
+
+/* #569 P5: a module's identity in the library keys, its SPIR-V's hash */
+static uint64_t gpl_module_id(ShaderModuleInfo *info)
+{
+    if (!info) {
+        return 0;
+    }
+    /* Only the thread that creates pipelines reads or writes it */
+    if (!info->gpl_id) {
+        info->gpl_id = (fast_hash(info->spirv->data, info->spirv->len) ^
+                        ((uint64_t)info->spirv->len << 40)) | 1;
+    }
+    return info->gpl_id;
+}
+
+/* #569 P5: the rest of PipelineCreateParams for the library path. The
+ * libraries are built against one render pass per attachment-format pair;
+ * every render pass here with that pair is identically defined, because
+ * create_render_pass() reads only the formats. */
+static void fill_pipeline_create_params_gpl(PGRAPHVkState *r,
+                                            PipelineCreateParams *p,
+                                            const PipelineKey *key)
+{
+    p->gpl = true;
+    p->gpl_vs_id = gpl_module_id(r->shader_binding->vsh.module_info);
+    p->gpl_gs_id = gpl_module_id(r->shader_binding->geom.module_info);
+    p->gpl_fs_id = gpl_module_id(r->shader_binding->psh.module_info);
+    p->gpl_color_format = key->render_pass_state.color_format;
+    p->gpl_zeta_format = key->render_pass_state.zeta_format;
+    RenderPassState lib_rp;
+    memset(&lib_rp, 0, sizeof(lib_rp));
+    lib_rp.color_format = key->render_pass_state.color_format;
+    lib_rp.zeta_format = key->render_pass_state.zeta_format;
+    p->gpl_lib_render_pass = get_render_pass(r, &lib_rp);
+}
+#endif
+
 static void create_pipeline(PGRAPHState *pg)
 {
     NV2A_VK_DGROUP_BEGIN("Creating pipeline");
@@ -2310,6 +2413,21 @@ static void create_pipeline(PGRAPHState *pg)
         NV2A_VK_DPRINTF("Cache hit");
         g_nv2a_stats.shader_stats.pipeline_cache_hits++;
         r->pipeline_binding_changed = r->pipeline_binding != snode;
+#if OPT_ASYNC_COMPILE
+        /* #569 P5, HAKUX_GPL=2: the LTO rebuild is ready; the fast-linked
+         * pipeline stays alive until eviction, a command buffer in flight
+         * may use it */
+        if (snode->gpl_lto_pipeline != VK_NULL_HANDLE &&
+            snode->gpl_retired_pipeline == VK_NULL_HANDLE &&
+            !qatomic_read(&snode->gpl_lto_pending)) {
+            smp_rmb();
+            snode->gpl_retired_pipeline = snode->pipeline;
+            snode->pipeline = snode->gpl_lto_pipeline;
+            snode->gpl_lto_pipeline = VK_NULL_HANDLE;
+            qatomic_inc(&r->gpl.stats.lto_swapped);
+            r->pipeline_binding_changed = true;
+        }
+#endif
         r->pipeline_binding = snode;
         NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
         NV2A_VK_DGROUP_END();
@@ -2732,6 +2850,69 @@ static void create_pipeline(PGRAPHState *pg)
      * bits clear, and a further 0.6% is the triangle-fan/strip interior seam.
      */
 
+#if OPT_ASYNC_COMPILE
+    /*
+     * #569 P5: link from graphics pipeline libraries (vk/compile_worker.c),
+     * under the one fixed layout rather than one created per miss. With
+     * async compile on, the worker builds it; otherwise it is built here,
+     * and a stage this pipeline shares with an earlier one is not compiled
+     * again.
+     */
+    if (r->gpl.mode) {
+        VkPipelineLayout gpl_layout = pgraph_vk_gpl_layout(r);
+        VkRenderPass gpl_render_pass =
+            get_render_pass(r, &key.render_pass_state);
+        CompileJob *job = NULL;
+        PipelineCreateParams sync_params;
+        PipelineCreateParams *p = &sync_params;
+        if (xemu_get_async_compile()) {
+            job = g_malloc0(sizeof(CompileJob));
+            job->type = COMPILE_JOB_PIPELINE;
+            job->pipeline.target = snode;
+            p = &job->pipeline.params;
+        } else {
+            memset(p, 0, sizeof(*p));
+        }
+        fill_pipeline_create_params(
+            r, p, shader_stages, num_active_shader_stages,
+            input_assembly.topology, &rasterizer, &depth_stencil,
+            &color_blend_attachment, color_blending.blendConstants,
+            dynamic_states, num_dynamic_states,
+            snode->has_dynamic_line_width, gpl_layout, gpl_render_pass);
+        fill_pipeline_create_params_gpl(r, p, &key);
+
+        snode->draw_time = pg->draw_time;
+
+        if (job) {
+            snode->pending = true;
+            r->pipeline_binding = snode;
+            r->pipeline_binding_changed = true;
+            pgraph_vk_compile_worker_enqueue(r, job);
+            NV2A_PHASE_TIMER_END_EXCL(shader_compile);
+            NV2A_VK_DGROUP_END();
+            return;
+        }
+
+        nv2a_profile_shader_keydiff(
+            r->pipeline_binding && r->pipeline_binding != snode &&
+                    !r->pipeline_binding->key.clear
+                ? &r->pipeline_binding->key.shader_state
+                : NULL,
+            &key.shader_state);
+        VkPipeline pipeline;
+        VK_CHECK(pgraph_vk_gpl_create_pipeline(r, snode, p, &pipeline));
+        snode->pipeline = pipeline;
+        snode->layout = gpl_layout;
+        snode->render_pass = gpl_render_pass;
+        r->pipeline_binding = snode;
+        r->pipeline_binding_changed = true;
+
+        maybe_save_pipeline_cache(r);
+        NV2A_PHASE_TIMER_END_EXCL(shader_compile);
+        NV2A_VK_DGROUP_END();
+        return;
+    }
+#endif
 
     VkPushConstantRange push_constant_ranges[2];
     int num_push_ranges = 0;
@@ -3012,6 +3193,14 @@ static void push_geom_line_params(PGRAPHState *pg)
 static int push_template_index(PGRAPHVkState *r, bool use_push_constants,
                                uint32_t uniform_attrs)
 {
+#if OPT_ASYNC_COMPILE
+    /* #569 P5's one layout declares every inline attribute */
+    if (use_push_constants && r->pipeline_binding &&
+        r->gpl.layout != VK_NULL_HANDLE &&
+        r->pipeline_binding->layout == r->gpl.layout) {
+        return NV2A_VERTEXSHADER_ATTRIBUTES;
+    }
+#endif
     return use_push_constants ? __builtin_popcount(uniform_attrs) : 0;
 }
 
