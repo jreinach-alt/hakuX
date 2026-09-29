@@ -83,7 +83,11 @@ Tier B, same method:
 
 | Title | Device | Regimen | Request | Verdict | fps median | Share 28.5+ |
 |---|---|---|---|---|---|---|
-| Azurik | thor | default | 1-1790688705-lane.verdict433-3467502 | queued | | |
+| Azurik | thor | default | 1-1790688705-lane.verdict433-3467502 | **FAIL(thermal)** | -- | 58.9% fps_ok |
+| Baldur's Gate: Dark Alliance | thor | default | 1-1790693574-lane.verdict433-211577 | queued | | |
+| WWE Raw 2 | nova | default | 1-1790693575-lane.verdict433-211620 | queued | | |
+| 50 Cent: Bulletproof | nova | default | 1-1790693575-lane.verdict433-211666 | queued | | |
+| KOF: Maximum Impact Maniax | thor | default | 1-1790693575-lane.verdict433-211719 | queued | | |
 
 ## State at the end of session 1 (2026-09-29, about 07:00 PDT)
 
@@ -168,14 +172,15 @@ for a thermal pause, not just for fps/audio share, when their results land.
 Updated `queue_batch1.sh`'s `REF` to this merge's tip (was pinned to the
 session-1 base `94cf8eb627`; no emulator code changed between the two, so
 this changes nothing about what the requests measure, only which sha
-`request.sh` builds/reuses). Queued all four:
+`request.sh` builds/reuses). Queued all four (pilot gate admitted the whole
+batch on the fresh `pilots/lane.verdict433.ok`):
 
 | Title | Device | Request |
 |---|---|---|
-| Baldur's Gate: Dark Alliance | thor | (see table below once IDs land) |
-| WWE Raw 2 | nova | |
-| 50 Cent: Bulletproof | nova | |
-| KOF: Maximum Impact Maniax | thor | |
+| Baldur's Gate: Dark Alliance | thor | `1-1790693574-lane.verdict433-211577` |
+| WWE Raw 2 | nova | `1-1790693575-lane.verdict433-211620` |
+| 50 Cent: Bulletproof | nova | `1-1790693575-lane.verdict433-211666` |
+| KOF: Maximum Impact Maniax | thor | `1-1790693575-lane.verdict433-211719` |
 
 Thor is on a cooldown hold (`cooldown-devwatch`, waiting for 65 C); queued
 requests wait behind it rather than being refused, so this is not a reason
