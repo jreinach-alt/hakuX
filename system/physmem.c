@@ -870,6 +870,64 @@ int mem_access_callback_address_matches(CPUState *cpu, hwaddr addr, hwaddr len)
     return ret;
 }
 
+#ifdef XBOX
+/*
+ * lane.memfast phase 0 (#507): wall time with no mem-access callback live,
+ * which is when the XBOX load fast path is armed (once [TLB-FP] activated).
+ * Only the 0 <-> 1 transitions of cb_count are booked, under one lock so a
+ * transition and its timestamp stay paired. Read by the [mf0] line (cputlb.c).
+ */
+static QemuSpin hakux_mf0_lock;
+static int64_t hakux_mf0_since;     /* start of the open cb_count==0 span */
+static bool hakux_mf0_open = true;  /* cb_count starts at 0 */
+static uint64_t hakux_mf0_closed_ns;
+uint64_t hakux_mf0_up;              /* 0 -> 1 transitions */
+uint64_t hakux_mf0_down;            /* 1 -> 0 transitions */
+
+static void hakux_mf0_cb_delta(int d)
+{
+    extern volatile int32_t *xbox_ram_fp_cb_count_ptr;
+    int64_t now = get_clock();
+    int32_t old;
+
+    qemu_spin_lock(&hakux_mf0_lock);
+    if (!hakux_mf0_since) {
+        hakux_mf0_since = now;
+    }
+    old = d > 0 ? qatomic_fetch_inc(xbox_ram_fp_cb_count_ptr)
+                : qatomic_fetch_dec(xbox_ram_fp_cb_count_ptr);
+    if (d > 0 && old == 0) {
+        if (hakux_mf0_open) {
+            hakux_mf0_closed_ns += now - hakux_mf0_since;
+        }
+        hakux_mf0_open = false;
+        hakux_mf0_up++;
+    } else if (d < 0 && old == 1) {
+        hakux_mf0_since = now;
+        hakux_mf0_open = true;
+        hakux_mf0_down++;
+    }
+    qemu_spin_unlock(&hakux_mf0_lock);
+}
+
+/* Total ns with cb_count == 0 since the first call, open span included. */
+uint64_t hakux_mf0_cb0_ns(int64_t now)
+{
+    uint64_t ns;
+
+    qemu_spin_lock(&hakux_mf0_lock);
+    if (!hakux_mf0_since) {
+        hakux_mf0_since = now;
+    }
+    ns = hakux_mf0_closed_ns;
+    if (hakux_mf0_open) {
+        ns += now - hakux_mf0_since;
+    }
+    qemu_spin_unlock(&hakux_mf0_lock);
+    return ns;
+}
+#endif
+
 static void do_mem_access_callback_insert(CPUState *cpu, run_on_cpu_data data)
 
 {
@@ -892,12 +950,7 @@ MemAccessCallback *mem_access_callback_insert(CPUState *cpu, MemoryRegion *mr,
     cb->opaque = opaque;
 
 #ifdef XBOX
-    {
-        extern volatile int32_t *xbox_ram_fp_cb_count_ptr;
-        if (xbox_ram_fp_cb_count_ptr) {
-            qatomic_inc(xbox_ram_fp_cb_count_ptr);
-        }
-    }
+    hakux_mf0_cb_delta(1);
 #endif
 
     async_safe_run_on_cpu(cpu, do_mem_access_callback_insert,
@@ -924,12 +977,7 @@ void mem_access_callback_remove_by_ref(CPUState *cpu, MemAccessCallback *cb)
     }
 
 #ifdef XBOX
-    {
-        extern volatile int32_t *xbox_ram_fp_cb_count_ptr;
-        if (xbox_ram_fp_cb_count_ptr) {
-            qatomic_fetch_dec(xbox_ram_fp_cb_count_ptr);
-        }
-    }
+    hakux_mf0_cb_delta(-1);
 #endif
 
     async_safe_run_on_cpu(cpu, do_mem_access_callback_remove_by_ref,
