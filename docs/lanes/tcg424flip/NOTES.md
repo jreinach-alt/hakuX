@@ -131,6 +131,24 @@ The range test sends B's stores to the slow path at about 9x A's rate
 here, against 14% in the titleroutes baselines on older builds. The pilot's
 A window covers more of the race (223 s against 124-161 s).
 
+### Runs under v2 (queued 2026-09-29, Thor, 62ef8bf0fe, expect_sha 412fafbc4833)
+
+| run | A (HAKUX_TCG424_RANGE=0) | B (no env) |
+|---|---|---|
+| 1 | 1-1790687707-lane.tcg424flip-3372535 | 1-1790687708-lane.tcg424flip-3372653 |
+| 2 | 1-1790687721-lane.tcg424flip-3375977 | 1-1790687722-lane.tcg424flip-3376159 |
+| 3 | 1-1790687722-lane.tcg424flip-3376343 | 1-1790687723-lane.tcg424flip-3376527 |
+
+The pilot verdict is in `pilots/lane.tcg424flip.ok`. The pgraph arms pair
+(1-1790661220-arms-tcg424flip-base/-fix) is still queued. It was not withdrawn,
+because the pilot showed no gfps loss.
+
+**Waiting on (attempt 2):** the six runs above and the `[job.arms]` verdict for
+tcg424flip-pgraph.json. Next step: `python3 docs/lanes/tcg424flip/arcticread2.py
+<the six ids>`, read each window's frames, judge M0/M1/M2a/M2b/M4' as
+registered in tcg424flip-arctic2.json, then check scores1.tsv's status column
+on the pgraph arm.
+
 ## For the next lane
 
 - The arctic-thunder race ends 100-160 s after `mark gameplay`, and the route
