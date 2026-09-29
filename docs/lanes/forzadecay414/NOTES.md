@@ -478,6 +478,33 @@ Thor at 16:26Z to match its base. It is at the head of the queue, but lane.thorh
 Thor since 17:50Z (`hold/thor.why`: block-3 fan draw). The arm runs when that hold is released.
 Nothing else on this PR is open.
 
+**Resume 2026-09-29 20:15Z (attempt 2; why the previous session did not finish):** it ended on the
+same outside wait, the Thor hold. That wait is over, but without a clean result. The fix arm
+`-fix-3483172` ran on the Thor (apk d5aa7a873b21, DONE 13:13:58 PDT), and both of its runs hit the
+1800 s timeout:
+
+| run | captures (base: 3379 / 3379) | what stopped it |
+|---|---|---|
+| 1 | 2872 | guest idle (`[rr425w] idlepc=8001b02e`, `[pace526] flips=0`) from 12:03:20 PDT to the timeout, inside W_buffering `ZBuf16D_WallQuad_V1_ZB1_ZS1` (`captures1/pgraph_progress_log.txt`, last line `Starting [167/265]`) |
+| 2 | 0 | host side: `WSL ... UtilAcceptVsock ... accept4 failed 110`, then `adb shell failed`, then the timeout (`run2.log`) |
+
+- **Run 1 is not slower per test.** Over the 2408 tests both arms completed, the fix's median time
+  per test is 0.89 of the base's. Their totals are 871 s and 988 s.
+- **The test it stopped in is already anomalous on master.** On the same device, the base arm
+  completed `ZBuf16D_WallQuad_V1_ZB1_ZS1` in **-23395 ms** (run 1) and **-23573 ms** (run 2), so the
+  guest's clock jumps during that test. Across the last 400 pgraph progress logs on the host, this
+  test completed 30 times, came back negative twice (both in this base arm), and stopped once
+  (this fix arm).
+- One idle guest in a test where master's clock misbehaves does not put the hang on the change.
+  That is a reading, not a proof. The re-run decides it.
+
+The arms job had not judged the pair yet at 13:15 PDT. With a leg unscored, it should read
+INCOMPLETE, and `arms.sh` (line ~951) re-queues an INCOMPLETE pair once, on its next tick. If it
+reads FAIL on the missing captures instead, the next session registers a replicate. #583 stays draft until that verdict.
+
+- **If the re-run also stops in W_buffering on the fix but not on the base,** the hang is the
+  change's. The next step is to read the fix's pruning path against that test's surfaces.
+
 ## Do not repeat
 
 - Do not re-queue a pre-fix Forza soak on the Nova to read a whole master race. lmkd kills it at
