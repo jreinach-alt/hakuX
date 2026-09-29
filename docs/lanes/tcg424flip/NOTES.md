@@ -78,7 +78,64 @@ verdict for tcg424flip-pgraph.json. Next step: read the pilot with
 arcticread.py. If M0 is valid and M4' is not clearly failing, write
 `pilots/lane.tcg424flip.ok` and queue the remaining A B A B.
 
+## Attempt 2 (2026-09-29): the pilot is VOID; v2 registered
+
+Attempt 1 did not finish because it had nothing left to do: it queued the
+pilot and the pgraph arm and stopped, waiting on them as the brief said.
+Hostops resumed this lane when the pilot finished.
+
+### The pilot under tcg424flip-arctic.json: VOID on both arms
+
+Both runs hit the Thor's thermal pause (thermal-pause-F8). run.log puts the
+onset after +451 s (A) and +388 s (B) of the 560 s soak. M0 voids a paused run.
+arcticread.py over the open window, for the record only:
+
+| run | tail s | m50 | on% | cpf | gfps | churn% | di/s | slow/s | inv/s |
+|---|---|---|---|---|---|---|---|---|---|
+| A 1-1790660189-...-1147138 | -2.8 | 75 | 89.9 | 33.3 | 27.0 | 32.4 | 80,194 | 16,151 | 13,227 |
+| B 1-1790660193-...-1148129 | 21.9 | 194 | 76.3 | 25.9 | 29.5 | 0.0 | 0.2 | 93,938 | 92,163 |
+
+Reading it also exposed a second fault in the window. B's race gave way at
+mark + 100 s to 59-60 gfps with Df:0 (a results or menu screen), then a load
+(gfps 4), then another race at 26-29. The open window counted the menu as
+gameplay, which pulled B's median up. Both titleroutes baselines end their race
+the same way, at mark + 124-161 s (arcticread2.py's `hi` column), so this
+happens on every run, not only on B. A's race ran 223 s to the pause without
+ending. B's 21.9 s tail was not a hang: after the last gfps line the emulator
+kept refreshing frames and writing [tlb68] (cpu 1,390 of 2,000 ms) up to
+`soak end`. The 20-27 s gaps between gfps samples in B all came after its pause
+began. Before the pause, the gaps on all four runs on disk are at most 4.3 s.
+
+### tcg424flip-arctic2.json (supersedes; no threshold changed)
+
+- Reader `arcticread2.py`: arcticread.py loaded unchanged, with the window closed
+  at `hi`, the earliest of: the pause's earliest onset, the first gfps sample
+  >= 45 (race over), and `soak end`.
+- M0 no longer voids a run for pausing, because the window ends before the
+  pause could have begun.
+- M4''s tail check becomes `gap <= 15 s` inside the window. The frames in the
+  window must show the race.
+- The soak is 420 s instead of 560 s: anything after about +388 s is paused
+  time. It captures a frame every 20 s.
+
+The pilot read under the bounds, for information only: arcticread2.py was
+written after this reading, so neither file counts it:
+
+| run | hi s | ng | gap | rt | on% | cpf | gfps | churn% | di/s | slow/s | inv/s |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| A | 223 p | 93 | 2.3 | 0 | 97.2 | 34.7 | 28 | 32.3 | 107,591 | 21,622 | 17,690 |
+| B | 100 m | 31 | 2.8 | 1 | 78.7 | 29.1 | 27 | 0.0 | 0.0 | 190,706 | 186,640 |
+
+The range test sends B's stores to the slow path at about 9x A's rate
+(190k/s against 22k/s), and still costs less vCPU per frame. A churns 32%
+here, against 14% in the titleroutes baselines on older builds. The pilot's
+A window covers more of the race (223 s against 124-161 s).
+
 ## For the next lane
+
+- The arctic-thunder race ends 100-160 s after `mark gameplay`, and the route
+  then drives the results and menu screens at 60 gfps. Bound any window by
+  race end (the first sample >= 45) and by the pause's onset.
 
 - Soak predictions are hand-read. arms.sh skips any prediction that has a
   `title`, and one whose a_ref equals its b_ref. Queue the soak with
