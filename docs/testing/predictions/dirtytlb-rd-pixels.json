@@ -1,0 +1,24 @@
+{
+  "registered_utc": "2026-09-28T18:40:57Z",
+  "who": "lane.dirtytlb",
+  "issue": "548",
+  "prediction": "#548 fix arm, pixels. B turns HAKUX_TCG68_RD on by default and changes nothing else (accel/tcg/cputlb.c, one line). The walk then covers only the modes in tlb.c.dirty. A mode outside it holds only -1 entries, which tlb_reset_dirty_range_locked() rejects on TLB_INVALID_MASK and tlb_set_dirty1_locked() never matches, so every entry A re-arms B re-arms, and no dirty bit differs (docs/audits/2026-09-25-tcgchurn-pass1.md read the same argument). PREDICTED: all 318 captures of these 11 suites are byte-identical between the arms, as they were in the counter's arm (dirtytlb-counter-pixels.json, 318 of 318 in these suites). REFUTED by any capture that moves: a guest store reached a page through an entry B left writable, so a vertex or texture upload was skipped, and the switch is not exact. Texture signed component tests is in dirtytlb-rd-signed.json with three runs per arm. Read scores1.tsv for unreadable rows and run1.log for UtilAcceptVsock before trusting a same.",
+  "a_ref": "249ea8fd05",
+  "b_ref": "052551bdd3",
+  "must_not_move": [
+    "Texture_CPU_Update/*",
+    "Texture_3D_as_2D/*",
+    "Texture_render_update_in_place/*",
+    "Texture_format/*",
+    "High_vertex_count/*",
+    "SetVertexData/*",
+    "Zero_stride/*",
+    "Attrib_carryover/*",
+    "DMA_corruption_around_surfaces/*",
+    "Inline_array_size_mismatch/*",
+    "3D_primitive/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": []
+}

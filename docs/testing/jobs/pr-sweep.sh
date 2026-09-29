@@ -136,10 +136,8 @@ if ! remote_authoritative; then
     say "the board read came back \`$(remote_source)\` rather than origin/board, so this tick cannot tell which heads belong to a lane this host cannot drive. It reports nothing and repairs nothing. Cure: \`git fetch origin board\` in $REPO -- or, on a host that has no board branch at all, set HAKUX_BOARD_REF= to say that the in-tree copy IS the board."
     exit 0
 fi
-# "<branch>\t<lane>" per line, or empty when no row is marked `remote`. Read
-# once here and handed to the classifier; asking per PR would make one board
-# read into one per row.
-remote_rows=$(remote_map)
+# WHICH HEADS ARE A REMOTE LANE'S is asked below, once the PR list is in:
+# remote_lanes_of takes every head on this one board read, the gate's.
 
 # WHETHER CLASS 4 HAS AN OWNER. lane.stalecheck (PR #169) teaches fold.sh to
 # tell a stale red from a live one and hand it back for a base merge. This
@@ -195,7 +193,7 @@ board_health() {
 # PR in a state board.sh considers labelled.
 STATE_LABELS='needs-audit-1 needs-audit-2 needs-remediation fold-ready folded needs-rebase'
 
-classify() {   # <prs json> <active units> <trunk epoch|""> <remote map> -> class\tnum\thead\tbranch\tdetail
+classify() {   # <prs json> <active units> <trunk epoch|""> <remote heads> -> class\tnum\thead\tbranch\tdetail
     python3 - "$1" "$2" "${3:-}" "$STATE_LABELS" "${4:-}" <<'PY'
 import datetime
 import json
@@ -205,9 +203,11 @@ raw, units_raw, trunk, state_raw, remote_raw = sys.argv[1:6]
 units = set(u.strip() for u in units_raw.splitlines() if u.strip())
 STATE = set(state_raw.split())
 trunk_epoch = int(trunk) if trunk.isdigit() else None
-# branch -> lane, for the lanes that do not live on this host. Empty is the
-# ordinary case and means every lane is local; it is NOT the "could not read"
-# case, which never reaches here -- the tick refuses before this runs.
+# head -> lane, for each open PR's head that a lane which does not live on
+# this host owns: its own branch or one of its suffixed ones, decided in bash
+# by remote-lane.sh's rule so there is one copy of it. Empty is the ordinary
+# case and means every lane is local; it is NOT the "could not read" case,
+# which never reaches here -- the tick refuses before this runs.
 REMOTE = {}
 for line in remote_raw.splitlines():
     b, _, l = line.partition("\t")
@@ -322,6 +322,12 @@ if [ -z "$prs" ]; then
     say "gh returned nothing for the open PR list; this tick is blind and repairs nothing"
     exit 0
 fi
+# "<head>\t<lane>" for each head a remote lane owns. A remote lane opens each
+# PR on `<its branch>-<suffix>`, so matching the row's value alone left its
+# suffixed drafts in no class at all.
+remote_rows=$(python3 -c 'import json, sys
+for p in json.loads(sys.argv[1] or "[]") or []:
+    print(p.get("headRefName") or "")' "$prs" 2>/dev/null | remote_lanes_of)
 rows=$(classify "$prs" "$units" "$trunk_time" "$remote_rows")
 
 # What handback.sh would do, asked ONCE and not once per draft. `list` acts on

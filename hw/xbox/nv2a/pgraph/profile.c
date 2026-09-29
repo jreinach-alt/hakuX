@@ -18,6 +18,7 @@
  */
 
 #include "hw/xbox/nv2a/nv2a_int.h"
+#include "hw/xbox/nv2a/pgraph/glsl/shaders.h"
 #ifdef __ANDROID__
 #include <android/log.h>
 #endif
@@ -642,8 +643,21 @@ void nv2a_profile_flip_stall(void)
          * 0 in the stall), s = shader modules, v = SPIR-V cache; h/m =
          * hits/misses, dh/dm the deltas.
          * dt_ms is wall time since the last line. L = pipeline cache loaded
-         * from disk, W = saves to it. Wall ms inside the compile is not here:
-         * its only timer is NV2A_PERF_LOG's, compiled out of a normal build.
+         * from disk, W = saves to it.
+         *
+         * #569 P1 appends, all deltas over the window: pc_ms (running) and
+         * dpc_ms, wall ms inside every graphics pipeline create, sync, worker
+         * and clear alike, dpn creates; Turnip's VkPipelineCreationFeedback:
+         * dfb creates with valid feedback, dfbh whole-pipeline cache hits,
+         * dfb_ms its duration, dvs/dgs/dfs_ms per stage; for draw pipelines,
+         * dsru/dsrum stages whose module an earlier pipeline used / of those
+         * the driver missed in its cache, dsru_ms their stage durations,
+         * dsnu/dsnum/dsnu_ms the same for new modules;
+         * dgl_ms glslang, dsmod_ms the whole GLSL -> module, dsv_ms pipeline
+         * cache saves; kd= sync draw misses per ShaderState class that
+         * differs from the pipeline bound before (VP/FF/CB/TX/FL/PO/GE, then
+         * NONE identical, then no comparable previous binding; see
+         * nv2a_profile_shader_keydiff); dins_us this instrument's own time.
          */
         {
             static ShaderPipelineStats prev;
@@ -652,7 +666,12 @@ void nv2a_profile_flip_stall(void)
             __android_log_print(ANDROID_LOG_INFO, "hakuX-perf",
                 "[shd413] f=%u dt_ms=%lld ph=%u pm=%u dph=%u dpm=%u "
                 "sh=%u sm=%u dsh=%u dsm=%u vh=%u vm=%u dvh=%u dvm=%u "
-                "L=%c W=%u",
+                "L=%c W=%u "
+                "pc_ms=%.1f dpc_ms=%.1f dpn=%u dfb=%u dfbh=%u dfb_ms=%.1f "
+                "dvs_ms=%.1f dgs_ms=%.1f dfs_ms=%.1f "
+                "dsru=%u dsrum=%u dsru_ms=%.1f dsnu=%u dsnum=%u dsnu_ms=%.1f "
+                "dgl_ms=%.1f dsmod_ms=%.1f dsv_ms=%.1f "
+                "kd=%u/%u/%u/%u/%u/%u/%u/%u/%u dins_us=%.1f",
                 g_nv2a_stats.frame_count,
                 prev_us ? (long long)((now - prev_us) / 1000) : 0LL,
                 s.pipeline_cache_hits, s.pipeline_cache_misses,
@@ -665,7 +684,31 @@ void nv2a_profile_flip_stall(void)
                 s.spv_cache_hits - prev.spv_cache_hits,
                 s.spv_cache_misses - prev.spv_cache_misses,
                 s.pipeline_cache_disk_loaded ? 'Y' : 'N',
-                s.pipeline_cache_disk_saved);
+                s.pipeline_cache_disk_saved,
+                s.pipeline_create_us / 1000.0,
+                (s.pipeline_create_us - prev.pipeline_create_us) / 1000.0,
+                s.pipeline_creates - prev.pipeline_creates,
+                s.pipeline_fb_valid - prev.pipeline_fb_valid,
+                s.pipeline_fb_hit - prev.pipeline_fb_hit,
+                (s.pipeline_fb_us - prev.pipeline_fb_us) / 1000.0,
+                (s.stage_fb_us[0] - prev.stage_fb_us[0]) / 1000.0,
+                (s.stage_fb_us[1] - prev.stage_fb_us[1]) / 1000.0,
+                (s.stage_fb_us[2] - prev.stage_fb_us[2]) / 1000.0,
+                s.stage_reused - prev.stage_reused,
+                s.stage_reused_miss - prev.stage_reused_miss,
+                (s.stage_reused_us - prev.stage_reused_us) / 1000.0,
+                s.stage_new - prev.stage_new,
+                s.stage_new_miss - prev.stage_new_miss,
+                (s.stage_new_us - prev.stage_new_us) / 1000.0,
+                (s.glslang_us - prev.glslang_us) / 1000.0,
+                (s.shader_module_us - prev.shader_module_us) / 1000.0,
+                (s.plc_save_us - prev.plc_save_us) / 1000.0,
+                s.keydiff[0] - prev.keydiff[0], s.keydiff[1] - prev.keydiff[1],
+                s.keydiff[2] - prev.keydiff[2], s.keydiff[3] - prev.keydiff[3],
+                s.keydiff[4] - prev.keydiff[4], s.keydiff[5] - prev.keydiff[5],
+                s.keydiff[6] - prev.keydiff[6], s.keydiff[7] - prev.keydiff[7],
+                s.keydiff[8] - prev.keydiff[8],
+                (s.instr_ns - prev.instr_ns) / 1000.0);
             prev = s;
             prev_us = now;
         }
@@ -888,6 +931,123 @@ void nv2a_profile_get_surf_timing_str(char *buf, int bufsize)
              p->df_flush_ms, p->df_read_ms,
              p->create_count, p->hit_count, p->evict_count,
              p->upload_count, p->download_count, p->miss_count);
+}
+
+/*
+ * #569 P1: on a sync draw pipeline miss, which classes of ShaderState differ
+ * from the pipeline bound before. It says what a new shader is new in: a
+ * game that keeps its vertex programs and swaps combiners is a different
+ * pre-build and generator problem from one that changes both. Each class is
+ * compared, then copied across, so the last two classes see only what the
+ * named ones leave. prev is NULL when nothing comparable was bound.
+ */
+enum {
+    SHADER_KEYDIFF_VP,    /* vertex program words, or programmable <-> ff */
+    SHADER_KEYDIFF_FF,    /* fixed-function vsh and the vsh fields both share */
+    SHADER_KEYDIFF_CB,    /* combiner stages and final combiner */
+    SHADER_KEYDIFF_TX,    /* psh texture fields, stage program included */
+    SHADER_KEYDIFF_FL,    /* float fields: point, aa offset, border sizes */
+    SHADER_KEYDIFF_PO,    /* the rest of PshState */
+    SHADER_KEYDIFF_GE,    /* GeomState */
+    SHADER_KEYDIFF_NONE,  /* ShaderState identical: a non-shader key miss */
+    SHADER_KEYDIFF_NOPREV,
+};
+
+void nv2a_profile_shader_keydiff(const ShaderState *prev,
+                                 const ShaderState *cur);
+
+void nv2a_profile_shader_keydiff(const ShaderState *prev,
+                                 const ShaderState *cur)
+{
+    int64_t t0 = nv2a_clock_ns();
+    ShaderPipelineStats *s = &g_nv2a_stats.shader_stats;
+
+    if (!prev) {
+        s->keydiff[SHADER_KEYDIFF_NOPREV]++;
+        s->instr_ns += nv2a_clock_ns() - t0;
+        return;
+    }
+
+    static ShaderState x, y; /* PFIFO thread only; too big for the stack */
+    unsigned int bits = 0;
+    x = *prev;
+    y = *cur;
+
+#define KD(cls, f)                                              \
+    do {                                                        \
+        if (memcmp(&x.f, &y.f, sizeof(x.f))) {                  \
+            bits |= 1u << (cls);                                \
+        }                                                       \
+        memcpy(&y.f, &x.f, sizeof(x.f));                        \
+    } while (0)
+
+    if (x.vsh.is_fixed_function != y.vsh.is_fixed_function ||
+        (!x.vsh.is_fixed_function &&
+         (x.vsh.programmable.program_length !=
+              y.vsh.programmable.program_length ||
+          memcmp(x.vsh.programmable.program_data,
+                 y.vsh.programmable.program_data,
+                 x.vsh.programmable.program_length *
+                     sizeof(x.vsh.programmable.program_data[0]))))) {
+        bits |= 1u << SHADER_KEYDIFF_VP;
+    } else if (x.vsh.is_fixed_function &&
+               memcmp(&x.vsh.fixed_function, &y.vsh.fixed_function,
+                      sizeof(x.vsh.fixed_function))) {
+        bits |= 1u << SHADER_KEYDIFF_FF;
+    }
+    y.vsh.is_fixed_function = x.vsh.is_fixed_function;
+    memcpy(&y.vsh.programmable, &x.vsh.programmable,
+           MAX(sizeof(x.vsh.programmable), sizeof(x.vsh.fixed_function)));
+
+    KD(SHADER_KEYDIFF_FL, vsh.point_size);
+    KD(SHADER_KEYDIFF_FL, vsh.point_params);
+    KD(SHADER_KEYDIFF_FL, vsh.aa_offset_x);
+    KD(SHADER_KEYDIFF_FL, psh.border_logical_size);
+    KD(SHADER_KEYDIFF_FL, psh.border_inv_real_size);
+
+    KD(SHADER_KEYDIFF_CB, psh.combiner_control);
+    KD(SHADER_KEYDIFF_CB, psh.other_stage_input);
+    KD(SHADER_KEYDIFF_CB, psh.final_inputs_0);
+    KD(SHADER_KEYDIFF_CB, psh.final_inputs_1);
+    KD(SHADER_KEYDIFF_CB, psh.color_space_convert);
+    KD(SHADER_KEYDIFF_CB, psh.rgb_inputs);
+    KD(SHADER_KEYDIFF_CB, psh.rgb_outputs);
+    KD(SHADER_KEYDIFF_CB, psh.alpha_inputs);
+    KD(SHADER_KEYDIFF_CB, psh.alpha_outputs);
+
+    KD(SHADER_KEYDIFF_TX, psh.shader_stage_program);
+    KD(SHADER_KEYDIFF_TX, psh.rect_tex);
+    KD(SHADER_KEYDIFF_TX, psh.snorm_tex);
+    KD(SHADER_KEYDIFF_TX, psh.tex_hilo16);
+    KD(SHADER_KEYDIFF_TX, psh.tex_comp0_const);
+    KD(SHADER_KEYDIFF_TX, psh.tex_bytes16);
+    KD(SHADER_KEYDIFF_TX, psh.tex_y16);
+    KD(SHADER_KEYDIFF_TX, psh.tex_aniso);
+    KD(SHADER_KEYDIFF_TX, psh.tex_signed);
+    KD(SHADER_KEYDIFF_TX, psh.compare_mode);
+    KD(SHADER_KEYDIFF_TX, psh.alphakill);
+    KD(SHADER_KEYDIFF_TX, psh.colorkey_mode);
+    KD(SHADER_KEYDIFF_TX, psh.conv_tex);
+    KD(SHADER_KEYDIFF_TX, psh.tex_x8y24);
+    KD(SHADER_KEYDIFF_TX, psh.dim_tex);
+    KD(SHADER_KEYDIFF_TX, psh.tex_cubemap);
+    KD(SHADER_KEYDIFF_TX, psh.addr_border);
+    KD(SHADER_KEYDIFF_TX, psh.shadow_map);
+    KD(SHADER_KEYDIFF_TX, psh.tex_depth_float);
+    KD(SHADER_KEYDIFF_TX, psh.shadow_depth_func);
+
+    KD(SHADER_KEYDIFF_GE, geom);
+    KD(SHADER_KEYDIFF_FF, vsh);
+    KD(SHADER_KEYDIFF_PO, psh);
+#undef KD
+
+    if (!bits) {
+        bits = 1u << SHADER_KEYDIFF_NONE;
+    }
+    for (int i = 0; i < SHADER_KEYDIFF_NOPREV; i++) {
+        s->keydiff[i] += (bits >> i) & 1;
+    }
+    s->instr_ns += nv2a_clock_ns() - t0;
 }
 
 void nv2a_profile_get_shader_stats_str(char *buf, int bufsize)

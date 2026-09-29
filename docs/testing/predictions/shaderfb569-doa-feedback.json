@@ -1,0 +1,26 @@
+{
+  "registered_utc": "2026-09-28T18:52:42Z",
+  "who": "lane.shaderfb569",
+  "issue": "569",
+  "title": "54430006-Dead_or_Alive_1_Ultimate.xiso.iso",
+  "device": "nova",
+  "route": "survey",
+  "perflog": false,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "cf5144dddb",
+  "b_ref": "cf5144dddb",
+  "judge": "python3 docs/lanes/shaderfb569/fbwin.py <result dir> (--selftest passes): every [shd413] window with the #569 fields, the fight load as its docstring defines it, and the legs below; shader_cache from result.json. Hand-read against the route frames: the load span must be the black screen -> GET READY span; if the frames place it elsewhere, the frames' span is scored as well and both are reported.",
+  "prediction": "ONE-ARM MEASUREMENT, not an A/B: a_ref == b_ref on purpose (the arms job skips it; it is queued by hand with request.sh --expect). One cold 440 s soak of DOA Ultimate on the Nova, survey route (the route pipeline413's ring-out soak 1-1790579572-pipeline413-1715785 used), build cf5144dddb: master 01e62d8d1c plus #569 P1's instrument. It appends to the [shd413] line the wall ms inside every vkCreateGraphicsPipelines (dpc_ms); Turnip's VkPipelineCreationFeedback (whole pipeline and per stage, duration and APPLICATION_PIPELINE_CACHE_HIT); per-stage counts split by whether an earlier pipeline already used the stage's VkShaderModule; glslang ms, whole-module ms and pipeline-cache-save ms; a ShaderState key-diff class count per sync draw miss; and the instrument's own time. pipeline413 priced the menu -> first fight load at an excess of 14.8 s over 19 misses (<= 780 ms each, an upper bound), and doa413c found 96% of the stalled PFIFO thread inside Turnip under vkCreateGraphicsPipelines. This run measures the create call directly.",
+  "legs": {
+    "M0 (instrument)": "result.json shader_cache says cleared; >= 20 [shd413] lines, every one parses with the #569 fields, pc_ms never decreases; dfb > 0 somewhere (Turnip reports creation feedback). No cold cache voids every leg. dfb == 0 everywhere voids C3 only: dpc_ms is our own clock, so C1, C2 and C4 stand.",
+    "C1 (pipeline413 section 9's falsifier)": "the fight load's summed dpc_ms is within 20% of 14.8 s (11.84-17.76 s). FAILS below 11.84 s in the world where the stall's time is outside the create call (a wait, a lock, other load work): then every compile option's bound shrinks to dpc_ms. FAILS above 17.76 s in the world where creates also run in the windows taken as the non-compile floor, so the 14.8 s excess understated the compile. C1' reads the same 20% against this run's own excess (fbwin.py, pipeline413's method); both are reported.",
+    "C2": "glslang ms summed over the fight load is <= 5% of that load's dpc_ms (doa413c: under 1% of samples). FAILS in the world where the SPIR-V step is a material share of the stall, which would put the glslang trims back on the plan.",
+    "C3 (decides P5)": "over the whole run, of the draw-pipeline stages whose VkShaderModule an earlier pipeline had already used (dsru), the share with no APPLICATION_PIPELINE_CACHE_HIT (dsrum / dsru). >= 50%: Turnip recompiles unchanged partner stages, and GPL's bound is 1/2-2/3 of each miss. <= 10%: GPL buys little; drop P5. Between: P5 is priced at the share. Read beside it: ms per reused stage vs ms per new stage from the stage durations. A reported miss that costs ~0 ms is not a real recompile, and is said so.",
+    "C4 (a reading, not a threshold)": "the fight load's key-diff classes: counts per VP / FF / CB / TX / FL / PO / GE / NONE / NOPREV.",
+    "O (overhead, the brief's claim)": "the instrument's own time (dins_us) per create is < 100 us, against creates of hundreds of ms. The hit path carries no added code: every hunk is on a miss path or a create call (read in the diff)."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off [shd413] lines by fbwin.py."
+}
