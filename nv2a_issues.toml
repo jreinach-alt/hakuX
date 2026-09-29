@@ -4555,10 +4555,10 @@ component = "harness"
 disposition = "harness"
 suites = []
 no_suites = "A HARNESS defect in fleet.py queue_stall; no pgraph suite covers it."
-status = "open"
+status = "fixed"
 dispatch_state = "blocked"
 blocker_tested = "confirmed 2026-09-29T01:20Z: [lane.fleetabsent] row added by hostops; lane started the same tick."
-blocked_on = "owned by lane.fleetabsent (territory.toml, GitHub `lane:fleetabsent`) -- not free to dispatch."
+blocked_on = "fixed by PR #599 (folded as 170a21df37, 2026-09-29T01:32Z); lane.fleetabsent retired -- nothing to dispatch."
 status_note = "Filed by the board 2026-09-29T01:11Z as a dead Thor worker. Root cause (hostops): both handhelds were unplugged for the owner's top-up at 17:40 PDT (PnP Present=False, adb empty); the worker exits with its device, and fleet.py's queue_stall FAILs its pinned requests as passed over instead of reporting an absent device. Fix: lane.fleetabsent."
 impact_px = 0
 impact_onestep_px = 0
