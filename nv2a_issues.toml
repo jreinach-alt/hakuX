@@ -4445,10 +4445,10 @@ component = "games"
 disposition = "defect"
 suites = []
 no_suites = "A PERFORMANCE/POWER DEFECT (host spin-waits and display refresh). No pgraph suite measures frame pacing or power, so none is named."
-status = "open"
+status = "closed"
 dispatch_state = "blocked"
 blocker_tested = "confirmed 2026-09-28T01:27:49Z: [lane.pacing] row on origin/board."
-blocked_on = "IN FLIGHT (lane.local 2026-09-28T01:27:49Z): lane.pacing holds it (briefs/pacing.md). PR #529 folded (d054c1c731). vk/draw.c LENT from lane.forza414 at 2026-09-28T18:30Z (hostops): the two sched_yield waits go on a second PR, lane/pacing-spin."
+blocked_on = "CLOSED (hostops 2026-09-29T11:45Z): PR #529 (d054c1c731) and PR #572 (48e7ec2ea2) folded: the limiter sleeps, the 60 Hz surface request, and both render waits block instead of spinning (Crimson/Otogi, Thor, defaults: gfps 29/29 unchanged, wait CPU per flip 0.85->0.26 and 0.23->0.05 ms). lane.pacing retired. || PRIOR: IN FLIGHT (lane.local 2026-09-28T01:27:49Z): lane.pacing holds it (briefs/pacing.md). PR #529 folded (d054c1c731). vk/draw.c LENT from lane.forza414 at 2026-09-28T18:30Z (hostops): the two sched_yield waits go on a second PR, lane/pacing-spin."
 status_note = "FILED 2026-09-28T01:27:49Z by lane.local from the thermal/perf engineering review (lanelocal-scratch/thermal-review.md, levers 3-4): XEMU_OPT_FRAME_LIMITER_SPIN=1 (ui/xemu.c:65, spin at :1890); sched_yield loops vk/draw.c:3713, :3778; Nova min_refresh_rate=120 with hakuX in front; vsync pref default false (xemu_android.cpp:915)."
 impact_px = 0
 impact_onestep_px = 0
