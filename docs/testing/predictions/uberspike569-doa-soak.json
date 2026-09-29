@@ -1,0 +1,25 @@
+{
+  "registered_utc": "2026-09-28T20:58:48Z",
+  "who": "lane.uberspike569",
+  "issue": "569",
+  "title": "54430006-Dead_or_Alive_1_Ultimate.xiso.iso",
+  "device": "nova",
+  "seconds": 440,
+  "route_name": "survey",
+  "runs_per_arm": 2,
+  "a_ref": "2ca713adec",
+  "b_ref": "2ca713adec",
+  "env_a": [],
+  "env_b": [
+    "HAKUX_PSH_UBER=1"
+  ],
+  "prediction": "#569 P6, the P and C legs. HAND-READ: queued by the lane with request.sh --title, judged by docs/lanes/uberspike569/soak_read.py --judge this file. One binary, 2ca713adec (ubershader built, default off). A: no env. B: HAKUX_PSH_UBER=1, every covered draw through its family's combiner ubershader. DOA1 Ultimate on the Nova, survey route, 440 s, native resolution, two soaks per arm (the first pair is the pilot; the second is queued after it is read).\n\nP (the leg): the fight is GPU-bound (doa413: GPU 31-48 ms/frame, 11-16 fps), so a fragment ALU or register-pressure cost shows in fps. FIGHT fps = 60 / gap between hakuX-perf gfps lines over the last 150 s of the log, median per soak, median over the soaks of an arm. PASS if B/A >= 0.90 (shaderplan569 P6's 'fps within 10%'). It FAILS in the world where the interpreter's per-pixel cost is a real share of DOA's GPU frame: expert R11's 3-6x fragment ALU would put B/A near 0.5-0.8. My point estimate is 0.85-1.0: the lean interpreter is ~90 scalar ops per stage for DOA's few-stage programs at 640x480, against a frame dominated by surface work (doa413: Surf is the largest segment). A B/A inside the single-run spread (doa413b: 12.6-14.9 fps for one binary, so about +-8%) with fewer than two soaks per arm is NOT a pass.\n\nC (reading, device side): B's 'psh-uber: family module N: B bytes GLSL, T ms' lines give glslang plus vkCreateShaderModule per family (Turnip compiles at pipeline creation, so this is not the pipeline cost); [shd413] pm/sm at the end of each soak give pipeline and binding misses, expected FEWER in B (families share pipelines across combiner programs). The host figure for the fragment stage is 0.29-0.35 s per pipeline (NOTES 5.1).\n\nVOID: A with any 'psh-uber: ON' line, B without one or without a family module line, or any soak with fewer than 20 gfps lines in the window (it did not reach the fight).",
+  "expect": {
+    "M0/a_uber_off": true,
+    "M0/b_uber_on": true,
+    "M1/fight_lines_min": 20,
+    "P1/b_over_a_fight_fps_min": 0.9
+  },
+  "expect_counts": {},
+  "expect_note": "Named rules read by docs/lanes/uberspike569/soak_read.py --judge, not golden keys."
+}

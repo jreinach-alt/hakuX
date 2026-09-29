@@ -254,7 +254,7 @@ def contact_sheet(rdir, out_png):
     return os.path.basename(out_png), None
 
 
-def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
+def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS, write_contact_sheet=True):
     req = load_json(os.path.join(rdir, "request.json"))
     res = load_json(os.path.join(rdir, "result.json"))
     targets = load_targets(targets_path)
@@ -562,10 +562,14 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS):
         if v["rating_candidate"] is None:
             v["rating_note"] = "passed, but surface_scale %s is not 1 or 2 (or was not logged)" % scale
 
-    sheet, why = contact_sheet(rdir, os.path.join(rdir, "contact.png"))
-    v["contact_sheet"] = sheet
-    if why:
-        v["contact_sheet_note"] = why
+    if write_contact_sheet:
+        sheet, why = contact_sheet(rdir, os.path.join(rdir, "contact.png"))
+        v["contact_sheet"] = sheet
+        if why:
+            v["contact_sheet_note"] = why
+    else:
+        v["contact_sheet"] = None
+        v["contact_sheet_note"] = "not generated: a live score (status_html.py) never writes into a result dir"
     v["judged_utc"] = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     return v
 

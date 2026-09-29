@@ -1,0 +1,31 @@
+{
+ "registered_utc": "2026-09-29T00:36:46Z",
+ "who": "lane.gpl569",
+ "issue": "569",
+ "title": "4D530013-Blinx_The_Time_Sweeper.xiso.iso",
+ "device": "nova",
+ "route": "survey",
+ "seconds": 440,
+ "perflog": true,
+ "frames_every": 0,
+ "runs_per_arm": 1,
+ "a_ref": "6aaa1142ad",
+ "b_ref": "a84fda7ed4",
+ "b2": "b_ref with --env HAKUX_GPL=2 (fast link, then the LTO rebuild on the compile worker swapped in)",
+ "order": "A, then B, then B2, all on the Nova. A and B are different apks, so each starts with cleared caches (vk/renderer.c wipes spv_cache and the pipeline cache on an apk change). B2 is B's apk, so it starts warm: it is read for draw time only, never for the stall.",
+ "judge": "python3 docs/lanes/gpl569/gpljudge.py --a <A dir> --b <B dir> --b2 <B2 dir> (--selftest passes). Every reading and rule is in its docstring and was fixed before any run. The route frames are read beside it, and the load's placement is checked against them.",
+ "prediction": "#569 P5 on Blinx: The Time Sweeper, the GPU-heavy title for the draw-time legs. A is master plus the graphics pipeline library code, switched off (HAKUX_GPL_DEFAULT 0). B is the same with the switch on: every draw pipeline is linked from four libraries (vertex input, vs+gs, fs, fragment output), each cached by the state its subset reads, and fast-linked. P1 (#574, a cold DOA soak on the Nova) found Turnip compiling again, at full price, all 246 stages whose module an earlier pipeline had used: 77% of stage time. GPL removes the recompile when the whole library key repeats, not just the module: vs, gs, rasterizer state and attachment formats for PR; fs, depth/stencil state and formats for FS. So the saving is below 77%. The estimate: about 65% of reused-module stage time lands on a repeated library key, so 0.77 x 0.65, about half of create time, goes; fast links and the cheap VI/FO libraries add a few percent back. Registered: create ms per draw-pipeline miss falls to at most 0.70 of A's. The per-miss reading is used because B, stalling less, can reach more of the game in 440 s. Anything below 0.23 of A is below GPL's bound and means something other than GPL moved; the arm is then read, not scored.",
+ "legs": {
+  "M0 (validity)": "A and B both start with cleared caches (result.json shader_cache); each has >= 20 [shd413] windows; B's logcat has '[gpl569] ext=1 lib=1 ... mode=1' at start and a '[gpl569] mode=1 links=N' line with N > 0. If B lacks these, it ran the monolithic path, and every leg is VOID for B.",
+  "S1 (stall, the brief's registered factor)": "whole run: B's pc_ms / pm at its last [shd413] line is <= 0.70 x A's. FAILS in the world where Turnip's library compile costs as much as its monolithic one, or where library keys rarely repeat (the PR key splits by rasterizer state or formats more than the module reuse suggests). Below 0.23 x A is flagged, not passed.",
+  "S2 (the first load after mark play)": "the summed dpc_ms of the first load cluster after `mark play` (gpljudge.first_load) is <= 0.70 x A's. The miss counts (load_dpm) are reported beside it; if they differ by more than 30%, the two loads are not the same work, and S2 is reported as incomparable, not scored.",
+  "S3 (mechanism)": "B's final [gpl569] line: PR library hits / (hits + new) >= 0.50. This leg is what makes S1 attributable. If S1 passes and S3 fails, the saving came from somewhere else, and S1 is not credited to GPL.",
+  "D1 (draw-time cost of the fast link)": "from `mark play` + 60 s to the end: B's median xemu-gpu Tot ms <= 1.10 x A's, and B's median gfps >= 0.90 x A's. FAILS in the world where Turnip's non-LTO independent fragment and pre-raster code is materially slower on the GPU.",
+  "D2 (LTO swap)": "B2's median xemu-gpu Tot ms over the same span is <= 1.03 x A's, and B2's [gpl569] line shows lto swapped > 0. D2 is what decides whether HAKUX_GPL=2 becomes the default. If D1 passes, mode 1 ships and D2 is a reading.",
+  "MEM (reading, no threshold)": "B's final [gpl569] libs=vi/pr/fs/fo and heap_mb, the device-local heap usage at session end. A has no [gpl569] counter line (mode 0), so the heap is read beside A's end-of-run memory where the logcat has one."
+ },
+ "expect": {},
+ "expect_counts": {},
+ "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off [shd413], [gpl569], xemu-gpu and gfps lines by gpljudge.py.",
+ "stall_note": "Blinx is here for the draw-time legs (D1, D2): the brief's GPU-heavy title. S1-S3 are read the same way and reported, but the registered stall factor is DOA's; Blinx's pipeline counts were never measured with creation feedback."
+}
