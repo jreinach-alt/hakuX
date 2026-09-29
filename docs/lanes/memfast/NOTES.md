@@ -682,6 +682,27 @@ file); a rate here sizes a design, it does not compare builds.
     `1385984`. GTA: still no Nova copy (no `listing-nova.txt` on master).
   - **Lesson:** copy a finished result into `.scratch/` as soon as it lands.
     The dispatch dir is not a store.
+  - **UPDATE 16:40 PDT: results/ was restored, queue/ was not.** Nightfire
+    A2, AUF A1 and the errored arm base came back and are now copied into
+    `.scratch/nf/`. The two re-queues they made redundant (`-1385939`,
+    `-1385984`) were moved to `queue/withdrawn/` with a `.why`. Crimson B/A
+    and Nightfire B2 stay queued.
+  - **The arm base's 0 captures:** `run1.log` says the guest did not exit in
+    1800 s. The emulator lived the whole time (1,057 `[mf0]` lines, 13:38 to
+    14:13, no crash) and E: held no captures. The same a_ref gave 3,379
+    captures on 09-28, so this is a run failure, not the code. Hostops
+    rebuilt the Thor's E: that afternoon. The re-queued pair decides whether
+    it repeats.
+  - **Census, AUF A1 (`out/mf0-auf-a1.out`).** The plan named AUF as the
+    title without surface watches, but it has them: `cb` is 3-4 on every
+    line after window 0, and the path is armed for at most 2.0 s, at boot.
+    Low window: 22,994 identity against 1,758,245 non-identity installs
+    (98.7%), on 3,972 distinct pages. BAR1 is all identity. **The census now
+    has three titles (GTA, Nightfire, AUF), all the same shape:** the path is
+    dead in play, and non-identity wherever it was armed.
+  - **Nightfire A2 (`…1478752`, a_ref; `out/mf0-nightfire-a2.out`):**
+    gameplay 270.4 s, J 0.2494, fps median 29.08, no crash or hang. The
+    census matches A1. It is paired with B2 `-1385890` when that lands.
 
 ## The superseding pixel prediction (2026-09-29)
 
@@ -962,8 +983,9 @@ gameplay, power was measured on battery, and neither had a thermal pause.
    `legs_read.py`, never with `jitmix.py`, on any build after this PR.
 1. **Outstanding soaks, all on the Nova** (re-queued 2026-09-29 23:31Z after
    the dispatch wipe; see the attempt-9 log entry):
-   - Nightfire B2 `1-1790724658-lane.memfast-1385890`, A2 `-1385939`;
-   - AUF A1 `-1385984`;
+   - Nightfire B2 `1-1790724658-lane.memfast-1385890` (A2 is done: `-1478752`,
+     restored; J 0.2494);
+   - AUF A1: done (`-1478936`, restored; census read);
    - Crimson B `1-1790724657-lane.memfast-1385791`, A `-1385837`;
    - the stable pixel arm, re-queued by the arms job (markers removed);
    - GTA: not queued. Queue two Nova pairs under
