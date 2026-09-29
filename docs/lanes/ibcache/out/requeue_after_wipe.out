@@ -1,0 +1,41 @@
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 4 and 5b in docs/lanes/ibcache/NOTES.md
+priority release: '0.5' on #507
+queued 1-1790724689-lane.ibcache-1389824
+  soak: Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso, 360s, route crimson-skies, pinned to nova
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 4 and 5b in docs/lanes/ibcache/NOTES.md
+priority release: '0.5' on #507
+queued 1-1790724690-lane.ibcache-1389915
+  soak: Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso, 360s, env HAKUX_IBC=0, route crimson-skies, pinned to nova
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 4 and 5b in docs/lanes/ibcache/NOTES.md
+priority release: '0.5' on #507
+queued 1-1790724690-lane.ibcache-1390145
+  soak: Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso, 360s, route crimson-skies, pinned to nova
+queuing without a prediction: jcsize pilot, hand-read against the registered legs in docs/lanes/ibcache/NOTES.md
+priority release: '0.5' on #507
+queued 1-1790724691-lane.ibcache-1390243
+  soak: Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso, 360s, route crimson-skies, pinned to nova
+queuing without a prediction: jcsize pilot, hand-read against the registered legs in docs/lanes/ibcache/NOTES.md
+priority release: '0.5' on #507
+pilot gate: lane.ibcache would hold ~38 min of device time; reviewed pilot /home/justin/hakux-work/dispatch/pilots/lane.ibcache.ok (8.0 h old) admits it
+queued 1-1790724691-lane.ibcache-1390402
+  soak: Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso, 360s, route crimson-skies, pinned to nova
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 4 and 5b in docs/lanes/ibcache/NOTES.md
+priority release: '0.5' on #507
+pilot gate: lane.ibcache would hold ~45 min of device time; reviewed pilot /home/justin/hakux-work/dispatch/pilots/lane.ibcache.ok (8.0 h old) admits it
+queued 1-1790724692-lane.ibcache-1390521
+  soak: 5A440004-Alien_Hominid.xiso.iso, 360s, route alien-hominid, pinned to nova
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 4 and 5b in docs/lanes/ibcache/NOTES.md
+priority release: '0.5' on #507
+pilot gate: lane.ibcache would hold ~52 min of device time; reviewed pilot /home/justin/hakux-work/dispatch/pilots/lane.ibcache.ok (8.0 h old) admits it
+queued 1-1790724692-lane.ibcache-1390704
+  soak: 5A440004-Alien_Hominid.xiso.iso, 360s, env HAKUX_IBC=0, route alien-hominid, pinned to nova
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 4 and 5b in docs/lanes/ibcache/NOTES.md
+priority release: '0.5' on #507
+pilot gate: lane.ibcache would hold ~60 min of device time; reviewed pilot /home/justin/hakux-work/dispatch/pilots/lane.ibcache.ok (8.0 h old) admits it
+queued 1-1790724693-lane.ibcache-1390830
+  soak: 5A440004-Alien_Hominid.xiso.iso, 360s, env HAKUX_IBC=0, route alien-hominid, pinned to nova
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 4 and 5b in docs/lanes/ibcache/NOTES.md
+priority release: '0.5' on #507
+pilot gate: lane.ibcache would hold ~68 min of device time; reviewed pilot /home/justin/hakux-work/dispatch/pilots/lane.ibcache.ok (8.0 h old) admits it
+queued 1-1790724693-lane.ibcache-1391025
+  soak: 5A440004-Alien_Hominid.xiso.iso, 360s, route alien-hominid, pinned to nova

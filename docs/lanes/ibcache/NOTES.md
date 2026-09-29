@@ -654,3 +654,52 @@ back `device: nova`, no env):
 against its registered legs. If it passes, open the stacked PR from
 `lane/ibcache-jcsize` (merge `lane/ibcache` into it first) and queue its
 multi-run A/B. Mark #591 ready when legs 4 and 5a pass.
+
+## Attempt 8 (resumed 2026-09-29 16:26 PDT by the hostops waiter)
+
+**Why attempt 7 did not finish.** It ended correctly on a `waiting:` for five
+Nova requests and two title copies. None of the five ran. From 12:01 to 16:15
+PDT the dispatcher refused every one on battery: the Nova sat at 35-37%
+against a need of 37.6-38.3% (`BATTERY: skip` in `dispatcher.log`). Then,
+between 16:23 and 16:29 PDT, `dispatch/queue/` and `dispatch/results/` were
+emptied twice (hostops-inbox, lane.memfast's 16:28 and 16:29 items; lead:
+a selftest fragment sourced with the real `DISPATCH_DIR`). The waiter read the
+empty queue as "runs finished" and resumed this lane on that false premise.
+
+- `results/` has been refilled (2,066 dirs by 16:30), including Crimson A1
+  (`1-1790708501-lane.ibcache-1378258`) and every earlier ibcache result.
+- `queue/` has not: no copy of the lost `.req` files exists anywhere under
+  `/home/justin`. So they are re-queued by hand.
+
+### Re-queued at 16:31 PDT (`requeue_after_wipe.sh`, `out/requeue_after_wipe.out`)
+
+Same refs, device, length and env as the lost requests. The request files read
+back `device: nova`.
+
+| purpose | request | ref | arm |
+|---|---|---|---|
+| Crimson, legs 4/5b | `1-1790724689-lane.ibcache-1389824` | c8e95ed539 | B (probe on) |
+| | `1-1790724690-lane.ibcache-1389915` | c8e95ed539 | A (`HAKUX_IBC=0`) |
+| | `1-1790724690-lane.ibcache-1390145` | c8e95ed539 | B |
+| jcsize pilot X, 14 bits | `1-1790724691-lane.ibcache-1390243` | a987e375db | probe on |
+| jcsize pilot Y, 16 bits | `1-1790724691-lane.ibcache-1390402` | 9808982fa7 | probe on |
+| Alien Hominid, leg 4 | `1-1790724692-lane.ibcache-1390521` | c8e95ed539 | B |
+| | `1-1790724692-lane.ibcache-1390704` | c8e95ed539 | A |
+| | `1-1790724693-lane.ibcache-1390830` | c8e95ed539 | A |
+| | `1-1790724693-lane.ibcache-1391025` | c8e95ed539 | B |
+
+Alien Hominid's Nova copy is now in `hardware/titlepush/listing-nova.txt`
+(`5A440004-Alien_Hominid.xiso.iso`), so its pair is queued now. GTA SA's copy
+(54540082) is still not listed. With Crimson's A1, Crimson has two runs per arm.
+
+**Do not repeat:** trusting an empty `queue/` as "my runs finished". Check
+`results/` for each id before reading or re-queuing.
+
+## State at 23:35Z, 2026-09-29: waiting on the Nova queue and GTA's copy
+
+1. The nine requests in the table above. The Nova is battery-gated: at 37%,
+   a 360 s soak needs about 38%. The owner's weekday top-up is ~18:00 PDT.
+2. GTA SA's Nova copy (54540082), then `queue_leg4.sh nova 360 BAAB gta-sa ...`
+   (leg 4, and 5a).
+
+**Next, on resume:** unchanged from attempt 7, plus the Alien Hominid pair.
