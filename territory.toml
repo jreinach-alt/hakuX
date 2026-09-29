@@ -609,12 +609,11 @@ files = []
 retired_utc = "2026-09-29T16:22:45Z"
 note = "RETIRED (hostops 2026-09-29T16:22:45Z): PR #615 merged (fold: folded #615, 16:21:08Z), unit gone, no open PR. Brief's build (full-window fps/share in the title table, slice-only readings labelled, status selftest case for a 100%-slice/40%-window title) landed and CI (build + 4 selftest shards) was green. Files to [free]: docs/testing/titles/table.py, docs/testing/jobs/status_html.py, docs/testing/jobs/selftest.d/99-status-fullwindow.sh, docs/lanes/statuswindow/**, docs/testing/title_verdict.py, docs/lanes/statuswindow/NOTES.md."
 
-[lane.thorheat]
-issues = ["507"]
-files = ["docs/lanes/thorheat/**"]
-released = ["docs/lanes/thorheat/**"]
-released_at_ready = 614
-note = "RELEASED AT READY (hostops 2026-09-29 12:01 PDT): PR #614 is out of draft, CI green (build pass x2), unit gone (0 loaded hakux-lane-thorheat* units); labelled fold-ready (docs-only diff, docs/lanes/thorheat/NOTES.md). Files free for the next lane. PRIOR NOTE: STARTED (lane.local 2026-09-29T16:00Z), briefs/thorheat.md: the owner's ask (09-29 ~08:50 PDT), a hardware-engineer persona with direct Thor access to find why this device overheats (xo-therm 78 C pause; Azurik paused at +938 s from cold at the defaults, while the Nova plateaus near 49 C) and what counteracts it. DEVICE GRANT (owner): Thor only, direct adb under hold.sh lane.thorheat, blocks of at most 60 min, at most 3 h today, user-accessible settings only, everything restored; no root, flash or fan-duty writes. Docs only."
+[retired.thorheat]
+issues = []
+files = []
+retired_utc = "2026-09-29T19:10:00Z"
+note = "RETIRED (hostops 2026-09-29 12:10 PDT): PR #614 MERGED 2026-09-29T19:05:32Z (44dc2188ff), unit gone, no open PR. Brief's ask (why the Thor overheats vs the Nova, ranked counter-measures) delivered: docs/lanes/thorheat/NOTES.md, summary on #507. Its later 09:50 PDT fan-100 addendum went unread (session had ended) but is answered by the PR's own blocks 2/3 (fan duty 0->50000 measured inert, <0.05 W) -- see hostops comment on #614. Not re-resumed; the 12:10 PDT heat-off-Thor decision on #507 treats this finding as settled input. Files RELEASED to [free]: docs/lanes/thorheat/**."
 
 [lane.kabukistall]
 issues = ["507"]
