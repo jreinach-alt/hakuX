@@ -6,6 +6,39 @@ measures the mechanism. This lane measures what a player sees (fps, frame
 pacing, audio), with J/frame beside it, on six Nova titles where a slow
 pgraph wake is most likely to show.
 
+## Verdict (2026-09-29)
+
+**The halt stays opt-in for now. This PR does not propose the flip, and it
+found no cost a player sees.** Neither branch of the brief's "done when" is
+met:
+
+- **Default-on needs H, P and A on every title, and E. Not met.** As
+  registered, H fails pooled on Fuzion (-6.0 fps of 2.5) and DOA1U (-5.4 of
+  4.0), A fails on DOA1U's first pair, E fails (2 of 5 first pairs), and
+  Forza has no scored run.
+- **Opt-in needs a title that fails H or P on both of its pairs. Not met.**
+  No title does. Fuzion and DOA1U each fail on the first pair and hold on
+  the second.
+
+What the 16 scored runs show:
+
+- **Six of the eight pairs hold every leg**: Kabuki, Ghoulies, both Blinx 2
+  pairs, Fuzion's second pair and DOA1U's second pair. H is within -1.8 fps
+  in all six, lateness is under 0.0012 in every run, and the p99 estimate is
+  within 1.06x.
+- **The two failing pairs compare different workloads.** Fuzion's first
+  pair drew two different stages. DOA1U's first halt-on run spent 134 s in a
+  flipless state that the second pair's halt-off run also entered (21 s,
+  same idle signature), with the larger audio starve of the two (0.0077
+  against 0.0048).
+- **The saving is real on Blinx 2 and unproven elsewhere.** Blinx 2:
+  J/frame -16% and -14%, net_w -1.41 and -1.17 W, against a same-arm spread
+  of 0.13 W. Ghoulies -1.9% and Fuzion's matched pair -1.6% are inside the
+  same-arm spread. The saving does not follow the guest's idle share:
+  Fuzion's halt-on arm slept 44% of the window and saved 0.04 W.
+
+What would settle it is in "What the next lane needs" at the end.
+
 ## Titles (all on the Nova, one copy each; `devices.sh titles nova`, 2026-09-28)
 
 | title | why | route, seconds | window |
@@ -324,3 +357,161 @@ the B2 ids. Pool them with the first pairs. Read route-frames for scene
 match. Then judge the verdict. Helpers used this session (uncommitted):
 `.lane-scratch/timeline.py` (fps per 20 s bin), `gaps.py` (flipless
 stretches), `grepres.py`.
+
+## Session 4 (2026-09-29): second pairs read, verdict
+
+Why session 3 did not finish: it ended correctly after queueing the three
+second pairs, waiting on those six request ids. They finished overnight and
+job.handback resumed this lane. origin/master is merged in (no rebase); the
+registered refs are unchanged.
+
+### Second pairs (`ihd_judge.py --share-at 13.5,28.5,57`, mark to end)
+
+hostops promoted the six to the Nova's head, so each result is under
+`0-0-x-<id>`. All six pass V: on the Nova, apk 9ab5709037ca, a window of
+194-338 s, 61-213 fps windows, audio and power measured, `[idlehalt]` on=1
+with halts > 0 in every B and on=0 in every A.
+
+| title | arm | fps median | share >= 28.5 | late >1 ms / held | p99 est. ms | audio | net_w | J/frame | no-flip s |
+|---|---|---|---|---|---|---|---|---|---|
+| Fuzion | A2 | 48.19 | 0.72 | 3 / 20421 (0.00015) | 35.8 | 0 | 7.785 | 0.2076 | 9 |
+| Fuzion | B2 | 46.40 | 0.72 | 6 / 20421 (0.00029) | 37.8 | 0 | 7.746 | 0.2043 | 18 |
+| DOA1U | A2 | 25.77 | 0.12 | 1 / 5503 (0.00018) | 71.7 | **0.00766** | 7.485 | 0.3978 | 32 |
+| DOA1U | B2 | 26.22 | 0.15 | 0 / 4877 | 69.3 | 0 | 7.227 | 0.3209 | 0 |
+| Blinx 2 | A2 | 29.85 | 0.60 | 5 / 12009 (0.00042) | 37.6 | 0 | 8.214 | 0.2842 | 0 |
+| Blinx 2 | B2 | 29.87 | 0.59 | 1 / 12011 (0.00008) | 38.0 | 0 | 7.044 | 0.2448 | 0 |
+
+Scene match, from the route-frames and the fps per 20 s bin:
+- **Fuzion: matched.** Both arms drew the Downtown arena first (A2
+  213254, B2 020403), and the bins track each other from the mark to the
+  end (A2 24 24 30 39 42 51 48 48 57 54 24 21 24 27 57; B2 27 21 33 30 45
+  45 48 51 51 48 27 21 24 39 48).
+- **Blinx 2: matched.** Flat at 27-30 in every bin of both arms, as in the
+  first pair.
+- **DOA1U: not matched, and it cannot be on this route.** The fighters and
+  stages differ in every run. A2 has two flipless stretches (20.9 s and
+  11.1 s); B2 has none.
+
+One difference in timing: Fuzion A2 ran at 21:30 PDT and B2 at 02:02, 4.5
+hours apart, because the Nova charged in between. Both started at 45%
+battery with the same USB input (2.12 W). The other pairs ran 7 minutes
+apart.
+
+### Every scored run, with its result dir
+
+All dirs are under `dispatch/results/`. `<L>` is `lane.idlehaltdefault`.
+Idle share is the guest's (`[rr425w]` idle over idle + busy), from
+`ihd_idle.py`.
+
+| title | arm | result dir | window s | fps median | late >1 ms share | p99 est. ms | audio | net_w | J/frame | idle share | no-flip s |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Kabuki | A1 | `1-1790618696-<L>-845673` | 204 | 58.88 | 0 | 45.5 | 0 | 7.952 | 0.2879 | 0.46 | 117 |
+| Kabuki | B1 | `1-1790618748-<L>-846115` | 200 | 58.25 | 0.00017 | 46.0 | 0 | 7.565 | 0.3969 | 0.63 | 136 |
+| Fuzion | A1 | `0-0-x-1-1790634702-<L>-3052286` | 331 | 49.10 | 0.00035 | 36.7 | 0 | 8.511 | 0.1997 | 0.46 | 0 |
+| Fuzion | B1 | `0-0-x-1-1790634702-<L>-3051928` | 330 | 38.89 | 0.00112 | 37.5 | 0 | 7.235 | 0.2193 | 0.50 | 10 |
+| Fuzion | A2 | `0-0-x-1-1790651074-<L>-2875039` | 337 | 48.19 | 0.00015 | 35.8 | 0 | 7.785 | 0.2076 | 0.48 | 9 |
+| Fuzion | B2 | `0-0-x-1-1790651074-<L>-2875118` | 338 | 46.40 | 0.00029 | 37.8 | 0 | 7.746 | 0.2043 | 0.44 | 18 |
+| Forza | A1 | `0-0-x-1-1790634702-<L>-3052521` | VOID | | | | | | | | |
+| Forza | B1 | `0-0-x-1-1790634703-<L>-3052915` | VOID | | | | | | | | |
+| DOA1U | A1 | `0-0-x-1-1790634703-<L>-3053613` | 176 | 26.49 | 0 | 65.4 | 0.00026 | 5.838 | 0.2681 | 0.16 | 8 |
+| DOA1U | B1 | `0-0-x-1-1790634703-<L>-3053271` | 178 | 15.18 | 0 | 144.0 | 0.00481 | 6.539 | 1.0481 | 0.51 | 134 |
+| DOA1U | A2 | `0-0-x-1-1790651074-<L>-2875201` | 200 | 25.77 | 0.00018 | 71.7 | 0.00766 | 7.485 | 0.3978 | 0.23 | 32 |
+| DOA1U | B2 | `0-0-x-1-1790651074-<L>-2875292` | 194 | 26.22 | 0 | 69.3 | 0 | 7.227 | 0.3209 | 0.11 | 0 |
+| Blinx 2 | A1 | `0-0-x-1-1790634703-<L>-3053911-r1` | 189 | 29.93 | 0.00088 | 37.7 | 0 | 8.321 | 0.2889 | 0.65 | 0 |
+| Blinx 2 | B1 | `0-0-x-1-1790634704-<L>-3054293` | 193 | 29.23 | 0.00009 | 38.8 | 0 | 6.914 | 0.2430 | 0.58 | 0 |
+| Blinx 2 | A2 | `0-0-x-1-1790651075-<L>-2875478` | 204 | 29.85 | 0.00042 | 37.6 | 0 | 8.214 | 0.2842 | 0.66 | 0 |
+| Blinx 2 | B2 | `0-0-x-1-1790651075-<L>-2875391` | 207 | 29.87 | 0.00008 | 38.0 | 0 | 7.044 | 0.2448 | 0.58 | 0 |
+| Ghoulies | A1 | `0-0-x-1-1790634704-<L>-3055105` | 236 | 29.96 | 0.00044 | 37.7 | 0.00035 | 8.164 | 0.2962 | 0.11 | 0 |
+| Ghoulies | B1 | `0-0-x-1-1790634704-<L>-3054732` | 235 | 29.96 | 0 | 39.2 | 0.00088 | 7.889 | 0.2907 | 0.08 | 0 |
+
+VOID, not scored: Blinx 2 `0-0-x-1-1790634703-<L>-3053911` (adb link
+dropped at 225 s), and both Forza runs (lmkd kill before `mark play`).
+
+### Legs, as registered
+
+H on the two-pair titles is pooled: the mean of the two medians per arm. P
+is read on each pair.
+
+| title | H | P1 | P2 | A |
+|---|---|---|---|---|
+| Kabuki | holds: -0.63 of 2.0 | holds: +0.00017 | holds: 1.01x | holds |
+| Fuzion | **fails pooled**: 42.65 vs 48.65, -6.00 of 2.5. Pair 1 -10.21, pair 2 -1.79 | holds: +0.00077, +0.00014 | holds: 1.02x, 1.06x | holds |
+| Forza | VOID | | | |
+| DOA1U | **fails pooled**: 20.70 vs 26.13, -5.43 of 4.0. Pair 1 -11.31, pair 2 +0.45 | holds: 0, -0.00018 | **fails pair 1** (2.20x), holds pair 2 (0.97x) | **fails pair 1** (B 0.0048), holds pair 2 (B 0, A 0.0077) |
+| Blinx 2 | holds pooled: 29.55 vs 29.89, -0.34 of 1.0; share 0.585 vs 0.610, -0.026 of 0.10 | holds: -0.00079, -0.00034 | holds: 1.03x, 1.01x | holds |
+| Ghoulies | holds: 0.00 of 1.0; share -0.054 of 0.10 | holds: -0.00044 | holds: 1.04x | holds |
+
+**E fails as registered**: on the first pairs, B's J/frame is below A's in
+2 of 5 scored titles (Blinx 2, Ghoulies), and the leg needed 4 of 6.
+
+J/frame and net_w, B against A, on every pair:
+
+| pair | J/frame | net_w | same scene? |
+|---|---|---|---|
+| Kabuki 1 | +37.9% | -0.39 W (-4.9%) | no: 117 s against 136 s of static screen |
+| Fuzion 1 | +9.8% | -1.28 W | no: different stages |
+| Fuzion 2 | -1.6% | -0.04 W (-0.5%) | yes |
+| DOA1U 1 | +291% | +0.70 W | no: B flipless for 134 s |
+| DOA1U 2 | -19.3% | -0.26 W (-3.4%) | no: A flipless for 32 s |
+| Blinx 2 1 | -15.9% | -1.41 W (-16.9%) | yes |
+| Blinx 2 2 | -13.9% | -1.17 W (-14.2%) | yes |
+| Ghoulies 1 | -1.9% | -0.28 W (-3.4%) | yes |
+
+Same-arm spread of net_w, from the titles with two pairs: Blinx 2 0.11 W
+(A) and 0.13 W (B); Fuzion 0.73 W (A) and 0.51 W (B), across two stages;
+DOA1U 1.65 W (A) and 0.69 W (B). So only Blinx 2's saving is outside the
+spread of its own arm. Ghoulies and Kabuki have one run per arm, and their
+differences (0.28 and 0.39 W) are smaller than the Fuzion and DOA1U spreads.
+
+### What the second pairs changed
+
+**Fuzion's H failure was the stage.** With both arms on the same stage, B
+is 1.79 fps below A, inside the 2.5 bound. That is still more than half the
+bound, and the bound is borrowed from Forza, so Fuzion is "holds, not
+tight".
+
+**DOA1U's flipless state belongs to the title, not to the halt.**
+- A2 (halt off) entered it for 20.9 s at 139 s after the mark. `[rr425w]`
+  reads 1.67-1.72 s idle and 0.28-0.33 s busy per 2 s, at
+  `idlepc=8001b02e`, with `pg=0`. B1's stretches and lane.pacing's halt-off
+  runs read about 1.7 s and 0.3 s at the same idlepc.
+- It carries the audio starve with it. A2 reads 0.0077 with the halt off,
+  which is over the verdict's 0.001 and over B1's 0.0048.
+- Counting runs with a flipless stretch over 8 s: halt on 1 of 2, halt off
+  2 of 2 here (8 s, 32 s) and 5 of 18 before. Four runs cannot say whether
+  the halt changes how often the title enters the state or how long it
+  stays.
+
+**The saving does not follow the guest's idle share.** I checked this
+because it would have explained E. It does not hold. Fuzion's B2 slept 44%
+of the window and saved 0.04 W. Blinx 2's B arms slept 57-58% and saved
+1.2-1.4 W. Ghoulies slept 8% and saved 0.28 W. What separates Blinx 2 from
+Fuzion is not measured here.
+
+### What the next lane needs
+
+1. **Forza, after PR #583 folds.** It is one of the two pgraph-sync titles
+   and it has no scored run. At 3a5d79e3ea lmkd kills it at about 215 s.
+   #583 was still a draft on 2026-09-29.
+2. **A scene gate, registered before the run.** On Fuzion, Kabuki and the
+   survey route's DOA1U the game chooses what is on screen, and that moves
+   fps by up to 2x and J/frame by up to 4x. A pair should count only when
+   both arms' route-frames show the same stage and their no-flip seconds
+   agree; otherwise it is re-queued, not scored.
+3. **An energy leg on net_w, with J/frame beside it.** J/frame divides by
+   flips, so a static screen reads as a worse frame. net_w needs a same-arm
+   spread per title before it can carry a bound: DOA1U's is 1.65 W.
+4. **DOA1U's flipless state is its own question.** It starves audio with
+   the halt off (A2, 0.0077). It needs a rate over more runs than four
+   before anything is said about the halt and it.
+
+Do not repeat:
+- Do not read J/frame across arms without reading the no-flip seconds.
+- Do not pool a median across pairs whose scenes differ. The pooled H
+  failures above are one confounded run each, averaged in.
+- Do not explain the saving by the idle share. It was tested above and it
+  does not fit Fuzion.
+
+Helpers: `ihd_judge.py` (every leg), `ihd_idle.py` (idle share and no-flip
+seconds). The judge's logs and the fps-per-bin script are in
+`.lane-scratch/`, which is not committed.
