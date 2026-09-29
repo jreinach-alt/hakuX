@@ -3472,3 +3472,81 @@ it counts a local lane as having an open PR only on `lane/<name>`. So a local
 lane whose unit is gone and whose PR is open on `lane/<name>-<suffix>`
 (lane.sustain507's #547 shape) still reads as having no open PR. The grant
 covers remote lanes, so this is reported rather than fixed.
+
+## #461, fifth: pair 2 passes, and the fix stays (2026-09-29)
+
+### Pair 2, scored as registered
+
+hostops ran `pair461_read.py --pair` at origin/master over 90-240 s
+(5884516710, with `rdous` in 5884957631), and I scored it on #461 (5884870841,
+5885643241).
+- **The runs.** A is `0-0-s-1-1790614390-remote461-p22a-r2` (f131dd11), the
+  re-run. B is `1-1790588957-remote461-p21b` (8f9c74f0, the fix). B ran first,
+  as registered.
+- **Valid and cold.** A reached the route this time. It started at xo-therm
+  49.6 C and B at 49.4 C. Neither run paused: only the two backlights are
+  above `cur_state` 0.
+
+| leg | read | |
+|---|---|---|
+| F4b | gfps B 29 − A 29 = 0, bar −1 | **PASS** |
+| K1, thermal parity | 39 cooling devices, every highest `cur_state` equal | holds |
+| K2, same scene | `M` A 11,930 / B 12,013, 1.007, bar 1.10 | holds |
+| P1 | `Tq` A 1,116 / B 1,156 | **PASS** |
+| P2 | `mk` KiB per flip A 25,330 / B 21,733 (−14%); `bit`+`bov` A 1,056 / B 2,342 (×2.2) | **PASS** |
+| R | BUSY − TxH A 18.22 / B 13.00 ms/frame | not read: F4b passed |
+| V | flips taking 3+ VBLANKs A 12.6% / B 3.4%; 4+ VBLANKs A 23 / B 36 flips | |
+| G | per flip: `rdo` A 165.84 / B 165.95 (+0.07%); `sd` A 468.43 / B 470.28 | route possible by the letter, with no drop to explain |
+| W1 | (BUSY − TxH) per method A 1.53 / B 1.08 µs; B over A 0.71 | **none** |
+| W2 | `rdous` per flip A 3,242.0 / B 3,270.1 µs; per method, B over A 1.002 | **none** |
+
+**What follows, as registered.**
+- F4b passes with K1 and K2 holding, so the M1 memo fix (#480) stays.
+- Pair 1's F4 stays FAIL as recorded. Pair 1 has no thermal record and its K2
+  failed, so its drop stays unexplained.
+
+**What the fix does on a matched pair.**
+- **Texture hashing:** TxH 5.51 → 1.45 ms/frame. B takes 4.06 ms/frame of it
+  off the render thread.
+- **Render-thread busy time:** 23.73 → 14.46 ms/frame, 9.27 less. W1 at 0.71
+  says the rest of the render thread's work fell per method too.
+- **Bytes hashed:** 89,007 → 24,078 KiB per flip. A's memo share, 62,618, is
+  gone on B.
+- **Pacing:** flips taking 3 or more VBLANKs fall from 12.6% to 3.4% (516 →
+  147 of about 4,100). Flips taking 4 or more rise from 23 to 36 (0.56% →
+  0.83%), which is recorded, not scored. gfps is 29 on both arms, so on this
+  route the fix shows up as frame-time headroom and pacing, not as rate.
+- **TLB walks:** W2 at 1.002 says the fix adds no walk time per unit of work.
+  Pair 1's 1.34 was read across different scenes (K2 +13.8%).
+
+**P2, read again.**
+- Pair 1's P2 FAIL stays a FAIL.
+- But pair 1's scenes differed (K2 +13.8%), and on this matched pair P2
+  passes.
+- So "#461, fourth"'s correction to my model was read off different scenes,
+  and it does not hold on a matched one. That correction said the rebind test
+  makes more discoveries in total.
+
+### lane.dirtytlb's per-caller count, against ask 3's bounds
+
+lane.dirtytlb counted `tlb_reset_dirty()`'s callers on Crimson on the Thor
+(#461, 5876294933 and 5877554895). Ask 3 (5872024863) had priced them offline
+from pair 1.
+
+| caller | ask 3's bound, per flip | counted, per flip | |
+|---|---|---|---|
+| vertex RAM sync | about 98 to 165 walks | 126.3 of 176.4 (72%) | inside |
+| `check_texture_dirty()` | at most 41% of the walks | 50.1 (28%) | under |
+| VGA display update | up to about 5 | 0 | none |
+| anything else | | 0 | |
+
+- **The span lever saves nothing** (`vr` 0). That lever is one walk per draw
+  over all its dirty ranges.
+- **PR #575 walks only the live MMU modes.** It stays a draft until its pixel
+  arms are judged.
+  - µs per walk ×0.22 on the render thread and ×0.16 on the vCPU.
+  - Walk time 7.25 → 1.36 ms per flip, and render CPU −3.35 ms per flip.
+  - gfps is unchanged (29/29), and J per frame ×0.991.
+- **For G and W2.** They price the fix's extra texture walks. Under #575 each
+  walk costs about 0.2×, so a W2 cost would shrink by that factor. W2 is not
+  re-registered for it.
