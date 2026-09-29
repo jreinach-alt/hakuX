@@ -249,3 +249,44 @@ Nova is above its battery floor (dock, or the ~18:00 PDT top-up).
   `request.sh --title` yourself.
 - The arctic-thunder route marks `mark gameplay`, not `mark play`. playread.py
   would VOID every run.
+
+## Attempt 6 (2026-09-29 ~16:58 PDT): re-queued after the dispatch wipe
+
+Attempt 5 did not finish because nothing had run. The Nova sat below its
+battery floor, and that session correctly stopped to wait. Between about
+16:15 and 16:26 PDT a host-side dispatch wipe emptied `dispatch/queue` (see
+PR #623). All six of this lane's requests were lost: the four Arctic Thunder
+soaks and the Nova pgraph pair. None had run. The dispatcher log shows each
+one refused by the battery gate up to 16:15:41, and none is in `results/`,
+`running/`, `parked/` or `withdrawn/`.
+
+Re-queued with the same arguments: same prediction, ref, device pin and
+seconds. No leg, reader or threshold changed.
+
+| what | old id (wiped) | new id |
+|---|---|---|
+| Arctic A1 (`HAKUX_TCG424_RANGE=0`) | 1-1790716215-lane.tcg424flip-3229031 | 1-1790726259-lane.tcg424flip-1691697 |
+| Arctic B1 (no env) | 1-1790716219-lane.tcg424flip-3229494 | 1-1790726265-lane.tcg424flip-1692424 |
+| Arctic A2 (`HAKUX_TCG424_RANGE=0`) | 1-1790716222-lane.tcg424flip-3229888 | 1-1790726265-lane.tcg424flip-1692530 |
+| Arctic B2 (no env) | 1-1790716226-lane.tcg424flip-3230429 | 1-1790726266-lane.tcg424flip-1692609 |
+| pgraph base (30538458a0) | 1-1790707670-arms-tcg424flip-base-1207251 | 1-1790726318-arms-tcg424flip-base-1704391 |
+| pgraph fix (62ef8bf0fe) | 1-1790707670-arms-tcg424flip-fix-1207297 | 1-1790726318-arms-tcg424flip-fix-1704464 |
+
+The soaks: request.sh, `--device nova --hard-pin`, 420 s, frames every
+20 s, ref 7bcd6e6e2b, `--expect tcg424flip-arctic-nova.json`.
+
+The pgraph pair: queued the way arms.sh's `samedev_rerun` queues one. The
+same requesters (`arms-tcg424flip-base` and `-fix`), the same refs, the pair
+record's 100 suites, the skip of `Texture_render_target::RenderTextureLoop`,
+the arms job's frozen expect copy (`arms/expect/fbed11c3...json`), and
+`--device nova --hard-pin`. `arms/pairs/fbed11c3...json` still names the old
+ids, so `results/<old id>` is now a symlink to `<new id>`. That is how
+lane.local handled a renamed arms request on 09-28, and it lets the arms job
+judge the new pair as the confounded pair's re-run without anyone editing
+its state. The links dangle until the runs start.
+
+**Waiting on (attempt 6):** the six new ids above. They run once the Nova
+is above its battery floor (38% for the soaks, 41% for the arms pair; it
+read 31% at 16:57 PDT). Next step is unchanged:
+`python3 docs/lanes/tcg424flip/arcticread3.py` over the four soak ids, then
+the `[job.arms]` verdict and scores1.tsv's status column.
