@@ -280,6 +280,15 @@ queued first; fix is 87ceac5569.
   3. Post the legs on #569 as their own post, with GPU ms per frame and `j_per_frame`.
 - If the thermal gate voids the pair, re-run it from a cool start.
 
+## 7. Session 3 (2026-09-29, attempt 3): gate 4 read
+
+### Why session 2 did not finish
+
+It did not fail. It ended on purpose, waiting on the gate-4 soak pair, which was queued 54th-55th
+of 59 on the Nova. PR #580 (gates 1-3) was marked ready and folded in the meantime. The pair
+finished DONE, and `handback.sh` resumed the lane to read it. This session carries gate 4 on a
+new PR.
+
 ## 5. For the next lane
 
 - **Gate 4 (device) waits on P1** (PR #574, lane.shaderfb569: `dpc_ms` per stage). The leg
