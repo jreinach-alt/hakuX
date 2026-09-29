@@ -1603,10 +1603,3 @@ note = "RETIRED (hostops 2026-09-28T02:40Z): PRs #475, #485 and #516 folded (the
 issues = ["507"]
 files = []
 note = "WRITTEN LATE (job.board 2026-09-28T22:15Z, fleet.py FAIL: RUNNING WITH NO TERRITORY ROW): fleet.py shows battadmit attempt 2/opus-5-5 on #507, 0.0h, no PR yet, no briefs/battadmit.md in this tree -- started outside the normal board dispatch (the same pattern as the retired vcpuplan/battadmit rows: STARTED directly by lane.local/hostops, not by a board tick). files = [] because this row cannot see what the running attempt is touching; narrow it once a PR or a brief exists. See [retired.battadmit] above for attempt 1 (PR #587, folded as 2c950e0a1e)."
-
-
-[lane.cloud-audit1-595]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit1-595, audit pass 1 of PR #595 on branch lane/battadmit-2, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit1 595` removes this row when the unit ends."
