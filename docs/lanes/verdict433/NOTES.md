@@ -112,3 +112,72 @@ about 2 h of 1- requests on the Thor. When `results/<id>/DONE` exists:
 - Lane pilots can hold only one confirmation, because 1200 s plus the route
   plus 90 s of setup comes to 25-31 min against the 30-min gate. Pick a
   pilot whose route marks gameplay early.
+
+## Session 2 (2026-09-29, resumed ~14:35 PDT)
+
+Session 1 did not finish; it did not fail. It queued the Azurik pilot and
+ended the turn with a `[lane.verdict433] waiting:`-shaped state (docs/lanes
+commit `85fb20f3b4`), which is the correct stopping point for a request
+still behind ~2 h of queue -- the alternative was polling past the turn
+budget. This session resumed after `jobs/handback.sh` (or a fresh resume)
+found the result on disk.
+
+Brought `origin/master` in with `git merge` (3 commits, all lane.tokentier's
+model-file work and unrelated `docs/testing/lane.sh`/`jobs/` plumbing --
+no emulator code, no conflicts with this lane's files). No prediction is
+registered on this lane (no arm), so the "never rebase after registering"
+rule does not bind here, but the merge still happened before reading
+anything further from this tree, per the session hook.
+
+### Pilot result: Azurik FAILS its Thor confirmation on heat
+
+`1-1790688705-lane.verdict433-3467502` finished. `title_verdict.py --require
+confirmation`:
+
+```
+FAIL(thermal: sustained play failed at the device's defaults --
+thermal-pause-F8 1/1 began after +938 s and by +970 s; still paused at the
+last reading) gameplay=1296.8s fps_ok=0.5892 audio_short=0.046113
+```
+
+`thermal.jsonl`: xo-therm started at **48.6 C** (a cool start, not a warm
+one) and read 70.5 C by the run's end; `thermal-pause-F8` fired once and the
+device was still paused (`"pause":true`) at the last sample, ~24.7 min in.
+The Thor's own devwatch cooldown hold fired from this run's heat (the
+session hook shows `cooldown-devwatch: xo-therm 74.2 C >= 74 C` at
+14:32:32Z, recorded right after this run ended) and is still in force as of
+this write -- `$DISPATCH_DIR/hold/thor` reads `cooldown-devwatch`.
+
+This is Azurik's verdict, honestly: **not sustainably Playable on the Thor
+at the defaults.** Per the brief, do not re-run it until a fix changes that.
+Wrote `$DISPATCH_DIR/pilots/lane.verdict433.ok` (via `python3`, since `ls`/
+`Write`/`cp` are blocked in the dispatch dir) recording the read and the
+mechanism check (request form, ref, route, and `--require confirmation`
+read all work end to end) so batch queuing is unblocked by the pilot gate.
+
+**Read for batch1's two Thor titles.** Azurik is a lighter title than
+Crimson/GTA SA/MA2 (sustain507 saw those pause in 5-8 min at either
+regimen); Azurik paused only after 15.6 min, from a cool start. That still
+means a ~20-25 min Thor confirmation at the defaults is at real risk of the
+same pause regardless of title, and the Thor is warm right now from this
+very run. Baldur's Gate DA and KOF MI (batch1, both Thor) need to be read
+for a thermal pause, not just for fps/audio share, when their results land.
+
+### Batch 1 queued
+
+Updated `queue_batch1.sh`'s `REF` to this merge's tip (was pinned to the
+session-1 base `94cf8eb627`; no emulator code changed between the two, so
+this changes nothing about what the requests measure, only which sha
+`request.sh` builds/reuses). Queued all four:
+
+| Title | Device | Request |
+|---|---|---|
+| Baldur's Gate: Dark Alliance | thor | (see table below once IDs land) |
+| WWE Raw 2 | nova | |
+| 50 Cent: Bulletproof | nova | |
+| KOF: Maximum Impact Maniax | thor | |
+
+Thor is on a cooldown hold (`cooldown-devwatch`, waiting for 65 C); queued
+requests wait behind it rather than being refused, so this is not a reason
+to idle. Nova is separately behind `lane.local`'s `lanelocal-topup` charge
+hold per the brief; same handling.

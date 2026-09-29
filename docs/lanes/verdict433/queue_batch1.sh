@@ -8,7 +8,7 @@
 # + 1200 s + about 60 s of margin.
 set -u
 R=docs/testing/request.sh
-REF=${REF:-94cf8eb627}
+REF=${REF:-83b030fa27}
 q() { # device title route seconds why
     env HAKUX_RELEASE_PRIO=1 "$R" --who lane.verdict433 --device "$1" --ref "$REF" \
         --title "$2" --route "$3" --seconds "$4" --env PERF_REGIMEN=default --issue 433 \
