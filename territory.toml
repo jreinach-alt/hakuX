@@ -700,6 +700,12 @@ files = []
 retired_utc = "2026-09-29T01:40:00Z"
 note = "RETIRED (hostops 2026-09-29T01:40Z): PR #599 folded as 170a21df37 (18:32 PDT), unit gone; #598 fixed. Files to [free]: docs/testing/fleet.py, docs/testing/jobs/selftest.d/99-fleet-absent-device.sh, docs/lanes/fleetabsent/**."
 
+[lane.boardtreeheal]
+issues = []
+files = ["docs/testing/jobs/board.sh", "docs/testing/jobs/selftest.d/99-board-wt-refresh.sh",
+         "docs/lanes/boardtreeheal/**"]
+note = "STARTED (job.board, board tick 2026-09-29T21:xxZ), briefs/boardtreeheal.md: harness defect, no tracker issue. PR #619's refresh_wt() lands $WT on origin/master every tick but was never extended to $BT (\"$WT/.boardtree\", the session's board-branch worktree) -- board.sh creates $BT once and never fetches/checks/fast-forwards it again. This tick found $BT five commits behind origin/board and dirty (a staged partial copy of PR #619's own board.sh diff, plus 47 files reverted to an older state than HEAD); git stash list already held four prior auto-stashes of the same shape back to 2026-09-21, so this recurs. Manually repaired this tick (stash push -u, then merge --ff-only origin/board) so the tick could proceed; this lane makes board.sh do that itself every tick, mirroring refresh_wt but keeping $BT attached to branch `board` (fast-forward merge, not detach) and aborting loudly on real divergence instead of guessing. selftest.d/99-board-wt-refresh.sh is shared with refresh_wt's existing cases -- read it before extending it. board.sh and that selftest file are FREE (last claimed by lane.boardwt-checkout-selfheal, released at its PR #619's fold; no lane holds them now)."
+
 [lane.tcg424flip]
 issues = ["424"]
 files = ["accel/tcg/tb-maint.c", "accel/tcg/tb-internal.h", "docs/lanes/tcg424flip/**", "docs/testing/predictions/tcg424flip-*.json"]
