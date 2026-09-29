@@ -408,6 +408,53 @@ first). The judge is `doa_gpu_history.py`, unchanged from the registering commit
   5. Mark #607 ready once CI is green.
   - If R1 is refuted, B1 is a compile-stall fix only. Say that, and drop the energy framing.
 
+## 8. Session 4 (2026-09-29, attempt 3 resumed): the replication pair
+
+### Why session 3 did not finish
+
+It ended on purpose, waiting on the replication pair (section 7). The resume brief named the
+gate-4 pair again, and that pair was already read. The replication came back without a scorable
+fix arm:
+- **The fix arm `1-1790668953-litcompile569-2678297` is VOID.** hostops voided it: the Nova's USB
+  link dropped at 09:11 PDT, and the soak aborted `not-foreground` at 312 of 440 s. Battery was
+  53%, so this was not the low-battery link drop.
+- **The hostops re-run `1-1790698600-litcompile569-3098546` had no route:** its `route_name` and
+  `route` were empty. With no input the game never reached a fight and never wrote `mark play`,
+  so the judge reads 0 lines from it. It cannot be a replication arm.
+- The base arm, `1-1790668956-litcompile569-2678738`, is valid: cache cleared, 447 s, no
+  thermal pause, and the GPU at 615-680 MHz.
+
+### The provisional reading (the voided arm; NOT the registered verdict)
+
+`doa_gpu_history.py`, unchanged, run on base against the voided fix arm:
+
+| arm | fight lines | fight Tot ms | fps | opponent (route frames) |
+|---|---|---|---|---|
+| base bf1ecde346 | 112 | 24.4 | 36.3 | Gen Fu |
+| fix 87ceac5569 (VOID, 312 s) | 20 | 20.4 | 43.7 | Bayman |
+| fix/base | | **0.84** | **1.20** | |
+
+- **It would pass R1 (<= 0.90), R2 (>= 1.10) and R3** (pooled with gate 4's 0.82, the mean is
+  0.83).
+- It is not scored, for three reasons:
+  - the arm is void;
+  - it has exactly V's minimum of 20 fight lines;
+  - the opponents differ again. Both fights are on the same stage, the clock tower.
+- The fix arm's GPU clock ranged 401-680 MHz, against 615-680 on base. A lower clock slows the
+  fix, so it cuts against the fix's reading, not in its favour.
+- **An unregistered cross-pair match:** gate 4's base also fought Bayman (27.4 ms). Against this
+  fix's Bayman fight (20.4 ms) that is 0.74. It comes from different sessions, so it is
+  reported, not scored.
+
+### State at the end of session 4: waiting
+
+- **The fix arm is re-queued with the survey route:** `1790721747-litcompile569-271619`, Nova,
+  plain tier, 30th of 33. The route text is byte-identical to the base arm's.
+- **When it is DONE:** run `doa_gpu_history.py <base 2678738> <fix 271619>`, score R1-R3, name
+  the opponent, post on #569 and PR #607, and mark #607 ready.
+- **If it voids again,** score R1-R3 on the voided arm above as the registered V permits (it
+  has 20 lines), and say so.
+
 ## 5. For the next lane
 
 - **Gate 4 (device) waits on P1** (PR #574, lane.shaderfb569: `dpc_ms` per stage). The leg
