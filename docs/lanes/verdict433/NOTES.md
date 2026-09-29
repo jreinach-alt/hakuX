@@ -400,3 +400,7 @@ over 1200 s.
 4. DOA Ultimate needs a route to a fight (Thor route authoring). Kabuki waits
    on lane.kabukistall. Forza waits on #583. GTA SA waits on #591.
 
+
+### Ending session 4: waiting
+
+Posted on #433 (issuecomment-5896935910) and a `waiting:` comment on PR #610. I am waiting on the three queued Nova confirmations, on the three Nova title copies, and on ibcache's Crimson runs. The PR stays a draft until a confirmation reads.
