@@ -4571,11 +4571,10 @@ component = "harness"
 disposition = "harness"
 suites = []
 no_suites = "A HARNESS/process defect (the attempt counter), not a pgraph suite."
-status = "open"
-dispatch_state = "blocked"
+status = "fixed"
+dispatch_state = "done"
 blocker_tested = "confirmed 2026-09-29T02:59:58Z: filed by job.board this tick, labelled decision-needed and blocked:needs-owner."
-blocked_on = "OWNER DECISION (#603): lane.titleroutes is RETIRED (attempts exhausted); reset its attempt counter, or restructure #397 into successive per-batch lanes. The board does not reset attempt counters itself (roles/board.md)."
-status_note = "FILED 2026-09-29T02:59:58Z by job.board: `lane.sh resume titleroutes` REFUSED at LANE_MAX_ATTEMPTS=4, but attempt 4 (log titleroutes.20260928T150453Z) completed cleanly and merged PR #558 -- not a failure, see memory attempts-counts-dispatches-not-failures. #397 itself stays open and unaffected; [retired.titleroutes] in territory.toml records the same evidence."
+status_note = "DECIDED (hostops 2026-09-29T03:15Z, owner delegation): option 1, `lane.sh reset titleroutes`; [lane.titleroutes] restored; resumes via hakux-waiter-titleroutes when its queued Thor runs finish. || FILED 2026-09-29T02:59:58Z by job.board: `lane.sh resume titleroutes` REFUSED at LANE_MAX_ATTEMPTS=4, but attempt 4 (log titleroutes.20260928T150453Z) completed cleanly and merged PR #558 -- not a failure, see memory attempts-counts-dispatches-not-failures. #397 itself stays open and unaffected; [retired.titleroutes] in territory.toml records the same evidence."
 impact_px = 0
 impact_onestep_px = 0
 game_visible = false
