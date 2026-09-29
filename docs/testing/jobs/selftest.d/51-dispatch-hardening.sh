@@ -149,6 +149,9 @@ export DH_ADB_PIDS="$DH/adb.pids"; : > "$DH_ADB_PIDS"
 cat > "$DH/drive.sh" <<'EOF'
 # drive.sh <testing-dir> <dispatch-dir> <request-id>: one serve_one, as written
 export DISPATCH_DIR="$2" SERIAL=ee317437 DISPATCH_TREE="$REPO" DISPATCH_REPO="$REPO"
+# The fake adb answers no battery level, and battery admission fails closed on
+# that (99-battery-admit covers it): off, so the claim these cases hang is made.
+export BATTERY_ADMIT=off
 . "$1/dispatcher.sh" selftest-not-a-subcommand >/dev/null 2>&1
 build_ref() { echo "$DH_APK"; }
 serve_one "$2/queue/$3.req"
@@ -402,9 +405,62 @@ for s in request.sh ab_run.sh preflight.sh; do
     check "I: the lane allowlist lets a lane run docs/testing/$s directly" \
         grep -q "Bash(docs/testing/$s:\*)" "$DHAL"
 done
-DHTERR=$(cd "$REPO" && python3 "$TESTING/check_territory.py" 2>&1 | head -3)
+# STDOUT ONLY, AND ANYWHERE IN IT. This read `2>&1 | head -3`. check_territory
+# prints its FAIL lines to stderr, which is unbuffered, so on a red board they
+# come out AHEAD of the buffered stdout, and the first three lines held no
+# "read from" line: the master selftest of 3a5d79e3ea failed this check while
+# origin/board double-claimed a file (defect 29). What this check is about is
+# the two source lines, not whether the board is green -- preflight gates that.
+dhterr_agree() {   # <check_territory stdout>
+    local t
+    t=$(sed -n "s/^territory.toml read from //p" <<< "$1")
+    [ -n "$t" ] && grep -qx "nv2a_issues.toml read from $t" <<< "$1"
+}
+DHTERR=$(cd "$REPO" && python3 "$TESTING/check_territory.py" 2>/dev/null)
 check "I: check_territory names where it read the tracker, and it is where it read the territory" \
-    bash -c 't=$(sed -n "s/^territory.toml read from //p" <<< "$1"); [ -n "$t" ] && grep -qx "nv2a_issues.toml read from $t" <<< "$1"' _ "$DHTERR"
+    dhterr_agree "$DHTERR"
+# Two fixture boards in a private repo, read through a private ref:
+#   red   -- both files on the ref, one file claimed by two lanes: the
+#            sources agree, so the check is green although the board is red;
+#   split -- the tracker missing from the ref, so it comes from the working
+#            tree: the sources differ, and the check is red.
+DHTR="$DH/terr"; mkdir -p "$DHTR/docs/testing"
+cp "$TESTING/check_territory.py" "$TESTING/board_files.py" "$DHTR/docs/testing/"
+printf 'wave = 1\n[lane.a]\nfiles = ["x.c"]\nissues = ["1"]\n[lane.b]\nfiles = ["x.c"]\nissues = ["2"]\n' \
+    > "$DHTR/docs/testing/territory.toml"
+printf '[issue."1"]\ntitle = "t"\n' > "$DHTR/docs/testing/nv2a_issues.toml"
+dhterr_board() {   # <branch> <files...>: an orphan board branch with those root files
+    local b="$1" f; shift
+    git -C "$DHTR" checkout -q --orphan "$b" && git -C "$DHTR" rm -rq --cached . 2>/dev/null
+    for f in "$@"; do cp "$DHTR/docs/testing/$f" "$DHTR/$f"; git -C "$DHTR" add "$f"; done
+    git -C "$DHTR" -c user.name=t -c user.email=t@t commit -qm "$b" && rm -f "${@/#/$DHTR/}"
+}
+git -C "$DHTR" init -q -b code
+git -C "$DHTR" add docs && git -C "$DHTR" -c user.name=t -c user.email=t@t commit -qm code
+dhterr_board fxred territory.toml nv2a_issues.toml
+dhterr_board fxsplit territory.toml
+git -C "$DHTR" checkout -q -f code
+dhterr_run() { (unset PYTHONUNBUFFERED; export HAKUX_BOARD_REF="$1"; shift
+                python3 "$DHTR/docs/testing/check_territory.py" "$@"); }
+DHTRED=$(dhterr_run fxred 2>/dev/null)
+DHTSPLIT=$(dhterr_run fxsplit 2>/dev/null)
+DHTOLD=$(dhterr_run fxred 2>&1 | head -3)
+case "$DHTRED" in *"territory.toml read from fxred"*) ok "I: the red fixture board is read from its ref" ;;
+                  *) bad "I: the red fixture board was not read from fxred: $DHTRED" ;; esac
+case "$(dhterr_run fxred 2>&1 >/dev/null)" in
+    *"x.c is claimed by both a and b"*) ok "I: the red fixture board really is red (a double claim)" ;;
+    *) bad "I: the red fixture board did not report its double claim" ;; esac
+check "I: a red board whose two sources agree passes the source check" dhterr_agree "$DHTRED"
+case "$DHTSPLIT" in *"territory.toml read from fxsplit"*"nv2a_issues.toml read from working tree"*)
+        ok "I: the split fixture reads the territory from its ref and the tracker from the tree" ;;
+    *) bad "I: the split fixture did not split its sources: $DHTSPLIT" ;; esac
+if dhterr_agree "$DHTSPLIT"; then bad "I: split sources passed the source check: $DHTSPLIT"
+else ok "I: split sources fail the source check"; fi
+# The old reading, on the red board: the defect, red for its own reason.
+if dhterr_agree "$DHTOLD"; then bad "I: the old 2>&1 | head -3 reading passed a red board -- the fixture proves nothing"
+else case "$DHTOLD" in "FAIL: territory.toml"*) ok "I: the old 2>&1 | head -3 reading fails the red board, FAIL lines first" ;;
+                       *) bad "I: the old reading failed, but not with the FAIL lines first: $DHTOLD" ;; esac; fi
 
 unset DH DHM DHS DHS2 DHO DHV DHMO DHB DHSETS DHRC DHT DHHALF DHQ DHREQ DH_ADB_PIDS TAB \
-      DHG DHH1 DHH2 DHH3 DHSPEC DHAL DHTERR
+      DHG DHH1 DHH2 DHH3 DHSPEC DHAL DHTERR DHTR DHTRED DHTSPLIT DHTOLD
+unset -f dhterr_agree dhterr_board dhterr_run

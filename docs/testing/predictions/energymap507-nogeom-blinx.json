@@ -1,0 +1,35 @@
+{
+  "registered_utc": "2026-09-28T20:32:30Z",
+  "who": "lane.energymap507",
+  "issue": "507",
+  "title": "4D530013-Blinx_The_Time_Sweeper.xiso.iso",
+  "device": "nova",
+  "seconds": 420,
+  "route": "survey",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "5af7b13ee5b9faf1e2fb3437c833836f7910023c",
+  "b_ref": "5af7b13ee5b9faf1e2fb3437c833836f7910023c",
+  "a_env": [],
+  "b_env": [
+    "HAKUX_MEASURE_NO_GEOM=1"
+  ],
+  "queue_order": "B1 (--env HAKUX_MEASURE_NO_GEOM=1) then A1, each request.sh --title 4D530013-Blinx_The_Time_Sweeper.xiso.iso --route survey --seconds 420 --perflog --device nova --ref 5af7b13ee5 --issue 507. One binary; MAX regimen (the soak default), idle halt unset in both.",
+  "window": "`mark play` + 10 s to 10 s before the log ends, as energymap507 read Blinx's baseline 1-1790582080-idlehalt-2124441 (docs/lanes/energymap507/em_extract.py)",
+  "judge": "python3 docs/lanes/energymap507/em_extract.py and em_breakdown.py on copies of <B1> <A1>; python3 docs/lanes/flip474/phaseread.py --from <mark play + 10> <B1> <A1>; grep 'env: HAKUX_MEASURE_NO_GEOM' and '\\[nogeom507\\] skipped=' in each logcat; title_verdict.py on copies for J/frame; the route's play shots by eye",
+  "units": "GPU, R and X as printed use limits.timestampPeriod; every leg is a ratio of two arms of one binary, so the period cancels.",
+  "baseline": "Blinx, Nova, MAX, 40fabbaacc, 1-1790582080-idlehalt-2124441: hakuX-phase GPU 32.9 ms/f, R 31.4 ms/f, X 1.5; PFIFO Fin Fen 6.7 ms/f; fps 19.2; J/frame 0.434 (docs/lanes/energymap507/NOTES.md section 1).",
+  "prediction": "#507 P3. B drops the geometry stage from every filled, smooth-shaded TRIANGLES draw (pgraph_glsl_need_geom, glsl/geom.c): no calc_triz and no #223 wedge per triangle, and on the Adreno no GS in the binning pass. Flat triangles and flat quads keep it. The fragment shader runs on the same fragments (it writes gl_FragDepth, so there is no early-z to change), with depth flat per triangle, so fragment work is about equal and a fall in R is the stage's own cost. Guess, labelled: nv2a-era geometry is light and Blinx's R is fill-bound, so R falls by less than 25% (p 0.75). If R falls by 25% or more, the geometry stage's execution cost is a top energy lever and #3 of the energymap507 ranking is re-scored upward.",
+  "legs": {
+    "V (validity)": "Each arm: >= 15 hakuX-phase lines with GPU > 0 in the window, and the play shots show level play. B's logcat has 'env: HAKUX_MEASURE_NO_GEOM=1' and at least one '[nogeom507] skipped=' line; A has neither. Otherwise VOID for that arm, rerun once. An arm whose thermal record shows cpu3-7 paused in the window is VOID for fps and J/frame, not for R.",
+    "R (the point)": "median R in the window: B / A. Predicted >= 0.75 (confidence 75%). <= 0.75 decides the geometry stage is a top lever; 0.75-0.90 a material one, priced by the saved R x 3-5 W; > 0.90 drops it, and #580's lit-VS straight-line helpers are the remaining execution question.",
+    "F (fence wait)": "PFIFO Fin Fen (waiting on the GPU): moves the same way as R. Reported, not judged.",
+    "G (fps)": "fps in the window, B / A: reported. A fall in R that does not lift fps says Blinx is bound elsewhere on that frame.",
+    "Heat": "J/frame for both arms from title_verdict.py when power.measured is true. One Nova pair resolves about 10% (energymap507 section 0), so J/frame is reported, not judged.",
+    "Falsifier": "The 'geometry stage is cheap' guess is refuted by R_B <= 0.75 x R_A with V passing in both arms. The measurement itself is void, not refuted, if B's logcat shows no [nogeom507] line (the switch never acted) or if B's shots show no level play."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. B's pixels change on purpose (flat depth per triangle, no wedge), so no capture could be judged against a golden. The legs are read off hakuX-phase, hakuX-perf and the app's 'env:' lines."
+}

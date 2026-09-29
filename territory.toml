@@ -586,7 +586,9 @@ note = "RETIRED (hostops 2026-09-29T00:18Z): phase A finished; PR #573 merged 20
 [lane.litcompile569]
 issues = ["569"]
 files = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/lanes/litcompile569/**", "docs/testing/predictions/litcompile569-*.json"]
-note = "STARTED (lane.local 2026-09-28T19:50Z), briefs/litcompile569.md: #569 P2 phase B1 (PR #573 section 6): rewrite the lighting unit helpers (vsh-ff.c:128-283) loop-free and bit-exact so Turnip compiles lit pipelines 1.9-5.8x faster; gates: CPU bit-exactness with mutants, host compile factor, full-sweep pixel-inert arms, then a cold DOA dpc_ms soak once P1 (PR #574) lands. vsh-ff.c from [free]."
+released = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/lanes/litcompile569/**", "docs/testing/predictions/litcompile569-*.json"]
+released_at_ready = 580
+note = "RELEASED AT READY (job.board 2026-09-29T05:04Z): PR #580 is out of draft, CI green, unit gone -- all 3 held files released per roles/board.md so the next lane can start; kept in files since the fold still reads what the PR touched. The next lane names PR #580 and merges master (or lane/litcompile569 if it has not folded) before marking its own PR ready. || STARTED (lane.local 2026-09-28T19:50Z), briefs/litcompile569.md: #569 P2 phase B1 (PR #573 section 6): rewrite the lighting unit helpers (vsh-ff.c:128-283) loop-free and bit-exact so Turnip compiles lit pipelines 1.9-5.8x faster; gates: CPU bit-exactness with mutants, host compile factor, full-sweep pixel-inert arms, then a cold DOA dpc_ms soak once P1 (PR #574) lands. vsh-ff.c from [free]."
 
 [lane.gpl569]
 issues = ["569"]

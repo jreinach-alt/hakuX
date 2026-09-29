@@ -43,7 +43,8 @@
 #   (c) ours   hakuX on display 0, FocusedDisplayId 0: the route plays.
 #              Fails under a first-match read (the first-entry mutant), which
 #              sees display 4's launcher.
-#       silent adb answers nothing: unknown, never in front.
+#       silent adb answers nothing: unreadable (exit 3, #592), never in
+#              front. 99-fg-unreadable.sh has the hung and no-field legs.
 #   (d) anr    the live block is followed by the dispatcher state at the last
 #              ANR (#513). anr-ours: hakuX live, Daijishou in the ANR block,
 #              in front. anr-daijishou: the reverse, not in front. The first
@@ -328,7 +329,7 @@ fg_legs() {    # <devices.sh> -> one "FAIL <why>" per unmet leg
     case "$r" in "0|in-front: ee317437 app=com.jreinach.hakux.debug focus=com.jreinach.hakux.debug display=0") ;;
         *) echo "FAIL (c) ours: [$r]" ;; esac
     r=$(fg_check "$d" silent)
-    case "$r" in "2|foreground-unknown: ee317437 answered no FocusedDisplayId") ;;
+    case "$r" in "3|foreground-unreadable: ee317437 adb answered nothing") ;;
         *) echo "FAIL silent: [$r]" ;; esac
     r=$(fg_check "$d" anrours)
     case "$r" in "0|in-front: ee317437 app=com.jreinach.hakux.debug focus=com.jreinach.hakux.debug display=0") ;;

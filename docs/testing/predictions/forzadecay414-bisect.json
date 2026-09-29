@@ -1,0 +1,26 @@
+{
+  "registered_utc": "2026-09-28T19:41:21Z",
+  "who": "lane.forzadecay414",
+  "issue": "414",
+  "prediction": "NOVA SOAK, read by hand (arms.sh skips title soaks). Forza race, survey route, 360 s, perflog, regimen max, the Nova because it plateaus near 49 C and never reaches the Thor's xo-therm 78 C pause, which is a second, separate 2-4 fps regime (NOTES section 2) that would confound a Thor read. Buckets are docs/lanes/forza414/timeline.py's 30-s rows (t = 0 at `soak start`); `invalid` is the [watch311] line's invalid= (length of r->invalid_surfaces); `faf` and `scan` are the txw probe's ms/flip and calls/flip for pgraph_vk_flush_all_frames and pgraph_vk_download_surfaces_in_range_if_dirty. Mechanism under test (NOTES section 3): invalidate_surface() stamps a surface invalidated inside the open command buffer with invalidation_frame = r->current_frame, a ring-slot index that is never reset; surface_in_flight() is then true whenever that slot is current or submitted, which in steady state is always, so prune_invalid_surfaces() keeps the surface until pgraph_vk_flush_all_frames() clears every frame_submitted[] at once. #517 moved the flush Forza hit on every direct surface-to-texture bind behind the copy branch, so in Forza's race nothing flushes, the list grows, and every texture bind (~800 per flip) walks it in pgraph_vk_download_surfaces_in_range_if_dirty. A is f82e7e87fe (master before #517), B is 09050ddbe5 (the #517 fold; the only emulator change between them is that moved flush). Legs, and the world each fails in: M0 both arms reach the race: timeline rows t = 180-330 have G >= 40 ms and there are >= 5 [watch311] lines after t = 150; else VOID. P0 A's median txw faf calls/flip over t = 180-330 >= 0.2 and B's <= 0.02. Fails in the world where A does not flush in the race either: then A's pruning comes from somewhere else and the flush is not the link. P1 B's last [watch311] invalid= at or before t = 360 >= 1000. Fails in the world where #517 alone does not grow the list on the Nova: the growth then needs #518's pending flip pre-download (deferred_downloads_reference) or something Thor-only, and the fa56a26f1f runs named the wrong commit. P2 A's max [watch311] invalid= over the run <= 400 (the eight pre-#517 Nova soaks peak at 50-240). Fails in the world where the leak predates #517. P3 fps (timeline fps column, mean of rows t = 270, 300, 330) B/A <= 0.6. Fails in the world where the list grows but costs the Nova no fps: then the Thor's decay needs a second, Thor-side cost. READOUTS, not judged: txw scan ms/flip first and last race line, ic, cpu, G per bucket, thermal.jsonl xo-therm (the Nova must not cross 60 C for the read to stand as cool-device).",
+  "a_ref": "f82e7e87fe",
+  "b_ref": "09050ddbe5",
+  "must_not_move": [],
+  "expect": {
+    "M0/both_reach_race_is": true,
+    "P0/a_faf_calls_per_flip_min": 0.2,
+    "P0/b_faf_calls_per_flip_max": 0.02,
+    "P1/b_last_invalid_min": 1000,
+    "P2/a_max_invalid_max": 400,
+    "P3/b_over_a_fps_t270_330_max": 0.6
+  },
+  "expect_counts": {},
+  "must_not_regress": [],
+  "title": "4D53006E-Forza_Motorsport.xiso.iso",
+  "device": "nova",
+  "seconds": 360,
+  "route": "survey",
+  "perflog": true,
+  "runs_per_arm": 1,
+  "expect_note": "Named rules read by hand from the logcats (timeline.py rows, [watch311] invalid=, txw faf/scan); a soak writes no captures, so ab_compare never judges it."
+}

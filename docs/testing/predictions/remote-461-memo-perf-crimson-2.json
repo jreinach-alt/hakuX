@@ -1,0 +1,31 @@
+{
+  "registered_utc": "2026-09-28T09:41:38Z",
+  "who": "lane.remote",
+  "issue": "461",
+  "title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso",
+  "route": "crimson-skies",
+  "device": "thor",
+  "seconds": 240,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "perflog": true,
+  "a_ref": "f131dd11",
+  "b_ref": "8f9c74f0",
+  "judge": "by hand from each result's logcat.txt, thermal.jsonl and run.log, 90-240 s after the first hakuX-perf line, or with docs/lanes/remote/pair461_read.py --pair A_RUN B_RUN, which reads every figure below over that window (this lane's PR after #480, or later), and docs/lanes/remote/tex461_read.py --window 90,240 for the txh/txu/txr lines. Not an ab_compare golden arm: a title soak has no capture keys.",
+  "must_not_move": [
+    "the two refs differ only by the memo retirement in create_texture() (hw/xbox/nv2a/pgraph/vk/texture.c) and comment wording",
+    "both arms perflog, same device, same route",
+    "B RUNS FIRST, then A: the order is reversed from the first pair (remote-461-memo-perf-crimson.json), where A ran first and B started straight after it"
+  ],
+  "expect": {
+    "F4b/arm_b_minus_arm_a_gfps_median_90_240_min": -1,
+    "K1/every_cooling_device_max_cur_state_90_240_equal_across_arms": true,
+    "K2/larger_over_smaller_hakux_cpu_M_median_90_240_max": 1.1,
+    "P1/arm_b_minus_arm_a_Tq_median_90_240_min": 0,
+    "P2/arm_b_mk_kib_per_frame_below_arm_a_and_bit_bov_above": true,
+    "R/arm_b_minus_arm_a_busy_less_txh_ms_90_240_render_thread_above": 2.0
+  },
+  "expect_counts": {},
+  "expect_note": "Read off the hakuX-perf, hakuX-pace, hakuX-cpu, hakuX-phase and hakuX-stall lines and thermal.jsonl; a soak writes no captures, so there is no golden key for ab_compare to judge. K1 and K2 are controls, not predictions; R is read only when F4b fails with K1 and K2 passing. Queue by hand, B FIRST: request.sh --title ... --route crimson-skies --seconds 240 --perflog --device thor for 8f9c74f0, then the same for f131dd11, each through the soak's COOLDOWN gate.",
+  "prediction": "#461 M1 FIX -- THE SECOND THOR PAIR (F4b and its controls, registered on #461 at 2026-09-28T09:41:38Z, comment 5867400666, before any figure below was read and before pair 2 existed; filed here with the text unchanged). WHY: the first pair (remote-461-memo-perf-crimson.json, hostops' read 5866342003) scored F1, F2 (0.47, marginal: window median 0.55) and F3 PASS, the kill not triggered, and F4 FAIL: B's gfps median 22 against A's 26, and 47 hakuX-perf lines against 58 in the window (B drew 19% fewer flips). A reproduced #473's soak (26 gfps, TxH 6.93 against 6.71 ms/frame). A reading of the code gives B less render-thread work, and a guest-side cost only on pages the guest writes continuously: B's rebind test clears bits that A's next per-draw poll would have cleared, and clears twice where A clears once only when the guest writes the pages again between the rebind and the next poll, each such clear re-arming the guest's not-dirty write trap (tlb_reset_dirty_range_all). One condition of the first pair was not controlled: order. A ran first; B started about four minutes later, straight after A's 240 s at MAX, on a Thor whose kernel pauses cpu3-7 at xo-therm's 78 C trip (#507). THE PAIR: B RUN FIRST, then A; same refs (A f131dd11, B 8f9c74f0), both perflog, crimson-skies, 240 s, read 90-240 s after the first hakuX-perf line. F4b (moderate-low): B's gfps median is at least A's minus 1; moderate-low because the code offers only the narrow route above, but A's reproduction of #473 makes the drop hard to set aside. K1, THERMAL PARITY (a control, not a prediction), on each pair: every cooling device's highest cur_state over the thermal.jsonl samples inside the window is the same in both arms; a pair that fails K1 is reported as thermally confounded, its F4 reading stands as recorded but is not attributed to the fix. K2, SAME SCENE (a control): the window medians of hakuX-cpu's M (PGRAPH methods per frame) are within 10% of each other; a pair that fails K2 drew different scenes. P1, THE MODEL'S POSITIVE CONTROL (high, given K2): B's Tq (bitmap tests per frame, hakuX-perf), as a window median, is at least A's; the fix swaps memo hashes for bitmap tests, and a lower Tq on B means the reading of the change is wrong, which comes before anything else. P2 (moderate), on pair 1's existing lines: B's mk KiB per frame is below A's, and B's bit+bov KiB per frame above A's; the rebind test should take over the poll's discoveries. THE ATTRIBUTION, read on any pair where B is below A minus 1 with K1 and K2 holding: R, the render thread: BUSY minus TxH per frame as window means, BUSY being phase_read_split's Surf + Draw + Fin; B's more than 2 ms/frame above A's puts the time on the render thread, and the work counts (M, txr's ct and bt) then say whether it did more work or ran the same work slower (clocks); otherwise the render thread is not where the frame went, what is left is the guest (the route above) or the display, and the next instrument counts the clears that found a bit set, per frame, on both refs. V, how it shows: the share of the window's flips that took 3 or more VBLANKs (hakuX-pace v3+v4); the title paces itself to 30, so a drop should show as flips slipping from 2 VBLANKs to 3. WHAT FOLLOWS: F4b passes with K1 and K2 holding, the fix stays, F4 stays FAIL as recorded, and K1 on pair 1 says whether throttling explains it. F4b fails with K1 and K2 holding, in the order that favours B: the fix costs frame rate on Crimson, and this lane reverts its create_texture() hunks from master, or registers a replacement first if R and V point to one. K1 or K2 fails on pair 2: reported as confounded, and one more pair is asked for. VOID, NOT FAILED, as the first pair: a run with no hakuX-perf line after 60 s, no txh/txu/txr lines, or a route that did not reach gameplay; re-queued once and reported either way. A FAIL stays a FAIL."
+}
