@@ -392,15 +392,30 @@ def _hash_pick(key, devs):
 # always was. battery_admit.py writes the record (`.battery_refused.<label>`)
 # and computes the need; see there.
 #
-# PAIRS. Both arms share the key and so read the same records, the same level
-# files and (same runs, same kind) the same need: one answer for both, from
-# state rather than from nothing, which is what the hash was for. The answer
-# can change only when a level file does, which is once a minute at most; an
-# arm claimed in that minute is in running/ and rule 2 pulls its partner
-# after it. The one gap is the rename-to-owner-write instant rule 2 already
-# names. A device with no fresh level (nothing asked it for 15 min) counts as
+# PAIRS. Both arms share the key, but a move read from state can flip, and a
+# claim is not the instant of the decision: the dispatcher decides here, then
+# runs the battery gate (a dumpsys read of up to ADB_QUICK_TIMEOUT), and only
+# then moves the arm into running/. For that whole window the arm is still in
+# queue/ and rule 2 cannot see it. If the refusing device's level crossed its
+# need inside the window, the partner would hash back to it and be admitted
+# there: a split pair (audit of #611, M1). So a move is ONE-WAY for the key.
+# The first claim to decide it writes moves/<key>.battery.json naming the
+# target and the key's ids, and from then on every reader follows that note,
+# not the live levels. The note is given up only when its target itself
+# refuses the key, and a refusing device cannot claim, so the one flip left
+# is toward a device that will not take the arm. It lapses once none of its
+# ids is queued or running. The one gap is the instant between a claim
+# computing the move and writing it, the same kind as the
+# rename-to-owner-write instant rule 2 already names.
+#
+# A candidate with no fresh level (nothing asked it for 15 min) counts as
 # admitting: it reads its level when it is offered the request, and if it
-# refuses, that refusal is recorded and the request goes back.
+# refuses, that refusal is recorded and the request goes back. That asymmetry
+# is for candidates only. The device refusing a key is judged on the level it
+# refused at once its own reading goes stale, and after a move it is never
+# offered the key again, so an idle refuser that has since recharged keeps
+# passing the key on until other work routed to it refreshes its level. The
+# cost is delay, never a split.
 REFUSED_MOVE_S = float(os.environ.get("AFFINITY_REFUSED_MOVE_S") or 600)
 
 try:
@@ -442,15 +457,38 @@ def _refusing(d, label, ids, now, age=0.0):
     return None
 
 
-def _battery_alt(d, req, me, key, dev, devs):
-    """Where to send `req` instead of `dev`, or "" to leave it on `dev`."""
+def _move_path(d, key):
+    return os.path.join(d, "moves", key.replace("/", "_") + ".battery.json")
+
+
+def _battery_alt(d, req, me, key, dev, devs, commit=False):
+    """Where to send `req` instead of `dev`, or "" to leave it on `dev`.
+    `commit` (a claim, not a question) writes and retires the key's move."""
     if _ba is None or not key or dev not in devs:
         return ""
     try:
+        now = time.time()
+        ids = None
+        mp = _move_path(d, key)
+        mv = load(mp) if os.path.exists(mp) else {}
+        if mv:
+            # A move already decided for this key is followed, not re-derived.
+            ids = _key_ids(d, key, me)
+            to = mv.get("to") or ""
+            if ids & set(mv.get("ids") or ()) and to in devs \
+                    and not _refusing(d, to, ids, now):
+                return "" if to == dev else to
+            # Lapsed (its pair has gone), its target has left the pool, or
+            # its target refuses: re-derive, and a claim retires it.
+            if commit:
+                try:
+                    os.remove(mp)
+                except OSError:
+                    pass
         if not _ba.refusals(d, dev):
             return ""    # the common case, without listing the queue
-        now = time.time()
-        ids = _key_ids(d, key, me)
+        if ids is None:
+            ids = _key_ids(d, key, me)
         if not _refusing(d, dev, ids, now, REFUSED_MOVE_S):
             return ""
         ok = []
@@ -460,9 +498,26 @@ def _battery_alt(d, req, me, key, dev, devs):
             lvl = _ba.level_now(d, x)
             if lvl is None or lvl >= _ba.need_for(d, x, req)[0]:
                 ok.append(x)
-        return ok[_hash_pick(key, ok)] if ok else ""
+        if not ok:
+            return ""
+        to = ok[_hash_pick(key, ok)]
+        if commit:
+            _write_move(mp, dict(key=key, frm=dev, to=to, ids=sorted(ids), t=now))
+        return to
     except Exception:    # never fail a claim over the battery rule
         return ""
+
+
+def _write_move(path, rec):
+    """The key's one-way move (see PAIRS above), replaced atomically."""
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        tmp = path + ".%d" % os.getpid()
+        with open(tmp, "w") as f:
+            json.dump(rec, f, sort_keys=True)
+        os.replace(tmp, path)
+    except OSError:
+        pass  # never fail a claim over a note
 
 
 def _note_battery_move(d, reqname, key, frm, to):
@@ -578,7 +633,8 @@ def decide(d, req, me, notes=True, labels_for=None):
             # A load pin to a device refusing it on battery falls through
             # like one to a held device: nothing has landed, and both arms
             # carry the same pin, so both go wherever the rules below say.
-            if _battery_alt(d, req, me, _key(req), explicit, pooled(d)):
+            if _battery_alt(d, req, me, _key(req), explicit, pooled(d),
+                            commit=notes):
                 load_pin = ""
         elif not _held(d, explicit):
             note_split(d, me, _key(req) or "(none)", explicit)
@@ -608,7 +664,8 @@ def decide(d, req, me, notes=True, labels_for=None):
             continue
         if _is_load_pin(sib, dev) and (
                 not _live(d, dev)
-                or _battery_alt(d, sib, name, key, dev, pooled(d))):
+                or _battery_alt(d, sib, name, key, dev, pooled(d),
+                                commit=notes)):
             continue  # the sibling falls through too; follow it there
         queued_pin = dev
         break
@@ -670,7 +727,7 @@ def decide(d, req, me, notes=True, labels_for=None):
     devs = pooled(d)
     if len(devs) > 1:
         pick = devs[_hash_pick(key, devs)]
-        alt = _battery_alt(d, req, me, key, pick, devs)
+        alt = _battery_alt(d, req, me, key, pick, devs, commit=notes)
         if alt:
             if notes:
                 _note_battery_move(d, me, key, pick, alt)

@@ -53,16 +53,27 @@ battery gate.
   Rule 2 (a sibling that has landed) and hand pins (rule 1) are unchanged.
   With no refusal recorded, or with every alternative refusing, the answer
   is exactly what it was before.
-- Pairs: both arms share the key, so they read the same records, the same
-  level files and the same need, and they get one answer. That answer can
-  change only when a level file changes, at most once a minute. An arm
-  claimed within that minute is in `running/`, and rule 2 pulls its partner
-  after it. The only gap left is the rename-to-owner-write instant that the
-  rule-2 docstring already names.
-- If a device has no fresh level (nothing asked it anything for 15 min), it
-  counts as admitting. It reads its level when it is offered the request.
+- Pairs: the move is one-way per key (audit pass 1, M1). The claim is not
+  the instant of the decision: the dispatcher decides with affinity.py, then
+  runs the battery gate (a dumpsys read of up to 30 s), and only then moves
+  the arm into `running/`. For that window rule 2 cannot see the arm. If the
+  refusing device's level crossed its need inside the window, the partner
+  would hash back to it and be admitted there, which splits the pair. So the
+  first claim that decides a move writes `moves/<key>.battery.json` (the
+  target and the key's ids), and every later decision follows it rather than
+  the live levels. It is given up only when its target refuses the key (a
+  refusing device cannot claim), and it lapses once none of its ids is
+  queued or running. A question (`notes` off, CHOOSE pricing) reads it but
+  never writes it. The gap left is the instant between a claim computing the
+  move and writing it, the same kind as rule 2's rename-to-owner-write gap.
+- If a candidate has no fresh level (nothing asked it anything for 15 min),
+  it counts as admitting. It reads its level when it is offered the request.
   If it refuses, that refusal is recorded and the request goes back to the
-  hash device.
+  hash device. This applies to candidates only. The refusing device is judged
+  on the level it refused at once its reading is stale, and after a move it
+  is not offered the key again. An idle refuser that has recharged keeps
+  passing the key on until other work refreshes its level. That costs delay,
+  not a split (pass 1, L1).
 - Fail-open: a lone copy of affinity.py with no battery_admit.py beside it
   (the fleet selftests copy it that way) keeps the old rule 3. The dispatcher
   snapshot deploys both files into one directory (SCRIPT_DEPS).
@@ -84,13 +95,19 @@ was the hash's blindness, so the fix went where every free request gets it.
 prediction name (it hashes to the nova), the nova at 35 refusing at 49.6, and
 the thor at 80:
 
-- no refusal: nova nova. Refused for 15 min: thor thor, and the move is noted.
+- no refusal: nova nova. Refused for 15 min: thor thor, and the move is noted
+  and kept for the key.
+- The claim window (M1): with the move kept, the nova's level rising to 55
+  still gives thor thor. The same state without the kept move gives nova
+  nova, so the check separates. With the thor refusing, the kept move is
+  retired and the pair goes back to the nova. A kept move naming no live id
+  is re-derived, and a `notes`-off question writes none.
 - MUTANT, affinity.py without battery_admit: nova nova.
 - Controls:
   - refused for only 5 min: nova nova;
   - the thor refusing too: nova nova;
   - the thor below its own need: nova nova;
-  - the nova's level recovered to 55: nova nova;
+  - no move kept and the nova's level recovered to 55: nova nova;
   - the thor not serving: free;
   - a sibling that ran on the nova: nova;
   - a hand pin: nova.
@@ -105,7 +122,8 @@ Run with `SELFTEST_ONLY` alongside 95-affinity, 99-affinity-backlog,
 99-battery-admit, 55-affinity-offpool, 56-desktop-worker,
 98-fleet-queue-stall, 99-fleet-battery-gate, 99-fleet-absent-device,
 99-arms-confounded-pair, 97-dispatch-deploy and 97-dispatch-snapshot-rename:
-274 passed, 0 failed.
+274 passed, 0 failed. After the M1 remediation, the same set: 281 passed, 0
+failed.
 
 ## Not done, for the next lane
 

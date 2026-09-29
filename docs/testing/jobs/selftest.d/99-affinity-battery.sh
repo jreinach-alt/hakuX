@@ -53,9 +53,42 @@ check "the nova has refused the pair for 15 min and the thor at 80 would admit i
 check "and the move is noted where a reader can find it" [ -s "$BT/moves/$BTA.req.battery.txt" ]
 check "and not as a split (status.sh reads splits/ as 'may span two devices')" \
     bash -c '[ -z "$(ls "$1"/splits 2>/dev/null)" ]' _ "$BT"
-btrefuse "$BT" nova 900 49.6 35 "$BTA"
+BTM="$BT/moves/$BTK.battery.json"
+check "and the move is kept for the key, naming the thor" \
+    python3 -c 'import json,sys; sys.exit(0 if json.load(open(sys.argv[1]))["to"] == "thor" else 1)' "$BTM"
+
+# THE CLAIM WINDOW (audit of #611, M1). The thor decided arm A, and while its
+# battery gate is reading the level (A still in queue/, invisible to rule 2)
+# the nova's level crosses the need it refused at. Re-derived from live state,
+# arm B would hash back to the nova and be admitted there: a split pair. The
+# kept move is followed instead.
+btlevel "$BT" nova 55
+check "M1: the nova's level crosses its need mid-claim; the pair still goes to the thor" \
+    [ "$(btpair "$BT")" = "thor thor" ]
+cp "$BTM" "$T/afbt-move.json"; rm -f "$BTM"
+check "M1 (the check separates): with no kept move, the same state sends the pair back to the nova" \
+    [ "$(btpair "$BT")" = "nova nova" ]
+rm -f "$BTM"; cp "$T/afbt-move.json" "$BTM"
+btrefuse "$BT" thor 60 90 80 "$BTA" "$BTB"
+check "the kept move is given up only when its target refuses: back to the nova, which admits at 55" \
+    [ "$(btpair "$BT")" = "nova nova" ]
+check "and a claim that gives it up retires it" [ ! -e "$BTM" ]
+rm -f "$BT/.battery_refused.thor"; btlevel "$BT" nova 35
+check "a kept move naming none of the key's live ids has lapsed and is re-derived" \
+    bash -c 'printf "%s\n" "{\"to\":\"nova\",\"ids\":[\"1-1-gone\"]}" > "$1"; [ "$(python3 "$2" "$3" "$3/queue/$4.req")" = thor ]' \
+    _ "$BTM" "$TESTING/affinity.py" "$BT" "$BTA"
+check "a question (CHOOSE pricing, notes off) writes no move" python3 -c '
+import os, sys; sys.path.insert(0, sys.argv[1]); import affinity as a
+p = sys.argv[2] + "/moves/" + sys.argv[3] + ".battery.json"
+os.remove(p); a.decide(sys.argv[2], a.load(sys.argv[2] + "/queue/" + sys.argv[4] + ".req"), sys.argv[4] + ".req", notes=False)
+sys.exit(1 if os.path.exists(p) else 0)' "$TESTING" "$BT" "$BTK" "$BTA"
+
+# From here each check re-derives the move from its state, so the kept move is
+# cleared first (`btfresh`).
+btfresh() { rm -f "$BTM"; }
+btfresh; btrefuse "$BT" nova 900 49.6 35 "$BTA"
 check "one arm's refusal moves both (the pair shares the key)" [ "$(btpair "$BT")" = "thor thor" ]
-rm -f "$BT/.battery_level.thor"
+btfresh; rm -f "$BT/.battery_level.thor"
 check "a thor with no fresh level reading counts as admitting (it reads one when offered)" \
     [ "$(btpair "$BT")" = "thor thor" ]
 btlevel "$BT" thor 80
@@ -67,16 +100,16 @@ check "MUTANT: affinity.py without battery_admit beside it sends the refused pai
     [ "$(btpair "$BT" "$T/afbt-m/affinity.py")" = "nova nova" ]
 
 # Controls: every other state gives the answer it always did.
-btrefuse "$BT" nova 300 49.6 35 "$BTA" "$BTB"
+btfresh; btrefuse "$BT" nova 300 49.6 35 "$BTA" "$BTB"
 check "CONTROL: refused for only 5 min, the pair stays on the nova" [ "$(btpair "$BT")" = "nova nova" ]
-btrefuse "$BT" nova 900 49.6 35 "$BTA" "$BTB"; btrefuse "$BT" thor 60 90 80 "$BTA" "$BTB"
+btfresh; btrefuse "$BT" nova 900 49.6 35 "$BTA" "$BTB"; btrefuse "$BT" thor 60 90 80 "$BTA" "$BTB"
 check "CONTROL: the thor refusing too, the pair stays on the hash device" [ "$(btpair "$BT")" = "nova nova" ]
-rm -f "$BT/.battery_refused.thor"; btlevel "$BT" thor 15
+btfresh; rm -f "$BT/.battery_refused.thor"; btlevel "$BT" thor 15
 check "CONTROL: the thor's level below its own need, the pair stays on the hash device" [ "$(btpair "$BT")" = "nova nova" ]
-btlevel "$BT" thor 80; btlevel "$BT" nova 55
-check "CONTROL: the nova's level now covers the need it refused at, the pair goes back to the nova" \
+btfresh; btlevel "$BT" thor 80; btlevel "$BT" nova 55
+check "CONTROL: no move kept and the nova's level now covers the need it refused at: the nova" \
     [ "$(btpair "$BT")" = "nova nova" ]
-btlevel "$BT" nova 35
+btfresh; btlevel "$BT" nova 35
 printf '%s\n' "$BTLIVE" > "$BT/lanes/desktop"; rm -f "$BT/lanes/thor"
 check "CONTROL: no other POOLED device serving (thor gone, desktop off-pool), no move: the pair is free" \
     [ "$(btpair "$BT")" = " " ]
@@ -95,13 +128,13 @@ rm -rf "$BT/results/r-base"
 # A load pin (arms.sh --choose) is a preference: refused on battery, it falls
 # through like a pin to a held device, and both arms move together. A hand pin
 # stays absolute.
-sed -i 's/"runs":3}/"runs":3,"device":"nova"}/' "$BT/queue/$BTA.req" "$BT/queue/$BTB.req"
+btfresh; sed -i 's/"runs":3}/"runs":3,"device":"nova"}/' "$BT/queue/$BTA.req" "$BT/queue/$BTB.req"
 check "an arms-job load pin to the refusing nova falls through, both arms to the thor" \
     [ "$(btpair "$BT")" = "thor thor" ]
 printf '%s\n' '{"requester":"titleplay","device":"nova","title":"t","seconds":60}' > "$BT/queue/1-1790639800-hand.req"
 btrefuse "$BT" nova 900 49.6 35 "$BTA" "$BTB" 1-1790639800-hand
 check "CONTROL: a hand pin to the refusing nova still holds (rule 1)" [ "$(btaff "$BT" 1-1790639800-hand)" = nova ]
-btrefuse "$BT" nova 300 49.6 35 "$BTA" "$BTB"
+btfresh; btrefuse "$BT" nova 300 49.6 35 "$BTA" "$BTB"
 check "CONTROL: a load pin refused for only 5 min holds" [ "$(btpair "$BT")" = "nova nova" ]
 
 # --- the writer. battery_admit.py check records a refusal and clears it on
