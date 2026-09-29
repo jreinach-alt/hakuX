@@ -503,12 +503,11 @@ retired_utc = "2026-09-28T02:06:00Z"
 files = []
 note = "RETIRED (hostops 2026-09-28T02:06Z): PR #531 folded (7b94a74caf), unit gone. Files RELEASED to [free]: docs/testing/jobs/selftest.d/76-pr-sweep.sh, docs/lanes/sweepclock/**."
 
-[lane.gmem474]
+[retired.gmem474]
 issues = ["474"]
-files = ["docs/lanes/gmem474/**", "docs/testing/predictions/gmem474-*.json", "android/app/src/main/java/com/rfandango/haku_x/TitleDefaults.kt"]
-released = ["docs/lanes/gmem474/**", "docs/testing/predictions/gmem474-*.json", "android/app/src/main/java/com/rfandango/haku_x/TitleDefaults.kt"]
-released_at_ready = 582
-note = "STARTED (hostops 2026-09-28T19:58Z), briefs/gmem474.md: #474 (0.5, fps-focus; thermal review item 5, section 3.4). GMEM vs sysmem chosen by J/frame: four Turnip arms (autotune default, TU_DEBUG=sysmem, TU_DEBUG=gmem,forcebin, TU_AUTOTUNE_ALGO=profiled) on DOA, AUF and one non-saturated title; pilot first. TitleDefaults.kt (from [free], freed by retiring lane.rendermode474) only for a second PR if a per-title decision differs from #530. || RELEASED AT READY (job.board 2026-09-29T22:44Z): PR #582 is out of draft, CI green (Android + Desktop build), unit gone (no running agent); diff touches only docs/lanes/gmem474/** and docs/testing/predictions/gmem474-*.json, so labelled fold-ready with no audit. TitleDefaults.kt was never touched by #582 and released with it since no session holds it; the next lane names PR #582 and merges master (or lane/gmem474 if it has not folded) before marking its own PR ready."
+files = []
+retired_utc = "2026-09-29T22:53:00Z"
+note = "RETIRED (hostops 2026-09-29T22:53Z): PR #582 MERGED 2026-09-29T22:45:32Z (fold 26e8d1104c). Result (NOTES.md section 13): GMEM vs sysmem by J/frame on DOA, AUF, Crimson, Kabuki -- sysmem stays for DOA and AUF (already shipped by #530), autotune stays for Crimson and Kabuki (sysmem stalls Kabuki's fight 2 of 2 runs, incl. a warm-cache rerun). No decision differs from what ships, so no code PR; TitleDefaults.kt untouched. Files RELEASED to [free]: docs/lanes/gmem474/**, docs/testing/predictions/gmem474-*.json, android/app/src/main/java/com/rfandango/haku_x/TitleDefaults.kt."
 
 [retired.rendermode474]
 issues = ["474"]
@@ -714,6 +713,7 @@ files = ["accel/tcg/tb-maint.c", "accel/tcg/tb-internal.h", "docs/lanes/tcg424fl
 note = "STARTED (hostops 2026-09-29T05:35Z), briefs/tcg424flip.md: tbflip424-blinx2.json's three valid Thor pairs pass M0/M1/M4' (A gfps 19 / churn 2.1, B 19 / 0.0; #424 issuecomment-5884276103), so the decision rule flips hakux_tcg424_range_on() to default ON (opt-out HAKUX_TCG424_RANGE=0). Before PR-ready: the Arctic Thunder Thor A/B lane.local routed to the retired lane.sustain507 (never queued), and the pgraph must-not-move arm on the flipped binary."
 
 [free]
+# RELEASED (hostops 2026-09-29T22:53Z) by retiring lane.gmem474 (PR #582 merged 26e8d1104c): docs/lanes/gmem474/**, docs/testing/predictions/gmem474-*.json, android/app/src/main/java/com/rfandango/haku_x/TitleDefaults.kt.
 # RELEASED (hostops 2026-09-29T22:00:29Z) by retiring lane.boardtreeheal (PR #621 folded b4e3d4c323): docs/testing/jobs/board.sh, docs/testing/jobs/selftest.d/99-board-wt-refresh.sh, docs/lanes/boardtreeheal/**.
 # RELEASED (hostops 2026-09-29T16:22:45Z) by retiring lane.statuswindow (PR #615 folded): docs/testing/titles/table.py, docs/testing/jobs/status_html.py, docs/testing/jobs/selftest.d/99-status-fullwindow.sh, docs/lanes/statuswindow/**, docs/testing/title_verdict.py.
 # RELEASED (job.board 2026-09-29T14:47:31Z) by retiring lane.tokentier (PR #612 folded 5053f92847): docs/testing/lane.sh, docs/testing/jobs/cloud.sh, docs/testing/jobs/roles/board.md, docs/testing/jobs/selftest.d/99-lane-model-file.sh, docs/lanes/tokentier/**.
