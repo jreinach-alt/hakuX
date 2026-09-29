@@ -553,3 +553,61 @@ reverting the block.
   before `mark gameplay` is VOID in every arm.
 - A 1-2% of one core CPU saving is below what the 5-sample power record
   resolves. Price one with thread CPU over longer runs, not with J/frame.
+
+## Attempt 7 (2026-09-29): the Otogi read; #572 ready
+
+### Why attempt 6 did not finish
+
+It ended correctly, waiting on the four Otogi re-runs named above. All four
+finished DONE; the handback job resumed the lane. Nothing was lost.
+
+### Otogi (Thor, f53000f7e4, 400 s, 2 runs per arm, all valid)
+
+No VOID.txt. Every run marked gameplay and has 14 windows (M0 needs 8).
+Start xo-therm: A1 48.2 C, B1 72.8, B2 67.6, A2 63.4. No run paused, no
+cooling device above 0 at the end. No FATAL, ANR or crash line in any
+logcat.
+
+| | A yield (A1, A2) | B block (B1, B2) | leg |
+|---|---|---|---|
+| gfps median | 29 / 29 | 29 / 29 | P2 (B >= A - 1): holds |
+| mode lines, blocked waits | yield, 0 | block, 4135 + 4165 | F0 holds |
+| wait CPU, ms per flip | 0.2259 | 0.0510 | H1 B/A 0.23, bar 0.25: holds |
+| wakes per blocked wait | - | 1.0 | |
+| deferred wait p99 us (median of windows) | 1250 | 1282.5 | K1 (<= A+100): holds |
+| deferred wait wall, ms per flip | 0.230 | 0.276 | |
+| thread CPU, ms per flip (one tid each) | 9.02 | 9.05 | not a leg on Otogi |
+| perf gap max s | 1.1, 1.9 | 1.7, 1.7 | H0 holds |
+| net_w per run | 5.45, 4.79 | 5.29, 5.12 | |
+| J/frame pooled | 0.1734 | 0.1759 | E1 (a guess): misses by 1.4% |
+
+Reading:
+- **P2 holds, but not in the case it was written for.** The prediction
+  called Otogi renderer-bound at 12.6 fps. In this window, after the
+  route's gameplay mark, it ran at 29 fps in all four runs, with one
+  deferred wait per flip. So these runs are a second capped title, and P2
+  holding says nothing about a renderer-bound one. The wake-up cost is
+  bounded instead by K1: B's waits end 30-40 us later at p50 and p99, about
+  0.05 ms per flip. On a title that does not reach its cap, that could cost
+  fps. Neither title here tested it.
+- H1 holds here: 0.23. Otogi's waits are longer (p50 160 us), so almost
+  all of them block (8300 of 8308), and the 30 us poll is a smaller share.
+- E1: the A pair differs by 0.66 W, and B sits between A's two runs. As on
+  Crimson, the power record cannot resolve a saving this small.
+
+### Verdict on #572
+
+Pixels: `verified` by the arms job (pgraph inert). Every safety leg holds
+on both titles: F0, K1, H0, and P1/P2 at the cap. The removed spin is
+0.59 ms per flip on Crimson and 0.17 ms on Otogi. Neither thread CPU nor
+J/frame can see it, so the release note claims no fps or power change.
+#572 is marked ready.
+
+### For the next lane
+
+- A title's fps in a prediction comes from a run of the same route window.
+  Otogi's 12.6 fps was from another place in the game, and the route's
+  gameplay window runs at the cap.
+- To test the wake-up cost on a renderer-bound title, pick one whose route
+  window is measured below its cap on the Thor. Read `[rwait526]` p99 and
+  gfps together.
