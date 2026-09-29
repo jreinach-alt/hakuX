@@ -603,3 +603,10 @@ queued by hand). The results go in BUILD.md.
   479 "ok" pairs with no drawn pixel (window clip regions covering the target under an exclusive
   clip; alpha refs above every alpha). `render_check.py` now prints drawn-pixel counts per
   baseline.
+
+## The build (PR #618) is recorded in `BUILD.md`
+
+Resume of 2026-09-29 16:10 PDT: attempt 4 ended as a wait on the DOA soak arms and the E pixel arm,
+which had not run (all queued behind the Nova's release tier). This resume added the Kabuki
+acceptance leg (BUILD.md section 7). Do not judge Kabuki's stall by "no flip gap over 5 s": master
+already meets it since B1 (longest gap 4.4 s in K1); read create ms and the gap against an A arm.
