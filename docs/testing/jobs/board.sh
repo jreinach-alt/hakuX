@@ -492,6 +492,43 @@ refresh_wt() {   # <worktree> -> 0 at FETCH_HEAD of origin/$TIP, else 1 (said)
 # `board.sh refresh-wt <worktree>` -- the refresh alone, for the selftest.
 if [ "${1:-}" = "refresh-wt" ]; then refresh_wt "${2:?worktree}"; exit $?; fi
 
+# THE SESSION'S BOARD TREE LANDS ON origin/board, OR THE TICK STOPS. $BT
+# (below, "$WT/.boardtree") was created once and never touched again: no
+# fetch, no dirty check, no fast-forward. A tick could start on a $BT that
+# was stale or still held a previous tick's uncommitted edits, and nothing
+# caught it -- on 2026-09-29 $BT was five commits behind origin/board,
+# carrying a staged diff duplicating part of PR #619's own patch plus an
+# unstaged diff reverting 47 files to an older state, and `git stash list`
+# already held four prior auto-stashes of the same shape going back to
+# 2026-09-21. This is the same defect refresh_wt fixed for $WT in PR #619,
+# extended to $BT: fetch origin/board, stash any dirt reversibly (never
+# reset/clean), then fast-forward the tree's own `board` branch onto
+# origin/board. $BT stays ON branch `board` (it is not detached like $WT),
+# so the fast-forward is `merge --ff-only`, not a checkout: a $BT holding a
+# local commit origin/board does not have (which should not happen in
+# normal operation, since the session pushes every tick) cannot be
+# fast-forwarded, and the tick stops rather than guess how to reconcile it.
+refresh_bt() {   # <worktree> -> 0 at origin/board's tip, else 1 (said)
+    local wt="$1" dirt tag
+    git -C "$wt" fetch -q origin board \
+        || { say "ABORT: cannot fetch origin/board into $wt; not running a tick on a stale board tree"; return 1; }
+    dirt=$(git -C "$wt" status --porcelain) \
+        || { say "ABORT: git status failed in $wt"; return 1; }
+    if [ -n "$dirt" ]; then
+        tag="board.sh: auto-cleared dirty $wt at $(date -u +%FT%TZ)"
+        say "NOTE: $wt had $(printf '%s\n' "$dirt" | wc -l) uncommitted path(s), which this session's board tree must never carry across a tick boundary. First: $(printf '%s\n' "$dirt" | head -3 | tr '\n' ';' | sed 's/;$//'). Stashing as \"$tag\" (git stash list) and fast-forwarding to origin/board."
+        git -C "$wt" stash push -q -u -m "$tag" \
+            || { say "ABORT: could not stash the dirt in $wt; not running a tick on it"; return 1; }
+    fi
+    git -C "$wt" merge -q --ff-only FETCH_HEAD \
+        || { say "ABORT: $wt's board branch has a commit origin/board does not (not fast-forwardable); not force-landing over session work"; return 1; }
+    [ "$(git -C "$wt" rev-parse HEAD)" = "$(git -C "$wt" rev-parse FETCH_HEAD)" ] \
+        || { say "ABORT: $wt is at $(git -C "$wt" rev-parse --short HEAD), not origin/board"; return 1; }
+}
+
+# `board.sh refresh-bt <worktree>` -- the refresh alone, for the selftest.
+if [ "${1:-}" = "refresh-bt" ]; then refresh_bt "${2:?worktree}"; exit $?; fi
+
 # A private worktree of the trunk, so this job never reads the owner's checkout.
 if [ ! -e "$WT/.git" ]; then
     git -C "$REPO" fetch -q origin "$TIP" && git -C "$REPO" worktree add --quiet --detach "$WT" FETCH_HEAD \
@@ -528,6 +565,7 @@ if [ ! -e "$BT/.git" ]; then
         || git -C "$WT" worktree add -q -B board "$BT" origin/board 2>/dev/null \
         || say "cannot create $BT; the session will make its own, unguarded by the push gate"
 fi
+[ -e "$BT/.git" ] && { refresh_bt "$BT" || exit 1; }
 for t in "$BT" "$WT"; do
     [ -e "$t/.git" ] || continue
     install_board_hook "$t" "$JOBS/board-push-gate.sh" \
