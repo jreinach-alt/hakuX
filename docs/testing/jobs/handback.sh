@@ -519,6 +519,88 @@ for name, row in sorted((t.get("lane") or {}).items()):
             break
 PY
 }
+
+# ------------------------------------------- a parked lane still has runs out
+# PARKED IS NOT FINISHED. The skip below is right -- nothing here resumes a
+# parked lane -- but a lane parked with device requests still queued or running
+# ended its session waiting on them, and once they finish nothing in the
+# harness resumes it: every cause above is skipped for it, forever. That
+# stranded shaderfb569 and litcompile569 (2026-09-28), memfast, ibcache,
+# gpl569 (#594) and verdict433 (#610) (2026-09-29); each needed hostops to
+# notice harness_health's `parked-nowaker` and start the same unit by hand.
+# This job starts it instead: `hakux-waiter-<lane>`, the host's
+# resume_when_runs_finish.sh, which polls the dispatch dir for the lane's tag
+# and calls `lane.sh resume` once nothing matches (or gives up after
+# PARK_WAITER_HOURS with a hostops-inbox line).
+#
+# Armed only when all of these hold, each checked every tick, so the tick is
+# idempotent: something of the lane's is in flight (lane_requests_of, the
+# resume path's own reader); the lane's session is not running (it is still
+# deciding what it waits for); no waiter is active; the waiter's OWN pattern
+# (`[-.]<lane>-` over queue/ and running/ names) sees a request too -- when it
+# does not, the waiter would resume the lane at once, runs still out; and the
+# lane is under LANE_MAX_ATTEMPTS, because `lane.sh resume` past the cap is a
+# guaranteed REFUSED (harness_health's `capped-waiter`). The last two are said
+# once per lane and state, on the PR and in the tick log.
+PARK_WAITER="${HAKUX_PARK_WAITER:-$WORK/host-tools/resume_when_runs_finish.sh}"
+PARK_WAITER_HOURS="${PARK_WAITER_HOURS:-14}"
+# lane.sh's own reading: models.env, then the host's limits.env over it.
+PARK_MAX_ATTEMPTS=$( . "$(dirname "${BASH_SOURCE[0]}")/models.env" 2>/dev/null
+                     [ -f "$WORK/limits.env" ] && . "$WORK/limits.env" 2>/dev/null
+                     echo "${LANE_MAX_ATTEMPTS:-4}" )
+park_waiter() {   # <pr> <branch> <park> -> arms hakux-waiter-<lane>, or says why not (list: says what it would do)
+    local pr="$1" branch="$2" park="$3" name unit n m
+    lane_name "$branch" "$pr" || return 0
+    name="$NAME"; unit="hakux-waiter-$name"
+    INFLIGHT=""; INFLIGHT_KIND=""; RKEY=""; RSET=""; RLIST=""
+    lane_requests_of "$branch" "$name"
+    [ -n "$INFLIGHT" ] || return 0
+    if systemctl --user is-active --quiet "hakux-lane-$name" 2>/dev/null; then
+        [ "$mode" = list ] && echo "#$pr $branch: parked with $INFLIGHT in flight; lane $name is running, no waiter yet"
+        return 0
+    fi
+    if systemctl --user is-active --quiet "$unit.service" 2>/dev/null; then
+        [ "$mode" = list ] && echo "#$pr $branch: parked with $INFLIGHT in flight; waiter $unit already armed"
+        return 0
+    fi
+    if ! ls "$DISPATCH_DIR/queue" "$DISPATCH_DIR/running" 2>/dev/null | grep -q -- "[-.]$name-"; then
+        [ "$mode" = list ] && { echo "#$pr $branch: parked with $INFLIGHT in flight, but no queued or running id matches [-.]$name-; NOT ARMING $unit (it would resume at once)"; return 0; }
+        m="$H/done/waiter-unseen-$name-${INFLIGHT#*/}"
+        [ -f "$m" ] && return 0
+        echo "$INFLIGHT" > "$m"
+        say "#$pr: lane $name parked by $park with $INFLIGHT in flight, but its id does not match the waiter's [-.]$name- pattern; not arming $unit"
+        comment "$pr" "[job.handback] \`lane.$name\` is parked by \`$park\` with \`$INFLIGHT\` still in flight, and **no waiter was armed**: that request's id does not match \`[-.]$name-\`, the pattern \`resume_when_runs_finish.sh\` polls, so the waiter would resume the lane at once with the run still out. Resume it by hand when \`$INFLIGHT\` finishes."
+        return 0
+    fi
+    n=$(cat "$WORK/attempts/$name" 2>/dev/null || echo 0)
+    case "$n" in ''|*[!0-9]*) n=0 ;; esac
+    if [ "$n" -ge "$PARK_MAX_ATTEMPTS" ]; then
+        [ "$mode" = list ] && { echo "#$pr $branch: parked with $INFLIGHT in flight, but lane $name is at $n of LANE_MAX_ATTEMPTS=$PARK_MAX_ATTEMPTS; NOT ARMING $unit (lane.sh resume would refuse)"; return 0; }
+        m="$H/done/waiter-capped-$name-a$n"
+        [ -f "$m" ] && return 0
+        echo "$INFLIGHT" > "$m"
+        say "#$pr: lane $name parked by $park with $INFLIGHT in flight, at $n of LANE_MAX_ATTEMPTS=$PARK_MAX_ATTEMPTS; not arming $unit"
+        comment "$pr" "[job.handback] \`lane.$name\` is parked by \`$park\` with \`$INFLIGHT\` still in flight, and **no waiter was armed**: the lane has had $n attempts, which is \`LANE_MAX_ATTEMPTS=$PARK_MAX_ATTEMPTS\`, so the \`lane.sh resume\` a waiter would call when the run finishes is refused. This needs a decision: \`lane.sh reset $name\` if the brief was the problem, or a \`decision-needed\` issue."
+        return 0
+    fi
+    if [ "$mode" = list ]; then
+        echo "#$pr $branch: parked with $INFLIGHT in flight and no waiter; WOULD ARM $unit ($PARK_WAITER $name $name $PARK_WAITER_HOURS)"
+        return 0
+    fi
+    if [ ! -f "$PARK_WAITER" ]; then
+        say "#$pr: lane $name parked with $INFLIGHT in flight, but $PARK_WAITER is missing; no waiter armed"
+        return 0
+    fi
+    # A waiter that timed out exited 1 and stays loaded as `failed`, which
+    # holds the unit name; clear it or systemd-run refuses the name.
+    systemctl --user reset-failed "$unit.service" >/dev/null 2>&1
+    if systemd-run --user --unit="$unit" bash "$PARK_WAITER" "$name" "$name" "$PARK_WAITER_HOURS" >/dev/null 2>&1; then
+        say "#$pr: lane $name parked by $park with $INFLIGHT in flight; armed $unit"
+        comment "$pr" "[job.handback] \`lane.$name\` is parked by \`$park\`, so this job does not resume it, but \`$INFLIGHT\` is still in flight. Armed \`$unit\`: it runs \`lane.sh resume $name\` once nothing matching \`[-.]$name-\` is queued or running, or gives up after $PARK_WAITER_HOURS h with a hostops-inbox line."
+    else
+        say "#$pr: lane $name parked with $INFLIGHT in flight; starting $unit FAILED"
+    fi
+}
 # Four fold ticks: long enough to outlast a ~90-minute device arm, so a lane
 # that ended while its arm was in flight is not resumed to be told nothing.
 DRAFT_STRAND_SECS="${DRAFT_STRAND_SECS:-7200}"
@@ -1087,7 +1169,8 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
             continue
         fi
         # PARKED: the PR's own `blocked:*` label first, then its lane's issue.
-        # Silent in the tick log: it is a standing state, not news each tick.
+        # Silent in the tick log: it is a standing state, not news each tick --
+        # except the waiter park_waiter arms for runs still in flight.
         park=$(parked_label "$labels")
         if [ -z "$park" ]; then
             case "$branch" in lane/?*)
@@ -1097,6 +1180,7 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
         fi
         if [ -n "$park" ]; then
             [ "$mode" = list ] && echo "#$pr $branch: $label, skipped: parked by $park (a blocked:* label has its own actor)"
+            park_waiter "$pr" "$branch" "$park"
             continue
         fi
 

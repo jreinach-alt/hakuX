@@ -74,6 +74,12 @@ whoever pushed it.
   cap: stop dispatching locally, do not retry, do not start a session any
   other way. The brief is still the work, so write three good briefs, not
   three thin ones. If turns run short, dispatch fewer.
+- **Before `lane.sh start`, write `$WORK/briefs/<name>.model`: one line, the
+  model that attempt and every resume of it runs on.** `claude-sonnet-5` for
+  docs-only, measurement, route, harness or status work; `claude-opus-5-5`
+  for emulator-code engineering. A lane started on the cheaper model without
+  this file drifts back to Opus at its first resume, so this is the one place
+  that sticks.
 - The host session holds the owner's delegation for `decision-needed` and
   `regression-accepted` calls (owner, 2026-09-24): route those to the host
   with a `[board]` comment on the issue or PR, and keep dispatching other
