@@ -479,7 +479,7 @@ static StringArray *get_required_device_extension_names(void)
  * The environment reaches the Android app through request.sh --env.
  */
 #ifndef HAKUX_GPL_DEFAULT
-#define HAKUX_GPL_DEFAULT 0
+#define HAKUX_GPL_DEFAULT 1
 #endif
 
 static int gpl_requested_mode(void)
