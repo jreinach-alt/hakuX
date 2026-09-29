@@ -184,6 +184,87 @@ symlinked from lane.turnipcost569's `.scratch` rather than rebuilt.
     suspect. Re-run `lt_check.c` with that helper's GPU semantics in mind.
   - Gate 4 follows P1 (#574) as its own post.
 
+## 6. Session 2 (2026-09-28 21:30 PDT, attempt 2)
+
+### Why session 1 did not finish
+
+It ended on purpose, waiting (section 4) on two things outside it: the arms pair (about 90
+min of Nova time behind other queued work) and CI. Its `waiting:` comment is on #580. #569's
+`blocked:in-flight` label made `handback.sh` skip the lane, so the waiter unit resumed it
+when the pair finished. At resume, CI was green on `856d9455cb` and both arms were DONE.
+The arms job had not yet judged the pair.
+
+### Gate 3: the arms pair, read per capture before the job's verdict
+
+Base `1-1790625720-arms-litcompile569-base-3794892` (503b901ee4) and fix
+`1-1790625721-...-fix-3795315` (fb80d7e793): Nova, 3,379 captures each, both from a cleared
+cache (two apks).
+- **All 489 registered lighting-set captures are byte-identical** (sha256 of each PNG).
+- **13 other captures moved:**
+  - 9 are Stencil_REPLACE/ZERO_*;
+  - 4 are Vertex_shader_rounding_tests Geometry{Sub,Super}screen_*.
+- **Both suites draw with `PassthroughVertexShader`, a vertex program.** Their pipelines have
+  no fixed-function vertex shader, and B1 changes only lit fixed-function SPIR-V. The change
+  cannot reach them.
+- **10 of the 13 fix images also appear in runs of refs without B1** (flip474, zrtz272,
+  notify488, dpforce345, buildflags427: 1-23 runs each). These captures are bistable noise.
+  Stencil moves by whole 200x200 quads.
+- The other 3 are new images from the same two suites.
+- The prediction scores only `must_not_move` (the 489). The `[job.arms]` verdict is the
+  record.
+
+### DOA's own shaders, regenerated on the host (the lit share for gate 4)
+
+`gendoa.c` + `build_gendoa.sh`: read lane.local's pull of P1's cold DOA
+`shader_module_keys.bin` (131 raw `ShaderModuleCacheKey`s of 2,352 bytes; x86-64 and aarch64
+agree on the layout) and regenerate every module with a given tree's generator.
+- **Against P1's build (cf5144dddb):** all 44 vertex and 2 geometry modules are
+  **byte-identical** to the device's `spv_cache` SPIR-V, including all 21 lit ones.
+  - The 62 fragment modules differ (psh_differ's shim).
+  - No file name matches, although the device names files by XXH3 of the GLSL. The SPIR-V
+    identity is the stronger check. The name mismatch is not chased.
+- **Master (bf1ecde346) against this branch:** exactly the 18 lit modules that carry the
+  helpers change. Everything else is byte-identical, including master's newer `geom.c` on
+  DOA's two geometry states.
+- **Timed** with `doa_manifest.py` (VS + DOA's triangle GS + one DOA FS) on turnipcost569's
+  harness, 5 interleaved reps, load ~1-3. Then `doa_share.py`:
+
+| | A (master) | B (B1) | A/B |
+|---|---|---|---|
+| the 18 lit pipelines, each | 534-1558 ms | 224-338 ms | **2.18-4.96x** |
+| their VS stage, each | 310-1187 ms | 61-114 ms | |
+| 26 unchanged pipelines (A/A) | | | 0.93-1.13x |
+| sum over 44 modules: pipeline | 20.7 s | 8.8 s | **2.36x** |
+| sum over 44 modules: VS stage | 11.9 s | 1.9 s | **6.26x** |
+
+- **Lit share, each module weighted once:** 81% of DOA's pipeline compile time and 96.7% of its
+  VS stage time.
+- The keys list modules, not how many pipelines used each module. The device leg settles the
+  weighting.
+- DOA's lit shaders gain more than the catalogue's (2.5-2.7x). Their A-side VS stages are
+  larger, up to 1.19 s against the catalogue's 0.8-1.3 s pipelines.
+
+### Gate 4: registered before any run
+
+`docs/testing/predictions/litcompile569-doa-soak.json`, 04:43Z. Judge:
+`doa_soak_judge.py <base> <fix>`.
+- It was written before either arm ran.
+- It was self-checked with P1's run as both arms: L3 passes, and L1, L2 and L4 fail, as a
+  no-change pair must. It reproduces fbwin's 8,277 ms load.
+- Its GPU leg was checked on a fixture (5.0 against 4.0 ms reads -20%).
+
+The run: cold DOA survey soak, Nova, 440 s, `--perflog` (the only build that prints
+`xemu-gpu` frame times; `[shd413]` is in every Android build). Base is master bf1ecde346,
+queued first; fix is 87ceac5569.
+
+**Model:** fix create time = base create time - (1 - 1/6.26) x base VS stage time.
+- **L1:** whole run, per create, within 30%.
+- **L2:** the fight load, within 30%.
+- **L3:** gs/fs per create unchanged (0.75-1.33).
+- **L4:** VS per create falls 4.8-8.1x.
+- **E:** GPU `Tot` ms per frame in play windows with no misses. Expected within ±10%;
+  `j_per_frame` is read beside it.
+
 ## 5. For the next lane
 
 - **Gate 4 (device) waits on P1** (PR #574, lane.shaderfb569: `dpc_ms` per stage). The leg
