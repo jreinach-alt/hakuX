@@ -61,6 +61,9 @@ queue). The fixture's fix arm has `progress_log_proof: false`, as #583's did.
 | R3 deleting judged/ + pairs/ queues it once more | ok | FAIL (the hostops hand-fix) |
 
 16/16 on this branch, 7/16 on master (193 s each, SELFTEST_ONLY alone).
+The arms chain (10 through 94-arms-label-state), 94-arms-verdict-scope,
+94-arms-withdrawn, 99-arms-confounded-pair and this fragment together:
+342 passed, 0 failed. preflight.sh passed.
 
 ## For the next lane
 
