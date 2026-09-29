@@ -287,7 +287,111 @@ queued first; fix is 87ceac5569.
 It did not fail. It ended on purpose, waiting on the gate-4 soak pair, which was queued 54th-55th
 of 59 on the Nova. PR #580 (gates 1-3) was marked ready and folded in the meantime. The pair
 finished DONE, and `handback.sh` resumed the lane to read it. This session carries gate 4 on a
-new PR.
+new PR (#607).
+
+### Gate 4: the pair
+
+The pair: base `0-0-x-0-1790657057-litcompile569-206765` (bf1ecde346) and fix
+`...-1790657061-litcompile569-206870` (87ceac5569). Nova, 440 s, perflog, MAX regimen, battery
+39% at start.
+- **Both arms were cold** (shader cache cleared) and never thermally paused. The GPU clock was
+  615-680 MHz in both, median 680, with no throttling.
+- **The route drew different fights.** Both arms picked Kasumi in Story mode.
+  - Base fought Bayman, lost, and continued.
+  - Fix fought Helena, then Lei Fang.
+  - Both arms reached the fight during the menu presses, so `mark play` (at 23:41:54 on base,
+    00:46:45 on fix) falls mid-fight. fbwin's rule places no fight load on either arm.
+- **Creates:** 155 on base and 110 on fix (-29%). That is outside V's ±25%, so the per-create
+  legs stand and the totals are reported only.
+- **The fix arm's adb link dropped at 00:48:51,** 60 s before its end, at 36% battery (the
+  known Nova link drop). All the compile data is before the drop. `title_verdict.py` voids
+  the arm ("not-foreground: unreadable"), so the fix has no j_per_frame from it.
+
+`doa_soak_judge.py` (registered legs):
+
+| leg | reading | verdict |
+|---|---|---|
+| L1 (whole run, per create) | fix 180.9 ms/create against model 155.4 (base 359.1): ratio 1.16; base/fix **1.98x** | PASS |
+| L2 (fight load, placed from the frames) | base 23:40:03-:23 (character select -> Bayman intro -> GET READY) 7,987 ms; fix 00:44:38-:56 (select -> intro -> fight) 4,855 ms; model 3,786: ratio **1.28** | PASS, on the line |
+| L2, narrower placement (to :20 / :52) | 7,045 against 4,455, model 3,348: ratio 1.33 | FAIL |
+| L3 (gs, fs per create) | 1.12, 1.12 | PASS |
+| L4 (VS per create, 4.8-8.1x) | **3.48x** | FAIL |
+| E (GPU Tot ms/frame, play, dpm == 0) | 26.8 -> 21.2 (-20.9%) | falls: see below |
+
+- **L2 is not decided by this pair.** The two loads fetch different fighters (Bayman against
+  Helena). Where the span ends moves the ratio across the 1.30 bound.
+- **The matched read replaces it** (`doa_matched.py`, written after the run). It pairs the
+  windows whose `kd` vector and create count are the same in both arms, i.e. the same load:
+
+| | base | fix | base/fix |
+|---|---|---|---|
+| 15 matched windows, 72 creates each (base 72 of 155, fix 72 of 110) | | | |
+| pipeline create ms | 25,758 | 12,029 | **2.14x** |
+| the model's fix (base - 0.840 x base VS) | | 12,086 | **fix/model 1.00** |
+| VS stage ms | 16,271 | 3,957 | **4.11x** |
+| GS stage ms | 5,722 | 5,661 | 0.99 |
+| the title-to-menu load (26 creates) | 12,233 | 4,903 | 2.49x (VS 4.55x) |
+| unlit windows (boot 12 creates, 1-create unlit) | 1,205 / 126 / 150 | 1,203 / 125 / 150 | 1.00 |
+
+- **On the same content, the registered model predicts the fix's create time exactly (1.00).**
+  B1 halves DOA's pipeline creation time on the device: 2.14x on matched loads, 1.98x per create
+  over the run.
+- **L4 fails anyway: the device's VS stage gains 4.1x, not the host's 6.3x.** The pipeline
+  total still meets the model because the time outside the three stages also shrank. Over the
+  matched creates, dpc - (vs + gs + fs) is about 3.8 s on base and 2.4 s on fix. The feedback
+  API's stage split is not the host's split. The registered text named only the other failure
+  (L4 pass, L1 fail). This one is not a gap outside the VS stage; it is how the stage time is
+  attributed.
+
+### E: GPU time per frame, fps and energy (the addendum)
+
+`doa_energy.py` / `doa_gpu_segments.py` (written after the run). Scenes are placed from the
+route frames, and only windows with no pipeline miss are counted:
+
+| scene | fps base -> fix | GPU ms/frame | net W (batt + USB) | J/frame |
+|---|---|---|---|---|
+| menus (profile -> character select; same content in both arms) | 58.3 -> 60.0 (at the cap) | 14.7 -> 10.9 (**0.74**) | 8.46 -> 7.39 (1 sample each) | 0.145 -> 0.123 (0.85) |
+| first fight (Bayman / Helena, same stage, pause menus included) | 34.7 -> 44.2 (**1.27x**) | 27.4 -> 22.3 (**0.81**) | 7.41 -> 8.06 (4/4) | 0.214 -> 0.182 (**0.85**) |
+| whole run to the fix's link drop | 36.6 -> 46.6 | 26.8 -> 21.4 (0.80) | 7.43 -> 8.02 | 0.203 -> 0.172 (0.85) |
+
+- **The fight is GPU-bound in both arms:** fps is about 1000 / GPU ms (27.4 ms -> 36 fps cap,
+  34.7 read; 22.3 -> 45, 44.2 read). A cut in GPU time per frame becomes frame rate.
+- **The registered E reading expected ±10%.** It reads -19% to -26%: "the rewrite also cuts GPU
+  time per frame and is an energy lever". Energy per frame falls 15%. Power rises, because the
+  fix draws more frames per second.
+- **Only `vsh-ff.c` differs between the refs** (`git diff --stat bf1ecde346 87ceac5569 -- .
+  ':!docs'`).
+- **Why this is not yet a claim:** it is one run per arm, and the fight is a different opponent
+  in each arm. The menus are the same content, but n = 13 and 10.
+- **Mechanism, host** (Turnip A740 drm-shim, `IR3_SHADER_DEBUG=vs`, gate 2's catalogue, where
+  the FS keeps the lit colours):
+
+| VS (A -> B) | instr | nops | cat0 (flow + nop) | cat2 + cat3 ALU | full regs | max_waves |
+|---|---|---|---|---|---|---|
+| ff_lit2 (+basic) | 4692 -> 2930 | 1584 -> 347 | 1841 -> 368 | 2608 -> 2488 | 16 -> 19 | 12 -> 10 |
+| ff_skin_texgen (+basic) | 9224 -> 5101 | 3281 -> ~400 | 3825 -> 427 | 4923 -> 4539 | 24 -> 24 | 8 -> 8 |
+
+  - B1 keeps the ALU and removes about 230-400 branch instructions and most of the scheduling
+    nops.
+  - Per vertex, the old forms pay a branch and its nop padding at every special case. The new
+    forms select.
+  - The cost is 3 more registers on `ff_lit2`.
+  - A static count is not a dynamic path, so this makes the device reading plausible; it does not
+    prove it.
+- **DOA's own manifest cannot show this on the host.** Its pairing (one DOA FS + the triangle
+  GS) reads only 2 varyings, so link-time DCE strips the lighting from the final ISA. A and B come
+  out identical: 872-931 instructions, 12 regs. The compile-time gap survives because Turnip's NIR
+  loop runs before the link.
+- **Earlier DOA soaks with perflog** (`doa_gpu_history.py`: 22 runs, all pre-B1) are no baseline.
+  Other builds and routes read 13-60 ms and 13-33 fps.
+
+### Replication, registered before it ran
+
+`docs/testing/predictions/litcompile569-doa-gpu-rep.json`: the same refs, order reversed (fix
+first). The judge is `doa_gpu_history.py`, unchanged from the registering commit.
+- **R1:** this pair's fight Tot fix/base <= 0.90 (refuted if >= 0.95).
+- **R2:** fps >= 1.10.
+- **R3:** pooled with gate 4's 0.82, mean <= 0.90.
 
 ## 5. For the next lane
 
