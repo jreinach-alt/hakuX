@@ -212,6 +212,32 @@ on the Nova pgraph pair. Next step: `python3 docs/lanes/tcg424flip/arcticread3.p
 over the four ids, read each window's frames, and judge M0/M1/M2a/M2b/M4' as
 registered. Then check scores1.tsv's status column on the pgraph arm.
 
+## Attempt 5 (2026-09-29 ~16:30 PDT): still battery-blocked, nothing ran
+
+Attempt 4 did not finish because it had queued its runs and correctly
+stopped to wait on them. This session was a resume with no result to read.
+The dispatcher log (`logs/dispatcher.log`) shows all six requests, the four
+Arctic Thunder runs and the Nova pgraph pair, refused by the battery gate at
+every tick from 14:10 through 16:15 PDT. The Nova sat at 35-37%, and the
+gates need 38.0% (soaks) and 41.0% (arms pair). Nothing has run, so there is
+nothing to judge. No leg, reader, prediction or ref changed.
+
+This session could not see `queue/` or `results/` entries whose ids start
+`1-` (FileNotFoundError on a direct stat, although the dispatcher logged a
+write to `results/1-1790723547-hostops-1062899` at 16:22). The live
+`logs/dispatcher.log` is the evidence used above. A resumed session that
+cannot open its result directories should read that log first, then ask
+hostops for the paths.
+
+PR #605 is MERGEABLE/CLEAN with green CI on 7958fcdcc3. Master is 26 commits
+ahead but touches none of this lane's files, so no merge was made (it would
+only cost a CI run).
+
+**Waiting on (attempt 5):** the same six ids as attempt 4:
+1-1790716215-lane.tcg424flip-3229031, -3229494, -3229888, -3230429 and
+1-1790707670-arms-tcg424flip-base-1207251 / -fix-1207297. They run once the
+Nova is above its battery floor (dock, or the ~18:00 PDT top-up).
+
 ## For the next lane
 
 - The arctic-thunder race ends 100-160 s after `mark gameplay`, and the route
