@@ -9,8 +9,9 @@ the run with the owner's margin:
 
     need = FLOOR + MARGIN + rate(D, kind) x runs x (seconds + overhead_s) / 3600
 
-FLOOR is 15 (hostops's battery hold places itself below it) and MARGIN is 5
-("about 5% wiggle room"). kind is `soak` for a request with a title and
+FLOOR is 15 (hostops's battery hold places itself below it), or the device's
+own floor where it fails above that (the Nova's USB link: 30, FLOOR_BY_LABEL),
+and MARGIN is 5 ("about 5% wiggle room"). kind is `soak` for a request with a title and
 `pgraph` for a test-disc run.
 
 `rate` and `overhead_s` are LEARNED from D's own last 10 results of that kind,
@@ -69,6 +70,13 @@ import sys
 import time
 
 FLOOR = float(os.environ.get("BATTERY_FLOOR", "15"))
+# A per-handheld floor replaces FLOOR where the device fails above 15 %. The
+# Nova's USB link on the PC's 500 mA port drops at low charge (Windows adb.log
+# `write terminated: Input/output error` on ee317437): of its runs 09-27/28,
+# 8 of 17 that went below 30 % lost the link, against 2 of 38 that stayed in
+# 30-59 % (docs/lanes/battadmit/NOTES.md, "The Nova's link floor"). So a Nova
+# run must end at 30 + MARGIN. BATTERY_FLOOR_<label> in the environment wins.
+FLOOR_BY_LABEL = {"nova": 30.0}
 MARGIN = float(os.environ.get("BATTERY_MARGIN", "5"))
 CEILING = float(os.environ.get("BATTERY_CEILING", "75"))
 HEAD_WAIT_S = float(os.environ.get("BATTERY_HEAD_WAIT_S", "1800"))
@@ -106,6 +114,11 @@ def load(path):
             return json.load(fh)
     except (OSError, ValueError):
         return None
+
+
+def floor_for(label):
+    v = os.environ.get("BATTERY_FLOOR_%s" % label)
+    return float(v) if v else FLOOR_BY_LABEL.get(label, FLOOR)
 
 
 def kind_of(req):
@@ -236,15 +249,16 @@ def check(d, label, req_path, level, head):
     seconds = float(req.get("seconds") or 0)
     lv = learn_cached(d, label, kind)
     dev_s = runs * (seconds + lv["overhead_s"])
-    need = FLOOR + MARGIN + lv["rate"] * dev_s / 3600.0
+    floor = floor_for(label)
+    need = floor + MARGIN + lv["rate"] * dev_s / 3600.0
     need = round(need + 0.049, 1)          # rounded up: never admit on a rounding
     uncapped = need
     need = min(need, CEILING)
     now = time.time()
     state_path = os.path.join(d, ".battery_head.%s" % label)
     state = load(state_path) or {}
-    inputs = "rate %.1f %%/h %s n=%d, %s x (%ds + overhead %ds %s n=%d)" % (
-        lv["rate"], lv["rate_src"], lv["rate_n"], runs, seconds,
+    inputs = "floor %.0f + margin %.0f + rate %.1f %%/h %s n=%d, %s x (%ds + overhead %ds %s n=%d)" % (
+        floor, MARGIN, lv["rate"], lv["rate_src"], lv["rate_n"], runs, seconds,
         lv["overhead_s"], lv["overhead_src"], lv["overhead_n"])
     if uncapped > need:
         inputs += "; need %.1f capped at ceiling %.0f" % (uncapped, CEILING)
@@ -252,7 +266,7 @@ def check(d, label, req_path, level, head):
                rate_src=lv["rate_src"], rate_n=lv["rate_n"],
                overhead_s=lv["overhead_s"], overhead_src=lv["overhead_src"],
                overhead_n=lv["overhead_n"], kind=kind, runs=runs,
-               seconds=seconds, floor=FLOOR, margin=MARGIN, t_admit=now)
+               seconds=seconds, floor=floor, margin=MARGIN, t_admit=now)
     if uncapped > need:
         rec["need_uncapped"] = uncapped
     if level < need:

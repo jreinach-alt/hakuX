@@ -260,14 +260,71 @@ def _req(path):
     return req, s(req.get("device")), os.path.basename(s(req.get("expect")))
 
 
+# How long `adb devices` may take. Windows adb.exe through WSL interop can
+# hang (devices.sh's adb_call), and fleet.py runs on the board's tick.
+ADB_TIMEOUT_S = int(os.environ.get("FLEET_ADB_TIMEOUT_S", "20"))
+
+
+def attached_labels():
+    """({label: adb state}, None), or (None, why adb could not be read).
+
+    Every serial `adb devices` lists, mapped to its label by devices.sh's own
+    device_env table, not a second copy of it: a serial the table does not
+    know is left out. The state is adb's word ("device", "offline",
+    "unauthorized"); only "device" is a handheld a worker can drive.
+    """
+    try:
+        p = subprocess.run(["adb", "devices"], capture_output=True, text=True,
+                           timeout=ADB_TIMEOUT_S)
+    except FileNotFoundError:
+        return None, "adb is not on PATH"
+    except subprocess.TimeoutExpired:
+        return None, "`adb devices` gave no answer in %ds" % ADB_TIMEOUT_S
+    except OSError as e:
+        return None, "`adb devices` did not run (%s)" % e
+    lines = p.stdout.replace("\r", "").splitlines()
+    if p.returncode != 0 or not any(l.startswith("List of devices") for l in lines):
+        return None, "`adb devices` exited %d without its device list" % p.returncode
+    state = {}
+    for l in lines:
+        f = l.split()
+        if len(f) >= 2 and not l.startswith("List of devices") and not l.startswith("*"):
+            state[f[0]] = f[1]
+    if not state:
+        return {}, None
+    devices_sh = os.path.join(os.path.dirname(os.path.abspath(__file__)), "devices.sh")
+    if not os.path.exists(devices_sh):
+        return None, "devices.sh is not beside fleet.py, so serials have no labels"
+    try:
+        m = subprocess.run(
+            ["bash", "-c", '. "$0" || exit 2; for s; do device_env "$s" '
+             '>/dev/null 2>&1 && echo "$s $DEVICE_LABEL"; done; exit 0',
+             devices_sh] + sorted(state),
+            capture_output=True, text=True, timeout=ADB_TIMEOUT_S)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return None, "devices.sh could not map the serials (%s)" % e
+    if m.returncode != 0:
+        return None, "devices.sh could not map the serials (exit %d)" % m.returncode
+    labels = {}
+    for l in m.stdout.splitlines():
+        f = l.split()
+        if len(f) == 2 and f[0] in state:
+            labels[f[1]] = state[f[0]]
+    return labels, None
+
+
 def queue_stall(now=None, settle_s=None):
     """Queued requests that every live claimer has walked past.
 
-    Returns (stalled, on_hold, blind):
+    Returns (stalled, on_hold, absent, blind):
       stalled  [(id, age_s, evidence)] -- nothing is going to claim these;
       on_hold  [(id, age_s, labels)]   -- only a held device can take these;
+      absent   [(id, age_s, label, adb_state)] -- pinned to a handheld with
+               no live worker that adb does not list as attached ("absent"
+               when adb lists it not at all): hands or a re-pin, not a
+               claimer fix;
       blind    None, or why the queue could not be judged at all.
-    Both lists oldest first. Never raises: this file also runs from scratch
+    All lists oldest first. Never raises: this file also runs from scratch
     copies (selftest.d/93, /55) whose $DISPATCH_DIR has no queue at all.
     """
     now = time.time() if now is None else now
@@ -276,9 +333,9 @@ def queue_stall(now=None, settle_s=None):
     try:
         queued = sorted(n for n in os.listdir(qdir) if n.endswith(".req"))
     except OSError:
-        return [], [], None
+        return [], [], [], None
     if not queued:
-        return [], [], None
+        return [], [], [], None
     # Liveness is affinity.py's own kill -0 test, not a second copy of it: the
     # scheduler decides who is serving, and this has to agree with it.
     # Imported here and not at the top because the scratch copies above carry
@@ -286,8 +343,9 @@ def queue_stall(now=None, settle_s=None):
     try:
         import affinity
     except ImportError as e:
-        return [], [], ("affinity.py is not beside fleet.py (%s), so liveness "
-                        "cannot be read the way the scheduler reads it" % e)
+        return [], [], [], ("affinity.py is not beside fleet.py (%s), so "
+                            "liveness cannot be read the way the scheduler "
+                            "reads it" % e)
     live = set(affinity.serving(D))
     try:
         held = {h for h in os.listdir(os.path.join(D, "hold"))
@@ -354,7 +412,23 @@ def queue_stall(now=None, settle_s=None):
     epoch = max([_mtime(os.path.join(D, "lanes")), _mtime(os.path.join(D, "hold"))]
                 + [_mtime(os.path.join(D, "lanes", l)) for l in live])
 
-    stalled, on_hold = [], []
+    # A HANDHELD OFF USB IS NOT A STALL. On 2026-09-28 17:40 PDT the owner
+    # unplugged both handhelds to charge; the Thor's worker exited with its
+    # device, and 17 Thor-pinned requests read as "nothing will claim it"
+    # (#598). Nothing was broken, and harness_health.py `[devices]` already
+    # says a device is gone. So a pin to a label with no live worker whose
+    # serial adb does not list as `device` is `absent`. adb is read at most
+    # once per call, and only when some pin has no live claimer. When adb
+    # cannot be read, the request stays a stall and the FAIL says so:
+    # "cannot tell" is never "fine".
+    adb = []                           # [labels-or-None, why] once read
+    def adb_state(label):
+        if not adb:
+            adb.extend(attached_labels())
+        labels, why = adb
+        return (None, why) if labels is None else (labels.get(label, "absent"), None)
+
+    stalled, on_hold, absent = [], [], []
     for name in queued:
         path = os.path.join(qdir, name)
         written = _mtime(path)
@@ -375,9 +449,18 @@ def queue_stall(now=None, settle_s=None):
             claimers = set(live)
         if not claimers:
             if now - epoch > settle_s:
+                why = ""
+                if pin and pin not in affinity.OFFPOOL:   # desktop has no serial
+                    st, blind_adb = adb_state(pin)
+                    if st is not None and st != "device":
+                        absent.append((rid, age, pin, st))
+                        continue
+                    why = (" (and adb could not be read to tell whether %s "
+                           "is on USB: %s)" % (pin, blind_adb) if blind_adb
+                           else " (%s is on adb as `device`)" % pin)
                 stalled.append((rid, age, (
                     "pinned to %s, which no live worker serves and nobody "
-                    "has held" % pin) if pin else
+                    "has held%s" % (pin, why)) if pin else
                     "no dispatch worker is alive and no device is held"))
             continue
         changed = max(epoch, sib.get(key, 0.0))
@@ -401,7 +484,8 @@ def queue_stall(now=None, settle_s=None):
             stalled.append((rid, age, "; ".join(evidence)))
     stalled.sort(key=lambda r: -r[1])
     on_hold.sort(key=lambda r: -r[1])
-    return stalled, on_hold, None
+    absent.sort(key=lambda r: -r[1])
+    return stalled, on_hold, absent, None
 
 
 # A PR the machine has already picked up is not the board's to act on. These
@@ -1227,8 +1311,10 @@ def main():
     # the first thing anyone clearing it needs; the next is the snapshot, since
     # a stale $DISPATCH_DIR/bin is how 2026-09-20 happened. A request waiting
     # on a hold is said on stdout and costs nothing: a hold is somebody's
-    # decision, and waking the board for it every tick would be noise.
-    stalled, on_hold, qblind = queue_stall()
+    # decision, and waking the board for it every tick would be noise. So is
+    # a request pinned to a handheld that is off USB (#598): that needs hands
+    # or a re-pin, and harness_health.py `[devices]` already reports it.
+    stalled, on_hold, absent, qblind = queue_stall()
     if qblind:
         print("FAIL: QUEUE-BLIND -- %s. The dispatch queue was not judged."
               % qblind, file=sys.stderr)
@@ -1250,6 +1336,14 @@ def main():
               "%s, queued %s ago, held: %s. Deliberate, not a stall; `rm "
               "$DISPATCH_DIR/hold/<label>` returns a device to service."
               % (len(on_hold), rid, age_s(age_secs), labels))
+    for label in sorted({r[2] for r in absent}):
+        rows = [r for r in absent if r[2] == label]
+        rid, age_secs, _, st = rows[0]
+        print("\nqueue: %d request(s) can only run on %s, which is not on adb%s "
+              "-- oldest %s, queued %s ago. Needs hands or a re-pin, not a "
+              "claimer fix."
+              % (len(rows), label, "" if st == "absent" else
+                 " as a device (adb says `%s`)" % st, rid, age_s(age_secs)))
     return rc
 
 

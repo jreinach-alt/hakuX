@@ -650,10 +650,7 @@ lane_blind_check() {
 #
 # battery_level: dumpsys's `level:`, read at most once a minute (the queue walk
 # asks once per request per tick). Empty when it cannot be read; the caller
-# then admits unchecked and says so, because an unreadable level on a device
-# that is present is an adb transient, and an absent device is requeued by
-# serve_one's own device_present check anyway. hostops's hold below 15 % is
-# still the floor under all of this.
+# then claims nothing (battery_unreadable).
 battery_level() {
     local f="$D/.battery_level.$DEVICE_LABEL" now t l
     now=$(date +%s)
@@ -673,15 +670,29 @@ battery_level() {
 # refused, the device's head -- on the first refusal. Each distinct line is
 # logged once per request, not every five seconds.
 declare -A BATT_SAID=()
+BATT_UNREAD_SINCE=""
+# battery_unreadable <id>: FAIL CLOSED. The first live hours admitted a run
+# unchecked on an unreadable level (16:41:17 on 09-28) while the Nova's USB
+# link was failing, and the run voided. An unreadable level almost always IS
+# that link, so nothing is claimed; the next walk reads again. One read per
+# walk (BATT_WALK_UNREAD), one line per episode, and one when it recovers.
+battery_unreadable() {
+    BATT_WALK_UNREAD=1
+    if [ -z "$BATT_UNREAD_SINCE" ]; then
+        BATT_UNREAD_SINCE=$(date +%s)
+        log "BATTERY: level unreadable on $DEVICE_LABEL; not claiming $1, reading again at the next walk"
+    fi
+}
 battery_admit() {
     local req="$1" id="$2" level out rc line
     BATT_JSON=""
     [ "${BATTERY_ADMIT:-on}" = off ] && return 0
+    [ -z "${BATT_WALK_UNREAD:-}" ] || return 1
     level=$(battery_level)
-    if [ -z "$level" ]; then
-        log "BATTERY: level unreadable on $DEVICE_LABEL; admitting $id unchecked"
-        BATT_JSON='{"battery_start": null, "unchecked": "level unreadable"}'
-        return 0
+    [ -n "$level" ] || { battery_unreadable "$id"; return 1; }
+    if [ -n "$BATT_UNREAD_SINCE" ]; then
+        log "BATTERY: level readable again on $DEVICE_LABEL ($level) after $(( $(date +%s) - BATT_UNREAD_SINCE ))s unreadable"
+        BATT_UNREAD_SINCE=""
     fi
     out=$(python3 "$HERE/battery_admit.py" check "$D" "$DEVICE_LABEL" "$req" "$level" "${BATT_HEAD:-}")
     rc=$?
@@ -710,7 +721,7 @@ battery_admit() {
 # serve_queue <req>... -> 0 once one is served. The queue walk, in priority
 # order; BATT_HEAD is per walk, so a head is the first refusal of THIS tick.
 serve_queue() {
-    BATT_HEAD=""
+    BATT_HEAD="" BATT_WALK_UNREAD=""
     local r
     for r in "$@"; do
         serve_one "$r" && return 0
