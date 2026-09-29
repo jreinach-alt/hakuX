@@ -466,18 +466,31 @@ STRAND_STALE="folded fold-ready needs-rebase needs-audit-1 needs-audit-2 needs-r
 # more literal, so the next `blocked:<x>` does not reopen it. The same holds for
 # the lane's ISSUE: a lane whose territory issue carries `blocked:*` is parked
 # whatever its PR says, and a lane with no PR is not idle while it is.
+#
+# EXCEPT `blocked:in-flight` ON THE ISSUE. The board and hostops set it on an
+# issue to say "lanes are already working this; do not dispatch another one"
+# -- it blocks a NEW lane, and it describes exactly the lanes it would park.
+# #569 carried it from 2026-09-28T18:41Z, and every lane on #569 that ended
+# waiting on its device runs (shaderfb569, litcompile569, uberspike569,
+# gpl569, ibcache, memfast) was never resumed when they finished; each needed a
+# hand-made hostops waiter unit, and harness_health.py's `parked-nowaker` fired
+# for it. Only the ISSUE half takes the exception: a PR that itself carries
+# `blocked:in-flight` (#504's interim) is still parked by parked_label.
+ISSUE_NOT_PARKING="blocked:in-flight"
 parked_label() {   # <labels,comma,separated> -> the first blocked:* label, or nothing
     local l
     local IFS=,
     for l in $1; do case "$l" in blocked:*) printf '%s\n' "$l"; return 0 ;; esac; done
     return 0
 }
-parked_lanes() {   # -> "name<TAB>#<issue> <label>" for every lane with an open issue labelled blocked:*
+parked_lanes() {   # -> "name<TAB>#<issue> <label>" for every lane with an open issue labelled blocked:* (less ISSUE_NOT_PARKING)
     local bi
+    # Every blocked:* label, comma-joined: the exception is applied below, so
+    # an issue carrying `blocked:in-flight` AND `blocked:after-0.5` still parks.
     bi=$(gh issue list --repo "$GH_REPO" --state open --limit 300 --json number,labels \
-        --jq '.[] | ([.labels[].name | select(startswith("blocked:"))] | first // empty) as $l | "\(.number)\t\($l)"' 2>/dev/null)
+        --jq '.[] | ([.labels[].name | select(startswith("blocked:"))] | join(",")) as $l | "\(.number)\t\($l)"' 2>/dev/null)
     [ -n "$bi" ] || return 0
-    BI="$bi" python3 - "$T" <<'PY' 2>/dev/null
+    BI="$bi" NOT_PARKING="$ISSUE_NOT_PARKING" python3 - "$T" <<'PY' 2>/dev/null
 import os, sys, tomllib
 testing = sys.argv[1]
 path = os.environ.get("HAKUX_TERRITORY")
@@ -491,10 +504,14 @@ try:
 except Exception:
     sys.exit(0)
 parked = {}
+not_parking = set(os.environ.get("NOT_PARKING", "").split())
 for l in os.environ.get("BI", "").splitlines():
-    n, _, lab = l.partition("\t")
-    if lab.startswith("blocked:"):         # a line with no label is not an answer to this question
-        parked.setdefault(n.strip(), lab.strip())
+    n, _, labs = l.partition("\t")
+    for lab in (x.strip() for x in labs.split(",")):
+        # a line with no label is not an answer to this question
+        if lab.startswith("blocked:") and lab not in not_parking:
+            parked.setdefault(n.strip(), lab)
+            break
 for name, row in sorted((t.get("lane") or {}).items()):
     for i in row.get("issues", []):
         if str(i) in parked:
