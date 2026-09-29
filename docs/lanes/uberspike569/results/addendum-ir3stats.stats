@@ -1,0 +1,185 @@
+MESA: info: ; VERT prog 21/1: 2622 instr, 625 nops, 1997 non-nops, 62 mov, 16 cov, 3936 dwords
+MESA: info: ; VERT prog 21/1: 0 last-baryf, 0 last-helper, 0 half, 13 full, 212 constlen
+MESA: info: ; VERT prog 21/1: 687 cat0, 78 cat1, 1293 cat2, 560 cat3, 1 cat4, 0 cat5, 3 cat6, 0 cat7
+MESA: info: ; VERT prog 21/1: 8 sstall, 1 (ss), 0 systall, 0 (sy), 0 loops
+MESA: info: ; VERT prog 21/1: 14 max_waves, 0 double_threadsize
+MESA: info: ; VERT prog 21/2: 2573 instr, 612 nops, 1961 non-nops, 2 mov, 4 cov, 3744 dwords
+MESA: info: ; VERT prog 21/2: 0 last-baryf, 0 last-helper, 0 half, 16 full, 28 constlen
+MESA: info: ; VERT prog 21/2: 674 cat0, 6 cat1, 1317 cat2, 560 cat3, 1 cat4, 0 cat5, 15 cat6, 0 cat7
+MESA: info: ; VERT prog 21/2: 8 sstall, 1 (ss), 282 systall, 12 (sy), 0 loops
+MESA: info: ; VERT prog 21/2: 12 max_waves, 0 double_threadsize
+MESA: info: ; GEOM prog 22/1: 3737 instr, 1398 nops, 2339 non-nops, 1057 mov, 109 cov, 5248 dwords
+MESA: info: ; GEOM prog 22/1: 0 last-baryf, 0 last-helper, 0 half, 48 full, 12 constlen
+MESA: info: ; GEOM prog 22/1: 1593 cat0, 1170 cat1, 736 cat2, 183 cat3, 36 cat4, 0 cat5, 19 cat6, 0 cat7
+MESA: info: ; GEOM prog 22/1: 298 sstall, 47 (ss), 156 systall, 3 (sy), 5 loops
+MESA: info: ; GEOM prog 22/1: 4 max_waves, 0 double_threadsize
+MESA: info: ; FRAG prog 23/1: 4763 instr, 1997 nops, 2766 non-nops, 355 mov, 81 cov, 6080 dwords
+MESA: info: ; FRAG prog 23/1: 12 last-baryf, 4700 last-helper, 0 half, 19 full, 28 constlen
+MESA: info: ; FRAG prog 23/1: 2226 cat0, 436 cat1, 1619 cat2, 425 cat3, 55 cat4, 1 cat5, 0 cat6, 1 cat7
+MESA: info: ; FRAG prog 23/1: 380 sstall, 58 (ss), 29 systall, 1 (sy), 3 loops
+MESA: info: ; FRAG prog 23/1: 10 max_waves, 0 double_threadsize
+MESA: info: ; VERT prog 24/1: 176 instr, 5 nops, 171 non-nops, 2 mov, 0 cov, 390 dwords
+MESA: info: ; VERT prog 24/1: 0 last-baryf, 0 last-helper, 0 half, 12 full, 24 constlen
+MESA: info: ; VERT prog 24/1: 7 cat0, 2 cat1, 99 cat2, 64 cat3, 1 cat4, 0 cat5, 3 cat6, 0 cat7
+MESA: info: ; VERT prog 24/1: 0 sstall, 1 (ss), 0 systall, 0 (sy), 0 loops
+MESA: info: ; VERT prog 24/1: 16 max_waves, 0 double_threadsize
+MESA: info: ; GEOM prog 25/1: 3737 instr, 1398 nops, 2339 non-nops, 1057 mov, 109 cov, 5248 dwords
+MESA: info: ; GEOM prog 25/1: 0 last-baryf, 0 last-helper, 0 half, 48 full, 12 constlen
+MESA: info: ; GEOM prog 25/1: 1593 cat0, 1170 cat1, 736 cat2, 183 cat3, 36 cat4, 0 cat5, 19 cat6, 0 cat7
+MESA: info: ; GEOM prog 25/1: 298 sstall, 47 (ss), 156 systall, 3 (sy), 5 loops
+MESA: info: ; GEOM prog 25/1: 4 max_waves, 0 double_threadsize
+MESA: info: ; FRAG prog 26/1: 4763 instr, 1997 nops, 2766 non-nops, 355 mov, 81 cov, 6080 dwords
+MESA: info: ; FRAG prog 26/1: 12 last-baryf, 4700 last-helper, 0 half, 19 full, 28 constlen
+MESA: info: ; FRAG prog 26/1: 2226 cat0, 436 cat1, 1619 cat2, 425 cat3, 55 cat4, 1 cat5, 0 cat6, 1 cat7
+MESA: info: ; FRAG prog 26/1: 380 sstall, 58 (ss), 29 systall, 1 (sy), 3 loops
+MESA: info: ; FRAG prog 26/1: 10 max_waves, 0 double_threadsize
+MESA: info: ; VERT prog 27/1: 3955 instr, 1269 nops, 2686 non-nops, 126 mov, 86 cov, 7520 dwords
+MESA: info: ; VERT prog 27/1: 0 last-baryf, 0 last-helper, 0 half, 16 full, 136 constlen
+MESA: info: ; VERT prog 27/1: 1508 cat0, 212 cat1, 1503 cat2, 724 cat3, 5 cat4, 0 cat5, 3 cat6, 0 cat7
+MESA: info: ; VERT prog 27/1: 56 sstall, 22 (ss), 0 systall, 0 (sy), 0 loops
+MESA: info: ; VERT prog 27/1: 12 max_waves, 0 double_threadsize
+MESA: info: ; VERT prog 27/2: 3950 instr, 1267 nops, 2683 non-nops, 124 mov, 85 cov, 7520 dwords
+MESA: info: ; VERT prog 27/2: 0 last-baryf, 0 last-helper, 0 half, 16 full, 72 constlen
+MESA: info: ; VERT prog 27/2: 1506 cat0, 209 cat1, 1502 cat2, 724 cat3, 5 cat4, 0 cat5, 4 cat6, 0 cat7
+MESA: info: ; VERT prog 27/2: 56 sstall, 22 (ss), 19 systall, 1 (sy), 0 loops
+MESA: info: ; VERT prog 27/2: 12 max_waves, 0 double_threadsize
+MESA: info: ; GEOM prog 28/1: 3737 instr, 1398 nops, 2339 non-nops, 1057 mov, 109 cov, 5248 dwords
+MESA: info: ; GEOM prog 28/1: 0 last-baryf, 0 last-helper, 0 half, 48 full, 12 constlen
+MESA: info: ; GEOM prog 28/1: 1593 cat0, 1170 cat1, 736 cat2, 183 cat3, 36 cat4, 0 cat5, 19 cat6, 0 cat7
+MESA: info: ; GEOM prog 28/1: 298 sstall, 47 (ss), 156 systall, 3 (sy), 5 loops
+MESA: info: ; GEOM prog 28/1: 4 max_waves, 0 double_threadsize
+MESA: info: ; FRAG prog 29/1: 4763 instr, 1997 nops, 2766 non-nops, 355 mov, 81 cov, 6080 dwords
+MESA: info: ; FRAG prog 29/1: 12 last-baryf, 4700 last-helper, 0 half, 19 full, 28 constlen
+MESA: info: ; FRAG prog 29/1: 2226 cat0, 436 cat1, 1619 cat2, 425 cat3, 55 cat4, 1 cat5, 0 cat6, 1 cat7
+MESA: info: ; FRAG prog 29/1: 380 sstall, 58 (ss), 29 systall, 1 (sy), 3 loops
+MESA: info: ; FRAG prog 29/1: 10 max_waves, 0 double_threadsize
+MESA: info: ; VERT prog 30/1: 1503 instr, 226 nops, 1277 non-nops, 343 mov, 26 cov, 2658 dwords
+MESA: info: ; VERT prog 30/1: 0 last-baryf, 0 last-helper, 0 half, 48 full, 348 constlen
+MESA: info: ; VERT prog 30/1: 255 cat0, 383 cat1, 399 cat2, 261 cat3, 8 cat4, 0 cat5, 197 cat6, 0 cat7
+MESA: info: ; VERT prog 30/1: 34 sstall, 20 (ss), 685 systall, 9 (sy), 1 loops
+MESA: info: ; VERT prog 30/1: 4 max_waves, 0 double_threadsize
+MESA: info: ; VERT prog 30/2: 1462 instr, 198 nops, 1264 non-nops, 328 mov, 22 cov, 2624 dwords
+MESA: info: ; VERT prog 30/2: 0 last-baryf, 0 last-helper, 0 half, 48 full, 20 constlen
+MESA: info: ; VERT prog 30/2: 228 cat0, 366 cat1, 398 cat2, 261 cat3, 8 cat4, 0 cat5, 201 cat6, 0 cat7
+MESA: info: ; VERT prog 30/2: 50 sstall, 27 (ss), 826 systall, 11 (sy), 1 loops
+MESA: info: ; VERT prog 30/2: 4 max_waves, 0 double_threadsize
+MESA: info: ; GEOM prog 31/1: 3534 instr, 1397 nops, 2137 non-nops, 854 mov, 108 cov, 4864 dwords
+MESA: info: ; GEOM prog 31/1: 0 last-baryf, 0 last-helper, 0 half, 48 full, 12 constlen
+MESA: info: ; GEOM prog 31/1: 1590 cat0, 962 cat1, 732 cat2, 189 cat3, 36 cat4, 0 cat5, 25 cat6, 0 cat7
+MESA: info: ; GEOM prog 31/1: 299 sstall, 49 (ss), 0 systall, 5 (sy), 5 loops
+MESA: info: ; GEOM prog 31/1: 4 max_waves, 0 double_threadsize
+MESA: info: ; FRAG prog 32/1: 4763 instr, 1997 nops, 2766 non-nops, 355 mov, 81 cov, 6080 dwords
+MESA: info: ; FRAG prog 32/1: 12 last-baryf, 4700 last-helper, 0 half, 19 full, 28 constlen
+MESA: info: ; FRAG prog 32/1: 2226 cat0, 436 cat1, 1619 cat2, 425 cat3, 55 cat4, 1 cat5, 0 cat6, 1 cat7
+MESA: info: ; FRAG prog 32/1: 380 sstall, 58 (ss), 29 systall, 1 (sy), 3 loops
+MESA: info: ; FRAG prog 32/1: 10 max_waves, 0 double_threadsize
+MESA: info: ; VERT prog 33/1: 6382 instr, 2027 nops, 4355 non-nops, 325 mov, 131 cov, 9416 dwords
+MESA: info: ; VERT prog 33/1: 0 last-baryf, 0 last-helper, 0 half, 19 full, 408 constlen
+MESA: info: ; VERT prog 33/1: 2385 cat0, 456 cat1, 2349 cat2, 1181 cat3, 8 cat4, 0 cat5, 3 cat6, 0 cat7
+MESA: info: ; VERT prog 33/1: 139 sstall, 46 (ss), 0 systall, 0 (sy), 2 loops
+MESA: info: ; VERT prog 33/1: 10 max_waves, 0 double_threadsize
+MESA: info: ; VERT prog 33/2: 6367 instr, 2005 nops, 4362 non-nops, 316 mov, 122 cov, 9376 dwords
+MESA: info: ; VERT prog 33/2: 0 last-baryf, 0 last-helper, 0 half, 19 full, 100 constlen
+MESA: info: ; VERT prog 33/2: 2363 cat0, 438 cat1, 2357 cat2, 1181 cat3, 8 cat4, 0 cat5, 20 cat6, 0 cat7
+MESA: info: ; VERT prog 33/2: 171 sstall, 55 (ss), 192 systall, 10 (sy), 2 loops
+MESA: info: ; VERT prog 33/2: 10 max_waves, 0 double_threadsize
+MESA: info: ; GEOM prog 34/1: 3737 instr, 1398 nops, 2339 non-nops, 1057 mov, 109 cov, 5248 dwords
+MESA: info: ; GEOM prog 34/1: 0 last-baryf, 0 last-helper, 0 half, 48 full, 12 constlen
+MESA: info: ; GEOM prog 34/1: 1593 cat0, 1170 cat1, 736 cat2, 183 cat3, 36 cat4, 0 cat5, 19 cat6, 0 cat7
+MESA: info: ; GEOM prog 34/1: 298 sstall, 47 (ss), 156 systall, 3 (sy), 5 loops
+MESA: info: ; GEOM prog 34/1: 4 max_waves, 0 double_threadsize
+MESA: info: ; FRAG prog 35/1: 4763 instr, 1997 nops, 2766 non-nops, 355 mov, 81 cov, 6080 dwords
+MESA: info: ; FRAG prog 35/1: 12 last-baryf, 4700 last-helper, 0 half, 19 full, 28 constlen
+MESA: info: ; FRAG prog 35/1: 2226 cat0, 436 cat1, 1619 cat2, 425 cat3, 55 cat4, 1 cat5, 0 cat6, 1 cat7
+MESA: info: ; FRAG prog 35/1: 380 sstall, 58 (ss), 29 systall, 1 (sy), 3 loops
+MESA: info: ; FRAG prog 35/1: 10 max_waves, 0 double_threadsize
+MESA: info: ; VERT prog 36/1: 7524 instr, 2212 nops, 5312 non-nops, 536 mov, 154 cov, 11296 dwords
+MESA: info: ; VERT prog 36/1: 0 last-baryf, 0 last-helper, 0 half, 48 full, 492 constlen
+MESA: info: ; VERT prog 36/1: 2597 cat0, 690 cat1, 2752 cat2, 1440 cat3, 16 cat4, 0 cat5, 29 cat6, 0 cat7
+MESA: info: ; VERT prog 36/1: 207 sstall, 66 (ss), 276 systall, 5 (sy), 3 loops
+MESA: info: ; VERT prog 36/1: 4 max_waves, 0 double_threadsize
+MESA: info: ; VERT prog 36/2: 7488 instr, 1979 nops, 5509 non-nops, 725 mov, 144 cov, 11752 dwords
+MESA: info: ; VERT prog 36/2: 0 last-baryf, 0 last-helper, 0 half, 48 full, 100 constlen
+MESA: info: ; VERT prog 36/2: 2364 cat0, 869 cat1, 2753 cat2, 1440 cat3, 16 cat4, 0 cat5, 46 cat6, 0 cat7
+MESA: info: ; VERT prog 36/2: 237 sstall, 72 (ss), 459 systall, 16 (sy), 3 loops
+MESA: info: ; VERT prog 36/2: 4 max_waves, 0 double_threadsize
+MESA: info: ; GEOM prog 37/1: 3534 instr, 1397 nops, 2137 non-nops, 854 mov, 108 cov, 4864 dwords
+MESA: info: ; GEOM prog 37/1: 0 last-baryf, 0 last-helper, 0 half, 48 full, 12 constlen
+MESA: info: ; GEOM prog 37/1: 1590 cat0, 962 cat1, 732 cat2, 189 cat3, 36 cat4, 0 cat5, 25 cat6, 0 cat7
+MESA: info: ; GEOM prog 37/1: 299 sstall, 49 (ss), 0 systall, 5 (sy), 5 loops
+MESA: info: ; GEOM prog 37/1: 4 max_waves, 0 double_threadsize
+MESA: info: ; FRAG prog 38/1: 4763 instr, 1997 nops, 2766 non-nops, 355 mov, 81 cov, 6080 dwords
+MESA: info: ; FRAG prog 38/1: 12 last-baryf, 4700 last-helper, 0 half, 19 full, 28 constlen
+MESA: info: ; FRAG prog 38/1: 2226 cat0, 436 cat1, 1619 cat2, 425 cat3, 55 cat4, 1 cat5, 0 cat6, 1 cat7
+MESA: info: ; FRAG prog 38/1: 380 sstall, 58 (ss), 29 systall, 1 (sy), 3 loops
+MESA: info: ; FRAG prog 38/1: 10 max_waves, 0 double_threadsize
+MESA: info: ; VERT prog 39/1: 7609 instr, 2203 nops, 5406 non-nops, 538 mov, 154 cov, 11392 dwords
+MESA: info: ; VERT prog 39/1: 0 last-baryf, 0 last-helper, 0 half, 48 full, 492 constlen
+MESA: info: ; VERT prog 39/1: 2588 cat0, 692 cat1, 2812 cat2, 1470 cat3, 16 cat4, 0 cat5, 31 cat6, 0 cat7
+MESA: info: ; VERT prog 39/1: 207 sstall, 66 (ss), 276 systall, 5 (sy), 3 loops
+MESA: info: ; VERT prog 39/1: 4 max_waves, 0 double_threadsize
+MESA: info: ; VERT prog 39/2: 7612 instr, 2002 nops, 5610 non-nops, 731 mov, 144 cov, 11872 dwords
+MESA: info: ; VERT prog 39/2: 0 last-baryf, 0 last-helper, 0 half, 48 full, 100 constlen
+MESA: info: ; VERT prog 39/2: 2390 cat0, 875 cat1, 2813 cat2, 1470 cat3, 16 cat4, 0 cat5, 48 cat6, 0 cat7
+MESA: info: ; VERT prog 39/2: 237 sstall, 72 (ss), 459 systall, 16 (sy), 3 loops
+MESA: info: ; VERT prog 39/2: 4 max_waves, 0 double_threadsize
+MESA: info: ; GEOM prog 40/1: 3448 instr, 1395 nops, 2053 non-nops, 722 mov, 108 cov, 4640 dwords
+MESA: info: ; GEOM prog 40/1: 0 last-baryf, 0 last-helper, 0 half, 48 full, 12 constlen
+MESA: info: ; GEOM prog 40/1: 1588 cat0, 830 cat1, 743 cat2, 227 cat3, 36 cat4, 0 cat5, 24 cat6, 0 cat7
+MESA: info: ; GEOM prog 40/1: 298 sstall, 46 (ss), 0 systall, 1 (sy), 5 loops
+MESA: info: ; GEOM prog 40/1: 4 max_waves, 0 double_threadsize
+MESA: info: ; FRAG prog 41/1: 8586 instr, 2586 nops, 6000 non-nops, 1470 mov, 235 cov, 16352 dwords
+MESA: info: ; FRAG prog 41/1: 16 last-baryf, 4695 last-helper, 0 half, 45 full, 212 constlen
+MESA: info: ; FRAG prog 41/1: 2889 cat0, 1705 cat1, 2769 cat2, 1167 cat3, 55 cat4, 1 cat5, 0 cat6, 0 cat7
+MESA: info: ; FRAG prog 41/1: 380 sstall, 84 (ss), 15 systall, 1 (sy), 3 loops
+MESA: info: ; FRAG prog 41/1: 4 max_waves, 0 double_threadsize
+MESA: info: ; FRAG prog 41/2: 8823 instr, 2577 nops, 6246 non-nops, 1365 mov, 236 cov, 15744 dwords
+MESA: info: ; FRAG prog 41/2: 16 last-baryf, 4719 last-helper, 0 half, 48 full, 100 constlen
+MESA: info: ; FRAG prog 41/2: 2880 cat0, 1601 cat1, 3021 cat2, 1243 cat3, 55 cat4, 1 cat5, 22 cat6, 0 cat7
+MESA: info: ; FRAG prog 41/2: 395 sstall, 101 (ss), 75 systall, 15 (sy), 3 loops
+MESA: info: ; FRAG prog 41/2: 4 max_waves, 0 double_threadsize
+MESA: info: ; VERT prog 42/1: 7597 instr, 2198 nops, 5399 non-nops, 539 mov, 154 cov, 11392 dwords
+MESA: info: ; VERT prog 42/1: 0 last-baryf, 0 last-helper, 0 half, 48 full, 492 constlen
+MESA: info: ; VERT prog 42/1: 2582 cat0, 693 cat1, 2810 cat2, 1470 cat3, 16 cat4, 0 cat5, 26 cat6, 0 cat7
+MESA: info: ; VERT prog 42/1: 207 sstall, 66 (ss), 276 systall, 5 (sy), 3 loops
+MESA: info: ; VERT prog 42/1: 4 max_waves, 0 double_threadsize
+MESA: info: ; BVERT prog 42/2: 1230 instr, 213 nops, 1017 non-nops, 223 mov, 26 cov, 2208 dwords
+MESA: info: ; BVERT prog 42/2: 0 last-baryf, 0 last-helper, 0 half, 48 full, 488 constlen
+MESA: info: ; BVERT prog 42/2: 252 cat0, 249 cat1, 429 cat2, 271 cat3, 9 cat4, 0 cat5, 20 cat6, 0 cat7
+MESA: info: ; BVERT prog 42/2: 106 sstall, 25 (ss), 217 systall, 2 (sy), 2 loops
+MESA: info: ; BVERT prog 42/2: 4 max_waves, 0 double_threadsize
+MESA: info: ; VERT prog 42/3: 7571 instr, 1972 nops, 5599 non-nops, 731 mov, 144 cov, 11840 dwords
+MESA: info: ; VERT prog 42/3: 0 last-baryf, 0 last-helper, 0 half, 48 full, 100 constlen
+MESA: info: ; VERT prog 42/3: 2356 cat0, 875 cat1, 2811 cat2, 1470 cat3, 16 cat4, 0 cat5, 43 cat6, 0 cat7
+MESA: info: ; VERT prog 42/3: 237 sstall, 72 (ss), 459 systall, 16 (sy), 3 loops
+MESA: info: ; VERT prog 42/3: 4 max_waves, 0 double_threadsize
+MESA: info: ; BVERT prog 42/4: 1191 instr, 186 nops, 1005 non-nops, 207 mov, 22 cov, 2214 dwords
+MESA: info: ; BVERT prog 42/4: 0 last-baryf, 0 last-helper, 0 half, 48 full, 100 constlen
+MESA: info: ; BVERT prog 42/4: 225 cat0, 229 cat1, 428 cat2, 271 cat3, 9 cat4, 0 cat5, 29 cat6, 0 cat7
+MESA: info: ; BVERT prog 42/4: 114 sstall, 27 (ss), 289 systall, 7 (sy), 2 loops
+MESA: info: ; BVERT prog 42/4: 4 max_waves, 0 double_threadsize
+MESA: info: ; FRAG prog 43/1: 3920 instr, 607 nops, 3313 non-nops, 1117 mov, 161 cov, 10720 dwords
+MESA: info: ; FRAG prog 43/1: 8 last-baryf, 22 last-helper, 0 half, 24 full, 208 constlen
+MESA: info: ; FRAG prog 43/1: 684 cat0, 1278 cat1, 1200 cat2, 756 cat3, 1 cat4, 1 cat5, 0 cat6, 0 cat7
+MESA: info: ; FRAG prog 43/1: 6 sstall, 27 (ss), 9 systall, 1 (sy), 0 loops
+MESA: info: ; FRAG prog 43/1: 8 max_waves, 0 double_threadsize
+MESA: info: ; FRAG prog 43/2: 4164 instr, 633 nops, 3531 non-nops, 990 mov, 161 cov, 10496 dwords
+MESA: info: ; FRAG prog 43/2: 8 last-baryf, 60 last-helper, 0 half, 24 full, 100 constlen
+MESA: info: ; FRAG prog 43/2: 713 cat0, 1151 cat1, 1447 cat2, 830 cat3, 1 cat4, 1 cat5, 21 cat6, 0 cat7
+MESA: info: ; FRAG prog 43/2: 24 sstall, 43 (ss), 78 systall, 14 (sy), 0 loops
+MESA: info: ; FRAG prog 43/2: 8 max_waves, 0 double_threadsize
+MESA: info: ; VERT prog 44/1: 54 instr, 0 nops, 54 non-nops, 2 mov, 0 cov, 128 dwords
+MESA: info: ; VERT prog 44/1: 0 last-baryf, 0 last-helper, 0 half, 8 full, 12 constlen
+MESA: info: ; VERT prog 44/1: 1 cat0, 2 cat1, 37 cat2, 14 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
+MESA: info: ; VERT prog 44/1: 0 sstall, 0 (ss), 0 systall, 0 (sy), 0 loops
+MESA: info: ; VERT prog 44/1: 16 max_waves, 0 double_threadsize
+MESA: info: ; BVERT prog 44/2: 23 instr, 1 nops, 22 non-nops, 1 mov, 0 cov, 96 dwords
+MESA: info: ; BVERT prog 44/2: 0 last-baryf, 0 last-helper, 0 half, 3 full, 12 constlen
+MESA: info: ; BVERT prog 44/2: 2 cat0, 1 cat1, 17 cat2, 3 cat3, 0 cat4, 0 cat5, 0 cat6, 0 cat7
+MESA: info: ; BVERT prog 44/2: 0 sstall, 0 (ss), 0 systall, 0 (sy), 0 loops
+MESA: info: ; BVERT prog 44/2: 16 max_waves, 0 double_threadsize
+MESA: info: ; FRAG prog 45/1: 96 instr, 18 nops, 78 non-nops, 2 mov, 7 cov, 192 dwords
+MESA: info: ; FRAG prog 45/1: 4 last-baryf, 13 last-helper, 0 half, 6 full, 20 constlen
+MESA: info: ; FRAG prog 45/1: 21 cat0, 9 cat1, 50 cat2, 14 cat3, 1 cat4, 1 cat5, 0 cat6, 0 cat7
+MESA: info: ; FRAG prog 45/1: 6 sstall, 2 (ss), 8 systall, 1 (sy), 0 loops
+MESA: info: ; FRAG prog 45/1: 16 max_waves, 1 double_threadsize

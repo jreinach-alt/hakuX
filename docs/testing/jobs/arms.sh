@@ -65,7 +65,7 @@ A="$WORK/arms"
 T="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$(dirname "${BASH_SOURCE[0]}")/gh-label.sh"   # label_add/label_rm: `gh pr edit --add-label` exits 1 here
 . "$(dirname "${BASH_SOURCE[0]}")/localtime.sh"  # say_time/local_ts: the display zone. Data timestamps below stay `date -u`.
-mkdir -p "$A"/{expect,pairs,judged,skipped,log,incomplete} "$WORK/logs/arms"
+mkdir -p "$A"/{expect,pairs,judged,skipped,log,incomplete,refused} "$WORK/logs/arms"
 LOG="$WORK/logs/arms/tick.log"
 # The tick log is read by hand when something jams, so it is display: local.
 say() { echo "$(say_time_s) $*" | tee -a "$LOG"; }
@@ -325,7 +325,7 @@ for rj in glob.glob(os.path.join(sys.argv[1], "results", "*", "request.json")):
     if os.path.exists(os.path.join(os.path.dirname(rj), "ERROR")):
         continue                       # an ERRORed result is not a run
     if os.path.exists(os.path.join(os.path.dirname(rj), "VOIDED")):
-        continue                       # nor is one an INCOMPLETE verdict voided
+        continue                       # nor is one an INCOMPLETE or REFUSED pair voided
     try:
         r = json.load(open(rj))
     except Exception:
@@ -1114,6 +1114,48 @@ for pair in "$A"/pairs/*.json; do
     out="$A/pairs/$sha.verdict.txt"
     (cd "$REPO" && DISPATCH_DIR="$D" python3 "$T/ab_compare.py" --a "$RA" --b "$RB" --expect "$exp" --json "$A/pairs/$sha.verdict.json") > "$out" 2>&1
     verdict=$(grep -m1 '^VERDICT:' "$out" || echo "VERDICT: (none printed; see the full output)")
+    # A REFUSED PAIR WAS NEVER COMPARED, SO IT IS AN ARM ERROR, NOT A VERDICT.
+    # ab_compare's die() prints `REFUSED:` and no VERDICT line when an arm
+    # cannot be scored at all -- a run without progress_log_proof above all,
+    # whose own text says "Requeue the arm". This fell through to the
+    # "(none printed)" string and was judged forever, with both results still
+    # clean in the RAN walk, so not even the ARM ERROR comment's manual
+    # recovery could queue it: #583's fix arm timed out twice on 09-29 and
+    # waited on a person to touch VOIDED by hand. Both halves are voided; the
+    # first REFUSED drops its pair record so the next tick queues it again,
+    # once, like INCOMPLETE; a second is final (a title that always drops the
+    # device would otherwise spend a device run every tick). No label moves.
+    refused=$(grep -q '^VERDICT:' "$out" || grep -m1 '^REFUSED:' "$out")
+    if [ -n "$refused" ]; then
+        if [ -f "$A/refused/$sha" ]; then
+            note="This is this prediction's second REFUSED, so it is not queued again. Fix what the refusal names, then register the prediction again (any edit changes its sha), or delete \`\$WORK/arms/judged/$sha\` and \`\$WORK/arms/pairs/$sha.json\` to have the job queue it once more."
+        else
+            note="Not a verdict, and no label moves on it. Both results are marked VOIDED and the pair is queued again on the next tick, once; a second REFUSED is final."
+        fi
+        {
+            echo "[job.arms] ${refused:0:300}"
+            echo
+            echo "| | |"; echo "|---|---|"
+            echo "| prediction | \`$src\` (sha256 \`${sha:0:12}\`) |"
+            echo "| who / issue | $who ${issue:+/ #$issue} |"
+            echo "| a_ref (base) | \`$(field "$pair" a_ref)\` result \`$ida\` |"
+            echo "| b_ref (fix) | \`$(field "$pair" b_ref)\` result \`$idb\` |"
+            echo "| refused | $(say_time_s) by ab_compare.py on the host; full text in \`\$WORK/arms/pairs/$sha.verdict.txt\` |"
+            echo; echo "$note"
+            echo
+            echo "<details><summary>ab_compare output (first 80 lines)</summary>"
+            echo; echo '```'; head -80 "$out"; echo '```'; echo "</details>"
+        } > "$body"
+        post "$(pr_for "$src")" "$issue" "$body" || say "  could not post the REFUSED for $sha anywhere"
+        : > "$RA/VOIDED"; : > "$RB/VOIDED"
+        if [ -f "$A/refused/$sha" ]; then
+            echo "REFUSED" > "$A/judged/$sha"; say "judged $sha: REFUSED again, final ($src)"
+        else
+            echo "$refused" > "$A/refused/$sha"; rm -f "$pair"
+            say "judged $sha: REFUSED, results voided, the pair re-queued once ($src)"
+        fi
+        continue
+    fi
     case "$verdict" in
         *FAIL*)
             da=$(arm_dev "$RA"); db=$(arm_dev "$RB")
