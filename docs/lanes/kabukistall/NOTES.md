@@ -126,7 +126,7 @@ What a hit looks like, written before the run:
 - The stall about halves for the same miss count: at 300 misses, 45-70 s.
 - If the stall is absent with dpm of 100 or more, the per-create figure decides. Under 50 ms would mean something besides B1 changed the cost, and the anatomy above would need re-reading.
 
-Status: queued; see the PR thread for the request id.
+Status (2026-09-29): queued as `1-1790702688-lane.kabukistall-194847` from `a5b4e27bc7`, release tier via #433 and pinned to the Nova, 600 s. The lane is waiting for its result dir. Posted: #507, #433 and #569 (Kabuki proposed as a leg for P5/P6/P3).
 
 ## 7. For the next lane
 
