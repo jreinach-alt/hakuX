@@ -3,6 +3,8 @@
 
     affinity.py <dispatch-dir> <request.req>     -> prints a device label, or ""
     affinity.py <dispatch-dir> --serving         -> prints the live lane labels
+    affinity.py <dispatch-dir> --available <label> -> exit 0 if serving or held
+                                                    (and coming back), 1 if gone
     affinity.py <dispatch-dir> --choose <key> <before-id>
                                                  -> the pooled device with the
                                                     least work queued ahead of
@@ -41,6 +43,11 @@ Three rules, in order:
    2b. A QUEUED sibling with an explicit `device` pins this request to that
    device. That covers a pair queued by hand with one arm given --device, and
    it is what keeps an arms-job pair together if only one arm carries the pin.
+
+   A sibling that LANDED (running or run) on a device that is now HELD still
+   pins, for up to HOLD_WAIT_S from the hold's mtime: a held device is coming
+   back, and following the partner elsewhere splits the pair (#583, see
+   `_held`). A device neither serving nor held is gone, and falls through.
 
    The siblings are read in the order a request MOVES -- queue/, then
    running/, then results/ -- so a sibling that is being claimed while this
@@ -283,6 +290,50 @@ def _live(d, label):
     return label in serving(d)
 
 
+# How long a pin waits for a HELD device before it falls through as if the
+# device were gone. From the hold file's mtime. See `_held`.
+HOLD_WAIT_S = int(os.environ.get("AFFINITY_HOLD_WAIT_S") or 3 * 3600)
+
+
+def _held(d, label):
+    """Is that device on a HOLD that is young enough to wait for?
+
+    A HELD DEVICE IS COMING BACK; A GONE ONE IS NOT. `_live` cannot tell them
+    apart, because a held worker drops its own `lanes/<label>` on purpose
+    (dispatcher.sh, the hold check: "affinity must not pin a pair to a device
+    on hold"), so both read as "not serving" and both fell through. That is
+    right for a device that went away and wrong for one taken out of service
+    for a title push or a cold slot: on 2026-09-28 #583's base arm ran on the
+    thor, the thor was under a bounded hold when the fix arm came up, its load
+    pin and its sibling pin both fell through, and the nova ran it. The pair
+    then FAILED on a capture that differs by device, and the PR was labelled
+    `regressed` on a verdict its own judge called unattributable.
+
+    So a pin to a held device WAITS, for up to HOLD_WAIT_S from the hold
+    file's mtime; after that the device is treated as gone and the pin falls
+    through exactly as before. The hold file is the only record that survives
+    a hold (the lane registration does not), which is why it is the test.
+
+    The 09-13 incident `_live` was written for -- the nova out of service for
+    four hours with #50's arm A run on it -- was a hold too. It now waits
+    three hours instead of none, and then falls through and is noted as a
+    split, as it always was. A device with neither a live lane nor a hold is
+    gone and falls through at once.
+    """
+    p = os.path.join(d, "hold", label)
+    try:
+        if not os.path.isfile(p):
+            return False
+        return time.time() - os.path.getmtime(p) < HOLD_WAIT_S
+    except OSError:
+        return False
+
+
+def _available(d, label):
+    """Serving now, or held and coming back: a pin to it is worth keeping."""
+    return _live(d, label) or _held(d, label)
+
+
 def load(p):
     try:
         with open(p) as f:
@@ -335,9 +386,16 @@ def _is_load_pin(req, label):
     Honouring it past the device's death would turn "run where the queue is
     shorter" into "never run", which is the stall `_live` exists to prevent.
     Off-pool lanes are never a load pick, so a pin to one stays absolute.
+
+    `"pin": "hard"` (request.sh --hard-pin) makes an arms-job pin absolute
+    too. The arms job writes it on the one arm pair it must NOT let fall
+    through: the same-device re-run of a pair whose FAIL was confounded by
+    running its two arms on two devices. Falling through there would
+    reproduce the confound it exists to remove.
     """
     return ((req.get("requester") or "").startswith("arms-")
             and not (req.get("title") or "").strip()
+            and (req.get("pin") or "").strip() != "hard"
             and label not in OFFPOOL)
 
 
@@ -406,9 +464,12 @@ def decide(d, req, me, notes=True, labels_for=None):
     if explicit:
         if not _is_load_pin(req, explicit):
             return explicit
+        # A load pin to a HELD device still falls through (nothing has
+        # landed, so both arms can go elsewhere together), but it is not a
+        # split: a sibling that did land there is followed below (`_held`).
         if _live(d, explicit):
             load_pin = explicit
-        else:
+        elif not _held(d, explicit):
             note_split(d, me, _key(req) or "(none)", explicit)
 
     key = _key(req)
@@ -466,7 +527,7 @@ def decide(d, req, me, notes=True, labels_for=None):
             # written. Its own explicit device is where it is running.
             owner = owner or (sib.get("device") or "").strip()
             if owner:
-                if _live(d, owner):
+                if _available(d, owner):
                     return owner
                 note_split(d, me, key, owner)
     except OSError:
@@ -482,7 +543,7 @@ def decide(d, req, me, notes=True, labels_for=None):
     # than one from hours ago.
     labels = labels_for(key) if labels_for else _result_labels(d, key)
     for label in labels:
-        if _live(d, label):
+        if _available(d, label):
             return label
         note_split(d, me, key, label)
 
@@ -590,6 +651,10 @@ def main():
     if reqpath == "--serving-pooled":
         print(" ".join(pooled(d)))
         return
+    # For the arms job's same-device re-run: is this device worth a HARD pin
+    # (serving, or held and coming back), or gone, so CHOOSE should pick?
+    if reqpath == "--available":
+        sys.exit(0 if _available(d, sys.argv[3]) else 1)
     if reqpath == "--choose":
         print(choose(d, sys.argv[3], sys.argv[4] if len(sys.argv) > 4 else ""))
         return
