@@ -376,6 +376,112 @@ def _hash_pick(key, devs):
     return h % len(devs)
 
 
+# BATTERY. Rule 3's hash and a load pin are both blind to the battery gate,
+# and the gate is asked only on the device this file names, so a refusal
+# there is seen by nobody else. On 2026-09-28 three arm pairs (ibcache,
+# gpl569, tcg424flip) hashed to the nova and were refused on every walk for
+# 8-14 h -- level 35 < need 49.6, the nova hovering at 35-39 % on its 500 mA
+# port -- while the thor sat at 80-83 % and would have admitted them at need
+# 29.9. It never saw them: this file had sent them to the nova.
+#
+# So a device that has refused a request of this key for REFUSED_MOVE_S, and
+# whose level is still below the need it refused at, is passed over -- but
+# only for another pooled device whose own level covers its own need, and
+# only where nothing has landed (a sibling that ran is still followed, rule
+# 2). No refusal, or every candidate refusing, and the answer is the one it
+# always was. battery_admit.py writes the record (`.battery_refused.<label>`)
+# and computes the need; see there.
+#
+# PAIRS. Both arms share the key and so read the same records, the same level
+# files and (same runs, same kind) the same need: one answer for both, from
+# state rather than from nothing, which is what the hash was for. The answer
+# can change only when a level file does, which is once a minute at most; an
+# arm claimed in that minute is in running/ and rule 2 pulls its partner
+# after it. The one gap is the rename-to-owner-write instant rule 2 already
+# names. A device with no fresh level (nothing asked it for 15 min) counts as
+# admitting: it reads its level when it is offered the request, and if it
+# refuses, that refusal is recorded and the request goes back.
+REFUSED_MOVE_S = float(os.environ.get("AFFINITY_REFUSED_MOVE_S") or 600)
+
+try:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    import battery_admit as _ba
+except Exception:        # a copy of this file alone: no battery rule, as before
+    _ba = None
+
+
+def _key_ids(d, key, me):
+    """Ids of the queued or running requests pinned on `key`, `me` included."""
+    ids = {me[:-4] if me.endswith(".req") else me}
+    for sub in ("queue", "running"):
+        p = os.path.join(d, sub)
+        try:
+            names = os.listdir(p)
+        except OSError:
+            continue
+        for name in names:
+            if name.endswith(".req") and _key(load(os.path.join(p, name))) == key:
+                ids.add(name[:-4])
+    return ids
+
+
+def _refusing(d, label, ids, now, age=0.0):
+    """The refusal of one of `ids` on `label` that still holds and is at least
+    `age` old, or None. "Still holds": the device's current level, or the
+    level it refused at if it has not read one since, is below that need."""
+    lvl = _ba.level_now(d, label)
+    for i, r in sorted(_ba.refusals(d, label).items()):
+        try:
+            if i not in ids or now - float(r["since"]) < age:
+                continue
+            at = lvl if lvl is not None else float(r["level"])
+            if at < float(r["need"]):
+                return dict(r, id=i, level_now=at)
+        except (KeyError, TypeError, ValueError):
+            continue
+    return None
+
+
+def _battery_alt(d, req, me, key, dev, devs):
+    """Where to send `req` instead of `dev`, or "" to leave it on `dev`."""
+    if _ba is None or not key or dev not in devs:
+        return ""
+    try:
+        if not _ba.refusals(d, dev):
+            return ""    # the common case, without listing the queue
+        now = time.time()
+        ids = _key_ids(d, key, me)
+        if not _refusing(d, dev, ids, now, REFUSED_MOVE_S):
+            return ""
+        ok = []
+        for x in devs:
+            if x == dev or _refusing(d, x, ids, now):
+                continue
+            lvl = _ba.level_now(d, x)
+            if lvl is None or lvl >= _ba.need_for(d, x, req)[0]:
+                ok.append(x)
+        return ok[_hash_pick(key, ok)] if ok else ""
+    except Exception:    # never fail a claim over the battery rule
+        return ""
+
+
+def _note_battery_move(d, reqname, key, frm, to):
+    """The move is a decision only this file knows it made: say so once.
+    Not in splits/: the pair stays on one device, and status.sh reads every
+    note there as "may span two devices"."""
+    p = os.path.join(d, "moves", reqname + ".battery.txt")
+    try:
+        if os.path.exists(p):
+            return
+        os.makedirs(os.path.dirname(p), exist_ok=True)
+        with open(p, "w") as f:
+            f.write("prediction %s: %s has refused it on battery for %ds or more "
+                    "and %s would admit it, so this request goes to %s\n"
+                    % (key, frm, REFUSED_MOVE_S, to, to))
+    except OSError:
+        pass  # never fail a claim over a note
+
+
 def _is_load_pin(req, label):
     """Is this explicit `device` the arms job's preference, not a requirement?
 
@@ -469,6 +575,11 @@ def decide(d, req, me, notes=True, labels_for=None):
         # split: a sibling that did land there is followed below (`_held`).
         if _live(d, explicit):
             load_pin = explicit
+            # A load pin to a device refusing it on battery falls through
+            # like one to a held device: nothing has landed, and both arms
+            # carry the same pin, so both go wherever the rules below say.
+            if _battery_alt(d, req, me, _key(req), explicit, pooled(d)):
+                load_pin = ""
         elif not _held(d, explicit):
             note_split(d, me, _key(req) or "(none)", explicit)
 
@@ -495,7 +606,9 @@ def decide(d, req, me, notes=True, labels_for=None):
         dev = (sib.get("device") or "").strip()
         if not dev:
             continue
-        if _is_load_pin(sib, dev) and not _live(d, dev):
+        if _is_load_pin(sib, dev) and (
+                not _live(d, dev)
+                or _battery_alt(d, sib, name, key, dev, pooled(d))):
             continue  # the sibling falls through too; follow it there
         queued_pin = dev
         break
@@ -556,7 +669,13 @@ def decide(d, req, me, notes=True, labels_for=None):
     # one.
     devs = pooled(d)
     if len(devs) > 1:
-        return devs[_hash_pick(key, devs)]
+        pick = devs[_hash_pick(key, devs)]
+        alt = _battery_alt(d, req, me, key, pick, devs)
+        if alt:
+            if notes:
+                _note_battery_move(d, me, key, pick, alt)
+            return alt
+        return pick
     # One serving device needs no pin -- everything lands there anyway, which
     # is the same answer the hash would give. NO serving device is different
     # in kind: it means this file's only input is missing and every rule above
