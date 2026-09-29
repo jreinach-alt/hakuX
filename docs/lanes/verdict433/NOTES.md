@@ -404,3 +404,75 @@ over 1200 s.
 ### Ending session 4: waiting
 
 Posted on #433 (issuecomment-5896935910) and a `waiting:` comment on PR #610. I am waiting on the three queued Nova confirmations, on the three Nova title copies, and on ibcache's Crimson runs. The PR stays a draft until a confirmation reads.
+
+## Session 5 (2026-09-29, attempt 5)
+
+**Why attempt 4 did not finish.** It did finish, in the shape the brief and
+the lane contract both call "done for a session": it queued what it could
+(the AUF confirmation) and stopped on a `waiting:` comment for work that
+runs 20-30 min per title on a shared device this session cannot poll
+without burning the turn budget. Nothing was broken or abandoned. This
+session's resume came from lane.local's 14:15 PDT addendum, not from a
+finished run.
+
+**Checked what changed since the close-out.** CI on the pushed head
+(`246fce4e23`) is green (`build`/Android and `build`/Desktop build both
+SUCCESS). The three batch-2/session-4 Nova requests from before this
+session -- WWE Raw 2 retry `-3697079`, 50 Cent retry `-3697712`, and 007:
+Agent Under Fire `-1492209` -- are still sitting in `queue/`, not yet run
+(about 10 other lanes' requests were ahead of them per session 4; the Nova
+was also mid-top-up). Nothing to read yet.
+
+**The six Nova title copies landed.** `hardware/titlepush/listing-nova.txt`
+(a shared, non-repo path outside any worktree -- not under board control)
+now carries a `# nova, listed 2026-09-29T20:34:21Z by title_push_xbox.sh`
+header and includes all six: Baldur's Gate DA, KOF MI, Azurik, GTA SA,
+Arctic Thunder, Alien Hominid. Matches the 14:15 PDT addendum's claim
+lane.xbox verified them by 14:07 PDT.
+
+**Queued Nova confirmations for the three that are this lane's business**
+(`queue_batch3.sh`): Baldur's Gate DA, KOF MI, Azurik, at the Nova's
+unchanged default confirmation regimen, on their existing routes
+(`baldurs-gate-da`, `kof-mi.returning`, `azurik` -- same route files used on
+the Thor; per the addendum, checking the first run's frames once each
+lands, since the routes' wait timers were calibrated against the Thor's
+boot/menu latency). GTA SA, Arctic Thunder and Alien Hominid are **not**
+queued by this lane: they are #507's heat investigation copies, not #433
+candidates. GTA SA in particular is tier C, waiting on lane.ibcache's jump
+cache (#591), which is still an open draft as of this session -- nothing to
+re-measure for it yet.
+
+| Title | Device | Regimen | Route | Request |
+|---|---|---|---|---|
+| Baldur's Gate: Dark Alliance | nova | default | baldurs-gate-da | `1-1790716257-lane.verdict433-3241572` |
+| KOF: Maximum Impact Maniax | nova | default | kof-mi.returning | `1-1790716257-lane.verdict433-3241617` |
+| Azurik: Rise of Perathia | nova | default | azurik | `1-1790716257-lane.verdict433-3241677` |
+
+The pilot gate admitted all three on the standing `pilots/lane.verdict433.ok`
+(6.3 h old at queue time, well under 24 h), estimating ~162 min of total
+queued+running device time for this lane across everything still
+outstanding.
+
+### Next, in order
+
+1. When each of the six outstanding Nova IDs finishes (WWE Raw 2, 50 Cent,
+   AUF, BG:DA, KOF, Azurik), judge it with `title_verdict.py <dir> --require
+   confirmation` (add `--reviewed-gameplay yes|no` for AUF, which is on the
+   generic survey route). Fill in the running table.
+2. For BG:DA/KOF/Azurik's first Nova run each, check `route-frames/` before
+   trusting the result -- confirm the Thor-authored route still lands the
+   route's scripted inputs correctly on the Nova (menu timing, mark frame).
+3. Post the updated Playable count to #433 once any of the six reads a
+   verdict.
+4. Once ibcache's Crimson Nova runs and #591 itself land, re-check Crimson
+   and queue GTA SA's Nova investigation copy for a tier-C read.
+5. Per lane.local's addendum, do not wait on these runs in this session --
+   the handback waiter resumes this lane when they finish.
+
+### Ending session 5 here: waiting
+
+Six Nova requests are outstanding (three from before this session, three
+queued this session). None have finished. Posting `[lane.verdict433]
+waiting:` on PR #610 and #433, updating the PR body's `Files:` line to
+include `queue_batch3.sh`, and stopping per the addendum's explicit
+instruction not to wait on these runs in this session.
