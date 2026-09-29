@@ -3,27 +3,25 @@
 Brief: `/home/justin/hakux-work/briefs/uberspike569.md`. Research: `docs/lanes/shaderplan569/NOTES.md`
 option (d) and section 7's P6. PR #581.
 
-Status (2026-09-29 02:00 PDT, attempt 2):
+Status (2026-09-29 PDT, attempt 3):
 - **E on the device: PASS.** All 305 captures are byte-identical in both runs (section 6.1).
 - **CB share, measured on the device:** forcing the families cut DOA's pipeline misses from 91 to 61
   on one route (section 6.2).
-- **P: void.** The pilot pair ran on the Thor, and both arms hit its thermal pause around the fight.
-  Pair 2 is queued on the Nova.
+- **The device has GPL with fast linking** (8.4 item 1, read from the probe).
+- **P: not read in this PR.** The Thor pilot pair was void (thermal pause). Pair 2's arm A ran on
+  the Nova at 04:3x PDT; arm B (`1-1790671996-uberspike569-4116483`) is still in the Nova queue
+  behind about 30 requests. The GPU cost of the uber stages is a registered leg of the build PR
+  (lane/uberspike569-gpl), which reads arm B too when it lands.
 - **Coverage (section 3):** DOA's 83 pixel-shader modules fall into 34 combiner families.
 - **Addendum** (full uber pipeline, GPL): section 8. The answer is uber libraries under GPL.
+- **Second addendum (2026-09-29 10:50 PDT), the build:** on a stacked branch,
+  `lane/uberspike569-gpl`, on top of PR #594 (section 9). This PR is the spike, and it is done.
 
-**Waiting (2026-09-29 02:20 PDT)** on four things outside this session:
-- CI on this head.
-- P pair 2 on the Nova: `1790671992-uberspike569-4114420` and `1790671996-uberspike569-4116483`.
-- The GPL probe `1790673060-uberspike569-277562`.
-
-The Nova is on charge hold until 04:30 PDT at the latest.
-
-**On resume:**
-1. Read pair 2 with `soak_read.py`, checking the thermal line, and judge it against
-   `uberspike569-doa-soak.json`.
-2. Grep the probe's logcat for `psh-uber: GPL`.
-3. Fill 6.2's P and 8.4 item 1, then mark PR #581 ready.
+**Why attempt 2 did not finish.** It ended properly, with a `waiting:` comment (09:12 UTC) on three
+things outside its session: CI, P pair 2 on the Nova, and the GPL probe. CI went green and the probe
+and arm A ran on the Nova at about 04:30-04:50 PDT; arm B did not run, because the Nova queue filled
+with critical-path requests ahead of it. The waiter resumed the lane with the brief's new build
+addendum, which is why this is attempt 3 rather than a resume for a wait.
 
 Verdict (section 7): the fragment-only hybrid as briefed is not supported, because the C leg kills
 it.
@@ -347,6 +345,10 @@ paths remains the way to make "identical" a guarantee rather than an observation
 The pilot verdict is in `pilots/uberspike569.ok`. Read the pair with `soak_read.py`, and check
 the Nova's thermal line before trusting its fps.
 
+As of attempt 3, arm A has run (`1-1790671992-uberspike569-4114420`, Nova) and arm B is queued. A
+single arm is not a P reading, so P is carried to the build branch (section 9), which reads the
+pair when B lands.
+
 ## 7. Verdict (host legs and device E measured; P pending on the Nova)
 
 **The hybrid as briefed is not supported. C kills it, and section 2 says why structurally.**
@@ -544,7 +546,10 @@ The columns:
    (git-62ac221a33). Turnip has shipped GPL since Mesa 23.1, but the device must say so. The switch
    now logs `psh-uber: GPL ext= feature= fastLinking=` once (`vk/shaders.c`, under
    `HAKUX_PSH_UBER` only). A one-arm B soak on this branch's head reads it:
-   `1790673060-uberspike569-277562` (4085a55165, DOA 90 s, Nova), queued 2026-09-29 02:12 PDT.
+   `1-1790673060-uberspike569-277562` (4085a55165, DOA 90 s, Nova, ran 04:47 PDT).
+   **Answer: yes.** `psh-uber: GPL ext=1 feature=1 fastLinking=1 independentInterpolation=1`.
+   The same run's family modules cost 6.0-9.8 ms each on the Nova (glslang + module), and
+   1.5-1.7 ms when a second instance reuses a warm glslang. lane.gpl569 read the same on the Thor.
 2. **The device's fast-link time**, against its monolithic create. It needs GPL in the renderer,
    which is the build's first step.
 3. **The GPU cost of the uber stages at DOA's loads**, forced (the addendum's measurement).
@@ -566,6 +571,14 @@ The columns:
   create sites.
 - `vk/shaders.c`: the family keys, library creation on worker threads, and the swap.
 - `vk/instance.c`: enable `VK_EXT_graphics_pipeline_library`.
+
+## 9. The build (second addendum): on `lane/uberspike569-gpl`
+
+lane.local's addendum of 2026-09-29 10:50 PDT asks for the uber libraries on GPL: prebuilt uber
+pre-raster and fragment libraries, fast-linked on a miss, with the specialised monolithic pipeline
+built behind them and swapped in. It stacks on PR #594 (lane/gpl569), whose files it edits, so it
+is its own PR on `lane/uberspike569-gpl`, and its notes are `docs/lanes/uberspike569/BUILD.md` on
+that branch. This PR stays the spike.
 
 ## Do not repeat
 
