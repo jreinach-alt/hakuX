@@ -393,6 +393,21 @@ first). The judge is `doa_gpu_history.py`, unchanged from the registering commit
 - **R2:** fps >= 1.10.
 - **R3:** pooled with gate 4's 0.82, mean <= 0.90.
 
+### State at the end of session 3 (2026-09-29 ~01:15 PDT): waiting
+
+- **Gate 4 is read and posted on #569.** PR #607 carries it.
+- **The replication is queued on the Nova,** 53rd-54th of 57, study priority:
+  - fix `1790668953-litcompile569-2678297` first;
+  - base `1790668956-litcompile569-2678738` second.
+- **When both are DONE:**
+  1. Run `doa_gpu_history.py <base> <fix>` and score R1-R3.
+  2. Name each arm's opponent from its route frames.
+  3. If the pair also drew one opponent each, rerun `doa_energy.py` with scene spans from its
+     frames.
+  4. Post the verdict on #569 and PR #607.
+  5. Mark #607 ready once CI is green.
+  - If R1 is refuted, B1 is a compile-stall fix only. Say that, and drop the energy framing.
+
 ## 5. For the next lane
 
 - **Gate 4 (device) waits on P1** (PR #574, lane.shaderfb569: `dpc_ms` per stage). The leg
