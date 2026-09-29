@@ -265,6 +265,21 @@ queued first; fix is 87ceac5569.
 - **E:** GPU `Tot` ms per frame in play windows with no misses. Expected within ±10%;
   `j_per_frame` is read beside it.
 
+### State at the end of session 2 (2026-09-28 ~22:10 PDT)
+
+- **Gates 1, 2, 2b and 3 are done.** 3 is `ab_compare` PASS, 489/489 on the host. CI is green
+  on 3b151aeb2b. PR #580 is marked ready. The `[job.arms]` comment had not posted: the arms
+  job's last tick was 19:39 PDT.
+- **Gate 4 is queued** on the Nova, plain priority, 54th-55th of 59:
+  - base `1790657057-litcompile569-206765`;
+  - fix `1790657061-litcompile569-206870`.
+- **When both are DONE:**
+  1. Run `title_verdict.py` on a COPY of each result dir.
+  2. Run `doa_soak_judge.py <base> <fix>`. Add `--base-span`/`--fix-span` from each arm's
+     route frames if fbwin's rule finds no fight load.
+  3. Post the legs on #569 as their own post, with GPU ms per frame and `j_per_frame`.
+- If the thermal gate voids the pair, re-run it from a cool start.
+
 ## 5. For the next lane
 
 - **Gate 4 (device) waits on P1** (PR #574, lane.shaderfb569: `dpc_ms` per stage). The leg
