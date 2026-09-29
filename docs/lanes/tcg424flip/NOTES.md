@@ -186,6 +186,32 @@ tcg424flip-arctic-nova.json and read them with arcticread3.py. (2) The
 `[job.arms]` verdict on the Nova pgraph pair above. Check scores1.tsv's status
 column for unreadable captures.
 
+## Attempt 4 (2026-09-29 ~14:30 PDT): the Nova runs are queued
+
+Attempt 3 did not finish because it could not queue: Arctic Thunder was not
+on the Nova yet. It registered tcg424flip-arctic-nova.json and stopped,
+waiting on the copy. lane.xbox verified the copy by 14:07 PDT
+(`hardware/titlepush/listing-nova.txt` line 106, `4D570002-Arctic_Thunder.xiso.iso`),
+and lane.local resumed this lane to queue.
+
+Queued under tcg424flip-arctic-nova.json, ref 7bcd6e6e2b, pinned to the Nova,
+420 s, frames every 20 s, route arctic-thunder. request.sh admitted the
+34 min on the reviewed pilot (`pilots/lane.tcg424flip.ok`, 7.9 h old):
+
+| run | A (HAKUX_TCG424_RANGE=0) | B (no env) |
+|---|---|---|
+| 1 | 1-1790716215-lane.tcg424flip-3229031 | 1-1790716219-lane.tcg424flip-3229494 |
+| 2 | 1-1790716222-lane.tcg424flip-3229888 | 1-1790716226-lane.tcg424flip-3230429 |
+
+The Nova pgraph pair (`1-1790707670-arms-tcg424flip-base-1207251` / `-fix-1207297`)
+is still queued. The Nova sits at 35-45% on port power, so these probably
+run after the evening top-up.
+
+**Waiting on (attempt 4):** the four runs above and the `[job.arms]` verdict
+on the Nova pgraph pair. Next step: `python3 docs/lanes/tcg424flip/arcticread3.py`
+over the four ids, read each window's frames, and judge M0/M1/M2a/M2b/M4' as
+registered. Then check scores1.tsv's status column on the pgraph arm.
+
 ## For the next lane
 
 - The arctic-thunder race ends 100-160 s after `mark gameplay`, and the route
