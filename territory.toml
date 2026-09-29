@@ -620,12 +620,11 @@ files = []
 retired_utc = "2026-09-29T19:10:00Z"
 note = "RETIRED (hostops 2026-09-29 12:10 PDT): PR #614 MERGED 2026-09-29T19:05:32Z (44dc2188ff), unit gone, no open PR. Brief's ask (why the Thor overheats vs the Nova, ranked counter-measures) delivered: docs/lanes/thorheat/NOTES.md, summary on #507. Its later 09:50 PDT fan-100 addendum went unread (session had ended) but is answered by the PR's own blocks 2/3 (fan duty 0->50000 measured inert, <0.05 W) -- see hostops comment on #614. Not re-resumed; the 12:10 PDT heat-off-Thor decision on #507 treats this finding as settled input. Files RELEASED to [free]: docs/lanes/thorheat/**."
 
-[lane.kabukistall]
+[retired.kabukistall]
 issues = ["507"]
-files = ["docs/lanes/kabukistall/**", "docs/testing/predictions/kabukistall-*.json"]
-released = ["docs/lanes/kabukistall/**", "docs/testing/predictions/kabukistall-*.json"]
-released_at_ready = 616
-note = "STARTED (lane.local 2026-09-29T17:10Z), briefs/kabukistall.md: the energy map's rank 5, unowned until now: Kabuki and DOA stall for 20-70 s with 1.8-2.25 cores busy and no flips (Kabuki 33.6% at 30 fps over full gameplay in 1-1790639272-lane.gmem474-125693). The owner asked why Kabuki is not Playable. Profile P1 is on disk. Emulator files come by board request once the cause is known. || RELEASED AT READY (job.board 2026-09-29T23:03:53Z): PR #616 is out of draft, CI green (build x2), unit gone. Files RELEASED to [free]: docs/lanes/kabukistall/**, docs/testing/predictions/kabukistall-*.json."
+files = []
+retired_utc = "2026-09-29T23:11:00Z"
+note = "RETIRED (hostops 2026-09-29T23:11Z): PR #616 MERGED 2026-09-29T23:05:30Z (fold 2dd92568b5). Result (NOTES.md): Kabuki's 20-130 s flipless stall IS #569's cold-pipeline-compile stall, at its worst -- a fight brings ~300 new Vulkan pipelines, each compiled inline at 350-390 ms pre-#580, 199 ms after (K1, cold cache): 68.6 s fight stall, 97% of it create time. A warm pipeline cache removes it entirely. Needs the vertex side too (72-75% of misses touch the vertex program/fixed-function state), not just a pixel ubershader -- so the fix is #569's GPL uber-library or key-set-prebuild work (PRs #581/#594), not a new lane. Analysis-only, no emulator code. Files RELEASED to [free]: docs/lanes/kabukistall/**, docs/testing/predictions/kabukistall-*.json."
 
 [retired.tokentier]
 issues = []
@@ -715,6 +714,7 @@ files = ["accel/tcg/tb-maint.c", "accel/tcg/tb-internal.h", "docs/lanes/tcg424fl
 note = "STARTED (hostops 2026-09-29T05:35Z), briefs/tcg424flip.md: tbflip424-blinx2.json's three valid Thor pairs pass M0/M1/M4' (A gfps 19 / churn 2.1, B 19 / 0.0; #424 issuecomment-5884276103), so the decision rule flips hakux_tcg424_range_on() to default ON (opt-out HAKUX_TCG424_RANGE=0). Before PR-ready: the Arctic Thunder Thor A/B lane.local routed to the retired lane.sustain507 (never queued), and the pgraph must-not-move arm on the flipped binary."
 
 [free]
+# RELEASED (hostops 2026-09-29T23:11Z) by retiring lane.kabukistall (PR #616 merged 2dd92568b5): docs/lanes/kabukistall/**, docs/testing/predictions/kabukistall-*.json.
 # RELEASED (hostops 2026-09-29T22:53Z) by retiring lane.gmem474 (PR #582 merged 26e8d1104c): docs/lanes/gmem474/**, docs/testing/predictions/gmem474-*.json, android/app/src/main/java/com/rfandango/haku_x/TitleDefaults.kt.
 # RELEASED (hostops 2026-09-29T22:00:29Z) by retiring lane.boardtreeheal (PR #621 folded b4e3d4c323): docs/testing/jobs/board.sh, docs/testing/jobs/selftest.d/99-board-wt-refresh.sh, docs/lanes/boardtreeheal/**.
 # RELEASED (hostops 2026-09-29T16:22:45Z) by retiring lane.statuswindow (PR #615 folded): docs/testing/titles/table.py, docs/testing/jobs/status_html.py, docs/testing/jobs/selftest.d/99-status-fullwindow.sh, docs/lanes/statuswindow/**, docs/testing/title_verdict.py.
