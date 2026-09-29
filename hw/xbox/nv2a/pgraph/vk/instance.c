@@ -485,7 +485,7 @@ static StringArray *get_required_device_extension_names(void)
  * whole monolithic pipeline on T30 (docs/lanes/gpl569/NOTES.md, "Runs").
  */
 #ifndef HAKUX_GPL_DEFAULT
-#define HAKUX_GPL_DEFAULT 4
+#define HAKUX_GPL_DEFAULT 0
 #endif
 
 static int gpl_requested_mode(void)
