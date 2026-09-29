@@ -10,7 +10,20 @@ Status (2026-09-29 02:00 PDT, attempt 2):
 - **P: void.** The pilot pair ran on the Thor, and both arms hit its thermal pause around the fight.
   Pair 2 is queued on the Nova.
 - **Coverage (section 3):** DOA's 83 pixel-shader modules fall into 34 combiner families.
-- **Addendum** (full uber pipeline, GPL): section 8.
+- **Addendum** (full uber pipeline, GPL): section 8. The answer is uber libraries under GPL.
+
+**Waiting (2026-09-29 02:20 PDT)** on four things outside this session:
+- CI on this head.
+- P pair 2 on the Nova: `1790671992-uberspike569-4114420` and `1790671996-uberspike569-4116483`.
+- The GPL probe `1790673060-uberspike569-277562`.
+
+The Nova is on charge hold until 04:30 PDT at the latest.
+
+**On resume:**
+1. Read pair 2 with `soak_read.py`, checking the thermal line, and judge it against
+   `uberspike569-doa-soak.json`.
+2. Grep the probe's logcat for `psh-uber: GPL`.
+3. Fill 6.2's P and 8.4 item 1, then mark PR #581 ready.
 
 Verdict (section 7): the fragment-only hybrid as briefed is not supported, because the C leg kills
 it.
