@@ -6,9 +6,9 @@
 #
 #   . "$(dirname "${BASH_SOURCE[0]}")/remote-lane.sh"
 #   remote_map                     # <branch>\t<lane> per line; rc 0 board, 2 working tree, 1 unreadable
-#   remote_lane_of   <branch>      # prints the lane name, or nothing
-#   remote_branch_of <lane>        # prints the branch, or nothing
-#   is_remote_branch <branch>      # rc 0 when some row names it
+#   remote_lane_of   <branch>      # prints the lane name, or nothing; <branch> may be suffixed
+#   remote_branch_of <lane>        # prints the branch, or nothing (the row's own, unsuffixed)
+#   is_remote_branch <branch>      # rc 0 when some remote lane owns it
 #   remote_source                  # prints board | worktree | unreadable
 #   remote_authoritative           # rc 0 ONLY when the map came from the board
 #   remote_readable                # rc 0 when SOMETHING parsed -- see the warning below
@@ -35,6 +35,22 @@
 # are not separable anyway -- a lane is remote precisely because it lives on a
 # branch this host does not drive -- so making the branch the marker's value
 # keeps it one field rather than a `remote` plus a `branch` that can disagree.
+#
+# AND A REMOTE LANE OPENS EACH PR ON A SUFFIXED BRANCH, `<remote>-<suffix>`,
+# exactly as a local lane's second PR goes on `lane/<name>-<suffix>`. Audit
+# files are named by branch, so a lane that reuses one name collides with its
+# own earlier audits; #578's pair did, and both passes said to stop. Asking
+# only "is this head the row's value?" filed every such PR under nobody, and
+# fold.sh's index-conflict repair would have pushed a merge onto a branch that
+# a session elsewhere pushes to.
+# So a head is a remote lane's when it EQUALS the row's value or, failing that,
+# STARTS WITH `<value>-`, and the longest match wins -- branch_lane() in
+# fleet.py, stated for remote rows. The longest match is taken over EVERY
+# row's branch, local ones included (`lane/<row name>`): a `remote = true`
+# row `foo` must not claim `lane/foo-bar` from a local lane called `foo-bar`,
+# since that is the other lane's own branch or its suffixed one. fleet.py's
+# remote_lane_of() is the same rule, and 98-lane-shape.sh runs one table of
+# heads through both.
 #
 # THE BOARD IS READ THROUGH board_files.py, so this sees origin/board and not a
 # lane worktree's fold-lagged copy (ORCHESTRATION-DESIGN.md §5). HAKUX_TERRITORY
@@ -86,7 +102,7 @@
 # affordable here -- the cost of being wrong is one fetch, and the cost of the
 # other direction is a deleted cloud branch or a second agent on one.
 
-_REMOTE_MAP=""; _REMOTE_MAP_RC=""; _REMOTE_SRC=""
+_REMOTE_MAP=""; _REMOTE_MAP_RC=""; _REMOTE_SRC=""; _REMOTE_LOCAL=""
 remote_map() {   # -> "<branch>\t<lane>" per line on stdout; rc 0 board, 2 working tree, 1 unreadable
     if [ -z "$_REMOTE_MAP_RC" ]; then
         local testing out
@@ -133,6 +149,12 @@ for lane, meta in sorted((t.get("lane") or {}).items()):
         print("lane/%s\t%s" % (lane, lane))
     elif isinstance(r, str) and r.strip():
         print("%s\t%s" % (r.strip(), lane))
+# Every LOCAL row's branch too, with a third field, for remote_lane_of's
+# longest match alone. remote_map does not print these: its callers asked for
+# remote lanes and get exactly those.
+for lane, meta in sorted((t.get("lane") or {}).items()):
+    if not meta.get("remote"):
+        print("lane/%s\t%s\tlocal" % (lane, lane))
 PY
 )      && case "$(printf '%s\n' "$out" | head -1)" in
                src=board)    _REMOTE_SRC=board;    _REMOTE_MAP_RC=0 ;;
@@ -140,7 +162,12 @@ PY
                *)            _REMOTE_SRC=unreadable; _REMOTE_MAP_RC=1 ;;
            esac \
         || { _REMOTE_SRC=unreadable; _REMOTE_MAP_RC=1; }
-        if [ "$_REMOTE_MAP_RC" = 1 ]; then _REMOTE_MAP=""; else _REMOTE_MAP=$(printf '%s\n' "$out" | tail -n +2); fi
+        if [ "$_REMOTE_MAP_RC" = 1 ]; then
+            _REMOTE_MAP=""; _REMOTE_LOCAL=""
+        else
+            _REMOTE_MAP=$(printf '%s\n' "$out" | tail -n +2 | awk -F'\t' 'NF == 2')
+            _REMOTE_LOCAL=$(printf '%s\n' "$out" | tail -n +2 | awk -F'\t' 'NF == 3 && $3 == "local"')
+        fi
     fi
     [ -n "$_REMOTE_MAP" ] && printf '%s\n' "$_REMOTE_MAP"
     return "$_REMOTE_MAP_RC"
@@ -159,9 +186,18 @@ remote_authoritative() { remote_map >/dev/null; [ "$_REMOTE_MAP_RC" = 0 ]; }
 # to report, never to decide whether a branch is safe to delete or to start on.
 remote_readable() { remote_map >/dev/null; [ "$_REMOTE_MAP_RC" != 1 ]; }
 
+# THE SUFFIX RULE (see the header). Remote rows are listed first, so where a
+# remote and a local row somehow name the same branch, the answer is the
+# remote lane -- the direction in which every caller refuses to act.
 remote_lane_of() {   # <branch> -> the lane name, or nothing
     [ -n "${1:-}" ] || return 1
-    remote_map | awk -F'\t' -v b="$1" '$1 == b { print $2; found = 1; exit } END { exit !found }'
+    # A pipeline, so the read stays in a subshell as it did when this was
+    # `remote_map | awk`: the caller's cache is not filled as a side effect.
+    { remote_map >/dev/null; printf '%s\n%s\n' "$_REMOTE_MAP" "$_REMOTE_LOCAL"; } | awk -F'\t' -v b="$1" '
+        NF < 2 || $1 == "" { next }
+        $1 == b { ex = 1; if (NF == 2) { print $2; found = 1 }; exit }
+        index(b, $1 "-") == 1 && length($1) > bl { bl = length($1); bn = $2; br = (NF == 2) }
+        END { if (!ex && br) { print bn; found = 1 }; exit !found }'
 }
 
 remote_branch_of() {   # <lane> -> the branch, or nothing

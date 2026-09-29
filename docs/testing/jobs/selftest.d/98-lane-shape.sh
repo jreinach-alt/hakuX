@@ -91,6 +91,103 @@ check "an explicit HAKUX_TERRITORY path is authoritative -- nothing fell back to
 check "an unreadable board is not authoritative either" \
     bash -c '. "$1/remote-lane.sh"; ! HAKUX_TERRITORY="$2/nosuch.toml" remote_authoritative' _ "$HERE" "$LS"
 
+# ------------------------------------------- a remote lane's suffixed branch
+# A REMOTE LANE OPENS EACH PR ON ITS OWN BRANCH, `<remote>-<suffix>`, as a
+# local lane's second PR goes on `lane/<name>-<suffix>`: audit files are named
+# by branch, and lane.remote's #578 collided with its own #560's by reusing
+# one. Both readers matched the row's value exactly, so such a PR belonged to
+# nobody. The rule is branch_lane()'s: the row's own branch, or else the
+# LONGEST branch the head starts with followed by `-`, taken over every row's
+# branch, local rows included. ONE TABLE, RUN THROUGH BOTH READERS: two jobs
+# that disagree about whose a head is act on two answers.
+#
+# ADDED 2026-09-29 by lane.remote (granted on #461, 5883107753) and measured on
+# its own, outside the 61 above: this block and its legs further down are 27
+# checks, and against master@bf1ecde346's remote-lane.sh and fleet.py 10 fail
+# and 17 pass. The 10 are what a suffix changes: the table's three suffix
+# rows, the fleet.py agreement check, and the fleet (3), handback (1) and fold
+# (2) legs that call a suffixed branch the lane's. The 17 are the table's ten
+# must-not-move rows, remote_map's and remote_branch_of's unchanged answers,
+# and the pairs: the fleet fixture answering, the prefix-only head in fleet
+# and in handback, handback starting nothing, and a local lane's suffixed
+# branch still pruned.
+cat > "$LS/suffix.toml" <<'TOML'
+wave = 1
+updated_utc = "2026-09-29T00:00:00Z"
+
+[lane.outer]
+issues = []
+files = []
+remote = "claude/sfx-u1"
+
+[lane.inner]
+issues = []
+files = []
+remote = "claude/sfx-u1-deep"
+
+[lane.conv]
+issues = []
+files = []
+remote = true
+
+[lane.conv-local]
+issues = []
+files = []
+
+[lane.plain]
+issues = []
+files = []
+TOML
+# <head>|<the remote lane it is, or ->|<why>
+cat > "$LS/suffix.tab" <<'TAB'
+claude/sfx-u1|outer|the row's own value
+claude/sfx-u1-461p2|outer|a suffixed branch is its row's
+claude/sfx-u1-deep|inner|another row's own value, though it starts with claude/sfx-u1-
+claude/sfx-u1-deep-2|inner|the longest match wins
+claude/sfx-u1x|-|no dash after the value: another branch, not a suffix
+claude/sfx-u|-|a prefix of the value is not the value
+lane/conv|conv|remote = true names lane/<row name>
+lane/conv-7|conv|  and that lane's suffixed branches
+lane/conv-local|-|a local row's own branch is not taken by the remote row lane/conv
+lane/conv-local-2|-|  nor is that local lane's suffixed branch: its row is the longer match
+lane/plain|-|a local lane's branch is no remote lane's
+lane/plain-3|-|  nor is its suffixed branch
+claude/other|-|no row names it
+TAB
+while IFS='|' read -r sh sx why; do
+    [ -n "$sh" ] || continue
+    got=$( ( . "$HERE/remote-lane.sh"; HAKUX_TERRITORY="$LS/suffix.toml" remote_lane_of "$sh" ) 2>/dev/null )
+    check "remote_lane_of $sh -> $sx: $why" [ "${got:--}" = "$sx" ]
+done < "$LS/suffix.tab"
+# remote_map's own output is unchanged: the local rows it now reads for the
+# longest match are not remote lanes, and its callers asked for those only.
+( . "$HERE/remote-lane.sh"; HAKUX_TERRITORY="$LS/suffix.toml" remote_map ) > "$LS/suffix-map.tsv" 2>/dev/null
+check "remote_map still lists remote rows only, two fields each" \
+    bash -c '[ "$(wc -l < "$1")" -eq 3 ] && awk -F"\t" "NF != 2 { exit 1 }" "$1" && ! grep -q -e plain -e conv-local "$1"' _ "$LS/suffix-map.tsv"
+check "remote_branch_of still answers the row's own, unsuffixed branch" \
+    bash -c '. "$1/remote-lane.sh"; [ "$(HAKUX_TERRITORY="$2/suffix.toml" remote_branch_of outer)" = claude/sfx-u1 ]' _ "$HERE" "$LS"
+fl_sfx=$(python3 - "$TESTING" "$LS/suffix.toml" "$LS/suffix.tab" 2>&1 <<'PY'
+import sys, tomllib
+testing, terr, tab = sys.argv[1:4]
+sys.path.insert(0, testing)
+import fleet
+t = tomllib.load(open(terr, "rb"))
+rem, n = fleet.remote_lanes(t), 0
+for line in open(tab):
+    if not line.strip():
+        continue
+    head, want, _ = line.rstrip("\n").split("|", 2)
+    got = fleet.remote_lane_of(head, rem, t.get("lane")) or "-"
+    n += 1
+    if got != want:
+        print("%s -> %s, want %s" % (head, got, want))
+print("rows=%d" % n)
+PY
+)
+# rows=13 and nothing else: a table that did not load cannot pass as agreement.
+check "fleet.py's remote_lane_of gives remote-lane.sh's answer on all 13 heads" \
+    [ "$fl_sfx" = "rows=13" ]
+
 # ------------------------------------------------------------------ arms.sh
 # THE DEVICE PIPELINE, WHICH THIS LANE HAD NEVER REACHED. A bare origin with a
 # non-lane/* branch carrying three registrations, and a gh that says the branch
@@ -330,6 +427,27 @@ check "a remote lane is NOT reported as a claim with no running agent" \
     bash -c '! grep -qE "^  (elsewhere|prefixed) +holds" <<< "$1"' _ "$flt_ls"
 check "  while a local lane with no unit still is -- the target is narrowed, not widened" \
     grep -qE "^  alpha +holds" <<< "$flt_ls"
+# A SUFFIXED BRANCH'S PR IS ITS REMOTE LANE'S (see the table near the top). A
+# ready one is the case that mattered: in no lane section, the READY-with-no-
+# label FAIL could not name it, and a PR nothing labels is stalled. #780 is
+# the pair: its head only shares the prefix, so it must stay nobody's.
+cat > "$LS/lsprs-sfx.json" <<'EOF'
+[{"number":777,"headRefName":"claude/elsewhere-u1","isDraft":true,"labels":[],"updatedAt":"2026-09-19T00:00:00Z","title":"the remote lane"},
+ {"number":779,"headRefName":"claude/elsewhere-u1-461p2","isDraft":false,"labels":[],"updatedAt":"2026-09-29T00:00:00Z","title":"the remote lane's next PR"},
+ {"number":780,"headRefName":"claude/elsewhere-u1x","isDraft":false,"labels":[],"updatedAt":"2026-09-29T00:00:00Z","title":"a branch that only shares the prefix"}]
+EOF
+flt_sfx=$( ( export PATH="$LS/bin2:$PATH" LS_PRS="$LS/lsprs-sfx.json"; cd "$LSF" && HAKUX_BOARD_REF= DISPATCH_DIR="$LS/fleetdisp" \
+             python3 "$LSF/fleet.py" ) 2>&1 )
+check "the suffixed-branch fleet fixture answered -- not PR-BLIND" \
+    bash -c '! grep -q "PR-BLIND" <<< "$1"' _ "$flt_sfx"
+check "a PR on a remote lane's suffixed branch is counted as that lane's" \
+    grep -q "elsewhere .*claude/elsewhere-u1 .*PR #777 draft, PR #779 READY" <<< "$flt_sfx"
+check "  and is READY, NOT FOLDED under the lane, placed elsewhere" \
+    grep -qE "^  elsewhere +#779 +elsewhere " <<< "$flt_sfx"
+check "  and the READY-with-no-label FAIL names it" \
+    grep -q "READY and carry no pipeline label: #779\." <<< "$flt_sfx"
+check "  while a head that only shares the prefix is no lane's PR" \
+    bash -c '! grep -q "#780" <<< "$1"' _ "$flt_sfx"
 
 # --------------------------------------------------------------- handback.sh
 # `needs-rebase` on a remote lane's PR. The old `*)` arm told it "whoever owns
@@ -379,6 +497,25 @@ check "a remote lane named lane/* is still not resumed locally" \
     bash -c '[ ! -s "$1/started.log" ]' _ "$LSH"
 check "  even though it has a worktree and a brief on this host" \
     [ -d "$HAKUX_WORK/wt/prefixed" ]
+# AND ITS SUFFIXED BRANCHES ARE THE SAME LANE'S. A remote lane opens each PR on
+# `<remote>-<suffix>`; before the suffix rule this head was `claude/*` with no
+# owner, and nothing said the lane's own routine would pick it up.
+: > "$LSH/comments.log"; : > "$LSH/started.log"
+printf '303\tclaude/elsewhere-u1-461p2\t%s\tneeds-rebase\n' cccccccccccccccccccccccccccccccccccccccc > "$LSH/prs.tsv"
+( export PATH="$LSH/bin:$PATH" HAKUX_TERRITORY="$LS/territory.toml"
+  bash "$HERE/handback.sh" ) >> "$LSH/tick.log" 2>&1
+check "a remote lane's suffixed branch starts nothing locally either" \
+    bash -c '[ ! -s "$1/started.log" ]' _ "$LSH"
+check "  and is told, by lane name, that its own routine picks it up" \
+    grep -q "lane.elsewhere.*runs somewhere this host cannot see" "$LSH/comments.log"
+# The pair: a head that only shares the prefix is not that lane's, so it is not
+# told so. (What handback does say to a branch nobody owns is 99-handback's.)
+: > "$LSH/comments.log"; : > "$LSH/started.log"
+printf '304\tclaude/elsewhere-u1x\t%s\tneeds-rebase\n' dddddddddddddddddddddddddddddddddddddddd > "$LSH/prs.tsv"
+( export PATH="$LSH/bin:$PATH" HAKUX_TERRITORY="$LS/territory.toml"
+  bash "$HERE/handback.sh" ) >> "$LSH/tick.log" 2>&1
+check "  while a head that only shares the prefix is not called lane.elsewhere's" \
+    bash -c '! grep -q "lane.elsewhere" "$1/comments.log"' _ "$LSH"
 
 # ----------------------------------------------------------------- lane.sh
 # THE SINGLE MOST EXPENSIVE THING THAT COULD GO WRONG. `lane.sh resume
@@ -462,6 +599,23 @@ check "  and says whose it is, so the refusal is diagnosable" \
     grep -q "NOT pruning 'lane/prefixed'.*lane.prefixed" <<< "$out"
 check "  while an ordinary folded lane branch is still deleted" \
     bash -c '! git -C "$1/origin.git" rev-parse -q --verify refs/heads/lane/ordinary >/dev/null' _ "$LSP"
+# A REMOTE LANE'S SUFFIXED lane/* BRANCH IS ITS TOO, so it is kept as well.
+# Whether a folded suffixed branch should be pruned is a separate question
+# (hostops, #461 5883107753); this pins today's answer, so that changing it is
+# done on purpose. lane/alpha-2 is the pair: a LOCAL lane's suffixed branch,
+# folded, is still deleted -- the exemption did not widen to every suffix.
+for b in prefixed-2 alpha-2; do
+    pg_ls checkout -q -b "lane/$b" master; echo "$b" > "$LSP/repo/$b"
+    pg_ls add -A; pg_ls commit -q -m "$b"; pg_ls push -q "origin" "lane/$b"
+    pg_ls checkout -q master; pg_ls merge -q --no-ff --no-edit "lane/$b"
+done
+pg_ls push -q origin master
+out=$(fold_ls --apply)
+check "fold.sh keeps a remote lane's suffixed lane/* branch too" \
+    git -C "$LSP/origin.git" rev-parse -q --verify refs/heads/lane/prefixed-2
+check "  and says whose it is" grep -q "NOT pruning 'lane/prefixed-2'.*lane.prefixed" <<< "$out"
+check "  while a local lane's suffixed branch, folded, is still deleted" \
+    bash -c '! git -C "$1/origin.git" rev-parse -q --verify refs/heads/lane/alpha-2 >/dev/null' _ "$LSP"
 # An un-pruned ref costs a few bytes. "I could not check" is not "safe to
 # delete", and this is the direction that has to be wrong for it to matter.
 pg_ls push -q origin master:refs/heads/lane/second

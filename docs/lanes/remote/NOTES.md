@@ -3364,3 +3364,82 @@ note above, not from the core:
 
 The tau = 60 s result in "tau, unregistered and in-sample" is not
 evidence. It was fitted on these same traces.
+
+## Suffixed branches, and the board's remote-lane rule (2026-09-29)
+
+**The decision.** Both #578 audits (LOW-2, in pass 1 and pass 2) advised
+that this lane's next PR go on a suffixed branch:
+- audit files are named by branch;
+- `claude/docs-tooling-agentic-coding-u152m1` already has #560's and #578's
+  audits on master, and #578's had to carry `-pr578` to avoid overwriting
+  #560's.
+
+The owner approved it in this lane's session on 2026-09-29. From now on each
+PR goes on its own `claude/docs-tooling-agentic-coding-u152m1-<suffix>`,
+started from master. The unsuffixed branch stays where it is (6d2b2e49).
+
+**The gap.** Every reader of `[lane.remote] remote` in `territory.toml`
+compared the head with the row's value exactly (#461, 5883036238):
+- **`fleet.py`,** in `lane_prs()`: a head that was neither a `remote` value
+  nor `lane/*` was skipped. So a suffixed PR was in no lane section, and the
+  READY-with-no-label FAIL could not name it.
+- **`jobs/remote-lane.sh`,** in `remote_lane_of()`, which `is_remote_branch()`,
+  `handback.sh`'s `lane_name()` and both of `fold.sh`'s guards call:
+  - handback could not tell a suffixed head was this lane's;
+  - `fold.sh`'s index-conflict repair would have pushed a merge onto a
+    branch this session pushes to.
+
+**The rule** (granted by hostops, board a64e53e5, #461 5883107753): a head is
+a remote lane's when it equals the row's value or, failing that, starts with
+`<value>-`, and the longest match wins, as in `branch_lane()`.
+- **The longest match is taken over every row's branch, local rows included**
+  (`lane/<row name>`). A `remote = true` row `foo` must not take
+  `lane/foo-bar`, which is a local lane `foo-bar`'s own branch, or that lane's
+  suffixed ones.
+- **Remote rows come first,** so a branch that a remote and a local row both
+  name goes to the remote lane, the direction in which every caller refuses
+  to act.
+- **Both readers implement it:** `fleet.py`'s new `remote_lane_of()` and the
+  shell's. `remote_map` now also reads the local rows for the longest match,
+  but still prints only remote rows, so its callers see no change.
+- **Out of scope, per the grant:** pruning folded suffixed branches.
+  `fold.sh` prunes only `lane/*` refs, so `claude/*` ones were never pruned.
+  A remote lane's suffixed `lane/*` branch is now kept like its own.
+
+**Tests** (`98-lane-shape.sh`, 27 new checks, 89 in the file):
+- **One table of 13 heads** is run through both readers:
+  - exact values;
+  - suffixed branches;
+  - the longest match between two remote rows;
+  - `remote = true` and its suffixes;
+  - a local row whose name extends the remote row's;
+  - prefix-only near misses;
+  - an unrelated branch.
+
+  `fleet.py` gives the shell's answer on all 13.
+- **End-to-end legs:**
+  - `fleet.py` counts a ready PR on a suffixed branch as the lane's, lists it
+    under READY, NOT FOLDED, and names it in the no-label FAIL;
+  - handback tells a suffixed head that the lane's own routine picks it up;
+  - `fold.sh` keeps a remote lane's suffixed `lane/*` branch.
+
+  Each leg has a pair that must not move: a head that only shares the prefix,
+  or a local lane's suffixed branch, which is still pruned.
+- **Against master bf1ecde346's two readers,** 10 of the 27 fail and 17 pass.
+  The 10 are what a suffix changes:
+  - the 3 suffix rows of the table;
+  - the agreement check;
+  - 3 fleet legs, 1 handback leg and 2 fold legs.
+
+  All 62 of the file's existing checks pass on both versions.
+
+**Two more readers match exactly, and they are not in the grant**
+(#461, 5883624572; asked whether this PR may take them):
+- **`jobs/issue-sweep.sh`, `lane_absence()`.** It counts a remote lane as
+  live only if an open PR's head equals its branch, or that exact branch's
+  tip moved within 3 days.
+  - The unsuffixed branch's tip is 6d2b2e49, 09-28 20:20Z.
+  - From about 10-01 20:20Z, the sweep would report this lane as absent even
+    with suffixed PRs open. That is the costly direction.
+- **`jobs/pr-sweep.sh`,** the classifier's `REMOTE.get(branch, "")`: a
+  suffixed draft gets no class. The impact is low.
