@@ -1637,10 +1637,3 @@ issues = []
 files = []
 retired_utc = "2026-09-29T01:40:00Z"
 note = "RETIRED (hostops 2026-09-29T01:40Z): attempt 2, PR #595, folded as 605532c2f8 (18:15 PDT), unit gone; its row held no files (written late by job.board). See [retired.battadmit] for attempt 1 (PR #587)."
-
-
-[lane.cloud-audit1-611]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit1-611, audit pass 1 of PR #611 on branch lane/toolsmith, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit1 611` removes this row when the unit ends."
