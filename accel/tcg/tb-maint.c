@@ -769,12 +769,13 @@ static void page_unlock(PageDesc *pd)
 /*
  * #424: the range test and the code bitmap that makes it cheap.
  *
- * HAKUX_TCG424_RANGE=1 (request.sh --env) turns on the range test and the
- * bitmap. Default OFF: the fork's whole-page invalidation (xemu 703566ce33),
- * where every block on a written page is discarded and no bitmap is built.
- * The default stays whole-page until the must-not-regress leg on Blinx
- * (tbchurn424-soak.json M4, failed on the survey route) is measured on
- * gameplay. Read once.
+ * Default ON: a write discards only the blocks whose bytes it overlaps, and
+ * the bitmap spares the rest cheaply. Flipped after tbflip424-blinx2.json
+ * passed M0, M1 and M4' on three Thor gameplay pairs (#424).
+ * HAKUX_TCG424_RANGE=0 (request.sh --env) restores the fork's whole-page
+ * invalidation (xemu 703566ce33), where every block on a written page is
+ * discarded and no bitmap is built, so an A/B can still run the old path.
+ * Read once.
  */
 static int hakux_tcg424_range = -1;
 
@@ -784,7 +785,7 @@ bool hakux_tcg424_range_on(void)
 
     if (unlikely(v < 0)) {
         const char *e = getenv("HAKUX_TCG424_RANGE");
-        v = e && e[0] == '1';
+        v = !(e && e[0] == '0');
         qatomic_set(&hakux_tcg424_range, v);
     }
     return v;
@@ -1791,9 +1792,9 @@ bool tb_invalidate_phys_page_unwind(CPUState *cpu, tb_page_addr_t addr,
  * "what restoring the test would spare" and not "what some other predicate
  * would spare".
  *
- * Since #424 it is the live predicate of the loop below when
- * HAKUX_TCG424_RANGE=1, and tb_page_code_extent() is the same arithmetic
- * expressed as a byte range for the per-page code bitmap.
+ * Since #424 it is the live predicate of the loop below (the default;
+ * HAKUX_TCG424_RANGE=0 turns it off), and tb_page_code_extent() is the same
+ * arithmetic expressed as a byte range for the per-page code bitmap.
  */
 static bool tb_overlaps_written_range(const TranslationBlock *tb, int n,
                                       tb_page_addr_t start,
