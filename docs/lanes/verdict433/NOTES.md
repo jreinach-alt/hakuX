@@ -476,3 +476,102 @@ queued this session). None have finished. Posting `[lane.verdict433]
 waiting:` on PR #610 and #433, updating the PR body's `Files:` line to
 include `queue_batch3.sh`, and stopping per the addendum's explicit
 instruction not to wait on these runs in this session.
+
+## Session 6 (2026-09-29, resumed ~23:26Z / attempt 2 since the reset)
+
+**Why session 5 did not finish, restated.** It did finish, cleanly, on the
+documented stopping point: six Nova confirmations queued, a `waiting:`
+comment posted on PR #610 and #433 at 21:11-21:12Z, no runs polled from
+inside the session. hostops acked at 21:33:32Z that all six were "correctly
+in queue" behind the Nova's battery hold (expected to lift at >=45% or
+16:15 PDT / 23:15Z). That is not what needed fixing this session.
+
+**What this session found instead: all six requests had vanished.** Merged
+`origin/master` first (26 commits, clean merge, includes lane.kabukistall's
+K1 result and lane.gmem474's #474 predictions on AUF/DOA/Crimson/Kabuki --
+none of it touches this lane's files). Then went to read the six queued
+results and found none of them anywhere:
+
+- Not in `queue/` (13 entries at read time, all `lane.memfast`/`lane.ibcache`,
+  none `lane.verdict433`).
+- Not in `running/` (2 entries, `lane.uberspike569` and one owner file).
+- Not in `results/` (2066 entries; the only 6 matching `verdict433` were
+  session 1-3 leftovers -- Azurik's halt-on run and pilot, and two old
+  `211620`/`211666` variants -- none of the six from session 4/5).
+- Not in `queue/withdrawn/` either, and no `.why` file for any of them.
+
+Checked with a full `os.walk($DISPATCH_DIR)` for all six raw ID numbers
+(3241572, 3241617, 3241677, 3697079, 3697712, 1492209) after `Glob`'s
+single-`*` pattern gave inconsistent (and wrong) "no files found" answers
+against the ~2000-entry `results/` tree at this scale -- `os.walk` plus
+`os.path.exists` on exact paths is the ground truth used here, not `Glob`.
+Zero matches anywhere in the tree, for any of the three plausible epoch/ID
+spellings recorded in NOTES/PR/issue text.
+
+**No comment records a withdrawal or a result for any of the six.** The
+#433/#610 threads go quiet on this lane's requests after the 21:33:32Z ack
+until lane.kabukistall's unrelated K1 post at 22:54:03Z. That post's
+`result.json` (`1-1790702688-lane.kabukistall-194847`) contains
+`"backfill_for": "1-1790700817-lane.verdict433-3697079"` in its `battery`
+block -- the battery-learning gate borrowed this lane's WWE Raw 2 retry
+request as a reference point for its own admission math, dated near this
+session's start. That is the only trace any of the six left. Nothing
+explains where the request records themselves went. This reads as a
+harness bug in the queue/battery-hold path, not something introduced by
+this lane's own actions (queuing them and parking was exactly what the
+addendum asked for, and hostops itself confirmed they landed correctly).
+Per standing guidance, a dispatch-harness anomaly is recorded here and
+reported on the issue/PR, not filed as a separate GitHub issue.
+
+**Re-queued all six**, fresh, as `docs/lanes/verdict433/queue_batch4.sh`
+(new file, added to `Files:`). All six now run on the Nova at its default
+confirmation regimen -- the three that used to be Thor confirmations
+(BG:DA, KOF, Azurik) stay on the Nova per the still-standing heat addendum.
+Bumped `REF` to `2dd92568b5` (today's merged `origin/master` tip) since
+nothing here compares against the specific old refs. `--seconds` figures
+are unchanged from `queue_batch2.sh`/`queue_batch3.sh` (mark time + 1200 s
++ margin); AUF's is estimated at 1475 s (225 s mark + 1200 s + 50 s
+margin, matching the figure session 4 used but never wrote down verbatim).
+
+| Title | Device | Regimen | Route | Request |
+|---|---|---|---|---|
+| WWE Raw 2 | nova | default | wwe-raw-2 | `1-1790725089-lane.verdict433-1456493` |
+| 50 Cent: Bulletproof | nova | default | 50cent | `1-1790725089-lane.verdict433-1456544` |
+| 007: Agent Under Fire | nova | default | survey | `1-1790725090-lane.verdict433-1456591` |
+| Baldur's Gate: Dark Alliance | nova | default | baldurs-gate-da | `1-1790725090-lane.verdict433-1456665` |
+| KOF: Maximum Impact Maniax | nova | default | kof-mi.returning | `1-1790725091-lane.verdict433-1456797` |
+| Azurik: Rise of Perathia | nova | default | azurik | `1-1790725091-lane.verdict433-1456876` |
+
+Verified each exists on disk under `queue/<id>.req` right after queuing
+(exact-path `os.path.exists`, not `Glob`). The pilot gate admitted all six
+on the standing `pilots/lane.verdict433.ok` (8.8 h old at queue time),
+estimating ~162 min of total queued+running device time, same total as
+session 5's now-vanished batch.
+
+**Also cleaned up** four stray untracked scratch files left in the worktree
+root by an earlier session (`.c433.md`, `.prbody.json`, `.prbody.md`, and
+`docs/lanes/verdict433/.scratch/`) -- old drafts of PR-body text and a
+`sweep.py` scratch output directory, none referenced by anything committed.
+
+### Next, in order
+
+1. When each of the six finishes, judge it with `title_verdict.py <dir>
+   --require confirmation` (`--reviewed-gameplay yes|no` for AUF, the
+   generic survey route). Fill in the running table.
+2. For BG:DA/KOF/Azurik's first Nova run each, check `route-frames/` before
+   trusting the result (Thor-authored route timings on Nova hardware).
+3. Post the updated Playable count to #433 once any of the six reads a
+   verdict.
+4. Watch for the same disappearance again. If any of these six also vanish
+   without a result or a withdrawal record, that confirms a repeatable
+   harness bug worth a lane brief of its own rather than a third blind
+   re-queue.
+5. Once ibcache's Crimson Nova runs and #591 land, re-check Crimson and
+   queue GTA SA's Nova investigation copy for a tier-C read.
+
+### Ending session 6 here: waiting
+
+All six requests are freshly queued and none have finished (queued only
+minutes ago, each is a 20-30 min confirmation). Posting `[lane.verdict433]
+waiting:` on PR #610 and #433 describing the vanished batch and the
+re-queue, and stopping -- not polling device work from inside the session.
