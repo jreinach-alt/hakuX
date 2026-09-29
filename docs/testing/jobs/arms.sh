@@ -957,7 +957,7 @@ samedev_rerun() {   # <pair.json> <verdict> <device A> <device B> -> "<ida> <idb
     dev=$da; err="$A/log/$sha.samedev.err"; : > "$err"
     python3 "$T/affinity.py" "$D" --available "$dev" 2>/dev/null \
         || dev=$(python3 "$T/affinity.py" "$D" --choose "$(basename "$path")" "$(date +%s)" 2>/dev/null)
-    local narrow=() ida="" idb="" newer
+    local rnarrow=() ida="" idb="" newer
     # A later registration on the same issue (or prediction) on this branch
     # supersedes this verdict whatever the re-run would say, so the re-run
     # would spend two arms on a verdict that cannot count. #583 is that case:
@@ -983,15 +983,15 @@ PY
         echo "the pair record lacks its prediction, refs or suites" > "$err"
     else
         skips=$(disc_list "$path" skip_tests); onlys=$(disc_list "$path" only_tests)
-        [ -z "$skips" ] || narrow+=(--skip-tests "$skips")
-        [ -z "$onlys" ] || narrow+=(--only-tests "$onlys")
+        [ -z "$skips" ] || rnarrow+=(--skip-tests "$skips")
+        [ -z "$onlys" ] || rnarrow+=(--only-tests "$onlys")
         runs=$(field "$path" runs_per_arm); [[ "$runs" =~ ^[0-9]+$ ]] && [ "$runs" -ge 1 ] || runs=1
         prio=$(release_prio "$issue")
         name=$(echo "${who:-arm}" | sed 's/^lane\.//; s/[^A-Za-z0-9_-]/_/g' | cut -c1-24)
-        qa=$(cd "$REPO" && HAKUX_RELEASE_PRIO="$prio" DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-base" --ref "$a" --suites "$suites" ${narrow[@]+"${narrow[@]}"} --device "$dev" --hard-pin --runs "$runs" \
+        qa=$(cd "$REPO" && HAKUX_RELEASE_PRIO="$prio" DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-base" --ref "$a" --suites "$suites" ${rnarrow[@]+"${rnarrow[@]}"} --device "$dev" --hard-pin --runs "$runs" \
                 --expect "$path" --purpose "BASE arm ${issue:+#$issue }$who at $a, same-device re-run on $dev of a pair confounded across $da/$db, queued by the arms job from $src" 2>>"$err") && ida="${qa##* }"
         if [ -n "$ida" ]; then
-            qb=$(cd "$REPO" && HAKUX_RELEASE_PRIO="$prio" DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-fix" --ref "$b" --suites "$suites" ${narrow[@]+"${narrow[@]}"} --device "$dev" --hard-pin --runs "$runs" \
+            qb=$(cd "$REPO" && HAKUX_RELEASE_PRIO="$prio" DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-fix" --ref "$b" --suites "$suites" ${rnarrow[@]+"${rnarrow[@]}"} --device "$dev" --hard-pin --runs "$runs" \
                     --expect "$path" --purpose "FIX arm ${issue:+#$issue }$who at $b, same-device re-run on $dev of a pair confounded across $da/$db, queued by the arms job from $src" 2>>"$err") && idb="${qb##* }"
         fi
     fi
