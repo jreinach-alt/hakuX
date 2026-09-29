@@ -17,9 +17,9 @@ def run(*a, **k):
 files = run("git", "diff", "--name-only", "origin/master...HEAD").split()
 body = run("gh", "pr", "view", PR, "--json", "body", "-q", ".body")
 rows = {
-    "| 3b pixels": "| 3b pixels, the flip band, three runs per arm | nothing moves outside the measured band | by hand (`bandread.py`): 0 captures self-identical in each arm and different between them; master's arm flips 5 of 67 on its own | PASS by hand; `[job.arms]` verdict pending |",
-    "| 4 title soaks": "| 4 title soaks, three titles | gameplay, no new crash or hang | GTA pilot: gameplay, no crash, both arms thermally paused; Crimson Skies and Alien Hominid env pairs queued | waiting |",
-    "| 5 fps and J/frame": "| 5 fps and J/frame | 5a GTA: no regression; 5b below-cap title: fps +5%, J/frame -4% | GTA pilot void (thermal pause 74 s after the mark in both arms); cold pair asked of lane.local; Crimson queued; Forza waits on #583 | waiting |",
+    "| 3b pixels": "| 3b pixels, the flip band, three runs per arm | nothing moves outside the measured band | by hand (`bandread.py`): 0 captures self-identical in each arm and different between them; master's arm flips 5 of 67 on its own | **PASS** (`[job.arms]`, all 69 checks, 2026-09-29 08:43 PDT) |",
+    "| 4 title soaks": "| 4 title soaks, three titles | gameplay, no new crash or hang | GTA pilot (Thor): gameplay, no crash, both arms thermally paused; runs moved to the Nova 09-29: Crimson Skies queued (B A A B), Alien Hominid and GTA wait on their Nova copies | waiting |",
+    "| 5 fps and J/frame": "| 5 fps and J/frame | 5a GTA: no regression; 5b below-cap title: fps +5%, J/frame -4% | GTA pilot void (thermal pause 74 s after the mark in both arms); 5a moves to the Nova (GTA copy pending); Crimson queued on the Nova; Forza waits on #583 | waiting |",
 }
 out = []
 for line in body.splitlines():
