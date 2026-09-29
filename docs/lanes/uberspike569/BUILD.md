@@ -139,3 +139,31 @@ programs: the specialised compiler sees constant registers and operand equalitie
 interpreter cannot see, and folds or reassociates on them. DOA's 15 programs are not affected.
 On the device, the spike's combiner check was exact where lavapipe was not (NOTES 6.1). So the
 device pixel arm decides this. `NoContraction` on both paths is still the way to guarantee it.
+
+One reduced by reading (pair 51, `rand5prog`): the signed zero is `DST(_opos_tmp, xyw, v2.yyz,
+R8.ywxz)`, whose y is `v2.y * R8.w`. No slot before it writes R8.w, so the specialised compiler
+knows it is the constant 0 and folds `x * 0.0` to `+0.0`. The interpreter multiplies at run time
+and gets `-0.0` for a negative `v2.y`. Only a program that reads a register it never wrote, or a
+constant the compiler can see, hits this. `precise` on both paths stops NIR from folding it.
+
+## 5. State (2026-09-29, attempt 3)
+
+- Built and pushed at 3f61a459c3 (CI pending). The NDK type-check is clean.
+- **Device smoke, queued on the Nova at plain priority** (no prediction: a crash check and the
+  counters, before any leg is registered):
+  - `1790706856-uberspike569-1023537`: DOA, 150 s, `HAKUX_GPL=4`;
+  - `1790706856-uberspike569-1023583`: DOA, 150 s, `HAKUX_GPL=3`.
+- **After the smoke, register and queue the legs** (judge `uberjudge.py`, `--selftest` passes):
+  - E: the pixel arm. A is the build at default 0; B is the test variant, one commit setting
+    `HAKUX_GPL_DEFAULT 4` (instance.c). That variant has all three mechanisms: its own sha and
+    APK; a `#define` the commit changes; and a runtime reader, the `[gpl569] ... mode=4` and
+    `[uber569] mode=4 links=N` lines. The suites are gpl569's 27 plus the vertex-stage ones
+    (Lighting, Specular, Fog, Texgen, Texture Matrix, Point, Vertex shader, Weight setter, W
+    param, Material).
+  - N1-N3 and G: cold DOA soaks on the Nova. A is `HAKUX_GPL=0`, B is `=3`, H is `=4`.
+    Registered factors: B's draw-path create ms <= 0.25 x A's over the run and <= 0.20 x A's over
+    the first load after `mark play`. B's stall windows (dpc_ms >= 100 in a window) <= its cold
+    misses + 2. H's GPU ms <= 1.50 x A's and gfps >= 0.80 x A's.
+- **Not built, by decision:** the persisted list of uber combinations and a boot prebuild. A
+  cold soak clears caches, so a persisted list would make "cold" warm. A canonical set needs
+  the GS states, which only a run shows. The smoke's `cold=` count prices it.
