@@ -47,15 +47,29 @@ def main(argv):
         if not rows:
             print("  VOID: no [mf0] line")
             continue
-        act = [r for r in rows if r.get("act") == 1 and r.get("cb0ms", -1) >= 0]
+        # act and cb0ms are separate facts. cb0ms reads -1 on every line of the
+        # runs so far (the cb==0 span opens at the first insert and never
+        # closes), and keying act on it printed "never activated" for runs
+        # with act=1 on every line. The armed time is bounded from cb/up/dn:
+        # a window that ends with cb > 0 and saw no transition held cb > 0
+        # throughout; any other window may have been armed for all of its dt.
+        act = [r for r in rows if r.get("act") == 1]
         tot = {k: sum(r.get(k, 0) for r in rows)
                for k in ("li", "ln", "lo", "vi", "vn", "vo", "up", "dn")}
         print("  lines=%d act_lines=%d" % (len(rows), len(act)))
         if act:
             wall = sum(r["dt"] for r in act)
-            armed = sum(min(r["cb0ms"], r["dt"]) for r in act)
-            print("  after act=1: wall=%.1fs armed(cb=0)=%.1fs share=%.4f"
-                  % (wall / 1e3, armed / 1e3, armed / wall if wall else 0.0))
+            maybe = [r for r in act
+                     if r.get("cb", 0) == 0 or r.get("up", 0) or r.get("dn", 0)]
+            bound = sum(r["dt"] for r in maybe)
+            print("  after act=1: wall=%.1fs armed(cb=0)<=%.1fs share<=%.4f "
+                  "(windows that could hold cb=0: %s)"
+                  % (wall / 1e3, bound / 1e3, bound / wall if wall else 0.0,
+                     ",".join("w%d" % rows.index(r) for r in maybe) or "none"))
+            if any(r.get("cb0ms", -1) >= 0 for r in act):
+                armed = sum(min(r["cb0ms"], r["dt"]) for r in act
+                            if r.get("cb0ms", -1) >= 0)
+                print("  cb0ms (where printed): armed=%.1fs" % (armed / 1e3))
             print("  cb at last line=%d, max=%d, min=%d"
                   % (act[-1].get("cb", -1), max(r.get("cb", -1) for r in act),
                      min(r.get("cb", -1) for r in act)))

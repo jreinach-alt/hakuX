@@ -93,7 +93,9 @@ names it.
 | | A1 `…1718274` (31515f9751) | B1 `…1718333` (82e0ef1fa9) |
 |---|---|---|
 | `[mf0]` lines | 155 | 154 |
-| `act=1` ever | **no** | no |
+| `act=1` | **on every line** (155) | on every line (154) |
+| `cb` on those lines | 2 to 27, never 0 | 2 to 27, never 0 |
+| armed time (`act=1`, `cb=0`) | at most 2.0 s, all in window 0 (boot) | the same |
 | low window: identity / other RAM page / device | 120,689 / **9,306,655** / 0 | 111,590 / 9,215,018 / 0 |
 | distinct non-identity pages (low) | **6,310** | 6,292 |
 | BAR1 window: identity / other / device | 178,771 / 0 / 0 | 178,481 / 0 / 0 |
@@ -102,11 +104,22 @@ names it.
 - **98.7% of low-window installs on GTA have VA != PA.** The first samples
   are the XBE image: VA 0x10000 -> PA 0xbf000, 0x11000 -> 0xe0000, and so on.
   The census's guess (`ln > 0`) holds, and by far.
-- **The path was never activated** (`act` stays 0), and `cb` rose to 1 once
-  and stayed there. So on GTA the path is dead *and*, if it were ever armed,
-  it would read the wrong page on almost every load. Today the bug is latent
-  on GTA. The removal is the fix for it. Nightfire, Crimson and AUF follow in
-  the queued A runs.
+- **The path was activated and then held disarmed by the watches.** `act` is
+  1 on every window line, and `cb` rose from 0 once, in window 0, and never
+  came back. After window 0 the armed time is 0. Inside window 0 the line
+  cannot order the two events, so the bound is that window's 2.0 s (0.6% of
+  the run), at boot. So on GTA the path is dead in gameplay *and*, wherever
+  it is armed, it reads the wrong page on almost every load. The removal is
+  the fix for it. Nightfire, Crimson and AUF follow in the queued A runs.
+- **CORRECTION (2026-09-29).** This table first said `act=1` ever: **no**, and
+  the bullet said the path was never activated. Both were the reader's error,
+  not the run's: `mf0_read.py` counted a line as active only when `cb0ms` was
+  0 or more, and `cb0ms` prints -1 on every line (the bug noted under the
+  pixel arm), so it found no active line and printed "never activated". The
+  reader now keeps `act` apart from `cb0ms` and bounds the armed time from
+  `cb`, `up` and `dn`. The dead-path conclusion stands on `cb`; the reason
+  given for it was wrong. The same wrong sentence is on #507
+  (issuecomment-5888195087) and is corrected there.
 - **BAR1 (the VRAM window) is all identity.** Phase 2's shadow can map it
   flat; only the low window needs per-page mappings.
 
@@ -452,6 +465,104 @@ the cause split into F0a. P stays 0.4. The largest risk remaining is M6
 - `target/i386/tcg/system/excp_helper.c` (the side-effect-free walk);
 - a new `accel/tcg/fastmem.c` and `.h`, and their meson entry (granted).
 
+### 8. F0a, the offline half (2026-09-29): the rates, from soaks on disk
+
+F0a has two halves. The device half measures the constants (a signal round
+trip, an `mprotect`, a page walk) and is still to do. This half reads the
+event rates that multiply them, from `[tlb68]`, `[watch311]` and `[mf0]`
+lines that finished soaks already printed. **Where a line below conflicts
+with sections 1-7, this section wins.**
+
+- **Reader:** `f0a_rates.py <result dir>`; output `out/f0a-rates.out`. The
+  span is from the route's `mark gameplay` to the end, unless the row says
+  otherwise. Rates are per second of wall time.
+- **The kill line** (section 6) is a third of the compare's 17.4% of the
+  vCPU: 41-55 ms per wall second on these runs.
+
+| title (device) | full flushes/s | cause | watch inserts/s | INVLPG/s | dirty clears/s, vCPU + other threads | `sd`/s | us per `sd` at the kill line |
+|---|---|---|---|---|---|---|---|
+| GTA, b_ref profile window (Thor) | 58.7 | `cr3s` 98% | 0.6 | 927 | 394 + 1,085 | 6,309 | 7.9 |
+| GTA, R1 profile window (Thor) | 36.1 | `cr3s` 94% | 1.2 | 560 | 385 + 826 | 4,299 | 11.9 |
+| GTA, pilot A1 (Thor) | 24.9 | `cr3s` 96% | 0.5 | 416 | 409 + 1,019 | 5,847 | 9.2 |
+| GTA, pilot B1 (Thor) | 28.5 | `cr3s` 99% | 0.2 | 493 | 465 + 943 | 4,937 | 10.8 |
+| Conker (Nova), **whole run, no mark** | 286.6 | `fo` 100% | 144.7 | 127 | 1,276 + 637 | 6,091 | 8.4 |
+| Forza (Nova), **whole run, no mark** | 37.7 | `fo` 98% | 22.3 | 212 | 469 + 61 | 765 | 70.9 |
+| Blinx 2 (Nova) | 57.7 | `fo` 100% | 28.9 | 0 | 427 + 2,232 | 2,669 | 20.3 |
+| Blinx: The Time Sweeper (Nova) | 0.6 | `cr3s` | 0.0 | 31 | 499 + 332 | 1,231 | 34.5 |
+| Crimson Skies (Thor) | 3.6 | `fo` 100% | 1.8 | 0 | 6,515 + 5,499 | 13,860 | 3.8 |
+| Nightfire (Thor) | 0.4 | - | 0.0 | 1 | 436 + 9,637 | 13,163 | 3.4 |
+| Agent Under Fire (Nova) | 0.0 | - | 0.0 | 0 | 282 + 6 | 282 | 124 |
+
+The two unmarked rows include boot and menus, so read their rates as the
+run's, not gameplay's. The runs are on different builds (ids in the output
+file); a rate here sizes a design, it does not compare builds.
+
+**What the rates decide**
+
+- **H4's cause split is answered, and there are two kinds of title.**
+  - **GTA reloads CR3 with the same value,** 25-59 times a second, 94-99% of
+    its full flushes.
+  - **Every other title's full flushes are ours.** `fo` is twice the watch
+    insert rate: Conker 286.3 against 2 x 144.7, Blinx 2 57.7 against
+    2 x 28.9, Crimson 3.6 against 2 x 1.8. That is one
+    `tlb_flush_all_cpus_synced` per insert and one per remove
+    (`system/physmem.c:960` and `:987`, both marked "FIXME: flush only
+    applicable pages").
+  - **No title changed CR3's value, CR0, CR4 or A20 in gameplay.** The guest
+    has one address space, so section 2's revalidation never meets a new
+    page directory in play.
+- **The per-page watch flush moves ahead of F1.** Section 2 placed it in F2.
+  - At Conker's 287 full flushes a second, a revalidation of an 8,192-page
+    mapped set at about 25 ns a page is about 59 ms per second: over the
+    kill line by itself. The 25 ns is an estimate; the device half measures
+    it.
+  - It is softmmu-only work inside this lane's files, and it pays without
+    fastmem: each of those flushes empties the TLB and the jump cache today.
+    **It is the next code item after phase 1 merges,** with its own
+    prediction: `[tlb68] fo` to about 0 on Conker, Blinx 2 and Forza, and
+    pixels identical.
+- **On GTA, revalidation is affordable without PT-page write tracking.**
+  59 flushes a second at the same estimate is about 12 ms per second, a
+  quarter of the kill line. Section 7's H4 write tracking becomes an
+  optimisation to measure later, not a precondition of F1.
+- **M6 is priced, and a fault per re-arm cannot pay.** `sd` is above 4,000
+  a second on four of the eight titles: GTA, Conker, Crimson and Nightfire.
+  A design in which each one is a protection fault and an `mprotect` has 3.4
+  to 12 us per event on those four before `sd` alone reaches the kill line. A signal round trip under libsigchain plus an `mprotect` is
+  of that order, so the design must not depend on the constant. **Amendment:
+  write permission in the shadow is optional, and it starts off.**
+  - Section 2's invariant is one-way. A shadow page mapped read-only where
+    softmmu would allow a store is always correct: the store faults to its
+    stub, and the stub is today's path.
+  - **F1 maps every page `PROT_READ`.** Dirty clears and `tlb_set_dirty` do
+    not touch the shadow, so `rd`, `rdo` and `sd` cost F1 nothing. F1's
+    reverse map serves watches only.
+  - **F2 grants write permission late.** A page becomes writable in the
+    shadow only after it has gone a stated interval with no dirty clear. The
+    first clear takes the permission away, and `tlb_set_dirty` never gives it
+    back. The `mprotect` rate is then bounded by the clears that land on
+    quiet pages, not by `sd`.
+- **F1 alone is sized at the load compares: 8.9% of GTA's vCPU** (leg S, on
+  b_ref), plus the refill part of the helpers. The store compares are 5.7%.
+  So loads-only reaches about 60% of the compare, and it carries none of the
+  dirty-tracking risk. **This is the reason to build F1 first and judge F2
+  on its own numbers.**
+- **INVLPG is not a risk.** At most 927 a second, each one unmap.
+- **GTA refills 770-1,330 pages after each full flush** (`[mf0]` installs
+  per flush, census windows only). That is softmmu's cost today,
+  `tlb_set_page_full` at 1.8-2.8% of the thread, and it is the set a
+  revalidation would keep.
+
+**The order of work, as amended**
+
+| step | what | gate |
+|---|---|---|
+| W1 | watch insert and remove flush only the pages of the watched range | phase 1 merged; its own prediction |
+| F0a, device half | the constants, measured with the other threads busy | a board request for a native test binary |
+| F0b | RAM on a memfd, fastmem off | `hw/xbox/xbox.c` granted |
+| F1 | loads only, every shadow page read-only, revalidate by walking | F0a prices it under the kill line on GTA and Conker |
+| F1x, F2, F3 | as section 6, with F2's late write permission | each on the one before |
+
 ## Log
 
 - 2026-09-28: branch, both commits, a type check against the NDK compile
@@ -517,6 +628,107 @@ the cause split into F0a. P stays 0.4. The largest risk remaining is M6
   pair before the arms job judged it (below) and ended on a `waiting:` for
   the nine soaks and the verdict.
 
+- 2026-09-29 (attempt 7; the resume header numbers it 4): attempt 6 did
+  finish, ending on a `waiting:` at 10:32Z for the nine soaks, the arms
+  verdict and the b_ref capture. It was resumed because the capture landed
+  (05:32 PDT). The verdict had posted too (10:39Z, FAIL 6 of 3379). The nine
+  soaks were still in `queue/` with nothing running, the Thor in a cool-down
+  hold. This attempt merged origin/master (26 commits; a merge, so the refs
+  stand), read leg S (below), found and corrected the `act` error in the
+  census table, answered the verdict with the noise record, and did the
+  offline half of F0a (section 8). It ended on a `waiting:` for the nine
+  soaks.
+
+## Leg S: b_ref's profile against R1 (GTA, Thor, cold)
+
+- **Captures.** A is R1 (`perf/2026-09-28-ibcache-r1`, master 01e62d8d1c).
+  B is `perf/2026-09-29-memfast-bref` (b_ref 82e0ef1fa9): xo 46.3 C at the
+  start, no thermal pause, `prof start` 74 s after `mark gameplay`, the MAX
+  regimen, as R1.
+- **Readers.** `legs_read.py` (this lane, new), `jitmix.py`, `symsplit.py`.
+  Outputs: `out/legs-r1.out`, `out/legs-bref.out`, `out/jitmix-bref.out`,
+  `out/sym-bref.out`.
+- **Verdict: PASS.** The registered claim is that the preamble and the
+  per-load test read about 0 on b_ref. Of b_ref's 3,429 disassembled TBs
+  (95% of the mapped JIT samples), **none** holds either sequence; of R1's
+  3,829, all hold the preamble and 3,292 the per-load test.
+
+| | R1 (master) | b_ref | |
+|---|---|---|---|
+| vCPU samples / in the JIT | 21,168 / 10,773 (50.9%) | 21,934 / 10,510 (47.9%) | |
+| TBs holding the preamble | 3,829 of 3,829 | **0 of 3,429** | leg S |
+| TBs holding a per-load test | 3,292 | **0** | leg S |
+| per-load tests per executed TB | 7.44 | **0.00** | |
+| preamble, at-ip | 488 samples, 2.4% of the thread | 0 | |
+| per-load test, at-ip | 150 samples, 0.7% | 0 | |
+| host instructions per executed TB | 462.6 | **363.9** (-21%) | 7 preamble + 89 test |
+| host per guest instruction | 26.12 | 20.63 | |
+| softmmu compares per executed TB | 12.74 | 12.79 | unchanged, as designed |
+| softmmu compare, at-ip | 17.5% of the thread | 14.6% | |
+| ... on loads (7.44 and 7.28 per TB) | 2,378 samples, **11.8%** | 1,845 samples, **8.9%** | the test sat ahead of these |
+| ... on stores (5.30 and 5.51 per TB) | 1,140 samples, **5.7%** | 1,189 samples, **5.7%** | the control: stores never had the test |
+| the TB's first instruction (`bti`) | 973 samples, 4.8% | 1,125 samples, 5.4% | the jump into the TB |
+
+- **The removed code held 3.1% of the vCPU thread, not 8%.** `jitmix.py`'s
+  `preamble` role is 14.3% of R1's JIT samples, which is where the plan's 8.5%
+  and this file's 8.0% came from. Two thirds of it is the TB's first
+  instruction, the BTI landing pad ahead of the preamble: 973 of the role's
+  1,461 samples. That is where the jump into the TB is billed, and it is
+  still there on b_ref (1,125). It is lane.ibcache's cost (TB lookup and
+  chaining), not the preamble's. The preamble's own seven instructions held
+  488 samples. **On its own instructions phase 1 is 2.5% (static) to 3.1%
+  (at-ip) of the vCPU,** and R1's section below is amended by this.
+- **The load compares fell with it, and the store compares did not.** The
+  compare that follows a load fell from 11.8% to 8.9% of the thread. The
+  compare that follows a store, which never had the test ahead of it, held
+  at 5.7% in both captures. The count of compares per TB did not change. So
+  about 2.9% of the thread that was billed to the load's compare was the
+  test's: its `cbz` and the branch around the fast-path block sat
+  immediately ahead. With that, the removal reads **about 6% of the thread
+  (2.4 + 0.7 + 2.9)**, and the store row says the two captures are
+  comparable on this cost despite their other differences.
+- **Why a new reader.** `jitmix.py` marks a TB's first instructions
+  `preamble` until it meets `mov w26, #0`, and stops at 10. b_ref never
+  emits that `mov`, so the role books the first 10 instructions of every TB
+  and reads **13.0%** on the build where the preamble is gone. The static
+  `xbox_fp` class has the matching blind spot: it keys on x26/x27, which b_ref
+  hands to the allocator (5,678 ordinary uses in these TBs), and it still
+  reads 0.1%. `legs_read.py` books a sample only inside the emitted sequence
+  and prints the count of TBs that hold it. Do not read `preamble` or
+  `xbox_fp` from `jitmix.py` on any build after this PR.
+- **What this pair cannot show.** A and B differ by more than the removal:
+  b_ref's base (be05285c44) is ten emulator commits ahead of R1's master, and
+  b_ref carries the census. The two windows also did different guest work:
+  same-value CR3 reloads 34/s against 58/s, INVLPG 560/s against 927/s. So the
+  softmmu bucket's rise (7.0% to 9.5%) is not this change's.
+  `tlb_set_page_full` rose 1.82% to 2.81%, a factor of 1.54 against 1.6 times
+  the flushes, so the census costs nothing that this pair can see. A share
+  is also not a saving: both threads ran 86-88% of the wall, so the saving
+  is read from the work rate below.
+
+### The work rate, from the same logs (an observation, not a registered leg)
+
+vCPU CPU time per frame: `[tlb68] cpu` over the span, divided by the mean
+frame rate over the same span (`[shd413] f`, which steps by 60 frames).
+
+| pair | A | B | B/A |
+|---|---|---|---|
+| R1 vs b_ref, profile windows (70 s each) | 881 ms/s at 25.32 fps = 34.8 ms | 858 ms/s at 25.78 fps = 33.3 ms | 0.957 |
+| pilot A1 vs B1, from `mark gameplay` (same base, 100 s each) | 923 ms/s at 25.84 fps = 35.7 ms | 918 ms/s at 27.42 fps = 33.5 ms | 0.938 |
+
+- The pairs give -4.3% and -6.2% of vCPU time per frame. That agrees with
+  the profile's 6% (the sequences' own 3.1% plus the 2.9% that left the load
+  compares), and it is inside the brief's 4-8%. Two pairs, one title: a size
+  to expect, not a result.
+- **The pilot's J/frame of 0.830 is not this change.** A 4% cut in one
+  thread's time cannot take net power from 6.19 W to 5.44 W. That pair's J
+  differs for some other reason, and the registered J leg (the mean over two
+  pairs per title) is what decides it. The vCPU is one term of the power, so
+  a 4-6% cut in its time per frame is a smaller cut in J/frame, and against
+  3.6% of per-pair noise two pairs may not resolve it. If the J leg reads
+  inside the noise, that is the honest result; the fps leg and these
+  counters carry the size.
+
 ## The pixel arm, read before its verdict (both arms on the Thor)
 
 `1-1790631509-arms-memfast-base-2314018` (31515f9751) and `-fix-2314089`
@@ -542,6 +754,31 @@ never held. The moves are noise:
 - `GeometrySuperscreen_0.5626` takes several hashes across arms on builds
   without this code (notify488 NOTES:219, flip474 `sysmem.md`:197).
   `_0.4999` is the same test family at 800 px, with no prior record found.
+
+**The verdict posted at 10:39Z: FAIL, 6 of 3379, label `regressed`,** the
+same six. **Each of the six is on record as unstable on builds without
+this change.** `arm_noise.py` (output: `out/arm-noise.out`) read
+`scores1.tsv` in the 1,251 other results
+on disk (aliases folded, this lane's four excluded); the counts are
+differing pixels, with the number of runs in brackets:
+
+| capture | runs on other builds | not exact | values seen | this arm (base / fix) |
+|---|---|---|---|---|
+| `GeometrySuperscreen_0.4999` | 59 | 7 | 400 (3), 800 (2), 1 (2) | 0 / 800 |
+| `GeometrySuperscreen_0.5626` | 59 | 8 | 285 (5), 570 (3) | 0 / 570 |
+| `Stencil_ZERO` | 48 | 9 | 40000 (8), 5000 (1) | 40000 / 0 |
+| `Stencil_ZERO_ST_DT` | 48 | 26 | 30000 (23), 34950, 20000, 5050 | 40000 / 30000 |
+| `Stencil_ZERO_ST_DT_ZB` | 48 | 22 | 30000 (18), 20000 (2), 5050, 2500 | 10000 / 30000 |
+| `Stencil_ZERO_ST_ZB` | 48 | 18 | 30000 (16), 20000, 10000 | 0 / 30000 |
+
+- `_0.4999` does have a prior record: 800 px on dpforce345's base
+  (2dc2b5c49a), a build with none of this code.
+- All six of the fix arm's values are values these captures take elsewhere.
+  Two of the base arm's are not (40000 on `_ST_DT`, 10000 on `_ST_DT_ZB`);
+  both are on captures that already take four distinct values, and the base
+  arm is the side without the change.
+- With the path unarmed in both arms, the falsifier's reading stands: the
+  moves are these captures' run-to-run noise.
 
 My registered prediction said "every capture bit-identical", with no noise
 allowance, so a strict verdict is FAIL on 6 of 3379. The prediction's own
@@ -603,6 +840,11 @@ gameplay, power was measured on battery, and neither had a thermal pause.
   and the preamble's first load (`ldr w16,[x27,#8]`) is where a TB-entry
   stall is billed. The truth is between. The registered soak leg does not
   depend on which, since it measures J/frame and fps.
+  - **AMENDED by leg S (2026-09-29): 2.5-3.1%.** The 8.0% counted the TB's
+    first instruction, the BTI pad, as preamble: 973 of the role's 1,461
+    samples. The TB-entry stall is billed there, not on the preamble's first
+    load, and b_ref still pays it. The rows above that say 8.0% and 14.3%
+    are `jitmix.py`'s role, kept as first written.
 - **Phase 2's ceiling on master** is the 17.5% compare plus the refill part
   of the 7.0% helpers (`tlb_set_page_full`, `mmu_translate`, `mmu_lookup1`:
   about 2.6%). `tlb_reset_dirty` at 1.2% is the cost the design's M6 (re-arm
@@ -611,18 +853,24 @@ gameplay, power was measured on battery, and neither had a thermal pause.
 
 ## Next, for whoever resumes this lane
 
-0. R1 (master's A side) is read; do not re-run jitmix on it. The B side is
-   the held b_ref capture lane.local schedules once `builds/82e0ef1fa9.apk`
-   exists; read it with the same two scripts and fill the table's b column.
-1. DONE: the pilot is read, `pilots/lane.memfast.ok` is written, and the
-   other nine soaks are queued (ids in the Log). When they land, run
-   `mf0_read.py` on every A run and `title_verdict.py` on a COPY of every dir.
-   Judge J as the mean B/A over the pairs per title, and G on every B run. The
-   GTA pilot pair counts as GTA's pair 1.
-2. The arm pair is read (section above): 6 moved captures, all noise,
-   because the path was never armed during the sweep. Quote that section
-   against the `[job.arms]` verdict when it posts; do not re-run the arm
-   unless the verdict names a capture outside those six.
-3. Post the census and the J/frame results on #507, then mark PR #590 ready.
-4. Phase 2 code waits for #590's merge. Do F0a first, and do not build F1
-   before F0a prices the overhead.
+0. DONE: leg S is read and passes (section "Leg S"). Do not re-run the
+   readers on either capture. Read `preamble` and `xboxchk` with
+   `legs_read.py`, never with `jitmix.py`, on any build after this PR.
+1. **Outstanding: the nine soaks** (ids in the Log, attempt 5), still in
+   `queue/` at 2026-09-29 12:40Z. When they land, run `mf0_read.py` on every
+   A run and `title_verdict.py` on a COPY of every dir. Judge J as the mean
+   B/A over the pairs per title, and G on every B run. The GTA pilot pair
+   counts as GTA's pair 1. **Check `queue/` and `running/` before scoring
+   anything;** a resume has said "finished" when they were not.
+2. DONE: the arms verdict (FAIL, 6 of 3379) is answered with the noise
+   record on #590. Do not re-run the arm unless a new verdict names a
+   capture outside those six.
+3. After the soaks: post the J and fps legs on #507 and #590, then mark
+   PR #590 ready. The release note's size comes from those legs; the profile
+   says to expect 4-6% of the vCPU's time per frame on GTA.
+4. Phase 2 code waits for #590's merge. Then, in order: W1 (the per-page
+   watch flush), F0a's device half, F0b, F1 (section 8's table). Do not
+   build F1 before F0a's device half prices it.
+5. Do not repeat: the `act` reading through `cb0ms` (the reader is fixed);
+   a pixel prediction that asserts the Stencil_ZERO family or
+   GeometrySuperscreen_0.4999/_0.5626 as exact.
