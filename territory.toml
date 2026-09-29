@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 277
-updated_utc = "2026-09-28T15:00:26Z"
+wave = 278
+updated_utc = "2026-09-29T01:07:00Z"
 
 [retired.hilodot10]
 issues = ["10"]
@@ -645,12 +645,14 @@ files = []
 retired_utc = "2026-09-29T00:18:00Z"
 note = "RETIRED (hostops 2026-09-29T00:18Z): PR #593 folded as 1922ce1cad; #592 closed; unit gone, no open PR. Files to [free]: docs/testing/devices.sh, docs/testing/soak_title.sh, docs/testing/jobs/selftest.d/99-fg-unreadable.sh, docs/lanes/fgunknown/**. || PRIOR: STARTED (hostops 2026-09-28T23:20Z), briefs/fgunknown.md: #592, the soak foreground watch aborts on two HUNG dumpsys reads (read as foreground-unknown). devices.sh and soak_title.sh were unclaimed; RELEASE them to [free] at PR-ready."
 
-[lane.inflightpark]
+[retired.inflightpark]
 issues = []
-files = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-parked.sh", "docs/lanes/inflightpark/NOTES.md"]
-note = "STARTED (hostops 2026-09-29T00:50Z), briefs/inflightpark.md: harness defect, no issue. handback.sh parks every lane whose issue carries blocked:*, including blocked:in-flight (#569), so lanes on #569 that wait on device runs are never resumed (shaderfb569, litcompile569, uberspike569, gpl569, ibcache, memfast needed hostops waiter units; harness_health parked-nowaker fired 09-28 17:44 PDT). Build: blocked:in-flight on an ISSUE does not park; PR-level parking unchanged. handback.sh and 99-handback-parked.sh CLAIMED from [free]."
+retired_utc = "2026-09-29T01:05:26Z"
+files = []
+note = "RETIRED (job.board, board tick): PR #596 MERGED 2026-09-29T01:05:26Z (fold 20f072b240), unit gone -- fleet.py's FAIL was stale by the time this tick read it (PR had already folded). docs/testing/jobs/handback.sh, docs/testing/jobs/selftest.d/99-handback-parked.sh and docs/lanes/inflightpark/NOTES.md RELEASED TO [free]."
 
 [free]
+# RELEASED (job.board 2026-09-29T01:07Z) by retiring lane.inflightpark (PR #596 merged 20f072b240): docs/testing/jobs/handback.sh, docs/testing/jobs/selftest.d/99-handback-parked.sh, docs/lanes/inflightpark/NOTES.md.
 # CLAIMED (hostops 2026-09-29T00:50Z): docs/testing/jobs/handback.sh and selftest.d/99-handback-parked.sh -> lane.inflightpark.
 # RELEASED (hostops 2026-09-29T00:20Z) by retiring lane.fgunknown (PR #593), lane.shaderfb569 (PR #574) and lane.turnipcost569 (PR #573): docs/testing/devices.sh, docs/testing/soak_title.sh, docs/testing/jobs/selftest.d/99-fg-unreadable.sh, docs/lanes/fgunknown/**, hw/xbox/nv2a/pgraph/vk/glsl.c, hw/xbox/nv2a/pgraph/profile.c, docs/lanes/shaderfb569/**, docs/testing/predictions/shaderfb569-*.json, docs/lanes/turnipcost569/**. vk/compile_worker.c went to lane.gpl569.
 # CLAIMED (hostops 2026-09-29T00:20Z): hw/xbox/nv2a/pgraph/vk/renderer.c and vk/instance.c -> lane.gpl569 (#569 P5); removed from [free], which still listed them.
