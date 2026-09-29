@@ -1,0 +1,12 @@
+fight load 1 (frames: char select -> fight): 6 windows
+   dt_ms=16880.0 dpm=21.0 dpc_ms=8277.3 dvs_ms=5165.3 dgs_ms=1818.8 dfs_ms=132.4 dsru=46.0 dsrum=46.0 dsru_ms=5017.3 dsnu=14.0 dsnum=14.0 dsnu_ms=2098.9 dgl_ms=104.4 dsmod_ms=123.5 dsv_ms=29.6 dins_us=66.8
+   kd VP=0 FF=18 CB=16 TX=6 FL=1 PO=3 GE=0 NONE=1 NOPREV=0
+win -> title -> stage 2 load: 18 windows
+   dt_ms=47091.0 dpm=59.0 dpc_ms=19673.4 dvs_ms=13706.5 dgs_ms=3300.4 dfs_ms=233.6 dsru=77.0 dsrum=77.0 dsru_ms=12830.2 dsnu=28.0 dsnum=28.0 dsnu_ms=4410.3 dgl_ms=168.2 dsmod_ms=204.0 dsv_ms=72.6 dins_us=130.1
+   kd VP=7 FF=39 CB=43 TX=25 FL=1 PO=12 GE=0 NONE=1 NOPREV=3
+attract/intro (16:19:30 window): 1 windows
+   dt_ms=13826.0 dpm=26.0 dpc_ms=12271.1 dvs_ms=8519.4 dgs_ms=2063.2 dfs_ms=152.6 dsru=45.0 dsrum=45.0 dsru_ms=8403.5 dsnu=24.0 dsnum=24.0 dsnu_ms=2331.8 dgl_ms=136.2 dsmod_ms=152.3 dsv_ms=9.8 dins_us=68.1
+   kd VP=1 FF=15 CB=21 TX=12 FL=0 PO=3 GE=0 NONE=0 NOPREV=2
+whole run: 216 windows
+   dt_ms=443862.0 dpm=164.0 dpc_ms=59850.8 dvs_ms=41179.9 dgs_ms=10771.9 dfs_ms=764.9 dsru=246.0 dsrum=246.0 dsru_ms=40438.3 dsnu=113.0 dsnum=113.0 dsnu_ms=12277.6 dgl_ms=731.1 dsmod_ms=843.4 dsv_ms=268.6 dins_us=416.1
+   kd VP=15 FF=98 CB=115 TX=67 FL=4 PO=32 GE=4 NONE=4 NOPREV=18

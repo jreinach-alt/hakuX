@@ -1474,8 +1474,16 @@ static void init_pipeline_cache(PGRAPHState *pg)
     r->pipeline_cache.pre_node_evict = pipeline_cache_pre_evict;
 }
 
+/* #569 P1: vk/compile_worker.c and pgraph/profile.c */
+VkResult pgraph_vk_create_graphics_pipeline_fb(
+    PGRAPHVkState *r, const VkGraphicsPipelineCreateInfo *info, bool draw,
+    VkPipeline *pipeline);
+void nv2a_profile_shader_keydiff(const ShaderState *prev,
+                                 const ShaderState *cur);
+
 static void save_pipeline_cache_to_disk(PGRAPHVkState *r)
 {
+    int64_t t0 = nv2a_clock_ns();
     size_t size = 0;
     VkResult res = vkGetPipelineCacheData(r->device, r->vk_pipeline_cache,
                                           &size, NULL);
@@ -1493,6 +1501,7 @@ static void save_pipeline_cache_to_disk(PGRAPHVkState *r)
         }
         g_free(data);
     }
+    g_nv2a_stats.shader_stats.plc_save_us += (nv2a_clock_ns() - t0) / 1000;
 }
 
 #define PIPELINE_CACHE_SAVE_INTERVAL_US (30 * 1000000LL)
@@ -2029,8 +2038,8 @@ static void create_clear_pipeline(PGRAPHState *pg)
     };
 
     VkPipeline pipeline;
-    VK_CHECK(vkCreateGraphicsPipelines(r->device, r->vk_pipeline_cache, 1,
-                                       &pipeline_info, NULL, &pipeline));
+    VK_CHECK(pgraph_vk_create_graphics_pipeline_fb(r, &pipeline_info, false,
+                                                   &pipeline));
 
     snode->pipeline = pipeline;
     snode->layout = layout;
@@ -2833,9 +2842,15 @@ static void create_pipeline(PGRAPHState *pg)
         .subpass = 0,
         .basePipelineHandle = VK_NULL_HANDLE,
     };
+    nv2a_profile_shader_keydiff(
+        r->pipeline_binding && r->pipeline_binding != snode &&
+                !r->pipeline_binding->key.clear
+            ? &r->pipeline_binding->key.shader_state
+            : NULL,
+        &key.shader_state);
     VkPipeline pipeline;
-    VK_CHECK(vkCreateGraphicsPipelines(r->device, r->vk_pipeline_cache, 1,
-                                       &pipeline_create_info, NULL, &pipeline));
+    VK_CHECK(pgraph_vk_create_graphics_pipeline_fb(r, &pipeline_create_info,
+                                                   true, &pipeline));
 
     snode->pipeline = pipeline;
     snode->layout = layout;
