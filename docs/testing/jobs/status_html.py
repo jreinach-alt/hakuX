@@ -2711,9 +2711,88 @@ def content_key(page):
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
 
+# ------------------------------------------------------------------ the degraded-render guard
+#
+# At 17:42 PDT on 2026-09-28 the board tick published a page reading "Measured
+# 0 / 145, Benchmarked 0 / 145, Playable 0 / 50; 0 lanes; no devices; queue not
+# read" over one reading 47 / 11 / 1 with 11 lanes, and PAGES_MIN_GAP then held
+# the next good render back for six minutes. That page is what build() makes
+# when lanes.json is missing: the lane block died or hit its timeout, most
+# likely on hung reads just after both handhelds left USB. So status.sh compares
+# the facts of each render with those of the last page it published, and does
+# not publish one that LOST data the last page had. The test is what could not
+# be READ -- the lane block, the board, the PR list, the devices, the queue, the
+# title table -- and an all-zero collapse of the three counts. A count that
+# merely fell (a reading withdrawn) is a real change and publishes.
+
+def page_facts(j):
+    """The facts of a status.json the guard compares, from the same fields the
+    first screen renders them from (_glance)."""
+    fs = j.get("first") or {}
+    trows = (fs.get("titles") or {}).get("rows") or []
+    lanes_read = bool(fs)
+    return {
+        "lanes_read": lanes_read,
+        "board_ok": bool(fs.get("board_ok")) if lanes_read else False,
+        "prs_ok": bool(fs.get("prs_ok")) if lanes_read else False,
+        "queue_read": bool((fs.get("queue") or {}).get("constraint")),
+        "devices": len(fs.get("devices") or []),
+        "lanes": len(fs.get("lanes") or []),
+        "titles": len(trows),
+        "measured": sum(1 for x in trows if x.get("fps_read")),
+        "benchmarked": sum(1 for x in trows if x.get("stage") in BENCHMARKED),
+        "playable": sum(1 for x in trows if x.get("stage") == "playable"),
+    }
+
+
+def degraded(new, old):
+    """What the new render lost that the last published one had read; empty
+    when nothing was lost. `old` may be empty (nothing published yet)."""
+    if not old:
+        return []
+    lost = []
+    for k, what in (("lanes_read", "the lane block was not read"), ("board_ok", "the board was not read"),
+                    ("prs_ok", "the PR list was not read"), ("queue_read", "queue not read")):
+        if old.get(k) and not new.get(k):
+            lost.append(what)
+    if old.get("devices") and not new.get("devices"):
+        lost.append("no devices, was %d" % old["devices"])
+    if old.get("titles") and not new.get("titles"):
+        lost.append("the title table is empty, was %d titles" % old["titles"])
+    c = ("measured", "benchmarked", "playable")
+    if any(old.get(k) for k in c) and not any(new.get(k) for k in c):
+        lost.append("the counts fell to 0 / 0 / 0, were %s" % " / ".join(str(old.get(k, 0)) for k in c))
+    return lost
+
+
 def main(argv):
     if len(argv) >= 2 and argv[1] == "key":
         print(content_key(open(argv[2], encoding="utf-8").read()))
+        return 0
+    if len(argv) >= 2 and argv[1] == "facts":
+        # facts <status.json>: the guard's facts as JSON; an unreadable status.json has none
+        try:
+            j = json.load(open(argv[2], encoding="utf-8"))
+        except Exception:
+            j = {}
+        print(json.dumps(page_facts(j), sort_keys=True))
+        return 0
+    if len(argv) >= 2 and argv[1] == "degraded":
+        # degraded <new facts.json> <last published facts.json>: exit 1 and print what was
+        # lost when the new render lost data; exit 0 otherwise. A missing last file is
+        # nothing to lose; an unreadable new one is itself a loss.
+        try:
+            new = json.load(open(argv[2], encoding="utf-8"))
+        except Exception:
+            new = {}
+        try:
+            old = json.load(open(argv[3], encoding="utf-8"))
+        except Exception:
+            old = {}
+        lost = degraded(new, old)
+        if lost:
+            print("; ".join(lost))
+            return 1
         return 0
     if len(argv) >= 2 and argv[1] == "render":
         j = json.load(open(argv[2], encoding="utf-8"))

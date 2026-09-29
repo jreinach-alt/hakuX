@@ -198,10 +198,16 @@ fi
 echo "### Lanes: what each one is doing ($(tz_abbr))"
 echo
 rm -f "$S/lanes.json"      # the dashboard must not show last tick's lanes as this tick's
+# Its exit and duration are kept for the degraded-render guard below: a lane
+# block that died leaves the page without lanes, devices, queue and titles.
+LANES_TIMEOUT="${STATUS_LANES_TIMEOUT:-300}"; case "$LANES_TIMEOUT" in ''|*[!0-9]*|0) LANES_TIMEOUT=300 ;; esac
+lanes_t0=$(date +%s)
 STATUS_METER="$meter" WORK="$WORK" D="$D" REPO="$REPO" GH_REPO="$GH_REPO" J="$J" S="$S" STATUS_NOW="$now" \
-HAVE_GH=$have_gh HAVE_SD=$have_sd UNITS="$units" timeout 300 python3 "$J/status_html.py" lanes \
-    --json "$S/lanes.json" --idle "$S/idle-lanes" 2>"$S/lanes.err" \
-    || echo "(the lane table could not be computed: $(tail -1 "$S/lanes.err" 2>/dev/null))"
+HAVE_GH=$have_gh HAVE_SD=$have_sd UNITS="$units" timeout "$LANES_TIMEOUT" python3 "$J/status_html.py" lanes \
+    --json "$S/lanes.json" --idle "$S/idle-lanes" 2>"$S/lanes.err"
+lanes_rc=$?; lanes_secs=$(( $(date +%s) - lanes_t0 ))
+[ "$lanes_rc" -eq 124 ] && echo "status_html.py lanes timed out after $LANES_TIMEOUT s and was killed" >> "$S/lanes.err"
+[ "$lanes_rc" -eq 0 ] || echo "(the lane table could not be computed: $(tail -1 "$S/lanes.err" 2>/dev/null))"
 echo
 
 # ------------------------------------------------- the account's windows
@@ -497,6 +503,8 @@ timeout "${STATUS_BUILD_TIMEOUT:-120}" python3 "$J/status_html.py" build --facts
 sh_rc=$?
 [ "$sh_rc" -eq 124 ] && echo "status_html.py build timed out after ${STATUS_BUILD_TIMEOUT:-120} s and was killed" >> "$S/status_html.err"
 [ "$sh_rc" -eq 0 ] || echo "the dashboard could not be rendered: $(tail -1 "$S/status_html.err")"
+# The facts the degraded-render guard compares (status_html.py page_facts).
+python3 "$J/status_html.py" facts "$S/status.json" > "$S/render-facts.json" 2>/dev/null || rm -f "$S/render-facts.json"
 
 # ---- publishing: one commit on an orphan gh-pages branch, force-pushed.
 #
@@ -513,18 +521,49 @@ PAGES_REMOTE="${STATUS_PAGES_REMOTE-}"
 [ -z "$PAGES_REMOTE" ] && [ "$GH_REPO" = jreinach-alt/hakuX ] && [ $have_gh = 1 ] && PAGES_REMOTE="https://github.com/$GH_REPO.git"
 PAGES_MIN_GAP="${STATUS_PAGES_MIN_GAP:-600}"; case "$PAGES_MIN_GAP" in ''|*[!0-9]*) PAGES_MIN_GAP=600 ;; esac
 PSTATE="$S/pages-state"          # "<epoch of the last publish> <its content key>"
+# THE DEGRADED-RENDER GUARD (#507, 2026-09-28 17:42 PDT: a page of zeros, "no
+# devices" and "queue not read" replaced a good one and PAGES_MIN_GAP kept it up
+# for six minutes). PFACTS holds the facts of the last page published; a render
+# that lost any of them (status_html.py degraded: what could not be read, and an
+# all-zero collapse of the counts, never a count that merely fell) is not
+# published, and PREFUSED makes the next complete render publish at once, past
+# PAGES_MIN_GAP. DEGLOG records why, because board.sh and fold.sh send this
+# script's output to /dev/null: the failing step, its exit and its stderr.
+PFACTS="$S/pages-facts.json"; PREFUSED="$S/pages-refused"; DEGLOG="$S/render-degraded.log"
+deglog() {
+    { printf '%s %s\n' "$(local_ts "@$now")" "$1"; shift; for f in "$@"; do [ -s "$f" ] && tail -n 8 "$f" | sed 's/^/    /'; done; } >> "$DEGLOG"
+    [ "$(wc -l < "$DEGLOG")" -gt 2000 ] && { tail -n 1000 "$DEGLOG" > "$DEGLOG.tmp" && mv "$DEGLOG.tmp" "$DEGLOG"; }
+    return 0
+}
+steps_failed=""
+[ "${lanes_rc:-0}" -eq 0 ] || steps_failed="status_html.py lanes exited $lanes_rc after ${lanes_secs:-?} s (limit $LANES_TIMEOUT s)"
+[ "${sh_rc:-0}" -eq 0 ] || steps_failed="${steps_failed:+$steps_failed; }status_html.py build exited $sh_rc"
+[ -s "$S/render-facts.json" ] || steps_failed="${steps_failed:+$steps_failed; }no facts could be read from status.json"
+[ -n "$steps_failed" ] && deglog "render: $steps_failed. stderr of lanes, then build:" "$S/lanes.err" "$S/status_html.err"
 publish_pages() {
     [ -n "$PAGES_REMOTE" ] || { echo "pages: no remote for $GH_REPO; not published"; return 0; }
     [ -s "$S/index.html" ] || { echo "pages: no page rendered; not published"; return 0; }
-    local key last_t last_k age tree c
+    local key last_t last_k age tree c lost grc
+    lost=$(python3 "$J/status_html.py" degraded "$S/render-facts.json" "$PFACTS" 2>"$S/pages-guard.err"); grc=$?
+    # Exit 1 is a verdict. Anything else is the guard itself failing, which must
+    # not hold every page back forever: it is logged, and the page goes on.
+    [ "$grc" -gt 1 ] && deglog "pages: the degraded-render guard itself failed (exit $grc); publishing unguarded" "$S/pages-guard.err"
+    if [ "$grc" -eq 1 ]; then
+        echo "pages: degraded render ($lost); not published"
+        deglog "pages: degraded render ($lost); not published. The last good page stays up."
+        echo "$now $lost" > "$PREFUSED"; return 0
+    fi
     key=$(python3 "$J/status_html.py" key "$S/index.html") || return 0
     last_t=0; last_k=""; [ -s "$PSTATE" ] && read -r last_t last_k < "$PSTATE"
     case "${last_t:-}" in ''|*[!0-9]*) last_t=0 ;; esac
     age=$(( now - last_t ))
     if [ "$key" = "${last_k:-}" ] && [ "$age" -lt "$HEARTBEAT" ]; then
+        rm -f "$PREFUSED"       # the page that is up is this one: nothing to recover
         echo "pages: unchanged since $(local_ts "@$last_t"); not republished"; return 0
     fi
-    if [ "$age" -lt "$PAGES_MIN_GAP" ]; then
+    if [ -s "$PREFUSED" ]; then
+        echo "pages: a degraded render was refused at $(local_ts "@$(cut -d' ' -f1 "$PREFUSED")"); this complete one publishes at once"
+    elif [ "$age" -lt "$PAGES_MIN_GAP" ]; then
         echo "pages: changed, but published $(( age / 60 )) min ago; the next tick after $(( PAGES_MIN_GAP / 60 )) min publishes it"; return 0
     fi
     [ -d "$PAGES_DIR/.git" ] || git init -q "$PAGES_DIR" 2>/dev/null || { echo "pages: cannot init $PAGES_DIR"; return 0; }
@@ -537,6 +576,9 @@ publish_pages() {
     [ -n "$c" ] || { echo "pages: could not build the commit"; return 0; }
     if GIT_TERMINAL_PROMPT=0 timeout 120 git -C "$PAGES_DIR" push -q -f "$PAGES_REMOTE" "$c:refs/heads/gh-pages" 2>"$S/pages-push.log"; then
         echo "$now $key" > "$PSTATE"; echo "pages: published ${c:0:10} to gh-pages"
+        # what the next render is judged against; no facts, no judgement
+        cp "$S/render-facts.json" "$PFACTS" 2>/dev/null || rm -f "$PFACTS"
+        rm -f "$PREFUSED"
     else
         echo "pages: push failed: $(tail -1 "$S/pages-push.log" | cut -c1-160)"
     fi
