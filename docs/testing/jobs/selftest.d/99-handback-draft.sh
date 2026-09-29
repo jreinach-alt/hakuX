@@ -276,7 +276,14 @@ check "  and still runs the handback actor" \
 # written once. A second copy is how the two causes drift apart.
 check "there is one resume call site, not one per pickup" \
     [ "$(grep -c '"\$LANE_SH" resume' "$HERE/handback.sh")" -eq 1 ]
-hd_no_systemd_run() { ! grep -qE "^[^#]*systemd-run" "$HERE/handback.sh"; }
+# The one systemd-run is the parked lane's waiter (lane.handbackwaiter), which
+# starts hakux-waiter-<lane>; that unit, not this job, calls lane.sh.
+hd_no_systemd_run() {
+    local l; l=$(grep -E "^[^#]*systemd-run" "$HERE/handback.sh")
+    [ -z "$l" ] && return 0
+    [ "$(wc -l <<< "$l")" -eq 1 ] && grep -qF 'systemd-run --user --unit="$unit" bash "$PARK_WAITER"' <<< "$l" \
+        && grep -qF 'unit="hakux-waiter-$name"' "$HERE/handback.sh"
+}
 check "handback.sh still starts no session itself; lane.sh does" hd_no_systemd_run
 check "the draft pickup is a function of its own, not a line in the table" \
     grep -q '^stranded_drafts()' "$HERE/handback.sh"

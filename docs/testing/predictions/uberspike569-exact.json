@@ -1,0 +1,45 @@
+{
+  "registered_utc": "2026-09-28T20:58:34Z",
+  "who": "lane.uberspike569",
+  "issue": "569",
+  "prediction": "#569 P6 E leg (exactness). A = 2ca713adec: the combiner ubershader built, HAKUX_PSH_UBER default OFF, so A draws what master draws. B = e677a46a66: the same tree with HAKUX_PSH_UBER_DEFAULT 1, the test variant: every draw whose final combiner is on binds its family's ubershader, and the combiner program travels as a uniform (glsl/psh-uber.c). Two runs per arm, so the byte leg can fail on evidence.\n\nTHE LEG: must_not_move over twelve combiner-heavy suites (~305 captures): every capture byte-identical between A and B. It passes in the world where the interpreter computes, per pixel, what the specialised shader computes AND ir3 rounds both the same. It fails in either of two worlds, told apart by the size of the move:\n  (1) ROUNDING: the specialised shader's compile-time constants (ZERO-register inputs, pFog with fog off) and CSE-visible equalities license NIR's inexact rewrites (reassociation, contraction) that the run-time interpreter cannot get. On lavapipe this left 2 of 548 random programs with 8-bit differences (9 and 422 of 4096 px), every one a single LSB on a (k+0.5)/255 boundary; docs/lanes/uberspike569/NOTES.md 4.1. MY EXPECTATION IS THIS WORLD: some captures move, each by pixels that differ by exactly 1 LSB in a channel.\n  (2) LOGIC: a capture that moves by more than 1 LSB in any channel, or over a large share of its drawn area, is an interpreter defect (a wrong register, mapping, mux or write order), which the host render check says should not exist (548 random programs, identical except for ulps; a staged-wrong-program mutant differs on every pair that draws).\nRead per capture with diff_specimen.py: list each moved capture with its max per-channel delta and the combiner stage and mode that produced it.\n\nVOID, not a result: B's logcat without 'psh-uber: ON' (the variant did not reach the binary), or A's with it.",
+  "a_ref": "2ca713adec",
+  "b_ref": "e677a46a66",
+  "must_not_move": [
+    "Combiner/*",
+    "Pixel_shader/*",
+    "Bump_env_lum/*",
+    "Bump_map/*",
+    "Alpha_func/*",
+    "Color_key/*",
+    "Texture_signed_component_tests/*",
+    "Fog_param/*",
+    "Material_color_source/*",
+    "Specular/*",
+    "Texture_format/*",
+    "Surface_format/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Alpha func",
+      "Bump env lum",
+      "Bump map",
+      "Color key",
+      "Combiner",
+      "Fog param",
+      "Material color source",
+      "Pixel shader",
+      "Specular",
+      "Surface format",
+      "Texture format",
+      "Texture signed component tests"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "runs_per_arm": 2
+}
