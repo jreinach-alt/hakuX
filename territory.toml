@@ -623,7 +623,9 @@ note = "RETIRED (hostops 2026-09-29 12:10 PDT): PR #614 MERGED 2026-09-29T19:05:
 [lane.kabukistall]
 issues = ["507"]
 files = ["docs/lanes/kabukistall/**", "docs/testing/predictions/kabukistall-*.json"]
-note = "STARTED (lane.local 2026-09-29T17:10Z), briefs/kabukistall.md: the energy map's rank 5, unowned until now: Kabuki and DOA stall for 20-70 s with 1.8-2.25 cores busy and no flips (Kabuki 33.6% at 30 fps over full gameplay in 1-1790639272-lane.gmem474-125693). The owner asked why Kabuki is not Playable. Profile P1 is on disk. Emulator files come by board request once the cause is known."
+released = ["docs/lanes/kabukistall/**", "docs/testing/predictions/kabukistall-*.json"]
+released_at_ready = 616
+note = "STARTED (lane.local 2026-09-29T17:10Z), briefs/kabukistall.md: the energy map's rank 5, unowned until now: Kabuki and DOA stall for 20-70 s with 1.8-2.25 cores busy and no flips (Kabuki 33.6% at 30 fps over full gameplay in 1-1790639272-lane.gmem474-125693). The owner asked why Kabuki is not Playable. Profile P1 is on disk. Emulator files come by board request once the cause is known. || RELEASED AT READY (job.board 2026-09-29T23:03:53Z): PR #616 is out of draft, CI green (build x2), unit gone. Files RELEASED to [free]: docs/lanes/kabukistall/**, docs/testing/predictions/kabukistall-*.json."
 
 [retired.tokentier]
 issues = []
