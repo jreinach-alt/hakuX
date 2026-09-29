@@ -1,0 +1,23 @@
+{
+  "registered_utc": "2026-09-28T18:40:57Z",
+  "who": "lane.dirtytlb",
+  "issue": "548",
+  "prediction": "#548 fix arm, pixels, the suite with a capture that moved in the counter's one-run arm (txt_A8R8G8B8_ADD, 168,960 against 153,427). B turns HAKUX_TCG68_RD on by default and changes nothing else (accel/tcg/cputlb.c, one line). The walk then covers only the modes in tlb.c.dirty. A mode outside it holds only -1 entries, which tlb_reset_dirty_range_locked() rejects on TLB_INVALID_MASK and tlb_set_dirty1_locked() never matches, so every entry A re-arms B re-arms, and no dirty bit differs (docs/audits/2026-09-25-tcgchurn-pass1.md read the same argument). PREDICTED: with three runs per arm, every capture's B runs fall inside A's measured band. REFUTED by a capture whose three B runs all fall outside A's band, txt_A8R8G8B8_ADD included: if A's three runs agree with each other and B's three all differ from them, the shorter walk changes what that test samples, and the fix does not land as it stands.",
+  "a_ref": "249ea8fd05",
+  "b_ref": "052551bdd3",
+  "must_not_move": [
+    "Texture_signed_component_tests/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Texture signed component tests"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "runs_per_arm": 3
+}

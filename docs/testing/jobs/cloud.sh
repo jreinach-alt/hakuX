@@ -653,6 +653,22 @@ case "$kind" in
         # from the same name, so it removes its own predecessor first.
         git -C "$REPO" worktree add --quiet --detach "$wt" "origin/$branch" \
             || { say "cannot create $wt for #$num on $branch; not claiming"; exit 5; }
+        # AUDITS SIZED TO THE DIFF. Pass 1 reads emulator code and stays on
+        # MODEL_AUDIT; pass 2 only verifies pass 1's own scenarios, which is a
+        # small task exactly when pass 1 found nothing worth fixing. The
+        # pass-1 file this audit2 task is itself told to read (below) is the
+        # source of truth: a `## HIGH` or `## MEDIUM` finding heading in any
+        # docs/audits/*-<lane>-pass1*.md on this branch means pass 1 (or a
+        # remediation since) had something to verify away, so pass 2 stays on
+        # MODEL_AUDIT; none present means pass 1 found no HIGH or MEDIUM and
+        # pass 2 runs on MODEL_BOOKKEEPING. HAKUX_MODEL and the attempt
+        # escalation both still win -- checked the same way the attempt loop
+        # above set MODEL, not by comparing values that could coincide.
+        if [ "$kind" = audit2 ] && [ -z "${HAKUX_MODEL:-}" ] && [ "$n" -le "$LANE_ESCALATE_AFTER" ]; then
+            if ! grep -lE '^#{2,4} *(HIGH|MEDIUM)[^a-zA-Z]' "$wt"/docs/audits/*-"${head#lane/}"-pass1*.md >/dev/null 2>&1; then
+                MODEL="$MODEL_BOOKKEEPING"
+            fi
+        fi
         case "$kind" in
             remediate) succ_human="needs-audit-2 or fold-ready" ;;
             *)         succ_human="needs-audit-2, needs-remediation or fold-ready" ;;

@@ -1,0 +1,85 @@
+# lane.slowtier2 2026-09-28: two frames added after the mark (play1, play2); the route to the mark is unchanged (docs/lanes/slowtier2/addshots.py).
+# Burnout (41430006): one route for the first run and later runs.
+# PLAYED by nav.py on the Thor, 2026-09-27 05:33 PDT (lane.titleroutes HELD
+# session burnout.first-run-20260927T053326).
+#
+#   title, "Press START" (START) -> first run only: "No Burnout saved game
+#   present. Do you wish to create a new saved game?", cursor on Yes (A) ->
+#   first run only: Enter Your Name, "PL1", cursor on END (A) -> main menu,
+#   Championship (A) -> Vehicle Select, Supermini Easy (A) -> Transmission
+#   Select, AT (A) -> Championship list, Journeyman Grand Prix (A) -> race
+#   1/3, Supermini AT, Interstate (A: Confirm) -> the race intro flyover ->
+#   the start line, lap 1/3, position 4/4.
+#
+# Every choice is the default row. The route presses A thirteen times, 7 s
+# apart: that covers the two first-run screens and the race intro's
+# "Continue (A)", which a nine-press train missed on replay. The spare
+# presses land in the race intro, where A does nothing that changes the
+# race.
+#
+# Player control: RT held for 4 s took the Supermini from 0 to 44 mph in
+# second gear as the race timer ran (nav frames 008-a7 -> 009-rt). The
+# play pattern holds RT and weaves the left stick.
+#
+wait 40.0
+press START
+wait 8.0
+press A
+wait 7.0
+press A
+wait 7.0
+press A
+wait 7.0
+press A
+wait 7.0
+press A
+wait 7.0
+press A
+wait 7.0
+press A
+wait 7.0
+press A
+wait 7.0
+press A
+wait 7.0
+press A
+wait 7.0
+press A
+wait 7.0
+press A
+wait 7.0
+press A
+wait 7.0
+shot intro
+wait 12.0
+axis RT max
+mark gameplay
+repeat 10 {
+    axis RT max
+    axis LX min
+    wait 1.5
+    axis LX max
+    wait 1.5
+    axis LX mid
+    wait 3
+}
+shot play1
+repeat 13 {
+    axis RT max
+    axis LX min
+    wait 1.5
+    axis LX max
+    wait 1.5
+    axis LX mid
+    wait 3
+}
+shot play2
+repeat forever {
+    axis RT max
+    axis LX min
+    wait 1.5
+    axis LX max
+    wait 1.5
+    axis LX mid
+    wait 3
+}

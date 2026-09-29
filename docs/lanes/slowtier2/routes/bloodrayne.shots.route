@@ -1,0 +1,137 @@
+# lane.slowtier2 2026-09-28: two frames added after the mark (play1, play2); the route to the mark is unchanged (docs/lanes/slowtier2/addshots.py).
+# BloodRayne (4D4A0001): one route for every run (New Game writes no save
+# before control). PLAYED by nav.py on the Thor, 2026-09-27 13:15 PDT
+# (lane.titleroutes HELD session bloodrayne.first-run-20260927T131543).
+#
+#   the Terminal Reality and Majesco logos (A, A) -> New Game, cursor on
+#   "Training" (hat down, to "Act 1 - Louisiana"; A) -> Choose difficulty
+#   level, cursor on Normal (A) -> the Control scheme text (A) -> Choose
+#   control scheme, 1st person / Normal (hat down twice, to "Start Game"; A)
+#   -> load -> the in-engine opening with Mynce (A does not end it; about
+#   70 s) -> Rayne on the grass below the church, health bar and compass.
+#
+# The highlighted menu entry is the DIM one. The left stick does not move
+# these menus; the hat does (`axis HATY max`, 0.15 s, `mid`).
+#
+# The two A presses through the logos are the fragile part: they are
+# counted, and a cold boot may pace the logos differently. The `newgame`
+# frame shows whether the cursor reached "Act 1 - Louisiana". If it shows
+# "Training" selected or another menu, the run is in the wrong place.
+# "Training" is playable too, but its tutorial cutscenes interrupt control.
+#
+# Player control: LY min walked Rayne from the grass to the church wall
+# (nav frames 005-cut3 -> 006-moved), RX turned the camera (008-played).
+#
+# Replayed once, 13:20 PDT, unattended, hakuX holding the input focus on all
+# 14 reads: gameplay at the mark (scratch/replay/bloodrayne-132018/). That
+# replay's play pattern walked forward only, and in 40 s it took her into
+# the swamp water, which drains her health. The pattern below walks forward
+# 1 s and back 1 s around a turn, so she stays by the church.
+#
+# REPLAYED with this pattern 2026-09-27 13:38 PDT, as a held soak
+# (soak_title.sh in our hold, MAX regimen, apk f5abfa521745 = ref
+# a593d8eb85; scratch/held/bloodrayne-20260927T133838): the mark frame is
+# Rayne at the church wall, overlay FPS 22, and hakuX held the input focus
+# on all 34 reads. 288 s of gameplay, fps window median 22.89 (min 5.48),
+# 0% at >= 30. The frame rate fell from 20-26 to 6-7 at 390 s (144 s after
+# the mark) and stayed there: the shape of the Thor's thermal pause (#507).
+# The title's rate in this place is the 20-26.
+wait 35.1
+press A 300
+wait 8.6
+press A 300
+wait 10.2
+axis HATY max
+wait 0.4
+axis HATY mid
+wait 1.6
+shot newgame
+wait 16.9
+press A 300
+wait 5.7
+press A 300
+wait 8.6
+press A 300
+wait 5.3
+axis HATY max
+wait 0.4
+axis HATY mid
+wait 1.7
+axis HATY max
+wait 0.4
+axis HATY mid
+wait 1.6
+shot scheme
+wait 3.8
+press A 300
+wait 30.1
+shot act1load
+wait 11.4
+press A 300
+wait 6.1
+shot skip
+wait 24.7
+shot cut2
+wait 28.1
+shot cut3
+wait 13.1
+axis LY min
+wait 2.7
+axis LY mid
+wait 0.6
+shot moved
+wait 1.1
+mark gameplay
+repeat 16 {
+    axis LY min
+    wait 1
+    axis LY mid
+    axis RX max
+    wait 0.5
+    axis RX mid
+    press X
+    wait 0.5
+    axis LY max
+    wait 1
+    axis LY mid
+    axis RT max
+    wait 0.3
+    axis RT min
+    wait 0.5
+}
+shot play1
+repeat 21 {
+    axis LY min
+    wait 1
+    axis LY mid
+    axis RX max
+    wait 0.5
+    axis RX mid
+    press X
+    wait 0.5
+    axis LY max
+    wait 1
+    axis LY mid
+    axis RT max
+    wait 0.3
+    axis RT min
+    wait 0.5
+}
+shot play2
+repeat forever {
+    axis LY min
+    wait 1
+    axis LY mid
+    axis RX max
+    wait 0.5
+    axis RX mid
+    press X
+    wait 0.5
+    axis LY max
+    wait 1
+    axis LY mid
+    axis RT max
+    wait 0.3
+    axis RT min
+    wait 0.5
+}

@@ -115,6 +115,10 @@ def _soak_median(rdir, lo=90.0, hi=240.0):
     return _soak_read(rdir, lo, hi)[:2]
 
 
+def _targets_path():
+    return os.environ.get("TITLE_TARGETS") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "titles", "targets.toml")
+
+
 def _fps_bar(playable=None):
     """The fps a window must reach to count as at the bar, as title_verdict.py
     judges it: [defaults] playable_fps x fps_tolerance in targets.toml (the
@@ -122,7 +126,7 @@ def _fps_bar(playable=None):
     title_verdict.py's own fallbacks for a key the file does not set. A
     verdict records its playable_fps as fps_bar but not the tolerance: pass
     it as `playable`."""
-    p = os.environ.get("TITLE_TARGETS") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "titles", "targets.toml")
+    p = _targets_path()
     try:
         import tomllib
         with open(p, "rb") as fh:
@@ -130,6 +134,24 @@ def _fps_bar(playable=None):
     except (OSError, ValueError, ImportError):
         d = {}
     return round(float(d.get("playable_fps", 30) if playable is None else playable) * float(d.get("fps_tolerance", 0.95)), 3)
+
+
+def _title_verdict_module():
+    """title_verdict.py, imported once, for a live full-gameplay-window score
+    on a soak that has no verdict.json yet (#433). None when it cannot be
+    imported -- its own guards handle a python with no tomllib; thermal_state.py
+    living beside it must be importable too -- and every caller falls back to
+    the 90-240 s slice, labelled as a slice, when this is None."""
+    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+    try:
+        sys.path.insert(0, d)
+        import title_verdict
+        return title_verdict
+    except Exception:
+        return None
+    finally:
+        if sys.path and sys.path[0] == d:
+            sys.path.pop(0)
 
 
 def _soak_read(rdir, lo=90.0, hi=240.0, bar=None):
@@ -1251,6 +1273,28 @@ def _devwatch(F, now):
     return {"found": True, "updated": up, "stale": up is None or now - up > 300, "devices": devs}
 
 
+def _meas_from_verdict(v, d, mode_dir, at, src):
+    """A `measured` row's dict, from a title_verdict.py-shaped result -- a
+    stored verdict.json, or a live judge() that wrote none -- in the shape
+    titles05 gates the pipeline on and _title_detail prints: the full
+    gameplay window's fps and share (never a fixed slice), reached/crash/hang,
+    and an audio flag from ANY `audio:` failure (title_verdict.py lists every
+    failing criterion in `failures`, not just the first named one)."""
+    rg = v.get("reached_gameplay")
+    fails = [str(x) for x in (v.get("failures") or [])]
+    return {
+        "device": d, "fps": v.get("fps_window_median"), "share": v.get("fps_ok_share"),
+        "bar": _fps_bar(v["fps_bar"] if isinstance(v.get("fps_bar"), (int, float)) else None),
+        "reached": "yes" if rg else ("no" if rg is False else "unconfirmed"),
+        "blocker": (v.get("failing") or "") if (rg is False or v.get("crash") or v.get("hang")) else "",
+        "crash": bool(v.get("crash")), "hang": bool(v.get("hang")),
+        "audio": any(f.startswith("audio:") for f in fails),
+        "verdict": "Playable" if v.get("pass") else ("fails: " + (v.get("failing") or "not Playable")),
+        "fails": fails, "at": at, "ref": str(v.get("ref") or "")[:10], "mode": _perf_mode(mode_dir),
+        "src": src, "hand": False, "url": "", "id": str(v.get("request_id") or ""),
+        "kind": v.get("pass_kind") or "", "route": v.get("route") or ""}
+
+
 def _iso_name(iso):
     """A title's name from an ISO file no registry names: "Tork - Prehistoric
     Punk (USA).iso" -> "Tork - Prehistoric Punk"."""
@@ -1386,18 +1430,7 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
             latest[(n, d)] = (at, v, p, tid)
     for (n, d), (at, v, p, tid) in latest.items():
         add(n, tid, d)
-        rg = v.get("reached_gameplay")
-        fails = [str(x) for x in (v.get("failures") or [])]
-        meas.setdefault(n, {})[d] = {
-            "device": d, "fps": v.get("fps_window_median"), "share": v.get("fps_ok_share"),
-            "bar": _fps_bar(v["fps_bar"] if isinstance(v.get("fps_bar"), (int, float)) else None),
-            "reached": "yes" if rg else ("no" if rg is False else "unconfirmed"),
-            "blocker": (v.get("failing") or "") if (rg is False or v.get("crash") or v.get("hang")) else "",
-            "crash": bool(v.get("crash")), "hang": bool(v.get("hang")),
-            "verdict": "Playable" if v.get("pass") else ("fails: " + (v.get("failing") or "not Playable")),
-            "fails": fails, "at": at, "ref": str(v.get("ref") or "")[:10], "mode": _perf_mode(os.path.dirname(p)),
-            "src": "title_verdict.py", "hand": False, "url": "", "id": str(v.get("request_id") or ""),
-            "kind": v.get("pass_kind") or "", "route": v.get("route") or ""}
+        meas.setdefault(n, {})[d] = _meas_from_verdict(v, d, os.path.dirname(p), at, "title_verdict.py")
 
     # ---- in flight: requests whose `title` (the ISO file) is this title's
     def req_title(r):
@@ -1406,15 +1439,26 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
             return iso_title[t]
         m = re.match(r"^([0-9A-Fa-f]{8})-", t)
         return by_tid.get(m.group(1).upper()) if m else (t if t in where else None)
-    # ---- soaks: a finished run whose request names the title, over the
-    # Ghoulies gate's 90-240 s from the first perf line, scored as
-    # title_verdict.py scores a run (_soak_read: 60-flip windows, time-weighted
-    # share at its bar). Results do not change once DONE, so each is read once
-    # and kept in $S/soak-gfps.json, keyed by result id with the bar it used.
-    cache_p = os.path.join(F.E["S"], "soak-gfps.json") if F.E.get("S") else ""
+    # ---- soaks: a finished run whose request names the title. One whose
+    # request also names the title's own route is scored the way
+    # title_verdict.py scores a confirmed run -- the mark to `soak end`, hang
+    # and audio included -- never the Ghoulies gate's fixed 90-240 s slice
+    # (#433: several 90-240 s slices read 100% where the full window read
+    # 22-47%, with hangs of 22-72 s the slice never saw, so the row looked
+    # ready to confirm when it was not). This never writes verdict.json or a
+    # contact sheet -- that is title_verdict.py --judge's job, run by an
+    # operator or the arms job -- so a route-less request, which title_verdict
+    # cannot score (no mark to start from), falls back to that slice, LABELLED
+    # as one (`screen_only`), so it never reads as a verdict and its `reached`
+    # stays "unconfirmed" -- it can never satisfy `bench` below, so a slice
+    # alone can never show a title as a Playable candidate. Results do not
+    # change once DONE, so each is read once and kept in $S/soak-live.json,
+    # keyed by result id with the bar it used.
+    cache_p = os.path.join(F.E["S"], "soak-live.json") if F.E.get("S") else ""
     cache = (_jload(cache_p) if cache_p else None) or {}
     bar = _fps_bar()
     fresh, soakr = False, {}
+    tv = _title_verdict_module()
     rdir0 = os.path.join(F.D, "results")
     try:
         rids = sorted(os.listdir(rdir0))
@@ -1429,20 +1473,40 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
         if not isinstance(q, dict) or not q.get("title"):
             continue
         n = req_title(q) or _iso_name(q["title"])
-        c = cache.get(rid) or ()
-        if len(c) < 5 or c[4] != bar:      # a shorter entry predates the verdict's reading
-            cache[rid] = list(_soak_read(rdir, bar=bar))
-            fresh = True
-        med, cnt, shr, fps = cache[rid][:4]
-        if med is None:
-            continue
         d = q.get("device") or "?"
+        c = cache.get(rid)
+        if not isinstance(c, dict) or c.get("bar") != bar:
+            full = None
+            if tv is not None and q.get("route") and os.path.exists(os.path.join(rdir, "run.log")):
+                try:
+                    full = tv.judge(rdir, targets_path=_targets_path(), write_contact_sheet=False)
+                except Exception:
+                    full = None
+            if full is not None and full.get("fps_window_median") is not None:
+                c = {"bar": bar, "kind": "full", "v": full}
+            else:
+                med, cnt, shr, fps, _ = _soak_read(rdir, bar=bar)
+                c = {"bar": bar, "kind": "screen", "fps": fps, "share": shr, "cnt": cnt}
+            cache[rid] = c
+            fresh = True
+        if c["kind"] == "full":
+            fps = c["v"].get("fps_window_median")
+        else:
+            fps = c.get("fps")
+        if fps is None:
+            continue
         add(n, "", d)
         seen(n, fps, at)
-        x = {"device": d, "fps": fps, "share": shr, "bar": bar, "reached": "unconfirmed", "blocker": "", "crash": False,
-             "hang": False, "verdict": "soak, %d gfps samples in 90-240 s" % cnt, "at": at,
-             "ref": str(q.get("ref") or "")[:10], "mode": _perf_mode(rdir), "src": "soak", "hand": False,
-             "url": "", "id": rid, "route": ""}
+        if c["kind"] == "full":
+            x = _meas_from_verdict(c["v"], d, rdir, at, "soak")
+            x["verdict"] = ("meets the bar" if c["v"].get("pass") else
+                            ("fails: " + (c["v"].get("failing") or "not Playable"))) + " (full window; no verdict.json yet)"
+        else:
+            x = {"device": d, "fps": fps, "share": c["share"], "bar": bar, "reached": "unconfirmed",
+                 "blocker": "", "crash": False, "hang": False, "audio": False,
+                 "verdict": "screen: 90-240 s only, %d gfps samples" % c["cnt"], "at": at,
+                 "ref": str(q.get("ref") or "")[:10], "mode": _perf_mode(rdir), "src": "soak", "hand": False,
+                 "url": "", "id": rid, "route": "", "screen_only": True}
         if n not in soakr or at > soakr[n]["at"]:
             soakr[n] = x
         m = meas.setdefault(n, {})
@@ -2111,7 +2175,8 @@ def _fps_cell(x):
         return '<td class="c-f nm">not measured</td>'
     s = '<b class="fm %s">%s</b>' % (_fps_cls(p["fps"], p.get("bar")), esc("%.1f" % p["fps"]))
     s += '<span class="fsh">%s</span>' % esc(_share_at(p))
-    how = "hand-reviewed" if p.get("hand") else "soak" if p.get("src") == "soak" else ""
+    how = ("hand-reviewed" if p.get("hand") else "screen: 90-240 s only" if p.get("screen_only") else
+           "soak" if p.get("src") == "soak" else "")
     sub = " &middot; ".join(esc(b) for b in (str(p["device"]).capitalize(), _lt(p.get("at"), "md")[:5] if p.get("at") else "date ?",
                                               (p.get("mode") or "unrecorded") + (", " + how if how else "")))
     for c in x.get("cross") or []:
@@ -2172,9 +2237,10 @@ def _title_detail(x, now):
     d.append("save: %s" % (x.get("save_id") or (("not needed: " + x["save_na"]) if x.get("save_na") and x.get("inputs") else
                                                  "not needed (no profile step)" if not x.get("needs_save", True) and x.get("inputs") else "none extracted")))
     for m in x.get("measured") or []:
-        d.append("%s: %s fps, %s, reached gameplay %s; %s (%s, %s, ref %s, %s%s)" % (
+        d.append("%s: %s fps, %s, reached gameplay %s%s%s; %s (%s, %s, ref %s, %s%s)" % (
             m.get("device"), ("%g" % m["fps"]) if m.get("fps") is not None else "-",
             _share_at(m), m.get("reached") or "?",
+            ", hang" if m.get("hang") else "", ", audio short" if m.get("audio") else "",
             m.get("verdict") or "-", m.get("src"), _lt(m.get("at"), "md") if m.get("at") else "date ?", m.get("ref") or "?",
             m.get("mode") or "unrecorded", (", " + m["id"]) if m.get("id") else ""))
     if x.get("blocker"):
@@ -2711,9 +2777,88 @@ def content_key(page):
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
 
+# ------------------------------------------------------------------ the degraded-render guard
+#
+# At 17:42 PDT on 2026-09-28 the board tick published a page reading "Measured
+# 0 / 145, Benchmarked 0 / 145, Playable 0 / 50; 0 lanes; no devices; queue not
+# read" over one reading 47 / 11 / 1 with 11 lanes, and PAGES_MIN_GAP then held
+# the next good render back for six minutes. That page is what build() makes
+# when lanes.json is missing: the lane block died or hit its timeout, most
+# likely on hung reads just after both handhelds left USB. So status.sh compares
+# the facts of each render with those of the last page it published, and does
+# not publish one that LOST data the last page had. The test is what could not
+# be READ -- the lane block, the board, the PR list, the devices, the queue, the
+# title table -- and an all-zero collapse of the three counts. A count that
+# merely fell (a reading withdrawn) is a real change and publishes.
+
+def page_facts(j):
+    """The facts of a status.json the guard compares, from the same fields the
+    first screen renders them from (_glance)."""
+    fs = j.get("first") or {}
+    trows = (fs.get("titles") or {}).get("rows") or []
+    lanes_read = bool(fs)
+    return {
+        "lanes_read": lanes_read,
+        "board_ok": bool(fs.get("board_ok")) if lanes_read else False,
+        "prs_ok": bool(fs.get("prs_ok")) if lanes_read else False,
+        "queue_read": bool((fs.get("queue") or {}).get("constraint")),
+        "devices": len(fs.get("devices") or []),
+        "lanes": len(fs.get("lanes") or []),
+        "titles": len(trows),
+        "measured": sum(1 for x in trows if x.get("fps_read")),
+        "benchmarked": sum(1 for x in trows if x.get("stage") in BENCHMARKED),
+        "playable": sum(1 for x in trows if x.get("stage") == "playable"),
+    }
+
+
+def degraded(new, old):
+    """What the new render lost that the last published one had read; empty
+    when nothing was lost. `old` may be empty (nothing published yet)."""
+    if not old:
+        return []
+    lost = []
+    for k, what in (("lanes_read", "the lane block was not read"), ("board_ok", "the board was not read"),
+                    ("prs_ok", "the PR list was not read"), ("queue_read", "queue not read")):
+        if old.get(k) and not new.get(k):
+            lost.append(what)
+    if old.get("devices") and not new.get("devices"):
+        lost.append("no devices, was %d" % old["devices"])
+    if old.get("titles") and not new.get("titles"):
+        lost.append("the title table is empty, was %d titles" % old["titles"])
+    c = ("measured", "benchmarked", "playable")
+    if any(old.get(k) for k in c) and not any(new.get(k) for k in c):
+        lost.append("the counts fell to 0 / 0 / 0, were %s" % " / ".join(str(old.get(k, 0)) for k in c))
+    return lost
+
+
 def main(argv):
     if len(argv) >= 2 and argv[1] == "key":
         print(content_key(open(argv[2], encoding="utf-8").read()))
+        return 0
+    if len(argv) >= 2 and argv[1] == "facts":
+        # facts <status.json>: the guard's facts as JSON; an unreadable status.json has none
+        try:
+            j = json.load(open(argv[2], encoding="utf-8"))
+        except Exception:
+            j = {}
+        print(json.dumps(page_facts(j), sort_keys=True))
+        return 0
+    if len(argv) >= 2 and argv[1] == "degraded":
+        # degraded <new facts.json> <last published facts.json>: exit 1 and print what was
+        # lost when the new render lost data; exit 0 otherwise. A missing last file is
+        # nothing to lose; an unreadable new one is itself a loss.
+        try:
+            new = json.load(open(argv[2], encoding="utf-8"))
+        except Exception:
+            new = {}
+        try:
+            old = json.load(open(argv[3], encoding="utf-8"))
+        except Exception:
+            old = {}
+        lost = degraded(new, old)
+        if lost:
+            print("; ".join(lost))
+            return 1
         return 0
     if len(argv) >= 2 and argv[1] == "render":
         j = json.load(open(argv[2], encoding="utf-8"))

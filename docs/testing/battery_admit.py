@@ -9,8 +9,9 @@ the run with the owner's margin:
 
     need = FLOOR + MARGIN + rate(D, kind) x runs x (seconds + overhead_s) / 3600
 
-FLOOR is 15 (hostops's battery hold places itself below it) and MARGIN is 5
-("about 5% wiggle room"). kind is `soak` for a request with a title and
+FLOOR is 15 (hostops's battery hold places itself below it), or the device's
+own floor where it fails above that (the Nova's USB link: 30, FLOOR_BY_LABEL),
+and MARGIN is 5 ("about 5% wiggle room"). kind is `soak` for a request with a title and
 `pgraph` for a test-disc run.
 
 `rate` and `overhead_s` are LEARNED from D's own last 10 results of that kind,
@@ -69,6 +70,13 @@ import sys
 import time
 
 FLOOR = float(os.environ.get("BATTERY_FLOOR", "15"))
+# A per-handheld floor replaces FLOOR where the device fails above 15 %. The
+# Nova's USB link on the PC's 500 mA port drops at low charge (Windows adb.log
+# `write terminated: Input/output error` on ee317437): of its runs 09-27/28,
+# 8 of 17 that went below 30 % lost the link, against 2 of 38 that stayed in
+# 30-59 % (docs/lanes/battadmit/NOTES.md, "The Nova's link floor"). So a Nova
+# run must end at 30 + MARGIN. BATTERY_FLOOR_<label> in the environment wins.
+FLOOR_BY_LABEL = {"nova": 30.0}
 MARGIN = float(os.environ.get("BATTERY_MARGIN", "5"))
 CEILING = float(os.environ.get("BATTERY_CEILING", "75"))
 HEAD_WAIT_S = float(os.environ.get("BATTERY_HEAD_WAIT_S", "1800"))
@@ -106,6 +114,11 @@ def load(path):
             return json.load(fh)
     except (OSError, ValueError):
         return None
+
+
+def floor_for(label):
+    v = os.environ.get("BATTERY_FLOOR_%s" % label)
+    return float(v) if v else FLOOR_BY_LABEL.get(label, FLOOR)
 
 
 def kind_of(req):
@@ -228,23 +241,103 @@ def learn_cached(d, label, kind):
     return v
 
 
+def need_for(d, label, req):
+    """(need, uncapped need, learned inputs) for `req` on `label`. No side
+    effects beyond the rates cache, so affinity.py can ask it about a device
+    that has never been offered the request."""
+    runs = max(1, int(req.get("runs") or 1))
+    seconds = float(req.get("seconds") or 0)
+    lv = learn_cached(d, label, kind_of(req))
+    dev_s = runs * (seconds + lv["overhead_s"])
+    need = floor_for(label) + MARGIN + lv["rate"] * dev_s / 3600.0
+    need = round(need + 0.049, 1)          # rounded up: never admit on a rounding
+    uncapped = need
+    need = min(need, CEILING)
+    return need, uncapped, lv
+
+
+# THE REFUSAL RECORD, AND WHY AFFINITY READS IT (lane.affinitybatt, 09-29).
+# The dispatcher asks this file only about requests affinity.py already sent
+# to this device, so a refusal here is invisible to the other handheld: it
+# never checks the request at all. Three arm pairs hashed to the Nova on
+# 09-28 and were refused there for 8-14 h (level 35 < need 49.6) while the
+# Thor sat at 80-83 % and would have admitted them at need 29.9. So each
+# refusal is written to .battery_refused.<label>: {id: {since, t, need,
+# level}}, `since` the first refusal of an unbroken run of them. An admission
+# removes the id; ids no longer in queue/ or running/ are pruned. One writer
+# per file (the device's own worker), replaced atomically. affinity.py reads
+# it through `refusals` and `level_now` below.
+def _refused_path(d, label):
+    return os.path.join(d, ".battery_refused.%s" % label)
+
+
+def refusals(d, label):
+    r = load(_refused_path(d, label))
+    return r if isinstance(r, dict) else {}
+
+
+def _write_refusals(d, label, recs):
+    live = set()
+    for sub in ("queue", "running"):
+        try:
+            live.update(n[:-4] for n in os.listdir(os.path.join(d, sub)) if n.endswith(".req"))
+        except OSError:
+            pass
+    recs = {k: v for k, v in recs.items() if k in live}
+    path = _refused_path(d, label)
+    tmp = path + ".%d" % os.getpid()
+    try:
+        with open(tmp, "w") as fh:
+            json.dump(recs, fh, sort_keys=True)
+        os.replace(tmp, path)
+    except OSError:
+        pass                               # never fail an admission over a note
+
+
+def note_refusal(d, label, rid, need, level, now):
+    recs = refusals(d, label)
+    old = recs.get(rid) or {}
+    # Rewritten when the need or level moves, or once a minute: the queue walk
+    # asks every few seconds and `t` is only a freshness mark.
+    if old.get("need") == need and old.get("level") == level and now - old.get("t", 0) < 60:
+        return
+    recs[rid] = dict(since=old.get("since", now), t=now, need=need, level=level)
+    _write_refusals(d, label, recs)
+
+
+def note_admission(d, label, rid):
+    recs = refusals(d, label)
+    if rid in recs:
+        del recs[rid]
+        _write_refusals(d, label, recs)
+
+
+def level_now(d, label, fresh_s=900):
+    """The level the dispatcher last read on `label` (.battery_level.<label>,
+    "<epoch> <level>"), or None if absent or older than fresh_s."""
+    try:
+        with open(os.path.join(d, ".battery_level.%s" % label)) as fh:
+            t, lvl = fh.read().split()[:2]
+        if time.time() - float(t) <= fresh_s:
+            return float(lvl)
+    except (OSError, ValueError):
+        pass
+    return None
+
+
 def check(d, label, req_path, level, head):
     req = load(req_path) or {}
     rid = os.path.basename(req_path)[:-4] if req_path.endswith(".req") else os.path.basename(req_path)
     kind = kind_of(req)
     runs = max(1, int(req.get("runs") or 1))
     seconds = float(req.get("seconds") or 0)
-    lv = learn_cached(d, label, kind)
-    dev_s = runs * (seconds + lv["overhead_s"])
-    need = FLOOR + MARGIN + lv["rate"] * dev_s / 3600.0
-    need = round(need + 0.049, 1)          # rounded up: never admit on a rounding
-    uncapped = need
-    need = min(need, CEILING)
+    need, uncapped, lv = need_for(d, label, req)
+    floor = floor_for(label)
     now = time.time()
     state_path = os.path.join(d, ".battery_head.%s" % label)
     state = load(state_path) or {}
-    inputs = "rate %.1f %%/h %s n=%d, %s x (%ds + overhead %ds %s n=%d)" % (
-        lv["rate"], lv["rate_src"], lv["rate_n"], runs, seconds,
+    inputs = "floor %.0f + margin %.0f + rate %.1f %%/h %s n=%d, %s x (%ds + overhead %ds %s n=%d)" % (
+        floor, MARGIN, lv["rate"], lv["rate_src"], lv["rate_n"], runs, seconds,
         lv["overhead_s"], lv["overhead_src"], lv["overhead_n"])
     if uncapped > need:
         inputs += "; need %.1f capped at ceiling %.0f" % (uncapped, CEILING)
@@ -252,7 +345,8 @@ def check(d, label, req_path, level, head):
                rate_src=lv["rate_src"], rate_n=lv["rate_n"],
                overhead_s=lv["overhead_s"], overhead_src=lv["overhead_src"],
                overhead_n=lv["overhead_n"], kind=kind, runs=runs,
-               seconds=seconds, floor=FLOOR, margin=MARGIN, t_admit=now)
+               seconds=seconds, floor=floor, margin=MARGIN, t_admit=now,
+               device=label)
     if uncapped > need:
         rec["need_uncapped"] = uncapped
     if level < need:
@@ -264,27 +358,29 @@ def check(d, label, req_path, level, head):
                 with open(state_path, "w") as fh:
                     json.dump(state, fh)
             waited = now - state["since"]
-        print("BATTERY: skip %s: level %d < need %.1f (%s)%s" % (
-            rid, level, need, inputs,
+        note_refusal(d, label, rid, need, level, now)
+        print("BATTERY: skip %s on %s: level %d < need %.1f (%s)%s" % (
+            rid, label, level, need, inputs,
             "" if head else "; head, refused for %ds" % waited))
         print(json.dumps(rec))
         return 1
+    note_admission(d, label, rid)
     if head:
         waited = now - state["since"] if state.get("id") == head else 0
         if waited >= HEAD_WAIT_S:
-            print("BATTERY: hold for head %s (refused for %ds >= %ds): not backfilling %s, level %d >= need %.1f" % (
-                head, waited, HEAD_WAIT_S, rid, level, need))
+            print("BATTERY: hold for head %s on %s (refused for %ds >= %ds): not backfilling %s, level %d >= need %.1f" % (
+                head, label, waited, HEAD_WAIT_S, rid, level, need))
             print(json.dumps(rec))
             return 3
         rec["backfill_for"] = head
-        print("BATTERY: admit %s as backfill for %s (refused %ds of %ds): level %d >= need %.1f (%s)" % (
-            rid, head, waited, HEAD_WAIT_S, level, need, inputs))
+        print("BATTERY: admit %s on %s as backfill for %s (refused %ds of %ds): level %d >= need %.1f (%s)" % (
+            rid, label, head, waited, HEAD_WAIT_S, level, need, inputs))
     else:
         try:
             os.remove(state_path)
         except OSError:
             pass
-        print("BATTERY: admit %s: level %d >= need %.1f (%s)" % (rid, level, need, inputs))
+        print("BATTERY: admit %s on %s: level %d >= need %.1f (%s)" % (rid, label, level, need, inputs))
     print(json.dumps(rec))
     return 0
 

@@ -17,7 +17,9 @@
 #   and two that count for neither: a thor soak and a nova test-disc run
 #   (each 120 %/h, overhead 1000 s).
 # So a 2100 s soak needs 15 + 5 + 27 x 2440 / 3600 = 38.3 and a 300 s soak
-# 24.8 (each 0.049 up, then to one decimal).
+# 24.8 (each 0.049 up, then to one decimal). Those cases run the nova at the
+# default floor 15 (BATTERY_FLOOR_nova=15); the nova's own floor, 30, has its
+# own case: 53.3 and 39.8.
 
 echo "== battery admission: claim only what the level covers; the head is not starved"
 BA="$T/battadmit"; rm -rf "$BA"; mkdir -p "$BA/bin"
@@ -25,7 +27,8 @@ cat > "$BA/bin/adb" <<'EOF'
 #!/usr/bin/env bash
 echo "$*" >> "$BA_ADB_LOG"
 case "$*" in
-    *"dumpsys battery"*) printf 'Current Battery Service state:\n  AC powered: false\n  USB powered: true\n  level: %s\n  scale: 100\n' "$(cat "$BA_LEVEL")" ;;
+    *"dumpsys battery"*) [ "$(cat "$BA_LEVEL")" != FAIL ] || { echo "error: device offline" >&2; exit 1; }
+        printf 'Current Battery Service state:\n  AC powered: false\n  USB powered: true\n  level: %s\n  scale: 100\n' "$(cat "$BA_LEVEL")" ;;
     devices*) printf 'List of devices attached\nee317437\tdevice\n' ;;
 esac
 exit 0
@@ -41,6 +44,9 @@ for _w in $(seq "${BA_WALKS:-1}"); do   # several walks in one worker, as its lo
     reqs=("$2"/queue/*.req)
     serve_queue "${reqs[@]}"
     echo "walk=$?"
+    # BA_LEVEL_AT=k:L -- the level becomes L after walk k, in the same worker
+    BA_LEVEL_AT="${BA_LEVEL_AT:-}"
+    [ "${BA_LEVEL_AT%%:*}" != "$_w" ] || echo "${BA_LEVEL_AT#*:}" > "$BA_LEVEL"
     [ "$_w" = "${BA_WALKS:-1}" ] || sleep 1.1   # so a running clock in a line moves
 done
 EOF
@@ -86,7 +92,7 @@ ba_case() {   # <tree> <dir> <level> <req-id:seconds>... -> set up, walk once
     ba_walk "$tree" "$1"
 }
 ba_walk() {   # <tree> <dir> [walks]: one more worker over what is queued now
-    BA_WALKS="${3:-1}" PATH="$BA/bin:$PATH" BA_ADB_LOG="$2/adb.log" BA_LEVEL="$2/level" ADB_QUICK_TIMEOUT=5 ADB_RETRY_SLEEP=0 \
+    BATTERY_FLOOR_nova="${BA_FLOOR_NOVA-15}" BA_WALKS="${3:-1}" PATH="$BA/bin:$PATH" BA_ADB_LOG="$2/adb.log" BA_LEVEL="$2/level" ADB_QUICK_TIMEOUT=5 ADB_RETRY_SLEEP=0 \
         timeout -k 2 60 bash "$BA/drive.sh" "$1" "$2" >>"$2/drive.out" 2>&1
 }
 ba_claimed() { [ -f "$1/results/$2/request.json" ] && [ ! -e "$1/queue/$2.req" ]; }
@@ -119,14 +125,14 @@ ba_case "$TESTING" "$BA/a" 50 0-long:2100
 check "fits: level 50 >= need 38.3 -> the 2100 s soak is claimed" ba_claimed "$BA/a" 0-long
 check "fits: battery.json records battery_start 50, need 38.3, rate 27" ba_bjson "$BA/a/results/0-long/battery.json" 50 38.3 27
 check "fits: the admit line names level, need and the learned inputs" \
-    ba_logged "$BA/a" "BATTERY: admit 0-long: level 50 >= need 38.3 (rate 27.0 %/h learned n=4, 1 x (2100s + overhead 340s learned n=5))"
+    ba_logged "$BA/a" "BATTERY: admit 0-long on nova: level 50 >= need 38.3 (floor 15 + margin 5 + rate 27.0 %/h learned n=4, 1 x (2100s + overhead 340s learned n=5))"
 check "fits: the level came from dumpsys battery" grep -q "shell dumpsys battery" "$BA/a/adb.log"
 
 # ------------------------------------------ does not fit -> the shorter one
 ba_case "$TESTING" "$BA/b" 30 0-long:2100 1-short:300
 check "skip: level 30 < need 38.3 -> the long head stays queued" ba_queued "$BA/b" 0-long
 check "skip: the 300 s soak behind it (need 24.8) is claimed instead" ba_claimed "$BA/b" 1-short
-check "skip: logged as BATTERY: skip <id>: level L < need N" ba_logged "$BA/b" "BATTERY: skip 0-long: level 30 < need 38.3"
+check "skip: logged as BATTERY: skip <id> on <device>: level L < need N" ba_logged "$BA/b" "BATTERY: skip 0-long on nova: level 30 < need 38.3"
 check "skip: the backfill records battery_start 30, need 24.8, rate 27" ba_bjson "$BA/b/results/1-short/battery.json" 30 24.8 27
 
 # ---------------------------------------------------------- nothing fits
@@ -147,7 +153,7 @@ ba_starve() {   # <tree> <dir>
 }
 ba_starve "$TESTING" "$BA/e"
 check "starve: head refused 2000 s -> the short soak that fits is held back" ba_queued "$BA/e" 1-short
-check "starve: logged as a hold for the head" ba_logged "$BA/e" "BATTERY: hold for head 0-long"
+check "starve: logged as a hold for the head" ba_logged "$BA/e" "BATTERY: hold for head 0-long on nova"
 echo 39 > "$BA/e/level"; rm -f "$BA/e/.battery_level.nova"
 ba_walk "$TESTING" "$BA/e"
 check "starve: at level 39 >= 38.3 the head is claimed first" ba_claimed "$BA/e" 0-long
@@ -198,10 +204,45 @@ ba_hold3() {   # <tree> <dir>: three walks in one worker, holding for the head
     python3 -c 'import json,sys,time; json.dump(dict(id="0-long", since=time.time()-2000), open(sys.argv[1],"w"))' "$2/.battery_head.nova"
     ba_walk "$1" "$2" 3
 }
-ba_holds() { grep -c 'BATTERY: hold for head 0-long' "$1/logs/dispatcher.log"; }
+ba_holds() { grep -c 'BATTERY: hold for head 0-long on nova' "$1/logs/dispatcher.log"; }
 ba_hold3 "$TESTING" "$BA/j"
 check "log once: three walks holding for the head log the hold line once" \
     test "$(ba_holds "$BA/j")" -eq 1
+
+# ------------------------------------------- an unreadable level: fail closed
+# dumpsys fails (the Nova's link, 16:41 on 09-28): nothing is claimed, one read
+# per walk, one line per episode; the walk after it reads again and claims.
+ba_unread() {   # <tree> <dir>: one worker, two walks unreadable, then one at 50
+    ba_setup "$2" FAIL 0-long:2100 1-short:300
+    BA_LEVEL_AT=2:50 ba_walk "$1" "$2" 3
+}
+ba_unread "$TESTING" "$BA/u"
+check "unreadable: nothing claimed on either unreadable walk (walk=1 twice)" test "$(grep -c "walk=1" "$BA/u/drive.out")" -eq 2
+check "unreadable: logged as not claiming" ba_logged "$BA/u" "BATTERY: level unreadable on nova; not claiming 0-long, reading again at the next walk"
+check "unreadable: once per episode, not once per walk" test "$(grep -c 'level unreadable on nova' "$BA/u/logs/dispatcher.log")" -eq 1
+check "unreadable: one dumpsys per walk, not per request (3 walks, 2 requests)" \
+    test "$(grep -c 'dumpsys battery' "$BA/u/adb.log")" -eq 3
+check "unreadable: at 50 the next walk claims the head" ba_claimed "$BA/u" 0-long
+check "unreadable: and says the level is readable again" ba_logged "$BA/u" "BATTERY: level readable again on nova (50) after "
+
+# --------------------------------------------- the nova's own floor, 30
+# No BATTERY_FLOOR_nova: FLOOR_BY_LABEL's 30. At 50 the 2100 s soak needs
+# 30 + 5 + 18.3 = 53.3 and waits; the 300 s soak needs 39.8 and is claimed.
+ba_novafloor() {   # <tree> <dir>
+    BA_FLOOR_NOVA="" ba_case "$1" "$2" 50 0-long:2100 1-short:300
+}
+ba_novafloor "$TESTING" "$BA/n"
+check "nova floor: level 50 < need 53.3 -> the 2100 s soak stays queued" ba_queued "$BA/n" 0-long
+check "nova floor: the line names floor 30" ba_logged "$BA/n" "BATTERY: skip 0-long on nova: level 50 < need 53.3 (floor 30 + margin 5 + rate 27.0"
+check "nova floor: the 300 s soak (need 39.8) is claimed" ba_claimed "$BA/n" 1-short
+check "nova floor: battery.json records need 39.8 and floor 30" \
+    python3 -c 'import json,sys; b=json.load(open(sys.argv[1])); sys.exit(0 if (b["need"], b["floor"]) == (39.8, 30.0) else 1)' "$BA/n/results/1-short/battery.json"
+printf '{"id":"t-long","title":"Fixture.iso","seconds":2100,"runs":1}\n' > "$BA/l/t-long.req"
+ba_thorfloor() {   # <tree>: the thor keeps 15 (its fallback rate 10 %/h, overhead 120 s)
+    env -u BATTERY_FLOOR_thor python3 "$1/battery_admit.py" check "$BA/l" thor "$BA/l/t-long.req" 50 \
+        | sed -n 2p | python3 -c 'import json,sys; b=json.load(sys.stdin); sys.exit(0 if b["floor"] == 15.0 else 1)'
+}
+check "thor floor: the thor keeps floor 15" ba_thorfloor "$TESTING"
 
 # ------------------------------------------------------------ the cache
 ba_case "$TESTING" "$BA/f" 22 0-long:2100 1-short:300
@@ -236,11 +277,11 @@ if [ -z "$M" ]; then bad "MUTANT learn-label: sed matched nothing"
 elif ba_learned "$(python3 "$M/battery_admit.py" learn "$BA/l" nova soak)"; then bad "MUTANT learn-label (the thor's runs count for the nova): still reads 27"
 else ok "MUTANT learn-label (the thor's runs count for the nova): red"; fi
 
-# fits: admission reads the floor as 50 -> the 2100 s soak no longer fits at 50
-M=$(ba_mut battery_admit.py 's/^FLOOR = float(os.environ.get("BATTERY_FLOOR", "15"))$/FLOOR = 50.0/' m-floor)
+# fits: admission reads the margin as 50 -> the 2100 s soak no longer fits at 50
+M=$(ba_mut battery_admit.py 's/^MARGIN = float(os.environ.get("BATTERY_MARGIN", "5"))$/MARGIN = 50.0/' m-floor)
 if [ -z "$M" ]; then bad "MUTANT fits: sed matched nothing"
 else ba_case "$M" "$BA/ma" 50 0-long:2100
-     if ba_claimed "$BA/ma" 0-long; then bad "MUTANT fits (floor 50): still claimed"; else ok "MUTANT fits (floor 50): red"; fi; fi
+     if ba_claimed "$BA/ma" 0-long; then bad "MUTANT fits (margin 50): still claimed"; else ok "MUTANT fits (margin 50): red"; fi; fi
 # skip: serve_one stops at the first refusal -> the short one is never reached
 M=$(ba_mut dispatcher.sh 's/^    battery_admit "\$req" "\$id" || return 1$/    battery_admit "$req" "$id" || return 0/' m-skip)
 if [ -z "$M" ]; then bad "MUTANT skip: sed matched nothing"
@@ -276,3 +317,28 @@ M=$(ba_mut dispatcher.sh 's/^    key=\$(printf .*$/    key="$line"/' m-once)
 if [ -z "$M" ]; then bad "MUTANT log-once: sed matched nothing"
 else ba_hold3 "$M" "$BA/mj"
      if [ "$(ba_holds "$BA/mj")" -eq 1 ]; then bad "MUTANT log-once (clock in the key): still once"; else ok "MUTANT log-once (clock in the key): red"; fi; fi
+# unreadable: admit on an unreadable level -> the head is claimed on a failing link
+M=$(ba_mut dispatcher.sh 's/^    \[ -n "\$level" \] || { battery_unreadable "\$id"; return 1; }$/    [ -n "$level" ] || { battery_unreadable "$id"; return 0; }/' m-unread)
+if [ -z "$M" ]; then bad "MUTANT unreadable: sed matched nothing"
+else ba_setup "$BA/mu" FAIL 0-long:2100; ba_walk "$M" "$BA/mu"
+     if ba_queued "$BA/mu" 0-long; then bad "MUTANT unreadable (admits): still queued"; else ok "MUTANT unreadable (admits): red"; fi; fi
+# unreadable, one read per walk: the walk's flag ignored -> a dumpsys per request
+M=$(ba_mut dispatcher.sh 's/^    \[ -z "\${BATT_WALK_UNREAD:-}" \] || return 1$/    :/' m-unreadwalk)
+if [ -z "$M" ]; then bad "MUTANT unreadable-walk: sed matched nothing"
+else ba_unread "$M" "$BA/mv"
+     if [ "$(grep -c 'dumpsys battery' "$BA/mv/adb.log")" -eq 3 ]; then bad "MUTANT unreadable-walk (read per request): still 3 reads"; else ok "MUTANT unreadable-walk (read per request): red"; fi; fi
+# unreadable, once per episode: every walk logs
+M=$(ba_mut dispatcher.sh 's/^    if \[ -z "\$BATT_UNREAD_SINCE" \]; then$/    if true; then/' m-unreadonce)
+if [ -z "$M" ]; then bad "MUTANT unreadable-once: sed matched nothing"
+else ba_unread "$M" "$BA/mw"
+     if [ "$(grep -c 'level unreadable on nova' "$BA/mw/logs/dispatcher.log")" -eq 1 ]; then bad "MUTANT unreadable-once (every walk): still once"; else ok "MUTANT unreadable-once (every walk): red"; fi; fi
+# nova floor: the table emptied -> the nova is back at 15 and the 2100 s soak is claimed at 50
+M=$(ba_mut battery_admit.py 's/^FLOOR_BY_LABEL = {"nova": 30.0}$/FLOOR_BY_LABEL = {}/' m-novafloor)
+if [ -z "$M" ]; then bad "MUTANT nova-floor: sed matched nothing"
+else ba_novafloor "$M" "$BA/mn"
+     if ba_queued "$BA/mn" 0-long; then bad "MUTANT nova-floor (no table): still queued"; else ok "MUTANT nova-floor (no table): red"; fi; fi
+# thor floor: every device at 30 -> the thor's floor is not 15
+M=$(ba_mut battery_admit.py 's/FLOOR_BY_LABEL.get(label, FLOOR)$/30.0/' m-thorfloor)
+if [ -z "$M" ]; then bad "MUTANT thor-floor: sed matched nothing"
+elif ba_thorfloor "$M"; then bad "MUTANT thor-floor (all at 30): still 15"
+else ok "MUTANT thor-floor (all at 30): red"; fi
