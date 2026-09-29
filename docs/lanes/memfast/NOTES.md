@@ -88,6 +88,28 @@ names it.
 - **The b_ref keeps the counter.** There, the "armed" share still counts
   `cb=0` time, but nothing reads it.
 
+### Result on GTA (the pilot pair, Thor, 300 s each)
+
+| | A1 `…1718274` (31515f9751) | B1 `…1718333` (82e0ef1fa9) |
+|---|---|---|
+| `[mf0]` lines | 155 | 154 |
+| `act=1` ever | **no** | no |
+| low window: identity / other RAM page / device | 120,689 / **9,306,655** / 0 | 111,590 / 9,215,018 / 0 |
+| distinct non-identity pages (low) | **6,310** | 6,292 |
+| BAR1 window: identity / other / device | 178,771 / 0 / 0 | 178,481 / 0 / 0 |
+| `cb` transitions | 0->1 once, never back | same |
+
+- **98.7% of low-window installs on GTA have VA != PA.** The first samples
+  are the XBE image: VA 0x10000 -> PA 0xbf000, 0x11000 -> 0xe0000, and so on.
+  The census's guess (`ln > 0`) holds, and by far.
+- **The path was never activated** (`act` stays 0), and `cb` rose to 1 once
+  and stayed there. So on GTA the path is dead *and*, if it were ever armed,
+  it would read the wrong page on almost every load. Today the bug is latent
+  on GTA. The removal is the fix for it. Nightfire, Crimson and AUF follow in
+  the queued A runs.
+- **BAR1 (the VRAM window) is all identity.** Phase 2's shadow can map it
+  flat; only the low window needs per-page mappings.
+
 ## Predictions
 
 - `docs/testing/predictions/memfast-drop-pixels.json`: all 100 golden suites
@@ -472,6 +494,39 @@ the cause split into F0a. P stays 0.4. The largest risk remaining is M6
   A full local configure was not permitted in this sandbox; CI's Desktop
   build is the check. Read every CI job on the head, not only Android,
   before posting a `waiting:`.
+- 2026-09-29 (attempt 5): attempt 4 did finish: CI went green on 6badcd9404
+  (Desktop and Android) and it ended on a `waiting:` at 21:39Z. It was
+  resumed because its four requests had all finished overnight: the GTA
+  pilot pair and the arm pair. This attempt read the pilot (census table
+  above; J/frame below), wrote `pilots/lane.memfast.ok`, and queued the
+  other nine soaks in `memfast-drop-soak.json`'s order:
+  `1-1790676918-lane.memfast-1478484` (GTA B2), `-1478533` (GTA A2),
+  `-1478575`/`-1478620`/`-1478678`/`-1478752` (Nightfire B1 A1 B2 A2),
+  `-1478812`/`-1478877` (Crimson B1 A1), `-1478936` (AUF A1). The Nova was
+  held for charging at the time. The arms job had not posted its verdict yet,
+  though both arm result dirs existed.
+
+## Pilot J/frame (GTA, one pair; not a verdict)
+
+`title_verdict.py` on copies (`.scratch/`, not committed). Both runs reached
+gameplay, power was measured on battery, and neither had a thermal pause.
+
+| | A1 (a_ref) | B1 (b_ref) | B/A |
+|---|---|---|---|
+| scored gameplay | 99.5 s | 93.9 s | |
+| flips in the window | 2580 | 2580 | |
+| net W | 6.188 | 5.442 | 0.879 |
+| **j_per_frame** | 0.2386 | 0.1981 | **0.830** |
+| fps window median | 27.14 | 28.21 | 1.039 |
+| share of time at >= 30 fps | 14.4% | 39.6% | |
+
+- B/A 0.830 is well past the predicted -3.5 to -7%, and it is one pair. Both
+  runs cleared the shader cache (the APK changed), so the two ran under the
+  same cold-cache conditions. Still, one pair against a 3.6% per-pair noise
+  figure cannot size the effect. The J leg is judged on the mean of GTA's two
+  pairs and Nightfire's two pairs, as registered.
+- Both FAIL the Playable screening on duration (300 s requests) and on fps.
+  That is expected and not this lane's measure.
 
 ## R1: master's shares, from lane.local's cold GTA capture
 
@@ -511,11 +566,11 @@ the cause split into F0a. P stays 0.4. The largest risk remaining is M6
 0. R1 (master's A side) is read; do not re-run jitmix on it. The B side is
    the held b_ref capture lane.local schedules once `builds/82e0ef1fa9.apk`
    exists; read it with the same two scripts and fill the table's b column.
-1. When the pilot lands, run `mf0_read.py` on A1 and `title_verdict.py` on a
-   COPY of both dirs. Check that gameplay was reached, power was measured, and
-   the `[mf0]` lines are present. Write `pilots/lane.memfast.ok` with python3,
-   then queue the rest per `memfast-drop-soak.json`'s queue_order. The Nova
-   titles wait for the battery hold to lift.
+1. DONE: the pilot is read, `pilots/lane.memfast.ok` is written, and the
+   other nine soaks are queued (ids in the Log). When they land, run
+   `mf0_read.py` on every A run and `title_verdict.py` on a COPY of every dir.
+   Judge J as the mean B/A over the pairs per title, and G on every B run. The
+   GTA pilot pair counts as GTA's pair 1.
 2. Read the `[job.arms]` verdict on `memfast-drop-pixels.json`. A moved
    capture is read against that run's `[mf0]` lines before it is called
    anything.
