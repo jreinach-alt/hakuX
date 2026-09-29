@@ -572,19 +572,17 @@ retired_utc = "2026-09-28T19:00:00Z"
 files = []
 note = "RETIRED (hostops 2026-09-28T19:00Z): PR #570 folded as d0d09361cf (plan in docs/lanes/shaderplan569/NOTES.md); unit gone. docs/lanes/shaderplan569/** needs no holder. #569 continues on [lane.shaderfb569] (P1) and [lane.turnipcost569] (P2 phase A). || STARTED (lane.local 2026-09-28T18:45Z), briefs/shaderplan569.md: #569 (fps-focus), research and plan, docs only. The owner's questions on shader compile stalls (native hardware vs hakuX, undispatched fixes, an Adreno/Turnip expert review, precompile and predictive compile on idle cores, ubershaders, per-title options, the visual cost of skipping). Output: NOTES with a ranked, priced plan of dispatchable items; lane.local dispatches them."
 
-[lane.shaderfb569]
-issues = ["569"]
-files = ["hw/xbox/nv2a/pgraph/vk/compile_worker.c", "hw/xbox/nv2a/pgraph/vk/glsl.c", "hw/xbox/nv2a/pgraph/profile.c", "hw/xbox/nv2a/debug.h", "hw/xbox/nv2a/pgraph/vk/draw.c", "docs/lanes/shaderfb569/**", "docs/testing/predictions/shaderfb569-*.json"]
-released = ["hw/xbox/nv2a/pgraph/vk/draw.c", "hw/xbox/nv2a/pgraph/vk/compile_worker.c", "hw/xbox/nv2a/pgraph/vk/glsl.c", "hw/xbox/nv2a/pgraph/profile.c", "hw/xbox/nv2a/debug.h", "docs/lanes/shaderfb569/**", "docs/testing/predictions/shaderfb569-*.json"]
-released_at_ready = 574
-note = "RELEASED AT READY (job.board 2026-09-28T23:45Z): PR #574 is out of draft, unit gone; added the remaining 6 files to `released` per roles/board.md (release at ready) so the next lane can start on them. The next lane branches from master and merges master (or lane/shaderfb569 if #574 has not folded) before marking its own PR ready, re-running its arm. || TERRITORY FIX (job.board 2026-09-28T19:41Z): vk/draw.c added to `released` here so check_territory.py has one holder (uberspike569); this row keeps the file under `files` for its own create-sites/cache-save hunks per the note below -- board-push-gate FAILed with 'claimed by both shaderfb569 and uberspike569' before this edit. || SHARED (lane.local 2026-09-28T20:00Z): vk/draw.c regions init_pipeline_key (~2267-2281) and the fragment uniform upload path LENT to [lane.uberspike569]; this lane keeps its create sites and the cache save. || STARTED (lane.local 2026-09-28T18:50Z), briefs/shaderfb569.md: #569 plan item P1 (PR #570): VkPipelineCreationFeedback per stage at both create sites, glslang and cache-save timers, a key-diff class counter, on the [shd413] line; legs C1-C4; one cold DOA soak on the Nova after the top-up. compile_worker.c, vk/glsl.c, profile.c from [free]; debug.h (shader_stats struct only) LENT from lane.remote; vk/draw.c (create sites + cache save only) SUB-LENT from lane.pacing."
+[retired.shaderfb569]
+issues = []
+files = []
+retired_utc = "2026-09-29T00:18:00Z"
+note = "RETIRED (hostops 2026-09-29T00:18Z): P1 finished; PR #574 folded as be89ee5846; unit gone, no open PR. Files to [free]: vk/compile_worker.c (now held by lane.gpl569), vk/glsl.c, pgraph/profile.c, nv2a/debug.h, docs/lanes/shaderfb569/**, predictions shaderfb569-*.json; vk/draw.c stays with uberspike569/gpl569. || PRIOR: RELEASED AT READY (job.board 2026-09-28T23:45Z): PR #574 is out of draft, unit gone; added the remaining 6 files to `released` per roles/board.md (release at ready) so the next lane can start on them. The next lane branches from master and merges master (or lane/shaderfb569 if #574 has not folded) before marking its own PR ready, re-running its arm. || TERRITORY FIX (job.board 2026-09-28T19:41Z): vk/draw.c added to `released` here so check_territory.py has one holder (uberspike569); this row keeps the file under `files` for its own create-sites/cache-save hunks per the note below -- board-push-gate FAILed with 'claimed by both shaderfb569 and uberspike569' before this edit. || SHARED (lane.local 2026-09-28T20:00Z): vk/draw.c regions init_pipeline_key (~2267-2281) and the fragment uniform upload path LENT to [lane.uberspike569]; this lane keeps its create sites and the cache save. || STARTED (lane.local 2026-09-28T18:50Z), briefs/shaderfb569.md: #569 plan item P1 (PR #570): VkPipelineCreationFeedback per stage at both create sites, glslang and cache-save timers, a key-diff class counter, on the [shd413] line; legs C1-C4; one cold DOA soak on the Nova after the top-up. compile_worker.c, vk/glsl.c, profile.c from [free]; debug.h (shader_stats struct only) LENT from lane.remote; vk/draw.c (create sites + cache save only) SUB-LENT from lane.pacing."
 
-[lane.turnipcost569]
-issues = ["569"]
-files = ["docs/lanes/turnipcost569/**"]
-released = ["docs/lanes/turnipcost569/**"]
-released_at_ready = 573
-note = "STARTED (lane.local 2026-09-28T18:50Z), briefs/turnipcost569.md: #569 plan item P2 phase A (PR #570): build Mesa 26.3 Turnip on the host (drm-shim), time and profile hakuX SPIR-V per pass for a7xx, rank the generator features by cost, propose phase B. Docs and host tools only; no emulator code, no device holds. RELEASED AT READY (job.board 2026-09-28T19:41Z): PR #573 out of draft, CI green, unit gone. File RELEASED; the next lane merges master (or lane/turnipcost569's branch if #573 has not folded) and re-runs its arm before marking ready."
+[retired.turnipcost569]
+issues = []
+files = []
+retired_utc = "2026-09-29T00:18:00Z"
+note = "RETIRED (hostops 2026-09-29T00:18Z): phase A finished; PR #573 merged 2026-09-28T19:51Z; unit gone, no open PR. Files to [free]: docs/lanes/turnipcost569/**. || PRIOR: STARTED (lane.local 2026-09-28T18:50Z), briefs/turnipcost569.md: #569 plan item P2 phase A (PR #570): build Mesa 26.3 Turnip on the host (drm-shim), time and profile hakuX SPIR-V per pass for a7xx, rank the generator features by cost, propose phase B. Docs and host tools only; no emulator code, no device holds. RELEASED AT READY (job.board 2026-09-28T19:41Z): PR #573 out of draft, CI green, unit gone. File RELEASED; the next lane merges master (or lane/turnipcost569's branch if #573 has not folded) and re-runs its arm before marking ready."
 
 [lane.litcompile569]
 issues = ["569"]
@@ -599,7 +597,8 @@ note = "STARTED (lane.local 2026-09-28T00:20Z+1d), briefs/gpl569.md: #569 P5, de
 [lane.uberspike569]
 issues = ["569"]
 files = ["hw/xbox/nv2a/pgraph/glsl/psh-uber.c", "hw/xbox/nv2a/pgraph/glsl/psh-uber.h", "hw/xbox/nv2a/pgraph/glsl/meson.build", "hw/xbox/nv2a/pgraph/vk/shaders.c", "hw/xbox/nv2a/pgraph/vk/renderer.h", "hw/xbox/nv2a/pgraph/vk/draw.c", "docs/lanes/uberspike569/**", "docs/testing/predictions/uberspike569-*.json"]
-note = "STARTED (lane.local 2026-09-28T20:00Z), briefs/uberspike569.md: #569 P6 on the owner's ask ('most interested in the Dolphin style' ubershader): a fragment-side combiner interpreter behind HAKUX_PSH_UBER=1 (default OFF), legs E (per-capture exactness vs the specialised path), P (fps cost forced on a DOA fight, Nova), C (its own compile cost), then a verdict on building the hybrid. vk/shaders.c and vk/renderer.h released by forza414; vk/draw.c LENT regions only (init_pipeline_key ~2267-2281 and the fragment uniform upload path) -- lane.shaderfb569 holds its create sites and cache save."
+released = ["hw/xbox/nv2a/pgraph/vk/shaders.c", "hw/xbox/nv2a/pgraph/vk/renderer.h", "hw/xbox/nv2a/pgraph/vk/draw.c"]
+note = "SHARED (hostops 2026-09-29T00:18Z): vk/shaders.c, vk/renderer.h and vk/draw.c are listed as released so that lane.gpl569 can hold them too; check_territory has no shared claim, and a released file allows exactly one more holder. Nothing is freed: uberspike569 keeps its regions (init_pipeline_key and the fragment uniform path; its shaders.c/renderer.h paths), gpl569 takes the create sites, the layout and the module/stage paths, as lane.local split them in briefs/gpl569.md. Overlaps meet at fold as ordinary merges. || STARTED (lane.local 2026-09-28T20:00Z), briefs/uberspike569.md: #569 P6 on the owner's ask ('most interested in the Dolphin style' ubershader): a fragment-side combiner interpreter behind HAKUX_PSH_UBER=1 (default OFF), legs E (per-capture exactness vs the specialised path), P (fps cost forced on a DOA fight, Nova), C (its own compile cost), then a verdict on building the hybrid. vk/shaders.c and vk/renderer.h released by forza414; vk/draw.c LENT regions only (init_pipeline_key ~2267-2281 and the fragment uniform upload path) -- lane.shaderfb569 holds its create sites and cache save."
 
 [retired.rankrule]
 issues = []
@@ -635,11 +634,11 @@ issues = ["507"]
 files = ["accel/tcg/cpu-exec.c", "accel/tcg/tb-jmp-cache.h", "target/i386/tcg/translate.c", "docs/lanes/ibcache/**", "docs/testing/predictions/ibcache-*.json"]
 note = "QUEUED FILE (hostops 2026-09-28T20:56Z): tcg/aarch64/tcg-target.c.inc is held by lane.memfast (check_territory allows one holder); ibcache gets it when memfast releases it at PR-ready, or earlier by a host grant once R1 says go -- ask on #507. STARTED (lane.local 2026-09-28T20:55Z), briefs/ibcache.md: #507 vCPU plan (PR #589) rank 2, owner-endorsed: R1 (cold GTA Thor profile on master) decides go or no-go, then an inline indirect-branch cache and a return-address stack (P 0.5, -7 to -11% J/f). SHARED: tcg-target.c.inc goto_ptr/indirect-lookup region only (lane.memfast holds qemu_ld/st); translate.c call/ret emission (released by idlehaltspin)."
 
-[lane.fgunknown]
-issues = ["592"]
-files = ["docs/testing/devices.sh", "docs/testing/soak_title.sh", "docs/testing/jobs/selftest.d/99-fg-unreadable.sh", "docs/lanes/fgunknown/**"]
-released = ["docs/testing/devices.sh", "docs/testing/soak_title.sh", "docs/testing/jobs/selftest.d/99-fg-unreadable.sh", "docs/lanes/fgunknown/**"]
-note = "STARTED (hostops 2026-09-28T23:20Z), briefs/fgunknown.md: #592, the soak foreground watch aborts on two HUNG dumpsys reads (read as foreground-unknown). devices.sh and soak_title.sh were unclaimed; RELEASE them to [free] at PR-ready."
+[retired.fgunknown]
+issues = []
+files = []
+retired_utc = "2026-09-29T00:18:00Z"
+note = "RETIRED (hostops 2026-09-29T00:18Z): PR #593 folded as 1922ce1cad; #592 closed; unit gone, no open PR. Files to [free]: docs/testing/devices.sh, docs/testing/soak_title.sh, docs/testing/jobs/selftest.d/99-fg-unreadable.sh, docs/lanes/fgunknown/**. || PRIOR: STARTED (hostops 2026-09-28T23:20Z), briefs/fgunknown.md: #592, the soak foreground watch aborts on two HUNG dumpsys reads (read as foreground-unknown). devices.sh and soak_title.sh were unclaimed; RELEASE them to [free] at PR-ready."
 
 [free]
 # CLAIMED (hostops 2026-09-28T20:56Z): accel/tcg/tb-jmp-cache.h -> lane.ibcache (#507; removed from [free], which still listed it). tcg/aarch64/tcg-target.c.inc goes to lane.memfast alone (qemu_ld/st, items 0/3 first); QUEUED for lane.ibcache after it (the gate has no shared claim).
