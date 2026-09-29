@@ -506,7 +506,9 @@ note = "RETIRED (hostops 2026-09-28T02:06Z): PR #531 folded (7b94a74caf), unit g
 [lane.gmem474]
 issues = ["474"]
 files = ["docs/lanes/gmem474/**", "docs/testing/predictions/gmem474-*.json", "android/app/src/main/java/com/rfandango/haku_x/TitleDefaults.kt"]
-note = "STARTED (hostops 2026-09-28T19:58Z), briefs/gmem474.md: #474 (0.5, fps-focus; thermal review item 5, section 3.4). GMEM vs sysmem chosen by J/frame: four Turnip arms (autotune default, TU_DEBUG=sysmem, TU_DEBUG=gmem,forcebin, TU_AUTOTUNE_ALGO=profiled) on DOA, AUF and one non-saturated title; pilot first. TitleDefaults.kt (from [free], freed by retiring lane.rendermode474) only for a second PR if a per-title decision differs from #530."
+released = ["docs/lanes/gmem474/**", "docs/testing/predictions/gmem474-*.json", "android/app/src/main/java/com/rfandango/haku_x/TitleDefaults.kt"]
+released_at_ready = 582
+note = "STARTED (hostops 2026-09-28T19:58Z), briefs/gmem474.md: #474 (0.5, fps-focus; thermal review item 5, section 3.4). GMEM vs sysmem chosen by J/frame: four Turnip arms (autotune default, TU_DEBUG=sysmem, TU_DEBUG=gmem,forcebin, TU_AUTOTUNE_ALGO=profiled) on DOA, AUF and one non-saturated title; pilot first. TitleDefaults.kt (from [free], freed by retiring lane.rendermode474) only for a second PR if a per-title decision differs from #530. || RELEASED AT READY (job.board 2026-09-29T22:44Z): PR #582 is out of draft, CI green (Android + Desktop build), unit gone (no running agent); diff touches only docs/lanes/gmem474/** and docs/testing/predictions/gmem474-*.json, so labelled fold-ready with no audit. TitleDefaults.kt was never touched by #582 and released with it since no session holds it; the next lane names PR #582 and merges master (or lane/gmem474 if it has not folded) before marking its own PR ready."
 
 [retired.rendermode474]
 issues = ["474"]
