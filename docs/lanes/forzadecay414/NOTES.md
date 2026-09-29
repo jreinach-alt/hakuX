@@ -505,6 +505,15 @@ reads FAIL on the missing captures instead, the next session registers a replica
 - **If the re-run also stops in W_buffering on the fix but not on the base,** the hang is the
   change's. The next step is to read the fix's pruning path against that test's surfaces.
 
+**Resume 2026-09-29 22:42Z (attempt 3; why the previous session did not finish):** it ended on an
+outside wait, the arms job's verdict. That verdict (20:19Z) printed none: ab_compare refused the
+pair because neither fix run proved its progress log, which is a die, not an INCOMPLETE, so
+`arms.sh` did not re-queue it. hostops queued the re-run by hand at 20:40Z: base
+`1-1790714366-arms-forzadecay414-base-2900948`, fix `-fix-2900992`, both pinned to the Thor. At
+22:43Z both are still in `queue/`. The Thor is on `hold/thor` (battery-hostops, 21:20Z: battery
+12%, lifted at >= 20%). Nothing on this PR is open except that pair's verdict; #583 stays draft
+until it is judged.
+
 ## Do not repeat
 
 - Do not re-queue a pre-fix Forza soak on the Nova to read a whole master race. lmkd kills it at
