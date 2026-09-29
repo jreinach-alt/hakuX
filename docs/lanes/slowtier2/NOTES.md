@@ -16,6 +16,10 @@ Files here:
 - `levers.sh` (+ `levers.out`): which lever fold commits each reading's ref
   contains.
 - `perflogscan.py`: which results of these titles carry perflog lines.
+- `playsplit.py` (+ `otogi2-playsplit.out`): medians of a perflog soak's
+  lines over one span, with the logcat.txt line range of each (section 7).
+- `addshots.py` (+ `addshots.out`, `routes/*.shots.route`): the two frames
+  added after the mark to the parked requests (section 7).
 
 ## 1. What the logs can and cannot say
 
@@ -76,7 +80,7 @@ off" = frame x (1 - on-CPU share). Regimen from run.log `PERF: regimen=`.
 | Dead or Alive 3 | 15.41 (status soak window 101-251 s) | titleplay-p1-doa3, a5b5b628f2, Thor, unrecorded | **not gameplay**: the status page's own pass-1 review says "gameplay not reached"; the window is 12-13 fps and 60 fps screens | none | (guest, in that window) | not a gameplay reading. That window has the heaviest code churn of the set: 15,490 inval/s, 158,526 TBs discarded/s, vCPU TLB resets 10.8 ms/frame (ro:237-242) | ro:230-255 |
 | Project Gotham Racing | 14.27 | titleroutes-3587419, a593d8eb85, Thor, MAX | **paused after 360 s (inferred)**: cold (idle 41 min), no record. From a gate-admitted start the Thor still pauses 5-8 min in (sustain507), and the fall is at 6 min: 15.1 fps to 360 s, then 5.5 to the end (a fall to 0.36, just over the one-third test), vCPU on-CPU falling 87% -> 61% and zero-filled audio 0% -> 71% at the same point (ro:268-278) | **15.12** over 197-360 s = 66.1 ms | renderer (idle 13%) | vCPU on 57.3 (87%); renderer busy 58.4: both threads near full | ro:256-278 |
 | Brute Force | 13.16 | titleroutes-1101937, 9d3656f263, Thor, MAX | **clean**: cold (idle 23 min), flat 11.3-13.9 from the mark (the 30 fps before it is the pre-mark screens) | 13.16 = 76.0 ms | guest, **vCPU blocked** | vCPU on 55.4 / **off 20.6**; renderer idle 49.4 (65%); a mean backlog of 788 KB beside an idle renderer (not understood) | ro:279-291 |
-| Otogi | 12.62 | titleroutes-1129571, 9e7f8418dc, Thor, MAX | **clean (inferred)**: claimed 703 s after a 570 s run, no record; the fall 30 -> 11 is at 120 s, too early for #507 | 12.62 = 79.3 ms | **renderer, near saturated** | renderer idle 7.3 (9%), busy 74.9; vCPU on 46.7 (59%); backlog 1.4 MB (the pusher far ahead); vCPU TLB resets 2.7 | ro:292-305 |
+| Otogi (**on master: 29.97, at its cap; section 7**) | 12.62 | titleroutes-1129571, 9e7f8418dc, Thor, MAX | **clean (inferred)**: claimed 703 s after a 570 s run, no record; the fall 30 -> 11 is at 120 s, too early for #507 | 12.62 = 79.3 ms | **renderer, near saturated** | renderer idle 7.3 (9%), busy 74.9; vCPU on 46.7 (59%); backlog 1.4 MB (the pusher far ahead); vCPU TLB resets 2.7 | ro:292-305 |
 | Burnout | 10.85 | titleroutes-1150288, 3540bf2a69, Thor, MAX | **clean (inferred)**: claimed 704 s after a 550 s run, no record; the fall 30 -> 10 is at 210 s, at the mark | 10.85 = 92.2 ms | renderer (idle 23%) | renderer busy 71.1; vCPU on 54.8 (59%); vCPU TLB resets 2.7; zero-filled audio 56% | ro:306-319 |
 | Black | 7.45 | titleroutes-3358750, a593d8eb85, Thor, MAX | **clean (inferred)**: cold (idle 23 min). Frame `215235-f1.png`, 3.5 min in, shows the intro cutscene at FPS 4 before any pause could come. The 26 fps before the mark is a black "4 DAYS EARLIER" card (`215343-f2.png`); `215426-gameplay.png` shows FPS 7. A pause after 8 min is not excluded (no record) | 7.45 = 134 ms | guest (idle 42%), vCPU blocked | vCPU on 92.3 / **off 42**; renderer busy 78.6; **TLB resets on other threads 17.8 ms/frame** (#548's cost, 6x any other title) and 3.6 on the vCPU | ro:320-332 |
 | Midtown Madness 3 | 3.13 | titleroutes-1032854, 6aaa8197c5, Thor, MAX | **unknown, leaning content**: claimed 5 s after a 410 s Alien Hominid run (warm), no record. The #507 test flags the fall at 210 s (51.9 -> 3.1), but it lands on the mission load, which the route frames show: `040703-a3.png` (menu) at FPS 59, `040838-b3.png` (the static mission briefing) at FPS 3, `041030-gameplay.png` (the drive) at FPS 3 | 3.13 = 320 ms | guest, **vCPU blocked** | vCPU on 228 (71%) / **off 92**; renderer idle 260 (81%); vCPU TLB resets 9.3. The verdict's ten 12-20 s "hangs" are its steady frame: 60 flips at 3.1 fps take 19 s, as with GTA in the first pass | ro:333-345 |
@@ -104,6 +108,10 @@ reading), with the ms per frame read above.
 | 6 | **TLB resets on the vCPU thread** | MM3 9.3, Arctic 5.3-6.0, Black 3.6, Otogi 2.7, Burnout 2.7 | 2.7-9.3 | **no lever names it**: #548 is the render thread's. Its caller on the vCPU is not on record | **new**: name the caller from the next profile |
 | 7 | **Thermal pause** | readings, not titles: MechAssault 2's 23.89, Crimson's Thor 23.4, PGR's last 135 s | a 3-5x fall | #507 (sustain507: the start temperature, not the regimen) | on record |
 | 8 | **Idle-loop spin at the cap** | MechAssault 2 (vCPU 98%, renderer idle 86%), Crimson Thor (vCPU 90-93%) | heat, not fps | #525/#528 (idle halt), #526 (spin-waits) | on record, inferred |
+
+**Update (section 7):** on master Otogi is no longer in row 1. Its renderer
+is busy 5.3 ms of a 33.4 ms frame, at the 30 cap. Whether the rest of row 1
+moved with it is what runs 4, 6, 7 and 8 measure.
 
 New causes no lever covers: **(6)**, the vCPU thread's own `tlb_reset_dirty`
 time, and **the vCPU-blocked time on #475-less builds**. That time is #475's if
@@ -240,6 +248,102 @@ device as run 1, with the fixed route. `readme_append.py` added the order to
 the parked README. This lane writes `pilots/lane.slowtier2.ok` and deletes
 `PILOT-FAILED` only after reading its `gameplay` frame.
 
+## 7. The re-pilot read: Otogi is at its cap on master (2026-09-28, attempt 4)
+
+Run: `0-0-s-1-1790615781-lane.slowtier2-otogi2870269` (master 97a6fa2b51,
+perflog, Thor, MAX, `routes/otogi.cold.route`). Cites: `tl:N` is a line of
+`otogi2-timeline.out` (slowdown462's `timeline.py`), `ps:N` of
+`otogi2-playsplit.out` (`playsplit.py`, which prints the logcat.txt line
+range of every median), `oc:N` of `otogi2-cond.out` (`condread.py`).
+
+**The route reached play.** The frames, in order: `185857-title.png` is the
+title ("PRESS START BUTTON"), `185931-menu.png` the main menu ("Stage"
+selected), `190020-intro.png` the intro cutscene, `190330-gameplay.png` the
+bamboo forest with the player and the HUD, FPS 29. The four STARTs from
++22 s did what the single START at +48 s did not. hostops wrote
+`pilots/lane.slowtier2.ok` on the same frame at 02:13Z and set
+`PILOT-FAILED` aside; this lane read the frames itself and agrees.
+
+**Conditions: clean.** Start xo-therm 46.6 C, 72.0 C at the mark, max 74.0 C,
+19 samples, no pause device above 0 (oc:4; run.log `THERMAL:`). The shader
+cache was cleared for the new APK (result.json `shader_cache`).
+
+**Play lasts 105 s, and the verdict's window is mostly not play.** The mark
+is at +297 s (tl:146). Play runs to about +402 s. From +404 s the draws per
+frame fall from 280-730 to 11-31 (tl:200-207), and the phase row becomes the
+title's: over +404..+554 s Draw 0.7, Fin 1.3, GPU 1.4 ms, 26 draws (ps:35,
+ps:38), against Draw 0.4, Fin 1.3, GPU 1.3 ms, 18 draws on the title at
++15..+37 s (ps:51, ps:54). No frame was taken there, so "back on the title"
+is read from the counters. Why play ended is inferred: the last 10 s of play
+carry three windows with Fin 10-22 ms and GPU 30-40 ms (tl:194, tl:197,
+tl:198), the shape of a full-screen fade, and the route's loop fights
+nothing in particular, so the player most likely died. The verdict's window
+(mark to end, 257 s) is 105 s of play and 150 s of title. Every number below
+is over **+297..+392 s**, which leaves the fade out.
+
+| | old reading (9e7f8418dc, no perflog) | re-pilot (97a6fa2b51) | cite |
+|---|---|---|---|
+| fps median | 12.62 (p25/p75 10.7/16.1) | **29.97** (p10/p25/p75 29.9/29.9/30.0, min 24.6), Vpf 2.00: the 30 cap | ro:300, oc:7 |
+| frame (G) | 82.2 ms | 33.4 ms | ro:300, ps:2 |
+| renderer idle (`Ri`) | 7.3 ms (9%) | 22.5 ms (67% of G) | ro:300, ps:2 |
+| `G - Ri` | 74.9 ms | 10.9 ms | ro:300, oc:7 |
+| vCPU on-CPU | 59.0% | 98.2-98.5% | ro:301, ps:13, oc:8 |
+| vCPU TLB resets | 2.70 ms/frame | 0.58 ms/frame | ro:301, oc:8 |
+| kicks/s, mean backlog | 46, 1.40 MB | 108, 0.68 MB | ro:302, oc:9 |
+| audio zero-filled | 0.8% | 0.0% | ro:304, oc:11 |
+
+Where the 33.4 ms frame goes on master (medians of 47 windows, ps:2-15):
+
+| part | ms/frame | cite |
+|---|---|---|
+| renderer thread, accounted (`Tot`) | 27.8, of which **idle 22.5** | ps:3 |
+| renderer busy (`Tot - Idle`) | **5.3**: Draw 4.4 (of which its `Pipe` part 2.4), Surf 0.5, Fin 0.4 | ps:3, ps:15 |
+| downloads | 0.0 ms (10 a window, all deferred: `su_deferred` 14,125) | ps:5, ps:9 |
+| texture hash and upload | 0.0 | ps:3 |
+| pipeline compiles | none: `pipe[ev0 pend0]`, PGen 0, SGen 0 | ps:6, ps:12 |
+| GPU, from the timestamp rows | 15.7 (render 7.7, transfer 8.0) = 47% of the frame | ps:3 |
+| vCPU wait on `pfifo.lock` (`Lw`) | 0.0 | ps:4 |
+| `pg->lock` read wait | 0.9 ms per 2 s window | ps:10 |
+| guest idle loop | **66.7% of the vCPU's time** (`[rr425w]`, idle pc 8001b02e); the idle halt is off (`[idlehalt] on=0`), so the vCPU thread spins at 98% | ps:8, ps:11, ps:14 |
+
+**What it says.**
+- On master Otogi is **not slow**. It sits at its 30 fps cap with the
+  renderer idle two-thirds of the frame, the GPU under half busy and the
+  guest in its idle loop two-thirds of the time. It belongs with MechAssault
+  2 and Crimson Skies (at the cap when clean), not in row 1 of section 3.
+- The intro cutscene moved the same way. The old run fell to 11-12 fps at
+  +120 s (ro:297), where the cutscene starts. On master the cutscene runs at
+  29 with the renderer idle 17.8 of 33.4 ms (ps:18-19).
+- **Which change moved it is not decided by this run.** One run on one ref
+  cannot say. The refs differ by #475, #479, #504, #518, #528 (off by
+  default) and #536, and the old build logged no phase row. The old reading
+  was probably not a thermal pause: its audio was whole (0.8% zero-filled)
+  where the pauses on record starve it (PGR 71%, section 2). That is an
+  inference. Pricing the old build is not worth a device run: the question
+  it would answer is closed on master.
+- **Heat is the open side.** From a 46.6 C start the run reached 72.0 C by
+  the mark and 74.0 C at most, under MAX, with the vCPU thread at 98% on an
+  idle loop even on the title. The pause is at 78 C. The lever for that is
+  the idle halt (#525/#528), which is off by default. An `HAKUX_IDLE_HALT=1`
+  soak is lane.idlehaltdefault's to run, not this lane's.
+- **It is not a Playable reading yet.** Playable is sustained play, and
+  this route holds play for 105 s. lane.titleroutes owns
+  `docs/testing/titles/routes/otogi.route`. It needs the four STARTs of
+  `routes/otogi.cold.route`, and a play loop that survives at 30 fps. The
+  old run's loop survived because the game ran at 12 fps.
+
+**What changed for runs 2-8.** A mark frame in play does not show that the
+window after it is play. So `addshots.py` added two frames after the mark
+to the six requests still parked (runs 3-8): `shot play1` near +70 s and
+`shot play2` near +160 s. The route to the mark, the ref, the seconds, the
+regimen and the ids are unchanged. The derived routes are
+`routes/*.shots.route`, each passes `route.sh --check`, and `addshots.out`
+lists them. Run 2 (MM3, `0-0-s-1-1790609661-lane.slowtier2-mm3184014`) was
+queued by hostops at 19:19 PDT, before the change, and runs as parked. Its
+window is read from the counters. The risk is the same for every route
+timed on a slow build: MM3's mark frame shows a delivery timer at 01:37, and
+the races of Burnout and PGR end.
+
 ## Do not repeat
 
 - Do not read a benchmark soak for `hakuX-phase` or GPU rows. Only perflog
@@ -264,6 +368,16 @@ the parked README. This lane writes `pilots/lane.slowtier2.ok` and deletes
   route was timed on a +12 s boot and failed on a +4 s one. Compare the
   first `hakuX-perf gfps=` line with the route's START lines first
   (`routecheck.py`).
+
+- Do not take a `mark gameplay` frame in play as proof of the window after
+  it. Otogi's re-pilot left play 105 s after the mark. Read the draws per
+  frame and the phase row across the window (`timeline.py`), and compare
+  them with the title's at the start of the same run.
+- A route timed on a slow build meets a faster game on master. Its waits
+  are wall time; the game's timers, races and enemies are not. Put a `shot`
+  or two after the mark in any route parked for a build that may be faster.
+- `--frames-every` is not the way to get those frames in an attribution
+  soak: it costs frame rate (route.sh's header). A `shot` is one screencap.
 
 ## Log (PDT, 2026-09-28)
 
