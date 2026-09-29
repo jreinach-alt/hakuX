@@ -522,6 +522,40 @@ def remote_lanes(terr):
     return out
 
 
+def remote_lane_of(ref, remote, rows=None):
+    """The remote lane whose branch `ref` is, or None. `remote` is remote_lanes().
+
+    A REMOTE LANE OPENS EACH PR ON A SUFFIXED BRANCH, `<remote>-<suffix>`, as a
+    local lane's second PR goes on `lane/<name>-<suffix>`: audit files are
+    named by branch, and #578 collided with #560's audits by reusing one. Only
+    the exact value used to count, so such a PR was in no section at all and
+    the READY-with-no-label check could not see it.
+
+    So: the row's own branch, or else the LONGEST branch `ref` starts with
+    followed by `-` -- branch_lane()'s rule. The longest is taken over every
+    row's branch, local ones included (`lane/<row name>`), so a `remote = true`
+    row `foo` cannot claim `lane/foo-bar`, a local lane's own branch, or that
+    lane's suffixed ones. Remote rows come first, so a branch that a remote
+    and a local row both name goes to the remote lane.
+
+    jobs/remote-lane.sh's remote_lane_of() is the same rule for the shell jobs,
+    and 98-lane-shape.sh runs one table of heads through both. Unlike
+    branch_lane(), it does not consult units or worktrees: the shell cannot
+    see them, and the two readers must give one answer.
+    """
+    bases = [(b, lane, True) for b, lane in remote.items()]
+    bases += [("lane/" + lane, lane, False)
+              for lane, meta in sorted((rows or {}).items()) if not meta.get("remote")]
+    for b, lane, is_remote in bases:
+        if ref == b:
+            return lane if is_remote else None
+    pre = [t for t in bases if ref.startswith(t[0] + "-")]
+    if not pre:
+        return None
+    _, lane, is_remote = max(pre, key=lambda t: len(t[0]))
+    return lane if is_remote else None
+
+
 def branch_lane(ref, rows, units=None, work=None):
     """The lane a `lane/<rest>` head belongs to. `rows` is territory's [lane].
 
@@ -565,8 +599,9 @@ def branch_lane(ref, rows, units=None, work=None):
 def lane_prs(remote=None, lane_rows=None, units=None):
     """Open PRs a lane owns, or None if gh could not answer.
 
-    A `lane/*` head, or a head some territory row names as its remote lane's.
-    `lane/*` heads are filed under branch_lane(), not the stripped name.
+    A `lane/*` head, or a head that is a remote lane's branch or one of its
+    suffixed branches (remote_lane_of(), asked first). Other `lane/*` heads are
+    filed under branch_lane(), not the stripped name.
     One LIST, not a call per lane: everything the READY-NOT-FOLDED and BLOCKED
     sections need comes out of it. (One HTTP call per hundred PRs, since REST
     pages -- see gh_rest.)
@@ -594,8 +629,9 @@ def lane_prs(remote=None, lane_rows=None, units=None):
     out = []
     for p in rows:
         ref = p.get("headRefName") or ""
-        if ref in remote:
-            p["lane"] = remote[ref]
+        rl = remote_lane_of(ref, remote, lane_rows)
+        if rl:
+            p["lane"] = rl
             p["remote"] = True
         elif ref.startswith("lane/"):
             p["lane"] = branch_lane(ref, lane_rows or {}, units)
