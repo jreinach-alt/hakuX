@@ -1,0 +1,86 @@
+{
+  "registered_utc": "2026-09-28T20:00:52Z",
+  "who": "lane.gmem474",
+  "issue": "474",
+  "title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso",
+  "device": "thor",
+  "seconds": 360,
+  "route": "crimson-skies",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": "1 (A twice: A1, A2)",
+  "a_ref": "db1e8a7f12e00b7c5942e2e4fb10bc1d915940c7",
+  "b_ref": "db1e8a7f12e00b7c5942e2e4fb10bc1d915940c7",
+  "window_s": [
+    120,
+    350
+  ],
+  "runs": {
+    "A1": {
+      "arm": "autotune (the driver's default algorithm, bandwidth)",
+      "env": [
+        "PERF_REGIMEN=default",
+        "TU_DEBUG=startup",
+        "MESA_LOG_FILE=/sdcard/Android/data/com.jreinach.hakux.debug/files/gmem474-crimson-a1.log"
+      ],
+      "pull": "gmem474-crimson-a1.log"
+    },
+    "B": {
+      "arm": "sysmem (what #530 ships for DOA and AUF)",
+      "env": [
+        "PERF_REGIMEN=default",
+        "TU_DEBUG=startup,sysmem",
+        "MESA_LOG_FILE=/sdcard/Android/data/com.jreinach.hakux.debug/files/gmem474-crimson-b.log"
+      ],
+      "pull": "gmem474-crimson-b.log"
+    },
+    "C": {
+      "arm": "gmem + forcebin",
+      "env": [
+        "PERF_REGIMEN=default",
+        "TU_DEBUG=startup,gmem,forcebin",
+        "MESA_LOG_FILE=/sdcard/Android/data/com.jreinach.hakux.debug/files/gmem474-crimson-c.log"
+      ],
+      "pull": "gmem474-crimson-c.log"
+    },
+    "D": {
+      "arm": "autotune, profiled algorithm",
+      "env": [
+        "PERF_REGIMEN=default",
+        "TU_DEBUG=startup",
+        "TU_AUTOTUNE_ALGO=profiled",
+        "MESA_LOG_FILE=/sdcard/Android/data/com.jreinach.hakux.debug/files/gmem474-crimson-d.log"
+      ],
+      "pull": "gmem474-crimson-d.log"
+    },
+    "A2": {
+      "arm": "autotune (the driver's default algorithm, bandwidth)",
+      "env": [
+        "PERF_REGIMEN=default",
+        "TU_DEBUG=startup",
+        "MESA_LOG_FILE=/sdcard/Android/data/com.jreinach.hakux.debug/files/gmem474-crimson-a2.log"
+      ],
+      "pull": "gmem474-crimson-a2.log"
+    }
+  },
+  "queue_order": "Thor. PILOT first: C then D (the two options whose run-time proof is unshown; C is the apk's first run on the Thor, so its shader cache is cleared). After the pilot is read: A1, B, A2. Each: request.sh --who lane.gmem474 --title <title> --device thor --route crimson-skies --seconds 360 --perflog --ref db1e8a7f12 --pull <pull> --env <each env> --expect this file, HAKUX_RELEASE_PRIO=1.",
+  "judge": "python3 docs/lanes/gmem474/gmemread.py --from 120 --to 350 <A1> <B> <C> <D> <A2>; the route's shots in the window, by eye",
+  "driver_options_proof": "Fleet driver T30 (vulkan.purple.so sha256 1d80dfa01965..., 'PurpleVK 26.3.0-devel (git-62ac221a33)'), read before registering: its tu_debug_options table holds startup=0x1, nobin=0x4, sysmem=0x8, forcebin=0x10, gmem=0x1000; the TU_AUTOTUNE_ALGO parser (call_once lambda of tu_autotune::get_env_config at 0x9e3ca4) compares an 8-byte immediate 0x64656c69666f7270 ('profiled') and sets algorithm 1, and holds 'Unknown TU_AUTOTUNE_ALGO' for anything else. Each run proves its own mode at run time: TU_DEBUG=startup makes the driver log the parsed flag word ('TU_DEBUG=0x..') and, when the variable is set, 'TU_AUTOTUNE_ALGO=N (name)', into MESA_LOG_FILE, which --pull brings back (the TU log tag is not in the dispatcher's LOGCAT_SPEC).",
+  "units": "gfps_med: time-weighted median of 60-flip windows in the window. J/frame: net_w (battery + usb) x the windows' seconds / their flips. GPU, R, X as printed by hakuX-phase; only ratios inside one device are read.",
+  "decision_rule": "Registered before any run. Per title, the shipped mode is B (sysmem) for DOA and AUF (#530) and A (autotune) for Crimson (not tabled). Another arm Y replaces it only if (1) neither run is VOID, (2) Y's gfps_med >= shipped's - 1, and (3) Y's J/frame <= shipped's x (1 - max(n, 0.05)). Only 'sysmem', 'gmem' and 'auto' are expressible in #530's table: a win by C (forcebin) or D (profiled) is reported with its number and not shipped by this lane. No sysmem default for a title whose sysmem run has qry_lines > 0 in its window (#527's ZPASS caveat); it is reported. Otherwise keep what ships.",
+  "must_not_move": [],
+  "prediction": "flip474 (sysmem.md), MAX regimen, Nova, older code: AUF 16 -> 24 gfps and DOA 13 -> 21 under sysmem, X/R 1.0 -> 0.02: in GMEM the heavy pass has 1-2 tiles and no binning, so its draw stream runs once per tile. J/frame was never measured. The review (thermal-review.md 3.4) leaves the sign open: sysmem adds DRAM traffic, GMEM replays the draws. forcebin (tu_util.cc) splits a 1-tile direction into 2 and forces a hardware binning pass, so C is a binning pass plus up to 4 tiles that each run only the draws binned to them. profiled (D) times both modes per render pass and picks by measured time. Crimson is the title that is NOT GPU-saturated: it paces itself to 30 (29-30 gfps) with GPU ~5-7 ms of a 33 ms frame, X/R ~0.1 (flip474 on the Thor; lane.turnipfork found autotune, sysmem and gmem flat at 29). Forza, the brief's other candidate, decays from the invalid-surface list since #517 (#579), so its fps is not a steady state. At equal fps J/frame is W/fps, so every leg here is watts. The guess: the render mode moves less than 5% of the frame's energy, and sysmem is, if anything, the dearer.",
+  "legs": {
+    "V0 (instrument; a run failing it is VOID and re-queued once)": "result.json device and apk as queued; perf_regimen.json regimen 'default', perf_mode 0; >= 15 hakuX-phase lines with GPU > 0 in the window; >= 3 power samples in the window with sign_suspect 0; gfps lines to the end of the run and no crash marker; the route's shots in the window show play.",
+    "E0 (the mode that ran)": "the app's line reads 'render_mode: auto (table|default) title=<TID> TU_DEBUG=<the arm's TU_DEBUG>' and the pulled Mesa log reads TU_DEBUG=0x1 (A, D), 0x9 (B), 0x1011 (C); D's log reads 'TU_AUTOTUNE_ALGO=1 (profiled)' with no 'Unknown TU_AUTOTUNE_ALGO', and A, B, C have no TU_AUTOTUNE_ALGO line. If no log was pulled, B is shown by X/R <= 0.25 and the other arms are 'mode not shown', not measurements.",
+    "T0 (heat)": "no thermal-pause episode overlaps the window (thermal_state.in_window). A paused run is VOID for gfps and J/frame (#507), is reported with its pause, and is re-queued once.",
+    "N0 (noise floor, not a guess)": "n = |J/frame(A1) - J/frame(A2)| / their mean, and the same for gfps. A difference between two arms smaller than max(n, 5 %) in J/frame, or max(|A1 - A2|, 1) in gfps, is 'not separated'.",
+    "K1 (capped: fps does not move)": "every arm's gfps_med within 1 of A's. Confidence 80%. Fails in the world flip474 half-saw (sysmem 2 lower where not capped).",
+    "K2 (sysmem about the same energy)": "B's J/frame within +-5% of A's; direction guess B >= A. Confidence 55%. Fails high in the world where sysmem's DRAM traffic is a real energy cost on an unsaturated title: then the table must not grow to titles that are not replay-bound.",
+    "K3 (forcebin costs a binning pass)": "C's J/frame >= A's. Confidence 55%.",
+    "K4 (profiled is autotune here)": "D's J/frame within +-5% of A's. Confidence 60%."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read by gmemread.py off logcat.txt, thermal.jsonl, perf_regimen.json and pulled/, and the shots by eye."
+}
