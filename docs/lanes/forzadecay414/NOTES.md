@@ -514,6 +514,30 @@ pair because neither fix run proved its progress log, which is a die, not an INC
 12%, lifted at >= 20%). Nothing on this PR is open except that pair's verdict; #583 stays draft
 until it is judged.
 
+**Resume 2026-09-29 23:25Z (attempt 3, second session; why the previous session did not finish):**
+it ended on the same outside wait, the Thor's battery hold, and hostops confirmed that on #583 at
+23:01Z. That wait did not resolve. The pair was deleted instead. At about 16:23-16:26 PDT,
+`dispatch/queue/` lost all 36 queued requests, `-2900948` and `-2900992` among them, and
+`dispatch/results/` lost every result directory. What remains is `.withdrawn-1789281384-issue10-arm-a`
+and the arms that were queued after 16:26. `dispatcher.log` last names the pair at 16:13:15 (a Thor
+battery skip). The last line before the gap is 16:22:59. At 16:26:21 the queue holds only new
+`arms-surfwatch382`/`arms-vtxarr262` requests, and the battery admission reads "overhead 300s
+fallback n=0" where it read "learned n=10" at 16:13. Its learned history went too. A walk of
+`/home/justin` to depth 6 finds no copy of any of this lane's result dirs. The recovery manifest
+(`recovery/manifest.md`, 16:15 PDT) still counted "Queued: 36".
+
+What this does to #583:
+- **pixels2 is stranded.** `$WORK/arms/pairs/388ea55c4b19….json` still names `-2900948`/`-2900992`,
+  and there is no `judged/` or `skipped/` marker. `arms.sh`'s judge loop waits for both `DONE`
+  files, and those can no longer appear. Its queue check reads only `queue/` and `running/`, so it
+  will not re-queue the pair either. The pair needs host action: re-queue both ids, or delete
+  `pairs/388ea55c….json` so the arms job queues it again (arms.sh line 919's recipe).
+- **The evidence in sections 8.1-8.6 now cites result dirs that are gone.** The readings are
+  recorded above and in the commits that made them, but they cannot be re-read on this host.
+
+#583 stays draft. Its code, fix-forza2 (B holds) and fix-auf (holds) are unchanged; only the pixel
+arm is open.
+
 ## Do not repeat
 
 - Do not re-queue a pre-fix Forza soak on the Nova to read a whole master race. lmkd kills it at
