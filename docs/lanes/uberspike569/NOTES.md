@@ -447,7 +447,7 @@ LF assumes that the texture modes sharing a sampler class run behind a branch. T
 so L1's 34 is what exists today.
 
 **GPU cost, static only.** From ir3's statistics (`host/uber_vs/ir3stats.sh`,
-`results/addendum-ir3stats.txt`):
+`results/addendum-ir3stats.stats`):
 
 | shader | instructions | full regs | max waves |
 |---|---|---|---|
@@ -530,12 +530,19 @@ The columns:
 1. **The device's driver has GPL.** It is PurpleVK, a Turnip fork of Mesa 26.3-devel
    (git-62ac221a33). Turnip has shipped GPL since Mesa 23.1, but the device must say so. The switch
    now logs `psh-uber: GPL ext= feature= fastLinking=` once (`vk/shaders.c`, under
-   `HAKUX_PSH_UBER` only). A one-arm B soak on this branch's head reads it.
+   `HAKUX_PSH_UBER` only). A one-arm B soak on this branch's head reads it:
+   `1790673060-uberspike569-277562` (4085a55165, DOA 90 s, Nova), queued 2026-09-29 02:12 PDT.
 2. **The device's fast-link time**, against its monolithic create. It needs GPL in the renderer,
    which is the build's first step.
-3. **The GPU cost of the uber stages at DOA's loads**, forced (the addendum's measurement). It needs
-   an exact-enough uber vertex stage in the emulator (`glsl/vsh-uber.c`, spliced like
-   `psh-uber.c`).
+3. **The GPU cost of the uber stages at DOA's loads**, forced (the addendum's measurement).
+   - The fragment half is P, pair 2 on the Nova (6.2).
+   - The vertex half needs an exact-enough uber vertex stage in the emulator
+     (`glsl/vsh-uber.c`, spliced like `psh-uber.c`). That is the same wiring the build needs, so
+     it is the build's first gate, not done in this spike.
+   - The expected size: ir3's static stats (8.1) say several times the vertex ALU at under a third
+     of the occupancy. It is paid only for the frames between a fast link and the swap, and a
+     specialised fragment library takes about 0.1 s and a pre-raster library 0.2-1.4 s on the
+     host. The probability that it kills the design is low, but it is the leg that could.
 4. **Exactness:** `NoContraction` on both paths, and an arm against the goldens.
 
 **The build, as files:**
