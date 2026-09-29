@@ -639,6 +639,84 @@ file); a rate here sizes a design, it does not compare builds.
   offline half of F0a (section 8). It ended on a `waiting:` for the nine
   soaks.
 
+- 2026-09-29 (attempt 8; the resume header numbers it 1): attempt 7 did
+  finish, ending on a `waiting:` at 12:47Z for the nine soaks. It was resumed
+  because the ground moved under that wait, twice:
+  - hostops (12:51Z) put the `regressed` label back: `arms.sh state`
+    recomputes it from the verdicts on disk, so an answer in prose cannot
+    clear it. Only a newer registration on #507 that passes can;
+  - lane.local (12:00 PDT) withdrew the four Thor soaks (GTA B2/A2, Crimson
+    B1/A1) and moved fps and J/frame runs to the Nova.
+
+  This attempt merged origin/master (62 commits; a merge, so the refs stand)
+  and registered `memfast-drop-pixels-stable.json` (section below). It
+  registered `memfast-drop-soak-nova.json` for Crimson and GTA on the Nova,
+  queued the Crimson pair there (`1-1790709139-lane.memfast-1486524` B,
+  `1-1790709140-lane.memfast-1486748` A), and read Nightfire pair 1. Nightfire
+  B2 went VOID, so it was re-queued (`1-1790709166-lane.memfast-1492075`).
+  GTA's Nova copy has not landed (`hardware/titlepush/listing-nova.txt`), so
+  GTA is not queued.
+
+## The superseding pixel prediction (2026-09-29)
+
+`docs/testing/predictions/memfast-drop-pixels-stable.json`, on the same refs
+(31515f9751 -> 82e0ef1fa9) and the same disc (100 suites, RenderTextureLoop
+skipped).
+
+- **The rule.** Every capture must stay bit-identical, except the ones that
+  took two or more `differing` values on ONE build. A build is one
+  `apk_sha`, run twice or more, in results on disk that do not carry this
+  change.
+  - Reader: `unstable_caps.py`; output: `out/unstable-caps.out`.
+  - It found 217 such captures across 1,258 results. 212 of them are on this
+    disc: Texture_cubemap 71, Bump_map 38, Texture_render_target 32,
+    Volume_texture 15, Stencil 12, Vertex_shader_rounding_tests 9, and a
+    few in other suites.
+  - The file's `excluded_unstable` field lists them.
+- **Why same-build, not cross-build.** A cross-build rule (two or more values
+  anywhere) marks 1,679 of 3,168 captures, because code changes move
+  captures between builds. Same-build variation cannot be code, so it is
+  noise.
+- **The six captures of the FAIL are all in the set.** The rule catches them
+  without naming them.
+- **Checks: 3,167 captures**, 342 patterns. Each pattern is a whole suite
+  where no capture is unstable, or a single capture name where some are.
+  - A dry run against the old arm pair gives PASS on all 3,167. That run is
+    POST-HOC and tests only that every pattern matches a capture; the
+    verdict that counts comes from the fresh arm the arms job queues.
+- **Refutation:** any capture outside the excluded set moving.
+
+## Nightfire pair 1 (Nova; `title_verdict.py` on copies in `.scratch/nf/`)
+
+| | A1 `…1478620` (a_ref) | B1 `…1478575` (b_ref) | B/A |
+|---|---|---|---|
+| gameplay | 268.7 s | 270.1 s | |
+| flips / scored s | 8040 / 273.0 | 8100 / 274.7 | |
+| net W | 7.667 | 6.937 | 0.905 |
+| **j_per_frame** | 0.2603 | 0.2352 | **0.904** |
+| fps window median | 29.75 | 29.76 | 1.000 |
+| share at >= 30 fps | 58.2% | 65.3% | |
+| crash / hang / thermal status | none / none / 0 | none / none / 0 | |
+
+- **B2 `…1478678` is VOID.** At 119 s the app had no focused window
+  (`not-foreground`), so it scored no flips. It was re-queued once, as leg V
+  allows. A2 `…1478752` is still queued.
+- **Nightfire runs at its 30 fps cap,** not the 60 the registered F leg
+  assumed. Its median is at the cap in both arms, so on Nightfire the fps leg
+  is VOID by the leg's own rule, and J carries the claim.
+- **J 0.904 is one pair, larger than the profile's 4-6% of vCPU time
+  predicts,** as GTA's 0.830 pilot was. Both pairs moved net W by far more
+  than the vCPU's share can explain. Run order does not explain it alone:
+  this pair ran B first, and GTA's pilot ran A first. The two-pair mean is
+  the registered measure.
+- **Census, a_ref (`out/mf0-nightfire-a1.out`).** The same shape as GTA:
+  - `act=1` on every line, and `cb` between 4 and 16;
+  - armed for at most 2.1 s, in window 0 (boot);
+  - low window: 7,963 identity installs against 1,385,657 non-identity
+    (99.4%), on 1,026 distinct non-identity pages;
+  - BAR1: all identity;
+  - the first samples are the XBE image again (VA 0x10000 -> PA 0xbf000).
+
 ## Leg S: b_ref's profile against R1 (GTA, Thor, cold)
 
 - **Captures.** A is R1 (`perf/2026-09-28-ibcache-r1`, master 01e62d8d1c).
@@ -856,15 +934,22 @@ gameplay, power was measured on battery, and neither had a thermal pause.
 0. DONE: leg S is read and passes (section "Leg S"). Do not re-run the
    readers on either capture. Read `preamble` and `xboxchk` with
    `legs_read.py`, never with `jitmix.py`, on any build after this PR.
-1. **Outstanding: the nine soaks** (ids in the Log, attempt 5), still in
-   `queue/` at 2026-09-29 12:40Z. When they land, run `mf0_read.py` on every
-   A run and `title_verdict.py` on a COPY of every dir. Judge J as the mean
-   B/A over the pairs per title, and G on every B run. The GTA pilot pair
-   counts as GTA's pair 1. **Check `queue/` and `running/` before scoring
-   anything;** a resume has said "finished" when they were not.
-2. DONE: the arms verdict (FAIL, 6 of 3379) is answered with the noise
-   record on #590. Do not re-run the arm unless a new verdict names a
-   capture outside those six.
+1. **Outstanding soaks, all on the Nova** (as of 2026-09-29 19:30Z):
+   - Nightfire A2 `-1478752` and the B2 re-queue `-1492075`;
+   - AUF A1 `-1478936`;
+   - Crimson B1 `-1486524` and A1 `-1486748`;
+   - GTA: not queued. Queue two Nova pairs under
+     `memfast-drop-soak-nova.json` once `listing-nova.txt` names GTA. The
+     Thor pilot pair is not pooled with them.
+
+   When they land, run `mf0_read.py` on every A run and `title_verdict.py`
+   (`.scratch/score.py`) on a COPY of every dir. Judge J as the mean B/A over
+   the pairs per title, and G on every B run. **Check `queue/` and `running/`
+   before scoring anything.**
+2. The first arms verdict (FAIL, 6 of 3379) is superseded by
+   `memfast-drop-pixels-stable.json` once its arm runs and passes. Read that
+   arm's `[job.arms]` comment; a capture that moves outside the
+   excluded set refutes the change.
 3. After the soaks: post the J and fps legs on #507 and #590, then mark
    PR #590 ready. The release note's size comes from those legs; the profile
    says to expect 4-6% of the vCPU's time per frame on GTA.
