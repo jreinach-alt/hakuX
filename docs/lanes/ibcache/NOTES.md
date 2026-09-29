@@ -423,3 +423,85 @@ legs are in, not into this head.
      as env pairs, for leg 4's three titles and leg 5b's near-bound title.
   4. Forza (leg 5b as the brief names it) waits on #583.
   5. Then the jump-cache size, on `lane/ibcache-jcsize`.
+
+## Attempt 5 (resumed 2026-09-29, handback)
+
+**Why attempt 4 did not finish.** It ended on a `waiting:` for the band arm
+and the GTA pilot pair, both outside the session. That was correct. Both have
+landed since: the band arm's result dirs exist, but `[job.arms]` has not
+posted a verdict on them yet. The pilot pair finished at 04:13 device time.
+
+### The band arm, read by hand (`bandread.py`, `out/bandread.out`)
+
+A `1-1790639762-arms-ibcache-base-184395` (2c950e0a1e, no probe), B
+`1-1790639763-arms-ibcache-fix-184418` (c8e95ed539, probe), Thor, three runs
+per arm, 67 captures each, none missing.
+
+| reading | count |
+|---|---:|
+| captures that flip between runs **inside A (master, no probe)** | 5 |
+| captures that flip between runs inside B | 2 |
+| captures whose image sets differ between A and B | 4 (Stencil_ZERO, Stencil_ZERO_DT, GeometrySuperscreen_0.0010, _0.4999) |
+| **self-identical in each arm and different between them (the kill outcome)** | **0** |
+
+All four captures that differ between the arms are ones A itself flipped in
+three runs. In each of them, B's image is also one of A's images, except one
+of B's Stencil_ZERO_DT runs. That capture flips inside B too. None of the 10
+captures that moved in the full-sweep FAIL differs between the arms here. They
+are self-identical in both arms and match between them. So the band reading
+holds: the pgraph movers are run-to-run noise that master shows on its own.
+The official verdict is `[job.arms]`'s on PR #591. It supersedes the `regressed`
+label only if it PASSes.
+
+### The GTA pilot pair: void, both arms paused at the same point
+
+`1-1790638705-lane.ibcache-66240` (A, `HAKUX_IBC=0`, logcat `[ibc507] on=0`)
+and `1-1790638712-lane.ibcache-67880` (B, unset, `on=1 layout=ok`). Thor,
+c8e95ed539, 450 s. Both reach `mark gameplay`, and neither has a crash.
+`title_verdict.py` (`out/tv-pilot.out`) voids both: `thermal-pause-F8` began
+74 s after the mark in both arms. It flags `hang=True` in both, and that comes
+from the pause, not from the probe.
+
+The 64 s before the pause (`gfps.py`, `out/gfps-pilot.out`) give gfps medians
+of 26.0 (A) and 28.0 (B). **That is not a leg-5a reading.** It is one pair.
+A cleared the shader cache and B kept it, and the registered window is from
+the mark plus 10 s to the end. Recorded only.
+
+**Do not repeat:** a warm 450 s GTA soak on the Thor. The route reaches
+gameplay at about +210 s and the pause comes at +291 s. Leg 5a needs a cold
+start, as R1 and R1b had, so it went to lane.local (#507
+issuecomment-5893447927, `out/coldslot-5a-request.md`).
+
+### Leg 4 and 5b, queued (pilot verdict in `pilots/lane.ibcache.ok`)
+
+Otogi's route reaches gameplay only at about +246 s, which is too close to the
+pause. So the three titles for leg 4 are GTA (the pilot above: gameplay, no
+crash in B), Crimson Skies (gameplay at about +105 s, the near-bound title for
+leg 5b), and Alien Hominid (about +101 s). Each soak is 240 s, so it ends
+before +291 s. They are env pairs on c8e95ed539, pinned to the Thor, with the
+probe arm queued first so a title's first-run shader compiles land against the
+probe (`queue_leg4.sh`, `out/queue_leg4.out`):
+
+| title | B (probe on) | A (`HAKUX_IBC=0`) |
+|---|---|---|
+| Crimson Skies | `1-1790696069-lane.ibcache-2131018` | `1-1790696070-lane.ibcache-2131529` |
+| Alien Hominid | `1-1790696071-lane.ibcache-2131813` | `1-1790696071-lane.ibcache-2132071` |
+
+### Master merged
+
+Master is merged at this head. The only change it brought under accel/, tcg/
+or target/ is `cputlb.c`'s `HAKUX_TCG68_RD` default (#548, the dirty-TLB
+walk). That code does not invalidate the jump cache. The soaks above name
+c8e95ed539, whose apk is already built.
+
+## State at 15:40Z, 2026-09-29: waiting on three things outside this session
+
+1. `[job.arms]`'s verdict on `ibcache-probe-band.json` (both result dirs are
+   DONE). Leg 3b.
+2. The four soak requests in the table above. Legs 4 and 5b.
+3. lane.local's two cold GTA soaks (#507 issuecomment-5893447927). Leg 5a.
+
+**Next, on resume:** read each against its leg with `title_verdict.py` on
+copies and `gfps.py`. Check `[ibc507] on=` in every logcat. If legs 3b, 4 and
+5a pass, mark the PR ready with the release note. 5b on Forza still waits on
+#583, and the jump-cache size goes on `lane/ibcache-jcsize`.

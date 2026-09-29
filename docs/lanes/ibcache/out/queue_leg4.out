@@ -1,0 +1,16 @@
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 4 and 5b in docs/lanes/ibcache/NOTES.md
+priority release: '0.5' on #507
+queued 1-1790696069-lane.ibcache-2131018
+  soak: Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso, 240s, route crimson-skies, pinned to thor
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 4 and 5b in docs/lanes/ibcache/NOTES.md
+priority release: '0.5' on #507
+queued 1-1790696070-lane.ibcache-2131529
+  soak: Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso, 240s, env HAKUX_IBC=0, route crimson-skies, pinned to thor
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 4 and 5b in docs/lanes/ibcache/NOTES.md
+priority release: '0.5' on #507
+queued 1-1790696071-lane.ibcache-2131813
+  soak: 5A440004-Alien_Hominid.xiso.iso, 240s, route alien-hominid, pinned to thor
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 4 and 5b in docs/lanes/ibcache/NOTES.md
+priority release: '0.5' on #507
+queued 1-1790696071-lane.ibcache-2132071
+  soak: 5A440004-Alien_Hominid.xiso.iso, 240s, env HAKUX_IBC=0, route alien-hominid, pinned to thor
