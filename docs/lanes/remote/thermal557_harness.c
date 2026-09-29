@@ -1,10 +1,13 @@
 /*
  * thermal557_harness.c -- drives the #557 governor core on the desktop.
  *
- * It includes android/app/src/main/cpp/thermal_governor.c whole, so it can
- * reach the process-wide governor's statics (the sysfs root, the injected
- * clock). Build and run it through thermal557_replay.py, which also writes
- * the scenarios:
+ * It includes thermal_governor.c whole, so it can reach the process-wide
+ * governor's statics (the sysfs root, the injected clock). The core is no
+ * longer in the tree: #557 was stopped and its core reverted, and
+ * thermal557_replay.py builds this harness against the core as it stood at
+ * the fold that carried it (git history), which it writes beside the
+ * harness's build. Build and run it through thermal557_replay.py, which also
+ * writes the scenarios:
  *
  *   thermal557_harness feed < script   feed samples, print what happens
  *   thermal557_harness sysfs           the reader and the tick, on a fake tree
@@ -20,7 +23,7 @@
  *   L T LINE            a log line
  */
 
-#include "../../../android/app/src/main/cpp/thermal_governor.c"
+#include "thermal_governor.c" /* from git history; see above */
 
 #include <stddef.h>
 #include <stdint.h>
