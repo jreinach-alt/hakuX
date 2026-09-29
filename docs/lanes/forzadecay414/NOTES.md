@@ -428,7 +428,54 @@ claim, A 85347ffbd1, B 10fe2f59a7, 2 runs per arm, same 100-suite disc. Stencil/
 is out of must_not_move (99 globs). The old file is left as it is: its sha is bound. #583 stays
 draft until fix-forza2, fix-auf and fix-pixels2 all hold.
 
+### 8.6 Attempt 6: the fix's second Forza run and the AUF pair, read (2026-09-29 ~09:20 PDT)
+
+Why attempt 5 did not finish: it ended waiting, correctly, on the three queued Nova soaks and the
+pixels2 arm pair. The three soaks ran 08:30-09:07 PDT (Nova, regimen max). No thermal-pause device
+rose above 0 in any sample of the three, and the hottest zone reached 94.7-95.1 C.
+
+**fix-forza2** (`judge.py`). B is `1-1790639501-forzadecay414-151099` (10fe2f59a7, whole, 362.7 s):
+
+| leg | reads | by the letter |
+|---|---|---|
+| M0 race reached | B: 89 scan lines, 772-857 calls/flip; last frame `083725-play.png` shows the race HUD, lap 1/2, race clock 2:21 | B holds; A see below |
+| A1, A3, D2 | A's run `-3394871-r4` was withdrawn by hostops at 02:12Z: "a pre-fix Forza soak on the Nova is killed by lmkd at ~215 s (xemu 4.4 GB PSS), shown 3x (#414 comment 5882237205)" | **not read**: no whole master run exists or can exist |
+| B1 max invalid <= 400 | 10 | holds |
+| B2 last invalid <= max(60, 2 x median) | 9 against 60 | holds |
+| B3 walk <= 0.5 ms/flip, first and last race line | 0.04 (t = 151.8), 0.05 (t = 361.9) | holds |
+| D1 late / early fps >= 0.8 | 26.67 / 22.67 = 1.18 | holds |
+
+What stands in for A: all four master and #517 runs that reached the race leaked, and each was
+cut at 208-276 s with `invalid` at 1915-1996. The bisect re-run `1-1790624588-forzadecay414-3394828-r3`
+(09050ddbe5) is the fourth. It reads fps 14 10 2 over rows t = 150-210, invalid 1915 at t = 208, walk
+1.99 -> 7.80 ms/flip, and the soak was aborted at 261 s when adb dropped. A master run cannot reach
+the D2 window because the leak itself ends the process. The memory cost is part of the defect.
+
+**fix-auf** (`txwwin.py <dir> 255 411`). A is `1-1790639505-forzadecay414-151975` (85347ffbd1), B is
+`-152037` (10fe2f59a7):
+
+| leg | A | B | by the letter |
+|---|---|---|---|
+| M0 txw lines in 255-411 >= 10 | 88 | 123 | holds |
+| M1 no thermal-pause in window | 0 samples | 0 samples | holds |
+| K1 B faf <= 0.02, bs 1.00 | - | 0.00, 1.00 | holds |
+| K2 B bt <= A + 0.5 ms/flip | 0.07 | 0.07 | holds |
+| K3 B / A flips/s >= 0.95 | 34.04 | 47.49 | holds, 1.40 |
+| K4 B max invalid <= 20 | 11 | 10 | holds |
+
+K3's 1.40 is not a speedup. The two arms' last frames are different views: A faces the vault door
+(`084445-play.png`) and B faces the aircraft (`090614-play.png`), and bt calls/flip differ, 78.2
+against 42.4. The leg only asks that the fix not cost AUF's frame. No crash, validation or
+device-lost line appears in any of the three logcats.
+
+**fix-pixels2:** the arms job queued the pair at 1790670960. Base `1-1790670960-arms-forzadecay414-base-3483119`
+is done on the Thor (85347ffbd1). The fix arm `-fix-3483172` is still queued, with no device pin in
+its request. #583 stays draft until the arms job judges it.
+
 ## Do not repeat
+
+- Do not re-queue a pre-fix Forza soak on the Nova to read a whole master race. lmkd kills it at
+  about 215 s (hostops, #414 comment 5882237205), and adb drops with it.
 
 - Do not put `Stencil/*` in a must_not_move list (#79). It flakes on every binary.
 
