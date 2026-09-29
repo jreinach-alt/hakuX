@@ -149,6 +149,9 @@ export DH_ADB_PIDS="$DH/adb.pids"; : > "$DH_ADB_PIDS"
 cat > "$DH/drive.sh" <<'EOF'
 # drive.sh <testing-dir> <dispatch-dir> <request-id>: one serve_one, as written
 export DISPATCH_DIR="$2" SERIAL=ee317437 DISPATCH_TREE="$REPO" DISPATCH_REPO="$REPO"
+# The fake adb answers no battery level, and battery admission fails closed on
+# that (99-battery-admit covers it): off, so the claim these cases hang is made.
+export BATTERY_ADMIT=off
 . "$1/dispatcher.sh" selftest-not-a-subcommand >/dev/null 2>&1
 build_ref() { echo "$DH_APK"; }
 serve_one "$2/queue/$3.req"
