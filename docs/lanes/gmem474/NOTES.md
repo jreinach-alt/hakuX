@@ -339,3 +339,103 @@ On the four requests above, outside this session, about 3-4 h behind the
 queue. The interim table is on #474 (comment 5893498856), which also puts
 DOA's ZPASS question to the owner. My recommendation there is to keep sysmem and
 record the exception. The DOA row is unchanged until the owner rules.
+
+## 13. Attempt 5 (2026-09-29 22:35Z): why attempt 4 did not finish, the final read
+
+Attempt 4 did not fail. It ended on a `waiting:` for the four reruns in section
+11, outside the session. All four had landed by 15:30Z (the Nova ones) and 13:34
+Thor time; this resume's brief carried hostops' old 16:46 PDT addendum (the
+pilot, read in section 9) again. hostops ruled on the DOA ZPASS question at
+15:42Z on #474: keep sysmem, record #527's exception as moot for DOA (its
+occlusion query returns a fixed value in both modes). Master merged at this
+attempt's start; the queued apk stays `db1e8a7f12`.
+
+**The reruns:**
+
+| run | arm | result |
+|---|---|---|
+| `2136264` | DOA B | valid: 30.67 gfps, 0.187 J/frame, X/R 0.02, `TU_DEBUG=0x9`, no pause |
+| `2136324` | Kabuki A1 | valid: W1 59.94 gfps, 0.1055 J/frame |
+| `2136418` | Crimson A1 | **VOID again (V0), not re-queued**: both play shots are Crimson's "Your Xbox doesn't have enough free blocks to save games. Additional blocks needed: 8" dialog on the player-select screen, so the window is a menu (GPU 2.6 ms against 9.8 in flight). The Thor's Crimson save space was full at 13:29 device time; A2 at 05:01 had flown. Any Crimson route on the Thor fails the same way until that is cleared |
+| `2163487` | Kabuki B, warm (reported) | **stalls again**: W1 5.26 gfps, 0.337 J/frame |
+
+### DOA (Nova, 151-288 s): keep sysmem
+
+| arm | gfps med | p10 | GPU ms | X/R | net W | J/frame | qry lines |
+|---|---|---|---|---|---|---|---|
+| A1 autotune | 15.58 | 15.31 | 60.0 | 0.99 | 4.83 | 0.308 | 3 |
+| B sysmem (ships) | 30.67 | 26.60 | 28.6 | 0.02 | 6.46 | **0.187** | 16 |
+| C gmem,forcebin | 19.56 | 16.93 | 47.4 | 6.3 | 7.34 | 0.338 | 5 |
+| D profiled | 32.35 | 30.72 | 27.4 | 0.02 | 8.88 | 0.233 | 2 |
+| A2 autotune | 15.65 | 15.24 | 60.0 | 1.00 | 6.50 | 0.392 | 6 |
+
+A = 15.62 gfps, 0.350 J/frame; n(J) = 24 %. S1 HOLDS (30.67 >= 19.62). P1
+HOLDS (B = 0.53 x A, separated beyond the 24 % noise). P2 HOLDS (B's watts
+1.14 x A's, inside +-15 %). C1 FAILS (section 11). C2 HOLDS (0.338 >= 0.187).
+D1 HOLDS (X/R 0.02, 1.68 gfps from B). Decision rule: D is within 1 gfps but
+dearer per frame (0.233 against 0.187), so nothing replaces B. The registered
+ZPASS clause (B's qry_lines 16 > 0) would remove the row; hostops overruled it
+for DOA on #474 (15:42Z) because the query's value is a constant in both modes.
+**Keep sysmem**, exception recorded. Sysmem doubles DOA's fight frame rate and
+halves its energy per frame.
+
+### Crimson (Thor, 120-350 s): keep autotune
+
+A is A2 alone (29.40 gfps, 0.187 J/frame): A1 is VOID twice (thermal pause,
+then the save dialog), so n is not computable and the floor is the 5 % minimum.
+K1 HOLDS (every valid arm within 1 gfps of A2). K2 HOLDS (B +3.3 %, direction
+B >= A as bet). K3 HOLDS (C +2.1 %). K4 FAILS (D +8.4 %: profiled sends
+Crimson to sysmem, X/R 0.09, and costs more). No arm beats A2. **Keep
+autotune** (not tabled).
+
+### Kabuki (Nova): keep autotune; sysmem stalls the fight
+
+| arm | W1 gfps | W1 J/frame | W1 X/R | W2 gfps | W2 J/frame |
+|---|---|---|---|---|---|
+| A1 autotune (rerun) | 59.94 | 0.1055 | 0.5 | 59.94 | 0.1019 |
+| B sysmem | 0.52 | 0.336 | 0.02 | 59.94 | 0.1099 |
+| B sysmem, warm (reported) | 5.26 | 0.337 | 0.02 | 59.94 | 0.1011 |
+| C gmem,forcebin | 58.03 | 0.115 | 8.83 | 59.94 | 0.1055 |
+| D profiled | 59.88 | 0.119 | 0.29 | 59.94 | 0.1063 |
+| A2 autotune | 59.94 | 0.104 | 1.67 | 59.94 | 0.1071 |
+
+A = 59.94 gfps, 0.1049 J/frame in W1; n = 1.1 %, floor 5 %. **KW1 FAILS**:
+B's W1 gfps is 11x to 115x below A's, the leg's named failure world (a mode
+changes the stall), and C (+9.7 %) and D (+13.6 %) are outside 5 % too.
+Recorded, not re-fitted.
+
+**Section 11's reading is refuted.** It put B's stall down to a cold pipeline
+cache, since the two stalled runs were the apk's first two Kabuki runs. The
+warm B (`2163487`, same apk, cache kept, straight after the A1 rerun) stalls
+the same way: `pipe[... used]` goes 134 -> 333 across a 66 s gap with no perf
+line, where A2 went 397 -> 730 in 2 s with no gap. So under sysmem Kabuki's
+fight stalls in 2 of 2 runs, and no A, C or D run after the apk's first has.
+The mechanism is open. It is not Turnip's disk cache being keyed on the flag:
+the cache UUID hashes the build id, chip id, `uche_trap_base` and
+`compiler_options`, and of the TU_DEBUG flags only `nomultipos` and
+`compute_round_robin` reach those (`tu_device.cc:78-132`, mesa-turnipfork).
+Decision rule: B fails condition (2). **Keep autotune.** energymap507's -5 to
+-8 % sysmem price holds only in the menus (W2: B -4.8 % watts, inside noise);
+in the fight, sysmem costs 3.2x the energy per frame.
+
+### Final per-title decision
+
+| title | ships | measured best | decision | table change |
+|---|---|---|---|---|
+| AUF | sysmem | sysmem (profiled = sysmem) | keep sysmem | none |
+| DOA | sysmem | sysmem (profiled = sysmem) | keep sysmem (ZPASS exception, hostops 15:42Z) | none |
+| Crimson | autotune | autotune | keep autotune | none |
+| Kabuki | autotune | autotune; sysmem stalls the fight | keep autotune; do not table sysmem | none |
+
+No decision differs from what ships, so there is no `lane/gmem474-default` PR.
+
+### For the next lane
+
+- Do not re-price sysmem for Kabuki from menus or from X/R: the fight stall
+  under sysmem is the cost. If someone wants the mechanism, compare a warm A
+  and warm B `pipe[]` trace with Turnip's pipeline-compile timing
+  (`TU_DEBUG=perf` or a simpletrace); do not assume a cold cache.
+- Crimson on the Thor needs its save space cleared before any Crimson soak there
+  (host item, not a lane's).
+- forcebin (C) never won: it cuts GPU time on the replay-bound titles (C1 fails
+  on DOA and AUF) but costs more energy per frame than sysmem everywhere.
