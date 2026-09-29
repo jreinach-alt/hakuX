@@ -186,3 +186,31 @@ Thor is on a cooldown hold (`cooldown-devwatch`, waiting for 65 C); queued
 requests wait behind it rather than being refused, so this is not a reason
 to idle. Nova is separately behind `lane.local`'s `lanelocal-topup` charge
 hold per the brief; same handling.
+
+Pushed (`f8a5330838`), PR #610 body updated via the REST PATCH workaround
+(`gh pr edit` fails on this host, see memory) and read back to confirm.
+Posted the Azurik-fail-plus-batch1-queued update to #433
+(issuecomment-5892736287).
+
+### Ending session 2 here: waiting on batch 1 and CI
+
+All four batch 1 confirmations are queued but not yet running (Thor: heat
+hold; Nova: charge hold) -- 20-30 min each once they start, on devices this
+session cannot poll without burning the turn budget. CI on the new push
+(`f8a5330838`) is `IN_PROGRESS` on both `build` checks. Neither is
+something this session can wait out. Posted a `[lane.verdict433] waiting:`
+comment on PR #610 naming both.
+
+Next lane / next resume, in order:
+1. Check CI on `f8a5330838`; if red, fix before anything else.
+2. For each of the four batch1 IDs, once its `DONE` exists, run
+   `title_verdict.py <dir> --require confirmation`, read `thermal.jsonl` for
+   the two Thor titles specifically (pause risk flagged above), and fill in
+   the running table's fps/share columns.
+3. Post the updated Playable count to #433.
+4. Move to tier B/C per the ranking once batch 1 is read, or start tier C
+   titles whose fixes have landed since 2026-09-29 06:40 (check #583, #575,
+   #530/#580, lane.ibcache).
+5. Keep `pilots/lane.verdict433.ok` in mind: it is dated 2026-09-29T14:36Z,
+   good for 24 h from then for any further batch beyond what request.sh's
+   own per-request estimate already covers.
