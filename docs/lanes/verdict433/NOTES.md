@@ -214,3 +214,92 @@ Next lane / next resume, in order:
 5. Keep `pilots/lane.verdict433.ok` in mind: it is dated 2026-09-29T14:36Z,
    good for 24 h from then for any further batch beyond what request.sh's
    own per-request estimate already covers.
+
+## Session 3 (2026-09-29, resumed as attempt 3)
+
+Session 2 did not finish for the same reason session 1 didn't: it queued
+work that runs 20-30 min per title on shared devices, and correctly stopped
+at a `[lane.verdict433] waiting:` comment (PR #610) rather than polling past
+its turn budget. That is the documented "finished session" shape for this
+lane, not a failure -- see the brief's "Never end a session waiting on your
+own background task" / draft-PR rules. This session picked up where it left
+off: CI on `4ea4d401d5` was green by the time of resume, and hostops had
+armed a 14 h waiter (`hakux-waiter-verdict433`) per its `[job.deliver]`
+comment.
+
+**Merged `origin/master` first, per the session hook (12 commits behind).**
+Clean merge (no conflicts on this lane's files). Notably PR #615
+(lane.statuswindow, folded as `2fcb228749`) fixes the exact problem this
+lane's session 1 flagged: the status page's title table was reading a
+90-240 s slice instead of the full gameplay window. It now calls
+`title_verdict.judge(..., write_contact_sheet=False)` live for any finished
+request with a route and a run.log, so the table itself should stop
+overstating tier A's fps even before a confirmation lands. That does not
+change what "Playable" requires (`--require confirmation`), so this lane's
+job is unchanged; it only means the *table* is no longer the misleading
+signal it was in session 1. Pushed the merge (`3427e75ba1`) before queuing
+anything, since `build_ref` resolves `--ref` against the host's clone of
+`$REPO` and needs the sha to exist there.
+
+**Read batch 1's actual results, not just its request IDs:**
+
+| Title | Device | Batch-1 request | Outcome |
+|---|---|---|---|
+| Baldur's Gate: Dark Alliance | thor | `-211577` | **missing from results** -- withdrawn by lane.local per the addendum (Thor moved to full-fan confirmations) |
+| KOF: Maximum Impact Maniax | thor | `-211719` | **missing from results** -- withdrawn, same reason |
+| WWE Raw 2 | nova | `-211620` (ran as `0-0-x-1-...-211620`) | DONE, but void: `title_verdict.py --require confirmation` reads `FAIL(void: not-foreground: unreadable (ee317437 adb failed (exit 1)))` -- a capture glitch, not a low-fps reading. `capture_lost=26.3s`, `capture_truncated` |
+| 50 Cent: Bulletproof | nova | `-211666` (ran as `0-0-x-1-...-211666`) | **ERROR**: "could not set the requested env_vars pref; see dispatcher.log" -- the run never started (`apply_env_pref` failed in dispatcher.sh before the app launched) |
+
+Neither Nova failure is a real reading of either title; both are harness/adb
+hiccups (per memory: single-run device flakes get a rerun before any
+conclusion). Also found, unlisted in any prior NOTES: a `study`-priority
+request `1-1790696366-lane.verdict433-2378176` (Azurik, `HAKUX_IDLE_HALT=1`,
+queued 15:39Z under this lane's own requester name) ran to completion with
+`"pause":false` throughout -- idle halt kept Azurik off the thermal pause in
+this one run. That request was not queued by any session recorded in this
+lane's NOTES; it reads as another actor's (#525 lane.idlehaltdefault's)
+probe riding this lane's requester name. Out of scope for #433's brief
+(which does not mention the idle halt), so not acted on here beyond noting
+it for whichever lane owns #525.
+
+**Read the addendum and its cited decision** (#433 comment 5894686025,
+owner): Thor Playable confirmations now run at `PERF_REGIMEN=max
+FAN_MODE=customize:100` ("full fan"); the bar (90% at 28.5+, audio ≤0.1%, no
+crash/hang, no thermal pause) is unchanged; Nova is unchanged.
+`FAN_MODE=customize:100` is a valid request per `devices.sh`'s
+`DEVICE_FAN_OPTIONS` (customize is a HIGH-only slider 0-100, matching
+`PERF_REGIMEN=max`'s performance_mode).
+
+**Batch 2 queued** (`docs/lanes/verdict433/queue_batch2.sh`, pilot gate
+still admits under the 2 h-old `pilots/lane.verdict433.ok`):
+
+| Title | Device | Regimen | Request |
+|---|---|---|---|
+| Baldur's Gate: Dark Alliance | thor | max, fan customize:100 | `1-1790700816-lane.verdict433-3695372` |
+| KOF: Maximum Impact Maniax | thor | max, fan customize:100 | `1-1790700816-lane.verdict433-3695988` |
+| Azurik: Rise of Perathia | thor | max, fan customize:100 (re-confirm; failed at defaults in the pilot) | `1-1790700817-lane.verdict433-3696430` |
+| WWE Raw 2 | nova | default (retry; batch-1 run voided) | `1-1790700817-lane.verdict433-3697079` |
+| 50 Cent: Bulletproof | nova | default (retry; batch-1 run errored) | `1-1790700818-lane.verdict433-3697712` |
+
+request.sh's own estimate put this at ~136 min of queued+running device
+time for this lane; the pilot gate admitted the whole batch on the standing
+`pilots/lane.verdict433.ok`, consistent with "the reviewed pilot's verdict
+is what the gate checks," not a fresh 30-min ceiling per batch.
+
+### Ending session 3 here: waiting on batch 2
+
+All five requests are queued, none finished yet (20-30 min each once
+running, on devices this session cannot poll without burning the turn
+budget). Posting `[lane.verdict433] waiting:` on PR #610 and #433, updating
+the PR body's `Files:` line to include `queue_batch2.sh`, and stopping.
+
+Next lane / next resume, in order:
+1. For each of the five batch-2 IDs above, once its `DONE` exists, run
+   `title_verdict.py <dir> --require confirmation`.
+2. For the three Thor titles, read `perf_regimen.json` (record it in this
+   table per the addendum) and `thermal.jsonl` for a pause -- a pause still
+   fails the run even at full fan.
+3. Post the updated Playable count to #433.
+4. If WWE Raw 2 or 50 Cent error/void again on the Nova, that is no longer a
+   single-run flake; escalate as a board request rather than a third retry.
+5. Move to tier B/C per the existing ranking once batch 2 is read.
