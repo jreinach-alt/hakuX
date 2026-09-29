@@ -104,7 +104,21 @@ Issue #569, PR #594. Branched from master at 1922ce1cad.
 
 ## Runs
 
-(filled in as they land)
+- **Queued 2026-09-28 17:37 PDT**, all on the Nova, which is on hostops' charge
+  hold until about 18:00-19:00 PDT. All three are `--perflog`, survey route,
+  440 s, `HAKUX_RELEASE_PRIO=1`:
+  - `1-1790642263-gpl569-834655`: DOA A (6aaa1142ad, off), cold.
+  - `1-1790642270-gpl569-837983`: DOA B (a84fda7ed4, mode 1), cold.
+  - `1-1790642271-gpl569-838619`: DOA B2 (a84fda7ed4, `--env HAKUX_GPL=2`),
+    warm.
+  - These are the pilot, about 26.5 min of device time. They must be reviewed,
+    and `pilots/gpl569.ok` written, before the Blinx trio goes in.
+  - A plain-priority duplicate of A (`1790642249-gpl569-828024`) was queued
+    first by mistake and removed from the queue unclaimed. To get release
+    priority on an issue without the 0.5 label, pass `HAKUX_RELEASE_PRIO=1`.
+- **Pixel arm:** `gpl569-pixels-inert.json`, pushed at 6dd14f86f6; the arms
+  job queues it.
+- **Preflight** (`--allow-tracker`): passed at 6dd14f86f6.
 
 ## Do not repeat
 
