@@ -221,3 +221,106 @@ On resume, run `ihd_judge.py` over all twelve (`--a` the six A ids, `--b`
 the six B ids), with `hang_gaps_s` read beside it. Then fill the per-title
 table, judge the six predictions, and decide whether a second pair is
 needed (only for a title whose leg fails or sits inside the bound).
+
+## Session 3 (2026-09-28 ~20:40 PDT): first pairs read, three second pairs queued
+
+Why session 2 did not finish: it ended correctly after queueing the ten
+runs, waiting on those request ids. hostops resumed this lane once none was
+queued or running.
+
+### First pairs (`ihd_judge.py --share-at 13.5,28.5,57`, mark to end)
+
+Full output: `.lane-scratch/batch.log` (not committed). Blinx 2 A1 is
+`-3053911-r1`: the first `-3053911` is VOID (the Nova's adb link dropped at
+225 s, hostops).
+
+| title | arm | result | fps median | share >= 28.5 | late >1 ms (held) | p99 est. ms | audio | net_w | J/frame | no-flip s (>8 s gaps) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Kabuki | A | `1-1790618696-...-845673` | 58.88 | 0.46 | 0 / 12009 | 45.5 | 0 | 7.952 | 0.2879 | 117 (4 gaps) |
+| Kabuki | B | `1-1790618748-...-846115` | 58.25 | 0.32 | 0.00017 | 46.0 | 0 | 7.565 | 0.3969 | 136 (2 gaps) |
+| Fuzion | A | `0-0-x-1-1790634702-...-3052286` | 49.10 | 0.81 | 0.00035 | 36.7 | 0 | 8.511 | 0.1997 | 0 |
+| Fuzion | B | `0-0-x-1-1790634702-...-3051928` | 38.89 | 0.57 | 0.00112 | 37.5 | 0 | 7.235 | 0.2193 | 0 |
+| Forza | A | `0-0-x-1-1790634702-...-3052521` | VOID | | | | | | | |
+| Forza | B | `0-0-x-1-1790634703-...-3052915` | VOID | | | | | | | |
+| DOA1U | A | `0-0-x-1-1790634703-...-3053613` | 26.49 | 0.19 | 0 / 5503 | 65.4 | 0.00026 | 5.838 | 0.2681 | 8 |
+| DOA1U | B | `0-0-x-1-1790634703-...-3053271` | 15.18 | 0.00 | 0 / 8072 | 144.0 | **0.00481** | 6.539 | 1.0481 | 134 |
+| Blinx 2 | A | `0-0-x-1-1790634703-...-3053911-r1` | 29.93 | 0.62 | 0.00088 | 37.7 | 0 | 8.321 | 0.2889 | 0 |
+| Blinx 2 | B | `0-0-x-1-1790634704-...-3054293` | 29.23 | 0.58 | 0.00009 | 38.8 | 0 | 6.914 | 0.2430 | 0 |
+| Ghoulies | A | `0-0-x-1-1790634704-...-3055105` | 29.96 | 0.72 | 0.00044 | 37.7 | 0.00035 | 8.164 | 0.2962 | 0 |
+| Ghoulies | B | `0-0-x-1-1790634704-...-3054732` | 29.96 | 0.67 | 0 | 39.2 | 0.00088 | 7.889 | 0.2907 | 0 |
+
+Every B run reads `[idlehalt] on=1` with halts > 0. Every A run reads on=0.
+All twelve use apk 9ab5709037ca.
+
+Legs on the first pairs, as registered:
+
+| title | H | P1 | P2 | A | 2nd pair? |
+|---|---|---|---|---|---|
+| Kabuki | holds (-0.63 of 2.0) | holds | holds (1.01x) | holds | no |
+| Fuzion | **fails** (-10.2 of 2.5) | holds (+0.0008) | holds (1.02x) | holds | yes |
+| Forza | VOID | | | | not at this ref |
+| DOA1U | **fails** (-11.3 of 4.0) | holds | **fails** (2.2x) | **fails** (0.0048) | yes |
+| Blinx 2 | holds (-0.70 of 1.0; share -0.04 of 0.10) | holds | holds | holds | yes: B is worse than half the H bound |
+| Ghoulies | holds (0.00) | holds | holds (1.04x) | holds | no |
+
+E (B's J/frame below A's): Blinx 2 and Ghoulies, 2 of 5 scored titles. **E
+fails as registered.** net_w is lower with the halt in 4 of 5 (Kabuki -0.39,
+Fuzion -1.28, Blinx 2 -1.41, Ghoulies -0.28 W; DOA1U +0.70 W). The failures
+are the three titles whose arms played different scenes (below). J/frame
+divides by flips, so it follows the scene.
+
+### What the three failures are
+
+**Fuzion: the arms played different minigame stages.** The route mashes A,
+and the game picks the stage itself. A (`-3052286`) drew "Stage 1 -
+Downtown": a rhythm game at 49 fps and fireworks at 41 (route-frames
+184554, 184704). B (`-3051928`) drew "Stage 1 - Outlands": a bomb arena at
+19 fps and a hoverbike game at 27 (183723, 183832). Per 20 s bin, A sits at
+45-57 fps from 140 to 260 s while B sits at 21-36. The H failure is a
+comparison of two different workloads. It says nothing about the halt either
+way.
+
+**DOA1U: B spent 134 s of 178 in a flipless state that A spent 8 s in.**
+- B fought Helena and fell through the floor. The frame reads "FPS: 1"
+  (190318-play). A fought Gen Fu at the clock face and reached GAME OVER.
+- In B's flipless stretch, `[rr425w]` reads the guest ~85% idle at
+  `idlepc=8001b02e` (about 1.7 s idle, 0.3 s busy per 2 s), and `[idlehalt]`
+  reads `pg=0`, `lpgmax=0`. **The guest is not waiting on pgraph**, which
+  is the only wake leg L measured as slow.
+- **The same state occurs with the halt off**, with the same numbers.
+  lane.pacing's `1-1790575939-lane.pacing-1078334-r2` (41.8 s) and
+  `-1078381` (19.3 s) read ~1.69 s idle and 0.3 s busy per 2 s, at the same
+  idlepc. Of 18 earlier halt-off DOA1U runs, 5 have such stretches.
+- So the state is DOA1U's own. Whether the halt makes it longer or more
+  frequent is what the second pair is for. The audio starve (0.0048) and the
+  p99 (144 ms) both fall inside B's flipless stretches.
+- A is itself high for this title: 26.49 fps against 11-17 in 16 of 18
+  earlier halt-off Nova runs.
+
+**Forza: both arms died before `mark play`.** lmkd killed xemu at 4.4 GB PSS,
+at 218 s and 212 s: the #414 Forza memory growth on master, which PR #583
+fixes (hostops, #525). Neither arm has a scored window. A re-queue at
+3a5d79e3ea would die the same way, so Forza is not measurable at this ref.
+It needs a pair on master after #583 folds.
+
+### Second pairs (queued 20:4x PDT, release prio, Nova, 3a5d79e3ea)
+
+| title | first | second |
+|---|---|---|
+| Fuzion | A2 `1-1790651074-lane.idlehaltdefault-2875039` | B2 `1-1790651074-lane.idlehaltdefault-2875118` |
+| DOA1U | A2 `1-1790651074-lane.idlehaltdefault-2875201` | B2 `1-1790651074-lane.idlehaltdefault-2875292` |
+| Blinx 2 | B2 `1-1790651075-lane.idlehaltdefault-2875391` | A2 `1-1790651075-lane.idlehaltdefault-2875478` |
+
+Deviation from the registration's "same order": each second pair leads with
+the other arm, so each arm leads once per title. H is then scored pooled, as
+registered: the mean of the two medians per arm.
+
+Do not repeat: a single pair on Fuzion or on the survey route's DOA1U cannot
+answer an A/B question. The scene is chosen by the game, not the route, and
+it moves fps by 2x. Read the route-frames before reading a leg.
+
+On resume: run `ihd_judge.py` with `--a` set to the A2 ids and `--b` set to
+the B2 ids. Pool them with the first pairs. Read route-frames for scene
+match. Then judge the verdict. Helpers used this session (uncommitted):
+`.lane-scratch/timeline.py` (fps per 20 s bin), `gaps.py` (flipless
+stretches), `grepres.py`.
