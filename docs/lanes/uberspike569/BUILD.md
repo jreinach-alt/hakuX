@@ -267,3 +267,37 @@ The pilot file got this build's verdict appended (the two smokes of section 6, r
 **On resume:** `find_results.py` on the seven ids; `uberjudge.py` on the DOA three; `kabjudge.py`
 on the Kabuki two; E per capture from the `[job.arms]` comment; then the verdict, the #569
 post, and ready.
+
+## 8. Attempt 6 (2026-09-29 16:25 PDT): every queued request was lost; re-queued
+
+**Why attempt 5 did not finish.** It ended as a wait, correctly, on the five soak arms and the E
+pixel arm. None of them ran, because at 16:15 the Nova sat at 36% battery and the admission floor was
+38-39%. Between 16:22:59 and 16:26 PDT, **every entry in the live `$DISPATCH_DIR/queue/*.req` and
+`$DISPATCH_DIR/results/*` was removed.** This lane's seven requests went with it: the arms job's
+E pair `1790716235-arms-uberspike569-{base,fix}-*` and the five soaks. So did every earlier
+result dir (the smokes of section 6, and lane.kabukistall's K1). The only activity at that minute
+was lane.hddsplit's dispatcher fixtures (`wt/hddsplit/.st/dh/`, 16:25:17-29). That is flagged on
+PR #622 as a likely cause, not a proven one. `results/kabjudge-k1-self.json` and
+`host/k1_windows.txt` hold what this lane read from K1.
+
+**Re-queued** with the same refs, flags and predictions:
+
+| arm | ref | new id | replaces |
+|---|---|---|---|
+| DOA A | 23543417aa | `1790724512-uberspike569-1350514` | `1790714390-uberspike569-2903782` |
+| DOA B | 752b4f0f7b | `1790724521-uberspike569-1353595` | `1790714395-uberspike569-2904221` |
+| DOA H | 6bec23c3f4 | `1790724524-uberspike569-1354320` | `1790714395-uberspike569-2904335` |
+| Kabuki A | 8b15159b2f | `1790724526-uberspike569-1355381` | `1790723587-uberspike569-1071671` |
+| Kabuki B2 | d0152f9c44 | `1790724528-uberspike569-1355882` | `1790723590-uberspike569-1073743` |
+| E A (36 suites, 2 runs) | 23543417aa | `1790724542-uberspike569-1360739` | `1790716235-arms-uberspike569-base-3233746` |
+| E H | 6bec23c3f4 | `1790724547-uberspike569-1361951` | `1790716235-arms-uberspike569-fix-3233820` |
+
+The arms job's pair record for E (`pairs/c5c0e63aed4e...json`) still names the deleted ids, and a
+pair judges only when both of its result dirs exist, so the job will never judge it. So E is
+queued under this lane, and the lane judges it itself on resume:
+`ab_compare.py --a <A dir> --b <H dir> --expect docs/testing/predictions/uberspike569-gpl-pixels.json`.
+The prediction file is unchanged (sha256 `c5c0e63aed4e`).
+
+**On resume:** `host/find_results.py` on the seven new ids; `uberjudge.py` on DOA A/B/H;
+`kabjudge.py` on Kabuki A/B2; `ab_compare.py` on E, read per capture, and E's H logcat for
+`[uber569] mode=4 links=N`, N > 0; then the verdict, the #569 post, and ready.

@@ -610,3 +610,7 @@ Resume of 2026-09-29 16:10 PDT: attempt 4 ended as a wait on the DOA soak arms a
 which had not run (all queued behind the Nova's release tier). This resume added the Kabuki
 acceptance leg (BUILD.md section 7). Do not judge Kabuki's stall by "no flip gap over 5 s": master
 already meets it since B1 (longest gap 4.4 s in K1); read create ms and the gap against an A arm.
+
+Resume of 2026-09-29 16:25 PDT (attempt 6): attempt 5 ended as a wait, and before anything ran
+the live dispatch queue and results were emptied (BUILD.md section 8). All seven device requests
+were re-queued under new ids; E is now judged by this lane, not the arms job.
