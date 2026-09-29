@@ -26,7 +26,7 @@ MUT = {
                 "pooled_unheld = {l for l in os.listdir(os.path.join(D, 'lanes')) if '.' not in l} - held - set(affinity.OFFPOOL)")],
   "holdall":  [("elif handhelds_held and not pooled_unheld:", "elif False:")],
   "pinheld":  [("            if pin in held:\n", "            if False:\n")],
-  "nocall":   [("    stalled, on_hold, qblind = queue_stall()\n", "    stalled, on_hold, qblind = [], [], None\n")],
+  "nocall":   [("    stalled, on_hold, absent, qblind = queue_stall()\n", "    stalled, on_hold, absent, qblind = [], [], [], None\n")],
 }
 names = sys.argv[1:] or list(MUT)
 for name in names:
