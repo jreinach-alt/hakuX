@@ -477,9 +477,11 @@ static StringArray *get_required_device_extension_names(void)
  * HAKUX_GPL=0 off (the monolithic path), 1 fast link, 2 fast link and a
  * link-time-optimised rebuild on the compile worker, swapped in when ready.
  * The environment reaches the Android app through request.sh --env.
+ * Off by default: on its own, a pre-rasterization library costs more than a
+ * whole monolithic pipeline on T30 (docs/lanes/gpl569/NOTES.md, "Runs").
  */
 #ifndef HAKUX_GPL_DEFAULT
-#define HAKUX_GPL_DEFAULT 1
+#define HAKUX_GPL_DEFAULT 0
 #endif
 
 static int gpl_requested_mode(void)
