@@ -1,0 +1,34 @@
+{
+  "registered_utc": "2026-09-28T01:40:38Z",
+  "who": "lane.pacing",
+  "issue": "526",
+  "title": "54430006-Dead_or_Alive_1_Ultimate.xiso.iso",
+  "device": "nova",
+  "seconds": 300,
+  "route": "survey",
+  "perflog": false,
+  "runs_per_arm": 2,
+  "a_ref": "ead1086cb577928fab98df6fd650fd8c8ac2ef25",
+  "b_ref": "ead1086cb577928fab98df6fd650fd8c8ac2ef25",
+  "a_env": ["HAKUX_LIMITER=spin", "HAKUX_SURFACE_RATE=off"],
+  "b_env": ["HAKUX_SURFACE_RATE=off"],
+  "queue_order": "A1 B1 A2 B2 after the Kabuki pilot is read; each request.sh --who lane.pacing --title 54430006-Dead_or_Alive_1_Ultimate.xiso.iso --route survey --seconds 300 --device nova --ref ead1086cb5 --env ... --expect this file",
+  "judge": "python3 docs/lanes/pacing/pace_judge.py --from 150 --to 288 --a <A1> <A2> --b <B1> <B2>; thermal.jsonl pause samples per run; logcat -b crash in each result",
+  "prediction": "#526 LIMITER, THE UNCAPPED CASE. DOA1 Ultimate on the Nova runs below its own 60 target in the survey route's attract/fight window: 1-1790549110-flip474-1833747 reads gfps 20-21 with D 16.7 from ~150 s to ~280 s, and flip474's other Nova runs of this window read 13-22. The guest is the slow side, but the display loop still paces itself to 60 Hz and still waits in the limiter every display frame, so the spin is paid ~3 times per guest frame. Window 150-288 s after soak start, as flip474 judged it. ONE BINARY (ead1086cb5): A HAKUX_LIMITER=spin, B the default sleep; both HAKUX_SURFACE_RATE=off. POINT PREDICTION: B removes 1.0-2.0 ms of render-thread CPU per display frame; gfps does not change beyond this window's run-to-run spread. A small gfps rise is possible (the render thread shares big cores with the vCPU and the PFIFO thread) but is not predicted.",
+  "legs": {
+    "M0 (instrument, VOID not fail)": "every run has >= 11 [pace526] windows in 150-288 s, >= 10 gfps lines there, and no thermal.jsonl sample with pause=true. A run missing any is VOID and rerun once.",
+    "F0 (the mechanism ran)": "A's limiter line mode=spin env=spin, B's mode=sleep env=(unset) rt_clock=1.",
+    "H1 (THE COUNTER THAT MUST MOVE)": "wait_cpu_ms_per_display_frame: A in [0.7, 2.5], B <= 0.15. Same falsifiers as pacing-limiter-kabuki.json H1. The render thread's frame is not longer here than in Kabuki (it presents the last guest frame again), so the wait is not shorter and the band is the same.",
+    "H2 (render-thread CPU)": "thr_cpu_ms_per_display_frame: A - B within [0.6, 1.4] x (A_wait - B_wait). thr_cpu_ms_per_flip falls by about 3x that (display frames per flip = 60 / gfps); the judge prints both.",
+    "P1 (fps, no regression)": "pooled gfps median: B >= A - 2, where 2 is the least of this window's observed run-to-run spread on one apk (flip474: 13-22). A drop beyond 2 in both B runs FAILS.",
+    "P2 (fps, a guess labelled as one)": "|B - A| < 2 (about 75% confident). B - A >= 2 in both runs falsifies the reading that the render thread's spin does not contend with the guest's threads for a big core on this title.",
+    "L1 (lateness bound: p99 <= 1 ms)": "B: late_gt1ms_share <= 0.01 pooled and median window late_p99_us <= 1000.",
+    "T (heat, reported)": "hottest zone and pause count per run; net_w and j_per_frame per arm when the power record is live."
+  },
+  "must_not_move": [
+    "pgraph: docs/testing/predictions/pacing-pgraph-inert.json"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. Read by pace_judge.py."
+}

@@ -204,8 +204,15 @@ rm -f "$HAKUX_WORK/attempts/selftesthb"
 # The pickup is a TABLE of labels, not a branch per label: needs-remediation
 # and the two audit labels join it as a row (lane.auditoutlet, PR #130).
 check "the pickup is one table of labels" grep -q '^HANDBACK_ROWS=(' "$HERE/handback.sh"
-check "handback.sh starts no session itself; lane.sh does" \
-    bash -c '! grep -qE "^[^#]*systemd-run" "$HERE/handback.sh"'
+# The one systemd-run is the parked lane's waiter (lane.handbackwaiter), which
+# starts hakux-waiter-<lane>; that unit, not this job, calls lane.sh.
+hb_no_session() {
+    local l; l=$(grep -E "^[^#]*systemd-run" "$HERE/handback.sh")
+    [ -z "$l" ] && return 0
+    [ "$(wc -l <<< "$l")" -eq 1 ] && grep -qF 'systemd-run --user --unit="$unit" bash "$PARK_WAITER"' <<< "$l" \
+        && grep -qF 'unit="hakux-waiter-$name"' "$HERE/handback.sh"
+}
+check "handback.sh starts no session itself; lane.sh does" hb_no_session
 
 # fold.sh's half: it records the cause and resolves nothing. A real conflict
 # needs a real remote and a real push, so this pins the two lines that connect

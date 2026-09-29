@@ -1,0 +1,35 @@
+{
+  "registered_utc": "2026-09-28T01:40:38Z",
+  "who": "lane.pacing",
+  "issue": "526",
+  "title": "43560001-Kabuki_Warriors.xiso.iso",
+  "device": "nova",
+  "seconds": 300,
+  "route": "kabuki-warriors",
+  "perflog": false,
+  "runs_per_arm": 1,
+  "a_ref": "ead1086cb577928fab98df6fd650fd8c8ac2ef25",
+  "b_ref": "ead1086cb577928fab98df6fd650fd8c8ac2ef25",
+  "a_env": ["HAKUX_VSYNC=0", "HAKUX_SURFACE_RATE=mode"],
+  "b_env": ["HAKUX_VSYNC=1", "HAKUX_SURFACE_RATE=mode"],
+  "also": {
+    "title": "54430006-Dead_or_Alive_1_Ultimate.xiso.iso",
+    "route": "survey",
+    "seconds": 300,
+    "window": "150-288 s"
+  },
+  "queue_order": "ONLY IF pacing-display.json's C arm reached a 60 Hz panel (mode_hz ~60); otherwise this is not 'at the 60 Hz panel' and is not queued. Then Kabuki A1 B1, DOA1U A1 B1; each request.sh --who lane.pacing --device nova --ref ead1086cb5 --env ... --expect this file",
+  "judge": "python3 docs/lanes/pacing/pace_judge.py --from 30 --to mark:gameplay --a <KA1> --b <KB1>; and --from 150 --to 288 --a <DA1> --b <DB1>",
+  "prediction": "#526 VSYNC-ALIGNED PRESENT, MEASURE ONLY; the pref's default stays false. A runs swap interval 0 (the default), B swap interval 1, both at the 60 Hz panel C of pacing-display.json reached (HAKUX_SURFACE_RATE=mode). HAKUX_VSYNC overrides the vsync pref for the run because a dispatch request can write env_vars and no other pref. Reported, per title: the share of present-to-present intervals within 1 ms of 16.67 ms (pres_1ms_share), gfps, render-thread CPU per display frame, process CPU per flip, and the smoothed swap time (hakuX-perf S:). Guesses, each labelled: (1) B's pres_1ms_share >= A's (a blocking swap quantizes presents to the panel period); (2) Kabuki's capped window holds 59 in both; (3) DOA1U's gfps does not fall by more than 2 in B; (4) render-thread CPU per display frame is within 10% between arms, because time blocked in eglSwapBuffers is not CPU time. No leg here changes a default; locking titles that cannot hold 60 to 30 is the owner's decision and is not measured.",
+  "legs": {
+    "V0 (the arm is what it says, VOID otherwise)": "A's `[pace526] swap` line reads interval=0 rc=0, B's interval=1 rc=0; both runs have a [rate526] line with mode_hz ~60 after the request; no thermal pause sample.",
+    "V1 (reported)": "pres_1ms_share, gfps median, thr_cpu_ms_per_display_frame, proc_cpu_ms_per_flip, per arm and title.",
+    "F (what the instrument cannot see)": "pres_1ms_share measures interval regularity, not phase. A 60 Hz timer free-running against a 60 Hz panel has regular intervals and still drifts in phase, which shows on screen as a repeated or dropped frame every few seconds; this line cannot count those. SurfaceFlinger's per-layer frame timeline would, and a request cannot read it today."
+  },
+  "must_not_move": [
+    "pgraph: docs/testing/predictions/pacing-pgraph-inert.json"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures."
+}

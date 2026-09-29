@@ -1,0 +1,38 @@
+{
+  "registered_utc": "2026-09-28T01:45:00Z",
+  "who": "lane.rendermode474",
+  "issue": "474",
+  "title": "54430006-Dead_or_Alive_1_Ultimate.xiso.iso",
+  "device": "nova",
+  "seconds": 300,
+  "route": "survey",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "59d478911ec90f379efe789377b90963aef82a59",
+  "b_ref": "61e0edf87c6a95f555c6a000dfcfae2eec4b805e",
+  "window_s": [151, 288],
+  "arms": {
+    "A": "master 59d478911e, no env",
+    "B": "this branch 61e0edf87c, no env"
+  },
+  "queue_order": "A then B; each request.sh --who rendermode474 --title <this title> --device nova --route survey --seconds 300 --perflog --ref <arm ref> --expect this file",
+  "judge": "grep 'render_mode:' and 'env: TU_DEBUG' in each logcat; python3 docs/lanes/flip474/sysmemjudge.py (PR #516) over 151-288 s on each arm; the cooling devices and thermal samples of each run; power.j_per_frame from each result.json if power.measured is true",
+  "units": "GPU, R and X as printed use limits.timestampPeriod; the legs are ratios inside one pair on one device, or gfps.",
+  "must_not_move": [
+    "pgraph: docs/testing/predictions/rendermode474-pgraph.json"
+  ],
+  "prediction": "#474: with no env and no per-game value, B reads DOA 1 Ultimate's title ID from the disc, finds it in the table and sets TU_DEBUG=sysmem before the Vulkan instance; A does not. B then reproduces flip474's sysmem-by-env arm (X/R 0.02, gfps 21) and A its GMEM arms (X/R 0.98-1.02, gfps 13-16).",
+  "legs": {
+    "M0 (instrument)": ">= 15 hakuX-phase lines with GPU > 0 in 151-288 s in each arm, and the fight is on screen. Otherwise VOID for that arm, rerun once.",
+    "E0 (engaged line)": "B's logcat has exactly one hakuX-build line 'render_mode: sysmem (table) title=54430006 TU_DEBUG=sysmem'; A has no render_mode line; neither arm has an 'env: TU_DEBUG' line. KILL: B has no such line, or it says auto/default, or a title other than 54430006 (the reader misread the disc). VOID if either arm has an env TU_DEBUG line (the request leaked an env).",
+    "D1 (the driver took it)": "B's X/R median <= 0.25 and A's >= 0.8. Confidence 90%. KILL of 'the default reaches the driver': B's X/R >= 0.8 with E0 holding (the line printed, the driver still binned).",
+    "F1 (fps)": "B's gfps median >= 19 (flip474's sysmem arm read 21) and >= A's + 4. Confidence 70%; the opponent is drawn per run. If D1 holds and F1 fails, report it; it does not refute the mechanism.",
+    "T0 (heat)": "neither arm shows the kernel's cpu3-7 pause (thermal-pause) inside the window in its thermal samples or cooling devices, and the smallest gfps line in the window is >= 0.6 x the median unless the screen shows a scene change. Otherwise VOID that arm (#507), rerun once after a cool-down.",
+    "P0 (energy, reported not gated)": "if both result.json files say power.measured true: report j_per_frame for both. Guess: B <= A (the draw stream runs once, not twice), confidence 55%. A gain in gfps with a loss in J/frame is reported as such.",
+    "H0 (no hang)": "each arm: hakuX-perf lines to the end of the run, no crash marker, and no gap between them longer than 2 x the arm's median gap."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off hakuX-build, hakuX-phase, hakuX-perf and the app's 'env:' lines."
+}

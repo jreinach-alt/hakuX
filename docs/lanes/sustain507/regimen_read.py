@@ -48,10 +48,20 @@ the range the 1 % steps allow is narrow (max <= 1.3 x min).
 --pair MAX DEF. The like-for-like power comparison: net_w of both runs over
 [0, S] from the mark, where S is the MAX run's clean span (its first pause's
 `after` bound, from the mark), capped at 1800 s. S under 120 s is `unreadable`.
+
+PART C (sustain507-levers.json). --mark play reads the survey route's
+`mark play` in place of `mark gameplay`. Every run also reports the start
+sample's battery zone (`battery_start_c`, beside `xo_start_c`), and the
+[idlehalt] read-back: `ih_on` (the set of on= values over the window), `ih_halts`
+(halts summed over the window) and `ih_run_pct` (median run_us / span_us).
+--halt ON OFF: net_w of both runs over [0, S] from the mark, where S is the
+earlier of the two runs' clean spans (the first pause's `after` bound from
+the mark; 1800 s for a run that never paused). S under 120 s is `unreadable`.
 """
 import argparse
 import json
 import os
+import re
 import statistics
 import sys
 
@@ -65,6 +75,13 @@ WINDOW_S = 1800.0
 PLATEAU_BAND_C = 1.5
 PLATEAU_TAIL_S = 300.0
 NOT_MITIGATION = ("panel0-backlight", "panel1-backlight")
+MARK = "mark gameplay"
+IH = re.compile(r"\[idlehalt\] w=\d+ on=(\d) span_us=(\d+) run_us=(\d+) rq_us=\d+ halts=(\d+)")
+
+
+def mark_of(lc):
+    marks = [t for t, lv, tag, msg in lc if tag == "hakuX-route" and msg.strip() == MARK]
+    return marks[0] if marks else None
 
 
 def rdir_of(arg):
@@ -99,19 +116,25 @@ def bound(after, by):
 def read(rdir):
     lc, gaps, _ = tv.parse_logcat(os.path.join(rdir, "logcat.txt"))
     perf = [t for t, lv, tag, msg in lc if tag == "hakuX-perf" and tv.PERF.search(msg)]
-    marks = [t for t, lv, tag, msg in lc if tag == "hakuX-route" and msg.strip() == "mark gameplay"]
+    m0 = mark_of(lc)
     ends = [t for t, lv, tag, msg in lc if tag == "hakuX-route" and msg.strip() == "soak end"]
     req = tv.load_json(os.path.join(rdir, "request.json"))
     reg = tv.load_json(os.path.join(rdir, "perf_regimen.json"))
     out = dict(id=os.path.basename(rdir.rstrip("/")), title=(req.get("title") or "")[:40],
                device=tv.load_json(os.path.join(rdir, "result.json")).get("device_label"),
                regimen=reg.get("regimen"), perf_mode=reg.get("perf_mode"), fan_mode=reg.get("fan_mode"))
-    if not marks:
-        out["error"] = "no mark gameplay"
+    if m0 is None:
+        out["error"] = "no " + MARK
         return out
-    m0 = marks[0]
     end = ends[-1] if ends else (lc[-1][0] if lc else m0)
     hi = min(end, m0 + WINDOW_S)
+    ih = [(t, IH.search(msg)) for t, lv, tag, msg in lc if tag == "hakuX"]
+    ih = [(t, m) for t, m in ih if m and m0 <= t <= hi]
+    out["ih_lines"] = len(ih)
+    out["ih_on"] = sorted({int(m.group(1)) for _, m in ih})
+    out["ih_halts"] = sum(int(m.group(4)) for _, m in ih)
+    shares = [int(m.group(3)) / int(m.group(2)) for _, m in ih if int(m.group(2)) > 0]
+    out["ih_run_pct"] = round(100 * statistics.median(shares), 1) if shares else None
     out["window_s"] = round(hi - m0, 1)
     out["short_s"] = round(max(0.0, m0 + WINDOW_S - end), 1)
     after = [t for t in perf if t >= m0]
@@ -174,7 +197,16 @@ def read(rdir):
     xo = [(thermal_state.dev_ts(r), thermal_state.zone_c(r, "xo-therm")) for r in ok]
     xo = [(t, c) for t, c in xo if c is not None and t0 <= t <= hi + thermal_state.EVERY_S]
     out["xo_start_c"] = xo[0][1] if xo else None
+    bz = [thermal_state.zone_c(r, "battery") for r in ok if thermal_state.dev_ts(r) >= t0]
+    out["battery_start_c"] = next((c for c in bz if c is not None), None)
     out["xo_max_c"] = max(c for _, c in xo) if xo else None
+    # H3 of sustain507-levers.json: xo at minute 10 from the mark, linear
+    # between the two samples around it.
+    t10 = m0 + 600.0
+    around = [(a, b) for a, b in zip(xo, xo[1:]) if a[0] <= t10 <= b[0]]
+    if around:
+        (ta, ca), (tb, cb) = around[0]
+        out["xo_m10_c"] = round(ca if tb == ta else ca + (cb - ca) * (t10 - ta) / (tb - ta), 1)
     tail = [c for t, c in xo if t >= hi - PLATEAU_TAIL_S]
     out["plateau_min"] = None
     if len(tail) >= 3 and max(tail) - min(tail) <= 2 * PLATEAU_BAND_C:
@@ -218,10 +250,32 @@ def pair(max_dir, def_dir):
     for key, rdir in (("max", max_dir), ("default", def_dir)):
         therm = thermal_state.load(os.path.join(rdir, "thermal.jsonl")) or []
         lc, _, _ = tv.parse_logcat(os.path.join(rdir, "logcat.txt"))
-        m0 = [t for t, lv, tag, msg in lc if tag == "hakuX-route" and msg.strip() == "mark gameplay"][0]
+        m0 = mark_of(lc)
         res[key + "_net_w"] = thermal_state.power_over(therm, m0, m0 + s)["net_w"]
     if res["max_net_w"] is not None and res["default_net_w"] is not None:
         res["cut_w"] = round(res["max_net_w"] - res["default_net_w"], 3)
+    return res
+
+
+def halt_pair(on_dir, off_dir):
+    """--halt ON OFF: net_w of both over the span before either paused."""
+    a, b = read(on_dir), read(off_dir)
+    spans = [WINDOW_S if r.get("pause_from_start") is None else r.get("clean_span_s")
+             for r in (a, b)]
+    # A run cut short (`short_s`) is not read past its own end.
+    s = None if None in spans else min(spans + [a.get("window_s") or 0, b.get("window_s") or 0])
+    res = dict(on=a["id"], off=b["id"], span_s=s,
+               pause_from_mark=dict(on=a.get("pause_from_mark"), off=b.get("pause_from_mark")))
+    if s is None or s < 120:
+        res["verdict"] = "unreadable: pre-pause span %s s < 120 s" % s
+        return res
+    for key, rdir in (("on", on_dir), ("off", off_dir)):
+        therm = thermal_state.load(os.path.join(rdir, "thermal.jsonl")) or []
+        lc, _, _ = tv.parse_logcat(os.path.join(rdir, "logcat.txt"))
+        m0 = mark_of(lc)
+        res[key + "_net_w"] = thermal_state.power_over(therm, m0, m0 + s)["net_w"]
+    if res["on_net_w"] is not None and res["off_net_w"] is not None:
+        res["cut_w"] = round(res["off_net_w"] - res["on_net_w"], 3)
     return res
 
 
@@ -244,9 +298,18 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("runs", nargs="+")
     ap.add_argument("--pair", action="store_true", help="two runs: MAX then default")
+    ap.add_argument("--halt", action="store_true", help="two runs: halt ON then OFF")
+    ap.add_argument("--mark", default="gameplay", help="the route mark that opens the window")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args()
+    global MARK
+    MARK = "mark " + a.mark
     dirs = [rdir_of(x) for x in a.runs]
+    if a.halt:
+        if len(dirs) != 2:
+            raise SystemExit("--halt takes two runs, ON then OFF")
+        print(json.dumps(halt_pair(*dirs), indent=1))
+        return
     if a.pair:
         if len(dirs) != 2:
             raise SystemExit("--pair takes two runs, MAX then default")
@@ -262,7 +325,8 @@ def main():
     if a.json:
         print(json.dumps(dict(runs=rows, pool=pooled), indent=1))
         return
-    hdr = ("id", "reg", "med", "p10", "stab", "mit s", "pause s", "xo max", "plat", "net W", "J/fr", "h")
+    hdr = ("id", "reg", "ih on", "xo0", "bat0", "med", "p10", "stab", "mit s", "pause s", "xo max",
+           "plat", "net W", "J/fr", "h")
     print(" | ".join(hdr))
     for r in rows:
         if r.get("error"):
@@ -271,7 +335,10 @@ def main():
         mit = r.get("mitigation_from_start")
         pz = r.get("pause_from_start")
         print(" | ".join([
-            r["id"][-22:], fmt(r.get("regimen")), fmt(r.get("fps_median")), fmt(r.get("fps_p10")),
+            r["id"][-22:], fmt(r.get("regimen")),
+            "/".join(str(x) for x in r.get("ih_on") or []) or "-",
+            fmt(r.get("xo_start_c")), fmt(r.get("battery_start_c")),
+            fmt(r.get("fps_median")), fmt(r.get("fps_p10")),
             fmt(r.get("stability"), 2),
             "none" if not mit else "%s-%s" % (fmt(mit["after"], 0), fmt(mit["by"], 0)),
             "none" if not pz else "%s-%s" % (fmt(pz["after"], 0), fmt(pz["by"], 0)),

@@ -275,6 +275,13 @@ typedef struct PipelineBinding {
     bool has_dynamic_line_width;
 #if OPT_ASYNC_COMPILE
     bool pending;
+    /* #569 P5, HAKUX_GPL=2: the link-time-optimised pipeline built on the
+     * compile worker, swapped in by create_pipeline() when ready; the
+     * fast-linked one it replaces is kept until eviction, since a command
+     * buffer in flight may still use it */
+    bool gpl_lto_pending;
+    VkPipeline gpl_lto_pipeline;
+    VkPipeline gpl_retired_pipeline;
 #endif
 #if NV2A_PERF_LOG
     /* The last command buffer to bind it: its serial and frame slot */
@@ -417,6 +424,9 @@ typedef struct ShaderModuleInfo {
     SpvReflectDescriptorSet **descriptor_sets;
     ShaderUniformLayout uniforms;
     ShaderUniformLayout push_constants;
+    /* #569 P5: hash of spirv, the module's identity in the graphics
+     * pipeline library keys; 0 until first computed (vk/draw.c) */
+    uint64_t gpl_id;
 } ShaderModuleInfo;
 
 typedef struct ShaderModuleCacheKey {
@@ -433,6 +443,13 @@ typedef struct ShaderModuleCacheKey {
         struct {
             PshState state;
             GenPshGlslOptions glsl_opts;
+            /* #569 P6: generate the family's combiner ubershader
+             * (glsl/psh-uber.h) instead of psh.c's shader. Only ever set
+             * under HAKUX_PSH_UBER; zero in every key a default build makes
+             * or has persisted. It sits inside the union's vsh-sized
+             * footprint, so the key's size, and the persisted key file's
+             * record size, do not change. */
+            bool uber;
         } psh;
     };
 } ShaderModuleCacheKey;
@@ -465,6 +482,8 @@ typedef struct ShaderBinding {
     struct {
         ShaderModuleInfo *module_info;
         PshUniformLocs uniform_locs;
+        /* The ubershader's combiner uniform; -1 on a specialised module. */
+        int uber_comb_loc;
     } psh;
 } ShaderBinding;
 
@@ -499,11 +518,24 @@ typedef struct PipelineCreateParams {
 
     VkPipelineLayout layout;
     VkRenderPass render_pass;
+
+    /* #569 P5: build from graphics pipeline libraries (vk/compile_worker.c).
+     * The module ids are ShaderModuleInfo::gpl_id, 0 for no geometry stage;
+     * lib_render_pass is the render pass the libraries are built against,
+     * one per attachment-format pair (all of ours with one pair are
+     * identically defined: create_render_pass() ignores the load ops). */
+    bool gpl;
+    uint64_t gpl_vs_id, gpl_gs_id, gpl_fs_id;
+    VkFormat gpl_color_format, gpl_zeta_format;
+    VkRenderPass gpl_lib_render_pass;
 } PipelineCreateParams;
+
+typedef struct GplLib GplLib;
 
 typedef enum {
     COMPILE_JOB_SHADER_MODULE,
     COMPILE_JOB_PIPELINE,
+    COMPILE_JOB_GPL_LTO,
 } CompileJobType;
 
 typedef struct CompileJob {
@@ -518,6 +550,12 @@ typedef struct CompileJob {
             PipelineBinding *target;
             PipelineCreateParams params;
         } pipeline;
+        struct {
+            PipelineBinding *target;
+            GplLib *libs[4];            /* one reference each */
+            VkPipelineLayout layout;
+            VkRenderPass render_pass;
+        } gpl_lto;
     };
 } CompileJob;
 
@@ -1510,6 +1548,32 @@ typedef struct PGRAPHVkState {
         bool shutdown;
         int queue_depth;
     } compile_worker;
+
+    /*
+     * #569 P5: VK_EXT_graphics_pipeline_library. A draw pipeline is linked
+     * from four libraries -- vertex input, pre-rasterization (vs + gs),
+     * fragment shader, fragment output -- each cached by what its own stage
+     * reads, so a vs that a new blend state or fragment shader pairs with is
+     * not compiled again. vk/compile_worker.c owns all of it.
+     */
+    struct {
+        bool supported;         /* extension and feature, on this device */
+        bool fast_linking;      /* graphicsPipelineLibraryFastLinking */
+        int mode;               /* 0 off, 1 fast link, 2 + LTO swap */
+        VkPipelineLayout layout;    /* the one layout every draw uses */
+        QemuMutex lock;         /* libs, stats */
+        GHashTable *libs[4];    /* GBytes key -> GplLib */
+        int lto_inflight;       /* LTO jobs queued or running */
+        struct {
+            unsigned int lib_new[4], lib_hit[4], lib_fail[4];
+            uint64_t lib_us[4];
+            unsigned int links, link_fail, fallbacks;
+            uint64_t link_us;
+            unsigned int lto_done, lto_fail, lto_swapped;
+            uint64_t lto_us;
+            unsigned int flushes;
+        } stats;
+    } gpl;
 #endif
 
     SubmitWorker submit_worker;
@@ -1770,6 +1834,14 @@ void pgraph_vk_compile_worker_wait_idle(PGRAPHVkState *r,
                                         int total_jobs,
                                         void (*progress_cb)(int current,
                                                             int total));
+/* #569 P5 */
+VkPipelineLayout pgraph_vk_gpl_layout(PGRAPHVkState *r);
+VkResult pgraph_vk_gpl_create_pipeline(PGRAPHVkState *r,
+                                       PipelineBinding *target,
+                                       const PipelineCreateParams *p,
+                                       VkPipeline *pipeline);
+void pgraph_vk_gpl_wait_lto_idle(PGRAPHVkState *r);
+void pgraph_vk_gpl_finalize(PGRAPHVkState *r);
 #endif
 
 // submit_worker.c
@@ -1805,6 +1877,8 @@ void pgraph_vk_process_pending_reports_internal(NV2AState *d);
 void pgraph_vk_init_pipelines(PGRAPHState *pg);
 void pgraph_vk_finalize_pipelines(PGRAPHState *pg);
 void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter);
+bool pgraph_vk_clear_covers_binding(PGRAPHState *pg, SurfaceBinding *b,
+                                    uint32_t parameter);
 void pgraph_vk_draw_begin(NV2AState *d);
 void pgraph_vk_draw_end(NV2AState *d);
 void pgraph_vk_finish(PGRAPHState *pg, FinishReason why);

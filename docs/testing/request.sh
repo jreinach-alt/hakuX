@@ -4,13 +4,15 @@
 #
 #   request.sh --who bump-agent --purpose "bump map baseline" \
 #              --suites "Bump map,Bump env lum" [--ref HEAD] [--runs 1] [--wait] \
-#              [--skip-tests "Suite::Test,..."] [--device nova|thor|desktop] \
+#              [--skip-tests "Suite::Test,..."] [--device nova|thor|desktop [--hard-pin]] \
 #              (--expect predictions/x.json | --no-expect "why not") \
 #              [--issue 474[,525]]    # else the first #N in --purpose
+#              [--priority blocker|arm|study|sweep]   # default study
 #
 # An issue labelled for the release (HAKUX_RELEASE_LABEL, default 0.5) queues
 # the request as 1-<epoch>-..., ahead of plain requests; see "release
-# priority" at the id below.
+# priority" at the id below. --priority blocker queues 0-<epoch>-... ahead of
+# both, and --priority sweep queues z-<epoch>-... in the idle tier.
 #
 #   request.sh --who audio --purpose "baseline" --title "Galleon (USA).xiso.iso" \
 #              --seconds 90 --pull 'apu_monitor.s16le48k2ch.pcm*' \
@@ -109,6 +111,7 @@ ENV_VARS=()
 FRAMES_EVERY=0
 ROUTE=""; ROUTE_TEXT=""
 ISSUE=""
+PIN=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --who) WHO="$2"; shift 2;;
@@ -151,6 +154,11 @@ while [ $# -gt 0 ]; do
         --arm) ARM="$2"; shift 2;;
         --runs) RUNS="$2"; shift 2;;
         --device) DEVICE="$2"; shift 2;;
+        # --hard-pin makes --device absolute for an `arms-*` requester, whose
+        # --device is otherwise a load pin affinity.py lets fall through when
+        # the device is not serving. The arms job's same-device re-run of a
+        # confounded pair uses it: falling through there re-creates the split.
+        --hard-pin) PIN=hard; shift;;
         --title) TITLE="$2"; shift 2;;
         --seconds) SECONDS_HOLD="$2"; shift 2;;
         --pull) PULL_GLOB="$2"; shift 2;;
@@ -167,6 +175,7 @@ while [ $# -gt 0 ]; do
         # The issue(s) this request serves, for its release priority only
         # (below, at the id). Without it, the first #N in --purpose.
         --issue) ISSUE="${ISSUE:+$ISSUE,}$2"; shift 2;;
+        --priority) PRIORITY="$2"; shift 2;;
         *) echo "unknown option $1" >&2; exit 2;;
     esac
 done
@@ -174,6 +183,11 @@ done
 # keeps the log, for questions with no golden framebuffer (the test discs are
 # silent, so nothing about audio can be asked of them).
 [ -n "$WHO" ] || { echo "need --who" >&2; exit 2; }
+PRIORITY="${PRIORITY:-study}"
+case "$PRIORITY" in
+    blocker|arm|study|sweep) ;;
+    *) echo "unknown --priority '$PRIORITY': blocker, arm, study or sweep" >&2; exit 2;;
+esac
 [ -n "$SUITES" ] || [ -n "$TITLE" ] || { echo "need --suites, or --title for a soak" >&2; exit 2; }
 # --runs is honoured only on the disc path; the soak path runs once and always
 # has. Accepting it there and ignoring it hands the requester a one-sample
@@ -204,6 +218,7 @@ fi
 # mentions the variable. It also could not see `desktop`, which is an
 # execution target with NO SERIAL and so has no row in the serial-keyed table
 # for any such regex to find. `devices.sh labels` enumerates both kinds.
+[ -z "$PIN" ] || [ -n "$DEVICE" ] || { echo "--hard-pin needs --device" >&2; exit 2; }
 if [ -n "$DEVICE" ]; then
     KNOWN=$(bash "$(dirname "$0")/devices.sh" labels)
     printf '%s\n' "$KNOWN" | grep -qx "$DEVICE" || {
@@ -712,7 +727,8 @@ fi
 # issue labelled for the current release, #432) names it 1-<epoch>-..., which
 # sorts after every 0-* probe and host-promoted 0-0-x-* head, and ahead of
 # every plain <epoch>-... request ('-' is 0x2d, below any digit) and every
-# z-* sweep. Readers of an id that want the epoch strip a leading "1-" first.
+# z-* sweep. Readers of an id that want the epoch strip a leading tier prefix
+# ("0-", "1-" or "z-", from --priority below) first.
 #
 # A LANE QUEUING DIRECTLY GETS IT TOO (2026-09-27). Only ab_run.sh and arms.sh
 # read the label, so a pilot or soak queued straight through here got a plain
@@ -728,9 +744,34 @@ fi
 #   HAKUX_RELEASE_PRIO= (set, empty)  plain id, no read: ab_run.sh and arms.sh
 #                               pass their own reader's answer this way
 #   unset                       read the label
+#
+# --priority (defect 22) NAMES THE TIER INSTEAD OF RENAMING THE FILE. Until it
+# existed, the only lever above the release tier was the host renaming a queued
+# request to a 0-0- id by hand. On 2026-09-25, #311's reproduction, a 0.5
+# blocker, waited 163 min on the Nova until it was renamed. The tiers, in the
+# dispatcher's ASCII order:
+#   blocker   0-<epoch>-...   behind the host's own 0-0-* heads, ahead of all
+#                             else. It must name the issue it unblocks
+#                             (--issue, or #N in --purpose). No label is read.
+#   arm       as study. The two are recorded apart in the request's
+#   study     `priority` field but share a tier: the release label (below)
+#             already lifts a release arm, and putting every arm ahead of
+#             release studies is a decision this flag does not take.
+#   sweep     z-<epoch>-...   the idle tier, beside queue_full_sweep.sh's z-*.
+#                             arms.sh and status.sh count it apart. No read.
 RELEASE_LABEL="${HAKUX_RELEASE_LABEL:-0.5}"
 PRIO=""
-if [ "${HAKUX_RELEASE_PRIO+set}" = set ]; then
+if [ "$PRIORITY" = blocker ]; then
+    BLOCKS="$ISSUE"
+    [ -n "$BLOCKS" ] || BLOCKS=$(printf '%s' "$PURPOSE" | grep -o '#[0-9][0-9]*' | head -1)
+    if [ -z "$BLOCKS" ]; then
+        echo "refusing to queue: --priority blocker names no issue; give --issue N (or #N in --purpose) for what it unblocks" >&2
+        exit 2
+    fi
+    PRIO=0; PRIO_WHY="blocker: --priority blocker for ${BLOCKS#\#}"
+elif [ "$PRIORITY" = sweep ]; then
+    PRIO=z; PRIO_WHY="idle: --priority sweep"
+elif [ "${HAKUX_RELEASE_PRIO+set}" = set ]; then
     case "$HAKUX_RELEASE_PRIO" in
         ""|0) PRIO_WHY="plain: HAKUX_RELEASE_PRIO='$HAKUX_RELEASE_PRIO' set by the caller" ;;
         *) PRIO=1; PRIO_WHY="release: HAKUX_RELEASE_PRIO=$HAKUX_RELEASE_PRIO set by the caller" ;;
@@ -753,7 +794,7 @@ else
     fi
 fi
 echo "priority $PRIO_WHY" >&2
-ID="${PRIO:+1-}$(date +%s)-$WHO-$$"
+ID="${PRIO:+$PRIO-}$(date +%s)-$WHO-$$"
 mkdir -p "$D/queue"
 # Written to a dotfile and renamed into place, because the dispatcher globs
 # `queue/*.req` and a claim is an atomic rename of whatever it finds. Writing
@@ -1088,7 +1129,7 @@ fi
 # `env` goes LAST and as the remaining argv, because it is the only repeatable
 # option here and packing it into one comma-joined string -- the shape every
 # other list option uses -- would make a value containing a comma unqueueable.
-ROUTE="$ROUTE" ROUTE_TEXT="$ROUTE_TEXT" \
+ROUTE="$ROUTE" ROUTE_TEXT="$ROUTE_TEXT" PRIORITY="$PRIORITY" PIN="$PIN" \
 python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" "$AUDIO_CAPTURE" "$BASE_ISO" "$PERFLOG" "$ONLY_TESTS" "$FRAMES_EVERY" "$PROGRAM" ${ENV_VARS[@]+"${ENV_VARS[@]}"} <<'PY'
 import json, sys
 (p, i, who, purpose, suites, ref, arm, runs, tests, title, seconds,
@@ -1103,6 +1144,8 @@ json.dump({"id": i, "requester": who, "purpose": purpose,
            "ref": ref, "arm": arm, "runs": int(runs),
            "title": title, "seconds": int(seconds),
            "device": device,
+           # "hard" or absent: see --hard-pin and affinity.py _is_load_pin.
+           **({"pin": "hard"} if __import__("os").environ.get("PIN") == "hard" else {}),
            "pull_glob": pull_glob,
            "audio_capture": arm_audio,
            "base_iso": base_iso,
@@ -1120,6 +1163,8 @@ json.dump({"id": i, "requester": who, "purpose": purpose,
            "route": __import__("os").environ.get("ROUTE_TEXT", ""),
            "expect": expect, "expect_sha": expect_sha,
            "no_expect": no_expect,
+           # The tier asked for (--priority); the id's prefix is its effect.
+           "priority": __import__("os").environ.get("PRIORITY", "study"),
            "queued_utc": __import__("datetime").datetime.now(
                __import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")},
           open(p, "w"), indent=2)
