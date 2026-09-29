@@ -207,3 +207,17 @@ and a runtime reader, the `[gpl569] ... mode=` and `[uber569] mode=` lines.
 - `uberspike569-gpl-doa-soak.json`, legs N1-N3 and G: A, B and H, cold DOA survey soaks of 440 s on
   the Nova, judged by `uberjudge.py`. Queued by hand (the arms job leaves soaks to their lane).
   The three are separate perflog apks, so each starts cleared.
+
+**Queued (attempt 4), the soak arms on the Nova, in order:**
+- A `1790714390-uberspike569-2903782` (23543417aa, default 0)
+- B `1790714395-uberspike569-2904221` (752b4f0f7b, default 3)
+- H `1790714395-uberspike569-2904335` (6bec23c3f4, default 4)
+
+The arms job queues the E pixel arm from `uberspike569-gpl-pixels.json`, and posts its verdict as a
+`[job.arms]` comment on PR #618. Preflight passes on the branch (`--allow-tracker`).
+
+**Attempt 4 ended as a wait** on those four results. On resume:
+- run `uberjudge.py --a --b --h` on the three dirs;
+- read E per capture;
+- read E's B logcat for `[uber569] mode=4 links=N` with N > 0; without it, E is void;
+- then the verdict, the #569 post, and mark the PR ready.
