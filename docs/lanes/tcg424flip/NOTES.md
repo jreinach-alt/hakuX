@@ -61,7 +61,22 @@ Arctic spends 14% of its vCPU time on the two #424 mechanisms. Blinx spends
 
 ## Runs
 
-(filled in as they land)
+Pilot queued 2026-09-29 05:4xZ, both pinned to the Thor at 62ef8bf0fe with
+expect_sha 9aeef14aa07b (read back from the queue files):
+
+- A: `1-1790660189-lane.tcg424flip-1147138` (`HAKUX_TCG424_RANGE=0`)
+- B: `1-1790660193-lane.tcg424flip-1148129` (no env)
+
+The Thor held a cold-slot hold for slowtier2's
+`1-1790609664-lane.slowtier2-alias942359` when these were queued. The cool gate
+applies to each run anyway.
+
+The pgraph arm (tcg424flip-pgraph.json) is left to the arms job.
+
+**Waiting on:** the two pilot results above, and the arms job's `[job.arms]`
+verdict for tcg424flip-pgraph.json. Next step: read the pilot with
+arcticread.py. If M0 is valid and M4' is not clearly failing, write
+`pilots/lane.tcg424flip.ok` and queue the remaining A B A B.
 
 ## For the next lane
 
