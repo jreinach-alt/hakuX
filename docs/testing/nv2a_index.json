@@ -1840,73 +1840,73 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:429",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:598",
    "symbols": [],
    "text": "\"  if (d <= lightLocalRange(%d)) {\\n\"  /* FIXME: Double check that range is inclusive */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:469",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:638",
    "symbols": [],
    "text": "* (\"XXX spotlight\"), so it stays float32 and is rounded into"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:893",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:1062",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:914",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:1083",
    "symbols": [],
    "text": "/* FIXME: could be nicer if some channels share the same texgen */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:916",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:1085",
    "symbols": [],
    "text": "/* TODO: TexGen View Model missing! */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:935",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:1104",
    "symbols": [],
    "text": "/* FIXME: u, r and m only have to be calculated once */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:937",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:1106",
    "symbols": [],
    "text": "//FIXME: tNormal before or after normalization? Always normalize?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:940",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:1109",
    "symbols": [],
    "text": "/* FIXME: This would consume 1 division fewer and *might* be"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:955",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:1124",
    "symbols": [],
    "text": "/* FIXME: u and r only have to be calculated once, can share the one from SPHERE_MAP */"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:968",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:1137",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:1081",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:1250",
    "symbols": [],
    "text": "/* FIXME: Do we have to clamp here? */"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:1098",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:1267",
    "symbols": [],
    "text": "assert(!\"Invalid foggen mode\");"
   },
@@ -2812,13 +2812,13 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/vk/shaders.c:1109",
+   "loc": "hw/xbox/nv2a/pgraph/vk/shaders.c:1156",
    "symbols": [],
    "text": "abort();"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/vk/shaders.c:1117",
+   "loc": "hw/xbox/nv2a/pgraph/vk/shaders.c:1164",
    "symbols": [],
    "text": "assert(!\"Invalid shader module kind\");"
   },
@@ -4652,7 +4652,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "568aa06849a2e1c78682de7a072de9cb1b0f27a7",
+  "emulator_commit": "bca7958c32c44a9346e4449e37d044f3fffbfccc",
   "gaps": 497,
   "resolved_tables": 1,
   "sites": 2994,
