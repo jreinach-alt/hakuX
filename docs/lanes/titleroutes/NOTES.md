@@ -2163,3 +2163,60 @@ targets.toml and has no benchmark.
 4. Thor titles (Bicycle Casino, Breeders' Cup, AMF Xtreme Bowling, ... from
    the hand-over; Bruce Lee's route check) once the Thor is back in
    service for title work and is not held.
+
+## Session 38 (resumed 2026-09-30, attempt 1): why attempt 37 did not finish, and re-queuing the lost benchmarks
+
+**Why the previous attempt did not finish:** session 37 ended after queueing
+three Nova benchmarks (Midnight Club 3 `1-1790734333-titleroutes-3037624`,
+187: Ride or Die `1-1790735661-titleroutes-3181153`, Crash: Wrath of Cortex
+`1-1790736688-titleroutes-3301413`) and its own commits had already folded
+into `origin/master` as `a3681ccb0b` (PR #626) by the time this session
+started -- so the branch itself was not the problem. hostops's 03:31
+addendum expected those three results to be waiting in `dispatch/results`.
+They are not: no trace of any of the three request ids anywhere under
+`dispatch/` (queue, running, results, void). Between session 37 (ending
+~20:01 PDT 09-29) and now, the harness went through the GitHub suspension,
+the offline-git cutover, and lane.hddcrash's mode-660 fix for a bug that
+crashed **every** titles.qcow2 boot 2-7 ms after `sdl2_display_early_init`
+(dispatch/board-requests/hddcrash's NOTES: ~190 hdd.img runs with 0 early
+crashes vs. 10 of 11 titles.qcow2 runs dead, 09-28 00:00 to 09-29 20:05).
+My three requests were queued at 19:22-19:41 PDT 09-29, inside that crash
+window, against the Nova's titles disk -- the most likely explanation is
+they died the same way and were later reaped, though I have no surviving
+run.log to confirm it was this bug specifically rather than the dispatch
+disruption itself. Either way, nothing about the routes or targets.toml
+entries is in question: all three replayed clean interactively in session
+37, and `titlestate_selftest.py` still passes.
+
+**This session:**
+- Merged `origin/master` (fast-forward, no conflicts): HEAD moved from
+  `9c922e017a` to `146b8887db`, bringing in `lane/cithrottle` (CI throttle)
+  and `lane/hddcrash` (titles-disk mode 660 fix), both folded offline by
+  lane.local while GitHub was suspended. `gh api user` still returns 403
+  ("Sorry. Your account was suspended") as of this session, so this PR
+  follows the offline protocol in `offline-git/README.md`: `docs/lanes/
+  titleroutes/PR.md` in place of a GitHub PR, `OUTBOX.md` in place of a
+  #397 comment.
+- Confirmed the titles-disk kill-switch drop-in is gone
+  (`offline-git/titlesdisk-off.conf.removed-20260930`) and the live
+  dispatcher snapshot (`dispatch/bin/dispatcher.sh`) already has the
+  mode-660 fix (`dev_make_660`, `mode_found`/`mode` in hdd.json).
+- **The Thor is out of service.** `dispatch/hold/thor` = `lanelocal-fanwait`
+  since 2026-09-30T02:22:37Z: the Thor's fan is dead (owner 09-29, a
+  warranty replacement is shipping). Not mine to release. No Thor work
+  this session.
+- Nova is free (no hold), asleep, battery 35% -- above the 30% floor but
+  with little margin, so I re-queued rather than took an interactive hold.
+  Re-queued the three lost benchmarks at ref `146b8887db` (current
+  `origin/master`, carries the disk fix), same routes and `--seconds` as
+  before:
+  - Midnight Club 3 (`54540079`, `midnight-club-3.returning`): `1-1790764527-titleroutes-2436824`, 460 s
+  - 187: Ride or Die (`55530036`, `187-ride-or-die.returning`): `1-1790764530-titleroutes-2437076`, 370 s
+  - Crash: Wrath of Cortex (`56550003`, `crash-wrath-of-cortex`): `1-1790764531-titleroutes-2437119`, 400 s
+- `titlestate_selftest.py`: all checks pass. `targets.toml` parses with
+  `tomllib`.
+
+**Next:** read the three re-queued results once they land, put them in the
+#397 table (via OUTBOX until GitHub is back), then continue with Black
+Stone / Burnout Revenge on the Nova. Thor work waits for `lanelocal-fanwait`
+to lift.
