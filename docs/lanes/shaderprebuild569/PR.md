@@ -3,7 +3,7 @@ State: draft
 
 Lane: shaderprebuild569       Issue: #569, for #433
 Base: master @ 2c59b7bbba
-Files: docs/lanes/shaderprebuild569/NOTES.md, docs/lanes/shaderprebuild569/PR.md, docs/lanes/shaderprebuild569/pbjudge.py, docs/lanes/shaderprebuild569/typecheck.py, docs/testing/predictions/shaderprebuild569-doa-soak.json, docs/testing/predictions/shaderprebuild569-kabuki-soak.json, hw/xbox/nv2a/pgraph/vk/compile_worker.c, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/shaders.c
+Files: docs/lanes/shaderprebuild569/NOTES.md, docs/lanes/shaderprebuild569/OUTBOX.md, docs/lanes/shaderprebuild569/PR.md, docs/lanes/shaderprebuild569/pbjudge.py, docs/lanes/shaderprebuild569/typecheck.py, docs/testing/predictions/shaderprebuild569-doa-soak.json, docs/testing/predictions/shaderprebuild569-kabuki-soak.json, hw/xbox/nv2a/pgraph/vk/compile_worker.c, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/shaders.c
 Prediction: docs/testing/predictions/shaderprebuild569-doa-soak.json @ 79fa745ea324732947d4780217b75300d83dbf39ab43f00b5fdcaf6c55663c28; docs/testing/predictions/shaderprebuild569-kabuki-soak.json @ 4bd7cdb383d595e71b847af7acb37e5b54b2d8cea316c44f5848255f830d8cf4
 Needs device: yes    Needs NDK: yes
 
@@ -34,7 +34,7 @@ Details and thread-safety reading are in NOTES section 2.
 
 **Proof:** W1-W4 as two-launch soak pairs on the Nova, DOA then Kabuki. Both launches run with
 `HAKUX_PLC_WIPE=1`, so launch 2 has the records but no cache file (W4, the falsifier). Legs are
-in NOTES section 3; the judge is `pbjudge.py`. No run yet.
+in NOTES section 3; the judge is `pbjudge.py`. The DOA pair is queued (NOTES section 4); no result yet.
 
 Release note (performance): a game you have played before no longer freezes the first time a scene loads.
 
