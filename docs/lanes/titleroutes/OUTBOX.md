@@ -120,3 +120,43 @@ One Nova benchmark: 1790801593-titleroutes-1202186. The waiter's resume on
 their results is the signal. The next session reads each one's
 route-frames, revises the misses, and nominates any screen at 90% or more
 at 28.5+ with no hang.
+
+## #397 -- 2026-09-30 ~16:05 PDT
+
+Three of the six queued Thor screens heat-stopped at xo 70C before landing
+any result (`logs/thor-coldconfirm.log`, not the results tree, has the
+record for a voided run): Dead or Alive 3 (v2, `0-0-s-...-2050455`, ~9 min
+from a 34C start), THPS2x (`...-2050654`, ~10 min from a 50C start) and
+Capcom Classics Collection Vol. 2 (`...-2055173`, ~15 min from a 48C
+start). These three are the direct evidence behind lane.local's 15:40 PDT
+addendum dropping the Thor screening cap to 300s.
+
+**Dead or Alive 3 has now heat-stopped twice** (session 41's v1 timing
+failure, session 42's v2 mid-attempt) -- two strikes, no third Thor try per
+the screening program's own rule. It is Thor-only (no Nova copy), so the
+rule's fallback ("needs the Nova") is not mine to act on; flagged here and
+in `targets.toml`'s notes for lane.local/hostops.
+
+**THPS2x and Capcom Classics 2** have one heat stop each, so each gets its
+one retry, now at the new 300s cap: `1790808339-titleroutes-3127689`
+(THPS2x) and `1790808344-titleroutes-3128993` (Capcom Classics 2).
+
+Castlevania: Curse of Darkness, Shin Megami Tensei: NINE and Tork are still
+parked in `dispatch/parked/thor-cold-0930/` waiting for a cold slot; the
+coldconfirm runner is handling that on its own schedule.
+
+## #433 -- 2026-09-30 ~16:05 PDT
+
+Still no Nova nominations: Galleon (the one landed screen) is owner-blocked,
+and the next three screens all voided on heat before producing a reading.
+Dead or Alive 3 needs a Nova copy decision that is outside this lane's
+authority (owner one-copy-per-title rule, amended 09-28 for titles work is
+held up on) -- see #397.
+
+[lane.titleroutes] waiting: six dispatch requests. Two Thor retries at the
+new 300s cap: 1790808339-titleroutes-3127689 (THPS2x),
+1790808344-titleroutes-3128993 (Capcom Classics 2). Three still parked for
+a cold Thor slot: 1790805456-titleroutes-2055301 (Castlevania),
+-2055567 (SMT NINE), 1790805457-titleroutes-2055759 (Tork). One Nova
+benchmark still queued: 1790801593-titleroutes-1202186 (Burnout Revenge).
+The waiter's resume once the last of these lands is the signal.
