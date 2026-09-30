@@ -127,6 +127,8 @@ that writes keys, so the recovery is one more soak on the same ref right after i
 against the original L1.
 
 Still to do, in order:
+0. Wait for `lane/uberspike569-gpl` to fold. Then merge master and apply the resolution under
+   "Attempt 2" below.
 1. Judge the DOA pair. Write `pilots/shaderprebuild569.ok`, because the Kabuki pair (2 x 690 s)
    takes this requester past the 30-minute pilot allowance.
 2. Queue the Kabuki pair.
@@ -141,6 +143,38 @@ same worker loop, `CompileJob` enum, shutdown and `renderer.h` structs. This bra
 state in an opaque `CompilePool` behind one pointer in `r->compile_worker`, adds no job type,
 and leaves the GPL/uber code alone. Whichever folds second merges the worker loop by hand: their
 new `switch` cases go into this loop's `job` branch unchanged.
+
+### Attempt 2 (2026-09-30 14:15 PDT)
+
+**Why attempt 1 did not finish.** It ended correctly on a wait: the DOA pair was queued, with
+nothing left to do before it ran. At 14:16 PDT both requests are still in `queue/`, and nothing
+is running on the Nova. Three Nova requests are ahead of them: the two forzadecay414 arms and a
+verdict433 Crimson Skies run. A brief addendum at 14:10 also lends `compile_worker.c` to
+lane.uberspike569 until `lane/uberspike569-gpl` folds, so this PR cannot be ready before that
+fold in any case.
+
+**Trial merge of `origin/lane/uberspike569-gpl` @ 758a7f7735 (aborted, not committed).** Only
+`compile_worker.c` conflicts, in two hunks. The resolution:
+1. Includes: keep both sides (`system/runstate.h`, `ui/xemu-settings.h`, `glsl/vsh-uber.h`).
+2. The worker's job switch: take this branch's `if (job) / else if (pb) / else save` body, and
+   add their `COMPILE_JOB_GPL_UBER_LIB` and `COMPILE_JOB_GPL_UBER_NEXT` cases to its switch.
+3. Theirs gives `create_monolithic_pipeline` a fourth argument, `bool draw_path`. With `false`
+   it bypasses `pgraph_vk_create_graphics_pipeline_fb`, which is what this branch's thread-local
+   `pcfb_quiet` did. So `prebuild_run` calls it with `false`, and `pcfb_quiet` is deleted.
+
+With those three edits, the five C files pass the NDK type-check with 0 errors. The auto-merged
+parts also fit the pool:
+- their uber jobs take rank 2 in `compile_job_rank`, with LTO;
+- their shutdown drain (uber jobs) sits inside the pool's drain loop;
+- their enqueues go through `pgraph_vk_compile_worker_enqueue`.
+
+With GPL on, the draw path makes GPL pipelines, and only monolithic creates are recorded. So a
+GPL session writes no records, and the pre-build covers the monolithic path, which is the
+default.
+
+After the fold: merge `origin/master`, apply 1-3, type-check, push, and queue the head smoke.
+The DOA pair's verdict on 54865a3521 still judges the mechanism, because the merge does not
+change the pre-build or save code.
 
 ## 6. Item 6 design (the second PR, `lane/shaderprebuild569-sets`; not built here)
 

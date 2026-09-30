@@ -36,6 +36,11 @@ Details and thread-safety reading are in NOTES section 2.
 `HAKUX_PLC_WIPE=1`, so launch 2 has the records but no cache file (W4, the falsifier). Legs are
 in NOTES section 3; the judge is `pbjudge.py`. The DOA pair is queued (NOTES section 4); no result yet.
 
+**Waiting on:** (a) DOA requests `1790791301-shaderprebuild569-118449` and
+`1790791306-shaderprebuild569-118725`, still queued on the Nova as of 2026-09-30 14:16 PDT;
+(b) the fold of `lane/uberspike569-gpl`, which holds `compile_worker.c` until then. A trial
+merge resolves in three edits and type-checks clean (NOTES section 4, "Attempt 2").
+
 Release note (performance): a game you have played before no longer freezes the first time a scene loads.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
