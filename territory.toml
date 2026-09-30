@@ -1732,3 +1732,8 @@ issues = ["433"]
 files = ["docs/lanes/defecttriage433/**"]
 note = "STARTED (lane.local 2026-09-30T17:15Z, offline), briefs/defecttriage433.md: classify and rank the defects blocking near-Playable titles. Docs only. Owner-approved 09-30."
 
+[lane.verdict10min]
+issues = ["433"]
+files = ["docs/testing/titles/targets.toml", "docs/testing/title_verdict.py", "docs/testing/jobs/selftest.d/99-verdict-10min.sh", "docs/lanes/verdict10min/**"]
+note = "STARTED (lane.local 2026-09-30T19:10Z, offline), briefs/verdict10min.md: the owner changed the Playable confirmation to 600 s (09-30 ~12:05 PDT), 1200 s while the device is still heating and for flagged titles, and a 1-in-5 audit."
+
