@@ -1,0 +1,110 @@
+# Galleon (41540004): one route. PLAYED by nav.py on the Thor, 2026-09-27
+# 00:46 PDT (lane.titleroutes HELD session galleon.first-run-20260927T004625).
+#
+#   SCi logo -> title "Please press the START button to begin" -> "Select a
+#   save game" A / B / C, cursor on A -> New Game / Options / Clear Save
+#   Game, cursor on New Game -> Loading -> the ship intro, cutscenes and a
+#   loading screen, advanced with A every 6 s -> tutorial on the deck: "Turn Rhama by using the left
+#   thumbstick" / "Turn Rhama to face towards the arrow", with a stamina bar.
+#
+# The title times out into an attract demo whose load runs ~2.5 min, and
+# its window moved between runs: it was up at 28 s in one run and already
+# gone at 48 s in another. START also selects on the menus, so the route
+# presses START every 3 s from 28 s to 58 s: the first one that lands on the
+# title opens the save list, the next two pick slot A and New Game, and the
+# rest land on the loading screen and the intro. A first route with one
+# START at 48 s missed the title on replay (scratch/replay/galleon-004011).
+#
+# Player control: LX max for 1.5 s turned Rhama toward the arrow and the
+# tutorial answered "Excellent!" (nav frames 013-c6 -> 014-turned). The play
+# pattern walks, turns both ways and presses A to dismiss tutorial prompts.
+#
+# NOT YET REPLAYED on this Thor session's own disk -- this text is nav.py's
+# emitted route from the session above, queued here as the Thor screening
+# program's combined validate+benchmark soak (no interactive Thor session
+# is available: hold/thor stays with lanelocal-fanwait). A screening soak
+# that does not reach `mark gameplay` means this route needs revision, not
+# that Galleon itself is blocked.
+wait 28.1
+shot t28
+wait 1.3
+press START 200
+wait 5.3
+press START 200
+wait 3.6
+press START 200
+wait 3.5
+press START 200
+wait 3.1
+shot t40
+wait 0.9
+press START 200
+wait 3.6
+press START 200
+wait 3.7
+press START 200
+wait 3.5
+press START 200
+wait 3.6
+press START 200
+wait 3.6
+press START 200
+wait 4.8
+shot t58
+wait 17.9
+press A 300
+wait 6.7
+press A 300
+wait 8.4
+press A 300
+wait 6.6
+press A 300
+wait 6.1
+shot c1
+wait 1.5
+press A 300
+wait 6.6
+press A 300
+wait 6.6
+press A 300
+wait 8.4
+press A 300
+wait 6.1
+shot c2
+wait 1.5
+press A 300
+wait 6.7
+press A 300
+wait 6.7
+press A 300
+wait 6.1
+shot c3
+wait 14.0
+press A 300
+wait 4.6
+press A 300
+wait 4.2
+axis LX max
+wait 1.7
+axis LX mid
+shot turned
+wait 1.8
+mark gameplay
+repeat forever {
+    axis LY min
+    wait 2
+    axis LY mid
+    axis LX max
+    wait 1
+    axis LX mid
+    press A 200
+    wait 1
+    axis LY min
+    wait 2
+    axis LY mid
+    axis LX min
+    wait 1
+    axis LX mid
+    press A 200
+    wait 1
+}
