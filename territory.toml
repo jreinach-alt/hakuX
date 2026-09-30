@@ -1709,10 +1709,3 @@ issues = []
 files = []
 retired_utc = "2026-09-30T02:46:43Z"
 note = "RETIRED (hostops 2026-09-30T02:46Z): PR #628 folded as 988b0bc753, unit gone. status_html.py's escalation_items() now treats a `## ` block as one item, matches RESOLVED only as a leading marker, and skips the timer item while the tick is activating, per briefs/escalationparse.md."
-
-
-[lane.cloud-audit2-627]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-627, audit pass 2 of PR #627 on branch lane/hddperm, attempt 1 of 4 on claude-sonnet-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 627` removes this row when the unit ends."
