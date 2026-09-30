@@ -195,8 +195,9 @@ notes = "#431 (comment 5851536933): 30, medium confidence. GameSpot and Eurogame
 [titles."45410076"]
 name = "Burnout Revenge"
 iso = { nova = "45410076-Burnout_Revenge.xiso.iso" }
+route = "burnout-revenge.returning"
 target_fps = 60
-notes = "#431 (comment 5849938891): 60, high confidence. Criterion to Digital Foundry; DarkZero (Xbox)"
+notes = "#431 (comment 5849938891): 60, high confidence. Criterion to Digital Foundry; DarkZero (Xbox). routes/burnout-revenge.returning.route PLAYED and replayed clean (session 41): Traffic Attack event, mark at live gameplay with HUD/speed, replay ran the full event to its RESULTS screen."
 
 [titles."4D530065"]
 name = "Blinx 2: Battle of Time & Space ~ Blinx 2: Masters of Time & Space"
