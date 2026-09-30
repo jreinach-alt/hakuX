@@ -1691,3 +1691,10 @@ issues = []
 files = []
 retired_utc = "2026-09-29T01:40:00Z"
 note = "RETIRED (hostops 2026-09-29T01:40Z): attempt 2, PR #595, folded as 605532c2f8 (18:15 PDT), unit gone; its row held no files (written late by job.board). See [retired.battadmit] for attempt 1 (PR #587)."
+
+
+[lane.cloud-remediate-622]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-622, remediation of PR #622 on branch lane/hddsplit, attempt 1 of 4 on claude-opus-5-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 622` removes this row when the unit ends."
