@@ -538,6 +538,22 @@ What this does to #583:
 #583 stays draft. Its code, fix-forza2 (B holds) and fix-auf (holds) are unchanged; only the pixel
 arm is open.
 
+**Resume 2026-09-30 ~00:15Z (attempt 4 of 4; why attempt 3 did not finish):** attempt 3 could not
+re-queue the pair itself. The dispatch wipe had deleted both requests, and the stale
+`arms/pairs/388ea55c….json` still named them. That file made `already_ran()` count the sha as in
+flight, so the arms job never queued it again. What changed this session:
+- Both old halves (`-3483119`, `-3483172`) carry `VOIDED`, so the RAN set does not count them.
+- No `judged/` or `skipped/` marker exists for the sha.
+- I moved the stale pair record to
+  `arms/.removed-for-requeue/388ea55c….pairs.json.wiped-2900948.bak`. That is the step the arms
+  job's own ARM ERROR text gives.
+
+The arms job queued the pair on its next tick (1790727472): base
+`1-1790727472-arms-forzadecay414-base-2035879` (85347ffbd1) and fix `-fix-2035992` (10fe2f59a7).
+Both carry expect_sha 388ea55c4b19, 2 runs each, and neither is pinned to a device. When they were
+queued, the Thor and the Nova were both on holds, with 28 requests in the queue. #583 stays draft
+until the `[job.arms]` verdict.
+
 ## Do not repeat
 
 - Do not re-queue a pre-fix Forza soak on the Nova to read a whole master race. lmkd kills it at
