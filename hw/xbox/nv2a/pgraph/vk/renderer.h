@@ -278,7 +278,9 @@ typedef struct PipelineBinding {
     /* #569 P5, HAKUX_GPL=2: the link-time-optimised pipeline built on the
      * compile worker, swapped in by create_pipeline() when ready; the
      * fast-linked one it replaces is kept until eviction, since a command
-     * buffer in flight may still use it */
+     * buffer in flight may still use it. HAKUX_GPL=3 uses the same slot for
+     * the specialised pipeline that replaces an uber-linked one. */
+    bool gpl_uber;              /* pipeline links the uber vertex stage */
     bool gpl_lto_pending;
     VkPipeline gpl_lto_pipeline;
     VkPipeline gpl_retired_pipeline;
@@ -475,6 +477,14 @@ typedef struct ShaderBinding {
     struct {
         ShaderModuleInfo *module_info;
         VshUniformLocs uniform_locs;
+        /* #569, HAKUX_GPL=3|4: the family's uber vertex stage, NULL when
+         * the switch is off or the state is not covered. Its uniform block
+         * is module_info's with ubVsh appended, so a draw uploads into
+         * upload_info's layout (the uber one when there is one) and either
+         * pipeline reads it (docs/lanes/uberspike569/BUILD.md 2.1). */
+        ShaderModuleInfo *uber_module_info;
+        ShaderModuleInfo *upload_info;
+        int uber_loc;
     } vsh;
     struct {
         ShaderModuleInfo *module_info;
@@ -536,7 +546,20 @@ typedef enum {
     COMPILE_JOB_SHADER_MODULE,
     COMPILE_JOB_PIPELINE,
     COMPILE_JOB_GPL_LTO,
+    COMPILE_JOB_GPL_UBER_LIB,
+    COMPILE_JOB_GPL_UBER_NEXT,
 } CompileJobType;
+
+/* #569, HAKUX_GPL=3|4 (vk/compile_worker.c): a job's own copy of each
+ * stage's SPIR-V, so it never depends on a render-thread module's life */
+/* The vertex binding the uber link's zero attributes read (gpl.uber_zero_buf);
+ * the draws' own bindings are 0..15 */
+#define UBER_ZERO_BINDING NV2A_VERTEXSHADER_ATTRIBUTES
+
+typedef struct GplStageCode {
+    VkShaderStageFlagBits stage;
+    GBytes *spirv;
+} GplStageCode;
 
 typedef struct CompileJob {
     CompileJobType type;
@@ -556,6 +579,18 @@ typedef struct CompileJob {
             VkPipelineLayout layout;
             VkRenderPass render_pass;
         } gpl_lto;
+        /* an uber pre-raster library, built once and pinned */
+        struct {
+            GBytes *key;
+            GplStageCode code[2];       /* vs, and gs if any */
+            PipelineCreateParams params;
+        } gpl_uber_lib;
+        /* the specialised pipeline that replaces an uber-linked one */
+        struct {
+            PipelineBinding *target;
+            GplStageCode code[3];
+            PipelineCreateParams params;
+        } gpl_uber_next;
     };
 } CompileJob;
 
@@ -1559,11 +1594,23 @@ typedef struct PGRAPHVkState {
     struct {
         bool supported;         /* extension and feature, on this device */
         bool fast_linking;      /* graphicsPipelineLibraryFastLinking */
-        int mode;               /* 0 off, 1 fast link, 2 + LTO swap */
+        /* 0 off, 1 fast link, 2 + LTO swap; #569's uber ladder: 3 a miss
+         * fast-links the uber vertex stage and the specialised pipeline is
+         * swapped in when the worker has built it, 4 the same held on the
+         * uber stage (exactness and GPU-cost measurement only) */
+        int mode;
         VkPipelineLayout layout;    /* the one layout every draw uses */
         QemuMutex lock;         /* libs, stats */
         GHashTable *libs[4];    /* GBytes key -> GplLib */
-        int lto_inflight;       /* LTO jobs queued or running */
+        GHashTable *uber_queued; /* uber PR keys queued for the worker */
+        /* The uber vertex stage declares all sixteen attribute inputs; its
+         * link's vertex-input library feeds the ones this draw sends as
+         * uniforms from this zero buffer at UBER_ZERO_BINDING, so every
+         * input it consumes has an attribute. The stage selects the uniform
+         * value, so what it reads there is never used. */
+        VkBuffer uber_zero_buf;
+        VmaAllocation uber_zero_alloc;
+        int lto_inflight;       /* LTO and uber jobs queued or running */
         struct {
             unsigned int lib_new[4], lib_hit[4], lib_fail[4];
             uint64_t lib_us[4];
@@ -1572,6 +1619,15 @@ typedef struct PGRAPHVkState {
             unsigned int lto_done, lto_fail, lto_swapped;
             uint64_t lto_us;
             unsigned int flushes;
+            /* uber: rung-0 links, misses with no uber library yet
+             * (monolithic inline), libraries built and their worker time,
+             * specialised pipelines built behind and swapped in, states
+             * the uber stage does not cover */
+            unsigned int uber_links, uber_cold, uber_libs, uber_lib_fail;
+            uint64_t uber_lib_us;
+            unsigned int uber_next_done, uber_next_fail, uber_swapped;
+            uint64_t uber_next_us;
+            unsigned int uber_uncovered;
         } stats;
     } gpl;
 #endif
@@ -1840,6 +1896,20 @@ VkResult pgraph_vk_gpl_create_pipeline(PGRAPHVkState *r,
                                        PipelineBinding *target,
                                        const PipelineCreateParams *p,
                                        VkPipeline *pipeline);
+/*
+ * #569, HAKUX_GPL=3|4: a pipeline for a miss whose vertex state the uber
+ * stage covers. spec is the specialised pipeline's parameters (gpl fields
+ * filled), uber the same with the vertex stage and gpl_vs_id replaced by the
+ * uber module's; spec_mods and uber_vs are the modules behind them, whose
+ * SPIR-V the worker copies. Sets *uber when the pipeline links the uber
+ * stage.
+ */
+VkResult pgraph_vk_gpl_uber_create_pipeline(
+    PGRAPHVkState *r, PipelineBinding *target,
+    const PipelineCreateParams *spec, const PipelineCreateParams *uber,
+    ShaderModuleInfo *const spec_mods[3], ShaderModuleInfo *uber_vs,
+    VkPipeline *pipeline, bool *is_uber);
+void pgraph_vk_gpl_uber_log(PGRAPHVkState *r);
 void pgraph_vk_gpl_wait_lto_idle(PGRAPHVkState *r);
 void pgraph_vk_gpl_finalize(PGRAPHVkState *r);
 #endif
