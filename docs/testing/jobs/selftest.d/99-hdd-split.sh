@@ -32,8 +32,15 @@ case "$1" in
     shell) shift; c="$*"
         case "$c" in
             "am force-stop"*) ;;
-            *"cat > shared_prefs/x1box_prefs.xml"*) cat > "$HS_DEV/prefs.xml" ;;
-            *"cat shared_prefs/x1box_prefs.xml"*) cat "$HS_DEV/prefs.xml" ;;
+            *"cat > shared_prefs/x1box_prefs.xml"*) cat > "$HS_DEV/prefs.xml"
+                [ -f "$HS_DEV/drop_readback" ] && touch "$HS_DEV/drop_next" ;;
+            *"cat shared_prefs/x1box_prefs.xml"*)   # drop_readback: the write lands, its read-back is lost
+                if [ -f "$HS_DEV/drop_next" ]; then rm -f "$HS_DEV/drop_next"; else cat "$HS_DEV/prefs.xml"; fi ;;
+            "cp -f "*)   # nospace: the on-device backup runs out of room part way
+                if [ -f "$HS_DEV/nospace" ]; then
+                    set -- $(map "$c" | tr -d "'"); head -c 100 "$3" > "$4"; exit 1
+                fi
+                sh -c "$(map "$c")" ;;
             *) sh -c "$(map "$c")" ;;
         esac ;;
 esac
@@ -139,6 +146,33 @@ check "  ... and is the image the registry says was pushed" \
 hs_env 'titles_disk_after req2 "$HS/r2"' >/dev/null 2>&1
 check "  ... an untouched disk is not pulled after the run" grep -q unchanged_or_blocked "$HS/r2/hdd.after.json"
 
+# ------------------------------- the pref write lands, its read-back is lost
+# (pass-1 M1.) The marker must already hold hdd.img, or the next disc run
+# boots the titles disk and the next title run makes that permanent.
+echo "== hdd split: a failed hddPath read-back still leaves the way back"
+mkdir -p "$HS/r5"; touch "$HS/dev/drop_readback"
+hs_env 'titles_disk_prepare req5 "$HS/r5"' > "$HS/r5.log" 2>&1; rc=$?
+rm -f "$HS/dev/drop_readback" "$HS/dev/drop_next"
+check "a lost read-back fails the prepare (rc=$rc)" [ "$rc" != 0 ]
+check "  ... the write did land: hddPath names titles.qcow2 (got: $(pref))" [ "$(pref)" = "$X/titles.qcow2" ]
+check "  ... and the marker already holds hdd.img" \
+      [ "$(cat "$HS/dispatch/.hdd_pref.nova" 2>/dev/null)" = "$X/hdd.img" ]
+hs_env 'restore_hdd_pref' >/dev/null 2>&1
+check "  ... so the next request's restore puts hdd.img back (got: $(pref))" [ "$(pref)" = "$X/hdd.img" ]
+check "  ... byte for byte" cmp -s "$HS/prefs.orig.xml" "$HS/dev/prefs.xml"
+# A device already left on the titles disk with no marker (the pre-fix fault).
+sed -i "s:$X/hdd.img</string>:$X/titles.qcow2</string>:" "$HS/dev/prefs.xml"
+mkdir -p "$HS/r6"
+hs_env 'titles_disk_prepare req6 "$HS/r6"' > "$HS/r6.log" 2>&1
+check "hddPath found on titles.qcow2 is never recorded as the one to put back" \
+      [ "$(cat "$HS/dispatch/.hdd_pref.nova" 2>/dev/null)" = "$X/hdd.img" ]
+hs_env 'titles_disk_after req6 "$HS/r6"' >/dev/null 2>&1
+check "  ... the run after it ends on hdd.img (got: $(pref))" [ "$(pref)" = "$X/hdd.img" ]
+printf '%s' "$X/titles.qcow2" > "$HS/dispatch/.hdd_pref.nova"
+sed -i "s:$X/hdd.img</string>:$X/titles.qcow2</string>:" "$HS/dev/prefs.xml"
+hs_env 'restore_hdd_pref' >/dev/null 2>&1
+check "a marker naming titles.qcow2 restores hdd.img (got: $(pref))" [ "$(pref)" = "$X/hdd.img" ]
+
 # ------------------------------------------------------ plan(): the guards
 echo "== hdd split: plan() never rebuilds over an unharvested disk"
 PT="$HS/plan"; mkdir -p "$PT/devices"
@@ -179,6 +213,28 @@ check "  ... the new hdd.img is not the old one" \
       [ "$(sha256sum "$HS/dev/fs/hdd.img" | cut -d' ' -f1)" != "$osha" ]
 check "  ... and every save on it survived" \
       eval 'for t in 4D530021 4541005B; do python3 "$TESTING/titles/saves.py" verify "$HS/dev/fs/hdd.img" "$HS/fix/$t" >/dev/null || exit 1; done'
+
+# (pass-1 M2.) A reset that cannot succeed on this disk is paid for once.
+echo "== hdd split: a failed reset is not retried on the same disk"
+FAILED="$HS/dispatch/.hdd_guard_failed.nova"
+guard() { : > "$HS/dev/calls"; rm -f "$HS/r4/hdd_guard.json"; hs_env 'HAKUX_HDD_RESET_BYTES=1000 hdd_img_guard "$HS/r4"' >> "$HS/r4.log" 2>&1; }
+touch "$HS/dev/nospace"; guard; rm -f "$HS/dev/nospace"
+check "no room for the backup: an alert" grep -q 'could not back up' "$HS/r4/hdd_guard.json"
+check "  ... and the partial hdd.img.bak-auto is removed" test ! -e "$HS/dev/fs/hdd.img.bak-auto"
+check "  ... the failure is recorded against the disk" test -s "$FAILED"
+guard
+check "  ... the next request writes the alert again, marked repeat" grep -q '"repeat": true' "$HS/r4/hdd_guard.json"
+check "  ... without pulling or hashing the disk" eval '! grep -q "pull\|sha256sum" "$HS/dev/calls"'
+head -c 3000000 /dev/urandom > "$HS/dev/fs/hdd.img"
+guard
+check "a disk saves.py refuses: an alert" grep -q 'saves.py reset refused' "$HS/r4/hdd_guard.json"
+guard
+check "  ... not retried while the disk is unchanged" \
+      eval 'grep -q "\"repeat\": true" "$HS/r4/hdd_guard.json" && ! grep -q "^pull" "$HS/dev/calls"'
+printf x >> "$HS/dev/fs/hdd.img"
+guard
+check "  ... a write to hdd.img re-arms the guard" \
+      eval '! grep -q "\"repeat\"" "$HS/r4/hdd_guard.json" && grep -q "^pull" "$HS/dev/calls"'
 
 # --------------------------------------------------------- the wiring
 echo "== hdd split: serve_one calls it where the runs are"

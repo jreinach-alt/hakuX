@@ -90,3 +90,20 @@ soak on each device pays the seed: one pull of hdd.img, ~11 MB since the
   reached the file.
 - `hdd.img.bak-auto` is overwritten by each guard reset; the 09-29 manual
   backups have their own names and are untouched.
+
+## Pass-1 remediation (2026-09-29)
+
+- M1: `set_hdd_pref <path> <marker>` writes the marker from the value it read,
+  before the write, so a lost read-back or a dead worker still leaves
+  `restore_hdd_pref` the way back. A value of `titles.qcow2` is never
+  recorded (hdd.img is recorded instead), and a marker already naming it
+  restores hdd.img. That also heals a device left in the pre-fix state.
+- M2: a reset that `saves.py` refuses, or a backup the device has no room
+  for, is recorded in `$D/.hdd_guard_failed.<device>` against hdd.img's
+  `stat` size and mtime. While those still match, the guard writes
+  `"repeat": true` and pays for no sha256, pull or reset. Any write re-arms
+  it. A partial `hdd.img.bak-auto` is removed. Pull and push failures are
+  not recorded; they may be transient.
+- L1 and L2 are left as they are (LOW, the lane's discretion).
+- Selftest legs for both: against the pre-fix dispatcher.sh, 12 of the 48
+  go red.

@@ -498,9 +498,14 @@ open(path, "w").write(s)
 PYHDD
 }
 
-# set_hdd_pref <path> ; echoes the hddPath it replaced. Verified by reading back.
+# set_hdd_pref <path> [marker] ; echoes the hddPath it replaced. Verified by
+# reading back. With a marker, the value to put back is recorded there BEFORE
+# the write (unless a marker is already there): a write that lands and a
+# read-back that hangs, or a worker that dies between them, must still leave
+# restore_hdd_pref something to restore. Never records the titles disk as the
+# original -- that would make it permanent -- but hdd.img in its place.
 set_hdd_pref() {
-    local want="$1" pkg tmp was back
+    local want="$1" marker="${2:-}" pkg tmp was back
     pkg="${PKG:-com.jreinach.hakux.debug}"
     tmp="$D/.prefs.${DEVICE_LABEL:-$SERIAL}.hdd.xml"
     adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (hdd pref)" shell am force-stop "$pkg" >/dev/null 2>&1
@@ -510,6 +515,10 @@ set_hdd_pref() {
         log "  HDD PREF: cannot read x1box_prefs.xml"; return 1
     fi
     was=$(hdd_pref_edit get "$tmp")
+    if [ -n "$marker" ] && [ ! -f "$marker" ]; then
+        [ "$was" = "$(x1box_dir)/titles.qcow2" ] && was="$(x1box_dir)/hdd.img"
+        printf '%s' "$was" > "$marker" || { log "  HDD PREF: cannot write $marker"; return 1; }
+    fi
     hdd_pref_edit set "$tmp" "$want" || return 1
     adb_call "$ADB_QUICK_TIMEOUT" "run-as write x1box_prefs.xml (hdd)" --in "$tmp" \
         shell "run-as $pkg sh -c 'cat > shared_prefs/x1box_prefs.xml'" >/dev/null 2>&1
@@ -527,6 +536,9 @@ restore_hdd_pref() {
     local marker; marker="$(hdd_pref_marker)"
     [ -f "$marker" ] || return 0
     local orig; orig=$(cat "$marker")
+    # A marker written before set_hdd_pref refused this value names the titles
+    # disk; put the discs' disk back instead.
+    [ "$orig" = "$(x1box_dir)/titles.qcow2" ] && orig="$(x1box_dir)/hdd.img"
     set_hdd_pref "$orig" >/dev/null || return 1
     rm -f "$marker"
     log "  hddPath restored to ${orig:-(unset)}"
@@ -614,11 +626,11 @@ titles_disk_prepare() {
         esac
     done
     [ "$action" = keep ] || { log "  TITLES DISK: no stable plan after $i rounds"; return 1; }
-    local was
-    was=$(set_hdd_pref "$dpath") || return 1
     # The FIRST value found is the one to put back: a marker already there
     # (a worker that died mid-run) holds it, and hddPath now reads ours.
-    [ -f "$(hdd_pref_marker)" ] || printf '%s' "$was" > "$(hdd_pref_marker)"
+    # set_hdd_pref writes the marker before the pref, so a failure here still
+    # leaves serve_one's restore_hdd_pref the value to put back.
+    set_hdd_pref "$dpath" "$(hdd_pref_marker)" >/dev/null || return 1
     python3 - "$rdir" "$dpath" "$sha" "$bytes" <<'PYHDD'
 import json, os, sys
 rdir, path, sha, n = sys.argv[1:5]
@@ -666,11 +678,27 @@ titles_disk_after() {
 # title's save pulled, a fresh disk built from them, each verified -- and the
 # old one kept on the device as hdd.img.bak-auto. A failed reset changes
 # nothing and says so. Writes <rdir>/hdd_guard.json when it acts.
+#
+# A reset that fails for a reason that will not change (saves.py refuses the
+# disk, or the device has no room for the backup) is recorded against the
+# disk's size and mtime in $D/.hdd_guard_failed.<device>; while hdd.img still
+# has that size and mtime, later requests write the alert without paying for
+# the sha256, the pull and the reset again. Any write to hdd.img, or removing
+# the file, re-arms the guard.
 hdd_img_guard() {
-    local rdir="$1" x dpath bytes limit="${HAKUX_HDD_RESET_BYTES:-1073741824}" sha h sdir stamp
+    local rdir="$1" x dpath bytes limit="${HAKUX_HDD_RESET_BYTES:-1073741824}" sha h sdir stamp fp failed
     x="$(x1box_dir)"; dpath="$x/hdd.img"
     bytes=$(dev_bytes "$dpath")
     [ "$bytes" -gt "$limit" ] || return 0
+    failed="$D/.hdd_guard_failed.${DEVICE_LABEL:-$SERIAL}"
+    fp=$(adb_call "$ADB_QUICK_TIMEOUT" "stat $dpath (guard)" shell "stat -c '%s %Y' '$dpath' 2>/dev/null" 2>/dev/null | tr -d '\r' | head -1)
+    [[ "$fp" =~ ^[0-9]+\ [0-9]+$ ]] || fp=""
+    if [ -n "$fp" ] && [ -f "$failed" ] && [ "$(head -1 "$failed")" = "$fp" ]; then
+        log "  HDD GUARD: hdd.img ($bytes B) is the disk whose reset already failed; not retried"
+        printf '{"action": "alert", "bytes": %s, "limit": %s, "repeat": true, "why": "%s"}\n' \
+            "$bytes" "$limit" "$(sed -n 2p "$failed" | tr -d '"')" > "$rdir/hdd_guard.json"
+        return 0
+    fi
     log "  HDD GUARD: hdd.img is $bytes B > $limit B; resetting it (saves.py reset)"
     stamp=$(date -u +%Y%m%dT%H%M%SZ); sdir="$D/hdd-reset/${DEVICE_LABEL:-$SERIAL}-$stamp"
     h="$sdir/pulled.img"; mkdir -p "$sdir"
@@ -679,14 +707,22 @@ hdd_img_guard() {
         printf '{"action": "alert", "bytes": %s, "limit": %s, "why": "%s"}\n' "$bytes" "$limit" "$1" > "$rdir/hdd_guard.json"
         rm -f "$h" "$sdir/hdd.img"
     }
+    # guard_fail_final: the same disk would fail the same way next time.
+    guard_fail_final() {
+        guard_fail "$1"
+        [ -n "$fp" ] && printf '%s\n%s\n' "$fp" "$1" > "$failed"
+    }
     adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (hdd guard)" shell am force-stop "${PKG:-com.jreinach.hakux.debug}" >/dev/null 2>&1
     sha=$(dev_sha256 "$dpath")
     [ -n "$sha" ] && dev_pull "$dpath" "$h" "$sha" || { guard_fail "pull failed"; return 0; }
     python3 "$SAVES_PY" reset "$h" "$sdir/hdd.img" "$sdir/saves" > "$sdir/reset.json" 2>>"$sdir/reset.err" \
-        || { guard_fail "saves.py reset refused: $(tail -1 "$sdir/reset.err" | tr -d '"')"; return 0; }
+        || { guard_fail_final "saves.py reset refused: $(tail -1 "$sdir/reset.err" | tr -d '"')"; return 0; }
     rm -f "$h"
+    # A partial backup holds the space the next attempt needs: removed.
     adb_call 600 "back up hdd.img" shell "cp -f '$dpath' '$dpath.bak-auto'" >/dev/null 2>&1 \
-        && [ "$(dev_sha256 "$dpath.bak-auto")" = "$sha" ] || { guard_fail "could not back up hdd.img on the device"; return 0; }
+        && [ "$(dev_sha256 "$dpath.bak-auto")" = "$sha" ] || {
+            adb_call "$ADB_QUICK_TIMEOUT" "rm partial hdd.img.bak-auto" shell "rm -f '$dpath.bak-auto'" >/dev/null 2>&1
+            guard_fail_final "could not back up hdd.img on the device"; return 0; }
     dev_push "$sdir/hdd.img" "$dpath" || { guard_fail "push of the rebuilt disk failed (hdd.img.bak-auto is the original)"; return 0; }
     python3 - "$rdir/hdd_guard.json" "$sdir/reset.json" "$bytes" "$limit" "$sdir" <<'PYHDD'
 import json, sys
@@ -696,7 +732,7 @@ json.dump({"action": "reset", "bytes": int(n), "limit": int(lim), "after_bytes":
            "titles": r["titles"], "saves": sdir + "/saves", "backup": "hdd.img.bak-auto"},
           open(out, "w"), indent=1)
 PYHDD
-    rm -f "$sdir/hdd.img"
+    rm -f "$sdir/hdd.img" "$failed"
     log "  HDD GUARD: hdd.img reset, $bytes B -> $(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["bytes"])' "$sdir/reset.json") B, saves in $sdir/saves"
 }
 
