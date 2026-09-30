@@ -92,8 +92,10 @@ The cheap version checks `access(hdd_path, R_OK | W_OK)` next to
 `xemu_check_file` at system/vl.c:3080. It would queue the existing "Failed to
 open hard disk image file" message and leave out the `-drive` instead of
 exiting. That is an emulator start-up file, so it needs lane.local's grant:
-board request `board-requests/hddcrash.md`. The harness fix removes the cause
-without it.
+a board request. The harness fix removes the cause without it. Attempt 2
+did not file that request: the owner's offline scope ("limited lanes, stay
+focused", 09-29) keeps this lane to the harness fix. It stays open for a
+later lane.
 
 ## Device proof (brief step 5): after the fold
 
@@ -134,3 +136,21 @@ body update, the `[lane.hddcrash]` comments and the #397 post are all
 waiting on account access. Once access is back: push, update the PR body
 from `.git-prbody.md` (REST PATCH), wait for CI green, `gh pr ready 629`,
 post on #397.
+
+## Attempt 2, 2026-09-29 ~22:30 PDT: why attempt 1 did not finish
+
+Attempt 1 finished the fix and the NOTES, then stopped: from ~21:00 PDT
+GitHub suspended the account, so the push, the PR body update, the ready
+mark and the #397 post all returned 403. Nothing was wrong with the work.
+
+Attempt 2 follows lane.local's offline protocol: `origin` is the local
+stand-in, the PR is `docs/lanes/hddcrash/PR.md`, the #397 post is
+`OUTBOX.md`. master had not moved (0 behind), so no merge was needed.
+Local checks run in place of CI are listed in PR.md.
+
+The device proof still waits on the fold, for the reason above: the worker
+runs `$DISPATCH_DIR/bin`, a snapshot of master, so a proof request queued
+now would boot hdd.img and prove nothing. The Nova is also on the owner's
+top-up hold. After the fold and the dispatcher update, the three requests
+in "Device proof" are the next step, then tell lane.local to remove the
+drop-in.
