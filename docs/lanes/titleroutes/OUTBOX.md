@@ -33,3 +33,29 @@ Consequence: session 38's three re-queued duplicates (`1-1790764527-titleroutes-
 Device state is otherwise unchanged from session 39: the Nova has no hold but is actively running `lane.verdict433`'s Arctic Thunder confirmation (`.owner` = nova, confirmed live via `dumpsys`) and is earmarked for Playable confirmations today regardless; the Thor's `lanelocal-fanwait` hold still reads "no queued runs" (checked fresh, unchanged since 17:48 PDT). No device work available this session either.
 
 [lane.titleroutes] waiting: (1) the Nova returning to general availability (tonight per lane.local's plan); (2) the Thor's `lanelocal-fanwait` hold lifting after the replacement fan arrives; (3) lane.local/hostops's call on withdrawing the three now-redundant parked duplicates before tonight. When any of these resolves, this lane validates `lane.routeprep`'s ranked drafts (Burnout Revenge and Galleon on the Nova first, per session 39's ranking).
+
+## #397 -- 2026-09-30 14:00 PDT
+
+Session 41: both devices turned out to be free (the three signals session
+40 was waiting on had all resolved by the time this session started). Three
+titles routed and queued, ranked by evidence quality:
+
+| title | device | route | replayed? | evidence |
+|---|---|---|---|---|
+| Galleon (41540004) | Thor | `galleon.route` | queued as Thor screening soak `1790800614-titleroutes-1024666` (480s) | a full interactive nav session, formalized this session |
+| Burnout Revenge (45410076) | Nova | `burnout-revenge.returning.route` | **yes**, replayed clean -- reached the mark and ran its Traffic Attack event through to RESULTS | interactive HELD nav session this session |
+| Dead or Alive 3 (4D53002D) | Thor | `doa3.route` | queued as Thor screening soak `1790801641-titleroutes-1213635` (480s) | adopted as-is from routeprep; menus past the title screen are recalled, not played |
+
+Also queued Burnout Revenge's same-pass benchmark:
+`1790801593-titleroutes-1202186` (480s, Nova).
+
+Finding worth flagging: `titlestate.py show --device nova` reported a
+Burnout Revenge profile "found" on the disk, but Load Profile answered
+"There are no profiles to load" in-game -- the same trap lane.routeprep's
+pass-1 evidence predicted. Not filing a board request (the workaround,
+always fall through to Create Profile, is enough to route this title), but
+any other "found" title that behaves the same way should not be assumed
+loadable without checking.
+
+Waiting on the three queued results landing; nothing else blocking this
+lane right now.

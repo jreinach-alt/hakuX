@@ -2398,3 +2398,112 @@ duplicate-withdrawal flag added:
    arrives.
 3. (new) lane.local or hostops deciding whether to drop the three now-
    redundant parked re-queue requests before they return to `queue/` tonight.
+
+## Session 41 (resumed 2026-09-30 13:34 PDT, attempt 3): why attempt 2 (session 40) did not finish, and both devices turned out to be free
+
+**Why session 40 did not need recovery.** It finished cleanly, the same as
+session 39: no device work was available at the time (Nova mid-soak for
+`lane.verdict433`, Thor's `lanelocal-fanwait` hold text reading "no queued
+runs"), so it ended on a `waiting:` naming three external signals and PR
+body `State: ready`. Nothing failed.
+
+**All three of those signals had already resolved by the time this session
+started**, checked fresh rather than assumed:
+- `dispatch/hold/thor.why` (fresh read, 13:34 PDT) now reads: "queued Thor
+  requests of <= 480 s ARE allowed (owner 09-30 ~12:30 PDT: the Thor
+  screening program)" -- superseding the "no queued runs" text session 39
+  and 40 both saw. (That text itself says it is from a period *after* the
+  12:40 PDT addendum, which is a contradiction in the file's own history
+  this session can't resolve; what matters is the text in force now allows
+  queued work.)
+- The Nova has no hold file and is asleep, battery 38% (checked via
+  `dumpsys battery`/`dumpsys power`), not running anything
+  (`dispatch/running/` empty).
+- The three redundant re-queued duplicates flagged in session 40
+  (`...2436824`, `...2437076`, `...2437119`) are gone from `queue/`,
+  `running/`, `results/` and the daypark park dir -- found instead at
+  `dispatch/parked/withdrawn/titleroutes-daypark-0930-redundant-20260930/`,
+  confirming lane.local or hostops acted on the flag and withdrew them.
+
+So this is a routine continuation with real device availability, not a
+failure recovery. `gh api user` still returns 403 "account was suspended":
+still the offline protocol (`PR.md`/`OUTBOX.md`, no `gh`).
+
+**Work this session, in session-39's ranked order (evidence quality first):**
+
+1. **Galleon** (Nova+Thor). An earlier session (before 09-27) had already
+   driven a full interactive nav.py session on the Thor
+   (`galleon.first-run-20260927T004625`) and left its emitted route text in
+   `scratch/galleon.draft.route`, unformalized and unreplayed. Assembled it
+   into `routes/galleon.route` with the header already drafted in
+   `scratch/galleon.hdr`, checked clean with `route.sh --check`, wired
+   `targets.toml`. No interactive Thor session is available (hold/thor
+   stays with lanelocal-fanwait per the screening program's own text), so
+   this is queued as the Thor screening soak that validates and benchmarks
+   it together: `1790800614-titleroutes-1024666`, 480s, ref `cbd9d36994`.
+2. **Burnout Revenge** (Nova). `titlestate.py show --device nova` reports a
+   profile "found" since 2026-09-30T01:36:36Z, so tried the returning path
+   first -- and hit the exact trap lane.routeprep's pass-1 evidence
+   predicted: Load Profile answers "There are no profiles to load"
+   (`003-profile-list.png`). **titlestate's record does not mean the
+   profile is loadable in-game on this disk.** Not filing a board request
+   for this (nav.py/titlestate.py aren't mine to edit, and the workaround
+   -- always fall through to Create Profile -- is enough to route the
+   title), but worth knowing for any other "found" title that fails the
+   same way. Drove the rest interactively, HELD Nova 13:37-13:47 PDT
+   (10 min, battery 38% -> 34%): Create Profile -> an Autosave consent
+   prompt (Yes) -> name keyboard ("Burnout_", DONE) -> an empty
+   profile-slot picker ("Profile 1") -> World Tour -> rank 1 -> Sunshine
+   Keys -> a Traffic Attack event -> car select -> a ~100 s loading/tips
+   montage -> an event brief with cash targets -> Continue -> **live
+   gameplay starts immediately**, car already at 70 mph, no separate
+   grid/start wait. Several of routeprep's Burnout-3-derived guesses were
+   wrong (no name keyboard right after Create Profile; a profile-slot
+   picker, not a storage/saving notice) -- corrected in the route's header.
+   Player control confirmed two ways: a steer input changed the car's road
+   section entirely (`021-steer-right.png`, a boost-lane shortcut onto a
+   bridge), and the play pattern (RT max + LX weave) scored live
+   Traffic-Check/Near-Miss events, money $0 -> $14,550
+   (`023-after-play.png`). **Replayed once unattended**
+   (`scratch/replay/burnout-revenge.returning-134524/`, `replay.sh nova`):
+   reached the identical gameplay frame at the mark, and within the 40s
+   extra window the Traffic Attack event ran through to its own RESULTS
+   screen (OK rating, no failure) -- the route is solid. 640x480 copy:
+   `frames/burnout-revenge-replay-gameplay.jpg`. Released the Nova hold
+   clean (app stopped, perf/fan reset, screen asleep) at 13:53 PDT.
+   Queued the same-pass benchmark: `1790801593-titleroutes-1202186`, 480s,
+   Nova, ref `e85dbeb3f5`.
+3. **DOA3** (Thor). Adopted routeprep's draft as-is (`drafts/doa3.route`):
+   the copyright-warning wait and title-screen START are read from real
+   pass-1 frames, but everything past the title (mode select, character
+   select, loading, round start) is `[recalled]`/`[guess]`, not re-played.
+   Lower confidence than the other two routes this session. Queued anyway
+   as a Thor screening soak, consistent with that program's own design (a
+   soak that fails to reach `mark gameplay` is itself the validation
+   result, not proof the title is blocked): `1790801641-titleroutes-1213635`,
+   480s, Thor, ref `f3d3169a80`.
+
+Did not take a second interactive Nova hold this session: battery was at
+34% after Burnout Revenge (4 points of margin over the 30% floor), and the
+just-queued Burnout Revenge benchmark will draw more of it down at MAX.
+
+`titlestate_selftest.py`: all checks pass. `targets.toml` parses with
+`tomllib` (Galleon, Burnout Revenge and DOA3 all now carry a `route` key).
+
+**Next:**
+1. Read the three queued results once they land (Galleon, Burnout Revenge,
+   DOA3), put fps numbers in the #397 table and OUTBOX.
+2. The five `[guess]`-only routeprep drafts (capcom-classics2,
+   castlevania-cod x2, smt-nine, thps2x, tork) still need either a short
+   interactive nav session (Nova or Thor-adjacent titles that ARE on the
+   Nova) or, for Thor-only ones, acceptance that a screening soak is their
+   only path to validation the same way DOA3's was.
+3. Keep working the main work list (section 1) for titles with no draft at
+   all yet, on whichever device is free and above the battery floor.
+
+**Waiting:** the three requests above (`1790800614-titleroutes-1024666`
+Galleon/Thor, `1790801593-titleroutes-1202186` Burnout Revenge/Nova,
+`1790801641-titleroutes-1213635` DOA3/Thor). None registered as an A/B
+prediction (route validation + benchmark soaks, not arms), so nothing here
+needs `ab_compare` judging -- reading the result dirs directly is enough
+once they land.

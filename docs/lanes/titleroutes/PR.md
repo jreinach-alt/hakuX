@@ -1,71 +1,94 @@
-# titleroutes: sessions 39-40, both handhelds restricted today; three "lost" benchmarks found
+# titleroutes: sessions 39-41, three titles routed once both handhelds turned out to be free
 
 State: ready
 
 Lane: titleroutes          Issue: #397 (per-title gameplay fps; 0.5 tracking #433)
 Base: master @ 2ba1a6e9a2
-Files: docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/PR.md, docs/lanes/titleroutes/OUTBOX.md
-Prediction: none: no arm (bookkeeping only; no code or golden changed)
-Needs device: no (both handhelds are restricted today; see below)
+Files: docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/PR.md, docs/lanes/titleroutes/OUTBOX.md,
+       docs/testing/titles/routes/galleon.route, docs/testing/titles/routes/burnout-revenge.returning.route,
+       docs/testing/titles/routes/doa3.route, docs/testing/titles/targets.toml,
+       docs/lanes/titleroutes/frames/burnout-revenge-replay-gameplay.jpg
+Prediction: none: no arm (route validation + same-pass fps benchmark soaks, not A/B arms)
+Needs device: yes -- three requests queued this session, results pending (see below)
 
 ## What this session found
 
 Session 38's own work had already folded cleanly into `origin/master` as
-`2c59b7bbba` before this session started -- not a failure recovery, a
+`2c59b7bbba` before session 39 started -- not a failure recovery, a
 routine continuation. Merged `origin/master` (fast-forward,
 `39d518f9b6..2ba1a6e9a2`, no conflicts): brings in `lane.defecttriage433`'s
 classification of the six titles blocking 0.5 Playable (analysis only, no
 files of mine).
 
-Neither handheld has device work available this session:
+Sessions 39 and 40 found neither handheld had device work available (Nova
+busy with a `lane.verdict433` confirmation soak / earmarked for Playable
+confirmations; Thor's `lanelocal-fanwait` hold text reading "no queued
+runs"). Both sessions ended correctly on a `waiting:` rather than guessing.
+Cross-referenced `lane.routeprep`'s 24 offline route drafts against this
+lane's adopted routes (9 still pending device validation, ranked by
+evidence quality) while waiting -- detail in NOTES.md sessions 39-40.
 
-- **Nova**: session 38's three re-queued benchmarks (Midnight Club 3, 187:
-  Ride or Die, Crash: Wrath of Cortex) never ran. They're parked at
-  `dispatch/parked/titleroutes-daypark-0930/`: owner plan (lane.local
-  10:05 PDT) sends the Nova's battery to Playable confirmations first
-  today; my three return to queue tonight after the evening dock.
-- **Thor**: `dispatch/hold/thor.why` was rewritten at 17:48 PDT today to
-  "no queued runs" (fan still dead, light work only) -- this supersedes
-  the 12:40 PDT "Thor screening program" addendum's allowance for queued
-  `--hard-pin` soaks. No interactive hold, no queued soak.
+## Session 41 update (resumed 13:34 PDT): both signals had resolved
 
-`titlestate_selftest.py` passes; `targets.toml` parses with `tomllib`
-(unchanged). See NOTES.md session 39 for detail.
+Checked fresh rather than assumed: `dispatch/hold/thor.why` now explicitly
+allows queued Thor requests <=480s (the owner's 12:30 PDT "Thor screening
+program"), and the Nova has no hold, is idle, battery 38%. Worked
+routeprep's ranked backlog in order:
 
-Checked whether offline route-authoring (the Thor-screening addendum's own
-suggestion) could fill the gap: of 4 candidate Thor titles with pass-1
-survey frames reaching gameplay, 3 (Blinx, Blinx 2, Forza) belong to
-lane.slowdown462 and the 4th (25 to Life) has too little evidence to draft
-confidently. More useful: cross-referenced `lane.routeprep`'s 24 offline
-route drafts against my adopted routes and found 9 still pending device
-validation (8 others were already superseded by my own routes under
-different filenames). Ranked them by evidence quality for the next device
-session: Burnout Revenge and Galleon (Nova, strong pass-1 evidence) first,
-then DOA3 (Thor, strong evidence), then 5 guess-only drafts that need a nav
-session before a validation replay is worth it. Detail in NOTES.md.
+1. **Galleon** (Thor+Nova): an earlier session had already driven a full
+   interactive nav.py session on the Thor and left the emitted route
+   unformalized in scratch/. Assembled it into `routes/galleon.route`,
+   checked clean with `route.sh --check`, wired `targets.toml`. No
+   interactive Thor session is available (fan still dead), so queued as
+   the Thor screening program's combined validate+benchmark soak:
+   `1790800614-titleroutes-1024666` (480s).
+2. **Burnout Revenge** (Nova): `titlestate.py show` reported a profile
+   "found" on the Nova disk, but Load Profile answered "There are no
+   profiles to load" in-game -- the exact trap routeprep's pass-1 evidence
+   predicted. Drove the rest interactively in a HELD Nova session
+   (13:37-13:53 PDT, battery 38% -> 34%, released clean): Create Profile,
+   an Autosave prompt, name entry, an empty profile slot, World Tour,
+   Sunshine Keys, a Traffic Attack event, car select, a loading montage, an
+   event brief, then live gameplay starting immediately at 70 mph. Several
+   of routeprep's Burnout-3-derived guesses were wrong (corrected in the
+   route's header). Player control confirmed two ways (a steer input
+   changed the road section; the play pattern scored live Traffic-Check/
+   Near-Miss events, $0 -> $14,550). **Replayed once unattended and it
+   reached the same gameplay frame, then ran the event through to its own
+   RESULTS screen within the extra window** -- this route is solid.
+   Queued its same-pass benchmark: `1790801593-titleroutes-1202186` (480s).
+3. **DOA3** (Thor): adopted routeprep's draft as-is -- the warning-wait and
+   title-screen START are from real pass-1 frames, but the menu path past
+   the title is recalled/guessed, not played. Queued as a Thor screening
+   soak anyway, per that program's own design (a soak that fails to reach
+   `mark gameplay` is itself the validation result):
+   `1790801641-titleroutes-1213635` (480s).
+
+Did not take a second interactive Nova hold this session (34% battery, 4
+points of margin over the floor, and the queued benchmark will draw it
+down further).
 
 ## Local checks (no CI while GitHub is suspended)
 
 - `python3 docs/testing/titles/titlestate_selftest.py`: all checks pass.
-- `targets.toml`: parses with `tomllib`, unchanged this session.
+- `targets.toml`: parses with `tomllib` (Galleon, Burnout Revenge, DOA3 now
+  carry a `route` key).
+- `bash docs/testing/titles/route.sh --check` on all three new route files:
+  clean.
 
 ## Device proof
 
-None this session -- see "What this session found" above for why.
+- Burnout Revenge: interactive nav frames in
+  `/home/justin/hakux-work/nav/burnout-revenge.returning-20260930T133805/`
+  and unattended replay frames in
+  `scratch/replay/burnout-revenge.returning-134524/` (not committed, local
+  to the worktree); 640x480 copy of the replay's gameplay frame committed
+  at `docs/lanes/titleroutes/frames/burnout-revenge-replay-gameplay.jpg`.
+- Galleon, DOA3: queued as Thor screening soaks; their result dirs (once
+  landed) are the proof, same as any soak-based validation under that
+  program.
 
-## Session 40 update (resumed 12:45 PDT)
-
-Not a rescue: session 39 ended correctly on a `waiting:`. This session
-resolved session 38's "lost benchmarks" report: the three original
-session-37 requests (not session 38's re-queued duplicates) are `DONE` in
-`dispatch/results/` with real, non-void fps readings (Midnight Club 3 29.67
-median/87.5% >= 30; 187: Ride or Die 59.94 median/100% >= 30; Crash: Wrath of
-Cortex 56.18 median/100% >= 60 as an upper bound). They were never lost --
-session 38's re-queued duplicates are now flagged as redundant (parked,
-not touched). Device state re-checked fresh: Nova has no hold but is
-actively running `lane.verdict433`'s confirmation soak (`.owner` = nova) and
-is earmarked for Playable confirmations today regardless; Thor's
-`lanelocal-fanwait` still reads "no queued runs". No device work available.
-Full detail in NOTES.md session 40 and OUTBOX.md.
+Release note (performance|stability|rendering|other|none): none -- this PR
+touches only route data and lane bookkeeping, no emulator code.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
