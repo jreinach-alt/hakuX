@@ -24,6 +24,46 @@
 # Every mutant is confirmed to DIFFER from the real file before it is run, and
 # lives in a symlink tree: the real docs/testing is never written.
 
+# SCRATCH GUARD (lane.dispatchguard). This fragment empties $DISPATCH_DIR's
+# queue and results and $HAKUX_WORK's arms markers. selftest.sh points both at
+# a fresh mktemp tree; a script that sources the fragment any other way points
+# them at whatever the caller exported -- on a lane host, the live dispatch
+# dir. On 2026-09-29 the live queue and results were emptied twice in five
+# minutes that way. So refuse, before any rm, unless all three hold:
+#   1. DISPATCH_DIR and HAKUX_WORK are exactly $T/work/dispatch and $T/work;
+#   2. $T sits strictly below a tmp root (${TMPDIR:-/tmp} or /tmp);
+#   3. none of T, HAKUX_WORK, DISPATCH_DIR is inside, or contains,
+#      $HOME/hakux-work.
+# Paths are compared as realpaths. Run a fragment alone with
+# `SELFTEST_ONLY=NN-name bash docs/testing/jobs/selftest.sh`. The same block is
+# in 50-arms-requeue.sh and 51-dispatch-hardening.sh; keep them identical.
+_dg_real() { realpath -m -- "$1" 2>/dev/null; }
+_dg_scratch() {   # -> 0, or 1 with the reason on stdout
+    local t d w p l tmp=no
+    [ -n "${T:-}" ] && [ -n "${DISPATCH_DIR:-}" ] && [ -n "${HAKUX_WORK:-}" ] \
+        || { echo "T, DISPATCH_DIR and HAKUX_WORK must all be set"; return 1; }
+    t=$(_dg_real "$T"); d=$(_dg_real "$DISPATCH_DIR"); w=$(_dg_real "$HAKUX_WORK")
+    [ -n "$t" ] && [ "$d" = "$t/work/dispatch" ] && [ "$w" = "$t/work" ] \
+        || { echo "DISPATCH_DIR and HAKUX_WORK are not \$T/work/dispatch and \$T/work"; return 1; }
+    for p in "$(_dg_real "${TMPDIR:-/tmp}")" /tmp; do
+        case "$t/" in "$p"/?*/) tmp=yes ;; esac
+    done
+    [ "$tmp" = yes ] || { echo "T=$t is not below \${TMPDIR:-/tmp} or /tmp"; return 1; }
+    [ -n "${HOME:-}" ] || return 0
+    l=$(_dg_real "$HOME/hakux-work")
+    for p in "$t" "$w" "$d"; do
+        case "$p/" in "$l"/*) echo "$p is inside the live $l"; return 1 ;; esac
+        case "$l/" in "$p"/*) echo "$p contains the live $l"; return 1 ;; esac
+    done
+}
+if ! _dg_why=$(_dg_scratch); then
+    echo "SELFTEST GUARD: ${BASH_SOURCE[0]##*/} refuses to run, nothing removed: $_dg_why" \
+         "(T=${T:-} DISPATCH_DIR=${DISPATCH_DIR:-} HAKUX_WORK=${HAKUX_WORK:-})." \
+         "Run it through selftest.sh: SELFTEST_ONLY=${BASH_SOURCE[0]##*/} bash docs/testing/jobs/selftest.sh" >&2
+    fail=$((${fail:-0} + 1))
+    return 1 2>/dev/null || exit 1
+fi
+
 DH="$T/dh"; rm -rf "$DH"; mkdir -p "$DH"
 dhmut() {   # <path under docs/testing> <sed-expression> [name] -> echoes the tree
     local rel="$1" expr="$2" dir="$DH/${3:-mut}" x
@@ -210,6 +250,13 @@ check "D: pause force-stopped the app on the sweep's device (ee317437)" \
 check "D: and touched no other device" bash -c '! grep -q bdc158a5 "$1"' _ "$DH/sq/adb.log"
 
 # ------------------------------------------------ E. both halves or neither
+# E and E2 empty the queue and results; the guard above ran 180 lines ago, so
+# ask again here in case anything since has moved DISPATCH_DIR or HAKUX_WORK.
+if ! _dg_why=$(_dg_scratch); then
+    echo "SELFTEST GUARD: 51-dispatch-hardening.sh stops before part E, nothing removed: $_dg_why" >&2
+    fail=$((fail + 1))
+    return 1 2>/dev/null || exit 1
+fi
 echo "== dispatch hardening E: a half-run pair can be queued again"
 # vshconst (09-25): base lost its pull, fix was DONE, and the ARM ERROR
 # advice to delete judged/<sha> and pairs/<sha>.json did nothing because the
@@ -461,6 +508,75 @@ if dhterr_agree "$DHTOLD"; then bad "I: the old 2>&1 | head -3 reading passed a 
 else case "$DHTOLD" in "FAIL: territory.toml"*) ok "I: the old 2>&1 | head -3 reading fails the red board, FAIL lines first" ;;
                        *) bad "I: the old reading failed, but not with the FAIL lines first: $DHTOLD" ;; esac; fi
 
+# --------------------------------------------------- J. the scratch guard
+echo "== dispatch hardening J: 50 and 51 refuse a DISPATCH_DIR that is not selftest.sh's scratch tree"
+# 2026-09-29 16:23-16:29 PDT: the live dispatch queue and results were emptied
+# twice, leaving exactly what 51's `rm -rf results/* queue/*.req` leaves. A
+# one-off script had sourced a fragment with T set and DISPATCH_DIR left at
+# the host's live one. Each case below sources a fragment in a subshell with a
+# "live" tree that holds a canary request and result, and asserts the fragment
+# stopped, said why, and removed nothing.
+DG="$T/dg"; rm -rf "$DG"; mkdir -p "$DG/home"
+dglive() {   # -> a fresh "live" dispatch dir under the fake HOME, canaries in place
+    local l="$DG/home/hakux-work"
+    rm -rf "$l"; mkdir -p "$l/dispatch/queue" "$l/dispatch/results/canary" "$l/arms/judged"
+    echo '{}' > "$l/dispatch/queue/canary.req"; echo simulated > "$l/dispatch/results/canary/DONE"
+    : > "$l/arms/judged/canary"; printf '%s\n' "$l"
+}
+dgintact() { [ -f "$1/dispatch/queue/canary.req" ] && [ -f "$1/dispatch/results/canary/DONE" ] && [ -f "$1/arms/judged/canary" ]; }
+dgsource() {   # <fragment> <T> <HAKUX_WORK> <DISPATCH_DIR>: source it as a one-off script would
+    (export HOME="$DG/home" T="$2" HAKUX_WORK="$3" DISPATCH_DIR="$4"
+     . "$HERE/selftest.d/$1" >/dev/null 2>"$DG/err"; echo "rc=$?" >> "$DG/err")
+}
+check "J: selftest.sh's own tree passes the guard (so 50..51 above really ran)" _dg_scratch
+# The incident's shape: T is a real mktemp dir, DISPATCH_DIR is the live one.
+for dgf in 50-arms-requeue.sh 51-dispatch-hardening.sh; do
+    dgl=$(dglive)
+    dgsource "$dgf" "$T" "$dgl" "$dgl/dispatch"
+    check "J: $dgf with the live DISPATCH_DIR removes nothing" dgintact "$dgl"
+    check "J: and says so, naming the rule it broke" \
+        grep -q "SELFTEST GUARD: $dgf refuses to run, nothing removed: DISPATCH_DIR and HAKUX_WORK are not" "$DG/err"
+    check "J: and returns nonzero" grep -qx "rc=1" "$DG/err"
+done
+# The live tree laid out exactly like selftest.sh's, but not below a tmp root:
+# realpath -m needs no such dir, and the refusal comes before anything is made.
+dgsource 50-arms-requeue.sh /dg-not-a-tmp/x /dg-not-a-tmp/x/work /dg-not-a-tmp/x/work/dispatch
+check "J: a scratch-shaped tree outside the tmp roots is refused" \
+    grep -q "T=/dg-not-a-tmp/x is not below" "$DG/err"
+# Shaped right AND below /tmp, but it IS $HOME/hakux-work (a HOME under /tmp).
+dgl=$(dglive); mkdir -p "$dgl/work"; mv "$dgl/dispatch" "$dgl/arms" "$dgl/work/"
+dgsource 50-arms-requeue.sh "$dgl" "$dgl/work" "$dgl/work/dispatch"
+check "J: a tree inside the live \$HOME/hakux-work is refused even below /tmp" \
+    grep -q "is inside the live $dgl" "$DG/err"
+check "J: and removes nothing" dgintact "$dgl/work"
+# Run as a script rather than sourced, `return` is an error: it must still stop.
+dgl=$(dglive)
+(export HOME="$DG/home" T="$T" HAKUX_WORK="$dgl" DISPATCH_DIR="$dgl/dispatch"
+ bash "$HERE/selftest.d/50-arms-requeue.sh" >/dev/null 2>&1); dgrc=$?
+check "J: executed rather than sourced, it exits 1 and removes nothing" \
+    bash -c '[ "$1" -eq 1 ]' _ "$dgrc"
+check "J: (the canaries after the executed run)" dgintact "$dgl"
+# The two copies of the guard are one rule: diff them.
+dgblock() { sed -n '/^# SCRATCH GUARD/,/^fi$/p' "$HERE/selftest.d/$1"; }
+check "J: 50 and 51 carry the same guard, byte for byte" \
+    bash -c '[ -n "$1" ] && [ "$1" = "$2" ]' _ "$(dgblock 50-arms-requeue.sh)" "$(dgblock 51-dispatch-hardening.sh)"
+# MUTANT: 50 without its guard, sourced the incident's way, does empty the
+# live queue -- so the canary checks above can go red.
+# Not through dhmut: its tree symlinks jobs/selftest.d, so its rm would reach
+# the real fragment.
+sed '/^if ! _dg_why=\$(_dg_scratch); then$/,/^fi$/d' "$HERE/selftest.d/50-arms-requeue.sh" > "$DG/50-unguarded.sh"
+if cmp -s "$DG/50-unguarded.sh" "$HERE/selftest.d/50-arms-requeue.sh"; then
+    bad "J MUTANT: could not build it (the sed matched nothing)"
+else
+    dgl=$(dglive)
+    (export HOME="$DG/home" HAKUX_WORK="$dgl" DISPATCH_DIR="$dgl/dispatch"
+     . "$DG/50-unguarded.sh" >/dev/null 2>&1)
+    check "J MUTANT: the unguarded 50 removes the live canary request, so J can go red" \
+        test ! -e "$dgl/dispatch/queue/canary.req"
+fi
+
 unset DH DHM DHS DHS2 DHO DHV DHMO DHB DHSETS DHRC DHT DHHALF DHQ DHREQ DH_ADB_PIDS TAB \
-      DHG DHH1 DHH2 DHH3 DHSPEC DHAL DHTERR DHTR DHTRED DHTSPLIT DHTOLD
-unset -f dhterr_agree dhterr_board dhterr_run
+      DHG DHH1 DHH2 DHH3 DHSPEC DHAL DHTERR DHTR DHTRED DHTSPLIT DHTOLD \
+      DG dgf dgl dgrc
+unset -f dhterr_agree dhterr_board dhterr_run dglive dgintact dgsource dgblock _dg_real _dg_scratch
+unset _dg_why
