@@ -304,7 +304,8 @@ notes = "No #431 target; the default 30 applies. Routes by lane.titleroutes 2026
 name = "Crash Bandicoot: The Wrath of Cortex"
 iso = { nova = "56550003-Crash_Bandicoot_The_Wrath_of_Cortex.xiso.iso" }
 target_fps = 60
-notes = "#431 (comment 5851536933): 60, low confidence. two user captures of a real Xbox (average 59.78)"
+route = "crash-wrath-of-cortex"
+notes = "#431 (comment 5851536933): 60, low confidence. two user captures of a real Xbox (average 59.78). Route by lane.titleroutes 2026-09-29 (Nova, session 37), REPLAYED CLEAN twice: NEW GAME -> name CRASH -> START skips two cutscenes -> the warp room hub, walked with the stick. The scored window is the hub, not a level, so its fps is an upper bound."
 
 [titles."4D530004"]
 name = "Halo: Combat Evolved"
