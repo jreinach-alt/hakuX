@@ -1,58 +1,46 @@
 # Dead or Alive 3 (4D53002D), Thor. One file: DOA3 has no profile on the
 # way to a fight.
 #
-# Evidence: pass 1 (0-0-y-1790433159-titleplay-p1-doa3, Thor), frames in its
-# route-frames/ (t = seconds after the route started):
-#   113257 t20 .. 113553 t~200: the copyright warning scrolls at 3-14 fps;
-#          pass 1's START and A every ~6 s did NOT skip it
-#   113559 t~206 TECMO logo; 113710 t~277 dark
-#   113738 t~305 "DEAD OR ALIVE 3 / PRESS START BUTTON"; 113802, 113830 the
-#          same prompt over attract backgrounds. Pass 1 was in its play
-#          phase by then (stick + A), and A does not pass this screen.
+# Evidence:
+# - pass 1 (0-0-y-1790433159-titleplay-p1-doa3, Thor, COLD shader cache):
+#   the copyright warning scrolled at 3-14 fps to t~200, TECMO logo t~206,
+#   "PRESS START BUTTON" at t~305; START and A every ~6 s did not skip the
+#   warning, and A does not pass the title prompt.
+# - screening soak 1790801641-titleroutes-1213635 (Thor, WARM cache, this
+#   route's first version, which waited 300 s blind): by t100 the attract
+#   demo was already running (warning100: fight at the pagoda stage; t200
+#   a newspaper cutscene at 46 fps; t260 a fight at 54 fps). The Thor's
+#   screening runner stopped it at xo 70 C at 284 s, before the first press.
+#   So with a warm cache the title is reachable well before t90.
 #
-# So: wait out the warning without pressing (nothing is gained, and a press
-# queued at the wrong moment could only hurt), then START at ~310 s. The
-# menus after the title are [recalled], not played: STORY is the first
-# mode, character select takes A, then the fight. Pattern and marking as
-# Kabuki Warriors (titleroutes: mark at the round start, attack without
-# pause).
+# So: START twice from t~75 (attract -> title prompt -> main menu; if the
+# first START lands on the prompt, the second enters the menu's first item),
+# then A to walk STORY -> character select -> costume -> fight intro. Extra
+# A presses in the fight are attacks, so over-pressing is safe; START is not
+# pressed after the menu (it pauses the fight). The menu steps are
+# [recalled]; every step leaves a frame.
 #
-# NOT YET REPLAYED -- queued here as the Thor screening program's combined
-# validate+benchmark soak (no interactive Thor session is available: hold/
-# thor stays with lanelocal-fanwait). Lower confidence than routes played by
-# an interactive nav session (compare routes/galleon.route, routes/burnout-
-# revenge.returning.route, both from this lane): the steps after the title
-# screen are recalled from an earlier survey pass, not read from fresh
-# frames. A screening soak that does not reach `mark gameplay` means this
-# route needs revision, not that DOA3 itself is blocked.
-wait 100
-shot warning100
-wait 100
-shot warning200
+# NOT YET REPLAYED -- a Thor screening soak is its validation (no
+# interactive Thor session while the fan is dead).
 wait 60
-shot boot260
-wait 40
-shot boot300                # expect PRESS START BUTTON [seen 113738]
-press START
-wait 5
-shot after-start1           # if still the prompt, the next START takes it
-press START
-wait 5
-shot mode-menu              # [recalled] STORY highlighted; CHECK: a second START may already have entered it
-mark booted
-press A                     # [recalled] Story
-wait 6
-shot char-select
-press A                     # [recalled] the highlighted fighter
-wait 5
-shot costume
-press A                     # [guess] costume / confirm, if asked
+shot boot60
 wait 15
-shot loading
-press A                     # [guess] skip the intro poses
-wait 8
+shot boot75                 # expect attract or PRESS START BUTTON
+press START
+wait 4
+shot after-start1
+press START
+wait 4
+shot after-start2           # [recalled] main menu, STORY first
+mark booted
+repeat 7 {
+    press A                 # STORY -> fighter -> costume -> skip the intro poses
+    wait 4
+    shot menu-a
+}
+wait 4
 shot round
-mark gameplay               # [guess] placeholder: move to the round start (timer running)
+mark gameplay               # [guess] the round start (timer running)
 repeat forever {
     axis LX max
     wait 0.6

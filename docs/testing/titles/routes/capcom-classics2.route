@@ -1,0 +1,63 @@
+# Capcom Classics Collection Vol. 2 (43430019), Thor. DRAFT by
+# lane.routeprep, 2026-09-26, not played. NO FRAMES ON DISK for this title:
+# every step is [guess].
+#
+# The collection emulates arcade boards. The route picks the first game in
+# the list, inserts a coin and starts it. In this collection BACK is the
+# arcade coin and START is the arcade start [guess, recalled]. One file: an
+# autosave prompt at boot, if any, is accepted with A and does not change
+# the path afterwards.
+#
+# Adopted by lane.titleroutes 2026-09-30 (session 42) unchanged in its steps
+# except where noted, and queued as a Thor screening soak (<= 480 s, the
+# fan-dead Thor's cold-slot runner): NOT YET REPLAYED. Every step leaves a
+# frame, so a soak that misses gameplay is the survey that revises it.
+wait 30
+shot boot30
+press START                 # [guess] skip logos
+wait 15
+shot boot45
+press START                 # [guess] title prompt
+wait 8
+shot after-title            # OPEN: an autosave / storage prompt, or the game list
+press A
+wait 8
+shot game-list              # [guess] the first game highlighted
+mark booted
+press A                     # [guess] choose the game
+wait 6
+shot game-menu              # [guess] "Play Game" highlighted
+press A
+wait 20
+shot arcade-boot            # the emulated board's boot / attract
+press BACK                  # [guess] coin
+wait 2
+shot coin
+press START                 # [guess] 1P start
+wait 6
+shot started
+press A
+wait 6
+shot started-a
+mark gameplay               # [guess] placeholder: move to the first frame with the player's ship/fighter under control
+repeat forever {
+    axis LX max
+    press A
+    wait 0.5
+    press X
+    wait 0.5
+    axis LX min
+    press A
+    wait 0.5
+    press X
+    wait 0.5
+    axis LX mid
+    axis LY min
+    press A
+    wait 0.5
+    axis LY mid
+    press BACK              # a coin now and then continues after a game over
+    wait 0.3
+    press START
+    wait 0.5
+}
