@@ -1503,7 +1503,9 @@ VkResult pgraph_vk_create_graphics_pipeline_fb(
 void nv2a_profile_shader_keydiff(const ShaderState *prev,
                                  const ShaderState *cur);
 
-static void save_pipeline_cache_to_disk(PGRAPHVkState *r)
+/* #569 P3: called by a compile worker during play (vk/compile_worker.c) and
+ * at teardown; vkGetPipelineCacheData needs no external synchronisation */
+void pgraph_vk_save_pipeline_cache(PGRAPHVkState *r)
 {
     int64_t t0 = nv2a_clock_ns();
     size_t size = 0;
@@ -1526,20 +1528,18 @@ static void save_pipeline_cache_to_disk(PGRAPHVkState *r)
     g_nv2a_stats.shader_stats.plc_save_us += (nv2a_clock_ns() - t0) / 1000;
 }
 
-#define PIPELINE_CACHE_SAVE_INTERVAL_US (30 * 1000000LL)
-
+/* #569 P3: a compile worker saves it, at most every 30 s, and when the VM
+ * pauses; the draw thread only says there is something new to save */
 static void maybe_save_pipeline_cache(PGRAPHVkState *r)
 {
     if (!g_config.perf.cache_shaders) {
         return;
     }
-    static int64_t last_save_us;
-    int64_t now = qemu_clock_get_us(QEMU_CLOCK_REALTIME);
-    if (last_save_us && (now - last_save_us) < PIPELINE_CACHE_SAVE_INTERVAL_US) {
-        return;
-    }
-    last_save_us = now;
-    save_pipeline_cache_to_disk(r);
+#if OPT_ASYNC_COMPILE
+    pgraph_vk_compile_worker_note_dirty(r);
+#else
+    pgraph_vk_save_pipeline_cache(r);
+#endif
 }
 
 static void finalize_pipeline_cache(PGRAPHState *pg)
@@ -1552,7 +1552,7 @@ static void finalize_pipeline_cache(PGRAPHState *pg)
 #endif
 
     if (g_config.perf.cache_shaders) {
-        save_pipeline_cache_to_disk(r);
+        pgraph_vk_save_pipeline_cache(r);
     }
 
     lru_flush(&r->pipeline_cache);
@@ -1798,6 +1798,13 @@ static VkRenderPass get_render_pass(PGRAPHVkState *r, RenderPassState *state)
         }
     }
     return add_new_render_pass(r, state);
+}
+
+/* #569 P3: renderer init only, before the PFIFO thread draws */
+VkRenderPass pgraph_vk_prebuild_render_pass(PGRAPHVkState *r,
+                                            RenderPassState *state)
+{
+    return get_render_pass(r, state);
 }
 
 static void create_frame_buffer(PGRAPHState *pg)
@@ -2994,6 +3001,8 @@ static void create_pipeline(PGRAPHState *pg)
         p->has_dynamic_line_width = snode->has_dynamic_line_width;
         p->layout = layout;
         p->render_pass = render_pass;
+        pgraph_vk_prebuild_note(r, &key.render_pass_state, p,
+                                push_constant_ranges, num_push_ranges);
 
         snode->draw_time = pg->draw_time;
         snode->pending = true;
@@ -3042,6 +3051,22 @@ static void create_pipeline(PGRAPHState *pg)
 
     r->pipeline_binding = snode;
     r->pipeline_binding_changed = true;
+
+#if OPT_ASYNC_COMPILE
+    {
+        /* #569 P3: what a later launch pre-builds */
+        PipelineCreateParams *p = g_new0(PipelineCreateParams, 1);
+        fill_pipeline_create_params(
+            r, p, shader_stages, num_active_shader_stages,
+            input_assembly.topology, &rasterizer, &depth_stencil,
+            &color_blend_attachment, color_blending.blendConstants,
+            dynamic_states, num_dynamic_states,
+            snode->has_dynamic_line_width, layout, render_pass);
+        pgraph_vk_prebuild_note(r, &key.render_pass_state, p,
+                                push_constant_ranges, num_push_ranges);
+        g_free(p);
+    }
+#endif
 
     maybe_save_pipeline_cache(r);
     NV2A_PHASE_TIMER_END_EXCL(shader_compile);
@@ -4741,9 +4766,7 @@ mfp_miss: (void)0;
              * (especially with VK driver cache warm) and skipping causes
              * permanently missing textures on screens that only draw once.
              */
-            while (qatomic_read(&r->pipeline_binding->pending)) {
-                g_usleep(100);
-            }
+            pgraph_vk_compile_worker_wait_pipeline(r, r->pipeline_binding);
         }
         if (r->pipeline_binding->pipeline == VK_NULL_HANDLE) {
             /* Pipeline creation failed */
