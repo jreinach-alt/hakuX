@@ -1,15 +1,34 @@
-# titleroutes: sessions 39-41, three titles routed once both handhelds turned out to be free
+# titleroutes: sessions 39-42, three titles routed and six Thor screens queued
 
 State: ready
 
 Lane: titleroutes          Issue: #397 (per-title gameplay fps; 0.5 tracking #433)
-Base: master @ 2ba1a6e9a2
+Base: master @ e930bc756d (merged in session 42)
 Files: docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/PR.md, docs/lanes/titleroutes/OUTBOX.md,
        docs/testing/titles/routes/galleon.route, docs/testing/titles/routes/burnout-revenge.returning.route,
-       docs/testing/titles/routes/doa3.route, docs/testing/titles/targets.toml,
-       docs/lanes/titleroutes/frames/burnout-revenge-replay-gameplay.jpg
+       docs/testing/titles/routes/doa3.route, docs/testing/titles/routes/capcom-classics2.route,
+       docs/testing/titles/routes/castlevania-cod.first-run.route, docs/testing/titles/routes/smt-nine.route,
+       docs/testing/titles/routes/thps2x.route, docs/testing/titles/routes/tork.route,
+       docs/testing/titles/targets.toml, docs/lanes/titleroutes/frames/burnout-revenge-replay-gameplay.jpg
 Prediction: none: no arm (route validation + same-pass fps benchmark soaks, not A/B arms)
-Needs device: yes -- three requests queued this session, results pending (see below)
+Needs device: yes -- seven requests queued (six Thor screens, one Nova benchmark), results pending
+
+## Session 42 update (resumed ~14:45 PDT)
+
+- DOA3's Thor screen (`1790801641-titleroutes-1213635`) was heat-stopped at
+  xo 70 C at 284 s, before the route's first press. Its frames show that
+  the route's 300 s blind wait was pass 1's cold-cache timing: the attract
+  was running by t100. The route is re-timed (START at t~75) and re-queued.
+- Galleon is blocked by the owner (14:40 PDT). The route file is kept,
+  `targets.toml` notes the block, and nothing is queued for it.
+- lane.routeprep's drafts for Capcom Classics 2, Castlevania: CoD
+  (first-run), SMT Nine, THPS2x and Tork are adopted into `routes/`,
+  shortened for the heat stop, and wired into `targets.toml`.
+- Six Thor screens are queued (480 s, `--hard-pin`, ref `5b193af6d0`). Ids
+  and the running Thor screen table are in NOTES.md, session 42.
+- Local checks: `route.sh --check` is clean on all six routes;
+  `titlestate_selftest.py` passes (all checks passed); `targets.toml`
+  parses with tomllib (69 titles).
 
 ## What this session found
 

@@ -77,3 +77,46 @@ Galleon's screening soak already landed and is written up above. When
 either of the remaining two lands, this lane reads the result, reports the
 numbers, and continues down the work list / routeprep's remaining
 guess-only drafts.
+
+## #397 -- 2026-09-30 15:00 PDT
+
+Session 42 (Thor screening program).
+
+- **DOA3's first screen is void by heat, and the frames show a route
+  timing error, not a title problem.** In `1790801641-titleroutes-1213635`,
+  the runner stopped the soak at xo 70 C at 284 s, before the route's first
+  press. The route waited 300 s blind, which is the timing of pass 1's
+  cold-cache boot. With the cache warm, the attract was already playing at
+  t100: t200 a cutscene at 46 fps, t260 a fight at 54 fps. The route is
+  re-timed (START at t~75) and re-queued.
+- **Galleon is blocked by the owner** (14:40 PDT). Its screen (9.88% at
+  target) is on record, but it is not counted as a screen or a nomination.
+- **Six Thor screens are queued** (480 s, hard-pinned, ref `5b193af6d0`):
+
+| title | route | request | replayed? |
+|---|---|---|---|
+| Dead or Alive 3 | doa3 (re-timed) | 1790805442-titleroutes-2050455 | no: the screen is its validation |
+| THPS2x | thps2x | 1790805442-titleroutes-2050654 | no |
+| Capcom Classics Collection Vol. 2 | capcom-classics2 | 1790805455-titleroutes-2055173 | no |
+| Castlevania: Curse of Darkness | castlevania-cod.first-run | 1790805456-titleroutes-2055301 | no |
+| Shin Megami Tensei: NINE | smt-nine | 1790805456-titleroutes-2055567 | no |
+| Tork: Prehistoric Punk | tork | 1790805457-titleroutes-2055759 | no |
+
+  The last five are lane.routeprep's drafts, which are guesses past the
+  boot. Each soak takes a frame at every step, so a miss revises the route.
+- Burnout Revenge's Nova benchmark (`1790801593-titleroutes-1202186`) is
+  still queued.
+
+## #433 -- 2026-09-30 15:00 PDT
+
+No Nova nominations yet. The one landed Thor screen is Galleon (9.88% at
+target), and the owner has since blocked it. Six screens are queued on the
+Thor (see #397).
+
+[lane.titleroutes] waiting: seven dispatch requests. Six Thor screens:
+1790805442-titleroutes-2050455, -2050654, 1790805455-titleroutes-2055173,
+1790805456-titleroutes-2055301, -2055567, 1790805457-titleroutes-2055759.
+One Nova benchmark: 1790801593-titleroutes-1202186. The waiter's resume on
+their results is the signal. The next session reads each one's
+route-frames, revises the misses, and nominates any screen at 90% or more
+at 28.5+ with no hang.

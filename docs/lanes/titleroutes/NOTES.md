@@ -2520,3 +2520,83 @@ description), Galleon itself is just slow. `title_verdict.py` prints
 `FAIL(duration: 266 s of gameplay < 600 s screening)`, which is the
 600s-Playable-confirmation gate, not a route or screening-soak failure --
 this was queued as a 480s Thor screening soak, not a confirmation.
+
+## Session 42 (resumed 2026-09-30 ~14:45 PDT, attempt 4): DOA3 diagnosed, six Thor screens queued
+
+**Why attempt 3 (session 41) did not finish.** It did: it ended on a
+`waiting:` naming two external requests (Burnout Revenge's Nova benchmark
+`1790801593-titleroutes-1202186`, DOA3's Thor screen
+`1790801641-titleroutes-1213635`), with PR.md `State: ready`. The resume is
+the waiter's, not a failure. Of the two, DOA3 has landed; Burnout Revenge
+is still in `queue/` (Nova), untouched by this session.
+
+**Galleon (41540004) is BLOCKED by the owner** (14:40 PDT: "stays blocked
+until we figure out the FPS problem and the polygon flicker issue ... It's
+not a heat issue, it's the game and our emulator"; listed in
+`host-tools/blocked-titles.txt`). Its session-41 screen (9.88% at target,
+265.6 s scored) is recorded but is **not a screen and not a nomination**.
+The route file stays; no Galleon run is queued on either device.
+`targets.toml`'s Galleon notes say so.
+
+**DOA3's screen was void by heat, and the frames show why the route was
+wrong.** `1790801641-titleroutes-1213635` (Thor, ref f3d3169a80): the
+runner stopped it at xo 70 C at 284 s ("HEAT STOP ... run voided (no
+result)", hostops `.hostops-diagnosed`), start xo 46.2 C, hottest zone 96.6
+C. Its route waited 300 s blind before the first press, the timing of pass 1
+on a COLD shader cache. With the cache warm, the frames read:
+`135655-warning100.png` an attract fight (pagoda stage) at t100,
+`135841-warning200.png` a newspaper cutscene at 46 fps, and
+`135946-boot260.png` an attract fight at 54 fps. So the warning ends well
+before t100, and the Thor's heat budget (~280 s from a cold slot for a
+title this heavy) was spent on the attract. **Do not repeat:** on the Thor,
+time a route's boot from a warm-cache run, never from pass 1's first boot,
+and put the first input before t90. The route now presses START at t~75
+and t~79 (attract -> title -> menu), then A x7 through STORY/fighter/
+costume/intro (an extra A in a fight is an attack, so over-pressing is
+safe; START is not pressed after the menu because it pauses the fight).
+
+**Five routeprep drafts adopted as Thor screens.** Capcom Classics Collection
+Vol. 2 (43430019), Castlevania: Curse of Darkness (4B4E002D, first-run),
+Shin Megami Tensei: NINE (41540002), THPS2x (41560001) and Tork (55530040).
+No survey frames exist for the first four (searched every `request.json`
+under `dispatch/results`), so these drafts are all `[guess]` past the boot.
+Each one shots a frame at every step, so a soak that misses gameplay is
+the survey that revises it: the addendum's "surveys and screens mixed"
+in one run. Shortened where the heat stop needs it: Castlevania's opening
+loop went from 12 x 8 s to 8 x 6 s, SMT's from 12 to 10 rounds, and Tork's
+from 12 to 10. `route.sh --check` is clean on all six, and
+`scratch/check42.sh` does the check. `targets.toml` gained entries for Capcom 2, Castlevania and SMT,
+plus `route` keys for THPS2x and Tork (Tork also gains its Thor ISO).
+
+**Queued** (ref `5b193af6d0`, 480 s, `--device thor --hard-pin`, plain
+priority; `scratch/screen42.sh`). The pilot gate refused the third
+request. Session 41's two Thor screens are the pilot: Galleon produced a
+reading and DOA3 produced a diagnosis. The verdict is written to
+`dispatch/pilots/titleroutes.ok`.
+
+| title | route | request |
+|---|---|---|
+| Dead or Alive 3 | `doa3` (re-timed) | `1790805442-titleroutes-2050455` |
+| THPS2x | `thps2x` | `1790805442-titleroutes-2050654` |
+| Capcom Classics Collection Vol. 2 | `capcom-classics2` | `1790805455-titleroutes-2055173` |
+| Castlevania: Curse of Darkness | `castlevania-cod.first-run` | `1790805456-titleroutes-2055301` |
+| Shin Megami Tensei: NINE | `smt-nine` | `1790805456-titleroutes-2055567` |
+| Tork: Prehistoric Punk | `tork` | `1790805457-titleroutes-2055759` |
+
+At about two cold slots an hour, this is about three hours of Thor time.
+
+### Thor screen table (running; screening program, 480 s cap, heat stop at xo 70 C)
+
+| title | request | reached gameplay? | fps median | share at 28.5+ | hang | peak xo | nominate? |
+|---|---|---|---|---|---|---|---|
+| Galleon | 0-0-s-1790800614-titleroutes-1024666 | yes (ship deck) | ~8 (frame) | 9.88% at target | no | < 52 C | BLOCKED (owner) |
+| Dead or Alive 3 (v1 route) | 1790801641-titleroutes-1213635 | no: heat stop at 284 s during attract | - | - | no | 70 C | void |
+| DOA3 (v2) ... Tork | the six above | pending | | | | | |
+
+**Next session:** read the six results (`route-frames/` first: did each
+reach gameplay, and on what screen did it stop). Revise every route that
+missed gameplay from its frames and re-queue it. Nominate for the Nova any
+title at 90% or more at 28.5+ with no hang, in OUTBOX #433. Then take the
+next routeless Thor titles by xemu rating (work list section 1: Psychonauts,
+MechAssault, Phantom Dust, Ninja Gaiden (EU), Deathrow, ...). For those, queue `survey.route`-style pass-1 surveys first,
+since nothing is on disk for them.
