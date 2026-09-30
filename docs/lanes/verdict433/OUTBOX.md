@@ -67,3 +67,23 @@ All three use the defaults and 1200 s after the mark. Four earlier confirmations
 Playable count from this lane: 2 (KOF: Maximum Impact Maniax, Azurik), with 7 confirmations pending.
 
 Waiting on: the seven dispatch results above.
+
+## #433 -- 2026-09-30 14:10 UTC
+
+Four of the seven pending confirmations are in: **three more titles PASS Playable.** That puts this lane's count at 5, meeting the "3-5 more today" target.
+
+- **WWE Raw 2** -- PASS Playable, fps_ok=0.9982, gameplay 1276.9s, no crash/hang, audio_short=0.0, 0.1357 J/frame.
+- **50 Cent: Bulletproof** -- PASS Playable, fps_ok=0.9906, gameplay 1348.3s, no crash/hang, audio_short=0.0, 0.2498 J/frame.
+- **Baldur's Gate: Dark Alliance** -- PASS Playable, fps_ok=1.0, gameplay 1303.9s, no crash/hang, audio_short=0.0, 0.1273 J/frame.
+
+hostops's chmod-660 fix for the shared `titles.qcow2` HDD file (the bug that voided WWE/50 Cent and hung AUF last session) held for all three reruns -- clean confirmations, no capture faults.
+
+- **007: Agent Under Fire's rerun booted and played this time, but is not a Playable read.** Reviewing `route-frames/`: the character walks up to a vault-style door at the `mark play` frame and then never moves again for the rest of the 20-minute window -- the same camera angle, same door, same crosshair position recur at the 15-minute and 20-minute marks. The renderer is live (FPS overlay keeps changing) but the scripted route just bounces off the door forever. That's a softlock, not gameplay, so this reads FAIL. AUF needs its own authored route (like KOF/Azurik/BG:DA/WWE/50 Cent already have) before it's worth another confirmation attempt -- flagging this for whichever lane does route authoring.
+
+Also found and noted (not fixed, per standing guidance): `title_verdict.py`'s `--reviewed-gameplay no` path has a logic gap -- reviewing a generic-route run as "not gameplay" still leaves the verdict at "unconfirmed" internally rather than a reviewed "no", because the code has no branch for `reviewed == "no"` when selecting the gameplay mark. Doesn't change any verdict here (both read FAIL), but worth a harness lane's attention. Detail in `docs/lanes/verdict433/NOTES.md`, session 9.
+
+**Five titles confirmed Playable by this lane: KOF: Maximum Impact - Maniax, Azurik: Rise of Perathia, WWE Raw 2, 50 Cent: Bulletproof, Baldur's Gate: Dark Alliance.**
+
+Still queued, not yet run: Alien Hominid, 187: Ride or Die, Arctic Thunder (batch 6, behind three `forzadecay414` requests on an otherwise-idle Nova).
+
+Waiting on: the three batch-6 results.

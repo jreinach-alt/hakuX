@@ -774,3 +774,117 @@ lane's device time admitted on the refreshed pilot.
 Seven Nova confirmations are queued behind the Nova's top-up hold. I am
 waiting on those dispatch results, which are outside this session, and
 stopping here.
+
+## Session 9 (2026-09-30, attempt 5 since the reset)
+
+**Why session 8 did not finish.** It did finish, on the documented stopping
+point: three more Nova confirmations queued (batch 6: Alien Hominid, 187,
+Arctic Thunder), a `waiting:` entry posted, no polling from inside the
+session. This resume found four of the seven outstanding requests DONE.
+
+**Merged `origin/master` first** (19 commits behind; clean merge, only
+`docs/lanes/titleroutes/*` files touched, nothing of this lane's). Pushed as
+`07d2718e7c`.
+
+**Checked all seven outstanding IDs by exact path** (`os.path.exists`, not
+`Glob`, per session 6's finding). Four are DONE, three (batch 6: Alien
+Hominid, 187, Arctic Thunder) are still in `queue/` -- the Nova's `queue/`
+has 6 entries total (our 3 plus 3 from `forzadecay414`'s arm), `running/` is
+empty, and the Nova's own hold is no longer present (only the Thor carries
+`lanelocal-fanwait`), so these three simply haven't reached the front yet.
+
+### Three more titles PASS Playable
+
+`title_verdict.py --require confirmation` on each of the four DONE results:
+
+| Title | Request | Verdict | fps_ok | Gameplay s | audio_short | net_w | J/frame |
+|---|---|---|---|---|---|---|---|
+| **WWE Raw 2** | `-1456493r2` | **PASS Playable** | 0.9982 | 1276.9 | 0.0 | 7.956 | 0.1357 |
+| **50 Cent: Bulletproof** | `-1456544r2` | **PASS Playable** | 0.9906 | 1348.3 | 0.0 | 7.471 | 0.2498 |
+| **Baldur's Gate: Dark Alliance** | `-366130` | **PASS Playable** | 1.0 | 1303.9 | 0.0 | 7.628 | 0.1273 |
+| 007: Agent Under Fire | `-366094` | FAIL, see below | 0.9956 | 1251.1 | 0.0 | 7.899 | 0.1837 |
+
+hostops's chmod-660 fix for `titles.qcow2` (the bug that voided both of
+these in their first attempt, session 7-8) held for all three reruns: no
+capture faults, no voids, clean confirmations.
+
+### 007: Agent Under Fire's rerun is stuck at a vault door, not gameplay
+
+The tool printed `reached_gameplay: unconfirmed (generic route)` (AUF uses
+the generic `survey` route, which marks `play` not `gameplay`, so it needs
+`--reviewed-gameplay yes|no` after a frame review). Reviewed
+`route-frames/`: the route walks the character up to a vault-style door at
+`092408-play.png` (mark `play` fires here) and the identical camera angle,
+down to the same red crosshair position on the same door panel, recurs at
+`093305-play.png`, `093936-play.png`, and the last frame `094452-play.png`
+(the full ~20 min window). The FPS overlay changes (51/45/44/42/43) so the
+renderer is live, but the character never moves past this door -- no
+progress, no combat, nothing but the scripted walk-forward/look-around loop
+bouncing off the same obstacle for the entire confirmation. That is a
+softlock against scenery, not gameplay, so this reads `--reviewed-gameplay
+no`.
+
+Ran it: `python3 docs/testing/title_verdict.py <dir> --require confirmation
+--reviewed-gameplay no` still prints the same "unconfirmed" message and
+leaves `reached_gameplay: null` in `verdict.json`, not `false` -- tracing
+the code, the `reviewed == "no"` case has no branch of its own in the
+`gameplay_by` selection (`docs/testing/title_verdict.py`, the `gp`/`play`
+block around line 15958): it falls through to the same `elif play:` arm as
+an unreviewed run, so `gameplay_by` stays `None` and `reached_gameplay`
+stays `None` (unconfirmed) rather than `False` (reviewed, not gameplay) --
+even though a later branch (`elif reviewed == "no": why = "a reviewer
+judged the contact sheet not gameplay"`) clearly expects to be reached.
+**Either way the run reads FAIL under `--require confirmation`**, so this
+does not change AUF's verdict, only the label. Noting it as a harness
+anomaly per standing guidance (report, don't fix from a measurement lane;
+`docs/testing/title_verdict.py` is also the Playable rule the brief says not
+to touch).
+
+**AUF is not Playable from this run.** The generic survey route cannot get
+it past this door; it needs its own authored route (like KOF, Azurik, BG:DA,
+WWE, 50 Cent all have) before another confirmation is worth queuing. Not
+re-queuing AUF from this lane -- route authoring is out of this lane's scope
+(per the brief and the addendum's split: route authoring is Thor work).
+
+### Running table (confirmations), updated
+
+| Title | Device | Regimen | Request | Verdict |
+|---|---|---|---|---|
+| **KOF: Maximum Impact - Maniax** | nova | default | `-1456797` | **PASS Playable** (99.4%, 1282.6 s) |
+| **Azurik: Rise of Perathia** | nova | default | `-1456876` | **PASS Playable** (95.2%, 1292.3 s) |
+| **WWE Raw 2** | nova | default | `-1456493r2` | **PASS Playable** (99.8%, 1276.9 s) |
+| **50 Cent: Bulletproof** | nova | default | `-1456544r2` | **PASS Playable** (99.1%, 1348.3 s) |
+| **Baldur's Gate: Dark Alliance** | nova | default | `-366130` | **PASS Playable** (100%, 1303.9 s) |
+| 007: Agent Under Fire | nova | default | `-366094` | FAIL (stuck at a door, not gameplay; needs its own route) |
+| Alien Hominid | nova | default | `1-1790775886-lane.verdict433-3086847` | queued, not yet run |
+| 187: Ride or Die | nova | default | `1-1790775886-lane.verdict433-3086875` | queued, not yet run |
+| Arctic Thunder | nova | default | `1-1790775886-lane.verdict433-3086903` | queued, not yet run |
+
+**Five titles confirmed Playable by this lane so far: KOF: Maximum Impact -
+Maniax, Azurik: Rise of Perathia, WWE Raw 2, 50 Cent: Bulletproof, Baldur's
+Gate: Dark Alliance.** That is the owner's "3-5 more titles Playable today"
+target (06:45 PDT addendum) met, before batch 6 even lands.
+
+### Next, in order
+
+1. When the three batch-6 IDs finish, judge each with `title_verdict.py
+   <dir> --require confirmation`. For Arctic Thunder and 187, check the last
+   route frame per session 8's caution (a results/continue screen would make
+   the share a menu reading, same failure mode as AUF's door).
+2. Post the five-Playable update to `OUTBOX.md` #433.
+3. AUF needs a dedicated route before it can be re-measured; flag it for
+   whichever lane does Thor-side route authoring (titleroutes).
+4. Tier B/C unchanged: Crimson waits on ibcache's three queued Nova runs and
+   #575/#591, DOA needs a fight route, Kabuki waits on lane.kabukistall,
+   Forza waits on #583, GTA SA waits on #591.
+5. Once all of batch 6 has a verdict and the OUTBOX post is made, this
+   lane's PR can move toward `State: ready` -- check with the owner whether
+   the day's measurement pass is considered done at five, or whether to keep
+   going into tier B.
+
+### Ending session 9 here: waiting
+
+Three Nova confirmations (batch 6) are still queued, behind three
+`forzadecay414` arm/base requests, with the Nova otherwise idle
+(`running/` empty). Recording this progress in `OUTBOX.md` and stopping --
+not polling device work from inside the session.
