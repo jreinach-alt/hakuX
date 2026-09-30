@@ -1720,3 +1720,15 @@ note = "STARTED (lane.local 2026-09-30T03:25Z), briefs/hddcrash.md: #622s titles
 issues = []
 files = [".github/workflows/android.yml", ".github/workflows/desktop.yml", ".github/workflows/jobs-selftest.yml", "docs/lanes/cithrottle/**"]
 note = "STARTED (lane.local 2026-09-30T06:10Z, offline): the CI limits committed in the GitHub reinstatement request; folded offline before any push back to GitHub."
+
+[lane.shaderprebuild569]
+issues = ["569"]
+files = ["hw/xbox/nv2a/pgraph/vk/compile_worker.c", "hw/xbox/nv2a/pgraph/vk/shaders.c", "hw/xbox/nv2a/pgraph/vk/renderer.c", "hw/xbox/nv2a/pgraph/vk/renderer.h", "hw/xbox/nv2a/pgraph/vk/draw.c", "docs/lanes/shaderprebuild569/**", "docs/testing/predictions/shaderprebuild569-*.json"]
+note = "STARTED (lane.local 2026-09-30T17:15Z, offline), briefs/shaderprebuild569.md: P3 of shaderplan569 -- save the pipeline cache during play, pre-build known pipelines on idle cores at boot. Owner-approved 09-30."
+
+
+[lane.defecttriage433]
+issues = ["433"]
+files = ["docs/lanes/defecttriage433/**"]
+note = "STARTED (lane.local 2026-09-30T17:15Z, offline), briefs/defecttriage433.md: classify and rank the defects blocking near-Playable titles. Docs only. Owner-approved 09-30."
+
