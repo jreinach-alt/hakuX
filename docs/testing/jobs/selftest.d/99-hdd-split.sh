@@ -27,11 +27,14 @@ echo "$*" >> "$HS_DEV/calls"
 X=/storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box
 map() { printf '%s' "${1//$X/$HS_DEV/fs}"; }
 case "$1" in
-    push) cp "$2" "$(map "$3")" ;;
+    push) cp "$2" "$(map "$3")" && chmod 644 "$(map "$3")" ;;   # adb push: the shell's umask
     pull) cp "$(map "$2")" "$3" ;;
     shell) shift; c="$*"
         case "$c" in
             "am force-stop"*) ;;
+            "chmod "*)   # nochmod: the device refuses the mode change
+                [ -f "$HS_DEV/nochmod" ] && exit 1
+                sh -c "$(map "$c")" ;;
             *"cat > shared_prefs/x1box_prefs.xml"*) cat > "$HS_DEV/prefs.xml"
                 [ -f "$HS_DEV/drop_readback" ] && touch "$HS_DEV/drop_next" ;;
             *"cat shared_prefs/x1box_prefs.xml"*)   # drop_readback: the write lands, its read-back is lost
@@ -77,7 +80,7 @@ for tid, p in (("4D530021", b"crimson" * 300), ("4541005B", b"burnout" * 900), (
 saves.build(os.path.join(out, "hdd.img"), [os.path.join(out, t) for t in ("4D530021", "4541005B")])
 saves.build(os.path.join(out, "played.qcow2"), [os.path.join(out, t) for t in ("4D530021", "4541005B", "4D530053")])
 PY
-cp "$HS/fix/hdd.img" "$HS/dev/fs/hdd.img"
+cp "$HS/fix/hdd.img" "$HS/dev/fs/hdd.img"; chmod 660 "$HS/dev/fs/hdd.img"   # as the app made it
 check "fixtures: a device hdd.img with two titles' saves" test -s "$HS/dev/fs/hdd.img"
 
 # Run a shell snippet inside a sourced dispatcher.sh against the fake device.
@@ -116,6 +119,11 @@ check "  ... result's sha256_at_start is the device file's" \
       grep -q "\"sha256_at_start\": \"$dsha\"" "$HS/r1/hdd.json"
 check "  ... the seed carried both of hdd.img's saves onto it" verify_on "$HS/dev/fs/titles.qcow2" 4D530021 4541005B
 check "  ... hdd.img itself was not changed" cmp -s "$HS/fix/hdd.img" "$HS/dev/fs/hdd.img"
+# (lane.hddperm.) adb push leaves 644; the app writes through its group, so
+# a 644 titles.qcow2 aborts xemu with Permission denied before focus.
+mode_of() { stat -c %a "$1" 2>/dev/null; }
+check "  ... the pushed titles.qcow2 is 660, as hdd.img is (got: $(mode_of "$HS/dev/fs/titles.qcow2"))" \
+      eval '[ "$(mode_of "$HS/dev/fs/titles.qcow2")" = 660 ] && [ "$(mode_of "$HS/dev/fs/hdd.img")" = 660 ]'
 check "  ... the marker holds the hddPath it replaced" \
       [ "$(cat "$HS/dispatch/.hdd_pref.nova" 2>/dev/null)" = "$X/hdd.img" ]
 
@@ -143,6 +151,7 @@ check "the second run rebuilds from the store: build, keep (got: $plans)" [ "$pl
 check "  ... its disk carries all three saves" verify_on "$HS/dev/fs/titles.qcow2" 4D530021 4541005B 4D530053
 check "  ... and is the image the registry says was pushed" \
       [ "$(sha256sum "$HS/dev/fs/titles.qcow2" | cut -d' ' -f1)" = "$(reg "st['image']['sha256']")" ]
+check "  ... and is 660 (got: $(mode_of "$HS/dev/fs/titles.qcow2"))" [ "$(mode_of "$HS/dev/fs/titles.qcow2")" = 660 ]
 hs_env 'titles_disk_after req2 "$HS/r2"' >/dev/null 2>&1
 check "  ... an untouched disk is not pulled after the run" grep -q unchanged_or_blocked "$HS/r2/hdd.after.json"
 
@@ -211,8 +220,20 @@ check "  ... the original is kept on the device as hdd.img.bak-auto" \
       [ "$(sha256sum "$HS/dev/fs/hdd.img.bak-auto" 2>/dev/null | cut -d' ' -f1)" = "$osha" ]
 check "  ... the new hdd.img is not the old one" \
       [ "$(sha256sum "$HS/dev/fs/hdd.img" | cut -d' ' -f1)" != "$osha" ]
+check "  ... and is 660, not adb push's 644 (got: $(mode_of "$HS/dev/fs/hdd.img"))" [ "$(mode_of "$HS/dev/fs/hdd.img")" = 660 ]
 check "  ... and every save on it survived" \
       eval 'for t in 4D530021 4541005B; do python3 "$TESTING/titles/saves.py" verify "$HS/dev/fs/hdd.img" "$HS/fix/$t" >/dev/null || exit 1; done'
+
+# A device that refuses the chmod: the push fails, and the disk it would have
+# replaced is still the one it was.
+echo "== hdd split: a push whose mode cannot be set fails and replaces nothing"
+cp "$HS/dev/fs/hdd.img" "$HS/hdd.before"; head -c 4096 /dev/urandom > "$HS/other.img"
+touch "$HS/dev/nochmod"
+hs_env 'dev_push "$HS/other.img" "$X/hdd.img"' > "$HS/nochmod.log" 2>&1; rc=$?
+rm -f "$HS/dev/nochmod" "$HS/dev/fs/hdd.img.new"
+check "a refused chmod fails dev_push (rc=$rc)" [ "$rc" != 0 ]
+check "  ... and hdd.img is the disk it was" cmp -s "$HS/hdd.before" "$HS/dev/fs/hdd.img"
+cp -p "$HS/hdd.before" "$HS/dev/fs/hdd.img"   # so a red leg here does not redden the guard's
 
 # (pass-1 M2.) A reset that cannot succeed on this disk is paid for once.
 echo "== hdd split: a failed reset is not retried on the same disk"

@@ -568,13 +568,29 @@ dev_pull() {
     done
     rm -f "$dst"; return 1
 }
+# dev_mode <device path> -> octal mode (e.g. 660), or "" when the file is absent
+dev_mode() {
+    local m
+    m=$(adb_call "$ADB_QUICK_TIMEOUT" "stat mode $1" shell "stat -c %a '$1' 2>/dev/null" 2>/dev/null | tr -d '\r' | head -1)
+    [[ "$m" =~ ^[0-7]{3,4}$ ]] && echo "$m"
+}
 # dev_push <host path> <device path>: through <path>.new and a rename, checked.
+# adb push creates the file as shell with the shell's umask, 644; the app
+# reaches files/x1box through its ext_data_rw group, so a 644 disk is
+# read-only to it, xemu's writable -drive open fails (Permission denied) and
+# the app aborts before it takes focus. Every disk the app writes is 660, as
+# the files the app itself created are; the mode is set on <path>.new, so the
+# rename never exposes a read-only disk, and read back after it.
 dev_push() {
-    local src="$1" dst="$2" want
+    local src="$1" dst="$2" want mode
     want=$(sha256sum "$src" | cut -d' ' -f1)
     adb_call 600 "push $dst" push "$src" "$dst.new" >/dev/null 2>&1 || return 1
     [ "$(dev_sha256 "$dst.new")" = "$want" ] || { log "  push $dst: the device's copy does not match"; return 1; }
+    adb_call "$ADB_QUICK_TIMEOUT" "chmod $dst" shell "chmod 660 '$dst.new'" >/dev/null 2>&1 \
+        || { log "  push $dst: chmod 660 failed"; return 1; }
     adb_call "$ADB_QUICK_TIMEOUT" "mv $dst" shell "mv -f '$dst.new' '$dst'" >/dev/null 2>&1 || return 1
+    mode=$(dev_mode "$dst")
+    [[ "$mode" =~ [2367].$ ]] || { log "  push $dst: mode is '${mode:-unreadable}', not group-writable"; return 1; }
     [ "$(dev_sha256 "$dst")" = "$want" ]
 }
 
