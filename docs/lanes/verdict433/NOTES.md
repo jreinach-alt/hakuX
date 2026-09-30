@@ -1139,3 +1139,127 @@ Three requests remain outstanding: 187 and Arctic Thunder queued on the
 Nova, Otogi running on the Thor. Recording this session's decision in
 `OUTBOX.md` and stopping -- not polling device work from inside the
 session.
+
+## Session 12 (2026-09-30, resumed as attempt 3)
+
+**Why the previous attempt did not need fixing, again.** Session 11 ended
+correctly: it read hostops's new addendum, made and documented a real
+decision (don't re-queue Alien Hominid), found and recorded the new
+`lanelocal-fanwait` hold, and stopped at its own "waiting" checkpoint with
+three device requests still outstanding and an `OUTBOX.md` entry naming
+them -- exactly a finished session per `roles/lane.md`. `git status` clean;
+`HEAD` (`48e9441d27`) unchanged from where session 11 left it. This resume
+is the handback waiter bringing the lane back to check the outstanding
+work, not a fix for anything broken.
+
+**Checked all three outstanding requests by exact path** (`os.walk`/direct
+reads under `DISPATCH_DIR` via `python3`, same method as prior sessions):
+
+| Request | Title | State |
+|---|---|---|
+| `-3086875` | 187: Ride or Die | still `queue/`, nova |
+| `-3086903` | Arctic Thunder | still `queue/`, nova |
+| `-43486` | Otogi: Myth of Demons | still `running/`, thor -- not yet judgeable |
+
+**187 and Arctic Thunder: still battery-gated, as the 14:15 PDT addendum
+predicted.** `.battery_refused.nova` (mtime 11:12:30) shows both refused
+at `level: 37` against `need: 47.0` / `need: 48.3`, alongside two
+`forzadecay414` arm requests refused the same way. No hold on the Nova
+itself -- it's simply under the ~48% floor this addendum already
+anticipated ("they run first after the next top-up ... about 18:00").
+Nothing actionable here; still hours from the evening dock.
+
+**Otogi: still running, but it has already hit a sustained thermal pause
+-- read directly from `thermal.jsonl` in its results dir** (46 samples,
+`10:48:31` through `11:13:04` at the time of this check), not inferred:
+
+| Time (PDT) | xo-therm (C) | `pause` | fan.speed |
+|---|---|---|---|
+| 10:48:31 (cool) | 66.8 | False | 0 |
+| 10:49:03 (start) | 64.3 | False | 0 |
+| 10:49:43-11:00:46 (ramp) | 66.4 -> 77.9 | False | 0 |
+| **11:01:19** | 77.2 | **True** | 0 |
+| 11:01:19-11:13:04 (12+ min so far) | 77.2 -> 70.4, declining | **True, every sample since** | 0 |
+
+`fan.speed` reads 0 across every sample including the ramp -- consistent
+with lane.thorheat's #614 finding that this unit's fan does not spin
+regardless of the commanded duty (`fan.duty` reads 26500/50000, `mode: 4`,
+the whole time). This is the kernel thermal governor's own
+`thermal-pause-F8` cdev engaging at xo~78C, not the `hakux-thor-coldconfirm`
+runner's 70C force-stop (no `.hostops-diagnosed` file has appeared, and
+xo passed through 70C twice on the way up without the app being killed --
+this request was queued in session 10, before the 10:20 PDT addendum stood
+up the coldconfirm slot-gating runner, and started from xo 64-66C, already
+above that runner's 50C cold-slot floor). `request.json` / `result.json` /
+`verdict.json` still don't exist -- the run has not finished or been
+force-stopped, just throttled, and this check does not wait for it to.
+
+**This matters regardless of how it finishes.** The brief is explicit
+(point 3): "A title that hits the thermal pause during a confirmation is
+not sustainably Playable on the Thor. Record that honestly, with its heat
+evidence; do not re-run until it passes." Otogi's confirmation has now hit
+exactly that, mid-run. Whatever numeric verdict `title_verdict.py` produces
+when it finishes (fps during the paused minutes will be reduced, not
+necessarily enough to fail `fps_share_min` outright), **this run cannot be
+recorded as a Thor Playable confirmation** even on a numeric PASS -- it
+must be recorded as heat evidence, same as Azurik's earlier
+`thermal-pause-F8` fail and the session-10-to-12 record of 16/66 Thor runs
+pausing in 30h. Not re-running Otogi on the Thor after this.
+
+**This also undercuts session 10's candidate-selection method, not just
+Otogi.** Otogi was picked as the single Thor cold-start candidate because
+four independent *short* runs (256-263s each) read 4.0-5.1 W net with no
+issue. A full 1200s confirmation window pushed the same title into a
+sustained thermal pause on this fan-dead unit. A short-run wattage reading
+is not a reliable predictor of full-window thermal behavior here -- the
+same caution the owner's 12:00 PDT addendum already applied at the fleet
+level ("16 of 66 ... 14 of them ... between 00:20 and 08:05") now has a
+single-title mechanism behind it. Not proposing a fix (that's #507's
+lane); flagging it so no lane picks another "light in a short run" Thor
+candidate on the strength of short-run power alone until #507 lands
+something.
+
+**Nothing new to judge or queue this session.** No verdict files exist for
+any of the three outstanding requests. The Playable count from this lane
+stays at five, unchanged since session 9.
+
+### Running table (confirmations), unchanged except Otogi's new heat note
+
+| Title | Device | Regimen | Request | Verdict |
+|---|---|---|---|---|
+| **KOF: Maximum Impact - Maniax** | nova | default | `-1456797` | **PASS Playable** (99.4%, 1282.6 s) |
+| **Azurik: Rise of Perathia** | nova | default | `-1456876` | **PASS Playable** (95.2%, 1292.3 s) |
+| **WWE Raw 2** | nova | default | `-1456493r2` | **PASS Playable** (99.8%, 1276.9 s) |
+| **50 Cent: Bulletproof** | nova | default | `-1456544r2` | **PASS Playable** (99.1%, 1348.3 s) |
+| **Baldur's Gate: Dark Alliance** | nova | default | `-366130` | **PASS Playable** (100%, 1303.9 s) |
+| 007: Agent Under Fire | nova | default | `-366094` | FAIL (stuck at a door, not gameplay; needs its own route) |
+| Alien Hominid | thor (cold-start, re-pinned) | default | `-3086847` | voided (heat stop, no result); not re-queued -- already Playable via a separate, earlier Thor confirmation (`lanelocal-1183547`) |
+| 187: Ride or Die | nova | default | `-3086875` | queued, battery-refused (Nova at 37%, needs ~47%) |
+| Arctic Thunder | nova | default | `-3086903` | queued, battery-refused (Nova at 37%, needs ~48%) |
+| Otogi: Myth of Demons | thor (hard-pin, cold-start) | default | `-43486` | running; **hit `thermal-pause-F8` at xo 77.9C, ~11:01 PDT, still paused as of 11:13 PDT** -- whatever its numeric outcome, not a valid Thor confirmation; not re-running |
+
+### Next, in order
+
+1. When Otogi's request produces `verdict.json`, record its numeric result
+   in this table for completeness, but do not count it as Playable even on
+   a PASS -- the thermal pause during the run already disqualifies it per
+   the brief's point 3. Do not re-queue it on the Thor.
+2. When 187 and Arctic Thunder run (after the Nova recharges toward 18:00
+   PDT), judge each with `title_verdict.py <dir> --require confirmation`,
+   checking the last route frame per session 8's caution.
+3. Tier B/C unchanged: Crimson waits on #591 (still unfolded), DOA needs a
+   fight route, Kabuki waits on lane.kabukistall, Forza waits on #583, GTA
+   SA waits on #591.
+4. Not queuing further Thor work -- `lanelocal-fanwait` is still up, and
+   this session's finding is a second, independent reason not to trust a
+   short-run power reading as a green light for a full Thor confirmation
+   right now anyway.
+
+### Ending session 12 here: waiting
+
+All three outstanding requests are still unresolved: 187 and Arctic
+Thunder battery-gated on the Nova, Otogi mid-thermal-pause on the Thor.
+Recording this session's thermal-pause finding in `OUTBOX.md` and
+stopping -- not polling or waiting out the remaining ~100s of Otogi's run
+from inside the session.
+session.

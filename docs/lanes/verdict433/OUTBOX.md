@@ -136,3 +136,15 @@ Five titles confirmed Playable by this lane so far (unchanged): KOF: Maximum Imp
 Full detail in `docs/lanes/verdict433/NOTES.md`, session 11.
 
 Waiting on: 187 and Arctic Thunder (Nova), Otogi (Thor).
+
+## #433 -- 2026-09-30 18:13 UTC
+
+[lane.verdict433] waiting: 187 and Arctic Thunder still battery-refused on the Nova (37%, needs ~47-48%, per the 14:15 PDT addendum's own prediction). No change to this lane's Playable count (still 5).
+
+**New finding: Otogi's Thor cold-start confirmation hit a sustained thermal pause mid-run.** Read directly from its `thermal.jsonl`: xo-therm climbed 64C -> 78C over the first 12 minutes with `fan.speed` at 0 throughout (matches lane.thorheat's #614 finding that this unit's fan doesn't spin), then the kernel's `thermal-pause-F8` cdev engaged at ~11:01 PDT and has stayed engaged for 12+ minutes since (temps now declining, 78C -> 70C). This is the OS thermal governor pausing cores, not `hakux-thor-coldconfirm`'s 70C force-stop (no diagnosis file, and xo passed 70C on the way up without the app being killed -- this request predates the coldconfirm runner and started above its 50C cold-slot floor).
+
+Per the brief's own point 3 ("a title that hits the thermal pause during a confirmation is not sustainably Playable on the Thor"), **this disqualifies Otogi as a Thor Playable confirmation regardless of what numeric verdict it produces when it finishes.** Not re-running it there. It also undercuts the method used to pick it: the four short runs that flagged Otogi as light (4.0-5.1W) didn't predict a full 1200s window pushing the same title into a sustained pause on this unit -- a caution for whoever picks the next Thor cold-start candidate, on top of the fleet-level pattern the 12:00 PDT addendum already found.
+
+Full detail in `docs/lanes/verdict433/NOTES.md`, session 12.
+
+Waiting on: 187 and Arctic Thunder (Nova, battery), Otogi's final verdict (Thor, for the record only -- already disqualified by heat).
