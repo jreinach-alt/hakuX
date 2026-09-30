@@ -32,8 +32,9 @@ case "$1" in
     shell) shift; c="$*"
         case "$c" in
             "am force-stop"*) ;;
-            "chmod "*)   # nochmod: the device refuses the mode change
+            "chmod "*)   # nochmod: the device refuses the mode change; chmodnoop: it says yes and ignores it
                 [ -f "$HS_DEV/nochmod" ] && exit 1
+                [ -f "$HS_DEV/chmodnoop" ] && exit 0
                 sh -c "$(map "$c")" ;;
             *"cat > shared_prefs/x1box_prefs.xml"*) cat > "$HS_DEV/prefs.xml"
                 [ -f "$HS_DEV/drop_readback" ] && touch "$HS_DEV/drop_next" ;;
@@ -230,10 +231,22 @@ echo "== hdd split: a push whose mode cannot be set fails and replaces nothing"
 cp "$HS/dev/fs/hdd.img" "$HS/hdd.before"; head -c 4096 /dev/urandom > "$HS/other.img"
 touch "$HS/dev/nochmod"
 hs_env 'dev_push "$HS/other.img" "$X/hdd.img"' > "$HS/nochmod.log" 2>&1; rc=$?
-rm -f "$HS/dev/nochmod" "$HS/dev/fs/hdd.img.new"
+rm -f "$HS/dev/nochmod"
 check "a refused chmod fails dev_push (rc=$rc)" [ "$rc" != 0 ]
 check "  ... and hdd.img is the disk it was" cmp -s "$HS/hdd.before" "$HS/dev/fs/hdd.img"
-cp -p "$HS/hdd.before" "$HS/dev/fs/hdd.img"   # so a red leg here does not redden the guard's
+check "  ... and hdd.img.new is removed" test ! -e "$HS/dev/fs/hdd.img.new"
+rm -f "$HS/dev/fs/hdd.img.new"; cp -p "$HS/hdd.before" "$HS/dev/fs/hdd.img"   # so a red leg here does not redden the next
+# (pass-1 M1.) A chmod that exits 0 and leaves 644: caught on hdd.img.new,
+# before the rename, so hdd.img is never replaced by a read-only disk.
+touch "$HS/dev/chmodnoop"
+hs_env 'dev_push "$HS/other.img" "$X/hdd.img"' > "$HS/chmodnoop.log" 2>&1; rc=$?
+rm -f "$HS/dev/chmodnoop"
+check "a chmod that does not take fails dev_push (rc=$rc)" [ "$rc" != 0 ]
+check "  ... and hdd.img is the disk it was" cmp -s "$HS/hdd.before" "$HS/dev/fs/hdd.img"
+check "  ... still 660 (got: $(mode_of "$HS/dev/fs/hdd.img"))" [ "$(mode_of "$HS/dev/fs/hdd.img")" = 660 ]
+check "  ... and hdd.img.new is removed" test ! -e "$HS/dev/fs/hdd.img.new"
+check "  ... and the log names the mode" grep -q "mode is '644'" "$HS/chmodnoop.log"
+rm -f "$HS/dev/fs/hdd.img.new"; cp -p "$HS/hdd.before" "$HS/dev/fs/hdd.img"
 
 # (pass-1 M2.) A reset that cannot succeed on this disk is paid for once.
 echo "== hdd split: a failed reset is not retried on the same disk"

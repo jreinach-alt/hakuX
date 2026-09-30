@@ -16,23 +16,24 @@ records the downstream symptom, `not-foreground`.
 
 | caller | line (after this PR) | pushes | first hit |
 |---|---|---|---|
-| `titles_disk_prepare`, `build` | ~634 | `titles.qcow2` | Nova, 2026-09-29 18:36 PDT, the first build since PR #622 |
-| `hdd_img_guard`, reset | ~738 | `hdd.img` | not yet; would make every disc run crash too |
+| `titles_disk_prepare`, `build` | 646 | `titles.qcow2` | Nova, 2026-09-29 18:36 PDT, the first build since PR #622 |
+| `hdd_img_guard`, reset | 750 | `hdd.img` | not yet; would make every disc run crash too |
 
 Both go through the one function, so the one fix covers both; the guard-reset
 leg of the selftest asserts it.
 
 ## The fix
 
-`dev_push` now `chmod 660`s `<path>.new` after its sha check and before the
-rename, so the rename never exposes a read-only disk; a failed chmod fails the
-push and replaces nothing. After the rename it reads the mode back
-(`dev_mode`, `stat -c %a`) and fails unless the group digit has the write bit,
-then checks the sha as before, and logs
+`dev_push` now `chmod 660`s `<path>.new` after its sha check, reads the mode
+back on `<path>.new` (`dev_mode`, `stat -c %a`), and only then renames it
+(the rename keeps the mode). A chmod that fails, or exits 0 and does not take,
+fails the push with the old disk still in place and `<path>.new` removed
+(pass-1 M1, L1). After the rename it checks the sha as before and logs
 `pushed <path> (sha256 <12>, mode <mode>)` to dispatcher.log.
 
-The mode check is on group-writability, not `= 660`: a storage layer that
-reports a wider mode the app can still write must not fail a good push.
+The mode check is on the group digit being 6 or 7 (read and write; xemu opens
+the disk read-write), not `= 660`: a storage layer that reports a wider mode
+the app can still use must not fail a good push.
 
 ## Selftest (99-hdd-split.sh)
 
@@ -42,11 +43,17 @@ hdd.img is 660, as the app makes it. New legs:
 - the first run's pushed titles.qcow2 is 660, as hdd.img is
 - the rebuilt titles.qcow2 on the second run is 660
 - the guard-reset hdd.img is 660, not adb push's 644
-- a device that refuses the chmod fails `dev_push`, and hdd.img is unchanged
+- a device that refuses the chmod fails `dev_push`, hdd.img is unchanged,
+  and hdd.img.new is removed
+- (pass-1 M1) a chmod that exits 0 and leaves 644 fails `dev_push`; hdd.img
+  is unchanged and still 660, hdd.img.new is removed, the log names `644`
 
 Falsifier: master's dispatcher.sh with the new fragment, 48 passed / 5 failed,
 exactly the five new legs (`got: 644` on the three mode legs; `rc=0` and a
-replaced hdd.img on the refused-chmod leg). This branch: 53 passed, 0 failed.
+replaced hdd.img on the refused-chmod leg). Remediation: the pass-1 head's
+dispatcher.sh with the remediated fragment, 56 passed / 3 failed -- the M1
+leg's hdd.img replaced and 644, and the refused-chmod leg's hdd.img.new left.
+This branch: 59 passed, 0 failed.
 
 ## Real-device proof: after the fold, not before
 
@@ -64,7 +71,7 @@ after the fold writes to dispatcher.log
 
 and its run has no `Permission denied` in logcat and no `not-foreground`
 abort. A push that could not set the mode logs `push ...: chmod 660 failed`
-or `mode is '644', not group-writable` and fails the request as
+or `mode is '644', not group read-write; <path> left as it was` and fails the request as
 `TITLES DISK: push failed`, not as a void run.
 
 State at 2026-09-29 ~19:00 PDT (read-only, titlestate registry):

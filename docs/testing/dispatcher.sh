@@ -579,19 +579,26 @@ dev_mode() {
 # reaches files/x1box through its ext_data_rw group, so a 644 disk is
 # read-only to it, xemu's writable -drive open fails (Permission denied) and
 # the app aborts before it takes focus. Every disk the app writes is 660, as
-# the files the app itself created are; the mode is set on <path>.new, so the
-# rename never exposes a read-only disk, and read back after it.
+# the files the app itself created are. The mode is set on <path>.new and
+# read back there, before the rename (which keeps it), so a chmod that exits 0
+# without taking fails the push with the old disk still in place. Every
+# failure before the rename removes <path>.new.
+dev_push_fail() {   # <device path> <why>
+    adb_call "$ADB_QUICK_TIMEOUT" "rm $1.new" shell "rm -f '$1.new'" >/dev/null 2>&1
+    log "  push $1: $2"; return 1
+}
 dev_push() {
     local src="$1" dst="$2" want mode
     want=$(sha256sum "$src" | cut -d' ' -f1)
-    adb_call 600 "push $dst" push "$src" "$dst.new" >/dev/null 2>&1 || return 1
-    [ "$(dev_sha256 "$dst.new")" = "$want" ] || { log "  push $dst: the device's copy does not match"; return 1; }
+    adb_call 600 "push $dst" push "$src" "$dst.new" >/dev/null 2>&1 || { dev_push_fail "$dst" "adb push failed"; return 1; }
+    [ "$(dev_sha256 "$dst.new")" = "$want" ] || { dev_push_fail "$dst" "the device's copy does not match"; return 1; }
     adb_call "$ADB_QUICK_TIMEOUT" "chmod $dst" shell "chmod 660 '$dst.new'" >/dev/null 2>&1 \
-        || { log "  push $dst: chmod 660 failed"; return 1; }
-    adb_call "$ADB_QUICK_TIMEOUT" "mv $dst" shell "mv -f '$dst.new' '$dst'" >/dev/null 2>&1 || return 1
-    mode=$(dev_mode "$dst")
-    [[ "$mode" =~ [2367].$ ]] || { log "  push $dst: mode is '${mode:-unreadable}', not group-writable"; return 1; }
-    [ "$(dev_sha256 "$dst")" = "$want" ] || return 1
+        || { dev_push_fail "$dst" "chmod 660 failed"; return 1; }
+    mode=$(dev_mode "$dst.new")
+    # xemu opens the disk read-write: the group needs read and write.
+    [[ "$mode" =~ [67].$ ]] || { dev_push_fail "$dst" "mode is '${mode:-unreadable}', not group read-write; $dst left as it was"; return 1; }
+    adb_call "$ADB_QUICK_TIMEOUT" "mv $dst" shell "mv -f '$dst.new' '$dst'" >/dev/null 2>&1 || { dev_push_fail "$dst" "rename failed"; return 1; }
+    [ "$(dev_sha256 "$dst")" = "$want" ] || { log "  push $dst: after the rename the device's copy does not match"; return 1; }
     log "  pushed $dst (sha256 ${want:0:12}, mode $mode)"
 }
 
