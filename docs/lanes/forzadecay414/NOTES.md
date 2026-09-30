@@ -554,6 +554,42 @@ Both carry expect_sha 388ea55c4b19, 2 runs each, and neither is pinned to a devi
 queued, the Thor and the Nova were both on holds, with 28 requests in the queue. #583 stays draft
 until the `[job.arms]` verdict.
 
+## 9. Resume 2026-09-30 07:20 PDT (lane.local's offline addendum): pixels3 and forza3 on the merged head
+
+**Why attempt 4 did not finish.** It ended on an outside wait: the arms job's verdict on the re-queued
+pixels2 pair. The pair ran, but split: base `1-1790727472-arms-forzadecay414-base-2035879` on the
+Thor (85347ffbd1, apk 24205af617ee), fix `-fix-2035992` on the Nova (10fe2f59a7, apk d5aa7a873b21).
+The arms job judged it at 02:40 PDT: FAIL, 37 of 3363, **CONFOUNDED (A thor, B nova)**
+(`$WORK/arms/pairs/388ea55c4b19….comment.md`). Its same-device re-run was never queued. The job's
+own error reads `no device to pin to: thor is gone and CHOOSE named none`
+(`arms/log/388ea55c….samedev.err`). The label reads `none`: no verdict counts. Since about 21:00 PDT
+09-29 GitHub is unreachable. The arms job has queued no new pair since then (its `prs.tsv` was last
+written at 03:15Z), so a new registration is not picked up by it.
+
+The 37: 36 ZPass_pixel_count captures (ZPass +672; the 35 LineWidth/PointSize/PointSizeVS
+captures +1010 to +1114, e.g. `ZPassLineWidth-0x0000` 320 -> 1414), and
+`Antialiasing_tests/FramebufferNotModifiedBySurfac` 0 -> 1. The better side has five Stencil
+captures going to exact (30000/40000 -> 0), which is #79. A near-constant shift across one whole
+suite fits a device difference; one device decides it.
+
+**What this session did:**
+- Merged origin/master 146b8887db as eec025dd37. The merge was clean. No commit since 85347ffbd1 touches
+  `invalidation_frame`, `surface_in_flight` or the drain. The fix's hunk is unchanged. `retired` is
+  allocated per slot at init (surface.c:5249), so the drain's early return fires only after the
+  finalizer and never skips the reset.
+- `judge.py --end N` reads a window other than 360 s. At the default it prints what it printed before,
+  except one fix: the `w311` line's `max` and `last` were shifted by one argument. It had printed "max
+  360, last (t<=10)" on `-151099`; it now prints "max 10, last (t<=360) 9", the numbers section 8 quotes.
+- Registered by `register_fix3.py` at 2026-09-30T14:25:20Z, before any run, A 146b8887db, B eec025dd37:
+
+| file | sha256 | what |
+|---|---|---|
+| `forzadecay414-fix-pixels3.json` | 82cd41a840fc | pixels2's claim and must_not_move list on the new refs; both arms hard-pinned to the Nova, 2 runs each |
+| `forzadecay414-fix-forza3.json` | 3d3587def921 | one Nova Forza soak of B, 420 s, judged by `judge.py --end 420`: W0 whole, M0 race, B1-B3 as forza2, D1 rows 330-390 vs 150-210 >= 0.8, D3 every row 150-390 >= 0.6 x their median |
+
+A of forza3 is not run (the lmkd kill; "Do not repeat" below). D3's 0.6 comes from `-151099`'s
+0.77 over rows 150-330. That run is not judged by the file.
+
 ## Do not repeat
 
 - Do not re-queue a pre-fix Forza soak on the Nova to read a whole master race. lmkd kills it at
