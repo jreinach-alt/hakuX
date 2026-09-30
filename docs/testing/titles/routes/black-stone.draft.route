@@ -1,0 +1,67 @@
+# Black Stone: Magic & Steel (58490004). No profile step: NEW is always the
+# first choice and asks for a class and a name. PLAYED by nav.py on the
+# Nova, 2026-09-29 19:54 PDT (lane.titleroutes session 37, HELD; nav
+# session black-stone.first-run-20260929T195423).
+#
+# Boot with no input (scratch/replay/bootwatch-195244): a health warning,
+# then Start Game / Option from ~13 s after launch, steady through 75 s at
+# least (no attract demo seen).
+#
+# Start Game -> a four-player panel (P1: NEW / LOAD) -> A on NEW -> class
+# (Warrior) -> A -> a name keyboard with the cursor on "A". The keyboard
+# says "Select OK directly to name your character as default": one stick
+# pulse up wraps the cursor to the bottom row (the backspace arrow), one
+# pulse right reaches OK. (START on the keyboard types a letter.)
+#
+# DRAFT: GAMEPLAY NOT CONFIRMED. The route replays to a green octagonal room
+# with the HUD (HP 410, default name "Irgil"; scratch/replay/
+# black-stone-195702). The stick changes the warrior's facing and stance
+# and A swings his sword (nav frames 019-023), but he NEVER WALKS: not with
+# the stick held 3 s, nor with the hat (nav sessions black-stone-check*,
+# 19:59 PDT). HP fell 410 -> 390 while A was pressed. A room the player
+# cannot leave is not yet shown to be play, so this file is not linked in
+# targets.toml and has no benchmark. Next: find what makes him walk (a
+# different stick range, a run button, or an emulation defect), from this
+# room.
+wait 5.0
+shot boot
+wait 15.0
+shot title
+mark title
+press A 150
+wait 4.0
+shot player-panel
+mark player-panel
+press A
+wait 4.0
+shot class
+mark class
+press A
+wait 4.0
+shot keyboard
+axis LY min
+axis LY mid
+wait 1.0
+axis LX max
+axis LX mid
+wait 1.0
+shot name-ok
+mark name
+press A
+wait 20.0
+shot room
+mark gameplay
+repeat forever {
+    axis LY max
+    wait 2
+    axis LY mid
+    axis LX max
+    wait 2
+    axis LX mid
+    axis LY min
+    wait 2
+    axis LY mid
+    axis LX min
+    wait 2
+    axis LX mid
+}

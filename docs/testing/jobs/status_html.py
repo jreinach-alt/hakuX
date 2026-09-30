@@ -954,9 +954,11 @@ ESC_RECHECK_SECS = 2 * 3600
 
 
 def _items(text, opens):
-    """Group lines into items: a line for which opens(line) is true starts one, and the indented
-    lines under it belong to it (UPDATE, RESOLVED and re-checked notes are written there). Other
-    lines are no item's and end none. As host-tools/harness_health.py groups escalations."""
+    """Group lines into items: a line for which opens(line) is true starts one, and every line
+    after it -- indented (UPDATE, RESOLVED and re-checked notes are written there) or not (an
+    unindented paragraph inside a "## " heading block) -- belongs to it until the next line that
+    opens one. A line before any item opens belongs to none. As host-tools/harness_health.py
+    groups escalations."""
     out = []
     for l in text.splitlines():
         if l[:1] in (" ", "\t"):
@@ -964,21 +966,41 @@ def _items(text, opens):
                 out[-1].append(l.strip())
         elif opens(l):
             out.append([l.strip()])
+        elif out and l.strip():
+            out[-1].append(l.strip())
     return out
 
 
+_RESOLVED = re.compile(r"(?:^|[.!?]\s+)RESOLVED\b")
+
+
 def escalation_items(text, now):
-    """The open owner items in host-tools/escalations.md. An item is an unindented line (a "- " bullet,
-    or the older unbulleted "OWNER ONLY ...(meta): text" line; not a "#" heading) plus its indented
-    continuation lines; it is resolved when any of its lines says RESOLVED. The page
-    shows its first line, and the newest "re-checked HH:MM" among its lines (hostops re-verifies each
-    open item every tick); an item neither opened nor re-checked in the last 2 h is marked unverified."""
+    """The open owner items in host-tools/escalations.md. An item opens on a "- " (or "*") bullet,
+    an older unbulleted "OWNER ..." line, or a "## " heading; everything after it up to the next
+    such line belongs to it (a heading block's unindented paragraphs included -- hostops writes
+    those without a bullet or indent, and reading each one as its own item is what turned one WSL
+    escalation into 32 on the page, #433). An item is resolved only by a marker, never a bare
+    substring: RESOLVED where a sentence starts -- the very first word after the bullet/heading
+    marker or after a continuation line's indentation, or anywhere it follows ". "/"! "/"? " --
+    closes it; hostops writes both a leading "- RESOLVED ...: ... Was: ..." rewrite and an older
+    "<original ask>. RESOLVED <time> (source): <resolution>" appended to the same line, and both
+    forms are a marker under this rule. "Not marking RESOLVED." and "Mark RESOLVED here once done"
+    are mid-sentence, not a new sentence, so they are prose and never close an item -- including
+    when hostops's own line-wrap splits that exact sentence in two ("Not marking\n  RESOLVED.",
+    2026-09-29 18:33 PDT): the marker is searched for in the item's lines joined back into prose,
+    not line by line, so a wrapped "RESOLVED." that only continues the previous line's unfinished
+    sentence is not mistaken for one starting fresh. The page shows the item's first line, and the
+    newest "re-checked HH:MM" among its lines (hostops re-verifies each open item every tick); an
+    item neither opened nor re-checked in the last 2 h is marked unverified."""
     out = []
     today = _lt(now, "full")[:10]
-    for lines in _items(text, lambda l: l.strip() and not l.startswith("#")):
-        if any("RESOLVED" in l for l in lines):
+    def opens(l):
+        s = l.strip()
+        return bool(s) and bool(re.match(r"^(?:[-*]\s|OWNER ONLY\b|##\s)", s))
+    for lines in _items(text, opens):
+        l = re.sub(r"^(?:[-*]\s+|#+\s+)", "", lines[0])
+        if _RESOLVED.search(" ".join([l] + lines[1:])):
             continue
-        l = re.sub(r"^[-*]\s+", "", lines[0])
         m = re.match(r"^(OWNER ONLY[^(:]*)?\(([^)]*)\)\s*:\s*(.*)$", l)
         at = None
         if m:
@@ -1810,6 +1832,39 @@ def _device_words(d, now):
     return "idle" + ((" since %s" % _lt(d["since"])) if d.get("since") else "")
 
 
+_TIMER_NO_NEXT = re.compile(r"^(\S+)\.timer is active but has no next run\b")
+
+
+def _service_state(unit):
+    """systemctl --user is-active <unit>: "active", "activating", "inactive", "failed", ... or ""
+    when there is no systemd user session to ask (e.g. under test)."""
+    import subprocess
+    try:
+        p = subprocess.run(["systemctl", "--user", "is-active", unit], capture_output=True, text=True, timeout=10)
+        return (p.stdout or "").strip()
+    except Exception:
+        return ""
+
+
+def _live_timer_attn(items, state_of=_service_state):
+    """status.sh's own "<timer> has no next run" alarm already skips a paired .service that
+    reads active, activating or reloading AT THAT CHECK -- but a oneshot has no next elapse for
+    as long as it runs, by design, and the gap between status.sh's check and this render is
+    enough for the two ticks to disagree (hakux-hostops.timer fired one tick after its own
+    service's check passed, #433). Re-check here and drop the alarm unless the service reads
+    inactive or failed right now; an unreadable state (no systemd user session) keeps the alarm
+    rather than hiding a real one."""
+    out = []
+    for a in items:
+        m = a.get("kind") == "timer" and _TIMER_NO_NEXT.match(a.get("text") or "")
+        if m:
+            st = state_of(m.group(1) + ".service")
+            if st and st not in ("inactive", "failed"):
+                continue
+        out.append(a)
+    return out
+
+
 def build(facts_path, lanes_path, md_path):
     """Merge status.sh's facts.tsv, the lane block's lanes.json and STATUS.md."""
     f = {"devices": [], "attention": [], "blockers": [], "timers": []}
@@ -1836,6 +1891,7 @@ def build(facts_path, lanes_path, md_path):
                 kv[p[0]] = p[1]
     except OSError:
         f["attention"].append({"kind": "page", "text": "status.sh wrote no facts file; the strip below is empty"})
+    f["attention"] = _live_timer_attn(f["attention"])
     lanes = {}
     try:
         lanes = json.load(open(lanes_path, encoding="utf-8"))

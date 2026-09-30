@@ -1924,3 +1924,242 @@ stopped, REST perf/fan (0/4) set, screen asleep (`KEYCODE_SLEEP`).
 4. The rest of the corrected Nova work list (section 1) after Burnout
    Revenge / Midnight Club 3: 187: Ride or Die (row 15), Crash Bandicoot:
    The Wrath of Cortex (row 20), Black Stone: Magic & Steel (row 21).
+
+### Session 36 (attempt 3 of 4): 2026-09-29, no device work
+
+**Why attempt 2 (session 35) did not need recovery: it finished.** PR #625
+merged as `4d648aed31`, and the two hostops addenda that followed (00:56
+and, after PR #622 folded, again) both confirm nothing of the lane's was
+left running or queued. This attempt is a fresh continuation, not a
+recovery from a stall -- there is no unfinished work from session 35 to
+pick up beyond its own "Next" list, which this session tried to follow.
+
+**Merged `origin/master`** (fast-forward, 6 commits: PR #622 `lane.hddsplit`
+-- the title-disk/nxdk-disk split now wired into the dispatcher, touching
+`titlestate.py`/`saves.py`, not this lane's files -- and PR #624
+`dispatchguard`). `titlestate_selftest.py` passes on the merged tree (all
+checks, including hddsplit's new device-choice and route-selection cases).
+
+**Both handhelds are held for a charging top-up, not by this lane, so no
+device work happened this session.** `adb devices -l` (after `adb
+kill-server`) returned nothing for either serial. `dispatch/hold/thor` and
+`dispatch/hold/nova` both read `lanelocal-topup`:
+
+- `thor.why`: "owner evening top-up 2026-09-29 17:12 PDT: the owner charges
+  the Thor off the harness; lane.local releases when it is back on adb"
+  (placed 2026-09-30T00:11:24Z)
+- `nova.why`: "owner top-up 2026-09-29: the owner charges the nova off the
+  harness; lane.local's topup_release.sh releases it when it is back on adb
+  at >= 60%" (placed 2026-09-30T00:20:07Z)
+
+Per the lane role rules, a hold placed by another actor is never removed by
+this lane, and a device with no adb connection cannot take a HELD session
+regardless. So no route work, no replay, no benchmark this session.
+
+**Checked what the offline record shows instead, since a hold is not a
+reason to go idle:**
+
+- Bruce Lee's route-check request (`1-9-1790608228-titleroutes-824349`,
+  queued since 09-28 15:10 PDT) was promoted by hostops at 23:20:42Z
+  (09-29 16:20 PDT) to `1-1790608228-titleroutes-824349`, per #397. It is
+  gone a second time: absent from `queue/`, `queue/withdrawn/`, `running/`
+  and `results/` alike (checked by id and by `56550016-Bruce_Lee` inside
+  `request.json`/`result.json` text, which only turns up its earlier
+  session-27 run `1-1790487611-titleroutes-261841` and titleplay's old
+  pass-1 run). The charging hold (17:11-17:12 PDT) came about 51 min after
+  the promotion, which may or may not be why -- same disappearance-without-
+  a-log-line pattern as session 35 noted for the first attempt. Not
+  investigated further (not this lane's file; the dispatcher is), but worth
+  a board ask if a third promotion also vanishes.
+- PGR2's fill-tier benchmark (`1-1790569004-titleroutes-3006458`, queued
+  09-28 04:16 UTC, its sibling to the Bruce Lee request) DID run, 09-29
+  13:14 PDT on the Thor. `title_verdict.py` on its result: **VOID**
+  (`thermal-pause: thermal-pause-F8 1/1 began after +140 s ... still paused
+  at the last reading`) -- the Thor's known #507 thermal pause, not a route
+  problem. `adb_failures=0` and the route reached gameplay
+  (`gameplay=340.0s`). No action needed: PGR2 already has a route and a
+  target in `targets.toml`; a clean re-read is a job for whoever needs the
+  number, same standing note as the 09-28 dispatch-wipe titles (session
+  34, "Next" item 4).
+- `docs/testing/titles/targets.toml` now has 65 titles, 31 with a `route =`
+  key (routes/ directory has 43 files, some first-run/returning pairs and
+  the `black.first-run`/`generic`/`survey` scaffolding routes that are not
+  per-title). The 34 titles still reading `route = None` in targets.toml
+  are the ones this lane's device work would continue against once a
+  handheld is back on adb (Section 1's work list plus the titles routed
+  since it was written: 25 to Life, Call of Duty 3, Crimson Skies, Forza,
+  DOA1U, Blinx/Blinx 2, Agent Under Fire are lane.slowdown462's / the
+  original 9-title batch's, out of scope here).
+
+**No prediction, no capture, no route/targets.toml change this session --
+analysis and bookkeeping only, gated entirely on device availability.**
+
+**Next**, once a handheld clears its charging hold and shows up on `adb
+devices`:
+1. Nova: fix `midnight-club-3.returning.route`'s "Checking saved games" ->
+   attract-screen branch (session 35's finding), then continue the work
+   list (Burnout Revenge, 187: Ride or Die, Crash Bandicoot: The Wrath of
+   Cortex, Black Stone: Magic & Steel).
+2. Thor: re-drive or re-queue Bruce Lee's route check if it vanishes a
+   third time, file it on the board; then the hand-over's remaining titles
+   (Bicycle Casino, Breeders' Cup, AMF Xtreme Bowling, ... and the rest of
+   Section 1's Thor column).
+3. Either device: any new title lane.xbox has landed since 09-26 that is
+   not yet in targets.toml (not checked this session -- no device to
+   confirm what is actually on each handheld's disk beyond what targets.toml
+   already lists).
+
+### Session 37 (attempt 4 of 4): 2026-09-29 18:48-20:05 PDT, four HELD Nova sessions
+
+**Why attempt 3 (session 36) did not finish:** it did, as a waiting
+session. Both handhelds were off adb on the owner's charging top-up hold,
+so there was no device work to do. It ended with PR #626 still in draft
+and no `waiting:` comment, so nothing marked the wait. Hostops's 18:47
+addendum resolved it: both devices were back on adb at 18:35-18:36 PDT.
+This session carries on the same branch and PR (#626).
+
+**Device state at start:** Thor 97%, held by lane.xbox's title push
+(Darkwatch) and out of service for heat work (fan). Not used. Nova 77%;
+lane.ibcache's run was on it. I took the hold with `hold.sh take nova
+lane.titleroutes` and started once `running/` had nothing for the Nova.
+Each session read `dumpsys input` (FOCUS_OK) before it sent any input
+(`scratch/focus.py`), and every release left the Nova at rest: app stopped,
+perf 0 / fan 4, asleep.
+
+| session | Nova held (driving) | battery | title | result |
+|---|---|---|---|---|
+| 37a | 18:56-19:11 | 76 -> 71% | Midnight Club 3 (54540079) | returning route REWRITTEN, replayed clean |
+| 37b | 19:19-19:35 | 71 -> 65% | 187: Ride or Die (55530036) | first-run (draft) + returning, returning replayed clean |
+| 37c | 19:41-19:50 | 63% | Crash Bandicoot: Wrath of Cortex (56550003) | single route, replayed clean twice |
+| 37d | 19:52-20:01 | ~62% | Black Stone: Magic & Steel (58490004) | DRAFT: replays to a room, but the player never walks |
+
+**Benchmarks queued** (Nova, 0.5 priority `1-`, MAX regimen, ref
+`1c0c23fabb` = origin/master, `--seconds` = pre-mark + 300, via
+`scratch/bench.sh`). All three were still in `queue/` when this session
+ended:
+
+| title | request | seconds |
+|---|---|---|
+| Midnight Club 3 | `1-1790734333-titleroutes-3037624` | 460 |
+| 187: Ride or Die | `1-1790735661-titleroutes-3181153` | 370 |
+| Crash: Wrath of Cortex | `1-1790736688-titleroutes-3301413` | 400 |
+
+`titlestate.py choose` picks the replayed route for all three (MC3 and 187
+`returning`, Crash `single`).
+
+#### Midnight Club 3: the fix for session 35's failed replay
+
+Session 35's diagnosis ("an intermittent attract screen after Checking
+saved games") was wrong. Read from frames this time:
+- **"Press START to begin" is the title screen.** It always appears, and
+  "Checking saved games" comes only AFTER START. The draft pressed A
+  there, which does nothing.
+- **The boot presses were the real defect.** The interactive session
+  pressed A three times during the boot. On replay those presses landed on
+  different screens, so START arrived during the intro FMV and every later
+  step ran one screen behind. The first rewrite failed in exactly this way
+  (`scratch/replay/midnight-club-3.returning-190114`: it ended in Career /
+  Purchase a Vehicle).
+- **A no-input boot watch** (`scratch/bootwatch.sh`, frames in
+  `scratch/replay/bootwatch-190402`): Rockstar logos 6-20 s, intro FMV
+  25-80, trademark pages 85-98, fly-in 103, then the title screen from ~107
+  to ~155 s after launch, after which the attract FMV loops. The route now
+  sends nothing until ~120 s and then one START.
+- **The profile list highlights the last-used profile, and it wraps.** It
+  now holds Player 1 and Player 2; session 35's failed replay DID save a
+  second profile, even though it ended with no `flush`. The route takes the
+  highlighted profile with A and does not steer.
+- **Menu movement:** the D-pad buttons do nothing. The left stick moved
+  +2, +1, +1 rows on three identical pulses. The hat moves ONE row for a
+  back-to-back `axis HATY max` / `axis HATY mid`, and TWO when the pulse is
+  held ~0.5 s. The route uses one back-to-back hat pulse (Career ->
+  Arcade), then START, START, A (San Diego cruise).
+- **Replay:** `scratch/replay/midnight-club-3.returning-190751`. Frames:
+  `191000-title.png` (title), `191007-profile-select.png`,
+  `191018-menu-arcade.png` (Arcade highlighted), `191056-gameplay.png`
+  (Jetta on the street in 4th), `zz-end.png` (25 s later, a different
+  street, 3rd gear).
+
+#### 187: Ride or Die
+
+- No-input boot (`scratch/replay/bootwatch-191916`): Ubisoft and ESRB,
+  then "Please press START to begin" from ~22 to ~50 s, then an **attract
+  race with a full HUD**. That race is not gameplay.
+- First run (nav `187-ride-or-die.first-run-20260929T192056`): START ->
+  PLAYER PROFILE (all Empty) -> A (Create) -> keyboard: A types the
+  highlighted "N", Y validates -> MAIN MENU (a horizontal list: Story
+  mode, Quick hits, Xbox Live, ...). One LX pulse moved one item; the hat
+  moved two. Then Quick hits -> Western Whip Race -> Buck -> sport car ->
+  Controller Configuration (first time only) -> a narrated tutorial clip
+  that drives itself. START does not skip it; A does. The race starts ~8
+  s after the skip. Control: the stick steered the car into a tanker (44
+  -> 22) and holding A (Classic: accelerate) brought it back to 37 (frames
+  045-048).
+- The profile was flushed with a HOME intent (`deferred bdrv_flush_all
+  completed`), and the returning route was driven next. **The first boot
+  after the flush hung**: a black screen with a spinner at 3 fps,
+  `hakuX-watchdog: STALL` and `FORCED IF=1 (stuck 2 hb, eip=0x800151ed)`,
+  for 60+ s (nav `187-ride-or-die.returning-20260929T192645`). The next
+  launch booted normally, and so did the replay. That is 1 hang in 3 boots.
+- A 60 ms START on the title was missed once, so the routes hold it
+  150 ms.
+- Replay: `scratch/replay/187-ride-or-die.returning-193134`. Frames:
+  `193219-profile-select.png` ("N 0%"), `193226-quick-hits.png`,
+  `193245-tutorial.png`, `193259-gameplay.png` (race, lap 1/4, 49 mph),
+  `zz-end.png` (25 s on, 88 mph).
+- `187-ride-or-die.first-run.route` is a DRAFT. Its own session made the
+  profile, so a first-run replay needs that profile gone first.
+
+#### Crash Bandicoot: The Wrath of Cortex
+
+- No-input boot (`scratch/replay/bootwatch-194127`): NEW GAME / LOAD GAME
+  from ~26 to ~52 s, then a "DEMO" level. NEW GAME -> a name entry
+  ("CRASH", DONE highlighted) -> A -> the intro cutscene (START skips it)
+  -> a warp-room cutscene on the monitor (START skips it; it was still up
+  21 s after the first skip) -> **the warp-room hub**. The stick walked
+  and turned Crash.
+- First replay (`crash-wrath-of-cortex-194543`) reached the hub, but the
+  play loop's stick-up plus A walked Crash into the LOAD/SAVE monitor and
+  opened its menu (`zz-end.png`). That menu also showed a "CRASH" save
+  already on the hard disk. The loop now uses the stick only and moves
+  toward the camera and side to side.
+- Second replay (`crash-wrath-of-cortex-194814`), with the save present:
+  clean. `194959-gameplay.png` shows the hub; `zz-end.png`, 40 s on,
+  shows Crash walking with the camera turned.
+- **The scored window is the hub, not a level**, so its fps is an upper
+  bound on the title's.
+
+#### Black Stone: Magic & Steel: not reached
+
+The route replays to a green octagonal room with the HUD
+(`scratch/replay/black-stone-195702`, `195814-gameplay.png`). The stick
+changes the warrior's facing and stance, and A swings his sword. He never
+walks: not with the stick held 3 s, and not with the hat. HP fell 410 ->
+390 while A was pressed. A room the player cannot leave does not show
+play, so the file is `routes/black-stone.draft.route`. It is not linked in
+targets.toml and has no benchmark.
+
+#### Do not repeat
+
+- **Do not press buttons during a boot to "skip" it.** Where the presses
+  land depends on timing, and one landing on a different screen shifts
+  every later step. Watch the boot with no input first (`bootwatch.sh
+  <dev> <iso> <s> <every>`), find the title's window, and put a single
+  START in the middle of it.
+- **Do not steer to a fixed row in a list that highlights the last-used
+  entry and wraps** (MC3's profile list). Take the highlighted entry.
+- **Test a menu pulse's step size on the screen you will use it on**:
+  MC3's hat moved 1 back-to-back and 2 when held; 187's hat moved 2 and
+  its stick 1.
+- **A play loop must not bring the player back to where it started** if
+  something interactive is there (Crash's LOAD/SAVE monitor).
+
+**Next:**
+1. Read the three Nova benchmarks above once they land (`title_verdict.py`
+   on each result dir). Put the medians in the #397 table.
+2. Black Stone: find what makes the warrior walk, from the room the draft
+   reaches.
+3. Burnout Revenge (Nova, row 11): the profile loop from earlier sessions.
+4. Thor titles (Bicycle Casino, Breeders' Cup, AMF Xtreme Bowling, ... from
+   the hand-over; Bruce Lee's route check) once the Thor is back in
+   service for title work and is not held.
