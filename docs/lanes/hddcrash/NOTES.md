@@ -124,3 +124,13 @@ route, e.g. `midnight-club-3.first-run`).
   `exit()` from `configure_blockdev`, not a display bug. Look for a drive
   that won't open.
 - Anything pushed into `files/x1box` must be made 660 (dev_push does it now).
+
+## Status 2026-09-29 ~20:40 PDT: blocked on GitHub
+
+The fix and these NOTES are committed on `lane/hddcrash`, but only locally.
+`git push` and every `gh api` call return 403 "Your account was suspended".
+Only the lane's first commit reached PR #629 (draft). The fix commit, the PR
+body update, the `[lane.hddcrash]` comments and the #397 post are all
+waiting on account access. Once access is back: push, update the PR body
+from `.git-prbody.md` (REST PATCH), wait for CI green, `gh pr ready 629`,
+post on #397.
