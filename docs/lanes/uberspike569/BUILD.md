@@ -340,7 +340,7 @@ hostops asked for. #624 folded at 17:40 PDT (`dfa30e5780` on master).
 predictions stand unchanged (`host/predinfo.py`: doa-soak `642189382de2`, kabuki-soak
 `dad936499521`, pixels `c5c0e63aed4e`). None was re-registered.
 
-**Queued** with `host/requeue3.sh`, which uses section 8's refs and flags, output in `host/requeue3.log`.
+**Queued** with `host/requeue3.sh`, which uses section 8's refs and flags, output in `host/requeue3.log` (gitignored, local to the worktree).
 The DOA and Kabuki soaks now carry
 `--device nova --hard-pin`. In section 8 they carried a soft pin, and four were admitted on the
 Thor, whose thermal pause voids a soak. The pilot gate admitted the batch on
