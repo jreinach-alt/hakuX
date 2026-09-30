@@ -116,7 +116,23 @@ Cold references (lane.uberspike569's arm A, same route and seconds, GPL 0):
 
 ## 4. Runs
 
-(none yet)
+| launch | request id | ref | state |
+|---|---|---|---|
+| DOA L1 | `1790791301-shaderprebuild569-118449` | 54865a3521 | queued 2026-09-30 ~12:45 PDT, behind five release-priority Nova requests (verdict433 x3, forzadecay414 x3) |
+| DOA L2 | `1790791306-shaderprebuild569-118725` | 54865a3521 | queued right after L1 |
+
+If a request with another apk runs on the Nova between L1 and L2, L2 comes back `cleared`. Its
+keys are then gone, its records unresolved, and it is VOID. That run is itself a cold launch
+that writes keys, so the recovery is one more soak on the same ref right after it, judged as L2
+against the original L1.
+
+Still to do, in order:
+1. Judge the DOA pair. Write `pilots/shaderprebuild569.ok`, because the Kabuki pair (2 x 690 s)
+   takes this requester past the 30-minute pilot allowance.
+2. Queue the Kabuki pair.
+3. Queue one short smoke on the final head, which `offline_fold.py` needs: a run built from the
+   branch head.
+4. Set `State: ready`.
 
 ## 5. Coordination
 
