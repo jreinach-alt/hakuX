@@ -52,7 +52,8 @@ notes = "Asks for every VBLANK (perf/bench_ff.sh). Route from bench_ff.sh."
 [titles."41540004"]
 name = "Galleon"
 iso = { nova = "Galleon (USA).xiso.iso", thor = "Galleon (USA).xiso.iso" }
-notes = "A §11 soak title; own target not yet measured, so the 30 default. Route: PR 2."
+route = "galleon"
+notes = "A §11 soak title; own target not yet measured, so the 30 default. routes/galleon.route queued as a Thor screening soak (session 41), not yet replayed."
 
 [titles."4D53002D"]
 name = "Dead or Alive 3"
