@@ -2220,3 +2220,96 @@ entries is in question: all three replayed clean interactively in session
 #397 table (via OUTBOX until GitHub is back), then continue with Black
 Stone / Burnout Revenge on the Nova. Thor work waits for `lanelocal-fanwait`
 to lift.
+
+## Session 39 (resumed 2026-09-30 12:37 PDT, attempt 1): previous attempt finished cleanly; both devices restricted today
+
+**Why attempt 38 did not need recovery:** it did finish. Its own commits
+(`39d518f9b6` and the NOTES/OUTBOX/PR.md above) were already folded into
+`origin/master` as `2c59b7bbba` ("fold: lane/titleroutes (offline)") before
+this session started -- confirmed by `git log origin/master` showing that
+fold directly above session 38's own commit. This is a routine continuation,
+not a failure recovery.
+
+**This session:**
+- `git fetch origin && git merge origin/master` fast-forwarded
+  `39d518f9b6..2ba1a6e9a2` (3 commits: PR #628 escalation-parser fold, plus
+  `lane.defecttriage433`'s classification of the six titles blocking 0.5
+  Playable -- analysis only, no files of mine touched). No conflicts.
+- `gh api user` still 403 "account was suspended": still offline protocol.
+- **Session 38's three re-queued Nova benchmarks never ran.** They are not
+  in `dispatch/{queue,running,results}` anywhere; they are parked at
+  `dispatch/parked/titleroutes-daypark-0930/{2436824,2437076,2437119}.req`.
+  The park's README: "lane.local 2026-09-30 10:05 PDT: owner plan -- the
+  Nova battery goes to Playable confirmations first today (no top-up until
+  the evening dock). These three route runs return to queue/ tonight after
+  the dock." Not mine to unpark; nothing to do here but wait for tonight.
+- **The Thor's hold text changed since the "Thor screening program" addendum
+  above was written.** `dispatch/hold/thor.why` now reads (timestamp
+  2026-09-30T17:48:12Z, i.e. today, after the 12:40 PDT addendum):
+  "lanelocal-fanwait: the Thor's fan is dead ...: light work only --
+  staged new titles push under this hold (push-under-hold flags); **no
+  queued runs**; lane.local releases after the repair." That supersedes the
+  addendum's "queued requests only, `--device thor --hard-pin`" allowance --
+  even queued Thor screening soaks are out today, not just interactive
+  holds. Confirmed no active hold file for Nova (only `hold/lifted/nova.*`
+  entries), so the Nova restriction is the owner-plan/battery one above, not
+  a hold.
+- **Net: no device work is available from either handheld this session.**
+  Dispatched an Explore agent to check whether route-authoring work is
+  possible without new device time (the Thor-screening addendum's own
+  suggestion: "author the route from pass-1 survey soaks and their
+  route-frames" that already exist on disk from earlier campaigns) --
+  findings below once it returns.
+- Did not touch `dispatch/parked/titleroutes-daypark-0930` or
+  `dispatch/hold/thor*` (not mine; per brief "Do not restore or touch"
+  applies in spirit even though that line names a different parked dir).
+- `titlestate_selftest.py`: all checks pass (no code of mine changed this
+  session). `targets.toml` still parses with `tomllib`.
+
+**Offline-work check (Explore agent):** the Thor-screening addendum's own
+suggestion was to author routes from pass-1 survey soaks already on disk,
+without new device time. The agent found 4 Thor titles with `iso.thor` set,
+no route yet, and pass-1 `route-frames/` reaching gameplay per
+`titleplay/NOTES.md`'s review table: Blinx, Blinx 2, Forza, 25 to Life.
+Three of those four (Blinx, Blinx 2, Forza) are explicitly reserved for
+`lane.slowdown462` (brief addendum 3), so not mine to draft. The fourth,
+**25 to Life**, has only one thin summary line in `titleplay/NOTES.md`
+("profile created, chapter 1 Warehouse, third-person shooting") with no
+step-by-step input sequence -- not enough evidence to draft a route with
+any confidence, unlike routeprep's detailed drafts (below). Left undrafted
+rather than guess at a title defecttriage433 already ranked lowest priority
+of its six ("may resolve to 'fine' once measured properly").
+
+**`lane.routeprep`'s backlog (real, useful offline-prep work): drafts
+awaiting device validation.** routeprep (`docs/lanes/routeprep/`, its own
+lane, offline, not my files) prepares route drafts from exactly this kind
+of survey evidence; "lane.titleroutes validates each one on a device and
+adopts it into `docs/testing/titles/routes/`" (its NOTES.md, line 6). Cross
+-referenced its 24 drafts against my adopted `routes/`: 8 titles have
+**already been superseded** by my own validated routes under different
+filenames (187-ride-or-die, mc3 -> midnight-club-3, jsrf, mechassault2,
+pgr2, rallisport2, spikeout, wwe-raw2) -- no action needed, routeprep's
+NOTES is just stale on naming. The other **9 are still pending validation**,
+never driven on a device:
+
+| draft | device | evidence quality (routeprep NOTES) |
+|---|---|---|
+| `burnout-revenge.first-run.route`, `.returning.route` | Nova | pass-1 input frames + Burnout 3's played routes; open: name keyboard, save default, pre-race video |
+| `galleon.route` | Nova, Thor | pass-1 input frames to an in-game load; open: main-menu order |
+| `doa3.route` | Thor | pass-1 input frames through the 200 s copyright wait; open: Story entry, costume step |
+| `capcom-classics2.route` | Thor | no frames on disk, `[recalled]`/`[guess]` only |
+| `castlevania-cod.first-run.route`, `.returning.route` | Thor | no frames on disk, `[guess]` only |
+| `smt-nine.route` | Thor | no frames on disk, Japanese menus, `[guess]` only |
+| `thps2x.route` | Thor | no frames on disk, `[guess]` only |
+| `tork.route` | Nova, Thor | hands-off frames only (no input evidence past the title), `[guess]` past START |
+
+Priority for the next device session, ranked by evidence quality (a draft
+built on real input frames is far more likely to replay clean on the first
+try than a `[guess]`-only one): **Burnout Revenge** first (Nova, already on
+my own "next" list from session 38; strong evidence), then **Galleon**
+(Nova+Thor, strong evidence; also already on my radar from the 09-27
+addendum's "fast titles blocked by their route" note, so validating it
+finally answers whether its actual route matches that note's account), then
+**DOA3** (Thor, strong evidence). The `[guess]`-only five need a short nav
+session before they're worth a full validation replay, same as any
+no-evidence title on my own work list.

@@ -5,3 +5,13 @@
 The Thor is out of service (`lanelocal-fanwait`: dead fan, owner 09-29 approved a warranty replacement) -- no Thor work this session. The Nova was free at 35% battery; queued rather than held.
 
 [lane.titleroutes] waiting: the three re-queued Nova benchmark requests above (`1-1790764527-titleroutes-2436824`, `1-1790764530-titleroutes-2437076`, `1-1790764531-titleroutes-2437119`). Once they land, their fps table goes here and in NOTES.md, and the next batch (Black Stone's walk investigation, Burnout Revenge's profile loop) continues on the Nova. Thor work resumes when `lanelocal-fanwait` lifts.
+
+## #397 -- 2026-09-30 (session 39)
+
+[lane.titleroutes] Session 38 folded clean as `2c59b7bbba` before this session started. Merged `origin/master` (fast-forward, no conflicts). Neither handheld has device work today: the three requeued Nova benchmarks above are parked at `dispatch/parked/titleroutes-daypark-0930/` (owner plan: Nova battery goes to Playable confirmations first today, they return to queue tonight after the dock); the Thor's hold was rewritten at 17:48 PDT today to "no queued runs" (fan still dead), which supersedes the 12:40 PDT Thor-screening addendum's queued-soak allowance.
+
+Checked for offline route-authoring work per that addendum's own suggestion: of 4 Thor titles with pass-1 survey frames reaching gameplay and no route, 3 (Blinx, Blinx 2, Forza) belong to lane.slowdown462 and the 4th (25 to Life) has too little evidence in `titleplay/NOTES.md` to draft with confidence -- left undrafted rather than guess.
+
+More useful: cross-referenced `lane.routeprep`'s 24 offline route drafts (a sibling lane that prepares drafts from survey evidence for titleroutes to validate on a device) against my adopted routes. 8 are already superseded by my own validated routes under different filenames (stale naming in routeprep's NOTES, no action needed). 9 are still pending validation, ranked by evidence quality for the next device session: Burnout Revenge and Galleon (Nova, strong pass-1 input evidence) first, then DOA3 (Thor, strong evidence), then 5 guess-only drafts (Capcom Classics 2, Castlevania, SMT: Nine, THPS 2x, Tork) that need a short nav session before a validation replay is worth it. Full table in NOTES.md session 39.
+
+[lane.titleroutes] waiting: (1) the three Nova benchmarks above, due back in queue tonight after the evening dock per lane.local's 10:05 PDT plan; (2) the Thor's `lanelocal-fanwait` hold, which lifts when the replacement fan lane.local is shipping arrives and lane.local releases it. When either resolves, this lane validates the ranked routeprep drafts above (Burnout Revenge and Galleon first) and continues the Nova/Thor work lists.
