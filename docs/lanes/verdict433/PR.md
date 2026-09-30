@@ -3,8 +3,8 @@
 State: draft
 
 Lane: verdict433            Issue: #433 [#507]
-Base: master @ 94cf8eb627 (branched); merged forward to 2ba1a6e9a2 as of session 13
-Files: docs/lanes/verdict433/NOTES.md, docs/lanes/verdict433/PR.md, docs/lanes/verdict433/OUTBOX.md, docs/lanes/verdict433/judge_copy.py, docs/lanes/verdict433/scan.py, docs/lanes/verdict433/soaks.py, docs/lanes/verdict433/sweep.py, docs/lanes/verdict433/queue_batch1.sh, docs/lanes/verdict433/queue_batch2.sh, docs/lanes/verdict433/queue_batch3.sh, docs/lanes/verdict433/queue_batch4.sh, docs/lanes/verdict433/queue_batch5.sh, docs/lanes/verdict433/queue_batch6.sh, docs/lanes/verdict433/queue_batch7.sh, docs/lanes/verdict433/queue_batch8.sh
+Base: master @ 94cf8eb627 (branched); merged forward to 05695acc7c as of session 14
+Files: docs/lanes/verdict433/NOTES.md, docs/lanes/verdict433/PR.md, docs/lanes/verdict433/OUTBOX.md, docs/lanes/verdict433/judge_copy.py, docs/lanes/verdict433/scan.py, docs/lanes/verdict433/soaks.py, docs/lanes/verdict433/sweep.py, docs/lanes/verdict433/queue_batch1.sh, docs/lanes/verdict433/queue_batch2.sh, docs/lanes/verdict433/queue_batch3.sh, docs/lanes/verdict433/queue_batch4.sh, docs/lanes/verdict433/queue_batch5.sh, docs/lanes/verdict433/queue_batch6.sh, docs/lanes/verdict433/queue_batch7.sh, docs/lanes/verdict433/queue_batch8.sh, docs/lanes/verdict433/queue_batch9.sh
 Prediction: none: analysis-only (no emulator code changed; this lane only reads device results and queues confirmation soaks through the normal harness)
 Needs device: yes (Nova; Thor confirmations withdrawn per lane.local's 2026-09-29 12:00 PDT addendum -- heat-sensitive work moved off the Thor pending #507)
 
@@ -17,11 +17,13 @@ code, Playable rule, or board file is touched -- this is a measurement-only
 lane that reads `title_verdict.py` output and queues confirmation soaks via
 `docs/testing/request.sh`.
 
-Across nine sessions (2026-09-29 through 2026-09-30, each one queuing a
-batch and stopping to let 20-30 min device soaks run rather than polling):
+Across fourteen sessions (2026-09-29 through 2026-09-30, each one queuing a
+batch and stopping to let device soaks run rather than polling):
 
-- **Five titles confirmed Playable this pass, all on the Nova at the
+- **Six titles confirmed Playable this pass, all on the Nova at the
   default confirmation regimen:**
+  - **187: Ride or Die** -- fps_ok=1.0, gameplay 1286.4s, no crash/hang,
+    audio_short=0.0, 0.0961 J/frame.
   - **KOF: Maximum Impact - Maniax** -- fps_ok=0.9936, gameplay 1282.6s, no
     crash/hang, audio_short=0.0005, 0.1121 J/frame.
   - **Azurik: Rise of Perathia** -- fps_ok=0.9521, gameplay 1292.3s, no
@@ -59,12 +61,29 @@ batch and stopping to let 20-30 min device soaks run rather than polling):
   `reached_gameplay` at "unconfirmed" instead of a reviewed "false" --
   doesn't change AUF's verdict, which is FAIL either way. See NOTES,
   session 9.)
-- Three more Nova confirmations (Alien Hominid, 187: Ride or Die, Arctic
-  Thunder) are queued and outstanding as of this write.
-- Full ranking, tier A/B/C readings, and the session-by-session log (9
+- **Arctic Thunder is not Playable**: a full-length (684s) run reads only
+  63.9% at 28.5+, contradicting four earlier short (195-198s) runs that all
+  read 100% -- the route's own script runs out of steps at 684s rather than
+  sustaining a full window, and what fps it does produce past that point
+  falls well under the bar.
+- **Otogi: Myth of Demons FAILs on heat** on the Thor
+  (`thermal-pause-F8` at +703s, 35.0% at 28.5+, peak xo 77.9 C) -- recorded
+  as heat evidence, not re-run there.
+- **Alien Hominid** already carries a separate, earlier Thor Playable
+  confirmation (`lanelocal-1183547`, 09-26) found during this pass; this
+  lane's own Nova/Thor attempts at it were not needed and not re-queued.
+- **A queued Crimson Skies confirmation was withdrawn as a false-positive
+  "Galleon" match** (session 14): the withdrawn request's title field reads
+  Crimson Skies, not Galleon, and Galleon's title ID appears nowhere in it
+  -- the only trace of "Galleon" is flavour text in the route's own
+  descriptive comment ("Galleon-era perf runs"), a prose match rather than
+  a title match. Re-queued (`queue_batch9.sh`); outstanding as of this
+  write.
+- Full ranking, tier A/B/C readings, and the session-by-session log (14
   sessions, including a harness anomaly where an entire batch of six
   queued requests vanished from the dispatch tree without a withdrawal or
-  error record, root-caused as unrecoverable and simply re-queued) are in
+  error record, root-caused as unrecoverable and simply re-queued, and the
+  false-positive Galleon withdrawal above) are in
   `docs/lanes/verdict433/NOTES.md`.
 
 Release note (none): measurement/verification work only; no emulator code
@@ -73,9 +92,9 @@ changed.
 ## Local checks run (offline protocol -- no CI available)
 
 - `python3 docs/testing/title_verdict.py <dir> --require confirmation
-  [--reviewed-gameplay yes]` run directly against each of this session's
-  six result directories; output captured in NOTES.md's table above.
-- `git status` clean before and after this session's edits; only
+  [--reviewed-gameplay yes]` run directly against each finished result
+  directory across all sessions; output captured in NOTES.md's tables.
+- `git status` clean before and after each session's edits; only
   `docs/lanes/verdict433/*` files touched.
 - No harness files (`docs/testing/*.py`, `docs/testing/jobs/*`) changed, so
   `docs/testing/jobs/selftest.sh` was not required per the offline
@@ -92,14 +111,23 @@ changed.
   confirmation from before this pass (`1-1790515369-lanelocal-1183547`),
   so it's already Playable and already counted -- a fresh confirmation
   would be redundant device time.
-- `-3086875` (187: Ride or Die) is running on the Nova. `-3086903` (Arctic
-  Thunder) is queued there, battery-refused.
+- `-3086875` (187: Ride or Die) **PASS Playable** (session 14): fps_ok=1.0,
+  gameplay 1286.4s. `-3086903` (Arctic Thunder) **FAIL** (session 14): only
+  684s of gameplay (the route's script runs out of steps early) at 63.9%
+  share, well under the 90% bar. Not re-queuing without a longer route.
 - Session 10's Thor cold-start confirmation (Otogi: Myth of Demons,
   `-43486`) **FAILED on heat** (session 13). `thermal-pause-F8` engaged at
   +703 s, the run read 35.0% at 28.5+, peak xo was 77.9 C, and net power was
   4.06 W. Not re-running it on the Thor.
-- Crimson Skies, a 600-s Nova confirmation under the 09-30 rule
-  (`1-1790796880-lane.verdict433-750238`, session 13), is queued.
+- Crimson Skies's session-13 request (`-750238`) was **withdrawn as a
+  false-positive "Galleon" match** (session 14) -- its title field reads
+  Crimson Skies, not Galleon; the only "Galleon" text in the request is
+  flavour text in the route's own comment. Re-queued
+  (`1-1790804473-lane.verdict433-1767161`, `queue_batch9.sh`); outstanding.
+- Merged `origin/master` (session 14), folding in lane.verdict10min's native
+  600-s `confirmation_s` default -- `title_verdict.py --require
+  confirmation` now reads the 600-s bar directly; no more `--require
+  screening` workaround needed.
 - The Thor is now under a fresh hold (`lanelocal-fanwait`, placed
   2026-09-30 ~10:48 PDT, light work only, no new queued runs) until
   lane.local's fan repair lands -- not queuing anything further on the

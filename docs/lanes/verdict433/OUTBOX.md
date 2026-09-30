@@ -161,3 +161,14 @@ Waiting on: 187 and Arctic Thunder (Nova, battery), Otogi's final verdict (Thor,
   - The run decides whether Crimson is Playable now or waits on #591.
 
 Full detail in `docs/lanes/verdict433/NOTES.md`, session 13.
+
+## #433 -- 2026-09-30 21:20 UTC
+
+[lane.verdict433] waiting: Crimson Skies re-queued on the Nova (`1-1790804473-lane.verdict433-1767161`), freshly queued. Playable count now **7** (Alien Hominid plus this lane's six).
+
+- **187: Ride or Die -- PASS Playable.** fps_ok=1.0, gameplay 1286.4 s, no crash/hang, audio_short=0.0, 0.0961 J/frame. This lane's sixth Playable title.
+- **Arctic Thunder -- not Playable.** A full-length run read only 63.9% at 28.5+ over 684 s of gameplay, contradicting four earlier short (195-198 s) runs that all read 100%. The route's own scripted input loop runs out of steps at 684 s rather than sustaining the requested window (confirmed via `run.log`: a clean `ROUTE ... end`, no crash, no thermal pause, no capture fault -- the script is just short). Whatever fps it produces past that point falls well under the bar. Not re-queuing without a route that survives to a longer window; not this lane's scope to author one.
+- **Found and corrected: Crimson Skies' queued confirmation was withdrawn as a false-positive "Galleon" match.** `queue/withdrawn/1-1790796880-lane.verdict433-750238.why` reads "Galleon is blocked from testing by the owner ... (host-tools/blocked-titles.txt)", but the withdrawn request's `title` field reads "Crimson Skies - High Road to Revenge...", and Galleon's title ID (41540004) appears nowhere in it. The only "Galleon" text anywhere in the request is flavour text in the `crimson-skies` route's own descriptive comment ("...is what the Galleon-era perf runs measured against"). Crimson Skies (4D530021) is not Galleon (41540004) and is not on `host-tools/blocked-titles.txt`. Re-queued as `1-1790804473-lane.verdict433-1767161`. Flagging this so it isn't read as a real block and doesn't recur on whatever withdrew it.
+- **Merged `origin/master`**, folding in lane.verdict10min's native 600-s `confirmation_s` default -- `title_verdict.py --require confirmation` now reads the 600-s bar directly.
+
+Full detail in `docs/lanes/verdict433/NOTES.md`, session 14.

@@ -1388,3 +1388,153 @@ plus this lane's five.
 Three Nova requests are outstanding: 187 running, Arctic Thunder
 battery-gated, and Crimson queued. All three are dispatch work outside this
 session. Recorded in `OUTBOX.md`; stopping.
+
+## Session 14 (2026-09-30, resumed as attempt 5)
+
+**Why session 13 did not finish.** It did. It stopped at its documented
+`waiting:` checkpoint with three requests outstanding (187 running, Arctic
+Thunder battery-gated, Crimson Skies queued as the 600-s confirmation) and an
+`OUTBOX.md` entry naming them. Nothing to fix from that session.
+
+**Checked all three outstanding requests by exact path** (`os.walk` under
+`DISPATCH_DIR`, same method as prior sessions): 187 (`-3086875`) and Arctic
+Thunder (`-3086903`) both DONE; Crimson (`-750238`) was **not** in
+`queue/`, `running/` or `results/` -- found in `queue/withdrawn/` instead.
+
+### 187: Ride or Die -- PASS Playable
+
+`title_verdict.py --require confirmation`: `PASS Playable gameplay=1286.4s
+fps_ok=1.0 crash=False hang=False audio_short=0.0 battery_w=+3.64
+net_w=5.762 j_per_frame=0.0961`. Clean 1200s+ confirmation (stronger than the
+600-s bar; needs no audit re-run), 100% share, own authored route. **This
+lane's sixth Playable title.**
+
+### Arctic Thunder -- FAIL, a real fps reading, not a menu artifact
+
+`title_verdict.py --require confirmation`: `FAIL(duration: 684 s of gameplay
+< 1200 s confirmation)`. Checked against the new native 600-s
+`confirmation_s` (post-merge, see below) with the same command: still FAIL,
+now on fps: `FAIL(fps: 63.9% of gameplay at >= 30 fps (bar 90%))`,
+gameplay=684.0s, fps_ok=0.6393.
+
+The short gameplay window is not a capture problem -- `run.log` shows the
+route script itself ending normally (`ROUTE ... end`, `adb_failures=0`,
+`THERMAL: no thermal-pause`) at 684s after `mark gameplay`; the route's
+post-mark loop (hold/release A cycling the race's stick-and-throttle inputs,
+no more `shot` calls after the mark) simply runs out of scripted steps well
+short of the requested 1510s window, rather than looping forever. Session
+8's four short (195-198s) reads were all 100% share; this fuller 684s read
+is only 63.9% -- the same "a short-run reading does not predict the full
+window" pattern session 12 found for Otogi's wattage, now showing up as an
+fps-share effect instead of a thermal one. No route-frame evidence is
+available past the mark (the post-mark loop takes no screenshots), so this
+can't be visually distinguished from real in-race fps variance, but the
+numeric bar fails either way. **Arctic Thunder is not Playable from this
+run.** Its route would need a longer scripted loop (or one that survives to
+race end and restarts) before a duration this long is worth re-queuing --
+not this lane's scope to author routes.
+
+### Crimson Skies: batch 8's request was withdrawn as "Galleon" -- it was
+never Galleon
+
+Read the withdrawn files directly
+(`dispatch/queue/withdrawn/1-1790796880-lane.verdict433-750238.req` and
+`.why`):
+
+```
+.why: lane.local 2026-09-30 14:37 PDT: Galleon is blocked from testing by
+the owner until its FPS problem and polygon flicker close
+(host-tools/blocked-titles.txt).
+```
+
+But the `.req`'s `title` field reads `"Crimson Skies - High Road to Revenge
+(USA) (En,Fr,De,Zh,Ko).xiso.iso"` -- Galleon's title ID (41540004) appears
+nowhere in the request. `host-tools/blocked-titles.txt` has exactly one
+entry, keyed on `41540004` (Galleon), and the only automated matcher that
+reads that file (`host-tools/thor_coldconfirm.sh`'s `park_all()`) matches
+the key against the request's `title` field alone, via `case "$t" in
+*"$key"*)` -- which would not fire here, and its withdrawal message format
+(`"lane.local runner <date>: blocked title -- $why"`) doesn't match what's
+actually in the `.why` file either. The one place "Galleon" *does* appear in
+this request is the `crimson-skies` route's own descriptive comment: "...is
+what the Galleon-era perf runs measured against" (flavour text about a
+historical crash fix, `queue_batch8.sh`'s route body). This reads as a
+prose match, not a title match -- someone or something scanned the full
+request text for "Galleon" rather than checking the title field, the exact
+failure shape memory already has a name for (a grep check matching the
+prose instead of the field it should gate on). Crimson Skies (4D530021) is
+not Galleon (41540004) and is not on the blocked list.
+
+**Re-queued it** as `docs/lanes/verdict433/queue_batch9.sh` (new file, added
+to `Files:`), same form as batch 8, at the post-merge ref (below):
+`1-1790804473-lane.verdict433-1767161`. Verified in `queue/` by exact path.
+Flagging the false-positive withdrawal here and in `OUTBOX.md` so lane.local
+doesn't read it as a real Galleon match and so nobody treats Crimson as
+blocked.
+
+### Merged `origin/master`: the native 600-s confirmation has folded
+
+`git rev-list --left-right --count HEAD...origin/master` read `26 2` before
+merging. Merged (2 commits: lane.verdict10min's fold plus its own commit,
+clean, only `docs/testing/title_verdict.py`, `docs/testing/titles/targets.toml`
+and `docs/testing/jobs/selftest.d/99-verdict-10min.sh`) and pushed as
+`05695acc7c`.
+
+`targets.toml`'s `[defaults] confirmation_s` is now `600` natively (was
+`1200`; this lane had been working around the old default with `--require
+screening` since the 12:10 PDT addendum). Forza and Kabuki Warriors keep
+`confirmation_s = 1200` (flagged for slow-building defects) via per-title
+overrides. `title_verdict.py` bumps a sub-1200s window back to 1200 when
+the run was still heating at the end (xo-therm/battery zone climbing faster
+than 1.0 C/min over the last 180s, or any thermal pause in the window) --
+this doesn't change any of this session's verdicts (187 ran the full 1200s+
+anyway; Arctic Thunder failed on its own numbers; Crimson isn't judged yet).
+**From here, `--require confirmation` alone reads the 600-s bar** -- no more
+`--require screening` workaround needed.
+
+### Tally
+
+**Seven titles now Playable that this lane's work accounts for:** the five
+from before session 13, plus 187: Ride or Die (this session), plus Alien
+Hominid (a separate, pre-existing Thor confirmation this lane found and
+chose not to duplicate, sessions 10-13).
+
+### Running table (confirmations)
+
+| Title | Device | Regimen | Request | Verdict |
+|---|---|---|---|---|
+| **KOF: Maximum Impact - Maniax** | nova | default | `-1456797` | **PASS Playable** (99.4%, 1282.6 s) |
+| **Azurik: Rise of Perathia** | nova | default | `-1456876` | **PASS Playable** (95.2%, 1292.3 s) |
+| **WWE Raw 2** | nova | default | `-1456493r2` | **PASS Playable** (99.8%, 1276.9 s) |
+| **50 Cent: Bulletproof** | nova | default | `-1456544r2` | **PASS Playable** (99.1%, 1348.3 s) |
+| **Baldur's Gate: Dark Alliance** | nova | default | `-366130` | **PASS Playable** (100%, 1303.9 s) |
+| **187: Ride or Die** | nova | default | `-3086875` | **PASS Playable** (100%, 1286.4 s) |
+| 007: Agent Under Fire | nova | default | `-366094` | FAIL (stuck at a door, not gameplay; needs its own route) |
+| Alien Hominid | thor (cold-start control) | default | `-3086847` | void (heat stop at xo 70 C, 402 s); already Playable (`lanelocal-1183547`, 09-26) |
+| Otogi: Myth of Demons | thor (cold-start) | default | `-43486` | **FAIL (thermal)**: pause at +703 s, 35.0% at 28.5+, peak xo 77.9 C, 4.06 W net |
+| Arctic Thunder | nova | default | `-3086903` | **FAIL**: 684 s gameplay (route ran out of script), 63.9% at 28.5+ |
+| Crimson Skies | nova | default | `-750238` withdrawn (false-positive Galleon match), re-queued `-1767161` | queued |
+
+### Next, in order
+
+1. When Crimson's `-1767161` finishes, judge with `title_verdict.py <dir>
+   --require confirmation` (native 600-s bar now, no `--require screening`
+   needed).
+2. Watch for a repeat of the false-positive withdrawal pattern on any future
+   queued request whose route text happens to mention a blocked title's
+   name in passing -- if it recurs, that's confirmation the matcher (or
+   whatever manual process withdrew this one) needs to gate on the title
+   field, not the full request text.
+3. Tier B/C unchanged: DOA needs a fight route, Kabuki waits on
+   lane.kabukistall, Forza waits on #583, GTA SA waits on #591 -- checked
+   directly this session, neither folded into `origin/master`.
+4. No Thor work while `lanelocal-fanwait` holds.
+5. Arctic Thunder is done from this lane's side: FAIL is its verdict; no
+   requeue without a route that survives to a longer window.
+
+### Ending session 14 here: waiting
+
+One Nova request outstanding: Crimson Skies's re-queue (`-1767161`), freshly
+queued. Recording this session's two verdicts, the merge, and the
+false-positive-withdrawal finding in `OUTBOX.md`; stopping -- not polling
+device work from inside the session.
