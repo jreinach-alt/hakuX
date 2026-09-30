@@ -68,3 +68,12 @@ route validated: `route-frames/134228-gameplay.png` shows the ship-deck
 tutorial scene the route's header describes, at FPS: 8. Burnout Revenge's
 benchmark is still queued and DOA3's screening soak is still running;
 their numbers will follow in the next check-in.
+
+[lane.titleroutes] waiting: two of this session's three queued requests
+have not landed yet -- Burnout Revenge's same-pass benchmark
+(`1790801593-titleroutes-1202186`, Nova) and DOA3's Thor screening soak
+(`1790801641-titleroutes-1213635`, still running as of this check).
+Galleon's screening soak already landed and is written up above. When
+either of the remaining two lands, this lane reads the result, reports the
+numbers, and continues down the work list / routeprep's remaining
+guess-only drafts.
