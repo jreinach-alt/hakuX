@@ -1,5 +1,17 @@
 # lane.escalationparse -- #433: the dashboard counted one escalation as 32
 
+## Status
+
+PR #628 open, pushed at 9dd4b98785, waiting on CI (build + selftest shards).
+Locally green: `99-status-escalation-items.sh` (unchanged, 6/6) and the new
+`99-status-escalations.sh` (4/4) under the real `selftest.sh` harness, plus a
+broader run of 60-67 and every 99-status-* fragment (196/197 -- the one
+failure, "status shows the arms refusal in full" in `60-status.sh`, is an
+artifact of running that fragment outside its normal 10-50 sequence in a
+`SELFTEST_ONLY` subset; it reads `$WORK/arms/skipped/` files that only the
+earlier arms fragments create, and none of this PR's files are in that path).
+Will mark the PR ready once CI reports green.
+
 ## What was wrong
 
 `status_html.py`'s `escalation_items()` grouped `host-tools/escalations.md` into
