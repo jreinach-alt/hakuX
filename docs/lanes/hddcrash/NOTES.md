@@ -154,3 +154,13 @@ now would boot hdd.img and prove nothing. The Nova is also on the owner's
 top-up hold. After the fold and the dispatcher update, the three requests
 in "Device proof" are the next step, then tell lane.local to remove the
 drop-in.
+
+## Attempt 3, 2026-09-29 ~22:40 PDT: why attempt 2 did not finish
+
+Attempt 2 pushed PR.md and OUTBOX.md but left `State: draft` because the
+full `selftest.sh` was still running. That run was a background task of
+the session, so it died when the session ended. `scratch/selftest-full.log`
+stops at dispatch-hardening E2 and has no total. Attempt 3 re-runs the full
+selftest in shards (`SELFTEST_SHARD=k/n`), detached with `setsid nohup`
+into `scratch/selftest-shard-*.log`, and polls those logs in this session.
+master has not moved (0 behind).
