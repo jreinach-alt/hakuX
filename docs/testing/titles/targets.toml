@@ -33,7 +33,16 @@ fps_tolerance = 0.95
 # about one 5 ms shortfall every five seconds; set 0.0 for literal zero.
 audio_starve_max_share = 0.001
 screening_s = 600
-confirmation_s = 1200
+# 10-minute confirmation (owner, 2026-09-30): re-scoring every full-length
+# confirmation as if cut at 300 s and 600 s found no verdict change on the
+# Nova (6/6 runs, which plateaus near 49 C and never pauses) at 5 or 10
+# minutes; on the Thor, Azurik read 99.6% at 10 minutes and failed at 15.6
+# minutes on the heat pause. So confirmation_s defaults to 600, EXCEPT a
+# per-title override (below) for titles flagged for slow-building defects,
+# and a run whose window was still heating at the end still needs 1200 s
+# (title_verdict.py, see "confirmation_s"). Process, not code: lane.verdict433
+# re-runs every 5th 600-s pass at the full 1200 s, as an audit.
+confirmation_s = 600
 
 [titles."4D530021"]
 name = "Crimson Skies: High Road to Revenge"
@@ -153,6 +162,7 @@ notes = "#431 (comment 5851536933): 30, medium confidence. IGN (2004, names the 
 name = "Forza Motorsport"
 iso = { thor = "4D53006E-Forza_Motorsport.xiso.iso" }
 target_fps = 30
+confirmation_s = 1200  # owner 2026-09-30: flagged for slow-building defects (invalid-list decay, memory growth; #517)
 notes = "#431 (comment 5849938891): 30, medium confidence. IGN (Xbox, 2005): locks at 30 fps"
 
 [titles."56550042"]
@@ -237,6 +247,7 @@ notes = "#431 (comment 5851536933): 60, medium confidence. Play Magazine (Oct 20
 name = "Kabuki Warriors"
 iso = { nova = "43560001-Kabuki_Warriors.xiso.iso" }
 route = "kabuki-warriors"
+confirmation_s = 1200  # owner 2026-09-30: flagged for slow-building defects (random stalls)
 notes = "Route by lane.titleroutes 2026-09-26 (Nova): Tour Mode fight vs CPU, no profile step. Own target not yet measured, so the 30 default."
 
 [titles."54430003"]
