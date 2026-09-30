@@ -15,3 +15,21 @@ Checked for offline route-authoring work per that addendum's own suggestion: of 
 More useful: cross-referenced `lane.routeprep`'s 24 offline route drafts (a sibling lane that prepares drafts from survey evidence for titleroutes to validate on a device) against my adopted routes. 8 are already superseded by my own validated routes under different filenames (stale naming in routeprep's NOTES, no action needed). 9 are still pending validation, ranked by evidence quality for the next device session: Burnout Revenge and Galleon (Nova, strong pass-1 input evidence) first, then DOA3 (Thor, strong evidence), then 5 guess-only drafts (Capcom Classics 2, Castlevania, SMT: Nine, THPS 2x, Tork) that need a short nav session before a validation replay is worth it. Full table in NOTES.md session 39.
 
 [lane.titleroutes] waiting: (1) the three Nova benchmarks above, due back in queue tonight after the evening dock per lane.local's 10:05 PDT plan; (2) the Thor's `lanelocal-fanwait` hold, which lifts when the replacement fan lane.local is shipping arrives and lane.local releases it. When either resolves, this lane validates the ranked routeprep drafts above (Burnout Revenge and Galleon first) and continues the Nova/Thor work lists.
+
+## #397 -- 2026-09-30 (session 40)
+
+[lane.titleroutes] Correction to session 38's report: the three benchmarks were not lost. Session 38 checked `dispatch/results/` for the three *original* session-37 request ids and found nothing, and re-queued duplicates. This session re-checked and all three originals are `DONE` with real, non-void readings (they must have landed after session 38's check):
+
+| title | fps median (min) | share >= target | target | gameplay window |
+|---|---|---|---|---|
+| Midnight Club 3: DUB Edition | 29.67 (13.81) | 87.5% | 30 | 288.7 s |
+| 187: Ride or Die | 59.94 (59.88) | 100% | 30 | 302.2 s |
+| Crash: Wrath of Cortex | 56.18 (41.78) | 100% | 60 (upper bound: scored window is the warp-room hub, not a level) | 308.9 s |
+
+No hang on any of the three. Full detail (request ids, judge output, route-frame cross-check) in NOTES.md session 40.
+
+Consequence: session 38's three re-queued duplicates (`1-1790764527-titleroutes-2436824`, `1-1790764530-titleroutes-2437076`, `1-1790764531-titleroutes-2437119`), still parked at `dispatch/parked/titleroutes-daypark-0930/` and due back in `queue/` tonight, are now redundant -- running them would re-spend Nova device time measuring titles already measured cleanly above. Flagging for lane.local/hostops to drop before tonight's return; not mine to unpark or withdraw.
+
+Device state is otherwise unchanged from session 39: the Nova has no hold but is actively running `lane.verdict433`'s Arctic Thunder confirmation (`.owner` = nova, confirmed live via `dumpsys`) and is earmarked for Playable confirmations today regardless; the Thor's `lanelocal-fanwait` hold still reads "no queued runs" (checked fresh, unchanged since 17:48 PDT). No device work available this session either.
+
+[lane.titleroutes] waiting: (1) the Nova returning to general availability (tonight per lane.local's plan); (2) the Thor's `lanelocal-fanwait` hold lifting after the replacement fan arrives; (3) lane.local/hostops's call on withdrawing the three now-redundant parked duplicates before tonight. When any of these resolves, this lane validates `lane.routeprep`'s ranked drafts (Burnout Revenge and Galleon on the Nova first, per session 39's ranking).

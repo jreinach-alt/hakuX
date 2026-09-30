@@ -1,4 +1,4 @@
-# titleroutes: session 39, both handhelds restricted today -- bookkeeping and offline-work check
+# titleroutes: sessions 39-40, both handhelds restricted today; three "lost" benchmarks found
 
 State: ready
 
@@ -52,5 +52,20 @@ session before a validation replay is worth it. Detail in NOTES.md.
 ## Device proof
 
 None this session -- see "What this session found" above for why.
+
+## Session 40 update (resumed 12:45 PDT)
+
+Not a rescue: session 39 ended correctly on a `waiting:`. This session
+resolved session 38's "lost benchmarks" report: the three original
+session-37 requests (not session 38's re-queued duplicates) are `DONE` in
+`dispatch/results/` with real, non-void fps readings (Midnight Club 3 29.67
+median/87.5% >= 30; 187: Ride or Die 59.94 median/100% >= 30; Crash: Wrath of
+Cortex 56.18 median/100% >= 60 as an upper bound). They were never lost --
+session 38's re-queued duplicates are now flagged as redundant (parked,
+not touched). Device state re-checked fresh: Nova has no hold but is
+actively running `lane.verdict433`'s confirmation soak (`.owner` = nova) and
+is earmarked for Playable confirmations today regardless; Thor's
+`lanelocal-fanwait` still reads "no queued runs". No device work available.
+Full detail in NOTES.md session 40 and OUTBOX.md.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

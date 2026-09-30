@@ -2313,3 +2313,88 @@ finally answers whether its actual route matches that note's account), then
 **DOA3** (Thor, strong evidence). The `[guess]`-only five need a short nav
 session before they're worth a full validation replay, same as any
 no-evidence title on my own work list.
+
+## Session 40 (resumed 2026-09-30 12:45 PDT, attempt 2): the three "lost" benchmarks were never lost
+
+**Why attempt 1 (session 39) did not need recovery.** It did finish, cleanly:
+it ended on a `waiting:` naming two external signals (the Nova park returning
+to queue tonight, the Thor's `lanelocal-fanwait` hold lifting), and PR body
+`State: ready`. Nothing failed; there was just no device work available at
+the time. This session resumes as a routine continuation, not a rescue.
+
+**The mystery session 38 reported ("no trace of any of the three request ids
+anywhere under `dispatch/`") is resolved: they were never lost.** Re-checked
+`dispatch/results/` for the three *original* session-37 request ids (not the
+session-38 re-queue duplicates) and all three are `DONE` with real frames and
+logcat, at a later admission time than session 38's check:
+
+| title | request (original, session 37) | gameplay_s | fps median (min) | share >= target | target | hang |
+|---|---|---|---|---|---|---|
+| Midnight Club 3: DUB Edition | `1-1790734333-titleroutes-3037624` | 288.7 | 29.67 (13.81) | 87.5% | 30 | no |
+| 187: Ride or Die | `1-1790735661-titleroutes-3181153` | 302.2 | 59.94 (59.88) | 100% | 30 | no |
+| Crash: Wrath of Cortex | `1-1790736688-titleroutes-3301413` | 308.9 | 56.18 (41.78) | 100% | 60 | no |
+
+(`scratch/judge.py` on each, `docs/testing/title_verdict.py` under the hood,
+apk `eae7a2f00588`, ref `1c0c23fabb`.) All three route-frame sequences in the
+result dirs show real play through to the mark (MC3: Jetta on the San Diego
+street; 187: the Western Whip race; Crash: the warp-room hub), matching what
+the interactive replays in session 37 showed. Most likely explanation: these
+three requests were still in flight (or briefly stuck) during the
+GitHub-suspension/offline-git cutover session 38 investigated, and their
+results only landed in `dispatch/results/` sometime after session 38's check
+-- not evidence of the titles-disk crash session 38 blamed them on. Nothing
+here contradicts that crash's existence (lane.hddcrash's fix is real and
+independently documented), just that these three particular requests survived
+it.
+
+**Consequence: session 38's three re-queued duplicates are now redundant.**
+`1-1790764527-titleroutes-2436824` (MC3), `1-1790764530-titleroutes-2437076`
+(187), `1-1790764531-titleroutes-2437119` (Crash) sit parked at
+`dispatch/parked/titleroutes-daypark-0930/`, due back in `queue/` tonight per
+lane.local's 10:05 PDT plan. Running them would re-spend Nova device time
+re-measuring titles that already have clean, non-void readings above. This
+parked dir is under lane.local's management, not named in my brief's "do not
+touch" list (that names a different parked dir, titleplay-p1), but I am not
+unparking, editing or deleting its contents unilaterally -- flagging it here
+and in OUTBOX for lane.local/hostops to drop before tonight's return, since
+they are not mine to withdraw from the queue.
+
+**Device state, checked fresh this session (not reused from session 39):**
+- **Nova** (`ee317437`): no hold file (only `hold/lifted/nova.*` entries).
+  Battery 43%. But `dispatch/running/1-1790775886-lane.verdict433-3086903`
+  names it (`.owner` = `nova`) -- confirmed live via
+  `dumpsys activity activities | grep mFocusedApp`: hakuX is in front on the
+  Nova right now, mid soak (Arctic Thunder, #433 Playable confirmation batch
+  6, 910 s). Per the brief, a device whose `.owner` names it is off limits
+  for a hold regardless of battery. Also per lane.local's 10:05 PDT plan,
+  today's Nova battery goes to Playable confirmations first even once this
+  soak ends -- so I did not queue behind it either.
+- **Thor** (`bdc158a5`): `dispatch/hold/thor` = `lanelocal-fanwait`,
+  `thor.why` still reads the 17:48 PDT "no queued runs" text from session
+  39's check. Unchanged; still out for both interactive and queued title
+  work.
+
+So, same as session 39, no device work is available this session. What
+changed is real: three benchmark numbers that were reported as missing now
+have a home in the #397 table above, and the duplicate re-queue is now known
+to be pure waste whenever it runs tonight.
+
+`python3 docs/testing/titles/titlestate_selftest.py`: all checks pass (no
+code of mine touched). `targets.toml` parses with `tomllib` (unchanged;
+these three titles' entries already carried routes, fps is reported in NOTES
+and OUTBOX, not stored in targets.toml).
+
+**Next, once a device is actually free:** validate `lane.routeprep`'s ranked
+drafts in the order session 39 set (Burnout Revenge and Galleon on the Nova
+first, then DOA3 on the Thor, once its fan is repaired), then the five
+guess-only drafts.
+
+**Waiting**, same two external signals as session 39, now with the
+duplicate-withdrawal flag added:
+1. The Nova returning to general availability (tonight, per lane.local's plan,
+   or whenever `dispatch/running/1-1790775886-lane.verdict433-3086903`'s
+   successor confirmations stop filling its queue).
+2. The Thor's `lanelocal-fanwait` hold lifting after the replacement fan
+   arrives.
+3. (new) lane.local or hostops deciding whether to drop the three now-
+   redundant parked re-queue requests before they return to `queue/` tonight.
