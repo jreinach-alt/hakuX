@@ -575,3 +575,96 @@ All six requests are freshly queued and none have finished (queued only
 minutes ago, each is a 20-30 min confirmation). Posting `[lane.verdict433]
 waiting:` on PR #610 and #433 describing the vanished batch and the
 re-queue, and stopping -- not polling device work from inside the session.
+
+## Session 7 (2026-09-30, resumed ~05:00 UTC, attempt 3 since the reset)
+
+**Why session 6 did not finish.** It finished cleanly on the documented
+stopping point: all six re-queued batch-4 requests confirmed present on
+disk, a `waiting:` comment posted, no polling from inside the session.
+Nothing to fix from that session. This session's resume found all six
+batch-4 requests had actually run to completion.
+
+**GitHub is down for this account** (owner-approved local stand-in since
+~21:00 PDT 2026-09-29, see the offline-protocol addendum above). `origin`
+now resolves to `~/hakux-work/offline-git/hakuX.git`; confirmed with `git
+remote -v`. No `gh` calls made this session. This lane's PR and issue posts
+now go to `docs/lanes/verdict433/PR.md` and `OUTBOX.md` instead -- both new
+this session, since the switchover happened after session 6 closed out.
+
+**Checked `git status` (clean) before doing anything else**, per the
+worktree-safety rule, then read all six batch-4 result dirs directly
+(`os.path.exists`/`os.listdir`, not `Glob`, per session 6's finding that
+`Glob` misbehaves at this tree's scale). All six have `DONE`:
+
+| Title | Result | `title_verdict.py --require confirmation` |
+|---|---|---|
+| WWE Raw 2 (`-1456493`) | **void again** | `not-foreground` -- ES-DE frontend stole focus. `VOID.txt`: hostops root-caused it this tick -- `titles.qcow2` was pushed to the Nova with `adb push`'s default `rw-r--r--`, one group-write bit short of what xemu needs; the drive open failed `Permission denied` and xemu fell back to the ES-DE home launcher, which then held display 0 (same bug as PR #627/lane.hddperm, #397). Interim fix: chmod 660 on the Nova (again; #627 not yet folded). hostops already re-queued this as `1-1790737858-lane.verdict433-1456493r2` (queued_utc 2026-09-30T03:10:57Z) -- **do not re-queue a third time**, it is already in `queue/`. |
+| 50 Cent (`-1456544`) | **void again**, same cause | Same `VOID.txt` text, same interim chmod fix. Already re-queued by hostops as `1-1790737859-lane.verdict433-1456544r2`, same `queued_utc`. Not re-queued here either. |
+| 007: Agent Under Fire (`-1456591`) | **FAIL(booted: the guest never appeared or never flipped 60 frames)** gameplay=0.0s | `run.log`: `guest never appeared in 1475s -- title did not boot`. `logcat.txt` (84 lines total) shows xemu reaching `xemu_android_main: qemu_init` -> `sdl2_display_early_init` and then **nothing** until `soak end` 25 min later -- no crash line, no further log at all. This run's `request.json` `queued_utc` puts it third in the batch's run order (after WWE and 50 Cent, before BG:DA), so it started *before* hostops's chmod-660 fix (WWE/50cent voided, fix applied, then BG:DA booted clean right after). The silent hang at exactly the `qemu_init` stage matches the same disc-permission bug's signature (see memory: a pushed disk at the wrong mode SIGSEGVs/hangs a few ms into `qemu_init`), not a real read on AUF. **Requeued as `1-1790745234-lane.verdict433-366094`.** |
+| Baldur's Gate DA (`-1456665`) | **FAIL(void: not-foreground: unreadable (adb failed exit 1))** gameplay=1190.0s, capture_lost=28.0s | Booted clean (after the chmod fix), played the whole scripted route into gameplay, and ran 1684s of a planned 1760s -- 1190s of gameplay, 10s short of the 1200s bar -- before `FOREGROUND: foreground-unreadable: adb failed (exit 1)` fired 5 times running and the soak aborted (`run.log`: "soak aborted: not-foreground after 1684s of 1760s"). No crash, no hang, `audio_short=0.0` through the readable portion. This is a single adb capture flake right at the finish line, not a low-fps or crash reading -- per memory, a single-run device flake gets a rerun before any conclusion, especially one this close to the bar. **Requeued as `1-1790745235-lane.verdict433-366130`.** |
+| KOF: Maximum Impact - Maniax (`-1456797`) | **PASS Playable** | gameplay=1282.6s, fps_ok=0.9936, crash=False, hang=False, audio_short=0.000541, battery_w=+3.42, net_w=5.543, j_per_frame=0.1121. Clean confirmation, no review flag needed (its own named route, not the generic survey). |
+| Azurik: Rise of Perathia (`-1456876`) | **PASS Playable** | gameplay=1292.3s, fps_ok=0.9521, crash=False, hang=False, audio_short=0.0, battery_w=+4.58, net_w=6.704, j_per_frame=0.228. Clean confirmation on its own route. This is the same title that FAILED its Thor confirmation on heat in session 2 (`thermal-pause-F8` at +938s) -- the addendum's move to the Nova is exactly what turned it Playable. |
+
+**Two new Playable titles: KOF: Maximum Impact - Maniax and Azurik: Rise of
+Perathia, both on the Nova at the default confirmation regimen.** Neither
+needed a review flag (each has its own authored route with an explicit
+`mark gameplay`, not the generic survey AUF uses).
+
+**Queued batch 5** (`queue_batch5.sh`, new file, added to `Files:`): reruns
+of AUF and BG:DA only -- WWE Raw 2 and 50 Cent are already re-queued by
+hostops and must not be queued a third time. Pilot gate admitted both on
+the standing `pilots/lane.verdict433.ok` (14.4 h old at queue time, still
+under 24h):
+
+| Title | Device | Route | Request |
+|---|---|---|---|
+| 007: Agent Under Fire | nova | survey | `1-1790745234-lane.verdict433-366094` |
+| Baldur's Gate: Dark Alliance | nova | baldurs-gate-da | `1-1790745235-lane.verdict433-366130` |
+
+`queue/` and `running/` checked directly before queuing: `running/` was
+empty, `queue/` held about 20 other lanes' requests ahead of these two
+(memfast, tcg424flip, ibcache r2s, titleroutes, litcompile569,
+uberspike569) plus the two hostops r2 requeues, so neither of these two new
+requests nor the two r2s will start immediately.
+
+### Running table (confirmations), updated
+
+| Title | Device | Regimen | Request | Verdict | fps_ok | Gameplay s | j/frame |
+|---|---|---|---|---|---|---|---|
+| **KOF: Maximum Impact - Maniax** | nova | default | `1-1790725091-lane.verdict433-1456797` | **PASS Playable** | 0.9936 | 1282.6 | 0.1121 |
+| **Azurik: Rise of Perathia** | nova | default | `1-1790725091-lane.verdict433-1456876` | **PASS Playable** | 0.9521 | 1292.3 | 0.228 |
+| WWE Raw 2 | nova | default | `-1456493` void, `-1456493r2` queued (hostops) | void (ES-DE focus theft, titles.qcow2 perms) -- | | | |
+| 50 Cent: Bulletproof | nova | default | `-1456544` void, `-1456544r2` queued (hostops) | void, same cause | | | |
+| 007: Agent Under Fire | nova | default | `-1456591` FAIL(boot), `-366094` queued (this session) | boot hang, pre-chmod-fix (rerun pending) | | | |
+| Baldur's Gate: Dark Alliance | nova | default | `-1456665` FAIL(void, adb flake at 1684/1760s), `-366130` queued (this session) | 10s short on an adb glitch (rerun pending) | | | |
+
+Playable count for #433 as of this session: **KOF: Maximum Impact - Maniax,
+Azurik: Rise of Perathia** confirmed this session. Earlier lanes/status-page
+history for any prior Playable title is not re-verified here; this table
+only tracks this lane's confirmations.
+
+### Next, in order
+
+1. When `-366094` (AUF) and `-366130` (BG:DA) finish, judge with
+   `title_verdict.py <dir> --require confirmation --reviewed-gameplay yes`
+   for AUF (generic survey route) and without the flag for BG:DA (its own
+   route).
+2. Watch for the `r2` WWE Raw 2 / 50 Cent results (hostops-owned requeue,
+   not this lane's queue action, but this lane's title and should be read
+   and recorded when they land).
+3. Post the two-Playable update plus this session's diagnosis to `#433` via
+   `OUTBOX.md` (offline protocol -- no `gh` available).
+4. Tier B/C unchanged from session 4's ranking: Crimson waits on ibcache's
+   three queued Nova runs, DOA needs a fight route, Kabuki waits on
+   lane.kabukistall, Forza waits on #583, GTA SA waits on #591.
+5. Per the offline protocol, do not wait on these two reruns in this
+   session -- park, and the handback waiter (or a future resume) picks up
+   the results.
+
+### Ending session 7 here: waiting
+
+Two reruns queued (AUF, BG:DA), the two hostops r2 requeues (WWE, 50 Cent)
+untouched and already in `queue/`. Two titles confirmed Playable this
+session. Recording a `waiting:` entry in `OUTBOX.md` (no PR/issue comment
+tool available under the offline protocol) and stopping -- not polling
+device work from inside the session.
