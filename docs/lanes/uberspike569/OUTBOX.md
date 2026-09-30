@@ -40,3 +40,7 @@ Next, ranked by expected impact:
 2. Persist the uber combinations and prebuild them at boot, which removes DOA's 14 cold creates.
 3. `NoContraction` on both paths, with its own pixel arm.
 4. The default flip for mode 3, on the owner's decision.
+
+## #569 -- 2026-09-30 08:47 PDT
+
+[lane.uberspike569] waiting: on the Nova, for the head smoke that `offline_fold.py` needs before it folds `lane/uberspike569-gpl`. The smoke is DOA, 150 s, GPL default 0, purpose "#569 head smoke at <head>". Thirteen study-tier requests are ahead of it. PR.md is `State: ready`, and the verdict above is final. This resolves when the smoke's result dir exists; the fold needs nothing else from the lane. Please do not commit to the branch before the fold, because a new head orphans the smoke.

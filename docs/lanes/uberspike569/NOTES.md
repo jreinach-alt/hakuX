@@ -649,3 +649,8 @@ attempt read all seven (BUILD.md section 12):
 
 Do not trust `host/find_results.py` for a result dir with a `1-` priority prefix; it globs on
 the bare id. Use `host/list_results.py`.
+
+Attempt 10 ends as a wait. `PR.md` is `State: ready`, and the verdict is final. `offline_fold.py`
+still needs a finished run built from the branch head, so a DOA head smoke is queued on the Nova
+after the last commit, behind 13 study-tier requests (BUILD.md 12.5). A commit to this branch
+before the fold would orphan that smoke.

@@ -529,3 +529,21 @@ with its own arms.
    show no pop. Lavapipe shows 1-2 ulp on 22% of random programs.
 4. **Then the default flip for mode 3**, on the owner's decision. The trade is a transient fps dip
    against the 26-133 s freezes it replaces.
+
+### 12.5 Local checks, the head smoke, and the wait
+
+- **Local checks, at this head:**
+  - NDK type-check of the eight changed C files: rc 0, and every warning is in a line older than
+    this branch;
+  - both judges' `--selftest`: ok;
+  - `preflight.sh --allow-tracker`: passed. Its coverage gate could not run, because it needs `gh`.
+- **Merged origin/master** twice, at 146b8887db and 2c59b7bbba. Neither merge brings emulator code.
+- **The head smoke.** `offline_fold.py` needs a finished, non-void run whose ref is the branch
+  head. So the smoke is queued **after** the last commit: DOA, 150 s, Nova, GPL at its default of
+  0, `--no-expect`, with purpose `#569 head smoke at <head>`. A smoke queued at 489a11bff2 was
+  withdrawn when this note moved the head.
+- **The wait.** At 08:46 PDT the Nova is the only device that takes runs (the Thor is on
+  `lanelocal-fanwait`). Thirteen study-tier requests are ahead of the smoke, several of them
+  1200-1550 s soaks, so it is hours out. `PR.md` says `State: ready`, and `offline_fold.py`
+  refuses the fold until the smoke's result exists. **Do not commit to this branch until the
+  fold:** a new head orphans the smoke.
