@@ -590,6 +590,24 @@ suite fits a device difference; one device decides it.
 A of forza3 is not run (the lmkd kill; "Do not repeat" below). D3's 0.6 comes from `-151099`'s
 0.77 over rows 150-330. That run is not judged by the file.
 
+**Queued** at 07:33 PDT by `queue_fix.sh forza3` and `queue_fix.sh pixels3`, after the push of
+92972ff031. Each was read back: device nova, and the expect_sha matches its file.
+
+| request | ref | what |
+|---|---|---|
+| `1-1790778383-forzadecay414-3163702` | eec025dd37 | Forza, 420 s, perflog (forza3) |
+| `1-1790778383-arms-forzadecay414-base-3163761` | 146b8887db | pixels3 A, 2 runs, hard pin nova |
+| `1-1790778383-arms-forzadecay414-fix-3163802` | eec025dd37 | pixels3 B, 2 runs, hard pin nova |
+
+**Waiting (session end, 2026-09-30 ~07:40 PDT)** on those three. The Nova is on `hold/nova`
+(`lanelocal-topup`: the owner charges it off the harness), and 20 requests are queued ahead. On resume:
+- `python3 docs/testing/ab_compare.py --a <base dir> --b <fix dir> --expect
+  docs/testing/predictions/forzadecay414-fix-pixels3.json`
+- `judge.py --end 420` on `-3163702`, and look at its last `play` frame.
+- If both hold, set PR.md `State: ready`, push, and queue one more 420-s Forza run on that exact head.
+  `offline_fold.py` wants a run whose ref is the branch head, and the ready commit touches only
+  `docs/lanes/`. Post the verdicts to OUTBOX.md.
+
 ## Do not repeat
 
 - Do not re-queue a pre-fix Forza soak on the Nova to read a whole master race. lmkd kills it at

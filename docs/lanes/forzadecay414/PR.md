@@ -42,6 +42,6 @@ not rotate the slot.
 - **fix-forza2** (B `-151099`): B1, B2, B3, D1 hold; A1/A3/D2 not read (no master run survives the race).
 - **fix-auf** (`-151975` / `-152037`): every leg holds. The #517 saving on AUF is kept: faf 0.00, bt 0.07 ms/flip in both arms.
 - **fix-pixels** and **fix-pixels2**: both pairs split Thor/Nova, and both FAILs are confounded. pixels2's 37 are 36 ZPass_pixel_count captures shifted +672 to +1114 and one Antialiasing capture 0 -> 1.
-- **fix-pixels3** (the pair on one device) and **fix-forza3** (a 420-s Forza run on this head's code): queued on the Nova, results pending.
+- **fix-pixels3** (the pair on one device: `1-1790778383-arms-forzadecay414-base-3163761` / `-fix-3163802`) and **fix-forza3** (a 420-s Forza run on eec025dd37: `1-1790778383-forzadecay414-3163702`): queued on the Nova, results pending. Draft until both hold.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
