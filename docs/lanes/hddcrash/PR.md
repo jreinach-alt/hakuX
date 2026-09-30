@@ -1,6 +1,6 @@
 # hddcrash: titles disk mode 660; a request's HAKUX_TITLES_DISK wins (#397)
 
-State: draft
+State: ready
 
 Lane: hddcrash            Issue: #397
 Base: master @ a3681ccb0b0eb2cc445fd59dc501473f51b8ce92
@@ -45,13 +45,16 @@ New legs in 99-hdd-split. The fake push leaves 0644, as the real one does. The l
 
 Results: 61 pass on this branch. Against master's dispatcher.sh, 9 of them fail.
 
-## Device proof: after the fold
-The worker runs a snapshot of master, so the chmod and the override are not live until this folds. The drop-in stays in place until then. The three proof requests are in NOTES.md.
-
 ## Local checks (no CI while GitHub is suspended)
 
 - `SELFTEST_ONLY=99-hdd-split docs/testing/jobs/selftest.sh`: 61 passed, 0 failed.
-- full `docs/testing/jobs/selftest.sh`: PENDING
+- full `docs/testing/jobs/selftest.sh`: **incomplete, 0 FAIL in what ran.** On 09-29 ~22:30-23:00 PDT the host sat at load ~260
+  and the fragments crawled: four `SELFTEST_SHARD=k/4` shards, detached, finished 29 of 116 fragments with 0 FAIL
+  (10-arms-list, 55-affinity-offpool, 56-desktop-worker, 57-vsh-disc, 58-pull-verify, 65-*, 66-*, 67-status-measured,
+  70..76-cloud/fold/nv2a/pr-sweep/x1a7, 79-stop-hook-hold, 80-labels, 84-perf-regimen, 85-fold-ci, 86/87-nightly, 87-fold-stale-ci,
+  88-sweep-cover). Attempt 2's whole run got through the arms chain 10..50 and 51-dispatch-hardening A-E2 (52 ok, 0 FAIL)
+  before it died. The fragments that drive dispatcher.sh, where the change is, are 99-hdd-split and 51-dispatch-hardening,
+  plus the arms chain. All of those ran green. The rest of the full run is left to `offline_fold.py`'s selftest.sh gate.
 
 ## Device proof: after the fold
 

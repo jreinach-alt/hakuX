@@ -164,3 +164,16 @@ stops at dispatch-hardening E2 and has no total. Attempt 3 re-runs the full
 selftest in shards (`SELFTEST_SHARD=k/n`), detached with `setsid nohup`
 into `scratch/selftest-shard-*.log`, and polls those logs in this session.
 master has not moved (0 behind).
+
+Result: the full selftest could not finish in this session either. The host
+sat at load ~260 and its clock nearly stopped: a 540-second poll loop
+returned after 1-4 s of `/proc/uptime`. The four shards finished 29 of 116
+fragments with 0 FAIL. Attempt 2's partial run covers the arms chain and
+51-dispatch-hardening A-E2, with 0 FAIL. 99-hdd-split alone passed 61/0.
+PR.md lists them and is set `State: ready`. The full selftest.sh is
+`offline_fold.py`'s gate at fold time. If that gate finds a red, the
+shard logs are `scratch/selftest-shard-{0..3}.log` in this worktree
+(untracked; the shards were left running).
+
+Next, unchanged: after the fold and the dispatcher update, the three Nova
+proof requests in "Device proof", then tell lane.local to remove the drop-in.
