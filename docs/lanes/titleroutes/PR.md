@@ -28,7 +28,9 @@ Needs device: yes -- seven requests queued (six Thor screens, one Nova benchmark
   and the running Thor screen table are in NOTES.md, session 42.
 - Local checks: `route.sh --check` is clean on all six routes;
   `titlestate_selftest.py` passes (all checks passed); `targets.toml`
-  parses with tomllib (69 titles).
+  parses with tomllib (69 titles); `docs/testing/preflight.sh
+  --allow-tracker` passes ("preflight passed - safe to push"; the
+  territory leg failed open on the offline GitHub).
 
 ## What this session found
 
