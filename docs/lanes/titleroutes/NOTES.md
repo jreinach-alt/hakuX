@@ -2008,3 +2008,158 @@ devices`:
    not yet in targets.toml (not checked this session -- no device to
    confirm what is actually on each handheld's disk beyond what targets.toml
    already lists).
+
+### Session 37 (attempt 4 of 4): 2026-09-29 18:48-20:05 PDT, four HELD Nova sessions
+
+**Why attempt 3 (session 36) did not finish:** it did, as a waiting
+session. Both handhelds were off adb on the owner's charging top-up hold,
+so there was no device work to do. It ended with PR #626 still in draft
+and no `waiting:` comment, so nothing marked the wait. Hostops's 18:47
+addendum resolved it: both devices were back on adb at 18:35-18:36 PDT.
+This session carries on the same branch and PR (#626).
+
+**Device state at start:** Thor 97%, held by lane.xbox's title push
+(Darkwatch) and out of service for heat work (fan). Not used. Nova 77%;
+lane.ibcache's run was on it. I took the hold with `hold.sh take nova
+lane.titleroutes` and started once `running/` had nothing for the Nova.
+Each session read `dumpsys input` (FOCUS_OK) before it sent any input
+(`scratch/focus.py`), and every release left the Nova at rest: app stopped,
+perf 0 / fan 4, asleep.
+
+| session | Nova held (driving) | battery | title | result |
+|---|---|---|---|---|
+| 37a | 18:56-19:11 | 76 -> 71% | Midnight Club 3 (54540079) | returning route REWRITTEN, replayed clean |
+| 37b | 19:19-19:35 | 71 -> 65% | 187: Ride or Die (55530036) | first-run (draft) + returning, returning replayed clean |
+| 37c | 19:41-19:50 | 63% | Crash Bandicoot: Wrath of Cortex (56550003) | single route, replayed clean twice |
+| 37d | 19:52-20:01 | ~62% | Black Stone: Magic & Steel (58490004) | DRAFT: replays to a room, but the player never walks |
+
+**Benchmarks queued** (Nova, 0.5 priority `1-`, MAX regimen, ref
+`1c0c23fabb` = origin/master, `--seconds` = pre-mark + 300, via
+`scratch/bench.sh`). All three were still in `queue/` when this session
+ended:
+
+| title | request | seconds |
+|---|---|---|
+| Midnight Club 3 | `1-1790734333-titleroutes-3037624` | 460 |
+| 187: Ride or Die | `1-1790735661-titleroutes-3181153` | 370 |
+| Crash: Wrath of Cortex | `1-1790736688-titleroutes-3301413` | 400 |
+
+`titlestate.py choose` picks the replayed route for all three (MC3 and 187
+`returning`, Crash `single`).
+
+#### Midnight Club 3: the fix for session 35's failed replay
+
+Session 35's diagnosis ("an intermittent attract screen after Checking
+saved games") was wrong. Read from frames this time:
+- **"Press START to begin" is the title screen.** It always appears, and
+  "Checking saved games" comes only AFTER START. The draft pressed A
+  there, which does nothing.
+- **The boot presses were the real defect.** The interactive session
+  pressed A three times during the boot. On replay those presses landed on
+  different screens, so START arrived during the intro FMV and every later
+  step ran one screen behind. The first rewrite failed in exactly this way
+  (`scratch/replay/midnight-club-3.returning-190114`: it ended in Career /
+  Purchase a Vehicle).
+- **A no-input boot watch** (`scratch/bootwatch.sh`, frames in
+  `scratch/replay/bootwatch-190402`): Rockstar logos 6-20 s, intro FMV
+  25-80, trademark pages 85-98, fly-in 103, then the title screen from ~107
+  to ~155 s after launch, after which the attract FMV loops. The route now
+  sends nothing until ~120 s and then one START.
+- **The profile list highlights the last-used profile, and it wraps.** It
+  now holds Player 1 and Player 2; session 35's failed replay DID save a
+  second profile, even though it ended with no `flush`. The route takes the
+  highlighted profile with A and does not steer.
+- **Menu movement:** the D-pad buttons do nothing. The left stick moved
+  +2, +1, +1 rows on three identical pulses. The hat moves ONE row for a
+  back-to-back `axis HATY max` / `axis HATY mid`, and TWO when the pulse is
+  held ~0.5 s. The route uses one back-to-back hat pulse (Career ->
+  Arcade), then START, START, A (San Diego cruise).
+- **Replay:** `scratch/replay/midnight-club-3.returning-190751`. Frames:
+  `191000-title.png` (title), `191007-profile-select.png`,
+  `191018-menu-arcade.png` (Arcade highlighted), `191056-gameplay.png`
+  (Jetta on the street in 4th), `zz-end.png` (25 s later, a different
+  street, 3rd gear).
+
+#### 187: Ride or Die
+
+- No-input boot (`scratch/replay/bootwatch-191916`): Ubisoft and ESRB,
+  then "Please press START to begin" from ~22 to ~50 s, then an **attract
+  race with a full HUD**. That race is not gameplay.
+- First run (nav `187-ride-or-die.first-run-20260929T192056`): START ->
+  PLAYER PROFILE (all Empty) -> A (Create) -> keyboard: A types the
+  highlighted "N", Y validates -> MAIN MENU (a horizontal list: Story
+  mode, Quick hits, Xbox Live, ...). One LX pulse moved one item; the hat
+  moved two. Then Quick hits -> Western Whip Race -> Buck -> sport car ->
+  Controller Configuration (first time only) -> a narrated tutorial clip
+  that drives itself. START does not skip it; A does. The race starts ~8
+  s after the skip. Control: the stick steered the car into a tanker (44
+  -> 22) and holding A (Classic: accelerate) brought it back to 37 (frames
+  045-048).
+- The profile was flushed with a HOME intent (`deferred bdrv_flush_all
+  completed`), and the returning route was driven next. **The first boot
+  after the flush hung**: a black screen with a spinner at 3 fps,
+  `hakuX-watchdog: STALL` and `FORCED IF=1 (stuck 2 hb, eip=0x800151ed)`,
+  for 60+ s (nav `187-ride-or-die.returning-20260929T192645`). The next
+  launch booted normally, and so did the replay. That is 1 hang in 3 boots.
+- A 60 ms START on the title was missed once, so the routes hold it
+  150 ms.
+- Replay: `scratch/replay/187-ride-or-die.returning-193134`. Frames:
+  `193219-profile-select.png` ("N 0%"), `193226-quick-hits.png`,
+  `193245-tutorial.png`, `193259-gameplay.png` (race, lap 1/4, 49 mph),
+  `zz-end.png` (25 s on, 88 mph).
+- `187-ride-or-die.first-run.route` is a DRAFT. Its own session made the
+  profile, so a first-run replay needs that profile gone first.
+
+#### Crash Bandicoot: The Wrath of Cortex
+
+- No-input boot (`scratch/replay/bootwatch-194127`): NEW GAME / LOAD GAME
+  from ~26 to ~52 s, then a "DEMO" level. NEW GAME -> a name entry
+  ("CRASH", DONE highlighted) -> A -> the intro cutscene (START skips it)
+  -> a warp-room cutscene on the monitor (START skips it; it was still up
+  21 s after the first skip) -> **the warp-room hub**. The stick walked
+  and turned Crash.
+- First replay (`crash-wrath-of-cortex-194543`) reached the hub, but the
+  play loop's stick-up plus A walked Crash into the LOAD/SAVE monitor and
+  opened its menu (`zz-end.png`). That menu also showed a "CRASH" save
+  already on the hard disk. The loop now uses the stick only and moves
+  toward the camera and side to side.
+- Second replay (`crash-wrath-of-cortex-194814`), with the save present:
+  clean. `194959-gameplay.png` shows the hub; `zz-end.png`, 40 s on,
+  shows Crash walking with the camera turned.
+- **The scored window is the hub, not a level**, so its fps is an upper
+  bound on the title's.
+
+#### Black Stone: Magic & Steel: not reached
+
+The route replays to a green octagonal room with the HUD
+(`scratch/replay/black-stone-195702`, `195814-gameplay.png`). The stick
+changes the warrior's facing and stance, and A swings his sword. He never
+walks: not with the stick held 3 s, and not with the hat. HP fell 410 ->
+390 while A was pressed. A room the player cannot leave does not show
+play, so the file is `routes/black-stone.draft.route`. It is not linked in
+targets.toml and has no benchmark.
+
+#### Do not repeat
+
+- **Do not press buttons during a boot to "skip" it.** Where the presses
+  land depends on timing, and one landing on a different screen shifts
+  every later step. Watch the boot with no input first (`bootwatch.sh
+  <dev> <iso> <s> <every>`), find the title's window, and put a single
+  START in the middle of it.
+- **Do not steer to a fixed row in a list that highlights the last-used
+  entry and wraps** (MC3's profile list). Take the highlighted entry.
+- **Test a menu pulse's step size on the screen you will use it on**:
+  MC3's hat moved 1 back-to-back and 2 when held; 187's hat moved 2 and
+  its stick 1.
+- **A play loop must not bring the player back to where it started** if
+  something interactive is there (Crash's LOAD/SAVE monitor).
+
+**Next:**
+1. Read the three Nova benchmarks above once they land (`title_verdict.py`
+   on each result dir). Put the medians in the #397 table.
+2. Black Stone: find what makes the warrior walk, from the room the draft
+   reaches.
+3. Burnout Revenge (Nova, row 11): the profile loop from earlier sessions.
+4. Thor titles (Bicycle Casino, Breeders' Cup, AMF Xtreme Bowling, ... from
+   the hand-over; Bruce Lee's route check) once the Thor is back in
+   service for title work and is not held.
