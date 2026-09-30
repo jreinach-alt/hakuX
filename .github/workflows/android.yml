@@ -6,9 +6,13 @@ name: Android
 # developer's machine, and an unvalidated frontend integration all shipped.
 
 on:
+  # hakux-ci-throttle (2026-09-29): build only when code changes, and only non-draft PRs
   push:
     branches: [master]
+    paths-ignore: ['docs/**', '**/*.md']
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths-ignore: ['docs/**', '**/*.md']
   workflow_dispatch:
 
 concurrency:
@@ -17,6 +21,7 @@ concurrency:
 
 jobs:
   build:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 90
 

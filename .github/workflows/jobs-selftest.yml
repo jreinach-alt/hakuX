@@ -19,6 +19,7 @@ on:
       - 'docs/testing/nv2a_index.py'
       - '.github/workflows/jobs-selftest.yml'
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - 'docs/testing/jobs/**'
       - 'docs/testing/jobs/selftest.d/**'
@@ -26,6 +27,11 @@ on:
       - 'docs/testing/lane.sh'
       - 'docs/testing/nv2a_index.py'
       - '.github/workflows/jobs-selftest.yml'
+
+# hakux-ci-throttle (2026-09-29): a newer push cancels the older run
+concurrency:
+  group: jobs-selftest-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   # One job per shard (selftest.sh, "the shards"): run whole it took 18-25 min
@@ -35,6 +41,7 @@ jobs:
   # Changing the shard count: the list and the /N below together, or
   # selftest.sh's guard refuses every shard.
   selftest:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
