@@ -3,6 +3,8 @@
 Brief: `/home/justin/hakux-work/briefs/uberspike569.md`. Research: `docs/lanes/shaderplan569/NOTES.md`
 option (d) and section 7's P6. PR #581.
 
+**The build's device verdict (2026-09-30, attempt 10) is BUILD.md section 12:** E passes (1317/1317), the DOA and Kabuki stall legs pass, and G (the uber GPU cost while held, 3.8x) fails.
+
 Status (2026-09-29 PDT, attempt 3):
 - **E on the device: PASS.** All 305 captures are byte-identical in both runs (section 6.1).
 - **CB share, measured on the device:** forcing the families cut DOA's pipeline misses from 91 to 61
@@ -580,6 +582,13 @@ built behind them and swapped in. It stacks on PR #594 (lane/gpl569), whose file
 is its own PR on `lane/uberspike569-gpl`, and its notes are `docs/lanes/uberspike569/BUILD.md` on
 that branch. This PR stays the spike.
 
+### 9.1 Attempts 3 and 4
+
+Attempt 3 built the ladder and ended as a wait on two smoke soaks (`[lane.uberspike569] waiting:`
+on PR #618). Attempt 4 read them (clean, BUILD.md section 6), merged master and registered the build's
+legs: `uberspike569-gpl-pixels.json` (E, the arms job) and `uberspike569-gpl-doa-soak.json` (N1-N3, G,
+queued by hand). The results go in BUILD.md.
+
 ## Do not repeat
 
 - Do not give an uber shader a constant-bound loop over lights or texgen slots. NIR unrolls it into
@@ -596,3 +605,52 @@ that branch. This PR stays the spike.
   479 "ok" pairs with no drawn pixel (window clip regions covering the target under an exclusive
   clip; alpha refs above every alpha). `render_check.py` now prints drawn-pixel counts per
   baseline.
+
+## The build (PR #618) is recorded in `BUILD.md`
+
+Resume of 2026-09-29 16:10 PDT: attempt 4 ended as a wait on the DOA soak arms and the E pixel arm,
+which had not run (all queued behind the Nova's release tier). This resume added the Kabuki
+acceptance leg (BUILD.md section 7). Do not judge Kabuki's stall by "no flip gap over 5 s": master
+already meets it since B1 (longest gap 4.4 s in K1); read create ms and the gap against an A arm.
+
+Resume of 2026-09-29 16:25 PDT (attempt 6): attempt 5 ended as a wait, and before anything ran
+the live dispatch queue and results were emptied (BUILD.md section 8). All seven device requests
+were re-queued under new ids; E is now judged by this lane, not the arms job.
+
+Resume of 2026-09-29 17:39 PDT (attempt 7): attempt 6 ended as a wait, but the same wipe took a
+second pass and removed six of the seven re-queued requests. Only E's A arm ran. The cause is
+PR #622's selftest fragments, and PR #624 fixes it. The lane waits for #624 to fold before it
+re-queues the six (BUILD.md section 9).
+
+Resume of 2026-09-29 18:10 PDT (attempt 8): attempt 7 ended as a wait on PR #624's fold, which is
+what it should have done. #624 folded at 17:40 PDT. The lane merged origin/master (no emulator code,
+so the refs and predictions stand) and queued the six lost requests a third time, with the soaks
+hard-pinned to the Nova (BUILD.md section 10). Both devices are on the owner's top-up hold, so this
+attempt also ends as a wait.
+
+Resume of 2026-09-29 22:11 PDT (attempt 9): attempt 8 ended as a wait on the six requests it had
+re-queued. It did not finish because none of them has run: at 22:11 all six are still in
+`queue/`. The Nova is on the owner's top-up hold, and the Thor is out of service with a dead fan.
+GitHub is suspended, so the lane now follows the offline protocol: `PR.md` and `OUTBOX.md` beside
+this file stand in for PR #618 and the #569 post (BUILD.md section 11).
+
+Resume of 2026-09-30 08:31 PDT (attempt 10): attempt 9 ended as a wait on the six queued arms, and
+that was the right call. It did not finish because the arms could not run under the holds. The
+Nova came off its top-up hold overnight and ran all six between 07:24 and about 08:20 PDT. This
+attempt read all seven (BUILD.md section 12):
+- **E: PASS.** 1317 of 1317 captures are byte-identical with the uber stage held (2103 links,
+  0 uncovered).
+- **DOA:** N1-N3 pass. Draw-path create falls from 26.2 s to 2.7 s, and the first fight load from
+  2.9 s to 52 ms.
+- **G fails.** Held, the uber stage costs 3.8x the GPU ms (13 gfps against 45). That is an upper
+  bound, because the non-LTO link's own cost is in it too.
+- **Kabuki:** K0-K3 pass. The fight's create time falls from 133 s to 27 ms, with 0 stall windows,
+  and the longest flip gap from 5.0 s to 0.7 s.
+
+Do not trust `host/find_results.py` for a result dir with a `1-` priority prefix; it globs on
+the bare id. Use `host/list_results.py`.
+
+Attempt 10 ends as a wait. `PR.md` is `State: ready`, and the verdict is final. `offline_fold.py`
+still needs a finished run built from the branch head, so a DOA head smoke is queued on the Nova
+after the last commit, behind 13 study-tier requests (BUILD.md 12.5). A commit to this branch
+before the fold would orphan that smoke.
