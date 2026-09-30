@@ -84,9 +84,13 @@ down further).
   `scratch/replay/burnout-revenge.returning-134524/` (not committed, local
   to the worktree); 640x480 copy of the replay's gameplay frame committed
   at `docs/lanes/titleroutes/frames/burnout-revenge-replay-gameplay.jpg`.
-- Galleon, DOA3: queued as Thor screening soaks; their result dirs (once
-  landed) are the proof, same as any soak-based validation under that
-  program.
+- Galleon: Thor screening soak `0-0-s-1790800614-titleroutes-1024666`
+  landed during this session -- DONE, 265.6s gameplay, fps share at target
+  9.88%, no crash/hang, not thermal-limited. Route validated:
+  `route-frames/134228-gameplay.png` in the result dir shows the exact
+  tutorial scene the route's header describes.
+- DOA3: screening soak `1790801641-titleroutes-1213635` still running as
+  of this push; its result dir (once landed) is the proof.
 
 Release note (performance|stability|rendering|other|none): none -- this PR
 touches only route data and lane bookkeeping, no emulator code.

@@ -2507,3 +2507,16 @@ Galleon/Thor, `1790801593-titleroutes-1202186` Burnout Revenge/Nova,
 prediction (route validation + benchmark soaks, not arms), so nothing here
 needs `ab_compare` judging -- reading the result dirs directly is enough
 once they land.
+
+**Galleon's screening soak landed before this session ended.**
+`0-0-s-1790800614-titleroutes-1024666` (Thor, 480s cap): DONE, 265.6s of
+gameplay, fps share at target only 9.88%, no crash, no hang. `xo-therm`
+stayed under 52C through the samples read (well below the Thor's 70C
+force-stop), so this is a real slow reading, not thermal throttling cut
+short. `route-frames/134228-gameplay.png` shows the ship-deck tutorial
+scene from the route's header ("Now turn Rhama towards the arrow by the
+front mast") at FPS: 8 -- the route validated (real gameplay, matches the
+description), Galleon itself is just slow. `title_verdict.py` prints
+`FAIL(duration: 266 s of gameplay < 600 s screening)`, which is the
+600s-Playable-confirmation gate, not a route or screening-soak failure --
+this was queued as a 480s Thor screening soak, not a confirmation.

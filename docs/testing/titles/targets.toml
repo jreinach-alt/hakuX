@@ -53,7 +53,7 @@ notes = "Asks for every VBLANK (perf/bench_ff.sh). Route from bench_ff.sh."
 name = "Galleon"
 iso = { nova = "Galleon (USA).xiso.iso", thor = "Galleon (USA).xiso.iso" }
 route = "galleon"
-notes = "A §11 soak title; own target not yet measured, so the 30 default. routes/galleon.route queued as a Thor screening soak (session 41), not yet replayed."
+notes = "A §11 soak title; own target not yet measured, so the 30 default. routes/galleon.route validated by its Thor screening soak (session 41, 0-0-s-1790800614-titleroutes-1024666): 265.6s gameplay, fps share at target 9.88%, no crash/hang, not thermal-limited (xo-therm < 52C throughout) -- genuinely slow on the Thor."
 
 [titles."4D53002D"]
 name = "Dead or Alive 3"

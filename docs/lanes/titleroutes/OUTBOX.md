@@ -59,3 +59,12 @@ loadable without checking.
 
 Waiting on the three queued results landing; nothing else blocking this
 lane right now.
+
+**Update, same session:** Galleon's Thor screening soak landed before the
+session ended: 265.6s gameplay, fps share at target 9.88% (min/median not
+separately reported here), no crash/hang, xo-therm under 52C throughout
+(not a thermal cut-short -- Galleon is genuinely slow on the Thor). The
+route validated: `route-frames/134228-gameplay.png` shows the ship-deck
+tutorial scene the route's header describes, at FPS: 8. Burnout Revenge's
+benchmark is still queued and DOA3's screening soak is still running;
+their numbers will follow in the next check-in.
