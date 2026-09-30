@@ -83,7 +83,27 @@ State at 2026-09-29 ~19:00 PDT (read-only, titlestate registry):
 - Thor: no titles.qcow2 yet; its first title run builds and pushes. Out of
   service (fan) today.
 
+## Attempt 2 (2026-09-29 PDT): CI red on e9e62ee32e, a fixture umask
+
+Why attempt 1 did not finish: its head passed the audit and every local run,
+but `selftest (2)` on CI failed one leg, `a chmod that does not take ...
+still 660 (got: 640)`. Attempt 1 ran the fragment only on this host, whose
+umask is 002, and never under the runner's 022.
+
+The cause is the fixture, not `dev_push`. Read: `dev_push` chmods and stats
+only `<path>.new` before the rename and never touches `<path>` on a failure.
+The refused-chmod leg saved `hdd.img` with a plain `cp` to `hdd.before`, which
+created the copy at 660 & ~umask, so 640 on CI, and then restored it over
+`hdd.img` with `cp -p`. That left a 640 `hdd.img` at the start of the "does
+not take" leg. Reproduced here with
+`SELFTEST_ONLY=99-hdd-split` under `umask 022`: 58 passed, 1 failed, the same
+line. With the save done as `cp -p`: 59 passed, 0 failed under umask 022.
+No assertion changed.
+
 ## For the next lane
+
+- Run a mode-asserting selftest under `umask 022` before pushing: the host is
+  002, CI is 022, and a plain `cp` in a fixture makes the two disagree.
 
 - A fixture that stands in for a device must reproduce the device's modes, not
   only its bytes: the old fake push was `cp`, which kept the host file's mode,

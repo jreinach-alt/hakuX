@@ -228,7 +228,9 @@ check "  ... and every save on it survived" \
 # A device that refuses the chmod: the push fails, and the disk it would have
 # replaced is still the one it was.
 echo "== hdd split: a push whose mode cannot be set fails and replaces nothing"
-cp "$HS/dev/fs/hdd.img" "$HS/hdd.before"; head -c 4096 /dev/urandom > "$HS/other.img"
+# -p: a plain cp masks 660 by the runner's umask (022 on CI -> 640), and the
+# restores below would hand the next leg a 640 hdd.img that dev_push never touched.
+cp -p "$HS/dev/fs/hdd.img" "$HS/hdd.before"; head -c 4096 /dev/urandom > "$HS/other.img"
 touch "$HS/dev/nochmod"
 hs_env 'dev_push "$HS/other.img" "$X/hdd.img"' > "$HS/nochmod.log" 2>&1; rc=$?
 rm -f "$HS/dev/nochmod"
