@@ -330,3 +330,38 @@ and predictions as section 8: E H (6bec23c3f4, the 36 suites, 2 runs), DOA A/B/H
 Pin the DOA and Kabuki soaks to the Nova (the Thor's thermal pause voids a soak). If any is lost a
 third time after #624, that is a different bug: post the dispatcher.log evidence on #618. Then
 the judging of section 8's last paragraph.
+
+## 10. Attempt 8 (2026-09-29 18:10 PDT): the six queued a third time, after #624
+
+**Why attempt 7 did not finish.** It ended as a wait on PR #624 (lane.dispatchguard), which is what
+hostops asked for. #624 folded at 17:40 PDT (`dfa30e5780` on master).
+
+**Merged origin/master.** It adds no emulator code (docs, jobs, routes), so the refs and the three
+predictions stand unchanged (`host/predinfo.py`: doa-soak `642189382de2`, kabuki-soak
+`dad936499521`, pixels `c5c0e63aed4e`). None was re-registered.
+
+**Queued** with `host/requeue3.sh`, which uses section 8's refs and flags, output in `host/requeue3.log`.
+The DOA and Kabuki soaks now carry
+`--device nova --hard-pin`. In section 8 they carried a soft pin, and four were admitted on the
+Thor, whose thermal pause voids a soak. The pilot gate admitted the batch on
+`pilots/uberspike569.ok`.
+
+| arm | ref | id |
+|---|---|---|
+| E A (kept, ran 16:49) | 23543417aa | `1790724542-uberspike569-1360739` |
+| E H | 6bec23c3f4 | `1790730667-uberspike569-2559646` |
+| DOA A | 23543417aa | `1790730667-uberspike569-2559714` |
+| DOA B | 752b4f0f7b | `1790730668-uberspike569-2559794` |
+| DOA H | 6bec23c3f4 | `1790730669-uberspike569-2559870` |
+| Kabuki A | 8b15159b2f | `1790730670-uberspike569-2559946` |
+| Kabuki B2 | d0152f9c44 | `1790730670-uberspike569-2560023` |
+
+At 18:12 PDT all six sat in `queue/`. Both devices are held for the owner's top-up, and lane.local
+releases the holds, so this attempt ends as a wait. If any of the six is lost after #624, post the
+dispatcher.log evidence on #618.
+
+**On resume:** `host/find_results.py` on the seven ids. Then `uberjudge.py --a --b --h` on the
+three DOA arms, `kabjudge.py --a --b` on the two Kabuki arms, and
+`ab_compare.py --a <E A> --b <E H> --expect docs/testing/predictions/uberspike569-gpl-pixels.json`
+read per capture. Check E H's logcat for `[uber569] mode=4 links=N`, N > 0. Then the verdict, the
+#569 post, and ready.

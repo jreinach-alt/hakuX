@@ -619,3 +619,9 @@ Resume of 2026-09-29 17:39 PDT (attempt 7): attempt 6 ended as a wait, but the s
 second pass and removed six of the seven re-queued requests. Only E's A arm ran. The cause is
 PR #622's selftest fragments, and PR #624 fixes it. The lane waits for #624 to fold before it
 re-queues the six (BUILD.md section 9).
+
+Resume of 2026-09-29 18:10 PDT (attempt 8): attempt 7 ended as a wait on PR #624's fold, which is
+what it should have done. #624 folded at 17:40 PDT. The lane merged origin/master (no emulator code,
+so the refs and predictions stand) and queued the six lost requests a third time, with the soaks
+hard-pinned to the Nova (BUILD.md section 10). Both devices are on the owner's top-up hold, so this
+attempt also ends as a wait.
