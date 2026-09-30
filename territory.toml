@@ -1701,3 +1701,8 @@ issues = []
 files = []
 retired_utc = "2026-09-29T01:40:00Z"
 note = "RETIRED (hostops 2026-09-29T01:40Z): attempt 2, PR #595, folded as 605532c2f8 (18:15 PDT), unit gone; its row held no files (written late by job.board). See [retired.battadmit] for attempt 1 (PR #587)."
+
+[lane.escalationparse]
+issues = ["433"]
+files = ["docs/testing/jobs/status_html.py", "docs/testing/jobs/selftest.d/99-status-escalations.sh", "docs/lanes/escalationparse/**"]
+note = "STARTED (lane.local 2026-09-30T02:20Z), briefs/escalationparse.md: the owner saw 33 items needing a human (09-29 ~19:05 PDT); it was one WSL-restart escalation that escalation_items() split per unindented line, plus a mid-tick timer read. Fix the parser: a ## block is one item, RESOLVED only as a leading marker, and no timer item while the tick is activating. Harness dashboard, no emulator code."
