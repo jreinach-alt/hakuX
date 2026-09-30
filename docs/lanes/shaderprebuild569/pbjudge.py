@@ -28,8 +28,10 @@ Read per launch (gpljudge.py's readings, plus):
   load_dpc_ms   the first load after `mark <load-mark>` (gpljudge.first_load)
 
 Legs, factors in FACTORS, all fixed before any run:
-  V   validity: L1 cleared, L2 kept; L2's wipe line says removed; L1's start
-      has records=0; L2's start has records >= min_records and unresolved
+  V   validity: L1 has the wipe line (removed or absent) and its start has
+      records=0, so it began with no records for the title and no cache file
+      (the dispatcher's clear is not required: another title's caches may be
+      kept); L2 kept, and its wipe line says removed; L2's start has records >= min_records and unresolved
       <= max_unresolved x records; >= min_lines [shd413] windows each; both
       have the boot mark; L2 has >= min_known known recs after it; L1 has
       >= min_known new recs after it. Anything else is VOID, not a verdict.
@@ -138,7 +140,8 @@ def verdicts(L1, L2, f, load_mark):
     rec2 = ival(s2, "records") or 0
     unres2 = ival(s2, "unresolved")
     v["V"] = bool(
-        L1.get("cleared") and L2.get("kept") and L2.get("wipe") == "removed" and
+        L1.get("wipe") in ("removed", "absent") and L2.get("kept") and
+        L2.get("wipe") == "removed" and
         ival(s1, "records") == 0 and rec2 >= f["min_records"] and
         unres2 is not None and unres2 <= f["max_unresolved"] * rec2 and
         L1.get("lines", 0) >= f["min_lines"] and
@@ -233,10 +236,17 @@ def selftest():
                            done_s=30, wipe=bad.get("wipe", "removed")),
                     bad.get("sc", "kept: same apk"), "booted", "play")
         assert not verdicts(L1, L2v, FACTORS, "play")["V"], bad
-    # L1 must be cold with no records
+    # L1 must start with no records for the title and no cache file; the
+    # dispatcher's clear is not needed for that (another title's caches kept)
     L1w = score(launch(12, cold_recs, cold_dpc, 59), "cleared: a -> b",
                 "booted", "play")
     assert not verdicts(L1w, L2, FACTORS, "play")["V"]
+    L1n = score(launch(0, cold_recs, cold_dpc, 59, wipe=None), "cleared: a -> b",
+                "booted", "play")
+    assert not verdicts(L1n, L2, FACTORS, "play")["V"]
+    L1k = score(launch(0, cold_recs, cold_dpc, 59, wipe="absent"),
+                "kept: same apk", "booted", "play")
+    assert verdicts(L1k, L2, FACTORS, "play")["V"]
     print("selftest ok")
 
 

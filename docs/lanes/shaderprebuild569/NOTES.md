@@ -102,7 +102,7 @@ run.
 
 | leg | registered | fails in the world where |
 |---|---|---|
-| V | L1 cleared, L2 kept; L2's wipe line says removed; L1 `records=0`; L2 `records >= 20`, unresolved <= 10%; >= 20 [shd413] windows; boot mark in both; >= 20 known (L2) and new (L1) creates after it | not a verdict: VOID, re-queue |
+| V | L1 has the wipe line and `records=0` (no records for the title, no cache file; the dispatcher's clear is not required); L2 kept, and its wipe line says removed; L2 `records >= 20`, unresolved <= 10%; >= 20 [shd413] windows; boot mark in both; >= 20 known (L2) and new (L1) creates after it | not a verdict: VOID, re-queue |
 | W4 | L2's mean known create after the boot mark <= 0.10 x L1's mean new create after it | the pre-build builds under a different driver cache key than the draw path (layout, render pass, module or state mismatch), or has not reached them |
 | W1 | L2 pc_ms <= 0.25 x L1's (whole run) | W4's world, or L2 meets many pipelines L1 never did |
 | W1b (DOA) | L2's first load after `mark play`: dpc_ms <= 0.25 x L1's | the same, inside the fight load |
