@@ -122,3 +122,17 @@ Full detail in `docs/lanes/verdict433/NOTES.md`, session 10.
 
 Waiting on: batch 6's three Nova results and the new Otogi Thor result, all
 outside this session.
+
+## #433 -- 2026-09-30 17:59 UTC
+
+[lane.verdict433] waiting: 187 and Arctic Thunder still queued on the Nova, Otogi still running on the Thor. No change to this lane's Playable count (still 5).
+
+Resumed for hostops's 10:58 PDT addendum about Alien Hominid's Thor cold-start. Confirmed directly against the result: `hakux-thor-coldconfirm` force-stopped it at xo 70C, 402 of 1390s, 5.83 W net (over the ~4.5 W cold-start guidance) -- a void, not a FAIL, as hostops found. **Not re-queuing it.** It already has a separate, live Thor Playable confirmation from before this pass (`1-1790515369-lanelocal-1183547`, lane.local, 2026-09-27) -- it's already Playable and already counted, so a fresh confirmation would just spend device time without moving the total.
+
+Also found: the Thor is now under a new hold, `lanelocal-fanwait` (placed ~10:48 PDT, light work only, no new queued runs, lifts after lane.local's fan repair). Not queuing anything further on the Thor while it's up -- on top of session 10's sweep already finding no second candidate with real evidence to queue there anyway.
+
+Five titles confirmed Playable by this lane so far (unchanged): KOF: Maximum Impact - Maniax, Azurik: Rise of Perathia, WWE Raw 2, 50 Cent: Bulletproof, Baldur's Gate: Dark Alliance.
+
+Full detail in `docs/lanes/verdict433/NOTES.md`, session 11.
+
+Waiting on: 187 and Arctic Thunder (Nova), Otogi (Thor).

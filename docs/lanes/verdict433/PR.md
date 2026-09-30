@@ -83,17 +83,23 @@ changed.
 
 ## Outstanding before ready
 
-- Batch 6 (`-3086847` Alien Hominid, `-3086875` 187: Ride or Die,
-  `-3086903` Arctic Thunder) has not finished -- Alien Hominid running,
-  the other two still queued on the Nova.
-- Session 10 queued one Thor cold-start confirmation (Otogi: Myth of
-  Demons, `-43486`, `--hard-pin`, defaults) per lane.local's 10:20 PDT
-  addendum, also outstanding.
-- Alien Hominid already has a separate, live Thor Playable confirmation
-  from before this pass (`1-1790515369-lanelocal-1183547`, not this lane's
-  work) -- noted so the count isn't read as +1 when this lane's own Nova
-  run for it lands; it would be a second confirmation of an
-  already-Playable title.
+- Batch 6's Alien Hominid request (`-3086847`) is DONE but **voided**: it
+  was re-pinned from the Nova to a Thor cold-start slot by lane.local
+  (10:40 PDT) and force-stopped at xo 70C (402 of 1390s, 5.83 W, over the
+  cold-start power guidance) -- a no-result void, not a FAIL, per hostops's
+  10:58 PDT addendum (confirmed directly against `.hostops-diagnosed`).
+  **Not re-queuing it**: it already has a separate, live Thor Playable
+  confirmation from before this pass (`1-1790515369-lanelocal-1183547`),
+  so it's already Playable and already counted -- a fresh confirmation
+  would be redundant device time.
+- `-3086875` (187: Ride or Die) and `-3086903` (Arctic Thunder) are still
+  queued on the Nova, unaffected.
+- Session 10's Thor cold-start confirmation (Otogi: Myth of Demons,
+  `-43486`, `--hard-pin`, defaults) is still running.
+- The Thor is now under a fresh hold (`lanelocal-fanwait`, placed
+  2026-09-30 ~10:48 PDT, light work only, no new queued runs) until
+  lane.local's fan repair lands -- not queuing anything further on the
+  Thor until it lifts.
 - Ibcache's three queued Crimson Nova runs, DOA's fight-route authoring,
   lane.kabukistall's stall explanation, #583 (Forza) and #591 (GTA SA) are
   all still open per the existing tier B/C ranking -- confirmed #591 still

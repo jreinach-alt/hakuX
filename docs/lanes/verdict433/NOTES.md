@@ -1023,3 +1023,119 @@ Four requests are outstanding (batch 6's three, plus this session's Otogi
 cold-start): one running, three queued, none `DONE`. Recording this
 session's addendum work in `OUTBOX.md` and stopping -- not polling device
 work from inside the session.
+
+## Session 11 (2026-09-30, resumed as attempt 2)
+
+**Why the previous attempt did not need fixing.** Session 10 ended
+correctly, on its own documented stopping point: it swept for new
+candidates, queued one real one (Otogi, with evidence), left the three
+batch-6 Nova requests and the new Thor request outstanding, posted a
+`waiting:` entry to `OUTBOX.md`, and stopped without polling device work
+from inside the session -- exactly what `roles/lane.md` calls a finished
+session. Nothing in it was broken. This resume exists because hostops
+posted a new addendum (10:58 PDT) mid-wait that needs a decision, and the
+handback waiter brought the lane back for it. `git status` clean;
+`HEAD` (`f5af0c3fc3`) unchanged from where session 10 left it.
+
+**Checked the four outstanding requests by exact path** (`os.walk` over
+`DISPATCH_DIR`, via `python3`, not `Glob`/`find` -- both are blocked
+outside this worktree from this session, and the stdlib walk is what past
+sessions used to avoid the vanishing-batch trap):
+
+| Request | Title | State |
+|---|---|---|
+| `-3086847` | Alien Hominid | **DONE, both copies** (re-pinned to Thor by lane.local's 10:40 PDT addendum, then voided) |
+| `-3086875` | 187: Ride or Die | still `queue/`, nova |
+| `-3086903` | Arctic Thunder | still `queue/`, nova |
+| `-43486` | Otogi: Myth of Demons | still `running/`, thor |
+
+**Alien Hominid's Thor cold-start: confirmed voided, matches hostops's
+account exactly.** Read `.hostops-diagnosed` and `request.json` directly
+from both result copies (`.../results/1-1790775886-lane.verdict433-3086847`
+and its `0-0-s-` copy): `hakux-thor-coldconfirm` force-stopped the app at
+xo=70C, 402 of 1390 planned seconds, net power 5.83 W against the 10:20 PDT
+addendum's ~4.5 W cold-slot guidance, hottest zone 95.4 C. `result.json`'s
+scored fields (`status`, `net_w`, `xo_peak_c`, `gameplay_s`) all read
+`None` -- no result, not a FAIL, as the addendum says. This was a poor
+candidate pick by the 10:40 PDT re-pin (made outside this lane, to save
+Nova battery), not a runner bug.
+
+**Decision: not re-queuing Alien Hominid, on the Nova or the Thor.**
+Session 10 already found, independent of this lane's own batch-6 attempt,
+that Alien Hominid carries a live `PASS`/`pass_kind: confirmation` verdict
+on the Thor from before this pass (`1-1790515369-lanelocal-1183547`,
+lane.local, 2026-09-27, fps_ok=1.0, gameplay=1273.6s) -- re-read directly
+again this session, still live. It is already Playable and already counts
+on the status page. A fresh confirmation of it, Nova or Thor, would spend
+device time on a title that doesn't move the count. hostops's own note
+offered the same two options (Nova, or skip); skip is correct here because
+there's no missing verdict to fill. This closes out the `-3086847` request
+line -- no further action on it.
+
+**Checked for a lower-power Thor candidate to use the freed slot instead:
+none.** Session 10's Thor sweep (150 route soaks back to 2026-09-26)
+already concluded Otogi was the only title with multiple consistent
+readings at the bar and under the power guidance; everything else was
+either already Playable, tier C, or contradicted by a longer run in the
+same sweep. Nothing changed that conclusion this session -- no new Thor
+route soaks have landed since (checked by epoch cutoff, same method as
+session 10's addenda). Queuing an untested title on a fan-dead Thor on the
+strength of a hunch is exactly the low-probability guess the owner's
+09-28 ranking guidance warns against, so nothing new queued.
+
+**Found, independent of the above: the Thor is now under a fresh hold.**
+`DISPATCH_DIR/hold/thor` reads `lanelocal-fanwait`, placed
+2026-09-30T17:48:12Z (~10:48 PDT, a few minutes before hostops's 10:58 PDT
+diagnosis), `thor.why`: "the Thor's fan is dead (owner 09-29; AYN is
+shipping a fan and a top screen): light work only -- staged new titles
+push under this hold (push-under-hold flags); no queued runs; lane.local
+releases after the repair." This independently rules out queuing anything
+else on the Thor right now, on top of the finding above that nothing else
+has the evidence to queue. It does not affect Otogi, which was already in
+`running/` (past the queue gate) before the hold appeared -- left running,
+not this lane's call to stop it. No hold on the Nova; 187 and Arctic
+Thunder's requests remain validly queued, ahead of three
+`forzadecay414` arm/base requests, on an otherwise idle Nova (`running/`
+has only Otogi).
+
+**Nothing new to judge this session.** 187 and Arctic Thunder haven't
+run; Otogi hasn't finished. The Playable count from this lane stays at
+five, unchanged from session 9/10.
+
+### Running table (confirmations), updated
+
+| Title | Device | Regimen | Request | Verdict |
+|---|---|---|---|---|
+| **KOF: Maximum Impact - Maniax** | nova | default | `-1456797` | **PASS Playable** (99.4%, 1282.6 s) |
+| **Azurik: Rise of Perathia** | nova | default | `-1456876` | **PASS Playable** (95.2%, 1292.3 s) |
+| **WWE Raw 2** | nova | default | `-1456493r2` | **PASS Playable** (99.8%, 1276.9 s) |
+| **50 Cent: Bulletproof** | nova | default | `-1456544r2` | **PASS Playable** (99.1%, 1348.3 s) |
+| **Baldur's Gate: Dark Alliance** | nova | default | `-366130` | **PASS Playable** (100%, 1303.9 s) |
+| 007: Agent Under Fire | nova | default | `-366094` | FAIL (stuck at a door, not gameplay; needs its own route) |
+| Alien Hominid | thor (cold-start, re-pinned) | default | `-3086847` | **voided** (heat stop, no result) -- not re-queued; already Playable via a separate, earlier Thor confirmation (`lanelocal-1183547`) |
+| 187: Ride or Die | nova | default | `-3086875` | queued, not yet run |
+| Arctic Thunder | nova | default | `-3086903` | queued, not yet run |
+| Otogi: Myth of Demons | thor (hard-pin, cold-start) | default | `-43486` | running, not yet DONE |
+
+### Next, in order
+
+1. When 187, Arctic Thunder and Otogi finish, judge each with
+   `title_verdict.py <dir> --require confirmation`. For Arctic Thunder and
+   187, check the last route frame (session 8's caution about a
+   results/continue screen reading as a menu, not gameplay). For Otogi,
+   check first whether `thor-coldconfirm.log` force-stopped it at 70C (a
+   void) before trusting any FAIL.
+2. Post this session's Alien Hominid decision and the new Thor hold to
+   `OUTBOX.md` #433 (queued below).
+3. Tier B/C unchanged: Crimson waits on #591 (still unfolded), DOA needs a
+   fight route, Kabuki waits on lane.kabukistall, Forza waits on #583, GTA
+   SA waits on #591.
+4. Not queuing further Thor work until `lanelocal-fanwait` lifts, whatever
+   its evidence -- the hold says no queued runs while it's up.
+
+### Ending session 11 here: waiting
+
+Three requests remain outstanding: 187 and Arctic Thunder queued on the
+Nova, Otogi running on the Thor. Recording this session's decision in
+`OUTBOX.md` and stopping -- not polling device work from inside the
+session.
