@@ -294,6 +294,12 @@ name = "Mortal Kombat: Armageddon"
 target_fps = 60
 notes = "#431 (comment 5851536933): 60, medium confidence. Prima official guide (2006, PS2 and Xbox): fights run at 60"
 
+[titles."55530036"]
+name = "187: Ride or Die"
+iso = { nova = "55530036-187_Ride_or_Die.xiso.iso" }
+route = "187-ride-or-die"
+notes = "No #431 target; the default 30 applies. Routes by lane.titleroutes 2026-09-29 (Nova, session 37): returning.route REPLAYED CLEAN (profile N -> Quick hits -> Western Whip Race; A skips the tutorial clip; hold A to drive). first-run.route is a draft (its session made the profile). One boot in three hung on a spinner at 3 fps (watchdog STALL), the first boot after the flush. See NOTES.md session 37."
+
 [titles."56550003"]
 name = "Crash Bandicoot: The Wrath of Cortex"
 iso = { nova = "56550003-Crash_Bandicoot_The_Wrath_of_Cortex.xiso.iso" }
