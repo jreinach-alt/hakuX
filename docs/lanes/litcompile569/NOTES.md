@@ -484,6 +484,38 @@ DONE:** follow section 7's list (score R1-R3 with `doa_gpu_history.py`, name the
 post on #569 and #607, mark #607 ready). Section 8's provisional 0.84 is not a pair, and is not
 pooled into R3.
 
+## 10. Session 6 (2026-09-29 17:49 PDT): the second re-queue was wiped too
+
+### Why session 5 did not finish
+
+It ended on purpose, waiting on the re-queued pair (section 9). Neither arm ran:
+- **hostops confirmed the cause** from `dispatch/logs/dispatcher.log`. The dispatch wipe had a
+  second pass.
+  - `selftest.d/50-arms-requeue.sh` and `51-dispatch-hardening.sh` ran against the live
+    `DISPATCH_DIR` from PR #622's branch.
+  - The fix arm (`1351153`) was only ever battery-skipped on the Nova.
+  - The base arm (`1352783`) was admitted on the Thor and then removed before anything
+    claimed it.
+- **The fix is PR #624** (lane.dispatchguard): those fragments now refuse a live
+  `DISPATCH_DIR`. It folded at 2026-09-30 00:40 UTC.
+- **The resume brief's table names the gate-4 pair** (`206765`, `206870`). Section 7
+  already read that pair.
+
+### Queued a third time
+
+The pair is back in the queue, queued at 00:41 UTC (after #624 folded):
+- fix 87ceac5569: `1790728885-litcompile569-2295720`, first;
+- base bf1ecde346: `1790728890-litcompile569-2296232`.
+
+Both run on the Nova, at study priority, on the survey route. The route text is
+byte-identical to the replication base arm's `request.json`. I did not queue a duplicate.
+
+Both handhelds are held for the owner's top-up (`lanelocal-topup`). The holds release
+themselves, so nothing runs until the Nova is back.
+
+**When both are DONE:** follow section 7's list. If the pair is lost a third time with #624
+in, that is a different bug: report it on #607 with dispatcher.log evidence.
+
 ## 5. For the next lane
 
 - **Gate 4 (device) waits on P1** (PR #574, lane.shaderfb569: `dpc_ms` per stage). The leg
