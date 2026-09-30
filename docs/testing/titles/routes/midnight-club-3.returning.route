@@ -1,0 +1,122 @@
+# Midnight Club 3: DUB Edition (54540079), RETURNING: a profile ("Player 1")
+# already exists on the Nova (created by the first-run session, 2026-09-29
+# 16:33 PDT). PLAYED by nav.py on the Nova, 2026-09-29 17:09 PDT (lane.
+# titleroutes HELD session midnight-club-3.returning.returning-20260929T170935).
+#
+# DRAFT, NOT YET REPLAYED CLEAN (2026-09-29 session 35). The steps below are
+# what worked when driven interactively (mark gameplay: RT accelerated a red
+# Jetta out of "SIX-ONE-NINE CUSTOMS" onto the street, full HUD, within
+# ~5 s of the Start press -- frames 017/018 of nav session
+# midnight-club-3.returning.returning-20260929T170935). AN UNATTENDED REPLAY
+# OF THIS EXACT FILE DID NOT REACH THAT SCREEN (scratch/replay/mc3ret-1735/
+# frames, run.log; not committed):
+#
+#   - After "Checking saved games" (171646-checking.png), the replay hit a
+#     "Press START to begin" attract/title screen (171649-profile-select.png,
+#     171651-profile-select.png) that the interactive session never showed
+#     -- or showed and dismissed without a screenshot catching it. This
+#     route's `press A` there did nothing for at least 2 s (two shots 3.5 s
+#     apart both still read "Press START to begin").
+#   - The route's next `press A` (meant for the "Player 1" row) landed once
+#     the screen had cycled back through "Checking saved games"
+#     (171654-loading.png) to the SAME 4-row profile list (Player 1 + three
+#     "Create Profile" rows, 171657-main-menu.png) -- not the 5-row main
+#     menu (Career/Arcade/Networking/Race Editor/Options) this route
+#     expects from that point on.
+#   - Every step after that (the four `axis LY max` pulses, `press A`,
+#     "Arcade"/"settings"/"Start" labels) ran against the WRONG list: the
+#     pulses landed on "Create Profile" (171710-menu-arcade.png), and the
+#     route's final `press A` began creating a SECOND profile. `mark
+#     gameplay` (171734-gameplay.png) shows "Career / Purchase a Vehicle /
+#     Enter Nickname" -- profile creation, not gameplay. The run ended on a
+#     timeout (no `flush`), so nothing was written to the disk image; the
+#     Nova's profile state is unchanged (titlestate.py still reads
+#     Player 1, created 2026-09-29T23:47:50Z).
+#
+# NEXT SESSION: after "Checking saved games", shot before assuming the
+# profile list -- if "Press START to begin" is on screen, `press START` (not
+# A) and re-shoot before trusting anything downstream. Do not reuse this
+# file's post-checking steps unread; the fixed waits below assume the
+# attract screen is NOT there, which this session's own replay shows is not
+# reliable.
+#
+# THE MENU-LIST MAPPING FROM SESSION 34 (first-run) DOES NOT HOLD HERE
+# EITHER, going by the interactive drive that DID reach the real main menu:
+# `axis LY max` then `mid` moved the highlight ONE row per pulse (not
+# three), wrapping past the list ends: Career(0) -> [2 pulses] -> Race
+# Editor(3) (0-2 mod 5) -> [1 pulse] -> Networking(2) -> [1 pulse] ->
+# Arcade(1). Whether that holds on a clean replay is untested, since this
+# replay never reached the real main menu to try it.
+#
+# Player control (confirmed interactively, not by this route's replay): RT
+# accelerates. The play pattern holds the gas and lets off briefly so a
+# wall or a car can be seen to react, since MC3's roads are not straight.
+wait 2.0
+shot boot
+wait 2.0
+press A
+wait 2.0
+shot legal
+wait 2.0
+press A
+wait 1.3
+press A
+wait 2.0
+shot logo
+wait 2.0
+press A
+wait 2.0
+shot checking
+wait 3.0
+shot profile-select
+wait 1.0
+mark profile-select
+press A
+wait 2.5
+shot loading
+wait 2.5
+shot main-menu
+wait 1.0
+mark main-menu
+axis LY max
+wait 0.5
+axis LY mid
+wait 1.5
+axis LY max
+wait 0.5
+axis LY mid
+wait 1.5
+axis LY max
+wait 0.5
+axis LY mid
+wait 1.5
+axis LY max
+wait 0.5
+axis LY mid
+wait 1.5
+shot menu-arcade
+wait 1.0
+mark menu-arcade
+press A
+wait 2.5
+shot arcade-ready
+wait 1.0
+mark arcade-ready
+press A
+wait 2.0
+shot settings
+wait 1.0
+press A
+wait 2.0
+shot start-ready
+wait 1.0
+mark start-selected
+press A
+wait 8.0
+mark gameplay
+repeat forever {
+    axis RT max
+    wait 2
+    axis RT mid
+    wait 1
+}

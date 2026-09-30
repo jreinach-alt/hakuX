@@ -1810,3 +1810,117 @@ no hold, no queued request.
    09-28 15:37 PDT pilot-file review already reached the same verdict from
    a different two of them. A re-run would only be for the window-median
    numbers, which is a job for whoever needs them, not a default action.
+
+### Session 35 (attempt 2 of 4): 2026-09-29 17:05-17:50 PDT
+
+Why attempt 1 did not finish: it did finish. Batch 12 (PR #623) merged, and
+the resume brief for this attempt confirms both -- the merge and that
+nothing of the lane's was left running or queued. This is a fresh
+continuation, not a recovery from a stall.
+
+Bruce Lee's route-check request (1-1790608228-titleroutes-824349, later
+renamed 1-9-...) never ran and is gone from `queue/` -- its four
+dispatcher.log lines are all `BATTERY: skip`, the last at 09-29 16:22:59,
+and it is absent from `queue/` and `queue/withdrawn/` alike. Something
+(another dispatch-state event, unlogged under this id) removed it rather
+than running it. Not re-queued this session; Thor battery (21%, see below)
+would refuse it again immediately regardless.
+
+**Device state at session start:** Thor 21% (below the 30% held-session
+floor; no hold, no running/queued request), Nova 32% (above floor, no
+hold). Per the brief's "Next" list, item 1 (fix the MC3 first-run route's
+transition timing) was next, and the Nova was the only device clear to
+hold.
+
+**Midnight Club 3 (54540079), returning, held Nova session
+midnight-club-3.returning.returning-20260929T170935 (17:09-17:16 PDT
+interactive drive; hold titleroutes-s35, released 17:4x, battery
+32% -> 29%):**
+
+Drove interactively from a fresh `am start` (profile "Player 1" already on
+disk from session 34's first-run) through to real gameplay, timing the
+Start-press-to-HUD transition directly instead of guessing: `press A` on
+"Start" at host time 1790727206.978; a shot after one `wait 2.0`
+(1790727211.869, ~4.9 s including two nav.py/adb round trips and a
+screencap) already showed the full street-with-HUD frame -- much faster
+than the first-run route's assumed 9.0 s (session 34), let alone the 13.9 s
+the first-run NAV session itself took. Confirmed player control: `play axis
+RT max wait 2 axis RT mid wait 1` moved the car from parked outside
+"SIX-ONE-NINE CUSTOMS" out into street traffic (frames 017-018 of the nav
+session).
+
+**The main-menu pulse mapping session 34 recorded does not hold here.**
+That session found `axis LY max` then `mid` moved the highlight THREE rows
+per pulse. This session, checked with a shot after every pulse (not
+inferred from the label alone): a two-pulse shell call moved Career(0) to
+Race Editor(3) -- consistent with ONE row per pulse in the opposite
+(wrapping) direction, i.e. -2 mod 5 = 3, not +2*3 mod 5. Two further
+single-pulse calls then moved Race Editor(3) -> Networking(2) ->
+Arcade(1), each -1. Four `axis LY max` pulses from Career reaches Arcade,
+by this model. Whether "3 rows" or "1 row, reversed" is the title's actual
+behavior, or whether it depends on which list is on screen (profile-select
+has 4 rows, the main menu 5), was not isolated -- both readings are only
+as good as the specific screens they were taken on.
+
+**Wrote `routes/midnight-club-3.returning.route` from the nav session,
+trimmed the same way the first-run route was (collapsing the recorded
+wait-to-my-own-reading-time gaps, some over 50 s, to fixed 1.3-3.0 s
+per-step waits matching the first-run route's style). `route.sh --check`
+passed. REPLAYED unattended (fresh `am force-stop` + wake + relaunch,
+`scratch/replay/mc3ret-1735/`, capped at 78 s so the `repeat forever` tail
+did not run indefinitely) -- AND IT DID NOT REACH GAMEPLAY.** The replay
+hit a "Press START to begin" attract screen right after "Checking saved
+games" that the interactive drive never showed (or showed and dismissed
+without a screenshot catching it -- the interactive drive used the same
+3.0 s wait at that point with no intermediate shot). The route's `press A`
+there did nothing for over 2 s (two shots 3.5 s apart, both still reading
+"Press START to begin": frames `171649-profile-select.png`,
+`171651-profile-select.png`). The NEXT `press A` landed once the screen
+had cycled back through "Checking saved games" to the SAME 4-row
+profile-select list (Player 1 + three "Create Profile" rows,
+`171657-main-menu.png` -- mislabeled by the route, since it expected the
+real 5-row main menu there). Every step after that operated on the wrong
+list: the four LY pulses landed on "Create Profile", and the route's final
+`press A` began creating a second profile -- `mark gameplay`
+(`171734-gameplay.png`) shows "Career / Purchase a Vehicle / Enter
+Nickname", not gameplay. The 78 s cap ended the run before any `flush`, so
+nothing was written to disk; `titlestate.py show --device nova` still
+reads Player 1, created 2026-09-29T23:47:50Z, unchanged.
+
+This is a **falsifier that worked as intended**: the route claimed to
+reach gameplay and the replay checked that claim against the device
+instead of trusting the interactive walkthrough, and found it false. The
+route file itself now carries this finding (not a second, contradicting
+copy of it) so the next session does not re-drive the same interactive
+path expecting it to hold. **Not fixed this session** -- the fix needs a
+shot immediately after "Checking saved games" resolves, before assuming
+either the profile list or the attract screen, and a `press START`
+(pad.sh's START code, not A) if the attract screen is there. Time and the
+Nova's battery (32% -> 29% over the session) were both nearly spent by the
+time the replay's actual failure mode was legible from the frames, so a
+same-session retry would have pushed well past the 30-minute hold budget
+and the battery floor.
+
+`targets.toml`'s `54540079` notes now cover both drafts (first-run,
+returning) and why neither is linked. No benchmark was queued -- neither
+route replays.
+
+Released the Nova hold at query, battery 29% (at floor already), app
+stopped, REST perf/fan (0/4) set, screen asleep (`KEYCODE_SLEEP`).
+
+**Next:**
+1. Fix `midnight-club-3.returning.route`: a held Nova session (battery
+   permitting -- it ended this session at 29%, below the 30% floor, so it
+   may need to clear that first) that shoots right after "Checking saved
+   games" resolves and does not assume what comes next. If "Press START to
+   begin" is there, `press START`, re-shoot, and only proceed once the
+   actual "Player 1" row is confirmed on screen.
+2. The Thor is still battery-gated (21% at session start; unread since).
+   Check it before taking a held session there; if still below 30%, work
+   the offline parts of the Thor's queued list or wait for it to charge.
+3. Bruce Lee's route-check request is gone from the queue (see above) and
+   was never run. Re-queue it once the Thor clears the battery floor for a
+   route-check-with-frames request, or drive it in a held session instead.
+4. The rest of the corrected Nova work list (section 1) after Burnout
+   Revenge / Midnight Club 3: 187: Ride or Die (row 15), Crash Bandicoot:
+   The Wrath of Cortex (row 20), Black Stone: Magic & Steel (row 21).
