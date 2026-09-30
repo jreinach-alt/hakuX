@@ -888,3 +888,138 @@ Three Nova confirmations (batch 6) are still queued, behind three
 `forzadecay414` arm/base requests, with the Nova otherwise idle
 (`running/` empty). Recording this progress in `OUTBOX.md` and stopping --
 not polling device work from inside the session.
+
+## Session 10 (2026-09-30, resumed as attempt 1 after a reset)
+
+**Why session 9 did not finish.** It did finish, on the documented stopping
+point: three more titles confirmed Playable this session (WWE Raw 2, 50
+Cent, Baldur's Gate DA), batch 6 (Alien Hominid, 187, Arctic Thunder) queued
+and none of its three yet run, a `waiting:` entry posted to `OUTBOX.md`, no
+polling from inside the session. Nothing to fix from session 9 itself.
+
+**`git status` clean; `HEAD` (`b536bac125`) already carries everything on
+`origin/master`** (`git rev-list --left-right --count HEAD...origin/master`
+reads `21 0` -- 21 commits ahead, 0 behind), so no merge was needed this
+session before reading anything further, per the session hook.
+
+**Checked batch 6 by exact path** (`os.walk`/`os.path.exists`, not `Glob`,
+per session 6's finding): all three requests are still present (no repeat of
+session 6's vanishing-batch bug). Alien Hominid (`-3086847`) is now
+`running/` (has a `results/` dir with `thermal.jsonl`/`battery.json`/etc but
+no `DONE` yet); 187 (`-3086875`) and Arctic Thunder (`-3086903`) are still in
+`queue/`. Nothing new to judge this session.
+
+### Addendum (09:55 PDT): re-ranked by margin, checked the 30-capped examples -- none add
+
+Re-swept every judgeable Nova route soak since the session-8 sweep's cutoff
+(`sweep.py .scratch10 1790709000 nova`, 31 new runs) plus the full
+default-cutoff sweep from session 4/8, specifically for the addendum's named
+examples (Nightfire, Crimson Skies, Blinx 2, Grabbed by the Ghoulies):
+
+| Title | Newest/best Nova evidence since the addendum | Reading |
+|---|---|---|
+| 007: Nightfire | one new run, `void` (frontend focus theft) | no new full-window read; last real one still 52-65% (session 8) |
+| Crimson Skies | 3 new ibcache short runs (250-254s window), 96.6-96.6% | still on ibcache's unmerged `HAKUX_IBC` branch (#591 not folded into `origin/master` -- checked `git merge-base --is-ancestor`, answer no); the one master-build control read 85-94% (sessions 4/8), under 90% on a clean build |
+| Blinx 2 | no new runs at all since epoch 1790709000 | unchanged at 61.1% (session 4) |
+| Grabbed by the Ghoulies | no new runs at all since epoch 1790709000 | unchanged at 72.7% (session 4) |
+
+None of the addendum's four named examples clear 90% on a Nova run built
+from `origin/master`. **Nothing added.** The three currently queued
+(Alien Hominid, 187, Arctic Thunder) all still read 100% share on their
+newest evidence (session 8's table) -- **nothing dropped** either. Margin
+ranking changes nothing about what's already queued; it just confirms the
+09-55 addendum's own examples are hopeful, not evidenced, same shape as
+session 8's finding about the 06:45 addendum's examples.
+
+### Addendum (10:20 PDT): one Thor cold-start confirmation queued, after a full Thor sweep
+
+Swept every judgeable Thor route soak on record (`sweep.py .scratch10
+1790400000 thor`, 150 runs, back to 2026-09-26) for a title that is light
+(low net_w), 30-fps-capped, and holds 28.5+ on its full recorded window,
+per the addendum's bar. Ranked every title by its best-seen `fps_ok` share:
+
+| Title | Best share seen | Net_w range | Verdict |
+|---|---|---|---|
+| Azurik, GTA SA, Crash Twinsanity, Alien Hominid, Bruce Lee, Baldur's Gate DA | 100% (isolated runs) | varies | each is either already Playable, tier C (GTA SA waits on #591), or contradicted by a longer run in the same sweep (Crash Twinsanity: one 156s window at 100% vs. a 268s window at 0%; Bruce Lee: one 158s window at 100% vs. the known 289s/81.3%/21s-hang read from session 1) -- not reliable enough to queue blind |
+| KOF: Maximum Impact - Maniax | 99% | 5.5W | already Nova-Playable |
+| **Otogi: Myth of Demons** | 95.5% (4 independent short runs, 88.1-95.5%, mean ~90.7%) | **4.0-5.1 W** | the only title with multiple consistent readings at the bar and low power; no hang/crash in any of the four; **queued** |
+| Crimson Skies | 93.4% best, most runs 23-87% | 5.2-6.7W | inconsistent, not light |
+| 25 to Life, Burnout | 83%, 82% | 5.4-5.6W | under 90%, not especially light |
+| everything else with data | under 60% | -- | not candidates |
+
+**Found in the same sweep, not this lane's work:** Alien Hominid already
+carries a live `PASS`/`pass_kind: confirmation` verdict **on the Thor**
+(`1-1790515369-lanelocal-1183547`, lane.local, queued 2026-09-27, fps_ok=1.0,
+gameplay=1273.6s, route `alien-hominid`) -- checked the live `verdict.json`
+directly, not a judged copy. That predates this lane's Nova confirmation of
+the same title (batch 6, still running) and already counts toward the
+status page's Playable total independent of this lane. Noting it here so
+the Playable count isn't undercounted when this lane's Nova run for Alien
+Hominid lands (it would be a second, redundant confirmation of an
+already-Playable title, not a new one).
+
+**Otogi: Myth of Demons (46530002) is Thor-only** (absent from
+`listing-nova.txt`; present in `listing-thor.txt`), has its own authored
+route (`docs/testing/titles/routes/otogi.route`, not the generic survey),
+and `targets.toml` gives it `target_fps = 30` with no bar overrides (the
+defaults apply: 28.5+ over 90% of gameplay time, 1200s confirmation). Cross-
+checked its `mark gameplay` timing from three independent requests'
+`seconds` minus recorded `gameplay_s` (energymap507 `-1790650474`: 550-294=
+256s; slowtier2 `-1790609660`: unknown total minus 287=263s by the same
+method; pacing `-1790637578`: 400-143=257s) -- consistent at 256-263s.
+
+Queued (`queue_batch7.sh`, new file, added to `Files:`), per the addendum's
+exact form (`--device thor --hard-pin`, `PERF_REGIMEN=default`, 1200s after
+the mark):
+
+| Title | Device | Route | Seconds | Request |
+|---|---|---|---|---|
+| Otogi: Myth of Demons | thor (hard-pin) | otogi | 1545 (mark ~265 + 1200 + 80) | `1-1790790097-lane.verdict433-43486` |
+
+Verified in `queue/` by exact path. The pilot gate (`pilots/lane.verdict433.ok`,
+3.9h old, still under 24h) admitted it at ~103 min of this lane's total
+outstanding device time. This is the only Thor cold-start request queued
+this session -- the addendum allows up to 3, but the sweep found no second
+or third title meeting the bar with real evidence; queuing blind on an
+untested title would be exactly the low-probability, cheap-first move the
+owner's 09-28 ranking guidance warns against. If lane.local's coldconfirm
+runner (`thor_coldconfirm.sh`) reads Otogi favorably, the same sweep method
+can be pointed at any titles it clears for a cold-start read next session.
+
+### Running table (confirmations), unchanged from session 9 plus the new Thor item
+
+| Title | Device | Regimen | Request | Verdict |
+|---|---|---|---|---|
+| **KOF: Maximum Impact - Maniax** | nova | default | `-1456797` | **PASS Playable** (99.4%, 1282.6 s) |
+| **Azurik: Rise of Perathia** | nova | default | `-1456876` | **PASS Playable** (95.2%, 1292.3 s) |
+| **WWE Raw 2** | nova | default | `-1456493r2` | **PASS Playable** (99.8%, 1276.9 s) |
+| **50 Cent: Bulletproof** | nova | default | `-1456544r2` | **PASS Playable** (99.1%, 1348.3 s) |
+| **Baldur's Gate: Dark Alliance** | nova | default | `-366130` | **PASS Playable** (100%, 1303.9 s) |
+| 007: Agent Under Fire | nova | default | `-366094` | FAIL (stuck at a door, not gameplay; needs its own route) |
+| Alien Hominid | nova | default | `-3086847` | running (not DONE yet); **already Playable via a separate Thor confirmation**, see above |
+| 187: Ride or Die | nova | default | `-3086875` | queued, not yet run |
+| Arctic Thunder | nova | default | `-3086903` | queued, not yet run |
+| Otogi: Myth of Demons | thor (hard-pin, cold-start) | default | `-43486` | queued, not yet run |
+
+### Next, in order
+
+1. When batch 6's three Nova IDs and the Otogi Thor ID finish, judge each
+   with `title_verdict.py <dir> --require confirmation`. For Arctic Thunder
+   and 187, check the last route frame (results/continue screen would make
+   the share a menu reading, per session 8's caution). For Otogi, review
+   whether the coldconfirm runner force-stopped it at 70C (a void, not a
+   verdict) before trusting any FAIL.
+2. Post this session's findings to `OUTBOX.md` #433 (queued below).
+3. Tier B/C unchanged: Crimson still waits on #591 (not folded as of this
+   session -- checked directly); DOA needs a fight route; Kabuki waits on
+   lane.kabukistall; Forza waits on #583; GTA SA waits on #591.
+4. If Otogi's cold-start read comes back PASS, that is title 6 for this
+   lane's count and the first Thor-cold-start Playable under the new
+   protocol -- worth its own OUTBOX line, not folded into a routine update.
+
+### Ending session 10 here: waiting
+
+Four requests are outstanding (batch 6's three, plus this session's Otogi
+cold-start): one running, three queued, none `DONE`. Recording this
+session's addendum work in `OUTBOX.md` and stopping -- not polling device
+work from inside the session.

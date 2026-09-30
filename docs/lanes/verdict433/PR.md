@@ -3,8 +3,8 @@
 State: draft
 
 Lane: verdict433            Issue: #433 [#507]
-Base: master @ 94cf8eb627 (branched); merged forward to 07d2718e7c as of session 9
-Files: docs/lanes/verdict433/NOTES.md, docs/lanes/verdict433/PR.md, docs/lanes/verdict433/OUTBOX.md, docs/lanes/verdict433/judge_copy.py, docs/lanes/verdict433/scan.py, docs/lanes/verdict433/soaks.py, docs/lanes/verdict433/sweep.py, docs/lanes/verdict433/queue_batch1.sh, docs/lanes/verdict433/queue_batch2.sh, docs/lanes/verdict433/queue_batch3.sh, docs/lanes/verdict433/queue_batch4.sh, docs/lanes/verdict433/queue_batch5.sh, docs/lanes/verdict433/queue_batch6.sh
+Base: master @ 94cf8eb627 (branched); merged forward to 2c59b7bbba as of session 10 (already current with origin/master)
+Files: docs/lanes/verdict433/NOTES.md, docs/lanes/verdict433/PR.md, docs/lanes/verdict433/OUTBOX.md, docs/lanes/verdict433/judge_copy.py, docs/lanes/verdict433/scan.py, docs/lanes/verdict433/soaks.py, docs/lanes/verdict433/sweep.py, docs/lanes/verdict433/queue_batch1.sh, docs/lanes/verdict433/queue_batch2.sh, docs/lanes/verdict433/queue_batch3.sh, docs/lanes/verdict433/queue_batch4.sh, docs/lanes/verdict433/queue_batch5.sh, docs/lanes/verdict433/queue_batch6.sh, docs/lanes/verdict433/queue_batch7.sh
 Prediction: none: analysis-only (no emulator code changed; this lane only reads device results and queues confirmation soaks through the normal harness)
 Needs device: yes (Nova; Thor confirmations withdrawn per lane.local's 2026-09-29 12:00 PDT addendum -- heat-sensitive work moved off the Thor pending #507)
 
@@ -84,10 +84,19 @@ changed.
 ## Outstanding before ready
 
 - Batch 6 (`-3086847` Alien Hominid, `-3086875` 187: Ride or Die,
-  `-3086903` Arctic Thunder) has not finished -- still queued on the Nova.
+  `-3086903` Arctic Thunder) has not finished -- Alien Hominid running,
+  the other two still queued on the Nova.
+- Session 10 queued one Thor cold-start confirmation (Otogi: Myth of
+  Demons, `-43486`, `--hard-pin`, defaults) per lane.local's 10:20 PDT
+  addendum, also outstanding.
+- Alien Hominid already has a separate, live Thor Playable confirmation
+  from before this pass (`1-1790515369-lanelocal-1183547`, not this lane's
+  work) -- noted so the count isn't read as +1 when this lane's own Nova
+  run for it lands; it would be a second confirmation of an
+  already-Playable title.
 - Ibcache's three queued Crimson Nova runs, DOA's fight-route authoring,
   lane.kabukistall's stall explanation, #583 (Forza) and #591 (GTA SA) are
-  all still open per the existing tier B/C ranking -- unchanged this
-  session.
+  all still open per the existing tier B/C ranking -- confirmed #591 still
+  not folded into `origin/master` this session, unchanged.
 - AUF needs its own authored route before it can be re-measured; not this
   lane's scope to author it.

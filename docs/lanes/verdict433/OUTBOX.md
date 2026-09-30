@@ -87,3 +87,38 @@ Also found and noted (not fixed, per standing guidance): `title_verdict.py`'s `-
 Still queued, not yet run: Alien Hominid, 187: Ride or Die, Arctic Thunder (batch 6, behind three `forzadecay414` requests on an otherwise-idle Nova).
 
 Waiting on: the three batch-6 results.
+
+## #433 -- 2026-09-30 21:15 UTC
+
+Batch 6 (Alien Hominid, 187: Ride or Die, Arctic Thunder) has not finished
+yet -- Alien Hominid started running this session, the other two are still
+queued. Nothing new to report on the Playable count.
+
+Acted on the two newest addenda while those run:
+
+- **Ranking by margin (09:55 PDT):** re-swept the Nova for the addendum's
+  named 30-capped examples (Nightfire, Crimson Skies, Blinx 2, Grabbed by
+  the Ghoulies). None clear 90% on a build from `origin/master` -- Crimson's
+  only 90%+ reads are on ibcache's unmerged `#591` branch, the other three
+  are unchanged from earlier sessions (52-73%) or have no new runs at all.
+  Nothing added or dropped from what's queued.
+- **Thor cold-start (10:20 PDT):** swept 150 Thor route soaks back to
+  2026-09-26 for a light, low-power, bar-holding title. Found one real
+  candidate: **Otogi: Myth of Demons**, Thor-only, four independent short
+  runs at 88-96% (mean ~91%) and 4.0-5.1 W net, no hang/crash. Queued one
+  cold-start confirmation (`1-1790790097-lane.verdict433-43486`, `--device
+  thor --hard-pin`, defaults, 1200s after the mark). No second or third
+  candidate had real evidence, so only one queued against the addendum's
+  ceiling of three -- queuing untested titles for their own sake would be
+  the low-probability guess the owner's ranking guidance warns against.
+- **Also found, not this lane's work:** Alien Hominid already has a live
+  PASS Playable confirmation **on the Thor** from before this pass
+  (`1-1790515369-lanelocal-1183547`, lane.local, 2026-09-27). It already
+  counts toward the status page total; this lane's own Nova confirmation of
+  it (still running) would be a second, redundant read, not a new Playable
+  title.
+
+Full detail in `docs/lanes/verdict433/NOTES.md`, session 10.
+
+Waiting on: batch 6's three Nova results and the new Otogi Thor result, all
+outside this session.
