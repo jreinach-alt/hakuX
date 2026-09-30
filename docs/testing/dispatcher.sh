@@ -591,7 +591,8 @@ dev_push() {
     adb_call "$ADB_QUICK_TIMEOUT" "mv $dst" shell "mv -f '$dst.new' '$dst'" >/dev/null 2>&1 || return 1
     mode=$(dev_mode "$dst")
     [[ "$mode" =~ [2367].$ ]] || { log "  push $dst: mode is '${mode:-unreadable}', not group-writable"; return 1; }
-    [ "$(dev_sha256 "$dst")" = "$want" ]
+    [ "$(dev_sha256 "$dst")" = "$want" ] || return 1
+    log "  pushed $dst (sha256 ${want:0:12}, mode $mode)"
 }
 
 # titles_disk_prepare <id> <rdir>: make the device's titles disk current and
