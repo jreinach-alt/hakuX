@@ -365,3 +365,27 @@ three DOA arms, `kabjudge.py --a --b` on the two Kabuki arms, and
 `ab_compare.py --a <E A> --b <E H> --expect docs/testing/predictions/uberspike569-gpl-pixels.json`
 read per capture. Check E H's logcat for `[uber569] mode=4 links=N`, N > 0. Then the verdict, the
 #569 post, and ready.
+
+## 11. Attempt 9 (2026-09-29 22:11 PDT): still queued; offline protocol
+
+**Why attempt 8 did not finish.** It ended as a wait on the six requests of section 10, and none
+has run yet. `host/find_results.py` at 22:11 PDT: E A's result dir exists; E H, DOA A/B/H and
+Kabuki A/B2 are all in `queue/`, so nothing was lost this time. The holds:
+- the Nova is on `lanelocal-topup` (the owner charges it off the harness; lane.local releases it
+  back at 60% or more). The soaks are hard-pinned there.
+- the Thor is on `lanelocal-fanwait` (its fan is dead; no queued runs until the repair).
+
+**Merged origin/master** at a3681ccb0b (routes, targets and titles docs; no emulator code), so the
+refs and the three predictions stand as registered.
+
+**GitHub is suspended (addendum 22:05 PDT).** PR #618 is now `PR.md` beside this file, at
+`State: draft`. The #569 post goes to `OUTBOX.md`. Neither the arms job nor handback can comment
+on #618, so E is judged by this lane as section 8 says.
+
+**Before `State: ready`:** `offline_fold.py` requires a finished, non-void dispatch run built
+from the branch's head commit. The judged arms are built from the variant refs, not the head.
+So once the verdict is written and committed, queue one DOA smoke at the head (default 0, the
+code that folds) and wait for it to finish. Then set `State: ready`.
+
+**On resume:** the judging of section 10's last paragraph, then the verdict in this file and in
+NOTES.md, the OUTBOX post, the head smoke, and ready.

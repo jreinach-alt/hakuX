@@ -625,3 +625,9 @@ what it should have done. #624 folded at 17:40 PDT. The lane merged origin/maste
 so the refs and predictions stand) and queued the six lost requests a third time, with the soaks
 hard-pinned to the Nova (BUILD.md section 10). Both devices are on the owner's top-up hold, so this
 attempt also ends as a wait.
+
+Resume of 2026-09-29 22:11 PDT (attempt 9): attempt 8 ended as a wait on the six requests it had
+re-queued. It did not finish because none of them has run: at 22:11 all six are still in
+`queue/`. The Nova is on the owner's top-up hold, and the Thor is out of service with a dead fan.
+GitHub is suspended, so the lane now follows the offline protocol: `PR.md` and `OUTBOX.md` beside
+this file stand in for PR #618 and the #569 post (BUILD.md section 11).
