@@ -389,3 +389,143 @@ code that folds) and wait for it to finish. Then set `State: ready`.
 
 **On resume:** the judging of section 10's last paragraph, then the verdict in this file and in
 NOTES.md, the OUTBOX post, the head smoke, and ready.
+
+## 12. Attempt 10 (2026-09-30 08:31 PDT): all seven arms read; the verdict
+
+**Why attempt 9 did not finish.** It ended as a wait, correctly, on the six queued requests. The
+Nova came off its top-up hold overnight and ran all six between 07:24 and about 08:20 PDT on
+2026-09-30, each starting at 86-92% battery with a cleared shader cache. None was lost. The result
+dirs carry a `1-` prefix, which `host/find_results.py`'s glob missed. `host/list_results.py`
+lists them.
+
+**Merged origin/master** at f7ceaebce9 (the hddcrash and cithrottle folds: dispatcher, selftest,
+CI and docs; no emulator code), so the refs and predictions stand as registered.
+
+### 12.1 E, pixel-inert with the uber stage held: PASS
+
+`ab_compare.py` output: `results/ab-e.txt`.
+
+| arm | ref | device | result |
+|---|---|---|---|
+| A (GPL 0) | 23543417aa | Thor | `1790724542-uberspike569-1360739` |
+| H (GPL 4, held) | 6bec23c3f4 | Nova | `1-1790730667-uberspike569-2559646` |
+
+- **Verdict:** PASS. All 1317 registered checks hold across the 36 suites:
+  - 1313 captures are the same;
+  - 4 are noise inside the measured band (`Vertex_shader_rounding_tests/GeometrySuperscreen_{0.0010,0.4999,0.5000,0.5626}` flicker across exact in both arms);
+  - none is better or worse, and exact goes 513 -> 515, all flicker;
+  - the byte-level check finds every one of the 1317 shared captures byte-identical between the arms.
+- **The arm tested the uber stage.** H's logcat reads `[uber569] mode=4 links=2103 ... uncovered=0`
+  in both runs, so the uber vertex stage drew every covered bind and declined none.
+- **The pair is split across devices** (the dispatcher found no poolable lane to pin E). A leg that
+  holds across a device split is strictly stronger than a same-device pair, so the split does
+  not weaken this PASS.
+- **Not covered:** `NoContraction` is not in the build. On lavapipe, 33 of 150 random vertex
+  programs differ by a signed zero or 1-2 ulp (4.1). No capture in these suites shows that
+  difference, but a title's program could. At a swap, such a pixel would pop by at most that much.
+
+### 12.2 N1-N3 and G, cold DOA survey soaks on the Nova
+
+`uberjudge.py` output: `results/uberjudge-doa.json`. All three arms cleared and reached
+`mark play`.
+
+| | A (GPL 0) | B (GPL 3, ladder) | H (GPL 4, held) |
+|---|---|---|---|
+| result | `1-1790730667-uberspike569-2559714` | `1-1790730668-uberspike569-2559794` | `1-1790730669-uberspike569-2559870` |
+| draw-path create over the run (`pc_ms`) | 26 239 ms | 2 693 ms | 4 573 ms |
+| first load after `mark play` (`dpc_ms`) | 2 880 ms | 52 ms | 47 ms |
+| stall windows (`dpc_ms` >= 100 ms), summed | 25, 26 239 ms | 5, 2 303 ms | 3, 4 369 ms |
+| play span: median GPU Tot ms / gfps | 18.8 / 45 | 22.5 / 35.5 | 70.9 / 13 |
+| `[uber569]` (last line) | | links 641, cold 14, next >= 216/0/167 | links 129, cold 0 |
+
+| leg | registered | measured | verdict |
+|---|---|---|---|
+| N1 | B/A pc_ms <= 0.25 | 0.103 | **PASS** |
+| N2 | B/A first-load dpc_ms <= 0.20 | 0.018 | **PASS** |
+| N3 | B stall windows <= cold + 2 = 16 | 5 | **PASS** |
+| G | H/A GPU ms <= 1.50 and gfps >= 0.80 | 3.77 and 0.29 | **FAIL** |
+
+- **The ladder takes the compile off the draw path.** The draw path waits 26.2 s on creates
+  without it and 2.7 s with it, and the first fight load drops from 2.9 s to 52 ms.
+- **The five stall windows left are cold misses, by design.** A cold miss is the first sight of a
+  (family, GS, raster, formats) combination whose uber pre-raster library does not exist yet.
+  It builds the monolithic pipeline inline (section 1) and queues that library.
+- **G fails: the uber stage costs 3.8x the GPU time per frame while it stands in.** Held on every
+  covered draw, DOA's fight runs 13 gfps against 45. **Confound:** H's pipelines are also
+  fast-linked without link-time optimisation. gpl569's leg for that cost alone (D1) was voided
+  by the Thor's thermal pause, so 3.8x is the uber stage **plus** the unoptimised link. It is an
+  upper bound on the vertex interpreter's own cost, not a measurement of it.
+- **In the ladder, the cost lasts until the swaps land** (`host/doa_series.py`, 30 s bins from
+  `mark play`, `results/doa-series.txt`):
+
+  | t+ s | A gfps / GPU ms | B gfps / GPU ms | B links, built/swapped |
+  |---|---|---|---|
+  | 0 | 42 / 20.7 | 43 / 21.1 | 71, 70/64 |
+  | 30 | 59 / 13.4 | 59 / 14.4 | 71, 70/64 |
+  | 60 | 59 / 12.7 | 59 / 10.5 | 129, 105/87 |
+  | 90 | 37 / 23.7 | 32.5 / 25.8 | 129, 105/87 |
+  | 120 | 39 / 23.2 | 30 / 28.0 | 157, 156/128 |
+  | 150 | 59 / 11.2 | 28.5 / 25.1 | 641, 216/167 |
+  | 180 | 43 / 20.3 | 39 / 17.1 | 641, 216/167 |
+  | 210 | 44 / 18.9 | 59 / 14.2 | 641, 216/167 |
+
+  - B tracks A while the scene's specialised pipelines are in place (0-60 s), and again from 180 s.
+  - B runs 12-50% below A in the 90-150 s bins, where it links new uber pipelines (129 -> 641).
+  - The route is timed and not aligned between arms: A spent 26 s more stalled than B, so the
+    same bin is not the same content. Read this table for duration, not for per-bin ratios.
+  - Over the whole play span, B's median is 0.79x A's gfps. That is the ladder's price on a cold
+    cache: a dip for as long as the worker takes to catch up, where A instead freezes.
+
+### 12.3 K0-K3, Kabuki's cold-cache fight on the Nova
+
+`kabjudge.py` output: `results/kabjudge-k.json`.
+
+| | A (GPL 0) | B2 (GPL 3, ladder) |
+|---|---|---|
+| result | `1-1790730670-uberspike569-2559946` | `1-1790730670-uberspike569-2560023` |
+| draw-path create after `mark gameplay` | 133 418 ms, 780 misses | 27 ms, 425 misses |
+| stall windows | 35 | 0 |
+| longest gap between guest flips | 4 990 ms | 697 ms |
+| `[uber569]` (last line) | | links 706, cold 79, next >= 706/0/512, uncovered 0 |
+
+| leg | registered | measured | verdict |
+|---|---|---|---|
+| K0 | validity (cleared, both marked, A >= 100 misses, B links > 0) | yes | **PASS** |
+| K1 | B's longest gap < 5000 ms | 697 ms | **PASS** (not discriminating: A is 4990) |
+| K2 | B/A fight create ms <= 0.25 | 0.0002 | **PASS** |
+| K3 | B/A longest flip gap <= 0.50 | 0.14 | **PASS** |
+
+- **Kabuki's compile stall is gone in the fight.** Draw-path create falls from 133 s to 27 ms,
+  there are no stall windows, and the longest gap between two guest flips falls from 5.0 s to
+  0.7 s.
+- **Kabuki's 79 cold misses all fall before `mark gameplay`** (in the menus and the load), so
+  none of them stalled the fight.
+
+### 12.4 Verdict
+
+**The uber pre-raster libraries under GPL (the ladder, mode 3) give a first draw with no stall
+for every miss whose combination has an uber library.** That covers all of Kabuki's fight and all
+but DOA's 14 cold combinations. Both acceptance titles pass every discriminating stall leg,
+with margins from 2.4x (N1) to about 1250x (K2) inside the registered bound, and the swap path is pixel-exact on all 1317 captures. **The cost is GPU time
+while the uber stage stands in:** up to 3.8x per frame held (G fails its registered 1.5x), and
+0.79x median fps over a cold DOA play span, recovering as the swaps land.
+
+**Default stays 0 in this PR, as briefed.** Turning the ladder on for players is a separate change
+with its own arms.
+
+**Next, ranked by expected impact (probability x size of the win):**
+1. **Separate the unoptimised-link cost from the uber stage's cost.** Queue one arm: GPL mode 1,
+   specialised libraries fast-linked and not swapped, forced on the same DOA route on the Nova,
+   against A. It decides whether the stand-in's price is the interpreter, to be optimised, or the
+   missing link-time optimisation, to be fixed by LTO-linking the uber pipeline on the worker as
+   rung 1. Probability of a useful answer: high (one arm, same instrument). Win: it chooses which
+   of the two big fixes to build.
+2. **Persist the uber combinations and prebuild them at boot** (section 5, not built by decision).
+   That removes the cold misses: DOA's 5 remaining stall windows (2.3 s), and Kabuki's 79 creates
+   in its load. Probability: high, since the mechanism is the inline create already measured. Win:
+   the last draw-path creates. It needs a measure of cold that survives a persisted list, because
+   a cleared cache would no longer be cold.
+3. **`NoContraction` on both paths**, with its own pixel arm, before any default flip. The suites
+   show no pop. Lavapipe shows 1-2 ulp on 22% of random programs.
+4. **Then the default flip for mode 3**, on the owner's decision. The trade is a transient fps dip
+   against the 26-133 s freezes it replaces.

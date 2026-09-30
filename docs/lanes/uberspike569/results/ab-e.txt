@@ -1,0 +1,98 @@
+==============================================================================
+A/B comparison, per capture
+==============================================================================
+A (baseline)  1790724542-uberspike569-1360739
+    ref 23543417aa   apk 56f279ca7360   classifier 37a5cc7ff3
+    2 run(s), 1317/1317 captures, progress-log proof yes/yes
+B (candidate)  1-1790730667-uberspike569-2559646
+    ref 6bec23c3f4   apk d798b808df11   classifier 37a5cc7ff3
+    2 run(s), 1317/1317 captures, progress-log proof yes/yes
+disc  36-suites:52f2b53d:3D primitive,Attrib float,Attrib setter,
+      identical in both arms, so the arms are comparable
+
+WARNING: DEVICES DIFFER (A thor, B nova). The pair is comparable but CONFOUNDED: every figure below mixes run-to-run variation with any difference between the two handhelds. A leg that HOLDS is strictly stronger than one device would give. A leg that FAILS is NOT attributable -- a device difference has the same signature as the defect -- so a failure here needs a same-device pair before it can be diagnosed.
+WARNING: A: Depth_buffer scored 144 of 784 goldens -- that suite's numbers are a FLOOR, not a score.
+WARNING: A: Front_face scored 24 of 36 goldens -- that suite's numbers are a FLOOR, not a score.
+WARNING: B: Depth_buffer scored 144 of 784 goldens -- that suite's numbers are a FLOOR, not a score.
+WARNING: B: Front_face scored 24 of 36 goldens -- that suite's numbers are a FLOOR, not a score.
+
+------------------------------------------------------------------------------
+movers
+------------------------------------------------------------------------------
+  none: no capture moved outside its measured band.
+
+  inside the measured run-to-run band, so not a result:
+  noise  Vertex_shader_rounding_tests GeometrySuperscreen_0.4999           400 ->         0  band 800
+  noise  Vertex_shader_rounding_tests GeometrySuperscreen_0.0010           200 ->         0  band 400
+  noise  Vertex_shader_rounding_tests GeometrySuperscreen_0.5000             0 ->       200  band 400
+  noise  Vertex_shader_rounding_tests GeometrySuperscreen_0.5626           142 ->         0  band 285
+
+------------------------------------------------------------------------------
+counts, per capture -- the only valid unit
+------------------------------------------------------------------------------
+  better 0     worse 0     same 1313  noise 4       (1317 compared)
+  exact  513   ->    515    (+2)   of which 4 is flicker inside the band
+  regressed from exact 0        repaired to exact 0  
+  flickered across exact, inside the measured band (not a result): Vertex_shader_rounding_tests/GeometrySuperscreen_0.0010, Vertex_shader_rounding_tests/GeometrySuperscreen_0.4999, Vertex_shader_rounding_tests/GeometrySuperscreen_0.5000, Vertex_shader_rounding_tests/GeometrySuperscreen_0.5626
+
+------------------------------------------------------------------------------
+byte-level check -- what a score count cannot see
+------------------------------------------------------------------------------
+  hashed 1317 of 1317 shared captures (2 run-dir(s) A, 2 B)
+  every checked capture is byte-identical between the arms.
+
+------------------------------------------------------------------------------
+per suite
+------------------------------------------------------------------------------
+  suite                       caps better worse  same noise  differing A  differing B
+  3D_primitive                 160      0     0   160     0    3,271,912    3,271,912
+  Attrib_float                  12      0     0    12     0      186,745      186,745
+  Attrib_setter                  2      0     0     2     0       35,195       35,195
+  Clear                         32      0     0    32     0            0            0
+  Depth_buffer                 144      0     0   144     0    1,325,892    1,325,892
+  Fog                            6      0     0     6     0       56,688       56,688
+  Fog_coord_vec4                41      0     0    41     0          123          123
+  Fog_gen                       60      0     0    60     0    1,247,216    1,247,216
+  Fog_vsh                        6      0     0     6     0       56,754       56,754
+  Front_face                    24      0     0    24     0      361,504      361,504
+  Lighting_Two_Sided             1      0     0     1     0            0            0
+  Lighting_accumulation         10      0     0    10     0       20,102       20,102
+  Lighting_control              32      0     0    32     0       28,960       28,960
+  Lighting_normals              28      0     0    28     0      127,440      127,440
+  Lighting_range                 3      0     0     3     0        7,592        7,592
+  Lighting_spotlight            24      0     0    24     0       97,090       97,090
+  Material_alpha                24      0     0    24     0      711,032      711,032
+  Material_color                 6      0     0     6     0            0            0
+  Material_color_source         28      0     0    28     0            0            0
+  Point_params                  25      0     0    25     0       13,128       13,128
+  Point_size                    21      0     0    21     0       20,579       20,579
+  Shade_model                  168      0     0   168     0    2,258,928    2,258,928
+  Specular                      22      0     0    22     0      198,870      198,870
+  Specular_back                 17      0     0    17     0      116,257      116,257
+  Texgen                         5      0     0     5     0            0            0
+  Texgen_with_texture_matrix    66      0     0    66     0        5,094        5,094
+  Texture_Matrix                11      0     0    11     0          326          326
+  Texture_format                40      0     0    40     0      134,902      134,902
+  Vertex_shader_independence_tests     2      0     0     2     0            0            0
+  Vertex_shader_rounding_tests    51      0     0    47     4        1,240          698
+  Vertex_shader_swizzle_tests    29      0     0    29     0            0            0
+  Viewport                      12      0     0    12     0        1,396        1,396
+  W_param                      110      0     0   110     0    2,721,461    2,721,461
+  Weight_setter                  1      0     0     1     0            0            0
+  Window_clip                   92      0     0    92     0            0            0
+  Zero_stride                    2      0     0     2     0            0            0
+
+------------------------------------------------------------------------------
+totals -- ADVISORY ONLY: a total can hide a regression
+------------------------------------------------------------------------------
+  differing      13,006,426 ->     13,005,884  (-542)
+  structural      1,318,576 ->      1,318,034  (-542)
+  structural is differing minus off-by-one; the two never overlap, so the subtraction is safe.
+
+==============================================================================
+PRE-REGISTERED: arm B was queued at 2026-09-30T01:11:07Z naming /home/justin/hakux-work/wt/uberspike569/docs/testing/predictions/uberspike569-gpl-pixels.json, and its content still hashes to the sha recorded then. The prediction existed before the device ran and has not been edited since.
+  bound sha256 c5c0e63aed4e03cc3a7329f381d244b4be579590c3188c5751810ea9d782eeaa
+  verify with: sha256sum ../../testing/predictions/uberspike569-gpl-pixels.json
+prediction (registered 2026-09-29T20:38:00Z): #569 uber ladder, leg E (exactness with the swap path forced). A = 23543417aa: the uber ladder built, HAKUX_GPL_DEFAULT 0, so A draws what master draws (monolithic pipelines). B = 6bec23c3f4: the same tree plus one line, HAKUX_GPL_DEFAULT 4. In mode 4 every draw whose vertex state glsl/vsh-uber.c covers is linked from the family's uber pre-raster library (the vertex-program interpreter, or the uniform-driven fixed-function path, plus the specialised GS) with the specialised fragment library, and is kept on it: the specialised pipeline never swaps in. So every covered draw in these suites runs the uber vertex stage. The uber stage replays the specialised generator's statement order, uses the same lt*/ff* helpers, and shares one uniform block; on lavapipe it was bit-identical on DOA's 46 vertex states and 150 random fixed-function states. Predicted: every capture in the must-not-move set is byte-identical between arms, within the run-to-run band that runs_per_arm 2 measures. What a moved capture would mean: (a) Vertex_shader_rounding_tests, Vertex_shader_* or W_param move by a signed zero or 1-2 ulp at an edge: the specialised compiler folded a constant or an equal operand the interpreter computes at run time (BUILD.md 4.1, 33 of 150 random programs on lavapipe); the fix is precise/NoContraction on both paths, which is a default-path change with its own arm; (b) a whole lighting, fog, texgen, texture-matrix, point or skinning suite moves: a uniform field is packed or read wrongly in the fixed-function path; (c) textured or attribute suites move wholesale: the binding-16 zero buffer or the vertex-input library feeds a location the specialised input does not; (d) edges move across many suites: the fast-linked fragment library rounds differently from the monolithic compile (gpl569's pixels-inert arm measures that mechanism alone). B's logcat must show '[gpl569] ... mode=4' and a '[uber569] mode=4 links=N' line with N > 0, and 'vsh-uber: family module'. Without them B ran the monolithic path and the arm is VOID as a test of the uber stage, whatever the pixels say. [uber569] uncovered= counts the binds the uber stage declined; those draws are specialised in both arms and cannot move.
+VERDICT: PASS -- all 1317 registered checks hold.
+==============================================================================

@@ -3,6 +3,8 @@
 Brief: `/home/justin/hakux-work/briefs/uberspike569.md`. Research: `docs/lanes/shaderplan569/NOTES.md`
 option (d) and section 7's P6. PR #581.
 
+**The build's device verdict (2026-09-30, attempt 10) is BUILD.md section 12:** E passes (1317/1317), the DOA and Kabuki stall legs pass, and G (the uber GPU cost while held, 3.8x) fails.
+
 Status (2026-09-29 PDT, attempt 3):
 - **E on the device: PASS.** All 305 captures are byte-identical in both runs (section 6.1).
 - **CB share, measured on the device:** forcing the families cut DOA's pipeline misses from 91 to 61
@@ -631,3 +633,19 @@ re-queued. It did not finish because none of them has run: at 22:11 all six are 
 `queue/`. The Nova is on the owner's top-up hold, and the Thor is out of service with a dead fan.
 GitHub is suspended, so the lane now follows the offline protocol: `PR.md` and `OUTBOX.md` beside
 this file stand in for PR #618 and the #569 post (BUILD.md section 11).
+
+Resume of 2026-09-30 08:31 PDT (attempt 10): attempt 9 ended as a wait on the six queued arms, and
+that was the right call. It did not finish because the arms could not run under the holds. The
+Nova came off its top-up hold overnight and ran all six between 07:24 and about 08:20 PDT. This
+attempt read all seven (BUILD.md section 12):
+- **E: PASS.** 1317 of 1317 captures are byte-identical with the uber stage held (2103 links,
+  0 uncovered).
+- **DOA:** N1-N3 pass. Draw-path create falls from 26.2 s to 2.7 s, and the first fight load from
+  2.9 s to 52 ms.
+- **G fails.** Held, the uber stage costs 3.8x the GPU ms (13 gfps against 45). That is an upper
+  bound, because the non-LTO link's own cost is in it too.
+- **Kabuki:** K0-K3 pass. The fight's create time falls from 133 s to 27 ms, with 0 stall windows,
+  and the longest flip gap from 5.0 s to 0.7 s.
+
+Do not trust `host/find_results.py` for a result dir with a `1-` priority prefix; it globs on
+the bare id. Use `host/list_results.py`.
