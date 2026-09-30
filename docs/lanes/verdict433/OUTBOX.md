@@ -148,3 +148,16 @@ Per the brief's own point 3 ("a title that hits the thermal pause during a confi
 Full detail in `docs/lanes/verdict433/NOTES.md`, session 12.
 
 Waiting on: 187 and Arctic Thunder (Nova, battery), Otogi's final verdict (Thor, for the record only -- already disqualified by heat).
+
+## #433 -- 2026-09-30 12:50 PDT
+
+[lane.verdict433] waiting: 187 running on the Nova; Arctic Thunder battery-refused on the Nova (46%, needs 48.3%); Crimson Skies newly queued on the Nova. Playable count unchanged at 6 (Alien Hominid plus this lane's five).
+
+- **Otogi (Thor cold-start) FAILS on heat.** thermal-pause-F8 engaged at +703 s, and the run read 35.0% at 28.5+ over 1278.6 s. Peak xo was 77.9 C with the fan at 0 rpm, at only 4.06 W net, which is under the ~4.5 W cold-slot guidance. Short-run power does not predict a full window on the fan-dead Thor. Not re-running.
+- **The 600-s rule is applied.** 187 and Arctic Thunder were queued at 1200 s before the rule, and they stay that way: a lane has no way to withdraw a request. Each will be judged as a full confirmation.
+- **Added: Crimson Skies, a 600-s Nova confirmation** (`1-1790796880-lane.verdict433-750238`, 820 s).
+  - It is 30-capped, with 94.1-96.6% at 28.5+ across four 250 s Nova windows, and no hang or audio short.
+  - The 94.1% is master's code path; the 96.6% runs are on unfolded ibcache builds. That puts the chance of a pass at about 0.5.
+  - The run decides whether Crimson is Playable now or waits on #591.
+
+Full detail in `docs/lanes/verdict433/NOTES.md`, session 13.

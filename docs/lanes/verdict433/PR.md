@@ -3,8 +3,8 @@
 State: draft
 
 Lane: verdict433            Issue: #433 [#507]
-Base: master @ 94cf8eb627 (branched); merged forward to 2c59b7bbba as of session 10 (already current with origin/master)
-Files: docs/lanes/verdict433/NOTES.md, docs/lanes/verdict433/PR.md, docs/lanes/verdict433/OUTBOX.md, docs/lanes/verdict433/judge_copy.py, docs/lanes/verdict433/scan.py, docs/lanes/verdict433/soaks.py, docs/lanes/verdict433/sweep.py, docs/lanes/verdict433/queue_batch1.sh, docs/lanes/verdict433/queue_batch2.sh, docs/lanes/verdict433/queue_batch3.sh, docs/lanes/verdict433/queue_batch4.sh, docs/lanes/verdict433/queue_batch5.sh, docs/lanes/verdict433/queue_batch6.sh, docs/lanes/verdict433/queue_batch7.sh
+Base: master @ 94cf8eb627 (branched); merged forward to 2ba1a6e9a2 as of session 13
+Files: docs/lanes/verdict433/NOTES.md, docs/lanes/verdict433/PR.md, docs/lanes/verdict433/OUTBOX.md, docs/lanes/verdict433/judge_copy.py, docs/lanes/verdict433/scan.py, docs/lanes/verdict433/soaks.py, docs/lanes/verdict433/sweep.py, docs/lanes/verdict433/queue_batch1.sh, docs/lanes/verdict433/queue_batch2.sh, docs/lanes/verdict433/queue_batch3.sh, docs/lanes/verdict433/queue_batch4.sh, docs/lanes/verdict433/queue_batch5.sh, docs/lanes/verdict433/queue_batch6.sh, docs/lanes/verdict433/queue_batch7.sh, docs/lanes/verdict433/queue_batch8.sh
 Prediction: none: analysis-only (no emulator code changed; this lane only reads device results and queues confirmation soaks through the normal harness)
 Needs device: yes (Nova; Thor confirmations withdrawn per lane.local's 2026-09-29 12:00 PDT addendum -- heat-sensitive work moved off the Thor pending #507)
 
@@ -92,10 +92,14 @@ changed.
   confirmation from before this pass (`1-1790515369-lanelocal-1183547`),
   so it's already Playable and already counted -- a fresh confirmation
   would be redundant device time.
-- `-3086875` (187: Ride or Die) and `-3086903` (Arctic Thunder) are still
-  queued on the Nova, unaffected.
+- `-3086875` (187: Ride or Die) is running on the Nova. `-3086903` (Arctic
+  Thunder) is queued there, battery-refused.
 - Session 10's Thor cold-start confirmation (Otogi: Myth of Demons,
-  `-43486`, `--hard-pin`, defaults) is still running.
+  `-43486`) **FAILED on heat** (session 13). `thermal-pause-F8` engaged at
+  +703 s, the run read 35.0% at 28.5+, peak xo was 77.9 C, and net power was
+  4.06 W. Not re-running it on the Thor.
+- Crimson Skies, a 600-s Nova confirmation under the 09-30 rule
+  (`1-1790796880-lane.verdict433-750238`, session 13), is queued.
 - The Thor is now under a fresh hold (`lanelocal-fanwait`, placed
   2026-09-30 ~10:48 PDT, light work only, no new queued runs) until
   lane.local's fan repair lands -- not queuing anything further on the

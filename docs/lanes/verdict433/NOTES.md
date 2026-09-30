@@ -1262,4 +1262,129 @@ Thunder battery-gated on the Nova, Otogi mid-thermal-pause on the Thor.
 Recording this session's thermal-pause finding in `OUTBOX.md` and
 stopping -- not polling or waiting out the remaining ~100s of Otogi's run
 from inside the session.
-session.
+
+## Session 13 (2026-09-30, from 12:32 PDT, resumed as attempt 4)
+
+**Why attempt 3 (session 12) did not finish.** It did. It stopped at its
+documented `waiting:` checkpoint with three requests outstanding (187 and
+Arctic Thunder battery-gated on the Nova, Otogi running on the Thor) and an
+`OUTBOX.md` entry naming them. The PR stays `State: draft` because those
+requests had no verdicts. Session 12 had also ended before lane.local's
+12:10 PDT addendum (the 600-s confirmation rule), so this resume applies it.
+
+Merged `origin/master` (2 commits: lane.defecttriage433's fold, docs only;
+clean). Pushed as `5a0a940b8e`. defecttriage433's table adds no new
+candidate: every title it ranks is under the bar, already owned, or needs a
+route.
+
+### Otogi: FAIL on heat (Thor), recorded as heat evidence
+
+`title_verdict.py <dir> --require confirmation` on
+`1-1790790097-lane.verdict433-43486`:
+
+`FAIL(thermal: sustained play failed at the device's defaults --
+thermal-pause-F8 1/1 began after +703 s and by +736 s (device 09-30
+11:01:19); still paused at the last reading)`, gameplay 1278.6 s, **fps_ok
+0.350**, audio short 0.136%, net 4.06 W, 0.188 J/frame. Peak xo-therm 77.9 C,
+70.3 C at the end, `fan.speed` 0 throughout. The run's net power sat under
+the 10:20 addendum's ~4.5 W guidance and it still paused. **Short-run power
+does not predict the full window on the fan-dead Thor.** Not re-running it
+there.
+
+### The 600-s rule (12:10 PDT addendum)
+
+- **187 and Arctic Thunder:** both were queued at 1200 s, before the rule.
+  There is no lane-side withdraw in `request.sh`, and editing `queue/` by
+  hand is not a lane's to do, so both stay as queued. Each will be judged
+  with `--require confirmation`. A 1200-s pass is stronger than a 600-s one
+  and needs no audit re-run.
+  - 187 (`-3086875`) is now `running/` on the Nova.
+  - Arctic Thunder (`-3086903`) is still battery-refused (Nova at 46%, needs
+    48.3%, `.battery_refused.nova` at 12:15 PDT).
+- **Checked the rule's effect on earlier FAILs.** None of this lane's FAILs
+  turns into a 600-s pass:
+  - AUF was stuck at a door, which is not gameplay at any length.
+  - Otogi is disqualified by heat, and the Thor stays off.
+- **The audit (every 5th 600-s pass re-run at 1200 s):** this lane has no
+  600-s passes yet. Crimson would be the first.
+
+### Added: Crimson Skies, one Nova 600-s confirmation
+
+- **Pass check.** `scan.py Crimson` finds no pass verdict for 4D530021.
+- **Evidence.** Judged copies (`judge_copy.py`) of every finished Nova
+  Crimson run since 09-28 19:00 PDT:
+
+| Run | Build | Gameplay s | Share 28.5+ | Hang | Audio short | net W |
+|---|---|---|---|---|---|---|
+| `1-1790708501-lane.ibcache-1378258` | c8e95ed539, `HAKUX_IBC=0` (master's path) | 250.7 | 94.1% | no | 0 | 7.30 |
+| `1-1790724690-lane.ibcache-1390145` | c8e95ed539, IBC on | 253.9 | 96.6% | no | 0 | 7.11 |
+| `1-1790724691-lane.ibcache-1390243` | a987e375db (ibcache-jcsize) | 253.9 | 96.6% | no | 0 | 7.20 |
+| `1-1790724691-lane.ibcache-1390402` | 9808982fa7 (ibcache-jcsize) | 249.9 | 96.6% | no | 0 | 7.13 |
+| four others (ibcache, memfast) | -- | void | -- | -- | -- | frontend focus theft, not the title |
+
+- **Why Crimson.** It is the one 30-capped title in the 09:55 addendum's
+  list with evidence above 90% on the Nova. Nightfire, Blinx 2 and Ghoulies
+  read 52-73% (sessions 8 and 10).
+- **The chance of a pass is about 0.5.** Master's own path read 94.1% in one
+  250-s window, a 4-point margin; the 96.6% runs are on builds master does
+  not carry.
+- **What the run decides.** Crimson is Playable now, or it waits on
+  ibcache/#591 to fold.
+- **Not low-watt** (7.1-7.3 W net). It is still the only new candidate with
+  any evidence.
+- No new Nova soaks since the session-10 sweep would add another: 10 runs
+  finished since 09-30 01:00 PDT, of which only the hddcrash Crash runs and
+  one uberspike DOA run are new Nova titles, and session 8 already passed
+  over both.
+
+Queued with `queue_batch8.sh` at `5a0a940b8e`: `--seconds 820`, which is the
+route's mark at ~105 s + 600 s + 115 s margin, with `PERF_REGIMEN=default`:
+
+| Title | Device | Regimen | Route | Seconds | Request |
+|---|---|---|---|---|---|
+| Crimson Skies | nova | default | crimson-skies | 820 | `1-1790796880-lane.verdict433-750238` |
+
+Verified in `queue/` by exact path. The pilot gate admitted it at ~56 min of
+this lane's outstanding device time (`pilots/lane.verdict433.ok` 5.8 h old).
+
+### Running table (confirmations)
+
+| Title | Device | Regimen | Request | Verdict |
+|---|---|---|---|---|
+| **KOF: Maximum Impact - Maniax** | nova | default | `-1456797` | **PASS Playable** (99.4%, 1282.6 s) |
+| **Azurik: Rise of Perathia** | nova | default | `-1456876` | **PASS Playable** (95.2%, 1292.3 s) |
+| **WWE Raw 2** | nova | default | `-1456493r2` | **PASS Playable** (99.8%, 1276.9 s) |
+| **50 Cent: Bulletproof** | nova | default | `-1456544r2` | **PASS Playable** (99.1%, 1348.3 s) |
+| **Baldur's Gate: Dark Alliance** | nova | default | `-366130` | **PASS Playable** (100%, 1303.9 s) |
+| 007: Agent Under Fire | nova | default | `-366094` | FAIL (stuck at a door, not gameplay; needs its own route) |
+| Alien Hominid | thor (cold-start control) | default | `-3086847` | void (heat stop at xo 70 C, 402 s); already Playable (`lanelocal-1183547`, 09-26) |
+| Otogi: Myth of Demons | thor (cold-start) | default | `-43486` | **FAIL (thermal)**: pause at +703 s, 35.0% at 28.5+, peak xo 77.9 C, 4.06 W net |
+| 187: Ride or Die | nova | default | `-3086875` | running (1200-s confirmation) |
+| Arctic Thunder | nova | default | `-3086903` | queued, battery-refused (46%, needs 48.3%) |
+| Crimson Skies | nova | default | `-750238` | queued (600-s confirmation, 09-30 rule) |
+
+**Playable count (lane.local's 10:50 tally): 6.** Alien Hominid (09-26),
+plus this lane's five.
+
+### Next, in order
+
+1. **187 and Arctic Thunder:** judge each with `title_verdict.py <dir>
+   --require confirmation`, and check the last route frame for a
+   results/continue screen.
+2. **Crimson:** judge with `--require screening` and record it as a "600-s
+   confirmation (09-30 rule)". If it passes, it is the first 600-s pass and
+   counts toward the every-5th audit.
+3. **Tier B/C unchanged:**
+   - DOA needs a fight route.
+   - Kabuki is flagged and still stalls (kabukistall's fold keeps the
+     68.6 s fight stall).
+   - Forza waits on #583.
+   - GTA SA waits on #591.
+   - AUF needs its own route.
+4. No Thor work while `lanelocal-fanwait` holds.
+
+### Ending session 13 here: waiting
+
+Three Nova requests are outstanding: 187 running, Arctic Thunder
+battery-gated, and Crimson queued. All three are dispatch work outside this
+session. Recorded in `OUTBOX.md`; stopping.
