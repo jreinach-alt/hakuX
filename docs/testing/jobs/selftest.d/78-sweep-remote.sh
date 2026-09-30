@@ -70,6 +70,24 @@ sg checkout -q master
 sr_tip_age() { git -C "$SR/repo" log -1 --format=%ct "$1"; }
 check "the fixture's stale branch really is a month behind its live one" \
     bash -c '[ $(( $2 - $1 )) -gt 2000000 ]' _ "$(sr_tip_age claude/stale-u1)" "$(sr_tip_age claude/live-u1)"
+# SUFFIXED BRANCHES. A remote lane opens each PR on `<its branch>-<suffix>`
+# (remote-lane.sh's header), so its own branch stops moving while it works.
+# Month-old bases: one with a suffixed branch pushed now; one whose only fresh
+# `-*` branch belongs to a LONGER row (`claude/sfx2-u1-deep`, itself a month
+# old) and so is not its at all. Names no other leg uses, so no earlier
+# verdict moves.
+for spec in "claude/sfx-u1|30 days ago" "claude/sfx-u1-461p2|now" \
+            "claude/sfx2-u1|30 days ago" "claude/sfx2-u1-deep|30 days ago" \
+            "claude/sfx2-u1-deep-2|now"; do
+    IFS='|' read -r b when <<< "$spec"
+    sg checkout -q master; sg checkout -q -b "$b"
+    echo "$b" > "$SR/repo/$(tr / _ <<< "$b")"; sg add -A
+    sg_commit_at "$(date -u -d "$when" '+%FT%TZ')" "$b"
+    sg push -q origin "$b"
+done
+sg checkout -q master
+check "the suffixed fixture's fresh branch really is a month ahead of its base" \
+    bash -c '[ $(( $2 - $1 )) -gt 2000000 ]' _ "$(sr_tip_age claude/sfx-u1)" "$(sr_tip_age claude/sfx-u1-461p2)"
 
 # ------------------------------------------------------------ the shims
 cat > "$SR/ibin/gh" <<'EOF'
@@ -334,6 +352,62 @@ got=$(sr_is list)
 check "a \`lane:\` label naming a live remote lane is not an orphaned label" \
       sr_notin 'label `lane:livecloud`'
 
+# A REMOTE LANE'S SUFFIXED BRANCHES ARE ITS TOO (#461, 5883107753). It opens
+# each PR on `<its branch>-<suffix>`, so its own branch stops moving while it
+# works: from three days after its last unsuffixed push, `branch in heads` and
+# that one tip called a working lane dead and handed its claims to the board.
+# Each leg runs beside a lane that IS reported, so a sweep that reports
+# nothing cannot pass it.
+#
+# ADDED 2026-09-29 by lane.remote with the suffix rule: 13 checks (the
+# fixture's, 8 in this part, 4 in part 3). Against master@bf1ecde346 -- and
+# against this branch with only remote-lane.sh changed, so the sweeps' own
+# edits are what carry them -- 6 fail and 7 pass. The 6 are what a suffix
+# changes: the suffixed PR, the suffixed tip, its finding's words, the longer
+# row's own tip, and the suffixed draft's two. The 7 are the fixture check,
+# both controls, both prefix-only pairs, sfx2cloud still reported, and
+# handback.sh not asked.
+sr_reset
+sr_board "$SRT" "stalecloud|23|claude/stale-u1" "deadlocal|21|"
+sr_issues "23||900" "21||900"; sr_row 23; sr_row 21
+echo "claude/stale-u1-461p2" > "$SR/pr-heads"
+got=$(sr_is list)
+check "an open PR on a SUFFIXED branch keeps the remote lane's claim, old tip and all" \
+      sr_notin 'territory row `lane.stalecloud`'
+check "  (control: the dead local lane in the same fixture is still reported)" \
+      sr_in 'territory row `lane.deadlocal`'
+
+sr_reset
+sr_board "$SRT" "stalecloud|23|claude/stale-u1"
+sr_issues "23||900"; sr_row 23
+echo "claude/stale-u1x" > "$SR/pr-heads"
+got=$(sr_is list)
+check "  while an open PR on a head that only shares the prefix does not" \
+      sr_in 'territory row `lane.stalecloud`'
+
+# The tip: the newest of the branch and ITS suffixed ones. sfxcloud's own
+# branch is a month old and its suffixed branch was pushed this minute.
+# sfx2cloud's is a month old too, and its only fresh `-*` branch is
+# deepcloud's, the longer row's -- which is what keeps deepcloud alive.
+sr_reset
+sr_board "$SRT" "sfxcloud|26|claude/sfx-u1" "sfx2cloud|27|claude/sfx2-u1" \
+         "deepcloud|28|claude/sfx2-u1-deep" "deadlocal|21|"
+sr_issues "26||900" "27||900" "28||900" "21||900"
+sr_row 26; sr_row 27; sr_row 28; sr_row 21
+got=$(sr_is list)
+check "a remote lane whose own branch is a month old but whose suffixed one moved is live" \
+      sr_notin 'territory row `lane.sfxcloud`'
+check "  while a fresh branch that a LONGER row owns does not keep the shorter lane alive" \
+      sr_in 'territory row `lane.sfx2cloud`'
+# -F: the finding spells the glob `claude/sfx2-u1-*`, and as a regex `-*` is
+# "any number of dashes", which never matches the text it names.
+check "  and that finding says its suffixed branches were looked at too" \
+      grep -qF -- 'nor any suffixed `claude/sfx2-u1-*` branch of its' <<< "$got"
+check "  and the longer row, a month old itself, is live on its own suffixed branch" \
+      sr_notin 'territory row `lane.deepcloud`'
+check "  (control: the dead local lane in the same fixture is still reported)" \
+      sr_in 'territory row `lane.deadlocal`'
+
 # ==================================================================== part 2
 # THE SECOND MUTANT: the map is not the board's. remote_authoritative is rc 0
 # ONLY for a board read; a fold-lagged in-tree copy is exactly the copy missing
@@ -468,6 +542,25 @@ sr_pr 304 claude/somebodys-branch true "" 90000
 got=$(sr_ps list)
 check "a claude/* head no territory row names is not a remote lane" sr_notin "remote-draft"
 check "  and is not a strand either: there is no lane to strand" sr_notin "draft-strand"
+
+# A REMOTE LANE'S SUFFIXED DRAFT (#461, 5883107753). `REMOTE.get(branch)` put
+# it in no class at all: not remote-draft, and not a strand, having no
+# `lane/` prefix. The pair is a head that only shares the prefix, which stays
+# nobody's.
+sr_reset
+sr_board "$SRP" "cloudy||claude/live-u1"
+sr_pr 307 claude/live-u1-461p2 true "" 90000
+sr_ps >/dev/null
+check "a remote lane's draft on a SUFFIXED branch is told its own routine is the only actor" \
+      sr_said "only actor for this PR is your own routine"
+check "  by the lane name the board gave the branch it extends" sr_said 'lane.cloudy'
+check "  and never reaches handback.sh" sr_unasked "handback.sh"
+sr_reset
+sr_board "$SRP" "cloudy||claude/live-u1"
+sr_pr 308 claude/live-u1x true "" 90000
+got=$(sr_ps list)
+check "  while a draft whose head only shares the prefix is no remote lane's" \
+      sr_notin "remote-draft"
 
 # THE SECOND MUTANT AGAIN, on the sweep that takes OUTWARD actions. pr-sweep
 # runs `cloud.sh finish` and comments on PRs unattended every three hours, and

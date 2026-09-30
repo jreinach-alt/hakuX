@@ -1,0 +1,62 @@
+==============================================================================
+A/B comparison, per capture
+==============================================================================
+A (baseline)  1-1790623783-arms-shaderfb569-base-3041077
+    ref 01e62d8d1c   apk daa804f3a6c4   classifier 37a5cc7ff3
+    1 run(s), 593 captures, progress-log proof yes
+B (candidate)  1-1790623783-arms-shaderfb569-fix-3041536
+    ref 84c865c37d   apk 17fff996dc38   classifier 37a5cc7ff3
+    1 run(s), 593 captures, progress-log proof yes
+disc  8-suites:1b7a732f:3D primitive,Blend tests,Depth buffer,Fo
+      identical in both arms, so the arms are comparable
+
+WARNING: A: Blend_tests scored 105 of 1673 goldens -- that suite's numbers are a FLOOR, not a score.
+WARNING: A: Depth_buffer scored 144 of 784 goldens -- that suite's numbers are a FLOOR, not a score.
+WARNING: B: Blend_tests scored 105 of 1673 goldens -- that suite's numbers are a FLOOR, not a score.
+WARNING: B: Depth_buffer scored 144 of 784 goldens -- that suite's numbers are a FLOOR, not a score.
+
+------------------------------------------------------------------------------
+movers
+------------------------------------------------------------------------------
+  none: no capture moved outside its measured band.
+
+------------------------------------------------------------------------------
+counts, per capture -- the only valid unit
+------------------------------------------------------------------------------
+  better 0     worse 0     same 593   noise 0       (593 compared)
+  exact  257   ->    257    (+0)
+  regressed from exact 0        repaired to exact 0  
+
+------------------------------------------------------------------------------
+byte-level check -- what a score count cannot see
+------------------------------------------------------------------------------
+  hashed 593 of 593 shared captures (1 run-dir(s) A, 1 B)
+  every checked capture is byte-identical between the arms.
+
+------------------------------------------------------------------------------
+per suite
+------------------------------------------------------------------------------
+  suite                       caps better worse  same noise  differing A  differing B
+  3D_primitive                 160      0     0   160     0    3,271,912    3,271,912
+  Blend_tests                  105      0     0   105     0            0            0
+  Depth_buffer                 144      0     0   144     0    1,325,892    1,325,892
+  Fog_gen                       60      0     0    60     0    1,247,216    1,247,216
+  Specular                      22      0     0    22     0      198,870      198,870
+  Surface_clip                  47      0     0    47     0            0            0
+  Texture_DXT                   15      0     0    15     0       25,659       25,659
+  Texture_format                40      0     0    40     0      134,902      134,902
+
+------------------------------------------------------------------------------
+totals -- ADVISORY ONLY: a total can hide a regression
+------------------------------------------------------------------------------
+  differing       6,204,451 ->      6,204,451  (+0)
+  structural        655,629 ->        655,629  (+0)
+  structural is differing minus off-by-one; the two never overlap, so the subtraction is safe.
+
+==============================================================================
+UNBOUND: shaderfb569-pixels-inert.json predates both results, so it was not written to fit them -- but no arm was queued naming it, so nothing proves it is the prediction that was made. Queue the next arm with request.sh --expect.
+prediction (registered 2026-09-28T18:52:17Z): #569 P1 is instrumentation only: every graphics pipeline create goes through pgraph_vk_create_graphics_pipeline_fb, which chains VkPipelineCreationFeedbackCreateInfo on a Vulkan 1.3 device and times the call; glsl.c and save_pipeline_cache_to_disk gain timers; a sync draw miss runs a ShaderState class compare on copies. Feedback is an output-only struct: it changes no pipeline state, no shader, no draw. B differs from A in hw/ by exactly a073e39676 and 84c865c37d. So every capture in the must-not-move set is identical between arms. A moved capture means the chained struct or the wrapper changed the pipeline the driver built (a pNext chain dropped or reordered, a create call's arguments changed), and the instrument is not inert.
+VERDICT: PASS -- all 593 registered checks hold.
+==============================================================================
+
+exit 1

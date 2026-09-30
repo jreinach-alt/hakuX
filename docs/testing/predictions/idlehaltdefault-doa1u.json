@@ -1,0 +1,34 @@
+{
+  "registered_utc": "2026-09-28T18:04:01Z",
+  "who": "lane.idlehaltdefault",
+  "issue": "525",
+  "title": "54430006-Dead_or_Alive_1_Ultimate.xiso.iso",
+  "device": "nova",
+  "seconds": 420,
+  "route": "survey",
+  "perflog": true,
+  "frames_every": 0,
+  "runs_per_arm": 1,
+  "a_ref": "3a5d79e3ea225fd1a7673de28657b6eb14cc058c",
+  "b_ref": "3a5d79e3ea225fd1a7673de28657b6eb14cc058c",
+  "a_env": [],
+  "b_env": [
+    "HAKUX_IDLE_HALT=1"
+  ],
+  "queue_order": "B1 then A1, each request.sh --who lane.idlehaltdefault --title <title> --route survey --seconds 420 --perflog --device nova --ref 3a5d79e3ea, B with --env HAKUX_IDLE_HALT=1. Titles interleaved: Kabuki A B, Fuzion B A, Forza A B, DOA1U B A, Blinx 2 A B, Ghoulies B A, so the Nova's drift falls on both arms. One binary.",
+  "window": "the route's first `mark gameplay` (survey route: `mark play`) to `soak end`, title_verdict.py's scored window; every leg is read over it",
+  "judge": "python3 docs/lanes/idlehaltdefault/ihd_judge.py --a <A1> [<A2>] --b <B1> [<B2>]  (copies each result dir into docs/lanes/idlehaltdefault/.copies and runs title_verdict.judge there; never inside dispatch/results)",
+  "prediction": "#525, should the idle halt default on. 54430006-Dead_or_Alive_1_Ultimate.xiso.iso on the Nova, heavy on pgraph sync; lane.pacing's noisy title (9.5-15 gfps within one arm). One master binary (3a5d79e3ea, the halt opt-in, spin 0), A without and B with HAKUX_IDLE_HALT=1. The halt's pg callback wake is slower (leg L failed: p99 raise-to-run 100-200 us on AUF), but at ~1.6 pg wakes a frame that is well under 1% of a 16.7-33 ms frame, so a player sees no fps, pacing or audio change beyond this title's same-arm spread, and J/frame falls.",
+  "legs": {
+    "V (validity)": "Per run: not VOID (title_verdict: display, foreground, thermal pause in the window), a window of >= 120 s holding >= 20 fps windows, audio and power measured. Both arms on the Nova with one apk_sha. B's [idlehalt] lines read on=1 with halts > 0 in the window; A's read on=0. A run that fails V is re-queued, never scored as a zero.",
+    "H (fps)": "fps median of the per-60-flip windows: B >= A - 4.0 fps. Bound: nine same-arm Nova pairs (NOTES.md, Bounds) spread by 0.4-4.0 fps in eight, and 12.8 in the ninth (lane.pacing's 1078334-r2, a run mostly not in the fight). The brief asked for a time-share form here; on the same nine pairs the time share at 13.5 fps (0.9 x DOA1U's usual 15) spread by 0.08-1.0, and at 28.5 it is 0 in most runs (a leg that cannot fail), so the median is the tighter instrument and the second pair carries the noise. Fails in the world where the slow wake stalls the guest behind the push buffer each frame, so a pgraph-bound or 60-budget title loses frames the halt-off arm keeps.",
+    "P (pacing)": "Display lateness: [pace526] late_gt1ms / waited (limiter-held display frames released more than 1 ms after their deadline) over the window, B <= A + 0.002. Bound: lane.pacing's sleep-limiter arm measured 0.0008 pooled over two Kabuki runs, one of them 1 in 12612, so the two runs spread by ~0.0015; 0.002 covers that. Judged only when both arms hold >= 1000 frames (a render-bound title's limiter never holds one, and the leg is then BLIND, reported as such, not as a pass). Frame-time p99: the median over the window's hakuX-pace lines of each line's `max` (the worst flip of 60), which estimates the 98.85th percentile of flip time (0.5^(1/60)) if flips are independent; an estimator, labelled. B <= 1.5 x A. Bound: the same-arm pairs spread by up to 46% (Kabuki 30.8 vs 45.0 ms), and 7 of 9 DOA1U pairs by <= 20%; the two DOA1U pairs past 1.5x each hold one run that was not in the fight (lane.pacing: 2.35 flips a second). Reported, not judged: vK p99 in VBLANKs, and the share of flips over nominal. Fails in the world where the tail shows as frames that miss their VBLANK (hitching) with the mean fps intact.",
+    "A (audio)": "Audio: title_verdict's audio_starve_share (short sink callbacks after mark + 10 s). Holds when B <= 0.001 (the verdict's bar). If A itself is over 0.001, B <= A + 0.0031, the largest same-arm spread measured (DOA1U notify488 9f80bc887a: 0 vs 0.0031). Fails in the world where the halt's late wake starves the APU feed while the halt-off arm plays clean.",
+    "E (energy, across titles)": "J/frame (title_verdict power.j_per_frame = net_w x scored s / flips; net_w includes the USB input, so a charging run compares fairly): B < A in at least 4 of the 6 titles, first pairs. Fails in the world where the halt's saving belongs to AUF and Blinx (idle-heavy) and the pgraph-bound titles, which idle less, pay the wake cost in power instead.",
+    "Second pair": "A second pair (same order, same ref) is queued for this title only if a leg fails on the first, or if B is worse than A by more than half the H bound or half the P2 margin. Scored pooled: H on the mean of the two runs' medians per arm, P on each pair.",
+    "Verdict": "Across the six titles: the halt stays opt-in if any title fails H or P on both of its pairs; the PR proposes default-on if H, P and A hold on every title and E holds. Controls, cited not re-run: AUF 1-1790582079-idlehalt-2124199 (off) / 1-1790582078-idlehalt-2124125 (on), Blinx 1-1790582080-idlehalt-2124441 / -2124356, at 40fabbaacc."
+  },
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off hakuX-perf, hakuX-pace, [pace526], hakuX-audiocap, [idlehalt] and thermal.jsonl by ihd_judge.py."
+}

@@ -1,0 +1,116 @@
+# lane.slowtier2 2026-09-28: two frames added after the mark (play1, play2); the route to the mark is unchanged (docs/lanes/slowtier2/addshots.py).
+# Alias (41430016): one route for every run (New Game saves nothing before
+# control). PLAYED by nav.py on the Thor, 2026-09-27 07:08 PDT
+# (lane.titleroutes HELD session alias.first-run-20260927T070810).
+#
+#   the intro video (A) -> MAIN MENU, cursor on NEW GAME (A) -> the briefing
+#   cutscene (A) -> "OPERATION CASINO: LOADING..." -> an in-engine cutscene
+#   at a door (A) -> Sydney on the casino floor, health bar top right ->
+#   Vaughn's radio box ("Find Dixon for your op..."), which does not stop
+#   her moving.
+#
+# The casino ran at 5-7 fps in the nav session (a first run, shaders
+# compiling) and at 19 in the replay, which walked her the length of the
+# bar (scratch/replay/alias-071116/zz-end.png).
+#
+# Player control: LY min walked Sydney forward across the carpet (nav frames
+# 006-gameplay -> 008-walk, mid-stride), RX turned the camera.
+wait 26.7
+shot boot
+wait 8.4
+press A
+wait 5.4
+press A
+wait 5.1
+shot a2
+wait 10.7
+press A
+wait 6.1
+shot new
+wait 8.4
+press A
+wait 5.4
+press A
+wait 6.7
+shot skip
+wait 27.3
+shot load
+wait 10.7
+press A
+wait 5.4
+press A
+wait 5.1
+shot skip2
+wait 9.6
+mark gameplay
+repeat 6 {
+    axis LY min
+    wait 2
+    axis LY mid
+    axis RX max
+    wait 0.6
+    axis RX mid
+    axis RT max
+    wait 0.3
+    axis RT min
+    axis LY min
+    wait 2
+    axis LY mid
+    axis RX min
+    wait 0.6
+    axis RX mid
+    axis RT max
+    wait 0.3
+    axis RT min
+    axis LY min
+    wait 5
+    axis LY mid
+}
+shot play1
+repeat 7 {
+    axis LY min
+    wait 2
+    axis LY mid
+    axis RX max
+    wait 0.6
+    axis RX mid
+    axis RT max
+    wait 0.3
+    axis RT min
+    axis LY min
+    wait 2
+    axis LY mid
+    axis RX min
+    wait 0.6
+    axis RX mid
+    axis RT max
+    wait 0.3
+    axis RT min
+    axis LY min
+    wait 5
+    axis LY mid
+}
+shot play2
+repeat forever {
+    axis LY min
+    wait 2
+    axis LY mid
+    axis RX max
+    wait 0.6
+    axis RX mid
+    axis RT max
+    wait 0.3
+    axis RT min
+    axis LY min
+    wait 2
+    axis LY mid
+    axis RX min
+    wait 0.6
+    axis RX mid
+    axis RT max
+    wait 0.3
+    axis RT min
+    axis LY min
+    wait 5
+    axis LY mid
+}

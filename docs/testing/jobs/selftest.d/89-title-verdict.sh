@@ -297,9 +297,15 @@ soak_run() {   # <soak_title.sh> <scenario words...> -> run.log on stdout
     # lease on a host must never be touched by a selftest.
     PATH="$SK/bin:$PATH" SOAK_FAKE="$SK" SERIAL=ee317437 ROUTE_DRY=1 \
         HAKUX_DEVICE_LEASE="$SK/lease" SOAK_POLL_S=0.2 SOAK_RETRY_S=0.1 \
-        ROUTE_FILE="$SK/r.route" timeout 60 bash "$s" /fake/iso.iso 2 2>&1
+        ROUTE_FILE="$SK/r.route" timeout 60 bash "$s" /fake/iso.iso "${SOAK_HOLD_S:-2}" 2>&1
 }
-log1=$(soak_run "$TESTING/soak_title.sh" up fail up)
+# The probe scenarios need two or three trips round the hold loop, and the
+# loop reads its clock in whole seconds before each probe: a 2 s hold whose
+# first 0.2 s poll ran late (t0 late in its second, a loaded host) read s=2
+# and probed once, so run.log said adb_failures=0 (#600, master 20f072b240).
+# A 5 s hold survives a 4 s stall; the passing scenarios end at a guest exit
+# or cost 3 s each.
+log1=$(SOAK_HOLD_S=5 soak_run "$TESTING/soak_title.sh" up fail up)
 case "$log1" in *"guest exited"*) bad "one failed probe ended the soak as a guest exit";;
                 *) ok "one failed probe did not end the soak";; esac
 case "$log1" in *"adb_failures=1"*) ok "adb_failures=1 is written to run.log";;
@@ -308,10 +314,10 @@ case "$log1" in *"held iso.iso"*) ok "the soak held to its deadline";;
                 *) bad "the soak did not hold to its deadline";; esac
 case "$log1" in *"ROUTE started"*"ROUTE "*" end"*) ok "the route was started and stopped with the hold";;
                 *) bad "the route was not started and stopped: $(printf '%s' "$log1" | grep ROUTE | head -3)";; esac
-log2=$(soak_run "$TESTING/soak_title.sh" up up down)
+log2=$(SOAK_HOLD_S=5 soak_run "$TESTING/soak_title.sh" up up down)
 case "$log2" in *"guest exited"*) ok "a real exit (ps works, no xemu) still ends the soak";;
                 *) bad "a real exit was not seen";; esac
-log3=$(soak_run "$TESTING/soak_title.sh" up fail fail fail up)
+log3=$(SOAK_HOLD_S=5 soak_run "$TESTING/soak_title.sh" up fail fail fail up)
 case "$log3" in *"guest exited"*) bad "three failed probes read as an exit (should be unknown)";;
                 *"adb_failures=3"*) ok "three failed probes are unknown, counted, and keep holding";;
                 *) bad "three failed probes: $(printf '%s' "$log3" | grep -E 'adb_failures|ADB' | head -3)";; esac
@@ -351,7 +357,7 @@ if s.count(old) != 1:
 open(sys.argv[2], "w").write(s.replace(old, '[ "$r" = 2 ] && return 1; return "$r"'))
 PY
 then
-    case "$(soak_run "$SM/soak_title.sh" up fail up)" in
+    case "$(SOAK_HOLD_S=5 soak_run "$SM/soak_title.sh" up fail up)" in
         *"guest exited"*) ok "mutant caught: treat one adb failure as an exit" ;;
         *) bad "mutant SURVIVED: treat one adb failure as an exit" ;;
     esac

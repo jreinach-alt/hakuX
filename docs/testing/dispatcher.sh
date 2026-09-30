@@ -89,7 +89,7 @@ SRC="${DISPATCH_SRC:-$TREE/docs/testing}"
 SCRIPT_DEPS="dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
 affinity.py captures.py make_test_iso.py extract_results.py sweep_queue.sh \
 make_isolation_discs.py vsh_score.py thermal_state.py titles/route.sh perf/pad.sh \
-battery_admit.py"
+battery_admit.py titles/titlestate.py titles/saves.py"
 # WHERE BUILDS HAPPEN, AND IT IS NEVER $TREE.
 #
 # Until 2026-09-19 a build detached the SHARED checkout onto the requested
@@ -117,7 +117,8 @@ snapshot_scripts() {
     for f in dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
              affinity.py captures.py make_test_iso.py extract_results.py \
              sweep_queue.sh make_isolation_discs.py vsh_score.py thermal_state.py \
-             titles/route.sh perf/pad.sh battery_admit.py; do
+             titles/route.sh perf/pad.sh battery_admit.py titles/titlestate.py \
+             titles/saves.py; do
         # Two of these live in subdirectories. Each file is resolved against
         # its own directory, so the write-beside-and-rename below stays in one
         # directory, and cp gets a directory that exists. (Reassigning $f
@@ -436,6 +437,354 @@ PYENV
     return 0
 }
 
+# TITLE RUNS BOOT A TITLES DISK; DISC RUNS KEEP hdd.img.
+#
+# Until 2026-09-29 every soak and every nxdk disc run shared the one
+# files/x1box/hdd.img on each handheld. Title saves, the titles' X:/Y:/Z:
+# utility caches and the discs' E:\nxdk_* output all piled onto it and nothing
+# ever took anything off: the Thor's reached 6.9 GB of its 8 GiB, and a
+# Crimson Skies soak's "gameplay" frames were the title's "not enough free
+# blocks to save games" dialog (#474). The real saves on it were a few MB.
+#
+# So a title run points `hddPath` at files/x1box/titles.qcow2, a disk the
+# host builds from its save store (titles/titlestate.py, docs/lanes/
+# titlestate/NOTES.md), and every other run leaves `hddPath` on hdd.img.
+# titlestate.py `plan` decides what happens to the titles disk before a run
+# (seed / harvest / build / keep); after the run the disk is pulled and its
+# saves harvested, so the store stays the truth and a rebuild loses nothing.
+#
+# The pref follows the env_vars rule: we undo only what we did. A marker
+# holds the hddPath we found; it is put back after the title run, and at the
+# start of any request that finds the marker still there (a worker that died
+# mid-run). No marker: not one adb call.
+#
+# HAKUX_TITLES_DISK=0 on the worker turns the split off: title runs boot
+# hdd.img as they did before. A request's own env HAKUX_TITLES_DISK (request.sh
+# --env) beats the worker's, either way: the switch lives in the worker's
+# environment, which a request cannot reach, and a proof run of the split must
+# be able to turn it on for itself alone while it stays off for everyone else.
+#
+# THE DISK MUST BE MODE 660. The app reaches files in its x1box directory
+# through a group, and `adb push` leaves them 0644: the app can read the disk
+# but not open it read-write. xemu's own check (xemu_check_file, system/vl.c)
+# only opens it "rb", so the -drive is added, qemu's configure_blockdev then
+# fails "Could not open ...: Permission denied" and exit()s on the qemu thread
+# while the render thread holds GL, and the process dies in the GPU driver:
+# SIGSEGV in libGLESv2_adreno.so or "pthread_mutex_lock called on a destroyed
+# mutex", 2-7 ms after sdl2_display_early_init, before stderr reaches logcat.
+# Every title run on #622's first pushed disks died that way (lane.hddcrash,
+# docs/lanes/hddcrash/NOTES.md). dev_push sets the mode before the rename, and
+# titles_disk_prepare checks it before every title run, so a disk pushed
+# before this fix is repaired rather than booted.
+TITLESTATE="$HERE/titles/titlestate.py"
+SAVES_PY="$HERE/titles/saves.py"
+# saves.py loads tools/make_xbox_hdd.py, which is not under docs/testing and so
+# not in the snapshot: name the tree's copy.
+export MAKE_XBOX_HDD="${MAKE_XBOX_HDD:-$TREE/tools/make_xbox_hdd.py}"
+export TITLESTATE_DIR="${TITLESTATE_DIR:-$D/titlestate}"
+x1box_dir() { echo "/storage/emulated/0/Android/data/${PKG:-com.jreinach.hakux.debug}/files/x1box"; }
+hdd_pref_marker() { echo "$D/.hdd_pref.${DEVICE_LABEL:-$SERIAL}"; }
+
+# hdd_pref_edit get|set <file> [value]: the one key, every other byte kept.
+# An empty value removes the key.
+hdd_pref_edit() {
+    python3 - "$@" <<'PYHDD'
+import re, sys
+mode, path = sys.argv[1], sys.argv[2]
+s = open(path, errors="replace").read()
+pat = r'\n?[ \t]*<string name="hddPath">(.*?)</string>'
+if mode == "get":
+    m = re.search(pat, s, re.S)
+    v = m.group(1) if m else ""
+    sys.stdout.write(v.replace("&gt;", ">").replace("&lt;", "<").replace("&amp;", "&"))
+    sys.exit(0)
+want = sys.argv[3]
+if "</map>" not in s:
+    sys.exit("prefs file has no </map>; refusing to write")
+esc = want.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+key = r'(<string name="hddPath">)(.*?)(</string>)'
+if want and re.search(key, s, re.S):
+    # In place, so a restore puts the file back byte for byte.
+    s = re.sub(key, lambda m: m.group(1) + esc + m.group(3), s, count=1, flags=re.S)
+else:
+    s = re.sub(pat, "", s, flags=re.S)
+    if want:
+        s = s.replace("</map>", '    <string name="hddPath">%s</string>\n</map>' % esc)
+open(path, "w").write(s)
+PYHDD
+}
+
+# set_hdd_pref <path> [marker] ; echoes the hddPath it replaced. Verified by
+# reading back. With a marker, the value to put back is recorded there BEFORE
+# the write (unless a marker is already there): a write that lands and a
+# read-back that hangs, or a worker that dies between them, must still leave
+# restore_hdd_pref something to restore. Never records the titles disk as the
+# original -- that would make it permanent -- but hdd.img in its place.
+set_hdd_pref() {
+    local want="$1" marker="${2:-}" pkg tmp was back
+    pkg="${PKG:-com.jreinach.hakux.debug}"
+    tmp="$D/.prefs.${DEVICE_LABEL:-$SERIAL}.hdd.xml"
+    adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (hdd pref)" shell am force-stop "$pkg" >/dev/null 2>&1
+    adb_call "$ADB_QUICK_TIMEOUT" "run-as cat x1box_prefs.xml (hdd)" \
+        shell "run-as $pkg cat shared_prefs/x1box_prefs.xml" 2>/dev/null | tr -d '\r' > "$tmp"
+    if [ -s "${ADB_HUNG_FILE:-}" ] || [ ! -s "$tmp" ]; then
+        log "  HDD PREF: cannot read x1box_prefs.xml"; return 1
+    fi
+    was=$(hdd_pref_edit get "$tmp")
+    if [ -n "$marker" ] && [ ! -f "$marker" ]; then
+        [ "$was" = "$(x1box_dir)/titles.qcow2" ] && was="$(x1box_dir)/hdd.img"
+        printf '%s' "$was" > "$marker" || { log "  HDD PREF: cannot write $marker"; return 1; }
+    fi
+    hdd_pref_edit set "$tmp" "$want" || return 1
+    adb_call "$ADB_QUICK_TIMEOUT" "run-as write x1box_prefs.xml (hdd)" --in "$tmp" \
+        shell "run-as $pkg sh -c 'cat > shared_prefs/x1box_prefs.xml'" >/dev/null 2>&1
+    adb_call "$ADB_QUICK_TIMEOUT" "run-as read back x1box_prefs.xml (hdd)" \
+        shell "run-as $pkg cat shared_prefs/x1box_prefs.xml" 2>/dev/null | tr -d '\r' > "$tmp.back"
+    back=$(hdd_pref_edit get "$tmp.back")
+    if [ "$back" != "$want" ]; then
+        log "  HDD PREF: wrote hddPath=$want but read back '$back'"; return 1
+    fi
+    printf '%s' "$was"
+}
+
+# restore_hdd_pref: put back the hddPath a title run replaced, if one did.
+restore_hdd_pref() {
+    local marker; marker="$(hdd_pref_marker)"
+    [ -f "$marker" ] || return 0
+    local orig; orig=$(cat "$marker")
+    # A marker written before set_hdd_pref refused this value names the titles
+    # disk; put the discs' disk back instead.
+    [ "$orig" = "$(x1box_dir)/titles.qcow2" ] && orig="$(x1box_dir)/hdd.img"
+    set_hdd_pref "$orig" >/dev/null || return 1
+    rm -f "$marker"
+    log "  hddPath restored to ${orig:-(unset)}"
+}
+
+# dev_sha256 <device path> -> sha256, or "" when the file is absent
+dev_sha256() {
+    adb_call 300 "sha256sum $1" shell "sha256sum '$1' 2>/dev/null || true" 2>/dev/null \
+        | tr -d '\r' | awk 'NR==1 && $1 ~ /^[0-9a-f]{64}$/ {print $1}'
+}
+# dev_bytes <device path> -> size, or -1 when the file is absent
+dev_bytes() {
+    local n
+    n=$(adb_call "$ADB_QUICK_TIMEOUT" "stat $1" shell "stat -c %s '$1' 2>/dev/null || echo -1" 2>/dev/null | tr -d '\r' | head -1)
+    [[ "$n" =~ ^[0-9]+$ ]] && echo "$n" || echo -1
+}
+# dev_pull <device path> <host path> <sha256>: pulled and matching, or 1.
+# Never `request.sh --pull`: soak_title.sh deletes what that pulls.
+dev_pull() {
+    local src="$1" dst="$2" want="$3" try
+    mkdir -p "$(dirname "$dst")"
+    for try in 1 2 3; do
+        rm -f "$dst"
+        adb_call 600 "pull $src" pull "$src" "$dst" >/dev/null 2>&1
+        [ -s "$dst" ] && [ "$(sha256sum "$dst" | cut -d' ' -f1)" = "$want" ] && return 0
+        log "  pull $try of $src: missing or not the device's file"
+    done
+    rm -f "$dst"; return 1
+}
+# dev_mode <device path> -> octal mode (e.g. 660), or "" when the file is absent
+dev_mode() {
+    adb_call "$ADB_QUICK_TIMEOUT" "stat mode $1" shell "stat -c %a '$1' 2>/dev/null" 2>/dev/null \
+        | tr -d '\r' | awk 'NR==1 && $1 ~ /^[0-7]+$/ {print $1}'
+}
+# dev_make_660 <device path>: mode 660, read back (see THE DISK MUST BE MODE
+# 660 above), or 1.
+dev_make_660() {
+    local m
+    m=$(dev_mode "$1")
+    [ "$m" = 660 ] && return 0
+    adb_call "$ADB_QUICK_TIMEOUT" "chmod 660 $1" shell "chmod 660 '$1'" >/dev/null 2>&1
+    m=$(dev_mode "$1")
+    [ "$m" = 660 ] || { log "  $1: mode ${m:-unreadable} after chmod 660; the app could not open it read-write"; return 1; }
+}
+# dev_push <host path> <device path>: through <path>.new and a rename, checked.
+# Mode 660 before the rename, so the file is never in place unopenable.
+dev_push() {
+    local src="$1" dst="$2" want
+    want=$(sha256sum "$src" | cut -d' ' -f1)
+    adb_call 600 "push $dst" push "$src" "$dst.new" >/dev/null 2>&1 || return 1
+    [ "$(dev_sha256 "$dst.new")" = "$want" ] || { log "  push $dst: the device's copy does not match"; return 1; }
+    dev_make_660 "$dst.new" || return 1
+    adb_call "$ADB_QUICK_TIMEOUT" "mv $dst" shell "mv -f '$dst.new' '$dst'" >/dev/null 2>&1 || return 1
+    [ "$(dev_sha256 "$dst")" = "$want" ] && [ "$(dev_mode "$dst")" = 660 ]
+}
+
+# titles_disk_prepare <id> <rdir> [<request env json>]: make the device's
+# titles disk current and point hddPath at it. Writes <rdir>/hdd.json.
+# Non-zero fails the request.
+titles_disk_prepare() {
+    local id="$1" rdir="$2" renv="${3:-[]}" dev="${DEVICE_LABEL:-}" dpath x pj action reason bytes sha i
+    local split="${HAKUX_TITLES_DISK:-1}" from=worker rsplit mode0
+    [ -n "${HAKUX_TITLES_DISK:-}" ] || from=default
+    # The request's own HAKUX_TITLES_DISK, when it names one, wins.
+    rsplit=$(python3 -c '
+import json, sys
+v = json.loads(sys.argv[1] or "[]")
+v = ["%s=%s" % kv for kv in v.items()] if isinstance(v, dict) else v
+print(([str(e).split("=", 1)[1] for e in v if str(e).startswith("HAKUX_TITLES_DISK=")] or [""])[-1])' "$renv" 2>/dev/null)
+    [ -n "$rsplit" ] && { split="$rsplit"; from=request; }
+    x="$(x1box_dir)"; dpath="$x/titles.qcow2"
+    case "$dev" in nova|thor) ;; *)
+        printf '{"path": null, "split": "off: no titles registry for device %s"}\n' "$dev" > "$rdir/hdd.json"
+        return 0 ;; esac
+    if [ "$split" = 0 ]; then
+        printf '{"path": null, "split": "off: HAKUX_TITLES_DISK=0", "split_from": "%s"}\n' "$from" > "$rdir/hdd.json"
+        return 0
+    fi
+    [ "$from" = request ] && log "  titles disk: on for this request (its env HAKUX_TITLES_DISK=$split beats the worker's ${HAKUX_TITLES_DISK:-unset})"
+    # Nothing may hold the disk while it is read or replaced.
+    adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (titles disk)" shell am force-stop "${PKG:-com.jreinach.hakux.debug}" >/dev/null 2>&1
+    : > "$rdir/hdd.plan"
+    for i in 1 2 3 4 5; do
+        bytes=$(dev_bytes "$dpath"); sha=""
+        [ "$bytes" -ge 0 ] && sha=$(dev_sha256 "$dpath")
+        pj=$(python3 "$TITLESTATE" plan --device "$dev" --device-bytes "$bytes" --device-sha "$sha") || {
+            log "  TITLES DISK: plan failed"; return 1; }
+        printf '%s\n' "$pj" >> "$rdir/hdd.plan"
+        action=$(python3 -c 'import json,sys;print(json.loads(sys.argv[1])["action"])' "$pj")
+        reason=$(python3 -c 'import json,sys;print(json.loads(sys.argv[1])["reason"])' "$pj")
+        log "  titles disk: $action ($reason)"
+        case "$action" in
+            keep) break ;;
+            seed)
+                local h hs; h="$TITLESTATE_DIR/pull/$dev-hdd.img"
+                hs=$(dev_sha256 "$x/hdd.img")
+                [ -n "$hs" ] && dev_pull "$x/hdd.img" "$h" "$hs" || { log "  TITLES DISK: cannot pull hdd.img to seed"; return 1; }
+                python3 "$TITLESTATE" seed --device "$dev" --image "$h" --run "$id" > "$rdir/hdd.seed.json" \
+                    || { rm -f "$h"; log "  TITLES DISK: seed failed"; return 1; }
+                rm -f "$h" ;;
+            harvest)
+                titles_disk_harvest "$id:before" "$dpath" "$sha" "$rdir/hdd.harvest-before.json" || return 1 ;;
+            build)
+                local bj img isha built
+                bj=$(python3 "$TITLESTATE" rebuild --device "$dev") || { log "  TITLES DISK: rebuild failed"; return 1; }
+                printf '%s\n' "$bj" > "$rdir/hdd.build.json"
+                img=$(python3 -c 'import json,sys;print(json.loads(sys.argv[1])["path"])' "$bj")
+                built=$(python3 -c 'import json,sys;print(json.dumps(json.loads(sys.argv[1])["built_from"]))' "$bj")
+                dev_push "$img" "$dpath" || { log "  TITLES DISK: push failed"; return 1; }
+                python3 "$TITLESTATE" pushed --device "$dev" --image "$img" --device-path "$dpath" \
+                    --built-from "$built" || return 1 ;;
+            *) log "  TITLES DISK: unknown plan '$action'"; return 1 ;;
+        esac
+    done
+    [ "$action" = keep ] || { log "  TITLES DISK: no stable plan after $i rounds"; return 1; }
+    # A kept disk may predate dev_push's chmod (THE DISK MUST BE MODE 660).
+    mode0=$(dev_mode "$dpath")
+    dev_make_660 "$dpath" || { log "  TITLES DISK: cannot make $dpath mode 660"; return 1; }
+    [ "$mode0" = 660 ] || log "  titles disk: mode ${mode0:-unreadable} -> 660"
+    # The FIRST value found is the one to put back: a marker already there
+    # (a worker that died mid-run) holds it, and hddPath now reads ours.
+    # set_hdd_pref writes the marker before the pref, so a failure here still
+    # leaves serve_one's restore_hdd_pref the value to put back.
+    set_hdd_pref "$dpath" "$(hdd_pref_marker)" >/dev/null || return 1
+    python3 - "$rdir" "$dpath" "$sha" "$bytes" "$mode0" "$from" <<'PYHDD'
+import json, os, sys
+rdir, path, sha, n, mode0, frm = sys.argv[1:7]
+plans = [json.loads(l) for l in open(os.path.join(rdir, "hdd.plan")) if l.strip()]
+json.dump({"path": path, "sha256_at_start": sha, "bytes_at_start": int(n), "plans": plans,
+           "mode_found": mode0 or None, "mode": "660",
+           "split": "on", "split_from": frm}, open(os.path.join(rdir, "hdd.json"), "w"), indent=1)
+PYHDD
+    log "  hddPath -> $dpath (sha256 ${sha:0:12}, $bytes B)"
+}
+
+# titles_disk_harvest <run> <device path> <sha> <out.json>: pull, harvest.
+titles_disk_harvest() {
+    local run="$1" dpath="$2" sha="$3" out="$4" h
+    h="$TITLESTATE_DIR/pull/${DEVICE_LABEL}-titles.qcow2"
+    dev_pull "$dpath" "$h" "$sha" || { log "  TITLES DISK: pull for harvest failed"; return 1; }
+    python3 "$TITLESTATE" after-run --device "$DEVICE_LABEL" --image "$h" --run "$run" \
+        --device-sha "$sha" > "$out" || { rm -f "$h"; return 1; }
+    rm -f "$h"
+    log "  titles disk harvested: $(cat "$out")"
+}
+
+# titles_disk_after <id> <rdir>: after the soak (the app is force-stopped):
+# harvest whatever the run wrote, then put hddPath back. Never fails the
+# request: the run already happened; what did not harvest, plan() refuses to
+# rebuild over next time.
+titles_disk_after() {
+    local id="$1" rdir="$2" dpath bytes sha pj
+    grep -q '"split": "on"' "$rdir/hdd.json" 2>/dev/null || { restore_hdd_pref; return 0; }
+    dpath="$(x1box_dir)/titles.qcow2"
+    adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (titles disk after)" shell am force-stop "${PKG:-com.jreinach.hakux.debug}" >/dev/null 2>&1
+    bytes=$(dev_bytes "$dpath"); sha=$(dev_sha256 "$dpath")
+    pj=$(python3 "$TITLESTATE" plan --device "$DEVICE_LABEL" --device-bytes "$bytes" --device-sha "$sha")
+    case "$pj" in
+        *'"action": "harvest"'*)
+            titles_disk_harvest "$id" "$dpath" "$sha" "$rdir/hdd.after.json" \
+                || printf '{"error": "pull or harvest failed; see dispatcher.log"}\n' > "$rdir/hdd.after.json" ;;
+        *) printf '{"unchanged_or_blocked": %s, "sha256": "%s"}\n' "$pj" "$sha" > "$rdir/hdd.after.json" ;;
+    esac
+    restore_hdd_pref || log "  WARNING: hddPath not restored; the next request retries"
+}
+
+# hdd_img_guard <rdir>: disc runs keep hdd.img, and it still grows (E:\nxdk_*
+# output, a few MB a run, plus whatever the pre-split title runs left). Past
+# HAKUX_HDD_RESET_BYTES (1 GiB) it is reset through saves.py reset -- every
+# title's save pulled, a fresh disk built from them, each verified -- and the
+# old one kept on the device as hdd.img.bak-auto. A failed reset changes
+# nothing and says so. Writes <rdir>/hdd_guard.json when it acts.
+#
+# A reset that fails for a reason that will not change (saves.py refuses the
+# disk, or the device has no room for the backup) is recorded against the
+# disk's size and mtime in $D/.hdd_guard_failed.<device>; while hdd.img still
+# has that size and mtime, later requests write the alert without paying for
+# the sha256, the pull and the reset again. Any write to hdd.img, or removing
+# the file, re-arms the guard.
+hdd_img_guard() {
+    local rdir="$1" x dpath bytes limit="${HAKUX_HDD_RESET_BYTES:-1073741824}" sha h sdir stamp fp failed
+    x="$(x1box_dir)"; dpath="$x/hdd.img"
+    bytes=$(dev_bytes "$dpath")
+    [ "$bytes" -gt "$limit" ] || return 0
+    failed="$D/.hdd_guard_failed.${DEVICE_LABEL:-$SERIAL}"
+    fp=$(adb_call "$ADB_QUICK_TIMEOUT" "stat $dpath (guard)" shell "stat -c '%s %Y' '$dpath' 2>/dev/null" 2>/dev/null | tr -d '\r' | head -1)
+    [[ "$fp" =~ ^[0-9]+\ [0-9]+$ ]] || fp=""
+    if [ -n "$fp" ] && [ -f "$failed" ] && [ "$(head -1 "$failed")" = "$fp" ]; then
+        log "  HDD GUARD: hdd.img ($bytes B) is the disk whose reset already failed; not retried"
+        printf '{"action": "alert", "bytes": %s, "limit": %s, "repeat": true, "why": "%s"}\n' \
+            "$bytes" "$limit" "$(sed -n 2p "$failed" | tr -d '"')" > "$rdir/hdd_guard.json"
+        return 0
+    fi
+    log "  HDD GUARD: hdd.img is $bytes B > $limit B; resetting it (saves.py reset)"
+    stamp=$(date -u +%Y%m%dT%H%M%SZ); sdir="$D/hdd-reset/${DEVICE_LABEL:-$SERIAL}-$stamp"
+    h="$sdir/pulled.img"; mkdir -p "$sdir"
+    guard_fail() {
+        log "  HDD GUARD ALERT: $1; hdd.img left as it was ($bytes B)"
+        printf '{"action": "alert", "bytes": %s, "limit": %s, "why": "%s"}\n' "$bytes" "$limit" "$1" > "$rdir/hdd_guard.json"
+        rm -f "$h" "$sdir/hdd.img"
+    }
+    # guard_fail_final: the same disk would fail the same way next time.
+    guard_fail_final() {
+        guard_fail "$1"
+        [ -n "$fp" ] && printf '%s\n%s\n' "$fp" "$1" > "$failed"
+    }
+    adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (hdd guard)" shell am force-stop "${PKG:-com.jreinach.hakux.debug}" >/dev/null 2>&1
+    sha=$(dev_sha256 "$dpath")
+    [ -n "$sha" ] && dev_pull "$dpath" "$h" "$sha" || { guard_fail "pull failed"; return 0; }
+    python3 "$SAVES_PY" reset "$h" "$sdir/hdd.img" "$sdir/saves" > "$sdir/reset.json" 2>>"$sdir/reset.err" \
+        || { guard_fail_final "saves.py reset refused: $(tail -1 "$sdir/reset.err" | tr -d '"')"; return 0; }
+    rm -f "$h"
+    # A partial backup holds the space the next attempt needs: removed.
+    adb_call 600 "back up hdd.img" shell "cp -f '$dpath' '$dpath.bak-auto'" >/dev/null 2>&1 \
+        && [ "$(dev_sha256 "$dpath.bak-auto")" = "$sha" ] || {
+            adb_call "$ADB_QUICK_TIMEOUT" "rm partial hdd.img.bak-auto" shell "rm -f '$dpath.bak-auto'" >/dev/null 2>&1
+            guard_fail_final "could not back up hdd.img on the device"; return 0; }
+    dev_push "$sdir/hdd.img" "$dpath" || { guard_fail "push of the rebuilt disk failed (hdd.img.bak-auto is the original)"; return 0; }
+    python3 - "$rdir/hdd_guard.json" "$sdir/reset.json" "$bytes" "$limit" "$sdir" <<'PYHDD'
+import json, sys
+out, rj, n, lim, sdir = sys.argv[1:6]
+r = json.load(open(rj))
+json.dump({"action": "reset", "bytes": int(n), "limit": int(lim), "after_bytes": r["bytes"],
+           "titles": r["titles"], "saves": sdir + "/saves", "backup": "hdd.img.bak-auto"},
+          open(out, "w"), indent=1)
+PYHDD
+    rm -f "$sdir/hdd.img" "$failed"
+    log "  HDD GUARD: hdd.img reset, $bytes B -> $(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["bytes"])' "$sdir/reset.json") B, saves in $sdir/saves"
+}
+
 # THERE IS NO SWEEP PREEMPTION HERE, and there was one until 2026-09-25.
 # preempt_sweep/resume_sweep drove sweep_queue.sh pause/resume around every
 # install. It never ran: sweep_queue.sh demanded four build inputs before its
@@ -650,10 +999,7 @@ lane_blind_check() {
 #
 # battery_level: dumpsys's `level:`, read at most once a minute (the queue walk
 # asks once per request per tick). Empty when it cannot be read; the caller
-# then admits unchecked and says so, because an unreadable level on a device
-# that is present is an adb transient, and an absent device is requeued by
-# serve_one's own device_present check anyway. hostops's hold below 15 % is
-# still the floor under all of this.
+# then claims nothing (battery_unreadable).
 battery_level() {
     local f="$D/.battery_level.$DEVICE_LABEL" now t l
     now=$(date +%s)
@@ -673,15 +1019,29 @@ battery_level() {
 # refused, the device's head -- on the first refusal. Each distinct line is
 # logged once per request, not every five seconds.
 declare -A BATT_SAID=()
+BATT_UNREAD_SINCE=""
+# battery_unreadable <id>: FAIL CLOSED. The first live hours admitted a run
+# unchecked on an unreadable level (16:41:17 on 09-28) while the Nova's USB
+# link was failing, and the run voided. An unreadable level almost always IS
+# that link, so nothing is claimed; the next walk reads again. One read per
+# walk (BATT_WALK_UNREAD), one line per episode, and one when it recovers.
+battery_unreadable() {
+    BATT_WALK_UNREAD=1
+    if [ -z "$BATT_UNREAD_SINCE" ]; then
+        BATT_UNREAD_SINCE=$(date +%s)
+        log "BATTERY: level unreadable on $DEVICE_LABEL; not claiming $1, reading again at the next walk"
+    fi
+}
 battery_admit() {
     local req="$1" id="$2" level out rc line
     BATT_JSON=""
     [ "${BATTERY_ADMIT:-on}" = off ] && return 0
+    [ -z "${BATT_WALK_UNREAD:-}" ] || return 1
     level=$(battery_level)
-    if [ -z "$level" ]; then
-        log "BATTERY: level unreadable on $DEVICE_LABEL; admitting $id unchecked"
-        BATT_JSON='{"battery_start": null, "unchecked": "level unreadable"}'
-        return 0
+    [ -n "$level" ] || { battery_unreadable "$id"; return 1; }
+    if [ -n "$BATT_UNREAD_SINCE" ]; then
+        log "BATTERY: level readable again on $DEVICE_LABEL ($level) after $(( $(date +%s) - BATT_UNREAD_SINCE ))s unreadable"
+        BATT_UNREAD_SINCE=""
     fi
     out=$(python3 "$HERE/battery_admit.py" check "$D" "$DEVICE_LABEL" "$req" "$level" "${BATT_HEAD:-}")
     rc=$?
@@ -710,7 +1070,7 @@ battery_admit() {
 # serve_queue <req>... -> 0 once one is served. The queue walk, in priority
 # order; BATT_HEAD is per walk, so a head is the first refusal of THIS tick.
 serve_queue() {
-    BATT_HEAD=""
+    BATT_HEAD="" BATT_WALK_UNREAD=""
     local r
     for r in "$@"; do
         serve_one "$r" && return 0
@@ -829,6 +1189,13 @@ p=sys.argv[1]; b=json.load(open(p)); b["t_device"]=time.time(); json.dump(b,open
         mv "$req" "$rdir/request.json"; return 0
     fi
     req_env=$(python3 -c "import json,sys;print(json.dumps(json.load(open(sys.argv[1])).get('env') or []))" "$req" 2>/dev/null || echo "[]")
+    # A title run that never reached titles_disk_after left hddPath on the
+    # titles disk; no run may start on the wrong one. No marker, no adb call.
+    if ! restore_hdd_pref; then
+        adb_error "could not restore hddPath after an earlier title run; see dispatcher.log" > "$rdir/ERROR"
+        log "  HDD PREF RESTORE FAILED"
+        mv "$req" "$rdir/request.json"; return 0
+    fi
 
     # A soak request runs a real title and keeps its log, instead of running a
     # test disc and scoring captures. It exists because some questions have no
@@ -846,6 +1213,12 @@ p=sys.argv[1]; b=json.load(open(p)); b["t_device"]=time.time(); json.dump(b,open
             log "  TITLE NOT FOUND"; mv "$req" "$rdir/request.json"; return 0
         fi
         touch "$LEASE"
+        if ! titles_disk_prepare "$id" "$rdir" "$req_env"; then
+            adb_error "could not prepare the titles disk; see dispatcher.log" > "$rdir/ERROR"
+            log "  TITLES DISK SETUP FAILED"
+            restore_hdd_pref
+            mv "$req" "$rdir/request.json"; return 0
+        fi
         # The route's text travels in the request (request.sh --route); the
         # file soak_title.sh plays is written from it here, beside the result.
         python3 -c 'import json,sys; r=json.load(open(sys.argv[1])).get("route") or ""; r and open(sys.argv[2],"w").write(r.rstrip("\n")+"\n")' "$req" "$rdir/route.txt"
@@ -859,6 +1232,7 @@ p=sys.argv[1]; b=json.load(open(p)); b["t_device"]=time.time(); json.dump(b,open
         # and unconditionally, so an early guest exit does not leave a
         # screencap loop running against the next request's title.
         stop_frame_capture
+        titles_disk_after "$id" "$rdir"
         local lines; lines=$(wc -l < "$rdir/logcat.txt" 2>/dev/null || echo 0)
         python3 - "$rdir" "$sha" "$title" "$seconds" "$requester" "$purpose" "$ref" "$lines" "$req_env" "$frames_every" <<'PYEOF'
 import json, os, sys
@@ -890,7 +1264,21 @@ def _battery(rdir):
         return json.load(open(os.path.join(rdir, "battery.json")))
     except (OSError, ValueError):
         return None
+# WHICH DISK THE TITLE BOOTED (titles_disk_prepare): its device path, sha256
+# at the start, the plans that made it current, and what the post-run
+# harvest found. None before the split existed.
+def _hdd(rdir):
+    try:
+        h = json.load(open(os.path.join(rdir, "hdd.json")))
+    except (OSError, ValueError):
+        return None
+    try:
+        h["after"] = json.load(open(os.path.join(rdir, "hdd.after.json")))
+    except (OSError, ValueError):
+        pass
+    return h
 json.dump(dict(apk_sha=sha, kind="soak", title=title, seconds=int(seconds),
+               hdd=_hdd(rdir),
                requester=who, purpose=purpose, ref=ref,
                logcat=dict(spec=_spec, lines=int(lines)),
                device_serial=os.environ.get("SERIAL", ""),
@@ -1113,6 +1501,7 @@ else:
 PYEOF
 )
 
+    hdd_img_guard "$rdir"
     local r
     for r in $(seq 1 "$runs"); do
         local args=() gdir="d$(echo "$id$r" | md5sum | cut -c1-6)"
@@ -1191,6 +1580,11 @@ meta["env"] = json.loads(os.environ.get("REQ_ENV_JSON") or "[]")
 # Whether this run started on a cleared shader cache (clear_shader_caches_on_
 # apk_change): "cleared: apk X -> Y", "kept: ...", or "" before the field.
 meta["shader_cache"] = os.environ.get("SHADER_CACHE_STATE", "")
+# hdd_img_guard: present only when hdd.img was past its limit before this run.
+try:
+    meta["hdd_guard"] = json.load(open(os.path.join(rdir, "hdd_guard.json")))
+except (OSError, ValueError):
+    pass
 # TWO revisions, because `classifier_rev` has been recording the WRONG FILE.
 #
 # The `status` column every consumer reads -- ok / label-differs /

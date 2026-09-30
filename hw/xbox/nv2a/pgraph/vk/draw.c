@@ -20,6 +20,8 @@
 #include "qemu/osdep.h"
 #include "qemu/fast-hash.h"
 #include "qemu/error-report.h"
+#include "qemu/processor.h"
+#include "qemu/timer.h"
 #include "renderer.h"
 #include "system/physmem.h"
 #include "ui/xemu-settings.h"
@@ -1374,6 +1376,11 @@ static void pipeline_cache_entry_init(Lru *lru, LruNode *node,
     snode->layout = VK_NULL_HANDLE;
     snode->pipeline = VK_NULL_HANDLE;
     snode->draw_time = 0;
+#if OPT_ASYNC_COMPILE
+    snode->gpl_lto_pending = false;
+    snode->gpl_lto_pipeline = VK_NULL_HANDLE;
+    snode->gpl_retired_pipeline = VK_NULL_HANDLE;
+#endif
 #if NV2A_PERF_LOG
     snode->last_use_cb = 0;
 #endif
@@ -1385,7 +1392,7 @@ static bool pipeline_cache_pre_evict(Lru *lru, LruNode *node)
     PipelineBinding *snode = container_of(node, PipelineBinding, node);
 
 #if OPT_ASYNC_COMPILE
-    if (snode->pending) {
+    if (snode->pending || qatomic_read(&snode->gpl_lto_pending)) {
         return false;  /* Still being compiled */
     }
 #endif
@@ -1416,6 +1423,21 @@ static void pipeline_cache_entry_post_evict(Lru *lru, LruNode *node)
         vkDestroyPipeline(r->device, snode->pipeline, NULL);
         snode->pipeline = VK_NULL_HANDLE;
     }
+
+#if OPT_ASYNC_COMPILE
+    if (snode->gpl_lto_pipeline != VK_NULL_HANDLE) {
+        vkDestroyPipeline(r->device, snode->gpl_lto_pipeline, NULL);
+        snode->gpl_lto_pipeline = VK_NULL_HANDLE;
+    }
+    if (snode->gpl_retired_pipeline != VK_NULL_HANDLE) {
+        vkDestroyPipeline(r->device, snode->gpl_retired_pipeline, NULL);
+        snode->gpl_retired_pipeline = VK_NULL_HANDLE;
+    }
+    /* #569 P5's one layout is shared and outlives every entry */
+    if (snode->layout == r->gpl.layout) {
+        snode->layout = VK_NULL_HANDLE;
+    }
+#endif
 
     if (snode->layout != VK_NULL_HANDLE) {
         vkDestroyPipelineLayout(r->device, snode->layout, NULL);
@@ -1474,8 +1496,16 @@ static void init_pipeline_cache(PGRAPHState *pg)
     r->pipeline_cache.pre_node_evict = pipeline_cache_pre_evict;
 }
 
+/* #569 P1: vk/compile_worker.c and pgraph/profile.c */
+VkResult pgraph_vk_create_graphics_pipeline_fb(
+    PGRAPHVkState *r, const VkGraphicsPipelineCreateInfo *info, bool draw,
+    VkPipeline *pipeline);
+void nv2a_profile_shader_keydiff(const ShaderState *prev,
+                                 const ShaderState *cur);
+
 static void save_pipeline_cache_to_disk(PGRAPHVkState *r)
 {
+    int64_t t0 = nv2a_clock_ns();
     size_t size = 0;
     VkResult res = vkGetPipelineCacheData(r->device, r->vk_pipeline_cache,
                                           &size, NULL);
@@ -1493,6 +1523,7 @@ static void save_pipeline_cache_to_disk(PGRAPHVkState *r)
         }
         g_free(data);
     }
+    g_nv2a_stats.shader_stats.plc_save_us += (nv2a_clock_ns() - t0) / 1000;
 }
 
 #define PIPELINE_CACHE_SAVE_INTERVAL_US (30 * 1000000LL)
@@ -1514,6 +1545,11 @@ static void maybe_save_pipeline_cache(PGRAPHVkState *r)
 static void finalize_pipeline_cache(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
+
+#if OPT_ASYNC_COMPILE
+    /* An LTO job writes to its entry and uses the pipeline cache */
+    pgraph_vk_gpl_wait_lto_idle(r);
+#endif
 
     if (g_config.perf.cache_shaders) {
         save_pipeline_cache_to_disk(r);
@@ -2029,8 +2065,8 @@ static void create_clear_pipeline(PGRAPHState *pg)
     };
 
     VkPipeline pipeline;
-    VK_CHECK(vkCreateGraphicsPipelines(r->device, r->vk_pipeline_cache, 1,
-                                       &pipeline_info, NULL, &pipeline));
+    VK_CHECK(pgraph_vk_create_graphics_pipeline_fb(r, &pipeline_info, false,
+                                                   &pipeline));
 
     snode->pipeline = pipeline;
     snode->layout = layout;
@@ -2189,6 +2225,84 @@ static void init_pipeline_key(PGRAPHState *pg, PipelineKey *key)
 #endif
 }
 
+#if OPT_ASYNC_COMPILE
+/* What a pipeline create needs, for the compile worker or the #569 P5
+ * library path (vk/compile_worker.c) */
+static void fill_pipeline_create_params(
+    PGRAPHVkState *r, PipelineCreateParams *p,
+    const VkPipelineShaderStageCreateInfo *shader_stages,
+    int num_shader_stages, VkPrimitiveTopology topology,
+    const VkPipelineRasterizationStateCreateInfo *rasterizer,
+    const VkPipelineDepthStencilStateCreateInfo *depth_stencil,
+    const VkPipelineColorBlendAttachmentState *color_blend_attachment,
+    const float *blend_constants, const VkDynamicState *dynamic_states,
+    int num_dynamic_states, bool has_dynamic_line_width,
+    VkPipelineLayout layout, VkRenderPass render_pass)
+{
+    p->device = r->device;
+    p->vk_pipeline_cache = r->vk_pipeline_cache;
+    memcpy(p->shader_stages, shader_stages,
+           num_shader_stages * sizeof(shader_stages[0]));
+    p->num_shader_stages = num_shader_stages;
+    memcpy(p->binding_descs, r->vertex_binding_descriptions,
+           r->num_active_vertex_binding_descriptions *
+               sizeof(VkVertexInputBindingDescription));
+    memcpy(p->attr_descs, r->vertex_attribute_descriptions,
+           r->num_active_vertex_attribute_descriptions *
+               sizeof(VkVertexInputAttributeDescription));
+    p->num_binding_descs = r->num_active_vertex_binding_descriptions;
+    p->num_attr_descs = r->num_active_vertex_attribute_descriptions;
+    p->topology = topology;
+    p->rasterizer = *rasterizer;
+    p->depth_stencil = *depth_stencil;
+    p->has_zeta = r->zeta_binding != NULL;
+    p->color_blend_attachment = *color_blend_attachment;
+    p->has_color = r->color_binding != NULL;
+    memcpy(p->blend_constants, blend_constants, sizeof(p->blend_constants));
+    memcpy(p->dynamic_states, dynamic_states,
+           num_dynamic_states * sizeof(VkDynamicState));
+    p->num_dynamic_states = num_dynamic_states;
+    p->has_dynamic_line_width = has_dynamic_line_width;
+    p->layout = layout;
+    p->render_pass = render_pass;
+}
+
+/* #569 P5: a module's identity in the library keys, its SPIR-V's hash */
+static uint64_t gpl_module_id(ShaderModuleInfo *info)
+{
+    if (!info) {
+        return 0;
+    }
+    /* Only the thread that creates pipelines reads or writes it */
+    if (!info->gpl_id) {
+        info->gpl_id = (fast_hash(info->spirv->data, info->spirv->len) ^
+                        ((uint64_t)info->spirv->len << 40)) | 1;
+    }
+    return info->gpl_id;
+}
+
+/* #569 P5: the rest of PipelineCreateParams for the library path. The
+ * libraries are built against one render pass per attachment-format pair;
+ * every render pass here with that pair is identically defined, because
+ * create_render_pass() reads only the formats. */
+static void fill_pipeline_create_params_gpl(PGRAPHVkState *r,
+                                            PipelineCreateParams *p,
+                                            const PipelineKey *key)
+{
+    p->gpl = true;
+    p->gpl_vs_id = gpl_module_id(r->shader_binding->vsh.module_info);
+    p->gpl_gs_id = gpl_module_id(r->shader_binding->geom.module_info);
+    p->gpl_fs_id = gpl_module_id(r->shader_binding->psh.module_info);
+    p->gpl_color_format = key->render_pass_state.color_format;
+    p->gpl_zeta_format = key->render_pass_state.zeta_format;
+    RenderPassState lib_rp;
+    memset(&lib_rp, 0, sizeof(lib_rp));
+    lib_rp.color_format = key->render_pass_state.color_format;
+    lib_rp.zeta_format = key->render_pass_state.zeta_format;
+    p->gpl_lib_render_pass = get_render_pass(r, &lib_rp);
+}
+#endif
+
 static void create_pipeline(PGRAPHState *pg)
 {
     NV2A_VK_DGROUP_BEGIN("Creating pipeline");
@@ -2301,6 +2415,21 @@ static void create_pipeline(PGRAPHState *pg)
         NV2A_VK_DPRINTF("Cache hit");
         g_nv2a_stats.shader_stats.pipeline_cache_hits++;
         r->pipeline_binding_changed = r->pipeline_binding != snode;
+#if OPT_ASYNC_COMPILE
+        /* #569 P5, HAKUX_GPL=2: the LTO rebuild is ready; the fast-linked
+         * pipeline stays alive until eviction, a command buffer in flight
+         * may use it */
+        if (snode->gpl_lto_pipeline != VK_NULL_HANDLE &&
+            snode->gpl_retired_pipeline == VK_NULL_HANDLE &&
+            !qatomic_read(&snode->gpl_lto_pending)) {
+            smp_rmb();
+            snode->gpl_retired_pipeline = snode->pipeline;
+            snode->pipeline = snode->gpl_lto_pipeline;
+            snode->gpl_lto_pipeline = VK_NULL_HANDLE;
+            qatomic_inc(&r->gpl.stats.lto_swapped);
+            r->pipeline_binding_changed = true;
+        }
+#endif
         r->pipeline_binding = snode;
         NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
         NV2A_VK_DGROUP_END();
@@ -2723,6 +2852,69 @@ static void create_pipeline(PGRAPHState *pg)
      * bits clear, and a further 0.6% is the triangle-fan/strip interior seam.
      */
 
+#if OPT_ASYNC_COMPILE
+    /*
+     * #569 P5: link from graphics pipeline libraries (vk/compile_worker.c),
+     * under the one fixed layout rather than one created per miss. With
+     * async compile on, the worker builds it; otherwise it is built here,
+     * and a stage this pipeline shares with an earlier one is not compiled
+     * again.
+     */
+    if (r->gpl.mode) {
+        VkPipelineLayout gpl_layout = pgraph_vk_gpl_layout(r);
+        VkRenderPass gpl_render_pass =
+            get_render_pass(r, &key.render_pass_state);
+        CompileJob *job = NULL;
+        PipelineCreateParams sync_params;
+        PipelineCreateParams *p = &sync_params;
+        if (xemu_get_async_compile()) {
+            job = g_malloc0(sizeof(CompileJob));
+            job->type = COMPILE_JOB_PIPELINE;
+            job->pipeline.target = snode;
+            p = &job->pipeline.params;
+        } else {
+            memset(p, 0, sizeof(*p));
+        }
+        fill_pipeline_create_params(
+            r, p, shader_stages, num_active_shader_stages,
+            input_assembly.topology, &rasterizer, &depth_stencil,
+            &color_blend_attachment, color_blending.blendConstants,
+            dynamic_states, num_dynamic_states,
+            snode->has_dynamic_line_width, gpl_layout, gpl_render_pass);
+        fill_pipeline_create_params_gpl(r, p, &key);
+
+        snode->draw_time = pg->draw_time;
+
+        if (job) {
+            snode->pending = true;
+            r->pipeline_binding = snode;
+            r->pipeline_binding_changed = true;
+            pgraph_vk_compile_worker_enqueue(r, job);
+            NV2A_PHASE_TIMER_END_EXCL(shader_compile);
+            NV2A_VK_DGROUP_END();
+            return;
+        }
+
+        nv2a_profile_shader_keydiff(
+            r->pipeline_binding && r->pipeline_binding != snode &&
+                    !r->pipeline_binding->key.clear
+                ? &r->pipeline_binding->key.shader_state
+                : NULL,
+            &key.shader_state);
+        VkPipeline pipeline;
+        VK_CHECK(pgraph_vk_gpl_create_pipeline(r, snode, p, &pipeline));
+        snode->pipeline = pipeline;
+        snode->layout = gpl_layout;
+        snode->render_pass = gpl_render_pass;
+        r->pipeline_binding = snode;
+        r->pipeline_binding_changed = true;
+
+        maybe_save_pipeline_cache(r);
+        NV2A_PHASE_TIMER_END_EXCL(shader_compile);
+        NV2A_VK_DGROUP_END();
+        return;
+    }
+#endif
 
     VkPushConstantRange push_constant_ranges[2];
     int num_push_ranges = 0;
@@ -2833,9 +3025,15 @@ static void create_pipeline(PGRAPHState *pg)
         .subpass = 0,
         .basePipelineHandle = VK_NULL_HANDLE,
     };
+    nv2a_profile_shader_keydiff(
+        r->pipeline_binding && r->pipeline_binding != snode &&
+                !r->pipeline_binding->key.clear
+            ? &r->pipeline_binding->key.shader_state
+            : NULL,
+        &key.shader_state);
     VkPipeline pipeline;
-    VK_CHECK(vkCreateGraphicsPipelines(r->device, r->vk_pipeline_cache, 1,
-                                       &pipeline_create_info, NULL, &pipeline));
+    VK_CHECK(pgraph_vk_create_graphics_pipeline_fb(r, &pipeline_create_info,
+                                                   true, &pipeline));
 
     snode->pipeline = pipeline;
     snode->layout = layout;
@@ -2997,6 +3195,14 @@ static void push_geom_line_params(PGRAPHState *pg)
 static int push_template_index(PGRAPHVkState *r, bool use_push_constants,
                                uint32_t uniform_attrs)
 {
+#if OPT_ASYNC_COMPILE
+    /* #569 P5's one layout declares every inline attribute */
+    if (use_push_constants && r->pipeline_binding &&
+        r->gpl.layout != VK_NULL_HANDLE &&
+        r->pipeline_binding->layout == r->gpl.layout) {
+        return NV2A_VERTEXSHADER_ATTRIBUTES;
+    }
+#endif
     return use_push_constants ? __builtin_popcount(uniform_attrs) : 0;
 }
 
@@ -3449,6 +3655,202 @@ void pgraph_vk_flush_all_frames(PGRAPHState *pg)
     }
 }
 
+/*
+ * Waiting for the render thread to submit a frame slot (#526). Two places in
+ * pgraph_vk_finish wait until the render thread has run vkQueueSubmit for a
+ * slot this thread queued: the deferred finish, and the frame rotation when
+ * the next slot is still queued. Both used to loop on sched_yield(), which
+ * returns at once on a core with nothing else to run, so the wait was a spin
+ * at full clock for as long as the render thread's backlog took to drain.
+ *
+ * Now the wait polls for up to RWAIT_SPIN_NS with cpu_relax(), which covers
+ * the waits that end quickly, then blocks on the render thread's idle_event.
+ * The render thread sets that event after every command it completes
+ * (render_thread.c), so the waiter wakes once per drained command and checks
+ * again; the finish it waits for is still queued, so a set always follows.
+ * Resetting the event here can swallow a set that
+ * pgraph_vk_render_thread_wait_idle() on another thread has not observed yet,
+ * so the event is set again on the way out. An extra set costs that caller
+ * one more look at its queue. HAKUX_RENDER_WAIT=yield selects the old loop
+ * for an A/B on one binary.
+ *
+ * The [rwait526] line (tag hakuX-lane, every 10 s) carries what judges it:
+ * per site, how many waits found the slot already submitted, ended inside the
+ * poll, or blocked; the wall time of the waits (10 us bins); and this
+ * thread's CPU time, in total and inside the waits.
+ */
+#define RWAIT_SPIN_NS 30000
+#define RWAIT_BIN_NS 10000
+#define RWAIT_BINS 200          /* 0-2 ms; one more bin holds the rest */
+#define RWAIT_WINDOW_NS (10 * NANOSECONDS_PER_SECOND)
+
+enum { RWAIT_BLOCK, RWAIT_YIELD };
+enum { RWAIT_DEFERRED, RWAIT_ROTATE, RWAIT_SITES };
+
+static struct {
+    int mode;
+    int64_t t0_ns, wait_cpu_ns;
+    unsigned int flips0;
+    unsigned int calls[RWAIT_SITES], waits[RWAIT_SITES];
+    unsigned int spun[RWAIT_SITES], blocked[RWAIT_SITES], wakes[RWAIT_SITES];
+    int64_t wait_ns[RWAIT_SITES], wait_max_ns[RWAIT_SITES];
+    unsigned int hist[RWAIT_SITES][RWAIT_BINS + 1];
+} rwait526 = { .mode = -1 };
+
+/*
+ * The waits are reached from more than one thread (the PFIFO thread, the
+ * display's present, surface downloads), and the window is closed by
+ * whichever of them crosses it. A thread's CPU clock is only comparable
+ * with itself, so each thread keeps its own span and reports it when it
+ * closes a window: tid, seconds, guest flips and CPU since its own last
+ * report.
+ */
+static __thread int64_t rwait_tl_t0_ns, rwait_tl_cpu0_ns;
+static __thread unsigned int rwait_tl_flips0;
+
+static int rwait_mode(void)
+{
+    if (rwait526.mode < 0) {
+        const char *env = getenv("HAKUX_RENDER_WAIT");
+        rwait526.mode = env && !strcmp(env, "yield") ? RWAIT_YIELD
+                                                     : RWAIT_BLOCK;
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-lane",
+                            "[rwait526] render wait mode=%s env=%s spin_us=%d",
+                            rwait526.mode == RWAIT_YIELD ? "yield" : "block",
+                            env ? env : "(unset)", RWAIT_SPIN_NS / 1000);
+#endif
+    }
+    return rwait526.mode;
+}
+
+static int64_t rwait_thread_cpu_ns(void)
+{
+    struct timespec ts;
+    if (clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts) != 0) {
+        return 0;
+    }
+    return ts.tv_sec * NANOSECONDS_PER_SECOND + ts.tv_nsec;
+}
+
+#ifdef __ANDROID__
+static double rwait_pct_us(int site, double q)
+{
+    unsigned int n = rwait526.waits[site];
+    unsigned int want = (unsigned int)(q * n + 0.999999), acc = 0;
+    for (int i = 0; i <= RWAIT_BINS && n; i++) {
+        acc += rwait526.hist[site][i];
+        if (acc >= want) {
+            /* the bin's upper edge: a bound on the percentile, not a value */
+            return (double)(i + 1) * RWAIT_BIN_NS / 1000.0;
+        }
+    }
+    return -1.0;
+}
+#endif
+
+static void rwait_report(int64_t now)
+{
+    int64_t thr = rwait_thread_cpu_ns();
+    unsigned int flips = g_nv2a_stats.frame_count;
+
+#ifdef __ANDROID__
+    if (rwait526.t0_ns) {
+        char site_txt[RWAIT_SITES][192];
+        for (int s = 0; s < RWAIT_SITES; s++) {
+            snprintf(site_txt[s], sizeof(site_txt[s]),
+                     "calls=%u waits=%u spun=%u blocked=%u wakes=%u "
+                     "wait_ms=%.2f p50_us=%.0f p99_us=%.0f max_us=%.0f",
+                     rwait526.calls[s], rwait526.waits[s], rwait526.spun[s],
+                     rwait526.blocked[s], rwait526.wakes[s],
+                     rwait526.wait_ns[s] / 1e6, rwait_pct_us(s, 0.50),
+                     rwait_pct_us(s, 0.99), rwait526.wait_max_ns[s] / 1e3);
+        }
+        /* thr_*: this thread's own span; -1 on its first report */
+        __android_log_print(
+            ANDROID_LOG_INFO, "hakuX-lane",
+            "[rwait526] mode=%s s=%.2f flips=%u tid=%d thr_s=%.2f "
+            "thr_flips=%d thr_cpu_ms=%.1f wait_cpu_ms=%.2f "
+            "| deferred %s | rotate %s",
+            rwait_mode() == RWAIT_YIELD ? "yield" : "block",
+            (now - rwait526.t0_ns) / 1e9, flips - rwait526.flips0,
+            qemu_get_thread_id(),
+            rwait_tl_t0_ns ? (now - rwait_tl_t0_ns) / 1e9 : -1.0,
+            rwait_tl_t0_ns ? (int)(flips - rwait_tl_flips0) : -1,
+            rwait_tl_t0_ns ? (thr - rwait_tl_cpu0_ns) / 1e6 : -1.0,
+            rwait526.wait_cpu_ns / 1e6,
+            site_txt[RWAIT_DEFERRED], site_txt[RWAIT_ROTATE]);
+    }
+#endif
+    rwait526.t0_ns = now;
+    rwait526.flips0 = flips;
+    rwait_tl_t0_ns = now;
+    rwait_tl_cpu0_ns = thr;
+    rwait_tl_flips0 = flips;
+    rwait526.wait_cpu_ns = 0;
+    memset(rwait526.calls, 0, sizeof(rwait526.calls));
+    memset(rwait526.waits, 0, sizeof(rwait526.waits));
+    memset(rwait526.spun, 0, sizeof(rwait526.spun));
+    memset(rwait526.blocked, 0, sizeof(rwait526.blocked));
+    memset(rwait526.wakes, 0, sizeof(rwait526.wakes));
+    memset(rwait526.wait_ns, 0, sizeof(rwait526.wait_ns));
+    memset(rwait526.wait_max_ns, 0, sizeof(rwait526.wait_max_ns));
+    memset(rwait526.hist, 0, sizeof(rwait526.hist));
+}
+
+/* Return once the render thread has submitted `frame`. */
+static void wait_frame_submitted(PGRAPHVkState *r, int frame, int site)
+{
+    int64_t t0 = get_clock();
+
+    if (!rwait526.t0_ns || t0 - rwait526.t0_ns >= RWAIT_WINDOW_NS) {
+        rwait_report(t0);
+    }
+    rwait526.calls[site]++;
+    if (qatomic_read(&r->frame_submitted[frame])) {
+        return;
+    }
+
+    int64_t cpu0 = rwait_thread_cpu_ns();
+
+    if (rwait_mode() == RWAIT_YIELD || r->is_render_thread_context) {
+        while (!qatomic_read(&r->frame_submitted[frame])) {
+            sched_yield();
+        }
+    } else {
+        bool done = false;
+        while (get_clock() - t0 < RWAIT_SPIN_NS) {
+            if (qatomic_read(&r->frame_submitted[frame])) {
+                done = true;
+                break;
+            }
+            cpu_relax();
+        }
+        if (done) {
+            rwait526.spun[site]++;
+        } else {
+            QemuEvent *ev = &r->render_thread.idle_event;
+            rwait526.blocked[site]++;
+            while (true) {
+                qemu_event_reset(ev);
+                if (qatomic_read(&r->frame_submitted[frame])) {
+                    break;
+                }
+                qemu_event_wait(ev);
+                rwait526.wakes[site]++;
+            }
+            qemu_event_set(ev);
+        }
+    }
+
+    int64_t dt = get_clock() - t0;
+    rwait526.wait_cpu_ns += rwait_thread_cpu_ns() - cpu0;
+    rwait526.waits[site]++;
+    rwait526.wait_ns[site] += dt;
+    rwait526.wait_max_ns[site] = MAX(rwait526.wait_max_ns[site], dt);
+    rwait526.hist[site][MIN(dt / RWAIT_BIN_NS, RWAIT_BINS)]++;
+}
+
 static void flush_reorder_window_internal(NV2AState *d);
 static void flush_draw_queue_internal(NV2AState *d);
 
@@ -3707,12 +4109,8 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
             pgraph_vk_render_thread_enqueue(r, cmd);
 
             if (deferred) {
-                /* Spin-wait for render thread to complete vkQueueSubmit.
-                 * Faster than QemuEvent (no futex/eventfd syscall overhead).
-                 * Typically completes in <100μs. */
-                while (!qatomic_read(&r->frame_submitted[deferred_frame])) {
-                    sched_yield();
-                }
+                /* Wait for the render thread to complete vkQueueSubmit. */
+                wait_frame_submitted(r, deferred_frame, RWAIT_DEFERRED);
             }
 
             if (!deferred) {
@@ -3772,13 +4170,10 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
 
             /* If the next frame slot was enqueued for deferred submission
              * but the render thread hasn't completed vkQueueSubmit yet,
-             * spin-wait until it does. With 3 frame slots this rarely
+             * wait until it does. With 3 frame slots this rarely
              * triggers since there's 2 frames of pipeline headroom. */
-            if (r->frame_enqueued[next_frame] &&
-                !qatomic_read(&r->frame_submitted[next_frame])) {
-                while (!qatomic_read(&r->frame_submitted[next_frame])) {
-                    sched_yield();
-                }
+            if (r->frame_enqueued[next_frame]) {
+                wait_frame_submitted(r, next_frame, RWAIT_ROTATE);
             }
             r->frame_enqueued[next_frame] = false;
 

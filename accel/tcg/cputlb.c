@@ -154,12 +154,14 @@ extern uint64_t hakux_tcg424_cbb;
 
 /*
  * Fix switches, read once from the environment so one binary carries both
- * arms (request.sh --env). Default OFF (#311 arms must differ from master
- * only by counters and one hunk); "1" turns a fix on.
+ * arms (request.sh --env). Both are default ON now; "0" turns one off.
  *
  *   HAKUX_TCG68_RD  tlb_reset_dirty / tlb_set_dirty walk only the modes in
  *                   tlb.c.dirty instead of all NB_MMU_MODES. Exact, not a
  *                   heuristic: see tlb_reset_dirty().
+ *                   Default ON since #548 (Crimson and Blinx walked 22
+ *                   modes and 5,880 to 7,990 entries to reach the 610 to
+ *                   2,620 in the two modes that hold any).
  *   HAKUX_TCG68_JC  do_tb_phys_invalidate() does not wipe the whole jump
  *                   cache for a CF_PCREL TB. See tb_jmp_cache_inval_tb().
  *                   Default ON since #425 (PR #443: pixels 593/593
@@ -179,7 +181,7 @@ static inline bool hakux_tlb68_rd_on(void)
 {
     int v = qatomic_read(&hakux_tlb68_fix_rd);
     if (unlikely(v < 0)) {
-        v = hakux_tlb68_env("HAKUX_TCG68_RD");
+        v = getenv("HAKUX_TCG68_RD") ? hakux_tlb68_env("HAKUX_TCG68_RD") : 1;
         qatomic_set(&hakux_tlb68_fix_rd, v);
     }
     return v;

@@ -115,6 +115,10 @@ def _soak_median(rdir, lo=90.0, hi=240.0):
     return _soak_read(rdir, lo, hi)[:2]
 
 
+def _targets_path():
+    return os.environ.get("TITLE_TARGETS") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "titles", "targets.toml")
+
+
 def _fps_bar(playable=None):
     """The fps a window must reach to count as at the bar, as title_verdict.py
     judges it: [defaults] playable_fps x fps_tolerance in targets.toml (the
@@ -122,7 +126,7 @@ def _fps_bar(playable=None):
     title_verdict.py's own fallbacks for a key the file does not set. A
     verdict records its playable_fps as fps_bar but not the tolerance: pass
     it as `playable`."""
-    p = os.environ.get("TITLE_TARGETS") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "titles", "targets.toml")
+    p = _targets_path()
     try:
         import tomllib
         with open(p, "rb") as fh:
@@ -130,6 +134,24 @@ def _fps_bar(playable=None):
     except (OSError, ValueError, ImportError):
         d = {}
     return round(float(d.get("playable_fps", 30) if playable is None else playable) * float(d.get("fps_tolerance", 0.95)), 3)
+
+
+def _title_verdict_module():
+    """title_verdict.py, imported once, for a live full-gameplay-window score
+    on a soak that has no verdict.json yet (#433). None when it cannot be
+    imported -- its own guards handle a python with no tomllib; thermal_state.py
+    living beside it must be importable too -- and every caller falls back to
+    the 90-240 s slice, labelled as a slice, when this is None."""
+    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
+    try:
+        sys.path.insert(0, d)
+        import title_verdict
+        return title_verdict
+    except Exception:
+        return None
+    finally:
+        if sys.path and sys.path[0] == d:
+            sys.path.pop(0)
 
 
 def _soak_read(rdir, lo=90.0, hi=240.0, bar=None):
@@ -932,9 +954,11 @@ ESC_RECHECK_SECS = 2 * 3600
 
 
 def _items(text, opens):
-    """Group lines into items: a line for which opens(line) is true starts one, and the indented
-    lines under it belong to it (UPDATE, RESOLVED and re-checked notes are written there). Other
-    lines are no item's and end none. As host-tools/harness_health.py groups escalations."""
+    """Group lines into items: a line for which opens(line) is true starts one, and every line
+    after it -- indented (UPDATE, RESOLVED and re-checked notes are written there) or not (an
+    unindented paragraph inside a "## " heading block) -- belongs to it until the next line that
+    opens one. A line before any item opens belongs to none. As host-tools/harness_health.py
+    groups escalations."""
     out = []
     for l in text.splitlines():
         if l[:1] in (" ", "\t"):
@@ -942,21 +966,41 @@ def _items(text, opens):
                 out[-1].append(l.strip())
         elif opens(l):
             out.append([l.strip()])
+        elif out and l.strip():
+            out[-1].append(l.strip())
     return out
 
 
+_RESOLVED = re.compile(r"(?:^|[.!?]\s+)RESOLVED\b")
+
+
 def escalation_items(text, now):
-    """The open owner items in host-tools/escalations.md. An item is an unindented line (a "- " bullet,
-    or the older unbulleted "OWNER ONLY ...(meta): text" line; not a "#" heading) plus its indented
-    continuation lines; it is resolved when any of its lines says RESOLVED. The page
-    shows its first line, and the newest "re-checked HH:MM" among its lines (hostops re-verifies each
-    open item every tick); an item neither opened nor re-checked in the last 2 h is marked unverified."""
+    """The open owner items in host-tools/escalations.md. An item opens on a "- " (or "*") bullet,
+    an older unbulleted "OWNER ..." line, or a "## " heading; everything after it up to the next
+    such line belongs to it (a heading block's unindented paragraphs included -- hostops writes
+    those without a bullet or indent, and reading each one as its own item is what turned one WSL
+    escalation into 32 on the page, #433). An item is resolved only by a marker, never a bare
+    substring: RESOLVED where a sentence starts -- the very first word after the bullet/heading
+    marker or after a continuation line's indentation, or anywhere it follows ". "/"! "/"? " --
+    closes it; hostops writes both a leading "- RESOLVED ...: ... Was: ..." rewrite and an older
+    "<original ask>. RESOLVED <time> (source): <resolution>" appended to the same line, and both
+    forms are a marker under this rule. "Not marking RESOLVED." and "Mark RESOLVED here once done"
+    are mid-sentence, not a new sentence, so they are prose and never close an item -- including
+    when hostops's own line-wrap splits that exact sentence in two ("Not marking\n  RESOLVED.",
+    2026-09-29 18:33 PDT): the marker is searched for in the item's lines joined back into prose,
+    not line by line, so a wrapped "RESOLVED." that only continues the previous line's unfinished
+    sentence is not mistaken for one starting fresh. The page shows the item's first line, and the
+    newest "re-checked HH:MM" among its lines (hostops re-verifies each open item every tick); an
+    item neither opened nor re-checked in the last 2 h is marked unverified."""
     out = []
     today = _lt(now, "full")[:10]
-    for lines in _items(text, lambda l: l.strip() and not l.startswith("#")):
-        if any("RESOLVED" in l for l in lines):
+    def opens(l):
+        s = l.strip()
+        return bool(s) and bool(re.match(r"^(?:[-*]\s|OWNER ONLY\b|##\s)", s))
+    for lines in _items(text, opens):
+        l = re.sub(r"^(?:[-*]\s+|#+\s+)", "", lines[0])
+        if _RESOLVED.search(" ".join([l] + lines[1:])):
             continue
-        l = re.sub(r"^[-*]\s+", "", lines[0])
         m = re.match(r"^(OWNER ONLY[^(:]*)?\(([^)]*)\)\s*:\s*(.*)$", l)
         at = None
         if m:
@@ -1251,6 +1295,28 @@ def _devwatch(F, now):
     return {"found": True, "updated": up, "stale": up is None or now - up > 300, "devices": devs}
 
 
+def _meas_from_verdict(v, d, mode_dir, at, src):
+    """A `measured` row's dict, from a title_verdict.py-shaped result -- a
+    stored verdict.json, or a live judge() that wrote none -- in the shape
+    titles05 gates the pipeline on and _title_detail prints: the full
+    gameplay window's fps and share (never a fixed slice), reached/crash/hang,
+    and an audio flag from ANY `audio:` failure (title_verdict.py lists every
+    failing criterion in `failures`, not just the first named one)."""
+    rg = v.get("reached_gameplay")
+    fails = [str(x) for x in (v.get("failures") or [])]
+    return {
+        "device": d, "fps": v.get("fps_window_median"), "share": v.get("fps_ok_share"),
+        "bar": _fps_bar(v["fps_bar"] if isinstance(v.get("fps_bar"), (int, float)) else None),
+        "reached": "yes" if rg else ("no" if rg is False else "unconfirmed"),
+        "blocker": (v.get("failing") or "") if (rg is False or v.get("crash") or v.get("hang")) else "",
+        "crash": bool(v.get("crash")), "hang": bool(v.get("hang")),
+        "audio": any(f.startswith("audio:") for f in fails),
+        "verdict": "Playable" if v.get("pass") else ("fails: " + (v.get("failing") or "not Playable")),
+        "fails": fails, "at": at, "ref": str(v.get("ref") or "")[:10], "mode": _perf_mode(mode_dir),
+        "src": src, "hand": False, "url": "", "id": str(v.get("request_id") or ""),
+        "kind": v.get("pass_kind") or "", "route": v.get("route") or ""}
+
+
 def _iso_name(iso):
     """A title's name from an ISO file no registry names: "Tork - Prehistoric
     Punk (USA).iso" -> "Tork - Prehistoric Punk"."""
@@ -1386,18 +1452,7 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
             latest[(n, d)] = (at, v, p, tid)
     for (n, d), (at, v, p, tid) in latest.items():
         add(n, tid, d)
-        rg = v.get("reached_gameplay")
-        fails = [str(x) for x in (v.get("failures") or [])]
-        meas.setdefault(n, {})[d] = {
-            "device": d, "fps": v.get("fps_window_median"), "share": v.get("fps_ok_share"),
-            "bar": _fps_bar(v["fps_bar"] if isinstance(v.get("fps_bar"), (int, float)) else None),
-            "reached": "yes" if rg else ("no" if rg is False else "unconfirmed"),
-            "blocker": (v.get("failing") or "") if (rg is False or v.get("crash") or v.get("hang")) else "",
-            "crash": bool(v.get("crash")), "hang": bool(v.get("hang")),
-            "verdict": "Playable" if v.get("pass") else ("fails: " + (v.get("failing") or "not Playable")),
-            "fails": fails, "at": at, "ref": str(v.get("ref") or "")[:10], "mode": _perf_mode(os.path.dirname(p)),
-            "src": "title_verdict.py", "hand": False, "url": "", "id": str(v.get("request_id") or ""),
-            "kind": v.get("pass_kind") or "", "route": v.get("route") or ""}
+        meas.setdefault(n, {})[d] = _meas_from_verdict(v, d, os.path.dirname(p), at, "title_verdict.py")
 
     # ---- in flight: requests whose `title` (the ISO file) is this title's
     def req_title(r):
@@ -1406,15 +1461,26 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
             return iso_title[t]
         m = re.match(r"^([0-9A-Fa-f]{8})-", t)
         return by_tid.get(m.group(1).upper()) if m else (t if t in where else None)
-    # ---- soaks: a finished run whose request names the title, over the
-    # Ghoulies gate's 90-240 s from the first perf line, scored as
-    # title_verdict.py scores a run (_soak_read: 60-flip windows, time-weighted
-    # share at its bar). Results do not change once DONE, so each is read once
-    # and kept in $S/soak-gfps.json, keyed by result id with the bar it used.
-    cache_p = os.path.join(F.E["S"], "soak-gfps.json") if F.E.get("S") else ""
+    # ---- soaks: a finished run whose request names the title. One whose
+    # request also names the title's own route is scored the way
+    # title_verdict.py scores a confirmed run -- the mark to `soak end`, hang
+    # and audio included -- never the Ghoulies gate's fixed 90-240 s slice
+    # (#433: several 90-240 s slices read 100% where the full window read
+    # 22-47%, with hangs of 22-72 s the slice never saw, so the row looked
+    # ready to confirm when it was not). This never writes verdict.json or a
+    # contact sheet -- that is title_verdict.py --judge's job, run by an
+    # operator or the arms job -- so a route-less request, which title_verdict
+    # cannot score (no mark to start from), falls back to that slice, LABELLED
+    # as one (`screen_only`), so it never reads as a verdict and its `reached`
+    # stays "unconfirmed" -- it can never satisfy `bench` below, so a slice
+    # alone can never show a title as a Playable candidate. Results do not
+    # change once DONE, so each is read once and kept in $S/soak-live.json,
+    # keyed by result id with the bar it used.
+    cache_p = os.path.join(F.E["S"], "soak-live.json") if F.E.get("S") else ""
     cache = (_jload(cache_p) if cache_p else None) or {}
     bar = _fps_bar()
     fresh, soakr = False, {}
+    tv = _title_verdict_module()
     rdir0 = os.path.join(F.D, "results")
     try:
         rids = sorted(os.listdir(rdir0))
@@ -1429,20 +1495,40 @@ def titles05(F, conf, conf_path, now, rows=(), reqs=(), tracker=None, lane_issue
         if not isinstance(q, dict) or not q.get("title"):
             continue
         n = req_title(q) or _iso_name(q["title"])
-        c = cache.get(rid) or ()
-        if len(c) < 5 or c[4] != bar:      # a shorter entry predates the verdict's reading
-            cache[rid] = list(_soak_read(rdir, bar=bar))
-            fresh = True
-        med, cnt, shr, fps = cache[rid][:4]
-        if med is None:
-            continue
         d = q.get("device") or "?"
+        c = cache.get(rid)
+        if not isinstance(c, dict) or c.get("bar") != bar:
+            full = None
+            if tv is not None and q.get("route") and os.path.exists(os.path.join(rdir, "run.log")):
+                try:
+                    full = tv.judge(rdir, targets_path=_targets_path(), write_contact_sheet=False)
+                except Exception:
+                    full = None
+            if full is not None and full.get("fps_window_median") is not None:
+                c = {"bar": bar, "kind": "full", "v": full}
+            else:
+                med, cnt, shr, fps, _ = _soak_read(rdir, bar=bar)
+                c = {"bar": bar, "kind": "screen", "fps": fps, "share": shr, "cnt": cnt}
+            cache[rid] = c
+            fresh = True
+        if c["kind"] == "full":
+            fps = c["v"].get("fps_window_median")
+        else:
+            fps = c.get("fps")
+        if fps is None:
+            continue
         add(n, "", d)
         seen(n, fps, at)
-        x = {"device": d, "fps": fps, "share": shr, "bar": bar, "reached": "unconfirmed", "blocker": "", "crash": False,
-             "hang": False, "verdict": "soak, %d gfps samples in 90-240 s" % cnt, "at": at,
-             "ref": str(q.get("ref") or "")[:10], "mode": _perf_mode(rdir), "src": "soak", "hand": False,
-             "url": "", "id": rid, "route": ""}
+        if c["kind"] == "full":
+            x = _meas_from_verdict(c["v"], d, rdir, at, "soak")
+            x["verdict"] = ("meets the bar" if c["v"].get("pass") else
+                            ("fails: " + (c["v"].get("failing") or "not Playable"))) + " (full window; no verdict.json yet)"
+        else:
+            x = {"device": d, "fps": fps, "share": c["share"], "bar": bar, "reached": "unconfirmed",
+                 "blocker": "", "crash": False, "hang": False, "audio": False,
+                 "verdict": "screen: 90-240 s only, %d gfps samples" % c["cnt"], "at": at,
+                 "ref": str(q.get("ref") or "")[:10], "mode": _perf_mode(rdir), "src": "soak", "hand": False,
+                 "url": "", "id": rid, "route": "", "screen_only": True}
         if n not in soakr or at > soakr[n]["at"]:
             soakr[n] = x
         m = meas.setdefault(n, {})
@@ -1746,6 +1832,39 @@ def _device_words(d, now):
     return "idle" + ((" since %s" % _lt(d["since"])) if d.get("since") else "")
 
 
+_TIMER_NO_NEXT = re.compile(r"^(\S+)\.timer is active but has no next run\b")
+
+
+def _service_state(unit):
+    """systemctl --user is-active <unit>: "active", "activating", "inactive", "failed", ... or ""
+    when there is no systemd user session to ask (e.g. under test)."""
+    import subprocess
+    try:
+        p = subprocess.run(["systemctl", "--user", "is-active", unit], capture_output=True, text=True, timeout=10)
+        return (p.stdout or "").strip()
+    except Exception:
+        return ""
+
+
+def _live_timer_attn(items, state_of=_service_state):
+    """status.sh's own "<timer> has no next run" alarm already skips a paired .service that
+    reads active, activating or reloading AT THAT CHECK -- but a oneshot has no next elapse for
+    as long as it runs, by design, and the gap between status.sh's check and this render is
+    enough for the two ticks to disagree (hakux-hostops.timer fired one tick after its own
+    service's check passed, #433). Re-check here and drop the alarm unless the service reads
+    inactive or failed right now; an unreadable state (no systemd user session) keeps the alarm
+    rather than hiding a real one."""
+    out = []
+    for a in items:
+        m = a.get("kind") == "timer" and _TIMER_NO_NEXT.match(a.get("text") or "")
+        if m:
+            st = state_of(m.group(1) + ".service")
+            if st and st not in ("inactive", "failed"):
+                continue
+        out.append(a)
+    return out
+
+
 def build(facts_path, lanes_path, md_path):
     """Merge status.sh's facts.tsv, the lane block's lanes.json and STATUS.md."""
     f = {"devices": [], "attention": [], "blockers": [], "timers": []}
@@ -1772,6 +1891,7 @@ def build(facts_path, lanes_path, md_path):
                 kv[p[0]] = p[1]
     except OSError:
         f["attention"].append({"kind": "page", "text": "status.sh wrote no facts file; the strip below is empty"})
+    f["attention"] = _live_timer_attn(f["attention"])
     lanes = {}
     try:
         lanes = json.load(open(lanes_path, encoding="utf-8"))
@@ -2111,7 +2231,8 @@ def _fps_cell(x):
         return '<td class="c-f nm">not measured</td>'
     s = '<b class="fm %s">%s</b>' % (_fps_cls(p["fps"], p.get("bar")), esc("%.1f" % p["fps"]))
     s += '<span class="fsh">%s</span>' % esc(_share_at(p))
-    how = "hand-reviewed" if p.get("hand") else "soak" if p.get("src") == "soak" else ""
+    how = ("hand-reviewed" if p.get("hand") else "screen: 90-240 s only" if p.get("screen_only") else
+           "soak" if p.get("src") == "soak" else "")
     sub = " &middot; ".join(esc(b) for b in (str(p["device"]).capitalize(), _lt(p.get("at"), "md")[:5] if p.get("at") else "date ?",
                                               (p.get("mode") or "unrecorded") + (", " + how if how else "")))
     for c in x.get("cross") or []:
@@ -2172,9 +2293,10 @@ def _title_detail(x, now):
     d.append("save: %s" % (x.get("save_id") or (("not needed: " + x["save_na"]) if x.get("save_na") and x.get("inputs") else
                                                  "not needed (no profile step)" if not x.get("needs_save", True) and x.get("inputs") else "none extracted")))
     for m in x.get("measured") or []:
-        d.append("%s: %s fps, %s, reached gameplay %s; %s (%s, %s, ref %s, %s%s)" % (
+        d.append("%s: %s fps, %s, reached gameplay %s%s%s; %s (%s, %s, ref %s, %s%s)" % (
             m.get("device"), ("%g" % m["fps"]) if m.get("fps") is not None else "-",
             _share_at(m), m.get("reached") or "?",
+            ", hang" if m.get("hang") else "", ", audio short" if m.get("audio") else "",
             m.get("verdict") or "-", m.get("src"), _lt(m.get("at"), "md") if m.get("at") else "date ?", m.get("ref") or "?",
             m.get("mode") or "unrecorded", (", " + m["id"]) if m.get("id") else ""))
     if x.get("blocker"):
@@ -2711,9 +2833,88 @@ def content_key(page):
     return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
 
+# ------------------------------------------------------------------ the degraded-render guard
+#
+# At 17:42 PDT on 2026-09-28 the board tick published a page reading "Measured
+# 0 / 145, Benchmarked 0 / 145, Playable 0 / 50; 0 lanes; no devices; queue not
+# read" over one reading 47 / 11 / 1 with 11 lanes, and PAGES_MIN_GAP then held
+# the next good render back for six minutes. That page is what build() makes
+# when lanes.json is missing: the lane block died or hit its timeout, most
+# likely on hung reads just after both handhelds left USB. So status.sh compares
+# the facts of each render with those of the last page it published, and does
+# not publish one that LOST data the last page had. The test is what could not
+# be READ -- the lane block, the board, the PR list, the devices, the queue, the
+# title table -- and an all-zero collapse of the three counts. A count that
+# merely fell (a reading withdrawn) is a real change and publishes.
+
+def page_facts(j):
+    """The facts of a status.json the guard compares, from the same fields the
+    first screen renders them from (_glance)."""
+    fs = j.get("first") or {}
+    trows = (fs.get("titles") or {}).get("rows") or []
+    lanes_read = bool(fs)
+    return {
+        "lanes_read": lanes_read,
+        "board_ok": bool(fs.get("board_ok")) if lanes_read else False,
+        "prs_ok": bool(fs.get("prs_ok")) if lanes_read else False,
+        "queue_read": bool((fs.get("queue") or {}).get("constraint")),
+        "devices": len(fs.get("devices") or []),
+        "lanes": len(fs.get("lanes") or []),
+        "titles": len(trows),
+        "measured": sum(1 for x in trows if x.get("fps_read")),
+        "benchmarked": sum(1 for x in trows if x.get("stage") in BENCHMARKED),
+        "playable": sum(1 for x in trows if x.get("stage") == "playable"),
+    }
+
+
+def degraded(new, old):
+    """What the new render lost that the last published one had read; empty
+    when nothing was lost. `old` may be empty (nothing published yet)."""
+    if not old:
+        return []
+    lost = []
+    for k, what in (("lanes_read", "the lane block was not read"), ("board_ok", "the board was not read"),
+                    ("prs_ok", "the PR list was not read"), ("queue_read", "queue not read")):
+        if old.get(k) and not new.get(k):
+            lost.append(what)
+    if old.get("devices") and not new.get("devices"):
+        lost.append("no devices, was %d" % old["devices"])
+    if old.get("titles") and not new.get("titles"):
+        lost.append("the title table is empty, was %d titles" % old["titles"])
+    c = ("measured", "benchmarked", "playable")
+    if any(old.get(k) for k in c) and not any(new.get(k) for k in c):
+        lost.append("the counts fell to 0 / 0 / 0, were %s" % " / ".join(str(old.get(k, 0)) for k in c))
+    return lost
+
+
 def main(argv):
     if len(argv) >= 2 and argv[1] == "key":
         print(content_key(open(argv[2], encoding="utf-8").read()))
+        return 0
+    if len(argv) >= 2 and argv[1] == "facts":
+        # facts <status.json>: the guard's facts as JSON; an unreadable status.json has none
+        try:
+            j = json.load(open(argv[2], encoding="utf-8"))
+        except Exception:
+            j = {}
+        print(json.dumps(page_facts(j), sort_keys=True))
+        return 0
+    if len(argv) >= 2 and argv[1] == "degraded":
+        # degraded <new facts.json> <last published facts.json>: exit 1 and print what was
+        # lost when the new render lost data; exit 0 otherwise. A missing last file is
+        # nothing to lose; an unreadable new one is itself a loss.
+        try:
+            new = json.load(open(argv[2], encoding="utf-8"))
+        except Exception:
+            new = {}
+        try:
+            old = json.load(open(argv[3], encoding="utf-8"))
+        except Exception:
+            old = {}
+        lost = degraded(new, old)
+        if lost:
+            print("; ".join(lost))
+            return 1
         return 0
     if len(argv) >= 2 and argv[1] == "render":
         j = json.load(open(argv[2], encoding="utf-8"))
