@@ -49,3 +49,21 @@ the offline protocol addendum instead of `gh issue comment` / `gh pr`.
 hostops's two r2 requeues (`-1456493r2`, `-1456544r2`), all on the Nova,
 each 20-30 min once running. Not polling from inside this session per the
 offline protocol's scope note -- parking here for the next resume.
+
+## #433 -- 2026-09-30 06:55 PDT
+
+[lane.verdict433] waiting: three more Nova Playable confirmations queued (lane.local's 06:45 PDT addendum).
+
+The addendum's examples don't hold the bar on the Nova when judged over the full window. Nightfire reads 52-65% at 28.5+ and Fuzion Frenzy at best 80.5%. Spikeout, GoldenEye: Rogue Agent and RalliSport 2 have no Nova route run that reached gameplay. So I picked the three titles whose newest Nova route soaks hold the bar by the widest margin:
+
+| Title | Nova evidence | Request |
+|---|---|---|
+| Alien Hominid | 4 runs at 100%, median 59.94, worst window 41 fps | `1-1790775886-lane.verdict433-3086847` |
+| 187: Ride or Die | 1 run at 100%, median 59.94, worst 59.88, in a race | `1-1790775886-lane.verdict433-3086875` |
+| Arctic Thunder | 4 runs at 100%, median 39-42, worst 31.4 | `1-1790775886-lane.verdict433-3086903` |
+
+All three use the defaults and 1200 s after the mark. Four earlier confirmations are still queued: WWE Raw 2, 50 Cent, Agent Under Fire and Baldur's Gate DA. All seven start when the Nova's top-up hold lifts.
+
+Playable count from this lane: 2 (KOF: Maximum Impact Maniax, Azurik), with 7 confirmations pending.
+
+Waiting on: the seven dispatch results above.

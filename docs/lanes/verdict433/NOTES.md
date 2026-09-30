@@ -668,3 +668,109 @@ untouched and already in `queue/`. Two titles confirmed Playable this
 session. Recording a `waiting:` entry in `OUTBOX.md` (no PR/issue comment
 tool available under the offline protocol) and stopping -- not polling
 device work from inside the session.
+
+## Session 8 (2026-09-30, resumed ~13:40 UTC / 06:40 PDT, attempt 4 since the reset)
+
+**Why attempt 3 (session 7) did not finish.** It did finish, on the
+documented stopping point: two Playable confirmations read (KOF MI, Azurik),
+two reruns queued, a `waiting:` entry in `OUTBOX.md`. The PR stays
+`State: draft` because four confirmations are still outstanding. This resume
+came from lane.local's 06:45 PDT addendum (queue up to 3 more), not from a
+result.
+
+Merged `origin/master` (34 commits; clean, nothing in this lane's files) and
+pushed as `15f476e77b`.
+
+**The four outstanding Nova confirmations are all still in `queue/`, none
+run** (the Nova is on the `lanelocal-topup` hold from 13:41Z): WWE Raw 2
+`-1456493r2`, 50 Cent `-1456544r2`, AUF `-366094`, BG:DA `-366130`.
+`running/` is empty.
+
+### Picking three more (evidence, not the example list)
+
+Swept every finished Nova route soak since session 4 (epoch 1790709000, 31
+runs) with `sweep.py`, and judged copies of the newest Nightfire, Fuzion and
+Spikeout soaks. The addendum's examples do not hold the bar on the Nova:
+
+| Title | Newest evidence | Reading |
+|---|---|---|
+| 007: Nightfire | memfast 09-29, 3 judgeable Nova runs | 52-65% at 28.5+ |
+| Fuzion Frenzy | idlehaltdefault, 6 Nova runs (session 4 sweep) | best 80.5% |
+| Spikeout | only a Thor route run (`0-0-x-1-1790567423-titleroutes-2191714`) | void, thermal pause at +207 s; no Nova route run |
+| GoldenEye: Rogue Agent | `y-1790481308-titlebench-2893125` | route never marked gameplay |
+| RalliSport 2 | Thor only, thermal void | no Nova route run |
+
+The titles that do hold it on the Nova, all newly routed or newly copied
+since the brief's 09-29 06:40 list (so tier A by its definition, "at the
+bar with no confirming verdict"):
+
+| Title | Runs (build) | Share 28.5+ | fps median / min | Gameplay s | Mark s |
+|---|---|---|---|---|---|
+| **Alien Hominid** | 4 (ibcache `c8e95ed539`, two with `HAKUX_IBC=0`) | 100% all 4 | 59.94 / 41.2-43.4 | 257-260 | 109-110 |
+| **187: Ride or Die** | 1 (titleroutes `1c0c23fabb`, ancestor of master) | 100% | 59.94 / 59.88 | 302 | 77 |
+| **Arctic Thunder** | 4 (tcg424flip `7bcd6e6e2b`, both arms) | 100% all 4 | 39.4-42.1 / 31.4-34.3 | 195-198 | 226-229 |
+| Crash Bandicoot: WoC | 2 (`1c0c23fabb`, hddcrash) | 100% | 56-58 / 41.8 | 144-309 | -- |
+| Crimson Skies | 3 (ibcache probe on, not master) | 96.6% | 30.0 / 26.4 | 250-254 | -- |
+| Midnight Club 3 | 1 | 87.5% | 29.7 / 13.8 | 289 | -- |
+
+**Chosen: Alien Hominid, 187: Ride or Die, Arctic Thunder.**
+- Alien Hominid has the most runs at the widest margin: four at 60 fps
+  whose worst window is 41 fps, on both ibcache arms (the `HAKUX_IBC=0` arm
+  is master's code path). Probability of a pass about 0.9.
+- 187: Ride or Die is one run, but locked at 59.9 with a worst window of
+  59.88, in a race, on a master build. Risk: its route notes one boot in
+  three hanging on a spinner, which would void rather than fail. About 0.8.
+- Arctic Thunder's worst window across four runs is 31.4 fps, above 28.5,
+  with no audio shortfall. Its builds are tcg424flip's (not folded), but
+  both arms of the #424 range setting read 100%, so that setting does not
+  move it. Risk: the race ends inside 1200 s and the loop's A presses must
+  carry it through the results screen. About 0.75.
+- Passed over: Crash (the scored window is the warp-room hub, which the
+  route itself calls an upper bound, and titleroutes plus hddcrash already
+  have Crash runs queued); Crimson (paced at 30.0, 96.6% only on unmerged
+  ibcache builds; the `HAKUX_IBC=0` control read 94.1% in session 4, a thin
+  margin over 20 min); Kabuki (skipped per the addendum).
+
+Refreshed `pilots/lane.verdict433.ok` (it was 22.9 h old) with the review of
+batch 4's two passing Nova confirmations: both mark frames show gameplay
+(KOF mid-round at FPS 58; Azurik in the training arena). Queued
+`queue_batch6.sh` at `15f476e77b`, `--seconds` = mark + 1200 + 80:
+
+| Title | Device | Regimen | Route | Seconds | Request |
+|---|---|---|---|---|---|
+| Alien Hominid | nova | default | alien-hominid | 1390 | `1-1790775886-lane.verdict433-3086847` |
+| 187: Ride or Die | nova | default | 187-ride-or-die.returning | 1360 | `1-1790775886-lane.verdict433-3086875` |
+| Arctic Thunder | nova | default | arctic-thunder | 1510 | `1-1790775886-lane.verdict433-3086903` |
+
+All three verified in `queue/` by exact path. Pilot gate: ~185 min of this
+lane's device time admitted on the refreshed pilot.
+
+### Running table (confirmations), session 8
+
+| Title | Device | Regimen | Request | Verdict |
+|---|---|---|---|---|
+| **KOF: Maximum Impact - Maniax** | nova | default | `1-1790725091-lane.verdict433-1456797` | **PASS Playable** (99.4%, 1282.6 s) |
+| **Azurik: Rise of Perathia** | nova | default | `1-1790725091-lane.verdict433-1456876` | **PASS Playable** (95.2%, 1292.3 s) |
+| WWE Raw 2 | nova | default | `1-1790737858-lane.verdict433-1456493r2` | queued |
+| 50 Cent: Bulletproof | nova | default | `1-1790737859-lane.verdict433-1456544r2` | queued |
+| 007: Agent Under Fire | nova | default | `1-1790745234-lane.verdict433-366094` | queued (`--reviewed-gameplay` needed: survey route) |
+| Baldur's Gate: Dark Alliance | nova | default | `1-1790745235-lane.verdict433-366130` | queued |
+| Alien Hominid | nova | default | `1-1790775886-lane.verdict433-3086847` | queued |
+| 187: Ride or Die | nova | default | `1-1790775886-lane.verdict433-3086875` | queued |
+| Arctic Thunder | nova | default | `1-1790775886-lane.verdict433-3086903` | queued |
+
+### Next, in order
+
+1. Judge each of the seven as it finishes: `title_verdict.py <dir> --require
+   confirmation` (AUF also `--reviewed-gameplay yes|no` after its frames).
+   For Arctic Thunder and 187, look at the last route frame: a results or
+   continue screen for most of the window would make the share a menu
+   reading.
+2. Post the Playable count to `OUTBOX.md` #433.
+3. Set `State: ready` once the outstanding confirmations have verdicts.
+
+### Ending session 8 here: waiting
+
+Seven Nova confirmations are queued behind the Nova's top-up hold. I am
+waiting on those dispatch results, which are outside this session, and
+stopping here.
