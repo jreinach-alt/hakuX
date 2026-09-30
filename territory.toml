@@ -1715,3 +1715,8 @@ note = "RETIRED (hostops 2026-09-30T02:46Z): PR #628 folded as 988b0bc753, unit 
 issues = ["397"]
 files = ["docs/testing/dispatcher.sh", "docs/testing/titles/titlestate.py", "docs/testing/titles/saves.py", "tools/make_xbox_hdd.py", "docs/testing/jobs/selftest.d/99-hdd-split.sh", "docs/lanes/hddcrash/**"]
 note = "STARTED (lane.local 2026-09-30T03:25Z), briefs/hddcrash.md: #622s titles disk crashes hakuX at qemu_init (SIGSEGV 0x0) whenever titlestate builds a ~10 MB titles.qcow2; 9 Nova title runs voided 18:37-20:05 PDT incl. two Playable confirmations. Kill switch HAKUX_TITLES_DISK=0 is live (dispatcher drop-in). Find the cause, fix the builder, per-request override for proof, device proof on the Nova."
+
+[lane.cithrottle]
+issues = []
+files = [".github/workflows/android.yml", ".github/workflows/desktop.yml", ".github/workflows/jobs-selftest.yml", "docs/lanes/cithrottle/**"]
+note = "STARTED (lane.local 2026-09-30T06:10Z, offline): the CI limits committed in the GitHub reinstatement request; folded offline before any push back to GitHub."
