@@ -1924,3 +1924,87 @@ stopped, REST perf/fan (0/4) set, screen asleep (`KEYCODE_SLEEP`).
 4. The rest of the corrected Nova work list (section 1) after Burnout
    Revenge / Midnight Club 3: 187: Ride or Die (row 15), Crash Bandicoot:
    The Wrath of Cortex (row 20), Black Stone: Magic & Steel (row 21).
+
+### Session 36 (attempt 3 of 4): 2026-09-29, no device work
+
+**Why attempt 2 (session 35) did not need recovery: it finished.** PR #625
+merged as `4d648aed31`, and the two hostops addenda that followed (00:56
+and, after PR #622 folded, again) both confirm nothing of the lane's was
+left running or queued. This attempt is a fresh continuation, not a
+recovery from a stall -- there is no unfinished work from session 35 to
+pick up beyond its own "Next" list, which this session tried to follow.
+
+**Merged `origin/master`** (fast-forward, 6 commits: PR #622 `lane.hddsplit`
+-- the title-disk/nxdk-disk split now wired into the dispatcher, touching
+`titlestate.py`/`saves.py`, not this lane's files -- and PR #624
+`dispatchguard`). `titlestate_selftest.py` passes on the merged tree (all
+checks, including hddsplit's new device-choice and route-selection cases).
+
+**Both handhelds are held for a charging top-up, not by this lane, so no
+device work happened this session.** `adb devices -l` (after `adb
+kill-server`) returned nothing for either serial. `dispatch/hold/thor` and
+`dispatch/hold/nova` both read `lanelocal-topup`:
+
+- `thor.why`: "owner evening top-up 2026-09-29 17:12 PDT: the owner charges
+  the Thor off the harness; lane.local releases when it is back on adb"
+  (placed 2026-09-30T00:11:24Z)
+- `nova.why`: "owner top-up 2026-09-29: the owner charges the nova off the
+  harness; lane.local's topup_release.sh releases it when it is back on adb
+  at >= 60%" (placed 2026-09-30T00:20:07Z)
+
+Per the lane role rules, a hold placed by another actor is never removed by
+this lane, and a device with no adb connection cannot take a HELD session
+regardless. So no route work, no replay, no benchmark this session.
+
+**Checked what the offline record shows instead, since a hold is not a
+reason to go idle:**
+
+- Bruce Lee's route-check request (`1-9-1790608228-titleroutes-824349`,
+  queued since 09-28 15:10 PDT) was promoted by hostops at 23:20:42Z
+  (09-29 16:20 PDT) to `1-1790608228-titleroutes-824349`, per #397. It is
+  gone a second time: absent from `queue/`, `queue/withdrawn/`, `running/`
+  and `results/` alike (checked by id and by `56550016-Bruce_Lee` inside
+  `request.json`/`result.json` text, which only turns up its earlier
+  session-27 run `1-1790487611-titleroutes-261841` and titleplay's old
+  pass-1 run). The charging hold (17:11-17:12 PDT) came about 51 min after
+  the promotion, which may or may not be why -- same disappearance-without-
+  a-log-line pattern as session 35 noted for the first attempt. Not
+  investigated further (not this lane's file; the dispatcher is), but worth
+  a board ask if a third promotion also vanishes.
+- PGR2's fill-tier benchmark (`1-1790569004-titleroutes-3006458`, queued
+  09-28 04:16 UTC, its sibling to the Bruce Lee request) DID run, 09-29
+  13:14 PDT on the Thor. `title_verdict.py` on its result: **VOID**
+  (`thermal-pause: thermal-pause-F8 1/1 began after +140 s ... still paused
+  at the last reading`) -- the Thor's known #507 thermal pause, not a route
+  problem. `adb_failures=0` and the route reached gameplay
+  (`gameplay=340.0s`). No action needed: PGR2 already has a route and a
+  target in `targets.toml`; a clean re-read is a job for whoever needs the
+  number, same standing note as the 09-28 dispatch-wipe titles (session
+  34, "Next" item 4).
+- `docs/testing/titles/targets.toml` now has 65 titles, 31 with a `route =`
+  key (routes/ directory has 43 files, some first-run/returning pairs and
+  the `black.first-run`/`generic`/`survey` scaffolding routes that are not
+  per-title). The 34 titles still reading `route = None` in targets.toml
+  are the ones this lane's device work would continue against once a
+  handheld is back on adb (Section 1's work list plus the titles routed
+  since it was written: 25 to Life, Call of Duty 3, Crimson Skies, Forza,
+  DOA1U, Blinx/Blinx 2, Agent Under Fire are lane.slowdown462's / the
+  original 9-title batch's, out of scope here).
+
+**No prediction, no capture, no route/targets.toml change this session --
+analysis and bookkeeping only, gated entirely on device availability.**
+
+**Next**, once a handheld clears its charging hold and shows up on `adb
+devices`:
+1. Nova: fix `midnight-club-3.returning.route`'s "Checking saved games" ->
+   attract-screen branch (session 35's finding), then continue the work
+   list (Burnout Revenge, 187: Ride or Die, Crash Bandicoot: The Wrath of
+   Cortex, Black Stone: Magic & Steel).
+2. Thor: re-drive or re-queue Bruce Lee's route check if it vanishes a
+   third time, file it on the board; then the hand-over's remaining titles
+   (Bicycle Casino, Breeders' Cup, AMF Xtreme Bowling, ... and the rest of
+   Section 1's Thor column).
+3. Either device: any new title lane.xbox has landed since 09-26 that is
+   not yet in targets.toml (not checked this session -- no device to
+   confirm what is actually on each handheld's disk beyond what targets.toml
+   already lists).
