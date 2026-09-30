@@ -58,8 +58,9 @@ notes = "A §11 soak title; own target not yet measured, so the 30 default. rout
 [titles."4D53002D"]
 name = "Dead or Alive 3"
 iso = { thor = "Dead or Alive 3 (USA) (En,Ja).xiso.iso" }
+route = "doa3"
 target_fps = 60
-notes = "A §11 soak title; a 60 fps fighter. Route: PR 2. #431 (09-28; documented, not measured here): Impulse Gamer (2002): \"a consistent 60 frames per second\"; HonestGamers: \"flawless framerates\"; a frame-rate video of the original: youtube.com/watch?v=djgZg-FqeQs (\"Xbox Original | Dead or Alive 3 | Review Gameplay Framerate\")."
+notes = "A §11 soak title; a 60 fps fighter. Route: PR 2. routes/doa3.route queued as a Thor screening soak (session 41), not yet replayed -- the post-title menu steps are [recalled] from a pass-1 survey, not freshly played. #431 (09-28; documented, not measured here): Impulse Gamer (2002): \"a consistent 60 frames per second\"; HonestGamers: \"flawless framerates\"; a frame-rate video of the original: youtube.com/watch?v=djgZg-FqeQs (\"Xbox Original | Dead or Alive 3 | Review Gameplay Framerate\")."
 
 [titles."49470018"]
 name = "JSRF: Jet Set Radio Future"
