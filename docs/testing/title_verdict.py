@@ -9,12 +9,32 @@ THE BAR (the owner, 2026-09-25). A run passes when the title
   - booted, and reached gameplay by its route (`mark gameplay` in logcat,
     then at least one guest flip after it);
   - played for the required window after the mark (600 s screening,
-    1200 s confirmation) with no crash, no hang and no real exit;
+    600 s confirmation by default -- see CONFIRMATION LENGTH below) with no
+    crash, no hang and no real exit;
   - ran at >= 30 fps for >= 90% of the gameplay time;
   - played its audio with no dropouts (see AUDIO below).
 A pass at surface_scale 1 is the `Playable` rating, at 2 `Playable (2x)`.
 `Perfect` is a human's call: `human_review` is written empty and nothing here
 ever fills it.
+
+CONFIRMATION LENGTH (the owner, 2026-09-30, #433). Re-scoring every
+full-length confirmation as if cut at 300 s and 600 s found no verdict
+change on the Nova (6/6 runs, which plateaus near 49 C and never pauses) at
+5 or 10 minutes; on the Thor, Azurik read 99.6% at 10 minutes and failed at
+15.6 minutes on the heat pause. So `confirmation_s` defaults to 600 s
+(targets.toml `[defaults]`), 20 minutes only where it earns its cost:
+  - a title flagged for slow-building defects (Forza's invalid-list decay
+    and memory growth, Kabuki Warriors' random stalls) carries its own
+    `confirmation_s = 1200` in targets.toml;
+  - a run whose scored window was STILL HEATING at the end -- its last 180 s
+    show xo-therm or the battery zone rising faster than 1.0 C/min, or a
+    thermal pause overlapped it -- needs the full 1200 s regardless of the
+    title's own confirmation_s, because a device still climbing may pause
+    minutes after a short window ends. Such a run reads
+    "confirmation: 1200 s needed -- the device was still heating at the end".
+Process, not code: lane.verdict433 re-runs every 5th 600-s pass at the full
+1200 s, as an audit. Existing verdicts are not re-judged: a pass already
+recorded at 1200 s stays a pass.
 
 FRAME RATE: WHICH FIELD, AND WHY NOT G. hakuX-perf (pgraph/profile.c) prints
 one line every 60 guest FLIP_STALLs -- `g_nv2a_stats.frame_count` counts
@@ -141,6 +161,11 @@ FRAMES_PER_LINE = 60          # profile.c: frame_count % 60
 HANG_S = 10.0
 AUDIO_SKIP_S = 10.0
 
+# STILL HEATING (see CONFIRMATION LENGTH in the module doc, #433).
+HEATING_WINDOW_S = 180.0
+HEATING_RATE_C_PER_MIN = 1.0
+HEATING_ZONES = ("xo-therm", "battery")
+
 
 def ts(stamp):
     # Year 2000 is a leap year, so a 02-29 stamp parses; only differences
@@ -223,6 +248,17 @@ def lost_in(a, b, gaps):
     return sum(max(0.0, min(b, g1) - max(a, g0)) for g0, g1 in gaps)
 
 
+def heating_rate(samples, zone, lo, hi):
+    """C/min between `zone`'s first and last reading in device-time window
+    (lo, hi), or None with fewer than two readings in it."""
+    pts = sorted((thermal_state.dev_ts(r), thermal_state.zone_c(r, zone)) for r in samples)
+    pts = [(t, c) for t, c in pts if t is not None and c is not None and lo <= t <= hi]
+    if len(pts) < 2:
+        return None
+    dt_min = (pts[-1][0] - pts[0][0]) / 60.0
+    return (pts[-1][1] - pts[0][1]) / dt_min if dt_min > 0 else None
+
+
 def contact_sheet(rdir, out_png):
     """Grid of the run's frames for a reviewer. None + reason when there is
     nothing to draw or no PIL (the jobs-selftest runner has none)."""
@@ -263,12 +299,15 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS, write
     tol = float(defaults.get("fps_tolerance", 0.95))
     share_min = float(defaults.get("fps_share_min", 0.90))
     audio_max = float(defaults.get("audio_starve_max_share", 0.001))
-    need = {"screening": float(defaults.get("screening_s", 600)),
-            "confirmation": float(defaults.get("confirmation_s", 1200))}
 
     title = req.get("title") or res.get("title") or ""
     tid, entry = find_title(targets, title)
     own_target = float(entry.get("target_fps", bar_fps))
+    # CONFIRMATION LENGTH (see module doc): a title's own confirmation_s,
+    # else the default; a still-heating window (computed below, once mark_t
+    # and end_t are known) bumps a sub-1200 s figure up to 1200 regardless.
+    need = {"screening": float(defaults.get("screening_s", 600)),
+            "confirmation": float(entry.get("confirmation_s", defaults.get("confirmation_s", 600)))}
 
     try:
         with open(os.path.join(rdir, "run.log"), errors="replace") as f:
@@ -366,6 +405,21 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS, write
     elif gap and void is None:
         void = "thermal-unread: %s, relative to the mark" % gap
 
+    # STILL HEATING (see CONFIRMATION LENGTH above): the window's last
+    # HEATING_WINDOW_S show a HEATING_ZONES reading climbing faster than
+    # HEATING_RATE_C_PER_MIN, or a pause overlapped the window at all. Needs
+    # `windowed` (readable samples and a scored window), same as the void
+    # checks above.
+    still_heating = bool(hit)
+    if windowed and not still_heating:
+        tail_lo = end_t - HEATING_WINDOW_S
+        rates = [heating_rate(read, zone, tail_lo, end_t) for zone in HEATING_ZONES]
+        still_heating = any(r is not None and r > HEATING_RATE_C_PER_MIN for r in rates)
+    thermal["still_heating"] = still_heating if windowed else None
+    heating_bump = windowed and still_heating and need["confirmation"] < 1200.0
+    if heating_bump:
+        need["confirmation"] = 1200.0
+
     v = dict(title=title, title_id=tid, name=entry.get("name"),
              device=res.get("device_label") or "", ref=res.get("ref") or req.get("ref"),
              apk_sha=res.get("apk_sha"), request_id=req.get("id") or os.path.basename(rdir.rstrip("/")),
@@ -444,6 +498,7 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS, write
     v["target_fps"] = own_target
     own_share = share(own_target)[0] if own_target > bar_fps else v["fps_ok_share"]
     v["own_target_share"] = own_share
+    v["confirmation_need_s"] = need["confirmation"]
     v["below_own_target"] = bool(own_target > bar_fps and v["fps_ok_share"] is not None
                                  and v["fps_ok_share"] >= share_min
                                  and (own_share or 0) < share_min)
@@ -541,7 +596,11 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS, write
     if v["hang"]:
         fails.append("hang: %s s without 60 guest flips after the mark" % hang_gaps[0])
     if mark_t is not None and gameplay_s < need[require]:
-        fails.append("duration: %.0f s of gameplay < %.0f s %s" % (gameplay_s, need[require], require))
+        if require == "confirmation" and heating_bump:
+            fails.append("confirmation: %.0f s needed -- the device was still heating at the end"
+                         % need["confirmation"])
+        else:
+            fails.append("duration: %.0f s of gameplay < %.0f s %s" % (gameplay_s, need[require], require))
     if v["fps_ok_share"] is None:
         if mark_t is not None and flipped_after and not void:
             fails.append("fps: fewer than two perf lines after the mark")
