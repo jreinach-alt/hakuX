@@ -614,3 +614,8 @@ already meets it since B1 (longest gap 4.4 s in K1); read create ms and the gap 
 Resume of 2026-09-29 16:25 PDT (attempt 6): attempt 5 ended as a wait, and before anything ran
 the live dispatch queue and results were emptied (BUILD.md section 8). All seven device requests
 were re-queued under new ids; E is now judged by this lane, not the arms job.
+
+Resume of 2026-09-29 17:39 PDT (attempt 7): attempt 6 ended as a wait, but the same wipe took a
+second pass and removed six of the seven re-queued requests. Only E's A arm ran. The cause is
+PR #622's selftest fragments, and PR #624 fixes it. The lane waits for #624 to fold before it
+re-queues the six (BUILD.md section 9).

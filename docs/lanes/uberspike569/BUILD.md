@@ -301,3 +301,32 @@ The prediction file is unchanged (sha256 `c5c0e63aed4e`).
 **On resume:** `host/find_results.py` on the seven new ids; `uberjudge.py` on DOA A/B/H;
 `kabjudge.py` on Kabuki A/B2; `ab_compare.py` on E, read per capture, and E's H logcat for
 `[uber569] mode=4 links=N`, N > 0; then the verdict, the #569 post, and ready.
+
+## 9. Attempt 7 (2026-09-29 17:39 PDT): six of the seven re-queued requests were lost too
+
+**Why attempt 6 did not finish.** It ended as a wait, correctly, on the seven requests of section
+8. The same wipe took a second pass seconds after they were queued. hostops (addendum 17:38 PDT)
+read `dispatch/logs/dispatcher.log`: the root cause was `selftest.d/50-arms-requeue.sh` and
+`51-dispatch-hardening.sh` on PR #622's branch. Both ran `rm -rf` on the live `DISPATCH_DIR`,
+which a lane session inherits. PR #624 (lane.dispatchguard) fixes it. `find_results.py` at 17:39
+agrees:
+
+| arm | id | state |
+|---|---|---|
+| E A | `1790724542-uberspike569-1360739` | **result dir exists** (ran 16:49); keep it, do not re-run |
+| E H | `1790724547-uberspike569-1361951` | gone, never logged |
+| DOA A | `1790724512-uberspike569-1350514` | gone (battery skip on the Nova, never run) |
+| DOA B / H | `...-1353595` / `...-1354320` | gone (admitted on the Thor, never claimed) |
+| Kabuki A / B2 | `...-1355381` / `...-1355882` | gone (admitted on the Thor, never claimed) |
+
+**Not re-queued yet, by hostops' instruction:** re-queue after #624 folds and a device is free.
+At 17:39, #624 is green, `fold-ready` and mergeable, and both devices are held for an
+owner-authorized top-up, so a request queued now could not run before the fold anyway. This
+attempt ends as a wait on #624's fold.
+
+**On resume (after #624 is on master):** merge origin/master (it brings no emulator code, so the
+refs and predictions stand; do not re-register), then re-queue the six with the same refs, flags
+and predictions as section 8: E H (6bec23c3f4, the 36 suites, 2 runs), DOA A/B/H, Kabuki A/B2.
+Pin the DOA and Kabuki soaks to the Nova (the Thor's thermal pause voids a soak). If any is lost a
+third time after #624, that is a different bug: post the dispatcher.log evidence on #618. Then
+the judging of section 8's last paragraph.
