@@ -255,7 +255,7 @@ notes = "Route by lane.titleroutes 2026-09-26 (Nova): Tour Mode fight vs CPU, no
 name = "Ninja Gaiden"
 iso = { thor = "Ninja Gaiden (Europe) (En,Fr,De,Es,It).iso" }
 target_fps = 60
-notes = "#431 (comment 5851536933): 60, high confidence. Digital Foundry 2019 and 2007; lawrence.com (Xbox, 2004). European image: the target assumes hakuX's default EEPROM (NTSC-M), under which it runs its 60 Hz modes; a 50 Hz run would read as below target."
+notes = "#431 (comment 5851536933): 60, high confidence. Digital Foundry 2019 and 2007; lawrence.com (Xbox, 2004). European image: the target assumes hakuX's default EEPROM (NTSC-M), under which it runs its 60 Hz modes; a 50 Hz run would read as below target. Session 45's pass-1 survey (0-0-s-1790822580-titleroutes-2819211, Thor, 300s) ran its full length without a stop: title (PRESS START BUTTON) -> intro sword clip -> 'The Book of the Fiends' text and Now Loading pages (59 fps) -> by 200613-play.png a dark first area with the health HUD and Ryu by a waterfall, dimmed, FPS overlay 0 at that instant. Not counted as gameplay (no input visibly moved him). No route yet: the survey needed ~270 s to get there, so an authored route that skips the text pages is the next step."
 
 [titles."5443000D"]
 name = "Ninja Gaiden Black"
@@ -314,7 +314,7 @@ notes = "#431 (comment 5851536933): 60, medium confidence. Prima official guide 
 name = "187: Ride or Die"
 iso = { nova = "55530036-187_Ride_or_Die.xiso.iso" }
 route = "187-ride-or-die"
-notes = "No #431 target; the default 30 applies. Routes by lane.titleroutes 2026-09-29 (Nova, session 37): returning.route REPLAYED CLEAN (profile N -> Quick hits -> Western Whip Race; A skips the tutorial clip; hold A to drive). first-run.route is a draft (its session made the profile). One boot in three hung on a spinner at 3 fps (watchdog STALL), the first boot after the flush. See NOTES.md session 37."
+notes = "No #431 target; the default 30 applies. SINGLE route since 2026-09-30 (lane.titleroutes session 46): it creates profile N on every run (keyboard: A, A, Y) -> Quick hits -> Western Whip Race -> controller screen -> A skips the tutorial clip -> the mark after 6 s of driving. It replaces the first-run/returning pair: titlestate's 'found' save builds a disk with four Empty slots, so the returning route's mark landed on the name keyboard and the Playable confirmation 1-1790775886-lane.verdict433-3086875 (100%, 59.94) and session 40's benchmark both scored that menu. Not yet replayed as a soak. One boot in three hung on a spinner at 3 fps (watchdog STALL), the first boot after a flush. See NOTES.md sessions 37 and 46."
 
 [titles."56550003"]
 name = "Crash Bandicoot: The Wrath of Cortex"
@@ -333,7 +333,7 @@ notes = "#431 (comment 5851536933): 30, high confidence. Digital Foundry Retro (
 name = "Phantom Dust"
 iso = { thor = "Phantom Dust (USA) (En,Ja).xiso.iso" }
 target_fps = 30
-notes = "#431 (comment 5851536933): 30, high confidence. Microsoft's remaster creative director (2017): the engine was built around 30. Session 44's pass-1 survey (0-0-s-1790822578-titleroutes-2819133, 480s) left no result at all -- logs/thor-coldconfirm.log: 'HEAT STOP at xo 70 C -- run voided (no result)', nothing under dispatch/results. Requeued at the new 300s cap, session 45 (1790823811-titleroutes-2952744); no route-frames exist yet either way."
+notes = "#431 (comment 5851536933): 30, high confidence. Microsoft's remaster creative director (2017): the engine was built around 30. Session 44's pass-1 survey (0-0-s-1790822578-titleroutes-2819133, 480s) left no result at all -- logs/thor-coldconfirm.log: 'HEAT STOP at xo 70 C -- run voided (no result)', nothing under dispatch/results. Requeued at the new 300s cap, session 45 (1790823811-titleroutes-2952744); no route-frames exist yet either way. Session 46: the 300s requeue (0-0-s-1790823811-titleroutes-2952744) was also heat-stopped (runner log 21:36:21 PDT; the run log's 'not-foreground: daijishou' line is the launcher taking focus AFTER the force-stop). Its last frame (213619-menu-a.png, 13th START/A cycle) is the first explorable room, player in view, minimap, FPS overlay 30. Two heat stops on the Thor: done there, nominated as 'needs the Nova' (#433); the survey prefix (13 cycles) is the route seed."
 
 [titles."4D530064"]
 name = "Halo 2"
@@ -488,4 +488,37 @@ notes = "No #431 target; the default 30 applies. Japanese menus. routes/smt-nine
 [titles."4D4A0012"]
 name = "Psychonauts"
 iso = { thor = "Psychonauts (USA).iso" }
-notes = "No #431 target; the default 30 applies. Session 44's pass-1 survey (1790822573-titleroutes-2818801, Thor, 300s) never got past the title screen ('Press START to begin', scrolling credits in the background) in 136s and 7 cycles of START-then-A: every route-frame from 194441 to 194548 shows the identical title card. Stopped at 136s by a focus steal to com.android.launcher3 (not Daijishou this time -- a different launcher, display 4), not heat (xo-therm only reached 64.5C; hostops's .hostops-diagnosed note on this result correlates it with a dead-fan heat signature on other thermal zones but calls that unproven). No route drafted: the title screen needs something other than repeated START/A at 5s intervals to advance (a longer hold, a different button, or a wait the survey's generic cadence does not give it), and that needs a held or hand-authored route, not another blind survey. Next: author a route.txt that tries a single longer START press or a different first input before re-surveying."
+notes = "No #431 target; the default 30 applies. Session 44's pass-1 survey (1790822573-titleroutes-2818801, Thor, 300s) never got past the title screen ('Press START to begin', scrolling credits in the background) in 136s and 7 cycles of START-then-A: every route-frame from 194441 to 194548 shows the identical title card. Stopped at 136s by a focus steal to com.android.launcher3 (not Daijishou this time -- a different launcher, display 4), not heat (xo-therm only reached 64.5C; hostops's .hostops-diagnosed note on this result correlates it with a dead-fan heat signature on other thermal zones but calls that unproven). No route drafted: the title screen needs something other than repeated START/A at 5s intervals to advance (a longer hold, a different button, or a wait the survey's generic cadence does not give it), and that needs a held or hand-authored route, not another blind survey. Next: author a route.txt that tries a single longer START press or a different first input before re-surveying. Session 46: the requeue (0-0-s-1790823861-titleroutes-2960863) stopped at 127 s the same way (not-foreground: com.android.launcher3, input focus on display 4) after the title card; 214537-menu-start.png shows the PSYCHONAUTS brain title with the FPS overlay at 1. No heat stop in the runner log (peak xo 67 C). Two runs, neither past the title card: parked here, not retried blind."
+
+[titles."545400B0"]
+name = "Family Guy: Video Game!"
+iso = { thor = "545400B0-Family_Guy_Video_Game.xiso.iso" }
+route = "family-guy"
+notes = "No #431 target; the default 30 applies. routes/family-guy.route (session 46) from the Thor survey 0-0-s-1790823797-titleroutes-2950719 (heat-stopped at 20:45 PDT after 4 min): START -> New Game, A -> Select Auto Save (all Empty), A -> intro clip, START skips, LOADING -> Stewie's nursery with the HUD on the 4th cycle (204142-menu-a.png). The play frames (204357-204448) show Stewie walked from the rug to the changing table under the stick. FPS overlay 29-30. Not yet replayed."
+
+[titles."53450038"]
+name = "Super Monkey Ball Deluxe"
+iso = { thor = "53450038-Super_Monkey_Ball_Deluxe.xiso.iso" }
+route = "super-monkey-ball-deluxe"
+notes = "No #431 target; the default 30 applies (the stage ran at an FPS overlay of 59). routes/super-monkey-ball-deluxe.route (session 46) from the Thor survey 0-0-s-1790823793-titleroutes-2949342 (heat-stopped at 20:31 PDT): no-game-data A -> save YES -> Mode Select Main Game -> Data Select slot 1 -> stage 1-1 SIMPLE started by the 10th START/A cycle (203030-menu-a.png, timer 57:50). The survey never tilted the stage. Not yet replayed."
+
+[titles."5345002B"]
+name = "Sonic Heroes"
+iso = { thor = "5345002B-Sonic_Heroes.xiso.iso" }
+route = "sonic-heroes"
+notes = "No #431 target; the default 30 applies (the level ran at an FPS overlay of 59). routes/sonic-heroes.route (session 46) from the Thor survey 0-0-s-1790823803-titleroutes-2951964 (heat-stopped at 21:10 PDT): Seaside Hill with Team Sonic, started by the 9th START/A cycle (the 10th START paused it at 00:03:96, 210904-menu-a.png); 6 rings and 60 points by 210918. Not yet replayed."
+
+[titles."4D57000E"]
+name = "Gauntlet: Dark Legacy"
+iso = { thor = "4D57000E-Gauntlet_Dark_Legacy.xiso.iso" }
+notes = "No #431 target; the default 30 applies. Session 46: the Thor survey 0-0-s-1790823800-titleroutes-2951589 (heat-stopped at 20:58 PDT) reached the in-engine wizard intro at an FPS overlay of 14 (205704-menu-a.png), then the START/A cycles left it on the in-game pause menu's Audio page at 11-14 (205743, 205824). A low in-engine reading worth a screen. No route: the survey's START keeps reopening the pause menu, so the route must stop pressing START once the level loads."
+
+[titles."53550001"]
+name = "Bistro Cupid"
+iso = { thor = "53550001-Bistro_Cupid.xiso.iso" }
+notes = "No #431 target; the default 30 applies. Japanese text. Session 46: the Thor survey 0-0-s-1790823806-titleroutes-2952343 ran to its end (no heat stop, peak xo 69 C) and finished on story dialogue (the headmaster's welcome, 212406-play.png, FPS overlay 29). Dialogue is not gameplay; the cooking or free-roam part was not reached. No route."
+
+[titles."55530004"]
+name = "Deathrow"
+iso = { thor = "Deathrow (USA).xiso.iso" }
+notes = "No #431 target; the default 30 applies. Session 46: the Thor survey 0-0-s-1790822581-titleroutes-2819301 was heat-stopped at 208 s (runner log 20:18:33 PDT); the last route frame (201833-menu-a.png) is the Daijishou launcher, taken after the force-stop. One heat stop so far."
