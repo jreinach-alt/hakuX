@@ -1,0 +1,60 @@
+# Castlevania: Curse of Darkness (4B4E002D), single route. lane.titleroutes
+# session 48, 2026-10-01, from the generic `--route survey` soak
+# 0-0-s-1790839398-titleroutes-2238193 (Thor, heat-stopped at 284/300s).
+#
+# Every earlier guess route for this title (castlevania-cod.first-run, two
+# re-marks) never got past a menu: New Game landed on Name Entry, then on
+# "Create new save data? Yes/No". The generic survey's 14 START/A cycles
+# (not the guess route's handful) cleared whatever that save-data prompt
+# and name entry needed, and its `mark play` frame (011651-play.png) and
+# the one after it (011717-play.png) are confirmed by eye: a character
+# standing in a gothic courtyard facing a gargoyle, then walking through
+# the courtyard toward a gate -- real control, not a menu.
+#
+# So: 14 cycles, then the survey's own post-mark combat/move loop (A to
+# attack/confirm, RX to turn the camera, LY to walk). DRAFT until a soak
+# replays this file by name and the mark frame is reviewed again: the
+# survey proved 14 cycles is ENOUGH, not that it is the fewest that work.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+mark booted
+repeat 14 {
+    press START
+    wait 5
+    shot menu-start
+    press A
+    wait 5
+    shot menu-a
+}
+axis LY min
+press A
+wait 3
+press A
+wait 3
+press A
+wait 3
+axis RX max
+wait 0.5
+axis RX mid
+axis LY mid
+wait 1
+shot running
+mark gameplay
+repeat forever {
+    axis LY min
+    press A
+    wait 3
+    press A
+    wait 3
+    press A
+    wait 3
+    axis RX max
+    wait 0.5
+    axis RX mid
+    axis LY mid
+    wait 1
+    shot play
+}
