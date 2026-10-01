@@ -118,20 +118,18 @@ Cold references (lane.uberspike569's arm A, same route and seconds, GPL 0):
 
 | launch | request id | ref | state |
 |---|---|---|---|
-| DOA L1 | `1790791301-shaderprebuild569-118449` | 54865a3521 | queued 2026-09-30 ~12:45 PDT, behind five release-priority Nova requests (verdict433 x3, forzadecay414 x3) |
-| DOA L2 | `1790791306-shaderprebuild569-118725` | 54865a3521 | queued right after L1 |
+| DOA L1 | `1790791301-shaderprebuild569-118449` | 54865a3521 | ran 2026-09-30 17:09 PDT, Nova, `cleared` (apk change) |
+| DOA L2 | `1790791306-shaderprebuild569-118725` | 54865a3521 | ran 17:17 PDT, Nova, `kept` |
 
 If a request with another apk runs on the Nova between L1 and L2, L2 comes back `cleared`. Its
 keys are then gone, its records unresolved, and it is VOID. That run is itself a cold launch
 that writes keys, so the recovery is one more soak on the same ref right after it, judged as L2
 against the original L1.
 
-Still to do, in order:
-0. Wait for `lane/uberspike569-gpl` to fold. Then merge master and apply the resolution under
-   "Attempt 2" below.
-1. Judge the DOA pair. Write `pilots/shaderprebuild569.ok`, because the Kabuki pair (2 x 690 s)
-   takes this requester past the 30-minute pilot allowance.
-2. Queue the Kabuki pair.
+Still to do, in order (0-1 done in attempt 3):
+0. ~~Merge master after the uberspike569 fold~~ (262e30e6de).
+1. ~~Judge the DOA pair~~ (section 5, attempt 3).
+2. Queue the Kabuki pair on 262e30e6de, then judge it.
 3. Queue one short smoke on the final head, which `offline_fold.py` needs: a run built from the
    branch head.
 4. Set `State: ready`.
@@ -175,6 +173,56 @@ default.
 After the fold: merge `origin/master`, apply 1-3, type-check, push, and queue the head smoke.
 The DOA pair's verdict on 54865a3521 still judges the mechanism, because the merge does not
 change the pre-build or save code.
+
+### Attempt 3 (2026-09-30 17:30 PDT)
+
+**Why attempt 2 did not finish.** Like attempt 1, it ended on a wait for two things outside the
+session. The DOA pair was still queued behind release-priority Nova work, and the brief's
+14:10 addendum barred `State: ready` until `lane/uberspike569-gpl` folded. Both have since
+resolved: the pair ran at 17:09 and 17:17 PDT, and uberspike569 folded as 5de1926fec.
+
+**Merge.** `origin/master` @ 2c59b7bbba..cb98d0dedc was merged as 262e30e6de, with the three edits
+above applied as planned. `pcfb_quiet` is gone, and `prebuild_run` calls
+`create_monolithic_pipeline(..., false)`. The uber jobs keep their rank 2, and a worker takes a
+pre-build job only when the draw queue is empty, so pre-build jobs never delay uber jobs.
+NDK type-check of `compile_worker.c`, `draw.c`, `renderer.c`, `shaders.c` and `glsl.c` gives
+rc 0 for each.
+
+**DOA verdict** (`pbjudge.py`; the full output is in `doa_judge.json`):
+
+| leg | registered | read | verdict |
+|---|---|---|---|
+| V | validity | L1 `cleared`, records=0, wipe `absent`. L2 `kept`, wipe `removed`, 640 records, 0 unresolved, 383 modules | valid |
+| W4 | L2 known mean <= 0.10 x L1 new mean, after `mark booted` | 32 us (74 known) vs 171,085 us (629 new): **0.0002** | PASS |
+| W1 | L2 pc_ms <= 0.25 x L1's | 12,607 ms vs 108,938 ms: **0.116** | PASS |
+| W1b | L2's first load after `mark play`: dpc_ms <= 0.25 x L1's | 3,164 ms vs 2,739 ms: **1.16** | **FAIL** |
+| W2 | `[pb569] done` before `mark booted` | 640/640 ok, 0 fail, 57.4 s wall (171.8 s of creates on 3 workers), 8.7 s before the mark | PASS |
+| W3 | pre-boot median gfps >= 0.90 x L1's | 59 vs 59: **1.0** | PASS |
+
+**W1b is a route failure, not a mechanism failure.** The registered verdict stands, but the
+evidence says the two launches did not load the same scene:
+- **The route is blind.** `titleplay` presses START/A through the menus, and DOA's arcade picks
+  the opponent and stage.
+- **The frames show different fights.** L1 fought Zack on the cathedral stage (`171201-menu-a`),
+  then Helena in the desert (`171412-play`). L2 fought Bass on another stage (`172023-menu-a`) and
+  was back at the title screen at `mark play` (`172234-play`).
+- **The recorded pipelines are all fast.** All 131 L2 creates after `mark play` are `new`: none
+  of them is in L1's 640 records. No recorded pipeline was slow at any point in L2.
+- **L2 never drew L1's main burst.** L1's 450 creates between t+140 and t+240 s show up nowhere
+  in L2, not even as fast `known` creates.
+- **W1 also gains from the content difference.** L2 met 220 pipelines against L1's 640. The
+  mechanism reading is W4, inside one run: in L2, the 74 recorded pipelines cost 2.4 ms in total
+  and the 135 unrecorded ones cost 12.6 s.
+
+Do not repeat: a same-scene load leg needs a route that reaches the same scene in both launches.
+Kabuki's route marks `gameplay` on a fixed path. DOA's titleplay route does not.
+
+Not chased: L2's unrecorded creates cost ~250 ms each against L1's ~170 ms. The content is
+different, so this is not a like-for-like comparison.
+
+**Kabuki.** The prediction was re-registered on 262e30e6de before any Kabuki run on either ref.
+Refs, time and order line changed; thresholds, legs and judge did not. The pair runs on the merge
+because it is the code that folds.
 
 ## 6. Item 6 design (the second PR, `lane/shaderprebuild569-sets`; not built here)
 

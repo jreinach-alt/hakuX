@@ -9,9 +9,9 @@
  "perflog": true,
  "frames_every": 0,
  "runs_per_arm": 1,
- "a_ref": "54865a3521",
- "b_ref": "54865a3521",
- "order": "After the DOA pair is read. L1 then L2, both ref 54865a3521, both queued with request.sh --title 43560001-Kabuki_Warriors.xiso.iso --route kabuki-warriors --seconds 600 --perflog --device nova --hard-pin --env HAKUX_PLC_WIPE=1, back to back. L1 need not be 'cleared': with no Kabuki records and the cache file removed it is cold for Kabuki even with DOA's keys kept. L2 must be 'kept'.",
+ "a_ref": "262e30e6de",
+ "b_ref": "262e30e6de",
+ "order": "After the DOA pair is read. L1 then L2, both ref 262e30e6de, both queued with request.sh --title 43560001-Kabuki_Warriors.xiso.iso --route kabuki-warriors --seconds 600 --perflog --device nova --hard-pin --env HAKUX_PLC_WIPE=1, back to back. L1 need not be 'cleared': with no Kabuki records and the cache file removed it is cold for Kabuki even with DOA's keys kept. L2 must be 'kept'.",
  "judge": "python3 docs/lanes/shaderprebuild569/pbjudge.py --l1 <L1 dir> --l2 <L2 dir> --boot-mark gameplay (--selftest passes). The kabuki-warriors route marks only 'gameplay' (lane.uberspike569's arm A: at 223 s), so it is the boot mark and there is no load leg.",
  "prediction": "#569 P3 on Kabuki Warriors, the heavy case: lane.uberspike569's cold arm A on this route created 836 pipelines in 140.4 s of draw-path time. L2 pre-builds L1's records (about 836 at ~168 ms on three workers: about 47 s) against mark gameplay at about 223 s. Registered: W4, L2's mean known create after mark gameplay <= 0.10 x L1's mean new create after it; W1, L2's whole-run draw-path create ms <= 0.25 x L1's; W2, L2's [pb569] done before its mark gameplay; W3, L2's median gfps before mark gameplay >= 0.90 x L1's.",
  "legs": {
@@ -24,5 +24,6 @@
  },
  "expect": {},
  "expect_counts": {},
- "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off [pb569], [plc569], [shd413], gfps and hakuX-route lines by pbjudge.py."
+ "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off [pb569], [plc569], [shd413], gfps and hakuX-route lines by pbjudge.py.",
+ "reregistered": "2026-10-01T00:29:00Z: refs moved from 54865a3521 to 262e30e6de, the merge of origin/master (lane/uberspike569-gpl folded) into this branch. Thresholds, legs and judge unchanged. Registered before any Kabuki run on either ref."
 }

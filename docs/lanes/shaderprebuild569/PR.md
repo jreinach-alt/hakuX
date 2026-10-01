@@ -2,9 +2,9 @@
 State: draft
 
 Lane: shaderprebuild569       Issue: #569, for #433
-Base: master @ 2c59b7bbba
-Files: docs/lanes/shaderprebuild569/NOTES.md, docs/lanes/shaderprebuild569/OUTBOX.md, docs/lanes/shaderprebuild569/PR.md, docs/lanes/shaderprebuild569/pbjudge.py, docs/lanes/shaderprebuild569/typecheck.py, docs/testing/predictions/shaderprebuild569-doa-soak.json, docs/testing/predictions/shaderprebuild569-kabuki-soak.json, hw/xbox/nv2a/pgraph/vk/compile_worker.c, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/shaders.c
-Prediction: docs/testing/predictions/shaderprebuild569-doa-soak.json @ 79fa745ea324732947d4780217b75300d83dbf39ab43f00b5fdcaf6c55663c28; docs/testing/predictions/shaderprebuild569-kabuki-soak.json @ 4bd7cdb383d595e71b847af7acb37e5b54b2d8cea316c44f5848255f830d8cf4
+Base: master @ cb98d0dedc (merged as 262e30e6de)
+Files: docs/lanes/shaderprebuild569/NOTES.md, docs/lanes/shaderprebuild569/OUTBOX.md, docs/lanes/shaderprebuild569/PR.md, docs/lanes/shaderprebuild569/doa_judge.json, docs/lanes/shaderprebuild569/pbjudge.py, docs/lanes/shaderprebuild569/typecheck.py, docs/testing/predictions/shaderprebuild569-doa-soak.json, docs/testing/predictions/shaderprebuild569-kabuki-soak.json, hw/xbox/nv2a/pgraph/vk/compile_worker.c, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/renderer.h, hw/xbox/nv2a/pgraph/vk/shaders.c
+Prediction: docs/testing/predictions/shaderprebuild569-doa-soak.json @ 79fa745ea324732947d4780217b75300d83dbf39ab43f00b5fdcaf6c55663c28; docs/testing/predictions/shaderprebuild569-kabuki-soak.json @ f3cef856a43a415495f448b53ca97e772ffb326bdb7f8119d4b2c85339204269
 Needs device: yes    Needs NDK: yes
 
 P3 of `docs/lanes/shaderplan569/NOTES.md`, items 1-5. Item 6 (shipped per-title sets) is
