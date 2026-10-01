@@ -340,3 +340,57 @@ Queued next (ref `2a87446629`, `--device thor --hard-pin --seconds 300` except t
 [lane.titleroutes] waiting: `1790839386-titleroutes-2237355`, `1790839390-titleroutes-2237657`,
 `1790839392-titleroutes-2237866`, `1790839395-titleroutes-2238007`, `1790839398-titleroutes-2238193`
 (Thor) and `1790839401-titleroutes-2238360` (Nova). PR.md is ready.
+
+## #433 -- 2026-10-01 07:50 PDT (session 48)
+
+GitHub is still suspended (36+ hours now); this and the #397 post below are relayed through OUTBOX.md
+per the offline protocol, same as every post since 2026-09-29.
+
+**Nominations (all frames checked by eye, not fps share alone -- see NOTES.md session 48):**
+
+| title | device | evidence |
+|---|---|---|
+| 187: Ride or Die | nova | Full 300s route replay, no stop. Mark frame (002517-gameplay.png): a night street race, countdown "2", rival cars alongside, 46fps overlay. Re-nominated: the prior scored window (1-1790775886-lane.verdict433-3086875) measured the profile-name keyboard, not this. |
+| Super Monkey Ball Deluxe | thor-only, needs the Nova | Route CONFIRMED on two separate runs (ball rolling in-level, 1-1 SIMPLE). Both heat-stopped (48.5s, then 51s scored). Two heat stops on a confirmed route, per the screening program's own rule. |
+| Tony Hawk's Pro Skater 2x | thor-only, needs the Nova | Route CONFIRMED on two separate runs since the mark fix (the Hangar under a tutorial tip, not the goal checklist the original nomination measured). Both heat-stopped (105.1s, then 102s scored). Two heat stops on a confirmed route. |
+| Tony Hawk's Pro Skater 3 | thor-only, needs the Nova | **Caveat: please check the Nova confirmation's own mark frame.** The route's own replay only ever caught THE FOUNDRY's level-splash card before a heat stop (010437-gameplay.png); live post-splash control has only been seen in the generic survey's frame from the same level, one step later. Two heat stops for the title (once as survey, once as its own route). |
+
+**Not nominated -- Sonic Heroes needs a route fix, not a re-screen.** The exact same route
+(`routes/sonic-heroes.route`, 9 START/A cycles) gave two different answers on two runs: session 47's
+run showed real play (Seaside Hill, timer 00:34:73); this session's run spent its entire scored
+window frozen on the pause menu (timer stuck at 00:15:68 across the mark frame and every frame after
+it). The route presses START on a fixed schedule that sometimes lands after the level has already
+started, pausing it, and the route's one recovery attempt (`press A` after the mark) did not resume
+it this time. A route that reached gameplay once is not proven reliable by that one run; please do
+not nominate this title from any run of this specific route until it is reworked. Full detail:
+NOTES.md session 48.
+
+**New this session: Castlevania: Curse of Darkness reaches real gameplay.** Every guess route for
+this title has failed since session 44 (stuck on Name Entry, then a save-data prompt). A generic
+`--route survey` soak this session used 14 START/A cycles -- more than any guess tried -- and reached
+a gothic courtyard with the character under player control, facing a gargoyle, then walking toward a
+gate (011651-play.png, 011717-play.png). `routes/castlevania-cod.route` is authored from this
+evidence and queued for its first replay. Not a nomination yet -- the authored route itself hasn't
+been confirmed as its own run.
+
+## #397 -- 2026-10-01 07:50 PDT (session 48)
+
+| title | device | route | replayed? | what the frames show |
+|---|---|---|---|---|
+| 187: Ride or Die | nova | 187-ride-or-die | yes, full 300s, `1790839401-titleroutes-2238360` | night street race, confirmed -- re-nominated #433 |
+| Super Monkey Ball Deluxe | thor | super-monkey-ball-deluxe | yes (2nd time), heat-stopped at 51s, `1790839386-titleroutes-2237355` | ball rolling in-level, confirmed -- nominated #433 |
+| Sonic Heroes | thor | sonic-heroes | yes (2nd time), heat-stopped, `1790839390-titleroutes-2237657` | frozen on the pause menu the whole window -- NOT confirmed this run, route needs a fix |
+| Tony Hawk's Pro Skater 2x | thor | thps2x | yes (2nd time), heat-stopped at 102s, `1790839392-titleroutes-2237866` | Hangar under tutorial tip, confirmed -- nominated #433 |
+| Tony Hawk's Pro Skater 3 | thor | thps3 (1st replay as its own route) | yes, heat-stopped at 97s, `1790839395-titleroutes-2238007` | THE FOUNDRY splash card (one frame short of confirmed control); nominated #433 with a caveat |
+| Castlevania: Curse of Darkness | thor | survey (generic) | yes, 284/300s, `1790839398-titleroutes-2238193` | gothic courtyard under player control -- authored castlevania-cod.route from this, queued for its own replay |
+
+**All five Thor requests this batch heat-stopped** (worse than session 47's 3 of 5): the fan-dead
+Thor is not getting more reliable. See NOTES.md session 48 for the full per-title table.
+
+Queued next (ref `d7791f6c0a`, Thor only, `--device thor --hard-pin --seconds 300`):
+`1790846753-titleroutes-3234529`, castlevania-cod.route's first replay. No Nova work queued by this
+lane -- the four nominations above go to lane.local/lane.verdict433 to copy and confirm.
+
+[lane.titleroutes] waiting: `1790846753-titleroutes-3234529` (Thor). If GitHub is still down when
+this resumes, read the result directly from `dispatch/results` / `logs/thor-coldconfirm.log` rather
+than waiting on a PR-parking waiter that cannot arm itself.
