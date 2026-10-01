@@ -3,7 +3,7 @@
 State: ready
 
 Lane: titleroutes          Issue: #397 (per-title gameplay fps; 0.5 tracking #433)
-Base: master @ ec244430e3 (unchanged this session; no master movement to merge)
+Base: master @ 6d19e4e7bd (merged in: session 52's own fold, no conflicts; selftest re-checked clean after)
 Files: docs/testing/titles/routes/castlevania-cod.first-run.route, docs/testing/titles/routes/castlevania-cod.returning.route, docs/testing/titles/targets.toml, docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/OUTBOX.md, docs/lanes/titleroutes/PR.md
 Prediction: none: analysis/route-authoring only, no pixel-affecting arm
 Needs device: no (device time for this title already spent this session; see below)
