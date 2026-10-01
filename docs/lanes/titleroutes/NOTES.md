@@ -3293,3 +3293,145 @@ copy and confirm, not for titleroutes to benchmark directly.
    gives more than one cold slot a session.
 4. Then the ranked list (`scratch/rank_untouched.py`): Plus Plumb 2, Petit
    Copter, Doom 3, Monster Garage, AMF Bowling 2004, ...
+
+## Session 49 (2026-10-01): why attempt 2 (session 48) did not finish, then Gauntlet's own trap
+
+Resumed as attempt 3 of this worktree. Session 48 did not fail: it read its six
+pending results, authored `castlevania-cod.route` from real evidence, queued
+exactly one Thor replay of it (`1790846753-titleroutes-3234529`, ref
+`d7791f6c0a`), and ended by posting `[lane.titleroutes] waiting:` naming that
+request id in both OUTBOX.md and PR.md -- which is the correct way to end a
+session per the lane's own doctrine (a queued device request is something
+outside the session, not a background task of its own) and per `roles/lane.md`
+explicitly does not count against the attempt budget. So "did not finish" here
+means the brief's work (routes down the list, #397 continuous pipeline) is
+still open, not that session 48 made a mistake; the attempt counter increments
+on a hostops/harness resume event, and the harness's own addenda say a wait
+resume is free. Picking back up where it left off:
+
+**The castlevania replay heat-stopped at 78s, inconclusive, not a route
+failure.** `0-0-s-1790846753-titleroutes-3234529`'s `.hostops-diagnosed` note
+and `run.log` confirm a CPU thermal-gate stop (cpu-1-9 at 91C, xo-therm only
+47C) 78s in -- the route had only completed 2 of its 14 START/A cycles by
+then, nowhere near its own mark. This is one heat stop for the *named* route
+(the generic survey it was built from heat-stopped separately, at 284/300s,
+not voided). Per the screening program's "two heat stops = done" rule, one
+heat stop is not done: queued a second replay this session rather than
+escalating it to the Nova on a single inconclusive run.
+
+### Gauntlet: Dark Legacy caught the same trap in its own survey frames, before any route was written
+
+Read `0-0-s-1790823800-titleroutes-2951589`'s route-frames cycle by cycle
+(not just the two frames NOTES had already named) to find the actual boot
+timing, since authoring a route from this survey was next on the list:
+
+| cycle | frame | what it shows |
+|---|---|---|
+| 7 ('A') | 205650-menu-a.png | an in-engine tutorial scroll over the live 3D dungeon ("I have summoned to my tower... Press A Button when done"), FPS 14 |
+| 8 ('start') | 205658-menu-start.png | the identical scroll (unchanged -- START does nothing while it's up) |
+| 8 ('A') | 205704-menu-a.png | the scroll is gone: the wizard standing in the dungeon, fully in player control, FPS 14 |
+| 14 ('mark play') | 205824-play.png | the in-game pause menu's Audio page (Music/Sfx Volume sliders), FPS 11 |
+
+So the survey's blind 14-cycle default (same constant used for castlevania)
+overshot here: gameplay was already running by cycle 8, and cycles 9-14 kept
+blind-pressing START into live play, which paused it -- exactly the bug
+session 48 found and named "Gauntlet-class" in `sonic-heroes.route`, except
+this time the evidence was sitting in a survey's own frames, not yet baked
+into a committed route. Authored `routes/gauntlet.route` from this: 8 cycles
+(not 14), then `mark gameplay`, then a movement loop that never presses
+START again (same shape as `castlevania-cod.route`). `targets.toml` gets
+`route = "gauntlet"` and the frame-by-frame note. DRAFT until its own replay
+is checked -- picking 8 because that's where this one run's evidence showed
+clean entry, not because 8 is proven as the fewest/safest cycle count for
+every boot-timing variance this title might show.
+
+**Do not repeat:** a survey's own frames can hide this bug if you only check
+the two frames a prior note already called out (the apparent "14 fps
+in-engine" read and the final mark). Walking every `menu-start`/`menu-a`
+frame pair in order is what found the overshoot here; spot-checking the
+headline frame would have missed it, same as it would have on Sonic Heroes.
+
+### capcom-classics2: queued a survey instead of guessing a second fix
+
+The withdrawn nomination's mark frame reads a "START MENU (Start Game / Load
+Game / Game Settings / Exit Game)" that the current `routes/capcom-
+classics2.route` (an all-`[guess]` arcade-coin draft) never anticipated --
+its guessed button sequence doesn't match this title's real menu structure
+at all. Rather than guess a second blind sequence (low probability of
+landing right on a structure already proven to not match the first guess),
+queued a generic `--route survey` soak, the same method that produced real
+evidence for castlevania-cod and surfaced Gauntlet's trap above. `route=` in
+`targets.toml` still points at the old guess draft until the survey gives
+frames to author from.
+
+### Two new titles from the ranked list, surveyed generically
+
+`scratch/rank_untouched.py`'s output is stale (its `targeted_ids.txt`
+exclusion list predates several sessions' routed titles, so it still lists
+already-routed titles like Super Monkey Ball Deluxe and Sonic Heroes as
+"untouched" -- not fixed this session, worked around by hand-checking
+`docs/testing/titles/routes/` for what's genuinely missing). Of the list's
+top unrouted entries, picked the two with no route file and no prior survey
+at all: **Plus Plumb 2** (rank 101, Perfect) and **Petit Copter** (rank 135,
+Perfect, likely Japanese menus per session 46's list note). Added bare
+`targets.toml` entries and queued generic surveys for both; no frames yet.
+
+### Sonic Heroes: a tiebreaker, not a blind edit
+
+Per last session's own "Next session" item 2: one option was reworking the
+route's cycle count from inference alone (the first good run's mark frame
+read 00:34:73 of elapsed level time at cycle 9, suggesting gameplay starts
+well before that point). Weighed against Gauntlet's lesson above: Gauntlet's
+cycle-8 fix is grounded in a frame-by-frame walk of its own survey showing
+exactly where gameplay started; `sonic-heroes.route` has no comparable
+per-cycle frame record (the two existing runs only shot `menu-start`/`menu-a`
+at the fixed 9-cycle schedule, so there's no frame showing cycle 5, 6, 7 to
+tell where the race window actually begins). Guessing a new cycle count
+without that evidence risks spending a cold Thor slot to learn nothing, or
+worse, to "fix" a count that still races. The session's results so far are 1
+good (session 47) / 1 bad (session 48) of the SAME route and cycle count --
+genuinely a coin flip reading, not yet a verdict either way. Queued one more
+screen of the existing route as a tiebreaker (decides something: 2-of-3 good
+reopens the nomination path under the "two clean confirmations" rule; 1-of-3
+confirms the route needs a real redesign, not another screen). Not nominated
+either way until that lands.
+
+### Queued this session (ref: this session's head, pushed)
+
+Thor (`--device thor --hard-pin --seconds 300`, `screen47.sh`-pattern):
+1. castlevania-cod.route, 2nd replay (1st heat-stopped inconclusively)
+2. gauntlet.route, 1st replay (newly authored)
+3. capcom-classics2, `--route survey` (generic, replacing the guess route as a mark source)
+4. Plus Plumb 2 (544B0004), `--route survey` (new title)
+5. Petit Copter (41510001), `--route survey` (new title)
+6. sonic-heroes.route, 3rd screen (tiebreaker, same route/cycle count)
+
+Request ids: see the table added to OUTBOX.md after queueing below.
+
+### Next session
+
+1. Read all six results above. Open the mark frame AND walk every
+   `menu-start`/`menu-a` pair before writing a number -- Gauntlet's own
+   trap this session was found exactly that way, not by trusting one named
+   frame.
+2. Apply "two heat stops = done on the Thor" to castlevania-cod and
+   gauntlet if either heat-stops again.
+3. Resolve Sonic Heroes from the tiebreaker's result (nominate on 2-of-3
+   good; redesign or drop on 1-of-3).
+4. If capcom-classics2's survey reaches real play, author
+   `routes/capcom-classics2.route` from its frames the same way
+   castlevania-cod and gauntlet were built, and retire the old guess draft.
+5. Ninja Gaiden is still open and NOT queued this session: its one survey
+   frame near the mark (200613-play.png) is too dark to call by eye (FPS
+   overlay reads 0 at that instant) and the title's own target_fps note
+   already says "not counted as gameplay (no input visibly moved him)" --
+   it needs a frame-every look at the full sequence after the "Now
+   Loading..." screen, not a guess that the dark frame is control, before
+   spending another cold slot on it.
+6. Bistro Cupid stopped at story dialogue, not gameplay, with no heat
+   stop (peak xo 69C) -- the full 300s wasn't enough to reach the
+   cooking/free-roam part. Worth a longer survey or a held Nova session
+   (it may also be on the Nova) rather than another 300s Thor attempt.
+7. Then continue the ranked list past Plus Plumb 2 / Petit Copter: Doom 3,
+   Monster Garage, AMF Bowling 2004, ... (fix `scratch/targeted_ids.txt`
+   first so the script's output stops repeating already-routed titles).
