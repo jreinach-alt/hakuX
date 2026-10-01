@@ -3109,3 +3109,64 @@ not counted.
    ~270 s to reach the first area.
 6. Then the ranked list (`scratch/rank_untouched.py`): Plus Plumb 2, Petit
    Copter, Doom 3, Monster Garage, AMF Bowling 2004, ...
+
+## Session 47 (2026-10-01): why attempt 1 of the resume did not finish, then the eight results
+
+Resumed per the harness's standard addendum (which matches the newest
+addendum in the brief, dated 2026-10-01 00:12 PDT / started_utc 07:12:24Z):
+the prior session (46) ended having written the "Next session" list above
+but before doing any of it -- `git log` shows session 46's commits already
+folded into `origin/master` (`fold: lane/titleroutes ... sessions 44-46`),
+and nothing in `dispatch/results` or the board file shows the eight
+requests having been read. So this attempt's first job was exactly that
+list. `gh` is still returning `403` (suspended account): offline protocol
+continues, PR.md/OUTBOX.md instead of a GitHub PR and issue comments.
+
+**Finding results took more than a flat `ls`.** None of the eight ids
+turned up under `dispatch/results/<id>/` by directory listing (the Glob
+tool does not descend one level without `**` or `*/*`, and the Bash tool
+is sandboxed to this worktree, so `find`/`grep -r` over `/home/justin/
+hakux-work/dispatch` do not run here). `Read`-ing the exact expected path,
+and `Glob` with a `*/*` pattern, both work. The real location of each
+result (`dispatch/results/0-0-s-<id>/` for Thor cold-slot runs, no prefix
+for the Nova replay) came from `logs/thor-coldconfirm.log`, which also
+gives the ground truth for which runs heat-stopped.
+
+### The eight results
+
+| request | device | outcome | finding |
+|---|---|---|---|
+| `0-0-s-1790830432-titleroutes-310926` (family-guy) | thor | DONE, no heat stop | fps_ok_share 0.9763 over 189.4s. Mark frame (215740-gameplay.png) is "Are you sure you want to overwrite this save?" -- the disk now carries a Family Guy save from an earlier run, so the 4th A landed on a used slot, not an Empty one as the route's comment assumed. Real gameplay (Stewie in the nursery, HUD) confirmed 9s later (215749-play.png); the 97.6% share is dominated by real play. **Nominated for Nova.** |
+| `0-0-s-1790830432-titleroutes-310985` (super-monkey-ball-deluxe) | thor | HEAT STOP, voided | Route CONFIRMED by its mark frame (221224-gameplay.png): the ball rolling in-level, 59fps, not a menu. Only 48.5s of gameplay before the stop. **Needs a clean re-screen**, not a nomination yet. |
+| `0-0-s-1790830432-titleroutes-311058` (sonic-heroes) | thor | HEAT STOP, voided | Route CONFIRMED (222424-gameplay.png): Team Sonic running Seaside Hill, 59fps. Only 61.4s before the stop. **Needs a clean re-screen.** |
+| `0-0-s-1790830433-titleroutes-311114` (THPS3, generic `survey`) | thor | HEAT STOP, voided | Never reached `mark gameplay` (no route existed to place one), but the frames show it reached real gameplay anyway: cycle 2 shows "THE FOUNDRY" goal splash, cycle 3 (223419-menu-a.png) is live, unpaused Foundry gameplay at 59fps. The generic survey then kept pressing START every ~12s, which just pauses/resumes an already-running level (223432 unpaused 1:55; 223634 PAUSED 1:01 at the heat stop). **Authored `routes/thps3.route`** from this evidence: 3 cycles then stop pressing START. DRAFT, not yet replayed as its own route. |
+| `0-0-s-1790830433-titleroutes-311173` (SSX Tricky, generic `survey`) | thor | done, no heat stop, but `hang=True` | The route's three "play" shots (224637, 224703, 224729) are all a solid black frame with only the FPS:59 overlay -- not gameplay, not a readable menu. Needs its own survey/nav pass, not a re-queue of the same one. No route yet. |
+| `0-0-s-1790830528-titleroutes-329478` (thps2x, re-marked) | thor | HEAT STOP, voided | The session-46 re-mark WORKED: mark frame (225733-gameplay.png) is the Hangar under a tutorial tip, 59fps, not the goal checklist. Only 105.1s before the stop; `below_own_target` at the 60fps bar it doesn't have evidence for yet (30fps bar: 100%). **Needs a clean re-screen.** |
+| `0-0-s-1790830528-titleroutes-329599` (castlevania-cod.first-run, re-marked) | thor | HEAT STOP, voided | The session-46 re-mark did NOT work: mark frame (231027-gameplay.png) is "There is no save data on your Xbox. Create new save data? Yes/No" -- a different menu, still not gameplay. Every step of this route past boot has always been [guess]; no frame on disk has ever shown this title under control. **Abandoning this route as a mark source.** Needs a fresh `--route survey` soak, same as thps3/family-guy/the monkey-ball and sonic titles were built this session, not another blind guess. |
+| `1790830434-titleroutes-311228` (187-ride-or-die.route replay) | nova | VOID | Not a route finding: `run.log` shows hakuX never got a focused window on display 0 at all ("foreground-unknown ... has no focused window on display 0"), so no input was sent and the route was never exercised. A launch race, not the keyboard trap session 46 fixed. Needs a re-queue. |
+
+`targets.toml` carries a "Session 47" sentence on every title above plus
+two new entries (41560004 THPS3, 45410004 SSX Tricky).
+
+### Mark-audit lesson applied, both ways
+
+Checking the mark frame (not just the fps share) is what told apart
+"the route works, the Thor just got hot" (monkey ball, Sonic Heroes,
+THPS2x, THPS3's evidence) from "the route still doesn't reach gameplay"
+(Castlevania, SSX Tricky) and from "it's basically fine, just one frame
+early" (Family Guy). A `crash=True`/`FAIL` verdict line from
+title_verdict.py conflates a genuine route failure with a heat stop that
+cut a good route short; only the frames tell them apart.
+
+### Queued next (this session)
+
+Thor (`screen47.sh`, pattern of session 42's `screen47.sh`/`bench8.sh`,
+`--device thor --hard-pin --seconds 300`, ref `5014d808b0` once pushed):
+re-screen super-monkey-ball-deluxe, sonic-heroes, thps2x (routes
+confirmed, want a clean unheated window); thps3 (new route, first replay);
+castlevania: `--route survey` (generic, abandoning the guess route).
+Nova: re-queue the 187-ride-or-die.route replay.
+
+Request ids and `DONE`/outcome: see the table added to OUTBOX.md and the
+board request file (`dispatch/board-requests/titleroutes.md`) after
+queueing below.

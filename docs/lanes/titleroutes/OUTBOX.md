@@ -306,3 +306,37 @@ and does not cause it.
 `1790830432-titleroutes-311058`, `1790830433-titleroutes-311114`, `1790830433-titleroutes-311173`,
 `1790830528-titleroutes-329478`, `1790830528-titleroutes-329599` (Thor) and
 `1790830434-titleroutes-311228` (Nova). PR.md is ready.
+
+## #397 -- 2026-10-01 00:23 PDT (session 47)
+
+The eight requests from session 46 read (logs/thor-coldconfirm.log gave the ground truth; none
+of the ids were findable by a flat directory listing -- see NOTES.md session 47 for why):
+
+| title | device | outcome | mark frame shows | verdict |
+|---|---|---|---|---|
+| Family Guy: Video Game! | thor | DONE, no heat stop | a save-overwrite dialog (one frame early); real play confirmed 9s later | fps_ok_share 0.9763/189.4s -- **nominated for Nova (#433)** |
+| Super Monkey Ball Deluxe | thor | HEAT STOP, voided | ball rolling in-level, 59fps -- route CONFIRMED | only 48.5s scored; re-screen queued |
+| Sonic Heroes | thor | HEAT STOP, voided | Team Sonic running Seaside Hill, 59fps -- route CONFIRMED | only 61.4s scored; re-screen queued |
+| THPS3 (generic survey) | thor | HEAT STOP, voided | no mark yet, but frames show live Foundry gameplay at 59fps by cycle 3 | routes/thps3.route authored from this evidence; first replay queued |
+| SSX Tricky (generic survey) | thor | done, no heat stop | all three "play" shots are a solid black frame | hang=True; needs its own survey, not a route yet |
+| Tony Hawk's Pro Skater 2x | thor | HEAT STOP, voided | the Hangar under a tutorial tip, 59fps -- re-mark CONFIRMED | only 105.1s scored; re-screen queued |
+| Castlevania: Curse of Darkness | thor | HEAT STOP, voided | "Create new save data? Yes/No" -- still a menu | re-mark did NOT work; abandoning the guess route, generic survey queued |
+| 187: Ride or Die (replay) | nova | VOID | n/a -- hakuX never held display 0 focus, no input sent | not a route finding; retry queued |
+
+**Nova nomination (#433): Family Guy: Video Game! (545400B0).** Clean full-session read, 97.6%
+share, real gameplay confirmed in the frames past the one-frame-early mark.
+
+**Withdrawn from last session's implicit candidates:** Super Monkey Ball Deluxe, Sonic Heroes and
+THPS2x are confirmed-good routes but their only scored windows are heat-truncated (48-105s); not
+nominating until a clean re-screen lands. Castlevania's route is not confirmed at all; dropped
+until a fresh survey replaces it.
+
+Queued next (ref `2a87446629`, `--device thor --hard-pin --seconds 300` except the Nova line):
+`1790839386-titleroutes-2237355` (super-monkey-ball-deluxe re-screen), `1790839390-titleroutes-2237657`
+(sonic-heroes re-screen), `1790839392-titleroutes-2237866` (thps2x re-screen), `1790839395-titleroutes-2238007`
+(thps3 first replay), `1790839398-titleroutes-2238193` (castlevania generic survey), and
+`1790839401-titleroutes-2238360` (187-ride-or-die retry, Nova).
+
+[lane.titleroutes] waiting: `1790839386-titleroutes-2237355`, `1790839390-titleroutes-2237657`,
+`1790839392-titleroutes-2237866`, `1790839395-titleroutes-2238007`, `1790839398-titleroutes-2238193`
+(Thor) and `1790839401-titleroutes-2238360` (Nova). PR.md is ready.
