@@ -2679,3 +2679,132 @@ surveys, since nothing is on disk for them yet.
 `1790801593-titleroutes-1202186` (Burnout Revenge, Nova). None are A/B
 predictions, so no `ab_compare` judging is needed -- reading each result dir
 directly is enough once it lands.
+
+## Session 44 (resumed, attempt 2): why session 43 didn't "finish", all six results read, and a dispatcher misdiagnosis
+
+**Why the previous attempt did not finish.** It didn't need to: session 43 ended
+correctly on a `[lane.titleroutes] waiting:` naming six dispatch requests (five
+Thor screens, one Nova benchmark), with PR.md `State: ready`. The harness's own
+rule is that a `waiting:` on dispatch request ids is a finished session, not a
+failure -- this is the waiter's routine resume. By the time this session started,
+lane.local's offline-protocol fold had already merged that PR into master
+(`70c9e96876`), so step one was `git merge origin/master` (fast-forward, no
+conflicts) before anything else.
+
+**All six requests had landed.** None of them were findable by directory-name
+substring glob under `dispatch/results` (a tooling quirk of this session's Glob
+tool with wildcard patterns outside the worktree -- exact paths work fine, substring
+globs across result dirs do not), which is why they looked "missing" at first.
+Reading each exact `dispatch/results/<id>/` path directly found all six, and
+`docs/testing/title_verdict.py <dir> --reviewed-gameplay yes` scored each one:
+
+| title | device | request | reached gameplay | gameplay_s | fps_window_median | fps_ok_share (28.5+ bar) | own target | crash/hang | real stop cause |
+|---|---|---|---|---|---|---|---|---|---|
+| Tony Hawk's Pro Skater 2x | thor | `0-0-s-...-2050654` (v1, 480s) | yes | 133.2 | - | 0.961 | 60 | crash/no | **Daijishou focus steal at 260s** (explicit `not-foreground` line), not heat |
+| Tony Hawk's Pro Skater 2x | thor | `1790808339-titleroutes-3127689` (retry, 300s) | yes | 183.9 | 59.82 | 0.976 | 60 | no/no | clean, ran to its own end |
+| Capcom Classics Collection Vol. 2 | thor | `0-0-s-...-2055173` (v1, 480s) | yes | 273.2 | - | 1.0 | 30 | crash/no | silent `guest exited after 390s`, **no** not-foreground line logged; last thermal sample reads xo-therm 70.1C -- unlike the other four, this one's HEAT STOP label is at least plausible |
+| Capcom Classics Collection Vol. 2 | thor | `1790808344-titleroutes-3128993` (retry, 300s) | yes | 189.6 | 59.94 | 1.0 | 30 | no/no | clean |
+| Castlevania: Curse of Darkness | thor | `1790805456-titleroutes-2055301` | yes | 204.2 | 59.94 | 1.0 | 30 | crash/no | **Daijishou focus steal at 381s**, not heat |
+| Shin Megami Tensei: NINE | thor | `1790805456-titleroutes-2055567` | yes | 316.2 | 29.96 | 0.967 | 30 | no/no | clean |
+| Tork: Prehistoric Punk | thor | `1790805457-titleroutes-2055759` | yes | 130.3 | 29.96 | 0.585 | 30 | crash/no | **Daijishou focus steal at 290s**, not heat |
+| Dead or Alive 3 (v2) | thor | `0-0-s-1790805442-titleroutes-2050455` | yes | 342.7 | 52.22 | 0.605 | 60 | crash/**hang** | **Daijishou focus steal at 475s**, not heat |
+| Burnout Revenge | nova | `1790801593-titleroutes-1202186` | yes | 102.2 | 39.45 | 0.972 | 60 | no/no | clean (same-pass benchmark, session 41's route) |
+
+**The dispatcher's heat-stop diagnosis is wrong for 4 of the 5 Thor runs it
+flagged this batch.** Every one of the five Thor runs carrying a
+`.hostops-diagnosed` flag (DOA3 v2, THPS2x v1, Capcom2 v1, Castlevania, Tork)
+says the identical templated line: `"HEAT STOP at xo 70 C -- force-stopped
+hakuX by design, not a jam/crash"`. Reading each run's own `run.log` and
+`thermal.jsonl` instead of trusting that flag shows:
+- **Four of the five (DOA3 v2, THPS2x v1, Castlevania, Tork) actually stopped
+  because the Thor's Daijishou launcher (`com.magneticchen.daijishou`)
+  regained focus on display 0** -- the route engine's own foreground guard
+  caught it and logged `ROUTE STOPPED: ... xemu is gone, so the guest exited
+  (not-foreground: com.magneticchen.daijishou ...)` before ending the route.
+  This is the same symptom class as 09-27's D&D Heroes stop and the
+  dual-screen-assistant focus loss (NOTES session 26), just a different
+  launcher doing the stealing. It happened at wildly different elapsed times
+  (260s, 290s, 381s, 475s) -- not correlated with any duration cap, which
+  means the 300s cap cannot reliably prevent it. In every one of these four,
+  `thermal.jsonl`'s own xo-therm never crosses 70C (Castlevania peaks at
+  69.927C two samples before the end; DOA3 v2 ends at 69.6C) -- so the "xo 70
+  C" in the diagnosis is not what actually happened in these four runs.
+- **The fifth (Capcom2 v1) is different and NOT disproven as heat.** `run.log`
+  shows a bare `guest exited after 390s of 480s` with no preceding
+  `not-foreground` line -- the route engine did not catch a focus loss here,
+  the guest process itself just stopped appearing. Its last `thermal.jsonl`
+  sample reads xo-therm 70.125C, right at the claimed threshold, so this one's
+  HEAT STOP label is plausible even though the log never explicitly says so
+  (title_verdict.py scores it a bare "crash", same as the Daijishou cases,
+  because a silent early exit looks identical to one from the outside).
+
+So the auto-diagnoser (harness_health.py, presumably templated on "the Thor
+was near 70C when this got force-stopped") is over-applying a heat label to a
+different, unrelated failure mode (Daijishou focus steal) in 4 of 5 cases this
+session, while the 1 case it may have gotten right offers no positive
+confirmation in the log beyond a temperature reading taken after the fact.
+
+**This undermines the evidence behind lane.local's 09-30 15:40 PDT addendum**,
+which cited three of these five runs as heat stops to justify dropping the Thor
+screening cap from 480s to 300s. The cap may still be a reasonable throughput
+choice on its own merits (cooling-slot cadence), but its stated reason is a
+misdiagnosis, and the real recurring failure (Daijishou stealing focus,
+independent of duration or temperature) is still live and not something a
+shorter timeout fixes. **Filed on `dispatch/board-requests/titleroutes.md` and
+flagged on #397** for whoever owns `harness_health.py` and the Thor's launcher
+configuration; not my file to fix.
+
+**DOA3 and Tork now each have two failed Thor runs**, but by the real cause
+(Daijishou), not the heat the screening program's "two strikes" rule was
+written against. I'm treating that as two failures either way and not sending a
+third blind retry at either on the Thor. DOA3 is Thor-only (no Nova copy), so
+"needs the Nova" needs a copy decision outside this lane (owner's amended
+one-copy-per-title rule); flagged in `targets.toml` and OUTBOX #433, not queued
+by me. Tork's fps was also genuinely marginal (58.5% at the 30 bar) even in the
+130s it got, independent of the Daijishou stop, so it is not a Nova candidate
+on fps either.
+
+**Nova nominations (#433), 90%+ at 28.5+ with no hang:**
+- **Tony Hawk's Pro Skater 2x** -- 97.6% (clean run, no caveat)
+- **Capcom Classics Collection Vol. 2** -- 100% (clean run, no caveat)
+- **Shin Megami Tensei: NINE** -- 96.7% (clean run, no caveat)
+- **Castlevania: Curse of Darkness** -- 100% while it ran, `hang=False` so it
+  technically clears the written bar, but the run ended in a crash (Daijishou,
+  not the game) at 204s rather than completing -- nominated with that caveat;
+  a clean confirmation run would be worth more than trusting this one outright.
+
+`targets.toml` updated for all seven titles (the six screens plus Burnout
+Revenge) with these results in place of "not yet replayed"; still parses
+(tomllib) and `titlestate_selftest.py` passes.
+
+**Kept the Thor queue fed.** Per the "batch the Thor work per session"
+addendum, queued the next four routeless Thor titles from the work list
+(NOTES "work list" table, all Thor-only per the nova column being blank) as
+blind pass-1 surveys (`--route survey`, 300s, `--hard-pin --device thor`,
+`--issue 397`; GitHub is still offline so release-priority labels can't be
+read and these queued at plain priority, same as every other offline-mode
+request this lane has made):
+
+| title | title_id | request |
+|---|---|---|
+| Psychonauts | 4D4A0012 | `1790822573-titleroutes-2818801` |
+| Phantom Dust | 4D530046 | `1790822578-titleroutes-2819133` |
+| Ninja Gaiden (Europe) | 54430003 | `1790822580-titleroutes-2819211` |
+| Deathrow | 55530004 | `1790822581-titleroutes-2819301` |
+
+These are blind surveys (no `mark gameplay`), so even if Daijishou kills one
+mid-run the captured `route-frames/` up to that point are still usable for
+authoring a real route next session.
+
+**Next session:** read the four survey results above (`route-frames/`: how far
+did each get, what screen is it on). Author a route for each from those
+frames, replay it once, and queue its same-pass fps benchmark, same as every
+other title. Then continue down the work list (next after these four, by the
+NOTES work-list table: whatever the next untouched Thor-only or Nova-only row
+is). Watch for the Daijishou stop in every future Thor run regardless of
+duration -- read `run.log` for `not-foreground: com.magneticchen.daijishou`
+before trusting any `.hostops-diagnosed` "HEAT STOP" label.
+
+**Waiting:** none of my own device requests are outstanding at the time of
+writing (the four surveys above are newly queued, not something I'm blocking
+this session on). PR pushed and marked ready; nothing to wait on.

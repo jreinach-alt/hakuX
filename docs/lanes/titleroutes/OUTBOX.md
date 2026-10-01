@@ -160,3 +160,60 @@ a cold Thor slot: 1790805456-titleroutes-2055301 (Castlevania),
 -2055567 (SMT NINE), 1790805457-titleroutes-2055759 (Tork). One Nova
 benchmark still queued: 1790801593-titleroutes-1202186 (Burnout Revenge).
 The waiter's resume once the last of these lands is the signal.
+
+## #397 -- 2026-09-30 (session 44)
+
+All six pending Thor screens plus the Burnout Revenge Nova benchmark landed and are read in full:
+
+| title | device | reached gameplay? | fps median | share at 28.5+ | crash/hang | real cause if it stopped early |
+|---|---|---|---|---|---|---|
+| Tony Hawk's Pro Skater 2x (v1, 480s) | thor | yes | - | 0.961 | crash/no | Daijishou focus steal at 260s (not heat) |
+| Tony Hawk's Pro Skater 2x (retry, 300s) | thor | yes | 59.82 | 0.976 | no/no | clean |
+| Capcom Classics Collection Vol. 2 (v1, 480s) | thor | yes | - | 1.0 | crash/no | silent exit at 390s, xo-therm 70.1C at the end -- plausibly real heat |
+| Capcom Classics Collection Vol. 2 (retry, 300s) | thor | yes | 59.94 | 1.0 | no/no | clean |
+| Castlevania: Curse of Darkness | thor | yes | 59.94 | 1.0 | crash/no | Daijishou focus steal at 381s (not heat) |
+| Shin Megami Tensei: NINE | thor | yes | 29.96 | 0.967 | no/no | clean |
+| Tork: Prehistoric Punk | thor | yes | 29.96 | 0.585 | crash/no | Daijishou focus steal at 290s (not heat); fps also genuinely marginal |
+| Dead or Alive 3 (v2) | thor | yes | 52.22 | 0.605 | crash/hang | Daijishou focus steal at 475s (not heat) |
+| Burnout Revenge | nova | yes | 39.45 | 0.972 | no/no | clean (BENCHMARKED, well below its 60 own-target) |
+
+**Defect found and filed** (`dispatch/board-requests/titleroutes.md`, not my file): the dispatcher's
+Thor cold-slot auto-diagnoser (harness_health.py) labeled 5 of these runs `.hostops-diagnosed`
+"HEAT STOP at xo 70 C". Four of the five actually logged an explicit
+`not-foreground: com.magneticchen.daijishou` -- the Thor's launcher regained display-0 focus and
+killed xemu, caught correctly by the route engine's own guard, with xo-therm nowhere near 70C at
+the time. Only the fifth (Capcom2 v1) has thermal evidence consistent with a real heat stop. This
+undermines the evidence behind lane.local's 09-30 15:40 PDT addendum that cited three of these as
+heat stops to justify the 300s cap -- the cap may still be reasonable for cooling cadence, but the
+Daijishou focus-steal is a separate, still-live problem that a shorter timeout does not reliably
+prevent (it struck at 260s, 290s, 381s and 475s, no correlation with duration). Detail in
+`docs/lanes/titleroutes/NOTES.md`, "Session 44".
+
+`targets.toml` updated for all seven titles with these results; still parses and
+`titlestate_selftest.py` passes.
+
+**Kept the Thor queue fed**: queued the next four routeless Thor-only titles from the work list as
+blind pass-1 surveys (300s each, `--hard-pin --device thor`): Psychonauts (`1790822573-titleroutes-2818801`),
+Phantom Dust (`1790822578-titleroutes-2819133`), Ninja Gaiden Europe (`1790822580-titleroutes-2819211`),
+Deathrow (`1790822581-titleroutes-2819301`).
+
+[lane.titleroutes] waiting: nothing of my own. The four survey requests above are newly queued, not
+something this session is blocking on; a future session reads their route-frames and authors routes
+from them. PR pushed and marked ready.
+
+## #433 -- 2026-09-30 (session 44)
+
+Nova nominations, 90%+ at 28.5+ with no hang, from this session's six Thor screens:
+- **Tony Hawk's Pro Skater 2x** -- 97.6%, clean run, no caveat.
+- **Capcom Classics Collection Vol. 2** -- 100%, clean run, no caveat.
+- **Shin Megami Tensei: NINE** -- 96.7%, clean run, no caveat.
+- **Castlevania: Curse of Darkness** -- 100% while it ran (hang=False, technically clears the bar),
+  but the run ended in a crash (the Daijishou focus-steal defect above, not the game) at 204s rather
+  than completing the full screen -- nominated with that caveat; a clean confirmation run would be
+  worth more than trusting this one outright.
+
+Not nominated: Dead or Alive 3 (60.5% at the bar, real hang gaps too) and Tork (58.5% at the bar,
+genuinely marginal even setting the Daijishou stop aside). Both now have two failed Thor runs each
+(by the real cause, not the heat label); DOA3 is Thor-only so "needs the Nova" needs a copy decision
+outside this lane (owner's amended one-copy-per-title rule) -- flagged in `targets.toml`, not queued
+by me.
