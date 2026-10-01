@@ -1,45 +1,21 @@
-# lane.forzadecay414: the ready head's Forza run reads clean; notes after #583 (#414)
+# lane.forzadecay414: the +11 min step in Forza's 1200-s confirmation is the car moving to a heavier view (#414)
 State: ready
 
-Lane: forzadecay414-fix-notes   Issue: #414
-Base: lane/forzadecay414-fix @ 78564d090b (stacked; fold it after lane/forzadecay414-fix)
-Files: docs/lanes/forzadecay414/NOTES.md, docs/lanes/forzadecay414/OUTBOX.md, docs/lanes/forzadecay414/PR.md
-Prediction: none: analysis-only (the head run was queued with --no-expect as a replicate of forzadecay414-fix-forza3.json)
+Lane: forzadecay414-step   Issue: #414
+Base: master @ b73367209a
+Files: docs/lanes/forzadecay414/NOTES.md, docs/lanes/forzadecay414/OUTBOX.md, docs/lanes/forzadecay414/PR.md, docs/lanes/forzadecay414/step_split.py
+Prediction: none: analysis-only (reads the existing run 1-1790826491-lane.verdict433-3477700; no device run)
 Needs device: no    Needs NDK: no
 
 Release note (none): documentation only
 
-**Fold order.** Fold `lane/forzadecay414-fix` first, at 78564d090b. Until it is on master, this
-branch's diff also carries the fix's 16 files. offline_fold.py's head-run check then refuses it,
-because no run was built from this head. After the fix folds, the diff is the three files above
-under `docs/lanes/`, and no device run is needed.
+lane.local's 22:40 addendum asked what changes at about +11 min in the Playable confirmation `1-1790826491-lane.verdict433-3477700` (Nova, master b1cea467c6, default regimen, 1200 s). In that run Forza steps from 30 fps to 20 fps.
 
-## What it adds (NOTES section 11)
+**What the step is.** The survey route parked the car at 0 mph at the start grandstand for 10.5 minutes. It then drove onto the circuit (41 mph at t = 683 s) and parked again in a forest section until the end. The fps steps one second later, at t = 684 s.
+- **The forest view** puts most flips on 3 vblanks. The renderer is never idle there (Ri 0.0, against 11.5 ms/frame before), and the guest idles more (41%, against 25%).
+- **No creep.** The invalid list holds at 10. G is flat over 8 minutes of identical frames. Heat and the CPU clocks do not change.
+- **One open item: the GPU clock.** `gpuclk` reads 401 MHz throughout under the default regimen, where the MAX runs read 615 MHz. This run does not decide whether the forest view is bound by that clock.
 
-The head run that offline_fold.py needed for the fix, `1-1790821846-forzadecay414-2624677`
-(ref 78564d090b, Nova, 420 s), finished, and it holds forza3's legs as a replicate:
-
-| leg | read |
-|---|---|
-| W0 | soak end t = 427.3; no ERROR, VOID, lmkd or Fatal signal |
-| M0 | race HUD on the last `play` frame: LAP 1/2, RACE 02:49 |
-| B1/B2 | invalid= max 10, last 10 |
-| B3 | walk 0.06 -> 0.07 ms/flip |
-| D1 | late/early 0.83 |
-| D3 | min/median 0.82 |
-
-fps rows t = 150..390: `22 22 28 28 22 22 22 20 18`. The last two rows are lower, but the list holds at
-9-10 and the clocks are flat at 2016/2707/3187 MHz CPU and 615 MHz GPU, with no cooling device engaged
-(#588's fields). The car is stopped on the verge in 8th at the end, a different scene from forza3's.
-
-The readout is on this stacked branch, not on the fix branch. A commit there would move the head
-off 78564d090b, and offline_fold.py would then need another 420-s Nova run before folding the fix.
-
-## NOTES section 12
-
-A run on this branch's earlier head, `1-1790823584-forzadecay414-2909711` (ref 089378374c), is DONE
-but short: the Nova's adb link dropped at about t = 308 s. Up to the drop, `invalid=` read 9-10 and
-gfps 25-30. It is not needed: under the fold order above, this branch is docs-only by the time it
-folds.
+The details are in NOTES.md section 13. `step_split.py` produces the per-minute table.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
