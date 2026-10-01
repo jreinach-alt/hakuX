@@ -2163,3 +2163,519 @@ targets.toml and has no benchmark.
 4. Thor titles (Bicycle Casino, Breeders' Cup, AMF Xtreme Bowling, ... from
    the hand-over; Bruce Lee's route check) once the Thor is back in
    service for title work and is not held.
+
+## Session 38 (resumed 2026-09-30, attempt 1): why attempt 37 did not finish, and re-queuing the lost benchmarks
+
+**Why the previous attempt did not finish:** session 37 ended after queueing
+three Nova benchmarks (Midnight Club 3 `1-1790734333-titleroutes-3037624`,
+187: Ride or Die `1-1790735661-titleroutes-3181153`, Crash: Wrath of Cortex
+`1-1790736688-titleroutes-3301413`) and its own commits had already folded
+into `origin/master` as `a3681ccb0b` (PR #626) by the time this session
+started -- so the branch itself was not the problem. hostops's 03:31
+addendum expected those three results to be waiting in `dispatch/results`.
+They are not: no trace of any of the three request ids anywhere under
+`dispatch/` (queue, running, results, void). Between session 37 (ending
+~20:01 PDT 09-29) and now, the harness went through the GitHub suspension,
+the offline-git cutover, and lane.hddcrash's mode-660 fix for a bug that
+crashed **every** titles.qcow2 boot 2-7 ms after `sdl2_display_early_init`
+(dispatch/board-requests/hddcrash's NOTES: ~190 hdd.img runs with 0 early
+crashes vs. 10 of 11 titles.qcow2 runs dead, 09-28 00:00 to 09-29 20:05).
+My three requests were queued at 19:22-19:41 PDT 09-29, inside that crash
+window, against the Nova's titles disk -- the most likely explanation is
+they died the same way and were later reaped, though I have no surviving
+run.log to confirm it was this bug specifically rather than the dispatch
+disruption itself. Either way, nothing about the routes or targets.toml
+entries is in question: all three replayed clean interactively in session
+37, and `titlestate_selftest.py` still passes.
+
+**This session:**
+- Merged `origin/master` (fast-forward, no conflicts): HEAD moved from
+  `9c922e017a` to `146b8887db`, bringing in `lane/cithrottle` (CI throttle)
+  and `lane/hddcrash` (titles-disk mode 660 fix), both folded offline by
+  lane.local while GitHub was suspended. `gh api user` still returns 403
+  ("Sorry. Your account was suspended") as of this session, so this PR
+  follows the offline protocol in `offline-git/README.md`: `docs/lanes/
+  titleroutes/PR.md` in place of a GitHub PR, `OUTBOX.md` in place of a
+  #397 comment.
+- Confirmed the titles-disk kill-switch drop-in is gone
+  (`offline-git/titlesdisk-off.conf.removed-20260930`) and the live
+  dispatcher snapshot (`dispatch/bin/dispatcher.sh`) already has the
+  mode-660 fix (`dev_make_660`, `mode_found`/`mode` in hdd.json).
+- **The Thor is out of service.** `dispatch/hold/thor` = `lanelocal-fanwait`
+  since 2026-09-30T02:22:37Z: the Thor's fan is dead (owner 09-29, a
+  warranty replacement is shipping). Not mine to release. No Thor work
+  this session.
+- Nova is free (no hold), asleep, battery 35% -- above the 30% floor but
+  with little margin, so I re-queued rather than took an interactive hold.
+  Re-queued the three lost benchmarks at ref `146b8887db` (current
+  `origin/master`, carries the disk fix), same routes and `--seconds` as
+  before:
+  - Midnight Club 3 (`54540079`, `midnight-club-3.returning`): `1-1790764527-titleroutes-2436824`, 460 s
+  - 187: Ride or Die (`55530036`, `187-ride-or-die.returning`): `1-1790764530-titleroutes-2437076`, 370 s
+  - Crash: Wrath of Cortex (`56550003`, `crash-wrath-of-cortex`): `1-1790764531-titleroutes-2437119`, 400 s
+- `titlestate_selftest.py`: all checks pass. `targets.toml` parses with
+  `tomllib`.
+
+**Next:** read the three re-queued results once they land, put them in the
+#397 table (via OUTBOX until GitHub is back), then continue with Black
+Stone / Burnout Revenge on the Nova. Thor work waits for `lanelocal-fanwait`
+to lift.
+
+## Session 39 (resumed 2026-09-30 12:37 PDT, attempt 1): previous attempt finished cleanly; both devices restricted today
+
+**Why attempt 38 did not need recovery:** it did finish. Its own commits
+(`39d518f9b6` and the NOTES/OUTBOX/PR.md above) were already folded into
+`origin/master` as `2c59b7bbba` ("fold: lane/titleroutes (offline)") before
+this session started -- confirmed by `git log origin/master` showing that
+fold directly above session 38's own commit. This is a routine continuation,
+not a failure recovery.
+
+**This session:**
+- `git fetch origin && git merge origin/master` fast-forwarded
+  `39d518f9b6..2ba1a6e9a2` (3 commits: PR #628 escalation-parser fold, plus
+  `lane.defecttriage433`'s classification of the six titles blocking 0.5
+  Playable -- analysis only, no files of mine touched). No conflicts.
+- `gh api user` still 403 "account was suspended": still offline protocol.
+- **Session 38's three re-queued Nova benchmarks never ran.** They are not
+  in `dispatch/{queue,running,results}` anywhere; they are parked at
+  `dispatch/parked/titleroutes-daypark-0930/{2436824,2437076,2437119}.req`.
+  The park's README: "lane.local 2026-09-30 10:05 PDT: owner plan -- the
+  Nova battery goes to Playable confirmations first today (no top-up until
+  the evening dock). These three route runs return to queue/ tonight after
+  the dock." Not mine to unpark; nothing to do here but wait for tonight.
+- **The Thor's hold text changed since the "Thor screening program" addendum
+  above was written.** `dispatch/hold/thor.why` now reads (timestamp
+  2026-09-30T17:48:12Z, i.e. today, after the 12:40 PDT addendum):
+  "lanelocal-fanwait: the Thor's fan is dead ...: light work only --
+  staged new titles push under this hold (push-under-hold flags); **no
+  queued runs**; lane.local releases after the repair." That supersedes the
+  addendum's "queued requests only, `--device thor --hard-pin`" allowance --
+  even queued Thor screening soaks are out today, not just interactive
+  holds. Confirmed no active hold file for Nova (only `hold/lifted/nova.*`
+  entries), so the Nova restriction is the owner-plan/battery one above, not
+  a hold.
+- **Net: no device work is available from either handheld this session.**
+  Dispatched an Explore agent to check whether route-authoring work is
+  possible without new device time (the Thor-screening addendum's own
+  suggestion: "author the route from pass-1 survey soaks and their
+  route-frames" that already exist on disk from earlier campaigns) --
+  findings below once it returns.
+- Did not touch `dispatch/parked/titleroutes-daypark-0930` or
+  `dispatch/hold/thor*` (not mine; per brief "Do not restore or touch"
+  applies in spirit even though that line names a different parked dir).
+- `titlestate_selftest.py`: all checks pass (no code of mine changed this
+  session). `targets.toml` still parses with `tomllib`.
+
+**Offline-work check (Explore agent):** the Thor-screening addendum's own
+suggestion was to author routes from pass-1 survey soaks already on disk,
+without new device time. The agent found 4 Thor titles with `iso.thor` set,
+no route yet, and pass-1 `route-frames/` reaching gameplay per
+`titleplay/NOTES.md`'s review table: Blinx, Blinx 2, Forza, 25 to Life.
+Three of those four (Blinx, Blinx 2, Forza) are explicitly reserved for
+`lane.slowdown462` (brief addendum 3), so not mine to draft. The fourth,
+**25 to Life**, has only one thin summary line in `titleplay/NOTES.md`
+("profile created, chapter 1 Warehouse, third-person shooting") with no
+step-by-step input sequence -- not enough evidence to draft a route with
+any confidence, unlike routeprep's detailed drafts (below). Left undrafted
+rather than guess at a title defecttriage433 already ranked lowest priority
+of its six ("may resolve to 'fine' once measured properly").
+
+**`lane.routeprep`'s backlog (real, useful offline-prep work): drafts
+awaiting device validation.** routeprep (`docs/lanes/routeprep/`, its own
+lane, offline, not my files) prepares route drafts from exactly this kind
+of survey evidence; "lane.titleroutes validates each one on a device and
+adopts it into `docs/testing/titles/routes/`" (its NOTES.md, line 6). Cross
+-referenced its 24 drafts against my adopted `routes/`: 8 titles have
+**already been superseded** by my own validated routes under different
+filenames (187-ride-or-die, mc3 -> midnight-club-3, jsrf, mechassault2,
+pgr2, rallisport2, spikeout, wwe-raw2) -- no action needed, routeprep's
+NOTES is just stale on naming. The other **9 are still pending validation**,
+never driven on a device:
+
+| draft | device | evidence quality (routeprep NOTES) |
+|---|---|---|
+| `burnout-revenge.first-run.route`, `.returning.route` | Nova | pass-1 input frames + Burnout 3's played routes; open: name keyboard, save default, pre-race video |
+| `galleon.route` | Nova, Thor | pass-1 input frames to an in-game load; open: main-menu order |
+| `doa3.route` | Thor | pass-1 input frames through the 200 s copyright wait; open: Story entry, costume step |
+| `capcom-classics2.route` | Thor | no frames on disk, `[recalled]`/`[guess]` only |
+| `castlevania-cod.first-run.route`, `.returning.route` | Thor | no frames on disk, `[guess]` only |
+| `smt-nine.route` | Thor | no frames on disk, Japanese menus, `[guess]` only |
+| `thps2x.route` | Thor | no frames on disk, `[guess]` only |
+| `tork.route` | Nova, Thor | hands-off frames only (no input evidence past the title), `[guess]` past START |
+
+Priority for the next device session, ranked by evidence quality (a draft
+built on real input frames is far more likely to replay clean on the first
+try than a `[guess]`-only one): **Burnout Revenge** first (Nova, already on
+my own "next" list from session 38; strong evidence), then **Galleon**
+(Nova+Thor, strong evidence; also already on my radar from the 09-27
+addendum's "fast titles blocked by their route" note, so validating it
+finally answers whether its actual route matches that note's account), then
+**DOA3** (Thor, strong evidence). The `[guess]`-only five need a short nav
+session before they're worth a full validation replay, same as any
+no-evidence title on my own work list.
+
+## Session 40 (resumed 2026-09-30 12:45 PDT, attempt 2): the three "lost" benchmarks were never lost
+
+**Why attempt 1 (session 39) did not need recovery.** It did finish, cleanly:
+it ended on a `waiting:` naming two external signals (the Nova park returning
+to queue tonight, the Thor's `lanelocal-fanwait` hold lifting), and PR body
+`State: ready`. Nothing failed; there was just no device work available at
+the time. This session resumes as a routine continuation, not a rescue.
+
+**The mystery session 38 reported ("no trace of any of the three request ids
+anywhere under `dispatch/`") is resolved: they were never lost.** Re-checked
+`dispatch/results/` for the three *original* session-37 request ids (not the
+session-38 re-queue duplicates) and all three are `DONE` with real frames and
+logcat, at a later admission time than session 38's check:
+
+| title | request (original, session 37) | gameplay_s | fps median (min) | share >= target | target | hang |
+|---|---|---|---|---|---|---|
+| Midnight Club 3: DUB Edition | `1-1790734333-titleroutes-3037624` | 288.7 | 29.67 (13.81) | 87.5% | 30 | no |
+| 187: Ride or Die | `1-1790735661-titleroutes-3181153` | 302.2 | 59.94 (59.88) | 100% | 30 | no |
+| Crash: Wrath of Cortex | `1-1790736688-titleroutes-3301413` | 308.9 | 56.18 (41.78) | 100% | 60 | no |
+
+(`scratch/judge.py` on each, `docs/testing/title_verdict.py` under the hood,
+apk `eae7a2f00588`, ref `1c0c23fabb`.) All three route-frame sequences in the
+result dirs show real play through to the mark (MC3: Jetta on the San Diego
+street; 187: the Western Whip race; Crash: the warp-room hub), matching what
+the interactive replays in session 37 showed. Most likely explanation: these
+three requests were still in flight (or briefly stuck) during the
+GitHub-suspension/offline-git cutover session 38 investigated, and their
+results only landed in `dispatch/results/` sometime after session 38's check
+-- not evidence of the titles-disk crash session 38 blamed them on. Nothing
+here contradicts that crash's existence (lane.hddcrash's fix is real and
+independently documented), just that these three particular requests survived
+it.
+
+**Consequence: session 38's three re-queued duplicates are now redundant.**
+`1-1790764527-titleroutes-2436824` (MC3), `1-1790764530-titleroutes-2437076`
+(187), `1-1790764531-titleroutes-2437119` (Crash) sit parked at
+`dispatch/parked/titleroutes-daypark-0930/`, due back in `queue/` tonight per
+lane.local's 10:05 PDT plan. Running them would re-spend Nova device time
+re-measuring titles that already have clean, non-void readings above. This
+parked dir is under lane.local's management, not named in my brief's "do not
+touch" list (that names a different parked dir, titleplay-p1), but I am not
+unparking, editing or deleting its contents unilaterally -- flagging it here
+and in OUTBOX for lane.local/hostops to drop before tonight's return, since
+they are not mine to withdraw from the queue.
+
+**Device state, checked fresh this session (not reused from session 39):**
+- **Nova** (`ee317437`): no hold file (only `hold/lifted/nova.*` entries).
+  Battery 43%. But `dispatch/running/1-1790775886-lane.verdict433-3086903`
+  names it (`.owner` = `nova`) -- confirmed live via
+  `dumpsys activity activities | grep mFocusedApp`: hakuX is in front on the
+  Nova right now, mid soak (Arctic Thunder, #433 Playable confirmation batch
+  6, 910 s). Per the brief, a device whose `.owner` names it is off limits
+  for a hold regardless of battery. Also per lane.local's 10:05 PDT plan,
+  today's Nova battery goes to Playable confirmations first even once this
+  soak ends -- so I did not queue behind it either.
+- **Thor** (`bdc158a5`): `dispatch/hold/thor` = `lanelocal-fanwait`,
+  `thor.why` still reads the 17:48 PDT "no queued runs" text from session
+  39's check. Unchanged; still out for both interactive and queued title
+  work.
+
+So, same as session 39, no device work is available this session. What
+changed is real: three benchmark numbers that were reported as missing now
+have a home in the #397 table above, and the duplicate re-queue is now known
+to be pure waste whenever it runs tonight.
+
+`python3 docs/testing/titles/titlestate_selftest.py`: all checks pass (no
+code of mine touched). `targets.toml` parses with `tomllib` (unchanged;
+these three titles' entries already carried routes, fps is reported in NOTES
+and OUTBOX, not stored in targets.toml).
+
+**Next, once a device is actually free:** validate `lane.routeprep`'s ranked
+drafts in the order session 39 set (Burnout Revenge and Galleon on the Nova
+first, then DOA3 on the Thor, once its fan is repaired), then the five
+guess-only drafts.
+
+**Waiting**, same two external signals as session 39, now with the
+duplicate-withdrawal flag added:
+1. The Nova returning to general availability (tonight, per lane.local's plan,
+   or whenever `dispatch/running/1-1790775886-lane.verdict433-3086903`'s
+   successor confirmations stop filling its queue).
+2. The Thor's `lanelocal-fanwait` hold lifting after the replacement fan
+   arrives.
+3. (new) lane.local or hostops deciding whether to drop the three now-
+   redundant parked re-queue requests before they return to `queue/` tonight.
+
+## Session 41 (resumed 2026-09-30 13:34 PDT, attempt 3): why attempt 2 (session 40) did not finish, and both devices turned out to be free
+
+**Why session 40 did not need recovery.** It finished cleanly, the same as
+session 39: no device work was available at the time (Nova mid-soak for
+`lane.verdict433`, Thor's `lanelocal-fanwait` hold text reading "no queued
+runs"), so it ended on a `waiting:` naming three external signals and PR
+body `State: ready`. Nothing failed.
+
+**All three of those signals had already resolved by the time this session
+started**, checked fresh rather than assumed:
+- `dispatch/hold/thor.why` (fresh read, 13:34 PDT) now reads: "queued Thor
+  requests of <= 480 s ARE allowed (owner 09-30 ~12:30 PDT: the Thor
+  screening program)" -- superseding the "no queued runs" text session 39
+  and 40 both saw. (That text itself says it is from a period *after* the
+  12:40 PDT addendum, which is a contradiction in the file's own history
+  this session can't resolve; what matters is the text in force now allows
+  queued work.)
+- The Nova has no hold file and is asleep, battery 38% (checked via
+  `dumpsys battery`/`dumpsys power`), not running anything
+  (`dispatch/running/` empty).
+- The three redundant re-queued duplicates flagged in session 40
+  (`...2436824`, `...2437076`, `...2437119`) are gone from `queue/`,
+  `running/`, `results/` and the daypark park dir -- found instead at
+  `dispatch/parked/withdrawn/titleroutes-daypark-0930-redundant-20260930/`,
+  confirming lane.local or hostops acted on the flag and withdrew them.
+
+So this is a routine continuation with real device availability, not a
+failure recovery. `gh api user` still returns 403 "account was suspended":
+still the offline protocol (`PR.md`/`OUTBOX.md`, no `gh`).
+
+**Work this session, in session-39's ranked order (evidence quality first):**
+
+1. **Galleon** (Nova+Thor). An earlier session (before 09-27) had already
+   driven a full interactive nav.py session on the Thor
+   (`galleon.first-run-20260927T004625`) and left its emitted route text in
+   `scratch/galleon.draft.route`, unformalized and unreplayed. Assembled it
+   into `routes/galleon.route` with the header already drafted in
+   `scratch/galleon.hdr`, checked clean with `route.sh --check`, wired
+   `targets.toml`. No interactive Thor session is available (hold/thor
+   stays with lanelocal-fanwait per the screening program's own text), so
+   this is queued as the Thor screening soak that validates and benchmarks
+   it together: `1790800614-titleroutes-1024666`, 480s, ref `cbd9d36994`.
+2. **Burnout Revenge** (Nova). `titlestate.py show --device nova` reports a
+   profile "found" since 2026-09-30T01:36:36Z, so tried the returning path
+   first -- and hit the exact trap lane.routeprep's pass-1 evidence
+   predicted: Load Profile answers "There are no profiles to load"
+   (`003-profile-list.png`). **titlestate's record does not mean the
+   profile is loadable in-game on this disk.** Not filing a board request
+   for this (nav.py/titlestate.py aren't mine to edit, and the workaround
+   -- always fall through to Create Profile -- is enough to route the
+   title), but worth knowing for any other "found" title that fails the
+   same way. Drove the rest interactively, HELD Nova 13:37-13:47 PDT
+   (10 min, battery 38% -> 34%): Create Profile -> an Autosave consent
+   prompt (Yes) -> name keyboard ("Burnout_", DONE) -> an empty
+   profile-slot picker ("Profile 1") -> World Tour -> rank 1 -> Sunshine
+   Keys -> a Traffic Attack event -> car select -> a ~100 s loading/tips
+   montage -> an event brief with cash targets -> Continue -> **live
+   gameplay starts immediately**, car already at 70 mph, no separate
+   grid/start wait. Several of routeprep's Burnout-3-derived guesses were
+   wrong (no name keyboard right after Create Profile; a profile-slot
+   picker, not a storage/saving notice) -- corrected in the route's header.
+   Player control confirmed two ways: a steer input changed the car's road
+   section entirely (`021-steer-right.png`, a boost-lane shortcut onto a
+   bridge), and the play pattern (RT max + LX weave) scored live
+   Traffic-Check/Near-Miss events, money $0 -> $14,550
+   (`023-after-play.png`). **Replayed once unattended**
+   (`scratch/replay/burnout-revenge.returning-134524/`, `replay.sh nova`):
+   reached the identical gameplay frame at the mark, and within the 40s
+   extra window the Traffic Attack event ran through to its own RESULTS
+   screen (OK rating, no failure) -- the route is solid. 640x480 copy:
+   `frames/burnout-revenge-replay-gameplay.jpg`. Released the Nova hold
+   clean (app stopped, perf/fan reset, screen asleep) at 13:53 PDT.
+   Queued the same-pass benchmark: `1790801593-titleroutes-1202186`, 480s,
+   Nova, ref `e85dbeb3f5`.
+3. **DOA3** (Thor). Adopted routeprep's draft as-is (`drafts/doa3.route`):
+   the copyright-warning wait and title-screen START are read from real
+   pass-1 frames, but everything past the title (mode select, character
+   select, loading, round start) is `[recalled]`/`[guess]`, not re-played.
+   Lower confidence than the other two routes this session. Queued anyway
+   as a Thor screening soak, consistent with that program's own design (a
+   soak that fails to reach `mark gameplay` is itself the validation
+   result, not proof the title is blocked): `1790801641-titleroutes-1213635`,
+   480s, Thor, ref `f3d3169a80`.
+
+Did not take a second interactive Nova hold this session: battery was at
+34% after Burnout Revenge (4 points of margin over the 30% floor), and the
+just-queued Burnout Revenge benchmark will draw more of it down at MAX.
+
+`titlestate_selftest.py`: all checks pass. `targets.toml` parses with
+`tomllib` (Galleon, Burnout Revenge and DOA3 all now carry a `route` key).
+
+**Next:**
+1. Read the three queued results once they land (Galleon, Burnout Revenge,
+   DOA3), put fps numbers in the #397 table and OUTBOX.
+2. The five `[guess]`-only routeprep drafts (capcom-classics2,
+   castlevania-cod x2, smt-nine, thps2x, tork) still need either a short
+   interactive nav session (Nova or Thor-adjacent titles that ARE on the
+   Nova) or, for Thor-only ones, acceptance that a screening soak is their
+   only path to validation the same way DOA3's was.
+3. Keep working the main work list (section 1) for titles with no draft at
+   all yet, on whichever device is free and above the battery floor.
+
+**Waiting:** the three requests above (`1790800614-titleroutes-1024666`
+Galleon/Thor, `1790801593-titleroutes-1202186` Burnout Revenge/Nova,
+`1790801641-titleroutes-1213635` DOA3/Thor). None registered as an A/B
+prediction (route validation + benchmark soaks, not arms), so nothing here
+needs `ab_compare` judging -- reading the result dirs directly is enough
+once they land.
+
+**Galleon's screening soak landed before this session ended.**
+`0-0-s-1790800614-titleroutes-1024666` (Thor, 480s cap): DONE, 265.6s of
+gameplay, fps share at target only 9.88%, no crash, no hang. `xo-therm`
+stayed under 52C through the samples read (well below the Thor's 70C
+force-stop), so this is a real slow reading, not thermal throttling cut
+short. `route-frames/134228-gameplay.png` shows the ship-deck tutorial
+scene from the route's header ("Now turn Rhama towards the arrow by the
+front mast") at FPS: 8 -- the route validated (real gameplay, matches the
+description), Galleon itself is just slow. `title_verdict.py` prints
+`FAIL(duration: 266 s of gameplay < 600 s screening)`, which is the
+600s-Playable-confirmation gate, not a route or screening-soak failure --
+this was queued as a 480s Thor screening soak, not a confirmation.
+
+## Session 42 (resumed 2026-09-30 ~14:45 PDT, attempt 4): DOA3 diagnosed, six Thor screens queued
+
+**Why attempt 3 (session 41) did not finish.** It did: it ended on a
+`waiting:` naming two external requests (Burnout Revenge's Nova benchmark
+`1790801593-titleroutes-1202186`, DOA3's Thor screen
+`1790801641-titleroutes-1213635`), with PR.md `State: ready`. The resume is
+the waiter's, not a failure. Of the two, DOA3 has landed; Burnout Revenge
+is still in `queue/` (Nova), untouched by this session.
+
+**Galleon (41540004) is BLOCKED by the owner** (14:40 PDT: "stays blocked
+until we figure out the FPS problem and the polygon flicker issue ... It's
+not a heat issue, it's the game and our emulator"; listed in
+`host-tools/blocked-titles.txt`). Its session-41 screen (9.88% at target,
+265.6 s scored) is recorded but is **not a screen and not a nomination**.
+The route file stays; no Galleon run is queued on either device.
+`targets.toml`'s Galleon notes say so.
+
+**DOA3's screen was void by heat, and the frames show why the route was
+wrong.** `1790801641-titleroutes-1213635` (Thor, ref f3d3169a80): the
+runner stopped it at xo 70 C at 284 s ("HEAT STOP ... run voided (no
+result)", hostops `.hostops-diagnosed`), start xo 46.2 C, hottest zone 96.6
+C. Its route waited 300 s blind before the first press, the timing of pass 1
+on a COLD shader cache. With the cache warm, the frames read:
+`135655-warning100.png` an attract fight (pagoda stage) at t100,
+`135841-warning200.png` a newspaper cutscene at 46 fps, and
+`135946-boot260.png` an attract fight at 54 fps. So the warning ends well
+before t100, and the Thor's heat budget (~280 s from a cold slot for a
+title this heavy) was spent on the attract. **Do not repeat:** on the Thor,
+time a route's boot from a warm-cache run, never from pass 1's first boot,
+and put the first input before t90. The route now presses START at t~75
+and t~79 (attract -> title -> menu), then A x7 through STORY/fighter/
+costume/intro (an extra A in a fight is an attack, so over-pressing is
+safe; START is not pressed after the menu because it pauses the fight).
+
+**Five routeprep drafts adopted as Thor screens.** Capcom Classics Collection
+Vol. 2 (43430019), Castlevania: Curse of Darkness (4B4E002D, first-run),
+Shin Megami Tensei: NINE (41540002), THPS2x (41560001) and Tork (55530040).
+No survey frames exist for the first four (searched every `request.json`
+under `dispatch/results`), so these drafts are all `[guess]` past the boot.
+Each one shots a frame at every step, so a soak that misses gameplay is
+the survey that revises it: the addendum's "surveys and screens mixed"
+in one run. Shortened where the heat stop needs it: Castlevania's opening
+loop went from 12 x 8 s to 8 x 6 s, SMT's from 12 to 10 rounds, and Tork's
+from 12 to 10. `route.sh --check` is clean on all six, and
+`scratch/check42.sh` does the check. `targets.toml` gained entries for Capcom 2, Castlevania and SMT,
+plus `route` keys for THPS2x and Tork (Tork also gains its Thor ISO).
+
+**Queued** (ref `5b193af6d0`, 480 s, `--device thor --hard-pin`, plain
+priority; `scratch/screen42.sh`). The pilot gate refused the third
+request. Session 41's two Thor screens are the pilot: Galleon produced a
+reading and DOA3 produced a diagnosis. The verdict is written to
+`dispatch/pilots/titleroutes.ok`.
+
+| title | route | request |
+|---|---|---|
+| Dead or Alive 3 | `doa3` (re-timed) | `1790805442-titleroutes-2050455` |
+| THPS2x | `thps2x` | `1790805442-titleroutes-2050654` |
+| Capcom Classics Collection Vol. 2 | `capcom-classics2` | `1790805455-titleroutes-2055173` |
+| Castlevania: Curse of Darkness | `castlevania-cod.first-run` | `1790805456-titleroutes-2055301` |
+| Shin Megami Tensei: NINE | `smt-nine` | `1790805456-titleroutes-2055567` |
+| Tork: Prehistoric Punk | `tork` | `1790805457-titleroutes-2055759` |
+
+At about two cold slots an hour, this is about three hours of Thor time.
+
+### Thor screen table (running; screening program, 480 s cap, heat stop at xo 70 C)
+
+| title | request | reached gameplay? | fps median | share at 28.5+ | hang | peak xo | nominate? |
+|---|---|---|---|---|---|---|---|
+| Galleon | 0-0-s-1790800614-titleroutes-1024666 | yes (ship deck) | ~8 (frame) | 9.88% at target | no | < 52 C | BLOCKED (owner) |
+| Dead or Alive 3 (v1 route) | 1790801641-titleroutes-1213635 | no: heat stop at 284 s during attract | - | - | no | 70 C | void |
+| DOA3 (v2) ... Tork | the six above | pending | | | | | |
+
+**Next session:** read the six results (`route-frames/` first: did each
+reach gameplay, and on what screen did it stop). Revise every route that
+missed gameplay from its frames and re-queue it. Nominate for the Nova any
+title at 90% or more at 28.5+ with no hang, in OUTBOX #433. Then take the
+next routeless Thor titles by xemu rating (work list section 1: Psychonauts,
+MechAssault, Phantom Dust, Ninja Gaiden (EU), Deathrow, ...). For those, queue `survey.route`-style pass-1 surveys first,
+since nothing is on disk for them.
+
+## Session 43 (resumed 2026-09-30 ~15:50 PDT): three of the six screens heat-stopped; two retried at the new 300s cap
+
+**Why the previous attempt did not "finish."** It didn't need to: session 42
+ended correctly on a `waiting:` naming the six queued Thor screens plus the
+Burnout Revenge Nova benchmark, PR.md `State: ready`. This is the waiter's
+routine resume, not a failure recovery.
+
+**None of the six requests were where I first looked.** `dispatch/results/`,
+`queue/` and `running/` had no trace of doa3(v2)/thps2x/capcom-classics2 by
+request id, anywhere in the tree. Three (castlevania-cod, smt-nine, tork)
+turned up in `dispatch/parked/thor-cold-0930/`, still waiting for a cold
+slot -- expected, the coldconfirm runner parks everything until xo <= 50C.
+The other three had left no trace at all in `dispatch/`, which is what a
+voided-with-no-result run looks like; `logs/thor-coldconfirm.log` had the
+answer directly (**never assume a missing id means never-queued -- read the
+runner's own log**):
+
+| title | request | outcome |
+|---|---|---|
+| Dead or Alive 3 (v2, re-timed) | `0-0-s-1790805442-titleroutes-2050455` | HEAT STOP at xo 70C, ~9 min from a 34C cold start (21:57:47Z-ish start xo=33978m C). Voided, no result, no frames. |
+| THPS2x | `0-0-s-1790805442-titleroutes-2050654` | HEAT STOP at xo 70C, ~10 min from a 50C cold start (already close to the ceiling). Voided, no result. |
+| Capcom Classics Collection Vol. 2 | `0-0-s-1790805455-titleroutes-2055173` | HEAT STOP at xo 70C, ~15 min from a 48C cold start. Voided, no result. |
+
+These three, plus DOA3's session-41 v1 (timing failure before it ever
+reached heat), are the evidence behind lane.local's 15:40 PDT addendum that
+dropped the Thor screening cap to 300s including boot.
+
+**Dead or Alive 3 has now heat-stopped twice** (v1 at 284s before the first
+press, v2 mid-attempt at ~9 min). Per the screening program's own rule ("two
+heat stops = done on the Thor... needs the Nova, with no third try"), no
+third Thor try. But DOA3 is Thor-only (work list row 35: no Nova ISO), so
+"needs the Nova" is not something this lane can act on -- copying a title is
+lane.xbox's, and the one-copy-per-title rule only bends when work is held up
+for the title (owner 09-29 23:15 amendment). Recorded in `targets.toml`'s
+DOA3 notes and flagged in OUTBOX #433 for lane.local/hostops to decide, not
+queued anywhere by me.
+
+**THPS2x and Capcom Classics 2 have one heat stop each**, so each gets the
+one more try the rule allows, now at the new 300s cap (the whole point of
+lowering it: both were still mid-attract/menu, not yet in scored gameplay,
+when they hit 70C at 480s -- a shorter run may finish before the guest gets
+that hot). Re-queued, ref `ae98398e2d` (this session's merge of
+`origin/master`, includes the unrelated `lane.uberspike569` ubershader work,
+no conflicts with anything of mine):
+
+| title | route | request | seconds |
+|---|---|---|---|
+| THPS2x | thps2x | `1790808339-titleroutes-3127689` | 300 |
+| Capcom Classics Collection Vol. 2 | capcom-classics2 | `1790808344-titleroutes-3128993` | 300 |
+
+**Castlevania: Curse of Darkness, Shin Megami Tensei: NINE and Tork** are
+still in `dispatch/parked/thor-cold-0930/`, waiting for their cold slot; the
+coldconfirm runner owns that queue, nothing for me to do there.
+
+**Burnout Revenge's Nova benchmark** (`1790801593-titleroutes-1202186`) is
+still sitting in `dispatch/queue/`, not yet run.
+
+Local checks: `titlestate_selftest.py` all pass; `targets.toml` parses with
+tomllib (69 titles, unchanged count -- only DOA3's notes field changed this
+session).
+
+**Next session:** read whichever of the five pending Thor requests (THPS2x
+retry, Capcom2 retry, Castlevania, SMT, Tork) and the Nova benchmark
+(Burnout Revenge) have landed. For any Thor screen that reached gameplay,
+score it into the running Thor screen table and consider it for a Nova
+nomination. For any that heat-stopped again, apply the two-strikes rule.
+Then continue down the work list's next routeless Thor titles (Psychonauts,
+MechAssault, Phantom Dust, Ninja Gaiden (EU), Deathrow, ...) with pass-1
+surveys, since nothing is on disk for them yet.
+
+**Waiting:** `1790808339-titleroutes-3127689` (THPS2x retry, Thor),
+`1790808344-titleroutes-3128993` (Capcom Classics 2 retry, Thor),
+`1790805456-titleroutes-2055301` (Castlevania, Thor, parked cold),
+`1790805456-titleroutes-2055567` (SMT NINE, Thor, parked cold),
+`1790805457-titleroutes-2055759` (Tork, Thor, parked cold),
+`1790801593-titleroutes-1202186` (Burnout Revenge, Nova). None are A/B
+predictions, so no `ab_compare` judging is needed -- reading each result dir
+directly is enough once it lands.

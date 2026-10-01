@@ -1,0 +1,46 @@
+{
+ "A": {
+  "cleared": true,
+  "shader_cache": "cleared: apk 4db6cd5e6973 -> 41ac0041b93d on this device",
+  "mark": true,
+  "gp_dpc_ms": 126352.2,
+  "gp_dpm": 718,
+  "gmax_ms": 4405.6,
+  "gaps5": 0,
+  "stalls": 22,
+  "wins": 275,
+  "uber_init": null,
+  "last_uber": null
+ },
+ "B": {
+  "cleared": true,
+  "shader_cache": "cleared: apk 4db6cd5e6973 -> 41ac0041b93d on this device",
+  "mark": true,
+  "gp_dpc_ms": 126352.2,
+  "gp_dpm": 718,
+  "gmax_ms": 4405.6,
+  "gaps5": 0,
+  "stalls": 22,
+  "wins": 275,
+  "uber_init": null,
+  "last_uber": null
+ },
+ "factors": {
+  "min_dpm": 100,
+  "gap_ms": 5000.0,
+  "k2_max": 0.25,
+  "k3_max": 0.5
+ },
+ "verdicts": {
+  "K0": false,
+  "K1": true,
+  "K2_ratio": 1.0,
+  "K2": false,
+  "K3_ratio": 1.0,
+  "K3": false,
+  "X_cold": null,
+  "X_uncovered": null,
+  "X_next": null,
+  "X_stalls_B": 22
+ }
+}

@@ -1,0 +1,59 @@
+# Shin Megami Tensei: NINE (41540002), Thor. DRAFT by lane.routeprep,
+# 2026-09-26, not played. NO FRAMES ON DISK for this title. It was released
+# in Japan only, so its menus are in Japanese; every step is [guess].
+#
+# Aim [guess]: the first item of the title menu (New Game) -> a name-entry
+# screen for the protagonist, which in this family usually has a default
+# name and a confirm (START) -> the opening scenes in Tokyo. A accepts any
+# save-creation prompt. One file: New Game stays the first item, and a later
+# run's "load" prompt, if any, is answered the same way.
+#
+# Adopted by lane.titleroutes 2026-09-30 (session 42) unchanged in its steps
+# except where noted, and queued as a Thor screening soak (<= 480 s, the
+# fan-dead Thor's cold-slot runner): NOT YET REPLAYED. Every step leaves a
+# frame, so a soak that misses gameplay is the survey that revises it.
+wait 30
+shot boot30
+press START                 # [guess] skip logos/FMV
+wait 15
+shot boot45
+press START
+wait 15
+shot boot60
+press START                 # [guess] title prompt
+wait 8
+shot title-menu             # CHECK: the highlighted item should be the first (new game)
+mark booted
+press A
+wait 8
+shot after-new-game         # OPEN: save-slot creation, or the name entry
+press A
+wait 8
+shot name-entry
+press START                 # [guess] accept the default name
+wait 6
+shot name-confirm
+press A                     # [guess] confirm YES
+wait 10
+shot story
+repeat 10 {                 # was 12: the heat stop
+    press A                 # [guess] advance the opening dialogue
+    wait 5
+    shot story-a
+}
+mark gameplay               # [guess] placeholder: move to the first frame with the player moving
+repeat forever {
+    axis LY min
+    wait 2
+    axis LY mid
+    press A
+    wait 1
+    axis LX max
+    wait 1.5
+    axis LX mid
+    press A
+    wait 1
+    axis LX min
+    wait 1.5
+    axis LX mid
+}

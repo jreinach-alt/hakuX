@@ -476,6 +476,10 @@ static StringArray *get_required_device_extension_names(void)
  * #569 P5: build draw pipelines from graphics pipeline libraries.
  * HAKUX_GPL=0 off (the monolithic path), 1 fast link, 2 fast link and a
  * link-time-optimised rebuild on the compile worker, swapped in when ready.
+ * 3 and 4 are #569's uber ladder (vk/compile_worker.c): a miss links a
+ * prebuilt uber vertex stage and draws this frame; 3 swaps the specialised
+ * pipeline in once the worker has built it, 4 keeps the uber link (for the
+ * exactness and GPU-cost arms only).
  * The environment reaches the Android app through request.sh --env.
  * Off by default: on its own, a pre-rasterization library costs more than a
  * whole monolithic pipeline on T30 (docs/lanes/gpl569/NOTES.md, "Runs").
@@ -488,7 +492,7 @@ static int gpl_requested_mode(void)
 {
     const char *e = getenv("HAKUX_GPL");
     int mode = HAKUX_GPL_DEFAULT;
-    if (e && e[0] >= '0' && e[0] <= '2' && !e[1]) {
+    if (e && e[0] >= '0' && e[0] <= '4' && !e[1]) {
         mode = e[0] - '0';
     }
     return mode;

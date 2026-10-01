@@ -33,7 +33,16 @@ fps_tolerance = 0.95
 # about one 5 ms shortfall every five seconds; set 0.0 for literal zero.
 audio_starve_max_share = 0.001
 screening_s = 600
-confirmation_s = 1200
+# 10-minute confirmation (owner, 2026-09-30): re-scoring every full-length
+# confirmation as if cut at 300 s and 600 s found no verdict change on the
+# Nova (6/6 runs, which plateaus near 49 C and never pauses) at 5 or 10
+# minutes; on the Thor, Azurik read 99.6% at 10 minutes and failed at 15.6
+# minutes on the heat pause. So confirmation_s defaults to 600, EXCEPT a
+# per-title override (below) for titles flagged for slow-building defects,
+# and a run whose window was still heating at the end still needs 1200 s
+# (title_verdict.py, see "confirmation_s"). Process, not code: lane.verdict433
+# re-runs every 5th 600-s pass at the full 1200 s, as an audit.
+confirmation_s = 600
 
 [titles."4D530021"]
 name = "Crimson Skies: High Road to Revenge"
@@ -52,13 +61,15 @@ notes = "Asks for every VBLANK (perf/bench_ff.sh). Route from bench_ff.sh."
 [titles."41540004"]
 name = "Galleon"
 iso = { nova = "Galleon (USA).xiso.iso", thor = "Galleon (USA).xiso.iso" }
-notes = "A §11 soak title; own target not yet measured, so the 30 default. Route: PR 2."
+route = "galleon"
+notes = "A §11 soak title; own target not yet measured, so the 30 default. routes/galleon.route validated by its Thor screening soak (session 41, 0-0-s-1790800614-titleroutes-1024666): 265.6s gameplay, fps share at target 9.88%, no crash/hang, not thermal-limited (xo-therm < 52C throughout) -- genuinely slow on the Thor. BLOCKED by the owner 2026-09-30 14:40 PDT (FPS + polygon flicker, 'the game and our emulator', not heat; host-tools/blocked-titles.txt): no run on either device until those issues close; not a screen, not a nomination."
 
 [titles."4D53002D"]
 name = "Dead or Alive 3"
 iso = { thor = "Dead or Alive 3 (USA) (En,Ja).xiso.iso" }
+route = "doa3"
 target_fps = 60
-notes = "A §11 soak title; a 60 fps fighter. Route: PR 2. #431 (09-28; documented, not measured here): Impulse Gamer (2002): \"a consistent 60 frames per second\"; HonestGamers: \"flawless framerates\"; a frame-rate video of the original: youtube.com/watch?v=djgZg-FqeQs (\"Xbox Original | Dead or Alive 3 | Review Gameplay Framerate\")."
+notes = "A §11 soak title; a 60 fps fighter. Route: PR 2. routes/doa3.route: session 41's version waited 300 s blind (cold-cache timing) and the Thor's runner heat-stopped it at 284 s before the first press (1790801641-titleroutes-1213635); session 42 re-timed it for a warm cache (START from t~75) and re-queued it as a Thor screening soak (0-0-s-1790805442-titleroutes-2050455), which session 43 found also heat-stopped at xo 70C (~9 min from a 34C cold start, before the new 300s cap existed) -- run voided, no result, no frames. Two heat stops on the Thor: per the screening program's rule (lane.local 09-30 15:40 PDT) this title is done on the Thor and needs the Nova -- but DOA3 is Thor-only (no Nova copy exists) so a Nova reading needs a copy decision under the amended one-copy-per-title rule (owner 09-29 23:15: copy when work is held up for the title); not this lane's call. #431 (09-28; documented, not measured here): Impulse Gamer (2002): \"a consistent 60 frames per second\"; HonestGamers: \"flawless framerates\"; a frame-rate video of the original: youtube.com/watch?v=djgZg-FqeQs (\"Xbox Original | Dead or Alive 3 | Review Gameplay Framerate\")."
 
 [titles."49470018"]
 name = "JSRF: Jet Set Radio Future"
@@ -96,8 +107,9 @@ notes = "Route by lane.titleroutes 2026-09-27 on the Thor's USA disc (the Europe
 [titles."55530040"]
 name = "Tork: Prehistoric Punk"
 target_fps = 30
-iso = { nova = "Tork - Prehistoric Punk (USA).iso" }
-notes = "#431 (comment 5851536933): 30, medium confidence. WorthPlaying (Xbox, 2005)"
+iso = { nova = "Tork - Prehistoric Punk (USA).iso", thor = "Tork - Prehistoric Punk (USA).iso" }
+route = "tork"
+notes = "#431 (comment 5851536933): 30, medium confidence. WorthPlaying (Xbox, 2005). routes/tork.route: lane.routeprep's draft (title screen timing from a gamecheck soak, the rest [guess]), queued as a Thor screening soak by titleroutes session 42, not yet replayed."
 
 # Population 1 of #397 (lane.titleplay): the 20 titles staged on 2026-09-26.
 [titles."4541000D"]
@@ -151,6 +163,7 @@ notes = "#431 (comment 5851536933): 30, medium confidence. IGN (2004, names the 
 name = "Forza Motorsport"
 iso = { thor = "4D53006E-Forza_Motorsport.xiso.iso" }
 target_fps = 30
+confirmation_s = 1200  # owner 2026-09-30: flagged for slow-building defects (invalid-list decay, memory growth; #517)
 notes = "#431 (comment 5849938891): 30, medium confidence. IGN (Xbox, 2005): locks at 30 fps"
 
 [titles."56550042"]
@@ -194,8 +207,9 @@ notes = "#431 (comment 5851536933): 30, medium confidence. GameSpot and Eurogame
 [titles."45410076"]
 name = "Burnout Revenge"
 iso = { nova = "45410076-Burnout_Revenge.xiso.iso" }
+route = "burnout-revenge.returning"
 target_fps = 60
-notes = "#431 (comment 5849938891): 60, high confidence. Criterion to Digital Foundry; DarkZero (Xbox)"
+notes = "#431 (comment 5849938891): 60, high confidence. Criterion to Digital Foundry; DarkZero (Xbox). routes/burnout-revenge.returning.route PLAYED and replayed clean (session 41): Traffic Attack event, mark at live gameplay with HUD/speed, replay ran the full event to its RESULTS screen."
 
 [titles."4D530065"]
 name = "Blinx 2: Battle of Time & Space ~ Blinx 2: Masters of Time & Space"
@@ -234,6 +248,7 @@ notes = "#431 (comment 5851536933): 60, medium confidence. Play Magazine (Oct 20
 name = "Kabuki Warriors"
 iso = { nova = "43560001-Kabuki_Warriors.xiso.iso" }
 route = "kabuki-warriors"
+confirmation_s = 1200  # owner 2026-09-30: flagged for slow-building defects (random stalls)
 notes = "Route by lane.titleroutes 2026-09-26 (Nova): Tour Mode fight vs CPU, no profile step. Own target not yet measured, so the 30 default."
 
 [titles."54430003"]
@@ -257,8 +272,9 @@ notes = "#431 (comment 5851536933): 60, medium confidence. TeamXbox (2003); spli
 [titles."41560001"]
 name = "Tony Hawk's Pro Skater 2x"
 iso = { thor = "Tony Hawk's Pro Skater 2x (USA).xiso.iso" }
+route = "thps2x"
 target_fps = 60
-notes = "#431 (comment 5851536933): 60, medium confidence. TeamXbox (2001, two reviews), ActiveXbox (2002)"
+notes = "#431 (comment 5851536933): 60, medium confidence. TeamXbox (2001, two reviews), ActiveXbox (2002). routes/thps2x.route: lane.routeprep's all-[guess] draft (Free Skate), queued as a Thor screening soak by titleroutes session 42, not yet replayed."
 
 [titles."4947002B"]
 name = "Panzer Dragoon Orta"
@@ -450,3 +466,21 @@ notes = "Own target 60 from #431 (comment 5853568091): medium confidence. IGN Xb
 name = "KOF: Maximum Impact - Maniax"
 iso = { thor = "534E0007-KOF_Maximum_Impact_Maniax.xiso.iso" }
 route = "kof-mi.returning"
+
+[titles."43430019"]
+name = "Capcom Classics Collection Vol. 2"
+iso = { thor = "43430019-Capcom_Classics_Collection_Vol_2.xiso.iso" }
+route = "capcom-classics2"
+notes = "No #431 target; the default 30 applies. routes/capcom-classics2.route: lane.routeprep's all-[guess] draft (first game in the list, coin, start), queued as a Thor screening soak by titleroutes session 42, not yet replayed."
+
+[titles."4B4E002D"]
+name = "Castlevania: Curse of Darkness"
+iso = { thor = "4B4E002D-Castlevania_Curse_of_Darkness.xiso.iso" }
+route = "castlevania-cod.first-run"
+notes = "No #431 target; the default 30 applies. routes/castlevania-cod.first-run.route: lane.routeprep's all-[guess] draft (New Game, default name), queued as a Thor screening soak by titleroutes session 42, not yet replayed. No returning route yet."
+
+[titles."41540002"]
+name = "Shin Megami Tensei: NINE"
+iso = { thor = "41540002-Shin_Megami_Tensei_Nine.xiso.iso" }
+route = "smt-nine"
+notes = "No #431 target; the default 30 applies. Japanese menus. routes/smt-nine.route: lane.routeprep's all-[guess] draft, queued as a Thor screening soak by titleroutes session 42, not yet replayed."
