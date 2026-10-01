@@ -217,3 +217,33 @@ genuinely marginal even setting the Daijishou stop aside). Both now have two fai
 (by the real cause, not the heat label); DOA3 is Thor-only so "needs the Nova" needs a copy decision
 outside this lane (owner's amended one-copy-per-title rule) -- flagged in `targets.toml`, not queued
 by me.
+
+## #397 -- 2026-09-30 (session 45)
+
+Read session 44's four pending requests. Phantom Dust voided with no result at all (HEAT STOP at the
+old 480s cap, nothing to review) -- requeued at 300s. Psychonauts landed but never passed its title
+screen in 7 menu-loop cycles before a NEW focus-steal defect (Android's own `com.android.launcher3`,
+not Daijishou this time) killed it at 136s of 300s -- well inside budget, so this is evidence of
+another focus-steal hit, not evidence the title's menu needs different input. Requeued the identical
+survey. Ninja Gaiden (Europe) and Deathrow are still working through the Thor cold-slot queue
+(one running, one parked), nothing to read yet.
+
+**The work-list table this lane built 2026-09-26 (48 titles) is effectively exhausted.** Refreshed it
+by listing both Thor ISO roots directly (`adb shell ls`, no hold needed): 42 titles on the external
+card, 347 on the internal-storage root added since lane.xbox started copying from the owner's PC
+library -- 389 total, matching the scale lane.local's 12:40 PDT addendum already named ("321 titles,
+only 23 routed"). Cross-referencing against `targets.toml`'s 70 entries found 327 internal-root
+titles with no entry at all. Ranked them against `xemu-compat-2026-09-25.csv` (rating, then
+xemu_rank) and checked `host-tools/blocked-titles.txt` (only Galleon). Queued the top five plus the
+two requeues as this session's Thor batch (seven requests total, listed in
+`docs/lanes/titleroutes/NOTES.md` session 45): Super Monkey Ball Deluxe, Family Guy: Video Game!,
+Gauntlet: Dark Legacy, Sonic Heroes, Bistro Cupid, plus Phantom Dust and Psychonauts requeues.
+
+`targets.toml` updated (Psychonauts added, Phantom Dust's notes extended); still parses and
+`titlestate_selftest.py` passes.
+
+[lane.titleroutes] waiting: `1790823793-titleroutes-2949342`, `1790823797-titleroutes-2950719`,
+`1790823800-titleroutes-2951589`, `1790823803-titleroutes-2951964`, `1790823806-titleroutes-2952343`,
+`1790823811-titleroutes-2952744`, `1790823861-titleroutes-2960863` (this session's seven), plus
+`1790822580-titleroutes-2819211` and `1790822581-titleroutes-2819301` (Ninja Gaiden Europe, Deathrow,
+still outstanding from session 44). PR pushed and marked ready.
