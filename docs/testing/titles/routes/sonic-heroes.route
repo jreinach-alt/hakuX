@@ -1,0 +1,44 @@
+# Sonic Heroes (5345002B), single route. lane.titleroutes session 46,
+# 2026-09-30, from the Thor survey 0-0-s-1790823803-titleroutes-2951964
+# (route-frames, booted at 21:07:49 PDT; the runner's heat stop ended it
+# at 226 s). DRAFT until a soak replays it.
+#
+# The survey's START/A cycles (one press every ~5.5 s) reached Seaside Hill
+# with Team Sonic: the 10th START (210857) paused a level whose timer read
+# 00:03:96, so the 9th cycle's A (210851) started it. Between 210904 and
+# 210918 the team picked up 6 rings and 60 points (A = jump). The FPS
+# overlay read 59 in every level frame.
+#
+# So: nine cycles, then run with the left stick and jump with A, no START
+# (it pauses).
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+mark booted
+repeat 9 {
+    press START
+    wait 5
+    shot menu-start
+    press A
+    wait 5
+    shot menu-a
+}
+axis LY min
+wait 3
+shot running
+mark gameplay
+repeat forever {
+    axis LY min
+    wait 3
+    press A
+    wait 1
+    axis LX max
+    wait 0.5
+    axis LX min
+    wait 0.5
+    axis LX mid
+    wait 2
+    shot play
+}

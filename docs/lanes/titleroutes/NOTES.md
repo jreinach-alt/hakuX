@@ -2943,3 +2943,169 @@ never idles.
 `1790822581-titleroutes-2819301` (Deathrow, still cold-parked) -- all Thor,
 all #397 pass-1 surveys, none an A/B prediction so no `ab_compare` judging
 is needed, reading each result dir directly is enough once it lands.
+
+## Session 46 (resumed 2026-09-30 ~21:45 PDT, attempt 4): 187 fixed, a mark audit that withdraws all four Thor nominations, and a retraction
+
+**Why the previous attempt did not finish.** It did finish. Session 45 ended
+on a `waiting:` naming nine dispatch requests, with PR.md `State: ready`, and
+lane.local folded it (`70c9e96876`). This resume is the waiter's, after those
+nine landed. The "attempt 4" count is resumes, not failures. `origin/master`
+was 42 commits ahead, so step one was `git merge origin/master` (`6e07e2d5b6`,
+no conflicts).
+
+### The nine results
+
+| title | request | how it ended | how far it got |
+|---|---|---|---|
+| Ninja Gaiden (Europe) | `0-0-s-1790822580-titleroutes-2819211` | ran its full 300 s | title -> intro clip -> "Book of the Fiends" text pages (59 fps) -> a dark first area with a HUD (200613-play.png, overlay 0). Not counted as gameplay |
+| Deathrow | `0-0-s-1790822581-titleroutes-2819301` | heat stop at 208 s | last frame is the Daijishou launcher, taken after the kill |
+| Super Monkey Ball Deluxe | `0-0-s-1790823793-titleroutes-2949342` | heat stop at 263 s | **stage 1-1 at 59** by the 10th START/A cycle (203030) |
+| Family Guy: Video Game! | `0-0-s-1790823797-titleroutes-2950719` | heat stop, about 4 min | **Stewie's nursery, walking, 29-30**, by the 4th cycle (204142) |
+| Gauntlet: Dark Legacy | `0-0-s-1790823800-titleroutes-2951589` | heat stop at 256 s | in-engine wizard intro at **14 fps** (205704), then the in-game pause menu's Audio page at 11-14 |
+| Sonic Heroes | `0-0-s-1790823803-titleroutes-2951964` | heat stop at 226 s | **Seaside Hill at 59**, started by the 9th cycle (210851) |
+| Bistro Cupid | `0-0-s-1790823806-titleroutes-2952343` | ran to its end, peak xo 69 C | Japanese story dialogue (212406). Not gameplay |
+| Phantom Dust (requeue) | `0-0-s-1790823811-titleroutes-2952744` | heat stop at 197 s, **the second** | first explorable room at 30 (213619, 13th cycle) |
+| Psychonauts (requeue) | `0-0-s-1790823861-titleroutes-2960863` | `not-foreground: com.android.launcher3` at 127 s, peak xo 67 C | title card, overlay **1 fps** (214537) |
+
+(Every result id also exists without its `0-0-s-` prefix. The two dirs hold
+the same files; read the prefixed one.)
+
+### Retraction: session 44's "Daijishou focus steal, not heat" was backwards
+
+Every Thor stop above ends `xemu is gone ... (not-foreground:
+com.magneticchen.daijishou ...)`. Deathrow's timings settle the order. The
+runner logged `HEAT STOP at xo 70 C` at 20:18:33. The route's last step ran
+at 20:18:33.962, and `end` and the not-foreground line followed at 20:18:34.
+Daijishou is the Thor's home launcher, so it takes display 0 *because*
+hakuX was force-stopped. `logs/thor-coldconfirm.log` logs a HEAT STOP for all
+four runs session 44 called misdiagnosed (DOA3 v2 15:06:43, THPS2x v1
+15:17:44, Castlevania 16:16:24, Tork 16:45:13). `thermal.jsonl`'s samples are
+coarser than the runner's xo read, so "never crossed 70 C" in them proved
+nothing. harness_health.py's labels were right. The 300 s cap's reasoning
+stands. Retracted on the board request file and in OUTBOX #397.
+**Do not repeat:** a `not-foreground: <launcher>` line on a Thor run is the
+*consequence* of a stop. Read the runner log's line for the request id first.
+
+Those four runs were "run voided (no result)" by design, so session 44
+should not have scored their fps at all. The mark audit below makes that
+moot.
+
+### 187: Ride or Die: the scored window was the name keyboard
+
+The owner was right. Here is the cause. titlestate records a 187 profile on
+the Nova: "found", save `a760c747565e`, since 10:05Z. So `choose()` picked
+the returning route. But the disk built with that save shows four Empty
+slots (`1-1790775886-lane.verdict433-3086875`, hdd plan "keep",
+121939-profile-select.png). The returning route's A opened Create's name
+keyboard, its menu stick pulse moved the cursor N -> O, and every later
+press was a keyboard press. `mark gameplay` landed on PLAYER PROFILE /
+"Define the profile name" (122018-gameplay.png). The 1200 s confirmation
+(100%, 59.94) and session 40's benchmark both measured that menu.
+
+**Fix:** one route, `routes/187-ride-or-die.route`, built from the
+session-37 first-run nav. It creates profile N on every run (A, A, Y),
+accepts the new profile's Controller Configuration screen, skips the
+tutorial clip, drives 6 s, then marks. The returning and first-run files
+are gone, so `choose()` now returns `variant: single` for this route
+whatever titlestate believes. Its assumption, stated in its header: the
+soak's disk holds no 187 profile. That is true of every soak so far, and
+the route never flushes. The titlestate side ("found" save the game does
+not list) is on the board request file, not mine to fix.
+**Replay queued on the Nova:** `1790830434-titleroutes-311228` (300 s). If its
+frames show the race, re-nominate 187 for a Nova confirmation (#433).
+
+### Mark audit: every route with a scored `mark gameplay`, frame by frame
+
+`scratch/audit46.py` (throwaway) found, for each of the 45 route names
+ever soaked, the newest run that reached `mark gameplay`, and the frames at
+and after the mark. A subagent read every frame. I re-read the four that
+carried Nova nominations myself.
+
+**Not on gameplay (the trap, or close to it):**
+
+| route | run | the mark frame shows | consequence |
+|---|---|---|---|
+| 187-ride-or-die.returning | `1-1790775886-lane.verdict433-3086875` | profile-name keyboard | fixed (above) |
+| castlevania-cod.first-run | `0-0-s-1790805456-titleroutes-2055301` | Name Entry, empty name, Accept highlighted | **session-44 Nova nomination withdrawn**; re-marked, screen queued |
+| smt-nine | `0-0-s-1790805456-titleroutes-2055567` | Japanese name entry, given name empty | **nomination withdrawn**; not yet fixed |
+| thps2x | `1790808339-titleroutes-3127689` | THE HANGAR CHECKLIST goal list | **nomination withdrawn**; re-marked (A accepts), screen queued |
+| capcom-classics2 | `0-0-s-1790808344-titleroutes-3128993` | START MENU (Start / Load / Settings / Exit) | **nomination withdrawn**; not yet fixed |
+| bruce-lee | `1-1790487611-titleroutes-261841` | the title screen, and the frame before it too | known route problem (Addendum of 09-27) |
+| pgr.returning | `0-0-s-1-1790609665-lane.slowtier2-pgr365442` | car at 0 mph on the grid, in all three frames | |
+| pgr2 | `1-1790569004-titleroutes-3006458` | car at 0 mph at the start gate | |
+| crash-wrath-of-cortex | `1-1790757193-lane.hddcrash-1697566` | LOAD / SAVE menu | |
+| doax | `y-1790481308-titlebench-2893458` | in-game shop list | |
+| burnout | `0-0-s-1-1790609663-lane.slowtier2-burnout968727` | Game Over, then a Continue prompt in both later frames | |
+| ghoulies | `0-0-x-1-1790634704-lane.idlehaltdefault-3054732` | storybook transition page | |
+| kof-mi.returning | `1-1790725091-lane.verdict433-1456797` | post-round PERFECT / WINNER | a round may follow; the window needs a review |
+| azurik | `1-1790725091-lane.verdict433-1456876` | modal tutorial dialog | the loop may dismiss it; the window needs a review |
+| doa3 | `0-0-s-1790805442-titleroutes-2050455` | black frame | one frame only |
+| tork | `0-0-s-1790805457-titleroutes-2055759` | a cutscene-like beat at FPS 7 | one frame only |
+
+**On gameplay at the mark (28):** 50cent, alias, alien-hominid, arctic-thunder,
+baldurs-gate-da, bf2mc, black.returning, blood-wake, bloodrayne, brute-force,
+burnout-revenge.returning, burnout3.returning, crash-twinsanity,
+crimson-skies, dnd-heroes, galleon, gta-sa, jsrf, kabuki-warriors,
+mechassault-2, midnight-club-3.returning, midtown-madness-3.returning,
+nightfire, otogi, otogi.cold, rallisport-2.returning, spikeout.returning,
+wwe-raw-2. fuzion-frenzy's mark is early, but play follows within one frame.
+
+**Limit of this audit:** most title soaks shoot one frame at the mark and
+none in the loop. A play mark followed by a menu, or a menu mark the loop
+escapes, is invisible here. kof-mi and azurik are the second case and are
+not called wrong. Every title in the first table has a "Session 46 mark
+audit" sentence in its targets.toml notes.
+
+**Do not repeat (this lane's own failure):** sessions 42-44 adopted
+lane.routeprep's all-[guess] drafts. Each ended in a `mark gameplay` labelled
+"[guess] placeholder". I then nominated them on fps share alone, without
+opening the mark frame. Four of four were menus. A menu runs at the frame
+cap, so a 97-100% share is what a menu looks like. **Open the mark frame
+before writing any screen into the table or the nominations**
+(memory: a Playable needs a frame review).
+
+### New routes from this batch's surveys (drafts until a screen replays them)
+
+| title | route | built from | gameplay at |
+|---|---|---|---|
+| Family Guy: Video Game! (545400B0) | `family-guy.route` | 4 START/A cycles, then the stick (no START: it pauses) | 204142, nursery |
+| Super Monkey Ball Deluxe (53450038) | `super-monkey-ball-deluxe.route` | 10 cycles, then tilt | 203030, stage 1-1 |
+| Sonic Heroes (5345002B) | `sonic-heroes.route` | 9 cycles, then run + jump | 210851, Seaside Hill |
+
+Each replays the survey's own presses up to the cycle that started play,
+then never presses START again. Each title's survey showed that START
+pauses it.
+
+### Thor screen table (running; 300 s, `--hard-pin`, cold-slot runner)
+
+| title | request | route | what to read |
+|---|---|---|---|
+| Family Guy | `1790830432-titleroutes-310926` | family-guy | nursery at the mark, fps |
+| Super Monkey Ball Deluxe | `1790830432-titleroutes-310985` | super-monkey-ball-deluxe | ball rolling at the mark |
+| Sonic Heroes | `1790830432-titleroutes-311058` | sonic-heroes | team running at the mark |
+| THPS3 | `1790830433-titleroutes-311114` | survey | how far |
+| SSX Tricky | `1790830433-titleroutes-311173` | survey | how far |
+| THPS2x (re-marked) | `1790830528-titleroutes-329478` | thps2x | after-checklist / rolling frames |
+| Castlevania (re-marked) | `1790830528-titleroutes-329599` | castlevania-cod.first-run | name-typed / after-accept frames |
+
+Nova: `1790830434-titleroutes-311228`, the 187 single-route replay.
+
+**Done on the Thor:** Phantom Dust (two heat stops) goes to #433 as "needs
+the Nova", with its survey prefix (13 cycles) as the route seed. Galleon
+stays blocked (owner, 14:40 PDT: FPS and polygon flicker), not screened,
+not counted.
+
+### Next session
+
+1. Read the eight requests above. **Open the mark frame, and the frame after
+   it, before writing a number anywhere.**
+2. 187: if the replay's `race` frame is a race, re-nominate it on OUTBOX #433.
+3. Fix smt-nine (type a kana into the given-name field, then 決定) and
+   capcom-classics2 (A on START GAME, then the collection's game list).
+   Both need a frame-every look or a guess with shots at every step.
+4. Gauntlet: in-engine 14 fps is a performance lead. Its route must stop
+   pressing START once the level loads.
+5. Ninja Gaiden: author a route that skips the text pages. The survey took
+   ~270 s to reach the first area.
+6. Then the ranked list (`scratch/rank_untouched.py`): Plus Plumb 2, Petit
+   Copter, Doom 3, Monster Garage, AMF Bowling 2004, ...
