@@ -34,12 +34,29 @@ Details and thread-safety reading are in NOTES section 2.
 
 **Proof:** W1-W4 as two-launch soak pairs on the Nova, DOA then Kabuki. Both launches run with
 `HAKUX_PLC_WIPE=1`, so launch 2 has the records but no cache file (W4, the falsifier). Legs are
-in NOTES section 3; the judge is `pbjudge.py`. The DOA pair is queued (NOTES section 4); no result yet.
+in NOTES section 3; the judge is `pbjudge.py`.
 
-**Waiting on:** (a) DOA requests `1790791301-shaderprebuild569-118449` and
-`1790791306-shaderprebuild569-118725`, still queued on the Nova as of 2026-09-30 14:16 PDT;
-(b) the fold of `lane/uberspike569-gpl`, which holds `compile_worker.c` until then. A trial
-merge resolves in three edits and type-checks clean (NOTES section 4, "Attempt 2").
+**DOA (54865a3521; `1790791301-...-118449` cold, `1790791306-...-118725` with the pre-build):**
+
+| leg | read | verdict |
+|---|---|---|
+| W4: a recorded pipeline's create with no cache file, vs cold | 32 us vs 171 ms (0.0002) | PASS |
+| W1: whole-run create time | 12.6 s vs 108.9 s (0.116) | PASS |
+| W1b: first fight load after `mark play` | 3.16 s vs 2.74 s (1.16) | FAIL: the route loaded a different fight |
+| W2: pre-build done before `mark booted` | 640/640 in 57 s, 8.7 s before the mark | PASS |
+| W3: boot fps | 59 vs 59 | PASS |
+
+W1b's failure is the route, not the pre-build. The survey route presses START/A blind, so the
+two launches reached different opponents and stages, and the frames show it. All 131 launch-2
+creates after `mark play` were pipelines launch 1 never made. No recorded pipeline was slow
+(NOTES section 5, attempt 3).
+
+**Merged** `origin/master` after the uberspike569 fold (262e30e6de). NDK type-check of the
+changed C files: rc 0 each.
+
+**Waiting on:** the Kabuki pair on 262e30e6de, `1790814605-shaderprebuild569-748505` (L1) and
+`1790814611-shaderprebuild569-750364` (L2). As of 2026-09-30 17:35 PDT they are queued on the
+Nova behind two Nova requests. Then a head smoke, and `State: ready`.
 
 Release note (performance): a game you have played before no longer freezes the first time a scene loads.
 

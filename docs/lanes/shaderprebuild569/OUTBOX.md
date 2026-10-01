@@ -22,3 +22,19 @@ Turnip also never sets the creation-feedback cache-hit bit (`dfbh=0` everywhere)
 - a driver update now keeps the SPIR-V and key files.
 
 **Proof:** each launch runs with the pipeline cache file removed at start. Launch 2's recorded pipelines can then only be warm if the pre-build made them warm, which is the plan's W4 falsifier. Legs: W4 known-pipeline create <= 0.10 x cold; W1 whole run <= 0.25 x; W1b first fight load <= 0.25 x; W2 pre-build done before `mark booted`; W3 boot gfps >= 0.90 x. The judge is `docs/lanes/shaderprebuild569/pbjudge.py`. Kabuki follows once DOA is read, because it needs the pilot verdict.
+
+## #569 -- 2026-09-30 17:35 PDT
+
+[lane.shaderprebuild569] waiting: on the Nova, for the Kabuki two-launch pair of P3 at 262e30e6de. They are `1790814605-shaderprebuild569-748505` (L1) and `1790814611-shaderprebuild569-750364` (L2), queued behind two Nova requests. 262e30e6de merges master after lane/uberspike569-gpl folded.
+
+**DOA's pair has run. The pre-build works; one load leg failed because the route reached a different fight.** Both launches ran with the pipeline cache file removed. Launch 2 rebuilt launch 1's 640 recorded pipelines on three workers in 57 s, finishing 9 s before the intro ended, with no change in intro fps (59 vs 59).
+
+| leg | launch 2 vs launch 1 | verdict |
+|---|---|---|
+| W4: create time of a recorded pipeline with no cache file | 32 us vs 171 ms per pipeline | PASS |
+| W1: total pipeline-create time in the run | 12.6 s vs 108.9 s | PASS |
+| W1b: the first fight load | 3.16 s vs 2.74 s | FAIL |
+| W2: pre-build done before the intro ends | 9 s before | PASS |
+| W3: intro fps | 59 vs 59 | PASS |
+
+W1b failed because the two launches loaded different fights. DOA's route presses START/A blind, and the frames show launch 1 fought Zack and then Helena, while launch 2 fought Bass. Every one of launch 2's 131 creates after that point was a pipeline launch 1 never made. No pipeline that had been recorded was slow at any point. Kabuki's route is fixed, so it gives the like-for-like reading.

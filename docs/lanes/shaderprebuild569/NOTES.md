@@ -120,6 +120,13 @@ Cold references (lane.uberspike569's arm A, same route and seconds, GPL 0):
 |---|---|---|---|
 | DOA L1 | `1790791301-shaderprebuild569-118449` | 54865a3521 | ran 2026-09-30 17:09 PDT, Nova, `cleared` (apk change) |
 | DOA L2 | `1790791306-shaderprebuild569-118725` | 54865a3521 | ran 17:17 PDT, Nova, `kept` |
+| Kabuki L1 | `1790814605-shaderprebuild569-748505` | 262e30e6de | queued 17:30 PDT behind a forzadecay414 arm pair (2 x 60 s) and a titleroutes 480 s benchmark |
+| Kabuki L2 | `1790814611-shaderprebuild569-750364` | 262e30e6de | queued right after L1 |
+
+**Attempt 3 ends waiting** on the Kabuki pair. Judge it with
+`pbjudge.py --l1 <L1> --l2 <L2> --boot-mark gameplay`. Then queue the head smoke and set ready.
+Because L1 is on a new apk, it comes back `cleared`. If L2 also comes back `cleared`, it is
+VOID; the recovery is as above.
 
 If a request with another apk runs on the Nova between L1 and L2, L2 comes back `cleared`. Its
 keys are then gone, its records unresolved, and it is VOID. That run is itself a cold launch
