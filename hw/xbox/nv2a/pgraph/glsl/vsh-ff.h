@@ -31,4 +31,9 @@ void pgraph_glsl_gen_vsh_ff(const VshState *state, MString *header,
 void pgraph_glsl_append_vsh_prog_lighting(const VshState *state,
                                           MString *header, MString *body);
 
+/* The header pgraph_glsl_gen_vsh_ff() appends: the attribute and register
+ * names, the fixed-function z helpers (ff*) and the lighting unit's
+ * arithmetic (lt*). For #569's uber vertex stage (glsl/vsh-uber.c). */
+void pgraph_glsl_append_vsh_ff_header(MString *header);
+
 #endif

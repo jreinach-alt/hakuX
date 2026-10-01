@@ -22,6 +22,7 @@
 #include "qemu/mstring.h"
 #include "system/runstate.h"
 #include "ui/xemu-settings.h"
+#include "hw/xbox/nv2a/pgraph/glsl/vsh-uber.h"
 
 /*
  * #569 P1: every graphics pipeline create goes through here. It times the
@@ -42,9 +43,8 @@ VkResult pgraph_vk_create_graphics_pipeline_fb(
 
 static GMutex pcfb_lock;
 static GHashTable *pcfb_modules;
-/* #569 P3: set around a pre-build create, which is not a draw-path stall;
- * the calling thread's last draw-path create time, for the [pb569] rec line */
-static __thread bool pcfb_quiet;
+/* #569 P3: the calling thread's last draw-path create time, for the [pb569]
+ * rec line */
 static __thread int64_t pcfb_last_us;
 
 static int pcfb_stage_index(VkShaderStageFlagBits stage)
@@ -65,11 +65,6 @@ VkResult pgraph_vk_create_graphics_pipeline_fb(
     PGRAPHVkState *r, const VkGraphicsPipelineCreateInfo *info, bool draw,
     VkPipeline *pipeline)
 {
-    if (pcfb_quiet) {
-        return vkCreateGraphicsPipelines(r->device, r->vk_pipeline_cache, 1,
-                                         info, NULL, pipeline);
-    }
-
     VkPipelineCreationFeedback pipeline_fb = { 0 };
     VkPipelineCreationFeedback stage_fb[3] = { { 0 } };
     VkPipelineCreationFeedbackCreateInfo fb_info = {
@@ -152,7 +147,10 @@ static void process_shader_module_job(PGRAPHVkState *r, CompileJob *job)
 
     switch (key->kind) {
     case VK_SHADER_STAGE_VERTEX_BIT:
-        code = pgraph_glsl_gen_vsh(&key->vsh.state, key->vsh.glsl_opts);
+        code = key->vsh.glsl_opts.uber ?
+                   pgraph_glsl_gen_vsh_uber(&key->vsh.state,
+                                            key->vsh.glsl_opts) :
+                   pgraph_glsl_gen_vsh(&key->vsh.state, key->vsh.glsl_opts);
         break;
     case VK_SHADER_STAGE_GEOMETRY_BIT:
         code = pgraph_glsl_gen_geom(&key->geom.state, key->geom.glsl_opts);
@@ -178,9 +176,12 @@ static void process_shader_module_job(PGRAPHVkState *r, CompileJob *job)
     qatomic_set(&target->ready, true);
 }
 
+/* draw_path: false for a pipeline built behind the draw (#569's uber swap),
+ * which must not count in [shd413]'s create time */
 static VkResult create_monolithic_pipeline(PGRAPHVkState *r,
                                            const PipelineCreateParams *p,
-                                           VkPipeline *pipeline)
+                                           VkPipeline *pipeline,
+                                           bool draw_path)
 {
     VkPipelineVertexInputStateCreateInfo vertex_input = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -244,6 +245,10 @@ static VkResult create_monolithic_pipeline(PGRAPHVkState *r,
         .basePipelineHandle = VK_NULL_HANDLE,
     };
 
+    if (!draw_path) {
+        return vkCreateGraphicsPipelines(r->device, r->vk_pipeline_cache, 1,
+                                         &pipeline_create_info, NULL, pipeline);
+    }
     return pgraph_vk_create_graphics_pipeline_fb(r, &pipeline_create_info,
                                                  true, pipeline);
 }
@@ -256,7 +261,7 @@ static void process_pipeline_job(PGRAPHVkState *r, CompileJob *job)
     VkPipeline pipeline;
     VkResult result =
         p->gpl ? pgraph_vk_gpl_create_pipeline(r, target, p, &pipeline) :
-                 create_monolithic_pipeline(r, p, &pipeline);
+                 create_monolithic_pipeline(r, p, &pipeline, true);
 
     if (result == VK_SUCCESS) {
         target->pipeline = pipeline;
@@ -313,6 +318,9 @@ static void process_pipeline_job(PGRAPHVkState *r, CompileJob *job)
 struct GplLib {
     VkPipeline pipeline;
     int refcnt;
+    /* #569: an uber library, which the whole-table flush keeps -- dropping
+     * it would bring back the stall it exists to remove */
+    bool pinned;
 };
 
 enum { GPL_VI, GPL_PR, GPL_FS, GPL_FO, GPL_NUM_LIBS };
@@ -385,25 +393,57 @@ static void gpl_lib_ref(GplLib *lib)
     qatomic_inc(&lib->refcnt);
 }
 
-/* Drop the tables' references. Caller holds r->gpl.lock. */
-static void gpl_flush_locked(PGRAPHVkState *r)
+/* Drop the tables' references, but a pinned library's only when all is set
+ * (at finalize). Caller holds r->gpl.lock. */
+static void gpl_flush_locked(PGRAPHVkState *r, bool all)
 {
     for (int i = 0; i < GPL_NUM_LIBS; i++) {
         GHashTableIter it;
         gpointer value;
         g_hash_table_iter_init(&it, r->gpl.libs[i]);
         while (g_hash_table_iter_next(&it, NULL, &value)) {
-            gpl_lib_unref(r, value);
+            GplLib *lib = value;
+            if (lib->pinned && !all) {
+                continue;
+            }
+            gpl_lib_unref(r, lib);
+            g_hash_table_iter_remove(&it);
         }
-        g_hash_table_remove_all(r->gpl.libs[i]);
     }
     r->gpl.stats.flushes++;
+}
+
+/* Create one library of a kind. draw_path as for create_monolithic_pipeline.
+ * Takes no lock. */
+static VkResult gpl_create_lib(PGRAPHVkState *r, int kind,
+                               const VkGraphicsPipelineCreateInfo *info,
+                               bool draw_path, VkPipeline *pipeline)
+{
+    VkGraphicsPipelineLibraryCreateInfoEXT lib_info = {
+        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT,
+        .pNext = info->pNext,
+        .flags = gpl_lib_flags[kind],
+    };
+    VkGraphicsPipelineCreateInfo ci = *info;
+    ci.pNext = &lib_info;
+    ci.flags |= VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
+    if (r->gpl.mode == 2) {
+        ci.flags |= VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT;
+    }
+    if (!draw_path) {
+        return vkCreateGraphicsPipelines(r->device, r->vk_pipeline_cache, 1,
+                                         &ci, NULL, pipeline);
+    }
+    return pgraph_vk_create_graphics_pipeline_fb(r, &ci, true, pipeline);
 }
 
 /*
  * The library for kind/key, created from info if the table has none. Returns
  * it with a reference for the caller, or NULL if the driver refused.
- * Caller holds r->gpl.lock.
+ * Caller holds r->gpl.lock, which is DROPPED while the library is created
+ * (gpl569 D7): the compile worker builds #569's uber libraries, and a
+ * render-thread lookup must not wait out a one-second pre-raster build. If
+ * another thread inserted the same key meanwhile, its library wins.
  */
 static GplLib *gpl_get_lib(PGRAPHVkState *r, int kind, const void *key,
                            size_t key_size,
@@ -418,23 +458,14 @@ static GplLib *gpl_get_lib(PGRAPHVkState *r, int kind, const void *key,
         return lib;
     }
 
-    VkGraphicsPipelineLibraryCreateInfoEXT lib_info = {
-        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_LIBRARY_CREATE_INFO_EXT,
-        .pNext = info->pNext,
-        .flags = gpl_lib_flags[kind],
-    };
-    VkGraphicsPipelineCreateInfo ci = *info;
-    ci.pNext = &lib_info;
-    ci.flags |= VK_PIPELINE_CREATE_LIBRARY_BIT_KHR;
-    if (r->gpl.mode == 2) {
-        ci.flags |= VK_PIPELINE_CREATE_RETAIN_LINK_TIME_OPTIMIZATION_INFO_BIT_EXT;
-    }
-
+    qemu_mutex_unlock(&r->gpl.lock);
     VkPipeline pipeline;
     int64_t t0 = nv2a_clock_ns();
-    VkResult result =
-        pgraph_vk_create_graphics_pipeline_fb(r, &ci, true, &pipeline);
-    r->gpl.stats.lib_us[kind] += (nv2a_clock_ns() - t0) / 1000;
+    VkResult result = gpl_create_lib(r, kind, info, true, &pipeline);
+    int64_t us = (nv2a_clock_ns() - t0) / 1000;
+    qemu_mutex_lock(&r->gpl.lock);
+
+    r->gpl.stats.lib_us[kind] += us;
     if (result != VK_SUCCESS) {
         g_bytes_unref(k);
         r->gpl.stats.lib_fail[kind]++;
@@ -442,13 +473,34 @@ static GplLib *gpl_get_lib(PGRAPHVkState *r, int kind, const void *key,
     }
     r->gpl.stats.lib_new[kind]++;
 
+    lib = g_hash_table_lookup(r->gpl.libs[kind], k);
+    if (lib) {
+        vkDestroyPipeline(r->device, pipeline, NULL);
+        g_bytes_unref(k);
+        gpl_lib_ref(lib);
+        return lib;
+    }
     if (g_hash_table_size(r->gpl.libs[kind]) >= GPL_MAX_LIBS) {
-        gpl_flush_locked(r);
+        gpl_flush_locked(r, false);
     }
     lib = g_new0(GplLib, 1);
     lib->pipeline = pipeline;
     lib->refcnt = 2; /* the table's and the caller's */
     g_hash_table_insert(r->gpl.libs[kind], k, lib);
+    return lib;
+}
+
+/* The library for kind/key if the table has it, with a reference for the
+ * caller; never creates. Caller holds r->gpl.lock. */
+static GplLib *gpl_find_lib(PGRAPHVkState *r, int kind, const void *key,
+                            size_t key_size)
+{
+    GBytes *k = g_bytes_new_static(key, key_size);
+    GplLib *lib = g_hash_table_lookup(r->gpl.libs[kind], k);
+    g_bytes_unref(k);
+    if (lib) {
+        gpl_lib_ref(lib);
+    }
     return lib;
 }
 
@@ -571,10 +623,33 @@ static bool gpl_dynamic(const PipelineCreateParams *p, VkDynamicState s)
     return false;
 }
 
-VkResult pgraph_vk_gpl_create_pipeline(PGRAPHVkState *r,
-                                       PipelineBinding *target,
-                                       const PipelineCreateParams *p,
-                                       VkPipeline *pipeline)
+static void gpl_pr_key(GplPrKey *pr_key, const PipelineCreateParams *p)
+{
+    memset(pr_key, 0, sizeof(*pr_key));
+    gpl_dyn_key(&pr_key->dyn, p);
+    pr_key->vs = p->gpl_vs_id;
+    pr_key->gs = p->gpl_gs_id;
+    pr_key->color = p->gpl_color_format;
+    pr_key->zeta = p->gpl_zeta_format;
+    pr_key->depth_clamp = p->rasterizer.depthClampEnable;
+    pr_key->discard = p->rasterizer.rasterizerDiscardEnable;
+    pr_key->polygon_mode = p->rasterizer.polygonMode;
+    pr_key->cull_mode = p->rasterizer.cullMode;
+    pr_key->front_face = p->rasterizer.frontFace;
+    pr_key->depth_bias = p->rasterizer.depthBiasEnable;
+    pr_key->line_width = p->rasterizer.lineWidth;
+    assert(p->rasterizer.pNext == NULL);
+}
+
+/*
+ * Link a draw pipeline from the four libraries, getting or creating each; pr,
+ * when not NULL, is the pre-rasterization library to use instead (#569's
+ * uber library), whose reference this takes. Falls back to a monolithic
+ * create, and says so in *fell_back.
+ */
+static VkResult gpl_link_pipeline(PGRAPHVkState *r, PipelineBinding *target,
+                                  const PipelineCreateParams *p, GplLib *pr,
+                                  VkPipeline *pipeline, bool *fell_back)
 {
     VkPipelineDynamicStateCreateInfo dynamic_state = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
@@ -647,20 +722,7 @@ VkResult pgraph_vk_gpl_create_pipeline(PGRAPHVkState *r,
         .subpass = 0,
     };
     GplPrKey pr_key;
-    memset(&pr_key, 0, sizeof(pr_key));
-    gpl_dyn_key(&pr_key.dyn, p);
-    pr_key.vs = p->gpl_vs_id;
-    pr_key.gs = p->gpl_gs_id;
-    pr_key.color = p->gpl_color_format;
-    pr_key.zeta = p->gpl_zeta_format;
-    pr_key.depth_clamp = p->rasterizer.depthClampEnable;
-    pr_key.discard = p->rasterizer.rasterizerDiscardEnable;
-    pr_key.polygon_mode = p->rasterizer.polygonMode;
-    pr_key.cull_mode = p->rasterizer.cullMode;
-    pr_key.front_face = p->rasterizer.frontFace;
-    pr_key.depth_bias = p->rasterizer.depthBiasEnable;
-    pr_key.line_width = p->rasterizer.lineWidth;
-    assert(p->rasterizer.pNext == NULL);
+    gpl_pr_key(&pr_key, p);
 
     /* FS */
     VkGraphicsPipelineCreateInfo fs_info = {
@@ -734,8 +796,11 @@ VkResult pgraph_vk_gpl_create_pipeline(PGRAPHVkState *r,
                                   r->gpl.stats.lib_new[2] +
                                   r->gpl.stats.lib_new[3];
     bool have_libs = true;
+    libs[GPL_PR] = pr;
     for (int i = 0; i < GPL_NUM_LIBS && have_libs; i++) {
-        libs[i] = gpl_get_lib(r, i, keys[i], key_sizes[i], infos[i]);
+        if (!libs[i]) {
+            libs[i] = gpl_get_lib(r, i, keys[i], key_sizes[i], infos[i]);
+        }
         have_libs = libs[i] != NULL;
     }
     qemu_mutex_unlock(&r->gpl.lock);
@@ -791,8 +856,9 @@ VkResult pgraph_vk_gpl_create_pipeline(PGRAPHVkState *r,
     bool fallback = result != VK_SUCCESS;
     if (fallback) {
         /* Same layout, so push_template_index() still holds */
-        result = create_monolithic_pipeline(r, p, pipeline);
+        result = create_monolithic_pipeline(r, p, pipeline, true);
     }
+    *fell_back = fallback;
 
     qemu_mutex_lock(&r->gpl.lock);
     r->gpl.stats.fallbacks += fallback;
@@ -804,6 +870,382 @@ VkResult pgraph_vk_gpl_create_pipeline(PGRAPHVkState *r,
     }
     qemu_mutex_unlock(&r->gpl.lock);
 
+    return result;
+}
+
+VkResult pgraph_vk_gpl_create_pipeline(PGRAPHVkState *r,
+                                       PipelineBinding *target,
+                                       const PipelineCreateParams *p,
+                                       VkPipeline *pipeline)
+{
+    bool fell_back;
+    return gpl_link_pipeline(r, target, p, NULL, pipeline, &fell_back);
+}
+
+/*
+ * #569's uber ladder, HAKUX_GPL=3|4 (docs/lanes/uberspike569/BUILD.md).
+ *
+ * The stall GPL alone leaves is the pre-rasterization library: 1.6 s on T30
+ * for a new vertex shader, 2.8x a whole monolithic pipeline (gpl569). So a
+ * miss whose vertex state the uber stage covers links, instead of its own:
+ *   PR  the uber library for (uber family, GS, rasterizer, formats), built
+ *       once on the compile worker and pinned in the PR table;
+ *   VI, FS, FO  its own, got or created as mode 1 does (the FS library is
+ *       ~12 ms, so no fragment ubershader is needed on this path).
+ * The draw happens this frame. Mode 3 then builds the specialised pipeline,
+ * monolithic, on the worker, and create_pipeline() swaps it in through the
+ * LTO slot; mode 4 keeps the uber link (the exactness and GPU-cost arms).
+ *
+ * The first miss of a (family, GS, rasterizer, formats) combination has no
+ * uber library yet. Mode 3 builds that miss monolithic on the draw thread,
+ * as GPL off does (570 ms rather than 1.6 s, gpl569 D7), and queues the
+ * library, so every later miss in the combination is free. Mode 4 builds
+ * the library there and then, since its purpose is to draw everything
+ * through the uber stage.
+ *
+ * Jobs carry their own copies of the SPIR-V: a module the render thread
+ * owns can be evicted while a one-second build is in flight.
+ */
+
+static GBytes *gpl_spirv_copy(ShaderModuleInfo *info)
+{
+    return g_bytes_new(info->spirv->data, info->spirv->len);
+}
+
+static VkShaderModule gpl_module_from(PGRAPHVkState *r, GBytes *code)
+{
+    gsize len;
+    const void *data = g_bytes_get_data(code, &len);
+    VkShaderModuleCreateInfo ci = {
+        .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = len,
+        .pCode = data,
+    };
+    VkShaderModule module = VK_NULL_HANDLE;
+    if (vkCreateShaderModule(r->device, &ci, NULL, &module) != VK_SUCCESS) {
+        return VK_NULL_HANDLE;
+    }
+    return module;
+}
+
+static void gpl_stage_code_free(GplStageCode *code, int n)
+{
+    for (int i = 0; i < n; i++) {
+        if (code[i].spirv) {
+            g_bytes_unref(code[i].spirv);
+            code[i].spirv = NULL;
+        }
+    }
+}
+
+/* A pre-rasterization library from p's rasterizer state and these stages */
+static VkResult gpl_build_pr(PGRAPHVkState *r, const PipelineCreateParams *p,
+                             const VkPipelineShaderStageCreateInfo *stages,
+                             uint32_t num_stages, bool draw_path,
+                             VkPipeline *pipeline)
+{
+    VkPipelineDynamicStateCreateInfo dynamic_state = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .dynamicStateCount = p->num_dynamic_states,
+        .pDynamicStates = p->dynamic_states,
+    };
+    VkPipelineViewportStateCreateInfo viewport_state = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .viewportCount = 1,
+        .scissorCount = 1,
+    };
+    VkGraphicsPipelineCreateInfo pr_info = {
+        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .stageCount = num_stages,
+        .pStages = stages,
+        .pViewportState = &viewport_state,
+        .pRasterizationState = &p->rasterizer,
+        .pDynamicState = &dynamic_state,
+        .layout = p->layout,
+        .renderPass = p->gpl_lib_render_pass,
+        .subpass = 0,
+    };
+    return gpl_create_lib(r, GPL_PR, &pr_info, draw_path, pipeline);
+}
+
+/* Put an uber library in the PR table, pinned; if the key is there already
+ * the new pipeline is dropped. Returns the table's entry with a reference
+ * for the caller. Caller holds r->gpl.lock. */
+static GplLib *gpl_insert_pinned_locked(PGRAPHVkState *r, const GplPrKey *key,
+                                        VkPipeline pipeline)
+{
+    GBytes *k = g_bytes_new(key, sizeof(*key));
+    GplLib *lib = g_hash_table_lookup(r->gpl.libs[GPL_PR], k);
+    if (lib) {
+        vkDestroyPipeline(r->device, pipeline, NULL);
+        g_bytes_unref(k);
+        lib->pinned = true;
+        gpl_lib_ref(lib);
+        return lib;
+    }
+    lib = g_new0(GplLib, 1);
+    lib->pipeline = pipeline;
+    lib->refcnt = 2; /* the table's and the caller's */
+    lib->pinned = true;
+    g_hash_table_insert(r->gpl.libs[GPL_PR], k, lib);
+    return lib;
+}
+
+/*
+ * [uber569] mode= links= cold= libs= lib_fail= lib_ms= next=done/fail/swapped
+ * next_ms= uncovered= queued=, running totals: rung-0 links; misses with no
+ * uber library yet (built monolithic on the draw thread); uber libraries
+ * built and their create time (the worker's, or mode 4's draw thread's);
+ * specialised pipelines built behind rung 0, failed, and swapped in, and
+ * their worker time; binds of a state the uber stage does not cover; uber
+ * libraries queued and not yet built. Caller holds r->gpl.lock.
+ */
+static void gpl_uber_log_locked(PGRAPHVkState *r)
+{
+    typeof(r->gpl.stats) *s = &r->gpl.stats;
+    char line[384];
+    snprintf(line, sizeof(line),
+             "[uber569] mode=%d links=%u cold=%u libs=%u lib_fail=%u "
+             "lib_ms=%.1f next=%u/%u/%u next_ms=%.1f uncovered=%u queued=%u",
+             r->gpl.mode, s->uber_links, s->uber_cold, s->uber_libs,
+             s->uber_lib_fail, s->uber_lib_us / 1000.0, s->uber_next_done,
+             s->uber_next_fail, qatomic_read(&s->uber_swapped),
+             s->uber_next_us / 1000.0, qatomic_read(&s->uber_uncovered),
+             g_hash_table_size(r->gpl.uber_queued));
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-perf", "%s", line);
+#else
+    fprintf(stderr, "%s\n", line);
+#endif
+}
+
+void pgraph_vk_gpl_uber_log(PGRAPHVkState *r)
+{
+    qemu_mutex_lock(&r->gpl.lock);
+    gpl_uber_log_locked(r);
+    qemu_mutex_unlock(&r->gpl.lock);
+}
+
+static void gpl_queue_uber_lib(PGRAPHVkState *r, const GplPrKey *key,
+                               const PipelineCreateParams *uber,
+                               ShaderModuleInfo *uber_vs, ShaderModuleInfo *gs)
+{
+    GBytes *k = g_bytes_new(key, sizeof(*key));
+    qemu_mutex_lock(&r->gpl.lock);
+    bool queued = g_hash_table_contains(r->gpl.uber_queued, k);
+    if (!queued) {
+        g_hash_table_add(r->gpl.uber_queued, g_bytes_ref(k));
+    }
+    qemu_mutex_unlock(&r->gpl.lock);
+    if (queued) {
+        g_bytes_unref(k);
+        return;
+    }
+
+    CompileJob *job = g_malloc0(sizeof(CompileJob));
+    job->type = COMPILE_JOB_GPL_UBER_LIB;
+    job->gpl_uber_lib.key = k;
+    job->gpl_uber_lib.code[0] = (GplStageCode){
+        VK_SHADER_STAGE_VERTEX_BIT, gpl_spirv_copy(uber_vs)
+    };
+    if (gs) {
+        job->gpl_uber_lib.code[1] = (GplStageCode){
+            VK_SHADER_STAGE_GEOMETRY_BIT, gpl_spirv_copy(gs)
+        };
+    }
+    job->gpl_uber_lib.params = *uber;
+    qatomic_inc(&r->gpl.lto_inflight);
+    pgraph_vk_compile_worker_enqueue(r, job);
+}
+
+static void process_gpl_uber_lib_job(PGRAPHVkState *r, CompileJob *job)
+{
+    GplStageCode *code = job->gpl_uber_lib.code;
+    VkPipelineShaderStageCreateInfo stages[2];
+    VkShaderModule modules[2] = { VK_NULL_HANDLE, VK_NULL_HANDLE };
+    uint32_t n = 0;
+    bool ok = true;
+    for (int i = 0; i < 2; i++) {
+        if (!code[i].spirv) {
+            continue;
+        }
+        modules[i] = gpl_module_from(r, code[i].spirv);
+        ok = ok && modules[i] != VK_NULL_HANDLE;
+        stages[n++] = (VkPipelineShaderStageCreateInfo){
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+            .stage = code[i].stage,
+            .module = modules[i],
+            .pName = "main",
+        };
+    }
+
+    VkPipeline pipeline = VK_NULL_HANDLE;
+    int64_t t0 = nv2a_clock_ns();
+    VkResult result = ok ? gpl_build_pr(r, &job->gpl_uber_lib.params, stages,
+                                        n, false, &pipeline)
+                         : VK_ERROR_UNKNOWN;
+    int64_t us = (nv2a_clock_ns() - t0) / 1000;
+    for (int i = 0; i < 2; i++) {
+        if (modules[i] != VK_NULL_HANDLE) {
+            vkDestroyShaderModule(r->device, modules[i], NULL);
+        }
+    }
+    gpl_stage_code_free(code, 2);
+
+    GplPrKey key;
+    assert(g_bytes_get_size(job->gpl_uber_lib.key) == sizeof(key));
+    memcpy(&key, g_bytes_get_data(job->gpl_uber_lib.key, NULL), sizeof(key));
+
+    qemu_mutex_lock(&r->gpl.lock);
+    r->gpl.stats.uber_lib_us += us;
+    if (result == VK_SUCCESS) {
+        gpl_lib_unref(r, gpl_insert_pinned_locked(r, &key, pipeline));
+        r->gpl.stats.uber_libs++;
+        /* a failed key stays queued, so it is not tried again */
+        g_hash_table_remove(r->gpl.uber_queued, job->gpl_uber_lib.key);
+    } else {
+        r->gpl.stats.uber_lib_fail++;
+    }
+    gpl_uber_log_locked(r);
+    qemu_mutex_unlock(&r->gpl.lock);
+
+    g_bytes_unref(job->gpl_uber_lib.key);
+    qatomic_dec(&r->gpl.lto_inflight);
+}
+
+static void process_gpl_uber_next_job(PGRAPHVkState *r, CompileJob *job)
+{
+    PipelineBinding *target = job->gpl_uber_next.target;
+    PipelineCreateParams *p = &job->gpl_uber_next.params;
+    GplStageCode *code = job->gpl_uber_next.code;
+    VkShaderModule modules[3] = { VK_NULL_HANDLE };
+    bool ok = true;
+    for (int i = 0; i < p->num_shader_stages; i++) {
+        VkShaderModule m = VK_NULL_HANDLE;
+        for (int j = 0; j < 3; j++) {
+            if (code[j].spirv && code[j].stage == p->shader_stages[i].stage) {
+                m = modules[i] = gpl_module_from(r, code[j].spirv);
+            }
+        }
+        ok = ok && m != VK_NULL_HANDLE;
+        p->shader_stages[i].module = m;
+    }
+
+    VkPipeline pipeline = VK_NULL_HANDLE;
+    int64_t t0 = nv2a_clock_ns();
+    VkResult result = ok ? create_monolithic_pipeline(r, p, &pipeline, false)
+                         : VK_ERROR_UNKNOWN;
+    int64_t us = (nv2a_clock_ns() - t0) / 1000;
+    for (int i = 0; i < 3; i++) {
+        if (modules[i] != VK_NULL_HANDLE) {
+            vkDestroyShaderModule(r->device, modules[i], NULL);
+        }
+    }
+    gpl_stage_code_free(code, 3);
+
+    qemu_mutex_lock(&r->gpl.lock);
+    r->gpl.stats.uber_next_us += us;
+    if (result == VK_SUCCESS) {
+        r->gpl.stats.uber_next_done++;
+    } else {
+        r->gpl.stats.uber_next_fail++;
+    }
+    qemu_mutex_unlock(&r->gpl.lock);
+
+    if (result == VK_SUCCESS) {
+        target->gpl_lto_pipeline = pipeline;
+    }
+    smp_wmb();
+    qatomic_set(&target->gpl_lto_pending, false);
+    qatomic_dec(&r->gpl.lto_inflight);
+}
+
+VkResult pgraph_vk_gpl_uber_create_pipeline(
+    PGRAPHVkState *r, PipelineBinding *target,
+    const PipelineCreateParams *spec, const PipelineCreateParams *uber,
+    ShaderModuleInfo *const spec_mods[3], ShaderModuleInfo *uber_vs,
+    VkPipeline *pipeline, bool *is_uber)
+{
+    *is_uber = false;
+
+    GplPrKey key;
+    gpl_pr_key(&key, uber);
+    qemu_mutex_lock(&r->gpl.lock);
+    GplLib *pr = gpl_find_lib(r, GPL_PR, &key, sizeof(key));
+    qemu_mutex_unlock(&r->gpl.lock);
+
+    if (!pr && r->gpl.mode == 4) {
+        VkPipelineShaderStageCreateInfo stages[2];
+        uint32_t n = 0;
+        for (int i = 0; i < uber->num_shader_stages; i++) {
+            if (uber->shader_stages[i].stage != VK_SHADER_STAGE_FRAGMENT_BIT) {
+                stages[n++] = uber->shader_stages[i];
+            }
+        }
+        VkPipeline lib_pipeline;
+        int64_t t0 = nv2a_clock_ns();
+        VkResult result = gpl_build_pr(r, uber, stages, n, true, &lib_pipeline);
+        int64_t us = (nv2a_clock_ns() - t0) / 1000;
+        qemu_mutex_lock(&r->gpl.lock);
+        r->gpl.stats.uber_lib_us += us;
+        if (result == VK_SUCCESS) {
+            pr = gpl_insert_pinned_locked(r, &key, lib_pipeline);
+            r->gpl.stats.uber_libs++;
+        } else {
+            r->gpl.stats.uber_lib_fail++;
+        }
+        gpl_uber_log_locked(r);
+        qemu_mutex_unlock(&r->gpl.lock);
+    }
+
+    if (!pr) {
+        if (r->gpl.mode == 3) {
+            gpl_queue_uber_lib(r, &key, uber, uber_vs, spec_mods[1]);
+        }
+        qemu_mutex_lock(&r->gpl.lock);
+        r->gpl.stats.uber_cold++;
+        gpl_uber_log_locked(r);
+        qemu_mutex_unlock(&r->gpl.lock);
+        return create_monolithic_pipeline(r, spec, pipeline, true);
+    }
+
+    /* uber's vertex input feeds the uber stage's every input (draw.c);
+     * its fragment stage and output state are spec's */
+    bool fell_back;
+    VkResult result = gpl_link_pipeline(r, target, uber, pr, pipeline,
+                                        &fell_back);
+    if (result != VK_SUCCESS || fell_back) {
+        return result;
+    }
+    *is_uber = true;
+
+    if (r->gpl.mode == 3 && target) {
+        CompileJob *job = g_malloc0(sizeof(CompileJob));
+        job->type = COMPILE_JOB_GPL_UBER_NEXT;
+        job->gpl_uber_next.target = target;
+        job->gpl_uber_next.params = *spec;
+        static const VkShaderStageFlagBits stage[3] = {
+            VK_SHADER_STAGE_VERTEX_BIT, VK_SHADER_STAGE_GEOMETRY_BIT,
+            VK_SHADER_STAGE_FRAGMENT_BIT,
+        };
+        for (int i = 0; i < 3; i++) {
+            if (spec_mods[i]) {
+                job->gpl_uber_next.code[i] = (GplStageCode){
+                    stage[i], gpl_spirv_copy(spec_mods[i])
+                };
+            }
+        }
+        qatomic_set(&target->gpl_lto_pending, true);
+        qatomic_inc(&r->gpl.lto_inflight);
+        pgraph_vk_compile_worker_enqueue(r, job);
+    }
+
+    qemu_mutex_lock(&r->gpl.lock);
+    r->gpl.stats.uber_links++;
+    if ((r->gpl.stats.uber_links % 32) == 1) {
+        gpl_uber_log_locked(r);
+    }
+    qemu_mutex_unlock(&r->gpl.lock);
     return result;
 }
 
@@ -872,17 +1314,21 @@ static void gpl_init(PGRAPHVkState *r)
         r->gpl.libs[i] = g_hash_table_new_full(
             g_bytes_hash, g_bytes_equal, (GDestroyNotify)g_bytes_unref, NULL);
     }
+    r->gpl.uber_queued = g_hash_table_new_full(
+        g_bytes_hash, g_bytes_equal, (GDestroyNotify)g_bytes_unref, NULL);
 }
 
 void pgraph_vk_gpl_finalize(PGRAPHVkState *r)
 {
     qemu_mutex_lock(&r->gpl.lock);
-    gpl_flush_locked(r);
+    gpl_flush_locked(r, true);
     qemu_mutex_unlock(&r->gpl.lock);
     for (int i = 0; i < GPL_NUM_LIBS; i++) {
         g_hash_table_destroy(r->gpl.libs[i]);
         r->gpl.libs[i] = NULL;
     }
+    g_hash_table_destroy(r->gpl.uber_queued);
+    r->gpl.uber_queued = NULL;
     if (r->gpl.layout != VK_NULL_HANDLE) {
         vkDestroyPipelineLayout(r->device, r->gpl.layout, NULL);
         r->gpl.layout = VK_NULL_HANDLE;
@@ -1160,9 +1606,8 @@ static bool prebuild_run(PGRAPHVkState *r, PrebuildJob *pb, int64_t *us)
 
     VkPipeline pipeline;
     int64_t t0 = nv2a_clock_ns();
-    pcfb_quiet = true;
-    VkResult result = create_monolithic_pipeline(r, p, &pipeline);
-    pcfb_quiet = false;
+    /* not a draw-path stall: kept out of [shd413]'s create time */
+    VkResult result = create_monolithic_pipeline(r, p, &pipeline, false);
     *us = (nv2a_clock_ns() - t0) / 1000;
 
     if (result == VK_SUCCESS) {
@@ -1266,6 +1711,12 @@ static void *compile_worker_func(void *opaque)
                 break;
             case COMPILE_JOB_GPL_LTO:
                 process_gpl_lto_job(r, job);
+                break;
+            case COMPILE_JOB_GPL_UBER_LIB:
+                process_gpl_uber_lib_job(r, job);
+                break;
+            case COMPILE_JOB_GPL_UBER_NEXT:
+                process_gpl_uber_next_job(r, job);
                 break;
             }
 
@@ -1425,6 +1876,14 @@ void pgraph_vk_compile_worker_shutdown(PGRAPHVkState *r)
             for (int i = 0; i < GPL_NUM_LIBS; i++) {
                 gpl_lib_unref(r, job->gpl_lto.libs[i]);
             }
+            qatomic_dec(&r->gpl.lto_inflight);
+        } else if (job->type == COMPILE_JOB_GPL_UBER_LIB) {
+            gpl_stage_code_free(job->gpl_uber_lib.code, 2);
+            g_bytes_unref(job->gpl_uber_lib.key);
+            qatomic_dec(&r->gpl.lto_inflight);
+        } else if (job->type == COMPILE_JOB_GPL_UBER_NEXT) {
+            gpl_stage_code_free(job->gpl_uber_next.code, 3);
+            qatomic_set(&job->gpl_uber_next.target->gpl_lto_pending, false);
             qatomic_dec(&r->gpl.lto_inflight);
         }
         g_free(job);

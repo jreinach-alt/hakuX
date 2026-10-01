@@ -1,0 +1,82 @@
+#!/usr/bin/env python3
+"""Write docs/testing/predictions/uberspike569-gpl-doa-soak.json (the build's DOA soak legs)."""
+import datetime
+import json
+
+P = 'docs/testing/predictions/uberspike569-gpl-doa-soak.json'
+d = {
+    "registered_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    "who": "lane.uberspike569",
+    "issue": "569",
+    "title": "54430006-Dead_or_Alive_1_Ultimate.xiso.iso",
+    "device": "nova",
+    "route": "survey",
+    "seconds": 440,
+    "perflog": True,
+    "frames_every": 0,
+    "runs_per_arm": 1,
+    "a_ref": "23543417aa",
+    "b_ref": "752b4f0f7b",
+    "h_ref": "6bec23c3f4",
+    "order": ("A, then B, then H, all on the Nova, each queued with request.sh --title "
+              "--route survey --seconds 440 --perflog --device nova. The three refs build three "
+              "different perflog apks (A: HAKUX_GPL_DEFAULT 0; B: 3; H: 4, one line apart), so "
+              "each arm starts with the dispatcher's shader-cache clear (result.json shader_cache "
+              "'cleared'). The pixel arm's apks are non-perflog builds and cannot warm them."),
+    "judge": ("python3 docs/lanes/uberspike569/uberjudge.py --a <A dir> --b <B dir> --h <H dir> "
+              "(--selftest passes). Every reading, leg and factor is in its docstring and FACTORS, "
+              "fixed before any run. The 2026-09-29 smoke (1790706856-uberspike569-1023537 and "
+              "-1023583, 150 s, not the survey route, B warm) was read for crashes and counters "
+              "only; no factor was changed after it."),
+    "prediction": (
+        "#569 uber ladder on Dead or Alive 1 Ultimate, cold. A draws with monolithic pipelines "
+        "built on the draw thread (lane.gpl569 measured about 570 ms each on this title). In B, a "
+        "miss whose vertex state glsl/vsh-uber.c covers fast-links the uber pre-raster library for "
+        "its family and GS (0.06 ms) with a specialised fragment library (about 12 ms) and draws "
+        "that frame; the specialised monolithic pipeline is built on the compile worker and "
+        "swapped in. A miss with no uber library yet for its (family, GS, raster, formats) is "
+        "built monolithic on the draw thread, as in A, and queues that library; it is counted in "
+        "[uber569] cold=. DOA has one vertex family per GS prefix (46 vertex states, BUILD.md 2), "
+        "so cold should be a handful and every later miss a link. H holds every covered draw on "
+        "the uber stage and is read for its GPU price only. Registered: N1, B's whole-run "
+        "draw-path create ms <= 0.25 x A's; N2, B's first load after mark play <= 0.20 x A's; "
+        "N3, B's stall windows (dpc_ms >= 100 within one [shd413] window) <= B's cold count + 2, "
+        "i.e. no frame waits on a pipeline create except the cold ones the design admits; G, H's "
+        "play-span median GPU Tot ms <= 1.50 x A's and gfps >= 0.80 x A's."),
+    "legs": {
+        "M0 (validity)": (
+            "A and B cleared; >= 20 [shd413] windows each; B has 'vsh-uber: family module' and a "
+            "last [uber569] line with mode=3 and links > 0; H has mode=4 and links > 0. Without "
+            "these the arm ran the monolithic path and its legs are VOID."),
+        "N1": (
+            "B pc_ms <= 0.25 x A pc_ms. FAILS in the world where cold misses (no uber library "
+            "yet) dominate DOA's create time: the uber libraries are keyed too finely (raster "
+            "state or formats split them), or are built too late on the worker to catch the "
+            "misses behind the first."),
+        "N2": (
+            "B's first load after mark play: dpc_ms <= 0.20 x A's. FAILS in the same world as "
+            "N1, or where the specialised fragment library (inline, about 12 ms each) is the "
+            "remaining stall because the load brings many new fragment states at once."),
+        "N3": (
+            "B stall windows <= cold + 2. FAILS in the world where something besides a cold miss "
+            "still creates on the draw thread: the inline fragment library cost summed over a "
+            "window, an uncovered vertex state (read [uber569] uncovered=), or the swap itself."),
+        "G": (
+            "H GPU Tot ms <= 1.50 x A and gfps >= 0.80 x A over the play span. FAILS in the world "
+            "where the interpreter's vertex ALU and register pressure on the Adreno 740 costs more "
+            "than half again the frame's GPU time at DOA's vertex loads. B pays this only between "
+            "a link and its swap, so a G failure prices the stand-in frames; it does not kill "
+            "N1-N3."),
+        "X (reading)": (
+            "B's next=done/fail/swapped and next_ms: the specialised pipelines built behind rung "
+            "0, and how many were swapped in."),
+    },
+    "expect": {},
+    "expect_counts": {},
+    "expect_note": ("EMPTY ON PURPOSE: a soak writes no captures. The legs are read off [shd413], "
+                    "[uber569], [gpl569], xemu-gpu and gfps lines by uberjudge.py."),
+}
+s = json.dumps(d, indent=1) + "\n"
+json.loads(s)
+open(P, 'w').write(s)
+print("wrote", P)

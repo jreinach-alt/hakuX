@@ -23,6 +23,12 @@
 #include "renderer.h"
 #include "ui/xemu-settings.h"
 #include "hw/xbox/nv2a/pgraph/glsl/psh-uber.h"
+#include "hw/xbox/nv2a/pgraph/glsl/vsh-uber.h"
+
+/* #569: the uber flag lives in GenVshGlslOptions' padding (glsl/vsh.h), so
+ * the persisted module key keeps its record size */
+QEMU_BUILD_BUG_ON(offsetof(GenVshGlslOptions, uber) != 2 ||
+                  offsetof(GenVshGlslOptions, gles_version) != 4);
 
 #ifdef __ANDROID__
 #include <android/log.h>
@@ -593,7 +599,7 @@ void pgraph_vk_update_descriptor_sets(PGRAPHState *pg)
     }
 #endif
 
-    ShaderUniformLayout *layouts[] = { &binding->vsh.module_info->uniforms,
+    ShaderUniformLayout *layouts[] = { &binding->vsh.upload_info->uniforms,
                                        &binding->psh.module_info->uniforms };
 
     VkDeviceSize ubo_buffer_total_size = 0;
@@ -813,10 +819,19 @@ void pgraph_vk_update_descriptor_sets(PGRAPHState *pg)
 
 static void update_shader_uniform_locs(ShaderBinding *binding)
 {
+    /* #569: with an uber vertex stage the draw uploads into its layout, of
+     * which the specialised module's is a prefix */
+    binding->vsh.upload_info = binding->vsh.uber_module_info ?
+                                   binding->vsh.uber_module_info :
+                                   binding->vsh.module_info;
     for (int i = 0; i < ARRAY_SIZE(binding->vsh.uniform_locs); i++) {
         binding->vsh.uniform_locs[i] = uniform_index(
-            &binding->vsh.module_info->uniforms, VshUniformInfo[i].name);
+            &binding->vsh.upload_info->uniforms, VshUniformInfo[i].name);
     }
+    binding->vsh.uber_loc =
+        binding->vsh.uber_module_info ?
+            uniform_index(&binding->vsh.upload_info->uniforms, VSH_UBER_NAME) :
+            -1;
 
     for (int i = 0; i < ARRAY_SIZE(binding->psh.uniform_locs); i++) {
         binding->psh.uniform_locs[i] = uniform_index(
@@ -965,6 +980,29 @@ static void shader_binding_build_module_keys(
 }
 
 #if OPT_ASYNC_COMPILE
+/*
+ * #569, HAKUX_GPL=3|4: the family uber vertex stage a covered binding
+ * carries beside its own (glsl/vsh-uber.h). Created on the draw thread at
+ * the binding's first sight, once per family; its pipelines are built on the
+ * compile worker (vk/compile_worker.c).
+ */
+static ShaderModuleInfo *get_uber_vsh_module(PGRAPHVkState *r,
+                                             ShaderBinding *binding,
+                                             const ShaderModuleCacheKey *vsh_key)
+{
+    if (r->gpl.mode < 3) {
+        return NULL;
+    }
+    if (!pgraph_glsl_vsh_uber_covers(&binding->state.vsh)) {
+        qatomic_inc(&r->gpl.stats.uber_uncovered);
+        return NULL;
+    }
+    ShaderModuleCacheKey key = *vsh_key;
+    pgraph_glsl_vsh_uber_family(&binding->state.vsh, &key.vsh.state);
+    key.vsh.glsl_opts.uber = true;
+    return get_and_ref_shader_module_for_key(r, &key);
+}
+
 static bool try_finalize_shader_binding(PGRAPHVkState *r,
                                         ShaderBinding *binding)
 {
@@ -1020,6 +1058,7 @@ static void shader_cache_entry_init(Lru *lru, LruNode *node, const void *state)
     bool need_geom;
     shader_binding_build_module_keys(r, binding, &vsh_key, &geom_key,
                                      &psh_key, &need_geom);
+    binding->vsh.uber_module_info = NULL;
 
 #if OPT_ASYNC_COMPILE
     if (xemu_get_async_compile()) {
@@ -1071,6 +1110,11 @@ static void shader_cache_entry_init(Lru *lru, LruNode *node, const void *state)
     }
     binding->vsh.module_info = get_and_ref_shader_module_for_key(r, &vsh_key);
     binding->psh.module_info = get_and_ref_shader_module_for_key(r, &psh_key);
+#if OPT_ASYNC_COMPILE
+    binding->vsh.uber_module_info =
+        binding->vsh.module_info ? get_uber_vsh_module(r, binding, &vsh_key)
+                                 : NULL;
+#endif
 
     if (!binding->vsh.module_info || !binding->psh.module_info ||
         (need_geom && !binding->geom.module_info)) {
@@ -1092,6 +1136,7 @@ static void shader_cache_entry_post_evict(Lru *lru, LruNode *node)
         snode->vsh.module_info,
         snode->geom.module_info,
         snode->psh.module_info,
+        snode->vsh.uber_module_info,
     };
     for (int i = 0; i < ARRAY_SIZE(modules); i++) {
         if (modules[i]) {
@@ -1119,6 +1164,9 @@ void shader_module_key_persist(const ShaderModuleCacheKey *key)
     }
     /* A debug-switch module is not a key a default boot should warm. */
     if (key->kind == VK_SHADER_STAGE_FRAGMENT_BIT && key->psh.uber) {
+        return;
+    }
+    if (key->kind == VK_SHADER_STAGE_VERTEX_BIT && key->vsh.glsl_opts.uber) {
         return;
     }
 
@@ -1190,8 +1238,11 @@ static void shader_module_compile_sync(PGRAPHVkState *r,
 
     switch (module->key.kind) {
     case VK_SHADER_STAGE_VERTEX_BIT:
-        code = pgraph_glsl_gen_vsh(&module->key.vsh.state,
-                                   module->key.vsh.glsl_opts);
+        code = module->key.vsh.glsl_opts.uber ?
+                   pgraph_glsl_gen_vsh_uber(&module->key.vsh.state,
+                                            module->key.vsh.glsl_opts) :
+                   pgraph_glsl_gen_vsh(&module->key.vsh.state,
+                                       module->key.vsh.glsl_opts);
         break;
     case VK_SHADER_STAGE_GEOMETRY_BIT:
         code = pgraph_glsl_gen_geom(&module->key.geom.state,
@@ -1218,18 +1269,28 @@ static void shader_module_compile_sync(PGRAPHVkState *r,
         code = NULL;
     }
 
-    int64_t uber_t0 = module->key.kind == VK_SHADER_STAGE_FRAGMENT_BIT &&
-                      module->key.psh.uber ? g_get_monotonic_time() : 0;
+    bool vsh_uber = module->key.kind == VK_SHADER_STAGE_VERTEX_BIT &&
+                    module->key.vsh.glsl_opts.uber;
+    int64_t uber_t0 = (module->key.kind == VK_SHADER_STAGE_FRAGMENT_BIT &&
+                       module->key.psh.uber) || vsh_uber ?
+                          g_get_monotonic_time() : 0;
     module->module_info = pgraph_vk_create_shader_module_from_glsl(
         r, module->key.kind, mstring_get_str(code));
     if (uber_t0) {
         /* C leg, device side: glslang plus vkCreateShaderModule for one
          * family. The pipeline's Turnip compile is timed where pipelines are
          * created, not here. */
-        static int uber_modules;
-        UBER_LOG("psh-uber: family module %d: %zu bytes GLSL, %.1f ms",
+        static int uber_modules, vsh_uber_modules;
+        if (vsh_uber) {
+            UBER_LOG("vsh-uber: family module %d: %zu bytes GLSL, %.1f ms%s",
+                     ++vsh_uber_modules, mstring_get_length(code),
+                     (g_get_monotonic_time() - uber_t0) / 1000.0,
+                     module->module_info ? "" : ", FAILED");
+        } else {
+            UBER_LOG("psh-uber: family module %d: %zu bytes GLSL, %.1f ms",
                      ++uber_modules, mstring_get_length(code),
                      (g_get_monotonic_time() - uber_t0) / 1000.0);
+        }
     }
     mstring_unref(code);
 
@@ -1513,7 +1574,7 @@ void pgraph_vk_update_shader_uniforms(PGRAPHState *pg)
     }
 #endif
 
-    ShaderUniformLayout *vsh_layout = &binding->vsh.module_info->uniforms;
+    ShaderUniformLayout *vsh_layout = &binding->vsh.upload_info->uniforms;
     ShaderUniformLayout *psh_layout = &binding->psh.module_info->uniforms;
 
     /* Check if any constant/light arrays were modified since last update.
@@ -1530,6 +1591,14 @@ void pgraph_vk_update_shader_uniforms(PGRAPHState *pg)
     apply_uniform_updates(vsh_layout, VshUniformInfo,
                           binding->vsh.uniform_locs, &vsh_values,
                           VshUniform__COUNT);
+    if (binding->vsh.uber_loc != -1) {
+        /* #569: the vertex state the uber stage interprets. The binding's
+         * state is the live one; only the module is the family's. */
+        uint32_t ub[VSH_UBER_VEC4S * 4];
+        pgraph_glsl_vsh_uber_values(&binding->state.vsh, true, ub);
+        uniform_copy(vsh_layout, binding->vsh.uber_loc, ub, sizeof(uint32_t),
+                     ARRAY_SIZE(ub));
+    }
 
     PshUniformValues psh_values;
     pgraph_glsl_set_psh_uniform_values(pg, binding->psh.uniform_locs,
