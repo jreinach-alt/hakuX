@@ -38,3 +38,18 @@ Turnip also never sets the creation-feedback cache-hit bit (`dfbh=0` everywhere)
 | W3: intro fps | 59 vs 59 | PASS |
 
 W1b failed because the two launches loaded different fights. DOA's route presses START/A blind, and the frames show launch 1 fought Zack and then Helena, while launch 2 fought Bass. Every one of launch 2's 131 creates after that point was a pipeline launch 1 never made. No pipeline that had been recorded was slow at any point. Kabuki's route is fixed, so it gives the like-for-like reading.
+
+## #569 -- 2026-09-30 20:20 PDT
+
+[lane.shaderprebuild569] P3 (the pipeline pre-build) is ready to fold: `docs/lanes/shaderprebuild569/PR.md` on `lane/shaderprebuild569`, `State: ready`. **Kabuki's pair passes every registered leg.** As with DOA, both launches ran with the pipeline cache file removed. So launch 2's recorded pipelines could only be warm because the pre-build made them warm.
+
+| leg | launch 2 vs launch 1 | verdict |
+|---|---|---|
+| W4: create time of a recorded pipeline with no cache file | 25.6 us vs 174 ms per pipeline | PASS |
+| W1: total pipeline-create time in the run | 14.4 s vs 134.7 s | PASS |
+| W2: pre-build done before gameplay | 810 of 810 rebuilt on three workers in 73 s, 156 s before the fight | PASS |
+| W3: menu fps | 59 vs 59 | PASS |
+
+After the fight started, the 394 pipelines launch 1 had recorded cost 10 ms in total. What launch 2 still paid, 14.4 s, was 83 pipelines launch 1 never made: the CPU's fighters and the arena are random. The per-title shipped sets in the second PR are what cover those.
+
+The first launch-2 run (`1790814611-shaderprebuild569-750364`) is VOID because the Nova's adb link dropped 77 s in, with the battery at 63% and the app still running. It was re-run on the same build with no other Nova run in between.

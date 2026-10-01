@@ -2,7 +2,8 @@
 
 Brief: P3 of `docs/lanes/shaderplan569/NOTES.md` section 7 (items 1-5 here; item 6, shipped
 per-title key sets, is the second PR, designed in section 6 below). Base: master @ 2c59b7bbba.
-Code: 54865a3521.
+Code: 54865a3521, merged with master as 262e30e6de and ff3693193d (no change to `hw/` in the
+second).
 
 ## 1. Item 5 first: is the pipeline cache saved on Android? Yes, in sync mode
 
@@ -122,25 +123,22 @@ Cold references (lane.uberspike569's arm A, same route and seconds, GPL 0):
 | DOA L2 | `1790791306-shaderprebuild569-118725` | 54865a3521 | ran 17:17 PDT, Nova, `kept` |
 | Kabuki L1 | `1790814605-shaderprebuild569-748505` | 262e30e6de | ran 19:42 PDT, Nova, `cleared` (apk change); valid |
 | Kabuki L2 | `1790814611-shaderprebuild569-750364` | 262e30e6de | ran 19:52 PDT, Nova, `kept`; VOID: the adb link dropped at 77 s |
-| Kabuki L2 retry | `1790823465-shaderprebuild569-2896600` | 262e30e6de | queued 19:57 PDT, Nova idle |
-
-**Attempt 3 ends waiting** on the Kabuki pair. Judge it with
-`pbjudge.py --l1 <L1> --l2 <L2> --boot-mark gameplay`. Then queue the head smoke and set ready.
-Because L1 is on a new apk, it comes back `cleared`. If L2 also comes back `cleared`, it is
-VOID; the recovery is as above.
+| Kabuki L2 retry | `1790823465-shaderprebuild569-2896600` | 262e30e6de | ran 19:58 PDT, Nova, `kept`; valid. Judged as L2 against 748505 |
+| head smoke | queued on the head that carries `State: ready` (purpose `#569 head smoke at <head>`) | head | Kabuki, 180 s, default env |
 
 If a request with another apk runs on the Nova between L1 and L2, L2 comes back `cleared`. Its
 keys are then gone, its records unresolved, and it is VOID. That run is itself a cold launch
 that writes keys, so the recovery is one more soak on the same ref right after it, judged as L2
-against the original L1.
+against the original L1. Attempt 4 used the same recovery for a lost adb link: L2 again on the
+same ref, with no other Nova run in between.
 
-Still to do, in order (0-1 done in attempt 3):
-0. ~~Merge master after the uberspike569 fold~~ (262e30e6de).
+Done, in order:
+0. ~~Merge master after the uberspike569 fold~~ (262e30e6de, attempt 3).
 1. ~~Judge the DOA pair~~ (section 5, attempt 3).
-2. Queue the Kabuki pair on 262e30e6de, then judge it.
-3. Queue one short smoke on the final head, which `offline_fold.py` needs: a run built from the
-   branch head.
-4. Set `State: ready`.
+2. ~~Judge the Kabuki pair~~ (section 5, attempt 4: every leg passes).
+3. ~~Merge master again~~ (ff3693193d: titleroutes docs only, `hw/` byte-identical to
+   262e30e6de).
+4. ~~`State: ready`~~, then one short smoke on that exact head, which `offline_fold.py` needs.
 
 ## 5. Coordination
 
@@ -260,6 +258,30 @@ pair did not settle the legs:
 will be judged as L2 against the original L1. L2's own cold-free run left the records file at
 810+ and rewrote `vk_pipeline_cache.bin`. The retry wipes that file again (`HAKUX_PLC_WIPE=1`),
 so W4 still holds as registered.
+
+**Kabuki verdict** (L1 `748505`, L2 `2896600`, both at 262e30e6de; `pbjudge.py ... --boot-mark
+gameplay`; the full output is in `kabuki_judge.json`):
+
+| leg | registered | read | verdict |
+|---|---|---|---|
+| V | validity | L1 `cleared`, records=0, wipe `absent`. L2 `kept`, wipe `removed`, 810 records, 0 unresolved, 578 modules; 580 and 463 `[shd413]` windows | valid |
+| W4 | L2 known mean <= 0.10 x L1 new mean, after `mark gameplay` | 25.6 us (394 known) vs 173,801 us (669 new): **0.00015** | PASS |
+| W1 | L2 pc_ms <= 0.25 x L1's | 14,416 ms vs 134,717 ms: **0.107** | PASS |
+| W2 | `[pb569] done` before `mark gameplay` | 810/810 ok, 0 fail, 73.0 s wall (218.5 s of creates on 3 workers); done at 19:59:29.6, mark at 20:02:05.5: **156 s before** | PASS |
+| W3 | pre-mark median gfps >= 0.90 x L1's | 59 vs 59: **1.0** | PASS |
+
+The reading (X), not a leg:
+- **What L2 still paid for was new content.** L2's 83 creates after the mark were pipelines L1
+  never made, and they averaged 173 ms, the same as L1's cold ones. Together they cost 14.4 s,
+  which is nearly all of L2's 14.4 s whole-run `pc_ms`. The route picks a fixed path, but the
+  CPU's fighters and the arena are random, so each launch meets some new pipelines.
+- **Stall windows (dpc_ms >= 100) fell from 41 to 19.** The 19 that are left are those new
+  pipelines.
+- **Saves.** L2 saved once after the pre-build, 20 times on a quiet load and twice on the timer.
+
+This is the like-for-like case DOA's route could not give: the same title path, with a cache file
+that could only be warm through the pre-build. Item 6's shipped sets are what cover the 83: a set
+harvested over several route soaks holds the fighters one launch did not meet.
 
 ## 6. Item 6 design (the second PR, `lane/shaderprebuild569-sets`; not built here)
 
