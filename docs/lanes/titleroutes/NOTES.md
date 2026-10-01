@@ -3658,3 +3658,59 @@ addendum has said its #462 priority has lifted.
   Black, ToeJam & Earl III, Tron 2.0: Killer App.
 - **Galleon:** still blocked by the owner (FPS and polygon flicker). Do not
   queue it on either device.
+
+## Session 52 (attempt 2 of a fresh resume): the usage-budget hold is still active; stopping without new brief work
+
+**Why session 51 did not "finish" the brief (it finished correctly).** Session
+51 ended on a correct `blocked:` (same Thor CPU-stop decision as session 50,
+still with the owner), marked `PR.md` `State: ready`, and that PR was already
+folded into `origin/master` as `ec244430e3` before this session started. This
+session fast-forwarded the branch to `origin/master` (`7993218f2b` ->
+`ec244430e3`, no local commits lost) and re-read the current blocker state
+before doing anything.
+
+**Found: an explicit, actively-enforced, owner-delegated hold against
+resuming this lane at all, right now.** `host-tools/hostops-inbox.md`
+(2026-10-01 06:15 PDT, `[lane.local] usage budget day`): weekly usage is at
+92%+ with no reset until 21:00 PDT tonight; "Do not resume titleroutes or
+any other lane" until then, device work only. hostops has reconfirmed this
+every tick since without resuming the lane (06:10, 10:10, 11:10, 12:10,
+12:53 PDT entries in `escalations.md`, all "no lane resumes/starts
+performed"). The 12:53 PDT tick is the newest entry in either file, and it
+still reads "~8h still to go" to the 21:00 PDT reset. Nothing countermands
+this hold anywhere in `escalations.md`, `hostops-inbox.md`, or
+`dispatch/hold/thor.why`.
+
+This session itself exists because the harness's own resume mechanism
+started it (the outer "attempt 2" resume prompt), not because lane.local or
+hostops decided to lift the hold -- the inbox shows the opposite, reconfirmed
+as recently as 12:53 PDT. Doing the brief's work now (even the no-device
+offline parts from session 51, like another `rank_untouched.py` pass) would
+be exactly the kind of unauthorized lane activity the hold exists to stop
+during a 92%+ usage day; the Thor-screening blocker this lane is stuck on
+also has not moved (`dispatch/hold/thor.why` and `escalations.md` 05:13 PDT
+entry, re-checked, unchanged since session 51 read them). So this session
+makes no routes/targets.toml changes, takes no device hold, queues nothing,
+and stops here -- the same correct-stop pattern session 51 used, but earlier
+in the session, because the blocking fact this time is the budget hold
+itself, not new work to do within it.
+
+**State for a successor:** unchanged from session 51's "State for a
+successor" above (Thor screening blocked on the owner's CPU-stop decision;
+castlevania-cod/gauntlet/sonic-heroes/capcom-classics2/Plus Plumb 2/Petit
+Copter evidence is gone and needs a fresh screen; `scratch/targeted_ids.txt`
+is fixed and `rank_untouched.py`'s 319-title list is trustworthy; 13
+Nova-only no-copy titles are listed for whoever gets Nova time cleared;
+Galleon stays blocked). Additionally: **do not resume this lane again before
+the 21:00 PDT usage-budget reset** (`hostops-inbox.md` 06:15 PDT) unless a
+later entry in `hostops-inbox.md` or `escalations.md` explicitly lifts it --
+check both files' tails first, the same way this session did.
+
+[lane.titleroutes] blocked: the 2026-10-01 92%+ weekly-usage budget hold
+(`hostops-inbox.md` 06:15 PDT, reconfirmed through 12:53 PDT, reset at
+21:00 PDT) says not to resume this lane until then; separately, the Thor
+CPU-stop decision from session 50/51 (`escalations.md` 05:13 PDT,
+`dispatch/hold/thor.why`) is still with the owner. Nothing of mine is
+queued or running on either device. Resolving signal: a `hostops-inbox.md`
+or `escalations.md` entry after 12:53 PDT either lifting the usage hold (at
+or after the 21:00 PDT reset) or ruling on the Thor CPU-stop question.
