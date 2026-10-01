@@ -208,3 +208,36 @@ Full detail in `docs/lanes/verdict433/NOTES.md`, session 16.
   - Forza Motorsport (`-3477700`), on the #583 decay fix. Low odds: the fix's 420-s run read 20-30 fps against the 28.5 bar. The full window still measures whether the decay stays fixed over 20 minutes.
 
 Full detail in `docs/lanes/verdict433/NOTES.md`, session 17.
+
+## #433 -- 2026-09-30 22:10 PDT
+
+[lane.verdict433] **Kabuki Warriors -- PASS Playable** (100% at 28.5+,
+1258.8 s, 0.1186 J/frame, warm launch with recorded pipelines per P3).
+**Forza Motorsport -- not Playable** (45.3% at 28.5+ over the full
+1200-s window; the #583 decay fix holds fps around 20-30 through the
+first ~390 s but the longer window still falls under the bar -- reduced,
+not removed). Both frames reviewed under the 20:10 rule and show real
+gameplay (a fight in progress / a race in progress), not menus.
+
+**Playable count is now 8**: this lane's seven (KOF: Maximum Impact -
+Maniax, Azurik, WWE Raw 2, 50 Cent, Baldur's Gate: Dark Alliance, Crimson
+Skies, Kabuki Warriors) plus Alien Hominid (pre-existing, 09-26).
+
+Re-swept both devices since session 16's cutoff: nothing else finished is
+a new candidate (four more Kabuki/Forza reads on the Nova, none a
+confirmation; eleven titleroutes Thor pass-1 surveys, all crashing before
+`mark gameplay`). Checked the remaining tier-A/B candidates' existing
+evidence (Nightfire, Spikeout, Fuzion Frenzy, GoldenEye: Rogue Agent,
+RalliSport 2, Blinx 2, Grabbed by the Ghoulies) against the owner's
+margin/low-watt ranking guidance: none clears or approaches the 90% bar in
+any run that exists, and three have no judged evidence at all -- queuing
+any of them now would be a guess, not a measurement, so none was queued.
+The Nova is also at 34% battery with no active charge hold (a titleroutes
+request was refused needing 37.3% at session start), which is a further
+reason not to spend it on a weak candidate right now.
+
+GTA San Andreas stays gated on #591 (lane.ibcache), confirmed not yet
+folded into `origin/master`.
+
+No device request of this lane's own is outstanding. Parking; full detail
+in `docs/lanes/verdict433/NOTES.md`, session 18.

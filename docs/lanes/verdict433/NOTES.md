@@ -1866,8 +1866,8 @@ Pre-queue check: no `verdict.json` under `dispatch/results` has
 | Alien Hominid | thor (cold-start control) | default | `-3086847` | void (heat stop, xo 70 C, 402 s); already Playable (`lanelocal-1183547`, 09-26) | |
 | Otogi: Myth of Demons | thor (cold-start) | default | `-43486` | FAIL (thermal): pause at +703 s, 35.0%, peak xo 77.9 C | |
 | Arctic Thunder | nova | default | `-3086903` | FAIL: 684 s gameplay (route ran out), 63.9% | |
-| Kabuki Warriors | nova | default | `-3477568` (warm-up `-3477434`) | queued | |
-| Forza Motorsport | nova | default | `-3477700` | queued | |
+| Kabuki Warriors | nova | default | `-3477568` (warm-up `-3477434`) | **PASS Playable** (100%, 1258.8 s) | `205954-gameplay` |
+| Forza Motorsport | nova | default | `-3477700` | FAIL (45.3% at 28.5+ over 1253.7 s; decay fix holds early but the full window still falls under the bar) | `213608-play`, `215609-play` |
 | Galleon | -- | -- | -- | blocked (owner, 09-30 14:40 PDT: FPS and polygon flicker; not heat) | |
 
 ### Ending session 17: waiting on the three batch-10 requests
@@ -1877,3 +1877,132 @@ Pre-queue check: no `verdict.json` under `dispatch/results` has
 `dispatch/results/`. Then judge Kabuki and Forza with `title_verdict.py
 --require confirmation`, review the frames after the mark, and read Kabuki's
 `shader_cache`.
+
+## Session 18 (2026-09-30, from ~21:55 PDT, resumed as attempt 1)
+
+**Why session 17 did not finish.** It ended on a clean `waiting:` -- the
+three batch-10 requests (Kabuki warm-up, Kabuki confirmation, Forza
+confirmation) were still running on the Nova with nothing else of this
+lane's own outstanding. That is a finished-session wait, not a stall; this
+session resumes once they carry `DONE`.
+
+**Merged `origin/master`** (2 commits: titleroutes session 45's work-list
+refresh and its offline fold; no emulator code, no conflicts). Pushed as
+part of this session's commit.
+
+### All three batch-10 requests are DONE; judged
+
+- **Kabuki warm-up (`-3477434`):** judged for the record only, not a
+  verdict -- `title_verdict.py --require screening` reads
+  FAIL(hang: 23.0 s without 60 guest flips after the mark), gameplay 198.2 s,
+  fps_ok 0.4846. This is the expected cold L1: `result.json`'s
+  `shader_cache` reads `cleared: apk fe169e285b67 -> 1462cd8c05bb on this
+  device` -- the dispatcher's apk-change rule cleared the cache, so this
+  launch recorded the fight's pipelines rather than using them. Confirms
+  the warm-up did its job; not counted as Kabuki's verdict.
+- **Kabuki confirmation (`-3477568`):** `shader_cache` reads `kept: same
+  apk as this device's previous run` -- the intended warm (L2) launch, P3
+  pre-build in effect. `title_verdict.py --require confirmation
+  --reviewed-gameplay yes`: **PASS Playable**, fps_ok=1.0, gameplay
+  1258.8 s, no crash/hang, audio_short=0.0, 0.1186 J/frame. Frame
+  `205954-gameplay.png` reviewed under the 20:10 rule: a live fight (round
+  timer 41, both health bars, a hit landing, FPS overlay 55) -- confirmed
+  gameplay, not a menu. **Kabuki Warriors is Playable**, with the caveat
+  the 20:50 PDT addendum already named: the verdict describes a warm
+  launch (the apk already has recorded pipelines); a player's literal
+  first fight on a fresh install still meets the create-burst stall once,
+  as the warm-up run itself shows.
+- **Forza confirmation (`-3477700`):** `shader_cache` reads `kept: same
+  apk as this device's previous run` (expected; same ref as the two Kabuki
+  runs). `title_verdict.py --require confirmation --reviewed-gameplay yes`:
+  **FAIL(fps: 45.3% of gameplay at >= 30 fps (bar 90%))**, gameplay
+  1253.7 s, no crash/hang/audio-short. Reviewed two route-frames spanning
+  the window: `213608-play.png` (lap 1/2, FPS overlay 24, a live race in
+  8th) and `215609-play.png` (lap 1/2 still, race clock 18:11, FPS overlay
+  21, car stationary at 0 mph) -- both show real gameplay, not a menu, so
+  the FAIL is genuine rather than a route problem. This matches
+  forzadecay414's own finding: the #583 fix holds fps around 20-30 through
+  the first ~390 s of a race, but the full 1200-s confirmation window
+  still reads under the 28.5 bar over its length. **Forza Motorsport is
+  not Playable.** Not a route or harness issue -- the decay is reduced,
+  not removed, and this is the measurement the 20:50 PDT addendum asked
+  for.
+
+### Re-swept for anything else finished since session 16's cutoff
+
+`sweep.py` on both devices from epoch 1790814000 (session 16's cutoff)
+found nothing beyond the three batch-10 requests just judged: on the Nova,
+four more shaderprebuild569/forzadecay414 Kabuki/Forza reads (two adb
+voids, a 377 s-short screening pass, a 33.6 s-hang screening fail -- none
+a confirmation, none this lane's title to re-judge); on the Thor, eleven
+titleroutes pass-1 surveys (Ninja Gaiden, Sonic Heroes, Bistro Cupid,
+Phantom Dust x3, Gauntlet: Dark Legacy, Psychonauts x2, Super Monkey Ball
+Deluxe, Family Guy, Deathrow), every one crashing or ending before any
+`mark gameplay` fired. No new candidate on either device.
+
+### Checked the remaining tier-A/B candidates' existing evidence before queuing more
+
+The 09-30 06:45 and 09:55 PDT addenda asked for 3-5 more Playable titles
+today and to prefer low-watt, high-margin candidates. `scan.py` against
+every title with a live `verdict.json` (i.e. already judged, not a fresh
+route soak) for the untried tier-A/B names -- Nightfire, Spikeout, Fuzion
+Frenzy, GoldenEye: Rogue Agent, RalliSport 2, Blinx 2, Grabbed by the
+Ghoulies -- found no clean full-window pass:
+
+| Title | Best reading found |
+|---|---|
+| GoldenEye: Rogue Agent | screening run never reached `mark gameplay` (route fault) |
+| Blinx 2 | 188.9 s gameplay, share 0.573 at 28.5+ (well short of 0.90), route unconfirmed |
+| Grabbed by the Ghoulies | best run 224.1 s (< 600 s screening bar) at share 0.59; an earlier run hung 14.7 s after the mark |
+| Fuzion Frenzy | 307.5 s gameplay, share 0.536, hangs 13.4 s after the mark |
+| Nightfire, Spikeout, RalliSport 2 | no live `verdict.json` at all -- no judged evidence either way |
+
+None of these clears the 90% bar or even approaches it in the runs that
+exist; the ones with no evidence at all would be a pure guess. Per the
+owner's ranking guidance (a cheap step only goes first when it decides
+something, and a hoped-for fix is not a reason to spend device time), none
+of these is worth a confirmation request today. This is the same call
+sessions 15 and 16 made for the Thor's third daily slot, applied here to
+the Nova.
+
+**The Nova is also battery-constrained right now**: `.battery_level.nova`
+reads 34% as of 21:59 PDT, and a titleroutes request right at this
+session's start was refused needing 37.3%. No active charge hold is in
+`dispatch/hold/` (checked directly), so this is an ordinary low point
+between top-ups, not a managed hold -- queuing a weak-evidence candidate
+into it would add to the backlog without the kind of result worth the
+device time.
+
+### Tally: nine Playable total (this lane's seven, plus Kabuki, plus Alien Hominid)
+
+Playable: KOF: Maximum Impact - Maniax, Azurik: Rise of Perathia, WWE Raw 2,
+50 Cent: Bulletproof, Baldur's Gate: Dark Alliance, Crimson Skies, Kabuki
+Warriors (all this lane's own confirmations), plus Alien Hominid
+(pre-existing, 09-26). **Count: 8.**
+
+Not Playable (this lane's own confirmations): 007: Agent Under Fire,
+Arctic Thunder, Otogi: Myth of Demons, Forza Motorsport. Withdrawn: 187:
+Ride or Die (route fault), Galleon (owner-blocked).
+
+### Next, in order
+
+1. GTA San Andreas is still gated on #591 (lane.ibcache), which has not
+   folded into `origin/master` as of this session (checked `git log
+   origin/master --oneline | grep -i "fold.*ibcache"`, no match).
+2. No remaining tier-A/B candidate has evidence worth a confirmation
+   request right now (above). Re-check after titleroutes authors or fixes
+   a route for one of the untried titles, or after a fresh short soak
+   turns up a share near 0.9.
+3. The Thor stays cold-start-only per #507; today's 3-slot cap already has
+   2 used (Alien Hominid void, Otogi FAIL) from session 17, and no new
+   light-title candidate turned up this sweep either.
+
+### Ending session 18: nothing of this lane's own outstanding; parking
+
+No device request of this lane's own is queued or running. Judged all
+three batch-10 results, found no new candidate on a fresh sweep of both
+devices, and found no tier-A/B title with evidence strong enough to be
+worth the Nova's constrained battery right now. Recording the Kabuki pass
+and Forza fail in `OUTBOX.md`. Not waiting on anything; the next real move
+needs either #591 to fold or a stronger candidate reading than exists
+today.

@@ -3,7 +3,7 @@
 State: draft
 
 Lane: verdict433            Issue: #433 [#507]
-Base: master @ 94cf8eb627 (branched); merged forward to origin/master @ b1cea467c6 (the #583 and #569 P3 folds) in session 17
+Base: master @ 94cf8eb627 (branched); merged forward to origin/master @ 28edcacfc8 (titleroutes session 45's offline fold) in session 18
 Files: docs/lanes/verdict433/NOTES.md, docs/lanes/verdict433/PR.md, docs/lanes/verdict433/OUTBOX.md, docs/lanes/verdict433/judge_copy.py, docs/lanes/verdict433/scan.py, docs/lanes/verdict433/soaks.py, docs/lanes/verdict433/sweep.py, docs/lanes/verdict433/queue_batch1.sh, docs/lanes/verdict433/queue_batch2.sh, docs/lanes/verdict433/queue_batch3.sh, docs/lanes/verdict433/queue_batch4.sh, docs/lanes/verdict433/queue_batch5.sh, docs/lanes/verdict433/queue_batch6.sh, docs/lanes/verdict433/queue_batch7.sh, docs/lanes/verdict433/queue_batch8.sh, docs/lanes/verdict433/queue_batch9.sh, docs/lanes/verdict433/queue_batch10.sh
 Prediction: none: analysis-only (no emulator code changed; this lane only reads device results and queues confirmation soaks through the normal harness)
 Needs device: yes (Nova for all confirmations; Thor cold-start-only per the 2026-09-30 10:20 PDT addendum, capped at 3/day, light titles under ~4.5W net)
@@ -17,13 +17,13 @@ code, Playable rule, or board file is touched -- this is a measurement-only
 lane that reads `title_verdict.py` output and queues confirmation soaks via
 `docs/testing/request.sh`.
 
-Across seventeen sessions (2026-09-29 and 2026-09-30, each one queuing a
+Across eighteen sessions (2026-09-29 and 2026-09-30, each one queuing a
 batch and stopping to let device soaks run rather than polling):
 
-- **Six titles confirmed Playable this pass, all on the Nova at the
-  default confirmation regimen; seven Playable in total with Alien
+- **Seven titles confirmed Playable this pass, all on the Nova at the
+  default confirmation regimen; eight Playable in total with Alien
   Hominid (09-26).** Each pass's mark frame was reviewed under the
-  09-30 20:10 PDT rule (NOTES, session 17, names each frame):
+  09-30 20:10 PDT rule (NOTES, sessions 17-18, names each frame):
   - **KOF: Maximum Impact - Maniax** -- fps_ok=0.9936, gameplay 1282.6s, no
     crash/hang, audio_short=0.0005, 0.1121 J/frame.
   - **Azurik: Rise of Perathia** -- fps_ok=0.9521, gameplay 1292.3s, no
@@ -43,6 +43,15 @@ batch and stopping to let device soaks run rather than polling):
     12:10 PDT rule change (audit counter: 1 of 5, not yet due for a
     1200-s re-run). Its first queue attempt was withdrawn by a
     false-positive "Galleon" match before this pass; see below.
+  - **Kabuki Warriors** (session 18) -- fps_ok=1.0, gameplay 1258.8s, no
+    crash/hang, audio_short=0.0, 0.1186 J/frame. A two-launch pair: a
+    warm-up launch first records the fight's pipelines (the dispatcher
+    clears every shader cache on a new ref's first launch of an apk), and
+    the confirmation is the second, warm launch that #569's P3 pre-build
+    removes the create-burst stall on (`result.json`'s `shader_cache:
+    kept`). The verdict describes that warm case; a literal first fight on
+    a fresh install still meets the stall once, as the warm-up run itself
+    shows (FAIL/hang on that launch).
 - **WWE Raw 2, 50 Cent and Baldur's Gate DA each needed a rerun first.**
   Their first attempts hit a harness bug: the shared `titles.qcow2` HDD
   file was pushed to the Nova with `adb push`'s default `rw-r--r--`
@@ -76,6 +85,13 @@ batch and stopping to let device soaks run rather than polling):
   read 100% -- the route's own script runs out of steps at 684s rather than
   sustaining a full window, and what fps it does produce past that point
   falls well under the bar.
+- **Forza Motorsport is not Playable** (session 18), after the #583 decay
+  fix folded: a full 1200-s confirmation reads 45.3% at 28.5+ (bar 90%).
+  Two route-frames spanning the window (lap-1/2, FPS overlay 24 early and
+  21 near the end) confirm genuine race gameplay, not a menu, so the FAIL
+  is a real measurement, not a route fault -- the fix reduces the decay
+  (the first ~390s reads 20-30 fps per forzadecay414's own data) but does
+  not remove it over a full window.
 - **Otogi: Myth of Demons FAILs on heat** on the Thor
   (`thermal-pause-F8` at +703s, 35.0% at 28.5+, peak xo 77.9 C) -- recorded
   as heat evidence, not re-run there.
@@ -123,33 +139,32 @@ changed.
 
 ## Outstanding before ready
 
-- **Batch 10 is queued on the Nova (session 17), on master b1cea467c6:**
-  Kabuki Warriors (warm-up `1-1790826491-lane.verdict433-3477434`, then the
-  1200-s confirmation `-3477568`, the second launch on the apk so P3's
-  pre-build has recorded pipelines) and Forza Motorsport (1200-s
-  confirmation `-3477700`, after the #583 decay fix). Both are flagged
-  titles, so 1200 s. Judge each, review its frames after the mark, and
-  record Kabuki's `shader_cache` state.
-- Every earlier request has a final verdict (six PASS Playable, 187
-  withdrawn, AUF and Arctic Thunder FAIL, Otogi FAIL on heat, Alien Hominid
-  void/redundant).
-- Merged `origin/master` twice (sessions 14 and 15), most recently 46
-  commits, clean, no conflicts. Session 15's merge folded
-  lane.uberspike569-gpl (#569's uber pre-raster library, but `HAKUX_GPL`
-  still defaults to 0 -- no effect on this lane's default-regimen
-  confirmations) and lane.titleroutes sessions 39-42 (Galleon
-  owner-blocked in `targets.toml` too; six new Thor screening routes, none
-  validated yet). #583 (Forza) folded since, in session 17's merge; #591
-  (GTA SA/ibcache) has not.
-- **Beyond batch 10, progress is gated on other lanes:** #591, and
-  titleroutes revising its SMT: NINE and DOA3 routes from their own
-  frames (both currently mark `gameplay`/`booted` on the wrong screen).
-  Session 15's full sweep of every finished Nova and Thor route soak found
-  no further confirmable candidate from current evidence -- re-sweep after
-  any of the above lands.
+- Batch 10 (session 17, judged session 18) is complete: **Kabuki Warriors
+  PASS Playable** (warm-up `1-1790826491-lane.verdict433-3477434`, then the
+  1200-s confirmation `-3477568`, frame `205954-gameplay.png` reviewed) and
+  **Forza Motorsport FAIL** (confirmation `-3477700`, 45.3% at 28.5+ over
+  1253.7s, frames `213608-play.png`/`215609-play.png` reviewed -- a real
+  race, not a menu).
+- Every request has a final verdict: seven PASS Playable (plus Alien
+  Hominid pre-existing), 187 withdrawn, AUF/Arctic Thunder/Forza FAIL,
+  Otogi FAIL on heat, Alien Hominid's own attempt void/redundant.
+- Merged `origin/master` three times since (sessions 14, 15, 17, 18),
+  most recently session 18's 2-commit merge (titleroutes session 45's
+  work-list refresh, no emulator code, clean). #583 (Forza decay) folded
+  in session 17's merge and its fix is now measured (above); #591 (GTA
+  SA/ibcache) has still not folded as of session 18.
+- **Further progress is gated on other lanes:** #591, and titleroutes
+  revising its SMT: NINE and DOA3 routes from their own frames (both
+  currently mark `gameplay`/`booted` on the wrong screen). Session 18's
+  fresh sweep of every finished Nova and Thor route soak, plus a direct
+  check of the remaining tier-A/B candidates' existing `verdict.json`
+  evidence (Nightfire, Spikeout, Fuzion Frenzy, GoldenEye: Rogue Agent,
+  RalliSport 2, Blinx 2, Grabbed by the Ghoulies), found none close to the
+  90% bar -- none was queued. Re-sweep after #591 lands, a titleroutes
+  route fix lands, or a fresh soak shows a share near 0.9 for an untried
+  title.
 - AUF needs its own authored route before it can be re-measured; not this
   lane's scope to author it.
-- The `lanelocal-fanwait` hold referenced in earlier sessions is no longer
-  present in `dispatch/hold/` as of session 15 (titleroutes queued and
-  completed six Thor requests after it was placed) -- Thor is not
-  currently held, but no good candidate was found to spend a slot on.
+- The Nova is at 34% battery as of session 18's close (21:59 PDT), with no
+  active charge hold in `dispatch/hold/` -- an ordinary low point between
+  top-ups, not something this lane manages.
