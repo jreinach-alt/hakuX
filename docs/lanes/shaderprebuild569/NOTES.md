@@ -120,8 +120,9 @@ Cold references (lane.uberspike569's arm A, same route and seconds, GPL 0):
 |---|---|---|---|
 | DOA L1 | `1790791301-shaderprebuild569-118449` | 54865a3521 | ran 2026-09-30 17:09 PDT, Nova, `cleared` (apk change) |
 | DOA L2 | `1790791306-shaderprebuild569-118725` | 54865a3521 | ran 17:17 PDT, Nova, `kept` |
-| Kabuki L1 | `1790814605-shaderprebuild569-748505` | 262e30e6de | queued 17:30 PDT behind a forzadecay414 arm pair (2 x 60 s) and a titleroutes 480 s benchmark |
-| Kabuki L2 | `1790814611-shaderprebuild569-750364` | 262e30e6de | queued right after L1 |
+| Kabuki L1 | `1790814605-shaderprebuild569-748505` | 262e30e6de | ran 19:42 PDT, Nova, `cleared` (apk change); valid |
+| Kabuki L2 | `1790814611-shaderprebuild569-750364` | 262e30e6de | ran 19:52 PDT, Nova, `kept`; VOID: the adb link dropped at 77 s |
+| Kabuki L2 retry | `1790823465-shaderprebuild569-2896600` | 262e30e6de | queued 19:57 PDT, Nova idle |
 
 **Attempt 3 ends waiting** on the Kabuki pair. Judge it with
 `pbjudge.py --l1 <L1> --l2 <L2> --boot-mark gameplay`. Then queue the head smoke and set ready.
@@ -230,6 +231,35 @@ different, so this is not a like-for-like comparison.
 **Kabuki.** The prediction was re-registered on 262e30e6de before any Kabuki run on either ref.
 Refs, time and order line changed; thresholds, legs and judge did not. The pair runs on the merge
 because it is the code that folds.
+
+### Attempt 4 (2026-09-30 19:57 PDT)
+
+**Why attempt 3 did not finish.** It ended on a wait for the Kabuki pair, which was queued on the
+Nova behind other work. That was correct. Both requests have since run, but L2 is VOID, so the
+pair did not settle the legs:
+- **L1 `1790814605-...-748505`** is valid. It came back `cleared` (apk change) with records=0.
+  It made 810 creates, 134.7 s in all, and its 669 creates after `mark gameplay` averaged 174 ms.
+  `mark gameplay` came at 71.2 s.
+- **L2 `1790814611-...-750364`** is VOID: the Nova's adb link went offline 77 s in
+  (`ADB: device offline`, `soak aborted: not-foreground after 77s of 600s`), before
+  `mark gameplay`. The battery was at 63%, so this is not the low-charge drop. The app was not
+  the cause: it logged normally until the stream ended at 19:53:35, with no fatal signal.
+
+  What L2 did show before the drop:
+  - It came back `kept`; the wipe line says `removed`.
+  - `[pb569] start records=810 jobs=810 unresolved=0 modules=578`.
+  - All 16 draw-path creates were `known`, at 13-100 us each, against L1's ~170 ms.
+  - `pc_ms` was 1.2 over 19 misses.
+
+  That is W4's direction, but read before the boot mark, short of `min_known` = 20, and with no
+  `[pb569] done` yet. So it is not a verdict.
+
+**Recovery.** No Nova run came between them, and `.shader_cache_apk.nova` is still
+`1a4ee11d52e7`. So a retry on 262e30e6de comes back `kept`. It is queued as
+`1790823465-shaderprebuild569-2896600`, with the same route, seconds, env and prediction, and it
+will be judged as L2 against the original L1. L2's own cold-free run left the records file at
+810+ and rewrote `vk_pipeline_cache.bin`. The retry wipes that file again (`HAKUX_PLC_WIPE=1`),
+so W4 still holds as registered.
 
 ## 6. Item 6 design (the second PR, `lane/shaderprebuild569-sets`; not built here)
 
