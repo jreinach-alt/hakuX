@@ -29,10 +29,12 @@
 # the first-run mark (same fountain, same facing), consistent with this
 # save being taken at the very start of the level.
 #
-# NOT YET REPLAYED UNATTENDED: played only by nav.py's interactive steps, not
-# by `route.sh` reading this file end to end. Treat as a draft until a soak
-# or scratch/replay.sh run confirms the same path from a cold launch of this
-# disk (which now always has slot 1 filled).
+# CONFIRMED by a full unattended replay (session 56, 2026-10-01, same
+# owner-approved Nova grant, ADDENDUM 4): scratch/replay/castlevania-cod.returning-145541
+# (copied to scratch/judge/), route.sh end to end from a cold launch of this
+# disk, all 19 scripted frames captured, mark gameplay reached at 15:00:34.692
+# (150034-gameplay.png), then ~28s of the repeat-forever play pattern before
+# the run's own timeout ended it. No longer a draft.
 wait 18.4
 shot boot
 wait 8.1
