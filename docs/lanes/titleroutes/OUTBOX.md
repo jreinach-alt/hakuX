@@ -539,3 +539,34 @@ pass; no routes or targets.toml changes this session.
 raise it / require consecutive reads / grant a one-time Nova exception is
 still with the owner (escalations.md 10-01 05:13 PDT, thor.why UPDATE 10-01
 05:09 PDT). Nothing of mine is queued or running on either device.
+
+## #397 -- 2026-10-01 (session 53, the owner-approved one-time Nova path-finding session)
+
+Routed Castlevania: Curse of Darkness (4B4E002D) on the Nova, per the
+`hostops-inbox.md` 14:16 PDT countermand of the usage-budget hold for this
+one title. Both variants now reach a frame-confirmed `mark gameplay`:
+
+| variant | trap found | mark frame |
+|---|---|---|
+| first-run | Name Entry needs `press START` to jump to Accept (`A` alone just types a letter); the save-creation prompt defaults to **No** (`axis LX min` onto Yes before `A`) | `scratch/nav/.../015-mark-gameplay.png`: player HUD 100/100 HP, gothic courtyard, gargoyle fountain |
+| returning | one `A` on Continue only replays the recap cutscene and returns to the title; a **second** `A` reaches LOAD HARD DISK -> slot 1 -> confirm -> the cutscene plays a third time -> the same courtyard | `scratch/nav/.../018-mark-gameplay.png`, same HUD/courtyard |
+
+Both are authored as `.route` files and both reached gameplay visibly (an
+attack animation after the standard play pattern, in the frame right after
+each mark). Neither is yet confirmed by an **unattended** `route.sh` replay
+end to end -- a 150s foreground peek of the returning route (cut short by a
+tight `timeout`, not a hang) matched the first ~115s of 268s to the mark,
+but did not run the whole thing. Both stay DRAFT until that full replay
+exists; see NOTES.md session 53 for the detail and the frame paths.
+
+This exhausted the session's one-time device-time allowance (two nav.py
+sessions plus the peek). Found and cleaned up a stray Nova hold the
+original session had left taken (`dispatch/hold/nova`, placed by this lane
+at 14:18 PDT, never released): released it, restored the Nova to its
+documented rest state (performance/fan mode 0/4, screen asleep). No new
+device time taken beyond that cleanup.
+
+**Not resumed further today.** The 92%+ weekly usage-budget hold (reset
+21:00 PDT) and the Thor CPU-stop decision are both still standing for
+everything outside this one approved title; nothing of this lane's is
+queued or running on either device now.

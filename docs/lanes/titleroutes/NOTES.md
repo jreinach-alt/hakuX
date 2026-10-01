@@ -3714,3 +3714,104 @@ CPU-stop decision from session 50/51 (`escalations.md` 05:13 PDT,
 queued or running on either device. Resolving signal: a `hostops-inbox.md`
 or `escalations.md` entry after 12:53 PDT either lifting the usage hold (at
 or after the 21:00 PDT reset) or ruling on the Thor CPU-stop question.
+
+## Session 53 (2026-10-01, the owner-approved one-time Nova path-finding session): Castlevania: Curse of Darkness reaches gameplay on both variants; a stranded Nova hold cleaned up
+
+`hostops-inbox.md` 14:16 PDT countermanded the 06:15 PDT usage-budget hold
+for this lane alone, for exactly one Nova session: route Castlevania: Curse
+of Darkness (4B4E002D), `<=300s`/`<=6` runs, hard-pinned. That session
+(`castlevania-cod.first-run-20261001T141851` then
+`castlevania-cod.returning-20261001T142355`, both via `nav.py` interactively,
+not a dispatch soak) did the routing, left both route files and the
+`targets.toml` notes update uncommitted, then ended while a foreground
+replay was still running, saying it would "wait" for it -- exactly the
+mistake `ADDENDUM 3` above the brief warns about (a background wait a dead
+session can't resume from). This continuation picked it up cold.
+
+**What session 53 actually found, read from its own frame evidence
+(`scratch/nav/castlevania-cod.*-2026100114*`, 19 and 22 frames):** the
+generic survey route never got this title past Name Entry or the New-Game
+save prompt (sessions 44-48). Two real traps, found by driving it by hand:
+Name Entry's keyboard needs an explicit `press START` to jump the cursor to
+Accept (`A` alone just types the highlighted letter onto the grid), and the
+save-creation prompt right after defaults its cursor to **No** (`axis LX
+min` moves it onto Yes before `A`, or the route silently declines its own
+save and loops back to Name Entry). With those two fixed. first-run reaches
+a confirmed `mark gameplay` frame
+(`scratch/nav/castlevania-cod.first-run-20261001T141851/015-mark-gameplay.png`):
+a player-controlled character, green `Player HP 100/100` HUD, in a gothic
+courtyard facing a gargoyle fountain, and the next frame
+(`016-postplay.png`) shows an attack animation after the stock
+axis-LY/press-A/axis-RX play pattern -- real, moving gameplay, not a menu.
+
+**The returning variant has its own trap, found the same way:** on a disk
+with slot 1 already filled, one `A` on the highlighted Continue does **not**
+load the save -- it replays the full opening recap cutscene and drops back
+to the title with Continue still highlighted. A **second** `A` is what
+reaches LOAD HARD DISK -> slot 1 -> "Is this save data correct?" -> and
+*then* the opening cutscene plays a **third** time before player control.
+Its own mark frame
+(`scratch/nav/castlevania-cod.returning-20261001T142355/018-mark-gameplay.png`)
+is the same courtyard, same HUD, same confirmation pattern
+(`019-postplay2.png` the attack animation after the play pattern).
+
+**What this continuation did, with the device time already spent:**
+- Read `scratch/replay/castlevania-cod.returning-143029/route.log` and its
+  frames: a foreground replay of the *full, already-written* 112-line
+  `castlevania-cod.returning.route` (confirmed by file mtimes: the route
+  file was last written 14:29:52, the replay started 14:30:36) was launched
+  with `scratch/replay.sh`, but `route.sh`'s own `end` line in the log comes
+  from its `TERM`/`INT` trap (`docs/testing/titles/route.sh:158-160`), not
+  from reaching end-of-file -- so this was a `timeout`-bounded foreground
+  peek cut short at 150s, well under `premark.py`'s own 268s pre-mark
+  estimate for this file, not a full confirmation and not a hang. Its five
+  captured frames (boot, continue1-4, c1, c2, seq1, seq2) match the
+  interactive session's own observations exactly, including the recap
+  cutscene's third playthrough (`143254-seq1.png`: "1476, Valachia... out
+  of the darkness and despair, a champion arose -- Trevor Belmont" --
+  same opening crawl, third time, as the header describes), so the route's
+  first ~115s of 268s pre-mark are confirmed unattended; the remainder
+  (through `mark gameplay`) is confirmed only by the interactive nav.py
+  session, same status as `castlevania-cod.first-run.route`, which has
+  never had *any* unattended replay attempt. **Neither route is yet
+  confirmed end-to-end by an unattended `route.sh` run; both remain drafts
+  by this lane's own rule, exactly as their in-file headers already say.**
+  Do not promote either to a soak/nomination until that full replay exists.
+- Found the Nova was no longer running hakuX at all: `dumpsys input` showed
+  `FocusedDisplayId: 0` focused on `org.es_de.frontend` (the launcher), so
+  the app had already exited/returned to the launcher after the 150s peek
+  ended. **Sent no input** (the standing rule: never tap/key a device back
+  into focus) and did not re-launch to chase a second replay -- the
+  session's single-use device-time allowance was already spent on the two
+  nav.py sessions plus this peek.
+- Found `dispatch/hold/nova` still held by `lane.titleroutes` (placed
+  2026-10-01T21:18:18Z / 14:18 PDT, the first-run session's own hold,
+  `<=30 min` and never released). Released it cleanly with
+  `docs/testing/jobs/hold.sh release nova lane.titleroutes` at 14:38 PDT
+  (20 min in, inside budget but no longer doing anything with it).
+- Restored the Nova to its documented rest state
+  (`host-tools/device_rest.conf`): `performance_mode`/`fan_mode` had been
+  left at `2`/`5` (MAX, from the play sessions) and were put back to `0`/`4`
+  (REST), then `KEYCODE_SLEEP` (never `keyevent 96`, per the brief).
+  Verified `mWakefulness=Dozing` afterward.
+- Wrote this NOTES entry, `OUTBOX.md` and `PR.md` (session 53 never wrote
+  either), and committed the route files, `targets.toml`, and these three
+  files together -- the uncommitted route work was session 53's to keep,
+  per `ADDENDUM 3`.
+
+**State for a successor:**
+- Castlevania: Curse of Darkness has two real, frame-confirmed routes
+  (`castlevania-cod.first-run.route`, `castlevania-cod.returning.route`),
+  both still DRAFT pending one unattended `route.sh` replay each (the
+  returning one needs only a longer timeout than this session's 150s peek
+  used, since its first ~115s already checked out; the first-run one has
+  had no unattended attempt at all). That replay is the next thing to do
+  with Nova or Thor time, whichever frees first -- this title's ISO is on
+  both handhelds now (`targets.toml`'s `iso` table), so either works.
+- The usage-budget hold (`hostops-inbox.md` 06:15 PDT, reset 21:00 PDT) and
+  the Thor CPU-stop decision (`escalations.md` 05:13 PDT) are both still
+  standing, unchanged by this one-title exception; do not read this
+  session as a broader reopening. Re-check both files' tails before taking
+  any further device time.
+- Once a route is confirmed end-to-end, it still needs the same-pass
+  benchmark queued (brief Addendum 2) before it counts toward #397/#433.

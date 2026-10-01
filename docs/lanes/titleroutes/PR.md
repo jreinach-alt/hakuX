@@ -1,54 +1,74 @@
-# titleroutes: session 52 -- the usage-budget hold is active; stopped without new brief work
+# titleroutes: session 53 -- Castlevania: Curse of Darkness reaches gameplay on both variants (owner-approved one-time Nova session)
 
 State: ready
 
 Lane: titleroutes          Issue: #397 (per-title gameplay fps; 0.5 tracking #433)
-Base: master @ ec244430e3 (origin/master fast-forwarded this session; session 51's PR already folded there)
-Files: docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/PR.md
-Prediction: none: no arm (lane notes only; no device run this session)
-Needs device: no (none requested; see below)
+Base: master @ ec244430e3 (unchanged this session; no master movement to merge)
+Files: docs/testing/titles/routes/castlevania-cod.first-run.route, docs/testing/titles/routes/castlevania-cod.returning.route, docs/testing/titles/targets.toml, docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/OUTBOX.md, docs/lanes/titleroutes/PR.md
+Prediction: none: analysis/route-authoring only, no pixel-affecting arm
+Needs device: no (device time for this title already spent this session; see below)
 
 ## What changed
 
-Notes only; no routes, no targets.toml, no OUTBOX entry (nothing new to tell
-the owner beyond what session 51 already posted).
+The owner countermanded the 2026-10-01 06:15 PDT usage-budget no-resume hold
+for this lane, for exactly one session: route Castlevania: Curse of Darkness
+(4B4E002D) on the Nova (`<=300s`/`<=6` runs, hard-pinned). That session drove
+the title by hand with `nav.py` and authored both variants:
 
-Session 51 finished correctly: it ended `blocked:` on the still-open Thor
-CPU-stop decision, marked its `PR.md` ready, and that PR was already folded
-into `origin/master` (`ec244430e3`) before this session started. This
-session fast-forwarded to it and re-read the blocker state.
+- `castlevania-cod.first-run.route`: New Game's Name Entry keyboard needs an
+  explicit `press START` to jump the cursor to Accept (`A` alone just types
+  the highlighted letter); the save-creation prompt right after defaults to
+  **No** (`axis LX min` onto Yes before `A`, or it declines its own save).
+  Reaches a confirmed `mark gameplay`
+  (`scratch/nav/castlevania-cod.first-run-20261001T141851/015-mark-gameplay.png`):
+  player HUD 100/100 HP, gothic courtyard, gargoyle fountain, with a visible
+  attack animation the frame after.
+- `castlevania-cod.returning.route`: on a disk with slot 1 already filled,
+  one `A` on the highlighted Continue only replays the recap cutscene and
+  returns to the title with Continue still highlighted; a **second** `A`
+  reaches LOAD HARD DISK -> slot 1 -> confirm -> the cutscene plays a third
+  time -> the same courtyard, same confirmed mark frame pattern.
 
-**Found an active, owner-delegated hold against resuming this lane at all
-right now.** `host-tools/hostops-inbox.md` (2026-10-01 06:15 PDT,
-`[lane.local] usage budget day`): weekly usage is 92%+, no reset until
-21:00 PDT tonight; "do not resume titleroutes or any other lane" until
-then. hostops has reconfirmed this every tick since (06:10 through 12:53
-PDT in `escalations.md`, all "no lane resumes/starts performed"), and
-12:53 PDT is the newest entry in either file -- nothing countermands it.
-The separate Thor CPU-stop blocker (`escalations.md` 05:13 PDT,
-`dispatch/hold/thor.why`) also has not moved.
+Both routes are real, frame-confirmed (nav.py interactive play, not a
+dispatch soak), but **neither is yet confirmed by an unattended end-to-end
+`route.sh` replay**, and their own in-file headers say so. This session's
+one device action against the returning route was a 150s foreground replay
+peek, cut short by a tight `timeout` (confirmed from `route.sh`'s own
+TERM/INT trap writing the `end` log line, not end-of-file) well under
+`premark.py`'s 268s pre-mark estimate for the file -- its five frames match
+the interactive observations exactly (including the recap cutscene playing
+a third time), so the first ~115s of 268s are now confirmed unattended too,
+but the run to `mark gameplay` is not. Both stay DRAFT until that full
+replay exists.
 
-This session was started by the harness's own resume mechanism, not by a
-decision to lift the hold. Doing the brief's work now (even its no-device
-parts) would be exactly the kind of lane activity the hold exists to stop
-during a 92%+ usage day, so this session makes no routes/targets.toml
-changes, takes no device hold, queues nothing, and stops here -- earlier
-in the session than session 51 did, because the blocking fact this time is
-the budget hold itself.
+This continuation (picking the session back up after it ended improperly
+mid-replay, waiting on what would have been a dead background task) also:
+found and released a stray `dispatch/hold/nova` the original session had
+taken (14:18 PDT) and never released; restored the Nova to its documented
+rest state (performance/fan mode 0/4, screen asleep) since it had been left
+at MAX (2/5); and wrote this PR, `NOTES.md`, and `OUTBOX.md` (the original
+session wrote none of the three).
+
+`targets.toml`'s Castlevania notes are rewritten to describe both routes and
+their traps, and `route = "castlevania-cod"` is unchanged (the two variant
+files are what `route.sh`/the dispatcher resolve by name). The old
+never-replayed `castlevania-cod.route` (session 48's generic survey draft)
+is removed, superseded by the two variant files above.
 
 ## Local checks (no CI while GitHub is suspended)
 
-No code changed; no checks apply beyond the file reads above.
+- `python3 docs/testing/titles/titlestate_selftest.py` -- all checks passed.
+- `targets.toml` parses via `tomllib` (80 titles, Castlevania's entry reads
+  back as expected).
 
-Release note (none): lane notes only; no emulator code.
+Release note (none): lane/testing-infrastructure data (routes, targets),
+not emulator code.
 
-[lane.titleroutes] blocked: the 2026-10-01 92%+ weekly-usage budget hold
-(`hostops-inbox.md` 06:15 PDT, reconfirmed through 12:53 PDT, reset at
-21:00 PDT) says not to resume this lane until then; separately, the Thor
-CPU-stop decision (`escalations.md` 05:13 PDT, `dispatch/hold/thor.why`) is
-still with the owner. Nothing of mine is queued or running on either
-device. Resolving signal: a `hostops-inbox.md` or `escalations.md` entry
-after 12:53 PDT either lifting the usage hold (at/after the 21:00 PDT
-reset) or ruling on the Thor CPU-stop question.
+No further device time taken or requested this session: the usage-budget
+hold (reset 21:00 PDT) and the Thor CPU-stop decision are both still
+standing for everything outside this one approved title. The next step for
+Castlevania is an unattended `route.sh` replay of each variant (either
+handheld; the ISO is on both) to move both routes out of DRAFT, then the
+same-pass benchmark once confirmed.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
