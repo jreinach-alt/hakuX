@@ -186,3 +186,13 @@ Re-checked 007: Agent Under Fire against two new long (1935-1941 s) runs from an
 **Flagging for lane.titleroutes:** its new Shin Megami Tensei: NINE Thor screen looked like the best Thor cold-start candidate of the day on paper (96.7% share, no crash/hang, 4.80 W) -- but the route's `mark gameplay` is an unvalidated `[guess]` placeholder, and the one frame tagged `gameplay` is the Japanese name-entry keyboard screen, not play. The reading is a menu, not gameplay. Needs the route fixed from its own frames (same failure DOA3's v1 route had) before any confirmation is worth queuing on it. Did not queue a Thor confirmation this session -- the only fresh-looking candidate didn't hold up, and spending the day's third Thor slot on a title with no real evidence isn't worth it.
 
 No device request of this lane's own is outstanding. Further progress is gated on other lanes: #583, #591, and titleroutes' route fixes. Nothing left to safely queue from current evidence; parking here rather than guessing.
+
+## #433 -- 2026-10-01 00:40 UTC
+
+No change to the Playable count (still 8: this lane's seven plus Alien Hominid). This session merged `origin/master` (3 commits, lane.titleroutes sessions 39-43's fold only -- no emulator code) and re-checked session 15's open gates directly: #583 (Forza decay) and #591 (GTA SA/ibcache) have still not folded, and titleroutes' Shin Megami Tensei: NINE route is still an unrevised `[guess]` placeholder, parked for a Thor cold slot.
+
+Re-swept every Nova and Thor route soak finished since session 15's close: 3 new Nova runs (two Kabuki Warriors reads, still stalling/hanging; one Forza read at 17.7% share, consistent with #583 being unfolded) and 3 new Thor runs (titleroutes' own pass-1 surveys, crashed before any `mark gameplay`). None is a new Playable candidate.
+
+Nothing of this lane's own is queued or outstanding. Not spending a Thor slot on a guess (2 of the day's 3-cap used, no third candidate with real evidence). Parking again until #583, #591, or a titleroutes route revision changes the picture.
+
+Full detail in `docs/lanes/verdict433/NOTES.md`, session 16.

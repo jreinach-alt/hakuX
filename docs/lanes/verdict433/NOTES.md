@@ -1690,3 +1690,82 @@ Playable pass, the merge, the AUF re-check and the SMT: NINE frame finding
 in `OUTBOX.md`. Further progress on this brief is gated on other lanes'
 work (route fixes, #583, #591); nothing left to safely queue from current
 evidence. Stopping here rather than spending a Thor or Nova slot on a guess.
+
+## Session 16 (2026-10-01, resumed as attempt 3)
+
+**Why session 15 did not finish.** It did: it ended cleanly with no device
+request of this lane's own outstanding, after a full sweep found nothing
+else to queue given current evidence, and an `OUTBOX.md` entry recording
+that. The PR stayed `State: draft` because the brief's gating conditions
+(route fixes from titleroutes, #583, #591) hadn't changed yet, not because
+anything was broken. This resume is the idle-lane handback cycle picking
+the lane back up (no `waiting:`/`blocked:` was posted, and nothing of this
+lane's was on a device, so per `roles/lane.md` the resume follows on its
+own after about 40 minutes), not a reaction to a result or a new addendum.
+
+**`git status` clean. `HEAD` was 3 commits behind `origin/master`** (all
+`lane.titleroutes` sessions 39-43's fold, no emulator code, nothing in this
+lane's files). Merged clean and pushed. The only content change relevant to
+check was `targets.toml`'s Dead or Alive 3 notes field (titleroutes session
+43): DOA3 heat-stopped twice on the Thor and is Thor-only (no Nova copy), so
+titleroutes flagged it for lane.local/hostops to decide on a copy, same as
+the owner's "copy when work is held up for the title" amendment. That is a
+decision for lane.local/hostops and the DOA3 title itself is not one of
+this lane's tracked candidates (it is "Dead or Alive 3", distinct from "Dead
+or Alive Ultimate"/DOAX which session 4/15 already looked at) -- noted, not
+acted on.
+
+**Checked both gating fixes directly in the merged history: neither has
+folded.** `git log origin/master | grep -i ibcache` and the forzadecay414-fix
+fold both come back empty -- #583 (Forza decay) and #591 (GTA SA/ibcache
+jump cache) are still open. **titleroutes' SMT: NINE route is unchanged**:
+session 43's notes still describe it sitting in `dispatch/parked/thor-cold-0930/`
+waiting for a cold slot, not re-authored; the `[guess]` placeholder mark this
+lane rejected in session 15 has not been revised.
+
+**Re-swept both devices since session 15's own cutoff** (`sweep.py` at
+epoch 1790814000, ~2026-10-01 00:20 UTC) to check for anything new rather
+than assuming the gate was still shut:
+
+- **Nova, 3 new finished runs:** two Kabuki Warriors reads from
+  `lane.shaderprebuild569` (one void on an adb capture glitch, one a 33.6 s
+  hang at 69.2% share -- the fight stall this lane already knows about,
+  unchanged) and one Forza Motorsport read from `lane.forzadecay414`
+  (17.7% share, unconfirmed generic route -- consistent with #583 still
+  being unfolded). None is a new candidate.
+- **Thor, 3 new finished runs:** all `lane.titleroutes` pass-1 surveys
+  (Psychonauts, Phantom Dust x2) that crashed before any `mark gameplay`
+  fired. Not candidates; not this lane's titles to route.
+
+**Conclusion: nothing changed since session 15.** Every gate the brief's
+further progress depends on (titleroutes' route revisions, #583, #591) is
+still shut, and the sweep found no new title crossing the bar on either
+device. Cleaned up the sweep's scratch output dirs
+(`.scratch16`/`.scratch16t`) before finishing, same as session 6's cleanup
+of stray scratch files -- neither is referenced by anything committed.
+
+### Tally (unchanged)
+
+Eight titles Playable, seven of them this lane's own confirmations
+(unchanged from session 15): KOF: Maximum Impact - Maniax, Azurik: Rise of
+Perathia, WWE Raw 2, 50 Cent: Bulletproof, Baldur's Gate: Dark Alliance,
+187: Ride or Die, Crimson Skies, plus Alien Hominid (pre-existing).
+
+### Next, in order
+
+1. Nothing of this lane's own is queued or outstanding. The next real move
+   still depends on other lanes: #583 or #591 folding, or titleroutes
+   revising the SMT: NINE (and DOA3) routes from their own frames.
+2. Re-sweep (`sweep.py`, from this session's cutoff epoch 1790814000 or
+   later) before assuming nothing changed, next time this lane resumes.
+3. No Thor confirmation to queue: the day's 3-cap is at 2 used (Alien
+   Hominid void, Otogi FAIL-heat) and still no third candidate has real
+   evidence, so spending it on a guess is still the wrong trade per the
+   owner's ranking guidance.
+
+### Ending session 16 here: not waiting on anything of this lane's own --
+
+No device request of this lane's own is outstanding, and a fresh sweep
+found nothing new to queue. Recording the merge and the re-check in
+`OUTBOX.md`. Stopping here rather than spending a device slot on a guess;
+the next real move is gated on other lanes' work.

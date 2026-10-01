@@ -3,7 +3,7 @@
 State: draft
 
 Lane: verdict433            Issue: #433 [#507]
-Base: master @ 94cf8eb627 (branched); merged forward to 308b062fa9 as of session 15
+Base: master @ 94cf8eb627 (branched); merged forward to origin/master's titleroutes-sessions-39-43 fold as of session 16
 Files: docs/lanes/verdict433/NOTES.md, docs/lanes/verdict433/PR.md, docs/lanes/verdict433/OUTBOX.md, docs/lanes/verdict433/judge_copy.py, docs/lanes/verdict433/scan.py, docs/lanes/verdict433/soaks.py, docs/lanes/verdict433/sweep.py, docs/lanes/verdict433/queue_batch1.sh, docs/lanes/verdict433/queue_batch2.sh, docs/lanes/verdict433/queue_batch3.sh, docs/lanes/verdict433/queue_batch4.sh, docs/lanes/verdict433/queue_batch5.sh, docs/lanes/verdict433/queue_batch6.sh, docs/lanes/verdict433/queue_batch7.sh, docs/lanes/verdict433/queue_batch8.sh, docs/lanes/verdict433/queue_batch9.sh
 Prediction: none: analysis-only (no emulator code changed; this lane only reads device results and queues confirmation soaks through the normal harness)
 Needs device: yes (Nova for all confirmations; Thor cold-start-only per the 2026-09-30 10:20 PDT addendum, capped at 3/day, light titles under ~4.5W net)
