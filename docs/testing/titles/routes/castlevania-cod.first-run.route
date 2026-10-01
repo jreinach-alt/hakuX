@@ -36,12 +36,33 @@ press A
 wait 12
 shot opening
 mark profile-saved
-repeat 8 {                  # was 12 x 8 s: the Thor heat-stops at xo 70 C
+# Session 46 (frame review): every frame from here to the old mark was the
+# Name Entry keyboard with an EMPTY name and "Accept" highlighted
+# (0-0-s-1790805456-titleroutes-2055301, 161303-gameplay.png). Eight A
+# presses on Accept left it empty: an empty name is refused. Its 100% at
+# 59.94 measured that keyboard. So: up off Accept onto the letters, A
+# types one, START [guess: jumps to Accept as on most keyboards], A accepts.
+axis LY min
+wait 0.3
+axis LY mid
+wait 0.5
+press A
+wait 1
+shot name-typed
+press START
+wait 1
+press A
+wait 8
+shot after-accept           # OPEN: a difficulty or confirm prompt
+press A
+wait 8
+shot after-accept-a
+repeat 6 {
     press A                 # [guess] advance the opening FMV / dialogue
     wait 6
     shot opening-a
 }
-mark gameplay               # [guess] placeholder: move to the first frame with Hector under control
+mark gameplay               # [guess] CHECK the last opening-a.png shows Hector under control
 repeat forever {
     axis LY min
     wait 1.5
