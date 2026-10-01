@@ -3815,3 +3815,188 @@ is the same courtyard, same HUD, same confirmation pattern
   any further device time.
 - Once a route is confirmed end-to-end, it still needs the same-pass
   benchmark queued (brief Addendum 2) before it counts toward #397/#433.
+
+## Session 55 (2026-10-01, continuing ADDENDUM 4's unattended-replay task)
+
+**Why the previous attempt (the session git log calls "session 54", commits
+`f185e2ac49`/`6b9fbe4093`, both timestamped 14:41 PDT) did not finish the
+brief:** it did real, correct git hygiene -- merged `origin/master` (session
+52's own fold, no conflicts) and rewrote `PR.md`'s `Base:` line to match --
+then stopped without taking any device action at all. ADDENDUM 4 (brief,
+14:42 PDT, one minute after that session's last commit) says exactly this:
+it read `<=300s per Nova run` and `one session` (session 53's one-time
+grant) as having already exhausted this lane's device allowance, when the
+owner's actual instruction was to keep going (ADDENDUM 4 explicitly lifts
+both limits for up to 4 replays of <=420s each). No work was lost; this
+session picks up with the replay ADDENDUM 4 asks for.
+
+**Checked before touching anything:** `dispatch/hold/thor` is still held
+(`lanelocal-fanwait`, unchanged since session 53/54 -- Thor stays off title
+gameplay). `dispatch/hold/nova` had no file (free). `host-tools/hostops-
+inbox.md`'s newest entry is still the 14:16/14:22 PDT countermand pair for
+session 53; nothing after it rescinds ADDENDUM 4. Host clock read 14:43:57
+PDT at session start, inside the window ADDENDUM 4 opened. Nova: 74%
+battery, charging, resting in the `es_de` launcher (the documented rest
+state session 53 left it in).
+
+Took the Nova hold (`hold.sh take nova titleroutes:2467249 ...`).
+`titlestate.py show --device nova` confirms the disk still carries the
+Castlevania save from session 53 (`profile found since
+2026-10-01T13:56:52Z`), so **returning** is the route that matches the
+disk's actual state right now; first-run would need the save wiped first,
+which is out of scope unless returning confirms clean.
+
+**Replay attempt 1 (FAILED, not a route defect): wrong ISO filename.** I
+guessed `4B4E002D-castlevania-cod.xiso.iso` for
+`scratch/replay.sh nova <iso> ...`'s `<iso>` argument instead of reading it
+from `targets.toml`. `dev.sh launch` builds `$ROOT/$2` and starts the intent
+regardless of whether that path resolves, so the app launched to a silent
+no-op and sat on `GameLibraryActivity` the entire time -- confirmed from the
+frames themselves: `144521-boot.png` (the very first shot, 18.4s after
+launch, before any input) is already the Game Library list, not a
+Castlevania boot screen. `focus.py` still reported `FOCUS_OK` through this
+because `GameLibraryActivity` is still `com.jreinach.hakux.debug`'s own
+window, which is all the focus check looks at -- it does not check that the
+foreground window is the *game*, only that it is *hakuX*. So a wrong launch
+path reads as focus-ok right up until the dispatcher's own later
+`FOCUS_FAIL` (it fails for an unrelated reason: the final `wait` step after
+the route's last scripted input runs past the library screen's own idle
+timeout). **Do not take "focus ok" as "the game is running"** -- for a
+manual `replay.sh` invocation, read the ISO argument from `targets.toml`'s
+`iso.<device>` key, never retype/guess it, and treat the `boot` shot itself
+as the first check that the title actually loaded.
+
+Verified the correct path by listing the device directly:
+`adb -s ee317437 shell ls /storage/E6C6-D7AA/Games/XBox/` ->
+`4B4E002D-Castlevania_Curse_of_Darkness.xiso.iso`, matching `targets.toml`'s
+`iso.nova` value exactly. Relaunched `replay.sh` with the corrected
+filename; that attempt was still running, correctly, as this entry was
+being written (foreground, not backgrounded -- see the run's own result
+below for what it found).
+
+**What that run (`castlevania-cod.returning-144635`) actually did, read
+cold at the start of this continuation:** it was cut short, not a
+completion. Its `route.log` stops at `shot loading3` (14:50:09.072), 4.4s
+into a scripted 12.2s wait, with `end` logged at 14:50:13.517 -- route.sh's
+`cleanup`/`end` fires on its `TERM`/`INT` trap (`route.sh:158-160`) *and*
+on normal `EXIT`, so `end` alone doesn't distinguish the two, but the
+route file (`castlevania-cod.returning.route`) has 10 more scripted steps
+after `loading3` -- three more `press A`, `shot loading6`, `shot check1`,
+two `axis LY` + `shot movetest`/`movetest2` pairs, and only then `mark
+gameplay` -- none of which appear in the log or as frame files in that
+directory (it has 4 frames: boot, continue1-3; the successful run below
+has 19). `focus.log` shows `FOCUS_OK` throughout, so it wasn't a focus
+kill either. **ADDENDUM 5 (lane.local, 14:55 PDT), which reads this run as
+having "SUCCEEDED" and reached `mark gameplay` with `145008-loading3.png`
+as evidence, is wrong on the primary evidence** -- `loading3` is a
+scripted shot roughly two-thirds of the way through the route, taken
+*before* the HUD appears (the route's own header: "the HUD (Player HP
+100/100) appeared only after LY min was sent once already overlapping the
+mark", i.e. at `movetest`/`movetest2`, both still ahead of `loading3`).
+The frame does show the right scene (the courtyard, the fountain) because
+the camera doesn't move between `loading3` and the mark, not because play
+had been reached. Not followed: no DRAFT removal, no nomination, from that
+run alone.
+
+**What likely cut it short:** this Bash tool auto-backgrounds a command
+that runs past 120s unless a longer `timeout` is explicitly set (confirmed
+this session: the correctly-ISO'd replay command below hit exactly this at
+120s and had to be picked up with `Monitor`/a blocking poll instead of
+ending the turn on it). The previous session's replay call most likely hit
+the same 120s auto-background, then the session's own turns ran out before
+anything read the backgrounded task's result -- consistent with "that
+attempt was still running... as this entry was being written" being the
+session's last line. A background task's fate in that situation is exactly
+the lane.md warning: it does not survive the session ending. This is not
+new territory, just the same trap with a different trigger (the tool's own
+120s default rather than `run_in_background`/Monitor dying with the
+session) -- worth remembering as its own case: **a bash call that may run
+past 120s needs an explicit `timeout` (or deliberate `Monitor` handling),
+or the tool's own auto-backgrounding silently reproduces the
+"background-task-dies-with-the-session" trap even when nothing was
+backgrounded on purpose.**
+
+## Session 56 (2026-10-01, continuing ADDENDUM 4; closing out the returning route)
+
+Checked before touching anything: `hold.sh who thor` still `lanelocal-fanwait`
+(unchanged, Thor stays off title gameplay); `hold.sh who nova` free. Nova
+battery 72%, awake, focus on `org.es_de.frontend` (the launcher) -- the
+interrupted run above had left the app not running, confirming it never
+reached a state worth treating as a defect in the route itself.
+
+Took the Nova hold (`titleroutes:2485046`). Ran
+`scratch/replay.sh nova 4B4E002D-Castlevania_Curse_of_Darkness.xiso.iso
+docs/testing/titles/routes/castlevania-cod.returning.route 40` as a Bash
+call with an explicit 480s timeout this time (not the tool's 120s default).
+It auto-backgrounded anyway at the 120s mark (task `bpy6hqkr0`) -- picked
+up with `Monitor` on its output file and a blocking poll loop
+(`until grep -q ...; do sleep 5; done`, itself under a 360s Bash timeout)
+rather than ending the turn on it, per the explicit instruction above and
+`roles/lane.md`'s "never end a session waiting on your own background
+task." It ran to completion, exit 0, in 308s (14:55:41 launch to a clean
+`end` at 15:01:02 -- the run's own `PRE+EXTRA` timeout, not an
+interruption).
+
+**`castlevania-cod.returning.route` is genuinely confirmed now.**
+`scratch/replay/castlevania-cod.returning-145541/route.log` runs every
+scripted step in order through `mark gameplay` (15:00:34.692) and about
+28s into the repeat-forever play pattern (visible `press A`/`axis RX`
+attack cycles) before the run's own timeout ended it cleanly -- 19 frames
+captured, matching the route file's 19 `shot` steps exactly. Read the
+frames, not just the log: `150023-movetest2.png` and `150034-gameplay.png`
+both show the HUD (`Player HP 100/100`, green) in the same gothic courtyard
+facing the gargoyle fountain, with the character's stance differing
+slightly between the two (the `axis LY min`/`mid` pair that produced
+`movetest2` visibly moved him), which is what "player control", not a
+static cutscene frame, looks like. Copied the whole run directory to
+`scratch/judge/castlevania-cod.returning-145541/` (the lost-evidence
+lesson from session 51/53 -- `scratch/replay/` is not kept past a
+successor's first cleanup).
+
+**Closed out, per the brief's "hand each replayed route to the benchmark
+stage" step and ADDENDUM 5's item list (its diagnosis was wrong, its
+remaining-work steps were still the right ones once the route was actually
+confirmed):**
+- `targets.toml`'s `4B4E002D` note and the route file's own header updated
+  to say CONFIRMED, with the run's path and timestamps (not "DRAFT").
+  `castlevania-cod.first-run.route` is explicitly left DRAFT in both --
+  it still needs its own unattended replay, and this disk no longer has a
+  clean (no-save) state to replay it from (session 53 wrote slot 1).
+- Added a line to `host-tools/nova-nominations.tsv` (a host file outside
+  this worktree/repo, written directly, not part of this PR's `Files:`)
+  for `castlevania-cod.returning`, replacing the stale 10-01 06:57 comment
+  that had removed Castlevania pending a real route. `autoverdict.sh`
+  queues its own 600s Nova confirmation from that line; not queued here
+  (brief: "Do NOT queue confirmations yourself").
+- Released the Nova hold (`titleroutes:2485046`) and restored rest state
+  (`performance_mode=0 fan_mode=4`, `KEYCODE_SLEEP`; verified
+  `mWakefulness=Dozing`).
+
+**Not attempted this session:** `castlevania-cod.first-run.route`'s own
+unattended replay. ADDENDUM 4 said to attempt it "if [the returning route]
+passes", but it needs a disk with no existing save, and wiping slot 1 to
+get one is a separate, riskier device action (and outside what ADDENDUM 5's
+closeout list asked for) that this session chose not to take on the same
+pass as closing out a route that had already been reported (wrongly) as
+done. Left as explicit open work below.
+
+### State for a successor
+
+- `castlevania-cod.returning` is CONFIRMED and nominated; nothing more to
+  do for it beyond letting `autoverdict.sh` queue and judge its 600s Nova
+  confirmation (not this lane's to queue).
+- `castlevania-cod.first-run.route` is still DRAFT and still has never had
+  any unattended replay attempt (not the 150s-peek, not today's run -- both
+  were the returning route). To confirm it needs a Castlevania disk with no
+  save in slot 1, which means either a fresh copy from lane.xbox or wiping
+  the current Nova save (titlestate.py/saves.py are not this lane's to
+  edit, but using them to manage a save on disk is in scope the same way
+  session 53 used them). Not attempted this session; next device time on
+  this title should start here.
+- The usage-budget hold (reset 21:00 PDT 10-01) and the Thor CPU-stop
+  decision (`escalations.md` 05:13 PDT) both still stand for everything
+  outside this one owner-approved Castlevania exception; re-check both
+  before taking any further device time beyond finishing first-run above.
+- Everything else in session 53's/55's "State for a successor" above is
+  unchanged (13 Nova-only no-route titles, Galleon blocked, Thor's 319
+  untouched titles all blocked on the same CPU-stop decision).

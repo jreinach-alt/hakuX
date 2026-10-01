@@ -570,3 +570,37 @@ device time taken beyond that cleanup.
 21:00 PDT) and the Thor CPU-stop decision are both still standing for
 everything outside this one approved title; nothing of this lane's is
 queued or running on either device now.
+
+## #397 -- 2026-10-01 (session 56, closing out Castlevania: Curse of Darkness's returning route)
+
+`castlevania-cod.returning.route` is now CONFIRMED by a full unattended
+`route.sh` replay (`scratch/replay/castlevania-cod.returning-145541`,
+copied to `scratch/judge/`): all 19 scripted frames captured, `mark
+gameplay` reached at 15:00:34.692, then ~28s of the repeat-forever play
+pattern (visible attack animations) before the run's own timeout ended it
+cleanly. `movetest2.png`/`mark gameplay.png` both show the HUD (`Player HP
+100/100`) with the character's stance shifted between them, confirming
+live control. No longer DRAFT; added to `host-tools/nova-nominations.tsv`
+for `autoverdict.sh`'s own 600s confirmation (not queued by this lane).
+
+**Correcting an earlier claim:** an intervening addendum (14:55 PDT) read
+the *previous* replay attempt (`castlevania-cod.returning-144635`) as
+having already succeeded, citing its last frame. It hadn't: that run's own
+`route.log` stops 10 scripted steps short of `mark gameplay` (no
+`movetest`/`movetest2`/`check1`/`loading6`, no mark), cut off mid-wait with
+only 4 of the route's 19 frames captured. The cited frame (`loading3.png`)
+is a mid-route shot taken before the HUD appears, not a confirmation. See
+NOTES.md session 56 for the full comparison. No harm done -- this session
+re-ran it properly before acting on the claim -- but flagging it since nothing
+else would have caught a route getting nominated for a benchmark off a run
+that never actually played it.
+
+`castlevania-cod.first-run.route` is still DRAFT: no unattended replay has
+ever been attempted for it (today's two runs were both the returning
+route), and the Nova's disk no longer has a clean, no-save state to replay
+it from (session 53 wrote a save to slot 1). Left as the next step on this
+title; see NOTES.md "State for a successor".
+
+No other device work taken this session. The usage-budget hold (reset
+21:00 PDT 10-01) and the Thor CPU-stop decision are both still standing
+outside this one owner-approved exception.
