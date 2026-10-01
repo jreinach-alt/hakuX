@@ -58,6 +58,9 @@ in OUTBOX #397).
 - `titlestate.py choose --title-id 55530036` returns `variant: single`, route
   `187-ride-or-die.route`. `--title-id 545400B0` returns `variant: single`.
 - No harness files changed, so `docs/testing/jobs/selftest.sh` does not apply.
+- `docs/testing/preflight.sh --allow-tracker` on 382d3810cc: "preflight passed". Its coverage
+  gate did NOT run, because gh returns 403 while the account is suspended. That gate's exit 0 is
+  "not checked", not a pass.
 
 Release note (none): route data, targets.toml and lane notes only; no emulator code.
 
