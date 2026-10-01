@@ -1,67 +1,54 @@
-# titleroutes: session 51 -- still blocked on the Thor's CPU stop; fixed the stale rank_untouched exclusion list
+# titleroutes: session 52 -- the usage-budget hold is active; stopped without new brief work
 
 State: ready
 
 Lane: titleroutes          Issue: #397 (per-title gameplay fps; 0.5 tracking #433)
-Base: master @ c071ae6e60 (origin/master merged this session; session 50's PR folded there)
-Files: docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/OUTBOX.md, docs/lanes/titleroutes/PR.md
+Base: master @ ec244430e3 (origin/master fast-forwarded this session; session 51's PR already folded there)
+Files: docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/PR.md
 Prediction: none: no arm (lane notes only; no device run this session)
-Needs device: no new device time requested this session (blocked; see below)
+Needs device: no (none requested; see below)
 
 ## What changed
 
-Notes only. No routes and no targets.toml changes this session (`scratch/` is
-not in this lane's `Files:` and is not committed).
+Notes only; no routes, no targets.toml, no OUTBOX entry (nothing new to tell
+the owner beyond what session 51 already posted).
 
-**Confirmed the Thor-screening blocker from session 50 is still open.**
-`escalations.md` (10-01 05:13 PDT) and `dispatch/hold/thor.why` (UPDATE
-10-01 05:09 PDT) show the owner has not yet decided whether to raise
-`thor_coldconfirm.sh`'s `CPU_STOP_C=90`, require consecutive reads, or grant
-a one-time one-copy-per-title exception to screen the six pending titles
-(Castlevania, Gauntlet, Capcom Classics Vol 2, Plus Plumb 2, Petit Copter,
-Sonic Heroes) on the Nova. hostops tried to reach lane.local directly and
-found no session; the decision sits in `hostops-inbox.md` as the durable
-record. Queued nothing new on the Thor.
+Session 51 finished correctly: it ended `blocked:` on the still-open Thor
+CPU-stop decision, marked its `PR.md` ready, and that PR was already folded
+into `origin/master` (`ec244430e3`) before this session started. This
+session fast-forwarded to it and re-read the blocker state.
 
-**Found and recorded a process loss: the six titles' survey/screen
-evidence from sessions 47-50 is gone.** Neither `dispatch/results/` nor
-`~/hakux-work/nav/` has anything for `castlevania-cod`'s survey, Gauntlet's
-survey, or any of the six session-49/50 request ids -- `dispatch/results/`
-is pruned sooner than assumed, and none of those results were copied into
-`scratch/judge/` before they went. The offline cycle-by-cycle frame walk
-session 50 asked a successor to do (the same method that found Gauntlet's
-START-during-gameplay trap) can no longer happen; those titles will need a
-fresh screen once device time is available. Recorded in NOTES as a lesson:
-copy a dispatch result into `scratch/` the same session it's read, not a
-session later.
+**Found an active, owner-delegated hold against resuming this lane at all
+right now.** `host-tools/hostops-inbox.md` (2026-10-01 06:15 PDT,
+`[lane.local] usage budget day`): weekly usage is 92%+, no reset until
+21:00 PDT tonight; "do not resume titleroutes or any other lane" until
+then. hostops has reconfirmed this every tick since (06:10 through 12:53
+PDT in `escalations.md`, all "no lane resumes/starts performed"), and
+12:53 PDT is the newest entry in either file -- nothing countermands it.
+The separate Thor CPU-stop blocker (`escalations.md` 05:13 PDT,
+`dispatch/hold/thor.why`) also has not moved.
 
-**Fixed `scratch/targeted_ids.txt`**, the exclusion list session 49's own
-notes flagged as stale (it was re-surfacing already-routed titles as
-"untouched" to `scratch/rank_untouched.py`). Cross-checked all 50
-`title_id`s with `route = "..."` in `targets.toml` against the file: 5 were
-missing (THPS3, Gauntlet, Sonic Heroes, Super Monkey Ball Deluxe, Family
-Guy). Added those plus 3 mid-investigation titles with a bare
-`targets.toml` entry but no route yet (Plus Plumb 2, Petit Copter, Bistro
-Cupid), so they don't get re-surfaced either. Verified
-`python3 scratch/rank_untouched.py` now lists 319 genuinely untouched
-titles headed by Doom 3, Bicycle Casino, Monster Garage, and others -- no
-already-routed titles in the output anymore.
-
-**No device work.** The Thor stays off-limits under the open decision. The
-Nova has no hold file, but neither the 09-26 21:10 PDT device-role split
-(Nova = #462 only) nor a one-copy-per-title exception has been lifted, and
-its queue still carries 30+ pinned #462/#474/#414/#569/#507 requests
-(escalations.md). Taking a Nova session for title-pipeline work without
-that exception would be making the owner's open decision myself, so none
-was taken. 13 Nova-only titles needing no copy and still unrouted are
-listed in NOTES for whoever next gets Nova time cleared for this work.
+This session was started by the harness's own resume mechanism, not by a
+decision to lift the hold. Doing the brief's work now (even its no-device
+parts) would be exactly the kind of lane activity the hold exists to stop
+during a 92%+ usage day, so this session makes no routes/targets.toml
+changes, takes no device hold, queues nothing, and stops here -- earlier
+in the session than session 51 did, because the blocking fact this time is
+the budget hold itself.
 
 ## Local checks (no CI while GitHub is suspended)
 
-- `python3 docs/testing/titles/titlestate_selftest.py`: all checks passed.
-- `targets.toml` parses (tomllib, 80 titles; unchanged).
-- No harness files changed, so `docs/testing/jobs/selftest.sh` does not apply.
+No code changed; no checks apply beyond the file reads above.
 
 Release note (none): lane notes only; no emulator code.
+
+[lane.titleroutes] blocked: the 2026-10-01 92%+ weekly-usage budget hold
+(`hostops-inbox.md` 06:15 PDT, reconfirmed through 12:53 PDT, reset at
+21:00 PDT) says not to resume this lane until then; separately, the Thor
+CPU-stop decision (`escalations.md` 05:13 PDT, `dispatch/hold/thor.why`) is
+still with the owner. Nothing of mine is queued or running on either
+device. Resolving signal: a `hostops-inbox.md` or `escalations.md` entry
+after 12:53 PDT either lifting the usage hold (at/after the 21:00 PDT
+reset) or ruling on the Thor CPU-stop question.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
