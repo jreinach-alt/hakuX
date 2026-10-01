@@ -2600,3 +2600,82 @@ title at 90% or more at 28.5+ with no hang, in OUTBOX #433. Then take the
 next routeless Thor titles by xemu rating (work list section 1: Psychonauts,
 MechAssault, Phantom Dust, Ninja Gaiden (EU), Deathrow, ...). For those, queue `survey.route`-style pass-1 surveys first,
 since nothing is on disk for them.
+
+## Session 43 (resumed 2026-09-30 ~15:50 PDT): three of the six screens heat-stopped; two retried at the new 300s cap
+
+**Why the previous attempt did not "finish."** It didn't need to: session 42
+ended correctly on a `waiting:` naming the six queued Thor screens plus the
+Burnout Revenge Nova benchmark, PR.md `State: ready`. This is the waiter's
+routine resume, not a failure recovery.
+
+**None of the six requests were where I first looked.** `dispatch/results/`,
+`queue/` and `running/` had no trace of doa3(v2)/thps2x/capcom-classics2 by
+request id, anywhere in the tree. Three (castlevania-cod, smt-nine, tork)
+turned up in `dispatch/parked/thor-cold-0930/`, still waiting for a cold
+slot -- expected, the coldconfirm runner parks everything until xo <= 50C.
+The other three had left no trace at all in `dispatch/`, which is what a
+voided-with-no-result run looks like; `logs/thor-coldconfirm.log` had the
+answer directly (**never assume a missing id means never-queued -- read the
+runner's own log**):
+
+| title | request | outcome |
+|---|---|---|
+| Dead or Alive 3 (v2, re-timed) | `0-0-s-1790805442-titleroutes-2050455` | HEAT STOP at xo 70C, ~9 min from a 34C cold start (21:57:47Z-ish start xo=33978m C). Voided, no result, no frames. |
+| THPS2x | `0-0-s-1790805442-titleroutes-2050654` | HEAT STOP at xo 70C, ~10 min from a 50C cold start (already close to the ceiling). Voided, no result. |
+| Capcom Classics Collection Vol. 2 | `0-0-s-1790805455-titleroutes-2055173` | HEAT STOP at xo 70C, ~15 min from a 48C cold start. Voided, no result. |
+
+These three, plus DOA3's session-41 v1 (timing failure before it ever
+reached heat), are the evidence behind lane.local's 15:40 PDT addendum that
+dropped the Thor screening cap to 300s including boot.
+
+**Dead or Alive 3 has now heat-stopped twice** (v1 at 284s before the first
+press, v2 mid-attempt at ~9 min). Per the screening program's own rule ("two
+heat stops = done on the Thor... needs the Nova, with no third try"), no
+third Thor try. But DOA3 is Thor-only (work list row 35: no Nova ISO), so
+"needs the Nova" is not something this lane can act on -- copying a title is
+lane.xbox's, and the one-copy-per-title rule only bends when work is held up
+for the title (owner 09-29 23:15 amendment). Recorded in `targets.toml`'s
+DOA3 notes and flagged in OUTBOX #433 for lane.local/hostops to decide, not
+queued anywhere by me.
+
+**THPS2x and Capcom Classics 2 have one heat stop each**, so each gets the
+one more try the rule allows, now at the new 300s cap (the whole point of
+lowering it: both were still mid-attract/menu, not yet in scored gameplay,
+when they hit 70C at 480s -- a shorter run may finish before the guest gets
+that hot). Re-queued, ref `ae98398e2d` (this session's merge of
+`origin/master`, includes the unrelated `lane.uberspike569` ubershader work,
+no conflicts with anything of mine):
+
+| title | route | request | seconds |
+|---|---|---|---|
+| THPS2x | thps2x | `1790808339-titleroutes-3127689` | 300 |
+| Capcom Classics Collection Vol. 2 | capcom-classics2 | `1790808344-titleroutes-3128993` | 300 |
+
+**Castlevania: Curse of Darkness, Shin Megami Tensei: NINE and Tork** are
+still in `dispatch/parked/thor-cold-0930/`, waiting for their cold slot; the
+coldconfirm runner owns that queue, nothing for me to do there.
+
+**Burnout Revenge's Nova benchmark** (`1790801593-titleroutes-1202186`) is
+still sitting in `dispatch/queue/`, not yet run.
+
+Local checks: `titlestate_selftest.py` all pass; `targets.toml` parses with
+tomllib (69 titles, unchanged count -- only DOA3's notes field changed this
+session).
+
+**Next session:** read whichever of the five pending Thor requests (THPS2x
+retry, Capcom2 retry, Castlevania, SMT, Tork) and the Nova benchmark
+(Burnout Revenge) have landed. For any Thor screen that reached gameplay,
+score it into the running Thor screen table and consider it for a Nova
+nomination. For any that heat-stopped again, apply the two-strikes rule.
+Then continue down the work list's next routeless Thor titles (Psychonauts,
+MechAssault, Phantom Dust, Ninja Gaiden (EU), Deathrow, ...) with pass-1
+surveys, since nothing is on disk for them yet.
+
+**Waiting:** `1790808339-titleroutes-3127689` (THPS2x retry, Thor),
+`1790808344-titleroutes-3128993` (Capcom Classics 2 retry, Thor),
+`1790805456-titleroutes-2055301` (Castlevania, Thor, parked cold),
+`1790805456-titleroutes-2055567` (SMT NINE, Thor, parked cold),
+`1790805457-titleroutes-2055759` (Tork, Thor, parked cold),
+`1790801593-titleroutes-1202186` (Burnout Revenge, Nova). None are A/B
+predictions, so no `ab_compare` judging is needed -- reading each result dir
+directly is enough once it lands.

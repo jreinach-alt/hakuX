@@ -1,9 +1,9 @@
-# titleroutes: sessions 39-42, three titles routed and six Thor screens queued
+# titleroutes: sessions 39-43, three titles routed, Thor screening batch in flight
 
 State: ready
 
 Lane: titleroutes          Issue: #397 (per-title gameplay fps; 0.5 tracking #433)
-Base: master @ e930bc756d (merged in session 42)
+Base: master @ ae98398e2d (merged in session 43)
 Files: docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/PR.md, docs/lanes/titleroutes/OUTBOX.md,
        docs/testing/titles/routes/galleon.route, docs/testing/titles/routes/burnout-revenge.returning.route,
        docs/testing/titles/routes/doa3.route, docs/testing/titles/routes/capcom-classics2.route,
@@ -11,7 +11,26 @@ Files: docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/PR.md, docs/lanes
        docs/testing/titles/routes/thps2x.route, docs/testing/titles/routes/tork.route,
        docs/testing/titles/targets.toml, docs/lanes/titleroutes/frames/burnout-revenge-replay-gameplay.jpg
 Prediction: none: no arm (route validation + same-pass fps benchmark soaks, not A/B arms)
-Needs device: yes -- seven requests queued (six Thor screens, one Nova benchmark), results pending
+Needs device: yes -- six requests pending (two Thor retries at the new 300s cap, three Thor screens parked
+       for a cold slot, one Nova benchmark)
+
+## Session 43 update (resumed ~15:50 PDT): three of six Thor screens heat-stopped
+
+Three of session 42's six queued Thor screens (Dead or Alive 3 v2, THPS2x,
+Capcom Classics Collection Vol. 2) heat-stopped at xo 70C and voided with no
+result -- the direct evidence behind lane.local's 15:40 PDT addendum
+dropping the Thor screening cap to 300s. Dead or Alive 3 has now
+heat-stopped twice (once on timing, once on heat); per the screening
+program's own rule that means no third Thor try, but DOA3 has no Nova copy
+so its fallback ("needs the Nova") is a copy decision outside this lane's
+authority -- flagged in `targets.toml` and OUTBOX #433. THPS2x and Capcom
+Classics 2 get their one retry each, now queued at 300s
+(`1790808339-titleroutes-3127689`, `1790808344-titleroutes-3128993`). The
+other three screens (Castlevania, SMT NINE, Tork) remain parked for a cold
+Thor slot; Burnout Revenge's Nova benchmark is still queued. Merged
+`origin/master` clean (brings in unrelated `lane.uberspike569` ubershader
+work, no conflicts). Local checks unchanged: `titlestate_selftest.py`
+passes, `targets.toml` parses (69 titles).
 
 ## Session 42 update (resumed ~14:45 PDT)
 
