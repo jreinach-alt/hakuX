@@ -478,3 +478,64 @@ session 50, "State for a successor".
 [lane.titleroutes] blocked: thor_coldconfirm.sh CPU_STOP_C=90 (a single sample) voids every Thor title
 screen. Unblocked by a decision on the stop (raise it, add a consecutive-sample rule, or route
 screens to the Nova).
+
+## #397 -- 2026-10-01 (session 51)
+
+Fresh worktree resume, merged `origin/master` (fast-forward onto `c071ae6e60`,
+session 50's fold). GitHub is still suspended (`gh api user` still 403
+"account was suspended"), so this stays on the offline protocol.
+
+**Still blocked, same decision as session 50.** `escalations.md` (10-01 05:13
+PDT) and `dispatch/hold/thor.why` (UPDATE 10-01 05:09 PDT) show the owner's
+call -- raise `CPU_STOP_C`, require consecutive reads, or grant a one-time
+Nova exception for the six pending titles -- is still open. hostops tried to
+reach lane.local directly and found no session to take it (hostops-inbox.md
+line 1883); no entry after that exists in either file. Nothing new to
+re-queue on the Thor.
+
+**The six voided titles' evidence is gone.** Session 50 asked a successor to
+walk `castlevania-cod`'s survey frames cycle-by-cycle offline before trusting
+its route, the way Gauntlet's own trap was found. Checked: no trace of that
+survey's result dir, Gauntlet's survey, or any of the six session-49/50
+request ids anywhere under `dispatch/results/` or `~/hakux-work/nav/`.
+`dispatch/results/` is evidently pruned sooner than this lane assumed, and
+none of those results were copied into `scratch/judge/` before they went.
+That offline analysis can no longer be done; the titles will need a fresh
+screen once device time is available. Recorded as a process lesson in NOTES
+(copy a result's frames into `scratch/` the same session you read them, not
+a session later).
+
+**Did this session: fixed `scratch/targeted_ids.txt`.** It was missing 5 of
+the 50 routed title_ids (THPS3, Gauntlet, Sonic Heroes, Super Monkey Ball
+Deluxe, Family Guy) and 3 mid-investigation ones (Plus Plumb 2, Petit
+Copter, Bistro Cupid), so `scratch/rank_untouched.py` was re-surfacing
+already-routed titles as "untouched" -- the bug session 49 flagged and
+didn't have time to fix. It now correctly lists 319 genuinely untouched
+titles, headed by Doom 3, Bicycle Casino, Monster Garage, Doom 3:
+Resurrection of Evil, Greg Hastings' Tournament Paintball Max'd, AMF Bowling
+2004, High Rollers Casino, Breeders' Cup, AMF Xtreme Bowling. All need a
+device (Thor, under the same blocker, or an approved Nova exception) to act
+on.
+
+**No device work.** The Thor stays off-limits per the open decision. The
+Nova has no hold file right now, but neither the 09-26 21:10 PDT device-role
+split (Nova = #462 only) nor the one-copy-per-title exception for the
+pending Thor titles has been lifted, and its queue still carries 30+ pinned
+#462/#474/#414/#569/#507 requests per escalations.md. Took no Nova session.
+13 Nova-only titles that need no copy and still lack a route (Batman --
+blocked on combat specifically, Black Stone, Star Wars Ep. III, Bloody Roar:
+Extreme, Gunvalkyrie, Dino Crisis 3, Buffy, Halo: Combat Evolved, Conker,
+Halo 2, Ninja Gaiden Black, ToeJam & Earl III, Tron 2.0) are listed in NOTES
+for whoever next gets Nova time cleared for title-pipeline work; a Nova
+session for them was not taken this session either, since the Nova's queue
+priority is not this lane's call.
+
+`python3 docs/testing/titles/titlestate_selftest.py` (all checks passed) and
+`targets.toml` parses (tomllib, 80 titles, unchanged) re-checked as a sanity
+pass; no routes or targets.toml changes this session.
+
+[lane.titleroutes] blocked: same as session 50 -- `thor_coldconfirm.sh`'s
+`CPU_STOP_C=90` voids every Thor title-gameplay screen, and the decision to
+raise it / require consecutive reads / grant a one-time Nova exception is
+still with the owner (escalations.md 10-01 05:13 PDT, thor.why UPDATE 10-01
+05:09 PDT). Nothing of mine is queued or running on either device.
