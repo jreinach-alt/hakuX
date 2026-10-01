@@ -765,6 +765,113 @@ be refused for having no run. That refusal is harmless, but it is the wrong orde
 **State:** both branches are `State: ready`. The lane is waiting only on lane.local's
 `offline_fold.py`, which is outside this session.
 
+## 13. Resume 2026-09-30 (lane.local 22:40 addendum): the +11 min step is the car moving, not a creep
+
+**Why the previous attempt did not finish.** It did finish. It ended waiting on lane.local's fold,
+and both branches have since folded: `lane/forzadecay414-fix` as e816bc35dd and `-fix-notes` as
+01268f51de. This section is a new question, so it goes on a new branch, `lane/forzadecay414-step`,
+off master b73367209a.
+
+**The question.** The Playable confirmation `1-1790826491-lane.verdict433-3477700` (Nova ee317437,
+master b1cea467c6, apk 1462cd8c05bb, `PERF_REGIMEN=default`, survey route, 1200 s after `mark play`)
+failed at 45.3% of gameplay >= 30 fps (`verdict.json`). The race holds 29-30 fps for about 11
+minutes and then steps to about 20 fps until the end. What changes?
+
+**Answer: the scene. For the first 10.5 min the car is parked at 0 mph facing the grandstand. It
+then drives onto the circuit and parks again in a forest section, where each frame costs about
+48 ms.** fps follows the view. Within the second view it holds flat for 9 minutes.
+
+### The frames
+
+Route frames, with time after `mark play` (21:35:16.7) and the HUD:
+
+| frame | t (s) | HUD | view |
+|---|---|---|---|
+| `213839-play.png` | 202 | RACE 03:45, 0 mph, FPS 31 | start straight, grandstand |
+| `214525-play.png` | 608 | RACE 10:26, 0 mph, FPS 25 | same spot, same view |
+| `214550-play.png` | 633 | RACE 10:51, R gear, 0 mph, FPS 29 | same spot, reversing |
+| `214616-play.png` | 659 | RACE 11:16, 12 mph, sector 00:01.035, FPS 29 | crossing the line |
+| `214640-play.png` | 683 | RACE 11:40, 41 mph, FPS 21 | on the circuit, hills, another car ahead |
+| `214822-play.png` | 785 | RACE 12:50, 0 mph, sector 00:18.509, FPS 21 | forest section, parked, damaged car |
+| `215609-play.png` | 1252 | RACE 18:11, 0 mph, sector 00:18.509, FPS 21 | the same view as 214822 |
+
+The survey route's input (`axis LY min`, A x3, `RX max`) stalled the car against the wall at the
+start for 10.5 minutes, then got it moving, and then stalled it again in the trees. 214822 and
+215609 are the same picture. The sector time is frozen at 00:18.509 in both.
+
+### The logcat, per 2 s, around the step
+
+`gfps` lines (`hakuX-perf`), with t after the mark. Ri is the renderer's idle ms per frame, and Tq
+counts texture dirty queries per 60 frames (`profile.c` `nv2a_profile_get_pacing_str`):
+- t = 620-634: gfps 29, G 33.3 ms, Ri 10.6-11.8, Tq 1400-1423.
+- t = 636, 647, 659, 665-671: single dips (gfps 21-27, Ri 0-1.7, Tq 1995-2693) while the car
+  reverses and turns, and the view swings.
+- **t = 684:** `gfps=21 G:47.0(32.5-56.0) ... Ri:0.6 Tq:3075`. That is one second after
+  `214640-play.png`, at 41 mph on the circuit. From there on, every line reads gfps 18-24 and Ri 0.0-0.5.
+
+### Before and after, per 60-s window
+
+`step_split.py <dir>` (this directory). It makes one row per 60 s after the mark. The full table is
+in the OUTBOX post.
+
+| | 360-600 s (grandstand, parked) | 720-1200 s (forest, parked) |
+|---|---|---|
+| gfps (median per row) | 29 | 19-21 |
+| G, guest frame ms (median per row) | 33.3 | 46.6-50.5 |
+| flips at 2 vblanks / 3 vblanks, per min | 1684-1741 / 38-64 | 158-278 / 910-982 |
+| Ri, renderer idle ms/frame | 11.4-11.8 | 0.0 |
+| Tq per 60 frames | 1405-1438 | 2253-2707 |
+| guest idle, `[rr425w]` idle_us / (idle+busy) | 25.2-26.4% | 40.0-42.6% |
+| `[watch311] invalid=` max | 10 | 10 |
+| pipeline misses (`[shd413]` dpm+dsm+dvm) | 0 | 0 |
+| `[surf92]` lines per min | 1092-1126 | 1417-1476 |
+| `hakuX-pages` slow stores per min | 36556-40933 | 36860-42253 |
+
+So the step is the 60/2 -> 60/3 vsync divisor, as the addendum read it: in the forest view most
+flips take 3 vblanks. The renderer has no idle time there (Ri 0), and the guest idles more (41%
+against 25%). **The guest is waiting on the renderer.** The renderer is not waiting on the guest.
+More textures are queried per frame, which fits a heavier view.
+
+### The three candidates
+
+- **Game state: yes.** The car moved from one view to another. It is a track section, not a
+  replay or attract loop: the HUD shows LAP 1/2 with the race clock running in every frame.
+- **Memory growth: not seen.** This run logs no PSS: `LOGCAT_SPEC` has no meminfo tag, and
+  `thermal.jsonl` samples carry no memory field. But the second view is one fixed picture for
+  t = 785-1252 s, and its G holds flat over 720-1200 s (49.8, 50.5, 47.5, 46.8, 48.8, 49.0, 46.6,
+  47.8, 49.5 ms), with no trend. A creep that cost frame time would have to show in those 8 minutes
+  of identical frames. The step is also not gradual: it lands in one 2-s line, one second after the
+  frame that shows the car on the circuit.
+- **GPU-cost creep from another growing list or cache: not seen,** for the same reason. The cost
+  is flat for 8 minutes of one view, the invalid list holds at 10, and no pipeline misses follow
+  the step.
+
+### Heat, clocks, and one thing this run does not decide
+
+`thermal.jsonl`, 46 samples: no cooling device above 0. xo-therm sits flat at 55.5-56.5 C from
+t = 280 s. cpu3 and cpu7 are at 2707 / 3187 MHz through the step. The battery reads `Charging` at
+every sample (46 -> 34%).
+
+**`gpuclk` reads 401 MHz at all 46 samples**, from 240 s before the mark, idle, to the end.
+`max_gpuclk` is 680 MHz and `throttling` is 0. Both MAX-regimen Forza runs read 615 MHz at 14 of 15
+samples (`-2624677`, `-3163702`). So the default regimen (perf_mode 0) holds the GPU at 401 MHz
+here. Whether the forest view is bound by that clock is not decided by this run. Ri = 0 means the
+render thread is never idle, which fits either a GPU wait or CPU-side recording. Deciding it takes
+the same view under both regimens. That is a per-scene performance question for whoever owns
+Forza's Playable fps, not this step.
+
+### What it means for the verdict
+
+- The step is not a regression and not a second decay. #583's fix holds: `invalid=` is at most 10
+  for 1250 s.
+- **The 29-30 fps the first 11 minutes show is a parked car looking at a grandstand.** A 600-s
+  confirmation on this route measures only that view. The 1200-s window caught the route moving
+  the car, and it is the first reading of the circuit itself on the default regimen: about 20 fps.
+- **Not queued: the 1300-s `--perflog` run the addendum offered.** The existing run answers the
+  step's question. The frames and the per-2-s lines put the step at the car's move, and 8 minutes of
+  one view show no creep. A further run would measure the circuit's per-scene cost, which is
+  outside this step's scope.
+
 ## Do not repeat
 
 - Do not commit to a branch after its head run is queued, if offline_fold.py will fold it. The
@@ -780,6 +887,10 @@ be refused for having no run. That refusal is harmless, but it is the wrong orde
   about 215 s (hostops, #414 comment 5882237205), and adb drops with it.
 
 - Do not put `Stencil/*` in a must_not_move list (#79). It flakes on every binary.
+
+- Do not read a step in a survey-route Forza run as a creep before looking at the `play` frames.
+  The route parks the car, and fps follows wherever it is parked: 29-30 at the start grandstand,
+  19-21 in the forest section (section 13). A creep has to show as a trend across frames of one view.
 
 - Do not mark the race by G or by fps. A race that runs well reads like a menu. Use the txw scan's
   calls per flip (>= 500) and the route frame.

@@ -72,3 +72,31 @@ The run queued on the notes branch's earlier head, `1-1790823584-forzadecay414-2
 - There were no lmkd or Vulkan error lines.
 
 It is not part of the fix's evidence, and no further device run is needed. This lane has nothing left to do until lane.local runs `offline_fold.py`.
+
+## #414 -- 2026-09-30 22:35 PDT
+
+**The +11 min step in the 1200-s Playable confirmation `1-1790826491-lane.verdict433-3477700` is the car moving to a heavier view. It is not a creep or a second decay.**
+
+- **What the frames show.** The survey route left the car parked at 0 mph, facing the start grandstand, from the mark until about t = 633 s (`214525-play.png`, `214550-play.png`). It crossed the line at t = 659 (12 mph) and was on the circuit at t = 683 (41 mph, `214640-play.png`). From t = 785 to the end it sat parked in a forest section, in the same frame throughout, with the sector time frozen at 00:18.509 (`214822-play.png`, `215609-play.png`).
+- **Where the fps steps.** The step lands one second after that frame: `gfps=21 G:47.0 ... Ri:0.6 Tq:3075` at t = 684.
+- **Before and after.** Per 60-s window after `mark play`:
+
+| | 360-600 s, grandstand | 720-1200 s, forest |
+|---|---|---|
+| gfps | 29 | 19-21 |
+| guest frame G (ms) | 33.3 | 46.6-50.5 |
+| flips taking 3 vblanks, per min | 38-64 | 910-982 |
+| renderer idle (ms/frame) | 11.4-11.8 | 0.0 |
+| guest idle (`[rr425w]`) | 25-26% | 40-43% |
+| `[watch311] invalid=` | 10 | 10 |
+
+- **What is waiting on what.** The guest waits on the renderer, and the renderer is never idle.
+- **No creep.** G is flat over 8 minutes of one identical view (49.8, 50.5, 47.5, 46.8, 48.8, 49.0, 46.6, 47.8, 49.5 ms). The run has no PSS line to read, but a memory or cache creep that cost frame time would show as a trend there, and none does.
+- **No heat change.** xo-therm is flat at 55.5-56.5 C, and the CPU clocks do not change.
+- **One open item: the GPU clock.** `gpuclk` reads 401 MHz in all 46 samples under the default regimen. The MAX Forza runs read 615. This run does not decide whether the forest view is bound by that clock.
+
+**For the verdict:**
+- The 29-30 fps of the first 11 minutes measured a parked car at the start line. About 20 fps is the first default-regimen reading of the circuit itself.
+- #583's fix holds over the whole 1250 s: `invalid=` is at most 10.
+- No further run is queued for this step. The method and the full per-minute table are in `docs/lanes/forzadecay414/NOTES.md` section 13, and the table script is `step_split.py`.
+
