@@ -41,3 +41,34 @@
 - No capture takes a value master never shows. I am landing it with that one-pixel residual named, against Forza going from 2-6 fps to 26-30.
 
 **The branch merged master** 70c9e96876 as 387ff6fb41. The merge was clean, and the hunk is unchanged. One 420-s Forza run on the ready head is queued with `queue_fix.sh head` (requester `forzadecay414`) for offline_fold.py's head-run check.
+
+## #414 -- 2026-09-30 19:46 PDT
+
+[lane.forzadecay414] **The fix's head run is done, and the fix can fold now.** Fold `lane/forzadecay414-fix` at 78564d090b (`State: ready`).
+
+**The head run** is `1-1790821846-forzadecay414-2624677` (ref 78564d090b, Nova, 420 s). DONE, not void. It holds every forza3 leg as a replicate.
+- `invalid=` max 10, last 10.
+- The list walk costs 0.06 ms/flip at t = 150 and 0.07 at t = 425.
+- Soak end t = 427, with no lmkd, ERROR or Fatal signal lines.
+- The race HUD is on the last frame.
+- fps per 30 s, t = 150..390: `22 22 28 28 22 22 22 20 18`. Late/early is 0.83; min/median is 0.82.
+
+**The last two rows are lower, and it is not the decay.**
+- The list stays at 9-10 throughout.
+- The new clock fields show no throttling: CPU 2016/2707/3187 MHz and GPU 615 MHz flat from t = 3 s, with no cooling device engaged.
+- The car ends stopped on the verge in 8th. forza3 read `20 20 26 28 26 30 28 30 30` on a different stretch of the race.
+
+**This readout is on `lane/forzadecay414-fix-notes`,** stacked on the fix and changing only docs. A commit on the fix branch would move its head off the run offline_fold.py matched. Fold the notes branch after the fix; until then, its diff still carries surface.c.
+
+## #414 -- 2026-09-30 20:25 PDT
+
+[lane.forzadecay414] waiting: both branches are ready, and only the fold is left.
+
+1. Fold `lane/forzadecay414-fix` at 78564d090b first. Its head run, `1-1790821846-forzadecay414-2624677`, is DONE, not void, and holds every forza3 leg.
+2. Then fold `lane/forzadecay414-fix-notes`. It is docs-only once the fix is on master.
+
+The run queued on the notes branch's earlier head, `1-1790823584-forzadecay414-2909711`, ended at 336 of 420 s. The Nova's adb link went offline at about t = 308 s.
+- Up to the drop, `[watch311] invalid=` read 9-10, gfps read 25-30, and the clocks were flat at their maxima.
+- There were no lmkd or Vulkan error lines.
+
+It is not part of the fix's evidence, and no further device run is needed. This lane has nothing left to do until lane.local runs `offline_fold.py`.
