@@ -1153,6 +1153,9 @@ static bool shader_cache_entry_compare(Lru *lru, LruNode *node, const void *key)
 
 static bool shader_module_warmup_in_progress;
 static void (*shader_warmup_progress_cb)(int current, int total);
+/* #569 P3: the compile workers are a pool, and one key is larger than
+ * stdio's buffer, so two appends at once could interleave their writes */
+static QemuMutex shader_module_key_lock;
 
 void shader_module_key_persist(const ShaderModuleCacheKey *key)
 {
@@ -1170,12 +1173,62 @@ void shader_module_key_persist(const ShaderModuleCacheKey *key)
     const char *base = xemu_settings_get_base_path();
     char *path = g_strdup_printf("%sshader_module_keys.bin", base);
 
+    qemu_mutex_lock(&shader_module_key_lock);
     FILE *f = fopen(path, "ab");
     if (f) {
         fwrite(key, sizeof(ShaderModuleCacheKey), 1, f);
         fclose(f);
     }
+    qemu_mutex_unlock(&shader_module_key_lock);
     g_free(path);
+}
+
+/*
+ * #569 P3 (vk/compile_worker.c). The hashes of the module keys a binding's
+ * pipeline is built from, as shader_module_keys.bin's keys hash; 0 for no
+ * geometry stage. PFIFO thread.
+ */
+void pgraph_vk_shader_binding_module_hashes(PGRAPHVkState *r,
+                                            ShaderBinding *binding,
+                                            uint64_t hashes[3])
+{
+    ShaderModuleCacheKey *keys = g_new0(ShaderModuleCacheKey, 3);
+    bool need_geom;
+    shader_binding_build_module_keys(r, binding, &keys[0], &keys[1], &keys[2],
+                                     &need_geom);
+    hashes[0] = hash_shader_module_key(&keys[0]);
+    hashes[1] = need_geom ? hash_shader_module_key(&keys[1]) : 0;
+    hashes[2] = hash_shader_module_key(&keys[2]);
+    g_free(keys);
+}
+
+uint64_t pgraph_vk_hash_shader_module_key(const ShaderModuleCacheKey *key)
+{
+    return hash_shader_module_key(key);
+}
+
+/*
+ * #569 P3: a copy of the SPIR-V for key, from the module cache the startup
+ * warm-up filled (compiled now if it is not there, without persisting the
+ * key again). NULL if the module is not ready (async compile) or failed.
+ * Renderer init only, before the PFIFO thread draws.
+ */
+GBytes *pgraph_vk_prebuild_module_spirv(PGRAPHVkState *r,
+                                        const ShaderModuleCacheKey *key)
+{
+    shader_module_warmup_in_progress = true;
+    ShaderModuleCacheEntry *entry = get_shader_module_entry_for_key(r, key);
+    shader_module_warmup_in_progress = false;
+#if OPT_ASYNC_COMPILE
+    if (!qatomic_read(&entry->ready)) {
+        return NULL;
+    }
+#endif
+    ShaderModuleInfo *info = entry->module_info;
+    if (!info || !info->spirv) {
+        return NULL;
+    }
+    return g_bytes_new(info->spirv->data, info->spirv->len);
 }
 
 static void shader_module_compile_sync(PGRAPHVkState *r,
@@ -1699,6 +1752,7 @@ void pgraph_vk_init_shaders(PGRAPHState *pg)
     r->descriptor_overflow_pools =
         g_array_new(FALSE, FALSE, sizeof(VkDescriptorPool));
     pgraph_vk_init_glsl_compiler();
+    qemu_mutex_init(&shader_module_key_lock);
 
     /*
      * The geometry stage's wide-line vec4 is unconditional and sits below the

@@ -1582,6 +1582,9 @@ typedef struct PGRAPHVkState {
         QSIMPLEQ_HEAD(, CompileJob) queue;
         bool shutdown;
         int queue_depth;
+        /* #569 P3: the worker pool, pipeline pre-build and cache saving
+         * (vk/compile_worker.c); thread above is unused */
+        struct CompilePool *pool;
     } compile_worker;
 
     /*
@@ -1912,7 +1915,28 @@ VkResult pgraph_vk_gpl_uber_create_pipeline(
 void pgraph_vk_gpl_uber_log(PGRAPHVkState *r);
 void pgraph_vk_gpl_wait_lto_idle(PGRAPHVkState *r);
 void pgraph_vk_gpl_finalize(PGRAPHVkState *r);
+/* #569 P3: pipeline pre-build and pipeline cache saving */
+void pgraph_vk_prebuild_start(PGRAPHState *pg);
+void pgraph_vk_prebuild_stop(PGRAPHVkState *r);
+void pgraph_vk_prebuild_note(PGRAPHVkState *r, const RenderPassState *rp,
+                             const PipelineCreateParams *p,
+                             const VkPushConstantRange *push_ranges,
+                             int num_push_ranges);
+void pgraph_vk_compile_worker_note_dirty(PGRAPHVkState *r);
+void pgraph_vk_compile_worker_wait_pipeline(PGRAPHVkState *r,
+                                            PipelineBinding *binding);
 #endif
+
+/* #569 P3: vk/shaders.c and vk/draw.c, for vk/compile_worker.c */
+void pgraph_vk_shader_binding_module_hashes(PGRAPHVkState *r,
+                                            ShaderBinding *binding,
+                                            uint64_t hashes[3]);
+uint64_t pgraph_vk_hash_shader_module_key(const ShaderModuleCacheKey *key);
+GBytes *pgraph_vk_prebuild_module_spirv(PGRAPHVkState *r,
+                                        const ShaderModuleCacheKey *key);
+VkRenderPass pgraph_vk_prebuild_render_pass(PGRAPHVkState *r,
+                                            RenderPassState *state);
+void pgraph_vk_save_pipeline_cache(PGRAPHVkState *r);
 
 // submit_worker.c
 void pgraph_vk_submit_worker_init(PGRAPHVkState *r);
