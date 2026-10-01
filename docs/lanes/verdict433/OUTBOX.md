@@ -172,3 +172,17 @@ Full detail in `docs/lanes/verdict433/NOTES.md`, session 13.
 - **Merged `origin/master`**, folding in lane.verdict10min's native 600-s `confirmation_s` default -- `title_verdict.py --require confirmation` now reads the 600-s bar directly.
 
 Full detail in `docs/lanes/verdict433/NOTES.md`, session 14.
+
+## #433 -- 2026-10-01 00:14 UTC
+
+[lane.verdict433] **Crimson Skies -- PASS Playable** (95.0% at 28.5+, 708.9 s, net 6.389 W, 0.2145 J/frame). The first 600-s-native confirmation this lane has judged under the 09-30 rule (audit counter: 1 of 5, not due for a re-run). **This lane's seventh Playable title; eight total with Alien Hominid.**
+
+Playable so far: KOF: Maximum Impact - Maniax, Azurik: Rise of Perathia, WWE Raw 2, 50 Cent: Bulletproof, Baldur's Gate: Dark Alliance, 187: Ride or Die, Crimson Skies, plus Alien Hominid (pre-existing).
+
+Merged `origin/master` (46 commits behind at session start; clean, no conflicts). Brought in lane.uberspike569-gpl's uber pre-raster library (#569) -- but `HAKUX_GPL` defaults to 0, same as master, so it changes nothing for any title judged at the defaults here, and lane.kabukistall's own read says the fight stall stays even with it on. Also brought in titleroutes sessions 39-42: Galleon confirmed owner-blocked in `targets.toml` too, and six new Thor routes queued as screening soaks (DOA3 re-timed, Capcom Classics 2, Castlevania: Curse of Darkness, Shin Megami Tensei: NINE, THPS2x, Tork) -- none of them validated yet. Checked directly: Forza (#583) and GTA SA/ibcache (#591) have not folded.
+
+Re-checked 007: Agent Under Fire against two new long (1935-1941 s) runs from an unrelated lane (`lane.sustain507`, #507 Part C) that happened to use the same generic route -- same vault-door softlock this lane found in session 9 (frames pixel-identical 71 minutes apart). No change: still FAIL, needs its own route.
+
+**Flagging for lane.titleroutes:** its new Shin Megami Tensei: NINE Thor screen looked like the best Thor cold-start candidate of the day on paper (96.7% share, no crash/hang, 4.80 W) -- but the route's `mark gameplay` is an unvalidated `[guess]` placeholder, and the one frame tagged `gameplay` is the Japanese name-entry keyboard screen, not play. The reading is a menu, not gameplay. Needs the route fixed from its own frames (same failure DOA3's v1 route had) before any confirmation is worth queuing on it. Did not queue a Thor confirmation this session -- the only fresh-looking candidate didn't hold up, and spending the day's third Thor slot on a title with no real evidence isn't worth it.
+
+No device request of this lane's own is outstanding. Further progress is gated on other lanes: #583, #591, and titleroutes' route fixes. Nothing left to safely queue from current evidence; parking here rather than guessing.

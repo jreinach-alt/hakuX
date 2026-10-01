@@ -1538,3 +1538,155 @@ One Nova request outstanding: Crimson Skies's re-queue (`-1767161`), freshly
 queued. Recording this session's two verdicts, the merge, and the
 false-positive-withdrawal finding in `OUTBOX.md`; stopping -- not polling
 device work from inside the session.
+
+## Session 15 (2026-10-01, resumed as attempt 2)
+
+**Why session 14 did not finish.** It did: it ended on its documented
+`waiting:` checkpoint with one request outstanding (Crimson's re-queue,
+`-1767161`) and an `OUTBOX.md` entry naming it. Nothing to fix from that
+session.
+
+**Checked `-1767161` by exact path**: DONE.
+
+### Crimson Skies -- PASS Playable (the 600-s rule's first native pass)
+
+`title_verdict.py --require confirmation`: `PASS Playable gameplay=708.9s
+fps_ok=0.95 crash=False hang=False audio_short=0.0 battery_w=+4.27
+net_w=6.389 j_per_frame=0.2145`. Not still-heating (thermal.still_heating
+false; a steady Nova read, as every Nova run has been), so the native 600-s
+bar applies as-is -- no 1200-s bump. **This is the first 600-s-native pass
+this lane has produced** (187 and all five before it were judged at full
+1200-s length, pre-dating the 09-30 12:10 PDT rule change) -- counter for
+the "every 5th 600-s pass gets audited at 1200 s" rule: **1 of 5**. Not due
+for an audit re-run yet.
+
+**This lane's seventh Playable title.** Tally: 8 total (this lane's seven
+plus Alien Hominid, pre-existing).
+
+### Merged `origin/master` (46 commits behind at session start)
+
+Clean merge, no conflicts, pushed as a merge commit. Brought in (relevant to
+this lane):
+- **lane.verdict10min already folded** (picked up last session) -- nothing
+  new there.
+- **lane.uberspike569-gpl folded (#569, PR stand-in for #618):** the uber
+  pre-raster library ships, but **`HAKUX_GPL` defaults to 0, same as
+  master** -- this lane's confirmations run at the defaults, so it changes
+  nothing for any title judged here. Confirmed directly:
+  `lane.kabukistall`'s own K1 read (folded earlier, `afbecbd459`) says "B1
+  halves the create (199 ms), the 68.6 s fight stall stays" -- **Kabuki
+  still stalls under the shipped defaults.** Not re-attempting it.
+- **lane.titleroutes sessions 39-42 folded:** Galleon marked owner-blocked
+  in `targets.toml` too (consistent with this lane's own record); new Thor
+  routes added for DOA3 (re-timed), Capcom Classics Collection Vol. 2,
+  Castlevania: Curse of Darkness, Shin Megami Tensei: NINE, THPS2x and Tork,
+  all queued by titleroutes as 480-s Thor *screening* soaks (route
+  validation work, not confirmations) -- see below, these are not usable
+  yet.
+- **No Forza (#583) or GTA SA/ibcache (#591) fold.** Checked `git log
+  origin/master` directly for both; neither has landed. Both stay blocked
+  tier C.
+
+### Full sweep since the last check: no new Playable candidates
+
+Ran `sweep.py` over every finished Nova route soak since 2026-09-28 19:00
+(175 runs) and every finished Thor route soak since the six titleroutes
+screens queued. Reviewed every row at fps_ok >= 0.90 that wasn't already a
+confirmed Playable title or a title already ruled out:
+
+- **007: Agent Under Fire, re-confirmed stuck.** Two long (1935-1941 s)
+  `lane.sustain507` runs (`#507 Part C` halt-on/off pair, not this lane's
+  own queue) reached the same vault-door softlock this lane's own
+  `-366094` found in session 9 -- checked the frames directly
+  (`074147-play.png` and the window's last frame `074301-play.png` are
+  pixel-identical to each other, same FPS overlay range, same decoder prop
+  in hand, 71 minutes apart). Ran `title_verdict.py --reviewed-gameplay
+  no` on both to close them out formally, per the brief's step 4 --
+  confirmed session 9's finding that the tool's `reviewed == "no"` branch
+  is unreachable (`reached_gameplay` stays `None`/unconfirmed either way,
+  a harness anomaly already flagged, not re-flagging again). No change:
+  AUF stays FAIL, needs its own route, out of this lane's scope.
+- **Dead or Alive 1 Ultimate (Nova):** several short (49-217 s) runs from
+  `litcompile569` and `uberspike569` dev branches, fps_ok 0.48-0.95,
+  inconsistent across builds, all on the generic unconfirmed route. Not
+  acted on -- these are other lanes' in-progress dev reads, not confirmable
+  evidence, and DOA's only authored route (`doa3`) is Thor-only per
+  `targets.toml` (`iso = { thor = ... }`), still mid-validation by
+  titleroutes (see below).
+- **Shin Megami Tensei: NINE (Thor), the one real-looking new Thor
+  candidate -- checked its frame and rejected.** titleroutes' session-42
+  screen (`1790805456-titleroutes-2055567`) read `fps_ok=0.9666` over
+  316.2 s, no crash/hang, 4.80 W net -- on paper the best Thor cold-start
+  candidate found all day. **Its `route.txt` says plainly `mark gameplay #
+  [guess] placeholder: move to the first frame with the player moving`,
+  an all-`[guess]` draft "NOT YET REPLAYED."** Read the one frame tagged
+  `gameplay` (`route-frames/162627-gameplay.png`): it is the Japanese
+  name-entry keyboard screen, not gameplay -- the mark fired on a menu.
+  The 96.7% share is a reading of a static character-creation UI, not
+  play. **Not a real candidate; did not queue a Thor confirmation on it.**
+  This is exactly the DOA3-v1 failure mode (a guessed route's placeholder
+  mark landing on the wrong screen) and belongs to titleroutes to fix from
+  its own frames, not to this lane to confirm from. Flagging it for them
+  in `OUTBOX.md` so the route gets revised before anyone queues a
+  confirmation on it.
+  - The other five titleroutes Thor screens from the same batch
+    (Capcom Classics 2, Castlevania, THPS2x, Tork, DOA3 v2) are all either
+    a crash before 480 s or a route not yet reaching a validated mark --
+    none is a candidate either. Left for titleroutes.
+- **Everything else re-checked (Nightfire, Fuzion Frenzy, Blinx/Blinx 2,
+  Grabbed by the Ghoulies, Midnight Club 3 at 87.5%, Kabuki's short
+  pre-fight-stall reads):** unchanged from sessions 4, 8 and 10's findings,
+  all still under the 90% bar or contradicted by a longer window. No new
+  evidence moved any of them.
+
+**No Thor confirmation queued this session.** The 10:20 PDT addendum's cap
+is 3 for the day; 2 are used (Alien Hominid: void/not a real pick, Otogi:
+FAIL on heat), and the one fresh-looking candidate (SMT: NINE) turned out
+to be a misread menu screen, not a light title with real evidence. Spending
+the third slot on a title with no real evidence would be exactly the
+low-probability guess the owner's ranking guidance (see `roles/lane.md`,
+"Ranking options") warns against -- not spending it blind.
+
+### Tally
+
+**Eight titles Playable, seven of them this lane's own confirmations:**
+KOF: Maximum Impact - Maniax, Azurik: Rise of Perathia, WWE Raw 2, 50 Cent:
+Bulletproof, Baldur's Gate: Dark Alliance, 187: Ride or Die, Crimson Skies
+(all PASS at the defaults, Nova), plus Alien Hominid (pre-existing Thor
+confirmation, 09-26/09-27, not duplicated).
+
+### Running table (confirmations)
+
+| Title | Device | Regimen | Request | Verdict |
+|---|---|---|---|---|
+| **KOF: Maximum Impact - Maniax** | nova | default | `-1456797` | **PASS Playable** (99.4%, 1282.6 s) |
+| **Azurik: Rise of Perathia** | nova | default | `-1456876` | **PASS Playable** (95.2%, 1292.3 s) |
+| **WWE Raw 2** | nova | default | `-1456493r2` | **PASS Playable** (99.8%, 1276.9 s) |
+| **50 Cent: Bulletproof** | nova | default | `-1456544r2` | **PASS Playable** (99.1%, 1348.3 s) |
+| **Baldur's Gate: Dark Alliance** | nova | default | `-366130` | **PASS Playable** (100%, 1303.9 s) |
+| **187: Ride or Die** | nova | default | `-3086875` | **PASS Playable** (100%, 1286.4 s) |
+| **Crimson Skies** | nova | default | `-1767161` | **PASS Playable** (95.0%, 708.9 s, 600-s rule audit count 1/5) |
+| 007: Agent Under Fire | nova | default | `-366094`, re-confirmed stuck via `lane.sustain507`'s two long runs | FAIL (vault-door softlock, generic route; needs its own route) |
+| Alien Hominid | thor (cold-start control) | default | `-3086847` | void (heat stop at xo 70 C, 402 s); already Playable (`lanelocal-1183547`, 09-26) |
+| Otogi: Myth of Demons | thor (cold-start) | default | `-43486` | **FAIL (thermal)**: pause at +703 s, 35.0% at 28.5+, peak xo 77.9 C, 4.06 W net |
+| Arctic Thunder | nova | default | `-3086903` | **FAIL**: 684 s gameplay (route ran out of script), 63.9% at 28.5+ |
+
+### Next, in order
+
+1. **Nothing queued is outstanding from this lane right now.** The next
+   move depends on other lanes: Forza (#583) and GTA SA/ibcache (#591)
+   folding, titleroutes revising SMT: NINE's and DOA3's routes from their
+   frames, or lane.kabukistall/#569 landing a default-on fix for Kabuki's
+   fight stall.
+2. If any of those fold before the next session, re-sweep (`sweep.py`,
+   since this session's epoch) before assuming nothing changed.
+3. AUF needs its own route (out of scope); not re-attempting with a
+   generic route again.
+
+### Ending session 15 here: not waiting on anything of this lane's own --
+
+No device request of this lane's own is outstanding. Recording Crimson's
+Playable pass, the merge, the AUF re-check and the SMT: NINE frame finding
+in `OUTBOX.md`. Further progress on this brief is gated on other lanes'
+work (route fixes, #583, #591); nothing left to safely queue from current
+evidence. Stopping here rather than spending a Thor or Nova slot on a guess.
