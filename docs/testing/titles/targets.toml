@@ -471,7 +471,7 @@ route = "kof-mi.returning"
 name = "Capcom Classics Collection Vol. 2"
 iso = { thor = "43430019-Capcom_Classics_Collection_Vol_2.xiso.iso" }
 route = "capcom-classics2"
-notes = "No #431 target; the default 30 applies. routes/capcom-classics2.route: lane.routeprep's all-[guess] draft (first game in the list, coin, start). Its first 480s Thor attempt (0-0-s-1790805455-titleroutes-2055173) ran 390 of 480s then a silent 'guest exited after 390s' with no not-foreground line (unlike the other four 'HEAT STOP'-flagged runs this session, which were Daijishou focus steals); its last thermal sample reads xo-therm 70.1C, so this one HEAT STOP diagnosis is at least plausible (see #397 session 44). Retried at the new 300s cap (1790808344-titleroutes-3128993, session 44): ran clean, reached gameplay (165540-gameplay.png), 190s gameplay, fps_window_median 59.94, fps_ok_share 1.0, no crash/hang -- Nova nomination (#433). Session 46 mark audit: the mark frame (0-0-s-1790808344-titleroutes-3128993, 165540-gameplay.png) is a START MENU (Start Game / Load Game / Game Settings / Exit Game): the 100% at 59.94 measured that menu. Nomination withdrawn. Session 46 mark audit: kof-mi.returning's mark frame (1-1790725091-lane.verdict433-1456797, 210409) is a post-round PERFECT / WINNER screen; the next round may follow, so the window needs a frame review, not a verdict on one frame."
+notes = "No #431 target; the default 30 applies. routes/capcom-classics2.route: lane.routeprep's all-[guess] draft (first game in the list, coin, start). Its first 480s Thor attempt (0-0-s-1790805455-titleroutes-2055173) ran 390 of 480s then a silent 'guest exited after 390s' with no not-foreground line (unlike the other four 'HEAT STOP'-flagged runs this session, which were Daijishou focus steals); its last thermal sample reads xo-therm 70.1C, so this one HEAT STOP diagnosis is at least plausible (see #397 session 44). Retried at the new 300s cap (1790808344-titleroutes-3128993, session 44): ran clean, reached gameplay (165540-gameplay.png), 190s gameplay, fps_window_median 59.94, fps_ok_share 1.0, no crash/hang -- Nova nomination (#433). Session 46 mark audit: the mark frame (0-0-s-1790808344-titleroutes-3128993, 165540-gameplay.png) is a START MENU (Start Game / Load Game / Game Settings / Exit Game): the 100% at 59.94 measured that menu. Nomination withdrawn. Session 46 mark audit: kof-mi.returning's mark frame (1-1790725091-lane.verdict433-1456797, 210409) is a post-round PERFECT / WINNER screen; the next round may follow, so the window needs a frame review, not a verdict on one frame. Session 49: queued a generic `--route survey` soak (the method that worked for castlevania-cod and surfaced gauntlet's own trap) rather than guessing a second fix for the guess route's wrong menu; route= still points at the old draft until the survey gives real frames to author from."
 
 [titles."4B4E002D"]
 name = "Castlevania: Curse of Darkness"
@@ -511,7 +511,8 @@ notes = "No #431 target; the default 30 applies (the level ran at an FPS overlay
 [titles."4D57000E"]
 name = "Gauntlet: Dark Legacy"
 iso = { thor = "4D57000E-Gauntlet_Dark_Legacy.xiso.iso" }
-notes = "No #431 target; the default 30 applies. Session 46: the Thor survey 0-0-s-1790823800-titleroutes-2951589 (heat-stopped at 20:58 PDT) reached the in-engine wizard intro at an FPS overlay of 14 (205704-menu-a.png), then the START/A cycles left it on the in-game pause menu's Audio page at 11-14 (205743, 205824). A low in-engine reading worth a screen. No route: the survey's START keeps reopening the pause menu, so the route must stop pressing START once the level loads."
+route = "gauntlet"
+notes = "No #431 target; the default 30 applies. Session 46: the Thor survey 0-0-s-1790823800-titleroutes-2951589 (heat-stopped at 20:58 PDT) reached the in-engine wizard intro at an FPS overlay of 14 (205704-menu-a.png), then the START/A cycles left it on the in-game pause menu's Audio page at 11-14 (205743, 205824). A low in-engine reading worth a screen. Session 49: read the survey's own frames cycle by cycle -- by the 8th cycle's A press (205704-menu-a.png) the wizard was already exploring the dungeon live (an in-level tutorial scroll over the 3D view, 'Press A Button when done'), but the survey kept pressing START for 6 more cycles, and its own mark frame (205824-play.png) is the in-game pause menu's Audio page, not play: the same START-during-gameplay trap as sonic-heroes.route, caught here before any route was committed. Authored routes/gauntlet.route: 8 cycles (not 14), then mark gameplay, then a movement loop that never presses START again. DRAFT until its own replay is checked."
 
 [titles."53550001"]
 name = "Bistro Cupid"
@@ -534,3 +535,13 @@ notes = "No #431 target; the default 30 applies pending one. routes/thps3.route 
 name = "SSX Tricky"
 iso = { thor = "45410004-SSX_Tricky.xiso.iso" }
 notes = "No #431 target; the default 30 applies. Session 47: the generic `--route survey` soak (0-0-s-1790830433-titleroutes-311173) ran its full 300 s with no heat stop, but title_verdict.py reads hang=True. The frames back it up: after the menu cycles the route's three 'play' shots (224637, 224703, 224729) are all a solid black frame with only the FPS overlay (59) drawn -- not gameplay, not a visible menu either. Needs its own authored route from a longer/different survey (a held nav read, or a longer generic pass), not a re-queue of the same survey. No route yet."
+
+[titles."544B0004"]
+name = "Plus Plumb 2"
+iso = { thor = "544B0004-Plus_Plumb_2.xiso.iso" }
+notes = "No #431 target; the default 30 applies. Session 49: new on the ranked untouched list (rank 101, Perfect). Queued a generic `--route survey` soak, no frames yet. No route."
+
+[titles."41510001"]
+name = "Petit Copter"
+iso = { thor = "41510001-Petit_Copter.xiso.iso" }
+notes = "No #431 target; the default 30 applies. Session 49: new on the ranked untouched list (rank 135, Perfect). Queued a generic `--route survey` soak, no frames yet. No route."
