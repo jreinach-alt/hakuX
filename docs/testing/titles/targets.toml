@@ -333,7 +333,7 @@ notes = "#431 (comment 5851536933): 30, high confidence. Digital Foundry Retro (
 name = "Phantom Dust"
 iso = { thor = "Phantom Dust (USA) (En,Ja).xiso.iso" }
 target_fps = 30
-notes = "#431 (comment 5851536933): 30, high confidence. Microsoft's remaster creative director (2017): the engine was built around 30"
+notes = "#431 (comment 5851536933): 30, high confidence. Microsoft's remaster creative director (2017): the engine was built around 30. Session 44's pass-1 survey (0-0-s-1790822578-titleroutes-2819133, 480s) left no result at all -- logs/thor-coldconfirm.log: 'HEAT STOP at xo 70 C -- run voided (no result)', nothing under dispatch/results. Requeued at the new 300s cap, session 45 (1790823811-titleroutes-2952744); no route-frames exist yet either way."
 
 [titles."4D530064"]
 name = "Halo 2"
@@ -484,3 +484,8 @@ name = "Shin Megami Tensei: NINE"
 iso = { thor = "41540002-Shin_Megami_Tensei_Nine.xiso.iso" }
 route = "smt-nine"
 notes = "No #431 target; the default 30 applies. Japanese menus. routes/smt-nine.route: lane.routeprep's all-[guess] draft, replayed session 44 (1790805456-titleroutes-2055567): ran clean (no stop event), reached gameplay (162627-gameplay.png), 316s gameplay, fps_window_median 29.96, fps_ok_share 0.967, no crash/hang -- Nova nomination (#433)."
+
+[titles."4D4A0012"]
+name = "Psychonauts"
+iso = { thor = "Psychonauts (USA).iso" }
+notes = "No #431 target; the default 30 applies. Session 44's pass-1 survey (1790822573-titleroutes-2818801, Thor, 300s) never got past the title screen ('Press START to begin', scrolling credits in the background) in 136s and 7 cycles of START-then-A: every route-frame from 194441 to 194548 shows the identical title card. Stopped at 136s by a focus steal to com.android.launcher3 (not Daijishou this time -- a different launcher, display 4), not heat (xo-therm only reached 64.5C; hostops's .hostops-diagnosed note on this result correlates it with a dead-fan heat signature on other thermal zones but calls that unproven). No route drafted: the title screen needs something other than repeated START/A at 5s intervals to advance (a longer hold, a different button, or a wait the survey's generic cadence does not give it), and that needs a held or hand-authored route, not another blind survey. Next: author a route.txt that tries a single longer START press or a different first input before re-surveying."
