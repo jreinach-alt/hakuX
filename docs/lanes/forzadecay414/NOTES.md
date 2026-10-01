@@ -685,7 +685,58 @@ master captures above.
   (offline_fold.py lines 101-111). The ready commit is a new head, so `queue_fix.sh head` queues
   one 420-s Forza run on it after the push. It is a readout, read with `judge.py --end 420`.
 
+## 11. Resume 2026-09-30 (attempt 3's resume): the ready head's run reads clean
+
+**Why the previous session did not finish.** It did finish its work. It pushed the ready head
+78564d090b with `State: ready`, queued the head run for offline_fold.py, and ended waiting on that
+run. Nothing else was outstanding. The run is `1-1790821846-forzadecay414-2624677`, DONE and not void.
+
+**Where this readout lives.** It is on `lane/forzadecay414-fix-notes`, stacked on the ready head,
+not on `lane/forzadecay414-fix`. offline_fold.py accepts a run only when its `ref` is a prefix of
+the branch head (lines 107-108). A docs commit on the fix branch would void 2624677 as the head run,
+so the fold would wait for another 420-s Nova run. With the fix branch left at 78564d090b, it can
+fold now. This branch changes only `docs/lanes/forzadecay414/`, so after the fix folds it needs no
+device run.
+
+### The head run, by forza3's legs
+
+`1-1790821846-forzadecay414-2624677` (ref 78564d090b, Nova ee317437, apk 920ebfc1aa6c, 420 s),
+`judge.py --end 420` (a replicate; it was queued with `--no-expect`):
+
+| leg | rule | read | |
+|---|---|---|---|
+| W0 | `soak end` t >= 400, no ERROR/VOID/lmkd | soak end t = 427.3; DONE, no VOID.txt; 0 ERROR/VOID in run.log; 0 lmkd/DEVICE_LOST/VK_ERROR_/Fatal signal lines in logcat.txt | holds |
+| M0 | race txw lines in 180-390; race HUD on the last `play` frame | 104 race scan lines (n in judge.py's scan summary); `route-frames/194104-play.png`: LAP 1/2, RACE 02:49.007, FPS 17, the car stopped on the grass verge in 8th | holds |
+| B1 | max invalid= <= 400 | 10 | holds |
+| B2 | last invalid= <= max(60, 2 x median 150-240) | 10 (median 9) | holds |
+| B3 | walk <= 0.5 ms/flip, first and last race line | 0.06 (t = 150.3), 0.07 (t = 424.6) | holds |
+| D1 | mean fps 330-390 >= 0.8 x mean 150-210 | 20.00 / 24.00 = 0.83 | holds, narrowly |
+| D3 | every row 150-390 >= 0.6 x median | min 18, median 22: 0.82 | holds |
+
+fps rows t = 150..390: `22 22 28 28 22 22 22 20 18`. forza3 read `20 20 26 28 26 30 28 30 30`.
+
+**The tail (20, 18) is not the list, and not the clock.**
+- The list holds at 9-10 for the whole race, and the walk costs 0.06-0.07 ms/flip, the same at
+  t = 150 and at t = 425.
+- `thermal.jsonl` (the #588 clock fields): no cooling device engaged at any sample. cpu0, cpu3 and
+  cpu7 sit at 2016 / 2707 / 3187 MHz and the GPU at 615 MHz from t = 3 s to the end. xo-therm
+  rises 44 to 54.5 C; the hottest zone is `cpu-1-9` at 91-96 C. forza3's trace is the same
+  (cpu3 2803 there), and it rose to 30 fps.
+- The scene differs. The route's input put the car on the verge at 0 mph in 8th: race clock 02:49
+  at the end, against 03:25 in forza3. The G column rises 46.7 to 55.5 over the race, which is
+  more guest work per row, not a slower host.
+- I did not trace the scene's cost. That is outside landing #583, and it is the per-scene fps a
+  Playable verdict reads, not the decay. Before the fix, every master race on the Nova reached
+  `invalid=` 1915-1996, fell to 2-6 fps and was killed by lmkd at 208-276 s (sections 8.1, 8.6).
+
+**Verdict:** the ready head runs a full 420-s race with the list bounded and no decay mechanism.
+`lane/forzadecay414-fix` stays at 78564d090b, `State: ready`, for lane.local to fold.
+
 ## Do not repeat
+
+- Do not commit to a branch after its head run is queued, if offline_fold.py will fold it. The
+  run's `ref` must prefix the head, so a docs-only commit voids the run as the fold's check. Put
+  later notes on a stacked `-notes` branch.
 
 - Do not register a pixel claim of "every non-Stencil capture must not move". ZPass_pixel_count,
   GeometrySuperscreen_0.9990, Blend_surface/X_Z1RGB5_Add_SrcA_DstA and
