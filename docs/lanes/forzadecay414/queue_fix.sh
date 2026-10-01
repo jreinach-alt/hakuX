@@ -9,6 +9,7 @@
 #   queue_fix.sh pixels3 both arms of forzadecay414-fix-pixels3.json, hard-pinned to the Nova. The
 #                        arms job queued pixels and pixels2 itself; it queues nothing while GitHub
 #                        is unreachable, and its same-device re-run of pixels2 found no device.
+#   queue_fix.sh head    one 420-s Forza run on the branch head as it is (offline_fold.py's check)
 set -u
 R=docs/testing/request.sh
 q() { # ref prediction title seconds purpose
@@ -34,5 +35,13 @@ case "${1:-}" in
                 --skip-tests Texture_render_target::RenderTextureLoop --device nova --hard-pin --runs 2 \
                 --expect "$P" --purpose "#414 fix-pixels3 ${1^^} arm at $2, Nova-only pair, queued by lane.forzadecay414"
         done ;;
-    *) echo "usage: $0 forza|forza2|auf|forza3|pixels3" >&2; exit 2 ;;
+    head)
+        # offline_fold.py wants a finished run built from the branch head itself. A readout, not an
+        # arm: forza3 is the judged run; this one is read with judge.py --end 420 as a replicate.
+        H=$(git rev-parse --short=10 HEAD)
+        env HAKUX_RELEASE_PRIO=1 "$R" --who forzadecay414 --device nova --ref "$H" \
+            --title "$FORZA" --route survey --seconds 420 --perflog \
+            --no-expect "replicate of forzadecay414-fix-forza3.json on the ready head $H, for offline_fold.py's head-run check" \
+            --purpose "#414 fix: Forza on the ready head $H, full window, Nova, perflog" ;;
+    *) echo "usage: $0 forza|forza2|auf|forza3|pixels3|head" >&2; exit 2 ;;
 esac

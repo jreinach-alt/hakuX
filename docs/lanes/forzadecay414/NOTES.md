@@ -608,7 +608,89 @@ A of forza3 is not run (the lmkd kill; "Do not repeat" below). D3's 0.6 comes fr
   `offline_fold.py` wants a run whose ref is the branch head, and the ready commit touches only
   `docs/lanes/`. Post the verdicts to OUTBOX.md.
 
+## 10. Resume 2026-09-30 19:25 PDT: forza3 holds; pixels3 is a FAIL on paper with one residual; ready
+
+**Why the previous session did not finish.** It ended on an outside wait, as planned: the three Nova
+requests in section 9, held behind the Nova's `lanelocal-topup` hold and 20 queued requests. All
+three are DONE now.
+
+### forza3: every leg holds
+
+`1-1790778383-forzadecay414-3163702` (eec025dd37, Nova, apk beeb8690b7fc), `judge.py --end 420`:
+
+| leg | rule | read | |
+|---|---|---|---|
+| W0 | `soak end` t >= 400, no ERROR/VOID/lmkd | soak end t = 433.2; no ERROR/VOID in run.log; 0 lmkd/DEVICE_LOST/VK_ERROR_/Fatal signal lines in logcat.txt | holds |
+| M0 | >= 5 race txw lines (calls/flip >= 500) in 180-390; race HUD on the last `play` frame | 95 race scan lines; `route-frames/130524-play.png`: LAP 1/2, RACE 03:25.648, FPS 29 | holds |
+| B1 | max invalid= <= 400 | 10 | holds |
+| B2 | last invalid= <= max(60, 2 x median 150-240) | 9 (median 9) | holds |
+| B3 | walk <= 0.5 ms/flip, first and last race line | 0.06 (t = 152.7), 0.04 (t = 427.9) | holds |
+| D1 | mean fps 330-390 >= 0.8 x mean 150-210 | 29.33 / 22.00 = 1.33 | holds |
+| D3 | every row 150-390 >= 0.6 x median | min 20, median 28: 0.71 | holds |
+
+fps rows t = 150..390: `20 20 26 28 26 30 28 30 30`. The fps rises over the race; it does not fall.
+
+### pixels3: FAIL on paper, 1 capture attributable, and master reaches that state too
+
+`ab_compare.py --expect forzadecay414-fix-pixels3.json` on base `1-1790778383-arms-forzadecay414-base-3163761`
+(146b8887db, apk eae7a2f00588) and fix `-fix-3163802` (eec025dd37, apk 06c870d29199). Both ran on the
+Nova (ee317437), 2 runs each, 3379 of 3379 captures. Counts: better 44, worse 1, same 3327, noise 7.
+exact 1384 -> 1392. 39 must_not_move captures moved:
+- 36 ZPass_pixel_count captures went down, e.g. ZPassLineWidth-0x0000 1240 -> 320. pixels2 moved
+  the same captures UP: 320 -> 1414 on a split pair.
+- Blend_surface/X_Z1RGB5_Add_SrcA_DstA 15016 -> 12274 (better).
+- Vertex_shader_rounding_tests/GeometrySuperscreen_0.9990 570 -> 0 (better, to exact).
+- Antialiasing_tests/AAOnThenOffCPUWrite 0 -> 1 (one pixel, max_rgb 123; worse, from exact).
+
+ab_compare's byte check calls six captures attributable, because each arm repeated itself
+byte for byte. Four of the six are Stencil (#79, excluded by the registration). The other two are
+AAOnThenOffCPUWrite and X_Z1RGB5.
+
+A two-run arm repeating itself does not show that the build sets the value. Each mover's value under
+the fix might also be a state master reaches. `pixel_survey.py` reads every scored capture of the
+four in `dispatch/results`, one count per run, split by device and by whether the ref carries the
+hunk (10fe2f59a7, eec025dd37):
+
+| capture | fix: values | not fix: values | reading |
+|---|---|---|---|
+| ZPassLineWidth-0x0000 | 320 x3, 1240, 1588, 250 | 250 x27, 320 x26, 1240 x14, 276, 314 | noise: same states, same rates (p = 0.42 for 320) |
+| GeometrySuperscreen_0.9990 | 0 x7 | 0 x90, 285 x13, 570 x4 | noise: 0 is master's usual value |
+| X_Z1RGB5_Add_SrcA_DstA | 12274 x3, 15016 x4 | 15016 x111, 43756 x18, 12274 x8, ... | master reaches 12274 too, but less often (p = 0.0065); the better state |
+| AAOnThenOffCPUWrite | 1 x4, 0 x3 | 0 x71, 1 x2 | master reaches 1 too (`1-1790610287-arms-rendermode474-fix-1969603` Thor, 61e0edf87c; `1-1790725598-arms-memfast-base-1586276` Nova, 31515f9751; same pixel, max_rgb 123), but rarely (p = 0.0003) |
+
+Neither 61e0edf87c nor 31515f9751 carries the hunk (`git grep` of the comment finds it only in
+eec025dd37). So the fix creates no new pixel state in any capture. It raises how often two captures
+land in one of their existing states: AAOnThenOffCPUWrite's one-pixel miss (from 2/74 to 4/7) and
+X_Z1RGB5's closer value. The per-run counts are not independent (two runs share one session), and
+four captures were tested, so the p-values overstate the evidence. Even so, three of three fix
+sessions on the Nova show the AA pixel at least once, against 1 of about 11 sessions without it.
+
+Both tests turn on when the guest's write lands relative to PGRAPH's. AAOnThenOffCPUWrite is a CPU
+write into a surface after an AA change. The hunk changes when an invalid surface becomes prunable,
+which moves when surfaces are freed. That is consistent with a timing shift. I did not trace it:
+it is outside this lane's scope, and it is one pixel against Forza's race going from 2-6 fps (and
+an lmkd kill) to 26-30 fps.
+
+**Decision: ready.** forza3 holds on every leg. The pixel residual is named here and in PR.md, so
+whoever folds it reads it. The pixel claim as registered (every non-Stencil capture must not move) is
+false as written, because it put four bimodal captures under must_not_move. That is the same
+mistake as Stencil in pixels (#79). A follow-up that wants the AA pixel can start from the two
+master captures above.
+
+### The ready head
+
+- Merged origin/master 70c9e96876 as 387ff6fb41. The merge was clean, nothing on master since
+  146b8887db touches `vk/surface.c`, and the hunk is unchanged.
+- `offline_fold.py` requires a finished run whose `ref` is a prefix of the branch head
+  (offline_fold.py lines 101-111). The ready commit is a new head, so `queue_fix.sh head` queues
+  one 420-s Forza run on it after the push. It is a readout, read with `judge.py --end 420`.
+
 ## Do not repeat
+
+- Do not register a pixel claim of "every non-Stencil capture must not move". ZPass_pixel_count,
+  GeometrySuperscreen_0.9990, Blend_surface/X_Z1RGB5_Add_SrcA_DstA and
+  Antialiasing_tests/AAOnThenOffCPUWrite each take two or more values on master, on one device and
+  one build. Run `pixel_survey.py` on a mover before calling it the change's.
 
 - Do not re-queue a pre-fix Forza soak on the Nova to read a whole master race. lmkd kills it at
   about 215 s (hostops, #414 comment 5882237205), and adb drops with it.
