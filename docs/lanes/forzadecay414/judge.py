@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The numbers behind this lane's hand-read Forza soak legs (#414).
 
-    judge.py <result dir> [<result dir> ...]
+    judge.py [--end N] <result dir> [<result dir> ...]
 
 One block per soak: what each registered leg of forzadecay414-bisect.json,
 -master.json and -fix-forza.json reads from that run's logcat. It prints
@@ -11,7 +11,10 @@ is the reader's to say.
 t = 0 is the `soak start` line, as in docs/lanes/forza414/timeline.py, whose
 30-s rows supply fps and G. `race` rows are t = 180..330, which is
 180 <= t < 360; `early` is rows t = 150..210 (150 <= t < 240) and `late`
-rows t = 270..330.
+rows t = 270..330. --end N (default 360) moves the window's end: race rows
+run to N - 30, `late` is the last three of them, `invalid= last` is read at
+or before N, and `all` rows t = 150..N - 30 print with their min / median
+(forzadecay414-fix-forza3.json reads a 420-s run with --end 420).
 
   G, fps      timeline.py's columns, per row
   w311        [watch311] lines after t = 150, and invalid= max / last at or
@@ -73,7 +76,7 @@ def fmt(x, spec='%.2f'):
     return '-' if x is None else spec % x
 
 
-def judge(d):
+def judge(d, end=360):
     logcat = os.path.join(d, 'logcat.txt')
     t0 = tend = None
     w311, txw, sdc = [], [], []
@@ -109,32 +112,39 @@ def judge(d):
     print('== %s' % os.path.basename(d.rstrip('/')))
     print('   log: soak end t=%s, last line t=%s' %
           (fmt(tend, '%.1f'), fmt(last_t, '%.1f')))
-    race = [180, 210, 240, 270, 300, 330]
-    print('   G   rows 180-330: %s' %
-          ' '.join(fmt(tl.get(t, (None, None))[1], '%.1f') for t in race))
-    print('   fps rows 150-330: %s' %
+    race = list(range(180, end, 30))
+    lrows = race[-3:]
+    print('   G   rows 180-%d: %s' % (race[-1],
+          ' '.join(fmt(tl.get(t, (None, None))[1], '%.1f') for t in race)))
+    print('   fps rows 150-%d: %s' % (race[-1],
           ' '.join(fmt(tl.get(t, (None, None))[0], '%.0f')
-                   for t in [150] + race))
+                   for t in [150] + race)))
     early = mean([tl.get(t, (None, None))[0] for t in (150, 180, 210)])
-    have_late = all(tl.get(t, (None, None))[0] is not None
-                    for t in (270, 300, 330))
-    late = mean([tl[t][0] for t in (270, 300, 330)]) if have_late else None
-    print('   fps early (150-210) %s, late (270-330) %s, late/early %s' %
-          (fmt(early), fmt(late),
+    have_late = all(tl.get(t, (None, None))[0] is not None for t in lrows)
+    late = mean([tl[t][0] for t in lrows]) if have_late else None
+    print('   fps early (150-210) %s, late (%d-%d) %s, late/early %s' %
+          (fmt(early), lrows[0], lrows[-1], fmt(late),
            fmt(late / early if late is not None and early else None)))
+    every = [tl.get(t, (None, None))[0] for t in [150] + race]
+    if all(v is not None for v in every):
+        med = statistics.median(every)
+        print('   fps all rows 150-%d: min %.0f median %.1f min/median %.2f' %
+              (race[-1], min(every), med, min(every) / med if med else 0))
+    else:
+        print('   fps all rows 150-%d: a row is missing' % race[-1])
 
     after = [v for t, v in w311 if t > 150]
-    upto = [v for t, v in w311 if t <= 360]
+    upto = [v for t, v in w311 if t <= end]
     mid = [v for t, v in w311 if 150 <= t < 240]
-    print('   w311: %d lines after t=150; invalid max %s, last (t<=360) %s, '
+    print('   w311: %d lines after t=150; invalid max %s, last (t<=%d) %s, '
           'median t=150-240 %s' %
-          (len(after), max(v for _, v in w311) if w311 else '-',
+          (len(after), max(v for _, v in w311) if w311 else '-', end,
            upto[-1] if upto else '-',
            fmt(statistics.median(mid) if mid else None, '%.0f')))
 
-    faf = [f for t, _, _, f in txw if 180 <= t < 360]
-    print('   faf calls/flip t=180-360: n=%d median %s max %s' %
-          (len(faf), fmt(statistics.median(faf) if faf else None),
+    faf = [f for t, _, _, f in txw if 180 <= t < end]
+    print('   faf calls/flip t=180-%d: n=%d median %s max %s' %
+          (end, len(faf), fmt(statistics.median(faf) if faf else None),
            fmt(max(faf) if faf else None)))
 
     stop = tend if tend is not None else last_t
@@ -161,5 +171,8 @@ def judge(d):
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         sys.exit(__doc__)
-    for d in sys.argv[1:]:
-        judge(d)
+    args, end = sys.argv[1:], 360
+    if args[:1] == ['--end']:
+        end, args = int(args[1]), args[2:]
+    for d in args:
+        judge(d, end)
