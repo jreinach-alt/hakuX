@@ -394,3 +394,51 @@ lane -- the four nominations above go to lane.local/lane.verdict433 to copy and 
 [lane.titleroutes] waiting: `1790846753-titleroutes-3234529` (Thor). If GitHub is still down when
 this resumes, read the result directly from `dispatch/results` / `logs/thor-coldconfirm.log` rather
 than waiting on a PR-parking waiter that cannot arm itself.
+
+## #397 -- 2026-10-01 (session 49)
+
+GitHub is still suspended (now ~40 h); relayed through OUTBOX.md per the offline protocol.
+
+**The castlevania-cod.route replay session 48 queued heat-stopped at 78s of 300s -- inconclusive, not
+a route failure.** `.hostops-diagnosed` on `0-0-s-1790846753-titleroutes-3234529` confirms the CPU
+thermal-gate (cpu-1-9 at 91C) stopped it 2 cycles into its 14, nowhere near its own mark. One heat
+stop for the named route (the generic survey it's built from heat-stopped separately already, not
+voided). Re-queued rather than escalating on one inconclusive run.
+
+**Gauntlet: Dark Legacy authored from its own survey's frames, found the same START-during-gameplay
+trap Sonic Heroes has, before any route was committed.** Walking `0-0-s-1790823800-titleroutes-
+2951589`'s route-frames cycle by cycle (not just the headline frame) found that by the 8th START/A
+cycle the wizard was already under player control in the dungeon (an in-engine tutorial scroll over
+live 3D, FPS 14), but the survey's blind 14-cycle default kept pressing START for 6 more cycles into
+that live play, and its `mark play` frame is the in-game pause menu's Audio page, not gameplay.
+Authored `routes/gauntlet.route`: 8 cycles, then mark, then a movement loop that never presses START
+again. Queued its first replay.
+
+**capcom-classics2: queued a generic survey instead of guessing a second fix.** The withdrawn
+nomination's mark frame is a "START MENU" structure the current guess route's arcade-coin sequence
+never anticipated. A second blind guess has low odds of landing right; queued `--route survey`
+instead, the method that worked for castlevania-cod and surfaced Gauntlet's trap above.
+
+**Two new titles from the ranked untouched list, surveyed generically:** Plus Plumb 2 (544B0004,
+rank 101) and Petit Copter (41510001, rank 135), both Perfect-rated, neither previously touched.
+
+**Sonic Heroes: queued a tiebreaker, not a blind edit.** 1 good (session 47) / 1 bad (session 48) of
+the same route and cycle count is a coin flip, not a verdict. Unlike Gauntlet, there's no per-cycle
+frame record for this title to ground a cycle-count fix in, so guessing a new count risks a wasted
+cold slot. Queued a 3rd screen of the existing route: 2-of-3 good reopens the nomination path, 1-of-3
+confirms it needs a real redesign.
+
+| title | device | route | request | purpose |
+|---|---|---|---|---|
+| Castlevania: Curse of Darkness | thor | castlevania-cod (2nd replay) | `1790850015-titleroutes-3951103` | confirm the route past the 78s heat stop |
+| Gauntlet: Dark Legacy | thor | gauntlet (1st replay, new route) | `1-1790850024-titleroutes-3953302` | confirm the 8-cycle fix |
+| Capcom Classics Collection Vol. 2 | thor | survey (generic) | `1-1790850027-titleroutes-3953658` | real frames to author a route from |
+| Plus Plumb 2 | thor | survey (generic) | `1-1790850029-titleroutes-3954081` | new title, no frames yet |
+| Petit Copter | thor | survey (generic) | `1-1790850032-titleroutes-3954284` | new title, no frames yet |
+| Sonic Heroes | thor | sonic-heroes (3rd screen) | `1-1790850035-titleroutes-3954488` | tiebreaker: 1 good / 1 bad so far |
+
+[lane.titleroutes] waiting: `1790850015-titleroutes-3951103`, `1-1790850024-titleroutes-3953302`,
+`1-1790850027-titleroutes-3953658`, `1-1790850029-titleroutes-3954081`, `1-1790850032-titleroutes-
+3954284`, `1-1790850035-titleroutes-3954488` (all Thor). GitHub is still down (~40 h); a successor
+should poll `dispatch/results`/`logs/thor-coldconfirm.log` directly rather than rely on the PR-parking
+waiter arming itself, same as the last three sessions.
