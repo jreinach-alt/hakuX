@@ -2808,3 +2808,138 @@ before trusting any `.hostops-diagnosed` "HEAT STOP" label.
 **Waiting:** none of my own device requests are outstanding at the time of
 writing (the four surveys above are newly queued, not something I'm blocking
 this session on). PR pushed and marked ready; nothing to wait on.
+
+## Session 45 (resumed, attempt 3): why session 44 didn't "finish", the work list was stale, and the real size of the backlog
+
+**Why the previous attempt did not finish.** Same reason as session 44's own
+answer: it didn't need to. Session 44 ended on a correct `[lane.titleroutes]
+waiting: none` with PR.md `State: ready` after pushing fresh work -- the
+harness resumed this session on the quiet clock, not because anything failed.
+`git merge-base --is-ancestor origin/master HEAD` confirmed `origin/master`
+(`70c9e96876`) is already an ancestor of this branch's tip, so no merge was
+needed before continuing.
+
+**Read the four pending requests from session 44's `waiting:`.** Exact-path
+reads (the Glob substring quirk from session 44 recurred identically on these
+four ids -- noted again so it stops costing a "missing" scare each time):
+
+| title | request | outcome |
+|---|---|---|
+| Psychonauts | `1790822573-titleroutes-2818801` | landed; never got past the title screen (see below) |
+| Phantom Dust | `1790822578-titleroutes-2819133` | `logs/thor-coldconfirm.log`: "HEAT STOP at xo 70 C -- run voided (no result)" -- no result dir, no frames, nothing to review |
+| Ninja Gaiden (Europe) | `1790822580-titleroutes-2819211` | still in `dispatch/running/` as of this session (got its cold slot after Phantom Dust) |
+| Deathrow | `1790822581-titleroutes-2819301` | still parked in `dispatch/parked/thor-cold-0930/`, waiting for a cold slot |
+
+**Psychonauts: the survey died to the SAME focus-steal defect, from a new
+launcher.** `run.log` shows a clean boot (xo-therm 48C cold start) into the
+title screen ("Press START to begin", credits scrolling behind), then 7
+cycles of the survey's standard START/A loop (`docs/testing/titles/routes/survey.route`,
+14 cycles at ~14s apiece) -- every one of the 7 route-frames
+(`194441-menu-start.png` through `194548-menu-start.png`) shows the
+*identical* title card, so none of the 7 START/A presses advanced it. At
+19:46:01 the route engine logged `ROUTE STOPPED: ... not-foreground:
+com.android.launcher3 (input focus is on display 4 ...)` and ended the run at
+136s of 300s -- not Daijishou this time, Android's own launcher took the
+focus. hostops's `.hostops-diagnosed` note on this result (read in full)
+correlates the stop with the Thor's dead fan (cpu zones hit 94.3C while
+xo-therm stayed at 64.5C) but is explicit that this is a correlation, not a
+proven cause. **Important distinction for next session:** 7 cycles at ~14s is
+~98s, and the run died at 136s (mid-boot-plus-menu), well inside the 300s
+budget -- so this is NOT evidence the title screen needs more than 14
+cycles, or a different input. It is evidence the survey never got the chance
+to finish its normal loop. Requeued the identical survey
+(`1790823861-titleroutes-2960863`) rather than hand-authoring a different
+route: there is no signal yet that the input pattern itself is wrong, only
+that the device cut the attempt short.
+
+**The work-list table (section 1, built 2026-09-26) is exhausted and stale.**
+After this session's six titles, essentially every row in that 48-title table
+is now routed, surveyed, or blocked. But the Thor's actual ISO set has grown
+far past those 48 since lane.xbox kept copying from the owner's PC library:
+
+    adb -s bdc158a5 shell ls -1 /storage/388C-68F7/ROMS/xbox   # 42 (was ~23 titles 9-26, now +junk/test files)
+    adb -s bdc158a5 shell ls -1 /storage/emulated/0/ROMS/xbox  # 347 (the internal-storage pool, new since GTA:SA, addendum 4)
+
+389 ISOs total between the two roots (these two `ls` calls needed no hold,
+same as Build step 1). Cross-referencing both lists' title_id prefixes
+against `targets.toml`'s 70 entries (every title this lane has ever routed,
+surveyed, or recorded a target for) with a throwaway script
+(`scratch/diffwork.py`, `scratch/rank_untouched.py`, not committed) found
+**327 titles on the internal root alone with no targets.toml entry at all** --
+this lane has barely scratched the real backlog lane.local's 12:40 PDT
+addendum already named ("321 titles are on the Thor and only 23 have a
+route"). The external root's 24 "untouched" hits were almost all titles
+*already* in targets.toml under a canonical id that doesn't match the ISO's
+own filename prefix (JSRF, Tork, Psychonauts, etc. ship without an id
+prefix on that card) -- false positives from the matching heuristic, not
+real gaps. Three real gaps there: RalliSport Challenge (1) (`4D53000F`),
+Whacked! (`4D530027`), Aliens Versus Predator: Extinction (`56550022`), plus
+junk (`Vimm's Lair.txt`, `fast.iso`, `nxdk_pgraph_tests_xiso.iso` -- not
+titles, skip).
+
+**Cross-referenced the 327 internal-root untouched titles against
+`xemu-compat-2026-09-25.csv`** (`scratch/rank_untouched.py`), sorted by
+rating then numeric xemu_rank (lower rank = more community reports), same
+ordering rule as the brief's Build step 1. Checked `host-tools/blocked-titles.txt`
+first (only Galleon is blocked; none of these are). Top "Perfect"-rated,
+ranked candidates: Bistro Cupid (69), Super Monkey Ball Deluxe (100), Plus
+Plumb 2 (101, name looks mangled -- low confidence), Family Guy: Video
+Game! (102), Gauntlet: Dark Legacy (115), Petit Copter (135, Japanese
+import), Sonic Heroes (147).
+
+**Queued this session's Thor batch**, same pattern as every prior batch
+(blind `--route survey`, 300s, `--hard-pin --device thor`, `--issue 397`,
+`--no-expect`, ref `56acf2f447` this branch's own tip -- no merge was needed
+so it's still ahead of `origin/master`):
+
+| title | title_id | request |
+|---|---|---|
+| Super Monkey Ball Deluxe | 53450038 | `1790823793-titleroutes-2949342` |
+| Family Guy: Video Game! | 545400B0 | `1790823797-titleroutes-2950719` |
+| Gauntlet: Dark Legacy | 4D57000E | `1790823800-titleroutes-2951589` |
+| Sonic Heroes | 5345002B | `1790823803-titleroutes-2951964` |
+| Bistro Cupid | 53550001 | `1790823806-titleroutes-2952343` |
+| Phantom Dust (requeue, 300s cap) | 4D530046 | `1790823811-titleroutes-2952744` |
+| Psychonauts (requeue, same input) | 4D4A0012 | `1790823861-titleroutes-2960863` |
+
+Skipped Plus Plumb 2 and Petit Copter from the ranked list for this batch
+(lower confidence / added menu-navigation risk); they're next in line, not
+dropped. `request.sh`'s own pilot gate admitted the Phantom Dust request
+("~32 min of device time... reviewed pilot ... admits it"), so this batch
+stayed inside the existing pilot rather than needing a fresh one.
+
+`targets.toml` updated: Psychonauts added fresh (no entry existed), Phantom
+Dust's notes extended with the void-and-requeue. Still parses (tomllib, 70
+titles) and `titlestate_selftest.py` passes.
+
+**Did not touch the Nova.** The two Thor-screen Nova nominations from
+session 44 (THPS2x, Capcom Classics 2, SMT NINE, Castlevania) are
+lane.local's/lane.verdict433's to action per the screening program's own
+division of labor ("lane.local queues their Nova investigation copies, and
+lane.verdict433 confirms them") -- not queued or touched here. Checked
+`dispatch/running/` and saw `shaderprebuild569` (not mine) using a device;
+left it alone rather than guessing which one and colliding.
+
+**For the next session:** the real work list going forward is the 327-title
+internal-root backlog, ranked by compat rating (script above, not committed
+-- rerun `scratch/rank_untouched.py` after refreshing `scratch/thor-int.txt`
+and `scratch/targeted_ids.txt` each session; both are throwaway and not
+committed, so they need regenerating, not resuming). Read this session's
+seven results when they land (Ninja Gaiden and Deathrow are also still
+outstanding from session 44), author routes for anything that reaches
+gameplay or a identifiable menu, and queue the next 4-6 ranked candidates
+(next up after this batch: Plus Plumb 2, Petit Copter, then whatever ranks
+next in `scratch/rank_untouched.py`'s output) so the Thor cold-slot runner
+never idles.
+
+**Waiting:** `1790823793-titleroutes-2949342` (Super Monkey Ball Deluxe),
+`1790823797-titleroutes-2950719` (Family Guy: Video Game!),
+`1790823800-titleroutes-2951589` (Gauntlet: Dark Legacy),
+`1790823803-titleroutes-2951964` (Sonic Heroes),
+`1790823806-titleroutes-2952343` (Bistro Cupid),
+`1790823811-titleroutes-2952744` (Phantom Dust, requeue),
+`1790823861-titleroutes-2960863` (Psychonauts, requeue),
+`1790822580-titleroutes-2819211` (Ninja Gaiden Europe, running),
+`1790822581-titleroutes-2819301` (Deathrow, still cold-parked) -- all Thor,
+all #397 pass-1 surveys, none an A/B prediction so no `ab_compare` judging
+is needed, reading each result dir directly is enough once it lands.
