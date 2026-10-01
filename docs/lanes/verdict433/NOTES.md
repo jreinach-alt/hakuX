@@ -1769,3 +1769,111 @@ No device request of this lane's own is outstanding, and a fresh sweep
 found nothing new to queue. Recording the merge and the re-check in
 `OUTBOX.md`. Stopping here rather than spending a device slot on a guess;
 the next real move is gated on other lanes' work.
+
+## Session 17 (2026-09-30, from 20:45 PDT, resumed as attempt 4)
+
+**Why session 16 did not finish.** It ended at a clean park: nothing of
+its own on a device, and every gate shut (#583, #591, the titleroutes route
+fixes). It could not act on two later addenda. The 20:10 PDT addendum
+withdrew 187, and the 20:50 PDT addendum made Forza and Kabuki candidates
+once #583 and P3 (#569) merged. (Sessions 15 and 16 dated their headings
+2026-10-01 from UTC; both ran on the evening of 09-30 PDT.)
+
+**Merged `origin/master`** (43 commits, clean): the Forza decay fix
+`e816bc35dd` (#583), its notes fold, titleroutes session 44, and the P3
+shader pre-build `b1cea467c6` (#569). Pushed as `5edbe2ca0f`.
+
+### 187: Ride or Die -- withdrawn: route ends on profile creation
+
+The owner reviewed the frames of `1-1790775886-lane.verdict433-3086875`: its
+scored window is the profile-creation screen, not a race. A menu at 60 fps
+scores 100%. Withdrawn, not counted. **The count is 7**: Alien Hominid
+(09-26) plus this lane's six (KOF, Azurik, WWE Raw 2, 50 Cent, BG:DA, Crimson
+Skies). Sessions 13-16 above, and the summary in `PR.md` before this
+session, counted 187. Those counts are wrong.
+
+### The 20:10 rule applied to the six passes
+
+187 was this lane's pass, so the other six got the same check.
+Five of the six routes take their last shot at the mark and none in the
+play loop, so for those five the mark frame is the last frame there is.
+Crimson's route shoots through the window.
+
+| Title | Frame checked | What it shows | Kept |
+|---|---|---|---|
+| KOF: MI Maniax | `-1456797/route-frames/210409-gameplay.png` | a live fight: round timer 37, both health bars, the "PERFECT" call; `210338-fight2`..`210407-moved` before it are mid-fight | yes |
+| Azurik | `-1456876/route-frames/212910-gameplay.png` | the training Arena in 3D (overlay FPS 29, health and element gauges), under the in-game tutorial box "To end your training session, leave the Arena ..." | yes, with a caveat |
+| WWE Raw 2 | `-1456493r2/route-frames/083314-gameplay.png` | a match in progress: The Rock vs The Undertaker in the ring, timer 00:25 | yes |
+| 50 Cent | `-1456544r2/route-frames/085725-gameplay.png` | third-person play in an alley, an enemy under the reticle | yes |
+| BG:DA | `-366130/route-frames/095310-gameplay.png` | the tavern from the play camera, the health/mana HUD up, the character at a table | yes |
+| Crimson Skies | `-1767161/route-frames/165411-play.png` .. `170248-play.png` | five frames across the window, the plane in flight with HUD and radar | yes |
+
+**Azurik's caveat.** The box at the mark is the tutorial prompt the route
+was written around. Its header says the play loop's first A closes it, and
+the authoring replay showed Azurik at the far arch 40 s later. The share,
+95.2% rather than a flat 100%, also reads like a 3D scene at ~30 fps, not a
+static box. No frame after the mark exists to show the walk, so the
+evidence is the route's replay, not this run. Kept.
+
+**For the next lane:** a route whose play loop takes no `shot` leaves one
+frame to review. Wherever that is a judgment call, a periodic `shot` in the
+loop would settle it. That is a route edit, so it belongs to titleroutes,
+not this lane.
+
+### Batch 10: Forza and Kabuki on master `b1cea467c6`, Nova, the defaults
+
+Pre-queue check: no `verdict.json` under `dispatch/results` has
+`"pass": true` for 4D53006E or 43560001. The pilot file
+`pilots/lane.verdict433.ok` (14 h old) admitted the 61 min.
+
+| Request | What | Seconds |
+|---|---|---|
+| `1-1790826491-lane.verdict433-3477434` | Kabuki warm-up launch, records the fight's pipelines | 420 |
+| `1-1790826491-lane.verdict433-3477568` | **Kabuki confirmation**, second launch on the apk | 1480 (mark at ~223 s, 1200 s after it) |
+| `1-1790826491-lane.verdict433-3477700` | **Forza confirmation**, survey route | 1480 (`mark play` at ~200 s, 1200 s after it) |
+
+- **Why the Kabuki warm-up.** P3 removes the create burst only on a launch
+  that has the title's recorded pipelines (shaderprebuild569 NOTES section
+  3, L1/L2). The dispatcher clears every shader cache when the apk differs
+  from the device's previous run (`clear_shader_caches_on_apk_change`), and
+  a fresh ref's first Kabuki launch is that cold L1. So the warm-up records
+  the pipelines and the confirmation is the L2. All three use one ref, so
+  Forza running between them does not clear anything. Read `shader_cache`
+  in the confirmation's `result.json`. If it says `cleared`, the run was
+  a cold first launch and is not the case P3 addresses.
+  - **A pass here means a warm launch.** A player's first fight on a new
+    install still meets the stall once. Record it that way.
+- **Forza's odds are low, and it was queued anyway.** forzadecay414's
+  420-s fix run read 20-30 fps through t = 390, and the bar is 28.5. A
+  1200-s window is still the measurement the addendum asked for, and it
+  records the decay over a full window on the fixed build. Judge it with
+  `--require confirmation` (targets.toml sets confirmation_s 1200 for both
+  titles). It needs `--reviewed-gameplay yes|no` from its route-frames
+  after `mark play`, under the 20:10 rule: a race in progress, not a menu.
+
+### Running table (confirmations)
+
+| Title | Device | Regimen | Request | Verdict | Frame reviewed |
+|---|---|---|---|---|---|
+| **KOF: Maximum Impact - Maniax** | nova | default | `-1456797` | **PASS Playable** (99.4%, 1282.6 s) | `210409-gameplay` |
+| **Azurik: Rise of Perathia** | nova | default | `-1456876` | **PASS Playable** (95.2%, 1292.3 s) | `212910-gameplay` (caveat above) |
+| **WWE Raw 2** | nova | default | `-1456493r2` | **PASS Playable** (99.8%, 1276.9 s) | `083314-gameplay` |
+| **50 Cent: Bulletproof** | nova | default | `-1456544r2` | **PASS Playable** (99.1%, 1348.3 s) | `085725-gameplay` |
+| **Baldur's Gate: Dark Alliance** | nova | default | `-366130` | **PASS Playable** (100%, 1303.9 s) | `095310-gameplay` |
+| **Crimson Skies** | nova | default | `-1767161` | **PASS Playable** (95.0%, 708.9 s; 600-s audit count 1/5) | `165411`..`170248-play` |
+| 187: Ride or Die | nova | default | `-3086875` | **withdrawn: route ends on profile creation** (owner, 09-30 20:10 PDT) | profile screen |
+| 007: Agent Under Fire | nova | default | `-366094` | FAIL (vault-door softlock, generic route) | |
+| Alien Hominid | thor (cold-start control) | default | `-3086847` | void (heat stop, xo 70 C, 402 s); already Playable (`lanelocal-1183547`, 09-26) | |
+| Otogi: Myth of Demons | thor (cold-start) | default | `-43486` | FAIL (thermal): pause at +703 s, 35.0%, peak xo 77.9 C | |
+| Arctic Thunder | nova | default | `-3086903` | FAIL: 684 s gameplay (route ran out), 63.9% | |
+| Kabuki Warriors | nova | default | `-3477568` (warm-up `-3477434`) | queued | |
+| Forza Motorsport | nova | default | `-3477700` | queued | |
+| Galleon | -- | -- | -- | blocked (owner, 09-30 14:40 PDT: FPS and polygon flicker; not heat) | |
+
+### Ending session 17: waiting on the three batch-10 requests
+
+`[lane.verdict433] waiting:` dispatch requests `1-1790826491-lane.verdict433-3477434`,
+`-3477568` and `-3477700` on the Nova. They resolve when each has a `DONE` in
+`dispatch/results/`. Then judge Kabuki and Forza with `title_verdict.py
+--require confirmation`, review the frames after the mark, and read Kabuki's
+`shader_cache`.

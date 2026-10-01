@@ -3,8 +3,8 @@
 State: draft
 
 Lane: verdict433            Issue: #433 [#507]
-Base: master @ 94cf8eb627 (branched); merged forward to origin/master's titleroutes-sessions-39-43 fold as of session 16
-Files: docs/lanes/verdict433/NOTES.md, docs/lanes/verdict433/PR.md, docs/lanes/verdict433/OUTBOX.md, docs/lanes/verdict433/judge_copy.py, docs/lanes/verdict433/scan.py, docs/lanes/verdict433/soaks.py, docs/lanes/verdict433/sweep.py, docs/lanes/verdict433/queue_batch1.sh, docs/lanes/verdict433/queue_batch2.sh, docs/lanes/verdict433/queue_batch3.sh, docs/lanes/verdict433/queue_batch4.sh, docs/lanes/verdict433/queue_batch5.sh, docs/lanes/verdict433/queue_batch6.sh, docs/lanes/verdict433/queue_batch7.sh, docs/lanes/verdict433/queue_batch8.sh, docs/lanes/verdict433/queue_batch9.sh
+Base: master @ 94cf8eb627 (branched); merged forward to origin/master @ b1cea467c6 (the #583 and #569 P3 folds) in session 17
+Files: docs/lanes/verdict433/NOTES.md, docs/lanes/verdict433/PR.md, docs/lanes/verdict433/OUTBOX.md, docs/lanes/verdict433/judge_copy.py, docs/lanes/verdict433/scan.py, docs/lanes/verdict433/soaks.py, docs/lanes/verdict433/sweep.py, docs/lanes/verdict433/queue_batch1.sh, docs/lanes/verdict433/queue_batch2.sh, docs/lanes/verdict433/queue_batch3.sh, docs/lanes/verdict433/queue_batch4.sh, docs/lanes/verdict433/queue_batch5.sh, docs/lanes/verdict433/queue_batch6.sh, docs/lanes/verdict433/queue_batch7.sh, docs/lanes/verdict433/queue_batch8.sh, docs/lanes/verdict433/queue_batch9.sh, docs/lanes/verdict433/queue_batch10.sh
 Prediction: none: analysis-only (no emulator code changed; this lane only reads device results and queues confirmation soaks through the normal harness)
 Needs device: yes (Nova for all confirmations; Thor cold-start-only per the 2026-09-30 10:20 PDT addendum, capped at 3/day, light titles under ~4.5W net)
 
@@ -17,13 +17,13 @@ code, Playable rule, or board file is touched -- this is a measurement-only
 lane that reads `title_verdict.py` output and queues confirmation soaks via
 `docs/testing/request.sh`.
 
-Across fifteen sessions (2026-09-29 through 2026-10-01, each one queuing a
+Across seventeen sessions (2026-09-29 and 2026-09-30, each one queuing a
 batch and stopping to let device soaks run rather than polling):
 
-- **Seven titles confirmed Playable this pass, all on the Nova at the
-  default confirmation regimen:**
-  - **187: Ride or Die** -- fps_ok=1.0, gameplay 1286.4s, no crash/hang,
-    audio_short=0.0, 0.0961 J/frame.
+- **Six titles confirmed Playable this pass, all on the Nova at the
+  default confirmation regimen; seven Playable in total with Alien
+  Hominid (09-26).** Each pass's mark frame was reviewed under the
+  09-30 20:10 PDT rule (NOTES, session 17, names each frame):
   - **KOF: Maximum Impact - Maniax** -- fps_ok=0.9936, gameplay 1282.6s, no
     crash/hang, audio_short=0.0005, 0.1121 J/frame.
   - **Azurik: Rise of Perathia** -- fps_ok=0.9521, gameplay 1292.3s, no
@@ -53,6 +53,10 @@ batch and stopping to let device soaks run rather than polling):
   seconds before an adb capture flake aborted it 10s short of the bar. All
   three reruns, queued after hostops's interim chmod-660 fix, came back
   clean.
+- **187: Ride or Die is withdrawn: its route ends on profile creation.**
+  It read fps_ok=1.0 over 1286.4s, but the owner's frame review showed the
+  scored window is the profile-creation screen, not a race. A menu at 60
+  fps scores 100%. Not counted.
 - **007: Agent Under Fire is not Playable.** Its first attempt started
   just before the chmod fix landed and hung silently at `qemu_init` for the
   full timeout (not a read on the title). Its rerun booted and played
@@ -119,9 +123,15 @@ changed.
 
 ## Outstanding before ready
 
-- **No device request of this lane's own is outstanding as of session 15.**
-  Every request this lane has queued has a final verdict (seven PASS
-  Playable, AUF and Arctic Thunder FAIL, Otogi FAIL on heat, Alien Hominid
+- **Batch 10 is queued on the Nova (session 17), on master b1cea467c6:**
+  Kabuki Warriors (warm-up `1-1790826491-lane.verdict433-3477434`, then the
+  1200-s confirmation `-3477568`, the second launch on the apk so P3's
+  pre-build has recorded pipelines) and Forza Motorsport (1200-s
+  confirmation `-3477700`, after the #583 decay fix). Both are flagged
+  titles, so 1200 s. Judge each, review its frames after the mark, and
+  record Kabuki's `shader_cache` state.
+- Every earlier request has a final verdict (six PASS Playable, 187
+  withdrawn, AUF and Arctic Thunder FAIL, Otogi FAIL on heat, Alien Hominid
   void/redundant).
 - Merged `origin/master` twice (sessions 14 and 15), most recently 46
   commits, clean, no conflicts. Session 15's merge folded
@@ -129,9 +139,9 @@ changed.
   still defaults to 0 -- no effect on this lane's default-regimen
   confirmations) and lane.titleroutes sessions 39-42 (Galleon
   owner-blocked in `targets.toml` too; six new Thor screening routes, none
-  validated yet). Checked directly: #583 (Forza) and #591 (GTA SA/ibcache)
-  have not folded.
-- **Further progress is gated on other lanes:** #583, #591, and
+  validated yet). #583 (Forza) folded since, in session 17's merge; #591
+  (GTA SA/ibcache) has not.
+- **Beyond batch 10, progress is gated on other lanes:** #591, and
   titleroutes revising its SMT: NINE and DOA3 routes from their own
   frames (both currently mark `gameplay`/`booted` on the wrong screen).
   Session 15's full sweep of every finished Nova and Thor route soak found

@@ -196,3 +196,15 @@ Re-swept every Nova and Thor route soak finished since session 15's close: 3 new
 Nothing of this lane's own is queued or outstanding. Not spending a Thor slot on a guess (2 of the day's 3-cap used, no third candidate with real evidence). Parking again until #583, #591, or a titleroutes route revision changes the picture.
 
 Full detail in `docs/lanes/verdict433/NOTES.md`, session 16.
+
+## #433 -- 2026-09-30 20:55 PDT
+
+[lane.verdict433] waiting: Kabuki Warriors and Forza Motorsport confirmations queued on the Nova, on master `b1cea467c6`. Playable count is **7**.
+
+- **187: Ride or Die is withdrawn: its route ends on profile creation.** The owner reviewed the frames, and its scored window (`-3086875`) is the profile-creation screen, not a race. My last two posts counted it (8). The correct count is 7: Alien Hominid (09-26) plus KOF: MI Maniax, Azurik, WWE Raw 2, 50 Cent, Baldur's Gate DA and Crimson Skies.
+- **Frames of the six remaining passes reviewed.** Each mark frame shows live play: a KOF fight, a WWE match, 50 Cent's alley shootout, BG:DA's tavern with the HUD up, and Crimson in flight across five frames. Azurik's mark frame is the 3D training arena under an in-game tutorial box. The route's first A closes that box, and the authoring replay showed Azurik walking 40 s later. Kept. NOTES session 17 names each frame.
+- **Batch 10, Nova, the defaults, 1200 s of gameplay (both titles are flagged):**
+  - Kabuki Warriors: a 420-s warm-up launch (`-3477434`), then the confirmation (`-3477568`). P3 removes the fight's create burst only on a launch with recorded pipelines, and the dispatcher clears the caches on a new apk, so the confirmation is the second launch on that build. A pass will mean a warm launch: a player's first fight on a new install still stalls once.
+  - Forza Motorsport (`-3477700`), on the #583 decay fix. Low odds: the fix's 420-s run read 20-30 fps against the 28.5 bar. The full window still measures whether the decay stays fixed over 20 minutes.
+
+Full detail in `docs/lanes/verdict433/NOTES.md`, session 17.
