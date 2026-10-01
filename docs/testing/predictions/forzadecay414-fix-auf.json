@@ -1,0 +1,25 @@
+{
+  "registered_utc": "2026-09-28T19:50:59Z",
+  "who": "lane.forzadecay414",
+  "issue": "414",
+  "prediction": "NOVA SOAK, read by hand. #517'S SAVING KEPT, on the title #517 scored it on. 007 Agent Under Fire, survey route, 420 s, perflog, regimen max, window 255-411 s, judged as drain474-auf-soak.json was: python3 docs/lanes/slowdown462/txwwin.py <result dir> 255 411 on each arm; power from title_verdict.py. A is 85347ffbd1 (master), B is 10fe2f59a7. B is A plus one change in vk/surface.c: pgraph_vk_drain_deferred_surface_releases(r, frame), which runs only after that slot's fence has been waited, also clears invalidation_frame on every invalid surface stamped with that slot. Before it, the stamp was a ring-slot index nothing reset, surface_in_flight() read it as busy whenever that slot was current or submitted (in steady state, always), and only pgraph_vk_flush_all_frames() made such a surface prunable; #517 moved the flush Forza's race hit on every direct surface-to-texture bind into the copy branch, so the list grew (NOTES section 3). #517's move is kept. #517's registered result (docs/lanes/drain474/NOTES.md, AUF pair 1-1790559191-drain474-1881273 / -1882754): faf 0.30 -> 0.00 calls/flip, bt 4.55 -> 0.10 ms/flip, flips/s 16.68 -> 16.97, gfps line median 16 -> 17, j_per_frame 0.4245 -> 0.3842 J (one pair, 5-6 samples; #517 itself read that as 'not worse', not a number). Legs, and the world each fails in: M0 >= 10 txw lines in 255-411 s in each arm, all parse, flips > 0; else VOID. M1 no thermal-pause in the window in either arm; else the fps leg is VOID. K1 B's faf calls/flip <= 0.02 and bs 1.00 +- 0.05 (#517's B: 0.00, 1.00). Fails in the world where the fix makes a direct bind drain again. K2 B's bt ms/flip <= A's + 0.5. Fails in the world where the rotation-time walk of invalid_surfaces costs the bind path. K3 B's flips/s >= 0.95 x A's (the pair-to-pair spread #517 read as unresolvable was 1.7%; 5% is three of those). Fails in the world where clearing stamps recycles images sooner and something on AUF's frame pays for it. K4 B's max [watch311] invalid= <= 20 (AUF peaks at 10-11 on refs after #517). Fails in the world where the fix loosens the list for titles that never leaked. READOUT, not judged: j_per_frame both arms (a single pair cannot resolve it, per #517).",
+  "a_ref": "85347ffbd1",
+  "b_ref": "10fe2f59a7",
+  "must_not_move": [],
+  "expect": {
+    "M0/txw_lines_min": 10,
+    "K1/b_faf_calls_per_flip_max": 0.02,
+    "K2/b_bt_ms_per_flip_max_over_a": 0.5,
+    "K3/b_over_a_flips_per_s_min": 0.95,
+    "K4/b_max_invalid_max": 20
+  },
+  "expect_counts": {},
+  "must_not_regress": [],
+  "title": "4541000D-007_Agent_Under_Fire.xiso.iso",
+  "device": "nova",
+  "seconds": 420,
+  "route": "survey",
+  "perflog": true,
+  "runs_per_arm": 1,
+  "expect_note": "Named rules read by hand from txwwin.py and the logcats; a soak writes no captures, so ab_compare never judges it."
+}
