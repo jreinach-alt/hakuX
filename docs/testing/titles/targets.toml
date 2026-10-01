@@ -69,7 +69,7 @@ name = "Dead or Alive 3"
 iso = { thor = "Dead or Alive 3 (USA) (En,Ja).xiso.iso" }
 route = "doa3"
 target_fps = 60
-notes = "A §11 soak title; a 60 fps fighter. Route: PR 2. routes/doa3.route: session 41's version waited 300 s blind (cold-cache timing) and the Thor's runner stopped it at 284 s before the first press (1790801641-titleroutes-1213635, diagnosed as heat but never reviewed against run.log); session 42 re-timed it for a warm cache (START from t~75) and re-queued it (0-0-s-1790805442-titleroutes-2050455). Session 44 read that result in full: it ran 475 of 480s and DID reach mark gameplay (150105-gameplay.png, fps_window_median 52.2, fps_ok_share 0.60 at the 30 bar), then its own route.txt logged 'ROUTE STOPPED: ... not-foreground: com.magneticchen.daijishou (the focused application on display 0 ..., not hakuX)' -- the Thor's Daijishou launcher took display 0 back at 15:06:44, title_verdict.py scores it crash+hang. thermal.jsonl's own xo-therm peaked at 69.9C, under the 70C the dispatcher's .hostops-diagnosed flag claims it hit. So BOTH of DOA3's Thor runs were mis-diagnosed as heat stops by harness_health.py; the real, reproducible failure is Daijishou regaining focus mid-run (reported dispatch/board-requests/titleroutes.md and #397, 2026-09-30 session 44). The screening program's two-heat-stops rule does not cleanly apply since neither stop was heat, but two Thor runs have now failed the same way regardless of label; DOA3 is Thor-only (no Nova copy exists) so a Nova reading needs a copy decision under the amended one-copy-per-title rule (owner 09-29 23:15: copy when work is held up for the title) -- not this lane's call. #431 (09-28; documented, not measured here): Impulse Gamer (2002): \"a consistent 60 frames per second\"; HonestGamers: \"flawless framerates\"; a frame-rate video of the original: youtube.com/watch?v=djgZg-FqeQs (\"Xbox Original | Dead or Alive 3 | Review Gameplay Framerate\")."
+notes = "A §11 soak title; a 60 fps fighter. Route: PR 2. routes/doa3.route: session 41's version waited 300 s blind (cold-cache timing) and the Thor's runner stopped it at 284 s before the first press (1790801641-titleroutes-1213635, diagnosed as heat but never reviewed against run.log); session 42 re-timed it for a warm cache (START from t~75) and re-queued it (0-0-s-1790805442-titleroutes-2050455). Session 44 read that result in full: it ran 475 of 480s and DID reach mark gameplay (150105-gameplay.png, fps_window_median 52.2, fps_ok_share 0.60 at the 30 bar), then its own route.txt logged 'ROUTE STOPPED: ... not-foreground: com.magneticchen.daijishou (the focused application on display 0 ..., not hakuX)' -- the Thor's Daijishou launcher took display 0 back at 15:06:44, title_verdict.py scores it crash+hang. thermal.jsonl's own xo-therm peaked at 69.9C, under the 70C the dispatcher's .hostops-diagnosed flag claims it hit. So BOTH of DOA3's Thor runs were mis-diagnosed as heat stops by harness_health.py; the real, reproducible failure is Daijishou regaining focus mid-run (reported dispatch/board-requests/titleroutes.md and #397, 2026-09-30 session 44). The screening program's two-heat-stops rule does not cleanly apply since neither stop was heat, but two Thor runs have now failed the same way regardless of label; DOA3 is Thor-only (no Nova copy exists) so a Nova reading needs a copy decision under the amended one-copy-per-title rule (owner 09-29 23:15: copy when work is held up for the title) -- not this lane's call. #431 (09-28; documented, not measured here): Impulse Gamer (2002): \"a consistent 60 frames per second\"; HonestGamers: \"flawless framerates\"; a frame-rate video of the original: youtube.com/watch?v=djgZg-FqeQs (\"Xbox Original | Dead or Alive 3 | Review Gameplay Framerate\"). Session 46 mark audit: the mark frame (0-0-s-1790805442-titleroutes-2050455, 150105) is black (a round fade?); one frame only."
 
 [titles."49470018"]
 name = "JSRF: Jet Set Radio Future"
@@ -83,7 +83,7 @@ name = "Grabbed by the Ghoulies"
 target_fps = 30
 iso = { nova = "Grabbed by the Ghoulies (USA) (En,Fr,De,Es,It).xiso.iso", thor = "Grabbed by the Ghoulies (USA) (En,Fr,De,Es,It).xiso.iso" }
 route = "ghoulies"
-notes = "#431 (comment 5851536933): 30, high confidence. Digital Foundry (2015): originally 480p30; hakuX swap interval 2.01-2.04"
+notes = "#431 (comment 5851536933): 30, high confidence. Digital Foundry (2015): originally 480p30; hakuX swap interval 2.01-2.04 Session 46 mark audit: the mark frame (0-0-x-1-1790634704-lane.idlehaltdefault-3054732, 193619) is a storybook transition page."
 
 [titles."4D530051"]
 name = "Conker: Live & Reloaded"
@@ -109,7 +109,7 @@ name = "Tork: Prehistoric Punk"
 target_fps = 30
 iso = { nova = "Tork - Prehistoric Punk (USA).iso", thor = "Tork - Prehistoric Punk (USA).iso" }
 route = "tork"
-notes = "#431 (comment 5851536933): 30, medium confidence. WorthPlaying (Xbox, 2005). routes/tork.route: lane.routeprep's draft (title screen timing from a gamecheck soak, the rest [guess]), queued as a Thor screening soak by titleroutes session 42, replayed in session 43/44 (1790805457-titleroutes-2055759): reached gameplay (164309-gameplay.png), but the Thor's Daijishou launcher took display 0 back at 290s ('ROUTE STOPPED ... not-foreground: com.magneticchen.daijishou'; the dispatcher's .hostops-diagnosed flag wrongly called this a heat stop -- see #397 session 44, the harness_health.py defect is systemic across this whole batch). Independent of that stop, fps_ok_share 0.585 at the 30 bar (fps_window_median 29.96, right at the edge) -- genuinely marginal even in the 130s it ran, not a Nova nomination."
+notes = "#431 (comment 5851536933): 30, medium confidence. WorthPlaying (Xbox, 2005). routes/tork.route: lane.routeprep's draft (title screen timing from a gamecheck soak, the rest [guess]), queued as a Thor screening soak by titleroutes session 42, replayed in session 43/44 (1790805457-titleroutes-2055759): reached gameplay (164309-gameplay.png), but the Thor's Daijishou launcher took display 0 back at 290s ('ROUTE STOPPED ... not-foreground: com.magneticchen.daijishou'; the dispatcher's .hostops-diagnosed flag wrongly called this a heat stop -- see #397 session 44, the harness_health.py defect is systemic across this whole batch). Independent of that stop, fps_ok_share 0.585 at the 30 bar (fps_window_median 29.96, right at the edge) -- genuinely marginal even in the 130s it ran, not a Nova nomination. Session 46 mark audit: the mark frame (0-0-s-1790805457-titleroutes-2055759, 164309) reads as a cutscene beat at FPS 7; one frame only."
 
 # Population 1 of #397 (lane.titleplay): the 20 titles staged on 2026-09-26.
 [titles."4541000D"]
@@ -129,7 +129,7 @@ name = "Dead or Alive Xtreme Beach Volleyball"
 iso = { nova = "54430007-Dead_or_Alive_Xtreme_Beach_Volleyball.xiso.iso" }
 target_fps = 60
 route = "doax"
-notes = "#431 (comment 5849938891): 60, low confidence. a user review only (set it so a person checks). #431 (09-28; documented, not measured here): NOT confirmed: eight reviews do not name a frame rate, and the one 30 fps claim found (a forum post) is about the pre-rendered opening video."
+notes = "#431 (comment 5849938891): 60, low confidence. a user review only (set it so a person checks). #431 (09-28; documented, not measured here): NOT confirmed: eight reviews do not name a frame rate, and the one 30 fps claim found (a forum post) is about the pre-rendered opening video. Session 46 mark audit: the mark frame (y-1790481308-titlebench-2893458, 011218-gameplay.png) is an in-game shop list."
 
 [titles."45410083"]
 name = "Black"
@@ -150,7 +150,7 @@ name = "Project Gotham Racing"
 target_fps = 60
 iso = { thor = "4D530003-Project_Gotham_Racing.xiso.iso" }
 route = "pgr"
-notes = "#431 (comment 5851536933): 60, medium confidence. GameSpot (Xbox, 2001). #431 (09-28; documented, not measured here): also The Pixel Empire: \"the 60fps driving\"."
+notes = "#431 (comment 5851536933): 60, medium confidence. GameSpot (Xbox, 2001). #431 (09-28; documented, not measured here): also The Pixel Empire: \"the 60fps driving\". Session 46 mark audit: pgr.returning's mark and both later frames (0-0-s-1-1790609665-lane.slowtier2-pgr365442) show the car at 0 mph on the grid: no frame shows the race moving."
 
 [titles."4541005D"]
 name = "GoldenEye: Rogue Agent"
@@ -202,7 +202,7 @@ name = "Project Gotham Racing 2"
 target_fps = 30
 iso = { thor = "4D53004B-Project_Gotham_Racing_2.xiso.iso" }
 route = "pgr2"
-notes = "#431 (comment 5851536933): 30, medium confidence. GameSpot and Eurogamer (Xbox, 2003): locked at 30"
+notes = "#431 (comment 5851536933): 30, medium confidence. GameSpot and Eurogamer (Xbox, 2003): locked at 30 Session 46 mark audit: the mark frame (1-1790569004-titleroutes-3006458) is the car stationary at the start gate, 0 mph."
 
 [titles."45410076"]
 name = "Burnout Revenge"
@@ -227,7 +227,7 @@ notes = "#431 (comment 5849938891): 60 from the hakuX swap interval: reviewed ga
 name = "Bruce Lee: Quest of the Dragon"
 iso = { thor = "56550016-Bruce_Lee_Quest_of_the_Dragon.xiso.iso" }
 route = "bruce-lee"
-notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default. Session 46 mark audit: the mark frame (1-1790487611-titleroutes-261841, 233203-gameplay.png) and the one before it are the title screen (Press Start)."
 
 [titles."54540079"]
 name = "Midnight Club 3: DUB Edition"
@@ -274,7 +274,7 @@ name = "Tony Hawk's Pro Skater 2x"
 iso = { thor = "Tony Hawk's Pro Skater 2x (USA).xiso.iso" }
 route = "thps2x"
 target_fps = 60
-notes = "#431 (comment 5851536933): 60, medium confidence. TeamXbox (2001, two reviews), ActiveXbox (2002). routes/thps2x.route: lane.routeprep's all-[guess] draft (Free Skate). Its first 480s Thor attempt (0-0-s-1790805442-titleroutes-2050654) stopped at 260s to the Thor's Daijishou launcher regaining display-0 focus, not heat (the .hostops-diagnosed flag said HEAT STOP; run.log says 'not-foreground: com.magneticchen.daijishou' -- see #397 session 44). Retried at the new 300s cap (1790808339-titleroutes-3127689, session 44): ran clean, reached gameplay (160005-gameplay.png), 184s gameplay, fps_window_median 59.82, fps_ok_share 0.976 at the 30 bar, own_target_share 0.786 at 60, no crash/hang -- Nova nomination (#433)."
+notes = "#431 (comment 5851536933): 60, medium confidence. TeamXbox (2001, two reviews), ActiveXbox (2002). routes/thps2x.route: lane.routeprep's all-[guess] draft (Free Skate). Its first 480s Thor attempt (0-0-s-1790805442-titleroutes-2050654) stopped at 260s to the Thor's Daijishou launcher regaining display-0 focus, not heat (the .hostops-diagnosed flag said HEAT STOP; run.log says 'not-foreground: com.magneticchen.daijishou' -- see #397 session 44). Retried at the new 300s cap (1790808339-titleroutes-3127689, session 44): ran clean, reached gameplay (160005-gameplay.png), 184s gameplay, fps_window_median 59.82, fps_ok_share 0.976 at the 30 bar, own_target_share 0.786 at 60, no crash/hang -- Nova nomination (#433). Session 46 mark audit: the mark frame (1790808339-titleroutes-3127689, 160005-gameplay.png) is THE HANGAR CHECKLIST goal list, not skating: the 97.6% at 59.82 measured that menu. Nomination withdrawn. Route re-marked (A accepts the checklist); screen queued as 1790830528-titleroutes-329478."
 
 [titles."4947002B"]
 name = "Panzer Dragoon Orta"
@@ -321,7 +321,7 @@ name = "Crash Bandicoot: The Wrath of Cortex"
 iso = { nova = "56550003-Crash_Bandicoot_The_Wrath_of_Cortex.xiso.iso" }
 target_fps = 60
 route = "crash-wrath-of-cortex"
-notes = "#431 (comment 5851536933): 60, low confidence. two user captures of a real Xbox (average 59.78). Route by lane.titleroutes 2026-09-29 (Nova, session 37), REPLAYED CLEAN twice: NEW GAME -> name CRASH -> START skips two cutscenes -> the warp room hub, walked with the stick. The scored window is the hub, not a level, so its fps is an upper bound."
+notes = "#431 (comment 5851536933): 60, low confidence. two user captures of a real Xbox (average 59.78). Route by lane.titleroutes 2026-09-29 (Nova, session 37), REPLAYED CLEAN twice: NEW GAME -> name CRASH -> START skips two cutscenes -> the warp room hub, walked with the stick. The scored window is the hub, not a level, so its fps is an upper bound. Session 46 mark audit: the mark frame (1-1790757193-lane.hddcrash-1697566, 101704) is the LOAD / SAVE menu."
 
 [titles."4D530004"]
 name = "Halo: Combat Evolved"
@@ -397,7 +397,7 @@ name = "Burnout"
 iso = { thor = "41430006-Burnout.xiso.iso" }
 route = "burnout"
 target_fps = 60
-notes = "#431 (09-28; documented, not measured here): medium confidence: 3rdvoicegaming: \"a rock-solid 60 frames per second\", and \"The Xbox and GameCube ports ... retain the excellent performance\"; ogxbox.co.uk (2025): 60, and \"particularly crash heavy sequences can cause occasional slowdown\"."
+notes = "#431 (09-28; documented, not measured here): medium confidence: 3rdvoicegaming: \"a rock-solid 60 frames per second\", and \"The Xbox and GameCube ports ... retain the excellent performance\"; ogxbox.co.uk (2025): 60, and \"particularly crash heavy sequences can cause occasional slowdown\". Session 46 mark audit: the mark frame and both later frames (0-0-s-1-1790609663-lane.slowtier2-burnout968727) show Game Over / Continue, not driving."
 
 [titles."45410062"]
 name = "Battlefield 2: Modern Combat"
@@ -415,7 +415,7 @@ name = "Azurik: Rise of Perathia"
 iso = { thor = "4D530007-Azurik_Rise_of_Perathia.xiso.iso" }
 route = "azurik"
 target_fps = 30
-notes = "Own target 30 from #431 (comment 5853568091): low confidence. Cxbx developer's blog (2010)."
+notes = "Own target 30 from #431 (comment 5853568091): low confidence. Cxbx developer's blog (2010). Session 46 mark audit: the mark frame (1-1790725091-lane.verdict433-1456876, 212910) is a modal tutorial dialog (Back / Continue); the window needs a frame review."
 
 [titles."41430016"]
 name = "Alias"
@@ -471,19 +471,19 @@ route = "kof-mi.returning"
 name = "Capcom Classics Collection Vol. 2"
 iso = { thor = "43430019-Capcom_Classics_Collection_Vol_2.xiso.iso" }
 route = "capcom-classics2"
-notes = "No #431 target; the default 30 applies. routes/capcom-classics2.route: lane.routeprep's all-[guess] draft (first game in the list, coin, start). Its first 480s Thor attempt (0-0-s-1790805455-titleroutes-2055173) ran 390 of 480s then a silent 'guest exited after 390s' with no not-foreground line (unlike the other four 'HEAT STOP'-flagged runs this session, which were Daijishou focus steals); its last thermal sample reads xo-therm 70.1C, so this one HEAT STOP diagnosis is at least plausible (see #397 session 44). Retried at the new 300s cap (1790808344-titleroutes-3128993, session 44): ran clean, reached gameplay (165540-gameplay.png), 190s gameplay, fps_window_median 59.94, fps_ok_share 1.0, no crash/hang -- Nova nomination (#433)."
+notes = "No #431 target; the default 30 applies. routes/capcom-classics2.route: lane.routeprep's all-[guess] draft (first game in the list, coin, start). Its first 480s Thor attempt (0-0-s-1790805455-titleroutes-2055173) ran 390 of 480s then a silent 'guest exited after 390s' with no not-foreground line (unlike the other four 'HEAT STOP'-flagged runs this session, which were Daijishou focus steals); its last thermal sample reads xo-therm 70.1C, so this one HEAT STOP diagnosis is at least plausible (see #397 session 44). Retried at the new 300s cap (1790808344-titleroutes-3128993, session 44): ran clean, reached gameplay (165540-gameplay.png), 190s gameplay, fps_window_median 59.94, fps_ok_share 1.0, no crash/hang -- Nova nomination (#433). Session 46 mark audit: the mark frame (0-0-s-1790808344-titleroutes-3128993, 165540-gameplay.png) is a START MENU (Start Game / Load Game / Game Settings / Exit Game): the 100% at 59.94 measured that menu. Nomination withdrawn. Session 46 mark audit: kof-mi.returning's mark frame (1-1790725091-lane.verdict433-1456797, 210409) is a post-round PERFECT / WINNER screen; the next round may follow, so the window needs a frame review, not a verdict on one frame."
 
 [titles."4B4E002D"]
 name = "Castlevania: Curse of Darkness"
 iso = { thor = "4B4E002D-Castlevania_Curse_of_Darkness.xiso.iso" }
 route = "castlevania-cod.first-run"
-notes = "No #431 target; the default 30 applies. routes/castlevania-cod.first-run.route: lane.routeprep's all-[guess] draft (New Game, default name), replayed session 44 (1790805456-titleroutes-2055301): reached gameplay (161303-gameplay.png), fps perfect while it ran (fps_window_median 59.94, fps_ok_share 1.0, no hang) but the Thor's Daijishou launcher took display 0 back at 381s ('not-foreground: com.magneticchen.daijishou'; the .hostops-diagnosed flag wrongly called this a heat stop -- #397 session 44). fps evidence alone clears the 90%-at-28.5+-no-hang bar, so nominated for Nova (#433) with that caveat; a clean full-length confirmation would be better before trusting it fully. No returning route yet."
+notes = "No #431 target; the default 30 applies. routes/castlevania-cod.first-run.route: lane.routeprep's all-[guess] draft (New Game, default name), replayed session 44 (1790805456-titleroutes-2055301): reached gameplay (161303-gameplay.png), fps perfect while it ran (fps_window_median 59.94, fps_ok_share 1.0, no hang) but the Thor's Daijishou launcher took display 0 back at 381s ('not-foreground: com.magneticchen.daijishou'; the .hostops-diagnosed flag wrongly called this a heat stop -- #397 session 44). fps evidence alone clears the 90%-at-28.5+-no-hang bar, so nominated for Nova (#433) with that caveat; a clean full-length confirmation would be better before trusting it fully. No returning route yet. Session 46 mark audit: the mark frame (0-0-s-1790805456-titleroutes-2055301, 161303-gameplay.png) is the Name Entry keyboard with an empty name: the 100% at 59.94 measured that menu. Nomination withdrawn. Route re-marked (type one letter, then Accept); screen queued as 1790830528-titleroutes-329599."
 
 [titles."41540002"]
 name = "Shin Megami Tensei: NINE"
 iso = { thor = "41540002-Shin_Megami_Tensei_Nine.xiso.iso" }
 route = "smt-nine"
-notes = "No #431 target; the default 30 applies. Japanese menus. routes/smt-nine.route: lane.routeprep's all-[guess] draft, replayed session 44 (1790805456-titleroutes-2055567): ran clean (no stop event), reached gameplay (162627-gameplay.png), 316s gameplay, fps_window_median 29.96, fps_ok_share 0.967, no crash/hang -- Nova nomination (#433)."
+notes = "No #431 target; the default 30 applies. Japanese menus. routes/smt-nine.route: lane.routeprep's all-[guess] draft, replayed session 44 (1790805456-titleroutes-2055567): ran clean (no stop event), reached gameplay (162627-gameplay.png), 316s gameplay, fps_window_median 29.96, fps_ok_share 0.967, no crash/hang -- Nova nomination (#433). Session 46 mark audit: the mark frame (0-0-s-1790805456-titleroutes-2055567, 162627-gameplay.png) is the Japanese name-entry keyboard with the given name empty: the 96.7% at 29.96 measured that menu. Nomination withdrawn; the route needs a typed name."
 
 [titles."4D4A0012"]
 name = "Psychonauts"

@@ -247,3 +247,62 @@ Gauntlet: Dark Legacy, Sonic Heroes, Bistro Cupid, plus Phantom Dust and Psychon
 `1790823811-titleroutes-2952744`, `1790823861-titleroutes-2960863` (this session's seven), plus
 `1790822580-titleroutes-2819211` and `1790822581-titleroutes-2819301` (Ninja Gaiden Europe, Deathrow,
 still outstanding from session 44). PR pushed and marked ready.
+
+## #433 -- 2026-09-30 22:30 PDT (session 46)
+
+**Nominations withdrawn: all four Thor screens from 2026-09-30 (session 44).** Their scored windows
+were menus, not play. The `mark gameplay` in each route was an unverified placeholder:
+
+| title | screen | what the mark frame shows |
+|---|---|---|
+| Tony Hawk's Pro Skater 2x | `1790808339-titleroutes-3127689` (97.6%, 59.82) | THE HANGAR CHECKLIST goal list |
+| Capcom Classics Collection Vol. 2 | `0-0-s-1790808344-titleroutes-3128993` (100%, 59.94) | START MENU |
+| Shin Megami Tensei: NINE | `0-0-s-1790805456-titleroutes-2055567` (96.7%, 29.96) | name-entry keyboard, given name empty |
+| Castlevania: Curse of Darkness | `0-0-s-1790805456-titleroutes-2055301` (100%, 59.94) | Name Entry keyboard, empty name |
+
+Please queue no confirmations for these four. THPS2x and Castlevania have been re-marked and
+re-screened on the Thor (`1790830528-titleroutes-329478`, `-329599`).
+
+**187: Ride or Die.** The confirmation `1-1790775886-lane.verdict433-3086875` scored the profile-name
+keyboard. The disk's profile list was empty, so the returning route's presses typed into Create's
+keyboard. The route is now a single file that creates the profile every run and marks after 6 s
+of driving in the race. Its replay is `1790830434-titleroutes-311228` (Nova, 300 s). 187 will be
+re-nominated if that replay's frames show the race.
+
+**Phantom Dust (4D530046): needs the Nova.** Two heat stops on the Thor (the second
+`0-0-s-1790823811-titleroutes-2952744` at 197 s). Its last frame is the first explorable room at an
+FPS overlay of 30. No fps verdict exists. It is on the Thor only.
+
+**Other routes whose mark frame is not live play** (one frame each, from the newest run that
+reached the mark; any Playable built on them needs a frame review of its window): bruce-lee (title
+screen), pgr.returning and pgr2 (car at 0 mph on the grid), crash-wrath-of-cortex (LOAD / SAVE),
+doax (shop list), burnout (Game Over), ghoulies (transition page), kof-mi.returning (PERFECT /
+WINNER result; a round may follow), azurik (tutorial dialog; the loop may dismiss it), doa3 (black),
+tork (cutscene-like, FPS 7). The table is in docs/lanes/titleroutes/NOTES.md, session 46.
+
+## #397 -- 2026-09-30 22:30 PDT (session 46)
+
+| title | device | route | replayed? | what the frames show |
+|---|---|---|---|---|
+| 187: Ride or Die | nova | 187-ride-or-die (single, new) | queued `1790830434-titleroutes-311228` | old mark sat on the profile keyboard |
+| Family Guy: Video Game! | thor | family-guy (new) | queued `1790830432-titleroutes-310926` | survey: Stewie walking in the nursery, ~29-30 |
+| Super Monkey Ball Deluxe | thor | super-monkey-ball-deluxe (new) | queued `1790830432-titleroutes-310985` | survey: stage 1-1 at 59 |
+| Sonic Heroes | thor | sonic-heroes (new) | queued `1790830432-titleroutes-311058` | survey: Seaside Hill at 59 |
+| Tony Hawk's Pro Skater 2x | thor | thps2x (re-marked) | queued `1790830528-titleroutes-329478` | old mark sat on the goal checklist |
+| Castlevania: Curse of Darkness | thor | castlevania-cod.first-run (re-marked) | queued `1790830528-titleroutes-329599` | old mark sat on Name Entry |
+| Gauntlet: Dark Legacy | thor | none | survey `0-0-s-1790823800-titleroutes-2951589` | in-engine intro at 14 fps; pause menu at 11-14 |
+| Ninja Gaiden (Europe) | thor | none | survey `0-0-s-1790822580-titleroutes-2819211` | text pages at 59; first area reached at ~270 s, dimmed |
+| Bistro Cupid | thor | none | survey `0-0-s-1790823806-titleroutes-2952343` | story dialogue only |
+| Psychonauts | thor | none | survey `0-0-s-1790823861-titleroutes-2960863` | title card at an FPS overlay of 1 |
+| Deathrow | thor | none | survey `0-0-s-1790822581-titleroutes-2819301` | heat stop at 208 s |
+| THPS3, SSX Tricky | thor | survey | queued `-311114`, `-311173` | |
+
+Correction to the 2026-09-30 session-44 post: the Thor stops it called "Daijishou focus steals, not
+heat" were heat stops. The cold-slot runner logged `HEAT STOP at xo 70 C` for each (DOA3 15:06:43,
+THPS2x 15:17:44, Castlevania 16:16:24, Tork 16:45:13 PDT). The launcher line follows the force-stop
+and does not cause it.
+
+[lane.titleroutes] waiting: `1790830432-titleroutes-310926`, `1790830432-titleroutes-310985`,
+`1790830432-titleroutes-311058`, `1790830433-titleroutes-311114`, `1790830433-titleroutes-311173`,
+`1790830528-titleroutes-329478`, `1790830528-titleroutes-329599` (Thor) and
+`1790830434-titleroutes-311228` (Nova). PR.md is ready.
