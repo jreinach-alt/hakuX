@@ -35,4 +35,11 @@ fps rows t = 150..390: `22 22 28 28 22 22 22 20 18`. The last two rows are lower
 The readout is on this stacked branch, not on the fix branch. A commit there would move the head
 off 78564d090b, and offline_fold.py would then need another 420-s Nova run before folding the fix.
 
+## NOTES section 12
+
+A run on this branch's earlier head, `1-1790823584-forzadecay414-2909711` (ref 089378374c), is DONE
+but short: the Nova's adb link dropped at about t = 308 s. Up to the drop, `invalid=` read 9-10 and
+gfps 25-30. It is not needed: under the fold order above, this branch is docs-only by the time it
+folds.
+
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

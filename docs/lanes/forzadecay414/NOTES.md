@@ -732,6 +732,39 @@ fps rows t = 150..390: `22 22 28 28 22 22 22 20 18`. forza3 read `20 20 26 28 26
 **Verdict:** the ready head runs a full 420-s race with the list bounded and no decay mechanism.
 `lane/forzadecay414-fix` stays at 78564d090b, `State: ready`, for lane.local to fold.
 
+## 12. Resume 2026-09-30 20:15 PDT (attempt 4): the notes head's run; nothing left but the fold
+
+**Why the previous attempt did not finish.** It did finish, apart from one wait. It pushed this
+branch's ready head 089378374c and queued a Forza run on it, `1-1790823584-forzadecay414-2909711`.
+offline_fold.py (`offline-git/offline_fold.py` lines 97-111) asks every branch whose diff from master
+touches emulator code for a DONE, non-void run whose `ref` prefixes the head. Until the fix folds,
+this branch's diff carries surface.c. The session then ended waiting on that run. Neither branch
+was folded when this attempt began: origin/master is still 70c9e96876.
+
+**2909711** (ref 089378374c, Nova ee317437, apk 961da6c7b43e, battery 57% at admit). It is DONE with
+no `VOID.txt`, so it passes offline_fold.py's check for this branch. It is a short run:
+- The Nova's adb link went offline at about t = 308 s. run.log reads `soak aborted: not-foreground
+  after 336s of 420s`, `adb_failures=9`. logcat.txt has 0 lmkd/DEVICE_LOST/VK_ERROR_/Fatal signal lines.
+- `judge.py --end 420`: `invalid=` max 10, last 10 (median 9). The walk is 0.06 ms/flip at t = 152.8
+  and 0.04 at t = 308.2. fps rows t = 150..300 read `20 22 28 28 28 8`.
+- The 8 is the 300-330 row cut off at about 308 s, not a fall. The last lines before the drop
+  (20:13:49-20:13:59) read `gfps=25 29 30 30 29 29`, `hakuX-pace ... ms=` 1973-2220, and
+  `[watch311] ... invalid=9`, then `invalid=10`.
+- The thermal summary shows no thermal-pause device above 0, and the clocks flat at their maxima
+  (cpu0 2016, cpu3 2707-2803, cpu7 3187, gpu 615 MHz).
+
+It adds nothing to the fix's case, which rests on forza3 and 2624677 (sections 10 and 11). It
+neither reads a full window nor shows a decay before the link drop.
+
+**This commit moves this branch's head off 089378374c,** so 2909711 no longer matches it. That is
+safe in the order PR.md already gives: fold `lane/forzadecay414-fix` (78564d090b, matched by
+2624677) first. After that, this branch's diff from master is `docs/lanes/forzadecay414/` only,
+offline_fold.py's code check does not apply, and no run is needed. Folded before the fix, it would
+be refused for having no run. That refusal is harmless, but it is the wrong order.
+
+**State:** both branches are `State: ready`. The lane is waiting only on lane.local's
+`offline_fold.py`, which is outside this session.
+
 ## Do not repeat
 
 - Do not commit to a branch after its head run is queued, if offline_fold.py will fold it. The
