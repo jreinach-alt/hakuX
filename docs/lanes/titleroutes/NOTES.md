@@ -3538,3 +3538,123 @@ slot and returns nothing.
   standard. The six from the 04:11 addendum come first, in this order:
   Gauntlet, Castlevania, Sonic Heroes (tiebreaker), Capcom Classics 2
   survey, Plus Plumb 2 survey, Petit Copter survey.
+
+## Session 51 (attempt 1 of a fresh worktree resume): why session 50 did not finish, the evidence it left is now gone, and the owner's decision is still pending
+
+**Why session 50 did not finish.** It did not fail: it found the Thor's
+cpu-1-9 >= 90 C stop voids every title-gameplay soak regardless of start
+temperature or regimen, escalated the decision it has no authority to make
+(raise the stop, require consecutive reads, or screen on the Nova), and
+ended on a correct `blocked:` with PR #? merged as `c071ae6e60`
+(`fold: lane/titleroutes (offline) -- titleroutes: session 50`). This
+session reads as a fresh resume of the worktree, merged `origin/master`
+(fast-forward, `6c31c4958c` -> `c071ae6e60`) and re-checked everything
+before writing anything new.
+
+**The owner has not ruled yet.** `host-tools/escalations.md` (10-01 05:13
+PDT) and `dispatch/hold/thor.why` (UPDATE 10-01 05:09 PDT) both still show
+the question open: whether to grant a one-time one-copy-per-title exception
+and screen titleroutes' Thor-only pending titles (Castlevania, Gauntlet,
+Capcom Classics Vol 2, Plus Plumb 2, Petit Copter, Sonic Heroes) on the
+Nova while the fan is dead. `host-tools/hostops-inbox.md` line 1883 (10-01
+05:14 PDT) shows hostops tried to reach lane.local directly and could not
+(no reachable session), so it is recorded there as the durable record
+instead. No entry after that exists in either file. `dispatch/hold/thor` is
+unchanged since: the Thor stays under `lanelocal-fanwait`, queued requests
+<= 480 s still technically admitted by the hold text but hostops' own
+09-30/10-01 ruling (also in `thor.why`) says no new Thor title-GAMEPLAY
+request should be queued until the fan ships. GitHub is still suspended
+(`gh api user` still returns the same 403 "account was suspended"), so the
+offline protocol stays in force and no PR-parking waiter can arm.
+
+**Do not repeat: a dispatch soak's route-frames do not survive to the next
+session.** Session 50's "State for a successor" asked for an offline
+cycle-by-cycle walk of `castlevania-cod`'s survey frames (request
+`0-0-s-1790839398-titleroutes-2238193`) before trusting its 14-cycle route,
+the same way Gauntlet's trap was found. That evidence is gone: neither
+`dispatch/results/` nor `~/hakux-work/nav/` has anything matching
+`2238193`, `2951589` (Gauntlet's survey), or any of the six session-49/50
+request ids (checked by glob across both trees, and across all of
+`/home/justin/hakux-work`). `nav.py` interactive sessions persist in `nav/`
+for days (burnout3's 09-26 session is still there), but these were
+`--route survey` dispatch soaks, and `dispatch/results/` is evidently
+pruned on a much shorter cycle. None of this attempt's three sessions
+(47, 48, 49/50) copied the result dirs into `scratch/judge/` the way
+`judge.py` does for benchmarked titles, so there is no local copy either.
+**Lesson for every future session that reads a dispatch result for its
+frames, not just its verdict: copy it into `scratch/` (e.g.
+`python3 scratch/judge.py <id>`, which already copies the whole result
+dir, not just the verdict) in the same session that reads it, even if the
+analysis is deferred.** The castlevania-cod cycle-by-cycle question, the
+Gauntlet 8-cycle confirmation, the Sonic Heroes tiebreaker's result, and
+whatever capcom-classics2/Plus Plumb 2/Petit Copter's surveys showed are
+now simply unknown; they will have to be re-run once the Thor (or an
+approved Nova exception) is available again. This is lost device time, not
+just lost analysis.
+
+**Offline work this session: fixed `scratch/targeted_ids.txt`, the
+exclusion list session 49's own notes said was stale.** Cross-checked
+every `title_id` with `route = "..."` set in `targets.toml` (50 of them)
+against the file and found five missing: `41560004` (THPS3), `4D57000E`
+(Gauntlet), `5345002B` (Sonic Heroes), `53450038` (Super Monkey Ball
+Deluxe), `545400B0` (Family Guy). Also added three titles that are
+mid-investigation with a bare `targets.toml` entry but no route yet, so
+`rank_untouched.py` does not re-surface them as if untouched: `544B0004`
+(Plus Plumb 2), `41510001` (Petit Copter), `53550001` (Bistro Cupid, 300 s
+survey ended in story dialogue, no heat stop, per session 49's "Next
+session" item 6). Verified: `python3 scratch/rank_untouched.py` now lists
+319 genuinely untouched titles headed by Doom 3, Bicycle Casino, Monster
+Garage, Doom 3: Resurrection of Evil, Greg Hastings' Tournament Paintball
+Max'd, AMF Bowling 2004, High Rollers Casino, Breeders' Cup, AMF Xtreme
+Bowling -- none of them already-routed titles, which is the bug session 49
+flagged and did not have time to fix.
+
+Also re-ran the Proof-section checks as a sanity pass (no routes/targets.toml
+changed this session, so this was a check, not a requirement):
+`python3 docs/testing/titles/titlestate_selftest.py` (all checks passed)
+and `targets.toml` parses via `tomllib` (80 titles, unchanged).
+
+**No device work this session.** The Thor is blocked on the owner's
+decision (above). The Nova has no hold file, but nothing has lifted the
+09-26 21:10 PDT device-role split (Nova = #462 investigation only) or
+granted the one-copy-per-title exception the pending Thor titles would
+need, and escalations.md (10-01 00:13 PDT entry and others) show its queue
+still carries 30+ pinned #462/#474/#414/#569/#507 requests. Taking a Nova
+session for title-pipeline work without that exception would be making the
+owner's open decision myself; not done. The 13 Nova-only titles from the
+original work list that still lack a route and need no copy (Batman --
+blocked on combat, Black Stone, Star Wars Ep. III, Bloody Roar: Extreme,
+Gunvalkyrie, Dino Crisis 3, Buffy, Halo: Combat Evolved, Conker, Halo 2,
+Ninja Gaiden Black, ToeJam & Earl III, Tron 2.0) are a separate question
+(the Nova's queue depth, not the role split) and are listed here for a
+successor, but a held Nova session for them was not attempted this
+session either, since the Nova's queue is not this lane's to jump and no
+addendum has said its #462 priority has lifted.
+
+### State for a successor
+
+- **Still blocked on the owner's Thor-screening decision** (escalations.md
+  10-01 05:13 PDT, thor.why 10-01 05:09 PDT UPDATE, hostops-inbox.md line
+  1883). Nothing to re-queue on the Thor until it lands. Re-check these
+  three files first in any resumed session; do not re-queue the six voided
+  titles on your own judgment.
+- **The castlevania-cod / gauntlet / sonic-heroes / capcom-classics2 /
+  Plus Plumb 2 / Petit Copter evidence is gone.** Treat all six as if their
+  session-49/50 soaks never happened: re-screen from scratch once device
+  time is available, and copy results into `scratch/judge/` immediately
+  this time.
+- **`scratch/targeted_ids.txt` is now accurate** (77 ids, all 50 routed
+  title_ids plus 3 mid-investigation ones). `scratch/rank_untouched.py`'s
+  output is trustworthy again: Doom 3, Bicycle Casino, Monster Garage, Doom
+  3: Resurrection of Evil, Greg Hastings' Tournament Paintball Max'd, AMF
+  Bowling 2004, High Rollers Casino, Breeders' Cup, AMF Xtreme Bowling, ...
+  (all Perfect-rated, all currently unranked/untouched; these need a device
+  to survey/route, same Thor-decision blocker as everything else Thor-side).
+- **13 Nova-only, no-copy-needed titles with no route**, listed above, for
+  whoever next gets a held Nova session cleared for title-pipeline work:
+  Batman (blocked on combat specifically, see session 2), Black Stone, Star
+  Wars Ep. III, Bloody Roar: Extreme, Gunvalkyrie, Dino Crisis 3, Buffy,
+  Halo: Combat Evolved, Conker: Live & Reloaded, Halo 2, Ninja Gaiden
+  Black, ToeJam & Earl III, Tron 2.0: Killer App.
+- **Galleon:** still blocked by the owner (FPS and polygon flicker). Do not
+  queue it on either device.

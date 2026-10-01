@@ -1,43 +1,60 @@
-# titleroutes: session 50 -- the Thor's 90 C CPU stop voids every title screen; lane blocked on the threshold
+# titleroutes: session 51 -- still blocked on the Thor's CPU stop; fixed the stale rank_untouched exclusion list
 
 State: ready
 
 Lane: titleroutes          Issue: #397 (per-title gameplay fps; 0.5 tracking #433)
-Base: master @ dc9529a408 (origin/master merged in session 50; session 49's PR folded there)
+Base: master @ c071ae6e60 (origin/master merged this session; session 50's PR folded there)
 Files: docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/OUTBOX.md, docs/lanes/titleroutes/PR.md
-Prediction: none: no arm (lane notes only; the one device run was a route screen, not an A/B arm)
-Needs device: yes, queued requests only (Thor cold-slot runner, 300 s); no held session
+Prediction: none: no arm (lane notes only; no device run this session)
+Needs device: no new device time requested this session (blocked; see below)
 
 ## What changed
 
-Notes only. No routes and no targets.toml changes this session.
+Notes only. No routes and no targets.toml changes this session (`scratch/` is
+not in this lane's `Files:` and is not committed).
 
-**All six of session 49's Thor requests voided on `thor_coldconfirm.sh`'s cpu-1-9 >= 90 C stop,
-64-169 s in.** None reached its mark, so none says anything about its route.
+**Confirmed the Thor-screening blocker from session 50 is still open.**
+`escalations.md` (10-01 05:13 PDT) and `dispatch/hold/thor.why` (UPDATE
+10-01 05:09 PDT) show the owner has not yet decided whether to raise
+`thor_coldconfirm.sh`'s `CPU_STOP_C=90`, require consecutive reads, or grant
+a one-time one-copy-per-title exception to screen the six pending titles
+(Castlevania, Gauntlet, Capcom Classics Vol 2, Plus Plumb 2, Petit Copter,
+Sonic Heroes) on the Nova. hostops tried to reach lane.local directly and
+found no session; the decision sits in `hostops-inbox.md` as the durable
+record. Queued nothing new on the Thor.
 
-**A cold start does not prevent the stop, and neither does a lower regimen.** Hostops' 04:11 fix makes
-`coldslot.sh` require cpu-1-9 <= 55 C at the start. It would have admitted the two Castlevania runs that
-started at 41.4-41.8 C, and both voided at ~80 s. This session's one pilot ran Gauntlet at
-`--env PERF_REGIMEN=default` (`1790853287-titleroutes-569824`). On the Thor that is perf_mode 0, the same
-as REST. It started at 39.5 C, read 81 C at +39 s, and was stopped at ~74 s. Before the stop existed,
-Castlevania held 94-95 C for four minutes and played 284 s to gameplay. Sonic Heroes' void was a
-one-sample trip: it was stopped 4 s into its route while every logged sample read about 51 C. Every Thor
-route marks later than the ~75 s the die takes to reach 90 C (the shortest, Gauntlet, marks at ~145 s),
-so no screen can reach its mark under this stop.
+**Found and recorded a process loss: the six titles' survey/screen
+evidence from sessions 47-50 is gone.** Neither `dispatch/results/` nor
+`~/hakux-work/nav/` has anything for `castlevania-cod`'s survey, Gauntlet's
+survey, or any of the six session-49/50 request ids -- `dispatch/results/`
+is pruned sooner than assumed, and none of those results were copied into
+`scratch/judge/` before they went. The offline cycle-by-cycle frame walk
+session 50 asked a successor to do (the same method that found Gauntlet's
+START-during-gameplay trap) can no longer happen; those titles will need a
+fresh screen once device time is available. Recorded in NOTES as a lesson:
+copy a dispatch result into `scratch/` the same session it's read, not a
+session later.
 
-| run | regimen | cpu-1-9 at start | +38 s | +69 s | stopped |
-|---|---|---|---|---|---|
-| Castlevania `3234529` | max | 41.8 C | 76.3 | 84.5 | ~80 s |
-| Castlevania `3951103` | max | 41.4 C | 77.4 | 86.8 | ~80 s |
-| Gauntlet `569824` | default | 39.5 C | 81.0 | 86.0 | ~74 s |
-| Sonic Heroes `3954488` | max | 51.6 C | 51.6 | 51.2 | 4 s into its route |
-| Castlevania survey `2238193`, before the stop existed | max | 52.0 C | 95.0 | 94.6 | none; held 94-95 C for 4 min, played to gameplay |
+**Fixed `scratch/targeted_ids.txt`**, the exclusion list session 49's own
+notes flagged as stale (it was re-surfacing already-routed titles as
+"untouched" to `scratch/rank_untouched.py`). Cross-checked all 50
+`title_id`s with `route = "..."` in `targets.toml` against the file: 5 were
+missing (THPS3, Gauntlet, Sonic Heroes, Super Monkey Ball Deluxe, Family
+Guy). Added those plus 3 mid-investigation titles with a bare
+`targets.toml` entry but no route yet (Plus Plumb 2, Petit Copter, Bistro
+Cupid), so they don't get re-surfaced either. Verified
+`python3 scratch/rank_untouched.py` now lists 319 genuinely untouched
+titles headed by Doom 3, Bicycle Casino, Monster Garage, and others -- no
+already-routed titles in the output anymore.
 
-The six re-queues the 04:11 addendum asked for are withheld: they would void the same way. The lane is
-blocked on a host-tools decision: raise the stop, require consecutive reads, or screen on the Nova until
-the fan is replaced. That decision is in `dispatch/board-requests/titleroutes.md` and OUTBOX #397. NOTES.md
-session 50 also has a cold-start state for a successor: confirmed and nominated routes, routes waiting on
-a clean replay, voided surveys, and the re-queue order and command.
+**No device work.** The Thor stays off-limits under the open decision. The
+Nova has no hold file, but neither the 09-26 21:10 PDT device-role split
+(Nova = #462 only) nor a one-copy-per-title exception has been lifted, and
+its queue still carries 30+ pinned #462/#474/#414/#569/#507 requests
+(escalations.md). Taking a Nova session for title-pipeline work without
+that exception would be making the owner's open decision myself, so none
+was taken. 13 Nova-only titles needing no copy and still unrouted are
+listed in NOTES for whoever next gets Nova time cleared for this work.
 
 ## Local checks (no CI while GitHub is suspended)
 
