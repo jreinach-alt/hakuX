@@ -3262,15 +3262,34 @@ Castlevania route, and queueing the next batch below.
 
 ### Queued next (this session)
 
-Thor (`--device thor --hard-pin --seconds 300`, ref `e999a849b2` once
-pushed): replay `routes/castlevania-cod.route` for the first time (confirm
-the newly-authored route reaches its own mark on a route-specific run, not
-just the generic survey). Given the Thor is heat-stopping on every single
-request right now, no other Thor work is queued this batch -- one request,
-not several, so a cold slot is not wasted on titles already decided
-(monkey-ball/thps2x/thps3 are nominated, sonic-heroes needs a route
-decision this lane hasn't made yet, not a re-screen).
+Thor (`--device thor --hard-pin --seconds 300`, ref `d7791f6c0a`, pushed):
+`1790846753-titleroutes-3234529`, the first replay of `routes/castlevania-
+cod.route` (confirm the newly-authored route reaches its own mark on a
+route-specific run, not just the generic survey). Given the Thor is
+heat-stopping on every single request right now, no other Thor work is
+queued this batch -- one request, not several, so a cold slot is not
+wasted on titles already decided (monkey-ball/thps2x/thps3 are nominated,
+sonic-heroes needs a route decision this lane hasn't made yet, not a
+re-screen).
 
 No Nova work queued by this lane this session: 187, monkey-ball, thps2x,
 thps3 are all nominated to #433/OUTBOX for lane.local/lane.verdict433 to
 copy and confirm, not for titleroutes to benchmark directly.
+
+### Next session
+
+1. Read `1790846753-titleroutes-3234529`. Open the mark frame before writing
+   anything -- the lesson of this session was that a route caught in one
+   good frame is not proven; check this run's own evidence on its own terms.
+2. Decide Sonic Heroes: either rework `routes/sonic-heroes.route` to stop
+   pressing START once gameplay is plausible (first run's own mark frame
+   already read 00:34:73 of elapsed level time at cycle 9, so the level
+   likely starts well before that point -- fewer cycles may clear it
+   safely), or queue a third screen and require TWO clean confirmations
+   before nominating, not one.
+3. smt-nine and capcom-classics2 (withdrawn nominations, session 46) and
+   Gauntlet/Ninja Gaiden (routes still to author) are untouched since
+   session 46's "Next session" list; pick these up once the Thor's heat
+   gives more than one cold slot a session.
+4. Then the ranked list (`scratch/rank_untouched.py`): Plus Plumb 2, Petit
+   Copter, Doom 3, Monster Garage, AMF Bowling 2004, ...

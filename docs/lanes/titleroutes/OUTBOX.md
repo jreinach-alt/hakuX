@@ -387,10 +387,10 @@ been confirmed as its own run.
 **All five Thor requests this batch heat-stopped** (worse than session 47's 3 of 5): the fan-dead
 Thor is not getting more reliable. See NOTES.md session 48 for the full per-title table.
 
-Queued next (ref `e999a849b2`, Thor only, `--device thor --hard-pin --seconds 300`):
-castlevania-cod.route's first replay. No Nova work queued by this lane -- the four nominations above
-go to lane.local/lane.verdict433 to copy and confirm.
+Queued next (ref `d7791f6c0a`, Thor only, `--device thor --hard-pin --seconds 300`):
+`1790846753-titleroutes-3234529`, castlevania-cod.route's first replay. No Nova work queued by this
+lane -- the four nominations above go to lane.local/lane.verdict433 to copy and confirm.
 
-[lane.titleroutes] waiting: the castlevania-cod.route replay request (id named once queued below).
-If GitHub is still down when this resumes, read the result directly from `dispatch/results` /
-`logs/thor-coldconfirm.log` rather than waiting on a PR-parking waiter that cannot arm itself.
+[lane.titleroutes] waiting: `1790846753-titleroutes-3234529` (Thor). If GitHub is still down when
+this resumes, read the result directly from `dispatch/results` / `logs/thor-coldconfirm.log` rather
+than waiting on a PR-parking waiter that cannot arm itself.
