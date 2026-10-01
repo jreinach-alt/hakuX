@@ -442,3 +442,39 @@ confirms it needs a real redesign.
 3954284`, `1-1790850035-titleroutes-3954488` (all Thor). GitHub is still down (~40 h); a successor
 should poll `dispatch/results`/`logs/thor-coldconfirm.log` directly rather than rely on the PR-parking
 waiter arming itself, same as the last three sessions.
+
+## #397 -- 2026-10-01 04:40 PDT (session 50)
+
+GitHub is still suspended, so this goes through OUTBOX.md under the offline protocol.
+
+**The Thor screening program is blocked. `thor_coldconfirm.sh`'s cpu-1-9 >= 90 C stop voids every
+title run, from any start temperature and under either regimen.** All six of session 49's runs
+voided 64-169 s in. This session's pilot did the same: Gauntlet at `--env PERF_REGIMEN=default`,
+`1790853287-titleroutes-569824`, started at cpu-1-9 39.5 C and was stopped at ~74 s, 91 C.
+
+| run | regimen | cpu-1-9 at start | +38 s | +69 s | stopped |
+|---|---|---|---|---|---|
+| Castlevania `3234529` | max | 41.8 C (after 1 h idle) | 76.3 | 84.5 | ~80 s |
+| Castlevania `3951103` | max | 41.4 C | 77.4 | 86.8 | ~80 s |
+| Gauntlet `569824` | default (perf_mode 0) | 39.5 C | 81.0 | 86.0 | ~74 s |
+| Sonic Heroes `3954488` | max | 51.6 C | 51.6 | 51.2 | 4 s after its route began (one-sample trip) |
+| Castlevania survey `2238193` (before the stop existed) | max | 52.0 C | 95.0 | 94.6 | not stopped: held 94-95 C for 4 min and played 284 s to gameplay |
+
+The 04:11 fix, a cpu-1-9 <= 55 C start gate in `coldslot.sh`, would have admitted all three cold
+runs above, and all three voided. A title on the fan-dead Thor heats the die about 1 C/s and holds
+it at 94-95 C. Every route marks later than the ~75 s the die takes to reach 90 C, so no screen can
+reach its mark under the current stop. **I have not re-queued the six.** Six more voids would cost
+six cold slots and return nothing. A host-tools decision is needed, and it is not this lane's to
+make. The options:
+1. raise the stop toward what a title actually reads (Castlevania held 94-95 C for 4 min without a
+   crash; Psychonauts crashed at 95 C, so the margin is a judgment call);
+2. trip only on several consecutive reads (this fixes Sonic Heroes' one-sample trip, not the rest);
+3. stop Thor screens until the fan is replaced, and screen on the Nova instead.
+
+**Hostops needs to resume this lane by hand** once one of these lands. Nothing of mine is queued,
+and GitHub is down, so no waiter will fire. The re-queue order and the exact command are in NOTES.md,
+session 50, "State for a successor".
+
+[lane.titleroutes] blocked: thor_coldconfirm.sh CPU_STOP_C=90 (a single sample) voids every Thor title
+screen. Unblocked by a decision on the stop (raise it, add a consecutive-sample rule, or route
+screens to the Nova).

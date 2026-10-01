@@ -1,83 +1,50 @@
-# titleroutes: session 49 -- gauntlet.route authored from its survey's own trap, capcom-classics2/two new titles surveyed, Sonic Heroes tiebreaker
+# titleroutes: session 50 -- the Thor's 90 C CPU stop voids every title screen; lane blocked on the threshold
 
 State: ready
 
 Lane: titleroutes          Issue: #397 (per-title gameplay fps; 0.5 tracking #433)
-Base: master @ f2da40f0e3 (origin/master merged in session 49; session 48's PR folded there)
-Files: docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/OUTBOX.md, docs/lanes/titleroutes/PR.md,
-       docs/testing/titles/targets.toml, docs/testing/titles/routes/gauntlet.route
-Prediction: none: no arm (route data and screening soaks, not A/B arms)
-Needs device: yes, queued requests only (Thor cold-slot runner at 300 s); no held session
+Base: master @ dc9529a408 (origin/master merged in session 50; session 49's PR folded there)
+Files: docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/OUTBOX.md, docs/lanes/titleroutes/PR.md
+Prediction: none: no arm (lane notes only; the one device run was a route screen, not an A/B arm)
+Needs device: yes, queued requests only (Thor cold-slot runner, 300 s); no held session
 
 ## What changed
 
-**The castlevania-cod.route replay session 48 queued heat-stopped at 78s of 300s, inconclusive.**
-`.hostops-diagnosed` on `0-0-s-1790846753-titleroutes-3234529` confirms a CPU thermal-gate stop
-(cpu-1-9 at 91C) two cycles into the route's 14, nowhere near its own mark -- not a route failure.
-One heat stop for the named route so far (the generic survey it's built from heat-stopped separately
-already, at 284/300s, and was not voided). Re-queued a second replay rather than escalating on one
-inconclusive run.
+Notes only. No routes and no targets.toml changes this session.
 
-**Gauntlet: Dark Legacy -- authored `routes/gauntlet.route` from its own survey's frames, which
-turned out to hide the same bug `sonic-heroes.route` has, found before any route was committed.**
-Walking `0-0-s-1790823800-titleroutes-2951589`'s route-frames cycle by cycle (not just the two
-frames an earlier note already named) found that by the 8th START/A cycle the wizard was already
-under player control in the dungeon (an in-engine tutorial scroll over live 3D, FPS 14), but the
-survey's blind 14-cycle default kept pressing START for 6 more cycles into that live play, and its
-own `mark play` frame is the in-game pause menu's Audio page, not gameplay -- the
-START-during-gameplay trap session 48 named "Gauntlet-class" after finding it in Sonic Heroes,
-except this time it was sitting in a survey's own frames. Authored the route at 8 cycles (not 14),
-then `mark gameplay`, then a movement loop that never presses START again, same shape as
-`castlevania-cod.route`. `targets.toml` gets `route = "gauntlet"` and the frame-by-frame note.
-DRAFT until its own replay (queued this session) is checked.
+**All six of session 49's Thor requests voided on `thor_coldconfirm.sh`'s cpu-1-9 >= 90 C stop,
+64-169 s in.** None reached its mark, so none says anything about its route.
 
-**capcom-classics2: queued a generic survey instead of guessing a second fix.** The withdrawn
-nomination's mark frame is a "START MENU (Start Game / Load Game / Game Settings / Exit Game)"
-structure the current all-`[guess]` route (an arcade-coin sequence) never anticipated. Queued
-`--route survey` instead of a second blind guess -- the method that produced real evidence for
-castlevania-cod and surfaced Gauntlet's trap above.
+**A cold start does not prevent the stop, and neither does a lower regimen.** Hostops' 04:11 fix makes
+`coldslot.sh` require cpu-1-9 <= 55 C at the start. It would have admitted the two Castlevania runs that
+started at 41.4-41.8 C, and both voided at ~80 s. This session's one pilot ran Gauntlet at
+`--env PERF_REGIMEN=default` (`1790853287-titleroutes-569824`). On the Thor that is perf_mode 0, the same
+as REST. It started at 39.5 C, read 81 C at +39 s, and was stopped at ~74 s. Before the stop existed,
+Castlevania held 94-95 C for four minutes and played 284 s to gameplay. Sonic Heroes' void was a
+one-sample trip: it was stopped 4 s into its route while every logged sample read about 51 C. Every Thor
+route marks later than the ~75 s the die takes to reach 90 C (the shortest, Gauntlet, marks at ~145 s),
+so no screen can reach its mark under this stop.
 
-**Two new titles from the ranked untouched list, surveyed generically:** Plus Plumb 2 (544B0004,
-rank 101, Perfect) and Petit Copter (41510001, rank 135, Perfect), neither previously touched.
-Bare `targets.toml` entries added; no frames yet.
+| run | regimen | cpu-1-9 at start | +38 s | +69 s | stopped |
+|---|---|---|---|---|---|
+| Castlevania `3234529` | max | 41.8 C | 76.3 | 84.5 | ~80 s |
+| Castlevania `3951103` | max | 41.4 C | 77.4 | 86.8 | ~80 s |
+| Gauntlet `569824` | default | 39.5 C | 81.0 | 86.0 | ~74 s |
+| Sonic Heroes `3954488` | max | 51.6 C | 51.6 | 51.2 | 4 s into its route |
+| Castlevania survey `2238193`, before the stop existed | max | 52.0 C | 95.0 | 94.6 | none; held 94-95 C for 4 min, played to gameplay |
 
-**Sonic Heroes: queued a tiebreaker, not a blind edit.** 1 good (session 47) / 1 bad (session 48) of
-the identical route and cycle count is a coin flip, not a verdict. Unlike Gauntlet, there's no
-per-cycle frame record for this title's boot timing to ground a cycle-count fix in, so guessing a
-new count risks spending a cold Thor slot to learn nothing. Queued a 3rd screen of the existing
-route: 2-of-3 good reopens the nomination path under the "two clean confirmations" rule, 1-of-3
-confirms it needs a real redesign, not another screen.
-
-`targets.toml` parses (tomllib, 80 titles) and `titlestate_selftest.py` passes (unchanged from
-session 48; no harness files touched).
-
-## Queued this session (ref `31dcc755ad`, Thor, `--device thor --hard-pin --seconds 300`)
-
-| title | route | request |
-|---|---|---|
-| Castlevania: Curse of Darkness | castlevania-cod (2nd replay) | `1790850015-titleroutes-3951103` |
-| Gauntlet: Dark Legacy | gauntlet (1st replay, new route) | `1-1790850024-titleroutes-3953302` |
-| Capcom Classics Collection Vol. 2 | survey (generic) | `1-1790850027-titleroutes-3953658` |
-| Plus Plumb 2 | survey (generic) | `1-1790850029-titleroutes-3954081` |
-| Petit Copter | survey (generic) | `1-1790850032-titleroutes-3954284` |
-| Sonic Heroes | sonic-heroes (3rd screen, tiebreaker) | `1-1790850035-titleroutes-3954488` |
-
-No Nova work queued by this lane this session.
-
-**Offline protocol note:** GitHub has returned `403` ("account was suspended") continuously since
-about 2026-09-29 19:40 PDT (~40 h into this session). The PR-parking waiter that arms from GitHub PR
-comments cannot arm itself during the outage. This session's `waiting:` line names the six queued
-request ids directly so a successor can poll `dispatch/results`/`logs/thor-coldconfirm.log` without
-relying on that waiter, same as the last three sessions.
+The six re-queues the 04:11 addendum asked for are withheld: they would void the same way. The lane is
+blocked on a host-tools decision: raise the stop, require consecutive reads, or screen on the Nova until
+the fan is replaced. That decision is in `dispatch/board-requests/titleroutes.md` and OUTBOX #397. NOTES.md
+session 50 also has a cold-start state for a successor: confirmed and nominated routes, routes waiting on
+a clean replay, voided surveys, and the re-queue order and command.
 
 ## Local checks (no CI while GitHub is suspended)
 
 - `python3 docs/testing/titles/titlestate_selftest.py`: all checks passed.
-- `targets.toml` parses with tomllib: 80 titles.
+- `targets.toml` parses (tomllib, 80 titles; unchanged).
 - No harness files changed, so `docs/testing/jobs/selftest.sh` does not apply.
-- Six device requests queued from this head's ref (`31dcc755ad`); results pending, named as
-  `waiting:` on #397/OUTBOX.md.
 
-Release note (none): route data, targets.toml and lane notes only; no emulator code.
+Release note (none): lane notes only; no emulator code.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

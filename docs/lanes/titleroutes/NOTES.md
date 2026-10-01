@@ -3435,3 +3435,106 @@ Request ids: see the table added to OUTBOX.md after queueing below.
 7. Then continue the ranked list past Plus Plumb 2 / Petit Copter: Doom 3,
    Monster Garage, AMF Bowling 2004, ... (fix `scratch/targeted_ids.txt`
    first so the script's output stops repeating already-routed titles).
+
+## Session 50 (2026-10-01 04:13 PDT, attempt 4 of 4): why session 49 did not finish, and the Thor screening program is blocked by the CPU stop
+
+**Why session 49 did not finish.** It queued six Thor requests and ended on
+`[lane.titleroutes] waiting:` naming them. That is a correct ending, but
+nothing could act on it: GitHub is still suspended, and in overnight mode
+`hakux-lanewatch.timer` is disabled, so no waiter resumed the lane. Hostops
+resumed it by hand at 04:11 PDT. All six requests had voided on
+`thor_coldconfirm.sh`'s CPU stop (cpu-1-9 >= 90 C) within 64-169 s. None
+reached its own mark, so none says anything about its route.
+
+### The cpu-1-9 90 C stop voids every title run, from any start temperature, under either regimen
+
+Hostops' 04:11 diagnosis was a climbing start temperature: six slots 30 s
+apart, cpu-1-9 rising from 41 to 53 C. Its fix makes `coldslot.sh` also
+require cpu-1-9 <= 55 C at the start. The thermal.jsonl of every run since
+the CPU stop went in (02:17 PDT) does not support that diagnosis:
+
+| request | title | regimen | cpu-1-9 at start | +38 s | +69 s | stopped at |
+|---|---|---|---|---|---|---|
+| `0-0-s-1790846753-titleroutes-3234529` | Castlevania (route) | max | **41.8 C** (after 1 h idle) | 76.3 | 84.5 | ~80 s, 91 C |
+| `0-0-s-1790850015-titleroutes-3951103` | Castlevania (route) | max | **41.4 C** | 77.4 | 86.8 | ~80 s, 91 C |
+| `0-0-s-1-1790850024-titleroutes-3953302` | Gauntlet | max | -- | -- | -- | ~70 s, 90 C |
+| `0-0-s-1-1790850027-titleroutes-3953658` | Capcom Classics 2 | max | -- | -- | -- | ~90 s, 93 C |
+| `0-0-s-1-1790850029-titleroutes-3954081` | Plus Plumb 2 | max | -- | -- | -- | ~64 s, 91 C |
+| `0-0-s-1-1790850032-titleroutes-3954284` | Petit Copter | max | -- | -- | -- | ~169 s, 95 C |
+| `0-0-s-1-1790850035-titleroutes-3954488` | Sonic Heroes | max | 51.6 C | 51.6 | 51.2 | **4 s after its route started**, while every logged sample read 49-52 C |
+| `0-0-s-1790853287-titleroutes-569824` (this session's pilot) | Gauntlet | **default** (perf_mode 0) | **39.5 C** | 81.0 | 86.0 | ~74 s, 91 C |
+
+- **Starting cold does not prevent the stop.** Three runs began at 39.5-41.8 C
+  (inside the new <= 55 C gate) and reached 90 C in 74-80 s, the same as
+  the warm-start runs. The die heats about 1 C/s under load. The start
+  temperature only shifts the trip time by a few seconds.
+- **The regimen does not prevent it either.** This session's pilot queued
+  Gauntlet with `--env PERF_REGIMEN=default`. On the Thor that is perf_mode 0,
+  the same value as REST (perf_regimen.json, read back). It reached 81 C at
+  +39 s and stopped at ~74 s. The route frames end at `041701-menu-start.png`,
+  the first menu cycle, which is the same point the MAX runs reached.
+- **A title run at load sits at 94-95 C.** Castlevania's survey
+  (`0-0-s-1790839398-titleroutes-2238193`, 01:12 PDT, before the CPU stop
+  existed) read cpu-1-9 95.0 C at +38 s and held 94.3-95.0 C for four
+  minutes. It played 284 s and showed gameplay. The Psychonauts crash at
+  95 C (thor_coldconfirm.sh line 16) is the reason the stop exists.
+- **Sonic Heroes' stop is a one-sample trip.** The runner force-stopped it
+  4 s after its route began, while every logged thermal sample read 49-52 C.
+  The watchdog acts on a single read, so a boot-time spike voids a run.
+
+**Consequence:** while `CPU_STOP_C=90` acts on a single sample, no Thor
+title screen can reach its mark. The die reaches 90 C 70-80 s after a route
+starts, and every Thor route marks later than that: the shortest, Gauntlet,
+marks about 145 s in (60 s of boot waits, then 8 cycles of ~10.6 s). So
+every run voids before its mark. Re-queuing
+the six, as the 04:11 addendum asks, would spend six cold slots to void six
+more runs. This session queued only the one pilot above, the single test
+that could still distinguish anything (the regimen). It did not re-queue the
+six. **The lane is blocked on a host-tools decision that is not this lane's
+to make:**
+1. raise the stop to what a title run actually reads (94-95 C held for
+   4 min without a crash in Castlevania; Psychonauts crashed at 95 C, so the
+   margin is a judgment call), or
+2. trip only on N consecutive reads >= 90 C (that removes the one-sample
+   Sonic Heroes trip, though not the others), or
+3. stop title screens on the Thor until the replacement fan arrives, and
+   screen on the Nova instead.
+
+None of those is a file this lane owns. The request is in
+`dispatch/board-requests/titleroutes.md` and OUTBOX #397.
+
+**Do not repeat:** do not re-queue a Thor title screen while the CPU stop
+stays at 90 C on one sample. Do not test a cooler start or another regimen
+either; this table already covers both. A queued screen now costs a cold
+slot and returns nothing.
+
+### State for a successor (cold start)
+
+- **Confirmed routes, nominated for the Nova** (#433, lane.local /
+  lane.verdict433): Super Monkey Ball Deluxe, THPS2x, THPS3 (with a caveat:
+  its own mark frame is a level splash, so the confirmation must check its
+  frames), 187: Ride or Die (fixed in session 46, confirmed on the Nova in
+  session 48).
+- **Routes waiting on their first clean Thor replay** (all heat-voided, never
+  actually screened): `castlevania-cod.route` (3 voids, none past the 2nd of
+  its 14 cycles; the open question is whether 14 blind START/A cycles overshoot
+  into a pause the way Gauntlet's survey did; its survey frames 011651/011717
+  show play, but its cycle-by-cycle frames were never walked; do that first,
+  offline), `gauntlet.route` (8 cycles, authored from the survey's frames,
+  2 voids), `sonic-heroes.route` (1 good / 1 bad, plus one tiebreaker void;
+  the route races, see session 48).
+- **Surveys voided before any frames:** capcom-classics2 (its route file is
+  still the all-`[guess]` draft), Plus Plumb 2 (544B0004), Petit Copter
+  (41510001).
+- **Not queued, needs offline frame work first:** Ninja Gaiden (dark frame at
+  the mark, see session 49 item 5) and Bistro Cupid (300 s ends in story
+  dialogue).
+- **Galleon:** blocked by the owner (FPS and polygon flicker). Do not queue it.
+- **Ranked list after these:** Doom 3, Monster Garage, AMF Bowling 2004, ...
+  (`scratch/rank_untouched.py`; fix `scratch/targeted_ids.txt` first, because
+  it still lists routed titles as untouched).
+- **To queue once the stop changes:** `env PERF_ENV= bash scratch/screen50.sh
+  <iso> <stem> <pushed ref>`. With PERF_ENV unset the runs use MAX, the
+  standard. The six from the 04:11 addendum come first, in this order:
+  Gauntlet, Castlevania, Sonic Heroes (tiebreaker), Capcom Classics 2
+  survey, Plus Plumb 2 survey, Petit Copter survey.
