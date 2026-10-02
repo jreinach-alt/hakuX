@@ -192,6 +192,26 @@ class Device:
     def __init__(self, serial):
         self.serial = serial
         self.env = dict(os.environ, SERIAL=serial)
+        self.pkg = os.environ.get("DRIVE_PACKAGE", "com.jreinach.hakux")
+        self.fg_at, self.fg_ok = -1e9, True
+
+    def foreground(self, max_age=3.0):
+        """Is hakuX the focused app? Read from `dumpsys window` at most every
+        `max_age` s. lane.routedriver2 Buffy run b4: the emulator aborted 10 s
+        into the intro, the launcher came to the front, and the driver's next
+        A launched Calendar from it. A failed read counts as in front: the
+        harness's own focus watch is the authority, this only stops presses."""
+        if now() - self.fg_at < max_age:
+            return self.fg_ok
+        self.fg_at = now()
+        try:
+            r = subprocess.run(["adb", "-s", self.serial, "shell", "dumpsys", "window"], capture_output=True,
+                               text=True, timeout=10)
+            focus = [l for l in r.stdout.splitlines() if "mCurrentFocus" in l or "mFocusedApp" in l]
+            self.fg_ok = (not focus) or any(self.pkg in l for l in focus)
+        except subprocess.TimeoutExpired:
+            self.fg_ok = True
+        return self.fg_ok
 
     def capture(self, path):
         t = now()
@@ -205,6 +225,9 @@ class Device:
         return ok, now() - t
 
     def pad(self, *args):
+        if args and args[0] in ("press", "hold") and not self.foreground():
+            # escape presses and play taps come here without Driver.press
+            raise Fail("hakuX is not the focused app: %s %s not sent" % args[:2])
         try:
             subprocess.run(["bash", PAD] + list(args), env=self.env, stdout=subprocess.DEVNULL,
                            stderr=subprocess.DEVNULL, timeout=30)
@@ -280,6 +303,11 @@ class SimDevice:
     def axes(self, fractions):
         self.sent.append((round(self.clock, 1), "axes") + tuple(sorted(fractions.items())))
         return True
+
+    fg = True                            # a selftest sets False: the app is not in front
+
+    def foreground(self, max_age=3.0):
+        return self.fg
 
     def logcat(self, msg):
         self.log.append(msg)
@@ -377,6 +405,9 @@ class Driver:
 
     def press(self, btn, why):
         t = self.t()
+        if not self.dev.foreground():
+            raise Fail("hakuX is not the focused app: no press sent (the emulator exited, or another window "
+                       "took the screen)")
         if btn == "START+A":
             self.dev.pad("hold", "START")
             self.dev.pad("press", "A")

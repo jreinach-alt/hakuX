@@ -416,6 +416,20 @@ def escape_checks():
     rel = sorted(x[1:] for x in d.dev.sent)
     checks.append(("release: a trigger to min, a stick to mid",
                    rel == [("axis", "LX", "mid"), ("axis", "RT", "min")], rel))
+    # hakuX not in front (the emulator died, the launcher came up): a press
+    # must fail and send nothing (Buffy run b4's A launched Calendar). The
+    # counter-case, in front, sends it.
+    for fg in (False, True):
+        d = drv({})
+        d.dev.fg = fg
+        d.dev.sent = []
+        try:
+            d.press("A", "test")
+            got = "sent %d" % len(d.dev.sent)
+        except drive.Fail as e:
+            got = "fail: %s, sent %d" % (str(e)[:30], len(d.dev.sent))
+        ok = got == "sent 1" if fg else (got.startswith("fail: hakuX is not the focused app") and got.endswith("sent 0"))
+        checks.append(("press with hakuX %s" % ("in front" if fg else "NOT in front"), ok, got))
     for name, ok, got in checks:
         fails += not ok
         print("%s  escape %-44s %s" % ("ok  " if ok else "FAIL", name, "" if ok else got))
