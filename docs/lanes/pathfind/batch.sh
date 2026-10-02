@@ -8,6 +8,7 @@ TOOLS="$HERE/../../testing/titles"
 dev=$1; root=$2; shift 2
 for t in "$@"; do
     slug=$(echo "$t" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9\n' '-' | sed 's/-*$//')
+    slug="$slug${SLUG_SUFFIX:-}"
     out="$root/$slug"
     echo "=== $(date +%T) $t -> $out"
     python3 "$TOOLS/pathfind.py" "$t" --device "$dev" --budget-min "${BUDGET_MIN:-15}" --out "$out" ${PATHFIND_ARGS:-}
