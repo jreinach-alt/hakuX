@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 287
+wave = 288
 updated_utc = "2026-10-02T07:31:00Z"
 
 [lane.collapse433]
@@ -1763,7 +1763,13 @@ files = []
 retired_utc = "2026-10-02T05:53:00Z"
 note = "RETIRED (hostops 2026-10-01 22:53 PDT): offline-folded as 8e3b1f2ad2 (ancestor of origin/master, offline-git/foldqueue.log 22:08:33 PDT), PR.md State: ready, no running unit (hakux-lane-localjobs.service not found). NOTES.md section 4 lists what was deliberately not built and confirms the lane's own scope (local-repo replacements for the five GitHub-bound timers) is complete; its deliverables are host-side scripts/timers under ~/hakux-work/ plus this report dir, never tracked repo files. No nv2a_issues.toml blocked_on references this lane (checked). Files RELEASED to [free]: docs/lanes/localjobs/**. || PRIOR: ROW RESTORED (hostops 2026-10-01 21:50 PDT): started directly (lane.sh start, owner 2026-10-01 21:40 PDT) with no board job running to add the row."
 
-[lane.routedriver]
+[retired.routedriver]
 issues = ["433"]
-files = ["docs/lanes/routedriver/**", "docs/testing/titles/route.sh", "docs/testing/title_verdict.py", "docs/testing/titles/drive.py", "docs/testing/titles/classify.py", "docs/testing/titles/classify_selftest.py", "docs/testing/titles/drive-profiles/**", "docs/testing/titles/routes/castlevania-cod.drive.route", "docs/testing/titles/routes/forza.drive.route", "docs/testing/titles/routes/sonic-heroes.drive.route", "docs/testing/jobs/selftest.d/99-play-share.sh"]
-note = "WIDENED AGAIN (hostops 2026-10-02 00:31 PDT): attempt 4 (logs/lane/routedriver.20261002T063332Z.json, ended 00:18 PDT, stop_reason end_turn) converted the Forza and Sonic Heroes proofs to live play and pushed lane/routedriver @ 17ada0de19 with PR.md State: ready, but offline_fold.py rejected it at 00:19:43 PDT (offline-git/fold-failures.log) for two more new route files outside this row's claim: docs/testing/titles/routes/forza.drive.route and docs/testing/titles/routes/sonic-heroes.drive.route -- the prior WIDENED note only granted castlevania-cod.drive.route by name. Same reasoning as that grant: each is a single new file inside lane.titleroutes' routes/** glob (territory.toml:409, still held broadly, titleroutes has no session running right now per status.sh \"waiting on device\"), GRANTED to routedriver by name only; titleroutes keeps the rest of routes/**. No other claimant on either file. This closes out the brief's proof requirement (one driving title, one on-foot title) named in briefs/routedriver.md step 6; routedriver is at attempt 4 (its cap) with session ended and no running unit -- per the runbook it cannot be resumed again, so its continuation (further titles) goes to a successor lane, not this row."
+files = []
+retired_utc = "2026-10-02T09:12:00Z"
+note = "RETIRED (hostops 2026-10-02 02:12 PDT): offline-folded as 7efa13af89 (confirmed ancestor of origin/master via git merge-base --is-ancestor, rc=0; offline-git/foldqueue.log 01:54:08 PDT), PR.md State: ready, no running unit, attempt 4/4 (its cap) with stop_reason end_turn -- a correct complete stop, not a strand. harness_health.py flagged it as an idle [0.5] stage lane this tick because its session ended with no running unit/queue/hold, but the prior tick's own note already called this: 'routedriver is at attempt 4 (its cap) ... per the runbook it cannot be resumed again, so its continuation (further titles) goes to a successor lane, not this row.' No nv2a_issues.toml blocked_on references this lane (checked). Open work it leaves (Sonic Heroes past the Seaside Hill block still unsolved after 5 variants, Forza needs a steering policy for any future scored run, and the driver needs rolling out to more titles) is handed to a successor. Files TRANSFERRED (not released to [free] -- work continues) to [lane.routedriver2]."
+
+[lane.routedriver2]
+issues = ["433"]
+files = ["docs/lanes/routedriver/**", "docs/lanes/routedriver2/**", "docs/testing/titles/route.sh", "docs/testing/title_verdict.py", "docs/testing/titles/drive.py", "docs/testing/titles/classify.py", "docs/testing/titles/classify_selftest.py", "docs/testing/titles/drive-profiles/**", "docs/testing/titles/routes/castlevania-cod.drive.route", "docs/testing/titles/routes/forza.drive.route", "docs/testing/titles/routes/sonic-heroes.drive.route", "docs/testing/jobs/selftest.d/99-play-share.sh"]
+note = "STARTED (hostops 2026-10-02 02:12 PDT): successor to the retired [lane.routedriver] (attempt 4/4 cap, folded as 7efa13af89, PR.md State: ready). Same files transferred directly (no gap, no re-claim race): continues the screen-aware play driver past its two proof titles -- Sonic Heroes' Seaside Hill block (5 variants tried, unsolved), Forza's steering policy, and rolling `drive` out to more of lane.titleroutes' backlog, coordinating rather than duplicating titleroutes' routes/** ownership. docs/lanes/routedriver/** kept (read-only history/NOTES this lane must read first) alongside its own docs/lanes/routedriver2/**. Brief: briefs/routedriver2.md."
