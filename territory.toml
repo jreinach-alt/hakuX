@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 281
+wave = 282
 updated_utc = "2026-09-29T18:35:00Z"
 
 [retired.hilodot10]
@@ -1744,3 +1744,13 @@ issues = ["433"]
 files = ["docs/testing/title_verdict.py", "docs/testing/hitch_report.py", "docs/testing/jobs/selftest.d/99-hitch-report.sh", "docs/testing/jobs/selftest.d/99-power-per-frame.sh", "docs/lanes/hitchwatch/**"]
 note = "ROW RESTORED (hostops 2026-10-01 19:16 PDT): hakux-lane-hitchwatch has been RUNNING since its session started (logs/lane/hitchwatch.20261002T012019Z.json) with NO territory row at all -- fleet.py FAIL 'running with no territory row', same recurring harness defect as laneshape/armlabel/desktopchannel/draftstrand/selftest86/vblank65 before it (briefs/hitchwatch.md, started from the owner's 2026-10-01 ~18:35 PDT Sonic Heroes hitch-telemetry decision, never got a row committed). title_verdict.py vacated by retiring lane.verdict10min above (folded, inactive); hitch_report.py and the two selftest files were unclaimed/[free]. KNOWN OVERLAP, NOT CLAIMED HERE: the lane's own worktree (wt/hitchwatch) also carries a small doc-comment-only diff to docs/testing/titles/targets.toml (documenting a new hitch_allowance field; no title data touched), and that file is actively held by lane.titleroutes, which is mid-session today. Not granted here because titleroutes is running right now; resolve at hitchwatch's fold (either a narrow grant from titleroutes for that one comment block, or hitchwatch drops the comment and documents the field in hitch_report.py's own docstring instead). Flagged so fold.sh's territory check does not surprise either lane."
 
+
+[lane.localjobs]
+issues = ["433"]
+files = ["docs/lanes/localjobs/**"]
+note = "ROW RESTORED (hostops 2026-10-01 21:50 PDT): hakux-lane-localjobs has been RUNNING since its session started (logs/lane/localjobs.20261002T044529Z.json, ~21:45 PDT) with NO territory row -- same recurring harness defect as hitchwatch/laneshape/armlabel/desktopchannel/draftstrand/selftest86/vblank65 before it: started directly (lane.sh start, off the owner's 2026-10-01 21:40 PDT decision to replace the GitHub-bound timers -- board/pr-sweep/issue-sweep/comments/fold -- with local-repo equivalents while GH is suspended) with no board job running (hakux-board itself is one of the stopped units) to add the row. Its brief's deliverables are new scripts plus systemd user timers under ~/hakux-work/ (offline-git/, host-tools/) and docs/lanes/localjobs/**, which are host-side, not governed by this file; only its own report directory is claimed here. If it ends up editing a tracked repo file (e.g. docs/testing/jobs/*.sh), grant it then."
+
+[lane.routedriver]
+issues = ["433"]
+files = ["docs/lanes/routedriver/**"]
+note = "ROW RESTORED (hostops 2026-10-01 21:50 PDT): hakux-lane-routedriver has been RUNNING since its session started (logs/lane/routedriver.20261002T044508Z.json, ~21:45 PDT) with NO territory row -- same recurring defect (see lane.localjobs above, started the same way minutes apart). Its brief (owner 2026-10-01 21:45 PDT: a screen-aware play driver so routes stop sending input into menus) asks it to build a new driver + drive-profiles beside route.sh and converge title_verdict.py's play_share field with lane.hitchwatch's merged form. KNOWN OVERLAP, NOT CLAIMED HERE: docs/testing/titles/route.sh is held by lane.titleroutes (mid-pipeline, do not take it from a running lane) and docs/testing/title_verdict.py was just vacated by lane.hitchwatch's fold (56c2a7b4a9) -- its brief already says to coordinate/take hitchwatch's merged form, not to clobber it. Resolve both at routedriver's fold: a narrow grant from titleroutes for the `drive` step hook in route.sh, and read title_verdict.py's post-hitchwatch form before editing. Only its own new files (driver script, drive-profiles/, its report dir) are claimed here; grant route.sh/title_verdict.py access explicitly if its fold needs it and no other lane is mid-session on them."
