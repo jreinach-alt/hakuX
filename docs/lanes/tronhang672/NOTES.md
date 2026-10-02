@@ -110,3 +110,13 @@ Boot was ~10 s slower than 1790971658: the ESRB card was still up at the
 route's START (141524), the title came at 141535, so B landed on the title and
 the run looped the Xbox Live sign-in at 60 fps for the rest of the soak. No
 information about the hang. Route v2 waits until ~80 s before START.
+
+## 6. Device run 3: 0-1790976263-tronhang672-2397053 (14:26-14:38 PDT): void, route timing again
+
+At 80 s the attract video was playing (142828). START dropped it to the title
+(142846), B landed on the title, and the run looped the sign-in. Boot-to-title
+varies by at least 15 s between boots, so no single START time is safe. Route
+v3 presses START five times, 7 s apart, from 55 s (START is a no-op on the
+sign-in screen), then the one B.
+
+Device runs used: 3 of 6 (two of them lost to the route, none to the hang).
