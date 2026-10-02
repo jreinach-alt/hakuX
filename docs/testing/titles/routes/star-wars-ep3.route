@@ -38,7 +38,16 @@
 # down per cycle, sliding along whatever wall it meets), X/X/Y combos on
 # each leg, and a frame on every leg, so the frames map the hangar and
 # show whether droids ever come. Its scored fps carries ~5 screencaps a
-# cycle: read it as a route check only.
+# cycle.
+# Run 2 (1790944635-titleroutes2-2688279, ref bd03a589f7): CONFIRMED, and
+# better than an exploring loop needed to be: the net-up walk takes Anakin
+# across the hangar to the force-field door, droids come and are cut down
+# (explosions at 061946, 062116), the game runs its own beats (letterboxed
+# cutscenes at 062040, 062101, 062206: 3 of 41 post-mark frames) and moves
+# on: "NEW OBJECTIVE: DEFEAT ENEMIES WHILE R2-D2 EXTENDS CATWALK", then
+# "OBJECTIVE ACHIEVED", fighting on the catwalk to the end. static 0.0.
+# This file is that run's route; keep it as it is (dropping the shots
+# would change the input timing the confirmation ran with).
 wait 20
 shot boot20
 wait 20
