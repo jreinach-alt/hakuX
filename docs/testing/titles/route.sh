@@ -42,6 +42,28 @@
 #                               an empty name field), so success is a
 #                               mismatch. Exhausting max_n ABORTS the route
 #                               (`ROUTE FAIL press-until <BTN> <name>`).
+#   drive <profile> <seconds>  screen-aware play, replacing a blind
+#                               `repeat forever { ... }` play loop (#433).
+#                               Loops for <seconds>: capture, classify.py
+#                               classifies the frame against
+#                               drive-profiles/<profile>.toml (play / paused
+#                               / menu / loading / cutscene / black /
+#                               unknown), and the profile's policy decides
+#                               the input -- `play` holds the title's own
+#                               accelerate axis and NEVER presses START;
+#                               `paused` presses the profile's resume button
+#                               (ROUTE FAIL after 3 tries still paused);
+#                               `menu`/`loading`/`cutscene`/`black` wait or
+#                               take the profile's own advance input;
+#                               `unknown` waits, then (if ANTHROPIC_API_KEY
+#                               is set) asks a vision model, then gives up.
+#                               Every state CHANGE is written to logcat
+#                               (`I/hakuX-route: state=<class> t=<s>`) and
+#                               every poll to route-state.tsv beside
+#                               ROUTE_FRAMES, which title_verdict.py reads
+#                               for play_share. See classify.py's module doc
+#                               for the classifier itself; this file only
+#                               owns the loop and the device I/O.
 #
 # WHY waitfor/press-until exist at all: a route otherwise plays fixed `wait`
 # timers against a screen it never looks at. castlevania-cod.first-run's
@@ -164,6 +186,10 @@ validate() {
                    isregion "${w[5]:-}" || err "$i" "press-until wants a region x,y,w,h"
                    isnum "${w[6]:-}" || err "$i" "press-until wants a threshold"
                    [ -f "$(ref_path "${w[2]}")" ] || err "$i" "press-until '${w[2]}': no reference crop $(ref_path "${w[2]}")" ;;
+            drive) [ -n "${w[1]:-}" ] || err "$i" "drive wants a profile name"
+                   [[ "${w[1]}" =~ ^[A-Za-z0-9_.-]+$ ]] || err "$i" "drive profile '${w[1]}' must be [A-Za-z0-9_.-]"
+                   isnum "${w[2]:-}" || err "$i" "drive wants seconds"
+                   [ -f "$HERE/drive-profiles/${w[1]}.toml" ] || err "$i" "drive '${w[1]}': no profile $HERE/drive-profiles/${w[1]}.toml" ;;
             *) err "$i" "unknown step '${w[0]}'" ;;
         esac
         i=$((i+1))
@@ -333,6 +359,109 @@ press_until_step() {
     return 1
 }
 
+# drive <profile> <seconds>: see the grammar comment at the top of this file
+# and classify.py's module doc. This function is the loop; classify.py is
+# the brain (classification + policy lookup), so every decision below is
+# just reading its one JSON line and acting on it -- no policy logic lives
+# here. route-state.tsv is written beside ROUTE_FRAMES's parent (the result
+# dir) so title_verdict.py finds it the same way it finds logcat.txt.
+#
+# CAPTURE RATE (measured, see docs/lanes/routedriver/NOTES.md "CAPTURE
+# COST"): 1s between polls while anything but a stable `play` is on screen
+# (menus/loading/paused/unknown all change fast enough that a slower poll
+# would miss a transition and sit on a stale class), DRIVE_SLOW_S once
+# `play` has held for 3+ consecutive polls, and back to 1s immediately
+# after ANY input (a press can change the screen before the next natural
+# slow-poll would have looked).
+DRIVE_SLOW_S="${DRIVE_SLOW_S:-5}"
+drive_step() {   # drive_step <profile> <seconds>
+    local profile="$1" secs="$2" prof_path result_dir state_tsv t0 deadline now
+    local prev="" cur out rc class action arg elapsed last_logged="" interval play_streak=0
+    prof_path="$HERE/drive-profiles/$profile.toml"
+    if [ -n "${ROUTE_DRY:-}" ]; then
+        log "drive $profile ${secs}s (dry)"
+        return 0
+    fi
+    mkdir -p "$ROUTE_FRAMES"
+    result_dir="$(dirname "$ROUTE_FRAMES")"
+    state_tsv="$result_dir/route-state.tsv"
+    : > "$state_tsv"
+    t0=$(date +%s); deadline=$((t0 + secs))
+    while :; do
+        now=$(date +%s)
+        [ "$now" -lt "$deadline" ] || break
+        cur="$(mktemp)"
+        if ! capture_tmp "$cur"; then
+            log "drive $profile: screencap failed; waiting"
+            rm -f "$cur"; nap 1; continue
+        fi
+        if [ -n "$prev" ]; then
+            out="$(python3 "$HERE/classify.py" step --profile "$prof_path" --frame "$cur" --prev "$prev" --result-dir "$result_dir" 2>&1)"; rc=$?
+        else
+            out="$(python3 "$HERE/classify.py" step --profile "$prof_path" --frame "$cur" --result-dir "$result_dir" 2>&1)"; rc=$?
+        fi
+        if [ "$rc" != 0 ]; then
+            log "drive $profile: classify.py failed (rc $rc): $out"
+            rm -f "$cur"; nap 1; continue
+        fi
+        IFS=$'\t' read -r class action arg <<< "$(printf '%s' "$out" | python3 -c '
+import json, sys
+d = json.loads(sys.stdin.read())
+print("%s\t%s\t%s" % (d["cls"], d["action"], d["action_arg"] or ""))
+')"
+        elapsed=$((now - t0))
+        printf '%s\t%s\t%s\t%s\n' "$elapsed" "$class" "$action" "$arg" >> "$state_tsv"
+        if [ "$class" != "$last_logged" ]; then
+            log "drive $profile: state=$class ($action${arg:+ $arg})"
+            timeout 20 adb -s "$SERIAL" shell log -t hakuX-route "'state=$class t=${elapsed}'" >/dev/null 2>&1
+            last_logged="$class"
+        fi
+        case "$action" in
+            fail)
+                log "ROUTE FAIL drive $profile: $class: $arg"
+                cp "$cur" "$ROUTE_FRAMES/$(date '+%H%M%S')-drive-fail-$class.png" 2>/dev/null
+                for x in $MOVED; do pad axis "$x" mid >/dev/null 2>&1; done; MOVED=""
+                rm -f "$cur" "$prev"
+                return 1 ;;
+            press) pad press "$arg" ;;
+            hold_accel)
+                while read -r axname axval; do
+                    [ -n "$axname" ] || continue
+                    pad axis "$axname" "$axval"
+                    case " $MOVED " in *" $axname "*) ;; *) MOVED="$MOVED $axname" ;; esac
+                done < <(python3 -c "
+import tomllib
+with open('$prof_path', 'rb') as f:
+    p = tomllib.load(f)
+for a in p.get('accel', []):
+    print(a['axis'], a['value'])
+") ;;
+            none) ;;
+        esac
+        # Leaving play: neutralise any axis `hold_accel` set, same as the
+        # route grammar's own `axis ... mid` convention -- a driving title
+        # left mid-hold on a menu would keep accelerating into it.
+        if [ "$action" != "hold_accel" ] && [ -n "$MOVED" ]; then
+            for x in $MOVED; do pad axis "$x" mid >/dev/null 2>&1; done
+            MOVED=""
+        fi
+        case "$class" in play) play_streak=$((play_streak + 1)) ;; *) play_streak=0 ;; esac
+        if [ "$action" = "press" ]; then
+            interval=1
+        elif [ "$class" = "play" ] && [ "$play_streak" -ge 3 ]; then
+            interval="$DRIVE_SLOW_S"
+        else
+            interval=1
+        fi
+        rm -f "$prev"
+        prev="$cur"
+        nap "$interval"
+    done
+    rm -f "$prev"
+    for x in $MOVED; do pad axis "$x" mid >/dev/null 2>&1; done; MOVED=""
+    return 0
+}
+
 run() {   # run <first line> <end line, exclusive>
     local i=$1 end=$2 w j k n
     while [ "$i" -lt "$end" ]; do
@@ -357,6 +486,8 @@ run() {   # run <first line> <end line, exclusive>
                    waitfor_step "${w[1]}" "${w[2]}" "${w[3]}" "${w[4]}" || exit 1 ;;
             press-until) log "press-until ${w[1]} ${w[2]} (max ${w[3]} presses, ${w[4]}s apart)"
                    press_until_step "${w[1]}" "${w[2]}" "${w[3]}" "${w[4]}" "${w[5]}" "${w[6]}" || exit 1 ;;
+            drive) log "drive ${w[1]} (${w[2]}s)"
+                   drive_step "${w[1]}" "${w[2]}" || exit 1 ;;
             repeat) j=$(close_of "$i")
                     n=${w[1]}; [ "$n" = forever ] && n=-1
                     k=0
