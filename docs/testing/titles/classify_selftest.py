@@ -65,12 +65,14 @@ SHT1 = "rdt1"                                  # lane.routedriver2 trial 1, Nova
 SHT2 = "rdt2"                                  # lane.routedriver2 trial 2, Nova: block cleared, stuck at POWER
 SHT4 = "rdt4"                                  # lane.routedriver2 trial 4, Nova: three obstacles, a Game Over
 BUFR1 = "rdb1"                                 # lane.routedriver2 Buffy run 1, Nova: HUD missed, dark read black
+FZT2 = "rdf2"                                  # lane.routedriver2 Forza run f2, Nova: parked at the grandstand
 BUFR3 = "rdb3"                                 # lane.routedriver2 Buffy run 3, Nova: dark canyon, every capture kept
 LOCAL = {CVR2: "scratch/run-cv2/route-frames", CVR3: "scratch/run-cv3/route-frames",
          CVR5: "scratch/run-cv5/route-frames", SHR1: "scratch/run-sh1/route-frames",
          FZR1: "scratch/run-fz1/route-frames", SHT1: "scratch/run-t1/route-frames",
          SHT2: "scratch/run-t2/route-frames", SHT4: "scratch/run-t4/route-frames",
-         BUFR1: "scratch/run-b1/route-frames", BUFR3: "scratch/run-b3/route-frames"}
+         BUFR1: "scratch/run-b1/route-frames", BUFR3: "scratch/run-b3/route-frames",
+         FZT2: "scratch/run-f2/route-frames"}
 
 # drive.py's progress check ([drive] progress_bar): (name, profile, run, frame
 # ~10 s earlier, the frame before this one, this frame, the sim seconds
@@ -193,6 +195,10 @@ CASES = [
      ["main_menu", "play"], "stalled"),
     ("forza live race, slow scene change (Thor): play", "forza", FZR1, "234117-045-play.png", "234114-044-play.png",
      "play", ["main_menu", "play"], "play"),
+    # Parked against the grandstand at 0 MPH, the crowd animating: read `play`
+    # on the default bar (run f2).
+    ("forza parked at 0 MPH, crowd moving: not play", "forza", FZT2, "035645-084-play.png",
+     "035643-083-unknown.png", "play", ["main_menu", "play"], "stalled"),
     ("forza on the line at 0 MPH after the race intro: unknown", "forza", FZR1, "234101-038-unknown.png",
      "234051-034-cutscene.png", "cutscene", ["main_menu", "cutscene"], "unknown"),
     ("forza race frame after a pause frame: unknown", "forza", FOR, "214313-menu-a.png", "214308-menu-start.png",
@@ -275,7 +281,7 @@ FOREIGN = [(SON2, "200707-play.png", "200657-play.png"), (FOR, "214502-play.png"
            (BUF1, "021351-play.png", "021330-gameplay.png")]
 TITLE_OF = {SON: "sonic-heroes", SON2: "sonic-heroes", SONT: "sonic-heroes", SONT2: "sonic-heroes",
             FOR: "forza", FZR1: "forza", SHR1: "sonic-heroes", SHT1: "sonic-heroes", SHT2: "sonic-heroes",
-            SHT4: "sonic-heroes", BUF: "buffy", BUF1: "buffy", BUFR1: "buffy", BUFR3: "buffy", SMB: "super-monkey-ball-deluxe", CV: "castlevania-cod", CVT: "castlevania-cod",
+            SHT4: "sonic-heroes", BUF: "buffy", BUF1: "buffy", BUFR1: "buffy", BUFR3: "buffy", FZT2: "forza", SMB: "super-monkey-ball-deluxe", CV: "castlevania-cod", CVT: "castlevania-cod",
             CVR2: "castlevania-cod", CVR3: "castlevania-cod", CVR5: "castlevania-cod"}
 
 # drive.py --sim runs: (name, profile, run, frames slice, args, checks). The
@@ -487,6 +493,7 @@ def progress_checks(prof, disk):
     for name, pn, run, ticks, (lo, hi), why in STEER:
         with tempfile.TemporaryDirectory() as td:
             d = drive.Driver(drive.SimDevice([], 1.0), prof(pn), td, td, 999, sim=True)
+            d.steer_cfg = prof(pn)["steer"]          # the table is tested even while the profile has it off
             for f, at in ticks:
                 d.clock_sim = at
                 d.steer_tick(source(run, f, disk))
@@ -500,6 +507,7 @@ def progress_checks(prof, disk):
     # grid start); the bend case above, with no start time, is the counter.
     with tempfile.TemporaryDirectory() as td:
         d = drive.Driver(drive.SimDevice([], 1.0), prof("forza"), td, td, 999, sim=True)
+        d.steer_cfg = prof("forza")["steer"]
         d.steer_since = 0.0
         d.clock_sim = 1.0
         d.steer_tick(source(FZR1, "234126-049-play.png", disk))

@@ -355,7 +355,11 @@ class Driver:
         self.stall_streak = False        # stall_clear_s: inside a stall, play must hold to count
         self.recover_since = None
         self.cur_scene = None            # this capture's classify.scene (progress_bar only)
-        self.steer_cfg = profile.get("steer")
+        # [steer] enabled = false keeps the table (and its selftest) without
+        # steering: Forza's runs f1-f2 put the car into a wall within seconds
+        # where RT alone reaches play.
+        st = profile.get("steer")
+        self.steer_cfg = st if st and st.get("enabled", True) else None
         self.steer_on = threading.Event()
         self.steer_stop = threading.Event()
         self.steer_thread = None
