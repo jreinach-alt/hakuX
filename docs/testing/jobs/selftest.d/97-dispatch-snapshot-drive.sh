@@ -138,5 +138,47 @@ if [ -f "$SD/mutant.sh" ]; then
 else
     bad "  mutant anchor no longer matches dispatcher.sh"
 fi
+
+echo "== request.sh --route: a route is checked as the run will see it"
+# THE LEGS (each in a private dispatch dir, so nothing reaches the harness's
+# queue; DISPATCH_TREE named, so the host's serving tree is never read):
+#   drive     a .drive.route against a snapshot holding its profile: queued.
+#   crops     a route with `waitfor` crops: refused. The run plays
+#             <result dir>/route.txt and nothing writes its refs/, so it
+#             would die at line 1 with the soak running on. Fails if the
+#             check reads the route where it sits in this tree.
+#   noprof    a .drive.route against a snapshot with no drive-profiles/ and
+#             no serving tree: refused, "no profile".
+#   server    the same snapshot, but a serving tree whose dispatcher ships
+#             profiles: queued (a worker re-snapshots before it claims).
+rq_sd() {   # <dispatch dir> <serving tree> <route> -> request.sh's output
+    mkdir -p "$1"/queue "$1"/running "$1"/results "$1"/expect
+    env DISPATCH_DIR="$1" DISPATCH_TREE="$2" bash "$TESTING/request.sh" --who sd --purpose "snapdrive selftest" \
+        --no-expect "selftest" --title "Sonic Heroes.iso" --seconds 600 --route "$3" 2>&1
+}
+cp -r "$SD/d/bin" "$SD/q1-bin"
+mkdir -p "$SD/q1"; mv "$SD/q1-bin" "$SD/q1/bin"
+out=$(rq_sd "$SD/q1" "$SD/no-tree" sonic-heroes.drive)
+if ls "$SD/q1/queue/"*.req >/dev/null 2>&1; then ok "a drive route is queued against a snapshot holding its profile"
+else bad "a drive route was refused against a snapshot holding its profile: $out"; fi
+crop=$(cd "$TESTING/titles/routes" && grep -l '^[[:space:]]*\(waitfor\|press-until\)' *.route | head -1)
+if [ -n "$crop" ]; then
+    out=$(rq_sd "$SD/q2" "$SD/no-tree" "${crop%.route}")
+    case "$out" in
+        *"would not run in the dispatched soak"*"no reference crop"*) ok "a route with waitfor crops is refused: they do not travel (${crop%.route})" ;;
+        *) bad "a route with waitfor crops was not refused (${crop%.route}): $out" ;;
+    esac
+else
+    bad "no route under titles/routes/ has a waitfor or press-until step to check the refusal with"
+fi
+mkdir -p "$SD/q3/bin"; cp -r "$SD/d/bin/." "$SD/q3/bin/"; rm -rf "$SD/q3/bin/titles/drive-profiles"
+out=$(rq_sd "$SD/q3" "$SD/no-tree" sonic-heroes.drive)
+case "$out" in
+    *"would not run in the dispatched soak"*"no profile"*) ok "a drive route is refused against a snapshot without its profile" ;;
+    *) bad "a drive route was not refused against a snapshot without its profile: $out" ;;
+esac
+out=$(rq_sd "$SD/q3" "$REPO" sonic-heroes.drive)
+if ls "$SD/q3/queue/"*.req >/dev/null 2>&1; then ok "  and queued when the serving tree ships profiles at its next re-exec"
+else bad "  and refused even with a serving tree that ships profiles: $out"; fi
 rm -rf "$SD"
-unset SD BIN SRC2 nroutes rd out h1 h2 h3 h4
+unset SD BIN SRC2 nroutes rd out h1 h2 h3 h4 crop
