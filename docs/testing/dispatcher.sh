@@ -89,7 +89,28 @@ SRC="${DISPATCH_SRC:-$TREE/docs/testing}"
 SCRIPT_DEPS="dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
 affinity.py captures.py make_test_iso.py extract_results.py sweep_queue.sh \
 make_isolation_discs.py vsh_score.py thermal_state.py titles/route.sh perf/pad.sh \
-battery_admit.py titles/titlestate.py titles/saves.py"
+battery_admit.py titles/titlestate.py titles/saves.py titles/drive.py \
+titles/classify.py titles/waitfor_match.py"
+# DATA A SHIPPED SCRIPT PICKS AT RUN TIME, shipped by glob, never by name.
+#
+# route.sh's `drive <profile>` step runs drive.py on
+# $HERE/drive-profiles/<profile>.toml, and classify.py reads that profile's
+# reference crops from drive-profiles/<profile>/*.png. None of it was in the
+# snapshot, so `route.sh --check` on any .drive.route failed in a worker with
+# "no profile" and no dispatched run could play one (#433, routedriver2
+# NOTES section 4). A profile is added per title, so naming them here would
+# go stale with the next title; the globs pick up a new one at the next
+# re-exec, and src_hash covers what they match, so adding one IS a re-exec.
+# drive-profiles/selftest/ is classify's fixtures, not data a run reads.
+SNAPSHOT_GLOBS="titles/drive-profiles/*.toml titles/drive-profiles/*/*.png"
+snapshot_globbed() {   # every file SNAPSHOT_GLOBS matches in $SRC, relative to it
+    ( cd "$SRC" 2>/dev/null || exit 0
+      local f
+      for f in $SNAPSHOT_GLOBS; do
+          case "$f" in */selftest/*) continue ;; esac
+          [ -f "$f" ] && printf '%s\n' "$f"
+      done )
+}
 # WHERE BUILDS HAPPEN, AND IT IS NEVER $TREE.
 #
 # Until 2026-09-19 a build detached the SHARED checkout onto the requested
@@ -113,43 +134,54 @@ REPO="${DISPATCH_REPO:-$TREE}"
 BUILD_TREE="${DISPATCH_BUILD_TREE:-$D/build-tree}"
 snapshot_scripts() {
     mkdir -p "$SNAP"
-    local f SRC0="$SRC" SNAP0="$SNAP"
+    local f g
+    # `for f in` stays one loop over literal names: 97-dispatch-deploy parses
+    # this list and compares it with SCRIPT_DEPS.
     for f in dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
              affinity.py captures.py make_test_iso.py extract_results.py \
              sweep_queue.sh make_isolation_discs.py vsh_score.py thermal_state.py \
              titles/route.sh perf/pad.sh battery_admit.py titles/titlestate.py \
-             titles/saves.py; do
-        # Two of these live in subdirectories. Each file is resolved against
-        # its own directory, so the write-beside-and-rename below stays in one
-        # directory, and cp gets a directory that exists. (Reassigning $f
-        # does not disturb the loop; `for f in` stays, as 97-dispatch-deploy
-        # parses this list.)
-        local SRC="$SRC0" SNAP="$SNAP0"
-        if [ "${f%/*}" != "$f" ]; then
-            SRC="$SRC0/${f%/*}"; SNAP="$SNAP0/${f%/*}"; f="${f##*/}"
-        fi
-        [ -f "$SRC/$f" ] || continue
-        mkdir -p "$SNAP" 2>/dev/null
-        cmp -s "$SRC/$f" "$SNAP/$f" 2>/dev/null && continue
-        # NEVER REWRITE A SNAPSHOT FILE IN PLACE. $SNAP is shared by every
-        # worker, and bash reads a running script lazily, by byte offset: a
-        # `cp -f` over run_disc.sh while the other device's worker was inside
-        # it made that bash read the new file at the old offset (`line 137:
-        # cess: command not found`), and a real run was voided as "the
-        # emulator never started" (2026-09-25, dispatch-hardening defect 13).
-        # Write beside it and rename: the rename swaps the inode, and a
-        # process already reading the old file keeps the old one.
-        cp -f "$SRC/$f" "$SNAP/.$f.tmp.$$" 2>/dev/null \
-            && mv -f "$SNAP/.$f.tmp.$$" "$SNAP/$f" 2>/dev/null \
-            || rm -f "$SNAP/.$f.tmp.$$"
+             titles/saves.py titles/drive.py titles/classify.py titles/waitfor_match.py; do
+        snapshot_one "$f"
     done
+    for g in $(snapshot_globbed); do
+        snapshot_one "$g"
+    done
+}
+snapshot_one() {   # snapshot_one <path relative to $SRC>
+    local f="$1" SRC="$SRC" SNAP="$SNAP"
+    # Some live in subdirectories. Each file is resolved against its own
+    # directory, so the write-beside-and-rename below stays in one directory,
+    # and cp gets a directory that exists.
+    if [ "${f%/*}" != "$f" ]; then
+        SRC="$SRC/${f%/*}"; SNAP="$SNAP/${f%/*}"; f="${f##*/}"
+    fi
+    [ -f "$SRC/$f" ] || return 0
+    mkdir -p "$SNAP" 2>/dev/null
+    cmp -s "$SRC/$f" "$SNAP/$f" 2>/dev/null && return 0
+    # NEVER REWRITE A SNAPSHOT FILE IN PLACE. $SNAP is shared by every
+    # worker, and bash reads a running script lazily, by byte offset: a
+    # `cp -f` over run_disc.sh while the other device's worker was inside
+    # it made that bash read the new file at the old offset (`line 137:
+    # cess: command not found`), and a real run was voided as "the
+    # emulator never started" (2026-09-25, dispatch-hardening defect 13).
+    # Write beside it and rename: the rename swaps the inode, and a
+    # process already reading the old file keeps the old one.
+    cp -f "$SRC/$f" "$SNAP/.$f.tmp.$$" 2>/dev/null \
+        && mv -f "$SNAP/.$f.tmp.$$" "$SNAP/$f" 2>/dev/null \
+        || rm -f "$SNAP/.$f.tmp.$$"
 }
 # Hash of the scripts as they are IN THE TREE. This used to return empty
 # while $TREE was detached for a build, because mid-build the tree held some
 # other commit's scripts. Builds no longer touch $TREE (see BUILD_TREE), so
 # the tree's scripts are always the tree's scripts and the hash is honest.
+# The globbed files go in by name AND content, so adding, renaming or editing a
+# profile or one of its crops moves the hash.
 src_hash() {
-    ( cd "$SRC" && cat $SCRIPT_DEPS 2>/dev/null | md5sum | cut -c1-12 )
+    local globbed; globbed=$(snapshot_globbed)
+    ( cd "$SRC" && { cat $SCRIPT_DEPS
+                     for f in $globbed; do echo "$f"; cat "$f"; done
+                   } 2>/dev/null | md5sum | cut -c1-12 )
 }
 # Logs go to the file and to STDERR, never stdout. build_ref's stdout is
 # captured as the APK path, so a log line on stdout becomes the path: adding
@@ -1987,6 +2019,16 @@ case "${1:-status}" in
     # exec between requests is free. Hash the scripts it actually depends on.
     DISPATCH_SRC_HASH="$(src_hash)"
     export DISPATCH_SRC_HASH
+    # And snapshot with THIS file's lists, after the hash. The re-exec that
+    # started this worker was carried out by the previous version's
+    # snapshot_scripts, which copies the previous version's list: a file a
+    # fold ADDS to the lists was never copied, and nothing re-snapshots until
+    # some later fold moves the hash (vsh_score.py, 2026-09-25: missing from
+    # bin/ after #229 folded, and request.sh refused vsh work waiting on a
+    # re-exec that was not coming). Hash first: a tree edit landing between
+    # the two leaves the snapshot NEWER than the hash, so the next tick
+    # re-execs; the other order would leave it older with nothing to notice.
+    snapshot_scripts
     # Anything left in running/ belongs to a loop that is gone -- killed,
     # crashed, or restarted to pick up a change. Its request was accepted and
     # never answered, so put it back rather than leaving it to be found by
