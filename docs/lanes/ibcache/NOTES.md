@@ -979,3 +979,28 @@ and a frame every ~20 s. The route is blind: nobody has played it.
 Both routes were copied into `docs/testing/titles/routes/` uncommitted only
 to queue them. `request.sh` reads them from there, and the full text is in
 each `request.json`. They are not in this branch's Files.
+
+### 5d pilot, read: the car moves (gate PASS)
+
+`1790918402-lane.ibcache-81467` (B, probe on), 23:09-23:16 PDT:
+- **Validity:** `[ibc507] on=1 layout=ok`, mark gameplay, 203 s of
+  gameplay, no crash, no hang, no thermal pause.
+- **Readings:** fps median 27.45, J/frame 0.3232, `[rr425] hc` median 1.44M.
+- **The play frames:** the car is in a different place in every one of the
+  ten. The speedometer reads 3, 3, 0, 0, 2, 0, 0, 0, 0 and 11 MPH, and the
+  lap counter goes from 0/2 to 1/2 at race clock 1:08.
+- **The gate PASSES**, against "above 0 MPH or a different place, in 3 or
+  more".
+- **What it is, honestly:** a car crawling and bouncing between the walls of
+  the start straight and the pit, with the camera swinging past the
+  grandstands. It is a moving, varied scene, but not racing at speed. 5d is
+  reported as that.
+
+Queued after it: A A B, `1790921866-lane.ibcache-1136225`, `-1136287`,
+`1790921867-lane.ibcache-1136347`, behind 5c's six. Because of that, the
+pilot B ran about 50 minutes before the other three. The order is B [5c] A A
+B, which is not drift-balanced, and the reading says so.
+
+5c queued 22:33 PDT, A B B A B A: `1790918407-lane.ibcache-81732` (A),
+`-81794` (B), `-81858` (B), `1790918408-lane.ibcache-81928` (A), `-81985`
+(B), `1790918409-lane.ibcache-82042` (A).

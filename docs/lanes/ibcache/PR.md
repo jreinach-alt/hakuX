@@ -25,8 +25,10 @@ No return-address stack: the probe serves RET already. Ranked and not built, see
 | 3 pixels, full sweep | nothing moves | 9 of 3381 moved, all in master's own flip band | FAIL, read as noise (NOTES attempt 4) |
 | 3b pixels, the flip band, three runs per arm | nothing moves outside the band | 0 captures self-identical in each arm and different between them | **PASS** (`[job.arms]`, 69 checks) |
 | 4 title soaks, three titles | gameplay with the probe, no new crash or hang | GTA (Thor), Crimson Skies, Alien Hominid (Nova): all gameplay, no crash or hang | **PASS** |
-| 5a GTA (capped), no regression | fps(B) >= fps(A) - 0.5; J/frame(B) <= 1.036 x A | Nova, head 946a78c8e9, B A A B queued 2026-10-01 | waiting |
-| 5b Forza (below cap) | fps +5%, J/frame -4% | Nova, head 946a78c8e9, B A A B queued 2026-10-01 | waiting |
+| 5a GTA (capped), no regression | fps(B) >= fps(A) - 0.5; J/frame(B) <= 1.036 x A | Nova, B A A B: fps 29.55 vs 29.62; J/frame 0.2942 vs 0.2759 (x1.066) | **FAIL** on J/frame (fps passes) |
+| 5b Forza (below cap) | fps +5%, J/frame -4% | the car sat at 0 MPH on the start line in every play frame of both arms (`forza414.route` never touches the throttle); one B run pre-empted by an outside launch | **not evidence** |
+| 5c GTA J/frame replication | J/frame(B) <= 1.036 x A over 3 fresh runs per arm, with window frames; FAIL turns the default off | Nova, A B B A B A queued 2026-10-01 22:33 PDT | waiting |
+| 5d Forza, driven | 5b's bars, on a throttle-holding route; one-run pilot gates it on the frames | pilot `1790918402-lane.ibcache-81467` queued | waiting |
 
 Crimson Skies at n=1 per arm on the Nova: both arms at the 30 fps cap, J/frame -2.8% (not gated).
 
