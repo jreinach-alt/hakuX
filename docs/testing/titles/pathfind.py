@@ -389,12 +389,21 @@ def knowledge(tid, name, limit=6000):
     return s[-limit:] if len(s) > limit else s
 
 
+STOP = {"the", "of", "and", "edition", "xiso", "iso", "usa", "europe", "japan", "game", "games", "pro", "tour"}
+
+
+def name_words(name):
+    return {w for w in norm(name).split() if len(w) >= 3 and w not in STOP and not re.fullmatch(r"[0-9a-f]{8}", w)}
+
+
 def load_paths(tid, name):
     """(own path or None, [sibling paths]) from pathknow/paths/*.json. A
-    sibling is a recorded title whose name shares a series file with ours,
-    or, lacking any, the same publisher."""
+    sibling is a recorded title whose name shares a series hint file with
+    ours, or one from the same publisher (title id's first 4 hex) sharing a
+    distinctive name word ("espn", "fifa", "tiger"), most shared words first."""
     own, sibs = None, []
     mine = set(os.path.basename(f) for f in series_files(name))
+    words = name_words(name)
     for p in sorted(glob.glob(os.path.join(KNOW, "paths", "*.json"))):
         try:
             d = json.load(open(p))
@@ -403,8 +412,11 @@ def load_paths(tid, name):
         if tid and d.get("title_id", "").upper() == tid.upper():
             own = d
         elif mine and mine & set(os.path.basename(f) for f in series_files(d.get("name", ""))):
-            sibs.append(d)
-    return own, sibs
+            sibs.append((99, d))
+        elif tid and d.get("title_id", "")[:4].upper() == tid[:4].upper() and words & name_words(d.get("name", "")):
+            sibs.append((len(words & name_words(d.get("name", ""))), d))
+    sibs.sort(key=lambda x: -x[0])
+    return own, [d for _, d in sibs]
 
 
 def path_text(d, limit=24):
@@ -578,6 +590,7 @@ class Agent:
         self.t0 = now()
         self.own, self.sibs = load_paths(tid, name)
         self.cursor = 0              # next index into self.own's steps a replay may use
+        self.sib_cursor = {}
         self.hints = knowledge(tid, name)
         self.probes = 0
         self.black_since = None
@@ -685,6 +698,23 @@ class Agent:
         screen every step and is invisible to tried_here."""
         return [" ".join(s["action"]) for s in self.steps[-k:]
                 if s.get("action") and s.get("sig") is not None and sig_dist(s["sig"], sig) <= SIG_MATCH]
+
+    MENU_STATES = ("title_screen", "main_menu", "submenu", "save_load_prompt", "controller_prompt",
+                   "name_entry", "profile_creation", "publisher_logo")
+
+    def sib_replay(self, sig):
+        """A SIBLING's recorded menu step whose screen matches closely (0.6x the
+        own-path threshold: a sibling's menus share a frontend, not every pixel):
+        (sibling index, step index, step) or None."""
+        for k, d in enumerate(self.sibs[:2]):
+            steps = d.get("steps", [])
+            cur = self.sib_cursor.get(k, 0)
+            for j in range(cur, min(cur + 6, len(steps))):
+                st = steps[j]
+                if st.get("sig") is not None and st.get("useful", True) and st.get("state") in self.MENU_STATES \
+                        and sig_dist(st["sig"], sig) <= 0.6 * SIG_MATCH:
+                    return k, j, st
+        return None
 
     def replay(self, sig):
         """A recorded step of this title's own path whose screen matches, at or
@@ -876,6 +906,12 @@ class Agent:
             self.cursor = j + 1
             return dict(base, state=s["state"], why=f"replay step {j}: {s['why']}", action=list(s["action"]),
                         wait_s=s.get("wait_s", 2), src="replay")
+        sp = self.sib_replay(sig) if not (tried or seen or self.own) else None
+        if sp:
+            k, j, s = sp
+            self.sib_cursor[k] = j + 1
+            return dict(base, state=s["state"], why=f"sibling {self.sibs[k].get('title_id')} step {j}: {s['why']}",
+                        action=list(s["action"]), wait_s=s.get("wait_s", 2), src="sibreplay")
         # 4. the model; the stronger one when stuck or unsure
         cycle = max((seen.count(a) for a in seen), default=0) >= 2
         stuck = len(tried) >= 2 or cycle
@@ -988,6 +1024,8 @@ class Agent:
                            steps=len(self.steps), seconds=round(self.el(), 1), last_frame=last,
                            last_state=self.steps[-1].get("state") if self.steps else None,
                            replayed=sum(1 for s in self.steps if s.get("src") == "replay"),
+                           sib_replayed=sum(1 for s in self.steps if s.get("src") == "sibreplay"),
+                           guide=[d.get("title_id") for d in ([self.own] if self.own else self.sibs[:2])],
                            cheap=sum(1 for s in self.steps if s.get("src") in ("black", "static")),
                            thermal=self.thermal)
         looks = sorted(glob.glob(os.path.join(self.frames, "*.jpg")))

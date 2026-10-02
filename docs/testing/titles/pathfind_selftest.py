@@ -171,6 +171,14 @@ os.environ["PATHFIND_AFTER_S"] = "0"
 check("retract", res["result"] != "gameplay" and res.get("retracted") == 1,
       f"claim retracted ({res['result']}, retracted {res.get('retracted')})")
 
+# siblings: same publisher and a shared distinctive word, with no series hint file
+pd = os.path.join(TMP, "know", "paths")
+for t, n in (("53450031", "ESPN NBA 2K5"), ("53450002", "Sonic Heroes"), ("4D530013", "ESPN Fake Other Pub")):
+    json.dump({"title_id": t, "name": n, "steps": []}, open(os.path.join(pd, t + ".json"), "w"))
+own, sibs = pathfind.load_paths("53450030", "ESPN NFL 2K5")
+check("siblings", own is None and [d["title_id"] for d in sibs] == ["53450031"],
+      f"ESPN NBA 2K5 is ESPN NFL 2K5's sibling, Sonic and another publisher's ESPN are not: {[d['title_id'] for d in sibs]}")
+
 # actions
 ca = pathfind.clean_action(["a", "START", "STICK:Up:9", "RT:1.5", "HOLD:A:1", "HOLD:Q:1", "JUMP", "select"])
 check("actions", ca == ["A", "START", "STICK:up:4", "RT:1.5", "HOLD:A:1", "BACK"], f"{ca}")
