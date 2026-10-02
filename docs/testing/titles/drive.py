@@ -268,9 +268,7 @@ class Driver:
         self.unknown_since = None
         self.unknown_streak = 0
         self.stalled_since = None
-        self.escape_t0 = None            # stall_cycle in progress since
-        self.escape_phase = None
-        self.escapes = 0
+        self.escapes = 0                 # stall_cycle runs so far
         self.last_hud_t = None
         self.play_since = None
         self.play_frames = []
@@ -283,6 +281,7 @@ class Driver:
         self.time_to = {}
         self.result = None
         self.n = 0
+        self.cap_t = 0.0
 
     # -- bookkeeping -------------------------------------------------------
     def check_profile(self):
@@ -330,36 +329,31 @@ class Driver:
         return out
 
     def escape(self):
-        """The axes the stall escape wants now, or None when no escape runs.
-        An escape, once started, plays its phases to the end whatever the
-        captures in between say: backing off makes motion, and a stall
-        watch that stopped the escape on the first moving capture would walk
-        straight back into the wall (Sonic Heroes' Seaside Hill block)."""
-        if self.escape_t0 is None:
-            return None
-        phases = self.stall_phases()
-        at = self.t() - self.escape_t0
-        for i, (axes, s, btns) in enumerate(phases):
-            if at < s:
-                if self.escape_phase != i:
-                    self.escape_phase = i
-                    for j, b in enumerate(btns):
-                        if j:
-                            self.sleep(0.3)
-                        self.dev.pad("press", b)
-                    self.inputs.append(dict(t=round(self.t(), 1), state=self.state, why="stall escape %d" % self.escapes,
-                                            input=" ".join("%s %s" % a for a in axes) + (" + " + ",".join(btns) if btns else "")))
-                return axes
-            at -= s
-        self.escape_t0 = self.escape_phase = None
-        return None
+        """Play input.stall_cycle through, now, with no captures in between:
+        each phase's axes held for its seconds, its buttons pressed 0.3 s
+        apart at its start. Synchronous because the phases are short and
+        exact: run off the capture clock (5 s apart in stable play), Sonic
+        Heroes' 2.5 s back-off ran ~6 s and walked the team off the ledge
+        into the sea, three times (session 4, replay 3)."""
+        for axes, s, btns in self.stall_phases():
+            self.inputs.append(dict(t=round(self.t(), 1), state=self.state, why="stall escape %d" % self.escapes,
+                                    input=" ".join("%s %s" % a for a in axes) + (" + " + ",".join(btns) if btns else "")))
+            for ax, _ in self.held:
+                if ax not in [a for a, _ in axes]:
+                    self.dev.pad("axis", ax, "mid")
+            for ax, val in axes:
+                self.dev.pad("axis", ax, str(val))
+            self.held = list(axes)
+            t0 = self.t()
+            for j, b in enumerate(btns):
+                if j:
+                    self.sleep(0.3)
+                self.dev.pad("press", b)
+            self.sleep(max(0.0, s - (self.t() - t0)))
 
     def hold_play(self):
         want = [tuple(x) for x in self.inp.get("play_hold", [])]
         cycle = self.inp.get("play_cycle")
-        esc = self.escape()
-        if esc is not None:
-            want, cycle = esc, None
         if cycle:
             # An on-foot title: one held direction walks into the first wall
             # (Castlevania's fountain, run 3), so the held axes rotate through
@@ -565,10 +559,12 @@ class Driver:
             return self.press(seq[n % len(seq)], "%s %d" % (state, n + 1))
 
         if state in ("play", "stalled"):
-            if (state == "stalled" and self.escape_t0 is None and self.stall_phases()
-                    and self.escapes < cfg["escape_max"]):
+            if state == "stalled" and self.stall_phases() and self.escapes < cfg["escape_max"]:
                 self.escapes += 1
-                self.escape_t0 = t
+                self.escape()
+                self.last_press_t = self.t()     # the next capture comes at the fast rate
+                self.stalled_since = None
+                return "stall escape %d" % self.escapes
             self.hold_play()
             if state == "stalled":
                 if self.stalled_since is None:
@@ -617,6 +613,7 @@ class Driver:
                 self.n += 1
                 cur = os.path.join(tmpdir, "cap%d.png" % (self.n % 2))
                 ok, cap_s = self.dev.capture(cur)
+                self.cap_t = self.t()        # the row's time: a stall escape acts for seconds after it
                 if not ok:
                     if self.sim:
                         break
@@ -684,7 +681,7 @@ class Driver:
 
     def row(self, r, cap_s, action, kept):
         self.tsv.write("%.1f\t%s\t%s\t%s\t%s\t%.2f\t%s\t%s\n" % (
-            self.t(), r["state"], r["source"], "" if r.get("changed") is None else r["changed"],
+            self.cap_t, r["state"], r["source"], "" if r.get("changed") is None else r["changed"],
             r.get("luma", ""), cap_s, action, kept))
         self.tsv.flush()
 

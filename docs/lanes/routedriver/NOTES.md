@@ -244,3 +244,130 @@ there. The Thor stays under lane.local's `lanelocal-fanwait` hold, which
 Thor replay runs under that hold. The replay script checks that no request
 is running there, starts cold (xo-therm <= 50 C) and stops at 70 C.
 `scratch/replay.sh` now takes `DEV=nova|thor`.
+
+### Forza Motorsport (4D53006E) on the Thor -- REACHED PLAY (driving proof)
+
+Thor bdc158a5, under lane.local's `lanelocal-fanwait` hold (ADDENDUM 4),
+nothing running there, start xo-therm 39.0 C / cpu-1-9 41 C, AC, battery
+100%. Supervised: `scratch/replay.sh` polled every 20 s (focus + xo-therm,
+stop at 70 C); I read the timeline on each poll. Route
+`routes/forza.drive.route` = `drive forza 420 find`.
+
+- Attempt 0 (23:37) sent nothing. The "Use USB for" dialog
+  (`com.odin.settings`, a bare window) had display 0's focus, so the
+  post-launch focus check failed and the app was stopped. I pressed BACK
+  once with no app running (soak_title.sh makes the same single exception)
+  and added that step to replay.sh, before launch.
+- Run 1 (23:39:49-23:41:43): rc 0 `reached-play` at 97 s. **Title 15.5 s,
+  play 74.7 s.** xo-therm 39.1 -> 45.6 -> 49.2 -> 52.9 -> 56.4 C during the
+  run, 58.9 C at the end: about 3.5 C per 20 s while running, so a Thor
+  `--find` has roughly 5 minutes before the 70 C stop. Screen slept after.
+  0 model calls. Sources: hud 13, black 10, moving 12, static 8, crop 6,
+  no-prev 1.
+
+Path (frames `scratch/run-fz1/route-frames/`, sheet
+`docs/lanes/routedriver/forza/run1-path.jpg`): "simulation" card (logo) ->
+Welcome to Forza (logo) -> intro FMV (A skips; the card/logo/FMV alternate
+twice) -> PRESS A TO START (crop title-logo) -> PROFILE SELECT (crop, A on
+Default) -> Arcade, Event Maple Valley Short, Class D, Car Civic Si, Assists
+OK (A each) -> loading screen -> 14 s black -> STARTING GRID -> race intro ->
+HUD at 0 MPH (`unknown`, hud+after-cutscene) -> RT held -> play.
+
+**Frame review, play stretch** (all 11 frames, `234106-040` ... `234129-050`,
+sheets `forza/run1-play-a.jpg`, `run1-play-b.jpg`): speed 10, 23, 32, 38,
+44, 53, 59, 65, 73, 52, 52 MPH; LAP 0/2 -> 1/2; race clock 3.0 -> 18.9 s;
+scenery changes from the pit straight to the Maple Valley billboard and the
+trees. The car is driving. **Classifier and policy errors, honestly:**
+(a) RT alone does not steer. The car ran wide at the first bend onto the
+dirt (frames 049-050: 52 MPH, place 4/8 -> 6/8). That is enough for `--find`
+but not for a scored window: a long window ends against a barrier, which
+the stall watch will name, not drive out of. (b) The menu transitions
+(Event, Car select fades) and the STARTING GRID were named `cutscene`
+(moving), and the Maple Valley loading screen was named `main_menu`
+(static). The skip ladder is only A here, so every press was the right
+button anyway, and the grid's A started the race. (c) `skip=none after 3
+passes` was logged for 61.6-68.3 s, the grid and the race intro, which
+ended on its own. (d) Three anomalies `main_menu after cutscene` come from
+(b). Live race motion went as low as 0.15 changed (2 s apart), against
+0.004-0.015 at 0 MPH on the grid (1790914021), so the default bars hold for
+Forza.
+
+### Sonic Heroes (5345002B) on the Nova -- replay 1: the wedge read as play
+
+Nova, hold `routedriver:a4` (taken 23:35, in effect 23:42 when ibcache's
+request ended), battery 80%. Route `routes/sonic-heroes.drive.route` =
+`drive sonic-heroes 400 find`. rc 0 `reached-play` at 90 s. **Title 9.2 s,
+play 41.7 s.** The old route waited 20 s at boot and 100 s for the story
+cutscene, which one A skipped here (33.6 s). Path: Sonic Team logo -> Sofdec
+-> Dolby -> title art (START) -> slot strip (A) -> Main Menu -> 1P PLAY ->
+STORY -> team (A x5, crop menu-banner) -> story cutscene (A) -> NOW LOADING
+-> Seaside Hill.
+
+**Frame review contradicts the timeline.** Frames 026-031 (clock 1:54 ->
+10:46): running, rings 0 -> 8, score 0 -> 80, scene changing (0.70-0.83
+changed). Frames 032-035 (clock 12:74 -> 20:21): **the team is wedged
+against a stone block**, the same picture four times, with score and rings
+frozen. Those captures read 0.14-0.18 changed (the water, the clock, idle
+animation), over the 0.05 motion bar, so they were `play`. The run "reached
+play" on 14 s of real play plus 6 s of wedge. This is the false `play` the
+owner warned about (ADDENDUM 2 item 7), on an on-foot title.
+
+Fix (516d910dd8): (1) classify.py takes per-title `hud_motion_bar` /
+`hud_stall_bar` for HUD frames only, so cutscene and intro detection keep
+the global bars. Sonic's are 0.35 / 0.30, against live 0.59-0.83 over three
+runs (2 s and ~10 s spacing) and the wedge at 0.14-0.18. The limit: one
+wedge, at one place. (2) drive.py takes `input.stall_cycle`, a committed
+escape played to its end once per stall, up to `escape_max` (6): back off
+2.5 s, then forward with A,A (jump plus mid-air action), then forward-right
+and forward-left with A,A. lane.titleroutes session 61 found that holding
+forward wedges the team 20-30 s in and that only backing off frees it.
+(3) Selftest cases: the wedge pair reads `stalled`, the running pair reads
+`play`, and a sim over replay 1's play frames must not reach play and must
+send the escape. Mutants (bars removed, cycle removed) fail them.
+
+### Sonic Heroes replays 2-6 (Nova, hold `routedriver:a4` 23:52-00:14 PDT)
+
+Between replay 1 and 2 I released the hold (23:45), so ibcache's queued
+request ran, and took it back at 23:48 (in effect 23:52).
+
+| replay | route | result | what the frames show |
+|---|---|---|---|
+| 2 | `drive sonic-heroes 400 find` | **reached-play**: title 8.1 s, play 34.7 s, 55 s total | 11 frames read (`run-sh2/route-frames/235256-021` ... `235317-030`, sheet `sonic/run2-play.jpg`). 021-025: running the course, rings 0 -> 8, score 80. 026-028: Fly formation, along the wall and out over the water. 029: camera underwater (fell in the sea). 030: respawned at the stage start (clock 0:00:24, 0 rings). All of it is live gameplay (HUD up, scene evolving), so `--find` is satisfied honestly, but the stretch ends in a death, not progress. No stall in this one: the team went past the block's side. |
+| 3 | `drive sonic-heroes 150` (scratch route, no find), escape = back off 2.5 s + jumps | window-done, 3 escapes | wedge at the block (game clock ~20 s), the escape's back-off ran ~6 s, not 2.5 s (phases advanced on 5 s captures) and walked the team off the ledge into the sea; checkpoint; repeat every 34 s |
+| 4 | same, escape now synchronous: forward + 4 A, then the two diagonals | window-done, 3 escapes | **the jump and fly clears the block** (frame 028: game clock 30:96, team flying over open water past it); the presses stop and the team falls short of the next island, dies, restarts |
+| 5 | forward + 20 A (~6 s) | window-done, 3 escapes | flew farthest (clock 39:74), came down in the water to the RIGHT of the next platform (a grate on its left); died; "x01" lives shown at 036 |
+| 6 | forward 3 s + 8 A, then forward-left 5 s + 14 A | window-done, 3 escapes | died sooner; stage restart each time |
+
+Driver fixes from these (all in drive.py): the escape is played
+synchronously with its exact phase timing (replay 3's bug), and a tsv row
+is stamped at its capture, not after its action (a 13 s escape had shifted
+its row; the logcat `state=` lines that title_verdict reads were always
+stamped at entry, so play_share was never affected). Sonic's profile keeps
+replay 5's cycle with `escape_max = 1` and says plainly that the section
+is unsolved. After the one escape the stall watch ends a scored run as
+ROUTE FAIL "stalled", instead of spending lives into a Game Over menu.
+
+**What the classifier got wrong on Sonic, all replays:** replay 1's wedge
+was `play` until the HUD bars (fixed, above). The Sofdec/ADX card is named
+`intro_video` (it moves), which makes a false `logo after intro_video`
+anomaly at 4 s in every replay. The Dolby logo took a second press (A did
+not skip it, START did). A death (fall into the sea, the restart iris) is
+named `play` or `black` (replay 5, 119.4 s), never a menu. That is right
+for play_share, but the timeline cannot say that the player died.
+
+### For the next session (do not repeat)
+
+- Sonic Heroes past the Seaside Hill block: do not retry back-offs or more
+  A presses in a straight line; five variants are recorded in the profile.
+  What was not tried: a formation change (the HUD's Y/B badges) to Speed or
+  Power before the block, holding the jump longer, or the side of the block
+  (replay 2 went past it on the side, before falling in further on).
+  Reading `sonic/run5-loop.jpg` (frame 034) for the next platform's position
+  is the start.
+- Forza's play input does not steer. A scored Forza window needs a steering
+  policy (e.g. follow the suggested line's colour, which the assists draw on
+  the road) or it will end against a barrier. `--find` does not need one.
+- The Thor `--find` heats about 3.5 C per 20 s while running (39 -> 59 C in
+  2 min). Five minutes is the budget from cold before the 70 C stop.
+- `drive` still cannot run from the dispatcher until this branch is folded:
+  `route.sh --check` on the dispatcher's snapshot refuses the step.
