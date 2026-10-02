@@ -1,12 +1,70 @@
-# titleroutes: session 62 -- Castlevania withdrawn/handed to lane.routedriver; Sonic Heroes and Super Monkey Ball findings stand; no device work available tonight (#397)
+# titleroutes: session 63 -- queued pass-1 surveys for 4 of the 13-title Nova backlog (ADDENDUM 15); pilot gate hit, 8 titles still to queue (#397)
 
 State: ready
 
 Lane: titleroutes          Issue: #397 (per-title gameplay fps; 0.5 tracking #433)
 Base: master @ 8e3b1f2ad2 (merge of origin/master into this branch, carrying session 61's own fold plus localjobs/litcompile569/forzadecay414)
-Files: docs/testing/titles/routes/sonic-heroes.route, docs/testing/titles/targets.toml, docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/OUTBOX.md, docs/lanes/titleroutes/PR.md
-Prediction: none: notes/status update only, no route or targets.toml edit this session
-Needs device: no -- the Nova is currently running another lane's request and the Thor stays closed to title gameplay (dead fan); nothing of this lane's own is queued
+Files: docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/OUTBOX.md, docs/lanes/titleroutes/PR.md
+Prediction: none: queued 4 generic blind surveys via request.sh (no route/targets.toml edit this session; no code under test)
+Needs device: no (direct hold) -- 4 survey requests are queued on the Nova (behind lane.ibcache's in-flight run), none held or driven live this session
+
+## What changed (session 63)
+
+Resumed per hostops ADDENDUM 15 (23:10 PDT): session 62 ended `blocked:`
+correctly (nothing of this lane's own was queued/running), but the
+addendum said not to stop there again without first queuing whatever
+offline/survey work is available. No trace of a prior "attempt 1" under
+this addendum exists (no commit since session 62's `7a090b6fa2`, no
+uncommitted changes, no stray hold, nothing new under `scratch/judge/`) --
+treated as having left no work behind, nothing to clean up.
+
+Checked `dispatch/running/`: the Nova is still running `lane.ibcache`'s
+request, unchanged since session 62. No hold taken, no device touched
+directly.
+
+Checked all 13 of session 51's Nova-only, no-copy-needed, no-route titles
+for existing survey/nav frames (`~/hakux-work/nav/*<title_id>*` glob,
+`targets.toml` grep) before queuing anything, per ADDENDUM 15's
+offline-first instruction: none of the 12 non-Batman titles have any.
+Batman: Dark Tomorrow stays as session 2's combat-blocked finding, not
+re-touched (re-surveying would not change an input-mapping problem).
+
+Resolved each title's canonical `title_id` against `targets.toml` where an
+entry exists and `xemu-compat-2026-09-25.csv` where it does not (5 of the
+12 have no `targets.toml` entry yet). Queued 4 generic blind surveys
+(`--route survey --seconds 300 --device nova --hard-pin --ref 7a090b6fa2`,
+plain priority -- `gh` is still down so the release-label read fails and
+falls back to plain, confirmed per-call) before hitting this lane's own
+pilot gate on the 5th (`pilots/titleroutes.ok` is 32.3 h old, past the 24 h
+window; these 4 already used the "first 30 min always goes through"
+allowance -- noting as a deviation that the brief's stated way out says to
+cap the opening batch at two, not four, before reviewing):
+
+| title | title_id | request id |
+|---|---|---|
+| Black Stone: Magic & Steel | 58490004 | `1790921686-titleroutes-1080767` |
+| Star Wars: Episode III: Revenge of the Sith | 4C410017 | `1790921690-titleroutes-1082096` |
+| Bloody Roar: Extreme | 48550001 | `1790921692-titleroutes-1082566` |
+| Gunvalkyrie | 49470017 | `1790921696-titleroutes-1084287` |
+
+The other 8 (Dino Crisis 3, Buffy, Halo: Combat Evolved, Conker: Live &
+Reloaded, Halo 2, Ninja Gaiden Black, ToeJam & Earl III, Tron 2.0) are not
+yet queued, blocked on this session's own pilot gate -- not on anything
+external. Did not try to force past it or wait idle for these 4 to land,
+per ADDENDUM 15's own "do not wait idle for the device to clear".
+
+`python3 docs/testing/titles/titlestate_selftest.py` (all checks passed)
+and `targets.toml` via `tomllib` (80 titles, unchanged) -- re-run as a
+check, since nothing under those files changed this session.
+
+Release note (none): queuing/notes only, no code or route/targets.toml
+change this session.
+
+Next session: review the 4 queued surveys' frames once they land, write
+`dispatch/pilots/titleroutes.ok` with the verdict, then queue the
+remaining 8 titles' surveys (ids/isos in NOTES.md "State for a
+successor"). Once any survey lands, author a route from its frames the
+same way every prior title in this lane has been handled.
 
 ## What changed (session 62)
 
