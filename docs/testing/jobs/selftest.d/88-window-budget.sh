@@ -189,11 +189,13 @@ chmod +x "$BWD/bin/"*
 echo '[{"number":120,"title":"a startable issue","labels":[]}]' > "$BWD/issues.json"
 echo '[{"number":101,"title":"ready and unlabelled","isDraft":false,"labels":[]}]' > "$BWD/prs.json"
 echo '[]' > "$BWD/none.json"
-SUN=$(date -u -d '2026-09-20T15:00:00Z' +%s)    # 95% through a Mon-anchored week
-WED=$(date -u -d '2026-09-16T15:00:00Z' +%s)    # 38% through the same week
+SUN=$(date -u -d '2026-09-24T19:30:00Z' +%s)    # 95% through a Thu-21:00-PT-anchored week
+WED=$(date -u -d '2026-09-20T18:00:00Z' +%s)    # 37% through the same week
 # A run index the reserve can read: 90 units of spend inside that week, in the
-# nine-column shape summarise_run.py writes.
-printf '2026-09-16T00:00:00Z\tlane-a\tclaude-opus-5\t50\t600\t90\tok\ta.json\tdid a thing\n' \
+# nine-column shape summarise_run.py writes. The week starts 2026-09-18T04:00Z
+# (Thu 2026-09-17 21:00 PDT); this row must fall inside it or neither SUN's nor
+# WED's check below sees the spend at all.
+printf '2026-09-19T00:00:00Z\tlane-a\tclaude-opus-5\t50\t600\t90\tok\ta.json\tdid a thing\n' \
     > "$BWD/work/logs/lane/index.tsv"
 hits() { : > "$BWD/work/window/limits.tsv"; for t in "$@"; do printf '%s\tlane-x\t-\tx.json\n' "$t" >> "$BWD/work/window/limits.tsv"; done; }
 bwgate() {   # <issues.json> <prs.json> <now epoch or ""> [limits.env contents]
@@ -241,20 +243,22 @@ check "a declared budget 80% spent, in the last fifth, holds the reserve" \
     bw_says 1 "owner's reserve" issues.json none.json "$SUN" 'WEEK_SPEND_BUDGET=100'
 check "the same spend mid-week does NOT defer: this is a reserve, not a second cap" \
     bw_says 0 '#120' issues.json none.json "$WED" 'WEEK_SPEND_BUDGET=100'
-# Two refusals INSIDE the reserve's own stretch, which opens at Sat 14:24Z
-# under a Monday anchor (5.6 days in). Both are hours old, so what arms here
-# is the reserve and not the cooldown wearing its clothes.
-hits 2026-09-19T15:00:00Z 2026-09-19T20:00:00Z
+# Two refusals INSIDE the reserve's own stretch, which opens at 2026-09-23
+# 18:24Z (Wed 11:24 PDT) under the Thu-21:00-PT anchor (5.6 days in). Both are
+# hours old, so what arms here is the reserve and not the cooldown wearing
+# its clothes.
+hits 2026-09-24T02:00:00Z 2026-09-24T08:00:00Z
 check "two refusals inside the reserve arm it with nothing declared at all" \
     bw_says 1 'refused 2 time' issues.json none.json "$SUN"
-# A five-hour refusal on Tuesday and a weekly one on Sunday read identically
-# from here, so Tuesday's must not be evidence about Sunday's budget.
-hits 2026-09-15T09:00:00Z 2026-09-15T10:00:00Z
+# A five-hour refusal on Friday and a weekly one late Thursday read
+# identically from here, so Friday's must not be evidence about the later
+# reading's weekly budget.
+hits 2026-09-19T09:00:00Z 2026-09-19T10:00:00Z
 check "refusals from earlier in the week do not arm it: nothing here knows which window closed" \
     bw_says 0 '#120' issues.json none.json "$SUN"
 check "and they are still reported, so the week's refusals are not hidden" \
     bw_says 0 '2 usage-limit hit(s) this week' issues.json none.json "$SUN"
-hits 2026-09-07T09:00:00Z 2026-09-08T10:00:00Z
+hits 2026-09-10T09:00:00Z 2026-09-11T10:00:00Z
 check "last week's refusals do not arm this week's reserve" \
     bw_says 0 '#120' issues.json none.json "$SUN"
 
