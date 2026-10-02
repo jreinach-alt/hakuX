@@ -3,7 +3,7 @@
 State: ready
 
 Lane: titleroutes          Issue: #397 (per-title gameplay fps; 0.5 tracking #433)
-Base: master @ f6792eb9b6 (merged in; it already carries 17c3bc721f, the first cut of both routes)
+Base: master @ 36c16a720f (merged in)
 Files: docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/OUTBOX.md, docs/lanes/titleroutes/PR.md, docs/testing/titles/routes/buffy.route, docs/testing/titles/targets.toml
 Prediction: none: route data (inputs) and notes, no emulator code; route checks are --no-expect dispatch runs
 Needs device: no direct hold -- route-check requests queued on the Nova via request.sh
