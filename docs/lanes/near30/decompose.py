@@ -64,6 +64,7 @@ def read_run(d):
     pace, gf, rows, rdc = [], [], [], []
     tlb = {}
     ih = {}
+    lk, ph, be = [], [], []
     rw = []
     for line in open(os.path.join(d, 'logcat.txt'), errors='replace'):
         m = TS.match(line)
@@ -94,6 +95,14 @@ def read_run(d):
             wm = num(r'deferred calls=\d+ waits=\d+ spun=\d+ blocked=\d+ wakes=\d+ wait_ms=([\d.]+)', line)
             if s_ and tc is not None and wm is not None:
                 rw.append((t, tc / (10 * s_), wm / (10 * s_)))
+        elif '[lock474]' in line:
+            dt = num(r'dt_ms=(\d+)', line)
+            if dt:
+                lk.append((t, (num(r'rd_wait_ms=([\d.]+)', line) + num(r'wr_wait_ms=([\d.]+)', line)) / dt))
+        elif 'hakuX-phase' in line:
+            ph.append((t, {k: num(r'\b' + k + r':([\d.]+)', line) for k in ('GPU', 'Draw', 'Fin', 'Idle', 'Tot', 'Surf', 'Tex')}))
+        elif 'xemu-work' in line:
+            be.append((t, num(r'BE:(\d+)', line)))
         elif '[tlb68]' in line:
             tlb[num(r' w=(\d+)', line)] = num(r' cpu=(\d+)', line) / num(r' dt=(\d+)', line)
         elif '[rr425w]' in line and t > 0:
@@ -145,6 +154,17 @@ def read_run(d):
             r['v_run'] = F * x[0]
             r['v_rq'] = F * x[1]
             r['v_blk'] = F * (1 - x[0] - x[1])
+        for src, key, fn in ((lk, 'lockw', lambda v: F * v),):
+            j = bisect.bisect_right([y[0] for y in src], r['t']) - 1
+            if j >= 0 and r['t'] - src[j][0] < 4:
+                r[key] = fn(src[j][1])
+        pts = [y for y in ph if r['t'] - 2 < y[0] <= r['t']]
+        if pts:
+            for k in ('GPU', 'Draw', 'Fin', 'Idle', 'Tot'):
+                r['ph_' + k] = med([y[1][k] for y in pts])
+        bs = [y[1] for y in be if r['t'] - 2 < y[0] <= r['t']]
+        if bs:
+            r['BE'] = med(bs)
         k = bisect.bisect_left([y[0] for y in rw], r['t'])
         if k < len(rw) and rw[k][0] - r['t'] < 10:
             r['rthr'] = rw[k][1]
@@ -164,7 +184,7 @@ def pct(xs, q):
 
 
 COLS = ['n', 'fps', 'F', 'gbusy', 'gidle', 'vblank_ms', 'pgraph_ms', 'timer_ms',
-        'disc_ms', 'other_ms', 'Ri', 'v_run', 'v_rq', 'v_blk', 'vcpu', 'rthr', 'rwait']
+        'disc_ms', 'other_ms', 'Ri', 'v_run', 'v_rq', 'v_blk', 'vcpu', 'rthr', 'rwait', 'lockw', 'ph_GPU', 'ph_Draw', 'ph_Fin', 'ph_Idle', 'ph_Tot', 'BE']
 tsv = open(args.tsv, 'w') if args.tsv else None
 if tsv:
     tsv.write('run\tt\t' + '\t'.join(COLS[1:]) + '\n')
