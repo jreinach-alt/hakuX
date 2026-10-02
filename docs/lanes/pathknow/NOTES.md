@@ -59,8 +59,8 @@ Do not repeat:
   - its action names: `UP/DOWN/LEFT/RIGHT` (the D-pad, sent as hat pulses), `STICK:<dir>:<s>`, `RT:/LT:`;
     there is no right stick;
   - its `series_files()` rule: every slug word must appear in the normalised title name. Five slugs were
-    renamed to satisfy it, and GoldenEye was split out of 007. `scratch/match.py` ran that rule over both
-    owner listings; only `series-crash` over-matches (Crash 'n Burn, Phantom Crash), and its header says
+    renamed to satisfy it, and GoldenEye was split out of 007. A one-off copy of that rule, run over both owner
+    listings, found that only `series-crash` over-matches (Crash 'n Burn, Phantom Crash), and its header says
     so.
 - ESPN 2K5, FIFA and Tiger Woods have no route on this emulator. Their series files are short, marked
   unverified, and built around the sports controller-assignment trap (controller left in the middle
