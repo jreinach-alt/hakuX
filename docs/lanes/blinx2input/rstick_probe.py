@@ -78,7 +78,7 @@ REF = os.path.dirname(os.path.abspath(__file__)) + "/ref"
 def sig(path):
     from PIL import Image
     im = Image.open(path).convert("L").resize((16, 12), Image.BOX)
-    return list(im.getdata())
+    return list(im.tobytes())
 
 
 def dist(a, b):
@@ -89,12 +89,14 @@ def dist(a, b):
 # >= 37; bearings card vs itself 0.2, vs the Test 1 card before it 14.
 TITLE = sig(REF + "/title.png")        # "Press START to begin." (run 1 frame 015)
 BEARINGS = sig(REF + "/bearings.jpg")  # "Move the Right thumbstick..." (unguided 009)
+TEST1 = sig(REF + "/test1.png")        # Test 1's start view, HUD up (run 2 frame 025; 0.3-0.7 to itself)
 
 
 def look(label):
     shot(label)
     s = sig(os.path.join(OUT, f"{n:03d}-{label}.png"))
-    d = dict(title=round(dist(s, TITLE), 1), bearings=round(dist(s, BEARINGS), 1))
+    d = dict(title=round(dist(s, TITLE), 1), bearings=round(dist(s, BEARINGS), 1),
+             test1=round(dist(s, TEST1), 1))
     note("look", **d)
     return d
 
@@ -109,25 +111,95 @@ while t() < 300:                        # wait for the title, START once
     time.sleep(3)
 for _ in range(40):                     # menus and cards: A until the bearings card
     time.sleep(4)
-    if look("menu")["bearings"] < 7:
+    d = look("menu")
+    if d["test1"] < 12:
         break
     press("A")
-press("A")
-time.sleep(2.5)
+time.sleep(1.0)
 shot("test1-start")
 
-# The card's instruction: the right stick. Sweep all the way round, twice.
-for rnd in (1, 2):
-    hold_axes(f"rx-max-{rnd}", [("RX", "max")], 3.0)
-    hold_axes(f"rx-min-{rnd}", [("RX", "min")], 3.0)
-    hold_axes(f"ry-min-{rnd}", [("RY", "min")], 1.5)
-    hold_axes(f"ry-max-{rnd}", [("RY", "max")], 1.5)
-    hold_axes(f"rx-max-long-{rnd}", [("RX", "max")], 6.0)
-    press("A")                          # any card that came up
-    time.sleep(2.0)
-    shot(f"after-round-{rnd}")
+# Run 3: slow orbits at part deflection, tilted progressively up (RY < 0
+# looks up, run 2 frame 064), a frame every ~1.2 s while held.
+def sweep(label, rx, ry, secs):
+    dev.pad("axis", "RX", str(rx))
+    dev.pad("axis", "RY", str(ry))
+    note("sweep", label=label, rx=rx, ry=ry)
+    end = time.time() + secs
+    while time.time() < end:
+        shot(label)
+    dev.pad("axis", "RX", "mid")
+    dev.pad("axis", "RY", "mid")
+    note("release", label=label)
+    time.sleep(1.5)
+    shot(label + "-after")
 
-# Then movement and jump.
+
+# Run 5: run 4 frame 072 showed a red lock-on arc round a CENTRED balloon,
+# and yaw persists after a pulse (pitch springs back). So: hold the pitch up,
+# find the balloon's olive-green blob, pulse yaw toward it at RX 22000 (~36
+# deg/s), dwell while centred, then yaw on to the next.
+import numpy as np                      # noqa: E402
+from PIL import Image                   # noqa: E402
+
+
+def balloon(path):
+    a = np.asarray(Image.open(path).convert("RGB")).astype(int)
+    h, w, _ = a.shape
+    r, g, b = a[..., 0], a[..., 1], a[..., 2]
+    m = (g > 100) & (g - r > 20) & (g - r < 80) & (b < 0.5 * g) & (r > 60)
+    m[: int(0.18 * h), : int(0.30 * w)] = False      # HUD health bar
+    m[int(0.50 * h):, :] = False                     # radar, player (run 4: Arch is green at y 0.57-0.6)
+    ys, xs = np.nonzero(m)
+    if len(xs) < 150:
+        return None
+    return xs.mean() / w - 0.5, ys.mean() / h, len(xs)
+
+
+def pulse(sign, secs):
+    dev.pad("axis", "RX", str(22000 * sign))
+    time.sleep(secs)
+    dev.pad("axis", "RX", "mid")
+
+
+pitch = -22000
+dev.pad("axis", "RY", str(pitch))
+skip = 0
+dwells = 0
+end = time.time() + 210
+while time.time() < end:
+    shot("seek")
+    bl = balloon(os.path.join(OUT, f"{n:03d}-seek.png"))
+    note("balloon", at=bl and [round(bl[0], 2), round(bl[1], 2), bl[2]], pitch=pitch, skip=skip)
+    if bl is None or skip:
+        skip = max(0, skip - 1)
+        pulse(1, 0.8)
+        continue
+    dx, y, _ = bl
+    want = pitch - 8000 if y < 0.22 else (pitch + 8000 if y > 0.42 else pitch)
+    want = max(-32000, min(-6000, want))
+    if want != pitch:
+        pitch = want
+        dev.pad("axis", "RY", str(pitch))
+    if abs(dx) > 0.06:
+        pulse(1 if dx > 0 else -1, min(1.2, abs(dx) * 2.0))
+        time.sleep(0.2)
+        continue
+    dwells += 1
+    note("dwell", n=dwells)
+    time.sleep(1.5)
+    shot("dwell")
+    time.sleep(2.5)
+    shot("dwell-end")
+    skip = 1
+    pulse(1, 1.5)
+dev.pad("axis", "RY", "mid")
+note("seek done", dwells=dwells)
+press("A")                              # a card, if the test passed
+time.sleep(2.0)
+shot("after-sweeps")
+press("A")
+time.sleep(2.0)
+shot("after-sweeps2")
 hold_axes("ly-up", [("LY", "min")], 2.0)
 hold_axes("lx-left", [("LX", "min")], 2.0)
 hold_axes("ly-down", [("LY", "max")], 2.0)
