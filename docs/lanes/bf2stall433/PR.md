@@ -3,7 +3,7 @@
 State: ready
 
 Lane: bf2stall433            Issue: #433
-Base: master @ b71f92a12a
+Base: master @ b71f92a12a, merged up to d949607b2d
 Files: docs/lanes/bf2stall433/NOTES.md, docs/lanes/bf2stall433/OUTBOX.md, docs/lanes/bf2stall433/PR.md, docs/lanes/bf2stall433/armread.py, docs/testing/predictions/bf2stall433-bf2-soak.json, docs/testing/predictions/bf2stall433-syncdraw.json
 Prediction: docs/testing/predictions/bf2stall433-bf2-soak.json (judged FAIL: V refuted), docs/testing/predictions/bf2stall433-syncdraw.json (judged S)
 Needs device: yes (done: 3 Nova runs)    Needs NDK: no (the fix that was built is reverted)

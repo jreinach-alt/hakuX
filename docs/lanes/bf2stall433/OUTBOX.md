@@ -25,3 +25,33 @@
 - **Budget:** the BF2 pair takes all 6 of my Nova runs. The second-title
   check (GTA, `bf2stall433-gta-soak.json`) is registered but needs 6 more
   Nova runs from lane.local.
+
+## #433 -- 2026-10-02 07:45 PDT
+
+[lane.bf2stall433] Battlefield 2's per-draw GPU cost: the vertex-fetch fix is refuted, and the draws turn out to be serialized. No emulator change ships from this lane; the next fix is named, and so is the counter that sizes it.
+
+- **Vertex fetch: refuted on the device.** The premise held: BF2's vertex
+  data is read from IO-coherent cached memory (`host type 1 flags 0xf
+  cached=1 coherent=1`). Moving it to a device-local mirror changed
+  heavy-view GPU time from 35.9 to 36.0 ms (needed <= 0.80x). The fix is
+  reverted, and its 4 queued pixel arms were withdrawn to
+  `queue/withdrawn/`. Its GTA check is withdrawn with it.
+- **The draws are serialized.** With Turnip's `syncdraw` (a full GPU drain
+  before every draw), heavy-view GPU time rose only 35.15 -> 43.9 ms (+3.8 us
+  per draw). If the draws normally overlapped, a drain per draw would cost far
+  more. So BF2's ~2,150 draws a frame already run close to one at a time: the
+  12-14 us per draw is exposed latency, which is why a faster GPU clock did
+  not help.
+- **Prime suspect:** every draw rebinds the uniform block at a new offset. In
+  Turnip that is a new descriptor set, an invalidation of every bindless
+  cache, and a constant reload before the draw can run.
+- **The fix that fits the Adreno:** pass the constants a game changes between
+  draws as push constants (loaded straight from the command stream, no
+  descriptor change), and rebind the UBO only when its content changes. It
+  lives in vk/shaders.c, glsl/vsh*.c and draw.c, outside this lane's
+  territory, so it needs a new lane.
+- **First step for that lane:** a perflog histogram of how many constant
+  registers BF2 writes between draws. If most draws change <= 8-16 vec4, the
+  fix removes the rebind from most draws.
+- Runs used: 3 of 6 (A1, B1, syncdraw). Detail:
+  `docs/lanes/bf2stall433/NOTES.md` sections 6-8, `PR.md`.
