@@ -93,3 +93,36 @@ as Halo CE, which `halo-ce` replay 1 is about to test; NGB has no such known tra
 Pilot verdict written to `dispatch/pilots/titleroutes2.ok` (04:28 PDT) after reading the Gunvalkyrie replay; queued
 after it: Gunvalkyrie replay 2, `halo-ce` replay 1 (`1790940485-titleroutes2-1612232`, ref `685c52e514`), Bloody Roar
 replay 2.
+
+### Second round of results
+
+| title | request | outcome | what the frames show |
+|---|---|---|---|
+| Bloody Roar: Extreme, replay 2 | `1790940923-titleroutes2-1761085` | **CONFIRMED** | the fast START/A phase reached the fight (Yugo vs Busuzima) ~150 s after launch; mark `050149` is the live round; every later frame is the same round moving (timer 55 -> 23, Busuzima's beast change). Median 9.84 fps (min 8.26), 0% at 30+, no hang; 32 hitches, classified 25 texture / 6 both / 0 shader: a texture-path slowdown for #397 triage. Not nominated. targets.toml updated. |
+| Gunvalkyrie, replay 2 | `1790940485-titleroutes2-1611958` | play all window, partly against a wall | boxes now clear (2 of 14 frames); 100% at 30+, no hang; but `044546..044755` Kelly faces one cliff (turns nearly cancel). |
+| Gunvalkyrie, replay 3 | `1790941860-titleroutes2-2053231` | play all window, mostly against walls | 1.2 s turns per cycle only randomise the heading; 100% at 30+, no hang, static 0.009; most frames are canyon walls. v4 (`bd03a589f7`) never turns: forward always, alternate strafes, double-LT boost. Queued `1790944628-titleroutes2-2686999`. |
+| Halo: Combat Evolved, replay 1 | `1790940485-titleroutes2-1612232` | in the cryo bay, past the tube, short of the scripted walk | SELECT PROFILE (New001) -> LOAD LEVEL (Pillar of Autumn) -> difficulty -> cryo bay; look test cleared; mark `045315` still has "Use X to exit the cryo-tube" up; the loop's X took it; then the window wandered the bay under "Stand on the red square" (99% at 30+, static 0.0). |
+| Ninja Gaiden Black, survey | `1790941402-titleroutes2-1890328` | no play in 300 s | title -> MAIN MENU (NEW GAME) -> prologue (not skipped by START/A) -> "The Book of the Fiends" over Now Loading (~95 s) -> "CHAPTER 1: The Way of the Ninja" (A = Proceed) -> the chapter's opening cutscene at the window's end. Route `ninja-gaiden-black` written (20 cycles, START x2 to skip the cutscene [guess], B x3, run/attack loop); queued `1790944628-titleroutes2-2687135`. |
+
+### Held Nova session: Halo CE's calibration (05:11 take, 05:19-05:35 PDT on the device, released)
+
+`hold.sh take nova lane.titleroutes2` while my own Gunvalkyrie replay 3 ran, `wait-idle` until it ended (05:19), focus
+read (`FOCUS_OK`) before and after launch, `nav.py` session `~/hakux-work/nav/halo-ce.returning-20261002T051941/` (59
+frames), then `nav.py end`, force-stop, perf/fan back to 0/4, screen off, `hold.sh release` (05:35, `who` = free).
+Device time 16 min, battery 80% on AC.
+
+The calibration, in order (the route header has it in full): look test -> "Use X to exit the cryo-tube" (X, not A) ->
+exit cutscene, control facing the tube row -> "Use LEFT to move" -> step on the red square in front of the light pillar
+-> "Target each of the flashing lights" (five lights in a cross; each goes green under the crosshair) -> the same five
+again "Vertical looking is now inverted" -> "Press B to try it the other way / A to leave it" (A) -> a GAMEPLAY HELP
+panel that A does not close and START does -> "Checkpoint... done". Nothing scripted happened in the next ~2 min of
+looking around (both doors shut); that is where the session stopped.
+
+The light test needs aimed input: full-throw right stick turns ~90 degrees in a ~0.4 s tap (nav.py's own round trip is
+most of that), a third-throw tap (RX 16000) ~25 px, two-thirds (22000) ~65 px. Ten aimed taps after an open-loop walk to
+the square is not a route that replays; it is drive.py's kind of problem (screen-aware), or a save made after the
+checkpoint. **Do not repeat: nav.py's per-step round trip (~0.3-0.5 s) is added to every axis hold, so a "wait 0.15"
+turn is really ~0.6 s; use partial-throw values (RX 16000/22000 on the Nova's +-32767 pad) for fine aim.**
+
+Queued after the session (ref `bd03a589f7`): Gunvalkyrie v4 `1790944628-titleroutes2-2686999`, Ninja Gaiden Black route
+`1790944628-titleroutes2-2687135`, Star Wars v2 (exploring) `1790944635-titleroutes2-2688279`.
