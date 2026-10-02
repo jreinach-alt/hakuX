@@ -28,8 +28,26 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 292
-updated_utc = "2026-10-02T15:51:00Z"
+wave = 293
+updated_utc = "2026-10-02T16:50:00Z"
+
+[lane.issuerecon]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/issuerecon/**"]
+note = "ROW ADDED (job.board 2026-10-02 ~16:50 PDT): hakux-lane-issuerecon has been RUNNING since 2026-10-02T16:45:36Z (briefs/issuerecon.md) with NO territory row -- board.sh cannot write it live while gh is suspended (account suspended 09-29, see [[github-account-suspended-0929]] memory; GitHub-suspension context, not gh-auth outage). Brief (owner, 2026-10-02 ~09:55 PDT): reconstruct the GitHub issue/comment log from agent transcripts, nv2a_issues.toml, git history and Wayback, into ~/hakux-work/forge-import/ (outside the repo: contains the owner's and others' words). Commits ONLY the tooling under docs/lanes/issuerecon/** to lane/issuerecon, never the recovered content. Files per the brief's own 'Territory requested' line; confirmed free."
+
+[lane.localforge]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/localforge/**", "docs/testing/jobs/gh-shim/**", "docs/testing/jobs/board.sh", "docs/testing/jobs/status.sh", "docs/testing/jobs/handback.sh", "docs/testing/jobs/fold.sh", "docs/testing/comment_sweep.sh", "docs/testing/gh_rest.py", ".forgejo/**"]
+note = "ROW ADDED (job.board 2026-10-02 ~16:50 PDT): hakux-lane-localforge has been RUNNING since 2026-10-02T16:45:31Z (briefs/localforge.md) with NO territory row, same gap as [lane.issuerecon] above. Brief (owner, 2026-10-02 ~09:55 PDT, approved): self-host Forgejo (127.0.0.1 only) while GitHub stays suspended, build a gh-shim, repoint the job scripts' gh calls through it, keep board.sh's positive dispatch gate OFF (dry-run) until lane.local enables it. Files per the brief's step-5 repoint list MINUS two collisions: `docs/testing/jobs/arms.sh` is held by [lane.toolsmith] (standing) and `docs/testing/jobs/pr-sweep.sh` / `docs/testing/jobs/issue-sweep.sh` are held by [lane.remote] -- NOT claimed here; the brief's own step 5 is late in its sequence (steps 1-4 first: Forgejo, the repo, the shim, the importer), so this does not block it yet. Grant those three when localforge actually reaches step 5, by return-from-toolsmith/remote or an explicit lend, not pre-emptively. Host files outside the repo (~/hakux-work/forge/**, the systemd units) are the lane's per its own brief, not tracked here."
+
+[lane.pathclass]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/pathclass/**", "docs/testing/titles/pathclass*.py", "docs/testing/titles/pathknow/classifier/**"]
+note = "ROW ADDED (job.board 2026-10-02 ~16:50 PDT): hakux-lane-pathclass has been RUNNING since 2026-10-02T16:33:19Z (briefs/pathclass.md) with NO territory row, same gap as [lane.issuerecon] above. Brief (owner, 2026-10-02 ~09:40 PDT): a local GPU screen-state classifier (tiers 1-2) so [lane.pathknow]'s/[lane.pathfind]'s screen-reading nav agent stops spending a model call on every step; no device, no request.sh, host GPU/CPU only. Files per the brief's own 'Territory requested' line. NOTE THE NESTING: `docs/testing/titles/pathknow/classifier/**` sits inside [lane.pathknow]'s existing broad claim `docs/testing/titles/pathknow/**` -- check_territory.py's collision check is exact-string, so this does not FAIL mechanically (same coexistence pattern as [lane.pathfind]'s note describes for titles/**), but it IS a real carve-out: pathclass owns the classifier/ subdir, pathknow keeps hints/, eval/ and the rest of its tree. Both lanes were dispatched off the same owner directive today; flagged here rather than left a silent gap."
 
 [lane.collapse433]
 issues = ["433"]
@@ -753,7 +771,7 @@ note = "ROW ADDED (hostops 2026-10-02 09:23 PDT): hakux-lane-pathfind has been R
 [lane.pathknow]
 issues = ["433"]
 files = ["docs/lanes/pathknow/**", "docs/testing/titles/pathknow/**"]
-note = "ROW ADDED (hostops 2026-10-02 09:23 PDT): hakux-lane-pathknow has been RUNNING since ~09:20 PDT (briefs/pathknow.md) with NO territory row, same gh-auth board-write gap as [lane.pathfind] above, started in the same owner directive. No device time, no request.sh, no holds (the brief's own words). Files: docs/testing/titles/pathknow/** (new dir: model-choice report plus per-title/publisher/series navigation hints, mined from existing route/NOTES history, read-only against everything else) and its own lane docs dir; both new/unclaimed, confirmed no other row names pathknow."
+note = "ROW ADDED (hostops 2026-10-02 09:23 PDT): hakux-lane-pathknow has been RUNNING since ~09:20 PDT (briefs/pathknow.md) with NO territory row, same gh-auth board-write gap as [lane.pathfind] above, started in the same owner directive. No device time, no request.sh, no holds (the brief's own words). Files: docs/testing/titles/pathknow/** (new dir: model-choice report plus per-title/publisher/series navigation hints, mined from existing route/NOTES history, read-only against everything else) and its own lane docs dir; both new/unclaimed, confirmed no other row names pathknow. CARVED OUT (job.board 2026-10-02 ~16:50 PDT): docs/testing/titles/pathknow/classifier/** is [lane.pathclass]'s (its own companion brief off the same owner directive, building tiers 1-2 of the screen classifier) -- pathknow keeps hints/, eval/ and the rest of this tree; see [lane.pathclass]'s row for why this is a deliberate carve-out and not a collision check.sh would catch."
 
 [lane.bf2ubosize433]
 issues = ["433"]
