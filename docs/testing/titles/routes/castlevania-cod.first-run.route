@@ -29,29 +29,39 @@
 # into an attack animation (016-postplay.png). HP bar steady at 100/100
 # throughout -- no combat pressure this early.
 #
-# REPLAYED UNATTENDED, FAILED (session 59, #397, dispatch request
-# 1790902028-titleroutes-1005086, Nova): the "press A, wait 1.1, shot
-# name-a" step that is supposed to type the highlighted letter "A" into
-# the name field fired before the Name Entry screen was interactive -- the
-# field in 174838-name-a.png is still empty, unlike the interactive nav.py
-# session's own 003-name-a.png (field shows "A" typed) from the identical
-# command/timing sequence. Every frame after that (accepted/yes/left1/
-# createdsave/wait5/slot1/saved1/a2/a5/gameplay) is the SAME Name Entry
-# screen with an empty name forever -- Accept silently refuses an empty
-# name, so the whole rest of the route (save creation, cutscene, the
-# `mark gameplay` itself) never happened; the registry's stored save for
-# 4B4E002D was unchanged by this run (still 53f0a40fe626, no save slot).
-# This is a timing race in the newgame->Name-Entry transition, not a step
-# ordering bug (the same fixed-wait sequence worked once, by eye, in the
-# interactive session that authored this route). Fixed by making the
-# letter-type step self-healing: press A on the "A" tile twice, a few
-# seconds apart. The cursor does not move off the "A" tile after a
-# successful type (confirmed in 003-name-a.png), so a redundant second
-# press just yields "AA" instead of "A" if the first one landed, and
-# recovers a dropped first press if it didn't -- either way the name is
-# non-empty by the time START jumps to Accept. NOT YET REPLAYED with this
-# fix: treat as a draft until a soak or scratch/replay.sh run confirms it
-# reaches real gameplay and creates a save.
+# REPLAYED UNATTENDED, FAILED TWICE on the newgame->Name-Entry transition,
+# not a step-ordering bug: the load time between selecting NEW GAME and the
+# Name Entry keyboard becoming interactive varies by 10+ seconds between
+# runs (confirmed by the owner from a THIRD run, see below).
+#
+#   - session 59 (#397, dispatch 1790902028-titleroutes-1005086, Nova): a
+#     single "press A, wait 1.1, shot name-a" step landed on a still-black
+#     screen (174838-name-a.png empty) that the interactive authoring
+#     session's identical timing had landed on a loaded one
+#     (003-name-a.png, field shows "A"). Session 59's fix -- a second blind
+#     press 4s later -- assumed the SCREEN was up and only the PRESS had
+#     been dropped.
+#   - That fix was wrong in exactly the way the owner called out (ADDENDUM
+#     11, 2026-10-01 ~18:30 PDT, request 1790903439-titleroutes-1317193,
+#     stopped mid-run): both `name-a` (181831) and `name-a2` (181838) are
+#     STILL BLACK -- the screen had not loaded by either press, so both
+#     presses went nowhere, and the route's later blind presses (meant for
+#     slot selection etc.) typed into the keyboard once it finally came up,
+#     leaving the name field reading "AAIIIIII" with no Accept
+#     (182106-a5.png) for the rest of the 900s. A second blind press "a
+#     timing error of that size" cannot fix, in the owner's words.
+#
+# FIXED FOR REAL this time: `waitfor` blocks until the Name Entry screen's
+# own banner is actually on screen (so a 10s-plus load never gets typed
+# into), then `press-until` presses A and checks the name field itself,
+# retrying rather than guessing a fixed number of blind presses. See
+# route.sh's grammar comment for how these compare screencaps.
+# Reference crops: routes/refs/castlevania-cod.first-run/name-entry-header.png
+# (the "Name Entry" banner, scratch/nav/castlevania-cod.first-run-20261001T141851/002-newgame.png)
+# and .../name-field-empty.png (the empty name field, same frame). Selftest:
+# `python3 docs/testing/titles/waitfor_selftest.py` (checked against fixture
+# crops of this exact screen, including the still-black frame above, under
+# `routes/refs/castlevania-cod.first-run/selftest/`).
 wait 10.9
 shot boot
 wait 13.4
@@ -60,17 +70,11 @@ wait 5.8
 shot a1
 wait 10.3
 press A
-wait 3.1
+waitfor name-entry-header 30 50,65,490,85 15
 shot newgame
-wait 14
-press A
-wait 1.1
+press-until A name-field-empty 5 1.5 350,180,120,70 8
 shot name-a
-wait 4
-press A
-wait 1.1
-shot name-a2
-wait 4.1
+wait 1
 press START
 wait 1.1
 shot name-start
