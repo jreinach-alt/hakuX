@@ -1,0 +1,170 @@
+# Halo: Combat Evolved (4D530004) -- drive profile (#433, lane.routedriver2).
+#
+# lane.titleroutes2's open-loop route (routes/halo-ce.route) reaches the cryo
+# bay and leaves the tube, then wanders: the calibration that follows needs
+# aimed input. Its held nav session (~/hakux-work/nav/halo-ce.returning-
+# 20261002T051941/, 59 frames) mapped it: step onto a red square, then
+# "Target each of the flashing lights" (five lights in a cross on a pillar,
+# orange until the crosshair sits on one, then green), the same five again
+# with "Vertical looking is now inverted", the invert question (A leaves it),
+# a GAMEPLAY HELP panel that only START closes, "Checkpoint... done".
+#
+# Reference crops in halo-ce/ (regions in 1280x960 space), cut from the
+# survey 1790933948-titleroutes-171581, replay 1790940485-titleroutes2-1612232
+# and the nav session (Nova). Scores over all 123 Halo frames on disk:
+#   title           CAMPAIGN / MULTIPLAYER / SETTINGS / GAME DEMOS (masked, 5 frames)
+#                   self 0.6-10.2 (10.2: the menu fading in), others >= 53.4
+#   select-profile  "SELECT PROFILE" header       self 1.1, others >= 26.9
+#   load-level      "LOAD LEVEL" header           self 0.9, others >= 26.9
+#   difficulty      "CHOOSE DIFFICULTY" header    self 0.8-2.6, others >= 27.3
+#   enter-name      "ENTER NAME" (a new profile)  self 0.9-3.2, others >= 27.6
+#   pause           "MISSION OBJECTIVES:" header  self 2.8-3.0, others >= 33.9
+#   help            "GAMEPLAY HELP:" header       self 0.2, others >= 34.8
+#   hud             the shield bar, by COLOUR, not grey: it is translucent, so
+#                   its grey follows the scene. Blue share of [939,108,170,16]:
+#                   every HUD frame 0.68-0.75, every other Halo frame 0.00
+#                   (one frame of it fading in, 0.29). Matched by shape: below.
+
+name = "halo-ce"
+title = "Halo: Combat Evolved"
+title_id = "4D530004"
+genre = "fps"
+order = ["boot", "logo", "title", "profile", "loading", "cutscene", "play"]
+
+[input]
+title = ["A"]            # CAMPAIGN is lit
+profile = ["A"]          # New001 / The Pillar of Autumn / Normal / ENTER NAME's Done
+# A still tube frame before the shield bar reads `main_menu` (static, after
+# the title; the real main menu is the title crop): the look test and the
+# tube exit, as on the ladder.
+main_menu = ["RY:min", "RY:max", "X", "A"]
+ingame_menu = ["START"]  # GAMEPLAY HELP closes on START only (nav session)
+paused = ["A"]           # RESUME GAME is lit
+# Walk forward and turn right a little each cycle, so the bay gets swept and
+# the red square comes into view (control returns facing the tube row, the
+# square off to the right: nav 012-026). A every 4 s answers "Press A to
+# leave it like it is" and is a jump otherwise; X every 5 s is "Use X to exit
+# the cryo-tube", and an action press after. NEVER START: it pauses.
+play_cycle = [[[["LY", "min"]], 2.5], [[["RX", "14000"]], 0.35]]
+play_tap = [["A", 4.0], ["X", 5.0]]
+stall_cycles = [
+  [[[["RX", "max"]], 0.35], [[["LY", "min"]], 2.0], [[], 0.3]],
+  [[[["RX", "min"]], 0.35], [[["LY", "min"]], 2.0], [[], 0.3]],
+  [[[["LY", "max"]], 1.0], [[["RX", "max"]], 0.6], [[["LY", "min"]], 2.0], [[], 0.3]],
+]
+
+[drive]
+stall_fail_s = 60.0
+escape_max = 6
+escape_reset_s = 30.0
+# Before the shield bar comes up the cryo tube reads `cutscene` (the tech
+# moves) and gets the skip ladder: no START (it opens the pause panel over
+# Reveille), and the right stick up and down, which is the look test
+# ("Use RIGHT to look around": the survey never cleared it, it only sent RX).
+ladder = ["A", "RY:min", "RY:max", "X"]
+skip_passes = 10
+
+[[crop]]
+name = "pause"
+state = "paused"
+region = [580, 325, 420, 60]
+ref = "pause.png"
+threshold = 12.0
+
+[[crop]]
+name = "help"
+state = "ingame_menu"
+region = [140, 280, 360, 45]
+ref = "help.png"
+threshold = 12.0
+
+[[crop]]
+name = "title"
+state = "title"
+region = [480, 480, 340, 290]
+ref = "title.png"
+threshold = 15.0
+
+[[crop]]
+name = "select-profile"
+state = "profile"
+region = [120, 80, 550, 60]
+ref = "select-profile.png"
+threshold = 10.0
+
+[[crop]]
+name = "load-level"
+state = "profile"
+region = [120, 80, 550, 60]
+ref = "load-level.png"
+threshold = 10.0
+
+[[crop]]
+name = "difficulty"
+state = "profile"
+region = [120, 80, 650, 80]
+ref = "difficulty.png"
+threshold = 10.0
+
+[[crop]]
+name = "enter-name"
+state = "profile"
+region = [120, 80, 550, 60]
+ref = "enter-name.png"
+threshold = 10.0
+
+# The shield bar's SHAPE in its colour: the per-pixel deep-blue test against
+# hud-mask.png (its segments and gaps, the median over the 59 HUD frames on
+# disk; 0.71 of it is bar). Score = 100 x the share of pixels that disagree.
+# Halo HUD frames 0.1-16.8 (16.8: a 640x480 JPEG fixture), Halo frames
+# without it 61.8-70.7, every other title's selftest frame >= 28.1 (Sonic
+# Heroes' sky fills the region with blue: by colour share alone it read as
+# Halo's HUD, caught by the selftest's foreign-title check).
+[[crop]]
+name = "hud"
+state = "play"
+region = [939, 108, 170, 16]
+colour = { channel = "b", over = [60, 0], level = [120, 255] }
+ref = "hud-mask.png"
+threshold = 22.0
+
+# The calibration lights: unlit orange 105-250 px each (the crosshair can cut
+# one in two, 33 px apart: merged), lit green. The console's orange keys under
+# the pillar are 23-67 px: under min_px. First in order, so on the square the
+# lights win over the square.
+[[aim]]
+name = "lights"
+hue = [20, 50]
+min_sat = 0.45
+min_val = 0.6
+piece_px = 20
+merge_px = 60
+min_px = 75
+region = [0, 60, 1280, 840]
+centre = [640, 480]
+done_px = 25
+throw = 0.5
+ms = [40, 300]
+rate_x = 0.2       # px per ms at half throw; learned from each nudge
+rate_y = 0.2
+max_s = 240
+
+# The red square on the bay floor (dark red, S ~0.82, V ~0.3; 11-41k px in
+# view): turn toward it and walk on. Retired once the lights have been seen.
+[[aim]]
+name = "square"
+hue = [345, 15]
+min_sat = 0.6
+min_val = 0.2
+piece_px = 40
+min_px = 1500
+axes = ["RX"]
+centre = [640, 480]
+done_px = 120
+walk_s = 1.0
+walk_px = 200
+throw = 0.5
+ms = [40, 300]
+rate_x = 0.2
+max_s = 240
+until_seen = "lights"

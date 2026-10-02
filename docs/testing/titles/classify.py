@@ -125,6 +125,8 @@ def load_profile(path):
     p["_dir"] = os.path.join(os.path.dirname(os.path.abspath(path)),
                              os.path.splitext(os.path.basename(path))[0])
     for c in p.get("crop", []):
+        if "ref" not in c and "colour" not in c:
+            raise SystemExit("classify.py: %s: crop %s has neither a ref nor a colour" % (path, c.get("name")))
         if c.get("state") not in STATES:
             raise SystemExit("classify.py: %s: crop %s names state %r, not one of %s"
                              % (path, c.get("name"), c.get("state"), ",".join(STATES)))
@@ -326,14 +328,8 @@ def region_rgb(path, box):
     return [float(x) for x in a.mean(0)]
 
 
-def channel_fraction(path, box, channel, over, level):
-    """Fraction of a region's pixels (1280x960 space) where `channel` (r, g
-    or b) beats each of the other two, in rgb order, by `over` [first,
-    second] and lies in `level` [lo, hi]. A profile's [[off_view]] reads
-    it. Buffy's night sky is the blue-dominant purple behind the canyon:
-    with the camera swung up at it, 0.64-0.94 of the upper centre (b7,
-    b13, titleroutes' two replays); running in the canyon, 0.00-0.20
-    (lane.routedriver2, all 888 HUD frames on disk)."""
+def colour_mask(path, box, channel, over, level, cap=None):
+    """channel_fraction's per-pixel test as a bool array over the region."""
     im = open_rgb(path)
     a = np.asarray(im.crop(scale_box(box, im.size)), dtype=np.int16)
     i = "rgb".index(channel)
@@ -341,17 +337,101 @@ def channel_fraction(path, box, channel, over, level):
     c = a[..., i]
     m = (c > a[..., others[0]] + over[0]) & (c > a[..., others[1]] + over[1])
     m &= (c >= level[0]) & (c <= level[1])
-    return float(m.mean())
+    if cap:
+        m &= (a[..., others[0]] <= cap[0]) & (a[..., others[1]] <= cap[1])
+    return m
 
 
-def match_crop(im, crops, profile):
+def channel_fraction(path, box, channel, over, level, cap=None):
+    """Fraction of a region's pixels (1280x960 space) where `channel` (r, g
+    or b) beats each of the other two, in rgb order, by `over` [first,
+    second] and lies in `level` [lo, hi]. A profile's [[off_view]] reads
+    it. Buffy's night sky is the blue-dominant purple behind the canyon:
+    with the camera swung up at it, 0.64-0.94 of the upper centre (b7,
+    b13, titleroutes' two replays); running in the canyon, 0.00-0.20
+    (lane.routedriver2, all 888 HUD frames on disk)."""
+    return float(colour_mask(path, box, channel, over, level, cap).mean())
+
+
+BLOB_CELL = 16                    # px of the 1280x960 frame per grouping cell
+
+
+def blobs(path, hue, region=None, min_sat=0.45, min_val=0.6, min_px=60):
+    """Patches of one colour: [(x, y, px)] in 1280x960 space, biggest first.
+    `hue` is [lo, hi] degrees (lo > hi wraps through red). Matching pixels
+    are counted per 16 px cell and 4-connected cells form one patch, so a
+    light whose glow is split by the crosshair is still one. Halo: Combat
+    Evolved's calibration lights (lane.routedriver2): unlit orange 105-250
+    px, lit green; the console keys under the pillar are 23-86 px of the
+    same orange and sit outside the aim region."""
+    im = open_rgb(path)
+    if im.size != (REF_W, REF_H):
+        im = im.resize((REF_W, REF_H), Image.BILINEAR)
+    hsv = np.asarray(im.convert("HSV"), dtype=np.float32)
+    h = hsv[..., 0] * (360.0 / 255.0)
+    m = (hsv[..., 1] > min_sat * 255) & (hsv[..., 2] > min_val * 255)
+    m &= ((h >= hue[0]) & (h <= hue[1])) if hue[0] <= hue[1] else ((h >= hue[0]) | (h <= hue[1]))
+    if region:
+        keep = np.zeros_like(m)
+        l, t, r, b = scale_box(region, (REF_W, REF_H))
+        keep[t:b, l:r] = True
+        m &= keep
+    gh, gw = REF_H // BLOB_CELL, REF_W // BLOB_CELL
+    cells = m.reshape(gh, BLOB_CELL, gw, BLOB_CELL)
+    cnt = cells.sum(axis=(1, 3))
+    ys_in, xs_in = np.mgrid[0:BLOB_CELL, 0:BLOB_CELL]
+    sx = (cells * xs_in[None, :, None, :]).sum(axis=(1, 3))
+    sy = (cells * ys_in[None, :, None, :]).sum(axis=(1, 3))
+    seen = np.zeros(cnt.shape, dtype=bool)
+    out = []
+    for y0, x0 in zip(*np.nonzero(cnt)):
+        if seen[y0, x0]:
+            continue
+        seen[y0, x0] = True
+        stack, n, tx, ty = [(y0, x0)], 0, 0.0, 0.0
+        while stack:
+            cy, cx = stack.pop()
+            c = int(cnt[cy, cx])
+            n += c
+            tx += float(sx[cy, cx]) + c * cx * BLOB_CELL
+            ty += float(sy[cy, cx]) + c * cy * BLOB_CELL
+            for ny, nx in ((cy + 1, cx), (cy - 1, cx), (cy, cx + 1), (cy, cx - 1)):
+                if 0 <= ny < gh and 0 <= nx < gw and cnt[ny, nx] and not seen[ny, nx]:
+                    seen[ny, nx] = True
+                    stack.append((ny, nx))
+        if n >= min_px:
+            out.append((int(round(tx / n)), int(round(ty / n)), n))
+    return sorted(out, key=lambda b: -b[2])
+
+
+def match_crop(im, crops, profile, path=None):
     """First crop in profile order whose region scores <= its threshold.
     Returns (crop, score, all_scores) -- all_scores is every crop's score,
-    for the timeline, so a near miss is visible after the fact."""
+    for the timeline, so a near miss is visible after the fact. A crop with
+    a `colour` table (channel, over, level: see channel_fraction) and no
+    `ref` scores 100 x (1 - the colour's share of its region), so a
+    translucent HUD whose grey follows the scene behind it can still be a
+    crop: Halo CE's shield bar is 0.68-0.75 blue on every HUD frame on disk
+    and 0.00 on every other (lane.routedriver2). It needs the frame's
+    `path`; without one it scores 100."""
     scores = {}
     hit = None
     for c in crops:
-        s = crop_score(im, os.path.join(profile["_dir"], c["ref"]), c["region"])
+        if "colour" in c:
+            col = c["colour"]
+            if not path:
+                s = 100.0
+            elif "ref" in c:
+                # the colour's SHAPE: agreement with a reference mask, 1s and 0s
+                m = colour_mask(path, c["region"], col["channel"], col["over"], col["level"], col.get("cap"))
+                ref = _ref(os.path.join(profile["_dir"], c["ref"])).convert("L")
+                mm = np.asarray(Image.fromarray(m.astype(np.uint8) * 255).resize(ref.size, Image.NEAREST)) > 127
+                s = 100.0 * (1.0 - float((mm == (np.asarray(ref) > 127)).mean()))
+            else:
+                s = 100.0 * (1.0 - channel_fraction(path, c["region"], col["channel"], col["over"], col["level"],
+                                                    col.get("cap")))
+        else:
+            s = crop_score(im, os.path.join(profile["_dir"], c["ref"]), c["region"])
         scores[c["name"]] = round(s, 2)
         if hit is None and s <= c["threshold"]:
             hit = (c, s)
@@ -380,13 +460,13 @@ def classify_frame(frame, prev, profile, seen=(), last_play_luma=None, prev_stat
         return out
 
     crops = profile.get("crop", [])
-    hit, score, scores = match_crop(im, [c for c in crops if c["state"] != "play"], profile)
+    hit, score, scores = match_crop(im, [c for c in crops if c["state"] != "play"], profile, frame)
     out["scores"] = scores
     if hit:
         out.update(state=hit["state"], source="crop:" + hit["name"], crop=hit["name"], score=round(score, 2))
         return out
 
-    hud, hscore, hscores = match_crop(im, [c for c in crops if c["state"] == "play"], profile)
+    hud, hscore, hscores = match_crop(im, [c for c in crops if c["state"] == "play"], profile, frame)
     out["scores"].update(hscores)
 
     if prev is None:

@@ -72,7 +72,9 @@ BUFR13 = "rdb13"                               # lane.routedriver2 Buffy run 13,
 BUFR15 = "rdb15"                               # lane.routedriver2 Buffy run 15, Nova: a flick that moved two rows
 BUFR16 = "rdb16"                               # lane.routedriver2 Buffy run 16, Nova: the hat moved two rows
 BUFR17 = "rdb17"                               # lane.routedriver2 Buffy run 17, Nova: lit rows the crops missed
-LOCAL = {CVR2: "scratch/run-cv2/route-frames", CVR3: "scratch/run-cv3/route-frames",
+HALO = "1790940485-titleroutes2-1612232"       # Halo CE, Nova: titleroutes2 replay 1, menus to the cryo bay
+HALON = "halonav"                              # Halo CE, Nova: titleroutes2's held nav session, the calibration
+LOCAL = {HALON: "/home/justin/hakux-work/nav/halo-ce.returning-20261002T051941", CVR2: "scratch/run-cv2/route-frames", CVR3: "scratch/run-cv3/route-frames",
          CVR5: "scratch/run-cv5/route-frames", SHR1: "scratch/run-sh1/route-frames",
          FZR1: "scratch/run-fz1/route-frames", SHT1: "scratch/run-t1/route-frames",
          SHT2: "scratch/run-t2/route-frames", SHT4: "scratch/run-t4/route-frames",
@@ -269,6 +271,20 @@ CASES = [
      "032323-048-stalled.png", "stalled", ["main_menu", "play"], "play"),
     ("buffy load black (luma 0) is still black", "buffy", BUFR1, "032146-014-black.png", None, None,
      ["main_menu", "profile"], "black"),
+    # Halo: Combat Evolved. The play HUD is a COLOUR crop (the translucent
+    # shield bar's blue share); the help panel and the pause panel cover it,
+    # and the cryo tube before the bar comes up is not play.
+    ("halo main menu (CAMPAIGN)", "halo-ce", HALO, "045117-booted.png", None, None, ["logo"], "title"),
+    ("halo SELECT PROFILE", "halo-ce", HALO, "045123-menu-start.png", None, None, ["title"], "profile"),
+    ("halo CHOOSE DIFFICULTY", "halo-ce", HALO, "045135-menu-start.png", None, None, ["title", "profile"], "profile"),
+    ("halo pause panel over Reveille", "halo-ce", HALO, "045210-menu-start.png", None, None,
+     ["title", "profile", "cutscene"], "paused"),
+    ("halo cryo tube, no shield bar yet: not play", "halo-ce", HALO, "045234-training.png", "045216-menu-a.png",
+     "cutscene", ["title", "profile", "cutscene"], "cutscene"),
+    ("halo walking the bay, shield bar up: play", "halo-ce", HALO, "045355-play.png", "045334-play.png", "play",
+     ["title", "play"], "play"),
+    ("halo GAMEPLAY HELP panel (covers the HUD)", "halo-ce", HALON, "046-t40.png", "045-t39.png", "play",
+     ["title", "play"], "ingame_menu"),
     # Castlevania: Curse of Darkness
     ("castlevania title menu", "castlevania-cod", CV, "174750-boot.png", None, None, [], "title"),
     ("castlevania intro FMV after the title", "castlevania-cod", CV, "174810-a1.png", "174750-boot.png", "title",
@@ -300,11 +316,26 @@ FOREIGN = [(SON2, "200707-play.png", "200657-play.png"), (FOR, "214502-play.png"
            (SMB, "172713-gameplay.png", "172712-rolling.png"), (SONT, "004222-menu-start.png", "004215-menu-a.png"),
            (SMB, "172733-play.png", "172723-play.png"), (CVR5, "230108-033-play.png", "230106-032-play.png"),
            (SHR1, "234349-029-play.png", "234347-028-play.png"), (FZR1, "234117-045-play.png", "234114-044-play.png"),
-           (BUF1, "021351-play.png", "021330-gameplay.png")]
+           (BUF1, "021351-play.png", "021330-gameplay.png"), (HALO, "045355-play.png", "045334-play.png")]
 TITLE_OF = {SON: "sonic-heroes", SON2: "sonic-heroes", SONT: "sonic-heroes", SONT2: "sonic-heroes",
             FOR: "forza", FZR1: "forza", SHR1: "sonic-heroes", SHT1: "sonic-heroes", SHT2: "sonic-heroes",
             SHT4: "sonic-heroes", BUF: "buffy", BUF1: "buffy", BUFR1: "buffy", BUFR3: "buffy", BUFR12: "buffy", BUFR13: "buffy", BUFR15: "buffy", BUFR16: "buffy", BUFR17: "buffy", FZT2: "forza", SMB: "super-monkey-ball-deluxe", CV: "castlevania-cod", CVT: "castlevania-cod",
-            CVR2: "castlevania-cod", CVR3: "castlevania-cod", CVR5: "castlevania-cod"}
+            CVR2: "castlevania-cod", CVR3: "castlevania-cod", CVR5: "castlevania-cod", HALO: "halo-ce",
+            HALON: "halo-ce"}
+
+# [[aim]] through Driver.aim_step: (name, profile, run, frame, the first
+# nudge wanted as (axis, sign) or "walk", or None for no aim). Halo CE's
+# calibration lights (orange until hit) and red floor square. Counter-cases:
+# the console's orange keys under the pillar (67 px, under min_px) with every
+# light already green, and the help panel, aim at nothing.
+AIMS = [
+    ("halo light above the crosshair: look up", "halo-ce", HALON, "034-t28.png", ("RY", -1)),
+    ("halo light right of the crosshair: turn right", "halo-ce", HALON, "041-t35.png", ("RX", 1)),
+    ("halo light below the crosshair: look down", "halo-ce", HALON, "044-t38.png", ("RY", 1)),
+    ("halo red square ahead: walk onto it", "halo-ce", HALON, "026-t20.png", "walk"),
+    ("halo lights all green, console keys orange: no aim", "halo-ce", HALON, "040-t34.png", None),
+    ("halo help panel: no aim", "halo-ce", HALON, "046-t40.png", None),
+]
 
 # [[cursor]]: which menu row is lit decides the press (Buffy's main menu is
 # one screen, and one pulse moves its cursor one row or two). (name,
@@ -385,6 +416,8 @@ def all_frames():
     for _, _, run, f, _ in MODES:
         seen.add((run, f))
     for _, _, run, f, _, _ in CURSOR_WANT:
+        seen.add((run, f))
+    for _, _, run, f, _ in AIMS:
         seen.add((run, f))
     seen.add((BUFR13, "062921-014-profile.png"))
     for _, _, run, fl, _ in RECOVER:
@@ -546,6 +579,46 @@ def escape_checks():
     return fails
 
 
+def aim_learn_checks():
+    """[[aim]] learns each axis from the target's move: a target that moved
+    WITH the nudge means the axis is inverted (Halo's second round of lights,
+    "Vertical looking is now inverted"), so the next nudge goes the other
+    way; one that moved against it keeps the sign and sets the rate from what
+    was measured. Synthetic frames: an orange square on grey."""
+    import drive
+    fails = 0
+    aim = dict(name="dot", hue=[20, 50], min_px=60, centre=[640, 480], done_px=20, rate_x=0.2, rate_y=0.2,
+               throw=0.5, ms=[40, 300])
+    prof = dict(name="t", input={}, aim=[aim])
+
+    def frame(td, name, x):
+        im = Image.new("RGB", (1280, 960), (60, 60, 60))
+        im.paste((255, 150, 20), (x - 15, 465, x + 15, 495))
+        p = os.path.join(td, name)
+        im.save(p)
+        return p
+
+    for name, x2, want_sign, want_rate in (("aim: target moved WITH the nudge -> axis inverted", 900, -1, 0.2),
+                                           ("aim: target moved against it -> same sign, rate learned", 690, 1, 0.35)):
+        with tempfile.TemporaryDirectory() as td:
+            d = drive.Driver(drive.SimDevice([], 1.0), prof, td, td, 999, sim=True)
+            d.aim_step(frame(td, "a.png", 840))          # 200 px right: RX +, 300 ms
+            d.aim_step(frame(td, "b.png", x2))
+            nud = [x for x in d.dev.sent if x[1] == "nudge"]
+            st = d.aim_st["dot"]
+        sign = 1 if nud[-1][3][1] > 0 else -1
+        ok = len(nud) == 2 and sign == want_sign and abs(st["rate"][0] - want_rate) < 0.01
+        fails += not ok
+        print("%s  aim %-49s second nudge RX %+d (want %+d), rate %.3f" % ("ok  " if ok else "FAIL", name, sign,
+                                                                           want_sign, st["rate"][0]))
+    # merge: two halves of one light 33 px apart are one target; far ones stay apart
+    got = drive.merge_blobs([(645, 664, 86), (678, 661, 84), (640, 300, 160)], 60)
+    ok = len(got) == 2 and got[0][2] == 170
+    fails += not ok
+    print("%s  aim %-49s %s" % ("ok  " if ok else "FAIL", "merge: a light cut in two is one target", got))
+    return fails
+
+
 def progress_checks(prof, disk):
     """The progress check and the mode reading, through drive.Driver.classify
     on the sim clock, as a run would meet them."""
@@ -617,6 +690,21 @@ def progress_checks(prof, disk):
     fails += not ok
     print("%s  steer %-47s got LX %s %s" % ("ok  " if ok else "FAIL", "forza bend 1 s after steering on: straight",
                                             got[3], got[6]))
+    for name, pn, run, f, want in AIMS:
+        with tempfile.TemporaryDirectory() as td:
+            d = drive.Driver(drive.SimDevice([], 1.0), prof(pn), td, td, 999, sim=True)
+            d.aim_step(source(run, f, disk))
+            sent = [x for x in d.dev.sent if x[1] == "nudge"]
+        if not sent:
+            got = None
+        elif sent[0][3][0] == "LY":
+            got = "walk"
+        else:
+            got = (sent[0][3][0], 1 if sent[0][3][1] > 0 else -1)
+        ok = got == want
+        fails += not ok
+        print("%s  aim %-49s want %-10s got %s" % ("ok  " if ok else "FAIL", name, want, got))
+    fails += aim_learn_checks()
     for name, pn, run, f, want in MODES:
         with tempfile.TemporaryDirectory() as td:
             d = drive.Driver(drive.SimDevice([], 1.0), prof(pn), td, td, 999, sim=True)
@@ -650,7 +738,7 @@ def main(argv):
         print("%s  %-48s want %-11s got %-11s %s" % ("ok  " if ok else "FAIL", name, want, r["state"], r["source"]))
 
     for run, f, p in FOREIGN:
-        for pn in ("sonic-heroes", "forza", "super-monkey-ball-deluxe", "castlevania-cod", "buffy"):
+        for pn in ("sonic-heroes", "forza", "super-monkey-ball-deluxe", "castlevania-cod", "buffy", "halo-ce"):
             if pn == TITLE_OF[run]:
                 continue
             r = classify.classify_frame(source(run, f, disk), source(run, p, disk), prof(pn),

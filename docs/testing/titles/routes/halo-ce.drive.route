@@ -1,0 +1,12 @@
+# Halo: Combat Evolved (4D530004), boot through the cryo-bay calibration,
+# screen-driven (#433, lane.routedriver2).
+#
+# routes/halo-ce.route (lane.titleroutes2) reaches the cryo bay open-loop and
+# stops at the calibration: walk onto a red square, then aim at five
+# flashing lights twice (the second time with the look inverted). drive.py
+# does it closed-loop: menus by crop, the tube's look test and exit on the
+# skip ladder (RY up/down, X), the square and the lights by [[aim]], the
+# help panel by START. The step ends at 20 s of confirmed play (`find`).
+# Profile, crops and the frames they were measured on:
+# drive-profiles/halo-ce.toml; the runs: docs/lanes/routedriver2/NOTES.md.
+drive halo-ce 480 find

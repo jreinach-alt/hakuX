@@ -92,6 +92,14 @@ for a cursor the d-pad does not move (Castlevania's save prompt).
                          several escapes, one per stall.
   unknown                wait; the model after `unknown_before_model`
                          captures; `unknown_fail_s` of it is ROUTE FAIL.
+  [[aim]] (play, stalled, or HUD up): a patch of one colour on screen
+                         takes over from the play input: one short look
+                         nudge per axis toward the patch nearest the
+                         crosshair, timed on the device, the rate and sign
+                         of each axis learned from how the patch moved
+                         (Halo CE's calibration lights, then the same lights
+                         with the look inverted). `walk_s` walks onto it
+                         instead (Halo's red floor square).
 A state seen after a later one in the profile's `order` (a main_menu after
 play) is logged as `anomaly`.
 
@@ -180,6 +188,20 @@ def now():
     return time.monotonic()
 
 
+def merge_blobs(bl, px):
+    """Patches closer than `px` are one (pixel-weighted centre): a light the
+    crosshair cuts in two reads as two patches 33 px apart (Halo CE)."""
+    out = []
+    for x, y, n in bl:
+        for i, (ox, oy, on) in enumerate(out):
+            if px and (x - ox) ** 2 + (y - oy) ** 2 <= px * px:
+                out[i] = (int(round((ox * on + x * n) / (on + n))), int(round((oy * on + y * n) / (on + n))), on + n)
+                break
+        else:
+            out.append((x, y, n))
+    return out
+
+
 def rest(axis):
     """An axis's released value: a stick centres (`mid`), a trigger lets go
     (`min`). pad.sh's `mid` on a 0..32767 trigger is a half press, which is
@@ -235,7 +257,11 @@ class Device:
         except subprocess.TimeoutExpired:
             pass
 
-    AXIS_CODES = {"LX": [("ABS_X", 0)], "RT": [("ABS_GAS", 9), ("ABS_RZ", 5)], "LT": [("ABS_BRAKE", 10), ("ABS_Z", 2)]}
+    # pad.sh's LOGICAL table, first present wins: both handhelds carry the
+    # right stick on ABS_Z/ABS_RZ and the triggers on ABS_BRAKE/ABS_GAS.
+    AXIS_CODES = {"LX": [("ABS_X", 0)], "LY": [("ABS_Y", 1)], "RX": [("ABS_RX", 3), ("ABS_Z", 2)],
+                  "RY": [("ABS_RY", 4), ("ABS_RZ", 5)],
+                  "RT": [("ABS_GAS", 9), ("ABS_RZ", 5)], "LT": [("ABS_BRAKE", 10), ("ABS_Z", 2)]}
 
     def axes(self, fractions):
         """Set several axes in ONE adb call: {LX: -1..1, RT: 0..1, LT: 0..1}.
@@ -264,6 +290,38 @@ class Device:
         cmds.append("sendevent %s 0 0 0" % lines["dev"])
         try:
             subprocess.run(["adb", "-s", self.serial, "shell", "; ".join(cmds)], stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL, timeout=10)
+        except subprocess.TimeoutExpired:
+            return False
+        return True
+
+    def nudge(self, fractions, ms):
+        """Hold axes for `ms`, timed ON the device: set, `sleep`, centre, in
+        one adb shell. Two pad.sh calls put an adb round trip (0.15-0.3 s)
+        inside every hold, and Halo's right stick turns ~90 degrees in a
+        0.4 s full-throw tap (lane.titleroutes2's nav session), so a short
+        aimed look cannot be timed from the host."""
+        cache = os.path.join(os.environ.get("HAKUX_WORK", "/home/justin/hakux-work"), "pad-dev." + self.serial)
+        try:
+            lines = dict(l.strip().split("=", 1) for l in open(cache) if "=" in l)
+        except OSError:
+            return False
+        on, off = [], []
+        for ax, f in fractions.items():
+            for name, code in self.AXIS_CODES.get(ax, []):
+                if name in lines:
+                    lo, hi = (int(v) for v in lines[name].split(","))
+                    mid = int(round((lo + hi) / 2.0)) if lo < 0 else lo
+                    val = int(round(mid + f * (hi - lo) / 2.0)) if lo < 0 else int(round(lo + f * (hi - lo)))
+                    on.append("sendevent %s 3 %d %d" % (lines["dev"], code, max(lo, min(hi, val))))
+                    off.append("sendevent %s 3 %d %d" % (lines["dev"], code, mid))
+                    break
+        if not on:
+            return False
+        syn = "sendevent %s 0 0 0" % lines["dev"]
+        cmd = "; ".join(on + [syn, "sleep %.3f" % (ms / 1000.0)] + off + [syn])
+        try:
+            subprocess.run(["adb", "-s", self.serial, "shell", cmd], stdout=subprocess.DEVNULL,
                            stderr=subprocess.DEVNULL, timeout=10)
         except subprocess.TimeoutExpired:
             return False
@@ -303,6 +361,10 @@ class SimDevice:
 
     def axes(self, fractions):
         self.sent.append((round(self.clock, 1), "axes") + tuple(sorted(fractions.items())))
+        return True
+
+    def nudge(self, fractions, ms):
+        self.sent.append((round(self.clock, 1), "nudge", int(ms)) + tuple(sorted(fractions.items())))
         return True
 
     fg = True                            # a selftest sets False: the app is not in front
@@ -368,6 +430,7 @@ class Driver:
         self.steer_last = (0.0, None)    # last steer and when the line was last seen
         self.steer_since = None          # when steering first came on (straight_s)
         self.escape_scene = None         # the scene where the last escape started
+        self.aim_st = {}                 # [[aim]] name -> rate, sign, last nudge, since, off
         self.last_hud_t = None
         self.play_since = None
         self.play_frames = []
@@ -471,6 +534,104 @@ class Driver:
             if d <= m.get("tol", 45.0) and (bd is None or d < bd):
                 best, bd = m["name"], d
         return best
+
+    def aim_step(self, frame):
+        """[[aim]]: on a frame with the play HUD up, the patch of `hue`
+        nearest the crosshair (`centre`) gets one short look nudge per axis
+        toward it (Device.nudge, timed on the device), and nothing else this
+        capture: no play cycle, no stall escape. A patch within `done_px` is
+        on target: hold still (Halo CE's calibration lights turn green under
+        the crosshair). Each axis learns from the last nudge: the patch
+        nearest where the target was must have moved against the nudge, by
+        roughly rate x ms; if it moved WITH it, the axis is inverted (Halo's
+        second round of lights: "Vertical looking is now inverted"), and
+        the rate follows what was measured. `walk_s` > 0 makes an approach:
+        once the patch is within `walk_px` across, walk forward (LY) that
+        long (Halo's red square on the floor). An aim gives up after `max_s`
+        of seeing targets, and `until_seen` (another aim's name) retires it
+        for good once that aim has had a target. Returns the action string, or None when no aim
+        has a target in this frame."""
+        for a in self.p.get("aim", []):
+            st = self.aim_st.setdefault(a["name"], dict(rate=[float(a.get("rate_x", 0.3)), float(a.get("rate_y", 0.3))],
+                                                        sign=[1, 1], last=None, since=None, off=False, n=0))
+            if a.get("until_seen") and self.aim_st.get(a["until_seen"], {}).get("since") is not None:
+                st["off"] = True         # its job is done: Halo's square leads to the lights
+            if st["off"]:
+                continue
+            bl = classify.blobs(frame, a["hue"], a.get("region"), float(a.get("min_sat", 0.45)),
+                                float(a.get("min_val", 0.6)), int(a.get("piece_px", 20)))
+            bl = [b for b in merge_blobs(bl, float(a.get("merge_px", 0))) if b[2] >= int(a.get("min_px", 60))]
+            if not bl:
+                st["last"] = None
+                continue
+            t = self.t()
+            if st["since"] is None:
+                st["since"] = t
+            if t - st["since"] > float(a.get("max_s", 180)):
+                st["off"] = True
+                self.inputs.append(dict(t=round(t, 1), state=self.state, input="", why="aim %s: gave up after %.0f s"
+                                        % (a["name"], t - st["since"])))
+                continue
+            self.release_play()
+            self.stalled_since = None
+            cx, cy = a.get("centre", [640, 480])
+            axes = a.get("axes", ["RX", "RY"])
+            learned = self.aim_learn(a, st, bl)
+            tx, ty, _ = min(bl, key=lambda b: (b[0] - cx) ** 2 + (b[1] - cy) ** 2)
+            d = [tx - cx, ty - cy]
+            done = float(a.get("done_px", 30))
+            st["n"] += 1
+            if abs(d[0]) <= done and (len(axes) < 2 or abs(d[1]) <= done):
+                st["last"] = None
+                walk = float(a.get("walk_s", 0))
+                if walk:
+                    self.dev.nudge({"LY": -1.0}, walk * 1000)
+                    return "aim %s: walk %.1f s (target %d,%d)%s" % (a["name"], walk, tx, ty, learned)
+                return "aim %s: on target %d,%d%s" % (a["name"], tx, ty, learned)
+            throw = float(a.get("throw", 0.5))
+            lo_ms, hi_ms = a.get("ms", [40, 250])
+            sent = [0.0, 0.0]
+            parts = []
+            for i, ax in enumerate(axes[:2]):
+                if abs(d[i]) <= done:
+                    continue
+                s = 1 if d[i] > 0 else -1
+                ms = max(lo_ms, min(hi_ms, abs(d[i]) / max(st["rate"][i], 0.01)))
+                self.dev.nudge({ax: st["sign"][i] * s * throw}, ms)
+                sent[i] = s * ms
+                parts.append("%s %+.2f %dms" % (ax, st["sign"][i] * s * throw, ms))
+            st["last"] = ((tx, ty), sent)
+            walk = float(a.get("walk_s", 0))
+            if walk and abs(d[0]) <= float(a.get("walk_px", 120)):
+                self.dev.nudge({"LY": -1.0}, walk * 1000)
+                parts.append("walk %.1f s" % walk)
+            self.inputs.append(dict(t=round(t, 1), state=self.state, input=", ".join(parts),
+                                    why="aim %s at %d,%d" % (a["name"], tx, ty)))
+            return "aim %s: %s (target %d,%d)%s" % (a["name"], ", ".join(parts), tx, ty, learned)
+        return None
+
+    def aim_learn(self, a, st, bl):
+        """Update an aim's per-axis rate (px per ms) and sign from where the
+        last target went. Returns a note for the timeline."""
+        if not st["last"]:
+            return ""
+        (px, py), sent = st["last"]
+        nb = min(bl, key=lambda b: (b[0] - px) ** 2 + (b[1] - py) ** 2)
+        obs = [nb[0] - px, nb[1] - py]
+        track = float(a.get("track_px", 250))
+        if (obs[0] ** 2 + obs[1] ** 2) ** 0.5 > track:
+            return " (lost the target)"
+        note = []
+        for i in range(2):
+            if abs(sent[i]) < 20 or abs(obs[i]) < 8:
+                continue
+            # the view moved toward +sent, so the target should move the other way
+            if obs[i] * sent[i] > 0:
+                st["sign"][i] = -st["sign"][i]
+                note.append("axis %d inverted" % i)
+            else:
+                st["rate"][i] = round(0.5 * st["rate"][i] + 0.5 * abs(obs[i]) / abs(sent[i]), 3)
+        return (" (%s)" % ", ".join(note)) if note else ""
 
     def stall_phases(self, n=1):
         """Escape n's cycle as [(axes, seconds, buttons)]: [[axes], seconds]
@@ -874,6 +1035,11 @@ class Driver:
         """The policy. Returns the action string for the timeline, or raises Fail."""
         t = self.t()
         cfg = self.cfg
+        if self.p.get("aim") and (state in ("play", "stalled") or
+                                  (state == "unknown" and r.get("source", "").startswith("hud:"))):
+            aimed = self.aim_step(frame)
+            if aimed:
+                return aimed
         if state == "unknown" and r.get("source", "").startswith("hud:"):
             # The play HUD is up but the motion does not say play yet: the
             # first frame after a load or overlay, or a character standing
