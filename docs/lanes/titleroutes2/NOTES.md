@@ -256,3 +256,11 @@ and the survey never pressed B, the footer's way out. Route `tron-2-killer-app` 
 back out of the next menu), 10 START/A cycles with a frame per press to map what follows, mark, an FPS loop (LY forward,
 RT fire, A jump, RX turns, frame per leg, no START). No targets.toml entry yet (added once a replay reaches play). Queued
 replay 1 `1790953776-titleroutes2-447685` (420 s).
+
+Tron replay 1 (`1790953776-titleroutes2-447685`, 77 frames): **the B came too soon.** 4 s after START the title was still
+up (`081413`), so B landed before the Sign In screen and was lost; the rest is the sign-in loop again. Worse: in the
+play loop the sticks moved the account cursor to <New Account>, and A raised "This will send you back to the Xbox
+Dashboard to create a new account. Yes / No" (`081911`, Yes lit). One A there leaves the game. **Do not repeat: a
+press meant for a screen that comes after a transition needs a wait longer than the transition. The sign-in screen
+holds until input, so waiting costs nothing.** v2 (`7ebe5300a1`): START, wait 10, B. Queued replay 2
+`1790954531-titleroutes2-667637`.
