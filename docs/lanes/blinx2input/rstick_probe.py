@@ -72,20 +72,46 @@ def until(sec):
         time.sleep(d)
 
 
+REF = os.path.dirname(os.path.abspath(__file__)) + "/ref"
+
+
+def sig(path):
+    from PIL import Image
+    im = Image.open(path).convert("L").resize((16, 12), Image.BOX)
+    return list(im.getdata())
+
+
+def dist(a, b):
+    return sum(abs(x - y) for x, y in zip(a, b)) / len(a)
+
+
+# Grey 16x12 signatures. Title vs other title frames 8-19, vs anything else
+# >= 37; bearings card vs itself 0.2, vs the Test 1 card before it 14.
+TITLE = sig(REF + "/title.png")        # "Press START to begin." (run 1 frame 015)
+BEARINGS = sig(REF + "/bearings.jpg")  # "Move the Right thumbstick..." (unguided 009)
+
+
+def look(label):
+    shot(label)
+    s = sig(os.path.join(OUT, f"{n:03d}-{label}.png"))
+    d = dict(title=round(dist(s, TITLE), 1), bearings=round(dist(s, BEARINGS), 1))
+    note("look", **d)
+    return d
+
+
 dev.launch(ISO)
 t0 = time.time()
 note("launch", iso=ISO)
-for s in (9, 20, 31, 40, 50):          # the unguided run's START/A beats
-    until(s)
-    shot("boot")
-    press("START")
+while t() < 300:                        # wait for the title, START once
+    if look("boot")["title"] < 25:
+        press("START")
+        break
+    time.sleep(3)
+for _ in range(40):                     # menus and cards: A until the bearings card
+    time.sleep(4)
+    if look("menu")["bearings"] < 7:
+        break
     press("A")
-for s in (63, 75, 85):                 # Challenge intro cards: A
-    until(s)
-    shot("card")
-    press("A")
-until(100)
-shot("bearings-card")
 press("A")
 time.sleep(2.5)
 shot("test1-start")

@@ -36,6 +36,17 @@ H1 is cheap to decide and decides the whole lane: one model-free device run
 (replay START/A to the card, then RX/RY holds, then LX and A, a frame
 after each).
 
-## Device runs
+## Device runs (Nova, model-free driver `rstick_probe.py`)
 
-(none yet)
+| run | what | result |
+|---|---|---|
+| 1 | fixed-time START/A beats, then RX/RY/LX holds | void: boot was ~60 s slower than the unguided run; every beat landed before the title and the game sat in its attract loop |
+| 2 | screen-reactive (title signature -> START, then A until the card), then RX/RY full-deflection holds, LX/LY, A | reached Test 1 (team "Arch"). **RX orbits the camera, RY tilts it** (060, 062, 064 shows sky and a balloon, 066 floor); the camera springs back behind the player within 0.6 s of release. LX/LY and A: no movement, as the test intends. Objective still "Locate the 3 balloons" |
+
+Verdict on the hypotheses after run 2: H2 refuted (right stick reaches the
+guest); H3 has nothing left to explain; H1 holds. Not an emulator defect, no
+emulator fix and so no prediction. The prober's fix is a right-stick token in
+pathfind (lane.pathfind's file, not mine).
+
+Do not repeat: probing a Blinx 2 "no movement" with the left stick. Read the
+tutorial card first.
