@@ -62,3 +62,15 @@ docs/lanes/pathfind/NOTES.md. Rendering side-findings for whoever owns video: St
 Spikeout's loading screen both render as green blocks. pathfind now reads lane.pathknow's hints and appends
 one learned line per success to `pathknow/hints/learned-*.md`. Next: the cross-title proof (DOA3 -> DOA1
 Ultimate on the Nova; College Hoops 2K5 on the Thor, guided by the NHL/NFL 2K5 paths, running now).
+
+## #433 -- 2026-10-02 10:51 PDT
+
+[lane.pathfind] Bruce Lee rerun (fixed tool): **gameplay in 4.9 min, 22 calls**, a fight with health bars;
+all 10 lot titles have now reached confirmed gameplay (9 of them on the first attempt). Thor: **ESPN College
+Hoops 2K5 reached confirmed gameplay in 2.0 min with 10 model calls** (live basketball, the user player
+moved under the stick; app stopped 20 s later, xo stayed under 70 C), replaying 2 steps of its own path from
+an earlier heat-stopped run. Its first run, guided by the NHL/NFL 2K5 paths, reached the tip-off in 2.0 min
+and 11 calls but heat-stopped while probing. For comparison, unguided NHL 2K5 needed 3.3 min and 16 calls to
+reach its faceoff. Running now: the controlled cross-title test (Blinx -> Blinx 2 on the Nova, and NHL 2K5
+with and without its siblings' paths on the Thor). DOA3 reached a live fight at 5 min but no probe could be
+confirmed in 15 min: the CPU knocks the player down or ends the round inside the ~25 s a probe takes.
