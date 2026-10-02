@@ -16,6 +16,13 @@ answers canned (PATHFIND_DRY). Each case names the defect it would catch.
             comes back, and the dialog's input is overridden by the 5th visit.
   replay    a second run of the same title with the recorded path replays
             the logo and menu steps with no model call (2 calls, not 4).
+  cinema    a letterboxed scene that moves under the probe and that the
+            confirm model calls gameplay (Bruce Lee's intro cinematic, 10-02):
+            NOT confirmed, refused before any confirm call.
+  ownmotion the probe frame changes, but no more than the scene changes on
+            its own: NOT confirmed.
+  retract   confirmed, but the frame 30 s on is a title screen (the
+            recheck says no): the claim is retracted, result not gameplay.
   actions   clean_action keeps valid tokens and drops the rest.
 """
 
@@ -54,6 +61,16 @@ def frame(path, kind, shift=0):
         for x in range(0, 1280, 160):
             d.rectangle((x + shift, 400, x + shift + 60, 960), fill=(120, 80, 40))
         d.rectangle((560, 600, 720, 900), fill=(220, 30, 30))
+    if kind == "cine":
+        return frame(path, "game", shift) or _bars(path)
+    im.save(path)
+
+
+def _bars(path):
+    im = Image.open(path)
+    d = ImageDraw.Draw(im)
+    d.rectangle((0, 0, 1280, 140), fill=(0, 0, 0))
+    d.rectangle((0, 820, 1280, 960), fill=(0, 0, 0))
     im.save(path)
 
 
@@ -131,6 +148,28 @@ rc, res, steps, calls = run("replay", [("logo", 0), ("menu", 0), ("game", 0), ("
                             [GAME, {"gameplay": True, "responded": True, "why": "moved"}], ["--no-record"])
 check("replay", res["result"] == "gameplay" and res["replayed"] == 2 and len(calls) == 2,
       f"result {res['result']}, replayed {res['replayed']}, calls {len(calls)}")
+
+# cinema: letterboxed, moves under the probe, confirm model would say yes
+rc, res, steps, calls = run("cinema", [("cine", 0), ("cine", 0), ("cine", 0), ("cine", 120)] + [("cine", 0)] * 4,
+                            [GAME, {"gameplay": True, "responded": True, "why": "he walked"}],
+                            ["--no-record", "--no-replay"])
+check("cinema", res["result"] != "gameplay" and not any(c["purpose"] == "confirm" for c in calls),
+      f"letterboxed scene refused before a confirm call ({res['result']})")
+
+# ownmotion: the scene moves as much with no input as under it
+rc, res, steps, calls = run("ownmotion", [("game", 0), ("game", 0), ("game", 80), ("game", 160)] + [("game", 0)] * 4,
+                            [GAME, {"gameplay": True, "responded": True, "why": "moved"}],
+                            ["--no-record", "--no-replay"])
+check("ownmotion", res["result"] != "gameplay", f"no response beyond its own motion ({res['result']})")
+
+# retract: confirmed, then the recheck 30 s on says it is a title screen
+os.environ["PATHFIND_AFTER_S"] = "0.05"
+rc, res, steps, calls = run("retract", [("game", 0), ("game", 0), ("game", 0), ("game", 80), ("logo", 0)] + [("logo", 0)] * 4,
+                            [GAME, {"gameplay": True, "responded": True, "why": "moved"},
+                             {"gameplay": False, "why": "title screen"}], ["--no-record", "--no-replay"])
+os.environ["PATHFIND_AFTER_S"] = "0"
+check("retract", res["result"] != "gameplay" and res.get("retracted") == 1,
+      f"claim retracted ({res['result']}, retracted {res.get('retracted')})")
 
 # actions
 ca = pathfind.clean_action(["a", "START", "STICK:Up:9", "RT:1.5", "HOLD:A:1", "HOLD:Q:1", "JUMP", "select"])

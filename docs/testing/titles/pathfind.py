@@ -241,6 +241,16 @@ def changed(a, b):
     return classify.motion(grey(a), grey(b))[0]
 
 
+def letterboxed(path):
+    """Black bars top AND bottom around a lit middle: a cutscene. Bruce Lee,
+    10-02: a letterboxed intro cinematic whose character moves on its own was
+    claimed and confirmed as gameplay."""
+    g = np.asarray(grey(path), dtype=np.float32)
+    h = g.shape[0]
+    top, bot, mid = g[: int(h * 0.09)], g[int(h * 0.91):], g[int(h * 0.3): int(h * 0.7)]
+    return bool(top.mean() < 10 and bot.mean() < 10 and top.std() < 6 and bot.std() < 6 and mid.mean() > 25)
+
+
 def is_black(path):
     g = np.asarray(grey(path), dtype=np.float32)
     return g.mean() < classify.BLACK_LUMA and g.std() < 6
@@ -448,7 +458,9 @@ black, unknown.
 
 Say "gameplay" only when you see player-controlled play (a HUD, a playfield with the player's character or
 vehicle), not a menu, not a replay/attract demo with "Press Start", not a cutscene with letterbox bars or
-subtitles. When you say gameplay, also give "probe": a list of inputs whose LAST one should visibly move
+subtitles. The "FPS: NN" text at the top-left is the EMULATOR's overlay on every frame: it is NOT a game
+HUD and never evidence of gameplay. An intro cinematic right after the publisher logos, before any title
+screen or menu, is a cutscene even when it shows the hero in the game world: skip it. When you say gameplay, also give "probe": a list of inputs whose LAST one should visibly move
 the player or camera for ~1.5 s (racing: ["RT:1.5"]; on foot: ["STICK:up:1.5"]); put any input needed to
 start the play first (a kickoff or serve: ["A", "STICK:up:1.5"]).
 
@@ -731,12 +743,19 @@ class Agent:
         ctrl, moved = changed(a_png, b_png), changed(b_png, c_png)
         rec = {"state": "probe", "action": pre + [probe], "why": f"control {ctrl:.3f}, under input {moved:.3f}",
                "src": "probe", "changed": moved}
-        if moved < PROBE_MOVED:
-            rec["verdict"] = "no visible change under the input"
+        if moved < PROBE_MOVED or moved < 1.5 * ctrl:
+            # 1.5x the no-input control: Bruce Lee's cinematic moved 0.249 with no input, 0.297 "under" it
+            rec["verdict"] = "no change under the input beyond what changes on its own"
             self.write_step(rec)
-            return False, f"the screen did not change while {probe} was held (changed {moved:.3f})"
+            return False, (f"the screen did not change while {probe} was held beyond its own motion "
+                           f"(control {ctrl:.3f}, under input {moved:.3f})")
+        if letterboxed(a_png) or letterboxed(c_png):
+            rec["verdict"] = "letterboxed: a cutscene"
+            self.write_step(rec)
+            return False, "black bars top and bottom: this is a cutscene, not gameplay"
         q = (f"Three screenshots of {self.name}, an Xbox game, attached in order: A, then B (1 s after A, no "
-             f"input), then C (taken while holding {probe}, ~1 s after B). The previous step "
+             f"input), then C (taken while holding {probe}, ~1 s after B). The 'FPS: NN' text at the top-left is the "
+             f"emulator's overlay, not a game HUD. The previous step "
              f"judged this gameplay: \"{why}\".\nIs this real player-controlled gameplay (not a menu, not a "
              "cutscene, not an attract/demo mode, not a replay), AND does C show the playfield responding to "
              f"the input {probe} (the player/vehicle/camera moved accordingly), beyond whatever changed on its "
@@ -809,7 +828,10 @@ class Agent:
                 # screen with action A; the stick alone only flipped the play menu)
                 ok, why = self.confirm(list(dec.get("action") or []) + probe, dec.get("why", ""))
                 if ok:
-                    return self.success(jpg)
+                    r = self.success(jpg)
+                    if r is not None:
+                        return r
+                    why = "retracted: 30 s later it was no longer gameplay"
                 if self.probes >= 4:
                     self.result.update(reason="four probes refused")
                 self.steps[-1]["why"] += f" | probe: {why}"
@@ -897,6 +919,23 @@ class Agent:
                 post.append(j)
             time.sleep(3)
         self.result["after_frames"] = post
+        # still gameplay 30 s on? A cinematic ends in a title screen; play does not (Bruce Lee, 10-02)
+        last = post[-1] if post else None
+        if last:
+            lb = letterboxed(last[:-4] + ".png") if os.path.exists(last[:-4] + ".png") else False
+            ans = self.model.ask(STRONG, (
+                f"A screenshot of {self.name}, an Xbox game, taken {span:.0f} s after the agent judged it to be in "
+                "gameplay (no input since). The 'FPS: NN' text at the top-left is the emulator's overlay, not "
+                "the game's HUD. Is this still in-game play (the player's character/vehicle in the game world, "
+                "possibly idle or paused) rather than a title screen, menu, logo, loading screen, cutscene or "
+                'attract demo? Answer JSON only: {"gameplay": true|false, "why": "<one line>"}'), "recheck", [last]) or {}
+            if lb or not ans.get("gameplay"):
+                why = "letterboxed" if lb else str(ans.get("why", "no answer"))
+                self.write_step({"state": "retracted", "action": [], "src": "probe",
+                                 "why": f"retracted after {span:.0f} s: {why}"[:240]})
+                self.result.update(result="running", minutes=None, gameplay_frame=None,
+                                   retracted=self.result.get("retracted", 0) + 1)
+                return None
         self.write_path()
         return self.finish(last=jpg, post=post)
 

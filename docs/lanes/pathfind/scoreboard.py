@@ -23,6 +23,10 @@ for d in sorted(glob.glob(os.path.join(HERE, "runs", "*")), key=os.path.getmtime
         else os.path.join("runs", os.path.basename(d), "strip.jpg")
     models = "/".join(f"{k.split('-')[1]} {v}" for k, v in sorted(by.items()))
     res = r.get("result")
+    if os.path.exists(os.path.join(d, "review.json")):
+        rv = json.load(open(os.path.join(d, "review.json")))
+        res = f"{res} -> REVIEW: {rv.get('verdict')}"
+        frame = os.path.join("runs", os.path.basename(d), "strip.jpg")
     rows.append(f"| {os.path.basename(d)} | {r.get('name')} | {r.get('device')} | "
                 f"{'**gameplay**' if res == 'gameplay' else res} | {mins} | {r.get('model_calls')} ({models}) | "
                 f"{r.get('steps')} | {r.get('replayed', 0)} | ${cost:.2f} | {r.get('reason') or ''} | {frame} |")
