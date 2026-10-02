@@ -237,13 +237,66 @@ def learn(frames, box, out, max_std=LEARN_STD):
     return float((alpha > 0).mean())
 
 
-def motion(a, b, mask_boxes=()):
-    """Changed fraction and mean grey diff between two open grey frames."""
+def motion(a, b, mask_boxes=(), pixel=MOTION_PIXEL):
+    """Changed fraction and mean grey diff between two open grey frames.
+    `pixel` is the grey-level step that counts as a change (profile
+    `motion_pixel`): in a dark scene a running character moves few pixels by
+    16 levels (Buffy's night canyon, lane.routedriver2 run b2: 0.07-0.14 while
+    running), so a dark title lowers it."""
     boxes = [FPS_CORNER] + list(mask_boxes)
     aa = np.asarray(masked(a, boxes).resize(MOTION_SIZE, Image.BILINEAR), dtype=np.int16)
     bb = np.asarray(masked(b, boxes).resize(MOTION_SIZE, Image.BILINEAR), dtype=np.int16)
     d = np.abs(aa - bb)
-    return float((d > MOTION_PIXEL).mean()), float(d.mean())
+    return float((d > pixel).mean()), float(d.mean())
+
+
+SCENE_SIZE = (32, 24)
+SCENE_PIXEL = 24                  # grey levels a 32x24 cell must move to count as changed
+
+
+def scene(path, mask_boxes=()):
+    """The scene's layout: the grey frame, FPS corner and `mask_boxes` blacked
+    out, box-averaged to 32x24 cells. At that size a character is a cell or
+    two and the level around it is the rest, so two of these taken ~10 s apart
+    ask whether the PLAYER got anywhere, where `motion` (2 s apart, 160x120)
+    asks whether anything moved -- a team struggling in a corner moves plenty
+    (Sonic Heroes, lane.routedriver2 trial 1: 0.35-0.50 changed) and goes
+    nowhere."""
+    im = masked(open_grey(path), [FPS_CORNER] + list(mask_boxes))
+    return np.asarray(im.resize(SCENE_SIZE, Image.BOX), dtype=np.float32)
+
+
+def scene_change(a, b):
+    """Fraction of 32x24 cells that changed between two `scene` arrays."""
+    return float((np.abs(a - b) > SCENE_PIXEL).mean())
+
+
+def line_reading(path, band, hue, min_sat=0.45, min_val=0.35):
+    """Where a coloured guide line is in a band ahead of the player (1280x960
+    space): (pixel count, centroid x in 1280 space or None). `hue` is
+    [lo, hi] degrees. Forza Motorsport's suggested line is green chevrons on
+    the asphalt (lane.routedriver2: 330-1290 px in a 1280x200 band over a
+    race, centroid at x 650-760 on the straight and 958-1054 at the bend the
+    car ran wide on). Saturation and value floors keep the grey road, the sky
+    and dull verges out."""
+    im = open_rgb(path)
+    l, t, r, b = scale_box(band, im.size)
+    hsv = np.asarray(im.crop((l, t, r, b)).convert("HSV"), dtype=np.float32)
+    h = hsv[..., 0] * (360.0 / 255.0)
+    m = (hsv[..., 1] > min_sat * 255) & (hsv[..., 2] > min_val * 255)
+    m &= (h >= hue[0]) & (h <= hue[1]) if hue[0] <= hue[1] else ((h >= hue[0]) | (h <= hue[1]))
+    xs = np.nonzero(m)[1]
+    if not len(xs):
+        return 0, None
+    sx = REF_W / float(im.size[0])
+    return int(len(xs) * sx * sx), float((xs.mean() + l) * sx)
+
+
+def region_rgb(path, box):
+    """Mean RGB of a region (1280x960 space): a HUD badge's colour."""
+    im = open_rgb(path)
+    a = np.asarray(im.crop(scale_box(box, im.size)), dtype=np.float64).reshape(-1, 3)
+    return [float(x) for x in a.mean(0)]
 
 
 def match_crop(im, crops, profile):
@@ -273,8 +326,12 @@ def classify_frame(frame, prev, profile, seen=(), last_play_luma=None, prev_stat
     # on a flat grey frame is itself a contrast
     below = im.crop(scale_box((0, FPS_CORNER[3], REF_W, REF_H - FPS_CORNER[3]), im.size))
     flat = float(np.asarray(below.resize(MOTION_SIZE), dtype=np.float64).std()) < FLAT_STD
-    if lu < BLACK_LUMA or flat:
-        out.update(state="black" if seen - {"boot", "black"} else "boot", source="black" if lu < BLACK_LUMA else "flat")
+    # A profile may lower the bar: Buffy's canyon has dark corners at luma
+    # 5.8 with the HUD in plain view, while its true blacks read 0.0
+    # (lane.routedriver2, Buffy run 1: 300 s of live play named `black`).
+    black_luma = profile.get("black_luma", BLACK_LUMA)
+    if lu < black_luma or flat:
+        out.update(state="black" if seen - {"boot", "black"} else "boot", source="black" if lu < black_luma else "flat")
         return out
 
     crops = profile.get("crop", [])
@@ -290,7 +347,8 @@ def classify_frame(frame, prev, profile, seen=(), last_play_luma=None, prev_stat
     if prev is None:
         out["source"] = "no-prev" + (" hud:" + hud["name"] if hud else "")
         return out
-    changed, diff = motion(im, open_grey(prev), profile.get("motion_mask", []))
+    changed, diff = motion(im, open_grey(prev), profile.get("motion_mask", []),
+                           profile.get("motion_pixel", MOTION_PIXEL))
     out.update(changed=round(changed, 4), diff=round(diff, 2))
     static_bar = profile.get("static_bar", STATIC_BAR)
     moving_bar = profile.get("motion_bar", MOVING_BAR)

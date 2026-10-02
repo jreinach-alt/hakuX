@@ -86,6 +86,9 @@ for a cursor the d-pad does not move (Castlevania's save prompt).
                          phases) plays it once per stall, to its end, up to
                          `escape_max` times: back off, jump, try a side
                          (Sonic Heroes wedges on a Seaside Hill block).
+                         input.stall_cycles, a list of cycles, plays
+                         escape n with cycle (n-1) mod len: one run tries
+                         several escapes, one per stall.
   unknown                wait; the model after `unknown_before_model`
                          captures; `unknown_fail_s` of it is ROUTE FAIL.
 A state seen after a later one in the profile's `order` (a main_menu after
@@ -134,6 +137,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib.request
 
@@ -151,7 +155,8 @@ DEFAULTS = dict(
     fast_s=1.0, slow_s=5.0, skip_settle_s=1.5, skip_passes=3, menu_gap_s=2.0, menu_max_presses=25,
     resume_tries=3, stall_fail_s=40.0, unknown_before_model=3, unknown_fail_s=90.0,
     model_calls_max=20, find_play_s=20.0, confirm_play_s=6.0, keep_every_s=30.0, screencap_fail_s=60.0,
-    hud_memory_s=20.0, escape_max=6,
+    hud_memory_s=20.0, escape_max=6, escape_capture_s=0.0, escape_reset_s=0.0,
+    progress_bar=0.0, progress_window_s=10.0, stall_clear_s=0.0, keep_all=0,
 )
 
 MODEL = "claude-haiku-4-5-20251001"
@@ -174,12 +179,39 @@ def now():
     return time.monotonic()
 
 
+def rest(axis):
+    """An axis's released value: a stick centres (`mid`), a trigger lets go
+    (`min`). pad.sh's `mid` on a 0..32767 trigger is a half press, which is
+    what every release here sent until lane.routedriver2."""
+    return "min" if axis in ("LT", "RT", "L2", "R2") else "mid"
+
+
 class Device:
     """The only thing that touches the handheld: screencap, pad.sh, logcat."""
 
     def __init__(self, serial):
         self.serial = serial
         self.env = dict(os.environ, SERIAL=serial)
+        self.pkg = os.environ.get("DRIVE_PACKAGE", "com.jreinach.hakux")
+        self.fg_at, self.fg_ok = -1e9, True
+
+    def foreground(self, max_age=3.0):
+        """Is hakuX the focused app? Read from `dumpsys window` at most every
+        `max_age` s. lane.routedriver2 Buffy run b4: the emulator aborted 10 s
+        into the intro, the launcher came to the front, and the driver's next
+        A launched Calendar from it. A failed read counts as in front: the
+        harness's own focus watch is the authority, this only stops presses."""
+        if now() - self.fg_at < max_age:
+            return self.fg_ok
+        self.fg_at = now()
+        try:
+            r = subprocess.run(["adb", "-s", self.serial, "shell", "dumpsys", "window"], capture_output=True,
+                               text=True, timeout=10)
+            focus = [l for l in r.stdout.splitlines() if "mCurrentFocus" in l or "mFocusedApp" in l]
+            self.fg_ok = (not focus) or any(self.pkg in l for l in focus)
+        except subprocess.TimeoutExpired:
+            self.fg_ok = True
+        return self.fg_ok
 
     def capture(self, path):
         t = now()
@@ -193,11 +225,48 @@ class Device:
         return ok, now() - t
 
     def pad(self, *args):
+        if args and args[0] in ("press", "hold") and not self.foreground():
+            # escape presses and play taps come here without Driver.press
+            raise Fail("hakuX is not the focused app: %s %s not sent" % args[:2])
         try:
             subprocess.run(["bash", PAD] + list(args), env=self.env, stdout=subprocess.DEVNULL,
                            stderr=subprocess.DEVNULL, timeout=30)
         except subprocess.TimeoutExpired:
             pass
+
+    AXIS_CODES = {"LX": [("ABS_X", 0)], "RT": [("ABS_GAS", 9), ("ABS_RZ", 5)], "LT": [("ABS_BRAKE", 10), ("ABS_Z", 2)]}
+
+    def axes(self, fractions):
+        """Set several axes in ONE adb call: {LX: -1..1, RT: 0..1, LT: 0..1}.
+        Raw values from pad.sh's own range cache (pad-dev.<serial>, written by
+        `pad.sh detect`): both handhelds read ABS_X -32767..32767 and
+        ABS_GAS/ABS_BRAKE 0..32767. One call because the steering loop sends
+        every tick, and two pad.sh round trips would halve its rate."""
+        cache = os.path.join(os.environ.get("HAKUX_WORK", "/home/justin/hakux-work"), "pad-dev." + self.serial)
+        try:
+            lines = dict(l.strip().split("=", 1) for l in open(cache) if "=" in l)
+        except OSError:
+            return False
+        cmds = []
+        for ax, f in fractions.items():
+            for name, code in self.AXIS_CODES.get(ax, []):
+                if name in lines:
+                    lo, hi = (int(v) for v in lines[name].split(","))
+                    if lo < 0:
+                        val = int(round((lo + hi) / 2.0 + f * (hi - lo) / 2.0))
+                    else:
+                        val = int(round(lo + f * (hi - lo)))
+                    cmds.append("sendevent %s 3 %d %d" % (lines["dev"], code, max(lo, min(hi, val))))
+                    break
+        if not cmds:
+            return False
+        cmds.append("sendevent %s 0 0 0" % lines["dev"])
+        try:
+            subprocess.run(["adb", "-s", self.serial, "shell", "; ".join(cmds)], stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL, timeout=10)
+        except subprocess.TimeoutExpired:
+            return False
+        return True
 
     def logcat(self, msg):
         try:
@@ -231,6 +300,15 @@ class SimDevice:
     def pad(self, *args):
         self.sent.append((round(self.clock, 1),) + args)
 
+    def axes(self, fractions):
+        self.sent.append((round(self.clock, 1), "axes") + tuple(sorted(fractions.items())))
+        return True
+
+    fg = True                            # a selftest sets False: the app is not in front
+
+    def foreground(self, max_age=3.0):
+        return self.fg
+
     def logcat(self, msg):
         self.log.append(msg)
 
@@ -249,7 +327,7 @@ class Driver:
         os.makedirs(out, exist_ok=True)
         os.makedirs(frames_dir, exist_ok=True)
         self.tsv = open(os.path.join(out, "route-state.tsv"), "w")
-        self.tsv.write("t\tstate\tsource\tchanged\tluma\tcap_s\taction\tframe\n")
+        self.tsv.write("t\tstate\tsource\tchanged\tluma\tcap_s\taction\tframe\tmode\n")
         self.t0 = None
         self.clock_sim = 0.0
         self.state = None
@@ -269,6 +347,26 @@ class Driver:
         self.unknown_streak = 0
         self.stalled_since = None
         self.escapes = 0                 # stall_cycle runs so far
+        self.esc_frames = 0
+        self.esc_phase = 0
+        self.mode = None                 # the [[mode]] the HUD shows (Sonic Heroes: the formation)
+        self.mode_escapes = {}           # escapes played per mode: picks that mode's next cycle
+        self.scene_hist = []             # (t, scene) of recent HUD frames: the progress check
+        self.stall_streak = False        # stall_clear_s: inside a stall, play must hold to count
+        self.recover_since = None
+        self.cur_scene = None            # this capture's classify.scene (progress_bar only)
+        # [steer] enabled = false keeps the table (and its selftest) without
+        # steering: Forza's runs f1-f2 put the car into a wall within seconds
+        # where RT alone reaches play.
+        st = profile.get("steer")
+        self.steer_cfg = st if st and st.get("enabled", True) else None
+        self.steer_on = threading.Event()
+        self.steer_stop = threading.Event()
+        self.steer_thread = None
+        self.steer_log = []              # (t, n, cx, lx, rt, lt, why) per steering tick
+        self.steer_last = (0.0, None)    # last steer and when the line was last seen
+        self.steer_since = None          # when steering first came on (straight_s)
+        self.escape_scene = None         # the scene where the last escape started
         self.last_hud_t = None
         self.play_since = None
         self.play_frames = []
@@ -288,12 +386,20 @@ class Driver:
         for b, _ in self.inp.get("play_tap", []):
             if b in ("START", "SELECT", "BACK"):
                 raise SystemExit("drive.py: profile play_tap sends %s: START in live play pauses it" % b)
-        for _, _, btns in self.stall_phases():
-            for b in btns:
-                if b in ("START", "SELECT", "BACK") or b in NEVER:
-                    raise SystemExit("drive.py: profile stall_cycle sends %s: START in live play pauses it" % b)
+        for mode in [None] + [m["name"] for m in self.p.get("mode", [])]:
+            self.mode = mode
+            for b, _ in self.inp_for("play_tap", []):
+                if b in ("START", "SELECT", "BACK"):
+                    raise SystemExit("drive.py: profile play_tap (mode %s) sends %s: START in live play pauses it"
+                                     % (mode, b))
+            for n in range(1, len(self.stall_cycles()) + 1):
+                for b in [b.split("/")[0] for _, _, btns in self.stall_phases(n) for b in btns]:
+                    if b in ("START", "SELECT", "BACK") or b in NEVER:
+                        raise SystemExit("drive.py: profile stall_cycle (mode %s) sends %s: START in live play "
+                                         "pauses it" % (mode, b))
+        self.mode = None
         for k, v in self.inp.items():
-            if k.startswith("play") or k == "stall_cycle":
+            if k.startswith("play") or k in ("stall_cycle", "stall_cycles"):
                 continue
             for b in v:
                 if b in NEVER:
@@ -304,6 +410,9 @@ class Driver:
 
     def press(self, btn, why):
         t = self.t()
+        if not self.dev.foreground():
+            raise Fail("hakuX is not the focused app: no press sent (the emulator exited, or another window "
+                       "took the screen)")
         if btn == "START+A":
             self.dev.pad("hold", "START")
             self.dev.pad("press", "A")
@@ -312,35 +421,123 @@ class Driver:
             ax, val = btn.split(":", 1)
             self.dev.pad("axis", ax, val)
             self.sleep(0.4)
-            self.dev.pad("axis", ax, "mid")
+            self.dev.pad("axis", ax, rest(ax))
         else:
             self.dev.pad("press", btn)
         self.last_press_t = t
         self.inputs.append(dict(t=round(t, 1), state=self.state, input=btn, why=why))
         return "press %s (%s)" % (btn, why)
 
-    def stall_phases(self):
-        """input.stall_cycle as [(axes, seconds, buttons)]: [[axes], seconds]
+    def stall_cycles(self):
+        """input.stall_cycles (a list of cycles: escape n plays cycle
+        (n-1) mod len, so one run can try several escapes, one per stall),
+        else [input.stall_cycle]."""
+        m = self.mode_table()
+        src = m if ("stall_cycles" in m or "stall_cycle" in m) else self.inp
+        if src.get("stall_cycles"):
+            return list(src["stall_cycles"])
+        return [src["stall_cycle"]] if src.get("stall_cycle") else []
+
+    def mode_table(self):
+        for m in self.p.get("mode", []):
+            if m["name"] == self.mode:
+                return m
+        return {}
+
+    def inp_for(self, key, default=None):
+        """input.<key>, or the current [[mode]]'s own <key> when it has one."""
+        m = self.mode_table()
+        return m[key] if key in m else self.inp.get(key, default)
+
+    def which_mode(self, frame):
+        """The [[mode]] whose `rgb` the frame's `region` is nearest, within
+        `tol` (Euclidean, 0-255 RGB); None when no mode is that close."""
+        best, bd = None, None
+        for m in self.p.get("mode", []):
+            c = classify.region_rgb(frame, m["region"])
+            d = sum((x - y) ** 2 for x, y in zip(c, m["rgb"])) ** 0.5
+            if d <= m.get("tol", 45.0) and (bd is None or d < bd):
+                best, bd = m["name"], d
+        return best
+
+    def stall_phases(self, n=1):
+        """Escape n's cycle as [(axes, seconds, buttons)]: [[axes], seconds]
         or [[axes], seconds, [buttons]] (pressed once on entering the phase,
-        0.3 s apart: A, A is a jump and a mid-air action)."""
+        0.3 s apart: A, A is a jump and a mid-air action; `A/800` holds A
+        for 800 ms instead of pad.sh's 60). Empty axes release the stick."""
+        cycles = self.stall_cycles()
+        if not cycles:
+            return []
         out = []
-        for ph in self.inp.get("stall_cycle", []):
+        for ph in cycles[(n - 1) % len(cycles)]:
             out.append(([tuple(x) for x in ph[0]], float(ph[1]), list(ph[2]) if len(ph) > 2 else []))
         return out
 
+    def start_escape(self):
+        """One escape. With progress_bar set, a stall whose scene differs from
+        where the last escape started (scene_change >= the bar) is a new
+        obstacle: the budget starts over there. Trial 3 of lane.routedriver2
+        spent its six escapes on two Seaside Hill obstacles, cleared both,
+        and met a third with none left: 30 s of play (escape_reset_s) never
+        came between them."""
+        if self.new_site():
+            self.escapes = 0
+            self.mode_escapes = {}
+            self.inputs.append(dict(t=round(self.t(), 1), state=self.state, input="",
+                                    why="new stall site: escape budget reset"))
+        if self.cur_scene is not None:
+            self.escape_scene = self.cur_scene
+        self.escapes += 1
+        self.mode_escapes[self.mode] = self.mode_escapes.get(self.mode, 0) + 1
+        steering = self.steer_on.is_set()
+        if steering:                     # the escape owns the stick and pedals while it plays
+            self.steer_on.clear()
+            time.sleep(0 if self.sim else 0.3)
+        try:
+            self.escape()
+        finally:
+            if steering:
+                self.steer_on.set()
+
+    def new_site(self):
+        bar = self.cfg["progress_bar"]
+        return bool(bar and self.escape_scene is not None and self.cur_scene is not None
+                    and classify.scene_change(self.cur_scene, self.escape_scene) >= bar)
+
     def escape(self):
-        """Play input.stall_cycle through, now, with no captures in between:
-        each phase's axes held for its seconds, its buttons pressed 0.3 s
-        apart at its start. Synchronous because the phases are short and
-        exact: run off the capture clock (5 s apart in stable play), Sonic
-        Heroes' 2.5 s back-off ran ~6 s and walked the team off the ledge
-        into the sea, three times (session 4, replay 3)."""
-        for axes, s, btns in self.stall_phases():
-            self.inputs.append(dict(t=round(self.t(), 1), state=self.state, why="stall escape %d" % self.escapes,
+        """Play escape number self.escapes's cycle through, now, with no
+        decisions in between: each phase's axes held for its seconds, its
+        buttons pressed 0.3 s apart at its start. Synchronous because the
+        phases are short and exact: run off the capture clock (5 s apart in
+        stable play), Sonic Heroes' 2.5 s back-off ran ~6 s and walked the
+        team off the ledge into the sea, three times (session 4, replay 3).
+        [drive] escape_capture_s > 0 keeps a frame that often through the
+        escape (named `esc<n>-p<phase>`), so a trial can see where it went.
+        The captures run on a thread of their own: taken in line they would
+        put a gap into the press cadence a flight depends on."""
+        every = float(self.cfg.get("escape_capture_s") or 0)
+        stop = threading.Event()
+        cap = None
+        if every and not self.sim:
+            cap = threading.Thread(target=self.escape_frames, args=(every, stop), daemon=True)
+            cap.start()
+        try:
+            self.escape_phases()
+        finally:
+            stop.set()
+            if cap:
+                cap.join(timeout=35)
+
+    def escape_phases(self):
+        n = self.mode_escapes.get(self.mode, 0)
+        for k, (axes, s, btns) in enumerate(self.stall_phases(n)):
+            self.esc_phase = k + 1
+            self.inputs.append(dict(t=round(self.t(), 1), state=self.state,
+                                    why="stall escape %d phase %d" % (self.escapes, k + 1),
                                     input=" ".join("%s %s" % a for a in axes) + (" + " + ",".join(btns) if btns else "")))
             for ax, _ in self.held:
                 if ax not in [a for a, _ in axes]:
-                    self.dev.pad("axis", ax, "mid")
+                    self.dev.pad("axis", ax, rest(ax))
             for ax, val in axes:
                 self.dev.pad("axis", ax, str(val))
             self.held = list(axes)
@@ -348,12 +545,27 @@ class Driver:
             for j, b in enumerate(btns):
                 if j:
                     self.sleep(0.3)
-                self.dev.pad("press", b)
+                if "/" in b:
+                    b, ms = b.split("/", 1)
+                    self.dev.pad("press", b, ms)
+                else:
+                    self.dev.pad("press", b)
             self.sleep(max(0.0, s - (self.t() - t0)))
 
+    def escape_frames(self, every, stop):
+        path = os.path.join(self.frames_dir, ".esc.png")
+        while not stop.is_set():
+            t = now()
+            ok, _ = self.dev.capture(path)
+            if ok:
+                self.esc_frames += 1
+                os.replace(path, os.path.join(self.frames_dir, "%s-%03d-esc%d-p%d-%03d.png" % (
+                    time.strftime("%H%M%S"), self.n, self.escapes, self.esc_phase, self.esc_frames)))
+            stop.wait(max(0.0, every - (now() - t)))
+
     def hold_play(self):
-        want = [tuple(x) for x in self.inp.get("play_hold", [])]
-        cycle = self.inp.get("play_cycle")
+        want = [tuple(x) for x in self.inp_for("play_hold", [])]
+        cycle = self.inp_for("play_cycle")
         if cycle:
             # An on-foot title: one held direction walks into the first wall
             # (Castlevania's fountain, run 3), so the held axes rotate through
@@ -365,9 +577,13 @@ class Driver:
                     want = [tuple(x) for x in axes]
                     break
                 at -= float(s)
+        if self.steer_cfg:
+            # [steer] owns LX and the pedals while the race HUD is up.
+            want = [w for w in want if w[0] not in self.STEER_AXES]
+            self.steering(True)
         for ax, _ in self.held:
             if ax not in [a for a, _ in want]:
-                self.dev.pad("axis", ax, "mid")
+                self.dev.pad("axis", ax, rest(ax))
         for ax, val in want:
             self.dev.pad("axis", ax, str(val))
         if want and self.held != want:
@@ -375,9 +591,71 @@ class Driver:
                                     input="hold " + " ".join("%s %s" % a for a in want), why="play"))
         self.held = want
 
+    STEER_AXES = ("LX", "RT", "LT")
+
+    def steer_command(self, n, cx, t):
+        """[steer]: the line's centroid -> (LX, RT, LT, why). LX is the
+        centroid's offset from `center_x` over `full_dx`, clamped to +-1.
+        Under `min_px` line pixels the line is lost: keep the last steer for
+        `lost_hold_s` at `lost_throttle`, then centre. Throttle is
+        `throttle` on the line and less the harder it steers (`turn_lift`
+        of it at full lock), because a 1-2 Hz loop cannot hold a bend taken
+        flat out."""
+        c = self.steer_cfg
+        if self.steer_since is not None and t - self.steer_since < c.get("straight_s", 0.0):
+            # Off the grid with the wheel straight: Forza run f1 steered toward
+            # the line from a standing start and clipped the car alongside.
+            return 0.0, c.get("throttle", 0.7), 0.0, "straight"
+        if n >= c.get("min_px", 40) and cx is not None:
+            lx = max(-1.0, min(1.0, (cx - c.get("center_x", 640)) / float(c.get("full_dx", 300))))
+            self.steer_last = (lx, t)
+            rt = c.get("throttle", 0.7) * (1.0 - c.get("turn_lift", 0.4) * abs(lx))
+            return lx, rt, 0.0, "line"
+        last, seen = self.steer_last
+        if seen is not None and t - seen < c.get("lost_hold_s", 1.5):
+            return last, c.get("lost_throttle", 0.3), 0.0, "lost-hold"
+        return 0.0, c.get("lost_throttle", 0.3), 0.0, "lost"
+
+    def steer_tick(self, path):
+        n, cx = classify.line_reading(path, self.steer_cfg.get("band", [0, 400, 1280, 200]),
+                                      self.steer_cfg.get("hue", [85, 160]))
+        t = self.t()
+        lx, rt, lt, why = self.steer_command(n, cx, t)
+        self.dev.axes(dict(LX=lx, RT=rt, LT=lt))
+        self.steer_log.append((round(t, 2), n, None if cx is None else int(cx), round(lx, 2), round(rt, 2), lt, why))
+
+    def steer_loop(self):
+        """The steering thread: while steer_on is set (the race HUD is up),
+        capture as fast as screencap allows and steer. Its own captures, so
+        the main loop's classification cadence does not set the control rate."""
+        path = os.path.join(tempfile.gettempdir(), "drive-steer-%d.png" % os.getpid())
+        while not self.steer_stop.is_set():
+            if not self.steer_on.wait(0.2):
+                continue
+            ok, _ = self.dev.capture(path)
+            if ok and self.steer_on.is_set():
+                self.steer_tick(path)
+
+    def steering(self, on):
+        if not self.steer_cfg or self.sim:
+            return
+        if on and not self.steer_on.is_set():
+            if self.steer_thread is None:
+                self.steer_thread = threading.Thread(target=self.steer_loop, daemon=True)
+                self.steer_thread.start()
+            if self.steer_since is None:
+                self.steer_since = self.t()
+            self.steer_on.set()
+            self.inputs.append(dict(t=round(self.t(), 1), state=self.state, input="steer on", why="play"))
+        elif not on and self.steer_on.is_set():
+            self.steer_on.clear()
+            self.dev.axes(dict(LX=0.0, RT=0.0, LT=0.0))
+            self.inputs.append(dict(t=round(self.t(), 1), state=self.state, input="steer off", why="left play"))
+
     def release_play(self):
+        self.steering(False)
         for ax, _ in self.held:
-            self.dev.pad("axis", ax, "mid")
+            self.dev.pad("axis", ax, rest(ax))
         if self.held:
             self.inputs.append(dict(t=round(self.t(), 1), state=self.state, input="release axes", why="left play"))
         self.held = []
@@ -442,6 +720,15 @@ class Driver:
             # not a menu. `stalled`: the play input stays held, and the stall
             # watch still ends the run if nothing ever moves.
             r.update(state="stalled", source="static+hud-recent")
+        if "hud:" in r["source"]:                 # the play HUD is up (also on a run's first frame, `no-prev hud:`)
+            if self.p.get("mode"):
+                m = self.which_mode(frame)
+                if m is not None:
+                    self.mode = m
+            self.progress(frame, r)
+        else:
+            self.scene_hist = []
+        self.recovering(r)
         if r["state"] == "unknown":
             self.unknown_streak += 1
             if self.unknown_streak >= self.cfg["unknown_before_model"]:
@@ -451,6 +738,68 @@ class Driver:
         else:
             self.unknown_streak = 0
         return r
+
+    def progress(self, frame, r):
+        """[drive] progress_bar > 0: a `play` frame whose scene layout
+        (classify.scene, 32x24) changed less than the bar against the HUD
+        frame `progress_window_s` earlier is `stalled` (source
+        hud+no-progress): the player is moving in place, not getting
+        anywhere. Sonic Heroes, trial 1 of lane.routedriver2: running
+        changed 0.46-0.71 of the cells over 8-14 s, a team struggling in a
+        corner 0.07-0.26 while its 2 s motion read 0.35-0.50 -- `play` on
+        the per-capture bars. Off by default: a title whose play can stay in
+        one place (an arena, a play_cycle walking a square) must not opt in.
+        Any non-HUD frame (a death's black, a menu) starts the window over."""
+        bar = self.cfg["progress_bar"]
+        if not bar:
+            return
+        t, win = self.t(), self.cfg["progress_window_s"]
+        sig = classify.scene(frame, self.p.get("drive", {}).get("progress_mask", []))
+        self.cur_scene = sig
+        old = [(ht, hs) for ht, hs in self.scene_hist if t - 1.6 * win <= ht <= t - win]
+        self.scene_hist = [(ht, hs) for ht, hs in self.scene_hist if ht >= t - 1.6 * win] + [(t, sig)]
+        if not old:
+            return
+        ch = classify.scene_change(sig, old[-1][1])
+        r["progress"] = round(ch, 3)
+        if r["state"] == "play" and ch < bar:
+            r.update(state="stalled", source="hud+no-progress")
+
+    def recovering(self, r):
+        """[drive] stall_clear_s > 0: once stalled, `play` must hold that long
+        before it is play again; until then the frame is `stalled` (source
+        +recovering, r["recovering"]). A team wedged at one place keeps
+        throwing short `play` reads -- Tails hovering up and down beside a
+        block moves the camera (lane.routedriver2 trial 2: ~45% of 100 s
+        stuck at Seaside Hill's POWER block read play) -- and each one both
+        counted as play time and restarted the stall watch, so the run never
+        ended. The cost: the first stall_clear_s of real play after a stall
+        is logged as stalled, which understates play_share, never inflates it.
+        A frame without the play HUD (a death's black, a menu) ends the streak."""
+        clear = self.cfg["stall_clear_s"]
+        if not clear:
+            return
+        if r["state"] == "stalled":
+            self.stall_streak, self.recover_since = True, None
+        elif "hud:" not in r["source"]:
+            self.stall_streak, self.recover_since = False, None
+        elif r["state"] == "play" and self.stall_streak:
+            if self.recover_since is None:
+                self.recover_since = self.t()
+            if self.t() - self.recover_since < clear:
+                r.update(state="stalled", source=r["source"] + "+recovering", recovering=True)
+            else:
+                self.stall_streak, self.recover_since = False, None
+
+    def play_taps(self, t):
+        act = ""
+        for b, every in self.inp_for("play_tap", []):
+            last = getattr(self, "_tap_" + b, -1e9)
+            if t - last >= every:
+                setattr(self, "_tap_" + b, t)
+                self.dev.pad("press", b)
+                act += " tap %s" % b
+        return act
 
     def enter(self, state, r, frame):
         t = self.t()
@@ -496,7 +845,7 @@ class Driver:
             # a play stretch this neither ends the stretch nor counts toward it.
             self.hold_play()
             return "hold (hud up, motion not yet play)"
-        if state != "play" and state != "stalled" and self.held:
+        if state != "play" and state != "stalled" and (self.held or self.steer_on.is_set()):
             self.release_play()
         if state != "stalled":
             self.stalled_since = None
@@ -559,9 +908,9 @@ class Driver:
             return self.press(seq[n % len(seq)], "%s %d" % (state, n + 1))
 
         if state in ("play", "stalled"):
-            if state == "stalled" and self.stall_phases() and self.escapes < cfg["escape_max"]:
-                self.escapes += 1
-                self.escape()
+            if (state == "stalled" and not r.get("recovering") and self.stall_cycles()
+                    and (self.escapes < cfg["escape_max"] or self.new_site())):
+                self.start_escape()
                 self.last_press_t = self.t()     # the next capture comes at the fast rate
                 self.stalled_since = None
                 return "stall escape %d" % self.escapes
@@ -573,18 +922,21 @@ class Driver:
                     raise Fail("stalled %.0f s: the play HUD is up and nothing moves -- "
                                "the play input is not reaching the game, or a pause the profile cannot see"
                                % (t - self.stalled_since))
+                if r.get("recovering"):     # moving again after a stall: play's inputs, not yet play
+                    return "hold (recovering, stalled %.0f s)%s" % (t - self.stalled_since, self.play_taps(t))
                 return "hold (stalled %.0f s)" % (t - self.stalled_since)
             self.last_play_luma = r["luma"]
             if self.play_since is None:
                 self.play_since = t
-            act = "hold"
-            for b, every in self.inp.get("play_tap", []):
-                last = getattr(self, "_tap_" + b, -1e9)
-                if t - last >= every:
-                    setattr(self, "_tap_" + b, t)
-                    self.dev.pad("press", b)
-                    act += " tap %s" % b
-            return act
+            if cfg["escape_reset_s"] and self.escapes and t - self.play_since >= cfg["escape_reset_s"]:
+                # Sustained play since the last escape: the player got past
+                # whatever stalled it, so the next obstacle gets a fresh budget.
+                self.escapes = 0
+                self.mode_escapes = {}
+                act_reset = " (escape budget reset)"
+            else:
+                act_reset = ""
+            return "hold" + self.play_taps(t) + act_reset
 
         # unknown
         if self.unknown_since is None:
@@ -654,7 +1006,8 @@ class Driver:
                         self.marked = True
                         action += " mark gameplay"
                         kept = self.keep(cur, "gameplay")
-                if not kept and (changed or (st == "play" and self.t() - self.last_keep >= self.cfg["keep_every_s"])):
+                if not kept and (changed or self.cfg["keep_all"]
+                                 or (st == "play" and self.t() - self.last_keep >= self.cfg["keep_every_s"])):
                     kept = self.keep(cur, st)
                     self.last_keep = self.t()
                 self.row(r, cap_s, action, kept)
@@ -664,6 +1017,7 @@ class Driver:
             return 0
         finally:
             self.release_play()
+            self.steer_stop.set()
             self.finish()
             shutil.rmtree(tmpdir, ignore_errors=True)
 
@@ -680,15 +1034,21 @@ class Driver:
             time.sleep(s)
 
     def row(self, r, cap_s, action, kept):
-        self.tsv.write("%.1f\t%s\t%s\t%s\t%s\t%.2f\t%s\t%s\n" % (
-            self.cap_t, r["state"], r["source"], "" if r.get("changed") is None else r["changed"],
-            r.get("luma", ""), cap_s, action, kept))
+        src = r["source"] + ("" if r.get("progress") is None else " p=%s" % r["progress"])
+        self.tsv.write("%.1f\t%s\t%s\t%s\t%s\t%.2f\t%s\t%s\t%s\n" % (
+            self.cap_t, r["state"], src, "" if r.get("changed") is None else r["changed"],
+            r.get("luma", ""), cap_s, action, kept, self.mode or ""))
         self.tsv.flush()
 
     def finish(self):
         t = self.t()
         res = self.result or "stopped"
         self.dev.logcat("state=end t=%d" % int(t))
+        if self.steer_log:
+            with open(os.path.join(self.out, "steer.tsv"), "w") as f:
+                f.write("t\tline_px\tline_x\tLX\tRT\tLT\twhy\n")
+                for row in self.steer_log:
+                    f.write("\t".join("" if v is None else str(v) for v in row) + "\n")
         if self.ladder and self.ladder.get("gave_up"):
             self.skips.append(dict(state=self.ladder["state"], button=None,
                                    waited_s=round(t - self.ladder["since"], 1), landed=None, presses=self.ladder["presses"]))
@@ -757,6 +1117,8 @@ def main(argv=None):
     ap.add_argument("--frames")
     ap.add_argument("--sim", help="frames dir, or @file listing frames: replay them instead of a device")
     ap.add_argument("--sim-step", type=float, default=None, help="seconds between sim frames (default fast_s)")
+    ap.add_argument("--set", action="append", default=[], metavar="KEY=VALUE",
+                    help="override a [drive] value for this run (a trial's keep_all=1, a sim's escape_max=0)")
     a = ap.parse_args(argv)
     profile = classify.load_profile(a.profile)
     frames_dir = a.frames or os.path.join(a.out, "route-frames")
@@ -772,6 +1134,12 @@ def main(argv=None):
             print("drive.py: SERIAL is required", file=sys.stderr)
             return 2
         dev = Device(serial)
+    for kv in a.set:
+        k, _, v = kv.partition("=")
+        if k not in DEFAULTS:
+            print("drive.py: --set %s: not a [drive] key" % k, file=sys.stderr)
+            return 2
+        profile.setdefault("drive", {})[k] = type(DEFAULTS[k])(float(v))
     d = Driver(dev, profile, a.out, frames_dir, a.seconds, find=a.find, mark=a.mark, sim=bool(a.sim))
     if a.sim and a.sim_step:
         d.cfg["fast_s"] = d.cfg["slow_s"] = a.sim_step

@@ -42,6 +42,8 @@ FIX = os.path.join(PROF, "selftest")
 FIX_SIZE, FIX_Q = (640, 480), 60     # the scale the masked references are stored at
 RESULTS = os.path.join(os.environ.get("DISPATCH_DIR", "/home/justin/hakux-work/dispatch"), "results")
 
+BUF = "1790932722-titleroutes-3976729"         # Buffy, Nova: replay 2, five minutes frozen on the sky
+BUF1 = "1790931264-titleroutes-3615749"        # Buffy, Nova: replay 1, moved a minute, then froze
 SON = "1790902215-autoverdict-1078702"        # Sonic, Nova, the paused confirmation
 SON2 = "1790910096-lane.local-2693820"         # Sonic, Nova, live play (wedged on a wall later)
 SONT = "1790839390-titleroutes-2237657"        # Sonic, Thor (1920x1080 pillarboxed)
@@ -59,9 +61,86 @@ CVR3 = "rdcv3"                                 # replay 3: play, then walked int
 CVR5 = "rdcv5"                                 # replay 5: first run, boot to 20 s of play
 SHR1 = "rdsh1"                                 # session 4, Nova: Seaside Hill, wedged on a block 14 s in
 FZR1 = "rdfz1"                                 # session 4, Thor: boot to a race, RT held, 0 -> 73 MPH
+SHT1 = "rdt1"                                  # lane.routedriver2 trial 1, Nova: past the pillar, then a corner
+SHT2 = "rdt2"                                  # lane.routedriver2 trial 2, Nova: block cleared, stuck at POWER
+SHT4 = "rdt4"                                  # lane.routedriver2 trial 4, Nova: three obstacles, a Game Over
+BUFR1 = "rdb1"                                 # lane.routedriver2 Buffy run 1, Nova: HUD missed, dark read black
+FZT2 = "rdf2"                                  # lane.routedriver2 Forza run f2, Nova: parked at the grandstand
+BUFR3 = "rdb3"                                 # lane.routedriver2 Buffy run 3, Nova: dark canyon, every capture kept
 LOCAL = {CVR2: "scratch/run-cv2/route-frames", CVR3: "scratch/run-cv3/route-frames",
          CVR5: "scratch/run-cv5/route-frames", SHR1: "scratch/run-sh1/route-frames",
-         FZR1: "scratch/run-fz1/route-frames"}
+         FZR1: "scratch/run-fz1/route-frames", SHT1: "scratch/run-t1/route-frames",
+         SHT2: "scratch/run-t2/route-frames", SHT4: "scratch/run-t4/route-frames",
+         BUFR1: "scratch/run-b1/route-frames", BUFR3: "scratch/run-b3/route-frames",
+         FZT2: "scratch/run-f2/route-frames"}
+
+# drive.py's progress check ([drive] progress_bar): (name, profile, run, frame
+# ~10 s earlier, the frame before this one, this frame, the sim seconds
+# between the earlier frame and this one, the state wanted; the frames are
+# 8 s apart on the run's clock, judged at the 10 s window). The counter-case to running
+# is the team struggling in a corner, whose 2 s motion reads `play`.
+PROGRESS = [
+    ("sonic running, 8 s on: play", "sonic-heroes", SHT1, "022719-036-play.png", "022725-039-play.png",
+     "022727-040-play.png", 10.0, "play"),
+    # Buffy: the camera swaying at the sky moves 0.31-0.37 at her pixel step
+    # (play on the per-capture bars), but the scene goes nowhere in 10 s.
+    ("buffy camera swaying at the sky, 10 s on: stalled", "buffy", BUF, "030531-play.png", "030633-play.png",
+     "030654-play.png", 10.0, "stalled"),
+    ("buffy running in the dark, 10 s on: play", "buffy", BUFR3, "033708-025-stalled.png", "033718-026-stalled.png",
+     "033720-027-stalled.png", 10.0, "play"),
+    ("sonic in a corner, moving, 8 s on: stalled", "sonic-heroes", SHT1, "022906-071-play.png", "022912-074-play.png",
+     "022914-075-play.png", 10.0, "stalled"),
+]
+# [drive] stall_clear_s through drive.py --sim: (name, profile, run, frames,
+# want; the sim starts inside a stall streak). After a stall, play must hold
+# 10 s to count, so the first case must show `stalled` (recovering) first. A stretch where the
+# team really got going again (trial 2, after the Fly escape cleared the
+# block) must still reach `play`; the counter-case, the team stuck in Fly
+# beside the POWER block reading `play` on every other capture, must log no
+# `play` at all.
+RECOVER = [
+    ("sonic moving again after a stall: play after the hold", "sonic-heroes", SHT2,
+     ["023809-028-stalled.png", "023812-029-play.png", "023814-030-play.png", "023817-031-play.png",
+      "023819-032-play.png", "023822-033-play.png", "023825-034-play.png", "023828-035-play.png",
+      "023830-036-play.png"], "play"),
+    ("sonic stuck at a block, play blips: never play", "sonic-heroes", SHT2,
+     ["024145-088-stalled.png", "024148-089-play.png", "024150-090-unknown.png", "024152-091-play.png",
+      "024155-092-play.png", "024157-093-play.png", "024159-094-play.png", "024201-095-play.png",
+      "024203-096-play.png", "024206-097-play.png"], "no-play"),
+]
+# A new stall site resets the escape budget (progress_bar profiles): (name,
+# profile, run, frame where the last escape started, the stall frame now,
+# reset wanted). Trial 2's lower-path block against its POWER block is a new
+# site; two stalls at the POWER block are the same one.
+SITES = [
+    ("sonic POWER block after the lower-path block: new site", "sonic-heroes", SHT2, "023809-028-stalled.png",
+     "024145-088-stalled.png", True),
+    ("sonic POWER block twice: same site", "sonic-heroes", SHT2, "024145-088-stalled.png",
+     "024208-098-stalled.png", False),
+]
+# [steer] on Forza's suggested line (green chevrons): (name, profile, run,
+# [(frame, seconds since the first tick)], (LX lo, LX hi) wanted on the last
+# tick, why wanted). The counter-cases are a straight, which must stay near
+# centre, and a lost line held past lost_hold_s, which must centre.
+STEER = [
+    ("forza right-hand bend: full right", "forza", FZR1, [("234126-049-play.png", 0.0)], (0.9, 1.0), "line"),
+    ("forza straight: near centre", "forza", FZR1, [("234117-045-play.png", 0.0)], (-0.2, 0.2), "line"),
+    ("forza line lost 1 s after the bend: hold right", "forza", FZR1,
+     [("234126-049-play.png", 0.0), ("234129-050-play.png", 1.0)], (0.9, 1.0), "lost-hold"),
+    ("forza line lost 3 s after the bend: centre", "forza", FZR1,
+     [("234126-049-play.png", 0.0), ("234129-050-play.png", 3.0)], (0.0, 0.0), "lost"),
+]
+# [[mode]] from a HUD region's colour, through Driver.classify: (name,
+# profile, run, frame, mode wanted). The counter-case is a menu: its blue
+# reads as Speed's colour, so the mode is only read on a frame with the play
+# HUD up, and a menu leaves it unset.
+MODES = [
+    ("sonic Speed (Sonic leads)", "sonic-heroes", SHT1, "022658-027-play.png", "speed"),
+    ("sonic Power (Knuckles leads)", "sonic-heroes", SHT1, "022758-048-play.png", "power"),
+    ("sonic Fly (Tails leads)", "sonic-heroes", SHR1, "234358-033-play.png", "fly"),
+    ("sonic Speed (Thor)", "sonic-heroes", SONT, "004222-menu-start.png", "speed"),
+    ("sonic Main Menu: no formation", "sonic-heroes", SON, "180456-menu-start.png", None),
+]
 
 # (case name, profile, run, frame, prev frame or None, prev state, seen, expected state)
 CASES = [
@@ -99,6 +178,10 @@ CASES = [
     # captures that the frames show going nowhere).
     ("sonic wedged on a block, clock and water moving: stalled", "sonic-heroes", SHR1, "234358-033-play.png",
      "234356-032-play.png", "play", ["main_menu", "play"], "stalled"),
+    # The no-game-data prompt is mostly a dark box: a dark frame of three
+    # close-up team balls scored 19.7 against it, under its old threshold 20.
+    ("sonic dark close-up of the team is play, not the save prompt", "sonic-heroes", SHT4,
+     "025910-108-profile.png", "025907-107-play.png", "play", ["main_menu", "play"], "play"),
     ("sonic running Seaside Hill, 2 s apart", "sonic-heroes", SHR1, "234349-029-play.png", "234347-028-play.png",
      "play", ["main_menu", "play"], "play"),
     # Forza Motorsport
@@ -112,6 +195,10 @@ CASES = [
      ["main_menu", "play"], "stalled"),
     ("forza live race, slow scene change (Thor): play", "forza", FZR1, "234117-045-play.png", "234114-044-play.png",
      "play", ["main_menu", "play"], "play"),
+    # Parked against the grandstand at 0 MPH, the crowd animating: read `play`
+    # on the default bar (run f2).
+    ("forza parked at 0 MPH, crowd moving: not play", "forza", FZT2, "035645-084-play.png",
+     "035643-083-unknown.png", "play", ["main_menu", "play"], "stalled"),
     ("forza on the line at 0 MPH after the race intro: unknown", "forza", FZR1, "234101-038-unknown.png",
      "234051-034-cutscene.png", "cutscene", ["main_menu", "cutscene"], "unknown"),
     ("forza race frame after a pause frame: unknown", "forza", FOR, "214313-menu-a.png", "214308-menu-start.png",
@@ -125,6 +212,41 @@ CASES = [
     ("smb pause box", "super-monkey-ball-deluxe", SMB, "172702-menu-start.png", None, None, ["main_menu"], "paused"),
     ("smb rolling in World 1-1", "super-monkey-ball-deluxe", SMB, "172713-gameplay.png", "172712-rolling.png", "play",
      ["main_menu", "play"], "play"),
+    # Buffy the Vampire Slayer
+    ("buffy title, Press START", "buffy", BUF, "030413-menu-start.png", None, None, ["intro_video"], "title"),
+    ("buffy main menu", "buffy", BUF, "030418-menu-a.png", None, None, ["title"], "main_menu"),
+    ("buffy Start Game confirm", "buffy", BUF, "030424-menu-start.png", None, None, ["title", "main_menu"], "profile"),
+    ("buffy Difficulty", "buffy", BUF, "030430-menu-a.png", None, None, ["title", "main_menu"], "profile"),
+    # Summoning is under the black luma bar: `black`, waited on exactly like
+    # `loading`, and never pressed through.
+    ("buffy Summoning (the load) is waited on", "buffy", BUF, "030436-menu-start.png", None, None,
+     ["main_menu", "profile"], "black"),
+    ("buffy PAUSE over the canyon", "buffy", BUF, "030500-menu-start.png", None, None, ["main_menu", "play"], "paused"),
+    ("buffy running in the canyon", "buffy", BUF1, "021351-play.png", "021330-gameplay.png", "play",
+     ["main_menu", "play"], "play"),
+    # The counter-cases: the frozen sky (replay 2, 21 s apart, identical) is
+    # not play; the in-engine opening draws a HUD of its own and is not play;
+    # a dark canyon frame is not the Summoning load.
+    ("buffy dead end in the dark, still: stalled", "buffy", BUFR3, "033751-036-stalled.png",
+     "033749-035-stalled.png", "play", ["main_menu", "play"], "stalled"),
+    ("buffy running in the dark canyon, 2 s apart: play", "buffy", BUFR3, "033705-024-stalled.png",
+     "033656-023-stalled.png", "play", ["main_menu", "play"], "play"),
+    ("buffy in-engine opening with its own HUD: not play", "buffy", BUF, "030406-booted.png", "030345-boot40.png",
+     "intro_video", [], "intro_video"),
+    ("buffy dark canyon frame is not Summoning", "buffy", BUF1, "021411-play.png", "021351-play.png", "play",
+     ["main_menu", "play"], "play"),
+    # Buffy run 1 (lane.routedriver2): with the first HUD crop the bright
+    # canyon read `cutscene` and got the skip ladder (START paused it), and a
+    # dark corner with the HUD up read `black` for 300 s.
+    ("buffy bright canyon is play, not a cutscene", "buffy", BUFR1, "032234-028-cutscene.png",
+     "032215-025-stalled.png", "play", ["main_menu", "play"], "play"),
+    # (the two frames straddle a 9 s stall escape, so the motion between them
+    # is real; the point of the case is that luma 5.8 with the HUD up is not
+    # `black`)
+    ("buffy dark corner, HUD up (luma 5.8): not black", "buffy", BUFR1, "032324-049-black.png",
+     "032323-048-stalled.png", "stalled", ["main_menu", "play"], "play"),
+    ("buffy load black (luma 0) is still black", "buffy", BUFR1, "032146-014-black.png", None, None,
+     ["main_menu", "profile"], "black"),
     # Castlevania: Curse of Darkness
     ("castlevania title menu", "castlevania-cod", CV, "174750-boot.png", None, None, [], "title"),
     ("castlevania intro FMV after the title", "castlevania-cod", CV, "174810-a1.png", "174750-boot.png", "title",
@@ -155,18 +277,27 @@ CASES = [
 FOREIGN = [(SON2, "200707-play.png", "200657-play.png"), (FOR, "214502-play.png", "214437-play.png"),
            (SMB, "172713-gameplay.png", "172712-rolling.png"), (SONT, "004222-menu-start.png", "004215-menu-a.png"),
            (SMB, "172733-play.png", "172723-play.png"), (CVR5, "230108-033-play.png", "230106-032-play.png"),
-           (SHR1, "234349-029-play.png", "234347-028-play.png"), (FZR1, "234117-045-play.png", "234114-044-play.png")]
+           (SHR1, "234349-029-play.png", "234347-028-play.png"), (FZR1, "234117-045-play.png", "234114-044-play.png"),
+           (BUF1, "021351-play.png", "021330-gameplay.png")]
 TITLE_OF = {SON: "sonic-heroes", SON2: "sonic-heroes", SONT: "sonic-heroes", SONT2: "sonic-heroes",
-            FOR: "forza", FZR1: "forza", SHR1: "sonic-heroes", SMB: "super-monkey-ball-deluxe", CV: "castlevania-cod", CVT: "castlevania-cod",
+            FOR: "forza", FZR1: "forza", SHR1: "sonic-heroes", SHT1: "sonic-heroes", SHT2: "sonic-heroes",
+            SHT4: "sonic-heroes", BUF: "buffy", BUF1: "buffy", BUFR1: "buffy", BUFR3: "buffy", FZT2: "forza", SMB: "super-monkey-ball-deluxe", CV: "castlevania-cod", CVT: "castlevania-cod",
             CVR2: "castlevania-cod", CVR3: "castlevania-cod", CVR5: "castlevania-cod"}
 
 # drive.py --sim runs: (name, profile, run, frames slice, args, checks). The
 # sim step is the seconds between frames; the default 6 is these runs'
 # START/A cadence, and Forza's play frames are ~25 s apart.
 SIMS = [
-    ("sonic: find play in a live run", "sonic-heroes", SON2, (0, 20), ["--find"],
-     dict(result="reached-play", time_to_title=True, time_to_play=True)),
-    ("forza: 0 MPH is a ROUTE FAIL, not play", "forza", FOR, (31, 39), ["--seconds", "999", "--sim-step", "25"],
+    # This run's last frames (1:21-1:41 on the game clock, score 3080 throughout)
+    # are the team wedged at the POWER block, so its play stretch is NOT 20 s.
+    # It passed as reached-play until the progress check (lane.routedriver2):
+    # the wedge was counted as play.
+    ("sonic: live run ending wedged at the POWER block: play, then a stall", "sonic-heroes", SON2, (0, 20),
+     ["--find"], dict(result="window-done", time_to_title=True, time_to_play=True, input_why="stall escape")),
+    # escape_max=0: the frames cannot react to the reverse escape; this case
+    # is the stall watch.
+    ("forza: 0 MPH is a ROUTE FAIL, not play", "forza", FOR, (31, 39),
+     ["--seconds", "999", "--sim-step", "25", "--set", "escape_max=0"],
      dict(result_prefix="ROUTE FAIL", fail_word="stalled")),
     ("sonic: a pause that never resumes is a ROUTE FAIL", "sonic-heroes", SON, (21, 40), ["--seconds", "999"],
      dict(result_prefix="ROUTE FAIL", fail_word="paused")),
@@ -176,6 +307,9 @@ SIMS = [
     # goes out (session 4's first replay called the wedge play and ended).
     ("sonic: a wedge on a block is not play; the escape runs", "sonic-heroes", SHR1, (9, 20),
      ["--find", "--sim-step", "2"], dict(result="window-done", input_why="stall escape")),
+    # lane.routedriver2 trial 1: boot, through the menus, 28 s of running.
+    ("sonic: boot to 20 s of play (trial 1)", "sonic-heroes", SHT1, (0, 26), ["--find", "--sim-step", "2"],
+     dict(result="reached-play", time_to_title=True, time_to_play=True)),
     ("forza: boot to a race with RT held (Thor)", "forza", FZR1, (0, 28), ["--find", "--sim-step", "2"],
      dict(result="reached-play", time_to_title=True, time_to_play=True)),
 ]
@@ -203,6 +337,16 @@ def all_frames():
             seen.add((c[2], c[4]))
     for run, f, p in FOREIGN:
         seen.update({(run, f), (run, p)})
+    for _, _, run, a, b, c, _, _ in PROGRESS:
+        seen.update({(run, a), (run, b), (run, c)})
+    for _, _, run, f, _ in MODES:
+        seen.add((run, f))
+    for _, _, run, fl, _ in RECOVER:
+        seen.update((run, f) for f in fl)
+    for _, _, run, a, b, _ in SITES:
+        seen.update({(run, a), (run, b)})
+    for _, _, run, ticks, _, _ in STEER:
+        seen.update((run, f) for f, _ in ticks)
     for _, _, run, (lo, hi), _, _ in SIMS:
         d = frames_dir(run)
         if os.path.isdir(d):
@@ -238,6 +382,152 @@ def make():
     print("made %d fixtures in %s" % (n, FIX))
 
 
+def escape_checks():
+    """input.stall_cycles: escape n plays cycle (n-1) mod len, a `B/ms` press
+    goes to pad.sh with its hold time, and a cycle that sends START is
+    refused. The counter-cases: a single stall_cycle replays the same cycle
+    every time, and START hidden in the SECOND cycle (or behind a /ms) is
+    still refused."""
+    import drive
+    fails = 0
+
+    def drv(inp):
+        with tempfile.TemporaryDirectory() as td:
+            return drive.Driver(drive.SimDevice([], 1.0), dict(name="t", input=inp), td, td, 10, sim=True)
+
+    def sent_by_escape(inp, n):
+        d = drv(inp)
+        out = []
+        for _ in range(n):
+            d.dev.sent = []
+            d.start_escape()
+            out.append([s[1:] for s in d.dev.sent if s[1] == "press"])
+        return out
+
+    a = [[[], 0.5, ["A", "A/800"]]]
+    b = [[[["LY", "min"]], 0.5, ["Y"]]]
+    got = sent_by_escape(dict(stall_cycles=[a, b]), 3)
+    want = [[("press", "A"), ("press", "A", "800")], [("press", "Y")], [("press", "A"), ("press", "A", "800")]]
+    checks = [("stall_cycles: escapes 1, 2, 3 play cycles a, b, a", got == want, got)]
+    got1 = sent_by_escape(dict(stall_cycle=b), 2)
+    checks.append(("stall_cycle (one): every escape plays it", got1 == [[("press", "Y")]] * 2, got1))
+    for name, inp in (("START in the second of stall_cycles", dict(stall_cycles=[a, [[[], 0.5, ["START"]]]])),
+                      ("START/500 in stall_cycle", dict(stall_cycle=[[[], 0.5, ["START/500"]]]))):
+        try:
+            drv(inp)
+            checks.append(("refused: " + name, False, "accepted"))
+        except SystemExit as e:
+            checks.append(("refused: " + name, "START" in str(e), str(e)))
+    d = drv({})
+    d.held = [("RT", "max"), ("LX", "max")]
+    d.dev.sent = []
+    d.release_play()
+    rel = sorted(x[1:] for x in d.dev.sent)
+    checks.append(("release: a trigger to min, a stick to mid",
+                   rel == [("axis", "LX", "mid"), ("axis", "RT", "min")], rel))
+    # hakuX not in front (the emulator died, the launcher came up): a press
+    # must fail and send nothing (Buffy run b4's A launched Calendar). The
+    # counter-case, in front, sends it.
+    for fg in (False, True):
+        d = drv({})
+        d.dev.fg = fg
+        d.dev.sent = []
+        try:
+            d.press("A", "test")
+            got = "sent %d" % len(d.dev.sent)
+        except drive.Fail as e:
+            got = "fail: %s, sent %d" % (str(e)[:30], len(d.dev.sent))
+        ok = got == "sent 1" if fg else (got.startswith("fail: hakuX is not the focused app") and got.endswith("sent 0"))
+        checks.append(("press with hakuX %s" % ("in front" if fg else "NOT in front"), ok, got))
+    for name, ok, got in checks:
+        fails += not ok
+        print("%s  escape %-44s %s" % ("ok  " if ok else "FAIL", name, "" if ok else got))
+    return fails
+
+
+def progress_checks(prof, disk):
+    """The progress check and the mode reading, through drive.Driver.classify
+    on the sim clock, as a run would meet them."""
+    import drive
+    fails = 0
+    for name, pn, run, old, prev, cur, dt, want in PROGRESS:
+        with tempfile.TemporaryDirectory() as td:
+            d = drive.Driver(drive.SimDevice([], 1.0), prof(pn), td, td, 999, sim=True)
+            d.seen = ["main_menu", "play"]
+            d.state = "play"
+            d.classify(source(run, old, disk))
+            d.clock_sim = dt
+            d.prev = source(run, prev, disk)
+            r = d.classify(source(run, cur, disk))
+        ok = r["state"] == want
+        fails += not ok
+        print("%s  progress %-44s want %-8s got %-8s %s p=%s" % ("ok  " if ok else "FAIL", name, want, r["state"],
+                                                                  r["source"], r.get("progress")))
+    for name, pn, run, fl, want in RECOVER:
+        with tempfile.TemporaryDirectory() as td:
+            d = drive.Driver(drive.SimDevice([source(run, f, disk) for f in fl], 2.2), prof(pn), td, td, 999,
+                             sim=True)
+            d.cfg["fast_s"] = d.cfg["slow_s"] = 2.2
+            d.cfg["escape_max"] = 0                 # the frames cannot react to an escape
+            d.seen = ["main_menu", "play"]
+            d.stall_streak = True                  # both stretches start inside a stall
+            d.run()
+            states = [l.split("\t")[1] for l in open(os.path.join(td, "route-state.tsv")) if l[0].isdigit()]
+        ok = (states[-1] == "play" and "stalled" in states) if want == "play" else ("play" not in states)
+        fails += not ok
+        print("%s  recover %-45s want %-7s got %s" % ("ok  " if ok else "FAIL", name, want, " ".join(states)))
+    for name, pn, run, first, now_f, want in SITES:
+        with tempfile.TemporaryDirectory() as td:
+            d = drive.Driver(drive.SimDevice([], 1.0), prof(pn), td, td, 999, sim=True)
+            d.seen = ["main_menu", "play"]
+            d.classify(source(run, first, disk))
+            d.start_escape()
+            d.clock_sim += 60.0
+            d.classify(source(run, now_f, disk))
+            got = d.new_site()
+            d.start_escape()
+            budget = d.escapes
+        ok = got == want and budget == (1 if want else 2)
+        fails += not ok
+        print("%s  site %-48s want %-5s got %s (escapes %d)" % ("ok  " if ok else "FAIL", name, want, got, budget))
+    for name, pn, run, ticks, (lo, hi), why in STEER:
+        with tempfile.TemporaryDirectory() as td:
+            d = drive.Driver(drive.SimDevice([], 1.0), prof(pn), td, td, 999, sim=True)
+            d.steer_cfg = prof(pn)["steer"]          # the table is tested even while the profile has it off
+            for f, at in ticks:
+                d.clock_sim = at
+                d.steer_tick(source(run, f, disk))
+            got = d.steer_log[-1]
+            sent = d.dev.sent[-1]
+        ok = lo <= got[3] <= hi and got[6] == why and sent[1] == "axes"
+        fails += not ok
+        print("%s  steer %-47s LX %s..%s %-9s got LX %s %s (line %s px at x %s)" % (
+            "ok  " if ok else "FAIL", name, lo, hi, why, got[3], got[6], got[1], got[2]))
+    # straight_s: 1 s after steering came on, the bend reads straight (the
+    # grid start); the bend case above, with no start time, is the counter.
+    with tempfile.TemporaryDirectory() as td:
+        d = drive.Driver(drive.SimDevice([], 1.0), prof("forza"), td, td, 999, sim=True)
+        d.steer_cfg = prof("forza")["steer"]
+        d.steer_since = 0.0
+        d.clock_sim = 1.0
+        d.steer_tick(source(FZR1, "234126-049-play.png", disk))
+        got = d.steer_log[-1]
+    ok = got[3] == 0.0 and got[6] == "straight"
+    fails += not ok
+    print("%s  steer %-47s got LX %s %s" % ("ok  " if ok else "FAIL", "forza bend 1 s after steering on: straight",
+                                            got[3], got[6]))
+    for name, pn, run, f, want in MODES:
+        with tempfile.TemporaryDirectory() as td:
+            d = drive.Driver(drive.SimDevice([], 1.0), prof(pn), td, td, 999, sim=True)
+            d.seen = ["main_menu", "play"]
+            d.classify(source(run, f, disk))
+            got = d.mode
+        ok = got == want
+        fails += not ok
+        print("%s  mode %-48s want %-6s got %s" % ("ok  " if ok else "FAIL", name, want, got))
+    return fails
+
+
 def main(argv):
     if "--make" in argv:
         make()
@@ -259,7 +549,7 @@ def main(argv):
         print("%s  %-48s want %-11s got %-11s %s" % ("ok  " if ok else "FAIL", name, want, r["state"], r["source"]))
 
     for run, f, p in FOREIGN:
-        for pn in ("sonic-heroes", "forza", "super-monkey-ball-deluxe", "castlevania-cod"):
+        for pn in ("sonic-heroes", "forza", "super-monkey-ball-deluxe", "castlevania-cod", "buffy"):
             if pn == TITLE_OF[run]:
                 continue
             r = classify.classify_frame(source(run, f, disk), source(run, p, disk), prof(pn),
@@ -306,6 +596,8 @@ def main(argv):
             fails += not ok
             print("%s  sim %-44s %s%s" % ("ok  " if ok else "FAIL", name, sol["result"][:70],
                                           "" if ok else "  <- " + "; ".join(probs) + "\n" + p.stdout + p.stderr))
+    fails += escape_checks()
+    fails += progress_checks(prof, disk)
     print("classify_selftest: %d failure(s)" % fails)
     return 1 if fails else 0
 

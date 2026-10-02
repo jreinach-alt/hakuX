@@ -1,0 +1,299 @@
+{
+ "profile": "sonic-heroes",
+ "title": "Sonic Heroes",
+ "mode": "play",
+ "result": "ROUTE FAIL drive sonic-heroes: stalled: stalled 40 s: the play HUD is up and nothing moves -- the play input is not reaching the game, or a pause the profile cannot see",
+ "seconds": 234.6,
+ "time_to_title_s": 9.8,
+ "time_to_play_s": 36.2,
+ "states_seen": [
+  "logo",
+  "intro_video",
+  "title",
+  "profile",
+  "main_menu",
+  "cutscene",
+  "loading",
+  "unknown",
+  "play",
+  "stalled"
+ ],
+ "skips": [
+  {
+   "state": "logo",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "intro_video",
+   "presses": 1
+  },
+  {
+   "state": "intro_video",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "logo",
+   "presses": 1
+  },
+  {
+   "state": "logo",
+   "button": "START",
+   "after_s": 1.6,
+   "landed": "intro_video",
+   "presses": 2
+  },
+  {
+   "state": "intro_video",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "title",
+   "presses": 1
+  },
+  {
+   "state": "cutscene",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "loading",
+   "presses": 1
+  }
+ ],
+ "inputs": [
+  {
+   "t": 0.6,
+   "state": "logo",
+   "input": "A",
+   "why": "skip logo"
+  },
+  {
+   "t": 2.4,
+   "state": "intro_video",
+   "input": "A",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 4.1,
+   "state": "logo",
+   "input": "A",
+   "why": "skip logo"
+  },
+  {
+   "t": 5.7,
+   "state": "logo",
+   "input": "START",
+   "why": "skip logo"
+  },
+  {
+   "t": 7.8,
+   "state": "intro_video",
+   "input": "A",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 9.9,
+   "state": "title",
+   "input": "START",
+   "why": "title 1"
+  },
+  {
+   "t": 13.0,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 1"
+  },
+  {
+   "t": 16.0,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 2"
+  },
+  {
+   "t": 19.3,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 22.3,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 2"
+  },
+  {
+   "t": 25.4,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 3"
+  },
+  {
+   "t": 28.6,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 4"
+  },
+  {
+   "t": 30.7,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 34.2,
+   "state": "unknown",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 50.6,
+   "state": "stalled",
+   "why": "stall escape 1 phase 1",
+   "input": " + A,A,A,A,A,A,A,A,A,A,A,A"
+  },
+  {
+   "t": 57.9,
+   "state": "stalled",
+   "why": "stall escape 1 phase 2",
+   "input": "LY min + A,A,A"
+  },
+  {
+   "t": 59.6,
+   "state": "stalled",
+   "why": "stall escape 1 phase 3",
+   "input": ""
+  },
+  {
+   "t": 65.8,
+   "state": "stalled",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 110.1,
+   "state": "stalled",
+   "why": "stall escape 2 phase 1",
+   "input": "LY min + X,X,X,X,X,X"
+  },
+  {
+   "t": 113.7,
+   "state": "stalled",
+   "why": "stall escape 2 phase 2",
+   "input": ""
+  },
+  {
+   "t": 117.7,
+   "state": "stalled",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 122.4,
+   "state": "stalled",
+   "why": "stall escape 3 phase 1",
+   "input": "LY min + A,X,A,X,A,X"
+  },
+  {
+   "t": 126.0,
+   "state": "stalled",
+   "why": "stall escape 3 phase 2",
+   "input": ""
+  },
+  {
+   "t": 129.7,
+   "state": "stalled",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 132.5,
+   "state": "stalled",
+   "why": "stall escape 4 phase 1",
+   "input": " + B"
+  },
+  {
+   "t": 133.3,
+   "state": "stalled",
+   "why": "stall escape 4 phase 2",
+   "input": " + A,A,A,A,A,A,A,A,A,A,A,A"
+  },
+  {
+   "t": 140.4,
+   "state": "stalled",
+   "why": "stall escape 4 phase 3",
+   "input": "LY min + A,A,A"
+  },
+  {
+   "t": 142.2,
+   "state": "stalled",
+   "why": "stall escape 4 phase 4",
+   "input": ""
+  },
+  {
+   "t": 147.6,
+   "state": "stalled",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 156.5,
+   "state": "stalled",
+   "why": "stall escape 5 phase 1",
+   "input": " + A/600,A/600,A/600,A/600,A/600,A/600"
+  },
+  {
+   "t": 163.4,
+   "state": "stalled",
+   "why": "stall escape 5 phase 2",
+   "input": "LY min + A/600,A/600"
+  },
+  {
+   "t": 165.6,
+   "state": "stalled",
+   "why": "stall escape 5 phase 3",
+   "input": ""
+  },
+  {
+   "t": 171.4,
+   "state": "stalled",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 187.3,
+   "state": "stalled",
+   "why": "stall escape 6 phase 1",
+   "input": "LY min + X,X,X,X,X,X"
+  },
+  {
+   "t": 190.9,
+   "state": "stalled",
+   "why": "stall escape 6 phase 2",
+   "input": ""
+  },
+  {
+   "t": 194.3,
+   "state": "stalled",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 234.6,
+   "state": "stalled",
+   "input": "release axes",
+   "why": "left play"
+  }
+ ],
+ "anomalies": [
+  {
+   "t": 4.0,
+   "state": "logo",
+   "after": "intro_video"
+  }
+ ],
+ "classifier_sources": {
+  "crop": 16,
+  "moving": 3,
+  "static": 1,
+  "hud": 62,
+  "hud+no-progress": 3
+ },
+ "model_calls": 0,
+ "play_stretch_frames": [],
+ "written_utc": "2026-10-02T09:52:32Z"
+}
