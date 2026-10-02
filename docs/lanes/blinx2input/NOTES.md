@@ -90,6 +90,31 @@ After run 6, all of this ran on the live game (none of it was a fresh launch):
 | fp: A, R3, A, then RX and RY both pulsed, crosshair ring masked | **all 3 popped in 22 s** (lock-on arc, confetti); card "Good. Click the Right thumbstick to return to normal view." |
 | nav.sh: R3, A, LY up | "Now for movement. Move the Left thumbstick..."; **the player ran through the flag gate** and the next card ("Press A to jump") came up (`frames/walk-sheet.jpg`) |
 
+## 600-s confirmation (`confirm.py`, 13:37-13:48 PDT): PASS, pending frame review
+
+The run lasted 641 s and made 31 cycles of 20 s each:
+- a frame before moving;
+- walk forward on LY for 1.2 s, with a frame in the middle;
+- walk back for 1.2 s, with a frame in the middle;
+- a double jump on every third cycle.
+
+Every cycle moved the picture, with a mean grey difference of 9.5 to 29.3.
+The longest gap between frames was 23.6 s. The strip is
+`frames/confirm-600s-strip.jpg`. The battery was not charging (USB 791 mA in,
+battery current 0 to -168 mA, level flat at 80%), but the run was not
+unplugged either. I wrote no charge nodes.
+
+Next lane, do not repeat:
+- Pulse the sticks over adb at gain 2.0. The overshoot is mostly adb's
+  latency.
+- Mask the lower half in first person.
+- Use a colour-only balloon test near the crosshair, which is olive-green
+  on its edge.
+
+Test 1's remaining steps (the jump onto the container, then Tests 2-7) have
+not been driven. The confirmation ran in Test 1's open area. Reach it with
+`test1.py`, then send `nav.sh "press R3" "press A"`.
+
 Detector checks before the run (`scratch/dettest.py` on center3's frames):
 the ring and the centre dot no longer read as a balloon, and the real
 balloons at y 0.5-0.75 are found.
