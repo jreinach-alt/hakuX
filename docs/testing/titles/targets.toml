@@ -550,7 +550,7 @@ notes = "No #431 target; the default 30 applies. Session 49: new on the ranked u
 name = "Dino Crisis 3"
 iso = { nova = "Dino Crisis 3.iso" }
 route = "dino-crisis-3"
-notes = "No #431 target; the default 30 applies. xemu: Playable. Session 65 (2026-10-02): a generic survey (1790928772-titleroutes-2771139, Nova) reached the first corridor with the HUD, then a START press in play opened OPTIONS and the rest of the window was that menu (fps_window_median 29.97 is a menu reading). routes/dino-crisis-3.route plays the survey's first 7 START/A cycles, then B twice to close any Options/tutorial overlay, then a loop with no START. DRAFT: not yet replayed."
+notes = "No #431 target; the default 30 applies. xemu: Playable. Session 65 (2026-10-02): a generic survey (1790928772-titleroutes-2771139, Nova) reached the first corridor with the HUD, then a START press in play opened OPTIONS and the rest of the window was that menu (fps_window_median 29.97 is a menu reading). routes/dino-crisis-3.route plays the survey's first 7 START/A cycles, then B twice to close any Options/tutorial overlay, then a loop with no START. CONFIRMED by a dispatch replay (1790931260-titleroutes-3615015, Nova, ref 17c3bc721f, frames in scratch/judge/): the mark frame 020712-gameplay.png is the corridor with the HUD, and every later frame is live play (boosting into the next room, an 'Activate switch?' prompt answered by A, the switch turning green); no Options screen. Launch to mark ~156 s. Measured (screening, 207 s of play): window fps median 27.16, 15.6% at 30+, two first-compile shader stalls of 15.1 s and 12.4 s (shader cache cleared by the new apk) read as hang=true. Not nominated: below the 90% bar."
 
 [titles."45410012"]
 name = "Buffy the Vampire Slayer"
