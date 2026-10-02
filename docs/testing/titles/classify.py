@@ -52,6 +52,10 @@ HOW A FRAME IS NAMED, cheapest and most specific first:
      A profile may set `hud_motion_bar`/`hud_stall_bar` to judge HUD frames
      by their own bars (a title whose scene moves while the player is
      wedged: Sonic Heroes' water and clock read 0.14-0.18 against a wall).
+     An `[[off_view]]` (name, region, channel, over, level, min_frac) makes a
+     HUD frame that would be `play` or `unknown` `stalled` when at least
+     min_frac of the region is that colour (`channel_fraction`): the camera
+     is looking where the player is not (Buffy's night sky).
   4. NO CROP MATCHED: liveness and context only, and never `play` -- a frame
      the classifier cannot name is `unknown`, not `play` (ADDENDUM 2, item 6).
        moving: `intro_video` until the run has been past the title into a
@@ -124,6 +128,11 @@ def load_profile(path):
         if c.get("state") not in STATES:
             raise SystemExit("classify.py: %s: crop %s names state %r, not one of %s"
                              % (path, c.get("name"), c.get("state"), ",".join(STATES)))
+    for v in p.get("off_view", []):
+        missing = [k for k in ("name", "region", "channel", "over", "level", "min_frac") if k not in v]
+        if missing or v.get("channel") not in ("r", "g", "b"):
+            raise SystemExit("classify.py: %s: off_view %s needs name, region, channel (r/g/b), over, level, "
+                             "min_frac (missing %s)" % (path, v.get("name"), ",".join(missing) or "a valid channel"))
     return p
 
 
@@ -317,6 +326,24 @@ def region_rgb(path, box):
     return [float(x) for x in a.mean(0)]
 
 
+def channel_fraction(path, box, channel, over, level):
+    """Fraction of a region's pixels (1280x960 space) where `channel` (r, g
+    or b) beats each of the other two, in rgb order, by `over` [first,
+    second] and lies in `level` [lo, hi]. A profile's [[off_view]] reads
+    it. Buffy's night sky is the blue-dominant purple behind the canyon:
+    with the camera swung up at it, 0.64-0.94 of the upper centre (b7,
+    b13, titleroutes' two replays); running in the canyon, 0.00-0.20
+    (lane.routedriver2, all 888 HUD frames on disk)."""
+    im = open_rgb(path)
+    a = np.asarray(im.crop(scale_box(box, im.size)), dtype=np.int16)
+    i = "rgb".index(channel)
+    others = [j for j in range(3) if j != i]
+    c = a[..., i]
+    m = (c > a[..., others[0]] + over[0]) & (c > a[..., others[1]] + over[1])
+    m &= (c >= level[0]) & (c <= level[1])
+    return float(m.mean())
+
+
 def match_crop(im, crops, profile):
     """First crop in profile order whose region scores <= its threshold.
     Returns (crop, score, all_scores) -- all_scores is every crop's score,
@@ -392,6 +419,18 @@ def classify_frame(frame, prev, profile, seen=(), last_play_luma=None, prev_stat
             out.update(state="stalled", source="hud:%s+static" % hud["name"])
         else:
             out.update(state="unknown", source="hud:%s+between" % hud["name"])
+        if out["state"] in ("play", "unknown") and not out["source"].startswith("hud:%s+after-" % hud["name"]):
+            # [[off_view]]: the camera is somewhere the player cannot be. Buffy's
+            # camera swung up at the night sky moves plenty (0.31-0.37 changed,
+            # 0.125 over 10 s in run b13) and read `play` with Buffy out of
+            # frame; `stalled` sends the stall escape, which pulls LT (the
+            # camera reset).
+            for v in profile.get("off_view", []):
+                frac = channel_fraction(frame, v["region"], v["channel"], v["over"], v["level"])
+                if frac >= v["min_frac"]:
+                    out.update(state="stalled", source="hud:%s+off-view:%s" % (hud["name"], v["name"]),
+                               off_view=round(frac, 3))
+                    break
         return out
 
     after_title = bool(seen & {"title", "main_menu", "profile", "ingame_menu", "play", "paused", "loading"})

@@ -562,3 +562,44 @@ the `play_cycle` that is known to run (session 1's b5/b6 profile), B
 pressed while she runs, with this stream recording. A jump frame, or a
 landing on the far ledge, settles it either way. ~2.5 min held. Not run
 this session: titleroutes2's two requests were queued from 07:37.
+
+### Buffy's "frozen sky" false play: fixed (`[[off_view]]`), and a wrong fixture
+
+The sky the camera swings up to is a blue-dominant purple, and Buffy is
+never in it. New, in classify.py: `channel_fraction` and a profile
+`[[off_view]]`. A HUD frame that would be `play` or `unknown` is
+`stalled` (source `hud:<crop>+off-view:<name>`) when at least `min_frac`
+of a region is that colour. The stall escape then fires, and Buffy's
+escapes start with LT, the camera reset.
+
+Buffy's rule: region [240, 100, 800, 300] (upper centre, below the HUD),
+b > r + 6 and b > g + 10, b in 25..140, min_frac 0.40. Measured on every
+Buffy HUD frame on disk:
+- **Sky:** 0.64-0.94 on the full PNGs (b7, b13, titleroutes' replays 1
+  and 2), and 0.52-0.72 on the selftest's JPEG fixtures.
+- **Everything else:** 866 frames (b1-b22) at 0.22 or under. The top one
+  is the camera starting to swing up (b7 028).
+- **Menus** read 0.7-0.98, but the rule is only read with the play HUD up.
+
+**A selftest fixture was wrong.** "buffy running in the canyon" (replay 1,
+`021351`, want play) is the sky stall itself: the camera on the night sky
+and a lamp, Buffy out of frame. It passed only because the sky camera
+read as play. It is now "camera on the sky: stalled". The play
+counter-cases still pass: the dark canyon, the bright canyon (b1), the
+dark corner (luma 5.8), and `021411`.
+
+New cases:
+- b13 `026` (the frame behind its false `reached-play`): stalled.
+- b13 `025` (the first HUD capture, after an `unknown`): stalled.
+- A malformed `[[off_view]]` is refused at load.
+
+Mutants, both caught:
+- Rule removed: the 3 sky cases read play.
+- `min_frac` 0: all 4 Buffy play counter-cases read stalled.
+
+`classify_selftest.py`: 0 failures.
+
+Not covered: a level with real sky in the upper centre while she runs.
+Every Buffy frame on disk is this one canyon at night. The rule is in
+Buffy's profile only, and a later level may need its region or level
+changed.

@@ -234,8 +234,18 @@ CASES = [
     # dimmed dialog read `cutscene` (run b12).
     ("buffy 10-saves dialog over the main menu: a menu", "buffy", BUFR12, "055717-012-cutscene.png",
      "055714-011-main_menu.png", "main_menu", ["title", "main_menu"], "main_menu"),
-    ("buffy running in the canyon", "buffy", BUF1, "021351-play.png", "021330-gameplay.png", "play",
-     ["main_menu", "play"], "play"),
+    # This case was "buffy running in the canyon", want play, until session 3
+    # of lane.routedriver2 looked at the frame: it is the camera on the night
+    # sky and a lamp, Buffy out of frame -- the sky stall itself. [[off_view]]
+    ("buffy camera on the sky, HUD up (replay 1): stalled", "buffy", BUF1, "021351-play.png", "021330-gameplay.png",
+     "play", ["main_menu", "play"], "stalled"),
+    # Run b13 ended `reached-play` on three frames like this one (rock face
+    # and sky, Buffy out of frame; 0.55 moved). The counter-cases: running in
+    # the dark canyon and in the bright canyon (below) stay play.
+    ("buffy b13 false play, camera on rock and sky: stalled", "buffy", BUFR13, "062953-026-play.png",
+     "062946-025-play.png", "play", ["main_menu", "play"], "stalled"),
+    ("buffy b13 first play capture, HUD after a cutscene: stalled", "buffy", BUFR13, "062946-025-play.png",
+     "062938-024-unknown.png", "unknown", ["main_menu", "play"], "stalled"),
     # The counter-cases: the frozen sky (replay 2, 21 s apart, identical) is
     # not play; the in-engine opening draws a HUD of its own and is not play;
     # a dark canyon frame is not the Summoning load.
@@ -512,6 +522,16 @@ def escape_checks():
         checks.append(("refused: [[cursor]] naming a missing crop", False, "accepted"))
     except SystemExit as e:
         checks.append(("refused: [[cursor]] naming a missing crop", "does not have" in str(e), str(e)))
+    with tempfile.TemporaryDirectory() as td:
+        bad = os.path.join(td, "bad.toml")
+        with open(bad, "w") as fh:
+            fh.write('name = "t"\n[[off_view]]\nname = "sky"\nregion = [0, 0, 10, 10]\nchannel = "b"\n'
+                     'over = [6, 10]\nlevel = [25, 140]\n')          # no min_frac
+        try:
+            classify.load_profile(bad)
+            checks.append(("refused: [[off_view]] without min_frac", False, "accepted"))
+        except SystemExit as e:
+            checks.append(("refused: [[off_view]] without min_frac", "min_frac" in str(e), str(e)))
     with tempfile.TemporaryDirectory() as td:
         bp = classify.load_profile(os.path.join(PROF, "buffy.toml"))
         d = drive.Driver(drive.SimDevice([], 1.0), bp, td, td, 10, sim=True)

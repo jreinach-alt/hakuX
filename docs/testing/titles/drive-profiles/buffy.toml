@@ -168,6 +168,23 @@ region = [90, 30, 390, 120]
 ref = "hud.png"
 threshold = 12.0
 
+# The camera swung up at the night sky, Buffy out of frame (b7, b13, b14,
+# titleroutes' replays 1 and 2) moves enough to read `play`: run b13 ended
+# `reached-play` on three sky frames. The sky is blue-dominant purple. Its
+# share of the upper centre (b > r + 6, b > g + 10, b in 25..140): sky
+# frames 0.64-0.94 (full PNGs; 0.52-0.72 as selftest JPEG fixtures), and
+# every other HUD frame on disk (866, b1-b22) <= 0.22, the top one the
+# camera swinging up (b7 028). So such a frame is `stalled`, and the stall
+# escape's LT brings the camera back. Menus read 0.7-0.98 too, but this is
+# only read on frames with the play HUD up.
+[[off_view]]
+name = "sky"
+region = [240, 100, 800, 300]
+channel = "b"
+over = [6, 10]
+level = [25, 140]
+min_frac = 0.40
+
 # The main menu's lit row decides the press: Load Game lit, A; above it,
 # down; below it, up. The lit row is the brightest of the four (99th-
 # percentile grey): right on all 25 labelled frames of b13-b17, by 89-126
