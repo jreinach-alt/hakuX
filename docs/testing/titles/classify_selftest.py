@@ -49,6 +49,16 @@ SONT2 = "1790830432-titleroutes-311058"        # Sonic, Thor: stood still, flat 
 FOR = "1790914021-lane.ibcache-3202498"        # Forza, Nova: paused every cycle, then 0 MPH
 SMB = "1790900520-autoverdict-566484"          # Super Monkey Ball, Nova: ten minutes on Stage Select
 CV = "1790902028-titleroutes-1005086"          # Castlevania, Nova: stuck on Name Entry
+CVT = "1790839398-titleroutes-2238193"         # Castlevania, Thor: survey, status screen every other press
+# lane.routedriver's own held Castlevania replays (not dispatch runs, so not
+# under results/): the originals were in the lane worktree's scratch/ and
+# only the fixtures are committed. --make keeps a fixture whose original is
+# gone.
+CVR2 = "rdcv2"                                 # replay 2: Name Entry answered, stuck on the Overwrite prompt
+CVR3 = "rdcv3"                                 # replay 3: play, then walked into the fountain (stalled)
+CVR5 = "rdcv5"                                 # replay 5: first run, boot to 20 s of play
+LOCAL = {CVR2: "scratch/run-cv2/route-frames", CVR3: "scratch/run-cv3/route-frames",
+         CVR5: "scratch/run-cv5/route-frames"}
 
 # (case name, profile, run, frame, prev frame or None, prev state, seen, expected state)
 CASES = [
@@ -105,14 +115,34 @@ CASES = [
     ("castlevania intro FMV after the title", "castlevania-cod", CV, "174810-a1.png", "174750-boot.png", "title",
      ["title"], "intro_video"),
     ("castlevania Name Entry", "castlevania-cod", CV, "174838-name-a.png", None, None, ["title"], "profile"),
+    ("castlevania Konami logo", "castlevania-cod", CVR5, "230014-003-logo.png", "230013-002-intro_video.png",
+     "intro_video", [], "logo"),
+    ("castlevania title, cursor on Continue", "castlevania-cod", CVR5, "230018-005-title.png", None, None, [], "title"),
+    ("castlevania Overwrite prompt over the SAVE list", "castlevania-cod", CVR2, "225522-066-fail-profile.png", None,
+     None, ["title", "profile"], "profile"),
+    ("castlevania LOAD list + 'Is this save data correct?'", "castlevania-cod", CVT, "011417-menu-start.png", None,
+     None, ["title"], "profile"),
+    ("castlevania Saving... is loading, not a menu", "castlevania-cod", CVR5, "230046-020-loading.png", None, None,
+     ["title", "profile"], "loading"),
+    ("castlevania Valachia text crawl", "castlevania-cod", CVT, "011428-menu-start.png", "011423-menu-a.png",
+     "cutscene", ["title", "profile"], "cutscene"),
+    ("castlevania Player status screen is paused", "castlevania-cod", CVT, "011452-menu-start.png", None, None,
+     ["profile", "play"], "paused"),
+    ("castlevania live courtyard play", "castlevania-cod", CVR5, "230108-033-play.png", "230106-032-play.png", "play",
+     ["profile", "play"], "play"),
+    ("castlevania HUD up, pinned on the fountain: stalled", "castlevania-cod", CVR3, "225651-021-stalled.png",
+     "225649-020-play.png", "play", ["profile", "play"], "stalled"),
+    ("castlevania HUD frame after the status screen: unknown", "castlevania-cod", CVT, "011505-menu-start.png",
+     "011459-menu-a.png", "paused", ["profile", "play", "paused"], "unknown"),
 ]
 
 # Frames that must never be `play` under a profile that is not their title's.
 FOREIGN = [(SON2, "200707-play.png", "200657-play.png"), (FOR, "214502-play.png", "214437-play.png"),
            (SMB, "172713-gameplay.png", "172712-rolling.png"), (SONT, "004222-menu-start.png", "004215-menu-a.png"),
-           (SMB, "172733-play.png", "172723-play.png")]
+           (SMB, "172733-play.png", "172723-play.png"), (CVR5, "230108-033-play.png", "230106-032-play.png")]
 TITLE_OF = {SON: "sonic-heroes", SON2: "sonic-heroes", SONT: "sonic-heroes", SONT2: "sonic-heroes",
-            FOR: "forza", SMB: "super-monkey-ball-deluxe", CV: "castlevania-cod"}
+            FOR: "forza", SMB: "super-monkey-ball-deluxe", CV: "castlevania-cod", CVT: "castlevania-cod",
+            CVR2: "castlevania-cod", CVR3: "castlevania-cod", CVR5: "castlevania-cod"}
 
 # drive.py --sim runs: (name, profile, run, frames slice, args, checks). The
 # sim step is the seconds between frames; the default 6 is these runs'
@@ -124,6 +154,8 @@ SIMS = [
      dict(result_prefix="ROUTE FAIL", fail_word="stalled")),
     ("sonic: a pause that never resumes is a ROUTE FAIL", "sonic-heroes", SON, (21, 40), ["--seconds", "999"],
      dict(result_prefix="ROUTE FAIL", fail_word="paused")),
+    ("castlevania: first run, boot to play", "castlevania-cod", CVR5, (0, 27), ["--find", "--sim-step", "2"],
+     dict(result="reached-play", time_to_title=True, time_to_play=True)),
 ]
 
 
@@ -131,8 +163,14 @@ def fixture(run, frame):
     return os.path.join(FIX, "%s--%s.jpg" % (run.split("-")[0], frame[:-4]))
 
 
+def frames_dir(run):
+    if run in LOCAL:
+        return os.path.join(HERE, "..", "..", "..", LOCAL[run])
+    return os.path.join(RESULTS, run, "route-frames")
+
+
 def source(run, frame, disk):
-    return os.path.join(RESULTS, run, "route-frames", frame) if disk else fixture(run, frame)
+    return os.path.join(frames_dir(run), frame) if disk else fixture(run, frame)
 
 
 def all_frames():
@@ -144,7 +182,7 @@ def all_frames():
     for run, f, p in FOREIGN:
         seen.update({(run, f), (run, p)})
     for _, _, run, (lo, hi), _, _ in SIMS:
-        d = os.path.join(RESULTS, run, "route-frames")
+        d = frames_dir(run)
         if os.path.isdir(d):
             for f in sorted(x for x in os.listdir(d) if x.endswith(".png"))[lo:hi]:
                 seen.add((run, f))
@@ -161,14 +199,18 @@ def make():
     os.makedirs(FIX, exist_ok=True)
     n = 0
     for run, f in all_frames():
-        src = os.path.join(RESULTS, run, "route-frames", f)
+        src = os.path.join(frames_dir(run), f)
+        if not os.path.exists(src) and os.path.exists(fixture(run, f)):
+            continue
         im = classify.content(Image.open(src).convert("RGB")).resize(FIX_SIZE, Image.LANCZOS)
         im.save(fixture(run, f), quality=FIX_Q, optimize=True)
         n += 1
-    lists = {}
+    with open(os.path.join(FIX, "sims.json")) as f:
+        lists = json.load(f)
     for _, _, run, _, _, _ in SIMS:
-        d = os.path.join(RESULTS, run, "route-frames")
-        lists[run] = sorted(x for x in os.listdir(d) if x.endswith(".png"))
+        d = frames_dir(run)
+        if os.path.isdir(d):
+            lists[run] = sorted(x for x in os.listdir(d) if x.endswith(".png"))
     with open(os.path.join(FIX, "sims.json"), "w") as f:
         json.dump(lists, f, indent=0)
     print("made %d fixtures in %s" % (n, FIX))
@@ -206,8 +248,8 @@ def main(argv):
                   "%s %s" % (run.split("-")[0], f), pn, r["state"], r["source"]))
 
     for name, pn, run, (lo, hi), args, want in SIMS:
-        fl = [os.path.join(RESULTS, run, "route-frames", x) for x in
-              sorted(y for y in os.listdir(os.path.join(RESULTS, run, "route-frames")) if y.endswith(".png"))[lo:hi]] \
+        fl = [os.path.join(frames_dir(run), x) for x in
+              sorted(y for y in os.listdir(frames_dir(run)) if y.endswith(".png"))[lo:hi]] \
             if disk else _slice_from_list(run, lo, hi)
         with tempfile.TemporaryDirectory() as td:
             lst = os.path.join(td, "frames.txt")

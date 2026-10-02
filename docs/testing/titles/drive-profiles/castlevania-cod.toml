@@ -1,16 +1,49 @@
 # Castlevania: Curse of Darkness (4B4E002D) -- drive profile (#433, lane.routedriver).
 #
-# PARTIAL: written for the classifier selftest, not yet for a run. It names
-# the title menu and Name Entry, the two screens session 59/60's fixed-wait
-# route lost its place on (1790902028-titleroutes-1005086: the route's A
-# presses landed on a still-black screen, then typed into Name Entry and
-# never reached Accept). It has no play HUD crop, so it can never say
-# `play`, and the save-data prompt that defaults to No (castlevania-cod.
-# first-run.route: LX min, then A) has no crop either.
+# FIRST RUN, boot to play, for `drive.py --find`. The path, from the
+# interactive authoring session (lane.titleroutes, Nova, 2026-10-01 14:18,
+# scratch/nav/castlevania-cod.first-run-20261001T141851) and the two failed
+# open-loop replays (1790902028-titleroutes-1005086, 1790903439-titleroutes-
+# 1317193):
 #
-# Reference crops in castlevania-cod/ (regions in 1280x960 space):
-#   title       1790902028 174750 (the logo and New Game / Continue / Options)
-#   name-entry  1790902028 174838 (the Name Entry banner, top left)
+#   Konami/logo and opening movie (skip: A) -> title menu, New Game
+#   highlighted (A) -> Name Entry keyboard: A types the highlighted letter,
+#   START jumps the cursor to Accept, A accepts -> "Is this correct?" (Yes is
+#   the default: A) -> "There is no save data on your Xbox. Create new save
+#   data?" (cursor defaults to No: LX flick left onto Yes, then A) ->
+#   "Creating new save data..." -> slot list (A on slot 1) -> "Saving..." ->
+#   "1476, Valachia" text crawl and castle shots (cutscene: A skips) -> play
+#   in the courtyard, HP/MP HUD top left.
+#
+# The open-loop route's failure was TIMING: the Name Entry keyboard comes up
+# 10+ s later on some runs, so fixed-time presses landed on a black screen
+# and later presses typed into the keyboard. Here every press waits for the
+# crop that names its screen. If the opening movie loops back over the title
+# (it replays itself when the title sits idle), the movie is `intro_video`
+# again and A skips it again.
+#
+# Reference crops in castlevania-cod/ (regions in 1280x960 space). The
+# confirm dialog sits ON the Name Entry screen, so its crop goes first.
+#   status-menu      1790839398 011452    the Player status screen START opens
+#                                         in play (Thor frame: the 4:3 picture)
+#   name-confirm     nav 005-accepted     "Is this correct?  Yes  No"
+#   save-create-no   nav 006-yes          create-save prompt, cursor on No
+#   save-create-yes  nav 007-left1        the same prompt, cursor on Yes
+#   overwrite        routedriver run 2    "Previous save data exists. Overwrite
+#                    225522               this save data?" over the slot list,
+#                                         cursor on No (a disk that has a save)
+#   start-nosave     1790862575 065412    "Start without saving?" (the prompt
+#                                         a declined save leads to)
+#   save-busy        nav 008-createdsave  "Please don't turn off your Xbox
+#                                         console." (Creating.../Saving...)
+#   save-slots       nav 009-wait5        SAVE banner over the 5-slot list
+#   name-entry       1790902028 174838    the Name Entry banner
+#   title-continue   routedriver run 1    the same, cursor on Continue (a disk
+#                    224933               that has a save starts there)
+#   title            1790902028 174750    logo + New Game / Continue / Options,
+#                                         cursor on New Game
+#   hud              masked, learned from nav first-run 013/014/016 and
+#                    returning 016/017/019 (HP bar, "Player", the icon)
 
 name = "castlevania-cod"
 title = "Castlevania: Curse of Darkness"
@@ -19,12 +52,120 @@ genre = "onfoot"
 order = ["boot", "logo", "intro_video", "title", "profile", "main_menu", "loading", "cutscene", "play"]
 
 [input]
-title = ["A"]              # New Game is highlighted
+title = ["A"]              # New Game is highlighted on a disk with no save
 profile = ["A"]
 main_menu = ["A"]
 ingame_menu = ["A"]
-paused = ["START"]
+paused = ["B", "START"]   # tried in turn: the status screen START opens
 play_hold = [["LY", "min"]]
+# Walk a square, not a line: LY forward alone pins him against the courtyard
+# fountain (routedriver run 3, 225651: HUD up, stalled 40 s). A taps (an
+# attack/jump swing) every 5 s keep the scene moving where a wall stops the walk.
+play_cycle = [[[["LY", "min"]], 4.0], [[["LX", "max"]], 2.0], [[["LY", "max"]], 3.0], [[["LX", "min"]], 2.0]]
+play_tap = [["A", 5.0]]
+
+[drive]
+# No START in the skip ladder: on the title's fade-in it picks the default
+# entry (Continue, on a disk with a save: run 3 took the returning path), and
+# in play it opens the Player status screen (run 3, 225640; B closed it).
+# A alone skipped the Konami logo, the opening movie and the Valachia crawl
+# in every run; X is the second rung.
+ladder = ["A", "X"]
+# 3 s between skip presses, not 1.5: the title fades in for ~2 s after the
+# opening movie is skipped, still "moving", and a ladder press on the fade
+# picks the default entry before the title crop can see the cursor (run 4,
+# 225839: X on the fade took Continue).
+skip_settle_s = 3.0
+
+# THE SOLUTION (routedriver replay 5, Nova, 2026-10-01 23:00 PDT, drive.py
+# --find, rc 0 `reached-play`): title at 6.6 s, play at 53.6 s, run ended at
+# 74.4 s after 20 s of confirmed play. The open-loop first-run route marked
+# gameplay ~200 s in (its authoring session: first press 13.5 s, `mark
+# gameplay` 202 s) and never reached it unattended. Inputs, each sent only
+# once the crop named its screen:
+#   intro movie A (+0 s) -> Konami/black -> title, cursor on Continue (this
+#   disk has a save): LY:min, then A on New Game -> Name Entry: A, START, A
+#   -> "Is this correct?": A -> SAVE list: A on slot 1 -> "Previous save
+#   data exists. Overwrite?": LX:min, A -> Saving/Save completed -> three
+#   cutscene skips, A each -> play.
+# On a disk with NO save the title starts on New Game and the SAVE list is
+# replaced by "There is no save data... Create new save data?" (save-create-
+# no/-yes crops, from the authoring session's frames: not yet seen by this
+# driver on a device). Full record: docs/lanes/routedriver/NOTES.md.
+# Skips learned from that run (`drive.py learn`); the driver tries these first.
+[skip.intro_video]   # 2026-10-02T06:01:27Z, 1 visit
+button = "A"
+after_s = 0.0
+landed = "logo"
+landed_times = 1
+
+[skip.cutscene]      # 2026-10-02T06:01:27Z, 4 visits (Save completed, Valachia crawl, castle shots)
+button = "A"
+after_s = 0.0
+landed = "black"
+landed_times = 3
+
+[[crop]]
+name = "status-menu"
+state = "paused"
+region = [820, 160, 280, 520]
+ref = "status-menu.png"
+threshold = 15.0
+
+[[crop]]
+name = "name-confirm"
+state = "profile"
+region = [400, 410, 460, 130]
+ref = "name-confirm.png"
+threshold = 12.0
+press = ["A"]              # Yes is the default
+
+[[crop]]
+name = "save-create-no"
+state = "profile"
+region = [100, 480, 700, 90]
+ref = "save-create-no.png"
+threshold = 12.0
+press = ["LX:min"]         # move the cursor off the default No onto Yes
+
+[[crop]]
+name = "save-create-yes"
+state = "profile"
+region = [100, 480, 700, 90]
+ref = "save-create-yes.png"
+threshold = 12.0
+press = ["A"]
+
+[[crop]]
+name = "overwrite"
+state = "profile"
+region = [370, 380, 540, 190]
+ref = "overwrite.png"
+threshold = 12.0
+press = ["LX:min", "A"]    # "Previous save data exists. Overwrite?" defaults to No
+
+[[crop]]
+name = "start-nosave"
+state = "profile"
+region = [300, 330, 450, 80]
+ref = "start-nosave.png"
+threshold = 5.0
+press = ["LX:min", "A"]    # Yes, start without saving: still reaches play
+
+[[crop]]
+name = "save-busy"
+state = "loading"
+region = [260, 495, 760, 40]
+ref = "save-busy.png"
+threshold = 15.0
+
+[[crop]]
+name = "save-slots"
+state = "profile"
+region = [40, 140, 1000, 560]
+ref = "save-slots.png"
+threshold = 12.0
+press = ["A"]              # slot 1
 
 [[crop]]
 name = "name-entry"
@@ -35,8 +176,23 @@ threshold = 20.0
 press = ["A", "START", "A"]  # A types the highlighted letter, START jumps to Accept, A accepts
 
 [[crop]]
+name = "title-continue"
+state = "title"
+region = [380, 600, 520, 200]
+ref = "title-continue.png"
+threshold = 8.0
+press = ["LY:min"]         # a disk with a save: the cursor starts on Continue; up to New Game
+
+[[crop]]
 name = "title"
 state = "title"
-region = [0, 40, 1280, 500]
+region = [380, 600, 520, 200]
 ref = "title.png"
-threshold = 20.0
+threshold = 8.0
+
+[[crop]]
+name = "hud"
+state = "play"
+region = [40, 78, 600, 64]
+ref = "hud.png"
+threshold = 22.0

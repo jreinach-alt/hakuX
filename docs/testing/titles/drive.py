@@ -61,8 +61,11 @@ POLICY. States are classify.py's; the inputs come from the profile's
                          reach Accept, then A), else input.<state>, one press
                          per `menu_gap_s`; `menu_max_presses` on one screen
                          without leaving it is ROUTE FAIL "stuck".
-  paused                 input.paused (the resume button), then re-classify;
-                         still paused after 3 presses is ROUTE FAIL.
+  paused                 input.paused (the resume buttons, tried in turn),
+                         then re-classify; still paused after 3 presses is
+                         ROUTE FAIL.
+A press may be `AXIS:value` (`LX:min`): the stick is flicked there and back,
+for a cursor the d-pad does not move (Castlevania's save prompt).
   play                   the profile's play_hold axes held (re-asserted each
                          capture), play_tap buttons every N s. NEVER START:
                          the profile is refused if a play input is START.
@@ -133,7 +136,8 @@ NEVER = {"BACK", "SELECT"}            # BACK exits to the dashboard on some titl
 DEFAULTS = dict(
     fast_s=1.0, slow_s=5.0, skip_settle_s=1.5, skip_passes=3, menu_gap_s=2.0, menu_max_presses=25,
     resume_tries=3, stall_fail_s=40.0, unknown_before_model=3, unknown_fail_s=90.0,
-    model_calls_max=20, find_play_s=20.0, confirm_play_s=6.0, keep_every_s=30.0,
+    model_calls_max=20, find_play_s=20.0, confirm_play_s=6.0, keep_every_s=30.0, screencap_fail_s=60.0,
+    hud_memory_s=20.0,
 )
 
 MODEL = "claude-haiku-4-5-20251001"
@@ -250,6 +254,7 @@ class Driver:
         self.unknown_since = None
         self.unknown_streak = 0
         self.stalled_since = None
+        self.last_hud_t = None
         self.play_since = None
         self.play_frames = []
         self.marked = False
@@ -283,6 +288,11 @@ class Driver:
             self.dev.pad("hold", "START")
             self.dev.pad("press", "A")
             self.dev.pad("release", "START")
+        elif ":" in btn:                 # AXIS:value, a stick flick (a cursor move where the d-pad is not mapped)
+            ax, val = btn.split(":", 1)
+            self.dev.pad("axis", ax, val)
+            self.sleep(0.4)
+            self.dev.pad("axis", ax, "mid")
         else:
             self.dev.pad("press", btn)
         self.last_press_t = t
@@ -291,6 +301,21 @@ class Driver:
 
     def hold_play(self):
         want = [tuple(x) for x in self.inp.get("play_hold", [])]
+        cycle = self.inp.get("play_cycle")
+        if cycle:
+            # An on-foot title: one held direction walks into the first wall
+            # (Castlevania's fountain, run 3), so the held axes rotate through
+            # phases of [[axis, value], seconds].
+            total = sum(float(s) for _, s in cycle)
+            at = self.t() % total
+            for axes, s in cycle:
+                if at < float(s):
+                    want = [tuple(x) for x in axes]
+                    break
+                at -= float(s)
+        for ax, _ in self.held:
+            if ax not in [a for a, _ in want]:
+                self.dev.pad("axis", ax, "mid")
         for ax, val in want:
             self.dev.pad("axis", ax, str(val))
         if want and self.held != want:
@@ -356,6 +381,15 @@ class Driver:
     # -- one capture -------------------------------------------------------
     def classify(self, frame):
         r = classify.classify_frame(frame, self.prev, self.p, self.seen, self.last_play_luma, self.state)
+        if r.get("crop") and r["source"].startswith("hud:"):
+            self.last_hud_t = self.t()
+        elif (r["source"] in ("static", "between") and self.last_hud_t is not None
+              and self.t() - self.last_hud_t < self.cfg["hud_memory_s"]):
+            # A still, uncropped frame moments after the play HUD was up: a
+            # title that hides its HUD when the player idles (Castlevania),
+            # not a menu. `stalled`: the play input stays held, and the stall
+            # watch still ends the run if nothing ever moves.
+            r.update(state="stalled", source="static+hud-recent")
         if r["state"] == "unknown":
             self.unknown_streak += 1
             if self.unknown_streak >= self.cfg["unknown_before_model"]:
@@ -400,6 +434,16 @@ class Driver:
         """The policy. Returns the action string for the timeline, or raises Fail."""
         t = self.t()
         cfg = self.cfg
+        if state == "unknown" and r.get("source", "").startswith("hud:"):
+            # The play HUD is up but the motion does not say play yet: the
+            # first frame after a load or overlay, or a character standing
+            # still because nothing is held -- and play is only confirmed by
+            # motion, which an idle character never makes (Castlevania, run
+            # 1 of this lane: HUD up, nothing held, then A presses into the
+            # game as a "menu"). So hold the play input as the probe. Inside
+            # a play stretch this neither ends the stretch nor counts toward it.
+            self.hold_play()
+            return "hold (hud up, motion not yet play)"
         if state != "play" and state != "stalled" and self.held:
             self.release_play()
         if state != "stalled":
@@ -445,7 +489,8 @@ class Driver:
             if self.resume_tries >= cfg["resume_tries"]:
                 raise Fail("paused after %d resume presses" % self.resume_tries)
             self.resume_tries += 1
-            return self.press((self.inp.get("paused") or ["START"])[0], "resume %d" % self.resume_tries)
+            seq = self.inp.get("paused") or ["START"]
+            return self.press(seq[(self.resume_tries - 1) % len(seq)], "resume %d" % self.resume_tries)
 
         if state in MENU_LIKE:
             key = (state, r.get("source"))
@@ -504,6 +549,7 @@ class Driver:
         self.t0 = now()
         self.dev.logcat("drive start %s %s" % (self.p.get("name", "?"), "find" if self.find else "play"))
         tmpdir = tempfile.mkdtemp(prefix="drive-")
+        cap_fail_since = None
         try:
             while self.t() < self.seconds:
                 self.n += 1
@@ -512,9 +558,16 @@ class Driver:
                 if not ok:
                     if self.sim:
                         break
+                    if cap_fail_since is None:
+                        cap_fail_since = self.t()
                     self.tsv.write("%.1f\t-\tscreencap-failed\t\t\t%.2f\t\t\n" % (self.t(), cap_s))
+                    if self.t() - cap_fail_since >= self.cfg["screencap_fail_s"]:
+                        self.result = "ROUTE FAIL drive %s: screencap failed for %.0f s" % (
+                            self.p.get("name"), self.t() - cap_fail_since)
+                        return 1
                     self.sleep(1.0)
                     continue
+                cap_fail_since = None
                 r = self.classify(cur)
                 st = r["state"]
                 self.sources[r["source"].split(":")[0]] = self.sources.get(r["source"].split(":")[0], 0) + 1
@@ -607,12 +660,26 @@ def learn(path):
     """The profile's [skip.<state>] tables from a route-solution.json."""
     sol = json.load(open(path))
     out = []
+    # One table per state (a state is visited more than once: Castlevania has
+    # three cutscenes). The button that landed most often wins; `none` only
+    # if no press ever landed -- a visit that ended on its own before the
+    # settle allowed a press (a logo cut short by a fade) says nothing.
+    by = {}
     for s in sol.get("skips", []):
-        out.append("[skip.%s]   # %s" % (s["state"], sol.get("written_utc", "")))
-        if s.get("button"):
-            out.append('button = "%s"\nafter_s = %s\nlanded = "%s"' % (s["button"], s["after_s"], s["landed"]))
+        by.setdefault(s["state"], []).append(s)
+    for st, visits in by.items():
+        won = [v for v in visits if v.get("button")]
+        out.append("[skip.%s]   # %s, %d visit(s)" % (st, sol.get("written_utc", ""), len(visits)))
+        if won:
+            b = max({v["button"] for v in won}, key=lambda x: sum(v["button"] == x for v in won))
+            hits = [v for v in won if v["button"] == b]
+            out.append('button = "%s"\nafter_s = %s\nlanded = "%s"\nlanded_times = %d'
+                       % (b, max(v["after_s"] for v in hits), hits[0]["landed"], len(hits)))
+        elif any(v.get("presses") for v in visits):
+            out.append('button = "none"\nwaited_s = %s   # skip: none after the ladder'
+                       % max(v.get("waited_s") or 0 for v in visits))
         else:
-            out.append('button = "none"\nwaited_s = %s   # skip: none after the ladder' % s.get("waited_s"))
+            out.pop()
     print("\n".join(out))
 
 
