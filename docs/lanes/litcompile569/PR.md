@@ -55,7 +55,8 @@ each arm. Per scene (spans placed from the route frames, unregistered):
 
 ## Local checks (no CI while GitHub is suspended)
 
-- `docs/testing/preflight.sh --allow-tracker`: see the result below.
+- `docs/testing/preflight.sh --allow-tracker` on the head: rc 0, "preflight passed". Every gate
+  passed except coverage, which did not run because it needs gh, and gh returns 403.
 - `python3 -m py_compile` on the four `doa_*.py` scripts: OK.
 - No harness file and no emulator file changed, so there is no selftest or dispatch-run
   requirement for the fold.
