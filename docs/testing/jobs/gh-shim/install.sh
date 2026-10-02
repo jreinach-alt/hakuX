@@ -11,8 +11,12 @@ set -eu
 src="$(cd "$(dirname "$0")" && pwd)/gh"
 bin="${FORGE_SHIM_BIN:-$HOME/hakux-work/forge/shim/bin}"
 mkdir -p "$bin"
-python3 -c "import ast,sys; ast.parse(open(sys.argv[1]).read())" "$src"
-cp "$src" "$bin/.gh.new"
-chmod 755 "$bin/.gh.new"
-mv -f "$bin/.gh.new" "$bin/gh"
-echo "installed $bin/gh from $src ($(git -C "$(dirname "$src")" rev-parse --short HEAD 2>/dev/null || echo '?'))"
+tools="${FORGE_TOOLS_BIN:-$HOME/hakux-work/forge/bin}"
+mkdir -p "$tools"
+put() {  # put <src> <dest>: syntax-check, then an atomic replace
+    python3 -c "import ast,sys; ast.parse(open(sys.argv[1]).read())" "$1"
+    cp "$1" "$2.new" && chmod 755 "$2.new" && mv -f "$2.new" "$2"
+}
+put "$src" "$bin/gh"
+put "$(dirname "$src")/forge_prsync.py" "$tools/forge_prsync.py"
+echo "installed $bin/gh and $tools/forge_prsync.py from $(dirname "$src") ($(git -C "$(dirname "$src")" rev-parse --short HEAD 2>/dev/null || echo '?'))"

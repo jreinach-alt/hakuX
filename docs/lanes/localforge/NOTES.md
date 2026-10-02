@@ -61,3 +61,106 @@ push fails.
 Rule that follows from (b): **nobody pushes code to the forge and nobody
 merges a forge PR.** The next sync would overwrite a forge-only commit.
 Merges stay with `foldqueue.sh`.
+
+## 3. The gh shim (step 3)
+
+`docs/testing/jobs/gh-shim/gh` (python3, one file). It is installed by
+`docs/testing/jobs/gh-shim/install.sh` to `~/hakux-work/forge/shim/bin/gh`,
+an atomic copy. Its header lists the rules. In short:
+
+- **Loud failures.** Every failure exits nonzero and prints one stderr line
+  naming the operation (HTTP status, forge unreachable, missing token, bad
+  jq). Unknown operations and unknown flags exit 64 with `gh-shim: not
+  implemented: <args>`. `pr merge` exits 2 and says merges go through
+  foldqueue.
+- **Logging.** Every call appends one JSON line to
+  `~/hakux-work/logs/forge/shim.log`: argv, rc, ms, forge user, calling
+  systemd unit, cwd and the error. `rc == 64` lines are the to-do list.
+- **Repo.** `--repo` > `$GH_REPO` > `jreinach-alt/hakuX`.
+- **Account.** `$FORGE_USER` > `$HAKUX_ROLE` (lane/cloud -> `lanes`) > `jobs`.
+- **What it implements.** Every operation the inventory found in harness code:
+  - `pr list/view/comment/create/ready/checks/diff/review/edit/close/reopen`
+  - `issue list/view/create/comment/edit/close/reopen/pin/unpin`
+  - `label create/list/delete`
+  - `release list/view/create/upload`
+  - `run list`
+  - `auth status`
+  - `api`: REST with `-f/-F` (including `@file`, `k[]=`, `k[sub]=`),
+    `--input`, `-X`, `--paginate`, `--jq` and `--silent`.
+- **Differences from GitHub that it hides:**
+  - **`per_page`.** Forgejo pages by `limit`, so `per_page` is translated.
+    Without that, gh_rest.py's "page < 100 rows means last page" would have
+    stopped after 30 rows. That is the silent-truncation version of the bug.
+  - **Timestamps.** Forgejo's are local time. They are normalised to
+    GitHub's `...Z`; jq's `fromdateiso8601` needs that exact form.
+  - **`mergeable`.** Forgejo reports `false` for every WIP (draft) PR. The
+    shim computes MERGEABLE/CONFLICTING itself with `git merge-tree
+    --write-tree` against the forge repo dir. New objects go to a scratch
+    dir, and results are cached per (base, head) in
+    `~/hakux-work/forge/cache/`.
+  - **`statusCheckRollup`.** Built from Forgejo commit statuses as
+    StatusContext objects. `commits/<sha>/check-runs` is synthesised from
+    the same statuses, so fold.sh's TRUNK_CI_JQ works.
+  - **Issue events.** `issues/<n>/events` is synthesised from the timeline
+    (labeled/unlabeled/closed/...).
+  - **Repo-wide comments.** `issues/comments` honours `sort`/`direction`,
+    which Forgejo ignores. PR comments get the `issue_url` Forgejo leaves
+    empty, and `/pulls/N#` html links become `/issues/N#`, so status.sh's
+    `(issues|pull)` regex still matches.
+  - **Labels.** Labels are addressed by name. An unknown label is created on
+    first use, as GitHub does. Forgejo silently drops an unknown label name;
+    measured in the importer test.
+  - **Drafts.** A draft is the `WIP: ` title prefix, stripped on output.
+
+Tests:
+- `python3 docs/testing/jobs/gh-shim/smoke_live.py` runs against the live
+  forge on a throwaway repo, `jreinach-alt/shim-smoke`. It runs the
+  harness's own command lines with the exact `--json` lists and `--jq`
+  filters from board, status, fold, handback, arms, pr-sweep, issue-sweep,
+  comment_sweep, gh-label.sh and gh_rest.py, plus the failure modes.
+  **80 passed, 0 failed.**
+- Labels: `ensure-labels.sh`, run through the shim, created its 16 labels in
+  `jreinach-alt/hakuX`. Others (`lane:<x>`, `0.5`, `release-blocker`, ...)
+  are created on first use.
+
+## 4. Issues and PRs (step 4)
+
+**Issues.** `docs/lanes/localforge/forge_import.py` (dry run unless
+`--execute`):
+- It walks #1..#640 in order, so every forge number is GitHub's.
+- A number with a lane.issuerecon record gets its title, body, state,
+  labels and comments, each comment with an author/time header.
+- A number with only a board row (`origin/board:nv2a_issues.toml`) is
+  seeded from that row: its title, plus a rendering of status,
+  disposition, blocker and notes. State is open unless the row's status is
+  `closed` or `closed-duplicate`.
+- Any other number up to #629 (the highest GitHub number git history names:
+  hddcrash's PR) becomes a closed "#n: not recovered" placeholder.
+- #630..#640 are closed "reserved" placeholders, so forge-native numbers
+  start at #641 and cannot collide with a GitHub number found late.
+- It is idempotent and keyed on a body marker. It never touches an
+  unmarked (forge-native) issue. It keeps labels a job added. It never
+  downgrades recovered text to the seed. It never posts a comment twice
+  (`github-comment:<id>` marker).
+- Test: `docs/lanes/localforge/import_smoke.py`, all passed.
+
+**Run 2026-10-02 ~10:50 PDT:** 640 created. 165 were seeded from the board;
+6 non-numeric board rows (apu-*, aci-vmstate) have no GitHub number and were
+not imported. 139 are open. Verified with `gh issue view 433` through the
+shim.
+
+**When issuerecon posts its import set ready:**
+`python3 docs/lanes/localforge/forge_import.py --recon ~/hakux-work/forge-import --execute`.
+Recovered PRs become issues titled `[GitHub PR] ...`, labelled `github-pr`,
+at their own numbers.
+
+**PRs.** `docs/testing/jobs/gh-shim/forge_prsync.py`, installed to
+`~/hakux-work/forge/bin/`, run by `hakux-forge-prsync.timer` (5 min, after
+a sync):
+- One forge PR per `lane/<x>` branch that has `docs/lanes/<x>/PR.md` and
+  commits master lacks. PR.md's line 1 is the title, `State: draft` makes it
+  a WIP draft, and the whole PR.md is the body. It is opened as the `lanes`
+  user.
+- It updates the PR when PR.md changes. It closes the PR with a
+  `[job.forge-prsync]` comment once the branch is in master.
+- First run: 13 PRs, #641..#653.
