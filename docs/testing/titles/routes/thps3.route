@@ -1,0 +1,50 @@
+# Tony Hawk's Pro Skater 3 (41560004), Thor. Built from the generic survey
+# 0-0-s-1790830433-titleroutes-311114 (lane.titleroutes session 47,
+# 2026-10-01), heat-stopped at 480s but with route-frames through cycle 15.
+# Confirmed from those frames, not guessed:
+#   cycle 1 (223347 START / 223353 A): clears the boot logos/intro.
+#   cycle 2 (223359 START / 223405 A): 223405 shows "THE FOUNDRY" with a
+#     goal splash ("GET A PRO SCORE: 30,000 POINTS") and an on-screen A
+#     prompt -- Career mode's first level, already chosen with no stick
+#     navigation needed.
+#   cycle 3 (223413 START / 223419 A): 223419 is live, unpaused Foundry
+#     gameplay under control, FPS 59, no overlay.
+# After that the survey kept pressing START every ~12s, which just pauses
+# and resumes an already-running level (223432 is mid-level unpaused at
+# 1:55 on the level timer; 223634 is the PAUSED overlay over the same
+# level at 1:01, mid-heat-stop). So: 3 cycles, then stop pressing START.
+# DRAFT until a soak replays this and the mark frame is reviewed.
+wait 30
+shot boot20
+wait 15
+shot boot40
+wait 15
+shot booted
+repeat 3 {
+    press START
+    wait 6
+    shot menu-start
+    press A
+    wait 6
+    shot menu-a
+}
+mark gameplay               # CHECK: the last menu-a shot is live Foundry gameplay, not a splash
+repeat forever {
+    axis LY min
+    wait 1.5
+    press A
+    wait 0.4
+    press X
+    wait 0.6
+    axis LX max
+    wait 1
+    press A
+    wait 0.4
+    press B
+    wait 0.6
+    axis LX min
+    wait 1
+    axis LX mid
+    axis LY mid
+    wait 0.3
+}

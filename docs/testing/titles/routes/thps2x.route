@@ -44,7 +44,18 @@ shot level-select
 press A
 wait 20
 shot loading
-mark gameplay               # [guess] placeholder: move to the first frame with the skater rolling
+# Session 46 (frame review): the old mark sat HERE, and the screen here is
+# THE HANGAR CHECKLIST (goal list, "A Accept / B Back"), not skating
+# (1790808339-titleroutes-3127689, 160005-gameplay.png). That screen's 97.6%
+# at 59.82 measured the menu. A accepts it [guess: the level then loads].
+press A
+wait 15
+shot after-checklist
+axis LY min
+wait 4
+axis LY mid
+shot rolling
+mark gameplay               # [guess] after the checklist; CHECK rolling.png shows the skater in the Hangar
 # Push, jump (A), flip/grab (X/B) and turn: bails are fine, the level keeps going.
 repeat forever {
     axis LY min

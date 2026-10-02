@@ -2943,3 +2943,1264 @@ never idles.
 `1790822581-titleroutes-2819301` (Deathrow, still cold-parked) -- all Thor,
 all #397 pass-1 surveys, none an A/B prediction so no `ab_compare` judging
 is needed, reading each result dir directly is enough once it lands.
+
+## Session 46 (resumed 2026-09-30 ~21:45 PDT, attempt 4): 187 fixed, a mark audit that withdraws all four Thor nominations, and a retraction
+
+**Why the previous attempt did not finish.** It did finish. Session 45 ended
+on a `waiting:` naming nine dispatch requests, with PR.md `State: ready`, and
+lane.local folded it (`70c9e96876`). This resume is the waiter's, after those
+nine landed. The "attempt 4" count is resumes, not failures. `origin/master`
+was 42 commits ahead, so step one was `git merge origin/master` (`6e07e2d5b6`,
+no conflicts).
+
+### The nine results
+
+| title | request | how it ended | how far it got |
+|---|---|---|---|
+| Ninja Gaiden (Europe) | `0-0-s-1790822580-titleroutes-2819211` | ran its full 300 s | title -> intro clip -> "Book of the Fiends" text pages (59 fps) -> a dark first area with a HUD (200613-play.png, overlay 0). Not counted as gameplay |
+| Deathrow | `0-0-s-1790822581-titleroutes-2819301` | heat stop at 208 s | last frame is the Daijishou launcher, taken after the kill |
+| Super Monkey Ball Deluxe | `0-0-s-1790823793-titleroutes-2949342` | heat stop at 263 s | **stage 1-1 at 59** by the 10th START/A cycle (203030) |
+| Family Guy: Video Game! | `0-0-s-1790823797-titleroutes-2950719` | heat stop, about 4 min | **Stewie's nursery, walking, 29-30**, by the 4th cycle (204142) |
+| Gauntlet: Dark Legacy | `0-0-s-1790823800-titleroutes-2951589` | heat stop at 256 s | in-engine wizard intro at **14 fps** (205704), then the in-game pause menu's Audio page at 11-14 |
+| Sonic Heroes | `0-0-s-1790823803-titleroutes-2951964` | heat stop at 226 s | **Seaside Hill at 59**, started by the 9th cycle (210851) |
+| Bistro Cupid | `0-0-s-1790823806-titleroutes-2952343` | ran to its end, peak xo 69 C | Japanese story dialogue (212406). Not gameplay |
+| Phantom Dust (requeue) | `0-0-s-1790823811-titleroutes-2952744` | heat stop at 197 s, **the second** | first explorable room at 30 (213619, 13th cycle) |
+| Psychonauts (requeue) | `0-0-s-1790823861-titleroutes-2960863` | `not-foreground: com.android.launcher3` at 127 s, peak xo 67 C | title card, overlay **1 fps** (214537) |
+
+(Every result id also exists without its `0-0-s-` prefix. The two dirs hold
+the same files; read the prefixed one.)
+
+### Retraction: session 44's "Daijishou focus steal, not heat" was backwards
+
+Every Thor stop above ends `xemu is gone ... (not-foreground:
+com.magneticchen.daijishou ...)`. Deathrow's timings settle the order. The
+runner logged `HEAT STOP at xo 70 C` at 20:18:33. The route's last step ran
+at 20:18:33.962, and `end` and the not-foreground line followed at 20:18:34.
+Daijishou is the Thor's home launcher, so it takes display 0 *because*
+hakuX was force-stopped. `logs/thor-coldconfirm.log` logs a HEAT STOP for all
+four runs session 44 called misdiagnosed (DOA3 v2 15:06:43, THPS2x v1
+15:17:44, Castlevania 16:16:24, Tork 16:45:13). `thermal.jsonl`'s samples are
+coarser than the runner's xo read, so "never crossed 70 C" in them proved
+nothing. harness_health.py's labels were right. The 300 s cap's reasoning
+stands. Retracted on the board request file and in OUTBOX #397.
+**Do not repeat:** a `not-foreground: <launcher>` line on a Thor run is the
+*consequence* of a stop. Read the runner log's line for the request id first.
+
+Those four runs were "run voided (no result)" by design, so session 44
+should not have scored their fps at all. The mark audit below makes that
+moot.
+
+### 187: Ride or Die: the scored window was the name keyboard
+
+The owner was right. Here is the cause. titlestate records a 187 profile on
+the Nova: "found", save `a760c747565e`, since 10:05Z. So `choose()` picked
+the returning route. But the disk built with that save shows four Empty
+slots (`1-1790775886-lane.verdict433-3086875`, hdd plan "keep",
+121939-profile-select.png). The returning route's A opened Create's name
+keyboard, its menu stick pulse moved the cursor N -> O, and every later
+press was a keyboard press. `mark gameplay` landed on PLAYER PROFILE /
+"Define the profile name" (122018-gameplay.png). The 1200 s confirmation
+(100%, 59.94) and session 40's benchmark both measured that menu.
+
+**Fix:** one route, `routes/187-ride-or-die.route`, built from the
+session-37 first-run nav. It creates profile N on every run (A, A, Y),
+accepts the new profile's Controller Configuration screen, skips the
+tutorial clip, drives 6 s, then marks. The returning and first-run files
+are gone, so `choose()` now returns `variant: single` for this route
+whatever titlestate believes. Its assumption, stated in its header: the
+soak's disk holds no 187 profile. That is true of every soak so far, and
+the route never flushes. The titlestate side ("found" save the game does
+not list) is on the board request file, not mine to fix.
+**Replay queued on the Nova:** `1790830434-titleroutes-311228` (300 s). If its
+frames show the race, re-nominate 187 for a Nova confirmation (#433).
+
+### Mark audit: every route with a scored `mark gameplay`, frame by frame
+
+`scratch/audit46.py` (throwaway) found, for each of the 45 route names
+ever soaked, the newest run that reached `mark gameplay`, and the frames at
+and after the mark. A subagent read every frame. I re-read the four that
+carried Nova nominations myself.
+
+**Not on gameplay (the trap, or close to it):**
+
+| route | run | the mark frame shows | consequence |
+|---|---|---|---|
+| 187-ride-or-die.returning | `1-1790775886-lane.verdict433-3086875` | profile-name keyboard | fixed (above) |
+| castlevania-cod.first-run | `0-0-s-1790805456-titleroutes-2055301` | Name Entry, empty name, Accept highlighted | **session-44 Nova nomination withdrawn**; re-marked, screen queued |
+| smt-nine | `0-0-s-1790805456-titleroutes-2055567` | Japanese name entry, given name empty | **nomination withdrawn**; not yet fixed |
+| thps2x | `1790808339-titleroutes-3127689` | THE HANGAR CHECKLIST goal list | **nomination withdrawn**; re-marked (A accepts), screen queued |
+| capcom-classics2 | `0-0-s-1790808344-titleroutes-3128993` | START MENU (Start / Load / Settings / Exit) | **nomination withdrawn**; not yet fixed |
+| bruce-lee | `1-1790487611-titleroutes-261841` | the title screen, and the frame before it too | known route problem (Addendum of 09-27) |
+| pgr.returning | `0-0-s-1-1790609665-lane.slowtier2-pgr365442` | car at 0 mph on the grid, in all three frames | |
+| pgr2 | `1-1790569004-titleroutes-3006458` | car at 0 mph at the start gate | |
+| crash-wrath-of-cortex | `1-1790757193-lane.hddcrash-1697566` | LOAD / SAVE menu | |
+| doax | `y-1790481308-titlebench-2893458` | in-game shop list | |
+| burnout | `0-0-s-1-1790609663-lane.slowtier2-burnout968727` | Game Over, then a Continue prompt in both later frames | |
+| ghoulies | `0-0-x-1-1790634704-lane.idlehaltdefault-3054732` | storybook transition page | |
+| kof-mi.returning | `1-1790725091-lane.verdict433-1456797` | post-round PERFECT / WINNER | a round may follow; the window needs a review |
+| azurik | `1-1790725091-lane.verdict433-1456876` | modal tutorial dialog | the loop may dismiss it; the window needs a review |
+| doa3 | `0-0-s-1790805442-titleroutes-2050455` | black frame | one frame only |
+| tork | `0-0-s-1790805457-titleroutes-2055759` | a cutscene-like beat at FPS 7 | one frame only |
+
+**On gameplay at the mark (28):** 50cent, alias, alien-hominid, arctic-thunder,
+baldurs-gate-da, bf2mc, black.returning, blood-wake, bloodrayne, brute-force,
+burnout-revenge.returning, burnout3.returning, crash-twinsanity,
+crimson-skies, dnd-heroes, galleon, gta-sa, jsrf, kabuki-warriors,
+mechassault-2, midnight-club-3.returning, midtown-madness-3.returning,
+nightfire, otogi, otogi.cold, rallisport-2.returning, spikeout.returning,
+wwe-raw-2. fuzion-frenzy's mark is early, but play follows within one frame.
+
+**Limit of this audit:** most title soaks shoot one frame at the mark and
+none in the loop. A play mark followed by a menu, or a menu mark the loop
+escapes, is invisible here. kof-mi and azurik are the second case and are
+not called wrong. Every title in the first table has a "Session 46 mark
+audit" sentence in its targets.toml notes.
+
+**Do not repeat (this lane's own failure):** sessions 42-44 adopted
+lane.routeprep's all-[guess] drafts. Each ended in a `mark gameplay` labelled
+"[guess] placeholder". I then nominated them on fps share alone, without
+opening the mark frame. Four of four were menus. A menu runs at the frame
+cap, so a 97-100% share is what a menu looks like. **Open the mark frame
+before writing any screen into the table or the nominations**
+(memory: a Playable needs a frame review).
+
+### New routes from this batch's surveys (drafts until a screen replays them)
+
+| title | route | built from | gameplay at |
+|---|---|---|---|
+| Family Guy: Video Game! (545400B0) | `family-guy.route` | 4 START/A cycles, then the stick (no START: it pauses) | 204142, nursery |
+| Super Monkey Ball Deluxe (53450038) | `super-monkey-ball-deluxe.route` | 10 cycles, then tilt | 203030, stage 1-1 |
+| Sonic Heroes (5345002B) | `sonic-heroes.route` | 9 cycles, then run + jump | 210851, Seaside Hill |
+
+Each replays the survey's own presses up to the cycle that started play,
+then never presses START again. Each title's survey showed that START
+pauses it.
+
+### Thor screen table (running; 300 s, `--hard-pin`, cold-slot runner)
+
+| title | request | route | what to read |
+|---|---|---|---|
+| Family Guy | `1790830432-titleroutes-310926` | family-guy | nursery at the mark, fps |
+| Super Monkey Ball Deluxe | `1790830432-titleroutes-310985` | super-monkey-ball-deluxe | ball rolling at the mark |
+| Sonic Heroes | `1790830432-titleroutes-311058` | sonic-heroes | team running at the mark |
+| THPS3 | `1790830433-titleroutes-311114` | survey | how far |
+| SSX Tricky | `1790830433-titleroutes-311173` | survey | how far |
+| THPS2x (re-marked) | `1790830528-titleroutes-329478` | thps2x | after-checklist / rolling frames |
+| Castlevania (re-marked) | `1790830528-titleroutes-329599` | castlevania-cod.first-run | name-typed / after-accept frames |
+
+Nova: `1790830434-titleroutes-311228`, the 187 single-route replay.
+
+**Done on the Thor:** Phantom Dust (two heat stops) goes to #433 as "needs
+the Nova", with its survey prefix (13 cycles) as the route seed. Galleon
+stays blocked (owner, 14:40 PDT: FPS and polygon flicker), not screened,
+not counted.
+
+### Next session
+
+1. Read the eight requests above. **Open the mark frame, and the frame after
+   it, before writing a number anywhere.**
+2. 187: if the replay's `race` frame is a race, re-nominate it on OUTBOX #433.
+3. Fix smt-nine (type a kana into the given-name field, then 決定) and
+   capcom-classics2 (A on START GAME, then the collection's game list).
+   Both need a frame-every look or a guess with shots at every step.
+4. Gauntlet: in-engine 14 fps is a performance lead. Its route must stop
+   pressing START once the level loads.
+5. Ninja Gaiden: author a route that skips the text pages. The survey took
+   ~270 s to reach the first area.
+6. Then the ranked list (`scratch/rank_untouched.py`): Plus Plumb 2, Petit
+   Copter, Doom 3, Monster Garage, AMF Bowling 2004, ...
+
+## Session 47 (2026-10-01): why attempt 1 of the resume did not finish, then the eight results
+
+Resumed per the harness's standard addendum (which matches the newest
+addendum in the brief, dated 2026-10-01 00:12 PDT / started_utc 07:12:24Z):
+the prior session (46) ended having written the "Next session" list above
+but before doing any of it -- `git log` shows session 46's commits already
+folded into `origin/master` (`fold: lane/titleroutes ... sessions 44-46`),
+and nothing in `dispatch/results` or the board file shows the eight
+requests having been read. So this attempt's first job was exactly that
+list. `gh` is still returning `403` (suspended account): offline protocol
+continues, PR.md/OUTBOX.md instead of a GitHub PR and issue comments.
+
+**Finding results took more than a flat `ls`.** None of the eight ids
+turned up under `dispatch/results/<id>/` by directory listing (the Glob
+tool does not descend one level without `**` or `*/*`, and the Bash tool
+is sandboxed to this worktree, so `find`/`grep -r` over `/home/justin/
+hakux-work/dispatch` do not run here). `Read`-ing the exact expected path,
+and `Glob` with a `*/*` pattern, both work. The real location of each
+result (`dispatch/results/0-0-s-<id>/` for Thor cold-slot runs, no prefix
+for the Nova replay) came from `logs/thor-coldconfirm.log`, which also
+gives the ground truth for which runs heat-stopped.
+
+### The eight results
+
+| request | device | outcome | finding |
+|---|---|---|---|
+| `0-0-s-1790830432-titleroutes-310926` (family-guy) | thor | DONE, no heat stop | fps_ok_share 0.9763 over 189.4s. Mark frame (215740-gameplay.png) is "Are you sure you want to overwrite this save?" -- the disk now carries a Family Guy save from an earlier run, so the 4th A landed on a used slot, not an Empty one as the route's comment assumed. Real gameplay (Stewie in the nursery, HUD) confirmed 9s later (215749-play.png); the 97.6% share is dominated by real play. **Nominated for Nova.** |
+| `0-0-s-1790830432-titleroutes-310985` (super-monkey-ball-deluxe) | thor | HEAT STOP, voided | Route CONFIRMED by its mark frame (221224-gameplay.png): the ball rolling in-level, 59fps, not a menu. Only 48.5s of gameplay before the stop. **Needs a clean re-screen**, not a nomination yet. |
+| `0-0-s-1790830432-titleroutes-311058` (sonic-heroes) | thor | HEAT STOP, voided | Route CONFIRMED (222424-gameplay.png): Team Sonic running Seaside Hill, 59fps. Only 61.4s before the stop. **Needs a clean re-screen.** |
+| `0-0-s-1790830433-titleroutes-311114` (THPS3, generic `survey`) | thor | HEAT STOP, voided | Never reached `mark gameplay` (no route existed to place one), but the frames show it reached real gameplay anyway: cycle 2 shows "THE FOUNDRY" goal splash, cycle 3 (223419-menu-a.png) is live, unpaused Foundry gameplay at 59fps. The generic survey then kept pressing START every ~12s, which just pauses/resumes an already-running level (223432 unpaused 1:55; 223634 PAUSED 1:01 at the heat stop). **Authored `routes/thps3.route`** from this evidence: 3 cycles then stop pressing START. DRAFT, not yet replayed as its own route. |
+| `0-0-s-1790830433-titleroutes-311173` (SSX Tricky, generic `survey`) | thor | done, no heat stop, but `hang=True` | The route's three "play" shots (224637, 224703, 224729) are all a solid black frame with only the FPS:59 overlay -- not gameplay, not a readable menu. Needs its own survey/nav pass, not a re-queue of the same one. No route yet. |
+| `0-0-s-1790830528-titleroutes-329478` (thps2x, re-marked) | thor | HEAT STOP, voided | The session-46 re-mark WORKED: mark frame (225733-gameplay.png) is the Hangar under a tutorial tip, 59fps, not the goal checklist. Only 105.1s before the stop; `below_own_target` at the 60fps bar it doesn't have evidence for yet (30fps bar: 100%). **Needs a clean re-screen.** |
+| `0-0-s-1790830528-titleroutes-329599` (castlevania-cod.first-run, re-marked) | thor | HEAT STOP, voided | The session-46 re-mark did NOT work: mark frame (231027-gameplay.png) is "There is no save data on your Xbox. Create new save data? Yes/No" -- a different menu, still not gameplay. Every step of this route past boot has always been [guess]; no frame on disk has ever shown this title under control. **Abandoning this route as a mark source.** Needs a fresh `--route survey` soak, same as thps3/family-guy/the monkey-ball and sonic titles were built this session, not another blind guess. |
+| `1790830434-titleroutes-311228` (187-ride-or-die.route replay) | nova | VOID | Not a route finding: `run.log` shows hakuX never got a focused window on display 0 at all ("foreground-unknown ... has no focused window on display 0"), so no input was sent and the route was never exercised. A launch race, not the keyboard trap session 46 fixed. Needs a re-queue. |
+
+`targets.toml` carries a "Session 47" sentence on every title above plus
+two new entries (41560004 THPS3, 45410004 SSX Tricky).
+
+### Mark-audit lesson applied, both ways
+
+Checking the mark frame (not just the fps share) is what told apart
+"the route works, the Thor just got hot" (monkey ball, Sonic Heroes,
+THPS2x, THPS3's evidence) from "the route still doesn't reach gameplay"
+(Castlevania, SSX Tricky) and from "it's basically fine, just one frame
+early" (Family Guy). A `crash=True`/`FAIL` verdict line from
+title_verdict.py conflates a genuine route failure with a heat stop that
+cut a good route short; only the frames tell them apart.
+
+### Queued next (this session)
+
+Thor (`screen47.sh`, pattern of session 42's `screen47.sh`/`bench8.sh`,
+`--device thor --hard-pin --seconds 300`, ref `5014d808b0` once pushed):
+re-screen super-monkey-ball-deluxe, sonic-heroes, thps2x (routes
+confirmed, want a clean unheated window); thps3 (new route, first replay);
+castlevania: `--route survey` (generic, abandoning the guess route).
+Nova: re-queue the 187-ride-or-die.route replay.
+
+Request ids and `DONE`/outcome: see the table added to OUTBOX.md and the
+board request file (`dispatch/board-requests/titleroutes.md`) after
+queueing below.
+
+## Session 48 (2026-10-01): why attempt 1 of this resume did not finish, then the six results
+
+Resumed per the harness's standard addendum (2026-10-01 02:14 PDT, matching the
+newest text in the brief): session 47 ended by posting `[lane.titleroutes]
+waiting:` on the six requests it had just queued (ref `2a87446629`), which is
+correct per the lane's own doctrine when there is live dispatch work
+outstanding -- but `gh` has been returning `403` ("account was suspended")
+since about 2026-09-29 19:40 PDT, more than 36 hours by the time this session
+started, so the PR-parking waiter that would normally arm itself from the
+PR's own comments was never armed (same gap hostops named at 00:12 and 02:14
+PDT for the two sessions before this one). Nothing resumed session 47's
+successor until hostops did it by hand again. The six requests had already
+finished (see below) and sat unread. This is the third time in a row this
+exact gap has stranded a finished batch; the standing fix is the same each
+time -- do not end a session waiting on a GH-dependent waiter while GH is
+down, poll the result dirs directly instead -- so this session does that.
+
+**Finding the results** used the same method session 47 worked out: `grep`
+the request ids against `logs/thor-coldconfirm.log` (outside this worktree,
+so `Grep` with an absolute `path` rather than `Bash`) to get the ground
+truth on which runs heat-stopped and where their result dirs actually sit
+(`dispatch/results/0-0-s-<id>` for Thor cold-slot runs, no prefix for the
+Nova run), then `Grep` the exact ids against `/home/justin/hakux-work/dispatch`
+to find every file mentioning them (a plain `Glob` of `dispatch/results` with
+a `*<id>*` pattern silently misses hits in a 233k-file directory; `Grep`
+does not).
+
+### All five Thor requests heat-stopped this round
+
+Worse than session 47's mixed results (3 of 5 heat-stopped there): every
+Thor request this round hit `HEAT STOP at xo 70 C`, cold-start temperatures
+(48.4-50.0 C) notwithstanding. The Thor's fan has been dead since before
+09-29 (AYN replacement pending); this is more evidence it is getting worse,
+not better, not a one-off.
+
+| request | title | scored before stop | mark frame | verdict |
+|---|---|---|---|---|
+| `0-0-s-1790839386-titleroutes-2237355` | Super Monkey Ball Deluxe | ~51s | ball rolling in-level, 1-1 SIMPLE, 47mph (003047-gameplay.png) | CONFIRMED again (2nd time). Two heat stops on a confirmed route -> **nominated for Nova** |
+| `0-0-s-1790839390-titleroutes-2237657` | Sonic Heroes | 0s of real play | the PAUSE menu, frozen (00:15:68, 006 rings) across the mark frame AND both play frames after it (004247/004256-gameplay.png) | **NOT confirmed this run** -- see "Sonic Heroes is racy" below. Not nominated. |
+| `0-0-s-1790839392-titleroutes-2237866` | Tony Hawk's Pro Skater 2x | ~102s | Hangar under the tutorial tip, same as session 47's confirm (005426-gameplay.png) | CONFIRMED again (2nd time). Two heat stops on a confirmed route -> **nominated for Nova** |
+| `0-0-s-1790839395-titleroutes-2238007` | Tony Hawk's Pro Skater 3 (own route, 1st replay) | ~97s | THE FOUNDRY level-splash card, one frame short of the survey's own confirmed-live frame from the same level (010437-gameplay.png) | Not independently confirmed by its own frame, consistent with prior survey evidence. Two heat stops for the title -> **nominated for Nova, with a caveat** telling the confirmation to check its own frames |
+| `0-0-s-1790839398-titleroutes-2238193` | Castlevania: Curse of Darkness (generic survey) | 284/300s, no further stop | gothic courtyard, character facing a gargoyle, then walking toward a gate (011651-play.png, 011717-play.png) -- **confirmed real gameplay by eye, the first time this title has ever shown player control** | Authored `routes/castlevania-cod.route` from this evidence (14 cycles, proven combat/walk loop). DRAFT, not yet replayed as its own named route. Not nominated yet. |
+
+Nova: `1790839401-titleroutes-2238360` (187: Ride or Die retry) ran the full
+300s with no stop of any kind. Its mark frame (002517-gameplay.png) is a
+confirmed night street race -- countdown "2", rival cars, a lead car
+accelerating, 46fps overlay. **187 is CONFIRMED and re-nominated** for the
+Nova Playable confirmation (#433); this closes the "needs a re-queue"
+question session 47 left open (that replay was VOID for an unrelated focus
+bug, not a route problem).
+
+### Sonic Heroes is racy: the SAME route, run twice, gave two different answers
+
+Session 47's run (`-311058`) and this session's run (`-2237657`) are the
+exact same `routes/sonic-heroes.route` file: 9 START/A cycles, then run
+with the stick. Session 47's mark frame showed real play (Seaside Hill,
+timer already at 00:34:73). This session's mark frame, and every frame
+around it (004235/004241 from cycle 9 itself, 004247 at the mark, 004256 a
+play shot after it), are pixel-identical to each other: the PAUSE menu,
+with the level timer frozen at 00:15:68 and the ring count frozen at 006.
+
+Reading both runs side by side: cycle 9's `press START` always has a
+~50/50-ish chance of landing after the level has already started (session
+47's own mark frame proves gameplay can be running by cycle 9, timer
+00:34:73), because the route presses START blind on a fixed schedule while
+the title's own boot-to-gameplay timing varies run to run. When a stray
+START during live play pauses the game, the route's "press A" after `mark
+gameplay` is the only recovery attempt, and this run shows it does NOT
+reliably un-pause (three consecutive frames spanning ~20s stayed on the
+identical paused HUD). This is the Gauntlet-class bug from the "Next
+session" list two sessions ago ("its route must stop pressing START once
+the level loads") but worse: it is probabilistic, not deterministic, so a
+single good replay cannot be trusted as proof the route is fixed.
+
+**Do not repeat:** checking one run's mark frame confirms that run; it does
+not confirm the route. A route whose boot timing already shows run-to-run
+variance (this one, and probably others built the same way) needs either a
+frame-based confirmation on EVERY Nova/benchmark run, not just the first
+screen, or a redesign that doesn't press START once gameplay is plausible.
+Not fixing the route this session (the DSL has no conditional branching to
+detect "paused" and recover); flagged instead, and NOT nominated.
+
+### Both outstanding worklist titles from session 47's "Next session" are not yet touched
+
+smt-nine and capcom-classics2 (both withdrawn nominations from session 46)
+and Gauntlet/Ninja Gaiden (new routes to author) are still open; this
+session's turns went entirely to reading the six pending results, the
+Castlevania route, and queueing the next batch below.
+
+### Queued next (this session)
+
+Thor (`--device thor --hard-pin --seconds 300`, ref `d7791f6c0a`, pushed):
+`1790846753-titleroutes-3234529`, the first replay of `routes/castlevania-
+cod.route` (confirm the newly-authored route reaches its own mark on a
+route-specific run, not just the generic survey). Given the Thor is
+heat-stopping on every single request right now, no other Thor work is
+queued this batch -- one request, not several, so a cold slot is not
+wasted on titles already decided (monkey-ball/thps2x/thps3 are nominated,
+sonic-heroes needs a route decision this lane hasn't made yet, not a
+re-screen).
+
+No Nova work queued by this lane this session: 187, monkey-ball, thps2x,
+thps3 are all nominated to #433/OUTBOX for lane.local/lane.verdict433 to
+copy and confirm, not for titleroutes to benchmark directly.
+
+### Next session
+
+1. Read `1790846753-titleroutes-3234529`. Open the mark frame before writing
+   anything -- the lesson of this session was that a route caught in one
+   good frame is not proven; check this run's own evidence on its own terms.
+2. Decide Sonic Heroes: either rework `routes/sonic-heroes.route` to stop
+   pressing START once gameplay is plausible (first run's own mark frame
+   already read 00:34:73 of elapsed level time at cycle 9, so the level
+   likely starts well before that point -- fewer cycles may clear it
+   safely), or queue a third screen and require TWO clean confirmations
+   before nominating, not one.
+3. smt-nine and capcom-classics2 (withdrawn nominations, session 46) and
+   Gauntlet/Ninja Gaiden (routes still to author) are untouched since
+   session 46's "Next session" list; pick these up once the Thor's heat
+   gives more than one cold slot a session.
+4. Then the ranked list (`scratch/rank_untouched.py`): Plus Plumb 2, Petit
+   Copter, Doom 3, Monster Garage, AMF Bowling 2004, ...
+
+## Session 49 (2026-10-01): why attempt 2 (session 48) did not finish, then Gauntlet's own trap
+
+Resumed as attempt 3 of this worktree. Session 48 did not fail: it read its six
+pending results, authored `castlevania-cod.route` from real evidence, queued
+exactly one Thor replay of it (`1790846753-titleroutes-3234529`, ref
+`d7791f6c0a`), and ended by posting `[lane.titleroutes] waiting:` naming that
+request id in both OUTBOX.md and PR.md -- which is the correct way to end a
+session per the lane's own doctrine (a queued device request is something
+outside the session, not a background task of its own) and per `roles/lane.md`
+explicitly does not count against the attempt budget. So "did not finish" here
+means the brief's work (routes down the list, #397 continuous pipeline) is
+still open, not that session 48 made a mistake; the attempt counter increments
+on a hostops/harness resume event, and the harness's own addenda say a wait
+resume is free. Picking back up where it left off:
+
+**The castlevania replay heat-stopped at 78s, inconclusive, not a route
+failure.** `0-0-s-1790846753-titleroutes-3234529`'s `.hostops-diagnosed` note
+and `run.log` confirm a CPU thermal-gate stop (cpu-1-9 at 91C, xo-therm only
+47C) 78s in -- the route had only completed 2 of its 14 START/A cycles by
+then, nowhere near its own mark. This is one heat stop for the *named* route
+(the generic survey it was built from heat-stopped separately, at 284/300s,
+not voided). Per the screening program's "two heat stops = done" rule, one
+heat stop is not done: queued a second replay this session rather than
+escalating it to the Nova on a single inconclusive run.
+
+### Gauntlet: Dark Legacy caught the same trap in its own survey frames, before any route was written
+
+Read `0-0-s-1790823800-titleroutes-2951589`'s route-frames cycle by cycle
+(not just the two frames NOTES had already named) to find the actual boot
+timing, since authoring a route from this survey was next on the list:
+
+| cycle | frame | what it shows |
+|---|---|---|
+| 7 ('A') | 205650-menu-a.png | an in-engine tutorial scroll over the live 3D dungeon ("I have summoned to my tower... Press A Button when done"), FPS 14 |
+| 8 ('start') | 205658-menu-start.png | the identical scroll (unchanged -- START does nothing while it's up) |
+| 8 ('A') | 205704-menu-a.png | the scroll is gone: the wizard standing in the dungeon, fully in player control, FPS 14 |
+| 14 ('mark play') | 205824-play.png | the in-game pause menu's Audio page (Music/Sfx Volume sliders), FPS 11 |
+
+So the survey's blind 14-cycle default (same constant used for castlevania)
+overshot here: gameplay was already running by cycle 8, and cycles 9-14 kept
+blind-pressing START into live play, which paused it -- exactly the bug
+session 48 found and named "Gauntlet-class" in `sonic-heroes.route`, except
+this time the evidence was sitting in a survey's own frames, not yet baked
+into a committed route. Authored `routes/gauntlet.route` from this: 8 cycles
+(not 14), then `mark gameplay`, then a movement loop that never presses
+START again (same shape as `castlevania-cod.route`). `targets.toml` gets
+`route = "gauntlet"` and the frame-by-frame note. DRAFT until its own replay
+is checked -- picking 8 because that's where this one run's evidence showed
+clean entry, not because 8 is proven as the fewest/safest cycle count for
+every boot-timing variance this title might show.
+
+**Do not repeat:** a survey's own frames can hide this bug if you only check
+the two frames a prior note already called out (the apparent "14 fps
+in-engine" read and the final mark). Walking every `menu-start`/`menu-a`
+frame pair in order is what found the overshoot here; spot-checking the
+headline frame would have missed it, same as it would have on Sonic Heroes.
+
+### capcom-classics2: queued a survey instead of guessing a second fix
+
+The withdrawn nomination's mark frame reads a "START MENU (Start Game / Load
+Game / Game Settings / Exit Game)" that the current `routes/capcom-
+classics2.route` (an all-`[guess]` arcade-coin draft) never anticipated --
+its guessed button sequence doesn't match this title's real menu structure
+at all. Rather than guess a second blind sequence (low probability of
+landing right on a structure already proven to not match the first guess),
+queued a generic `--route survey` soak, the same method that produced real
+evidence for castlevania-cod and surfaced Gauntlet's trap above. `route=` in
+`targets.toml` still points at the old guess draft until the survey gives
+frames to author from.
+
+### Two new titles from the ranked list, surveyed generically
+
+`scratch/rank_untouched.py`'s output is stale (its `targeted_ids.txt`
+exclusion list predates several sessions' routed titles, so it still lists
+already-routed titles like Super Monkey Ball Deluxe and Sonic Heroes as
+"untouched" -- not fixed this session, worked around by hand-checking
+`docs/testing/titles/routes/` for what's genuinely missing). Of the list's
+top unrouted entries, picked the two with no route file and no prior survey
+at all: **Plus Plumb 2** (rank 101, Perfect) and **Petit Copter** (rank 135,
+Perfect, likely Japanese menus per session 46's list note). Added bare
+`targets.toml` entries and queued generic surveys for both; no frames yet.
+
+### Sonic Heroes: a tiebreaker, not a blind edit
+
+Per last session's own "Next session" item 2: one option was reworking the
+route's cycle count from inference alone (the first good run's mark frame
+read 00:34:73 of elapsed level time at cycle 9, suggesting gameplay starts
+well before that point). Weighed against Gauntlet's lesson above: Gauntlet's
+cycle-8 fix is grounded in a frame-by-frame walk of its own survey showing
+exactly where gameplay started; `sonic-heroes.route` has no comparable
+per-cycle frame record (the two existing runs only shot `menu-start`/`menu-a`
+at the fixed 9-cycle schedule, so there's no frame showing cycle 5, 6, 7 to
+tell where the race window actually begins). Guessing a new cycle count
+without that evidence risks spending a cold Thor slot to learn nothing, or
+worse, to "fix" a count that still races. The session's results so far are 1
+good (session 47) / 1 bad (session 48) of the SAME route and cycle count --
+genuinely a coin flip reading, not yet a verdict either way. Queued one more
+screen of the existing route as a tiebreaker (decides something: 2-of-3 good
+reopens the nomination path under the "two clean confirmations" rule; 1-of-3
+confirms the route needs a real redesign, not another screen). Not nominated
+either way until that lands.
+
+### Queued this session (ref: this session's head, pushed)
+
+Thor (`--device thor --hard-pin --seconds 300`, `screen47.sh`-pattern):
+1. castlevania-cod.route, 2nd replay (1st heat-stopped inconclusively)
+2. gauntlet.route, 1st replay (newly authored)
+3. capcom-classics2, `--route survey` (generic, replacing the guess route as a mark source)
+4. Plus Plumb 2 (544B0004), `--route survey` (new title)
+5. Petit Copter (41510001), `--route survey` (new title)
+6. sonic-heroes.route, 3rd screen (tiebreaker, same route/cycle count)
+
+Request ids: see the table added to OUTBOX.md after queueing below.
+
+### Next session
+
+1. Read all six results above. Open the mark frame AND walk every
+   `menu-start`/`menu-a` pair before writing a number -- Gauntlet's own
+   trap this session was found exactly that way, not by trusting one named
+   frame.
+2. Apply "two heat stops = done on the Thor" to castlevania-cod and
+   gauntlet if either heat-stops again.
+3. Resolve Sonic Heroes from the tiebreaker's result (nominate on 2-of-3
+   good; redesign or drop on 1-of-3).
+4. If capcom-classics2's survey reaches real play, author
+   `routes/capcom-classics2.route` from its frames the same way
+   castlevania-cod and gauntlet were built, and retire the old guess draft.
+5. Ninja Gaiden is still open and NOT queued this session: its one survey
+   frame near the mark (200613-play.png) is too dark to call by eye (FPS
+   overlay reads 0 at that instant) and the title's own target_fps note
+   already says "not counted as gameplay (no input visibly moved him)" --
+   it needs a frame-every look at the full sequence after the "Now
+   Loading..." screen, not a guess that the dark frame is control, before
+   spending another cold slot on it.
+6. Bistro Cupid stopped at story dialogue, not gameplay, with no heat
+   stop (peak xo 69C) -- the full 300s wasn't enough to reach the
+   cooking/free-roam part. Worth a longer survey or a held Nova session
+   (it may also be on the Nova) rather than another 300s Thor attempt.
+7. Then continue the ranked list past Plus Plumb 2 / Petit Copter: Doom 3,
+   Monster Garage, AMF Bowling 2004, ... (fix `scratch/targeted_ids.txt`
+   first so the script's output stops repeating already-routed titles).
+
+## Session 50 (2026-10-01 04:13 PDT, attempt 4 of 4): why session 49 did not finish, and the Thor screening program is blocked by the CPU stop
+
+**Why session 49 did not finish.** It queued six Thor requests and ended on
+`[lane.titleroutes] waiting:` naming them. That is a correct ending, but
+nothing could act on it: GitHub is still suspended, and in overnight mode
+`hakux-lanewatch.timer` is disabled, so no waiter resumed the lane. Hostops
+resumed it by hand at 04:11 PDT. All six requests had voided on
+`thor_coldconfirm.sh`'s CPU stop (cpu-1-9 >= 90 C) within 64-169 s. None
+reached its own mark, so none says anything about its route.
+
+### The cpu-1-9 90 C stop voids every title run, from any start temperature, under either regimen
+
+Hostops' 04:11 diagnosis was a climbing start temperature: six slots 30 s
+apart, cpu-1-9 rising from 41 to 53 C. Its fix makes `coldslot.sh` also
+require cpu-1-9 <= 55 C at the start. The thermal.jsonl of every run since
+the CPU stop went in (02:17 PDT) does not support that diagnosis:
+
+| request | title | regimen | cpu-1-9 at start | +38 s | +69 s | stopped at |
+|---|---|---|---|---|---|---|
+| `0-0-s-1790846753-titleroutes-3234529` | Castlevania (route) | max | **41.8 C** (after 1 h idle) | 76.3 | 84.5 | ~80 s, 91 C |
+| `0-0-s-1790850015-titleroutes-3951103` | Castlevania (route) | max | **41.4 C** | 77.4 | 86.8 | ~80 s, 91 C |
+| `0-0-s-1-1790850024-titleroutes-3953302` | Gauntlet | max | -- | -- | -- | ~70 s, 90 C |
+| `0-0-s-1-1790850027-titleroutes-3953658` | Capcom Classics 2 | max | -- | -- | -- | ~90 s, 93 C |
+| `0-0-s-1-1790850029-titleroutes-3954081` | Plus Plumb 2 | max | -- | -- | -- | ~64 s, 91 C |
+| `0-0-s-1-1790850032-titleroutes-3954284` | Petit Copter | max | -- | -- | -- | ~169 s, 95 C |
+| `0-0-s-1-1790850035-titleroutes-3954488` | Sonic Heroes | max | 51.6 C | 51.6 | 51.2 | **4 s after its route started**, while every logged sample read 49-52 C |
+| `0-0-s-1790853287-titleroutes-569824` (this session's pilot) | Gauntlet | **default** (perf_mode 0) | **39.5 C** | 81.0 | 86.0 | ~74 s, 91 C |
+
+- **Starting cold does not prevent the stop.** Three runs began at 39.5-41.8 C
+  (inside the new <= 55 C gate) and reached 90 C in 74-80 s, the same as
+  the warm-start runs. The die heats about 1 C/s under load. The start
+  temperature only shifts the trip time by a few seconds.
+- **The regimen does not prevent it either.** This session's pilot queued
+  Gauntlet with `--env PERF_REGIMEN=default`. On the Thor that is perf_mode 0,
+  the same value as REST (perf_regimen.json, read back). It reached 81 C at
+  +39 s and stopped at ~74 s. The route frames end at `041701-menu-start.png`,
+  the first menu cycle, which is the same point the MAX runs reached.
+- **A title run at load sits at 94-95 C.** Castlevania's survey
+  (`0-0-s-1790839398-titleroutes-2238193`, 01:12 PDT, before the CPU stop
+  existed) read cpu-1-9 95.0 C at +38 s and held 94.3-95.0 C for four
+  minutes. It played 284 s and showed gameplay. The Psychonauts crash at
+  95 C (thor_coldconfirm.sh line 16) is the reason the stop exists.
+- **Sonic Heroes' stop is a one-sample trip.** The runner force-stopped it
+  4 s after its route began, while every logged thermal sample read 49-52 C.
+  The watchdog acts on a single read, so a boot-time spike voids a run.
+
+**Consequence:** while `CPU_STOP_C=90` acts on a single sample, no Thor
+title screen can reach its mark. The die reaches 90 C 70-80 s after a route
+starts, and every Thor route marks later than that: the shortest, Gauntlet,
+marks about 145 s in (60 s of boot waits, then 8 cycles of ~10.6 s). So
+every run voids before its mark. Re-queuing
+the six, as the 04:11 addendum asks, would spend six cold slots to void six
+more runs. This session queued only the one pilot above, the single test
+that could still distinguish anything (the regimen). It did not re-queue the
+six. **The lane is blocked on a host-tools decision that is not this lane's
+to make:**
+1. raise the stop to what a title run actually reads (94-95 C held for
+   4 min without a crash in Castlevania; Psychonauts crashed at 95 C, so the
+   margin is a judgment call), or
+2. trip only on N consecutive reads >= 90 C (that removes the one-sample
+   Sonic Heroes trip, though not the others), or
+3. stop title screens on the Thor until the replacement fan arrives, and
+   screen on the Nova instead.
+
+None of those is a file this lane owns. The request is in
+`dispatch/board-requests/titleroutes.md` and OUTBOX #397.
+
+**Do not repeat:** do not re-queue a Thor title screen while the CPU stop
+stays at 90 C on one sample. Do not test a cooler start or another regimen
+either; this table already covers both. A queued screen now costs a cold
+slot and returns nothing.
+
+### State for a successor (cold start)
+
+- **Confirmed routes, nominated for the Nova** (#433, lane.local /
+  lane.verdict433): Super Monkey Ball Deluxe, THPS2x, THPS3 (with a caveat:
+  its own mark frame is a level splash, so the confirmation must check its
+  frames), 187: Ride or Die (fixed in session 46, confirmed on the Nova in
+  session 48).
+- **Routes waiting on their first clean Thor replay** (all heat-voided, never
+  actually screened): `castlevania-cod.route` (3 voids, none past the 2nd of
+  its 14 cycles; the open question is whether 14 blind START/A cycles overshoot
+  into a pause the way Gauntlet's survey did; its survey frames 011651/011717
+  show play, but its cycle-by-cycle frames were never walked; do that first,
+  offline), `gauntlet.route` (8 cycles, authored from the survey's frames,
+  2 voids), `sonic-heroes.route` (1 good / 1 bad, plus one tiebreaker void;
+  the route races, see session 48).
+- **Surveys voided before any frames:** capcom-classics2 (its route file is
+  still the all-`[guess]` draft), Plus Plumb 2 (544B0004), Petit Copter
+  (41510001).
+- **Not queued, needs offline frame work first:** Ninja Gaiden (dark frame at
+  the mark, see session 49 item 5) and Bistro Cupid (300 s ends in story
+  dialogue).
+- **Galleon:** blocked by the owner (FPS and polygon flicker). Do not queue it.
+- **Ranked list after these:** Doom 3, Monster Garage, AMF Bowling 2004, ...
+  (`scratch/rank_untouched.py`; fix `scratch/targeted_ids.txt` first, because
+  it still lists routed titles as untouched).
+- **To queue once the stop changes:** `env PERF_ENV= bash scratch/screen50.sh
+  <iso> <stem> <pushed ref>`. With PERF_ENV unset the runs use MAX, the
+  standard. The six from the 04:11 addendum come first, in this order:
+  Gauntlet, Castlevania, Sonic Heroes (tiebreaker), Capcom Classics 2
+  survey, Plus Plumb 2 survey, Petit Copter survey.
+
+## Session 51 (attempt 1 of a fresh worktree resume): why session 50 did not finish, the evidence it left is now gone, and the owner's decision is still pending
+
+**Why session 50 did not finish.** It did not fail: it found the Thor's
+cpu-1-9 >= 90 C stop voids every title-gameplay soak regardless of start
+temperature or regimen, escalated the decision it has no authority to make
+(raise the stop, require consecutive reads, or screen on the Nova), and
+ended on a correct `blocked:` with PR #? merged as `c071ae6e60`
+(`fold: lane/titleroutes (offline) -- titleroutes: session 50`). This
+session reads as a fresh resume of the worktree, merged `origin/master`
+(fast-forward, `6c31c4958c` -> `c071ae6e60`) and re-checked everything
+before writing anything new.
+
+**The owner has not ruled yet.** `host-tools/escalations.md` (10-01 05:13
+PDT) and `dispatch/hold/thor.why` (UPDATE 10-01 05:09 PDT) both still show
+the question open: whether to grant a one-time one-copy-per-title exception
+and screen titleroutes' Thor-only pending titles (Castlevania, Gauntlet,
+Capcom Classics Vol 2, Plus Plumb 2, Petit Copter, Sonic Heroes) on the
+Nova while the fan is dead. `host-tools/hostops-inbox.md` line 1883 (10-01
+05:14 PDT) shows hostops tried to reach lane.local directly and could not
+(no reachable session), so it is recorded there as the durable record
+instead. No entry after that exists in either file. `dispatch/hold/thor` is
+unchanged since: the Thor stays under `lanelocal-fanwait`, queued requests
+<= 480 s still technically admitted by the hold text but hostops' own
+09-30/10-01 ruling (also in `thor.why`) says no new Thor title-GAMEPLAY
+request should be queued until the fan ships. GitHub is still suspended
+(`gh api user` still returns the same 403 "account was suspended"), so the
+offline protocol stays in force and no PR-parking waiter can arm.
+
+**Do not repeat: a dispatch soak's route-frames do not survive to the next
+session.** Session 50's "State for a successor" asked for an offline
+cycle-by-cycle walk of `castlevania-cod`'s survey frames (request
+`0-0-s-1790839398-titleroutes-2238193`) before trusting its 14-cycle route,
+the same way Gauntlet's trap was found. That evidence is gone: neither
+`dispatch/results/` nor `~/hakux-work/nav/` has anything matching
+`2238193`, `2951589` (Gauntlet's survey), or any of the six session-49/50
+request ids (checked by glob across both trees, and across all of
+`/home/justin/hakux-work`). `nav.py` interactive sessions persist in `nav/`
+for days (burnout3's 09-26 session is still there), but these were
+`--route survey` dispatch soaks, and `dispatch/results/` is evidently
+pruned on a much shorter cycle. None of this attempt's three sessions
+(47, 48, 49/50) copied the result dirs into `scratch/judge/` the way
+`judge.py` does for benchmarked titles, so there is no local copy either.
+**Lesson for every future session that reads a dispatch result for its
+frames, not just its verdict: copy it into `scratch/` (e.g.
+`python3 scratch/judge.py <id>`, which already copies the whole result
+dir, not just the verdict) in the same session that reads it, even if the
+analysis is deferred.** The castlevania-cod cycle-by-cycle question, the
+Gauntlet 8-cycle confirmation, the Sonic Heroes tiebreaker's result, and
+whatever capcom-classics2/Plus Plumb 2/Petit Copter's surveys showed are
+now simply unknown; they will have to be re-run once the Thor (or an
+approved Nova exception) is available again. This is lost device time, not
+just lost analysis.
+
+**Offline work this session: fixed `scratch/targeted_ids.txt`, the
+exclusion list session 49's own notes said was stale.** Cross-checked
+every `title_id` with `route = "..."` set in `targets.toml` (50 of them)
+against the file and found five missing: `41560004` (THPS3), `4D57000E`
+(Gauntlet), `5345002B` (Sonic Heroes), `53450038` (Super Monkey Ball
+Deluxe), `545400B0` (Family Guy). Also added three titles that are
+mid-investigation with a bare `targets.toml` entry but no route yet, so
+`rank_untouched.py` does not re-surface them as if untouched: `544B0004`
+(Plus Plumb 2), `41510001` (Petit Copter), `53550001` (Bistro Cupid, 300 s
+survey ended in story dialogue, no heat stop, per session 49's "Next
+session" item 6). Verified: `python3 scratch/rank_untouched.py` now lists
+319 genuinely untouched titles headed by Doom 3, Bicycle Casino, Monster
+Garage, Doom 3: Resurrection of Evil, Greg Hastings' Tournament Paintball
+Max'd, AMF Bowling 2004, High Rollers Casino, Breeders' Cup, AMF Xtreme
+Bowling -- none of them already-routed titles, which is the bug session 49
+flagged and did not have time to fix.
+
+Also re-ran the Proof-section checks as a sanity pass (no routes/targets.toml
+changed this session, so this was a check, not a requirement):
+`python3 docs/testing/titles/titlestate_selftest.py` (all checks passed)
+and `targets.toml` parses via `tomllib` (80 titles, unchanged).
+
+**No device work this session.** The Thor is blocked on the owner's
+decision (above). The Nova has no hold file, but nothing has lifted the
+09-26 21:10 PDT device-role split (Nova = #462 investigation only) or
+granted the one-copy-per-title exception the pending Thor titles would
+need, and escalations.md (10-01 00:13 PDT entry and others) show its queue
+still carries 30+ pinned #462/#474/#414/#569/#507 requests. Taking a Nova
+session for title-pipeline work without that exception would be making the
+owner's open decision myself; not done. The 13 Nova-only titles from the
+original work list that still lack a route and need no copy (Batman --
+blocked on combat, Black Stone, Star Wars Ep. III, Bloody Roar: Extreme,
+Gunvalkyrie, Dino Crisis 3, Buffy, Halo: Combat Evolved, Conker, Halo 2,
+Ninja Gaiden Black, ToeJam & Earl III, Tron 2.0) are a separate question
+(the Nova's queue depth, not the role split) and are listed here for a
+successor, but a held Nova session for them was not attempted this
+session either, since the Nova's queue is not this lane's to jump and no
+addendum has said its #462 priority has lifted.
+
+### State for a successor
+
+- **Still blocked on the owner's Thor-screening decision** (escalations.md
+  10-01 05:13 PDT, thor.why 10-01 05:09 PDT UPDATE, hostops-inbox.md line
+  1883). Nothing to re-queue on the Thor until it lands. Re-check these
+  three files first in any resumed session; do not re-queue the six voided
+  titles on your own judgment.
+- **The castlevania-cod / gauntlet / sonic-heroes / capcom-classics2 /
+  Plus Plumb 2 / Petit Copter evidence is gone.** Treat all six as if their
+  session-49/50 soaks never happened: re-screen from scratch once device
+  time is available, and copy results into `scratch/judge/` immediately
+  this time.
+- **`scratch/targeted_ids.txt` is now accurate** (77 ids, all 50 routed
+  title_ids plus 3 mid-investigation ones). `scratch/rank_untouched.py`'s
+  output is trustworthy again: Doom 3, Bicycle Casino, Monster Garage, Doom
+  3: Resurrection of Evil, Greg Hastings' Tournament Paintball Max'd, AMF
+  Bowling 2004, High Rollers Casino, Breeders' Cup, AMF Xtreme Bowling, ...
+  (all Perfect-rated, all currently unranked/untouched; these need a device
+  to survey/route, same Thor-decision blocker as everything else Thor-side).
+- **13 Nova-only, no-copy-needed titles with no route**, listed above, for
+  whoever next gets a held Nova session cleared for title-pipeline work:
+  Batman (blocked on combat specifically, see session 2), Black Stone, Star
+  Wars Ep. III, Bloody Roar: Extreme, Gunvalkyrie, Dino Crisis 3, Buffy,
+  Halo: Combat Evolved, Conker: Live & Reloaded, Halo 2, Ninja Gaiden
+  Black, ToeJam & Earl III, Tron 2.0: Killer App.
+- **Galleon:** still blocked by the owner (FPS and polygon flicker). Do not
+  queue it on either device.
+
+## Session 52 (attempt 2 of a fresh resume): the usage-budget hold is still active; stopping without new brief work
+
+**Why session 51 did not "finish" the brief (it finished correctly).** Session
+51 ended on a correct `blocked:` (same Thor CPU-stop decision as session 50,
+still with the owner), marked `PR.md` `State: ready`, and that PR was already
+folded into `origin/master` as `ec244430e3` before this session started. This
+session fast-forwarded the branch to `origin/master` (`7993218f2b` ->
+`ec244430e3`, no local commits lost) and re-read the current blocker state
+before doing anything.
+
+**Found: an explicit, actively-enforced, owner-delegated hold against
+resuming this lane at all, right now.** `host-tools/hostops-inbox.md`
+(2026-10-01 06:15 PDT, `[lane.local] usage budget day`): weekly usage is at
+92%+ with no reset until 21:00 PDT tonight; "Do not resume titleroutes or
+any other lane" until then, device work only. hostops has reconfirmed this
+every tick since without resuming the lane (06:10, 10:10, 11:10, 12:10,
+12:53 PDT entries in `escalations.md`, all "no lane resumes/starts
+performed"). The 12:53 PDT tick is the newest entry in either file, and it
+still reads "~8h still to go" to the 21:00 PDT reset. Nothing countermands
+this hold anywhere in `escalations.md`, `hostops-inbox.md`, or
+`dispatch/hold/thor.why`.
+
+This session itself exists because the harness's own resume mechanism
+started it (the outer "attempt 2" resume prompt), not because lane.local or
+hostops decided to lift the hold -- the inbox shows the opposite, reconfirmed
+as recently as 12:53 PDT. Doing the brief's work now (even the no-device
+offline parts from session 51, like another `rank_untouched.py` pass) would
+be exactly the kind of unauthorized lane activity the hold exists to stop
+during a 92%+ usage day; the Thor-screening blocker this lane is stuck on
+also has not moved (`dispatch/hold/thor.why` and `escalations.md` 05:13 PDT
+entry, re-checked, unchanged since session 51 read them). So this session
+makes no routes/targets.toml changes, takes no device hold, queues nothing,
+and stops here -- the same correct-stop pattern session 51 used, but earlier
+in the session, because the blocking fact this time is the budget hold
+itself, not new work to do within it.
+
+**State for a successor:** unchanged from session 51's "State for a
+successor" above (Thor screening blocked on the owner's CPU-stop decision;
+castlevania-cod/gauntlet/sonic-heroes/capcom-classics2/Plus Plumb 2/Petit
+Copter evidence is gone and needs a fresh screen; `scratch/targeted_ids.txt`
+is fixed and `rank_untouched.py`'s 319-title list is trustworthy; 13
+Nova-only no-copy titles are listed for whoever gets Nova time cleared;
+Galleon stays blocked). Additionally: **do not resume this lane again before
+the 21:00 PDT usage-budget reset** (`hostops-inbox.md` 06:15 PDT) unless a
+later entry in `hostops-inbox.md` or `escalations.md` explicitly lifts it --
+check both files' tails first, the same way this session did.
+
+[lane.titleroutes] blocked: the 2026-10-01 92%+ weekly-usage budget hold
+(`hostops-inbox.md` 06:15 PDT, reconfirmed through 12:53 PDT, reset at
+21:00 PDT) says not to resume this lane until then; separately, the Thor
+CPU-stop decision from session 50/51 (`escalations.md` 05:13 PDT,
+`dispatch/hold/thor.why`) is still with the owner. Nothing of mine is
+queued or running on either device. Resolving signal: a `hostops-inbox.md`
+or `escalations.md` entry after 12:53 PDT either lifting the usage hold (at
+or after the 21:00 PDT reset) or ruling on the Thor CPU-stop question.
+
+## Session 53 (2026-10-01, the owner-approved one-time Nova path-finding session): Castlevania: Curse of Darkness reaches gameplay on both variants; a stranded Nova hold cleaned up
+
+`hostops-inbox.md` 14:16 PDT countermanded the 06:15 PDT usage-budget hold
+for this lane alone, for exactly one Nova session: route Castlevania: Curse
+of Darkness (4B4E002D), `<=300s`/`<=6` runs, hard-pinned. That session
+(`castlevania-cod.first-run-20261001T141851` then
+`castlevania-cod.returning-20261001T142355`, both via `nav.py` interactively,
+not a dispatch soak) did the routing, left both route files and the
+`targets.toml` notes update uncommitted, then ended while a foreground
+replay was still running, saying it would "wait" for it -- exactly the
+mistake `ADDENDUM 3` above the brief warns about (a background wait a dead
+session can't resume from). This continuation picked it up cold.
+
+**What session 53 actually found, read from its own frame evidence
+(`scratch/nav/castlevania-cod.*-2026100114*`, 19 and 22 frames):** the
+generic survey route never got this title past Name Entry or the New-Game
+save prompt (sessions 44-48). Two real traps, found by driving it by hand:
+Name Entry's keyboard needs an explicit `press START` to jump the cursor to
+Accept (`A` alone just types the highlighted letter onto the grid), and the
+save-creation prompt right after defaults its cursor to **No** (`axis LX
+min` moves it onto Yes before `A`, or the route silently declines its own
+save and loops back to Name Entry). With those two fixed. first-run reaches
+a confirmed `mark gameplay` frame
+(`scratch/nav/castlevania-cod.first-run-20261001T141851/015-mark-gameplay.png`):
+a player-controlled character, green `Player HP 100/100` HUD, in a gothic
+courtyard facing a gargoyle fountain, and the next frame
+(`016-postplay.png`) shows an attack animation after the stock
+axis-LY/press-A/axis-RX play pattern -- real, moving gameplay, not a menu.
+
+**The returning variant has its own trap, found the same way:** on a disk
+with slot 1 already filled, one `A` on the highlighted Continue does **not**
+load the save -- it replays the full opening recap cutscene and drops back
+to the title with Continue still highlighted. A **second** `A` is what
+reaches LOAD HARD DISK -> slot 1 -> "Is this save data correct?" -> and
+*then* the opening cutscene plays a **third** time before player control.
+Its own mark frame
+(`scratch/nav/castlevania-cod.returning-20261001T142355/018-mark-gameplay.png`)
+is the same courtyard, same HUD, same confirmation pattern
+(`019-postplay2.png` the attack animation after the play pattern).
+
+**What this continuation did, with the device time already spent:**
+- Read `scratch/replay/castlevania-cod.returning-143029/route.log` and its
+  frames: a foreground replay of the *full, already-written* 112-line
+  `castlevania-cod.returning.route` (confirmed by file mtimes: the route
+  file was last written 14:29:52, the replay started 14:30:36) was launched
+  with `scratch/replay.sh`, but `route.sh`'s own `end` line in the log comes
+  from its `TERM`/`INT` trap (`docs/testing/titles/route.sh:158-160`), not
+  from reaching end-of-file -- so this was a `timeout`-bounded foreground
+  peek cut short at 150s, well under `premark.py`'s own 268s pre-mark
+  estimate for this file, not a full confirmation and not a hang. Its five
+  captured frames (boot, continue1-4, c1, c2, seq1, seq2) match the
+  interactive session's own observations exactly, including the recap
+  cutscene's third playthrough (`143254-seq1.png`: "1476, Valachia... out
+  of the darkness and despair, a champion arose -- Trevor Belmont" --
+  same opening crawl, third time, as the header describes), so the route's
+  first ~115s of 268s pre-mark are confirmed unattended; the remainder
+  (through `mark gameplay`) is confirmed only by the interactive nav.py
+  session, same status as `castlevania-cod.first-run.route`, which has
+  never had *any* unattended replay attempt. **Neither route is yet
+  confirmed end-to-end by an unattended `route.sh` run; both remain drafts
+  by this lane's own rule, exactly as their in-file headers already say.**
+  Do not promote either to a soak/nomination until that full replay exists.
+- Found the Nova was no longer running hakuX at all: `dumpsys input` showed
+  `FocusedDisplayId: 0` focused on `org.es_de.frontend` (the launcher), so
+  the app had already exited/returned to the launcher after the 150s peek
+  ended. **Sent no input** (the standing rule: never tap/key a device back
+  into focus) and did not re-launch to chase a second replay -- the
+  session's single-use device-time allowance was already spent on the two
+  nav.py sessions plus this peek.
+- Found `dispatch/hold/nova` still held by `lane.titleroutes` (placed
+  2026-10-01T21:18:18Z / 14:18 PDT, the first-run session's own hold,
+  `<=30 min` and never released). Released it cleanly with
+  `docs/testing/jobs/hold.sh release nova lane.titleroutes` at 14:38 PDT
+  (20 min in, inside budget but no longer doing anything with it).
+- Restored the Nova to its documented rest state
+  (`host-tools/device_rest.conf`): `performance_mode`/`fan_mode` had been
+  left at `2`/`5` (MAX, from the play sessions) and were put back to `0`/`4`
+  (REST), then `KEYCODE_SLEEP` (never `keyevent 96`, per the brief).
+  Verified `mWakefulness=Dozing` afterward.
+- Wrote this NOTES entry, `OUTBOX.md` and `PR.md` (session 53 never wrote
+  either), and committed the route files, `targets.toml`, and these three
+  files together -- the uncommitted route work was session 53's to keep,
+  per `ADDENDUM 3`.
+
+**State for a successor:**
+- Castlevania: Curse of Darkness has two real, frame-confirmed routes
+  (`castlevania-cod.first-run.route`, `castlevania-cod.returning.route`),
+  both still DRAFT pending one unattended `route.sh` replay each (the
+  returning one needs only a longer timeout than this session's 150s peek
+  used, since its first ~115s already checked out; the first-run one has
+  had no unattended attempt at all). That replay is the next thing to do
+  with Nova or Thor time, whichever frees first -- this title's ISO is on
+  both handhelds now (`targets.toml`'s `iso` table), so either works.
+- The usage-budget hold (`hostops-inbox.md` 06:15 PDT, reset 21:00 PDT) and
+  the Thor CPU-stop decision (`escalations.md` 05:13 PDT) are both still
+  standing, unchanged by this one-title exception; do not read this
+  session as a broader reopening. Re-check both files' tails before taking
+  any further device time.
+- Once a route is confirmed end-to-end, it still needs the same-pass
+  benchmark queued (brief Addendum 2) before it counts toward #397/#433.
+
+## Session 55 (2026-10-01, continuing ADDENDUM 4's unattended-replay task)
+
+**Why the previous attempt (the session git log calls "session 54", commits
+`f185e2ac49`/`6b9fbe4093`, both timestamped 14:41 PDT) did not finish the
+brief:** it did real, correct git hygiene -- merged `origin/master` (session
+52's own fold, no conflicts) and rewrote `PR.md`'s `Base:` line to match --
+then stopped without taking any device action at all. ADDENDUM 4 (brief,
+14:42 PDT, one minute after that session's last commit) says exactly this:
+it read `<=300s per Nova run` and `one session` (session 53's one-time
+grant) as having already exhausted this lane's device allowance, when the
+owner's actual instruction was to keep going (ADDENDUM 4 explicitly lifts
+both limits for up to 4 replays of <=420s each). No work was lost; this
+session picks up with the replay ADDENDUM 4 asks for.
+
+**Checked before touching anything:** `dispatch/hold/thor` is still held
+(`lanelocal-fanwait`, unchanged since session 53/54 -- Thor stays off title
+gameplay). `dispatch/hold/nova` had no file (free). `host-tools/hostops-
+inbox.md`'s newest entry is still the 14:16/14:22 PDT countermand pair for
+session 53; nothing after it rescinds ADDENDUM 4. Host clock read 14:43:57
+PDT at session start, inside the window ADDENDUM 4 opened. Nova: 74%
+battery, charging, resting in the `es_de` launcher (the documented rest
+state session 53 left it in).
+
+Took the Nova hold (`hold.sh take nova titleroutes:2467249 ...`).
+`titlestate.py show --device nova` confirms the disk still carries the
+Castlevania save from session 53 (`profile found since
+2026-10-01T13:56:52Z`), so **returning** is the route that matches the
+disk's actual state right now; first-run would need the save wiped first,
+which is out of scope unless returning confirms clean.
+
+**Replay attempt 1 (FAILED, not a route defect): wrong ISO filename.** I
+guessed `4B4E002D-castlevania-cod.xiso.iso` for
+`scratch/replay.sh nova <iso> ...`'s `<iso>` argument instead of reading it
+from `targets.toml`. `dev.sh launch` builds `$ROOT/$2` and starts the intent
+regardless of whether that path resolves, so the app launched to a silent
+no-op and sat on `GameLibraryActivity` the entire time -- confirmed from the
+frames themselves: `144521-boot.png` (the very first shot, 18.4s after
+launch, before any input) is already the Game Library list, not a
+Castlevania boot screen. `focus.py` still reported `FOCUS_OK` through this
+because `GameLibraryActivity` is still `com.jreinach.hakux.debug`'s own
+window, which is all the focus check looks at -- it does not check that the
+foreground window is the *game*, only that it is *hakuX*. So a wrong launch
+path reads as focus-ok right up until the dispatcher's own later
+`FOCUS_FAIL` (it fails for an unrelated reason: the final `wait` step after
+the route's last scripted input runs past the library screen's own idle
+timeout). **Do not take "focus ok" as "the game is running"** -- for a
+manual `replay.sh` invocation, read the ISO argument from `targets.toml`'s
+`iso.<device>` key, never retype/guess it, and treat the `boot` shot itself
+as the first check that the title actually loaded.
+
+Verified the correct path by listing the device directly:
+`adb -s ee317437 shell ls /storage/E6C6-D7AA/Games/XBox/` ->
+`4B4E002D-Castlevania_Curse_of_Darkness.xiso.iso`, matching `targets.toml`'s
+`iso.nova` value exactly. Relaunched `replay.sh` with the corrected
+filename; that attempt was still running, correctly, as this entry was
+being written (foreground, not backgrounded -- see the run's own result
+below for what it found).
+
+**What that run (`castlevania-cod.returning-144635`) actually did, read
+cold at the start of this continuation:** it was cut short, not a
+completion. Its `route.log` stops at `shot loading3` (14:50:09.072), 4.4s
+into a scripted 12.2s wait, with `end` logged at 14:50:13.517 -- route.sh's
+`cleanup`/`end` fires on its `TERM`/`INT` trap (`route.sh:158-160`) *and*
+on normal `EXIT`, so `end` alone doesn't distinguish the two, but the
+route file (`castlevania-cod.returning.route`) has 10 more scripted steps
+after `loading3` -- three more `press A`, `shot loading6`, `shot check1`,
+two `axis LY` + `shot movetest`/`movetest2` pairs, and only then `mark
+gameplay` -- none of which appear in the log or as frame files in that
+directory (it has 4 frames: boot, continue1-3; the successful run below
+has 19). `focus.log` shows `FOCUS_OK` throughout, so it wasn't a focus
+kill either. **ADDENDUM 5 (lane.local, 14:55 PDT), which reads this run as
+having "SUCCEEDED" and reached `mark gameplay` with `145008-loading3.png`
+as evidence, is wrong on the primary evidence** -- `loading3` is a
+scripted shot roughly two-thirds of the way through the route, taken
+*before* the HUD appears (the route's own header: "the HUD (Player HP
+100/100) appeared only after LY min was sent once already overlapping the
+mark", i.e. at `movetest`/`movetest2`, both still ahead of `loading3`).
+The frame does show the right scene (the courtyard, the fountain) because
+the camera doesn't move between `loading3` and the mark, not because play
+had been reached. Not followed: no DRAFT removal, no nomination, from that
+run alone.
+
+**What likely cut it short:** this Bash tool auto-backgrounds a command
+that runs past 120s unless a longer `timeout` is explicitly set (confirmed
+this session: the correctly-ISO'd replay command below hit exactly this at
+120s and had to be picked up with `Monitor`/a blocking poll instead of
+ending the turn on it). The previous session's replay call most likely hit
+the same 120s auto-background, then the session's own turns ran out before
+anything read the backgrounded task's result -- consistent with "that
+attempt was still running... as this entry was being written" being the
+session's last line. A background task's fate in that situation is exactly
+the lane.md warning: it does not survive the session ending. This is not
+new territory, just the same trap with a different trigger (the tool's own
+120s default rather than `run_in_background`/Monitor dying with the
+session) -- worth remembering as its own case: **a bash call that may run
+past 120s needs an explicit `timeout` (or deliberate `Monitor` handling),
+or the tool's own auto-backgrounding silently reproduces the
+"background-task-dies-with-the-session" trap even when nothing was
+backgrounded on purpose.**
+
+## Session 56 (2026-10-01, continuing ADDENDUM 4; closing out the returning route)
+
+Checked before touching anything: `hold.sh who thor` still `lanelocal-fanwait`
+(unchanged, Thor stays off title gameplay); `hold.sh who nova` free. Nova
+battery 72%, awake, focus on `org.es_de.frontend` (the launcher) -- the
+interrupted run above had left the app not running, confirming it never
+reached a state worth treating as a defect in the route itself.
+
+Took the Nova hold (`titleroutes:2485046`). Ran
+`scratch/replay.sh nova 4B4E002D-Castlevania_Curse_of_Darkness.xiso.iso
+docs/testing/titles/routes/castlevania-cod.returning.route 40` as a Bash
+call with an explicit 480s timeout this time (not the tool's 120s default).
+It auto-backgrounded anyway at the 120s mark (task `bpy6hqkr0`) -- picked
+up with `Monitor` on its output file and a blocking poll loop
+(`until grep -q ...; do sleep 5; done`, itself under a 360s Bash timeout)
+rather than ending the turn on it, per the explicit instruction above and
+`roles/lane.md`'s "never end a session waiting on your own background
+task." It ran to completion, exit 0, in 308s (14:55:41 launch to a clean
+`end` at 15:01:02 -- the run's own `PRE+EXTRA` timeout, not an
+interruption).
+
+**`castlevania-cod.returning.route` is genuinely confirmed now.**
+`scratch/replay/castlevania-cod.returning-145541/route.log` runs every
+scripted step in order through `mark gameplay` (15:00:34.692) and about
+28s into the repeat-forever play pattern (visible `press A`/`axis RX`
+attack cycles) before the run's own timeout ended it cleanly -- 19 frames
+captured, matching the route file's 19 `shot` steps exactly. Read the
+frames, not just the log: `150023-movetest2.png` and `150034-gameplay.png`
+both show the HUD (`Player HP 100/100`, green) in the same gothic courtyard
+facing the gargoyle fountain, with the character's stance differing
+slightly between the two (the `axis LY min`/`mid` pair that produced
+`movetest2` visibly moved him), which is what "player control", not a
+static cutscene frame, looks like. Copied the whole run directory to
+`scratch/judge/castlevania-cod.returning-145541/` (the lost-evidence
+lesson from session 51/53 -- `scratch/replay/` is not kept past a
+successor's first cleanup).
+
+**Closed out, per the brief's "hand each replayed route to the benchmark
+stage" step and ADDENDUM 5's item list (its diagnosis was wrong, its
+remaining-work steps were still the right ones once the route was actually
+confirmed):**
+- `targets.toml`'s `4B4E002D` note and the route file's own header updated
+  to say CONFIRMED, with the run's path and timestamps (not "DRAFT").
+  `castlevania-cod.first-run.route` is explicitly left DRAFT in both --
+  it still needs its own unattended replay, and this disk no longer has a
+  clean (no-save) state to replay it from (session 53 wrote slot 1).
+- Added a line to `host-tools/nova-nominations.tsv` (a host file outside
+  this worktree/repo, written directly, not part of this PR's `Files:`)
+  for `castlevania-cod.returning`, replacing the stale 10-01 06:57 comment
+  that had removed Castlevania pending a real route. `autoverdict.sh`
+  queues its own 600s Nova confirmation from that line; not queued here
+  (brief: "Do NOT queue confirmations yourself").
+- Released the Nova hold (`titleroutes:2485046`) and restored rest state
+  (`performance_mode=0 fan_mode=4`, `KEYCODE_SLEEP`; verified
+  `mWakefulness=Dozing`).
+
+**Not attempted this session:** `castlevania-cod.first-run.route`'s own
+unattended replay. ADDENDUM 4 said to attempt it "if [the returning route]
+passes", but it needs a disk with no existing save, and wiping slot 1 to
+get one is a separate, riskier device action (and outside what ADDENDUM 5's
+closeout list asked for) that this session chose not to take on the same
+pass as closing out a route that had already been reported (wrongly) as
+done. Left as explicit open work below.
+
+### State for a successor
+
+- `castlevania-cod.returning` is CONFIRMED and nominated; nothing more to
+  do for it beyond letting `autoverdict.sh` queue and judge its 600s Nova
+  confirmation (not this lane's to queue).
+- `castlevania-cod.first-run.route` is still DRAFT and still has never had
+  any unattended replay attempt (not the 150s-peek, not today's run -- both
+  were the returning route). To confirm it needs a Castlevania disk with no
+  save in slot 1, which means either a fresh copy from lane.xbox or wiping
+  the current Nova save (titlestate.py/saves.py are not this lane's to
+  edit, but using them to manage a save on disk is in scope the same way
+  session 53 used them). Not attempted this session; next device time on
+  this title should start here.
+- The usage-budget hold (reset 21:00 PDT 10-01) and the Thor CPU-stop
+  decision (`escalations.md` 05:13 PDT) both still stand for everything
+  outside this one owner-approved Castlevania exception; re-check both
+  before taking any further device time beyond finishing first-run above.
+- Everything else in session 53's/55's "State for a successor" above is
+  unchanged (13 Nova-only no-route titles, Galleon blocked, Thor's 319
+  untouched titles all blocked on the same CPU-stop decision).
+
+## Session 57 (2026-10-01, ADDENDUM 6: Super Monkey Ball Deluxe on the Nova)
+
+Resumed with attempt counter reset to 0 (per escalations.md's standing
+authority, same reasoning as the 05:13 PDT reset). `git fetch` showed
+session 56's PR had already folded (`575c480d27`); fast-forward merged
+`origin/master` with no conflicts before anything else, per the startup
+hook's "2 commits behind" warning.
+
+Per ADDENDUM 6 (lane.local, 16:50 PDT), the owner copied two more titles to
+the Nova, sha256-verified: `53450038-Super_Monkey_Ball_Deluxe.xiso.iso` and
+`5345002B-Sonic_Heroes.xiso.iso`, both already in `targets.toml` with
+Thor-confirmed routes (sessions 46-48) but never replayed on the Nova.
+This session: Super Monkey Ball Deluxe only, as instructed. Added
+`iso.nova` to both titles' `targets.toml` entries (factual: both ISOs are
+now present on the Nova, verified by `adb ls`), since the next session
+doing Sonic Heroes needs that key too and it's a one-line fact, not device
+work.
+
+**Nova state checked before taking anything:** `hold.sh who nova` free,
+battery 71%. Took the hold (`titleroutes:1790898676`).
+
+**First replay attempt failed on a tooling bug, not the route.** Ran
+`scratch/replay.sh nova 53450038-... super-monkey-ball-deluxe.route 40`
+(480s explicit timeout; it auto-backgrounded at the tool's 120s mark
+regardless, same as session 56 found -- picked up with a Monitor on the
+task's output file rather than ending the turn on it). It printed
+`pre-mark 73s + 40s` and the route was killed by its own `timeout
+$((PRE+EXTRA))` after only 5 of the route's 10 `repeat` cycles -- route.log
+stops mid-`wait 5` at 115.6s, nowhere near `mark gameplay`.
+
+**Root cause: `scratch/premark.py` doesn't account for `repeat N { }`.**
+It sums every `wait` line in the file exactly once, in source order, and
+stops at `mark gameplay` -- so a route whose pre-mark waits are inside a
+`repeat 10 { wait 5; ...; wait 5 }` block gets only 1x those waits, not
+10x. For this route: 3 top-level `wait 20`s (60s) + the repeat body's two
+`wait 5`s counted once (10s, should be 100s) + the trailing `wait 3` (3s)
+= 73s computed vs 163s actual. This is my own scratch tool (not
+`route.sh`, which is not mine to edit, and which itself correctly runs the
+loop `N` times -- only the *estimator* was wrong), so fixed it to track a
+repeat-depth multiplier stack, erroring out instead of silently
+mis-pricing a `repeat forever` before the mark (which cannot legitimately
+appear there) or a route with no `mark gameplay` at all. Re-checked all
+four routes with marks: `castlevania-cod.*` (no repeats before their
+marks) are unchanged at 268s/213s -- the bug is silent exactly when it
+doesn't matter, which is why it survived two sessions of Castlevania work
+without being noticed. `super-monkey-ball-deluxe.route` now reads 163s,
+`sonic-heroes.route` 153s (not used this session, but the next one needs
+it right).
+
+**Second replay, with the corrected timeout, succeeded cleanly.**
+`scratch/replay/super-monkey-ball-deluxe-165430/` (copied to
+`scratch/judge/`): all 26 scripted frames captured in order through all
+10 START/A cycles, `mark gameplay` at 16:57:49.444 -- 191.5s after
+route.sh's own `start` line (16:54:37.951), 198.4s after the launch intent
+(16:54:31) -- then the `play` shot 11s later, before the run's own
+PRE+EXTRA window ended cleanly at 16:58:05 (214.2s total from launch).
+Read both frames, not just the log:
+- `165749-gameplay.png` (the mark): stage "1-1 SIMPLE", timer `034:13`
+  counting down, speed `46 mph`, score `0000000` -- live telemetry, not a
+  static menu.
+- `165759-play.png` (11s later): timer `031:43` (2.5s of game-timer motion
+  per ~10s of wall time -- SMB's in-level clock runs on its own rate, this
+  isn't a mismatch), score now `0006286`, a goal/clear celebration pose
+  with confetti -- the score and scene both changed between the two
+  frames, which a frozen or menu-stuck capture cannot do.
+
+This confirms the route plays live, uncapped by the Thor's two prior
+heat-stops (session 47: 48.5s scored before 70C; session 48: 51s scored
+before 70C) -- the Nova run went the full 214s with no thermal event.
+
+**Closed out:** route file header updated from "DRAFT until a soak
+replays it" to CONFIRMED (both devices, with paths/timestamps).
+`targets.toml`'s note appended (not rewritten) with the session 57
+finding and the premark.py bug, so the session 47/48 Thor history stays
+legible. Added the nomination line to `host-tools/nova-nominations.tsv`
+(a host file outside this repo) for `autoverdict.sh`'s own 600s
+confirmation -- not queued here, per the brief. Released the Nova hold,
+restored rest state (performance_mode=0, fan_mode=4, KEYCODE_SLEEP,
+verified `mWakefulness=Dozing`).
+
+`python3 docs/testing/titles/titlestate_selftest.py` (all checks passed)
+and `targets.toml` parses (tomllib) re-checked before writing this up.
+
+### State for a successor
+
+- Super Monkey Ball Deluxe is done: CONFIRMED on both devices, nominated
+  for Nova fps confirmation, nothing more for this lane to do on it.
+- **Sonic Heroes is the next session's title** (ADDENDUM 6, explicit: "The
+  next session does Sonic Heroes"). Its `iso.nova` key is already in
+  `targets.toml` from this session. Its route's own history is a warning,
+  not a green light: session 48's Thor re-screen of the *same* route hit
+  a frozen PAUSE menu as its mark frame (a START press during the 9-cycle
+  survey timing paused live play, and the route's single post-pause `A`
+  didn't resume it) -- `targets.toml`'s note already flags this and
+  suggests either fewer cycles or a proven un-pause step, neither done
+  yet. Read that note and `sonic-heroes.route` itself before replaying it
+  blind; a Nova replay of the untouched route could hit the same trap.
+  `premark.py sonic-heroes.route` now correctly reads 153s pre-mark if a
+  replay is attempted as-is.
+- The premark.py fix is scratch-only, uncommitted to the repo by design
+  (scratch/ isn't tracked), but it's the reason this session's first
+  attempt wasted a Nova cycle -- worth a line in whatever hands off
+  tooling notes, since a future session or lane rebuilding similar
+  tooling from scratch could reintroduce the same undercount.
+- Thor CPU-stop decision, Galleon block, and the 13 Nova-only no-route
+  titles from prior sessions are all unchanged.
+
+## Session 58 (2026-10-01, resumed)
+
+**Why session 57 did not continue further:** it did not fail. It finished
+its one assigned title (Super Monkey Ball Deluxe, per ADDENDUM 6's explicit
+"this session: Super Monkey Ball Deluxe only"), committed, set PR.md
+`State: ready`, and correctly stopped there rather than starting the next
+title in the same session (session 57's own "State for a successor" names
+Sonic Heroes as the next session's work). `git fetch` shows `origin/master`
+is still at `575c480d27` (session 56's fold) -- session 57's PR has not been
+folded yet; GitHub is still suspended (`gh auth status`: invalid token /
+"account was suspended"), so this stays on the OFFLINE PROTOCOL (PR.md, not
+`gh`). Continuing from here with Sonic Heroes, per that hand-off.
+
+Checked before touching anything: `hold.sh who nova` free; `hold.sh who
+thor` still held by `lanelocal-fanwait` (Thor stays off title gameplay,
+unchanged). Nova battery 69%, asleep (clean rest state from session 57).
+Took the Nova hold (`titleroutes:1790900058`).
+
+**Sonic Heroes' trap was exactly the fixed-cycle guess session 48 found: a
+START press during live play pauses it, and the old route's single
+post-pause `A` never resumed it.** Rather than replay the same route and
+hope for a better roll, drove it live with nav.py instead, on both disk
+states this title can be found in:
+
+1. `nav/sonic-heroes.observe-20261001T170546` (fresh Nova copy, no Game
+   Data): title (~106s cumulative wait) -> START -> "no Game Data... Create
+   Game Data 01?" (Create highlighted, A) -> "created, press A" (A) -> Main
+   Menu (1P PLAY highlighted, A) -> STORY (highlighted, A) -> TEAM SONIC
+   (highlighted, A) -> an 88s in-engine cutscene with no input -> Seaside
+   Hill, full HUD, timer running. Confirmed live control with a stick
+   test (position changed between `movetest-left`/`movetest-right` frames,
+   camera no longer locked to the cutscene's framing).
+2. Force-stopped and relaunched to observe the disk state the first session
+   left behind (game data now in slot 01) --
+   `nav/sonic-heroes.returning-observe-20261001T171059`: title -> START ->
+   slot grid (No.01 highlighted, A) -> Start/Delete/Cancel (Start
+   highlighted, A) -> Main Menu -> **the identical 1P PLAY/STORY/TEAM
+   SONIC/cutscene path as session 1**, reaching gameplay about 85s after
+   team select. So both disk states need exactly ONE START and THREE A
+   presses to reach Main Menu (different screens, same count, same
+   default-highlighted option each time) -- one route covers both, which
+   matters because the dispatch confirmation will find whatever state the
+   disk is actually in, not nav state (the Castlevania lesson, session
+   56's ADDENDUM 7).
+
+Rewrote `routes/sonic-heroes.route` from these two sessions: single timed
+presses (no `repeat N` cycle-counting) for the boot-to-Main-Menu stage, then
+three more single A presses for 1P PLAY/STORY/TEAM SONIC, then a single
+generous wait (100s, against an observed 85-88s) through the cutscene with
+**no further presses at all** -- the fix for the START-during-play trap is
+simply never sending another START once the level might already be live.
+`premark.py docs/testing/titles/routes/sonic-heroes.route` -> 271s;
+`route.sh --check` -> ok.
+
+**Replayed unattended** (`scratch/replay.sh nova ... 40`, foreground with an
+explicit 340s timeout -- this one ran to completion inline without hitting
+the tool's 120s auto-background cutoff session 56/57 both hit, so nothing
+needed a Monitor/poll loop this time): all 17 scripted frames captured in
+order, `mark gameplay` at 17:21:33 (Seaside Hill, HUD live, timer running),
+then three `play` shots at 17:21:41/17:21:50/17:22:01 with the score
+(60->80), ring count (006->008) and timer all advancing and Sonic's
+pose/position visibly different frame to frame (running, then airborne in a
+jump) -- live, evolving play, not a stuck menu or cutscene. Copied the run
+to `scratch/judge/sonic-heroes-171639/` (the lost-evidence lesson).
+
+**Closed out:** route file header updated from DRAFT/the old coin-flip
+account to CONFIRMED with this session's evidence (old Thor history kept,
+not deleted, so the trap stays documented). `targets.toml`'s note rewritten
+to lead with the fix and the confirmation, keeping the session 46-48 history
+as context. Added the nomination line to `host-tools/nova-nominations.tsv`
+(a host file outside this repo) for `autoverdict.sh`'s own 600s
+confirmation -- not queued here, per the brief. Released the Nova hold,
+restored rest state (`performance_mode=0 fan_mode=4`, `KEYCODE_SLEEP`,
+verified `mWakefulness=Dozing`).
+
+`python3 docs/testing/titles/titlestate_selftest.py` (all checks passed) and
+`targets.toml` parses via `tomllib` (80 titles) re-checked before writing
+this up.
+
+### State for a successor
+
+- Sonic Heroes is done: CONFIRMED on the Nova (its only copy besides the
+  Thor, where sessions 47/48 already screened it, inconclusively, before
+  this route existed), nominated for the Nova fps confirmation, nothing
+  more for this lane to do on it.
+- The Thor CPU-stop decision, Galleon block, and the Nova-only no-route
+  titles from prior sessions are unchanged. No specific next title was
+  named for this session by an addendum; absent one, the next session
+  should check for a new addendum first and otherwise continue down
+  session 56/57's still-open backlog (13 Nova-only no-route titles; the
+  Thor's 319 untouched titles all blocked on the fan/CPU-stop decision).
+- **A pattern worth keeping for any title with a "no save / has a save"
+  fork:** don't assume the two paths need different route files. Check
+  whether they converge on press COUNT first (drive both from a fresh nav
+  session) -- here they did, which saved writing and maintaining a
+  `.first-run`/`.returning` pair.
