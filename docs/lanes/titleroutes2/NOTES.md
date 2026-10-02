@@ -170,3 +170,28 @@ these menus and two guard pairs absorb a one-press shift.
 Route `halo-2.route` written: 10 START/A cycles, 3 x (look up, look down, A, step + X) with a frame per leg, mark, a walk
 loop (forward, X, turns, A, B, small up/down looks) with a frame per leg and no START. `route.sh --check`: route ok.
 `targets.toml`: `route = "halo-2"` on 4D530064 (DRAFT); `tomllib` 83 titles; `titlestate_selftest.py`: all checks passed.
+
+Queued (Nova, `--hard-pin`, ref `93203cee0a`, `--no-expect`): `halo-2` replay 1 `1790948386-titleroutes2-3358105` (420 s);
+ToeJam & Earl III survey `1790948390-titleroutes2-3358315` (300 s, the next backlog title; Tron 2.0 has no targets.toml
+entry, so it waits).
+
+### Halo 2, replay 1 (`1790948386-titleroutes2-3358105`, 77 frames, read in full)
+
+No ROUTE FAIL. The saved profile did list "Halo0001", but "Create New Profile" stayed lit, so the path was the survey's
+exactly (keyboard default "Halo0002"); the Armory came on cycle 7's A (`064224`, one cycle sooner: "One Size Fits All").
+Three guard pairs were pause + Continue. Then the look block:
+
+- `064314` look-up (RY min = stick UP): view tilts up, the top light test answered.
+- `064318` look-down (RY max): the view goes FURTHER up (ceiling lights). By now the look is inverted, as in Halo CE's
+  calibration ("Vertical looking is now inverted", then "B to try it the other way / A to leave it").
+- `064321` A, `064325` step + X: unchanged.
+- `064331` (2nd round RY min): level again, "Updating profile... done" (the look setting saved).
+- `064335` RY max: straight up at the ceiling hatch; the third round never comes back level.
+
+Mark `064358`. The whole play window (`064403..064708`, 40 frames) is the ceiling: panels, light strips, yellow beams,
+the ring's top light from below at `064346`. The view turns with RX and the room moves a little with LY, but the pitch
+is pegged up, and the play loop's 0.4 s up/down taps cancel. Live (29 fps), but not a reading of play, and no frame
+shows what the Armory asks for after the look test. **Do not repeat: a look block that pushes up and down in equal
+amounts leaves the camera wherever the game's invert switch put it; after an invert question the stick's sense is
+unknown open-loop.** Next: a held Nova nav session to read the invert question, re-level the view, and map what the
+Armory asks next (walk to the tram?), before a v2.
