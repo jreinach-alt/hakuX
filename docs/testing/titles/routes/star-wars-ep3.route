@@ -23,9 +23,22 @@
 # So: 15 START/A cycles (13 reached play; the last 2 are a guard against a
 # slower boot, and pause + continue if play came on time), mark, then a
 # loop with no START that walks four directions in turn (so no one wall
-# holds it) and attacks with X and Y. NOT YET REPLAYED. Disk-state risk: the
-# survey left a 4C410017 save in the store; if the title now offers a
-# Continue/Load menu the frames will show which way START/A took it.
+# holds it) and attacks with X and Y. Disk-state risk: the survey left a
+# 4C410017 save in the store; if the title offers a Continue/Load menu the
+# frames will show which way START/A took it.
+# Replay 1 (1790939919-titleroutes2-1446307, ref 282a5af148): no ROUTE FAIL,
+# the same path (no Continue menu; play on cycle 13's A, 043818; cycle 14
+# pause + continue); the mark (043846) is live play -- the player is
+# ANAKIN (HUD portrait), Obi-Wan is the AI partner, beside their wrecked
+# starfighter. Then 11 near-identical frames to the end (static_frac
+# 0.82): the four legs cancel out, so he never left the spot, and the one
+# shot per loop lands at the same point of the loop every time. No enemy
+# and no door in any frame. So this version is an EXPLORING loop, not a
+# benchmark loop: net movement up (5 s up, 2.5 s right, 2 s left, 1 s
+# down per cycle, sliding along whatever wall it meets), X/X/Y combos on
+# each leg, and a frame on every leg, so the frames map the hangar and
+# show whether droids ever come. Its scored fps carries ~5 screencaps a
+# cycle: read it as a route check only.
 wait 20
 shot boot20
 wait 20
@@ -45,37 +58,45 @@ shot pre-mark
 mark gameplay               # CHECK: the cruiser hangar, the health HUD, no PAUSED panel
 repeat forever {
     axis LY min
-    wait 1.5
+    wait 2.5
     press X
-    wait 0.4
+    wait 0.3
     press X
-    wait 0.4
+    wait 0.3
     press Y
-    wait 0.6
+    wait 0.4
+    shot up1
     axis LY mid
     axis LX max
-    wait 1.2
+    wait 2.5
     press X
-    wait 0.4
+    wait 0.3
     press Y
-    wait 0.6
-    axis LX mid
-    axis LY max
-    wait 1.2
-    press X
     wait 0.4
+    shot right
+    axis LX mid
+    axis LY min
+    wait 2.5
     press X
-    wait 0.6
+    wait 0.3
+    press X
+    wait 0.3
+    press Y
+    wait 0.4
+    shot up2
     axis LY mid
     axis LX min
-    wait 1.2
+    wait 2.0
     press Y
     wait 0.4
     press A
-    wait 0.8
+    wait 0.6
+    shot left
     axis LX mid
-    axis LY min
+    axis LY max
     wait 1.0
     axis LY mid
-    shot play
+    press X
+    wait 0.4
+    shot back
 }

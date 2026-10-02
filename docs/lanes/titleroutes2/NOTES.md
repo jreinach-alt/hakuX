@@ -76,6 +76,19 @@ Device pin read back from each `.req` as `nova`. 3 x (420 + 90) s = 25.5 min, in
   phase. **Do not repeat: a START/A cycle with 5 s waits is a sampling clock; a screen shorter than the cycle is hit or
   missed by phase.** Fix `8fee881326`: START/A pairs 1.2 s apart for ~110 s, a frame every 4 pairs. Replay 2 queued:
   `1790940923-titleroutes2-1761085`.
+- **Star Wars Ep. III, replay 1** (`1790939919-titleroutes2-1446307`): no ROUTE FAIL; same path as the survey (no
+  Continue menu despite the store's 4C410017 save), play on cycle 13's A (`043818`), the mark `043846` is live play.
+  The player is Anakin (HUD portrait); Obi-Wan is the AI partner. Then 11 near-identical frames to the end
+  (static_frac 0.82): the four legs of the loop cancel out, so he never left the wrecked starfighter, and the one shot
+  per loop lands at the same loop phase every time. No enemy and no door in any frame. Scorer: 183 s of play, median
+  30.0, 97.2% at 30+, no hang, worst hitch 484 ms -- over a parked view, so not a reading of play. **Do not repeat: a
+  loop whose legs cancel never leaves its spot, and one shot at a fixed loop phase can make a moving loop look frozen
+  (or a frozen one look alive); shoot on every leg.** Route v2 is an exploring loop (net movement up, a frame per
+  leg); queued only when the Nova has room.
+
+Also queued (one backlog survey, per the one-at-a-time rule): Ninja Gaiden Black `1790941402-titleroutes2-1890328`
+(generic survey, 300 s, ref `8fee881326`). Chosen over Halo 2 because Halo 2 opens on the same kind of look-training
+as Halo CE, which `halo-ce` replay 1 is about to test; NGB has no such known trap.
 
 Pilot verdict written to `dispatch/pilots/titleroutes2.ok` (04:28 PDT) after reading the Gunvalkyrie replay; queued
 after it: Gunvalkyrie replay 2, `halo-ce` replay 1 (`1790940485-titleroutes2-1612232`, ref `685c52e514`), Bloody Roar
