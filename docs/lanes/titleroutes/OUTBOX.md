@@ -779,3 +779,43 @@ Per ADDENDUM 15: checked all 13 of session 51's Nova-only, no-copy-needed, no-ro
 The other 8 (Dino Crisis 3, Buffy, Halo: Combat Evolved, Conker: Live & Reloaded, Halo 2, Ninja Gaiden Black, ToeJam & Earl III, Tron 2.0) are not yet queued -- blocked on this session's own pilot gate, which needs a reviewed verdict written before more can be queued. Did not try to force past it or wait idle for these 4 to land, per ADDENDUM 15's own "do not wait idle for the device to clear".
 
 [lane.titleroutes] waiting: the 4 queued surveys above on the Nova (`1790921686-titleroutes-1080767`, `1790921690-titleroutes-1082096`, `1790921692-titleroutes-1082566`, `1790921696-titleroutes-1084287`). Once the last lands: review the frames, write `dispatch/pilots/titleroutes.ok`, then queue the remaining 8 titles' surveys.
+
+## #397 -- 2026-10-02 (session 64, resumed per hostops ADDENDUM 16)
+
+Reviewed the 4 pass-1 surveys session 63 queued, frame-by-frame rather than from `verdict.json`'s fields alone:
+
+| title | title_id | request id | reached_gameplay | note |
+|---|---|---|---|---|
+| Black Stone: Magic & Steel | 58490004 | `1790921686-titleroutes-1080767` | **no** | stuck on the character name-entry screen; blind menu-A presses typed garbage into the name field (same open-loop trap ADDENDUM 11 found in Castlevania's first-run route). Needs a `waitfor`/`press-until` route past name entry before it can be authored -- left as a dedicated next task, not attempted this session. |
+| Star Wars Episode III: Revenge of the Sith | 4C410017 | `1790921690-titleroutes-1082096` | yes | real lightsaber-duel combat across two distinct scene compositions; fps_window_median 30.0, fps_ok_share 0.8766. |
+| Bloody Roar: Extreme | 48550001 | `1790921692-titleroutes-1082566` | yes | **real severe slowdown**: live STAGE 1 fight, on-screen FPS counter itself reading 10, fps_window_median 10.83 / fps_ok_share 0.0. Flagging for whoever owns per-title slowdown triage (not this lane) -- this is a genuine performance finding, not a route/state problem. |
+| Gunvalkyrie | 49470017 (iso prefix `5345000B`, pre-existing mismatch) | `1790921696-titleroutes-1084287` | yes | real canyon traversal across two distinct frames; fps_window_median 59.94, fps_ok_share 1.0. |
+
+Wrote the verdict to `dispatch/pilots/titleroutes.ok`. Lesson worth repeating: Black Stone's `verdict.json` fields looked
+exactly as clean as Gunvalkyrie's (no hitches, no crash, fps_ok_share 1.0) -- only opening the frames caught that it
+never left the menu. Every survey needs the frame read, not just the ones a metric flags as suspicious.
+
+Queued 2 of the remaining 8 titles (two at a time this session, not four, per session 63's own "do not repeat" note):
+Dino Crisis 3 (`1790928772-titleroutes-2771139`) and Buffy the Vampire Slayer (`1790928774-titleroutes-2773088`), both
+Nova, `--route survey --seconds 300 --hard-pin`.
+
+[lane.titleroutes] waiting: the 2 queued surveys above on the Nova. Once both land: review the frames, update
+`dispatch/pilots/titleroutes.ok`, queue the remaining 6 (Halo: Combat Evolved, Conker: Live & Reloaded, Halo 2, Ninja
+Gaiden Black, ToeJam & Earl III, Tron 2.0: Killer App).
+
+## #397 -- 2026-10-02 03:00 PDT (session 65, attempt 4 of 4)
+
+| title | device | route | replayed? | what gameplay looked like | fps (screening) |
+|---|---|---|---|---|---|
+| Dino Crisis 3 (43430003) | Nova | `dino-crisis-3` | **yes** (`1790931260-titleroutes-3615015`) | corridor + HUD at the mark, then boosting into a switch room, activating it; live throughout | median 27.16, 15.6% at 30+; two first-compile shader stalls (15.1 s, 12.4 s) on a freshly cleared cache read as hangs |
+| Buffy the Vampire Slayer (45410012) | Nova | `buffy` | replay 1 (`1790931264-titleroutes-3615749`): reached play, then stuck 4 min at a ledge gap | canyon, live for ~1 min, then one frozen view | 95.4% at 30+, no hang (over a stuck window: not a usable reading) |
+| Buffy | Nova | `buffy` (B jumps) | replay 2 `1790932722-titleroutes-3976729`: reached play, stuck again at a ledge ("Push into low ledges to climb onto them") for ~4 min | live canyon at the mark, then one frozen view | 96.3% at 30+ (stuck window). Two failed replays: needs a path found by sight |
+
+The survey for Dino Crisis 3 had scored the Options screen (a START press in play opened it); the route avoids START
+after the mark. Also queued: pass-1 surveys for Halo: Combat Evolved (`1790933948-titleroutes-171581`) and Conker
+(`1790933948-titleroutes-171701`). This lane is at its attempt cap: a successor should start from NOTES.md's session 65
+"State for a successor", which names the three unreviewed requests above.
+
+[lane.titleroutes] waiting: `1790933948-titleroutes-171581` (Halo CE survey) and `1790933948-titleroutes-171701`
+(Conker survey) on the Nova. This session cannot be resumed; hostops
+should hand them to a successor.

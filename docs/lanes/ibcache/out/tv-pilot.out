@@ -1,0 +1,8 @@
+== 1-1790638705-lane.ibcache-66240
+VERDICT Grand Theft Auto: San Andreas thor FAIL(void: thermal-pause: thermal-pause-F8 1/1 began after +74 s and by +107 s (device 09-29 03:59:53); still paused at the last reading, relative to the mark) gameplay=252.9s fps_ok=None crash=False hang=True audio_short=0.568992 battery_w=+1.92 net_w=4.043 j_per_frame=None
+
+
+== 1-1790638712-lane.ibcache-67880
+VERDICT Grand Theft Auto: San Andreas thor FAIL(void: thermal-pause: thermal-pause-F8 1/1 began after +74 s and by +107 s (device 09-29 04:10:34); still paused at the last reading, relative to the mark) gameplay=251.7s fps_ok=None crash=False hang=True audio_short=0.523988 battery_w=+2.11 net_w=4.233 j_per_frame=None
+
+

@@ -1,0 +1,16 @@
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 4 and 5b in docs/lanes/ibcache/NOTES.md
+priority release: '0.5' on #507
+queued 1-1790708501-lane.ibcache-1378207
+  soak: Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso, 360s, route crimson-skies, pinned to nova
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 4 and 5b in docs/lanes/ibcache/NOTES.md
+priority release: '0.5' on #507
+queued 1-1790708501-lane.ibcache-1378258
+  soak: Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso, 360s, env HAKUX_IBC=0, route crimson-skies, pinned to nova
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 4 and 5b in docs/lanes/ibcache/NOTES.md
+priority release: '0.5' on #507
+queued 1-1790708502-lane.ibcache-1378332
+  soak: Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso, 360s, env HAKUX_IBC=0, route crimson-skies, pinned to nova
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 4 and 5b in docs/lanes/ibcache/NOTES.md
+priority release: '0.5' on #507
+queued 1-1790708502-lane.ibcache-1378456
+  soak: Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso, 360s, route crimson-skies, pinned to nova

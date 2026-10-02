@@ -1,12 +1,79 @@
-# titleroutes: session 63 -- queued pass-1 surveys for 4 of the 13-title Nova backlog (ADDENDUM 15); pilot gate hit, 8 titles still to queue (#397)
+# titleroutes: sessions 64-65 -- Dino Crisis 3 route confirmed by replay; Buffy reaches play but sticks at a ledge in 2 replays (#397)
 
 State: ready
 
 Lane: titleroutes          Issue: #397 (per-title gameplay fps; 0.5 tracking #433)
-Base: master @ 380dda3401 (merge of origin/master into this branch, carrying session 61's own fold back in plus localjobs/litcompile569/forzadecay414)
-Files: docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/OUTBOX.md, docs/lanes/titleroutes/PR.md
-Prediction: none: queued 4 generic blind surveys via request.sh (no route/targets.toml edit this session; no code under test)
-Needs device: no (direct hold) -- 4 survey requests are queued on the Nova (behind lane.ibcache's in-flight run), none held or driven live this session
+Base: master @ f6792eb9b6 (merged in; it already carries 17c3bc721f, the first cut of both routes)
+Files: docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/OUTBOX.md, docs/lanes/titleroutes/PR.md, docs/testing/titles/routes/buffy.route, docs/testing/titles/targets.toml
+Prediction: none: route data (inputs) and notes, no emulator code; route checks are --no-expect dispatch runs
+Needs device: no direct hold -- route-check requests queued on the Nova via request.sh
+
+## What changed (session 65)
+
+Reviewed the two surveys session 64 queued, frame by frame (copies in scratch/judge/):
+- Dino Crisis 3 (`1790928772-titleroutes-2771139`) reached the first corridor with the HUD, then a START press in play
+  opened OPTIONS and the whole scored window was that menu.
+- Buffy (`1790928774-titleroutes-2773088`) reached live play in the Spanish Mission canyon after 4 START/A cycles.
+
+Routed both from those frames rather than queuing two more blind surveys (ranked by probability x win: both have a
+known path into play, and a route converts a survey into something the benchmark stage counts):
+
+| title | route | replay request | replayed? | what the frames show | fps (screening, Nova) |
+|---|---|---|---|---|---|
+| Dino Crisis 3 (43430003) | `dino-crisis-3` | `1790931260-titleroutes-3615015` | **yes, confirmed** | mark `020712-gameplay.png` = corridor + HUD; later frames boost into the next room, answer "Activate switch?", switch turns green; no menu | median 27.16, 15.6% at 30+, two first-compile shader stalls 15.1 s / 12.4 s (cache cleared by new apk) -> hang=true; not nominated |
+| Buffy (45410012) | `buffy` | replay 1 `1790931264-titleroutes-3615749` | reached play, then stuck | mark `021330-gameplay.png` = canyon, live; moves for ~1 min, then 8 identical frames (sky/tree) for 4 min under the tip "Run and press B to jump between ledges" | 95.4% at 30+, no hang, worst hitch 222 ms -- but over a stuck window |
+| Buffy | `buffy` (B jumps added, ref 68bd2e6df6) | replay 2 `1790932722-titleroutes-3976729` | reached play, stuck again | mark `030510-gameplay.png` live; from `030613` 10 identical frames (sky, lamp post) under "Push into low ledges to climb onto them" | 96.3% at 30+, no hang -- over a stuck window. Two failed replays: Buffy stopped, stays DRAFT; needs a path found by sight (nav.py / routedriver) |
+
+Both routes are open-loop by necessity: `waitfor` reference crops do not reach a dispatched run (request.json embeds the
+route text only; ADDENDUM 13's Castlevania run died on a missing crop). They are built so a stray press lands harmlessly
+(Dino Crisis 3: B closes Options/the tutorial and is Jump in play; Buffy: START/A in play is pause + Resume, B is EXIT on
+the pause panel).
+
+Local checks: `bash dispatch/bin/titles/route.sh --check` on both routes (route ok, exit 0); `targets.toml` parses with
+tomllib (82 titles); `python3 docs/testing/titles/titlestate_selftest.py` (all checks passed).
+`bash docs/testing/preflight.sh --allow-tracker` on the merged head: "preflight passed" (territory, board files, nv2a
+index ok; the coverage gate DID NOT RUN because gh is suspended, and it fails open, so that part is unchecked).
+
+Also queued (pass-1 surveys, unreviewed; named for a successor in NOTES.md): Halo: Combat Evolved
+`1790933948-titleroutes-171581`, Conker: Live & Reloaded `1790933948-titleroutes-171701`.
+
+Release note (none): route data and notes only, no emulator code.
+
+## What changed (session 64)
+
+Resumed per hostops ADDENDUM 16 (01:10 PDT): session 63 ended correctly on `[lane.titleroutes] waiting:`, naming its 4
+queued request ids, but all 4 finished after the session ended, so the review step needed a fresh session -- this is
+the stage's normal "queue, then come back" pattern, not a strand.
+
+Merged `origin/master` first (11 commits behind, fast-forward, clean). Checked `dispatch/running/`: Nova still busy
+(`lane.ibcache-1136287`), so no hold needed -- this session is review + queuing only.
+
+**Reviewed all 4 surveys frame-by-frame, not from `verdict.json` alone.** 1 of 4 (Black Stone: Magic & Steel,
+`1790921686-titleroutes-1080767`) did NOT reach gameplay despite fields that looked clean (no hitches, no crash,
+fps_ok_share 1.0, 59fps) -- every post-mark frame is the character name-entry screen, with blind menu-A presses having
+typed garbage into the name field. Same open-loop trap ADDENDUM 11 found in Castlevania's first-run route. The other
+3 (Star Wars Episode III `1790921690-titleroutes-1082096`, Bloody Roar: Extreme `1790921692-titleroutes-1082566`,
+Gunvalkyrie `1790921696-titleroutes-1084287`) genuinely reached gameplay -- Bloody Roar's is a real severe slowdown
+(on-screen FPS counter itself reads 10 during live combat), flagged for per-title slowdown triage, not a route problem.
+Full table and frame citations in NOTES.md/OUTBOX.md.
+
+Checked whether a `waitfor`-based fix for Black Stone could be queued now: the mechanism is live in the dispatcher
+snapshot (`grep -c waitfor dispatch/bin/titles/route.sh` = 20) and the checkout is caught up. Not attempted this
+session, to stay inside ADDENDUM 16's actual scope (review + queue the next batch) -- left as a dedicated next task.
+
+Wrote the review to `dispatch/pilots/titleroutes.ok` (prepended, via `python3`). Queued 2 of the remaining 8 titles
+(two at a time, per session 63's own "do not repeat" note): Dino Crisis 3 (`1790928772-titleroutes-2771139`) and Buffy
+the Vampire Slayer (`1790928774-titleroutes-2773088`), both Nova, `--route survey --seconds 300 --hard-pin`.
+
+`python3 docs/testing/titles/titlestate_selftest.py` (all checks passed) and `targets.toml` via `tomllib` (80 titles,
+unchanged) -- re-run as a check, since nothing under those files changed this session.
+
+Release note (none): queuing/notes only, no code or route/targets.toml change this session.
+
+Next session: review the 2 queued surveys' frames once they land (same frame-by-frame discipline, trust nothing from
+verdict.json alone), update `dispatch/pilots/titleroutes.ok`, queue the remaining 6. Black Stone's name-entry route
+fix is a separate, larger task (author route + reference crops + verify), not a quick add to a review session. Star
+Wars Episode III, Bloody Roar, and Gunvalkyrie are ready for route-authoring from their survey frames.
 
 ## What changed (session 63)
 
