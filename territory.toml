@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 296
-updated_utc = "2026-10-02T21:05:47Z"
+wave = 297
+updated_utc = "2026-10-02T22:08:57Z"
 
 [lane.issuerecon]
 issues = ["433"]
@@ -60,6 +60,11 @@ issues = []
 standing = false
 files = ["docs/testing/jobs/hold.sh", "docs/testing/jobs/selftest.d/99-hold-take.sh", "docs/lanes/holdwait/**"]
 note = "STARTED (hostops 2026-10-01 22:2x PDT), briefs/holdwait.md, Issue: none (harness defect): hold.sh's own documented contract ('take and then wait for running/ to empty of <label> yourself') has no enforcement. lane.titleroutes session 61 took hold/nova at 21:58:16 PDT and force-stopped hakuX while lane.ibcache's dispatcher-admitted #507 request was still running (admitted 21:55:54, killed at 132 of 420s) -- confirmed via `adb logcat -b events` am_kill lines, not a crash or thermal event. Build a `hold.sh wait-idle <label> <timeout_s>` subcommand that polls dispatch/running/*.owner and actually enforces the wait, then make lane.titleroutes' own convention use it so the sequence is not just documented but followed. docs/testing/jobs/hold.sh and selftest.d/99-hold-take.sh LENT from [lane.toolsmith]'s standing claim -- RETURN there when this PR folds."
+[lane.stallmeasure569]
+issues = ["569"]
+standing = false
+files = ["docs/lanes/stallmeasure569/**"]
+note = "ROW ADDED (hostops 2026-10-02 ~15:10 PDT, inbox ask + fleet.py RUNNING WITH NO TERRITORY ROW): hakux-lane-stallmeasure569 has been RUNNING since 2026-10-02T22:01:14Z (logs/lane/stallmeasure569.20261002T220114Z.json; briefs/stallmeasure569.md) with NO territory row -- same recurring gh-auth-suspension gap as [lane.issuerecon]/[lane.localforge]/[lane.pathclass]/[lane.collapse433]/[lane.tronhang672] above. Brief (owner, 2026-10-02 ~15:05 PT, shader track): offline measurement of whether #569's shipped shader pre-build (shaderprebuild569, folded b1cea467c6) removed first-play compile stalls, using runs already on disk; no device unless the data cannot answer the question. Files per the brief's own 'Territory requested' line: docs/lanes/stallmeasure569/** -- confirmed free (no other row claims this path)."
 
 [retired.hilodot10]
 issues = ["10"]
