@@ -3,7 +3,7 @@
 State: ready
 
 Lane: titleroutes          Issue: #397 (per-title gameplay fps; 0.5 tracking #433)
-Base: master @ 8e3b1f2ad2 (merge of origin/master into this branch, carrying session 61's own fold plus localjobs/litcompile569/forzadecay414)
+Base: master @ 380dda3401 (merge of origin/master into this branch, carrying session 61's own fold back in plus localjobs/litcompile569/forzadecay414)
 Files: docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/OUTBOX.md, docs/lanes/titleroutes/PR.md
 Prediction: none: queued 4 generic blind surveys via request.sh (no route/targets.toml edit this session; no code under test)
 Needs device: no (direct hold) -- 4 survey requests are queued on the Nova (behind lane.ibcache's in-flight run), none held or driven live this session
