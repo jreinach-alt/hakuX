@@ -14,6 +14,10 @@
 #                                   code (75 if the account's window closed)
 #   lane.sh fleet-gc                # drop registry entries whose unit is gone
 #
+# OWNER STOP: a lane stopped on the owner's word has its brief renamed to
+# $WORK/briefs/<name>.md.STOPPED-by-owner-<stamp>. start and resume refuse it
+# (exit 77) while that file exists; a human renames it back to lift the stop.
+#
 # WHY THE WORKTREE IS MADE HERE AND NOT BY --worktree. Claude Code's own
 # worktree base is origin/HEAD, which is right now that master is the trunk,
 # but this script fetches first and names the base explicitly so a stale
@@ -232,10 +236,27 @@ refund_attempt() {   # <lane>
     return 0
 }
 
+# STOPPED BY THE OWNER. On 2026-10-02 the owner stopped lane.titleroutes2 and a
+# hostops tick resumed it one minute later: nothing a script could read said
+# the stop was deliberate. The marker is the brief itself, renamed to
+# <name>.md.STOPPED-by-owner-<stamp>. Before this check resume refused it only
+# as "no brief at ...", which reads like a lost file someone should restore,
+# and start copied a fresh brief straight over the stop. Exit 77, distinct from
+# every other refusal here, so a caller can tell "do not retry" from "broken".
+refuse_if_owner_stopped() {   # <lane> [brief argument]
+    local m
+    for m in "$WORK/briefs/$1.md.STOPPED-by-owner-"* "${2:-}"; do
+        case "$m" in *.STOPPED-by-owner-*) [ -e "$m" ] || continue ;; *) continue ;; esac
+        echo "REFUSED: lane.$1 was STOPPED BY THE OWNER (marker: $m). It does not start or resume until a human renames that file back to $WORK/briefs/$1.md." >&2
+        exit 77
+    done
+}
+
 case "$cmd" in
   start)
     brief="${3:?usage: lane.sh start <name> <brief.md> [issue]}"; issue="${4:-}"
     refuse_if_remote "${name:?name}"
+    refuse_if_owner_stopped "$name" "$brief"
     [ -f "$brief" ] || { echo "no such brief: $brief" >&2; exit 2; }
     wt="$WORK/wt/$name"; branch="lane/$name"
     mkdir -p "$WORK/wt" "$WORK/briefs" "$WORK/logs/lane"
@@ -280,6 +301,7 @@ case "$cmd" in
     # the base check and the lane reads its own git log and notes first.
     refuse_if_remote "${name:?name}"
     wt="$WORK/wt/${name:?name}"; branch="lane/$name"
+    refuse_if_owner_stopped "$name"
     [ -d "$wt" ] || { echo "no worktree at $wt; use lane.sh start" >&2; exit 3; }
     [ -f "$WORK/briefs/$name.md" ] || { echo "no brief at $WORK/briefs/$name.md" >&2; exit 3; }
     active=$(systemctl --user list-units 'hakux-lane-*' --state=active,activating --no-legend 2>/dev/null | wc -l)
