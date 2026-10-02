@@ -224,3 +224,23 @@ read `timeline: none` with their old failures (1790914021, 1790900520,
   refuses the step). Until then every drive run is a held replay.
 - The Haiku fallback is coded and capped but has never made a call: this
   host has no ANTHROPIC_API_KEY in the lane's environment.
+
+## Session 4 (attempt 4, Opus 5.5), 2026-10-01 23:33 PDT -
+
+**Why attempt 3 did not finish.** It did finish what it set out to do.
+Castlevania reached play, the records were committed, and PR.md was set to
+`State: ready` at 23:30. It stopped short of brief item 6: the two
+conversion proofs, one on-foot (Sonic Heroes) and one driving (Burnout or
+Forza), had never driven a device. Its reason was the one-title-per-Nova-
+session rule, but it did not use ADDENDUM 4 (supervised `--find` on the Thor
+for titles already there). It also did not run `preflight.sh` and left no
+`waiting:` note, so the lane was resumed. This session merges origin/master
+(titleroutes session 61, collapse433; clean). It then does both proofs in
+parallel on separate devices: Sonic Heroes on the Nova (hold
+`routedriver:a4`, taken 23:35), and Forza on the Thor under ADDENDUM 4.
+Both titles are on the Thor per onhand's listings, but only Forza runs
+there. The Thor stays under lane.local's `lanelocal-fanwait` hold, which
+`hold.sh take` cannot take over and ADDENDUM 4 says not to lift, so the
+Thor replay runs under that hold. The replay script checks that no request
+is running there, starts cold (xo-therm <= 50 C) and stops at 70 C.
+`scratch/replay.sh` now takes `DEV=nova|thor`.
