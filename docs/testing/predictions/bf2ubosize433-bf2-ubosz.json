@@ -1,0 +1,30 @@
+{
+  "registered_utc": "2026-10-02T17:20:00Z",
+  "who": "lane.bf2ubosize433",
+  "issue": "433",
+  "title": "45410062-Battlefield_2_Modern_Combat.xiso.iso",
+  "device": "nova",
+  "seconds": 420,
+  "route": "bf2mc",
+  "frames_every": 20,
+  "perflog": true,
+  "env": ["PERF_REGIMEN=default"],
+  "runs_per_arm": 1,
+  "a_ref": "none: a counter, not an A/B. The instrument exists only in the B build.",
+  "b_ref": "d9729d6250d3cebc64d421437044154be9a6e3ac",
+  "queue_order": "One run: `request.sh --who lane.bf2ubosize433 --title 45410062-Battlefield_2_Modern_Combat.xiso.iso --route bf2mc --seconds 420 --frames-every 20 --perflog --device nova --hard-pin --env PERF_REGIMEN=default --ref d9729d6250 --issue 433 --expect docs/testing/predictions/bf2ubosize433-bf2-ubosz.json`. Same route, seconds, frames, perflog and regimen as bf2stall433's A1 (1-1790948452-lane.bf2stall433-3362375, 17 heavy rows). The counter costs CPU on the draw thread (two ~3-7 KB compares per upload), so this run's fps and GPU ms are NOT judged; only the counts are.",
+  "judge": "python3 docs/lanes/bf2ubosize433/ubosz_read.py <the run's result dir>; read its M0 line, the F8/F16/R16 line and VERDICT. Heavy windows are ubosz windows joined (within 2 s) to a row with BE >= 1800, armread.py's convention.",
+  "prediction": "#433 lane.bf2ubosize433, after bf2stall433 refuted vertex fetch and showed BF2's ~2,150 draws per heavy frame are already serialized (syncdraw +25%). Prime suspect: every draw uploads the whole VS+PS uniform block to a new dynamic offset and rebinds the UBO set (Turnip: new descriptor set, SP_UPDATE_CNTL bindless invalidation, constant reload in the preamble). The fix that fits Adreno is push constants (CP_LOAD_STATE6 SS6_DIRECT) for what changes between draws, with the UBO rebound only when the rest changes. This run sizes it before anyone builds it. Prior, stated before the run: PUSH ~50% (a D3D8 title typically rewrites one world/WVP matrix, 3-4 vec4, per object), PUSH-SWITCH-BOUND ~20% (PBnd 808 of ~2,150 draws: binding switches may be a large share), LARGE ~15% (skinning palettes or per-draw light blocks), MIXED ~15%.",
+  "legs": {
+    "M0 (instrument)": "The run reaches mark gameplay, >= 15 ubosz windows from 45 s before the mark to the end, >= 6 of them joined to rows with BE >= 1800, and uploads > 0 in those. Fewer heavy windows: BELOW RESOLUTION, and the brief's step 2 is re-run once. No ubosz lines at all: VOID (the perflog build did not carry the counter).",
+    "PUSH (vec4-budget case)": "Over heavy windows: F16 = share of same-binding uploads changing <= 16 chunks (16-byte) >= 0.50, AND R16 = (pk16 + binding switches) / uploads <= 0.50. Then the successor brief (push constants for the changed chunks; UBO rebound only past the budget) is written and handed off.",
+    "PUSH-SWITCH-BOUND": "F16 >= 0.50 but R16 > 0.50: what changes fits, but shader-binding switches would still force a rebind on most uploads. The successor brief then carries one uniform block layout shared across shaders (so a switch is not a rebind) as part of the fix.",
+    "LARGE (large-range case)": "F16 < 0.50 and the median same-binding upload changes > 32 chunks: push constants do not help as stated. Named lever instead: batching draws that share constants into fewer, larger uniform uploads (bf2stall433 section 8).",
+    "MIXED": "Anything else, reported with F8, F16, R16, the switch share and the median bin.",
+    "note Z (not a verdict leg)": "If >= 0.30 of same-binding uploads are byte-identical to the previous one, that is reported: those rebinds carry nothing, and skipping them is part of any successor brief."
+  },
+  "falsifier": "The verdict is decided by counts the build itself prints; the reader is checked against a synthetic logcat built from A1's rows (17 heavy windows, F16 0.80, R16 0.287 as constructed) and the counter against host sequences with known answers (ubosz_selftest.py). A wrong-direction answer is possible both ways: PUSH and LARGE are separated by the median bin, not by a threshold near the prior.",
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. Read by ubosz_read.py."
+}
