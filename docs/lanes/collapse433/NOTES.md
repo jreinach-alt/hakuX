@@ -62,7 +62,8 @@ and `[rr425w] idle_us/(idle_us+busy_us)`.
 - Ruled out on this run: `ubo_ring_grow` reached its 16-pool cap at
   10:57:35, 3 min BEFORE the mark, and never logs again (the next log would
   be n256). `hitch_report.py`: 9 hitches, 2 shader-classified, both before
-  9.2 s of offset. No `[pb569]` build or `dpm` in the bad windows.
+  9.2 s of offset. Only 8 inline pipeline creates (`[shd413] dpm`) in the
+  whole 514 s, so not a per-window cost.
 - **Frames: only the mark frame exists** (`110044-gameplay.png`: first
   person, mission clock 00:20, in the level). The request had
   `frames_every 0`, so nothing shows whether the player kept moving for the
@@ -284,9 +285,120 @@ governor under-clocks an emulator.
 ## 7. Max-regimen comparison
 
 `1-1790921431-lane.collapse433-967641`: the same request with
-`PERF_REGIMEN=max`.
+`PERF_REGIMEN=max` (`perf_regimen.json`: max, perf_mode 2, fan_mode 5).
+`gpuclk` was 615 MHz in every sample from start to end (the 401 in the
+run.log summary is the pre-start `cool` sample). Mark 23:23:21, end
+23:24:26, 65 s of gameplay.
 
-(pending)
+| BE bin | default (-390126): n / fps / GPU / Fen / Tot | max (-967641): n / fps / GPU / Fen / Tot |
+|---|---|---|
+| 600-1200 | 14 / 27.6 / 21.8 / 1.3 / 27.6 | 13 / 26.1 / 15.7 / 1.4 / 26.3 |
+| 1200-1800 | -- | 3 / 29.9 / 16.8 / 1.2 / 26.2 |
+| 1800-2400 | 16 / 18.9 / 34.9 / 11.4 / 37.9 | 15 / 20.7 / 28.9 / 7.9 / 33.8 |
+| 2400+ | 8 / 16.0 / 40.0 / 16.8 / 46.2 | 9 / 17.2 / 35.0 / 14.1 / 42.0 |
+
+- At 1.53x the GPU clock, heavy-view GPU time falls only 12-17% and no
+  heavy window reaches 30. **The default GPU governor is a contributor, not
+  the cause.**
+- Renderer `Tot` (one frame's renderer wall time, perflog-inflated `Draw`
+  included) stays at 33.8-42 ms. Anything over 33.4 ms takes 3 VBLANKs,
+  which is why these windows sit at 17-21 fps. Without perflog's per-method
+  clock reads, `Draw` is smaller. The original non-perflog run's dips were
+  24-27 fps, not 17-20. No non-perflog BF2 run under max exists, and the
+  brief's three-run budget is spent.
+
+### What GPU time follows (`gpufit.py`)
+
+Least squares over the 38-40 rows of each soak, GPU ms against the last
+frame's draws (BE) and render passes (RP):
+
+| run | GPU ~ BE | resid sd | GPU ~ RP | resid sd |
+|---|---|---|---|---|
+| default, GMEM | 9.8 + 0.0119 x BE | 3.81 | 0.88 x RP | 4.15 |
+| default, sysmem | 6.4 + 0.0121 x BE | 3.67 | -3.4 + 0.83 x RP | 6.24 |
+| max (615 MHz) | -0.8 + 0.0142 x BE | 2.73 | -10.8 + 1.00 x RP | 4.61 |
+
+**GPU time is ~12-14 us per draw**, and that per-draw term does not shrink
+at 1.53x the clock or in sysmem. Only the constant moves. `GPU Tot` is the
+span between each command buffer's own first and last timestamps
+(`gpu_ts_readback`, vk/draw.c), summed per frame. CPU submission gaps are
+therefore not in it, and this is GPU execution time.
+
+A per-draw cost that does not scale with core clock or render mode is a
+per-draw LATENCY on the GPU, not shader ALU work: a pipeline stall or wait
+between draws, or a memory fetch per draw. 2,000 draws at 640x480 should
+not cost an Adreno 740 35 ms.
+
+## 8. Diagnosis (for the next lane)
+
+**Battlefield 2: Modern Combat on the Nova does not collapse.** It dips
+whenever the view draws ~1,800+ draws a frame (38-45 render passes). In
+those frames the GPU spends 35-40 ms against the 33.4 ms that 30 fps
+allows, frames take 3 VBLANKs, and the window reads 17-27 fps. Light views
+(~900 draws) run at 30. The 514 s confirmation's 66.5% is that mix. Its
+late all-30 stretch is very probably the blind route parked against a wall
+with an empty gun (section 4), so a longer window of real play would
+probably read worse, not better.
+
+- Not heat: no pause, `throttling 0`, Nova.
+- Not a lock or the vCPU: `[lock474]` flat (section 4). The guest-idle drop
+  and late VBLANK timers are downstream of GPU-bound frames.
+- Not shader or pipeline compiles: `[shd413] dpm` sums to 5 in the soak's
+  63 s and 8 in the 514 s run (`[pb569]` lines 5 and 8). That is a handful
+  of creates, not a per-frame cost. Not the UBO ring (capped 3 min before
+  the mark).
+- Not GMEM tile overhead: sysmem leaves the heavy-view GPU time unchanged.
+- The default regimen's GPU clock (401 MHz) makes it worse, but 615 MHz
+  alone does not clear it.
+- **The lever is the ~12-14 us per draw of GPU time that does not scale
+  with clock.**
+
+What the next lane should do first. This is a measurement that decides
+between causes, not a guess at a fix:
+1. Find what the renderer emits per draw that the GPU must wait on. Count,
+   per frame, the barriers, `vkCmdUpdateBuffer`/copies, descriptor and
+   pipeline binds, and dynamic-state calls inside render passes (perflog
+   counters exist for binds: `xemu-work PBnd/SBnd`). A pipeline barrier or
+   event wait per draw would serialize the GPU at a fixed latency per draw,
+   which fits the clock-insensitive slope.
+2. Check where vertex data is fetched from. If draws read guest-RAM
+   vertex data through a host-visible, uncached mapping, each draw pays
+   memory latency the core clock does not shorten. `[rdc] vtx=` shows the
+   vertex-RAM walks are active in every BF2 window.
+3. Prove it with Turnip's per-draw GPU counters or an off-CPU or GPU
+   profile in a held session (a lane cannot drive the device directly, so
+   this needs a hostops or held-session grant).
+
+If (1) or (2) finds a per-draw stall, the fix fits the hardware and helps
+every draw-heavy title, not just BF2. Register its prediction against the
+three soaks here, binned by `BE` (`modecmp.py`), on the default regimen.
+
+## 9. Blood Wake's audio burst (secondary)
+
+Answered in section 3: the 21-callback burst at 10:44:51 is the transition
+into a state the route never leaves (a code burst of 853 + 1273 TBs, the
+same shape as the pre-mark load-transition bursts). It is not a gameplay
+stall. BF2's runs show no flip pause of that kind: worst flip 247.9 ms, in
+the first 10 s, and audio 0.0% short. **What matters more:** the accepted Blood Wake run spent
+~536 of its 667 s in what is very probably a static screen. Its Playable
+rests on ~131 s of real play. It should be re-checked with frames
+(`--frames-every`).
+
+## Do not repeat
+
+- Do not read the Thor's BF2/Blood Wake collapses as an emulator defect:
+  MAX regimen, 5-8 min after launch, a 5-7x step with a clean VBLANK clock
+  (section 2).
+- Do not reopen the PGRAPH-lock (#474) chain for BF2: `[lock474]` wait is
+  ~1.7% of wall time in bad and good windows alike.
+- Do not put BF2 in the sysmem table on these numbers: heavy-view GPU time
+  is unchanged, and the sysmem run's frames went near-black (unexplained).
+- Do not compare BF2 runs by whole-window fps: the view sets the draw count
+  and the route is blind. Bin by `BE` (`modecmp.py`).
+- Do not trust a blind-route run's late stretch without frames: BF2 ends
+  facing a wall with an empty gun, and Blood Wake ends on a static screen.
+- `gapus`/`tbus` in `[rr425]` sum past 100% after the JIT warms; they are
+  usable only in the first minute.
 
 ## Process notes
 
