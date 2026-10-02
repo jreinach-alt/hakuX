@@ -22,20 +22,33 @@
 # press would also take one.
 # So: 10 START/A cycles (8 reached the fight; the last 2 are a guard
 # against a slower attract cycle, and pause + resume if the fight came on
-# time), mark, then a fight loop with no START. NOT YET REPLAYED.
+# time), mark, then a fight loop with no START.
+# Replay 1 (1790939919-titleroutes2-1446231, ref 282a5af148): NEVER LEFT
+# THE ATTRACT LOOP. Each frame is shot 5 s after its press, so: the title
+# came up, A landed on it, it timed out to black and a DEMONSTRATION fight,
+# and the next START (11 s after the last) only brought the title back --
+# six times over, then the title for the rest of the window. The title
+# takes START only for a few seconds before it times out, and an 11 s
+# cycle kept missing that window; the survey's cycle 4 hit it by luck of
+# phase. So the menu phase is now START/A pairs 1.2 s apart for ~110 s
+# (the survey's title -> fight took ~50 s): START passes the title, the
+# save prompt (NO lit), the main menu (ARCADE lit), character select and
+# the cards; in the fight each pair is pause + RESUME (A), so the phase
+# always ends unpaused. A frame every 4 pairs.
 wait 20
 shot boot20
 wait 20
 shot boot40
 wait 20
 shot booted
-repeat 10 {
-    press START
-    wait 5
-    shot menu-start
-    press A
-    wait 5
-    shot menu-a
+repeat 12 {
+    repeat 4 {
+        press START
+        wait 1.2
+        press A
+        wait 1.2
+    }
+    shot menu
 }
 wait 2
 shot pre-mark
