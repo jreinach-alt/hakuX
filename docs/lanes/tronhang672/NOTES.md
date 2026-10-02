@@ -82,3 +82,24 @@ Run 1 expectation: the title reaches the loading card at ~450 s as before and
 the guest goes busy with 0 flips; the `[spin672]` lines from then on name the
 loop. If the hang does not reproduce, the run itself is the news (the hang is
 intermittent; record its frames).
+
+## 4. Device run 1: 0-1790974820-tronhang672-2186958 (ref 16f09aa346, 14:00-14:11 PDT)
+
+**No hang.** The instrument works (`[spin672]` 2 lines per 2 s). The run took a
+different path from the hung one:
+
+- 1790971658 left a save, so the Single Player cursor now starts on **Auto
+  Load** (route-frame 140237). The route's A loaded the post-intro checkpoint,
+  which is **the same second load** ("Unauthorized User", Action-button card)
+  that hung in 1790971658.
+- That load finished in ~40 s (card 14:02:43-14:03:03). Then a cutscene, the
+  basic-training prompt, a Save Game screen, and live play with the HUD from
+  t=240 s to the end at 30-39 fps.
+
+So the second load does not hang by itself on a fresh boot. The hung run reached
+it after New Game's first load and ~4.5 min of in-engine intro, at 471 s of
+process uptime. Either the hang needs the state the intro leaves (guest heap,
+an emulator-side cache or counter that grows with run time), or it is
+intermittent. Run 2 repeats the hung run's path: route
+`docs/lanes/tronhang672/tron-newgame.route` (one DOWN to pick New Game, the rest
+of the inputs unchanged).

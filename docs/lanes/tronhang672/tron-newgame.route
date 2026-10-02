@@ -1,0 +1,71 @@
+# Tron 2.0: Killer App (42560001), Nova, lane.tronhang672 (#672).
+# tron-2-killer-app.route (lane.titleroutes2) with one change: a DOWN
+# before the A on the Single Player menu, so it picks New Game.
+# Why: the hang (1790971658-lanelocal-1220020) came at the second load,
+# after New Game's first load and ~4.5 min of in-engine intro. That run left
+# a save, and since then the Single Player cursor starts on Auto Load
+# (0-1790974820-tronhang672-2186958, route-frame 140237), which skips the
+# intro and goes straight to the second load; there it did not hang.
+# Menu map from 1790971658's route-frames: START on the main menu does
+# nothing, A opens Single Player (130943); START does nothing there, A on
+# New Game opens the difficulty box (130954, Normal lit); A loads (131005).
+# Inputs after that are the base route's, unchanged.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+shot booted
+press START
+wait 10
+shot signin
+press B
+wait 5
+shot skip
+press START
+wait 5
+shot menu-start
+press A
+wait 5
+shot menu-a
+press START
+wait 5
+shot menu-start
+press DOWN
+wait 2
+shot menu-down
+press A
+wait 5
+shot menu-a
+repeat 8 {
+    press START
+    wait 5
+    shot menu-start
+    press A
+    wait 5
+    shot menu-a
+}
+mark gameplay               # blind: fires during the intro cutscenes
+repeat forever {
+    axis LY min
+    wait 3
+    shot fwd
+    axis RT max
+    wait 1
+    axis RT min
+    wait 1
+    axis RX max
+    wait 0.4
+    axis RX mid
+    wait 1
+    shot right
+    press A
+    wait 2
+    axis RX min
+    wait 0.4
+    axis RX mid
+    wait 1
+    shot left
+    axis LY mid
+    wait 0.5
+}
