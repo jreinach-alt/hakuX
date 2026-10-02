@@ -49,3 +49,32 @@ Do not repeat:
   Sonnet navigated to the right option on 3/8 of each.
 - Three frames were ambiguous on a second look and are marked `AMBIG:`: f021 (Black, dark ledge), f095
   (Alias casino walk, no HUD) and f105 (Azurik relief, no HUD).
+
+## Part 2: hints and families (posted to OUTBOX 09:50)
+
+- A subagent read every source and drafted 35 files plus `families.md`; I reviewed them. Spot checks
+  against the sources held: BloodRayne's DIM highlight is in `bloodrayne.route:12` and titleroutes NOTES
+  :834; the GoldenEye and Kabuki D-pad finding is in titleroutes NOTES :158-162.
+- The hints are fitted to `pathfind.py` on origin/lane/pathfind @ 9a87999ca9:
+  - its action names: `UP/DOWN/LEFT/RIGHT` (the D-pad, sent as hat pulses), `STICK:<dir>:<s>`, `RT:/LT:`;
+    there is no right stick;
+  - its `series_files()` rule: every slug word must appear in the normalised title name. Five slugs were
+    renamed to satisfy it, and GoldenEye was split out of 007. `scratch/match.py` ran that rule over both
+    owner listings; only `series-crash` over-matches (Crash 'n Burn, Phantom Crash), and its header says
+    so.
+- ESPN 2K5, FIFA and Tiger Woods have no route on this emulator. Their series files are short, marked
+  unverified, and built around the sports controller-assignment trap (controller left in the middle
+  means CPU against CPU).
+
+Do not repeat:
+- **Write hints in the consumer's vocabulary.** The first draft used pad.sh axis names (`LY min`,
+  `HATY max`); the eval prompt used `DPAD_*` and `LSTICK_*`; pathfind uses `UP` and `STICK:up:1.5`. A
+  model given two vocabularies in one prompt has to translate, and may echo the wrong one back as an
+  action.
+- **A slug is a matching rule, not a label.** `series-pgr` would never have loaded for "Project Gotham
+  Racing". Check slugs against the consumer's matcher and the real listings.
+
+## Local checks in place of CI
+
+`docs/testing/titles/pathknow/**` counts as harness for offline_fold.py, so the fold runs
+`docs/testing/jobs/selftest.sh`. Its result on this head is recorded in PR.md.
