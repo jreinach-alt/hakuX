@@ -238,6 +238,49 @@ def make():
     print("made %d fixtures in %s" % (n, FIX))
 
 
+def escape_checks():
+    """input.stall_cycles: escape n plays cycle (n-1) mod len, a `B/ms` press
+    goes to pad.sh with its hold time, and a cycle that sends START is
+    refused. The counter-cases: a single stall_cycle replays the same cycle
+    every time, and START hidden in the SECOND cycle (or behind a /ms) is
+    still refused."""
+    import drive
+    fails = 0
+
+    def drv(inp):
+        with tempfile.TemporaryDirectory() as td:
+            return drive.Driver(drive.SimDevice([], 1.0), dict(name="t", input=inp), td, td, 10, sim=True)
+
+    def sent_by_escape(inp, n):
+        d = drv(inp)
+        out = []
+        for _ in range(n):
+            d.escapes += 1
+            d.dev.sent = []
+            d.escape()
+            out.append([s[1:] for s in d.dev.sent if s[1] == "press"])
+        return out
+
+    a = [[[], 0.5, ["A", "A/800"]]]
+    b = [[[["LY", "min"]], 0.5, ["Y"]]]
+    got = sent_by_escape(dict(stall_cycles=[a, b]), 3)
+    want = [[("press", "A"), ("press", "A", "800")], [("press", "Y")], [("press", "A"), ("press", "A", "800")]]
+    checks = [("stall_cycles: escapes 1, 2, 3 play cycles a, b, a", got == want, got)]
+    got1 = sent_by_escape(dict(stall_cycle=b), 2)
+    checks.append(("stall_cycle (one): every escape plays it", got1 == [[("press", "Y")]] * 2, got1))
+    for name, inp in (("START in the second of stall_cycles", dict(stall_cycles=[a, [[[], 0.5, ["START"]]]])),
+                      ("START/500 in stall_cycle", dict(stall_cycle=[[[], 0.5, ["START/500"]]]))):
+        try:
+            drv(inp)
+            checks.append(("refused: " + name, False, "accepted"))
+        except SystemExit as e:
+            checks.append(("refused: " + name, "START" in str(e), str(e)))
+    for name, ok, got in checks:
+        fails += not ok
+        print("%s  escape %-44s %s" % ("ok  " if ok else "FAIL", name, "" if ok else got))
+    return fails
+
+
 def main(argv):
     if "--make" in argv:
         make()
@@ -306,6 +349,7 @@ def main(argv):
             fails += not ok
             print("%s  sim %-44s %s%s" % ("ok  " if ok else "FAIL", name, sol["result"][:70],
                                           "" if ok else "  <- " + "; ".join(probs) + "\n" + p.stdout + p.stderr))
+    fails += escape_checks()
     print("classify_selftest: %d failure(s)" % fails)
     return 1 if fails else 0
 

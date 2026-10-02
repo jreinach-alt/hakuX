@@ -86,6 +86,9 @@ for a cursor the d-pad does not move (Castlevania's save prompt).
                          phases) plays it once per stall, to its end, up to
                          `escape_max` times: back off, jump, try a side
                          (Sonic Heroes wedges on a Seaside Hill block).
+                         input.stall_cycles, a list of cycles, plays
+                         escape n with cycle (n-1) mod len: one run tries
+                         several escapes, one per stall.
   unknown                wait; the model after `unknown_before_model`
                          captures; `unknown_fail_s` of it is ROUTE FAIL.
 A state seen after a later one in the profile's `order` (a main_menu after
@@ -134,6 +137,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib.request
 
@@ -151,7 +155,7 @@ DEFAULTS = dict(
     fast_s=1.0, slow_s=5.0, skip_settle_s=1.5, skip_passes=3, menu_gap_s=2.0, menu_max_presses=25,
     resume_tries=3, stall_fail_s=40.0, unknown_before_model=3, unknown_fail_s=90.0,
     model_calls_max=20, find_play_s=20.0, confirm_play_s=6.0, keep_every_s=30.0, screencap_fail_s=60.0,
-    hud_memory_s=20.0, escape_max=6,
+    hud_memory_s=20.0, escape_max=6, escape_capture_s=0.0,
 )
 
 MODEL = "claude-haiku-4-5-20251001"
@@ -269,6 +273,8 @@ class Driver:
         self.unknown_streak = 0
         self.stalled_since = None
         self.escapes = 0                 # stall_cycle runs so far
+        self.esc_frames = 0
+        self.esc_phase = 0
         self.last_hud_t = None
         self.play_since = None
         self.play_frames = []
@@ -288,12 +294,12 @@ class Driver:
         for b, _ in self.inp.get("play_tap", []):
             if b in ("START", "SELECT", "BACK"):
                 raise SystemExit("drive.py: profile play_tap sends %s: START in live play pauses it" % b)
-        for _, _, btns in self.stall_phases():
-            for b in btns:
+        for n in range(1, len(self.stall_cycles()) + 1):
+            for b in [b.split("/")[0] for _, _, btns in self.stall_phases(n) for b in btns]:
                 if b in ("START", "SELECT", "BACK") or b in NEVER:
                     raise SystemExit("drive.py: profile stall_cycle sends %s: START in live play pauses it" % b)
         for k, v in self.inp.items():
-            if k.startswith("play") or k == "stall_cycle":
+            if k.startswith("play") or k in ("stall_cycle", "stall_cycles"):
                 continue
             for b in v:
                 if b in NEVER:
@@ -319,24 +325,57 @@ class Driver:
         self.inputs.append(dict(t=round(t, 1), state=self.state, input=btn, why=why))
         return "press %s (%s)" % (btn, why)
 
-    def stall_phases(self):
-        """input.stall_cycle as [(axes, seconds, buttons)]: [[axes], seconds]
+    def stall_cycles(self):
+        """input.stall_cycles (a list of cycles: escape n plays cycle
+        (n-1) mod len, so one run can try several escapes, one per stall),
+        else [input.stall_cycle]."""
+        cycles = self.inp.get("stall_cycles")
+        if cycles:
+            return list(cycles)
+        return [self.inp["stall_cycle"]] if self.inp.get("stall_cycle") else []
+
+    def stall_phases(self, n=1):
+        """Escape n's cycle as [(axes, seconds, buttons)]: [[axes], seconds]
         or [[axes], seconds, [buttons]] (pressed once on entering the phase,
-        0.3 s apart: A, A is a jump and a mid-air action)."""
+        0.3 s apart: A, A is a jump and a mid-air action; `A/800` holds A
+        for 800 ms instead of pad.sh's 60). Empty axes release the stick."""
+        cycles = self.stall_cycles()
+        if not cycles:
+            return []
         out = []
-        for ph in self.inp.get("stall_cycle", []):
+        for ph in cycles[(n - 1) % len(cycles)]:
             out.append(([tuple(x) for x in ph[0]], float(ph[1]), list(ph[2]) if len(ph) > 2 else []))
         return out
 
     def escape(self):
-        """Play input.stall_cycle through, now, with no captures in between:
-        each phase's axes held for its seconds, its buttons pressed 0.3 s
-        apart at its start. Synchronous because the phases are short and
-        exact: run off the capture clock (5 s apart in stable play), Sonic
-        Heroes' 2.5 s back-off ran ~6 s and walked the team off the ledge
-        into the sea, three times (session 4, replay 3)."""
-        for axes, s, btns in self.stall_phases():
-            self.inputs.append(dict(t=round(self.t(), 1), state=self.state, why="stall escape %d" % self.escapes,
+        """Play escape number self.escapes's cycle through, now, with no
+        decisions in between: each phase's axes held for its seconds, its
+        buttons pressed 0.3 s apart at its start. Synchronous because the
+        phases are short and exact: run off the capture clock (5 s apart in
+        stable play), Sonic Heroes' 2.5 s back-off ran ~6 s and walked the
+        team off the ledge into the sea, three times (session 4, replay 3).
+        [drive] escape_capture_s > 0 keeps a frame that often through the
+        escape (named `esc<n>-p<phase>`), so a trial can see where it went.
+        The captures run on a thread of their own: taken in line they would
+        put a gap into the press cadence a flight depends on."""
+        every = float(self.cfg.get("escape_capture_s") or 0)
+        stop = threading.Event()
+        cap = None
+        if every and not self.sim:
+            cap = threading.Thread(target=self.escape_frames, args=(every, stop), daemon=True)
+            cap.start()
+        try:
+            self.escape_phases()
+        finally:
+            stop.set()
+            if cap:
+                cap.join(timeout=35)
+
+    def escape_phases(self):
+        for k, (axes, s, btns) in enumerate(self.stall_phases(self.escapes)):
+            self.esc_phase = k + 1
+            self.inputs.append(dict(t=round(self.t(), 1), state=self.state,
+                                    why="stall escape %d phase %d" % (self.escapes, k + 1),
                                     input=" ".join("%s %s" % a for a in axes) + (" + " + ",".join(btns) if btns else "")))
             for ax, _ in self.held:
                 if ax not in [a for a, _ in axes]:
@@ -348,8 +387,23 @@ class Driver:
             for j, b in enumerate(btns):
                 if j:
                     self.sleep(0.3)
-                self.dev.pad("press", b)
+                if "/" in b:
+                    b, ms = b.split("/", 1)
+                    self.dev.pad("press", b, ms)
+                else:
+                    self.dev.pad("press", b)
             self.sleep(max(0.0, s - (self.t() - t0)))
+
+    def escape_frames(self, every, stop):
+        path = os.path.join(self.frames_dir, ".esc.png")
+        while not stop.is_set():
+            t = now()
+            ok, _ = self.dev.capture(path)
+            if ok:
+                self.esc_frames += 1
+                os.replace(path, os.path.join(self.frames_dir, "%s-%03d-esc%d-p%d-%03d.png" % (
+                    time.strftime("%H%M%S"), self.n, self.escapes, self.esc_phase, self.esc_frames)))
+            stop.wait(max(0.0, every - (now() - t)))
 
     def hold_play(self):
         want = [tuple(x) for x in self.inp.get("play_hold", [])]
@@ -559,7 +613,7 @@ class Driver:
             return self.press(seq[n % len(seq)], "%s %d" % (state, n + 1))
 
         if state in ("play", "stalled"):
-            if state == "stalled" and self.stall_phases() and self.escapes < cfg["escape_max"]:
+            if state == "stalled" and self.stall_cycles() and self.escapes < cfg["escape_max"]:
                 self.escapes += 1
                 self.escape()
                 self.last_press_t = self.t()     # the next capture comes at the fast rate
