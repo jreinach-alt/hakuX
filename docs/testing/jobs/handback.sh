@@ -89,6 +89,18 @@ LOG="$WORK/logs/handback/tick.log"
 # The tick log is read by hand when something jams, so it is display: local.
 say() { echo "$(say_time_s) $*" | tee -a "$LOG"; }
 mode="${1:-run}"
+# THE LOCAL FORGE (lane.localforge, 2026-10-02). While GitHub is suspended,
+# `gh` is the forge shim and the unit's forge drop-in sets HAKUX_FORGE=1.
+# Under it, a `run` is a `list`: it says what it would resume, and resumes,
+# labels and comments nothing. That holds until lane.local sets
+# HANDBACK_DRY_RUN=0. Offline, lanes are resumed by
+# host-tools/lanewatch_offline.sh, and two resumers on one lane is the race
+# this file guards against everywhere else.
+HANDBACK_DRY_RUN="${HANDBACK_DRY_RUN:-${HAKUX_FORGE:-0}}"
+if [ "$mode" = run ] && [ "$HANDBACK_DRY_RUN" = 1 ]; then
+    say "DRY RUN (HANDBACK_DRY_RUN=1, local forge): this run is a list; nothing is resumed, labelled or commented"
+    mode=list
+fi
 # A no-PR row (the idle cause, PR `none`) has nowhere to comment: the tick log is its record.
 comment() { [ "$1" != none ] || return 0; printf '%s\n' "$2" > "$H/comment.md"; gh pr comment "$1" --repo "$GH_REPO" --body-file "$H/comment.md" >/dev/null 2>&1; }
 

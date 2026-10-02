@@ -11,7 +11,7 @@
 # No `uses:` actions: the forge runs offline (DEFAULT_ACTIONS_URL=self), so
 # the checkout is a shared clone of the stand-in bare repo, which every
 # forge sha comes from.
-name: jobs selftest
+name: forge jobs selftest
 
 on:
   pull_request:
@@ -21,7 +21,7 @@ on:
       - 'docs/testing/request.sh'
       - 'docs/testing/lane.sh'
       - 'docs/testing/nv2a_index.py'
-      - '.forgejo/workflows/jobs-selftest.yml'
+      - '.forgejo/workflows/forge-selftest.yml'
   workflow_dispatch:
 
 concurrency:

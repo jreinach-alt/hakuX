@@ -234,13 +234,17 @@ rc, out, err = gh("pr", "list", "--repo", R, "--state", "open", "--limit", "100"
 check("handback.sh:1029 (fromdateiso8601 on updatedAt) ci=NONE", rc == 0 and re.search(rf"^{pn}\tlane/smoke\t.*ci=NONE quiet=\d+", out, re.M), (out, err))
 
 head = prs.get(pn, {}).get("headRefOid", "")
-st, _ = api("POST", f"/repos/{R}/statuses/{head}", dict(state="pending", context="jobs-selftest", description="running"))
+# a status from a GitHub-only workflow (no runner here) must not count
+st, _ = api("POST", f"/repos/{R}/statuses/{head}", dict(state="failure", context="ci / build (pull_request)", description="never runs"))
+rc, out, err = gh("pr", "view", str(pn), "--repo", R, "--json", "statusCheckRollup", "--jq", ".statusCheckRollup | length")
+check("non-forge CI context ignored", rc == 0 and out.strip() == "0", (out, err))
+st, _ = api("POST", f"/repos/{R}/statuses/{head}", dict(state="pending", context="forge jobs selftest / selftest (pull_request)", description="running"))
 rc, out, err = gh("pr", "view", str(pn), "--repo", R, "--json", "headRefOid,statusCheckRollup", "--jq",
                   CI_STATE_JQ + '"\\(.headRefOid)\\t\\(ci_state)"')
 check("handback.sh:1077 PENDING", rc == 0 and out.strip() == f"{head}\tPENDING", out)
 rc, out, err = gh("pr", "checks", str(pn))
 check("pr checks pending exits 8", rc == 8, (rc, out, err))
-st, _ = api("POST", f"/repos/{R}/statuses/{head}", dict(state="success", context="jobs-selftest", description="ok"))
+st, _ = api("POST", f"/repos/{R}/statuses/{head}", dict(state="success", context="forge jobs selftest / selftest (pull_request)", description="ok"))
 fold_green = '''
         [.statusCheckRollup[]? | (.conclusion // .state // "PENDING")] as $c
         | if ($c | length) == 0 then "NONE"
@@ -251,7 +255,7 @@ rc, out, err = gh("pr", "view", str(pn), "--repo", R, "--json", "statusCheckRoll
 check("fold.sh:683 ci_green GREEN", rc == 0 and out.strip() == "GREEN", out)
 CHECK_ROWS_JQ = '.statusCheckRollup[]? | [ (.name // .context // "check"), (if (.conclusion // "") != "" then .conclusion elif (.state // "") != "" then .state else "PENDING" end), (.startedAt // .createdAt // "") ] | @tsv'
 rc, out, err = gh("pr", "view", str(pn), "--repo", R, "--json", "statusCheckRollup", "--jq", CHECK_ROWS_JQ)
-check("fold.sh:788 CHECK_ROWS_JQ", rc == 0 and out.startswith("jobs-selftest\tSUCCESS\t20"), out)
+check("fold.sh:788 CHECK_ROWS_JQ", rc == 0 and out.startswith("forge jobs selftest / selftest (pull_request)\tSUCCESS\t20"), out)
 TRUNK_CI_JQ = '''[.check_runs[]? | if .status != "completed" then "PENDING" else ((.conclusion // "") | ascii_upcase) end] as $all
         | [$all[] | select(. != "CANCELLED")] as $c
         | if ($all | length) == 0 then "NONE"
@@ -263,7 +267,7 @@ rc, out, err = gh("api", f"repos/{R}/commits/{head}/check-runs", "--jq", TRUNK_C
 check("fold.sh:1044 TRUNK_CI_JQ via check-runs", rc == 0 and out.strip() == "GREEN", (out, err))
 rc, out, err = gh("pr", "checks", str(pn))
 check("pr checks green exits 0", rc == 0, (rc, out, err))
-st, _ = api("POST", f"/repos/{R}/statuses/{head}", dict(state="failure", context="android", description="bad"))
+st, _ = api("POST", f"/repos/{R}/statuses/{head}", dict(state="failure", context="forge Android / build (pull_request)", description="bad"))
 rc, out, err = gh("api", f"repos/{R}/commits/{head}/check-runs", "--jq", TRUNK_CI_JQ)
 check("TRUNK_CI_JQ RED", out.strip() == "RED", out)
 

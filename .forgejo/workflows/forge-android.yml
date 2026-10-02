@@ -1,12 +1,12 @@
 # Local CI (lane.localforge, 2026-10-02): the Android unit tests and debug
 # build on the local forge's host runner. The trigger rules are the same as
-# jobs-selftest.yml: fold candidates only. A WIP (draft) PR never builds.
+# forge-selftest.yml: fold candidates only. A WIP (draft) PR never builds.
 # The runner has capacity 1, so this never runs beside the selftest.
 #
 # It uses the host's own toolchain: JDK 21 at ~/toolchains/jdk21 (the one
 # lane.sh exports), the SDK and NDK named by ~/hakuX/android/local.properties,
 # and meson in ~/.local/bin.
-name: Android
+name: forge Android
 
 on:
   pull_request:

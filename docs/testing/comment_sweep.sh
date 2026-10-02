@@ -57,6 +57,14 @@ OUT_DIR="${HAKUX_SWEEP_DIR:-$WORK/comment-sweep}"
 STAMP="$OUT_DIR/last-run"
 REPORT="$OUT_DIR/unread.md"
 CID="$OUT_DIR/comment-id"
+# THE LOCAL FORGE (lane.localforge, 2026-10-02). Under HAKUX_FORGE=1, `gh` is
+# the forge shim. The watermark and the comment id then have their own files,
+# because a GitHub comment id means nothing in the forge, and GitHub's
+# watermark must still be its own when the account returns.
+if [ "${HAKUX_FORGE:-0}" = 1 ]; then
+    STAMP="$OUT_DIR/forge-last-run"
+    CID="$OUT_DIR/forge-comment-id"
+fi
 SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 mkdir -p "$OUT_DIR"
 

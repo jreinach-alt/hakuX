@@ -356,14 +356,22 @@ STATE_UP = {"pending": "PENDING", "success": "SUCCESS", "error": "ERROR", "failu
             "warning": "NEUTRAL", "skipped": "SKIPPED", "cancelled": "CANCELLED"}
 
 
+# Only the forge's own workflows (.forgejo/workflows/forge-*.yml, named "forge ...") count
+# as CI. Forgejo falls back to .github/workflows on a branch without .forgejo/, and those
+# runs ask for runners that do not exist here: they sit PENDING for ever, or FAILURE once
+# cancelled, and deleting the run leaves the commit status behind (measured 2026-10-02).
+CI_CONTEXT_RE = re.compile(os.environ.get("FORGE_CI_CONTEXT_RE", r"^forge[ -]"))
+CI_WORKFLOW_RE = re.compile(os.environ.get("FORGE_CI_WORKFLOW_RE", r"^forge-.*\.ya?ml$"))
+
+
 def statuses(fg, sha):
-    """Latest status per context for a commit (Forgejo's combined status)."""
+    """Latest status per context for a commit (Forgejo's combined status), forge CI only."""
     if not sha:
         return []
     j = fg.get(fg.r(f"/commits/{sha}/status"), ok404=True)
     if not j:
         return []
-    return j.get("statuses") or []
+    return [s for s in j.get("statuses") or [] if CI_CONTEXT_RE.search(s.get("context") or "")]
 
 
 def rollup(fg, sha):
@@ -1141,7 +1149,7 @@ def cmd_run(argv):
         fields = fields_of(a, RUN_FIELDS, op)
         lim = int(a.get("--limit") or 20)
         j = fg.get(fg.r("/actions/runs"), dict(limit=PAGE, **({"head_sha": a.get("--commit")} if a.get("--commit") else {})))
-        rows = (j or {}).get("workflow_runs") or []
+        rows = [r for r in (j or {}).get("workflow_runs") or [] if CI_WORKFLOW_RE.search(r.get("workflow_id") or "")]
         objs = [run_obj(fg, r, RUN_FIELDS) for r in rows]
         if a.get("--branch"):
             objs = [o for o in objs if o["headBranch"] == a.get("--branch")]
@@ -1230,12 +1238,12 @@ def api_special(fg, method, path, q):
         return [check_runs(fg, resolve_sha(fg, m.group(1)))]
     m = re.fullmatch(rf"repos/{re.escape(R)}/commits/([^/]+)/status", path, re.I)
     if m and method == "GET":
-        j = fg.get(fg.r(f"/commits/{resolve_sha(fg, m.group(1))}/status"))
-        if j:
-            for s in j.get("statuses") or []:
-                s.setdefault("state", s.get("status"))
-            j.setdefault("state", j.get("state"))
-        return [j]
+        sts = statuses(fg, resolve_sha(fg, m.group(1)))
+        for s in sts:
+            s.setdefault("state", s.get("status"))
+        order = ["failure", "error", "pending", "success"]
+        worst = min((s["state"] for s in sts), key=lambda x: order.index(x) if x in order else 3, default="pending")
+        return [dict(state=worst if sts else "pending", statuses=sts, total_count=len(sts), sha=m.group(1))]
     m = re.fullmatch(rf"repos/{re.escape(R)}/commits/([^/]+)", path, re.I)
     if m and method == "GET":
         rows = fg.get(fg.r("/commits"), dict(sha=m.group(1), limit=1, stat="false", files="false", verification="false"))
