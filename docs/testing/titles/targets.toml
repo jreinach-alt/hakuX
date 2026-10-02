@@ -269,7 +269,7 @@ name = "ToeJam & Earl III: Mission to Earth"
 iso = { nova = "ToeJam & Earl III - Mission to Earth (USA).iso" }
 target_fps = 60
 route = "toejam-earl-3"
-notes = "#431 (comment 5851536933): 60, medium confidence. TeamXbox (2003); split-screen also 60. A generic survey (1790948390-titleroutes2-3358315, Nova, lane.titleroutes2) reached live play in level 1 on its 4th START/A cycle (One Player Game -> Story Mode -> ToeJam -> intro -> load); later STARTs toggle the Player Stats panel; walking frames at 38-59 fps. routes/toejam-earl-3.route: 4 START/A cycles, an exploring walk loop with no START. DRAFT, NOT CONFIRMED."
+notes = "#431 (comment 5851536933): 60, medium confidence. TeamXbox (2003); split-screen also 60. A generic survey (1790948390-titleroutes2-3358315, Nova, lane.titleroutes2) reached live play in level 1 on its 4th START/A cycle (One Player Game -> Story Mode -> ToeJam -> intro -> load); later STARTs toggle the Player Stats panel; walking frames at 38-59 fps. routes/toejam-earl-3.route: 4 START/A cycles, an exploring walk loop with no START. CONFIRMED by replay 1 (1790951866-titleroutes2-46925): live play from the mark to the end (299 s, static 0.009), median 51.6 fps, 98.8% at 30+, 29% at its own 60, no hang, worst hitch 515 ms; below its own target, not nominated. The loop circles one hill of level 1 (tree, fence, waterfall) rather than travelling the level. The verdict's crash=True is four media.extractor (Android system service) tombstones, not hakuX (board request filed)."
 
 [titles."41560001"]
 name = "Tony Hawk's Pro Skater 2x"

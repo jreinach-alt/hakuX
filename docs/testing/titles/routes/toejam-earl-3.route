@@ -18,6 +18,13 @@
 # with no START: net-forward walking with a turn each way, a jump, a frame
 # on every leg (one shot at a fixed loop phase can hide a parked player).
 # If the load runs long, the loop's A presses land on black, harmlessly.
+# Replay 1 (1790951866-titleroutes2-46925, ref 162ca56fd8): CONFIRMED.
+# Same path; play on cycle 4's A (075718), mark 075730; live play to the
+# end, 84 frames, static 0.009: median 51.6 fps, 98.8% at 30+, 29% at its
+# own 60, no hang. The loop's right and left legs make a circuit of one
+# hill (tree, fence, waterfall, cake), so the window is one corner of level
+# 1, moving. Its crash=True is media.extractor tombstones (an Android
+# system service), not hakuX.
 wait 20
 shot boot20
 wait 20

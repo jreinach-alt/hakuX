@@ -230,3 +230,18 @@ Queued (ref `162ca56fd8`): `toejam-earl-3` replay 1 `1790951866-titleroutes2-469
 table; no targets.toml entry yet, one gets added if the survey reaches play). After Tron the Nova-only backlog is empty.
 `rank_untouched.py` ranks the Thor's file list (`thor-int.txt`), and the Thor is closed to this lane, so those titles
 wait for the Thor or for a copy (one-copy-per-title rule, amended 09-28).
+
+### ToeJam & Earl III, replay 1 (`1790951866-titleroutes2-46925`, 84 frames, read in full): CONFIRMED
+
+Same path as the survey. Play on cycle 4's A (`075718`), the `loaded` frame and the mark (`075730`) are live play. Every
+leg's frame to the end is ToeJam moving and jumping (static 0.009). But the right and left legs form a circuit, so he
+laps one hill of level 1 (tree, fence, waterfall, a cake): the same five views repeat every ~16 s. Live, but one corner
+of the level, the Gunvalkyrie class. `title_verdict.py --targets`: 299.1 s of play, median 51.55, 98.8% at 30+, 29.3% at
+its own 60, no hang, worst hitch 515 ms. Below its own target: not nominated. targets.toml and the route header updated.
+
+**The verdict's crash=True is not hakuX.** The four tombstones (07:56:05, 07:58:01, 08:00:41, 08:02:14) are all
+`Cmdline: media.extractor`: Android's extractor aborting on a malformed MP4 (`MPEG4Extractor.cpp:1991 CHECK_EQ`).
+`title_verdict.py` (lines 420-422) counts any F-level DEBUG/libc line as a crash, whatever the process. My three earlier
+Nova logcats today have none; this run has one every ~2 min, so something new on the Nova's storage is being re-scanned.
+Filed on `dispatch/board-requests/titleroutes.md` (08:10 PDT): key the crash test on the soaked process, and find the
+file. **Do not repeat: read a crash verdict's `Cmdline:` line before calling a run a crash.**
