@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 293
+wave = 294
 updated_utc = "2026-10-02T16:50:00Z"
 
 [lane.issuerecon]
@@ -65,7 +65,12 @@ note = "STARTED (hostops 2026-10-01 22:2x PDT), briefs/holdwait.md, Issue: none 
 issues = ["10"]
 retired_utc = "2026-09-20T14:57:11Z"
 files = []
-note = "RETIRED (job.board, board tick): PR #168 MERGED 2026-09-19T23:27:57Z (fold c5f7169e70), unit gone, no open PR left on lane/hilodot10. #10 stays open (status fixed-part) -- its own blocked_on already says NO MECHANISM IN HAND for the three remaining classes and explicitly 'do not read this as queued work', so this is not a re-dispatch candidate, just label/row hygiene. docs/testing/bump_sign_quads.py and docs/lanes/hilodot10/NOTES.md RELEASED TO [free]."
+note = "RETIRED (job.board, board tick): PR #168 MERGED 2026-09-19T23:27:57Z (fold c5f7169e70), unit gone, no open PR left on lane/hilodot10. #10 stays open (status fixed-part) -- its own blocked_on already says NO MECHANISM IN HAND for the three remaining classes and explicitly 'do not read this as queued work', so this is not a re-dispatch candidate, just label/row hygiene. docs/testing/bump_sign_quads.py and docs/lanes/hilodot10/NOTES.md RELEASED TO [lane.usagemode]
+issues = ["433"]
+files = ["docs/lanes/usagemode/**", "docs/testing/jobs/usage/**", "docs/testing/jobs/window.sh", "docs/testing/jobs/selftest.d/89-usage-mode.sh"]
+note = "ROW ADDED (hostops 2026-10-02 10:18 PDT): hakux-lane-usagemode has been RUNNING since ~10:15 PDT (briefs/usagemode.md, #433) with NO territory row -- hakux-board cannot write it while gh-auth is down (see [gh-auth]) and lane.local, who started it per the owner's 10:10 PDT operating-modes decision, cannot write board rows either. Found via the HOST INBOX ask lane.local left at 10:15 PDT. Files per lane.local's own request; confirmed unclaimed elsewhere (window.sh, usage/**, 89-usage-mode.sh all absent from every files= list and from [free])."
+
+[free]."
 
 [retired.indexcheck]
 issues = ["157"]
