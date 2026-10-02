@@ -1,0 +1,147 @@
+t	state	source	changed	luma	cap_s	action	frame	mode
+0.4	logo	crop:logo-sonicteam		18.9	0.27	press A (skip logo)	023704-001-logo.png	
+2.2	intro_video	moving	0.2291	15.8	0.32	press A (skip intro_video)	023706-002-intro_video.png	
+4.0	black	black		0.0	0.27	wait	023708-003-black.png	
+5.4	logo	crop:logo-dolby		8.9	0.27	press A (skip logo)	023709-004-logo.png	
+7.4	intro_video	moving	0.8588	69.5	0.57	press A (skip intro_video)	023711-005-intro_video.png	
+9.6	title	crop:title-art		122.3	0.67	press START (title 1)	023714-006-title.png	
+11.4	profile	crop:profile-slots		119.7	0.27	settle	023715-007-profile.png	
+12.9	profile	crop:profile-slots		135.6	0.32	press A (profile 1)		
+14.6	profile	crop:profile-slots		134.8	0.32	settle		
+16.0	profile	crop:profile-slots		134.7	0.32	press A (profile 2)		
+17.7	main_menu	crop:menu-banner		111.3	0.37	settle	023722-011-main_menu.png	
+19.2	main_menu	crop:menu-banner		110.2	0.37	press A (main_menu 1)		
+20.9	main_menu	crop:menu-banner		116.3	0.32	settle		
+22.2	main_menu	crop:menu-banner		115.1	0.32	press A (main_menu 2)		
+23.9	main_menu	crop:menu-banner		103.2	0.32	settle		
+25.3	main_menu	crop:menu-banner		109.9	0.32	press A (main_menu 3)		
+27.0	main_menu	crop:menu-banner		109.6	0.37	settle		
+28.4	main_menu	crop:menu-banner		109.5	0.32	press A (main_menu 4)		
+30.4	cutscene	moving	0.8302	119.0	0.62	press A (skip cutscene)	023735-019-cutscene.png	
+32.2	loading	crop:loading-stage		37.3	0.32	wait	023737-020-loading.png	
+33.8	unknown	hud:hud+after-loading	0.2106	52.5	0.37	hold (hud up, motion not yet play)	023739-021-unknown.png	speed
+36.0	play	hud:hud+motion	0.932	180.6	0.77	hold tap A	023741-022-play.png	speed
+38.7	play	hud:hud+motion	0.7972	140.6	0.82	hold	023743-023-play.png	speed
+41.1	play	hud:hud+motion	0.816	114.3	0.87	hold	023746-024-play.png	speed
+43.3	play	hud:hud+motion	0.7348	102.6	0.77	hold	023748-025-play.png	speed
+45.7	play	hud:hud+motion p=0.784	0.7642	123.8	0.82	hold tap A	023751-026-play.png	fly
+48.4	play	hud:hud+motion p=0.669	0.7715	119.4	0.82	hold	023754-027-play.png	fly
+50.7	stalled	hud:hud+static p=0.609	0.2124	119.9	0.77	stall escape 1	023809-028-stalled.png	fly
+66.0	play	hud:hud+motion p=0.568	0.7482	123.9	0.82	hold tap A	023812-029-play.png	fly
+68.8	play	hud:hud+motion	0.3557	123.4	0.82	hold	023814-030-play.png	fly
+71.1	play	hud:hud+motion	0.7945	124.6	0.87	hold	023817-031-play.png	fly
+73.5	play	hud:hud+motion	0.7479	122.2	0.92	hold tap X	023819-032-play.png	power
+76.2	play	hud:hud+motion p=0.607	0.7666	117.9	0.82	hold tap A	023822-033-play.png	power
+78.9	play	hud:hud+motion p=0.608	0.7411	125.2	0.92	hold tap X	023825-034-play.png	power
+81.6	play	hud:hud+motion p=0.583	0.7729	141.0	0.82	hold	023828-035-play.png	power
+83.9	play	hud:hud+motion p=0.49	0.7931	135.3	0.82	hold tap X	023830-036-play.png	power
+86.6	play	hud:hud+motion p=0.618	0.8329	85.2	0.77	hold tap A	023833-037-play.png	power
+89.1	play	hud:hud+motion p=0.585	0.6461	100.7	0.72	hold tap X	023835-038-play.png	power
+91.6	play	hud:hud+motion p=0.723	0.8317	99.9	0.72	hold	023838-039-play.png	power
+93.7	play	hud:hud+motion p=0.69	0.5541	104.0	0.67	hold tap X	023840-040-play.png	power
+96.1	play	hud:hud+motion p=0.779	0.6434	63.1	0.67	hold tap A	023842-041-play.png	power
+98.6	play	hud:hud+motion p=0.501	0.4202	65.5	0.72	hold tap X (escape budget reset)	023845-042-play.png	power
+101.3	play	hud:hud+motion p=0.54	0.772	99.5	0.87	hold	023847-043-play.png	power
+103.5	play	hud:hud+motion p=0.577	0.7009	64.9	0.72	hold tap X	023850-044-play.png	power
+105.9	play	hud:hud+motion p=0.439	0.642	65.0	0.67	hold tap A	023852-045-play.png	power
+108.4	stalled	hud+no-progress p=0.184	0.462	58.2	0.72	stall escape 1	023901-046-stalled.png	power
+116.1	play	hud:hud+motion p=0.466	0.6752	79.5	0.82	hold tap A tap X	023904-047-play.png	power
+119.2	play	hud:hud+motion p=0.426	0.5907	76.9	0.77	hold	023906-048-play.png	power
+121.5	play	hud:hud+motion p=0.314	0.5729	59.2	0.72	hold tap X	023909-049-play.png	power
+123.9	stalled	hud+no-progress p=0.251	0.6248	72.0	0.67	stall escape 2	023916-050-stalled.png	power
+130.9	play	hud:hud+motion p=0.415	0.5406	58.5	0.77	hold tap A tap X	023918-051-play.png	power
+133.8	play	hud:hud+motion p=0.316	0.3587	61.2	0.67	hold	023921-052-play.png	power
+136.0	play	hud:hud+motion p=0.368	0.5826	59.9	0.77	hold tap X	023923-053-play.png	power
+138.6	play	hud:hud+motion p=0.414	0.6143	67.8	0.72	hold	023925-054-play.png	power
+140.8	play	hud:hud+motion	0.6124	58.9	0.77	hold tap A tap X	023928-055-play.png	power
+143.7	play	hud:hud+motion p=0.307	0.5499	60.9	0.77	hold	023930-056-play.png	power
+145.8	stalled	hud+no-progress p=0.195	0.5155	57.4	0.72	stall escape 3	023939-057-stalled.png	power
+153.4	play	hud:hud+motion p=0.592	0.7471	105.3	0.77	hold tap A tap X	023942-058-play.png	power
+156.5	play	hud:hud+motion p=0.466	0.6913	76.9	0.77	hold	023944-059-play.png	power
+158.7	play	hud:hud+motion p=0.478	0.6651	89.4	0.77	hold tap X	023947-060-play.png	power
+161.3	play	hud:hud+motion p=0.522	0.6206	97.1	0.82	hold	023949-061-play.png	power
+163.6	play	hud:hud+motion p=0.533	0.713	100.2	0.82	hold tap A tap X	023952-062-play.png	power
+166.5	play	hud:hud+motion p=0.605	0.6332	102.4	0.77	hold	023954-063-play.png	power
+168.7	play	hud:hud+motion p=0.456	0.7098	67.1	0.77	hold tap X	023957-064-play.png	power
+171.0	play	hud:hud+motion p=0.581	0.6941	42.2	0.52	hold	023959-065-play.png	power
+173.3	play	hud:hud+motion p=0.643	0.9499	140.5	0.82	hold tap A	024001-066-play.png	speed
+176.0	play	hud:hud+motion p=0.624	0.7719	112.0	0.82	hold	024004-067-play.png	speed
+178.3	play	hud:hud+motion p=0.655	0.8265	142.2	0.82	hold	024007-068-play.png	speed
+180.6	play	hud:hud+motion p=0.764	0.7942	145.2	0.82	hold	024009-069-play.png	speed
+182.9	play	hud:hud+motion p=0.789	0.7976	116.7	0.82	hold tap A	024012-070-play.png	speed
+185.5	play	hud:hud+motion p=0.62	0.7681	114.8	0.77	hold (escape budget reset)	024014-071-play.png	speed
+187.7	play	hud:hud+motion p=0.668	0.8283	85.5	0.72	hold	024016-072-play.png	speed
+189.8	play	hud:hud+motion p=0.737	0.6417	102.5	0.67	hold	024018-073-play.png	speed
+192.0	stalled	hud:hud+static p=0.758	0.2371	100.2	0.72	stall escape 1	024034-074-stalled.png	speed
+207.6	play	hud:hud+motion p=0.496	0.7121	80.1	0.77	hold tap A	024036-075-play.png	fly
+210.2	play	hud:hud+motion	0.6058	86.9	0.72	hold	024039-076-play.png	fly
+212.3	play	hud:hud+motion	0.4695	90.9	0.72	hold	024042-077-play.png	fly
+214.2	play	hud:hud+motion	0.7973	109.7	0.47	hold	024043-078-play.png	fly
+216.3	play	hud:hud+motion	0.7957	89.2	0.72	hold tap A	024046-079-play.png	fly
+218.8	unknown	hud:hud+between p=0.422	0.3018	90.5	0.72	hold (hud up, motion not yet play)	024048-080-unknown.png	fly
+221.0	play	hud:hud+motion p=0.471	0.6986	88.4	0.57	hold	024050-081-play.png	fly
+223.2	stalled	hud+no-progress p=0.264	0.6935	100.9	0.72	stall escape 2	024105-082-stalled.png	fly
+238.0	stalled	hud+no-progress p=0.286	0.4797	96.1	0.67	stall escape 3		fly
+252.6	play	hud:hud+motion p=0.383	0.5726	81.7	0.67	hold tap A	024123-084-play.png	fly
+255.1	play	hud:hud+motion	0.5523	93.7	0.67	hold	024125-085-play.png	fly
+257.2	play	hud:hud+motion	0.4984	83.3	0.73	hold	024127-086-play.png	fly
+259.4	play	hud:hud+motion	0.4628	91.5	0.72	hold	024130-087-play.png	fly
+261.5	stalled	hud:hud+static	0.1624	91.2	0.72	stall escape 4	024145-088-stalled.png	fly
+276.3	play	hud:hud+motion p=0.583	0.7506	88.1	0.72	hold tap A	024148-089-play.png	fly
+279.0	unknown	hud:hud+between	0.3231	87.1	0.77	hold (hud up, motion not yet play)	024150-090-unknown.png	fly
+281.2	play	hud:hud+motion	0.8064	124.5	0.62	hold	024152-091-play.png	fly
+283.4	play	hud:hud+motion	0.8103	88.1	0.72	hold	024155-092-play.png	fly
+285.6	play	hud:hud+motion	0.7231	93.2	0.72	hold tap A	024157-093-play.png	fly
+288.1	play	hud:hud+motion p=0.586	0.4668	88.7	0.72	hold	024159-094-play.png	fly
+290.2	play	hud:hud+motion p=0.609	0.5028	100.5	0.72	hold	024201-095-play.png	fly
+292.3	play	hud:hud+motion p=0.641	0.4569	93.2	0.72	hold	024203-096-play.png	fly
+294.4	play	hud:hud+motion p=0.553	0.551	99.7	0.67	hold tap A	024206-097-play.png	fly
+296.8	stalled	hud+no-progress p=0.277	0.5239	98.9	0.72	hold (stalled 0 s)	024208-098-stalled.png	fly
+299.1	stalled	hud+no-progress p=0.225	0.4441	90.2	0.72	hold (stalled 2 s)		fly
+301.3	play	hud:hud+motion p=0.49	0.6983	91.2	0.72	hold	024213-100-play.png	fly
+303.5	stalled	hud+no-progress p=0.293	0.7049	96.8	0.67	hold (stalled 0 s)	024215-101-stalled.png	fly
+305.8	play	hud:hud+motion p=0.53	0.7232	84.8	0.77	hold tap A	024218-102-play.png	fly
+308.4	stalled	hud+no-progress p=0.296	0.7082	94.6	0.72	hold (stalled 0 s)	024220-103-stalled.png	fly
+310.6	play	hud:hud+motion p=0.503	0.7123	88.4	0.72	hold	024223-104-play.png	fly
+312.9	play	hud:hud+motion p=0.497	0.7165	89.1	0.72	hold	024225-105-play.png	fly
+315.1	stalled	hud:hud+static p=0.318	0.2369	90.4	0.72	hold (stalled 0 s)	024227-106-stalled.png	fly
+317.3	unknown	hud:hud+between p=0.512	0.3477	90.9	0.72	hold (hud up, motion not yet play)	024229-107-unknown.png	fly
+319.6	stalled	hud+no-progress p=0.237	0.4395	99.6	0.67	hold (stalled 5 s)	024232-108-stalled.png	fly
+321.9	play	hud:hud+motion p=0.518	0.4225	93.0	0.72	hold tap A	024234-109-play.png	fly
+324.5	stalled	hud+no-progress p=0.238	0.3751	91.5	0.72	hold (stalled 0 s)	024237-110-stalled.png	fly
+326.8	stalled	hud+no-progress p=0.083	0.4238	91.9	0.72	hold (stalled 2 s)		fly
+328.9	stalled	hud:hud+static p=0.125	0.2678	93.6	0.72	hold (stalled 4 s)		fly
+331.0	play	hud:hud+motion p=0.46	0.6543	92.0	0.62	hold tap A	024243-113-play.png	fly
+333.5	stalled	hud+no-progress p=0.207	0.6721	86.0	0.67	hold (stalled 0 s)	024246-114-stalled.png	fly
+335.7	play	hud:hud+motion p=0.417	0.6484	79.2	0.62	hold	024248-115-play.png	fly
+337.9	stalled	hud+no-progress p=0.255	0.7023	98.4	0.67	hold (stalled 0 s)	024251-116-stalled.png	fly
+340.2	stalled	hud+no-progress p=0.121	0.4372	91.7	0.72	hold (stalled 2 s)		fly
+342.3	stalled	hud:hud+static p=0.458	0.2805	88.8	0.67	hold (stalled 4 s)		fly
+344.4	unknown	hud:hud+between p=0.169	0.3332	93.0	0.72	hold (hud up, motion not yet play)	024257-119-unknown.png	fly
+346.7	stalled	hud:hud+static p=0.418	0.2343	92.5	0.72	hold (stalled 9 s)	024300-120-stalled.png	fly
+348.9	unknown	hud:hud+between p=0.243	0.3302	92.6	0.67	hold (hud up, motion not yet play)	024302-121-unknown.png	fly
+351.2	stalled	hud+no-progress p=0.271	0.4211	100.9	0.72	hold (stalled 13 s)	024304-122-stalled.png	fly
+353.4	stalled	hud+no-progress p=0.221	0.4319	94.7	0.72	hold (stalled 15 s)		fly
+355.6	stalled	hud+no-progress p=0.254	0.5185	84.6	0.72	hold (stalled 18 s)		fly
+357.6	play	hud:hud+motion p=0.397	0.5552	72.5	0.62	hold tap A	024311-125-play.png	fly
+360.2	stalled	hud+no-progress p=0.112	0.592	94.6	0.72	hold (stalled 0 s)	024313-126-stalled.png	fly
+362.5	unknown	hud:hud+between p=0.257	0.3473	91.6	0.72	hold (hud up, motion not yet play)	024316-127-unknown.png	fly
+364.8	stalled	hud+no-progress p=0.288	0.5297	89.2	0.72	hold (stalled 5 s)	024318-128-stalled.png	fly
+367.0	stalled	hud+no-progress p=0.275	0.498	90.6	0.67	hold (stalled 7 s)		fly
+369.2	play	hud:hud+motion p=0.318	0.5068	85.1	0.72	hold tap A	024323-130-play.png	fly
+371.8	stalled	hud+no-progress p=0.233	0.5261	95.9	0.72	hold (stalled 0 s)	024326-131-stalled.png	fly
+374.0	stalled	hud+no-progress p=0.297	0.4689	94.0	0.67	hold (stalled 2 s)		fly
+376.1	stalled	hud+no-progress p=0.249	0.5184	86.6	0.72	hold (stalled 4 s)		fly
+378.1	play	hud:hud+motion p=0.461	0.6691	90.6	0.62	hold tap A	024332-134-play.png	fly
+380.7	stalled	hud+no-progress p=0.23	0.6698	94.2	0.72	hold (stalled 0 s)	024335-135-stalled.png	fly
+383.0	play	hud:hud+motion p=0.473	0.6687	85.1	0.72	hold	024337-136-play.png	fly
+385.3	stalled	hud+no-progress p=0.247	0.6778	87.6	0.67	hold (stalled 0 s)	024339-137-stalled.png	fly
+387.5	stalled	hud+no-progress p=0.206	0.4726	92.3	0.67	hold (stalled 2 s)		fly
+389.7	play	hud:hud+motion p=0.453	0.4042	89.5	0.72	hold tap A	024344-139-play.png	fly
+392.2	unknown	hud:hud+between p=0.111	0.3424	91.5	0.72	hold (hud up, motion not yet play)	024346-140-unknown.png	fly
+394.3	play	hud:hud+motion p=0.499	0.6377	89.1	0.57	hold	024348-141-play.png	fly
+396.5	stalled	hud+no-progress p=0.243	0.6907	101.6	0.67	hold (stalled 0 s)	024351-142-stalled.png	fly
+398.8	stalled	hud+no-progress p=0.056	0.4656	93.2	0.72	hold (stalled 2 s)		fly
+# time_to_title_s=9.7
+# time_to_play_s=36.3
+# result=window-done

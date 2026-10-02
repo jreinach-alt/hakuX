@@ -25,6 +25,12 @@ title = "Forza Motorsport"
 title_id = "4D53006E"
 genre = "driving"
 order = ["boot", "logo", "intro_video", "title", "profile", "main_menu", "loading", "cutscene", "play"]
+# HUD frames by their own bars (lane.routedriver2 run f2, Nova): the car
+# parked against the grandstand wall at 0 MPH reads 0.054-0.097 changed 2-4 s
+# apart (the crowd is animated) and so read `play` on the default 0.05 bar;
+# live racing reads 0.146-0.423 (rdfz1, 2 s apart).
+hud_motion_bar = 0.12
+hud_stall_bar = 0.10
 
 [input]
 title = ["A"]            # "PRESS A TO START"
@@ -33,9 +39,51 @@ main_menu = ["A"]        # Arcade Race -> event -> class -> car -> assists -> St
 ingame_menu = ["A"]
 paused = ["A"]           # Resume is highlighted; START would also resume
 play_hold = [["RT", "max"]]
+# Against a wall at 0 MPH (run f1): reverse (LT brakes, then reverses) with
+# the wheel turned, then straighten; the second try turns the other way. The
+# steering thread is paused while an escape plays.
+stall_cycles = [
+  [[[["LT", "max"], ["LX", "max"]], 2.5], [[["LX", "min"]], 0.8], [[], 0.3]],
+  [[[["LT", "max"], ["LX", "min"]], 2.5], [[["LX", "max"]], 0.8], [[], 0.3]],
+]
+
+# STEERING (lane.routedriver2). RT alone ran wide onto the dirt at the
+# first bend (lane.routedriver session 4). The Arcade assists draw the
+# suggested line as green chevrons on the asphalt. A thread reads where they
+# are in the band ahead of the car and steers toward them several times a
+# second, owning LX, RT and LT while the race HUD is up (play_hold's RT is
+# its job then). On the recorded run (rdfz1, Thor) the line's centroid sat at
+# x 650-760 on the straight and 951-1054 at the bend the car ran wide on. In
+# the frame after, the car is on the dirt and no line is visible: hold the
+# last steer 1.5 s at low throttle, then centre. Throttle is eased as the
+# lock grows, because one capture per ~0.5 s cannot hold a flat-out bend.
+[steer]
+# OFF: on the Nova (runs f1, f2) the loop ran at ~1.1 Hz (one screencap per
+# 0.9 s) and put the car into the pit wall / the grandstand within 12 s, at
+# 0 MPH for the rest of the window, where RT alone reaches play. Kept so the
+# next attempt starts from measured numbers; see lane.routedriver2 NOTES.md.
+enabled = false
+band = [0, 400, 1280, 200]
+hue = [85, 160]
+center_x = 640
+full_dx = 300
+min_px = 40
+throttle = 0.7
+turn_lift = 0.4
+lost_throttle = 0.3
+lost_hold_s = 1.5
+# Run f1 (Nova, lane.routedriver2): steering from the standing start toward
+# the line (110 px right of the car) clipped the car alongside, then the car
+# went full left into the pit wall at 12 s and sat at 0 MPH: hold the wheel
+# straight for the first 5 s.
+straight_s = 5.0
 
 [drive]
 stall_fail_s = 30.0
+escape_max = 4
+# No progress_bar: the 32x24 scene with Forza's HUD masked reads 0.154 on a
+# live race fixture 10 s apart and 0.155 on the parked car 41 s apart (f2);
+# it does not separate them here.
 # Forza's assists overlay, its loading screen and the starting grid are
 # animated menus the classifier reads as moving (`cutscene`): A advances
 # all of them, B would back out, START on the grid opens the pause.
