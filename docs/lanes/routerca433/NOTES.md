@@ -16,7 +16,7 @@ file is the evidence behind it and what the next lane should not repeat.
   route progress (`steps`, `marks`, `ended`), the verdict (`gameplay_s`, `pass`,
   `failing`), `post_frames`/`post_span_s` (route frames taken AFTER the mark,
   the only pictures of the scored window that exist), and the class.
-- `review.tsv`: the 18 runs whose frames I opened, with what each showed.  It
+- `review.tsv`: the 19 runs whose frames I opened, with what each showed.  It
   overrides the automatic class.
 - `devtime.py`: device-minutes by state from `~/hakux-work/logs/devwatch/*.tsv`
   (one sample per device per minute, 09-26 00:00 to 10-02 ~07:00 PDT).
@@ -110,7 +110,7 @@ Device time from devwatch (09-26 00:00 to 10-02 ~07:00 PDT, 132.6 h per device):
 Route work, dispatch plus held: **about 41 device-hours since 09-26** (Nova 21.1,
 Thor 20.3, cold slots not counted).  Output: 1 frame-proven 600-s window.
 
-## Frame review (18 runs, across classes)
+## Frame review (19 runs, across classes)
 
 `review.tsv` has each with the file looked at.  Summary:
 
@@ -270,7 +270,7 @@ Also from a read-only subagent. I re-checked every item that CAPA relies on.
 ## Session 1 (2026-10-02): done
 
 - Ledger and devtime.
-- Frame review of 18 runs.
+- Frame review of 19 runs.
 - Code read of route.sh, drive.py, classify.py and title_verdict.py.
 - Route-file census: 61 blind, 1 waitfor, 3 drive.
 - Snapshot check: the Android build stubs xemu snapshots.

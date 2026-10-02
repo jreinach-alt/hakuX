@@ -3,7 +3,7 @@
 lane.routerca433, 2026-10-02.  Analysis only: no device time, no runs queued.
 Evidence is in this directory:
 - `ledger.tsv`: 218 dispatch requests, from `ledger.py`.
-- `review.tsv`: 18 runs whose frames I opened.
+- `review.tsv`: 19 runs whose frames I opened.
 - `devtime.py`: per-minute device states from devwatch.
 - `NOTES.md`: method, the per-requester tables, held sessions and process history.
 Every number below names a run id or a file.
@@ -386,7 +386,7 @@ Not run; this lane does not queue.
 
 | # | question | run | hit | miss |
 |---|---|---|---|---|
-| X1 | Can a vision model name the screens our classifier needed crops for? | Offline, no device: the 18 reviewed runs' frames plus the routedriver/routedriver2 fixtures, through the MODEL FALLBACK prompt | State names agree with the review on >= 90% of frames (Name Entry, pause, Stage Select, lost round, play, stalled) | < 80%, or it calls a menu `play` |
+| X1 | Can a vision model name the screens our classifier needed crops for? | Offline, no device: the 19 reviewed runs' frames plus the routedriver/routedriver2 fixtures, through the MODEL FALLBACK prompt | State names agree with the review on >= 90% of frames (Name Entry, pause, Stage Select, lost round, play, stalled) | < 80%, or it calls a menu `play` |
 | X2 | Do the 10 accepted d? titles hold play past the mark? | Their current routes, Nova, 900 s, `frames_every 30` | >= 18 of 20 window frames are live play | Any title with > 60 s of menu, results or static screen |
 | X3 | Do Android VM snapshots work? | One held proof: savevm in Crimson Skies flight, then loadvm x5 | Rendering and input resume 5/5 | Hang, black, or lost input |
 | X4 | Does a save reset remove the state class? | 187 and Castlevania returning with the declared save image, 2 runs each | The first frames match the declared path in 4/4 | Any keyboard or Name Entry |

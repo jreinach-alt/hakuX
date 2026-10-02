@@ -15,7 +15,7 @@ What is in the directory:
 - `ledger.py` -> `ledger.tsv`: every route-related dispatch request since
   09-24, deduplicated by request id. 218 requests, 29.2 device-hours, each
   with an outcome class.
-- `review.tsv`: 18 runs whose frames were opened, overriding the automatic
+- `review.tsv`: 19 runs whose frames were opened, overriding the automatic
   class.
 - `devtime.py`: device-minutes by state from devwatch.
 - `NOTES.md`: method, tables, held-session and process history, and what the
