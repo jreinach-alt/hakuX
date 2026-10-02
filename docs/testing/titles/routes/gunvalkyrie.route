@@ -52,9 +52,17 @@
 # 051733-051838). A 1.2 s turn per cycle only randomises her heading. The
 # mark frame shows the spawn heading looking DOWN the canyon at the arch,
 # and replay 1, which turned least, was the one that reached the arch
-# (042255). So this version never turns: the stick stays forward the whole
-# cycle, alternate 1.5 s strafes (net zero) slide her off whatever she
-# meets, and the double-LT boost lifts her over low rock.
+# (042255). So v4 never turned: forward the whole cycle, alternate 1.5 s
+# strafes, the double-LT boost.
+# Replay 4 (1790944628-titleroutes2-2686999, ref bd03a589f7): worse. She
+# meets a dark rock face within 14 s of the mark and from 060508 to the end
+# is pressed against one wall. Same numbers as every replay (59.94 median,
+# 100% at 30+, 96% at 60, no hang, static 0.010): the canyon walls do not
+# move the frame rate, they only make the window a poor picture of play.
+# FINAL: the loop below is replay 2's (685c52e514) again, unchanged -- the
+# one that travelled most (2.5 min at one cliff, then down the canyon) --
+# so replay 2 is its confirmation run. Moving Kelly through Valley 1 for a
+# whole window needs a screen-aware loop (drive.py), not a fifth blind one.
 wait 20
 shot boot20
 wait 20
@@ -82,22 +90,25 @@ repeat forever {
     axis LT max
     wait 0.3
     axis LT min
-    wait 0.3
-    axis LT max
-    wait 0.3
-    axis LT min
-    wait 1.2
+    wait 1.5
     press A
+    axis RX max
+    wait 0.7
+    axis RX mid
+    axis RT max
+    wait 2
+    axis RT min
+    press A
+    axis LY mid
     axis LX max
     wait 1.5
     axis LX mid
-    axis RT max
-    wait 1.5
-    axis RT min
     press A
-    axis LX min
-    wait 1.5
-    axis LX mid
+    axis LY min
+    wait 2
+    axis RX min
+    wait 0.4
+    axis RX mid
     press A
     wait 1
     shot play
