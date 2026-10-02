@@ -1,0 +1,86 @@
+# Ninja Gaiden Black (5443000D), Nova. Built from the generic survey
+# 1790941402-titleroutes2-1890328 (lane.titleroutes2 session 1,
+# 2026-10-02). Read from its route-frames, not guessed:
+#   boot20 (050613): the copyright warning; boot40: the intro movie;
+#     booted (050656): "PRESS START BUTTON".
+#   cycle 1 (050702 START / 050707 A): MAIN MENU, NEW GAME lit; A starts
+#     it, and the prologue narration begins ("...of a Black Dragon").
+#   cycles 2-13 (050714-050842): the prologue ("of ancient myth", "This
+#     sword", "of young Ninja Ryu Hayabusa..."). START and A did not skip
+#     it.
+#   cycles 13-19 (050847-050940): "The Book of the Fiends" text over
+#     "Now Loading..." (~95 s).
+#   play loop (051006): "CHAPTER 1 / The Way of the Ninja", "Proceed";
+#     the loop's A took it, and 051030 is the chapter's opening cutscene
+#     (Ryu above a waterfall). The 300 s window ended there.
+# So: 20 START/A cycles (reach the chapter card, ~260 s after launch, and
+# take it), then START to skip the opening cutscene, then B three times
+# (B closes the START menu if a START landed in play; in play B is a
+# thrown shuriken), mark, then a play loop with no START: run forward on
+# the left stick, X/Y combos, A jump, small RX camera turns.
+# [guess] that START skips the cutscene (the frames will show it), and
+# where play starts. NOT YET REPLAYED: launch to play is ~4.5 min, so a
+# 420 s replay scores ~2 min.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+shot booted
+repeat 20 {
+    press START
+    wait 5
+    shot menu-start
+    press A
+    wait 5
+    shot menu-a
+}
+press START
+wait 4
+shot skip1
+press START
+wait 4
+shot skip2
+press B
+wait 1.5
+press B
+wait 1.5
+press B
+wait 2
+shot pre-mark
+mark gameplay               # CHECK: Ryu under player control, the health bar up, no menu or cutscene
+repeat forever {
+    axis LY min
+    wait 2
+    press X
+    wait 0.3
+    press X
+    wait 0.3
+    press Y
+    wait 0.6
+    press A
+    wait 1
+    axis RX max
+    wait 0.5
+    axis RX mid
+    wait 2
+    press Y
+    wait 0.4
+    press X
+    wait 0.5
+    shot play1
+    axis LY mid
+    axis LX max
+    wait 1.5
+    axis LX mid
+    axis LY min
+    wait 2
+    press A
+    wait 0.4
+    press X
+    wait 1
+    axis RX min
+    wait 0.3
+    axis RX mid
+    shot play2
+}

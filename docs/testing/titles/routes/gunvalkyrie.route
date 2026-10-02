@@ -46,6 +46,15 @@
 # 1.2 s one way per cycle (the view sweeps round in a few cycles), and the
 # jump is the tip's double pull of LT (jump, then Rocket Boost) to clear
 # low rock.
+# Replay 3 (1790941860-titleroutes2-2053231, ref 82ca509265): no ROUTE
+# FAIL, play the whole window, 100% at 30+, no hang, static_frac 0.009 --
+# but most frames are still Kelly against a canyon wall (051506-051555,
+# 051733-051838). A 1.2 s turn per cycle only randomises her heading. The
+# mark frame shows the spawn heading looking DOWN the canyon at the arch,
+# and replay 1, which turned least, was the one that reached the arch
+# (042255). So this version never turns: the stick stays forward the whole
+# cycle, alternate 1.5 s strafes (net zero) slide her off whatever she
+# meets, and the double-LT boost lifts her over low rock.
 wait 20
 shot boot20
 wait 20
@@ -79,20 +88,16 @@ repeat forever {
     axis LT min
     wait 1.2
     press A
-    axis RX max
-    wait 1.2
-    axis RX mid
-    axis RT max
-    wait 2
-    axis RT min
-    press A
-    axis LY mid
     axis LX max
     wait 1.5
     axis LX mid
+    axis RT max
+    wait 1.5
+    axis RT min
     press A
-    axis LY min
-    wait 2
+    axis LX min
+    wait 1.5
+    axis LX mid
     press A
     wait 1
     shot play

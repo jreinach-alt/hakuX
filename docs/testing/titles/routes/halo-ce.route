@@ -23,9 +23,38 @@
 # "invert the look?" question either way, which does not change the run.
 # The survey made a "New001" profile; if the title now lists profiles
 # first, START/A pick the lit one, so the cycle count should hold -- the
-# frames will say. NOT YET REPLAYED. What a pass looks like: the play
-# frames leave the cryo bay (corridors of the Pillar of Autumn), not five
-# minutes of one room.
+# frames will say. What a pass looks like: the play frames leave the cryo
+# bay (corridors of the Pillar of Autumn), not five minutes of one room.
+# Replay 1 (1790940485-titleroutes2-1612232, ref 685c52e514): no ROUTE
+# FAIL; SELECT PROFILE (New001) -> LOAD LEVEL (The Pillar of Autumn) ->
+# CHOOSE DIFFICULTY -> the cryo bay on cycle 4; the training block cleared
+# the look test, and the mark (045315) came with "Use X to exit the
+# cryo-tube" still up; the walk loop's X took it. The rest of the window
+# was the cryo bay under "Stand on the red square", wandering (static 0.0,
+# 99% at 30+): live, but the scripted walk never started.
+# HELD Nova nav session (lane.titleroutes2 s1, 05:19-05:35 PDT,
+# ~/hakux-work/nav/halo-ce.returning-20261002T051941/, 59 frames) found the
+# rest of the calibration, in order:
+#   1. look test ("Use RIGHT to look around") -- any up/down look;
+#   2. "Use X to exit the cryo-tube" (X, not A), then a short cutscene;
+#      control returns facing the tube row, the tech to the right, the red
+#      square on the floor beside him;
+#   3. "Use LEFT to move / RIGHT to look", then stepping onto the red
+#      square in front of the light pillar;
+#   4. "Target each of the flashing lights": five lights in a cross on the
+#      pillar (centre, top, left, right, bottom), each turns green when the
+#      crosshair sits on it; then the same five again with "Vertical
+#      looking is now inverted";
+#   5. "Press B to try it the other way / Press A to leave it like it is":
+#      A; a GAMEPLAY HELP panel that A does NOT close and START does;
+#      "Checkpoint... done". Nothing else happened in the next ~2 min.
+# Step 4 needs aimed input: the right stick is very fast at full throw (a
+# ~0.4 s tap turns ~90 degrees), a third-throw (RX 16000) tap moves ~25 px,
+# two-thirds (22000) ~65 px; vertical taps at full throw ~160 px. An
+# open-loop route would have to replay the walk to the square and ten
+# aimed taps exactly; that is a drive.py (screen-aware) job, or a save
+# made after the checkpoint. This file is a DRAFT that reaches the cryo
+# bay only.
 wait 20
 shot boot20
 wait 20
