@@ -4,7 +4,7 @@ State: ready
 
 Lane: pathfind            Issue: #433
 Base: master @ 66bce0c222
-Files: docs/lanes/pathfind/PR.md, docs/lanes/pathfind/NOTES.md, docs/lanes/pathfind/OUTBOX.md, docs/lanes/pathfind/batch.sh, docs/lanes/pathfind/scoreboard.py, docs/lanes/pathfind/runs/, docs/testing/titles/pathfind.py, docs/testing/titles/pathfind_selftest.py, docs/testing/titles/pathknow/paths/
+Files: docs/lanes/pathfind/NOTES.md, docs/lanes/pathfind/OUTBOX.md, docs/lanes/pathfind/PR.md, docs/lanes/pathfind/batch.sh, docs/lanes/pathfind/runs/, docs/lanes/pathfind/scoreboard.py, docs/lanes/pathfind/sigcmp.py, docs/testing/titles/pathfind.py, docs/testing/titles/pathfind_selftest.py, docs/testing/titles/pathknow/hints/learned-pub-4947.md, docs/testing/titles/pathknow/hints/learned-pub-4C41.md, docs/testing/titles/pathknow/hints/learned-pub-4D53.md, docs/testing/titles/pathknow/hints/learned-pub-5345.md, docs/testing/titles/pathknow/hints/learned-pub-5443.md, docs/testing/titles/pathknow/hints/learned-pub-5454.md, docs/testing/titles/pathknow/hints/learned-pub-5655.md, docs/testing/titles/pathknow/hints/learned-pub-5849.md, docs/testing/titles/pathknow/hints/learned-series-blinx.md, docs/testing/titles/pathknow/hints/learned-series-espn-2k5.md, docs/testing/titles/pathknow/hints/learned-series-midnight-club.md, docs/testing/titles/pathknow/hints/learned-series-ninja-gaiden.md, docs/testing/titles/pathknow/paths/
 Prediction: none: no arm (tooling; no emulator code)
 Needs device: yes (held, direct driving; no dispatcher requests)    Needs NDK: no
 
