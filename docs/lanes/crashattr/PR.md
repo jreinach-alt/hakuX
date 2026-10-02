@@ -47,7 +47,7 @@ fragments, 0 failed (97 in one run before its 50-minute cap, 2582 ok; the
 other 23 in a second run, 361 passed). `preflight.sh`: pending, run once the
 diff is applied on the branch.
 
-Waiting: the territory grant for `title_verdict.py` (lane.routedriver2) and
+Waiting (11:02 PDT, polled origin/board 08:57-11:01 with no change): the territory grant for `title_verdict.py` (lane.routedriver2) and
 `89-title-verdict.sh` ([free]). See NOTES.md, "Territory".
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

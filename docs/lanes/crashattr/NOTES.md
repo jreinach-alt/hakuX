@@ -95,6 +95,32 @@ three paths. Once they are granted:
 `git apply docs/lanes/crashattr/crashattr.diff`, then rerun `falsify.py` and
 the fragment, commit, push, and set `State: ready`.
 
+## Waiting (2026-10-02 11:02 PDT)
+
+`[lane.crashattr]` is waiting on a territory grant for `docs/lanes/crashattr/**`,
+`89-title-verdict.sh` ([free]) and `title_verdict.py` ([lane.routedriver2]).
+I polled origin/board from 08:57 to 11:01 PDT with no change and no reply in
+`board-requests/crashattr.md`. hostops was active the whole time (board edits
+at 09:04-10:32), and at 10:32 the owner ordered it rebuilt as a model-free ops
+layer (`[lane.opsrebuild]`). The follow-up request asks whoever grants the
+paths to also run `lane.sh resume crashattr`, because nothing offline resumes
+a lane on a territory change.
+
+**On resume, in order:**
+1. Confirm the grant: all three paths are in `[lane.crashattr].files` on
+   origin/board.
+2. `git merge origin/master`.
+3. `git show origin/master:docs/testing/title_verdict.py > docs/lanes/crashattr/work/old_tv.py`
+4. `git apply docs/lanes/crashattr/crashattr.diff`. If master moved
+   title_verdict.py, use `git apply -3`.
+5. `python3 docs/lanes/crashattr/falsify.py docs/testing/title_verdict.py docs/lanes/crashattr/work/old_tv.py`
+   must give 0 of 19 rows wrong.
+6. `SELFTEST_ONLY=89-title-verdict bash docs/testing/jobs/selftest.sh`, then
+   `docs/testing/preflight.sh --allow-tracker`.
+7. Commit and push both files. Delete `crashattr.diff`, since it is applied.
+   Set PR.md `State: ready`, update its `Files:` line to match
+   `git diff --stat origin/master...HEAD`, and add a line to OUTBOX.md.
+
 ## For the next lane
 
 - Do not key hakuX crash identity on a process name alone. hakuX's own
