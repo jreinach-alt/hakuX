@@ -4107,3 +4107,100 @@ and `targets.toml` parses (tomllib) re-checked before writing this up.
   tooling from scratch could reintroduce the same undercount.
 - Thor CPU-stop decision, Galleon block, and the 13 Nova-only no-route
   titles from prior sessions are all unchanged.
+
+## Session 58 (2026-10-01, resumed)
+
+**Why session 57 did not continue further:** it did not fail. It finished
+its one assigned title (Super Monkey Ball Deluxe, per ADDENDUM 6's explicit
+"this session: Super Monkey Ball Deluxe only"), committed, set PR.md
+`State: ready`, and correctly stopped there rather than starting the next
+title in the same session (session 57's own "State for a successor" names
+Sonic Heroes as the next session's work). `git fetch` shows `origin/master`
+is still at `575c480d27` (session 56's fold) -- session 57's PR has not been
+folded yet; GitHub is still suspended (`gh auth status`: invalid token /
+"account was suspended"), so this stays on the OFFLINE PROTOCOL (PR.md, not
+`gh`). Continuing from here with Sonic Heroes, per that hand-off.
+
+Checked before touching anything: `hold.sh who nova` free; `hold.sh who
+thor` still held by `lanelocal-fanwait` (Thor stays off title gameplay,
+unchanged). Nova battery 69%, asleep (clean rest state from session 57).
+Took the Nova hold (`titleroutes:1790900058`).
+
+**Sonic Heroes' trap was exactly the fixed-cycle guess session 48 found: a
+START press during live play pauses it, and the old route's single
+post-pause `A` never resumed it.** Rather than replay the same route and
+hope for a better roll, drove it live with nav.py instead, on both disk
+states this title can be found in:
+
+1. `nav/sonic-heroes.observe-20261001T170546` (fresh Nova copy, no Game
+   Data): title (~106s cumulative wait) -> START -> "no Game Data... Create
+   Game Data 01?" (Create highlighted, A) -> "created, press A" (A) -> Main
+   Menu (1P PLAY highlighted, A) -> STORY (highlighted, A) -> TEAM SONIC
+   (highlighted, A) -> an 88s in-engine cutscene with no input -> Seaside
+   Hill, full HUD, timer running. Confirmed live control with a stick
+   test (position changed between `movetest-left`/`movetest-right` frames,
+   camera no longer locked to the cutscene's framing).
+2. Force-stopped and relaunched to observe the disk state the first session
+   left behind (game data now in slot 01) --
+   `nav/sonic-heroes.returning-observe-20261001T171059`: title -> START ->
+   slot grid (No.01 highlighted, A) -> Start/Delete/Cancel (Start
+   highlighted, A) -> Main Menu -> **the identical 1P PLAY/STORY/TEAM
+   SONIC/cutscene path as session 1**, reaching gameplay about 85s after
+   team select. So both disk states need exactly ONE START and THREE A
+   presses to reach Main Menu (different screens, same count, same
+   default-highlighted option each time) -- one route covers both, which
+   matters because the dispatch confirmation will find whatever state the
+   disk is actually in, not nav state (the Castlevania lesson, session
+   56's ADDENDUM 7).
+
+Rewrote `routes/sonic-heroes.route` from these two sessions: single timed
+presses (no `repeat N` cycle-counting) for the boot-to-Main-Menu stage, then
+three more single A presses for 1P PLAY/STORY/TEAM SONIC, then a single
+generous wait (100s, against an observed 85-88s) through the cutscene with
+**no further presses at all** -- the fix for the START-during-play trap is
+simply never sending another START once the level might already be live.
+`premark.py docs/testing/titles/routes/sonic-heroes.route` -> 271s;
+`route.sh --check` -> ok.
+
+**Replayed unattended** (`scratch/replay.sh nova ... 40`, foreground with an
+explicit 340s timeout -- this one ran to completion inline without hitting
+the tool's 120s auto-background cutoff session 56/57 both hit, so nothing
+needed a Monitor/poll loop this time): all 17 scripted frames captured in
+order, `mark gameplay` at 17:21:33 (Seaside Hill, HUD live, timer running),
+then three `play` shots at 17:21:41/17:21:50/17:22:01 with the score
+(60->80), ring count (006->008) and timer all advancing and Sonic's
+pose/position visibly different frame to frame (running, then airborne in a
+jump) -- live, evolving play, not a stuck menu or cutscene. Copied the run
+to `scratch/judge/sonic-heroes-171639/` (the lost-evidence lesson).
+
+**Closed out:** route file header updated from DRAFT/the old coin-flip
+account to CONFIRMED with this session's evidence (old Thor history kept,
+not deleted, so the trap stays documented). `targets.toml`'s note rewritten
+to lead with the fix and the confirmation, keeping the session 46-48 history
+as context. Added the nomination line to `host-tools/nova-nominations.tsv`
+(a host file outside this repo) for `autoverdict.sh`'s own 600s
+confirmation -- not queued here, per the brief. Released the Nova hold,
+restored rest state (`performance_mode=0 fan_mode=4`, `KEYCODE_SLEEP`,
+verified `mWakefulness=Dozing`).
+
+`python3 docs/testing/titles/titlestate_selftest.py` (all checks passed) and
+`targets.toml` parses via `tomllib` (80 titles) re-checked before writing
+this up.
+
+### State for a successor
+
+- Sonic Heroes is done: CONFIRMED on the Nova (its only copy besides the
+  Thor, where sessions 47/48 already screened it, inconclusively, before
+  this route existed), nominated for the Nova fps confirmation, nothing
+  more for this lane to do on it.
+- The Thor CPU-stop decision, Galleon block, and the Nova-only no-route
+  titles from prior sessions are unchanged. No specific next title was
+  named for this session by an addendum; absent one, the next session
+  should check for a new addendum first and otherwise continue down
+  session 56/57's still-open backlog (13 Nova-only no-route titles; the
+  Thor's 319 untouched titles all blocked on the fan/CPU-stop decision).
+- **A pattern worth keeping for any title with a "no save / has a save"
+  fork:** don't assume the two paths need different route files. Check
+  whether they converge on press COUNT first (drive both from a fresh nav
+  session) -- here they did, which saved writing and maintaining a
+  `.first-run`/`.returning` pair.
