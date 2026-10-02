@@ -603,3 +603,46 @@ Not covered: a level with real sky in the upper centre while she runs.
 Every Buffy frame on disk is this one canyon at night. The rule is in
 Buffy's profile only, and a later level may need its region or level
 changed.
+
+### Buffy b23: B tapped while running, recorded, never jumps; and two corrections
+
+Hold `routedriver2:s3b`, 08:08-08:12 PDT. The committed profile with
+`play_tap = [["B", 1.5]]`, recorded at 160x120.
+
+**Correction 1: she did run in b20-b22.** The camera follows at a fixed
+distance, so a running Buffy keeps her place on the screen. In the dim,
+brightened stream that looked like standing still. b23's screencaps show
+her advancing: the tip changes from "Move the R thumbstick" to "Push into
+low ledges" at 56 s. The paragraph above that says "in the escape harness
+she does not run" is wrong.
+
+**Correction 2: the orange "trail" is not her body.** Frame by frame
+(`buffy/b23-trail-frames.jpg`) it is a pale quad from her hip to the edge
+of the frame. It shows for 2-3 frames while her pose does not change at
+all. In b23 it recurs about every 1.5 s, the B tap interval, so it may be
+B's effect drawn wrong, or an effect with no body animation behind it.
+Either way it is not evidence of a kick, and it is not a jump.
+
+**What b23 shows:**
+- B was tapped at about 51, 54 and 56 s, while she ran from the start to
+  the low-ledge area. No frame at ~30 fps shows her off the ground.
+- With b20-b22 (standing, every face button), **no B press in any run,
+  at any rate, has produced an airborne frame**. Yet the game's own map
+  says B is Jump.
+- In menus our B is Back, as it should be (b19). So the guest does get B
+  as B.
+
+What would separate the explanations (not tried; none is a driver
+variant):
+1. The jump is context-only: "jump between ledges" fires only at a ledge
+   edge, facing it. Session 2's bursts (b8, b10: near-continuous B at the
+   gap) argue against it, but they ran with turn phases, so she may have
+   met the edge at an angle.
+2. The game reads B's analog pressure in play, and the emulated value
+   misses its bar. This is an input-emulation question for emulator code,
+   not for this lane.
+3. A person presses the handheld's own B at the gap. One try separates
+   1 and 2 from a driver fault.
+
+Buffy is parked here. Twenty held runs (b5-b23), and the open question is
+no longer one a screen driver can answer.

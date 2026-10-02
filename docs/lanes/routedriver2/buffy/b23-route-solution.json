@@ -1,0 +1,328 @@
+{
+ "profile": "buffy",
+ "title": "Buffy the Vampire Slayer",
+ "mode": "play",
+ "result": "window-done",
+ "seconds": 110.7,
+ "time_to_title_s": 14.4,
+ "time_to_play_s": 51.4,
+ "states_seen": [
+  "unknown",
+  "black",
+  "intro_video",
+  "title",
+  "main_menu",
+  "cutscene",
+  "profile",
+  "play",
+  "stalled"
+ ],
+ "skips": [
+  {
+   "state": "intro_video",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "black",
+   "presses": 1
+  },
+  {
+   "state": "intro_video",
+   "button": "B",
+   "after_s": 3.9,
+   "landed": "black",
+   "presses": 3
+  },
+  {
+   "state": "cutscene",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "profile",
+   "presses": 1
+  },
+  {
+   "state": "cutscene",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "black",
+   "presses": 1
+  }
+ ],
+ "inputs": [
+  {
+   "t": 3.9,
+   "state": "intro_video",
+   "input": "A",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 7.4,
+   "state": "intro_video",
+   "input": "A",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 9.3,
+   "state": "intro_video",
+   "input": "START",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 11.2,
+   "state": "intro_video",
+   "input": "B",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 14.5,
+   "state": "title",
+   "input": "START",
+   "why": "title 1"
+  },
+  {
+   "t": 16.8,
+   "state": "main_menu",
+   "input": "LY:max",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 19.1,
+   "state": "main_menu",
+   "input": "LY:min",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 21.6,
+   "state": "main_menu",
+   "input": "LY:max",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 24.0,
+   "state": "main_menu",
+   "input": "LY:min",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 26.5,
+   "state": "main_menu",
+   "input": "LY:max",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 29.0,
+   "state": "main_menu",
+   "input": "LY:min",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 31.4,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 33.4,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 35.5,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 1"
+  },
+  {
+   "t": 45.3,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 49.4,
+   "state": "unknown",
+   "input": "hold LY min LX max",
+   "why": "play"
+  },
+  {
+   "t": 51.8,
+   "state": "play",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 54.3,
+   "state": "play",
+   "input": "hold LY min LX min",
+   "why": "play"
+  },
+  {
+   "t": 56.8,
+   "state": "play",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 59.2,
+   "state": "stalled",
+   "why": "stall escape 1 phase 1",
+   "input": "LT max"
+  },
+  {
+   "t": 60.3,
+   "state": "stalled",
+   "why": "stall escape 1 phase 2",
+   "input": "LY min + B/150,B/150,B/150,B/150,B/150,B/150"
+  },
+  {
+   "t": 64.7,
+   "state": "stalled",
+   "why": "stall escape 1 phase 3",
+   "input": ""
+  },
+  {
+   "t": 67.1,
+   "state": "stalled",
+   "why": "stall escape 2 phase 1",
+   "input": "LT max"
+  },
+  {
+   "t": 68.0,
+   "state": "stalled",
+   "why": "stall escape 2 phase 2",
+   "input": "LY max"
+  },
+  {
+   "t": 69.3,
+   "state": "stalled",
+   "why": "stall escape 2 phase 3",
+   "input": "LY min + B/150,B/150,B/150,B/150,B/150,B/150"
+  },
+  {
+   "t": 73.7,
+   "state": "stalled",
+   "why": "stall escape 2 phase 4",
+   "input": ""
+  },
+  {
+   "t": 76.2,
+   "state": "stalled",
+   "input": "hold LY min LX min",
+   "why": "play"
+  },
+  {
+   "t": 78.2,
+   "state": "stalled",
+   "input": "",
+   "why": "new stall site: escape budget reset"
+  },
+  {
+   "t": 78.2,
+   "state": "stalled",
+   "why": "stall escape 1 phase 1",
+   "input": "LT max"
+  },
+  {
+   "t": 79.3,
+   "state": "stalled",
+   "why": "stall escape 1 phase 2",
+   "input": "LY min + B/150,B/150,B/150,B/150,B/150,B/150"
+  },
+  {
+   "t": 83.6,
+   "state": "stalled",
+   "why": "stall escape 1 phase 3",
+   "input": ""
+  },
+  {
+   "t": 85.6,
+   "state": "stalled",
+   "why": "stall escape 2 phase 1",
+   "input": "LT max"
+  },
+  {
+   "t": 86.6,
+   "state": "stalled",
+   "why": "stall escape 2 phase 2",
+   "input": "LY max"
+  },
+  {
+   "t": 87.8,
+   "state": "stalled",
+   "why": "stall escape 2 phase 3",
+   "input": "LY min + B/150,B/150,B/150,B/150,B/150,B/150"
+  },
+  {
+   "t": 92.1,
+   "state": "stalled",
+   "why": "stall escape 2 phase 4",
+   "input": ""
+  },
+  {
+   "t": 94.2,
+   "state": "stalled",
+   "why": "stall escape 3 phase 1",
+   "input": "LT max"
+  },
+  {
+   "t": 95.1,
+   "state": "stalled",
+   "why": "stall escape 3 phase 2",
+   "input": "LX min"
+  },
+  {
+   "t": 97.0,
+   "state": "stalled",
+   "why": "stall escape 3 phase 3",
+   "input": "LY min + B/150,B/150,B/150,B/150,B/150"
+  },
+  {
+   "t": 100.7,
+   "state": "stalled",
+   "why": "stall escape 3 phase 4",
+   "input": ""
+  },
+  {
+   "t": 102.8,
+   "state": "stalled",
+   "why": "stall escape 4 phase 1",
+   "input": "LT max"
+  },
+  {
+   "t": 103.8,
+   "state": "stalled",
+   "why": "stall escape 4 phase 2",
+   "input": "LX max"
+  },
+  {
+   "t": 105.5,
+   "state": "stalled",
+   "why": "stall escape 4 phase 3",
+   "input": "LY min + B/150,B/150,B/150,B/150,B/150"
+  },
+  {
+   "t": 109.3,
+   "state": "stalled",
+   "why": "stall escape 4 phase 4",
+   "input": ""
+  }
+ ],
+ "anomalies": [
+  {
+   "t": 35.4,
+   "state": "profile",
+   "after": "cutscene"
+  }
+ ],
+ "classifier_sources": {
+  "no-prev": 1,
+  "black": 10,
+  "moving": 6,
+  "crop": 9,
+  "hud": 9,
+  "hud+no-progress": 2
+ },
+ "model_calls": 0,
+ "play_stretch_frames": [],
+ "written_utc": "2026-10-02T15:10:40Z"
+}

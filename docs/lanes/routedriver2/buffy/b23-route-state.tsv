@@ -1,0 +1,41 @@
+t	state	source	changed	luma	cap_s	action	frame	mode
+0.5	unknown	no-prev		13.2	0.42	wait (unknown)	080844-001-unknown.png	
+2.0	black	black		2.3	0.28	wait	080846-002-black.png	
+3.7	intro_video	moving	0.8929	84.9	0.52	press A (skip intro_video)	080848-003-intro_video.png	
+5.6	black	black		2.3	0.32	wait	080851-004-black.png	
+7.2	intro_video	moving	0.188	10.7	0.37	press A (skip intro_video)	080853-005-intro_video.png	
+9.2	intro_video	moving	0.6298	37.7	0.47	press START (skip intro_video)	080855-006-intro_video.png	
+11.1	intro_video	moving	0.4017	38.2	0.52	press B (skip intro_video)	080857-007-intro_video.png	
+12.9	black	black		1.1	0.27	wait	080858-008-black.png	
+14.4	title	crop:title		5.7	0.37	press START (title 1)	080900-009-title.png	
+16.6	main_menu	crop:main-menu+row:start		29.9	0.62	press LY:max (main_menu 1)	080903-010-main_menu.png	
+19.0	main_menu	crop:main-menu+row:options		30.3	0.52	press LY:min (main_menu 1)	080905-011-main_menu.png	
+21.5	main_menu	crop:main-menu+row:start		32.8	0.57	press LY:max (main_menu 1)	080907-012-main_menu.png	
+23.9	main_menu	crop:main-menu+row:options		46.9	0.57	press LY:min (main_menu 1)	080910-013-main_menu.png	
+26.4	main_menu	crop:main-menu+row:start		34.0	0.57	press LY:max (main_menu 1)	080912-014-main_menu.png	
+28.9	main_menu	crop:main-menu+row:options		34.6	0.62	press LY:min (main_menu 1)	080915-015-main_menu.png	
+31.3	main_menu	crop:main-menu+row:load		33.2	0.57	press A (main_menu 1)	080917-016-main_menu.png	
+33.2	cutscene	moving	0.4863	25.7	0.47	press A (skip cutscene)	080919-017-cutscene.png	
+35.3	profile	crop:start-game		25.3	0.47	press A (profile 1)	080921-018-profile.png	
+37.0	black	black		0.0	0.27	wait	080924-019-black.png	
+38.4	black	black		1.7	0.27	wait	080925-020-black.png	
+39.6	black	black		0.0	0.22	wait	080926-021-black.png	
+40.9	black	black		0.7	0.27	wait	080927-022-black.png	
+42.2	black	black		0.0	0.22	wait	080929-023-black.png	
+43.5	black	black		0.0	0.27	wait	080930-024-black.png	
+45.1	cutscene	moving	0.4801	13.6	0.62	press A (skip cutscene)	080932-025-cutscene.png	
+47.0	black	black		1.4	0.27	wait	080934-026-black.png	
+48.8	unknown	hud:hud+after-black	0.6482	15.2	0.72	hold (hud up, motion not yet play)	080936-027-unknown.png	
+51.1	play	hud:hud+motion	0.216	14.9	0.72	hold tap B	080939-028-play.png	
+53.8	play	hud:hud+motion	0.353	13.4	0.62	hold tap B	080941-029-play.png	
+56.3	play	hud:hud+motion	0.3451	13.7	0.67	hold tap B	080944-030-play.png	
+58.9	stalled	hud+no-progress p=0.057	0.3507	15.3	0.67	stall escape 1	080952-031-stalled.png	
+66.9	stalled	hud+no-progress p=0.051	0.502	17.8	0.72	stall escape 2	081002-032-stalled.png	
+75.7	stalled	hud:hud+motion+recovering	0.5017	6.1	0.47	hold (recovering, stalled 0 s) tap B	081005-033-stalled.png	
+78.0	stalled	hud:hud+static p=0.137	0.0199	6.2	0.47	stall escape 1	081012-034-stalled.png	
+85.5	stalled	hud:hud+static	0.0175	6.1	0.47	stall escape 2	081021-035-stalled.png	
+94.1	stalled	hud:hud+static	0.0002	6.0	0.47	stall escape 3	081029-036-stalled.png	
+102.7	stalled	hud:hud+static	0.0159	6.1	0.52	stall escape 4	081039-037-stalled.png	
+# time_to_title_s=14.4
+# time_to_play_s=51.4
+# result=window-done
