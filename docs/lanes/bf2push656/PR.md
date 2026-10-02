@@ -35,7 +35,9 @@ counters per draw, and the candidates it would separate.
 
 Local checks: `python3 docs/lanes/bf2push656/push656_read.py` on the pair
 and on a synthetic B logcat (constructed values read back); the prediction
-JSON parses. No harness files changed, so selftest.sh does not apply. No
+JSON parses. `docs/testing/preflight.sh --allow-tracker`: passed (territory
+ok, board files ok; its coverage gate did not run, gh returns 403 offline).
+No harness files changed, so selftest.sh does not apply. No
 emulator code, so no head-commit run is needed.
 
 Release note (none): no player-visible change; the measured change is not shipped.
