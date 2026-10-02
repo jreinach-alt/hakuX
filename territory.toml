@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 293
+wave = 294
 updated_utc = "2026-10-02T16:50:00Z"
 
 [lane.issuerecon]
@@ -765,8 +765,8 @@ note = "RELEASED AT READY (job.board 2026-09-30T02:12Z): PR #627 is out of draft
 
 [lane.pathfind]
 issues = ["433"]
-files = ["docs/lanes/pathfind/**", "docs/testing/titles/pathfind.py"]
-note = "ROW ADDED (hostops 2026-10-02 09:23 PDT): hakux-lane-pathfind has been RUNNING since ~09:18 PDT (briefs/pathfind.md) with NO territory row -- hakux-board cannot write it while gh-auth is down (see [gh-auth]) and lane.local, who started it per the owner's 09:20 PDT directive ('I want the agent handling the programmed input to work intelligently ... navigate into the game, that is the whole bar for today'), cannot write board rows either. Found via fleet.py's RUNNING WITH NO TERRITORY ROW check. Files per the brief's own described deliverable (docs/testing/titles/pathfind.py, a new screen-reading nav agent superseding routedriver2's blind .route/drive-profile approach per lane.routerca433's CAPA) and its own lane docs dir; both new/unclaimed -- confirmed no other row names pathfind.py, and docs/testing/titles/** in [free] is a broad glob coexisting with specific overriding claims (titleroutes2, routedriver2) the same way this one does."
+files = ["docs/lanes/pathfind/**", "docs/testing/titles/pathfind.py", "docs/testing/titles/pathfind_selftest.py", "docs/testing/titles/pathknow/hints/**", "docs/testing/titles/pathknow/paths/**"]
+note = "WIDENED (hostops 2026-10-02 10:57 PDT): lane/pathfind's ready PR failed to fold -- outside its row's files: pathfind_selftest.py (new, unclaimed) plus 11 learned-*.md hint files and 14 title path jsons under docs/testing/titles/pathknow/. Both are the shared design lane.local stated at row creation (09-18 PDT): \"hints/** is shared on purpose: pathknow seeds, pathfind appends.\" [lane.pathknow]'s row still claims the broad docs/testing/titles/pathknow/** glob including these same subdirs -- a deliberate overlap by literal string, same precedent as [lane.pathclass]'s classifier/** carve-out note on the pathknow row (\"not a collision check.sh would catch\": check_territory.py only flags duplicate literal list entries, not glob-vs-glob intersection against real paths). Not narrowing pathknow's claim: both lanes are still RUNNING and pathknow seeded these files first (commit 22d8ae61fb), pathfind is now the active appender. If pathknow later needs to add new hint/path files itself, flag any resulting fold conflict to lane.local to resolve the hand-off order rather than hostops guessing it. ROW ADDED (hostops 2026-10-02 09:23 PDT): hakux-lane-pathfind has been RUNNING since ~09:18 PDT (briefs/pathfind.md) with NO territory row -- hakux-board cannot write it while gh-auth is down (see [gh-auth]) and lane.local, who started it per the owner's 09:20 PDT directive ('I want the agent handling the programmed input to work intelligently ... navigate into the game, that is the whole bar for today'), cannot write board rows either. Found via fleet.py's RUNNING WITH NO TERRITORY ROW check. Files per the brief's own described deliverable (docs/testing/titles/pathfind.py, a new screen-reading nav agent superseding routedriver2's blind .route/drive-profile approach per lane.routerca433's CAPA) and its own lane docs dir; both new/unclaimed -- confirmed no other row names pathfind.py, and docs/testing/titles/** in [free] is a broad glob coexisting with specific overriding claims (titleroutes2, routedriver2) the same way this one does."
 
 [lane.pathknow]
 issues = ["433"]
@@ -793,8 +793,8 @@ note = "RETIRED (hostops 2026-10-02 06:53 PDT): PR folded (State: ready, base b7
 
 [lane.usagemode]
 issues = ["433"]
-files = ["docs/lanes/usagemode/**", "docs/testing/jobs/usage/**", "docs/testing/jobs/window.sh", "docs/testing/jobs/selftest.d/89-usage-mode.sh"]
-note = "ROW ADDED (hostops 2026-10-02 10:18 PDT): hakux-lane-usagemode has been RUNNING since ~10:15 PDT (briefs/usagemode.md, #433) with NO territory row -- hakux-board cannot write it while gh-auth is down (see [gh-auth]) and lane.local, who started it per the owner's 10:10 PDT operating-modes decision, cannot write board rows either. Found via the HOST INBOX ask lane.local left at 10:15 PDT. Files per lane.local's own request; confirmed unclaimed elsewhere (window.sh, usage/**, 89-usage-mode.sh all absent from every files= list and from [free])."
+files = ["docs/lanes/usagemode/**", "docs/testing/jobs/usage/**", "docs/testing/jobs/window.sh", "docs/testing/jobs/selftest.d/89-usage-mode.sh", "docs/testing/jobs/selftest.d/88-window-budget.sh"]
+note = "WIDENED (hostops 2026-10-02 10:57 PDT): lane/usagemode's ready PR failed to fold -- outside its row's files: selftest.d/88-window-budget.sh (new file, companion to 89-usage-mode.sh; confirmed unclaimed -- the old selftest.d/88-sweep-cover.sh name was released to [free] at wave 239 when lane.sweepcover retired, a different file, no collision). ROW ADDED (hostops 2026-10-02 10:18 PDT): hakux-lane-usagemode has been RUNNING since ~10:15 PDT (briefs/usagemode.md, #433) with NO territory row -- hakux-board cannot write it while gh-auth is down (see [gh-auth]) and lane.local, who started it per the owner's 10:10 PDT operating-modes decision, cannot write board rows either. Found via the HOST INBOX ask lane.local left at 10:15 PDT. Files per lane.local's own request; confirmed unclaimed elsewhere (window.sh, usage/**, 89-usage-mode.sh all absent from every files= list and from [free])."
 
 [lane.opsrebuild]
 issues = ["433"]
