@@ -4,7 +4,7 @@ State: ready
 
 Lane: titleroutes          Issue: #397 (per-title gameplay fps; 0.5 tracking #433)
 Base: master @ 8e3b1f2ad2 (merge of origin/master into this branch, carrying session 61's own fold plus localjobs/litcompile569/forzadecay414)
-Files: docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/OUTBOX.md, docs/lanes/titleroutes/PR.md
+Files: docs/testing/titles/routes/sonic-heroes.route, docs/testing/titles/targets.toml, docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/OUTBOX.md, docs/lanes/titleroutes/PR.md
 Prediction: none: notes/status update only, no route or targets.toml edit this session
 Needs device: no -- the Nova is currently running another lane's request and the Thor stays closed to title gameplay (dead fan); nothing of this lane's own is queued
 
