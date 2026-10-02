@@ -796,6 +796,11 @@ issues = ["433"]
 files = ["docs/lanes/usagemode/**", "docs/testing/jobs/usage/**", "docs/testing/jobs/window.sh", "docs/testing/jobs/selftest.d/89-usage-mode.sh"]
 note = "ROW ADDED (hostops 2026-10-02 10:18 PDT): hakux-lane-usagemode has been RUNNING since ~10:15 PDT (briefs/usagemode.md, #433) with NO territory row -- hakux-board cannot write it while gh-auth is down (see [gh-auth]) and lane.local, who started it per the owner's 10:10 PDT operating-modes decision, cannot write board rows either. Found via the HOST INBOX ask lane.local left at 10:15 PDT. Files per lane.local's own request; confirmed unclaimed elsewhere (window.sh, usage/**, 89-usage-mode.sh all absent from every files= list and from [free])."
 
+[lane.opsrebuild]
+issues = ["433"]
+files = ["docs/lanes/opsrebuild/**", "docs/testing/jobs/ops/**", "docs/testing/jobs/selftest.d/87-ops-tick.sh"]
+note = "ROW ADDED (hostops 2026-10-02 10:32 PDT): hakux-lane-opsrebuild has been RUNNING since ~10:31 PDT (briefs/opsrebuild.md, #433 -- owner order: replace hostops's model tick with a model-free ops layer) with NO territory row -- hakux-board cannot write it while gh-auth is down (see [gh-auth]) and lane.local, who started it, cannot write board rows either. Found via this tick's own hostops-inbox.md ask (lane.local, 10:31 PDT). Files per lane.local's own request; confirmed unclaimed elsewhere and absent from [free] (docs/testing/jobs/ops/**, selftest.d/87-ops-tick.sh, docs/lanes/opsrebuild/**)."
+
 [free]
 # RELEASED (hostops 2026-10-02 09:21 PDT) by retiring lane.bf2stall433 (PR folded 2790e4b700, complete negative result, see [retired.bf2stall433]): docs/lanes/bf2stall433/**, docs/testing/predictions/bf2stall433-*.json, hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/surface.c. vk/draw.c released by the same retirement but immediately re-claimed by [lane.bf2ubosize433] in the same tick (see that row) -- never actually free; vk/shaders.c and glsl/vsh-ff.c/vsh-prog.c/vsh.c were unclaimed anywhere (not even here) and granted to the same lane directly.
 # RELEASED (hostops 2026-10-02 06:53 PDT) by retiring lane.routerca433 (PR folded, analysis-only, see [retired.routerca433]): docs/lanes/routerca433/**.
