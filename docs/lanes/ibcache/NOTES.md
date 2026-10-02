@@ -857,3 +857,125 @@ runs above are this batch's pilot. The request files read back
 4. `prmd.py`, commit, push, and queue one run on the new head.
 5. Then the 16-bit jump cache on `lane/ibcache-jcsize` (stacked; merge
    lane/ibcache first), with its own GTA profile leg.
+
+## Attempt 10 (resumed 2026-10-01 22:15 PDT, lane.local's Forza addendum)
+
+(The resume brief counts this as attempt 2. The numbering here follows this file.)
+
+**Why attempt 9 did not finish.** It ended correctly on a `waiting:` for
+eight Nova requests (legs 5a and 5b). All eight finished by 21:58 PDT, and
+lane.local resumed the lane with an addendum: the Forza arms were not
+driving. GitHub is still suspended (`gh api user`: "Your account was
+suspended"), so the offline protocol still applies.
+
+Master merged again: no change under accel/, tcg/, target/ or include/.
+
+### Legs 5a and 5b on the head, read (`out/soakread-head.out`, `out/headread.out`, `out/idleread-gta.out`)
+
+Nova, ref 946a78c8e9 (apk e72f5a48278c), MAX regimen, no thermal pause in
+any run. fps = `power.flips / power.scored_s`.
+
+| run | leg | arm | `[ibc507]` | fps | J/frame | net W | guest idle | vCPU on-CPU | PGRAPH rd/s |
+|---|---|---|---|---:|---:|---:|---:|---:|---:|
+| `-3201791` | 5a GTA | B | on=1 layout=ok | 29.35 | 0.2950 | 8.66 | 0.000 | 0.967 | 180 |
+| `-3201832` | 5a GTA | A | on=0 | 29.65 | 0.2704 | 8.02 | 0.005 | 0.965 | 183 |
+| `-3201920` | 5a GTA | A | on=0 | 29.59 | 0.2814 | 8.33 | 0.012 | 0.962 | 188 |
+| `-3202122` | 5a GTA | B | on=1 layout=ok | 29.76 | 0.2934 | 8.73 | 0.022 | 0.953 | 198 |
+| `-3202216` | 5b Forza | B | on=1 layout=ok | 27.22 | 0.3149 | 8.57 | | | |
+| `-3202498` | 5b Forza | A | on=0 | 26.82 | 0.3158 | 8.47 | | | |
+| `-3202829` | 5b Forza | A | on=0 | 27.85 | 0.3110 | 8.66 | | | |
+| `-3203127` | 5b Forza | B | on=1 layout=ok | void | | | | | |
+
+**5a (GTA, no regression): FAIL as registered.**
+- fps: B 29.55, A 29.62. The bar is B >= A - 0.5, so this half PASSES.
+- J/frame: B 0.2942, A 0.2759, **ratio 1.066**. The bar is 1.036, so this half FAILS.
+- The gap is larger than either arm's own spread (A 4.0%, B 0.5%). The
+  order was B A A B, so a linear drift cancels. The first B started colder
+  (xo 35 C against about 50 C), which would lower its watts, not raise them.
+- The extra power is all battery-side: USB in is 6.53 W in all four runs.
+  The whole-run thermal sampler (13 samples, not the scored window) reads
+  net W B 7.57/8.08 against A 7.42/7.70, which is +3.5%.
+
+**What the extra watts are not** (the checks that could separate a cause):
+- **Not kernel idle-loop spin.** The guest idle share (`[rr425w]`) is 0 to
+  2% in both arms, and the vCPU is about 96% on-CPU in both.
+- **Not register polling.** `[lock474]` PGRAPH reads are 180-198/s in both
+  arms.
+- **The open hypothesis, untested:** with the same on-CPU time and the same
+  fps, a cheaper TB dispatch means the vCPU retires more guest instructions
+  per second, in GTA's own wait loops, at a higher IPC, so it draws more
+  watts. That is [[vcpu-saving-is-spin-without-halt]] at a game-code wait
+  rather than at the kernel idle loop. `[rr425]` has no guest-instruction
+  counter that would show it directly.
+- **The instrument:** one Nova pair resolves about 10% in J. At n=2 per arm,
+  6.6% is not certainly real, and it is also not safe to call noise. So it
+  gets a replication (5c), registered below.
+
+**Player control in GTA.** The `moved` and `gameplay` frames of all four
+runs show CJ running down the Jefferson alley and then at its mouth, under
+control. The route keeps sending input for the whole window and never
+presses START. But `gta-sa.route` takes no frame after the mark, so nothing
+in these runs shows CJ moving inside the scored window. 5c adds frames.
+
+**5b (Forza, the gain): NOT EVIDENCE.**
+- **The car never moved.** Every play frame of `-3202216` (B) and
+  `-3202829` (A) shows the car at 0 MPH, place 8/8, at the start line, with
+  the race clock running (contact sheets in `scratch/sheets/`, not
+  committed). lane.local read the same in `-3202498`. `forza414.route`
+  presses A and pushes LY, and neither is Forza's throttle. Both arms
+  rendered a parked car, so their fps (B 27.2, A 27.3 mean) and J/frame
+  (B 0.3149, A 0.3134) are not the workload the +5%/-4% claim is about.
+  They are not reported as a reading.
+- **`-3203127` (B) is void, and it was not a crash.** The Forza process
+  (pid 31001) was still rendering normally at 21:58:26.668: the `[surf92]`,
+  `[lock474]` and `[rr425]` windows were current, and there is no fatal,
+  `libc` or crash line. At 21:58:27.2 a new hakuX process (pid 3728) started
+  Sonic Heroes (`dvdUri=...5345002B-Sonic_Heroes`). The runner saw ES-DE in
+  front and stopped the run, which is what `title_verdict.py` scored as
+  "crash: guest exited after 132s". No dispatch run launched Sonic Heroes:
+  the only Nova runs from 21:00 to 22:30 are this lane's eight. So something
+  outside the dispatcher launched a title on the Nova mid-run. Leg 4 has no
+  new crash.
+
+### 5c: the GTA J/frame replication, registered before it is queued
+
+Six fresh runs: ref 946a78c8e9 (the same apk, and the same kept shader
+cache), Nova, 360 s, route `ibcache-gta-sa-shots`. That is `gta-sa.route`
+plus a `shot play` every ~20 s, equal in both arms
+(`docs/lanes/ibcache/gta-sa-shots.route`). Order A B B A B A.
+- **Reading:** the mean J/frame and fps of the 3 fresh runs per arm. 5a's
+  runs are not pooled in, because their route took no window frames.
+- **Validity:** each run reads `[ibc507]` as its arm says, reaches mark
+  gameplay, has no thermal pause, and is not void. CJ must be moving in at
+  least 3 of its play frames (a different place in the alley or street from
+  frame to frame). A run that fails it is re-queued once.
+- **PASS (no regression):** J/frame(B) <= 1.036 x J/frame(A), and
+  fps(B) >= fps(A) - 0.5. The probe stays on by default.
+- **FAIL (the regression replicates):** J/frame(B) > 1.036 x J/frame(A).
+  The probe's default goes to off (`HAKUX_IBC` unset = 0), and the PR
+  becomes the opt-in switch with `Release note (none)`. A default-on
+  probe then needs a measured win (5d) that is larger than the cost, and a
+  halt that turns the saved vCPU time into sleep.
+- **Also recorded:** net W per arm, and the guest idle share, vCPU on-CPU
+  and PGRAPH rd/s per run (`idleread.py`).
+
+### 5d: Forza, driven, registered before it is queued
+
+The route is `ibcache-forza-drive` (`docs/lanes/ibcache/forza-drive.route`):
+forza414's menu phase exactly, then pgr2's throttle-and-steer pattern (RT
+throttle, LT to back off a wall, LX steer), with `mark gameplay` at the race
+and a frame every ~20 s. The route is blind: nobody has played it.
+- **Pilot first: one B run alone.** Its play frames are the gate. In at
+  least 3 of them the speedometer reads above 0 MPH, or the car is in a
+  different place from the frame before.
+  - If the pilot fails the gate, the Forza claim leaves the PR and is
+    reported as not driven. A Forza route is then lane/routedriver's
+    `drive` step, not this lane's.
+  - If it passes, A A B follow, and the pilot is the first B (order B A A B).
+- **Legs (5b's, unchanged):** fps(B) >= 1.05 x fps(A), and
+  J/frame(B) <= 0.96 x J/frame(A), each arm the mean of two. 5c's validity
+  gate applies, with the car-moving check in place of CJ's.
+
+Both routes were copied into `docs/testing/titles/routes/` uncommitted only
+to queue them. `request.sh` reads them from there, and the full text is in
+each `request.json`. They are not in this branch's Files.
