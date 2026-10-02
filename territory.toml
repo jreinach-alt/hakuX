@@ -1733,8 +1733,14 @@ issues = ["433"]
 files = ["docs/lanes/defecttriage433/**"]
 note = "STARTED (lane.local 2026-09-30T17:15Z, offline), briefs/defecttriage433.md: classify and rank the defects blocking near-Playable titles. Docs only. Owner-approved 09-30."
 
-[lane.verdict10min]
+[retired.verdict10min]
 issues = ["433"]
-files = ["docs/testing/titles/targets.toml", "docs/testing/title_verdict.py", "docs/testing/jobs/selftest.d/99-verdict-10min.sh", "docs/lanes/verdict10min/**"]
-note = "STARTED (lane.local 2026-09-30T19:10Z, offline), briefs/verdict10min.md: the owner changed the Playable confirmation to 600 s (09-30 ~12:05 PDT), 1200 s while the device is still heating and for flagged titles, and a 1-in-5 audit."
+files = []
+retired_utc = "2026-10-02T02:16:00Z"
+note = "RETIRED (hostops 2026-10-01 19:16 PDT): folded offline as e930bc756d (offline-git/journal.jsonl, 2026-09-30T14:21:06-0700), unit gone (hakux-lane-verdict10min.service inactive), no open branch work (lane/verdict10min is an ancestor of origin/master). Files RELEASED to [free]: docs/testing/titles/targets.toml (titleroutes already holds this file in its own row, so this was a stale duplicate claim), docs/testing/title_verdict.py (claimed outright below by lane.hitchwatch), docs/testing/jobs/selftest.d/99-verdict-10min.sh, docs/lanes/verdict10min/**."
+
+[lane.hitchwatch]
+issues = ["433"]
+files = ["docs/testing/title_verdict.py", "docs/testing/hitch_report.py", "docs/testing/jobs/selftest.d/99-hitch-report.sh", "docs/testing/jobs/selftest.d/99-power-per-frame.sh", "docs/lanes/hitchwatch/**"]
+note = "ROW RESTORED (hostops 2026-10-01 19:16 PDT): hakux-lane-hitchwatch has been RUNNING since its session started (logs/lane/hitchwatch.20261002T012019Z.json) with NO territory row at all -- fleet.py FAIL 'running with no territory row', same recurring harness defect as laneshape/armlabel/desktopchannel/draftstrand/selftest86/vblank65 before it (briefs/hitchwatch.md, started from the owner's 2026-10-01 ~18:35 PDT Sonic Heroes hitch-telemetry decision, never got a row committed). title_verdict.py vacated by retiring lane.verdict10min above (folded, inactive); hitch_report.py and the two selftest files were unclaimed/[free]. KNOWN OVERLAP, NOT CLAIMED HERE: the lane's own worktree (wt/hitchwatch) also carries a small doc-comment-only diff to docs/testing/titles/targets.toml (documenting a new hitch_allowance field; no title data touched), and that file is actively held by lane.titleroutes, which is mid-session today. Not granted here because titleroutes is running right now; resolve at hitchwatch's fold (either a narrow grant from titleroutes for that one comment block, or hitchwatch drops the comment and documents the field in hitch_report.py's own docstring instead). Flagged so fold.sh's territory check does not surprise either lane."
 
