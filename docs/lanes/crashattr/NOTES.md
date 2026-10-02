@@ -81,6 +81,10 @@ gave 114 passed, 0 failed. `99-hitch-report` and `66-status-titles` (the other
 classifier, the new `bystander` fixture fails
 (`crash=True ... libmediandk.so`).
 
+The full `jobs/selftest.sh` on that scratch tree (2026-10-02 09:05-10:05 PDT)
+ran all 120 fragments with 0 failed: 97 in a first run that hit its 50-minute
+timeout (2582 ok), then the other 23 (361 passed).
+
 ## Territory (why the patch is not applied yet)
 
 `docs/testing/title_verdict.py` is in `[lane.routedriver2]`'s row. That lane's

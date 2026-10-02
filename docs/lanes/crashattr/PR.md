@@ -42,8 +42,10 @@ becomes Playable from this change.
 Local checks: `falsify.py` 0 of 19 rows wrong. With the patch,
 `SELFTEST_ONLY=89-title-verdict` gave 114 passed, 0 failed, with 5 new mutants
 each caught. `99-hitch-report` and `66-status-titles` gave 30 passed, 0 failed.
-Full `selftest.sh` and `preflight.sh`: pending, run once the patch is applied
-on the branch.
+Full `jobs/selftest.sh` on a scratch tree with the diff applied: all 120
+fragments, 0 failed (97 in one run before its 50-minute cap, 2582 ok; the
+other 23 in a second run, 361 passed). `preflight.sh`: pending, run once the
+diff is applied on the branch.
 
 Waiting: the territory grant for `title_verdict.py` (lane.routedriver2) and
 `89-title-verdict.sh` ([free]). See NOTES.md, "Territory".
