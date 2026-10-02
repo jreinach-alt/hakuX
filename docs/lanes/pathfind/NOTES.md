@@ -19,6 +19,9 @@ DOAX, DOA3, JSRF, ...). pathfind never reads the retired `.route` files some of 
 | panzer-dragoon | Panzer Dragoon Orta | nova | **gameplay** | 4.48 | 21 (opus 2/sonnet 19) | 25 | 0 | $1.08 | four probes refused | runs/panzer-dragoon/gameplay_frame.jpg |
 | espn-nfl-2k5.try3 | ESPN NFL 2K5 | thor | heat-stop | 4.4 | 18 (opus 1/sonnet 17) | 18 | 0 | $0.91 | Thor xo 70.292 C | runs/espn-nfl-2k5.try3/strip.jpg |
 | amped-2 | Amped 2 | nova | **gameplay** | 9.02 | 34 (opus 4/sonnet 30) | 48 | 0 | $1.83 | four probes refused | runs/amped-2/gameplay_frame.jpg |
+| counter-strike | Counter Strike | nova | **gameplay** | 3.12 | 14 (opus 3/sonnet 11) | 14 | 0 | $0.80 |  | runs/counter-strike/gameplay_frame.jpg |
+| espn-nba-2k5.discerror | ESPN NBA 2K5 | thor | title-error | 3.6 | 15 (opus 4/sonnet 10) | 15 | 0 | $0.87 | SEGA "problem with the disc ... dirty or damaged" after team select (stopped by hand at 3.6 min; fatal_error state added after) | runs/espn-nba-2k5.discerror/strip.jpg |
+| top-spin | Top Spin | nova | **gameplay** | 5.48 | 24 (opus 3/sonnet 21) | 26 | 0 | $1.28 |  | runs/top-spin/gameplay_frame.jpg |
 
 Cross-title (Thor, sibling after a recorded path):
 
