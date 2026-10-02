@@ -42,6 +42,9 @@ after each).
 |---|---|---|
 | 1 | fixed-time START/A beats, then RX/RY/LX holds | void: boot was ~60 s slower than the unguided run; every beat landed before the title and the game sat in its attract loop |
 | 2 | screen-reactive (title signature -> START, then A until the card), then RX/RY full-deflection holds, LX/LY, A | reached Test 1 (team "Arch"). **RX orbits the camera, RY tilts it** (060, 062, 064 shows sky and a balloon, 066 floor); the camera springs back behind the player within 0.6 s of release. LX/LY and A: no movement, as the test intends. Objective still "Locate the 3 balloons" |
+| 3 | slow sweeps at RX 11000 with RY tilt | RX 11000 does **not** yaw at all (game dead zone); RY tilts in proportion and springs back on release |
+| 4 | RX 22000 / max with RY tilt, RX pulses | RX 22000 orbits at ~36 deg/s; yaw persists after a pulse. Frame 072: a **red lock-on arc** round a centred balloon |
+| 5 | closed loop: find the olive-green balloon blob, pulse yaw toward it, pitch held up | the loop overshot (gain x2 too high) but swept the balloons through centre; **all 3 popped** in ~25 s (041 arc, 042 popped, 050 confetti). Next card: "Now let's try first-person view. Click the Right thumbstick." -- Test 1 advances; the game is fully responsive |
 
 Verdict on the hypotheses after run 2: H2 refuted (right stick reaches the
 guest); H3 has nothing left to explain; H1 holds. Not an emulator defect, no

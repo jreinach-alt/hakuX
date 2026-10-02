@@ -166,8 +166,20 @@ dev.pad("axis", "RY", str(pitch))
 skip = 0
 dwells = 0
 end = time.time() + 210
+def card(path):
+    """The tutorial's green dialogue box across the bottom (run 5 frame 053)."""
+    a = np.asarray(Image.open(path).convert("RGB")).astype(int)
+    h, w, _ = a.shape
+    z = a[int(0.86 * h):int(0.94 * h), int(0.45 * w):int(0.9 * w)]
+    g = (z[..., 1] > z[..., 0] + 30) & (z[..., 1] > z[..., 2])
+    return g.mean() > 0.5
+
+
 while time.time() < end:
     shot("seek")
+    if card(os.path.join(OUT, f"{n:03d}-seek.png")):
+        note("card: balloons done")
+        break
     bl = balloon(os.path.join(OUT, f"{n:03d}-seek.png"))
     note("balloon", at=bl and [round(bl[0], 2), round(bl[1], 2), bl[2]], pitch=pitch, skip=skip)
     if bl is None or skip:
@@ -181,7 +193,7 @@ while time.time() < end:
         pitch = want
         dev.pad("axis", "RY", str(pitch))
     if abs(dx) > 0.06:
-        pulse(1 if dx > 0 else -1, min(1.2, abs(dx) * 2.0))
+        pulse(1 if dx > 0 else -1, min(1.2, abs(dx) * 1.2))   # run 5: 2.0 overshot
         time.sleep(0.2)
         continue
     dwells += 1
@@ -192,8 +204,12 @@ while time.time() < end:
     shot("dwell-end")
     skip = 1
     pulse(1, 1.5)
+dev.pad("axis", "RX", "mid")
 dev.pad("axis", "RY", "mid")
 note("seek done", dwells=dwells)
+if os.environ.get("LEAVE_RUNNING"):
+    note("left running for nav.py")
+    sys.exit(0)
 press("A")                              # a card, if the test passed
 time.sleep(2.0)
 shot("after-sweeps")

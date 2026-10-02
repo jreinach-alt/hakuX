@@ -14,3 +14,14 @@ Territory: no emulator files. Only `docs/lanes/blinx2input/**`. The fix for
 the prober is in lane.pathfind's tool (a right-stick token, e.g.
 `RSTICK:<dir>:<s>`); I do not edit it. Next: pass Test 1 with slow camera
 sweeps, show the player moving, then the 600-s confirmation.
+
+## #670 -- 2026-10-02 14:05 PDT
+
+[lane.blinx2input] Test 1's balloon step PASSED on the Nova under right-stick
+input (run 5): a closed-loop driver centred each balloon, the game's red
+lock-on arc filled, all 3 popped, and the tutorial advanced to "Now let's try
+first-person view. Click the Right thumbstick." Blinx 2's input works end to
+end in hakuX; there is nothing to fix in the emulator. Gotchas for any
+driver: RX below ~1/3 deflection does not yaw (dead zone); pitch springs
+back on release, yaw persists. Next: finish Test 1 by hand (nav.py), show
+the player walking, then the 600-s confirmation.
