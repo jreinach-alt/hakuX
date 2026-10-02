@@ -1,78 +1,86 @@
 #!/usr/bin/env python3
-"""classify.py -- screen classifier for route.sh's `drive` step (#433).
+"""classify.py -- name the screen a title is on, from one screencap (#433).
 
-THE PROBLEM (owner, 2026-10-01 21:45 PDT). A blind play loop
-(`repeat forever { ... press A ... }`) sends input into whatever is on
-screen: START in live play pauses the game, A on a results/menu screen
-advances to another menu. Nothing reads the screen DURING play, so a scored
-window can fill with menus and pauses while fps still looks fine. `drive`
-replaces the blind loop with: capture a frame, classify it, send the input
-the title's profile maps that class to, log the class. This module is the
-classifier; `route.sh`'s `drive_step` (see its grammar comment) is the loop
-that calls it once per capture and acts on the result.
+The classifier half of route.sh's `drive` step (drive.py is the loop that
+captures, calls `classify_frame`, and sends the input the title's profile
+maps the state to). It never touches a device and never calls a model:
+drive.py layers the Haiku fallback on top when this says `unknown` too often.
 
-CLASSES: play, paused, menu, loading, cutscene, black, unknown. `unknown`
-is not a screen state, it is this classifier admitting it does not know --
-see POLICY below for what happens on it.
+    classify.py frame  --profile P FRAME [--prev PREV] [--seen title,main_menu,...]
+    classify.py crop   FRAME x,y,w,h OUT.png      cut a reference crop (1280x960 space)
+    classify.py diff   A B [--profile P]          the motion numbers for one pair
 
-THE CHEAP CLASSIFIER, IN THE ORDER IT IS TRIED (no model call in this
-path -- the brief's requirement that the default work with zero model
-calls):
+THE STATES (owner, ADDENDUM 2, 2026-10-01 22:10 PDT). Boot-to-play is a
+path through named states, in roughly this order:
 
-  1. BLACK: mean luminance of the whole frame under BLACK_LUMA_BAR. A
-     screencap race (the display hasn't drawn yet) or a real black frame
-     both read this way; treated as `loading` by policy, not failed.
-  2. NAMED REFERENCE CROPS (`profile["crops"]`, reusing route.sh's own
-     waitfor/press-until comparator, `waitfor_match.region_score` --
-     one comparator for the whole codebase, not two). Each crop names a
-     region, a reference PNG and a class; the first crop (in the profile's
-     own order) whose region scores <= its threshold against the reference
-     wins outright, before anything cheaper-but-vaguer runs. This is how a
-     title's specific pause overlay, results screen or stage-select grid
-     gets named exactly, the same way `waitfor` already does for a single
-     scripted step -- `drive` is that same idea, polled continuously.
-  3. HUD CROP: a crop whose class is `play` -- the brief's "HUD present =
-     play". Checked after the named crops (a menu screen that happens to
-     show a HUD-shaped icon must not be read as play) but before liveness.
-  4. LIVENESS, only once 1-3 found no match. `frame_diff` scores two
-     consecutive captures with the profile's `corner_mask` (the FPS-counter
-     corner; it updates every frame regardless of what else is on screen
-     and would otherwise make EVERY pair of frames look live) blanked out.
-     Liveness alone cannot say `play` -- a cutscene moves too, and a menu
-     over a replaying background moves under a perfectly static dialog
-     (see NOTES.md, the Burnout Revenge SAVE/LOAD case) -- so it only
-     chooses among the screens the first three steps did NOT already name:
-       - moving (diff > STATIC_BAR): `cutscene` (no HUD, something is
-         still happening -- an in-engine cinematic, most likely).
-       - static (diff <= STATIC_BAR): dim check (mean luminance well below
-         the profile's typical play luminance, `dim_drop`) -> `paused`,
-         else -> `menu`.
-     A score within MARGIN of either bar is treated as `unknown` rather
-     than guessed -- see UNKNOWN AND THE MODEL FALLBACK.
+    boot -> logo -> intro_video -> title -> main_menu -> profile -> loading
+         -> cutscene -> ingame_menu -> play
 
-UNKNOWN AND THE MODEL FALLBACK. `unknown` accumulates in the driver's state
-file (see `step()`). Below `profile.get("unknown_before_model", 2)`
-consecutive unknowns, the policy is just "wait, try again" -- a single
-ambiguous capture is cheap to re-poll and often resolves itself (a frame
-mid-transition). At the threshold, and only if ANTHROPIC_API_KEY is set
-and the frame hash is not already in the state file's model cache, one
-call to Haiku 4.5 (`claude-haiku-4-5-20251001`) asks for
-`{"screen_class": ..., "button": ...}` on a downscaled frame -- see
-`model_classify`. Every call (hit or cached) is appended to
-`<result-dir>/classify-model-calls.jsonl` with its cost; the cap
-(`profile.get("model_calls_max", 20)`) is enforced in `step()`, which is
-also what makes "zero model calls" the default: no key, no call, ever.
+plus `paused` (an in-level pause overlay: its own state because its input is
+"resume", not "advance"), `stalled` (the title's play HUD is up but nothing
+on screen moves: a pause the profile has no crop for, or the play input not
+reaching the game -- Forza at 0 MPH with the race clock running, run
+1790914021-lane.ibcache-3202498), and the two fallbacks `black` and
+`unknown`. A profile (drive-profiles/<name>.toml) lists which states its title
+has and in what order; drive.py logs a state seen out of that order as an
+anomaly.
 
-WHY A SEPARATE STATE FILE, NOT IN-PROCESS STATE. `route.sh` calls this
-script fresh, once per capture, from bash -- there is no long-lived
-process to hold a liveness baseline, an unknown streak or a resume-attempt
-counter. `<result-dir>/drive-state.json` carries it between calls, written
-with the same tmp-then-rename pattern `title_verdict.py` uses so a reader
-mid-write never sees a half-written file.
+HOW A FRAME IS NAMED, cheapest and most specific first:
+
+  1. BLACK. Mean luminance (FPS corner masked) under BLACK_LUMA, or a
+     frame of one flat colour (grey-level std under FLAT_STD: a fade).
+     Before any other state of the run it is `boot`; after, `black` (a load
+     or a fade; drive.py waits on both).
+  2. NAMED CROPS. `[[crop]]` entries in the profile, each a region, a
+     reference PNG beside the profile and a state, scored with the same
+     comparator route.sh's waitfor uses (waitfor_match.region_score: mean
+     abs grey diff at 64x48). The first non-play crop that matches names the
+     frame outright: a title's pause box, its title logo, its Name Entry
+     banner. Non-play crops go first because a pause overlay sits on top of
+     the live HUD (Sonic Heroes' PAUSE box leaves the score, timer and ring
+     count on screen).
+  3. PLAY CROPS ARE NOT ENOUGH. A crop whose state is `play` (a HUD element)
+     only says the HUD is up. `play` also needs MOTION between this capture
+     and the previous one: changed fraction >= the profile's `motion_bar`.
+     HUD up and static is `stalled`, HUD up with a changed fraction between
+     the two bars is `unknown`. A HUD and a ticking clock alone is never
+     `play` (ADDENDUM 2, item 7). Motion is only read against a previous
+     capture that was itself play, stalled or unknown: against a pause box
+     or a menu, the change is the overlay leaving (Forza's blind route
+     alternated pause and race frames, and every race frame read 0.8 moved
+     though the car sat at 0 MPH). The first HUD frame after one is `unknown`.
+  4. NO CROP MATCHED: liveness and context only, and never `play` -- a frame
+     the classifier cannot name is `unknown`, not `play` (ADDENDUM 2, item 6).
+       moving: `intro_video` until the run has been past the title into a
+               menu (an attract movie that plays when the title sits idle is
+               still the intro), then `cutscene`.
+       static: `paused` if the run has seen play and the frame is darker
+               than the last play frame by `dim_drop` (Forza's pause is a
+               dark full-screen menu); otherwise `logo` before `title`,
+               `main_menu` after it, `ingame_menu` after play.
+       between the bars, or no previous frame to compare: `unknown`.
+     A profile with no play crop at all can set `play_by_motion = true`:
+     then a moving uncropped frame after `main_menu` is `play` (source
+     `motion-only`), the weakest evidence the driver accepts and named so in
+     the timeline.
+
+MOTION, AND WHY A CHANGED FRACTION NOT A MEAN. Both frames are greyed, the
+FPS overlay and any `motion_mask` regions (a HUD clock) blacked out, and
+shrunk to 160x120; the score is the fraction of pixels whose grey level
+moved by more than 16. A mean diff lets one bright moving object (a clock,
+a spinning ring) look like a moving scene; a fraction asks how much of the
+screen moved. Measured on frames already on disk, 5-10 s apart (NOTES.md,
+session 2): live Sonic Heroes play 0.10-0.82, Super Monkey Ball's animated
+Stage Select 0.18-0.42 (so it needs its crop), Sonic paused 0.000-0.006,
+Forza on the grid at 0 MPH with the clock running 0.004-0.015.
+
+COORDINATES. Every region is written in a 1280x960 frame (the Nova's
+screencap) and scaled to the picture actually read, so a fixture downscaled
+to 320x240 uses the same profile. A screencap that is not 4:3 is cropped to
+its centred 4:3 picture first (`content`): the Thor's 1920x1080 pillarboxes a
+1440x1080 picture, and its FPS overlay sits in the left bar, outside it.
 """
-import base64
-import datetime as dt
-import hashlib
+import argparse
 import json
 import os
 import sys
@@ -87,289 +95,310 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-from waitfor_match import region_score  # noqa: E402  -- the one comparator, shared with waitfor/press-until
+from waitfor_match import CMP_SIZE  # noqa: E402  -- one comparator for waitfor and drive
 
-CLASSES = ("play", "paused", "menu", "loading", "cutscene", "black", "unknown")
-
-BLACK_LUMA_BAR = 8.0        # 0-255; a screencap race or a true black frame
-STATIC_BAR = 6.0            # frame_diff below this: not moving
-MARGIN = 1.5                # within this of STATIC_BAR or dim_drop: unknown, not guessed
-DIFF_RESIZE = (160, 90)     # downscaled grayscale size liveness is scored at
-
-MODEL_NAME = "claude-haiku-4-5-20251001"
-MODEL_IMAGE_MAX = 512        # longest side, downscaled before sending
-MODEL_PROMPT = (
-    "This is a screenshot from an original-Xbox game running under emulation, "
-    "captured during an unattended automated playtest. Classify what is on "
-    "screen right now. Answer with ONLY a JSON object, no other text: "
-    '{"screen_class": one of "play","paused","menu","loading","cutscene","black", '
-    '"button": the single gamepad button (A, B, START, or "") that would make '
-    "the most progress toward live gameplay from this screen}."
-)
-
-
-def luminance(path, region=None):
-    im = Image.open(path).convert("L")
-    if region:
-        x, y, w, h = region
-        im = im.crop((x, y, x + w, y + h))
-    return float(np.asarray(im, dtype=np.float64).mean())
-
-
-def _mask(arr, region):
-    """Zero out `region` (x,y,w,h in ORIGINAL frame pixels) in a DIFF_RESIZE-scaled array."""
-    if region is None:
-        return arr
-    # region is in the original frame's coordinates; scale it into DIFF_RESIZE space.
-    # Callers pass the SOURCE image size so this scales correctly regardless of crop size.
-    return arr  # masking is applied before resize in frame_diff(); see there.
-
-
-def frame_diff(frame_a, frame_b, mask_region=None):
-    """Mean abs grayscale diff between two frames, downscaled, with `mask_region`
-    (x,y,w,h in the frames' own pixel coordinates -- the FPS-counter corner)
-    painted black in both before the diff, so a free-running counter cannot
-    read as motion. 0-255 scale, same convention as waitfor_match's score."""
-    a = Image.open(frame_a).convert("L")
-    b = Image.open(frame_b).convert("L")
-    if mask_region:
-        x, y, w, h = mask_region
-        for im in (a, b):
-            blank = Image.new("L", (w, h), 0)
-            im.paste(blank, (x, y))
-    aa = np.asarray(a.resize(DIFF_RESIZE), dtype=np.int16)
-    bb = np.asarray(b.resize(DIFF_RESIZE), dtype=np.int16)
-    return float(np.abs(aa - bb).mean())
+STATES = ("boot", "logo", "intro_video", "title", "main_menu", "profile", "loading",
+          "cutscene", "ingame_menu", "paused", "play", "stalled", "black", "unknown")
+REF_W, REF_H = 1280, 960
+FPS_CORNER = (0, 0, 130, 50)     # the FPS: overlay TextView (MainActivity.kt), top-left
+BLACK_LUMA = 8.0
+FLAT_STD = 3.0                    # a single-colour frame (a fade): 1790830432 222523 is flat grey
+MOTION_SIZE = (160, 120)
+MOTION_PIXEL = 16                 # grey levels a pixel must move to count as changed
+STATIC_BAR = 0.025                # changed fraction at or under this: static
+MOVING_BAR = 0.05                 # at or over this: moving. Between: unknown
+DIM_DROP = 25.0                   # luma below the last play frame's: a pause dim
 
 
 def load_profile(path):
     if tomllib is None:
         raise SystemExit("classify.py: python has no tomllib; need 3.11+")
     with open(path, "rb") as f:
-        return tomllib.load(f)
+        p = tomllib.load(f)
+    p["_dir"] = os.path.join(os.path.dirname(os.path.abspath(path)),
+                             os.path.splitext(os.path.basename(path))[0])
+    for c in p.get("crop", []):
+        if c.get("state") not in STATES:
+            raise SystemExit("classify.py: %s: crop %s names state %r, not one of %s"
+                             % (path, c.get("name"), c.get("state"), ",".join(STATES)))
+    return p
 
 
-def match_crops(frame_path, crops, profile_dir):
-    """First crop (in profile order) whose region matches its reference.
-    `crops` is a list of dicts: name, region [x,y,w,h], ref (path relative
-    to profile_dir), threshold, class. Returns (name, cls, score) or None."""
+def scale_box(box, size):
+    """A region in 1280x960 space -> pixel box (l, t, r, b) in a frame of `size`."""
+    x, y, w, h = box
+    sx, sy = size[0] / REF_W, size[1] / REF_H
+    return (int(round(x * sx)), int(round(y * sy)), int(round((x + w) * sx)), int(round((y + h) * sy)))
+
+
+def content(im):
+    """The 4:3 picture inside a screencap. The Nova's 1280x960 is all picture;
+    the Thor's 1920x1080 pillarboxes a 1440x1080 picture between black bars,
+    and every region, mask and motion score is about the picture."""
+    w, h = im.size
+    if abs(w / h - REF_W / REF_H) < 0.02:
+        return im
+    if w / h > REF_W / REF_H:
+        cw = int(round(h * REF_W / REF_H))
+        return im.crop(((w - cw) // 2, 0, (w - cw) // 2 + cw, h))
+    ch = int(round(w * REF_H / REF_W))
+    return im.crop((0, (h - ch) // 2, w, (h - ch) // 2 + ch))
+
+
+def open_grey(path):
+    im = Image.open(path)
+    im.load()
+    return content(im.convert("L"))
+
+
+def open_rgb(path):
+    im = Image.open(path)
+    im.load()
+    return content(im.convert("RGB"))
+
+
+def masked(im, boxes):
+    im = im.copy()
+    for b in boxes:
+        im.paste(0, scale_box(b, im.size))
+    return im
+
+
+def luma(im, profile=None):
+    return float(np.asarray(masked(im, [FPS_CORNER]), dtype=np.float64).mean())
+
+
+_REFS = {}
+
+
+def _ref(path):
+    if path not in _REFS:
+        im = Image.open(path)
+        im.load()
+        _REFS[path] = im
+    return _REFS[path]
+
+
+def crop_score(im, ref_path, box):
+    """Mean abs grey diff of a frame region against a reference crop, region
+    in 1280x960 space. An opaque reference is scored exactly as waitfor_match
+    scores one (both sides at 64x48). A reference WITH AN ALPHA CHANNEL is a
+    masked crop (see `learn`): both sides at the reference's own size, and
+    only the pixels its alpha marks are compared -- a HUD drawn over a moving
+    scene matches whatever the scene behind it is."""
+    ref = _ref(ref_path)
+    region = im.crop(scale_box(box, im.size))
+    if ref.mode != "RGBA":
+        a = np.asarray(region.resize(CMP_SIZE), dtype=np.int16)
+        b = np.asarray(ref.convert("L").resize(CMP_SIZE), dtype=np.int16)
+        return float(np.abs(a - b).mean())
+    a = np.asarray(region.resize(ref.size, Image.BILINEAR), dtype=np.int16)
+    b = np.asarray(ref.convert("L"), dtype=np.int16)
+    m = np.asarray(ref.getchannel("A")) > 127
+    if not m.any():
+        return 255.0
+    return float(np.abs(a - b)[m].mean())
+
+
+def save_crop(im, box, out):
+    """An opaque reference crop, stored grey at LEARN_SCALE of its 1280x960 size:
+    it is compared at 64x48, so full resolution is only bytes in the repo."""
+    w, h = max(1, int(round(box[2] * LEARN_SCALE))), max(1, int(round(box[3] * LEARN_SCALE)))
+    im.crop(scale_box(box, im.size)).resize((w, h), Image.LANCZOS).convert("L").save(out, optimize=True)
+
+
+LEARN_STD = 14.0     # grey-level std across the sample frames under which a pixel is "the HUD"
+LEARN_SCALE = 0.5    # masked references are stored at half the 1280x960 size
+
+
+def learn(frames, box, out, max_std=LEARN_STD):
+    """Build a masked reference crop from frames that all show the same
+    overlay over DIFFERENT scenes: the per-pixel median is the reference, and
+    the alpha keeps only pixels whose grey level barely moves across the
+    frames (the overlay), dropping the scene behind it. Frames whose scenes
+    are alike (Sonic wedged against one wall for 8 minutes) teach the wall as
+    part of the HUD: pick frames from different places. Returns the kept
+    fraction, so a near-empty or near-full mask is visible at once."""
+    w, h = int(round(box[2] * LEARN_SCALE)), int(round(box[3] * LEARN_SCALE))
+    stack_rgb, stack_l = [], []
+    for f in frames:
+        im = open_rgb(f)
+        r = im.crop(scale_box(box, im.size)).resize((w, h), Image.BILINEAR)
+        stack_rgb.append(np.asarray(r, dtype=np.float32))
+        stack_l.append(np.asarray(r.convert("L"), dtype=np.float32))
+    rgb = np.median(np.stack(stack_rgb), axis=0).astype(np.uint8)
+    std = np.stack(stack_l).std(axis=0)
+    alpha = np.where(std < max_std, 255, 0).astype(np.uint8)
+    img = Image.fromarray(np.dstack([rgb, alpha]), "RGBA")
+    img.save(out)
+    return float((alpha > 0).mean())
+
+
+def motion(a, b, mask_boxes=()):
+    """Changed fraction and mean grey diff between two open grey frames."""
+    boxes = [FPS_CORNER] + list(mask_boxes)
+    aa = np.asarray(masked(a, boxes).resize(MOTION_SIZE, Image.BILINEAR), dtype=np.int16)
+    bb = np.asarray(masked(b, boxes).resize(MOTION_SIZE, Image.BILINEAR), dtype=np.int16)
+    d = np.abs(aa - bb)
+    return float((d > MOTION_PIXEL).mean()), float(d.mean())
+
+
+def match_crop(im, crops, profile):
+    """First crop in profile order whose region scores <= its threshold.
+    Returns (crop, score, all_scores) -- all_scores is every crop's score,
+    for the timeline, so a near miss is visible after the fact."""
+    scores = {}
+    hit = None
     for c in crops:
-        ref = os.path.join(profile_dir, c["ref"])
-        try:
-            score = region_score(frame_path, ref, tuple(c["region"]))
-        except Exception:
-            continue
-        if score <= c["threshold"]:
-            return c["name"], c["class"], score
-    return None
+        s = crop_score(im, os.path.join(profile["_dir"], c["ref"]), c["region"])
+        scores[c["name"]] = round(s, 2)
+        if hit is None and s <= c["threshold"]:
+            hit = (c, s)
+    return (hit[0], hit[1], scores) if hit else (None, None, scores)
 
 
-def classify_frame(frame_path, prev_frame_path, profile, profile_dir):
-    """The cheap classifier (steps 1-4 of the module doc). Returns a dict:
-    cls, reason, detail -- never calls the model; `step()` layers that on
-    top when this returns `unknown` often enough."""
-    luma = luminance(frame_path)
-    if luma < BLACK_LUMA_BAR:
-        return dict(cls="black", reason="luma %.1f < %.1f" % (luma, BLACK_LUMA_BAR), luma=luma)
+def classify_frame(frame, prev, profile, seen=(), last_play_luma=None, prev_state=None):
+    """Name one capture. `prev` is the previous capture's path (None for the
+    first), `seen` the states this run has already been in, `last_play_luma`
+    the luminance of the last `play` frame. Returns a dict: state, source
+    (what decided it), and the numbers it was decided on."""
+    seen = set(seen)
+    im = open_grey(frame)
+    lu = luma(im)
+    out = dict(state="unknown", source="", luma=round(lu, 1), changed=None, diff=None, crop=None, scores={})
+    # below the FPS corner, not with it painted black: a blacked-out corner
+    # on a flat grey frame is itself a contrast
+    below = im.crop(scale_box((0, FPS_CORNER[3], REF_W, REF_H - FPS_CORNER[3]), im.size))
+    flat = float(np.asarray(below.resize(MOTION_SIZE), dtype=np.float64).std()) < FLAT_STD
+    if lu < BLACK_LUMA or flat:
+        out.update(state="black" if seen - {"boot", "black"} else "boot", source="black" if lu < BLACK_LUMA else "flat")
+        return out
 
-    crops = [c for c in profile.get("crops", []) if c.get("class") != "play"]
-    hit = match_crops(frame_path, crops, profile_dir)
+    crops = profile.get("crop", [])
+    hit, score, scores = match_crop(im, [c for c in crops if c["state"] != "play"], profile)
+    out["scores"] = scores
     if hit:
-        name, cls, score = hit
-        return dict(cls=cls, reason="crop %s score %.2f" % (name, score), crop=name, score=score)
+        out.update(state=hit["state"], source="crop:" + hit["name"], crop=hit["name"], score=round(score, 2))
+        return out
 
-    hud = [c for c in profile.get("crops", []) if c.get("class") == "play"]
-    hit = match_crops(frame_path, hud, profile_dir)
-    if hit:
-        name, cls, score = hit
-        return dict(cls="play", reason="hud crop %s score %.2f" % (name, score), crop=name, score=score)
+    hud, hscore, hscores = match_crop(im, [c for c in crops if c["state"] == "play"], profile)
+    out["scores"].update(hscores)
 
-    if prev_frame_path is None:
-        return dict(cls="unknown", reason="no previous frame yet (first capture)")
+    if prev is None:
+        out["source"] = "no-prev" + (" hud:" + hud["name"] if hud else "")
+        return out
+    changed, diff = motion(im, open_grey(prev), profile.get("motion_mask", []))
+    out.update(changed=round(changed, 4), diff=round(diff, 2))
+    static_bar = profile.get("static_bar", STATIC_BAR)
+    moving_bar = profile.get("motion_bar", MOVING_BAR)
+    moving = changed >= moving_bar
+    static = changed <= static_bar
 
-    corner = profile.get("corner_mask")
-    diff = frame_diff(frame_path, prev_frame_path, tuple(corner) if corner else None)
-    if diff > STATIC_BAR + MARGIN:
-        return dict(cls="cutscene", reason="moving (diff %.2f), no crop matched" % diff, diff=diff)
-    if diff < STATIC_BAR - MARGIN:
-        dim_drop = profile.get("dim_drop", 40.0)
-        play_luma = profile.get("play_luma", 110.0)
-        if play_luma - luma > dim_drop + MARGIN:
-            return dict(cls="paused", reason="static (diff %.2f), dim (luma %.1f vs play ~%.1f)"
-                        % (diff, luma, play_luma), diff=diff, luma=luma)
-        if play_luma - luma < dim_drop - MARGIN:
-            return dict(cls="menu", reason="static (diff %.2f), not dim (luma %.1f vs play ~%.1f)"
-                        % (diff, luma, play_luma), diff=diff, luma=luma)
-        return dict(cls="unknown", reason="static but luma %.1f is within %.1f of the dim bar"
-                    % (luma, MARGIN), diff=diff, luma=luma)
-    return dict(cls="unknown", reason="diff %.2f is within %.1f of the static bar" % (diff, MARGIN), diff=diff)
-
-
-def _state_path(result_dir):
-    return os.path.join(result_dir, "drive-state.json")
-
-
-def load_state(result_dir):
-    try:
-        with open(_state_path(result_dir)) as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return dict(unknown_streak=0, resume_tries=0, model_calls=0, model_cache={}, last_class=None)
-
-
-def save_state(result_dir, state):
-    tmp = _state_path(result_dir) + ".tmp"
-    with open(tmp, "w") as f:
-        json.dump(state, f)
-    os.replace(tmp, _state_path(result_dir))
-
-
-def frame_hash(path):
-    with open(path, "rb") as f:
-        return hashlib.sha256(f.read()).hexdigest()[:16]
-
-
-def model_classify(frame_path, result_dir, state):
-    """One Haiku 4.5 call on a downscaled frame, cached by frame hash in
-    `state["model_cache"]`. Returns (cls, button, called:bool, cost:dict|None).
-    No ANTHROPIC_API_KEY, no SDK, or any API error: (None, None, False, None)
-    -- the caller falls back to `unknown` and keeps going. This is what makes
-    the model optional rather than required: nothing above this function
-    ever calls it unless the cheap classifier already gave up."""
-    h = frame_hash(frame_path)
-    if h in state["model_cache"]:
-        return state["model_cache"][h]["cls"], state["model_cache"][h].get("button", ""), False, None
-    key = os.environ.get("ANTHROPIC_API_KEY")
-    if not key:
-        return None, None, False, None
-    try:
-        import anthropic
-    except ImportError:
-        return None, None, False, None
-    try:
-        im = Image.open(frame_path).convert("RGB")
-        im.thumbnail((MODEL_IMAGE_MAX, MODEL_IMAGE_MAX))
-        import io
-        buf = io.BytesIO()
-        im.save(buf, format="JPEG", quality=85)
-        b64 = base64.b64encode(buf.getvalue()).decode()
-        client = anthropic.Anthropic(api_key=key)
-        resp = client.messages.create(
-            model=MODEL_NAME, max_tokens=200,
-            messages=[{"role": "user", "content": [
-                {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": b64}},
-                {"type": "text", "text": MODEL_PROMPT},
-            ]}])
-        text = "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
-        parsed = json.loads(text[text.find("{"):text.rfind("}") + 1])
-        cls = parsed.get("screen_class")
-        button = parsed.get("button", "")
-        if cls not in CLASSES:
-            cls = None
-        cost = dict(input_tokens=resp.usage.input_tokens, output_tokens=resp.usage.output_tokens)
-        state["model_cache"][h] = dict(cls=cls, button=button)
-        log = dict(t=dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                   frame=os.path.basename(frame_path), frame_hash=h, cls=cls, button=button, **cost)
-        with open(os.path.join(result_dir, "classify-model-calls.jsonl"), "a") as f:
-            f.write(json.dumps(log) + "\n")
-        return cls, button, True, cost
-    except Exception as exc:
-        with open(os.path.join(result_dir, "classify-model-calls.jsonl"), "a") as f:
-            f.write(json.dumps(dict(t=dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                                     frame=os.path.basename(frame_path), frame_hash=h,
-                                     error=str(exc)[:200])) + "\n")
-        return None, None, True, None
-
-
-def resolve_action(cls, profile, state):
-    """(action_name, args) from `profile["policy"][cls]`. `paused` and
-    `unknown` carry their own retry/escalation logic (see the module doc);
-    everything else is a straight policy lookup. `profile["policy"]` maps a
-    class to one of: "hold_accel" (the title's play input, from
-    `profile["accel"]`, held for this whole tick), "none" (wait), or an
-    explicit "press BTN" / "press-pattern NAME" naming a block under
-    `profile["patterns"][NAME]` (a short list of route.sh step dicts)."""
-    pol = profile.get("policy", {})
-    if cls == "paused":
-        max_tries = profile.get("max_resume_tries", 3)
-        if state["resume_tries"] >= max_tries:
-            return "fail", "paused %d times; resume did not work" % state["resume_tries"]
-        state["resume_tries"] += 1
-        return "press", profile.get("resume_button", "START")
-    if cls != "paused":
-        state["resume_tries"] = 0
-    if cls == "unknown":
-        threshold = profile.get("unknown_before_model", 2)
-        if state["unknown_streak"] < threshold:
-            return "none", None
-        return "model_or_fail", None
-    spec = pol.get(cls, "none")
-    if spec == "hold_accel":
-        return "hold_accel", profile.get("accel", {})
-    if spec.startswith("press "):
-        return "press", spec.split(" ", 1)[1]
-    return "none", None
-
-
-def step(args):
-    """CLI entry: one classification + policy decision for one capture.
-    Prints a single JSON line to stdout; route.sh's drive_step() reads it
-    and does the actual pad.sh call and logcat/tsv writing -- this process
-    never touches the device."""
-    profile = load_profile(args.profile)
-    profile_dir = os.path.dirname(os.path.abspath(args.profile))
-    state = load_state(args.result_dir)
-
-    result = classify_frame(args.frame, args.prev, profile, profile_dir)
-    cls = result["cls"]
-    model_called = False
-
-    if cls == "unknown":
-        state["unknown_streak"] = state.get("unknown_streak", 0) + 1
-    else:
-        state["unknown_streak"] = 0
-
-    action, action_arg = resolve_action(cls, profile, state)
-
-    if action == "model_or_fail":
-        if state["model_calls"] < profile.get("model_calls_max", 20):
-            mcls, mbutton, called, cost = model_classify(args.frame, args.result_dir, state)
-            if called:
-                state["model_calls"] += 1
-                model_called = True
-            if mcls:
-                cls = mcls
-                result = dict(cls=cls, reason="model: " + (mcls or "?"), model_cost=cost)
-                state["unknown_streak"] = 0
-                action, action_arg = resolve_action(cls, profile, state)
-                if mbutton and action == "none" and cls != "play":
-                    action, action_arg = "press", mbutton
-            else:
-                action, action_arg = "fail", "unknown after model (unavailable or inconclusive)"
+    if hud:
+        out["crop"] = hud["name"]
+        if prev_state is not None and prev_state not in ("play", "stalled", "unknown"):
+            # The previous capture was a pause box or a menu: the "motion" is
+            # that overlay going away, not the scene. One more capture decides.
+            out.update(state="unknown", source="hud:%s+after-%s" % (hud["name"], prev_state))
+        elif moving:
+            out.update(state="play", source="hud:%s+motion" % hud["name"])
+        elif static:
+            out.update(state="stalled", source="hud:%s+static" % hud["name"])
         else:
-            action, action_arg = "fail", "unknown, and model_calls_max (%d) reached" % profile.get("model_calls_max", 20)
+            out.update(state="unknown", source="hud:%s+between" % hud["name"])
+        return out
 
-    state["last_class"] = cls
-    save_state(args.result_dir, state)
-
-    print(json.dumps(dict(cls=cls, action=action, action_arg=action_arg, model_called=model_called,
-                           detail=result)))
-    return 0
+    after_title = bool(seen & {"title", "main_menu", "profile", "ingame_menu", "play", "paused", "loading"})
+    after_menu = bool(seen & {"main_menu", "profile", "ingame_menu", "play", "paused"})
+    played = bool(seen & {"play", "stalled", "paused"})
+    if moving:
+        if profile.get("play_by_motion") and after_menu:
+            out.update(state="play", source="motion-only")
+        else:
+            out.update(state="cutscene" if after_menu else "intro_video", source="moving")
+    elif static:
+        dim = profile.get("dim_drop", DIM_DROP)
+        if played and last_play_luma is not None and last_play_luma - lu >= dim:
+            out.update(state="paused", source="static+dim")
+        elif not after_title:
+            out.update(state="logo", source="static")
+        else:
+            out.update(state="ingame_menu" if played else "main_menu", source="static")
+    else:
+        out["source"] = "between"
+    return out
 
 
 def main(argv=None):
-    import argparse
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
-    s = sub.add_parser("step", help="classify one capture and resolve the policy action")
-    s.add_argument("--profile", required=True)
-    s.add_argument("--frame", required=True)
-    s.add_argument("--prev", default=None)
-    s.add_argument("--result-dir", required=True)
+    f = sub.add_parser("frame")
+    f.add_argument("--profile", required=True)
+    f.add_argument("frame")
+    f.add_argument("--prev")
+    f.add_argument("--seen", default="")
+    f.add_argument("--last-play-luma", type=float)
+    c = sub.add_parser("crop")
+    c.add_argument("frame")
+    c.add_argument("region")
+    c.add_argument("out")
+    d = sub.add_parser("diff")
+    d.add_argument("a")
+    d.add_argument("b")
+    d.add_argument("--profile")
+    lr = sub.add_parser("learn", help="masked reference crop from frames showing one overlay over different scenes")
+    lr.add_argument("region")
+    lr.add_argument("out")
+    lr.add_argument("frames", nargs="+")
+    lr.add_argument("--max-std", type=float, default=LEARN_STD)
+    sc = sub.add_parser("score", help="score frames against one reference crop")
+    sc.add_argument("ref")
+    sc.add_argument("region")
+    sc.add_argument("frames", nargs="+")
+    tb = sub.add_parser("table", help="classify a run's frames in order, with every crop's score")
+    tb.add_argument("--profile", required=True)
+    tb.add_argument("frames", nargs="+")
     a = ap.parse_args(argv)
-    if a.cmd == "step":
-        return step(a)
-    return 2
+    if a.cmd == "table":
+        p = load_profile(a.profile)
+        names = [c["name"] for c in p.get("crop", [])]
+        print("%-40s %-12s %-26s %7s  %s" % ("frame", "state", "source", "changed", " ".join(n[:9] for n in names)))
+        prev, seen, lpl, pst = None, [], None, None
+        for f in a.frames:
+            r = classify_frame(f, prev, p, seen, lpl, pst)
+            pst = r["state"]
+            if r["state"] not in seen:
+                seen.append(r["state"])
+            if r["state"] == "play":
+                lpl = r["luma"]
+            sc = " ".join("%9s" % ("%.1f" % r["scores"][n] if n in r["scores"] else "-") for n in names)
+            print("%-40s %-12s %-26s %7s  %s" % (os.path.basename(f)[:40], r["state"], r["source"][:26],
+                                                 "" if r["changed"] is None else "%.3f" % r["changed"], sc))
+            prev = f
+        return 0
+    if a.cmd == "learn":
+        kept = learn(a.frames, tuple(int(v) for v in a.region.split(",")), a.out, a.max_std)
+        print("%s: %d frames, %.1f%% of the region kept" % (a.out, len(a.frames), 100 * kept))
+        return 0
+    if a.cmd == "score":
+        box = tuple(int(v) for v in a.region.split(","))
+        for f in a.frames:
+            print("%7.2f  %s" % (crop_score(open_grey(f), a.ref, box), f))
+        return 0
+    if a.cmd == "frame":
+        p = load_profile(a.profile)
+        r = classify_frame(a.frame, a.prev, p, [s for s in a.seen.split(",") if s], a.last_play_luma)
+        print(json.dumps(r))
+    elif a.cmd == "crop":
+        box = tuple(int(v) for v in a.region.split(","))
+        im = open_rgb(a.frame)
+        save_crop(im, box, a.out)
+        print(a.out)
+    elif a.cmd == "diff":
+        p = load_profile(a.profile) if a.profile else {}
+        ch, mn = motion(open_grey(a.a), open_grey(a.b), p.get("motion_mask", []))
+        print("changed=%.4f mean=%.2f" % (ch, mn))
+    return 0
 
 
 if __name__ == "__main__":

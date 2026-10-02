@@ -1,0 +1,42 @@
+# Castlevania: Curse of Darkness (4B4E002D) -- drive profile (#433, lane.routedriver).
+#
+# PARTIAL: written for the classifier selftest, not yet for a run. It names
+# the title menu and Name Entry, the two screens session 59/60's fixed-wait
+# route lost its place on (1790902028-titleroutes-1005086: the route's A
+# presses landed on a still-black screen, then typed into Name Entry and
+# never reached Accept). It has no play HUD crop, so it can never say
+# `play`, and the save-data prompt that defaults to No (castlevania-cod.
+# first-run.route: LX min, then A) has no crop either.
+#
+# Reference crops in castlevania-cod/ (regions in 1280x960 space):
+#   title       1790902028 174750 (the logo and New Game / Continue / Options)
+#   name-entry  1790902028 174838 (the Name Entry banner, top left)
+
+name = "castlevania-cod"
+title = "Castlevania: Curse of Darkness"
+title_id = "4B4E002D"
+genre = "onfoot"
+order = ["boot", "logo", "intro_video", "title", "profile", "main_menu", "loading", "cutscene", "play"]
+
+[input]
+title = ["A"]              # New Game is highlighted
+profile = ["A"]
+main_menu = ["A"]
+ingame_menu = ["A"]
+paused = ["START"]
+play_hold = [["LY", "min"]]
+
+[[crop]]
+name = "name-entry"
+state = "profile"
+region = [0, 40, 560, 80]
+ref = "name-entry.png"
+threshold = 20.0
+press = ["A", "START", "A"]  # A types the highlighted letter, START jumps to Accept, A accepts
+
+[[crop]]
+name = "title"
+state = "title"
+region = [0, 40, 1280, 500]
+ref = "title.png"
+threshold = 20.0

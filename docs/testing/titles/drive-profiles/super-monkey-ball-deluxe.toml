@@ -1,0 +1,87 @@
+# Super Monkey Ball Deluxe (53450038) -- drive profile (#433, lane.routedriver).
+#
+# The blind route's START/A cycles got through the save prompts, Mode Select,
+# Main Game, Story Mode, Data Select and Name Entry (it typed "AIAI") into
+# World 1-1 -- and then kept cycling: START paused the stage, A on the pause
+# menu's "Stage select" ... left the run on Stage Select for ten minutes
+# (1790900520-autoverdict-566484). Stage Select is animated (changed
+# fraction 0.18-0.42 between captures), so motion alone would call it a
+# cutscene: it has its own crop.
+#
+# Reference crops in super-monkey-ball-deluxe/ (regions in 1280x960 space):
+#   title-deluxe   1790900520 172505 (the DELUXE ribbon, "PRESS START BUTTON")
+#   name-entry     1790900520 172631 (the Name Entry banner)
+#   stage-select   1790900520 172649 (the Stage Select banner)
+#   menu-banner    MASKED, learned from the wooden title banner Mode Select,
+#                  Main Game Select, Data Select and Name Entry share (1790900520
+#                  172554 172606 172619 172631; 1790839386 002849 002901 002913):
+#                  those screens animate, so without it they read as `cutscene`
+#   pause          1790900520 172702 (the Continue game / Retry / ... box)
+#   hud            MASKED, learned from the SCORE / TIME / banana band over six
+#                  World 1-1 frames on both handhelds (1790900520 172713;
+#                  1790839386-titleroutes-2237355 003003 003016 003028 003041
+#                  003047). One stage only, so 73% of the band was kept --
+#                  some of it is 1-1's backdrop; a later world may miss it.
+# NOT YET DRIVEN: checked against frames on disk only.
+
+name = "super-monkey-ball-deluxe"
+title = "Super Monkey Ball Deluxe"
+title_id = "53450038"
+genre = "onfoot"
+order = ["boot", "logo", "intro_video", "title", "profile", "main_menu", "loading", "cutscene", "play"]
+
+[input]
+title = ["START"]
+profile = ["A"]
+main_menu = ["A"]          # Mode Select, Main Game, Story Mode, Data Select, Stage Select: A
+ingame_menu = ["A"]
+paused = ["A"]             # "Continue game" is highlighted
+play_hold = [["LY", "min"]] # tilt the stage forward
+
+[drive]
+# The save/load dialogs sit over an animated logo and read as moving; B on
+# them is "cancel" (decline the save). A and START only.
+ladder = ["A", "START"]
+
+[[crop]]
+name = "pause"
+state = "paused"
+region = [220, 270, 820, 410]
+ref = "pause.png"
+threshold = 8.0           # the save/load dialogs share the wood box style: 21-22 against it
+
+[[crop]]
+name = "title-deluxe"
+state = "title"
+region = [380, 610, 500, 140]
+ref = "title-deluxe.png"
+threshold = 25.0
+
+[[crop]]
+name = "name-entry"
+state = "profile"
+region = [230, 70, 820, 80]
+ref = "name-entry.png"
+threshold = 8.0           # Mode Select's banner, same wood, scores 18
+press = ["A", "START", "A"]  # type a letter, jump to END, accept; then "Are you sure? Yes" is A
+
+[[crop]]
+name = "stage-select"
+state = "main_menu"
+region = [100, 60, 320, 100]
+ref = "stage-select.png"
+threshold = 20.0
+
+[[crop]]
+name = "menu-banner"
+state = "main_menu"
+region = [224, 48, 830, 104]
+ref = "menu-banner.png"
+threshold = 15.0
+
+[[crop]]
+name = "hud"
+state = "play"
+region = [40, 60, 1220, 200]
+ref = "hud.png"
+threshold = 20.0

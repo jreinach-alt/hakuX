@@ -1,0 +1,123 @@
+# Sonic Heroes (5345002B) -- drive profile (#433, lane.routedriver).
+#
+# Reference crops are in sonic-heroes/, cut from frames already on disk
+# (regions in 1280x960 space; classify.py scales them):
+#   title-logo      1790902215-autoverdict-1078702 180331-boot20 (logo over clouds)
+#   title-art       1790910096-lane.local-2693820 200413-booted (Team Sonic art, "Press START")
+#   logo-sonicteam  1790902215 180421, logo-dolby 1790902215 180426
+#   profile-slots   1790910096 200422-menu1 (the No.01/02/03 slot strip; also under
+#                   the Start/Delete/Cancel popup)
+#   profile-nodata  1790902215 180444 ("There is no Game Data ... Create Game Data 01?")
+#   profile-created 1790902215 180451 ("Game Data has been created ... press A")
+#   menu-banner     MASKED, learned from the Y/emblem badge at the top right of
+#                   Main Menu, 1P PLAY, STORY and team select (1790902215 180456,
+#                   180502, 180507; 1790910096 200449, 200456; 1790839390 004145)
+#   loading-stage   1790839390-titleroutes-2237657 004157 ("NOW LOADING", Thor)
+#   pause           MASKED, learned (classify.py learn) from the PAUSE box over
+#                   three scenes: 1790902215 180617, 1790839390 004209 and 004235
+#   hud             MASKED, learned from the top-right HUD (team gauge, Y and B
+#                   badges) over nine scenes on both handhelds, one with Tails
+#                   leading (1790830432-titleroutes-311058 222435), so the team
+#                   circles that rotate with the formation are left out.
+# Thresholds from the score table in docs/lanes/routedriver/NOTES.md
+# (session 2): every crop's own screens score under its threshold and every
+# other screen on disk scores well over it.
+
+name = "sonic-heroes"
+title = "Sonic Heroes"
+title_id = "5345002B"
+genre = "onfoot"
+# Boot to play, from the frames: Sega/Sonic Team/Dolby logos, an intro FMV,
+# the title (two variants), the save prompt or the slot strip, Main Menu ->
+# 1P PLAY -> STORY -> team select, the story cutscene, NOW LOADING, Seaside Hill.
+order = ["boot", "logo", "intro_video", "title", "profile", "main_menu", "cutscene", "loading", "play"]
+
+[input]
+title = ["START"]
+profile = ["A"]          # every default is the one wanted: Create, Start, slot 01
+main_menu = ["A"]        # 1P PLAY -> STORY -> TEAM SONIC, all defaults
+ingame_menu = ["A"]
+paused = ["START"]       # resume (Continue is highlighted)
+# Run forward; jump now and then. NEVER START: it pauses (run 1790902215).
+play_hold = [["LY", "min"]]
+play_tap = [["A", 8.0]]
+
+[drive]
+stall_fail_s = 40.0
+
+[[crop]]
+name = "pause"
+state = "paused"
+region = [500, 330, 290, 240]
+ref = "pause.png"
+threshold = 25.0
+
+[[crop]]
+name = "title-logo"
+state = "title"
+region = [290, 290, 700, 330]
+ref = "title-logo.png"
+threshold = 25.0
+
+[[crop]]
+name = "title-art"
+state = "title"
+region = [330, 100, 300, 300]
+ref = "title-art.png"
+threshold = 35.0          # the art drifts as it settles: 27 on 200413-pretitle
+
+[[crop]]
+name = "logo-sonicteam"
+state = "logo"
+region = [280, 330, 720, 340]
+ref = "logo-sonicteam.png"
+threshold = 15.0
+
+[[crop]]
+name = "logo-dolby"
+state = "logo"
+region = [330, 420, 660, 240]
+ref = "logo-dolby.png"
+threshold = 15.0
+
+[[crop]]
+name = "profile-nodata"
+state = "profile"
+region = [190, 210, 900, 300]
+ref = "profile-nodata.png"
+threshold = 20.0
+
+[[crop]]
+name = "profile-created"
+state = "profile"
+region = [190, 284, 900, 312]
+ref = "profile-created.png"
+threshold = 20.0
+
+[[crop]]
+name = "profile-slots"
+state = "profile"
+region = [80, 250, 1120, 70]
+ref = "profile-slots.png"
+threshold = 20.0
+
+[[crop]]
+name = "menu-banner"
+state = "main_menu"
+region = [990, 70, 200, 100]
+ref = "menu-banner.png"
+threshold = 20.0
+
+[[crop]]
+name = "loading-stage"
+state = "loading"
+region = [800, 130, 340, 50]
+ref = "loading-stage.png"
+threshold = 20.0
+
+[[crop]]
+name = "hud"
+state = "play"
+region = [890, 60, 300, 150]
+ref = "hud.png"
+threshold = 20.0
