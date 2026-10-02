@@ -1,0 +1,63 @@
+{
+ "title_id": "53450033",
+ "name": "ESPN College Hoops 2K5",
+ "device": "thor",
+ "iso": "/storage/emulated/0/ROMS/xbox/53450033-ESPN_College_Hoops_2K5.xiso.iso",
+ "result": "heat-stop",
+ "tool": "41aeb6ac79",
+ "started": "2026-10-02 10:29:06 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-college-hoops-2k5.guided/frames/016-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-college-hoops-2k5.guided/frames/016-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-college-hoops-2k5.guided/frames/016-probe-left.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-college-hoops-2k5.guided/frames/016-probe-right.jpg"
+ ],
+ "reason": "Thor xo 71.865 C",
+ "model_calls": 14,
+ "calls_by_model": {
+  "claude-sonnet-5": 11,
+  "claude-opus-5-5": 3
+ },
+ "steps": 16,
+ "seconds": 228.0,
+ "last_frame": null,
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [
+  "53450030",
+  "53450032"
+ ],
+ "cheap": 2,
+ "thermal": [
+  [
+   1.7,
+   51.159
+  ],
+  [
+   44.3,
+   56.6
+  ],
+  [
+   78.0,
+   61.275
+  ],
+  [
+   114.9,
+   63.54
+  ],
+  [
+   152.5,
+   67.537
+  ],
+  [
+   188.0,
+   69.787
+  ],
+  [
+   227.6,
+   71.865
+  ]
+ ],
+ "strip": "/home/justin/hakux-work/wt/pathfind/scratch/runs/espn-college-hoops-2k5.guided/strip.jpg"
+}
