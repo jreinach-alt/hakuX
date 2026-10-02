@@ -17,6 +17,14 @@
 # past it (this run is the second survey as much as a route), mark, and a
 # first-person loop (Tron 2.0 is an FPS: LY forward, RT fire, A jump, RX
 # turn) with a frame per leg and no START.
+# Replay 1 (1790953776-titleroutes2-447685, ref 77b3523fd3): the B came
+# too soon. 4 s after START the title was still up (081413), the B landed
+# before the Sign In screen did, and the run looped the sign-in as the
+# survey did. A worse turn: in the play loop the sticks moved the account
+# cursor to <New Account>, and A raised "This will send you back to the
+# Xbox Dashboard to create a new account. Yes / No" (081911); a Yes would
+# leave the game. v2 waits 10 s for the screen (it holds until input)
+# before its one B.
 wait 20
 shot boot20
 wait 20
@@ -24,10 +32,10 @@ shot boot40
 wait 20
 shot booted
 press START
-wait 4
+wait 10
 shot signin
 press B
-wait 4
+wait 5
 shot skip
 repeat 10 {
     press START
