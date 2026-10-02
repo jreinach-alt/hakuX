@@ -267,6 +267,27 @@ def scene_change(a, b):
     return float((np.abs(a - b) > SCENE_PIXEL).mean())
 
 
+def line_reading(path, band, hue, min_sat=0.45, min_val=0.35):
+    """Where a coloured guide line is in a band ahead of the player (1280x960
+    space): (pixel count, centroid x in 1280 space or None). `hue` is
+    [lo, hi] degrees. Forza Motorsport's suggested line is green chevrons on
+    the asphalt (lane.routedriver2: 330-1290 px in a 1280x200 band over a
+    race, centroid at x 650-760 on the straight and 958-1054 at the bend the
+    car ran wide on). Saturation and value floors keep the grey road, the sky
+    and dull verges out."""
+    im = open_rgb(path)
+    l, t, r, b = scale_box(band, im.size)
+    hsv = np.asarray(im.crop((l, t, r, b)).convert("HSV"), dtype=np.float32)
+    h = hsv[..., 0] * (360.0 / 255.0)
+    m = (hsv[..., 1] > min_sat * 255) & (hsv[..., 2] > min_val * 255)
+    m &= (h >= hue[0]) & (h <= hue[1]) if hue[0] <= hue[1] else ((h >= hue[0]) | (h <= hue[1]))
+    xs = np.nonzero(m)[1]
+    if not len(xs):
+        return 0, None
+    sx = REF_W / float(im.size[0])
+    return int(len(xs) * sx * sx), float((xs.mean() + l) * sx)
+
+
 def region_rgb(path, box):
     """Mean RGB of a region (1280x960 space): a HUD badge's colour."""
     im = open_rgb(path)

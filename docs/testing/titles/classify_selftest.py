@@ -42,6 +42,8 @@ FIX = os.path.join(PROF, "selftest")
 FIX_SIZE, FIX_Q = (640, 480), 60     # the scale the masked references are stored at
 RESULTS = os.path.join(os.environ.get("DISPATCH_DIR", "/home/justin/hakux-work/dispatch"), "results")
 
+BUF = "1790932722-titleroutes-3976729"         # Buffy, Nova: replay 2, five minutes frozen on the sky
+BUF1 = "1790931264-titleroutes-3615749"        # Buffy, Nova: replay 1, moved a minute, then froze
 SON = "1790902215-autoverdict-1078702"        # Sonic, Nova, the paused confirmation
 SON2 = "1790910096-lane.local-2693820"         # Sonic, Nova, live play (wedged on a wall later)
 SONT = "1790839390-titleroutes-2237657"        # Sonic, Thor (1920x1080 pillarboxed)
@@ -104,6 +106,18 @@ SITES = [
      "024145-088-stalled.png", True),
     ("sonic POWER block twice: same site", "sonic-heroes", SHT2, "024145-088-stalled.png",
      "024208-098-stalled.png", False),
+]
+# [steer] on Forza's suggested line (green chevrons): (name, profile, run,
+# [(frame, seconds since the first tick)], (LX lo, LX hi) wanted on the last
+# tick, why wanted). The counter-cases are a straight, which must stay near
+# centre, and a lost line held past lost_hold_s, which must centre.
+STEER = [
+    ("forza right-hand bend: full right", "forza", FZR1, [("234126-049-play.png", 0.0)], (0.9, 1.0), "line"),
+    ("forza straight: near centre", "forza", FZR1, [("234117-045-play.png", 0.0)], (-0.2, 0.2), "line"),
+    ("forza line lost 1 s after the bend: hold right", "forza", FZR1,
+     [("234126-049-play.png", 0.0), ("234129-050-play.png", 1.0)], (0.9, 1.0), "lost-hold"),
+    ("forza line lost 3 s after the bend: centre", "forza", FZR1,
+     [("234126-049-play.png", 0.0), ("234129-050-play.png", 3.0)], (0.0, 0.0), "lost"),
 ]
 # [[mode]] from a HUD region's colour, through Driver.classify: (name,
 # profile, run, frame, mode wanted). The counter-case is a menu: its blue
@@ -183,6 +197,27 @@ CASES = [
     ("smb pause box", "super-monkey-ball-deluxe", SMB, "172702-menu-start.png", None, None, ["main_menu"], "paused"),
     ("smb rolling in World 1-1", "super-monkey-ball-deluxe", SMB, "172713-gameplay.png", "172712-rolling.png", "play",
      ["main_menu", "play"], "play"),
+    # Buffy the Vampire Slayer
+    ("buffy title, Press START", "buffy", BUF, "030413-menu-start.png", None, None, ["intro_video"], "title"),
+    ("buffy main menu", "buffy", BUF, "030418-menu-a.png", None, None, ["title"], "main_menu"),
+    ("buffy Start Game confirm", "buffy", BUF, "030424-menu-start.png", None, None, ["title", "main_menu"], "profile"),
+    ("buffy Difficulty", "buffy", BUF, "030430-menu-a.png", None, None, ["title", "main_menu"], "profile"),
+    # Summoning is under the black luma bar: `black`, waited on exactly like
+    # `loading`, and never pressed through.
+    ("buffy Summoning (the load) is waited on", "buffy", BUF, "030436-menu-start.png", None, None,
+     ["main_menu", "profile"], "black"),
+    ("buffy PAUSE over the canyon", "buffy", BUF, "030500-menu-start.png", None, None, ["main_menu", "play"], "paused"),
+    ("buffy running in the canyon", "buffy", BUF1, "021351-play.png", "021330-gameplay.png", "play",
+     ["main_menu", "play"], "play"),
+    # The counter-cases: the frozen sky (replay 2, 21 s apart, identical) is
+    # not play; the in-engine opening draws a HUD of its own and is not play;
+    # a dark canyon frame is not the Summoning load.
+    ("buffy frozen on the sky for five minutes: stalled", "buffy", BUF, "030552-play.png", "030531-play.png", "play",
+     ["main_menu", "play"], "stalled"),
+    ("buffy in-engine opening with its own HUD: not play", "buffy", BUF, "030406-booted.png", "030345-boot40.png",
+     "intro_video", [], "intro_video"),
+    ("buffy dark canyon frame is not Summoning", "buffy", BUF1, "021411-play.png", "021351-play.png", "play",
+     ["main_menu", "play"], "play"),
     # Castlevania: Curse of Darkness
     ("castlevania title menu", "castlevania-cod", CV, "174750-boot.png", None, None, [], "title"),
     ("castlevania intro FMV after the title", "castlevania-cod", CV, "174810-a1.png", "174750-boot.png", "title",
@@ -213,10 +248,11 @@ CASES = [
 FOREIGN = [(SON2, "200707-play.png", "200657-play.png"), (FOR, "214502-play.png", "214437-play.png"),
            (SMB, "172713-gameplay.png", "172712-rolling.png"), (SONT, "004222-menu-start.png", "004215-menu-a.png"),
            (SMB, "172733-play.png", "172723-play.png"), (CVR5, "230108-033-play.png", "230106-032-play.png"),
-           (SHR1, "234349-029-play.png", "234347-028-play.png"), (FZR1, "234117-045-play.png", "234114-044-play.png")]
+           (SHR1, "234349-029-play.png", "234347-028-play.png"), (FZR1, "234117-045-play.png", "234114-044-play.png"),
+           (BUF1, "021351-play.png", "021330-gameplay.png")]
 TITLE_OF = {SON: "sonic-heroes", SON2: "sonic-heroes", SONT: "sonic-heroes", SONT2: "sonic-heroes",
             FOR: "forza", FZR1: "forza", SHR1: "sonic-heroes", SHT1: "sonic-heroes", SHT2: "sonic-heroes",
-            SHT4: "sonic-heroes", SMB: "super-monkey-ball-deluxe", CV: "castlevania-cod", CVT: "castlevania-cod",
+            SHT4: "sonic-heroes", BUF: "buffy", BUF1: "buffy", SMB: "super-monkey-ball-deluxe", CV: "castlevania-cod", CVT: "castlevania-cod",
             CVR2: "castlevania-cod", CVR3: "castlevania-cod", CVR5: "castlevania-cod"}
 
 # drive.py --sim runs: (name, profile, run, frames slice, args, checks). The
@@ -277,6 +313,8 @@ def all_frames():
         seen.update((run, f) for f in fl)
     for _, _, run, a, b, _ in SITES:
         seen.update({(run, a), (run, b)})
+    for _, _, run, ticks, _, _ in STEER:
+        seen.update((run, f) for f, _ in ticks)
     for _, _, run, (lo, hi), _, _ in SIMS:
         d = frames_dir(run)
         if os.path.isdir(d):
@@ -348,6 +386,13 @@ def escape_checks():
             checks.append(("refused: " + name, False, "accepted"))
         except SystemExit as e:
             checks.append(("refused: " + name, "START" in str(e), str(e)))
+    d = drv({})
+    d.held = [("RT", "max"), ("LX", "max")]
+    d.dev.sent = []
+    d.release_play()
+    rel = sorted(x[1:] for x in d.dev.sent)
+    checks.append(("release: a trigger to min, a stick to mid",
+                   rel == [("axis", "LX", "mid"), ("axis", "RT", "min")], rel))
     for name, ok, got in checks:
         fails += not ok
         print("%s  escape %-44s %s" % ("ok  " if ok else "FAIL", name, "" if ok else got))
@@ -399,6 +444,18 @@ def progress_checks(prof, disk):
         ok = got == want and budget == (1 if want else 2)
         fails += not ok
         print("%s  site %-48s want %-5s got %s (escapes %d)" % ("ok  " if ok else "FAIL", name, want, got, budget))
+    for name, pn, run, ticks, (lo, hi), why in STEER:
+        with tempfile.TemporaryDirectory() as td:
+            d = drive.Driver(drive.SimDevice([], 1.0), prof(pn), td, td, 999, sim=True)
+            for f, at in ticks:
+                d.clock_sim = at
+                d.steer_tick(source(run, f, disk))
+            got = d.steer_log[-1]
+            sent = d.dev.sent[-1]
+        ok = lo <= got[3] <= hi and got[6] == why and sent[1] == "axes"
+        fails += not ok
+        print("%s  steer %-47s LX %s..%s %-9s got LX %s %s (line %s px at x %s)" % (
+            "ok  " if ok else "FAIL", name, lo, hi, why, got[3], got[6], got[1], got[2]))
     for name, pn, run, f, want in MODES:
         with tempfile.TemporaryDirectory() as td:
             d = drive.Driver(drive.SimDevice([], 1.0), prof(pn), td, td, 999, sim=True)
@@ -432,7 +489,7 @@ def main(argv):
         print("%s  %-48s want %-11s got %-11s %s" % ("ok  " if ok else "FAIL", name, want, r["state"], r["source"]))
 
     for run, f, p in FOREIGN:
-        for pn in ("sonic-heroes", "forza", "super-monkey-ball-deluxe", "castlevania-cod"):
+        for pn in ("sonic-heroes", "forza", "super-monkey-ball-deluxe", "castlevania-cod", "buffy"):
             if pn == TITLE_OF[run]:
                 continue
             r = classify.classify_frame(source(run, f, disk), source(run, p, disk), prof(pn),

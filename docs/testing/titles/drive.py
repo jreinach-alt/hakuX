@@ -179,6 +179,13 @@ def now():
     return time.monotonic()
 
 
+def rest(axis):
+    """An axis's released value: a stick centres (`mid`), a trigger lets go
+    (`min`). pad.sh's `mid` on a 0..32767 trigger is a half press, which is
+    what every release here sent until lane.routedriver2."""
+    return "min" if axis in ("LT", "RT", "L2", "R2") else "mid"
+
+
 class Device:
     """The only thing that touches the handheld: screencap, pad.sh, logcat."""
 
@@ -203,6 +210,40 @@ class Device:
                            stderr=subprocess.DEVNULL, timeout=30)
         except subprocess.TimeoutExpired:
             pass
+
+    AXIS_CODES = {"LX": [("ABS_X", 0)], "RT": [("ABS_GAS", 9), ("ABS_RZ", 5)], "LT": [("ABS_BRAKE", 10), ("ABS_Z", 2)]}
+
+    def axes(self, fractions):
+        """Set several axes in ONE adb call: {LX: -1..1, RT: 0..1, LT: 0..1}.
+        Raw values from pad.sh's own range cache (pad-dev.<serial>, written by
+        `pad.sh detect`): both handhelds read ABS_X -32767..32767 and
+        ABS_GAS/ABS_BRAKE 0..32767. One call because the steering loop sends
+        every tick, and two pad.sh round trips would halve its rate."""
+        cache = os.path.join(os.environ.get("HAKUX_WORK", "/home/justin/hakux-work"), "pad-dev." + self.serial)
+        try:
+            lines = dict(l.strip().split("=", 1) for l in open(cache) if "=" in l)
+        except OSError:
+            return False
+        cmds = []
+        for ax, f in fractions.items():
+            for name, code in self.AXIS_CODES.get(ax, []):
+                if name in lines:
+                    lo, hi = (int(v) for v in lines[name].split(","))
+                    if lo < 0:
+                        val = int(round((lo + hi) / 2.0 + f * (hi - lo) / 2.0))
+                    else:
+                        val = int(round(lo + f * (hi - lo)))
+                    cmds.append("sendevent %s 3 %d %d" % (lines["dev"], code, max(lo, min(hi, val))))
+                    break
+        if not cmds:
+            return False
+        cmds.append("sendevent %s 0 0 0" % lines["dev"])
+        try:
+            subprocess.run(["adb", "-s", self.serial, "shell", "; ".join(cmds)], stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL, timeout=10)
+        except subprocess.TimeoutExpired:
+            return False
+        return True
 
     def logcat(self, msg):
         try:
@@ -235,6 +276,10 @@ class SimDevice:
 
     def pad(self, *args):
         self.sent.append((round(self.clock, 1),) + args)
+
+    def axes(self, fractions):
+        self.sent.append((round(self.clock, 1), "axes") + tuple(sorted(fractions.items())))
+        return True
 
     def logcat(self, msg):
         self.log.append(msg)
@@ -282,6 +327,12 @@ class Driver:
         self.stall_streak = False        # stall_clear_s: inside a stall, play must hold to count
         self.recover_since = None
         self.cur_scene = None            # this capture's classify.scene (progress_bar only)
+        self.steer_cfg = profile.get("steer")
+        self.steer_on = threading.Event()
+        self.steer_stop = threading.Event()
+        self.steer_thread = None
+        self.steer_log = []              # (t, n, cx, lx, rt, lt, why) per steering tick
+        self.steer_last = (0.0, None)    # last steer and when the line was last seen
         self.escape_scene = None         # the scene where the last escape started
         self.last_hud_t = None
         self.play_since = None
@@ -334,7 +385,7 @@ class Driver:
             ax, val = btn.split(":", 1)
             self.dev.pad("axis", ax, val)
             self.sleep(0.4)
-            self.dev.pad("axis", ax, "mid")
+            self.dev.pad("axis", ax, rest(ax))
         else:
             self.dev.pad("press", btn)
         self.last_press_t = t
@@ -442,7 +493,7 @@ class Driver:
                                     input=" ".join("%s %s" % a for a in axes) + (" + " + ",".join(btns) if btns else "")))
             for ax, _ in self.held:
                 if ax not in [a for a, _ in axes]:
-                    self.dev.pad("axis", ax, "mid")
+                    self.dev.pad("axis", ax, rest(ax))
             for ax, val in axes:
                 self.dev.pad("axis", ax, str(val))
             self.held = list(axes)
@@ -482,9 +533,13 @@ class Driver:
                     want = [tuple(x) for x in axes]
                     break
                 at -= float(s)
+        if self.steer_cfg:
+            # [steer] owns LX and the pedals while the race HUD is up.
+            want = [w for w in want if w[0] not in self.STEER_AXES]
+            self.steering(True)
         for ax, _ in self.held:
             if ax not in [a for a, _ in want]:
-                self.dev.pad("axis", ax, "mid")
+                self.dev.pad("axis", ax, rest(ax))
         for ax, val in want:
             self.dev.pad("axis", ax, str(val))
         if want and self.held != want:
@@ -492,9 +547,65 @@ class Driver:
                                     input="hold " + " ".join("%s %s" % a for a in want), why="play"))
         self.held = want
 
+    STEER_AXES = ("LX", "RT", "LT")
+
+    def steer_command(self, n, cx, t):
+        """[steer]: the line's centroid -> (LX, RT, LT, why). LX is the
+        centroid's offset from `center_x` over `full_dx`, clamped to +-1.
+        Under `min_px` line pixels the line is lost: keep the last steer for
+        `lost_hold_s` at `lost_throttle`, then centre. Throttle is
+        `throttle` on the line and less the harder it steers (`turn_lift`
+        of it at full lock), because a 1-2 Hz loop cannot hold a bend taken
+        flat out."""
+        c = self.steer_cfg
+        if n >= c.get("min_px", 40) and cx is not None:
+            lx = max(-1.0, min(1.0, (cx - c.get("center_x", 640)) / float(c.get("full_dx", 300))))
+            self.steer_last = (lx, t)
+            rt = c.get("throttle", 0.7) * (1.0 - c.get("turn_lift", 0.4) * abs(lx))
+            return lx, rt, 0.0, "line"
+        last, seen = self.steer_last
+        if seen is not None and t - seen < c.get("lost_hold_s", 1.5):
+            return last, c.get("lost_throttle", 0.3), 0.0, "lost-hold"
+        return 0.0, c.get("lost_throttle", 0.3), 0.0, "lost"
+
+    def steer_tick(self, path):
+        n, cx = classify.line_reading(path, self.steer_cfg.get("band", [0, 400, 1280, 200]),
+                                      self.steer_cfg.get("hue", [85, 160]))
+        t = self.t()
+        lx, rt, lt, why = self.steer_command(n, cx, t)
+        self.dev.axes(dict(LX=lx, RT=rt, LT=lt))
+        self.steer_log.append((round(t, 2), n, None if cx is None else int(cx), round(lx, 2), round(rt, 2), lt, why))
+
+    def steer_loop(self):
+        """The steering thread: while steer_on is set (the race HUD is up),
+        capture as fast as screencap allows and steer. Its own captures, so
+        the main loop's classification cadence does not set the control rate."""
+        path = os.path.join(tempfile.gettempdir(), "drive-steer-%d.png" % os.getpid())
+        while not self.steer_stop.is_set():
+            if not self.steer_on.wait(0.2):
+                continue
+            ok, _ = self.dev.capture(path)
+            if ok and self.steer_on.is_set():
+                self.steer_tick(path)
+
+    def steering(self, on):
+        if not self.steer_cfg or self.sim:
+            return
+        if on and not self.steer_on.is_set():
+            if self.steer_thread is None:
+                self.steer_thread = threading.Thread(target=self.steer_loop, daemon=True)
+                self.steer_thread.start()
+            self.steer_on.set()
+            self.inputs.append(dict(t=round(self.t(), 1), state=self.state, input="steer on", why="play"))
+        elif not on and self.steer_on.is_set():
+            self.steer_on.clear()
+            self.dev.axes(dict(LX=0.0, RT=0.0, LT=0.0))
+            self.inputs.append(dict(t=round(self.t(), 1), state=self.state, input="steer off", why="left play"))
+
     def release_play(self):
+        self.steering(False)
         for ax, _ in self.held:
-            self.dev.pad("axis", ax, "mid")
+            self.dev.pad("axis", ax, rest(ax))
         if self.held:
             self.inputs.append(dict(t=round(self.t(), 1), state=self.state, input="release axes", why="left play"))
         self.held = []
@@ -684,7 +795,7 @@ class Driver:
             # a play stretch this neither ends the stretch nor counts toward it.
             self.hold_play()
             return "hold (hud up, motion not yet play)"
-        if state != "play" and state != "stalled" and self.held:
+        if state != "play" and state != "stalled" and (self.held or self.steer_on.is_set()):
             self.release_play()
         if state != "stalled":
             self.stalled_since = None
@@ -855,6 +966,7 @@ class Driver:
             return 0
         finally:
             self.release_play()
+            self.steer_stop.set()
             self.finish()
             shutil.rmtree(tmpdir, ignore_errors=True)
 
@@ -881,6 +993,11 @@ class Driver:
         t = self.t()
         res = self.result or "stopped"
         self.dev.logcat("state=end t=%d" % int(t))
+        if self.steer_log:
+            with open(os.path.join(self.out, "steer.tsv"), "w") as f:
+                f.write("t\tline_px\tline_x\tLX\tRT\tLT\twhy\n")
+                for row in self.steer_log:
+                    f.write("\t".join("" if v is None else str(v) for v in row) + "\n")
         if self.ladder and self.ladder.get("gave_up"):
             self.skips.append(dict(state=self.ladder["state"], button=None,
                                    waited_s=round(t - self.ladder["since"], 1), landed=None, presses=self.ladder["presses"]))

@@ -1,0 +1,122 @@
+# Buffy the Vampire Slayer (45410012) -- drive profile (#433, lane.routedriver2).
+#
+# The blind route (routes/buffy.route, lane.titleroutes session 65) reaches
+# live play with START/A cycles, then its play loop wedges. In replay 1
+# (1790931264-titleroutes-3615749) Buffy moved for about a minute, then sat
+# 4 minutes on one frame of sky and a tree under "Run and press B to jump
+# between ledges". In replay 2 (1790932722-titleroutes-3976729, B jumps
+# added) the frame is identical from 030531 to 030859, five minutes, under
+# "Push into low ledges to climb onto them". In both the camera ends up
+# pointing at the sky with Buffy out of frame. The game's own tip says the
+# L trigger resets it.
+#
+# Reference crops in buffy/ (regions in 1280x960 space), cut from
+# 1790932722's frames (Nova). Scores over every frame of the three runs on
+# disk (survey 1790928774-titleroutes-2773088 and the two replays):
+#   title       030413 (Buffy logo, "Press START")    self 0.1-2.6, others >= 19.4
+#   main-menu   030418 (logo + Start Game list)       self 0.2-0.4, others >= 27
+#   start-game  030424 ("Start Game" header)          self 0.2-2.0, others >= 13.6
+#   difficulty  030430 ("Difficulty" header)          self 0.2-1.7, others >= 14.7
+#   summoning   030436 ("Summoning", the load)        self 0.1-2.3, dark play frames 9.8-12.4
+#               (the Nova's Summoning frame is under the black luma bar and so
+#               is named `black` first; the crop is for a brighter capture)
+#   pause       030500 (PAUSE / Resume / Options / Quit) pauses 0.1-12.0 (one fading 19.3), others >= 29
+#   hud         MASKED, learned over seven play frames in five places
+#               (flame heart and bars, top left): play 1.6-8.7, menus and
+#               logos >= 18.5. The in-engine opening at boot+60 s (030406)
+#               draws a HUD too, and scores 24.3 against this one: not play.
+
+name = "buffy"
+title = "Buffy the Vampire Slayer"
+title_id = "45410012"
+genre = "onfoot"
+# Boot to play, from the frames: FOX Interactive, the intro FMV, an
+# in-engine opening, the title (Press START), the main menu, Start Game
+# ("Launch a New Game ... called BUFFY n"), Difficulty (Normal lit),
+# Summoning, the mission card (Spanish Mission), the canyon.
+order = ["boot", "logo", "intro_video", "title", "main_menu", "profile", "loading", "cutscene", "play"]
+# HUD frames by their own bars: the "frozen" sky of replay 2 is the camera
+# swaying, 0.17-0.21 changed between captures 21 s apart, where running
+# reads 0.49-0.52 (replay 1). The 32x24 scene settles it: stuck 0.00-0.06,
+# running 0.31-0.35 ([drive] progress_bar).
+hud_motion_bar = 0.25
+hud_stall_bar = 0.22
+
+[input]
+title = ["START"]
+main_menu = ["A"]        # Start Game is lit
+profile = ["A"]          # Start Game: CONFIRM; Difficulty: Normal
+ingame_menu = ["A"]
+paused = ["A"]           # Resume is lit
+# Run forward, pulling LT at the start of each cycle (the camera reset), with
+# a turn each way so one wall does not hold her. B jumps (the canyon's ledge
+# gaps); A attacks. NEVER START: it pauses (the survey's cycles 5-14 only
+# toggled PAUSE).
+play_cycle = [[[["LY", "min"], ["LT", "max"]], 1.0], [[["LY", "min"]], 4.0], [[["LY", "min"], ["LX", "max"]], 1.5], [[["LY", "min"]], 3.0], [[["LY", "min"], ["LX", "min"]], 1.5]]
+play_tap = [["B", 4.0], ["A", 7.0]]
+# A stall (the HUD up, the frame still): reset the camera, back off and turn,
+# then run and jump; the second try turns the other way; the third runs
+# straight at the ledge with two jumps (the "push into low ledges" tip).
+stall_cycles = [
+  [[[["LT", "max"]], 0.8], [[["LY", "max"]], 1.0], [[["LX", "max"]], 1.5], [[["LY", "min"]], 2.5, ["B"]], [[], 0.5]],
+  [[[["LT", "max"]], 0.8], [[["LY", "max"]], 1.0], [[["LX", "min"]], 1.5], [[["LY", "min"]], 2.5, ["B"]], [[], 0.5]],
+  [[[["LT", "max"]], 0.8], [[["LY", "min"]], 3.0, ["B", "B"]], [[], 0.5]],
+]
+
+[drive]
+stall_fail_s = 40.0
+escape_max = 6
+escape_reset_s = 30.0
+progress_bar = 0.15
+progress_window_s = 10.0
+progress_mask = [[0, 0, 480, 160], [0, 840, 1280, 120]]   # the HUD, and the TIP banner
+stall_clear_s = 10.0
+
+[[crop]]
+name = "pause"
+state = "paused"
+region = [560, 60, 300, 290]
+ref = "pause.png"
+threshold = 16.0
+
+[[crop]]
+name = "title"
+state = "title"
+region = [400, 290, 480, 300]
+ref = "title.png"
+threshold = 8.0
+
+[[crop]]
+name = "main-menu"
+state = "main_menu"
+region = [90, 40, 400, 200]
+ref = "main-menu.png"
+threshold = 8.0
+
+[[crop]]
+name = "start-game"
+state = "profile"
+region = [150, 40, 980, 110]
+ref = "start-game.png"
+threshold = 7.0
+
+[[crop]]
+name = "difficulty"
+state = "profile"
+region = [150, 40, 980, 110]
+ref = "difficulty.png"
+threshold = 7.0
+
+[[crop]]
+name = "summoning"
+state = "loading"
+region = [300, 400, 700, 160]
+ref = "summoning.png"
+threshold = 5.0
+
+[[crop]]
+name = "hud"
+state = "play"
+region = [90, 30, 390, 120]
+ref = "hud.png"
+threshold = 12.0
