@@ -409,7 +409,10 @@ def det_battery_floor():
             msg = "%s at %d%% (< floor %d%%) and unheld" % (dev, level, BATTERY_FLOOR)
 
             def remedy(dev=dev, level=level):
-                out, rc = sh("bash %s take %s %s battery floor %d%% < %d%% (ops_tick)" % (HOLD_SH, dev, BATTERY_TAG, level, BATTERY_FLOOR))
+                # Bare "<" and "(" are shell metacharacters under shell=True (redirection, and a
+                # syntax error as a bare word) -- "below" and no parens keep this a plain
+                # argument list hold.sh's "${*:4}" can join back into one reason string.
+                out, rc = sh("bash %s take %s %s battery floor %d%% below %d%% ops_tick" % (HOLD_SH, dev, BATTERY_TAG, level, BATTERY_FLOOR))
                 return "hold.sh take %s %s -> rc=%d %s" % (dev, BATTERY_TAG, rc, out.strip()[:200])
 
             jams.append(Jam("battery-floor", dev, msg, remedy, "hold the device"))
@@ -492,12 +495,18 @@ def load_jams(path):
     return rows
 
 
+def _tsv_safe(s):
+    # remedy_tried carries a command's stdout (truncated, but not scrubbed) -- a literal tab or
+    # newline in there would misalign every column after it, so flatten whitespace per field.
+    return " ".join(str(s).split())
+
+
 def save_jams(path, rows):
     tmp = path + ".tmp"
     with open(tmp, "w") as f:
         f.write("#" + "\t".join(JAMS_COLUMNS) + "\n")
         for row in sorted(rows.values(), key=lambda r: r["opened"]):
-            f.write("\t".join(row.get(c, "") for c in JAMS_COLUMNS) + "\n")
+            f.write("\t".join(_tsv_safe(row.get(c, "")) for c in JAMS_COLUMNS) + "\n")
     os.replace(tmp, path)
 
 

@@ -33,6 +33,11 @@ Nothing from `hold-overbound`, `queue-stale`, `timer-unanchored`, `failed-unit`,
 `battery-lift`, `disk-low`, or `stopped-lane-queued`: checked, clean. (`stranded-lane` for
 `titleroutes2` was also checked and correctly NOT reported -- see below.)
 
+## Tick 2 -- 2026-10-02 10:56 PDT (independent run, five minutes later)
+
+Identical 9 jams, same classes and subjects, nothing added or dropped -- the detection is stable
+against a live, slowly-changing system, not flapping tick to tick.
+
 ## Cross-check against `status/local-board.md` (hakux-local-board.timer, lane.local's own
 model-free script, last written 2026-10-02T17:20:18Z -- 30 min before this tick)
 
@@ -66,6 +71,18 @@ advance). Covered by a new selftest leg ("a fold-failure jam whose branch has si
 dropped, not kept open"). This is exactly the kind of thing a >= 2 h shadow run is for: it was
 found in the FIRST five minutes against real data, not in the fixture tree.
 
+A second real bug surfaced while hardening the test suite, not from the live shadow data: the
+first cut of `det_battery_floor`'s `hold.sh take` reason string embedded a bare `<` and
+`(ops_tick)` -- both shell metacharacters under `ops_tick.py`'s `shell=True` `sh()` (a
+redirection, and a syntax error as a bare word; `bash -c 'echo ... < 15% (ops_tick)'` fails
+outright). The live shadow run never exercised this path (neither handheld was below its
+battery floor), so it was caught only by adding a battery-floor/lift selftest leg and testing it
+-- confirmed by reverting the fix and re-running, which fails loud. A third: `jams.tsv` is
+tab-separated, but `remedy_tried` stores a command's raw (truncated, not scrubbed) stdout --
+caught the same way, by writing a direct `save_jams`/`load_jams` round-trip leg with an embedded
+tab and newline in it, confirmed likewise by reverting the fix. None of the three would have
+shown up in a read-only code review; each needed something to actually execute the path.
+
 ## What this lane could NOT do: the full >= 2 h side-by-side
 
 The brief asks for `ops_tick.py --shadow` run for >= 2 h alongside hostops, with the comparison
@@ -74,9 +91,9 @@ and ending a session waiting on a background timer across turns is exactly the f
 project's own memory warns about (a lane's `run_in_background` work dies with the session; see
 `roles/lane.md` and the "lane background task dies with session" note). What IS done: the
 detectors, remedies, and escalation wiring are implemented and unit-tested
-(`selftest.d/87-ops-tick.sh`, 24 legs), and the run above is a genuine (if short) shadow tick
-against live production state that already caught one real bug before any device or lane was
-touched. **For lane.local, before cutover:** run
+(`selftest.d/87-ops-tick.sh`, 28 legs), and the run above is a genuine (if short) shadow tick
+against live production state that already caught the stale-head bug before any device or lane
+was touched. **For lane.local, before cutover:** run
 `env OPS_STATE_DIR=$HAKUX_WORK/host-tools/ops-shadow python3 docs/testing/jobs/ops/ops_tick.py
 --shadow` on a 5-minute timer (the same cadence the real timer will use) for >= 2 h, diff
 `ops-shadow/shadow.log` against what hostops did over the same window (`hostops-inbox.md`'s new

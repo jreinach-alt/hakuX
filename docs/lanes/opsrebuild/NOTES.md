@@ -251,10 +251,19 @@ shared `$T/bin/systemctl` shim -- it only answers `is-active`, and this job also
 `$OPS_SYSTEMCTL`). Legs: (a) a dead-lane hold past its bound releases; an owner-tagged hold past
 the same bound does not; (b) a stranded lane resumes exactly once across two ticks, a STOPPED
 lane never resumes; (c) fold-failures.log: territory writes an inbox note, conflict resumes the
-lane, a later FOLDED line clears the jam and a further tick does not re-act; (d) a failed unit
-escalates on its first tick (no remedy to wait on), not again inside the escalate window, and
-clears once no longer failed; (e) `--shadow` logs intent and writes nothing. Run:
-`env SELFTEST_ONLY="87-ops-tick.sh" bash docs/testing/jobs/selftest.sh` (23 passed, 0 failed).
+lane, a later FOLDED line clears the jam and a further tick does not re-act, and a branch that
+has since pushed past its recorded failure is dropped rather than kept open on stale evidence;
+(d) a failed unit escalates on its first tick (no remedy to wait on), not again inside the
+escalate window, and clears once no longer failed; (e) a device below its battery floor is held
+with ops_tick's own tag and released once it climbs back above the lift threshold -- this leg
+was added AFTER manually finding that the first cut's `hold.sh take` reason string embedded a
+bare `<` and `(ops_tick)`, both shell metacharacters under `shell=True` (a redirection and a
+syntax error); reverting the fix and re-running confirmed this leg catches it; (f) `--shadow`
+logs intent and writes nothing. Run:
+`env SELFTEST_ONLY="87-ops-tick.sh" bash docs/testing/jobs/selftest.sh` (28 passed, 0 failed;
+leg (g) proves `jams.tsv`'s tab-separated format survives a `remedy_tried` whose source text
+carries a raw tab/newline, after a similar manual-test catch: `save_jams`/`load_jams` now flatten
+whitespace per field).
 `bash docs/testing/jobs/selftest.sh --check-shards 4` still covers all fragments (this one lands
 in whichever shard is lightest; it carries no SHARD_CHAINS entry since it touches nothing another
 fragment reads). Also ran the FULL unsharded `selftest.sh` (all ~121 fragments) before marking

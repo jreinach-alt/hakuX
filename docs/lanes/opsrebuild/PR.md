@@ -4,7 +4,7 @@ State: draft
 
 Lane: opsrebuild             Issue: #433 (0.5: 50 Playable)
 Base: origin/master
-Files: docs/lanes/opsrebuild/**, docs/testing/jobs/ops/**, docs/testing/jobs/selftest.d/87-ops-tick.sh
+Files: docs/lanes/opsrebuild/NOTES.md, docs/lanes/opsrebuild/OUTBOX.md, docs/lanes/opsrebuild/PR.md, docs/lanes/opsrebuild/shadow-comparison.md, docs/testing/jobs/ops/allowed-tools.ops-escalate, docs/testing/jobs/ops/escalate-role.md, docs/testing/jobs/ops/ops_escalate.sh, docs/testing/jobs/ops/ops_tick.py, docs/testing/jobs/ops/units/hakux-ops-tick.service, docs/testing/jobs/ops/units/hakux-ops-tick.timer, docs/testing/jobs/selftest.d/87-ops-tick.sh
 Prediction: none: no arm (model-free tooling change, not a measured performance fix)
 Needs device: no
 
@@ -38,7 +38,7 @@ cannot block 2+ hours, and this lane was told not to touch host-tools/ or live u
 ## Verification run locally (no CI while GitHub is suspended)
 
 - `python3 -m py_compile docs/testing/jobs/ops/ops_tick.py` -- clean.
-- `env SELFTEST_ONLY="87-ops-tick.sh" bash docs/testing/jobs/selftest.sh` -- 24 passed, 0 failed.
+- `env SELFTEST_ONLY="87-ops-tick.sh" bash docs/testing/jobs/selftest.sh` -- 28 passed, 0 failed.
 - `bash docs/testing/jobs/selftest.sh --check-shards 4` -- all 121 fragments still covered.
 - Full `bash docs/testing/jobs/selftest.sh` (every fragment, unsharded) -- required because this
   PR changes files under `docs/testing/` (offline_fold.py's own harness-file gate): result below.

@@ -20,9 +20,19 @@
 #       same branch clears the jam so a third tick does not act again.
 #   (d) a failed hakux unit has no remedy and escalates on its very first
 #       tick (not after 30 minutes) -- ops_escalate.sh is a fixture shim here,
-#       never a real `claude -p` call.
-#   (e) jams.tsv accumulates one row per (class, subject) and clears a row
-#       once its detector stops reporting it.
+#       never a real `claude -p` call. Each (a)-(d) leg also shows jams.tsv
+#       opening a row once and clearing it once the detector stops reporting it.
+#   (e) a device below its battery floor is held (ops_tick's own tag, via
+#       hold.sh take -- real hold.sh, like leg (a)); above the lift threshold,
+#       held by that same tag, it is released. Caught a real bug here: the
+#       first cut's `take` reason string used a bare "<" and "(ops_tick)",
+#       both shell metacharacters under shell=True (a redirection, and a
+#       syntax error) -- this leg exists so that class of mistake fails loud.
+#   (f) --shadow logs intent and writes nothing (no jams.tsv, no actual hold
+#       release).
+#   (g) jams.tsv is tab-separated, but `remedy_tried` carries a command's raw stdout
+#       (truncated, not scrubbed) -- a leg directly on save_jams/load_jams proves an
+#       embedded tab or newline does not misalign the row's later columns.
 
 echo "== ops_tick.py: model-free jam detection and scripted remedies (#433)"
 
@@ -226,11 +236,50 @@ ot_tick
 check "(d) once the unit is no longer failed, its jam row clears" \
     bash -c '[ "$(awk -F"\t" -v c=failed-unit -v s=hakux-fold.service "\$2==c && \$3==s {print (\$5==\"\")?\"open\":\"cleared\"}" "'"$OT"'/state/jams.tsv" | tail -1)" = cleared ]'
 
-# --------------------------------------------------------------- (e) shadow
+# --------------------------------------------------------- (e) battery floor
+mkdir -p "$OT/work/host-tools"
+rm -f "$OT/work/dispatch/hold/thor" "$OT/work/dispatch/hold/thor.why"
+cat > "$OT/work/host-tools/.device-reality.json" <<'EOF'
+{"thor": {"level": "10"}, "nova": {"level": "80"}}
+EOF
+ot_tick
+check "(e) thor below its battery floor (10% < 15%) gets ops_tick's own hold" \
+    grep -qxF ops.battery "$OT/work/dispatch/hold/thor"
+check "(e) nova (80%, held by leg (a)'s unrelated owner tag) is untouched" \
+    grep -qxF lanelocal-fanwait "$OT/work/dispatch/hold/nova"
+cat > "$OT/work/host-tools/.device-reality.json" <<'EOF'
+{"thor": {"level": "25"}, "nova": {"level": "80"}}
+EOF
+ot_tick
+check "(e) thor back above the lift threshold (25% >= 20%) is released" \
+    bash -c '[ ! -e "'"$OT_WORK"'/dispatch/hold/thor" ]'
+
+# --------------------------------------------------------------- (f) shadow
 rm -rf "$OT/state"; mkdir -p "$OT/state"
 echo "lane.deadlane" > "$OT/work/dispatch/hold/thor"
 touch -d '45 minutes ago' "$OT/work/dispatch/hold/thor"
 ot_env --shadow > "$OT/shadow.out" 2>&1
-check "(e) --shadow logs what it would do" grep -q "would run remedy" "$OT/state/shadow.log"
-check "(e) --shadow writes no jams.tsv" bash -c '[ ! -s "'"$OT"'/state/jams.tsv" ]'
-check "(e) --shadow does not actually release the hold" grep -qxF lane.deadlane "$OT/work/dispatch/hold/thor"
+check "(f) --shadow logs what it would do" grep -q "would run remedy" "$OT/state/shadow.log"
+check "(f) --shadow writes no jams.tsv" bash -c '[ ! -s "'"$OT"'/state/jams.tsv" ]'
+check "(f) --shadow does not actually release the hold" grep -qxF lane.deadlane "$OT/work/dispatch/hold/thor"
+
+# ----------------------------------------------------- (g) jams.tsv is tab-safe
+cat > "$OT/tsv_safe.py" <<'EOF'
+import sys
+sys.path.insert(0, sys.argv[1])
+import ops_tick as ot
+path = sys.argv[2]
+rows = {("hold-overbound", "thor"): {
+    "opened": "2026-10-02T10:00:00", "class": "hold-overbound", "subject": "thor",
+    "remedy_tried": "hold.sh release thor lane.x -> rc=0\nmulti\tline\toutput", "cleared_at": "", "time_to_clear_s": ""}}
+ot.save_jams(path, rows)
+lines = open(path).readlines()
+loaded = ot.load_jams(path)
+row = loaded.get(("hold-overbound", "thor"))
+# Exactly 2 lines (header + the one row): a raw newline in remedy_tried, left unflattened,
+# would split the row into two lines and load_jams would silently drop both (wrong column count).
+ok = row is not None and row["subject"] == "thor" and row["cleared_at"] == "" and len(lines) == 2
+print("ok" if ok else "FAIL: row=%r lines=%r" % (row, lines))
+EOF
+check "(g) a remedy_tried with embedded tabs/newlines round-trips without misaligning columns" \
+    bash -c 'python3 "'"$OT"'/tsv_safe.py" "'"$HERE/ops"'" "'"$OT"'/tsv_safe.tsv" | grep -qx ok'
