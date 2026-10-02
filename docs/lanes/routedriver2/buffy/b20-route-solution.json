@@ -1,0 +1,133 @@
+{
+ "profile": "buffy",
+ "title": "Buffy the Vampire Slayer",
+ "mode": "play",
+ "result": "window-done",
+ "seconds": 114.9,
+ "time_to_title_s": 13.8,
+ "time_to_play_s": 41.7,
+ "states_seen": [
+  "unknown",
+  "black",
+  "intro_video",
+  "title",
+  "main_menu",
+  "profile",
+  "cutscene",
+  "play"
+ ],
+ "skips": [
+  {
+   "state": "intro_video",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "black",
+   "presses": 1
+  },
+  {
+   "state": "intro_video",
+   "button": "START",
+   "after_s": 1.8,
+   "landed": "black",
+   "presses": 2
+  },
+  {
+   "state": "cutscene",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "black",
+   "presses": 1
+  }
+ ],
+ "inputs": [
+  {
+   "t": 3.5,
+   "state": "intro_video",
+   "input": "A",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 6.6,
+   "state": "intro_video",
+   "input": "A",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 8.4,
+   "state": "intro_video",
+   "input": "START",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 13.9,
+   "state": "title",
+   "input": "START",
+   "why": "title 1"
+  },
+  {
+   "t": 17.4,
+   "state": "main_menu",
+   "input": "LY:max",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 19.7,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 23.1,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 1"
+  },
+  {
+   "t": 26.5,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 2"
+  },
+  {
+   "t": 36.2,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 44.1,
+   "state": "play",
+   "input": "hold LT max",
+   "why": "play"
+  },
+  {
+   "t": 60.8,
+   "state": "play",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 79.5,
+   "state": "play",
+   "input": "hold LT max",
+   "why": "play"
+  },
+  {
+   "t": 97.6,
+   "state": "play",
+   "input": "hold LT max",
+   "why": "play"
+  }
+ ],
+ "anomalies": [],
+ "classifier_sources": {
+  "no-prev": 1,
+  "black": 12,
+  "moving": 4,
+  "crop": 8,
+  "hud": 15
+ },
+ "model_calls": 0,
+ "play_stretch_frames": [],
+ "written_utc": "2026-10-02T14:44:47Z"
+}

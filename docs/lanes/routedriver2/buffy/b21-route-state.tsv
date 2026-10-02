@@ -1,0 +1,34 @@
+t	state	source	changed	luma	cap_s	action	frame	mode
+0.5	unknown	no-prev		33.5	0.42	wait (unknown)	074825-001-unknown.png	
+1.9	intro_video	moving	0.4286	3.8	0.22	press A (skip intro_video)	074826-002-intro_video.png	
+3.6	black	black		2.5	0.22	wait	074828-003-black.png	
+5.1	intro_video	moving	0.1866	10.6	0.32	press A (skip intro_video)	074830-004-intro_video.png	
+7.1	intro_video	moving	0.6257	37.6	0.47	press START (skip intro_video)	074831-005-intro_video.png	
+8.8	intro_video	moving	0.4085	38.2	0.42	press B (skip intro_video)	074833-006-intro_video.png	
+10.5	black	black		0.9	0.27	wait	074835-007-black.png	
+11.9	black	black		2.0	0.27	wait	074837-008-black.png	
+13.4	title	crop:title		15.0	0.42	press START (title 1)	074839-009-title.png	
+15.5	main_menu	crop:main-menu+row:start		30.6	0.62	press LY:max (main_menu 1)	074842-010-main_menu.png	
+18.0	main_menu	crop:main-menu+row:load		30.8	0.57	press A (main_menu 1)	074844-011-main_menu.png	
+20.0	profile	crop:start-game		26.4	0.47	press A (profile 1)	074846-012-profile.png	
+22.0	profile	crop:start-game		26.5	0.47	settle	074847-013-profile.png	
+23.6	profile	crop:start-game		27.4	0.52	press A (profile 2)	074849-014-profile.png	
+25.2	black	black		0.0	0.22	wait	074851-015-black.png	
+26.6	black	black		1.3	0.27	wait	074852-016-black.png	
+27.8	black	black		0.0	0.22	wait	074853-017-black.png	
+29.1	black	black		0.8	0.27	wait	074855-018-black.png	
+30.4	black	black		0.8	0.27	wait	074856-019-black.png	
+31.7	black	black		0.0	0.27	wait	074857-020-black.png	
+33.3	cutscene	moving	0.4845	13.3	0.62	press A (skip cutscene)	074859-021-cutscene.png	
+35.8	unknown	hud:hud+after-cutscene	0.6156	15.2	0.87	hold (hud up, motion not yet play)	074902-022-unknown.png	
+38.0	stalled	hud:hud+static	0.1472	14.3	0.82	stall escape 1	074915-023-stalled.png	
+49.8	stalled	hud:hud+static	0.2601	10.1	0.82	stall escape 2	074926-024-stalled.png	
+61.1	stalled	hud:hud+static	0.1007	10.1	0.82	stall escape 3	074937-025-stalled.png	
+72.4	stalled	hud:hud+static	0.0026	10.1	0.82	stall escape 4	074950-026-stalled.png	
+83.8	stalled	hud:hud+static	0.0213	10.1	0.77	stall escape 5	075002-027-stalled.png	
+95.3	stalled	hud:hud+static	0.2048	11.9	0.87	stall escape 6	075013-028-stalled.png	
+107.0	stalled	hud:hud+static	0.1421	11.2	0.83	hold (stalled 0 s)	075016-029-stalled.png	
+109.3	stalled	hud:hud+static	0.1295	11.9	0.94	hold (stalled 2 s)	075020-030-stalled.png	
+# time_to_title_s=13.4
+# time_to_play_s=
+# result=window-done

@@ -475,3 +475,90 @@ whose `options` row presses A. It was not run because two priority requests
 - Next for Buffy: the Options probe (`scratch/mk_probe_options.py` builds it: the cursor walks to Options and presses A;
   about 70 s held), to read the controller map and learn what the jump is. It was not run: lane.bf2stall433's arms
   and a titleroutes2 request were queued on the Nova from 06:55 on.
+
+## Session 3 (Opus 5.5), 2026-10-02 (attempt 3 of 4)
+
+**Why attempt 2 "did not finish":** it did. Session 2 ended normally at
+07:07 PDT: `af8e2fc01a` pushed, PR.md `State: ready`. It has not folded
+yet only because GitHub is suspended and the offline fold queue had not
+reached it (origin/master still `d949607b2d`, this branch 8 ahead). This
+is a resume of a continuous pipeline lane, not a recovery.
+
+Order chosen (probability x win):
+1. Buffy's Options probe (~70 s held). It is the one step that decides
+   something: whether the game's own controller map names the jump. Buffy
+   is the strongest Playable candidate in this lane's hands (29.97 fps),
+   and the jump is its only known blocker.
+2. The b13 "frozen sky" false play: its own fixture and fix.
+3. Roll-out: titleroutes2 names two titles as drive.py problems in its own
+   notes. Halo CE's calibration needs aimed look input (five flashing
+   lights, twice), and Gunvalkyrie's blind loops park Kelly at canyon walls.
+   Halo 2 is under titleroutes2's own held nav session, so it is not taken
+   here.
+
+### Buffy: the controller map, and what the frames did NOT show (b19-b22)
+
+Nova hold `routedriver2:s3`, 07:36-07:55 PDT, AC, 80%. Released when two
+titleroutes2 requests queued. Records: `buffy/b19-*` .. `buffy/b22-*`.
+
+**b19, the Options probe** (scratch profile: the cursor's `options` row
+presses A). The driver reached Options, then Controls. It read both as
+`cutscene` (the fog moves), and its skip ladder walked in and out of them,
+which filmed the map three times. `buffy/b19-controls.jpg`. Configuration
+**1** is selected (white; 2 and 3 purple). Vibration is Off.
+- Y: Use. **B: Jump.** X: Punch. A: Kick.
+- White: Inventory. Black: Ammo Swap.
+- L: Look. R: Target. Right stick: Camera. Left stick: Move.
+- Left thumb click: Weapon Select. Back: Back. Start: Pause.
+
+The in-game tip ("Run and press B to jump") agrees. Menus get our B as B:
+in b19, B on Options went back to the main menu.
+
+**A faster instrument: `screenrecord --output-format=frames`.** The Nova
+can stream raw RGB888 frames over adb: a 20-byte header (5 x u32: ?,
+width, height, stride, format 3), then the pixels, and no decoder needed.
+`buffy/srgrab.py` keeps every frame with a host timestamp;
+`buffy/srstrip.py` lays out strips. It runs at ~30-37 fps against the
+screencap's ~1.1 Hz, so a jump can no longer fall between captures. Two
+costs, both measured:
+- **Frame rate:** guest pace went from 2.0-2.2 s per 60 frames (b18) to
+  2.2-3.7 s at 320x240 (b21) and 2.0-2.8 s at 160x120 (b22).
+- **Lag that drifts.** Matched against the driver's own screencaps, and
+  against the LT camera snaps, the stream's host timestamps ran from -0.5
+  to +3.9 s behind the screen over 70 s (b21). So a press can only be
+  aligned by an event in the stream itself (here, the run start before
+  it), not by the clock.
+
+Not fixed. That drift is why it is not yet the Forza steering signal
+(below).
+
+**What the full-rate frames show:**
+- **The orange "attack trail" is not tied to any button.**
+  - b22 escape 1: one B, and two trails 2.1 s apart (42.9 s and 45.0 s).
+    `buffy/b22-idle-trail.jpg`.
+  - b21: in the X and Y escapes the trail comes 0.8-1.2 s BEFORE the
+    press, once each is aligned on its own camera snap.
+  - It is an idle move of her raised-fists stance. So **session 2's
+    "standing B is a kick" (b11) does not hold.** Its frames showed a
+    trail after a B, and a trail comes with or without one.
+- **No airborne frame for any button, standing:** b20 (B every 2 s), b21
+  (A, B, X, Y, and B held 400 ms, one per escape) and b22 (the same with
+  no LT). But that only says something about a standing press.
+- **In the escape harness she does not run.**
+  - Every b21/b22 escape held LY at min for 2.2-2.5 s, and the background
+    did not move. She turned and kept her stance by the first tree.
+  - b20's `play_cycle` run phase (LT first) barely moved her either.
+  - In session 1's b5/b6 the same LY min in `play_cycle`, with no LT, ran
+    her ~12 s to the gap.
+  - I do not know why. It may be the stall state's hold, the facing, or
+    LT just before. So **every "B while running" test from an escape
+    (b7-b10, b14) may never have been running.**
+  - The runs where she did run (b5, b6, b8, b10, b13, b14, all
+    `play_cycle`) had B on `play_tap`. Their captures are ~2 s apart, so
+    a jump of under a second can fall between them.
+
+**So the jump is still open, but narrower.** The one test that decides it:
+the `play_cycle` that is known to run (session 1's b5/b6 profile), B
+pressed while she runs, with this stream recording. A jump frame, or a
+landing on the far ledge, settles it either way. ~2.5 min held. Not run
+this session: titleroutes2's two requests were queued from 07:37.

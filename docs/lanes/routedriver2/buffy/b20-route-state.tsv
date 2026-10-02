@@ -1,0 +1,44 @@
+t	state	source	changed	luma	cap_s	action	frame	mode
+0.4	unknown	no-prev		13.2	0.32	wait (unknown)	074247-001-unknown.png	
+1.7	black	black		2.3	0.22	wait	074248-002-black.png	
+3.4	intro_video	moving	0.891	84.6	0.47	press A (skip intro_video)	074250-003-intro_video.png	
+5.0	black	black		2.5	0.27	wait	074251-004-black.png	
+6.5	intro_video	moving	0.1843	10.4	0.32	press A (skip intro_video)	074253-005-intro_video.png	
+8.3	intro_video	moving	0.6301	37.8	0.42	press START (skip intro_video)	074255-006-intro_video.png	
+9.8	black	black		0.1	0.22	wait	074256-007-black.png	
+11.2	black	black		0.8	0.22	wait	074257-008-black.png	
+12.5	black	black		1.6	0.22	wait	074300-009-black.png	
+13.8	title	crop:title		11.8	0.32	press START (title 1)	074302-010-title.png	
+15.7	main_menu	crop:main-menu		30.2	0.47	settle	074303-011-main_menu.png	
+17.3	main_menu	crop:main-menu+row:start		30.3	0.52	press LY:max (main_menu 1)	074306-012-main_menu.png	
+19.7	main_menu	crop:main-menu+row:load		32.2	0.52	press A (main_menu 1)	074307-013-main_menu.png	
+21.5	profile	crop:start-game		26.4	0.47	settle	074309-014-profile.png	
+23.1	profile	crop:start-game		27.4	0.42	press A (profile 1)	074311-015-profile.png	
+24.9	profile	crop:start-game		28.1	0.47	settle	074312-016-profile.png	
+26.4	profile	crop:start-game		30.7	0.52	press A (profile 2)	074314-017-profile.png	
+28.1	black	black		0.0	0.22	wait	074316-018-black.png	
+29.4	black	black		1.2	0.22	wait	074317-019-black.png	
+30.7	black	black		0.0	0.27	wait	074318-020-black.png	
+31.9	black	black		0.9	0.22	wait	074319-021-black.png	
+33.2	black	black		0.0	0.22	wait	074321-022-black.png	
+34.4	black	black		0.0	0.22	wait	074322-023-black.png	
+36.0	cutscene	moving	0.4442	13.0	0.57	press A (skip cutscene)	074324-024-cutscene.png	
+37.8	black	black		1.7	0.27	wait	074325-025-black.png	
+39.6	unknown	hud:hud+after-black	0.6276	15.2	0.72	hold (hud up, motion not yet play)	074327-026-unknown.png	
+41.6	play	hud:hud+motion	0.0	15.2	0.77	hold tap B	074330-027-play.png	
+43.9	play	hud:hud+motion	0.0214	15.2	0.77	hold tap B	074333-028-play.png	
+46.1	play	hud:hud+motion	0.3257	13.1	0.67	hold tap B	074336-029-play.png	
+48.4	play	hud:hud+motion	0.3318	15.2	0.77	hold tap B	074338-030-play.png	
+54.5	play	hud:hud+motion	0.0049	15.2	0.72	hold tap B	074344-031-play.png	
+60.6	play	hud:hud+motion	0.0006	15.2	0.72	hold tap B	074350-032-play.png	
+66.9	play	hud:hud+motion	0.3083	13.6	0.72	hold tap B	074356-033-play.png	
+73.2	play	hud:hud+motion	0.3098	13.4	0.72	hold tap B	074402-034-play.png	
+79.3	play	hud:hud+motion	0.0026	13.4	0.67	hold tap B	074410-035-play.png	
+85.1	play	hud:hud+motion	0.3104	6.4	0.32	hold tap B	074416-036-play.png	
+91.3	play	hud:hud+motion	0.3153	13.5	0.62	hold tap B	074422-037-play.png	
+97.4	play	hud:hud+motion	0.001	13.5	0.67	hold tap B	074428-038-play.png	
+103.3	play	hud:hud+motion	0.3143	6.5	0.32	hold tap B	074434-039-play.png	
+109.5	play	hud:hud+motion	0.3105	13.4	0.72	hold tap B	074442-040-play.png	
+# time_to_title_s=13.8
+# time_to_play_s=41.7
+# result=window-done

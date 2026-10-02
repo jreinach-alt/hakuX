@@ -1,0 +1,49 @@
+t	state	source	changed	luma	cap_s	action	frame	mode
+0.4	unknown	no-prev		6.7	0.32	wait (unknown)	073628-001-unknown.png	
+1.8	intro_video	moving	0.1489	3.8	0.22	press A (skip intro_video)	073630-002-intro_video.png	
+3.5	black	black		2.5	0.22	wait	073631-003-black.png	
+4.8	intro_video	moving	0.1821	10.0	0.27	press A (skip intro_video)	073633-004-intro_video.png	
+6.8	intro_video	moving	0.6312	37.8	0.42	press START (skip intro_video)	073634-005-intro_video.png	
+8.5	intro_video	moving	0.3794	38.2	0.42	press B (skip intro_video)	073636-006-intro_video.png	
+10.1	black	black		1.0	0.22	wait	073637-007-black.png	
+11.4	black	black		2.4	0.22	wait	073639-008-black.png	
+12.8	title	crop:title		16.3	0.37	press START (title 1)	073641-009-title.png	
+14.8	main_menu	crop:main-menu+row:start		30.1	0.52	press LY:max (main_menu 1)	073643-010-main_menu.png	
+17.2	main_menu	crop:main-menu+row:options		30.5	0.47	press A (main_menu 1)	073645-011-main_menu.png	
+19.0	cutscene	moving	0.4627	24.3	0.37	press A (skip cutscene)	073647-012-cutscene.png	
+20.8	cutscene	moving	0.3652	32.5	0.42	press START (skip cutscene)	073650-013-cutscene.png	
+22.6	cutscene	moving	0.4232	26.6	0.42	press B (skip cutscene)	073652-014-cutscene.png	
+24.5	main_menu	crop:main-menu		35.0	0.52	settle	073654-015-main_menu.png	
+26.1	main_menu	crop:main-menu+row:options		35.0	0.47	press A (main_menu 2)	073655-016-main_menu.png	
+27.9	profile	crop:difficulty		25.9	0.42	settle	073657-017-profile.png	
+29.4	profile	crop:difficulty		26.4	0.37	press A (profile 1)	073659-018-profile.png	
+31.2	cutscene	moving	0.3517	31.3	0.42	press A (skip cutscene)	073701-019-cutscene.png	
+33.0	cutscene	moving	0.3119	25.6	0.37	press START (skip cutscene)	073702-020-cutscene.png	
+34.9	cutscene	moving	0.494	37.5	0.47	press B (skip cutscene)	073704-021-cutscene.png	
+36.8	cutscene	moving	0.5968	40.4	0.57	press X (skip cutscene)	073706-022-cutscene.png	
+38.8	cutscene	moving	0.5633	38.8	0.57	press START+A (skip cutscene)	073708-023-cutscene.png	
+40.9	profile	crop:difficulty		35.3	0.47	press A (profile 2)	073710-024-profile.png	
+42.8	profile	crop:difficulty		24.6	0.42	settle	073712-025-profile.png	
+44.2	profile	crop:difficulty		22.6	0.37	press A (profile 3)	073714-026-profile.png	
+46.0	profile	crop:difficulty		30.8	0.42	settle	073715-027-profile.png	
+47.5	profile	crop:difficulty		29.9	0.42	press A (profile 4)	073717-028-profile.png	
+49.3	cutscene	moving	0.4343	25.7	0.42	press A (skip cutscene)	073719-029-cutscene.png	
+51.3	cutscene	moving	0.541	38.6	0.52	press START (skip cutscene)	073721-030-cutscene.png	
+53.2	cutscene	moving	0.6742	37.6	0.57	press B (skip cutscene)	073724-031-cutscene.png	
+55.2	main_menu	crop:main-menu		39.7	0.57	settle	073726-032-main_menu.png	
+56.9	main_menu	crop:main-menu+row:options		35.4	0.52	press A (main_menu 1)	073728-033-main_menu.png	
+58.7	cutscene	moving	0.6118	25.5	0.42	press A (skip cutscene)	073730-034-cutscene.png	
+60.7	cutscene	moving	0.399	33.8	0.52	press START (skip cutscene)	073732-035-cutscene.png	
+62.7	cutscene	moving	0.5103	32.1	0.52	press B (skip cutscene)	073733-036-cutscene.png	
+64.6	main_menu	crop:main-menu		37.3	0.52	settle	073735-037-main_menu.png	
+66.3	main_menu	crop:main-menu+row:options		33.9	0.52	press A (main_menu 2)	073737-038-main_menu.png	
+68.1	cutscene	moving	0.5644	22.9	0.37	press A (skip cutscene)	073739-039-cutscene.png	
+70.1	cutscene	moving	0.4068	32.1	0.47	press START (skip cutscene)	073741-040-cutscene.png	
+71.9	cutscene	moving	0.3596	23.0	0.37	press B (skip cutscene)	073743-041-cutscene.png	
+73.7	main_menu	crop:main-menu		31.5	0.52	settle	073744-042-main_menu.png	
+75.4	main_menu	crop:main-menu+row:options		32.6	0.47	press A (main_menu 3)	073746-043-main_menu.png	
+77.3	cutscene	moving	0.5306	28.3	0.47	press A (skip cutscene)	073748-044-cutscene.png	
+79.3	cutscene	moving	0.5074	36.4	0.52	press START (skip cutscene)	073750-045-cutscene.png	
+# time_to_title_s=12.9
+# time_to_play_s=
+# result=window-done

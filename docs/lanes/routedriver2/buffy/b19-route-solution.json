@@ -1,0 +1,316 @@
+{
+ "profile": "buffy",
+ "title": "Buffy the Vampire Slayer",
+ "mode": "play",
+ "result": "window-done",
+ "seconds": 80.7,
+ "time_to_title_s": 12.9,
+ "time_to_play_s": null,
+ "states_seen": [
+  "unknown",
+  "intro_video",
+  "black",
+  "title",
+  "main_menu",
+  "cutscene",
+  "profile"
+ ],
+ "skips": [
+  {
+   "state": "intro_video",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "black",
+   "presses": 1
+  },
+  {
+   "state": "intro_video",
+   "button": "B",
+   "after_s": 3.6,
+   "landed": "black",
+   "presses": 3
+  },
+  {
+   "state": "cutscene",
+   "button": "B",
+   "after_s": 3.6,
+   "landed": "main_menu",
+   "presses": 3
+  },
+  {
+   "state": "cutscene",
+   "button": "START+A",
+   "after_s": 7.6,
+   "landed": "profile",
+   "presses": 5
+  },
+  {
+   "state": "cutscene",
+   "button": "B",
+   "after_s": 3.8,
+   "landed": "main_menu",
+   "presses": 3
+  },
+  {
+   "state": "cutscene",
+   "button": "B",
+   "after_s": 3.9,
+   "landed": "main_menu",
+   "presses": 3
+  },
+  {
+   "state": "cutscene",
+   "button": "B",
+   "after_s": 3.6,
+   "landed": "main_menu",
+   "presses": 3
+  }
+ ],
+ "inputs": [
+  {
+   "t": 2.0,
+   "state": "intro_video",
+   "input": "A",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 5.0,
+   "state": "intro_video",
+   "input": "A",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 6.8,
+   "state": "intro_video",
+   "input": "START",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 8.6,
+   "state": "intro_video",
+   "input": "B",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 13.0,
+   "state": "title",
+   "input": "START",
+   "why": "title 1"
+  },
+  {
+   "t": 15.1,
+   "state": "main_menu",
+   "input": "LY:max",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 17.3,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 19.1,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 20.9,
+   "state": "cutscene",
+   "input": "START",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 22.7,
+   "state": "cutscene",
+   "input": "B",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 26.2,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 2"
+  },
+  {
+   "t": 29.5,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 1"
+  },
+  {
+   "t": 31.4,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 33.1,
+   "state": "cutscene",
+   "input": "START",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 35.0,
+   "state": "cutscene",
+   "input": "B",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 36.9,
+   "state": "cutscene",
+   "input": "X",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 38.9,
+   "state": "cutscene",
+   "input": "START+A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 41.1,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 2"
+  },
+  {
+   "t": 44.3,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 3"
+  },
+  {
+   "t": 47.5,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 4"
+  },
+  {
+   "t": 49.5,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 51.4,
+   "state": "cutscene",
+   "input": "START",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 53.3,
+   "state": "cutscene",
+   "input": "B",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 57.0,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 58.9,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 60.8,
+   "state": "cutscene",
+   "input": "START",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 62.8,
+   "state": "cutscene",
+   "input": "B",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 66.4,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 2"
+  },
+  {
+   "t": 68.3,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 70.1,
+   "state": "cutscene",
+   "input": "START",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 71.9,
+   "state": "cutscene",
+   "input": "B",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 75.5,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 3"
+  },
+  {
+   "t": 77.5,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 79.4,
+   "state": "cutscene",
+   "input": "START",
+   "why": "skip cutscene"
+  }
+ ],
+ "anomalies": [
+  {
+   "t": 24.5,
+   "state": "main_menu",
+   "after": "cutscene"
+  },
+  {
+   "t": 28.0,
+   "state": "profile",
+   "after": "cutscene"
+  },
+  {
+   "t": 40.9,
+   "state": "profile",
+   "after": "cutscene"
+  },
+  {
+   "t": 55.2,
+   "state": "main_menu",
+   "after": "cutscene"
+  },
+  {
+   "t": 64.7,
+   "state": "main_menu",
+   "after": "cutscene"
+  },
+  {
+   "t": 73.8,
+   "state": "main_menu",
+   "after": "cutscene"
+  }
+ ],
+ "classifier_sources": {
+  "no-prev": 1,
+  "moving": 23,
+  "black": 3,
+  "crop": 18
+ },
+ "model_calls": 0,
+ "play_stretch_frames": [],
+ "written_utc": "2026-10-02T14:37:51Z"
+}
