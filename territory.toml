@@ -606,12 +606,11 @@ files = []
 retired_utc = "2026-09-29T00:18:00Z"
 note = "RETIRED (hostops 2026-09-29T00:18Z): phase A finished; PR #573 merged 2026-09-28T19:51Z; unit gone, no open PR. Files to [free]: docs/lanes/turnipcost569/**. || PRIOR: STARTED (lane.local 2026-09-28T18:50Z), briefs/turnipcost569.md: #569 plan item P2 phase A (PR #570): build Mesa 26.3 Turnip on the host (drm-shim), time and profile hakuX SPIR-V per pass for a7xx, rank the generator features by cost, propose phase B. Docs and host tools only; no emulator code, no device holds. RELEASED AT READY (job.board 2026-09-28T19:41Z): PR #573 out of draft, CI green, unit gone. File RELEASED; the next lane merges master (or lane/turnipcost569's branch if #573 has not folded) and re-runs its arm before marking ready."
 
-[lane.litcompile569]
+[retired.litcompile569]
 issues = ["569"]
-files = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/lanes/litcompile569/**", "docs/testing/predictions/litcompile569-*.json"]
-released = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/lanes/litcompile569/**", "docs/testing/predictions/litcompile569-*.json"]
-released_at_ready = 580
-note = "RELEASED AT READY (job.board 2026-09-29T05:04Z): PR #580 is out of draft, CI green, unit gone -- all 3 held files released per roles/board.md so the next lane can start; kept in files since the fold still reads what the PR touched. The next lane names PR #580 and merges master (or lane/litcompile569 if it has not folded) before marking its own PR ready. || STARTED (lane.local 2026-09-28T19:50Z), briefs/litcompile569.md: #569 P2 phase B1 (PR #573 section 6): rewrite the lighting unit helpers (vsh-ff.c:128-283) loop-free and bit-exact so Turnip compiles lit pipelines 1.9-5.8x faster; gates: CPU bit-exactness with mutants, host compile factor, full-sweep pixel-inert arms, then a cold DOA dpc_ms soak once P1 (PR #574) lands. vsh-ff.c from [free]."
+files = []
+retired_utc = "2026-10-02T05:53:00Z"
+note = "RETIRED (hostops 2026-10-01 22:53 PDT): offline-folded as 47bfcdc9b7 (ancestor of origin/master, offline-git/foldqueue.log 22:08:26 PDT), PR.md State: ready, no running unit (hakux-lane-litcompile569.service not found), NOTES.md section 5 ('For the next lane') confirms the lane's own work is done -- B1 already folded as #580 with gates 1-3; this branch only added gate 4 (device cold-DOA soak, 2.14x pipeline-create on the Nova) and the registered GPU-per-frame replication (R2/R3 pass, R1 undecided), no further device run queued. No nv2a_issues.toml blocked_on references this lane (checked). Files RELEASED to [free]: hw/xbox/nv2a/pgraph/glsl/vsh-ff.c (already released_at_ready for PR #580), docs/lanes/litcompile569/**, docs/testing/predictions/litcompile569-*.json. || PRIOR: RELEASED AT READY (job.board 2026-09-29T05:04Z): PR #580 is out of draft, CI green, unit gone. || STARTED (lane.local 2026-09-28T19:50Z), briefs/litcompile569.md: #569 P2 phase B1 (PR #573 section 6): rewrite the lighting unit helpers (vsh-ff.c:128-283) loop-free and bit-exact so Turnip compiles lit pipelines 1.9-5.8x faster."
 
 [retired.gpl569]
 issues = ["569"]
@@ -1758,10 +1757,11 @@ retired_utc = "2026-10-02T04:56:00Z"
 note = "RETIRED (hostops 2026-10-01 21:56 PDT): folded as 56c2a7b4a9 (ancestor of origin/master), unit gone (hakux-lane-hitchwatch.service not found). hitch_report.py and title_verdict.py now count/classify hitches and a frozen/looping scored window per briefs/hitchwatch.md. Files RELEASED to [free]: docs/testing/title_verdict.py, docs/testing/hitch_report.py, docs/testing/jobs/selftest.d/99-hitch-report.sh, docs/testing/jobs/selftest.d/99-power-per-frame.sh, docs/lanes/hitchwatch/**. No nv2a_issues.toml blocked_on references this lane (checked). The targets.toml comment-block overlap this row flagged resolved itself: hitchwatch's fold landed clean (no conflict logged against lane.titleroutes)."
 
 
-[lane.localjobs]
+[retired.localjobs]
 issues = ["433"]
-files = ["docs/lanes/localjobs/**"]
-note = "ROW RESTORED (hostops 2026-10-01 21:50 PDT): hakux-lane-localjobs has been RUNNING since its session started (logs/lane/localjobs.20261002T044529Z.json, ~21:45 PDT) with NO territory row -- same recurring harness defect as hitchwatch/laneshape/armlabel/desktopchannel/draftstrand/selftest86/vblank65 before it: started directly (lane.sh start, off the owner's 2026-10-01 21:40 PDT decision to replace the GitHub-bound timers -- board/pr-sweep/issue-sweep/comments/fold -- with local-repo equivalents while GH is suspended) with no board job running (hakux-board itself is one of the stopped units) to add the row. Its brief's deliverables are new scripts plus systemd user timers under ~/hakux-work/ (offline-git/, host-tools/) and docs/lanes/localjobs/**, which are host-side, not governed by this file; only its own report directory is claimed here. If it ends up editing a tracked repo file (e.g. docs/testing/jobs/*.sh), grant it then."
+files = []
+retired_utc = "2026-10-02T05:53:00Z"
+note = "RETIRED (hostops 2026-10-01 22:53 PDT): offline-folded as 8e3b1f2ad2 (ancestor of origin/master, offline-git/foldqueue.log 22:08:33 PDT), PR.md State: ready, no running unit (hakux-lane-localjobs.service not found). NOTES.md section 4 lists what was deliberately not built and confirms the lane's own scope (local-repo replacements for the five GitHub-bound timers) is complete; its deliverables are host-side scripts/timers under ~/hakux-work/ plus this report dir, never tracked repo files. No nv2a_issues.toml blocked_on references this lane (checked). Files RELEASED to [free]: docs/lanes/localjobs/**. || PRIOR: ROW RESTORED (hostops 2026-10-01 21:50 PDT): started directly (lane.sh start, owner 2026-10-01 21:40 PDT) with no board job running to add the row."
 
 [lane.routedriver]
 issues = ["433"]
