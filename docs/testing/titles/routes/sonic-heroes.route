@@ -1,0 +1,82 @@
+# Sonic Heroes (5345002B). CONFIRMED on the Nova (session 58, 2026-10-01,
+# scratch/judge/sonic-heroes-171639): one full unattended `route.sh` replay
+# ran every scripted step through `mark gameplay` (172133, Seaside Hill,
+# HUD live) and three `play` shots after it (172141/172150/172201) show the
+# score (60->80), ring count (006->008) and timer all advancing and Sonic
+# changing pose/position between frames -- live, evolving play, not a
+# stuck menu or cutscene. Replaces the session 46 9-cycle START/A route that
+# two Thor re-screens showed was a coin flip: session 47's run landed in
+# live play, session 48's identical run landed on a frozen PAUSE menu (a
+# START press during live play, with no un-pause step after it). A fixed
+# cycle count races the title's own variable boot/cutscene length and does
+# not reliably land clear of a live level.
+#
+# This route is driven from per-step nav.py observation on the Nova
+# (nav/sonic-heroes.observe-20261001T170546 on a disk with NO game data, and
+# nav/sonic-heroes.returning-observe-20261001T171059 on the disk this first
+# session left behind, WITH game data in slot 01), not guessed cycle counts:
+#   - fresh disk: title -> START -> "no Game Data... Create Game Data 01?"
+#     (Create highlighted, A) -> "Game Data has been created... press A" (A)
+#     -> Main Menu.
+#   - disk with slot 01 present: title -> START -> slot grid (No.01
+#     highlighted, A) -> Start/Delete/Cancel (Start highlighted, A) -> Main
+#     Menu.
+#   Both paths reach Main Menu after exactly ONE START and THREE A presses,
+#   with the default option already highlighted at every screen, so one
+#   route covers both disk states (the dispatch run starts from whatever
+#   the disk holds, not from nav state -- see NOTES.md session 57's
+#   ADDENDUM-7 Castlevania lesson).
+# From Main Menu: A (1P PLAY, default) -> A (STORY, default) -> A (TEAM
+# SONIC, default) -> an ~85-90 s in-engine cutscene/dialogue with NO input
+# (both nav sessions: 88 s and 85 s to live play) -> Seaside Hill, Team
+# Sonic running, full HUD, timer counting. No STARTs after the title's: the
+# only in-level pause trap is a START while already in play, and this route
+# never presses one again.
+# Confirmed by nav.py movement tests in both sessions: a left-stick press
+# changed Sonic's screen position and the camera panned off the cutscene's
+# fixed framing (not true of a stuck cutscene frame).
+wait 30
+shot boot30
+wait 30
+shot boot60
+wait 30
+shot boot90
+wait 20
+shot boot110
+wait 15
+shot pretitle
+mark booted
+press START
+wait 8
+shot menu1
+press A
+wait 8
+shot menu2
+press A
+wait 10
+shot menu3
+press A
+wait 6
+shot story
+press A
+wait 6
+shot team
+press A
+wait 8
+shot cutscene-start
+wait 100
+shot cutscene-end
+mark gameplay
+repeat forever {
+    axis LX min
+    wait 1.5
+    axis LX max
+    wait 1.5
+    axis LX mid
+    axis LY min
+    wait 2
+    press A
+    wait 1
+    shot play
+    wait 2
+}

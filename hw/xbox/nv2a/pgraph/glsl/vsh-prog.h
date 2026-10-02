@@ -35,4 +35,9 @@ void pgraph_glsl_gen_vsh_prog(uint16_t version, const uint32_t *tokens,
  */
 int pgraph_glsl_vsh_token_constant_write(const uint32_t *token);
 
+/* The header pgraph_glsl_gen_vsh_prog() appends: the register file and the
+ * MAC/ILU op helpers (_MUL, _DP4, ...). For #569's uber vertex stage
+ * (glsl/vsh-uber.c), which interprets a program with the same helpers. */
+const char *pgraph_glsl_vsh_prog_helpers(void);
+
 #endif

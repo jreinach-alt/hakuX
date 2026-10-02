@@ -459,7 +459,23 @@ PYENV
 # mid-run). No marker: not one adb call.
 #
 # HAKUX_TITLES_DISK=0 on the worker turns the split off: title runs boot
-# hdd.img as they did before.
+# hdd.img as they did before. A request's own env HAKUX_TITLES_DISK (request.sh
+# --env) beats the worker's, either way: the switch lives in the worker's
+# environment, which a request cannot reach, and a proof run of the split must
+# be able to turn it on for itself alone while it stays off for everyone else.
+#
+# THE DISK MUST BE MODE 660. The app reaches files in its x1box directory
+# through a group, and `adb push` leaves them 0644: the app can read the disk
+# but not open it read-write. xemu's own check (xemu_check_file, system/vl.c)
+# only opens it "rb", so the -drive is added, qemu's configure_blockdev then
+# fails "Could not open ...: Permission denied" and exit()s on the qemu thread
+# while the render thread holds GL, and the process dies in the GPU driver:
+# SIGSEGV in libGLESv2_adreno.so or "pthread_mutex_lock called on a destroyed
+# mutex", 2-7 ms after sdl2_display_early_init, before stderr reaches logcat.
+# Every title run on #622's first pushed disks died that way (lane.hddcrash,
+# docs/lanes/hddcrash/NOTES.md). dev_push sets the mode before the rename, and
+# titles_disk_prepare checks it before every title run, so a disk pushed
+# before this fix is repaired rather than booted.
 TITLESTATE="$HERE/titles/titlestate.py"
 SAVES_PY="$HERE/titles/saves.py"
 # saves.py loads tools/make_xbox_hdd.py, which is not under docs/testing and so
@@ -568,28 +584,56 @@ dev_pull() {
     done
     rm -f "$dst"; return 1
 }
+# dev_mode <device path> -> octal mode (e.g. 660), or "" when the file is absent
+dev_mode() {
+    adb_call "$ADB_QUICK_TIMEOUT" "stat mode $1" shell "stat -c %a '$1' 2>/dev/null" 2>/dev/null \
+        | tr -d '\r' | awk 'NR==1 && $1 ~ /^[0-7]+$/ {print $1}'
+}
+# dev_make_660 <device path>: mode 660, read back (see THE DISK MUST BE MODE
+# 660 above), or 1.
+dev_make_660() {
+    local m
+    m=$(dev_mode "$1")
+    [ "$m" = 660 ] && return 0
+    adb_call "$ADB_QUICK_TIMEOUT" "chmod 660 $1" shell "chmod 660 '$1'" >/dev/null 2>&1
+    m=$(dev_mode "$1")
+    [ "$m" = 660 ] || { log "  $1: mode ${m:-unreadable} after chmod 660; the app could not open it read-write"; return 1; }
+}
 # dev_push <host path> <device path>: through <path>.new and a rename, checked.
+# Mode 660 before the rename, so the file is never in place unopenable.
 dev_push() {
     local src="$1" dst="$2" want
     want=$(sha256sum "$src" | cut -d' ' -f1)
     adb_call 600 "push $dst" push "$src" "$dst.new" >/dev/null 2>&1 || return 1
     [ "$(dev_sha256 "$dst.new")" = "$want" ] || { log "  push $dst: the device's copy does not match"; return 1; }
+    dev_make_660 "$dst.new" || return 1
     adb_call "$ADB_QUICK_TIMEOUT" "mv $dst" shell "mv -f '$dst.new' '$dst'" >/dev/null 2>&1 || return 1
-    [ "$(dev_sha256 "$dst")" = "$want" ]
+    [ "$(dev_sha256 "$dst")" = "$want" ] && [ "$(dev_mode "$dst")" = 660 ]
 }
 
-# titles_disk_prepare <id> <rdir>: make the device's titles disk current and
-# point hddPath at it. Writes <rdir>/hdd.json. Non-zero fails the request.
+# titles_disk_prepare <id> <rdir> [<request env json>]: make the device's
+# titles disk current and point hddPath at it. Writes <rdir>/hdd.json.
+# Non-zero fails the request.
 titles_disk_prepare() {
-    local id="$1" rdir="$2" dev="${DEVICE_LABEL:-}" dpath x pj action reason bytes sha i
+    local id="$1" rdir="$2" renv="${3:-[]}" dev="${DEVICE_LABEL:-}" dpath x pj action reason bytes sha i
+    local split="${HAKUX_TITLES_DISK:-1}" from=worker rsplit mode0
+    [ -n "${HAKUX_TITLES_DISK:-}" ] || from=default
+    # The request's own HAKUX_TITLES_DISK, when it names one, wins.
+    rsplit=$(python3 -c '
+import json, sys
+v = json.loads(sys.argv[1] or "[]")
+v = ["%s=%s" % kv for kv in v.items()] if isinstance(v, dict) else v
+print(([str(e).split("=", 1)[1] for e in v if str(e).startswith("HAKUX_TITLES_DISK=")] or [""])[-1])' "$renv" 2>/dev/null)
+    [ -n "$rsplit" ] && { split="$rsplit"; from=request; }
     x="$(x1box_dir)"; dpath="$x/titles.qcow2"
     case "$dev" in nova|thor) ;; *)
         printf '{"path": null, "split": "off: no titles registry for device %s"}\n' "$dev" > "$rdir/hdd.json"
         return 0 ;; esac
-    if [ "${HAKUX_TITLES_DISK:-1}" = 0 ]; then
-        printf '{"path": null, "split": "off: HAKUX_TITLES_DISK=0"}\n' > "$rdir/hdd.json"
+    if [ "$split" = 0 ]; then
+        printf '{"path": null, "split": "off: HAKUX_TITLES_DISK=0", "split_from": "%s"}\n' "$from" > "$rdir/hdd.json"
         return 0
     fi
+    [ "$from" = request ] && log "  titles disk: on for this request (its env HAKUX_TITLES_DISK=$split beats the worker's ${HAKUX_TITLES_DISK:-unset})"
     # Nothing may hold the disk while it is read or replaced.
     adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (titles disk)" shell am force-stop "${PKG:-com.jreinach.hakux.debug}" >/dev/null 2>&1
     : > "$rdir/hdd.plan"
@@ -626,17 +670,22 @@ titles_disk_prepare() {
         esac
     done
     [ "$action" = keep ] || { log "  TITLES DISK: no stable plan after $i rounds"; return 1; }
+    # A kept disk may predate dev_push's chmod (THE DISK MUST BE MODE 660).
+    mode0=$(dev_mode "$dpath")
+    dev_make_660 "$dpath" || { log "  TITLES DISK: cannot make $dpath mode 660"; return 1; }
+    [ "$mode0" = 660 ] || log "  titles disk: mode ${mode0:-unreadable} -> 660"
     # The FIRST value found is the one to put back: a marker already there
     # (a worker that died mid-run) holds it, and hddPath now reads ours.
     # set_hdd_pref writes the marker before the pref, so a failure here still
     # leaves serve_one's restore_hdd_pref the value to put back.
     set_hdd_pref "$dpath" "$(hdd_pref_marker)" >/dev/null || return 1
-    python3 - "$rdir" "$dpath" "$sha" "$bytes" <<'PYHDD'
+    python3 - "$rdir" "$dpath" "$sha" "$bytes" "$mode0" "$from" <<'PYHDD'
 import json, os, sys
-rdir, path, sha, n = sys.argv[1:5]
+rdir, path, sha, n, mode0, frm = sys.argv[1:7]
 plans = [json.loads(l) for l in open(os.path.join(rdir, "hdd.plan")) if l.strip()]
 json.dump({"path": path, "sha256_at_start": sha, "bytes_at_start": int(n), "plans": plans,
-           "split": "on"}, open(os.path.join(rdir, "hdd.json"), "w"), indent=1)
+           "mode_found": mode0 or None, "mode": "660",
+           "split": "on", "split_from": frm}, open(os.path.join(rdir, "hdd.json"), "w"), indent=1)
 PYHDD
     log "  hddPath -> $dpath (sha256 ${sha:0:12}, $bytes B)"
 }
@@ -1164,7 +1213,7 @@ p=sys.argv[1]; b=json.load(open(p)); b["t_device"]=time.time(); json.dump(b,open
             log "  TITLE NOT FOUND"; mv "$req" "$rdir/request.json"; return 0
         fi
         touch "$LEASE"
-        if ! titles_disk_prepare "$id" "$rdir"; then
+        if ! titles_disk_prepare "$id" "$rdir" "$req_env"; then
             adb_error "could not prepare the titles disk; see dispatcher.log" > "$rdir/ERROR"
             log "  TITLES DISK SETUP FAILED"
             restore_hdd_pref

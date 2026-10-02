@@ -912,11 +912,8 @@ void pgraph_glsl_append_vsh_prog_lighting(const VshState *state,
     }
 }
 
-void pgraph_glsl_gen_vsh_ff(const VshState *state, MString *header,
-                            MString *body)
+void pgraph_glsl_append_vsh_ff_header(MString *header)
 {
-    int i, j;
-
     mstring_append(header,
 "#define position      v0\n"
 "#define weight        v1\n"
@@ -1040,6 +1037,14 @@ GLSL_DEFINE(texPlaneQ3, GLSL_C(NV_IGRAPH_XF_XFCTX_TG3MAT + 3))
 "\n");
 
     append_lighting_header(header);
+}
+
+void pgraph_glsl_gen_vsh_ff(const VshState *state, MString *header,
+                            MString *body)
+{
+    int i, j;
+
+    pgraph_glsl_append_vsh_ff_header(header);
 
     unsigned int count;
     bool mix;

@@ -1,0 +1,58 @@
+# Dead or Alive 3 (4D53002D), Thor. One file: DOA3 has no profile on the
+# way to a fight.
+#
+# Evidence:
+# - pass 1 (0-0-y-1790433159-titleplay-p1-doa3, Thor, COLD shader cache):
+#   the copyright warning scrolled at 3-14 fps to t~200, TECMO logo t~206,
+#   "PRESS START BUTTON" at t~305; START and A every ~6 s did not skip the
+#   warning, and A does not pass the title prompt.
+# - screening soak 1790801641-titleroutes-1213635 (Thor, WARM cache, this
+#   route's first version, which waited 300 s blind): by t100 the attract
+#   demo was already running (warning100: fight at the pagoda stage; t200
+#   a newspaper cutscene at 46 fps; t260 a fight at 54 fps). The Thor's
+#   screening runner stopped it at xo 70 C at 284 s, before the first press.
+#   So with a warm cache the title is reachable well before t90.
+#
+# So: START twice from t~75 (attract -> title prompt -> main menu; if the
+# first START lands on the prompt, the second enters the menu's first item),
+# then A to walk STORY -> character select -> costume -> fight intro. Extra
+# A presses in the fight are attacks, so over-pressing is safe; START is not
+# pressed after the menu (it pauses the fight). The menu steps are
+# [recalled]; every step leaves a frame.
+#
+# NOT YET REPLAYED -- a Thor screening soak is its validation (no
+# interactive Thor session while the fan is dead).
+wait 60
+shot boot60
+wait 15
+shot boot75                 # expect attract or PRESS START BUTTON
+press START
+wait 4
+shot after-start1
+press START
+wait 4
+shot after-start2           # [recalled] main menu, STORY first
+mark booted
+repeat 7 {
+    press A                 # STORY -> fighter -> costume -> skip the intro poses
+    wait 4
+    shot menu-a
+}
+wait 4
+shot round
+mark gameplay               # [guess] the round start (timer running)
+repeat forever {
+    axis LX max
+    wait 0.6
+    press X
+    wait 0.3
+    press Y
+    wait 0.3
+    press X
+    wait 0.3
+    axis LX mid
+    press B
+    wait 0.3
+    press A                 # also leaves a KO / continue screen
+    wait 0.3
+}
