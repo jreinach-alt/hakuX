@@ -57,8 +57,11 @@ CVT = "1790839398-titleroutes-2238193"         # Castlevania, Thor: survey, stat
 CVR2 = "rdcv2"                                 # replay 2: Name Entry answered, stuck on the Overwrite prompt
 CVR3 = "rdcv3"                                 # replay 3: play, then walked into the fountain (stalled)
 CVR5 = "rdcv5"                                 # replay 5: first run, boot to 20 s of play
+SHR1 = "rdsh1"                                 # session 4, Nova: Seaside Hill, wedged on a block 14 s in
+FZR1 = "rdfz1"                                 # session 4, Thor: boot to a race, RT held, 0 -> 73 MPH
 LOCAL = {CVR2: "scratch/run-cv2/route-frames", CVR3: "scratch/run-cv3/route-frames",
-         CVR5: "scratch/run-cv5/route-frames"}
+         CVR5: "scratch/run-cv5/route-frames", SHR1: "scratch/run-sh1/route-frames",
+         FZR1: "scratch/run-fz1/route-frames"}
 
 # (case name, profile, run, frame, prev frame or None, prev state, seen, expected state)
 CASES = [
@@ -90,6 +93,14 @@ CASES = [
     ("sonic black after the title", "sonic-heroes", SONT2, "222229-menu-start.png", None, None, ["title"], "black"),
     ("sonic black at boot", "sonic-heroes", SONT2, "222229-menu-start.png", None, None, [], "boot"),
     ("sonic no previous frame: unknown", "sonic-heroes", SON2, "200233-boot30.png", None, None, [], "unknown"),
+    # The wedge: the team pressed against a Seaside Hill block, the clock
+    # running and the water moving (0.14-0.18 changed, 2 s apart). Before
+    # hud_stall_bar this read `play` (session 4's first replay: four `play`
+    # captures that the frames show going nowhere).
+    ("sonic wedged on a block, clock and water moving: stalled", "sonic-heroes", SHR1, "234358-033-play.png",
+     "234356-032-play.png", "play", ["main_menu", "play"], "stalled"),
+    ("sonic running Seaside Hill, 2 s apart", "sonic-heroes", SHR1, "234349-029-play.png", "234347-028-play.png",
+     "play", ["main_menu", "play"], "play"),
     # Forza Motorsport
     ("forza title, PRESS A", "forza", FOR, "214158-menu-start.png", None, None, ["intro_video"], "title"),
     ("forza PROFILE SELECT", "forza", FOR, "214204-menu-a.png", None, None, ["title"], "profile"),
@@ -99,6 +110,10 @@ CASES = [
     ("forza live race", "forza", FOR, "214502-play.png", "214437-play.png", "play", ["main_menu", "play"], "play"),
     ("forza 0 MPH, race clock running: stalled", "forza", FOR, "214618-play.png", "214553-play.png", "play",
      ["main_menu", "play"], "stalled"),
+    ("forza live race, slow scene change (Thor): play", "forza", FZR1, "234117-045-play.png", "234114-044-play.png",
+     "play", ["main_menu", "play"], "play"),
+    ("forza on the line at 0 MPH after the race intro: unknown", "forza", FZR1, "234101-038-unknown.png",
+     "234051-034-cutscene.png", "cutscene", ["main_menu", "cutscene"], "unknown"),
     ("forza race frame after a pause frame: unknown", "forza", FOR, "214313-menu-a.png", "214308-menu-start.png",
      "paused", ["main_menu", "play", "paused"], "unknown"),
     # Super Monkey Ball Deluxe
@@ -139,9 +154,10 @@ CASES = [
 # Frames that must never be `play` under a profile that is not their title's.
 FOREIGN = [(SON2, "200707-play.png", "200657-play.png"), (FOR, "214502-play.png", "214437-play.png"),
            (SMB, "172713-gameplay.png", "172712-rolling.png"), (SONT, "004222-menu-start.png", "004215-menu-a.png"),
-           (SMB, "172733-play.png", "172723-play.png"), (CVR5, "230108-033-play.png", "230106-032-play.png")]
+           (SMB, "172733-play.png", "172723-play.png"), (CVR5, "230108-033-play.png", "230106-032-play.png"),
+           (SHR1, "234349-029-play.png", "234347-028-play.png"), (FZR1, "234117-045-play.png", "234114-044-play.png")]
 TITLE_OF = {SON: "sonic-heroes", SON2: "sonic-heroes", SONT: "sonic-heroes", SONT2: "sonic-heroes",
-            FOR: "forza", SMB: "super-monkey-ball-deluxe", CV: "castlevania-cod", CVT: "castlevania-cod",
+            FOR: "forza", FZR1: "forza", SHR1: "sonic-heroes", SMB: "super-monkey-ball-deluxe", CV: "castlevania-cod", CVT: "castlevania-cod",
             CVR2: "castlevania-cod", CVR3: "castlevania-cod", CVR5: "castlevania-cod"}
 
 # drive.py --sim runs: (name, profile, run, frames slice, args, checks). The
@@ -155,6 +171,12 @@ SIMS = [
     ("sonic: a pause that never resumes is a ROUTE FAIL", "sonic-heroes", SON, (21, 40), ["--seconds", "999"],
      dict(result_prefix="ROUTE FAIL", fail_word="paused")),
     ("castlevania: first run, boot to play", "castlevania-cod", CVR5, (0, 27), ["--find", "--sim-step", "2"],
+     dict(result="reached-play", time_to_title=True, time_to_play=True)),
+    # 14 s of running, then wedged: not 20 s of play, and the stall escape
+    # goes out (session 4's first replay called the wedge play and ended).
+    ("sonic: a wedge on a block is not play; the escape runs", "sonic-heroes", SHR1, (9, 20),
+     ["--find", "--sim-step", "2"], dict(result="window-done", input_why="stall escape")),
+    ("forza: boot to a race with RT held (Thor)", "forza", FZR1, (0, 28), ["--find", "--sim-step", "2"],
      dict(result="reached-play", time_to_title=True, time_to_play=True)),
 ]
 
@@ -276,6 +298,8 @@ def main(argv):
                 probs.append("no time_to_play")
             if "\tplay\t" in tsv and any(i["input"] in ("START", "START+A") and i["state"] == "play" for i in sol["inputs"]):
                 probs.append("START sent in play")
+            if "input_why" in want and not any(i["why"].startswith(want["input_why"]) for i in sol["inputs"]):
+                probs.append("no input '%s'" % want["input_why"])
             if "# result=" not in tsv:
                 probs.append("tsv has no summary")
             ok = not probs

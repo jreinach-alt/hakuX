@@ -17,8 +17,8 @@
 #   hud-lap         MASKED, learned from the LAP/RACE/LAP block over eight race
 #                   frames from two runs and two tracks (1-1790826491 213542 213608
 #                   213633 214640 214706 215058, 1790914021 214502 214302).
-# NOT YET DRIVEN: this profile has only been checked against frames on disk
-# (classify_selftest.py). No replay has used it.
+# DRIVEN: routedriver session 4, Thor, 2026-10-01 23:39 PDT, drive.py --find
+# reached play (see THE SOLUTION below the [drive] table).
 
 name = "forza"
 title = "Forza Motorsport"
@@ -40,6 +40,41 @@ stall_fail_s = 30.0
 # animated menus the classifier reads as moving (`cutscene`): A advances
 # all of them, B would back out, START on the grid opens the pause.
 ladder = ["A"]
+
+# THE SOLUTION (routedriver session 4, THOR bdc158a5 -- not the Nova: Thor
+# and Nova timings differ -- 2026-10-01 23:39 PDT, drive.py --find, rc 0
+# `reached-play`, 0 model calls): title at 15.5 s, play at 74.7 s, run ended
+# at 97 s after 20 s of confirmed play. The blind forza414.route spent 14
+# START/A rounds (~140 s) in the menus and then sat on the grid at 0 MPH.
+# Inputs, A every time, each sent only once the screen was named:
+#   "simulation" card / Welcome to Forza logo / intro FMV: A (skips; the
+#   card and the logo alternate with the FMV twice) -> PRESS A TO START: A
+#   -> PROFILE SELECT: A (Default) -> Arcade Race, Event (Maple Valley Short),
+#   Class D, Car (Civic Si), Assists OK: A each -> Loading (static, ~14 s
+#   black after it: wait) -> STARTING GRID, Start Race: A -> race intro
+#   (ended on its own) -> HUD at 0 MPH (`unknown`, not play) -> RT held:
+#   10, 23, 32, 44, 53, 59, 65, 73 MPH, LAP 0/2 -> 1/2 in the confirmed
+#   stretch. RT alone does not steer: the car ran wide onto the dirt at the
+#   first bend (52 MPH, PLACE 6/8) -- enough for --find, not for a scored
+#   window. Record: docs/lanes/routedriver/forza/.
+# Skips learned from that run (`drive.py learn`); the driver tries these first.
+[skip.logo]          # 2026-10-02T06:41:29Z, 2 visits (Thor)
+button = "A"
+after_s = 2.1
+landed = "intro_video"
+landed_times = 2
+
+[skip.intro_video]   # 2026-10-02T06:41:29Z, 2 visits (Thor)
+button = "A"
+after_s = 1.9
+landed = "logo"
+landed_times = 2
+
+[skip.cutscene]      # 2026-10-02T06:41:29Z, 4 visits (Thor; menu fades and the grid, see NOTES)
+button = "A"
+after_s = 2.0
+landed = "main_menu"
+landed_times = 3
 
 [[crop]]
 name = "pause"

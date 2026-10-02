@@ -31,6 +31,13 @@ genre = "onfoot"
 # the title (two variants), the save prompt or the slot strip, Main Menu ->
 # 1P PLAY -> STORY -> team select, the story cutscene, NOW LOADING, Seaside Hill.
 order = ["boot", "logo", "intro_video", "title", "profile", "main_menu", "cutscene", "loading", "play"]
+# HUD frames are judged by their own bars. The team wedged against a stone
+# block 14 s into Seaside Hill reads 0.14-0.18 changed between captures 2 s
+# apart (water, the clock, idle animation); running reads 0.59-0.83 over
+# three runs (rdsh1 2 s apart, 1790910096 and 1790830432 ~10 s apart). On
+# the default 0.05 bar the wedge read `play` (routedriver session 4, replay 1).
+hud_motion_bar = 0.35
+hud_stall_bar = 0.30
 
 [input]
 title = ["START"]
@@ -41,6 +48,12 @@ paused = ["START"]       # resume (Continue is highlighted)
 # Run forward; jump now and then. NEVER START: it pauses (run 1790902215).
 play_hold = [["LY", "min"]]
 play_tap = [["A", 8.0]]
+# On a stall (HUD up, the scene not moving as a run does): back off, then
+# run in again with a jump and a mid-air A (Sonic: homing dash; Tails: fly;
+# Knuckles: glide), straight, then right, then left. lane.titleroutes
+# session 61 found that holding forward wedges the team on a block 20-30 s
+# in, and that only backing off frees it.
+stall_cycle = [[[["LY", "max"]], 2.5], [[["LY", "min"]], 2.5, ["A", "A"]], [[["LY", "min"], ["LX", "max"]], 2.5, ["A", "A"]], [[["LY", "min"], ["LX", "min"]], 2.5, ["A", "A"]]]
 
 [drive]
 stall_fail_s = 40.0

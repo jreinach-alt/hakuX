@@ -49,6 +49,9 @@ HOW A FRAME IS NAMED, cheapest and most specific first:
      or a menu, the change is the overlay leaving (Forza's blind route
      alternated pause and race frames, and every race frame read 0.8 moved
      though the car sat at 0 MPH). The first HUD frame after one is `unknown`.
+     A profile may set `hud_motion_bar`/`hud_stall_bar` to judge HUD frames
+     by their own bars (a title whose scene moves while the player is
+     wedged: Sonic Heroes' water and clock read 0.14-0.18 against a wall).
   4. NO CROP MATCHED: liveness and context only, and never `play` -- a frame
      the classifier cannot name is `unknown`, not `play` (ADDENDUM 2, item 6).
        moving: `intro_video` until the run has been past the title into a
@@ -296,13 +299,20 @@ def classify_frame(frame, prev, profile, seen=(), last_play_luma=None, prev_stat
 
     if hud:
         out["crop"] = hud["name"]
+        # HUD-only bars (default: the profile's motion/static bars). A title
+        # whose scene keeps moving while the player is wedged -- water, a
+        # clock, an idle animation -- sets them per title: Sonic Heroes'
+        # team wedged against a Seaside Hill block reads 0.14-0.18 changed,
+        # live running 0.59-0.83 (routedriver session 4).
+        hud_moving = changed >= profile.get("hud_motion_bar", moving_bar)
+        hud_static = changed <= profile.get("hud_stall_bar", static_bar)
         if prev_state is not None and prev_state not in ("play", "stalled", "unknown"):
             # The previous capture was a pause box or a menu: the "motion" is
             # that overlay going away, not the scene. One more capture decides.
             out.update(state="unknown", source="hud:%s+after-%s" % (hud["name"], prev_state))
-        elif moving:
+        elif hud_moving:
             out.update(state="play", source="hud:%s+motion" % hud["name"])
-        elif static:
+        elif hud_static:
             out.update(state="stalled", source="hud:%s+static" % hud["name"])
         else:
             out.update(state="unknown", source="hud:%s+between" % hud["name"])

@@ -81,7 +81,11 @@ for a cursor the d-pad does not move (Castlevania's save prompt).
                          hides its HUD when the player idles, Castlevania,
                          is not on a menu): keep the play input held;
                          `stall_fail_s` of it is ROUTE FAIL "the play input is
-                         not reaching the game" (Forza at 0 MPH).
+                         not reaching the game" (Forza at 0 MPH). A profile
+                         with input.stall_cycle ([[axes], seconds, [buttons]]
+                         phases) plays it once per stall, to its end, up to
+                         `escape_max` times: back off, jump, try a side
+                         (Sonic Heroes wedges on a Seaside Hill block).
   unknown                wait; the model after `unknown_before_model`
                          captures; `unknown_fail_s` of it is ROUTE FAIL.
 A state seen after a later one in the profile's `order` (a main_menu after
@@ -147,7 +151,7 @@ DEFAULTS = dict(
     fast_s=1.0, slow_s=5.0, skip_settle_s=1.5, skip_passes=3, menu_gap_s=2.0, menu_max_presses=25,
     resume_tries=3, stall_fail_s=40.0, unknown_before_model=3, unknown_fail_s=90.0,
     model_calls_max=20, find_play_s=20.0, confirm_play_s=6.0, keep_every_s=30.0, screencap_fail_s=60.0,
-    hud_memory_s=20.0,
+    hud_memory_s=20.0, escape_max=6,
 )
 
 MODEL = "claude-haiku-4-5-20251001"
@@ -264,6 +268,9 @@ class Driver:
         self.unknown_since = None
         self.unknown_streak = 0
         self.stalled_since = None
+        self.escape_t0 = None            # stall_cycle in progress since
+        self.escape_phase = None
+        self.escapes = 0
         self.last_hud_t = None
         self.play_since = None
         self.play_frames = []
@@ -282,8 +289,12 @@ class Driver:
         for b, _ in self.inp.get("play_tap", []):
             if b in ("START", "SELECT", "BACK"):
                 raise SystemExit("drive.py: profile play_tap sends %s: START in live play pauses it" % b)
+        for _, _, btns in self.stall_phases():
+            for b in btns:
+                if b in ("START", "SELECT", "BACK") or b in NEVER:
+                    raise SystemExit("drive.py: profile stall_cycle sends %s: START in live play pauses it" % b)
         for k, v in self.inp.items():
-            if k.startswith("play"):
+            if k.startswith("play") or k == "stall_cycle":
                 continue
             for b in v:
                 if b in NEVER:
@@ -309,9 +320,46 @@ class Driver:
         self.inputs.append(dict(t=round(t, 1), state=self.state, input=btn, why=why))
         return "press %s (%s)" % (btn, why)
 
+    def stall_phases(self):
+        """input.stall_cycle as [(axes, seconds, buttons)]: [[axes], seconds]
+        or [[axes], seconds, [buttons]] (pressed once on entering the phase,
+        0.3 s apart: A, A is a jump and a mid-air action)."""
+        out = []
+        for ph in self.inp.get("stall_cycle", []):
+            out.append(([tuple(x) for x in ph[0]], float(ph[1]), list(ph[2]) if len(ph) > 2 else []))
+        return out
+
+    def escape(self):
+        """The axes the stall escape wants now, or None when no escape runs.
+        An escape, once started, plays its phases to the end whatever the
+        captures in between say: backing off makes motion, and a stall
+        watch that stopped the escape on the first moving capture would walk
+        straight back into the wall (Sonic Heroes' Seaside Hill block)."""
+        if self.escape_t0 is None:
+            return None
+        phases = self.stall_phases()
+        at = self.t() - self.escape_t0
+        for i, (axes, s, btns) in enumerate(phases):
+            if at < s:
+                if self.escape_phase != i:
+                    self.escape_phase = i
+                    for j, b in enumerate(btns):
+                        if j:
+                            self.sleep(0.3)
+                        self.dev.pad("press", b)
+                    self.inputs.append(dict(t=round(self.t(), 1), state=self.state, why="stall escape %d" % self.escapes,
+                                            input=" ".join("%s %s" % a for a in axes) + (" + " + ",".join(btns) if btns else "")))
+                return axes
+            at -= s
+        self.escape_t0 = self.escape_phase = None
+        return None
+
     def hold_play(self):
         want = [tuple(x) for x in self.inp.get("play_hold", [])]
         cycle = self.inp.get("play_cycle")
+        esc = self.escape()
+        if esc is not None:
+            want, cycle = esc, None
         if cycle:
             # An on-foot title: one held direction walks into the first wall
             # (Castlevania's fountain, run 3), so the held axes rotate through
@@ -517,6 +565,10 @@ class Driver:
             return self.press(seq[n % len(seq)], "%s %d" % (state, n + 1))
 
         if state in ("play", "stalled"):
+            if (state == "stalled" and self.escape_t0 is None and self.stall_phases()
+                    and self.escapes < cfg["escape_max"]):
+                self.escapes += 1
+                self.escape_t0 = t
             self.hold_play()
             if state == "stalled":
                 if self.stalled_since is None:
