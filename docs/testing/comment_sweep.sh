@@ -249,6 +249,10 @@ esac
 # $CID and PATCHed.
 issue="$(timeout 60 gh issue list --repo "$REPO" --label harness-status --state open \
            --json number --jq '.[0].number' 2>/dev/null)"
+# An empty list prints the literal "null", which is not empty. On the forge's
+# first sweep it became `POST /issues/null/comments` (a 404, which the shim said
+# out loud). status.sh has the same guard for the same reason.
+case "$issue" in ''|*[!0-9]*) issue="" ;; esac
 if [ -z "$issue" ]; then
     echo "swept $now: $found thread(s) with new comments -> $REPORT (no harness-status issue; not posted)"
 else
