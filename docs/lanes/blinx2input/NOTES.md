@@ -79,3 +79,17 @@ After run 6, all of this ran on the live game (none of it was a fresh launch):
      pitch acts as a rate, as yaw does, so pulse RY rather than hold it.
 - Third person, what worked (run 5): RY held at -32000 (run 6, at -22000,
   never drew the lock-on arc), with RX pulses at 22000 lasting |dx|*2.0 s.
+
+## Attempt 2: Test 1 end to end (run 7, `test1.py`), 13:30-13:37 PDT
+
+| phase | result |
+|---|---|
+| boot | the title came up at 104 s, then A through Story Mode, Load Game and the cards to Test 1's HUD |
+| tp, gain 2.0 | **failed for 300 s.** The yaw swung between +0.4 and -0.4 widths and never settled. adb adds ~0.15 s to every pulse, so run 5's pass at this gain was luck |
+| tp, gain 0.6 (resumed on the live game) | one dwell, card at 20 s: balloons done |
+| fp: A, R3, A, then RX and RY both pulsed, crosshair ring masked | **all 3 popped in 22 s** (lock-on arc, confetti); card "Good. Click the Right thumbstick to return to normal view." |
+| nav.sh: R3, A, LY up | "Now for movement. Move the Left thumbstick..."; **the player ran through the flag gate** and the next card ("Press A to jump") came up (`frames/walk-sheet.jpg`) |
+
+Detector checks before the run (`scratch/dettest.py` on center3's frames):
+the ring and the centre dot no longer read as a balloon, and the real
+balloons at y 0.5-0.75 are found.

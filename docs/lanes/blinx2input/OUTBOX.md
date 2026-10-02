@@ -25,3 +25,24 @@ end in hakuX; there is nothing to fix in the emulator. Gotchas for any
 driver: RX below ~1/3 deflection does not yaw (dead zone); pitch springs
 back on release, yaw persists. Next: finish Test 1 by hand (nav.py), show
 the player walking, then the 600-s confirmation.
+
+## #670 -- 2026-10-02 13:38 PDT
+
+[lane.blinx2input] **Blinx 2 moves.** A fresh launch on the Nova went
+through all of Test 1's camera steps under right-stick input, driven by
+`docs/lanes/blinx2input/test1.py`:
+- the third-person balloons;
+- R3 into first person;
+- the first-person balloons;
+- R3 back to the normal view.
+
+The tutorial then unlocked movement ("Move the Left thumbstick to walk or
+run through the flag gate"). Under LY the player ran through the gate, and
+the next card ("Press A to jump") came up. Frames:
+`docs/lanes/blinx2input/frames/walk-sheet.jpg` and
+`frames/balloons-fp-sheet.jpg`.
+
+This confirms the mechanism: the emulator's input path has no defect. The
+probes stalled at the camera gate because they never sent the right stick.
+No emulator files are involved, and the territory is `docs/lanes/blinx2input/**`
+only. The 600-s confirmation is running now from this live state.
