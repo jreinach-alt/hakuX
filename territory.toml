@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 291
-updated_utc = "2026-10-02T15:40:00Z"
+wave = 292
+updated_utc = "2026-10-02T15:51:00Z"
 
 [lane.collapse433]
 issues = ["433"]
@@ -1800,3 +1800,8 @@ note = "STARTED (hostops 2026-10-02 02:12 PDT): successor to the retired [lane.r
 issues = []
 files = []
 note = "HARNESS DEFECT, dispatched directly (no issue, see dispatch-harness-fixes-dont-file-issues precedent): title_verdict.py's crash detector (lines ~420-423) counts ANY system tombstone (tag libc/DEBUG, level F) as a hakuX crash, with no check on which process actually crashed. Three 2026-10-02 nova titleroutes2 runs (ToeJam & Earl III, Tron 2.0 x2 -- dispatch/results/1790951866-titleroutes2-46925, 1790951914-titleroutes2-68595, 1790953776-titleroutes2-447685) all tombstone-crashed Android's own media.extractor service (Cmdline: media.extractor aextractor, MPEG4Extractor.cpp:1991 CHECK_EQ abort, a stock AOSP bug) while hakuX's own process kept running fine throughout -- each run scored crash:true, pass:false and was failed for a crash that never happened in the emulator. A fourth example from 2026-09-26 (dispatch/results/0-0-x-1790465684-lane.remote-2069760) shows the same false attribution for surfaceflinger. This directly undercounts the 0.5 '50 Playable' tally (#433). CLAIMS NO FILES YET: title_verdict.py is actively held by [lane.routedriver2] above (running right now, #433). Build and verify the fix (process-identity check scoped to hakuX's package com.jreinach.hakux + .debug/.debug2 variants) against a local checkout with no claim needed, then claim the file the moment routedriver2 releases/retires it and push immediately -- see briefs/crashattr.md for the exact mechanism and falsifier (replay against the four named logcat.txt files, must all read crash:false; a genuine hakuX-tagged tombstone must still read crash:true)."
+
+[lane.stopmarker]
+issues = []
+files = ["docs/testing/lane.sh"]
+note = "HARNESS DEFECT, dispatched directly (no issue): lane.sh's start/resume do not explicitly recognize an owner-stop marker. Evidence (hostops-inbox.md 10-02 08:27 PDT): the owner stopped lane.titleroutes2 at 06:36 PDT; one minute later a hostops tick's mechanical '0.5 stage lane is continuous, resume it' rule found no running unit/queue/hold and ran lane.sh resume titleroutes2 anyway, because the stop had no durable marker yet. lane.local's interim fix: rename briefs/<name>.md to briefs/<name>.md.STOPPED-by-owner-<stamp>, which makes resume fail on a missing brief and start fail on the surviving worktree -- but both fail with a generic message, not an explicit one, and the convention lives nowhere lane.sh itself knows about. harness_health.py already recognizes the marker (host-tools fix, same tick) and no longer suggests resuming such a lane. THIS LANE: make lane.sh's start and resume subcommands check for briefs/<name>.md.STOPPED-by-owner-* explicitly and refuse with a clear message naming the marker and the owner's stop, document the convention in lane.sh's header comment. See briefs/stopmarker.md for the exact falsifier. Claims only lane.sh; does not touch harness_health.py (already fixed) or lane.titleroutes2's stop itself (owner's call, not this lane's)."
