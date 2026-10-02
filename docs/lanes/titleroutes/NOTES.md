@@ -4895,3 +4895,76 @@ Nova. Once the last of them lands: review the frames, write the pilot
 verdict (`dispatch/pilots/titleroutes.ok`), and queue the remaining 8
 titles' surveys per the table above.
 
+
+## Session 64 (2026-10-02, resumed as attempt 3): review the 4 pilot surveys (ADDENDUM 16), write the pilot verdict, queue 2 more
+
+**Why attempt 2 (session 63) did not "finish" by the harness's read, though it ended correctly.** Session 63 queued its 4
+surveys and ended on `[lane.titleroutes] waiting:` naming those request ids -- exactly what `roles/lane.md` asks for. But
+all 4 finished AFTER the session ended (judged 00:43-00:59 PDT, resumed here at ADDENDUM 16, 01:10 PDT), so the harness's
+idle-lane check flagged nothing in flight and a fresh resume was needed to do the review step. This is the stage's normal
+"queue, then come back" pattern, not a strand or a failure -- ADDENDUM 16 says so explicitly, and the resume prompt's own
+instruction to "say why the previous attempt did not finish" is answered by: it finished its own scope correctly; the
+*review* of its results is a separate step that needed a new session, which this one is.
+
+Merged `origin/master` first (branch was 11 commits behind; fast-forward, clean, brought in `lane.collapse433` and
+`lane.holdwait`'s work, nothing touching this lane's files). Checked `dispatch/running/`: the Nova has
+`lane.ibcache-1136287` running (owner `nova`) -- still busy, so no hold taken or needed; this session is review + queuing
+only, same shape as session 63.
+
+**Read all 4 surveys frame-by-frame** (route-frames/, not just verdict.json's fields -- the explicit lesson from every
+prior "a count/field is not the measurement" entry in memory, and this session's own finding below proves why it still
+matters even after 60+ sessions of practice):
+
+| title | title_id | request id | reached_gameplay | what the frames show |
+|---|---|---|---|---|
+| Black Stone: Magic & Steel | 58490004 | `1790921686-titleroutes-1080767` | **FALSE** | Every post-mark `play` frame is the character name-entry keyboard screen; blind menu-A presses typed "AAAA"->"AAA&[" into the name field. Same open-loop trap as Castlevania's first-run route (ADDENDUM 11), not gameplay. `fps_ok_share 1.0` at 59fps is a menu reading. |
+| Star Wars Episode III: Revenge of the Sith | 4C410017 | `1790921690-titleroutes-1082096` | **TRUE** | Two distinct lightsaber-duel compositions across the window (tutorial prompt "PRESS X AND Y..." with R2D2/wreckage, then a different corridor/barrel layout), live HUD. `static_window frozen_frac 0.9474` is very likely this duel's largely-stationary combat stance against a static corridor background, not a stall -- the frames are visibly different scenes. fps_window_median 30.0, fps_ok_share 0.8766. |
+| Bloody Roar: Extreme | 48550001 | `1790921692-titleroutes-1082566` | **TRUE**, with a real severe slowdown | Live STAGE 1 fight (Yugo vs Shina), round timer counting down 53->44 between frames, on-screen FPS counter itself reading 10. `fps_window_median 10.83` / `fps_ok_share 0.0` is a genuine finding, not a route artifact. Not this lane's to fix -- flagged in OUTBOX for per-title slowdown triage. |
+| Gunvalkyrie | 49470017 (iso prefix is `5345000B`, pre-existing mismatch, not investigated further) | `1790921696-titleroutes-1084287` | **TRUE** | Player moving through a canyon toward/through a rock archway across two frames (CAUTION HUD, distinct compositions). fps_window_median 59.94, fps_ok_share 1.0. |
+
+**Checked `dispatch/bin/titles/route.sh` (the dispatcher's own snapshot) and the `/home/justin/hakuX` checkout** before
+deciding whether a `waitfor`-based fix for Black Stone's name-entry trap could be queued this session: `grep -c waitfor
+/home/justin/hakux-work/dispatch/bin/titles/route.sh` = 20 (live), `git -C /home/justin/hakuX rev-list --count
+HEAD..origin/master` = 0 (caught up). So the mechanism is available now -- **not attempted this session**, to stay inside
+this session's actual scope (ADDENDUM 16 asked for review + the next 8 titles' surveys, not a new route-authoring pass).
+Left as a clearly separate next step below; Black Stone is NOT nominated and its `targets.toml` entry (none exists yet,
+per session 63) is correctly still absent.
+
+**Wrote `dispatch/pilots/titleroutes.ok`** (via `python3`, prepended above the existing history, same convention as every
+prior pilot entry) with the per-title table above and the verdict: proceed with the remaining 8-title batch, same
+`generic.route survey` method, but **two at a time this time**, not four -- session 63's own "do not repeat" note said
+exactly this, and this session's own Black Stone finding reinforces why: `verdict.json`'s fields alone said Black Stone
+and Gunvalkyrie both "looked clean" (no hitches, no crash, high fps_ok_share); only opening the frames caught Black
+Stone's trap. A clean-looking verdict is not a substitute for the frame read, for any of them, every time.
+
+**Queued 2 of the remaining 8** (`--route survey --seconds 300 --device nova --hard-pin --ref 980ac1932103ded2164c34f1cbf40418eb1282ec`,
+the current `origin/master` tip at merge time, `--no-expect`, plain priority -- same `gh`-down fallback as session 63):
+
+| title | title_id | request id |
+|---|---|---|
+| Dino Crisis 3 | 43430003 | `1790928772-titleroutes-2771139` |
+| Buffy the Vampire Slayer | 45410012 | `1790928774-titleroutes-2773088` |
+
+The other 6 (Halo: Combat Evolved, Conker: Live & Reloaded, Halo 2, Ninja Gaiden Black, ToeJam & Earl III, Tron 2.0:
+Killer App) remain unqueued, deliberately, to leave the pilot gate's window open for review before more land.
+
+Re-ran the Proof-section checks (no routes/targets.toml edit this session): `titlestate_selftest.py` all checks passed;
+`targets.toml` via `tomllib`, 80 entries, unchanged.
+
+### State for a successor
+
+- Review `1790928772-titleroutes-2771139` (Dino Crisis 3) and `1790928774-titleroutes-2773088` (Buffy) frame-by-frame,
+  same discipline as above, once they land. Then queue the remaining 6 (ids in session 63's table, repeated above),
+  2-3 at a time.
+- **Black Stone: Magic & Steel needs a `waitfor`/`press-until` route past its name-entry screen** before it can be
+  authored into a real route -- the mechanism is live in the dispatcher snapshot now (unlike when Castlevania's attempt
+  failed). This is a genuinely separate, larger task (author the route, create reference crops, verify `route.sh --check`,
+  then a dispatch-style verification run per ADDENDUM 12's lesson) -- scope it as its own session rather than folding it
+  into a survey-review session.
+- Star Wars Episode III, Bloody Roar: Extreme, and Gunvalkyrie all reached gameplay and are ready for the next step
+  (author a route from their survey frames, replay, hand to the benchmark stage) -- Bloody Roar's severe slowdown should
+  be flagged on #397/OUTBOX as a performance finding alongside its route work, not instead of it.
+- The Thor (`lanelocal-fanwait`, dead fan) and the Nova device-role-split/queue-depth questions are unchanged.
+
+[lane.titleroutes] waiting: `1790928772-titleroutes-2771139` (Dino Crisis 3) and `1790928774-titleroutes-2773088` (Buffy)
+on the Nova. Once both land: review the frames, update `dispatch/pilots/titleroutes.ok`, queue the remaining 6.
