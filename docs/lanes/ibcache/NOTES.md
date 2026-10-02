@@ -811,3 +811,49 @@ The validity gate applies to each run:
 A void run is re-queued once. If an arm still has only one valid run, it is
 read at n=1 and labelled so. A crash or hang in B that A does not have fails
 leg 4 as well.
+
+### Queued on the head (`queue_leg4.sh` with REF/LEG; `out/queue_head_*.out`)
+
+Pilot verdict rewritten in `pilots/lane.ibcache.ok` (2026-10-01): the Nova
+runs above are this batch's pilot. The request files read back
+`device: nova`, `ref: 946a78c8e9`, and the env their arm names.
+
+| leg | B (probe on) | A (`HAKUX_IBC=0`) | A | B |
+|---|---|---|---|---|
+| 5a GTA SA, `gta-sa`, 360 s | `1790914019-lane.ibcache-3201791` | `1790914019-lane.ibcache-3201832` | `1790914020-lane.ibcache-3201920` | `1790914020-lane.ibcache-3202122` |
+| 5b Forza, `survey`, 420 s | `1790914020-lane.ibcache-3202216` | `1790914021-lane.ibcache-3202498` | `1790914021-lane.ibcache-3202829` | `1790914021-lane.ibcache-3203127` |
+
+### Offline PR and the fold
+
+- `docs/lanes/ibcache/PR.md` is `State: draft`. `prmd.py` writes its
+  Files: line literally from the diff. `OUTBOX.md` holds the #507 post.
+- **Territory.** The board row lacks `include/accel/tcg/hakux-ibc.h`,
+  `include/tcg/tcg-op-common.h` and `tcg/tcg-op.c`, all of which the probe has
+  edited since 27554f7145. No other lane holds any of them. A board request
+  is in `$DISPATCH_DIR/board-requests/lane.ibcache.md` (21:25 PDT).
+  `offline_fold.py` checks territory, so this must be applied before PR.md
+  goes ready.
+- **Fold mechanics.** `offline_fold.py` needs a finished, non-void run whose
+  `ref` is a prefix of the branch head, and `foldqueue.sh` retries each tick
+  while that run is pending. The final commit (5a/5b readings, `State: ready`)
+  moves the head past 946a78c8e9. So queue **one** run on that final head
+  after pushing it. An Alien Hominid A arm (360 s, `HAKUX_IBC=0`) is the
+  useful one, because all three of its earlier A runs were void.
+- `preflight.sh --allow-tracker` passes on f1777bd2fb. Its coverage gate did
+  not run (gh is suspended), and it says so.
+
+## State at 2026-10-02 04:35Z (21:35 PDT 10-01): waiting on eight Nova requests
+
+1. The eight requests in the table above (legs 5a and 5b).
+2. The board request: add the three files to [lane.ibcache].
+
+**Next, on resume:**
+1. `python3 docs/lanes/ibcache/soakread.py <ids>` for the eight. Apply the
+   validity gate, then compute fps = flips/scored_s and J/frame per arm (the
+   mean of two) against 5a and 5b.
+2. Write the result into NOTES, PR.md (the legs table) and OUTBOX.
+3. If 5a passes, set `State: ready`, whatever 5b says. 5b is the size of the
+   win, and 5a is the gate. A 5b miss is reported as it is.
+4. `prmd.py`, commit, push, and queue one run on the new head.
+5. Then the 16-bit jump cache on `lane/ibcache-jcsize` (stacked; merge
+   lane/ibcache first), with its own GTA profile leg.
