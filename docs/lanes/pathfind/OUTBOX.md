@@ -74,3 +74,20 @@ and 11 calls but heat-stopped while probing. For comparison, unguided NHL 2K5 ne
 reach its faceoff. Running now: the controlled cross-title test (Blinx -> Blinx 2 on the Nova, and NHL 2K5
 with and without its siblings' paths on the Thor). DOA3 reached a live fight at 5 min but no probe could be
 confirmed in 15 min: the CPU knocks the player down or ends the round inside the ~25 s a probe takes.
+
+## #433 -- 2026-10-02 11:26 PDT
+
+[lane.pathfind] Cross-title results (table in NOTES.md, "Cross-title"). ESPN 2K5 family on the Thor: runs
+guided by a sibling's recorded path reached live play in **7-9 model calls and 1.6-2.1 min, against 12-19
+calls and 3.0-3.4 min unguided** (NFL, NHL baselines). Two confounds favour the guided runs (profiles
+saved on the device by earlier runs; tool changes between runs), so this is evidence, not a controlled
+measurement. Sibling knowledge travels through the model, not frame matching: the same ESPN menu in two
+titles is too far apart in pixels to match, so the agent now lets the model plan the next menus from a
+sibling's path and sends them with no call while each input visibly changes the screen. Rule-5
+confirmation is the hard part for team sports: goals, fouls and camera cuts land inside the probe, and
+two NHL runs played CPU vs CPU (controller icon left in the middle of Team Select; now a rule). Every Thor
+ESPN run is cut by the 70 C stop about 4 min in.
+**Finding for an emulator lane:** Blinx 2 (4D530065, Nova) reaches Challenge 1 with the HUD up, but the
+character never moves under any stick, d-pad or button input (2 runs, 30+ probes each, idle animation only).
+Frames: scratch run dirs, summary in docs/lanes/pathfind/runs/blinx-2.*. Next: the rest of the lot on the
+Nova (Conker, Ghoulies, Tork, DOAX, JSRF, Halo 2, ...), Tiger Woods 2004 on the Thor.
