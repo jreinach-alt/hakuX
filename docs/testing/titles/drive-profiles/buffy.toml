@@ -55,7 +55,13 @@ hud_stall_bar = 0.08
 
 [input]
 title = ["START"]
-main_menu = ["A"]        # Start Game is lit
+# Load Game, not Start Game (session 2, run b12): each Start Game makes a
+# save ("BUFFY n"), the game keeps at most 10, and the Nova's disk is kept
+# between runs (hdd.plan "keep", dispatched runs too). With 10 on it, Start
+# Game only shows "only allows 10 saved games ... Press A to continue" and
+# A goes back to this menu, a loop. Every save was made at the canyon's
+# start. So: down to Load Game, then A.
+main_menu = ["LY:max", "A"]
 profile = ["A"]          # Start Game: CONFIRM; Difficulty: Normal
 ingame_menu = ["A"]
 paused = ["A"]           # Resume is lit
@@ -69,7 +75,7 @@ paused = ["A"]           # Resume is lit
 # gaps); A attacks. NEVER START: it pauses (the survey's cycles 5-14 only
 # toggled PAUSE).
 play_cycle = [[[["LY", "min"]], 5.0], [[["LY", "min"], ["LX", "max"]], 1.5], [[["LY", "min"]], 3.0], [[["LY", "min"], ["LX", "min"]], 1.5]]
-play_tap = [["B", 4.0], ["A", 7.0]]
+play_tap = [["Y/150", 0.0, 8, 0.3], ["A", 7.0]]
 # A stall (the HUD up, the frame still): reset the camera, back off and turn,
 # then run and jump; the second try turns the other way; the third runs
 # straight at the ledge with two jumps (the "push into low ledges" tip).
@@ -80,10 +86,10 @@ play_tap = [["B", 4.0], ["A", 7.0]]
 # at 46.7 s. Every escape above played from inside the stream bed. These
 # four explore it, one direction each, with B pressed through each push.
 stall_cycles = [
-  [[[["LY", "min"]], 0.3], [[["LY", "min"]], 2.7, ["B", "B", "B", "B"]], [[], 0.3]],
-  [[[["LT", "max"]], 0.8], [[["LY", "max"]], 3.0, ["B", "B", "B"]], [[], 0.3]],
-  [[[["LT", "max"]], 0.8], [[["LX", "min"]], 3.0, ["B", "B"]], [[], 0.3]],
-  [[[["LT", "max"]], 0.8], [[["LX", "max"]], 3.0, ["B", "B"]], [[], 0.3]],
+  [[[["LT", "max"]], 0.8], [[["LY", "min"]], 2.5, ["Y/150", "Y/150", "Y/150", "Y/150", "Y/150", "Y/150"]], [[], 0.3]],
+  [[[["LT", "max"]], 0.8], [[["LY", "max"]], 1.0], [[["LY", "min"]], 2.5, ["Y/150", "Y/150", "Y/150", "Y/150", "Y/150", "Y/150"]], [[], 0.3]],
+  [[[["LT", "max"]], 0.8], [[["LX", "min"]], 1.5], [[["LY", "min"]], 2.5, ["Y/150", "Y/150", "Y/150", "Y/150", "Y/150"]], [[], 0.3]],
+  [[[["LT", "max"]], 0.8], [[["LX", "max"]], 1.5], [[["LY", "min"]], 2.5, ["Y/150", "Y/150", "Y/150", "Y/150", "Y/150"]], [[], 0.3]],
 ]
 
 [drive]
@@ -98,6 +104,14 @@ progress_bar = 0.07
 progress_window_s = 10.0
 progress_mask = [[0, 0, 480, 160], [0, 840, 1280, 120]]   # the HUD, and the TIP banner
 stall_clear_s = 10.0
+
+[[crop]]
+name = "save-limit"
+state = "main_menu"
+region = [470, 370, 490, 115]
+ref = "save-limit.png"
+threshold = 12.0   # b12: the dialog 0.3-9.8, every other Buffy frame on disk (572) >= 23.3
+press = ["A"]      # "Press A to continue" -> the main menu
 
 [[crop]]
 name = "pause"

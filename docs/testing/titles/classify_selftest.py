@@ -67,12 +67,13 @@ SHT4 = "rdt4"                                  # lane.routedriver2 trial 4, Nova
 BUFR1 = "rdb1"                                 # lane.routedriver2 Buffy run 1, Nova: HUD missed, dark read black
 FZT2 = "rdf2"                                  # lane.routedriver2 Forza run f2, Nova: parked at the grandstand
 BUFR3 = "rdb3"                                 # lane.routedriver2 Buffy run 3, Nova: dark canyon, every capture kept
+BUFR12 = "rdb12"                               # lane.routedriver2 Buffy run 12, Nova: the 10-saves dialog loop
 LOCAL = {CVR2: "scratch/run-cv2/route-frames", CVR3: "scratch/run-cv3/route-frames",
          CVR5: "scratch/run-cv5/route-frames", SHR1: "scratch/run-sh1/route-frames",
          FZR1: "scratch/run-fz1/route-frames", SHT1: "scratch/run-t1/route-frames",
          SHT2: "scratch/run-t2/route-frames", SHT4: "scratch/run-t4/route-frames",
          BUFR1: "scratch/run-b1/route-frames", BUFR3: "scratch/run-b3/route-frames",
-         FZT2: "scratch/run-f2/route-frames"}
+         FZT2: "scratch/run-f2/route-frames", BUFR12: "scratch/run-b12/route-frames"}
 
 # drive.py's progress check ([drive] progress_bar): (name, profile, run, frame
 # ~10 s earlier, the frame before this one, this frame, the sim seconds
@@ -222,6 +223,11 @@ CASES = [
     ("buffy Summoning (the load) is waited on", "buffy", BUF, "030436-menu-start.png", None, None,
      ["main_menu", "profile"], "black"),
     ("buffy PAUSE over the canyon", "buffy", BUF, "030500-menu-start.png", None, None, ["main_menu", "play"], "paused"),
+    # The save-limit crop is first in profile order, so the cases around it
+    # (PAUSE, Start Game, the canyon) are its counter-cases. Without it the
+    # dimmed dialog read `cutscene` (run b12).
+    ("buffy 10-saves dialog over the main menu: a menu", "buffy", BUFR12, "055717-012-cutscene.png",
+     "055714-011-main_menu.png", "main_menu", ["title", "main_menu"], "main_menu"),
     ("buffy running in the canyon", "buffy", BUF1, "021351-play.png", "021330-gameplay.png", "play",
      ["main_menu", "play"], "play"),
     # The counter-cases: the frozen sky (replay 2, 21 s apart, identical) is
@@ -281,7 +287,7 @@ FOREIGN = [(SON2, "200707-play.png", "200657-play.png"), (FOR, "214502-play.png"
            (BUF1, "021351-play.png", "021330-gameplay.png")]
 TITLE_OF = {SON: "sonic-heroes", SON2: "sonic-heroes", SONT: "sonic-heroes", SONT2: "sonic-heroes",
             FOR: "forza", FZR1: "forza", SHR1: "sonic-heroes", SHT1: "sonic-heroes", SHT2: "sonic-heroes",
-            SHT4: "sonic-heroes", BUF: "buffy", BUF1: "buffy", BUFR1: "buffy", BUFR3: "buffy", FZT2: "forza", SMB: "super-monkey-ball-deluxe", CV: "castlevania-cod", CVT: "castlevania-cod",
+            SHT4: "sonic-heroes", BUF: "buffy", BUF1: "buffy", BUFR1: "buffy", BUFR3: "buffy", BUFR12: "buffy", FZT2: "forza", SMB: "super-monkey-ball-deluxe", CV: "castlevania-cod", CVT: "castlevania-cod",
             CVR2: "castlevania-cod", CVR3: "castlevania-cod", CVR5: "castlevania-cod"}
 
 # drive.py --sim runs: (name, profile, run, frames slice, args, checks). The
@@ -439,6 +445,36 @@ def escape_checks():
             got = "fail: %s, sent %d" % (str(e)[:30], len(d.dev.sent))
         ok = got == "sent 1" if fg else (got.startswith("fail: hakuX is not the focused app") and got.endswith("sent 0"))
         checks.append(("press with hakuX %s" % ("in front" if fg else "NOT in front"), ok, got))
+    # play_tap [btn, every, n, gap]: a burst of n presses gap s apart (Buffy's
+    # ledge jump). The counter-case: the two-element form sends one press,
+    # and a burst is still due only once per `every`. START in a burst is
+    # refused like any play tap.
+    for name, tap, want in (("play_tap burst [B, 2, 3, 0.4]: 3 presses", ["B", 2.0, 3, 0.4], 3),
+                            ("play_tap [B, 2]: 1 press", ["B", 2.0], 1)):
+        d = drv(dict(play_tap=[tap]))
+        d.dev.sent = []
+        c0 = d.clock_sim
+        a1 = d.play_taps(10.0)
+        a2 = d.play_taps(11.0)           # not due again yet
+        n = len([x for x in d.dev.sent if x[1:] == ("press", "B")])
+        spent = round(d.clock_sim - c0, 2)
+        ok = n == want and spent == round(0.4 * (want - 1), 2) and a2 == ""
+        checks.append((name, ok, "presses %d, slept %s, %r %r" % (n, spent, a1, a2)))
+    d = drv(dict(play_tap=[["B/150", 2.0, 2, 0.3]]))
+    d.dev.sent = []
+    d.play_taps(10.0)
+    got = [x[1:] for x in d.dev.sent if x[1] == "press"]
+    checks.append(("play_tap B/150 burst: held 150 ms", got == [("press", "B", "150")] * 2, got))
+    try:
+        drv(dict(play_tap=[["START/150", 5.0]]))
+        checks.append(("refused: START/150 in play_tap", False, "accepted"))
+    except SystemExit as e:
+        checks.append(("refused: START/150 in play_tap", "START" in str(e), str(e)))
+    try:
+        drv(dict(play_tap=[["START", 5.0, 2, 0.3]]))
+        checks.append(("refused: START in a play_tap burst", False, "accepted"))
+    except SystemExit as e:
+        checks.append(("refused: START in a play_tap burst", "START" in str(e), str(e)))
     for name, ok, got in checks:
         fails += not ok
         print("%s  escape %-44s %s" % ("ok  " if ok else "FAIL", name, "" if ok else got))

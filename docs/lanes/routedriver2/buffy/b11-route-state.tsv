@@ -1,0 +1,34 @@
+t	state	source	changed	luma	cap_s	action	frame	mode
+0.5	unknown	no-prev		8.3	0.37	wait (unknown)	055449-001-unknown.png	
+1.9	black	black		0.0	0.27	wait	055450-002-black.png	
+3.6	intro_video	moving	0.8997	86.0	0.52	press A (skip intro_video)	055452-003-intro_video.png	
+5.5	black	black		2.5	0.32	wait	055454-004-black.png	
+7.0	intro_video	moving	0.1889	10.9	0.32	press A (skip intro_video)	055455-005-intro_video.png	
+9.1	intro_video	moving	0.6311	37.8	0.47	press START (skip intro_video)	055457-006-intro_video.png	
+10.7	black	black		0.1	0.27	wait	055459-007-black.png	
+12.1	black	black		0.8	0.27	wait	055500-008-black.png	
+13.5	black	black		1.6	0.32	wait	055501-009-black.png	
+14.9	title	crop:title		13.4	0.37	press START (title 1)	055503-010-title.png	
+17.0	main_menu	crop:main-menu		30.3	0.52	press A (main_menu 1)	055505-011-main_menu.png	
+18.9	profile	crop:start-game		23.5	0.42	settle	055507-012-profile.png	
+20.5	profile	crop:start-game		25.1	0.47	press A (profile 1)	055509-013-profile.png	
+22.4	profile	crop:difficulty		25.1	0.47	settle	055510-014-profile.png	
+24.0	profile	crop:difficulty		26.3	0.52	press A (profile 1)	055512-015-profile.png	
+25.8	black	black		0.0	0.27	wait	055514-016-black.png	
+27.2	black	black		2.0	0.32	wait	055515-017-black.png	
+28.5	black	black		0.2	0.27	wait	055516-018-black.png	
+29.9	black	black		0.4	0.32	wait	055519-019-black.png	
+31.2	black	black		0.0	0.27	wait	055520-020-black.png	
+32.8	cutscene	moving	0.5126	14.2	0.57	press A (skip cutscene)	055523-021-cutscene.png	
+35.2	unknown	hud:hud+after-cutscene	0.6171	15.3	0.77	hold (hud up, motion not yet play)	055525-022-unknown.png	
+37.3	stalled	hud:hud+static	0.1739	14.3	0.67	stall escape 1	055535-023-stalled.png	
+47.1	stalled	hud:hud+static p=0.007	0.2545	12.1	0.62	hold (stalled 0 s)	055537-024-stalled.png	
+49.0	stalled	hud:hud+static p=0.001	0.1391	13.3	0.67	hold (stalled 2 s)	055539-025-stalled.png	
+51.2	stalled	hud:hud+static p=0.031	0.3186	13.4	0.67	hold (stalled 4 s)	055541-026-stalled.png	
+53.2	stalled	hud:hud+static p=0.042	0.299	12.6	0.62	hold (stalled 6 s)	055543-027-stalled.png	
+55.1	stalled	hud:hud+static	0.166	12.3	0.62	hold (stalled 8 s)	055545-028-stalled.png	
+57.1	stalled	hud:hud+static p=0.094	0.5282	18.1	0.72	stall escape 1	055556-029-stalled.png	
+66.5	stalled	hud:hud+static p=0.04	0.6485	5.5	0.42	stall escape 1	055605-030-stalled.png	
+# time_to_title_s=14.9
+# time_to_play_s=
+# result=window-done

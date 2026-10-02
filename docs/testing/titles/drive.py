@@ -70,7 +70,8 @@ for a cursor the d-pad does not move (Castlevania's save prompt).
                          capture), or play_cycle's phases in turn ([[axes],
                          seconds]: an on-foot title walks a square, since one
                          held direction ends against the first wall),
-                         play_tap buttons every N s. NEVER START: the profile
+                         play_tap buttons every N s ([btn, N, n, gap]: a burst
+                         of n presses). NEVER START: the profile
                          is refused if a play input is START. The play input
                          is also held, as a probe, on any frame where the
                          play HUD is up but the motion has not said `play`
@@ -383,12 +384,14 @@ class Driver:
 
     # -- bookkeeping -------------------------------------------------------
     def check_profile(self):
-        for b, _ in self.inp.get("play_tap", []):
+        for b, *_ in self.inp.get("play_tap", []):
+            b = b.split("/")[0]
             if b in ("START", "SELECT", "BACK"):
                 raise SystemExit("drive.py: profile play_tap sends %s: START in live play pauses it" % b)
         for mode in [None] + [m["name"] for m in self.p.get("mode", [])]:
             self.mode = mode
-            for b, _ in self.inp_for("play_tap", []):
+            for b, *_ in self.inp_for("play_tap", []):
+                b = b.split("/")[0]
                 if b in ("START", "SELECT", "BACK"):
                     raise SystemExit("drive.py: profile play_tap (mode %s) sends %s: START in live play pauses it"
                                      % (mode, b))
@@ -792,13 +795,24 @@ class Driver:
                 self.stall_streak, self.recover_since = False, None
 
     def play_taps(self, t):
+        """play_tap entries are [button, every] (one press, at most once per
+        capture) or [button, every, n, gap]: n presses `gap` s apart, for a
+        jump that has to go off near an edge the driver cannot see (Buffy's
+        ledge gap: one B per ~2 s capture landed her in the stream bed)."""
         act = ""
-        for b, every in self.inp_for("play_tap", []):
-            last = getattr(self, "_tap_" + b, -1e9)
+        for tap in self.inp_for("play_tap", []):
+            b, every = tap[0], float(tap[1])
+            n = int(tap[2]) if len(tap) > 2 else 1
+            gap = float(tap[3]) if len(tap) > 3 else 0.0
+            btn, _, ms = b.partition("/")   # `B/150`: held 150 ms (a game at 15 fps polls every 67)
+            last = getattr(self, "_tap_" + btn, -1e9)
             if t - last >= every:
-                setattr(self, "_tap_" + b, t)
-                self.dev.pad("press", b)
-                act += " tap %s" % b
+                setattr(self, "_tap_" + btn, t)
+                for k in range(n):
+                    if k:
+                        self.sleep(gap)
+                    self.dev.pad("press", btn, *([ms] if ms else []))
+                act += " tap %s" % b + ("x%d" % n if n > 1 else "")
         return act
 
     def enter(self, state, r, frame):

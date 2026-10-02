@@ -327,3 +327,39 @@ problems:
 Run b7 measures (1) first: four escapes, each exploring one direction
 (forward, back, left, right) with B pressed through the push, every escape
 filmed at 0.5 s (`escape_capture_s`), every capture kept.
+
+Held runs, Nova ee317437, hold `routedriver2:s2` 05:35-05:59 PDT, AC, 80%,
+each 240 s or less with `--find` (records: `docs/lanes/routedriver2/buffy/`):
+
+| run | change | result | what the frames show |
+|---|---|---|---|
+| b7 | four exploring escapes (forward, back, left, right, B through each), every capture kept, escapes filmed at 0.5 s | ROUTE FAIL stalled | The timeline diverged from b5/b6. She climbed the low ledge (027), then **the camera swung to the sky** (028-036, 20 s). That is titleroutes replay 2's "frozen sky": the camera, not a wall. Escape 1 (forward + B) left it on the sky. Escape 2 starts with LT, and **LT (the camera reset) brought her back into view**. At 92 s she splashed into the stream bed (042). Then 8 escapes, each direction twice with B through the push, filmed every 0.5 s: **she never left the water**. The stream bed is a closed pit for every input tried. |
+| b8 | B every capture, as a burst of 3 presses 0.4 s apart (new `play_tap` burst form); every escape starts with LT | ROUTE FAIL stalled | In the stream bed by 45 s, earlier than before. Escape frames: B presses with forward held, in the water, show no airborne frame. |
+| b9 | probe: HUD bars at 1.01, so every HUD frame is `stalled` and escape 1 (LT, forward + B x4) fires at the spawn, on dry ground | (probe) | Running forward on dry ground with B pressed 4x in 0.9 s: never airborne at 0.4 s sampling. Escape 2: she ran forward toward the gap with B x4 at the phase start, then went off the edge 1-2 s later with no B in that window and splashed in (021). |
+| b10 | B presses held 150 ms (the gap's frames read FPS 14-20, 50-70 ms a frame; pad.sh's default press is 60 ms), a burst of 8 every capture | ROUTE FAIL stalled | In the stream bed by 45 s. |
+| b11 | probe: standing still on flat ground, stick released: B/150, B/300, A, X, Y, 1.5 s apart, filmed at 0.3 s | (probe) | **B and A each draw an attack trail (a kick, a punch), not a jump.** At the second site, on the ledge top under the "Run and press B" tip, the **Y** press (phase 5) moved her off the ledge with no stick: 022 standing, 023 blur, 024 splash in the stream bed. |
+| b12 | Y bursts in place of B | ROUTE FAIL stuck, main_menu | **Never reached the canyon: the save limit.** Each Start Game makes a save ("BUFFY n"), the game keeps 10, and the Nova's disk is kept between runs. Dispatched runs keep it too: hdd.plan "keep", "the disk carries the store's saves". With 10 saves, Start Game shows "Buffy The Vampire Slayer only allows 10 saved games on your Xbox Hard Disk ... Press A to continue", and A goes back to the main menu. The driver looped there (it read the dimmed dialog as `cutscene` and pressed A). |
+
+What this settles:
+- The stream bed has no exit the driver can find. Falling in ends the run,
+  so escapes cannot fix the gap; the jump has to be made.
+- B pressed while running, at any density tried (one per ~2 s, a burst of
+  3, a burst of 8 held 150 ms), never produced a frame of her in the air.
+  Standing B is a kick. Y is the one button seen to move her off a ledge
+  without the stick. **Open:** whether Y is the jump. b12 was meant to
+  answer it and hit the save limit first.
+- LT clears the sky-camera stall. Every escape now starts with LT.
+
+Fixes from this:
+- `play_tap` takes a burst, `[btn, every, n, gap]`, and `BTN/ms` presses.
+  Selftest: a burst sends n presses and sleeps (n-1) x gap. The counter-case:
+  `[btn, every]` sends one, and a burst is not due again inside `every`.
+  `B/150` is sent held 150 ms. START is refused in a burst and as
+  `START/150`. Mutant: a burst collapsed to one press is caught.
+- Buffy's main menu takes **Load Game** (`LY:max`, then A). A `save-limit`
+  crop (main_menu, press A) catches the dialog. Its scores: the dialog
+  0.3-9.8, all 572 other Buffy frames on disk >= 23.3. Fixture: the b12
+  dialog reads main_menu. Its counter-cases are the PAUSE, Start Game and
+  canyon cases, since the crop is first in profile order. Mutant: without
+  the crop the dialog reads `cutscene`, caught. The Load Game screen itself
+  has not been seen yet: the next run films it.
