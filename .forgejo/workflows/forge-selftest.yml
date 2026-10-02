@@ -30,7 +30,12 @@ concurrency:
 
 jobs:
   selftest:
-    if: github.event_name != 'pull_request' || !startsWith(github.event.pull_request.title, 'WIP')
+    # `edited` counts only when the title loses its WIP prefix (draft -> ready):
+    # hakux-forge-prsync rewrites PR bodies, and a body edit is not a new head.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (!startsWith(github.event.pull_request.title, 'WIP') &&
+       (github.event.action != 'edited' || startsWith(github.event.changes.title.from, 'WIP')))
     runs-on: host
     timeout-minutes: 120
     steps:
