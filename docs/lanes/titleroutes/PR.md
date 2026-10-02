@@ -1,12 +1,59 @@
-# titleroutes: session 59 -- fixed castlevania-cod.first-run's name-entry timing race, flagged a stale-ref confirmation
+# titleroutes: session 60 -- build the real waitfor/press-until fix (ADDENDUM 11) for castlevania-cod.first-run
 
 State: ready
 
 Lane: titleroutes          Issue: #397 (per-title gameplay fps; 0.5 tracking #433)
 Base: master @ 4f37bdfbc7 (session 57's fold; merged clean before this session's work)
-Files: docs/testing/titles/routes/castlevania-cod.first-run.route, docs/testing/titles/routes/sonic-heroes.route, docs/testing/titles/targets.toml, docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/OUTBOX.md, docs/lanes/titleroutes/PR.md
+Files: docs/testing/titles/route.sh, docs/testing/titles/waitfor_match.py, docs/testing/titles/waitfor_selftest.py, docs/testing/titles/routes/castlevania-cod.first-run.route, docs/testing/titles/routes/sonic-heroes.route, docs/testing/titles/routes/refs/castlevania-cod.first-run/**, docs/testing/titles/targets.toml, docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/OUTBOX.md, docs/lanes/titleroutes/PR.md
 Prediction: none: analysis/route-authoring only, no pixel-affecting arm
-Needs device: yes -- a verification already queued (`1790903439-titleroutes-1317193`, Nova, route check), not a background task of this session's
+Needs device: yes -- a verification already queued (`1790905334-titleroutes-1780552`, Nova, route check), not a background task of this session's
+
+## What changed (session 60)
+
+Session 59's fix (below) was wrong: the owner's own verification run
+(`1790903439-titleroutes-1317193`) showed both presses of the "self-heal"
+landing on a still-black, not-yet-loaded screen (`181831-name-a.png` and
+`181838-name-a2.png`, both black), not a single dropped press. The owner
+stopped that run (ADDENDUM 11, 2026-10-01 ~18:30 PDT) and asked for a route
+that looks at the screen before pressing into it, for every title, not
+another guess at this one.
+
+Built it: `route.sh` gained `waitfor <name> <timeout_s> <x,y,w,h>
+<threshold>` and `press-until <BTN> <name> <max_n> <gap_s> <x,y,w,h>
+<threshold>` steps that poll a screencap region against a committed
+reference crop (`docs/testing/titles/waitfor_match.py`, PIL+numpy mean abs
+diff over a grayscale downscale) instead of a fixed `wait`, and ABORT the
+route (`ROUTE FAIL ...`, a frame kept) rather than typing blind. The
+existing grammar is unchanged -- all 58 pre-existing `.route` files still
+pass `route.sh --check` byte-for-byte, and a `ROUTE_DRY=1` run of the
+rewritten route shows the new steps falling through cleanly.
+
+Proved the comparator against the exact failure before spending any device
+time: `docs/testing/titles/waitfor_selftest.py`, 5/5 cases, using committed
+fixture crops under `routes/refs/castlevania-cod.first-run/selftest/`
+(including the real still-black frame from the withdrawn run). Also ran
+`waitfor_match.py` directly against the real failed-run frames: the black
+`name-a2.png` scores 102.9 NOMATCH, the loaded `name-start.png` scores 2.9
+MATCH against a threshold of 15 -- the fix would have caught exactly what
+session 59 missed.
+
+Re-authored `castlevania-cod.first-run.route`'s newgame -> Name-Entry
+section (the only section with diagnosed evidence of a race; the rest of
+the route is unchanged) to `waitfor` the Name Entry screen before pressing,
+then `press-until` the letter and check the field itself (up to 5 presses,
+1.5s apart) instead of a fixed wait and a guessed press count.
+
+**Verification queued, not replayed live** (ADDENDUM 11's own sequencing,
+ADDENDUM 8's disk-state reasoning still holds -- only a dispatch rebuild
+reproduces the no-save disk state this route targets): `request.sh --who
+titleroutes --title 4B4E002D-Castlevania_Curse_of_Darkness.xiso.iso
+--device nova --hard-pin --route castlevania-cod.first-run --seconds 900
+--ref 1f23c068f0 --no-expect "route authoring check, no Playable verdict
+expected"` -> `1790905334-titleroutes-1780552`. Next session reads its
+result before anything else (route-frames, frame by frame, not the exit
+code or mark alone).
+
+## What changed (session 59, carried forward)
 
 ## What changed (session 59)
 
@@ -51,18 +98,20 @@ whoever reviews it.
 ## Local checks (no CI while GitHub is suspended)
 
 - `python3 docs/testing/titles/titlestate_selftest.py` -- all checks passed.
+- `python3 docs/testing/titles/waitfor_selftest.py` -- 5/5 cases passed.
 - `targets.toml` parses via `tomllib` (80 titles).
-- `bash docs/testing/titles/route.sh --check docs/testing/titles/routes/castlevania-cod.first-run.route` -- route ok.
+- `bash docs/testing/titles/route.sh --check <f>` over all 58 `docs/testing/titles/routes/*.route` files -- all ok, no regression from the new grammar.
+- `ROUTE_DRY=1 bash docs/testing/titles/route.sh docs/testing/titles/routes/castlevania-cod.first-run.route` -- runs cleanly through both new steps and the rest of the route (killed by the dry run's own short timeout, as expected; not a route failure).
 
-Release note (none): lane/testing-infrastructure data (routes, notes), not
-emulator code.
+Release note (none): lane/testing-infrastructure data and route-player
+tooling (route.sh, routes, refs, notes), not emulator code.
 
-No specific next title named by a new addendum; absent one, the next
-session reads the two open request results (see NOTES.md "State for a
-successor"), finishes the Castlevania first-run/base-name/nomination work
-per ADDENDUM 8, then Super Monkey Ball Deluxe's post-mark stage-select-menu
-fix (ADDENDUM 9 item 2), then the still-open backlog (13 Nova-only
-no-route titles; the Thor's untouched titles remain blocked on the
-fan/CPU-stop decision).
+Next session reads `1790905334-titleroutes-1780552`'s result first
+(route-frames, frame by frame). If it reaches real play and creates a
+save: the base-name run (ADDENDUM 8 step b), then nominate `castlevania-cod`
+(not the variant name). Then: Super Monkey Ball Deluxe's post-mark
+stage-select-menu fix (ADDENDUM 9 item 2), Sonic Heroes' play-loop fix
+(ADDENDUM 10), then the still-open backlog (13 Nova-only no-route titles;
+the Thor's untouched titles remain blocked on the fan/CPU-stop decision).
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

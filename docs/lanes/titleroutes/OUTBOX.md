@@ -690,3 +690,43 @@ this branch (not a new bug) -- it needs a re-nomination once sessions
 
 Next session: read both request results first (see NOTES.md "State for a
 successor"), then continue per ADDENDUM 8/9.
+
+## #397 -- 2026-10-01 19:05 PDT (session 60)
+
+Session 59's "self-heal" fix for `castlevania-cod.first-run.route` (a second
+blind press on the Name Entry letter tile) was wrong, as the owner found
+directly (ADDENDUM 11, ~18:30 PDT) by watching its own verification run
+(`1790903439-titleroutes-1317193`) sit stuck on Name Entry and stopping it:
+both presses landed on a still-black, not-yet-loaded screen -- confirmed by
+reading `181831-name-a.png`/`181838-name-a2.png` (both black) -- not a
+dropped press. The owner asked for the real fix: a route that looks at the
+screen before pressing into it, not another guess.
+
+Built it. `route.sh` gained two new step types, `waitfor` and
+`press-until`, that poll a screencap region against a committed reference
+crop (mean abs diff, grayscale, downscaled) instead of playing a fixed
+`wait`, and ABORT the route with a clear `ROUTE FAIL` line rather than
+typing blind into whatever screen is actually up. A new selftest
+(`docs/testing/titles/waitfor_selftest.py`) proves the comparator against
+this exact failure -- including the real still-black frame from the
+withdrawn run -- before any device time was spent: 5/5 cases pass. All 58
+existing `.route` files still parse unchanged. `castlevania-cod.first-run.route`'s
+newgame -> Name-Entry section now waits for the Name Entry screen itself to
+be up (timeout 30s, generous), then presses the letter and checks the field
+itself, retrying up to 5 times -- not a fixed wait and a blind press count.
+
+Verification queued (not replayed live, per ADDENDUM 11's own sequencing
+and ADDENDUM 8's disk-state reasoning): `1790905334-titleroutes-1780552`
+(Nova, hard-pinned, `--route castlevania-cod.first-run --seconds 900`, ref
+`1f23c068f0`, tagged as a route check, not a Playable confirmation).
+
+| title | device | route | status | note |
+|---|---|---|---|---|
+| Castlevania: Curse of Darkness (4B4E002D) | Nova | castlevania-cod.first-run | fix queued for verification (1790905334-titleroutes-1780552) | see above; route.sh now has waitfor/press-until |
+
+Next session: read that result first (frame-by-frame, not the exit code or
+mark alone -- see NOTES.md "State for a successor"). If it reaches real
+play and creates a save, do the base-name run next (ADDENDUM 8 step b)
+before nominating. Still open and unreached: Super Monkey Ball Deluxe's
+post-mark stage-select-menu problem (ADDENDUM 9 item 2) and Sonic Heroes'
+play-loop fix (ADDENDUM 10).
