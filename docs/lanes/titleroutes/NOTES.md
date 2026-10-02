@@ -5015,3 +5015,69 @@ read back from the queued .req files as `nova`):
 |---|---|
 | Dino Crisis 3 (`dino-crisis-3`) | `1790931260-titleroutes-3615015` |
 | Buffy (`buffy`) | `1790931264-titleroutes-3615749` |
+
+**Replay results (read in this session, frames copied to `scratch/judge/`, scored locally with
+`docs/testing/title_verdict.py <dir> --targets docs/testing/titles/targets.toml`):**
+
+- **Dino Crisis 3 -- CONFIRMED.** `1790931260-titleroutes-3615015`: no `ROUTE FAIL`; mark at 02:07:12, ~156 s after
+  launch. `020712-gameplay.png` is the corridor with the HUD; `020730..021035-play.png` are live play: boosting into the
+  next room, an "Activate switch? YES/NO" prompt answered by the loop's A, the switch turning green, the player hovering
+  and firing. No Options screen. The player mostly stays in that room, but it is live, changing play (static_frac 0.24).
+  Screening numbers (207 s of play): window median 27.16 fps, 15.6% at 30+, hang=true from two shader-classified
+  stalls (15,077 ms at +29 s and 12,396 ms at +82 s, shader_stage_ms 12,010 / 9,847). result.json says the shader
+  cache was cleared for the new apk, so these are first-time pipeline compiles: an emulator finding (the ubershader
+  work), not a route defect. Not nominated (well below the 90% bar). DRAFT removed in targets.toml.
+- **Buffy, replay 1 -- reached play, then STUCK.** `1790931264-titleroutes-3615749`: Start Game named the save
+  "Buffy 2" (the survey's "Buffy 1" was on the disk) with no overwrite prompt, so the disk's save state does not change
+  the path. The 5th START/A cycle paused and resumed; `021329-pre-mark` and `021330-gameplay` are the live canyon;
+  `021351`/`021411`/`021432` show her moving to new spots; then `021451..021716`, 8 frames over 4 min, are one
+  identical view (sky and a tree) under the tip "Run and press B to jump between ledges". She was stuck at a gap that
+  needs a running jump, and loop 1 never pressed B. Scorer: 95.4% at 30+, no hang, worst hitch 222 ms, static_frac
+  0.10 -- real numbers, but over a stuck window. The same trap as Sonic Heroes (ADDENDUM 10): a frame review rejects it.
+- **Buffy, replay 2** (loop now runs forward with B jumps twice per cycle and 1.5 s turns; commit `68bd2e6df6`):
+  queued as `1790932722-titleroutes-3976729`. It had not run by 02:58 PDT: lane.routedriver2 has held the Nova since
+  02:21 PDT ("Sonic Heroes drive trials, at most 480 s each"), past its 30 min, and that hold is not mine to touch.
+
+**Also queued** (ADDENDUM 17 item 2, behind Buffy replay 2; pass-1 generic surveys, 300 s, Nova, ref `8ba59e26d5`):
+Halo: Combat Evolved `1790933948-titleroutes-171581`, Conker: Live & Reloaded `1790933948-titleroutes-171701`.
+`dispatch/pilots/titleroutes.ok` records all of this.
+
+### Do not repeat (session 65)
+
+- A survey's scored window says nothing about whether the title reached play: Dino Crisis 3's survey read
+  29.97 fps / 100% on the Options screen, and its first corridor frames sit two cycles before the mark.
+  Read every menu cycle's frames; the play is often in the middle.
+- A route that reaches play can still idle for the whole window (Buffy at a ledge gap, Monkey Ball on Stage Select,
+  Sonic at a wall). Look at the LAST frames of a replay, not just the mark: identical frames across minutes = stuck.
+  On-screen tips ("press B to jump") say what the loop is missing.
+- `waitfor` crops do not reach a dispatched run; write dispatched routes open-loop, with every post-mark press chosen
+  so it is harmless on whatever menu the game might fall into (B = Cancel/Exit, A/START pairs = pause/resume).
+
+### State for a successor (this was attempt 4 of 4; the lane cannot be resumed again)
+
+**Queued, NOT yet reviewed** (Nova, read each result's route-frames before anything else):
+1. `1790932722-titleroutes-3976729` -- Buffy replay 2 (`buffy.route` @ `68bd2e6df6`). Pass = the mark frame is the live
+   canyon AND the last frames differ from each other (she keeps moving: new ledges, not the sky/tree view). If it
+   passes and the scorer reads >= 90% at 30+ with no hang: remove DRAFT in targets.toml (45410012) and append to
+   `host-tools/nova-nominations.tsv`: `Buffy the Vampire Slayer (USA).xiso.iso<TAB>buffy<TAB>600<TAB><reason>`.
+   Launch to mark is ~125 s (replay 1: boot ~021205, mark 021330). If it is still stuck, try a held nav.py session to
+   find the canyon's actual path rather than a third blind loop.
+2. `1790933948-titleroutes-171581` -- Halo: Combat Evolved survey (4D530004).
+3. `1790933948-titleroutes-171701` -- Conker: Live & Reloaded survey (4D530051).
+
+**Routed and confirmed:** Dino Crisis 3 (`dino-crisis-3`), screening 27.16 fps median, not nominated.
+
+**Reached gameplay in a survey, no route yet** (author from their survey frames, same method as this session):
+Star Wars Ep. III (4C410017, `1790921690-titleroutes-1082096`), Gunvalkyrie (49470017, `1790921696-titleroutes-1084287`,
+59.94 fps / 100% -- the strongest nomination candidate once routed), Bloody Roar: Extreme (48550001,
+`1790921692-titleroutes-1082566`, 10.8 fps: a real slowdown for per-title triage).
+
+**Blocked / needs closed-loop input:** Black Stone (58490004, name-entry screen; needs `waitfor` crops staged into
+dispatched runs first), Castlevania first-run (lane.routedriver's), Batman: Dark Tomorrow (combat-blocked, session 2).
+
+**Not yet surveyed (Nova-only backlog):** Halo 2 (4D530064), Ninja Gaiden Black (5443000D), ToeJam & Earl III
+(5345000F), Tron 2.0: Killer App (42560001). Behind them: `scratch/rank_untouched.py`'s ranked list (Doom 3,
+Monster Garage, AMF Bowling 2004, ...), Thor-side and closed until the Thor's fan ships.
+
+**Still open from earlier sessions:** Sonic Heroes hold-UP loop (ADDENDUM 10; lane.routedriver2 is driving it now),
+Super Monkey Ball's post-mark Stage Select loop (ADDENDUM 9).
