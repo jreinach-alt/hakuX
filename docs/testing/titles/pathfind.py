@@ -486,6 +486,9 @@ How to act:
   Online/Xbox Live, Extras, Load. Read where the cursor/highlight IS before moving it; send the moves and the
   confirm together, e.g. ["DOWN","DOWN","A"].
 - Team/character/car/course select: accept the default with A (or START), repeatedly if several confirms.
+- Sports controller/team-select screens: if controller icons sit in the MIDDLE column between the two teams,
+  nobody is assigned and the CPU plays both sides (a match that looks live but ignores the stick: ESPN NHL
+  2K5, 10-02). First move controller 1 under a team with LEFT or RIGHT (or STICK:left:0.3), then A.
 - Profile creation / name entry: on a keyboard, A TYPES the highlighted letter. Prefer START, which usually
   jumps to Done/Accept; then A on Done/OK. Accept defaults.
 - Save/load prompts: "no storage device / continue without saving": choose continue. Prompts that create a
