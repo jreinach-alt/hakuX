@@ -1,0 +1,181 @@
+# Sonic Heroes (5345002B) -- drive profile (#433, lane.routedriver).
+#
+# Reference crops are in sonic-heroes/, cut from frames already on disk
+# (regions in 1280x960 space; classify.py scales them):
+#   title-logo      1790902215-autoverdict-1078702 180331-boot20 (logo over clouds)
+#   title-art       1790910096-lane.local-2693820 200413-booted (Team Sonic art, "Press START")
+#   logo-sonicteam  1790902215 180421, logo-dolby 1790902215 180426
+#   profile-slots   1790910096 200422-menu1 (the No.01/02/03 slot strip; also under
+#                   the Start/Delete/Cancel popup)
+#   profile-nodata  1790902215 180444 ("There is no Game Data ... Create Game Data 01?")
+#   profile-created 1790902215 180451 ("Game Data has been created ... press A")
+#   menu-banner     MASKED, learned from the Y/emblem badge at the top right of
+#                   Main Menu, 1P PLAY, STORY and team select (1790902215 180456,
+#                   180502, 180507; 1790910096 200449, 200456; 1790839390 004145)
+#   loading-stage   1790839390-titleroutes-2237657 004157 ("NOW LOADING", Thor)
+#   pause           MASKED, learned (classify.py learn) from the PAUSE box over
+#                   three scenes: 1790902215 180617, 1790839390 004209 and 004235
+#   hud             MASKED, learned from the top-right HUD (team gauge, Y and B
+#                   badges) over nine scenes on both handhelds, one with Tails
+#                   leading (1790830432-titleroutes-311058 222435), so the team
+#                   circles that rotate with the formation are left out.
+# Thresholds from the score table in docs/lanes/routedriver/NOTES.md
+# (session 2): every crop's own screens score under its threshold and every
+# other screen on disk scores well over it.
+
+name = "sonic-heroes"
+title = "Sonic Heroes"
+title_id = "5345002B"
+genre = "onfoot"
+# Boot to play, from the frames: Sega/Sonic Team/Dolby logos, an intro FMV,
+# the title (two variants), the save prompt or the slot strip, Main Menu ->
+# 1P PLAY -> STORY -> team select, the story cutscene, NOW LOADING, Seaside Hill.
+order = ["boot", "logo", "intro_video", "title", "profile", "main_menu", "cutscene", "loading", "play"]
+# HUD frames are judged by their own bars. The team wedged against a stone
+# block 14 s into Seaside Hill reads 0.14-0.18 changed between captures 2 s
+# apart (water, the clock, idle animation); running reads 0.59-0.83 over
+# three runs (rdsh1 2 s apart, 1790910096 and 1790830432 ~10 s apart). On
+# the default 0.05 bar the wedge read `play` (routedriver session 4, replay 1).
+hud_motion_bar = 0.35
+hud_stall_bar = 0.30
+
+[input]
+title = ["START"]
+profile = ["A"]          # every default is the one wanted: Create, Start, slot 01
+main_menu = ["A"]        # 1P PLAY -> STORY -> TEAM SONIC, all defaults
+ingame_menu = ["A"]
+paused = ["START"]       # resume (Continue is highlighted)
+# Run forward; jump now and then. NEVER START: it pauses (run 1790902215).
+play_hold = [["LY", "min"]]
+play_tap = [["A", 8.0]]
+# On a stall (HUD up, the scene not moving as a run does), ONE escape:
+# hold forward and press A 20 times (~6 s; jump, then mid-air A, which flies
+# the team in Fly formation), then forward-right and forward-left with 4 A.
+# THE SECTION IS NOT SOLVED. The team wedges on a stone block ~20 s
+# (game clock) into Seaside Hill with Tails leading (lane.titleroutes
+# session 61; this lane's replays 1, 3-6, Nova). Every escape tried ends in
+# the sea and costs a life (the stage restarts):
+#   replay 3  back off 2.5 s (ran ~6 s on the capture clock), A,A x3: walked
+#             off the ledge beside the block, 3 deaths in 150 s
+#   replay 4  forward + 4 A: flew over the block, out over the water (clock
+#             30:96), fell short of the next island when the presses stopped
+#   replay 5  forward + 20 A (this cycle): flew farthest (clock 39:74), came
+#             down in the water to the RIGHT of the next platform (a grate on
+#             the team's left), died
+#   replay 6  forward 3 s + 8 A, then forward-left 5 s + 14 A: died sooner
+# So escape_max = 1: one try per run (one life), then the stall watch ends
+# the run as ROUTE FAIL "stalled" rather than spending lives into a Game
+# Over menu. A --find run is unaffected: it reaches 20 s of play before the
+# block (replay 2, 34.7 s).
+stall_cycle = [[[["LY", "min"]], 8.0, ["A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A"]], [[["LY", "min"], ["LX", "max"]], 2.5, ["A", "A", "A", "A"]], [[["LY", "min"], ["LX", "min"]], 2.5, ["A", "A", "A", "A"]]]
+
+[drive]
+stall_fail_s = 40.0
+escape_max = 1
+
+# THE SOLUTION (routedriver session 4, NOVA ee317437, 2026-10-01 23:52 PDT,
+# replay 2, drive.py --find, rc 0 `reached-play`, 0 model calls; Thor
+# timings not measured): title at 8.1 s, play at 34.7 s, ended at 55 s after
+# 20 s of play. The old sonic-heroes.route waited 20 s at boot and 100 s for
+# the story cutscene and marked gameplay ~200 s in. Inputs, each sent once
+# the crop named its screen:
+#   Sonic Team logo: A -> Sofdec/ADX (moving, intro_video): A -> Dolby logo:
+#   A, then START (Dolby took the second press) -> title art: START -> slot
+#   strip: A, A (slot 01, Start) -> Main Menu / 1P PLAY / STORY / Team Sonic:
+#   A x4 -> story cutscene: A (skipped at once) -> NOW LOADING -> Seaside
+#   Hill: LY:min held, A every 8 s. Record: docs/lanes/routedriver/sonic/.
+# Skips learned from replay 2 (`drive.py learn`); the driver tries these first.
+[skip.logo]          # 2026-10-02T06:53:17Z, 2 visits (Nova)
+button = "A"
+after_s = 0.0
+landed = "intro_video"
+landed_times = 1
+
+[skip.intro_video]   # 2026-10-02T06:53:17Z, 1 visit (Nova; the Sofdec/ADX card)
+button = "A"
+after_s = 0.0
+landed = "logo"
+landed_times = 1
+
+[skip.cutscene]      # 2026-10-02T06:53:17Z, 1 visit (Nova; the Team Sonic story cutscene)
+button = "A"
+after_s = 0.0
+landed = "loading"
+landed_times = 1
+
+[[crop]]
+name = "pause"
+state = "paused"
+region = [500, 330, 290, 240]
+ref = "pause.png"
+threshold = 25.0
+
+[[crop]]
+name = "title-logo"
+state = "title"
+region = [290, 290, 700, 330]
+ref = "title-logo.png"
+threshold = 25.0
+
+[[crop]]
+name = "title-art"
+state = "title"
+region = [330, 100, 300, 300]
+ref = "title-art.png"
+threshold = 35.0          # the art drifts as it settles: 27 on 200413-pretitle
+
+[[crop]]
+name = "logo-sonicteam"
+state = "logo"
+region = [280, 330, 720, 340]
+ref = "logo-sonicteam.png"
+threshold = 15.0
+
+[[crop]]
+name = "logo-dolby"
+state = "logo"
+region = [330, 420, 660, 240]
+ref = "logo-dolby.png"
+threshold = 15.0
+
+[[crop]]
+name = "profile-nodata"
+state = "profile"
+region = [190, 210, 900, 300]
+ref = "profile-nodata.png"
+threshold = 20.0
+
+[[crop]]
+name = "profile-created"
+state = "profile"
+region = [190, 284, 900, 312]
+ref = "profile-created.png"
+threshold = 20.0
+
+[[crop]]
+name = "profile-slots"
+state = "profile"
+region = [80, 250, 1120, 70]
+ref = "profile-slots.png"
+threshold = 20.0
+
+[[crop]]
+name = "menu-banner"
+state = "main_menu"
+region = [990, 70, 200, 100]
+ref = "menu-banner.png"
+threshold = 20.0
+
+[[crop]]
+name = "loading-stage"
+state = "loading"
+region = [800, 130, 340, 50]
+ref = "loading-stage.png"
+threshold = 20.0
+
+[[crop]]
+name = "hud"
+state = "play"
+region = [890, 60, 300, 150]
+ref = "hud.png"
+threshold = 20.0

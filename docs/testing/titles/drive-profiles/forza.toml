@@ -1,0 +1,112 @@
+# Forza Motorsport (4D53006E) -- drive profile (#433, lane.routedriver).
+#
+# The blind survey route (forza414.route) held LY and pressed A in the race:
+# neither accelerates, so the car sat on the grid at 0 MPH, PLACE 8/8, for
+# whole runs with the race clock running (1790914021-lane.ibcache-3202498,
+# 1-1790826491-lane.verdict433-3477700). Its START presses also paused the
+# race every other cycle. Here the race is driven with the right trigger
+# held (RT = ABS_GAS on both handhelds, pad.sh), and a HUD with nothing
+# moving is `stalled`, not `play`.
+#
+# Reference crops in forza/ (regions in 1280x960 space):
+#   title-logo      1790914021 214158 (FORZA MOTORSPORT logo, "PRESS A TO START")
+#   profile-select  1790914021 214204 (the PROFILE SELECT header)
+#   pause           1790914021 214256 (the PAUSE header; both pause variants share it)
+#   menu-footer     1790914021 214211 (the "A Select / B Back" footer every menu has;
+#                   last of the non-play crops, so the pause and profile headers win)
+#   hud-lap         MASKED, learned from the LAP/RACE/LAP block over eight race
+#                   frames from two runs and two tracks (1-1790826491 213542 213608
+#                   213633 214640 214706 215058, 1790914021 214502 214302).
+# DRIVEN: routedriver session 4, Thor, 2026-10-01 23:39 PDT, drive.py --find
+# reached play (see THE SOLUTION below the [drive] table).
+
+name = "forza"
+title = "Forza Motorsport"
+title_id = "4D53006E"
+genre = "driving"
+order = ["boot", "logo", "intro_video", "title", "profile", "main_menu", "loading", "cutscene", "play"]
+
+[input]
+title = ["A"]            # "PRESS A TO START"
+profile = ["A"]          # the Default profile
+main_menu = ["A"]        # Arcade Race -> event -> class -> car -> assists -> Start Race
+ingame_menu = ["A"]
+paused = ["A"]           # Resume is highlighted; START would also resume
+play_hold = [["RT", "max"]]
+
+[drive]
+stall_fail_s = 30.0
+# Forza's assists overlay, its loading screen and the starting grid are
+# animated menus the classifier reads as moving (`cutscene`): A advances
+# all of them, B would back out, START on the grid opens the pause.
+ladder = ["A"]
+
+# THE SOLUTION (routedriver session 4, THOR bdc158a5 -- not the Nova: Thor
+# and Nova timings differ -- 2026-10-01 23:39 PDT, drive.py --find, rc 0
+# `reached-play`, 0 model calls): title at 15.5 s, play at 74.7 s, run ended
+# at 97 s after 20 s of confirmed play. The blind forza414.route spent 14
+# START/A rounds (~140 s) in the menus and then sat on the grid at 0 MPH.
+# Inputs, A every time, each sent only once the screen was named:
+#   "simulation" card / Welcome to Forza logo / intro FMV: A (skips; the
+#   card and the logo alternate with the FMV twice) -> PRESS A TO START: A
+#   -> PROFILE SELECT: A (Default) -> Arcade Race, Event (Maple Valley Short),
+#   Class D, Car (Civic Si), Assists OK: A each -> Loading (static, ~14 s
+#   black after it: wait) -> STARTING GRID, Start Race: A -> race intro
+#   (ended on its own) -> HUD at 0 MPH (`unknown`, not play) -> RT held:
+#   10, 23, 32, 44, 53, 59, 65, 73 MPH, LAP 0/2 -> 1/2 in the confirmed
+#   stretch. RT alone does not steer: the car ran wide onto the dirt at the
+#   first bend (52 MPH, PLACE 6/8) -- enough for --find, not for a scored
+#   window. Record: docs/lanes/routedriver/forza/.
+# Skips learned from that run (`drive.py learn`); the driver tries these first.
+[skip.logo]          # 2026-10-02T06:41:29Z, 2 visits (Thor)
+button = "A"
+after_s = 2.1
+landed = "intro_video"
+landed_times = 2
+
+[skip.intro_video]   # 2026-10-02T06:41:29Z, 2 visits (Thor)
+button = "A"
+after_s = 1.9
+landed = "logo"
+landed_times = 2
+
+[skip.cutscene]      # 2026-10-02T06:41:29Z, 4 visits (Thor; menu fades and the grid, see NOTES)
+button = "A"
+after_s = 2.0
+landed = "main_menu"
+landed_times = 3
+
+[[crop]]
+name = "pause"
+state = "paused"
+region = [190, 90, 160, 50]
+ref = "pause.png"
+threshold = 20.0
+
+[[crop]]
+name = "title-logo"
+state = "title"
+region = [200, 380, 880, 180]
+ref = "title-logo.png"
+threshold = 25.0
+
+[[crop]]
+name = "profile-select"
+state = "profile"
+region = [100, 70, 330, 30]
+ref = "profile-select.png"
+threshold = 20.0
+
+[[crop]]
+name = "menu-footer"
+state = "main_menu"
+region = [100, 830, 420, 50]
+ref = "menu-footer.png"
+threshold = 20.0
+
+[[crop]]
+name = "hud-lap"
+state = "play"
+region = [860, 90, 380, 110]
+ref = "hud-lap.png"
+threshold = 20.0

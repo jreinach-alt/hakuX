@@ -1,0 +1,47 @@
+t	state	source	changed	luma	cap_s	action	frame
+0.7	unknown	no-prev		27.0	0.42	wait (unknown)	225615-001-unknown.png
+2.4	intro_video	moving	0.9898	237.7	0.22	press A (skip intro_video)	225617-002-intro_video.png
+4.1	logo	static	0.0	237.7	0.22	press A (skip logo)	225619-003-logo.png
+5.9	intro_video	moving	0.9901	11.4	0.37	press A (skip intro_video)	225621-004-intro_video.png
+7.6	intro_video	moving	0.4427	18.3	0.37	press START (skip intro_video)	
+9.2	loading	crop:save-busy		41.7	0.47	wait	225624-006-loading.png
+11.2	profile	crop:save-slots		53.3	0.52	press A (profile 1)	225626-007-profile.png
+12.8	profile	crop:save-slots		52.6	0.57	settle	
+14.7	profile	crop:save-slots		51.4	0.52	press A (profile 2)	
+16.0	black	black		1.1	0.22	wait	225631-010-black.png
+17.3	black	black		0.7	0.22	wait	
+18.9	cutscene	moving	0.7829	83.4	0.22	press A (skip cutscene)	225634-012-cutscene.png
+20.3	black	black		0.0	0.22	wait	225635-013-black.png
+22.1	cutscene	moving	0.6157	17.0	0.42	press A (skip cutscene)	225637-014-cutscene.png
+24.0	cutscene	moving	0.2393	19.5	0.52	press START (skip cutscene)	
+25.6	paused	crop:status-menu		59.4	0.47	settle	225640-016-paused.png
+27.4	paused	crop:status-menu		58.8	0.52	press B (resume 1)	
+29.4	unknown	hud:hud+after-paused	0.7532	50.0	0.62	hold (hud up, motion not yet play)	225644-018-unknown.png
+31.4	play	hud:hud+motion	0.2794	46.8	0.67	hold	225647-019-play.png
+33.2	play	hud:hud+motion	0.3376	41.2	0.62	hold	225649-020-play.png
+35.2	stalled	hud:hud+static	0.0071	41.0	0.62	hold (stalled 0 s)	225651-021-stalled.png
+37.0	stalled	hud:hud+static	0.0055	41.0	0.62	hold (stalled 2 s)	
+38.9	stalled	hud:hud+static	0.0066	40.9	0.62	hold (stalled 4 s)	
+40.7	stalled	hud:hud+static	0.0042	40.8	0.62	hold (stalled 6 s)	
+42.6	stalled	hud:hud+static	0.0055	40.9	0.62	hold (stalled 7 s)	
+44.4	stalled	hud:hud+static	0.008	40.9	0.62	hold (stalled 9 s)	
+46.2	stalled	hud:hud+static	0.0066	40.9	0.62	hold (stalled 11 s)	
+48.1	stalled	hud:hud+static	0.0069	40.9	0.62	hold (stalled 13 s)	
+49.9	stalled	hud:hud+static	0.0096	41.0	0.63	hold (stalled 15 s)	
+51.7	stalled	hud:hud+static	0.0071	41.3	0.62	hold (stalled 17 s)	
+53.6	stalled	hud:hud+static	0.0065	41.1	0.62	hold (stalled 18 s)	
+55.4	stalled	hud:hud+static	0.0083	41.1	0.62	hold (stalled 20 s)	
+57.2	stalled	hud:hud+static	0.0061	41.0	0.62	hold (stalled 22 s)	
+59.1	stalled	hud:hud+static	0.0058	40.9	0.62	hold (stalled 24 s)	
+60.9	stalled	hud:hud+static	0.008	40.9	0.62	hold (stalled 26 s)	
+62.7	stalled	hud:hud+static	0.0059	40.8	0.62	hold (stalled 28 s)	
+64.6	stalled	hud:hud+static	0.0069	40.9	0.62	hold (stalled 29 s)	
+66.4	stalled	hud:hud+static	0.0096	41.0	0.62	hold (stalled 31 s)	
+68.2	stalled	hud:hud+static	0.0076	40.9	0.62	hold (stalled 33 s)	
+70.1	stalled	hud:hud+static	0.0075	41.0	0.62	hold (stalled 35 s)	
+71.9	stalled	hud:hud+static	0.0091	41.1	0.67	hold (stalled 37 s)	
+73.8	stalled	hud:hud+static	0.007	40.8	0.62	hold (stalled 39 s)	
+75.6	stalled	hud:hud+static	0.0057	40.9	0.62	ROUTE FAIL	225732-043-fail-stalled.png
+# time_to_title_s=
+# time_to_play_s=31.2
+# result=ROUTE FAIL drive castlevania-cod: stalled: stalled 40 s: the play HUD is up and nothing moves -- the play input is not reaching the game, or a pause the profile cannot see

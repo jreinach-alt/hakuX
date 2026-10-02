@@ -1,0 +1,12 @@
+# Forza Motorsport (4D53006E), boot to a race, screen-driven (#433,
+# lane.routedriver, brief item 6: the driving proof).
+#
+# Replaces forza414.route's blind START/A x14 and its LY+A play loop (neither
+# accelerates: the car sat on the grid at 0 MPH, PLACE 8/8, with the race
+# clock running, 1790914021-lane.ibcache-3202498) with drive.py: A through
+# the menus only when a menu is on screen, RT (accelerate) held in the race,
+# never START, and a HUD with nothing moving is `stalled`, not `play`. The
+# step ends at 20 s of confirmed play (`find`). Path and crops:
+# drive-profiles/forza.toml; the runs that found it:
+# docs/lanes/routedriver/NOTES.md.
+drive forza 420 find
