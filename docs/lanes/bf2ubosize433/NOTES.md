@@ -96,9 +96,15 @@ Prior: PUSH ~50%, SWITCH-BOUND ~20%, LARGE ~15%, MIXED ~15%.
 - The pipeline layouts already push a geometry-stage vec4 at offset 0
   (`GEOM_PUSH_CONSTANT_SIZE`, 16 B). Inline attribute values go in push
   constants only when `maxPushConstantsSize >= 16 + 16 x 16 = 272`
-  (`pgraph_vk_init_shaders`). Turnip reports 256, so on the Nova they do NOT:
-  `inlineValue` travels in the UBO, and its changes count in `lay`.
-- So the free push space on the Nova is 256 - 16 = **240 B, 15 vec4**, and the
+  (`pgraph_vk_init_shaders`). Turnip's `maxPushConstantsSize` is
+  `MAX_PUSH_CONSTANTS_SIZE`, which I believe is 256 upstream. **Not verified
+  against the fleet's driver**: nothing in a Nova logcat prints it, and the
+  Turnip copy bf2stall433 extracted does not carry the header. If it is 256,
+  then on the Nova inline attributes do NOT go in push constants: `inlineValue`
+  travels in the UBO and its changes count in `lay` (a `v.inlineValue` entry in
+  `ubosz-top` would show it). The fix's lane should log the limit at init
+  first.
+- If so, the free push space on the Nova is 256 - 16 = **240 B, 15 vec4**, and the
   fix also has to tell the shader which register each pushed vec4 replaces (an
   index list, or a fixed per-title mapping). In practice that is ~12-14 vec4 of
   data. The prediction's 8 and 16 bracket it, and `pk8`/`pk16` read on each
