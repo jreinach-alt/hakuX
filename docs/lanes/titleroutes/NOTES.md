@@ -4678,3 +4678,97 @@ rewrite.
 
 Device time for this: ~10 Nova-minutes of the same held session.
 
+## Session 62 (2026-10-01, resumed as attempt 1 of a fresh worktree resume): why session 61 did not "finish" (it ended correctly, waiting), the Castlevania run is confirmed withdrawn and off-limits, and there is no further device work this lane is cleared to start tonight
+
+**Why session 61 did not close the loop itself.** Session 61 finished every
+item of `roles/lane.md` it could reach in one sitting: committed
+(`c7aae3bf5c`), wrote NOTES/OUTBOX/PR.md, set `PR.md` `State: ready`, and
+ended on a correct `[lane.titleroutes] waiting:` naming the one thing
+outside its own session -- the Castlevania `waitfor` verification it had
+just queued (`1790918365-titleroutes-76920`). That is a finished session
+by this lane's own rules, not a stranding; nothing was left running in
+this session's own background.
+
+**What happened to that request while this lane was not running.** The
+owner read its result directly and cancelled the whole Castlevania line of
+work (brief's "ADDENDUM 13 (owner, 10-01 ~22:45 PDT)"): the route died at
+`route.txt:73` (`waitfor 'name-entry-header'`) because the dispatched run's
+result dir had no `refs/route.txt/name-entry-header.png` to compare
+against, so the app sat looping the intro video for the rest of the
+window. Confirmed this myself by reading the request's own files directly
+(not re-deriving from the addendum's prose):
+`dispatch/results/1790918365-titleroutes-76920/WITHDRAWN.txt` ("Withdrawn
+by lane.local at the owner's direction 22:40 PDT: ... no reference crop in
+the result dir refs/ ... Not scored, not a Playable confirmation.") and
+`run.log`'s own line: `route.sh:
+.../1790918365-titleroutes-76920/route.txt:73: waitfor 'name-entry-header':
+no reference crop .../refs/route.txt/name-entry-header.png`. `frames.count`
+in `result.json` is 0 and the run was held 661s of 900s with no score --
+matches "not scored" exactly. So the owner's diagnosis is independently
+confirmed from the primary artifacts, not just taken on trust.
+
+**The owner's instruction is a hard stop on this title, not a request for
+a fix.** Castlevania's input-sequencing is being rebuilt by `lane/routedriver`
+(a screen-aware `drive.py`/state machine), not by route-authoring in this
+lane. Per the owner: do not queue any Castlevania first-run run, do not
+drive the title on the Nova, and leave `castlevania-cod.first-run.route`
+exactly as session 60 left it. Done: no edit to that route or to its
+`targets.toml` note this session. The `waitfor` reference-crop-must-live-
+in-the-dispatched-run's-`refs/`-dir lesson is recorded here for whichever
+lane next authors a `waitfor` step, since it is a real gap in how
+`request.sh`/the dispatcher stage a run's assets, not a route bug: the
+crop is committed next to the route in this repo, but nothing currently
+copies it into the per-run `refs/` directory the snapshot `route.sh` reads.
+That is dispatcher-side (not `routes/**`/`targets.toml`), so it is flagged
+in OUTBOX rather than fixed here.
+
+**The other two items the owner's addendum named ("your remaining work, in
+order") were already finished in session 61, before the addendum was
+written:** Sonic Heroes' hold-up replay (ADDENDUM 10) and Super Monkey
+Ball's post-mark loop investigation (ADDENDUM 9). Both have terminal
+findings already recorded just above and in OUTBOX -- Sonic Heroes'
+loop fix is a real improvement but not confirmed to advance through the
+whole post-mark window (blocked on in-level geometry, not re-attempted
+this session since no new input idea presented itself beyond the 5
+already tried), and Super Monkey Ball's Stage Select screen reads no
+stage-selection input at all on this build (an input-layer finding, not a
+route defect, already flagged in OUTBOX for a tracked-issue decision).
+Re-reading both sections this session found nothing to add or correct.
+
+**No device work was available or authorized tonight beyond the above.**
+Checked before touching anything, per [[ff-mid-run-corrupts-the-other-device]]
+and the ADDENDUM 14 lesson (session 61 itself force-stopped the app over a
+live lane.ibcache run by skipping this check): `dispatch/running/*.owner`
+currently names exactly one in-flight request, `1-1790919561-lane.collapse433-390126`,
+owner `nova` -- so the Nova has a request running right now and is not
+free. `dispatch/hold/thor` and `thor.why` are unreadable/absent via the
+python3 path this session used (no stale hold found), but the Thor stays
+closed to all title-gameplay work regardless of hold state per the
+standing fan-dead ruling (escalations.md 05:13 PDT, unchanged) -- nothing
+in any addendum since has lifted it. And even once the Nova is free, the
+owner's device allowance for it tonight was scoped specifically to Sonic
+Heroes/Monkey Ball re-checks ("take it only under hold.sh wait nova
+titleroutes:$$ 900 ... keep replays <= 420s") plus `lane/routedriver`'s own
+Castlevania need -- not a blanket grant for the 13-title Nova-only backlog
+from session 51's "State for a successor", which stays blocked on the same
+device-role-split/queue-depth question as before (nothing has answered
+it). Taking a Nova hold for that backlog tonight would be making that open
+question myself, which session 51 already declined to do and nothing here
+changes.
+
+**So: nothing in this lane's remit is actionable right now without either
+(a) the Nova actually going idle and a session scoped only to re-verifying
+Sonic Heroes/Monkey Ball (already done, nothing left to re-verify), or (b)
+a new owner/hostops decision opening a general Nova title-pipeline session
+or the Thor fan landing.** This is recorded as `blocked:`, not `waiting:`,
+because nothing of this lane's own is queued or running -- there is no
+specific event to resume on besides those two external decisions, which
+the usual quiet-clock resume already covers.
+
+Pushed this session's NOTES/OUTBOX/PR.md update to `origin`
+(`/home/justin/hakux-work/offline-git/hakuX.git`, the GitHub-outage
+stand-in -- `gh auth status` still returns "token ... is invalid" /
+suspended account as of this session, so the offline protocol from
+lane.local 2026-09-29 22:05 PDT still applies: no `gh`, `PR.md`/`OUTBOX.md`
+are the PR and the issue posts).
+

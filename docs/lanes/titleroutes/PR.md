@@ -1,14 +1,60 @@
-# titleroutes: session 61 -- Sonic Heroes loop fix + Super Monkey Ball Stage Select input finding (#397)
+# titleroutes: session 62 -- Castlevania withdrawn/handed to lane.routedriver; Sonic Heroes and Super Monkey Ball findings stand; no device work available tonight (#397)
 
 State: ready
 
 Lane: titleroutes          Issue: #397 (per-title gameplay fps; 0.5 tracking #433)
-Base: master @ 0f07dbfede (session 60's fold + lane.hitchwatch's fold; merged clean before this session's work)
-Files: docs/testing/titles/routes/sonic-heroes.route, docs/testing/titles/targets.toml, docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/OUTBOX.md, docs/lanes/titleroutes/PR.md
-Prediction: none: route-authoring/investigation only, no pixel-affecting arm
-Needs device: yes -- a verification already queued (`1790918365-titleroutes-76920`, Nova, route check), not a background task of this session's
+Base: master @ 8e3b1f2ad2 (merge of origin/master into this branch, carrying session 61's own fold plus localjobs/litcompile569/forzadecay414)
+Files: docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/OUTBOX.md, docs/lanes/titleroutes/PR.md
+Prediction: none: notes/status update only, no route or targets.toml edit this session
+Needs device: no -- the Nova is currently running another lane's request and the Thor stays closed to title gameplay (dead fan); nothing of this lane's own is queued
 
-## Why this session didn't pick up where session 60 left off
+## What changed (session 62)
+
+Resolved session 61's `waiting:`: `1790918365-titleroutes-76920` (the
+Castlevania `waitfor` verification queued at the end of session 61) came
+back `WITHDRAWN`. The owner read it directly and cancelled the whole
+Castlevania line of work ("ADDENDUM 13 (owner, 10-01 ~22:45 PDT)" in the
+brief): the route died at `route.txt:73` because the dispatched run's
+`refs/` directory had no copy of the `name-entry-header` reference crop,
+so the app looped the intro video for the rest of the window (confirmed
+directly from `WITHDRAWN.txt`, `run.log`, and `result.json`'s
+`frames.count=0` -- not re-derived from the addendum's prose alone).
+Castlevania's input-sequencing now belongs to `lane/routedriver`; this
+session did not touch `castlevania-cod.first-run.route` or queue any
+further Castlevania run, per the owner's explicit instruction.
+
+Flagged a harness-side gap in OUTBOX rather than fixing it here (out of
+`routes/**`/`targets.toml`, so out of this lane's files): a `waitfor`
+step's reference crop is committed next to its route, but nothing stages
+a copy of it into the per-run `refs/` directory the dispatcher's `route.sh`
+snapshot reads, so `route.sh --check` can prove a route parses without
+proving its crops resolve once dispatched -- which is how this run got
+661s into a 900s hard-pinned Nova slot before failing.
+
+Re-checked Sonic Heroes and Super Monkey Ball Deluxe (the other two items
+the owner's addendum named as this lane's "remaining work, in order");
+both were already finished in session 61 before that addendum was
+written, with terminal findings (Sonic Heroes: loop fix committed, not
+confirmed to advance past an in-level geometry obstacle; Super Monkey
+Ball: Stage Select reads no stage-selection input at all, an input-layer
+finding flagged for a tracked-issue decision, not a route bug). Nothing to
+add on either this session.
+
+**No device work this session.** `dispatch/running/*.owner` shows the Nova
+running another lane's request (`lane.collapse433`) right now, so it is
+not free; the Thor stays closed to all title-gameplay work (dead fan,
+unchanged). Even once the Nova frees up, tonight's owner-granted allowance
+for it was scoped to Sonic Heroes/Monkey Ball re-checks (done) plus
+`lane/routedriver`'s own Castlevania need, not a blanket grant for the
+13-title Nova-only backlog from session 51's "State for a successor",
+which stays blocked on the same device-role-split/queue-depth question.
+
+Ending this session on `blocked:`, not `waiting:`: nothing of this lane's
+own is queued or running, and the two things that would unblock the next
+batch (a general-Nova-session decision, or the Thor's replacement fan) are
+external and already named in OUTBOX.
+
+## Why session 61 didn't pick up where session 60 left off
 
 Session 60 queued a Castlevania `waitfor` verification and ended cleanly
 (committed, PR ready, pushed). That verification came back `WITHDRAWN`
@@ -119,7 +165,7 @@ then queued session 60's still-pending Castlevania verification:
 --no-expect "route authoring check, no Playable verdict expected"` ->
 `1790918365-titleroutes-76920`.
 
-## Local checks
+## Local checks (session 61, still valid -- no route/targets.toml edit this session)
 
 - `python3 docs/testing/titles/titlestate_selftest.py` -- all checks passed.
 - `targets.toml` parses via `tomllib` (80 titles).
@@ -127,12 +173,12 @@ then queued session 60's still-pending Castlevania verification:
 
 Release note (none): lane/testing-infrastructure data and notes, not emulator code.
 
-Next session reads `1790918365-titleroutes-76920`'s result first
-(route-frames, frame by frame). If it reaches real play and creates a
-save: the base-name run (ADDENDUM 8 step b), then nominate
-`castlevania-cod` (not the variant). Then: the Sonic Heroes obstacle
-(open, no fix found this session) and a decision on the Super Monkey Ball
-Stage Select input finding above. The 13 Nova-only no-route titles and
-the Thor's fan/CPU-stop-blocked titles are unchanged.
+Next session: re-check `dispatch/running/*.owner` for the Nova and the
+Thor-fan decision before taking any hold. Do not queue or drive
+Castlevania (now `lane/routedriver`'s). Sonic Heroes' in-level obstacle and
+the Super Monkey Ball Stage Select input finding are both terminal for
+this lane unless a new idea or a decision arrives from outside it. The
+13 Nova-only no-route titles and the Thor's 300+ fan-blocked titles are
+unchanged and listed in NOTES.md "State for a successor".
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
