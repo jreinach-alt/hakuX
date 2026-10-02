@@ -67,9 +67,19 @@ POLICY. States are classify.py's; the inputs come from the profile's
 A press may be `AXIS:value` (`LX:min`): the stick is flicked there and back,
 for a cursor the d-pad does not move (Castlevania's save prompt).
   play                   the profile's play_hold axes held (re-asserted each
-                         capture), play_tap buttons every N s. NEVER START:
-                         the profile is refused if a play input is START.
-  stalled                HUD up, nothing moving: keep the play input held;
+                         capture), or play_cycle's phases in turn ([[axes],
+                         seconds]: an on-foot title walks a square, since one
+                         held direction ends against the first wall),
+                         play_tap buttons every N s. NEVER START: the profile
+                         is refused if a play input is START. The play input
+                         is also held, as a probe, on any frame where the
+                         play HUD is up but the motion has not said `play`
+                         yet: an idle character makes no motion, so play
+                         would never be confirmed without it.
+  stalled                HUD up, nothing moving (or a still, uncropped frame
+                         within `hud_memory_s` of a HUD frame: a title that
+                         hides its HUD when the player idles, Castlevania,
+                         is not on a menu): keep the play input held;
                          `stall_fail_s` of it is ROUTE FAIL "the play input is
                          not reaching the game" (Forza at 0 MPH).
   unknown                wait; the model after `unknown_before_model`

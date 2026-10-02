@@ -1,0 +1,70 @@
+t	state	source	changed	luma	cap_s	action	frame
+0.8	unknown	no-prev		32.9	0.47	wait (unknown)	225324-001-unknown.png
+2.4	intro_video	moving	0.9893	237.7	0.22	press A (skip intro_video)	225326-002-intro_video.png
+4.1	logo	static	0.0	237.7	0.22	press A (skip logo)	225328-003-logo.png
+5.6	black	black		5.4	0.32	wait	225330-004-black.png
+7.8	title	crop:title-continue		34.1	0.43	press LY:min (title 1)	225332-005-title.png
+9.6	title	crop:title		34.3	0.42	press A (title 1)	
+11.6	profile	crop:name-entry		40.4	0.57	press A (profile 1)	225336-007-profile.png
+13.2	profile	crop:name-entry		43.3	0.57	settle	
+15.0	profile	crop:name-entry		43.3	0.52	press START (profile 2)	
+16.6	profile	crop:name-entry		43.6	0.52	settle	
+18.5	profile	crop:name-entry		43.6	0.57	press A (profile 3)	
+20.1	profile	crop:name-confirm		42.6	0.52	settle	
+21.9	profile	crop:name-confirm		42.5	0.52	press A (profile 1)	
+23.9	cutscene	moving	0.6523	34.3	0.47	press A (skip cutscene)	225348-014-cutscene.png
+25.5	loading	crop:save-busy		42.7	0.47	wait	225350-015-loading.png
+27.5	profile	crop:save-slots		53.2	0.52	press A (profile 1)	225352-016-profile.png
+29.1	profile	crop:save-slots		52.5	0.52	settle	
+31.0	profile	crop:save-slots		52.0	0.52	press A (profile 2)	
+32.7	profile	crop:save-slots		52.1	0.61	settle	
+34.5	profile	crop:save-slots		52.2	0.52	press A (profile 3)	
+36.1	profile	crop:save-slots		52.0	0.57	settle	
+38.0	profile	crop:save-slots		52.1	0.52	press A (profile 4)	
+39.7	profile	crop:save-slots		52.7	0.57	settle	
+41.5	profile	crop:save-slots		53.2	0.57	press A (profile 5)	
+43.2	profile	crop:save-slots		53.3	0.57	settle	
+45.1	profile	crop:save-slots		52.8	0.57	press A (profile 6)	
+46.7	profile	crop:save-slots		52.3	0.57	settle	
+48.7	profile	crop:save-slots		52.1	0.57	press A (profile 7)	
+50.3	profile	crop:save-slots		51.9	0.58	settle	
+52.1	profile	crop:save-slots		52.0	0.52	press A (profile 8)	
+53.8	profile	crop:save-slots		52.5	0.57	settle	
+55.7	profile	crop:save-slots		52.4	0.57	press A (profile 9)	
+57.3	profile	crop:save-slots		52.8	0.52	settle	
+59.2	profile	crop:save-slots		53.4	0.57	press A (profile 10)	
+60.8	profile	crop:save-slots		53.2	0.57	settle	
+62.7	profile	crop:save-slots		52.8	0.57	press A (profile 11)	
+64.3	profile	crop:save-slots		52.0	0.57	settle	
+66.2	profile	crop:save-slots		51.8	0.57	press A (profile 12)	
+67.8	profile	crop:save-slots		52.3	0.57	settle	
+69.8	profile	crop:save-slots		52.1	0.62	press A (profile 13)	
+71.4	profile	crop:save-slots		52.1	0.52	settle	
+73.2	profile	crop:save-slots		52.3	0.52	press A (profile 14)	
+74.8	profile	crop:save-slots		53.4	0.57	settle	
+76.7	profile	crop:save-slots		53.5	0.57	press A (profile 15)	
+78.3	profile	crop:save-slots		52.7	0.52	settle	
+80.1	profile	crop:save-slots		52.1	0.52	press A (profile 16)	
+81.8	profile	crop:save-slots		52.1	0.57	settle	
+83.6	profile	crop:save-slots		52.1	0.57	press A (profile 17)	
+85.3	profile	crop:save-slots		52.0	0.57	settle	
+87.1	profile	crop:save-slots		52.1	0.57	press A (profile 18)	
+88.8	profile	crop:save-slots		52.4	0.57	settle	
+90.7	profile	crop:save-slots		52.9	0.57	press A (profile 19)	
+92.2	profile	crop:save-slots		53.4	0.52	settle	
+94.2	profile	crop:save-slots		53.0	0.57	press A (profile 20)	
+95.7	profile	crop:save-slots		52.6	0.52	settle	
+97.6	profile	crop:save-slots		52.1	0.57	press A (profile 21)	
+99.3	profile	crop:save-slots		51.9	0.57	settle	
+101.1	profile	crop:save-slots		52.0	0.52	press A (profile 22)	
+102.7	profile	crop:save-slots		52.2	0.57	settle	
+104.6	profile	crop:save-slots		52.5	0.57	press A (profile 23)	
+106.2	profile	crop:save-slots		52.6	0.57	settle	
+108.1	profile	crop:save-slots		53.2	0.52	press A (profile 24)	
+109.7	profile	crop:save-slots		53.4	0.57	settle	
+111.6	profile	crop:save-slots		52.9	0.57	press A (profile 25)	
+113.3	profile	crop:save-slots		52.0	0.57	settle	
+114.9	profile	crop:save-slots		51.9	0.57	ROUTE FAIL	225522-066-fail-profile.png
+# time_to_title_s=7.0
+# time_to_play_s=
+# result=ROUTE FAIL drive castlevania-cod: profile: stuck on profile (crop:save-slots) after 25 presses

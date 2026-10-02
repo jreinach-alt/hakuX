@@ -1,0 +1,207 @@
+{
+ "profile": "castlevania-cod",
+ "title": "Castlevania: Curse of Darkness",
+ "mode": "find",
+ "result": "reached-play",
+ "seconds": 48.9,
+ "time_to_title_s": null,
+ "time_to_play_s": 27.9,
+ "states_seen": [
+  "unknown",
+  "intro_video",
+  "logo",
+  "loading",
+  "profile",
+  "black",
+  "cutscene",
+  "play"
+ ],
+ "skips": [
+  {
+   "state": "intro_video",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "logo",
+   "presses": 1
+  },
+  {
+   "state": "logo",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "intro_video",
+   "presses": 1
+  },
+  {
+   "state": "intro_video",
+   "button": "X",
+   "after_s": 1.7,
+   "landed": "loading",
+   "presses": 2
+  },
+  {
+   "state": "cutscene",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "black",
+   "presses": 1
+  },
+  {
+   "state": "cutscene",
+   "button": "X",
+   "after_s": 1.9,
+   "landed": "unknown",
+   "presses": 2
+  }
+ ],
+ "inputs": [
+  {
+   "t": 2.2,
+   "state": "intro_video",
+   "input": "A",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 3.8,
+   "state": "logo",
+   "input": "A",
+   "why": "skip logo"
+  },
+  {
+   "t": 5.7,
+   "state": "intro_video",
+   "input": "A",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 7.4,
+   "state": "intro_video",
+   "input": "X",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 11.0,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 1"
+  },
+  {
+   "t": 14.6,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 2"
+  },
+  {
+   "t": 18.9,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 22.0,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 23.9,
+   "state": "cutscene",
+   "input": "X",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 26.1,
+   "state": "unknown",
+   "input": "hold LX max",
+   "why": "play"
+  },
+  {
+   "t": 28.3,
+   "state": "play",
+   "input": "hold LY max",
+   "why": "play"
+  },
+  {
+   "t": 32.5,
+   "state": "play",
+   "input": "hold LX min",
+   "why": "play"
+  },
+  {
+   "t": 34.5,
+   "state": "play",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 38.6,
+   "state": "play",
+   "input": "hold LX max",
+   "why": "play"
+  },
+  {
+   "t": 40.5,
+   "state": "play",
+   "input": "hold LY max",
+   "why": "play"
+  },
+  {
+   "t": 42.7,
+   "state": "play",
+   "input": "hold LX min",
+   "why": "play"
+  },
+  {
+   "t": 44.7,
+   "state": "play",
+   "input": "hold LY min",
+   "why": "play"
+  },
+  {
+   "t": 48.7,
+   "state": "play",
+   "input": "hold LX max",
+   "why": "play"
+  },
+  {
+   "t": 48.9,
+   "state": "play",
+   "input": "release axes",
+   "why": "left play"
+  }
+ ],
+ "anomalies": [
+  {
+   "t": 3.7,
+   "state": "logo",
+   "after": "intro_video"
+  },
+  {
+   "t": 10.9,
+   "state": "profile",
+   "after": "loading"
+  }
+ ],
+ "classifier_sources": {
+  "no-prev": 1,
+  "moving": 6,
+  "static": 1,
+  "crop": 4,
+  "black": 3,
+  "hud": 12
+ },
+ "model_calls": 0,
+ "play_stretch_frames": [
+  "225903-017-play.png",
+  "225905-018-play.png",
+  "225907-019-play.png",
+  "225909-020-play.png",
+  "225911-021-play.png",
+  "225913-022-play.png",
+  "225915-023-play.png",
+  "225917-024-play.png",
+  "225919-025-play.png",
+  "225921-026-play.png",
+  "225923-027-play.png"
+ ],
+ "written_utc": "2026-10-02T05:59:23Z"
+}

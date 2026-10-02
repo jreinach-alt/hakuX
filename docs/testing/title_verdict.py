@@ -35,6 +35,23 @@ for why a plain frame-to-frame diff does not separate a looping menu
 animation from real gameplay, and NOTES.md for the survey of titles these
 bars do and do not separate.
 
+TIMELINE (the owner, 2026-10-01, #433: "we're getting bad FPS data if half
+the time is spent in a menu"). A route whose play is a `drive` step
+(titles/drive.py) writes `hakuX-route: state=<s> t=<n>` to logcat on every
+change of the screen it sees (play, paused, main_menu, cutscene, stalled ...).
+From those lines, over the scored window (mark to `soak end`):
+  - `timeline.play_share` = seconds in `play` / scored seconds, with the
+    seconds per state in `timeline.by_state`. A confirmation whose
+    play_share is under `play_share_min` (targets.toml [defaults], else 0.90)
+    FAILS as "menu time", named before the fps bar because it is why the fps
+    data would be wrong.
+  - fps is judged over `play` seconds only: a perf window counts when its
+    midpoint lies in a `play` span. `timeline.fps_excluded_s` and
+    `fps_excluded_windows` say how much was left out.
+A route with no `drive` step (the blind routes) writes no state line and is
+judged exactly as before; `timeline` reads "none" and the printed line says
+`timeline: none`.
+
 CONFIRMATION LENGTH (the owner, 2026-09-30, #433). Re-scoring every
 full-length confirmation as if cut at 300 s and 600 s found no verdict
 change on the Nova (6/6 runs, which plateaus near 49 C and never pauses) at
@@ -267,6 +284,43 @@ def lost_in(a, b, gaps):
     return sum(max(0.0, min(b, g1) - max(a, g0)) for g0, g1 in gaps)
 
 
+STATE_LINE = re.compile(r"^state=([a-z_]+) t=\d+")
+
+
+def play_timeline(lc, mark_t, end_t):
+    """drive.py's state timeline over the scored window, or "none" for a
+    route with no `drive` step. Each `hakuX-route: state=<s>` line starts a
+    span that lasts to the next one; the state in force at the mark is the
+    last line before it; `state=end` (drive.py stopped) is not play."""
+    changes = [(t, STATE_LINE.match(msg).group(1)) for t, lv, tag, msg in lc
+               if tag == "hakuX-route" and STATE_LINE.match(msg)]
+    if not changes:
+        return "none"
+    if mark_t is None or end_t is None or end_t <= mark_t:
+        return dict(play_s=0.0, scored_s=0.0, play_share=None, by_state={}, play_spans=[], changes=len(changes))
+    spans, by = [], {}
+    cur = None
+    for t, s in changes:
+        if t <= mark_t:
+            cur = s
+    pts = [(mark_t, cur)] + [(t, s) for t, s in changes if mark_t < t < end_t] + [(end_t, None)]
+    for (a, s), (b, _) in zip(pts, pts[1:]):
+        key = s or "no-timeline"
+        by[key] = by.get(key, 0.0) + (b - a)
+        if s == "play":
+            spans.append((a, b))
+    play_s = by.get("play", 0.0)
+    scored = end_t - mark_t
+    return dict(play_s=round(play_s, 1), scored_s=round(scored, 1),
+                play_share=round(play_s / scored, 4) if scored > 0 else None,
+                by_state={k: round(x, 1) for k, x in sorted(by.items(), key=lambda kv: -kv[1])},
+                play_spans=[(round(a, 3), round(b, 3)) for a, b in spans], changes=len(changes))
+
+
+def in_spans(t, spans):
+    return any(a <= t < b for a, b in spans)
+
+
 def heating_rate(samples, zone, lo, hi):
     """C/min between `zone`'s first and last reading in device-time window
     (lo, hi), or None with fewer than two readings in it."""
@@ -318,6 +372,7 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS, write
     tol = float(defaults.get("fps_tolerance", 0.95))
     share_min = float(defaults.get("fps_share_min", 0.90))
     audio_max = float(defaults.get("audio_starve_max_share", 0.001))
+    play_share_min = float(defaults.get("play_share_min", 0.90))
 
     title = req.get("title") or res.get("title") or ""
     tid, entry = find_title(targets, title)
@@ -468,9 +523,19 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS, write
     for (t0, p0), (t1, p1) in ([] if void else zip(after, after[1:])):
         dt_s = t1 - t0
         if dt_s > 0 and not lost_in(t0, t1, cap_gaps):
-            windows.append((dt_s, FRAMES_PER_LINE / dt_s, float(p1.group(2)), int(p1.group(1))))
+            windows.append((dt_s, FRAMES_PER_LINE / dt_s, float(p1.group(2)), int(p1.group(1)), t0, t1))
     gameplay_s = (end_t - mark_t) if (mark_t is not None and end_t is not None) else 0.0
     v["gameplay_s"] = round(gameplay_s, 1)
+
+    # PLAY TIMELINE (see TIMELINE above): fps over `play` seconds only.
+    tl = play_timeline(lc, mark_t, end_t)
+    v["timeline"] = tl
+    if tl != "none":
+        kept = [w for w in windows if in_spans((w[4] + w[5]) / 2.0, tl["play_spans"])]
+        tl["fps_excluded_s"] = round(sum(w[0] for w in windows) - sum(w[0] for w in kept), 1)
+        tl["fps_excluded_windows"] = len(windows) - len(kept)
+        tl["play_spans"] = len(tl["play_spans"])
+        windows = kept
     in_play = [(a, b) for a, b in cap_gaps
                if mark_t is not None and end_t is not None and b > mark_t and a < end_t]
     v["capture_gaps_s"] = [round(b - a, 1) for a, b in in_play][:20]
@@ -636,8 +701,17 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS, write
                          % need["confirmation"])
         else:
             fails.append("duration: %.0f s of gameplay < %.0f s %s" % (gameplay_s, need[require], require))
+    if tl != "none" and require == "confirmation" and mark_t is not None and not void \
+            and (tl["play_share"] is None or tl["play_share"] < play_share_min):
+        fails.append("menu time: %s of the scored window in `play` (bar %.0f%%; %s)"
+                     % ("none" if tl["play_share"] is None else "%.1f%%" % (100 * tl["play_share"]),
+                        100 * play_share_min,
+                        ", ".join("%s %.0f s" % kv for kv in list(tl["by_state"].items())[:4])))
     if v["fps_ok_share"] is None:
-        if mark_t is not None and flipped_after and not void:
+        if tl != "none" and mark_t is not None and flipped_after and not void:
+            fails.append("fps: fewer than two perf lines inside `play` (%.0f s excluded as not play)"
+                         % tl["fps_excluded_s"])
+        elif mark_t is not None and flipped_after and not void:
             fails.append("fps: fewer than two perf lines after the mark")
     elif v["fps_ok_share"] < share_min:
         fails.append("fps: %.1f%% of gameplay at >= %g fps (bar %.0f%%)"
@@ -691,13 +765,16 @@ def main(argv=None):
     pw = v["power"]
     hrep = v["hitches"]
     sw = v["static_window"]
+    tl = v["timeline"]
     print("VERDICT %s %s %s gameplay=%ss fps_ok=%s crash=%s hang=%s audio_short=%s "
-          "hitches=%d/%spm worst_ms=%.1f static_frac=%s%s%s%s%s" % (
+          "hitches=%d/%spm worst_ms=%.1f static_frac=%s %s%s%s%s%s" % (
         v["name"] or v["title"] or "?", v["device"] or "?",
         ("PASS " + str(v["rating_candidate"])) if v["pass"] else "FAIL(%s)" % v["failing"],
         v["gameplay_s"], v["fps_ok_share"], v["crash"], v["hang"], v["audio_starve_share"],
         hrep["n_after_warmup"], hrep["per_min_after_warmup"], hrep["worst_ms"],
         sw["frozen_frac"] if sw["measured"] else "unmeasured",
+        "timeline: none" if tl == "none" else "play_share=%s fps_excluded=%ss" % (
+            tl["play_share"], tl.get("fps_excluded_s")),
         " below_own_target" if v["below_own_target"] else "",
         (" capture_lost=%ss" % v["capture_lost_s"]) if v["capture_lost_s"] else "",
         " capture_truncated" if v["capture_truncated"] else "",
