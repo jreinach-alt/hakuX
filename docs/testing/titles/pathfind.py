@@ -638,7 +638,9 @@ class Agent:
         guide = ""
         if self.own:
             guide = ("A path recorded on an earlier run of THIS title (a guide, not a script: check the "
-                     "screen):\n" + path_text(self.own) + "\n\n")
+                     "screen)" + ("" if self.own.get("complete", True) else
+                                  ", from a run that did NOT reach gameplay (it ended: "
+                                  + str(self.own.get("result")) + ")") + ":\n" + path_text(self.own) + "\n\n")
         elif self.sibs:
             guide = ("Paths recorded on SIBLING titles of the same series (menus are often laid out "
                      "alike):\n" + "\n\n".join(path_text(d) for d in self.sibs[:2]) + "\n\n")
@@ -801,7 +803,11 @@ class Agent:
             dec["frame"] = os.path.relpath(jpg, self.out)
             if dec["state"] == "gameplay" and dec.get("src") != "black":
                 self.write_step(dec)
-                ok, why = self.confirm(dec.get("probe") or ["STICK:up:1.5"], dec.get("why", ""))
+                probe = dec.get("probe") or ["STICK:up:1.5"]
+                probe = (probe if isinstance(probe, list) else [probe])
+                # the model's own action first (ESPN NFL 2K5, 10-02: "gameplay" on the kickoff play-call
+                # screen with action A; the stick alone only flipped the play menu)
+                ok, why = self.confirm(list(dec.get("action") or []) + probe, dec.get("why", ""))
                 if ok:
                     return self.success(jpg)
                 if self.probes >= 4:
@@ -839,7 +845,7 @@ class Agent:
         # 3. a recorded step of this title's own path matches the screen
         tried = self.tried_here(sig)
         seen = self.seen_here(sig)
-        rp = self.replay(sig) if not tried else None
+        rp = self.replay(sig) if not (tried or seen) else None
         if rp:
             j, s = rp
             self.cursor = j + 1
@@ -894,27 +900,48 @@ class Agent:
         self.write_path()
         return self.finish(last=jpg, post=post)
 
-    def write_path(self):
+    def write_path(self, complete=True):
+        """pathknow/paths/<TITLEID>.json. A run that did not reach gameplay
+        writes its steps too (complete: false), cut before the first screen it
+        had already visited, so a loop is never recorded; it never replaces a
+        complete path. On the Thor a retry's replayed menus are minutes of heat
+        saved (ESPN NFL 2K5, 10-02: 52 -> 70 C in 3.6 min of menus)."""
         if not self.record or not self.tid:
             return
+        dest = os.path.join(KNOW, "paths", f"{self.tid.upper()}.json")
+        if not complete:
+            try:
+                if json.load(open(dest)).get("complete", True):
+                    return
+            except (OSError, ValueError):
+                pass
         keep = []
+        seen = []
         for s in self.steps:
             if s.get("src") in ("probe", "check"):
                 continue
+            if not complete and s.get("sig") is not None:
+                if any(sig_dist(s["sig"], o) <= SIG_MATCH for o in seen) and s.get("state") not in (
+                        "black", "loading"):
+                    break
+                seen.append(s["sig"])
             useful = bool(s.get("action")) and (s.get("changed") or 0) > UNCHANGED
             keep.append({"state": s.get("state"), "why": s.get("why", "")[:160], "action": s.get("action", []),
                          "wait_s": s.get("wait_s", 2), "useful": useful or s.get("state") == "gameplay",
                          "sig": [[round(v) for v in row] for row in s["sig"]] if s.get("sig") else None})
         d = {"title_id": self.tid, "name": self.name, "device": self.dev.label,
              "recorded": time.strftime("%Y-%m-%d %H:%M %Z"), "minutes": self.result.get("minutes"),
-             "model_calls": self.model.calls, "steps": keep}
+             "model_calls": self.model.calls, "complete": complete, "result": self.result.get("result"),
+             "steps": keep}
         os.makedirs(os.path.join(KNOW, "paths"), exist_ok=True)
-        with open(os.path.join(KNOW, "paths", f"{self.tid.upper()}.json"), "w") as f:
+        with open(dest, "w") as f:
             json.dump(d, f, indent=0)
             f.write("\n")
 
     def finish(self, last=None, post=()):
         self.dev.stop(screen_off=not os.environ.get("PATHFIND_LEAVE_ON"))
+        if self.result.get("result") != "gameplay" and self.steps:
+            self.write_path(complete=False)
         self.result.update(model_calls=self.model.calls, calls_by_model=self.model.by_model,
                            steps=len(self.steps), seconds=round(self.el(), 1), last_frame=last,
                            last_state=self.steps[-1].get("state") if self.steps else None,
