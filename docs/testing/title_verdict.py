@@ -12,10 +12,28 @@ THE BAR (the owner, 2026-09-25). A run passes when the title
     600 s confirmation by default -- see CONFIRMATION LENGTH below) with no
     crash, no hang and no real exit;
   - ran at >= 30 fps for >= 90% of the gameplay time;
-  - played its audio with no dropouts (see AUDIO below).
+  - played its audio with no dropouts (see AUDIO below);
+  - did not hitch, and was actually gameplay the whole scored window (see
+    HITCHES and WHOLE-WINDOW LIVENESS below).
 A pass at surface_scale 1 is the `Playable` rating, at 2 `Playable (2x)`.
 `Perfect` is a human's call: `human_review` is written empty and nothing here
 ever fills it.
+
+HITCHES AND WHOLE-WINDOW LIVENESS (the owner, 2026-10-01, #433). A frame-rate
+pass is not a smooth pass: the TIME-weighted fps share above can pass a 600 s
+window carrying one sub-second stall, which is exactly what the owner saw
+playing Sonic Heroes and the share could not. `hitch_report.py` (its module
+doc has the counters and the rule) lists every hitch in the scored window
+from hakuX-pace/[shd413]/[rdc] already in logcat.txt, classifies each as
+shader, texture, both or unexplained, and fails the run as "hitches" past the
+owner's bars, unless the title's targets.toml entry carries `hitch_allowance`.
+Separately, `static_window()` catches a scored window that never left a menu
+(Super Monkey Ball and Castlevania both scored PASS on one, because
+`reached_gameplay` only reads the mark frame) by asking whether the window's
+own route-frames ever drift from their first frame; see that module's doc
+for why a plain frame-to-frame diff does not separate a looping menu
+animation from real gameplay, and NOTES.md for the survey of titles these
+bars do and do not separate.
 
 CONFIRMATION LENGTH (the owner, 2026-09-30, #433). Re-scoring every
 full-length confirmation as if cut at 300 s and 600 s found no verdict
@@ -147,6 +165,7 @@ except ImportError:            # python < 3.11
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import thermal_state  # noqa: E402
+import hitch_report  # noqa: E402
 DEFAULT_TARGETS = os.path.join(HERE, "titles", "targets.toml")
 
 # `logcat -v time`: "09-25 13:31:41.662 I/hakuX-perf( 1234): gfps=30 G:..."
@@ -551,6 +570,22 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS, write
     else:
         v["pace"] = None
 
+    # HITCHES (#433, 2026-10-01): a frame-rate pass is not a smooth pass --
+    # see hitch_report.py's module doc for the counters and the rule. A void
+    # window's flips are not the title's, so it is not scanned for hitches
+    # either, same as the fps windows above.
+    hitches = [] if void else hitch_report.find_hitches(lc, mark_t, end_t)
+    hrep = hitch_report.report(hitches, gameplay_s)
+    v["hitches"] = hrep
+    hitch_allowance = entry.get("hitch_allowance")
+    v["hitch_allowance"] = hitch_allowance
+
+    # WHOLE-WINDOW LIVENESS (#433): did the scored window ever move on, or
+    # is it sitting on a menu the whole time (Super Monkey Ball, Castlevania:
+    # `reached_gameplay` only reads the mark frame and cannot see this).
+    static = hitch_report.static_window(rdir, mark_t, end_t)
+    v["static_window"] = static
+
     # THE CRITERIA, IN ORDER. The first that fails is named; all are listed.
     if require is None:
         require = "confirmation" if gameplay_s >= need["confirmation"] else "screening"
@@ -612,6 +647,13 @@ def judge(rdir, require=None, reviewed=None, targets_path=DEFAULT_TARGETS, write
     elif v["audio_starve_share"] is not None and v["audio_starve_share"] > audio_max:
         fails.append("audio: %.3f%% of callbacks short (max %.3f%%)"
                      % (100 * v["audio_starve_share"], 100 * audio_max))
+    if mark_t is not None and not void:
+        hfail, hwhy = hitch_report.hitch_fail(hrep, hitch_allowance)
+        if hfail:
+            fails.append(hwhy)
+        sfail, swhy = hitch_report.static_window_fail(static)
+        if sfail:
+            fails.append(swhy)
     v["pass"] = not fails
     v["failing"] = fails[0] if fails else None
     v["failures"] = fails
@@ -647,10 +689,15 @@ def main(argv=None):
     json.load(open(tmp))
     os.replace(tmp, os.path.join(a.rdir, "verdict.json"))
     pw = v["power"]
-    print("VERDICT %s %s %s gameplay=%ss fps_ok=%s crash=%s hang=%s audio_short=%s%s%s%s%s" % (
+    hrep = v["hitches"]
+    sw = v["static_window"]
+    print("VERDICT %s %s %s gameplay=%ss fps_ok=%s crash=%s hang=%s audio_short=%s "
+          "hitches=%d/%spm worst_ms=%.1f static_frac=%s%s%s%s%s" % (
         v["name"] or v["title"] or "?", v["device"] or "?",
         ("PASS " + str(v["rating_candidate"])) if v["pass"] else "FAIL(%s)" % v["failing"],
         v["gameplay_s"], v["fps_ok_share"], v["crash"], v["hang"], v["audio_starve_share"],
+        hrep["n_after_warmup"], hrep["per_min_after_warmup"], hrep["worst_ms"],
+        sw["frozen_frac"] if sw["measured"] else "unmeasured",
         " below_own_target" if v["below_own_target"] else "",
         (" capture_lost=%ss" % v["capture_lost_s"]) if v["capture_lost_s"] else "",
         " capture_truncated" if v["capture_truncated"] else "",

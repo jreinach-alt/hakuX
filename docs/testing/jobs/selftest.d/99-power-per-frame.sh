@@ -215,6 +215,7 @@ r=$(pw_verdict "$TESTING" "$PWV"); uf=$(pw_usb)
 
 echo "== power per frame mutant: battery power without the sign flip"
 cp "$TESTING/title_verdict.py" "$PW/t/title_verdict.py"
+cp "$TESTING/hitch_report.py" "$PW/t/hitch_report.py"   # #433: title_verdict.py now imports it
 if python3 - "$TESTING/thermal_state.py" "$PW/t/thermal_state.py" <<'PY'
 import sys
 s = open(sys.argv[1]).read()
