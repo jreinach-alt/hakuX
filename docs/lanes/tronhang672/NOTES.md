@@ -120,3 +120,11 @@ v3 presses START five times, 7 s apart, from 55 s (START is a no-op on the
 sign-in screen), then the one B.
 
 Device runs used: 3 of 6 (two of them lost to the route, none to the hang).
+
+## 7. Device run 4: 0-1790976604-tronhang672-2513164 (14:40-14:52 PDT): Auto Load path again
+
+Route v3 reached the sign-in (five STARTs) and the main menu, but `press DOWN`
+did not move the Single Player cursor (route-frame 144159): this pad's D-pad is
+a hat axis, as other routes use (`axis HATY max` / `mid`). A loaded Auto Load
+again, so this run is a second sample of the path that passed in run 1, not of
+the hung path. Route v4 moves the cursor with `axis HATY max`.

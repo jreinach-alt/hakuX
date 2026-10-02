@@ -43,7 +43,9 @@ shot menu-a
 press START
 wait 5
 shot menu-start
-press DOWN
+axis HATY max              # v4: the D-pad is a hat; press DOWN was a no-op (144159)
+wait 0.4
+axis HATY mid
 wait 2
 shot menu-down
 press A
