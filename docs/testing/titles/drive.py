@@ -361,6 +361,7 @@ class Driver:
         self.steer_thread = None
         self.steer_log = []              # (t, n, cx, lx, rt, lt, why) per steering tick
         self.steer_last = (0.0, None)    # last steer and when the line was last seen
+        self.steer_since = None          # when steering first came on (straight_s)
         self.escape_scene = None         # the scene where the last escape started
         self.last_hud_t = None
         self.play_since = None
@@ -484,7 +485,15 @@ class Driver:
             self.escape_scene = self.cur_scene
         self.escapes += 1
         self.mode_escapes[self.mode] = self.mode_escapes.get(self.mode, 0) + 1
-        self.escape()
+        steering = self.steer_on.is_set()
+        if steering:                     # the escape owns the stick and pedals while it plays
+            self.steer_on.clear()
+            time.sleep(0 if self.sim else 0.3)
+        try:
+            self.escape()
+        finally:
+            if steering:
+                self.steer_on.set()
 
     def new_site(self):
         bar = self.cfg["progress_bar"]
@@ -589,6 +598,10 @@ class Driver:
         of it at full lock), because a 1-2 Hz loop cannot hold a bend taken
         flat out."""
         c = self.steer_cfg
+        if self.steer_since is not None and t - self.steer_since < c.get("straight_s", 0.0):
+            # Off the grid with the wheel straight: Forza run f1 steered toward
+            # the line from a standing start and clipped the car alongside.
+            return 0.0, c.get("throttle", 0.7), 0.0, "straight"
         if n >= c.get("min_px", 40) and cx is not None:
             lx = max(-1.0, min(1.0, (cx - c.get("center_x", 640)) / float(c.get("full_dx", 300))))
             self.steer_last = (lx, t)
@@ -626,6 +639,8 @@ class Driver:
             if self.steer_thread is None:
                 self.steer_thread = threading.Thread(target=self.steer_loop, daemon=True)
                 self.steer_thread.start()
+            if self.steer_since is None:
+                self.steer_since = self.t()
             self.steer_on.set()
             self.inputs.append(dict(t=round(self.t(), 1), state=self.state, input="steer on", why="play"))
         elif not on and self.steer_on.is_set():
@@ -1098,6 +1113,8 @@ def main(argv=None):
     ap.add_argument("--frames")
     ap.add_argument("--sim", help="frames dir, or @file listing frames: replay them instead of a device")
     ap.add_argument("--sim-step", type=float, default=None, help="seconds between sim frames (default fast_s)")
+    ap.add_argument("--set", action="append", default=[], metavar="KEY=VALUE",
+                    help="override a [drive] value for this run (a trial's keep_all=1, a sim's escape_max=0)")
     a = ap.parse_args(argv)
     profile = classify.load_profile(a.profile)
     frames_dir = a.frames or os.path.join(a.out, "route-frames")
@@ -1113,6 +1130,12 @@ def main(argv=None):
             print("drive.py: SERIAL is required", file=sys.stderr)
             return 2
         dev = Device(serial)
+    for kv in a.set:
+        k, _, v = kv.partition("=")
+        if k not in DEFAULTS:
+            print("drive.py: --set %s: not a [drive] key" % k, file=sys.stderr)
+            return 2
+        profile.setdefault("drive", {})[k] = type(DEFAULTS[k])(float(v))
     d = Driver(dev, profile, a.out, frames_dir, a.seconds, find=a.find, mark=a.mark, sim=bool(a.sim))
     if a.sim and a.sim_step:
         d.cfg["fast_s"] = d.cfg["slow_s"] = a.sim_step

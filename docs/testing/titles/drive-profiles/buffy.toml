@@ -59,11 +59,16 @@ main_menu = ["A"]        # Start Game is lit
 profile = ["A"]          # Start Game: CONFIRM; Difficulty: Normal
 ingame_menu = ["A"]
 paused = ["A"]           # Resume is lit
-# Run forward, pulling LT at the start of each cycle (the camera reset), with
-# a turn each way so one wall does not hold her. B jumps (the canyon's ledge
+# Run forward with a turn each way so one wall does not hold her. LT (the
+# camera reset) is pulled only in the stall escapes (taking it out of the
+# cycle made no difference, run b6). NOT SOLVED: every run (b2, b3, b5, b6)
+# runs ~10-15 s from the start, climbs a low ledge, and stops at the "Run and
+# press B to jump between ledges" gap; none of the escapes (back off and
+# turn, run and jump, two jumps) clears it. So `drive buffy ... find` does not
+# reach its 20 s of play: lane.routedriver2 NOTES.md. B jumps (the canyon's ledge
 # gaps); A attacks. NEVER START: it pauses (the survey's cycles 5-14 only
 # toggled PAUSE).
-play_cycle = [[[["LY", "min"], ["LT", "max"]], 1.0], [[["LY", "min"]], 4.0], [[["LY", "min"], ["LX", "max"]], 1.5], [[["LY", "min"]], 3.0], [[["LY", "min"], ["LX", "min"]], 1.5]]
+play_cycle = [[[["LY", "min"]], 5.0], [[["LY", "min"], ["LX", "max"]], 1.5], [[["LY", "min"]], 3.0], [[["LY", "min"], ["LX", "min"]], 1.5]]
 play_tap = [["B", 4.0], ["A", 7.0]]
 # A stall (the HUD up, the frame still): reset the camera, back off and turn,
 # then run and jump; the second try turns the other way; the third runs

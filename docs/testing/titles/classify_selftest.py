@@ -288,7 +288,10 @@ SIMS = [
     # the wedge was counted as play.
     ("sonic: live run ending wedged at the POWER block: play, then a stall", "sonic-heroes", SON2, (0, 20),
      ["--find"], dict(result="window-done", time_to_title=True, time_to_play=True, input_why="stall escape")),
-    ("forza: 0 MPH is a ROUTE FAIL, not play", "forza", FOR, (31, 39), ["--seconds", "999", "--sim-step", "25"],
+    # escape_max=0: the frames cannot react to the reverse escape; this case
+    # is the stall watch.
+    ("forza: 0 MPH is a ROUTE FAIL, not play", "forza", FOR, (31, 39),
+     ["--seconds", "999", "--sim-step", "25", "--set", "escape_max=0"],
      dict(result_prefix="ROUTE FAIL", fail_word="stalled")),
     ("sonic: a pause that never resumes is a ROUTE FAIL", "sonic-heroes", SON, (21, 40), ["--seconds", "999"],
      dict(result_prefix="ROUTE FAIL", fail_word="paused")),
@@ -493,6 +496,18 @@ def progress_checks(prof, disk):
         fails += not ok
         print("%s  steer %-47s LX %s..%s %-9s got LX %s %s (line %s px at x %s)" % (
             "ok  " if ok else "FAIL", name, lo, hi, why, got[3], got[6], got[1], got[2]))
+    # straight_s: 1 s after steering came on, the bend reads straight (the
+    # grid start); the bend case above, with no start time, is the counter.
+    with tempfile.TemporaryDirectory() as td:
+        d = drive.Driver(drive.SimDevice([], 1.0), prof("forza"), td, td, 999, sim=True)
+        d.steer_since = 0.0
+        d.clock_sim = 1.0
+        d.steer_tick(source(FZR1, "234126-049-play.png", disk))
+        got = d.steer_log[-1]
+    ok = got[3] == 0.0 and got[6] == "straight"
+    fails += not ok
+    print("%s  steer %-47s got LX %s %s" % ("ok  " if ok else "FAIL", "forza bend 1 s after steering on: straight",
+                                            got[3], got[6]))
     for name, pn, run, f, want in MODES:
         with tempfile.TemporaryDirectory() as td:
             d = drive.Driver(drive.SimDevice([], 1.0), prof(pn), td, td, 999, sim=True)

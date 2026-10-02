@@ -33,6 +33,13 @@ main_menu = ["A"]        # Arcade Race -> event -> class -> car -> assists -> St
 ingame_menu = ["A"]
 paused = ["A"]           # Resume is highlighted; START would also resume
 play_hold = [["RT", "max"]]
+# Against a wall at 0 MPH (run f1): reverse (LT brakes, then reverses) with
+# the wheel turned, then straighten; the second try turns the other way. The
+# steering thread is paused while an escape plays.
+stall_cycles = [
+  [[[["LT", "max"], ["LX", "max"]], 2.5], [[["LX", "min"]], 0.8], [[], 0.3]],
+  [[[["LT", "max"], ["LX", "min"]], 2.5], [[["LX", "max"]], 0.8], [[], 0.3]],
+]
 
 # STEERING (lane.routedriver2). RT alone ran wide onto the dirt at the
 # first bend (lane.routedriver session 4). The Arcade assists draw the
@@ -54,9 +61,15 @@ throttle = 0.7
 turn_lift = 0.4
 lost_throttle = 0.3
 lost_hold_s = 1.5
+# Run f1 (Nova, lane.routedriver2): steering from the standing start toward
+# the line (110 px right of the car) clipped the car alongside, then the car
+# went full left into the pit wall at 12 s and sat at 0 MPH: hold the wheel
+# straight for the first 5 s.
+straight_s = 5.0
 
 [drive]
 stall_fail_s = 30.0
+escape_max = 4
 # Forza's assists overlay, its loading screen and the starting grid are
 # animated menus the classifier reads as moving (`cutscene`): A advances
 # all of them, B would back out, START on the grid opens the pause.
