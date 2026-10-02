@@ -31,7 +31,8 @@ typedef struct HakuxIbcLayout {
 } HakuxIbcLayout;
 
 /*
- * HAKUX_IBC: unset or "1" on, "0" off, "2" on with a hit counter. Fills *l
+ * HAKUX_IBC: "1" on, "2" on with a hit counter, unset or anything else off
+ * (the default; see hakux_ibc_enabled() for why). Fills *l
  * and returns true when the probe may be emitted. Read once; logs one
  * "[ibc507]" line.
  */

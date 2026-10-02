@@ -1,0 +1,62 @@
+In file included from /home/justin/hakux-work/wt/ibcache/accel/tcg/cpu-exec.c:46:
+In file included from /home/justin/hakux-work/wt/ibcache/accel/tcg/tb-hash.h:24:
+/home/justin/hakux-work/wt/ibcache/include/exec/target_page.h:57:12: warning: shifting a negative signed value is undefined [-Wshift-negative-value]
+   57 |     return TARGET_PAGE_MASK;
+      |            ^~~~~~~~~~~~~~~~
+/home/justin/hakux-work/wt/ibcache/include/exec/target_page.h:45:52: note: expanded from macro 'TARGET_PAGE_MASK'
+   45 | # define TARGET_PAGE_MASK    ((TARGET_PAGE_TYPE)-1 << TARGET_PAGE_BITS)
+      |                               ~~~~~~~~~~~~~~~~~~~~ ^
+/home/justin/hakux-work/wt/ibcache/accel/tcg/cpu-exec.c:1607:37: warning: shifting a negative signed value is undefined [-Wshift-negative-value]
+ 1607 |         } else if (((pc ^ bp->pc) & TARGET_PAGE_MASK) == 0) {
+      |                                     ^~~~~~~~~~~~~~~~
+/home/justin/hakux-work/wt/ibcache/include/exec/target_page.h:45:52: note: expanded from macro 'TARGET_PAGE_MASK'
+   45 | # define TARGET_PAGE_MASK    ((TARGET_PAGE_TYPE)-1 << TARGET_PAGE_BITS)
+      |                               ~~~~~~~~~~~~~~~~~~~~ ^
+2 warnings generated.
+In file included from /home/justin/hakux-work/wt/ibcache/target/i386/tcg/translate.c:28:
+/home/justin/hakux-work/wt/ibcache/include/exec/target_page.h:57:12: warning: shifting a negative signed value is undefined [-Wshift-negative-value]
+   57 |     return TARGET_PAGE_MASK;
+      |            ^~~~~~~~~~~~~~~~
+/home/justin/hakux-work/wt/ibcache/include/exec/target_page.h:45:52: note: expanded from macro 'TARGET_PAGE_MASK'
+   45 | # define TARGET_PAGE_MASK    ((TARGET_PAGE_TYPE)-1 << TARGET_PAGE_BITS)
+      |                               ~~~~~~~~~~~~~~~~~~~~ ^
+/home/justin/hakux-work/wt/ibcache/target/i386/tcg/translate.c:2280:40: warning: shifting a negative signed value is undefined [-Wshift-negative-value]
+ 2280 |         if (((s->pc - 1) ^ (pc - 1)) & TARGET_PAGE_MASK) {
+      |                                        ^~~~~~~~~~~~~~~~
+/home/justin/hakux-work/wt/ibcache/include/exec/target_page.h:45:52: note: expanded from macro 'TARGET_PAGE_MASK'
+   45 | # define TARGET_PAGE_MASK    ((TARGET_PAGE_TYPE)-1 << TARGET_PAGE_BITS)
+      |                               ~~~~~~~~~~~~~~~~~~~~ ^
+/home/justin/hakux-work/wt/ibcache/target/i386/tcg/translate.c:2282:49: warning: shifting a negative signed value is undefined [-Wshift-negative-value]
+ 2282 |                                   (s->pc - 1) & TARGET_PAGE_MASK);
+      |                                                 ^~~~~~~~~~~~~~~~
+/home/justin/hakux-work/wt/ibcache/include/exec/target_page.h:45:52: note: expanded from macro 'TARGET_PAGE_MASK'
+   45 | # define TARGET_PAGE_MASK    ((TARGET_PAGE_TYPE)-1 << TARGET_PAGE_BITS)
+      |                               ~~~~~~~~~~~~~~~~~~~~ ^
+In file included from /home/justin/hakux-work/wt/ibcache/target/i386/tcg/translate.c:4471:
+/home/justin/hakux-work/wt/ibcache/target/i386/tcg/decode-new.c.inc:1285:71: warning: initializer overrides prior initialization of this subobject [-Winitializer-overrides]
+ 1285 |     [0xf7] = X86_OP_ENTRY3(MASKMOV,  None,None, V,dq, U,dq, vex4_unal avx2_256 mmx p_00_66),
+      |                                                                       ^~~~~~~~
+/home/justin/hakux-work/wt/ibcache/target/i386/tcg/decode-new.c.inc:198:8: note: expanded from macro 'X86_OP_ENTRY3'
+  198 |     ## __VA_ARGS__                                                \
+      |        ^~~~~~~~~~~
+/home/justin/hakux-work/wt/ibcache/target/i386/tcg/decode-new.c.inc:262:33: note: expanded from macro 'avx2_256'
+  262 | #define avx2_256 .vex_special = X86_VEX_AVX2_256,
+      |                                 ^~~~~~~~~~~~~~~~
+/home/justin/hakux-work/wt/ibcache/target/i386/tcg/decode-new.c.inc:1285:61: note: previous initialization is here
+ 1285 |     [0xf7] = X86_OP_ENTRY3(MASKMOV,  None,None, V,dq, U,dq, vex4_unal avx2_256 mmx p_00_66),
+      |                                                             ^~~~~~~~~
+/home/justin/hakux-work/wt/ibcache/target/i386/tcg/decode-new.c.inc:198:8: note: expanded from macro 'X86_OP_ENTRY3'
+  198 |     ## __VA_ARGS__                                                \
+      |        ^~~~~~~~~~~
+/home/justin/hakux-work/wt/ibcache/target/i386/tcg/decode-new.c.inc:247:50: note: expanded from macro 'vex4_unal'
+  247 | #define vex4_unal .vex_class = 4, .vex_special = X86_VEX_SSEUnaligned,
+      |                                                  ^~~~~~~~~~~~~~~~~~~~
+/home/justin/hakux-work/wt/ibcache/target/i386/tcg/translate.c:4645:20: warning: shifting a negative signed value is undefined [-Wshift-negative-value]
+ 4645 |         pc_arg &= ~TARGET_PAGE_MASK;
+      |                    ^~~~~~~~~~~~~~~~
+/home/justin/hakux-work/wt/ibcache/include/exec/target_page.h:45:52: note: expanded from macro 'TARGET_PAGE_MASK'
+   45 | # define TARGET_PAGE_MASK    ((TARGET_PAGE_TYPE)-1 << TARGET_PAGE_BITS)
+      |                               ~~~~~~~~~~~~~~~~~~~~ ^
+5 warnings generated.
+accel/tcg/cpu-exec.c rc 0
+target/i386/tcg/translate.c rc 0

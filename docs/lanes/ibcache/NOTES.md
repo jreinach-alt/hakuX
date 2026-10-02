@@ -1043,3 +1043,98 @@ and none is void.
     within what ten Nova runs can resolve, and it is not excluded. The
     mechanism hypothesis in 5a (more guest work per second at the same fps)
     is unchanged and still untested.
+
+### 5d, read: FAIL, and in the wrong direction (`readleg.sh 5d`, `out/legtable-5d.out`)
+
+Nova, 946a78c8e9, route `ibcache-forza-drive`, B [5c's six] A A B. The
+pilot B ran about 50 minutes before the other three, so the order is not
+drift-balanced. All four runs are valid, and the car moves in every one of
+them: it is in a different place in each of the ten play frames, at up to
+25 MPH, crawling and bouncing around the start straight and the pit.
+
+| run | arm | fps | J/frame | net W | guest idle | vCPU on-CPU | PGRAPH rd/s | `[rr425] hc` |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| `-81467` (pilot) | B | 26.07 | 0.3232 | 8.43 | 0.305 | 0.945 | 352 | 1.44M |
+| `-1136225` | A | 27.74 | 0.2813 | 7.80 | 0.230 | 0.945 | 372 | 14.1M |
+| `-1136287` | A | 26.29 | 0.2980 | 7.83 | 0.221 | 0.942 | 344 | 13.8M |
+| `-1136347` | B | 27.06 | 0.3144 | 8.51 | 0.278 | 0.922 | 355 | 1.51M |
+
+- **Arm means:** fps A 27.01, B 26.57 (**x0.98**; the bar was x1.05).
+  J/frame A 0.2896, B 0.3188 (**x1.10**; the bar was x0.96). Net W
+  A 7.82, B 8.47 (+0.65 W).
+- **5d FAILS both bars.** The probe gives no fps on Forza, and it costs
+  J/frame.
+- **Where the vCPU time went.** The guest idle share rises from 0.226 (A) to
+  0.291 (B), +6.5 points of the vCPU. The probe does save vCPU time, but
+  Forza on this route is not vCPU-bound (guest idle 0.22 even in A). So
+  the saved time becomes the guest kernel's idle loop, which spins because
+  the idle halt is off. The vCPU stays about 94% on-CPU in both arms.
+  B's extra 0.65 W is consistent with that spin running at a higher IPC than
+  the helper-call path it replaced, but this is not shown. Leg 6 tests it.
+
+### The probe across every title reading, and the decision: default OFF
+
+| title | leg | runs per arm | fps B vs A | J/frame B/A |
+|---|---|---|---:|---:|
+| GTA SA | 5a | 2 | -0.07 | 1.066 |
+| GTA SA | 5c | 3 | +0.31 | 1.021 |
+| Forza (driven) | 5d | 2 | -0.45 | 1.100 |
+| Crimson Skies | A1/B | 1 | +0.01 (both capped) | 0.972 |
+
+No title shows an fps gain, and three of the four J/frame readings are
+higher with the probe. The plan's estimate for rank 2 (-7 to -11% J/frame)
+is refuted on the Nova with the idle halt off, which is the default. The
+lookup share and the helper calls fell exactly as predicted (legs 1 and 2),
+but the time they freed did not become frames.
+
+**Decision.** `HAKUX_IBC` is off unless set to 1 or 2 (cpu-exec.c,
+hakux-ibc.h). The PR lands as an opt-in switch, with
+`Release note (none)`. The correctness legs (pixels, band, three-title soaks)
+were all run with the probe on, so they still cover the switch. The reasons
+to land it rather than drop it:
+- it is the mechanism leg 6 needs;
+- if the idle halt goes default-on (#566), the probe is one env away from
+  being measured where its saving could become sleep.
+
+**Stopped:** the 16-bit jump cache (`lane/ibcache-jcsize`) and the
+return-address stack. Both deepen the same saving, and while the halt is off
+that saving costs watts. Do not build either until leg 6 says the saved time
+becomes sleep.
+
+### Leg 6: the probe with the idle halt on, registered before it is queued
+
+The question: is B's +0.65 W the saved vCPU time spinning (H1), or a cost of
+the probe itself (H2)? It is the probe's only route to a win: with the halt
+on, saved vCPU time becomes sleep.
+
+- **Runs:** Forza, `ibcache-forza-drive`, Nova, 420 s, at this branch's
+  head. Both arms have `HAKUX_IDLE_HALT=1`. B adds `HAKUX_IBC=1`, and A is
+  the default (probe off). Order B A A B (`queue_leg6.sh`).
+- **Validity:** 5d's gate, plus `[idlehalt] on=1` with halts > 0 in every
+  run, and `[ibc507] on=1` in B and `on=0` in A.
+- **Readings:** net W, J/frame, fps and guest idle share, as arm means.
+- **H1 (spin), if net W(B) - net W(A) <= +0.20 W and J/frame(B)/J/frame(A)
+  <= 1.03:** the probe is a candidate to go on with the halt's default
+  (#566). The next measurement is a gain leg with both on, on a vCPU-bound
+  title.
+- **H2 (the probe costs power), if net W(B) - net W(A) >= +0.45 W:** that
+  is 70% or more of the halt-off gap. The probe stays off, rank 2 is closed
+  on the Nova, and so are the jcsize and RAS steps.
+- **Between the two:** unresolved at n=2. It is reported as that, with no
+  more runs from this lane.
+
+### Ready (2026-10-02 ~01:30 PDT)
+
+- **Checks:** `ccheck.py` compiles cpu-exec.c and translate.c with the
+  default-off change at rc 0, with only the existing upstream
+  shift-of-negative warnings (`out/ccheck-default-off.out`).
+  `preflight.sh --allow-tracker` passes (`out/preflight-ready.out`).
+  Its coverage gate did not run (gh is suspended), and it says so.
+- **PR.md:** `State: ready`, with `Release note (none)`. OUTBOX has the
+  #507 post.
+- **Territory:** the board request for the three unlisted files was refreshed
+  in `board-requests/lane.ibcache.md` at 01:30 PDT. It is still not applied
+  on origin/board.
+- **Leg 6:** queued at this head with `queue_leg6.sh <head> BAAB`. Its runs
+  are also the fold's run on this head. Its reading goes on a stacked
+  branch (`lane/ibcache-leg6`), so this head does not move.

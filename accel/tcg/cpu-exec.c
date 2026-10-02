@@ -1687,6 +1687,10 @@ const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
  * get_tb_cpu_state, curr_cflags and the key compares in tb_lookup (18.4% of
  * the vCPU on GTA, docs/lanes/vcpuplan/NOTES.md). A miss still calls the
  * helper, so the qht, breakpoints and translation stay here.
+ *
+ * Off unless HAKUX_IBC=1 or 2. With the idle halt off, the vCPU time it
+ * saves on the Nova became guest spin, not fps: J/frame x1.02 on GTA and
+ * x1.10 on Forza, fps unchanged (docs/lanes/ibcache/NOTES.md, 5c and 5d).
  */
 uint64_t hakux_ibc_hits;
 
@@ -1697,7 +1701,7 @@ bool hakux_ibc_enabled(HakuxIbcLayout *l)
         0xffffffff, 0x7ffe0,
     };
     const char *e = getenv("HAKUX_IBC");
-    bool on = !(e && e[0] == '0');
+    bool on = e && (e[0] == '1' || e[0] == '2');
     bool ok = true;
 
     l->array_ofs = offsetof(CPUJumpCache, array);
