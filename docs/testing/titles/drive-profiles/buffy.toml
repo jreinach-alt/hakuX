@@ -55,28 +55,47 @@ hud_stall_bar = 0.08
 
 [input]
 title = ["START"]
-main_menu = ["A"]        # Start Game is lit
+# Load Game, not Start Game (session 2, run b12): each Start Game makes a
+# save ("BUFFY n"), the game keeps at most 10, and the Nova's disk is kept
+# between runs (hdd.plan "keep", dispatched runs too). With 10 on it, Start
+# Game only shows "only allows 10 saved games ... Press A to continue" and
+# A goes back to this menu, a loop. Every save was made at the canyon's
+# start. So: Load Game, found by which row is lit ([[cursor]] below), since
+# one stick or hat pulse moves the cursor one row or two (b15-b17).
+main_menu = ["LY:max"]
 profile = ["A"]          # Start Game: CONFIRM; Difficulty: Normal
 ingame_menu = ["A"]
 paused = ["A"]           # Resume is lit
 # Run forward with a turn each way so one wall does not hold her. LT (the
 # camera reset) is pulled only in the stall escapes (taking it out of the
-# cycle made no difference, run b6). NOT SOLVED: every run (b2, b3, b5, b6)
-# runs ~10-15 s from the start, climbs a low ledge, and stops at the "Run and
-# press B to jump between ledges" gap; none of the escapes (back off and
-# turn, run and jump, two jumps) clears it. So `drive buffy ... find` does not
-# reach its 20 s of play: lane.routedriver2 NOTES.md. B jumps (the canyon's ledge
-# gaps); A attacks. NEVER START: it pauses (the survey's cycles 5-14 only
+# cycle made no difference, run b6). NOT SOLVED: every run (b2-b14) runs
+# ~10-15 s from the start, climbs a low ledge, and falls into the stream bed
+# below the "Run and press B to jump between ledges" gap. No B or Y pattern
+# tried made the jump (lane.routedriver2 NOTES.md, session 2). So `drive
+# buffy ... find` does not reach 20 s of frame-checked play. Standing B is a
+# kick and A a punch (b11: attack trails). NEVER START: it pauses (the survey's cycles 5-14 only
 # toggled PAUSE).
 play_cycle = [[[["LY", "min"]], 5.0], [[["LY", "min"], ["LX", "max"]], 1.5], [[["LY", "min"]], 3.0], [[["LY", "min"], ["LX", "min"]], 1.5]]
+# Session 2 tried B as bursts (3, then 8 presses held 150 ms, every
+# capture), then Y bursts (runs b8, b10, b13, b14): none made the gap, and
+# Y is DELETE on the Load Game screen, so it stays out of play. Session 1's
+# taps are kept: they reach play cleanly.
 play_tap = [["B", 4.0], ["A", 7.0]]
 # A stall (the HUD up, the frame still): reset the camera, back off and turn,
 # then run and jump; the second try turns the other way; the third runs
 # straight at the ledge with two jumps (the "push into low ledges" tip).
+#
+# Session 2: the first stall is NOT at the gap's edge but in the stream
+# bed below it (b5/b6's frame 028 is the 49.1 s capture: splash at her
+# feet). The stream bed is a closed pit: b7's eight escapes, four
+# directions with B through each push, never left it. So no escape fixes
+# the gap. What escapes CAN fix is the sky camera (b7, b13, b14: Buffy out
+# of frame, the camera on the sky), and LT clears it, so each starts with LT.
 stall_cycles = [
-  [[[["LT", "max"]], 0.8], [[["LY", "max"]], 1.0], [[["LX", "max"]], 1.5], [[["LY", "min"]], 2.5, ["B"]], [[], 0.5]],
-  [[[["LT", "max"]], 0.8], [[["LY", "max"]], 1.0], [[["LX", "min"]], 1.5], [[["LY", "min"]], 2.5, ["B"]], [[], 0.5]],
-  [[[["LT", "max"]], 0.8], [[["LY", "min"]], 3.0, ["B", "B"]], [[], 0.5]],
+  [[[["LT", "max"]], 0.8], [[["LY", "min"]], 2.5, ["B/150", "B/150", "B/150", "B/150", "B/150", "B/150"]], [[], 0.3]],
+  [[[["LT", "max"]], 0.8], [[["LY", "max"]], 1.0], [[["LY", "min"]], 2.5, ["B/150", "B/150", "B/150", "B/150", "B/150", "B/150"]], [[], 0.3]],
+  [[[["LT", "max"]], 0.8], [[["LX", "min"]], 1.5], [[["LY", "min"]], 2.5, ["B/150", "B/150", "B/150", "B/150", "B/150"]], [[], 0.3]],
+  [[[["LT", "max"]], 0.8], [[["LX", "max"]], 1.5], [[["LY", "min"]], 2.5, ["B/150", "B/150", "B/150", "B/150", "B/150"]], [[], 0.3]],
 ]
 
 [drive]
@@ -91,6 +110,14 @@ progress_bar = 0.07
 progress_window_s = 10.0
 progress_mask = [[0, 0, 480, 160], [0, 840, 1280, 120]]   # the HUD, and the TIP banner
 stall_clear_s = 10.0
+
+[[crop]]
+name = "save-limit"
+state = "main_menu"
+region = [470, 370, 490, 115]
+ref = "save-limit.png"
+threshold = 12.0   # b12: the dialog 0.3-9.8, every other Buffy frame on disk (572) >= 23.3
+press = ["A"]      # "Press A to continue" -> the main menu
 
 [[crop]]
 name = "pause"
@@ -140,3 +167,19 @@ state = "play"
 region = [90, 30, 390, 120]
 ref = "hud.png"
 threshold = 12.0
+
+# The main menu's lit row decides the press: Load Game lit, A; above it,
+# down; below it, up. The lit row is the brightest of the four (99th-
+# percentile grey): right on all 25 labelled frames of b13-b17, by 89-126
+# grey levels. Reference crops per lit row could not separate the pulsing
+# glow (b17: Options and Extras lit read as unlit, and down at Extras, the
+# bottom row, did nothing for 8 presses).
+[[cursor]]
+crop = "main-menu"
+min_margin = 40.0
+rows = [
+  { name = "start", region = [110, 320, 360, 70], press = ["LY:max"] },
+  { name = "load", region = [110, 445, 360, 70], press = ["A"] },
+  { name = "options", region = [110, 565, 360, 70], press = ["LY:min"] },
+  { name = "extras", region = [110, 685, 360, 70], press = ["LY:min"] },
+]

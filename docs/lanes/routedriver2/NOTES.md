@@ -286,3 +286,192 @@ logcats.
 - The Nova hold `routedriver2:s2` is released.
 - No confirmation was queued.
 
+
+## Session 2 (Opus 5.5), 2026-10-02 (attempt 2 of 4)
+
+**Why attempt 1 "did not finish":** it did. Session 1 ended normally with
+PR.md `State: ready` and folded offline as `b71f92a12a` (05:01 PDT). This
+attempt is the resume of a continuous pipeline lane, not a recovery. The
+branch fast-forwarded onto that fold (0 ahead at start).
+
+**Order chosen (probability x win):**
+- Buffy first. It is the strongest Playable candidate in this lane's hands
+  (29.97 fps against a 30 target, ok_share 0.93), its menu path and play
+  detection already work, and one obstacle stands between it and a `--find`
+  pass.
+- Black Stone (titleroutes' "needs closed-loop input") is NOT taken: its
+  draft route (`routes/black-stone.draft.route`, nav.py, session 37) already
+  reaches the first room. The block is that the warrior never walks, with
+  the stick or the hat. A screen driver cannot fix that, so the expected
+  value of a profile is low until someone finds why he does not walk.
+- Crash: Wrath of Cortex is already routed and confirmed (titleroutes
+  session 37). titleroutes2 is working Gunvalkyrie, Bloody Roar, Star Wars
+  Ep. III, Halo CE, Conker and NGB, so those are not duplicated here.
+
+### Buffy: what the b5/b6 frames actually say about the "ledge gap"
+
+b5 and b6 have identical timelines to the decisecond (play at 37.0 s, the
+first stall at 49.2 s): under the same inputs the game is deterministic.
+The frame kept on the first stall row (`028`) is written AFTER the escape
+runs (drive.py `keep()` follows `act()`). But it holds the 49.1 s capture,
+and in that capture **she is already in the stream bed below the gap**, with
+a splash at her feet. The play cycle's B tap at 46.7 s, at the edge
+(frame `027`), was the last input before it. So all six escapes in b5 and
+b6, and every earlier variant, played from inside the stream bed, and none
+of them was designed for it. The "ledge gap" problem is really two
+problems:
+1. getting out of the stream bed;
+2. making the jump. A B tap every 4 s lands at a random distance from the
+   edge.
+
+Run b7 measures (1) first: four escapes, each exploring one direction
+(forward, back, left, right) with B pressed through the push, every escape
+filmed at 0.5 s (`escape_capture_s`), every capture kept.
+
+Held runs, Nova ee317437, hold `routedriver2:s2` 05:35-05:59 PDT, AC, 80%,
+each 240 s or less with `--find` (records: `docs/lanes/routedriver2/buffy/`):
+
+| run | change | result | what the frames show |
+|---|---|---|---|
+| b7 | four exploring escapes (forward, back, left, right, B through each), every capture kept, escapes filmed at 0.5 s | ROUTE FAIL stalled | The timeline diverged from b5/b6. She climbed the low ledge (027), then **the camera swung to the sky** (028-036, 20 s). That is titleroutes replay 2's "frozen sky": the camera, not a wall. Escape 1 (forward + B) left it on the sky. Escape 2 starts with LT, and **LT (the camera reset) brought her back into view**. At 92 s she splashed into the stream bed (042). Then 8 escapes, each direction twice with B through the push, filmed every 0.5 s: **she never left the water**. The stream bed is a closed pit for every input tried. |
+| b8 | B every capture, as a burst of 3 presses 0.4 s apart (new `play_tap` burst form); every escape starts with LT | ROUTE FAIL stalled | In the stream bed by 45 s, earlier than before. Escape frames: B presses with forward held, in the water, show no airborne frame. |
+| b9 | probe: HUD bars at 1.01, so every HUD frame is `stalled` and escape 1 (LT, forward + B x4) fires at the spawn, on dry ground | (probe) | Running forward on dry ground with B pressed 4x in 0.9 s: never airborne at 0.4 s sampling. Escape 2: she ran forward toward the gap with B x4 at the phase start, then went off the edge 1-2 s later with no B in that window and splashed in (021). |
+| b10 | B presses held 150 ms (the gap's frames read FPS 14-20, 50-70 ms a frame; pad.sh's default press is 60 ms), a burst of 8 every capture | ROUTE FAIL stalled | In the stream bed by 45 s. |
+| b11 | probe: standing still on flat ground, stick released: B/150, B/300, A, X, Y, 1.5 s apart, filmed at 0.3 s | (probe) | **B and A each draw an attack trail (a kick, a punch), not a jump.** At the second site, on the ledge top under the "Run and press B" tip, the **Y** press (phase 5) moved her off the ledge with no stick: 022 standing, 023 blur, 024 splash in the stream bed. |
+| b12 | Y bursts in place of B | ROUTE FAIL stuck, main_menu | **Never reached the canyon: the save limit.** Each Start Game makes a save ("BUFFY n"), the game keeps 10, and the Nova's disk is kept between runs. Dispatched runs keep it too: hdd.plan "keep", "the disk carries the store's saves". With 10 saves, Start Game shows "Buffy The Vampire Slayer only allows 10 saved games on your Xbox Hard Disk ... Press A to continue", and A goes back to the main menu. The driver looped there (it read the dimmed dialog as `cutscene` and pressed A). |
+
+What this settles:
+- The stream bed has no exit the driver can find. Falling in ends the run,
+  so escapes cannot fix the gap; the jump has to be made.
+- B pressed while running, at any density tried (one per ~2 s, a burst of
+  3, a burst of 8 held 150 ms), never produced a frame of her in the air.
+  Standing B is a kick. Y is the one button seen to move her off a ledge
+  without the stick. **Open:** whether Y is the jump. b12 was meant to
+  answer it and hit the save limit first.
+- LT clears the sky-camera stall. Every escape now starts with LT.
+
+Fixes from this:
+- `play_tap` takes a burst, `[btn, every, n, gap]`, and `BTN/ms` presses.
+  Selftest: a burst sends n presses and sleeps (n-1) x gap. The counter-case:
+  `[btn, every]` sends one, and a burst is not due again inside `every`.
+  `B/150` is sent held 150 ms. START is refused in a burst and as
+  `START/150`. Mutant: a burst collapsed to one press is caught.
+- Buffy's main menu takes **Load Game** (`LY:max`, then A). A `save-limit`
+  crop (main_menu, press A) catches the dialog. Its scores: the dialog
+  0.3-9.8, all 572 other Buffy frames on disk >= 23.3. Fixture: the b12
+  dialog reads main_menu. Its counter-cases are the PAUSE, Start Game and
+  canyon cases, since the crop is first in profile order. Mutant: without
+  the crop the dialog reads `cutscene`, caught. The Load Game screen itself
+  has not been seen yet: the next run films it.
+
+Second hold, `routedriver2:s2b`, 06:28-06:34 PDT (taken after titleroutes2's
+queue had run three requests):
+
+| run | change | result | what the frames show |
+|---|---|---|---|
+| b13 | Load Game path; Y bursts (8 x Y/150 every capture) | **`reached-play` by the driver, REJECTED by the frame review** | The Load Game path works: Load Game, then "Buffy 1", then the checkpoint "Spanish Mission, Canyon", then the canyon. Title 14.3 s, play 39.1 s, one save loaded, nothing created. **Y is DELETE on the Load Game screen.** But all three play captures (025-027) show the camera on the sky or a rock face, with Buffy out of frame. The classifier counted the swaying camera as play: 2 s motion 0.55, and 10 s progress 0.125 against the 0.07 bar. Session 1 recorded the sway at 0.036-0.061 and called the margin small; here it was exceeded. The 8-press bursts spaced captures ~7 s apart, so only three frames stand behind the "20 s". `b13-false-play.jpg` |
+| b14 | LT for 0.5 s at the start of each play cycle; Y bursts of 4 | ROUTE FAIL stalled | The camera was on the sky from the first play capture (37 s). Escape 1's LT brought it back (026), she climbed the low ledge (027), and at 65.9 s she was in the pit (028) with Y bursts running. **Y is not the jump either.** |
+
+**Buffy, where it stands after session 2:**
+- Driver path: title, main menu, Load Game, save, checkpoint, canyon,
+  unattended and frame-checked, ~39 s from launch.
+- The gap: NOT solved. B (four densities, two press lengths) and Y (two
+  densities) were each pressed while running at it; she always ends in the
+  stream bed, which has no exit.
+- Next, not more driver variants: find out what the jump is. Options:
+  - The game's Options screen may show the button map (a held nav.py look,
+    or one more drive run that takes Options instead of Load Game).
+  - A person with a controller makes the jump once, and the frames show
+    what it takes.
+  - The tip shows the B glyph, and B reaches games on this pad (Sonic
+    trial 3's formation change), so an emulation question (a jump that never
+    fires) is possible but unproven. Nothing here separates it from timing.
+- **Classifier hole, found by the frame review:** with the camera swinging
+  on the sky, Buffy's motion and progress both read as play. Its own frames
+  rejected b13's `reached-play`. Until something tells "Buffy on screen"
+  from "sky", a Buffy `--find` pass needs the frame review as the gate, not
+  the driver's exit code. One candidate is the upper-centre region's mean
+  colour as a `[[mode]]`, steering into an LT. Not built: the gap blocks
+  Buffy before it would matter.
+- **The profile as committed:**
+  - Load Game, and the save-limit crop.
+  - Every escape starts with LT, then forward with six B/150.
+  - Play inputs as in session 1 (B every 4 s, A every 7 s). No Y anywhere.
+
+Driver changes that stay regardless: `play_tap` bursts and `BTN/ms`, with
+selftest cases.
+
+## For the next session (session 2 additions; do not repeat)
+
+- **Buffy:** do not try more B or Y timings at the gap; b7-b14 are the
+  record. Do not try escapes from the stream bed: it is a pit. Find the jump
+  first (above). Do not choose Start Game: 10 saves are on the Nova's disk,
+  and Start Game loops on the limit dialog.
+- **Black Stone:** not a driver problem until the warrior walks (titleroutes
+  session 37: the stick and the hat only turn him).
+
+### Buffy's main menu: the cursor moves one row or two (b15-b18)
+
+Two Options probes, b15 and b16 (scratch profile, holds `routedriver2:s2c`
+06:36-06:39), were meant to read the controller map. Neither reached Options:
+- b15: the first LY flick moved one row (Start Game to Load Game), the
+  second moved two (to Extras).
+- b16: one hat pulse moved two rows (Start Game to Options), and the next
+  went on to Extras.
+
+So the committed Load Game path (`LY:max`, `A`, b13) works only when the
+flick happens to move one row.
+
+The first fix was one reference crop per lit row. It failed on the device
+(b17, hold `s2d`): the glow pulses. Options lit at 018 and 021, and Extras
+at 022-029, scored over their thresholds. Down at Extras, the bottom row,
+did nothing for 8 presses: ROUTE FAIL stuck. Over 25 labelled frames
+(b13-b17), Extras lit scored up to 33 against its own reference while unlit
+rows scored from 21. No threshold separates them.
+
+What works: **the lit row is the brightest row.** The measure is each
+row's 99th-percentile grey. It was right on all 25 frames, by 89-126 grey
+levels.
+
+New, `[[cursor]]` (drive.py `cursor_press`, classify.py `cursor_row`): on a
+screen named by `crop`, the brightest of `rows` (if it beats the next by
+`min_margin`) picks that row's `press`. Buffy:
+- Load Game lit: A.
+- Start Game lit: down.
+- Options or Extras lit: up.
+
+Selftest (`CURSOR_WANT`):
+- Each lit row reads right, including b17's two frames the crops missed and
+  b15's dim-glow Load Game.
+- Counter-cases: the 10-saves dialog (its own crop, margin 6) and the Load
+  Game screen (margin 10) read no lit row.
+- `cursor_press` returns nothing for the same frame under another crop.
+- A `[[cursor]]` naming a missing crop is refused.
+- Mutants caught: dimmest instead of brightest (7 failures), and the crop
+  gate removed (1).
+- Also fixed: `check_profile()` ran before `self.crops` was set.
+
+**b18 (committed profile, `--find`, 06:52-06:55): the path works through
+the very jitter it was built for.**
+- The rows went Start, then (down moved two) Options, then (up moved two)
+  Start, then down to Load Game, then A, the checkpoint, the canyon.
+- Play at 41.4 s, then the known stall at the gap (52 s), ROUTE FAIL
+  stalled. `b18-cursor-path.jpg`.
+
+**Still open for Buffy: the jump.** The Options screen (and whether it shows
+a controller map) is a ~70 s held run now: a scratch copy of the profile
+whose `options` row presses A. It was not run because two priority requests
+(lane.bf2stall433) and a titleroutes2 request were queued on the Nova.
+
+## Hand-off state, session 2 (2026-10-02 07:07 PDT)
+
+- Branch merged with origin/master @ `bb027ced73`'s second parent (merge, no rebase); PR.md `State: ready`, `Files:`
+  equals `git diff --name-only origin/master...HEAD` (49 paths).
+- `classify_selftest.py`: 0 failures on the merged tree. `preflight.sh --allow-tracker` passed; its coverage gate did
+  NOT run (gh suspended), so that check is unverified, not passed.
+- Nova holds `routedriver2:s2`, `s2b`, `s2c`, `s2d` all released (last at 06:55). Nova device time this session: about
+  35 min in four holds, released whenever another lane's requests queued.
+- No confirmation queued; no prediction (harness only).
+- Next for Buffy: the Options probe (`scratch/mk_probe_options.py` builds it: the cursor walks to Options and presses A;
+  about 70 s held), to read the controller map and learn what the jump is. It was not run: lane.bf2stall433's arms
+  and a titleroutes2 request were queued on the Nova from 06:55 on.
