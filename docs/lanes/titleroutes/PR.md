@@ -1,12 +1,48 @@
-# titleroutes: session 63 -- queued pass-1 surveys for 4 of the 13-title Nova backlog (ADDENDUM 15); pilot gate hit, 8 titles still to queue (#397)
+# titleroutes: session 64 -- reviewed 4 pilot surveys frame-by-frame (1 of 4 was NOT gameplay despite a clean verdict), queued 2 more (#397)
 
 State: ready
 
 Lane: titleroutes          Issue: #397 (per-title gameplay fps; 0.5 tracking #433)
-Base: master @ 380dda3401 (merge of origin/master into this branch, carrying session 61's own fold back in plus localjobs/litcompile569/forzadecay414)
+Base: master @ 980ac19321 (fast-forward merge of origin/master into this branch, carrying lane.collapse433 and lane.holdwait's work; checkout was 11 commits behind at session start)
 Files: docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/OUTBOX.md, docs/lanes/titleroutes/PR.md
-Prediction: none: queued 4 generic blind surveys via request.sh (no route/targets.toml edit this session; no code under test)
-Needs device: no (direct hold) -- 4 survey requests are queued on the Nova (behind lane.ibcache's in-flight run), none held or driven live this session
+Prediction: none: review of already-queued surveys + 2 new generic blind surveys via request.sh (no route/targets.toml edit this session; no code under test)
+Needs device: no (direct hold) -- 2 survey requests queued on the Nova (behind lane.ibcache's in-flight run), none held or driven live this session
+
+## What changed (session 64)
+
+Resumed per hostops ADDENDUM 16 (01:10 PDT): session 63 ended correctly on `[lane.titleroutes] waiting:`, naming its 4
+queued request ids, but all 4 finished after the session ended, so the review step needed a fresh session -- this is
+the stage's normal "queue, then come back" pattern, not a strand.
+
+Merged `origin/master` first (11 commits behind, fast-forward, clean). Checked `dispatch/running/`: Nova still busy
+(`lane.ibcache-1136287`), so no hold needed -- this session is review + queuing only.
+
+**Reviewed all 4 surveys frame-by-frame, not from `verdict.json` alone.** 1 of 4 (Black Stone: Magic & Steel,
+`1790921686-titleroutes-1080767`) did NOT reach gameplay despite fields that looked clean (no hitches, no crash,
+fps_ok_share 1.0, 59fps) -- every post-mark frame is the character name-entry screen, with blind menu-A presses having
+typed garbage into the name field. Same open-loop trap ADDENDUM 11 found in Castlevania's first-run route. The other
+3 (Star Wars Episode III `1790921690-titleroutes-1082096`, Bloody Roar: Extreme `1790921692-titleroutes-1082566`,
+Gunvalkyrie `1790921696-titleroutes-1084287`) genuinely reached gameplay -- Bloody Roar's is a real severe slowdown
+(on-screen FPS counter itself reads 10 during live combat), flagged for per-title slowdown triage, not a route problem.
+Full table and frame citations in NOTES.md/OUTBOX.md.
+
+Checked whether a `waitfor`-based fix for Black Stone could be queued now: the mechanism is live in the dispatcher
+snapshot (`grep -c waitfor dispatch/bin/titles/route.sh` = 20) and the checkout is caught up. Not attempted this
+session, to stay inside ADDENDUM 16's actual scope (review + queue the next batch) -- left as a dedicated next task.
+
+Wrote the review to `dispatch/pilots/titleroutes.ok` (prepended, via `python3`). Queued 2 of the remaining 8 titles
+(two at a time, per session 63's own "do not repeat" note): Dino Crisis 3 (`1790928772-titleroutes-2771139`) and Buffy
+the Vampire Slayer (`1790928774-titleroutes-2773088`), both Nova, `--route survey --seconds 300 --hard-pin`.
+
+`python3 docs/testing/titles/titlestate_selftest.py` (all checks passed) and `targets.toml` via `tomllib` (80 titles,
+unchanged) -- re-run as a check, since nothing under those files changed this session.
+
+Release note (none): queuing/notes only, no code or route/targets.toml change this session.
+
+Next session: review the 2 queued surveys' frames once they land (same frame-by-frame discipline, trust nothing from
+verdict.json alone), update `dispatch/pilots/titleroutes.ok`, queue the remaining 6. Black Stone's name-entry route
+fix is a separate, larger task (author route + reference crops + verify), not a quick add to a review session. Star
+Wars Episode III, Bloody Roar, and Gunvalkyrie are ready for route-authoring from their survey frames.
 
 ## What changed (session 63)
 

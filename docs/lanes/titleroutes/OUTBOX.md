@@ -779,3 +779,26 @@ Per ADDENDUM 15: checked all 13 of session 51's Nova-only, no-copy-needed, no-ro
 The other 8 (Dino Crisis 3, Buffy, Halo: Combat Evolved, Conker: Live & Reloaded, Halo 2, Ninja Gaiden Black, ToeJam & Earl III, Tron 2.0) are not yet queued -- blocked on this session's own pilot gate, which needs a reviewed verdict written before more can be queued. Did not try to force past it or wait idle for these 4 to land, per ADDENDUM 15's own "do not wait idle for the device to clear".
 
 [lane.titleroutes] waiting: the 4 queued surveys above on the Nova (`1790921686-titleroutes-1080767`, `1790921690-titleroutes-1082096`, `1790921692-titleroutes-1082566`, `1790921696-titleroutes-1084287`). Once the last lands: review the frames, write `dispatch/pilots/titleroutes.ok`, then queue the remaining 8 titles' surveys.
+
+## #397 -- 2026-10-02 (session 64, resumed per hostops ADDENDUM 16)
+
+Reviewed the 4 pass-1 surveys session 63 queued, frame-by-frame rather than from `verdict.json`'s fields alone:
+
+| title | title_id | request id | reached_gameplay | note |
+|---|---|---|---|---|
+| Black Stone: Magic & Steel | 58490004 | `1790921686-titleroutes-1080767` | **no** | stuck on the character name-entry screen; blind menu-A presses typed garbage into the name field (same open-loop trap ADDENDUM 11 found in Castlevania's first-run route). Needs a `waitfor`/`press-until` route past name entry before it can be authored -- left as a dedicated next task, not attempted this session. |
+| Star Wars Episode III: Revenge of the Sith | 4C410017 | `1790921690-titleroutes-1082096` | yes | real lightsaber-duel combat across two distinct scene compositions; fps_window_median 30.0, fps_ok_share 0.8766. |
+| Bloody Roar: Extreme | 48550001 | `1790921692-titleroutes-1082566` | yes | **real severe slowdown**: live STAGE 1 fight, on-screen FPS counter itself reading 10, fps_window_median 10.83 / fps_ok_share 0.0. Flagging for whoever owns per-title slowdown triage (not this lane) -- this is a genuine performance finding, not a route/state problem. |
+| Gunvalkyrie | 49470017 (iso prefix `5345000B`, pre-existing mismatch) | `1790921696-titleroutes-1084287` | yes | real canyon traversal across two distinct frames; fps_window_median 59.94, fps_ok_share 1.0. |
+
+Wrote the verdict to `dispatch/pilots/titleroutes.ok`. Lesson worth repeating: Black Stone's `verdict.json` fields looked
+exactly as clean as Gunvalkyrie's (no hitches, no crash, fps_ok_share 1.0) -- only opening the frames caught that it
+never left the menu. Every survey needs the frame read, not just the ones a metric flags as suspicious.
+
+Queued 2 of the remaining 8 titles (two at a time this session, not four, per session 63's own "do not repeat" note):
+Dino Crisis 3 (`1790928772-titleroutes-2771139`) and Buffy the Vampire Slayer (`1790928774-titleroutes-2773088`), both
+Nova, `--route survey --seconds 300 --hard-pin`.
+
+[lane.titleroutes] waiting: the 2 queued surveys above on the Nova. Once both land: review the frames, update
+`dispatch/pilots/titleroutes.ok`, queue the remaining 6 (Halo: Combat Evolved, Conker: Live & Reloaded, Halo 2, Ninja
+Gaiden Black, ToeJam & Earl III, Tron 2.0: Killer App).
