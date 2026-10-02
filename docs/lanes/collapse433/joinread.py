@@ -90,7 +90,7 @@ def med(xs):
     return xs[len(xs) // 2] if xs else float('nan')
 
 
-cols = ['fps', 'gidle', 'tcpu', 'tb%', 'gap%', 'out%', 'x', 'cg', 'ndmax', 'clamp']
+cols = ['fps', 'gidle', 'tcpu', 'vblhz', 'ndmax', 'defn', 'clamp', 'cg', 'Ri']
 for c in cols:
     series.setdefault(c, [])
 print('bucket ' + ' '.join('%8s' % c for c in cols) + '   (medians; gidle/tcpu/run in %)')

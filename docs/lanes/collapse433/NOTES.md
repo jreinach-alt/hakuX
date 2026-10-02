@@ -231,7 +231,60 @@ vs 10.3K, pipeline binds 808 vs 270, shader binds 2182 vs 862.
 ## 5. Sysmem comparison (decides whether the fix is in reach)
 
 `1-1790920235-lane.collapse433-601955`: the same request with
-`--env TU_DEBUG=sysmem`.
+`--env TU_DEBUG=sysmem` (`render_mode: auto (default) title=45410062
+TU_DEBUG=sysmem`). Mark 23:08:13, end 23:09:15, 62 s of gameplay.
+`modecmp.py scratch/soak390126 scratch/soak601955 --from -45`:
+
+| BE bin | GMEM: n / fps / GPU ms / Fen | sysmem: n / fps / GPU ms / Fen |
+|---|---|---|
+| 600-1200 | 14 / 27.6 / 21.8 / 1.3 | 17 / 28.3 / 16.3 / 1.3 |
+| 1800-2400 | 16 / 18.9 / 34.9 / 11.4 | 10 / 23.9 / 35.5 / 9.2 |
+| 2400+ | 8 / 16.0 / 40.0 / 16.8 | 12 / 16.8 / 34.2 / 16.2 |
+
+**Sysmem does not remove the bound.** In the 1800-2400 draws bin, the views
+that make the dips, GPU time is the same (35.5 vs 34.9 ms). In 2400+ it
+drops 15% and fps does not move (16.0 -> 16.8). It saves 25% where the frame
+is not GPU-bound (600-1200), which buys nothing there. So BF2's GPU time is
+not GMEM tile overhead, unlike AUF and DOA. One run per mode; the view
+differs run to run, which is why the bins exist.
+
+Frames: f00019 (00:28) renders normally. **f00020 (00:49) and f00021
+(01:10) show a near-black world with only the HUD**, while the score rises
+to 750 and ammo falls (24|75 -> 15|25), so the player is in play. This is
+either the player against a dark wall or a sysmem rendering difference; one
+run does not separate them. It is a further reason not to put BF2 in the
+sysmem table on this evidence.
+
+## 6. The GPU clock: the default regimen holds the Nova's GPU at its lowest step
+
+The bound in sections 4-5 is GPU time per frame at the clock the GPU
+actually ran. `thermal.jsonl` samples `gpuclk` every ~33 s:
+- BF2 on default: 401 MHz in most samples of all three runs. In gameplay
+  (after the mark): 514 s run 401 x 8, 475 x 5, 550 x 1, 615 x 1; soak
+  -390126 550, 401; sysmem soak -601955 401, 401.
+  `throttling` is 0 throughout and no cooling device is engaged (`gpu`,
+  `devfreq-...kgsl-3d0` at 0). The governor chose the step; nothing capped it.
+- Every Nova run on disk with a thermal record (python scan of
+  `$DISPATCH_DIR/results`, `hold` samples only):
+
+| regimen (perf_mode) | runs | gpuclk samples, MHz |
+|---|---|---|
+| default (0) | 55 | 401 x 977, 475 x 39, 550 x 33, 615 x 13, 680 x 103 |
+| max (2) | 206 | 615 x 1057, 680 x 245 (never below 615) |
+
+So BF2's confirmation (`1790877270`, regimen default) ran a GPU-bound frame
+on a GPU clocked at 59% of its maximum for most of the window. The GPU busy
+share the governor sees is below 100% because the frame is serialized: the
+PFIFO thread waits on the fence (`Fen` 11-17 ms), then the GPU idles while
+the next frame records (`Draw` 16-19 ms). That is the textbook way a DVFS
+governor under-clocks an emulator.
+
+**Section 7 tests this directly**: the same soak under `PERF_REGIMEN=max`.
+
+## 7. Max-regimen comparison
+
+`1-1790921431-lane.collapse433-967641`: the same request with
+`PERF_REGIMEN=max`.
 
 (pending)
 
