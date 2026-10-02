@@ -10,14 +10,19 @@
 # nothing, A opens Single Player (130943); START does nothing there, A on
 # New Game opens the difficulty box (130954, Normal lit); A loads (131005).
 # Inputs after that are the base route's, unchanged.
+# v2: START at ~80 s, not ~64 s. In 0-1790975634-tronhang672-2276276 the
+# ESRB card was still up at 64 s (141524) and the title came at 141535, so
+# START hit the card, B hit the title, and the run looped the sign-in.
 wait 20
 shot boot20
 wait 20
 shot boot40
 wait 20
+shot boot60
+wait 15
 shot booted
 press START
-wait 10
+wait 12
 shot signin
 press B
 wait 5

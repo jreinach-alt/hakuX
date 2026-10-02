@@ -103,3 +103,10 @@ an emulator-side cache or counter that grows with run time), or it is
 intermittent. Run 2 repeats the hung run's path: route
 `docs/lanes/tronhang672/tron-newgame.route` (one DOWN to pick New Game, the rest
 of the inputs unchanged).
+
+## 5. Device run 2: 0-1790975634-tronhang672-2276276 (14:14-14:26 PDT): void, route timing
+
+Boot was ~10 s slower than 1790971658: the ESRB card was still up at the
+route's START (141524), the title came at 141535, so B landed on the title and
+the run looped the Xbox Live sign-in at 60 fps for the rest of the soak. No
+information about the hang. Route v2 waits until ~80 s before START.
