@@ -1,11 +1,11 @@
 # crashattr: a title verdict counts only hakuX's own crashes, not the device's
 
-State: draft
+State: ready
 
 ```
 Lane: crashattr            Issue: none (harness defect, dispatched directly)
-Base: master @ 2790e4b700
-Files: docs/testing/title_verdict.py, docs/testing/jobs/selftest.d/89-title-verdict.sh, docs/lanes/crashattr/NOTES.md, docs/lanes/crashattr/PR.md, docs/lanes/crashattr/falsify.py, docs/lanes/crashattr/crashattr.diff
+Base: master @ 48bb16c7d2
+Files: docs/testing/title_verdict.py, docs/testing/jobs/selftest.d/89-title-verdict.sh, docs/lanes/crashattr/NOTES.md, docs/lanes/crashattr/OUTBOX.md, docs/lanes/crashattr/PR.md, docs/lanes/crashattr/falsify.py
 Prediction: none: harness log parsing, no arm (verified by replaying 965 dispatch result logcats)
 Needs device: no    Needs NDK: no
 ```
@@ -44,10 +44,16 @@ Local checks: `falsify.py` 0 of 19 rows wrong. With the patch,
 each caught. `99-hitch-report` and `66-status-titles` gave 30 passed, 0 failed.
 Full `jobs/selftest.sh` on a scratch tree with the diff applied: all 120
 fragments, 0 failed (97 in one run before its 50-minute cap, 2582 ok; the
-other 23 in a second run, 361 passed). `preflight.sh`: pending, run once the
-diff is applied on the branch.
+other 23 in a second run, 361 passed). `preflight.sh --allow-tracker`: passed
+(territory ok, board files ok; coverage gate did not run -- `gh` 403, offline,
+exits 0 by design and is not a pass).
 
-Waiting (11:02 PDT, polled origin/board 08:57-11:01 with no change): the territory grant for `title_verdict.py` (lane.routedriver2) and
-`89-title-verdict.sh` ([free]). See NOTES.md, "Territory".
+Granted `title_verdict.py` and `89-title-verdict.sh` at 13:12 PDT once
+`[lane.routedriver2]` retired. Applied, re-verified against the merged tree
+(same falsify.py and selftest results). Re-judged the three 10-02 runs
+directly with `judge()` (not `main()`, so no `verdict.json` was rewritten --
+host ops owns re-scoring): all three now read `crash=False` and still FAIL on
+their original non-crash reason (duration, unconfirmed route). See NOTES.md,
+"Grant landed, fix applied".
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

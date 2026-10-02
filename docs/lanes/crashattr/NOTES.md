@@ -95,6 +95,59 @@ three paths. Once they are granted:
 `git apply docs/lanes/crashattr/crashattr.diff`, then rerun `falsify.py` and
 the fragment, commit, push, and set `State: ready`.
 
+## Resume, attempt 2 (2026-10-02 12:53 PDT)
+
+Attempt 1 did not finish because it was correctly blocked: the fix (diff,
+falsifier, full selftest) was ready since ~10:00 PDT, but `title_verdict.py`
+was still held by the active `[lane.routedriver2]` and `89-title-verdict.sh`
+was in `[free]` with no grant to this lane's row. It ended the session on a
+`waiting:` comment rather than editing out from under the other lane, per the
+territory rule -- that was the right call, not a stall.
+
+ADDENDUM 2 (12:57 PDT) says host ops is retiring `[lane.routedriver2]` and
+granting the three paths to this lane "on its way", to poll for up to ~20 min.
+I re-fetched `origin/board` at 12:53 PDT: `territory.toml` still shows
+`[lane.routedriver2]` active and holding `docs/testing/title_verdict.py`, and
+`[lane.crashattr].files = []` -- the grant has not landed yet (my check ran
+slightly before the addendum's own 12:57 timestamp). Continuing to poll below.
+
+## Grant landed, fix applied (2026-10-02 13:12 PDT)
+
+Polled `origin/board` every ~60s (two ~9-minute rounds). At 13:12 PDT
+`[lane.crashattr].files` listed `docs/testing/title_verdict.py`,
+`docs/testing/jobs/selftest.d/89-title-verdict.sh` and
+`docs/lanes/crashattr/**`, and `[lane.routedriver2]`'s row was gone from
+`territory.toml`. hostops's note on the grant: claimed directly from
+`[lane.routedriver2]`'s retirement per the owner's "proceed now" order.
+
+`git merge origin/master` pulled in `48bb16c7d2` (routedriver2's play_share
+timeline change to the same file). `git apply docs/lanes/crashattr/crashattr.diff`
+still applied cleanly (the brief's lines ~420-423 were untouched by that
+commit). Re-ran everything against the merged tree:
+
+- `falsify.py`: 0 of 19 rows wrong (same as the 10:00 PDT run).
+- `SELFTEST_ONLY=89-title-verdict`: 114 passed, 0 failed.
+- `preflight.sh --allow-tracker`: passed. `territory ok`, `board files ok`.
+  `coverage` did not run (`gh` 403, offline -- exits 0 by design, not a pass).
+
+Re-judged the three 10-02 runs with the patched classifier, calling `judge()`
+directly (not `main()`, which writes `verdict.json` -- host ops owns
+re-scoring those files, not this lane) against
+`/home/justin/hakux-work/dispatch/results/<run>`:
+
+```
+VERDICT ToeJam & Earl III: Mission to Earth nova FAIL(duration: 299 s of gameplay < 600 s screening) crash=False
+VERDICT Tron 2.0 - Killer App (USA, Europe).iso nova FAIL(reached_gameplay: unconfirmed (generic route) ...) crash=False
+VERDICT Tron 2.0 - Killer App (USA, Europe).iso nova FAIL(duration: 232 s of gameplay < 600 s screening) crash=False
+```
+
+All three now read `crash=False` (were `crash=True`). All three still FAIL,
+on the same non-crash reasons `falsify.py` already reported (duration,
+unconfirmed route) -- the fix removes a false reason, nothing is re-scored.
+
+Committed `title_verdict.py`, `89-title-verdict.sh` and this NOTES.md, deleted
+`crashattr.diff` (applied, no longer needed), set `PR.md` `State: ready`.
+
 ## Waiting (2026-10-02 11:02 PDT)
 
 `[lane.crashattr]` is waiting on a territory grant for `docs/lanes/crashattr/**`,
