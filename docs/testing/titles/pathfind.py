@@ -531,6 +531,15 @@ Answer exactly:
  "action": ["<token>", ...], "wait_s": <seconds to wait after the inputs, 1-10>, "probe": [<tokens>] or []}"""
 
 
+PLAN_RULE = """If the recorded path above clearly matches where you are, you may ALSO answer "plan": the inputs
+for the next screens from that path, in order, as [{"expect": "<state of that screen>", "action": [...],
+"wait_s": n}, ...] (at most 5; menus, prompts and loads only, never gameplay). They are sent one screen at a
+time without asking you, as long as each input visibly changes the screen; anything unexpected comes back to
+you. Leave "plan" out when unsure.
+
+"""
+
+
 def parse_json(text):
     text = text.strip()
     m = re.search(r"\{.*\}", text, re.S)
@@ -641,6 +650,7 @@ class Agent:
         self.own, self.sibs = load_paths(tid, name)
         self.cursor = 0              # next index into self.own's steps a replay may use
         self.sib_cursor = {}
+        self.plan = []               # the model's planned next screens (from a guide), sent without a call
         self.hints = knowledge(tid, name)
         self.probes = 0
         self.black_since = None
@@ -722,6 +732,8 @@ class Agent:
         elif self.sibs:
             guide = ("Paths recorded on SIBLING titles of the same series (menus are often laid out "
                      "alike):\n" + "\n\n".join(path_text(d) for d in self.sibs[:2]) + "\n\n")
+        if guide:
+            guide += PLAN_RULE
         return (f"{RULES}\n\nKnowledge from other titles (hints):\n{self.hints or '(none yet)'}\n\n{guide}"
                 f"Title: {self.name} (id {self.tid or '?'}), device {self.dev.label}. "
                 f"{self.el() / 60:.1f} min since cold boot.\n\nLast steps:\n{self.history()}\n\n{extra}"
@@ -998,7 +1010,18 @@ class Agent:
             self.sib_cursor[k] = j + 1
             return dict(base, state=s["state"], why=f"sibling {self.sibs[k].get('title_id')} step {j}: {s['why']}",
                         action=list(s["action"]), wait_s=s.get("wait_s", 2), src="sibreplay")
-        # 4. the model; the stronger one when stuck or unsure
+        # 4. the model's plan from a guide: the next planned input, while every input so far has visibly changed
+        # the screen. Sibling screens are 10-23 grey levels apart (ESPN 2K5 menus, 10-02), so a frame match
+        # cannot carry a sibling's path; the model reading the guide can.
+        if self.plan:
+            last = next((st for st in reversed(self.steps) if st.get("action")), None)
+            if tried or seen or not last or last.get("changed") is None or last["changed"] <= UNCHANGED:
+                self.plan = []
+            else:
+                nxt = self.plan.pop(0)
+                return dict(base, state=nxt["expect"], why=f"plan: {nxt['expect']} (from the guide)",
+                            action=nxt["action"], wait_s=nxt["wait_s"], src="plan")
+        # 5. the model; the stronger one when stuck or unsure
         cycle = max((seen.count(a) for a in seen), default=0) >= 2
         stuck = len(tried) >= 2 or cycle
         extra = ""
@@ -1026,6 +1049,16 @@ class Agent:
             wait_s = float(ans.get("wait_s") or 2)
         except (TypeError, ValueError):
             wait_s = 2.0
+        self.plan = []
+        for st in (ans.get("plan") or [])[:5] if isinstance(ans.get("plan"), list) else []:
+            if not isinstance(st, dict) or st.get("expect") not in Agent.MENU_STATES + ("loading", "black"):
+                break                # a plan only crosses menus and loads; play is the model's call
+            act = clean_action(st.get("action"))
+            try:
+                w = min(max(float(st.get("wait_s") or 2), 0.5), 10)
+            except (TypeError, ValueError):
+                w = 2.0
+            self.plan.append({"expect": st["expect"], "action": act, "wait_s": w})
         return dict(base, state=state, why=str(ans.get("why", ""))[:240], action=action, wait_s=wait_s,
                     probe=ans.get("probe") or "", src=("fast" if model == FAST else "strong"))
 

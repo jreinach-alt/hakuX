@@ -24,6 +24,10 @@ answers canned (PATHFIND_DRY). Each case names the defect it would catch.
             and its "did not follow" refusal is honoured.
   retract   confirmed, but the frame 30 s on is a title screen (the
             recheck says no): the claim is retracted, result not gameplay.
+  plan      the model answers a plan for the next two menus (from a guide):
+            they are sent with no model call while each input changes the
+            screen (3 calls, not 5); a plan never crosses into gameplay; a
+            planned input that leaves the screen unchanged drops the rest.
   actions   clean_action keeps valid tokens and drops the rest.
 """
 
@@ -57,6 +61,10 @@ def frame(path, kind, shift=0):
         im.paste((40, 40, 120), (0, 0, 1280, 960))
         for i in range(4):
             d.rectangle((400, 250 + i * 120, 880, 330 + i * 120), fill=(200, 200, 200) if i else (250, 220, 0))
+    elif kind == "menu2":
+        im.paste((120, 30, 30), (0, 0, 1280, 960))
+        for i in range(3):
+            d.ellipse((300 + i * 260, 380, 500 + i * 260, 580), fill=(230, 230, 230))
     elif kind == "game":
         im.paste((90, 140, 60), (0, 0, 1280, 960))
         for x in range(0, 1280, 160):
@@ -185,6 +193,29 @@ for t, n in (("53450031", "ESPN NBA 2K5"), ("53450002", "Sonic Heroes"), ("4D530
 own, sibs = pathfind.load_paths("53450030", "ESPN NFL 2K5")
 check("siblings", own is None and [d["title_id"] for d in sibs] == ["53450031"],
       f"ESPN NBA 2K5 is ESPN NFL 2K5's sibling, Sonic and another publisher's ESPN are not: {[d['title_id'] for d in sibs]}")
+
+# plan: logo (model, plans 2 menus) -> menu (plan) -> menu2 (plan) -> game (model) -> confirm
+rc, res, steps, calls = run("plan", [("logo", 0), ("menu", 0), ("menu2", 0), ("game", 0), ("game", 0), ("game", 0),
+                                     ("game", 80), ("game", 80)],
+                            [{"state": "publisher_logo", "why": "logo", "action": ["START"], "wait_s": 2,
+                              "plan": [{"expect": "main_menu", "action": ["A"], "wait_s": 2},
+                                       {"expect": "submenu", "action": ["DOWN", "A"], "wait_s": 2},
+                                       {"expect": "gameplay", "action": ["A"], "wait_s": 2}]},
+                             GAME, {"gameplay": True, "responded": True, "why": "moved"}],
+                            ["--no-record", "--no-replay"])
+srcs = [s.get("src") for s in steps]
+check("plan", res["result"] == "gameplay" and srcs.count("plan") == 2 and len(calls) == 3,
+      f"two planned menus sent with no call, the gameplay step dropped from the plan: {srcs}, {len(calls)} calls")
+
+# plan dropped: the first planned input leaves the screen unchanged, so the rest goes back to the model
+rc, res, steps, calls = run("plandrop", [("logo", 0), ("menu", 0), ("menu", 0)] + [("menu", 0)] * 4,
+                            [{"state": "publisher_logo", "why": "logo", "action": ["START"], "wait_s": 2,
+                              "plan": [{"expect": "main_menu", "action": ["A"], "wait_s": 2},
+                                       {"expect": "submenu", "action": ["A"], "wait_s": 2}]},
+                             {"state": "main_menu", "why": "menu", "action": ["DOWN"], "wait_s": 1}] * 1,
+                            ["--no-record", "--no-replay"])
+srcs = [s.get("src") for s in steps]
+check("plan", srcs[:3] == ["fast", "plan", "fast"], f"an input that changed nothing drops the plan: {srcs[:4]}")
 
 # actions
 ca = pathfind.clean_action(["a", "START", "STICK:Up:9", "RT:1.5", "HOLD:A:1", "HOLD:Q:1", "JUMP", "select"])
