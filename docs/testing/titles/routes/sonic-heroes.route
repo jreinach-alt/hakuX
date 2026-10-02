@@ -66,17 +66,22 @@ wait 8
 shot cutscene-start
 wait 100
 shot cutscene-end
+# ADDENDUM 10 (owner, 2026-10-01 ~18:35 PDT): the owner played this on the
+# Nova and found the prior loop's 1.5 s LX min/max swings made Sonic wander
+# rather than advance ("We should be holding down 'up' so it advances").
+# Hold LY min (stick UP) continuously for the rest of the route -- no LX
+# swings, no returning to mid -- and press A only occasionally for a jump.
+# Never press START again (the in-level pause trap this route already
+# avoids). `shot play` every ~10 s so a frame review can see Sonic's
+# position and the HUD advance between shots.
 mark gameplay
+axis LY min
 repeat forever {
-    axis LX min
-    wait 1.5
-    axis LX max
-    wait 1.5
-    axis LX mid
-    axis LY min
-    wait 2
-    press A
-    wait 1
+    wait 10
     shot play
-    wait 2
+    wait 10
+    shot play
+    wait 10
+    press A
+    shot play
 }
