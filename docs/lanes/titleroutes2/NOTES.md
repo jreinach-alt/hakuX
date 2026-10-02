@@ -58,3 +58,25 @@ Device pin read back from each `.req` as `nova`. 3 x (420 + 90) s = 25.5 min, in
 | Gunvalkyrie | `gunvalkyrie` | `1790939914-titleroutes2-1445425` |
 | Bloody Roar: Extreme | `bloody-roar-extreme` | `1790939919-titleroutes2-1446231` |
 | Star Wars Ep. III | `star-wars-ep3` | `1790939919-titleroutes2-1446307` |
+
+### Replay results (frames copied to `scratch/judge/`, scored locally with `title_verdict.py --targets`)
+
+- **Gunvalkyrie, replay 1** (`1790939914-titleroutes2-1445425`): no ROUTE FAIL. The title came one cycle sooner than in
+  the survey (play on cycle 7's START, `042146`); the two guard pairs were pause + Continue as designed; the mark
+  `042221-gameplay.png` is live play with the HUD. But 9 of the 13 later frames are the advisor's tutorial boxes ("Use
+  the Left Thumbstick to move...", "Pull the Right Trigger...", "...Dash in any direction while in the air"): the scene
+  dims, the game waits, and a yellow down-arrow asks for A. One A per ~25 s cycle left each page up for most of a cycle.
+  Between the boxes the moves work (walking, firing at `042347`, static_frac 0.01). Scorer: 251 s of play, median
+  59.94, 97.4% at 30+, no hang; worst hitch 2.75 s at +4.7 s (shader). Not a reading of play yet (much of it is the
+  paused box). Fix `685c52e514`: A every ~2-3 s in the loop. Replay 2 queued: `1790940485-titleroutes2-1611958`.
+- **Bloody Roar: Extreme, replay 1** (`1790939919-titleroutes2-1446231`): **never left the attract loop.** Each frame is
+  shot 5 s after its press: the title came up, A landed on it, it timed out to black and a DEMONSTRATION fight, and the
+  next START (11 s after the last) only brought the title back, six times; then the title for the whole window. The
+  title takes START only for a few seconds, and an 11 s cycle kept missing it; the survey's cycle 4 hit it by luck of
+  phase. **Do not repeat: a START/A cycle with 5 s waits is a sampling clock; a screen shorter than the cycle is hit or
+  missed by phase.** Fix `8fee881326`: START/A pairs 1.2 s apart for ~110 s, a frame every 4 pairs. Replay 2 queued:
+  `1790940923-titleroutes2-1761085`.
+
+Pilot verdict written to `dispatch/pilots/titleroutes2.ok` (04:28 PDT) after reading the Gunvalkyrie replay; queued
+after it: Gunvalkyrie replay 2, `halo-ce` replay 1 (`1790940485-titleroutes2-1612232`, ref `685c52e514`), Bloody Roar
+replay 2.
