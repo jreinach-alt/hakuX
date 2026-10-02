@@ -1661,12 +1661,199 @@ static void bind_uber_zero_buffer(PGRAPHVkState *r)
 #define bind_uber_zero_buffer(r) do { } while (0)
 #endif
 
+/*
+ * #433 (lane.bf2stall433): DRAWS FETCH VERTICES FROM A DEVICE-LOCAL MIRROR OF
+ * VERTEX RAM, not from the per-frame host copies.
+ *
+ * The per-frame FRAMEn_VERTEX_RAM buffers are created (vk/buffer.c) with
+ * HOST_ACCESS_RANDOM, which makes VMA prefer HOST_CACHED memory. On Turnip
+ * over KGSL the only cached type an ARM device exposes is cached-COHERENT
+ * (KGSL_MEMFLAGS_IOCOHERENT), so every vertex fetch of every draw was a GPU
+ * read that snoops the CPU caches. Its latency is the memory system's and
+ * the coherency fabric's, not the GPU core clock's, which is the shape of
+ * Battlefield 2's heavy views: ~12-14 us of GPU time per draw that did not
+ * shrink at 1.53x the GPU clock (docs/lanes/collapse433/NOTES.md section 7).
+ * Vertex data is nearly static -- ~20 uploads a frame against ~2,000 draws --
+ * so the same bytes crossed that path frame after frame.
+ *
+ * The host copies stay exactly as they were: every writer still writes them,
+ * and the frame-switch catch-up (#39) still keeps the current one newest
+ * everywhere. What changes is who reads them. The aux command buffer, which
+ * already copies index, inline-vertex and uniform staging at finish, now also
+ * copies what was written into the current host copy since the last finish
+ * into one device-local buffer, and draws bind that. Draws in a command
+ * buffer therefore see the host copy as it was at its finish, which is what
+ * they saw before: the host copy of a frame is not written again until that
+ * frame is current again, after its fence.
+ *
+ * WHAT IS COPIED. The ranges sync_vertex_ram_buffer uploads are recorded here.
+ * Every other writer of the host copy is a full-range refresh (the initial
+ * upload in renderer.c and the render thread's flush) and shows up as a flush
+ * range this list does not explain; that finish copies the whole flush range.
+ * A new writer of the host copy that is neither must record its range with
+ * vtx_mirror_note() or the mirror goes stale under it.
+ *
+ * The catch-up memcpy at frame switch is not copied: it brings an older host
+ * copy up to data the mirror already received when it was first uploaded.
+ *
+ * HAKUX_VTX_MIRROR=0 restores the old binding (no mirror).
+ */
+#define VTX_MIRROR_MAX_REGIONS 64
+
+typedef struct VertexRamMirror {
+    bool active;
+    VkBuffer buffer;
+    VmaAllocation allocation;
+    VkDeviceSize size;
+    int num_regions;
+    bool overflow;
+    VkBufferCopy regions[VTX_MIRROR_MAX_REGIONS];
+    VkDeviceSize own_min, own_max;
+    /* [vtxmirror] window counters, logged once per VTX_MIRROR_LOG_FLIPS */
+    unsigned int flips, finishes, copies, full, overflowed;
+    uint64_t bytes;
+} VertexRamMirror;
+
+#define VTX_MIRROR_LOG_FLIPS 120
+
+static VertexRamMirror g_vtx_mirror;
+
+static void vtx_mirror_reset_regions(void)
+{
+    g_vtx_mirror.num_regions = 0;
+    g_vtx_mirror.overflow = false;
+    g_vtx_mirror.own_min = VK_WHOLE_SIZE;
+    g_vtx_mirror.own_max = 0;
+}
+
+static VkMemoryPropertyFlags vtx_mirror_type_flags(PGRAPHVkState *r,
+                                                   VmaAllocation alloc,
+                                                   uint32_t *type_out)
+{
+    VmaAllocationInfo info;
+    VkMemoryPropertyFlags flags = 0;
+    vmaGetAllocationInfo(r->allocator, alloc, &info);
+    vmaGetMemoryTypeProperties(r->allocator, info.memoryType, &flags);
+    *type_out = info.memoryType;
+    return flags;
+}
+
+static void init_vertex_ram_mirror(PGRAPHVkState *r)
+{
+    memset(&g_vtx_mirror, 0, sizeof(g_vtx_mirror));
+    vtx_mirror_reset_regions();
+
+    StorageBuffer *host = &r->frame_staging[0].vertex_ram;
+    uint32_t host_type;
+    VkMemoryPropertyFlags host_flags =
+        vtx_mirror_type_flags(r, host->allocation, &host_type);
+
+    const char *env = getenv("HAKUX_VTX_MIRROR");
+    if (env && env[0] == '0') {
+        VK_LOG_ERROR("[vtxmirror] off (HAKUX_VTX_MIRROR=0): host type %u "
+                     "flags 0x%x cached=%d coherent=%d",
+                     host_type, host_flags,
+                     !!(host_flags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
+                     !!(host_flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT));
+        return;
+    }
+
+    VkBufferCreateInfo bi = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = host->buffer_size,
+        .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT |
+                 VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    };
+    VmaAllocationCreateInfo ai = {
+        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+    };
+    VkResult res = vmaCreateBuffer(r->allocator, &bi, &ai,
+                                   &g_vtx_mirror.buffer,
+                                   &g_vtx_mirror.allocation, NULL);
+    if (res != VK_SUCCESS) {
+        VK_LOG_ERROR("[vtxmirror] off: %zu-byte device buffer failed (%d); "
+                     "draws read the host copies", (size_t)bi.size, res);
+        g_vtx_mirror.buffer = VK_NULL_HANDLE;
+        g_vtx_mirror.allocation = VK_NULL_HANDLE;
+        return;
+    }
+    g_vtx_mirror.size = bi.size;
+    g_vtx_mirror.active = true;
+
+    uint32_t mirror_type;
+    VkMemoryPropertyFlags mirror_flags =
+        vtx_mirror_type_flags(r, g_vtx_mirror.allocation, &mirror_type);
+    VK_LOG_ERROR("[vtxmirror] on: %zu MB; host type %u flags 0x%x "
+                 "cached=%d coherent=%d; mirror type %u flags 0x%x "
+                 "host_visible=%d",
+                 (size_t)(bi.size >> 20), host_type, host_flags,
+                 !!(host_flags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT),
+                 !!(host_flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT),
+                 mirror_type, mirror_flags,
+                 !!(mirror_flags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT));
+}
+
+static void finalize_vertex_ram_mirror(PGRAPHVkState *r)
+{
+    if (g_vtx_mirror.buffer != VK_NULL_HANDLE) {
+        vmaDestroyBuffer(r->allocator, g_vtx_mirror.buffer,
+                         g_vtx_mirror.allocation);
+    }
+    memset(&g_vtx_mirror, 0, sizeof(g_vtx_mirror));
+}
+
+/* The buffer draws bind for vertex RAM attributes. */
+static VkBuffer vertex_ram_draw_buffer(PGRAPHVkState *r)
+{
+    if (g_vtx_mirror.active) {
+        return g_vtx_mirror.buffer;
+    }
+    return get_staging_buffer(r, BUFFER_VERTEX_RAM)->buffer;
+}
+
+/* A range just written into the current host copy. */
+static void vtx_mirror_note(hwaddr addr, VkDeviceSize size)
+{
+    VertexRamMirror *m = &g_vtx_mirror;
+
+    if (!m->active || !size) {
+        return;
+    }
+    VkDeviceSize end = addr + size;
+    m->own_min = MIN(m->own_min, (VkDeviceSize)addr);
+    m->own_max = MAX(m->own_max, end);
+    if (m->overflow) {
+        return;
+    }
+    /* Merge with any region it touches; sync ranges arrive page-aligned. */
+    for (int i = 0; i < m->num_regions; i++) {
+        VkBufferCopy *c = &m->regions[i];
+        VkDeviceSize c_end = c->srcOffset + c->size;
+        if (addr <= c_end && end >= c->srcOffset) {
+            VkDeviceSize lo = MIN(c->srcOffset, (VkDeviceSize)addr);
+            VkDeviceSize hi = MAX(c_end, end);
+            c->srcOffset = c->dstOffset = lo;
+            c->size = hi - lo;
+            return;
+        }
+    }
+    if (m->num_regions == VTX_MIRROR_MAX_REGIONS) {
+        m->overflow = true;
+        return;
+    }
+    m->regions[m->num_regions++] = (VkBufferCopy){
+        .srcOffset = addr, .dstOffset = addr, .size = size,
+    };
+}
+
 void pgraph_vk_init_pipelines(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
 
     init_pipeline_cache(pg);
     init_uber_zero_buffer(r);
+    init_vertex_ram_mirror(r);
     init_clear_shaders(pg);
     init_render_passes(r);
 
@@ -1726,6 +1913,7 @@ void pgraph_vk_finalize_pipelines(PGRAPHState *pg)
     }
     vkDestroyFence(r->device, r->aux_fence, NULL);
     vkDestroySemaphore(r->device, r->stall_chain_semaphore, NULL);
+    finalize_vertex_ram_mirror(r);
 }
 
 static void init_render_pass_state(PGRAPHState *pg, RenderPassState *state)
@@ -3535,13 +3723,98 @@ static void flush_memory_buffer(PGRAPHState *pg, VkCommandBuffer cmd)
         .size = size,
     };
 
+    /* Under the mirror the host copy's only GPU reader is the copy below. */
+    VkPipelineStageFlags dst_stage = VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
+    if (g_vtx_mirror.active) {
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        dst_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    }
+
     OPT_STAT_INC(barrier_count);
-    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_HOST_BIT,
-                         VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 0, NULL, 1,
-                         &barrier, 0, NULL);
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_HOST_BIT, dst_stage, 0, 0,
+                         NULL, 1, &barrier, 0, NULL);
 
     fs->vertex_ram_flush_min = VK_WHOLE_SIZE;
     fs->vertex_ram_flush_max = 0;
+}
+
+/*
+ * At finish, in the aux command buffer: bring the device-local mirror up to
+ * the current host copy over everything written since the last finish. The
+ * finish's aux->main barrier (TRANSFER_WRITE -> VERTEX_ATTRIBUTE_READ) orders
+ * it before this command buffer's draws, and the WAR barrier at the top of the
+ * aux command buffer orders it after every earlier submission's reads.
+ */
+static void flush_vertex_ram(PGRAPHState *pg, VkCommandBuffer cmd)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    VertexRamMirror *m = &g_vtx_mirror;
+
+    if (!m->active) {
+        flush_memory_buffer(pg, cmd);
+        return;
+    }
+
+    FrameStagingState *fs = &r->frame_staging[r->current_frame];
+    VkDeviceSize lo = fs->vertex_ram_flush_min;
+    VkDeviceSize hi = MIN(fs->vertex_ram_flush_max, m->size);
+    m->finishes++;
+
+    if (lo >= hi) {
+        vtx_mirror_reset_regions();
+        return;
+    }
+
+    /*
+     * Written ranges the list does not explain are another writer's (a full
+     * refresh): copy the whole flush range then. So is an overflowed list.
+     */
+    bool full = lo < m->own_min || hi > m->own_max ||
+                (lo == 0 && hi == m->size);
+    VkBufferCopy whole = { .srcOffset = lo, .dstOffset = lo, .size = hi - lo };
+    const VkBufferCopy *regions = m->regions;
+    uint32_t n = m->num_regions;
+    if (full) {
+        regions = &whole;
+        n = 1;
+        m->full++;
+    } else if (m->overflow) {
+        whole.srcOffset = whole.dstOffset = m->own_min;
+        whole.size = m->own_max - m->own_min;
+        regions = &whole;
+        n = 1;
+        m->overflowed++;
+    }
+
+    flush_memory_buffer(pg, cmd);
+
+    StorageBuffer *host = get_staging_buffer(r, BUFFER_VERTEX_RAM);
+    vkCmdCopyBuffer(cmd, host->buffer, m->buffer, n, regions);
+    m->copies++;
+    for (uint32_t i = 0; i < n; i++) {
+        m->bytes += regions[i].size;
+    }
+
+    vtx_mirror_reset_regions();
+}
+
+/* Once per flip, from the finish that presents. */
+static void vtx_mirror_log(void)
+{
+    VertexRamMirror *m = &g_vtx_mirror;
+
+    if (!m->active || ++m->flips < VTX_MIRROR_LOG_FLIPS) {
+        return;
+    }
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "hakuX",
+                        "[vtxmirror] flips=%u fin=%u copies=%u full=%u "
+                        "ovf=%u kb=%" PRIu64,
+                        m->flips, m->finishes, m->copies, m->full,
+                        m->overflowed, m->bytes >> 10);
+#endif
+    m->flips = m->finishes = m->copies = m->full = m->overflowed = 0;
+    m->bytes = 0;
 }
 
 static VkAttachmentLoadOp get_optimal_color_load_op(PGRAPHVkState *r)
@@ -4045,6 +4318,7 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
     if (finish_reason == VK_FINISH_REASON_FLIP_STALL ||
         finish_reason == VK_FINISH_REASON_PRESENTING) {
         opt_stats_log_and_reset();
+        vtx_mirror_log();
     }
 
     NV2A_PHASE_TIMER_BEGIN(finish);
@@ -4113,7 +4387,7 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
         r->sync_range_min = UINT32_MAX;
         r->sync_range_max = 0;
 #endif
-        flush_memory_buffer(pg, cmd);
+        flush_vertex_ram(pg, cmd);
 
         /* Execution barrier between aux CB (staging copies) and main CB
          * (draws).  Both CBs are submitted in a single VkSubmitInfo, so
@@ -4430,8 +4704,20 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
                     size_t len = next_fs->vertex_ram_stale_max - off;
                     memcpy(next_fs->vertex_ram.mapped + off,
                            cur_fs->vertex_ram.mapped + off, len);
-                    next_fs->vertex_ram_flush_min = off;
-                    next_fs->vertex_ram_flush_max = off + len;
+                    if (g_vtx_mirror.active) {
+                        /*
+                         * #433: draws read the mirror, which already holds
+                         * these bytes. Make the catch-up visible now rather
+                         * than counting it as a write the next finish must
+                         * copy: it can span most of vertex RAM.
+                         */
+                        VK_CHECK(vmaFlushAllocation(
+                            r->allocator, next_fs->vertex_ram.allocation,
+                            off, len));
+                    } else {
+                        next_fs->vertex_ram_flush_min = off;
+                        next_fs->vertex_ram_flush_max = off + len;
+                    }
                 }
 
                 next_fs->vertex_ram_stale_min = VK_WHOLE_SIZE;
@@ -6294,9 +6580,9 @@ static void snapshot_vertex_buffers(PGRAPHState *pg, ReorderWindowEntry *e,
     e->num_vertex_bindings = r->num_active_vertex_binding_descriptions;
     for (int i = 0; i < e->num_vertex_bindings; i++) {
         int attr_idx = r->vertex_attribute_descriptions[i].location;
-        int buffer_idx = (inline_map & (1 << attr_idx)) ? BUFFER_VERTEX_INLINE :
-                                                          BUFFER_VERTEX_RAM;
-        e->vertex_buffers[i] = get_staging_buffer(r, buffer_idx)->buffer;
+        e->vertex_buffers[i] = (inline_map & (1 << attr_idx)) ?
+            get_staging_buffer(r, BUFFER_VERTEX_INLINE)->buffer :
+            vertex_ram_draw_buffer(r);
         e->vertex_offsets[i] = offset + r->vertex_attribute_offsets[attr_idx];
     }
 }
@@ -7514,6 +7800,7 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
                 vw->bytes_copied += size;
                 pgraph_vk_update_vertex_ram_buffer(pg, addr,
                                                    d->vram_ptr + addr, size);
+                vtx_mirror_note(addr, size);
                 /* the update downloaded any draw_dirty overlap first */
                 vertex_range_gpu_stale(r, addr, size, true);
 #if HAKUX_VRAM_RACE_PROBE
@@ -8162,9 +8449,9 @@ static void bind_vertex_buffer(PGRAPHState *pg, uint16_t inline_map,
 
     for (int i = 0; i < r->num_active_vertex_binding_descriptions; i++) {
         int attr_idx = r->vertex_attribute_descriptions[i].location;
-        int buffer_idx = (inline_map & (1 << attr_idx)) ? BUFFER_VERTEX_INLINE :
-                                                          BUFFER_VERTEX_RAM;
-        buffers[i] = get_staging_buffer(r, buffer_idx)->buffer;
+        buffers[i] = (inline_map & (1 << attr_idx)) ?
+            get_staging_buffer(r, BUFFER_VERTEX_INLINE)->buffer :
+            vertex_ram_draw_buffer(r);
         offsets[i] = offset + r->vertex_attribute_offsets[attr_idx];
     }
 
