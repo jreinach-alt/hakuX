@@ -46,14 +46,6 @@ void pgraph_vk_ubosz_note_bind(VkDescriptorSet set, const uint32_t off[2]);
 void pgraph_vk_ubosz_log_and_reset(void);
 #endif
 
-/* #656 uniform overlay, in vk/shaders.c; declared here for the same reason. */
-bool pgraph_vk_ubo_ov_range(VkPushConstantRange *out);
-void pgraph_vk_ubo_ov_reset(void);
-void pgraph_vk_ubo_ov_forget_bind(void);
-bool pgraph_vk_ubo_ov_bind_redundant(VkDescriptorSet set, const uint32_t off[2]);
-void pgraph_vk_ubo_ov_push(VkCommandBuffer cmd, VkPipelineLayout layout);
-void pgraph_vk_ubo_ov_log_and_reset(void);
-
 /*
  * BEHIND A FLAG, DEFAULT OFF. AGENTS.md: "Instrumentation is not free ...
  * Profile-grade tracing belongs behind a flag." This probe is the expensive
@@ -1094,8 +1086,6 @@ static void opt_stats_log_and_reset(void)
         }
         /* #433: uniform-block churn per upload; see vk/shaders.c. */
         pgraph_vk_ubosz_log_and_reset();
-        /* #656: what the uniform overlay pushed instead of rebinding. */
-        pgraph_vk_ubo_ov_log_and_reset();
         {
             /*
              * #461: what a texture bind spends its time on, counted in
@@ -3110,14 +3100,6 @@ static void create_pipeline(PGRAPHState *pg)
         }
     }
 
-    /* #656: the uniform overlay's vertex range, on every pipeline as on
-     * every push-descriptor template (vk/shaders.c); never with the inline
-     * attributes' range above. */
-    if (num_push_ranges == 1 &&
-        pgraph_vk_ubo_ov_range(&push_constant_ranges[1])) {
-        num_push_ranges++;
-    }
-
     pipeline_layout_info.pushConstantRangeCount = num_push_ranges;
     pipeline_layout_info.pPushConstantRanges = push_constant_ranges;
 
@@ -3412,22 +3394,17 @@ static void bind_descriptor_sets(PGRAPHState *pg)
         (uint32_t)r->uniform_buffer_offsets[1],
     };
 
-    /* Bind UBO set (set 1) with dynamic offsets — common to both paths.
-     * #656: not again when it repeats the last bind in this command buffer,
-     * which every draw used to do: on Turnip each bind is a new dynamic
-     * descriptor set and a bindless-cache invalidation. The uniform overlay
-     * carries what changed since (vk/shaders.c). */
+    /* Bind UBO set (set 1) with dynamic offsets — common to both paths */
     assert(r->push_ubo_set_index >= 1);
-    VkDescriptorSet ubo_set = r->push_ubo_sets[r->push_ubo_set_index - 1];
-    if (!pgraph_vk_ubo_ov_bind_redundant(ubo_set, dynamic_offsets)) {
-        vkCmdBindDescriptorSets(
-            r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-            r->pipeline_binding->layout, 1, 1, &ubo_set, 2, dynamic_offsets);
+    vkCmdBindDescriptorSets(
+        r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+        r->pipeline_binding->layout, 1, 1,
+        &r->push_ubo_sets[r->push_ubo_set_index - 1],
+        2, dynamic_offsets);
 #if NV2A_PERF_LOG
-        pgraph_vk_ubosz_note_bind(ubo_set, dynamic_offsets);
+    pgraph_vk_ubosz_note_bind(r->push_ubo_sets[r->push_ubo_set_index - 1],
+                              dynamic_offsets);
 #endif
-    }
-    pgraph_vk_ubo_ov_push(r->command_buffer, r->pipeline_binding->layout);
 
     if (r->push_descriptors_supported) {
         /*
@@ -3615,10 +3592,6 @@ static void begin_render_pass(PGRAPHState *pg)
 
     assert(r->in_command_buffer);
     assert(!r->in_render_pass);
-
-    /* #656: bound state survives a render pass in Vulkan; bind and push
-     * once per pass anyway, which costs ~45 binds a frame, not ~2,000. */
-    pgraph_vk_ubo_ov_forget_bind();
 
     nv2a_profile_inc_counter(NV2A_PROF_PIPELINE_RENDERPASSES);
 
@@ -4492,7 +4465,6 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
         r->push_tex_dirty = true;
         r->push_tex_pushed_index = -1;
         r->uniforms_changed = true;
-        pgraph_vk_ubo_ov_reset();
         r->in_command_buffer = false;
         r->color_drawn_in_cb = false;
         r->zeta_drawn_in_cb = false;
@@ -4528,7 +4500,6 @@ void pgraph_vk_begin_command_buffer(PGRAPHState *pg)
                                   &command_buffer_begin_info));
     r->command_buffer_start_time = pg->draw_time;
     r->in_command_buffer = true;
-    pgraph_vk_ubo_ov_reset();
 #if NV2A_PERF_LOG
     r->frame_cb_serial[r->current_frame] = ++r->cb_serial;
 #endif
@@ -5955,8 +5926,6 @@ static void rebind_ubo_dynamic_offsets(PGRAPHState *pg, uint32_t off0,
         r->pipeline_binding->layout, 1, 1,
         &r->push_ubo_sets[r->push_ubo_set_index - 1],
         2, dyn_off);
-    pgraph_vk_ubo_ov_forget_bind();
-    pgraph_vk_ubo_ov_push(r->command_buffer, r->pipeline_binding->layout);
 #if NV2A_PERF_LOG
     pgraph_vk_ubosz_note_bind(r->push_ubo_sets[r->push_ubo_set_index - 1],
                               dyn_off);
@@ -7055,11 +7024,7 @@ static void emit_reorder_entry(PGRAPHState *pg, ReorderWindowEntry *e,
 #if NV2A_PERF_LOG
         pgraph_vk_ubosz_note_bind(e->descriptor_set, e->dynamic_offsets);
 #endif
-        pgraph_vk_ubo_ov_forget_bind();
     }
-    /* #656: the overlay is empty while reordering (vk/shaders.c), but the
-     * shader reads it, so it has to have been pushed. */
-    pgraph_vk_ubo_ov_push(r->command_buffer, e->layout);
 
     /* Bind texture set (set 0) */
     if (e->rw_use_push_descriptors) {

@@ -669,197 +669,6 @@ const char *pgraph_glsl_vsh_common_header(void)
         "}\n";
 }
 
-/*
- * #656: the uniform-block overlay. Battlefield 2 changes a few 16-byte rows
- * of the vertex uniform block between most draws (lighting context and a
- * handful of constant registers), and every such draw used to upload the
- * whole block to a new offset and rebind the UBO set, which on Turnip is a
- * new dynamic descriptor set and a bindless-cache invalidation per draw.
- * With the overlay, vk/shaders.c keeps the block bound and passes the rows
- * that differ from it as push constants: up to UBO_OV_SLOTS (key, value)
- * pairs, key = VshUniform id * 256 + array element, -1 ending the list.
- * Every read of an overlaid array in the generated code goes through ov4()
- * or ov3(), which return the pushed value when there is one for that
- * element. The value a register ends up holding is the same either way;
- * only how it reaches the shader changes.
- *
- * Set by vk/shaders.c once at init (0 slots: off). It is a property of the
- * device, so it is not part of the shader key; vk/shaders.c reads back from
- * each module's reflected push block whether the overlay is in it.
- */
-static int ubo_ov_slots;
-static int ubo_ov_push_offset;
-
-void pgraph_glsl_vsh_set_ubo_overlay(int slots, int push_offset)
-{
-    ubo_ov_slots = slots;
-    ubo_ov_push_offset = push_offset;
-}
-
-/* The arrays reads of which go through the overlay: every one of 16-byte
- * element stride, vec4 or vec3. */
-static const int ubo_ov_names[] = {
-    VshUniform_c,
-    VshUniform_ltc1,
-    VshUniform_ltctxa,
-    VshUniform_ltctxb,
-    VshUniform_lightInfiniteDirection,
-    VshUniform_lightInfiniteHalfVector,
-    VshUniform_lightLocalAttenuation,
-    VshUniform_lightLocalPosition,
-    VshUniform_specularParams,
-};
-
-static bool ubo_ov_ident_char(char ch)
-{
-    return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') ||
-           (ch >= '0' && ch <= '9') || ch == '_';
-}
-
-/* Index of the first character after the ']' matching the '[' at s[open],
- * or -1. */
-static int ubo_ov_match(const char *s, int open, int end)
-{
-    int depth = 0;
-    for (int i = open; i < end; i++) {
-        if (s[i] == '[') {
-            depth++;
-        } else if (s[i] == ']' && --depth == 0) {
-            return i + 1;
-        }
-    }
-    return -1;
-}
-
-/*
- * Rewrite s[begin, end) into out, replacing every NAME[E] of an overlaid
- * array with ov4(NAME[E'], id, int(E')) (ov3 for vec3 arrays), E' being E
- * rewritten. A bare NAME is left alone: the generated code shadows c with
- * locals (colorPrecision, the half-float unpack), and the one bare use of the
- * uniform, vsh-prog.c's `= c;` copy into c_rw, becomes ovCAll(). Comments are
- * copied as they are. False on brackets that do not match.
- */
-static bool ubo_ov_rewrite(MString *out, const char *s, int begin, int end)
-{
-    /* s[run, i) is copied as it is when something replaces what follows */
-    int run = begin, i = begin;
-#define UBO_OV_FLUSH() g_string_append_len(out->gstr, s + run, i - run)
-    while (i < end) {
-        if (s[i] == '/' && i + 1 < end && (s[i + 1] == '*' || s[i + 1] == '/')) {
-            const char *e = s[i + 1] == '*' ? strstr(s + i + 2, "*/") :
-                                              strchr(s + i, '\n');
-            int stop = e ? (int)(e - s) + (s[i + 1] == '*' ? 2 : 0) : end;
-            i = MIN(stop, end);
-            continue;
-        }
-        if (!ubo_ov_ident_char(s[i])) {
-            i++;
-            continue;
-        }
-        int j = i;
-        while (j < end && ubo_ov_ident_char(s[j])) {
-            j++;
-        }
-        if (i > begin && s[i - 1] == '.') {
-            i = j;
-            continue;
-        }
-        int len = j - i;
-        const UniformInfo *hit = NULL;
-        int hit_id = -1;
-        for (int k = 0; k < ARRAY_SIZE(ubo_ov_names); k++) {
-            const UniformInfo *info = &VshUniformInfo[ubo_ov_names[k]];
-            if ((int)strlen(info->name) == len &&
-                !strncmp(info->name, s + i, len)) {
-                hit = info;
-                hit_id = ubo_ov_names[k];
-                break;
-            }
-        }
-        if (hit && j < end && s[j] == '[') {
-            int close = ubo_ov_match(s, j, end);
-            if (close < 0) {
-                return false;
-            }
-            MString *e = mstring_new();
-            if (!ubo_ov_rewrite(e, s, j + 1, close - 1)) {
-                mstring_unref(e);
-                return false;
-            }
-            bool v3 = !strcmp(uniform_element_type_to_str[hit->type], "vec3");
-            UBO_OV_FLUSH();
-            mstring_append_fmt(out, "%s(%s[%s], %d, int(%s))",
-                               v3 ? "ov3" : "ov4", hit->name,
-                               mstring_get_str(e), hit_id, mstring_get_str(e));
-            mstring_unref(e);
-            run = i = close;
-            continue;
-        }
-        if (hit && hit_id == VshUniform_c) {
-            /* `= c;` */
-            int p = i - 1, q = j;
-            while (p >= begin && s[p] == ' ') {
-                p--;
-            }
-            while (q < end && s[q] == ' ') {
-                q++;
-            }
-            if (p >= begin && s[p] == '=' && q < end && s[q] == ';') {
-                UBO_OV_FLUSH();
-                mstring_append(out, "ovCAll()");
-                run = i = j;
-                continue;
-            }
-        }
-        i = j;
-    }
-    UBO_OV_FLUSH();
-#undef UBO_OV_FLUSH
-    return true;
-}
-
-static void ubo_ov_append_decls(MString *out)
-{
-    int n = ubo_ov_slots;
-    mstring_append_fmt(out,
-        "layout(push_constant) uniform VshOverlay {\n"
-        "    layout(offset = %d) ivec4 ovIdx[%d];\n"
-        "    vec4 ovVal[%d];\n"
-        "};\n\n",
-        ubo_ov_push_offset, n / 4, n);
-}
-
-static void ubo_ov_append_funcs(MString *out)
-{
-    int n = ubo_ov_slots;
-    mstring_append_fmt(out,
-        "vec4 ov4(vec4 v, int id, int e) {\n"
-        "  if (uint(e) < 256u) {\n"
-        "    int k = id * 256 + e;\n"
-        "    for (int s = 0; s < %d; s++) {\n"
-        "      int t = ovIdx[s >> 2][s & 3];\n"
-        "      if (t < 0) break;\n"
-        "      if (t == k) v = ovVal[s];\n"
-        "    }\n"
-        "  }\n"
-        "  return v;\n"
-        "}\n"
-        "vec3 ov3(vec3 v, int id, int e) {\n"
-        "  return ov4(vec4(v, 0.0), id, e).xyz;\n"
-        "}\n"
-        "vec4[%d] ovCAll() {\n"
-        "  vec4 a[%d] = c;\n"
-        "  for (int s = 0; s < %d; s++) {\n"
-        "    int t = ovIdx[s >> 2][s & 3];\n"
-        "    if (t < 0) break;\n"
-        "    if ((t >> 8) == %d) a[t & 255] = ovVal[s];\n"
-        "  }\n"
-        "  return a;\n"
-        "}\n\n",
-        n, NV2A_VERTEXSHADER_CONSTANTS, NV2A_VERTEXSHADER_CONSTANTS, n,
-        VshUniform_c);
-}
-
 MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
 {
     MString *uniforms = mstring_new();
@@ -1343,36 +1152,10 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
 
     mstring_append(body, "}\n");
 
-    /* #656: reads of the overlaid arrays through the push-constant overlay.
-     * Only one push-constant block per stage, so not with the inline
-     * attributes' (vk/shaders.c never enables both). */
-    bool ubo_ov = opts.vulkan && ubo_ov_slots > 0 &&
-                  !(num_uniform_attrs > 0 &&
-                    opts.use_push_constants_for_uniform_attrs);
-    if (ubo_ov) {
-        MString *h = mstring_new(), *b = mstring_new();
-        const char *hs = mstring_get_str(header), *bs = mstring_get_str(body);
-        if (ubo_ov_rewrite(h, hs, 0, strlen(hs)) &&
-            ubo_ov_rewrite(b, bs, 0, strlen(bs))) {
-            mstring_unref(header);
-            mstring_unref(body);
-            header = h;
-            body = b;
-        } else {
-            mstring_unref(h);
-            mstring_unref(b);
-            ubo_ov = false;
-        }
-    }
-
     /* Return combined header + source */
     MString *output = mstring_new();
     pgraph_glsl_append_version(output, opts.vulkan, opts.gles,
                                opts.gles_version);
-
-    if (ubo_ov) {
-        ubo_ov_append_decls(output);
-    }
 
     if (opts.vulkan) {
         if (num_uniform_attrs > 0 &&
@@ -1409,10 +1192,6 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
     } else {
         mstring_append(
             output, mstring_get_str(uniforms));
-    }
-
-    if (ubo_ov) {
-        ubo_ov_append_funcs(output);
     }
 
     mstring_append(output, mstring_get_str(header));

@@ -126,7 +126,116 @@ else REFUTED; R1 light views not worse than x1.15 + 1 ms.
 Prior: P1 PASS ~45%, PARTIAL ~20%, REFUTED with the mechanism engaged ~35%.
 
 Queued 16:20 PDT: A `1790983118-lane.bf2push656-3848423`, B
-`1790983118-lane.bf2push656-3848741`. Not yet registered (they wait on the
-pilot, so a no-win does not spend Nova time on them): the pixel sweep (two
-runs, every golden capture byte-identical) and the second draw-heavy title
-(GTA SA, two runs). That is the brief's 6.
+`1790983118-lane.bf2push656-3848741`. Held back until the pilot showed a
+win, so that a no-win would not spend Nova time on them: the pixel sweep
+(two runs, every golden capture byte-identical) and the second draw-heavy
+title (GTA SA, two runs). Together that is the brief's 6.
+
+## 5. The pilot pair: halving the UBO binds moved no GPU time (16:35 PDT)
+
+A `1790983118-lane.bf2push656-3848423` (master 7e1b471ef1), B
+`1790983118-lane.bf2push656-3848741` (2d0d03edb6). Both reached
+`mark gameplay` (A 16:25:20, B 16:32:59). Neither crashed; B's logcat has no
+VK_ERROR and no fatal signal.
+
+`armread.py --a A --b B`:
+
+| | A master | B overlay |
+|---|---|---|
+| rows / heavy rows (BE >= 1800) | 32 / 15 | 31 / 13 |
+| heavy-view GPU ms, median | 38.3 | 42.3 |
+| GPU ms, BE 1800-2400 (n) | 37.6 (9) | 40.2 (7) |
+| GPU ms, BE >= 2400 (n) | 41.9 (6) | 42.8 (6) |
+| fit GPU ms per draw | 0.0153 | 0.0149 |
+| fit intercept, ms | 3.8 | 9.0 |
+| light-view GPU ms (BE < 1200) | 17.8 | 21.0 |
+| heavy-view fps | 14.6 | 14.9 |
+
+`push656_read.py --a A --b B`, heavy windows:
+
+| | A | B |
+|---|---|---|
+| UBO set binds per draw | 0.916 | **0.453** (B/A 0.495) |
+| uniform changes pushed instead of uploaded | -- | 573,113 of 1,322,782 (0.433) |
+| binds skipped as repeats | -- | 696,503 |
+| rebind = binds / (uploads + pushes) | -- | 0.573 |
+| overlay size n1 / 2-4 / 5-8 / 9-12 | -- | 64,819 / 438,528 / 36,160 / 33,606 |
+| upload reasons set / binding / psh / row / full | -- | 0.92 / 0.00 / 0.08 / 0.00 / 0.01 |
+
+Legs as registered:
+
+- **M0 PASS**: 15 and 13 heavy rows, >= 8 each.
+- **P0 PASS**: `[push656] maxPushConstantsSize=256 attrs_in_push=0 gpl=0
+  env=- -> uniform overlay on (12 slots, 240 B at 16)`. **The Nova's limit
+  is 256 B**, as the Mesa tree says (section 1).
+- **M1 FAIL** on its rebind half: 0.573 against <= 0.45. Its other half
+  passes: binds per draw B/A 0.495 against <= 0.60. So by the letter P1 is
+  not read as a test of the rebind hypothesis.
+- **P1** (reported, not judged): heavy-view GPU B/A = 42.3 / 38.3 = 1.104.
+  Not lower in either heavy BE bin.
+- **R1 PASS**: light views 21.0 <= 17.8 x 1.15 + 1.0 = 21.5.
+- **C0 PASS**.
+
+What the pair shows, whatever M1's letter:
+
+- **B removed half of the UBO binds from BF2's heavy-view draws (0.92 to
+  0.45 per draw) and the GPU cost per draw did not move** (fit 0.0153 to
+  0.0149 ms per draw, -3%; collapse433's GMEM and sysmem soaks, same
+  renderer, differ by 2% in this slope, 0.0119 against 0.0121). The
+  heavy-view medians went up, not down.
+- **A bound, not a value**: if the whole -3% slope change is the binds,
+  one UBO bind costs ~0.9 us of the 15 us a heavy-view draw takes. If
+  instead B's +3.2 ms in light views is all the overlay's own vertex-shader
+  cost and it hides an equal saving in heavy views, the removed binds were
+  worth at most ~4 ms of 38 (~10%): at most ~4 us per bind. Either way the
+  per-draw UBO rebind is not what makes BF2's draws cost 12-15 us each.
+  bf2stall433's U (section 3 there) is refuted as the main cause.
+- **Why the rebind rate stayed at 0.57**: 92% of the uploads B still made
+  were `set`, a new UBO set due. `r->shader_bindings_changed` is cleared only
+  at the top of `pgraph_vk_bind_shaders()` (shaders.c) and in one draw.c
+  path, and `bind_shaders` runs only when the shader state is dirty. After a
+  binding switch the flag stays true for every following draw until the
+  next shader-state change, so each of those draws writes a new UBO
+  descriptor set (`vkUpdateDescriptorSets`), uploads, and misses the super
+  fast path (`sfp_miss_shader_changed`). That is a CPU cost on master,
+  noted here and not chased: no GPU win to unlock behind it.
+
+The emulator change is reverted on this branch (the three files restored
+from master); it stays in history at 2d0d03edb6. The pixel and GTA
+predictions were never registered and nothing else was queued. Runs used:
+2 of 6.
+
+## 6. Next, for whoever picks up BF2's per-draw cost
+
+Ruled out so far, each by a measurement that moved its mechanism: the
+vertex fetch path (bf2stall433 section 6), the per-draw UBO rebind (this
+lane), the GPU clock and the render mode (collapse433). The draws are
+serialized (bf2stall433 section 7). What is still unmeasured, in the order
+I would test it:
+
+1. **Is the GPU front end (CP) busy or waiting per draw?** Adreno's own
+   counters separate a command processor working through each draw's state
+   from shader cores stalled on something. One perflog soak with the CP and
+   SP busy counters (fdperf or a Perfetto GPU-counter capture, read-only)
+   answers it. It decides between the two that follow; without it, every
+   candidate below is another guess like U was.
+2. **Per-draw state volume.** Every draw still re-pushes texture
+   descriptors when bindings change, binds a vertex buffer, an index buffer
+   at a new offset, and on 808 of ~2,150 draws a pipeline with every dynamic
+   state re-issued (bf2stall433 section 1). If the CP is the bottleneck, the
+   cost is the state emitted per draw, and the lever is emitting less of it
+   (dynamic state only on change, one index buffer bind per command buffer
+   with `firstIndex`).
+3. **Shader-side latency per draw** (the preamble's constant loads, a
+   texture-cache cold start per draw): if the SP is busy, this.
+
+## Do not repeat
+
+- Pushing changed uniform rows to remove the per-draw UBO bind, for BF2's
+  GPU cost: built and measured (section 5), binds per draw halved, no GPU
+  change.
+- Lowering the UBO rebind rate further (the sticky `shader_bindings_changed`
+  set reason, a uniform layout shared across shaders): the binds it would
+  remove are worth a few us each at most.
+- Assuming the Nova's `maxPushConstantsSize`: it is 256 (P0 line).
+
