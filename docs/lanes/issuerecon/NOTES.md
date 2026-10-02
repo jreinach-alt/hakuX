@@ -25,17 +25,24 @@ masked context it prints (the value is never printed); add the key of a hit that
 - `recon_build.py`: merges per number; README text; coverage.
 - `secretscan.py`: the scan over the output.
 
-## What was measured (2026-10-02, first set)
+## What was measured (2026-10-02, final set)
 
-| | count |
-|---|---:|
-| transcripts read | 2,198 |
-| numbers 1..629 | 629 |
-| fully / partly / not recovered | 343 / 284 / 2 |
-| title / complete body / state / labels | 627 / 502 / 605 / 440 |
-| comment ids seen anywhere | 2,630 |
-| ... with full text / truncated only / no text | 2,180 / 22 / 425 |
-| comments without an id (reviews, close notes, id-less reads) | 464 |
+| | first set (10:30) | final set |
+|---|---:|---:|
+| transcripts read | 2,198 | 2,197 (this lane's own excluded) |
+| numbers 1..629 | 629 | 629 |
+| fully / partly / not recovered | 343 / 284 / 2 | 336 / 290 / 3 |
+| title / complete body / state / labels | 627 / 502 / 605 / 440 | 626 / 490 / 598 / 530 |
+| comment ids seen anywhere | 2,630 | 2,621 |
+| ... with full text / truncated only / no text | 2,180 / 22 / 425 | 2,180 / 16 / 425 |
+| comments without an id | 464 | 459 |
+
+The final set has fewer bodies and states than the first because it is stricter. JSON with no URL
+is now taken only from a command whose sole output is gh's. A command that also printed a game
+list as JSON (`{"number": 442, "title": "25 to Life"}`) had retitled #442. A `for n in ...; do gh pr view $n`
+loop beside `gh pr view 504` had given #504 three other PRs' titles. Labels went up: list templates
+such as `"#\(.number) \(.state) [\([.labels[].name]|join(","))] \(.title)"` are now read for state
+and labels too.
 
 Wayback Machine CDX (`url=github.com/jreinach-alt/*`): answered 200 with zero captures on 2026-10-02
 ~10:20 PDT. Nothing to gain there.
@@ -66,6 +73,15 @@ must agree. Each disagreement was a parser bug until shown otherwise; the ones f
 
 After the fixes: 90 agree, 3 differ, and each of the 3 is a later read of a comment edited after
 posting (the later text wins).
+
+## Not recoverable here
+
+- #272-#297 and other issues whose creation is in no local transcript: they were filed from a session that
+  did not run on this machine (cloud). Their titles come from reads and the board; their bodies were never
+  read here.
+- Posts whose body file was edited by python (`s.replace(old, new)` in a heredoc script) before posting:
+  about 30. Replaying such scripts with `ast` (literal old/new, one file) is the one parser extension
+  left that would recover agent text; it was not done.
 
 ## What the next lane should not repeat
 

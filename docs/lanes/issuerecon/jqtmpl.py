@@ -124,8 +124,11 @@ def classify(e):
         return ('number',)
     if ns == '.title':
         return ('title',)
-    if ns == '.state':
+    if ns in ('.state', '.state|ascii_downcase'):
         return ('state',)
+    m = re.fullmatch(r'(?:\[\.labels\[\]\.name\]|\.labels\|map\(\.name\))\|join\("([^"]*)"\)', ns)
+    if m:
+        return ('labels', m.group(1))
     return ('text',)
 
 
@@ -209,7 +212,17 @@ def compile_jq(jq):
             rx.append('(?P<id>\\d{9,12})' if 'id' not in names else '\\d+')
         elif k in ('issue', 'number'):
             rx.append('(?P<%s>\\d+)' % k if k not in names else '\\d+')
-        elif k in ('title', 'state'):
+        elif k == 'state':
+            rx.append('(?P<state>OPEN|CLOSED|MERGED|open|closed|merged)' if 'state' not in names else '\\S+')
+        elif k == 'labels':
+            end = nxt_lit[1][:1] if nxt_lit and nxt_lit[0] == 'lit' else ''
+            if end in (']', ')', '}', '\n', '|') and 'labels' not in names and p[2] in (',', ', ', ' '):
+                rx.append('(?P<labels>[^\\n%s]*)' % re.escape(end) if end != '\n' else '(?P<labels>[^\\n]*)')
+                labsep = p[2]
+            else:
+                rx.append('[^\\n]*?')
+                k = 'text'
+        elif k == 'title':
             # only a field that runs to the end of its line can be read back exactly
             if nxt_lit and nxt_lit[0] == 'lit' and nxt_lit[1].startswith('\n') and k not in names:
                 rx.append('(?P<%s>[^\\n]*)' % k)
@@ -219,7 +232,8 @@ def compile_jq(jq):
         else:
             rx.append('(?:[^\\n]*?)' if not seen_body else '(?:.*?)')
         names.append(k)
-    if 'body' not in names and not ({'number', 'title'} <= set(names)):
+    if 'body' not in names and not ('number' in names and {'title', 'state', 'labels'} & set(names)) and \
+            not (not gen and {'title', 'state', 'labels'} & set(names)):
         return None
     fields = {n: True for n in names}
     bound = next((p[2] for p in parts if p[0] == 'fld' and p[1] == 'body'), None)
@@ -228,7 +242,7 @@ def compile_jq(jq):
         hparts = parts
     strong = any(p[0] == 'fld' and p[1] in ('url', 'id', 'author') for p in hparts) or \
         any(p[0] == 'lit' and len(re.sub(r'\s', '', p[1])) >= 3 for p in hparts)
-    return {'rx': ''.join(rx), 'header': header, 'fields': fields, 'strong': strong, 'single': single, 'bound': bound,
+    return {'rx': ''.join(rx), 'header': header, 'fields': fields, 'strong': strong, 'labsep': locals().get('labsep'), 'single': single, 'bound': bound,
             'body_last': parts[-2][0] == 'fld' and parts[-2][1] == 'body'}
 
 

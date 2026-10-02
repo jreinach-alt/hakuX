@@ -956,7 +956,8 @@ def scan_templates(sc, cmd, out, cwd, ctx_hakux):
                             'reviews': 'reviews'}[a.group(3)]
                     segs.append((s, e, seg, jq, kind, int(nn) if nn.isdigit() else None))
             elif lst:
-                segs.append((s, e, seg, jq, 'list', None))
+                ln = 'pr' if re.match(r'gh\s+pr\b', seg) or '/pulls' in seg else 'issue' if re.match(r'gh\s+issue\b', seg) else None
+                segs.append((s, e, seg, jq, 'list', None, ln))
         segs = [x if len(x) == 7 else x + (None,) for x in segs]
     if not segs:
         return
@@ -986,12 +987,23 @@ def scan_templates(sc, cmd, out, cwd, ctx_hakux):
         same = [x for x in segs if x is not sg and (jqtmpl.compile_jq(x[3]) or {}).get('header') is not None
                 and re.sub(r'\(\?P<\w+>', '(?:', jqtmpl.compile_jq(x[3])['header']) == hdr]
         mixed = bool(same) and any(x[3] != jq for x in same)
+        if same and not ({'issue', 'url', 'number'} & set(spec['fields'])):
+            continue                      # several calls print the same records and none says whose they are
         if kind == 'list':
             if not ctx_hakux:
                 continue
             for d in jqtmpl.read_records(spec, out, sole, head, loop):
-                if 'number' in d and 'title' in d:
-                    sc.emit(t='issue', n=int(d['number']), kind=None, f={'title': d['title']}, how='jq-list')
+                if 'number' not in d:
+                    continue
+                f = {}
+                if 'title' in d:
+                    f['title'] = d['title']
+                if 'state' in d:
+                    f['state'] = d['state'].lower()
+                if 'labels' in d and spec.get('labsep'):
+                    f['labels'] = [x.strip() for x in d['labels'].split(spec['labsep'].strip() or ' ') if x.strip()]
+                if f:
+                    sc.emit(t='issue', n=int(d['number']), kind=noun if noun in ('issue', 'pr') else None, f=f, how='jq-list')
             continue
         if kind == 'issue':
             if not (ctx_hakux and spec['single']):
@@ -1000,6 +1012,10 @@ def scan_templates(sc, cmd, out, cwd, ctx_hakux):
                 f = {}
                 if d.get('title'):
                     f['title'] = d['title']
+                if d.get('state'):
+                    f['state'] = d['state'].lower()
+                if 'labels' in d and spec.get('labsep'):
+                    f['labels'] = [x.strip() for x in d['labels'].split(spec['labsep'].strip() or ' ') if x.strip()]
                 if 'body' in d and d['body']:
                     f['body'] = d['body']; f['body_exact'] = bool(d.get('exact')) and not mixed
                     if not f['body_exact'] and not (sole and not mixed):
@@ -1044,6 +1060,7 @@ def scan_reads(sc, cmd, out, cwd):
     segs = [sg for sg in gh_segments(cmd) if not re.match(r'gh\s+label', sg[2])]
     views = set()
     kinds = set()
+    targets = set()                       # every thread any gh call in the command reads (variables too)
     for (_, _, seg) in segs:
         m = re.match(r'gh\s+(issue|pr)\s+view\s+(\d+)', seg)
         if m:
@@ -1054,13 +1071,21 @@ def scan_reads(sc, cmd, out, cwd):
         m = re.match(r'gh\s+(issue|pr)\s+list', seg)
         if m:
             kinds.add(m.group(1))
+        for t in re.findall(r'gh\s+(?:issue|pr)\s+view\s+(\S+)', seg) + \
+                re.findall(r'repos/[^/\s]+/[^/\s]+/(?:issues|pulls)/([^/\s"\'?]+)', seg):
+            targets.add(t)
+        if re.match(r'gh\s+(issue|pr|search)\s+(list|issues|prs)', seg) or \
+                re.search(r'repos/[^/\s]+/[^/\s]+/(?:issues|pulls)(?:/comments)?(?:\?|["\'\s]|$)', seg):
+            targets.add('*')
+    if len(targets) > 1:
+        views = set()
     jqs = [jq_of(sg[2]) for sg in segs if jq_of(sg[2])]
     jq = ' '.join(jqs) if jqs else None
     bound = body_bound(jq)
     # bodies piped through head/cut after the gh call are not complete; JSON that still parses is complete per object
     ctx = {'n': next(iter(views)) if len(views) == 1 else None,
            'kind': next(iter(kinds)) if len(kinds) == 1 else None,
-           'hakux': is_hakux_ctx(cmd, cwd), 'jq': jq}
+           'hakux': is_hakux_ctx(cmd, cwd) and producers(cmd) <= 1, 'jq': jq}
     for v in json_values(out):
         walk_json(sc, v, ctx, bound)
     # single-field raw reads: one gh call, --jq .body / .title, output unpiped
@@ -1189,7 +1214,8 @@ def scan_file(path):
 
 
 def cmd_scan(scratch):
-    files = sorted(glob.glob(ROOT + '/**/*.jsonl', recursive=True), key=os.path.getsize, reverse=True)
+    files = sorted((f for f in glob.glob(ROOT + '/**/*.jsonl', recursive=True) if '-wt-issuerecon' not in f),
+                   key=os.path.getsize, reverse=True)
     n = 0
     seen_c, seen_n = set(), collections.Counter()
     with open(os.path.join(scratch, 'events.jsonl'), 'w') as o, Pool(8) as pool:
