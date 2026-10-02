@@ -28,8 +28,14 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 284
-updated_utc = "2026-10-02T05:27:22Z"
+wave = 285
+updated_utc = "2026-10-02T05:33:16Z"
+
+[lane.collapse433]
+issues = ["433"]
+standing = false
+files = ["docs/lanes/collapse433/**"]
+note = "ROW RESTORED (hostops 2026-10-01 22:33 PDT): hakux-lane-collapse433 has been RUNNING since 22:32:19 PDT (logs/lane/collapse433.20261002T053219Z.json) with NO territory row -- same recurring defect as lane.localjobs/lane.routedriver/lane.hitchwatch before it: hakux-board normally writes a new lane's row but is itself affected by the gh-auth outage. Brief (owner, 2026-10-01 ~22:30 PDT: \"lets get a fix lane going tonight for Blood Wake and BF2\"): diagnose why Battlefield 2: Modern Combat and Blood Wake's frame rate collapses, using the Nova's data first (the Thor's dead fan makes its own collapse evidence thermally confounded). Diagnosis-first (docs/lanes/collapse433/**); only if a fix is in reach does it touch renderer/vCPU files, which it must name in PR.md before touching -- not claimed here until it does."
 
 [lane.holdwait]
 issues = []
