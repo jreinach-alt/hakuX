@@ -211,8 +211,12 @@ class Classifier:
             self._zero_shot(open_clip.get_tokenizer(model))
         self.ocr_on = ocr
         self.reader = None
+        self.gameplay_bar = float(self.head["gameplay_bar"]) if self.head is not None and "gameplay_bar" in self.head else 0.0
+        self.feats = str(self.head["feats"]) if self.head is not None and "feats" in self.head else "pooled"
+        if "text" in self.feats and not ocr:
+            raise Unavailable(f"head {head} needs OCR (feats {self.feats}) and OCR is off")
         self.source = "head" if self.head is not None else "zero-shot"
-        self.classify_image(None)  # warm
+        self.classify_image(None, [] if "text" in self.feats else None)  # warm
 
     def _zero_shot(self, tok):
         sys.path.insert(0, os.path.join(HERE, "pathknow", "classifier"))
@@ -245,28 +249,50 @@ class Classifier:
             f = self.model.encode_image(self._tensor(path))
             return torch.nn.functional.normalize(f.float(), dim=-1)[0]
 
-    def embed_batch(self, paths, bs=16):
-        """The same preprocessing as embed(), batched (training uses this so its features match serving)."""
+    def embed_batch(self, paths, bs=16, grid=False):
+        """The same preprocessing as embed(), batched (training uses this so its features match serving).
+        grid=True also returns the patch tokens mean-pooled to a 4x4 grid, [n, 16, D]: where on the screen
+        things are (a letterbox, a centred menu column, a corner HUD), which the attention-pooled vector
+        mostly averages away."""
         torch = self.torch
-        out = []
+        out, gout = [], []
         with torch.no_grad():
             for i in range(0, len(paths), bs):
                 x = torch.cat([self._tensor(p) for p in paths[i:i + bs]])
-                out.append(torch.nn.functional.normalize(self.model.encode_image(x).float(), dim=-1).cpu().numpy())
+                pooled, g = self._forward(x)
+                out.append(pooled.cpu().numpy())
+                if grid:
+                    gout.append(g.cpu().numpy())
+        if grid:
+            return self.np.concatenate(out), self.np.concatenate(gout)
         return self.np.concatenate(out)
 
-    def classify_image(self, path):
+    def _forward(self, x):
+        torch = self.torch
+        trunk = getattr(self.model.visual, "trunk", None)
+        if trunk is None or not hasattr(trunk, "forward_features"):
+            f = self.model.encode_image(x)
+            return torch.nn.functional.normalize(f.float(), dim=-1), None
+        tok = trunk.forward_features(x)
+        pooled = self.model.visual.head(trunk.forward_head(tok))
+        n = int(round((tok.shape[1]) ** 0.5))
+        g = tok[:, -n * n:].float().reshape(tok.shape[0], n, n, -1).permute(0, 3, 1, 2)
+        g = torch.nn.functional.adaptive_avg_pool2d(g, 4).flatten(2).permute(0, 2, 1)
+        return torch.nn.functional.normalize(pooled.float(), dim=-1), g
+
+    def classify_image(self, path, menu=None):
+        """State probabilities from the head (its feature spec) or, with no head, the zero-shot prompts."""
         torch, np = self.torch, self.np
-        e = self.embed(path)
+        with torch.no_grad():
+            pooled, grid = self._forward(self._tensor(path))
         if self.head is not None:
             h = self.head
-            x = e.cpu().numpy()
-            if "mu" in h:
-                x = (x - h["mu"]) / h["sd"]
+            x = head_input(self.feats, pooled[0].cpu().numpy(), None if grid is None else grid[0].cpu().numpy(), menu)
+            x = (x - h["mu"]) / h["sd"]
             logits = x @ h["W"].T + h["b"]
             states = [str(s) for s in h["states"]]
         else:
-            logits = (e @ self.zs.T).cpu().numpy() * 100.0
+            logits = (pooled[0] @ self.zs.T).cpu().numpy() * 100.0
             states = STATES
         p = np.exp(logits - logits.max())
         p /= p.sum()
@@ -280,7 +306,8 @@ class Classifier:
         from PIL import Image
         im = Image.open(path).convert("RGB")
         a = self.np.asarray(im)
-        res = self.reader.readtext(a, paragraph=False)
+        # batched recognition and a 640 canvas: 2-3x faster on dense text (legal screens: 3.1 s -> 0.7 s)
+        res = self.reader.readtext(a, paragraph=False, batch_size=32, canvas_size=640)
         items = []
         for box, text, conf in res:
             if conf < 0.3 or len(text.strip()) < 2:
@@ -294,23 +321,30 @@ class Classifier:
         _mark_highlight(self.np, a, items)
         return items
 
+    def _menu(self, frame):
+        try:
+            return self.read_menu(frame)
+        except Exception as e:
+            return [{"text": f"<ocr failed: {e}>", "box": None, "highlighted": None, "intent": None}]
+
     def classify(self, frame, prev=None, context=None, ocr=None):
         t0 = time.time()
         context = context or {}
         fc = free_checks(frame, prev)
-        probs = self.classify_image(frame)
+        menu = None
+        if "text" in self.feats and not fc["black"]:
+            menu = self._menu(frame)
+        probs = self.classify_image(frame, menu)
         ranked = sorted(probs.items(), key=lambda kv: -kv[1])
-        state, conf = ranked[0]
+        state, conf = pick_state(probs, self.gameplay_bar)
         source = self.source
         if fc["black"]:
             state, conf, source = "black", max(conf, 0.99), "free:black"
         t_img = time.time()
-        menu = []
-        if (self.ocr_on if ocr is None else ocr) and state in OCR_STATES:
-            try:
-                menu = self.read_menu(frame)
-            except Exception as e:
-                menu = [{"text": f"<ocr failed: {e}>", "box": None, "highlighted": None, "intent": None}]
+        if menu is None:
+            menu = []
+            if (self.ocr_on if ocr is None else ocr) and state in OCR_STATES:
+                menu = self._menu(frame)
         ts = text_state(state, menu)
         if ts and ts != state:
             state, source = ts, source + "+text"
@@ -351,13 +385,15 @@ def text_state(state, menu):
     items = [m for m in menu if m.get("text") and not m["text"].startswith("<ocr failed")]
     if not items:
         return None
+    # both joins: a phrase OCR split over boxes ('TIME | IS | UP') must still match
     blob = " | ".join(" ".join(m["text"].lower().split()) for m in items)
+    blob += " || " + " ".join(" ".join(m["text"].lower().split()) for m in items)
     for st, words, few in TEXT_RULES:
         if few is not None and len(items) > few:
             continue
         if any(w in blob for w in words):
             if st == "title_screen" and state not in ("gameplay", "intro_video", "cutscene", "publisher_logo",
-                                                      "title_screen", "controller_prompt"):
+                                                      "title_screen", "controller_prompt", "main_menu"):
                 continue
             return st
     if state == "gameplay":
@@ -366,6 +402,68 @@ def text_state(state, menu):
         if legend >= 2 or sum(1 for m in items if m.get("intent")) >= 3:
             return "submenu"
     return None
+
+
+TEXT_FEATS = (["n_items", "n_chars", "area", "height", "x_spread", "bottom", "top", "single_chars", "digits",
+               "legend", "select", "avoid", "press", "yes_no"] + [f"rule_{s}" for s, _, _ in TEXT_RULES])
+
+
+def text_features(menu, size=(640, 480)):
+    """A fixed-length vector from the OCR items, for the head: how much text, where, and which keyword groups.
+    Feeds the same evidence as text_state() to the trained head instead of only hand rules."""
+    import math
+    import re
+    W, H = size
+    items = [m for m in menu if m.get("text") and m.get("box") and not m["text"].startswith("<ocr failed")]
+    v = dict.fromkeys(TEXT_FEATS, 0.0)
+    if items:
+        txt = [" ".join(m["text"].lower().split()) for m in items]
+        boxes = [m["box"] for m in items]
+        v["n_items"] = math.log1p(len(items))
+        v["n_chars"] = math.log1p(sum(len(t) for t in txt))
+        v["area"] = min(1.0, sum((b[2] - b[0]) * (b[3] - b[1]) for b in boxes) / (W * H))
+        v["height"] = sum(b[3] - b[1] for b in boxes) / len(boxes) / H
+        xc = [(b[0] + b[2]) / 2 / W for b in boxes]
+        v["x_spread"] = (sum((x - sum(xc) / len(xc)) ** 2 for x in xc) / len(xc)) ** 0.5
+        v["bottom"] = sum(b[1] > 0.85 * H for b in boxes) / len(boxes)
+        v["top"] = sum(b[3] < 0.15 * H for b in boxes) / len(boxes)
+        v["single_chars"] = sum(len(re.findall(r"(?<!\S)\S(?!\S)", t)) for t in txt) / (1 + sum(len(t.split()) for t in txt))
+        v["digits"] = sum(c.isdigit() for t in txt for c in t) / max(1, sum(len(t) for t in txt))
+        v["legend"] = min(3, sum(any(w == t or t.startswith(w + " ") for w in _LEGEND) for t in txt)) / 3
+        v["select"] = min(3, sum(m.get("intent") == "select" for m in items)) / 3
+        v["avoid"] = min(3, sum(m.get("intent") == "avoid" for m in items)) / 3
+        blob = " | ".join(txt) + " || " + " ".join(txt)
+        v["press"] = float("press" in blob or "prass" in blob)
+        v["yes_no"] = float(bool(re.search(r"(?<![a-z])yes(?![a-z])", blob)) and bool(re.search(r"(?<![a-z])no(?![a-z])", blob)))
+        for s, words, few in TEXT_RULES:
+            v[f"rule_{s}"] = float(any(w in blob for w in words))
+    return [v[k] for k in TEXT_FEATS]
+
+
+def head_input(feats, pooled, grid=None, menu=None, size=(640, 480)):
+    """The head's input row for a feature spec like 'pooled+grid2+text' (the order is fixed)."""
+    import numpy as np
+    parts = []
+    spec = feats.split("+")
+    if "pooled" in spec:
+        parts.append(np.asarray(pooled, dtype=np.float32).ravel())
+    if "grid2" in spec or "grid4" in spec:
+        g = np.asarray(grid, dtype=np.float32)            # [16, D], row-major 4x4
+        if "grid2" in spec:
+            g = g.reshape(2, 2, 2, 2, -1).mean((1, 3)).reshape(4, -1)
+        parts.append(g.ravel())
+    if "text" in spec:
+        parts.append(np.asarray(text_features(menu or [], size), dtype=np.float32))
+    return np.concatenate(parts)
+
+
+def pick_state(probs, gameplay_bar=0.0):
+    """(state, confidence) from the head's probabilities. A top-ranked gameplay below the head's gameplay bar
+    gives way to the runner-up: a false gameplay is the costly error (the old pipeline's false passes)."""
+    ranked = sorted(probs.items(), key=lambda kv: -kv[1])
+    if ranked[0][0] == "gameplay" and ranked[0][1] < gameplay_bar and len(ranked) > 1:
+        return ranked[1][0], float(ranked[1][1])
+    return ranked[0][0], float(ranked[0][1])
 
 
 def temporal(state, fc, context):

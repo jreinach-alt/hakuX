@@ -69,8 +69,14 @@ def call(batch, model, labdir, log):
     items = "\n".join(f"{i + 1}. {b['jpg']}  ({pretty_title(b['title_raw'])})" for i, b in enumerate(batch))
     t0 = time.time()
     # the prompt goes on stdin: --allowedTools is variadic and would swallow a trailing prompt argument
-    r = subprocess.run(["claude", "-p", "--model", model, "--output-format", "json", "--allowedTools", "Read"],
-                       input=PROMPT.format(items=items), capture_output=True, text=True, timeout=600, cwd=labdir)
+    try:
+        r = subprocess.run(["claude", "-p", "--model", model, "--output-format", "json", "--allowedTools", "Read"],
+                           input=PROMPT.format(items=items), capture_output=True, text=True, timeout=300, cwd=labdir)
+    except subprocess.TimeoutExpired:
+        with open(log, "a") as f:
+            f.write(json.dumps({"model": model, "s": round(time.time() - t0, 1), "frames": len(batch),
+                                "labelled": 0, "rc": "timeout"}) + "\n")
+        return []
     dt = time.time() - t0
     out = []
     try:
@@ -99,6 +105,7 @@ def main():
     ap.add_argument("--per-call", type=int, default=10)
     ap.add_argument("--model", default="claude-haiku-4-5-20251001")
     ap.add_argument("--heldout", action="store_true", help="label held-out-title frames instead (a test set)")
+    ap.add_argument("--paths", help="label exactly these pool paths (one per line), e.g. to adjudicate")
     a = ap.parse_args()
     rows = []
     with open(a.pool) as f:
@@ -106,6 +113,9 @@ def main():
         for line in f:
             rows.append(dict(zip(hdr, line.rstrip("\n").split("\t"))))
     rows = [r for r in rows if (r["heldout"] == "1") == a.heldout]
+    if a.paths:
+        want = {l.strip() for l in open(a.paths) if l.strip()}
+        rows = [r for r in rows if r["path"] in want]
     done = set()
     if os.path.exists(a.out):
         done = {json.loads(l)["path"] for l in open(a.out) if l.strip()}
@@ -140,8 +150,16 @@ def main():
     batches = [pick[i:i + a.per_call] for i in range(0, len(pick), a.per_call)]
     print(f"{len(pick)} frames to label in {len(batches)} calls", file=sys.stderr)
     log = os.path.join(outdir, "label_calls.jsonl")
+    # write each call's labels as it completes: one hung call must not hold back (or, on its timeout, lose)
+    # the calls that finished after it
     with cf.ThreadPoolExecutor(a.jobs) as ex, open(a.out, "a") as fo:
-        for res in ex.map(lambda b: call(b, a.model, labdir, log), batches):
+        futs = [ex.submit(call, b, a.model, labdir, log) for b in batches]
+        for fu in cf.as_completed(futs):
+            try:
+                res = fu.result()
+            except Exception as e:
+                print(f"call failed: {e.__class__.__name__}: {e}", file=sys.stderr, flush=True)
+                continue
             for o in res:
                 fo.write(json.dumps(o) + "\n")
             fo.flush()
