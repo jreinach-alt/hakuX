@@ -156,7 +156,7 @@ DEFAULTS = dict(
     resume_tries=3, stall_fail_s=40.0, unknown_before_model=3, unknown_fail_s=90.0,
     model_calls_max=20, find_play_s=20.0, confirm_play_s=6.0, keep_every_s=30.0, screencap_fail_s=60.0,
     hud_memory_s=20.0, escape_max=6, escape_capture_s=0.0, escape_reset_s=0.0,
-    progress_bar=0.0, progress_window_s=10.0,
+    progress_bar=0.0, progress_window_s=10.0, stall_clear_s=0.0,
 )
 
 MODEL = "claude-haiku-4-5-20251001"
@@ -279,6 +279,8 @@ class Driver:
         self.mode = None                 # the [[mode]] the HUD shows (Sonic Heroes: the formation)
         self.mode_escapes = {}           # escapes played per mode: picks that mode's next cycle
         self.scene_hist = []             # (t, scene) of recent HUD frames: the progress check
+        self.stall_streak = False        # stall_clear_s: inside a stall, play must hold to count
+        self.recover_since = None
         self.last_hud_t = None
         self.play_since = None
         self.play_frames = []
@@ -545,6 +547,7 @@ class Driver:
             self.progress(frame, r)
         else:
             self.scene_hist = []
+        self.recovering(r)
         if r["state"] == "unknown":
             self.unknown_streak += 1
             if self.unknown_streak >= self.cfg["unknown_before_model"]:
@@ -579,6 +582,42 @@ class Driver:
         r["progress"] = round(ch, 3)
         if r["state"] == "play" and ch < bar:
             r.update(state="stalled", source="hud+no-progress")
+
+    def recovering(self, r):
+        """[drive] stall_clear_s > 0: once stalled, `play` must hold that long
+        before it is play again; until then the frame is `stalled` (source
+        +recovering, r["recovering"]). A team wedged at one place keeps
+        throwing short `play` reads -- Tails hovering up and down beside a
+        block moves the camera (lane.routedriver2 trial 2: ~45% of 100 s
+        stuck at Seaside Hill's POWER block read play) -- and each one both
+        counted as play time and restarted the stall watch, so the run never
+        ended. The cost: the first stall_clear_s of real play after a stall
+        is logged as stalled, which understates play_share, never inflates it.
+        A frame without the play HUD (a death's black, a menu) ends the streak."""
+        clear = self.cfg["stall_clear_s"]
+        if not clear:
+            return
+        if r["state"] == "stalled":
+            self.stall_streak, self.recover_since = True, None
+        elif "hud:" not in r["source"]:
+            self.stall_streak, self.recover_since = False, None
+        elif r["state"] == "play" and self.stall_streak:
+            if self.recover_since is None:
+                self.recover_since = self.t()
+            if self.t() - self.recover_since < clear:
+                r.update(state="stalled", source=r["source"] + "+recovering", recovering=True)
+            else:
+                self.stall_streak, self.recover_since = False, None
+
+    def play_taps(self, t):
+        act = ""
+        for b, every in self.inp_for("play_tap", []):
+            last = getattr(self, "_tap_" + b, -1e9)
+            if t - last >= every:
+                setattr(self, "_tap_" + b, t)
+                self.dev.pad("press", b)
+                act += " tap %s" % b
+        return act
 
     def enter(self, state, r, frame):
         t = self.t()
@@ -687,7 +726,8 @@ class Driver:
             return self.press(seq[n % len(seq)], "%s %d" % (state, n + 1))
 
         if state in ("play", "stalled"):
-            if state == "stalled" and self.stall_cycles() and self.escapes < cfg["escape_max"]:
+            if (state == "stalled" and not r.get("recovering") and self.stall_cycles()
+                    and self.escapes < cfg["escape_max"]):
                 self.start_escape()
                 self.last_press_t = self.t()     # the next capture comes at the fast rate
                 self.stalled_since = None
@@ -700,6 +740,8 @@ class Driver:
                     raise Fail("stalled %.0f s: the play HUD is up and nothing moves -- "
                                "the play input is not reaching the game, or a pause the profile cannot see"
                                % (t - self.stalled_since))
+                if r.get("recovering"):     # moving again after a stall: play's inputs, not yet play
+                    return "hold (recovering, stalled %.0f s)%s" % (t - self.stalled_since, self.play_taps(t))
                 return "hold (stalled %.0f s)" % (t - self.stalled_since)
             self.last_play_luma = r["luma"]
             if self.play_since is None:
@@ -712,14 +754,7 @@ class Driver:
                 act_reset = " (escape budget reset)"
             else:
                 act_reset = ""
-            act = "hold"
-            for b, every in self.inp_for("play_tap", []):
-                last = getattr(self, "_tap_" + b, -1e9)
-                if t - last >= every:
-                    setattr(self, "_tap_" + b, t)
-                    self.dev.pad("press", b)
-                    act += " tap %s" % b
-            return act + act_reset
+            return "hold" + self.play_taps(t) + act_reset
 
         # unknown
         if self.unknown_since is None:

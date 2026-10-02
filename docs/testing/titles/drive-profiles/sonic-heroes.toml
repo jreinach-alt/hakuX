@@ -78,8 +78,12 @@ stall_fail_s = 40.0
 # One escape per mode cycle entry before the stall watch ends a scored run;
 # 30 s of play after an escape means it worked, and the next obstacle gets a
 # fresh budget.
-escape_max = 4
+escape_max = 6
 escape_reset_s = 30.0
+# After a stall, play must hold 10 s to count again (trial 2: ~45% of 100 s
+# stuck at the POWER block read `play` between stalls, and each read
+# restarted the stall watch).
+stall_clear_s = 10.0
 # Moving in place is not play: trial 1's team struggled in a corner behind
 # the POWER block for 100 s and ~40% of those captures read `play` (2 s
 # motion 0.35-0.50). The 32x24 scene against ~10 s earlier: running
@@ -100,11 +104,14 @@ name = "speed"
 region = [1000, 228, 100, 104]
 rgb = [50, 82, 157]
 tol = 45.0
-# Y into Fly and climb in place, then drift onto what was in the way; else
-# B into Power and punch it.
+# Speed has no move of its own for a wall: B into Power and punch it, else
+# Y into Fly and climb. Every mode's list ends in another formation, so a team
+# stuck at one obstacle goes through all three (trial 2: Speed's Y-and-climb
+# at the POWER block put the team in Fly there, and Fly's own escapes could
+# not punch).
 stall_cycles = [
-  [[[], 0.6, ["Y"]], [[], 4.5, ["A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A"]], [[["LY", "min"]], 1.2, ["A", "A", "A"]], [[], 3.0]],
   [[[], 0.6, ["B"]], [[["LY", "min"]], 3.0, ["X", "X", "X", "X", "X", "X"]], [[], 1.0]],
+  [[[], 0.6, ["Y"]], [[], 4.5, ["A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A"]], [[["LY", "min"]], 1.2, ["A", "A", "A"]], [[], 3.0]],
 ]
 
 [[mode]]
@@ -113,11 +120,14 @@ region = [1000, 228, 100, 104]
 rgb = [160, 137, 49]
 tol = 45.0
 # Climb in place (A taps fly Tails up, the stick released so the team rises
-# instead of sailing past), then a short forward drift onto the ledge; the
-# second try holds each A 600 ms.
+# instead of sailing past), then a short forward drift onto the ledge: trial
+# 2 cleared the lower-path stone block with it at 0:12 (landed on top, then
+# 30 s of play). The second try holds each A 600 ms; the third is Y into
+# Power and a punch.
 stall_cycles = [
   [[[], 4.5, ["A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A"]], [[["LY", "min"]], 1.2, ["A", "A", "A"]], [[], 3.0]],
   [[[], 4.5, ["A/600", "A/600", "A/600", "A/600", "A/600", "A/600"]], [[["LY", "min"]], 2.0, ["A/600", "A/600"]], [[], 3.0]],
+  [[[], 0.6, ["Y"]], [[["LY", "min"]], 3.0, ["X", "X", "X", "X", "X", "X"]], [[], 1.0]],
 ]
 
 [[mode]]
@@ -127,10 +137,13 @@ rgb = [170, 60, 37]
 tol = 45.0
 # Knuckles' punch clears robots on the way.
 play_tap = [["A", 8.0], ["X", 4.0]]
-# Punch what is in the way (a POWER-signed block), then jump-and-punch.
+# Punch what is in the way (a POWER-signed block: "Can you break this rock,
+# Knuckles?"), then jump-and-punch, then B into Fly and climb. Trial 2 got
+# past the POWER block on its third Power escape (1:52, +200).
 stall_cycles = [
   [[[["LY", "min"]], 3.0, ["X", "X", "X", "X", "X", "X"]], [[], 1.0]],
   [[[["LY", "min"]], 3.0, ["A", "X", "A", "X", "A", "X"]], [[], 1.0]],
+  [[[], 0.6, ["B"]], [[], 4.5, ["A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A"]], [[["LY", "min"]], 1.2, ["A", "A", "A"]], [[], 3.0]],
 ]
 
 # THE SOLUTION (routedriver session 4, NOVA ee317437, 2026-10-01 23:52 PDT,

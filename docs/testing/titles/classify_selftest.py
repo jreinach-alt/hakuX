@@ -60,9 +60,11 @@ CVR5 = "rdcv5"                                 # replay 5: first run, boot to 20
 SHR1 = "rdsh1"                                 # session 4, Nova: Seaside Hill, wedged on a block 14 s in
 FZR1 = "rdfz1"                                 # session 4, Thor: boot to a race, RT held, 0 -> 73 MPH
 SHT1 = "rdt1"                                  # lane.routedriver2 trial 1, Nova: past the pillar, then a corner
+SHT2 = "rdt2"                                  # lane.routedriver2 trial 2, Nova: block cleared, stuck at POWER
 LOCAL = {CVR2: "scratch/run-cv2/route-frames", CVR3: "scratch/run-cv3/route-frames",
          CVR5: "scratch/run-cv5/route-frames", SHR1: "scratch/run-sh1/route-frames",
-         FZR1: "scratch/run-fz1/route-frames", SHT1: "scratch/run-t1/route-frames"}
+         FZR1: "scratch/run-fz1/route-frames", SHT1: "scratch/run-t1/route-frames",
+         SHT2: "scratch/run-t2/route-frames"}
 
 # drive.py's progress check ([drive] progress_bar): (name, profile, run, frame
 # ~10 s earlier, the frame before this one, this frame, the sim seconds
@@ -74,6 +76,23 @@ PROGRESS = [
      "022727-040-play.png", 10.0, "play"),
     ("sonic in a corner, moving, 8 s on: stalled", "sonic-heroes", SHT1, "022906-071-play.png", "022912-074-play.png",
      "022914-075-play.png", 10.0, "stalled"),
+]
+# [drive] stall_clear_s through drive.py --sim: (name, profile, run, frames,
+# want; the sim starts inside a stall streak). After a stall, play must hold
+# 10 s to count, so the first case must show `stalled` (recovering) first. A stretch where the
+# team really got going again (trial 2, after the Fly escape cleared the
+# block) must still reach `play`; the counter-case, the team stuck in Fly
+# beside the POWER block reading `play` on every other capture, must log no
+# `play` at all.
+RECOVER = [
+    ("sonic moving again after a stall: play after the hold", "sonic-heroes", SHT2,
+     ["023809-028-stalled.png", "023812-029-play.png", "023814-030-play.png", "023817-031-play.png",
+      "023819-032-play.png", "023822-033-play.png", "023825-034-play.png", "023828-035-play.png",
+      "023830-036-play.png"], "play"),
+    ("sonic stuck at a block, play blips: never play", "sonic-heroes", SHT2,
+     ["024145-088-stalled.png", "024148-089-play.png", "024150-090-unknown.png", "024152-091-play.png",
+      "024155-092-play.png", "024157-093-play.png", "024159-094-play.png", "024201-095-play.png",
+      "024203-096-play.png", "024206-097-play.png"], "no-play"),
 ]
 # [[mode]] from a HUD region's colour, through Driver.classify: (name,
 # profile, run, frame, mode wanted). The counter-case is a menu: its blue
@@ -188,8 +207,12 @@ TITLE_OF = {SON: "sonic-heroes", SON2: "sonic-heroes", SONT: "sonic-heroes", SON
 # sim step is the seconds between frames; the default 6 is these runs'
 # START/A cadence, and Forza's play frames are ~25 s apart.
 SIMS = [
-    ("sonic: find play in a live run", "sonic-heroes", SON2, (0, 20), ["--find"],
-     dict(result="reached-play", time_to_title=True, time_to_play=True)),
+    # This run's last frames (1:21-1:41 on the game clock, score 3080 throughout)
+    # are the team wedged at the POWER block, so its play stretch is NOT 20 s.
+    # It passed as reached-play until the progress check (lane.routedriver2):
+    # the wedge was counted as play.
+    ("sonic: live run ending wedged at the POWER block: play, then a stall", "sonic-heroes", SON2, (0, 20),
+     ["--find"], dict(result="window-done", time_to_title=True, time_to_play=True, input_why="stall escape")),
     ("forza: 0 MPH is a ROUTE FAIL, not play", "forza", FOR, (31, 39), ["--seconds", "999", "--sim-step", "25"],
      dict(result_prefix="ROUTE FAIL", fail_word="stalled")),
     ("sonic: a pause that never resumes is a ROUTE FAIL", "sonic-heroes", SON, (21, 40), ["--seconds", "999"],
@@ -200,6 +223,9 @@ SIMS = [
     # goes out (session 4's first replay called the wedge play and ended).
     ("sonic: a wedge on a block is not play; the escape runs", "sonic-heroes", SHR1, (9, 20),
      ["--find", "--sim-step", "2"], dict(result="window-done", input_why="stall escape")),
+    # lane.routedriver2 trial 1: boot, through the menus, 28 s of running.
+    ("sonic: boot to 20 s of play (trial 1)", "sonic-heroes", SHT1, (0, 26), ["--find", "--sim-step", "2"],
+     dict(result="reached-play", time_to_title=True, time_to_play=True)),
     ("forza: boot to a race with RT held (Thor)", "forza", FZR1, (0, 28), ["--find", "--sim-step", "2"],
      dict(result="reached-play", time_to_title=True, time_to_play=True)),
 ]
@@ -231,6 +257,8 @@ def all_frames():
         seen.update({(run, a), (run, b), (run, c)})
     for _, _, run, f, _ in MODES:
         seen.add((run, f))
+    for _, _, run, fl, _ in RECOVER:
+        seen.update((run, f) for f in fl)
     for _, _, run, (lo, hi), _, _ in SIMS:
         d = frames_dir(run)
         if os.path.isdir(d):
@@ -326,6 +354,19 @@ def progress_checks(prof, disk):
         fails += not ok
         print("%s  progress %-44s want %-8s got %-8s %s p=%s" % ("ok  " if ok else "FAIL", name, want, r["state"],
                                                                   r["source"], r.get("progress")))
+    for name, pn, run, fl, want in RECOVER:
+        with tempfile.TemporaryDirectory() as td:
+            d = drive.Driver(drive.SimDevice([source(run, f, disk) for f in fl], 2.2), prof(pn), td, td, 999,
+                             sim=True)
+            d.cfg["fast_s"] = d.cfg["slow_s"] = 2.2
+            d.cfg["escape_max"] = 0                 # the frames cannot react to an escape
+            d.seen = ["main_menu", "play"]
+            d.stall_streak = True                  # both stretches start inside a stall
+            d.run()
+            states = [l.split("\t")[1] for l in open(os.path.join(td, "route-state.tsv")) if l[0].isdigit()]
+        ok = (states[-1] == "play" and "stalled" in states) if want == "play" else ("play" not in states)
+        fails += not ok
+        print("%s  recover %-45s want %-7s got %s" % ("ok  " if ok else "FAIL", name, want, " ".join(states)))
     for name, pn, run, f, want in MODES:
         with tempfile.TemporaryDirectory() as td:
             d = drive.Driver(drive.SimDevice([], 1.0), prof(pn), td, td, 999, sim=True)
