@@ -29,9 +29,29 @@
 # into an attack animation (016-postplay.png). HP bar steady at 100/100
 # throughout -- no combat pressure this early.
 #
-# NOT YET REPLAYED UNATTENDED: played only by nav.py's interactive steps, not
-# by `route.sh` reading this file end to end. Treat as a draft until a soak
-# or scratch/replay.sh run confirms the same path from a cold launch.
+# REPLAYED UNATTENDED, FAILED (session 59, #397, dispatch request
+# 1790902028-titleroutes-1005086, Nova): the "press A, wait 1.1, shot
+# name-a" step that is supposed to type the highlighted letter "A" into
+# the name field fired before the Name Entry screen was interactive -- the
+# field in 174838-name-a.png is still empty, unlike the interactive nav.py
+# session's own 003-name-a.png (field shows "A" typed) from the identical
+# command/timing sequence. Every frame after that (accepted/yes/left1/
+# createdsave/wait5/slot1/saved1/a2/a5/gameplay) is the SAME Name Entry
+# screen with an empty name forever -- Accept silently refuses an empty
+# name, so the whole rest of the route (save creation, cutscene, the
+# `mark gameplay` itself) never happened; the registry's stored save for
+# 4B4E002D was unchanged by this run (still 53f0a40fe626, no save slot).
+# This is a timing race in the newgame->Name-Entry transition, not a step
+# ordering bug (the same fixed-wait sequence worked once, by eye, in the
+# interactive session that authored this route). Fixed by making the
+# letter-type step self-healing: press A on the "A" tile twice, a few
+# seconds apart. The cursor does not move off the "A" tile after a
+# successful type (confirmed in 003-name-a.png), so a redundant second
+# press just yields "AA" instead of "A" if the first one landed, and
+# recovers a dropped first press if it didn't -- either way the name is
+# non-empty by the time START jumps to Accept. NOT YET REPLAYED with this
+# fix: treat as a draft until a soak or scratch/replay.sh run confirms it
+# reaches real gameplay and creates a save.
 wait 10.9
 shot boot
 wait 13.4
@@ -42,11 +62,15 @@ wait 10.3
 press A
 wait 3.1
 shot newgame
-wait 10.9
+wait 14
 press A
 wait 1.1
 shot name-a
-wait 8.1
+wait 4
+press A
+wait 1.1
+shot name-a2
+wait 4.1
 press START
 wait 1.1
 shot name-start
