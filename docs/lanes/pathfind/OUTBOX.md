@@ -50,3 +50,15 @@ played). The acceptance count (7) is met; Ninja Gaiden Black, Spikeout and the B
 team select (an emulator or ISO fault worth a look; frame `runs/espn-nba-2k5.discerror/last_frame.jpg`);
 pathfind now ends a run on a fatal error screen. Cross-title proof next: DOA3 -> DOA Ultimate on the Nova
 (no heat limit), and NHL 2K5 -> College Hoops 2K5 on the Thor when it is cool.
+
+## #433 -- 2026-10-02 10:36 PDT
+
+[lane.pathfind] **Acceptance met: 9 of the 10 lot titles reached confirmed gameplay on the first attempt**
+(Nova, cold, unattended, all within 15 min, max 9.0; strips reviewed by eye). New since the last post:
+Ninja Gaiden Black (7.0 min, 33 calls: intros, lore screens, weapon menu, Ryu walking by the waterfall) and
+Spikeout (4.3 min, 22 calls: name entry, Story, a street fight with health bars). The miss is Bruce Lee's
+false pass (caught in review, not counted); it is being rerun now with the fixed tool. Table:
+docs/lanes/pathfind/NOTES.md. Rendering side-findings for whoever owns video: Star Wars III's intro FMV and
+Spikeout's loading screen both render as green blocks. pathfind now reads lane.pathknow's hints and appends
+one learned line per success to `pathknow/hints/learned-*.md`. Next: the cross-title proof (DOA3 -> DOA1
+Ultimate on the Nova; College Hoops 2K5 on the Thor, guided by the NHL/NFL 2K5 paths, running now).
