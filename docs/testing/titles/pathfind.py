@@ -581,7 +581,10 @@ class Agent:
         self.hints = knowledge(tid, name)
         self.probes = 0
         self.black_since = None
-        self.result = {"title_id": tid, "name": name, "device": dev.label, "iso": iso, "result": "running"}
+        self.result = {"title_id": tid, "name": name, "device": dev.label, "iso": iso, "result": "running",
+                       "tool": subprocess.run(["git", "hash-object", os.path.abspath(__file__)], capture_output=True,
+                                              text=True).stdout.strip()[:10],
+                       "started": time.strftime("%Y-%m-%d %H:%M:%S %Z")}
         self.thermal = []
 
     # -- bookkeeping
