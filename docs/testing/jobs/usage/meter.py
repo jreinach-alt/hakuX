@@ -70,7 +70,6 @@ WORK = os.environ.get("HAKUX_WORK", os.path.expanduser("~/hakux-work"))
 PROJECTS_DIR = os.environ.get("HAKUX_CLAUDE_PROJECTS", os.path.expanduser("~/.claude/projects"))
 STATE_PATH = os.path.join(WORK, "usage", "state.json")
 SUMMARY_PATH = os.path.join(WORK, "usage", "summary.txt")
-LOGS_GLOB = os.path.join(WORK, "logs", "**", "*.json")
 
 WEEK_ANCHOR_DAY = "Thu"
 WEEK_ANCHOR_HOUR = 21

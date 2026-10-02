@@ -248,9 +248,16 @@ them. Confirmed by reading, not merely by omission: `grep -rl 'usage/mode\|usage
 - `docs/testing/jobs/selftest.d/88-window-budget.sh` in isolation, after the
   anchor-change fixture update: **50 passed, 0 failed** (unchanged count
   from before this lane -- the fixtures moved, the coverage did not shrink).
-- Full `docs/testing/jobs/selftest.sh` (no shard, no `SELFTEST_ONLY`): see
-  the run logged alongside this file / PR.md for the final pass/fail count
-  against the whole suite, including the fragments this lane did not touch.
+- Full `docs/testing/jobs/selftest.sh` (no shard, no `SELFTEST_ONLY`):
+  started, not finished -- it ran fragments 10, 20, 30 and 40 to completion
+  (74s, 141s, 60s, 340s; `arms.sh`'s queue/error-judging/refusal-retry
+  chain, 20 checks, **0 failures**) and was partway into 50 when this
+  session's time budget for the run was reached (`timeout 590` on the
+  wrapping call). The suite's own weight table puts the full run at
+  18-25 min on CI and roughly double that on this host, which this lane did
+  not have room for in one sitting. Supplemented with a direct check of
+  which OTHER fragments touch the files this lane changed (see "Territory
+  note" above) rather than guessing the rest would be clean.
 - No device: this brief has no arm (`Prediction: none` in PR.md).
 
 ## Dials (all in `$WORK/limits.env` or `$WORK/usage/`, none in a commit)

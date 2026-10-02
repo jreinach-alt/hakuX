@@ -1,9 +1,9 @@
 # usagemode: a usage meter and an auto Low/Normal mode switch (#433)
 
-State: draft
+State: ready
 
 Lane: usagemode              Issue: #433 (0.5: 50 Playable)
-Base: origin/master @ 66bce0c222
+Base: origin/master @ 66bce0c222, merged forward to 6c2b801c3b (lane/stopmarker's fold; clean merge, no conflicts)
 Files: docs/testing/jobs/window.sh, docs/testing/jobs/selftest.d/88-window-budget.sh,
        docs/testing/jobs/selftest.d/89-usage-mode.sh, docs/testing/jobs/usage/meter.py,
        docs/testing/jobs/usage/mode.sh, docs/testing/jobs/usage/units/hakux-usage-meter.service,
@@ -66,9 +66,12 @@ Exact integration point in OUTBOX.md for lane.local.
   fixtures to the new anchor: **50 passed, 0 failed** (same count as before
   this lane -- the anchor moved, the coverage did not shrink).
 - **Full `docs/testing/jobs/selftest.sh` (all ~120 fragments) was started but
-  not completed in this session** -- the suite's own `SHARD_SECS` table puts
-  the full run at 18-25 min on CI and "about 2x" that on this host, which did
-  not fit this session's turn budget. In its place: `grep -rl
+  not completed in this session.** It ran fragments 10/20/30/40 to
+  completion (74s/141s/60s/340s; `arms.sh`'s queue/error/refusal chain, 20
+  checks, 0 failures) before the time budget for this run ran out partway
+  into fragment 50; the suite's own `SHARD_SECS` table puts the full run at
+  18-25 min on CI and roughly double that on this host, which did not fit
+  this session's turn budget. In its place: `grep -rl
   'window\.sh\|WEEK_ANCHOR\|window_check' docs/testing/jobs/selftest.d/`
   finds every fragment that touches the file this lane changed
   (97-board-release.sh, 97-board-priority.sh, 99-board-wt-refresh.sh,

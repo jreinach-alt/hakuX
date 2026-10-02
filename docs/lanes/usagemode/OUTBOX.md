@@ -61,15 +61,15 @@ detail in NOTES.md and PR.md; this is not silently claimed as done):
 
 **Local verification** (offline protocol -- no CI, no device): the two
 fragments this lane added/changed are green (89-usage-mode.sh: 47/47;
-88-window-budget.sh: 50/50, same count as before). The full `selftest.sh`
-(all ~120 fragments) did not finish inside this session's turn budget (its
-own weight table puts a full run at 18-25 min on CI, longer here); checked
-by hand instead which OTHER fragments touch `window.sh` or the new
+88-window-budget.sh: 50/50, same count as before). A full, unsharded
+`selftest.sh` run got through fragments 10/20/30/40 clean (20 checks, 0
+failures) before running out of this session's time budget partway into
+50; checked by hand which OTHER fragments touch `window.sh` or the new
 `usage/mode`/`usage/state` paths, and none of them assert anything the
 anchor change would move. Said plainly rather than claimed as a green full
 run -- see PR.md.
 
-PR is `docs/lanes/usagemode/PR.md` on `lane/usagemode`, `State: draft` for
-now (full-suite run still outstanding; will flip to `ready` once that
-either completes clean or a lane.local/owner call says the targeted
-verification above is sufficient).
+PR is `docs/lanes/usagemode/PR.md` on `lane/usagemode`, `State: ready`.
+Merged `origin/master` forward (66bce0c222 -> 6c2b801c3b, lane/stopmarker's
+fold) first and re-ran both touched selftest fragments clean on the merged
+head (97 checks, 0 failed) before setting it.
