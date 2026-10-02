@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 294
+wave = 293
 updated_utc = "2026-10-02T16:50:00Z"
 
 [lane.issuerecon]
@@ -65,12 +65,7 @@ note = "STARTED (hostops 2026-10-01 22:2x PDT), briefs/holdwait.md, Issue: none 
 issues = ["10"]
 retired_utc = "2026-09-20T14:57:11Z"
 files = []
-note = "RETIRED (job.board, board tick): PR #168 MERGED 2026-09-19T23:27:57Z (fold c5f7169e70), unit gone, no open PR left on lane/hilodot10. #10 stays open (status fixed-part) -- its own blocked_on already says NO MECHANISM IN HAND for the three remaining classes and explicitly 'do not read this as queued work', so this is not a re-dispatch candidate, just label/row hygiene. docs/testing/bump_sign_quads.py and docs/lanes/hilodot10/NOTES.md RELEASED TO [lane.usagemode]
-issues = ["433"]
-files = ["docs/lanes/usagemode/**", "docs/testing/jobs/usage/**", "docs/testing/jobs/window.sh", "docs/testing/jobs/selftest.d/89-usage-mode.sh"]
-note = "ROW ADDED (hostops 2026-10-02 10:18 PDT): hakux-lane-usagemode has been RUNNING since ~10:15 PDT (briefs/usagemode.md, #433) with NO territory row -- hakux-board cannot write it while gh-auth is down (see [gh-auth]) and lane.local, who started it per the owner's 10:10 PDT operating-modes decision, cannot write board rows either. Found via the HOST INBOX ask lane.local left at 10:15 PDT. Files per lane.local's own request; confirmed unclaimed elsewhere (window.sh, usage/**, 89-usage-mode.sh all absent from every files= list and from [free])."
-
-[free]."
+note = "RETIRED (job.board, board tick): PR #168 MERGED 2026-09-19T23:27:57Z (fold c5f7169e70), unit gone, no open PR left on lane/hilodot10. #10 stays open (status fixed-part) -- its own blocked_on already says NO MECHANISM IN HAND for the three remaining classes and explicitly 'do not read this as queued work', so this is not a re-dispatch candidate, just label/row hygiene. docs/testing/bump_sign_quads.py and docs/lanes/hilodot10/NOTES.md RELEASED TO [free]."
 
 [retired.indexcheck]
 issues = ["157"]
@@ -795,6 +790,11 @@ note = "RETIRED (hostops 2026-10-02 09:21 PDT): PR folded (State: ready, base b7
 issues = ["433"]
 files = []
 note = "RETIRED (hostops 2026-10-02 06:53 PDT): PR folded (State: ready, base b71f92a12a, now an ancestor of origin/master -- confirmed by `git merge-base --is-ancestor`), unit inactive, analysis-only lane (no device time). Its CAPA.md/OUTBOX.md deliver a significant finding: of 9 title-verdict PASSes it could check by frame, 4 sat on a menu/name-entry screen for the whole window, and 10 of 11 accepted titles have no frame past their first moment of play -- the screen-aware driver (drive.py) has never run in a dispatched request. Raises owner-level decisions (D1: what counts as live play; D2: cold boot vs savestate; an API budget for a vision-model fallback) that touch the 0.5 '50 Playable' count -- escalated to the owner (escalations.md, this tick) rather than decided here, since it reads as a bar change, not a routine call. Released docs/lanes/routerca433/** to [free] below (its own notes dir; nothing else was ever claimed)."
+
+[lane.usagemode]
+issues = ["433"]
+files = ["docs/lanes/usagemode/**", "docs/testing/jobs/usage/**", "docs/testing/jobs/window.sh", "docs/testing/jobs/selftest.d/89-usage-mode.sh"]
+note = "ROW ADDED (hostops 2026-10-02 10:18 PDT): hakux-lane-usagemode has been RUNNING since ~10:15 PDT (briefs/usagemode.md, #433) with NO territory row -- hakux-board cannot write it while gh-auth is down (see [gh-auth]) and lane.local, who started it per the owner's 10:10 PDT operating-modes decision, cannot write board rows either. Found via the HOST INBOX ask lane.local left at 10:15 PDT. Files per lane.local's own request; confirmed unclaimed elsewhere (window.sh, usage/**, 89-usage-mode.sh all absent from every files= list and from [free])."
 
 [free]
 # RELEASED (hostops 2026-10-02 09:21 PDT) by retiring lane.bf2stall433 (PR folded 2790e4b700, complete negative result, see [retired.bf2stall433]): docs/lanes/bf2stall433/**, docs/testing/predictions/bf2stall433-*.json, hw/xbox/nv2a/pgraph/vk/renderer.c, hw/xbox/nv2a/pgraph/vk/surface.c. vk/draw.c released by the same retirement but immediately re-claimed by [lane.bf2ubosize433] in the same tick (see that row) -- never actually free; vk/shaders.c and glsl/vsh-ff.c/vsh-prog.c/vsh.c were unclaimed anywhere (not even here) and granted to the same lane directly.
