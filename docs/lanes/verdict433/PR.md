@@ -3,7 +3,7 @@
 State: draft
 
 Lane: verdict433            Issue: #433 [#507]
-Base: master @ 94cf8eb627 (branched); merged forward to origin/master @ 28edcacfc8 (titleroutes session 45's offline fold) in session 18
+Base: master @ 94cf8eb627 (branched); merged forward to origin/master @ bfb8c145fb (titleroutes sessions 44-59's offline folds) in session 19
 Files: docs/lanes/verdict433/NOTES.md, docs/lanes/verdict433/PR.md, docs/lanes/verdict433/OUTBOX.md, docs/lanes/verdict433/judge_copy.py, docs/lanes/verdict433/scan.py, docs/lanes/verdict433/soaks.py, docs/lanes/verdict433/sweep.py, docs/lanes/verdict433/queue_batch1.sh, docs/lanes/verdict433/queue_batch2.sh, docs/lanes/verdict433/queue_batch3.sh, docs/lanes/verdict433/queue_batch4.sh, docs/lanes/verdict433/queue_batch5.sh, docs/lanes/verdict433/queue_batch6.sh, docs/lanes/verdict433/queue_batch7.sh, docs/lanes/verdict433/queue_batch8.sh, docs/lanes/verdict433/queue_batch9.sh, docs/lanes/verdict433/queue_batch10.sh
 Prediction: none: analysis-only (no emulator code changed; this lane only reads device results and queues confirmation soaks through the normal harness)
 Needs device: yes (Nova for all confirmations; Thor cold-start-only per the 2026-09-30 10:20 PDT addendum, capped at 3/day, light titles under ~4.5W net)
@@ -17,13 +17,16 @@ code, Playable rule, or board file is touched -- this is a measurement-only
 lane that reads `title_verdict.py` output and queues confirmation soaks via
 `docs/testing/request.sh`.
 
-Across eighteen sessions (2026-09-29 and 2026-09-30, each one queuing a
+Across nineteen sessions (2026-09-29 through 2026-10-01, each one queuing a
 batch and stopping to let device soaks run rather than polling):
 
-- **Seven titles confirmed Playable this pass, all on the Nova at the
-  default confirmation regimen; eight Playable in total with Alien
-  Hominid (09-26).** Each pass's mark frame was reviewed under the
-  09-30 20:10 PDT rule (NOTES, sessions 17-18, names each frame):
+- **Nine titles confirmed Playable this pass, all on the Nova; ten
+  Playable in total with Alien Hominid (09-26).** Seven were this lane's
+  own confirmations at the default regimen; two (Tony Hawk's Pro Skater 2x,
+  187: Ride or Die) were a new host-side pipeline's confirmations
+  (`autoverdict.sh`, session 19) that this lane frame-reviewed and
+  confirmed genuine. Each pass's mark frame was reviewed under the
+  09-30 20:10 PDT rule (NOTES, sessions 17-19, names each frame):
   - **KOF: Maximum Impact - Maniax** -- fps_ok=0.9936, gameplay 1282.6s, no
     crash/hang, audio_short=0.0005, 0.1121 J/frame.
   - **Azurik: Rise of Perathia** -- fps_ok=0.9521, gameplay 1292.3s, no
@@ -52,6 +55,21 @@ batch and stopping to let device soaks run rather than polling):
     kept`). The verdict describes that warm case; a literal first fight on
     a fresh install still meets the stall once, as the warm-up run itself
     shows (FAIL/hang on that launch).
+  - **Tony Hawk's Pro Skater 2x** (session 19, via `autoverdict.sh`) --
+    fps_ok=0.9964, gameplay 708.3s, no crash/hang, audio_short=0.0,
+    0.1472 J/frame. Frame `080318-rolling.png`/`080319-gameplay.png`
+    reviewed: a skater mid-trick on a rooftop rail, live score/timer, FPS
+    57 -- real play. `below_own_target` (target 60, this run's median
+    59.82 but the share at 60 itself is 0.61) doesn't affect the 30-fps
+    Playable bar.
+  - **187: Ride or Die** (session 19, via `autoverdict.sh`) -- fps_ok=1.0,
+    gameplay 752.2s, no crash/hang, audio_short=0.0, 0.2008 J/frame. Frame
+    `062254-gameplay.png` reviewed: a live race, lap/position HUD,
+    speedometer, cars ahead -- real play, on the **rewritten** route
+    (titleroutes session 46/47). This lane withdrew 187 in session 17
+    because its then-current route scored a profile-creation menu;
+    titleroutes has since fixed the route, and this confirmation is
+    genuine. No longer withdrawn.
 - **WWE Raw 2, 50 Cent and Baldur's Gate DA each needed a rerun first.**
   Their first attempts hit a harness bug: the shared `titles.qcow2` HDD
   file was pushed to the Nova with `adb push`'s default `rw-r--r--`
@@ -62,10 +80,12 @@ batch and stopping to let device soaks run rather than polling):
   seconds before an adb capture flake aborted it 10s short of the bar. All
   three reruns, queued after hostops's interim chmod-660 fix, came back
   clean.
-- **187: Ride or Die is withdrawn: its route ends on profile creation.**
-  It read fps_ok=1.0 over 1286.4s, but the owner's frame review showed the
-  scored window is the profile-creation screen, not a race. A menu at 60
-  fps scores 100%. Not counted.
+- **187: Ride or Die's first route was withdrawn (session 17): it ended on
+  profile creation.** It read fps_ok=1.0 over 1286.4s, but the owner's
+  frame review showed the scored window is the profile-creation screen,
+  not a race. A menu at 60 fps scores 100%. Titleroutes rewrote the route
+  (session 46/47); the rewrite is frame-confirmed real and counted as
+  Playable above (session 19).
 - **007: Agent Under Fire is not Playable.** Its first attempt started
   just before the chmod fix landed and hung silently at `qemu_init` for the
   full timeout (not a read on the title). Its rerun booted and played
@@ -116,6 +136,27 @@ batch and stopping to let device soaks run rather than polling):
   gameplay` is an unvalidated `[guess]` placeholder that landed on the
   Japanese name-entry keyboard screen, not play -- the same failure mode
   DOA3's v1 route had. Not queued; needs the route fixed first.
+- **Session 19: flagged two live false-positive `pass: true` Playable
+  verdicts from a new automated pipeline, `autoverdict.sh`.** It queues and
+  judges Nova confirmations itself from titleroutes' nominations, without
+  the frame review this issue's 09-30 20:10 PDT rule requires.
+  **Castlevania: Curse of Darkness** (`1790897326-autoverdict-3745925`)
+  reads `pass: true` but every frame from well before the mark through the
+  mark itself is a static Name Entry keyboard, not the courtyard gameplay
+  its route describes. **Super Monkey Ball Deluxe**
+  (`1790900520-autoverdict-566484`) reads `pass: true` but the ball rolls
+  off within ~20s of the mark and the remaining ~630 of 654s sits on the
+  Stage Select menu. Neither is counted in this lane's tally despite the
+  live verdict. Neither can be corrected with `--reviewed-gameplay`: that
+  flag only overrides a generic/survey route's `mark play`
+  (`gameplay_by == "review"`); an authored route's `mark gameplay`
+  (`gameplay_by == "route"`) sets `reached_gameplay` from post-mark frame
+  activity alone with no review override (`title_verdict.py:431-432`).
+  Needs a titleroutes route fix (and arguably a `title_verdict.py` follow-up
+  to give route-authored marks the same challengeable status generic marks
+  have); posted to `OUTBOX.md` for #433 as the session's most urgent
+  finding, since the status page may currently be overcounting Playable by
+  2 if it reads these `verdict.json` files directly.
 - Full ranking, tier A/B/C readings, and the session-by-session log (15
   sessions, including a harness anomaly where an entire batch of six
   queued requests vanished from the dispatch tree without a withdrawal or
@@ -145,26 +186,35 @@ changed.
   **Forza Motorsport FAIL** (confirmation `-3477700`, 45.3% at 28.5+ over
   1253.7s, frames `213608-play.png`/`215609-play.png` reviewed -- a real
   race, not a menu).
-- Every request has a final verdict: seven PASS Playable (plus Alien
-  Hominid pre-existing), 187 withdrawn, AUF/Arctic Thunder/Forza FAIL,
-  Otogi FAIL on heat, Alien Hominid's own attempt void/redundant.
-- Merged `origin/master` three times since (sessions 14, 15, 17, 18),
-  most recently session 18's 2-commit merge (titleroutes session 45's
-  work-list refresh, no emulator code, clean). #583 (Forza decay) folded
-  in session 17's merge and its fix is now measured (above); #591 (GTA
-  SA/ibcache) has still not folded as of session 18.
-- **Further progress is gated on other lanes:** #591, and titleroutes
-  revising its SMT: NINE and DOA3 routes from their own frames (both
-  currently mark `gameplay`/`booted` on the wrong screen). Session 18's
-  fresh sweep of every finished Nova and Thor route soak, plus a direct
-  check of the remaining tier-A/B candidates' existing `verdict.json`
-  evidence (Nightfire, Spikeout, Fuzion Frenzy, GoldenEye: Rogue Agent,
-  RalliSport 2, Blinx 2, Grabbed by the Ghoulies), found none close to the
-  90% bar -- none was queued. Re-sweep after #591 lands, a titleroutes
-  route fix lands, or a fresh soak shows a share near 0.9 for an untried
-  title.
+- Every request has a final verdict: nine PASS Playable (plus Alien
+  Hominid pre-existing), AUF/Arctic Thunder/Forza FAIL, Otogi FAIL on
+  heat, Alien Hominid's own attempt void/redundant. 187's original route
+  withdrawn (session 17), its rewrite PASS (session 19).
+- Merged `origin/master` four times since (sessions 14, 15, 17, 18, 19),
+  most recently session 19's 35-commit merge (titleroutes sessions 44-59,
+  no emulator code, clean). #583 (Forza decay) folded in session 17's
+  merge and its fix is now measured (above); #591 (GTA SA/ibcache) has
+  still not folded as of session 19 -- a fresh autoverdict Nova
+  confirmation without it reads 84.6% at the bar (need 90%).
+- **Session 19's most urgent open item: two false-positive live Playable
+  verdicts from `autoverdict.sh`** (Castlevania: Curse of Darkness, Super
+  Monkey Ball Deluxe -- see above). Flagged to `OUTBOX.md`/#433; needs a
+  titleroutes route fix on each, and this lane cannot correct the live
+  verdict.json itself (no reviewed-gameplay override exists for a
+  route-authored mark).
+- **Further progress is otherwise gated on other lanes:** #591, and
+  titleroutes revising its SMT: NINE and DOA3 routes from their own frames
+  (both currently mark `gameplay`/`booted` on the wrong screen). Session
+  18's fresh sweep of every finished Nova and Thor route soak, plus a
+  direct check of the remaining tier-A/B candidates' existing
+  `verdict.json` evidence (Nightfire, Spikeout, Fuzion Frenzy, GoldenEye:
+  Rogue Agent, RalliSport 2, Blinx 2, Grabbed by the Ghoulies), found none
+  close to the 90% bar -- none was queued. Session 19 found
+  `host-tools/nova-nominations.tsv` (the new automated queue) already
+  exhausted bar a held Sonic Heroes. Re-sweep after #591 lands, a
+  titleroutes route fix lands, or a fresh soak/nomination shows a share
+  near 0.9 for an untried title.
 - AUF needs its own authored route before it can be re-measured; not this
   lane's scope to author it.
-- The Nova is at 34% battery as of session 18's close (21:59 PDT), with no
-  active charge hold in `dispatch/hold/` -- an ordinary low point between
-  top-ups, not something this lane manages.
+- The Nova is at 80% battery as of session 19's start, no active charge
+  hold in `dispatch/hold/`.

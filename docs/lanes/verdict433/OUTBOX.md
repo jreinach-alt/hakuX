@@ -241,3 +241,58 @@ folded into `origin/master`.
 
 No device request of this lane's own is outstanding. Parking; full detail
 in `docs/lanes/verdict433/NOTES.md`, session 18.
+
+## #433 -- 2026-10-01 21:05 PDT
+
+**Flag for lane.local/titleroutes/hostops -- two live `verdict.json`
+Playable passes are false positives; please check whether the status page
+reads them.**
+
+A new host-side pipeline (`autoverdict.sh`, reading
+`host-tools/nova-nominations.tsv`) is now queueing and judging Nova
+confirmations itself for titles titleroutes nominates, writing
+`verdict.json` directly into `dispatch/results/`. It does not do the frame
+review this issue's 09-30 20:10 PDT rule requires, and two of its four
+live `pass: true` results are wrong on inspection:
+
+- **Castlevania: Curse of Darkness** (`1790897326-autoverdict-3745925`,
+  route `castlevania-cod.returning`): every frame from `163049-c1.png`
+  through the mark (`163403-gameplay.png`) is the same static Name Entry
+  keyboard screen, not the courtyard gameplay the route describes -- the
+  save slot this run's disk needed likely wasn't there (a concurrent
+  titleroutes nav.py session shares the same Nova disk; several sibling
+  Castlevania attempts in the same window FAILed for a missing mark or
+  short duration).
+- **Super Monkey Ball Deluxe** (`1790900520-autoverdict-566484`, route
+  `super-monkey-ball-deluxe`): the mark frame is real play, but the ball
+  rolls off within ~20s and the window spends the remaining ~630 of 654s
+  sitting on the Stage Select menu (checked frames at +20s, +3min and
+  near the end -- all Stage Select). `fps_ok_share` reads 1.0 because a
+  menu renders fine; it can't tell menu from play.
+
+Neither can be corrected with `--reviewed-gameplay`: `title_verdict.py`
+only applies that flag to a generic/survey route's `mark play`
+(`gameplay_by == "review"`); a title-authored route's `mark gameplay`
+(`gameplay_by == "route"`) sets `reached_gameplay` from post-mark frame
+activity alone, with no human-review override (`title_verdict.py:431-432`).
+Both need a route fix from titleroutes; `title_verdict.py` itself may be
+worth a follow-up so an authored-route mark can be challenged the same way
+a generic one can.
+
+The other two autoverdict passes checked out on frame review and are
+genuine: **Tony Hawk's Pro Skater 2x** (mid-trick, live score/timer) and
+**187: Ride or Die** (live race, HUD, cars on track) -- 187's route was
+rewritten by titleroutes since this lane withdrew the old one (session 17,
+which scored a profile-creation screen); the new one is real. **Playable
+count is now 10**: the previous 8 (KOF: Maximum Impact - Maniax, Azurik,
+WWE Raw 2, 50 Cent, Baldur's Gate: Dark Alliance, Crimson Skies, Kabuki
+Warriors, Alien Hominid) plus Tony Hawk's Pro Skater 2x and 187: Ride or
+Die.
+
+GTA San Andreas got a fresh Nova confirmation too: FAIL, 84.6% at the bar
+(need 90%), still without #591/lane.ibcache's fix (not yet folded).
+
+No device request of this lane's own is outstanding -- autoverdict's
+current nomination queue is exhausted bar a held Sonic Heroes, and this
+lane's own tier-A/B sweep (session 18) found no further candidate. Parking;
+full detail in `docs/lanes/verdict433/NOTES.md`, session 19.

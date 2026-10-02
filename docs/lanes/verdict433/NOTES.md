@@ -2006,3 +2006,84 @@ worth the Nova's constrained battery right now. Recording the Kabuki pass
 and Forza fail in `OUTBOX.md`. Not waiting on anything; the next real move
 needs either #591 to fold or a stronger candidate reading than exists
 today.
+
+## Session 19 (2026-10-01, resumed as attempt 2)
+
+**Why session 18 did not finish, strictly speaking.** It did finish its own
+work (judged batch 10, swept both devices, found no further candidate) and
+parked correctly -- but it parked with *nothing* queued and posted no
+`waiting:`/`blocked:` marker (there was nothing to wait on). Per
+`roles/lane.md`, that is exactly the condition `handback.sh` treats as an
+idle lane and resumes ~40 minutes after session end, regardless of PR
+state. This resume is that automatic idle pickup, not a sign anything was
+wrong with session 18's work.
+
+**Merged `origin/master`** (35 commits, all `docs/testing/*` -- no emulator
+code -- titleroutes sessions 44-59 and two small forzadecay414 notes
+commits). Clean merge, no conflicts.
+
+### Major find: an automated Nova confirmation pipeline (`autoverdict.sh`) is now live, and it has already written two wrong Playable verdicts
+
+Titleroutes' sessions 46-58 authored and confirmed several new routes
+(thps2x, 187-ride-or-die rewrite, castlevania-cod.returning,
+super-monkey-ball-deluxe, sonic-heroes) and nominates them for a Nova
+confirmation via a host file, `host-tools/nova-nominations.tsv` (owner
+2026-10-01; not part of this repo). A new host-side runner,
+`autoverdict.sh`, reads that file, queues each title's 600-s Nova
+confirmation itself, and writes `verdict.json` straight into the live
+`dispatch/results/` -- the same job sessions 1-18 of this lane did by
+hand, now automated. `sweep.py .scratch/v433sweep 1790830740 nova` (this
+session's cutoff = session 18's close) found ten finished autoverdict/
+titleroutes Nova runs since.
+
+**This pipeline does not do the frame review the 09-30 20:10 PDT rule
+requires**, and two of its four live PASS verdicts are wrong once reviewed:
+
+| Title | request id | verdict.json | Frame review |
+|---|---|---|---|
+| Tony Hawk's Pro Skater 2x | `1790866838-autoverdict-1937886` | `pass: true` | **Confirmed real.** Mark frame `080319-gameplay.png` (= `080318-rolling.png`, same instant): skater mid-grind on a rooftop rail, score/timer/special-meter live, FPS 57. |
+| 187: Ride or Die | `1790860858-autoverdict-1510236` | `pass: true` | **Confirmed real.** Mark frame `062254-gameplay.png`: a live race, HUD lap counter, speedometer, position 6/6, cars visible ahead. This is the rewritten route (titleroutes s46/47); the old route this lane withdrew in session 17 scored a profile-creation screen -- the new one is genuine. **187: Ride or Die is Playable after all**, on the corrected route. |
+| Castlevania: Curse of Darkness | `1790897326-autoverdict-3745925` | `pass: true` | **FALSE PASS.** The mark frame (`163403-gameplay.png`) and every frame from `163049-c1.png` onward (`c2`, `seq1-4`, `loading1/2/3/6`, `check1`, `movetest`, `movetest2`, the mark itself) are the *same* static "Name Entry" keyboard screen (`AAAAAAAA`, cursor on `A`, "Please enter a name"), not the gothic courtyard the route's own comments describe. The `castlevania-cod.returning` route assumes a filled save slot 1; this run's disk apparently didn't have one (likely clobbered by a concurrent titleroutes nav.py session on the same shared Nova disk -- several other Castlevania attempts in the same window FAILed for `no mark gameplay` or `duration too short`, consistent with the save state changing under autoverdict's feet). `title_verdict.py` can't catch this: for a route-authored `mark gameplay` (not a generic survey's `mark play`), `reached_gameplay` is set from post-mark frame activity alone (`title_verdict.py:431-432`) -- `--reviewed-gameplay` only applies to generic/`review` marks, so there is no tool-level way to flag a wrong route-authored mark. **Not counted.** |
+| Super Monkey Ball Deluxe | `1790900520-autoverdict-566484` | `pass: true` | **FALSE PASS.** Mark frame `172713-gameplay.png` (+0s) is genuine rolling play (47 mph, stage 1-1 SIMPLE). But `172733-play.png` (+20s) and `172902-play.png` (+~3 min) are already back at the **Stage Select** menu, and `173759-play.png` (near the end of the 653.8s window) is still there -- the ball evidently rolls off/finishes almost immediately and the repeat-forever input loop never gets back into a stage; the vast majority of the scored window is a menu rendering at a steady 30-35 fps (which is why `fps_ok_share` still reads 1.0 -- the metric can't tell a menu from play either). Same tool limitation as Castlevania: a route-authored mark, no reviewed-gameplay override available. **Not counted.** |
+
+**This is urgent**, not just a bookkeeping note: these are live `verdict.json` files with `"pass": true, "rating_candidate": "Playable"` sitting in `dispatch/results/`, exactly what the status page is described as reading. If it reads them naively, it is currently overcounting by 2. Flagging prominently in `OUTBOX.md` for lane.local/titleroutes/hostops -- this lane cannot fix the routes (titleroutes' territory) or the tool's reviewed-gameplay gap (harness code, out of this lane's brief), only report what frame review shows.
+
+Also swept the Thor since the same cutoff: all FAIL (titleroutes pass-1/retry traffic, several more Castlevania/Sonic Heroes/Gauntlet/Petit Copter/Capcom Classics 2/Plus Plumb 2/THPS2x/THPS3 crashes or no-mark voids). Nothing new there; the Thor is still unproductive for this lane.
+
+GTA San Andreas also got a fresh Nova confirmation via autoverdict (`1790875419-autoverdict-2123622`): **FAIL, 84.6% at the 30 bar** (bar 90%), on ref `ec244430e3` -- still without #591/lane.ibcache's jump-cache fix (still not folded into `origin/master` as of this session). Consistent with the brief's tier-C gating; no change needed, just fresher evidence of the same gate.
+
+Checked `host-tools/nova-nominations.tsv` directly: every row has now been tried by autoverdict except Sonic Heroes, which carries a `#HOLD-UNTIL-FF` prefix (held pending something upstream, not queued) -- and a separate, non-autoverdict Nova attempt at it this window crashed too (`guest exited after 816s`). Nothing left in the nominations queue for this lane to duplicate or wait on.
+
+### Updated Playable count: 10
+
+Previous 8 (KOF: Maximum Impact - Maniax, Azurik: Rise of Perathia, WWE Raw
+2, 50 Cent: Bulletproof, Baldur's Gate: Dark Alliance, Crimson Skies,
+Kabuki Warriors, Alien Hominid) **plus, from this session's frame review:**
+**Tony Hawk's Pro Skater 2x** and **187: Ride or Die** (route fixed by
+titleroutes since this lane withdrew it in session 17; frame-reviewed,
+genuine race). **Count: 10.**
+
+Not counted despite a live `pass: true` verdict.json (false-positive frame
+review, above): Castlevania: Curse of Darkness, Super Monkey Ball Deluxe.
+Both need a titleroutes route fix (and ideally a harness fix so
+route-authored marks get the same reviewed-gameplay escape hatch generic
+marks have) before they can be re-tried.
+
+### Battery/hold check
+
+Nova: 80% as of this session's start (`'.battery_level.nova'`), no active
+hold in `dispatch/hold/` (only `thor`/`thor.why`/`lifted` present -- the
+Thor's standing heat situation, unchanged). Plenty of Nova budget right
+now, but nothing of this lane's own is worth queuing into it: the
+nominations queue autoverdict already works from is exhausted bar the held
+Sonic Heroes, and this lane's own tier-A/B sweep (session 18) already found
+no further candidate with real evidence.
+
+### Ending session 19: nothing of this lane's own to queue; flagged the two false positives; parking
+
+No device request of this lane's own is outstanding. The main output this
+session is the false-positive flag above, posted to `OUTBOX.md` for #433 --
+that is more urgent than any further queuing. Not waiting on a device
+request; the next real move needs either a titleroutes route fix for
+Castlevania/Super Monkey Ball, #591 to fold (GTA SA), or autoverdict/
+titleroutes producing a new nomination this lane hasn't reviewed yet.
