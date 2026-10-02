@@ -16,7 +16,7 @@ file is the evidence behind it and what the next lane should not repeat.
   route progress (`steps`, `marks`, `ended`), the verdict (`gameplay_s`, `pass`,
   `failing`), `post_frames`/`post_span_s` (route frames taken AFTER the mark,
   the only pictures of the scored window that exist), and the class.
-- `review.tsv`: the 17 runs whose frames I opened, with what each showed.  It
+- `review.tsv`: the 18 runs whose frames I opened, with what each showed.  It
   overrides the automatic class.
 - `devtime.py`: device-minutes by state from `~/hakux-work/logs/devwatch/*.tsv`
   (one sample per device per minute, 09-26 00:00 to 10-02 ~07:00 PDT).
@@ -110,7 +110,7 @@ Device time from devwatch (09-26 00:00 to 10-02 ~07:00 PDT, 132.6 h per device):
 Route work, dispatch plus held: **about 41 device-hours since 09-26** (Nova 21.1,
 Thor 20.3, cold slots not counted).  Output: 1 frame-proven 600-s window.
 
-## Frame review (17 runs, across classes)
+## Frame review (18 runs, across classes)
 
 `review.tsv` has each with the file looked at.  Summary:
 
@@ -181,9 +181,112 @@ What the review says:
 - **Foreground loss voids** (12 e:fg): ES-DE / Daijishou / notification shade /
   odin.settings holding display 0 (e.g. 1-1790725089-lane.verdict433-1456493).
 
-## Session 1 (2026-10-02): what is done, what is not
+## Held sessions and cooling (outside dispatch)
 
-Done: ledger, devtime, frame review, code read of route.sh / drive.py /
-classify.py / title_verdict.py.  Process history and held-session accounting
-are in CAPA.md (from the lane briefs, attempts and NOTES; see the process
-section there).
+Reconstructed by a read-only subagent from devwatch, dispatcher.log, nav/
+session dirs and lane NOTES. Its tables are summarised here.
+
+| device | held route sessions | cooling for screens | total |
+|---|---|---|---|
+| Thor | 539 min (titleroutes 507, titlestate pilot 23, routedriver Forza ~5 est.) | 179 min (thor_coldconfirm title slots) | about 12.0 h |
+| Nova | 465 min (titleroutes 244, routedriver2 102+, routedriver 42, gamecheck 28, titlerun 30, titleroutes2 16, titlestate 3) | 0 | about 7.8 h |
+
+- `~/hakux-work/nav/` holds 78 nav.py sessions (Thor 55, all between 09-26
+  16:13 and 09-27 21:43; Nova 23).
+- They drove 47 distinct titles, and 41 have a route file. Having a file does
+  not mean the route is validated.
+- Input bursts cover 5.2 h of the roughly 17 h held. The rest went on
+  replays, reading frames and waiting.
+
+thor_coldconfirm (logs/thor-coldconfirm.log, 09-30 10:34 to 10-01 04:17):
+
+| item | value |
+|---|---|
+| title slots | 40 (39 titleroutes, 1 verdict433) |
+| heat stop at xo 70 C | 25 |
+| heat stop at cpu-1-9 >= 90 C | 8, each 1.1-6.1 min after a cold start (xo 35-49 C) |
+| ran to the end | 7 |
+
+devwatch, 09-26 18:01 to 10-02 06:28: the Nova was idle or idle-waiting
+32.6 h. The Thor was under the fan-dead hold 47.8 h.
+
+Not reconstructible:
+- Holds before 09-26 18:01 (hold.sh keeps no history).
+- Driving versus waiting inside a hold.
+- Thor route work under the fanwait hold beyond routedriver's Forza run.
+
+## Process history (from briefs, attempts, lane logs, fold logs)
+
+Also from a read-only subagent. I re-checked every item that CAPA relies on.
+
+- **Hypotheses.** No route-building brief stated one: titlerun and titleplay
+  say "Prediction: none"; titleroutes says `Prediction: none: route data`.
+  All 218 ledger requests carry `no_expect`. I re-read this in request.json
+  (counts in CAPA T21).
+- **Attempt cap.** `LANE_MAX_ATTEMPTS=4` counts every start and every resume
+  (models.env; lane.sh:187-215). titleroutes' counter was reset at
+  briefs/titleroutes.md:231, :409 ("reset, not split") and :592, and it
+  retired at 4/4 on 10-02. It has 51 session logs, 28 of its 49 real
+  sessions on Sonnet after the 09-29 token policy ("Sonnet for measurement,
+  routes, docs"), and about $290 spent.
+- **Fold gate on route tooling** (offline-git/fold-failures.log):
+  - waitfor, 10-01 19:18;
+  - routedriver, 10-02 00:19 (folded 01:54);
+  - titleroutes' final review, 05:01;
+  - snapdrive, 06:20 and 06:36.
+
+  I re-checked that 4f570d1b71 is not an ancestor of origin/master.
+- **The snapshot defect, three times:**
+  - #206, 09-24 (NEXT-SESSION-PROMPT.md:40-46);
+  - vsh_score.py, 09-25;
+  - drive.py and friends, 10-02.
+- **Orchestrator keep-busy directives:**
+  - "Do not wait for the result" (briefs/titleroutes.md:114, 09-26 20:50);
+  - "do not wait for earlier results" (:312, 09-27 19:55);
+  - "Do not end this session on 'no device work tonight' again without first
+    queuing" (:789, hostops ADDENDUM 15, 10-01 23:10);
+  - "Write routes open-loop" and "end every session with something queued"
+    (briefs/titleroutes2.md:10, :79, hostops 10-02 04:10).
+
+  I re-read all four.
+- **Corrected claims.**
+  - lane.local's ADDENDUM 5 read Castlevania `castlevania-cod.returning-144635`
+    as "SUCCEEDED" on a frame taken before the HUD (titleroutes NOTES:3889).
+  - The re-confirmed route then scored 613 s of Name Entry in dispatch
+    (1790897326-autoverdict-3745925).
+  - Session 64 thought waitfor was live in the snapshot; session 65 found it
+    was not.
+  - The routedriver2 brief claimed `route.sh --check` passed on the folded
+    snapshot; routedriver2 refuted it ("no profile").
+  - Session 44's "focus steal, not heat" was retracted in session 46, but the
+    retraction is not yet in targets.toml (DOA3, THPS2x notes).
+- **Rejected PASSes still count.** Three rejected PASS verdicts (SMB,
+  Castlevania x2) still say `"pass": true` with no WITHDRAWN.txt, and
+  host-tools/autoverdict.sh treats any `"pass": true` as "already Playable".
+  I re-checked both.
+- **The 11 accepted titles.** No acceptance registry exists. The list is
+  verdict433's count of 10 plus Blood Wake, the only OWNER_ACCEPTED.txt.
+
+## Session 1 (2026-10-02): done
+
+- Ledger and devtime.
+- Frame review of 18 runs.
+- Code read of route.sh, drive.py, classify.py and title_verdict.py.
+- Route-file census: 61 blind, 1 waitfor, 3 drive.
+- Snapshot check: the Android build stubs xemu snapshots.
+- CAPA.md.
+
+## For the next lane: do not repeat
+
+- Do not judge a title by its verdict line or its mark frame. Look for
+  frames after the mark (`post_frames` in ledger.tsv). For the accepted
+  titles there are none.
+- Do not count `held ... for Ns` twice. A request can have two result dirs;
+  ledger.py dedupes by request id.
+- On the Thor, `ROUTE STOPPED ... daijishou` is the coldconfirm HEAT STOP
+  (logs/thor-coldconfirm.log), not a crash. On the Nova the same line is an
+  emulator exit.
+- devwatch columns are: time, device, state, flags, then the request id or
+  the hold reason. The hold reason is in column 5, not 4.
+- Run X1 (CAPA section 7) before any device time on C2. It is offline and
+  decides C2's probability.
