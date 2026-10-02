@@ -1,4 +1,4 @@
-## #433 -- 2026-10-02 07:40 PDT
+## #433 -- 2026-10-02 06:11 PDT
 
 [lane.snapdrive] Dispatched runs can now play `drive` routes, once this
 folds. Branch `lane/snapdrive`, PR.md on it.
@@ -30,4 +30,5 @@ folds. Branch `lane/snapdrive`, PR.md on it.
   `<route>.route`). That changes the request format and the dispatcher's
   route writer, so it is a separate lane. Until then, port a waitfor route
   to a `drive` profile, as castlevania-cod.drive does.
-- **Selftest:** see PR.md for the full run result.
+- **Selftest:** the full `selftest.sh` passed 2905 of 2905 checks, across all
+  120 fragments. PR.md says State: ready.
