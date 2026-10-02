@@ -7,18 +7,21 @@
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
 req="$here/../../testing/request.sh"
-R=c8e95ed539
-NE="env A/B on one binary, hand-read with title_verdict.py against legs 4 and 5b in docs/lanes/ibcache/NOTES.md"
+# REF and LEG override the ref and the leg label (2026-10-01: the merged head,
+# legs 5a/5b).
+R=${REF:-c8e95ed539}
+LEG=${LEG:-4/5b}
+NE="env A/B on one binary, hand-read with title_verdict.py against legs $LEG in docs/lanes/ibcache/NOTES.md"
 dev=$1 secs=$2 order=$3 route=$4 iso=$5 name=$6
 for (( i=0; i<${#order}; i++ )); do
     case ${order:$i:1} in
     B) bash "$req" --who lane.ibcache --device "$dev" --ref "$R" --title "$iso" \
         --route "$route" --seconds "$secs" --perflog --issue 507 \
-        --purpose "#507 lane.ibcache leg 4/5b, arm B: $name with the inline jump-cache probe ON (default, HAKUX_IBC unset) at $R" \
+        --purpose "#507 lane.ibcache leg $LEG, arm B: $name with the inline jump-cache probe ON (default, HAKUX_IBC unset) at $R" \
         --no-expect "$NE" ;;
     A) bash "$req" --who lane.ibcache --device "$dev" --ref "$R" --title "$iso" \
         --route "$route" --seconds "$secs" --perflog --issue 507 --env HAKUX_IBC=0 \
-        --purpose "#507 lane.ibcache leg 4/5b, arm A: $name with the inline jump-cache probe OFF (HAKUX_IBC=0) at $R" \
+        --purpose "#507 lane.ibcache leg $LEG, arm A: $name with the inline jump-cache probe OFF (HAKUX_IBC=0) at $R" \
         --no-expect "$NE" ;;
     esac
 done

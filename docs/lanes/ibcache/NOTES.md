@@ -703,3 +703,111 @@ Alien Hominid's Nova copy is now in `hardware/titlepush/listing-nova.txt`
    (leg 4, and 5a).
 
 **Next, on resume:** unchanged from attempt 7, plus the Alien Hominid pair.
+
+## Attempt 9 (resumed 2026-10-01 21:00 PDT, handback)
+
+**Why attempt 8 did not finish.** It ended correctly on a `waiting:` for nine
+Nova requests and GTA SA's Nova copy. All nine ran on 2026-09-29/30. The lane
+was not resumed for two days because GitHub suspended the harness account on
+2026-09-29 at about 21:00 PDT, and lane resumes were held while the offline
+stand-in was set up. GitHub is still suspended (`gh api user`: "Your account
+was suspended"). So this attempt follows the OFFLINE PROTOCOL (lane.local,
+2026-09-29 22:05, in the hddcrash brief). The PR is `docs/lanes/ibcache/PR.md`
+on this branch, and issue posts go to `docs/lanes/ibcache/OUTBOX.md`. `gh` is
+not used.
+
+### The nine Nova runs, read (`soakread.py`, `out/soakread-nova.out`)
+
+Five of the ten runs (A1 included) are void. hostops voided them for
+not-foreground aborts before the route's first input. ES-DE held display 0
+because `titles.qcow2` had been pushed 0644, and xemu's `-drive` open failed
+(the #627 bug). None of those five has an `[ibc507]` line. Every valid run
+reads `on=` as its arm says.
+
+| run | ref | arm | `[ibc507]` | gameplay s | crash / hang | fps (window median) | J/frame | `[rr425] hc` per 2 s, median, mark+10 s on |
+|---|---|---|---|---:|---|---:|---:|---:|
+| Crimson `-1378258` (A1) | c8e95ed539 | A off | on=0 | 250.7 | no / no | 29.99 | 0.2448 | 18,748,407 |
+| Crimson `-1390145` | c8e95ed539 | B on | on=1 layout=ok | 253.9 | no / no | 30.00 | 0.2379 | 353,525 |
+| Crimson `-1389824`, `-1389915` | c8e95ed539 | B, A | - | void | | | | |
+| jcsize X `-1390243` (14 bits) | a987e375db | on | on=1 layout=ok | 253.9 | no / no | 30.00 | 0.2411 | 265,556 |
+| jcsize Y `-1390402` (16 bits) | 9808982fa7 | on | on=1 layout=ok | 249.9 | no / no | 30.00 | 0.2387 | 90,300 |
+| Alien Hominid `-1390521` | c8e95ed539 | B on | on=1 layout=ok | 260.3 | no / no | 59.94 | 0.1185 | 446,294 |
+| Alien Hominid `-1390704`, `-1390830`, `-1391025` | c8e95ed539 | A, A, B | - | void | | | | |
+
+**Leg 4 (three titles reach gameplay with the probe, no new crash or hang):
+PASS.**
+- **Crimson Skies and Alien Hominid (Nova):** each reached gameplay with no
+  crash and no hang.
+- **GTA SA (Thor pilot B, `-67880`):** reached gameplay with no crash. Its
+  `hang` flag comes from the thermal pause, as A's does.
+- The probe-on runs show no crash or hang at all, so there is none that is
+  new. The GTA pair on the merged head (below) adds a Nova reading for GTA.
+
+**Crimson, the near-bound title (5b's numbers, read but not gated: Forza is
+5b's title).**
+- **fps:** both arms sit at the 30 fps cap on the Nova (29.99 against 30.00),
+  so no fps gain is possible there.
+- **J/frame:** 0.2448 (off) against 0.2379 (on), **-2.8%**, at one run per
+  arm. That is under the 4% bar and inside the Thor's 3.6% spread. It is not a
+  reading of a saving.
+- **Helper lookups:** down **98.1%** (9.37M/s to 0.18M/s). This is the
+  counter leg reproduced on a second title and a second device.
+
+**The jcsize pilot, against its registered legs.**
+- **Correctness gate:** both runs read `on=1 layout=ok`, with no crash or
+  hang. PASS.
+- **Counter, against the one valid 12-bit B run (353,525):**
+  - **X (14 bits): 0.75x. Its bar was 0.7x, so FAIL.**
+  - **Y (16 bits): 0.26x. Its bar was 0.5x, so PASS.**
+  - The registered comparison was the mean of two 12-bit B runs. One of them
+    is void, so the base is a single run.
+- **Kill (neither size below 0.7x):** not met, because Y is below it. The
+  lever stays.
+- **Size choice:** Y passes its bar, and its J/frame (0.2387) is not above
+  X's (0.2411). **So the size is 16 bits.**
+- **What it is worth here:** on Crimson the probe has already taken helper
+  calls down to 0.18M/s, and Y removes three quarters of that. Y's J/frame
+  equals the 12-bit run's (0.2387 against 0.2379). On a capped title the
+  saving is not visible. Its place is GTA, where 7.3% of the vCPU is still
+  lookup after the probe (R1b). That is the stacked branch's job, after this
+  PR folds. Do not fold it into this head.
+
+### Master merged; the probe code is unchanged
+
+Merged at 6ea5744959. Master brought nothing under accel/, tcg/, target/ or
+include/ (`git diff --stat 105ed6ad20 HEAD` over those paths is empty). It did
+bring the ubershader and other nv2a work under hw/. `ccheck.py` compiles
+`cpu-exec.c`, `translate.c` and `tcg-op.c` at rc 0, with only the 5 existing
+upstream warnings. The offline fold needs a finished, non-void run built from
+the head commit, so legs 5a and 5b run on this head.
+
+### Legs 5a and 5b on the head, registered before they are queued
+
+GTA SA's Nova copy has landed (`54540082-Grand_Theft_Auto_San_Andreas.xiso.iso`;
+autoverdict `1790875419-autoverdict-2123622` reached gameplay on the Nova on
+10-01). #583's fix is folded (e816bc35dd, forzadecay414), so Forza can run.
+Both are env pairs on one binary, on the Nova, in the order B A A B:
+- **GTA SA:** `gta-sa` route, 360 s.
+- **Forza:** `survey` route, 420 s, as forzadecay414's Nova runs used.
+
+The readings come from `title_verdict.py`, over its scored window from the
+gameplay mark, and each arm is the mean of its two runs:
+- **time-weighted fps** = `power.flips / power.scored_s`;
+- **J/frame** = `power.j_per_frame`.
+
+The legs:
+- **5a, GTA (capped at 30), no regression:** fps(B) >= fps(A) - 0.5, and
+  J/frame(B) <= 1.036 x J/frame(A). The thresholds are the ones registered in
+  attempt 4.
+- **5b, Forza (below its cap: 18-30 fps on this route), the gain:**
+  fps(B) >= 1.05 x fps(A), and J/frame(B) <= 0.96 x J/frame(A).
+
+The validity gate applies to each run:
+- `[ibc507] on=0` in A and `on=1 layout=ok` in B;
+- reached gameplay;
+- no thermal pause;
+- not void.
+
+A void run is re-queued once. If an arm still has only one valid run, it is
+read at n=1 and labelled so. A crash or hang in B that A does not have fails
+leg 4 as well.
