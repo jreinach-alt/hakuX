@@ -219,3 +219,76 @@ by something in our stream. The prime suspect is then the per-draw UBO rebind
 (new dynamic offset -> new Turnip descriptor set, bindless invalidation,
 constant reload). If it rises by >= 60% (T), draws normally overlap, and the
 cost is per-draw work.
+
+**Result: S.** `1-1790950456-lane.bf2stall433-3764595` (master b71f92a12a,
+apk 4e340d5f2591, `TU_DEBUG=sysmem,syncdraw`, mark 07:23:09, 56 s of play, no
+crash). `armread.py --a <-601955> --b <-3764595>`:
+
+| | sysmem (-601955) | sysmem + syncdraw | registered S leg |
+|---|---|---|---|
+| heavy rows | 22 | 19 | >= 6 |
+| heavy-view GPU ms, median | 35.15 | 43.90 | <= 1.25 x = 43.94: **S** (by 0.04 ms) |
+| heavy-view GPU per draw (median GPU/BE) | 14.9 us | 18.7 us | -- |
+| fit slope, ms per draw | 0.0121 | 0.0142 | <= 0.016: **S** |
+| light-view GPU ms (BE < 1200) | 16.3 | 17.0 | -- |
+
+A wait-for-idle before EVERY draw, which empties the GPU between draws, adds
+only ~3.8 us per draw (+25%). If BF2's draws normally overlapped, emptying the
+pipe before each would add its whole depth to each. So **the draws already run
+close to one at a time**: the 12-14 us per draw is mostly exposed per-draw
+latency, and no amount of shader speed or clock fixes a chain. This is why
+615 MHz did not clear it (collapse433 section 7).
+
+What the stream does per draw that can make each draw wait on the one before
+(section 1): **a new UBO dynamic offset on every draw.** In Turnip that is a
+new reserved descriptor set, the bindless bases re-emitted with
+`SP_UPDATE_CNTL gfx_bindless=0xff` (all bindless descriptor caches
+invalidated), and the constants reloaded in the shader preamble from the new
+offset before the draw's waves can run. Nothing else in the per-draw list
+(pipeline binds 808 of ~2,150, push constants, vertex/index binds) both runs
+every draw and touches descriptor or constant state. The heavy views have
+`SBnd` = `BE`: the whole uniform block is re-uploaded every draw, because the
+game writes vertex constants between draws.
+
+The heavy-view leg passed by 0.04 ms, one run against a baseline from another
+day (renderer byte-identical). Read it as "S, near the boundary": most of the
+per-draw cost is serialized, not all.
+
+## 8. Diagnosis and the next lane (brief step 6)
+
+- **Not a per-draw barrier, event or render-pass split** (section 1, master).
+- **Not the vertex fetch path** (section 6: the IO-coherent snoop was real and
+  removing it moved nothing).
+- **The draws are serialized** (section 7). The per-draw UBO rebind is the
+  per-draw change to descriptor and constant state that our stream makes, and
+  it is the prime suspect.
+- **The fix that fits the hardware** (Adreno loads push constants straight
+  from the command stream, CP_LOAD_STATE6 SS6_DIRECT, with no descriptor and
+  no invalidation): keep the uniform block in a UBO that is rebound only when
+  its content changes, and pass what a game changes between draws (the
+  constant registers written since the last draw, typically a transform or
+  two) as push constants. Draws that only change those registers then change
+  no descriptor. **This is vk/shaders.c, the GLSL vertex-shader generators
+  (glsl/vsh*.c) and draw.c: outside this lane's territory.**
+- **The deciding measurement before building it:** a perflog counter, per
+  draw, of how many vertex-constant registers were written since the previous
+  draw and which ones (`vsh_constants` dirty bits, at
+  `pgraph_vk_update_shader_uniforms`), as a histogram per 60 flips. If BF2's
+  heavy views change <= 8-16 vec4 per draw (128-256 bytes, the push-constant
+  budget) on most draws, the fix removes the per-draw rebind from most draws.
+  If they rewrite large ranges, it does not, and the next lever is fewer,
+  larger uniform uploads (batching draws that share constants) instead.
+- **Budget used:** 3 of 6 Nova runs (A1, B1, syncdraw). Not used: the
+  remaining 3. Not run: the pixel arms (withdrawn with the reverted change),
+  the GTA check (deleted with it).
+
+## Do not repeat
+
+- A device-local copy of vertex RAM (or any other change to where vertex data
+  is read from) for BF2's per-draw GPU cost: measured, no effect (section 6).
+- Hunting for per-draw barriers or render-pass splits on master: there are
+  none in BF2's heavy views (section 1).
+- Raising the GPU clock or switching render mode for this: the draws are
+  serialized (section 7), and collapse433 measured both.
+- Reading `[vtxmirror]`-style per-120-flip copy counters as cheap: BF2
+  re-uploads ~0.5 MB of vertex data per flip in play (section 6).
