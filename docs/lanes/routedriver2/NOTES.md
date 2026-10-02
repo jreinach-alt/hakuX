@@ -462,3 +462,16 @@ the very jitter it was built for.**
 a controller map) is a ~70 s held run now: a scratch copy of the profile
 whose `options` row presses A. It was not run because two priority requests
 (lane.bf2stall433) and a titleroutes2 request were queued on the Nova.
+
+## Hand-off state, session 2 (2026-10-02 07:07 PDT)
+
+- Branch merged with origin/master @ `bb027ced73`'s second parent (merge, no rebase); PR.md `State: ready`, `Files:`
+  equals `git diff --name-only origin/master...HEAD` (49 paths).
+- `classify_selftest.py`: 0 failures on the merged tree. `preflight.sh --allow-tracker` passed; its coverage gate did
+  NOT run (gh suspended), so that check is unverified, not passed.
+- Nova holds `routedriver2:s2`, `s2b`, `s2c`, `s2d` all released (last at 06:55). Nova device time this session: about
+  35 min in four holds, released whenever another lane's requests queued.
+- No confirmation queued; no prediction (harness only).
+- Next for Buffy: the Options probe (`scratch/mk_probe_options.py` builds it: the cursor walks to Options and presses A;
+  about 70 s held), to read the controller map and learn what the jump is. It was not run: lane.bf2stall433's arms
+  and a titleroutes2 request were queued on the Nova from 06:55 on.
