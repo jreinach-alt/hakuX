@@ -34,6 +34,9 @@
 #include "decode-new.h"
 
 #include "exec/log.h"
+#ifdef XBOX
+#include "accel/tcg/hakux-ibc.h"
+#endif
 
 static int g_use_fp_jit;
 
@@ -2903,6 +2906,130 @@ static void gen_rr425_eob_tag(DisasContext *s, int mode, bool shadow)
     tcg_gen_movi_ptr(p, (uintptr_t)&hakux_rr425_eob);
     tcg_gen_st_i64(tcg_constant_i64(tag), p, 0);
 }
+
+/*
+ * #507: the inline jump-cache probe (include/accel/tcg/hakux-ibc.h), emitted
+ * just before tcg_gen_lookup_and_goto_ptr(). It is tb_lookup()'s hit test:
+ *
+ *   key  = pc (uint32_t)(cs_base + eip), cs_base, flags as
+ *          x86_get_tb_cpu_state() builds them, cflags = cpu->tcg_cflags
+ *   slot = &cpu->tb_jmp_cache->array[tb_jmp_cache_hash_func(pc)]
+ *   hit  = slot->tb && slot->pc == pc && tb->cs_base == cs_base
+ *          && tb->flags == flags && tb->cflags == cflags
+ *
+ * Every part of the key is read at run time, none is assumed from this TB.
+ * A hit branches to tb->tc.ptr; anything else falls through to the helper,
+ * which is the unchanged path. Left to the helper, by construction:
+ *   - breakpoints and gdb single-step (either set: always the helper);
+ *   - 64-bit code (pc is not cs_base + eip there);
+ *   - a TB made while curr_cflags() differed from tcg_cflags (a count,
+ *     one-insn-per-tb, -d nochain, single-step), decided at translate time;
+ *   - -d exec/cpu logging, which the helper does on a hit.
+ * The slot and CF_INVALID tests are the helper's, so every invalidation that
+ * reaches tb_lookup (a wiped slot, a discarded TB) reaches the probe.
+ * cflags comes from tcg_cflags, not from this TB, whose own cflags may carry
+ * CF_TIER1/CF_SUPERBLOCK while it is translated.
+ */
+static int hakux_ibc_state = -1;
+static HakuxIbcLayout hakux_ibc;
+
+static bool hakux_ibc_use(DisasContext *s)
+{
+    if (unlikely(hakux_ibc_state < 0)) {
+        hakux_ibc_state = hakux_ibc_enabled(&hakux_ibc);
+    }
+    return hakux_ibc_state
+        && !CODE64(s)
+        && !(tb_cflags(s->base.tb) & (CF_COUNT_MASK | CF_NO_GOTO_TB |
+                                      CF_NO_GOTO_PTR | CF_SINGLE_STEP))
+        && !qemu_loglevel_mask(CPU_LOG_TB_CPU | CPU_LOG_EXEC |
+                               CPU_LOG_TB_NOCHAIN);
+}
+
+#define IBC_CPU_OFS(f) (offsetof(X86CPU, parent_obj.f) - offsetof(X86CPU, env))
+
+static void gen_ibc_probe(DisasContext *s)
+{
+    const HakuxIbcLayout *l = &hakux_ibc;
+    TCGLabel *miss = gen_new_label();
+    TCGv_ptr p = tcg_temp_new_ptr();
+    TCGv_ptr tb = tcg_temp_new_ptr();
+    TCGv_i32 f = tcg_temp_new_i32();
+    TCGv_i32 t32 = tcg_temp_new_i32();
+    TCGv_i64 pc = tcg_temp_new_i64();
+    TCGv_i64 csb = tcg_temp_new_i64();
+    TCGv_i64 key = tcg_temp_new_i64();
+    TCGv_i64 h = tcg_temp_new_i64();
+    TCGv_i64 t = tcg_temp_new_i64();
+    TCGv tl = tcg_temp_new();
+
+    QEMU_BUILD_BUG_ON(offsetof(TranslationBlock, cflags)
+                      != offsetof(TranslationBlock, flags) + 4);
+
+    /* check_for_breakpoints() and gdb single-step: the helper's */
+    tcg_gen_ld_ptr(p, tcg_env, IBC_CPU_OFS(breakpoints.tqh_first));
+    tcg_gen_brcondi_ptr(TCG_COND_NE, p, 0, miss);
+    tcg_gen_ld_i32(t32, tcg_env, IBC_CPU_OFS(singlestep_enabled));
+    tcg_gen_brcondi_i32(TCG_COND_NE, t32, 0, miss);
+
+    /* flags, as x86_get_tb_cpu_state(); 64-bit code goes to the helper */
+    tcg_gen_ld_i32(f, tcg_env, offsetof(CPUX86State, hflags));
+    tcg_gen_andi_i32(t32, f, HF_CS64_MASK);
+    tcg_gen_brcondi_i32(TCG_COND_NE, t32, 0, miss);
+    tcg_gen_ld_tl(tl, tcg_env, offsetof(CPUX86State, eflags));
+    tcg_gen_trunc_tl_i32(t32, tl);
+    tcg_gen_andi_i32(t32, t32,
+                     IOPL_MASK | TF_MASK | RF_MASK | VM_MASK | AC_MASK);
+    tcg_gen_or_i32(f, f, t32);
+    tcg_gen_ld_i32(t32, tcg_env, IBC_CPU_OFS(tcg_cflags));
+#if HOST_BIG_ENDIAN
+    tcg_gen_concat_i32_i64(key, t32, f);
+#else
+    tcg_gen_concat_i32_i64(key, f, t32);
+#endif
+
+    /* pc and cs_base */
+    tcg_gen_ext32u_tl(tl, cpu_seg_base[R_CS]);
+    tcg_gen_extu_tl_i64(csb, tl);
+    tcg_gen_add_tl(tl, cpu_eip, cpu_seg_base[R_CS]);
+    tcg_gen_ext32u_tl(tl, tl);
+    tcg_gen_extu_tl_i64(pc, tl);
+
+    /* the slot: tb_jmp_cache_hash_func(pc) */
+    tcg_gen_shri_i64(t, pc, l->hash_shift);
+    tcg_gen_xor_i64(t, t, pc);
+    tcg_gen_shri_i64(h, t, l->hash_shift);
+    tcg_gen_andi_i64(h, h, l->page_mask);
+    tcg_gen_andi_i64(t, t, l->addr_mask);
+    tcg_gen_or_i64(h, h, t);
+    tcg_gen_shli_i64(h, h, l->entry_shift);
+    tcg_gen_ld_ptr(p, tcg_env, IBC_CPU_OFS(tb_jmp_cache));
+    tcg_gen_trunc_i64_ptr(tb, h);
+    tcg_gen_add_ptr(p, p, tb);
+    tcg_gen_ld_ptr(tb, p, l->array_ofs + l->tb_ofs);
+    tcg_gen_brcondi_ptr(TCG_COND_EQ, tb, 0, miss);
+    tcg_gen_ld_i64(t, p, l->array_ofs + l->pc_ofs);
+    tcg_gen_brcond_i64(TCG_COND_NE, t, pc, miss);
+
+    /* the key */
+    tcg_gen_ld_i64(t, tb, offsetof(TranslationBlock, cs_base));
+    tcg_gen_brcond_i64(TCG_COND_NE, t, csb, miss);
+    tcg_gen_ld_i64(t, tb, offsetof(TranslationBlock, flags));
+    tcg_gen_brcond_i64(TCG_COND_NE, t, key, miss);
+
+    if (l->count) {
+        TCGv_ptr c = tcg_temp_new_ptr();
+
+        tcg_gen_movi_ptr(c, (uintptr_t)&hakux_ibc_hits);
+        tcg_gen_ld_i64(t, c, 0);
+        tcg_gen_addi_i64(t, t, 1);
+        tcg_gen_st_i64(t, c, 0);
+    }
+    tcg_gen_ld_ptr(p, tb, offsetof(TranslationBlock, tc.ptr));
+    tcg_gen_goto_ptr(p);
+
+    gen_set_label(miss);
+}
 #endif
 
 /*
@@ -2940,6 +3067,11 @@ gen_eob(DisasContext *s, int mode)
     } else if (mode == DISAS_JUMP &&
                /* give irqs a chance to happen */
                !inhibit_reset) {
+#ifdef XBOX
+        if (hakux_ibc_use(s)) {
+            gen_ibc_probe(s);
+        }
+#endif
         tcg_gen_lookup_and_goto_ptr();
     } else {
 #ifdef XBOX

@@ -1,0 +1,16 @@
+last 40 windows; A 2026-09-28-ibcache-r1, B 2026-09-28-ibcache-r1b
+[rr425], per second of wall time
+  field             A            B      B/A
+  it           254977       202784    0.795
+  e            160880        96828    0.602
+  m                26           15    0.568
+  r              1273         1311    1.029
+  g             69657        77390    1.111
+  x             23141        27241    1.177
+  hc          5187427       386008    0.074
+  hm               26           15    0.568
+  ip             1989         1602    0.806
+  iq             1334         1375    1.031
+[rr425w] guest idle
+  A idle 0.42 s of 81.32 s (0.51%), 15 of 40 windows with any idle
+  B idle 0.09 s of 80.23 s (0.11%), 8 of 40 windows with any idle

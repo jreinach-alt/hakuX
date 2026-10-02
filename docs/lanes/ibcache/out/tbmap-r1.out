@@ -1,0 +1,74 @@
+headers: 149571; delta mode 192 (149571); share of frequent deltas 76.9%  [FAIL]
+logcat: 0 'buffer full' lines (a code-buffer flush voids old headers)
+known-answer: 7 of 7 tier-1 promote pcs are header pcs  [ok]
+tid 19768: 21168 samples, 10773 JIT (50.9%), mapped 10754 (99.8% of JIT)
+guest kernel (pc >= 0x80000000): 1.9% of mapped JIT samples; title 98.1%
+spread: 4343 guest pcs (50% in 351, 80% in 2193, 90% in 3268); 470 4 KB pages (50% in 29, 80% in 116, 90% in 189); 51 64 KB ranges (50% in 8, 80% in 19, 90% in 27)
+
+top 64 KB guest ranges
+  00250000-0025ffff    1261   11.7%
+  00290000-0029ffff     709    6.6%
+  00010000-0001ffff     707    6.6%
+  000a0000-000affff     704    6.5%
+  002a0000-002affff     688    6.4%
+  00360000-0036ffff     648    6.0%
+  00350000-0035ffff     619    5.8%
+  00160000-0016ffff     515    4.8%
+  00100000-0010ffff     425    4.0%
+  00130000-0013ffff     383    3.6%
+  00240000-0024ffff     321    3.0%
+  002b0000-002bffff     280    2.6%
+  002d0000-002dffff     275    2.6%
+  000f0000-000fffff     245    2.3%
+  00280000-0028ffff     226    2.1%
+
+top 4 KB guest pages
+  0025e000     680    6.3%
+  000a2000     399    3.7%
+  0025d000     367    3.4%
+  002ad000     355    3.3%
+  00360000     352    3.3%
+  0035c000     263    2.4%
+  00139000     193    1.8%
+  002a0000     191    1.8%
+  00019000     188    1.7%
+  0029d000     183    1.7%
+  002da000     182    1.7%
+  00106000     167    1.6%
+  00362000     167    1.6%
+  00018000     164    1.5%
+  00298000     143    1.3%
+  00167000     128    1.2%
+  00105000     119    1.1%
+  0029c000     114    1.1%
+  0016c000     113    1.1%
+  0035e000     110    1.0%
+
+top guest pcs (tb pc: samples, share, guest bytes, insns, translations in buffer, invalid, tier1)
+  002ad100     324   3.01%    36 B   14 insn  x4  inv 0  t1 0
+  0025e0c2     308   2.86%   321 B   66 insn  x4  inv 0  t1 0
+  0025e078     259   2.41%    74 B   38 insn  x3  inv 0  t1 0
+  00360550     142   1.32%    81 B   24 insn  x3  inv 0  t1 0
+  0025d343     124   1.15%   279 B   90 insn  x4  inv 0  t1 0
+  000a2832     110   1.02%    11 B    5 insn  x4  inv 0  t1 0
+  00298ea0     105   0.98%   239 B   71 insn  x4  inv 0  t1 0
+  0013940c     101   0.94%   164 B   45 insn  x4  inv 0  t1 0
+  002dad22      98   0.91%    41 B   16 insn  x3  inv 0  t1 0
+  000a2732      85   0.79%     5 B    2 insn  x4  inv 0  t1 0
+  0001907f      51   0.47%   289 B   70 insn  x3  inv 0  t1 0
+  00018ec5      51   0.47%   154 B   40 insn  x4  inv 0  t1 0
+
+buffer: 149571 headers, 148806 distinct (pc, flags); 765 extra translations over 765 keys; 7456 carry CF_INVALID
+most-retranslated guest pages (extra translations)
+  002e4000  132
+  80046000  61
+  00366000  60
+  80048000  58
+  002e2000  51
+  80050000  49
+  00365000  48
+  80049000  42
+  00367000  32
+  8004f000  28
+  80052000  28
+  00369000  23

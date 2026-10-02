@@ -1,0 +1,21 @@
+queuing without a prediction: env A/B on one binary, both arms with the idle halt on, hand-read against leg 6 in docs/lanes/ibcache/NOTES.md
+release priority: could not read #507's labels; queueing at normal priority
+priority plain: #507's labels unreadable
+queued 1790929514-lane.ibcache-2992454
+  soak: 4D53006E-Forza_Motorsport.xiso.iso, 420s, env HAKUX_IDLE_HALT=1 HAKUX_IBC=1, route ibcache-forza-drive, pinned to nova
+queuing without a prediction: env A/B on one binary, both arms with the idle halt on, hand-read against leg 6 in docs/lanes/ibcache/NOTES.md
+release priority: could not read #507's labels; queueing at normal priority
+priority plain: #507's labels unreadable
+queued 1790929514-lane.ibcache-2992818
+  soak: 4D53006E-Forza_Motorsport.xiso.iso, 420s, env HAKUX_IDLE_HALT=1, route ibcache-forza-drive, pinned to nova
+queuing without a prediction: env A/B on one binary, both arms with the idle halt on, hand-read against leg 6 in docs/lanes/ibcache/NOTES.md
+release priority: could not read #507's labels; queueing at normal priority
+priority plain: #507's labels unreadable
+queued 1790929514-lane.ibcache-2993079
+  soak: 4D53006E-Forza_Motorsport.xiso.iso, 420s, env HAKUX_IDLE_HALT=1, route ibcache-forza-drive, pinned to nova
+queuing without a prediction: env A/B on one binary, both arms with the idle halt on, hand-read against leg 6 in docs/lanes/ibcache/NOTES.md
+release priority: could not read #507's labels; queueing at normal priority
+priority plain: #507's labels unreadable
+pilot gate: lane.ibcache would hold ~34 min of device time; reviewed pilot /home/justin/hakux-work/dispatch/pilots/lane.ibcache.ok (4.3 h old) admits it
+queued 1790929515-lane.ibcache-2993364
+  soak: 4D53006E-Forza_Motorsport.xiso.iso, 420s, env HAKUX_IDLE_HALT=1 HAKUX_IBC=1, route ibcache-forza-drive, pinned to nova

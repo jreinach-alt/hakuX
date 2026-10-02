@@ -1,0 +1,8 @@
+1-1790638705-lane.ibcache-66240: 118 gfps lines, mark 03:58:04, prof start 03:59:17
+  mark+10 .. prof start (no profiler)        n=25 gfps median 26.0 mean 24.6 (min 16 max 27), G median 39.0 ms
+  prof start .. +30 s (rec-off)              n= 6 gfps median 18.5 mean 16.0 (min 0 max 24), G median 54.9 ms
+  prof +30 .. +62 s (rec-on, the profile)    n= 2 gfps median  4.0 mean  4.0 (min 3 max 5), G median 240.1 ms
+1-1790638712-lane.ibcache-67880: 132 gfps lines, mark 04:08:45, prof start 04:09:58
+  mark+10 .. prof start (no profiler)        n=29 gfps median 28.0 mean 26.8 (min 17 max 31), G median 35.7 ms
+  prof start .. +30 s (rec-off)              n= 6 gfps median 26.5 mean 23.2 (min 4 max 31), G median 36.5 ms
+  prof +30 .. +62 s (rec-on, the profile)    n= 3 gfps median  5.0 mean  5.0 (min 5 max 5), G median 209.0 ms
