@@ -1,0 +1,120 @@
+{"state": "title_screen", "why": "Split-screen gameplay view with PRESS START text overlaid at the bottom", "action": "START", "wait_s": 2, "frame": "f000.jpg"}
+{"state": "black", "why": "Screen is nearly black with only a faint dim glow, no HUD or text visible", "action": "wait", "wait_s": 3, "frame": "f001.jpg"}
+{"state": "publisher_logo", "why": "Full-screen white-on-black legal and copyright notice text for Dead or Alive Ultimate", "action": "A", "wait_s": 3, "frame": "f002.jpg"}
+{"state": "black", "why": "Screen is fully black with no visible content", "action": "wait", "wait_s": 3, "frame": "f003.jpg"}
+{"state": "intro_video", "why": "Classic gun-barrel sequence with a suited silhouette, a pre-rendered intro before the title", "action": "START", "wait_s": 2, "frame": "f004.jpg"}
+{"state": "save_load_prompt", "why": "Auto-Load dialog states the hard disk has no saved settings data, with Continue >> A", "action": "A", "wait_s": 2, "frame": "f005.jpg"}
+{"state": "submenu", "why": "Character Select grid with Alba Meira highlighted and A-OK / B-Cancel prompts shown", "action": "A", "wait_s": 2, "frame": "f006.jpg"}
+{"state": "pause", "why": "GAME PAUSED banner over the game world with Resume game / Restart mini game / Return to main menu options", "action": "A", "wait_s": 2, "frame": "f007.jpg"}
+{"state": "black", "why": "Screen is fully black with no visible content", "action": "wait", "wait_s": 3, "frame": "f008.jpg"}
+{"state": "name_entry", "why": "On-screen keyboard grid for typing a name, with Done/Shift/Caps Lock/Backspace/Space keys", "action": "A", "wait_s": 2, "frame": "f009.jpg"}
+{"state": "pause", "why": "PAUSE menu over the race track with Resume highlighted and A Select / B Back prompts", "action": "A", "wait_s": 2, "frame": "f010.jpg"}
+{"state": "name_entry", "why": "Battlefield 2 on-screen keyboard for entering a Campaign Name, letter A currently highlighted", "action": "A", "wait_s": 2, "frame": "f011.jpg"}
+{"state": "loading", "why": "Now loading text with a Valley 1 level banner over character art", "action": "wait", "wait_s": 3, "frame": "f012.jpg"}
+{"state": "name_entry", "why": "On-screen letter grid for typing a name, cursor highlighting I", "action": "A", "wait_s": 1, "frame": "f013.jpg"}
+{"state": "profile_creation", "why": "Choose A Game save-slot select screen with three numbered slots", "action": "A", "wait_s": 1, "frame": "f014.jpg"}
+{"state": "gameplay", "why": "Player-controlled character on a dark forest path with health HUD and an on-screen control tip", "action": "LSTICK_UP", "wait_s": 3, "frame": "f015.jpg"}
+{"state": "submenu", "why": "Audio options submenu with Music Volume and Sfx Volume sliders", "action": "B", "wait_s": 1, "frame": "f016.jpg"}
+{"state": "loading", "why": "Black screen with green LOADING text", "action": "wait", "wait_s": 3, "frame": "f017.jpg"}
+{"state": "loading", "why": "Now loading Player Settings from the Hard Disk message over character art", "action": "wait", "wait_s": 3, "frame": "f018.jpg"}
+{"state": "gameplay", "why": "Player character standing in an alley with health, money and minimap HUD", "action": "LSTICK_UP", "wait_s": 3, "frame": "f019.jpg"}
+{"state": "main_menu", "why": "Main menu listing quick race, arcade race, kudos challenge with quick race highlighted", "action": "A", "wait_s": 1, "frame": "f020.jpg"}
+{"state": "gameplay", "why": "dark scene with only a lit patch showing the player's own legs/boots on a narrow ledge; no menu, HUD text, or dialogue box present", "action": "LSTICK_UP", "wait_s": 3, "frame": "f021.jpg"}
+{"state": "name_entry", "why": "Empty on-screen letter grid for name entry, cursor highlighting L", "action": "A", "wait_s": 1, "frame": "f022.jpg"}
+{"state": "publisher_logo", "why": "Neversoft developer logo with animated skater mascot", "action": "START", "wait_s": 2, "frame": "f023.jpg"}
+{"state": "gameplay", "why": "First-person view inside a cryo-tube bay with on-screen prompt 'Use X to exit the cryo-tube'", "action": "X", "wait_s": 2, "frame": "f024.jpg"}
+{"state": "cutscene", "why": "Letterboxed, non-interactive view of a cartoon village scene with a small character and no HUD", "action": "A", "wait_s": 3, "frame": "f025.jpg"}
+{"state": "results", "why": "Driving scene with no HUD and a 'Continue' prompt beside an A-button icon in the corner", "action": "A", "wait_s": 2, "frame": "f026.jpg"}
+{"state": "save_load_prompt", "why": "Dialog asking whether to load existing option data, with YES highlighted above NO", "action": "A", "wait_s": 1, "frame": "f027.jpg"}
+{"state": "gameplay", "why": "Two fighters mid-combat with health bars, a round timer '50', and round counter '2'", "action": "A", "wait_s": 1, "frame": "f028.jpg"}
+{"state": "title_screen", "why": "Tron 2.0: Killer App logo artwork with 'PRESS START' text", "action": "START", "wait_s": 2, "frame": "f029.jpg"}
+{"state": "pause", "why": "Pause menu over gameplay with Resume Game/Revert/Restart/Save and Quit plus a Mission Objectives panel", "action": "B", "wait_s": 1, "frame": "f030.jpg"}
+{"state": "controller_prompt", "why": "Player Entry screen showing 'PRESS...A' for ports 1-2 and 'Controller disconnected' for ports 3-4", "action": "A", "wait_s": 2, "frame": "f031.jpg"}
+{"state": "title_screen", "why": "Grabbed by the Ghoulies logo on a storybook page with 'Press START'", "action": "START", "wait_s": 2, "frame": "f032.jpg"}
+{"state": "gameplay", "why": "Third-person garden scene with a character status/health HUD icon in the corner", "action": "LSTICK_UP", "wait_s": 2, "frame": "f033.jpg"}
+{"state": "gameplay", "why": "Ninja character mid-action near a waterfall in a cave with a health bar HUD visible", "action": "X", "wait_s": 2, "frame": "f034.jpg"}
+{"state": "black", "why": "Entirely black frame with only the FPS counter overlay visible", "action": "wait", "wait_s": 3, "frame": "f035.jpg"}
+{"state": "cutscene", "why": "close-up in-engine shot of an NPC in a tavern, no HUD, player not controlling", "action": "A", "wait_s": 2, "frame": "f036.jpg"}
+{"state": "submenu", "why": "Select Game Mode screen with Race/Points/Battle/Training/Arcade/Upgrade icons", "action": "A", "wait_s": 2, "frame": "f037.jpg"}
+{"state": "gameplay", "why": "controlling Aradin in a dungeon with a health/HUD bar visible, no menus", "action": "LSTICK_UP", "wait_s": 3, "frame": "f038.jpg"}
+{"state": "cutscene", "why": "in-engine scene of Amy and Eggman on a dock with no HUD, player not steering", "action": "A", "wait_s": 2, "frame": "f039.jpg"}
+{"state": "save_load_prompt", "why": "dialog asking to continue without saving, with Continue/No options", "action": "DPAD_UP,A", "wait_s": 2, "frame": "f040.jpg"}
+{"state": "pause", "why": "Paused overlay with Resume highlighted drawn over the game world", "action": "A", "wait_s": 1, "frame": "f041.jpg"}
+{"state": "profile_creation", "why": "Select Driver profile screen showing Player stats, no keyboard present", "action": "A", "wait_s": 2, "frame": "f042.jpg"}
+{"state": "name_entry", "why": "on-screen letter keyboard for naming a character, cursor on letter A", "action": "DPAD_DOWN,DPAD_DOWN,DPAD_DOWN,DPAD_DOWN,DPAD_RIGHT,A", "wait_s": 2, "frame": "f043.jpg"}
+{"state": "loading", "why": "black screen with small Loading... text in the corner", "action": "wait", "wait_s": 5, "frame": "f044.jpg"}
+{"state": "unknown", "why": "Android launcher/frontend widget screen (profile and game list), not the game itself", "action": "DPAD_LEFT,A", "wait_s": 3, "frame": "f045.jpg"}
+{"state": "main_menu", "why": "Halo logo with Campaign/Multiplayer/Settings/Game Demos list, Campaign highlighted", "action": "A", "wait_s": 2, "frame": "f046.jpg"}
+{"state": "gameplay", "why": "flying a biplane with money counter, radar and objective text Recover the Pandora", "action": "RT", "wait_s": 3, "frame": "f047.jpg"}
+{"state": "black", "why": "screen is fully black except the FPS counter overlay", "action": "wait", "wait_s": 5, "frame": "f048.jpg"}
+{"state": "gameplay", "why": "player character walking down an alley with cash, health fist icon and stats HUD visible", "action": "wait", "wait_s": 5, "frame": "f049.jpg"}
+{"state": "title_screen", "why": "Ninja Gaiden Black logo with PRESS START BUTTON and copyright text", "action": "START", "wait_s": 3, "frame": "f050.jpg"}
+{"state": "loading", "why": "location name card \"SUNSHINE KEYS\" over a car image, a track loading transition", "action": "wait", "wait_s": 8, "frame": "f051.jpg"}
+{"state": "submenu", "why": "Tokaido travel map with a CONTINUE / MODE END selection box, CONTINUE highlighted", "action": "A", "wait_s": 2, "frame": "f052.jpg"}
+{"state": "save_load_prompt", "why": "dialog box asking \"Do you want to save?\" with Yes highlighted by the A button icon", "action": "A", "wait_s": 2, "frame": "f053.jpg"}
+{"state": "profile_creation", "why": "Create Game screen selecting storage device and game slot (NEW GAME / Mission 1 save)", "action": "DPAD_DOWN, A", "wait_s": 2, "frame": "f054.jpg"}
+{"state": "gameplay", "why": "first-person view down a dim corridor with a crosshair and a nearby figure, player controlled", "action": "wait", "wait_s": 4, "frame": "f055.jpg"}
+{"state": "gameplay", "why": "driving a blue car on a track with lap/race timer, place 8/8 and speedometer HUD", "action": "RT", "wait_s": 3, "frame": "f056.jpg"}
+{"state": "gameplay", "why": "controlling a mech in a city with a tutorial tip to pull the right trigger to fire mortar shells", "action": "RT", "wait_s": 3, "frame": "f057.jpg"}
+{"state": "cutscene", "why": "letterboxed scene of Rayne talking with a subtitle dialogue line at the bottom", "action": "wait", "wait_s": 6, "frame": "f058.jpg"}
+{"state": "publisher_logo", "why": "dark screen fading in developer logos for Avalanche Software, Ritual Entertainment and Highway 1", "action": "START", "wait_s": 3, "frame": "f059.jpg"}
+{"state": "loading", "why": "Now Loading card with flower icon and book title", "action": "wait", "wait_s": 5, "frame": "f060.jpg"}
+{"state": "submenu", "why": "Player Info stats screen with Return To Menu prompt", "action": "B", "wait_s": 2, "frame": "f061.jpg"}
+{"state": "main_menu", "why": "top menu titled Main Menu with Stage highlighted among Equip/Shop/Options", "action": "A", "wait_s": 2, "frame": "f062.jpg"}
+{"state": "main_menu", "why": "Battlefield 2 main menu with Play Campaign highlighted", "action": "A", "wait_s": 2, "frame": "f063.jpg"}
+{"state": "black", "why": "screen almost entirely black with only a faint word visible fading in", "action": "wait", "wait_s": 3, "frame": "f064.jpg"}
+{"state": "controller_prompt", "why": "Quick Start screen assigning controllers to human or CPU players", "action": "A", "wait_s": 2, "frame": "f065.jpg"}
+{"state": "publisher_logo", "why": "legal copyright and warnings text screen", "action": "A", "wait_s": 3, "frame": "f066.jpg"}
+{"state": "pause", "why": "pause menu over gameplay with Continue highlighted", "action": "A", "wait_s": 1, "frame": "f067.jpg"}
+{"state": "cutscene", "why": "characters gathered around a glowing device, player not in control", "action": "wait", "wait_s": 5, "frame": "f068.jpg"}
+{"state": "main_menu", "why": "Main Menu screen with Campaign highlighted and Select A prompt", "action": "A", "wait_s": 2, "frame": "f069.jpg"}
+{"state": "submenu", "why": "Single Player mode screen with New Game highlighted under selected profile", "action": "A", "wait_s": 2, "frame": "f070.jpg"}
+{"state": "publisher_logo", "why": "Fox Interactive studio logo screen", "action": "wait", "wait_s": 3, "frame": "f071.jpg"}
+{"state": "intro_video", "why": "pre-rendered cinematic close-up of an ornate golden dragon carving and a blade, no HUD text or menu", "action": "START", "wait_s": 3, "frame": "f072.jpg"}
+{"state": "profile_creation", "why": "Sign In screen with Press A to sign in / Press A to play as Guest, and a Press B skip Xbox Live sign-in shortcut", "action": "B", "wait_s": 2, "frame": "f073.jpg"}
+{"state": "publisher_logo", "why": "ARTOON developer logo centered on a black screen", "action": "START", "wait_s": 2, "frame": "f074.jpg"}
+{"state": "main_menu", "why": "in-game top menu listing Xbox Live, System Link, Dumbots, Profiles", "action": "DPAD_DOWN, DPAD_DOWN, A", "wait_s": 2, "frame": "f075.jpg"}
+{"state": "title_screen", "why": "BLACK game logo with PRESS START prompt and EA copyright text", "action": "START", "wait_s": 2, "frame": "f076.jpg"}
+{"state": "pause", "why": "PAUSED box over gameplay with Continue, Restart, Quit to main menu options", "action": "A", "wait_s": 2, "frame": "f077.jpg"}
+{"state": "name_entry", "why": "Player Profile on-screen keyboard grid for defining the profile name", "action": "Y", "wait_s": 2, "frame": "f078.jpg"}
+{"state": "black", "why": "entire frame is solid black aside from the FPS overlay", "action": "wait", "wait_s": 3, "frame": "f079.jpg"}
+{"state": "loading", "why": "near-black screen with a small scrolling text/progress box in the lower right", "action": "wait", "wait_s": 5, "frame": "f080.jpg"}
+{"state": "submenu", "why": "Options control configuration screen showing the Type A pad button mapping", "action": "B", "wait_s": 2, "frame": "f081.jpg"}
+{"state": "pause", "why": "Sonic-head PAUSE bubble over gameplay with Continue, Restart, Quit", "action": "A", "wait_s": 2, "frame": "f082.jpg"}
+{"state": "profile_creation", "why": "User Profile screen reporting No User Profiles Found with Create highlighted", "action": "A", "wait_s": 2, "frame": "f083.jpg"}
+{"state": "results", "why": "PERFECT text and WINNER banner over the victorious fighter's pose", "action": "wait", "wait_s": 5, "frame": "f084.jpg"}
+{"state": "title_screen", "why": "Sonic Heroes logo with a Press START prompt beneath it", "action": "START", "wait_s": 2, "frame": "f085.jpg"}
+{"state": "publisher_logo", "why": "black screen with game title and a Federal Warning copyright text block", "action": "START", "wait_s": 3, "frame": "f086.jpg"}
+{"state": "cutscene", "why": "canted, non-interactive shot of industrial machinery/pipes with no HUD", "action": "wait", "wait_s": 4, "frame": "f087.jpg"}
+{"state": "loading", "why": "scroll page showing the D&D Heroes title and a Loading progress bar", "action": "wait", "wait_s": 5, "frame": "f088.jpg"}
+{"state": "pause", "why": "PAUSE box over the game world with Continue/Restart/Quit, Continue highlighted", "action": "A", "wait_s": 2, "frame": "f089.jpg"}
+{"state": "main_menu", "why": "START MENU listing Start Game/Load Game/Game Settings/Exit Game, Start Game highlighted", "action": "A", "wait_s": 2, "frame": "f090.jpg"}
+{"state": "cutscene", "why": "letterboxed dark doorway shot with a hand reaching in, no HUD or player control", "action": "wait", "wait_s": 4, "frame": "f091.jpg"}
+{"state": "profile_creation", "why": "Sign In screen selecting Guest or New Account, no on-screen keyboard shown", "action": "A", "wait_s": 2, "frame": "f092.jpg"}
+{"state": "gameplay", "why": "racing HUD with position 6/6, lap counter and speedometer during a street race", "action": "RT", "wait_s": 3, "frame": "f093.jpg"}
+{"state": "submenu", "why": "New Game menu listing Training and Act 1 - Louisiana with Select/Back prompts", "action": "DPAD_DOWN, A", "wait_s": 2, "frame": "f094.jpg"}
+{"state": "gameplay", "why": "player character walking through a casino lobby with poker tables, HUD shows FPS counter, no menu or dialog overlay", "action": "wait", "wait_s": 2, "frame": "f095.jpg"}
+{"state": "title_screen", "why": "Halo 2 logo with PRESS START TO CONTINUE overlay on dark background", "action": "START", "wait_s": 2, "frame": "f096.jpg"}
+{"state": "profile_creation", "why": "Player 1/Player 2 profile slots and Create Profile options with OK/Back/Delete buttons", "action": "A", "wait_s": 2, "frame": "f097.jpg"}
+{"state": "unknown", "why": "screen is a solid block of green/color corruption artifacts, image is garbled", "action": "wait", "wait_s": 3, "frame": "f098.jpg"}
+{"state": "gameplay", "why": "first-person view in a sci-fi corridor with an NPC and a look-around control hint overlay", "action": "LSTICK_UP", "wait_s": 2, "frame": "f099.jpg"}
+{"state": "game_over", "why": "racing HUD with a large red Game Over! banner over the car", "action": "A", "wait_s": 3, "frame": "f100.jpg"}
+{"state": "profile_creation", "why": "Profiles carousel screen selecting profile kk with settings toggles for Emily shown", "action": "A", "wait_s": 2, "frame": "f101.jpg"}
+{"state": "cutscene", "why": "scroll dialogue box with story text and Press A Button when done prompt", "action": "A", "wait_s": 2, "frame": "f102.jpg"}
+{"state": "black", "why": "the screen is entirely black", "action": "wait", "wait_s": 3, "frame": "f103.jpg"}
+{"state": "save_load_prompt", "why": "SAVE/LOAD dialog stating there are no profiles to load with an OK button", "action": "A", "wait_s": 2, "frame": "f104.jpg"}
+{"state": "gameplay", "why": "In-game view of a stone archway with a carved relief, only an emulator FPS counter overlay, no menu, HUD, or dialogue box present", "action": "LSTICK_UP", "wait_s": 3, "frame": "f105.jpg"}
+{"state": "submenu", "why": "Stage Select screen for World 1 Jungle Island with difficulty bananas and stage bubbles", "action": "A", "wait_s": 2, "frame": "f106.jpg"}
+{"state": "save_load_prompt", "why": "dialog asking to create a Crash Twinsanity save game with YES/NO/Continue Without Saving options", "action": "DPAD_DOWN,DPAD_DOWN,A", "wait_s": 2, "frame": "f107.jpg"}
+{"state": "title_screen", "why": "Game logo 'DEAD OR ALIVE 3' on plain white background, no gameplay or menu yet", "action": "START", "wait_s": 3, "frame": "f108.jpg"}
+{"state": "unknown", "why": "Android launcher front-end showing an 'ANDROID APPS' folder, not the game itself", "action": "DPAD_RIGHT", "wait_s": 2, "frame": "f109.jpg"}
+{"state": "intro_video", "why": "attract-mode combat demo with BLOODY ROAR extreme logo watermark and a floating character name tag, no HUD", "action": "START", "wait_s": 2, "frame": "f110.jpg"}
+{"state": "gameplay", "why": "In-engine scene with motion-tracker HUD and an NPC soldier, overlaid with a non-blocking 'Updating profile... done' notification", "action": "LSTICK_UP", "wait_s": 2, "frame": "f111.jpg"}
+{"state": "profile_creation", "why": "Select Profile screen with profile 00 highlighted and its stats shown below", "action": "A", "wait_s": 3, "frame": "f112.jpg"}
+{"state": "name_entry", "why": "On-screen Japanese kana/kanji keyboard for typing the player's name", "action": "A", "wait_s": 2, "frame": "f113.jpg"}
+{"state": "title_screen", "why": "'Phantom Dust' logo with 'PRESS START BUTTON' and copyright text", "action": "START", "wait_s": 3, "frame": "f114.jpg"}
+{"state": "name_entry", "why": "Phone-style virtual keypad with a text field already filled with repeated letters", "action": "DPAD_UP, DPAD_LEFT, A", "wait_s": 2, "frame": "f115.jpg"}
+{"state": "gameplay", "why": "first-person racing view behind a car on a curving road, no menu or HUD overlay blocking the view", "action": "LSTICK_UP", "wait_s": 5, "frame": "f116.jpg"}
+{"state": "game_over", "why": "'TIME IS UP' message displayed over the scene, round ended by the clock", "action": "START", "wait_s": 4, "frame": "f117.jpg"}
+{"state": "gameplay", "why": "Character walking beside a wooden building at night with a health bar and minimap HUD", "action": "LSTICK_UP", "wait_s": 2, "frame": "f118.jpg"}
+{"state": "gameplay", "why": "yellow sports car driving down a night city street with HUD FPS counter, no menu or overlay", "action": "RT", "wait_s": 2, "frame": "f119.jpg"}
