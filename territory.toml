@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 297
-updated_utc = "2026-10-02T22:08:57Z"
+wave = 298
+updated_utc = "2026-10-02T23:03:22Z"
 
 [lane.issuerecon]
 issues = ["433"]
@@ -778,13 +778,18 @@ issues = ["433"]
 files = ["docs/lanes/pathknow/**", "docs/testing/titles/pathknow/**"]
 note = "ROW ADDED (hostops 2026-10-02 09:23 PDT): hakux-lane-pathknow has been RUNNING since ~09:20 PDT (briefs/pathknow.md) with NO territory row, same gh-auth board-write gap as [lane.pathfind] above, started in the same owner directive. No device time, no request.sh, no holds (the brief's own words). Files: docs/testing/titles/pathknow/** (new dir: model-choice report plus per-title/publisher/series navigation hints, mined from existing route/NOTES history, read-only against everything else) and its own lane docs dir; both new/unclaimed, confirmed no other row names pathknow. CARVED OUT (job.board 2026-10-02 ~16:50 PDT): docs/testing/titles/pathknow/classifier/** is [lane.pathclass]'s (its own companion brief off the same owner directive, building tiers 1-2 of the screen classifier) -- pathknow keeps hints/, eval/ and the rest of this tree; see [lane.pathclass]'s row for why this is a deliberate carve-out and not a collision check.sh would catch."
 
-[lane.bf2ubosize433]
+[retired.bf2ubosize433]
 issues = ["433"]
-files = ["docs/lanes/bf2ubosize433/**", "docs/testing/predictions/bf2ubosize433-*.json",
+files = []
+note = "RETIRED (hostops 2026-10-02 16:03 PDT): PR folded as e602b6f684 (confirmed ancestor of origin/master via `git merge-base --is-ancestor`), fold logged 15:23:56 PDT in foldqueue.log, unit inactive (no hakux-lane-bf2ubosize433.service). Judged PUSH on its registered prediction (F16 0.917, R16 0.413, PR.md/NOTES.md section 6): BF2's per-draw uniform churn justifies a push-constant fix. This lane does not build it -- its successor brief (OUTBOX.md, forge #656) names the fix exactly, and lane.bf2push656 is already RUNNING on it (started 15:59:57 PDT) holding these files with no territory row to show for it (fleet.py FAIL at session start). RELEASED DIRECTLY TO [lane.bf2push656] below (its own brief's 'Territory requested' line, verbatim): hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/shaders.c, hw/xbox/nv2a/pgraph/glsl/vsh-ff.c, hw/xbox/nv2a/pgraph/glsl/vsh-prog.c, hw/xbox/nv2a/pgraph/glsl/vsh.c -- not routed through [free], per this row's own standing pattern (bf2stall433 -> bf2ubosize433 immediate reclaim) and the inbox request's explicit instruction."
+
+[lane.bf2push656]
+issues = ["433"]
+files = ["docs/lanes/bf2push656/**", "docs/testing/predictions/bf2push656-*.json",
          "hw/xbox/nv2a/pgraph/vk/draw.c", "hw/xbox/nv2a/pgraph/vk/shaders.c",
          "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "hw/xbox/nv2a/pgraph/glsl/vsh-prog.c",
          "hw/xbox/nv2a/pgraph/glsl/vsh.c"]
-note = "STARTED (hostops 2026-10-02 09:21 PDT), briefs/bf2ubosize433.md, succeeding [retired.bf2stall433] below. bf2stall433's own diagnosis (NOTES.md sections 6-8) named the deciding measurement before building anything: a per-draw histogram of vertex-constant registers written since the previous draw, to size whether BF2's per-draw UBO-rebind cost (the prime suspect after vertex-fetch was refuted and the draws were shown already-serialized) fits a push-constants fix. vk/draw.c RE-CLAIMED directly from [retired.bf2stall433] below (never actually free -- same immediate-reclaim pattern as snapdrive/hddcrash this session). vk/shaders.c and glsl/vsh-ff.c/vsh-prog.c/vsh.c were UNCLAIMED ANYWHERE (not in any lane's files, not in [free] either -- confirmed by walking the parsed table, not grep, since '[lane.X]'-style headers are nested TOML tables and a flat grep over-reports) despite vk/shaders.c defining pgraph_vk_update_shader_uniforms(), the exact function the histogram instruments, called from vk/draw.c's per-draw path and referenced from glsl/vsh.c. Granted directly; no prior claim to release them from."
+note = "STARTED (hostops 2026-10-02 16:03 PDT, inbox request 15:59 PDT, owner-approved), briefs/bf2push656.md, succeeding [retired.bf2ubosize433] above (forge #656, umbrella #433). Builds the push-constant fix bf2ubosize433 sized and specified verbatim in its own brief: replace the per-draw uniform-block rebind with pushed 16-byte chunks for the registers that actually churn (c112-c115, c96-c105, the ltc* uniforms), targeting a realized rebind rate <= ~0.41 on BF2's heavy views. Nova only, at most 6 runs, budget ~$35. Files are the exact set bf2ubosize433 held, released directly above -- never free in between (lane was already RUNNING on them, confirmed via systemctl before this grant)."
 
 [retired.bf2stall433]
 issues = ["433"]
