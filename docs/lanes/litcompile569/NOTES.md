@@ -516,11 +516,113 @@ themselves, so nothing runs until the Nova is back.
 **When both are DONE:** follow section 7's list. If the pair is lost a third time with #624
 in, that is a different bug: report it on #607 with dispatcher.log evidence.
 
+## 11. Session 7 (2026-10-01 21:00 PDT, attempt 2 after the suspension): the replication is read
+
+### Why session 6 did not finish
+
+It ended on purpose, waiting on the third re-queue (section 10). That pair ran on the Nova on
+2026-09-30, fix 04:29-04:37 UTC and base 05:16-05:24 UTC. Both runs are DONE. The lane was not
+resumed to read them. GitHub suspended the harness account on 2026-09-29 around 21:00 PDT, and
+only the lanes named in the offline protocol ran. This session follows that protocol: there
+is no PR #607 to update. The PR is `docs/lanes/litcompile569/PR.md`, and the issue post is
+`OUTBOX.md`.
+
+### The pair
+
+- fix 87ceac5569: `1-1790728885-litcompile569-2295720`, first;
+- base bf1ecde346: `1-1790728890-litcompile569-2296232`, second.
+
+Both were copied to the worktree's scratch before reading.
+
+### V (validity): holds
+
+- **Both caches were cleared.** `result.json` reads `shader_cache=cleared`.
+- **Neither arm paused.** No `pause` flag and no active pause cdev in either `thermal.jsonl`.
+- **Both arms have enough fight lines:** 75 on base and 66 on fix, against V's minimum of 20.
+- **The GPU ran at 615-680 MHz during play in both arms.** Base read 401 MHz once, at the
+  idle `cool` sample before the start; it was 615-680 from then on.
+- **The thermal profiles matched:** xo 31 -> 51 C on base, 31 -> 54 C on fix.
+- **Both arms were on USB charge** (500 mA input) at 35-39% battery.
+
+### The registered judge (`doa_gpu_history.py`, unchanged since 1d46b29c8f)
+
+| arm | n | Tot ms | fps | fight lines | fight Tot ms | fight fps |
+|---|---|---|---|---|---|---|
+| base bf1ecde346 | 89 | 28.0 | 31.8 | 75 | 28.6 | 31.1 |
+| fix 87ceac5569 | 106 | 20.4 | 39.9 | 66 | 26.4 | 35.0 |
+
+| leg | reading | verdict |
+|---|---|---|
+| R1: fight Tot fix/base <= 0.90 (refuted at >= 0.95) | 26.4 / 28.6 = **0.923** | **not decided** (inside the 0.90-0.95 band) |
+| R2: fight fps fix/base >= 1.10 | 35.0 / 31.1 = **1.125** | PASS |
+| R3: mean of the two pairs' ratios <= 0.90 | (0.821 + 0.923) / 2 = **0.872** | PASS |
+
+- **R1 is not refuted.** The registered text says the gate-4 0.82 "was content, not B1" only at
+  >= 0.95. This pair reads 0.92, which the registration names as "not decided".
+
+### The opponents differ again (route frames)
+
+Each arm played two fights after `mark play`.
+
+| | base | fix |
+|---|---|---|
+| fight 1 (clock tower, Kasumi) | Bass, 05:20:59-:21:40, lost -> CONTINUE | Bayman, 04:33:23-:45, lost -> title |
+| fight 2 (Ryu, wooden Japanese interior) | Gen Fu, 05:23:00-:24:25 | Ayane, 04:34:45-:36:25 |
+
+- The two arms played a different share of each fight.
+  - Fix spent 22 s in fight 1 and about 100 s in fight 2.
+  - Base spent about 41 s in fight 1 and 85 s in fight 2.
+- The pooled fight median therefore mixes a different blend of the two scenes in each arm.
+  Fight 2 is the heavier scene: 46 ms on base. Fix has 34 of its lines there, and base has 17.
+- **That blend pulls the pooled ratio towards 1.** Each scene, on its own, reads lower than
+  the pool.
+
+### Per scene (`doa_gpu_segments.py` / `doa_energy.py`, spans placed from the frames, dpm == 0)
+
+| scene | fps b -> f | GPU ms/frame b -> f | net W b -> f (samples) | J/frame b -> f |
+|---|---|---|---|---|
+| clock tower fight | 31.9 -> 45.1 (1.41x) | 28.6 -> 20.4 (**0.71**) | 7.88 -> 9.08 (2/1) | 0.247 -> 0.201 (**0.81**) |
+| Ryu fight | 20.7 -> 33.3 (1.61x) | 46.2 -> 28.1 (**0.61**) | 6.94 -> 9.11 (3/3) | 0.335 -> 0.273 (**0.82**) |
+
+`title_verdict.py` (on the copies) over the whole run:
+- **J per frame:** 0.309 on base, 0.268 on fix (0.87).
+- **fps_ok:** 0.37 on base, 0.72 on fix.
+- **Net W:** 7.68 on base, 9.20 on fix.
+- Both arms FAIL on `reached_gameplay: unconfirmed (generic route)` and `hang=True`. That is the
+  survey route's verdict, the same for both arms. It is not a B1 effect.
+
+- **This replicates gate 4's direction on every reading.** Both pairs, and every scene in each
+  pair, read the fix faster in GPU time per frame. The readings:
+  - gate 4's menus 0.74 and its fight 0.81;
+  - this pair's scenes 0.71 and 0.61;
+  - the pooled registered medians 0.82 and 0.92.
+- **Energy per frame falls in every scene,** by 13-19%. Power rises because the fix draws more
+  frames per second.
+- **What is still not shown is a same-content pair.** Three pairs on the survey route have
+  drawn six different fights. The registered single-pair leg R1 lands in its undecided band.
+  R3 passes.
+- **What the claim is now:** B1 cuts GPU time per frame in DOA's fights by roughly 10-40%,
+  depending on the scene and the blend. Its sign held on every reading across two pairs. Its
+  size is not pinned down. It is an energy lever as well as a compile-stall fix. That claim
+  rests on R2 and R3 passing with R1 undecided, not on R1.
+
+### State at the end of session 7: ready
+
+- PR.md is `State: ready`. It carries gate 4 (section 7) and this replication. The branch
+  changes no emulator code: B1 itself folded as #580.
+- `OUTBOX.md` holds the #569 post.
+- No device run is queued. A same-content pair would need a route that fixes both fighters and
+  the stage, such as Versus mode. That is a new registration, and it is left to whoever picks
+  up the energy question. It is not this lane's.
+
 ## 5. For the next lane
 
-- **Gate 4 (device) waits on P1** (PR #574, lane.shaderfb569: `dpc_ms` per stage). The leg
-  is: the fight load's `dpc_ms` falls by (2.5-2.7x factor) x (the lit share of the stall),
-  within 30%. The lit share is lane.local's, from the DOA shader-key pull.
+- **Do not run another survey-route pair to settle B1's GPU-per-frame size.** Three pairs drew
+  six different fights. A pair that settles it fixes both fighters and the stage, and holds the
+  same time in each.
+
+- **Gate 4 (device) is read** (section 7). B1 halves DOA's pipeline creation on the Nova: 2.14x
+  on matched loads, with the model at 1.00. The GPU-per-frame replication is section 11.
 - **Do not write `a ? f(x) : y` or `a && (b == c)` in a generated helper.** glslang branches on
   both. Use `mix()` and named bools.
 - **B2 (`geom.c`'s wedge) is now the larger per-pipeline cost** on a lit pipeline too: ~150 ms
