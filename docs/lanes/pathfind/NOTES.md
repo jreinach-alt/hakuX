@@ -107,6 +107,11 @@ What this shows, and what it does not:
 
 ## What the next lane should not repeat
 
+- **Put the image AFTER the prompt text, and make the model describe it first.** With the frame first and
+  pathfind's long prompt after it, Sonnet 5 called Tiger Woods 2005's bright title logo "a black frame with
+  only the FPS overlay" 12 steps running, anchored on its own history, and burned 3 of the Thor's 4 minutes
+  (10-02 11:43). Same frame, same prompt: image-first wrong 2/2, image-last plus a leading "see" field right
+  4/4. Every run before 11:55 used image-first. (`scratch/blacktest2.py` in the lane worktree.)
 - **The d-pad buttons (evdev 544-547) do nothing in hakuX.** The d-pad is the hat: pulse
   `axis HATY min|max` then `mid`. Midnight Club 3 try 1 looped 8 times on a Yes/No dialog because
   UP never moved the cursor (stopped at 8 min, not scored; the old route's notes already said this).

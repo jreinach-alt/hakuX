@@ -529,7 +529,8 @@ the player or camera for ~1.5 s (racing: ["RT:1.5"]; on foot: ["STICK:up:1.5"]);
 start the play first (a kickoff or serve: ["A", "STICK:up:1.5"]).
 
 Answer exactly:
-{"state": "<state>", "why": "<one line: what you see, where the cursor is>",
+{"see": "<a literal description of the image: its text, logos, HUD, highlighted item>",
+ "state": "<state>", "why": "<one line: why this state and action, where the cursor is>",
  "action": ["<token>", ...], "wait_s": <seconds to wait after the inputs, 1-10>, "probe": [<tokens>] or []}"""
 
 
@@ -580,7 +581,10 @@ class Model:
             content = [{"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
                                                      "data": base64.b64encode(open(i, "rb").read()).decode()}}
                        for i in images]
-            msg = {"type": "user", "message": {"role": "user", "content": content + [{"type": "text", "text": prompt}]}}
+            # text FIRST, images after it: with the image first and a long prompt, Sonnet 5 read Tiger Woods
+            # 2005's bright logo as "black frame with only the FPS overlay" 12 times running, anchored on the
+            # history (10-02; 2/2 wrong image-first, 4/4 right image-last, scratch blacktest2)
+            msg = {"type": "user", "message": {"role": "user", "content": [{"type": "text", "text": prompt}] + content}}
             try:
                 r = subprocess.run(cmd, input=json.dumps(msg) + "\n", capture_output=True, text=True, timeout=240,
                                    cwd=self.out)
@@ -739,7 +743,8 @@ class Agent:
         return (f"{RULES}\n\nKnowledge from other titles (hints):\n{self.hints or '(none yet)'}\n\n{guide}"
                 f"Title: {self.name} (id {self.tid or '?'}), device {self.dev.label}. "
                 f"{self.el() / 60:.1f} min since cold boot.\n\nLast steps:\n{self.history()}\n\n{extra}"
-                "The attached image is the screen NOW. Answer with the JSON object only.")
+                "The image below is the screen NOW. The history above may be stale: judge the screen only from "
+                "the image. Answer with the JSON object only, starting with \"see\".")
 
     # -- repeats: the same input on the same unchanged screen
     def tried_here(self, sig):
@@ -837,7 +842,7 @@ class Agent:
             rec["verdict"] = "letterboxed: a cutscene"
             self.write_step(rec)
             return False, "black bars top and bottom: this is a cutscene, not gameplay"
-        head = (f"Screenshots of {self.name}, an Xbox game, attached in order. The 'FPS: NN' text at the top-left "
+        head = (f"Screenshots of {self.name}, an Xbox game, below in order. The 'FPS: NN' text at the top-left "
                 f"is the emulator's overlay, not a game HUD. The previous step judged this gameplay: \"{why}\".\n")
         tail = ("A menu cursor moving is NOT a response. Answer JSON only: "
                 '{"gameplay": true|false, "responded": true|false, "why": "<one line>"}')
@@ -1068,6 +1073,7 @@ class Agent:
             except (TypeError, ValueError):
                 w = 2.0
             self.plan.append({"expect": st["expect"], "action": act, "wait_s": w})
+        base["see"] = str(ans.get("see", ""))[:240]
         return dict(base, state=state, why=str(ans.get("why", ""))[:240], action=action, wait_s=wait_s,
                     probe=ans.get("probe") or "", src=("fast" if model == FAST else "strong"))
 
