@@ -726,6 +726,14 @@ class Agent:
                     return k, j, st
         return None
 
+    def static_run(self):
+        n = 0
+        for st in reversed(self.steps):
+            if st.get("src") != "static":
+                break
+            n += 1
+        return n
+
     def replay(self, sig):
         """A recorded step of this title's own path whose screen matches, at or
         a little past the cursor: (index, step) or None."""
@@ -927,11 +935,13 @@ class Agent:
             return dict(base, state="black", why=f"black for {black_s:.0f} s", action=act, wait_s=4, src="black")
         self.black_since = None
         prev = self.steps[-1] if self.steps else None
-        # 2. static after a wait on a loading/black screen: wait again
+        # 2. a load that has barely changed since the last look: wait again, no call. 0.05, not
+        # UNCHANGED: a progress bar creeps (ESPN NHL 2K5 on the Thor, 10-02: six model calls, ~80 s of heat,
+        # on one Team Match Up loading screen). At most 5 in a row, then the model looks again.
         if prev and not prev.get("action") and prev.get("state") in ("loading",) \
-                and prev.get("changed") is not None and prev["changed"] <= UNCHANGED \
-                and sum(1 for s in self.steps[-4:] if s.get("src") == "static") < 3:
-            return dict(base, state="loading", why="static frame after waiting on a load", action=[],
+                and prev.get("changed") is not None and prev["changed"] <= 0.05 \
+                and self.static_run() < 5:
+            return dict(base, state="loading", why="load still on screen (barely changed)", action=[],
                         wait_s=4, src="static")
         # 3. a recorded step of this title's own path matches the screen
         tried = self.tried_here(sig)
