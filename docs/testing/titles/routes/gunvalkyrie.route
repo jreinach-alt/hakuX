@@ -27,8 +27,17 @@
 # loop with no START: forward on the left stick, RT fire, LT jumps, RX
 # turns so a wall does not hold it. One A per cycle (the survey pressed A
 # in play with no visible effect) also takes a Continue/Retry panel if one
-# comes up. NOT YET REPLAYED: the first dispatch run's frames from the mark
-# to the LAST frame decide whether it reached and stayed in play.
+# comes up.
+# Replay 1 (1790939914-titleroutes2-1445425, ref 282a5af148): no ROUTE FAIL;
+# the title came one cycle sooner (play on cycle 7's START, 042146), the
+# guard pairs were pause + Continue as planned, and the mark (042221) is
+# live play with the HUD. But 9 of the 13 later frames are the advisor's
+# tutorial boxes ("Use the Left Thumbstick to move...", "Pull the Right
+# Trigger...", "...Dash in any direction while in the air"): the scene
+# dims, the game waits, and a yellow down-arrow asks for A. One A per
+# ~25 s cycle left each page up for most of a cycle. So the loop now
+# presses A every ~2-3 s; the moves between are unchanged (the same run
+# showed them working: walking, firing at 042347, static_frac 0.01).
 wait 20
 shot boot20
 wait 20
@@ -47,24 +56,29 @@ wait 2
 shot pre-mark
 mark gameplay               # CHECK: Valley 1, the HUD, no pause panel over it
 repeat forever {
+    press A
     axis LY min
     axis RT max
-    wait 3
+    wait 2
     axis RT min
+    press A
     axis LT max
     wait 0.3
     axis LT min
-    wait 2
+    wait 1.5
+    press A
     axis RX max
     wait 0.7
     axis RX mid
     axis RT max
-    wait 3
+    wait 2
     axis RT min
+    press A
     axis LY mid
     axis LX max
     wait 1.5
     axis LX mid
+    press A
     axis LY min
     wait 2
     axis RX min
