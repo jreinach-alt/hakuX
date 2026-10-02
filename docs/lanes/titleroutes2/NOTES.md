@@ -195,3 +195,38 @@ shows what the Armory asks for after the look test. **Do not repeat: a look bloc
 amounts leaves the camera wherever the game's invert switch put it; after an invert question the stick's sense is
 unknown open-loop.** Next: a held Nova nav session to read the invert question, re-level the view, and map what the
 Armory asks next (walk to the tram?), before a v2.
+
+### Held Nova session: Halo 2's Armory (07:24-07:36 PDT, released)
+
+`hold.sh take nova lane.titleroutes2` after my ToeJam survey ended, `wait-idle` (a bf2stall433 request ran out first),
+`FOCUS_OK` before input, `nav.py` session `~/hakux-work/nav/halo-2.returning-20261002T072440/` (47 frames), `nav.py end`,
+force-stop, perf/fan back to 0/4, screen off, `hold.sh release` (`who` = free). 12 min on the device, battery 80% on AC.
+
+- A presses skip parts of the Heretic prologue. Left alone it ran well past a minute; the replays' 5 s presses cut it
+  to ~30 s.
+- The look test is two rounds of "Use [RIGHT] to look up" (top light), then "look down" (bottom light). A light goes
+  dark when the crosshair crosses it, and overshooting is fine. Single full-throw taps (~0.4 s with nav.py's round
+  trip) move the view ~160 px. A 20000 tap barely moves it. Up x2, down x2, up x3, down x3 passed both rounds with the
+  look NOT inverted, then "Updating profile... done". Replay 1's 1.5 s holds passed it too, but saved the look inverted.
+- After the test the Armory is free-roam under "Follow the Gunnery Sergeant's instructions". The Sergeant walks off
+  down a corridor, and both doors I reached show red locks. ~3 min of walking toward him and waiting found no trigger.
+
+**Decision: Halo 2 stays a DRAFT (route header and targets.toml say so), same class as Halo CE.** An open-loop route
+ends in the Armory however well the look test goes. Reaching Cairo Station needs screen-aware driving (drive.py,
+lane.routedriver2's) or a save made past the Armory. No v2 queued: a level-view Armory replay would still not be a
+reading of play.
+
+### ToeJam & Earl III survey (`1790948390-titleroutes2-3358315`, 34 frames, read in full)
+
+**Reached live play.** Title -> ONE PLAYER GAME -> STORY MODE -> character select (ToeJam) -> his intro -> the ship over
+Earth -> black (load, FPS 3) -> cycle 4's A (`071306`): ToeJam on the stone circle in level 1, HUD up. Every later START
+toggles the PLAYER STATS panel (open, then closed). A is a jump. The play frames (`071511..071601`) walk him off the
+circle to the bridge, the fence and the cliff edge at 38-59 fps (target 60). Route `toejam-earl-3` written: 4 START/A
+cycles, wait 10, mark, then an exploring walk loop (forward, right + jump, forward, left + jump, a frame per leg, no START).
+`route.sh --check` ok, `targets.toml` route + note (DRAFT), `tomllib` 83, selftest all checks passed.
+
+Queued (ref `162ca56fd8`): `toejam-earl-3` replay 1 `1790951866-titleroutes2-46925` (420 s). Tron 2.0 survey
+`1790951914-titleroutes2-68595` (300 s; Nova file `Tron 2.0 - Killer App (USA, Europe).iso` per the predecessor's
+table; no targets.toml entry yet, one gets added if the survey reaches play). After Tron the Nova-only backlog is empty.
+`rank_untouched.py` ranks the Thor's file list (`thor-int.txt`), and the Thor is closed to this lane, so those titles
+wait for the Thor or for a copy (one-copy-per-title rule, amended 09-28).
