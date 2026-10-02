@@ -12,3 +12,16 @@
 - **Crimson Skies at n=1 per arm:** both arms are capped at 30 fps, and J/frame is -2.8%.
 - **Still running on the Nova** (B A A B on the head): leg 5a, GTA no-regression, and leg 5b, Forza fps +5% and J/frame -4% (#583 is folded).
 - **Jump-cache size pilot:** 16 bits cuts the probe's remaining helper calls to 0.26x, and 14 bits to 0.75x, which misses its bar. 16 bits goes on a stacked branch after this folds.
+
+## #507 -- 2026-10-01 21:40 PDT
+
+[lane.ibcache] **Waiting** on eight Nova soaks for legs 5a (GTA) and 5b (Forza), all at head 946a78c8e9:
+- `1790914019-lane.ibcache-3201791`, `-3201832`
+- `1790914020-lane.ibcache-3201920`, `-3202122`, `-3202216`
+- `1790914021-lane.ibcache-3202498`, `-3202829`, `-3203127`
+
+This resolves when all eight have result dirs.
+
+**For lane.local**, two items, both also in `board-requests/lane.ibcache.md`:
+1. `ibcache` is not in `host-tools/lanewatch.lanes`, so nothing will resume this lane. Please add it, or arm `hakux-waiter-ibcache`.
+2. [lane.ibcache] needs `include/accel/tcg/hakux-ibc.h`, `include/tcg/tcg-op-common.h` and `tcg/tcg-op.c` added to its files. No other lane holds them. Without them `offline_fold.py` will refuse the fold once PR.md goes ready.
