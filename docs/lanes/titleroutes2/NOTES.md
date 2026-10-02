@@ -126,3 +126,18 @@ turn is really ~0.6 s; use partial-throw values (RX 16000/22000 on the Nova's +-
 
 Queued after the session (ref `bd03a589f7`): Gunvalkyrie v4 `1790944628-titleroutes2-2686999`, Ninja Gaiden Black route
 `1790944628-titleroutes2-2687135`, Star Wars v2 (exploring) `1790944635-titleroutes2-2688279`.
+
+### Third round of results (ref `bd03a589f7`)
+
+| title | request | outcome | what the frames show |
+|---|---|---|---|
+| Gunvalkyrie, replay 4 (no-turn loop) | `1790944628-titleroutes2-2686999` | worse | a dark rock face within 14 s of the mark, pressed against one wall from `060508` to the end; same numbers (59.94, 100% at 30+, 96% at 60, no hang). **Decision: the route goes back to replay 2's loop, steps byte-identical to `685c52e514` (checked with a diff of the non-comment lines), so replay 2 is its confirmation. CONFIRMED and nominated (#433).** Travelling the level for a whole window needs drive.py, not a fifth blind loop. |
+| Ninja Gaiden Black, route replay 1 | `1790944628-titleroutes2-2687135` | **CONFIRMED** | chapter card on cycle 19 (`061202`), opening cutscene, HUD by `061240`; skip1's START opened the in-game menu, skip2's closed it; mark `061303` Ryu in the waterfall basin; live play to the end (static 0.007). Median 39.4, 75% at 30+, 0% at 60, shader hitches to 1.5 s. Below its own target; not nominated. |
+| Star Wars Ep. III, run 2 (exploring loop) | `1790944635-titleroutes2-2688279` | **CONFIRMED, nominated (#433)** | the net-forward walk crosses the hangar, fights droids, reaches the force-field door, and the level advances through its own objectives ("DEFEAT ENEMIES WHILE R2-D2 EXTENDS CATWALK", "OBJECTIVE ACHIEVED"); 3 of 41 frames are short scripted cutscenes; static 0.0. Median 29.97, 96.3% at 30+ (target 30), no hang. Measured with ~5 screencaps per cycle; the file is kept exactly as run. |
+
+**What worked, for the next title:** a net-forward loop with a frame on every leg both maps the level and plays it; a loop
+whose legs cancel (Star Wars v1) or that turns blind (Gunvalkyrie v3) parks the player. Combat titles whose levels pull
+the player along (Star Wars) suit it; open canyons (Gunvalkyrie) do not.
+
+Queued next (one backlog survey): Halo 2 `1790946979-titleroutes2-3257388` (300 s), to see whether it opens on an aimed
+calibration like Halo CE's.
