@@ -661,3 +661,72 @@ No specific next title was named by an addendum this session. Absent one,
 the next session should check for a new addendum first, then continue down
 the still-open backlog from sessions 56/57: 13 Nova-only no-route titles,
 and the Thor's untouched titles (all blocked on the fan/CPU-stop decision).
+
+## #397 -- 2026-10-01 18:15 PDT (session 59)
+
+Diagnosed and fixed a real bug in `castlevania-cod.first-run.route`: its
+name-typing step raced the Name Entry screen's own load, so the route spent
+900s stuck on an unaccepted empty name instead of creating a save and
+reaching gameplay. Dispatch route-check `1790902028-titleroutes-1005086`
+(Nova) is the evidence -- every frame after `name-a` is the same Name Entry
+screen; the registry's save for 4B4E002D (`53f0a40fe626`) is unchanged.
+Fixed by making the letter-type step self-healing (press A twice on the "A"
+tile, a few seconds apart) plus a larger initial margin. Verification queued:
+`1790903439-titleroutes-1317193` (Nova, route check, not yet landed).
+
+Also flagging: the Sonic Heroes Playable confirmation
+(`1790902215-autoverdict-1078702`, running) is building from `ref=575c480d27`,
+which predates session 57/58's folds -- it's running the OLD 9-cycle route,
+not session 58's rewrite. Its mid-run frames already show the known
+frozen-PAUSE failure (`180609-gameplay.png` / `181308-play.png`, 7 minutes
+apart, byte-identical). This is expected to FAIL, but the fix is already on
+this branch (not a new bug) -- it needs a re-nomination once sessions
+57-59 fold to master, not another route rewrite.
+
+| title | device | route | status | note |
+|---|---|---|---|---|
+| Castlevania: Curse of Darkness (4B4E002D) | Nova | castlevania-cod.first-run | fix queued for verification | see above |
+| Sonic Heroes (5345002B) | Nova | sonic-heroes | confirmation running on stale ref | expect FAIL, re-nominate after fold, don't re-fix |
+
+Next session: read both request results first (see NOTES.md "State for a
+successor"), then continue per ADDENDUM 8/9.
+
+## #397 -- 2026-10-01 19:05 PDT (session 60)
+
+Session 59's "self-heal" fix for `castlevania-cod.first-run.route` (a second
+blind press on the Name Entry letter tile) was wrong, as the owner found
+directly (ADDENDUM 11, ~18:30 PDT) by watching its own verification run
+(`1790903439-titleroutes-1317193`) sit stuck on Name Entry and stopping it:
+both presses landed on a still-black, not-yet-loaded screen -- confirmed by
+reading `181831-name-a.png`/`181838-name-a2.png` (both black) -- not a
+dropped press. The owner asked for the real fix: a route that looks at the
+screen before pressing into it, not another guess.
+
+Built it. `route.sh` gained two new step types, `waitfor` and
+`press-until`, that poll a screencap region against a committed reference
+crop (mean abs diff, grayscale, downscaled) instead of playing a fixed
+`wait`, and ABORT the route with a clear `ROUTE FAIL` line rather than
+typing blind into whatever screen is actually up. A new selftest
+(`docs/testing/titles/waitfor_selftest.py`) proves the comparator against
+this exact failure -- including the real still-black frame from the
+withdrawn run -- before any device time was spent: 5/5 cases pass. All 58
+existing `.route` files still parse unchanged. `castlevania-cod.first-run.route`'s
+newgame -> Name-Entry section now waits for the Name Entry screen itself to
+be up (timeout 30s, generous), then presses the letter and checks the field
+itself, retrying up to 5 times -- not a fixed wait and a blind press count.
+
+Verification queued (not replayed live, per ADDENDUM 11's own sequencing
+and ADDENDUM 8's disk-state reasoning): `1790905334-titleroutes-1780552`
+(Nova, hard-pinned, `--route castlevania-cod.first-run --seconds 900`, ref
+`1f23c068f0`, tagged as a route check, not a Playable confirmation).
+
+| title | device | route | status | note |
+|---|---|---|---|---|
+| Castlevania: Curse of Darkness (4B4E002D) | Nova | castlevania-cod.first-run | fix queued for verification (1790905334-titleroutes-1780552) | see above; route.sh now has waitfor/press-until |
+
+Next session: read that result first (frame-by-frame, not the exit code or
+mark alone -- see NOTES.md "State for a successor"). If it reaches real
+play and creates a save, do the base-name run next (ADDENDUM 8 step b)
+before nominating. Still open and unreached: Super Monkey Ball Deluxe's
+post-mark stage-select-menu problem (ADDENDUM 9 item 2) and Sonic Heroes'
+play-loop fix (ADDENDUM 10).
