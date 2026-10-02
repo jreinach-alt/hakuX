@@ -1,0 +1,64 @@
+# Bloody Roar: Extreme (48550001), Nova. Built from the generic survey
+# 1790921692-titleroutes-1082566 (lane.titleroutes session 63, reviewed
+# session 64; re-read by lane.titleroutes2 session 1, 2026-10-02). Read
+# from its route-frames, not guessed:
+#   booted (004716): the intro movie.
+#   cycle 1 (004722 START / 004728 A): "PRESS START" title, then black.
+#   cycle 2 (004734 / 004740): black, then the attract DEMONSTRATION fight.
+#   cycle 3 (004746 START / 004752 A): the demo again, then the title.
+#   cycle 4 (004758 START / 004803 A): "Create BLOODY ROAR extreme save
+#     data? YES / NO" (NO lit); A answers it and the main menu shows.
+#   cycle 5 (004810 START / 004816 A): ARCADE -> Select your character.
+#   cycle 6 (004822 START / 004828 A): Yugo picked; the stage / time /
+#     rounds card.
+#   cycle 7 (004833 START / 004840 A): the stage intro, then "STAGE 1".
+#   cycle 8 (004846 START / 004852 A): ROUND 1 / GET READY: a live fight,
+#     Yugo vs Shina.
+#   cycles 9-14: START opens PAUSE (RESUME lit) and A resumes it; the
+#     round timer runs 60 -> 44 across the window.
+# The on-screen FPS counter reads 10-11 in the fight: a real slowdown
+# (#397), not a route artifact. At that speed one 60 s round outlasts the
+# whole window, so the loop never meets a KO or continue screen; its A
+# press would also take one.
+# So: 10 START/A cycles (8 reached the fight; the last 2 are a guard
+# against a slower attract cycle, and pause + resume if the fight came on
+# time), mark, then a fight loop with no START. NOT YET REPLAYED.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+shot booted
+repeat 10 {
+    press START
+    wait 5
+    shot menu-start
+    press A
+    wait 5
+    shot menu-a
+}
+wait 2
+shot pre-mark
+mark gameplay               # CHECK: the fight, both health bars, no PAUSE panel
+repeat forever {
+    repeat 4 {
+        axis LX max
+        wait 0.6
+        press X
+        wait 0.3
+        press Y
+        wait 0.3
+        press X
+        wait 0.3
+        axis LX mid
+        press B
+        wait 0.3
+        press A
+        wait 0.3
+        axis LX min
+        wait 0.4
+        axis LX mid
+        wait 0.3
+    }
+    shot play
+}

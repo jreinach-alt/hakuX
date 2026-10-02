@@ -292,13 +292,15 @@ notes = "#431 (comment 5851536933): 60, medium confidence. GMR (Dec 2003)"
 name = "Bloody Roar: Extreme"
 iso = { nova = "48550001-Bloody_Roar_Extreme.xiso.iso" }
 target_fps = 60
-notes = "#431 (comment 5851536933): 60, medium confidence. IGN, GameSpot, TeamXbox (Xbox, 2003)"
+route = "bloody-roar-extreme"
+notes = "#431 (comment 5851536933): 60, medium confidence. IGN, GameSpot, TeamXbox (Xbox, 2003). A generic survey (1790921692-titleroutes-1082566, Nova, lane.titleroutes session 63) reached a live Arcade fight (Yugo vs Shina) on its 8th START/A cycle; the on-screen FPS counter reads 10-11 in the fight and the window median was 10.83 fps, 0% at 30+: a real slowdown for per-title triage, not a route artifact. routes/bloody-roar-extreme.route (lane.titleroutes2 session 1): 10 START/A cycles, then a fight loop with no START. DRAFT until a dispatch replay's frames from the mark to the last one are read."
 
 [titles."49470017"]
 name = "Gunvalkyrie"
 iso = { nova = "5345000B-Gunvalkyrie.xiso.iso" }
 target_fps = 60
-notes = "#431 (comment 5851536933): 60, medium confidence. Evolution, Italy (May 2002)"
+route = "gunvalkyrie"
+notes = "#431 (comment 5851536933): 60, medium confidence. Evolution, Italy (May 2002). A generic survey (1790921696-titleroutes-1084287, Nova, lane.titleroutes session 63) reached live play in Valley 1 on its 8th START/A cycle; later cycles only toggled the pause panel. Window median 59.94 fps, 100% at 30+, over ~70 s that was partly the pause panel. routes/gunvalkyrie.route (lane.titleroutes2 session 1): 10 START/A cycles, then a move/fire/jump loop with no START. DRAFT until a dispatch replay's frames from the mark to the last one are read."
 
 [titles."4D53003D"]
 name = "Sega GT 2002 + JSRF: Jet Set Radio Future"
@@ -557,3 +559,9 @@ name = "Buffy the Vampire Slayer"
 iso = { nova = "Buffy the Vampire Slayer (USA).xiso.iso" }
 route = "buffy"
 notes = "No #431 target; the default 30 applies. xemu: Playable. Session 65 (2026-10-02): a generic survey (1790928774-titleroutes-2773088, Nova) reached live play in the Spanish Mission canyon about 42 s after boot (4 START/A cycles); later cycles only toggled PAUSE/Resume. fps_window_median 29.97, fps_ok_share 0.93, one 220 ms shader hitch, measured over a window that was partly the pause panel. routes/buffy.route: 5 START/A cycles, then a walk/attack loop with no START. DRAFT, NOT CONFIRMED: two dispatch replays (1790931264-titleroutes-3615749, 1790932722-titleroutes-3976729 with B jumps) both reach live play at the mark (~125 s after launch; Start Game just names a new save Buffy 2/3, so disk state does not change the path), then get stuck within 1-2 min at the canyon's first ledges: one frozen sky view for ~4 min under the tips 'Run and press B to jump between ledges' / 'Push into low ledges to climb onto them'. The scorer's 95-96% at 30+, no hang, is over a stuck window. Needs a path found by looking at the screen (held nav.py session or lane.routedriver's drive.py), not a third blind loop."
+
+[titles."4C410017"]
+name = "Star Wars: Episode III: Revenge of the Sith"
+iso = { nova = "4C410017-Star_Wars_Episode_III_Revenge_of_the_Sith.xiso.iso" }
+route = "star-wars-ep3"
+notes = "No #431 target; the default 30 applies. A generic survey (1790921690-titleroutes-1082096, Nova, lane.titleroutes session 63) reached live play in the cruiser hangar on its 13th START/A cycle (~213 s after launch: the opening crawl and space-battle movie are not skipped by START or A), then its stick-UP loop held Obi-Wan against a wall (three near-identical play frames, frozen_frac 0.95), so its window median of 30.0 fps / 88% at 30+ is over a mostly static view. routes/star-wars-ep3.route (lane.titleroutes2 session 1): 15 START/A cycles, then a loop that walks four directions in turn with X/Y attacks and no START. DRAFT until a dispatch replay's frames from the mark to the last one are read."

@@ -1,0 +1,76 @@
+# Gunvalkyrie (49470017; the Nova's iso is 5345000B-Gunvalkyrie.xiso.iso),
+# Nova. Built from the generic survey 1790921696-titleroutes-1084287
+# (lane.titleroutes session 63, reviewed session 64; re-read by
+# lane.titleroutes2 session 1, 2026-10-02). Read from its route-frames, not
+# guessed:
+#   booted (005249): the ADX logo, start of the intro movie.
+#   cycle 1 (005254 START / 005300 A): a "VALLEY 1 now loading" card (the
+#     attract demo loading).
+#   cycle 2 (005307 START / 005313 A): "now loading", then the intro art.
+#   cycle 3 (005318 START / 005324 A): "Please press START to begin", then
+#     NEW GAME / CONTINUE / OPTIONS.
+#   cycle 4 (005330 / 005335): black (New Game's opening movie).
+#   cycle 5 (005342 START / 005348 A): the briefing menu (NEXT STAGE, POWER
+#     UP, FOE'S REPORT, SAVE, LOAD, OPTIONS, EXIT), then the Valley 1 map.
+#   cycle 6 (005354 START / 005359 A): GO / MISSION OUTLINE / ENEMY /
+#     CAUTION / BACK, then character select (Kelly).
+#   cycle 7 (005405 START / 005411 A): "Send to insertion point? YES", then
+#     "VALLEY 1 now loading".
+#   cycle 8 (005418 START / 005423 A): the STAGE 1 Valley 1 card, then live
+#     play (the HUD, Kelly warping in).
+#   cycles 9-14: START opens the pause panel (Continue highlighted) and A
+#     picks Continue, so a START/A pair in play is pause + resume.
+#   play (005605): the tip "While jumping, pull the Left Trigger again to
+#     perform a Rocket Boost" -- LT is jump/boost.
+# So: 10 START/A cycles (8 reached play; the last 2 are a guard against a
+# slower boot, and pause + resume if play came on time), mark, then a play
+# loop with no START: forward on the left stick, RT fire, LT jumps, RX
+# turns so a wall does not hold it. One A per cycle (the survey pressed A
+# in play with no visible effect) also takes a Continue/Retry panel if one
+# comes up. NOT YET REPLAYED: the first dispatch run's frames from the mark
+# to the LAST frame decide whether it reached and stayed in play.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+shot booted
+repeat 10 {
+    press START
+    wait 5
+    shot menu-start
+    press A
+    wait 5
+    shot menu-a
+}
+wait 2
+shot pre-mark
+mark gameplay               # CHECK: Valley 1, the HUD, no pause panel over it
+repeat forever {
+    axis LY min
+    axis RT max
+    wait 3
+    axis RT min
+    axis LT max
+    wait 0.3
+    axis LT min
+    wait 2
+    axis RX max
+    wait 0.7
+    axis RX mid
+    axis RT max
+    wait 3
+    axis RT min
+    axis LY mid
+    axis LX max
+    wait 1.5
+    axis LX mid
+    axis LY min
+    wait 2
+    axis RX min
+    wait 0.4
+    axis RX mid
+    press A
+    wait 1
+    shot play
+}

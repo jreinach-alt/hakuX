@@ -1,0 +1,81 @@
+# Star Wars: Episode III: Revenge of the Sith (4C410017), Nova. Built from
+# the generic survey 1790921690-titleroutes-1082096 (lane.titleroutes
+# session 63, reviewed session 64; re-read by lane.titleroutes2 session 1,
+# 2026-10-02). Read from its route-frames, not guessed:
+#   boot20 (004100): The Collective logo; boot40/booted: the intro movie
+#     (FMVs decode with green blocks, #303).
+#   cycle 1 (004147 START / 004153 A): "PRESS START" title, then "A long
+#     time ago in a galaxy far, far away...".
+#   cycles 2-8 (004159-004315): the opening crawl. START and A did not skip
+#     it: it ran its full ~80 s.
+#   cycles 9-12 (004320-004401): the opening space-battle movie, also not
+#     skipped.
+#   cycle 13 (004407 START / 004413 A): the end of the movie, then live
+#     play: "NEW OBJECTIVE: ESCAPE THE CRUISER HANGAR", Obi-Wan and Anakin
+#     with R2-D2, the health HUD.
+#   cycle 14 (004419 START / 004425 A): START opens PAUSED (CONTINUE lit)
+#     and A continues; the tip "PRESS X AND Y IN DIFFERENT COMBINATIONS TO
+#     VARY ATTACKS" is up.
+#   play (004451, 004515, 004541): three near-identical frames of Obi-Wan
+#     against a wall by a barrel. The survey loop (stick UP, A = jump)
+#     walked him into a wall and held him there; the verdict's static
+#     window read frozen_frac 0.95. That is the trap this loop avoids.
+# So: 15 START/A cycles (13 reached play; the last 2 are a guard against a
+# slower boot, and pause + continue if play came on time), mark, then a
+# loop with no START that walks four directions in turn (so no one wall
+# holds it) and attacks with X and Y. NOT YET REPLAYED. Disk-state risk: the
+# survey left a 4C410017 save in the store; if the title now offers a
+# Continue/Load menu the frames will show which way START/A took it.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+shot booted
+repeat 15 {
+    press START
+    wait 5
+    shot menu-start
+    press A
+    wait 5
+    shot menu-a
+}
+wait 2
+shot pre-mark
+mark gameplay               # CHECK: the cruiser hangar, the health HUD, no PAUSED panel
+repeat forever {
+    axis LY min
+    wait 1.5
+    press X
+    wait 0.4
+    press X
+    wait 0.4
+    press Y
+    wait 0.6
+    axis LY mid
+    axis LX max
+    wait 1.2
+    press X
+    wait 0.4
+    press Y
+    wait 0.6
+    axis LX mid
+    axis LY max
+    wait 1.2
+    press X
+    wait 0.4
+    press X
+    wait 0.6
+    axis LY mid
+    axis LX min
+    wait 1.2
+    press Y
+    wait 0.4
+    press A
+    wait 0.8
+    axis LX mid
+    axis LY min
+    wait 1.0
+    axis LY mid
+    shot play
+}
