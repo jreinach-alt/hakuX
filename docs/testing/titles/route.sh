@@ -23,6 +23,36 @@
 #                               its disk, and wait (default 10 s) for
 #                               `deferred bdrv_flush_all completed`. LAST
 #                               STEP ONLY: the title is paused after it.
+#   waitfor <name> <timeout_s> <x,y,w,h> <threshold>
+#                               poll the region once a second against the
+#                               reference crop routes/refs/<route>/<name>.png
+#                               (mean abs diff, grayscale, downscaled to
+#                               64x48) until it MATCHES (score <= threshold)
+#                               or the timeout passes. A timeout ABORTS the
+#                               route (`ROUTE FAIL waitfor <name>`): a route
+#                               that cannot see the screen it needs must
+#                               stop, not carry on pressing into whatever is
+#                               actually up.
+#   press-until <BTN> <name> <max_n> <gap_s> <x,y,w,h> <threshold>
+#                               press BTN, wait gap_s, compare the region to
+#                               the reference crop; repeat up to max_n times
+#                               until it NO LONGER matches (score >
+#                               threshold) -- the reference is the state
+#                               BEFORE the press is expected to work (e.g.
+#                               an empty name field), so success is a
+#                               mismatch. Exhausting max_n ABORTS the route
+#                               (`ROUTE FAIL press-until <BTN> <name>`).
+#
+# WHY waitfor/press-until exist at all: a route otherwise plays fixed `wait`
+# timers against a screen it never looks at. castlevania-cod.first-run's
+# newgame -> Name Entry transition varied by 10+ seconds between runs; a
+# `wait 14` that covered it once left every press of an unattended replay
+# landing on a screen that had not loaded yet, typing nothing for 900s
+# (docs/lanes/titleroutes/NOTES.md, session 60). `shot`/`mark` take a frame
+# but never read it back, so that failure was invisible until someone
+# opened the frames by hand. Reference crops are part of the route: commit
+# them next to the route file under `routes/refs/<route-stem>/`, and note
+# in the route's own comments which screen each one came from.
 #
 # WHY `flush`. A soak ends with `am force-stop` (SIGKILL), and the app
 # flushes its qcow2 disk only when it is backgrounded or terminated
@@ -64,6 +94,11 @@ ROUTE_FRAMES="${ROUTE_FRAMES:-$(dirname "$ROUTE")/route-frames}"
 
 BUTTONS=" A B X Y START SELECT BACK L1 R1 L2 R2 L3 R3 UP DOWN LEFT RIGHT "
 AXES=" LX LY RX RY LT RT HATX HATY ABS_X ABS_Y ABS_Z ABS_RX ABS_RY ABS_RZ ABS_GAS ABS_BRAKE ABS_HAT0X ABS_HAT0Y "
+
+# routes/refs/<route-stem>/<name>.png: the reference crop a `waitfor` or
+# `press-until` step with this name compares against.
+ref_path() { echo "$(dirname "$ROUTE")/refs/$(basename "$ROUTE" .route)/$1.png"; }
+isregion() { [[ "$1" =~ ^[0-9]+,[0-9]+,[0-9]+,[0-9]+$ ]]; }
 
 mapfile -t L < <(sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$ROUTE")
 N=${#L[@]}
@@ -115,6 +150,20 @@ validate() {
                    [ "$depth" = 0 ] || err "$i" "flush inside a repeat block"
                    # the FIRST flush: everything after it is checked, a second flush included
                    [ -n "$FLUSH_AT" ] || FLUSH_AT=$i ;;
+            waitfor) [ -n "${w[1]:-}" ] || err "$i" "waitfor wants a name"
+                   [[ "${w[1]}" =~ ^[A-Za-z0-9_.-]+$ ]] || err "$i" "waitfor name '${w[1]}' must be [A-Za-z0-9_.-]"
+                   isnum "${w[2]:-}" || err "$i" "waitfor wants a timeout in seconds"
+                   isregion "${w[3]:-}" || err "$i" "waitfor wants a region x,y,w,h"
+                   isnum "${w[4]:-}" || err "$i" "waitfor wants a threshold"
+                   [ -f "$(ref_path "${w[1]}")" ] || err "$i" "waitfor '${w[1]}': no reference crop $(ref_path "${w[1]}")" ;;
+            press-until) isbtn "${w[1]:-}" || err "$i" "unknown button '${w[1]:-}'"
+                   [ -n "${w[2]:-}" ] || err "$i" "press-until wants a name"
+                   [[ "${w[2]}" =~ ^[A-Za-z0-9_.-]+$ ]] || err "$i" "press-until name '${w[2]}' must be [A-Za-z0-9_.-]"
+                   [[ "${w[3]:-}" =~ ^[0-9]+$ ]] || err "$i" "press-until wants a max press count"
+                   isnum "${w[4]:-}" || err "$i" "press-until wants a gap in seconds"
+                   isregion "${w[5]:-}" || err "$i" "press-until wants a region x,y,w,h"
+                   isnum "${w[6]:-}" || err "$i" "press-until wants a threshold"
+                   [ -f "$(ref_path "${w[2]}")" ] || err "$i" "press-until '${w[2]}': no reference crop $(ref_path "${w[2]}")" ;;
             *) err "$i" "unknown step '${w[0]}'" ;;
         esac
         i=$((i+1))
@@ -208,6 +257,82 @@ flush_disk() {   # flush_disk <timeout_s>
     return 1
 }
 
+# Screencap to a scratch file for comparison only: no log line, no frame
+# kept in ROUTE_FRAMES. waitfor/press-until poll up to once a second and
+# must not fill the frames dir with one entry per poll.
+capture_tmp() {   # capture_tmp <dest file>
+    [ -n "${ROUTE_DRY:-}" ] && return 1
+    timeout 30 adb -s "$SERIAL" exec-out screencap -p > "$1" 2>/dev/null
+    [ -s "$1" ]
+}
+
+# waitfor <name> <timeout_s> <region> <threshold>: see the grammar comment
+# at the top of this file for why this exists at all.
+waitfor_step() {
+    local name="$1" timeout="$2" region="$3" threshold="$4" ref tmp waited=0 out rc
+    ref="$(ref_path "$name")"
+    if [ -n "${ROUTE_DRY:-}" ]; then
+        log "waitfor $name (dry, assumed matched)"
+        return 0
+    fi
+    mkdir -p "$ROUTE_FRAMES"
+    tmp="$(mktemp)"
+    while :; do
+        if capture_tmp "$tmp"; then
+            out="$(python3 "$HERE/waitfor_match.py" "$tmp" "$ref" "$region" "$threshold" 2>&1)"; rc=$?
+        else
+            out="(screencap failed)"; rc=2
+        fi
+        if [ "$rc" = 0 ]; then
+            log "waitfor $name: matched after ${waited}s ($out)"
+            cp "$tmp" "$ROUTE_FRAMES/$(date '+%H%M%S')-$name.png" 2>/dev/null
+            rm -f "$tmp"
+            return 0
+        fi
+        [ "$waited" -lt "$timeout" ] || break
+        nap 1; waited=$((waited + 1))
+    done
+    log "ROUTE FAIL waitfor $name: timed out after ${timeout}s ($out)"
+    cp "$tmp" "$ROUTE_FRAMES/$(date '+%H%M%S')-$name-timeout.png" 2>/dev/null
+    rm -f "$tmp"
+    return 1
+}
+
+# press-until <BTN> <name> <max_n> <gap_s> <region> <threshold>: see the
+# grammar comment at the top of this file. <name>'s reference crop is the
+# state BEFORE the press is expected to work, so success is a MISMATCH.
+press_until_step() {
+    local btn="$1" name="$2" max_n="$3" gap="$4" region="$5" threshold="$6" ref tmp n out rc
+    ref="$(ref_path "$name")"
+    if [ -n "${ROUTE_DRY:-}" ]; then
+        log "press-until $btn $name (dry, assumed changed after 1 press)"
+        pad press "$btn"
+        return 0
+    fi
+    mkdir -p "$ROUTE_FRAMES"
+    tmp="$(mktemp)"
+    for ((n = 1; n <= max_n; n++)); do
+        log "press-until $btn $name: press $n/$max_n"
+        pad press "$btn"
+        nap "$gap"
+        if capture_tmp "$tmp"; then
+            out="$(python3 "$HERE/waitfor_match.py" "$tmp" "$ref" "$region" "$threshold" 2>&1)"; rc=$?
+        else
+            out="(screencap failed)"; rc=0
+        fi
+        if [ "$rc" = 1 ]; then
+            log "press-until $btn $name: changed after $n press(es) ($out)"
+            cp "$tmp" "$ROUTE_FRAMES/$(date '+%H%M%S')-$name.png" 2>/dev/null
+            rm -f "$tmp"
+            return 0
+        fi
+    done
+    log "ROUTE FAIL press-until $btn $name: no change after $max_n presses ($out)"
+    cp "$tmp" "$ROUTE_FRAMES/$(date '+%H%M%S')-$name-stuck.png" 2>/dev/null
+    rm -f "$tmp"
+    return 1
+}
+
 run() {   # run <first line> <end line, exclusive>
     local i=$1 end=$2 w j k n
     while [ "$i" -lt "$end" ]; do
@@ -228,6 +353,10 @@ run() {   # run <first line> <end line, exclusive>
             shot)  shot "${w[1]}" ;;
             flush) log "flush ${w[1]:-10}"
                    [ -n "${ROUTE_DRY:-}" ] || flush_disk "${w[1]:-10}" ;;
+            waitfor) log "waitfor ${w[1]} (timeout ${w[2]}s)"
+                   waitfor_step "${w[1]}" "${w[2]}" "${w[3]}" "${w[4]}" || exit 1 ;;
+            press-until) log "press-until ${w[1]} ${w[2]} (max ${w[3]} presses, ${w[4]}s apart)"
+                   press_until_step "${w[1]}" "${w[2]}" "${w[3]}" "${w[4]}" "${w[5]}" "${w[6]}" || exit 1 ;;
             repeat) j=$(close_of "$i")
                     n=${w[1]}; [ "$n" = forever ] && n=-1
                     k=0
