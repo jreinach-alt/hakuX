@@ -635,3 +635,29 @@ not a blind replay -- see NOTES.md session 57 "State for a successor".
 
 `python3 docs/testing/titles/titlestate_selftest.py` (all checks passed)
 and `targets.toml` parses (tomllib) re-checked this session.
+
+## #397 -- 2026-10-01 17:30 PDT (session 58)
+
+Sonic Heroes (5345002B) is CONFIRMED on the Nova and nominated for its fps
+confirmation. Its route was a known coin flip (session 47 Thor screen: live
+play; session 48 Thor re-screen, same route: a frozen PAUSE menu) caused by
+a fixed 9-cycle START/A guess racing the title's own variable boot timing.
+Fixed by driving it live with nav.py on both disk states (fresh Nova copy
+with no Game Data, and the same disk after creating game data): both need
+exactly one START and three A presses to reach Main Menu (different
+intermediate screens, same count, default option highlighted each time), so
+one route covers both. The fix for the pause trap is simply never pressing
+START again once a level might already be live -- the rewritten route waits
+out the ~85-90s post-team-select cutscene with no input at all.
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Sonic Heroes (5345002B) | nova | `sonic-heroes.route` (rewritten) | yes (17:16-17:22 PDT, one unattended `route.sh` run, no failures) | Seaside Hill, Team Sonic; score 60->80, rings 006->008, timer continuously advancing, Sonic's pose/position changing frame to frame (running, then airborne) |
+
+Evidence: `scratch/judge/sonic-heroes-171639/` (mark frame `172133-gameplay.png`,
+later frames `172141/172150/172201-play.png`).
+
+No specific next title was named by an addendum this session. Absent one,
+the next session should check for a new addendum first, then continue down
+the still-open backlog from sessions 56/57: 13 Nova-only no-route titles,
+and the Thor's untouched titles (all blocked on the fan/CPU-stop decision).
