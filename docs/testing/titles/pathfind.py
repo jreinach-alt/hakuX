@@ -70,7 +70,7 @@ FAST = os.environ.get("PATHFIND_FAST", "claude-sonnet-5")
 STRONG = os.environ.get("PATHFIND_STRONG", "claude-opus-5-5")
 STATES = ("intro_video", "publisher_logo", "title_screen", "main_menu", "submenu", "profile_creation",
           "name_entry", "save_load_prompt", "controller_prompt", "loading", "cutscene", "pause",
-          "gameplay", "results", "game_over", "black", "unknown")
+          "gameplay", "results", "game_over", "black", "fatal_error", "unknown")
 BUTTONS = ("A", "B", "X", "Y", "START", "BACK", "UP", "DOWN", "LEFT", "RIGHT", "L1", "R1", "L3", "R3")
 STICK = {"up": (("LY", "min"),), "down": (("LY", "max"),), "left": (("LX", "min"),),
          "right": (("LX", "max"),), "upleft": (("LY", "min"), ("LX", "min")),
@@ -475,7 +475,8 @@ An empty list [] means wait and look again.
 
 States (pick exactly one): intro_video, publisher_logo, title_screen, main_menu, submenu, profile_creation,
 name_entry, save_load_prompt, controller_prompt, loading, cutscene, pause, gameplay, results, game_over,
-black, unknown.
+black, fatal_error, unknown. fatal_error is a screen no input can clear: "there is a problem with the disc /
+dirty or damaged", "an error has occurred", a crash or dashboard error screen.
 
 Say "gameplay" only when you see player-controlled play (a HUD, a playfield with the player's character or
 vehicle), not a menu, not a replay/attract demo with "Press Start", not a cutscene with letterbox bars or
@@ -899,6 +900,12 @@ class Agent:
                 self.steps[-1]["why"] += f" | probe: {why}"
                 last_png = None
                 continue
+            if dec["state"] == "fatal_error" and self.steps and self.steps[-1].get("state") == "fatal_error":
+                # twice in a row: the title cannot go on (ESPN NBA 2K5 on the Thor, 10-02: "disc is dirty or
+                # damaged" after team select; four more inputs changed nothing)
+                self.write_step(dec)
+                self.result.update(result="title-error", reason=dec.get("why", "")[:200])
+                return self.finish(last=jpg)
             self.write_step(dec)
             self.send(dec["action"])
             time.sleep(min(max(float(dec.get("wait_s") or 2), 0.5), 12))
