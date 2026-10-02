@@ -1,0 +1,1 @@
+{"verdict": "false-pass", "by": "lane.pathfind frame review 10-02 09:58", "why": "letterboxed intro cinematic (Bruce on the beach) ending in the title logo; the model read the emulator FPS overlay as a HUD and the cinematic moved on its own (control 0.249, under input 0.297). Fixed by the 1.5x-control rule, the letterbox veto and the 30-s recheck."}
