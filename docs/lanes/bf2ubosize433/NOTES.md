@@ -124,3 +124,66 @@ matches the head sha exactly), and this branch carries emulator code. Plan:
 after the results commit, queue one more identical soak at the final head as a
 replicate, and record its numbers outside the branch (the successor brief and
 the session report) so that the head does not move again.
+
+### Why attempt 1 ended here
+
+The session that wrote this status ended correctly, not short: the run was
+queued and genuinely blocked behind another lane's Nova hold, this lane has no
+way to wait inside a session without a background task dying with it
+([[lane-background-task-dies-with-session]]), and the brief itself caps device
+work at the one soak queued. Per `roles/lane.md` ("Never end a session waiting
+on your own background task"), the correct move with a result pending outside
+the session was to post the `waiting:` line (OUTBOX, 09:40 PDT) and stop, which
+is what happened. The plan in this section (one more replicate soak at the
+final head before fold) was written before anyone had looked at the first
+run's numbers, and turned out not to be needed: see section 6. `handback.sh`
+resumed this lane (attempt 2) once the run was DONE, per its own contract.
+
+## 6. Judged: PUSH (2026-10-02 15:01 PDT)
+
+`ubosz_read.py` against `1790958948-lane.bf2ubosize433-1976093` (ref
+d9729d6250): `ok ubosz windows=37 joined=37 max|dt|=1.94 s`, 18 heavy windows
+(BE >= 1800), M0 **PASS**.
+
+```
+F8 = 0.873  F16 = 0.917  R16 = 0.413  switch share = 0.360
+identical uploads Z = 0.072  median bin 3-4
+VERDICT: PUSH: most heavy-view uploads change <= 16 vec4, and a 16-vec4 push
+policy keeps the UBO bind off most of them -> successor brief
+```
+
+- **F16 = 0.917** >= the 0.50 PUSH threshold by a wide margin: 92% of
+  same-binding uploads in BF2's heavy views change 16 or fewer 16-byte chunks
+  (<= 16 vec4) of the VS+PS layout. Median bin is **3-4** chunks, well inside
+  even the 8-vec4 budget (F8 = 0.873).
+- **R16 = 0.413** <= 0.50: even after adding binding switches (switch share
+  0.36, which a push-constant fix cannot remove on its own) to the uploads a
+  16-vec4 policy would still have to rebind, under half of all uploads would
+  still force a UBO rebind. So this is **PUSH**, not PUSH-SWITCH-BOUND, though
+  the switch share is large enough that the successor brief should still cover
+  it (see below) rather than treat it as free.
+- **Z = 0.072**: only 7% of same-binding uploads are byte-identical to the
+  previous one, so "skip the redundant rebind" alone is a small win next to
+  "push what's small instead of rebinding."
+- **What actually changes** (`ubosz-top`, pooled over heavy+light): by far the
+  largest chunk counts are in `v.ltctxb`, `v.c` (the raw vertex-constant
+  array), `v.ltctxa`, `v.ltc1`, then the infinite-light direction/half-vector
+  and specular params. By register (`c<n>`), the hottest rows are **c112-c115**
+  then **c96-c105** — BF2's fixed-function path rewrites a handful of
+  lighting-context registers (not matrices) almost every draw. This matches
+  the "small, frequent" shape the prior called for 3-4 vec4 typical, not the
+  12-14 vec4 estimate in section 4's push-budget note, which was a ceiling,
+  not the typical case.
+- Prior stated before the run: PUSH ~50%. Observed: PUSH, decisively (F16
+  0.92 against a 0.50 bar).
+- This run used the ref from section 2 (d9729d6250); no commit since then
+  touches `hw/` (`git diff --stat d9729d6250..HEAD -- hw/` is empty), so the
+  run remains built from the code at HEAD for fold purposes.
+
+Run budget used: 1 of however many were available (the one queued in section
+5). No second run was needed: M0 is PASS, not BELOW RESOLUTION, and the
+verdict is clean PUSH, not MIXED.
+
+Successor brief posted to OUTBOX.md for lane.local to dispatch (forge #656).
+Per this lane's brief, the fix itself (vk/shaders.c, glsl/vsh*.c, vk/draw.c)
+is not built here.
