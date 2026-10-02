@@ -156,7 +156,7 @@ DEFAULTS = dict(
     resume_tries=3, stall_fail_s=40.0, unknown_before_model=3, unknown_fail_s=90.0,
     model_calls_max=20, find_play_s=20.0, confirm_play_s=6.0, keep_every_s=30.0, screencap_fail_s=60.0,
     hud_memory_s=20.0, escape_max=6, escape_capture_s=0.0, escape_reset_s=0.0,
-    progress_bar=0.0, progress_window_s=10.0, stall_clear_s=0.0,
+    progress_bar=0.0, progress_window_s=10.0, stall_clear_s=0.0, keep_all=0,
 )
 
 MODEL = "claude-haiku-4-5-20251001"
@@ -956,7 +956,8 @@ class Driver:
                         self.marked = True
                         action += " mark gameplay"
                         kept = self.keep(cur, "gameplay")
-                if not kept and (changed or (st == "play" and self.t() - self.last_keep >= self.cfg["keep_every_s"])):
+                if not kept and (changed or self.cfg["keep_all"]
+                                 or (st == "play" and self.t() - self.last_keep >= self.cfg["keep_every_s"])):
                     kept = self.keep(cur, st)
                     self.last_keep = self.t()
                 self.row(r, cap_s, action, kept)

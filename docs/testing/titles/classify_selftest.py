@@ -65,11 +65,12 @@ SHT1 = "rdt1"                                  # lane.routedriver2 trial 1, Nova
 SHT2 = "rdt2"                                  # lane.routedriver2 trial 2, Nova: block cleared, stuck at POWER
 SHT4 = "rdt4"                                  # lane.routedriver2 trial 4, Nova: three obstacles, a Game Over
 BUFR1 = "rdb1"                                 # lane.routedriver2 Buffy run 1, Nova: HUD missed, dark read black
+BUFR3 = "rdb3"                                 # lane.routedriver2 Buffy run 3, Nova: dark canyon, every capture kept
 LOCAL = {CVR2: "scratch/run-cv2/route-frames", CVR3: "scratch/run-cv3/route-frames",
          CVR5: "scratch/run-cv5/route-frames", SHR1: "scratch/run-sh1/route-frames",
          FZR1: "scratch/run-fz1/route-frames", SHT1: "scratch/run-t1/route-frames",
          SHT2: "scratch/run-t2/route-frames", SHT4: "scratch/run-t4/route-frames",
-         BUFR1: "scratch/run-b1/route-frames"}
+         BUFR1: "scratch/run-b1/route-frames", BUFR3: "scratch/run-b3/route-frames"}
 
 # drive.py's progress check ([drive] progress_bar): (name, profile, run, frame
 # ~10 s earlier, the frame before this one, this frame, the sim seconds
@@ -79,6 +80,12 @@ LOCAL = {CVR2: "scratch/run-cv2/route-frames", CVR3: "scratch/run-cv3/route-fram
 PROGRESS = [
     ("sonic running, 8 s on: play", "sonic-heroes", SHT1, "022719-036-play.png", "022725-039-play.png",
      "022727-040-play.png", 10.0, "play"),
+    # Buffy: the camera swaying at the sky moves 0.31-0.37 at her pixel step
+    # (play on the per-capture bars), but the scene goes nowhere in 10 s.
+    ("buffy camera swaying at the sky, 10 s on: stalled", "buffy", BUF, "030531-play.png", "030633-play.png",
+     "030654-play.png", 10.0, "stalled"),
+    ("buffy running in the dark, 10 s on: play", "buffy", BUFR3, "033708-025-stalled.png", "033718-026-stalled.png",
+     "033720-027-stalled.png", 10.0, "play"),
     ("sonic in a corner, moving, 8 s on: stalled", "sonic-heroes", SHT1, "022906-071-play.png", "022912-074-play.png",
      "022914-075-play.png", 10.0, "stalled"),
 ]
@@ -214,8 +221,10 @@ CASES = [
     # The counter-cases: the frozen sky (replay 2, 21 s apart, identical) is
     # not play; the in-engine opening draws a HUD of its own and is not play;
     # a dark canyon frame is not the Summoning load.
-    ("buffy frozen on the sky for five minutes: stalled", "buffy", BUF, "030552-play.png", "030531-play.png", "play",
-     ["main_menu", "play"], "stalled"),
+    ("buffy dead end in the dark, still: stalled", "buffy", BUFR3, "033751-036-stalled.png",
+     "033749-035-stalled.png", "play", ["main_menu", "play"], "stalled"),
+    ("buffy running in the dark canyon, 2 s apart: play", "buffy", BUFR3, "033705-024-stalled.png",
+     "033656-023-stalled.png", "play", ["main_menu", "play"], "play"),
     ("buffy in-engine opening with its own HUD: not play", "buffy", BUF, "030406-booted.png", "030345-boot40.png",
      "intro_video", [], "intro_video"),
     ("buffy dark canyon frame is not Summoning", "buffy", BUF1, "021411-play.png", "021351-play.png", "play",
@@ -225,8 +234,11 @@ CASES = [
     # dark corner with the HUD up read `black` for 300 s.
     ("buffy bright canyon is play, not a cutscene", "buffy", BUFR1, "032234-028-cutscene.png",
      "032215-025-stalled.png", "play", ["main_menu", "play"], "play"),
+    # (the two frames straddle a 9 s stall escape, so the motion between them
+    # is real; the point of the case is that luma 5.8 with the HUD up is not
+    # `black`)
     ("buffy dark corner, HUD up (luma 5.8): not black", "buffy", BUFR1, "032324-049-black.png",
-     "032323-048-stalled.png", "stalled", ["main_menu", "play"], "stalled"),
+     "032323-048-stalled.png", "stalled", ["main_menu", "play"], "play"),
     ("buffy load black (luma 0) is still black", "buffy", BUFR1, "032146-014-black.png", None, None,
      ["main_menu", "profile"], "black"),
     # Castlevania: Curse of Darkness
@@ -263,7 +275,7 @@ FOREIGN = [(SON2, "200707-play.png", "200657-play.png"), (FOR, "214502-play.png"
            (BUF1, "021351-play.png", "021330-gameplay.png")]
 TITLE_OF = {SON: "sonic-heroes", SON2: "sonic-heroes", SONT: "sonic-heroes", SONT2: "sonic-heroes",
             FOR: "forza", FZR1: "forza", SHR1: "sonic-heroes", SHT1: "sonic-heroes", SHT2: "sonic-heroes",
-            SHT4: "sonic-heroes", BUF: "buffy", BUF1: "buffy", BUFR1: "buffy", SMB: "super-monkey-ball-deluxe", CV: "castlevania-cod", CVT: "castlevania-cod",
+            SHT4: "sonic-heroes", BUF: "buffy", BUF1: "buffy", BUFR1: "buffy", BUFR3: "buffy", SMB: "super-monkey-ball-deluxe", CV: "castlevania-cod", CVT: "castlevania-cod",
             CVR2: "castlevania-cod", CVR3: "castlevania-cod", CVR5: "castlevania-cod"}
 
 # drive.py --sim runs: (name, profile, run, frames slice, args, checks). The

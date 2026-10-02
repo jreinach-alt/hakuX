@@ -237,13 +237,17 @@ def learn(frames, box, out, max_std=LEARN_STD):
     return float((alpha > 0).mean())
 
 
-def motion(a, b, mask_boxes=()):
-    """Changed fraction and mean grey diff between two open grey frames."""
+def motion(a, b, mask_boxes=(), pixel=MOTION_PIXEL):
+    """Changed fraction and mean grey diff between two open grey frames.
+    `pixel` is the grey-level step that counts as a change (profile
+    `motion_pixel`): in a dark scene a running character moves few pixels by
+    16 levels (Buffy's night canyon, lane.routedriver2 run b2: 0.07-0.14 while
+    running), so a dark title lowers it."""
     boxes = [FPS_CORNER] + list(mask_boxes)
     aa = np.asarray(masked(a, boxes).resize(MOTION_SIZE, Image.BILINEAR), dtype=np.int16)
     bb = np.asarray(masked(b, boxes).resize(MOTION_SIZE, Image.BILINEAR), dtype=np.int16)
     d = np.abs(aa - bb)
-    return float((d > MOTION_PIXEL).mean()), float(d.mean())
+    return float((d > pixel).mean()), float(d.mean())
 
 
 SCENE_SIZE = (32, 24)
@@ -343,7 +347,8 @@ def classify_frame(frame, prev, profile, seen=(), last_play_luma=None, prev_stat
     if prev is None:
         out["source"] = "no-prev" + (" hud:" + hud["name"] if hud else "")
         return out
-    changed, diff = motion(im, open_grey(prev), profile.get("motion_mask", []))
+    changed, diff = motion(im, open_grey(prev), profile.get("motion_mask", []),
+                           profile.get("motion_pixel", MOTION_PIXEL))
     out.update(changed=round(changed, 4), diff=round(diff, 2))
     static_bar = profile.get("static_bar", STATIC_BAR)
     moving_bar = profile.get("motion_bar", MOVING_BAR)

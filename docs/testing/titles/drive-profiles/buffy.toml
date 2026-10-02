@@ -38,16 +38,20 @@ genre = "onfoot"
 # ("Launch a New Game ... called BUFFY n"), Difficulty (Normal lit),
 # Summoning, the mission card (Spanish Mission), the canyon.
 order = ["boot", "logo", "intro_video", "title", "main_menu", "profile", "loading", "cutscene", "play"]
-# HUD frames by their own bars: the "frozen" sky of replay 2 is the camera
-# swaying, 0.17-0.21 changed between captures 21 s apart, where running
-# reads 0.49-0.52 (replay 1). The 32x24 scene settles it: stuck 0.00-0.06,
-# running 0.31-0.35 ([drive] progress_bar).
+# The canyon is a night scene, so motion counts a pixel that moved 8 grey
+# levels, not 16. Run b3 (lane.routedriver2, every capture kept, 2 s apart):
+# Buffy running reads 0.14-0.43 at 8 (0.04-0.28 at 16, so on the default bar
+# runs b1-b2 never confirmed play); the dark dead end 0.003-0.076. The camera
+# swaying at the sky (titleroutes replay 2, 21 s apart) also reads 0.31-0.37
+# at 8, so per-capture motion cannot tell that from running: the 10 s scene
+# does ([drive] progress_bar).
+motion_pixel = 8
 # The canyon's dark corners read luma 5.8 with the HUD in plain view (run
 # b1: 300 s of live play named `black` on the default bar of 8); the FOX
 # card's and Summoning's blacks read 0.0.
 black_luma = 3.0
-hud_motion_bar = 0.25
-hud_stall_bar = 0.22
+hud_motion_bar = 0.12
+hud_stall_bar = 0.08
 
 [input]
 title = ["START"]
@@ -74,7 +78,11 @@ stall_cycles = [
 stall_fail_s = 40.0
 escape_max = 6
 escape_reset_s = 30.0
-progress_bar = 0.15
+# 32x24 scene against ~10 s earlier: running in the dark canyon 0.077-0.185
+# (b3), the dead end 0.000, the sky sway 0.036-0.061 (replay 2), bright
+# running 0.31-0.35 (replay 1). The margin on the sway side is small (one
+# title, a few dozen frames).
+progress_bar = 0.07
 progress_window_s = 10.0
 progress_mask = [[0, 0, 480, 160], [0, 840, 1280, 120]]   # the HUD, and the TIP banner
 stall_clear_s = 10.0
