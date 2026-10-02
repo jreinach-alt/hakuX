@@ -73,8 +73,10 @@ BUFR15 = "rdb15"                               # lane.routedriver2 Buffy run 15,
 BUFR16 = "rdb16"                               # lane.routedriver2 Buffy run 16, Nova: the hat moved two rows
 BUFR17 = "rdb17"                               # lane.routedriver2 Buffy run 17, Nova: lit rows the crops missed
 HALO = "1790940485-titleroutes2-1612232"       # Halo CE, Nova: titleroutes2 replay 1, menus to the cryo bay
+HALOR2 = "rdh2"                                # lane.routedriver2 Halo run h2, Nova: a dark corner with the HUD up
+HALOR3 = "rdh3"                                # lane.routedriver2 Halo run h3, Nova: the console keyboard
 HALON = "halonav"                              # Halo CE, Nova: titleroutes2's held nav session, the calibration
-LOCAL = {HALON: "/home/justin/hakux-work/nav/halo-ce.returning-20261002T051941", CVR2: "scratch/run-cv2/route-frames", CVR3: "scratch/run-cv3/route-frames",
+LOCAL = {HALOR3: "scratch/run-h3/route-frames", HALOR2: "scratch/run-h2/route-frames", HALON: "/home/justin/hakux-work/nav/halo-ce.returning-20261002T051941", CVR2: "scratch/run-cv2/route-frames", CVR3: "scratch/run-cv3/route-frames",
          CVR5: "scratch/run-cv5/route-frames", SHR1: "scratch/run-sh1/route-frames",
          FZR1: "scratch/run-fz1/route-frames", SHT1: "scratch/run-t1/route-frames",
          SHT2: "scratch/run-t2/route-frames", SHT4: "scratch/run-t4/route-frames",
@@ -283,6 +285,13 @@ CASES = [
      "cutscene", ["title", "profile", "cutscene"], "cutscene"),
     ("halo walking the bay, shield bar up: play", "halo-ce", HALO, "045355-play.png", "045334-play.png", "play",
      ["title", "play"], "play"),
+    # Run h2: a dark corner of the bay with the shield bar up read luma 3.6,
+    # under the black bar, and the driver waited on it for five minutes. The
+    # play HUD now outranks the luma; a load black (no HUD) is still black.
+    ("halo dark corner, shield bar up: not black", "halo-ce", HALOR2, "083800-286-black.png",
+     "083758-285-black.png", "play", ["title", "play"], "stalled"),
+    ("halo load black is still black", "halo-ce", HALOR2, "083059-009-black.png", None, None,
+     ["title", "profile"], "black"),
     ("halo GAMEPLAY HELP panel (covers the HUD)", "halo-ce", HALON, "046-t40.png", "045-t39.png", "play",
      ["title", "play"], "ingame_menu"),
     # Castlevania: Curse of Darkness
@@ -320,7 +329,7 @@ FOREIGN = [(SON2, "200707-play.png", "200657-play.png"), (FOR, "214502-play.png"
 TITLE_OF = {SON: "sonic-heroes", SON2: "sonic-heroes", SONT: "sonic-heroes", SONT2: "sonic-heroes",
             FOR: "forza", FZR1: "forza", SHR1: "sonic-heroes", SHT1: "sonic-heroes", SHT2: "sonic-heroes",
             SHT4: "sonic-heroes", BUF: "buffy", BUF1: "buffy", BUFR1: "buffy", BUFR3: "buffy", BUFR12: "buffy", BUFR13: "buffy", BUFR15: "buffy", BUFR16: "buffy", BUFR17: "buffy", FZT2: "forza", SMB: "super-monkey-ball-deluxe", CV: "castlevania-cod", CVT: "castlevania-cod",
-            CVR2: "castlevania-cod", CVR3: "castlevania-cod", CVR5: "castlevania-cod", HALO: "halo-ce",
+            CVR2: "castlevania-cod", CVR3: "castlevania-cod", CVR5: "castlevania-cod", HALO: "halo-ce", HALOR2: "halo-ce", HALOR3: "halo-ce",
             HALON: "halo-ce"}
 
 # [[aim]] through Driver.aim_step: (name, profile, run, frame, the first
@@ -335,6 +344,9 @@ AIMS = [
     ("halo red square ahead: walk onto it", "halo-ce", HALON, "026-t20.png", "walk"),
     ("halo lights all green, console keys orange: no aim", "halo-ce", HALON, "040-t34.png", None),
     ("halo help panel: no aim", "halo-ce", HALON, "046-t40.png", None),
+    # run h3 aimed at this for four minutes: the keyboard is the lights'
+    # orange, one 12.8k px patch (max_px 800)
+    ("halo console keyboard by the tube: not a light", "halo-ce", HALOR3, "084355-047-play.png", None),
 ]
 
 # [[cursor]]: which menu row is lit decides the press (Buffy's main menu is
@@ -619,6 +631,61 @@ def aim_learn_checks():
     return fails
 
 
+def level_checks():
+    """classify.shift and drive.py's [level]: a look nudge whose picture
+    moved down means the stick's + is up; then the view is pinned down and
+    brought back. Counter-cases: the same frame twice reads no shift, and a
+    probe that moves nothing either way (pinned) sends no peg. One probe
+    that moves nothing and a second that does: the second one's sign."""
+    import drive
+    fails = 0
+    src = source(HALON, "026-t20.png", False)
+    with tempfile.TemporaryDirectory() as td:
+        im = classify.open_rgb(src).resize((1280, 960))
+        a = os.path.join(td, "a.png")
+        im.save(a)
+        down = Image.new("RGB", im.size)
+        down.paste(im.crop((0, 0, 1280, 900)), (0, 60))           # the picture moved down 60 px
+        b = os.path.join(td, "b.png")
+        down.save(b)
+        dx, dy = classify.shift(a, b)
+        ok = abs(dx) <= 4 and 50 <= dy <= 70
+        fails += not ok
+        print("%s  level %-47s got (%.0f, %.0f)" % ("ok  " if ok else "FAIL", "shift: picture moved down 60", dx, dy))
+        z = classify.shift(a, a)
+        ok = z == (0.0, 0.0)
+        fails += not ok
+        print("%s  level %-47s got %s" % ("ok  " if ok else "FAIL", "shift: the same frame twice is 0", z))
+        prof = dict(name="t", input={}, level=dict(axis="RY", probe_throw=0.6, probe_ms=150, peg_ms=2000, back_ms=450),
+                    aim=[dict(name="dot", hue=[20, 50])])
+        for name, caps, want_up in (("level: + moved the picture down: + is up", [b], 1),
+                                    ("level: + moved nothing, - moved it down", [a, b], -1),
+                                    ("level: pinned, nothing moves: no peg", [a, a], None)):
+            d = drive.Driver(drive.SimDevice(caps, 1.0), prof, td, os.path.join(td, "f"), 999, sim=True)
+            d.level_step(a)
+            nud = [x for x in d.dev.sent if x[1] == "nudge"]
+            pegs = [x for x in nud if x[2] in (2000, 450)]
+            if want_up is None:
+                ok = d.look_up is None and not pegs
+            else:
+                ok = (d.look_up == want_up and [(x[2], x[3][1]) for x in pegs] == [(2000, -want_up), (450, want_up)]
+                      and d.aim_st["dot"]["sign"][1] == -want_up)
+            fails += not ok
+            print("%s  level %-47s up %s, pegs %s" % ("ok  " if ok else "FAIL", name, d.look_up,
+                                                     [(x[2], x[3][1]) for x in pegs]))
+    # AXIS:value/ms holds the stick that long; a bare flick is 0.4 s
+    for name, btn, want in (("press RY:min/1500 holds 1.5 s", "RY:min/1500", 1.5), ("press RY:min holds 0.4 s", "RY:min", 0.4)):
+        with tempfile.TemporaryDirectory() as td:
+            d = drive.Driver(drive.SimDevice([], 1.0), dict(name="t", input={}), td, td, 999, sim=True)
+            c0 = d.clock_sim
+            d.press(btn, "test")
+            sent = [x[1:] for x in d.dev.sent]
+            ok = abs(d.clock_sim - c0 - want) < 1e-6 and sent == [("axis", "RY", "min"), ("axis", "RY", "mid")]
+            fails += not ok
+            print("%s  level %-47s held %.1f s, %s" % ("ok  " if ok else "FAIL", name, d.clock_sim - c0, sent))
+    return fails
+
+
 def progress_checks(prof, disk):
     """The progress check and the mode reading, through drive.Driver.classify
     on the sim clock, as a run would meet them."""
@@ -705,6 +772,7 @@ def progress_checks(prof, disk):
         fails += not ok
         print("%s  aim %-49s want %-10s got %s" % ("ok  " if ok else "FAIL", name, want, got))
     fails += aim_learn_checks()
+    fails += level_checks()
     for name, pn, run, f, want in MODES:
         with tempfile.TemporaryDirectory() as td:
             d = drive.Driver(drive.SimDevice([], 1.0), prof(pn), td, td, 999, sim=True)

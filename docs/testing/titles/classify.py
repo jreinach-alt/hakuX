@@ -353,6 +353,35 @@ def channel_fraction(path, box, channel, over, level, cap=None):
     return float(colour_mask(path, box, channel, over, level, cap).mean())
 
 
+SHIFT_SIZE = (320, 240)
+
+
+def shift(a_path, b_path, mask_boxes=()):
+    """How far the scene moved from frame a to frame b: (dx, dy) in
+    1280x960 px, by phase correlation of the grey frames (FPS corner and
+    `mask_boxes` blacked out, so a fixed HUD does not pin it at 0). Positive
+    dy: the picture moved down, i.e. the view tilted up. drive.py's [level]
+    reads the sign of a look nudge from it: Halo CE's calibration flips the
+    profile's invert setting, so up on the stick is up on one run and down
+    on the next."""
+    def arr(p):
+        im = masked(open_grey(p), [FPS_CORNER] + list(mask_boxes)).resize(SHIFT_SIZE, Image.BILINEAR)
+        a = np.asarray(im, dtype=np.float64)
+        a -= a.mean()
+        return a * np.outer(np.hanning(a.shape[0]), np.hanning(a.shape[1]))
+    fa, fb = np.fft.fft2(arr(a_path)), np.fft.fft2(arr(b_path))
+    r = fb * np.conj(fa)
+    r /= np.abs(r) + 1e-9
+    c = np.abs(np.fft.ifft2(r))
+    y, x = np.unravel_index(int(c.argmax()), c.shape)
+    h, w = c.shape
+    if y > h // 2:
+        y -= h
+    if x > w // 2:
+        x -= w
+    return float(x * REF_W / float(w)), float(y * REF_H / float(h))
+
+
 BLOB_CELL = 16                    # px of the 1280x960 frame per grouping cell
 
 
@@ -455,7 +484,11 @@ def classify_frame(frame, prev, profile, seen=(), last_play_luma=None, prev_stat
     # 5.8 with the HUD in plain view, while its true blacks read 0.0
     # (lane.routedriver2, Buffy run 1: 300 s of live play named `black`).
     black_luma = profile.get("black_luma", BLACK_LUMA)
-    if lu < black_luma or flat:
+    if (lu < black_luma or flat) and not match_crop(im, [c for c in profile.get("crop", []) if c["state"] == "play"],
+                                                    profile, frame)[0]:
+        # ...unless the play HUD is on it: Halo CE's shield bar over a dark
+        # corner of the bay reads luma 3.6, its load blacks up to 7.2
+        # (lane.routedriver2 run h2: 5 minutes of play named `black`).
         out.update(state="black" if seen - {"boot", "black"} else "boot", source="black" if lu < black_luma else "flat")
         return out
 

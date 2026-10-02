@@ -431,6 +431,8 @@ class Driver:
         self.steer_since = None          # when steering first came on (straight_s)
         self.escape_scene = None         # the scene where the last escape started
         self.aim_st = {}                 # [[aim]] name -> rate, sign, last nudge, since, off
+        self.level_done = False          # [level] ran since the last cutscene
+        self.look_up = None              # [level]'s measured sign of "up" on its axis
         self.last_hud_t = None
         self.play_since = None
         self.play_frames = []
@@ -494,8 +496,9 @@ class Driver:
             self.dev.pad("release", "START")
         elif ":" in btn:                 # AXIS:value, a stick flick (a cursor move where the d-pad is not mapped)
             ax, val = btn.split(":", 1)
+            val, _, ms = val.partition("/")  # AXIS:value/ms holds it that long (Halo's look test: 1.5 s)
             self.dev.pad("axis", ax, val)
-            self.sleep(0.4)
+            self.sleep(float(ms) / 1000.0 if ms else 0.4)
             self.dev.pad("axis", ax, rest(ax))
         else:
             self.dev.pad("press", btn)
@@ -560,7 +563,8 @@ class Driver:
                 continue
             bl = classify.blobs(frame, a["hue"], a.get("region"), float(a.get("min_sat", 0.45)),
                                 float(a.get("min_val", 0.6)), int(a.get("piece_px", 20)))
-            bl = [b for b in merge_blobs(bl, float(a.get("merge_px", 0))) if b[2] >= int(a.get("min_px", 60))]
+            bl = [b for b in merge_blobs(bl, float(a.get("merge_px", 0)))
+                  if int(a.get("min_px", 60)) <= b[2] <= int(a.get("max_px", 10 ** 9))]
             if not bl:
                 st["last"] = None
                 continue
@@ -609,6 +613,56 @@ class Driver:
                                     why="aim %s at %d,%d" % (a["name"], tx, ty)))
             return "aim %s: %s (target %d,%d)%s" % (a["name"], ", ".join(parts), tx, ty, learned)
         return None
+
+    def level_step(self, frame):
+        """[level]: on the first HUD frame after a cutscene (or the run's
+        first), find which way is up on `axis` and look a fixed amount below
+        the horizon. Up is measured, not assumed: a `probe_ms` nudge, then
+        classify.shift between the frames before and after (the picture moves
+        down when the view tilts up); a probe that moved nothing (pegged at a
+        limit) is tried the other way. Then `peg_ms` down at full throw pins
+        the view at the floor, and `back_ms` up brings it to a known pitch.
+        Halo CE, run h2 of lane.routedriver2: the tube's held look test left
+        the view pinned at the ceiling, and the walk never saw the floor's
+        red square; its calibration also flips the profile's invert setting
+        from run to run. The measured sign seeds every [[aim]]'s vertical
+        sign. Returns the action string, or None."""
+        lv = self.p.get("level")
+        if not lv or self.level_done:
+            return None
+        self.level_done = True
+        ax = lv.get("axis", "RY")
+        throw = float(lv.get("probe_throw", 0.6))
+        mask = lv.get("mask", [])
+        tmp = os.path.join(self.out, ".level.png")
+        up = None
+        before = frame
+        for s in (1, -1):
+            self.dev.nudge({ax: s * throw}, float(lv.get("probe_ms", 150)))
+            self.sleep(float(lv.get("settle_s", 0.3)))
+            ok, _ = self.dev.capture(tmp)
+            if not ok:
+                break
+            _, dy = classify.shift(before, tmp, mask)
+            if abs(dy) >= float(lv.get("min_shift", 8)):
+                up = s if dy > 0 else -s
+                break
+            shutil.copyfile(tmp, tmp + ".b.png")
+            before = tmp + ".b.png"
+        if up is None:
+            self.inputs.append(dict(t=round(self.t(), 1), state=self.state, input="", why="level: no shift either way"))
+            return "level: the probe moved nothing either way"
+        self.dev.nudge({ax: -up * 1.0}, float(lv.get("peg_ms", 2000)))
+        self.dev.nudge({ax: up * 1.0}, float(lv.get("back_ms", 450)))
+        for a in self.p.get("aim", []):    # an aim's +1 vertical sign means "stick + looks down"
+            st = self.aim_st.setdefault(a["name"], dict(rate=[float(a.get("rate_x", 0.3)), float(a.get("rate_y", 0.3))],
+                                                        sign=[1, 1], last=None, since=None, off=False, n=0))
+            st["sign"][1] = -up
+        self.look_up = up
+        self.inputs.append(dict(t=round(self.t(), 1), state=self.state, input="%s %+d is up" % (ax, up),
+                                why="level: peg down %s ms, back up %s ms" % (lv.get("peg_ms", 2000),
+                                                                             lv.get("back_ms", 450))))
+        return "level: %s %+d is up; pegged down, back up" % (ax, up)
 
     def aim_learn(self, a, st, bl):
         """Update an aim's per-axis rate (px per ms) and sign from where the
@@ -1027,6 +1081,8 @@ class Driver:
                 self.skips.append(dict(state=lad["state"], button=None, waited_s=round(t - lad["since"], 1),
                                        landed=state, presses=0))
             self.ladder = None
+        if state == "cutscene":
+            self.level_done = False      # a cutscene can leave the view anywhere: level again after it
         self.dev.logcat("state=%s t=%d" % (state, int(t)))
         if prev != "paused":
             self.resume_tries = 0
@@ -1035,8 +1091,11 @@ class Driver:
         """The policy. Returns the action string for the timeline, or raises Fail."""
         t = self.t()
         cfg = self.cfg
-        if self.p.get("aim") and (state in ("play", "stalled") or
-                                  (state == "unknown" and r.get("source", "").startswith("hud:"))):
+        hud_up = state in ("play", "stalled") or (state == "unknown" and r.get("source", "").startswith("hud:"))
+        if hud_up and self.p.get("level") and not self.level_done:
+            self.release_play()
+            return self.level_step(frame)
+        if self.p.get("aim") and hud_up:
             aimed = self.aim_step(frame)
             if aimed:
                 return aimed

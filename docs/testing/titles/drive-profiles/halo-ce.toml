@@ -37,7 +37,7 @@ profile = ["A"]          # New001 / The Pillar of Autumn / Normal / ENTER NAME's
 # A still tube frame before the shield bar reads `main_menu` (static, after
 # the title; the real main menu is the title crop): the look test and the
 # tube exit, as on the ladder.
-main_menu = ["RY:min", "RY:max", "X", "A"]
+main_menu = ["RY:min/1500", "RY:max/1500", "RX:max/800", "RX:min/800", "X", "A"]
 ingame_menu = ["START"]  # GAMEPLAY HELP closes on START only (nav session)
 paused = ["A"]           # RESUME GAME is lit
 # Walk forward and turn right a little each cycle, so the bay gets swept and
@@ -61,8 +61,12 @@ escape_reset_s = 30.0
 # moves) and gets the skip ladder: no START (it opens the pause panel over
 # Reveille), and the right stick up and down, which is the look test
 # ("Use RIGHT to look around": the survey never cleared it, it only sent RX).
-ladder = ["A", "RY:min", "RY:max", "X"]
+# Held looks, not flicks: run h1's 0.4 s flicks only tipped the view between
+# level and the feet for 100 s; the nav session cleared it with 1.5 s holds
+# up and down and 0.8 s left and right.
+ladder = ["A", "RY:min/1500", "RY:max/1500", "RX:max/800", "RX:min/800", "X"]
 skip_passes = 10
+menu_max_presses = 60
 
 [[crop]]
 name = "pause"
@@ -128,6 +132,23 @@ colour = { channel = "b", over = [60, 0], level = [120, 255] }
 ref = "hud-mask.png"
 threshold = 22.0
 
+# After the tube (and after any cutscene): measure which way is up on the
+# right stick, pin the view at the floor, come back up 450 ms. Run h2: the
+# tube's held looks left the view at the ceiling, and the walk never saw the
+# floor. The calibration flips the profile's invert setting run to run
+# ("Controls: inverted" on SELECT PROFILE after titleroutes2's session), so
+# the sign is measured each time. Masks: the shield bar, the crosshair, the
+# tips at the top left.
+[level]
+axis = "RY"
+probe_throw = 0.6
+probe_ms = 150
+settle_s = 0.3
+min_shift = 8
+peg_ms = 2000
+back_ms = 450
+mask = [[930, 95, 190, 40], [600, 440, 80, 80], [0, 150, 760, 140]]
+
 # The calibration lights: unlit orange 105-250 px each (the crosshair can cut
 # one in two, 33 px apart: merged), lit green. The console's orange keys under
 # the pillar are 23-67 px: under min_px. First in order, so on the square the
@@ -140,6 +161,7 @@ min_val = 0.6
 piece_px = 20
 merge_px = 60
 min_px = 75
+max_px = 800       # run h3: the console keyboard by the tube is the same orange, thousands of px
 region = [0, 60, 1280, 840]
 centre = [640, 480]
 done_px = 25
