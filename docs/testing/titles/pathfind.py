@@ -459,7 +459,7 @@ def load_paths(tid, name):
             sibs.append((99, d))
         elif tid and d.get("title_id", "")[:4].upper() == tid[:4].upper() and words & name_words(d.get("name", "")):
             sibs.append((len(words & name_words(d.get("name", ""))), d))
-    sibs.sort(key=lambda x: -x[0])
+    sibs.sort(key=lambda x: (-x[0], not x[1].get("complete", True)))   # complete paths first
     return own, [d for _, d in sibs]
 
 
