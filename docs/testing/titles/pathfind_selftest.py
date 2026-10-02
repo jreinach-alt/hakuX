@@ -11,6 +11,9 @@ answers canned (PATHFIND_DRY). Each case names the defect it would catch.
             confirmed.
   repeat    the same input on an unchanged screen: the 4th is overridden,
             and from the 3rd look the stronger model is asked.
+  cycle     two screens alternating, the same input on each (Midnight Club 3's
+            Yes/No dialog, 10-02): the stronger model is asked once the dialog
+            comes back, and the dialog's input is overridden by the 5th visit.
   replay    a second run of the same title with the recorded path replays
             the logo and menu steps with no model call (2 calls, not 4).
   actions   clean_action keeps valid tokens and drops the rest.
@@ -108,10 +111,19 @@ check("refused", res["result"] != "gameplay", f"a refused confirm is not gamepla
 rc, res, steps, calls = run("repeat", [("menu", 0)] * 8,
                             [{"state": "main_menu", "why": "menu", "action": ["A"], "wait_s": 1}] * 8,
                             ["--no-record", "--no-replay"])
-acts = [" ".join(s.get("action", [])) for s in steps if s.get("src") in ("haiku", "sonnet")]
+acts = [" ".join(s.get("action", [])) for s in steps if s.get("src") in ("fast", "strong")]
 check("repeat", acts[:3] == ["A", "A", "A"] and acts[3] != "A", f"4th repeat overridden: {acts[:5]}")
 models = [c["model"] for c in calls]
 check("repeat", models[2] == pathfind.STRONG, f"stronger model from the 3rd look: {models[:4]}")
+
+# cycle: dialog (menu) <-> garage (logo), "UP A" on the dialog and "A" on the garage, forever
+rc, res, steps, calls = run("cycle", [("menu", 0), ("logo", 0)] * 6,
+                            [{"state": "submenu", "why": "Yes/No dialog", "action": ["UP", "A"], "wait_s": 1},
+                             {"state": "submenu", "why": "garage", "action": ["A"], "wait_s": 1}] * 6,
+                            ["--no-record", "--no-replay"])
+dlg = [(s.get("src"), " ".join(s.get("action", []))) for s in steps if s.get("src") in ("fast", "strong")][0::2]
+check("cycle", dlg[2][0] == "strong", f"stronger model on the 3rd dialog visit: {dlg[:5]}")
+check("cycle", any(a != "UP A" for _, a in dlg[:5]), f"the dialog input is overridden by the 5th visit: {dlg[:5]}")
 
 # replay: the recorded path from `happy` replays the menu step without a call
 rc, res, steps, calls = run("replay", [("logo", 0), ("menu", 0), ("game", 0), ("game", 0), ("game", 0),

@@ -36,6 +36,7 @@ PATHFIND_DRY=1 with --sim <frames dir> touches no device (the selftest).
 """
 
 import argparse
+import base64
 import glob
 import json
 import os
@@ -62,8 +63,11 @@ DEVICES = {
 }
 PKG = os.environ.get("PKG", "com.jreinach.hakux.debug")
 ACT = PKG + "/com.rfandango.haku_x.LauncherActivity"
-FAST = os.environ.get("PATHFIND_FAST", "claude-haiku-4-5-20251001")
-STRONG = os.environ.get("PATHFIND_STRONG", "claude-sonnet-5")
+# Sonnet 5 per step, not Haiku: measured 10-02 on the same ESPN frame with the image inline, Sonnet 5
+# answered in 3.5-3.9 s (70-80 output tokens), Haiku 4.5 in 6.4-9.1 s (430-500, most of it thinking),
+# and Haiku had looped 8 times on a Yes/No dialog in Midnight Club 3. Opus 5.5 when stuck.
+FAST = os.environ.get("PATHFIND_FAST", "claude-sonnet-5")
+STRONG = os.environ.get("PATHFIND_STRONG", "claude-opus-5-5")
 STATES = ("intro_video", "publisher_logo", "title_screen", "main_menu", "submenu", "profile_creation",
           "name_entry", "save_load_prompt", "controller_prompt", "loading", "cutscene", "pause",
           "gameplay", "results", "game_over", "black", "unknown")
@@ -71,6 +75,9 @@ BUTTONS = ("A", "B", "X", "Y", "START", "BACK", "UP", "DOWN", "LEFT", "RIGHT", "
 STICK = {"up": (("LY", "min"),), "down": (("LY", "max"),), "left": (("LX", "min"),),
          "right": (("LX", "max"),), "upleft": (("LY", "min"), ("LX", "min")),
          "upright": (("LY", "min"), ("LX", "max"))}
+# The d-pad BUTTONS (544-547) do nothing in hakuX: the pad's d-pad is the hat, and a back-to-back
+# `axis HATY max` / `axis HATY mid` moves a menu ONE row (routes/midnight-club-3.returning.route).
+HAT = {"UP": ("HATY", "min"), "DOWN": ("HATY", "max"), "LEFT": ("HATX", "min"), "RIGHT": ("HATX", "max")}
 SKIP_LADDER = ("START", "A", "B", "BACK", "X", "Y", "DOWN", "UP", "RIGHT", "LEFT")
 SIG = (16, 12)                       # a frame's signature: grey, box-averaged
 SIG_MATCH = 9.0                      # mean grey-level distance under which two screens are the same
@@ -423,6 +430,10 @@ How to act:
 - Pause menus: choose Resume/Continue (A) or press START.
 - Never press BACK/B on a main menu unless you are deliberately backing out of a wrong submenu.
 - Never press the same input on an unchanged screen more than 3 times: change the input.
+- UP/DOWN/LEFT/RIGHT move a menu cursor ONE row/column per press. Before confirming, check which item is
+  REALLY highlighted (colour, arrow, box); on a Yes/No dialog the options may be side by side (LEFT/RIGHT).
+- Sports: a kickoff, tip-off, faceoff, serve or pre-snap play-call screen waits for you: pick a play / press
+  A to start the play, then the player can be moved.
 
 Inputs (the "action" list, up to 8 tokens, sent in order ~0.4 s apart):
   A B X Y START BACK UP DOWN LEFT RIGHT L1 R1 L3 R3   one press (UP/DOWN/LEFT/RIGHT are the d-pad)
@@ -437,12 +448,13 @@ black, unknown.
 
 Say "gameplay" only when you see player-controlled play (a HUD, a playfield with the player's character or
 vehicle), not a menu, not a replay/attract demo with "Press Start", not a cutscene with letterbox bars or
-subtitles. When you say gameplay, also give "probe": the input that should visibly move the player or
-camera for ~1.5 s (racing: "RT:1.5"; on foot: "STICK:up:1.5"; sports: "STICK:right:1.5").
+subtitles. When you say gameplay, also give "probe": a list of inputs whose LAST one should visibly move
+the player or camera for ~1.5 s (racing: ["RT:1.5"]; on foot: ["STICK:up:1.5"]); put any input needed to
+start the play first (a kickoff or serve: ["A", "STICK:up:1.5"]).
 
 Answer exactly:
 {"state": "<state>", "why": "<one line: what you see, where the cursor is>",
- "action": ["<token>", ...], "wait_s": <seconds to wait after the inputs, 1-10>, "probe": "<token or empty>"}"""
+ "action": ["<token>", ...], "wait_s": <seconds to wait after the inputs, 1-10>, "probe": [<tokens>] or []}"""
 
 
 def parse_json(text):
@@ -469,19 +481,33 @@ class Model:
         self.calls = 0
         self.by_model = {}
 
-    def ask(self, model, prompt, purpose):
+    def ask(self, model, prompt, purpose, images=()):
+        """One call; `images` (JPEG paths) go INLINE in a stream-json user
+        message, so the model answers in one turn with no Read tool call."""
         t0 = now()
         rec = {"t": round(t0, 3), "model": model, "purpose": purpose}
         if self.sim is not None:
             ans = self.sim.pop(0) if self.sim else {"state": "unknown", "why": "sim exhausted", "action": []}
             text, meta = json.dumps(ans), {}
         else:
-            cmd = ["claude", "-p", "--model", model, "--output-format", "json", "--tools", "Read",
-                   "--allowedTools", "Read", "--system-prompt", SYSTEM, "--no-session-persistence"]
+            cmd = ["claude", "-p", "--model", model, "--input-format", "stream-json", "--output-format",
+                   "stream-json", "--verbose", "--tools", "", "--system-prompt", SYSTEM, "--no-session-persistence"]
+            content = [{"type": "image", "source": {"type": "base64", "media_type": "image/jpeg",
+                                                     "data": base64.b64encode(open(i, "rb").read()).decode()}}
+                       for i in images]
+            msg = {"type": "user", "message": {"role": "user", "content": content + [{"type": "text", "text": prompt}]}}
             try:
-                r = subprocess.run(cmd, input=prompt, capture_output=True, text=True, timeout=240,
+                r = subprocess.run(cmd, input=json.dumps(msg) + "\n", capture_output=True, text=True, timeout=240,
                                    cwd=self.out)
-                meta = parse_json(r.stdout) or {}
+                meta = {}
+                for line in r.stdout.splitlines():
+                    if line.startswith("{") and '"result"' in line:
+                        try:
+                            d = json.loads(line)
+                        except ValueError:
+                            continue
+                        if d.get("type") == "result":
+                            meta = d
                 text = meta.get("result", "") if isinstance(meta, dict) else ""
                 if not text:
                     rec["error"] = (r.stderr or r.stdout)[-400:]
@@ -569,6 +595,12 @@ class Agent:
     # -- input
     def send(self, action):
         for tok in action:
+            if tok in HAT:
+                ax, v = HAT[tok]
+                self.dev.pad("axis", ax, v)
+                self.dev.pad("axis", ax, "mid")
+                time.sleep(0.35)
+                continue
             if tok in BUTTONS:
                 self.dev.pad("press", tok, 120)
                 time.sleep(0.35)
@@ -613,7 +645,7 @@ class Agent:
         return (f"{RULES}\n\nKnowledge from other titles (hints):\n{self.hints or '(none yet)'}\n\n{guide}"
                 f"Title: {self.name} (id {self.tid or '?'}), device {self.dev.label}. "
                 f"{self.el() / 60:.1f} min since cold boot.\n\nLast steps:\n{self.history()}\n\n{extra}"
-                f"Now Read the screenshot {jpg} and answer with the JSON object only.")
+                "The attached image is the screen NOW. Answer with the JSON object only.")
 
     # -- repeats: the same input on the same unchanged screen
     def tried_here(self, sig):
@@ -628,6 +660,14 @@ class Agent:
             elif s.get("action"):
                 break
         return tried
+
+    def seen_here(self, sig, k=12):
+        """Inputs sent on screens matching `sig` in the last k steps, whether or
+        not the screen changed: a 2-screen cycle (Midnight Club 3, 10-02: Yes/No
+        dialog -> UP A -> garage menu -> A -> the same dialog, 8 times) changes the
+        screen every step and is invisible to tried_here."""
+        return [" ".join(s["action"]) for s in self.steps[-k:]
+                if s.get("action") and s.get("sig") is not None and sig_dist(s["sig"], sig) <= SIG_MATCH]
 
     def replay(self, sig):
         """A recorded step of this title's own path whose screen matches, at or
@@ -645,7 +685,17 @@ class Agent:
     # -- gameplay confirmation (brief rule 5)
     def confirm(self, probe, why):
         self.probes += 1
-        probe = (clean_action([probe]) or ["STICK:up:1.5"])[0]
+        toks = clean_action(probe if isinstance(probe, list) else [probe]) or ["STICK:up:1.5"]
+        pre, probe = toks[:-1], toks[-1]
+        if probe in BUTTONS and probe not in HAT:
+            probe = f"HOLD:{probe}:1.5"
+        elif probe in HAT:
+            probe = {"UP": "STICK:up:1.5", "DOWN": "STICK:down:1.5", "LEFT": "STICK:left:1.5",
+                     "RIGHT": "STICK:right:1.5"}[probe]
+        if pre:
+            # inputs that START play first (a kickoff's A, a serve): then the control pair
+            self.send(pre)
+            time.sleep(1.5)
         self.n += 1
         a_png, a_jpg = self.frame("probe-a")
         time.sleep(1.0)
@@ -677,20 +727,20 @@ class Agent:
         if not c_png:
             return False, "screencap failed"
         ctrl, moved = changed(a_png, b_png), changed(b_png, c_png)
-        rec = {"state": "probe", "action": [probe], "why": f"control {ctrl:.3f}, under input {moved:.3f}",
+        rec = {"state": "probe", "action": pre + [probe], "why": f"control {ctrl:.3f}, under input {moved:.3f}",
                "src": "probe", "changed": moved}
         if moved < PROBE_MOVED:
             rec["verdict"] = "no visible change under the input"
             self.write_step(rec)
             return False, f"the screen did not change while {probe} was held (changed {moved:.3f})"
-        q = (f"Three screenshots of {self.name}, an Xbox game. A: {a_jpg}  B: {b_jpg} (1 s after A, no input)  "
-             f"C: {c_jpg} (taken while holding {probe}, ~1 s after B). Read all three. The previous step "
+        q = (f"Three screenshots of {self.name}, an Xbox game, attached in order: A, then B (1 s after A, no "
+             f"input), then C (taken while holding {probe}, ~1 s after B). The previous step "
              f"judged this gameplay: \"{why}\".\nIs this real player-controlled gameplay (not a menu, not a "
              "cutscene, not an attract/demo mode, not a replay), AND does C show the playfield responding to "
              f"the input {probe} (the player/vehicle/camera moved accordingly), beyond whatever changed on its "
              "own between A and B? A menu cursor moving is NOT a response. Answer JSON only: "
              '{"gameplay": true|false, "responded": true|false, "why": "<one line>"}')
-        ans = self.model.ask(STRONG, q, "confirm") or {}
+        ans = self.model.ask(STRONG, q, "confirm", [a_jpg, b_jpg, c_jpg]) or {}
         ok = bool(ans.get("gameplay")) and bool(ans.get("responded"))
         rec["verdict"] = ("CONFIRMED: " if ok else "refused: ") + str(ans.get("why", "no answer"))[:200]
         self.write_step(rec)
@@ -751,7 +801,7 @@ class Agent:
             dec["frame"] = os.path.relpath(jpg, self.out)
             if dec["state"] == "gameplay" and dec.get("src") != "black":
                 self.write_step(dec)
-                ok, why = self.confirm(dec.get("probe") or "STICK:up:1.5", dec.get("why", ""))
+                ok, why = self.confirm(dec.get("probe") or ["STICK:up:1.5"], dec.get("why", ""))
                 if ok:
                     return self.success(jpg)
                 if self.probes >= 4:
@@ -788,6 +838,7 @@ class Agent:
                         wait_s=4, src="static")
         # 3. a recorded step of this title's own path matches the screen
         tried = self.tried_here(sig)
+        seen = self.seen_here(sig)
         rp = self.replay(sig) if not tried else None
         if rp:
             j, s = rp
@@ -795,21 +846,26 @@ class Agent:
             return dict(base, state=s["state"], why=f"replay step {j}: {s['why']}", action=list(s["action"]),
                         wait_s=s.get("wait_s", 2), src="replay")
         # 4. the model; the stronger one when stuck or unsure
-        stuck = len(tried) >= 2
+        cycle = max((seen.count(a) for a in seen), default=0) >= 2
+        stuck = len(tried) >= 2 or cycle
         extra = ""
         if tried:
             extra = (f"On THIS unchanged screen these inputs did nothing: {tried}. Choose a different input.\n\n")
+        elif cycle:
+            extra = (f"You have been on this same screen before in the last 12 steps and sent: {seen}; it came "
+                     "back here, so that did not work. Do something different: a different option or direction, "
+                     "check which item is really highlighted, or back out and take another menu path.\n\n")
         model = STRONG if stuck else FAST
-        ans = self.model.ask(model, self.prompt(jpg, extra), "step")
+        ans = self.model.ask(model, self.prompt(jpg, extra), "step", [jpg])
         if ans and ans.get("state") == "unknown" and model == FAST:
             model = STRONG
-            ans = self.model.ask(model, self.prompt(jpg, extra), "step-escalate")
+            ans = self.model.ask(model, self.prompt(jpg, extra), "step-escalate", [jpg])
         if not ans:
             return dict(base, state="unknown", why="model gave no answer", action=[], wait_s=2, src="none")
         state = ans.get("state") if ans.get("state") in STATES else "unknown"
         action = clean_action(ans.get("action"))
         # never the same input a 4th time on the same unchanged screen
-        if action and tried.count(" ".join(action)) >= 3:
+        if action and (tried.count(" ".join(action)) >= 3 or seen.count(" ".join(action)) >= 4):
             fresh = [b for b in SKIP_LADDER if b not in tried]
             action = [fresh[0]] if fresh else ["START"]
             ans["why"] = str(ans.get("why", "")) + f" [override: repeated input on unchanged screen -> {action[0]}]"
@@ -818,7 +874,7 @@ class Agent:
         except (TypeError, ValueError):
             wait_s = 2.0
         return dict(base, state=state, why=str(ans.get("why", ""))[:240], action=action, wait_s=wait_s,
-                    probe=str(ans.get("probe") or ""), src=("haiku" if model == FAST else "sonnet"))
+                    probe=ans.get("probe") or "", src=("fast" if model == FAST else "strong"))
 
     def success(self, jpg):
         mins = self.el() / 60
