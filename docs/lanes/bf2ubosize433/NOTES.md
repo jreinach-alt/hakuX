@@ -91,4 +91,30 @@ run: one Nova soak of the counter build, route bf2mc, 420 s, frames every
 
 Prior: PUSH ~50%, SWITCH-BOUND ~20%, LARGE ~15%, MIXED ~15%.
 
-(Results: section 5, after the run.)
+### The real push budget (reading, for whoever builds the fix)
+
+- The pipeline layouts already push a geometry-stage vec4 at offset 0
+  (`GEOM_PUSH_CONSTANT_SIZE`, 16 B). Inline attribute values go in push
+  constants only when `maxPushConstantsSize >= 16 + 16 x 16 = 272`
+  (`pgraph_vk_init_shaders`). Turnip reports 256, so on the Nova they do NOT:
+  `inlineValue` travels in the UBO, and its changes count in `lay`.
+- So the free push space on the Nova is 256 - 16 = **240 B, 15 vec4**, and the
+  fix also has to tell the shader which register each pushed vec4 replaces (an
+  index list, or a fixed per-title mapping). In practice that is ~12-14 vec4 of
+  data. The prediction's 8 and 16 bracket it, and `pk8`/`pk16` read on each
+  side.
+
+## 5. Status: waiting on the device (2026-10-02 09:40 PDT)
+
+Queued `1790958948-lane.bf2ubosize433-1976093` (ref d9729d6250, normal
+priority, because #433's labels are unreadable while gh is down). The Nova is
+under lane.pathfind's direct-drive hold since 16:24Z, so the dispatcher will
+not claim it until that hold is released. Nothing else is queued. When the run
+is DONE: `ubosz_read.py <result dir>`, judge, then the successor brief or the
+batching lever (section 4).
+
+The fold also needs a finished run built from the FINAL head (offline_fold.py
+matches the head sha exactly), and this branch carries emulator code. Plan:
+after the results commit, queue one more identical soak at the final head as a
+replicate, and record its numbers outside the branch (the successor brief and
+the session report) so that the head does not move again.
