@@ -31,6 +31,8 @@ the pause panel).
 
 Local checks: `bash dispatch/bin/titles/route.sh --check` on both routes (route ok, exit 0); `targets.toml` parses with
 tomllib (82 titles); `python3 docs/testing/titles/titlestate_selftest.py` (all checks passed).
+`bash docs/testing/preflight.sh --allow-tracker` on the merged head: "preflight passed" (territory, board files, nv2a
+index ok; the coverage gate DID NOT RUN because gh is suspended, and it fails open, so that part is unchecked).
 
 Also queued (pass-1 surveys, unreviewed; named for a successor in NOTES.md): Halo: Combat Evolved
 `1790933948-titleroutes-171581`, Conker: Live & Reloaded `1790933948-titleroutes-171701`.
