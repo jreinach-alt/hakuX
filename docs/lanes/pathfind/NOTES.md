@@ -12,8 +12,13 @@ DOAX, DOA3, JSRF, ...). pathfind never reads the retired `.route` files some of 
 |---|---|---|---|---|---|---|---|---|---|---|
 | star-wars-iii | Star Wars Episode III Revenge of the Sith | nova | **gameplay** | 3.52 | 17 (haiku 16/sonnet 1) | 18 | 0 | $0.50 |  | runs/star-wars-iii/gameplay_frame.jpg |
 | espn-nfl-2k5.try1 | ESPN NFL 2K5 | thor | heat-stop | 6.2 | 20 (haiku 18/sonnet 2) | 21 | 0 | $0.65 | Thor xo 71.033 C | runs/espn-nfl-2k5.try1/strip.jpg |
-| espn-nfl-2k5 | ESPN NFL 2K5 | thor | heat-stop | 3.6 | 20 (opus 1/sonnet 19) | 20 | 0 | $0.99 | Thor xo 70.757 C | runs/espn-nfl-2k5/strip.jpg |
+| espn-nfl-2k5.try2 | ESPN NFL 2K5 | thor | heat-stop | 3.6 | 20 (opus 1/sonnet 19) | 20 | 0 | $0.99 | Thor xo 70.757 C | runs/espn-nfl-2k5.try2/strip.jpg |
 | midnight-club-3 | Midnight Club 3: DUB Edition | nova | **gameplay** | 6.23 | 33 (opus 3/sonnet 30) | 34 | 0 | $1.76 |  | runs/midnight-club-3/gameplay_frame.jpg |
+| bruce-lee.falsepass | Bruce Lee: Quest of the Dragon | nova | gameplay -> REVIEW: false-pass | 0.93 | 4 (opus 1/sonnet 3) | 4 | 0 | $0.24 |  | runs/bruce-lee.falsepass/strip.jpg |
+| black-stone | Black Stone Magic Steel | nova | **gameplay** | 2.41 | 12 (opus 3/sonnet 9) | 12 | 0 | $0.73 |  | runs/black-stone/gameplay_frame.jpg |
+| panzer-dragoon | Panzer Dragoon Orta | nova | **gameplay** | 4.48 | 21 (opus 2/sonnet 19) | 25 | 0 | $1.08 | four probes refused | runs/panzer-dragoon/gameplay_frame.jpg |
+| espn-nfl-2k5.try3 | ESPN NFL 2K5 | thor | heat-stop | 4.4 | 18 (opus 1/sonnet 17) | 18 | 0 | $0.91 | Thor xo 70.292 C | runs/espn-nfl-2k5.try3/strip.jpg |
+| amped-2 | Amped 2 | nova | **gameplay** | 9.02 | 34 (opus 4/sonnet 30) | 48 | 0 | $1.83 | four probes refused | runs/amped-2/gameplay_frame.jpg |
 
 Cross-title (Thor, sibling after a recorded path):
 

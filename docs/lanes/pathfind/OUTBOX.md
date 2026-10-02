@@ -19,3 +19,23 @@ Changes from what was learned: the d-pad is the hat axis (the d-pad buttons do n
 images and Sonnet 5 per step (3.5-3.9 s vs Haiku's 6-9 s, measured), Opus 5.5 when stuck, a 2-screen cycle
 detector. ESPN NFL 2K5 (Thor) reached the kickoff twice in 3.3 min but the Thor heat-stopped at 70 C both
 times (52 -> 70 C in 3.6 min of menus); retrying from a cold start.
+
+## #433 -- 2026-10-02 10:12 PDT
+
+[lane.pathfind] Lot scoreboard: **5 confirmed of 6 run** (Nova, unattended, cold):
+
+| title | min | model calls | gameplay frame |
+|---|---|---|---|
+| Star Wars Episode III | 3.5 | 17 | runs/star-wars-iii/gameplay_frame.jpg |
+| Midnight Club 3 | 6.2 | 33 | runs/midnight-club-3/gameplay_frame.jpg |
+| Black Stone: Magic & Steel | 2.4 | 12 | runs/black-stone/gameplay_frame.jpg |
+| Panzer Dragoon Orta | 4.5 | 21 | runs/panzer-dragoon/gameplay_frame.jpg |
+| Amped 2 | 9.0 | 34 | runs/amped-2/gameplay_frame.jpg |
+
+(paths under docs/lanes/pathfind/). **One false pass, caught in my frame review:** Bruce Lee "reached
+gameplay" in 0.9 min on its letterboxed intro cinematic (the model took the emulator's FPS overlay for a
+HUD, and the cinematic's hero moves by himself). Fixed with a letterbox veto, a 30-s recheck that retracts a
+claim when the frame 30 s later is no longer play, and a left/right steering test for scenes that move by
+themselves. Bruce Lee will be rerun. Running now: Counter-Strike, Top Spin, Ninja Gaiden Black, Spikeout
+(Nova); ESPN NBA 2K5 (Thor) as the cross-title baseline. ESPN NFL 2K5 reached the kick return but the Thor
+heat-stops every attempt at ~4 min (football needs play-call menus before any live play).
