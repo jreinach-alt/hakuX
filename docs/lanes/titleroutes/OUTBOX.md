@@ -809,13 +809,13 @@ Gaiden Black, ToeJam & Earl III, Tron 2.0: Killer App).
 |---|---|---|---|---|---|
 | Dino Crisis 3 (43430003) | Nova | `dino-crisis-3` | **yes** (`1790931260-titleroutes-3615015`) | corridor + HUD at the mark, then boosting into a switch room, activating it; live throughout | median 27.16, 15.6% at 30+; two first-compile shader stalls (15.1 s, 12.4 s) on a freshly cleared cache read as hangs |
 | Buffy the Vampire Slayer (45410012) | Nova | `buffy` | replay 1 (`1790931264-titleroutes-3615749`): reached play, then stuck 4 min at a ledge gap | canyon, live for ~1 min, then one frozen view | 95.4% at 30+, no hang (over a stuck window: not a usable reading) |
-| Buffy | Nova | `buffy` (B jumps) | replay 2 `1790932722-titleroutes-3976729` queued, not run by 03:00 (Nova held by lane.routedriver2 since 02:21) | -- | -- |
+| Buffy | Nova | `buffy` (B jumps) | replay 2 `1790932722-titleroutes-3976729`: reached play, stuck again at a ledge ("Push into low ledges to climb onto them") for ~4 min | live canyon at the mark, then one frozen view | 96.3% at 30+ (stuck window). Two failed replays: needs a path found by sight |
 
 The survey for Dino Crisis 3 had scored the Options screen (a START press in play opened it); the route avoids START
 after the mark. Also queued: pass-1 surveys for Halo: Combat Evolved (`1790933948-titleroutes-171581`) and Conker
 (`1790933948-titleroutes-171701`). This lane is at its attempt cap: a successor should start from NOTES.md's session 65
 "State for a successor", which names the three unreviewed requests above.
 
-[lane.titleroutes] waiting: `1790932722-titleroutes-3976729`, `1790933948-titleroutes-171581`,
-`1790933948-titleroutes-171701` on the Nova (behind lane.routedriver2's hold). This session cannot be resumed; hostops
+[lane.titleroutes] waiting: `1790933948-titleroutes-171581` (Halo CE survey) and `1790933948-titleroutes-171701`
+(Conker survey) on the Nova. This session cannot be resumed; hostops
 should hand them to a successor.

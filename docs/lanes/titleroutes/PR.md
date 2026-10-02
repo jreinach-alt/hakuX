@@ -1,6 +1,6 @@
-# titleroutes: sessions 64-65 -- Dino Crisis 3 route confirmed by replay; Buffy route written, replay 2 pending (#397)
+# titleroutes: sessions 64-65 -- Dino Crisis 3 route confirmed by replay; Buffy reaches play but sticks at a ledge in 2 replays (#397)
 
-State: draft
+State: ready
 
 Lane: titleroutes          Issue: #397 (per-title gameplay fps; 0.5 tracking #433)
 Base: master @ 980ac19321
@@ -22,7 +22,7 @@ known path into play, and a route converts a survey into something the benchmark
 |---|---|---|---|---|---|
 | Dino Crisis 3 (43430003) | `dino-crisis-3` | `1790931260-titleroutes-3615015` | **yes, confirmed** | mark `020712-gameplay.png` = corridor + HUD; later frames boost into the next room, answer "Activate switch?", switch turns green; no menu | median 27.16, 15.6% at 30+, two first-compile shader stalls 15.1 s / 12.4 s (cache cleared by new apk) -> hang=true; not nominated |
 | Buffy (45410012) | `buffy` | replay 1 `1790931264-titleroutes-3615749` | reached play, then stuck | mark `021330-gameplay.png` = canyon, live; moves for ~1 min, then 8 identical frames (sky/tree) for 4 min under the tip "Run and press B to jump between ledges" | 95.4% at 30+, no hang, worst hitch 222 ms -- but over a stuck window |
-| Buffy | `buffy` (B jumps added, ref 68bd2e6df6) | replay 2 `1790932722-titleroutes-3976729` | pending | -- | -- |
+| Buffy | `buffy` (B jumps added, ref 68bd2e6df6) | replay 2 `1790932722-titleroutes-3976729` | reached play, stuck again | mark `030510-gameplay.png` live; from `030613` 10 identical frames (sky, lamp post) under "Push into low ledges to climb onto them" | 96.3% at 30+, no hang -- over a stuck window. Two failed replays: Buffy stopped, stays DRAFT; needs a path found by sight (nav.py / routedriver) |
 
 Both routes are open-loop by necessity: `waitfor` reference crops do not reach a dispatched run (request.json embeds the
 route text only; ADDENDUM 13's Castlevania run died on a missing crop). They are built so a stray press lands harmlessly
@@ -31,6 +31,9 @@ the pause panel).
 
 Local checks: `bash dispatch/bin/titles/route.sh --check` on both routes (route ok, exit 0); `targets.toml` parses with
 tomllib (82 titles); `python3 docs/testing/titles/titlestate_selftest.py` (all checks passed).
+
+Also queued (pass-1 surveys, unreviewed; named for a successor in NOTES.md): Halo: Combat Evolved
+`1790933948-titleroutes-171581`, Conker: Live & Reloaded `1790933948-titleroutes-171701`.
 
 Release note (none): route data and notes only, no emulator code.
 

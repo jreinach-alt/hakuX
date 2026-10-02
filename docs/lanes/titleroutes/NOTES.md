@@ -5042,6 +5042,14 @@ read back from the queued .req files as `nova`):
 Halo: Combat Evolved `1790933948-titleroutes-171581`, Conker: Live & Reloaded `1790933948-titleroutes-171701`.
 `dispatch/pilots/titleroutes.ok` records all of this.
 
+- **Buffy, replay 2 -- STUCK again, earlier.** `1790932722-titleroutes-3976729` (ran 03:03-03:09 PDT once the Nova hold
+  lifted; no `ROUTE FAIL`; save named "Buffy 3"): mark `030510-gameplay.png` live canyon; `030531`/`030552` moving;
+  then `030613..030859`, 10 frames over ~4 min, one view (sky, lamp post, rock face) under the tip "Push into low ledges
+  to climb onto them". Scorer: 96.3% at 30+, no hang, worst hitch 228 ms, static_frac 0.33 -- over a stuck window.
+  **Two failed replays: stopped on Buffy.** What blocks it: the canyon needs ledge climbing along a path no blind
+  stick/jump loop finds; it needs a path found by looking at the screen (a held nav.py session, or lane.routedriver's
+  drive.py). The fps reading (~96% at 30+ on a static outdoor view) suggests it is a strong candidate once it moves.
+
 ### Do not repeat (session 65)
 
 - A survey's scored window says nothing about whether the title reached play: Dino Crisis 3's survey read
@@ -5055,13 +5063,9 @@ Halo: Combat Evolved `1790933948-titleroutes-171581`, Conker: Live & Reloaded `1
 
 ### State for a successor (this was attempt 4 of 4; the lane cannot be resumed again)
 
-**Queued, NOT yet reviewed** (Nova, read each result's route-frames before anything else):
-1. `1790932722-titleroutes-3976729` -- Buffy replay 2 (`buffy.route` @ `68bd2e6df6`). Pass = the mark frame is the live
-   canyon AND the last frames differ from each other (she keeps moving: new ledges, not the sky/tree view). If it
-   passes and the scorer reads >= 90% at 30+ with no hang: remove DRAFT in targets.toml (45410012) and append to
-   `host-tools/nova-nominations.tsv`: `Buffy the Vampire Slayer (USA).xiso.iso<TAB>buffy<TAB>600<TAB><reason>`.
-   Launch to mark is ~125 s (replay 1: boot ~021205, mark 021330). If it is still stuck, try a held nav.py session to
-   find the canyon's actual path rather than a third blind loop.
+**Queued, NOT yet reviewed** (Nova; items 2-3 are unreviewed, read each result's route-frames before anything else):
+1. (Reviewed in-session: Buffy replay 2 `1790932722-titleroutes-3976729` was stuck at a ledge; Buffy is BLOCKED on a
+   path found by sight -- see above. Launch to mark ~125 s; disk state does not matter.)
 2. `1790933948-titleroutes-171581` -- Halo: Combat Evolved survey (4D530004).
 3. `1790933948-titleroutes-171701` -- Conker: Live & Reloaded survey (4D530051).
 
