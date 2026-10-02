@@ -1,0 +1,30 @@
+{
+  "registered_utc": "2026-10-02T23:20:00Z",
+  "who": "lane.bf2push656",
+  "issue": "656",
+  "title": "45410062-Battlefield_2_Modern_Combat.xiso.iso",
+  "device": "nova",
+  "seconds": 420,
+  "route": "bf2mc",
+  "frames_every": 20,
+  "perflog": true,
+  "env": ["PERF_REGIMEN=default"],
+  "runs_per_arm": 1,
+  "a_ref": "7e1b471ef1",
+  "b_ref": "2d0d03edb6",
+  "queue_order": "A1 then B1, each `request.sh --who lane.bf2push656 --title 45410062-Battlefield_2_Modern_Combat.xiso.iso --route bf2mc --seconds 420 --frames-every 20 --perflog --device nova --hard-pin --env PERF_REGIMEN=default --ref <a_ref|b_ref> --issue 656 --expect docs/testing/predictions/bf2push656-bf2-soak.json`. Same route, seconds, frames, perflog and regimen as bf2stall433's A1/B1 and bf2ubosize433's run. One run per arm is the pilot: bf2stall433's single pair separated a 0.80 bar cleanly (B/A 1.004, >= 8 heavy rows a side). A second pair only if P1 lands within 0.05 of a leg boundary.",
+  "judge": "python3 docs/lanes/bf2stall433/armread.py --a <A1> --b <B1> (heavy-view GPU ms median, light-view GPU ms, rows); python3 docs/lanes/bf2push656/push656_read.py --a <A1> --b <B1> (P0 line, binds per draw, rebind rate, upload reasons).",
+  "prediction": "#656 lane.bf2push656, commit 2d0d03edb6 on master 7e1b471ef1. BF2's heavy views (~2,150 serialized draws, 35-40 ms GPU, ~12-14 us a draw: bf2stall433) upload the whole VS+PS uniform block to a new dynamic offset and rebind the UBO set on every draw; on Turnip each such bind is a new dynamic descriptor set plus SP_UPDATE_CNTL bindless invalidation. bf2ubosize433 measured that 92% of same-binding uploads change <= 16 vec4 (median 3-4) and that a 16-vec4 push policy would rebind 0.41 of uploads. B keeps the UBO bound at its last upload while every row that differs from it is an element of an overlaid vertex array and there are <= 12 of them, pushes those rows (CP_LOAD_STATE6 direct), and skips a UBO bind that repeats the last one in the command buffer. Prior, stated before any run: the per-draw rebind is most of the serialized cost and B/A heavy GPU <= 0.85 ~45%; partial (0.85-0.95) ~20%; no effect with the mechanism engaged (U refuted) ~35%. The overlay adds a select loop per overlaid read in the vertex shader; if it shows, it shows in light views too.",
+  "legs": {
+    "M0 (instrument)": "Both arms reach mark gameplay with >= 8 heavy rows (BE >= 1800) in armread.py; else BELOW RESOLUTION, and the pair is re-run once.",
+    "P0 (premise)": "B's logcat has `[push656] ... uniform overlay on` and ubopush[...] lines. `off` (maxPushConstantsSize below 256, inline attributes in push constants, or a GPL mode) makes the arm INERT BY PREMISE, not a refutation; the line names which.",
+    "M1 (mechanism engaged)": "push656_read.py over heavy windows: B rebind = binds / (up + push) <= 0.45 AND binds per draw B/A <= 0.60. FAIL: the overlay did not take the binds off the draws (the upload reasons say why), and P1 is not read as a test of the rebind hypothesis.",
+    "P1 (the win)": "With M1 PASS: armread.py heavy-view GPU ms median B/A <= 0.85: PASS, the per-draw rebind was the serialized cost. 0.85 < B/A <= 0.95: PARTIAL, it was part of it. B/A > 0.95: REFUTED, the rebind is not what serializes BF2's draws (next suspects in NOTES).",
+    "R1 (no vertex-stage regression)": "Light-view GPU ms (BE < 1200) median B <= A x 1.15 + 1.0 ms (the view-to-view spread is ~5 ms, so this only catches a gross ALU cost of the overlay reads).",
+    "C0 (stability)": "Neither arm crashes or hangs; B has no tombstone and no VK_ERROR in logcat."
+  },
+  "falsifier": "P1 and M1 are read from different instruments: GPU ms from the GPU timestamps armread.py reads, the bind counts from the draw thread's counters. A B arm whose binds did not drop (M1 FAIL) cannot pass or refute P1, so a broken overlay cannot read as a refutation. A B/A <= 0.85 with M1 FAIL would be a win from something else and is reported as unexplained, not as this change's.",
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. Read by armread.py and push656_read.py."
+}
