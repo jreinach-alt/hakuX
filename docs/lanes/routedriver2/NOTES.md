@@ -87,7 +87,7 @@ The next obstacles are the pink block by the pillar (~2:27) and the falls
 into the sea after the FLY sign (~2:04). The `--find` route is unchanged
 and still ends before the block.
 
-### 2. Forza: a steering policy for a scored window (built, not yet driven)
+### 2. Forza: a steering policy for a scored window: TRIED, NOT SOLVED (steering off)
 
 What the frames give (lane.routedriver's Thor run rdfz1, 040-050): the
 Arcade assists draw the suggested line as **green chevrons on the asphalt**.
@@ -100,92 +100,177 @@ segments anywhere in that run. The grey-road centroid was tried as a second
 signal and is noise: sky and barriers are grey too (road cx 460-650 with no
 relation to the bend).
 
-Built (drive.py `[steer]`, opt-in; Forza's profile has it):
+Built (drive.py `[steer]`, opt-in):
 - A steering thread runs while the race HUD is up. It captures as fast as
   screencap allows, independent of the classifier's cadence, and sends LX
   plus the throttle in ONE `adb shell` sendevent call (`Device.axes`), with
-  raw ranges from pad.sh's own cache. Both handhelds read ABS_X ±32767 and
-  ABS_GAS/BRAKE 0..32767.
+  raw ranges from pad.sh's own cache (both handhelds: ABS_X ±32767,
+  ABS_GAS/BRAKE 0..32767).
 - LX = (line cx − 640) / 300, clamped. Throttle 0.7, eased by 40% at full
-  lock. Below 40 line px the line is lost: hold the last steer 1.5 s at
-  0.3 throttle, then centre at 0.3.
-- It owns LX/RT/LT while on; play_hold's RT is dropped then. It stops on
-  any non-play state (pause, menu) and releases to 0. Every tick goes to
-  `<out>/steer.tsv`.
-- Selftest on the rdfz1 fixtures: the bend reads full right (LX 1.0), the
-  straight 0.05, line lost 1 s after the bend holds right, and at 3 s it
-  centres.
+  lock. Under 40 line px the line is lost: hold the last steer 1.5 s at 0.3
+  throttle, then centre at 0.3. `straight_s`: the wheel stays straight for
+  the first N s after steering starts.
+- The thread is paused while a stall escape plays, and every tick goes to
+  `<out>/steer.tsv`. `[steer] enabled = false` keeps the table and its
+  selftest but does not steer.
+- Selftest on the rdfz1 fixtures: the bend reads full right (LX 1.0) and
+  the straight 0.05. With the line lost, it holds right 1 s after the bend
+  and centres at 3 s. 1 s after steering comes on it reads straight.
+
+**Device results (Nova, hold `routedriver2:s2`, 2026-10-02 03:49-04:02 PDT):**
+
+| run | profile | result | frames / steer.tsv |
+|---|---|---|---|
+| f1 | steering on | ROUTE FAIL stalled, 131 s | The loop ran at **~1.1 Hz** (a Nova screencap takes ~0.9 s). From the standing start it steered toward the line (110 px right, LX +0.37) and clipped the car alongside. Then the line swung to x 417 and 272, it went full left into the pit wall, and sat at 0 MPH with the line lost (`no entry` sign). `forza/f1-*` |
+| f2 | + straight_s 5, a reverse-with-lock stall escape | window-done, 240 s | The car was sideways at the grandstand wall from ~20 s of race clock, **0 MPH for the rest of the window**. Four reverse escapes did not free it; line lost on 188 of 198 ticks. The classifier called some of those captures `play`: the animated crowd changes 0.054-0.097, over Forza's default 0.05 bar. `forza/f2-*` |
+| f3 | steering **off**; HUD bars 0.12/0.10 | **reached-play**: title 10.6 s, play 54.0 s | The `--find` route still works, but the frame review is weak. In the 20 s stretch the car scrapes along the pit wall at 0-22 MPH, three of its ten captures at 0 MPH while it pivots. The race clock reads 29.8 s at the stretch's start. RT alone does not drive Forza's Nova grid start cleanly: the Thor run made 73 MPH. `forza/f3-find-stretch.jpg` |
+
+What it means for a scored Forza window: **not ready.**
+- At ~1 Hz the loop is too slow to follow the line, and it makes things
+  worse from a grid start.
+- What would change the probability is a faster signal. Options: a cropped
+  or raw capture, an in-process signal, or reading the minimap's car
+  position, which needs no line at all. A slower car alone would not.
+  Priced by impact, a 3-5x faster capture is the precondition for any
+  steering law. Until then `enabled = false`.
+
+Kept from this item:
+- The HUD bars (motion 0.12 / stall 0.10), so a parked car beside an
+  animated crowd is `stalled`, not `play`. Fixture rdf2, counter-case to
+  rdfz1's live race.
+- The trigger-release fix, below.
+- The 10 s progress check does NOT separate Forza: 0.154 on a live race
+  10 s apart against 0.155 on the parked car over 41 s, so it is off for
+  Forza.
 
 Found on the way and fixed: every axis release in drive.py sent pad.sh
 `mid`. On a 0..32767 trigger that is a HALF press, so Forza's RT was
 half-pressed whenever the driver left play (menus, pause). Triggers now rest
 at `min` (selftest: release sends RT min, LX mid).
 
-**Not yet shown on a device:** whether a 1-3 Hz loop clears the first two
-turns. That is the next held run (Forza is on the Nova per onhand.py).
-
-### 3. Rolling `drive` out: Buffy the Vampire Slayer (profile written)
+### 3. Rolling `drive` out: Buffy reaches live play, but not 20 s of it
 
 Backlog, read from lane.titleroutes' NOTES/OUTBOX on origin/lane/titleroutes
 (5139f9556c; titleroutes is at attempt 4/4 and nobody is driving these):
-Buffy (Nova, wedges in play), Black Stone (Nova; blind A presses typed into
-name entry, the warrior never walks), Crash: Wrath of Cortex (Nova; mark on
-LOAD/SAVE), 187 (needs a re-queue only), plus Thor titles (closed while the
-fan is dead). Super Monkey Ball's Stage Select ignores everything but START.
-titleroutes calls that an input-layer issue, not a route; it is not
-ours. Buffy goes first: fps 29.97 against a 30 target, ok_share 0.93
-(targets.toml), and its only problem is a play loop that cannot see.
+- Buffy (Nova): wedges in play.
+- Black Stone (Nova): blind A presses typed into name entry; the warrior
+  never walks.
+- Crash: Wrath of Cortex (Nova): its mark lands on LOAD/SAVE.
+- 187: needs a re-queue only.
+- Thor titles: closed while the fan is dead.
+- Super Monkey Ball's Stage Select ignores everything but START. titleroutes
+  calls that an input-layer issue, not a route, so it is not ours.
 
-Buffy's two blind replays both froze in play. Replay 1 (1790931264) moved for a
-minute and then sat 4 min on the sky. Replay 2 (1790932722, B jumps added)
-showed the same sky from 030531 to 030859, five minutes. The frame is not
-literally still: the camera sways, 0.17-0.21 changed 21 s apart, against
-0.49-0.52 for real running. The 32x24 scene settles it: stuck 0.00-0.06,
-running 0.31-0.35. The camera is tilted at the sky with Buffy out of frame,
-and the game's tip says "Pull the L trigger to reset".
+Buffy goes first: fps 29.97 against a 30 target, ok_share 0.93
+(targets.toml), and its only known problem is a play loop that cannot see.
+
+Both blind replays froze in play. Replay 1 (1790931264) moved for a minute,
+then sat 4 min on the sky. Replay 2 (1790932722, B jumps added) showed the
+same sky from 030531 to 030859, five minutes, with the camera swaying.
 
 `drive-profiles/buffy.toml`:
-- Crops cut from 1790932722 and scored over every frame of all three runs
-  on disk: title, main menu, Start Game, Difficulty, Summoning, PAUSE, and
-  a masked HUD learned over seven play frames in five places.
-- Play is a run cycle with LT pulled at its start, B every 4 s, A every 7 s.
-- Stall escapes: LT, back off and turn, then run and jump (both ways), and
-  a straight run with two jumps.
-- HUD bars 0.25/0.22, progress_bar 0.15, stall_clear_s 10.
-- Selftest:
-  - Each screen.
-  - Counter-cases: the frozen sky is `stalled`, not play. The in-engine
-    opening (030406), which draws its own HUD, is not play (it scores 24.3
-    against the HUD crop). A dark canyon frame is not Summoning.
-  - Summoning itself is under the black luma bar, so it is `black`, which
-    is waited on exactly like `loading`.
+- Crops cut from 1790932722 and scored over every frame on disk: title,
+  main menu, Start Game, Difficulty, Summoning and PAUSE.
+- The HUD is masked, learned at LEARN_STD 10 over twelve play frames from
+  three runs: play ≤ 6.2, everything else ≥ 18.8.
+- Play: a run cycle with turns, B every 4 s, A every 7 s.
+- Escapes: LT (the camera reset), back off and turn, run and jump.
 
-Its `--find` is the next held Nova run.
+Held `--find` runs, Nova, 03:21-03:48 PDT:
 
-### 4. play_share gate: BLOCKED for dispatched runs (harness gap)
+| run | change | result | what the frames show |
+|---|---|---|---|
+| b1 | first profile | 420 s, no play | The first HUD crop (std 14, 81% of the region kept) had learned scenery: the bright canyon scored 14-18 against threshold 12 and was named `cutscene`. The cutscene ladder's START paused the game, A resumed, over and over. Then a dark corner with the HUD in plain view (luma 5.8) was `black` for 300 s. |
+| b2 | HUD relearned (std 10, 12 frames); `black_luma` 3.0; header thresholds | ROUTE FAIL stalled, 134 s | **The menu path is clean**: title 14.6 s, Start Game, Difficulty, Summoning, the mission card, canyon at 35 s. In play the 2 s motion read 0.07-0.14 while she ran. In a night scene few pixels move 16 grey levels, so play was never confirmed. |
+| b3 | every capture kept (`keep_all`), 240 s | ROUTE FAIL stalled | The measurement run (below). |
+| b4 | -- | killed at 28 s | **The emulator aborted** during the intro FMV (below). The driver's next A then launched Calendar from the launcher. |
+| b5 | `motion_pixel` 8, HUD bars 0.12/0.08, progress 0.07 | ROUTE FAIL stalled | **Play confirmed** (37-47 s), then no progress at 49 s. |
+| b6 | LT out of the play cycle | ROUTE FAIL stalled | Same. The frames: she runs (023-025), climbs a low ledge (026), and reaches the "Run and press B to jump between ledges" gap (027). There she stops, and no escape (back off and turn, run and jump, two jumps) clears it. |
+
+So Buffy reaches **real, frame-checked play ~35 s after boot**, against
+titleroutes' 5 START/A cycles (~70 s). `--find` does not complete: it gets
+10-12 s of play before the ledge gap, under the driver's 20 s bar. I did not
+lower the bar to make it pass. Next: what the gap needs. Likely run + B at
+the right moment and facing; a `--keep_all` run with `escape_capture_s` on
+the gap would show it.
+
+b3's measurement (every capture kept, 2 s apart), in grey-level changed
+fraction at a pixel step of 16 / 8:
+- Buffy running in the dark canyon: 0.04-0.28 / 0.14-0.43.
+- The dark dead end: 0.006-0.035 / 0.003-0.076.
+- The sky sway in titleroutes' replay 2, 21 s apart: 0.17-0.19 / 0.31-0.37.
+  Per-capture motion cannot separate it from running.
+- The 10 s 32x24 scene can: dark running 0.077-0.185, the dead end 0.000,
+  the sky sway 0.036-0.061, bright running 0.31-0.35. The sway margin is
+  small, and that is recorded in the profile.
+
+**Classifier and driver changes from Buffy** (with fixtures and counter-cases):
+- `motion_pixel` and `black_luma`, per profile.
+- `keep_all` and `--set KEY=VALUE` in drive.py (a trial no longer needs a
+  scratch profile).
+- **No press while hakuX is not the focused app** (`Device.foreground`,
+  `dumpsys window` cached 3 s, checked in `Device.pad` for presses and
+  holds). Run b4's A went into the launcher and opened Calendar. Selftest:
+  with hakuX not in front, a press fails and sends nothing.
+
+**Emulator crash, Buffy run b4** (2026-10-02 03:40:27 PDT, Nova, debug APK
+of the dispatcher's build-tree). The xemu process aborted on
+`pgraph.c:2163: int pgraph_method(...): assertion "channel_valid" failed`,
+from `pfifo_thread`, about 10 s into the intro FMV, right after the skip
+ladder's A/START presses. Runs b1-b3, b5 and b6 passed the same intro, so it
+is intermittent. Record: `buffy/b4-emulator-abort.txt` (the logcat
+excerpt). Not chased here (emulator code is not this lane's).
+Reported in OUTBOX for a tracker row.
+
+### 4. play_share gate: the reader checks out; dispatched runs BLOCKED (harness gap)
 
 **No dispatched run can use `drive` today.** The dispatcher snapshots a
 fixed file list (dispatcher.sh `SCRIPT_DEPS` and `snapshot_scripts`, lines
-89-92 and 117-121): titles/route.sh is in it, but titles/drive.py,
+89-92 and 117-121). titles/route.sh is in it. titles/drive.py,
 titles/classify.py, titles/waitfor_match.py (classify's import) and
 titles/drive-profiles/ (the .toml files and their reference PNGs) are not.
-On the live snapshot:
-`bash $DISPATCH_DIR/bin/titles/route.sh --check routes/sonic-heroes.drive.route`
-gives `drive 'sonic-heroes': no profile .../bin/titles/drive-profiles/sonic-heroes.toml`,
-and `bin/titles/` holds only route.sh, saves.py and titlestate.py. So no
-confirmation run has a drive timeline, and the gate has nothing real to be
-spot-checked against. The fix belongs in dispatcher.sh, which is outside this
-lane's territory:
+On the live snapshot, `bash $DISPATCH_DIR/bin/titles/route.sh --check
+routes/sonic-heroes.drive.route` gives `drive 'sonic-heroes': no profile
+.../bin/titles/drive-profiles/sonic-heroes.toml`, and `bin/titles/` holds
+only route.sh, saves.py and titlestate.py. So no confirmation run has a
+drive timeline.
+
+The fix belongs in dispatcher.sh, outside this lane's territory:
 - add the three .py files to both lists;
 - copy `drive-profiles/*.toml` and `drive-profiles/<name>/*.png` (not
   `selftest/`, which is fixtures);
-- extend selftest.d/97's closure check, since classify imports waitfor_match.
+- extend selftest.d/97's closure check, since classify imports
+  waitfor_match.
 
-Until then, every `drive` route is a held replay.
+**The gate's reader, on a held run's full logcat** (Forza f3): title_verdict's
+`parse_logcat` + `play_timeline` from the first `play` to `state=end` read
+play 27.0 s, stalled 21.8 s, unknown 4.1 s, so **play_share 0.51**. That
+matches the tsv's spans. Against the frames, the gate would FAIL that window,
+correctly: the car spent most of it stuck on the pit wall. The over-count it
+cannot see: three 0-MPH captures (≈6 s) inside the 27 s of `play`, where the
+car pivots against the wall and the scene still changes. A real
+confirmation's spot check waits on the snapshot fix.
 
-What can be checked meanwhile is the gate's READER, on a held run's own
-logcat. Every held replay so far, lane.routedriver's included, recorded only
-the first 30 s of logcat: the replay script ran `adb logcat` through a
-wrapper with a 30 s timeout (trial 4 has 7 `state=` lines against 35 changes
-in its tsv). The script is fixed (scratch/replay.sh), and the next held runs
-carry a full logcat for title_verdict's `play_timeline`.
+Every held replay before this, lane.routedriver's included, recorded only
+the first 30 s of logcat. The replay script ran `adb logcat` through a
+wrapper with a 30 s timeout (Sonic trial 4: 7 `state=` lines against 35
+changes in its tsv). scratch/replay.sh is fixed; b5, b6 and f1-f3 have full
+logcats.
+
+## For the next session (do not repeat)
+
+- **Sonic:** do not retry straight-line jumps at the lower-path block; the
+  climb-in-place Fly escape clears it. The open obstacles are the pink
+  block by a pillar (~2:27) and the falls into the sea after the FLY sign
+  (~2:04).
+- **Buffy:** the menu path and play detection work. The open problem is the
+  ledge gap ~12 s into the canyon. Do not raise play bars or shorten
+  `find_play_s` to pass `--find`. Do not put LT back into the play cycle:
+  it made no difference, and the raised fists are her running pose.
+- **Forza:**
+  - Do not turn `[steer]` back on at ~1 Hz; f1 and f2 are the evidence.
+    The next step is a faster capture, not a different steering law.
+  - The 10 s progress check does not separate a stuck Forza car.
+- **The dispatcher snapshot** must carry drive.py, classify.py,
+  waitfor_match.py and drive-profiles/ before any dispatched `drive` route
+  or confirmation can run.

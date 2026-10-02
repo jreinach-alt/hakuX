@@ -1,0 +1,240 @@
+{
+ "profile": "forza",
+ "title": "Forza Motorsport",
+ "mode": "play",
+ "result": "ROUTE FAIL drive forza: stalled: stalled 31 s: the play HUD is up and nothing moves -- the play input is not reaching the game, or a pause the profile cannot see",
+ "seconds": 118.6,
+ "time_to_title_s": 14.0,
+ "time_to_play_s": 74.7,
+ "states_seen": [
+  "unknown",
+  "logo",
+  "intro_video",
+  "title",
+  "profile",
+  "main_menu",
+  "cutscene",
+  "black",
+  "stalled",
+  "play"
+ ],
+ "skips": [
+  {
+   "state": "logo",
+   "button": "A",
+   "after_s": 2.0,
+   "landed": "intro_video",
+   "presses": 2
+  },
+  {
+   "state": "intro_video",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "logo",
+   "presses": 1
+  },
+  {
+   "state": "logo",
+   "button": "A",
+   "after_s": 1.9,
+   "landed": "intro_video",
+   "presses": 2
+  },
+  {
+   "state": "intro_video",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "title",
+   "presses": 1
+  },
+  {
+   "state": "cutscene",
+   "button": "A",
+   "after_s": 0.0,
+   "landed": "main_menu",
+   "presses": 1
+  },
+  {
+   "state": "cutscene",
+   "button": "A",
+   "after_s": 3.7,
+   "landed": "main_menu",
+   "presses": 3
+  },
+  {
+   "state": "cutscene",
+   "button": null,
+   "waited_s": 8.3,
+   "landed": "unknown",
+   "presses": 0
+  }
+ ],
+ "inputs": [
+  {
+   "t": 2.3,
+   "state": "logo",
+   "input": "A",
+   "why": "skip logo"
+  },
+  {
+   "t": 4.3,
+   "state": "logo",
+   "input": "A",
+   "why": "skip logo"
+  },
+  {
+   "t": 6.3,
+   "state": "intro_video",
+   "input": "A",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 8.4,
+   "state": "logo",
+   "input": "A",
+   "why": "skip logo"
+  },
+  {
+   "t": 10.3,
+   "state": "logo",
+   "input": "A",
+   "why": "skip logo"
+  },
+  {
+   "t": 12.2,
+   "state": "intro_video",
+   "input": "A",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 15.7,
+   "state": "title",
+   "input": "A",
+   "why": "title 1"
+  },
+  {
+   "t": 17.8,
+   "state": "profile",
+   "input": "A",
+   "why": "profile 1"
+  },
+  {
+   "t": 21.2,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 23.2,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 26.5,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 2"
+  },
+  {
+   "t": 29.9,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 3"
+  },
+  {
+   "t": 33.2,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 4"
+  },
+  {
+   "t": 35.2,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 36.9,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 38.9,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 40.9,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 43.0,
+   "state": "main_menu",
+   "input": "A",
+   "why": "main_menu 2"
+  },
+  {
+   "t": 60.4,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 62.7,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 64.8,
+   "state": "cutscene",
+   "input": "A",
+   "why": "skip cutscene"
+  },
+  {
+   "t": 68.9,
+   "state": "unknown",
+   "input": "steer on",
+   "why": "play"
+  },
+  {
+   "t": 118.6,
+   "state": "stalled",
+   "input": "steer off",
+   "why": "left play"
+  }
+ ],
+ "anomalies": [
+  {
+   "t": 8.2,
+   "state": "logo",
+   "after": "intro_video"
+  },
+  {
+   "t": 24.9,
+   "state": "main_menu",
+   "after": "cutscene"
+  },
+  {
+   "t": 40.8,
+   "state": "main_menu",
+   "after": "cutscene"
+  }
+ ],
+ "classifier_sources": {
+  "no-prev": 1,
+  "static": 6,
+  "moving": 10,
+  "crop": 11,
+  "black": 12,
+  "hud": 28
+ },
+ "model_calls": 0,
+ "play_stretch_frames": [],
+ "written_utc": "2026-10-02T10:51:25Z"
+}

@@ -1,0 +1,99 @@
+t	state	source	changed	luma	cap_s	action	frame	mode
+0.6	unknown	no-prev		26.6	0.47	wait (unknown)	035342-001-unknown.png	
+2.2	logo	static	0.0003	26.6	0.47	press A (skip logo)	035346-002-logo.png	
+4.3	intro_video	moving	0.0877	30.2	0.47	press A (skip intro_video)	035348-003-intro_video.png	
+6.4	logo	static	0.0003	30.2	0.47	press A (skip logo)	035350-004-logo.png	
+8.5	intro_video	moving	0.9808	191.7	0.52	press A (skip intro_video)	035352-005-intro_video.png	
+10.4	intro_video	moving	0.9559	28.3	0.37	press A (skip intro_video)		
+12.4	title	crop:title-logo		133.9	0.52	press A (title 1)	035356-007-title.png	
+14.4	profile	crop:profile-select		166.2	0.47	settle	035357-008-profile.png	
+16.0	profile	crop:profile-select		166.2	0.47	press A (profile 1)		
+17.9	cutscene	moving	0.2854	182.1	0.37	press A (skip cutscene)	035401-010-cutscene.png	
+19.8	main_menu	crop:menu-footer		142.2	0.42	settle	035403-011-main_menu.png	
+21.5	main_menu	crop:menu-footer		142.2	0.52	press A (main_menu 1)		
+23.2	cutscene	moving	0.4747	158.9	0.32	press A (skip cutscene)	035406-013-cutscene.png	
+25.0	main_menu	crop:menu-footer		136.6	0.32	settle	035408-014-main_menu.png	
+26.7	main_menu	crop:menu-footer		119.5	0.47	press A (main_menu 2)		
+28.5	main_menu	crop:menu-footer		144.1	0.37	settle		
+30.0	main_menu	crop:menu-footer		90.2	0.42	press A (main_menu 3)		
+31.8	cutscene	moving	0.7305	48.6	0.32	press A (skip cutscene)	035415-018-cutscene.png	
+33.6	cutscene	moving	0.995	244.7	0.32	press A (skip cutscene)		
+35.6	cutscene	moving	0.7378	134.5	0.52	press A (skip cutscene)		
+37.5	main_menu	static	0.0155	133.3	0.52	press A (main_menu 1)	035422-021-main_menu.png	
+39.7	main_menu	static	0.0013	133.4	0.52	press A (main_menu 2)		
+41.6	main_menu	static	0.0125	134.3	0.52	settle		
+42.9	black	black		0.3	0.27	wait	035427-024-black.png	
+44.4	cutscene	moving	0.2948	23.4	0.32	press A (skip cutscene)	035429-025-cutscene.png	
+46.6	cutscene	moving	0.7774	51.4	0.67	press A (skip cutscene)		
+48.7	cutscene	moving	0.5358	37.0	0.67	press A (skip cutscene)		
+50.9	unknown	hud:hud-lap+after-cutscene	0.6478	62.4	0.67	hold (hud up, motion not yet play)	035435-028-unknown.png	
+52.8	stalled	hud:hud-lap+static	0.0124	62.5	0.72	stall escape 1	035441-029-stalled.png	
+59.3	play	hud:hud-lap+motion	0.2633	67.0	0.72	hold	035443-030-play.png	
+61.3	play	hud:hud-lap+motion	0.5501	50.3	0.72	hold		
+63.1	play	hud:hud-lap+motion	0.3799	56.4	0.72	hold		
+64.8	play	hud:hud-lap+motion	0.496	59.1	0.67	hold		
+66.6	play	hud:hud-lap+motion	0.3607	50.2	0.67	hold		
+72.3	play	hud:hud-lap+motion	0.2878	47.5	0.62	hold		
+78.0	unknown	hud:hud-lap+between	0.0367	47.5	0.67	hold (hud up, motion not yet play)	035503-036-unknown.png	
+79.9	stalled	hud:hud-lap+static	0.0098	47.6	0.67	stall escape 2	035510-037-stalled.png	
+86.5	stalled	hud:hud-lap+static	0.0086	47.6	0.67	stall escape 3		
+92.9	stalled	hud:hud-lap+static	0.0017	47.6	0.62	stall escape 4		
+99.4	stalled	hud:hud-lap+static	0.0025	47.6	0.67	hold (stalled 0 s)		
+101.2	stalled	hud:hud-lap+static	0.0014	47.6	0.67	hold (stalled 2 s)		
+102.9	stalled	hud:hud-lap+static	0.0021	47.6	0.67	hold (stalled 4 s)		
+104.7	stalled	hud:hud-lap+static	0.0009	47.6	0.62	hold (stalled 5 s)		
+106.4	stalled	hud:hud-lap+static	0.0024	47.5	0.67	hold (stalled 7 s)		
+108.2	stalled	hud:hud-lap+static	0.0039	47.6	0.67	hold (stalled 9 s)		
+109.9	stalled	hud:hud-lap+static	0.0051	47.5	0.62	hold (stalled 10 s)		
+111.6	stalled	hud:hud-lap+static	0.0074	47.5	0.62	hold (stalled 12 s)		
+113.3	stalled	hud:hud-lap+static	0.0083	47.5	0.62	hold (stalled 14 s)		
+114.9	stalled	hud:hud-lap+static	0.0096	47.4	0.57	hold (stalled 15 s)		
+116.7	stalled	hud:hud-lap+static	0.011	47.3	0.67	hold (stalled 17 s)		
+118.4	stalled	hud:hud-lap+static	0.0139	47.3	0.62	hold (stalled 19 s)		
+120.1	stalled	hud:hud-lap+static	0.0142	47.3	0.62	hold (stalled 21 s)		
+121.8	stalled	hud:hud-lap+static	0.0153	47.3	0.67	hold (stalled 22 s)		
+123.5	stalled	hud:hud-lap+static	0.016	47.3	0.62	hold (stalled 24 s)		
+125.2	stalled	hud:hud-lap+static	0.0191	47.3	0.62	hold (stalled 26 s)		
+126.9	stalled	hud:hud-lap+static	0.021	47.4	0.62	hold (stalled 28 s)		
+128.7	stalled	hud:hud-lap+static	0.0232	47.5	0.67	hold (stalled 29 s)		
+130.4	unknown	hud:hud-lap+between	0.0264	47.6	0.67	hold (hud up, motion not yet play)	035558-058-unknown.png	
+132.3	unknown	hud:hud-lap+between	0.0289	47.7	0.67	hold (hud up, motion not yet play)		
+134.0	unknown	hud:hud-lap+between	0.0304	47.8	0.62	hold (hud up, motion not yet play)		
+135.7	unknown	hud:hud-lap+between	0.0308	48.0	0.62	hold (hud up, motion not yet play)		
+137.4	unknown	hud:hud-lap+between	0.033	48.2	0.62	hold (hud up, motion not yet play)		
+139.1	unknown	hud:hud-lap+between	0.0352	48.4	0.62	hold (hud up, motion not yet play)		
+140.8	unknown	hud:hud-lap+between	0.0339	48.6	0.62	hold (hud up, motion not yet play)		
+142.5	unknown	hud:hud-lap+between	0.0351	48.8	0.62	hold (hud up, motion not yet play)		
+144.2	unknown	hud:hud-lap+between	0.0398	48.9	0.62	hold (hud up, motion not yet play)		
+145.9	unknown	hud:hud-lap+between	0.0383	48.9	0.62	hold (hud up, motion not yet play)		
+147.6	unknown	hud:hud-lap+between	0.0379	49.1	0.67	hold (hud up, motion not yet play)		
+149.4	unknown	hud:hud-lap+between	0.0417	49.2	0.67	hold (hud up, motion not yet play)		
+151.2	unknown	hud:hud-lap+between	0.0421	49.5	0.67	hold (hud up, motion not yet play)		
+152.9	unknown	hud:hud-lap+between	0.0429	49.6	0.62	hold (hud up, motion not yet play)		
+154.6	unknown	hud:hud-lap+between	0.0419	49.7	0.62	hold (hud up, motion not yet play)		
+156.3	unknown	hud:hud-lap+between	0.0407	49.8	0.62	hold (hud up, motion not yet play)		
+158.0	unknown	hud:hud-lap+between	0.0436	50.0	0.62	hold (hud up, motion not yet play)		
+159.7	unknown	hud:hud-lap+between	0.0441	50.3	0.62	hold (hud up, motion not yet play)		
+161.4	unknown	hud:hud-lap+between	0.045	50.7	0.67	hold (hud up, motion not yet play)		
+163.2	unknown	hud:hud-lap+between	0.0475	51.1	0.67	hold (hud up, motion not yet play)		
+165.0	unknown	hud:hud-lap+between	0.0466	51.3	0.67	hold (hud up, motion not yet play)		
+166.7	unknown	hud:hud-lap+between	0.0481	51.6	0.67	hold (hud up, motion not yet play)		
+168.5	unknown	hud:hud-lap+between	0.0482	52.3	0.67	hold (hud up, motion not yet play)		
+170.2	play	hud:hud-lap+motion	0.0507	52.8	0.67	hold	035639-081-play.png	
+172.1	play	hud:hud-lap+motion	0.0537	53.6	0.67	hold		
+173.8	unknown	hud:hud-lap+between	0.0499	54.3	0.67	hold (hud up, motion not yet play)	035643-083-unknown.png	
+175.7	play	hud:hud-lap+motion	0.0536	54.6	0.62	hold	035645-084-play.png	
+177.6	play	hud:hud-lap+motion	0.0542	54.6	0.67	hold		
+183.3	play	hud:hud-lap+motion	0.1091	56.1	0.67	hold		
+189.1	play	hud:hud-lap+motion	0.0969	57.5	0.72	hold		
+194.9	play	hud:hud-lap+motion	0.0921	58.5	0.67	hold		
+200.6	play	hud:hud-lap+motion	0.085	58.8	0.67	hold		
+206.4	play	hud:hud-lap+motion	0.0773	59.4	0.67	hold	035716-090-play.png	
+212.2	play	hud:hud-lap+motion	0.0712	59.4	0.72	hold		
+217.9	play	hud:hud-lap+motion	0.0598	60.2	0.67	hold		
+223.7	play	hud:hud-lap+motion	0.0627	60.0	0.73	hold		
+229.6	play	hud:hud-lap+motion	0.0864	60.5	0.77	hold		
+235.3	play	hud:hud-lap+motion	0.1517	62.8	0.67	hold		
+# time_to_title_s=12.5
+# time_to_play_s=59.4
+# result=window-done
