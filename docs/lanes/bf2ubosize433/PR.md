@@ -4,8 +4,9 @@ State: draft
 
 Lane: bf2ubosize433            Issue: #433
 Base: master @ 66bce0c222
-Files: docs/lanes/bf2ubosize433/NOTES.md, docs/lanes/bf2ubosize433/PR.md, docs/lanes/bf2ubosize433/ubosz_read.py, docs/lanes/bf2ubosize433/ubosz_selftest.py, docs/testing/predictions/bf2ubosize433-bf2-ubosz.json, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/shaders.c
+Files: docs/lanes/bf2ubosize433/NOTES.md, docs/lanes/bf2ubosize433/OUTBOX.md, docs/lanes/bf2ubosize433/PR.md, docs/lanes/bf2ubosize433/ubosz_read.py, docs/lanes/bf2ubosize433/ubosz_selftest.py, docs/testing/predictions/bf2ubosize433-bf2-ubosz.json, hw/xbox/nv2a/pgraph/vk/draw.c, hw/xbox/nv2a/pgraph/vk/shaders.c
 Prediction: docs/testing/predictions/bf2ubosize433-bf2-ubosz.json (registered before the run; not yet judged)
+Waiting: Nova soak 1790958948-lane.bf2ubosize433-1976093 (ref d9729d6250), queued behind lane.pathfind's Nova hold
 Needs device: yes (one Nova soak)    Needs NDK: yes (perflog build)
 
 ## What this adds
