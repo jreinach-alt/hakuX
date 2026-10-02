@@ -61,10 +61,11 @@ SHR1 = "rdsh1"                                 # session 4, Nova: Seaside Hill, 
 FZR1 = "rdfz1"                                 # session 4, Thor: boot to a race, RT held, 0 -> 73 MPH
 SHT1 = "rdt1"                                  # lane.routedriver2 trial 1, Nova: past the pillar, then a corner
 SHT2 = "rdt2"                                  # lane.routedriver2 trial 2, Nova: block cleared, stuck at POWER
+SHT4 = "rdt4"                                  # lane.routedriver2 trial 4, Nova: three obstacles, a Game Over
 LOCAL = {CVR2: "scratch/run-cv2/route-frames", CVR3: "scratch/run-cv3/route-frames",
          CVR5: "scratch/run-cv5/route-frames", SHR1: "scratch/run-sh1/route-frames",
          FZR1: "scratch/run-fz1/route-frames", SHT1: "scratch/run-t1/route-frames",
-         SHT2: "scratch/run-t2/route-frames"}
+         SHT2: "scratch/run-t2/route-frames", SHT4: "scratch/run-t4/route-frames"}
 
 # drive.py's progress check ([drive] progress_bar): (name, profile, run, frame
 # ~10 s earlier, the frame before this one, this frame, the sim seconds
@@ -152,6 +153,10 @@ CASES = [
     # captures that the frames show going nowhere).
     ("sonic wedged on a block, clock and water moving: stalled", "sonic-heroes", SHR1, "234358-033-play.png",
      "234356-032-play.png", "play", ["main_menu", "play"], "stalled"),
+    # The no-game-data prompt is mostly a dark box: a dark frame of three
+    # close-up team balls scored 19.7 against it, under its old threshold 20.
+    ("sonic dark close-up of the team is play, not the save prompt", "sonic-heroes", SHT4,
+     "025910-108-profile.png", "025907-107-play.png", "play", ["main_menu", "play"], "play"),
     ("sonic running Seaside Hill, 2 s apart", "sonic-heroes", SHR1, "234349-029-play.png", "234347-028-play.png",
      "play", ["main_menu", "play"], "play"),
     # Forza Motorsport
@@ -210,7 +215,8 @@ FOREIGN = [(SON2, "200707-play.png", "200657-play.png"), (FOR, "214502-play.png"
            (SMB, "172733-play.png", "172723-play.png"), (CVR5, "230108-033-play.png", "230106-032-play.png"),
            (SHR1, "234349-029-play.png", "234347-028-play.png"), (FZR1, "234117-045-play.png", "234114-044-play.png")]
 TITLE_OF = {SON: "sonic-heroes", SON2: "sonic-heroes", SONT: "sonic-heroes", SONT2: "sonic-heroes",
-            FOR: "forza", FZR1: "forza", SHR1: "sonic-heroes", SMB: "super-monkey-ball-deluxe", CV: "castlevania-cod", CVT: "castlevania-cod",
+            FOR: "forza", FZR1: "forza", SHR1: "sonic-heroes", SHT1: "sonic-heroes", SHT2: "sonic-heroes",
+            SHT4: "sonic-heroes", SMB: "super-monkey-ball-deluxe", CV: "castlevania-cod", CVT: "castlevania-cod",
             CVR2: "castlevania-cod", CVR3: "castlevania-cod", CVR5: "castlevania-cod"}
 
 # drive.py --sim runs: (name, profile, run, frames slice, args, checks). The
