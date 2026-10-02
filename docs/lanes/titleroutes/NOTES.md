@@ -4000,3 +4000,110 @@ done. Left as explicit open work below.
 - Everything else in session 53's/55's "State for a successor" above is
   unchanged (13 Nova-only no-route titles, Galleon blocked, Thor's 319
   untouched titles all blocked on the same CPU-stop decision).
+
+## Session 57 (2026-10-01, ADDENDUM 6: Super Monkey Ball Deluxe on the Nova)
+
+Resumed with attempt counter reset to 0 (per escalations.md's standing
+authority, same reasoning as the 05:13 PDT reset). `git fetch` showed
+session 56's PR had already folded (`575c480d27`); fast-forward merged
+`origin/master` with no conflicts before anything else, per the startup
+hook's "2 commits behind" warning.
+
+Per ADDENDUM 6 (lane.local, 16:50 PDT), the owner copied two more titles to
+the Nova, sha256-verified: `53450038-Super_Monkey_Ball_Deluxe.xiso.iso` and
+`5345002B-Sonic_Heroes.xiso.iso`, both already in `targets.toml` with
+Thor-confirmed routes (sessions 46-48) but never replayed on the Nova.
+This session: Super Monkey Ball Deluxe only, as instructed. Added
+`iso.nova` to both titles' `targets.toml` entries (factual: both ISOs are
+now present on the Nova, verified by `adb ls`), since the next session
+doing Sonic Heroes needs that key too and it's a one-line fact, not device
+work.
+
+**Nova state checked before taking anything:** `hold.sh who nova` free,
+battery 71%. Took the hold (`titleroutes:1790898676`).
+
+**First replay attempt failed on a tooling bug, not the route.** Ran
+`scratch/replay.sh nova 53450038-... super-monkey-ball-deluxe.route 40`
+(480s explicit timeout; it auto-backgrounded at the tool's 120s mark
+regardless, same as session 56 found -- picked up with a Monitor on the
+task's output file rather than ending the turn on it). It printed
+`pre-mark 73s + 40s` and the route was killed by its own `timeout
+$((PRE+EXTRA))` after only 5 of the route's 10 `repeat` cycles -- route.log
+stops mid-`wait 5` at 115.6s, nowhere near `mark gameplay`.
+
+**Root cause: `scratch/premark.py` doesn't account for `repeat N { }`.**
+It sums every `wait` line in the file exactly once, in source order, and
+stops at `mark gameplay` -- so a route whose pre-mark waits are inside a
+`repeat 10 { wait 5; ...; wait 5 }` block gets only 1x those waits, not
+10x. For this route: 3 top-level `wait 20`s (60s) + the repeat body's two
+`wait 5`s counted once (10s, should be 100s) + the trailing `wait 3` (3s)
+= 73s computed vs 163s actual. This is my own scratch tool (not
+`route.sh`, which is not mine to edit, and which itself correctly runs the
+loop `N` times -- only the *estimator* was wrong), so fixed it to track a
+repeat-depth multiplier stack, erroring out instead of silently
+mis-pricing a `repeat forever` before the mark (which cannot legitimately
+appear there) or a route with no `mark gameplay` at all. Re-checked all
+four routes with marks: `castlevania-cod.*` (no repeats before their
+marks) are unchanged at 268s/213s -- the bug is silent exactly when it
+doesn't matter, which is why it survived two sessions of Castlevania work
+without being noticed. `super-monkey-ball-deluxe.route` now reads 163s,
+`sonic-heroes.route` 153s (not used this session, but the next one needs
+it right).
+
+**Second replay, with the corrected timeout, succeeded cleanly.**
+`scratch/replay/super-monkey-ball-deluxe-165430/` (copied to
+`scratch/judge/`): all 26 scripted frames captured in order through all
+10 START/A cycles, `mark gameplay` at 16:57:49.444 -- 191.5s after
+route.sh's own `start` line (16:54:37.951), 198.4s after the launch intent
+(16:54:31) -- then the `play` shot 11s later, before the run's own
+PRE+EXTRA window ended cleanly at 16:58:05 (214.2s total from launch).
+Read both frames, not just the log:
+- `165749-gameplay.png` (the mark): stage "1-1 SIMPLE", timer `034:13`
+  counting down, speed `46 mph`, score `0000000` -- live telemetry, not a
+  static menu.
+- `165759-play.png` (11s later): timer `031:43` (2.5s of game-timer motion
+  per ~10s of wall time -- SMB's in-level clock runs on its own rate, this
+  isn't a mismatch), score now `0006286`, a goal/clear celebration pose
+  with confetti -- the score and scene both changed between the two
+  frames, which a frozen or menu-stuck capture cannot do.
+
+This confirms the route plays live, uncapped by the Thor's two prior
+heat-stops (session 47: 48.5s scored before 70C; session 48: 51s scored
+before 70C) -- the Nova run went the full 214s with no thermal event.
+
+**Closed out:** route file header updated from "DRAFT until a soak
+replays it" to CONFIRMED (both devices, with paths/timestamps).
+`targets.toml`'s note appended (not rewritten) with the session 57
+finding and the premark.py bug, so the session 47/48 Thor history stays
+legible. Added the nomination line to `host-tools/nova-nominations.tsv`
+(a host file outside this repo) for `autoverdict.sh`'s own 600s
+confirmation -- not queued here, per the brief. Released the Nova hold,
+restored rest state (performance_mode=0, fan_mode=4, KEYCODE_SLEEP,
+verified `mWakefulness=Dozing`).
+
+`python3 docs/testing/titles/titlestate_selftest.py` (all checks passed)
+and `targets.toml` parses (tomllib) re-checked before writing this up.
+
+### State for a successor
+
+- Super Monkey Ball Deluxe is done: CONFIRMED on both devices, nominated
+  for Nova fps confirmation, nothing more for this lane to do on it.
+- **Sonic Heroes is the next session's title** (ADDENDUM 6, explicit: "The
+  next session does Sonic Heroes"). Its `iso.nova` key is already in
+  `targets.toml` from this session. Its route's own history is a warning,
+  not a green light: session 48's Thor re-screen of the *same* route hit
+  a frozen PAUSE menu as its mark frame (a START press during the 9-cycle
+  survey timing paused live play, and the route's single post-pause `A`
+  didn't resume it) -- `targets.toml`'s note already flags this and
+  suggests either fewer cycles or a proven un-pause step, neither done
+  yet. Read that note and `sonic-heroes.route` itself before replaying it
+  blind; a Nova replay of the untouched route could hit the same trap.
+  `premark.py sonic-heroes.route` now correctly reads 153s pre-mark if a
+  replay is attempted as-is.
+- The premark.py fix is scratch-only, uncommitted to the repo by design
+  (scratch/ isn't tracked), but it's the reason this session's first
+  attempt wasted a Nova cycle -- worth a line in whatever hands off
+  tooling notes, since a future session or lane rebuilding similar
+  tooling from scratch could reintroduce the same undercount.
+- Thor CPU-stop decision, Galleon block, and the 13 Nova-only no-route
+  titles from prior sessions are all unchanged.

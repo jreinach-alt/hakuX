@@ -604,3 +604,34 @@ title; see NOTES.md "State for a successor".
 No other device work taken this session. The usage-budget hold (reset
 21:00 PDT 10-01) and the Thor CPU-stop decision are both still standing
 outside this one owner-approved exception.
+
+## #397 -- 2026-10-01 (session 57, Super Monkey Ball Deluxe confirmed on the Nova)
+
+| title | device | route | replayed? | what gameplay looked like |
+|---|---|---|---|---|
+| Super Monkey Ball Deluxe (53450038) | Nova | super-monkey-ball-deluxe | yes, unattended, full | `scratch/judge/super-monkey-ball-deluxe-165430`: all 26 scripted frames through 10 START/A cycles, `mark gameplay` at 191.5s (route.sh start) / 198.4s (launch), stage 1-1 SIMPLE, 46 mph, timer counting down; a `play` frame 11s later shows a different score/timer and a goal-clear celebration -- live, evolving play, not a frozen menu |
+
+This title was already route-CONFIRMED on the Thor (sessions 47/48) but
+both Thor runs heat-stopped at 48-51s of scored play. Per ADDENDUM 6, the
+owner copied it (and Sonic Heroes) to the Nova; this session replayed it
+there with no thermal limit, end to end. Nominated for `autoverdict.sh`'s
+600s Nova fps confirmation via `host-tools/nova-nominations.tsv` (not
+queued by this lane).
+
+Found and fixed a bug in `scratch/premark.py` (my own scratch tool, not
+part of the repo) along the way: it summed every route `wait` line once
+regardless of an enclosing `repeat N { }`, so routes whose pre-mark waits
+sit inside a repeat loop got a pre-mark estimate far too low -- this
+title's route read 73s instead of the real 163s, and the first replay
+attempt timed out 5 cycles short of the mark before the fix. Routes with
+no repeat before their mark (both Castlevania variants) were unaffected,
+which is why it went unnoticed through two prior sessions.
+
+Sonic Heroes is next (ADDENDUM 6: "the next session does Sonic Heroes");
+its `iso.nova` key is already added to `targets.toml`. Its own prior
+history (session 48, Thor) shows the same fixed-cycle route can land on a
+frozen PAUSE menu instead of live play, so it needs a careful frame check,
+not a blind replay -- see NOTES.md session 57 "State for a successor".
+
+`python3 docs/testing/titles/titlestate_selftest.py` (all checks passed)
+and `targets.toml` parses (tomllib) re-checked this session.
