@@ -110,6 +110,14 @@ was taken on a real device.
   merges master, its `hold.sh wait` call prints the NOT IDLE notice. Its `.why` text ("waits for running/ to
   empty first") is still false, and the lane should switch `take` to `wait ... && wait-idle ...`.
 
+## Status
+
+[lane.holdwait] waiting: the fold of lane/holdwait into master (PR.md `State: ready`, pushed 2026-10-01
+~23:00 PDT; `hakux-foldqueue.timer` picks it up). Resolved when `git merge-base --is-ancestor 379883645f
+origin/master` holds. Then the one remaining step: rewrite `briefs/titleroutes.md`'s hold lines (Build step
+2, "Getting a device", ADDENDUM 7(a), ADDENDUM 14's command) in place to `take && wait-idle`, as above. If
+the fold fails, read `offline-git/fold-failures.log`.
+
 ## For the next lane
 
 - Do not check `running/` once after a take and call the device idle. The 09-28 race is real: claims land
