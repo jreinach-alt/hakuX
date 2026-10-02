@@ -4453,3 +4453,228 @@ Castlevania work). The Thor CPU-stop decision, Galleon block, and the
 `python3 docs/testing/titles/waitfor_selftest.py` (5/5 passed), `targets.toml`
 via `tomllib` (80 titles), and `scratch/check_routes.sh` over all 58 routes
 (all OK) -- re-checked before writing this up.
+
+## Session 61 (2026-10-01, resumed as attempt 2): why the previous attempt
+## did not finish, and ADDENDUM 13's two device-free-of-the-checkout items
+
+**Why the previous attempt (session 60) did not finish as a closed loop.**
+Session 60 itself finished cleanly by every item in `roles/lane.md`:
+committed, NOTES/OUTBOX/PR.md written, `PR.md` set `State: ready`, pushed.
+But the one thing it was waiting on -- its queued Castlevania verification
+(`1790905334-titleroutes-1780552`) -- came back `WITHDRAWN`
+(ADDENDUM 12, 19:05 PDT): the dispatcher's own snapshot of `route.sh`
+(`/home/justin/hakux-work/dispatch/bin/titles/route.sh`) still predates the
+`waitfor`/`press-until` grammar session 60 built, so the run parsed-failed
+at `route.txt:73` and sat on the boot screen for 904s doing nothing. That
+is a fold/checkout-propagation gap, not a defect in session 60's work --
+ADDENDUM 13 (hostops, 21:54 PDT) confirmed the branch folded clean
+(`0f07dbfede`, now on `origin/master`) but the **checkout at
+`/home/justin/hakuX` was not yet fast-forwarded** (a dispatch run was in
+flight on the Nova and forcing a fast-forward mid-run risks corrupting it,
+per [[ff-mid-run-corrupts-the-other-device]]), so the dispatcher's
+`route.sh` snapshot still had zero `waitfor` occurrences as of that
+addendum.
+
+Re-verified both numbers myself at the start of this session before doing
+anything else, per ADDENDUM 13's own instruction:
+`git -C /home/justin/hakuX rev-list --count HEAD..origin/master` = **11**
+(not 0) and `waitfor` count in the dispatcher's `route.sh` snapshot = **0**.
+Both preconditions for re-queueing the Castlevania `waitfor` verification
+are still unmet, so per ADDENDUM 13 I did the two items that do not touch
+`waitfor` or the dispatcher snapshot instead: ADDENDUM 10 (Sonic Heroes'
+post-mark loop) and ADDENDUM 9 (Super Monkey Ball Deluxe's post-mark loop).
+
+Also: merged `origin/master` into this branch first (fast-forward,
+`bdea9b8ecd..0f07dbfede`) -- it carries both session 60's own fold and
+lane.hitchwatch's fold (`56c2a7b4a9`, #433), which adds `hitch_report.py`
+and wires it into `title_verdict.py` (`v["hitches"]`, `v["hitch_allowance"]`,
+`hitch_fail`, plus a whole-window `static_window`/`static_window_fail`
+check). Per ADDENDUM 13 item 1 ("check whether title_verdict.py now
+reports hitches and say so"): **yes**, confirmed by reading
+`docs/testing/title_verdict.py` directly (lines ~574-581, ~651, ~692-695) --
+it now computes `hitch_report.find_hitches`/`report` over the scored
+window and fails a run on hitches past the owner's bar (overridable per
+title via `targets.toml`'s `hitch_allowance`), separately from the older
+fps-share check. So Sonic Heroes' Playable verdict, once its route is
+fixed and re-confirmed, is now actually gated on hitches too, not just on
+fps share -- matching what ADDENDUM 10 said was still open.
+
+**Checked whether `hitchwatch`'s new `static_window` check would, by
+itself, have caught Super Monkey Ball's stage-select-menu idle (ADDENDUM
+9) without a route fix.** Read `hitch_report.py`'s `static_window()`
+(compares every post-mark `route-frame` against the window's FIRST frame,
+whole-window max deviation per pixel, not frame-to-frame) against the 90
+`route-frames` already on disk from the rejected confirmation
+(`dispatch/results/1790900520-autoverdict-566484/route-frames/`, read in
+this session). It likely would NOT catch it: the Stage Select screen has a
+slow, continuously rotating idle camera (visible between e.g. `172723-play.png`
+and `172803-play.png`, both read this session -- the monkey/ball cluster's
+background framing visibly rotates), so most pixels DO move at least a
+little over the ~10-minute window; `frozen_frac` would likely land well
+under the fail bar even though no actual GAMEPLAY PROGRESS is happening.
+A route fix, not a verdict-side static-window check, is still the right
+fix here -- confirms ADDENDUM 9's framing, not a case where hitchwatch
+makes the route fix unnecessary.
+
+### ADDENDUM 10 (Sonic Heroes): the loop fix was applied, replayed, and the
+### owner's exact prescription does NOT confirm advance through the window
+
+Edited `sonic-heroes.route`'s post-mark loop per the owner's instruction
+verbatim: `axis LY min` once (held, never released, never swung back to
+mid/max), `press A` only every third ~10s step for an occasional jump,
+`shot play` every ~10s, no START. `route.sh --check`: ok (87 lines).
+
+**Replayed once under a Nova hold** (`scratch/replay.sh nova
+5345002B-Sonic_Heroes.xiso.iso sonic-heroes.route 90`, foregrounded via the
+Bash tool's own auto-backgrounding + a Monitor watch for `zz-end.png`, not
+a session-ending wait): `scratch/replay/sonic-heroes-215848/`. The route
+reached `mark gameplay` (220342-gameplay.png, Team Sonic running, score
+60, rings 006) exactly as session 58 confirmed, and the early game clearly
+advances for the first ~10s (220353-play.png: score 60->80, rings 006->008,
+Tails/Sonic/Knuckles still moving).
+
+**Then it stops advancing.** From 220404-play.png (clock ~01:02) through
+the run's last frame 220500-play.png (clock ~01:58, nearly a full minute
+later), score stays at 80 and rings stay at 008 in every single frame: the
+team is pressed up against a carved stone block/riser that fills the
+corridor's full width, performing a low standing jump each time `press A`
+fires (visible mid-air curl in 220416/220437/220449) without ever clearing
+it. **I did not stop at the replay's own frames** -- the app was still
+alive and stuck in the exact same spot after the scripted replay ended
+(confirmed live: `scratch/judge/sonic-live-check.png`, clock 02:33, same
+position), so I drove it by hand from there to find out whether ANY input
+sequence clears this obstacle, before deciding whether to call the owner's
+fix done:
+- `press X` (attack): no visible change (`sonic-live-x.png`).
+- `hold A` for ~1s then `release` (a fuller jump than a 60ms tap): no
+  change (`sonic-live-holdA.png`).
+- back off (`axis LY max` ~2s) then forward (`axis LY min` ~1.8s, a real
+  running start) then `press A`: this DID move them -- but into a
+  corner/wedge against the same structure from a different angle
+  (`sonic-live-runjump.png`, `sonic-live-runjump2.png`, two identical
+  frames a press apart), not past it.
+- back off further (`axis LY max` ~2.5s, `axis LY mid`): freed them into
+  an open grassy junction (`sonic-live-backoff.png`) -- the corridor
+  genuinely forks/curves here, visible from the wider camera angle.
+- `axis LY min` + `axis LX min` (forward-left, a real turn): walked them
+  back into the SAME stone block, approached from the side
+  (`sonic-live-turnleft.png`) -- still blocked.
+
+**Conclusion, stated plainly: the owner's fix (hold LY, no LX swings,
+occasional A) is better than the old route (it stops the aimless 1.5s
+LX-swing wandering the owner flagged), but it is NOT confirmed to advance
+through the whole post-mark window.** There is a specific choke point
+roughly 20-30s into the post-mark loop (first appears at 220404, clock
+~01:02) that a straight-forward hold-and-occasional-jump pattern cannot
+clear, and my live probing (5 different input combinations) did not find
+one that reliably does either -- only a lucky back-off-and-reroute that
+itself led to another dead end. **I am not nominating this route.** The
+edited `sonic-heroes.route` is committed because it is strictly better
+evidence than the old wandering version (and keeps the owner's explicit
+"hold up" framing for whoever picks this up next), but `targets.toml`'s
+note says plainly that whole-window advance is unconfirmed and names the
+exact obstacle and clock offset so a successor does not have to
+rediscover it. What a stuck frame looks like, for reference: HUD score and
+ring count frozen across multiple consecutive `play` shots while the
+in-level clock keeps advancing -- that pattern, not a single frame, is
+the tell (a single frame can't distinguish "paused to admire the view"
+from "wedged").
+
+Device time for this: ~7 Nova-minutes of the ~19-minute held session
+(titleroutes-s61, released cleanly afterward).
+
+### ADDENDUM 9 (Super Monkey Ball Deluxe): the 10-minute Stage Select idle
+### is NOT a route-input-sequencing problem -- it is dead input on that
+### screen, confirmed by direct, repeated testing
+
+Before writing a new post-mark loop, I needed to know WHY `press A` (and
+the swung `axis LX`) in the existing route's loop never got the game back
+into a stage after a death, since ADDENDUM 9 assumed a cursor-landed-on-a-
+locked-stage problem. Drove it live on the Nova (same hold) from a fresh
+launch: title -> A ("Finished loading Game Data... press A" -- a
+TitleMeta-only container, no real save, same shape as the Castlevania
+profile trap) -> Mode Select (A, Main Game) -> Main Game Select (A, Story
+Mode) -> Data Select (A, slot 1 "Start the game from the beginning") ->
+**Name Entry** (typed "A", NEXT, END, "Are you sure?" Yes -- this disk's
+slot 1 had no actual save data despite the loader's message, so "start
+from the beginning" re-creates it; same titlestate-registry trap as
+Castlevania: a profile container is not a save slot) -> an in-engine story
+cutscene (several screens of dialogue, ~45s, `A` to advance each box) ->
+**straight into stage 1-1 SIMPLE** (no Stage Select screen on this very
+first stage -- it launches directly).
+
+Held `axis LY min` with no steering at all (deliberately testing the
+simplest possible input, since this particular layout turned out to be a
+straight corridor): the ball reached the goal in ~15s real time
+(`smb-s16.png`: "GOAL!!", stage score 4530, clear score 9060) --
+**confirms a plain hold-forward CAN clear a stage when the geometry
+allows it**, unlike Sonic Heroes above.
+
+**Then the real test.** The stage-clear screen transitioned automatically
+to Stage Select, World 1 Jungle Island, with the cursor already sitting on
+the correct NEXT stage (1-2, second ball in the cluster) --
+`smb-s17.png`/`s18.png`. This is the exact screen the rejected 10-minute
+confirmation (`1790900520-autoverdict-566484`) sat frozen on. I then tried,
+in order, against this live screen:
+1. `press A` (default 60ms tap) -- no change (`s18.png` -> `s19.png`
+   identical cursor/world state, only the idle background camera rotated).
+2. `press A` again, waited 6s -- no change (`s19.png` -> no further shot
+   needed, re-confirmed by `s20.png` after a `hold A`/`release A` variant).
+3. `hold A` ~1s then `release A` -- no change (`s20.png`).
+4. `press B` -- no change (`s21.png`): rules out "A specifically is wrong
+   button code", since B should at least do SOMETHING if any input were
+   reaching this screen (back out, or nothing if there's nothing to
+   cancel -- either way distinguishable from A doing nothing).
+5. `axis LX max` held 2s (hard right, should move the cursor off 1-2 if
+   the stick were read at all) -- no change (`s22.png`): rules out "the
+   cursor already sits on the only legal target so A silently no-ops";
+   the cursor doesn't move at all, in either direction.
+6. Explicit `axis LX 0` / `axis LY 0` (not pad.sh's computed `mid`, in
+   case `mid` wasn't exactly centre) then `press A` -- no change
+   (`s23.png`).
+7. `press RIGHT` (the D-pad code, 547, distinct from the analog `axis LX`)
+   -- no change (`s26.png`): rules out "this screen reads the D-pad, not
+   the stick".
+8. `press START` -- **this worked**: opened the in-game pause popup
+   (Continue game / Save Game Data / How to play / Exit game,
+   `s24.png`), proving input generally DOES reach the app and this
+   specific screen's window still has focus (`dumpsys input`:
+   `FocusedDisplayId: 0`, `FocusedWindows` names `com.jreinach.hakux.debug`,
+   checked directly, not inferred). `Continue game` (A, already
+   highlighted) closed the popup and returned to the IDENTICAL Stage
+   Select screen (`s25.png`) -- so the popup's "Continue" just dismisses
+   itself, it is not a secondary way into the stage.
+9. Checked `logcat` for the relevant minutes (`save|flush|ANR|not
+   responding`): nothing -- no save-in-progress, no ANR, the perf counters
+   show the title rendering normally at 44-59 fps with the idle camera
+   genuinely a render-each-frame rotation, not a frozen/hung process.
+
+**So: on this build, the Stage Select screen accepts START (menu toggle)
+but does not react to A, B, the D-pad, or the analog stick at all**, for
+at least several minutes of sustained testing across 9 different input
+attempts. This is NOT a "route presses A at the wrong cursor position"
+bug -- no route redesign can fix a screen that reads no stage-selection
+input in the first place. It also explains the original rejected
+confirmation's frames precisely: the SAME ball stayed highlighted for the
+full 10 minutes with only the idle camera changing, which I mis-read
+(before this session's live test) as "the LX swings moved the cursor off
+a locked stage" -- the swings never moved the cursor at all, on either
+run.
+
+**This is now an emulator/input-layer finding, not a route one** -- out of
+this lane's remit per the brief (nav.py/titlestate.py/saves.py/the
+dispatcher are explicitly not mine, and this looks adjacent to or inside
+that input-handling stack, not something `routes/**`/`targets.toml` can
+fix). Flagged in OUTBOX for hostops/the owner to decide whether it is
+worth a tracked issue; I have NOT touched `super-monkey-ball-deluxe.route`
+itself (changing its post-mark loop would not change this finding, and I
+would rather not guess at a loop redesign that provably cannot work
+against dead input). `targets.toml`'s note is updated to record this
+precisely so a successor does not re-run the same 9 tests. Super Monkey
+Ball Deluxe stays nominated at stage-1-1-only (its session 57 confirmation
+is unaffected -- that one never needed Stage Select, since 1-1 launches
+directly); going past 1-1 is blocked on this input finding, not on a route
+rewrite.
+
+Device time for this: ~10 Nova-minutes of the same held session.
+
