@@ -1,7 +1,14 @@
 # Super Monkey Ball Deluxe (53450038), single route. lane.titleroutes
 # session 46, 2026-09-30, from the Thor survey
 # 0-0-s-1790823793-titleroutes-2949342 (route-frames, booted at 20:28:20
-# PDT). DRAFT until a soak replays it.
+# PDT). CONFIRMED on the Thor (sessions 47/48, two Thor soaks, both reached
+# live in-level play; both heat-stopped, see targets.toml's note) and now
+# also CONFIRMED on the Nova by a full unattended `route.sh` replay (session
+# 57, 2026-10-01, scratch/judge/super-monkey-ball-deluxe-165430): all 26
+# scripted frames captured through `mark gameplay` (191.5s after route.sh's
+# own start, 198.4s after the launch intent) and the `play` shot 11s later,
+# both showing live, evolving play (score/timer/speed changing between
+# them) in stage 1-1 SIMPLE, not a static menu.
 #
 # What the survey's START/A cycles reached (one press every ~5.5 s):
 #   202826  "There is no Game Data on your Xbox console. Please press A."
