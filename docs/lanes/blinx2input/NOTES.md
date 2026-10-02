@@ -53,3 +53,29 @@ pathfind (lane.pathfind's file, not mine).
 
 Do not repeat: probing a Blinx 2 "no movement" with the left stick. Read the
 tutorial card first.
+
+## Attempt 1 did not finish: paused by the owner (12:55 PDT)
+
+lane.local paused this lane at 12:55 so that lane.crashattr could use the Nova.
+At that point the game was running in Test 1's second step. After the
+third-person balloons popped, nav.py sent A, R3 and A, and the card read "Now
+locate the 3 balloons in first-person view"
+(`scratch/nav/blinx2-play.first-run-*/003-r3.png`). The Nova has run other
+titles since then, so that state is gone. Attempt 2 starts again from launch.
+
+After run 6, all of this ran on the live game (none of it was a fresh launch):
+- `center1` (240 s, third person): RX held continuously near the dead zone.
+  No balloon ever centred, because RX 12500 does not yaw and 13500 yaws half
+  a screen per second (`scratch/cal`), so there is no proportional range.
+  Use pulses.
+- `center3` (first person, `center.py`): it never popped a balloon. Two
+  bugs, both visible in the frames:
+  1. The detector found the crosshair, a ring at (0.5, ~0.48) that is
+     sometimes olive-green. It "dwelled" on the ring at dx ~0, y 0.44 five
+     times.
+  2. The lower-half mask, which exists to hide the player in third person,
+     hid every balloon. With RY held, the first-person view kept looking up
+     at the dome, which put the balloons at y 0.6-0.85. In first person,
+     pitch acts as a rate, as yaw does, so pulse RY rather than hold it.
+- Third person, what worked (run 5): RY held at -32000 (run 6, at -22000,
+  never drew the lock-on arc), with RX pulses at 22000 lasting |dx|*2.0 s.
