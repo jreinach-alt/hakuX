@@ -121,6 +121,9 @@ const size_t MAX_UNIFORM_ATTR_VALUES_SIZE = NV2A_VERTEXSHADER_ATTRIBUTES * 4 * s
  */
 #define GEOM_PUSH_CONSTANT_SIZE ((uint32_t)(4 * sizeof(float)))
 
+/* #656, below: the uniform overlay's vertex range, when it is on */
+bool pgraph_vk_ubo_ov_range(VkPushConstantRange *out);
+
 /*
  * Standard texture descriptor sets (used when push descriptors unavailable).
  * Set 0: NV2A_MAX_TEXTURES combined image samplers (bindings 0..3).
@@ -409,6 +412,11 @@ static void create_push_descriptor_resources(PGRAPHState *pg)
             .pushConstantRangeCount = want_vtx_range ? 2 : 1,
             .pPushConstantRanges = push_ranges,
         };
+        /* #656's overlay range, which create_pipeline() declares on every
+         * pipeline too; the two cannot both be on (ubo_ov_init). */
+        if (!want_vtx_range && pgraph_vk_ubo_ov_range(&push_ranges[1])) {
+            template_layout_info.pushConstantRangeCount = 2;
+        }
         VK_CHECK(vkCreatePipelineLayout(r->device, &template_layout_info,
                                         NULL, &r->push_template_layout[n]));
 
@@ -845,6 +853,337 @@ void pgraph_vk_ubosz_log_and_reset(void)
 }
 #endif
 
+/*
+ * #656: the uniform-block overlay (the shader half is in glsl/vsh.c).
+ *
+ * The UBO set stays bound at the offsets of the last upload, the BASE, while
+ * the only rows of the binding's layouts that differ from it are elements of
+ * the vertex arrays vsh.c overlays, and there are at most UBO_OV_SLOTS of
+ * them. Those rows go to the vertex stage as push constants, which Turnip
+ * writes straight into the command stream (CP_LOAD_STATE6 SS6_DIRECT): no
+ * new descriptor set, no bindless invalidation. Anything else uploads and
+ * rebinds as before, which empties the overlay: a binding switch, a new UBO
+ * set (a new command buffer after a finish), a pixel-stage change, a changed
+ * row outside the overlaid arrays, or more rows than slots. The overlay is
+ * always the whole difference from the base, rebuilt per upload it replaces,
+ * so a row changed and changed back holds no stale slot.
+ *
+ * bind_descriptor_sets() in draw.c skips a bind that repeats the last one in
+ * the command buffer, and pushes the overlay when it changed. Only when every
+ * pipeline layout is defined identically (no inline attributes in push
+ * constants, no #569 GPL layout), so that a skipped bind is still compatible
+ * with whatever pipeline the draw binds. HAKUX_UBO_PUSH=0 turns it off.
+ *
+ * State is file-static, like ubosz's: r's struct is in vk/renderer.h,
+ * outside lane.bf2push656's files. Touched only on the thread that draws.
+ */
+#define UBO_OV_SLOTS 12
+#define UBO_OV_PUSH_OFFSET GEOM_PUSH_CONSTANT_SIZE
+#define UBO_OV_PUSH_SIZE ((uint32_t)(UBO_OV_SLOTS / 4 * 16 + UBO_OV_SLOTS * 16))
+
+/* Declared here, and again in draw.c, because vk/renderer.h and glsl/vsh.h
+ * are outside lane.bf2push656's files. */
+void pgraph_glsl_vsh_set_ubo_overlay(int slots, int push_offset);
+void pgraph_vk_ubo_ov_reset(void);
+void pgraph_vk_ubo_ov_forget_bind(void);
+bool pgraph_vk_ubo_ov_bind_redundant(VkDescriptorSet set, const uint32_t off[2]);
+void pgraph_vk_ubo_ov_push(VkCommandBuffer cmd, VkPipelineLayout layout);
+void pgraph_vk_ubo_ov_log_and_reset(void);
+bool xemu_get_draw_merge(void);   /* draw.c */
+bool xemu_get_draw_reorder(void);
+
+static const int ubo_ov_arrays[] = {
+    VshUniform_c,
+    VshUniform_ltc1,
+    VshUniform_ltctxa,
+    VshUniform_ltctxb,
+    VshUniform_lightInfiniteDirection,
+    VshUniform_lightInfiniteHalfVector,
+    VshUniform_lightLocalAttenuation,
+    VshUniform_lightLocalPosition,
+    VshUniform_specularParams,
+};
+
+static struct {
+    bool enabled;
+    const ShaderBinding *base_binding;  /* NULL: no base to push against */
+    uint8_t *base[2];
+    size_t base_size[2];
+    int n;
+    int32_t key[UBO_OV_SLOTS];
+    uint8_t val[UBO_OV_SLOTS][16];
+    bool push_dirty;                    /* the overlay changed since pushed */
+    bool push_valid;                    /* pushed in this command buffer */
+    bool bind_valid;
+    VkDescriptorSet bind_set;
+    uint32_t bind_off[2];
+#if NV2A_PERF_LOG
+    struct {
+        unsigned up, push, binds, skips, pcs;
+        unsigned n[4];                  /* overlay size: 1, 2-4, 5-8, 9-12 */
+        unsigned why[5];                /* upload: no base or new set,
+                                           binding, psh, row, full */
+    } st;
+#endif
+} ubo_ov;
+
+enum { UBO_OV_WHY_SET, UBO_OV_WHY_BINDING, UBO_OV_WHY_PSH, UBO_OV_WHY_ROW,
+       UBO_OV_WHY_FULL };
+
+static void ubo_ov_init(PGRAPHVkState *r)
+{
+    uint32_t max = r->device_props.limits.maxPushConstantsSize;
+    const char *e = getenv("HAKUX_UBO_PUSH");
+    bool off = e && !strcmp(e, "0");
+    int gpl = 0;
+#if OPT_ASYNC_COMPILE
+    gpl = r->gpl.mode;
+#endif
+
+    ubo_ov.enabled = !off && !r->use_push_constants_for_uniform_attrs &&
+                     gpl == 0 &&
+                     max >= UBO_OV_PUSH_OFFSET + UBO_OV_PUSH_SIZE;
+    pgraph_glsl_vsh_set_ubo_overlay(ubo_ov.enabled ? UBO_OV_SLOTS : 0,
+                                    UBO_OV_PUSH_OFFSET);
+
+    char line[192];
+    snprintf(line, sizeof(line),
+             "[push656] maxPushConstantsSize=%u attrs_in_push=%d gpl=%d "
+             "env=%s -> uniform overlay %s (%d slots, %u B at %u)",
+             max, r->use_push_constants_for_uniform_attrs, gpl, e ? e : "-",
+             ubo_ov.enabled ? "on" : "off", UBO_OV_SLOTS, UBO_OV_PUSH_SIZE,
+             UBO_OV_PUSH_OFFSET);
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-build", "%s", line);
+#else
+    fprintf(stderr, "%s\n", line);
+#endif
+}
+
+bool pgraph_vk_ubo_ov_range(VkPushConstantRange *out)
+{
+    if (!ubo_ov.enabled) {
+        return false;
+    }
+    *out = (VkPushConstantRange){
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        .offset = UBO_OV_PUSH_OFFSET,
+        .size = UBO_OV_PUSH_SIZE,
+    };
+    return true;
+}
+
+/* A new command buffer, or a finish: nothing bound or pushed, and the base's
+ * offsets may be reused. */
+void pgraph_vk_ubo_ov_reset(void)
+{
+    ubo_ov.base_binding = NULL;
+    if (ubo_ov.n) {
+        ubo_ov.n = 0;
+        ubo_ov.push_dirty = true;
+    }
+    ubo_ov.push_valid = false;
+    ubo_ov.bind_valid = false;
+}
+
+/* Someone else bound set 1: the next bind_descriptor_sets() binds. */
+void pgraph_vk_ubo_ov_forget_bind(void)
+{
+    ubo_ov.bind_valid = false;
+}
+
+bool pgraph_vk_ubo_ov_bind_redundant(VkDescriptorSet set, const uint32_t off[2])
+{
+    if (ubo_ov.enabled && ubo_ov.bind_valid && ubo_ov.bind_set == set &&
+        ubo_ov.bind_off[0] == off[0] && ubo_ov.bind_off[1] == off[1]) {
+#if NV2A_PERF_LOG
+        ubo_ov.st.skips++;
+#endif
+        return true;
+    }
+    ubo_ov.bind_valid = ubo_ov.enabled;
+    ubo_ov.bind_set = set;
+    ubo_ov.bind_off[0] = off[0];
+    ubo_ov.bind_off[1] = off[1];
+#if NV2A_PERF_LOG
+    ubo_ov.st.binds++;
+#endif
+    return false;
+}
+
+void pgraph_vk_ubo_ov_push(VkCommandBuffer cmd, VkPipelineLayout layout)
+{
+    if (!ubo_ov.enabled || (ubo_ov.push_valid && !ubo_ov.push_dirty)) {
+        return;
+    }
+    QEMU_BUILD_BUG_ON(UBO_OV_SLOTS % 4);
+    uint8_t data[UBO_OV_PUSH_SIZE];
+    int32_t *keys = (int32_t *)data;
+    for (int i = 0; i < UBO_OV_SLOTS; i++) {
+        keys[i] = i < ubo_ov.n ? ubo_ov.key[i] : -1;
+    }
+    memcpy(data + UBO_OV_SLOTS * 4, ubo_ov.val, sizeof(ubo_ov.val));
+    vkCmdPushConstants(cmd, layout, VK_SHADER_STAGE_VERTEX_BIT,
+                       UBO_OV_PUSH_OFFSET, UBO_OV_PUSH_SIZE, data);
+    ubo_ov.push_valid = true;
+    ubo_ov.push_dirty = false;
+#if NV2A_PERF_LOG
+    ubo_ov.st.pcs++;
+#endif
+}
+
+static bool ubo_ov_binding_has_overlay(const ShaderBinding *binding)
+{
+    const ShaderModuleInfo *m = binding->vsh.module_info;
+    return m && binding->vsh.upload_info == m &&
+           uniform_index((ShaderUniformLayout *)&m->push_constants, "ovIdx") > 0;
+}
+
+/* The key of the overlaid array element the 16-byte row at byte offset o of
+ * the vertex layout is, or -1. */
+static int32_t ubo_ov_row_key(const ShaderBinding *binding,
+                              const ShaderUniformLayout *l, size_t o)
+{
+    for (int k = 0; k < ARRAY_SIZE(ubo_ov_arrays); k++) {
+        int loc = binding->vsh.uniform_locs[ubo_ov_arrays[k]];
+        if (loc <= 0) {
+            continue;
+        }
+        const ShaderUniform *u = &l->uniforms[loc - 1];
+        if (u->stride != 16 || u->offset % 16 || o < u->offset ||
+            o >= u->offset + u->dim_a * 16) {
+            continue;
+        }
+        size_t e = (o - u->offset) / 16;
+        return e < 256 ? (int32_t)(ubo_ov_arrays[k] * 256 + e) : -1;
+    }
+    return -1;
+}
+
+/* Push instead of uploading, when the overlay can hold the difference. */
+static bool ubo_ov_try_push(PGRAPHVkState *r, ShaderBinding *binding,
+                            ShaderUniformLayout *layouts[2],
+                            bool need_new_ubo_set)
+{
+    int why = -1;
+    (void)r;
+    if (!ubo_ov.enabled) {
+        return false;
+    }
+    if (need_new_ubo_set || !ubo_ov.base_binding ||
+        xemu_get_draw_merge() || xemu_get_draw_reorder()) {
+        why = UBO_OV_WHY_SET;
+    } else if (ubo_ov.base_binding != binding ||
+               !ubo_ov_binding_has_overlay(binding) ||
+               layouts[0]->total_size != ubo_ov.base_size[0] ||
+               layouts[1]->total_size != ubo_ov.base_size[1]) {
+        why = UBO_OV_WHY_BINDING;
+    } else if (memcmp(layouts[1]->allocation, ubo_ov.base[1],
+                      ubo_ov.base_size[1])) {
+        why = UBO_OV_WHY_PSH;
+    }
+
+    int n = 0;
+    int32_t key[UBO_OV_SLOTS];
+    int row[UBO_OV_SLOTS];
+    const uint8_t *cur = layouts[0]->allocation;
+    size_t size = ubo_ov.base_size[0];
+    for (size_t o = 0; why < 0 && o < size; o += 16) {
+        size_t len = MIN(16, size - o);
+        if (!memcmp(cur + o, ubo_ov.base[0] + o, len)) {
+            continue;
+        }
+        int32_t k = len == 16 ? ubo_ov_row_key(binding, layouts[0], o) : -1;
+        if (k < 0) {
+            why = UBO_OV_WHY_ROW;
+        } else if (n == UBO_OV_SLOTS) {
+            why = UBO_OV_WHY_FULL;
+        } else {
+            key[n] = k;
+            row[n++] = o;
+        }
+    }
+    if (why >= 0) {
+#if NV2A_PERF_LOG
+        ubo_ov.st.why[why]++;
+#endif
+        return false;
+    }
+
+    if (n != ubo_ov.n || memcmp(key, ubo_ov.key, n * sizeof(key[0]))) {
+        ubo_ov.push_dirty = true;
+    }
+    for (int i = 0; i < n; i++) {
+        if (!ubo_ov.push_dirty && memcmp(ubo_ov.val[i], cur + row[i], 16)) {
+            ubo_ov.push_dirty = true;
+        }
+        memcpy(ubo_ov.val[i], cur + row[i], 16);
+    }
+    memcpy(ubo_ov.key, key, n * sizeof(key[0]));
+    ubo_ov.n = n;
+#if NV2A_PERF_LOG
+    ubo_ov.st.push++;
+    ubo_ov.st.n[n <= 1 ? 0 : n <= 4 ? 1 : n <= 8 ? 2 : 3]++;
+#endif
+    return true;
+}
+
+/* The layouts were just uploaded: they are the base, and the overlay is empty. */
+static void ubo_ov_note_upload(ShaderBinding *binding,
+                               ShaderUniformLayout *layouts[2])
+{
+    if (!ubo_ov.enabled) {
+        return;
+    }
+    for (int i = 0; i < 2; i++) {
+        size_t size = layouts[i]->total_size;
+        if (size != ubo_ov.base_size[i]) {
+            ubo_ov.base[i] = g_realloc(ubo_ov.base[i], size);
+            ubo_ov.base_size[i] = size;
+        }
+        memcpy(ubo_ov.base[i], layouts[i]->allocation, size);
+    }
+    ubo_ov.base_binding = binding;
+    if (ubo_ov.n) {
+        ubo_ov.n = 0;
+        ubo_ov.push_dirty = true;
+    }
+#if NV2A_PERF_LOG
+    ubo_ov.st.up++;
+#endif
+}
+
+/*
+ * ubopush[up U push P (n1 a n2-4 b n5-8 c n9-12 d) why set/binding/psh/row/
+ * full bind B skip S pc C], on hakuX-stall every 60 flips beside ubosz: U
+ * uploads (each one a rebind), P uniform changes passed as an overlay
+ * instead, the overlay sizes of those, why each upload could not push, UBO
+ * set binds issued and skipped as repeats, and overlay pushes.
+ */
+void pgraph_vk_ubo_ov_log_and_reset(void)
+{
+#if NV2A_PERF_LOG
+    if (!ubo_ov.enabled) {
+        return;
+    }
+    char line[256];
+    snprintf(line, sizeof(line),
+             "ubopush[up %u push %u (n1 %u n2-4 %u n5-8 %u n9-12 %u) why "
+             "%u/%u/%u/%u/%u bind %u skip %u pc %u]",
+             ubo_ov.st.up, ubo_ov.st.push, ubo_ov.st.n[0], ubo_ov.st.n[1],
+             ubo_ov.st.n[2], ubo_ov.st.n[3], ubo_ov.st.why[0],
+             ubo_ov.st.why[1], ubo_ov.st.why[2], ubo_ov.st.why[3],
+             ubo_ov.st.why[4], ubo_ov.st.binds, ubo_ov.st.skips,
+             ubo_ov.st.pcs);
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-stall", "%s", line);
+#else
+    fprintf(stderr, "%s\n", line);
+#endif
+    memset(&ubo_ov.st, 0, sizeof(ubo_ov.st));
+#endif
+}
+
 void pgraph_vk_update_descriptor_sets(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -877,6 +1216,11 @@ void pgraph_vk_update_descriptor_sets(PGRAPHState *pg)
         make_room_in_ubo_ring(pg);
     }
 
+    if (r->uniforms_changed &&
+        ubo_ov_try_push(r, binding, layouts, need_new_ubo_set)) {
+        r->uniforms_changed = false;
+    }
+
     if (r->uniforms_changed) {
         if (!pgraph_vk_buffer_has_space_for(
                 pg, BUFFER_UNIFORM_STAGING, ubo_buffer_total_size,
@@ -895,6 +1239,7 @@ void pgraph_vk_update_descriptor_sets(PGRAPHState *pg)
 #if NV2A_PERF_LOG
         pgraph_vk_ubosz_note_upload(pg, 0);
 #endif
+        ubo_ov_note_upload(binding, layouts);
 
         r->uniforms_changed = false;
     }
@@ -979,6 +1324,7 @@ void pgraph_vk_update_descriptor_sets(PGRAPHState *pg)
         }
         vkUpdateDescriptorSets(r->device, 2, ubo_writes, 0, NULL);
         r->push_ubo_set_index++;
+        ubo_ov.bind_valid = false;
     }
 
     /* Write texture descriptor set (standard path only) */
@@ -2032,6 +2378,10 @@ void pgraph_vk_init_shaders(PGRAPHState *pg)
     r->use_push_constants_for_uniform_attrs =
         (r->device_props.limits.maxPushConstantsSize >=
          GEOM_PUSH_CONSTANT_SIZE + MAX_UNIFORM_ATTR_VALUES_SIZE);
+
+    /* #656: reads the flag above; the templates below and the shader cache's
+     * regenerated modules read what it decides */
+    ubo_ov_init(r);
 
     create_ubo_descriptor_resources(pg);
     create_descriptor_pool(pg);
