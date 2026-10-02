@@ -245,3 +245,14 @@ its own 60, no hang, worst hitch 515 ms. Below its own target: not nominated. ta
 Nova logcats today have none; this run has one every ~2 min, so something new on the Nova's storage is being re-scanned.
 Filed on `dispatch/board-requests/titleroutes.md` (08:10 PDT): key the crash test on the soaked process, and find the
 file. **Do not repeat: read a crash verdict's `Cmdline:` line before calling a run a crash.**
+
+### Tron 2.0: Killer App survey (`1790951914-titleroutes2-68595`, 34 frames, read in full): no play
+
+ESRB card, black, the KILLER APP title -> cycle 1's START: an Xbox Live **Sign In** screen (two slots, "Controller
+Disconnected" under each, footer "B Skip Xbox Live sign-in"). From there to the end of the window, A opens "Select account"
+(Guest / <New Account>), the next press picks Guest ("Press A to sign in / Y to deselect"), the next gives "At least one
+valid account must be chosen / OK", and round again: 14 cycles and the play loop on one screen. START/A cannot leave it,
+and the survey never pressed B, the footer's way out. Route `tron-2-killer-app` (`77b3523fd3`): START, one B (a second could
+back out of the next menu), 10 START/A cycles with a frame per press to map what follows, mark, an FPS loop (LY forward,
+RT fire, A jump, RX turns, frame per leg, no START). No targets.toml entry yet (added once a replay reaches play). Queued
+replay 1 `1790953776-titleroutes2-447685` (420 s).
