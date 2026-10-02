@@ -1,0 +1,9 @@
+2026-09-28-ibcache-r1: tid 19768, 21168 samples, 10773 JIT, 10754 mapped to a TB
+  TBs starting in [0x273678, 0x273698): 75 samples, 0.35% of the thread, 0.70% of mapped JIT
+    00273686     39
+    0027368e     36
+2026-09-28-ibcache-r1b: tid 26812, 21911 samples, 15489 JIT, 15481 mapped to a TB
+  TBs starting in [0x273678, 0x273698): 1845 samples, 8.42% of the thread, 11.92% of mapped JIT
+    00273686    939
+    0027368e    905
+    00273678      1

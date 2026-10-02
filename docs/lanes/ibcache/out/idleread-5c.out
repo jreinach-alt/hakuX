@@ -1,0 +1,6 @@
+{"id": "1790918407-lane.ibcache-81732", "mark": true, "guest_idle_med": 0.0055, "n_rrw": 73, "vcpu_oncpu_med": 0.9555, "n_ih": 73, "pgraph_rd_per_s": 182.271, "rd_wait_ms_per_s": 7.5184, "pgraph_wr_per_s": 120.548, "n_lk": 72}
+{"id": "1790918407-lane.ibcache-81794", "mark": true, "guest_idle_med": 0.0158, "n_rrw": 74, "vcpu_oncpu_med": 0.9558, "n_ih": 74, "pgraph_rd_per_s": 188.8112, "rd_wait_ms_per_s": 5.7971, "pgraph_wr_per_s": 124.3756, "n_lk": 73}
+{"id": "1790918407-lane.ibcache-81858", "mark": true, "guest_idle_med": 0.0168, "n_rrw": 72, "vcpu_oncpu_med": 0.965, "n_ih": 72, "pgraph_rd_per_s": 191.7603, "rd_wait_ms_per_s": 7.4794, "pgraph_wr_per_s": 125.8427, "n_lk": 72}
+{"id": "1790918408-lane.ibcache-81928", "mark": true, "guest_idle_med": 0.0135, "n_rrw": 71, "vcpu_oncpu_med": 0.9518, "n_ih": 72, "pgraph_rd_per_s": 188.247, "rd_wait_ms_per_s": 19.267, "pgraph_wr_per_s": 123.506, "n_lk": 71}
+{"id": "1790918408-lane.ibcache-81985", "mark": true, "guest_idle_med": 0.0285, "n_rrw": 73, "vcpu_oncpu_med": 0.9523, "n_ih": 73, "pgraph_rd_per_s": 202.1331, "rd_wait_ms_per_s": 20.4039, "pgraph_wr_per_s": 131.105, "n_lk": 74}
+{"id": "1790918409-lane.ibcache-82042", "mark": true, "guest_idle_med": 0.0278, "n_rrw": 72, "vcpu_oncpu_med": 0.9485, "n_ih": 72, "pgraph_rd_per_s": 198.406, "rd_wait_ms_per_s": 13.8809, "pgraph_wr_per_s": 127.8354, "n_lk": 72}
