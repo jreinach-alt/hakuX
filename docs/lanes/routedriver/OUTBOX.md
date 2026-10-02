@@ -1,3 +1,36 @@
+## #433 -- 2026-10-02 00:25 PDT
+
+lane.routedriver: the two route-conversion proofs (brief item 6) are done.
+Both reached live play under the screen-aware driver. Sonic also turned up a
+false `play`, which is now fixed.
+
+- **Forza Motorsport, Thor (supervised `--find`, ADDENDUM 4):** title 15.5 s,
+  play 74.7 s. Only A went into the menus, then RT was held. In the
+  confirmed stretch the car accelerates 10 -> 73 MPH, LAP 0/2 -> 1/2, and
+  the scenery passes; at 0 MPH on the line it read `unknown`, not play.
+  Started at xo-therm 39 C and ended at 59 C. Limit: RT does not steer, so
+  the car ran wide at the first bend. That is fine for finding play, but a
+  scored window needs steering. Frames:
+  `/home/justin/hakux-work/wt/routedriver/scratch/run-fz1/route-frames/`
+  234106-040-play.png ... 234129-050-play.png; sheets
+  `docs/lanes/routedriver/forza/run1-play-a.jpg`, `run1-play-b.jpg`.
+- **Sonic Heroes, Nova:** title 8.1 s, play 34.7 s. One A skipped the story
+  cutscene the old route waited 100 s for. Frames:
+  `/home/justin/hakux-work/wt/routedriver/scratch/run-sh2/route-frames/`
+  235256-021-play.png ... 235317-030-play.png; sheet
+  `docs/lanes/routedriver/sonic/run2-play.jpg`. They show running and
+  rings, then the team falls into the sea and respawns. That is live play,
+  not progress.
+- **Found and fixed:** Sonic's first replay counted 6 s of the team wedged
+  against a block as `play` (the clock and water kept the frame changing).
+  Sonic's HUD frames now use their own motion bars, so that wedge reads
+  `stalled`.
+- **Not solved:** the Seaside Hill block. A jump-and-fly escape clears it,
+  but every variant tried (five) falls short of the next island and costs a
+  life. The profile allows one try per run and records all five.
+- No confirmations queued; nothing here makes a title Playable. 0 model
+  calls in every run.
+
 ## #433 -- 2026-10-01 23:30 PDT
 
 lane.routedriver: Castlevania: Curse of Darkness (4B4E002D) first run now
