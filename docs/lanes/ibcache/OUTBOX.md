@@ -39,3 +39,14 @@ This resolves when all eight have result dirs.
 - **The plan's rank-2 figure (-7 to -11% J/frame) is refuted on the Nova with the halt off.** The 16-bit jump cache and the return-address stack are stopped: they deepen the same saving.
 - **Leg 6 is queued:** the same Forza pair with `HAKUX_IDLE_HALT=1` in both arms. It decides whether the extra watts are spin, which the halt turns into sleep, or a cost of the probe itself.
 - **One Forza run was pre-empted by an outside launch, not a crash.** The process was rendering normally, then Sonic Heroes started in hakuX one second later, and no dispatch run launched it (`1790914021-lane.ibcache-3203127`, 21:58 PDT 10-01).
+
+## #507 -- 2026-10-02 02:30 PDT
+
+[lane.ibcache] **Leg 6 is H1: with the idle halt on, the probe saves energy.** Forza (driven), Nova, both arms with `HAKUX_IDLE_HALT=1`, n=2 per arm:
+- **J/frame:** x0.937 (-6.3%).
+- **Power:** net -0.39 W.
+- **fps:** +0.36.
+
+With the halt off, the same probe cost +0.65 W. So that cost was the freed vCPU time spinning in the guest's idle loop, and the halt turns it into sleep.
+
+The probe stays opt-in (`HAKUX_IBC=1`). **For #566 (the idle halt's default):** please measure it with `HAKUX_IBC=1` beside it, because the two pay together and the probe alone does not.

@@ -1138,3 +1138,49 @@ on, saved vCPU time becomes sleep.
 - **Leg 6:** queued at this head with `queue_leg6.sh <head> BAAB`. Its runs
   are also the fold's run on this head. Its reading goes on a stacked
   branch (`lane/ibcache-leg6`), so this head does not move.
+
+### Leg 6, read: H1. With the idle halt on, the probe SAVES energy (`readleg.sh 6`, `out/legtable-6.out`)
+
+Nova, 87b89e857c (apk 4e340d5f2591), route `ibcache-forza-drive`, B A A B,
+2026-10-02 01:45 to 02:20 PDT.
+- **Validity:** all four runs are valid. `[idlehalt] on=1` in every
+  window, with 106k to 153k halts per run. `[ibc507] on=1 HAKUX_IBC=1` in B
+  and `on=0` in A. The car moves in every run. The first B run got out onto
+  the circuit at 20-29 MPH, the heaviest scene of the four, and it still
+  reads the lowest J/frame.
+
+| run | arm | fps | J/frame | net W | guest idle | vCPU on-CPU | `[rr425] hc` |
+|---|---|---:|---:|---:|---:|---:|---:|
+| `-2992454` | B | 24.80 | 0.2815 | 6.98 | 0.187 | 0.711 | 1.37M |
+| `-2992818` | A | 25.04 | 0.3001 | 7.51 | 0.081 | 0.767 | 13.4M |
+| `-2993079` | A | 27.26 | 0.2753 | 7.50 | 0.088 | 0.789 | 13.7M |
+| `-2993364` | B | 28.22 | 0.2576 | 7.27 | 0.117 | 0.765 | 1.55M |
+
+- **Arm means:** fps A 26.15, B 26.51 (+0.36). J/frame A 0.2877, B 0.2695,
+  **x0.937**. Net W A 7.51, B 7.12, **-0.39 W**.
+- **Against the registered rule:** H1 needed net W(B) - net W(A) <= +0.20
+  W and a J/frame ratio <= 1.03. It reads -0.39 W and 0.937. **H1 holds.**
+- **Reading:** the probe's +0.65 W in 5d (halt off) was the freed vCPU time
+  spinning in the guest's idle loop. With the halt on, that time is sleep:
+  the vCPU's on-CPU share falls (B 0.71/0.77, A 0.77/0.79), and B draws less
+  than A.
+- **Its size:** J/frame -6.3% on Forza, n=2 per arm. That is inside the
+  plan's -7 to -11% band, at its low edge. The within-arm fps spread is 2-3
+  fps, because the blind route reaches different scenes.
+- **What this does not cover:** a vCPU-bound title with the halt on. GTA's
+  guest idle is about 0, so the halt rarely fires there, and 5c's x1.021
+  (within the bar) is the best reading of the probe on GTA.
+
+**Consequence: unchanged code, changed recommendation.**
+- The probe stays opt-in at this head. Its payoff needs the idle halt, and
+  the halt's default belongs to #566 (lane.idlehaltdefault).
+- **The recommendation for #566:** measure the halt's default with
+  `HAKUX_IBC=1` beside it. Together they read x0.937 J/frame on Forza here,
+  and the probe adds nothing with the halt off.
+- **The jcsize and RAS steps:** reopened, but only for a halt-on
+  configuration, and ranked behind #566's decision. They deepen a saving
+  that pays only when the halt is on.
+
+The fold's run on the final head: one more leg-6 B run (`queue_leg6.sh
+<head> B`). It is not part of leg 6's registered n=2, and it is not read
+here.
