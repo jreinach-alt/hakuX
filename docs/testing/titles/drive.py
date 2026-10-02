@@ -281,6 +281,8 @@ class Driver:
         self.scene_hist = []             # (t, scene) of recent HUD frames: the progress check
         self.stall_streak = False        # stall_clear_s: inside a stall, play must hold to count
         self.recover_since = None
+        self.cur_scene = None            # this capture's classify.scene (progress_bar only)
+        self.escape_scene = None         # the scene where the last escape started
         self.last_hud_t = None
         self.play_since = None
         self.play_frames = []
@@ -385,9 +387,27 @@ class Driver:
         return out
 
     def start_escape(self):
+        """One escape. With progress_bar set, a stall whose scene differs from
+        where the last escape started (scene_change >= the bar) is a new
+        obstacle: the budget starts over there. Trial 3 of lane.routedriver2
+        spent its six escapes on two Seaside Hill obstacles, cleared both,
+        and met a third with none left: 30 s of play (escape_reset_s) never
+        came between them."""
+        if self.new_site():
+            self.escapes = 0
+            self.mode_escapes = {}
+            self.inputs.append(dict(t=round(self.t(), 1), state=self.state, input="",
+                                    why="new stall site: escape budget reset"))
+        if self.cur_scene is not None:
+            self.escape_scene = self.cur_scene
         self.escapes += 1
         self.mode_escapes[self.mode] = self.mode_escapes.get(self.mode, 0) + 1
         self.escape()
+
+    def new_site(self):
+        bar = self.cfg["progress_bar"]
+        return bool(bar and self.escape_scene is not None and self.cur_scene is not None
+                    and classify.scene_change(self.cur_scene, self.escape_scene) >= bar)
 
     def escape(self):
         """Play escape number self.escapes's cycle through, now, with no
@@ -574,6 +594,7 @@ class Driver:
             return
         t, win = self.t(), self.cfg["progress_window_s"]
         sig = classify.scene(frame, self.p.get("drive", {}).get("progress_mask", []))
+        self.cur_scene = sig
         old = [(ht, hs) for ht, hs in self.scene_hist if t - 1.6 * win <= ht <= t - win]
         self.scene_hist = [(ht, hs) for ht, hs in self.scene_hist if ht >= t - 1.6 * win] + [(t, sig)]
         if not old:
@@ -727,7 +748,7 @@ class Driver:
 
         if state in ("play", "stalled"):
             if (state == "stalled" and not r.get("recovering") and self.stall_cycles()
-                    and self.escapes < cfg["escape_max"]):
+                    and (self.escapes < cfg["escape_max"] or self.new_site())):
                 self.start_escape()
                 self.last_press_t = self.t()     # the next capture comes at the fast rate
                 self.stalled_since = None

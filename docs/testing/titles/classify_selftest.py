@@ -94,6 +94,16 @@ RECOVER = [
       "024155-092-play.png", "024157-093-play.png", "024159-094-play.png", "024201-095-play.png",
       "024203-096-play.png", "024206-097-play.png"], "no-play"),
 ]
+# A new stall site resets the escape budget (progress_bar profiles): (name,
+# profile, run, frame where the last escape started, the stall frame now,
+# reset wanted). Trial 2's lower-path block against its POWER block is a new
+# site; two stalls at the POWER block are the same one.
+SITES = [
+    ("sonic POWER block after the lower-path block: new site", "sonic-heroes", SHT2, "023809-028-stalled.png",
+     "024145-088-stalled.png", True),
+    ("sonic POWER block twice: same site", "sonic-heroes", SHT2, "024145-088-stalled.png",
+     "024208-098-stalled.png", False),
+]
 # [[mode]] from a HUD region's colour, through Driver.classify: (name,
 # profile, run, frame, mode wanted). The counter-case is a menu: its blue
 # reads as Speed's colour, so the mode is only read on a frame with the play
@@ -259,6 +269,8 @@ def all_frames():
         seen.add((run, f))
     for _, _, run, fl, _ in RECOVER:
         seen.update((run, f) for f in fl)
+    for _, _, run, a, b, _ in SITES:
+        seen.update({(run, a), (run, b)})
     for _, _, run, (lo, hi), _, _ in SIMS:
         d = frames_dir(run)
         if os.path.isdir(d):
@@ -367,6 +379,20 @@ def progress_checks(prof, disk):
         ok = (states[-1] == "play" and "stalled" in states) if want == "play" else ("play" not in states)
         fails += not ok
         print("%s  recover %-45s want %-7s got %s" % ("ok  " if ok else "FAIL", name, want, " ".join(states)))
+    for name, pn, run, first, now_f, want in SITES:
+        with tempfile.TemporaryDirectory() as td:
+            d = drive.Driver(drive.SimDevice([], 1.0), prof(pn), td, td, 999, sim=True)
+            d.seen = ["main_menu", "play"]
+            d.classify(source(run, first, disk))
+            d.start_escape()
+            d.clock_sim += 60.0
+            d.classify(source(run, now_f, disk))
+            got = d.new_site()
+            d.start_escape()
+            budget = d.escapes
+        ok = got == want and budget == (1 if want else 2)
+        fails += not ok
+        print("%s  site %-48s want %-5s got %s (escapes %d)" % ("ok  " if ok else "FAIL", name, want, got, budget))
     for name, pn, run, f, want in MODES:
         with tempfile.TemporaryDirectory() as td:
             d = drive.Driver(drive.SimDevice([], 1.0), prof(pn), td, td, 999, sim=True)
