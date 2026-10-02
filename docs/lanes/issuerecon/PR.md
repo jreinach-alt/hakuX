@@ -4,7 +4,7 @@ State: draft
 
 Lane: issuerecon            Issue: #433
 Base: master @ 66bce0c222
-Files: docs/lanes/issuerecon/PR.md, docs/lanes/issuerecon/NOTES.md, docs/lanes/issuerecon/OUTBOX.md, docs/lanes/issuerecon/recon.py
+Files: docs/lanes/issuerecon/NOTES.md, docs/lanes/issuerecon/OUTBOX.md, docs/lanes/issuerecon/PR.md, docs/lanes/issuerecon/jqtmpl.py, docs/lanes/issuerecon/recon.py, docs/lanes/issuerecon/recon_build.py, docs/lanes/issuerecon/secretscan-allow.json, docs/lanes/issuerecon/secretscan.py
 Prediction: none: analysis-only (no emulator code, no pixels)
 Needs device: no    Needs NDK: no
 
