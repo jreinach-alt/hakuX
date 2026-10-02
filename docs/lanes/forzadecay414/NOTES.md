@@ -872,6 +872,16 @@ Forza's Playable fps, not this step.
   one view show no creep. A further run would measure the circuit's per-scene cost, which is
   outside this step's scope.
 
+## 14. Resume 2026-10-01 (attempt 2 on the step): nothing left to do
+
+**Why the previous attempt did not finish.** It did finish. Section 13 answered lane.local's
+22:40 addendum, `PR.md` said `State: ready`, and `lane/forzadecay414-step` folded to master as
+5014d808b0. The resume came from the quiet clock, not from an open item. No Forza result has
+landed in `dispatch/results` since `1-1790826491-lane.verdict433-3477700`, so section 13's
+reading stands. The one open item, whether the forest view is bound by the 401 MHz GPU clock
+under the default regimen, belongs to whoever owns Forza's per-scene fps, not to this lane.
+No device run was queued.
+
 ## Do not repeat
 
 - Do not commit to a branch after its head run is queued, if offline_fold.py will fold it. The

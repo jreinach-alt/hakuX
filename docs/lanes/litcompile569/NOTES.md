@@ -280,11 +280,349 @@ queued first; fix is 87ceac5569.
   3. Post the legs on #569 as their own post, with GPU ms per frame and `j_per_frame`.
 - If the thermal gate voids the pair, re-run it from a cool start.
 
+## 7. Session 3 (2026-09-29, attempt 3): gate 4 read
+
+### Why session 2 did not finish
+
+It did not fail. It ended on purpose, waiting on the gate-4 soak pair, which was queued 54th-55th
+of 59 on the Nova. PR #580 (gates 1-3) was marked ready and folded in the meantime. The pair
+finished DONE, and `handback.sh` resumed the lane to read it. This session carries gate 4 on a
+new PR (#607).
+
+### Gate 4: the pair
+
+The pair: base `0-0-x-0-1790657057-litcompile569-206765` (bf1ecde346) and fix
+`...-1790657061-litcompile569-206870` (87ceac5569). Nova, 440 s, perflog, MAX regimen, battery
+39% at start.
+- **Both arms were cold** (shader cache cleared) and never thermally paused. The GPU clock was
+  615-680 MHz in both, median 680, with no throttling.
+- **The route drew different fights.** Both arms picked Kasumi in Story mode.
+  - Base fought Bayman, lost, and continued.
+  - Fix fought Helena, then Lei Fang.
+  - Both arms reached the fight during the menu presses, so `mark play` (at 23:41:54 on base,
+    00:46:45 on fix) falls mid-fight. fbwin's rule places no fight load on either arm.
+- **Creates:** 155 on base and 110 on fix (-29%). That is outside V's ±25%, so the per-create
+  legs stand and the totals are reported only.
+- **The fix arm's adb link dropped at 00:48:51,** 60 s before its end, at 36% battery (the
+  known Nova link drop). All the compile data is before the drop. `title_verdict.py` voids
+  the arm ("not-foreground: unreadable"), so the fix has no j_per_frame from it.
+
+`doa_soak_judge.py` (registered legs):
+
+| leg | reading | verdict |
+|---|---|---|
+| L1 (whole run, per create) | fix 180.9 ms/create against model 155.4 (base 359.1): ratio 1.16; base/fix **1.98x** | PASS |
+| L2 (fight load, placed from the frames) | base 23:40:03-:23 (character select -> Bayman intro -> GET READY) 7,987 ms; fix 00:44:38-:56 (select -> intro -> fight) 4,855 ms; model 3,786: ratio **1.28** | PASS, on the line |
+| L2, narrower placement (to :20 / :52) | 7,045 against 4,455, model 3,348: ratio 1.33 | FAIL |
+| L3 (gs, fs per create) | 1.12, 1.12 | PASS |
+| L4 (VS per create, 4.8-8.1x) | **3.48x** | FAIL |
+| E (GPU Tot ms/frame, play, dpm == 0) | 26.8 -> 21.2 (-20.9%) | falls: see below |
+
+- **L2 is not decided by this pair.** The two loads fetch different fighters (Bayman against
+  Helena). Where the span ends moves the ratio across the 1.30 bound.
+- **The matched read replaces it** (`doa_matched.py`, written after the run). It pairs the
+  windows whose `kd` vector and create count are the same in both arms, i.e. the same load:
+
+| | base | fix | base/fix |
+|---|---|---|---|
+| 15 matched windows, 72 creates each (base 72 of 155, fix 72 of 110) | | | |
+| pipeline create ms | 25,758 | 12,029 | **2.14x** |
+| the model's fix (base - 0.840 x base VS) | | 12,086 | **fix/model 1.00** |
+| VS stage ms | 16,271 | 3,957 | **4.11x** |
+| GS stage ms | 5,722 | 5,661 | 0.99 |
+| the title-to-menu load (26 creates) | 12,233 | 4,903 | 2.49x (VS 4.55x) |
+| unlit windows (boot 12 creates, 1-create unlit) | 1,205 / 126 / 150 | 1,203 / 125 / 150 | 1.00 |
+
+- **On the same content, the registered model predicts the fix's create time exactly (1.00).**
+  B1 halves DOA's pipeline creation time on the device: 2.14x on matched loads, 1.98x per create
+  over the run.
+- **L4 fails anyway: the device's VS stage gains 4.1x, not the host's 6.3x.** The pipeline
+  total still meets the model because the time outside the three stages also shrank. Over the
+  matched creates, dpc - (vs + gs + fs) is about 3.8 s on base and 2.4 s on fix. The feedback
+  API's stage split is not the host's split. The registered text named only the other failure
+  (L4 pass, L1 fail). This one is not a gap outside the VS stage; it is how the stage time is
+  attributed.
+
+### E: GPU time per frame, fps and energy (the addendum)
+
+`doa_energy.py` / `doa_gpu_segments.py` (written after the run). Scenes are placed from the
+route frames, and only windows with no pipeline miss are counted:
+
+| scene | fps base -> fix | GPU ms/frame | net W (batt + USB) | J/frame |
+|---|---|---|---|---|
+| menus (profile -> character select; same content in both arms) | 58.3 -> 60.0 (at the cap) | 14.7 -> 10.9 (**0.74**) | 8.46 -> 7.39 (1 sample each) | 0.145 -> 0.123 (0.85) |
+| first fight (Bayman / Helena, same stage, pause menus included) | 34.7 -> 44.2 (**1.27x**) | 27.4 -> 22.3 (**0.81**) | 7.41 -> 8.06 (4/4) | 0.214 -> 0.182 (**0.85**) |
+| whole run to the fix's link drop | 36.6 -> 46.6 | 26.8 -> 21.4 (0.80) | 7.43 -> 8.02 | 0.203 -> 0.172 (0.85) |
+
+- **The fight is GPU-bound in both arms:** fps is about 1000 / GPU ms (27.4 ms -> 36 fps cap,
+  34.7 read; 22.3 -> 45, 44.2 read). A cut in GPU time per frame becomes frame rate.
+- **The registered E reading expected ±10%.** It reads -19% to -26%: "the rewrite also cuts GPU
+  time per frame and is an energy lever". Energy per frame falls 15%. Power rises, because the
+  fix draws more frames per second.
+- **Only `vsh-ff.c` differs between the refs** (`git diff --stat bf1ecde346 87ceac5569 -- .
+  ':!docs'`).
+- **Why this is not yet a claim:** it is one run per arm, and the fight is a different opponent
+  in each arm. The menus are the same content, but n = 13 and 10.
+- **Mechanism, host** (Turnip A740 drm-shim, `IR3_SHADER_DEBUG=vs`, gate 2's catalogue, where
+  the FS keeps the lit colours):
+
+| VS (A -> B) | instr | nops | cat0 (flow + nop) | cat2 + cat3 ALU | full regs | max_waves |
+|---|---|---|---|---|---|---|
+| ff_lit2 (+basic) | 4692 -> 2930 | 1584 -> 347 | 1841 -> 368 | 2608 -> 2488 | 16 -> 19 | 12 -> 10 |
+| ff_skin_texgen (+basic) | 9224 -> 5101 | 3281 -> ~400 | 3825 -> 427 | 4923 -> 4539 | 24 -> 24 | 8 -> 8 |
+
+  - B1 keeps the ALU and removes about 230-400 branch instructions and most of the scheduling
+    nops.
+  - Per vertex, the old forms pay a branch and its nop padding at every special case. The new
+    forms select.
+  - The cost is 3 more registers on `ff_lit2`.
+  - A static count is not a dynamic path, so this makes the device reading plausible; it does not
+    prove it.
+- **DOA's own manifest cannot show this on the host.** Its pairing (one DOA FS + the triangle
+  GS) reads only 2 varyings, so link-time DCE strips the lighting from the final ISA. A and B come
+  out identical: 872-931 instructions, 12 regs. The compile-time gap survives because Turnip's NIR
+  loop runs before the link.
+- **Earlier DOA soaks with perflog** (`doa_gpu_history.py`: 22 runs, all pre-B1) are no baseline.
+  Other builds and routes read 13-60 ms and 13-33 fps.
+
+### Replication, registered before it ran
+
+`docs/testing/predictions/litcompile569-doa-gpu-rep.json`: the same refs, order reversed (fix
+first). The judge is `doa_gpu_history.py`, unchanged from the registering commit.
+- **R1:** this pair's fight Tot fix/base <= 0.90 (refuted if >= 0.95).
+- **R2:** fps >= 1.10.
+- **R3:** pooled with gate 4's 0.82, mean <= 0.90.
+
+### State at the end of session 3 (2026-09-29 ~01:15 PDT): waiting
+
+- **Gate 4 is read and posted on #569.** PR #607 carries it.
+- **The replication is queued on the Nova,** 53rd-54th of 57, study priority:
+  - fix `1790668953-litcompile569-2678297` first;
+  - base `1790668956-litcompile569-2678738` second.
+- **When both are DONE:**
+  1. Run `doa_gpu_history.py <base> <fix>` and score R1-R3.
+  2. Name each arm's opponent from its route frames.
+  3. If the pair also drew one opponent each, rerun `doa_energy.py` with scene spans from its
+     frames.
+  4. Post the verdict on #569 and PR #607.
+  5. Mark #607 ready once CI is green.
+  - If R1 is refuted, B1 is a compile-stall fix only. Say that, and drop the energy framing.
+
+## 8. Session 4 (2026-09-29, attempt 3 resumed): the replication pair
+
+### Why session 3 did not finish
+
+It ended on purpose, waiting on the replication pair (section 7). The resume brief named the
+gate-4 pair again, and that pair was already read. The replication came back without a scorable
+fix arm:
+- **The fix arm `1-1790668953-litcompile569-2678297` is VOID.** hostops voided it: the Nova's USB
+  link dropped at 09:11 PDT, and the soak aborted `not-foreground` at 312 of 440 s. Battery was
+  53%, so this was not the low-battery link drop.
+- **The hostops re-run `1-1790698600-litcompile569-3098546` had no route:** its `route_name` and
+  `route` were empty. With no input the game never reached a fight and never wrote `mark play`,
+  so the judge reads 0 lines from it. It cannot be a replication arm.
+- The base arm, `1-1790668956-litcompile569-2678738`, is valid: cache cleared, 447 s, no
+  thermal pause, and the GPU at 615-680 MHz.
+
+### The provisional reading (the voided arm; NOT the registered verdict)
+
+`doa_gpu_history.py`, unchanged, run on base against the voided fix arm:
+
+| arm | fight lines | fight Tot ms | fps | opponent (route frames) |
+|---|---|---|---|---|
+| base bf1ecde346 | 112 | 24.4 | 36.3 | Gen Fu |
+| fix 87ceac5569 (VOID, 312 s) | 20 | 20.4 | 43.7 | Bayman |
+| fix/base | | **0.84** | **1.20** | |
+
+- **It would pass R1 (<= 0.90), R2 (>= 1.10) and R3** (pooled with gate 4's 0.82, the mean is
+  0.83).
+- It is not scored, for three reasons:
+  - the arm is void;
+  - it has exactly V's minimum of 20 fight lines;
+  - the opponents differ again. Both fights are on the same stage, the clock tower.
+- The fix arm's GPU clock ranged 401-680 MHz, against 615-680 on base. A lower clock slows the
+  fix, so it cuts against the fix's reading, not in its favour.
+- **An unregistered cross-pair match:** gate 4's base also fought Bayman (27.4 ms). Against this
+  fix's Bayman fight (20.4 ms) that is 0.74. It comes from different sessions, so it is
+  reported, not scored.
+
+### State at the end of session 4: waiting
+
+- **The fix arm is re-queued with the survey route:** `1790721747-litcompile569-271619`, Nova,
+  plain tier, 30th of 33. The route text is byte-identical to the base arm's.
+- **When it is DONE:** run `doa_gpu_history.py <base 2678738> <fix 271619>`, score R1-R3, name
+  the opponent, post on #569 and PR #607, and mark #607 ready.
+- **If it voids again,** score R1-R3 on the voided arm above as the registered V permits (it
+  has 20 lines), and say so.
+
+## 9. Session 5 (2026-09-29 16:26 PDT, attempt 4): the queue was wiped
+
+### Why session 4 did not finish
+
+It ended on purpose, waiting on the re-queued fix arm `1790721747-litcompile569-271619`. That
+request never ran. The Nova's per-run battery admission skipped it at 35-36% (need 38.1) until
+16:15 PDT. Between 16:23 and 16:26 PDT, every queued request (32 at the 16:15 recovery
+manifest) and every historical result dir left `$DISPATCH_DIR/queue` and `$DISPATCH_DIR/results`.
+The dispatcher log has no line for it. The hostops waiters read "not in queue/running" as
+"finished" and resumed eight lanes, this one included, at 16:25-16:26. The resume brief's
+table names the gate-4 pair, which section 7 had already read.
+
+- **Lost with the wipe:** the replication base arm `1-1790668956-litcompile569-2678738` (its
+  judge output survives only as a scratch reading, section 8) and the voided fix arm.
+- **Not lost:** gate 4's pair. Both dirs were copied into the worktree's scratch before it was
+  read, and section 7's numbers stand.
+
+### Re-queued
+
+The registered replication (`litcompile569-doa-gpu-rep.json`, unchanged, same refs, fix first),
+both arms fresh on the Nova, survey route (text identical to gate 4's request.json):
+- fix 87ceac5569: `1790724513-litcompile569-1351153`;
+- base bf1ecde346: `1790724517-litcompile569-1352783`.
+
+That is 2 x (440 + 90) s = 17.7 min of device time, inside the pilot budget. **When both are
+DONE:** follow section 7's list (score R1-R3 with `doa_gpu_history.py`, name the opponents,
+post on #569 and #607, mark #607 ready). Section 8's provisional 0.84 is not a pair, and is not
+pooled into R3.
+
+## 10. Session 6 (2026-09-29 17:49 PDT): the second re-queue was wiped too
+
+### Why session 5 did not finish
+
+It ended on purpose, waiting on the re-queued pair (section 9). Neither arm ran:
+- **hostops confirmed the cause** from `dispatch/logs/dispatcher.log`. The dispatch wipe had a
+  second pass.
+  - `selftest.d/50-arms-requeue.sh` and `51-dispatch-hardening.sh` ran against the live
+    `DISPATCH_DIR` from PR #622's branch.
+  - The fix arm (`1351153`) was only ever battery-skipped on the Nova.
+  - The base arm (`1352783`) was admitted on the Thor and then removed before anything
+    claimed it.
+- **The fix is PR #624** (lane.dispatchguard): those fragments now refuse a live
+  `DISPATCH_DIR`. It folded at 2026-09-30 00:40 UTC.
+- **The resume brief's table names the gate-4 pair** (`206765`, `206870`). Section 7
+  already read that pair.
+
+### Queued a third time
+
+The pair is back in the queue, queued at 00:41 UTC (after #624 folded):
+- fix 87ceac5569: `1790728885-litcompile569-2295720`, first;
+- base bf1ecde346: `1790728890-litcompile569-2296232`.
+
+Both run on the Nova, at study priority, on the survey route. The route text is
+byte-identical to the replication base arm's `request.json`. I did not queue a duplicate.
+
+Both handhelds are held for the owner's top-up (`lanelocal-topup`). The holds release
+themselves, so nothing runs until the Nova is back.
+
+**When both are DONE:** follow section 7's list. If the pair is lost a third time with #624
+in, that is a different bug: report it on #607 with dispatcher.log evidence.
+
+## 11. Session 7 (2026-10-01 21:00 PDT, attempt 2 after the suspension): the replication is read
+
+### Why session 6 did not finish
+
+It ended on purpose, waiting on the third re-queue (section 10). That pair ran on the Nova on
+2026-09-30, fix 04:29-04:37 UTC and base 05:16-05:24 UTC. Both runs are DONE. The lane was not
+resumed to read them. GitHub suspended the harness account on 2026-09-29 around 21:00 PDT, and
+only the lanes named in the offline protocol ran. This session follows that protocol: there
+is no PR #607 to update. The PR is `docs/lanes/litcompile569/PR.md`, and the issue post is
+`OUTBOX.md`.
+
+### The pair
+
+- fix 87ceac5569: `1-1790728885-litcompile569-2295720`, first;
+- base bf1ecde346: `1-1790728890-litcompile569-2296232`, second.
+
+Both were copied to the worktree's scratch before reading.
+
+### V (validity): holds
+
+- **Both caches were cleared.** `result.json` reads `shader_cache=cleared`.
+- **Neither arm paused.** No `pause` flag and no active pause cdev in either `thermal.jsonl`.
+- **Both arms have enough fight lines:** 75 on base and 66 on fix, against V's minimum of 20.
+- **The GPU ran at 615-680 MHz during play in both arms.** Base read 401 MHz once, at the
+  idle `cool` sample before the start; it was 615-680 from then on.
+- **The thermal profiles matched:** xo 31 -> 51 C on base, 31 -> 54 C on fix.
+- **Both arms were on USB charge** (500 mA input) at 35-39% battery.
+
+### The registered judge (`doa_gpu_history.py`, unchanged since 1d46b29c8f)
+
+| arm | n | Tot ms | fps | fight lines | fight Tot ms | fight fps |
+|---|---|---|---|---|---|---|
+| base bf1ecde346 | 89 | 28.0 | 31.8 | 75 | 28.6 | 31.1 |
+| fix 87ceac5569 | 106 | 20.4 | 39.9 | 66 | 26.4 | 35.0 |
+
+| leg | reading | verdict |
+|---|---|---|
+| R1: fight Tot fix/base <= 0.90 (refuted at >= 0.95) | 26.4 / 28.6 = **0.923** | **not decided** (inside the 0.90-0.95 band) |
+| R2: fight fps fix/base >= 1.10 | 35.0 / 31.1 = **1.125** | PASS |
+| R3: mean of the two pairs' ratios <= 0.90 | (0.821 + 0.923) / 2 = **0.872** | PASS |
+
+- **R1 is not refuted.** The registered text says the gate-4 0.82 "was content, not B1" only at
+  >= 0.95. This pair reads 0.92, which the registration names as "not decided".
+
+### The opponents differ again (route frames)
+
+Each arm played two fights after `mark play`.
+
+| | base | fix |
+|---|---|---|
+| fight 1 (clock tower, Kasumi) | Bass, 05:20:59-:21:40, lost -> CONTINUE | Bayman, 04:33:23-:45, lost -> title |
+| fight 2 (Ryu, wooden Japanese interior) | Gen Fu, 05:23:00-:24:25 | Ayane, 04:34:45-:36:25 |
+
+- The two arms played a different share of each fight.
+  - Fix spent 22 s in fight 1 and about 100 s in fight 2.
+  - Base spent about 41 s in fight 1 and 85 s in fight 2.
+- The pooled fight median therefore mixes a different blend of the two scenes in each arm.
+  Fight 2 is the heavier scene: 46 ms on base. Fix has 34 of its lines there, and base has 17.
+- **That blend pulls the pooled ratio towards 1.** Each scene, on its own, reads lower than
+  the pool.
+
+### Per scene (`doa_gpu_segments.py` / `doa_energy.py`, spans placed from the frames, dpm == 0)
+
+| scene | fps b -> f | GPU ms/frame b -> f | net W b -> f (samples) | J/frame b -> f |
+|---|---|---|---|---|
+| clock tower fight | 31.9 -> 45.1 (1.41x) | 28.6 -> 20.4 (**0.71**) | 7.88 -> 9.08 (2/1) | 0.247 -> 0.201 (**0.81**) |
+| Ryu fight | 20.7 -> 33.3 (1.61x) | 46.2 -> 28.1 (**0.61**) | 6.94 -> 9.11 (3/3) | 0.335 -> 0.273 (**0.82**) |
+
+`title_verdict.py` (on the copies) over the whole run:
+- **J per frame:** 0.309 on base, 0.268 on fix (0.87).
+- **fps_ok:** 0.37 on base, 0.72 on fix.
+- **Net W:** 7.68 on base, 9.20 on fix.
+- Both arms FAIL on `reached_gameplay: unconfirmed (generic route)` and `hang=True`. That is the
+  survey route's verdict, the same for both arms. It is not a B1 effect.
+
+- **This replicates gate 4's direction on every reading.** Both pairs, and every scene in each
+  pair, read the fix faster in GPU time per frame. The readings:
+  - gate 4's menus 0.74 and its fight 0.81;
+  - this pair's scenes 0.71 and 0.61;
+  - the pooled registered medians 0.82 and 0.92.
+- **Energy per frame falls in every scene,** by 13-19%. Power rises because the fix draws more
+  frames per second.
+- **What is still not shown is a same-content pair.** Three pairs on the survey route have
+  drawn six different fights. The registered single-pair leg R1 lands in its undecided band.
+  R3 passes.
+- **What the claim is now:** B1 cuts GPU time per frame in DOA's fights by roughly 10-40%,
+  depending on the scene and the blend. Its sign held on every reading across two pairs. Its
+  size is not pinned down. It is an energy lever as well as a compile-stall fix. That claim
+  rests on R2 and R3 passing with R1 undecided, not on R1.
+
+### State at the end of session 7: ready
+
+- PR.md is `State: ready`. It carries gate 4 (section 7) and this replication. The branch
+  changes no emulator code: B1 itself folded as #580.
+- `OUTBOX.md` holds the #569 post.
+- No device run is queued. A same-content pair would need a route that fixes both fighters and
+  the stage, such as Versus mode. That is a new registration, and it is left to whoever picks
+  up the energy question. It is not this lane's.
+
 ## 5. For the next lane
 
-- **Gate 4 (device) waits on P1** (PR #574, lane.shaderfb569: `dpc_ms` per stage). The leg
-  is: the fight load's `dpc_ms` falls by (2.5-2.7x factor) x (the lit share of the stall),
-  within 30%. The lit share is lane.local's, from the DOA shader-key pull.
+- **Do not run another survey-route pair to settle B1's GPU-per-frame size.** Three pairs drew
+  six different fights. A pair that settles it fixes both fighters and the stage, and holds the
+  same time in each.
+
+- **Gate 4 (device) is read** (section 7). B1 halves DOA's pipeline creation on the Nova: 2.14x
+  on matched loads, with the model at 1.00. The GPU-per-frame replication is section 11.
 - **Do not write `a ? f(x) : y` or `a && (b == c)` in a generated helper.** glslang branches on
   both. Use `mix()` and named bools.
 - **B2 (`geom.c`'s wedge) is now the larger per-pipeline cost** on a lit pipeline too: ~150 ms
