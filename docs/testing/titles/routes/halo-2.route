@@ -1,0 +1,99 @@
+# Halo 2 (4D530064), Nova. Built from the generic survey
+# 1790946979-titleroutes2-3257388 (lane.titleroutes2, read 2026-10-02).
+# Read from its route-frames, not guessed:
+#   boot20 (062313): white flash; boot40/booted (062335, 062357): the title,
+#     "PRESS START TO CONTINUE".
+#   cycle 1 (062402 START / 062408 A): START -> CHOOSE PROFILE, "Create New
+#     Profile" lit; A -> PROFILE NAME keyboard, default "Halo0001".
+#   cycle 2 (062413 START / 062419 A): START = Done -> the main menu,
+#     CAMPAIGN lit; A -> CAMPAIGN OPTIONS, "New Campaign" lit.
+#   cycle 3 (062424 START / 062431 A): START -> SELECT LEVEL ("The
+#     Heretic"); A -> CHOOSE DIFFICULTY, Normal lit.
+#   cycle 4 (062437 START / 062442 A): START -> the Halo 2 loading card;
+#     black.
+#   cycles 5-7 (062448..062517): black, then the Heretic prologue cutscene
+#     (High Charity, the Gravemind's tower); START/A do not skip it.
+#   cycle 8 START (062523): "Updating profile... done", the Armory: the
+#     Chief in the calibration ring, the Gunnery Sergeant to the right.
+#     Live. "One Size Fits All" chapter title on the next frame.
+#   cycles 8-14: START = GAME PAUSED (Continue lit; objective "Follow the
+#     Gunnery Sergeant's instructions"), A = Continue. From 062604 the top
+#     light of the ring is lit red and the tip "Use [RIGHT] to look up"
+#     stays up for the rest of the window: the survey only sent RX and LY.
+#   play (062639..062754): the same frame four times.
+# The survey saved a profile (4D530064 harvested), so the next run may
+# list "Halo0001" on CHOOSE PROFILE. START and A both select on these
+# menus, so a lit Halo0001 skips the keyboard and the path shortens by one
+# press; the guard pairs (pause + Continue) absorb that.
+# So: 10 START/A cycles (play at 8, two guard pairs), then a calibration
+# block: look up, look down, look up again (whichever light the ring asks
+# for next), A to keep the look setting, a step forward, X; a frame after
+# every leg so the replay maps what the Armory asks next. No START after
+# the mark. In play A is jump, B melee, X action/reload: all harmless.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+shot booted
+repeat 10 {
+    press START
+    wait 5
+    shot menu-start
+    press A
+    wait 5
+    shot menu-a
+}
+repeat 3 {
+    axis RY min
+    wait 1.5
+    axis RY mid
+    wait 2
+    shot look-up
+    axis RY max
+    wait 1.5
+    axis RY mid
+    wait 2
+    shot look-down
+    press A
+    wait 2
+    shot answer-a
+    axis LY min
+    wait 2
+    axis LY mid
+    press X
+    wait 2
+    shot step
+}
+mark gameplay               # CHECK: the Armory's look test passed, no pause panel
+repeat forever {
+    axis LY min
+    wait 3
+    shot fwd
+    press X
+    wait 0.5
+    axis RX max
+    wait 0.5
+    axis RX mid
+    wait 2.5
+    shot right
+    press A
+    wait 1
+    axis RX min
+    wait 0.9
+    axis RX mid
+    wait 2.5
+    shot left
+    axis LY mid
+    press B
+    wait 1
+    axis RY min
+    wait 0.4
+    axis RY mid
+    wait 1
+    axis RY max
+    wait 0.4
+    axis RY mid
+    wait 1
+    shot look
+}

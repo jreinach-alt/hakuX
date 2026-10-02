@@ -343,7 +343,8 @@ notes = "#431 (comment 5851536933): 30, high confidence. Microsoft's remaster cr
 name = "Halo 2"
 iso = { nova = "Halo 2.iso" }
 target_fps = 30
-notes = "#431 (comment 5851536933): 30, medium confidence. IGN (Xbox, 2004); capped at 30 per a 2024 reverse-engineering write-up"
+route = "halo-2"
+notes = "#431 (comment 5851536933): 30, medium confidence. IGN (Xbox, 2004); capped at 30 per a 2024 reverse-engineering write-up. A generic survey (1790946979-titleroutes2-3257388, Nova, lane.titleroutes2) reached the Armory (the Chief in the calibration ring, player-controlled) on its 8th START/A cycle, after a profile keyboard (START = Done) and the unskippable Heretic prologue; then only toggled the pause panel under 'Use [RIGHT] to look up', which the survey's RX/LY loop never answers, so its 29 fps is one room. routes/halo-2.route: 10 START/A cycles, an up/down look block with a frame per leg, then a walk loop with no START. DRAFT, NOT CONFIRMED."
 
 [titles."4D530005"]
 name = "Amped: Freestyle Snowboarding"

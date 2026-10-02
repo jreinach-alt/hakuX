@@ -141,3 +141,32 @@ the player along (Star Wars) suit it; open canyons (Gunvalkyrie) do not.
 
 Queued next (one backlog survey): Halo 2 `1790946979-titleroutes2-3257388` (300 s), to see whether it opens on an aimed
 calibration like Halo CE's.
+
+## Session 2 (2026-10-02, attempt 2, Opus 5.5)
+
+**Why attempt 1 did not finish:** its session was stopped from outside at 06:27:59 PDT (systemd `Stopping`/`Stopped`,
+empty output log), about ten minutes after it queued the Halo 2 survey and committed the third round's notes
+(`8ce3813ed6`). hostops found no host tool or tick that issued the stop; the cause is undetermined, and this lane does
+not know it either. Nothing was lost: every result through the third round is recorded above, and the only open item
+was the Halo 2 survey, which finished (DONE) unread.
+
+Merged origin/master (`edcb5afd06`; the branch was 18 behind). Nova: held by `routedriver2:s2c` (a <=5 min Buffy read)
+at start; nothing of mine running or queued. Thor: `lanelocal-fanwait`.
+
+### Halo 2 survey, read frame by frame (`1790946979-titleroutes2-3257388`, copy in `scratch/judge/`)
+
+**In-engine, but only the Armory's look test.** Title -> CHOOSE PROFILE (Create New Profile) -> PROFILE NAME keyboard
+("Halo0001"; START = Done) -> main menu (CAMPAIGN) -> New Campaign -> SELECT LEVEL (The Heretic) -> Normal -> loading
+-> the Heretic prologue cutscene (START/A do not skip it) -> cycle 8's START: "Updating profile... done", the Armory, the
+Chief in the calibration ring, the Gunnery Sergeant beside it. Every later START is GAME PAUSED (Continue lit, objective
+"Follow the Gunnery Sergeant's instructions"), every A is Continue. From `062604` the ring's top light is red under "Use
+[RIGHT] to look up" for the rest of the window; the four play frames are identical. Same trap as Halo CE's survey: the
+survey loop sends no vertical look. Unlike Halo CE, the first prompt only asks for a direction (look up), not an aimed
+crosshair, so an open-loop block may clear it; what follows it is unknown, so the route shoots a frame after every leg.
+
+The survey saved a profile (4D530064 harvested), so the next run may list "Halo0001" first; START and A both select on
+these menus and two guard pairs absorb a one-press shift.
+
+Route `halo-2.route` written: 10 START/A cycles, 3 x (look up, look down, A, step + X) with a frame per leg, mark, a walk
+loop (forward, X, turns, A, B, small up/down looks) with a frame per leg and no START. `route.sh --check`: route ok.
+`targets.toml`: `route = "halo-2"` on 4D530064 (DRAFT); `tomllib` 83 titles; `titlestate_selftest.py`: all checks passed.
