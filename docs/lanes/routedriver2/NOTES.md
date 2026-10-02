@@ -274,3 +274,15 @@ logcats.
 - **The dispatcher snapshot** must carry drive.py, classify.py,
   waitfor_match.py and drive-profiles/ before any dispatched `drive` route
   or confirmation can run.
+
+## Hand-off state (2026-10-02 04:15 PDT)
+
+- Branch merged with origin/master @ 333711ac66 (merge, no rebase).
+- `preflight.sh` passed. Its coverage gate DID NOT RUN (gh account
+  suspended, HTTP 403): that check is unverified, not passed.
+- `classify_selftest.py`: 0 failures.
+- PR.md `State: ready`, and its `Files:` line equals
+  `git diff --name-only origin/master...HEAD` (137 paths).
+- The Nova hold `routedriver2:s2` is released.
+- No confirmation was queued.
+
