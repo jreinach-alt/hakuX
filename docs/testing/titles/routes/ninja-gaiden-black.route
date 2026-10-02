@@ -18,9 +18,18 @@
 # (B closes the START menu if a START landed in play; in play B is a
 # thrown shuriken), mark, then a play loop with no START: run forward on
 # the left stick, X/Y combos, A jump, small RX camera turns.
-# [guess] that START skips the cutscene (the frames will show it), and
-# where play starts. NOT YET REPLAYED: launch to play is ~4.5 min, so a
-# 420 s replay scores ~2 min.
+# Launch to play is ~4.5 min, so a 420 s replay scores ~2 min.
+# Replay 1 (1790944628-titleroutes2-2687135, ref bd03a589f7): CONFIRMED.
+# The chapter card came on cycle 19's START (061202), the opening cutscene
+# ran through cycle 19's A and cycle 20's START (Ryu above the waterfall,
+# then in the basin), and the HUD was up by 061240: play began inside the
+# cycles. So skip1's START opened the in-game menu (Weapon / Ninpo / Item /
+# Info / Map / Exit, "B Back") and skip2's START closed it; the B presses
+# then fell in play. Mark 061303 is Ryu in the waterfall basin with the
+# health bar; every later frame is live play (moving through the basin and
+# the falls, attacking; static 0.007). If a slower load ever leaves the
+# cutscene running at skip1, its START skips it and skip2 opens the menu,
+# which B (Back) closes.
 wait 20
 shot boot20
 wait 20
