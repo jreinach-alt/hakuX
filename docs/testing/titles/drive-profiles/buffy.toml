@@ -60,8 +60,9 @@ title = ["START"]
 # between runs (hdd.plan "keep", dispatched runs too). With 10 on it, Start
 # Game only shows "only allows 10 saved games ... Press A to continue" and
 # A goes back to this menu, a loop. Every save was made at the canyon's
-# start. So: down to Load Game, then A.
-main_menu = ["LY:max", "A"]
+# start. So: Load Game, found by which row is lit ([[cursor]] below), since
+# one stick or hat pulse moves the cursor one row or two (b15-b17).
+main_menu = ["LY:max"]
 profile = ["A"]          # Start Game: CONFIRM; Difficulty: Normal
 ingame_menu = ["A"]
 paused = ["A"]           # Resume is lit
@@ -166,3 +167,19 @@ state = "play"
 region = [90, 30, 390, 120]
 ref = "hud.png"
 threshold = 12.0
+
+# The main menu's lit row decides the press: Load Game lit, A; above it,
+# down; below it, up. The lit row is the brightest of the four (99th-
+# percentile grey): right on all 25 labelled frames of b13-b17, by 89-126
+# grey levels. Reference crops per lit row could not separate the pulsing
+# glow (b17: Options and Extras lit read as unlit, and down at Extras, the
+# bottom row, did nothing for 8 presses).
+[[cursor]]
+crop = "main-menu"
+min_margin = 40.0
+rows = [
+  { name = "start", region = [110, 320, 360, 70], press = ["LY:max"] },
+  { name = "load", region = [110, 445, 360, 70], press = ["A"] },
+  { name = "options", region = [110, 565, 360, 70], press = ["LY:min"] },
+  { name = "extras", region = [110, 685, 360, 70], press = ["LY:min"] },
+]

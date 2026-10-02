@@ -1,0 +1,33 @@
+t	state	source	changed	luma	cap_s	action	frame	mode
+0.4	unknown	no-prev		39.5	0.37	wait (unknown)	064807-001-unknown.png	
+1.8	intro_video	moving	0.3996	3.8	0.27	press A (skip intro_video)	064809-002-intro_video.png	
+3.8	intro_video	moving	0.8842	83.2	0.47	press START (skip intro_video)	064811-003-intro_video.png	
+5.3	black	black		2.5	0.22	wait	064812-004-black.png	
+6.7	intro_video	moving	0.183	10.2	0.27	press A (skip intro_video)	064814-005-intro_video.png	
+8.5	intro_video	moving	0.631	37.7	0.42	press START (skip intro_video)	064815-006-intro_video.png	
+10.0	black	black		0.1	0.22	wait	064817-007-black.png	
+11.4	black	black		0.7	0.22	wait	064818-008-black.png	
+12.7	black	black		1.6	0.27	wait	064819-009-black.png	
+14.1	title	crop:title		12.9	0.37	press START (title 1)	064821-010-title.png	
+16.0	main_menu	crop:main-menu		44.0	0.48	settle	064823-011-main_menu.png	
+17.7	main_menu	crop:main-menu		30.4	0.47	press LY:max (main_menu 1)	064825-012-main_menu.png	
+20.0	main_menu	crop:menu-load-lit		34.7	0.52	press LY:max (main_menu 1)	064827-013-main_menu.png	
+22.2	main_menu	crop:menu-extras-lit		33.1	0.57	press LY:min (main_menu 1)	064829-014-main_menu.png	
+24.5	main_menu	crop:menu-load-lit		33.7	0.52	press LY:max (main_menu 1)	064833-015-main_menu.png	
+26.7	main_menu	crop:main-menu		35.0	0.52	press LY:max (main_menu 1)	064835-016-main_menu.png	
+29.0	main_menu	crop:menu-extras-lit		33.2	0.52	press LY:min (main_menu 1)	064838-017-main_menu.png	
+31.2	main_menu	crop:main-menu		33.0	0.47	press LY:max (main_menu 1)	064840-018-main_menu.png	
+33.4	main_menu	crop:menu-extras-lit		31.2	0.47	press LY:min (main_menu 1)	064842-019-main_menu.png	
+35.5	main_menu	crop:menu-load-lit		34.3	0.47	press LY:max (main_menu 1)	064844-020-main_menu.png	
+37.9	main_menu	crop:main-menu		40.6	0.57	press LY:max (main_menu 1)	064846-021-main_menu.png	
+40.1	main_menu	crop:main-menu		44.5	0.57	press LY:max (main_menu 2)	064849-022-main_menu.png	
+42.4	main_menu	crop:main-menu		35.8	0.52	press LY:max (main_menu 3)	064851-023-main_menu.png	
+44.6	main_menu	crop:main-menu		31.0	0.47	press LY:max (main_menu 4)	064853-024-main_menu.png	
+46.8	main_menu	crop:main-menu		30.3	0.42	press LY:max (main_menu 5)	064855-025-main_menu.png	
+48.9	main_menu	crop:main-menu		30.2	0.47	press LY:max (main_menu 6)	064858-026-main_menu.png	
+51.1	main_menu	crop:main-menu		32.0	0.47	press LY:max (main_menu 7)	064900-027-main_menu.png	
+53.3	main_menu	crop:main-menu		38.6	0.52	press LY:max (main_menu 8)	064902-028-main_menu.png	
+55.6	main_menu	crop:main-menu		40.6	0.57	ROUTE FAIL	064904-029-fail-main_menu.png	
+# time_to_title_s=14.2
+# time_to_play_s=
+# result=ROUTE FAIL drive buffy: main_menu: stuck on main_menu (crop:main-menu) after 8 presses

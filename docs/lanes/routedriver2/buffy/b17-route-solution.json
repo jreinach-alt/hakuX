@@ -1,0 +1,176 @@
+{
+ "profile": "buffy",
+ "title": "Buffy the Vampire Slayer",
+ "mode": "play",
+ "result": "ROUTE FAIL drive buffy: main_menu: stuck on main_menu (crop:main-menu) after 8 presses",
+ "seconds": 55.7,
+ "time_to_title_s": 14.2,
+ "time_to_play_s": null,
+ "states_seen": [
+  "unknown",
+  "intro_video",
+  "black",
+  "title",
+  "main_menu"
+ ],
+ "skips": [
+  {
+   "state": "intro_video",
+   "button": "START",
+   "after_s": 1.8,
+   "landed": "black",
+   "presses": 2
+  },
+  {
+   "state": "intro_video",
+   "button": "START",
+   "after_s": 1.8,
+   "landed": "black",
+   "presses": 2
+  }
+ ],
+ "inputs": [
+  {
+   "t": 2.0,
+   "state": "intro_video",
+   "input": "A",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 3.8,
+   "state": "intro_video",
+   "input": "START",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 6.8,
+   "state": "intro_video",
+   "input": "A",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 8.6,
+   "state": "intro_video",
+   "input": "START",
+   "why": "skip intro_video"
+  },
+  {
+   "t": 14.2,
+   "state": "title",
+   "input": "START",
+   "why": "title 1"
+  },
+  {
+   "t": 17.7,
+   "state": "main_menu",
+   "input": "LY:max",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 20.0,
+   "state": "main_menu",
+   "input": "LY:max",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 22.3,
+   "state": "main_menu",
+   "input": "LY:min",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 24.6,
+   "state": "main_menu",
+   "input": "LY:max",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 26.8,
+   "state": "main_menu",
+   "input": "LY:max",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 29.1,
+   "state": "main_menu",
+   "input": "LY:min",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 31.2,
+   "state": "main_menu",
+   "input": "LY:max",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 33.4,
+   "state": "main_menu",
+   "input": "LY:min",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 35.6,
+   "state": "main_menu",
+   "input": "LY:max",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 37.9,
+   "state": "main_menu",
+   "input": "LY:max",
+   "why": "main_menu 1"
+  },
+  {
+   "t": 40.1,
+   "state": "main_menu",
+   "input": "LY:max",
+   "why": "main_menu 2"
+  },
+  {
+   "t": 42.5,
+   "state": "main_menu",
+   "input": "LY:max",
+   "why": "main_menu 3"
+  },
+  {
+   "t": 44.6,
+   "state": "main_menu",
+   "input": "LY:max",
+   "why": "main_menu 4"
+  },
+  {
+   "t": 46.8,
+   "state": "main_menu",
+   "input": "LY:max",
+   "why": "main_menu 5"
+  },
+  {
+   "t": 48.9,
+   "state": "main_menu",
+   "input": "LY:max",
+   "why": "main_menu 6"
+  },
+  {
+   "t": 51.2,
+   "state": "main_menu",
+   "input": "LY:max",
+   "why": "main_menu 7"
+  },
+  {
+   "t": 53.4,
+   "state": "main_menu",
+   "input": "LY:max",
+   "why": "main_menu 8"
+  }
+ ],
+ "anomalies": [],
+ "classifier_sources": {
+  "no-prev": 1,
+  "moving": 4,
+  "black": 4,
+  "crop": 20
+ },
+ "model_calls": 0,
+ "play_stretch_frames": [],
+ "written_utc": "2026-10-02T13:49:04Z"
+}

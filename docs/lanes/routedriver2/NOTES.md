@@ -409,3 +409,56 @@ selftest cases.
   and Start Game loops on the limit dialog.
 - **Black Stone:** not a driver problem until the warrior walks (titleroutes
   session 37: the stick and the hat only turn him).
+
+### Buffy's main menu: the cursor moves one row or two (b15-b18)
+
+Two Options probes, b15 and b16 (scratch profile, holds `routedriver2:s2c`
+06:36-06:39), were meant to read the controller map. Neither reached Options:
+- b15: the first LY flick moved one row (Start Game to Load Game), the
+  second moved two (to Extras).
+- b16: one hat pulse moved two rows (Start Game to Options), and the next
+  went on to Extras.
+
+So the committed Load Game path (`LY:max`, `A`, b13) works only when the
+flick happens to move one row.
+
+The first fix was one reference crop per lit row. It failed on the device
+(b17, hold `s2d`): the glow pulses. Options lit at 018 and 021, and Extras
+at 022-029, scored over their thresholds. Down at Extras, the bottom row,
+did nothing for 8 presses: ROUTE FAIL stuck. Over 25 labelled frames
+(b13-b17), Extras lit scored up to 33 against its own reference while unlit
+rows scored from 21. No threshold separates them.
+
+What works: **the lit row is the brightest row.** The measure is each
+row's 99th-percentile grey. It was right on all 25 frames, by 89-126 grey
+levels.
+
+New, `[[cursor]]` (drive.py `cursor_press`, classify.py `cursor_row`): on a
+screen named by `crop`, the brightest of `rows` (if it beats the next by
+`min_margin`) picks that row's `press`. Buffy:
+- Load Game lit: A.
+- Start Game lit: down.
+- Options or Extras lit: up.
+
+Selftest (`CURSOR_WANT`):
+- Each lit row reads right, including b17's two frames the crops missed and
+  b15's dim-glow Load Game.
+- Counter-cases: the 10-saves dialog (its own crop, margin 6) and the Load
+  Game screen (margin 10) read no lit row.
+- `cursor_press` returns nothing for the same frame under another crop.
+- A `[[cursor]]` naming a missing crop is refused.
+- Mutants caught: dimmest instead of brightest (7 failures), and the crop
+  gate removed (1).
+- Also fixed: `check_profile()` ran before `self.crops` was set.
+
+**b18 (committed profile, `--find`, 06:52-06:55): the path works through
+the very jitter it was built for.**
+- The rows went Start, then (down moved two) Options, then (up moved two)
+  Start, then down to Load Game, then A, the checkpoint, the canyon.
+- Play at 41.4 s, then the known stall at the gap (52 s), ROUTE FAIL
+  stalled. `b18-cursor-path.jpg`.
+
+**Still open for Buffy: the jump.** The Options screen (and whether it shows
+a controller map) is a ~70 s held run now: a scratch copy of the profile
+whose `options` row presses A. It was not run because two priority requests
+(lane.bf2stall433) and a titleroutes2 request were queued on the Nova.

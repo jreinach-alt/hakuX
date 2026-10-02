@@ -321,8 +321,8 @@ class Driver:
         self.cfg = dict(DEFAULTS)
         self.cfg.update({k: v for k, v in profile.get("drive", {}).items() if k in DEFAULTS})
         self.inp = profile.get("input", {})
-        self.check_profile()
         self.crops = {c["name"]: c for c in profile.get("crop", [])}
+        self.check_profile()
         self.order = profile.get("order", [])
         self.has_pause_crop = any(c["state"] == "paused" for c in profile.get("crop", []))
         os.makedirs(out, exist_ok=True)
@@ -407,6 +407,15 @@ class Driver:
             for b in v:
                 if b in NEVER:
                     raise SystemExit("drive.py: profile input.%s sends %s, which can exit to the dashboard" % (k, b))
+        for cur in self.p.get("cursor", []):
+            if cur.get("crop") not in self.crops:
+                raise SystemExit("drive.py: profile [[cursor]] names crop %r, which the profile does not have"
+                                 % cur.get("crop"))
+            for row in cur.get("rows", []):
+                for b in row.get("press", []):
+                    if b in NEVER:
+                        raise SystemExit("drive.py: profile [[cursor]] row %s sends %s, which can exit to the "
+                                         "dashboard" % (row.get("name"), b))
 
     def t(self):
         return self.clock_sim if self.sim else now() - self.t0
@@ -794,6 +803,22 @@ class Driver:
             else:
                 self.stall_streak, self.recover_since = False, None
 
+    def cursor_press(self, r, frame):
+        """[[cursor]]: on a screen named by `crop`, the lit row (the brightest
+        of `rows`, classify.cursor_row) picks the press. Returns (row, press
+        list) or None. Buffy's main menu: one stick or hat pulse moves its
+        cursor one row or two (runs b15-b17), so a fixed `down, A` lands on
+        Options or Extras by chance; reading the lit row does not."""
+        for cur in self.p.get("cursor", []):
+            if r.get("crop") != cur["crop"]:
+                continue
+            name, margin = classify.cursor_row(frame, cur["rows"], float(cur.get("min_margin", 40)))
+            r["source"] = (r.get("source") or "") + "+row:%s" % name
+            for row in cur["rows"]:
+                if row["name"] == name:
+                    return name, row["press"]
+        return None
+
     def play_taps(self, t):
         """play_tap entries are [button, every] (one press, at most once per
         capture) or [button, every, n, gap]: n presses `gap` s apart, for a
@@ -916,6 +941,13 @@ class Driver:
                 raise Fail("stuck on %s (%s) after %d presses" % (state, r.get("source"), n))
             crop = self.crops.get(r.get("crop") or "")
             seq = (crop or {}).get("press") or self.inp.get(state) or (["START"] if state == "title" else ["A"])
+            row = self.cursor_press(r, frame)
+            if row:
+                key = (state, r.get("source"), row[0])
+                n = self.screen_presses.get(key, 0)
+                if n >= cfg["menu_max_presses"]:
+                    raise Fail("stuck on %s (%s, row %s) after %d presses" % (state, r.get("source"), row[0], n))
+                seq = row[1]
             if r.get("source") == "model" and r.get("model_button") in ("A", "B", "X", "Y", "START"):
                 seq = [r["model_button"]]
             self.screen_presses = {key: n + 1}
