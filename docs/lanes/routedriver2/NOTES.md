@@ -363,3 +363,49 @@ Fixes from this:
   canyon cases, since the crop is first in profile order. Mutant: without
   the crop the dialog reads `cutscene`, caught. The Load Game screen itself
   has not been seen yet: the next run films it.
+
+Second hold, `routedriver2:s2b`, 06:28-06:34 PDT (taken after titleroutes2's
+queue had run three requests):
+
+| run | change | result | what the frames show |
+|---|---|---|---|
+| b13 | Load Game path; Y bursts (8 x Y/150 every capture) | **`reached-play` by the driver, REJECTED by the frame review** | The Load Game path works: Load Game, then "Buffy 1", then the checkpoint "Spanish Mission, Canyon", then the canyon. Title 14.3 s, play 39.1 s, one save loaded, nothing created. **Y is DELETE on the Load Game screen.** But all three play captures (025-027) show the camera on the sky or a rock face, with Buffy out of frame. The classifier counted the swaying camera as play: 2 s motion 0.55, and 10 s progress 0.125 against the 0.07 bar. Session 1 recorded the sway at 0.036-0.061 and called the margin small; here it was exceeded. The 8-press bursts spaced captures ~7 s apart, so only three frames stand behind the "20 s". `b13-false-play.jpg` |
+| b14 | LT for 0.5 s at the start of each play cycle; Y bursts of 4 | ROUTE FAIL stalled | The camera was on the sky from the first play capture (37 s). Escape 1's LT brought it back (026), she climbed the low ledge (027), and at 65.9 s she was in the pit (028) with Y bursts running. **Y is not the jump either.** |
+
+**Buffy, where it stands after session 2:**
+- Driver path: title, main menu, Load Game, save, checkpoint, canyon,
+  unattended and frame-checked, ~39 s from launch.
+- The gap: NOT solved. B (four densities, two press lengths) and Y (two
+  densities) were each pressed while running at it; she always ends in the
+  stream bed, which has no exit.
+- Next, not more driver variants: find out what the jump is. Options:
+  - The game's Options screen may show the button map (a held nav.py look,
+    or one more drive run that takes Options instead of Load Game).
+  - A person with a controller makes the jump once, and the frames show
+    what it takes.
+  - The tip shows the B glyph, and B reaches games on this pad (Sonic
+    trial 3's formation change), so an emulation question (a jump that never
+    fires) is possible but unproven. Nothing here separates it from timing.
+- **Classifier hole, found by the frame review:** with the camera swinging
+  on the sky, Buffy's motion and progress both read as play. Its own frames
+  rejected b13's `reached-play`. Until something tells "Buffy on screen"
+  from "sky", a Buffy `--find` pass needs the frame review as the gate, not
+  the driver's exit code. One candidate is the upper-centre region's mean
+  colour as a `[[mode]]`, steering into an LT. Not built: the gap blocks
+  Buffy before it would matter.
+- **The profile as committed:**
+  - Load Game, and the save-limit crop.
+  - Every escape starts with LT, then forward with six B/150.
+  - Play inputs as in session 1 (B every 4 s, A every 7 s). No Y anywhere.
+
+Driver changes that stay regardless: `play_tap` bursts and `BTN/ms`, with
+selftest cases.
+
+## For the next session (session 2 additions; do not repeat)
+
+- **Buffy:** do not try more B or Y timings at the gap; b7-b14 are the
+  record. Do not try escapes from the stream bed: it is a pit. Find the jump
+  first (above). Do not choose Start Game: 10 saves are on the Nova's disk,
+  and Start Game loops on the limit dialog.
+- **Black Stone:** not a driver problem until the warrior walks (titleroutes
+  session 37: the stick and the hat only turn him).

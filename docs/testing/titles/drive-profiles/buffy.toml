@@ -67,29 +67,34 @@ ingame_menu = ["A"]
 paused = ["A"]           # Resume is lit
 # Run forward with a turn each way so one wall does not hold her. LT (the
 # camera reset) is pulled only in the stall escapes (taking it out of the
-# cycle made no difference, run b6). NOT SOLVED: every run (b2, b3, b5, b6)
-# runs ~10-15 s from the start, climbs a low ledge, and stops at the "Run and
-# press B to jump between ledges" gap; none of the escapes (back off and
-# turn, run and jump, two jumps) clears it. So `drive buffy ... find` does not
-# reach its 20 s of play: lane.routedriver2 NOTES.md. B jumps (the canyon's ledge
-# gaps); A attacks. NEVER START: it pauses (the survey's cycles 5-14 only
+# cycle made no difference, run b6). NOT SOLVED: every run (b2-b14) runs
+# ~10-15 s from the start, climbs a low ledge, and falls into the stream bed
+# below the "Run and press B to jump between ledges" gap. No B or Y pattern
+# tried made the jump (lane.routedriver2 NOTES.md, session 2). So `drive
+# buffy ... find` does not reach 20 s of frame-checked play. Standing B is a
+# kick and A a punch (b11: attack trails). NEVER START: it pauses (the survey's cycles 5-14 only
 # toggled PAUSE).
 play_cycle = [[[["LY", "min"]], 5.0], [[["LY", "min"], ["LX", "max"]], 1.5], [[["LY", "min"]], 3.0], [[["LY", "min"], ["LX", "min"]], 1.5]]
-play_tap = [["Y/150", 0.0, 8, 0.3], ["A", 7.0]]
+# Session 2 tried B as bursts (3, then 8 presses held 150 ms, every
+# capture), then Y bursts (runs b8, b10, b13, b14): none made the gap, and
+# Y is DELETE on the Load Game screen, so it stays out of play. Session 1's
+# taps are kept: they reach play cleanly.
+play_tap = [["B", 4.0], ["A", 7.0]]
 # A stall (the HUD up, the frame still): reset the camera, back off and turn,
 # then run and jump; the second try turns the other way; the third runs
 # straight at the ledge with two jumps (the "push into low ledges" tip).
 #
-# Session 2 (b7): the first stall is NOT at the gap's edge. b5/b6's frame
-# 028 is the 49.1 s capture (kept after the escape ran): she is already in
-# the stream bed below the gap, splash at her feet, after the cycle's B tap
-# at 46.7 s. Every escape above played from inside the stream bed. These
-# four explore it, one direction each, with B pressed through each push.
+# Session 2: the first stall is NOT at the gap's edge but in the stream
+# bed below it (b5/b6's frame 028 is the 49.1 s capture: splash at her
+# feet). The stream bed is a closed pit: b7's eight escapes, four
+# directions with B through each push, never left it. So no escape fixes
+# the gap. What escapes CAN fix is the sky camera (b7, b13, b14: Buffy out
+# of frame, the camera on the sky), and LT clears it, so each starts with LT.
 stall_cycles = [
-  [[[["LT", "max"]], 0.8], [[["LY", "min"]], 2.5, ["Y/150", "Y/150", "Y/150", "Y/150", "Y/150", "Y/150"]], [[], 0.3]],
-  [[[["LT", "max"]], 0.8], [[["LY", "max"]], 1.0], [[["LY", "min"]], 2.5, ["Y/150", "Y/150", "Y/150", "Y/150", "Y/150", "Y/150"]], [[], 0.3]],
-  [[[["LT", "max"]], 0.8], [[["LX", "min"]], 1.5], [[["LY", "min"]], 2.5, ["Y/150", "Y/150", "Y/150", "Y/150", "Y/150"]], [[], 0.3]],
-  [[[["LT", "max"]], 0.8], [[["LX", "max"]], 1.5], [[["LY", "min"]], 2.5, ["Y/150", "Y/150", "Y/150", "Y/150", "Y/150"]], [[], 0.3]],
+  [[[["LT", "max"]], 0.8], [[["LY", "min"]], 2.5, ["B/150", "B/150", "B/150", "B/150", "B/150", "B/150"]], [[], 0.3]],
+  [[[["LT", "max"]], 0.8], [[["LY", "max"]], 1.0], [[["LY", "min"]], 2.5, ["B/150", "B/150", "B/150", "B/150", "B/150", "B/150"]], [[], 0.3]],
+  [[[["LT", "max"]], 0.8], [[["LX", "min"]], 1.5], [[["LY", "min"]], 2.5, ["B/150", "B/150", "B/150", "B/150", "B/150"]], [[], 0.3]],
+  [[[["LT", "max"]], 0.8], [[["LX", "max"]], 1.5], [[["LY", "min"]], 2.5, ["B/150", "B/150", "B/150", "B/150", "B/150"]], [[], 0.3]],
 ]
 
 [drive]
