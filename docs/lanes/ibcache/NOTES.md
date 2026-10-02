@@ -1004,3 +1004,42 @@ B, which is not drift-balanced, and the reading says so.
 5c queued 22:33 PDT, A B B A B A: `1790918407-lane.ibcache-81732` (A),
 `-81794` (B), `-81858` (B), `1790918408-lane.ibcache-81928` (A), `-81985`
 (B), `1790918409-lane.ibcache-82042` (A).
+
+### 5c, read: PASS. 5a's +6.6% did not replicate (`readleg.sh 5c`, `out/legtable-5c.out`)
+
+Nova, 946a78c8e9, route `ibcache-gta-sa-shots`, A B B A B A, 2026-10-01
+23:24 to 10-02 00:40 PDT. All six runs are valid: `[ibc507]` reads as the
+arm says, mark gameplay is reached, there is no crash, hang or thermal pause,
+and none is void.
+
+| run | arm | fps | J/frame | net W | guest idle | vCPU on-CPU | PGRAPH rd/s | `[rr425] hc` |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| `-81732` | A | 29.08 | 0.2811 | 8.18 | 0.006 | 0.956 | 182 | 12.4M |
+| `-81794` | B | 28.83 | 0.2735 | 7.88 | 0.016 | 0.956 | 189 | 0.94M |
+| `-81858` | B | 29.50 | 0.2748 | 8.11 | 0.017 | 0.965 | 192 | 0.86M |
+| `-81928` | A | 29.34 | 0.2558 | 7.50 | 0.014 | 0.952 | 188 | 12.8M |
+| `-81985` | B | 29.61 | 0.2689 | 7.96 | 0.029 | 0.952 | 202 | 0.86M |
+| `-82042` | A | 28.61 | 0.2634 | 7.54 | 0.028 | 0.949 | 198 | 13.3M |
+
+- **Arm means (3 each):** fps A 29.01, B 29.31 (+0.31). J/frame A 0.2668,
+  B 0.2724, **ratio 1.021**. Net W ratio 1.032.
+- **Against the bars:** fps(B) >= fps(A) - 0.5 PASSES, and J/frame(B) <=
+  1.036 x A PASSES. **5c PASSES, so the probe stays on by default.**
+- **The frames:** CJ is in a different place in every window frame of all
+  six runs (Jefferson, the tracks, East Los Santos). The movement gate
+  passes.
+- **Two B runs died.** `-81794` shows "Wasted" on the tracks at 09:46 game
+  time, then the hospital at 22:21. `-81858` shows County General's
+  respawn. No A run shows a death in its 8-9 frames. These two B runs read
+  the higher B J/frame (0.2735, 0.2748). The B run without a death,
+  `-81985`, reads 0.2689, which is 1.008x A's mean. So the deaths do not
+  flatter B.
+- **In context, not the decision (the rule registered fresh runs only):**
+  - **Pooled with 5a's four runs (n=5 per arm):** J/frame B 0.2811 against
+    A 0.2704, ratio 1.040.
+  - **The A arm's own spread** is 0.2558 to 0.2814 over five runs (10%).
+  - **Read together:** the probe has no J/frame cost above the registered
+    3.6% bar on capped GTA in the replication. A cost of about 2-4% is
+    within what ten Nova runs can resolve, and it is not excluded. The
+    mechanism hypothesis in 5a (more guest work per second at the same fps)
+    is unchanged and still untested.
