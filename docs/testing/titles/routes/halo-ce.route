@@ -1,0 +1,92 @@
+# Halo: Combat Evolved (4D530004), Nova. Built from the generic survey
+# 1790933948-titleroutes-171581 (lane.titleroutes session 65, read by
+# lane.titleroutes2 session 1, 2026-10-02). Read from its route-frames,
+# not guessed:
+#   boot20 (031011): the Bungie logo; boot40/booted (031032, 031054): the
+#     main menu, CAMPAIGN lit.
+#   cycle 1 (031100 START / 031106 A): START picks CAMPAIGN -> ENTER NAME
+#     with the default "New001" and the cursor on Done; A takes it ->
+#     CHOOSE DIFFICULTY, NORMAL lit.
+#   cycle 2 (031111 START / 031117 A): START picks Normal -> LOADING; black.
+#   cycle 3 (031123 START / 031129 A): black, then "Reveille": the cryo bay,
+#     the tech at his console. Live and player-controlled.
+#   cycles 4-14: START opens the pause panel (RESUME GAME lit; objective
+#     "Complete training diagnostic") and A resumes. The tip "Use RIGHT
+#     [stick] to look around" stays up the whole time: the look training
+#     waits for up/down look input, and the survey only ever sent RX.
+#   play (031405-031456): the same room with the camera swung right.
+# So: 5 START/A cycles (3 reached the cryo bay; 2 guard pairs are pause +
+# resume), then a training block that looks up, down, left and right on
+# the RIGHT stick and walks on the LEFT stick, three times over (so the
+# training's order does not matter), mark, then a walk loop with no START.
+# A is jump and X is action in play; B (melee) and A also answer an
+# "invert the look?" question either way, which does not change the run.
+# The survey made a "New001" profile; if the title now lists profiles
+# first, START/A pick the lit one, so the cycle count should hold -- the
+# frames will say. NOT YET REPLAYED. What a pass looks like: the play
+# frames leave the cryo bay (corridors of the Pillar of Autumn), not five
+# minutes of one room.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+shot booted
+repeat 5 {
+    press START
+    wait 5
+    shot menu-start
+    press A
+    wait 5
+    shot menu-a
+}
+repeat 3 {
+    axis RY min
+    wait 1.5
+    axis RY mid
+    wait 2
+    axis RY max
+    wait 1.5
+    axis RY mid
+    wait 2
+    axis RX max
+    wait 0.8
+    axis RX mid
+    wait 1
+    axis RX min
+    wait 0.8
+    axis RX mid
+    wait 1
+    press B
+    wait 2
+    axis LY min
+    wait 2
+    axis LY mid
+    wait 2
+    shot training
+}
+mark gameplay               # CHECK: player control past the look training, no pause panel
+repeat forever {
+    axis LY min
+    wait 4
+    press X
+    wait 0.5
+    axis RX max
+    wait 0.5
+    axis RX mid
+    wait 3
+    press A
+    wait 1
+    axis RX min
+    wait 0.9
+    axis RX mid
+    wait 3
+    axis LY mid
+    axis LX max
+    wait 1
+    axis LX mid
+    axis LY min
+    wait 3
+    axis LY mid
+    shot play
+}

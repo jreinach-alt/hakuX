@@ -329,7 +329,8 @@ notes = "#431 (comment 5851536933): 60, low confidence. two user captures of a r
 name = "Halo: Combat Evolved"
 iso = { nova = "Halo Combat Evolved.iso" }
 target_fps = 30
-notes = "#431 (comment 5851536933): 30, high confidence. Digital Foundry Retro (2017)"
+route = "halo-ce"
+notes = "#431 (comment 5851536933): 30, high confidence. Digital Foundry Retro (2017). A generic survey (1790933948-titleroutes-171581, Nova, lane.titleroutes session 65) reached the cryo bay ('Reveille', player-controlled) on its 3rd START/A cycle, then only toggled the pause panel: the look training ('Use RIGHT to look around') never cleared because the survey sent no up/down look, so its 29 fps is a reading of one room. routes/halo-ce.route (lane.titleroutes2 session 1): 5 START/A cycles, a look/walk training block, then a walk loop with no START. DRAFT until a dispatch replay's frames show play leaving the cryo bay."
 
 [titles."4D530046"]
 name = "Phantom Dust"
