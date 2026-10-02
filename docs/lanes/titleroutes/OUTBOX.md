@@ -661,3 +661,32 @@ No specific next title was named by an addendum this session. Absent one,
 the next session should check for a new addendum first, then continue down
 the still-open backlog from sessions 56/57: 13 Nova-only no-route titles,
 and the Thor's untouched titles (all blocked on the fan/CPU-stop decision).
+
+## #397 -- 2026-10-01 18:15 PDT (session 59)
+
+Diagnosed and fixed a real bug in `castlevania-cod.first-run.route`: its
+name-typing step raced the Name Entry screen's own load, so the route spent
+900s stuck on an unaccepted empty name instead of creating a save and
+reaching gameplay. Dispatch route-check `1790902028-titleroutes-1005086`
+(Nova) is the evidence -- every frame after `name-a` is the same Name Entry
+screen; the registry's save for 4B4E002D (`53f0a40fe626`) is unchanged.
+Fixed by making the letter-type step self-healing (press A twice on the "A"
+tile, a few seconds apart) plus a larger initial margin. Verification queued:
+`1790903439-titleroutes-1317193` (Nova, route check, not yet landed).
+
+Also flagging: the Sonic Heroes Playable confirmation
+(`1790902215-autoverdict-1078702`, running) is building from `ref=575c480d27`,
+which predates session 57/58's folds -- it's running the OLD 9-cycle route,
+not session 58's rewrite. Its mid-run frames already show the known
+frozen-PAUSE failure (`180609-gameplay.png` / `181308-play.png`, 7 minutes
+apart, byte-identical). This is expected to FAIL, but the fix is already on
+this branch (not a new bug) -- it needs a re-nomination once sessions
+57-59 fold to master, not another route rewrite.
+
+| title | device | route | status | note |
+|---|---|---|---|---|
+| Castlevania: Curse of Darkness (4B4E002D) | Nova | castlevania-cod.first-run | fix queued for verification | see above |
+| Sonic Heroes (5345002B) | Nova | sonic-heroes | confirmation running on stale ref | expect FAIL, re-nominate after fold, don't re-fix |
+
+Next session: read both request results first (see NOTES.md "State for a
+successor"), then continue per ADDENDUM 8/9.

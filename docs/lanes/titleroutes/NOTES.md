@@ -4204,3 +4204,109 @@ this up.
   whether they converge on press COUNT first (drive both from a fresh nav
   session) -- here they did, which saved writing and maintaining a
   `.first-run`/`.returning` pair.
+
+## Session 59 (2026-10-01, resumed)
+
+**Why session 58 did not continue further:** it did not fail either. It
+finished Sonic Heroes (the only title ADDENDUM 6 named for that session),
+committed, set PR.md `State: ready`, and stopped -- correct per the lane's
+"one title per session" pattern this whole Nova arc has followed. GitHub is
+still suspended (`gh auth status`: invalid token), so this stays on the
+OFFLINE PROTOCOL.
+
+Checked before touching anything: `git fetch` showed `origin/master` one
+commit ahead (`4f37bdfbc7`, session 57's fold -- session 58's own PR hasn't
+folded yet). Merged it clean (no conflicts). Pushed.
+
+**ADDENDUM 9 item 1: read the Castlevania first-run route-check
+(`1790902028-titleroutes-1005086`, Nova, finished at 18:02:51).** It
+FAILED, and not in the way the addendum's diagnosis expected. Read every
+route-frame, not just the mark: `174838-name-a.png` (the shot right after
+the route's single "press A" that is supposed to type the highlighted
+letter "A" into the Name Entry field) shows the field EMPTY, cursor still
+on the "A" tile -- compare the ORIGINAL interactive nav.py session's own
+`scratch/nav/castlevania-cod.first-run-20261001T141851/003-name-a.png`,
+identical screen, identical command/timing sequence, field shows "A"
+typed. Every frame after that in the dispatch run (`accepted`/`yes`/
+`left1`/`createdsave`/`wait5`/`slot1`/`saved1`/`a2`/`a5`/`gameplay`) is the
+*same* Name Entry screen with an empty name -- Accept silently refuses an
+empty name, so the save-creation/cutscene/gameplay the rest of the route
+assumes never happened. `mark gameplay` landed on frame `175130-gameplay.png`,
+which is Name Entry with the cursor on "L" (from unrelated LX-axis
+presses later in the route) -- not gameplay at all. Confirmed via the
+registry too: `titlestate.py show --device nova` still reads 4B4E002D's
+save as `53f0a40fe626` (the known no-slot profile), unchanged by this run.
+
+This is a timing race in the newgame -> Name-Entry transition (the letter
+press firing before the screen is interactive), not a step-ordering bug --
+the identical sequence worked once, by eye, in the session that authored
+the route. **Fixed** (`castlevania-cod.first-run.route`, commit
+`e7eee5688d`): made the letter-type step self-healing -- press A on the
+"A" tile twice, a few seconds apart, plus a larger initial margin (10.9s ->
+14s). The cursor does not move off "A" after a successful type (confirmed
+in `003-name-a.png`), so a redundant second press just yields "AA" instead
+of breaking anything, and recovers a dropped first press if the timing
+races again.
+
+**Verification queued, not yet landed.** Released the Nova hold I'd taken
+for a live nav.py re-drive (decided a dispatch-style route check is the
+right test vehicle instead, since only a dispatch rebuild reproduces the
+exact no-save disk state the first-run route targets -- a live interactive
+session on the Nova's persistent storage would not, now that the disk's
+store-side save for this title is no longer in a known state). Queued
+`1790903439-titleroutes-1317193` (`request.sh --device nova --hard-pin
+--route castlevania-cod.first-run --seconds 900`, ref `e7eee5688d`,
+tagged as a route check per ADDENDUM 8, not a Playable confirmation). It
+sat behind the already-running Sonic Heroes confirmation and had not
+started by the time this session's turns ran low. **Next session: read
+`dispatch/results/1790903439-titleroutes-1317193` first** (check
+`result.json`/`DONE`, then every route-frame from `name-a` through
+`gameplay`, the same way this session did -- do not trust the exit code
+or the mark alone). If it reaches real play and creates a save: do the
+base-name run (`--route castlevania-cod`, ADDENDUM 8 step b), confirm it
+picks `returning` and reaches the courtyard, then nominate `castlevania-cod`
+(not the variant name). If it fails again, read exactly how before
+touching the route again -- two failed replays of the SAME fix is the
+stop point, but this will be only the fix's first test.
+
+**Unplanned finding, also from this session's result-reading:** the Sonic
+Heroes Playable confirmation (`1790902215-autoverdict-1078702`, started
+18:02:52, running past this session's end) is using `ref=575c480d27` --
+session 56's fold, BEFORE session 57/58's fixes folded. Its embedded
+`route` field in `request.json` is the OLD 9-cycle `menu-start`/`menu-a`
+script, not session 58's rewrite. Its route-frames (readable mid-run,
+since they're written live) already show the exact session-48 failure
+mode: `180609-gameplay.png` and `181308-play.png` (7 minutes apart) are
+byte-for-byte the same frozen PAUSE menu (Continue/Restart/Quit over
+Seaside Hill, timer `00:21:29` unmoving in both). **This will almost
+certainly score a FAIL**, not because session 58's fix is wrong (it isn't
+-- it was never in this build), but because the fold pipeline is slower
+than the nomination pipeline under the offline protocol: nominating a
+route the moment it's confirmed on my own branch queues a confirmation
+against whatever `master` ref existed BEFORE my PR folds. **Do not
+re-author `sonic-heroes.route` off this result when it lands** -- it needs
+a RE-nomination once sessions 57+58+59 actually fold to master, not a
+third rewrite of an already-fixed route. Said this in OUTBOX for whoever
+reviews the confirmation.
+
+Also carried the Super Monkey Ball Deluxe post-mark-loop problem forward
+unaddressed (ADDENDUM 9 item 2: its confirmed route plays live for ~60s
+then idles on the Jungle Island stage-select menu for the remaining ~10
+minutes) -- not reached this session; next session after the Castlevania
+work above.
+
+`python3 docs/testing/titles/titlestate_selftest.py` (all checks passed),
+`route.sh --check` on the fixed route (ok), and `targets.toml` via
+`tomllib` (80 titles) all re-checked before writing this up.
+
+### State for a successor
+
+- Open requests to read first: `1790903439-titleroutes-1317193` (my
+  Castlevania first-run fix verification, Nova, queued behind Sonic Heroes)
+  and `1790902215-autoverdict-1078702` (Sonic Heroes confirmation, Nova,
+  expected to FAIL on the stale pre-fix ref -- read it to confirm, then
+  flag for re-nomination after folding, don't re-author the route).
+- Super Monkey Ball Deluxe's post-mark stage-select-menu problem
+  (ADDENDUM 9 item 2) is still open, next after Castlevania.
+- The Thor CPU-stop decision, Galleon block, and the 13 Nova-only no-route
+  titles from prior sessions are all unchanged.
