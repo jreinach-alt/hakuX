@@ -70,6 +70,53 @@ and `[rr425w] idle_us/(idle_us+busy_us)`.
   steady, consistent with staying in the same area, but they do not prove
   movement.
 
+### 1a. In a dip, the vCPU is BLOCKED, not short of CPU
+
+`badgood.py <copy> 90 300 28.5` labels every 2 s line in 90-300 s (after
+the JIT warmup) by the pace window around it (bad: < 28.5 fps). It then
+compares medians, bad (n=50) against good (n=55):
+
+| field | bad | good | reads as |
+|---|---|---|---|
+| `[rr425w] idle_us` per 2 s | 168 ms | 329 ms | the guest is busier in a dip |
+| `[tlb68] cpu=` (vCPU thread CPU) | 1660 ms | 1874 ms | yet the vCPU thread runs LESS |
+| `[idlehalt] run_us` | 1649 ms | 1893 ms | same |
+| `[idlehalt] rq_us` (run queue) | 4.3 ms | 3.8 ms | not waiting for a core |
+| span - run - rq = blocked | ~347 ms | ~103 ms | **+244 ms blocked per 2 s, ~3.5 ms per frame** |
+| `vblphase` clamp / def | 4 / 31 | 0 / 5 | main-loop timers late at the same moments |
+| `[rdc] tcpu` (render thread CPU, 60 flips) | 669 ms | 842 ms | the renderer works less |
+
+About 3.5 ms more blocked per frame is enough to push a 30 fps frame
+(33.4 ms budget, 20% guest idle in good windows) over 2 VBLANKs. The vCPU
+stops, the main loop stops, and the renderer's CPU drops, all at once. That
+looks like everyone waiting on the same thing.
+
+The candidate chain, read from the code:
+- NV2A's MMIO regions keep QEMU's global locking. No
+  `memory_region_clear_global_locking` appears anywhere in hw/xbox, so every
+  guest NV2A register access runs with the **BQL** held. This build is MTTCG
+  (`SDL_main: using accel tcg,thread=multi`, logcat line 62), so outside
+  MMIO and interrupts the vCPU does not hold it.
+- `pgraph_read` takes `pg->lock` (`pgraph_mmio_lock`). The batch puller holds
+  that lock across a whole `pgraph_method` batch, GPU waits included. This
+  is #474's mechanism (`docs/lanes/flip474/NOTES.md` section 1).
+- So a guest poll of a PGRAPH register mid-batch waits on `pg->lock` WHILE
+  HOLDING THE BQL. The main loop, which runs the VBLANK timer, then waits on
+  the BQL. That would explain the late timers (17-32 ms), the grid clamps,
+  and why the dip shows up as a slow VBLANK clock.
+- `user_read` (DMA_GET/REF polling) takes `pfifo.lock` the same way, and
+  nothing instruments it.
+
+Ruled out by reading:
+- **The APU.** `mcpx_apu_read`/`write` are lock-free (qatomic). The APU
+  frame thread takes the BQL only for `update_irq`.
+- **The display path.** On Android, `XEMU_OPT_REDUCE_BQL` keeps
+  `sdl2_gl_refresh`'s blit and event poll off the BQL.
+- **Round-robin TCG** holding the BQL: the build is MTTCG.
+
+`[lock474]` (perflog builds only) measures the vCPU's `pg->lock` wait per
+2 s and splits it by puller phase. That is what the soak in section 4 reads.
+
 ## 2. The Thor runs: heat, by signature (no thermal record exists)
 
 Neither Thor run has `thermal.jsonl`. Both ran `regimen=max` (perf_mode 2,
@@ -126,9 +173,67 @@ rest of the run never leaves:
   131 s. Its 0-131 s of live play ran 54-60 fps in unlock mode, past the
   Thor's 94 s collapse point.
 
-## 4. Nova perflog soak (step 3)
+## 4. Nova perflog soak (step 3): the dips are GPU time in heavy views
 
-(pending; see section 5 for the request id)
+`1-1790919561-lane.collapse433-390126`, ref `8b45e7c15c` (= master
+`8e3b1f2ad2` plus docs), perflog, `PERF_REGIMEN=default`, hard-pinned Nova,
+420 s, frames every 20 s. Mark at 22:47:45, end at 22:48:48: **63 s of
+gameplay** (the route spends ~355 s in menus and loads; the brief's 420 s
+cap leaves this much). `render_mode: auto (default) title=45410062
+TU_DEBUG=(unset)`. The GPU timestamp period is calibrated in this build
+(`init: GPU timestamp period reported=33.113 ns measured=52.049 ns ...
+using=52.049 ns`), so GPU ms are true.
+
+**The player is playing.** Frames f00019-f00021 (mission clock 00:27, 00:48,
+01:10) show the view moving and ammo falling 20|125 -> 14|100 -> 9|75
+(firing and reloading). By 01:10 the player faces a building wall. Reserve
+ammo falls ~25 per 20 s, so it runs out about two minutes in. A blind route
+that ends facing a wall with an empty gun is a lighter scene than the
+opening view, and that is the likely reason the 514 s run's dips fade after
+~300 s (section 1). Its late 30 fps is probably not representative play.
+
+The shape matches the 514 s run (slow VBLANK clock, late timers, low guest
+idle), somewhat deeper, as perflog and frame captures cost frame rate.
+
+**The PGRAPH-lock chain of 1a is refuted.** `[lock474] rd_wait_ms` is 34.5
+ms per 2 s in bad windows and 30.9 in good (`badgood.py`, -40..64 s, n
+45/7). That is about 1.7% of the window, and the same in both.
+
+**What grows is draw load and GPU time** (`modecmp.py`, rows = 60-flip
+windows binned by the last frame's begin/end draw count `BE`):
+
+| BE (draws/frame) | windows | fps | GPU ms | Fin/Fen ms | Draw ms | renderer Idle ms | render passes | >= 29.5 fps |
+|---|---|---|---|---|---|---|---|---|
+| 600-1200 | 14 | 27.6 | 21.8 | 1.3 | 7.8 | 15.2 | 25 | 7/14 |
+| 1800-2400 | 16 | 18.9 | 34.9 | 11.4 | 16.2 | 7.7 | 38 | 0/16 |
+| 2400+ | 8 | 16.0 | 40.0 | 16.8 | 18.7 | 6.0 | 45 | 0/8 |
+
+Bad vs good windows (`badgood.py`): methods per frame (`hakuX-cpu M`) 25.7K
+vs 10.3K, pipeline binds 808 vs 270, shader binds 2182 vs 862.
+
+- In the heavy views **GPU time per frame (35-40 ms) exceeds the 33.4 ms
+  budget of 30 fps**. The PFIFO thread then waits on the frame fence
+  (`Fen` 11-17 ms), and the renderer's Idle (waiting for the guest) falls to
+  6-8 ms. This is a GPU-bound frame, not a vCPU-bound one.
+- The vCPU-side symptoms of section 1 (blocked time, late main-loop timers,
+  VBLANK deferral) follow from it. The guest waits for the GPU through the
+  FIFO, and the adaptive VBLANK stretches to the late frame. Their exact
+  path is not needed for the lever.
+- Recording cost (`Draw` 16-19 ms) is inflated by perflog's per-method
+  clock reads, so it is not priced here. The GPU figure is not inflated by
+  them.
+- 38-45 render passes a frame on a tiler is the case GMEM handles worst:
+  each pass loads and stores its tiles. BF2 is not in the per-title
+  render-mode table (`xemu_android.cpp:871`, AUF and DOA only), so it runs
+  Turnip's GMEM default. Sysmem moved AUF 16 -> 24 and DOA 13 -> 21 gfps on
+  the Nova (`docs/lanes/flip474/sysmem.md`).
+
+## 5. Sysmem comparison (decides whether the fix is in reach)
+
+`1-1790920235-lane.collapse433-601955`: the same request with
+`--env TU_DEBUG=sysmem`.
+
+(pending)
 
 ## Process notes
 
