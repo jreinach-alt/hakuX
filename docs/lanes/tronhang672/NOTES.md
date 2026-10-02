@@ -178,3 +178,72 @@ Prediction: a compile storm at the post-load transition (tens of `[pb569] rec
 new` lines within seconds of "Press A to continue") and the hang reproduces,
 with `[spin672]` naming the loop. If the storm happens and no hang follows, the
 storm is not sufficient; if no storm happens, the env did not take.
+
+## 11. Device run 6: 0-1790978946-tronhang672-3184149 (15:13-15:25 PDT): HANG REPRODUCED
+
+`HAKUX_PREBUILD=0 HAKUX_PLC_WIPE=1`, route v4 (New Game). Took effect:
+`[pb569] start ... enabled=0`, `vk_pipeline_cache.bin absent`; 210 pipelines
+compiled synchronously at draw time by 15:17:49 (33.8 s of stall).
+
+- The intro played; the second card (Action button) at t=480 s; then a storm:
+  `[pb569] rec` lines 15:21:2x-15:21:5x, 50 of them, 39 in 15:21:40-49.
+- Flips: 441/10 s at 15:21:33, 40 at 15:21:43, 3, then **0 from 15:22:03 to the
+  end**. `[rr425w]`: guest 100% busy, charged to an IDE wake (`3e.00`), never
+  idle. Frames t=510-690 s: the card faded to near-black. **The same signature
+  as 1790971658.**
+
+Cold pipelines on the New Game path: **2 hangs of 2** (1790971658, run 6).
+Warm (pre-built) pipelines: **0 of 3** (runs 1, 4 via Auto Load; run 5 on the
+New Game path). The trigger is the synchronous pipeline-compile stall at the
+post-load transition. The repro is now deterministic enough to test a fix.
+
+### The spinning loop (`[spin672]`, 15:22:31-15:24:51)
+
+One guest thread, `thr=d0008018`, IRQL 0 (28 when a tick lands in the clock
+ISR), **game code**, not the kernel and not an XDK device wait:
+
+- stack (ebp chain): 003eb2ad <- 003ee29f <- 003d842f <- 003d7f5a <- 0002dee3 <- 8001cc98 (thread start)
+- top sampled indirect targets per 2 s: 003d84b0 (~4150: `mov eax,[ecx]; ret`, a getter),
+  00400520/00400531 (~3500 each: a list-head accessor, `call 003d84b0; test; je; sub eax,8`),
+  and ~600 each at 003eac90, 003eb16b, 003eb1a2, 003eb1cf, 003eb282, 003eb28d, 003eb2ad,
+  003eb380, 003eb3be, 003f7530, 00412110.
+- The body around 003eb16b-003eb3be walks a linked list of objects (`[ebp-0x28]`
+  the node, `[node+0x104]` a flag, `call 00400520` on `[ebp-0x44]+0x54`) and at
+  003eb1a2 keeps a budget: `if ([ebp-4] < [ebp-0x3c]) this->[0x2b4] -= [ebp-0x3c] - [ebp-4]`.
+
+It reads like a game-side time-budget or catch-up loop that never catches up
+after a ~13-s frame. That is a reading of 32-byte snippets, not a disassembly of
+the whole function: whether its exit depends on guest time, and on which clock,
+is not shown. A real Xbox never stalls 13 s mid-frame, so the game never had to
+survive it.
+
+## 12. Where this leaves the fix (ranked by probability x size of the win)
+
+The win is the same size for all three: Tron's first level, and any title that
+hits a multi-second first-sight compile at a timing-sensitive moment.
+
+| # | option | p it fixes Tron | evidence | cost |
+|---|---|---|---|---|
+| 1 | **Take the multi-second compile stall off the draw path**: #569's uber ladder, `HAKUX_GPL=3` (prebuilt uber vertex stage linked on a miss, draws this frame, specialised pipeline swapped in later). The approach that fits the hardware (the Nova reports `[gpl569] ext=1 lib=1 fast=1`). | ~0.5 | the hang needs a ~13-s stall; uberspike569 measured the forced uber mode at ~20% less stall time on DOA, "not no stall", so it may shrink the stall without removing it | one env-only device run on the deterministic repro (no code); the full fix is #569's program, not this lane's |
+| 2 | **Read the whole loop function** (dump ~1 KB at 003eb100 and 003ee200 once, from the same instrument) to learn what its exit waits on. If it is guest time, a narrower emulator fix exists: do not let guest time run ahead of a stalled GPU thread for seconds | decides between 1 and a time-side fix; p of a time-side fix ~0.3 | the budget arithmetic at 003eb1a2 | a small instrument change plus one device run |
+| 3 | Warm pipelines (records pre-built at boot, as now on every device that has run Tron once) | hides it on the harness, not for a player | runs 4, 5 | none. **Not a fix**: a player's first New Game hangs |
+
+Recommendation: run 1 and 2 together as one device run on the deterministic
+repro (`HAKUX_PREBUILD=0 HAKUX_PLC_WIPE=1 HAKUX_GPL=3`, route v4, with a
+loop-dump added to `[spin672]`). If GPL=3 plays through, the fix direction is
+#569 for this title too; if it still hangs, the dump says what the loop waits
+on.
+
+## 13. Do not repeat
+
+- Fixed-time START presses on this title: boot-to-title varies by 15 s or more,
+  and the attract video follows the title. Use route v4's five STARTs.
+- `press DOWN` on this pad: the D-pad is `axis HATY`.
+- A save on the disk moves the Single Player cursor to Auto Load, which skips
+  the intro (and the hang's path).
+- Reproducing without `HAKUX_PREBUILD=0 HAKUX_PLC_WIPE=1`: once one run has
+  recorded the pipelines, every later run pre-builds them and the hang is gone.
+- The media.extractor tombstone: a bystander (section 1).
+
+Device runs used: 6 of 6. Route: `docs/lanes/tronhang672/tron-newgame.route`
+(queue with `request.sh --route ../../../lanes/tronhang672/tron-newgame`).
