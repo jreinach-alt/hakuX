@@ -64,10 +64,12 @@ FZR1 = "rdfz1"                                 # session 4, Thor: boot to a race
 SHT1 = "rdt1"                                  # lane.routedriver2 trial 1, Nova: past the pillar, then a corner
 SHT2 = "rdt2"                                  # lane.routedriver2 trial 2, Nova: block cleared, stuck at POWER
 SHT4 = "rdt4"                                  # lane.routedriver2 trial 4, Nova: three obstacles, a Game Over
+BUFR1 = "rdb1"                                 # lane.routedriver2 Buffy run 1, Nova: HUD missed, dark read black
 LOCAL = {CVR2: "scratch/run-cv2/route-frames", CVR3: "scratch/run-cv3/route-frames",
          CVR5: "scratch/run-cv5/route-frames", SHR1: "scratch/run-sh1/route-frames",
          FZR1: "scratch/run-fz1/route-frames", SHT1: "scratch/run-t1/route-frames",
-         SHT2: "scratch/run-t2/route-frames", SHT4: "scratch/run-t4/route-frames"}
+         SHT2: "scratch/run-t2/route-frames", SHT4: "scratch/run-t4/route-frames",
+         BUFR1: "scratch/run-b1/route-frames"}
 
 # drive.py's progress check ([drive] progress_bar): (name, profile, run, frame
 # ~10 s earlier, the frame before this one, this frame, the sim seconds
@@ -218,6 +220,15 @@ CASES = [
      "intro_video", [], "intro_video"),
     ("buffy dark canyon frame is not Summoning", "buffy", BUF1, "021411-play.png", "021351-play.png", "play",
      ["main_menu", "play"], "play"),
+    # Buffy run 1 (lane.routedriver2): with the first HUD crop the bright
+    # canyon read `cutscene` and got the skip ladder (START paused it), and a
+    # dark corner with the HUD up read `black` for 300 s.
+    ("buffy bright canyon is play, not a cutscene", "buffy", BUFR1, "032234-028-cutscene.png",
+     "032215-025-stalled.png", "play", ["main_menu", "play"], "play"),
+    ("buffy dark corner, HUD up (luma 5.8): not black", "buffy", BUFR1, "032324-049-black.png",
+     "032323-048-stalled.png", "stalled", ["main_menu", "play"], "stalled"),
+    ("buffy load black (luma 0) is still black", "buffy", BUFR1, "032146-014-black.png", None, None,
+     ["main_menu", "profile"], "black"),
     # Castlevania: Curse of Darkness
     ("castlevania title menu", "castlevania-cod", CV, "174750-boot.png", None, None, [], "title"),
     ("castlevania intro FMV after the title", "castlevania-cod", CV, "174810-a1.png", "174750-boot.png", "title",
@@ -252,7 +263,7 @@ FOREIGN = [(SON2, "200707-play.png", "200657-play.png"), (FOR, "214502-play.png"
            (BUF1, "021351-play.png", "021330-gameplay.png")]
 TITLE_OF = {SON: "sonic-heroes", SON2: "sonic-heroes", SONT: "sonic-heroes", SONT2: "sonic-heroes",
             FOR: "forza", FZR1: "forza", SHR1: "sonic-heroes", SHT1: "sonic-heroes", SHT2: "sonic-heroes",
-            SHT4: "sonic-heroes", BUF: "buffy", BUF1: "buffy", SMB: "super-monkey-ball-deluxe", CV: "castlevania-cod", CVT: "castlevania-cod",
+            SHT4: "sonic-heroes", BUF: "buffy", BUF1: "buffy", BUFR1: "buffy", SMB: "super-monkey-ball-deluxe", CV: "castlevania-cod", CVT: "castlevania-cod",
             CVR2: "castlevania-cod", CVR3: "castlevania-cod", CVR5: "castlevania-cod"}
 
 # drive.py --sim runs: (name, profile, run, frames slice, args, checks). The

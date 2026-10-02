@@ -21,9 +21,12 @@
 #               (the Nova's Summoning frame is under the black luma bar and so
 #               is named `black` first; the crop is for a brighter capture)
 #   pause       030500 (PAUSE / Resume / Options / Quit) pauses 0.1-12.0 (one fading 19.3), others >= 29
-#   hud         MASKED, learned over seven play frames in five places
-#               (flame heart and bars, top left): play 1.6-8.7, menus and
-#               logos >= 18.5. The in-engine opening at boot+60 s (030406)
+#   hud         MASKED (LEARN_STD 10, 37% of the region kept), learned over
+#               twelve play frames from three runs, dark and bright canyon
+#               (flame heart and bars, top left): play <= 6.2, menus, logos
+#               and pauses >= 18.8. The first cut (std 14, 81% kept, seven
+#               frames) kept scenery and read 14-18 on run b1's bright
+#               canyon, which then went down the cutscene ladder. The in-engine opening at boot+60 s (030406)
 #               draws a HUD too, and scores 24.3 against this one: not play.
 
 name = "buffy"
@@ -39,6 +42,10 @@ order = ["boot", "logo", "intro_video", "title", "main_menu", "profile", "loadin
 # swaying, 0.17-0.21 changed between captures 21 s apart, where running
 # reads 0.49-0.52 (replay 1). The 32x24 scene settles it: stuck 0.00-0.06,
 # running 0.31-0.35 ([drive] progress_bar).
+# The canyon's dark corners read luma 5.8 with the HUD in plain view (run
+# b1: 300 s of live play named `black` on the default bar of 8); the FOX
+# card's and Summoning's blacks read 0.0.
+black_luma = 3.0
 hud_motion_bar = 0.25
 hud_stall_bar = 0.22
 
@@ -98,14 +105,14 @@ name = "start-game"
 state = "profile"
 region = [150, 40, 980, 110]
 ref = "start-game.png"
-threshold = 7.0
+threshold = 10.0   # run b1: Start Game (BUFFY 1, fog moving) scored 7.2; other screens >= 13.6
 
 [[crop]]
 name = "difficulty"
 state = "profile"
 region = [150, 40, 980, 110]
 ref = "difficulty.png"
-threshold = 7.0
+threshold = 10.0   # run b1: Start Game (BUFFY 1, fog moving) scored 7.2; other screens >= 13.6
 
 [[crop]]
 name = "summoning"

@@ -322,8 +322,12 @@ def classify_frame(frame, prev, profile, seen=(), last_play_luma=None, prev_stat
     # on a flat grey frame is itself a contrast
     below = im.crop(scale_box((0, FPS_CORNER[3], REF_W, REF_H - FPS_CORNER[3]), im.size))
     flat = float(np.asarray(below.resize(MOTION_SIZE), dtype=np.float64).std()) < FLAT_STD
-    if lu < BLACK_LUMA or flat:
-        out.update(state="black" if seen - {"boot", "black"} else "boot", source="black" if lu < BLACK_LUMA else "flat")
+    # A profile may lower the bar: Buffy's canyon has dark corners at luma
+    # 5.8 with the HUD in plain view, while its true blacks read 0.0
+    # (lane.routedriver2, Buffy run 1: 300 s of live play named `black`).
+    black_luma = profile.get("black_luma", BLACK_LUMA)
+    if lu < black_luma or flat:
+        out.update(state="black" if seen - {"boot", "black"} else "boot", source="black" if lu < black_luma else "flat")
         return out
 
     crops = profile.get("crop", [])
