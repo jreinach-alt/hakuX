@@ -19,8 +19,9 @@ answers canned (PATHFIND_DRY). Each case names the defect it would catch.
   cinema    a letterboxed scene that moves under the probe and that the
             confirm model calls gameplay (Bruce Lee's intro cinematic, 10-02):
             NOT confirmed, refused before any confirm call.
-  ownmotion the probe frame changes, but no more than the scene changes on
-            its own: NOT confirmed.
+  ownmotion the scene moves on its own (no-input change over SELF_MOVING):
+            the confirm call gets the left/right steering frames (4 images),
+            and its "did not follow" refusal is honoured.
   retract   confirmed, but the frame 30 s on is a title screen (the
             recheck says no): the claim is retracted, result not gameplay.
   actions   clean_action keeps valid tokens and drops the rest.
@@ -158,9 +159,12 @@ check("cinema", res["result"] != "gameplay" and not any(c["purpose"] == "confirm
 
 # ownmotion: the scene moves as much with no input as under it
 rc, res, steps, calls = run("ownmotion", [("game", 0), ("game", 0), ("game", 80), ("game", 160)] + [("game", 0)] * 4,
-                            [GAME, {"gameplay": True, "responded": True, "why": "moved"}],
+                            [GAME, {"gameplay": True, "responded": False, "why": "did not steer"}],
                             ["--no-record", "--no-replay"])
-check("ownmotion", res["result"] != "gameplay", f"no response beyond its own motion ({res['result']})")
+conf = [c for c in calls if c["purpose"] == "confirm"]
+check("ownmotion", res["result"] != "gameplay" and conf and conf[0]["images"] == 4,
+      f"self-moving scene gets the steering test and its refusal holds ({res['result']}, "
+      f"{[c['images'] for c in conf]})")
 
 # retract: confirmed, then the recheck 30 s on says it is a title screen
 os.environ["PATHFIND_AFTER_S"] = "0.05"

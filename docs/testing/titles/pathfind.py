@@ -83,6 +83,7 @@ SIG = (16, 12)                       # a frame's signature: grey, box-averaged
 SIG_MATCH = 9.0                      # mean grey-level distance under which two screens are the same
 UNCHANGED = 0.01                     # classify.motion changed fraction at or under this: no change
 PROBE_MOVED = 0.03                   # the probe frame must change at least this much
+SELF_MOVING = 0.15                   # no-input change over this: the scene moves by itself; steer L/R
 BLACK_MODEL_S = 40                   # seconds of black before the model is asked anyway
 THOR_START_C, THOR_STOP_C = 55.0, 70.0
 
@@ -517,7 +518,7 @@ class Model:
         """One call; `images` (JPEG paths) go INLINE in a stream-json user
         message, so the model answers in one turn with no Read tool call."""
         t0 = now()
-        rec = {"t": round(t0, 3), "model": model, "purpose": purpose}
+        rec = {"t": round(t0, 3), "model": model, "purpose": purpose, "images": len(images)}
         if self.sim is not None:
             ans = self.sim.pop(0) if self.sim else {"state": "unknown", "why": "sim exhausted", "action": []}
             text, meta = json.dumps(ans), {}
@@ -757,8 +758,56 @@ class Agent:
         b_png, b_jpg = self.frame("probe-b")
         if not (a_png and b_png):
             return False, "screencap failed"
-        # hold the probe and capture DURING it
-        parts = probe.split(":")
+        c_png, c_jpg = self.hold_capture(probe, "probe-c")
+        if not c_png:
+            return False, "screencap failed"
+        ctrl, moved = changed(a_png, b_png), changed(b_png, c_png)
+        rec = {"state": "probe", "action": pre + [probe], "why": f"control {ctrl:.3f}, under input {moved:.3f}",
+               "src": "probe", "changed": moved}
+        selfmove = ctrl > SELF_MOVING
+        if moved < PROBE_MOVED or (moved < 1.5 * ctrl and not selfmove):
+            rec["verdict"] = "no change under the input beyond what changes on its own"
+            self.write_step(rec)
+            return False, (f"the screen did not change while {probe} was held beyond its own motion "
+                           f"(control {ctrl:.3f}, under input {moved:.3f})")
+        if letterboxed(a_png) or letterboxed(c_png):
+            rec["verdict"] = "letterboxed: a cutscene"
+            self.write_step(rec)
+            return False, "black bars top and bottom: this is a cutscene, not gameplay"
+        head = (f"Screenshots of {self.name}, an Xbox game, attached in order. The 'FPS: NN' text at the top-left "
+                f"is the emulator's overlay, not a game HUD. The previous step judged this gameplay: \"{why}\".\n")
+        tail = ("A menu cursor moving is NOT a response. Answer JSON only: "
+                '{"gameplay": true|false, "responded": true|false, "why": "<one line>"}')
+        if selfmove:
+            # The scene moves by itself (downhill, on rails, a cinematic): pixels cannot say who moved it, so
+            # steer LEFT then RIGHT and ask whether the player followed both (Amped 2 and Panzer Dragoon, 10-02).
+            l_png, l_jpg = self.hold_capture("STICK:left:1.2", "probe-left")
+            r_png, r_jpg = self.hold_capture("STICK:right:1.2", "probe-right")
+            if not (l_png and r_png):
+                return False, "screencap failed"
+            rec["action"] = rec["action"] + ["STICK:left:1.2", "STICK:right:1.2"]
+            q = head + ("A, then B (1 s after A, no input): the scene moves on its own. Then C taken while holding "
+                        "the stick LEFT, then D taken while holding it RIGHT. Is this real player-controlled "
+                        "gameplay (not a menu, cutscene, attract/demo or replay), AND did the player's character, "
+                        "vehicle, aim reticle or camera steer LEFT in C and RIGHT in D? Both are needed. " + tail)
+            imgs = [a_jpg, b_jpg, l_jpg, r_jpg]
+        else:
+            q = head + (f"A, then B (1 s after A, no input), then C (taken while holding {probe}, ~1 s after B). "
+                        "Is this real player-controlled gameplay (not a menu, not a cutscene, not an attract/demo "
+                        f"mode, not a replay), AND does C show the playfield responding to the input {probe} (the "
+                        "player/vehicle/camera moved accordingly), beyond whatever changed on its own between A "
+                        "and B? " + tail)
+            imgs = [a_jpg, b_jpg, c_jpg]
+        ans = self.model.ask(STRONG, q, "confirm", imgs) or {}
+        ok = bool(ans.get("gameplay")) and bool(ans.get("responded"))
+        rec["verdict"] = ("CONFIRMED: " if ok else "refused: ") + str(ans.get("why", "no answer"))[:200]
+        self.write_step(rec)
+        self.result["probe_frames"] = imgs
+        return ok, rec["verdict"]
+
+    def hold_capture(self, tok, tag):
+        """Hold one input token, take a frame ~0.8 s into the hold, release."""
+        parts = tok.split(":")
         held = []
         if parts[0] == "STICK":
             for ax, v in STICK[parts[1]]:
@@ -772,42 +821,14 @@ class Agent:
             self.dev.pad("hold", btn)
             held.append(("release", btn))
         time.sleep(0.8)
-        c_png, c_jpg = self.frame("probe-c")
-        time.sleep(0.5)
+        png, jpg = self.frame(tag)
+        time.sleep(0.4)
         for ax, v in held:
             if ax == "release":
                 self.dev.pad("release", v)
             else:
                 self.dev.pad("axis", ax, v)
-        if not c_png:
-            return False, "screencap failed"
-        ctrl, moved = changed(a_png, b_png), changed(b_png, c_png)
-        rec = {"state": "probe", "action": pre + [probe], "why": f"control {ctrl:.3f}, under input {moved:.3f}",
-               "src": "probe", "changed": moved}
-        if moved < PROBE_MOVED or moved < 1.5 * ctrl:
-            # 1.5x the no-input control: Bruce Lee's cinematic moved 0.249 with no input, 0.297 "under" it
-            rec["verdict"] = "no change under the input beyond what changes on its own"
-            self.write_step(rec)
-            return False, (f"the screen did not change while {probe} was held beyond its own motion "
-                           f"(control {ctrl:.3f}, under input {moved:.3f})")
-        if letterboxed(a_png) or letterboxed(c_png):
-            rec["verdict"] = "letterboxed: a cutscene"
-            self.write_step(rec)
-            return False, "black bars top and bottom: this is a cutscene, not gameplay"
-        q = (f"Three screenshots of {self.name}, an Xbox game, attached in order: A, then B (1 s after A, no "
-             f"input), then C (taken while holding {probe}, ~1 s after B). The 'FPS: NN' text at the top-left is the "
-             f"emulator's overlay, not a game HUD. The previous step "
-             f"judged this gameplay: \"{why}\".\nIs this real player-controlled gameplay (not a menu, not a "
-             "cutscene, not an attract/demo mode, not a replay), AND does C show the playfield responding to "
-             f"the input {probe} (the player/vehicle/camera moved accordingly), beyond whatever changed on its "
-             "own between A and B? A menu cursor moving is NOT a response. Answer JSON only: "
-             '{"gameplay": true|false, "responded": true|false, "why": "<one line>"}')
-        ans = self.model.ask(STRONG, q, "confirm", [a_jpg, b_jpg, c_jpg]) or {}
-        ok = bool(ans.get("gameplay")) and bool(ans.get("responded"))
-        rec["verdict"] = ("CONFIRMED: " if ok else "refused: ") + str(ans.get("why", "no answer"))[:200]
-        self.write_step(rec)
-        self.result["probe_frames"] = [a_jpg, b_jpg, c_jpg]
-        return ok, rec["verdict"]
+        return png, jpg
 
     # -- the loop
     def thermal_ok(self, start=False):
