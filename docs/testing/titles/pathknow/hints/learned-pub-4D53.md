@@ -1,0 +1,4 @@
+# Learned by pathfind: the inputs that reached confirmed gameplay, one line per title
+- Amped 2 (4D530041, nova, pathfind 2026-10-02): gameplay in 9.0 min via intro_video START A -> publisher_logo START A -> name_entry A -> main_menu A -> submenu A
+- Counter Strike (4D530036, nova, pathfind 2026-10-02): gameplay in 3.1 min via publisher_logo START A -> title_screen START -> title_screen A -> title_screen HOLD:START:0.6 HOLD:A:0.6 -> main_menu DOWN A -> submenu A -> submenu B
+- Top Spin (4D530035, nova, pathfind 2026-10-02): gameplay in 5.5 min via publisher_logo START A -> loading START -> main_menu A -> submenu A -> submenu START -> submenu LEFT A -> submenu A -> loading START

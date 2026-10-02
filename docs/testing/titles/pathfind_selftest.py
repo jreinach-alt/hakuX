@@ -112,6 +112,9 @@ check("happy", sum(1 for s in steps if s.get("src") == "black") == 2 and len(cal
       f"black steps cost no call: {len(calls)} calls")
 path = os.path.join(TMP, "know", "paths", "00000000.json")
 check("happy", os.path.exists(path), "the path was recorded")
+lp = os.path.join(TMP, "know", "hints", "learned-pub-0000.md")
+check("happy", os.path.exists(lp) and "(00000000," in open(lp).read() and "main_menu A" in open(lp).read(),
+      "one learned line was appended to learned-pub-0000.md")
 
 # menu60: gameplay claimed on a static menu; the probe frame does not change
 rc, res, steps, calls = run("menu60", [("menu", 0)] * 12,

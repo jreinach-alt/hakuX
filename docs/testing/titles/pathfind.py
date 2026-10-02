@@ -379,6 +379,9 @@ def hint_files(tid, name):
         files.append(os.path.join(KNOW, "hints", f"pub-{tid[:4].upper()}.md"))
         files.append(os.path.join(KNOW, "hints", f"pub-{tid[:4].lower()}.md"))
     files += series_files(name)
+    # learned-<file>: what pathfind itself appended after a success, one line per title. A separate file so
+    # lane.pathknow's seeded files and pathfind's appends never edit the same lines.
+    files += [os.path.join(os.path.dirname(f), "learned-" + os.path.basename(f)) for f in list(files)]
     seen, out = set(), []
     for f in files:
         if os.path.exists(f) and os.path.realpath(f) not in seen:
@@ -387,13 +390,47 @@ def hint_files(tid, name):
     return out
 
 
-def knowledge(tid, name, limit=6000):
+def knowledge(tid, name, per_file=9000):
+    """The hint files' text, each cut at `per_file` chars (pathknow's global.md is ~8 KB)."""
     parts = []
     for f in hint_files(tid, name):
         txt = open(f).read().strip()
-        parts.append(f"### {os.path.relpath(f, KNOW)}\n{txt}")
-    s = "\n\n".join(parts)
-    return s[-limit:] if len(s) > limit else s
+        parts.append(f"### {os.path.relpath(f, KNOW)}\n{txt[:per_file]}")
+    return "\n\n".join(parts)
+
+
+def learn(tid, name, device, steps, minutes):
+    """After a confirmed success: one line per title in hints/learned-pub-<4hex>.md and in
+    learned-<series file> for each series this title matches; the path condensed to the useful inputs."""
+    if not tid:
+        return []
+    seq, last = [], None
+    for st in steps:
+        if st.get("state") in ("gameplay", "results", "pause", "game_over"):
+            continue           # a refused claim and what play led to: not the way in
+        if st.get("src") in ("probe", "check", "black", "static") or not st.get("action"):
+            continue
+        if st.get("changed") is not None and st["changed"] <= UNCHANGED:
+            continue
+        tag = f"{st.get('state')} {' '.join(st['action'])}"
+        if tag != last:
+            seq.append(tag)
+        last = tag
+    line = (f"- {name} ({tid}, {device}, pathfind {time.strftime('%Y-%m-%d')}): gameplay in {minutes:.1f} min via "
+            + " -> ".join(seq))[:600]
+    written = []
+    hints = os.path.join(KNOW, "hints")
+    os.makedirs(hints, exist_ok=True)
+    targets = [os.path.join(hints, f"learned-pub-{tid[:4].upper()}.md")]
+    targets += [os.path.join(hints, "learned-" + os.path.basename(f)) for f in series_files(name)]
+    for t in targets:
+        old = open(t).read() if os.path.exists(t) else (
+            "# Learned by pathfind: the inputs that reached confirmed gameplay, one line per title\n")
+        old = "".join(l for l in old.splitlines(True) if f"({tid}," not in l)   # one line per title
+        with open(t, "w") as f:
+            f.write(old + line + "\n")
+        written.append(t)
+    return written
 
 
 STOP = {"the", "of", "and", "edition", "xiso", "iso", "usa", "europe", "japan", "game", "games", "pro", "tour"}
@@ -1022,6 +1059,9 @@ class Agent:
                                    retracted=self.result.get("retracted", 0) + 1)
                 return None
         self.write_path()
+        if self.record:
+            self.result["learned"] = [os.path.relpath(f, KNOW) for f in
+                                      learn(self.tid, self.name, self.dev.label, self.steps, mins)]
         return self.finish(last=jpg, post=post)
 
     def write_path(self, complete=True):
