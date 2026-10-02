@@ -1,0 +1,24 @@
+{
+ "title_id": "4D530065",
+ "name": "Blinx 2: Battle of Time & Space ~ Blinx 2: Masters of Time & Space",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4D530065-Blinx_2_Battle_of_Time_Space_Blinx_2_Masters_of_Time_Space.xiso.iso",
+ "result": "gave-up",
+ "tool": "731408d5a7",
+ "started": "2026-10-02 11:11:19 PDT",
+ "reason": "budget 15 min",
+ "last_state": "probe",
+ "model_calls": 41,
+ "calls_by_model": {
+  "claude-sonnet-5": 41
+ },
+ "steps": 74,
+ "seconds": 914.2,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/blinx-2.unguided/frames/073-gameplay.jpg",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/scratch/runs/blinx-2.unguided/strip.jpg"
+}

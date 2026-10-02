@@ -1,0 +1,37 @@
+{
+ "title_id": "4C410017",
+ "name": "Star Wars Episode III Revenge of the Sith",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4C410017-Star_Wars_Episode_III_Revenge_of_the_Sith.xiso.iso",
+ "result": "gameplay",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/sw3/frames/018-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/sw3/frames/018-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/sw3/frames/018-probe-c.jpg"
+ ],
+ "minutes": 3.52,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/sw3/frames/017-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/sw3/frames/019-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/sw3/frames/020-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/sw3/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/sw3/frames/022-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/sw3/frames/023-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/sw3/frames/024-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/sw3/frames/025-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/sw3/frames/026-after.jpg"
+ ],
+ "model_calls": 17,
+ "calls_by_model": {
+  "claude-haiku-4-5-20251001": 16,
+  "claude-sonnet-5": 1
+ },
+ "steps": 18,
+ "seconds": 243.6,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/sw3/frames/017-gameplay.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/scratch/runs/sw3/strip.jpg"
+}
