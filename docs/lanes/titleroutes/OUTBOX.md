@@ -748,3 +748,34 @@ Session 60's Castlevania verification (`1790905334-titleroutes-1780552`) came ba
 | Castlevania: Curse of Darkness (4B4E002D) | Nova | castlevania-cod.first-run | verification queued (1790918365-titleroutes-76920) | waitfor/press-until fix from session 60, now that the dispatcher snapshot has the grammar |
 
 [lane.titleroutes] waiting: `1790918365-titleroutes-76920` (Castlevania first-run route check). Once it lands: read it frame-by-frame per the usual discipline, and if it reaches real play and creates a save, do the base-name run (ADDENDUM 8 step b) before nominating `castlevania-cod`. Also still open, unreached this session: any further Sonic Heroes obstacle work and a decision on the Super Monkey Ball Stage Select input finding above.
+
+## #397 -- 2026-10-01 (session 62)
+
+Resolving the wait above: `1790918365-titleroutes-76920` came back `WITHDRAWN`, cancelled by the owner directly (confirmed by reading `WITHDRAWN.txt` and `run.log` myself) -- it died at `route.txt:73` because the dispatched run's `refs/` directory had no copy of the `name-entry-header` reference crop the `waitfor` step needed, so the app sat looping the intro video for the window (`frames.count=0`, held 661s of 900s, not scored). The owner has handed Castlevania's input-sequencing to `lane/routedriver` (a screen-aware state machine); this lane is not to queue or drive that title again, and has not touched `castlevania-cod.first-run.route`.
+
+**Harness gap, for whoever owns `request.sh`/the dispatcher (not this lane's files):** a `waitfor` step's reference crop is committed next to its route in this repo, but nothing currently stages a copy of it into the per-run `refs/` directory that the dispatcher's own `route.sh` snapshot reads at run time. `route.sh --check` against the snapshot (session 60/61's own gate) proves the route *parses*, but not that its crops *resolve* once dispatched -- that's exactly how this run got 661s into a 900s hard-pinned Nova slot before failing. A fix belongs in `request.sh`'s staging step (copy/symlink each `waitfor`/`press-until` crop referenced by the chosen route into the new result dir's `refs/` before launch, and refuse to admit the request if any crop is missing) -- out of this lane's territory to make, flagging for a decision on whether it's worth a tracked issue or a direct board-request fix.
+
+Sonic Heroes and Super Monkey Ball Deluxe are unchanged from session 61's findings (see that entry above) -- both re-read this session, nothing new to add.
+
+**No device work this session.** `dispatch/running/*.owner` shows the Nova currently running `lane.collapse433`'s request; the Thor stays closed to all title-gameplay work (dead fan, unchanged ruling). Even once the Nova frees up, tonight's owner-granted allowance for it was scoped to re-checking Sonic Heroes/Monkey Ball specifically (both already re-checked, nothing left there) plus `lane/routedriver`'s own Castlevania need -- not a blanket grant for the 13-title Nova-only backlog (Batman, Black Stone, Star Wars Ep. III, Bloody Roar: Extreme, Gunvalkyrie, Dino Crisis 3, Buffy, Halo: Combat Evolved, Conker, Halo 2, Ninja Gaiden Black, ToeJam & Earl III, Tron 2.0) from session 51's "State for a successor", which stays blocked on the same device-role-split/Nova-queue-depth question as before.
+
+[lane.titleroutes] blocked: this lane has nothing of its own queued, running, or newly authorized to drive tonight. What would unblock the next batch of route work: (1) a decision opening a general Nova title-pipeline session (not scoped to a single named title), or the Nova's queue actually draining so a session fits without contending with #462/#474/#414/#569/#507/#433/routedriver work; or (2) the Thor's replacement fan landing, which reopens its 300+ untouched titles to screening. Until one of those lands, the next resume should re-check both before taking any device hold, same as this session did.
+
+## #397 -- 2026-10-01 (session 63, resumed per hostops ADDENDUM 15)
+
+No evidence survives of whatever ran as "attempt 1" under ADDENDUM 15 (no commit, no stray hold, no new scratch output) -- treating it as having left no work behind, not as a strand to clean up.
+
+Checked `dispatch/running/`: the Nova is still running `lane.ibcache`'s request (unchanged since session 62); no hold taken, no device touched directly this session.
+
+Per ADDENDUM 15: checked all 13 of session 51's Nova-only, no-copy-needed, no-route titles for existing survey/nav frames before queuing anything. None of the 12 non-Batman titles have any -- Batman: Dark Tomorrow stays as session 2's combat-blocked finding, not re-touched. So queued generic blind surveys (`--route survey`, 300s, `--device nova --hard-pin`, plain priority -- `gh` is still down so the release-label read fails and falls back to plain, confirmed per-call) for 4 of the 12 before hitting this lane's own pilot gate (its `pilots/titleroutes.ok` is 32.3 h old, past the 24 h verdict window, and these 4 already used the "first 30 min always goes through" allowance):
+
+| title | title_id | request id |
+|---|---|---|
+| Black Stone: Magic & Steel | 58490004 | `1790921686-titleroutes-1080767` |
+| Star Wars: Episode III: Revenge of the Sith | 4C410017 | `1790921690-titleroutes-1082096` |
+| Bloody Roar: Extreme | 48550001 | `1790921692-titleroutes-1082566` |
+| Gunvalkyrie | 49470017 | `1790921696-titleroutes-1084287` |
+
+The other 8 (Dino Crisis 3, Buffy, Halo: Combat Evolved, Conker: Live & Reloaded, Halo 2, Ninja Gaiden Black, ToeJam & Earl III, Tron 2.0) are not yet queued -- blocked on this session's own pilot gate, which needs a reviewed verdict written before more can be queued. Did not try to force past it or wait idle for these 4 to land, per ADDENDUM 15's own "do not wait idle for the device to clear".
+
+[lane.titleroutes] waiting: the 4 queued surveys above on the Nova (`1790921686-titleroutes-1080767`, `1790921690-titleroutes-1082096`, `1790921692-titleroutes-1082566`, `1790921696-titleroutes-1084287`). Once the last lands: review the frames, write `dispatch/pilots/titleroutes.ok`, then queue the remaining 8 titles' surveys.
