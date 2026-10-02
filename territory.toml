@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 290
-updated_utc = "2026-10-02T12:18:00Z"
+wave = 291
+updated_utc = "2026-10-02T15:40:00Z"
 
 [lane.collapse433]
 issues = ["433"]
@@ -1794,4 +1794,9 @@ note = "RETIRED (hostops 2026-10-02 02:12 PDT): offline-folded as 7efa13af89 (co
 [lane.routedriver2]
 issues = ["433"]
 files = ["docs/lanes/routedriver/**", "docs/lanes/routedriver2/**", "docs/testing/titles/route.sh", "docs/testing/title_verdict.py", "docs/testing/titles/drive.py", "docs/testing/titles/classify.py", "docs/testing/titles/classify_selftest.py", "docs/testing/titles/drive-profiles/**", "docs/testing/titles/routes/castlevania-cod.drive.route", "docs/testing/titles/routes/forza.drive.route", "docs/testing/titles/routes/sonic-heroes.drive.route", "docs/testing/jobs/selftest.d/99-play-share.sh"]
-note = "STARTED (hostops 2026-10-02 02:12 PDT): successor to the retired [lane.routedriver] (attempt 4/4 cap, folded as 7efa13af89, PR.md State: ready). Same files transferred directly (no gap, no re-claim race): continues the screen-aware play driver past its two proof titles -- Sonic Heroes' Seaside Hill block (5 variants tried, unsolved), Forza's steering policy, and rolling `drive` out to more of lane.titleroutes' backlog, coordinating rather than duplicating titleroutes' routes/** ownership. docs/lanes/routedriver/** kept (read-only history/NOTES this lane must read first) alongside its own docs/lanes/routedriver2/**. Brief: briefs/routedriver2.md."
+note = "STARTED (hostops 2026-10-02 02:12 PDT): successor to the retired [lane.routedriver] (attempt 4/4 cap, folded as 7efa13af89, PR.md State: ready). Same files transferred directly (no gap, no re-claim race): continues the screen-aware play driver past its two proof titles -- Sonic Heroes' Seaside Hill block (5 variants tried, unsolved), Forza's steering policy, and rolling `drive` out to more of lane.titleroutes' backlog, coordinating rather than duplicating titleroutes' routes/** ownership. docs/lanes/routedriver/** kept (read-only history/NOTES this lane must read first) alongside its own docs/lanes/routedriver2/**. Brief: briefs/routedriver2.md. COORDINATE: docs/testing/title_verdict.py is also wanted by [lane.crashattr] below (a harness-defect fix, unrelated lines ~420-423) -- release it the moment you no longer need it, or say so if you are actively editing those exact lines."
+
+[lane.crashattr]
+issues = []
+files = []
+note = "HARNESS DEFECT, dispatched directly (no issue, see dispatch-harness-fixes-dont-file-issues precedent): title_verdict.py's crash detector (lines ~420-423) counts ANY system tombstone (tag libc/DEBUG, level F) as a hakuX crash, with no check on which process actually crashed. Three 2026-10-02 nova titleroutes2 runs (ToeJam & Earl III, Tron 2.0 x2 -- dispatch/results/1790951866-titleroutes2-46925, 1790951914-titleroutes2-68595, 1790953776-titleroutes2-447685) all tombstone-crashed Android's own media.extractor service (Cmdline: media.extractor aextractor, MPEG4Extractor.cpp:1991 CHECK_EQ abort, a stock AOSP bug) while hakuX's own process kept running fine throughout -- each run scored crash:true, pass:false and was failed for a crash that never happened in the emulator. A fourth example from 2026-09-26 (dispatch/results/0-0-x-1790465684-lane.remote-2069760) shows the same false attribution for surfaceflinger. This directly undercounts the 0.5 '50 Playable' tally (#433). CLAIMS NO FILES YET: title_verdict.py is actively held by [lane.routedriver2] above (running right now, #433). Build and verify the fix (process-identity check scoped to hakuX's package com.jreinach.hakux + .debug/.debug2 variants) against a local checkout with no claim needed, then claim the file the moment routedriver2 releases/retires it and push immediately -- see briefs/crashattr.md for the exact mechanism and falsifier (replay against the four named logcat.txt files, must all read crash:false; a genuine hakuX-tagged tombstone must still read crash:true)."
