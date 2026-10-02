@@ -1,0 +1,46 @@
+t	state	source	changed	luma	cap_s	action	frame
+0.8	unknown	no-prev		33.6	0.47	wait (unknown)	230011-001-unknown.png
+2.4	intro_video	moving	0.9893	234.0	0.22	press A (skip intro_video)	230013-002-intro_video.png
+3.8	logo	static	0.0	237.7	0.22	settle	230014-003-logo.png
+5.2	black	black		0.0	0.22	wait	230016-004-black.png
+7.4	title	crop:title-continue		34.1	0.42	press LY:min (title 1)	230018-005-title.png
+9.1	title	crop:title		34.4	0.42	press A (title 1)	
+11.1	profile	crop:name-entry		34.7	0.57	press A (profile 1)	230022-007-profile.png
+12.7	profile	crop:name-entry		43.3	0.57	settle	
+14.6	profile	crop:name-entry		43.3	0.52	press START (profile 2)	
+16.2	profile	crop:name-entry		43.7	0.57	settle	
+18.0	profile	crop:name-entry		43.6	0.52	press A (profile 3)	
+19.6	profile	crop:name-confirm		42.5	0.52	settle	
+21.5	profile	crop:name-confirm		42.4	0.57	press A (profile 1)	
+23.2	cutscene	moving	0.6486	34.1	0.47	settle	230034-014-cutscene.png
+24.8	loading	crop:save-busy		41.5	0.47	wait	230035-015-loading.png
+26.8	profile	crop:save-slots		53.4	0.57	press A (profile 1)	230037-016-profile.png
+28.4	profile	crop:overwrite		52.8	0.57	settle	
+30.7	profile	crop:overwrite		52.2	0.57	press LX:min (profile 1)	
+32.6	profile	crop:overwrite		52.1	0.57	press A (profile 2)	
+34.2	loading	crop:save-busy		39.9	0.47	wait	230046-020-loading.png
+35.7	loading	crop:save-busy		39.9	0.47	wait	
+37.2	loading	crop:save-busy		40.0	0.47	wait	
+38.8	loading	crop:save-busy		40.3	0.47	wait	
+40.8	cutscene	moving	0.0951	40.4	0.47	press A (skip cutscene)	230052-024-cutscene.png
+42.1	black	black		1.4	0.22	wait	230054-025-black.png
+43.4	black	black		0.0	0.22	wait	
+45.0	cutscene	moving	0.7825	62.6	0.22	press A (skip cutscene)	230056-027-cutscene.png
+46.4	black	black		0.0	0.22	wait	230058-028-black.png
+48.2	cutscene	moving	0.612	16.9	0.42	press A (skip cutscene)	230100-029-cutscene.png
+49.9	cutscene	moving	0.2591	22.9	0.52	settle	
+51.8	unknown	hud:hud+after-cutscene	0.8171	49.7	0.62	hold (hud up, motion not yet play)	230103-031-unknown.png
+54.2	play	hud:hud+motion	0.262	53.3	0.67	hold tap A	230106-032-play.png
+56.2	play	hud:hud+motion	0.3342	54.6	0.67	hold	230108-033-play.png
+58.0	play	hud:hud+motion	0.3231	51.9	0.62	hold	230109-034-play.png
+60.3	play	hud:hud+motion	0.3202	46.3	0.67	hold tap A	230113-035-play.png
+62.3	play	hud:hud+motion	0.3222	45.0	0.67	hold	230115-036-play.png
+64.2	play	hud:hud+motion	0.3149	46.8	0.62	hold	230117-037-play.png
+66.5	play	hud:hud+motion	0.3379	50.7	0.67	hold tap A	230119-038-play.png
+68.3	play	hud:hud+motion	0.3375	45.7	0.62	hold	230121-039-play.png
+70.3	play	hud:hud+motion	0.3228	40.9	0.62	hold	230123-040-play.png
+72.4	play	hud:hud+motion	0.255	41.5	0.62	hold tap A	230125-041-play.png
+74.3	play	hud:hud+motion	0.2606	40.6	0.62	hold	230127-042-play.png
+# time_to_title_s=6.6
+# time_to_play_s=53.6
+# result=reached-play

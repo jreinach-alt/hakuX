@@ -42,6 +42,30 @@
 #                               an empty name field), so success is a
 #                               mismatch. Exhausting max_n ABORTS the route
 #                               (`ROUTE FAIL press-until <BTN> <name>`).
+#   drive <profile> <seconds> [find|mark]
+#                               screen-aware play (#433): drive.py captures,
+#                               names the screen (classify.py, against
+#                               drive-profiles/<profile>.toml), and sends the
+#                               input the profile maps that state to, for up
+#                               to <seconds>. It never presses START in live
+#                               play, skips logos/intros/cutscenes with a
+#                               button ladder, resumes a pause it can see,
+#                               and stops the route (`ROUTE FAIL drive ...`)
+#                               on a pause it cannot leave, a stall (HUD up,
+#                               nothing moving) or a screen it cannot name.
+#                               `find`: end the step at 20 s of confirmed
+#                               play (path-finding: only what the route puts
+#                               after it runs). `mark`: drive.py writes
+#                               `mark gameplay` itself once play is
+#                               confirmed, so the scored window starts on
+#                               seen play; a route using it has no `mark
+#                               gameplay` of its own. Each state change goes
+#                               to logcat as `hakuX-route: state=<s> t=<s>`
+#                               (title_verdict.py's play_share), every
+#                               capture to route-state.tsv, and the path to
+#                               play to route-solution.json, both in the
+#                               result dir (ROUTE_FRAMES' parent). See
+#                               drive.py's module doc.
 #
 # WHY waitfor/press-until exist at all: a route otherwise plays fixed `wait`
 # timers against a screen it never looks at. castlevania-cod.first-run's
@@ -164,6 +188,11 @@ validate() {
                    isregion "${w[5]:-}" || err "$i" "press-until wants a region x,y,w,h"
                    isnum "${w[6]:-}" || err "$i" "press-until wants a threshold"
                    [ -f "$(ref_path "${w[2]}")" ] || err "$i" "press-until '${w[2]}': no reference crop $(ref_path "${w[2]}")" ;;
+            drive) [ -n "${w[1]:-}" ] || err "$i" "drive wants a profile name"
+                   [[ "${w[1]}" =~ ^[A-Za-z0-9_.-]+$ ]] || err "$i" "drive profile '${w[1]}' must be [A-Za-z0-9_.-]"
+                   isnum "${w[2]:-}" || err "$i" "drive wants seconds"
+                   [ -z "${w[3]:-}" ] || [[ "${w[3]}" =~ ^(find|mark)$ ]] || err "$i" "drive's third word is find or mark"
+                   [ -f "$HERE/drive-profiles/${w[1]}.toml" ] || err "$i" "drive '${w[1]}': no profile $HERE/drive-profiles/${w[1]}.toml" ;;
             *) err "$i" "unknown step '${w[0]}'" ;;
         esac
         i=$((i+1))
@@ -202,6 +231,7 @@ cleanup() {
     [ -z "$CLEANED" ] || return 0
     CLEANED=1
     [ -n "$SLEEP_PID" ] && kill "$SLEEP_PID" 2>/dev/null
+    [ -n "$DRIVE_PID" ] && kill -TERM "$DRIVE_PID" 2>/dev/null && wait 2>/dev/null
     for b in $HELD; do bash "$PAD" release "$b" >/dev/null 2>&1; done
     for x in $MOVED; do bash "$PAD" axis "$x" mid >/dev/null 2>&1; done
     log "end"
@@ -333,6 +363,40 @@ press_until_step() {
     return 1
 }
 
+# drive <profile> <seconds> [find|mark]: see the grammar comment at the top
+# of this file and drive.py's module doc; the loop, the policy and the
+# capture rate all live there. drive.py runs in the background so a TERM
+# from soak_title.sh (the hold ended) reaches it through cleanup(), which
+# TERMs it: it then releases what it holds and writes its summary. Its exit
+# status comes back through a file, not the pipe into `log`.
+DRIVE_PID=""
+drive_step() {   # drive_step <profile> <seconds> [find|mark]
+    local rcf rc mode=""
+    if [ -n "${ROUTE_DRY:-}" ]; then
+        log "drive $1 ${2}s $3 (dry)"
+        return 0
+    fi
+    [ -z "$3" ] || mode="--$3"
+    mkdir -p "$ROUTE_FRAMES"
+    rcf="$(mktemp)"
+    ( python3 -u "$HERE/drive.py" --profile "$HERE/drive-profiles/$1.toml" --seconds "$2" $mode \
+          --out "$(dirname "$ROUTE_FRAMES")" --frames "$ROUTE_FRAMES" > "$rcf.out" 2>&1 &
+      echo $! > "$rcf.pid"; wait $!; echo $? > "$rcf" ) &
+    nap_on "$!"
+    DRIVE_PID=""
+    while IFS= read -r line; do log "drive $1: $line"; done < "$rcf.out"
+    rc=$(cat "$rcf" 2>/dev/null); rm -f "$rcf" "$rcf.out" "$rcf.pid"
+    return "${rc:-1}"
+}
+# Wait on a child the way nap() waits on its sleep, and remember the
+# drive.py pid so cleanup() can TERM it.
+nap_on() {
+    local i
+    for i in 1 2 3 4 5 6 7 8 9 10; do [ -s "$rcf.pid" ] && break; command sleep 0.1; done
+    DRIVE_PID=$(cat "$rcf.pid" 2>/dev/null)
+    wait "$1"
+}
+
 run() {   # run <first line> <end line, exclusive>
     local i=$1 end=$2 w j k n
     while [ "$i" -lt "$end" ]; do
@@ -357,6 +421,8 @@ run() {   # run <first line> <end line, exclusive>
                    waitfor_step "${w[1]}" "${w[2]}" "${w[3]}" "${w[4]}" || exit 1 ;;
             press-until) log "press-until ${w[1]} ${w[2]} (max ${w[3]} presses, ${w[4]}s apart)"
                    press_until_step "${w[1]}" "${w[2]}" "${w[3]}" "${w[4]}" "${w[5]}" "${w[6]}" || exit 1 ;;
+            drive) log "drive ${w[1]} (${w[2]}s${w[3]:+, ${w[3]}})"
+                   drive_step "${w[1]}" "${w[2]}" "${w[3]:-}" || { log "ROUTE FAIL drive ${w[1]}"; exit 1; } ;;
             repeat) j=$(close_of "$i")
                     n=${w[1]}; [ "$n" = forever ] && n=-1
                     k=0
