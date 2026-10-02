@@ -38,6 +38,14 @@
 # ~25 s cycle left each page up for most of a cycle. So the loop now
 # presses A every ~2-3 s; the moves between are unchanged (the same run
 # showed them working: walking, firing at 042347, static_frac 0.01).
+# Replay 2 (1790940485-titleroutes2-1611958, ref 685c52e514): no ROUTE
+# FAIL; the boxes now clear (2 of 14 post-mark frames show one); play the
+# whole window, 100% at 30+, no hang. But from 044546 to 044755 Kelly faces
+# one cliff face: the loop's turns nearly cancel (0.7 s right, 0.4 s left),
+# so a wall ahead holds her for minutes. So the right-stick turn is now
+# 1.2 s one way per cycle (the view sweeps round in a few cycles), and the
+# jump is the tip's double pull of LT (jump, then Rocket Boost) to clear
+# low rock.
 wait 20
 shot boot20
 wait 20
@@ -65,10 +73,14 @@ repeat forever {
     axis LT max
     wait 0.3
     axis LT min
-    wait 1.5
+    wait 0.3
+    axis LT max
+    wait 0.3
+    axis LT min
+    wait 1.2
     press A
     axis RX max
-    wait 0.7
+    wait 1.2
     axis RX mid
     axis RT max
     wait 2
@@ -81,9 +93,6 @@ repeat forever {
     press A
     axis LY min
     wait 2
-    axis RX min
-    wait 0.4
-    axis RX mid
     press A
     wait 1
     shot play
