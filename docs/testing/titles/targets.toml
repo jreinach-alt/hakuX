@@ -268,7 +268,8 @@ notes = "#431 (comment 5851536933): 60, medium confidence. WorthPlaying (Xbox, 2
 name = "ToeJam & Earl III: Mission to Earth"
 iso = { nova = "ToeJam & Earl III - Mission to Earth (USA).iso" }
 target_fps = 60
-notes = "#431 (comment 5851536933): 60, medium confidence. TeamXbox (2003); split-screen also 60"
+route = "toejam-earl-3"
+notes = "#431 (comment 5851536933): 60, medium confidence. TeamXbox (2003); split-screen also 60. A generic survey (1790948390-titleroutes2-3358315, Nova, lane.titleroutes2) reached live play in level 1 on its 4th START/A cycle (One Player Game -> Story Mode -> ToeJam -> intro -> load); later STARTs toggle the Player Stats panel; walking frames at 38-59 fps. routes/toejam-earl-3.route: 4 START/A cycles, an exploring walk loop with no START. DRAFT, NOT CONFIRMED."
 
 [titles."41560001"]
 name = "Tony Hawk's Pro Skater 2x"
@@ -344,7 +345,7 @@ name = "Halo 2"
 iso = { nova = "Halo 2.iso" }
 target_fps = 30
 route = "halo-2"
-notes = "#431 (comment 5851536933): 30, medium confidence. IGN (Xbox, 2004); capped at 30 per a 2024 reverse-engineering write-up. A generic survey (1790946979-titleroutes2-3257388, Nova, lane.titleroutes2) reached the Armory (the Chief in the calibration ring, player-controlled) on its 8th START/A cycle, after a profile keyboard (START = Done) and the unskippable Heretic prologue; then only toggled the pause panel under 'Use [RIGHT] to look up', which the survey's RX/LY loop never answers, so its 29 fps is one room. routes/halo-2.route: 10 START/A cycles, an up/down look block with a frame per leg, then a walk loop with no START. DRAFT, NOT CONFIRMED."
+notes = "#431 (comment 5851536933): 30, medium confidence. IGN (Xbox, 2004); capped at 30 per a 2024 reverse-engineering write-up. A generic survey (1790946979-titleroutes2-3257388, Nova, lane.titleroutes2) reached the Armory (the Chief in the calibration ring, player-controlled) on its 8th START/A cycle, after a profile keyboard (START = Done) and the unskippable Heretic prologue; then only toggled the pause panel under 'Use [RIGHT] to look up', which the survey's RX/LY loop never answers, so its 29 fps is one room. routes/halo-2.route: 10 START/A cycles, an up/down look block with a frame per leg, then a walk loop with no START. DRAFT, NOT CONFIRMED: replay 1 (1790948386-titleroutes2-3358105) passed the look test but left the look inverted and the view at the ceiling; a held Nova nav session (07:24-07:36 PDT 10-02) passed it non-inverted with single full-throw taps and found the Armory free-roam behind locked doors under 'Follow the Gunnery Sergeant's instructions', no trigger found. Cairo Station needs drive.py or a save past the Armory; not an open-loop route."
 
 [titles."4D530005"]
 name = "Amped: Freestyle Snowboarding"

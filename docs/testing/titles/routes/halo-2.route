@@ -30,6 +30,27 @@
 # for next), A to keep the look setting, a step forward, X; a frame after
 # every leg so the replay maps what the Armory asks next. No START after
 # the mark. In play A is jump, B melee, X action/reload: all harmless.
+# Replay 1 (1790948386-titleroutes2-3358105, ref 93203cee0a): same path
+# (CHOOSE PROFILE listed Halo0001 but kept "Create New Profile" lit); the
+# Armory on cycle 7's A. The look block passed the test, but its 1.5 s
+# holds left the look INVERTED ("Updating profile... done" at 064331, then
+# RY max = up) and the view pegged at the ceiling for the whole window.
+# HELD Nova nav session (lane.titleroutes2 s2, 07:24-07:36 PDT,
+# ~/hakux-work/nav/halo-2.returning-20261002T072440/, 47 frames):
+#   - A presses skip parts of the Heretic prologue; with no presses it
+#     runs well past a minute.
+#   - the test is two rounds of "Use [RIGHT] to look up" (top light) then
+#     "look down" (bottom light); each light goes dark when the crosshair
+#     crosses it. Full-throw single taps (nav.py's ~0.4 s round trip) move
+#     the view ~160 px; a 20000 tap barely moves it. Up taps x2, down x2,
+#     up x3, down x3 passed both rounds non-inverted, then "Updating
+#     profile... done".
+#   - after it the Armory is free-roam under "Follow the Gunnery Sergeant's
+#     instructions": the Sergeant walks off toward a corridor, the doors
+#     show red locks, and ~3 min of walking and waiting found no trigger.
+# So the open-loop route ends in the Armory either way. Reaching Cairo
+# Station needs screen-aware driving (drive.py) or a save past the Armory;
+# this file stays a DRAFT, its steps as replay 1 ran them.
 wait 20
 shot boot20
 wait 20

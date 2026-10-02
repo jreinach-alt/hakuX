@@ -1,0 +1,58 @@
+# ToeJam & Earl III: Mission to Earth (5345000F), Nova. Built from the
+# generic survey 1790948390-titleroutes2-3358315 (lane.titleroutes2,
+# read 2026-10-02). Read from its route-frames, not guessed:
+#   boot20 (071137): intro movie; boot40 (071158): the title, PRESS START;
+#     booted (071220): the attract demo under PRESS START.
+#   cycle 1 (071226 START / 071231 A): START -> ONE PLAYER GAME lit; A ->
+#     STORY MODE lit.
+#   cycle 2 (071237 START / 071244 A): START -> character select (ToeJam);
+#     A -> his intro cutscene.
+#   cycle 3 (071250 START / 071255 A): START -> the ship over Earth; black.
+#   cycle 4 (071301 START / 071306 A): black (FPS 3, loading), then live
+#     play: ToeJam on the stone circle of level 1, HUD up.
+#   cycles 5-14: START toggles the PLAYER STATS panel (open on one START,
+#     closed on the next); A in play is a jump.
+#   play (071511..071601): ToeJam walks off the circle, past the bridge and
+#     the fence to the cliff edge; 38-59 fps.
+# So: 4 START/A cycles, a wait for the load, mark, then an exploring loop
+# with no START: net-forward walking with a turn each way, a jump, a frame
+# on every leg (one shot at a fixed loop phase can hide a parked player).
+# If the load runs long, the loop's A presses land on black, harmlessly.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+shot booted
+repeat 4 {
+    press START
+    wait 5
+    shot menu-start
+    press A
+    wait 5
+    shot menu-a
+}
+wait 10
+shot loaded
+mark gameplay               # CHECK: ToeJam in level 1, HUD up, no PLAYER STATS panel
+repeat forever {
+    axis LY min
+    wait 3
+    shot fwd
+    axis LX max
+    wait 1.5
+    press A
+    wait 1
+    axis LX mid
+    shot right
+    wait 3
+    shot fwd2
+    axis LX min
+    wait 1.5
+    press A
+    wait 1
+    axis LX mid
+    shot left
+    axis LY mid
+    wait 0.5
+}
