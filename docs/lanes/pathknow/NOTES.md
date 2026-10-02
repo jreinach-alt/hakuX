@@ -77,4 +77,6 @@ Do not repeat:
 ## Local checks in place of CI
 
 `docs/testing/titles/pathknow/**` counts as harness for offline_fold.py, so the fold runs
-`docs/testing/jobs/selftest.sh`. Its result on this head is recorded in PR.md.
+`docs/testing/jobs/selftest.sh`. Run here on 22d8ae61fb, 10:00-11:20 PDT: 2905 passed, 0 failed, all
+120 fragments. After that I merged master 0426a98181, which touches none of this lane's files, and set
+PR.md `State: ready`.
