@@ -34,8 +34,9 @@ tomllib (82 titles); `python3 docs/testing/titles/titlestate_selftest.py` (all c
 `bash docs/testing/preflight.sh --allow-tracker` on the merged head: "preflight passed" (territory, board files, nv2a
 index ok; the coverage gate DID NOT RUN because gh is suspended, and it fails open, so that part is unchecked).
 
-Also queued (pass-1 surveys, unreviewed; named for a successor in NOTES.md): Halo: Combat Evolved
-`1790933948-titleroutes-171581`, Conker: Live & Reloaded `1790933948-titleroutes-171701`.
+Also queued and reviewed in-session: pass-1 surveys for Halo: Combat Evolved (`1790933948-titleroutes-171581`: reaches
+the cryo-room look-calibration tutorial, not free play) and Conker: Live & Reloaded (`1790933948-titleroutes-171701`:
+loops on "Connection to Xbox Live lost", never plays). Both need a path found by sight before a route.
 
 Release note (none): route data and notes only, no emulator code.
 
