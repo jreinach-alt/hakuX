@@ -137,7 +137,7 @@ check("repeat", models[2] == pathfind.STRONG, f"stronger model from the 3rd look
 rc, res, steps, calls = run("cycle", [("menu", 0), ("logo", 0)] * 6,
                             [{"state": "submenu", "why": "Yes/No dialog", "action": ["UP", "A"], "wait_s": 1},
                              {"state": "submenu", "why": "garage", "action": ["A"], "wait_s": 1}] * 6,
-                            ["--no-record", "--no-replay"])
+                            ["--no-record", "--no-replay", "--budget-min", "0.3"])
 dlg = [(s.get("src"), " ".join(s.get("action", []))) for s in steps if s.get("src") in ("fast", "strong")][0::2]
 check("cycle", dlg[2][0] == "strong", f"stronger model on the 3rd dialog visit: {dlg[:5]}")
 check("cycle", any(a != "UP A" for _, a in dlg[:5]), f"the dialog input is overridden by the 5th visit: {dlg[:5]}")

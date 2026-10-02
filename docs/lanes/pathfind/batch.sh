@@ -10,7 +10,7 @@ for t in "$@"; do
     slug=$(echo "$t" | tr 'A-Z' 'a-z' | tr -c 'a-z0-9\n' '-' | sed 's/-*$//')
     out="$root/$slug"
     echo "=== $(date +%T) $t -> $out"
-    python3 "$TOOLS/pathfind.py" "$t" --device "$dev" --budget-min "${BUDGET_MIN:-15}" --out "$out"
+    python3 "$TOOLS/pathfind.py" "$t" --device "$dev" --budget-min "${BUDGET_MIN:-15}" --out "$out" ${PATHFIND_ARGS:-}
     echo "=== $(date +%T) $t exit $?"
     keep="$HERE/runs/$slug"
     mkdir -p "$keep"

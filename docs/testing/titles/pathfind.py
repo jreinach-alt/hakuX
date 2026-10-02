@@ -139,12 +139,18 @@ class Device:
         return f"{PKG}:xemu" in self.sh("ps -A -o NAME").split()
 
     def isos(self):
-        names = []
-        for root in self.roots:
-            for line in self.sh(f"ls {root}/", timeout=30).splitlines():
-                line = line.strip()
-                if line.lower().endswith(".iso"):
-                    names.append((root, line))
+        """(root, file) for every ISO; three tries, since one WSL adb hiccup
+        returns an empty listing (ESPN NFL 2K5 attempt 3, 10-02)."""
+        for _ in range(3):
+            names = []
+            for root in self.roots:
+                for line in self.sh(f"ls {root}/", timeout=30).splitlines():
+                    line = line.strip()
+                    if line.lower().endswith(".iso"):
+                        names.append((root, line))
+            if names:
+                return names
+            time.sleep(3)
         return names
 
     def launch(self, iso_path):
@@ -455,7 +461,9 @@ How to act:
 - UP/DOWN/LEFT/RIGHT move a menu cursor ONE row/column per press. Before confirming, check which item is
   REALLY highlighted (colour, arrow, box); on a Yes/No dialog the options may be side by side (LEFT/RIGHT).
 - Sports: a kickoff, tip-off, faceoff, serve or pre-snap play-call screen waits for you: pick a play / press
-  A to start the play, then the player can be moved.
+  A to start the play, then the player can be moved. American football: a play-call screen is a MENU; press
+  A to pick the play (sometimes twice: formation, then play), then A again to snap; only after the snap is it
+  gameplay: then probe ["A", "STICK:up:1.5"] (snap and run).
 
 Inputs (the "action" list, up to 8 tokens, sent in order ~0.4 s apart):
   A B X Y START BACK UP DOWN LEFT RIGHT L1 R1 L3 R3   one press (UP/DOWN/LEFT/RIGHT are the d-pad)
@@ -1049,6 +1057,8 @@ def main(argv=None):
     ap.add_argument("--out", required=True)
     ap.add_argument("--no-record", action="store_true", help="do not write pathknow/paths/<id>.json")
     ap.add_argument("--no-replay", action="store_true", help="ignore this title's own recorded path")
+    ap.add_argument("--no-guide", action="store_true",
+                    help="use no recorded path at all, own or sibling (a cross-title baseline)")
     ap.add_argument("--sim", help="PATHFIND_DRY: frames dir to play back")
     ap.add_argument("--sim-answers", help="PATHFIND_DRY: JSON list of canned model answers")
     a = ap.parse_args(argv)
@@ -1066,8 +1076,10 @@ def main(argv=None):
         sys.exit(f"pathfind: {name} is owner-blocked: {why}")
     print(f"pathfind: {name} ({tid}) on {dev.label}: {iso}", flush=True)
     agent = Agent(dev, model, tid, name, iso, a.out, a.budget_min * 60, record=not a.no_record)
-    if a.no_replay:
+    if a.no_replay or a.no_guide:
         agent.own = None
+    if a.no_guide:
+        agent.sibs = []
     return agent.run()
 
 
