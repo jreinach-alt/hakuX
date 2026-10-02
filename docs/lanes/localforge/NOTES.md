@@ -164,3 +164,130 @@ a sync):
 - It updates the PR when PR.md changes. It closes the PR with a
   `[job.forge-prsync]` comment once the branch is in master.
 - First run: 13 PRs, #641..#653.
+
+## 5. The jobs (step 5): routed in two phases
+
+**What would have happened.** I had the side effects audited before routing
+anything. Once `gh` answers again, with today's forge content:
+- **board.sh** would start a model session (the 5-6 ready PRs carry no state
+  label) and run cloud.sh every tick.
+- **handback.sh** (fold's tail, and the 10-minute pacer) would `lane.sh
+  resume` drafts whose CI reads NONE. That races lanewatch_offline.
+- **fold.sh** would merge anything labelled `fold-ready`.
+- **status.sh** would force-push Pages to **github.com**. Its remote is
+  `https://github.com/...` whenever `gh auth status` succeeds, and the
+  insteadOf rewrite covers only `~/hakuX`.
+
+**So, in the jobs (this PR):**
+- `HAKUX_FORGE=1` is set by the drop-in.
+- **board.sh:**
+  - `BOARD_DRY_RUN` defaults to `HAKUX_FORGE`. When it is 1 the tick
+    computes its triggers and writes the brief, but it starts no session
+    and runs no `cloud.sh` (it logs `cloud.sh list` instead). It keeps the
+    brief under `logs/board/dry-run/` and marks nothing read.
+  - lane.local turns it on by setting `BOARD_DRY_RUN=0` in the board
+    drop-in.
+  - The two positive-gate reads now *say* a gh failure in the tick log
+    (`gh_or_say`) and still read it as empty. The 403s since 09-29 printed
+    exactly what "nothing actionable" prints.
+- **handback.sh:** `HANDBACK_DRY_RUN` defaults to `HAKUX_FORGE`. A `run`
+  becomes a `list`.
+- **fold.sh:** `FOLD_DRY_RUN` defaults to `HAKUX_FORGE`. A `run` becomes a
+  `list`. Merges stay with foldqueue.
+- **status.sh:**
+  - It never defaults its Pages remote to github.com under the forge.
+  - Its issue pointer and comment id move to `$S/forge/`. The forge gets its
+    own live-status issue, created once with the `harness-status` label. The
+    GitHub #107 bookkeeping stays untouched for GitHub's return.
+  - The comment link uses `HAKUX_WEB_URL`.
+- **comment_sweep.sh:**
+  - Its watermark and comment id get `forge-` files.
+  - It treats jq's literal `null` as "no status issue". On the first forge
+    sweep it POSTed to `issues/null`; the shim refused loudly with a 404.
+    The same latent bug existed on GitHub.
+
+**Routing is a drop-in per unit, written by `docs/testing/jobs/gh-shim/route.sh`:**
+- The file is `~/.config/systemd/user/<unit>.service.d/zz-forge-shim.conf`.
+- It sets PATH with the shim first, `HAKUX_FORGE=1`, `HAKUX_WEB_URL` and
+  `FORGE_USER=jobs`.
+- `route.sh status` shows every unit.
+- `route.sh on/off <unit|phase1|phase2>` changes them.
+- **`on` refuses a unit until the copy of the code it will run carries its
+  gate.** It checks the bare repo's master for run-trunk jobs and board's
+  re-exec, and `~/hakuX` for the handback pacer.
+
+| phase | units | state (2026-10-02 ~10:40 PDT) |
+|---|---|---|
+| 1 | hakux-comments, hakux-issue-sweep, hakux-pr-sweep, hakux-arms | **routed**. Their master code only reads or posts comments. Measured: hakux-comments ran green against the forge; every call is in shim.log. |
+| 2 | hakux-status, hakux-board, hakux-fold, hakux-foldpace, hakux-handbackpace | **waiting for this PR's fold** (route.sh refuses until then). The handback pacer also needs `~/hakuX` fast-forwarded. Then: `bash docs/testing/jobs/gh-shim/route.sh on phase2`. |
+| never | hakux-cloud, hakux-hostops | not routed: they start model sessions. board.sh's dry run already stops its board-tick call to cloud.sh. |
+
+**Lane sessions** get the shim only by an edit outside my territory:
+- `lane.sh start/resume` would pass `--setenv=PATH=<shim>:...`.
+- The alternative, `systemctl --user set-environment`, would also route
+  cloud and every unrouted job at once, so I did not use it.
+- Under the offline protocol lanes do not need gh. PR.md is their PR and
+  prsync publishes it.
+- This is listed for lane.local in OUTBOX.
+
+## 6. Local CI (step 6)
+
+- **Runner:** `forgejo-runner` 13.2.0 (sha256 and signature verified) as
+  `hakux-forge-runner.service`.
+  - Host executor, label `host`, **capacity 1**.
+  - `Nice=15`, idle IO, `MemoryMax=8G`.
+  - Its cache server is disabled; it would bind a port on the host's LAN
+    address.
+  - Registered on `jreinach-alt/hakuX` as `hakux-host`. Config and state are
+    in `~/hakux-work/forge/runner/`.
+- **Workflows:** `.forgejo/workflows/forge-selftest.yml` (the jobs selftest,
+  all shards in one job, 120 min) and `forge-android.yml` (unit tests plus
+  assembleDebug with the host's JDK 21 and SDK).
+  - They run on `pull_request` (opened/synchronize/reopened/edited) and
+    `workflow_dispatch`, and **skip WIP (draft) PRs**. CI therefore runs
+    only on fold candidates, whose PR.md says ready. An `edited` event
+    fires when prsync drops the WIP prefix.
+  - No `uses:` actions. The checkout is a `--shared` clone of the bare
+    repo.
+- **Forgejo falls back to `.github/workflows/`** on any branch without
+  `.forgejo/workflows/`, which today is every branch but this one. Those
+  runs ask for `ubuntu-latest`, which no runner serves, so they sit PENDING
+  for ever. Measured: #650 showed 4 PENDING `jobs selftest` checks. A
+  cancelled run turns its commit status into FAILURE, and deleting the run
+  leaves the status behind (measured on #641).
+  - So the shim counts **only contexts starting `forge `** (workflows
+    `forge-*.yml`) in `statusCheckRollup`, `check-runs` and `run list`. The
+    knobs are `FORGE_CI_CONTEXT_RE` and `FORGE_CI_WORKFLOW_RE`.
+  - The junk runs stay queued and harmless. They disappear as branches
+    merge master and gain `.forgejo/`.
+- First dispatch: run 10, `jobs-selftest` (pre-rename name) on
+  `lane/localforge` @ 463dd6b0ea, via `workflow_dispatch`.
+
+## Host files this lane added (outside the repo)
+
+| path | what |
+|---|---|
+| `~/.config/systemd/user/hakux-forge.service` | Forgejo web (enabled) |
+| `~/.config/systemd/user/hakux-forge-sync.{service,timer}` | bare repo -> forge, every ~60 s |
+| `~/.config/systemd/user/hakux-forge-prsync.{service,timer}` | PR.md -> forge PR, every 5 min |
+| `~/.config/systemd/user/hakux-forge-runner.service` | Actions runner (enabled) |
+| `~/.config/systemd/user/hakux-{comments,issue-sweep,pr-sweep,arms}.service.d/zz-forge-shim.conf` | phase-1 routing (route.sh) |
+| `~/hakux-work/forge/` | binaries, `custom/conf/app.ini`, `data/`, `log/`, `tokens/` (600), `runner/`, `shim/bin/gh`, `bin/forge-sync.sh`, `bin/git-askpass.sh`, `bin/forge_prsync.py`, `setup/*.py`, `cache/` |
+| `~/hakux-work/logs/forge/` | `shim.log` (every gh call), `sync.log`, `prsync.log` |
+
+Undo everything:
+1. `route.sh off all`.
+2. `systemctl --user disable --now hakux-forge-runner hakux-forge-prsync.timer hakux-forge-sync.timer hakux-forge`.
+3. Remove the unit files.
+4. The data stays in `~/hakux-work/forge/` until deleted.
+
+## Do not repeat
+
+- Don't create a test issue or PR in `jreinach-alt/hakuX`. Issue numbers are
+  the import's: one stray issue before the import would have shifted every
+  GitHub number. The smoke tests use their own throwaway repos.
+- Don't cancel or delete junk Actions runs to clean a PR's checks. The
+  commit status outlives the run; filter by context instead (the shim does).
+- `git merge-tree --quiet` does not exist in git 2.43, the host's version.
+- Forgejo ignores `per_page`, sort/direction on repo comments, and unknown
+  label names, all silently. Each looked like success until checked.
