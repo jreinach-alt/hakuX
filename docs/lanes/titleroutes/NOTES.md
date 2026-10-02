@@ -4968,3 +4968,50 @@ Re-ran the Proof-section checks (no routes/targets.toml edit this session): `tit
 
 [lane.titleroutes] waiting: `1790928772-titleroutes-2771139` (Dino Crisis 3) and `1790928774-titleroutes-2773088` (Buffy)
 on the Nova. Once both land: review the frames, update `dispatch/pilots/titleroutes.ok`, queue the remaining 6.
+
+
+## Session 65 (2026-10-02, resumed as attempt 4 of 4, ADDENDUM 17): Dino Crisis 3 and Buffy reviewed, routed, replays queued
+
+**Why attempt 3 (session 64) did not finish.** It did, within its scope: it reviewed the 4 pilot surveys, queued the
+next two (Dino Crisis 3, Buffy) and ended on `[lane.titleroutes] waiting:` naming them. Both finished after the session
+ended (judged 01:30 and 01:46 PDT), and a lane cannot wake itself, so reviewing them needed this resume. Not a strand.
+
+Branch was 1 ahead / 0 behind `origin/master` (session 64's commit not yet folded); no merge needed. `dispatch/running/`
+had `1790929514-lane.ibcache-2993079` on the Nova; no hold taken, no device touched, queuing only.
+
+**Frame review** (result dirs copied to `scratch/judge/`, per the lost-evidence lesson):
+
+| title | title_id | request | reached gameplay? | what the frames show |
+|---|---|---|---|---|
+| Dino Crisis 3 | 43430003 | `1790928772-titleroutes-2771139` | reached it, then LEFT it; scored window = **menu** | booted = intro FMV; cycle 1 START -> PRESS START title; cycle 2 START -> NEW GAME/OPTIONS, A -> EASY/NORMAL/HARD; cycle 3 START confirms Normal -> NOW LOADING; cycle 4 starfield FMV; cycle 5 A -> `012309-menu-a.png`, the first corridor with HUD (live play); cycle 6 the "Game Controls" tutorial pops up; cycle 7 back in the corridor; cycle 8 START in play opens OPTIONS (`012337`) and START/A never leave it: all three post-mark play frames (`012456`, `012521`, `012545`) are the Options screen. fps 29.97 / share 1.0 is a menu reading. |
+| Buffy the Vampire Slayer | 45410012 | `1790928774-titleroutes-2773088` | **yes** | booted = intro FMV; START -> title, A -> main menu; START -> Start Game ("Buffy 1" save), A -> Difficulty; START -> Summoning, mission card; cycle 4 `012843` live play in the Spanish Mission canyon (HUD top-left); later cycles only toggle PAUSE/Resume; post-mark `013050..013141` are live play, camera swung up at the sky by the survey loop's RX. fps 29.97, share 0.93, one 220 ms shader hitch, over a window partly on the pause panel. |
+
+Appended both to `dispatch/pilots/titleroutes.ok` (prepended, python3).
+
+**Decided against ADDENDUM 17's default next step (two more blind surveys: Halo CE, Conker)**, ranked by probability x
+win: a blind survey only learns how a title reaches play; a route replay of a title whose path is already known turns
+a survey into a route the benchmark stage can count (the 0.5 count is routed + measured titles). Both titles here have a
+known path, so routing them first is the larger expected win per Nova slot. The surveys are still the next step after.
+
+**Routes written from the frames** (commit `17c3bc721f`, both DRAFT, parse-checked with the dispatcher's own
+`dispatch/bin/titles/route.sh --check`, exit 0):
+- `routes/dino-crisis-3.route`: the survey's first 7 START/A cycles, then A, A (Inspect in play; NEXT/CLOSE if the
+  tutorial is up), B, B (Cancel out of Options or the tutorial; Jump in play), `mark gameplay`, then a loop with NO
+  START: left stick forward, X fire, A, small LX turns, B. Unverified assumption: that B closes the Options screen.
+- `routes/buffy.route`: 5 START/A cycles (4 reached play; a START/A pair in play is pause + Resume, so the 5th is a
+  guard against a slower load), `mark gameplay`, then walk forward/turn/attack with no START and no RX camera swing.
+  Disk-state risk: Start Game writes a "Buffy 1" save; a disk that already holds one may prompt differently.
+- `targets.toml`: entries for 43430003 and 45410012 (Nova iso, route, notes; neither is in #431's file, so default 30).
+  `tomllib` parses (82 titles); `titlestate_selftest.py`: all checks passed.
+
+Why not `waitfor`: refs/ crops do not reach a dispatched run (Castlevania's 22:45 run died on a missing crop, ADDENDUM
+13; request.json embeds the route TEXT only). Both routes are open-loop by necessity and built so a stray press lands
+harmlessly. The crop-staging fix belongs to the dispatcher, not this lane.
+
+**Queued** (Nova, `--hard-pin`, 360 s, ref `17c3bc721f`, `--no-expect`, plain priority since `gh` is down; device pin
+read back from the queued .req files as `nova`):
+
+| title | request |
+|---|---|
+| Dino Crisis 3 (`dino-crisis-3`) | `1790931260-titleroutes-3615015` |
+| Buffy (`buffy`) | `1790931264-titleroutes-3615749` |
