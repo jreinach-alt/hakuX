@@ -155,7 +155,8 @@ DEFAULTS = dict(
     fast_s=1.0, slow_s=5.0, skip_settle_s=1.5, skip_passes=3, menu_gap_s=2.0, menu_max_presses=25,
     resume_tries=3, stall_fail_s=40.0, unknown_before_model=3, unknown_fail_s=90.0,
     model_calls_max=20, find_play_s=20.0, confirm_play_s=6.0, keep_every_s=30.0, screencap_fail_s=60.0,
-    hud_memory_s=20.0, escape_max=6, escape_capture_s=0.0,
+    hud_memory_s=20.0, escape_max=6, escape_capture_s=0.0, escape_reset_s=0.0,
+    progress_bar=0.0, progress_window_s=10.0,
 )
 
 MODEL = "claude-haiku-4-5-20251001"
@@ -253,7 +254,7 @@ class Driver:
         os.makedirs(out, exist_ok=True)
         os.makedirs(frames_dir, exist_ok=True)
         self.tsv = open(os.path.join(out, "route-state.tsv"), "w")
-        self.tsv.write("t\tstate\tsource\tchanged\tluma\tcap_s\taction\tframe\n")
+        self.tsv.write("t\tstate\tsource\tchanged\tluma\tcap_s\taction\tframe\tmode\n")
         self.t0 = None
         self.clock_sim = 0.0
         self.state = None
@@ -275,6 +276,9 @@ class Driver:
         self.escapes = 0                 # stall_cycle runs so far
         self.esc_frames = 0
         self.esc_phase = 0
+        self.mode = None                 # the [[mode]] the HUD shows (Sonic Heroes: the formation)
+        self.mode_escapes = {}           # escapes played per mode: picks that mode's next cycle
+        self.scene_hist = []             # (t, scene) of recent HUD frames: the progress check
         self.last_hud_t = None
         self.play_since = None
         self.play_frames = []
@@ -294,10 +298,18 @@ class Driver:
         for b, _ in self.inp.get("play_tap", []):
             if b in ("START", "SELECT", "BACK"):
                 raise SystemExit("drive.py: profile play_tap sends %s: START in live play pauses it" % b)
-        for n in range(1, len(self.stall_cycles()) + 1):
-            for b in [b.split("/")[0] for _, _, btns in self.stall_phases(n) for b in btns]:
-                if b in ("START", "SELECT", "BACK") or b in NEVER:
-                    raise SystemExit("drive.py: profile stall_cycle sends %s: START in live play pauses it" % b)
+        for mode in [None] + [m["name"] for m in self.p.get("mode", [])]:
+            self.mode = mode
+            for b, _ in self.inp_for("play_tap", []):
+                if b in ("START", "SELECT", "BACK"):
+                    raise SystemExit("drive.py: profile play_tap (mode %s) sends %s: START in live play pauses it"
+                                     % (mode, b))
+            for n in range(1, len(self.stall_cycles()) + 1):
+                for b in [b.split("/")[0] for _, _, btns in self.stall_phases(n) for b in btns]:
+                    if b in ("START", "SELECT", "BACK") or b in NEVER:
+                        raise SystemExit("drive.py: profile stall_cycle (mode %s) sends %s: START in live play "
+                                         "pauses it" % (mode, b))
+        self.mode = None
         for k, v in self.inp.items():
             if k.startswith("play") or k in ("stall_cycle", "stall_cycles"):
                 continue
@@ -329,10 +341,33 @@ class Driver:
         """input.stall_cycles (a list of cycles: escape n plays cycle
         (n-1) mod len, so one run can try several escapes, one per stall),
         else [input.stall_cycle]."""
-        cycles = self.inp.get("stall_cycles")
-        if cycles:
-            return list(cycles)
-        return [self.inp["stall_cycle"]] if self.inp.get("stall_cycle") else []
+        m = self.mode_table()
+        src = m if ("stall_cycles" in m or "stall_cycle" in m) else self.inp
+        if src.get("stall_cycles"):
+            return list(src["stall_cycles"])
+        return [src["stall_cycle"]] if src.get("stall_cycle") else []
+
+    def mode_table(self):
+        for m in self.p.get("mode", []):
+            if m["name"] == self.mode:
+                return m
+        return {}
+
+    def inp_for(self, key, default=None):
+        """input.<key>, or the current [[mode]]'s own <key> when it has one."""
+        m = self.mode_table()
+        return m[key] if key in m else self.inp.get(key, default)
+
+    def which_mode(self, frame):
+        """The [[mode]] whose `rgb` the frame's `region` is nearest, within
+        `tol` (Euclidean, 0-255 RGB); None when no mode is that close."""
+        best, bd = None, None
+        for m in self.p.get("mode", []):
+            c = classify.region_rgb(frame, m["region"])
+            d = sum((x - y) ** 2 for x, y in zip(c, m["rgb"])) ** 0.5
+            if d <= m.get("tol", 45.0) and (bd is None or d < bd):
+                best, bd = m["name"], d
+        return best
 
     def stall_phases(self, n=1):
         """Escape n's cycle as [(axes, seconds, buttons)]: [[axes], seconds]
@@ -346,6 +381,11 @@ class Driver:
         for ph in cycles[(n - 1) % len(cycles)]:
             out.append(([tuple(x) for x in ph[0]], float(ph[1]), list(ph[2]) if len(ph) > 2 else []))
         return out
+
+    def start_escape(self):
+        self.escapes += 1
+        self.mode_escapes[self.mode] = self.mode_escapes.get(self.mode, 0) + 1
+        self.escape()
 
     def escape(self):
         """Play escape number self.escapes's cycle through, now, with no
@@ -372,7 +412,8 @@ class Driver:
                 cap.join(timeout=35)
 
     def escape_phases(self):
-        for k, (axes, s, btns) in enumerate(self.stall_phases(self.escapes)):
+        n = self.mode_escapes.get(self.mode, 0)
+        for k, (axes, s, btns) in enumerate(self.stall_phases(n)):
             self.esc_phase = k + 1
             self.inputs.append(dict(t=round(self.t(), 1), state=self.state,
                                     why="stall escape %d phase %d" % (self.escapes, k + 1),
@@ -406,8 +447,8 @@ class Driver:
             stop.wait(max(0.0, every - (now() - t)))
 
     def hold_play(self):
-        want = [tuple(x) for x in self.inp.get("play_hold", [])]
-        cycle = self.inp.get("play_cycle")
+        want = [tuple(x) for x in self.inp_for("play_hold", [])]
+        cycle = self.inp_for("play_cycle")
         if cycle:
             # An on-foot title: one held direction walks into the first wall
             # (Castlevania's fountain, run 3), so the held axes rotate through
@@ -496,6 +537,14 @@ class Driver:
             # not a menu. `stalled`: the play input stays held, and the stall
             # watch still ends the run if nothing ever moves.
             r.update(state="stalled", source="static+hud-recent")
+        if "hud:" in r["source"]:                 # the play HUD is up (also on a run's first frame, `no-prev hud:`)
+            if self.p.get("mode"):
+                m = self.which_mode(frame)
+                if m is not None:
+                    self.mode = m
+            self.progress(frame, r)
+        else:
+            self.scene_hist = []
         if r["state"] == "unknown":
             self.unknown_streak += 1
             if self.unknown_streak >= self.cfg["unknown_before_model"]:
@@ -505,6 +554,31 @@ class Driver:
         else:
             self.unknown_streak = 0
         return r
+
+    def progress(self, frame, r):
+        """[drive] progress_bar > 0: a `play` frame whose scene layout
+        (classify.scene, 32x24) changed less than the bar against the HUD
+        frame `progress_window_s` earlier is `stalled` (source
+        hud+no-progress): the player is moving in place, not getting
+        anywhere. Sonic Heroes, trial 1 of lane.routedriver2: running
+        changed 0.46-0.71 of the cells over 8-14 s, a team struggling in a
+        corner 0.07-0.26 while its 2 s motion read 0.35-0.50 -- `play` on
+        the per-capture bars. Off by default: a title whose play can stay in
+        one place (an arena, a play_cycle walking a square) must not opt in.
+        Any non-HUD frame (a death's black, a menu) starts the window over."""
+        bar = self.cfg["progress_bar"]
+        if not bar:
+            return
+        t, win = self.t(), self.cfg["progress_window_s"]
+        sig = classify.scene(frame, self.p.get("drive", {}).get("progress_mask", []))
+        old = [(ht, hs) for ht, hs in self.scene_hist if t - 1.6 * win <= ht <= t - win]
+        self.scene_hist = [(ht, hs) for ht, hs in self.scene_hist if ht >= t - 1.6 * win] + [(t, sig)]
+        if not old:
+            return
+        ch = classify.scene_change(sig, old[-1][1])
+        r["progress"] = round(ch, 3)
+        if r["state"] == "play" and ch < bar:
+            r.update(state="stalled", source="hud+no-progress")
 
     def enter(self, state, r, frame):
         t = self.t()
@@ -614,8 +688,7 @@ class Driver:
 
         if state in ("play", "stalled"):
             if state == "stalled" and self.stall_cycles() and self.escapes < cfg["escape_max"]:
-                self.escapes += 1
-                self.escape()
+                self.start_escape()
                 self.last_press_t = self.t()     # the next capture comes at the fast rate
                 self.stalled_since = None
                 return "stall escape %d" % self.escapes
@@ -631,14 +704,22 @@ class Driver:
             self.last_play_luma = r["luma"]
             if self.play_since is None:
                 self.play_since = t
+            if cfg["escape_reset_s"] and self.escapes and t - self.play_since >= cfg["escape_reset_s"]:
+                # Sustained play since the last escape: the player got past
+                # whatever stalled it, so the next obstacle gets a fresh budget.
+                self.escapes = 0
+                self.mode_escapes = {}
+                act_reset = " (escape budget reset)"
+            else:
+                act_reset = ""
             act = "hold"
-            for b, every in self.inp.get("play_tap", []):
+            for b, every in self.inp_for("play_tap", []):
                 last = getattr(self, "_tap_" + b, -1e9)
                 if t - last >= every:
                     setattr(self, "_tap_" + b, t)
                     self.dev.pad("press", b)
                     act += " tap %s" % b
-            return act
+            return act + act_reset
 
         # unknown
         if self.unknown_since is None:
@@ -734,9 +815,10 @@ class Driver:
             time.sleep(s)
 
     def row(self, r, cap_s, action, kept):
-        self.tsv.write("%.1f\t%s\t%s\t%s\t%s\t%.2f\t%s\t%s\n" % (
-            self.cap_t, r["state"], r["source"], "" if r.get("changed") is None else r["changed"],
-            r.get("luma", ""), cap_s, action, kept))
+        src = r["source"] + ("" if r.get("progress") is None else " p=%s" % r["progress"])
+        self.tsv.write("%.1f\t%s\t%s\t%s\t%s\t%.2f\t%s\t%s\t%s\n" % (
+            self.cap_t, r["state"], src, "" if r.get("changed") is None else r["changed"],
+            r.get("luma", ""), cap_s, action, kept, self.mode or ""))
         self.tsv.flush()
 
     def finish(self):

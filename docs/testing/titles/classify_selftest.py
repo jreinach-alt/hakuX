@@ -59,9 +59,33 @@ CVR3 = "rdcv3"                                 # replay 3: play, then walked int
 CVR5 = "rdcv5"                                 # replay 5: first run, boot to 20 s of play
 SHR1 = "rdsh1"                                 # session 4, Nova: Seaside Hill, wedged on a block 14 s in
 FZR1 = "rdfz1"                                 # session 4, Thor: boot to a race, RT held, 0 -> 73 MPH
+SHT1 = "rdt1"                                  # lane.routedriver2 trial 1, Nova: past the pillar, then a corner
 LOCAL = {CVR2: "scratch/run-cv2/route-frames", CVR3: "scratch/run-cv3/route-frames",
          CVR5: "scratch/run-cv5/route-frames", SHR1: "scratch/run-sh1/route-frames",
-         FZR1: "scratch/run-fz1/route-frames"}
+         FZR1: "scratch/run-fz1/route-frames", SHT1: "scratch/run-t1/route-frames"}
+
+# drive.py's progress check ([drive] progress_bar): (name, profile, run, frame
+# ~10 s earlier, the frame before this one, this frame, the sim seconds
+# between the earlier frame and this one, the state wanted; the frames are
+# 8 s apart on the run's clock, judged at the 10 s window). The counter-case to running
+# is the team struggling in a corner, whose 2 s motion reads `play`.
+PROGRESS = [
+    ("sonic running, 8 s on: play", "sonic-heroes", SHT1, "022719-036-play.png", "022725-039-play.png",
+     "022727-040-play.png", 10.0, "play"),
+    ("sonic in a corner, moving, 8 s on: stalled", "sonic-heroes", SHT1, "022906-071-play.png", "022912-074-play.png",
+     "022914-075-play.png", 10.0, "stalled"),
+]
+# [[mode]] from a HUD region's colour, through Driver.classify: (name,
+# profile, run, frame, mode wanted). The counter-case is a menu: its blue
+# reads as Speed's colour, so the mode is only read on a frame with the play
+# HUD up, and a menu leaves it unset.
+MODES = [
+    ("sonic Speed (Sonic leads)", "sonic-heroes", SHT1, "022658-027-play.png", "speed"),
+    ("sonic Power (Knuckles leads)", "sonic-heroes", SHT1, "022758-048-play.png", "power"),
+    ("sonic Fly (Tails leads)", "sonic-heroes", SHR1, "234358-033-play.png", "fly"),
+    ("sonic Speed (Thor)", "sonic-heroes", SONT, "004222-menu-start.png", "speed"),
+    ("sonic Main Menu: no formation", "sonic-heroes", SON, "180456-menu-start.png", None),
+]
 
 # (case name, profile, run, frame, prev frame or None, prev state, seen, expected state)
 CASES = [
@@ -203,6 +227,10 @@ def all_frames():
             seen.add((c[2], c[4]))
     for run, f, p in FOREIGN:
         seen.update({(run, f), (run, p)})
+    for _, _, run, a, b, c, _, _ in PROGRESS:
+        seen.update({(run, a), (run, b), (run, c)})
+    for _, _, run, f, _ in MODES:
+        seen.add((run, f))
     for _, _, run, (lo, hi), _, _ in SIMS:
         d = frames_dir(run)
         if os.path.isdir(d):
@@ -255,9 +283,8 @@ def escape_checks():
         d = drv(inp)
         out = []
         for _ in range(n):
-            d.escapes += 1
             d.dev.sent = []
-            d.escape()
+            d.start_escape()
             out.append([s[1:] for s in d.dev.sent if s[1] == "press"])
         return out
 
@@ -278,6 +305,36 @@ def escape_checks():
     for name, ok, got in checks:
         fails += not ok
         print("%s  escape %-44s %s" % ("ok  " if ok else "FAIL", name, "" if ok else got))
+    return fails
+
+
+def progress_checks(prof, disk):
+    """The progress check and the mode reading, through drive.Driver.classify
+    on the sim clock, as a run would meet them."""
+    import drive
+    fails = 0
+    for name, pn, run, old, prev, cur, dt, want in PROGRESS:
+        with tempfile.TemporaryDirectory() as td:
+            d = drive.Driver(drive.SimDevice([], 1.0), prof(pn), td, td, 999, sim=True)
+            d.seen = ["main_menu", "play"]
+            d.state = "play"
+            d.classify(source(run, old, disk))
+            d.clock_sim = dt
+            d.prev = source(run, prev, disk)
+            r = d.classify(source(run, cur, disk))
+        ok = r["state"] == want
+        fails += not ok
+        print("%s  progress %-44s want %-8s got %-8s %s p=%s" % ("ok  " if ok else "FAIL", name, want, r["state"],
+                                                                  r["source"], r.get("progress")))
+    for name, pn, run, f, want in MODES:
+        with tempfile.TemporaryDirectory() as td:
+            d = drive.Driver(drive.SimDevice([], 1.0), prof(pn), td, td, 999, sim=True)
+            d.seen = ["main_menu", "play"]
+            d.classify(source(run, f, disk))
+            got = d.mode
+        ok = got == want
+        fails += not ok
+        print("%s  mode %-48s want %-6s got %s" % ("ok  " if ok else "FAIL", name, want, got))
     return fails
 
 
@@ -350,6 +407,7 @@ def main(argv):
             print("%s  sim %-44s %s%s" % ("ok  " if ok else "FAIL", name, sol["result"][:70],
                                           "" if ok else "  <- " + "; ".join(probs) + "\n" + p.stdout + p.stderr))
     fails += escape_checks()
+    fails += progress_checks(prof, disk)
     print("classify_selftest: %d failure(s)" % fails)
     return 1 if fails else 0
 

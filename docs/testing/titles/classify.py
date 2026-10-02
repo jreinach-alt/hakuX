@@ -246,6 +246,34 @@ def motion(a, b, mask_boxes=()):
     return float((d > MOTION_PIXEL).mean()), float(d.mean())
 
 
+SCENE_SIZE = (32, 24)
+SCENE_PIXEL = 24                  # grey levels a 32x24 cell must move to count as changed
+
+
+def scene(path, mask_boxes=()):
+    """The scene's layout: the grey frame, FPS corner and `mask_boxes` blacked
+    out, box-averaged to 32x24 cells. At that size a character is a cell or
+    two and the level around it is the rest, so two of these taken ~10 s apart
+    ask whether the PLAYER got anywhere, where `motion` (2 s apart, 160x120)
+    asks whether anything moved -- a team struggling in a corner moves plenty
+    (Sonic Heroes, lane.routedriver2 trial 1: 0.35-0.50 changed) and goes
+    nowhere."""
+    im = masked(open_grey(path), [FPS_CORNER] + list(mask_boxes))
+    return np.asarray(im.resize(SCENE_SIZE, Image.BOX), dtype=np.float32)
+
+
+def scene_change(a, b):
+    """Fraction of 32x24 cells that changed between two `scene` arrays."""
+    return float((np.abs(a - b) > SCENE_PIXEL).mean())
+
+
+def region_rgb(path, box):
+    """Mean RGB of a region (1280x960 space): a HUD badge's colour."""
+    im = open_rgb(path)
+    a = np.asarray(im.crop(scale_box(box, im.size)), dtype=np.float64).reshape(-1, 3)
+    return [float(x) for x in a.mean(0)]
+
+
 def match_crop(im, crops, profile):
     """First crop in profile order whose region scores <= its threshold.
     Returns (crop, score, all_scores) -- all_scores is every crop's score,
