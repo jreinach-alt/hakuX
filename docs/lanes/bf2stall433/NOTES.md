@@ -165,3 +165,57 @@ Registered before any run (commit after 57fe561924):
   all 6. Needs six more runs from lane.local.
 - No hold is taken for the soaks: a hold stops the Nova's dispatcher claiming,
   so it blocks the lane's own request (collapse433's process note).
+
+## 6. The pilot pair refutes V (2026-10-02 06:52-07:11 PDT)
+
+A1 `1-1790948452-lane.bf2stall433-3362375` (master b71f92a12a, apk
+4e340d5f2591) and B1 `1-1790948456-lane.bf2stall433-3362482` (57fe561924, apk
+c5f203ffb38a). Both reached `mark gameplay` (A1 07:02:39, B1 07:09:53). The
+route ends ~38-61 s later: 420 s leaves that little after BF2's menus. Neither
+run crashed. `armread.py`:
+
+| | A1 master | B1 mirror |
+|---|---|---|
+| rows (60-flip windows, -45 s..end) | 29 | 39 |
+| heavy rows (BE >= 1800) | 17 | 20 |
+| heavy-view GPU ms, median | 35.9 | **36.0** |
+| heavy-view fps | 16.2 | 17.4 |
+| fit GPU ms per draw | 0.0111 | 0.0099 |
+| light views (BE < 1200) GPU ms | 16.5 | 21.4 |
+| transfer GPU ms (X) | 2.0 | 2.4 |
+
+- **P0 PASS, the premise holds:** `[vtxmirror] on: 64 MB; host type 1 flags
+  0xf cached=1 coherent=1; mirror type 0 flags 0x7 host_visible=1`. The host
+  copies ARE IO-coherent cached memory, and the mirror is the write-combine
+  type (no snoop).
+- **P1 FAIL: heavy-view GPU ms B/A = 1.004** against a predicted <= 0.80.
+  Both arms clear the registered resolution floor (>= 8 heavy rows each). The
+  snoop path is real and was removed, and the per-draw GPU cost did not move.
+  **V is refuted as the cause.**
+- Copy cost, measured: in gameplay BF2 re-uploads ~63-67 MB of vertex data per
+  120 flips (~0.5 MB a flip; dynamic vertex buffers), against ~0.5 MB per 120
+  flips in the menus. The light-view GPU rise (16.5 -> 21.4) is within the
+  view-to-view spread (collapse433's GMEM/sysmem pair differed by 5.5 ms there),
+  so it is not attributed.
+- So the rest of the 3+3 was not queued: it would firm up a null on a change
+  that should not ship. The fix is reverted on this branch (draw.c restored
+  from master). Its pixel and band predictions are deleted from the branch so
+  the arms job does not queue them again, and their 4 queued arms
+  (`1790949781-arms-bf2stall433-{base,fix}-*`, `1790949783-...`) were moved to
+  `queue/withdrawn/`. The GTA prediction for the same change is deleted too.
+  The code stays in history at 57fe561924.
+- Do not repeat: a device-local copy of vertex RAM, or any other change to
+  where vertex data is fetched from, for the per-draw GPU cost. The IO-coherent
+  fetch costs nothing measurable on the Nova.
+
+## 7. Next: is the per-draw cost a stall or throughput? (syncdraw)
+
+`bf2stall433-syncdraw.json`, registered before the run: one master run with
+`TU_DEBUG=sysmem,syncdraw`, against collapse433's sysmem soak (renderer
+byte-identical: `git diff 8b45e7c15c b71f92a12a -- hw/
+android/app/src/main/cpp/` is empty). Syncdraw drains the GPU before every
+draw. If the heavy-view GPU ms barely rises (S), draws are already serialized
+by something in our stream. The prime suspect is then the per-draw UBO rebind
+(new dynamic offset -> new Turnip descriptor set, bindless invalidation,
+constant reload). If it rises by >= 60% (T), draws normally overlap, and the
+cost is per-draw work.
