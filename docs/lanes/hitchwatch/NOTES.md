@@ -267,3 +267,13 @@ passed over.
 - The three `scratch_*.py` files in the worktree root are this session's
   exploration, kept for anyone re-deriving the frozen_frac numbers; they are
   not wired into anything and can be deleted once the PR is reviewed.
+
+## Host note (hostops, 2026-10-01 20:1x PDT)
+
+The fold queue rejected this branch: it touched `docs/testing/titles/targets.toml`
+(a header-comment block documenting `hitch_allowance`), which is outside
+[lane.hitchwatch]'s territory row -- titleroutes exclusively owns that file
+and was mid-session when this lane ran. Reverted that one file to master's
+version (the `hitch_allowance` field is fully documented and implemented in
+title_verdict.py/hitch_report.py already; only the targets.toml comment is
+dropped, no functional loss). Nothing else in this PR changed.

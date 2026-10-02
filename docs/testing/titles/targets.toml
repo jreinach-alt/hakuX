@@ -20,15 +20,6 @@
 #               routes/<route>.returning.route, which titlestate.py picks
 #               between from the device's title state
 #   notes       free text; where a value came from
-#   hitch_allowance
-#               set (any truthy value) to turn off the #433 hitch-rate/
-#               worst-stall check (hitch_report.py) for this title; see
-#               title_verdict.py's HITCHES doc and docs/lanes/hitchwatch/
-#               NOTES.md before adding one -- the survey there found several
-#               already-Playable titles (Azurik, KOF, Kabuki Warriors,
-#               THPS2x) would newly fail the owner's proposed bars, and did
-#               NOT add this to any of them: that is an owner call, not a
-#               default to route around quietly.
 
 [defaults]
 playable_fps = 30          # the owner's bar, 2026-09-25
