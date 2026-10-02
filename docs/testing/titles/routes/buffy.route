@@ -42,26 +42,35 @@ repeat 5 {
 wait 3
 shot pre-mark
 mark gameplay               # CHECK: the canyon with the HUD, no PAUSE panel
+# Replay 1790931264-titleroutes-3615749 (session 65) moved for ~1 min, then
+# sat 4 min on one frame (sky and a tree) under the tip "Run and press B to
+# jump between ledges": the canyon has gaps that need a running jump, and the
+# first loop never pressed B. So: run forward and jump (B) twice per cycle,
+# and turn for longer (1.5 s) so a wall does not hold her for the window.
 repeat forever {
     axis LY min
-    wait 4
-    press A
-    wait 0.6
+    wait 2
+    press B
+    wait 1.5
+    press B
+    wait 2
     press A
     wait 0.6
     press X
-    wait 2
+    wait 1
     axis LX max
-    wait 0.7
+    wait 1.5
     axis LX mid
-    wait 4
+    wait 2
+    press B
+    wait 2
     press A
     wait 0.6
     press A
-    wait 2
+    wait 1
     axis LX min
-    wait 0.7
+    wait 1.5
     axis LX mid
-    wait 2
+    wait 1
     shot play
 }

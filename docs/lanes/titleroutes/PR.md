@@ -1,12 +1,43 @@
-# titleroutes: session 64 -- reviewed 4 pilot surveys frame-by-frame (1 of 4 was NOT gameplay despite a clean verdict), queued 2 more (#397)
+# titleroutes: sessions 64-65 -- Dino Crisis 3 route confirmed by replay; Buffy reaches play but sticks at a ledge in 2 replays (#397)
 
 State: ready
 
 Lane: titleroutes          Issue: #397 (per-title gameplay fps; 0.5 tracking #433)
-Base: master @ 980ac19321 (fast-forward merge of origin/master into this branch, carrying lane.collapse433 and lane.holdwait's work; checkout was 11 commits behind at session start)
-Files: docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/OUTBOX.md, docs/lanes/titleroutes/PR.md
-Prediction: none: review of already-queued surveys + 2 new generic blind surveys via request.sh (no route/targets.toml edit this session; no code under test)
-Needs device: no (direct hold) -- 2 survey requests queued on the Nova (behind lane.ibcache's in-flight run), none held or driven live this session
+Base: master @ f6792eb9b6 (merged in; it already carries 17c3bc721f, the first cut of both routes)
+Files: docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/OUTBOX.md, docs/lanes/titleroutes/PR.md, docs/testing/titles/routes/buffy.route, docs/testing/titles/targets.toml
+Prediction: none: route data (inputs) and notes, no emulator code; route checks are --no-expect dispatch runs
+Needs device: no direct hold -- route-check requests queued on the Nova via request.sh
+
+## What changed (session 65)
+
+Reviewed the two surveys session 64 queued, frame by frame (copies in scratch/judge/):
+- Dino Crisis 3 (`1790928772-titleroutes-2771139`) reached the first corridor with the HUD, then a START press in play
+  opened OPTIONS and the whole scored window was that menu.
+- Buffy (`1790928774-titleroutes-2773088`) reached live play in the Spanish Mission canyon after 4 START/A cycles.
+
+Routed both from those frames rather than queuing two more blind surveys (ranked by probability x win: both have a
+known path into play, and a route converts a survey into something the benchmark stage counts):
+
+| title | route | replay request | replayed? | what the frames show | fps (screening, Nova) |
+|---|---|---|---|---|---|
+| Dino Crisis 3 (43430003) | `dino-crisis-3` | `1790931260-titleroutes-3615015` | **yes, confirmed** | mark `020712-gameplay.png` = corridor + HUD; later frames boost into the next room, answer "Activate switch?", switch turns green; no menu | median 27.16, 15.6% at 30+, two first-compile shader stalls 15.1 s / 12.4 s (cache cleared by new apk) -> hang=true; not nominated |
+| Buffy (45410012) | `buffy` | replay 1 `1790931264-titleroutes-3615749` | reached play, then stuck | mark `021330-gameplay.png` = canyon, live; moves for ~1 min, then 8 identical frames (sky/tree) for 4 min under the tip "Run and press B to jump between ledges" | 95.4% at 30+, no hang, worst hitch 222 ms -- but over a stuck window |
+| Buffy | `buffy` (B jumps added, ref 68bd2e6df6) | replay 2 `1790932722-titleroutes-3976729` | reached play, stuck again | mark `030510-gameplay.png` live; from `030613` 10 identical frames (sky, lamp post) under "Push into low ledges to climb onto them" | 96.3% at 30+, no hang -- over a stuck window. Two failed replays: Buffy stopped, stays DRAFT; needs a path found by sight (nav.py / routedriver) |
+
+Both routes are open-loop by necessity: `waitfor` reference crops do not reach a dispatched run (request.json embeds the
+route text only; ADDENDUM 13's Castlevania run died on a missing crop). They are built so a stray press lands harmlessly
+(Dino Crisis 3: B closes Options/the tutorial and is Jump in play; Buffy: START/A in play is pause + Resume, B is EXIT on
+the pause panel).
+
+Local checks: `bash dispatch/bin/titles/route.sh --check` on both routes (route ok, exit 0); `targets.toml` parses with
+tomllib (82 titles); `python3 docs/testing/titles/titlestate_selftest.py` (all checks passed).
+`bash docs/testing/preflight.sh --allow-tracker` on the merged head: "preflight passed" (territory, board files, nv2a
+index ok; the coverage gate DID NOT RUN because gh is suspended, and it fails open, so that part is unchecked).
+
+Also queued (pass-1 surveys, unreviewed; named for a successor in NOTES.md): Halo: Combat Evolved
+`1790933948-titleroutes-171581`, Conker: Live & Reloaded `1790933948-titleroutes-171701`.
+
+Release note (none): route data and notes only, no emulator code.
 
 ## What changed (session 64)
 
