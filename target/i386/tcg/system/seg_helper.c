@@ -29,6 +29,54 @@
 
 #ifdef XBOX
 extern int hakux_rr425_vec;   /* accel/tcg/cpu-exec.c */
+
+int hakux_spin672_regs(CPUState *cs, char *buf, size_t n);
+
+/*
+ * #672 [spin672r]: the vCPU's registers at a [rr425] window tick, with the
+ * IRQL and current thread from the KPCR (fs base: Irql at +0x24,
+ * PrcbData.CurrentThread at +0x28), 16 dwords at esp, and up to 6 return
+ * addresses down the ebp chain. A read that fails leaves zeros.
+ */
+int hakux_spin672_regs(CPUState *cs, char *buf, size_t n)
+{
+    CPUX86State *env = cpu_env(cs);
+    uint32_t fs = env->segs[R_FS].base, thr = 0, st[16] = { 0 };
+    uint32_t fp = env->regs[R_EBP], fr[2];
+    uint8_t irql = 0xff;
+    int off;
+
+    cpu_memory_rw_debug(cs, fs + 0x24, &irql, 1, false);
+    cpu_memory_rw_debug(cs, fs + 0x28, &thr, 4, false);
+    cpu_memory_rw_debug(cs, env->regs[R_ESP], st, sizeof(st), false);
+    off = snprintf(buf, n, "eip=%08x eax=%08x ebx=%08x ecx=%08x edx=%08x"
+                   " esi=%08x edi=%08x ebp=%08x esp=%08x efl=%08x irql=%u"
+                   " thr=%08x st=",
+                   (uint32_t)(env->segs[R_CS].base + env->eip),
+                   (uint32_t)env->regs[R_EAX], (uint32_t)env->regs[R_EBX],
+                   (uint32_t)env->regs[R_ECX], (uint32_t)env->regs[R_EDX],
+                   (uint32_t)env->regs[R_ESI], (uint32_t)env->regs[R_EDI],
+                   fp, (uint32_t)env->regs[R_ESP],
+                   (uint32_t)cpu_compute_eflags(env), irql,
+                   le32_to_cpu(thr));
+    for (int i = 0; i < 16 && off < (int)n - 10; i++) {
+        off += snprintf(buf + off, n - off, "%s%08x", i ? "," : "",
+                        le32_to_cpu(st[i]));
+    }
+    off += snprintf(buf + off, n - off, " bt=");
+    for (int i = 0; i < 6 && fp && off < (int)n - 10; i++) {
+        if (cpu_memory_rw_debug(cs, fp, fr, sizeof(fr), false) != 0) {
+            break;
+        }
+        off += snprintf(buf + off, n - off, "%s%08x", i ? "," : "",
+                        le32_to_cpu(fr[1]));
+        if (le32_to_cpu(fr[0]) <= fp) {
+            break;
+        }
+        fp = le32_to_cpu(fr[0]);
+    }
+    return off;
+}
 #endif
 
 void helper_syscall(CPUX86State *env, int next_eip_addend)

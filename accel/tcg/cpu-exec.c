@@ -1335,6 +1335,81 @@ static void rrw_tick(unsigned window, int64_t now)
     rrw_idle_ok = false;
 }
 
+/*
+ * #672 [spin672]: where a busy guest spins. Tron 2.0 hung at a level load
+ * with the guest never idle, no pushbuffer kicks, and 39M
+ * helper_lookup_tb_ptr calls a second against ~15k returns to the loop: a
+ * call/ret loop inside chained TBs, which [rr425pc] (loop returns only)
+ * cannot see. 1 in 4096 lookups books its target pc here; each window
+ * prints the top 8 with 32 code bytes, then [spin672r] the registers and
+ * stack at the tick (target/i386/tcg/system/seg_helper.c). Read-only.
+ */
+#define SPIN672_BITS 9
+static RR425Pc spin672_pc[1 << SPIN672_BITS];
+static uint32_t spin672_drop;
+int hakux_spin672_regs(CPUState *cs, char *buf, size_t n);
+
+static void spin672_note(uint32_t pc)
+{
+    uint32_t h = (uint32_t)((pc * 0x9e3779b97f4a7c15ull)
+                            >> (64 - SPIN672_BITS));
+
+    for (int i = 0; i < 8; i++) {
+        RR425Pc *p = &spin672_pc[(h + i) & ((1 << SPIN672_BITS) - 1)];
+        if (p->key == pc) {
+            p->n++;
+            return;
+        }
+        if (!p->key) {
+            p->key = pc;
+            p->n = 1;
+            return;
+        }
+    }
+    spin672_drop++;
+}
+
+static int rr425_pc_cmp(const void *a, const void *b);
+
+static void spin672_tick(CPUState *cpu, unsigned window)
+{
+    RR425Pc top[8];
+    int ntop = 0;
+    char buf[1024];
+    int off = 0;
+
+    for (int i = 0; i < (1 << SPIN672_BITS); i++) {
+        RR425Pc *p = &spin672_pc[i];
+        if (!p->key) {
+            continue;
+        }
+        if (ntop < 8) {
+            top[ntop++] = *p;
+        } else if (p->n > top[7].n) {
+            top[7] = *p;
+        } else {
+            continue;
+        }
+        qsort(top, ntop, sizeof(top[0]), rr425_pc_cmp);
+    }
+    for (int i = 0; i < ntop && off < (int)sizeof(buf) - 96; i++) {
+        uint32_t pc = (uint32_t)top[i].key;
+        uint8_t b[32] = { 0 };
+
+        cpu_memory_rw_debug(cpu, pc, b, sizeof(b), false);
+        off += snprintf(buf + off, sizeof(buf) - off, " %08x:%u:", pc,
+                        top[i].n);
+        for (int j = 0; j < 32; j++) {
+            off += snprintf(buf + off, sizeof(buf) - off, "%02x", b[j]);
+        }
+    }
+    JC425_LOG("[spin672] w=%u drop=%u%s", window, spin672_drop, buf);
+    hakux_spin672_regs(cpu, buf, sizeof(buf));
+    JC425_LOG("[spin672r] w=%u %s", window, buf);
+    memset(spin672_pc, 0, sizeof(spin672_pc));
+    spin672_drop = 0;
+}
+
 /* Book one return from cpu_loop_exec_tb. @tb is what cpu_tb_exec returned. */
 static inline void rr425_book(CPUState *cpu, TranslationBlock *tb,
                               int tb_exit)
@@ -1449,6 +1524,7 @@ static void rr425_tick(CPUState *cpu)
                         top[i].n);
     }
     JC425_LOG("[rr425pc] w=%u%s", window, buf);
+    spin672_tick(cpu, window);
     rrw_tick(window++, now);
 
 reset:
@@ -1664,6 +1740,11 @@ const void *HELPER(lookup_tb_ptr)(CPUArchState *env)
     }
 
     RR425_COUNT(RR_HC);
+#ifdef XBOX
+    if (unlikely((rr425_n[RR_HC] & 0xfff) == 0)) {
+        spin672_note((uint32_t)s.pc);   /* #672 [spin672] */
+    }
+#endif
     tb = tb_lookup(cpu, s, JC425_HELPER);
     if (tb == NULL) {
 #ifdef XBOX
