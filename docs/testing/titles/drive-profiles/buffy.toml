@@ -73,10 +73,17 @@ play_tap = [["B", 4.0], ["A", 7.0]]
 # A stall (the HUD up, the frame still): reset the camera, back off and turn,
 # then run and jump; the second try turns the other way; the third runs
 # straight at the ledge with two jumps (the "push into low ledges" tip).
+#
+# Session 2 (b7): the first stall is NOT at the gap's edge. b5/b6's frame
+# 028 is the 49.1 s capture (kept after the escape ran): she is already in
+# the stream bed below the gap, splash at her feet, after the cycle's B tap
+# at 46.7 s. Every escape above played from inside the stream bed. These
+# four explore it, one direction each, with B pressed through each push.
 stall_cycles = [
-  [[[["LT", "max"]], 0.8], [[["LY", "max"]], 1.0], [[["LX", "max"]], 1.5], [[["LY", "min"]], 2.5, ["B"]], [[], 0.5]],
-  [[[["LT", "max"]], 0.8], [[["LY", "max"]], 1.0], [[["LX", "min"]], 1.5], [[["LY", "min"]], 2.5, ["B"]], [[], 0.5]],
-  [[[["LT", "max"]], 0.8], [[["LY", "min"]], 3.0, ["B", "B"]], [[], 0.5]],
+  [[[["LY", "min"]], 0.3], [[["LY", "min"]], 2.7, ["B", "B", "B", "B"]], [[], 0.3]],
+  [[[["LT", "max"]], 0.8], [[["LY", "max"]], 3.0, ["B", "B", "B"]], [[], 0.3]],
+  [[[["LT", "max"]], 0.8], [[["LX", "min"]], 3.0, ["B", "B"]], [[], 0.3]],
+  [[[["LT", "max"]], 0.8], [[["LX", "max"]], 3.0, ["B", "B"]], [[], 0.3]],
 ]
 
 [drive]

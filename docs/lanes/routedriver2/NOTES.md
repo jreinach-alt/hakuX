@@ -286,3 +286,44 @@ logcats.
 - The Nova hold `routedriver2:s2` is released.
 - No confirmation was queued.
 
+
+## Session 2 (Opus 5.5), 2026-10-02 (attempt 2 of 4)
+
+**Why attempt 1 "did not finish":** it did. Session 1 ended normally with
+PR.md `State: ready` and folded offline as `b71f92a12a` (05:01 PDT). This
+attempt is the resume of a continuous pipeline lane, not a recovery. The
+branch fast-forwarded onto that fold (0 ahead at start).
+
+**Order chosen (probability x win):**
+- Buffy first. It is the strongest Playable candidate in this lane's hands
+  (29.97 fps against a 30 target, ok_share 0.93), its menu path and play
+  detection already work, and one obstacle stands between it and a `--find`
+  pass.
+- Black Stone (titleroutes' "needs closed-loop input") is NOT taken: its
+  draft route (`routes/black-stone.draft.route`, nav.py, session 37) already
+  reaches the first room. The block is that the warrior never walks, with
+  the stick or the hat. A screen driver cannot fix that, so the expected
+  value of a profile is low until someone finds why he does not walk.
+- Crash: Wrath of Cortex is already routed and confirmed (titleroutes
+  session 37). titleroutes2 is working Gunvalkyrie, Bloody Roar, Star Wars
+  Ep. III, Halo CE, Conker and NGB, so those are not duplicated here.
+
+### Buffy: what the b5/b6 frames actually say about the "ledge gap"
+
+b5 and b6 have identical timelines to the decisecond (play at 37.0 s, the
+first stall at 49.2 s): under the same inputs the game is deterministic.
+The frame kept on the first stall row (`028`) is written AFTER the escape
+runs (drive.py `keep()` follows `act()`). But it holds the 49.1 s capture,
+and in that capture **she is already in the stream bed below the gap**, with
+a splash at her feet. The play cycle's B tap at 46.7 s, at the edge
+(frame `027`), was the last input before it. So all six escapes in b5 and
+b6, and every earlier variant, played from inside the stream bed, and none
+of them was designed for it. The "ledge gap" problem is really two
+problems:
+1. getting out of the stream bed;
+2. making the jump. A B tap every 4 s lands at a random distance from the
+   edge.
+
+Run b7 measures (1) first: four escapes, each exploring one direction
+(forward, back, left, right) with B pressed through the push, every escape
+filmed at 0.5 s (`escape_capture_s`), every capture kept.
