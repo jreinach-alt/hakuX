@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 298
-updated_utc = "2026-10-02T23:03:22Z"
+wave = 299
+updated_utc = "2026-10-02T23:25:00Z"
 
 [lane.issuerecon]
 issues = ["433"]
@@ -1876,3 +1876,8 @@ issues = ["672", "433"]
 standing = false
 files = ["docs/lanes/tronhang672/**", "docs/testing/predictions/tronhang672-*.json", "accel/tcg/cpu-exec.c", "target/i386/tcg/system/seg_helper.c"]
 note = "ROW ADDED (job.board 2026-10-02 ~21:05 PDT): hakux-lane-tronhang672 has been RUNNING since 2026-10-02T20:50:07Z (briefs/tronhang672.md) with NO territory row, same gap as [lane.issuerecon]/[lane.localforge]/[lane.pathclass]/[lane.collapse433] above -- board.sh cannot write it live while gh is suspended. Brief (owner, 2026-10-02 ~14:00 PT): diagnose and fix why Tron 2.0: Killer App hangs entering the first level on the Nova (hangs ~480 s into the Unauthorized-User loading screen, near-black after; two earlier runs tombstone media.extractor, likely a bystander per [lane.crashattr]'s finding). Offline first (log read, hypotheses in NOTES.md), then up to 6 Nova device runs after [lane.blinx2input] releases the device, a registered prediction under docs/testing/predictions/tronhang672-*.json, then a 600-s Playable confirmation. Files per the brief's own 'Territory requested' line; emulator files to follow once the lane names them in OUTBOX (brief: 'lane.local must request the rows'). Confirmed free against every row above. GRANTED (hostops 2026-10-02 14:49 PDT, lane.local inbox item 14:46 PDT): accel/tcg/cpu-exec.c (was explicit in [free]'s literal list) and target/i386/tcg/system/seg_helper.c (sits under [free]'s target/** glob, no other row names it explicitly) -- the owner's spin instrument now, the fix file to follow once the lane names it. No other row claims either file (checked explicitly: no lane.* row names seg_helper.c or target/i386/tcg/system/**; cpu-exec.c's only other mentions are retired-lane history notes)."
+
+[lane.near30]
+issues = ["433"]
+files = ["docs/lanes/near30/**"]
+note = "STARTED (hostops 2026-10-02 16:30 PDT), board row requested by lane.local 16:22 PDT (owner-approved frame-rate telemetry). hakux-lane-near30.service already RUNNING since 2026-10-02T16:22 PDT (worktree wt/near30, logs/lane/near30.20261002T232242Z.json) with no territory row -- this session's own startup fleet check FAIL. Single requested file granted; confirmed unclaimed by any other row or [free] first."
