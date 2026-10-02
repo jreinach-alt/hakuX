@@ -545,3 +545,15 @@ notes = "No #431 target; the default 30 applies. Session 49: new on the ranked u
 name = "Petit Copter"
 iso = { thor = "41510001-Petit_Copter.xiso.iso" }
 notes = "No #431 target; the default 30 applies. Session 49: new on the ranked untouched list (rank 135, Perfect). Queued a generic `--route survey` soak, no frames yet. No route."
+
+[titles."43430003"]
+name = "Dino Crisis 3"
+iso = { nova = "Dino Crisis 3.iso" }
+route = "dino-crisis-3"
+notes = "No #431 target; the default 30 applies. xemu: Playable. Session 65 (2026-10-02): a generic survey (1790928772-titleroutes-2771139, Nova) reached the first corridor with the HUD, then a START press in play opened OPTIONS and the rest of the window was that menu (fps_window_median 29.97 is a menu reading). routes/dino-crisis-3.route plays the survey's first 7 START/A cycles, then B twice to close any Options/tutorial overlay, then a loop with no START. DRAFT: not yet replayed."
+
+[titles."45410012"]
+name = "Buffy the Vampire Slayer"
+iso = { nova = "Buffy the Vampire Slayer (USA).xiso.iso" }
+route = "buffy"
+notes = "No #431 target; the default 30 applies. xemu: Playable. Session 65 (2026-10-02): a generic survey (1790928774-titleroutes-2773088, Nova) reached live play in the Spanish Mission canyon about 42 s after boot (4 START/A cycles); later cycles only toggled PAUSE/Resume. fps_window_median 29.97, fps_ok_share 0.93, one 220 ms shader hitch, measured over a window that was partly the pause panel. routes/buffy.route: 5 START/A cycles, then a walk/attack loop with no START. DRAFT: not yet replayed."
