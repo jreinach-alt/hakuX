@@ -1,0 +1,63 @@
+# Tron 2.0: Killer App (42560001), Nova. Built from the generic survey
+# 1790951914-titleroutes2-68595 (lane.titleroutes2, read 2026-10-02).
+# Read from its route-frames, not guessed:
+#   boot20 (080334): ESRB card over PRESS START; boot40 (080356): black;
+#     booted (080416): the KILLER APP title, PRESS START.
+#   cycle 1 START (080424): an Xbox Live "Sign In" screen, two slots
+#     ("Press A to play"), "Controller Disconnected" under each, and a
+#     footer "B Skip Xbox Live sign-in".
+#   every later press: A opens "Select account" (Guest / <New Account>),
+#     the next press picks Guest ("Press A to sign in / Y to deselect"),
+#     the next gives "At least one valid account must be chosen / OK", and
+#     round again, for all 14 cycles and the play loop (080703..080754).
+#   The survey never pressed B, the footer's way out.
+# So: START at the title, then ONE B to skip the sign-in (a second B could
+# back out of whatever menu follows), with a frame after each; then 10
+# START/A cycles with a frame per press to map the menus
+# past it (this run is the second survey as much as a route), mark, and a
+# first-person loop (Tron 2.0 is an FPS: LY forward, RT fire, A jump, RX
+# turn) with a frame per leg and no START.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+shot booted
+press START
+wait 4
+shot signin
+press B
+wait 4
+shot skip
+repeat 10 {
+    press START
+    wait 5
+    shot menu-start
+    press A
+    wait 5
+    shot menu-a
+}
+mark gameplay               # CHECK: in a level, HUD up, no menu or sign-in screen
+repeat forever {
+    axis LY min
+    wait 3
+    shot fwd
+    axis RT max
+    wait 1
+    axis RT min
+    wait 1
+    axis RX max
+    wait 0.4
+    axis RX mid
+    wait 1
+    shot right
+    press A
+    wait 2
+    axis RX min
+    wait 0.4
+    axis RX mid
+    wait 1
+    shot left
+    axis LY mid
+    wait 0.5
+}
