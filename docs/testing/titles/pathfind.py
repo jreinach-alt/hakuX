@@ -85,6 +85,8 @@ UNCHANGED = 0.01                     # classify.motion changed fraction at or un
 PROBE_MOVED = 0.03                   # the probe frame must change at least this much
 SELF_MOVING = 0.15                   # no-input change over this: the scene moves by itself; steer L/R
 BLACK_MODEL_S = 40                   # seconds of black before the model is asked anyway
+BLACK_HANG_S = float(os.environ.get("PATHFIND_BLACK_HANG_S", 180))                  # continuous black this long ends the run (Conker, 10-02: 8+ min black
+                                     # after a level load, inputs every 5 s changing nothing)
 THOR_START_C, THOR_STOP_C = 55.0, 70.0
 
 
@@ -937,6 +939,13 @@ class Agent:
                 time.sleep(5)
                 continue
             dec = self.decide(png, jpg, sig)
+            if self.black_since and now() - self.black_since > BLACK_HANG_S:
+                alive = self.dev.alive()
+                self.write_step(dict(dec or {}, state="black", src="check", action=[],
+                                     why=f"black for {now() - self.black_since:.0f} s (xemu alive: {alive})"))
+                self.result.update(result="black-hang", reason=f"black for over {BLACK_HANG_S} s, xemu alive: {alive}")
+                prev = [st for st in self.steps if st.get("state") != "black" and st.get("frame")]
+                return self.finish(last=os.path.join(self.out, prev[-1]["frame"]) if prev else jpg)
             if dec is None:
                 last_png = png
                 continue

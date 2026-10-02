@@ -28,6 +28,8 @@ answers canned (PATHFIND_DRY). Each case names the defect it would catch.
             they are sent with no model call while each input changes the
             screen (3 calls, not 5); a plan never crosses into gameplay; a
             planned input that leaves the screen unchanged drops the rest.
+  blackhang a screen black for longer than BLACK_HANG_S ends the run as
+            black-hang (Conker, 10-02: 8+ min of black after a level load).
   actions   clean_action keeps valid tokens and drops the rest.
 """
 
@@ -216,6 +218,12 @@ rc, res, steps, calls = run("plandrop", [("logo", 0), ("menu", 0), ("menu", 0)] 
                             ["--no-record", "--no-replay"])
 srcs = [s.get("src") for s in steps]
 check("plan", srcs[:3] == ["fast", "plan", "fast"], f"an input that changed nothing drops the plan: {srcs[:4]}")
+
+# blackhang: black for longer than BLACK_HANG_S ends the run as black-hang, not a 15-min budget
+pathfind.BLACK_HANG_S = 1.0
+rc, res, steps, calls = run("blackhang", [("black", 0)] * 3, [], ["--no-record", "--no-replay", "--budget-min", "0.2"])
+pathfind.BLACK_HANG_S = 180.0
+check("blackhang", res["result"] == "black-hang", f"a long black screen ends as black-hang ({res['result']})")
 
 # actions
 ca = pathfind.clean_action(["a", "START", "STICK:Up:9", "RT:1.5", "HOLD:A:1", "HOLD:Q:1", "JUMP", "select"])
