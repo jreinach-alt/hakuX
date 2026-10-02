@@ -16,6 +16,26 @@ LIVENESS). The scratch files are left in place for the record but are not
 part of the change; `python3 scratch_firstlast.py` / `scratch_static2.py`
 (added this session, same reason) reproduce the numbers below.
 
+## Mid-session: origin/master landed the Sonic Heroes route fix
+
+While this PR's survey (below) was already concluding that the only
+available Sonic Heroes capture (1078702) was a stale/frozen artifact and not
+evidence about the owner's observed hitches, `lane.titleroutes` session 58
+folded to `origin/master` (`bfb8c145fb`, 2026-10-01 19:02 PDT) confirming
+exactly that: `sonic-heroes.route`'s old 9-cycle START/A version pressed
+START during already-live play, pausing it with no un-pause step -- the
+route was rewritten from nav.py observation and replayed clean
+(`scratch/judge/sonic-heroes-171639`: mark gameplay 172133, three `play`
+shots with score/rings/timer all advancing). It is "Nominated for the Nova
+fps confirmation" (`host-tools/nova-nominations.tsv`, a host file, not this
+repo) but **no fresh `dispatch/results/*sonic-heroes*` Playable-confirmation
+soak exists yet** -- that nomination had not been picked up as of this merge.
+Merged into `lane/hitchwatch` clean (only `targets.toml` touched by both
+sides; no conflict). This changes nothing below: it is independent
+confirmation that 1078702 was never a valid hitch-rate data point, and the
+real confirmation this survey needs is still pending, not something I can
+produce myself (no device work, no dispatch requests, per the brief).
+
 ## What exists now
 
 - `docs/testing/hitch_report.py` (new): parses hakuX-pace / [shd413] / [rdc]
