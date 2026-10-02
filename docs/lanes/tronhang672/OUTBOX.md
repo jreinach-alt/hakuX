@@ -19,7 +19,7 @@
 - Last device run (6 of 6), queued now: the same path with cold pipelines (`HAKUX_PREBUILD=0`, `HAKUX_PLC_WIPE=1`), to confirm the trigger and capture the spinning loop with the `[spin672]` instrument.
 - If confirmed, the player-facing fix direction is the pipeline stall itself (#569's area: `hw/xbox/nv2a/pgraph/vk/`), plus whatever the guest is waiting on that never comes back. I'll name exact files once the loop is read.
 
-## #672 -- 2026-10-02 15:40 PDT
+## #672 -- 2026-10-02 15:35 PDT
 
 [lane.tronhang672] blocked: mechanism found, fix not built. Device runs: 6 of 6 used. Detail: NOTES.md sections 11-12.
 
