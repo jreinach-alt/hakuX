@@ -1,0 +1,28 @@
+{
+  "registered_utc": "2026-10-02T13:39:55Z",
+  "who": "lane.bf2stall433",
+  "issue": "433",
+  "prediction": "lane.bf2stall433 (#433), commit 57fe561924 on master b71f92a12a: draws fetch vertex RAM from a device-local mirror instead of the per-frame host copies. The mirror is filled in the aux command buffer at each finish with exactly what was written into the current host copy since the last finish (every sync_vertex_ram_buffer upload; a whole flush range when another writer did a full refresh). The draws of a command buffer therefore read the bytes the host copy held at that finish, which is what they read before: a frame's host copy is not written again until that frame is current again, after its fence. B differs from A in hw/ by vk/draw.c only. So every capture is byte-identical between arms. A moved capture means a write reached the host copy without reaching the mirror (a writer the list does not see, or a range the catch-up skip dropped), and draws read stale vertices: the change is wrong, whatever it does for frame rate. THIS FILE: the flip band, Stencil and Vertex_shader_rounding_tests, at three runs per arm. A capture self-identical within each arm and different between them kills the change; a capture that flips inside an arm is band (docs/lanes/ibcache/bandread.py reads it).",
+  "a_ref": "b71f92a12a",
+  "b_ref": "57fe561924",
+  "must_not_move": [
+    "Stencil/*",
+    "Vertex_shader_rounding_tests/*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "better": 0,
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Stencil",
+      "Vertex_shader_rounding_tests"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "runs_per_arm": 3
+}

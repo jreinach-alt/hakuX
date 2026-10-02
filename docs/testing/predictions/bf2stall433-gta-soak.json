@@ -1,0 +1,31 @@
+{
+  "registered_utc": "2026-10-02T13:40:00Z",
+  "who": "lane.bf2stall433",
+  "issue": "433",
+  "title": "54540082-Grand_Theft_Auto_San_Andreas.xiso.iso",
+  "device": "nova",
+  "seconds": 360,
+  "route": "gta-sa",
+  "frames_every": 20,
+  "perflog": true,
+  "env": ["PERF_REGIMEN=default"],
+  "runs_per_arm": 3,
+  "a_ref": "b71f92a12a24c118616f568b9ccab05fc7d88588",
+  "b_ref": "57fe561924ffba54efea2780ebbd369405ffa4b8",
+  "queue_order": "NOT QUEUED BY lane.bf2stall433: its brief caps it at 6 Nova runs and the BF2 pair (bf2stall433-bf2-soak.json) takes all 6. Six more Nova runs (A1 B1 A2 B2 A3 B3, each `request.sh --title 54540082-Grand_Theft_Auto_San_Andreas.xiso.iso --route gta-sa --seconds 360 --frames-every 20 --perflog --device nova --hard-pin --env PERF_REGIMEN=default --expect this file`) are for lane.local or the next session to grant. Pilot the first pair before the rest.",
+  "judge": "python3 docs/lanes/bf2stall433/armread.py --from 0 --a <A1> <A2> <A3> --b <B1> <B2> <B3>",
+  "prediction": "#433 lane.bf2stall433, the second draw-heavy title. The device-local vertex mirror (57fe561924) changes where every draw fetches vertex RAM, in every title. GTA San Andreas draws from guest vertex buffers too, so the change reaches it. It must not regress: the copies it adds are the vertex uploads, which are small next to the draws, and a GTA frame reads the same bytes it read before. Whether GTA gains depends on how much of its frame is GPU-bound in draws. That is not known, so no gain is predicted.",
+  "legs": {
+    "M0 (instrument)": "As bf2stall433-bf2-soak.json M0, with rows from the mark to the end (--from 0).",
+    "P0 (premise)": "As bf2stall433-bf2-soak.json P0.",
+    "R1 (no regression, the number that counts)": "Share of 60-flip windows at >= 29.5 fps over all rows: B >= A - 0.05; median window fps B >= A - 1.0. FAIL otherwise.",
+    "R2 (GPU cost)": "Median GPU ms per frame over all rows: B <= A*1.05 + 0.5; transfer GPU ms (phase X) B <= A + 0.5.",
+    "I1 (information, not judged)": "Median GPU ms per frame in the arm's two highest-BE bins, B vs A, reported as found."
+  },
+  "must_not_move": [
+    "no crash, no tombstone in logcat -b crash on any B run"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. Read by armread.py."
+}

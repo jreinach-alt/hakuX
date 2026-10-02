@@ -54,10 +54,16 @@ preamble. And a vertex fetch from `BUFFER_VERTEX_RAM` (section 2).
   VMA turns HOST_ACCESS_RANDOM into a REQUIRED `HOST_VISIBLE | HOST_CACHED`.
 - Turnip on KGSL (`tu_knl_kgsl.cc` ~303; `tu_device.cc` ~1774) exposes no
   cached NON-coherent type on ARM (`has_cached_non_coherent_memory = ... &&
-  !DETECT_ARCH_ARM`), so the only HOST_CACHED type is the cached-coherent one,
-  allocated with `KGSL_MEMFLAGS_IOCOHERENT | KGSL_CACHEMODE_WRITEBACK`. The
-  allocation succeeded on the Nova (buffer_init logs all three), so a
-  HOST_CACHED type exists, and it is that one.
+  !DETECT_ARCH_ARM`), so the only HOST_CACHED type it can offer is the
+  cached-coherent one, allocated with `KGSL_MEMFLAGS_IOCOHERENT |
+  KGSL_CACHEMODE_WRITEBACK`, present when the kernel reports IO-coherence.
+- **Correction (same session):** this VMA version only PREFERS
+  HOST_CACHED for HOST_ACCESS_RANDOM (`vk_mem_alloc.h` ~4066: "Cannot require
+  it"). So the allocation succeeding does not prove a cached type exists. The
+  fix logs the memory type the host copies actually got (`[vtxmirror] on: ...
+  host type N flags 0x.. cached=? coherent=?`). The prediction's P0 reads that
+  line first: with `cached=0` there is no snoop to remove, and the arm is
+  INERT by premise, not a refutation.
 - **So every vertex fetch in every draw is an IO-coherent read: the GPU's
   request snoops the CPU caches through the interconnect.** That path's latency
   is set by the memory system and the CPU cluster's coherency fabric, not the
@@ -93,9 +99,69 @@ the one the brief's step 2 asked about. The A/B is also its falsifier: if V
 is the cost, heavy-view GPU ms per draw falls; if the slope does not move, V
 is refuted and U is next (section 7).
 
-Not a guess at the mechanism: the IO-coherent placement is read off the
-allocation flags and the driver source. What is not known is how much of the
-12-14 us it costs. Only the arm can say that.
+What the reading establishes: the allocation flags ask for cached memory, and
+the only cached type this driver can offer on ARM is IO-coherent. What it does
+not establish: that the Nova's kernel exposes that type (the B arm's
+`[vtxmirror]` line answers it), and how much of the 12-14 us the snoop costs.
+Only the arm can say that.
 
-## 4. The fix (step 3)
-(in progress)
+Probability, stated because the brief asks for ranking by probability x win:
+V ~35-40% to be most of the slope (it is the one memory-latency path on every
+draw that is pathological on this SoC); U similar, but unfixable in this
+territory; the rest (driver per-draw state cost, shader work) ~25%. Win if V
+holds: heavy views 35-40 ms -> under 30, and every title whose draws read
+guest vertex buffers gains. The arm decides V either way, and a FAIL hands U
+a clean field.
+
+## 4. The fix (step 3): a device-local vertex-RAM mirror (57fe561924, vk/draw.c only)
+
+- `init_vertex_ram_mirror` (from `pgraph_vk_init_pipelines`) creates one
+  device-local buffer the size of vertex RAM (64 MB; `AUTO_PREFER_DEVICE`, no
+  host access) and logs both memory types. `HAKUX_VTX_MIRROR=0` leaves it off.
+- `sync_vertex_ram_buffer` records each range it uploads (`vtx_mirror_note`,
+  merged, 64 slots, then the bounding range).
+- At finish, in the aux command buffer, `flush_vertex_ram` copies those ranges
+  from the current host copy into the mirror. If the frame's flush range is not
+  explained by the recorded ranges, or covers all of vertex RAM, another writer
+  did a full refresh (the initial upload in renderer.c, the render thread's
+  flush op), and the whole flush range is copied. The aux CB's existing
+  barriers order the copy: WAR against every earlier submission at its top,
+  TRANSFER_WRITE -> VERTEX_ATTRIBUTE_READ before the main CB.
+- `bind_vertex_buffer` and the reorder path's `snapshot_vertex_buffers` bind
+  the mirror for vertex-RAM attributes.
+- The frame-switch catch-up (#39) still memcpys the incoming host copy up to
+  date, but is flushed on the spot instead of being added to the flush range.
+  The mirror already holds those bytes, and the span can cover most of vertex
+  RAM.
+- Same bytes, same moment: a frame's host copy is not written again until that
+  frame is current again, after its fence. So the draws of a command buffer read
+  what the host copy held at its finish, before and after. Pixels should not
+  move (registered).
+- `[vtxmirror] flips= fin= copies= full= ovf= kb=` every 120 flips: what the
+  copies cost.
+- Outside the territory, and the natural home if this stays: the mirror's state
+  belongs in `PGRAPHVkState` (`vk/renderer.h`) and its allocation in
+  `vk/buffer.c`, where the host copies are made. Here it is file-static in
+  draw.c, because the brief's territory is draw.c/renderer.c/surface.c.
+- Local checks: `.scratch/cc_check.py`, the NDK clang line from the main
+  tree's `compile_commands.json` pointed at this worktree's draw.c, release and
+  `NV2A_PERF_LOG=1`: rc 0, and every warning it prints is pre-existing (none in
+  the new code).
+
+## 5. Prediction and runs (step 4-5)
+
+Registered before any run (commit after 57fe561924):
+- `bf2stall433-bf2-soak.json`: BF2, Nova, default regimen, perflog, 420 s,
+  frames every 20 s, 3 runs per arm, A = master b71f92a12a, B = 57fe561924.
+  Judged by `armread.py` (this dir), which reproduces collapse433's table from
+  its soaks (GMEM vs sysmem gives slopes 0.0119 / 0.0121 and P1 0.946, which is
+  the view-to-view noise level).
+- `bf2stall433-pixels.json` (98 suites, one run per arm) and
+  `bf2stall433-band.json` (Stencil, Vertex_shader_rounding_tests; three runs
+  per arm): every capture byte-identical. Registered with `register_pixels.py`.
+  These have golden keys, so the arms job queues them, not this lane.
+- `bf2stall433-gta-soak.json`: the second draw-heavy title, no regression.
+  NOT queued: the brief caps this lane at 6 Nova runs and the BF2 pair takes
+  all 6. Needs six more runs from lane.local.
+- No hold is taken for the soaks: a hold stops the Nova's dispatcher claiming,
+  so it blocks the lane's own request (collapse433's process note).
