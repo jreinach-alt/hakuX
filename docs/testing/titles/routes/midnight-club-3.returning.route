@@ -1,0 +1,75 @@
+# Midnight Club 3: DUB Edition (54540079), RETURNING: profiles already exist
+# on the Nova ("Player 1" from session 34's first-run; "Player 2" was left by
+# session 35's failed replay, both "0% - San Diego"). PLAYED by nav.py on
+# the Nova, 2026-09-29 18:56 PDT (lane.titleroutes session 37, HELD; nav
+# session midnight-club-3.returning-20260929T185622).
+#
+# REWRITTEN in session 37. What session 35's draft got wrong, read off this
+# session's frames rather than inferred:
+#   - "Press START to begin" is not an intermittent attract screen. It is the
+#     title screen, and it comes up by itself after the logo and a ~15-30 s
+#     black load (frames 003-006 black, 007-010 the title screen). START on
+#     it is what brings "Checking saved games" and then the profile list.
+#     The draft pressed A there, which does nothing.
+#   - The profile list highlights the LAST-USED profile, and the list wraps.
+#     Moving to a fixed row is not deterministic, so this route takes the
+#     highlighted profile with A. Any profile on the list is a finished one.
+#   - Menu movement: the D-pad buttons (UP/DOWN) do nothing. The left stick
+#     moves an inconsistent number of rows per pulse (+2, +1, +1 in frames
+#     015-017). The hat moves ONE row for a back-to-back `axis HATY max` /
+#     `axis HATY mid`, and TWO when the pulse is held ~0.5 s (frames 018-021).
+#     So the pulse below has no wait inside it.
+#
+# Player control: RT accelerated the Jetta from the kerb toward the
+# "SIX-ONE-NINE CUSTOMS" garage, speedo in 2nd (frames 055-057).
+#
+# THE BOOT TAKES NO INPUT. With none, the Nova shows (seconds after `am
+# start`, scratch/replay/bootwatch-190402): Rockstar logos 6-20, the intro
+# FMV 25-80, trademark pages 85-98, a fly-in 103, then "Press START to
+# begin" from ~107 s until ~155 s, when the attract FMV starts looping. The
+# first rewrite of this file pressed A three times during the boot, as the
+# interactive session did; in its replay the presses landed on different
+# screens, the FMV was still up at the START, and every later step ran one
+# screen behind (it ended in Career / Purchase a Vehicle). So: wait, then ONE
+# START about 120 s after launch, mid-window whether the route starts 2 s
+# (soak_title.sh) or 8 s (a held replay) after `am start`.
+wait 5.0
+shot boot
+wait 60.0
+shot intro
+wait 50.0
+shot title
+mark title
+press START
+wait 5.0
+shot profile-select
+mark profile-select
+press A
+wait 6.0
+shot main-menu
+mark main-menu
+axis HATY max
+axis HATY mid
+wait 1.0
+shot menu-arcade
+mark menu-arcade
+press A
+wait 4.0
+shot arcade-setup
+press START
+wait 2.5
+shot arcade-options
+press START
+wait 2.5
+shot arcade-start
+mark start-selected
+press A
+wait 22.0
+shot street
+mark gameplay
+repeat forever {
+    axis RT max
+    wait 2.5
+    axis RT mid
+    wait 1
+}

@@ -21,6 +21,12 @@ device's disk, and it needs no qemu-img (the host has none).
                                                 exactly these saves on E:
     saves.py verify <image> <savedir>           the image holds the save, byte
                                                 for byte (exit 1 if not)
+    saves.py reset <image> <out.qcow2> <dir>    all four above in one: every
+                                                title on <image> pulled under
+                                                <dir>/<TitleID>, a fresh disk
+                                                built from them, each verified
+                                                on it (exit 1 on any failure,
+                                                and <out> is then not written)
 
 A built image is small: the FATX structures plus the saves, a few hundred KiB.
 The emulator grows it as the guest writes (the utility-drive caches X:, Y:,
@@ -50,7 +56,10 @@ import extract_results as er  # noqa: E402  (qcow2 + FATX readers)
 
 
 def _load_mkhdd():
-    path = os.path.join(HERE, "..", "..", "..", "tools", "make_xbox_hdd.py")
+    # The dispatcher runs this from its script snapshot ($DISPATCH_DIR/bin/titles),
+    # where ../../../tools is not the repo; it names the tree's copy instead.
+    path = os.environ.get("MAKE_XBOX_HDD") or \
+        os.path.join(HERE, "..", "..", "..", "tools", "make_xbox_hdd.py")
     spec = importlib.util.spec_from_file_location("make_xbox_hdd", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -427,6 +436,30 @@ def verify(image_path, savedir):
     return bad
 
 
+def reset(image_path, out, savedir_root):
+    """A fresh disk carrying every title's saves from IMAGE, and nothing else:
+    list, pull, build, verify. Any title that does not pull, or does not
+    verify on the new disk, fails the whole reset and OUT is removed, so a
+    caller can never push a disk that lost a save."""
+    titles = sorted(list_titles(open_e(image_path)))
+    dirs = []
+    for tid in titles:
+        d = os.path.join(savedir_root, tid)
+        os.makedirs(d, exist_ok=True)
+        pull(image_path, tid, d)
+        dirs.append(d)
+    tmp = out + ".building"
+    n = build(tmp, dirs)
+    bad = {os.path.basename(d): verify(tmp, d) for d in dirs}
+    bad = {t: b for t, b in bad.items() if b}
+    if bad:
+        os.remove(tmp)
+        raise SaveError("reset: %d title(s) do not verify on the rebuilt disk: %s"
+                        % (len(bad), ", ".join(sorted(bad))))
+    os.replace(tmp, out)
+    return {"titles": titles, "bytes": n, "source_bytes": os.path.getsize(image_path)}
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -435,6 +468,7 @@ def main(argv=None):
     s = sub.add_parser("pull"); s.add_argument("image"); s.add_argument("title_id"); s.add_argument("outdir")
     s = sub.add_parser("build"); s.add_argument("out"); s.add_argument("savedirs", nargs="*")
     s = sub.add_parser("verify"); s.add_argument("image"); s.add_argument("savedir")
+    s = sub.add_parser("reset"); s.add_argument("image"); s.add_argument("out"); s.add_argument("dir")
     a = ap.parse_args(argv)
     t0 = time.monotonic()
     if a.cmd == "list":
@@ -459,6 +493,8 @@ def main(argv=None):
             print("  " + b)
         print("verify: " + ("OK" if not bad else f"{len(bad)} mismatches"))
         return 1 if bad else 0
+    elif a.cmd == "reset":
+        print(json.dumps(reset(a.image, a.out, a.dir), sort_keys=True))
     return 0
 
 

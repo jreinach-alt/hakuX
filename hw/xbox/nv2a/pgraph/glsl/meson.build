@@ -7,4 +7,5 @@ specific_ss.add([files(
 	'vsh.c',
 	'vsh-ff.c',
 	'vsh-prog.c',
+	'vsh-uber.c',
 	)])
