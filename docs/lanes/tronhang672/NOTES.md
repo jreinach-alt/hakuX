@@ -128,3 +128,53 @@ did not move the Single Player cursor (route-frame 144159): this pad's D-pad is
 a hat axis, as other routes use (`axis HATY max` / `mid`). A loaded Auto Load
 again, so this run is a second sample of the path that passed in run 1, not of
 the hung path. Route v4 moves the cursor with `axis HATY max`.
+
+## 8. Device run 5: 0-1790977357-tronhang672-2727294 (14:52-15:04 PDT): the hung path, no hang
+
+Route v4 took New Game: difficulty box, first load, the intro cutscenes, the
+second "Unauthorized User" card at t=360 s ("Press A to continue" at 145513),
+the in-engine credits, the KILLER APP title, and live play with the HUD from
+t=480 s to the end. **No hang on the exact path that hung.** 1 hang in 4 passes
+through that load.
+
+## 9. What the hung run actually shows (re-read after run 5)
+
+- **The frozen frame is the end of the load, not a black screen.** f00020
+  brightened 8x is the loading card with "Press A to continue", faded to ~1/8:
+  the load finished, the route's A started the fade-out, and the game stopped
+  mid-fade.
+- **The disk did not stall; the GPU thread did.** In 13:15:53-13:15:59 the
+  guest's wakes are the timer, USB and NV2A vblank (`33.02`) only, with the
+  guest 98% idle; the `fifoskew` line meant for every 2 s came after 5535 ms;
+  the vblank timer shows 132-262 ms gaps. The route's adb commands also ran late
+  (a `wait 0.5` took 2.15 s), so the whole device was loaded.
+- **What the GPU thread was doing: a cold pipeline-compile storm.** `[pb569] rec
+  new` lines from 13:15:52 to 13:16:05: 49 new Vulkan pipelines built
+  synchronously at draw time, 120-450 ms each (new 213 -> 261, new_ms 34907 ->
+  47099). The last is at 13:16:05; the guest is spinning from 13:16:01.
+
+| run | pipelines pre-built at start (`[pb569] start`/`done`) | new pipelines compiled at draw time | path | hang |
+|---|---|---|---|---|
+| 1790971658 (master 6b0c4a131f) | 9 of 22 records | **261** (49 at the transition) | New Game | **yes** |
+| run 1, 0-1790974820 | 0 (cache cleared: new APK) | 39 (+149 known, sync) | Auto Load | no |
+| run 4, 0-1790976604 | 232 | 5 | Auto Load | no |
+| run 5, 0-1790977357 | 244 | **0** | New Game | no |
+
+1790971658 recorded the pipelines it built, and every later run pre-built them
+at boot. That explains why the hang stopped reproducing; it is the strongest
+lead.
+
+Re-ranked: **H1-GPU** (the guest's wait on the GPU across a ~13-s compile
+stall leaves it in a state it never leaves: a timeout path, a lost
+completion, or a catch-up loop over the stalled time) is now first. H2/H4 drop:
+they would not depend on the pipeline cache. The `[spin672]` read of the loop
+still decides between the sub-cases.
+
+## 10. Device run 6 (the last of the brief's six): cold pipelines on the hung path
+
+`HAKUX_PREBUILD=0` (no pre-build from records) and `HAKUX_PLC_WIPE=1` (no
+`vk_pipeline_cache.bin`) recreate 1790971658's cold state with the same APK.
+Prediction: a compile storm at the post-load transition (tens of `[pb569] rec
+new` lines within seconds of "Press A to continue") and the hang reproduces,
+with `[spin672]` naming the loop. If the storm happens and no hang follows, the
+storm is not sufficient; if no storm happens, the env did not take.
