@@ -498,10 +498,13 @@ echo "== request.sh --route: the route's text travels in the request"
 # fragment counts in the harness's queue.
 RQ="$T/route-queue"; rm -rf "$RQ"; mkdir -p "$RQ"/{queue,running,results,expect}
 rq() { DISPATCH_DIR="$RQ" bash "$TESTING/request.sh" --who rt --purpose "route selftest" --no-expect "selftest" "$@"; }
-if rq --title "Crimson Skies.iso" --seconds 900 --route crimson-skies >/dev/null 2>&1; then
+# gta-sa: a `# state: first-run` route, which any disk can be built for. A
+# `returning` one (crimson-skies) needs a golden profile this private
+# dispatch dir has none of, and is refused (85-savestate.sh).
+if rq --title "Crimson Skies.iso" --seconds 900 --route gta-sa >/dev/null 2>&1; then
     check "the queued request carries the route's name and full text" \
-        python3 -c 'import json,glob,sys; r=json.load(open(glob.glob(sys.argv[1]+"/queue/*.req")[0])); src=open(sys.argv[2]).read(); assert r["route_name"]=="crimson-skies" and r["route"].strip()==src.strip()' \
-        "$RQ" "$TESTING/titles/routes/crimson-skies.route"
+        python3 -c 'import json,glob,sys; r=json.load(open(glob.glob(sys.argv[1]+"/queue/*.req")[0])); src=open(sys.argv[2]).read(); assert r["route_name"]=="gta-sa" and r["route"].strip()==src.strip()' \
+        "$RQ" "$TESTING/titles/routes/gta-sa.route"
 else
     bad "request.sh refused a valid --title --route request"
 fi
