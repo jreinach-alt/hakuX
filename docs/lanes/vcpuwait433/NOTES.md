@@ -9,6 +9,23 @@ below 28.5 fps (median F ~43 ms) the vCPU thread is asleep, neither running
 nor runnable, ~10 ms per frame. That sleep tracks GPU ms per frame (r 0.64),
 not the renderer's CPU draw work (0.08). BF2: 21 ms of a 64 ms frame.
 
+## Resume (2026-10-03 09:00 PDT): the fold's head run, re-made at a merged head
+
+**Why attempt 5 did not finish.** It did finish its work. PR.md was ready,
+and the head run at ac52966d30 was queued. But it ended waiting on that run
+and on the fold without a `WAITING` file, so hostops' jam duty resumed it. No
+addenda dated 08:30-08:47 PDT exist in the brief. The newest is Addendum 5
+(08:15), and attempt 5 had already acted on it.
+
+| step | result |
+|---|---|
+| head run `1-1791041533-vcpuwait433-1316447` (Thor, ac52966d30, 3 pixel suites) | DONE, apk 7890d7cfebad: 45 captures, exact 5. **All 45 rows (status, differing, max_rgb/a, pixels, off-by-one) match pixel arm B 4105238** |
+| merge origin/master 6c828f9860 (memfast, greensize303) | clean |
+| new head run | the fold accepts only a run whose ref is the branch head (`offline_fold.py`, prefix match). The merge and this note move the head, so the same 3-suite Thor run is queued again at the new head (id in PR.md) |
+
+Nothing else is in scope here: Addendum 5 says this resume is for finishing.
+The Next table under attempt 5 stands as written.
+
 ## Attempt 5 (2026-10-03 07:57-08:40 PDT): the Tron run went in-level, not the intro
 
 ### Why attempt 4 did not finish

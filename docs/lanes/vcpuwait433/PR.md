@@ -2,7 +2,7 @@
 State: ready
 
 Lane: vcpuwait433       Issue: #433
-Base: master @ cfa37a359e (merged into the branch at 4148fd3831; first base 9550493846)
+Base: master @ 6c828f9860 (merged into the branch at 26eb8db032; earlier cfa37a359e at 4148fd3831; first base 9550493846)
 Files: hw/xbox/nv2a/user.c, hw/xbox/nv2a/pfifo.c, docs/testing/predictions/vcpuwait433-pixels.json, docs/testing/predictions/vcpuwait433-tron.json, docs/testing/predictions/vcpuwait433-tron-firstrun.json, docs/lanes/vcpuwait433/PR.md, docs/lanes/vcpuwait433/NOTES.md, docs/lanes/vcpuwait433/OUTBOX.md, docs/lanes/vcpuwait433/capture_offcpu.sh, docs/lanes/vcpuwait433/waitsite.py, docs/lanes/vcpuwait433/decompose.py, docs/lanes/vcpuwait433/tron-newgame.route, docs/lanes/vcpuwait433/tron-newgame-returning.route, docs/lanes/vcpuwait433/tron-newgame-firstrun.route, docs/lanes/vcpuwait433/levelcheck.py, docs/lanes/vcpuwait433/userread-lockless.diff, docs/lanes/vcpuwait433/selftest_userread.sh
 Prediction: docs/testing/predictions/vcpuwait433-pixels.json @ 51885311070260918a53796ec4038db00d1a3a6173d5c3867df6ca9ca62045a9 (PASS); docs/testing/predictions/vcpuwait433-tron-firstrun.json @ 7c92e808e99436d2d5320c5d05aa093aab66ead111349362cfad85c135fa0b9b (VOID on leg V); docs/testing/predictions/vcpuwait433-tron.json @ 020b10df7f6e66dee2854093439e952d76b833a59b65f676926452534ead8d77 (superseded, never queued)
 Needs device: yes (Thor: 2 pixel arms + the head run; Nova: 3 of 3 runs used)    Needs NDK: yes
@@ -27,7 +27,7 @@ Local checks (no CI offline):
 - `bash docs/lanes/vcpuwait433/selftest_userread.sh`: PASS at this head. It compiles the real user.c with `-Wall -Werror`. With the fix, reads return in 0 ms while pfifo.lock is held for 400 ms, and a write still waits. The pre-fix user.c blocks 400 ms on each read.
 - `docs/testing/preflight.sh --allow-tracker` at this head: passed (psh_differ, aci_vmstate, nv2a index, territory and board files ok). The coverage gate did not run: gh is suspended.
 - NDK build: 012fa08a94 built and ran in pixel arm B and in 947718 (apk b43d7cbb8930).
-- The fold's run at this head: a Thor run of the 3 pixel suites, requester vcpuwait433, queued after this commit with `--ref` = this head.
+- The fold's run at this head: a Thor run of the 3 pixel suites, requester vcpuwait433, queued after this commit with `--ref` = this head. The previous head run (1-1791041533-vcpuwait433-1316447, ac52966d30) is DONE, and all 45 rows match pixel arm B. The head moved only for the master merge (clean) and NOTES.
 
 | Next | P | win | cost |
 |---|---|---|---|
