@@ -28,6 +28,23 @@ def stamp(t):
     t = T0 + t
     return "09-25 %02d:%02d:%06.3f" % (t // 3600, (t % 3600) // 60, t % 60)
 
+import importlib.util
+HAVE_PIL = all(importlib.util.find_spec(m) is not None for m in ("PIL", "numpy"))
+
+def frames(d):
+    # The liveness and position tests read route-frames/ after the mark (100 s
+    # to 760 s here, one every 30 s). Noise frames: the scene changes every
+    # sample, as live play does. Only with PIL; without it the verdict says
+    # `window unmeasured` and the pass-family expectations below say so.
+    if not HAVE_PIL:
+        return
+    from PIL import Image
+    rf = os.path.join(d, "route-frames"); os.makedirs(rf)
+    for i, t in enumerate(range(130, 760, 30)):
+        h, m, s = (T0 + t) // 3600, ((T0 + t) % 3600) // 60, (T0 + t) % 60
+        Image.effect_noise((640, 480), 80).convert("RGB").save(
+            os.path.join(rf, "%02d%02d%02d-r%02d.png" % (h, m, s, i)))
+
 def make(name, *, mark=True, gap_at=None, crash_at=None, fps=30.0, g_ms=33.3,
          runlog_extra="", exited=None, end=760.0, breaks=(), marks=(), cut=None, extra=()):
     d = os.path.join(root, name); os.makedirs(d)
@@ -108,6 +125,7 @@ def make(name, *, mark=True, gap_at=None, crash_at=None, fps=30.0, g_ms=33.3,
               open(os.path.join(d, "request.json"), "w"))
     json.dump({"kind": "soak", "device_label": "nova", "apk_sha": "0" * 12, "ref": "abc"},
               open(os.path.join(d, "result.json"), "w"))
+    frames(d)
 
 make("pass")
 make("crash", crash_at=400.0, exited=400)
@@ -181,8 +199,16 @@ def v(n):
         return json.load(open(os.path.join(root, n, "verdict.json")))
     except Exception:
         return {}
+import importlib.util
+HAVE_PIL = all(importlib.util.find_spec(m) is not None for m in ("PIL", "numpy"))
+def passed(x):
+    # With PIL the fixtures carry route-frames, so a pass is a pass. Without it
+    # the window cannot be read, and the verdict must say so: never a pass.
+    if HAVE_PIL:
+        return x.get("pass") is True
+    return x.get("pass") is False and (x.get("failing") or "").startswith("window unmeasured")
 exp = {
-    "pass":    lambda x: x.get("pass") is True and x.get("rating_candidate") == "Playable"
+    "pass":    lambda x: passed(x) and (x.get("rating_candidate") == "Playable" or not HAVE_PIL)
                          and x.get("fps_windows", 0) > 300 and x.get("audio_measured") is True
                          and (x.get("pace") or {}).get("late_per_100") == 3.33
                          and (x.get("pace") or {}).get("worst_stall") == 50.0,
@@ -193,9 +219,9 @@ exp = {
                          and (x.get("failing") or "").startswith("reached_gameplay"),
     "below":   lambda x: x.get("pass") is False and (x.get("failing") or "").startswith("fps")
                          and x.get("fps_ok_share") is not None and x["fps_ok_share"] < 0.9,
-    "adbfail": lambda x: x.get("pass") is True and x.get("crash") is False
+    "adbfail": lambda x: passed(x) and x.get("crash") is False
                          and x.get("adb_failures") == 3,
-    "capgap":  lambda x: x.get("pass") is True and x.get("hang") is False
+    "capgap":  lambda x: passed(x) and x.get("hang") is False
                          and x.get("fps_ok_share") == 1.0 and len(x.get("capture_gaps_s") or []) == 9
                          and (x.get("pace") or {}).get("lines")
                              == json.load(open(os.path.join(root, "capgap", "expect.json")))["pace_lines"],
@@ -205,7 +231,7 @@ exp = {
                          and (x.get("failing") or "").startswith("capture: truncated")
                          and (x.get("capture_truncated_s") or 0) > 400
                          and (x.get("capture_lost_s") or 0) > 400,
-    "bystander": lambda x: x.get("pass") is True and x.get("crash") is False
+    "bystander": lambda x: passed(x) and x.get("crash") is False
                            and x.get("crash_detail") == [],
     "owntomb":  lambda x: x.get("pass") is False and x.get("crash") is True
                           and (x.get("crash_detail") or [""])[0].startswith("*** ***"),
