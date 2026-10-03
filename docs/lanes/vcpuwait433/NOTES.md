@@ -18,7 +18,8 @@ attributed off-CPU time (95.5% of it reads, 4.5% the DMA_PUT store), about
 asleep in `wait_frame_submitted <- pgraph_vk_finish <-
 pgraph_vk_process_pending_reports <- pfifo_thread`, with pfifo.lock held. That
 finish runs only when DMA_GET == DMA_PUT, so the guest waits out a GPU batch to
-read a value that is already final. The fix is a lock-free `user_read`
+read a value that is already final. The per-tid pass puts the PFIFO thread
+asleep for at least 86% of those waits. The fix is a lock-free `user_read`
 (`userread-lockless.diff`, section 4). It needs a grant for
 `hw/xbox/nv2a/user.c` and `pfifo.c`, and a build. Tables are in section 4.
 
@@ -253,8 +254,22 @@ pgraph_vk_process_pending_reports <- pfifo_thread`** for 2,100 ms of the
 5,257 (40%). On-CPU samples inside the waits add `memcpy_opt`/`swizzle_box`
 under `pgraph_vk_complete_staged_downloads <- pgraph_vk_finish <-
 process_pending_reports` (94 samples). Every emulator thread is named
-`qemu_main`, so per-thread totals mix threads. The other ~60% of the hold time
-has no named holder in this pass. A per-tid pass would name it (Next, D).
+`qemu_main`, so the first pass mixed threads. **Per-tid pass (D, done
+21:20 PDT):** the PFIFO thread (tid 29653) covers 92% of the vCPU's pfifo
+waits:
+
+| PFIFO thread during the vCPU's waits | ms | share of 5,257 |
+|---|---|---|
+| asleep in `wait_frame_submitted <- pgraph_vk_finish <- process_pending_reports` | 2,100 | 40% |
+| asleep, switch-out unsampled | 2,448 | 47% |
+| on-CPU (cpu-clock samples at 1 kHz: staged-download memcpy/swizzle in the same finish, lock hand-off) | ~312 | 6% |
+| display thread (SDLThread) inside `pgraph_vk_get_framebuffer_surface` | 584 | 11% (overlaps the above) |
+
+For at least 86% of the wait time the pusher is asleep, not advancing
+DMA_GET. Its sleeps that release the lock (the idle `cond_wait`, the
+process_pending event) cannot block the vCPU, so the unsampled 47% is most
+likely the same finish. Either way, **the value the guest is waiting to read
+does not change while it waits.**
 
 **Why the vCPU waits there.** `pfifo_thread` calls
 `pgraph_process_pending_reports(d)` with pfifo.lock held (pfifo.c:2162).
@@ -316,14 +331,13 @@ this branch, so it waits for the grant). Tron, New Game route, 2 min from
 
 | candidate | P | evidence for P | win if it works | cost |
 |---|---|---|---|---|
-| **A. Lock-free `user_read` arm** (patch ready) | 0.4 that Tron's slow-window fps rises >= 5% | for: 95.5% of the site is reads; the named holder (40%) runs only at GET == PUT, so the read's value is final; in slow rows the renderer is idle 18 ms of 45 (Ri), so the pipeline waits on the guest, not the reverse. Against: 60% of the hold time has no named holder; the guest may be polling GET/REF in a loop that needs GPU progress, so the freed sleep can turn into spin ([rr425pc]) | up to 4.0 ms of the window's 36 ms mean frame (27.9 -> at most 31.4 fps, +12%; the bound, if all of it is on the critical path); in-level up to about the same share of 6.5 ms; BF2 unknown (21 ms sleep, site unmeasured) | grant (user.c, pfifo.c), 1 NDK build, Tron arm + BF2 arm (2 Nova runs) |
+| **A. Lock-free `user_read` arm** (patch ready) | 0.45 that Tron's slow-window fps rises >= 5% (0.9 that the site's sleep goes) | for: 95.5% of the site is reads; the PFIFO thread is asleep for >= 86% of the waits (D), in a finish that runs only at GET == PUT, so the value read is final and nothing it polls can change; in slow rows the renderer is idle 18 ms of 45 (Ri), so the pipeline waits on the guest. Against: after the read the guest may wait on GPU results in RAM (e.g. a report the finish writes), so the freed sleep can turn into spin ([rr425pc]) | up to 4.0 ms of the window's 36 ms mean frame (27.9 -> at most 31.4 fps, +12%; the bound, if all of it is on the critical path); in-level up to about the same share of 6.5 ms; BF2 unknown (21 ms sleep, site unmeasured) | grant (user.c, pfifo.c), 1 NDK build, Tron arm + BF2 arm (2 Nova runs) |
 | B. Release pfifo.lock across the STALLED finish in `pgraph_vk_process_pending_reports` | 0.3 | covers the named 40% holder for every pfifo.lock user (reads, the DMA_PUT store, the pusher); against: the lock shields the renderer state from the display thread and vk/surface.c during the finish, so a correctness audit and a golden run are needed | <= A's on reads, plus the 4.5% DMA_PUT share | grant (pfifo.c, vk/reports.c), build, goldens, arm |
 | C. In-level capture (run 3: script ready, gate fixed, golden profile) | 0.85 that it names the in-level owner | the gate replay opens on 2186958 at mark+28 s | knowledge only: whether the same site owns gameplay's 6.5 ms. A's arm on an in-level route answers that and the win together | 1 Nova run |
-| D. Per-tid holder pass on tron2.data (offline) | 0.8 that it names the other 60% | a reader change keyed by tid; the data is on disk | raises or lowers A's P (pusher batches with GET != PUT mean the guest would spin): it informs A, it does not replace it | ~10 min host, no device |
+| D. Per-tid holder pass on tron2.data (offline) | done | PFIFO thread asleep for >= 86% of the waits | raised A from 0.4 to 0.45 | done |
 
 A first: it is the change that moves frames, and the arm measures the win and
-the in-level case together. D can run while the grant is pending. C is not
-worth a run unless A's arm is blocked.
+the in-level case together. C is not worth a run unless A's arm is blocked.
 
 ## Device use
 
@@ -354,9 +368,10 @@ worth a run unless A's arm is blocked.
 - Do not call near30's Tron slow window "in-level". On the New Game route it is
   the in-engine intro (minutes 0-2 after `mark gameplay`). In-level (Auto
   Load) runs at 28-34 fps with v_blk about 6.5.
-- Do not hypothesise the display thread's `vkWaitForFences` under pfifo.lock
-  (vk/renderer.c:2803-2826) as the holder: in tron2, SDLThread sits in
-  `clock_nanosleep` during the vCPU's waits.
+- Do not take the display thread's `vkWaitForFences` under pfifo.lock
+  (vk/renderer.c:2803-2826) as THE holder. In tron2, SDLThread is inside
+  `pgraph_vk_get_framebuffer_surface` for 584 ms (11%) of the vCPU's waits
+  and in `clock_nanosleep` for 76%. The PFIFO thread is the main holder.
 
 ## Files
 

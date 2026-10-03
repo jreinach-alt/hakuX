@@ -225,15 +225,15 @@ def holders(vtid, names, waits, cs, outs):
                 continue
             i = bisect.bisect_right(st, t0) - 1
             ch = " <- ".join(emu_frames(so[i][1])[:6]) if i >= 0 and t0 - st[i] <= 200000 else "(unsampled)"
-            tn = names.get(tid, tid)
+            tn = "%s/%s" % (names.get(tid, "?"), tid)  # one name covers every emulator thread
             acc[(tn, ch)] += ov / 1e6
             cover[tn] += ov / 1e6
     print("\nHOLDERS: other threads off-CPU during the %.0f ms of waits (ms of overlap; a thread asleep "
           "for the whole of every wait scores 100%%)" % tot)
-    for tn, v in cover.most_common(8):
+    for tn, v in cover.most_common(12):
         print("  %8.0f ms %5.1f%%  %s" % (v, 100 * v / max(tot, 1), tn))
     print("  by thread and switch-out chain:")
-    for (tn, ch), v in acc.most_common(20):
+    for (tn, ch), v in acc.most_common(30):
         print("  %8.0f ms %5.1f%%  %-16s %s" % (v, 100 * v / max(tot, 1), tn, ch))
 
 
@@ -278,8 +278,8 @@ def detail(site, vtid, names, waits, clock):
             if tid == vtid:
                 continue
             nsamp += 1
-            th[names.get(tid, tid)] += 1
-            fr[(names.get(tid, tid), " <- ".join(fs[:4]))] += 1
+            th["%s/%s" % (names.get(tid, "?"), tid)] += 1
+            fr[("%s/%s" % (names.get(tid, "?"), tid), " <- ".join(fs[:4]))] += 1
     print("  other threads' cpu-clock samples inside those waits: %d" % nsamp)
     for k, v in th.most_common(6):
         print("  %6d %5.1f%%  %s" % (v, 100 * v / max(nsamp, 1), k))

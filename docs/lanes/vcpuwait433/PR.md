@@ -22,10 +22,10 @@ Needs device: yes (Nova; 2 of 3 runs used: tron1 void (menu), tron2 = the brief'
 
 | Next | P | win | cost |
 |---|---|---|---|
-| **A. lock-free `user_read` arm** | 0.4 (fps +5% in the slow window): the read's value is final; the renderer is idle 18 of 45 ms, so it waits on the guest. Against: 60% of the hold time has no named holder, and freed sleep may become guest spin | up to 4.0 ms of a 36 ms frame (27.9 -> at most 31.4 fps); BF2 unknown | grant, 1 build, 2 Nova runs |
+| **A. lock-free `user_read` arm** | 0.45 (fps +5% in the slow window): the per-tid pass puts the PFIFO thread asleep for >= 86% of the vCPU's waits, so the value read never changes during a wait; the renderer is idle 18 of 45 ms, so it waits on the guest. Against: the guest may then wait on GPU results in RAM, turning freed sleep into spin | up to 4.0 ms of a 36 ms frame (27.9 -> at most 31.4 fps); BF2 unknown | grant, 1 build, 2 Nova runs |
 | B. release pfifo.lock across the stalled finish | 0.3: wider, but exposes renderer state to the display thread | <= A + the 4.5% DMA_PUT share | grant, build, goldens, arm |
 | C. in-level capture (run 3) | 0.85 it names the owner | knowledge only; A's arm answers it too | 1 run |
-| D. per-tid holder pass (offline) | 0.8 | re-scores A's P | ~10 min host |
+| D. per-tid holder pass (offline) | done | PFIFO thread 92% of the hold (40% named finish, 47% unsampled sleep, 6% on-CPU) | done |
 
 Local checks: `docs/testing/preflight.sh --allow-tracker` passed at this head (territory ok, board files ok; the coverage gate did not run: gh suspended). `bash -n capture_offcpu.sh` OK. The gate's fps parse reads 33 fps on 2186958's pace lines and is empty-safe. `.scratch/replay_gate.py` replays the gate: OPEN on 2186958 at mark+28 s, ABORT on tron1 and tron2. `git apply --check userread-lockless.diff` OK on master 9550493846. `waitsite.py`'s `--detail` code runs only under its flag. Its site table on tron2 is byte-identical before and after the edit. The doa3 validation was not re-run.
 

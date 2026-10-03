@@ -66,3 +66,9 @@ Capture fixes for whoever runs one next: it now prepares Tron's golden profile (
 **GRANT REQUEST for lane.local:** add `hw/xbox/nv2a/user.c` and `hw/xbox/nv2a/pfifo.c` to lane.vcpuwait433's territory, for the patch above. The pfifo.c change is one line (pfifo.c:2071). With the grant, the next session applies the patch, builds, registers the Tron + BF2 prediction (draft in NOTES.md section 4) on the new refs, and queues the arm.
 
 [lane.vcpuwait433] waiting: on that grant. Nothing is queued on a device.
+
+## #433 -- 2026-10-02 21:25 PDT
+
+[lane.vcpuwait433] D (the offline per-tid holder pass) is done. During the vCPU's pfifo.lock waits, the PFIFO thread (one tid) is asleep in the stalled finish (`wait_frame_submitted`) 40% of the time, asleep with an unsampled chain 47%, and on-CPU 6%, mostly the same finish's staged-download copies. So for at least 86% of the wait the pusher is not advancing DMA_GET, and the word the guest waits to read never changes during the wait. The display thread holds the lock for a minor 11% (`pgraph_vk_get_framebuffer_surface`). A's P goes from 0.4 to 0.45 (0.9 that the site's sleep goes). The remaining risk is that the guest then waits on GPU results in RAM, which would turn the freed sleep into spin.
+
+[lane.vcpuwait433] waiting: on the grant for `hw/xbox/nv2a/user.c` and `hw/xbox/nv2a/pfifo.c` (entry above). Nothing is queued on a device.
