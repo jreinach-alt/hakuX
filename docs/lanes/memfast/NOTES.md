@@ -742,6 +742,95 @@ file); a rate here sizes a design, it does not compare builds.
     with the scores in one commit, and queue a head-sha soak for
     `offline_fold.py` (Next, step 2).
 
+- 2026-10-03 (attempt 11; the resume header numbers it 4): **why attempt 10
+  did not finish.** It ended at 18:14 PDT on 10-02 on a wait for the nine
+  Nova runs, and that was the right ending. The runs finished overnight.
+  lane.local then set PR.md ready (06:47 PDT, after a Thor ZPass A/A and A/B
+  at 0 of 72) and folded the branch (`ddbc5f0173`) before this lane scored
+  them. **Phase 1 is on master.** This attempt fast-forwarded to
+  origin/master (`9d1155f919`) and scored the nine runs:
+  - all nine are DONE, none VOID, and nothing is left in queue/ or running/;
+  - pixel arm stable2: **PASS** (below);
+  - J: **not shown**, neither confirmed nor refuted (below);
+  - G: **PASS**;
+  - the census has a fourth title, Crimson, with the same shape.
+
+## Phase 1 on the Nova: J/frame, reach, pixels (read 2026-10-03)
+
+The tool is `title_verdict.py`, run on copies in `.scratch/nf/`, and the
+table comes from `.scratch/jpairs.py`. All runs are 300 s soaks on battery,
+with no thermal pause.
+
+| title | pair (B / A) | J B / A | B/A | net W B/A | fps median B/A | gameplay s (B / A) |
+|---|---|---|---|---|---|---|
+| GTA SA | `521965` / `522010` | 0.2975 / 0.2894 | 1.028 | 1.019 | 0.999 | 86.5 / 85.5 |
+| GTA SA | `522200` / `522245` | 0.2897 / 0.2912 | 0.995 | 0.995 | 1.012 | 88.3 / 93.7 |
+| **GTA SA, mean** | | | **1.011** | | | |
+| Nightfire | `1478575` / `1478620` (09-29) | 0.2352 / 0.2603 | 0.904 | 0.905 | 1.000 | 270.1 / 268.7 |
+| Nightfire | `522055` (10-02) / `1478752` (09-29) | 0.2699 / 0.2494 | 1.082 | 1.111 | 1.022 | 252.4 / 270.4 |
+| **Nightfire, mean** | | | **0.993** | | | |
+| Crimson (one pair; G and census only) | `522109` / `522155` | 0.2698 / 0.2767 | 0.975 | 0.975 | 1.000 | 191.0 / 188.7 |
+
+(The 6-digit ids are `1-17909900xx-lane.memfast-`; the 7-digit ones are
+`1-17906769xx-lane.memfast-`.)
+
+- **J (registered: mean B/A <= 0.98 on each title; refuted if >= 1.00 on
+  both): NOT SHOWN.** GTA's 1.011 and Nightfire's 0.993 both miss 0.98.
+  Only GTA is at or above 1.00, so the leg is not refuted either. The
+  instrument cannot resolve the effect:
+  - **Same-arm spread exceeds the predicted effect.** Nightfire's two B runs
+    differ by 15% (0.2352 and 0.2699), and its two A runs by 4%. The
+    prediction was 2-7%.
+  - **Nightfire's pair 2 is split across days.** A2 ran on 09-29 and B2 on
+    10-02, after the Nova's restart. Its 1.111 net-W ratio is the largest in
+    the table.
+  - **GTA's scored window is short.** The route reaches play at about 210 s
+    of a 300 s soak, so each GTA J rests on about 87 s.
+  - **Every title is at its 30 fps cap** (fps median B/A 0.999-1.022). A
+    saving of about 5% of vCPU time becomes idle time, and on the Nova that
+    shows up only in net W.
+- **F (fps): VOID** on all three titles, by the leg's own rule. A runs at
+  its cap.
+- **G (B reaches play, no crash, no hang): PASS** on GTA (two B runs),
+  Nightfire (two) and Crimson (one). `crash` and `hang` are false on all
+  five, and `[mf0]` lines run to the end (152-169 per run).
+- **V (validity): PASS** on all nine. Each has `mark gameplay`, power
+  measured on battery, and at least 152 `[mf0]` lines.
+- **Pixels, `memfast-drop-pixels-stable2.json` (Nova arm pair
+  `1790990050-arms-memfast-base-522291` / `1790990051-...-fix-522338`):
+  PASS.** All 3,064 registered checks hold, and the arm was pre-registered
+  (sha bound at queue time). Output: `.scratch/stable2-arm.out`.
+  - 37 captures were worse: the 36 ZPass captures again (1202 -> 1750, in
+    the excluded set) and one `Vertex_shader_rounding_tests` capture, also
+    excluded.
+  - That makes three pixel arms with no move outside same-build-unstable
+    captures. Lane.local's Thor ZPass A/A and A/B (0 of 72) agree.
+- **Census (M), from three A runs (`.scratch/mf0-1003.out`).**
+  - GTA A1 and A2: armed for 2.0-2.1 s at boot, and `cb` 3-27 afterwards.
+    Low window 167,509-181,076 identity installs against
+    11.1-11.2 million non-identity (98.4-98.5%).
+  - Crimson A1, a fourth title: armed for 2.0 s, `cb` 3-14. 15,704 identity
+    against 3,595,344 non-identity (99.6%). BAR1 is all identity.
+  - The `first` samples are the XBE image at VA 0x10000 -> PA 0xbf000 on
+    all three.
+
+**What phase 1 shows.** The change removes code that never ran in play (four
+titles), and it moves no pixel outside the noise across three arms. On the
+Thor's cold profile it cuts GTA's vCPU time per frame by 4.3-6.2% (leg S).
+**It does not show a J/frame or fps change on the Nova at the 30 fps cap.**
+The release note in PR.md now says that.
+
+**What this teaches the phase 2 legs.** A vCPU saving of a few percent is
+invisible in J/frame on capped titles at this run length. F1 and W1 need
+two things:
+- a **profile leg** (vCPU time per frame, `simpleperf`), which resolved
+  4-6% here;
+- an **fps leg on a title below its cap and bound on the vCPU.** Tron 2.0
+  qualifies (near30: a 43 ms frame, vCPU-bound). Conker qualifies only if it
+  runs below 30.
+
+J/frame becomes an observation, not the gate.
+
 ## The second pixel arm (memfast-drop-pixels-stable.json), read 2026-10-02
 
 `1-1790725598-arms-memfast-base-1586276` (31515f9751) and
@@ -1062,33 +1151,28 @@ gameplay, power was measured on battery, and neither had a thermal pause.
 0. DONE: leg S is read and passes (section "Leg S"). Do not re-run the
    readers on either capture. Read `preamble` and `xboxchk` with
    `legs_read.py`, never with `jitmix.py`, on any build after this PR.
-1. **Outstanding, all on the Nova (queued 2026-10-02; ids in the log
-   entry and in OUTBOX.md):**
-   - GTA B1 A1 B2 A2 (`memfast-drop-soak-nova.json`);
-   - Nightfire B2 (`memfast-drop-soak.json`), paired with A2 `-1478752`;
-   - Crimson B1 A1 (`memfast-drop-soak-nova.json`);
-   - the third pixel arm pair (`memfast-drop-pixels-stable2.json`).
-
-   When they land:
-   - run `mf0_read.py` on every A run;
-   - run `title_verdict.py` (`.scratch/score.py`) on a COPY of every dir;
-   - judge J as the mean B/A over the pairs per title, and G on every B run;
-   - judge the arm with `ab_compare.py --expect` on the stable2 file.
-
-   **Check `queue/`, `running/` and every dir's `VOID.txt` before scoring
-   anything.** A DONE dir can also be VOID.
-2. **Then set PR.md `State: ready`, in one commit with the scores.** Queue
-   one soak built from that exact commit: `offline_fold.py` requires a
-   finished, non-void run whose ref is the head sha, so any later commit
-   voids it. Then end the session on a `waiting:` for that run.
-3. **After the fold, the next work is re-scored by the owner's rule (P x
-   win).** Win is in vCPU time; GTA is from leg S, Conker from section 8.
+1. DONE 2026-10-03: phase 1 is folded (`ddbc5f0173`), and its nine Nova runs
+   are scored ("Phase 1 on the Nova"). Pixels and G pass. J was not shown at
+   the cap.
+2. DONE: PR.md was set ready by lane.local and folded.
+3. **Phase 2, re-scored on 2026-10-03 after phase 1's J leg.** Win is
+   stated in vCPU time and in fps on a below-cap, vCPU-bound title, not in
+   J/frame on capped titles (phase 1 showed J cannot resolve a few percent).
+   GTA's figures come from leg S, Conker's from section 8, and Tron's from
+   near30.
 
 | candidate | P, and its evidence | win | cost | order |
 |---|---|---|---|---|
-| F1: fastmem, loads only | 0.4. Mechanism: the compare is measured and the shadow removes it. Precedent: Dolphin. Risk: watch churn and revalidation, priced below the kill line on GTA (section 8) but not yet on device | GTA 8.9% (load compares) + about 2.6% refill = about 11%. Tron (near30): 6.5-8 ms of a 43 ms frame | the largest: F0b and F1 code, then a pixel sweep and soaks | the target; built only after F0a passes |
-| W1: per-page watch flush | 0.7. Mechanism: `fo` = 2 x watch inserts, measured on Conker, Blinx 2 and Crimson. Each insert or remove is a full flush, which empties the TLB and the jump cache | Conker: 287 full flushes/s gone. GTA refills 770-1,330 pages per flush; at about 5 to 10 times GTA's flush rate, a guess of 5-15% of Conker's vCPU. GTA: about 0 | small: softmmu only, inside the grant; one prediction, one arm | first. It pays without fastmem, and F1 needs it on watch-heavy titles |
-| F0a, device half | a probe, not a fix | none by itself | one native test binary run | alongside W1. It picks between F1 and the fallback: under the kill line on GTA and Conker builds F1; over it switches F1 to Dolphin's lazy view swap (section 2) or parks it |
+| F1: fastmem, loads only | 0.4. Mechanism: the compare is measured and the shadow removes it. Precedent: Dolphin. Phase 1 adds evidence that removing translation instructions does cut vCPU time (leg S: -21% host instructions per TB, -4.3 to -6.2% vCPU time per frame). Risk: watch churn and revalidation, priced below the kill line on GTA (section 8) but not yet on device | GTA: 8.9% (load compares) + about 2.6% refill = about 11% of vCPU time. Tron 2.0 (near30: 43 ms frame, vCPU-bound, below its 60 cap): 6.5-8 ms, so +15-19% fps if the frame stays vCPU-bound. **On capped titles, expect no fps change and a J change below what the Nova resolves (phase 1)** | the largest: F0b and F1 code, then a pixel sweep, a profile, and Tron fps pairs | the target; built only after F0a passes. Expected value about 0.4 x 15-19% fps on vCPU-bound titles |
+| W1: per-page watch flush | 0.7. Mechanism: `fo` = 2 x watch inserts, measured on Conker, Blinx 2, Forza and Crimson. Each insert or remove is a full flush, which empties the TLB and the jump cache. `[tlb68] fo` going to about 0 is nearly certain; the 0.7 is for a vCPU-time cut that shows in a profile | Conker: 287 full flushes/s gone; Blinx 2: 58/s; Forza: 38/s. Guessed at 5-15% of Conker's vCPU time; GTA about 0. **Conker has no gameplay route, so its fps cannot be scored: the legs are `[tlb68]` on Conker, Blinx 2 and Forza, and a profile** | small: softmmu only, inside the grant; one prediction, one pixel arm, soaks with `--perflog` | first. It pays without fastmem, F1 needs it on watch-heavy titles, and its own risk is low. Expected value about 0.7 x 5-15% vCPU on three titles |
+| F0a, device half | a probe, not a fix | none by itself | one native test binary run | alongside W1. It picks between F1 and the fallback: under the kill line on GTA and Conker, build F1; over it, switch F1 to Dolphin's lazy view swap (section 2) or park it |
+
+**What phase 1's J result changed in this table:** the legs, not the order.
+On capped titles, J/frame and fps cannot see a vCPU cut of a few percent on
+the Nova. Every phase 2 claim is therefore gated on a profile (vCPU time
+per frame) and on fps on a vCPU-bound title below its cap (Tron 2.0). Each
+uses a route that works with or without a profile (vcpuwait433's
+tron-newgame v5).
 5. Do not repeat: the `act` reading through `cb0ms` (the reader is fixed);
    a pixel prediction that asserts the Stencil_ZERO family or
    GeometrySuperscreen_0.4999/_0.5626 as exact.
