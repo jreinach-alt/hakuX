@@ -1180,9 +1180,9 @@ class Agent:
         still, off, reason = 0, False, ""
         last_png, last_check, last_kept, drop = None, now(), None, []
         t_hold = now()
-        t_prev = t_hold
         while play_s < self.hold_s and self.el() < self.budget_s:
             self.n += 1
+            t_cycle = now()
             png, jp = self.frame("hold")
             if not png:
                 time.sleep(2)
@@ -1192,10 +1192,9 @@ class Agent:
                 break
             t = now()
             hold_el = t - t_hold
-            dt, t_prev = t - t_prev, t
             ch = changed(last_png, png) if last_png else None
             still = still + 1 if ch is not None and ch <= UNCHANGED else 0
-            suspect = is_black(png) or still >= 2
+            suspect = is_black(png) or still >= 1
             look = {"n": self.n, "hold_s": round(hold_el, 1), "play_s": round(play_s, 1),
                     "changed": None if ch is None else round(ch, 4), "off": off}
             if off or suspect or t - last_check >= HOLD_CHECK_S:
@@ -1221,10 +1220,11 @@ class Agent:
                 else:
                     nav = 0
             if not off and look.get("action") is None:
-                # play: the genre loop (a check look that said play sends it too)
+                # play: the genre loop (a check look that said play sends it too). The time credited is this
+                # cycle's own, from its frame to its inputs: the look before may have been off play.
                 look.update(src=look.get("src", "genre"), action=tokens)
                 self.send(tokens)
-                play_s += dt
+                play_s += now() - t_cycle
             keep = last_kept is None or hold_el - last_kept >= HOLD_FRAME_S
             if keep:
                 last_kept = hold_el
