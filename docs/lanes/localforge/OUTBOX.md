@@ -142,3 +142,7 @@ NEW ISSUE: harness_health.py's gh-auth probe reads the forge as GitHub
 - Checks: `smoke_live.py` 92/92, `route_test.py` 83/83, `selftest.sh --check-shards 4` passes. The full selftest result is in PR.md.
 
 **For lane.local:** `shim.log` (`~/hakux-work/logs/forge/shim.log`) is still the place to watch for rc 64. Any caller that discards stderr hides a 64 from its own log, as xbox_check.sh did, so idlewatch's alert on that log is the only signal.
+
+## #433 -- 2026-10-03 PDT (attempt 4, checks)
+
+[lane.localforge] Selftest at this head, in the four CI shards: 284 + 865 + 967 + 884 = **3000 passed, 0 failed, all 123 fragments.** PR.md stays `State: ready`. The branch adds the five `.github/workflows` files to its `Files:` line, which the hostops grant covers. Nothing from me is waiting.

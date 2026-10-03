@@ -79,7 +79,7 @@ Caller decisions for every remaining `gh` call on master are in NOTES.md section
   `issue comment N --body` form). `route_test.py` **83 passed, 0 failed**. `selftest.sh
   --check-shards 4`: passes. RETURN.md 2a's workflow check prints nothing at this head and
   prints the five files on origin/master. The territory check `offline_fold.py` runs, applied to
-  this head: 27 files, none outside `[lane.localforge]`. Selftest shards: SELFTEST_RESULT.
+  this head: 27 files, none outside `[lane.localforge]`. `selftest.sh` in the four CI shards, run one after another: **284 + 865 + 967 + 884 = 3000 passed, 0 failed, 13 + 39 + 36 + 35 = 123 fragments.** Shard 0 started before the shim's `--search` commit. No selftest fragment uses `gh-shim/`, so it tested the same harness code as this head.
 
 ## Not done in this PR
 
