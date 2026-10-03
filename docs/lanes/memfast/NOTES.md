@@ -831,6 +831,87 @@ two things:
 
 J/frame becomes an observation, not the gate.
 
+## W1: a surface watch flushes only its own pages (2026-10-03)
+
+**The change.** `mem_access_callback_insert` and `_remove_by_ref`
+(`system/physmem.c`) each queued a `tlb_flush_all_cpus_synced`, which
+flushes every mode and the jump cache: the "FIXME: flush only applicable
+pages". Now the exclusive work item that changes the callback list also
+calls `hakux_tlb_flush_ram_range` (`accel/tcg/cputlb.c`). That function
+walks the fast and victim tables of every mode in `c.dirty` and drops each
+entry whose RAM page overlaps the watched range. `HAKUX_W1=0` restores the
+full flush.
+
+- **Why the walk is complete.** Only `tlb_set_page_full` decides
+  `TLB_WATCHPOINT`, from the entry's RAM address (`iotlb`).
+  `xlat_section` keeps that address minus the entry's page, and that is how
+  `mem_check_access_callback_vaddr` recovers it. The walk recovers it the
+  same way.
+  - A mode outside `c.dirty` holds only -1 entries (the `tlb_reset_dirty`
+    argument).
+  - Large pages are entered one 4 KiB entry at a time, so each entry carries
+    its own `xlat_section`.
+  - Nothing runs between the list change and the walk, so the next access
+    refills against the new list.
+- **The jump cache is not flushed.** A watch changes no translation and no
+  code, only the data flags of a refill.
+- **Remove walks too.** That is not needed for correctness: an entry flagged
+  for a removed watch only takes the slow path and finds no callback. But
+  with full flushes rare, the page would stay slow.
+- **Accounting.** A main-table drop decrements `n_used_entries`. A
+  victim-table drop does not, because eviction already took the entry out of
+  the count. Decrementing again would drift the resize heuristic now that
+  full flushes are rare (#311 hunk (b) is the same kind of drift).
+- **The cross-check (`wx`).** The walk also tests each entry's host pointer
+  (`addend` + page) against the watched RAM's host range. That is an
+  independent recovery of the same fact. An entry that only the host test
+  drops is dropped anyway, and counted as `wx`. It should be 0 always, and
+  a non-zero `wx` falsifies the completeness argument above. I/O entries
+  have a NULL host pointer, so they cannot match it.
+- **`[tlb68]` gains** `w1=` (the switch), `wn=` (walks), `wh=` (entries
+  dropped), `wx=` and `wus=` (walk time). Reader: `w1_read.py`. On
+  the old runs it reproduces section 8: Conker `fo` 286/s against 143
+  inserts/s, and Forza 37/s against 22/s.
+- **Checks before the device:** `-fsyntax-only` with the NDK compile
+  database's flags on `cputlb.c` and `physmem.c` gives rc 0, with no
+  diagnostics beyond master's `TARGET_PAGE_MASK` shifts.
+- **An independent review (a subagent, 2026-10-03) found no correctness
+  bug.** It checked six things:
+  - every way an entry could survive the walk: clean modes, `addr_read`
+    -1, large pages, the victim swap, cached `probe_access` pointers;
+  - ordering: one atomic work item where there were two, and
+    `surface_watch_rearmed` is still queued behind it;
+  - skipping the jump cache;
+  - the entry count;
+  - the cross-check's host pointer (`d->vram` is the real RAM region, not
+    the alias);
+  - the Desktop build (`TARGET_PAGE_MASK` at run time).
+
+  It raised one **performance risk**. `tlb_add_large_page`'s per-mode region
+  is reset only by a full flush of the mode. With the watch flushes gone,
+  the region stays wide, so an INVLPG inside the kernel's 4 MB RAM mapping
+  flushes the whole mode (`pfl`). Leg P reports it. If it eats the saving,
+  the fix is to reset the region when a walk leaves the mode empty.
+  - The review also found stale wording in `surface.c` (lines 2192-2196
+    and 2242-2243, "the insert and a TLB flush"). That file is outside this
+    lane's territory, so it is left as is; what those comments rely on
+    still holds.
+
+**Legs** (`memfast-w1-soak.json`, `memfast-w1-pixels.json`; a_ref is master
+plus docs, b_ref is W1; all on the Nova):
+
+| leg | claim |
+|---|---|
+| M, the point | B's `fo`/s at most 10% of A's on Conker, Blinx 2 and Forza; B's `wn`/s within 0.8-1.25 x of 2 x inserts/s |
+| X | `wx` = 0 on every B line |
+| P, an observation | B's `pfl`/s and `ff`/s against A's; over half of A's `fo`/s means the large-page region spends the saving |
+| C, a labelled guess | vCPU CPU ms per wall second, B/A <= 0.97 on Conker; refuted if >= 1.00 on all three |
+| G | B reaches play on Forza (`forza.drive`) and Crimson; no crash or hang in any B run |
+| pixels | bit-identical outside the 325 same-build-unstable captures; the three CPU-write captures take a value seen without the change |
+
+**Pilot first:** Conker B1 and A1 (the most watch-heavy title) and the pixel
+arm pair. The rest goes after the pilot is read.
+
 ## The second pixel arm (memfast-drop-pixels-stable.json), read 2026-10-02
 
 `1-1790725598-arms-memfast-base-1586276` (31515f9751) and
