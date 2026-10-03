@@ -4609,3 +4609,17 @@ impact_px = 0
 impact_onestep_px = 0
 game_visible = false
 impact_basis = "harness: a stalled dispatch queue delays every lane's device runs behind it, not a pgraph/fps defect itself"
+
+[issue.672]
+title = "Tron 2.0: Killer App hangs entering the first level (black screen)"
+component = "tcg"
+disposition = "defect"
+suites = []
+no_suites = "A guest-CPU hang on one title, not a pgraph suite defect; no golden suite scores it."
+status = "fixed"
+dispatch_state = "done"
+status_note = "WORK STATE (hostops 08:53 PDT, 10-03, coverage gate): the PM stopped lane.tronhang672 as resolved: the ubershader default folded 10-02 23:25 PDT. Its PR #673 is an instrument (spin672 read-only), not for master, so it is not folded and this row carries no open work."
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "Tron 2.0 reaches play again on the folded default; the instrument was never a fix."
