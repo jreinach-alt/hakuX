@@ -4,7 +4,8 @@
 change? Those are run-to-run noise, the captures a bit-identical pixel
 prediction cannot assert. A capture that differs only across builds is not
 counted: that is code moving it. Reads scores1.tsv only; this lane's own
-results are excluded, and result aliases are folded.
+results are excluded, and result aliases are folded. Every row with a
+numeric `differing` counts, whatever its status.
 
 Usage: unstable_caps.py [--min-builds N] [--json]
   --min-builds: builds with two or more ok runs of the capture (default 1)
@@ -37,7 +38,12 @@ for n in sorted(os.listdir(D)):
         continue
     nres += 1
     for r in rows:
-        if r.get("status") != "ok":
+        # Every scored row counts, whatever its status. Until 2026-10-02
+        # this kept `ok` rows only, which dropped the `white-content` and
+        # `label-differs` captures (ZPass_pixel_count among them) and so
+        # hid their same-build variation; the second pixel arm failed on
+        # 36 of them.
+        if not (r.get("differing") or "").isdigit():
             continue
         vals[("%s/%s" % (r["suite"], r["test"]), r["apk_sha"])][r["differing"]] += 1
 

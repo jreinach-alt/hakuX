@@ -133,6 +133,10 @@ names it.
   - gameplay reach on GTA, Nightfire and Crimson;
   - the census on the A runs, plus AUF;
   - the jitmix vCPU-share leg (needs a held simpleperf window: board request).
+- Superseding files, each for the reason in its own section below:
+  - `memfast-drop-pixels-stable.json` (09-29), FAIL 36 of 3,167;
+  - `memfast-drop-pixels-stable2.json` (10-02), the live pixel prediction;
+  - `memfast-drop-soak-nova.json` (09-29): GTA and Crimson, moved to the Nova.
 
 ## Phase 2 design: guest memory through the host MMU ("fastmem")
 
@@ -704,6 +708,71 @@ file); a rate here sizes a design, it does not compare builds.
     gameplay 270.4 s, J 0.2494, fps median 29.08, no crash or hang. The
     census matches A1. It is paired with B2 `-1385890` when that lands.
 
+- 2026-10-02 (attempt 10; the resume header numbers it 3): attempt 9 did
+  finish. It ended at 16:40 PDT on 09-29 waiting on three re-queued Nova
+  soaks: Crimson B `-1385791`, Crimson A `-1385837` and Nightfire B2
+  `-1385890`. **Why nothing followed:**
+  - those three ran 18:36-18:41 PDT, during the Nova's post-restart recovery
+    burst, and **all three are VOID**. ES-DE or the notification shade held
+    display 0, so the route sent no input, and hostops marked them void at
+    19:03 PDT;
+  - GitHub went at 21:00 PDT, and the owner's "limited lanes" scope then
+    parked this lane until the 10-02 18:03 release.
+
+  The release addendum says each of the three "has DONE". That is true,
+  but each also has a `VOID.txt`, so they carry no J, fps or census data.
+  - The Crimson "crash=True" is the recovery burst: SIGSEGVs in apps the
+    restart killed, in both arms, before any route input.
+  - The stable pixel arm did run (Nova, 09-30) and FAILs (below).
+  - This attempt merged origin/master (412 commits, clean; my files
+    untouched apart from 17 lines of `cputlb.c` outside the census). It
+    re-checked the three C files against the NDK compile database: no
+    errors, and no warnings beyond master's `TARGET_PAGE_MASK` shifts. It
+    registered a third pixel prediction and queued the soaks again.
+
+## The second pixel arm (memfast-drop-pixels-stable.json), read 2026-10-02
+
+`1-1790725598-arms-memfast-base-1586276` (31515f9751) and
+`-fix-1586389` (82e0ef1fa9) ran **on the Nova, both arms**, on 09-30. The
+arms job has not run since, so it posted no verdict. `ab_compare.py
+--expect` on the two dirs (`.scratch/stable-arm.out`) gives:
+
+**FAIL, 36 of 3,167 checks.** All 36 are `ZPass_pixel_count`, and they
+move together: ZPass 1202 -> 1750, the LineWidth/PointSize captures
+about 320-500 -> 1220-1510.
+
+| evidence | reading |
+|---|---|
+| the fix APK `bd60ff410b34` gave 1202/320/386... in arm 1 (Thor), exact against base on all 72 ZPass captures | the same build takes two values; the change does not set the value |
+| 1750 on other builds, none carrying this change: tcg424flip fix `7ff91c7256` (3 runs, both devices), forzadecay414 base `eae7a2f005`, flip474 `6d334facad` | 1750 is a value this suite takes without the change |
+| `6bf6a11955` (Thor) took 1238 and 1202 on two runs | same-build variation, no memfast code |
+| `[mf0]` in both arms: `act=1` only with `cb >= 2`, `dn=0` | the removed path was never armed during the sweep |
+| captures that moved in arm 1 AND arm 2: one, `GeometrySuperscreen_0.5626`, in opposite directions (fix 570 vs base 0; then base 285 vs fix 0) | no capture moves consistently across the two pairs |
+
+**Why the stable rule missed them.** `unstable_caps.py` counted rows with
+`status == ok` only. ZPass_pixel_count is scored `white-content` (204
+captures on this disc are; 9 are `label-differs`), so the reader never saw
+`6bf6a11955`'s 1238/1202. The prose rule never said "ok only". With every
+numeric row counted, the same-build-unstable set grows from 217 to 325
+captures (1,370 results, this lane's excluded). It holds all 36 movers and
+drops none of the old 217.
+- **This is a correction made after seeing the failure,** so the
+  registered verdict stays FAIL. A fresh arm under the corrected rule is the
+  test (next section).
+
+## The third pixel prediction (memfast-drop-pixels-stable2.json, 2026-10-02)
+
+- Same refs (31515f9751 -> 82e0ef1fa9) and disc. The rule is the stable one,
+  with every status counted (`unstable_caps.py` as fixed; output
+  `out/unstable-caps2.out`).
+- 315 captures on this disc are excluded, which leaves **3,064 checks**
+  (593 patterns).
+- A dry run against both earlier arm pairs passes all 3,064. That is
+  POST-HOC: it shows the patterns match captures, nothing more.
+- **Refutation:** a capture outside the 315 moving.
+- The arms job is idle (its last result is from 09-30), so this lane queues
+  the pair itself, with `--expect` on the file.
+
 ## The superseding pixel prediction (2026-09-29)
 
 `docs/testing/predictions/memfast-drop-pixels-stable.json`, on the same refs
@@ -981,31 +1050,33 @@ gameplay, power was measured on battery, and neither had a thermal pause.
 0. DONE: leg S is read and passes (section "Leg S"). Do not re-run the
    readers on either capture. Read `preamble` and `xboxchk` with
    `legs_read.py`, never with `jitmix.py`, on any build after this PR.
-1. **Outstanding soaks, all on the Nova** (re-queued 2026-09-29 23:31Z after
-   the dispatch wipe; see the attempt-9 log entry):
-   - Nightfire B2 `1-1790724658-lane.memfast-1385890` (A2 is done: `-1478752`,
-     restored; J 0.2494);
-   - AUF A1: done (`-1478936`, restored; census read);
-   - Crimson B `1-1790724657-lane.memfast-1385791`, A `-1385837`;
-   - the stable pixel arm, re-queued by the arms job (markers removed);
-   - GTA: not queued. Queue two Nova pairs under
-     `memfast-drop-soak-nova.json` once `listing-nova.txt` names GTA. The
-     Thor pilot pair is not pooled with them.
+1. **Outstanding, all on the Nova (queued 2026-10-02; ids in the log
+   entry and in OUTBOX.md):**
+   - GTA B1 A1 B2 A2 (`memfast-drop-soak-nova.json`);
+   - Nightfire B2 (`memfast-drop-soak.json`), paired with A2 `-1478752`;
+   - Crimson B1 A1 (`memfast-drop-soak-nova.json`);
+   - the third pixel arm pair (`memfast-drop-pixels-stable2.json`).
 
-   When they land, run `mf0_read.py` on every A run and `title_verdict.py`
-   (`.scratch/score.py`) on a COPY of every dir. Judge J as the mean B/A over
-   the pairs per title, and G on every B run. **Check `queue/` and `running/`
-   before scoring anything.**
-2. The first arms verdict (FAIL, 6 of 3379) is superseded by
-   `memfast-drop-pixels-stable.json` once its arm runs and passes. Read that
-   arm's `[job.arms]` comment; a capture that moves outside the
-   excluded set refutes the change.
-3. After the soaks: post the J and fps legs on #507 and #590, then mark
-   PR #590 ready. The release note's size comes from those legs; the profile
-   says to expect 4-6% of the vCPU's time per frame on GTA.
-4. Phase 2 code waits for #590's merge. Then, in order: W1 (the per-page
-   watch flush), F0a's device half, F0b, F1 (section 8's table). Do not
-   build F1 before F0a's device half prices it.
+   When they land:
+   - run `mf0_read.py` on every A run;
+   - run `title_verdict.py` (`.scratch/score.py`) on a COPY of every dir;
+   - judge J as the mean B/A over the pairs per title, and G on every B run;
+   - judge the arm with `ab_compare.py --expect` on the stable2 file.
+
+   **Check `queue/`, `running/` and every dir's `VOID.txt` before scoring
+   anything.** A DONE dir can also be VOID.
+2. **Then set PR.md `State: ready`, in one commit with the scores.** Queue
+   one soak built from that exact commit: `offline_fold.py` requires a
+   finished, non-void run whose ref is the head sha, so any later commit
+   voids it. Then end the session on a `waiting:` for that run.
+3. **After the fold, the next work is re-scored by the owner's rule (P x
+   win).** Win is in vCPU time; GTA is from leg S, Conker from section 8.
+
+| candidate | P, and its evidence | win | cost | order |
+|---|---|---|---|---|
+| F1: fastmem, loads only | 0.4. Mechanism: the compare is measured and the shadow removes it. Precedent: Dolphin. Risk: watch churn and revalidation, priced below the kill line on GTA (section 8) but not yet on device | GTA 8.9% (load compares) + about 2.6% refill = about 11%. Tron (near30): 6.5-8 ms of a 43 ms frame | the largest: F0b and F1 code, then a pixel sweep and soaks | the target; built only after F0a passes |
+| W1: per-page watch flush | 0.7. Mechanism: `fo` = 2 x watch inserts, measured on Conker, Blinx 2 and Crimson. Each insert or remove is a full flush, which empties the TLB and the jump cache | Conker: 287 full flushes/s gone. GTA refills 770-1,330 pages per flush; at about 5 to 10 times GTA's flush rate, a guess of 5-15% of Conker's vCPU. GTA: about 0 | small: softmmu only, inside the grant; one prediction, one arm | first. It pays without fastmem, and F1 needs it on watch-heavy titles |
+| F0a, device half | a probe, not a fix | none by itself | one native test binary run | alongside W1. It picks between F1 and the fallback: under the kill line on GTA and Conker builds F1; over it switches F1 to Dolphin's lazy view swap (section 2) or parks it |
 5. Do not repeat: the `act` reading through `cb0ms` (the reader is fixed);
    a pixel prediction that asserts the Stencil_ZERO family or
    GeometrySuperscreen_0.4999/_0.5626 as exact.
