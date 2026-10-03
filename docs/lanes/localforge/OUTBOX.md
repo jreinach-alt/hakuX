@@ -52,3 +52,32 @@
    - Under the offline protocol they do not need it: PR.md stays the PR, and prsync publishes it.
    - I did not use the global alternative (`systemctl --user set-environment`): it would also route hakux-cloud, which claims work and starts sessions.
 3. **Origin:** recommendation (b) stands, because nothing a lane or foldqueue does changes. No cutover time is needed.
+
+## #433 -- 2026-10-03 08:31 PDT
+
+[lane.localforge] ADDENDUM 3 attempt 2. Items 1 and 2 are done in part; the rest is listed below. Finished:
+
+- **Item 1, the remaining `gh` callers.** Table in `docs/lanes/localforge/NOTES.md` section 7.1 (caller, decision, test).
+  - Routed through the shim by PATH: the job scripts, the sweeps, board, fleet, gh_rest, the idle watchdog and the rest.
+  - Nightly: `gh release create/upload` publishes a **forge prerelease** `nightly-<day>` on `jreinach-alt/hakuX`, fetched at http://127.0.0.1:3330. Verified by a new release section in `smoke_live.py`: create, create-on-existing refused, upload refused without `--clobber`, `--clobber`, view, list. **88 of 88 pass.**
+  - Retired for the return, not edited (GitHub-only): `scripts/sign-macos-release.sh` and three `.github/workflows` files. No harness unit runs them.
+  - `release download` is not implemented: it exits 64 and is logged.
+- **Item 2, the shim on PATH for every harness unit.** `route.sh on phase3` is applied: 25 units (hostops, dispatcher, nightly, pm@ template, and the rest of `hakux-*`), each with `zz-forge-shim.conf`. PATH is shim-first. hostops runs as `FORGE_USER=hostops`. `route_test.py` checks it offline (83 checks).
+  - **Not routed:** `hakux-cloud`, and the phase 2 units (status, board, fold, foldpace, handbackpace), which lane.local disabled.
+  - **For lane.local:** please run `systemctl --user disable --now hakux-cloud.timer hakux-cloud.service`. This session could not run `systemctl` (held for approval). Cloud is unrouted, so it still reaches `/usr/bin/gh` if it runs.
+  - **Drop-ins need a restart.** A running unit keeps its old environment until it next starts. `daemon-reload` ran without an error.
+  - **Lane sessions** still see `/usr/bin/gh`: `lane.sh` sets their PATH, and that is yours.
+  - **Shim failures:** rc 64 (not implemented) and every other failure are logged to `~/hakux-work/logs/forge/shim.log`. Idlewatch can alert on rc 64 lines.
+- **Item 3, FORGE PROTOCOL.** Drafted at `~/hakux-work/lane-protocol/forge.md`. It supersedes the OFFLINE PROTOCOL and the GitHub steps in roles/lane.md. Your append is the only step left.
+- **Item 4, RETURN design.** `docs/lanes/localforge/RETURN.md`, design only, nothing executed. **A hazard to fix before any `--execute`:** `offline-git/recover_github.py` probes GitHub with `gh api user`. Under the shim that call answers from the forge, so the script would take the forge for a reinstated account and carry on. Its later `gh` calls would also go to the forge. Pin `/usr/bin/gh` and refuse when `gh --version` says `forge-shim`.
+- **Number map.** `~/hakux-work/forge-import/local-number-map.tsv` was regenerated from the forge: 17 `local-only` issues, #656-#677. The first version had 14 rows with placeholder titles and no #670 onward.
+
+**Hostops OVERRIDE, replacement for item 1** (text only; `host-tools/hostops-poll.md` is not edited):
+
+> 1. THE FORGE IS THE HARNESS'S GITHUB (lane.local, 2026-10-03). `gh` on PATH for every hakux unit is the forge shim (`~/hakux-work/forge/shim/bin/gh`). It talks to the local forge at http://127.0.0.1:3330, repo `jreinach-alt/hakuX`, so the runbook's `gh pr list`, `gh issue list`, `gh api`, `gh pr comment`, labels and `gh release` work as written. Never call github.com or a GitHub URL, and never try to repair auth. A call the shim does not implement exits 64 with `gh-shim: not implemented: <args>` and is logged to `~/hakux-work/logs/forge/shim.log`; rc 64 lines are the to-do list. Any other failure exits nonzero with one stderr line: treat it as a finding, never as "nothing to do". `gh pr merge` is refused; merges stay with foldqueue. The offline equivalents (`offline_status.py`, `status/local-board.md`, the foldqueue logs) still work as the fallback. Phase 2 (board, fold, handback, status) is not on the shim yet: lane.local routes it after this PR folds.
+
+**Still open (for the next attempt or lane.local):**
+- Phase 2 routing, after this PR folds. `route.sh status` says what is missing.
+- `hakux-cloud` disable (above).
+- The `recover_github.py` pin (above).
+- The jobs selftest: running now; its result goes in PR.md before `State: ready`.
