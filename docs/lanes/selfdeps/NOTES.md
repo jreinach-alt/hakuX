@@ -153,4 +153,20 @@ Test environment (`/tmp/selfdeps-gitconfig`, `/tmp/selfdeps-test/*.sh`, test onl
 
 ## Next
 
-_Filled in after the Android result and the Thor run._
+Waiting on the dispatched Thor run `1-1791043414-selfdeps-1888089` (queued from head
+`8db47e3a8c`, `--suites ZPass_pixel_count --device thor --hard-pin`, one run). When it
+finishes, check the run is not void and that its build step used the mirrors. Then
+mark the PR ready (`State: ready` in PR.md).
+
+Open items, none blocking the PR:
+
+- **Desktop configure needs OpenSSL headers on this host** (finding 2, filed in OUTBOX.md).
+  The fetch side is proven (`meson subprojects download`). A compile-side desktop proof
+  needs `libssl-dev` on the host, or meson's curl subproject made optional upstream.
+- **libadrenotools is pinned to `master`**, so the mirror holds whatever master is at
+  refresh time. Pinning a sha in CMake would make the Android build reproducible. That
+  is a behaviour change to the build's pin, so it is left for the owner to decide.
+- **`MESON_PACKAGE_CACHE_DIR` is environment-only.** Meson cannot read it from
+  `meson.build`, so a bare desktop host must export it. Documented here, not in the repo.
+- **Gradle** still needs `~/.gradle/caches` (or network to google/mavenCentral). It is
+  not GitHub, and not mirrored.
