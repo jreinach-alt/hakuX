@@ -1,0 +1,121 @@
+frame	primary	accepted	title	device	source	note
+f000.jpg	title_screen	intro_video	ToeJam & Earl III - Mission to Earth (USA)	nova	1790951866-titleroutes2-46925/route-frames/075631-booted.png	FP:ToeJam attract with PRESS START
+f001.jpg	black	intro_video,cutscene	56550042-50_Cent_Bulletproof	nova	0-0-y-1790433159-titleplay-p1-50cent/route-frames/073540-booted.png	50 Cent dark
+f002.jpg	publisher_logo	intro_video	54430006-Dead_or_Alive_1_Ultimate	nova	1-1790671992-uberspike569-4114420/route-frames/092340-boot20.png	DOA1U legal text
+f003.jpg	black		Psychonauts (USA)	thor	1790822573-titleroutes-2818801/route-frames/194353-boot20.png	Psychonauts
+f004.jpg	intro_video	publisher_logo,cutscene	45410026-007_Nightfire	thor	1-9-1790563604-titleroutes-373432/route-frames/103218-a1.png	Nightfire gunbarrel
+f005.jpg	save_load_prompt		43430019-Capcom_Classics_Collection_Vol_2	thor	1790808344-titleroutes-3128993/route-frames/165450-game-list.png	Capcom Classics AUTO-LOAD no data
+f006.jpg	submenu		534E0007-KOF_Maximum_Impact_Maniax	nova	1-1790725091-lane.verdict433-1456797/route-frames/210241-chosen.png	KOF character select
+f007.jpg	pause		4D530065-Blinx_2_Battle_of_Time_Space_Blinx_2_Masters_of_Time_Space	nova	1-1790651075-lane.idlehaltdefault-2875478/route-frames/043048-menu-start.png	Blinx 2 GAME PAUSED
+f008.jpg	black		45410004-SSX_Tricky	thor	0-0-s-1790830433-titleroutes-311173/route-frames/224637-play.png	FP:SSX Tricky play black
+f009.jpg	name_entry	profile_creation	56550042-50_Cent_Bulletproof	nova	0-0-y-1790433159-titleplay-p1-50cent/route-frames/073641-menu-a.png	50 Cent keyboard
+f010.jpg	pause		4D53006E-Forza_Motorsport	nova	1-1790826491-lane.verdict433-3477700/route-frames/213459-menu-start.png	Forza PAUSE
+f011.jpg	name_entry	profile_creation	45410062-Battlefield_2_Modern_Combat	nova	1-1790921431-lane.collapse433-967641/route-frames/231910-enter.png	BF2 campaign name
+f012.jpg	loading		5345000B-Gunvalkyrie	nova	1790944628-titleroutes2-2686999/route-frames/060116-booted.png	Gunvalkyrie now loading
+f013.jpg	name_entry		4B4E002D-Castlevania_Curse_of_Darkness	nova	1790903439-titleroutes-1317193/route-frames/182126-gameplay.png	FP:Castlevania Name Entry AAIIIIII
+f014.jpg	save_load_prompt	submenu,profile_creation	Grabbed by the Ghoulies (USA) (En,Fr,De,Es,It)	thor	1-1790499526-titleroutes-925659/route-frames/020113-s1.png	Ghoulies choose a game
+f015.jpg	gameplay		Buffy the Vampire Slayer (USA)	nova	1790932722-titleroutes-3976729/route-frames/030509-pre-mark.png	Buffy
+f016.jpg	submenu	pause	4D57000E-Gauntlet_Dark_Legacy	thor	0-0-s-1790823800-titleroutes-2951589/route-frames/205824-play.png	FP:Gauntlet audio options at play
+f017.jpg	loading		56550003-Crash_Bandicoot_The_Wrath_of_Cortex	nova	1-1790757182-lane.hddcrash-1696988/route-frames/054227-boot.png	Crash WoC loading
+f018.jpg	loading	save_load_prompt	5451000D-WWE_Raw_2	nova	1-1790737858-lane.verdict433-1456493r2/route-frames/082943-st1.png	WWE loading player settings
+f019.jpg	gameplay		54540082-Grand_Theft_Auto_San_Andreas	nova	1790918407-lane.ibcache-81732/route-frames/232747-cut2.png	GTA SA
+f020.jpg	main_menu		4D530003-Project_Gotham_Racing	thor	1-1790609665-lane.slowtier2-pgr365442/route-frames/230402-up.png	PGR main menu
+f021.jpg	cutscene	intro_video	45410083-Black	thor	0-0-s-1-1790609662-lane.slowtier2-black167924/route-frames/215451-diff.png	AMBIG: Black dark
+f022.jpg	name_entry		4B4E002D-Castlevania_Curse_of_Darkness	nova	1790902028-titleroutes-1005086/route-frames/175130-gameplay.png	FP:Castlevania Name Entry empty
+f023.jpg	publisher_logo	intro_video	41560004-Tony_Hawk_s_Pro_Skater_3	thor	1790830433-titleroutes-311114/route-frames/223255-boot20.png	Neversoft
+f024.jpg	gameplay		Halo Combat Evolved	nova	1790940485-titleroutes2-1612232/route-frames/045254-training.png	Halo training
+f025.jpg	intro_video	cutscene	56550036-Crash_Twinsanity	thor	0-0-s-1-1790609666-lane.slowtier2-crash627374/route-frames/232436-a1.png	Crash Twinsanity
+f026.jpg	results	game_over,cutscene	41430006-Burnout	thor	1-1790609663-lane.slowtier2-burnout968727/route-frames/222017-play1.png	Burnout post-race replay with Continue
+f027.jpg	save_load_prompt		534E0007-KOF_Maximum_Impact_Maniax	thor	1-1790548502-titleroutes-1531011/route-frames/184138-boot.png	KOF load option data
+f028.jpg	gameplay		534E0007-KOF_Maximum_Impact_Maniax	thor	1-1790548502-titleroutes-1531011/route-frames/184428-gameplay.png	KOF fight
+f029.jpg	title_screen		Tron 2.0 - Killer App (USA, Europe)	nova	1790953776-titleroutes2-447685/route-frames/081408-booted.png	Tron dim
+f030.jpg	pause		Halo Combat Evolved	nova	1790933948-titleroutes-171581/route-frames/031146-menu-start.png	Halo
+f031.jpg	controller_prompt	submenu	43560001-Kabuki_Warriors	nova	1-1790826491-lane.verdict433-3477434/route-frames/204939-start2.png	Kabuki Player Entry press A
+f032.jpg	title_screen		Grabbed by the Ghoulies (USA) (En,Fr,De,Es,It)	thor	1-1790499526-titleroutes-925659/route-frames/020042-t20.png	Ghoulies
+f033.jpg	gameplay		ToeJam & Earl III - Mission to Earth (USA)	nova	1790951866-titleroutes2-46925/route-frames/075835-left.png	ToeJam
+f034.jpg	gameplay		Ninja Gaiden Black	nova	1790944628-titleroutes2-2687135/route-frames/061302-pre-mark.png	NGB
+f035.jpg	black		Dino Crisis 3	nova	1790928772-titleroutes-2771139/route-frames/012302-menu-start.png	Dino Crisis 3
+f036.jpg	cutscene	gameplay	5655001A-Baldur_s_Gate_Dark_Alliance	thor	1-1790548501-titleroutes-1530514/route-frames/182008-talk.png	Baldur's Gate talk
+f037.jpg	main_menu	submenu	4D570002-Arctic_Thunder	thor	1-1790547557-titleroutes-979135/route-frames/152131-m1.png	Arctic Thunder game mode
+f038.jpg	gameplay		49470013-Dungeons_Dragons_Heroes	thor	1-1790560999-titleroutes-2862610/route-frames/093908-gameplay.png	D&D Heroes
+f039.jpg	intro_video	cutscene	5345002B-Sonic_Heroes	nova	1790902215-autoverdict-1078702/route-frames/180414-booted.png	Sonic Heroes attract
+f040.jpg	save_load_prompt		56550042-50_Cent_Bulletproof	nova	1-1790737859-lane.verdict433-1456544r2/route-frames/085630-nosave.png	50 Cent continue without saving
+f041.jpg	pause		545400B0-Family_Guy_Video_Game	thor	0-0-s-1790823797-titleroutes-2950719/route-frames/204236-menu-start.png	Family Guy paused
+f042.jpg	profile_creation	submenu	4D530003-Project_Gotham_Racing	thor	0-0-s-1-1790609665-lane.slowtier2-pgr365442/route-frames/230332-hdd.png	PGR select driver
+f043.jpg	name_entry	profile_creation	58490004-Black_Stone_Magic_Steel	nova	1790921686-titleroutes-1080767/route-frames/003846-play.png	FP:Black Stone naming at play
+f044.jpg	loading	black	Galleon (USA)	thor	0-0-y-1790433159-titleplay-p1-galleon/route-frames/115417-booted.png	Loading...
+f045.jpg	unknown		Deathrow (USA)	thor	1790822581-titleroutes-2819301/route-frames/201833-menu-a.png	Android launcher (emulator gone)
+f046.jpg	main_menu		Halo Combat Evolved	nova	1790933948-titleroutes-171581/route-frames/031054-booted.png	Halo
+f047.jpg	gameplay		Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko)	thor	1-1790572031-lane.sustain507-4130875/route-frames/233708-play.png	Crimson Skies
+f048.jpg	black		45410076-Burnout_Revenge	nova	0-0-y-1790433159-titleplay-p1-burnout-rev/route-frames/075130-boot20.png	Burnout Revenge boot
+f049.jpg	gameplay		54540082-Grand_Theft_Auto_San_Andreas	nova	1790918408-lane.ibcache-81985/route-frames/002454-gameplay.png	GTA SA
+f050.jpg	title_screen		Ninja Gaiden Black	nova	1790944628-titleroutes2-2687135/route-frames/060853-booted.png	NGB
+f051.jpg	loading	cutscene,intro_video	45410076-Burnout_Revenge	nova	1790873999-autoverdict-2073899/route-frames/100330-event.png	Burnout Revenge event card
+f052.jpg	submenu	main_menu,results	43560001-Kabuki_Warriors	nova	1790823465-shaderprebuild569-2896600/route-frames/200034-map-start.png	Kabuki Tokaido map Continue/Mode End
+f053.jpg	save_load_prompt		45410062-Battlefield_2_Modern_Combat	nova	1-1790948452-lane.bf2stall433-3362375/route-frames/065914-entered.png	BF2 Do you want to save
+f054.jpg	save_load_prompt	submenu	4D530010-Blood_Wake	thor	1-1790508532-titleroutes-1074940/route-frames/043246-a2.png	Blood Wake create game storage
+f055.jpg	gameplay		4541005D-GoldenEye_Rogue_Agent	nova	0-0-x-1790539523-titlestate-1846315/route-frames/150256-control.png	GoldenEye RA
+f056.jpg	gameplay		4D53006E-Forza_Motorsport	nova	1790929514-lane.ibcache-2992454/route-frames/013537-menu-a.png	Forza
+f057.jpg	gameplay		4D53006B-MechAssault_2_Lone_Wolf	thor	1-1790572031-lane.sustain507-4130999/route-frames/015245-gameplay.png	MechAssault 2
+f058.jpg	cutscene		4D4A0001-BloodRayne	thor	0-0-s-1-1790609667-lane.slowtier2-bloodrayne201189/route-frames/234228-act1load.png	BloodRayne subtitled
+f059.jpg	publisher_logo		45530018-25_to_Life	thor	1790467152-titlebench-2601473/route-frames/184732-boot20.png	Avalanche/ritual
+f060.jpg	loading		Ninja Gaiden (Europe) (En,Fr,De,Es,It)	thor	0-0-s-1790822580-titleroutes-2819211/route-frames/200523-play.png	Ninja Gaiden now loading
+f061.jpg	submenu	pause	56550016-Bruce_Lee_Quest_of_the_Dragon	thor	0-0-y-1790433159-titleplay-p1-brucelee/route-frames/111536-play.png	FP:Bruce Lee Player Info at play
+f062.jpg	main_menu	submenu	46530002-Otogi_Myth_of_Demons	thor	0-0-s-1-1790615781-lane.slowtier2-otogi2870269/route-frames/185931-menu.png	Otogi stage menu
+f063.jpg	main_menu	submenu	45410062-Battlefield_2_Modern_Combat	nova	1-1790921431-lane.collapse433-967641/route-frames/231824-st.png	BF2 PLAY CAMPAIGN
+f064.jpg	black	publisher_logo	4D53004B-Project_Gotham_Racing_2	thor	1-1790569004-titleroutes-3006458/route-frames/131700-boot.png	PGR2 boot
+f065.jpg	controller_prompt	submenu	5451000D-WWE_Raw_2	nova	1-1790737858-lane.verdict433-1456493r2/route-frames/083026-quick.png	WWE assign controllers
+f066.jpg	publisher_logo		Ninja Gaiden (Europe) (En,Fr,De,Es,It)	thor	0-0-s-1790822580-titleroutes-2819211/route-frames/200149-boot20.png	Ninja Gaiden warnings
+f067.jpg	pause		5345000B-Gunvalkyrie	nova	1790940485-titleroutes2-1611958/route-frames/044507-menu-start.png	Gunvalkyrie pause
+f068.jpg	cutscene	intro_video	56550003-Crash_Bandicoot_The_Wrath_of_Cortex	nova	1-1790757193-lane.hddcrash-1697566/route-frames/101628-intro.png	Crash WoC
+f069.jpg	main_menu		4541005D-GoldenEye_Rogue_Agent	nova	y-1790481308-titlebench-2893125/route-frames/010437-ok.png	GoldenEye RA main menu
+f070.jpg	submenu	main_menu	4156005D-Call_of_Duty_3	nova	1790467161-titlebench-2614040/route-frames/194252-play.png	CoD3 SINGLE PLAYER new game
+f071.jpg	publisher_logo		Buffy the Vampire Slayer (USA)	nova	1790928774-titleroutes-2773088/route-frames/012718-boot20.png	Fox Interactive
+f072.jpg	intro_video	cutscene	Ninja Gaiden (Europe) (En,Fr,De,Es,It)	thor	0-0-s-1790822580-titleroutes-2819211/route-frames/200325-menu-start.png	Ninja Gaiden
+f073.jpg	controller_prompt	profile_creation	Tron 2.0 - Killer App (USA, Europe)	nova	1790953776-titleroutes2-447685/route-frames/081618-gameplay.png	FP:Tron sign in at mark
+f074.jpg	publisher_logo		4D530013-Blinx_The_Time_Sweeper	thor	0-0-s-1-1790593205-lane.sustain507-3238469/route-frames/042358-boot20.png	Artoon
+f075.jpg	main_menu	submenu	Conker Live & Reloaded	nova	1790933948-titleroutes-171701/route-frames/031939-play.png	Conker main
+f076.jpg	title_screen		45410083-Black	thor	0-0-y-1790433159-titleplay-p1-black/route-frames/105050-booted.png	Black PRESS START
+f077.jpg	pause		45410026-007_Nightfire	nova	1-1790481308-titlebench-2892825/route-frames/210641-start2.png	Nightfire PAUSED
+f078.jpg	name_entry	profile_creation	55530036-187_Ride_or_Die	nova	1-1790775886-lane.verdict433-3086875/route-frames/122018-gameplay.png	FP:187 PLAYER PROFILE keyboard
+f079.jpg	black		Dead or Alive 3 (USA) (En,Ja)	thor	0-0-y-1790433159-titleplay-p1-doa3/route-frames/113642-play.png	FP:DOA3 play black
+f080.jpg	loading	black	4541005D-GoldenEye_Rogue_Agent	nova	0-0-x-1790539523-titlestate-1846315/route-frames/150038-play.png	GoldenEye RA loading bar
+f081.jpg	submenu	pause	Dino Crisis 3	nova	1790928772-titleroutes-2771139/route-frames/012456-play.png	FP:Dino Crisis 3 OPTIONS at play
+f082.jpg	pause		5345002B-Sonic_Heroes	nova	1790902215-autoverdict-1078702/route-frames/180617-play.png	FP:Sonic PAUSE
+f083.jpg	profile_creation	save_load_prompt	Deathrow (USA)	thor	0-0-s-1790822581-titleroutes-2819301/route-frames/201716-menu-a.png	Deathrow no user profiles
+f084.jpg	results	game_over	534E0007-KOF_Maximum_Impact_Maniax	nova	1-1790725091-lane.verdict433-1456797/route-frames/210409-gameplay.png	FP:KOF lost round PERFECT/WINNER
+f085.jpg	title_screen		5345002B-Sonic_Heroes	nova	1790902215-autoverdict-1078702/route-frames/180331-boot20.png	Sonic Heroes
+f086.jpg	publisher_logo	intro_video	54430007-Dead_or_Alive_Xtreme_Beach_Volleyball	nova	0-0-y-1790433159-titleplay-p1-doax/route-frames/081307-boot20.png	DOAX federal warning
+f087.jpg	intro_video	cutscene	Dino Crisis 3	nova	1790928772-titleroutes-2771139/route-frames/012209-booted.png	Dino Crisis 3
+f088.jpg	loading		49470013-Dungeons_Dragons_Heroes	thor	1-1790560999-titleroutes-2862610/route-frames/093435-boot.png	D&D Heroes scroll loading
+f089.jpg	pause		5345002B-Sonic_Heroes	thor	1790823803-titleroutes-2951964/route-frames/211026-menu-a.png	FP:Sonic PAUSE (thor)
+f090.jpg	main_menu	submenu,title_screen	43430019-Capcom_Classics_Collection_Vol_2	thor	1790808344-titleroutes-3128993/route-frames/165540-gameplay.png	FP:Capcom Classics arcade START MENU at mark
+f091.jpg	cutscene	intro_video	4D4A0001-BloodRayne	thor	1-1790609667-lane.slowtier2-bloodrayne201189/route-frames/234313-cut2.png	BloodRayne
+f092.jpg	controller_prompt	profile_creation	Tron 2.0 - Killer App (USA, Europe)	nova	1790951914-titleroutes2-68595/route-frames/080546-menu-start.png	Tron sign in
+f093.jpg	gameplay		55530036-187_Ride_or_Die	nova	1790860858-autoverdict-1510236/route-frames/062254-gameplay.png	187 race
+f094.jpg	submenu	main_menu	4D4A0001-BloodRayne	thor	0-0-s-1-1790609667-lane.slowtier2-bloodrayne201189/route-frames/234107-newgame.png	BloodRayne New Game/Training
+f095.jpg	cutscene	intro_video	41430016-Alias	thor	1-1790609664-lane.slowtier2-alias942359/route-frames/224356-skip.png	AMBIG: Alias letterboxed
+f096.jpg	title_screen		Halo 2	nova	1790948386-titleroutes2-3358105/route-frames/064113-booted.png	Halo 2
+f097.jpg	profile_creation	main_menu,submenu	54540079-Midnight_Club_3_DUB_Edition	nova	1-1790734333-titleroutes-3037624/route-frames/025246-profile-select.png	MC3 create profile
+f098.jpg	unknown		4C410017-Star_Wars_Episode_III_Revenge_of_the_Sith	nova	1790939919-titleroutes2-1446307/route-frames/043749-menu-start.png	SW3 corrupt green
+f099.jpg	gameplay		Halo Combat Evolved	nova	1790933948-titleroutes-171581/route-frames/031341-play.png	Halo
+f100.jpg	game_over	results	41430006-Burnout	thor	0-0-s-1-1790609663-lane.slowtier2-burnout968727/route-frames/221907-gameplay.png	Burnout Game Over overlay
+f101.jpg	profile_creation	submenu	Conker Live & Reloaded	nova	1790933948-titleroutes-171701/route-frames/031739-menu-start.png	Conker profiles
+f102.jpg	cutscene	submenu,intro_video,loading	4D57000E-Gauntlet_Dark_Legacy	thor	1790823800-titleroutes-2951589/route-frames/205650-menu-a.png	Gauntlet story scroll
+f103.jpg	black		45410004-SSX_Tricky	thor	1790830433-titleroutes-311173/route-frames/224520-menu-start.png	SSX Tricky menu-start black
+f104.jpg	save_load_prompt	profile_creation	45410076-Burnout_Revenge	nova	0-0-y-1790433159-titleplay-p1-burnout-rev/route-frames/075315-menu-a.png	Burnout Revenge no profiles to load
+f105.jpg	cutscene	intro_video	4D530007-Azurik_Rise_of_Perathia	thor	1-1790560999-titleroutes-2862460/route-frames/082002-st.png	AMBIG: Azurik carving
+f106.jpg	submenu	main_menu	53450038-Super_Monkey_Ball_Deluxe	nova	1790900520-autoverdict-566484/route-frames/172723-play.png	FP:SMB Stage Select
+f107.jpg	save_load_prompt		56550036-Crash_Twinsanity	thor	1-1790609666-lane.slowtier2-crash627374/route-frames/232357-hd2.png	Crash Twinsanity no saved games
+f108.jpg	publisher_logo	title_screen,intro_video	Dead or Alive 3 (USA) (En,Ja)	thor	1790805442-titleroutes-2050455/route-frames/150040-menu-a.png	DOA3 white logo
+f109.jpg	unknown		4B4E002D-Castlevania_Curse_of_Darkness	nova	1790862575-autoverdict-1805573/route-frames/065639-play.png	Android launcher (emulator gone)
+f110.jpg	intro_video	cutscene	48550001-Bloody_Roar_Extreme	nova	1790939919-titleroutes2-1446231/route-frames/043011-pre-mark.png	FP:Bloody Roar attract fight with logo watermark
+f111.jpg	gameplay		Halo 2	nova	1790946979-titleroutes2-3257388/route-frames/062523-menu-start.png	Halo 2 updating profile
+f112.jpg	profile_creation	submenu	RalliSport Challenge 2 (Japan, Europe)	thor	1-1790566122-titleroutes-1417504/route-frames/183346-start.png	RSC2 select profile
+f113.jpg	name_entry	profile_creation	41540002-Shin_Megami_Tensei_Nine	thor	0-0-s-1790805456-titleroutes-2055567/route-frames/162627-gameplay.png	FP:SMT Nine JP name entry at mark
+f114.jpg	title_screen		Phantom Dust (USA) (En,Ja)	thor	1790822578-titleroutes-2819133/route-frames/195109-boot20.png	Phantom Dust
+f115.jpg	name_entry	profile_creation	56550042-50_Cent_Bulletproof	nova	0-0-y-1790433159-titleplay-p1-50cent/route-frames/073834-play.png	FP:50 Cent keyboard at play
+f116.jpg	intro_video	cutscene	4D53006E-Forza_Motorsport	nova	1-1790826491-lane.verdict433-3477700/route-frames/213228-booted.png	Forza booted
+f117.jpg	game_over	results	4D570002-Arctic_Thunder	thor	1-1790547557-titleroutes-979135/route-frames/152432-gameplay.png	Arctic Thunder TIME IS UP
+f118.jpg	gameplay		4D4A0001-BloodRayne	thor	0-0-s-1-1790609667-lane.slowtier2-bloodrayne201189/route-frames/234402-gameplay.png	BloodRayne
+f119.jpg	intro_video	cutscene	4D530003-Project_Gotham_Racing	thor	0-0-s-1-1790609665-lane.slowtier2-pgr365442/route-frames/230222-boot.png	PGR attract

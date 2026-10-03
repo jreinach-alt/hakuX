@@ -1,0 +1,10 @@
+# Burnout series
+Seen: Burnout (41430006, Acclaim), Burnout 3: Takedown (4541005B, EA), Burnout Revenge (45410076, EA). Burnout 2: Point of Impact (41430019): no evidence.
+- In every race RT accelerates and the left stick steers.
+- Burnout: title (START); first run only "No Burnout saved game present ... create a new saved game?" (Yes lit, A) and Enter Your Name "PL1" with END lit (A); main menu Championship, Supermini, AT, Journeyman Grand Prix, race 1 "Confirm" (A each, all defaults). The race intro flyover ends on "Continue (A)": A. Game Over / Continue after a crash run is not gameplay.
+- Burnout 3: Crash Nav video (A skips), "Press START to continue" (START), Select Language with English lit (A), "Burnout 3 requires a Profile": NEW PROFILE lit on an empty disk, LOAD PROFILE lit when one exists (A).
+- Burnout 3 new profile: DRIVER DETAILS keyboard "BURNOUT" with Done lit (A). "Would you like to save your profile? YES / NO" sits on NO; A there gives "Autosave will be disabled. Are you sure?" and looped: push the stick up to YES first, then A.
+- Burnout 3 returning: PROFILE 1 (A), "Load successful" (A), SELECT OPTION: WORLD TOUR, USA, a track, RACE, a car (A each). A RACE TRAINING video (~110 s) follows that neither A nor START skipped: wait. The race starts rolling.
+- Burnout Revenge: attract video, "Press START to continue" (START), "Would you like to create or load a profile?" with Load Profile lit; on "There are no profiles to load" press A, then push down to Create Profile (A).
+- Burnout Revenge create: an Autosave prompt (Yes lit, A), keyboard "Burnout_" with DONE lit (A), a profile slot "Profile 1" (A); main menu WORLD TOUR (A), rank 1, Sunshine Keys, a NEW event, the default car (A each).
+- Burnout Revenge: a ~100 s loading montage (city thumbnails, a grey crash reel, the logo card) is loading, not gameplay. Then an event brief with gold/silver/bronze targets: Continue (A). The car is already moving at ~70 mph when control returns. The event ends on a RESULTS screen (not gameplay).

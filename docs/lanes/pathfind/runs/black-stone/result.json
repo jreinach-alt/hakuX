@@ -1,0 +1,37 @@
+{
+ "title_id": "58490004",
+ "name": "Black Stone Magic Steel",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/58490004-Black_Stone_Magic_Steel.xiso.iso",
+ "result": "gameplay",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/black-stone/frames/012-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/black-stone/frames/012-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/black-stone/frames/012-probe-c.jpg"
+ ],
+ "minutes": 2.41,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/black-stone/frames/011-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/black-stone/frames/013-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/black-stone/frames/014-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/black-stone/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/black-stone/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/black-stone/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/black-stone/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/black-stone/frames/019-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/black-stone/frames/020-after.jpg"
+ ],
+ "model_calls": 12,
+ "calls_by_model": {
+  "claude-sonnet-5": 9,
+  "claude-opus-5-5": 3
+ },
+ "steps": 12,
+ "seconds": 177.6,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/black-stone/frames/011-gameplay.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/scratch/runs/black-stone/strip.jpg"
+}
