@@ -305,3 +305,22 @@ DOA3 and JSRF hide the same miss behind their single routes ("n/a").
    times. If they follow a reconnect within 5 min, do the hold. If not, drop it.
 5. **Foreground pre-admission**: P 0.1. A launcher in front BEFORE the app
    starts is normal, and the 17 losses happened mid-run. Not recommended.
+
+## Session 3 (2026-10-03 08:55 PDT): resumed to read the 08:37-08:47 addenda
+
+**Why attempt 2 "did not finish":** its work was done. PR.md went `ready` at
+`dd4b5e5f49` (08:41, pushed, `origin/master` is an ancestor). It ended before
+the brief gained two addenda, so hostops' jam duty resumed it to read them:
+
+- **08:37, request.sh is lane.localforge's now.** No change needed: this PR
+  does not touch request.sh (`git diff --stat origin/master...HEAD`). The
+  request.sh behavior my work needs (`--route` resolving by state, refusing a
+  mismatch) folded with the first PR at 07:57.
+- **Every defect that outlives the session gets a tracked issue.** The status
+  page's alias miss (Gunvalkyrie reads "no save"; `status_html.py:1255`, still
+  on master) is now a `NEW ISSUE:` in OUTBOX.md. lane.local's queue items (SW3
+  and ToeJam headed `any`) are queue edits, not defects; they stay in the 08:45
+  entry.
+
+The work list still has no title left (session 2), so per the 08:30 addendum
+this session ends with the PR ready and no WAITING file.

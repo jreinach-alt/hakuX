@@ -79,3 +79,14 @@ own logic. The 30 without a route get their save with their route
 Checked with `docs/lanes/savestate433/scratch/queuecheck.py`, which resolves
 every queue line as request.sh will. Kabuki, Gunvalkyrie and Halo 2 queue
 as they are.
+
+## #433 -- 2026-10-03 08:56 PDT
+
+NEW ISSUE: status page reads "no save" for titles whose saves are stored under an alias TitleID (Gunvalkyrie)
+`docs/testing/jobs/status_html.py:1255` (`_registry`) calls `titlestate.store_saves(tid)` with the targets.toml id.
+Saves are stored under the disk's id (`titlestate.disk_tid`). Gunvalkyrie is `49470017` in targets.toml and
+`5345000B` on the disk, so its row reads "no save" while the store holds one. DOA3 (`4D53002D`/`54430001`) and
+JSRF (`49470018`/`5345000A`) hit the same miss, hidden behind "n/a". The fix is one line:
+`titlestate.store_saves(titlestate.disk_tid(tid))`. It misdirects the #397 profile-save stage: a title with a
+save is listed as needing one. Found by lane.savestate433 (`scratch/needsave.py`, 10-03 08:35).
+
