@@ -19,6 +19,14 @@
 # must be up: START is a no-op on the sign-in (141547), the title needs one,
 # the attract video one more, and the ESRB card ignores it (141524). Five
 # STARTs 7 s apart from 55 s cover 55-90 s; then the one B.
+# v5 (lane.vcpuwait433, 2026-10-02): no DOWN. The Nova's hdd.img no longer
+# holds a Tron save: in capture tron1 (perf/2026-10-02-vcpuwait433/tron1,
+# route-frame 185013) Auto Load and Load Game are greyed and the cursor starts
+# on New Game, so v4's DOWN skipped the greyed Load Game to Light Cycles
+# (185021) and the menu loop ended in Options > Display (185202, 59 fps).
+# Without the DOWN, A picks the top enabled entry: New Game (no save, the
+# path near30 decomposed) or Auto Load (a save, straight to a level). Either
+# way the run ends in-level, not in a menu. Check 'menu-cursor' to see which.
 wait 20
 shot boot20
 wait 20
@@ -43,11 +51,8 @@ shot menu-a
 press START
 wait 5
 shot menu-start
-axis HATY max              # v4: the D-pad is a hat; press DOWN was a no-op (144159)
-wait 0.4
-axis HATY mid
 wait 2
-shot menu-down
+shot menu-cursor
 press A
 wait 5
 shot menu-a

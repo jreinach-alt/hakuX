@@ -48,7 +48,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../testing" && pwd)"
 HOLDSH="$HERE/jobs/hold.sh"
 TAG=lane.vcpuwait433
 LEASE=/tmp/hakux-device-lease.$DEV
-SOAK_S=${SOAK_S:-420}
+SOAK_S=${SOAK_S:-510}   # 420 + the slow gate's 90 s cap
 mkdir -p "$OUT"
 a() { timeout "${T:-120}" adb -s $S "$@"; }
 say() { echo "CAP $(date -u +%H:%M:%S) $*"; }
@@ -167,6 +167,16 @@ ok=0
 # `mark play` (DOA fights during the menu rounds: the 8th `press START`).
 if wait_for "ROUTE .* ${ANCHOR:-mark gameplay}" "${ANCHOR_N:-1}" 400; then
     sleep "$DELAY"
+    # Slow-window gate: record once a hakuX-pace second shows the guest below
+    # SLOW_FPS (frames per 1 s line), or after GATE_S. tron1 recorded a menu at
+    # 60 fps because nothing looked; the log line says which way it started.
+    t=0; fps=""
+    while [ $t -lt "${GATE_S:-90}" ]; do
+        fps=$(grep 'hakuX-pace' "$OUT/logcat.txt" | tail -2 | sed -n 's/.* f=\([0-9]*\) .*/\1/p' | awk 'NR==1{a=$1} NR==2{print $1-a}')
+        [ -n "$fps" ] && [ "$fps" -lt "${SLOW_FPS:-40}" ] && break
+        sleep 1; t=$((t + 1))
+    done
+    say "slow gate: last pace second ${fps:-?} fps after ${t} s (bar ${SLOW_FPS:-40}, cap ${GATE_S:-90} s)"
     a shell log -t hakuX-route "'prof start'" >/dev/null
     say "prof start"
     # The off-CPU half IS this capture: an on-CPU fallback cannot name a wait.
