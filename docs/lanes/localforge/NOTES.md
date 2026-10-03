@@ -332,6 +332,77 @@ see `/usr/bin/gh` until it changes.
 - `systemctl --user list-units`, `list-unit-files` and `is-enabled` were held for approval in this sandbox, so I read the unit files from disk instead. I did not attempt `disable`, so hakux-cloud is not disabled from here. The phase 3 drop-ins are on disk; `route.sh` ran `daemon-reload` with no error printed, but a running unit does not pick up a drop-in until it restarts. Both are for lane.local.
 - The jobs selftest (`docs/testing/jobs/selftest.sh`) runs detached; its result is recorded in PR.md.
 
+## 8. Attempt 3 (2026-10-03, resumed from the brief's addenda 4-7)
+
+**Why attempt 2 did not finish.** Attempt 2 posted CUTOVER READY at 09:58 PDT and
+marked the PR ready. The brief had gained addenda 4-7 between 09:00 and 09:55, and
+attempt 2's entries never mention them. It worked from the brief as it stood at
+08:31, and did not re-read the addenda before it declared the cutover done. So four
+things the addenda asked for were not in its finished work:
+
+1. **The addendum 7 bypass list.** Its caller table (7.1) covered the grep scope it
+   had chosen, not the named files, and it missed `status.sh`'s default link base,
+   which fell back to `https://github.com` whenever `HAKUX_WEB_URL` was unset.
+2. **The AGENTS.md and docs/testing rewrite** (addendum 5). Attempt 2 wrote
+   "not edited" for `AGENTS.md` and the roles docs, and did not touch the
+   `docs/testing/*.md` prose.
+3. **The lane-side checks** (addenda 4-5): whether `Bash(gh:*)` reaches the forge
+   from a lane session, and whether `harness_health.py`'s calls go through the shim.
+4. **The return gate for `.github/workflows/`** (addendum 6): nothing recorded what
+   must be true before the first push to GitHub.
+
+Attempt 3 does those four, plus the addendum 7 table below. Nothing from attempt 2
+was lost: the merge with `origin/master` (21 commits, now `2fb6087a09`) is clean.
+
+**Changes in this attempt**
+
+| file | change | why |
+|---|---|---|
+| `docs/testing/jobs/status.sh` | the link base is `$WEB_DEFAULT`: the forge while `HAKUX_FORGE=1`, else github.com; `HAKUX_WEB_URL` still wins | the one bypass in the addendum 7 list (the others are in the table below) |
+| `AGENTS.md` | new "The forge" section; the intro's CI sentence; the start-here comment; the public-facing list; the CI non-negotiable (rewritten, the `[skip ci]` rule is gone); two conventions lines | addendum 5 |
+| `docs/testing/systemd/README.md` | `gh` on the units' PATH is the shim, with the `jobs` token | addendum 5 |
+| `docs/testing/desktop-gate-warnings.md` | CI is the forge's and runs on ready PRs only | addendum 5 |
+| `docs/lanes/localforge/RETURN.md` | section 2a: the CI gate for the return (no workflow may start itself) | addendum 6 |
+
+**Addendum 7 table.** Every file the addendum names, and every other path the scan of
+`docs/testing`, `scripts`, `host-tools`, `.github` and `AGENTS.md` found that reaches
+GitHub. "shim" means the file calls `gh` by name, so it reaches the forge when the
+caller's PATH has the shim first. The smoke columns name the test that covers the form.
+
+| path | GitHub reach (measured) | decision | test |
+|---|---|---|---|
+| `docs/testing/gh_rest.py` | `gh api` REST calls, 13 mentions | **shim** by PATH | `smoke_live.py` api and pr list forms |
+| `docs/testing/jobs/status_html.py` | 2 `gh` calls; links use the `html_url` the gh JSON carries; prose says "GitHub" | **shim** by PATH; the shim returns the forge's `html_url`, so the links are the forge's. Prose left for the return | selftest 64-status-html |
+| `docs/testing/check_coverage.py` | `gh issue list` (REST, comment only) | **shim** by PATH | smoke issue list form |
+| `docs/testing/fleet.py` | `gh pr list`, `gh api` | **shim** by PATH; no hard-coded host | selftest 96-fleet-registry |
+| `docs/testing/jobs/gh-label.sh` | `gh api -X POST/DELETE repos/.../labels` | **shim** by PATH | smoke api labels form |
+| `docs/testing/jobs/ensure-labels.sh` | `gh label create --force` (16 labels) | **shim** by PATH; ran through the shim in attempt 1 | smoke label create |
+| `docs/testing/jobs/cloud.sh` | 18 gh calls (claims, comments, labels, `pr diff`) | **shim** by PATH. `hakux-cloud` stays off and unrouted; it claims work and starts sessions | selftest 72-cloud-tail (fixture) |
+| `docs/testing/jobs/deliver.sh` | `gh auth status`, `gh api` POST and `--paginate` | **shim** by PATH. Lane messages are forge comments; the fallback in addendum 3 is not needed | selftest 66-deliveries |
+| `docs/testing/jobs/selftest.d/66-deliveries.sh` | github.com URLs in fixture bodies | **fixture only** | n/a |
+| `docs/testing/jobs/selftest.d/98-coverage-rest.sh` | `api.github.com` and the GraphQL 403 text, in fixture | **fixture only** (the 403 is the case the fixture reproduces) | n/a |
+| `docs/testing/jobs/selftest.d/99-handback-draft.sh` | `gh pr <verb>` text grep | **fixture only** | n/a |
+| `docs/testing/jobs/selftest.d/72-cloud-tail.sh` | a fake `gh` that logs its argv | **fixture only** | n/a |
+| `docs/testing/jobs/roles/{board,lane,cloud}.md` | gh command lines, unchanged, and GitHub-era prose | **shim** (the command lines run unchanged on the forge). The prose is superseded by the FORGE PROTOCOL that lane.local appends; the files are outside this lane's territory and were not edited | n/a |
+| `docs/testing/pgraph-harness.md` | 7 github.com links to upstream repos (`abaire/*`) | **upstream, kept**: those repos live on GitHub, and the harness does not reach them through this file | n/a |
+| `docs/testing/desktop-runs.md` | link to `.github/workflows/desktop.yml` | **kept**: it names a file; the workflow is retired for the return (below) | n/a |
+| `docs/testing/jobs/harness_health.py` | not in the repo: `~/hakux-work/host-tools/harness_health.py`, `gh` by name (`sh('gh %s')`) | **shim** by PATH, on the hourly unit (phase 3). Two checks read the forge as GitHub: see NEW ISSUE in OUTBOX | n/a in repo |
+| `docs/testing/jobs/allowed-tools.lane` | `Bash(gh:*)` and `WebFetch` | `Bash(gh:*)` **reaches the forge**: `~/.config/environment.d/50-hakux-forge.conf` puts the shim first on the user manager's PATH, which transient units inherit. Not verified by a launch (`systemd-run` was held for approval). `WebFetch` is not gated by PATH and still reaches the internet: lane.local's call, flagged in OUTBOX. The file is not edited | n/a |
+| `AGENTS.md` | 18 hits, 2 `gh` lines | **rewritten** (see the changes table) | n/a |
+| `scripts/bump-subproject-wraps.py` | `api.github.com` for upstream tags (SDL and others) | **retired for the return**: only `bump-subproject-wraps.yml` calls it, and that workflow is retired. Run by hand, it still reaches github.com | none (no unit calls it) |
+| `scripts/sign-macos-release.sh`, `.github/workflows/{bump-subproject-wraps,delete-prerelease,update-ppa}.yml` | `gh release`, `gh pr create` | **retired for the return** (section 7.1) | none |
+| `.github/workflows/*.yml` (five files with `push` or `pull_request` triggers: android, desktop, nv2a-index, jobs-selftest, build-xemu-win64-toolchain) | would start CI on a push to GitHub | **gate for the return** (RETURN.md 2a). Not edited: master is outside this lane's territory | the grep in RETURN.md 2a prints five files today |
+
+**What was checked and not changed.** The `gh` operations the scripts use are
+implemented by the shim, with one exception found by this scan: `gh issue lock`
+(`status.sh:660`, the Pages move) is **not** implemented, so it exits 64 and is
+logged. The caller discards its output, so the failure is silent in the job's own
+log. It runs only when the roll-up moves to Pages, which the forge never does, so it
+is a finding and not a live fault: see NEW ISSUE in OUTBOX. The operations the shim
+does not implement are `issue lock`/`unlock`, `release download` and `release
+delete`, `workflow run`, `repo` and `workflow` browsing. The callers of the release
+ones are in the retired files above.
+
 ## Host files this lane added (outside the repo)
 
 | path | what |

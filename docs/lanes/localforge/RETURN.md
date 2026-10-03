@@ -29,10 +29,30 @@ code, because the forge copies it (option (b) in NOTES.md section 2).
 3. **master**, then **board**: fast-forwards only. Throttled CI markers are checked first
    (the script's `hakux-ci-throttle` check).
 4. **Lane branches** with open PR.md work, in batches of **at most 5 per hour**, each push
-   followed by a 10-minute wait. A push starts CI on GitHub; the throttle is the point.
+   followed by a 10-minute wait. A push starts CI on GitHub only if a workflow still has a
+   `push` or `pull_request` trigger, which section 2a rules out before the first push.
 5. **Issues**: the local-only issues in numeric order (section 3), then the summaries.
 6. **Draft PRs** for pushed lane branches, then ready for each PR that the fold admits.
 7. Record a journal line per batch. Stop on the first error.
+
+## 2a. CI on the return: no workflow may start itself
+
+The owner's direction (2026-10-03): GitHub receives a curated share of the work, about 10%
+(master in batches, release artifacts, issue and PR summaries). The rest stays on the forge.
+CI does not resume as it was. It ran, failed, queued runs and never fixed a problem. It may
+come back in a diminished role, as a manual dispatch or a release gate only.
+
+Before the first push of any batch, every file in `.github/workflows/` must be trigger-less
+or `workflow_dispatch`-only. Check it with:
+
+    grep -l -E '^\s*(push|pull_request|pull_request_target|schedule|workflow_run):' .github/workflows/*.yml
+
+The check must print nothing. A workflow that prints is edited first, on master, in its own
+commit. A returning push then cannot restart the old CI, because nothing it contains fires.
+
+Not done in this lane: the `.github/workflows/` files are on master, outside this lane's
+territory, so the edit is a lane.local decision. Until it is made, the check above is the
+gate, and the batch does not run.
 
 ## 3. Local-only issues: number map
 

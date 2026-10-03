@@ -518,6 +518,10 @@ python3 "$J/status_html.py" facts "$S/status.json" > "$S/render-facts.json" 2>/d
 # drives this path with GH_REPO=example/hakux and must never reach the network.
 PAGES_DIR="${STATUS_PAGES_DIR:-$S/pages}"
 PAGES_REMOTE="${STATUS_PAGES_REMOTE-}"
+# The web base for the links this job writes: the forge while HAKUX_FORGE=1, else
+# github.com. HAKUX_WEB_URL overrides both. A bare run must not link to github.com
+# from a forge-only host (lane.localforge, 2026-10-03).
+if [ "${HAKUX_FORGE:-0}" = 1 ]; then WEB_DEFAULT=http://127.0.0.1:3330; else WEB_DEFAULT=https://github.com; fi
 # Never github.com while `gh` is the local forge shim (HAKUX_FORGE=1), for three
 # reasons:
 #   - the forge has no Pages;
@@ -704,7 +708,7 @@ if [ "$lapse" -gt 0 ]; then
     echo "> **The roll-up lapsed for $(ago "$prev_run" | sed 's/ ago$//') before this one** (previous tick $(local_ts "@$prev_run")). The state below is current; nothing was observed across that window."
 fi
 echo
-[ -n "$cid" ] && echo "The full roll-up is [in the comment below](${HAKUX_WEB_URL:-https://github.com}/$GH_REPO/issues/$issue#issuecomment-$cid), rewritten in place every tick."
+[ -n "$cid" ] && echo "The full roll-up is [in the comment below](${HAKUX_WEB_URL:-$WEB_DEFAULT}/$GH_REPO/issues/$issue#issuecomment-$cid), rewritten in place every tick."
 echo "GitHub shows a comment's *posted* time, not its edited time, and never moves an edited comment -- so read the clock in this body and in the title above it, never the timestamp beside the comment."
 echo
 # Carried forward from the body this header replaces. It is the page's only

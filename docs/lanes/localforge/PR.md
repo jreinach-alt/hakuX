@@ -3,8 +3,8 @@
 State: ready
 
 Lane: localforge            Issue: #433
-Base: master @ 9d1155f919
-Files: .forgejo/workflows/forge-android.yml, .forgejo/workflows/forge-selftest.yml, docs/lanes/localforge/NOTES.md, docs/lanes/localforge/OUTBOX.md, docs/lanes/localforge/PR.md, docs/lanes/localforge/RETURN.md, docs/lanes/localforge/forge_import.py, docs/lanes/localforge/import_smoke.py, docs/testing/comment_sweep.sh, docs/testing/jobs/board.sh, docs/testing/jobs/fold.sh, docs/testing/jobs/gh-shim/forge_prsync.py, docs/testing/jobs/gh-shim/gh, docs/testing/jobs/gh-shim/install.sh, docs/testing/jobs/gh-shim/route.sh, docs/testing/jobs/gh-shim/route_test.py, docs/testing/jobs/gh-shim/smoke_live.py, docs/testing/jobs/handback.sh, docs/testing/jobs/status.sh
+Base: master @ 9d1155f919 (merged to origin/master @ a143aa5db8 on 2026-10-03)
+Files: .forgejo/workflows/forge-android.yml, .forgejo/workflows/forge-selftest.yml, AGENTS.md, docs/lanes/localforge/NOTES.md, docs/lanes/localforge/OUTBOX.md, docs/lanes/localforge/PR.md, docs/lanes/localforge/RETURN.md, docs/lanes/localforge/forge_import.py, docs/lanes/localforge/import_smoke.py, docs/testing/comment_sweep.sh, docs/testing/desktop-gate-warnings.md, docs/testing/jobs/board.sh, docs/testing/jobs/fold.sh, docs/testing/jobs/gh-shim/forge_prsync.py, docs/testing/jobs/gh-shim/gh, docs/testing/jobs/gh-shim/install.sh, docs/testing/jobs/gh-shim/route.sh, docs/testing/jobs/gh-shim/route_test.py, docs/testing/jobs/gh-shim/smoke_live.py, docs/testing/jobs/handback.sh, docs/testing/jobs/status.sh, docs/testing/systemd/README.md
 Prediction: none: no arm. Harness infrastructure only (a local forge, a gh shim, job gates, unit routing); no emulator pixels or speed.
 Needs device: no    Needs NDK: no
 
