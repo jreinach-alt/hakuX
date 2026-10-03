@@ -111,6 +111,8 @@ THOR_START_C, THOR_STOP_C = 55.0, 70.0
 HOLD_FRAME_S = 30                    # a kept frame every this many seconds of hold
 HOLD_CHECK_S = 90                    # the model reads the screen at least this often while holding
 HOLD_NAV_MAX = 12                    # model-steered steps back to play in one episode before the hold gives up
+HOLD_REPEAT = 3                      # a cutscene or game over that asked for one button: that press, unlooked, this often
+HOLD_REPEAT_STATES = ("cutscene", "game_over")
 HOLD_GENRES = {
     "drive": ["RT:2", "STICK:left:0.8", "STICK:right:0.8"],
     "attack": ["STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"],
@@ -209,7 +211,8 @@ class Device:
     def logcat_start(self, path):
         """Follow logcat from now into `path` with the soak's tags: title_verdict.py reads it."""
         f = open(path, "w")
-        return subprocess.Popen(["adb", "-s", self.serial, "logcat", "-v", "threadtime", "-T", "1"]
+        # `-v time` (MM-DD HH:MM:SS.mmm V/tag(pid): msg), the format title_verdict.py's LINE parses and soak_title.sh writes
+        return subprocess.Popen(["adb", "-s", self.serial, "logcat", "-v", "time", "-T", "1"]
                                 + LOGCAT_SPEC.split(), stdout=f, stderr=subprocess.DEVNULL)
 
     def xo_c(self):
@@ -1226,6 +1229,7 @@ class Agent:
         print(f"hold-play: genre {genre}, need {self.hold_s:.0f} s of play", flush=True)
         kept, play_s, navs, nav = [], 0.0, 0, 0
         still, off, reason = 0, False, ""
+        rep, rep_left = None, 0          # the last off-play look's single press, and how many repeats it has left
         last_png, last_check, last_kept, drop = None, now(), None, []
         # the perflog: logcat from the mark to `soak end`, with a state line at every change of play, so
         # title_verdict.py judges fps over play seconds only (its TIMELINE)
@@ -1255,7 +1259,14 @@ class Agent:
             suspect = is_black(png) or still >= 1
             look = {"n": self.n, "hold_s": round(hold_el, 1), "play_s": round(play_s, 1),
                     "changed": None if ch is None else round(ch, 4), "off": off}
-            if off or suspect or t - last_check >= HOLD_CHECK_S:
+            if rep_left and off:
+                # model-free recovery (Panzer, 10-03: each death cost 4 model looks at ~9 s, one per A of an episode
+                # card): repeat the last look's single press, unlooked, then look again
+                rep_left -= 1
+                look.update(src="repeat", state=rep[2], action=rep[0])
+                self.send(rep[0])
+                time.sleep(rep[1])
+            elif off or suspect or t - last_check >= HOLD_CHECK_S:
                 last_check = t
                 a = self.hold_look(jp, genre)
                 off = a.get("in_play") is not True
@@ -1279,8 +1290,11 @@ class Agent:
                     look["action"] = action
                     self.send(action)
                     time.sleep(wait_s)
+                    single = len(action) == 1 and st in HOLD_REPEAT_STATES
+                    rep, rep_left = (action, wait_s, st), (HOLD_REPEAT if single else 0)
                 else:
                     nav = 0
+                    rep_left = 0
             if not off and look.get("action") is None:
                 # play: the genre loop (a check look that said play sends it too). The time credited is this
                 # cycle's own, from its frame to its inputs: the look before may have been off play.
@@ -1318,15 +1332,14 @@ class Agent:
 
     def hold_verdict(self, secs):
         """title_verdict.py on the hold's logcat: its one VERDICT line (verdict.json beside it)."""
+        # title_verdict resolves the title by the ISO's basename (targets.toml `iso` map), not by the display name
         with open(os.path.join(self.out, "request.json"), "w") as f:
-            json.dump({"title": self.name, "title_id": self.tid, "device": self.dev.label}, f)
-        # title_verdict reads `held <title> for <n>s` from run.log; a run's stdout is usually redirected there
-        rl = os.path.join(self.out, "run.log")
-        if os.path.exists(rl):
-            print(f"held {self.name} for {int(secs)}s", flush=True)
-        else:
-            with open(rl, "w") as f:
-                f.write(f"held {self.name} for {int(secs)}s\n")
+            json.dump({"title": self.name, "title_id": self.tid, "device": self.dev.label,
+                       "iso": os.path.basename(self.iso or "")}, f)
+        # title_verdict reads `held <title> for <n>s` from run.log; append it there (stdout is not run.log)
+        with open(os.path.join(self.out, "run.log"), "a") as f:
+            f.write(f"held {self.name} for {int(secs)}s\n")
+        print(f"held {self.name} for {int(secs)}s", flush=True)
         try:
             r = subprocess.run([sys.executable, VERDICT, self.out, "--require", "confirmation"],
                                capture_output=True, text=True, timeout=120)

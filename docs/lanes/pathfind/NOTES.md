@@ -13,6 +13,25 @@
   It takes the hold, waits up to 900 s for idle, runs the held Panzer, and releases on every exit. Poll its log;
   this session stays up until it finishes. If the wait times out, re-queue it and say so in OUTBOX.
 
+## Panzer Dragoon Orta, held run 1 (10-03 10:25-10:42 PDT): FAIL on play share, and a verdict defect
+
+| run | device | genre | claim | held (s) | play (s) | play share | model reads | verdict | frames |
+|---|---|---|---|---|---|---|---|---|---|
+| panzer-dragoon-hold | nova | onrails | 3.4 min (step 20) | 740 | 598 | 81% | 41 calls, 23 hold reads | FAIL: menu time 80.8% (bar 90%) | runs/panzer-dragoon-hold/hold_strip.jpg |
+
+- **The hold worked as designed.** It played on, read the screen when play may have ended, and recovered from three
+  deaths (game over at about 216, 430 and 645 s of hold). Each recovery was an episode-card cutscene: one model read per
+  press, about 9 s each, so each death cost 33-38 s off play. The cost is 142 s of 740 s.
+- **The verdict did not run correctly on the first try, so run 1's first verdict was void.** Two defects in the hold's
+  own output (not the device, not the title): (a) `logcat_start` used `-v threadtime`, but title_verdict's LINE parses
+  `-v time`, so it read zero perflog lines and said "the guest never appeared"; (b) `hold_verdict` wrote request.json
+  without the ISO, so the title ID did not resolve. Both fixed. The run's logcat was converted to `-v time` (same pid
+  and text; the original is kept as `logcat.threadtime.txt`) and judged offline with title_verdict, which is how the
+  FAIL above was reached. The run.log `held` line was also missing (the old code printed it and did not write it).
+- **Change made (`holdrepeat`):** a cutscene or game-over look whose action is one button repeats that press
+  `HOLD_REPEAT` (3) times with no model read, then looks again. The selftest case fails without it (three extra looks).
+- **Next:** run 2 with the repeat change, same title, `runs/panzer-dragoon-hold2`. The verdict is judged the same way.
+
 ## Resume (10-03 09:45 PDT, attempt 5): why the previous attempt did not finish
 
 - The previous session ended on its WAITING file (`run 1791040252-lanelocal-978819`), after it had taken the Nova,

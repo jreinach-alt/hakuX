@@ -37,6 +37,8 @@ answers canned (PATHFIND_DRY). Each case names the defect it would catch.
             state line per change of play, soak end).
   holdstuck the pause never clears: the hold gives up at the nav cap, and the
             claim itself still stands.
+  holdrepeat a cutscene that asks for A is answered once; its A repeats HOLD_REPEAT times with no model read,
+            then the screen is read again and play resumes.
   unlock    two probes in a row move nothing at all; the third is led by X
             (UNLOCK_LADDER; Black Stone, 10-03: a stance only X released).
   actions   clean_action keeps valid tokens and drops the rest (RSTICK too).
@@ -311,6 +313,21 @@ check("holdstuck", res["result"] == "gameplay" and hold.get("ok") is False and "
       f"the claim stands but the hold gives up: {hold.get('reason', '')[:80]}")
 check("holdstuck", sum(1 for c in calls if c["purpose"] == "hold-check") <= pathfind.HOLD_NAV_MAX + 1,
       "no more than the nav cap of model steps")
+
+# holdrepeat: a cutscene that asks for A (an episode card) is answered once; its A is repeated HOLD_REPEAT times
+# with no model call, then the screen is read again, and the play resumes (Panzer, 10-03: 4 looks per death)
+CUT = {"state": "cutscene", "in_play": False, "why": "episode card", "action": ["A"], "wait_s": 1}
+rc, res, steps, calls = run("holdrepeat", PREFIX + PLAY[:6] + [("menu", 0)] * 2 + PLAY2,
+                            [GAME, {"gameplay": True, "responded": True, "why": "moved"}, GENRE, CUT]
+                            + [PLAYING] * 6, ["--no-record", "--no-replay", "--hold-s", "60", "--budget-min", "60"])
+hold = res.get("hold", {})
+look = [json.loads(l) for l in open(os.path.join(TMP, "holdrepeat", "out", "hold.jsonl"))]
+reps = [l for l in look if l.get("src") == "repeat"]
+nchk = sum(1 for c in calls if c["purpose"] == "hold-check")
+check("holdrepeat", len(reps) == pathfind.HOLD_REPEAT and all(l.get("action") == ["A"] for l in reps),
+      f"the cutscene's A repeated {len(reps)} times, unlooked: {[l.get('action') for l in reps]}")
+check("holdrepeat", nchk <= 2 + 1, f"no model read for the repeats: {nchk} hold checks in all")
+check("holdrepeat", hold.get("ok") is True, f"play resumed and held: {hold.get('play_s')} s of play")
 pathfind.now, pathfind.time.sleep = real_now, real_sleep
 
 # actions

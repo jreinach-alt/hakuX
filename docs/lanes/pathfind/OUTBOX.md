@@ -144,3 +144,26 @@ real pipeline sends to the steering test (not replayed). The alternating 2-of-3 
 Table, labels and scripts: docs/lanes/pathfind/gate/.
 
 Next: the first held run, Panzer Dragoon Orta on the Nova, 600 s of play, with the golden profile.
+
+## #433 -- 2026-10-03 10:58 PDT
+
+Panzer Dragoon Orta (4947002B, Nova), first held run (600 s of play asked, 740 s held). Result: claimed at 3.4 min on
+the on-rails dragon (probe control 0.25-0.68 under input); held 740 s, **598 s of play = 81%**, so title_verdict FAILs on
+its 90% play-share bar. The three deaths in the hold (game over at about 216, 430 and 645 s) each cost an episode-card
+cutscene of about 35 s before control came back; the hold recovered all three. Frames: docs/lanes/pathfind/runs/
+panzer-dragoon-hold/hold_strip.jpg and hold.jsonl. Not a Playable confirmation.
+
+Fixes made after run 1 (selftest all ok): the cutscene's A and a game over's press repeat three times with no model
+read before the next look (`holdrepeat`), which removes ~3 model looks per death. A second Panzer run with that code is
+queued behind a lanelocal request and will be judged the same way.
+
+NEW ISSUE: pathfind's held run on Panzer Dragoon Orta dies three times in 10 min and loses ~140 s to game over and
+episode-card cutscenes (play 81%, below the 90% bar).
+Evidence: runs/panzer-dragoon-hold (hold.jsonl, the game-over and cutscene looks at 216-254 s, 430-464 s, 645-678 s,
+verdict FAIL "menu time: 80.8% of the scored window in play"). Blocks: the 600-s Panzer confirmation and the NBA Live family
+pass, which needs the same long hold.
+
+NEW ISSUE: hold verdict was silently wrong: pathfind's hold wrote logcat in threadtime format and request.json without
+the ISO, so title_verdict reported "guest never appeared" for a run that played 740 s and resolved no title id.
+Evidence: runs/panzer-dragoon-hold, first verdict "booted: the guest never appeared". Fixed on lane/pathfind (logcat
+`-v time`, request.json carries the ISO, run.log gets the held line); pending the fold.
