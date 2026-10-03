@@ -1,3 +1,4 @@
+# state: returning   (the only frame-proven 600 s window (1-1790804473) ran on a disk carrying 'Nathan'; lane.savestate433)
 # Crimson Skies: High Road to Revenge (4D530021), from perf/run_perf.sh:
 # boot 75 s, A x12 at 1.5 s through the intro and the first tutorial
 # prompts, settle 12 s. That sequence exposed the crash fixed in fe418afedf
