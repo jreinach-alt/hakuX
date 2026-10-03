@@ -1,6 +1,6 @@
 # localforge: a local Forgejo stands in for GitHub, a gh shim that fails loudly, and the harness on it (#433)
 
-State: draft
+State: ready
 
 Lane: localforge            Issue: #433
 Base: master @ 9d1155f919
@@ -63,7 +63,7 @@ Caller decisions for every remaining `gh` call on master are in NOTES.md section
 - `python3 docs/testing/jobs/gh-shim/route_test.py` (phase 3 drop-ins, in a temporary units
   directory): **83 passed, 0 failed**.
 - `bash ~/hakux-work/host-tools/local_jobs_selftest.sh`: **14 checks passed**.
-- `docs/testing/jobs/selftest.sh` (all shards, run locally at ab37133): result below.
+- `docs/testing/jobs/selftest.sh` (all shards, run locally at ab37133): **3000 passed, 0 failed, all 123 fragments.** Log: `~/hakux-work/logs/forge/selftest-localforge-ab37133.log`.
 - `python3 docs/lanes/localforge/import_smoke.py` (importer): all passed, unchanged this attempt.
 
 ## Not done in this PR

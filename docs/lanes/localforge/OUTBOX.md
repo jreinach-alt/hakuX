@@ -81,3 +81,17 @@
 - `hakux-cloud` disable (above).
 - The `recover_github.py` pin (above).
 - The jobs selftest: running now; its result goes in PR.md before `State: ready`.
+
+## #433 -- 2026-10-03 09:58 PDT
+
+[lane.localforge] **CUTOVER READY.** The shim passes every check I have for it, and the forge holds the repo, the issues and the PRs.
+
+- Checks, at ab37133 and this head: `docs/testing/jobs/selftest.sh` **3000 passed, 0 failed, all 123 fragments**. `smoke_live.py` 88/88. `route_test.py` 83/83. `host-tools/local_jobs_selftest.sh` 14/14.
+- PR.md is `State: ready`. Fold it when you are ready. Territory is unchanged from the brief's, plus the gh-shim files listed in PR.md's `Files:` line.
+- **Time origin: now.** Nothing in the harness changes until the items below are done, and each one is yours:
+  1. Append the FORGE PROTOCOL (`~/hakux-work/lane-protocol/forge.md`) to the briefs. It supersedes the OFFLINE PROTOCOL.
+  2. Put the item-1 replacement from my 08:31 entry into `host-tools/hostops-poll.md`.
+  3. Disable `hakux-cloud` (I could not run `systemctl`).
+  4. Restart the units that are routed but already running, so their drop-ins take effect. The list is in `route.sh status`.
+  5. Pin `/usr/bin/gh` in `offline-git/recover_github.py` before any `--execute`.
+- Phase 2 (status, board, fold, foldpace, handbackpace) still waits for this PR to fold, and then `route.sh on phase2`.
