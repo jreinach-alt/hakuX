@@ -1,6 +1,12 @@
 # lane.tcg424flip (#424): flip the range test to the default
 
-## What changed
+**Outcome (2026-10-03): not flipped.** Arctic M1's falsifier failed on the
+Nova, and the pgraph arm was a FAIL not attributable to the flip. The branch
+restores master's tb-maint.c and tb-internal.h, so the range test stays
+opt-in. See "Attempt 7" at the end. The section below describes the flip
+commit as it was tested.
+
+## What changed (62ef8bf0fe, reverted to master's text in attempt 7)
 
 `hakux_tcg424_range_on()` (accel/tcg/tb-maint.c) now returns true unless
 `HAKUX_TCG424_RANGE=0`. Before, it returned true only for
@@ -290,3 +296,126 @@ is above its battery floor (38% for the soaks, 41% for the arms pair; it
 read 31% at 16:57 PDT). Next step is unchanged:
 `python3 docs/lanes/tcg424flip/arcticread3.py` over the four soak ids, then
 the `[job.arms]` verdict and scores1.tsv's status column.
+
+## Attempt 7 (2026-10-03): both verdicts are in; the flip does not ship
+
+### Why attempt 6 did not finish
+
+Attempt 6 queued six runs and correctly stopped to wait on them. All six ran
+between 00:06 and 01:41 PDT on 2026-09-30, and the arms job judged the pgraph
+pair at 02:10 PDT. No resume followed:
+
+- GitHub suspended the account at about 21:00 PDT on 09-29, so the
+  `[job.arms]` comment never posted.
+- The WAITING / lanewaker mechanism did not exist until 10-03, and this lane
+  had no WAITING file.
+
+The 08:30 hostops addendum read the six `queue/withdrawn` entries as the
+Nova requests. They are the six **Thor** runs of tcg424flip-arctic2.json
+(`-3372535` ... `-3376527`). lane.local withdrew them on purpose at
+2026-09-29 12:00 PDT, because the owner moved fps runs off the Thor (#507).
+Each `.why` file says so. That reason still holds: the Thor's fan is dead.
+Nothing needs re-queuing. The Nova re-runs of the same arm already ran.
+
+### Arctic Thunder on the Nova: tcg424flip-arctic-nova.json, judged as registered
+
+`arcticread3.py`, unchanged; the output is saved in `arctic-nova.out`. Ref
+7bcd6e6e2b, apk dd2c266dcdf2, Nova, MAX. Battery 77 -> 70% across the four
+runs. No thermal pause (no thermal-pause device above 0).
+
+| run | arm | hi s | ng | gap s | rt | fatal | m50 | on% | cpf | gfps | churn% | di/s | slow/s | inv/s | fs/s |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 1-1790726259-...-1691697 | A | 122m | 61 | 1.8 | 0 | 0 | 189 | 84.5 | 21.7 | 39 | 2.5 | 70,733 | 19,685 | 14,193 | 0 |
+| 1-1790726265-...-1692424 | B | 104m | 48 | 1.8 | 1 | 0 | 202 | 75.0 | 19.7 | 38.0 | 0.0 | 0 | 267,422 | 262,007 | 264,600 |
+| 1-1790726265-...-1692530 | A | 121m | 63 | 1.7 | 0 | 0 | 203 | 83.0 | 20.2 | 41 | 2.5 | 73,911 | 21,057 | 15,056 | 0 |
+| 1-1790726266-...-1692609 | B | 101m | 49 | 1.7 | 1 | 0 | 202 | 75.1 | 18.3 | 41 | 0.0 | 0 | 287,536 | 281,531 | 284,534 |
+| **A (mean of 2)** | | | | | | | | 83.75 | 20.95 | 40 | 2.5 | 72,322 | 20,371 | 14,625 | 0 |
+| **B (mean of 2)** | | | | | | | | 75.05 | 19.0 | 39.5 | 0.0 | 0 | 277,479 | 271,769 | 274,567 |
+
+| leg | rule | read | verdict |
+|---|---|---|---|
+| M0 | `mark gameplay`, ng >= 20, xx 0, m50 >= 40, A rt=0 only, B rt=1 only | all four | **PASS** |
+| M1 | churn% A >= 5.0; B <= 0.5 x A; di/s B <= 0.1 x A | A churn **2.5** < 5.0; B 0.0; di/s 0 vs 72,322 | **FAIL** (the A falsifier) |
+| M2a | on% B <= A - 2.0 | 75.05 vs 83.75 (-8.7) | PASS |
+| M2b | cpf B <= 0.95 x A | 19.0 vs 20.95 (x0.907) | PASS |
+| M4' | gfps B >= A - 1; no fatal; gap <= 15 s; frames show the race | 39.5 vs 40; fatal 0; gap <= 1.8 s; f00013/f00014 of each run show a live race with the timer running | **PASS** |
+
+The registered decision is: ship iff M0, M1 and M4' pass, and the pgraph arm
+is byte-identical. **M1 fails, so the flip does not ship on this
+prediction**, and per its own rule Arctic does not price the lever. No
+threshold was changed.
+
+What the miss shows, for information only (this is not a re-judgment). On the
+Nova, A discards 72k blocks a second, about twice the Thor baselines'
+37-41k. churn% (jump-cache plus reset microseconds over vCPU time) reads only
+2.5%, against 14-32% on the Thor. Yet B's on% falls 8.7 points, more than A's
+whole churn%. churn% does not count the retranslation that follows a
+discard, so on the Nova it under-reports what the lever saves. B pays for its
+saving with 13x the slow-path stores (277k against 20k a second). Neither
+title moves gfps: Blinx/Thor 19 vs 19, Arctic/Nova 40 vs 39.5.
+
+### pgraph must-not-move: tcg424flip-pgraph.json, judged FAIL, not attributable
+
+Same-device Nova pair `1-1790726318-arms-tcg424flip-base-1704391` (30538458a0)
+/ `-fix-1704464` (62ef8bf0fe), judged by the arms job at 2026-09-30 02:10 PDT
+(`arms/pairs/fbed11c3....verdict.txt`, and the unposted `.comment.md`):
+**FAIL, 41 of 3379 captures differ byte for byte.** Its own line: "NOT
+ATTRIBUTABLE: one run per arm cannot tell a change from device
+nondeterminism. Requeue with --runs 3." Both arms have 3379 captures, the
+progress-log proof and no unscored capture. The status column reads `ok`,
+except ZPass_pixel_count's `white-content` rows, which match in both arms.
+
+The 41 are five families: Antialiasing FramebufferNotModifiedBySurfaceState
+(0 -> 1 px), Stencil_REPLACE (0 -> 40,000), GeometrySuperscreen 0.5624 /
+0.9990 (0 -> 400 / 285), with 0.5000 going 400 -> 0, and 37 ZPass captures
+(+550 to +1,020).
+
+- `moverscan.py`: on both devices, every one of these keys takes two or three
+  states at a single ref. For example, memfast-base at 31515f9751 read
+  Stencil_REPLACE 0 once and 40,000 once; ZPass reads 1,008 / 1,202 / 1,750 at
+  fixed refs; GeometrySuperscreen 0.5000 and 0.5624 trade 0/400/800 between
+  runs of one build.
+- `pgraphnoise.py`: **all 41 of the fix arm's differing captures are
+  byte-identical to a capture made by a build that does not contain the flip**
+  (`git merge-base --is-ancestor 62ef8bf0fe` false). The weakest match is
+  ZPass, in 3 no-flip runs. Stencil_REPLACE matches in 31, and
+  GeometrySuperscreen_0.5000 in 75.
+
+So nothing in the pgraph arm points at the flip. It still did not pass as
+registered. That is the second reason not to ship.
+
+### What this branch now does
+
+`accel/tcg/tb-maint.c` and `tb-internal.h` are restored to master's text. The
+range test stays opt-in (`HAKUX_TCG424_RANGE=1`). The branch lands the
+predictions, the readers and these notes. It changes no emulator behaviour.
+The flip commit 62ef8bf0fe and the merge 7bcd6e6e2b stay in history, so
+every registered ref still resolves.
+
+### Next (owner rule 2026-10-02: P x win)
+
+Measured win of the flip if shipped: **0 gfps on both titles measured** (Blinx/Thor
+19 vs 19, Arctic/Nova 40 vs 39.5). It saves vCPU: Arctic/Nova cpf -9%,
+on% -8.7 points. That is headroom on a frame that is not vCPU-bound on the
+Nova, not fps.
+
+| candidate | P | evidence for P | win | cost |
+|---|---|---|---|---|
+| 1. Arctic on the Thor under tcg424flip-arctic2.json (registered, pause-bounded window), once #507's fan is fixed | ~0.5 (M1 ~0.85, M4' ~0.6) | Thor pilot A churn 32.3%, baselines 14%; Thor pilot gfps 28 vs 27, run-to-run spread ~2 | the flip ships under a registered rule; ~0 gfps, ~9% vCPU/frame | 6 Thor runs, ~51 min; **blocked by device policy** (fps off the Thor, fan dead) |
+| 2. pgraph re-run, `--runs 3` per arm, same-device Nova pair, same tcg424flip-pgraph.json | ~0.8 | 41/41 differing captures byte-identical to no-flip captures; the five families vary at a fixed ref | the pixel leg passes as registered; needed for any ship, worthless without 1 | 6 x 34 min = 3.4 h Nova |
+| 3. A title whose frame is vCPU-bound on the Nova, to give the saving a chance to become fps | unknown, <0.3 | Arctic at 84% on-CPU did not convert -9% cpf into gfps | the only path to a player-visible win | a survey before any arm |
+| 4. Leave the range test opt-in (this branch) | 1 | n/a | 0 | 0 |
+
+Recommendation: 4 now. 1 and 2 only together, and only after the Thor fan
+is fixed. Run 2 after 1 passes, because 2 alone cannot ship anything. The
+larger vCPU wins are on the vCPU-JIT track, not in this lever.
+
+### For the next lane
+
+- Do not run Arctic M1 on the Nova again. Its A side churns 2.5% there, so
+  the A >= 5.0 falsifier cannot pass, whatever the lever does.
+- A single-run pgraph pair cannot pass must-not-move on these builds. Stencil_REPLACE,
+  ZPass and GeometrySuperscreen flip between states at one ref. Queue
+  `--runs 3`, or expect a not-attributable FAIL.
+- `pgraphnoise.py` is a reusable check: for a pair's differing captures,
+  does a build without the change produce the candidate's bytes?

@@ -50,7 +50,7 @@ void tb_invalidate_phys_range_fast(CPUState *cpu, ram_addr_t ram_addr,
 #endif /* CONFIG_SOFTMMU */
 
 #ifdef XBOX
-/* #424: range test and code bitmap; default on, HAKUX_TCG424_RANGE=0 off. */
+/* #424: range test and code bitmap on (HAKUX_TCG424_RANGE=1). */
 bool hakux_tcg424_range_on(void);
 #endif
 
