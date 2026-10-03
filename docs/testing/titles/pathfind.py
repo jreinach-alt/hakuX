@@ -88,6 +88,10 @@ RSTICK = {"up": (("RY", "min"),), "down": (("RY", "max"),), "left": (("RX", "min
 # `axis HATY max` / `axis HATY mid` moves a menu ONE row (routes/midnight-club-3.returning.route).
 HAT = {"UP": ("HATY", "min"), "DOWN": ("HATY", "max"), "LEFT": ("HATX", "min"), "RIGHT": ("HATX", "max")}
 SKIP_LADDER = ("START", "A", "B", "BACK", "X", "Y", "DOWN", "UP", "RIGHT", "LEFT")
+# After 2 probes in a row that move nothing at all, the next probe is led by one of these in turn. Black Stone
+# (10-03): the player stood in a sword-raised stance for 12 min while 40 stick, d-pad, A and RT probes moved
+# nothing; one X lowered the sword and the next stick ran. The pad was never the problem.
+UNLOCK_LADDER = ("X", "B", "Y", "R1", "L1", "BACK")
 SIG = (16, 12)                       # a frame's signature: grey, box-averaged
 SIG_MATCH = 9.0                      # mean grey-level distance under which two screens are the same
 UNCHANGED = 0.01                     # classify.motion changed fraction at or under this: no change
@@ -681,6 +685,7 @@ class Agent:
         self.plan = []               # the model's planned next screens (from a guide), sent without a call
         self.hints = knowledge(tid, name)
         self.probes = 0
+        self.dead_probes = 0         # probes in a row whose input moved nothing at all (UNLOCK_LADDER)
         self.black_since = None
         self.hold_s = 0              # hold-play: seconds of play to hold after the claim (0: off)
         self.result = {"title_id": tid, "name": name, "device": dev.label, "iso": iso, "result": "running",
@@ -834,6 +839,8 @@ class Agent:
         self.probes += 1
         toks = clean_action(probe if isinstance(probe, list) else [probe]) or ["STICK:up:1.5"]
         pre, probe = toks[:-1], toks[-1]
+        if self.dead_probes >= 2:
+            pre = [UNLOCK_LADDER[(self.dead_probes - 2) % len(UNLOCK_LADDER)]] + pre
         if probe in BUTTONS and probe not in HAT:
             probe = f"HOLD:{probe}:1.5"
         elif probe in HAT:
@@ -856,6 +863,7 @@ class Agent:
         rec = {"state": "probe", "action": pre + [probe], "why": f"control {ctrl:.3f}, under input {moved:.3f}",
                "src": "probe", "changed": moved}
         selfmove = ctrl > SELF_MOVING
+        self.dead_probes = self.dead_probes + 1 if moved < PROBE_MOVED and ctrl < PROBE_MOVED else 0
         if moved < PROBE_MOVED or (moved < 1.5 * ctrl and not selfmove):
             rec["verdict"] = "no change under the input beyond what changes on its own"
             self.write_step(rec)

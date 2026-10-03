@@ -35,6 +35,8 @@ answers canned (PATHFIND_DRY). Each case names the defect it would catch.
             play), 3-6 model reads in all, a kept frame every 30 s.
   holdstuck the pause never clears: the hold gives up at the nav cap, and the
             claim itself still stands.
+  unlock    two probes in a row move nothing at all; the third is led by X
+            (UNLOCK_LADDER; Black Stone, 10-03: a stance only X released).
   actions   clean_action keeps valid tokens and drops the rest (RSTICK too).
 """
 
@@ -138,6 +140,15 @@ rc, res, steps, calls = run("menu60", [("menu", 0)] * 12,
                             [dict(GAME, why="looks like play")] * 3, ["--no-record", "--no-replay"])
 check("menu60", res["result"] != "gameplay", f"not confirmed (result {res['result']})")
 check("menu60", not any(c["purpose"] == "confirm" for c in calls), "no confirm call on an unchanged probe")
+
+# unlock: two probes move nothing at all; the third is led by X, the first of UNLOCK_LADDER (Black Stone, 10-03)
+rc, res, steps, calls = run("unlock", [("game", 0)] * 8 + [("game", 0)] * 3 + [("game", 80)] * 3,
+                            [GAME, GAME, GAME, {"gameplay": True, "responded": True, "why": "he ran"}],
+                            ["--no-record", "--no-replay"])
+pacts = [s.get("action") for s in steps if s.get("src") == "probe"]
+check("unlock", len(pacts) == 3 and pacts[0][0] != "X" and pacts[1][0] != "X" and pacts[2][0] == "X",
+      f"the third probe, after two dead ones, is led by X: {pacts}")
+check("unlock", res["result"] == "gameplay", f"result {res['result']}")
 
 # refused: the probe moves but the confirm model says it is a demo
 rc, res, steps, calls = run("refused", [("game", 0), ("game", 0), ("game", 0), ("game", 80)] + [("game", 0)] * 4,
