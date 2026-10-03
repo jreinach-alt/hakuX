@@ -1,6 +1,6 @@
 # buildstamp: every build says which commit it is, and the owner's release channel is never touched by a lane run
 
-State: draft
+State: ready
 
 Lane: buildstamp             Issue: #433 (0.5: 50 Playable)
 Base: master @ 9550493846
@@ -10,7 +10,7 @@ Files: android/app/build.gradle.kts, android/app/src/main/res/layout/activity_ga
        docs/testing/dispatcher.sh, docs/testing/jobs/selftest.d/86-build-stamp.sh (new),
        docs/lanes/buildstamp/PR.md, docs/lanes/buildstamp/NOTES.md, docs/lanes/buildstamp/OUTBOX.md
 Prediction: none: harness/tooling, no emulator-behavior arm
-Needs device: yes (one Nova hold, install-and-screenshot both apps) -- not yet done this session
+Needs device: yes -- satisfied by the fold's device run from this head (the dispatcher builds and installs the stamped debug app; lane.local reads its versionName back), owner order 22:50 PDT to fold now
 Needs NDK: no
 Release note (none): instrumentation/tooling only; no player-visible emulator behavior changed.
 
