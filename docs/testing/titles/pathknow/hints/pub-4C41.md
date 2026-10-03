@@ -1,0 +1,4 @@
+# LucasArts titles (4C41xxxx)
+Seen: Star Wars: Episode III: Revenge of the Sith (4C410017), Mercenaries (4C410015). Battlefront I/II, KOTOR II, The Clone Wars, Starfighter SE and Armed and Dangerous have no route evidence.
+- Star Wars Ep. III: an opening crawl and a movie that START/A do not skip (about 13 START/A rounds pass before play); then Anakin (HUD portrait) with Obi-Wan as AI partner by a wrecked starfighter, tip "PRESS X AND Y ...": gameplay. Walking forward crosses the hangar and the level advances by objectives ("OBJECTIVE ACHIEVED"); short scripted cutscenes interrupt.
+- Mercenaries: no press is needed up to "PRESS START"; START, A on NEW GAME, A on JACOBS, A on ACCEPT, A ends the news-footage video. The loading screen after it ("Allied M1025 Scout") never ended, pixel-identical with its spinner: an emulator freeze, report it rather than pressing.

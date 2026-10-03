@@ -1,0 +1,26 @@
+{
+ "registered_utc": "2026-09-29T08:02:00Z",
+ "who": "lane.litcompile569",
+ "issue": "569",
+ "title": "54430006-Dead_or_Alive_1_Ultimate.xiso.iso",
+ "device": "nova",
+ "route": "survey",
+ "seconds": 440,
+ "perflog": true,
+ "frames_every": 0,
+ "runs_per_arm": 1,
+ "a_ref": "bf1ecde346",
+ "b_ref": "87ceac5569",
+ "order": "fix first, base second (the reverse of the gate-4 pair, so a warmer second start now falls on the base arm)",
+ "judge": "python3 docs/lanes/litcompile569/doa_gpu_history.py <base dir> <fix dir>, unchanged from the commit that registers this file: its 'fight Tot' and 'fps' columns (median over GPU: Tot lines after `mark play` with Tot >= 15 ms, and the median window fps there).",
+ "prediction": "Replication of gate 4's E reading. On the gate-4 pair (base 0-0-x-0-1790657057-litcompile569-206765, fix ...-206870) the judge read fight Tot 27.4 -> 22.5 ms (0.82) and fps 33.1 -> 41.1 (1.24), but the survey route drew a different opponent in each arm (Bayman against Helena), so that reading may be the fight's content, not B1. Host mechanism, measured before this registration (Turnip A740 drm-shim, IR3_SHADER_DEBUG=vs, gate 2's ff_lit2+basic): B1's lit VS is 4692 -> 2930 instructions, 1841 -> 368 cat0 (branches and nops), cat2+cat3 ALU 2608 -> 2488, full regs 16 -> 19 (max_waves 12 -> 10). A fresh pair on the same refs, order reversed.",
+ "legs": {
+  "R1 (this pair, GPU time)": "fix/base of 'fight Tot' <= 0.90. REFUTED if >= 0.95: the gate-4 pair's 0.82 was content, not B1. Between 0.90 and 0.95: not decided, stated as such.",
+  "R2 (this pair, fps)": "fix/base of the fight-window fps >= 1.10 (a GPU-bound fight converts GPU time into frame rate). Reported beside R1; it cannot pass with R1 refuted.",
+  "R3 (both pairs pooled)": "the mean of the two pairs' fix/base 'fight Tot' ratios is <= 0.90.",
+  "V (validity)": "both result.json shader_cache say cleared; no thermal-pause in thermal.jsonl during play; each arm has >= 20 fight-like lines (Tot >= 15 ms) after `mark play`, else that arm is void and is re-run once. The route frames are read to name each arm's opponent(s); a pair that drew the same opponent is stated as the cleaner of the two."
+ },
+ "expect": {},
+ "expect_counts": {},
+ "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off the perflog xemu-gpu lines."
+}

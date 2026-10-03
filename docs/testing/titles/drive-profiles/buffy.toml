@@ -1,0 +1,185 @@
+# Buffy the Vampire Slayer (45410012) -- drive profile (#433, lane.routedriver2).
+#
+# The blind route (routes/buffy.route, lane.titleroutes session 65) reaches
+# live play with START/A cycles, then its play loop wedges. In replay 1
+# (1790931264-titleroutes-3615749) Buffy moved for about a minute, then sat
+# 4 minutes on one frame of sky and a tree under "Run and press B to jump
+# between ledges". In replay 2 (1790932722-titleroutes-3976729, B jumps
+# added) the frame is identical from 030531 to 030859, five minutes, under
+# "Push into low ledges to climb onto them". In both the camera ends up
+# pointing at the sky with Buffy out of frame. The game's own tip says the
+# L trigger resets it.
+#
+# Reference crops in buffy/ (regions in 1280x960 space), cut from
+# 1790932722's frames (Nova). Scores over every frame of the three runs on
+# disk (survey 1790928774-titleroutes-2773088 and the two replays):
+#   title       030413 (Buffy logo, "Press START")    self 0.1-2.6, others >= 19.4
+#   main-menu   030418 (logo + Start Game list)       self 0.2-0.4, others >= 27
+#   start-game  030424 ("Start Game" header)          self 0.2-2.0, others >= 13.6
+#   difficulty  030430 ("Difficulty" header)          self 0.2-1.7, others >= 14.7
+#   summoning   030436 ("Summoning", the load)        self 0.1-2.3, dark play frames 9.8-12.4
+#               (the Nova's Summoning frame is under the black luma bar and so
+#               is named `black` first; the crop is for a brighter capture)
+#   pause       030500 (PAUSE / Resume / Options / Quit) pauses 0.1-12.0 (one fading 19.3), others >= 29
+#   hud         MASKED (LEARN_STD 10, 37% of the region kept), learned over
+#               twelve play frames from three runs, dark and bright canyon
+#               (flame heart and bars, top left): play <= 6.2, menus, logos
+#               and pauses >= 18.8. The first cut (std 14, 81% kept, seven
+#               frames) kept scenery and read 14-18 on run b1's bright
+#               canyon, which then went down the cutscene ladder. The in-engine opening at boot+60 s (030406)
+#               draws a HUD too, and scores 24.3 against this one: not play.
+
+name = "buffy"
+title = "Buffy the Vampire Slayer"
+title_id = "45410012"
+genre = "onfoot"
+# Boot to play, from the frames: FOX Interactive, the intro FMV, an
+# in-engine opening, the title (Press START), the main menu, Start Game
+# ("Launch a New Game ... called BUFFY n"), Difficulty (Normal lit),
+# Summoning, the mission card (Spanish Mission), the canyon.
+order = ["boot", "logo", "intro_video", "title", "main_menu", "profile", "loading", "cutscene", "play"]
+# The canyon is a night scene, so motion counts a pixel that moved 8 grey
+# levels, not 16. Run b3 (lane.routedriver2, every capture kept, 2 s apart):
+# Buffy running reads 0.14-0.43 at 8 (0.04-0.28 at 16, so on the default bar
+# runs b1-b2 never confirmed play); the dark dead end 0.003-0.076. The camera
+# swaying at the sky (titleroutes replay 2, 21 s apart) also reads 0.31-0.37
+# at 8, so per-capture motion cannot tell that from running: the 10 s scene
+# does ([drive] progress_bar).
+motion_pixel = 8
+# The canyon's dark corners read luma 5.8 with the HUD in plain view (run
+# b1: 300 s of live play named `black` on the default bar of 8); the FOX
+# card's and Summoning's blacks read 0.0.
+black_luma = 3.0
+hud_motion_bar = 0.12
+hud_stall_bar = 0.08
+
+[input]
+title = ["START"]
+# Load Game, not Start Game (session 2, run b12): each Start Game makes a
+# save ("BUFFY n"), the game keeps at most 10, and the Nova's disk is kept
+# between runs (hdd.plan "keep", dispatched runs too). With 10 on it, Start
+# Game only shows "only allows 10 saved games ... Press A to continue" and
+# A goes back to this menu, a loop. Every save was made at the canyon's
+# start. So: Load Game, found by which row is lit ([[cursor]] below), since
+# one stick or hat pulse moves the cursor one row or two (b15-b17).
+main_menu = ["LY:max"]
+profile = ["A"]          # Start Game: CONFIRM; Difficulty: Normal
+ingame_menu = ["A"]
+paused = ["A"]           # Resume is lit
+# Run forward with a turn each way so one wall does not hold her. LT (the
+# camera reset) is pulled only in the stall escapes (taking it out of the
+# cycle made no difference, run b6). NOT SOLVED: every run (b2-b14) runs
+# ~10-15 s from the start, climbs a low ledge, and falls into the stream bed
+# below the "Run and press B to jump between ledges" gap. No B or Y pattern
+# tried made the jump (lane.routedriver2 NOTES.md, session 2). So `drive
+# buffy ... find` does not reach 20 s of frame-checked play. Standing B is a
+# kick and A a punch (b11: attack trails). NEVER START: it pauses (the survey's cycles 5-14 only
+# toggled PAUSE).
+play_cycle = [[[["LY", "min"]], 5.0], [[["LY", "min"], ["LX", "max"]], 1.5], [[["LY", "min"]], 3.0], [[["LY", "min"], ["LX", "min"]], 1.5]]
+# Session 2 tried B as bursts (3, then 8 presses held 150 ms, every
+# capture), then Y bursts (runs b8, b10, b13, b14): none made the gap, and
+# Y is DELETE on the Load Game screen, so it stays out of play. Session 1's
+# taps are kept: they reach play cleanly.
+play_tap = [["B", 4.0], ["A", 7.0]]
+# A stall (the HUD up, the frame still): reset the camera, back off and turn,
+# then run and jump; the second try turns the other way; the third runs
+# straight at the ledge with two jumps (the "push into low ledges" tip).
+#
+# Session 2: the first stall is NOT at the gap's edge but in the stream
+# bed below it (b5/b6's frame 028 is the 49.1 s capture: splash at her
+# feet). The stream bed is a closed pit: b7's eight escapes, four
+# directions with B through each push, never left it. So no escape fixes
+# the gap. What escapes CAN fix is the sky camera (b7, b13, b14: Buffy out
+# of frame, the camera on the sky), and LT clears it, so each starts with LT.
+stall_cycles = [
+  [[[["LT", "max"]], 0.8], [[["LY", "min"]], 2.5, ["B/150", "B/150", "B/150", "B/150", "B/150", "B/150"]], [[], 0.3]],
+  [[[["LT", "max"]], 0.8], [[["LY", "max"]], 1.0], [[["LY", "min"]], 2.5, ["B/150", "B/150", "B/150", "B/150", "B/150", "B/150"]], [[], 0.3]],
+  [[[["LT", "max"]], 0.8], [[["LX", "min"]], 1.5], [[["LY", "min"]], 2.5, ["B/150", "B/150", "B/150", "B/150", "B/150"]], [[], 0.3]],
+  [[[["LT", "max"]], 0.8], [[["LX", "max"]], 1.5], [[["LY", "min"]], 2.5, ["B/150", "B/150", "B/150", "B/150", "B/150"]], [[], 0.3]],
+]
+
+[drive]
+stall_fail_s = 40.0
+escape_max = 6
+escape_reset_s = 30.0
+# 32x24 scene against ~10 s earlier: running in the dark canyon 0.077-0.185
+# (b3), the dead end 0.000, the sky sway 0.036-0.061 (replay 2), bright
+# running 0.31-0.35 (replay 1). The margin on the sway side is small (one
+# title, a few dozen frames).
+progress_bar = 0.07
+progress_window_s = 10.0
+progress_mask = [[0, 0, 480, 160], [0, 840, 1280, 120]]   # the HUD, and the TIP banner
+stall_clear_s = 10.0
+
+[[crop]]
+name = "save-limit"
+state = "main_menu"
+region = [470, 370, 490, 115]
+ref = "save-limit.png"
+threshold = 12.0   # b12: the dialog 0.3-9.8, every other Buffy frame on disk (572) >= 23.3
+press = ["A"]      # "Press A to continue" -> the main menu
+
+[[crop]]
+name = "pause"
+state = "paused"
+region = [560, 60, 300, 290]
+ref = "pause.png"
+threshold = 16.0
+
+[[crop]]
+name = "title"
+state = "title"
+region = [400, 290, 480, 300]
+ref = "title.png"
+threshold = 8.0
+
+[[crop]]
+name = "main-menu"
+state = "main_menu"
+region = [90, 40, 400, 200]
+ref = "main-menu.png"
+threshold = 8.0
+
+[[crop]]
+name = "start-game"
+state = "profile"
+region = [150, 40, 980, 110]
+ref = "start-game.png"
+threshold = 10.0   # run b1: Start Game (BUFFY 1, fog moving) scored 7.2; other screens >= 13.6
+
+[[crop]]
+name = "difficulty"
+state = "profile"
+region = [150, 40, 980, 110]
+ref = "difficulty.png"
+threshold = 10.0   # run b1: Start Game (BUFFY 1, fog moving) scored 7.2; other screens >= 13.6
+
+[[crop]]
+name = "summoning"
+state = "loading"
+region = [300, 400, 700, 160]
+ref = "summoning.png"
+threshold = 5.0
+
+[[crop]]
+name = "hud"
+state = "play"
+region = [90, 30, 390, 120]
+ref = "hud.png"
+threshold = 12.0
+
+# The main menu's lit row decides the press: Load Game lit, A; above it,
+# down; below it, up. The lit row is the brightest of the four (99th-
+# percentile grey): right on all 25 labelled frames of b13-b17, by 89-126
+# grey levels. Reference crops per lit row could not separate the pulsing
+# glow (b17: Options and Extras lit read as unlit, and down at Extras, the
+# bottom row, did nothing for 8 presses).
+[[cursor]]
+crop = "main-menu"
+min_margin = 40.0
+rows = [
+  { name = "start", region = [110, 320, 360, 70], press = ["LY:max"] },
+  { name = "load", region = [110, 445, 360, 70], press = ["A"] },
+  { name = "options", region = [110, 565, 360, 70], press = ["LY:min"] },
+  { name = "extras", region = [110, 685, 360, 70], press = ["LY:min"] },
+]

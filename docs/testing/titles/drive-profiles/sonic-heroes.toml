@@ -1,0 +1,263 @@
+# Sonic Heroes (5345002B) -- drive profile (#433, lane.routedriver).
+#
+# Reference crops are in sonic-heroes/, cut from frames already on disk
+# (regions in 1280x960 space; classify.py scales them):
+#   title-logo      1790902215-autoverdict-1078702 180331-boot20 (logo over clouds)
+#   title-art       1790910096-lane.local-2693820 200413-booted (Team Sonic art, "Press START")
+#   logo-sonicteam  1790902215 180421, logo-dolby 1790902215 180426
+#   profile-slots   1790910096 200422-menu1 (the No.01/02/03 slot strip; also under
+#                   the Start/Delete/Cancel popup)
+#   profile-nodata  1790902215 180444 ("There is no Game Data ... Create Game Data 01?")
+#   profile-created 1790902215 180451 ("Game Data has been created ... press A")
+#   menu-banner     MASKED, learned from the Y/emblem badge at the top right of
+#                   Main Menu, 1P PLAY, STORY and team select (1790902215 180456,
+#                   180502, 180507; 1790910096 200449, 200456; 1790839390 004145)
+#   loading-stage   1790839390-titleroutes-2237657 004157 ("NOW LOADING", Thor)
+#   pause           MASKED, learned (classify.py learn) from the PAUSE box over
+#                   three scenes: 1790902215 180617, 1790839390 004209 and 004235
+#   hud             MASKED, learned from the top-right HUD (team gauge, Y and B
+#                   badges) over nine scenes on both handhelds, one with Tails
+#                   leading (1790830432-titleroutes-311058 222435), so the team
+#                   circles that rotate with the formation are left out.
+# Thresholds from the score table in docs/lanes/routedriver/NOTES.md
+# (session 2): every crop's own screens score under its threshold and every
+# other screen on disk scores well over it.
+
+name = "sonic-heroes"
+title = "Sonic Heroes"
+title_id = "5345002B"
+genre = "onfoot"
+# Boot to play, from the frames: Sega/Sonic Team/Dolby logos, an intro FMV,
+# the title (two variants), the save prompt or the slot strip, Main Menu ->
+# 1P PLAY -> STORY -> team select, the story cutscene, NOW LOADING, Seaside Hill.
+order = ["boot", "logo", "intro_video", "title", "profile", "main_menu", "cutscene", "loading", "play"]
+# HUD frames are judged by their own bars. The team wedged against a stone
+# block 14 s into Seaside Hill reads 0.14-0.18 changed between captures 2 s
+# apart (water, the clock, idle animation); running reads 0.59-0.83 over
+# three runs (rdsh1 2 s apart, 1790910096 and 1790830432 ~10 s apart). On
+# the default 0.05 bar the wedge read `play` (routedriver session 4, replay 1).
+hud_motion_bar = 0.35
+hud_stall_bar = 0.30
+
+[input]
+title = ["START"]
+profile = ["A"]          # every default is the one wanted: Create, Start, slot 01
+main_menu = ["A"]        # 1P PLAY -> STORY -> TEAM SONIC, all defaults
+ingame_menu = ["A"]
+paused = ["START"]       # resume (Continue is highlighted)
+# Run forward; jump now and then. NEVER START: it pauses (run 1790902215).
+play_hold = [["LY", "min"]]
+play_tap = [["A", 8.0]]
+# On a stall the escape depends on the FORMATION, which Seaside Hill's
+# formation gates set for the obstacle ahead (lane.routedriver2 trial 1: a
+# Fly gate before a checkered pillar, a POWER sign over a white block). The
+# leader's circle at the HUD's bottom right names it: [[mode]] below. Y and B
+# change formation (Y: Speed -> Fly -> Power -> Speed, B the other way); X is
+# the action button. input.stall_cycle stays as the escape when the circle
+# reads as none of the three.
+#
+# History (lane.routedriver session 4): the team wedged on a stone block on
+# the LOWER path ~20 s in, with Tails leading (Fly), in replays 1 and 3-6.
+# Every escape tried there held forward through the flight and ended in the
+# sea (one life each):
+#   replay 3  back off 2.5 s (ran ~6 s on the capture clock), A,A x3: walked
+#             off the ledge beside the block, 3 deaths in 150 s
+#   replay 4  forward + 4 A: flew over the block, out over the water (clock
+#             30:96), fell short of the next island when the presses stopped
+#   replay 5  forward + 20 A (this stall_cycle): flew farthest (clock 39:74),
+#             came down in the water to the RIGHT of the next platform, died
+#   replay 6  forward 3 s + 8 A, then forward-left 5 s + 14 A: died sooner
+# lane.routedriver2 trial 1 (Nova, 2026-10-02 02:26 PDT) never met that
+# block: an A tap landed in Fly at the foot of a checkered pillar at 0:07,
+# the team flew up it (+1000), took a Power gate at 0:11 and reached 1580
+# points, 49 rings, 0:26 -- the route the lower path is the miss of.
+# With the [[mode]] escapes below (trials 2-4, Nova, 2026-10-02 02:35-03:02
+# PDT; docs/lanes/routedriver2/NOTES.md): the lower-path block is cleared by
+# Fly's climb-in-place in all three (0:12-0:17, landing on top); the POWER
+# block by Power's B-into-Fly climb (trial 3, 2:03) or its punches (trial 2,
+# 1:52); trial 4 played 450 s through three obstacles, a fall into the sea
+# and a Game Over, with no ROUTE FAIL. A scored window would still read
+# roughly half `stalled`/recovering: Seaside Hill is not solved end to end.
+stall_cycle = [[[["LY", "min"]], 8.0, ["A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A"]], [[["LY", "min"], ["LX", "max"]], 2.5, ["A", "A", "A", "A"]], [[["LY", "min"], ["LX", "min"]], 2.5, ["A", "A", "A", "A"]]]
+
+[drive]
+stall_fail_s = 40.0
+# One escape per mode cycle entry before the stall watch ends a scored run;
+# 30 s of play after an escape means it worked, and the next obstacle gets a
+# fresh budget.
+escape_max = 6
+escape_reset_s = 30.0
+# After a stall, play must hold 10 s to count again (trial 2: ~45% of 100 s
+# stuck at the POWER block read `play` between stalls, and each read
+# restarted the stall watch).
+stall_clear_s = 10.0
+# Moving in place is not play: trial 1's team struggled in a corner behind
+# the POWER block for 100 s and ~40% of those captures read `play` (2 s
+# motion 0.35-0.50). The 32x24 scene against ~10 s earlier: running
+# 0.46-0.71 changed, the corner 0.07-0.29 (lane.routedriver2 NOTES.md). A
+# sim of the trial's frames put one frame just after a robot fight at 0.34:
+# the bar sits between.
+progress_bar = 0.30
+progress_window_s = 10.0
+# The HUD (score, clock, rings, the formation circles) is masked out of the
+# scene: it changes with no progress.
+progress_mask = [[0, 0, 420, 230], [890, 60, 300, 290]]
+
+# The formation, from the leader's circle (mean RGB of [1000, 228, 100, 104];
+# Nova and Thor frames: Speed 41-63,77-85,150-162; Power 164-175,54-64,31-42;
+# Fly 158-162,136-137,49).
+[[mode]]
+name = "speed"
+region = [1000, 228, 100, 104]
+rgb = [50, 82, 157]
+tol = 45.0
+# Speed has no move of its own for a wall: B into Power and punch it, else
+# Y into Fly and climb. Every mode's list ends in another formation, so a team
+# stuck at one obstacle goes through all three (trial 2: Speed's Y-and-climb
+# at the POWER block put the team in Fly there, and Fly's own escapes could
+# not punch).
+stall_cycles = [
+  [[[], 0.6, ["B"]], [[["LY", "min"]], 3.0, ["X", "X", "X", "X", "X", "X"]], [[], 1.0]],
+  [[[], 0.6, ["Y"]], [[], 4.5, ["A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A"]], [[["LY", "min"]], 1.2, ["A", "A", "A"]], [[], 3.0]],
+]
+
+[[mode]]
+name = "fly"
+region = [1000, 228, 100, 104]
+rgb = [160, 137, 49]
+tol = 45.0
+# Climb in place (A taps fly Tails up, the stick released so the team rises
+# instead of sailing past), then a short forward drift onto the ledge: trial
+# 2 cleared the lower-path stone block with it at 0:12 (landed on top, then
+# 30 s of play). The second try holds each A 600 ms; the third is Y into
+# Power and a punch.
+stall_cycles = [
+  [[[], 4.5, ["A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A"]], [[["LY", "min"]], 1.2, ["A", "A", "A"]], [[], 3.0]],
+  [[[], 4.5, ["A/600", "A/600", "A/600", "A/600", "A/600", "A/600"]], [[["LY", "min"]], 2.0, ["A/600", "A/600"]], [[], 3.0]],
+  [[[], 0.6, ["Y"]], [[["LY", "min"]], 3.0, ["X", "X", "X", "X", "X", "X"]], [[], 1.0]],
+]
+
+[[mode]]
+name = "power"
+region = [1000, 228, 100, 104]
+rgb = [170, 60, 37]
+tol = 45.0
+# Knuckles' punch clears robots on the way.
+play_tap = [["A", 8.0], ["X", 4.0]]
+# Punch what is in the way (a POWER-signed block: "Can you break this rock,
+# Knuckles?"), then jump-and-punch, then B into Fly and climb. Trial 2 got
+# past the POWER block on its third Power escape (1:52, +200).
+stall_cycles = [
+  [[[["LY", "min"]], 3.0, ["X", "X", "X", "X", "X", "X"]], [[], 1.0]],
+  [[[["LY", "min"]], 3.0, ["A", "X", "A", "X", "A", "X"]], [[], 1.0]],
+  [[[], 0.6, ["B"]], [[], 4.5, ["A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A", "A"]], [[["LY", "min"]], 1.2, ["A", "A", "A"]], [[], 3.0]],
+]
+
+# THE SOLUTION (routedriver session 4, NOVA ee317437, 2026-10-01 23:52 PDT,
+# replay 2, drive.py --find, rc 0 `reached-play`, 0 model calls; Thor
+# timings not measured): title at 8.1 s, play at 34.7 s, ended at 55 s after
+# 20 s of play. The old sonic-heroes.route waited 20 s at boot and 100 s for
+# the story cutscene and marked gameplay ~200 s in. Inputs, each sent once
+# the crop named its screen:
+#   Sonic Team logo: A -> Sofdec/ADX (moving, intro_video): A -> Dolby logo:
+#   A, then START (Dolby took the second press) -> title art: START -> slot
+#   strip: A, A (slot 01, Start) -> Main Menu / 1P PLAY / STORY / Team Sonic:
+#   A x4 -> story cutscene: A (skipped at once) -> NOW LOADING -> Seaside
+#   Hill: LY:min held, A every 8 s. Record: docs/lanes/routedriver/sonic/.
+# Skips learned from replay 2 (`drive.py learn`); the driver tries these first.
+[skip.logo]          # 2026-10-02T06:53:17Z, 2 visits (Nova)
+button = "A"
+after_s = 0.0
+landed = "intro_video"
+landed_times = 1
+
+[skip.intro_video]   # 2026-10-02T06:53:17Z, 1 visit (Nova; the Sofdec/ADX card)
+button = "A"
+after_s = 0.0
+landed = "logo"
+landed_times = 1
+
+[skip.cutscene]      # 2026-10-02T06:53:17Z, 1 visit (Nova; the Team Sonic story cutscene)
+button = "A"
+after_s = 0.0
+landed = "loading"
+landed_times = 1
+
+[[crop]]
+name = "pause"
+state = "paused"
+region = [500, 330, 290, 240]
+ref = "pause.png"
+threshold = 25.0
+
+[[crop]]
+name = "title-logo"
+state = "title"
+region = [290, 290, 700, 330]
+ref = "title-logo.png"
+threshold = 25.0
+
+[[crop]]
+name = "title-art"
+state = "title"
+region = [330, 100, 300, 300]
+ref = "title-art.png"
+threshold = 35.0          # the art drifts as it settles: 27 on 200413-pretitle
+
+[[crop]]
+name = "logo-sonicteam"
+state = "logo"
+region = [280, 330, 720, 340]
+ref = "logo-sonicteam.png"
+threshold = 15.0
+
+[[crop]]
+name = "logo-dolby"
+state = "logo"
+region = [330, 420, 660, 240]
+ref = "logo-dolby.png"
+threshold = 15.0
+
+[[crop]]
+name = "profile-nodata"
+state = "profile"
+region = [190, 210, 900, 300]
+ref = "profile-nodata.png"
+# 0.1-0.6 on the prompt itself; a dark gameplay frame of three close-up team
+# balls scored 19.7 (lane.routedriver2 trial 4, 025910-108) under the old 20.
+threshold = 8.0
+
+[[crop]]
+name = "profile-created"
+state = "profile"
+region = [190, 284, 900, 312]
+ref = "profile-created.png"
+threshold = 20.0
+
+[[crop]]
+name = "profile-slots"
+state = "profile"
+region = [80, 250, 1120, 70]
+ref = "profile-slots.png"
+threshold = 20.0
+
+[[crop]]
+name = "menu-banner"
+state = "main_menu"
+region = [990, 70, 200, 100]
+ref = "menu-banner.png"
+threshold = 20.0
+
+[[crop]]
+name = "loading-stage"
+state = "loading"
+region = [800, 130, 340, 50]
+ref = "loading-stage.png"
+threshold = 20.0
+
+[[crop]]
+name = "hud"
+state = "play"
+region = [890, 60, 300, 150]
+ref = "hud.png"
+threshold = 20.0

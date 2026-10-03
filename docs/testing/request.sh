@@ -1118,11 +1118,77 @@ fi
 # was played -- an edit to the route after queueing cannot change a run that
 # is already waiting. It is parsed here too (route.sh --check), so a typo is
 # refused at the prompt rather than twenty minutes into a soak.
+#
+# THE ROUTE'S STATE (lane.savestate433). A route is written on a disk that
+# either carries the title's profile or does not, and declares which in its
+# `# state: returning|first-run|any` line. The dispatcher builds the title's
+# disk to match (titlestate.py compose: the title's GOLDEN profile, or none on
+# a first-run). `--route <base>` of a first-run/returning family resolves to
+# `.returning` when the title has a golden and `.first-run` when it has none;
+# a variant named outright is taken as named. A route whose state the disk
+# cannot match -- `returning` with no golden, or no `# state:` line at all --
+# is refused HERE, before any device time: that mismatch was the void (Tron
+# 2.0 in Options > Display, 187 and Castlevania on Name Entry, 10-01/02).
+TITLE_ID=""; TITLE_STATE="any"
+TS_PY="$(dirname "$0")/titles/titlestate.py"
+export TITLESTATE_DIR="${TITLESTATE_DIR:-$D/titlestate}"
+[ -z "$TITLE" ] || TITLE_ID=$(python3 "$TS_PY" tid-for-iso "$TITLE" 2>/dev/null)
 if [ -n "$ROUTE" ]; then
     [ -n "$TITLE" ] || { echo "--route only means anything on a soak (--title)" >&2; exit 2; }
-    ROUTE_PATH="$(dirname "$0")/titles/routes/$ROUTE.route"
+    RES=$(python3 "$TS_PY" resolve-route --route "$ROUTE" ${TITLE_ID:+--title-id "$TITLE_ID"} \
+          ${DEVICE:+--device "$DEVICE"} 2>&1)
+    RREFUSE=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1]).get("refuse") or "")' "$RES" 2>/dev/null) \
+        || RREFUSE="titlestate.py resolve-route failed: $RES"
+    if [ -n "$RREFUSE" ]; then
+        echo "refusing to queue: $RREFUSE" >&2; exit 2
+    fi
+    ROUTE_PATH=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["path"])' "$RES")
+    TITLE_STATE=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["state"])' "$RES")
+    RNAME=$(python3 -c 'import json,sys; print(json.loads(sys.argv[1])["route_name"])' "$RES")
+    [ "$RNAME" = "$ROUTE" ] || echo "route: $ROUTE -> $RNAME (${TITLE_ID:-?} $([ "$TITLE_STATE" = returning ] && echo has || echo 'has no') golden profile)" >&2
+    ROUTE="$RNAME"
     [ -f "$ROUTE_PATH" ] || { echo "refusing to queue: no route '$ROUTE' ($ROUTE_PATH)" >&2; exit 2; }
     bash "$(dirname "$0")/titles/route.sh" --check "$ROUTE_PATH" >/dev/null || exit 2
+    # AND AS THE RUN WILL SEE IT. The run does not play this file: the
+    # dispatcher writes the text to <result dir>/route.txt and the worker
+    # plays it with the SNAPSHOT's route.sh. A `drive` profile resolves
+    # against the snapshot's titles/drive-profiles/, and a `waitfor` or
+    # `press-until` crop against <result dir>/refs/route.txt/, which nothing
+    # writes. A route that fails there exits at its first line and the soak
+    # runs on with no input (lane.routedriver), so the check above passing on
+    # this tree said nothing about the run. Check the copy the run gets, with
+    # the serving snapshot's route.sh; failing that, with the serving tree's,
+    # which a worker re-snapshots from before it claims anything (src_hash
+    # covers the profiles, and a worker snapshots at startup).
+    SNAPBIN="${DISPATCH_DIR:-$D}/bin"
+    SERVER="${DISPATCH_TREE:-/home/justin/hakuX}/docs/testing"
+    RCHK=$(mktemp -d); cp "$ROUTE_PATH" "$RCHK/route.txt"
+    rmsg=""; rok=""; rsh=""
+    for rsh in "$SNAPBIN/titles/route.sh" "$SERVER/titles/route.sh"; do
+        [ -f "$rsh" ] || continue
+        # The serving tree only stands in for a snapshot it will refresh.
+        [ "$rsh" = "$SERVER/titles/route.sh" ] && ! grep -q '^snapshot_globbed()' "$SERVER/dispatcher.sh" 2>/dev/null && continue
+        if out=$(bash "$rsh" --check "$RCHK/route.txt" 2>&1); then rok=1; break; fi
+        rmsg="$rmsg$(printf '\n  %s: %s' "$rsh" "$out")"
+    done
+    # Neither exists (a private DISPATCH_DIR, a host with no serving tree):
+    # this tree's route.sh on the copy still sees the crops that do not travel.
+    if [ -z "$rok" ] && [ -z "$rmsg" ]; then
+        out=$(bash "$(dirname "$0")/titles/route.sh" --check "$RCHK/route.txt" 2>&1) && rok=1 \
+            || rmsg=$(printf '\n  %s' "$out")
+    fi
+    rm -rf "$RCHK"
+    if [ -z "$rok" ]; then
+        cat >&2 <<MSG
+refusing to queue: route '$ROUTE' parses here but would not run in the dispatched soak:$rmsg
+
+A 'waitfor' or 'press-until' crop does not travel with the request: the run
+plays <result dir>/route.txt, and nothing writes its refs/. A 'drive' profile
+must be in the serving snapshot ($SNAPBIN/titles/drive-profiles/) or on the
+serving tree's master. The soak would run with no input after the first line.
+MSG
+        exit 2
+    fi
     ROUTE_TEXT=$(cat "$ROUTE_PATH")
 fi
 
@@ -1130,6 +1196,7 @@ fi
 # option here and packing it into one comma-joined string -- the shape every
 # other list option uses -- would make a value containing a comma unqueueable.
 ROUTE="$ROUTE" ROUTE_TEXT="$ROUTE_TEXT" PRIORITY="$PRIORITY" PIN="$PIN" \
+TITLE_ID="$TITLE_ID" TITLE_STATE="$TITLE_STATE" \
 python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" "$AUDIO_CAPTURE" "$BASE_ISO" "$PERFLOG" "$ONLY_TESTS" "$FRAMES_EVERY" "$PROGRAM" ${ENV_VARS[@]+"${ENV_VARS[@]}"} <<'PY'
 import json, sys
 (p, i, who, purpose, suites, ref, arm, runs, tests, title, seconds,
@@ -1161,6 +1228,10 @@ json.dump({"id": i, "requester": who, "purpose": purpose,
            # The route's name and its full text as queued; see --route.
            "route_name": __import__("os").environ.get("ROUTE", ""),
            "route": __import__("os").environ.get("ROUTE_TEXT", ""),
+           # The title (its targets.toml id) and the disk state its route
+           # declares: the dispatcher composes the titles disk to match.
+           "title_id": __import__("os").environ.get("TITLE_ID", ""),
+           "title_state": __import__("os").environ.get("TITLE_STATE", "any") or "any",
            "expect": expect, "expect_sha": expect_sha,
            "no_expect": no_expect,
            # The tier asked for (--priority); the id's prefix is its effect.
@@ -1200,7 +1271,8 @@ except Exception as e:
 if r.get("title"):
     print("soak: %s, %ss%s%s" % (r["title"], r["seconds"],
                                ", env " + " ".join(r["env"]) if r.get("env") else "",
-                               ", route " + r["route_name"] if r.get("route") else ""))
+                               ", route " + r["route_name"] if r.get("route") else "")
+          + " [%s %s]" % (r.get("title_id") or "title ?", r.get("title_state") or "any"))
 else:
     print("%sdisc: %d suite(s) [%s], only_tests %d, skip_tests %d, runs %d"
           % ("vsh " if r.get("program") == "vsh" else "",

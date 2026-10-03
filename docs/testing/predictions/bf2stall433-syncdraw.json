@@ -1,0 +1,30 @@
+{
+  "registered_utc": "2026-10-02T14:30:00Z",
+  "who": "lane.bf2stall433",
+  "issue": "433",
+  "title": "45410062-Battlefield_2_Modern_Combat.xiso.iso",
+  "device": "nova",
+  "seconds": 420,
+  "route": "bf2mc",
+  "frames_every": 20,
+  "perflog": true,
+  "env": ["PERF_REGIMEN=default", "TU_DEBUG=sysmem,syncdraw"],
+  "runs_per_arm": 1,
+  "a_ref": "8b45e7c15c",
+  "a_result": "1-1790920235-lane.collapse433-601955 (collapse433's sysmem soak: same route, seconds, frames, perflog, regimen; env TU_DEBUG=sysmem)",
+  "b_ref": "b71f92a12a24c118616f568b9ccab05fc7d88588",
+  "queue_order": "One run: `request.sh --title 45410062-Battlefield_2_Modern_Combat.xiso.iso --route bf2mc --seconds 420 --frames-every 20 --perflog --device nova --hard-pin --env PERF_REGIMEN=default --env TU_DEBUG=sysmem,syncdraw --ref b71f92a12a --expect this file`. The A side is NOT re-run: `git diff 8b45e7c15c b71f92a12a -- hw/ android/app/src/main/cpp/` is empty (the only non-docs change is the opt-in ibcache TCG probe), and this lane's own master pilot A1 (1-1790948452-lane.bf2stall433-3362375) reproduced collapse433's GMEM numbers (heavy GPU 35.9 vs 37.1 ms, slope 0.0111 vs 0.0119).",
+  "judge": "python3 docs/lanes/bf2stall433/armread.py --a $DISPATCH_DIR/results/1-1790920235-lane.collapse433-601955 --b <the run>; read the per-bin table and the A:/B: summary lines (heavy GPU, fit). The P0-P4 lines armread.py prints are the mirror arm's legs and do not apply here.",
+  "prediction": "#433 lane.bf2stall433, after the vertex-RAM mirror arm refuted V (pilot pair: heavy-view GPU ms B/A = 36.0/35.9 with the IO-coherent premise confirmed). TU_DEBUG=syncdraw makes Turnip wait for idle (WAIT_FOR_IDLE + WAIT_FOR_ME + WAIT_MEM_WRITES) before EVERY draw (tu6_emit_flushes via tu_emit_cache_flush_renderpass; sysmem so it is once per draw, not once per bin). That separates the two shapes the 12-14 us per draw can have. S: the draws are ALREADY serialized by something in the command stream (each draw waits on the one before, e.g. the per-draw descriptor rebind with bindless invalidation and constant reload). Then forcing a drain per draw adds little. T: the draws normally overlap and the per-draw cost is throughput (shader and constant work). Then a drain per draw adds the whole pipeline depth to every draw, ~5-20 us each at ~2,000 draws.",
+  "legs": {
+    "M0 (instrument)": "The run reaches mark gameplay and has >= 15 rows from 45 s before the mark to the end; logcat shows TU_DEBUG=sysmem,syncdraw in the render_mode line. Otherwise VOID.",
+    "S (already serialized)": "Median GPU ms per frame over rows with BE >= 1800 <= 1.25 x the baseline's (35.1 -> <= 43.9 ms), and the fit slope <= 0.016 ms per draw (baseline 0.0121).",
+    "T (pipelined, throughput)": "Heavy-view median GPU ms >= 1.6 x the baseline's (>= 56.2 ms), or fit slope >= 0.020.",
+    "between": "Anything else is reported as MIXED with both numbers: part of the per-draw cost overlaps and part does not.",
+    "resolution": "The run needs >= 6 rows with BE >= 1800 (syncdraw lowers fps, so a 60-flip row spans more time). Fewer: the slope over all rows decides alone, and the report says so."
+  },
+  "what_follows": "S: the fix is to stop serializing draws. The candidate is the per-draw UBO rebind (a new dynamic offset every draw, hence a new descriptor set, bindless invalidation and a constant reload): bind the uniform data once per pass and index it per draw. That is vk/shaders.c and the GLSL generators, outside this lane's territory. T: the cost is work, not waiting, and the lever is the per-draw shader/constant cost (the size of the uniform block reloaded per draw, the ubershader's per-draw cost), measured with Adreno counters (TU_DEBUG=perfc exposes VK_KHR_performance_query).",
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. Read by armread.py."
+}

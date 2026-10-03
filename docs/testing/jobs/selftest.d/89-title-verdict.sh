@@ -29,7 +29,7 @@ def stamp(t):
     return "09-25 %02d:%02d:%06.3f" % (t // 3600, (t % 3600) // 60, t % 60)
 
 def make(name, *, mark=True, gap_at=None, crash_at=None, fps=30.0, g_ms=33.3,
-         runlog_extra="", exited=None, end=760.0, breaks=(), marks=(), cut=None):
+         runlog_extra="", exited=None, end=760.0, breaks=(), marks=(), cut=None, extra=()):
     d = os.path.join(root, name); os.makedirs(d)
     L = [(1.0, "I", "hakuX", "surface_scale=1 (override=)"),
          (2.0, "I", "hakuX-route", "soak start")]
@@ -68,6 +68,7 @@ def make(name, *, mark=True, gap_at=None, crash_at=None, fps=30.0, g_ms=33.3,
         L.append((crash_at, "E", "hakuX-crash", "=== XBOX KERNEL CRASH (BugCheck) ==="))
     else:
         L.append((end, "I", "hakuX-route", "soak end"))
+    L.extend(extra)                       # (t, level, tag, msg, pid): another process's lines
     L.sort(key=lambda x: x[0])
     # Capture breaks, as soak_title.sh writes them: (start, length, replayed).
     # A lost break drops every line inside it; a replayed one reprints the
@@ -79,7 +80,7 @@ def make(name, *, mark=True, gap_at=None, crash_at=None, fps=30.0, g_ms=33.3,
     # fails at once, so the file ends in LOGCAT_RESTARTS+1 break lines.
     if cut:
         L = [x for x in L if x[0] < cut]
-    fmt = lambda x: "%s %s/%s( 4242): %s\n" % (stamp(x[0]), x[1], x[2], x[3])
+    fmt = lambda x: "%s %s/%s(%5d): %s\n" % (stamp(x[0]), x[1], x[2], x[4] if len(x) > 4 else 4242, x[3])
     todo = sorted(breaks)
     with open(os.path.join(d, "logcat.txt"), "w") as f:
         done = []
@@ -136,6 +137,30 @@ make("lostmark", mark=False, marks=[(60.0, "booted")], runlog_extra=
 # restart failed. The guest played 660 s; the verdict must name the capture,
 # not the duration, and must not report nothing lost.
 make("truncated", cut=300.0, runlog_extra="held x.iso for 758s\n")
+# WHOSE CRASH (title_verdict.py). libc and DEBUG at F are the whole device's.
+# `bystander` is the passing run while Android's media.extractor and
+# surfaceflinger die beside it (the 2026-10-02 Nova runs), with a capture
+# that opens mid-tombstone; it must still pass. The other three are hakuX's
+# own crash, each by one route only: a tombstone naming a hakuX process
+# (logged by crash_dump's pid), a libc line from hakuX's pid (the handler's
+# SIG_DFL re-raise leaves only that), and a Fatal-signal line naming hakuX's
+# comm from a pid that logs nothing else.
+def tombstone(t, pid, cmdline, name):
+    return [(t, "F", "DEBUG", "*** *** *** *** *** *** *** *** *** *** *** *** *** *** *** ***", pid),
+            (t, "F", "DEBUG", "Build fingerprint: 'qti/kalama/kalama:13/x:user/release-keys'", pid),
+            (t, "F", "DEBUG", "Cmdline: " + cmdline, pid),
+            (t, "F", "DEBUG", "pid: %d, tid: %d, name: %s  >>> %s <<<" % (pid, pid, name, cmdline), pid),
+            (t, "F", "DEBUG", "Abort message: 'CHECK_EQ( *offset,stop_offset) failed'", pid),
+            (t, "F", "DEBUG", "    #00 pc 000000000005b2a0  /apex/com.android.runtime/lib64/bionic/libc.so (abort+168)", pid)]
+make("bystander", extra=[(0.5, "F", "DEBUG", "    #07 pc 0000000000012345  /system/lib64/libmediandk.so", 5000)]
+     + tombstone(300.0, 13795, "media.extractor aextractor", "mediaextractor")
+     + [(400.0, "F", "libc", "Fatal signal 6 (SIGABRT), code -1 (SI_QUEUE) in tid 1620 "
+                             "(surfaceflinger), pid 1369 (surfaceflinger)", 1369)]
+     + tombstone(400.1, 1638, "/system/bin/surfaceflinger", "surfaceflinger"))
+make("owntomb", extra=tombstone(400.0, 5150, "com.jreinach.hakux.debug:xemu", "CPU 0/TCG"))
+make("ownlibc", extra=[(400.0, "F", "libc", "FORTIFY: pthread_mutex_lock called on a destroyed mutex (0x717fb142a8)", 4242)])
+make("ownfatal", extra=[(400.0, "F", "libc", "Fatal signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr 0x0 "
+                                             "in tid 4300 (CPU 0/TCG), pid 4299 (nach.hakux:xemu)", 4299)])
 PY
 
 # verdict_expect <title_verdict.py> -> prints one "FAIL <why>" line per unmet
@@ -143,7 +168,7 @@ PY
 # bad) and for every mutant (at least one line is the mutant being caught).
 verdict_expect() {
     local vpy="$1" f
-    for f in pass crash hang nomark below adbfail capgap lostmark truncated; do
+    for f in pass crash hang nomark below adbfail capgap lostmark truncated bystander owntomb ownlibc ownfatal; do
         rm -f "$TV/$f/verdict.json"
         python3 "$vpy" "$TV/$f" --targets "$TESTING/titles/targets.toml" >/dev/null 2>&1 \
             || { echo "FAIL $f: title_verdict exited non-zero"; continue; }
@@ -180,6 +205,14 @@ exp = {
                          and (x.get("failing") or "").startswith("capture: truncated")
                          and (x.get("capture_truncated_s") or 0) > 400
                          and (x.get("capture_lost_s") or 0) > 400,
+    "bystander": lambda x: x.get("pass") is True and x.get("crash") is False
+                           and x.get("crash_detail") == [],
+    "owntomb":  lambda x: x.get("pass") is False and x.get("crash") is True
+                          and (x.get("crash_detail") or [""])[0].startswith("*** ***"),
+    "ownlibc":  lambda x: x.get("pass") is False and x.get("crash") is True
+                          and (x.get("crash_detail") or [""])[0].startswith("FORTIFY:"),
+    "ownfatal": lambda x: x.get("pass") is False and x.get("crash") is True
+                          and (x.get("crash_detail") or [""])[0].startswith("Fatal signal 11"),
 }
 for n, ok in exp.items():
     x = v(n)
@@ -190,7 +223,7 @@ PY
 }
 
 out=$(verdict_expect "$TESTING/title_verdict.py")
-for f in pass crash hang nomark below adbfail capgap lostmark truncated; do
+for f in pass crash hang nomark below adbfail capgap lostmark truncated bystander owntomb ownlibc ownfatal; do
     case "$out" in
         *"FAIL $f:"*) bad "verdict on the '$f' fixture: $(printf '%s\n' "$out" | grep "FAIL $f:")" ;;
         *) ok "verdict on the '$f' fixture is what it should be" ;;
@@ -252,6 +285,21 @@ tv_mutant "ignore a capture that never resumed" truncated \
 tv_mutant "ignore route.sh's failed mark write" lostmark \
     '        elif lost:' \
     '        elif False:'
+tv_mutant "count any process's tombstone" bystander \
+    '            if n >= 0 and names[n] and is_hakux_proc(names[n]):' \
+    '            if True:'
+tv_mutant "count any process's libc line" bystander \
+    '            if pid in own or (m and is_hakux_proc(m.group(1))):' \
+    '            if True:'
+tv_mutant "never count a tombstone" owntomb \
+    '            if n >= 0 and names[n] and is_hakux_proc(names[n]):' \
+    '            if False:'
+tv_mutant "name-only libc check (no pid)" ownlibc \
+    'if pid in own or (m and is_hakux_proc(m.group(1))):' \
+    'if (m and is_hakux_proc(m.group(1))):'
+tv_mutant "pid-only libc check (no comm tail)" ownfatal \
+    'if pid in own or (m and is_hakux_proc(m.group(1))):' \
+    'if pid in own:'
 
 echo "== soak_title.sh: one failed adb probe is not a guest exit"
 # A fake adb that answers the soak's calls. `ps` answers in the order the
@@ -450,10 +498,13 @@ echo "== request.sh --route: the route's text travels in the request"
 # fragment counts in the harness's queue.
 RQ="$T/route-queue"; rm -rf "$RQ"; mkdir -p "$RQ"/{queue,running,results,expect}
 rq() { DISPATCH_DIR="$RQ" bash "$TESTING/request.sh" --who rt --purpose "route selftest" --no-expect "selftest" "$@"; }
-if rq --title "Crimson Skies.iso" --seconds 900 --route crimson-skies >/dev/null 2>&1; then
+# gta-sa: a `# state: first-run` route, which any disk can be built for. A
+# `returning` one (crimson-skies) needs a golden profile this private
+# dispatch dir has none of, and is refused (85-savestate.sh).
+if rq --title "Crimson Skies.iso" --seconds 900 --route gta-sa >/dev/null 2>&1; then
     check "the queued request carries the route's name and full text" \
-        python3 -c 'import json,glob,sys; r=json.load(open(glob.glob(sys.argv[1]+"/queue/*.req")[0])); src=open(sys.argv[2]).read(); assert r["route_name"]=="crimson-skies" and r["route"].strip()==src.strip()' \
-        "$RQ" "$TESTING/titles/routes/crimson-skies.route"
+        python3 -c 'import json,glob,sys; r=json.load(open(glob.glob(sys.argv[1]+"/queue/*.req")[0])); src=open(sys.argv[2]).read(); assert r["route_name"]=="gta-sa" and r["route"].strip()==src.strip()' \
+        "$RQ" "$TESTING/titles/routes/gta-sa.route"
 else
     bad "request.sh refused a valid --title --route request"
 fi
