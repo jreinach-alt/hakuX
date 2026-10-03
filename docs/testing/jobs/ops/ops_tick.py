@@ -76,6 +76,15 @@ DISK_FLOOR_GB = float(os.environ.get("OPS_DISK_FLOOR_GB", "20"))
 QUEUE_STALE_MIN = int(os.environ.get("OPS_QUEUE_STALE_MIN", "60"))
 HOLD_DEFAULT_BOUND_MIN = int(os.environ.get("OPS_HOLD_BOUND_MIN", "90"))
 ESCALATE_AFTER_MIN = int(os.environ.get("OPS_ESCALATE_AFTER_MIN", "30"))
+# Model sessions per jam instance: Sonnet, then Opus, then none. The 10-03 shadow window had
+# `fold-failure:rowless lane/titleroutes` "escalating" every 30 min all morning (count 4 by
+# 08:53) -- hostops's burn again, one jam at a time. Past the cap a jam stays open in
+# summary.txt for lane.local and the PM, and no further session is spawned for it.
+ESCALATE_MAX = int(os.environ.get("OPS_ESCALATE_MAX", "2"))
+# A lane is not stranded until it has been idle this long (the owner's 10-03 rule: "no WAITING
+# file and no commit for 90 min is reported as stranded"). handback and lanewaker act inside
+# that window; ops_tick is the backstop behind them, not a third resumer racing them.
+STRANDED_GRACE_MIN = int(os.environ.get("OPS_STRANDED_GRACE_MIN", "90"))
 
 
 def sh(cmd, timeout=30):
@@ -91,12 +100,13 @@ def say(*a):
 
 
 class Jam:
-    def __init__(self, cls, subject, msg, remedy=None, remedy_label=""):
+    def __init__(self, cls, subject, msg, remedy=None, remedy_label="", escalate=True):
         self.cls = cls
         self.subject = subject
         self.msg = msg
         self.remedy = remedy          # callable() -> str (what happened), or None
         self.remedy_label = remedy_label
+        self.escalate = escalate      # False: an owned class (disk is lane.xbox's), never a model
 
 
 # ------------------------------------------------------------------ detectors
@@ -162,6 +172,25 @@ def _lane_session_live(name):
     return False
 
 
+def _lane_idle_min(name, ref):
+    """Minutes since the lane last did anything we can see: its branch's last commit, or its
+    unit's last stop, whichever is later. None if neither can be read."""
+    marks = []
+    out, rc = sh("git -C %s log -1 --format=%%ct %s" % (REPO, ref))
+    if rc == 0 and out.strip().isdigit():
+        marks.append(int(out.strip()))
+    out, rc = sh("%s show -p InactiveEnterTimestamp --value hakux-lane-%s.service" % (SYSTEMCTL, name))
+    if rc == 0 and out.strip() and out.strip() != "n/a":
+        ep, rc2 = sh("date -d %s +%%s" % _shq(out.strip()))
+        if rc2 == 0 and ep.strip().isdigit():
+            marks.append(int(ep.strip()))
+    return (NOW - max(marks)) / 60 if marks else None
+
+
+def _shq(s):
+    return "'" + s.replace("'", "'\\''") + "'"
+
+
 def _resume_lane(name, addendum):
     """Append `addendum` to the lane's brief and resume it once. Returns a status string."""
     brief = os.path.join(BRIEFS, name + ".md")
@@ -190,7 +219,20 @@ def det_stranded_lanes():
         state = (re.search(r"^State:\s*(\w+)", pr_text, re.M) or [None, "?"])[1]
         if state.lower() != "draft":
             continue
-        msg = "lane.%s is stopped with its PR.md still 'draft' and no running unit: stranded" % name
+        # A WAITING file is a recognised wait: hakux-lanewaker resumes it when its conditions
+        # hold. 10-03 08:48 the shadow named memfast stranded a minute after it wrote one.
+        _, rc = sh("git -C %s cat-file -e %s:docs/lanes/%s/WAITING" % (REPO, ref, name))
+        if rc == 0:
+            continue
+        # A head already in master is a folded lane, not a stranded one.
+        _, rc = sh("git -C %s merge-base --is-ancestor %s origin/master" % (REPO, ref))
+        if rc == 0:
+            continue
+        idle_min = _lane_idle_min(name, ref)
+        if idle_min is not None and idle_min < STRANDED_GRACE_MIN:
+            continue
+        msg = "lane.%s is stopped with its PR.md still 'draft', no WAITING file, no running unit, idle %s min: stranded" \
+              % (name, "?" if idle_min is None else "%.0f" % idle_min)
 
         def remedy(name=name):
             addendum_path = W + "/host-tools/bg-addendum.md"
@@ -310,7 +352,10 @@ def det_fold_failures():
                     f.write("\n## %s -- fold-failure:%s (ops_tick)\n%s: %s\nNeeds a board-territory edit (private worktree, gated push) widening [lane.%s]'s files, or a new row.\n"
                             % (time.strftime("%Y-%m-%d %H:%M"), cls, branch, reason[:300], lane))
                 return "wrote host-tools/hostops-inbox.md"
-            jams.append(Jam("fold-failure:" + cls, branch, msg, remedy, "write inbox request"))
+            # Never a model: the fix is a board-territory edit, which an escalation session may
+            # not make. The inbox note is the route; the jam stays OPEN in summary.txt until
+            # lane.local widens the row.
+            jams.append(Jam("fold-failure:" + cls, branch, msg, remedy, "write inbox request", escalate=False))
         elif cls in ("conflict", "selftest", "no-device-run"):
             def remedy(lane=lane, cls=cls, reason=reason):
                 if _stopped_marker(lane):
@@ -468,14 +513,24 @@ def _disk_free_gb(path):
 
 
 def det_disk_low():
-    """Disk below threshold on / (and C: if mounted under WSL): no safe auto remedy."""
+    """Disk below threshold on / (and C: if mounted under WSL). Host disk space is lane.xbox's
+    (owner, 10-02; brief addendum 1): report it and route it there, once per jam instance. No
+    remedy is attempted and no model session is ever spawned for it."""
     jams = []
     for path, label in ((os.environ.get("OPS_ROOT", "/"), "/"), (os.environ.get("OPS_CDRIVE", "/mnt/c"), "C:")):
         free = _disk_free_gb(path)
         if free is None:
             continue
         if free < DISK_FLOOR_GB:
-            jams.append(Jam("disk-low", label, "%s has %.1f GB free (< floor %.0f GB)" % (label, free, DISK_FLOOR_GB), None, ""))
+            msg = "%s has %.1f GB free (< floor %.0f GB)" % (label, free, DISK_FLOOR_GB)
+
+            def route(msg=msg):
+                os.makedirs(os.path.dirname(INBOX), exist_ok=True)
+                with open(INBOX, "a") as f:
+                    f.write("\n## %s -- disk-low, for lane.xbox (ops_tick)\n%s. Host disk space is lane.xbox's; ops_tick takes no action on it.\n"
+                            % (time.strftime("%Y-%m-%d %H:%M"), msg))
+                return "routed to lane.xbox via host-tools/hostops-inbox.md"
+            jams.append(Jam("disk-low", label, msg, route, "route to lane.xbox", escalate=False))
     return jams
 
 
@@ -571,7 +626,9 @@ def write_summary(jams_path, summary_path, escalations):
         f.write("ops summary %s: open=%d cleared_today=%d median_ttc_s=%d escalations_today=%d cost_today_usd=%.2f\n"
                 % (today, len(open_now), len(cleared_today), median_ttc, len(esc_today), cost_today))
         for r in open_now:
-            f.write("  OPEN  %s %s (opened %s, remedy: %s)\n" % (r["class"], r["subject"], r["opened"], r["remedy_tried"] or "none"))
+            esc = escalations.get(r["class"] + "\t" + r["subject"], {})
+            capped = " NEEDS lane.local: escalation cap reached" if esc.get("capped_ts") and esc.get("inst_opened") == r["opened"] else ""
+            f.write("  OPEN  %s %s (opened %s, remedy: %s)%s\n" % (r["class"], r["subject"], r["opened"], r["remedy_tried"] or "none", capped))
 
 
 # ------------------------------------------------------------------------ main
@@ -632,14 +689,26 @@ def run(shadow):
         past_escalate = age_min >= ESCALATE_AFTER_MIN
         if no_remedy and is_new:
             actions.append("[shadow] no remedy for %s %s (escalate class)" % (jam.cls, jam.subject) if shadow else "no remedy for %s %s" % (jam.cls, jam.subject))
-        if (no_remedy and NO_REMEDY_ESCALATES_IMMEDIATELY) or past_escalate:
+        if jam.escalate and ((no_remedy and NO_REMEDY_ESCALATES_IMMEDIATELY) or past_escalate):
             esc_key = jam.cls + "\t" + jam.subject
             esc = escalations.get(esc_key, {"count": 0})
+            # The cap counts THIS instance's sessions (a jam that clears and recurs gets its
+            # own); the model choice counts every session the (class, subject) ever had.
+            if esc.get("inst_opened") != row["opened"]:
+                esc["inst_opened"] = row["opened"]
+                esc["inst_count"] = 0
+                esc.pop("capped_ts", None)
+                escalations[esc_key] = esc
             # Escalate again only once the previous escalation session has had time to run
             # (ESCALATE_AFTER_MIN) -- otherwise a jam open for hours would spawn one session
             # per 5-minute tick. A no-remedy jam re-escalates on the same cadence.
             last_ts = esc.get("last_epoch", 0)
-            if NOW - last_ts >= ESCALATE_AFTER_MIN * 60:
+            if esc["inst_count"] >= ESCALATE_MAX:
+                if not esc.get("capped_ts"):
+                    esc["capped_ts"] = now_iso
+                    say("ESCALATION CAP %s %s: %d session(s) did not clear it; left OPEN for lane.local and the PM"
+                        % (jam.cls, jam.subject, esc["inst_count"]))
+            elif NOW - last_ts >= ESCALATE_AFTER_MIN * 60:
                 model = "claude-opus-5-5" if esc["count"] >= 1 else "claude-sonnet-5"
                 if shadow:
                     cost = 0.0
@@ -650,6 +719,7 @@ def run(shadow):
                 # Shadow advances the same count and clock a real escalation would, so the
                 # model switch and the re-escalation cadence show what the cutover would do.
                 esc["count"] += 1
+                esc["inst_count"] += 1
                 esc["last_epoch"] = NOW
                 esc["last_ts"] = now_iso
                 esc["cost_usd_total"] = float(esc.get("cost_usd_total", 0)) + cost

@@ -39,6 +39,13 @@
 #       hakux-* token, never the glyph.
 #   (j) --shadow keeps its own jam identity across ticks: a jam the first shadow
 #       tick announced is not announced as NEW again by the second.
+#   (k) a lane whose session's cwd is its worktree is live, not stranded.
+#   (l) not stranded: a draft lane with a WAITING file (lanewaker's), a draft lane whose
+#       head is in origin/master (folded), and a lane idle under the 90-min grace.
+#   (m) one jam instance gets at most two model sessions (Sonnet, then Opus), then is
+#       marked for lane.local in summary.txt; the 10-03 shadow escalated one jam 4 times.
+#   (n) disk-low routes to lane.xbox and never escalates (brief addendum 1); a territory
+#       fold gap never escalates either (its fix is a board edit no session may make).
 
 echo "== ops_tick.py: model-free jam detection and scripted remedies (#433)"
 
@@ -107,7 +114,8 @@ ot_env() {
         OPS_DEVICE_REALITY="$OT/work/host-tools/.device-reality.json" \
         OPS_LANE_SH="$OT/bin/lane.sh" OPS_HOLD_SH="$OT_HOLD_SH" \
         OPS_JAMCHECK_SH="$OT/bin/true" OPS_ESCALATE_SH="$OT/bin/ops_escalate.sh" \
-        OPS_DEVICES="thor,nova" OPS_ESCALATE_AFTER_MIN=30 OPS_HOLD_BOUND_MIN=30 \
+        OPS_DEVICES="thor,nova" OPS_ESCALATE_AFTER_MIN="${OT_ESC_AFTER:-30}" OPS_HOLD_BOUND_MIN=30 \
+        OPS_STRANDED_GRACE_MIN="${OT_GRACE:-0}" OPS_DISK_FLOOR_GB="${OT_DISK_FLOOR:-20}" \
         OPS_ROOT="$OT" OPS_CDRIVE="/nonexistent-ops-selftest" \
         python3 "$OT_PY" "$@"
 }
@@ -193,7 +201,7 @@ print("\n".join(sorted(j.subject for j in m.det_stranded_lanes())))
 PY
 )
 ot_stranded() { # (proc root) -> the stranded lane names ops_tick would act on, one per line
-    env OPS_PROC="$1" OPS_SYSTEMCTL="$OT/bin/systemctl" HAKUX_WORK="$OT/work" \
+    env OPS_PROC="$1" OPS_SYSTEMCTL="$OT/bin/systemctl" HAKUX_WORK="$OT/work" OPS_STRANDED_GRACE_MIN="${OT_GRACE:-0}" \
         HAKUX_REPO_DIR="$OT/repo" OPS_BRIEFS="$OT/work/briefs" python3 -c "$LIVE_PY" "$OT_PY"
 }
 mkdir -p "$OT/proc-empty" "$OT/proc-live/4242"
@@ -204,6 +212,27 @@ check "(k) a stranded lane with no live session is named" grep -qx stranded1 "$O
 check "(k) a lane whose session cwd is its worktree is not stranded" \
     bash -c '! grep -qx stranded1 "'"$OT/k-live.txt"'"'
 check "(k) the other lane (no session) is still named" grep -qx terrgap "$OT/k-live.txt"
+
+# ------------------------------------------- (l) waiting, folded, or recent: not stranded
+for name in waiting1 draftfolded; do
+    git -C "$OT/repo" checkout -q -b "lane/$name" master
+    mkdir -p "$OT/repo/docs/lanes/$name"
+    printf '# lane.%s\nState: draft\n' "$name" > "$OT/repo/docs/lanes/$name/PR.md"
+    [ "$name" = waiting1 ] && echo "run 1700000000-selftest" > "$OT/repo/docs/lanes/$name/WAITING"
+    git -C "$OT/repo" add "docs/lanes/$name" >/dev/null  # by path: origin.git sits in this tree
+    git -C "$OT/repo" -c user.email=t@t -c user.name=t commit -q -m "lane.$name draft"
+    git -C "$OT/repo" push -q origin "lane/$name"
+done
+git -C "$OT/repo" checkout -q master
+git -C "$OT/repo" merge -q --ff-only lane/draftfolded
+git -C "$OT/repo" push -q origin master
+git -C "$OT/repo" fetch -q origin
+ot_stranded "$OT/proc-empty" > "$OT/l-zero.txt"
+OT_GRACE=90 ot_stranded "$OT/proc-empty" > "$OT/l-grace.txt"
+check "(l) a draft lane with a WAITING file is not stranded" bash -c '! grep -qx waiting1 "'"$OT/l-zero.txt"'"'
+check "(l) a draft lane whose head is in origin/master is not stranded" bash -c '! grep -qx draftfolded "'"$OT/l-zero.txt"'"'
+check "(l) with no grace, the plain draft lane is still named" grep -qx terrgap "$OT/l-zero.txt"
+check "(l) a lane that committed minutes ago is inside the 90-min grace" bash -c '! grep -qx terrgap "'"$OT/l-grace.txt"'"'
 
 # ------------------------------------------------------- (c) fold failures
 FF="$OT/work/offline-git/fold-failures.log"
@@ -293,6 +322,34 @@ check "(i) a bulleted failed unit is named by its hakux-* token" \
 check "(i) the bullet glyph is never a jam subject" \
     bash -c '! grep -q "failed-unit ●" "'"$OT_ESCALATE_LOG"'" && ! grep -q "failed-unit ●" "'"$OT/state/jams.tsv"'" 2>/dev/null'
 : > "$OT/bin/failed-units.txt"
+ot_tick
+
+# ----------------------------------------------- (m) two model sessions per jam, then stop
+echo "hakux-capped.service loaded failed failed hakuX capped job" > "$OT/bin/failed-units.txt"
+: > "$OT_ESCALATE_LOG"
+for i in 1 2 3 4; do OT_ESC_AFTER=0 ot_tick; done
+check "(m) four ticks of one open jam spawn exactly two sessions" \
+    bash -c '[ "$(grep -c "failed-unit hakux-capped.service" "'"$OT_ESCALATE_LOG"'")" = 2 ]'
+check "(m) the second session is Opus" \
+    bash -c 'grep "failed-unit hakux-capped.service" "'"$OT_ESCALATE_LOG"'" | tail -1 | grep -q claude-opus-5-5'
+check "(m) summary.txt marks the capped jam for lane.local" \
+    grep -q "failed-unit hakux-capped.service.*NEEDS lane.local" "$OT/state/summary.txt"
+: > "$OT/bin/failed-units.txt"
+ot_tick
+
+# ------------------------------------- (n) disk and territory gaps never reach a model
+: > "$OT_ESCALATE_LOG"
+OT_SHA_STOPPED1=$(git -C "$OT/repo" rev-parse --short=10 lane/stopped1)
+echo "2026-10-02 09:30:00 PDT FAILED lane/stopped1 @ $OT_SHA_STOPPED1: outside [lane.stopped1]'s files ['docs/lanes/stopped1/**']: ['hw/y.c']" >> "$FF"
+for i in 1 2; do OT_ESC_AFTER=0 OT_DISK_FLOOR=100000000 ot_tick; done
+check "(n) disk-low is routed to lane.xbox in the inbox" \
+    grep -q "disk-low, for lane.xbox" "$OT_WORK/host-tools/hostops-inbox.md"
+check "(n) disk-low is routed once per jam instance, not once per tick" \
+    bash -c '[ "$(grep -c "disk-low, for lane.xbox" "'"$OT_WORK"'/host-tools/hostops-inbox.md")" = 1 ]'
+check "(n) disk-low never spawns a model session" bash -c '! grep -q "^disk-low" "'"$OT_ESCALATE_LOG"'"'
+check "(n) a territory fold gap never spawns a model session" \
+    bash -c '! grep -q "^fold-failure:territory" "'"$OT_ESCALATE_LOG"'"'
+echo "2026-10-02 09:31:00 PDT FOLDED lane/stopped1: selftest cleanup" >> "$FF"
 ot_tick
 
 # --------------------------------------------------------- (e) battery floor
