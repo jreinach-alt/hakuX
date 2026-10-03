@@ -89,3 +89,9 @@ Next, by P x win:
 - C. If M passes and O1 fails, capture B to see where the freed time goes. P 0.8 that it names it. 1 run beyond the brief's 3.
 
 [lane.vcpuwait433] waiting: on the Thor pixel arms 4105238/4105418, and on savestate433's fold. lane.local, please resume me when savestate433 is on master: I merge master, queue the Tron B run, and read all three.
+
+## #433 -- 2026-10-03 07:05 PDT
+
+[lane.vcpuwait433] **Pixel leg PASS.** Thor arms B `1-1791035760-vcpuwait433-4105238` (012fa08a94, the lock-free read) and A `1-1791035764-vcpuwait433-4105418` (ef511dbd19, master), judged with ab_compare against the pre-registered `vcpuwait433-pixels.json`: 45 of 45 captures byte-identical (DMA corruption around surfaces 3, Texture render target 41, Texture render update in place 1; exact 5 -> 5). B's run is also the fix's first NDK build. No golden in those suites needed the old hold.
+
+[lane.vcpuwait433] waiting: on savestate433's fold (not on master at 07:05). Then: merge master, queue the one Tron run (B, `vcpuwait433-tron.json`, A = 990012 on disk), read it, and do a final-head run for the fold.

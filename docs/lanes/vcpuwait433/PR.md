@@ -7,7 +7,9 @@ Files: hw/xbox/nv2a/user.c, hw/xbox/nv2a/pfifo.c, docs/testing/predictions/vcpuw
 Prediction: docs/testing/predictions/vcpuwait433-pixels.json @ 51885311070260918a53796ec4038db00d1a3a6173d5c3867df6ca9ca62045a9; docs/testing/predictions/vcpuwait433-tron.json @ 020b10df7f6e66dee2854093439e952d76b833a59b65f676926452534ead8d77
 Needs device: yes (Thor: 2 pixel arms; Nova: 3rd of 3 runs, Tron)    Needs NDK: yes
 
-[lane.vcpuwait433] waiting: on (1) the Thor pixel arms 1-1791035760-vcpuwait433-4105238 (B) and 1-1791035764-vcpuwait433-4105418 (A), and (2) savestate433's fold. Only after that fold is the Tron arm's `# state: returning` enforced. Tron's disk now holds the first-run state, in which the arm's route would void. Once savestate433 is on master: merge master, queue the Tron B run (prediction vcpuwait433-tron.json), then read all three.
+[lane.vcpuwait433] waiting: on savestate433's fold (not on master at 07:05 PDT). Only after that fold is the Tron arm's `# state: returning` enforced. Tron's disk now holds the first-run state, in which the arm's route would void. Once savestate433 is on master: merge master, queue the Tron B run (prediction vcpuwait433-tron.json), read it, and finish with a run at the final head for the fold.
+
+**Pixel leg: PASS.** Thor, B `1-1791035760-vcpuwait433-4105238` (012fa08a94), A `1-1791035764-vcpuwait433-4105418` (ef511dbd19). ab_compare against the pre-registered `vcpuwait433-pixels.json`: all 45 captures in DMA corruption around surfaces, Texture render target and Texture render update in place are byte-identical (better 0, worse 0, exact 5 -> 5). B's run is also the fix's NDK build.
 
 **The site.** In Tron 2.0's slow window (the New Game intro; tron2, 60 s at 27.9 fps), 65.2% of the vCPU's attributed off-CPU time is `pfifo.lock` in USER MMIO, and 95.5% of that is `user_read`, a guest load of DMA_GET, DMA_PUT or REF. In a 60-fps menu the same site is under 3%. The holder is the PFIFO thread. It calls `pgraph_process_pending_reports` with pfifo.lock held, and when DMA_GET == DMA_PUT that call does `pgraph_vk_finish(STALLED)`, which sleeps until the render thread submits. The per-tid pass puts the PFIFO thread asleep for >= 86% of the vCPU's waits. The word the guest is waiting to read does not change in that time.
 
@@ -18,7 +20,7 @@ Needs device: yes (Thor: 2 pixel arms; Nova: 3rd of 3 runs, Tron)    Needs NDK: 
 Local checks (no CI offline):
 - `bash docs/lanes/vcpuwait433/selftest_userread.sh`: PASS. It compiles the real user.c with `-Wall -Werror` (real atomic.h, nv2a_regs.h, stub nv2a_int.h). With the fix, the three reads return in 0 ms while pfifo.lock is held for 400 ms; a write still waits 402 ms; the PUT store is visible to the next read; the pfifo.c GET store is a release store. The pre-fix user.c blocks 400-405 ms on each read, which is the harness's falsifier.
 - `docs/testing/preflight.sh --allow-tracker` at ab8b4646be: passed (territory ok, board files ok, nv2a index ok). The coverage gate did not run: gh is suspended.
-- NDK build: none yet. The arms build 012fa08a94.
+- NDK build: 012fa08a94 built and ran in pixel arm B (apk b43d7cbb8930).
 
 | Next | P | win | cost |
 |---|---|---|---|

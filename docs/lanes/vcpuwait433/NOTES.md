@@ -27,9 +27,9 @@ while it waited (21:25), and parked. Addendum 4 (06:47) granted both files.
 | selftest | `selftest_userread.sh`: compiles the real `user.c` with `-Wall -Werror` against a stub `nv2a_int.h`, using the real `qemu/atomic.h` and `nv2a_regs.h` | **PASS**. With the fix, reads of DMA_GET, DMA_PUT and REF return in 0 ms while another thread holds pfifo.lock for 400 ms. `user_write` still waits (402 ms). The PUT store is visible to the next read. pfifo.c's GET store is a release store. **Falsifier:** the pre-fix `user.c` (5661db4f2b) blocks 400-405 ms on all three reads, so the harness sees the lock |
 | pixel prediction | `predictions/vcpuwait433-pixels.json` (sha256 51885311...): A ef511dbd19, B 012fa08a94; must not move: DMA_corruption_around_surfaces (3 goldens), Texture_render_target (41), Texture_render_update_in_place (1) | registered and pushed before any run |
 | Tron prediction | `predictions/vcpuwait433-tron.json` (sha256 020b10df...): legs V, M, O1, O2, below | registered and pushed before any run |
-| pixel arms | Thor, pinned, release tier: B `1-1791035760-vcpuwait433-4105238`, A `1-1791035764-vcpuwait433-4105418` | queued 06:56 PDT |
+| pixel arms | Thor, pinned, release tier: B `1-1791035760-vcpuwait433-4105238` (apk b43d7cbb8930), A `1-1791035764-vcpuwait433-4105418` (apk ac5b7cf64c9d) | **PASS** (ab_compare, PRE-REGISTERED, done 07:02 PDT): 45 of 45 captures byte-identical; better 0, worse 0, exact 5 -> 5. B's run is also the first NDK build of the fix |
 | Tron arm | Nova, one run | **not queued: waits for savestate433 to fold** (below) |
-| compile | the NDK build happens when the arm builds 012fa08a94 | the host stub compile above is the only compile so far |
+| compile | the pixel arm B built 012fa08a94 with the NDK | built and ran |
 
 Suite choice: these three are where the guest or the GPU consumes
 GPU-written memory right after the pushbuffer drains. One behaviour is new:
@@ -88,8 +88,8 @@ golden it reaches Auto Load and the level, a different window from A.
 | B. Release pfifo.lock across the STALLED finish | 0.3 | covers the DMA_PUT store (4.5%) and the pusher-side waiters too, but exposes renderer state to the display thread | <= A + 4.5% of the site | grant (vk/reports.c), build, goldens, arm |
 | C. If M passes and O1 fails: off-CPU + on-CPU capture of B | 0.8 that it names where the freed time goes (spin on a RAM report vs another sleep) | tron2's method worked | knowledge; picks between B and a report-path fix | 1 run, needs a 4th from lane.local |
 
-The pixel arms gate the fold regardless of A's outcome. A moved capture
-blocks the fix.
+The pixel arms passed (45/45 byte-identical), so they no longer gate the
+fold. What remains is A's outcome, plus the fold's run at the final head.
 
 ## Result (attempt 3, 2026-10-02 21:05 PDT): pfifo.lock in `user_read` owns the wait
 
@@ -428,7 +428,7 @@ the in-level case together. C is not worth a run unless A's arm is blocked.
 | 1 | off-CPU capture tron1 (host-run, d8d36c9161) | 18:46-18:54 PDT | void: the route ended in Options > Display (no save, so the DOWN went to Light Cycles). Usable as a fast-window control: off-CPU 0.53 ms/frame, 69% BQL <- cpu_exec_loop |
 | 2 | off-CPU capture tron2 (v5 route + slow gate) | 19:54-20:01 PDT | recorded the New Game intro cinematic (not the level) at 27 fps: **the brief's slow window** (section 4). pfifo.lock in `user_read` 65.2%, which OWNS the wait |
 | 3 | Tron arm B (012fa08a94, returning golden, A = 990012) | not queued yet | waits for savestate433 to fold (attempt 4) |
-| Thor | pixel arms B / A (3 suites) | 1-1791035760-vcpuwait433-4105238 / 1-1791035764-vcpuwait433-4105418 | queued 06:56 PDT |
+| Thor | pixel arms B / A (3 suites) | 1-1791035760-vcpuwait433-4105238 / 1-1791035764-vcpuwait433-4105418 | PASS: 45/45 byte-identical |
 
 ## Do not repeat
 
