@@ -75,6 +75,56 @@ CMAKE_ARCHIVES = [
      "android/glib:zlib (meson patch)"),
 ]
 
+# Build and release tooling outside the two builds (Addendum 1): the host Turnip
+# harness, the Windows cross toolchain (ubuntu-win64-cross/), and the changelog
+# generator's title database. Each row names its consumer.
+TOOLING_GIT = [
+    # tools/turnip/build.sh: the Mesa tree it compiles, and glslangValidator's tag
+    ("https://gitlab.freedesktop.org/mesa/mesa.git",
+     "4c18636110f0ef2e1d4cecdbfbf4b7126c1d22cc", "tools/turnip:mesa"),
+    ("https://github.com/KhronosGroup/glslang.git", "15.4.0", "tools/turnip:glslang"),
+    # ubuntu-win64-cross/gcc.Dockerfile and llvm.Dockerfile: the MXE recipe trees
+    ("https://github.com/mxe/mxe.git", "9c716d7337fcec2b95eef7ed8f5970b4b8e97f68",
+     "ubuntu-win64-cross:gcc.Dockerfile MXE_VERSION"),
+    ("https://github.com/kleisauke/mxe.git", "llvm-mingw-20251219",
+     "ubuntu-win64-cross:llvm.Dockerfile MXE_TAG"),
+    # ubuntu-win64-cross/vulkan-headers.mk, libsamplerate.mk (the .mk pins are archives below)
+    ("https://github.com/KhronosGroup/Vulkan-Headers.git", "vulkan-sdk-1.4.309.0",
+     "ubuntu-win64-cross:vulkan-headers.mk"),
+    ("https://github.com/libsndfile/libsamplerate.git", "0.2.2",
+     "ubuntu-win64-cross:libsamplerate.mk"),
+    # .github/scripts/gen-changelog.py: title names from xdb's titles/ tree (main)
+    ("https://github.com/xemu-project/xdb.git", "main", "gen-changelog:xdb titles"),
+]
+
+# Archive sources of the same tooling: (url, filename, sha256, consumer). The
+# filename is what MXE's package cache expects (its $(PKG)_FILE), so the cache
+# can be seeded from this directory. Pins are copied from the .mk files.
+TOOLING_ARCHIVES = [
+    ("https://github.com/libsdl-org/SDL/releases/download/release-2.30.10/SDL2-2.30.10.tar.gz",
+     "SDL2-2.30.10.tar.gz",
+     "f59adf36a0fcf4c94198e7d3d776c1b3824211ab7aeebeb31fe19836661196aa",
+     "ubuntu-win64-cross:sdl2.mk"),
+    ("https://github.com/libressl/portable/releases/download/v4.0.0/libressl-4.0.0.tar.gz",
+     "libressl-4.0.0.tar.gz",
+     "4d841955f0acc3dfc71d0e3dd35f283af461222350e26843fea9731c0246a1e4",
+     "ubuntu-win64-cross:libressl.mk"),
+    ("https://github.com/libsndfile/libsamplerate/archive/refs/tags/0.2.2/0.2.2.tar.gz",
+     "libsamplerate-0.2.2.tar.gz",
+     "16e881487f184250deb4fcb60432d7556ab12cb58caea71ef23960aec6c0405a",
+     "ubuntu-win64-cross:libsamplerate.mk"),
+    ("https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/vulkan-sdk-1.4.309.0.tar.gz",
+     "vulkan-headers-vulkan-sdk-1.4.309.0.tar.gz",
+     "2bc1b4127950badc80212abf1edfa5c3b5032f3425edf37255863ba7592c1969",
+     "ubuntu-win64-cross:vulkan-headers.mk"),
+    ("https://curl.haxx.se/download/curl-8.18.0.tar.xz", "curl-8.18.0.tar.xz",
+     "40df79166e74aa20149365e11ee4c798a46ad57c34e4f68fd13100e2c9a91946",
+     "ubuntu-win64-cross:curl.mk"),
+    ("https://download.gnome.org/sources/glib/2.83/glib-2.83.2.tar.xz", "glib-2.83.2.tar.xz",
+     "8428d672c8485636d940f03ce8dcdc174f9b3892ac8b2eea76dd281af6a6e937",
+     "ubuntu-win64-cross:glib.mk"),
+]
+
 # Submodule discovery depth: a git source's .gitmodules, and theirs, and so on.
 SUBMODULE_DEPTH = 3
 
@@ -287,8 +337,8 @@ def main():
     args = ap.parse_args()
 
     wrap_git, wrap_archives = read_wraps()
-    repos = normalise_git(wrap_git + CMAKE_GIT)
-    archives = wrap_archives + CMAKE_ARCHIVES
+    repos = normalise_git(wrap_git + CMAKE_GIT + TOOLING_GIT)
+    archives = wrap_archives + CMAKE_ARCHIVES + TOOLING_ARCHIVES
 
     if args.list:
         table(discover(repos, args.root, clone=False), archives)

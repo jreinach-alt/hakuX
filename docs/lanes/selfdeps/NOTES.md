@@ -80,6 +80,73 @@ needs network for the JVM dependencies (not GitHub).
 The meson `source_fallback_url` entries (github.com release assets for curl
 and xxhash) are never reached: the primary archive is in the mirror.
 
+## Addendum 1: tooling and release path (lane.local 2026-10-03 09:55 PT)
+
+Every GitHub or GitLab reference in the build, tooling and release code lines of
+origin/master, and what this PR does about it. "Executed" means a hakuX pipeline runs it.
+
+| file | reaches | executed by | what this PR does |
+|---|---|---|---|
+| `tools/turnip/build.sh` | gitlab mesa (`MESA_URL`), github glslang tag 15.4.0 (`git clone --branch`) | host Turnip harness | **repo unchanged.** `git clone` goes through the `insteadOf` rules; mesa and glslang are mirrored (table below) |
+| `ubuntu-win64-cross/gcc.Dockerfile` | github `mxe/mxe` at `MXE_VERSION` 9c716d73 | Windows toolchain image (CI `build-xemu-win64-toolchain.yml`) | mirrored (git). Dockerfile **unchanged**: see "Windows toolchain" below |
+| `ubuntu-win64-cross/llvm.Dockerfile` | github `kleisauke/mxe` at `MXE_TAG` llvm-mingw-20251219 | same | mirrored (git) |
+| `ubuntu-win64-cross/{sdl2,libressl,libsamplerate,vulkan-headers}.mk` | github release and archive URLs | MXE package recipes | mirrored (archives, the MXE `$(PKG_FILE)` names, sha256 from the .mk) |
+| `ubuntu-win64-cross/{curl,glib}.mk` | curl.haxx.se, download.gnome.org (not GitHub) | same | mirrored (archives) |
+| `.github/scripts/gen-changelog.py` | `raw.githubusercontent.com/xemu-project/xdb/main/titles` | `release.yml` (GitHub Actions) | **changed**: title names read from the xdb mirror (`git show main:titles/...`). Missing mirror is an error. Its `gh api` calls go through the forge shim |
+| `scripts/gen-license.py` | `raw.githubusercontent.com` / `gitlab` URLs in the `Lib` entries | release licence text | **changed**: the URLs were only a fallback for a missing `licenses/<name>.license.txt`, and that fallback was broken (`fname` undefined). All 31 entries have a cached text (NVAPI at `thirdparty/nvapi/`). The fallback now raises, so the script never fetches |
+| `scripts/sign-macos-release.sh` | `gh release view/download/upload` (no github URL in the script) | macOS release signing | **no change.** `gh` on routed hosts is the forge shim (`~/hakux-work/forge/shim/bin/gh`), which implements `release view/create/upload` against the forge. Whether the release host runs the shim is an owner question (below) |
+| `scripts/bump-subproject-wraps.py` | `api.github.com` (tags, releases, refs) | `bump-subproject-wraps.yml` (GitHub Actions) | **not changed.** Finding a new upstream pin needs upstream, so mirrors cannot replace it. Owner question (below) |
+| `rust/Cargo.lock` | `registry+https://github.com/rust-lang/crates.io-index` (crates.io's canonical id, 0 `git+` sources) | meson `rust` option | **no change.** Cargo maps this id to the sparse index (`index.crates.io`), not github.com. Read from the lock file; not run here. The 16 crate archives are mirrored (table above) |
+| `scripts/update-mips-syscall-args.sh` | `raw.githubusercontent.com/strace/strace` | none (developer regenerates a QEMU table by hand) | not changed. Not executed by any hakuX pipeline |
+| `scripts/download-macos-libs.py` | MacPorts (urlopen) | macOS build | not GitHub (its github references are comments). No change |
+| `scripts/oss-fuzz/build.sh`, `scripts/ci/**`, `scripts/get_maintainer.pl`, `scripts/xml-preprocess.py` | github/gitlab in comments or QEMU's upstream CI | not executed by any hakuX pipeline | out of scope (brief). Listed, not changed |
+| `.github/workflows/*.yml` | GitHub Actions itself | GitHub | owner question (below). The forge has no `.forgejo/` workflows in this tree |
+
+### Mirrors added (Addendum)
+
+| name | upstream | pin | fetched by | GitHub | mirror |
+|---|---|---|---|---|---|
+| mesa | https://gitlab.freedesktop.org/mesa/mesa.git | 4c18636110f0 | tools/turnip/build.sh | no | git/gitlab.freedesktop.org/mesa/mesa |
+| glslang tag | https://github.com/KhronosGroup/glslang.git | 15.4.0 | tools/turnip/build.sh | yes | existing git/github.com/KhronosGroup/glslang (tag present) |
+| mxe | https://github.com/mxe/mxe.git | 9c716d7337 | ubuntu-win64-cross/gcc.Dockerfile | yes | git/github.com/mxe/mxe |
+| kleisauke/mxe | https://github.com/kleisauke/mxe.git | llvm-mingw-20251219 | ubuntu-win64-cross/llvm.Dockerfile | yes | git/github.com/kleisauke/mxe |
+| Vulkan-Headers | https://github.com/KhronosGroup/Vulkan-Headers.git | vulkan-sdk-1.4.309.0 | vulkan-headers.mk | yes | git/github.com/KhronosGroup/Vulkan-Headers |
+| libsamplerate | https://github.com/libsndfile/libsamplerate.git | 0.2.2 | libsamplerate.mk | yes | git/github.com/libsndfile/libsamplerate |
+| xdb | https://github.com/xemu-project/xdb.git | main | gen-changelog.py | yes | git/github.com/xemu-project/xdb |
+
+| archive | upstream | sha256 prefix | fetched by | GitHub | mirror file |
+|---|---|---|---|---|---|
+| SDL2 2.30.10 | github release | f59adf36 | sdl2.mk | yes | archives/SDL2-2.30.10.tar.gz |
+| libressl 4.0.0 | github release | 4d841955 | libressl.mk | yes | archives/libressl-4.0.0.tar.gz |
+| libsamplerate 0.2.2 | github archive | 16e88148 | libsamplerate.mk | yes | archives/libsamplerate-0.2.2.tar.gz |
+| vulkan-headers vulkan-sdk-1.4.309.0 | github archive | 2bc1b412 | vulkan-headers.mk | yes | archives/vulkan-headers-vulkan-sdk-1.4.309.0.tar.gz |
+| curl 8.18.0 | curl.haxx.se | 40df7916 | curl.mk | no | archives/curl-8.18.0.tar.xz |
+| glib 2.83.2 | download.gnome.org | 8428d672 | glib.mk | no | archives/glib-2.83.2.tar.xz |
+
+**Windows toolchain: the MXE package set is not inventoried.** MXE builds about two
+hundred packages, each with a recipe `src/<pkg>.mk` in the mirrored `mxe/mxe`
+tree; the image fetches every one it builds from that recipe's `_URL`. The six
+pins above are the Dockerfiles' and the four `.mk` files in this directory. The rest
+are MXE's own recipes. Seed MXE's package cache (`/usr/local/mxe/pkg`, the
+`--mount=type=cache` in the Dockerfiles) from `archives/` to stop it fetching. No
+docker is installed on this host, so the image was not built and that proof is not done.
+
+### Not executed by any hakuX pipeline
+
+`scripts/oss-fuzz/**`, `scripts/ci/**`, `scripts/get_maintainer.pl`, `scripts/xml-preprocess.py`
+(a comment's URL), `scripts/update-mips-syscall-args.sh`, and the QEMU upstream `tests/functional/*`
+and the vendored SDL's own build scripts. These are upstream QEMU or SDL tooling.
+
+### Owner questions (not decided by this lane)
+
+1. `.github/workflows/*` (release, changelog, nightly, the Windows toolchain image) are GitHub
+   Actions. They run only on github.com, so the release path is not on the forge. Moving them is a
+   separate lane.
+2. `scripts/bump-subproject-wraps.py` needs upstream to find new pins. Keep it (dev tool) or retire it
+   (pins bumped by hand)?
+3. Does the macOS release host run the forge `gh` shim, so `scripts/sign-macos-release.sh`'s `gh release`
+   calls stay on the forge?
+
 ## Mechanism
 
 - **Git:** `url.<mirror>.insteadOf <upstream>` in the user's git config. Both
@@ -150,6 +217,10 @@ Test environment (`/tmp/selfdeps-gitconfig`, `/tmp/selfdeps-test/*.sh`, test onl
 | Android clean | `android-clean.sh` (`gradlew --offline assembleDebug`, cleared `.cxx`/`build`) | **BUILD SUCCESSFUL in 6m 20s**, `GRADLE_EXIT=0`. Every FetchContent and ExternalProject step came from the mirrors | `logs/android-clean.log` |
 | desktop | `desktop-clean.sh` | configure stops at openssl (finding 2) | `logs/desktop-configure*.log` |
 | desktop fetch | `meson subprojects download` | all wraps resolved (finding 3) | `logs/meson-subprojects-download.log` |
+| addendum mirrors | `python3 docs/lanes/selfdeps/mirror_sources.py --insteadof` | 27 git, 32 archives, 0 problems | `logs/mirror-run4.log` |
+| addendum git | `git ls-remote https://github.com/KhronosGroup/glslang.git refs/tags/15.4.0` and mesa `HEAD`, via the insteadOf rules | tag `8a85691a` and mesa HEAD answered from the mirrors | (terminal) |
+| addendum xdb | `gen-changelog.get_title_name('4d530001')` | `Oddworld: Munch's Oddysee` from the mirror | (terminal) |
+| addendum licences | every `Lib` in `gen-license.py`, `license_text` | 31 of 31 resolve from cache, no network | (terminal) |
 
 ## Attempt history
 

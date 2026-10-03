@@ -1,0 +1,2 @@
+grant scripts/gen-license.py
+grant .github/scripts/gen-changelog.py
