@@ -479,6 +479,12 @@
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:layout_marginTop="2dp" android:text="@string/settings_async_compile_desc" android:textAppearance="@style/TextAppearance.Material3.BodySmall" android:textColor="@color/xemu_text_muted" />
           </LinearLayout>
 
+          <!-- Ubershader (#569) -->
+          <LinearLayout android:id="@+id/group_ubershader" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+            <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/switch_ubershader" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:text="@string/settings_ubershader" android:textColor="@color/xemu_text_muted" />
+            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginStart="4dp" android:layout_marginTop="2dp" android:text="@string/settings_ubershader_desc" android:textAppearance="@style/TextAppearance.Material3.BodySmall" android:textColor="@color/xemu_text_muted" />
+          </LinearLayout>
+
           <!-- Frame Skip -->
           <LinearLayout android:id="@+id/group_frame_skip" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
             <com.google.android.material.materialswitch.MaterialSwitch android:id="@+id/switch_frame_skip" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="20dp" android:text="@string/settings_frame_skip" android:textColor="@color/xemu_text_muted" />
