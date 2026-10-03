@@ -27,6 +27,28 @@ Offline checks, run on saved frames with the real prompts (Sonnet 5, scratch/hol
 | hold_genre | Panzer Dragoon Orta | onrails | right |
 | hold_genre | Counter-Strike | attack | right |
 
+## Attempt 4 (10-03 08:31 PDT): why attempt 3 did not finish
+
+- **Attempt 3 ended right after its Black Stone run** (08:14), with the run written up and pushed, the Nova
+  released, and nothing running. It wrote no WAITING file and no next step, so hostops resumed it at 08:30.
+  Nothing was lost. Its next steps (the pad check, then Panzer Dragoon Orta) are this attempt's first work.
+- Attempt 3 also left the Black Stone path and learned hint rewritten from the 13-min run, uncommitted. They are
+  **reverted**: that claim is not a confirmed result, and the 10-02 path (2.4 min, 12 calls) stays the guide.
+
+## Black Stone input check (10-03, offline from the saved frames; no device time)
+
+**The pad reached the game throughout. The player was stuck in a stance, and X released it.**
+- On the menus, the hat moved the name-entry cursor (6 DOWN, 2 RIGHT landed on Ok), and A accepted. Those are pad inputs.
+- In play, from the first probe (step 14) to step 93, the player stands on the spawn octagon with the sword raised
+  overhead, HP 410 -> 330 -> 310. Forty stick, d-pad, A and RT probes moved nothing (0.001-0.007).
+- At step 94 the action was X. Frame 094 shows the sword lowered. At step 95 one LEFT + stick moved the player off the
+  octagon. At step 97 the stick ran him and the camera followed (0.321, confirmed).
+- On 10-02 the first stick probe ran him (0.288). Same title, same spawn. What put him in the stance on 10-03 is not
+  known. It is not the input path.
+- **Change (pathfind.py):** after 2 probes in a row that move nothing at all (probe and control both under
+  PROBE_MOVED), the next probe is led by one button from `UNLOCK_LADDER` (X, B, Y, R1, L1, BACK) in turn. On the
+  10-03 run, that puts X before probe 3 at about 1.5 min, not 13 min. Selftest case `unlock`.
+
 ## Attempt 3 (10-03): why attempt 2 did not finish
 
 - **Attempt 2 built hold-play and stopped before any device run.** Its only blocker was the golden profile:
