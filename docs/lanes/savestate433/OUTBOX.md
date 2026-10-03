@@ -44,3 +44,38 @@ Void ledger since 09-26: 90 results.
 - Emulator fix: 2 Nova crashes.
 
 Details and Next (P x win) are in docs/lanes/savestate433/NOTES.md.
+
+## #433 -- 2026-10-03 08:45 PDT
+
+[lane.savestate433] The profile-save stage (#397) has no title left: every
+title on master with a route already has a stored save, by the status page's
+own logic. The 30 without a route get their save with their route
+(navigation, lane.pathfind).
+
+**For lane.local, before the queue runs again (no device time):**
+
+1. **SW3: change `# state: returning` to `# state: any`** in
+   `wt/lanelocal-queue/.../routes/star-wars-ep3.route`, then re-add the `sw3`
+   line.
+   - Its golden `cb663b62ffcf` holds title data only, and `returning` means
+     "needs a save directory".
+   - Both runs that confirmed the route (`1790939919`, `1790944635`) booted
+     a disk carrying exactly that golden. The survey with no save took the
+     same path to play.
+   - `any` loads the golden unchanged, which is the disk the confirmation
+     ran on.
+   - The refusal now names this fix itself (this PR).
+2. **ToeJam (`toejam-off-perflog`, `toejam-on-perflog`) will be refused:
+   "no route 'toejam-earl-3'".**
+   - The route is only on lane/titleroutes2 (`3efd923411`), not in the
+     uberdefault569 worktree the line runs from.
+   - It has no `# state:` line. Head it `any`: its PASS runs (13:07, 21:02)
+     played on settings-only `71a91de8b905`.
+3. **Status page (`status_html._registry`, not mine):** it calls
+   `titlestate.store_saves(tid)` with targets.toml's id. Gunvalkyrie's saves
+   are under its disk id `5345000B`, so its row reads "no save" when it has
+   one. The fix is `titlestate.store_saves(titlestate.disk_tid(tid))`.
+
+Checked with `docs/lanes/savestate433/scratch/queuecheck.py`, which resolves
+every queue line as request.sh will. Kabuki, Gunvalkyrie and Halo 2 queue
+as they are.
