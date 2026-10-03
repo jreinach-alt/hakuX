@@ -146,6 +146,9 @@ uint64_t hakux_tlb68_rs;        /* dynamic TLB resizes, any mode (#311 rs) */
 uint64_t hakux_tlb68_ka;        /* hunk (a): pages kept armed on emptying */
 uint64_t hakux_tlb68_kafb;      /* hunk (a): ... disarmed by the fallback */
 static __thread bool hakux_tlb68_arming;
+extern uint64_t hakux_w1_n, hakux_w1_hit, hakux_w1_extra,
+                hakux_w1_ns;   /* W1, below */
+bool hakux_w1_on(void);
 __thread int64_t hakux_rdc_last_ns;   /* #548, see system/ram_addr.h */
 __thread uint64_t hakux_rdc_last_hits;
 /* #424, defined in tb-maint.c: bitmap-answered stores, builds */
@@ -327,7 +330,8 @@ void hakux_tlb68_tick(CPUState *cpu)
     static uint64_t p_cause[HAKUX_TLB68_NCAUSE];
     static uint64_t p_ff, p_ffe, p_pf, p_pfl, p_jc, p_jcns, p_jct, p_jci,
                     p_jcx, p_rd, p_rdc, p_rde, p_rdm, p_rdh, p_rdns, p_rdo,
-                    p_rdoe, p_rdons, p_sd, p_rs, p_ka, p_kafb, p_cb, p_cbb;
+                    p_rdoe, p_rdons, p_sd, p_rs, p_ka, p_kafb, p_cb, p_cbb,
+                    p_wn, p_wh, p_wx, p_wns;
     static unsigned window;
     int64_t now = get_clock();
     struct timespec ts;
@@ -388,7 +392,9 @@ void hakux_tlb68_tick(CPUState *cpu)
               " sd=%" PRIu64 " dm=0x%x sz=%s"
               " tw=%" PRIu64 " tn=%zu rs=%" PRIu64
               " ka=%" PRIu64 " kafb=%" PRIu64 " fx=rd%djc%dka%dtb%d"
-              " rt=%d cb=%" PRIu64 " cbb=%" PRIu64,
+              " rt=%d cb=%" PRIu64 " cbb=%" PRIu64
+              " w1=%d wn=%" PRIu64 " wh=%" PRIu64 " wx=%" PRIu64
+              " wus=%" PRIu64,
               window++, (now - prev_ns) / 1000000,
               (cpu_ns - prev_cpu_ns) / 1000000,
               hakux_tlb68_ff - p_ff, hakux_tlb68_ff_empty - p_ffe,
@@ -413,7 +419,9 @@ void hakux_tlb68_tick(CPUState *cpu)
               hakux_tlb68_rd_on(), hakux_tlb68_jc_on(),
               HAKUX_TCG311_KEEP_ARMED, HAKUX_TCG311_TLB_BOUND,
               hakux_tcg424_range_on(), hakux_tcg424_cb - p_cb,
-              hakux_tcg424_cbb - p_cbb);
+              hakux_tcg424_cbb - p_cbb,
+              hakux_w1_on(), hakux_w1_n - p_wn, hakux_w1_hit - p_wh,
+              hakux_w1_extra - p_wx, (hakux_w1_ns - p_wns) / 1000);
     hakux_mf0_tick(now, window - 1, (now - prev_ns) / 1000000);
 
     for (int i = 0; i < HAKUX_TLB68_NCAUSE; i++) {
@@ -430,6 +438,8 @@ void hakux_tlb68_tick(CPUState *cpu)
     p_sd = hakux_tlb68_sd;
     p_rs = hakux_tlb68_rs; p_ka = hakux_tlb68_ka; p_kafb = hakux_tlb68_kafb;
     p_cb = hakux_tcg424_cb; p_cbb = hakux_tcg424_cbb;
+    p_wn = hakux_w1_n; p_wh = hakux_w1_hit; p_wx = hakux_w1_extra;
+    p_wns = hakux_w1_ns;
     prev_ns = now;
     prev_cpu_ns = cpu_ns;
 }
@@ -1424,6 +1434,134 @@ static void tlb_set_dirty(CPUState *cpu, vaddr addr)
     }
     qemu_spin_unlock(&cpu->neg.tlb.c.lock);
 }
+
+#ifdef XBOX
+/*
+ * lane.memfast W1 (#507): a mem-access callback (an NV2A surface watch) is
+ * inserted or removed with a walk that drops only the entries mapping its RAM,
+ * instead of a full flush of every mode and the jump cache. Conker did 287
+ * full flushes a second this way, one per insert and one per remove.
+ *
+ * What could go stale: an entry installed before the insert, with no
+ * TLB_WATCHPOINT, that keeps serving loads and stores on the watched RAM
+ * without the callback.
+ *
+ * Why it cannot: the watch flag is decided only in tlb_set_page_full(), from
+ * the RAM address the entry maps (iotlb), and xlat_section keeps that address
+ * minus the entry's page, which is how mem_check_access_callback_vaddr()
+ * recovers it. This walk recovers it the same way and drops every entry that
+ * overlaps [start, start + len), in the fast and victim tables of every mode
+ * in c.dirty (a clean mode holds only -1 entries; see tlb_reset_dirty()). The
+ * caller runs it in the same exclusive work item that changes the callback
+ * list, so no access runs between the change and the walk, and a refill sees
+ * the new list. A dropped entry the walk did not need to drop (an I/O entry
+ * whose section offset happens to fall in range) only costs a refill.
+ *
+ * What it does not need: the jump cache. A watch changes no translation and
+ * no code, only the data flags of a refill.
+ *
+ * HAKUX_W1=0 restores the full flush.
+ */
+uint64_t hakux_w1_n;      /* walks, vCPU thread */
+uint64_t hakux_w1_hit;    /* ... entries dropped */
+uint64_t hakux_w1_extra;  /* ... of which by the host test alone */
+uint64_t hakux_w1_ns;
+static int hakux_w1_fix = -1;
+
+bool hakux_w1_on(void)
+{
+    int v = qatomic_read(&hakux_w1_fix);
+    if (unlikely(v < 0)) {
+        v = getenv("HAKUX_W1") ? hakux_tlb68_env("HAKUX_W1") : 1;
+        qatomic_set(&hakux_w1_fix, v);
+    }
+    return v;
+}
+
+/*
+ * Called with tlb_c.lock held, on the vCPU thread. Returns 0 to keep the
+ * entry, 1 for a drop by its RAM address, and 2 for a drop by its host
+ * pointer alone. The host test is a second, independent recovery of the same
+ * fact, through addend instead of xlat_section; it is counted (wx) because it
+ * should never be the only one to fire. A 2 is an entry the RAM test missed.
+ */
+static int hakux_w1_drop_locked(CPUTLBEntryFull *full, CPUTLBEntry *te,
+                                ram_addr_t start, ram_addr_t len,
+                                uintptr_t host)
+{
+    uint64_t page;
+    ram_addr_t ra;
+    uintptr_t hp;
+    int why;
+
+    if (te->addr_read != -1) {
+        page = te->addr_read;
+    } else if (te->addr_write != -1) {
+        page = te->addr_write;
+    } else if (te->addr_code != -1) {
+        page = te->addr_code;
+    } else {
+        return 0;
+    }
+    page &= TARGET_PAGE_MASK;
+    ra = (full->xlat_section & TARGET_PAGE_MASK) + page;
+    hp = page + te->addend;
+    if (ra < start + len && ra + TARGET_PAGE_SIZE > start) {
+        why = 1;
+    } else if (host && hp < host + len && hp + TARGET_PAGE_SIZE > host) {
+        why = 2;
+    } else {
+        return 0;
+    }
+    memset(te, -1, sizeof(*te));
+    return why;
+}
+
+void hakux_tlb_flush_ram_range(CPUState *cpu, ram_addr_t start, ram_addr_t len,
+                               uintptr_t host)
+{
+    int64_t t0 = get_clock();
+    uint64_t hits = 0, extra = 0;
+    int why;
+
+    assert_cpu_is_self(cpu);
+    qemu_spin_lock(&cpu->neg.tlb.c.lock);
+    for (MMUIdxMap w = cpu->neg.tlb.c.dirty; w; w &= w - 1) {
+        int mmu_idx = ctz32(w);
+        CPUTLBDesc *desc = &cpu->neg.tlb.d[mmu_idx];
+        CPUTLBDescFast *fast = cpu_tlb_fast(cpu, mmu_idx);
+        unsigned int n = tlb_n_entries(fast);
+        unsigned int i;
+
+        for (i = 0; i < n; i++) {
+            why = hakux_w1_drop_locked(&desc->fulltlb[i], &fast->table[i],
+                                       start, len, host);
+            if (why) {
+                tlb_n_used_entries_dec(cpu, mmu_idx);
+                hits++;
+                extra += why == 2;
+            }
+        }
+        /*
+         * Not counted down: an entry left n_used_entries when it was evicted
+         * here (tlb_set_page_full), and with full flushes rare a second
+         * decrement would drift the resize heuristic's use rate.
+         */
+        for (i = 0; i < CPU_VTLB_SIZE; i++) {
+            why = hakux_w1_drop_locked(&desc->vfulltlb[i], &desc->vtable[i],
+                                       start, len, host);
+            hits += why != 0;
+            extra += why == 2;
+        }
+    }
+    qemu_spin_unlock(&cpu->neg.tlb.c.lock);
+
+    hakux_w1_n++;
+    hakux_w1_hit += hits;
+    hakux_w1_extra += extra;
+    hakux_w1_ns += get_clock() - t0;
+}
+#endif
 
 /* Our TLB does not support large pages, so remember the area covered by
    large pages and trigger a full TLB flush if these are invalidated.  */

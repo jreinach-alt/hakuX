@@ -755,6 +755,22 @@ file); a rate here sizes a design, it does not compare builds.
   - G: **PASS**;
   - the census has a fourth title, Crimson, with the same shape.
 
+  This attempt then started phase 2 with W1 (section "W1" below):
+  - code `1b0f73a8bd` (b_ref), reviewed with no bug found;
+  - predictions registered on 5e249bbfe0 -> 1b0f73a8bd;
+  - **queued 08:45 PDT on the Nova:** the pilot, Conker B1
+    `1-1791042386-lane.memfast-1541269` and A1 `-1541403`, and the pixel arm
+    pair `1791042389-arms-memfast-w1-base-1541588` /
+    `1791042391-arms-memfast-w1-fix-1542161`;
+  - **waiting** on those four (`WAITING`). Then:
+    - read the pilot with `w1_read.py` (legs M, X, P, C) and
+      `title_verdict.py` on copies;
+    - judge the arm with `ab_compare.py --expect memfast-w1-pixels.json`,
+      plus the CPU-write leg;
+    - if M and X hold, queue Blinx 2 B/A, Forza B/A (`forza.drive`, state
+      any) and Crimson B, all 300 s `--perflog` on the Nova. If `wx` > 0,
+      stop and explain it first.
+
 ## Phase 1 on the Nova: J/frame, reach, pixels (read 2026-10-03)
 
 The tool is `title_verdict.py`, run on copies in `.scratch/nf/`, and the
@@ -830,6 +846,227 @@ two things:
   runs below 30.
 
 J/frame becomes an observation, not the gate.
+
+## W1: a surface watch flushes only its own pages (2026-10-03)
+
+**The change.** `mem_access_callback_insert` and `_remove_by_ref`
+(`system/physmem.c`) each queued a `tlb_flush_all_cpus_synced`, which
+flushes every mode and the jump cache: the "FIXME: flush only applicable
+pages". Now the exclusive work item that changes the callback list also
+calls `hakux_tlb_flush_ram_range` (`accel/tcg/cputlb.c`). That function
+walks the fast and victim tables of every mode in `c.dirty` and drops each
+entry whose RAM page overlaps the watched range. `HAKUX_W1=0` restores the
+full flush.
+
+- **Why the walk is complete.** Only `tlb_set_page_full` decides
+  `TLB_WATCHPOINT`, from the entry's RAM address (`iotlb`).
+  `xlat_section` keeps that address minus the entry's page, and that is how
+  `mem_check_access_callback_vaddr` recovers it. The walk recovers it the
+  same way.
+  - A mode outside `c.dirty` holds only -1 entries (the `tlb_reset_dirty`
+    argument).
+  - Large pages are entered one 4 KiB entry at a time, so each entry carries
+    its own `xlat_section`.
+  - Nothing runs between the list change and the walk, so the next access
+    refills against the new list.
+- **The jump cache is not flushed.** A watch changes no translation and no
+  code, only the data flags of a refill.
+- **Remove walks too.** That is not needed for correctness: an entry flagged
+  for a removed watch only takes the slow path and finds no callback. But
+  with full flushes rare, the page would stay slow.
+- **Accounting.** A main-table drop decrements `n_used_entries`. A
+  victim-table drop does not, because eviction already took the entry out of
+  the count. Decrementing again would drift the resize heuristic now that
+  full flushes are rare (#311 hunk (b) is the same kind of drift).
+- **The cross-check (`wx`).** The walk also tests each entry's host pointer
+  (`addend` + page) against the watched RAM's host range. That is an
+  independent recovery of the same fact. An entry that only the host test
+  drops is dropped anyway, and counted as `wx`. It should be 0 always, and
+  a non-zero `wx` falsifies the completeness argument above. I/O entries
+  have a NULL host pointer, so they cannot match it.
+- **`[tlb68]` gains** `w1=` (the switch), `wn=` (walks), `wh=` (entries
+  dropped), `wx=` and `wus=` (walk time). Reader: `w1_read.py`. On
+  the old runs it reproduces section 8: Conker `fo` 286/s against 143
+  inserts/s, and Forza 37/s against 22/s.
+- **Checks before the device:** `-fsyntax-only` with the NDK compile
+  database's flags on `cputlb.c` and `physmem.c` gives rc 0, with no
+  diagnostics beyond master's `TARGET_PAGE_MASK` shifts.
+- **An independent review (a subagent, 2026-10-03) found no correctness
+  bug.** It checked six things:
+  - every way an entry could survive the walk: clean modes, `addr_read`
+    -1, large pages, the victim swap, cached `probe_access` pointers;
+  - ordering: one atomic work item where there were two, and
+    `surface_watch_rearmed` is still queued behind it;
+  - skipping the jump cache;
+  - the entry count;
+  - the cross-check's host pointer (`d->vram` is the real RAM region, not
+    the alias);
+  - the Desktop build (`TARGET_PAGE_MASK` at run time).
+
+  It raised one **performance risk**. `tlb_add_large_page`'s per-mode region
+  is reset only by a full flush of the mode. With the watch flushes gone,
+  the region stays wide, so an INVLPG inside the kernel's 4 MB RAM mapping
+  flushes the whole mode (`pfl`). Leg P reports it. If it eats the saving,
+  the fix is to reset the region when a walk leaves the mode empty.
+  - The review also found stale wording in `surface.c` (lines 2192-2196
+    and 2242-2243, "the insert and a TLB flush"). That file is outside this
+    lane's territory, so it is left as is; what those comments rely on
+    still holds.
+
+**Legs** (`memfast-w1-soak.json`, `memfast-w1-pixels.json`; a_ref is master
+plus docs, b_ref is W1; all on the Nova):
+
+| leg | claim |
+|---|---|
+| M, the point | B's `fo`/s at most 10% of A's on Conker, Blinx 2 and Forza; B's `wn`/s within 0.8-1.25 x of 2 x inserts/s |
+| X | `wx` = 0 on every B line |
+| P, an observation | B's `pfl`/s and `ff`/s against A's; over half of A's `fo`/s means the large-page region spends the saving |
+| C, a labelled guess | vCPU CPU ms per wall second, B/A <= 0.97 on Conker; refuted if >= 1.00 on all three |
+| G | B reaches play on Forza (`forza.drive`) and Crimson; no crash or hang in any B run |
+| pixels | bit-identical outside the 325 same-build-unstable captures; the three CPU-write captures take a value seen without the change |
+
+**Pilot first:** Conker B1 and A1 (the most watch-heavy title) and the pixel
+arm pair. The rest goes after the pilot is read.
+
+### W1 pilot and pixel arm, read 2026-10-03 10:18 PDT
+
+**Why the previous session stopped.** It queued the pilot (Conker B1/A1)
+and the pixel arm pair at 08:46 PDT. Then it ended on a `WAITING` file
+naming the four runs, which is the procedure for a wait. All four finished
+by 10:12 PDT, and hostops resumed this session. Nothing failed.
+
+**Conker pilot (Nova, 300 s each; `w1_read.py`, `.scratch/w1-pilot.out`)**
+
+| | B `-1541269` (W1) | A `-1541403` |
+|---|---|---|
+| `[tlb68]` lines, wall s | 153, 307.4 | 153, 307.0 |
+| `fo`/s | **0.96** | 144.67 |
+| `ff`/s (all causes) | 1.27 | 144.98 |
+| watch inserts/s | 72.6 | 72.1 |
+| `wn`/s (walks) | 145.5 (2 x inserts = 145.3) | - |
+| `wh`/s (entries dropped) | 18.6 | - |
+| `wx` | 0 on every line | - |
+| `pf`/s, `pfl`/s | 109.9, 0 | 110.0, 0 |
+| walk time | 728 us/s (0.07% of wall) | - |
+| vCPU CPU ms / wall s | 888.7 | 901.9 |
+
+- **M: PASS.** B's `fo` is 0.7% of A's (the bar is 10%). `wn` is 1.00 x
+  2 x inserts (the band is 0.8-1.25).
+- **X: PASS.** `wx` = 0.
+- **P: no cost.** `pfl` = 0 on both arms. The large-page region did not
+  spend the saving on Conker.
+- **C: not shown** (B/A 0.985 against the guessed <= 0.97). It is not
+  refuted, since that needs >= 1.00 on all three titles. The vCPU thread is
+  on-CPU about 89-90% of wall time on both arms. CPU ms per wall second
+  therefore measures how busy the thread is, not work per frame. A saving
+  shows up there only if the thread was not already spinning. That makes
+  this instrument the weakest of the legs.
+
+**Pixel arm (`memfast-w1-pixels.json`): PASS, all 3,064 checks, but the
+pair is device-split.** Base `1791042389-arms-memfast-w1-base-1541588` ran
+on the **Thor**, and fix `-1542161` on the Nova. Both requests say
+`device: nova`. An `arms-*` request's `--device` is only a preference unless
+`--hard-pin` is given (`request.sh:157`). The Thor was serving fold-head runs
+at 09:00 and claimed the base arm. That is the known behaviour, not a new
+defect.
+- ab_compare: "DEVICES DIFFER ... A leg that HOLDS is strictly stronger than
+  one device would give". The pass stands.
+- Of the 41 worse captures, all are inside the 315 excluded unstable ones,
+  and 4 regressed from exact: `Stencil_REPLACE_DT`, `Stencil_ZERO` (#79's
+  flake), `GeometrySuperscreen_0.9990`, and
+  **`Antialiasing_tests/FramebufferNotModifiedBySurfaceState` (0 -> 79)**.
+- **Watch-capture leg: PASS.** B reads `AAOnThenOffCPUWrite` 0,
+  `CPUWriteIgnoresSurfaceConfig` 0 and `GPUAAWriteAfterCPUWrite` 134: the
+  mode of each.
+- `wx` = 0 on all 408 `[tlb68]` lines of the fix arm, so the
+  Antialiasing suite never let the host-pointer test catch an entry that
+  the RAM-address test missed.
+- **`FramebufferNotModifiedBySurfaceState` is the one open item.** Over
+  91 scored runs on disk (`.scratch/fbnm.py`), builds without W1 read 0 76
+  times, 1-2 ten times, and 44 and 317 once each. 79 is the only reading
+  on a W1 build. So a large value without W1 is rare (2 in about 89), and
+  the capture is in the suite that exercises CPU writes to watched
+  surfaces. The exclusion is legitimate: the capture took several values on
+  one build. But a single excluded reading cannot clear W1 on the one test
+  whose mechanism it touches. **Queued:** the Antialiasing suite, 3 runs
+  per arm, both on the Nova (`-3559153` B, `-3559222` A). Decision rule:
+  - B non-zero on 2 or more of 3 while A is 0 on all 3: W1 changes it.
+    W1 stays out of the fold until the walk's miss is found.
+  - B 0 on 2 or more of 3: the 79 was the capture's known race. W1 goes to
+    ready.
+
+**Batch after the pilot (queued 10:17 PDT; every pin read back as `nova`):**
+Blinx 2 B `-3557300` / A `-3557411`, Forza B `-3557511` / A `-3557775`
+(`forza.drive`), Crimson B `-3558012` (`crimson-skies`, profile found),
+all `1-17910478xx-lane.memfast-`. Profiles were checked with `titlestate.py
+show --device nova` (Blinx 2 and Forza imported, Crimson found).
+
+### W1 batch and the Antialiasing repeat, read 2026-10-03 12:30 PDT
+
+**Why attempt 1 of this resume did not finish.** It queued the seven runs
+above at 10:17 PDT, pushed a `WAITING` file naming them, and ended. That is
+the procedure for a wait, and nothing failed. All seven had finished by
+12:15 PDT, and this session (attempt 2) was resumed to read them.
+
+**Antialiasing x3 per arm, both on the Nova (`.scratch/aa3.py`):**
+`FramebufferNotModifiedBySurfaceState` read **0 on all three B runs**
+(`-3559153`, W1) and 0 on all three A runs (`-3559222`). The other
+CPU-write captures took their usual values on all six runs (0, 0, 134).
+By the decision rule above, the 79 on the device-split arm was the
+capture's known race. **The pixel leg stands as PASS.**
+
+**Soaks (`w1_read.py`, `.scratch/w1-batch.out`; `title_verdict.py` on
+copies in `.scratch/w1b/`, `.scratch/w1b-verdicts.out`):**
+
+| title | B / A | B `fo`/s | A `fo`/s | B/A | B `wn`/s against 2 x inserts/s | `wx` | `pfl`/s B, A | vCPU ms/s B/A |
+|---|---|---|---|---|---|---|---|---|
+| Conker (pilot) | `1541269` / `1541403` | 0.96 | 144.67 | 0.7% | 145.5 / 145.3 (1.00) | 0 | 0, 0 | 0.985 |
+| Blinx 2 | `3557300` / `3557411` | 0.97 | 40.49 | 2.4% | 39.24 / 39.26 (1.00) | 0 | 0, 0 | 0.997 |
+| Forza (to the crash) | `3557511` / `3557775` | 2.08 | 30.95 | 6.7% | 41.36 / 40.22 (1.03) | 0 | 0, 0 | 0.987 |
+| Crimson (B only) | `3558012` | 0.95 | - | - | 5.90 / 5.92 (1.00) | 0 | 0, - | - |
+
+- **M: PASS on all three registered titles.** B's `fo` is 0.7-6.7% of A's
+  (the bar is 10%), and `wn` is 1.00-1.03 x 2 x inserts (the band is
+  0.8-1.25). Forza's lines stop at its crash (142 s for B, 203 s for A),
+  so its rates cover the menus only.
+- **X: PASS.** `wx` = 0 on every B line of every run.
+- **P: no cost.** `pfl` = 0 on every run, both arms. The non-watch full
+  flushes are unchanged: Blinx 2's `ff` - `fo` is 7.15/s on B and 7.18/s
+  on A.
+- **C: not shown, not refuted.** B/A is 0.985-0.997, against a guessed
+  0.97 or less. The refutation needs 1.00 or more on all three, and none is.
+  As the pilot showed, the thread is on-CPU about 85-95% of wall time on
+  both arms, so this instrument reads how busy the thread is.
+- **G: Crimson PASS. Forza VOID: the control crashed the same way.**
+  - Crimson B reached play by route (191 s of gameplay, fps_ok 0.989, no
+    crash, no hang, 0 audio starve).
+  - Blinx 2 and Conker have no gameplay route. Their B runs ran 300 s with
+    no crash and no hang, and so did their A runs.
+  - **Forza crashed on both arms, with the same signature:** guest kernel
+    BugCheck 0x7f (exception 8, a double fault), halt loop at EIP
+    0x800151ed, CR2 0xd0068ffc. It came at about 110 s on B and 120 s on A,
+    while `drive.py` was at the profile-select (B) and main-menu (A)
+    screens. The route's "stuck" failures follow from the halted guest.
+    These two are the only `forza.drive` runs on disk, and the only Forza
+    kernel crashes among all Forza soaks on disk. lane.ibcache's Forza
+    runs on 10-02 reached play before the golden-profile titles disk
+    (savestate433, 10-02 20:12). Both of my runs booted the imported save
+    `a1baf745d557`, and the profile was re-imported with that save at
+    12:16 PDT, after them.
+  - So the crash is on master plus the current disk state, not on W1. It
+    is filed as a NEW ISSUE in OUTBOX. Forza is not re-run: the void's
+    cause is not fixed, and it is outside this lane's territory.
+
+**Local checks on the merged head** (master merged at 12:28 PDT, clean;
+master's code change since the last head is `hw/xbox/nv2a/pfifo.c` and
+`user.c` only): `.scratch/syncheck.py` (`-fsyntax-only` with the NDK
+compile database's flags) on `cputlb.c` and `physmem.c` gives rc 0, no
+errors. The 45 warnings are all master's `-Wshift-negative-value` on
+`TARGET_PAGE_MASK`.
+
+**W1 is ready.** One Crimson B soak (`crimson-skies`, 300 s, `--perflog`)
+is queued at the final head for `offline_fold`'s head-run check. Its
+expected result: reaches play, no crash, `w1=1` and `wx=0` on every line.
 
 ## The second pixel arm (memfast-drop-pixels-stable.json), read 2026-10-02
 
@@ -1173,6 +1410,25 @@ the Nova. Every phase 2 claim is therefore gated on a profile (vCPU time
 per frame) and on fps on a vCPU-bound title below its cap (Tron 2.0). Each
 uses a route that works with or without a profile (vcpuwait433's
 tron-newgame v5).
-5. Do not repeat: the `act` reading through `cb0ms` (the reader is fixed);
+4. **DONE 2026-10-03 12:30 PDT: W1 is ready** ("W1 batch and the
+   Antialiasing repeat"). M, X and pixels pass, P shows no cost, and C is
+   not shown. G passes on Crimson, and Forza is void because the control
+   crashed the same way (filed). A Crimson B soak is queued at the final
+   head for the fold. `WAITING` names the fold.
+5. **After W1's fold: re-scored with what W1 showed.** W1 removed the
+   flushes it targeted (0.7-6.7% left) and moved vCPU CPU ms per wall
+   second by only 0.3-1.5%. That instrument cannot see a per-frame saving
+   on a thread that is on-CPU 85-95% of the time, so W1's vCPU win is still
+   unmeasured, not refuted.
+
+| candidate | P, and its evidence | win | cost | order |
+|---|---|---|---|---|
+| F1: fastmem, loads only | 0.4, unchanged. W1 adds evidence on the risk side: walks cost 0.03-0.07% of wall time at 6-145 walks/s, so watch churn priced as a per-page walk is cheap. That is the coherence operation F1 needs on watch changes | about 11% of GTA's vCPU time; +15-19% fps on Tron 2.0 if its frame stays vCPU-bound (near30) | the largest: F0b and F1 code, a pixel sweep, a profile, Tron fps pairs | the target. Built after F0a |
+| F0a, device half | a probe, not a fix. It decides F1: under the kill line on GTA and Conker, build F1; over it, switch to the lazy view swap (section 2) or park F1 | none by itself | one native test binary run, about 1 Nova run | first, because it decides F1 |
+| W1's profile (simpleperf, Conker, B against A) | 0.6 that it shows 5% or more of vCPU time; the evidence is the 145 full flushes/s removed, each of which empties the TLB and jump cache | measures W1's win; changes no code | a held window from lane.local, 2 captures | optional. It does not change the F1 decision, so it goes after F0a |
+
+6. Do not repeat: the `act` reading through `cb0ms` (the reader is fixed);
    a pixel prediction that asserts the Stencil_ZERO family or
-   GeometrySuperscreen_0.4999/_0.5626 as exact.
+   GeometrySuperscreen_0.4999/_0.5626 as exact; a Forza soak on the
+   golden-profile disk before the BugCheck 0x7f issue is fixed (both arms
+   crash at about 110-120 s).
