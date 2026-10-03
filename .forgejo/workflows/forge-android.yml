@@ -1,0 +1,54 @@
+# Local CI (lane.localforge, 2026-10-02): the Android unit tests and debug
+# build on the local forge's host runner. The trigger rules are the same as
+# forge-selftest.yml: fold candidates only. A WIP (draft) PR never builds.
+# The runner has capacity 1, so this never runs beside the selftest.
+#
+# It uses the host's own toolchain: JDK 21 at ~/toolchains/jdk21 (the one
+# lane.sh exports), the SDK and NDK named by ~/hakuX/android/local.properties,
+# and meson in ~/.local/bin.
+name: forge Android
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+    paths-ignore: ['docs/**', '**/*.md']
+  workflow_dispatch:
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    # `edited` counts only when the title loses its WIP prefix (draft -> ready):
+    # hakux-forge-prsync rewrites PR bodies, and a body edit is not a new head.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (!startsWith(github.event.pull_request.title, 'WIP') &&
+       (github.event.action != 'edited' || startsWith(github.event.changes.title.from, 'WIP')))
+    runs-on: host
+    timeout-minutes: 120
+    env:
+      JAVA_HOME: /home/justin/toolchains/jdk21
+    steps:
+      - name: Check out the head from the stand-in bare repo
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -eu
+          rm -rf src && git clone -q --shared --no-checkout "$HOME/hakux-work/offline-git/hakuX.git" src
+          git -C src checkout -q --detach "$HEAD_SHA"
+          cp "$HOME/hakuX/android/local.properties" src/android/local.properties
+          git -C src log --oneline -1
+      - name: Test
+        working-directory: src/android
+        run: PATH="$JAVA_HOME/bin:$HOME/.local/bin:$PATH" ./gradlew testDebugUnitTest --no-daemon --stacktrace
+      - name: Build
+        working-directory: src/android
+        run: PATH="$JAVA_HOME/bin:$HOME/.local/bin:$PATH" ./gradlew assembleDebug --no-daemon --stacktrace
+      - name: Report what was built
+        working-directory: src/android
+        run: |
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          ls -lh "$APK"
+          sha256sum "$APK"

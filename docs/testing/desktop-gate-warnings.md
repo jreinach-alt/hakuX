@@ -1,8 +1,9 @@
 # Desktop build gate: warning inventory
 
 The desktop (lavapipe) build is the only gate that catches a desktop link
-error: the Android build cannot, and CI is a finite monthly budget reserved
-for release builds, never a self-check. Three defects have reached the tree
+error: the Android build cannot, and CI is not a self-check: it runs only on
+ready PRs on the local forge, and the GitHub Actions runs are retired until
+the return (`docs/lanes/localforge/RETURN.md`). Three defects have reached the tree
 that way -- an unguarded `__android_log_print` in `vp.c`, `XEMU_OPT_TB_CACHE_HINTS=0`
 dropping two counter definitions that `profile.c` declares `extern`, and the
 implicit `qemu_log` recorded below.
