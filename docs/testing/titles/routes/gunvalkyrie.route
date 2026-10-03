@@ -60,10 +60,15 @@
 # is pressed against one wall. Same numbers as every replay (59.94 median,
 # 100% at 30+, 96% at 60, no hang, static 0.010): the canyon walls do not
 # move the frame rate, they only make the window a poor picture of play.
-# FINAL: the loop below is replay 2's (685c52e514) again, unchanged -- the
-# one that travelled most (2.5 min at one cliff, then down the canyon) --
-# so replay 2 is its confirmation run. Moving Kelly through Valley 1 for a
-# whole window needs a screen-aware loop (drive.py), not a fifth blind one.
+# v5 (lane.routefix1002, 2026-10-03, #433): the loop below is written from
+# replays 1-4 (see docs/lanes/routefix1002/NOTES.md), not from replay 2 again.
+# Replay 4 (v4, bd03a589f7) held forward with no turn and pinned Kelly to a
+# rock face from 060508 to the end; replay 2's cancelling turns (0.7 s right,
+# 0.4 s left) held her at a cliff for 2.5 min. So: forward is held all cycle,
+# a 0.8 s back-off comes first to free her from a wall she is pressed on, the
+# turns are unequal (1.5 s right, 0.5 s left: a net sweep, not a cancel), and
+# A is pressed every ~2.5 s for the advisor's boxes. Blind: P of a clean 600 s
+# is moderate-low (see NOTES); drive.py is the next step if it pins.
 wait 20
 shot boot20
 wait 20
@@ -82,35 +87,30 @@ wait 2
 shot pre-mark
 mark gameplay               # CHECK: Valley 1, the HUD, no pause panel over it
 repeat forever {
-    press A
+    axis LY max
+    wait 0.8
     axis LY min
     axis RT max
-    wait 2
-    axis RT min
     press A
+    wait 1.5
     axis LT max
     wait 0.3
     axis LT min
-    wait 1.5
+    wait 0.3
+    axis LT max
+    wait 0.3
+    axis LT min
     press A
+    wait 1.2
     axis RX max
-    wait 0.7
-    axis RX mid
-    axis RT max
-    wait 2
-    axis RT min
-    press A
-    axis LY mid
-    axis LX max
     wait 1.5
-    axis LX mid
     press A
-    axis LY min
-    wait 2
     axis RX min
-    wait 0.4
+    wait 0.5
     axis RX mid
+    wait 1.5
     press A
+    axis RT min
     wait 1
     shot play
 }
