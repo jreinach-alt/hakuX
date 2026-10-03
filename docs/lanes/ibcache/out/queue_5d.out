@@ -1,0 +1,18 @@
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 5d in docs/lanes/ibcache/NOTES.md
+release priority: could not read #507's labels; queueing at normal priority
+priority plain: #507's labels unreadable
+pilot gate: lane.ibcache would hold ~54 min of device time; reviewed pilot /home/justin/hakux-work/dispatch/pilots/lane.ibcache.ok (2.2 h old) admits it
+queued 1790921866-lane.ibcache-1136225
+  soak: 4D53006E-Forza_Motorsport.xiso.iso, 420s, env HAKUX_IBC=0, route ibcache-forza-drive, pinned to nova
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 5d in docs/lanes/ibcache/NOTES.md
+release priority: could not read #507's labels; queueing at normal priority
+priority plain: #507's labels unreadable
+pilot gate: lane.ibcache would hold ~62 min of device time; reviewed pilot /home/justin/hakux-work/dispatch/pilots/lane.ibcache.ok (2.2 h old) admits it
+queued 1790921866-lane.ibcache-1136287
+  soak: 4D53006E-Forza_Motorsport.xiso.iso, 420s, env HAKUX_IBC=0, route ibcache-forza-drive, pinned to nova
+queuing without a prediction: env A/B on one binary, hand-read with title_verdict.py against legs 5d in docs/lanes/ibcache/NOTES.md
+release priority: could not read #507's labels; queueing at normal priority
+priority plain: #507's labels unreadable
+pilot gate: lane.ibcache would hold ~70 min of device time; reviewed pilot /home/justin/hakux-work/dispatch/pilots/lane.ibcache.ok (2.2 h old) admits it
+queued 1790921867-lane.ibcache-1136347
+  soak: 4D53006E-Forza_Motorsport.xiso.iso, 420s, route ibcache-forza-drive, pinned to nova

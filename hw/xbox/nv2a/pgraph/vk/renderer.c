@@ -113,44 +113,74 @@ static void check_driver_identity_and_wipe_caches(PGRAPHVkState *r)
                                   (uint32_t)sizeof(VshState) * 3266489917u +
                                   SHADER_STATE_LAYOUT_VERSION;
 
-    bool match = false;
+    /*
+     * #569 P3 item 4: only the pipeline cache depends on the driver. SPIR-V
+     * and the persisted module and pipeline keys depend on the key layout
+     * alone, so a driver update keeps them, and the pre-build
+     * (vk/compile_worker.c) rebuilds the driver's binaries from them.
+     */
+    bool match = false, layout_match = false;
     gchar *data = NULL;
     gsize len = 0;
     if (g_file_get_contents(id_path, &data, &len, NULL) &&
         len == sizeof(GpuDriverIdentity)) {
         match = memcmp(data, &current, sizeof(GpuDriverIdentity)) == 0;
+        layout_match = ((GpuDriverIdentity *)data)->shader_state_layout ==
+                       current.shader_state_layout;
     }
     g_free(data);
 
+    char *plc_path = g_strdup_printf("%svk_pipeline_cache.bin", base);
     if (!match) {
-        char *spv_dir = g_strdup_printf("%sspv_cache", base);
-        char *plc_path = g_strdup_printf("%svk_pipeline_cache.bin", base);
-
         VK_LOG("Driver or shader-state layout changed -- wiping caches");
 #ifdef __ANDROID__
         __android_log_print(ANDROID_LOG_INFO, "hakuX-vk",
-            "Cache identity mismatch: wiping spv_cache and pipeline cache "
+            "Cache identity mismatch: wiping %s "
             "(vendor=%04x device=%04x driverVer=%08x layout=%08x)",
+            layout_match ? "the pipeline cache (driver only)" :
+                           "spv_cache, keys and pipeline cache",
             current.vendor_id, current.device_id, current.driver_version,
             current.shader_state_layout);
 #else
-        fprintf(stderr, "xemu-vk: Cache identity mismatch: wiping caches "
+        fprintf(stderr, "xemu-vk: Cache identity mismatch: wiping %s "
                 "(vendor=%04x device=%04x driverVer=%08x layout=%08x)\n",
+                layout_match ? "the pipeline cache (driver only)" :
+                               "spv_cache, keys and pipeline cache",
                 current.vendor_id, current.device_id, current.driver_version,
                 current.shader_state_layout);
 #endif
 
-        char *smk_path = g_strdup_printf("%sshader_module_keys.bin", base);
-        remove_directory_recursive(spv_dir);
         unlink(plc_path);
-        unlink(smk_path);
-        g_free(spv_dir);
-        g_free(plc_path);
-        g_free(smk_path);
+        if (!layout_match) {
+            char *spv_dir = g_strdup_printf("%sspv_cache", base);
+            char *smk_path = g_strdup_printf("%sshader_module_keys.bin", base);
+            char *pk_dir = g_strdup_printf("%spipeline_keys", base);
+            remove_directory_recursive(spv_dir);
+            unlink(smk_path);
+            remove_directory_recursive(pk_dir);
+            g_free(spv_dir);
+            g_free(smk_path);
+            g_free(pk_dir);
+        }
 
         g_file_set_contents(id_path, (const gchar *)&current,
                             sizeof(GpuDriverIdentity), NULL);
     }
+
+    /* #569 P3's falsifier arm: start with no pipeline cache file, keys kept */
+    const char *wipe = getenv("HAKUX_PLC_WIPE");
+    if (wipe && !strcmp(wipe, "1")) {
+        int rc = unlink(plc_path);
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-perf",
+                            "[pb569] HAKUX_PLC_WIPE=1: vk_pipeline_cache.bin %s",
+                            rc == 0 ? "removed" : "absent");
+#else
+        fprintf(stderr, "[pb569] HAKUX_PLC_WIPE=1: vk_pipeline_cache.bin %s\n",
+                rc == 0 ? "removed" : "absent");
+#endif
+    }
+    g_free(plc_path);
 
     g_free(id_path);
 }
@@ -447,6 +477,9 @@ static void pgraph_vk_init(NV2AState *d, Error **errp)
     pgraph_vk_init_shaders(pg);
     VK_LOG_ERROR("init: pipelines");
     pgraph_vk_init_pipelines(pg);
+#if OPT_ASYNC_COMPILE
+    pgraph_vk_prebuild_start(pg);
+#endif
     VK_LOG_ERROR("init: textures");
     pgraph_vk_init_textures(pg);
     pgraph_vk_texture_dump_init();
@@ -508,6 +541,9 @@ static void pgraph_vk_finalize(NV2AState *d)
     pgraph_vk_texture_replace_shutdown();
     pgraph_vk_texture_dump_shutdown();
     pgraph_vk_finalize_textures(pg);
+#if OPT_ASYNC_COMPILE
+    pgraph_vk_prebuild_stop(pg->vk_renderer_state);
+#endif
     pgraph_vk_finalize_pipelines(pg);
     pgraph_vk_finalize_shaders(pg);
     pgraph_vk_finalize_surfaces(pg);

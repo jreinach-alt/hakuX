@@ -1,0 +1,5 @@
+[lane.uberspike569] Between 16:22:59 and 16:26 PDT today, every entry in the live `$DISPATCH_DIR/queue/*.req` and `$DISPATCH_DIR/results/*` was removed (`/home/justin/hakux-work/dispatch`). Only `queue/withdrawn/` and `results/.withdrawn-1789281384-issue10-arm-a` are left. The dispatcher log's last result, `1-1790723547-hostops-1062899` (written at 16:22:59), is gone too. No archive dir holds any of it.
+
+This PR's worktree has dispatcher fixture state written at the same time: `wt/hddsplit/.st/dh/{c2,cm,sq,mut}/...`, 16:25:17-16:25:29. Lane sessions inherit `DISPATCH_DIR=/home/justin/hakux-work/dispatch` from the environment. So if a fixture falls back to `$DISPATCH_DIR`, or a cleanup step runs before a tempdir is exported, it would hit the live dir. I have not proven this is the cause, and the timing fits. Could you check the self-test or dispatcher fixture you ran at 16:25 for a `DISPATCH_DIR` that was not overridden?
+
+Impact: every lane's queued device requests are lost, including pending arms-job pairs (a `pairs/<sha>.json` whose two ids no longer exist never judges). All result dirs up to 16:25 are gone as well.

@@ -1,0 +1,50 @@
+t	state	source	changed	luma	cap_s	action	frame
+0.9	logo	crop:logo-sonicteam		18.9	0.32	press A (skip logo)	235412-001-logo.png
+2.7	intro_video	moving	0.2291	15.8	0.27	press A (skip intro_video)	235414-002-intro_video.png
+4.1	black	black		0.7	0.27	wait	235416-003-black.png
+5.8	logo	crop:logo-dolby		8.9	0.27	press A (skip logo)	235418-004-logo.png
+7.9	intro_video	moving	0.8843	74.4	0.57	press A (skip intro_video)	235420-005-intro_video.png
+10.0	title	crop:title-art		122.1	0.62	press START (title 1)	235422-006-title.png
+11.4	profile	crop:profile-slots		118.8	0.27	settle	235423-007-profile.png
+13.0	profile	crop:profile-slots		135.6	0.27	press A (profile 1)	
+14.4	profile	crop:profile-slots		134.8	0.32	settle	
+16.0	profile	crop:profile-slots		134.7	0.32	press A (profile 2)	
+17.6	main_menu	crop:menu-banner		111.6	0.37	settle	235429-011-main_menu.png
+19.3	main_menu	crop:menu-banner		110.1	0.37	press A (main_menu 1)	
+20.6	main_menu	crop:menu-banner		116.3	0.27	settle	
+22.3	main_menu	crop:menu-banner		115.1	0.32	press A (main_menu 2)	
+23.6	main_menu	crop:menu-banner		103.2	0.32	settle	
+25.3	main_menu	crop:menu-banner		109.9	0.37	press A (main_menu 3)	
+26.8	main_menu	crop:menu-banner		109.5	0.37	settle	
+28.5	main_menu	crop:menu-banner		109.4	0.37	press A (main_menu 4)	
+30.7	cutscene	moving	0.8322	116.0	0.67	press A (skip cutscene)	235443-019-cutscene.png
+32.1	loading	crop:loading-stage		42.1	0.27	wait	235444-020-loading.png
+33.9	unknown	hud:hud+after-loading	0.2033	59.7	0.37	hold (hud up, motion not yet play)	235447-021-unknown.png
+36.3	play	hud:hud+motion	0.914	183.2	0.77	hold tap A	235449-022-play.png
+38.5	play	hud:hud+motion	0.8077	144.3	0.92	hold	
+40.7	play	hud:hud+motion	0.8405	96.5	0.97	hold	
+42.8	play	hud:hud+motion	0.7334	100.8	0.82	hold	
+49.4	play	hud:hud+motion	0.7769	120.1	0.97	hold tap A	
+55.7	stalled	hud:hud+static	0.2359	120.4	0.97	hold (stalled 0 s)	235509-027-stalled.png
+58.4	play	hud:hud+motion	0.7779	107.5	0.92	hold tap A	235511-028-play.png
+61.4	play	hud:hud+motion	0.7111	110.5	0.82	hold	
+64.5	play	hud:hud+motion	0.7494	88.5	0.82	hold	
+71.2	play	hud:hud+motion	0.8473	141.5	0.87	hold tap A	
+77.4	play	hud:hud+motion	0.8002	128.8	0.92	hold	
+83.9	play	hud:hud+motion	0.7099	120.0	0.92	hold tap A	
+90.2	stalled	hud:hud+static	0.2591	120.3	0.92	hold (stalled 0 s)	235544-034-stalled.png
+92.8	play	hud:hud+motion	0.7805	107.1	0.97	hold tap A	235547-035-play.png
+95.9	play	hud:hud+motion	0.7127	111.4	0.87	hold	
+99.1	play	hud:hud+motion	0.7526	88.2	0.87	hold	
+105.3	play	hud:hud+motion	0.9384	36.5	0.37	hold tap A	
+111.5	play	hud:hud+motion	0.923	110.7	0.92	hold	
+118.0	play	hud:hud+motion	0.7847	119.8	0.97	hold tap A	
+124.4	stalled	hud:hud+static	0.2819	120.2	0.97	hold (stalled 0 s)	235619-041-stalled.png
+127.0	play	hud:hud+motion	0.7726	106.8	0.97	hold tap A	235622-042-play.png
+130.1	play	hud:hud+motion	0.6955	108.5	0.82	hold	
+133.3	play	hud:hud+motion	0.7597	90.8	0.87	hold	
+139.4	play	hud:hud+motion	0.7029	73.1	0.37	hold tap A	
+145.5	play	hud:hud+motion	0.6486	112.8	0.92	hold	
+# time_to_title_s=9.6
+# time_to_play_s=35.7
+# result=window-done

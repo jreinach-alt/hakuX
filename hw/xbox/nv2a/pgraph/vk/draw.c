@@ -38,6 +38,14 @@ static int g_xemu_submit_frames = 3;
 
 struct OptBisectStats g_opt_stats;
 
+#if NV2A_PERF_LOG
+/* #433 uniform-block churn counter, in vk/shaders.c. Declared here because
+ * renderer.h is outside lane.bf2ubosize433's files. */
+void pgraph_vk_ubosz_note_upload(PGRAPHState *pg, int site);
+void pgraph_vk_ubosz_note_bind(VkDescriptorSet set, const uint32_t off[2]);
+void pgraph_vk_ubosz_log_and_reset(void);
+#endif
+
 /*
  * BEHIND A FLAG, DEFAULT OFF. AGENTS.md: "Instrumentation is not free ...
  * Profile-grade tracing belongs behind a flag." This probe is the expensive
@@ -1076,6 +1084,8 @@ static void opt_stats_log_and_reset(void)
                 g_opt_stats.pipe_evict_recording,
                 plc->num_used, plc->num_used + plc->num_free);
         }
+        /* #433: uniform-block churn per upload; see vk/shaders.c. */
+        pgraph_vk_ubosz_log_and_reset();
         {
             /*
              * #461: what a texture bind spends its time on, counted in
@@ -1377,6 +1387,7 @@ static void pipeline_cache_entry_init(Lru *lru, LruNode *node,
     snode->pipeline = VK_NULL_HANDLE;
     snode->draw_time = 0;
 #if OPT_ASYNC_COMPILE
+    snode->gpl_uber = false;
     snode->gpl_lto_pending = false;
     snode->gpl_lto_pipeline = VK_NULL_HANDLE;
     snode->gpl_retired_pipeline = VK_NULL_HANDLE;
@@ -1503,7 +1514,9 @@ VkResult pgraph_vk_create_graphics_pipeline_fb(
 void nv2a_profile_shader_keydiff(const ShaderState *prev,
                                  const ShaderState *cur);
 
-static void save_pipeline_cache_to_disk(PGRAPHVkState *r)
+/* #569 P3: called by a compile worker during play (vk/compile_worker.c) and
+ * at teardown; vkGetPipelineCacheData needs no external synchronisation */
+void pgraph_vk_save_pipeline_cache(PGRAPHVkState *r)
 {
     int64_t t0 = nv2a_clock_ns();
     size_t size = 0;
@@ -1526,20 +1539,18 @@ static void save_pipeline_cache_to_disk(PGRAPHVkState *r)
     g_nv2a_stats.shader_stats.plc_save_us += (nv2a_clock_ns() - t0) / 1000;
 }
 
-#define PIPELINE_CACHE_SAVE_INTERVAL_US (30 * 1000000LL)
-
+/* #569 P3: a compile worker saves it, at most every 30 s, and when the VM
+ * pauses; the draw thread only says there is something new to save */
 static void maybe_save_pipeline_cache(PGRAPHVkState *r)
 {
     if (!g_config.perf.cache_shaders) {
         return;
     }
-    static int64_t last_save_us;
-    int64_t now = qemu_clock_get_us(QEMU_CLOCK_REALTIME);
-    if (last_save_us && (now - last_save_us) < PIPELINE_CACHE_SAVE_INTERVAL_US) {
-        return;
-    }
-    last_save_us = now;
-    save_pipeline_cache_to_disk(r);
+#if OPT_ASYNC_COMPILE
+    pgraph_vk_compile_worker_note_dirty(r);
+#else
+    pgraph_vk_save_pipeline_cache(r);
+#endif
 }
 
 static void finalize_pipeline_cache(PGRAPHState *pg)
@@ -1552,7 +1563,7 @@ static void finalize_pipeline_cache(PGRAPHState *pg)
 #endif
 
     if (g_config.perf.cache_shaders) {
-        save_pipeline_cache_to_disk(r);
+        pgraph_vk_save_pipeline_cache(r);
     }
 
     lru_flush(&r->pipeline_cache);
@@ -1612,11 +1623,60 @@ static void finalize_render_passes(PGRAPHVkState *r)
     r->render_passes = NULL;
 }
 
+#if OPT_ASYNC_COMPILE
+/* #569's uber ladder: see gpl.uber_zero_buf in renderer.h */
+static void init_uber_zero_buffer(PGRAPHVkState *r)
+{
+    if (r->gpl.mode < 3) {
+        return;
+    }
+    if (r->device_props.limits.maxVertexInputBindings <= UBER_ZERO_BINDING) {
+        VK_LOG_ERROR("[uber569] maxVertexInputBindings %u leaves no binding "
+                     "for the uber stage's zero attributes: HAKUX_GPL=%d "
+                     "runs as 1", r->device_props.limits.maxVertexInputBindings,
+                     r->gpl.mode);
+        r->gpl.mode = 1;
+        return;
+    }
+    VkBufferCreateInfo bi = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = 64,
+        .usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    };
+    VmaAllocationCreateInfo ai = {
+        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_HOST,
+        .flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+                 VMA_ALLOCATION_CREATE_MAPPED_BIT,
+    };
+    VmaAllocationInfo info;
+    VK_CHECK(vmaCreateBuffer(r->allocator, &bi, &ai, &r->gpl.uber_zero_buf,
+                             &r->gpl.uber_zero_alloc, &info));
+    memset(info.pMappedData, 0, 64);
+    vmaFlushAllocation(r->allocator, r->gpl.uber_zero_alloc, 0, VK_WHOLE_SIZE);
+}
+
+/* Every draw binds it beside its pipeline under the uber modes: harmless for
+ * a pipeline that reads no such binding. */
+static void bind_uber_zero_buffer(PGRAPHVkState *r)
+{
+    if (r->gpl.uber_zero_buf != VK_NULL_HANDLE) {
+        VkDeviceSize offset = 0;
+        vkCmdBindVertexBuffers(r->command_buffer, UBER_ZERO_BINDING, 1,
+                               &r->gpl.uber_zero_buf, &offset);
+    }
+}
+#else
+#define init_uber_zero_buffer(r) do { } while (0)
+#define bind_uber_zero_buffer(r) do { } while (0)
+#endif
+
 void pgraph_vk_init_pipelines(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
 
     init_pipeline_cache(pg);
+    init_uber_zero_buffer(r);
     init_clear_shaders(pg);
     init_render_passes(r);
 
@@ -1650,6 +1710,13 @@ void pgraph_vk_finalize_pipelines(PGRAPHState *pg)
     finalize_clear_shaders(pg);
     finalize_pipeline_cache(pg);
     finalize_render_passes(r);
+#if OPT_ASYNC_COMPILE
+    if (r->gpl.uber_zero_buf != VK_NULL_HANDLE) {
+        vmaDestroyBuffer(r->allocator, r->gpl.uber_zero_buf,
+                         r->gpl.uber_zero_alloc);
+        r->gpl.uber_zero_buf = VK_NULL_HANDLE;
+    }
+#endif
 
     pgraph_vk_render_thread_wait_idle(r);
     for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
@@ -1798,6 +1865,13 @@ static VkRenderPass get_render_pass(PGRAPHVkState *r, RenderPassState *state)
         }
     }
     return add_new_render_pass(r, state);
+}
+
+/* #569 P3: renderer init only, before the PFIFO thread draws */
+VkRenderPass pgraph_vk_prebuild_render_pass(PGRAPHVkState *r,
+                                            RenderPassState *state)
+{
+    return get_render_pass(r, state);
 }
 
 static void create_frame_buffer(PGRAPHState *pg)
@@ -2303,6 +2377,44 @@ static void fill_pipeline_create_params_gpl(PGRAPHVkState *r,
 }
 #endif
 
+#if OPT_ASYNC_COMPILE
+/*
+ * #569 P5 and the uber ladder: the pipeline the worker built behind this
+ * entry's (an LTO link under HAKUX_GPL=2, the specialised pipeline under 3)
+ * is ready: take it. The one it replaces is kept until eviction, since a
+ * command buffer in flight may still use it. Called wherever create_pipeline
+ * settles on an entry, so a pipeline that stays bound is swapped too.
+ */
+static void gpl_take_next_pipeline(PGRAPHVkState *r, PipelineBinding *snode)
+{
+    if (!snode || qatomic_read(&snode->gpl_lto_pending) ||
+        snode->gpl_retired_pipeline != VK_NULL_HANDLE) {
+        return;
+    }
+    smp_rmb();
+    if (snode->gpl_lto_pipeline == VK_NULL_HANDLE) {
+        return;
+    }
+    snode->gpl_retired_pipeline = snode->pipeline;
+    snode->pipeline = snode->gpl_lto_pipeline;
+    snode->gpl_lto_pipeline = VK_NULL_HANDLE;
+    if (snode->gpl_uber) {
+        snode->gpl_uber = false;
+        unsigned int n = qatomic_fetch_inc(&r->gpl.stats.uber_swapped) + 1;
+        if ((n & (n - 1)) == 0) {
+            pgraph_vk_gpl_uber_log(r);
+        }
+    } else {
+        qatomic_inc(&r->gpl.stats.lto_swapped);
+    }
+    if (r->pipeline_binding == snode) {
+        r->pipeline_binding_changed = true;
+    }
+}
+#else
+#define gpl_take_next_pipeline(r, snode) do { } while (0)
+#endif
+
 static void create_pipeline(PGRAPHState *pg)
 {
     NV2A_VK_DGROUP_BEGIN("Creating pipeline");
@@ -2320,6 +2432,7 @@ static void create_pipeline(PGRAPHState *pg)
         pg->pipeline_state_gen == r->last_pipeline_state_gen &&
         pg->primitive_mode == r->shader_binding->state.geom.primitive_mode) {
         OPT_STAT_INC(pipeline_early_hits);
+        gpl_take_next_pipeline(r, r->pipeline_binding);
         /* No generation above moved, but a uniform value can change without
          * one: an attribute set once before the first vertex (GPUAA's
          * diffuse) is passed as a uniform. Every other path through here
@@ -2373,6 +2486,7 @@ static void create_pipeline(PGRAPHState *pg)
 
     if (r->pipeline_binding && !pipeline_dirty) {
         NV2A_VK_DPRINTF("Cache hit");
+        gpl_take_next_pipeline(r, r->pipeline_binding);
         NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
         NV2A_VK_DGROUP_END();
         return;
@@ -2384,6 +2498,7 @@ static void create_pipeline(PGRAPHState *pg)
     if (r->pipeline_binding &&
         memcmp(&key, &r->pipeline_binding->key, sizeof(key)) == 0) {
         NV2A_VK_DPRINTF("Cache hit (same binding)");
+        gpl_take_next_pipeline(r, r->pipeline_binding);
         g_nv2a_stats.shader_stats.pipeline_cache_hits++;
         NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
         NV2A_VK_DGROUP_END();
@@ -2415,22 +2530,8 @@ static void create_pipeline(PGRAPHState *pg)
         NV2A_VK_DPRINTF("Cache hit");
         g_nv2a_stats.shader_stats.pipeline_cache_hits++;
         r->pipeline_binding_changed = r->pipeline_binding != snode;
-#if OPT_ASYNC_COMPILE
-        /* #569 P5, HAKUX_GPL=2: the LTO rebuild is ready; the fast-linked
-         * pipeline stays alive until eviction, a command buffer in flight
-         * may use it */
-        if (snode->gpl_lto_pipeline != VK_NULL_HANDLE &&
-            snode->gpl_retired_pipeline == VK_NULL_HANDLE &&
-            !qatomic_read(&snode->gpl_lto_pending)) {
-            smp_rmb();
-            snode->gpl_retired_pipeline = snode->pipeline;
-            snode->pipeline = snode->gpl_lto_pipeline;
-            snode->gpl_lto_pipeline = VK_NULL_HANDLE;
-            qatomic_inc(&r->gpl.stats.lto_swapped);
-            r->pipeline_binding_changed = true;
-        }
-#endif
         r->pipeline_binding = snode;
+        gpl_take_next_pipeline(r, snode);
         NV2A_PHASE_TIMER_END_EXCL(pipe_lookup);
         NV2A_VK_DGROUP_END();
         return;
@@ -2902,7 +3003,54 @@ static void create_pipeline(PGRAPHState *pg)
                 : NULL,
             &key.shader_state);
         VkPipeline pipeline;
-        VK_CHECK(pgraph_vk_gpl_create_pipeline(r, snode, p, &pipeline));
+        ShaderBinding *sb = r->shader_binding;
+        if (r->gpl.mode >= 3 && sb->vsh.uber_module_info) {
+            /* #569's uber ladder (vk/compile_worker.c): the same pipeline
+             * with the family's uber vertex stage in place of its own */
+            PipelineCreateParams uber = *p;
+            for (int i = 0; i < uber.num_shader_stages; i++) {
+                if (uber.shader_stages[i].stage == VK_SHADER_STAGE_VERTEX_BIT) {
+                    uber.shader_stages[i].module =
+                        sb->vsh.uber_module_info->module;
+                }
+            }
+            uber.gpl_vs_id = gpl_module_id(sb->vsh.uber_module_info);
+            uint32_t present = 0;
+            for (uint32_t i = 0; i < uber.num_attr_descs; i++) {
+                present |= 1u << uber.attr_descs[i].location;
+            }
+            if (present != 0xFFFF) {
+                assert(uber.num_binding_descs < NV2A_VERTEXSHADER_ATTRIBUTES);
+                uber.binding_descs[uber.num_binding_descs++] =
+                    (VkVertexInputBindingDescription){
+                        .binding = UBER_ZERO_BINDING,
+                        .stride = 0,
+                        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+                    };
+                for (uint32_t loc = 0; loc < NV2A_VERTEXSHADER_ATTRIBUTES;
+                     loc++) {
+                    if (!(present & (1u << loc))) {
+                        uber.attr_descs[uber.num_attr_descs++] =
+                            (VkVertexInputAttributeDescription){
+                                .location = loc,
+                                .binding = UBER_ZERO_BINDING,
+                                .format = VK_FORMAT_R32G32B32A32_SFLOAT,
+                                .offset = 0,
+                            };
+                    }
+                }
+            }
+            ShaderModuleInfo *const spec_mods[3] = {
+                sb->vsh.module_info, sb->geom.module_info, sb->psh.module_info,
+            };
+            bool is_uber;
+            VK_CHECK(pgraph_vk_gpl_uber_create_pipeline(
+                r, snode, p, &uber, spec_mods, sb->vsh.uber_module_info,
+                &pipeline, &is_uber));
+            snode->gpl_uber = is_uber;
+        } else {
+            VK_CHECK(pgraph_vk_gpl_create_pipeline(r, snode, p, &pipeline));
+        }
         snode->pipeline = pipeline;
         snode->layout = gpl_layout;
         snode->render_pass = gpl_render_pass;
@@ -2994,6 +3142,8 @@ static void create_pipeline(PGRAPHState *pg)
         p->has_dynamic_line_width = snode->has_dynamic_line_width;
         p->layout = layout;
         p->render_pass = render_pass;
+        pgraph_vk_prebuild_note(r, &key.render_pass_state, p,
+                                push_constant_ranges, num_push_ranges);
 
         snode->draw_time = pg->draw_time;
         snode->pending = true;
@@ -3042,6 +3192,22 @@ static void create_pipeline(PGRAPHState *pg)
 
     r->pipeline_binding = snode;
     r->pipeline_binding_changed = true;
+
+#if OPT_ASYNC_COMPILE
+    {
+        /* #569 P3: what a later launch pre-builds */
+        PipelineCreateParams *p = g_new0(PipelineCreateParams, 1);
+        fill_pipeline_create_params(
+            r, p, shader_stages, num_active_shader_stages,
+            input_assembly.topology, &rasterizer, &depth_stencil,
+            &color_blend_attachment, color_blending.blendConstants,
+            dynamic_states, num_dynamic_states,
+            snode->has_dynamic_line_width, layout, render_pass);
+        pgraph_vk_prebuild_note(r, &key.render_pass_state, p,
+                                push_constant_ranges, num_push_ranges);
+        g_free(p);
+    }
+#endif
 
     maybe_save_pipeline_cache(r);
     NV2A_PHASE_TIMER_END_EXCL(shader_compile);
@@ -3235,6 +3401,10 @@ static void bind_descriptor_sets(PGRAPHState *pg)
         r->pipeline_binding->layout, 1, 1,
         &r->push_ubo_sets[r->push_ubo_set_index - 1],
         2, dynamic_offsets);
+#if NV2A_PERF_LOG
+    pgraph_vk_ubosz_note_bind(r->push_ubo_sets[r->push_ubo_set_index - 1],
+                              dynamic_offsets);
+#endif
 
     if (r->push_descriptors_supported) {
         /*
@@ -4741,9 +4911,7 @@ mfp_miss: (void)0;
              * (especially with VK driver cache warm) and skipping causes
              * permanently missing textures on screens that only draw once.
              */
-            while (qatomic_read(&r->pipeline_binding->pending)) {
-                g_usleep(100);
-            }
+            pgraph_vk_compile_worker_wait_pipeline(r, r->pipeline_binding);
         }
         if (r->pipeline_binding->pipeline == VK_NULL_HANDLE) {
             /* Pipeline creation failed */
@@ -5038,6 +5206,7 @@ static void begin_draw(PGRAPHState *pg)
         nv2a_profile_inc_counter(NV2A_PROF_PIPELINE_BIND);
         vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           r->pipeline_binding->pipeline);
+        bind_uber_zero_buffer(r);
         r->pipeline_binding_changed = false;
         r->pipeline_binding->draw_time = pg->draw_time;
         PIPELINE_NOTE_BIND(r, r->pipeline_binding);
@@ -5466,7 +5635,7 @@ static bool upload_draw_uniforms(PGRAPHState *pg, size_t offsets_out[2])
     pgraph_vk_update_shader_uniforms(pg);
 
     ShaderUniformLayout *layouts[] = {
-        &binding->vsh.module_info->uniforms,
+        &binding->vsh.upload_info->uniforms,
         &binding->psh.module_info->uniforms,
     };
 
@@ -5488,6 +5657,9 @@ static bool upload_draw_uniforms(PGRAPHState *pg, size_t offsets_out[2])
             pg, BUFFER_UNIFORM_STAGING, &data, &size, 1,
             r->device_props.limits.minUniformBufferOffsetAlignment);
     }
+#if NV2A_PERF_LOG
+    pgraph_vk_ubosz_note_upload(pg, 1);
+#endif
 
     return true;
 }
@@ -5754,6 +5926,10 @@ static void rebind_ubo_dynamic_offsets(PGRAPHState *pg, uint32_t off0,
         r->pipeline_binding->layout, 1, 1,
         &r->push_ubo_sets[r->push_ubo_set_index - 1],
         2, dyn_off);
+#if NV2A_PERF_LOG
+    pgraph_vk_ubosz_note_bind(r->push_ubo_sets[r->push_ubo_set_index - 1],
+                              dyn_off);
+#endif
 }
 
 /*
@@ -6648,6 +6824,7 @@ static void emit_reorder_entry(PGRAPHState *pg, ReorderWindowEntry *e,
         nv2a_profile_inc_counter(NV2A_PROF_PIPELINE_BIND);
         vkCmdBindPipeline(r->command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                           e->pipeline_binding->pipeline);
+        bind_uber_zero_buffer(r);
         e->pipeline_binding->draw_time = pg->draw_time;
         PIPELINE_NOTE_BIND(r, e->pipeline_binding);
         vkCmdSetViewport(r->command_buffer, 0, 1, &e->viewport);
@@ -6844,6 +7021,9 @@ static void emit_reorder_entry(PGRAPHState *pg, ReorderWindowEntry *e,
                                 VK_PIPELINE_BIND_POINT_GRAPHICS,
                                 e->layout, 1, 1, &e->descriptor_set,
                                 2, e->dynamic_offsets);
+#if NV2A_PERF_LOG
+        pgraph_vk_ubosz_note_bind(e->descriptor_set, e->dynamic_offsets);
+#endif
     }
 
     /* Bind texture set (set 0) */

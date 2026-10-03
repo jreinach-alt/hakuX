@@ -1,0 +1,52 @@
+# Family Guy: Video Game! (545400B0), single route. lane.titleroutes session
+# 46, 2026-09-30, from the Thor survey 0-0-s-1790823797-titleroutes-2950719
+# (route-frames, booted at 20:41:05 PDT). DRAFT until a soak replays it.
+#
+# What the survey's START/A cycles did (one press every ~5.5 s):
+#   START  204111  title menu: New Game / Options / Continue
+#   A      204116  "Select Auto Save": four Empty slots + Exit
+#   START  204122  no change
+#   A      204128  Empty slot accepted -> the intro clip (PTV dish)
+#   START  204134  skips the clip -> "LOADING"
+#   A      204142  Stewie's nursery, HUD (health bar, 0/20, ray gun): play
+#   START  204148  pauses (Paused: Resume / Quit Level / ...); A resumes
+# The play frames (204357-204448, LY held forward + A) show Stewie walked
+# from the rug to the changing table: the stick moves him. The game runs
+# at ~29-30 (FPS overlay 29); target 30.
+#
+# So: four cycles, then no START (it pauses). Assumes no Family Guy auto
+# save on the disk; with one, the Auto Save list would not be all Empty.
+wait 20
+shot boot20
+wait 20
+shot boot40
+wait 20
+mark booted
+repeat 4 {
+    press START
+    wait 5
+    shot menu-start
+    press A
+    wait 5
+    shot menu-a
+}
+axis LY min
+wait 3
+axis LY mid
+shot moved
+mark gameplay
+repeat forever {
+    axis LY min
+    wait 3
+    axis LX max
+    wait 0.5
+    axis LX mid
+    press A
+    wait 2
+    axis LY mid
+    axis LX min
+    wait 0.5
+    axis LX mid
+    wait 1
+    shot play
+}

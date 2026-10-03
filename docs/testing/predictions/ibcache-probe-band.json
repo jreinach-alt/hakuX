@@ -1,0 +1,28 @@
+{
+  "registered_utc": "2026-09-28T23:33:04Z",
+  "who": "lane.ibcache",
+  "issue": "507",
+  "prediction": "INLINE JUMP-CACHE PROBE, THE BAND LEG (lane.ibcache, #507). The full-sweep arm on the same code (ibcache-probe-pixels.json, A 4e3d69a69b, B a6ec5ec0ab, one run per arm) read 3369 of 3379 captures byte-identical and 10 differing: 8 in Stencil (REPLACE/ZERO with DT, ST or ZB) and 2 in Vertex_shader_rounding_tests (GeometrySuperscreen_0.5000, _0.9990). Every one of the 10 B images is byte-identical to an image drawn by a build without the probe, and for each of the 10 at least one apk without the probe drew both the A and the B image in repeated runs (docs/lanes/ibcache/out/noisecheck-pixels.out). This arm measures that band instead of assuming it. ARMS: A = master 2c950e0a1e, B = c8e95ed539 (that master merged into the probe branch; emulator code identical to a6ec5ec0ab), the probe on by default, THREE runs per arm, suites Stencil and Vertex_shader_rounding_tests. REGISTERED LEGS: no capture in either suite moves outside the run-to-run band measured in the arms (better = 0, worse = 0; in-band flips are classed noise), and no capture that is byte-identical with itself across the three runs of each arm differs between the arms. UNCOMFORTABLE OUTCOMES NAMED NOW: (1) a capture self-identical in A and self-identical in B and different between them is the probe running a TB the helper would not have, and kills the change as written; (2) a capture outside the band in B only, in the same direction as the full-sweep arm (REPLACE_DT worse, GeometrySuperscreen_0.5000 or _0.9990 worse), is the same finding; (3) if neither arm flips any capture in three runs, the band on this two-suite disc is unmeasured, the full-sweep movers stay unexplained by this arm, and the noise reading rests on the byte-identity evidence alone.",
+  "a_ref": "2c950e0a1e",
+  "b_ref": "c8e95ed539",
+  "must_not_move": [
+    "Stencil/*",
+    "Vertex_shader_rounding_tests/*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "better": 0,
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Stencil",
+      "Vertex_shader_rounding_tests"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "runs_per_arm": 3
+}

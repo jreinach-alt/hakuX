@@ -1123,6 +1123,46 @@ if [ -n "$ROUTE" ]; then
     ROUTE_PATH="$(dirname "$0")/titles/routes/$ROUTE.route"
     [ -f "$ROUTE_PATH" ] || { echo "refusing to queue: no route '$ROUTE' ($ROUTE_PATH)" >&2; exit 2; }
     bash "$(dirname "$0")/titles/route.sh" --check "$ROUTE_PATH" >/dev/null || exit 2
+    # AND AS THE RUN WILL SEE IT. The run does not play this file: the
+    # dispatcher writes the text to <result dir>/route.txt and the worker
+    # plays it with the SNAPSHOT's route.sh. A `drive` profile resolves
+    # against the snapshot's titles/drive-profiles/, and a `waitfor` or
+    # `press-until` crop against <result dir>/refs/route.txt/, which nothing
+    # writes. A route that fails there exits at its first line and the soak
+    # runs on with no input (lane.routedriver), so the check above passing on
+    # this tree said nothing about the run. Check the copy the run gets, with
+    # the serving snapshot's route.sh; failing that, with the serving tree's,
+    # which a worker re-snapshots from before it claims anything (src_hash
+    # covers the profiles, and a worker snapshots at startup).
+    SNAPBIN="${DISPATCH_DIR:-$D}/bin"
+    SERVER="${DISPATCH_TREE:-/home/justin/hakuX}/docs/testing"
+    RCHK=$(mktemp -d); cp "$ROUTE_PATH" "$RCHK/route.txt"
+    rmsg=""; rok=""; rsh=""
+    for rsh in "$SNAPBIN/titles/route.sh" "$SERVER/titles/route.sh"; do
+        [ -f "$rsh" ] || continue
+        # The serving tree only stands in for a snapshot it will refresh.
+        [ "$rsh" = "$SERVER/titles/route.sh" ] && ! grep -q '^snapshot_globbed()' "$SERVER/dispatcher.sh" 2>/dev/null && continue
+        if out=$(bash "$rsh" --check "$RCHK/route.txt" 2>&1); then rok=1; break; fi
+        rmsg="$rmsg$(printf '\n  %s: %s' "$rsh" "$out")"
+    done
+    # Neither exists (a private DISPATCH_DIR, a host with no serving tree):
+    # this tree's route.sh on the copy still sees the crops that do not travel.
+    if [ -z "$rok" ] && [ -z "$rmsg" ]; then
+        out=$(bash "$(dirname "$0")/titles/route.sh" --check "$RCHK/route.txt" 2>&1) && rok=1 \
+            || rmsg=$(printf '\n  %s' "$out")
+    fi
+    rm -rf "$RCHK"
+    if [ -z "$rok" ]; then
+        cat >&2 <<MSG
+refusing to queue: route '$ROUTE' parses here but would not run in the dispatched soak:$rmsg
+
+A 'waitfor' or 'press-until' crop does not travel with the request: the run
+plays <result dir>/route.txt, and nothing writes its refs/. A 'drive' profile
+must be in the serving snapshot ($SNAPBIN/titles/drive-profiles/) or on the
+serving tree's master. The soak would run with no input after the first line.
+MSG
+        exit 2
+    fi
     ROUTE_TEXT=$(cat "$ROUTE_PATH")
 fi
 

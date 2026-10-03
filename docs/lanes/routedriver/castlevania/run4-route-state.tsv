@@ -1,0 +1,31 @@
+t	state	source	changed	luma	cap_s	action	frame
+0.8	unknown	no-prev		33.3	0.47	wait (unknown)	225834-001-unknown.png
+2.5	intro_video	moving	0.9893	237.7	0.22	press A (skip intro_video)	225836-002-intro_video.png
+4.2	logo	static	0.0	237.7	0.22	press A (skip logo)	225837-003-logo.png
+6.0	intro_video	moving	0.9939	8.4	0.37	press A (skip intro_video)	225839-004-intro_video.png
+7.7	intro_video	moving	0.4218	21.0	0.37	press X (skip intro_video)	
+9.3	loading	crop:save-busy		41.7	0.47	wait	225842-006-loading.png
+11.3	profile	crop:save-slots		53.1	0.57	press A (profile 1)	225844-007-profile.png
+12.9	profile	crop:save-slots		52.6	0.57	settle	
+14.8	profile	crop:save-slots		52.3	0.57	press A (profile 2)	
+16.2	black	black		1.1	0.22	wait	225849-010-black.png
+17.4	black	black		1.2	0.22	wait	
+19.1	cutscene	moving	0.783	83.3	0.27	press A (skip cutscene)	225852-012-cutscene.png
+20.5	black	black		0.0	0.22	wait	225854-013-black.png
+22.3	cutscene	moving	0.6157	17.0	0.37	press A (skip cutscene)	225855-014-cutscene.png
+24.2	cutscene	moving	0.2462	21.0	0.52	press X (skip cutscene)	
+26.1	unknown	hud:hud+after-cutscene	0.7324	46.9	0.62	hold (hud up, motion not yet play)	225900-016-unknown.png
+28.5	play	hud:hud+motion	0.3006	46.2	0.67	hold tap A	225903-017-play.png
+30.5	play	hud:hud+motion	0.3232	48.3	0.67	hold	225905-018-play.png
+32.5	play	hud:hud+motion	0.3176	53.1	0.67	hold	225907-019-play.png
+34.8	play	hud:hud+motion	0.3362	56.8	0.67	hold tap A	225909-020-play.png
+36.6	play	hud:hud+motion	0.344	55.6	0.67	hold	225911-021-play.png
+38.6	play	hud:hud+motion	0.3268	49.2	0.62	hold	225913-022-play.png
+40.8	play	hud:hud+motion	0.3325	45.1	0.62	hold tap A	225915-023-play.png
+42.7	play	hud:hud+motion	0.3092	48.5	0.62	hold	225917-024-play.png
+44.7	play	hud:hud+motion	0.3216	52.6	0.62	hold	225919-025-play.png
+46.8	play	hud:hud+motion	0.3104	49.7	0.62	hold tap A	225921-026-play.png
+48.7	play	hud:hud+motion	0.3307	44.5	0.62	hold	225923-027-play.png
+# time_to_title_s=
+# time_to_play_s=27.9
+# result=reached-play

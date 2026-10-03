@@ -33,7 +33,16 @@ fps_tolerance = 0.95
 # about one 5 ms shortfall every five seconds; set 0.0 for literal zero.
 audio_starve_max_share = 0.001
 screening_s = 600
-confirmation_s = 1200
+# 10-minute confirmation (owner, 2026-09-30): re-scoring every full-length
+# confirmation as if cut at 300 s and 600 s found no verdict change on the
+# Nova (6/6 runs, which plateaus near 49 C and never pauses) at 5 or 10
+# minutes; on the Thor, Azurik read 99.6% at 10 minutes and failed at 15.6
+# minutes on the heat pause. So confirmation_s defaults to 600, EXCEPT a
+# per-title override (below) for titles flagged for slow-building defects,
+# and a run whose window was still heating at the end still needs 1200 s
+# (title_verdict.py, see "confirmation_s"). Process, not code: lane.verdict433
+# re-runs every 5th 600-s pass at the full 1200 s, as an audit.
+confirmation_s = 600
 
 [titles."4D530021"]
 name = "Crimson Skies: High Road to Revenge"
@@ -52,13 +61,15 @@ notes = "Asks for every VBLANK (perf/bench_ff.sh). Route from bench_ff.sh."
 [titles."41540004"]
 name = "Galleon"
 iso = { nova = "Galleon (USA).xiso.iso", thor = "Galleon (USA).xiso.iso" }
-notes = "A §11 soak title; own target not yet measured, so the 30 default. Route: PR 2."
+route = "galleon"
+notes = "A §11 soak title; own target not yet measured, so the 30 default. routes/galleon.route validated by its Thor screening soak (session 41, 0-0-s-1790800614-titleroutes-1024666): 265.6s gameplay, fps share at target 9.88%, no crash/hang, not thermal-limited (xo-therm < 52C throughout) -- genuinely slow on the Thor. BLOCKED by the owner 2026-09-30 14:40 PDT (FPS + polygon flicker, 'the game and our emulator', not heat; host-tools/blocked-titles.txt): no run on either device until those issues close; not a screen, not a nomination."
 
 [titles."4D53002D"]
 name = "Dead or Alive 3"
 iso = { thor = "Dead or Alive 3 (USA) (En,Ja).xiso.iso" }
+route = "doa3"
 target_fps = 60
-notes = "A §11 soak title; a 60 fps fighter. Route: PR 2. #431 (09-28; documented, not measured here): Impulse Gamer (2002): \"a consistent 60 frames per second\"; HonestGamers: \"flawless framerates\"; a frame-rate video of the original: youtube.com/watch?v=djgZg-FqeQs (\"Xbox Original | Dead or Alive 3 | Review Gameplay Framerate\")."
+notes = "A §11 soak title; a 60 fps fighter. Route: PR 2. routes/doa3.route: session 41's version waited 300 s blind (cold-cache timing) and the Thor's runner stopped it at 284 s before the first press (1790801641-titleroutes-1213635, diagnosed as heat but never reviewed against run.log); session 42 re-timed it for a warm cache (START from t~75) and re-queued it (0-0-s-1790805442-titleroutes-2050455). Session 44 read that result in full: it ran 475 of 480s and DID reach mark gameplay (150105-gameplay.png, fps_window_median 52.2, fps_ok_share 0.60 at the 30 bar), then its own route.txt logged 'ROUTE STOPPED: ... not-foreground: com.magneticchen.daijishou (the focused application on display 0 ..., not hakuX)' -- the Thor's Daijishou launcher took display 0 back at 15:06:44, title_verdict.py scores it crash+hang. thermal.jsonl's own xo-therm peaked at 69.9C, under the 70C the dispatcher's .hostops-diagnosed flag claims it hit. So BOTH of DOA3's Thor runs were mis-diagnosed as heat stops by harness_health.py; the real, reproducible failure is Daijishou regaining focus mid-run (reported dispatch/board-requests/titleroutes.md and #397, 2026-09-30 session 44). The screening program's two-heat-stops rule does not cleanly apply since neither stop was heat, but two Thor runs have now failed the same way regardless of label; DOA3 is Thor-only (no Nova copy exists) so a Nova reading needs a copy decision under the amended one-copy-per-title rule (owner 09-29 23:15: copy when work is held up for the title) -- not this lane's call. #431 (09-28; documented, not measured here): Impulse Gamer (2002): \"a consistent 60 frames per second\"; HonestGamers: \"flawless framerates\"; a frame-rate video of the original: youtube.com/watch?v=djgZg-FqeQs (\"Xbox Original | Dead or Alive 3 | Review Gameplay Framerate\"). Session 46 mark audit: the mark frame (0-0-s-1790805442-titleroutes-2050455, 150105) is black (a round fade?); one frame only."
 
 [titles."49470018"]
 name = "JSRF: Jet Set Radio Future"
@@ -72,7 +83,7 @@ name = "Grabbed by the Ghoulies"
 target_fps = 30
 iso = { nova = "Grabbed by the Ghoulies (USA) (En,Fr,De,Es,It).xiso.iso", thor = "Grabbed by the Ghoulies (USA) (En,Fr,De,Es,It).xiso.iso" }
 route = "ghoulies"
-notes = "#431 (comment 5851536933): 30, high confidence. Digital Foundry (2015): originally 480p30; hakuX swap interval 2.01-2.04"
+notes = "#431 (comment 5851536933): 30, high confidence. Digital Foundry (2015): originally 480p30; hakuX swap interval 2.01-2.04 Session 46 mark audit: the mark frame (0-0-x-1-1790634704-lane.idlehaltdefault-3054732, 193619) is a storybook transition page."
 
 [titles."4D530051"]
 name = "Conker: Live & Reloaded"
@@ -96,8 +107,9 @@ notes = "Route by lane.titleroutes 2026-09-27 on the Thor's USA disc (the Europe
 [titles."55530040"]
 name = "Tork: Prehistoric Punk"
 target_fps = 30
-iso = { nova = "Tork - Prehistoric Punk (USA).iso" }
-notes = "#431 (comment 5851536933): 30, medium confidence. WorthPlaying (Xbox, 2005)"
+iso = { nova = "Tork - Prehistoric Punk (USA).iso", thor = "Tork - Prehistoric Punk (USA).iso" }
+route = "tork"
+notes = "#431 (comment 5851536933): 30, medium confidence. WorthPlaying (Xbox, 2005). routes/tork.route: lane.routeprep's draft (title screen timing from a gamecheck soak, the rest [guess]), queued as a Thor screening soak by titleroutes session 42, replayed in session 43/44 (1790805457-titleroutes-2055759): reached gameplay (164309-gameplay.png), but the Thor's Daijishou launcher took display 0 back at 290s ('ROUTE STOPPED ... not-foreground: com.magneticchen.daijishou'; the dispatcher's .hostops-diagnosed flag wrongly called this a heat stop -- see #397 session 44, the harness_health.py defect is systemic across this whole batch). Independent of that stop, fps_ok_share 0.585 at the 30 bar (fps_window_median 29.96, right at the edge) -- genuinely marginal even in the 130s it ran, not a Nova nomination. Session 46 mark audit: the mark frame (0-0-s-1790805457-titleroutes-2055759, 164309) reads as a cutscene beat at FPS 7; one frame only."
 
 # Population 1 of #397 (lane.titleplay): the 20 titles staged on 2026-09-26.
 [titles."4541000D"]
@@ -117,7 +129,7 @@ name = "Dead or Alive Xtreme Beach Volleyball"
 iso = { nova = "54430007-Dead_or_Alive_Xtreme_Beach_Volleyball.xiso.iso" }
 target_fps = 60
 route = "doax"
-notes = "#431 (comment 5849938891): 60, low confidence. a user review only (set it so a person checks). #431 (09-28; documented, not measured here): NOT confirmed: eight reviews do not name a frame rate, and the one 30 fps claim found (a forum post) is about the pre-rendered opening video."
+notes = "#431 (comment 5849938891): 60, low confidence. a user review only (set it so a person checks). #431 (09-28; documented, not measured here): NOT confirmed: eight reviews do not name a frame rate, and the one 30 fps claim found (a forum post) is about the pre-rendered opening video. Session 46 mark audit: the mark frame (y-1790481308-titlebench-2893458, 011218-gameplay.png) is an in-game shop list."
 
 [titles."45410083"]
 name = "Black"
@@ -138,7 +150,7 @@ name = "Project Gotham Racing"
 target_fps = 60
 iso = { thor = "4D530003-Project_Gotham_Racing.xiso.iso" }
 route = "pgr"
-notes = "#431 (comment 5851536933): 60, medium confidence. GameSpot (Xbox, 2001). #431 (09-28; documented, not measured here): also The Pixel Empire: \"the 60fps driving\"."
+notes = "#431 (comment 5851536933): 60, medium confidence. GameSpot (Xbox, 2001). #431 (09-28; documented, not measured here): also The Pixel Empire: \"the 60fps driving\". Session 46 mark audit: pgr.returning's mark and both later frames (0-0-s-1-1790609665-lane.slowtier2-pgr365442) show the car at 0 mph on the grid: no frame shows the race moving."
 
 [titles."4541005D"]
 name = "GoldenEye: Rogue Agent"
@@ -151,6 +163,7 @@ notes = "#431 (comment 5851536933): 30, medium confidence. IGN (2004, names the 
 name = "Forza Motorsport"
 iso = { thor = "4D53006E-Forza_Motorsport.xiso.iso" }
 target_fps = 30
+confirmation_s = 1200  # owner 2026-09-30: flagged for slow-building defects (invalid-list decay, memory growth; #517)
 notes = "#431 (comment 5849938891): 30, medium confidence. IGN (Xbox, 2005): locks at 30 fps"
 
 [titles."56550042"]
@@ -189,13 +202,14 @@ name = "Project Gotham Racing 2"
 target_fps = 30
 iso = { thor = "4D53004B-Project_Gotham_Racing_2.xiso.iso" }
 route = "pgr2"
-notes = "#431 (comment 5851536933): 30, medium confidence. GameSpot and Eurogamer (Xbox, 2003): locked at 30"
+notes = "#431 (comment 5851536933): 30, medium confidence. GameSpot and Eurogamer (Xbox, 2003): locked at 30 Session 46 mark audit: the mark frame (1-1790569004-titleroutes-3006458) is the car stationary at the start gate, 0 mph."
 
 [titles."45410076"]
 name = "Burnout Revenge"
 iso = { nova = "45410076-Burnout_Revenge.xiso.iso" }
+route = "burnout-revenge.returning"
 target_fps = 60
-notes = "#431 (comment 5849938891): 60, high confidence. Criterion to Digital Foundry; DarkZero (Xbox)"
+notes = "#431 (comment 5849938891): 60, high confidence. Criterion to Digital Foundry; DarkZero (Xbox). routes/burnout-revenge.returning.route PLAYED and replayed clean (session 41): Traffic Attack event, mark at live gameplay with HUD/speed, replay ran the full event to its RESULTS screen. Same-pass fps benchmark queued session 41, landed session 44 (1790801593-titleroutes-1202186, Nova, clean run): 102s gameplay (most of the 480s is pre-mark route), fps_window_median 39.45, fps_ok_share 0.972 at the 30 bar, own_target_share only 0.020 at its 60 target -- BENCHMARKED, well below its own target."
 
 [titles."4D530065"]
 name = "Blinx 2: Battle of Time & Space ~ Blinx 2: Masters of Time & Space"
@@ -213,13 +227,14 @@ notes = "#431 (comment 5849938891): 60 from the hakuX swap interval: reviewed ga
 name = "Bruce Lee: Quest of the Dragon"
 iso = { thor = "56550016-Bruce_Lee_Quest_of_the_Dragon.xiso.iso" }
 route = "bruce-lee"
-notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default."
+notes = "Staged 2026-09-26 (#265 batch); own target not yet measured, so the 30 default. Session 46 mark audit: the mark frame (1-1790487611-titleroutes-261841, 233203-gameplay.png) and the one before it are the title screen (Press Start)."
 
 [titles."54540079"]
 name = "Midnight Club 3: DUB Edition"
 target_fps = 30
 iso = { nova = "54540079-Midnight_Club_3_DUB_Edition.xiso.iso" }
-notes = "#431 (comment 5851536933): 30, medium confidence. IGN (PS2 and Xbox, 2005)"
+route = "midnight-club-3"
+notes = "#431 (comment 5851536933): 30, medium confidence. IGN (PS2 and Xbox, 2005). Routes by lane.titleroutes 2026-09-29 (Nova). returning.route REPLAYED CLEAN in session 37: no input through the boot, one START at ~120 s (the title screen's window is ~107-155 s after launch), the highlighted profile, Arcade, San Diego cruise; RT drives the Jetta down the street. first-run.route is still a draft (session 34: it stalled on a static post-Start garage frame). See NOTES.md sessions 34-37."
 
 [titles."56550036"]
 name = "Crash Twinsanity"
@@ -233,13 +248,14 @@ notes = "#431 (comment 5851536933): 60, medium confidence. Play Magazine (Oct 20
 name = "Kabuki Warriors"
 iso = { nova = "43560001-Kabuki_Warriors.xiso.iso" }
 route = "kabuki-warriors"
+confirmation_s = 1200  # owner 2026-09-30: flagged for slow-building defects (random stalls)
 notes = "Route by lane.titleroutes 2026-09-26 (Nova): Tour Mode fight vs CPU, no profile step. Own target not yet measured, so the 30 default."
 
 [titles."54430003"]
 name = "Ninja Gaiden"
 iso = { thor = "Ninja Gaiden (Europe) (En,Fr,De,Es,It).iso" }
 target_fps = 60
-notes = "#431 (comment 5851536933): 60, high confidence. Digital Foundry 2019 and 2007; lawrence.com (Xbox, 2004). European image: the target assumes hakuX's default EEPROM (NTSC-M), under which it runs its 60 Hz modes; a 50 Hz run would read as below target."
+notes = "#431 (comment 5851536933): 60, high confidence. Digital Foundry 2019 and 2007; lawrence.com (Xbox, 2004). European image: the target assumes hakuX's default EEPROM (NTSC-M), under which it runs its 60 Hz modes; a 50 Hz run would read as below target. Session 45's pass-1 survey (0-0-s-1790822580-titleroutes-2819211, Thor, 300s) ran its full length without a stop: title (PRESS START BUTTON) -> intro sword clip -> 'The Book of the Fiends' text and Now Loading pages (59 fps) -> by 200613-play.png a dark first area with the health HUD and Ryu by a waterfall, dimmed, FPS overlay 0 at that instant. Not counted as gameplay (no input visibly moved him). No route yet: the survey needed ~270 s to get there, so an authored route that skips the text pages is the next step."
 
 [titles."5443000D"]
 name = "Ninja Gaiden Black"
@@ -256,8 +272,9 @@ notes = "#431 (comment 5851536933): 60, medium confidence. TeamXbox (2003); spli
 [titles."41560001"]
 name = "Tony Hawk's Pro Skater 2x"
 iso = { thor = "Tony Hawk's Pro Skater 2x (USA).xiso.iso" }
+route = "thps2x"
 target_fps = 60
-notes = "#431 (comment 5851536933): 60, medium confidence. TeamXbox (2001, two reviews), ActiveXbox (2002)"
+notes = "#431 (comment 5851536933): 60, medium confidence. TeamXbox (2001, two reviews), ActiveXbox (2002). routes/thps2x.route: lane.routeprep's all-[guess] draft (Free Skate). Its first 480s Thor attempt (0-0-s-1790805442-titleroutes-2050654) stopped at 260s to the Thor's Daijishou launcher regaining display-0 focus, not heat (the .hostops-diagnosed flag said HEAT STOP; run.log says 'not-foreground: com.magneticchen.daijishou' -- see #397 session 44). Retried at the new 300s cap (1790808339-titleroutes-3127689, session 44): ran clean, reached gameplay (160005-gameplay.png), 184s gameplay, fps_window_median 59.82, fps_ok_share 0.976 at the 30 bar, own_target_share 0.786 at 60, no crash/hang -- Nova nomination (#433). Session 46 mark audit: the mark frame (1790808339-titleroutes-3127689, 160005-gameplay.png) is THE HANGAR CHECKLIST goal list, not skating: the 97.6% at 59.82 measured that menu. Nomination withdrawn. Route re-marked (A accepts the checklist); screen queued as 1790830528-titleroutes-329478. Session 47: replayed, route CONFIRMED -- the mark frame (225733-gameplay.png) is the Hangar with the skater under a tutorial tip overlay, 59 fps, not the checklist. HEAT STOP at 70C cut it to 105.1s of scored gameplay (fps_ok_share 1.0 at the 30 bar, but flagged below_own_target at the 60 bar; title_verdict.py reads crash=True because the force-stop looks like a guest exit). Session 48: re-screened (0-0-s-1790839392-titleroutes-2237866), route CONFIRMED again (005426-gameplay.png, same Hangar-under-tutorial-tip) but HEAT STOP again, this time at 102s scored. Two heat stops on a confirmed route: nominated for Nova (#433) per the screening program's rule, not for a third Thor try."
 
 [titles."4947002B"]
 name = "Panzer Dragoon Orta"
@@ -293,11 +310,18 @@ name = "Mortal Kombat: Armageddon"
 target_fps = 60
 notes = "#431 (comment 5851536933): 60, medium confidence. Prima official guide (2006, PS2 and Xbox): fights run at 60"
 
+[titles."55530036"]
+name = "187: Ride or Die"
+iso = { nova = "55530036-187_Ride_or_Die.xiso.iso" }
+route = "187-ride-or-die"
+notes = "No #431 target; the default 30 applies. SINGLE route since 2026-09-30 (lane.titleroutes session 46): it creates profile N on every run (keyboard: A, A, Y) -> Quick hits -> Western Whip Race -> controller screen -> A skips the tutorial clip -> the mark after 6 s of driving. It replaces the first-run/returning pair: titlestate's 'found' save builds a disk with four Empty slots, so the returning route's mark landed on the name keyboard and the Playable confirmation 1-1790775886-lane.verdict433-3086875 (100%, 59.94) and session 40's benchmark both scored that menu. Session 47: the replay (1790830434-titleroutes-311228, Nova) is VOID, not a route finding -- hakuX never got a focused window on display 0 at all ('foreground-unknown ... has no focused window on display 0'); no input was sent. Needs a re-queue, not a route fix. One boot in three hung on a spinner at 3 fps (watchdog STALL), the first boot after a flush. Session 48: the re-queue (1790839401-titleroutes-2238360, Nova) ran clean for the full 300s (no stop, no void) and its mark frame (002517-gameplay.png) is confirmed by eye -- a night street race, countdown '2', cars alongside, 46 fps overlay -- real racing, not a menu. CONFIRMED and re-nominated for the Nova Playable confirmation (#433). See NOTES.md sessions 37, 46, 47, 48."
+
 [titles."56550003"]
 name = "Crash Bandicoot: The Wrath of Cortex"
 iso = { nova = "56550003-Crash_Bandicoot_The_Wrath_of_Cortex.xiso.iso" }
 target_fps = 60
-notes = "#431 (comment 5851536933): 60, low confidence. two user captures of a real Xbox (average 59.78)"
+route = "crash-wrath-of-cortex"
+notes = "#431 (comment 5851536933): 60, low confidence. two user captures of a real Xbox (average 59.78). Route by lane.titleroutes 2026-09-29 (Nova, session 37), REPLAYED CLEAN twice: NEW GAME -> name CRASH -> START skips two cutscenes -> the warp room hub, walked with the stick. The scored window is the hub, not a level, so its fps is an upper bound. Session 46 mark audit: the mark frame (1-1790757193-lane.hddcrash-1697566, 101704) is the LOAD / SAVE menu."
 
 [titles."4D530004"]
 name = "Halo: Combat Evolved"
@@ -309,7 +333,7 @@ notes = "#431 (comment 5851536933): 30, high confidence. Digital Foundry Retro (
 name = "Phantom Dust"
 iso = { thor = "Phantom Dust (USA) (En,Ja).xiso.iso" }
 target_fps = 30
-notes = "#431 (comment 5851536933): 30, high confidence. Microsoft's remaster creative director (2017): the engine was built around 30"
+notes = "#431 (comment 5851536933): 30, high confidence. Microsoft's remaster creative director (2017): the engine was built around 30. Session 44's pass-1 survey (0-0-s-1790822578-titleroutes-2819133, 480s) left no result at all -- logs/thor-coldconfirm.log: 'HEAT STOP at xo 70 C -- run voided (no result)', nothing under dispatch/results. Requeued at the new 300s cap, session 45 (1790823811-titleroutes-2952744); no route-frames exist yet either way. Session 46: the 300s requeue (0-0-s-1790823811-titleroutes-2952744) was also heat-stopped (runner log 21:36:21 PDT; the run log's 'not-foreground: daijishou' line is the launcher taking focus AFTER the force-stop). Its last frame (213619-menu-a.png, 13th START/A cycle) is the first explorable room, player in view, minimap, FPS overlay 30. Two heat stops on the Thor: done there, nominated as 'needs the Nova' (#433); the survey prefix (13 cycles) is the route seed."
 
 [titles."4D530064"]
 name = "Halo 2"
@@ -373,7 +397,7 @@ name = "Burnout"
 iso = { thor = "41430006-Burnout.xiso.iso" }
 route = "burnout"
 target_fps = 60
-notes = "#431 (09-28; documented, not measured here): medium confidence: 3rdvoicegaming: \"a rock-solid 60 frames per second\", and \"The Xbox and GameCube ports ... retain the excellent performance\"; ogxbox.co.uk (2025): 60, and \"particularly crash heavy sequences can cause occasional slowdown\"."
+notes = "#431 (09-28; documented, not measured here): medium confidence: 3rdvoicegaming: \"a rock-solid 60 frames per second\", and \"The Xbox and GameCube ports ... retain the excellent performance\"; ogxbox.co.uk (2025): 60, and \"particularly crash heavy sequences can cause occasional slowdown\". Session 46 mark audit: the mark frame and both later frames (0-0-s-1-1790609663-lane.slowtier2-burnout968727) show Game Over / Continue, not driving."
 
 [titles."45410062"]
 name = "Battlefield 2: Modern Combat"
@@ -391,7 +415,7 @@ name = "Azurik: Rise of Perathia"
 iso = { thor = "4D530007-Azurik_Rise_of_Perathia.xiso.iso" }
 route = "azurik"
 target_fps = 30
-notes = "Own target 30 from #431 (comment 5853568091): low confidence. Cxbx developer's blog (2010)."
+notes = "Own target 30 from #431 (comment 5853568091): low confidence. Cxbx developer's blog (2010). Session 46 mark audit: the mark frame (1-1790725091-lane.verdict433-1456876, 212910) is a modal tutorial dialog (Back / Continue); the window needs a frame review."
 
 [titles."41430016"]
 name = "Alias"
@@ -442,3 +466,94 @@ notes = "Own target 60 from #431 (comment 5853568091): medium confidence. IGN Xb
 name = "KOF: Maximum Impact - Maniax"
 iso = { thor = "534E0007-KOF_Maximum_Impact_Maniax.xiso.iso" }
 route = "kof-mi.returning"
+
+[titles."43430019"]
+name = "Capcom Classics Collection Vol. 2"
+iso = { thor = "43430019-Capcom_Classics_Collection_Vol_2.xiso.iso" }
+route = "capcom-classics2"
+notes = "No #431 target; the default 30 applies. routes/capcom-classics2.route: lane.routeprep's all-[guess] draft (first game in the list, coin, start). Its first 480s Thor attempt (0-0-s-1790805455-titleroutes-2055173) ran 390 of 480s then a silent 'guest exited after 390s' with no not-foreground line (unlike the other four 'HEAT STOP'-flagged runs this session, which were Daijishou focus steals); its last thermal sample reads xo-therm 70.1C, so this one HEAT STOP diagnosis is at least plausible (see #397 session 44). Retried at the new 300s cap (1790808344-titleroutes-3128993, session 44): ran clean, reached gameplay (165540-gameplay.png), 190s gameplay, fps_window_median 59.94, fps_ok_share 1.0, no crash/hang -- Nova nomination (#433). Session 46 mark audit: the mark frame (0-0-s-1790808344-titleroutes-3128993, 165540-gameplay.png) is a START MENU (Start Game / Load Game / Game Settings / Exit Game): the 100% at 59.94 measured that menu. Nomination withdrawn. Session 46 mark audit: kof-mi.returning's mark frame (1-1790725091-lane.verdict433-1456797, 210409) is a post-round PERFECT / WINNER screen; the next round may follow, so the window needs a frame review, not a verdict on one frame. Session 49: queued a generic `--route survey` soak (the method that worked for castlevania-cod and surfaced gauntlet's own trap) rather than guessing a second fix for the guess route's wrong menu; route= still points at the old draft until the survey gives real frames to author from."
+
+[titles."4B4E002D"]
+name = "Castlevania: Curse of Darkness"
+iso = { thor = "4B4E002D-Castlevania_Curse_of_Darkness.xiso.iso", nova = "4B4E002D-Castlevania_Curse_of_Darkness.xiso.iso" }
+route = "castlevania-cod"
+notes = "No #431 target; the default 30 applies. Every castlevania-cod.first-run guess (New Game, re-marks) got stuck on a menu: Name Entry, then 'Create new save data? Yes/No'. Abandoned session 47. Session 48: a generic `--route survey` soak (0-0-s-1790839398-titleroutes-2238193, heat-stopped at 284/300s) ran 14 START/A cycles and reached a `mark play` frame showing real control, but that evidence was lost before a successor could walk it cycle-by-cycle (session 51: the dispatch result had already been pruned). Session 53 (2026-10-01, owner-approved one-time Nova path-finding session, #397): re-authored both variants from a fresh nav.py session on the Nova copy, confirmed by eye and by player movement between frames, not by a soak. castlevania-cod.first-run.route: New Game -> Name Entry (A types the highlighted letter, START jumps the cursor to Accept, A accepts) -> 'Is this correct?' (A) -> the save-data prompt defaults to No (axis LX min moves the cursor to Yes before A, or it declines its own save and loops back to Name Entry) -> slot 1 (A) -> the opening cutscene (A x3, 5.4s apart) -> gameplay in a gothic courtyard facing a gargoyle fountain. castlevania-cod.returning.route: on a disk with slot 1 filled, Continue needs TWO passes (the first just replays the opening recap and returns to the title with Continue still highlighted) before it reaches LOAD HARD DISK -> slot 1 (A) -> 'Is this save data correct?' (A) -> the opening recap plays a THIRD time -> the same courtyard. Session 56 (2026-10-01, same owner-approved Nova grant, ADDENDUM 4): castlevania-cod.returning.route CONFIRMED by a full unattended route.sh replay (scratch/replay/castlevania-cod.returning-145541, copied to scratch/judge/) -- all 19 scripted frames captured including movetest/movetest2 (HUD 'Player HP 100/100' visible, position shifted between the two, confirming live control, not a static menu) and mark gameplay (150034-gameplay.png), then ~28s of the repeat-forever play pattern (visible attack animations) before the run's own timeout ended it cleanly. No longer DRAFT; nominated for a Nova fps confirmation (host-tools/nova-nominations.tsv). castlevania-cod.first-run.route is UNCHANGED, still DRAFT: it needs its own unattended replay on a disk with no existing save, which this disk no longer has (session 53 wrote a save to slot 1); that replay is still open work. Supersedes the never-replayed castlevania-cod.route (session 48) and the never-played lane.routeprep guess (session 42), both removed. Session 59: a dispatch route-check (1790902028-titleroutes-1005086) FAILED -- the newgame->Name-Entry screen transition had not loaded by the time the fixed-wait letter-press fired, so the route typed into a black screen for 900s; 'fixed' with a second blind press, assuming only the press (not the screen) had been missed. Session 60 (owner, ADDENDUM 11, 2026-10-01 ~18:30 PDT): the owner's own verification run (1790903439-titleroutes-1317193) showed session 59's fix did NOT work -- both presses landed on the still-black screen (name-a/name-a2 both black), and the route's later blind presses (meant for slot selection etc.) typed into the keyboard once it finally came up, leaving the name field 'AAIIIIII' with no Accept. The owner stopped the run and asked for a real closed-loop fix, not another guess. Session 60 built it: route.sh gained `waitfor`/`press-until` steps that poll a screencap region against a reference crop (routes/refs/castlevania-cod.first-run/*.png) rather than a fixed wait (see route.sh's grammar comment and docs/testing/titles/waitfor_selftest.py, which checks the comparator against fixture crops of this exact failure, including the still-black frame). castlevania-cod.first-run.route's newgame->Name-Entry section now waits for the Name Entry banner before pressing, then presses A on the letter tile up to 5 times, 1.5s apart, checking the field itself each time, instead of a fixed wait + blind press(es). STILL DRAFT: not yet replayed with this fix; a dispatch route-check is queued next (see docs/lanes/titleroutes/NOTES.md session 60)."
+
+[titles."41540002"]
+name = "Shin Megami Tensei: NINE"
+iso = { thor = "41540002-Shin_Megami_Tensei_Nine.xiso.iso" }
+route = "smt-nine"
+notes = "No #431 target; the default 30 applies. Japanese menus. routes/smt-nine.route: lane.routeprep's all-[guess] draft, replayed session 44 (1790805456-titleroutes-2055567): ran clean (no stop event), reached gameplay (162627-gameplay.png), 316s gameplay, fps_window_median 29.96, fps_ok_share 0.967, no crash/hang -- Nova nomination (#433). Session 46 mark audit: the mark frame (0-0-s-1790805456-titleroutes-2055567, 162627-gameplay.png) is the Japanese name-entry keyboard with the given name empty: the 96.7% at 29.96 measured that menu. Nomination withdrawn; the route needs a typed name."
+
+[titles."4D4A0012"]
+name = "Psychonauts"
+iso = { thor = "Psychonauts (USA).iso" }
+notes = "No #431 target; the default 30 applies. Session 44's pass-1 survey (1790822573-titleroutes-2818801, Thor, 300s) never got past the title screen ('Press START to begin', scrolling credits in the background) in 136s and 7 cycles of START-then-A: every route-frame from 194441 to 194548 shows the identical title card. Stopped at 136s by a focus steal to com.android.launcher3 (not Daijishou this time -- a different launcher, display 4), not heat (xo-therm only reached 64.5C; hostops's .hostops-diagnosed note on this result correlates it with a dead-fan heat signature on other thermal zones but calls that unproven). No route drafted: the title screen needs something other than repeated START/A at 5s intervals to advance (a longer hold, a different button, or a wait the survey's generic cadence does not give it), and that needs a held or hand-authored route, not another blind survey. Next: author a route.txt that tries a single longer START press or a different first input before re-surveying. Session 46: the requeue (0-0-s-1790823861-titleroutes-2960863) stopped at 127 s the same way (not-foreground: com.android.launcher3, input focus on display 4) after the title card; 214537-menu-start.png shows the PSYCHONAUTS brain title with the FPS overlay at 1. No heat stop in the runner log (peak xo 67 C). Two runs, neither past the title card: parked here, not retried blind."
+
+[titles."545400B0"]
+name = "Family Guy: Video Game!"
+iso = { thor = "545400B0-Family_Guy_Video_Game.xiso.iso" }
+route = "family-guy"
+notes = "No #431 target; the default 30 applies. routes/family-guy.route (session 46) from the Thor survey 0-0-s-1790823797-titleroutes-2950719 (heat-stopped at 20:45 PDT after 4 min): START -> New Game, A -> Select Auto Save (all Empty), A -> intro clip, START skips, LOADING -> Stewie's nursery with the HUD on the 4th cycle (204142-menu-a.png). The play frames (204357-204448) show Stewie walked from the rug to the changing table under the stick. FPS overlay 29-30. Session 47: replayed clean, no heat stop (0-0-s-1790830432-titleroutes-310926), title_verdict.py reads fps_ok_share 0.9763 over 189.4s. The disk now carries a Family Guy save from this run's own predecessor runs, so the 4th cycle's A landed on 'Are you sure you want to overwrite this save?' instead of an Empty slot: the mark frame (215740-gameplay.png) is that dialog, not Stewie. Real gameplay (Stewie in the nursery, HUD) is confirmed by 215749-play.png, ~9s later, and the 97.6% share is dominated by that real play. Nominated for Nova (#433) on that evidence; the route would be more precise with an explicit press to leave the overwrite dialog rather than relying on the play loop's incidental A press, not done this session."
+
+[titles."53450038"]
+name = "Super Monkey Ball Deluxe"
+iso = { thor = "53450038-Super_Monkey_Ball_Deluxe.xiso.iso", nova = "53450038-Super_Monkey_Ball_Deluxe.xiso.iso" }
+route = "super-monkey-ball-deluxe"
+notes = "No #431 target; the default 30 applies (the stage ran at an FPS overlay of 59). routes/super-monkey-ball-deluxe.route (session 46) from the Thor survey 0-0-s-1790823793-titleroutes-2949342 (heat-stopped at 20:31 PDT): no-game-data A -> save YES -> Mode Select Main Game -> Data Select slot 1 -> stage 1-1 SIMPLE started by the 10th START/A cycle (203030-menu-a.png, timer 57:50). The survey never tilted the stage. Session 47: replayed (0-0-s-1790830432-titleroutes-310985), route CONFIRMED -- the mark frame (221224-gameplay.png) is the ball rolling in-level at 59 fps, not a menu. HEAT STOP at 70C cut it to 48.5s of scored gameplay (fps_ok_share 1.0 over that short window; title_verdict.py reads crash=True because the force-stop looks like a guest exit). Session 48: re-screened (0-0-s-1790839386-titleroutes-2237355), route CONFIRMED again (003047-gameplay.png, ball rolling, 1-1 SIMPLE, 47 mph) but HEAT STOP again, this time at 51s scored. Two heat stops on a confirmed route: nominated for Nova (#433) per the screening program's rule, not for a third Thor try. Session 57 (2026-10-01): the title was copied to the Nova and the route replayed there end to end with no heat limit -- scratch/judge/super-monkey-ball-deluxe-165430, mark gameplay at 191.5s (route.sh start) / 198.4s (launch intent), stage 1-1 SIMPLE at 46 mph, and a play frame 11s later with a different score/timer/speed confirming live, evolving play. Nominated for autoverdict's 10-minute Nova confirmation via host-tools/nova-nominations.tsv. This session also fixed a premark.py bug (it summed `wait` lines once instead of multiplying by their enclosing `repeat N` count) that had made the first Nova replay attempt time out after only 5 of 10 START/A cycles, well short of the mark; the corrected pre-mark figure for this route is 163s, not the old tool's 73s. Session 61 (2026-10-01): the confirmed route's post-mark loop plays live for ~60s then idles on the Stage Select screen for the rest of the window (ADDENDUM 9) -- traced this live on the Nova, NOT a route-sequencing bug. A fresh game reaches stage 1-1 directly (no Stage Select before the first stage) and a plain held-forward input clears it in ~15s (GOAL!!, stage score 4530). The stage-clear screen then lands on Stage Select with the cursor already correctly on the next unlocked stage (1-2) -- but on this build, THAT SCREEN DOES NOT RESPOND to A, B, the D-pad, or the analog stick (9 separate attempts over several minutes: taps, a held A, zeroed axes, hard stick-right, D-pad right -- none moved the cursor or changed the screen); only START worked (opened the in-game pause popup, proving input generally reaches the app and the window has focus per `dumpsys input`). This matches the rejected 10-minute confirmation's frames exactly (same ball highlighted the whole window, only the idle camera rotating) -- not a cursor-landed-on-a-locked-stage problem as ADDENDUM 9 assumed, but dead input on this specific screen. No route fix can work around input the game isn't reading; flagged in OUTBOX for a tracked issue. Stays nominated for stage-1-1-only (unaffected, since 1-1 never needs Stage Select); going further is blocked on this finding, not on route.sh."
+
+[titles."5345002B"]
+name = "Sonic Heroes"
+iso = { thor = "5345002B-Sonic_Heroes.xiso.iso", nova = "5345002B-Sonic_Heroes.xiso.iso" }
+route = "sonic-heroes"
+notes = "No #431 target; the default 30 applies (the level ran at an FPS overlay of 59). Session 46-48 history (Thor): routes/sonic-heroes.route's original 9-cycle START/A version was a coin flip -- session 47 replayed clean (0-0-s-1790830432-titleroutes-311058, mark 222424-gameplay.png, Team Sonic running at 59 fps), session 48's identical re-screen (0-0-s-1790839390-titleroutes-2237657) landed on a frozen PAUSE menu instead (a START press during live play, no un-pause step), so it was NOT nominated pending a fix. Session 58 (2026-10-01, Nova, iso.nova now present): rewrote the route from per-step nav.py observation instead of a fixed cycle count -- title -> START -> exactly 3 A presses (the default-highlighted option at every screen, whether the disk has no Game Data or an existing slot 01 -- both paths converge to the same press count) -> Main Menu -> A (1P PLAY) -> A (STORY) -> A (TEAM SONIC, default) -> an ~85-90s cutscene with NO further input (the old route's trap: a START here pauses a level that may already be live) -> Seaside Hill. CONFIRMED by a full unattended replay (scratch/judge/sonic-heroes-171639): mark gameplay at 172133, three later `play` shots (172141/172150/172201) show score 60->80, rings 006->008 and the timer all advancing with Sonic's pose/position changing between frames. Nominated for the Nova fps confirmation (host-tools/nova-nominations.tsv). ADDENDUM 10 (owner, 2026-10-01 ~18:35 PDT): the owner played this and found the post-mark loop's 1.5s LX min/max swings made Sonic wander rather than advance; also flagged brief in-play stalls as a verdict question for lane.hitchwatch (now folded, title_verdict.py reports hitches -- see NOTES.md session 61). Session 61 (2026-10-01): rewrote the loop to hold `axis LY min` continuously (no LX, occasional `A` for a jump) per the owner's instruction, and replayed it on the Nova. Confirmed this removes the wandering, but ALSO found (by driving the app live past the scripted replay's own end, 5 different input combinations including a running jump and a reroute) that Team Sonic gets wedged against carved-stone level geometry about 20-30s into the post-mark window (first appears at clock ~01:02, score/rings frozen at 80/008 for the rest of the ~2 minutes tested) and a plain hold-forward-plus-occasional-jump cannot clear it. NOT nominating this route as confirmed -- whole-window advance is still open. A frozen-camera static window like this one WOULD be caught by hitchwatch's new static_window check if a confirmation were run against it now (unlike Super Monkey Ball Deluxe's idle-camera-rotation case below), so an accidental false PASS here is less likely than it was before hitchwatch folded -- but the route itself still needs more work, ideally informed by nav.py exploring what input (if any) clears this specific obstacle, before a confirmation is worth queuing."
+
+[titles."4D57000E"]
+name = "Gauntlet: Dark Legacy"
+iso = { thor = "4D57000E-Gauntlet_Dark_Legacy.xiso.iso" }
+route = "gauntlet"
+notes = "No #431 target; the default 30 applies. Session 46: the Thor survey 0-0-s-1790823800-titleroutes-2951589 (heat-stopped at 20:58 PDT) reached the in-engine wizard intro at an FPS overlay of 14 (205704-menu-a.png), then the START/A cycles left it on the in-game pause menu's Audio page at 11-14 (205743, 205824). A low in-engine reading worth a screen. Session 49: read the survey's own frames cycle by cycle -- by the 8th cycle's A press (205704-menu-a.png) the wizard was already exploring the dungeon live (an in-level tutorial scroll over the 3D view, 'Press A Button when done'), but the survey kept pressing START for 6 more cycles, and its own mark frame (205824-play.png) is the in-game pause menu's Audio page, not play: the same START-during-gameplay trap as sonic-heroes.route, caught here before any route was committed. Authored routes/gauntlet.route: 8 cycles (not 14), then mark gameplay, then a movement loop that never presses START again. DRAFT until its own replay is checked."
+
+[titles."53550001"]
+name = "Bistro Cupid"
+iso = { thor = "53550001-Bistro_Cupid.xiso.iso" }
+notes = "No #431 target; the default 30 applies. Japanese text. Session 46: the Thor survey 0-0-s-1790823806-titleroutes-2952343 ran to its end (no heat stop, peak xo 69 C) and finished on story dialogue (the headmaster's welcome, 212406-play.png, FPS overlay 29). Dialogue is not gameplay; the cooking or free-roam part was not reached. No route."
+
+[titles."55530004"]
+name = "Deathrow"
+iso = { thor = "Deathrow (USA).xiso.iso" }
+notes = "No #431 target; the default 30 applies. Session 46: the Thor survey 0-0-s-1790822581-titleroutes-2819301 was heat-stopped at 208 s (runner log 20:18:33 PDT); the last route frame (201833-menu-a.png) is the Daijishou launcher, taken after the force-stop. One heat stop so far."
+
+[titles."41560004"]
+name = "Tony Hawk's Pro Skater 3"
+iso = { thor = "41560004-Tony_Hawk_s_Pro_Skater_3.xiso.iso" }
+route = "thps3"
+target_fps = 60
+notes = "No #431 target; the default 30 applies pending one. routes/thps3.route (session 47) from the Thor generic survey 0-0-s-1790830433-titleroutes-311114 (heat-stopped at 300 s): 2 START/A cycles clear the boot logos into Career's first level, The Foundry, with a goal splash; the 3rd cycle's A dismisses the splash into live, unpaused gameplay at 59 fps (223419-menu-a.png). The survey then kept pressing START every ~12 s, which only pauses/resumes the already-running level (223432 unpaused at 1:55, 223634 PAUSED at 1:01 when the heat stop hit). Session 48: replayed as its own route for the first time (0-0-s-1790839395-titleroutes-2238007) -- HEAT STOP again at 97s scored, and this route takes no screenshot after the mark, so the only frame is the mark itself (010437-gameplay.png): THE FOUNDRY's level-name splash, the same card the survey's cycle 3 showed one frame before confirmed live play. Not independently confirmed by this run's own frames, but consistent with the survey's evidence from the same level. Two heat stops for this title (once as a survey, once as its own route): nominated for Nova (#433) per the screening program's rule, WITH the caveat that the Nova confirmation should check its own frames for live play, since this route has never shown a post-splash control frame."
+
+[titles."45410004"]
+name = "SSX Tricky"
+iso = { thor = "45410004-SSX_Tricky.xiso.iso" }
+notes = "No #431 target; the default 30 applies. Session 47: the generic `--route survey` soak (0-0-s-1790830433-titleroutes-311173) ran its full 300 s with no heat stop, but title_verdict.py reads hang=True. The frames back it up: after the menu cycles the route's three 'play' shots (224637, 224703, 224729) are all a solid black frame with only the FPS overlay (59) drawn -- not gameplay, not a visible menu either. Needs its own authored route from a longer/different survey (a held nav read, or a longer generic pass), not a re-queue of the same survey. No route yet."
+
+[titles."544B0004"]
+name = "Plus Plumb 2"
+iso = { thor = "544B0004-Plus_Plumb_2.xiso.iso" }
+notes = "No #431 target; the default 30 applies. Session 49: new on the ranked untouched list (rank 101, Perfect). Queued a generic `--route survey` soak, no frames yet. No route."
+
+[titles."41510001"]
+name = "Petit Copter"
+iso = { thor = "41510001-Petit_Copter.xiso.iso" }
+notes = "No #431 target; the default 30 applies. Session 49: new on the ranked untouched list (rank 135, Perfect). Queued a generic `--route survey` soak, no frames yet. No route."
+
+[titles."43430003"]
+name = "Dino Crisis 3"
+iso = { nova = "Dino Crisis 3.iso" }
+route = "dino-crisis-3"
+notes = "No #431 target; the default 30 applies. xemu: Playable. Session 65 (2026-10-02): a generic survey (1790928772-titleroutes-2771139, Nova) reached the first corridor with the HUD, then a START press in play opened OPTIONS and the rest of the window was that menu (fps_window_median 29.97 is a menu reading). routes/dino-crisis-3.route plays the survey's first 7 START/A cycles, then B twice to close any Options/tutorial overlay, then a loop with no START. CONFIRMED by a dispatch replay (1790931260-titleroutes-3615015, Nova, ref 17c3bc721f, frames in scratch/judge/): the mark frame 020712-gameplay.png is the corridor with the HUD, and every later frame is live play (boosting into the next room, an 'Activate switch?' prompt answered by A, the switch turning green); no Options screen. Launch to mark ~156 s. Measured (screening, 207 s of play): window fps median 27.16, 15.6% at 30+, two first-compile shader stalls of 15.1 s and 12.4 s (shader cache cleared by the new apk) read as hang=true. Not nominated: below the 90% bar."
+
+[titles."45410012"]
+name = "Buffy the Vampire Slayer"
+iso = { nova = "Buffy the Vampire Slayer (USA).xiso.iso" }
+route = "buffy"
+notes = "No #431 target; the default 30 applies. xemu: Playable. Session 65 (2026-10-02): a generic survey (1790928774-titleroutes-2773088, Nova) reached live play in the Spanish Mission canyon about 42 s after boot (4 START/A cycles); later cycles only toggled PAUSE/Resume. fps_window_median 29.97, fps_ok_share 0.93, one 220 ms shader hitch, measured over a window that was partly the pause panel. routes/buffy.route: 5 START/A cycles, then a walk/attack loop with no START. DRAFT, NOT CONFIRMED: two dispatch replays (1790931264-titleroutes-3615749, 1790932722-titleroutes-3976729 with B jumps) both reach live play at the mark (~125 s after launch; Start Game just names a new save Buffy 2/3, so disk state does not change the path), then get stuck within 1-2 min at the canyon's first ledges: one frozen sky view for ~4 min under the tips 'Run and press B to jump between ledges' / 'Push into low ledges to climb onto them'. The scorer's 95-96% at 30+, no hang, is over a stuck window. Needs a path found by looking at the screen (held nav.py session or lane.routedriver's drive.py), not a third blind loop."

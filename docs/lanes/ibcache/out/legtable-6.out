@@ -1,0 +1,7 @@
+1790929514-lane.ibcache-2992454 B on=1 layout=ok valid gp_s 203.8 fps 24.796 jpf 0.2815 net_w 6.979 idle 0.1873 oncpu 0.7106 rd/s 317.1029 hc 1374429.0 static {'measured': False, 'reason': '0 post-mark route-frame(s), need 3', 'frozen_frac': None, 'n': 0}
+1790929514-lane.ibcache-2992818 A on=0 layout=ok valid gp_s 203.5 fps 25.036 jpf 0.3001 net_w 7.513 idle 0.0811 oncpu 0.767 rd/s 321.0303 hc 13389220.0 static {'measured': False, 'reason': '0 post-mark route-frame(s), need 3', 'frozen_frac': None, 'n': 0}
+1790929514-lane.ibcache-2993079 A on=0 layout=ok valid gp_s 202.9 fps 27.26 jpf 0.2753 net_w 7.503 idle 0.0879 oncpu 0.7889 rd/s 348.9765 hc 13668073.5 static {'measured': False, 'reason': '0 post-mark route-frame(s), need 3', 'frozen_frac': None, 'n': 0}
+1790929515-lane.ibcache-2993364 B on=1 layout=ok valid gp_s 204.7 fps 28.215 jpf 0.2576 net_w 7.267 idle 0.1165 oncpu 0.7653 rd/s 389.2216 hc 1545557.5 static {'measured': False, 'reason': '0 post-mark route-frame(s), need 3', 'frozen_frac': None, 'n': 0}
+A n 2 fps 26.148 jpf 0.2877 net_w 7.508
+B n 2 fps 26.505 jpf 0.2695 net_w 7.123
+B/A: fps 1.0137 jpf 0.9369 net_w 0.9487; fps B-A 0.357

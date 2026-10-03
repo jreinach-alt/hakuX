@@ -1,0 +1,12 @@
+# Castlevania: Curse of Darkness (4B4E002D), FIRST RUN, screen-driven (#433,
+# lane.routedriver, owner ADDENDUM 3 2026-10-01).
+#
+# Replaces castlevania-cod.first-run.route's fixed-time presses (which typed
+# into a late-loading Name Entry keyboard, and on 1790918365 stopped at a
+# missing reference crop and left the opening movie looping for the rest of
+# the window) with drive.py: every press waits for the screen it is meant
+# for, logos and movies are skipped with the ladder, and the step ends at
+# 20 s of confirmed play (`find`). The path and its crops are in
+# drive-profiles/castlevania-cod.toml; the run that found it is in
+# docs/lanes/routedriver/NOTES.md.
+drive castlevania-cod 360 find

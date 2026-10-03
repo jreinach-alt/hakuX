@@ -1,0 +1,92 @@
+# lane.ibcache (#507) leg 5c: gta-sa.route exactly, plus a `shot play`
+# every second cycle of the play pattern (~20 s), so the scored window has
+# frames that show whether CJ was moving. Same in both arms of the env pair.
+# Grand Theft Auto: San Andreas (54540082, USA): one route. With no save on
+# the disk, START at the title begins a new game (no menu), and the game
+# saves only at a save point, so every run starts the same way. PLAYED by
+# nav.py on the Thor, 2026-09-27 00:06 PDT (lane.titleroutes HELD session
+# gta-sa.first-run-20260927T000620); ISO on the Thor's internal storage,
+# /storage/emulated/0/ROMS/xbox/.
+#
+#   Rockstar logos -> intro credits FMV (A skips it) -> title "Press START"
+#   (START) -> loading screens (~55 s) -> airport cutscene (A skips it) ->
+#   police-stop cutscene (A skips it) -> Jefferson alley, CJ on foot, HUD
+#   (clock, $350, radar), "Use the left thumbstick to move Carl".
+#
+# The two cutscene skips are a train of A presses 5 s apart (one A per
+# cutscene in the nav session): loading time differs between runs, and an
+# A that lands on a loading screen does nothing. On foot, A is sprint, so
+# the presses that land after the cutscenes are harmless.
+#
+# Player control: LY min for 2 s ran CJ down the alley ("Press Y to jump on
+# the bike", nav frames 008-skip2 -> 009-moved). The play pattern runs,
+# sprints, steers and turns the camera; it never presses Y, START or BACK.
+#
+wait 26.7
+shot boot
+wait 36.7
+press A 300
+wait 6.1
+shot skA
+wait 8.6
+press START 300
+wait 9.8
+shot menu
+wait 30.0
+shot load
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+shot cut1
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+shot cut2
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+press A 300
+wait 5
+shot cut3
+wait 10
+axis LY min
+wait 2.2
+axis LY mid
+shot moved
+wait 5
+mark gameplay
+repeat forever {
+  repeat 2 {
+    axis LY min
+    press A 200
+    wait 1.5
+    axis LX max
+    wait 1
+    axis LX mid
+    press A 200
+    wait 1.5
+    axis LX min
+    wait 1
+    axis LX mid
+    axis RX max
+    wait 0.5
+    axis RX mid
+    wait 1
+    axis LY mid
+    wait 0.5
+  }
+  shot play
+}

@@ -1,0 +1,32 @@
+{
+ "title_id": "4D530065",
+ "name": "Blinx 2: Battle of Time & Space ~ Blinx 2: Masters of Time & Space",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/4D530065-Blinx_2_Battle_of_Time_Space_Blinx_2_Masters_of_Time_Space.xiso.iso",
+ "result": "gave-up",
+ "tool": "41aeb6ac79",
+ "started": "2026-10-02 10:56:09 PDT",
+ "reason": "budget 15 min",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/blinx-2.guided/frames/084-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/blinx-2.guided/frames/084-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/blinx-2.guided/frames/084-probe-c.jpg"
+ ],
+ "last_state": "pause",
+ "model_calls": 61,
+ "calls_by_model": {
+  "claude-sonnet-5": 44,
+  "claude-opus-5-5": 17
+ },
+ "steps": 89,
+ "seconds": 909.1,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/blinx-2.guided/frames/089-pause.jpg",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [
+  "4D530013"
+ ],
+ "cheap": 1,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/scratch/runs/blinx-2.guided/strip.jpg"
+}
