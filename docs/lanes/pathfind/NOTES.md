@@ -21,6 +21,17 @@ Offline checks, run on saved frames with the real prompts (Sonnet 5, scratch/hol
 | hold_genre | Panzer Dragoon Orta | onrails | right |
 | hold_genre | Counter-Strike | attack | right |
 
+## Attempt 3 (10-03): why attempt 2 did not finish
+
+- **Attempt 2 built hold-play and stopped before any device run.** Its only blocker was the golden profile:
+  `titlestate.py prepare` was not on master, and addendum 2 says held runs start from it. It went to a
+  `waiting:` comment at 06:58 PDT and ended there with nothing queued on the Nova.
+- **That blocker has cleared.** savestate433 folded to master (`cfa37a359e`, the Tron device proof). Attempt 3
+  merged origin/master. The one conflict was `pathfind.py`'s argument block: both sides added arguments, so
+  `--hold-s` and `--state`/`--hdd-img` are both kept. Selftest all ok after the merge.
+- **Nothing else from attempt 2 carries over as a result.** Its hold-play work is selftested only; no held run has
+  been made on a device yet. Today's bar stays addendum 2: 600 s held on a Nova title from the pool, judged.
+
 ## Attempt 2 (10-03): why attempt 1 did not finish
 
 - **Attempt 1 finished its acceptance, not today's bar.** The 10-02 lot acceptance (9 of 10, Bruce Lee rerun) was

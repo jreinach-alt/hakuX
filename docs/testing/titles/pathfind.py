@@ -1328,6 +1328,11 @@ def main(argv=None):
                     help="use no recorded path at all, own or sibling (a cross-title baseline)")
     ap.add_argument("--hold-s", type=float, default=0,
                     help="after the claim, hold play for this many seconds of play (Nova only: the Thor's fan is dead)")
+    ap.add_argument("--state", default="any", choices=("returning", "first-run", "any"),
+                    help="the titles disk to boot (titlestate.py compose): the title's golden profile "
+                         "(returning), none (first-run), or its golden if it has one (any)")
+    ap.add_argument("--hdd-img", action="store_true",
+                    help="boot whatever hdd.img holds (hand play); the path found then assumes it")
     ap.add_argument("--sim", help="PATHFIND_DRY: frames dir to play back")
     ap.add_argument("--sim-answers", help="PATHFIND_DRY: JSON list of canned model answers")
     a = ap.parse_args(argv)
@@ -1352,7 +1357,18 @@ def main(argv=None):
         agent.own = None
     if a.no_guide:
         agent.sibs = []
-    return agent.run()
+    # The titles disk a dispatched run of the path would boot (lane.savestate433):
+    # the path found is only replayable from the state it was found in.
+    hdd = None
+    if not dry() and not a.hdd_img:
+        import titlestate
+        hdd = titlestate.prepare(dev.label, tid, a.state, log=lambda m: print(m, flush=True))
+        json.dump(hdd, open(os.path.join(a.out, "hdd.json"), "w"), indent=1)
+    try:
+        return agent.run()
+    finally:
+        if hdd:
+            titlestate.release(dev.label, hdd.get("run"), log=lambda m: print(m, flush=True))
 
 
 if __name__ == "__main__":

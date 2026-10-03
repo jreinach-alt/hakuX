@@ -643,12 +643,18 @@ dev_push() {
     [ "$(dev_sha256 "$dst")" = "$want" ] && [ "$(dev_mode "$dst")" = 660 ]
 }
 
-# titles_disk_prepare <id> <rdir> [<request env json>]: make the device's
-# titles disk current and point hddPath at it. Writes <rdir>/hdd.json.
-# Non-zero fails the request.
+# titles_disk_prepare <id> <rdir> [<request env json>] [<title id>] [<state>]:
+# make the device's titles disk the composed goldens for this title and state
+# (titlestate.py, GOLDENS: every title's golden profile, minus this title's on
+# a first-run) and point hddPath at it. Writes <rdir>/hdd.json, which records
+# what was loaded: title, save, golden or none. Non-zero fails the request;
+# 3 is a refusal (a returning state with no golden), written to
+# <rdir>/hdd.refused, before any disk is touched.
 titles_disk_prepare() {
-    local id="$1" rdir="$2" renv="${3:-[]}" dev="${DEVICE_LABEL:-}" dpath x pj action reason bytes sha i
-    local split="${HAKUX_TITLES_DISK:-1}" from=worker rsplit mode0
+    local id="$1" rdir="$2" renv="${3:-[]}" tid="${4:-}" tstate="${5:-any}" dev="${DEVICE_LABEL:-}" dpath x pj action reason bytes sha i
+    local split="${HAKUX_TITLES_DISK:-1}" from=worker rsplit mode0 targs=()
+    [ -n "$tid" ] && targs=(--title-id "$tid")
+    targs+=(--state "$tstate")
     [ -n "${HAKUX_TITLES_DISK:-}" ] || from=default
     # The request's own HAKUX_TITLES_DISK, when it names one, wins.
     rsplit=$(python3 -c '
@@ -672,7 +678,7 @@ print(([str(e).split("=", 1)[1] for e in v if str(e).startswith("HAKUX_TITLES_DI
     for i in 1 2 3 4 5; do
         bytes=$(dev_bytes "$dpath"); sha=""
         [ "$bytes" -ge 0 ] && sha=$(dev_sha256 "$dpath")
-        pj=$(python3 "$TITLESTATE" plan --device "$dev" --device-bytes "$bytes" --device-sha "$sha") || {
+        pj=$(python3 "$TITLESTATE" plan --device "$dev" --device-bytes "$bytes" --device-sha "$sha" "${targs[@]}") || {
             log "  TITLES DISK: plan failed"; return 1; }
         printf '%s\n' "$pj" >> "$rdir/hdd.plan"
         action=$(python3 -c 'import json,sys;print(json.loads(sys.argv[1])["action"])' "$pj")
@@ -680,6 +686,15 @@ print(([str(e).split("=", 1)[1] for e in v if str(e).startswith("HAKUX_TITLES_DI
         log "  titles disk: $action ($reason)"
         case "$action" in
             keep) break ;;
+            refuse)
+                printf '%s\n' "$reason" > "$rdir/hdd.refused"
+                log "  TITLES DISK: REFUSED: $reason"; return 3 ;;
+            preserve)
+                # The harvest of this disk failed: keep all of it on the host,
+                # then rebuild. A disk a run wrote to is never booted again.
+                local keep; keep="$TITLESTATE_DIR/unharvested/$dev-${sha:0:12}.qcow2"
+                dev_pull "$dpath" "$keep" "$sha" || { log "  TITLES DISK: cannot pull the disk to preserve it"; return 1; }
+                python3 "$TITLESTATE" preserved --device "$dev" --sha "$sha" --path "$keep" || return 1 ;;
             seed)
                 local h hs; h="$TITLESTATE_DIR/pull/$dev-hdd.img"
                 hs=$(dev_sha256 "$x/hdd.img")
@@ -691,7 +706,7 @@ print(([str(e).split("=", 1)[1] for e in v if str(e).startswith("HAKUX_TITLES_DI
                 titles_disk_harvest "$id:before" "$dpath" "$sha" "$rdir/hdd.harvest-before.json" || return 1 ;;
             build)
                 local bj img isha built
-                bj=$(python3 "$TITLESTATE" rebuild --device "$dev") || { log "  TITLES DISK: rebuild failed"; return 1; }
+                bj=$(python3 "$TITLESTATE" rebuild --device "$dev" "${targs[@]}") || { log "  TITLES DISK: rebuild failed"; return 1; }
                 printf '%s\n' "$bj" > "$rdir/hdd.build.json"
                 img=$(python3 -c 'import json,sys;print(json.loads(sys.argv[1])["path"])' "$bj")
                 built=$(python3 -c 'import json,sys;print(json.dumps(json.loads(sys.argv[1])["built_from"]))' "$bj")
@@ -711,15 +726,20 @@ print(([str(e).split("=", 1)[1] for e in v if str(e).startswith("HAKUX_TITLES_DI
     # set_hdd_pref writes the marker before the pref, so a failure here still
     # leaves serve_one's restore_hdd_pref the value to put back.
     set_hdd_pref "$dpath" "$(hdd_pref_marker)" >/dev/null || return 1
-    python3 - "$rdir" "$dpath" "$sha" "$bytes" "$mode0" "$from" <<'PYHDD'
+    local cj; cj=$(python3 "$TITLESTATE" compose --device "$dev" "${targs[@]}") || cj='{}'
+    python3 - "$rdir" "$dpath" "$sha" "$bytes" "$mode0" "$from" "$cj" <<'PYHDD'
 import json, os, sys
-rdir, path, sha, n, mode0, frm = sys.argv[1:7]
+rdir, path, sha, n, mode0, frm, cj = sys.argv[1:8]
 plans = [json.loads(l) for l in open(os.path.join(rdir, "hdd.plan")) if l.strip()]
-json.dump({"path": path, "sha256_at_start": sha, "bytes_at_start": int(n), "plans": plans,
-           "mode_found": mode0 or None, "mode": "660",
-           "split": "on", "split_from": frm}, open(os.path.join(rdir, "hdd.json"), "w"), indent=1)
+c = json.loads(cj)
+c.pop("built_from", None)
+# title_id, disk_title_id, state, save, loaded (golden|none), golden_status:
+# what this run's title found on the disk (titlestate.py compose).
+json.dump(dict(c, path=path, sha256_at_start=sha, bytes_at_start=int(n), plans=plans,
+               mode_found=mode0 or None, mode="660",
+               split="on", split_from=frm), open(os.path.join(rdir, "hdd.json"), "w"), indent=1)
 PYHDD
-    log "  hddPath -> $dpath (sha256 ${sha:0:12}, $bytes B)"
+    log "  hddPath -> $dpath (sha256 ${sha:0:12}, $bytes B; ${tid:-title unknown} $tstate: $(python3 -c 'import json,sys;c=json.loads(sys.argv[1]);print(c.get("loaded"), c.get("save") or "")' "$cj" 2>/dev/null))"
 }
 
 # titles_disk_harvest <run> <device path> <sha> <out.json>: pull, harvest.
@@ -750,7 +770,26 @@ titles_disk_after() {
                 || printf '{"error": "pull or harvest failed; see dispatcher.log"}\n' > "$rdir/hdd.after.json" ;;
         *) printf '{"unchanged_or_blocked": %s, "sha256": "%s"}\n' "$pj" "$sha" > "$rdir/hdd.after.json" ;;
     esac
+    titles_first_run_golden "$id" "$rdir"
     restore_hdd_pref || log "  WARNING: hddPath not restored; the next request retries"
+}
+
+# titles_first_run_golden <id> <rdir>: a first-run whose route reached `mark
+# profile-saved` made the title's profile; when the title has no golden, the
+# harvested save becomes it (titlestate.py first-run-saved never replaces one).
+titles_first_run_golden() {
+    local id="$1" rdir="$2" dt save
+    grep -q '"state": "first-run"' "$rdir/hdd.json" 2>/dev/null || return 0
+    grep -q 'mark profile-saved' "$rdir/run.log" 2>/dev/null || return 0
+    dt=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("disk_title_id") or "")' "$rdir/hdd.json" 2>/dev/null)
+    save=$(python3 -c 'import json,sys;print((json.load(open(sys.argv[1])).get("harvested") or {}).get(sys.argv[2]) or "")' \
+           "$rdir/hdd.after.json" "$dt" 2>/dev/null)
+    if [ -z "$dt" ] || [ -z "$save" ]; then
+        log "  first-run reached profile-saved, but no save of ${dt:-the title} was harvested; no golden made"
+        return 0
+    fi
+    python3 "$TITLESTATE" first-run-saved --title-id "$dt" --save "$save" --run "$id" \
+        > "$rdir/hdd.golden.json" 2>&1 && log "  golden: $(cat "$rdir/hdd.golden.json")"
 }
 
 # hdd_img_guard <rdir>: disc runs keep hdd.img, and it still grows (E:\nxdk_*
@@ -1288,7 +1327,20 @@ p=sys.argv[1]; b=json.load(open(p)); b["t_device"]=time.time(); json.dump(b,open
             log "  TITLE NOT FOUND"; mv "$req" "$rdir/request.json"; return 0
         fi
         touch "$LEASE"
-        if ! titles_disk_prepare "$id" "$rdir" "$req_env"; then
+        # Which title, and the state its route was written for (request.sh
+        # --route, titlestate.py resolve-route). A request queued before that
+        # carries neither: its title from the ISO name, state `any`.
+        local ttid tstate trc
+        ttid=$(jq_get "$req" title_id "")
+        [ -n "$ttid" ] || ttid=$(python3 "$TITLESTATE" tid-for-iso "$title" 2>/dev/null)
+        tstate=$(jq_get "$req" title_state any)
+        titles_disk_prepare "$id" "$rdir" "$req_env" "$ttid" "$tstate"; trc=$?
+        if [ "$trc" = 3 ]; then
+            echo "refused before the soak: the titles disk cannot carry what the route assumes: $(cat "$rdir/hdd.refused" 2>/dev/null)" > "$rdir/ERROR"
+            log "  TITLES DISK REFUSED"
+            restore_hdd_pref
+            mv "$req" "$rdir/request.json"; return 0
+        elif [ "$trc" != 0 ]; then
             adb_error "could not prepare the titles disk; see dispatcher.log" > "$rdir/ERROR"
             log "  TITLES DISK SETUP FAILED"
             restore_hdd_pref

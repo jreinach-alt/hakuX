@@ -1,3 +1,4 @@
+# state: any   (serves every title; never marks gameplay; lane.savestate433)
 # The first pass over a title with no route of its own (lane.titleplay).
 #
 # generic.route's input, plus a frame at every step of the way in: the

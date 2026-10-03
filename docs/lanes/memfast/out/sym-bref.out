@@ -1,0 +1,37 @@
+tid 19110: 21934 samples
+  jit        10510   47.9%
+  lookup      5705   26.0%
+  softmmu     2075    9.5%
+  fp          1139    5.2%
+  mmio         149    0.7%
+  translate     74    0.3%
+  loop         342    1.6%
+  kernel       429    2.0%
+  other       1511    6.9%
+
+top symbols outside the JIT
+  10.86%  lookup    tb_lookup  [libxemu.so]
+   7.33%  lookup    helper_lookup_tb_ptr  [libxemu.so]
+   4.86%  lookup    qht_lookup_custom  [libxemu.so]
+   2.81%  softmmu   tlb_set_page_full  [libxemu.so]
+   1.96%  lookup    tb_lookup_cmp  [libxemu.so]
+   1.87%  fp        helper_mulss  [libxemu.so]
+   1.37%  softmmu   tlb_reset_dirty  [libxemu.so]
+   1.25%  softmmu   probe_access_internal  [libxemu.so]
+   1.03%  kernel    *[kernel.kallsyms][+ffffffef40e45d8c]  [[kernel.kallsyms]]
+   0.92%  loop      cpu_exec_loop  [libxemu.so]
+   0.91%  fp        helper_addss  [libxemu.so]
+   0.88%  other     voice_lock  [libxemu.so]
+   0.77%  lookup    x86_get_tb_cpu_state  [libxemu.so]
+   0.74%  fp        helper_subss  [libxemu.so]
+   0.69%  fp        helper_comiss  [libxemu.so]
+   0.63%  softmmu   do_ld4_mmu  [libxemu.so]
+   0.60%  softmmu   mmu_translate  [libxemu.so]
+   0.57%  other     [linker]tlsdesc_resolver_dynamic  [linker64]
+   0.53%  other     curr_cflags  [libxemu.so]
+   0.44%  other     find_next_bit  [libxemu.so]
+   0.42%  softmmu   mem_access_callback_address_matches  [libxemu.so]
+   0.39%  other     physical_memory_get_dirty_flag  [libxemu.so]
+   0.39%  softmmu   mmu_lookup1  [libxemu.so]
+   0.38%  other     tb_tc_cmp  [libxemu.so]
+   0.35%  softmmu   qemu_ram_block_from_host  [libxemu.so]
