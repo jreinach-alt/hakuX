@@ -166,11 +166,7 @@ path was type-checked, not run on the device.
    per-title records, applied to the (family, GS, raster, formats) keys. Win: the creates left on
    a first launch, 2.8-3.2 s and 2-4 stall windows per title here, all of which come from cold
    combinations (`[uber569] cold=` 94 Kabuki, 17 DOA3, 12 Tron). Cost: one lane, ~4 Nova runs.
-2. **Find what ToeJam B lost (F).** This head's ToeJam A, same ref and env with `HAKUX_GPL=0`, is
-   queued as the fold's head run. If it reads ~0.88, the miss was the session and thermals, and
-   F passes in substance. If it reads ~0.99, the ubershader costs a 60-fps title about 0.1 of its
-   time at 30+ fps. Then the next step is (3). P that the ladder is the cause: 0.3, because the
-   ladder's work ended before the slow stretches. Win: settles F. Cost: that run.
+2. *(superseded by section 8, which ranks the ToeJam cost first)*
 3. **Cut the stand-in's GPU cost.** uberspike569 G read 3.8x GPU ms held (uber stage plus a
    non-LTO link, never split). Split the two with one arm (GPL 1 held against 0), then LTO-link
    the uber pipeline on the worker or tune the interpreter. P 0.6 for a useful split. Win: the
@@ -191,3 +187,51 @@ path was type-checked, not run on the device.
   compile stall; read dpc_ms beside it.
 - `--frames-every 1` catches the banner. The frame mtimes are host clock and logcat is device
   clock; place frames by content, not by time.
+
+## 8. The ToeJam check (head run at effb0d001b, read 22:08 PDT)
+
+`1-1791001364-uberdefault569-1888217`: ToeJam & Earl III, same route and env as B,
+`HAKUX_GPL=0`, built from effb0d001b (emulator code = d4a02e2060). Cold (cache cleared, PLC wiped).
+
+| arm | ref | start xo-therm | fps_ok | median | fps per minute after mark |
+|---|---|---|---|---|---|
+| A1 off (first play) | 6b0c4a131f | 43.7 C | 0.992 | 59.9 | 40 41 57 59 50 57 58 60 60 60 51 54 60 |
+| **A2 off (this run)** | effb0d001b | 35.0 C | **0.996** | 59.9 | 42 51 58 57 60 60 60 60 60 60 60 60 |
+| B on | d4a02e2060 | 48.6 C | 0.881 | 53.9 | 38 32 55 53 52 54 49 38 39 53 42 44 54 |
+
+- **F fails again against the same build: 0.996 -> 0.881.** The "different session" reading in
+  section 5 is gone. Two off arms at 0.99+ against one on arm at 0.88.
+- **The deficit is not the cold span.** B's ladder linked 92 pipelines by 23 s after the mark and
+  100 by 201 s, and none after. Its misses after the first minute are 0-3 a minute with 0-22 ms
+  of creates. Yet its slowest minutes are 7-8 and 10-11. In mode 3, a pipeline that has swapped
+  should draw the same as A's monolithic one. So either something in mode 3 costs every frame
+  (a pipeline still on the uber stage, the swapped pipeline not being what A builds, or bind-path
+  overhead), or B's warmer start (48.6 C against 35-44 C) cost it 0.1 by itself.
+- **It matters for ratings.** 0.881 is under the Playable bar (>= 0.90 of gameplay at 30+ fps).
+  Both off arms pass it. If the cost is the ladder's, the default flip could drop a Playable title
+  below the bar.
+- **What this does not show:** GPU ms per frame. No arm ran `--perflog`, so B's slow minutes
+  cannot be split into GPU time and anything else here.
+
+**Next, re-ranked by P x win** (replaces section 6's order; 6's items 1, 3, 4 stand behind it):
+1. **Find ToeJam's steady-state cost.** One ToeJam pair, on then off, back to back from a matched
+   start temperature, both `--perflog`. Read GPU ms per frame and `[gpl569]`/`[uber569]` per
+   window in the slow minutes. P 0.6 that the ladder causes it: same-build off 0.996 vs on 0.881,
+   with the ladder idle while it happened. Counter-evidence: a 13 C warmer start, and A1 shows
+   content dips to 50 fps. Win: whether the default holds Playable titles at Playable. If the
+   GPU ms are higher, check that swapped pipelines are the monolithic ones and that none stays on
+   the uber stage. If GPU ms are equal and fps lower, it is the bind path or thermals.
+   Cost: 2 Nova runs, ~35 min.
+2. Persist the uber combinations and pre-build them at boot (section 6 item 1). P 0.8. Win: the
+   last ~3 s of creates per first launch.
+3. Split and cut the stand-in's GPU cost (section 6 item 3). P 0.6.
+4. `NoContraction` (section 6 item 4).
+
+**The default stays on, as the owner decided.** The trade on these four titles: three cold-launch
+freezes of 11-226 s removed and fps_ok up 0.19-0.34 where the off arm froze, against ToeJam's
+0.996 -> 0.881. The setting turns the ubershader off, globally or per game, if a title shows
+the ToeJam pattern.
+
+The fold's head run is a short DOA3 smoke queued after this commit (purpose `#569 head run`), because
+this section moved the head off effb0d001b. That makes 12 Nova runs, two over the brief's 10:
+the Tron rerun and this smoke.

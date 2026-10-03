@@ -43,20 +43,23 @@ Both used the same route and env.
 | F fps_ok on >= off - 0.10 | **FAIL** on ToeJam (-0.11); Kabuki +0.21, DOA3 +0.19 |
 | pixels, 36 suites, on vs off | **PASS**: 1317/1317 same, all byte-identical; 1321 draws went through the uber stage |
 
-**The F miss.** ToeJam's ladder work ended inside the first minute (97 links, 95 swapped, no
-later activity). Its slow stretches come 7-12 minutes in. The on arm started 5 C warmer, and
-the off arm is from another session. So the cause is not shown. The head run below is a
-same-build ToeJam off arm, and it decides between the two.
+**The F miss, checked.** A same-build ToeJam run with the ubershader off
+(`1-1791001364-uberdefault569-1888217`, the first head run) reads fps_ok 0.996 against 0.881 on.
+ToeJam's ladder had finished its work by 3.5 min, and the slow stretches with it on come at
+7-8 and 10-11 min. So it looks like a steady-state cost in mode 3 on this title. The on arm's
+13 C warmer start is the one confound left. 0.881 is under the Playable bar, and both off
+runs pass it. NOTES section 8.
 
 **Banner screenshot:** `docs/lanes/uberdefault569/banner-nova.png` (Nova, frame f00011 of
 `1-1790994336-uberdefault569-990675`). It is visible from the first frame of the app window
 until about 6 s, then gone.
 
-**Next, by P x win** (NOTES 6):
-1. Persist the uber combinations and pre-build them at boot. P 0.8, using shaderprebuild569's
-   shipped mechanism. Win: the ~3 s of creates and 2-4 stall windows left per first launch,
-   all from cold combinations.
-2. The ToeJam fps check, which is this PR's head run. P 0.3 that the ladder caused the dip.
+**Next, by P x win** (NOTES 8):
+1. Find ToeJam's steady-state cost: an on/off pair from a matched start temperature, with
+   `--perflog` (GPU ms per frame in the slow minutes). P 0.6 that the ladder causes it. Win:
+   whether the default keeps Playable titles Playable. 2 runs.
+2. Persist the uber combinations and pre-build them at boot. P 0.8, using shaderprebuild569's
+   shipped mechanism. Win: the ~3 s of creates left per first launch.
 3. Split the stand-in's GPU cost (interpreter against non-LTO link), then cut it. P 0.6.
 4. `NoContraction` on both paths, with its own pixel arm.
 
@@ -68,12 +71,12 @@ until about 6 s, then gone.
 - `docs/testing/preflight.sh --allow-tracker`: passed. Its coverage gate did not run, because it
   needs `gh`.
 - No harness file changed, so `selftest.sh` does not apply.
-- **Head run:** ToeJam & Earl III, cold, `--env HAKUX_GPL=0`, queued at this head after this
-  commit, with purpose `#569 head run`. It is the fold's head-commit run and the F check above.
+- **Head run:** a DOA3 smoke, 150 s, at this head, queued after this commit with purpose
+  `#569 head run`. The ToeJam check ran at effb0d001b, and this commit moved the head off it.
 
-Nova runs: 10 at d4a02e2060 plus the head run, 11 in all, one over the brief's 10. The extra
-one is the Tron rerun after the boot crash.
+Nova runs: 10 at d4a02e2060, the ToeJam check, and the head smoke, 12 in all. That is two over
+the brief's 10: the Tron rerun after the boot crash, and the smoke this correction needed.
 
-Release note (performance): Games no longer freeze to compile shaders the first time a scene appears. A general "ubershader" draws it at once while the exact shader builds, which removes multi-second to minute-long stalls on first play (Kabuki Warriors, Dead or Alive 3, Tron 2.0). It can be turned off in Settings > Graphics > Ubershader, per game if needed.
+Release note (performance): Games no longer freeze to compile shaders the first time a scene appears. A general "ubershader" draws it at once while the exact shader builds, which removes multi-second to minute-long stalls on first play (Kabuki Warriors, Dead or Alive 3, Tron 2.0). In some games it can lower the frame rate (ToeJam & Earl III ran at 54 fps instead of 60 in testing). It can be turned off in Settings > Graphics > Ubershader, globally or per game.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)

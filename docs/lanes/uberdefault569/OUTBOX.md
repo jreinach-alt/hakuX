@@ -52,3 +52,15 @@ no freeze. Draw-path creates 3.2 s against run 6's 49.8 s, no hitch in the first
 kernel BugCheck 0xA 13 s into boot, before any frame; one other run in the last 524 (Conker,
 ubershader off) shows the same halt. The default flip is in lane/uberdefault569; once it folds,
 #672's first-play hang does not happen on this path.
+
+## #569 -- 2026-10-02 22:10 PDT
+
+[lane.uberdefault569] The ToeJam check came back, and it **does not clear the ubershader.** The
+same build with the ubershader off (`1-1791001364-uberdefault569-1888217`) reads fps_ok 0.996
+(flat 59.9 fps from minute 4), against 0.881 with it on. The ladder had finished its work by
+3.5 min, and the on-arm's slow minutes come at 7-8 and 10-11 min. So this looks like a
+steady-state cost in mode 3 on this title, not the cold-start dip. One confound is left: the on
+arm started 13 C warmer. 0.881 is under the Playable bar of 0.90, and both off runs pass it.
+Next, ranked first: a ToeJam on/off pair from a matched temperature with `--perflog`, to read
+GPU ms per frame in the slow minutes (2 runs, P 0.6 that the ladder is the cause). The default
+stays on, as decided. The setting turns it off for a title that shows this. NOTES section 8.
