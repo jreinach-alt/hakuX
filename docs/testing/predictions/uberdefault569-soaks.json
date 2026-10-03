@@ -1,0 +1,45 @@
+{
+ "registered_utc": "2026-10-03T01:20:00Z",
+ "who": "lane.uberdefault569",
+ "issue": "569",
+ "device": "nova",
+ "a_ref": "d4a02e2060",
+ "b_ref": "d4a02e2060",
+ "runs_per_arm": 1,
+ "arms": {
+  "Kabuki": {
+   "title": "43560001-Kabuki_Warriors.xiso.iso", "route": "kabuki-warriors", "seconds": 600,
+   "B": "request.sh --ref d4a02e2060 --env HAKUX_PREBUILD=0 --env HAKUX_PLC_WIPE=1 (no HAKUX_GPL: the build's default, 3)",
+   "A": "the same plus --env HAKUX_GPL=0, queued after B"
+  },
+  "DOA3": {
+   "title": "54430001-Dead_or_Alive_3.xiso.iso", "route": "doa3", "seconds": 480,
+   "B": "as Kabuki's B", "A": "as Kabuki's A, after B"
+  },
+  "ToeJam": {
+   "title": "ToeJam & Earl III - Mission to Earth (USA).iso",
+   "route": "../../../lanes/uberdefault569/routes/toejam-earl-3", "seconds": 840, "frames_every": 30,
+   "B": "--env PERF_REGIMEN=default --env HAKUX_PREBUILD=0 --env HAKUX_PLC_WIPE=1, the A run's own settings and route text",
+   "A": "1790970734-lanelocal-1022425 (on disk: the title's first play on the Nova, 2026-10-02 12:52 PDT, ref 6b0c4a131f, HAKUX_GPL 0 by default, shader cache cleared, [pb569] jobs=0). Between 6b0c4a131f and d4a02e2060 the emulator differs by bf2push656, folded with its overlay reverted, and this lane's default flip"
+  },
+  "Tron": {
+   "title": "Tron 2.0 - Killer App (USA, Europe).iso",
+   "route": "../../../lanes/uberdefault569/routes/tron-newgame", "seconds": 720, "frames_every": 30,
+   "B": "--env PERF_REGIMEN=default --env HAKUX_PREBUILD=0 --env HAKUX_PLC_WIPE=1, run 6's own settings and route text",
+   "A": "0-1790978946-tronhang672-3184149 (#672 run 6 on disk: ref 16f09aa346, the same env, HAKUX_GPL 0; ~50 synchronous creates at the second card, then the hang)"
+  }
+ },
+ "order": "Pilot (30-min gate): Kabuki B, then Tron B. Then Kabuki A, DOA3 B, DOA3 A, ToeJam B. B before A in each fresh pair, so a shader-module cache kept from the previous run on the same apk favours A, not B.",
+ "judge": "python3 docs/lanes/uberdefault569/judge.py --pair Kabuki <A> <B> --pair DOA3 <A> <B> --pair ToeJam <A> <B> --pair Tron <A> <B> (--selftest passes). Readings, legs and FACTORS are in its docstring, fixed before any run. On the two runs already on disk for Tron (run 6 as A, run 7 as B) it reads V, H, S1 (0.059), S2 (3 -> 0) true.",
+ "prediction": "#569 ubershader on by default. uberspike569 measured the ladder (HAKUX_GPL=3) on two titles: Kabuki's fight 133 s -> 27 ms of draw-path creates, DOA1U 26.2 s -> 2.7 s, and its uber vertex stage held on every draw was byte-identical on 1317 suite captures. #672 run 7 took Tron 2.0's cold New Game path past the card where run 6 hung. This build makes 3 the default and adds an Android setting that turns it off. Predicted, on cold first launches (no pipeline cache file, nothing pre-built): H, no B arm hangs, crashes, or fails to reach gameplay that its A reached; S1, per title B's draw-path create ms <= 0.50 x A's; S2, summed over titles B's shader-class hitches in the first 120 s after `mark gameplay` < A's, and no title's B exceeds its A by more than 1; F, per title except Tron (whose A hung), B's fps_ok_share >= A's - 0.10. Each B must log [gpl569] requested=3 mode=3 and a last [uber569] with links > 0, and each A [gpl569] mode=0; both arms cold by [pb569]. Otherwise the pair is VOID.",
+ "legs": {
+  "V (validity)": "per pair, as the prediction's last sentence. A VOID pair scores nothing.",
+  "H": "every B: verdict.json hang false, crash false, reached_gameplay true unless its A's was false. FAILS in the world where a stand-in pipeline wedges the GPU or the swap frees a pipeline still in flight.",
+  "S1": "per pair, B dpc_ms <= 0.50 x A's. FAILS where a title's cold misses (no uber library yet for a (family, GS, raster, formats) combination) dominate, as DOA1U's 14 cold combinations did in part, or where its vertex states are uncovered ([uber569] uncovered=).",
+  "S2": "first 120 s after mark gameplay, shader-class hitches (hitch_report's classifier): sum B < sum A, and each B <= A + 1. FAILS where the early hitches are cold combinations or are not compile-bound.",
+  "F": "per pair except Tron, B fps_ok_share >= A - 0.10. 0.10 is a registered tolerance, not a measured noise band. FAILS where the stand-in's GPU cost (uberspike569 G: up to 3.8x per frame held, 0.79x median gfps over DOA1U's cold play span) lasts long enough to move the share. This is the leg most at risk."
+ },
+ "expect": {},
+ "expect_counts": {},
+ "expect_note": "EMPTY ON PURPOSE: a soak writes no captures. The legs are read off logcat and verdict.json by judge.py."
+}
