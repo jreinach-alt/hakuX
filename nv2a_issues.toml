@@ -5062,3 +5062,555 @@ status = "open"
 dispatch_state = "blocked"
 blocked_on = "UNTRIAGED (hostops 12:52 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
 status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.783]
+title = "nightly: APK name and release lose the version (hakuX--nightly-...) since versionName became stampedVersionName()"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.782]
+title = "golden saves harvested on the Thor are read as \"damaged\" on the Nova (different eeprom.bin); 55 of 84 goldens are Thor-made"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.781]
+title = "Windows C: drive is filling (9.4 GB free at 10:34)"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.780]
+title = "84 goldens were promoted without checking each against its route"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.779]
+title = "Cause-level telemetry exists only in the -Pperflog build and its cost was never measured"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.778]
+title = "Stranded branches and unfolded branches without PR.md"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.777]
+title = "Lanes at the 4-attempt cap and the 0.5 title-route stage (#397) have no owner"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.776]
+title = "0.5-track requests are queued at plain priority; the checker rule and the owner's order disagree"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.775]
+title = "Stale lane:* labels on forge issues of retired lanes"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.774]
+title = "Ready PRs lack a pipeline label; foldqueue selects on PR.md State, so the label rule is GitHub-era"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.773]
+title = "The forge shim does not implement gh pr list --search (exit 64)"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.772]
+title = "Five self-starting GitHub workflows on master queue jobs for a runner that does not exist"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.771]
+title = "Lane sandbox and xbox units still reach GitHub: WebFetch allowed, hakux-cloud not routed, xbox units use real gh"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.770]
+title = "status.sh force-pushes gh-pages to github.com whenever gh auth status passes under the shim"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.769]
+title = "Nightly publish fails every night with HTTP 403 from gh release create and upload"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.768]
+title = "Nightly build: run-nightly.sh does not copy android/local.properties into a recreated worktree"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.767]
+title = "Thor cold-slot hold is orphaned on coldconfirm restart; retries block every Thor cold slot"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.766]
+title = "foldqueue.sh crashed after its script was edited in place"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.765]
+title = "foldqueue.tried records a head that failed before its device run finished; it is never retried"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.764]
+title = "routerca433 screen-aware driver drive.py has never run in a dispatched request"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.763]
+title = "Low mode does not stop dispatch: board.sh has no gate on the low-usage flag"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.762]
+title = "title_verdict.contact_sheet puts boot samples mid-sheet, so they read as a restart"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.761]
+title = "Nothing converts a failed run into a pathing hand-off; request.sh does not call the admission gate"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.760]
+title = "scripts/gen-license.py: fname is undefined in the license-text fallback"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.759]
+title = "tcg424flip churn metric reads 2.5% for arm A and never counts retranslation after a discard"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.758]
+title = "Thor: CPU die near 95 C restarts the Android runtime during Psychonauts"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.757]
+title = "Thor on the 500 mA port drains under compute load and hits battery holds"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.756]
+title = "Nova void classes: sustained USB drops, post-restart burst voids and emulator crashes"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.755]
+title = "Nova media.extractor aborts about every 2 minutes (MPEG4Extractor CHECK_EQ) while hakuX keeps playing"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.754]
+title = "hakuX native crashes leave no tombstone; the crash lines show only a nameless libc line"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.753]
+title = "Battlefield 2 sysmem soak frames f00020 and f00021 render a near-black world with only the HUD"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.752]
+title = "Forza decay AAOnThenOffCPUWrite takes a one-pixel value more often under the Forza fix"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.751]
+title = "Tron 2.0 with the ubershader on: guest kernel BugCheck 0xA 13 s into boot"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.750]
+title = "Uber stage has no NoContraction: 1-2 ulp differences on 22% of random vertex programs (lavapipe)"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.749]
+title = "Bruce Lee: Quest of the Dragon has a 21.2 s window with no hakuX-perf line"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.748]
+title = "Hitches with no classified cause: Azurik pipeline stall, KOF: Maximum Impact, Tony Hawk's Pro Skater 2x"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.747]
+title = "600-s screening runs fall under the fps bar or stop short of 600 s (Burnout Revenge, D&D Heroes, Tron 2.0, BF2 MC, SW3, GTA SA, Halo 2, Crimson Skies)"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.746]
+title = "D&D Heroes holds a flat 14-15 fps; every flip takes 4+ VBLANKs"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.745]
+title = "Thor: Blood Wake and Battlefield 2: Modern Combat collapse to 2-6 fps for minutes"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.744]
+title = "Ninja Gaiden Black: 39.4 fps median against the 60 fps target, shader hitches to 1.5 s"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.743]
+title = "Bloody Roar: Extreme runs at 9.8-10.8 fps median with almost no time at 30 fps"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.742]
+title = "Forza run stopped when an outside launch started Sonic Heroes on the Nova mid-run"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.741]
+title = "GTA San Andreas route takes no frame after the mark; the scored window shows no movement"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.740]
+title = "Forza Motorsport route inputs: throttle never pressed, steering not applied, car leaves the track"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.739]
+title = "Halo 2 Armory look test inverts the view; the open-loop route cannot reach Cairo Station"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.738]
+title = "Halo CE golden 4D530004 has an all-zero savegame.bin, so the golden is not past training"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.737]
+title = "Halo: Combat Evolved route stops at the cryo-room look-calibration tutorial"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.736]
+title = "Castlevania: Curse of Darkness guest exited after 402 s"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.735]
+title = "First-run name-entry and profile-creation screens block routes (Castlevania, Black Stone, Ride or Die)"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.734]
+title = "Xbox Live sign-in loops keep Tron 2.0 and Conker: Live & Reloaded from reaching play"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.733]
+title = "Super Monkey Ball Deluxe: stage select ignores A, B and the D-pad and stick (only START responds)"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.732]
+title = "Sonic Heroes route: Seaside Hill unsolved and the post-mark loop wedges against a stone riser"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.731]
+title = "Gunvalkyrie route: player stuck facing a canyon wall; v5 route never ran"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.730]
+title = "Buffy the Vampire Slayer: post-mark loop sticks at a ledge; play not held for 600 s"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.729]
+title = "DOA titles: survey routes do not reach a fight (DOA Ultimate, DOA3, DOA survey W1b)"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.728]
+title = "Blind routes press into the wrong screen and never reach play (007, Arctic Thunder, 25 to Life, SMT NINE)"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.727]
+title = "Four titles FAIL on duration (183-253 s) because their requests asked seconds=420"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.726]
+title = "Crimson Skies confirmation withdrawn as a Galleon match: blocked-title matcher keys on request text"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.725]
+title = "title_verdict cannot correct a route-authored mark and has no reviewed-gameplay 'no' branch"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.724]
+title = "adb adds ~0.15 s to each stick pulse; a closed-loop yaw driver at gain 2.0 overshoots (Blinx 2)"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.723]
+title = "Haiku classifier fallback never runs: the host has no ANTHROPIC_API_KEY"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.722]
+title = "Pathknow: attract demos with a HUD-like overlay are classified as gameplay"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.721]
+title = "Pathknow: batched frames cross-talk; the model answers for neighbouring frames"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.720]
+title = "Preflight coverage gate is skipped under a GitHub 403 and preflight still exits 0"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.719]
+title = "Star Wars Episode III: green block corruption in the intro FMV and title screen (gameplay clean)"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.718]
+title = "Black Stone: player stuck with sword raised on the spawn octagon; stick, D-pad, A and RT move nothing"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.717]
+title = "pathfind claim rule accepts gameplay while measured control is near zero (Black Stone)"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.716]
+title = "pathfind probe refuses real control in dark scenes (fixed 16-level motion step)"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
+
+[issue.715]
+title = "Harness: waitfor reference crops are not staged into the dispatched run; routes stall at route.txt:73 and soaks run unflagged"
+component = "untriaged"
+status = "open"
+dispatch_state = "blocked"
+blocked_on = "UNTRIAGED (hostops 13:30 PDT, 10-03 coverage gate): filed on the forge with no tracker row. The PM (lane-local session) to triage (dispatch with a row, close, or name the blocker)."
+status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run (hostops jam duty)."
