@@ -9,6 +9,71 @@ below 28.5 fps (median F ~43 ms) the vCPU thread is asleep, neither running
 nor runnable, ~10 ms per frame. That sleep tracks GPU ms per frame (r 0.64),
 not the renderer's CPU draw work (0.08). BF2: 21 ms of a 64 ms frame.
 
+## Resume (2026-10-03 10:25 PDT): Tron B read. Valid, and the sleep did not go (M FAIL)
+
+**Why the 09:13 resume did not finish.** It ended on purpose, waiting on
+`1791044179-vcpuwait433-2251972`, with a `WAITING` file naming that run.
+The run finished at 10:24, and the lanewaker resumed this session.
+
+**Verdict against `vcpuwait433-tron-anystate.json`, read by hand** (the arms
+job skips soak predictions), with decompose.py, bar 28.5:
+
+| leg | bar | A 990012 | B 2251972 | verdict |
+|---|---|---|---|---|
+| V | menu-down = New Game; all goldens; `[gpl569] mode=3`; PLC wiped; apk from 012fa08a94; no BugCheck; >= 200 rows | - | route-frame 101444-menu-down shows **New Game** highlighted (Auto Load lit, so the profile loaded). hdd "all goldens (title not identified)", 84; `[gpl569] requested=3 mode=3`; `[pb569] HAKUX_PLC_WIPE=1: vk_pipeline_cache.bin absent`; apk b43d7cbb8930 (947718's build of 012fa08a94); 0 BugCheck; 261 rows. Frame 101703 shows the in-engine intro (the scientist scene) | **PASS** |
+| M | slow-row v_blk <= 7.0 ms/frame | 9.80 (45 rows) | **9.29** (76 rows) | **FAIL: inert** |
+| O1 | share >= 0.87 and all-row fps >= 37.4 | 0.82, 35.58 | 0.71, 35.87 | **FAIL** |
+| O2 | share >= 0.90 | 0.82 | 0.71 | **FAIL** |
+
+| group | run | n | fps | F ms | v_run | v_blk | Ri |
+|---|---|---|---|---|---|---|---|
+| all | A | 254 | 35.58 | 28.10 | 22.38 | 5.59 | 13.20 |
+| all | B | 261 | 35.87 | 27.88 | 22.41 | 5.18 | 12.70 |
+| < bar | A | 45 | 23.70 | 42.19 | 31.30 | 9.80 | 15.55 |
+| < bar | B | 76 | 23.97 | 41.72 | 31.43 | 9.29 | 16.30 |
+
+What it says:
+- **The slow-frame sleep fell 0.5 ms, not the >= 2.8 ms M asked for.**
+  tron2 put 3.1 ms/frame of this window's sleep on pfifo.lock in
+  `user_read`. The selftest shows the fix's read takes no lock. So, in this
+  build, removing that wait does not remove the sleep. The vCPU sleeps
+  about as long somewhere else.
+- **It is still a sleep, not spin.** Slow-row v_run is flat (31.30 -> 31.43).
+  So this is not O1's failure reading, where the freed time turns into guest
+  spin on GPU results ([rr425pc]). The vCPU blocks at a second site.
+- The share drop (0.82 -> 0.71, 45 -> 76 slow rows) is inside near30's
+  0.50-0.73 spread for single New Game soaks. All-row fps moved +0.8%. Neither
+  is read as a regression. The noise note in the prediction already
+  said O1 and O2 are weak evidence on one run per arm.
+- The most likely second site, by mechanism (unmeasured): after reading
+  DMA_GET for ring space, the guest writes DMA_PUT. `user_write` still takes
+  pfifo.lock, and the PFIFO thread holds it across the same STALLED finish.
+  In tron2 the write was 4.5% of the site, because the read blocked first.
+  Other candidates: BQL, or a wait on a GPU result in RAM through a sleep
+  (`qemu_event_wait`).
+
+**Fold decision: fold.** The change is correct (selftest with falsifier),
+pixel-inert (45/45 on the Thor), and has now run 24 min on the Nova (12 in
+level, 12 in the intro) with no BugCheck or hang. Keeping it matters for
+the next step. Any capture of this sleep on a build that still has the
+locked read rediscovers tron2's 65% site and hides whatever sits beneath
+it. The release note says no frame-rate change was measured.
+
+### Next (P x win, re-scored after 2251972)
+
+| candidate | P | evidence for P | win if it works | cost |
+|---|---|---|---|---|
+| **A. BF2 gameplay off-CPU capture** (capture_offcpu.sh + its fail-closed gate, on master with this fix) | 0.6 that one site holds >= 50% | tron2's method named the intro's owner (65%). BF2's sleep is unmeasured, and Tron's turned out to be layered, which lowers the odds of a single owner | names the owner of **21 ms of a 64 ms gameplay frame** in a title below the bar: the largest vCPU sleep near30 measured | 1 host-run capture, plus a BF2 route with an in-level gate |
+| B. Tron in-level capture (returning golden, HUD gate) | 0.85 that it names the owner | the same method, and the gate replay opened on 2186958 at mark+28 s | names ~7 ms of a 34 ms gameplay frame; Tron gameplay already clears the 0.90 bar (947718: 0.91) | 1 host-run capture |
+| C. Tron intro capture on this fix's build | 0.85 that it names where the sleep moved | the same method as tron2, on the same window | decides D. Its own win is knowledge about a cutscene | 1 host-run capture |
+| D. Release pfifo.lock across the STALLED finish (`pgraph_vk_process_pending_reports`) | 0.25 | for: tron2 named the PFIFO thread's stalled finish as holder for >= 86% of waits, and the guest's DMA_PUT store still takes the lock. Against: M's failure shows the sleep is layered, and the next layer is unmeasured. The lock shields renderer state from the display thread | <= ~3 ms of the intro's 42 ms slow frame, in a cutscene | grant (vk/reports.c), build, goldens, Nova arm |
+
+A ranks first by P x win: it is gameplay, in a title below the bar, and its
+sleep is 3x Tron's. C goes before D only if D is chosen: C is the step that
+decides D (a C dominated by user_write's pfifo.lock picks D; BQL or an event
+wait refutes it). Every one of these is beyond this lane's 3 Nova runs
+(4 used), so each is lane.local's call.
+
 ## Resume (2026-10-03 09:13 PDT): the Tron B arm, queued by hand on an all-goldens disk
 
 **Why the 09:00 resume did not finish.** It finished its work: it re-made
@@ -532,9 +597,15 @@ the in-level case together. C is not worth a run unless A's arm is blocked.
 | 1 | off-CPU capture tron1 (host-run, d8d36c9161) | 18:46-18:54 PDT | void: the route ended in Options > Display (no save, so the DOWN went to Light Cycles). Usable as a fast-window control: off-CPU 0.53 ms/frame, 69% BQL <- cpu_exec_loop |
 | 2 | off-CPU capture tron2 (v5 route + slow gate) | 19:54-20:01 PDT | recorded the New Game intro cinematic (not the level) at 27 fps: **the brief's slow window** (section 4). pfifo.lock in `user_read` 65.2%, which OWNS the wait |
 | 3 | Tron arm B (012fa08a94, first-run route, A = 990012) | 1-1791039792-vcpuwait433-947718 | VOID on leg V: Auto Load was enabled, so the run went in-level, not to the intro. In-level read: share 0.91, v_blk 6.93 ms/frame (attempt 5) |
+| 4 | Tron arm B retake (012fa08a94, `# state: any` route, A = 990012) | 1791044179-vcpuwait433-2251972 | valid (New Game, intro). **M FAIL:** slow-row v_blk 9.29 against A's 9.80 (bar <= 7.0). O1/O2 FAIL: share 0.71, fps 35.87 |
 | Thor | pixel arms B / A (3 suites) | 1-1791035760-vcpuwait433-4105238 / 1-1791035764-vcpuwait433-4105418 | PASS: 45/45 byte-identical |
 
 ## Do not repeat
+
+- Do not read tron2's 65% site as the size of the win. Removing it moved
+  the intro's slow-row sleep 0.5 ms (2251972), not 3. A sleep that one capture
+  attributes to a lock can sit on top of another wait. Re-capture on the fixed
+  build before fixing the next layer.
 
 - Do not infer a title's menu state from `titlestate.py show`. "profile ...
   save X" names the save harvested, and on Tron d2aff0a53543 is a real

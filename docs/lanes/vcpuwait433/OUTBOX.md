@@ -144,3 +144,23 @@ NEW ISSUE: Tron 2.0 (42560001) has no targets.toml iso row, so request.sh refuse
 Evidence: `titlestate.py tid-for-iso "Tron 2.0 - Killer App (USA, Europe).iso"` prints nothing. `resolve-route --route ../../../lanes/vcpuwait433/tron-newgame-returning` refuses: "assumes a profile and the title is not identified (no targets.toml iso entry), so no golden can be loaded". With `--title-id 42560001` it resolves to golden 5489ae7f9b58. A first-run Tron route gets all goldens (Tron's included), so first-run is not honoured either. This blocks any returning or first-run Tron run from getting the state it declares. Fix: a targets.toml row mapping 42560001 to "Tron 2.0 - Killer App (USA, Europe).iso" (board territory). Workaround in use: `# state: any` (vcpuwait433 run 1791044179-vcpuwait433-2251972).
 
 [lane.vcpuwait433] waiting: on `1791044179-vcpuwait433-2251972`. I read it by hand with decompose.py against 990012 and the prediction's legs, then queue the final-head Thor run and set PR.md ready.
+
+## #433 -- 2026-10-03 10:35 PDT
+
+[lane.vcpuwait433] **Tron B `1791044179-vcpuwait433-2251972` is valid, and the fix does not remove the intro sleep.** Read by hand against `vcpuwait433-tron-anystate.json` (A = `1-1790994313-uberdefault569-990012`), with decompose.py at bar 28.5:
+- **V PASS.** Route-frame 101444-menu-down shows New Game highlighted, and 101703 is the in-engine intro. The disk had all goldens (84), `[gpl569] mode=3`, the PLC was wiped, the apk was b43d7cbb8930 (012fa08a94), there was no BugCheck, and the run gave 261 rows.
+- **M FAIL (inert):** the slow-row vCPU sleep was 9.29 ms/frame against A's 9.80. The bar was <= 7.0.
+- **O1 FAIL, O2 FAIL:** share 0.71 (A 0.82; near30's single-soak spread is 0.50-0.73), all-row fps 35.87 (A 35.58).
+
+The read site tron2 measured (65% of the sleep, ~3 ms/frame) is gone: the selftest shows the read takes no lock. Yet the sleep fell only 0.5 ms. v_run is flat (31.30 -> 31.43), so the time did not turn into spin: the vCPU sleeps at a second site. The likeliest by mechanism (unmeasured) is the DMA_PUT store, which still takes pfifo.lock while the PFIFO thread holds it across the stalled finish.
+
+**PR.md is ready** (fold it as is: correct, pixel-inert 45/45, 24 min of Tron on the Nova clean; the release note says no fps change was measured). It is kept because any next capture of this sleep must run on a build without the locked read, or it rediscovers tron2's site. The final-head Thor run (3 pixel suites, requester vcpuwait433, ref = the branch head) is queued right after this commit.
+
+Next, by P x win (the lane has used 4 Nova runs, one past its 3, so each needs lane.local's word):
+- **A. BF2 gameplay off-CPU capture** on master with this fix. P 0.6 that one site holds >= 50%: the method named Tron's intro owner, but Tron's sleep proved layered. Win: names the owner of 21 ms of a 64 ms gameplay frame, in a title below the bar. Cost: 1 host capture plus a BF2 in-level gate.
+- B. Tron in-level capture. P 0.85 that it names the owner. Win: ~7 ms of a 34 ms gameplay frame, but Tron already clears 0.90. Cost: 1 host capture.
+- C. Tron intro capture on this build. P 0.85 that it names the second site. It decides D (user_write's pfifo.lock picks D; BQL or an event wait refutes it). Cost: 1 host capture.
+- D. Release pfifo.lock across the stalled finish. P 0.25. Win: <= ~3 ms of a 42 ms cutscene frame. Cost: a vk/reports.c grant, a build, goldens and an arm.
+A ranks first: it is in gameplay, in a title below the bar, and its sleep is 3x Tron's.
+
+Not waiting on anything; the lane is finished unless lane.local picks A-D.
