@@ -1,6 +1,6 @@
 # routefix1002: three route checks for the overnight Nova queue (#433)
 
-State: draft
+State: ready
 
 Lane: routefix1002           Issue: #433
 Base: origin/lane/titleroutes2 (merged with origin/master, 2026-10-03)
@@ -20,6 +20,7 @@ Release note (none): route data and queue only.
 - Halo CE golden `90ebd6a27bd1`: savegame.bin has 0 nonzero bytes of 3,670,016; not past training, not queued.
 - `queue.tsv`: 9 tab-separated fields.
 - No emulator code changed; selftest not required (no harness files).
+- No `preflight.sh` in this repo; the offline checks above are the local equivalents.
 
 ## Next
 Gunvalkyrie v5's 840-s result decides: a whole-window play run confirms it; a pin on one wall makes a screen-triggered back-off the next build (NOTES.md, candidate 2). Buffy: the Options probe (about 70 s held) first. Halo: a held run past training, then a returning route.
