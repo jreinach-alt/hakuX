@@ -94,3 +94,100 @@ uberspike569's #569 arms ran at.
   nothing) when a soak path did not write one: Kabuki B had none. Legs and factors unchanged.
 - Pilot verdict written to `pilots/uberdefault569.ok`; the remaining eight requests queued.
 - Budget: the Tron rerun makes this 11 Nova runs with the head smoke, one over the brief's 10.
+
+## 5. Results (read 21:20 PDT)
+
+All arms ref d4a02e2060, Nova, cold. `judge.py` output: `judge-soaks.json`; pixel comparison:
+`ab-pixels.txt` / `ab-pixels.json`.
+
+| title | arm | result | draw-path creates | stall windows | freezes (verdict hang gaps) | shader hitches, first 120 s (worst) | fps_ok | median fps |
+|---|---|---|---|---|---|---|---|---|
+| Kabuki | A off | 1-1790994318-uberdefault569-990124 | 141.3 s | 47 | 22.5, 10.7, 60.9 s | 9 (4681 ms) | 0.72 | 59.9 |
+| Kabuki | B on | 1-1790990144-uberdefault569-532413 | 2.8 s | 3 | none | 9 (734 ms) | 0.93 | 59.9 |
+| DOA3 | A off | 1-1790994322-uberdefault569-990282 | 122.7 s | 35 | 11.0, 19.0, 12.7 s | 11 (7265 ms) | 0.63 | 47.3 |
+| DOA3 | B on | 1-1790994320-uberdefault569-990204 | 2.9 s | 4 | none | 3 (271 ms) | 0.82 | 45.9 |
+| ToeJam | A off | 1790970734-lanelocal-1022425 | 15.6 s | 13 | none | 8 (435 ms) | 0.99 | 59.9 |
+| ToeJam | B on | 1-1790994325-uberdefault569-990361 | 3.1 s | 2 | none | 0 | 0.88 | 53.9 |
+| Tron 2.0 | A off | 0-1790978946-tronhang672-3184149 (#672 run 6) | 49.8 s | 21 | 18.2, **226.3 s (the hang)** | 3 (3816 ms) | 0.48 | 47.3 |
+| Tron 2.0 | B on | 1-1790994313-uberdefault569-990012 | 3.2 s | 4 | none | 0 | 0.82 | 36.9 |
+
+| leg | registered | measured | verdict |
+|---|---|---|---|
+| V | each pair: B mode 3 with uber links, A mode 0, both cold | 4/4 valid | **PASS** |
+| H | no B hangs, crashes, or misses gameplay its A reached | 4/4 (Tron B's first run crashed at boot, see 4) | **PASS** |
+| S1 | per title B creates <= 0.50 x A | 0.020, 0.024, 0.198, 0.065 | **PASS** |
+| S2 | sum of first-120 s shader hitches B < A, each B <= A + 1 | 12 vs 31; Kabuki 9 vs 9 | **PASS** |
+| F | per title (not Tron) B fps_ok >= A - 0.10 | Kabuki +0.21, DOA3 +0.19, **ToeJam -0.11** | **FAIL** |
+| pixels | every capture same or in band | 1317/1317 same, every one byte-identical; B linked 1321 draws through the uber stage | **PASS** |
+
+**A correction to the registered soak file.** Its ToeJam entry says 6b0c4a131f differs from
+d4a02e2060 by "bf2push656, folded with its overlay reverted". `git diff --stat` says otherwise:
+the emulator code differs by the default flip and bf2ubosize433's uniform-churn counter
+(`vk/draw.c`, `vk/shaders.c`, under `NV2A_PERF_LOG`). 16f09aa346 (Tron's A) also carries #672's
+spin probe (`accel/tcg/cpu-exec.c`, `target/i386/tcg/system/seg_helper.c`). The file stays as
+registered.
+
+**What the numbers say.**
+- With the ubershader off, three of four titles froze on a cold first launch: Kabuki for 61 s in
+  one gap, DOA3 for up to 19 s, Tron for good (226 s, #672). With it on, none froze, and draw-path
+  pipeline creation fell to 2.8-3.2 s per run on every title.
+- Kabuki's first-120 s hitch count did not fall (9 vs 9), but its worst hitch fell from 4.7 s to
+  0.73 s. Each of B's hitches has dpc_ms <= 22.5 ms: hitch_report classes a window as shader on
+  any cache miss, and under the ladder a miss is a ~5 ms link, so the count does not separate a
+  compile stall from a frame that merely saw a miss.
+- **F fails on ToeJam by 0.01 beyond the band** (0.99 -> 0.88). It does not look like the stand-in.
+  ToeJam B's ladder finished inside the first minute (`[uber569]` links 97, next 96/0/95, no
+  later line), yet its slow stretches come at 420-540 s and 600-720 s (37-43 fps against A's
+  50-60 in 60 s bins). B started 5 C warmer (xo-therm 48.6 vs 43.7 C), and A is a different
+  session at a different ref. So the miss is real as registered, and its cause is not shown.
+  The same-ref ToeJam A queued as the head run (section 6) separates the two.
+- On Kabuki and DOA3, where A froze, fps_ok rose by about 0.2.
+
+**Pixels.** Leg E's 36 suites, same build, B default (3) against A (`HAKUX_GPL=0`): better 0,
+worse 0, same 1317, noise 0, and the byte-level check finds every capture identical. B's logcat:
+`[uber569] mode=3 links=1321 cold=786 ... uncovered=0`. The uber stage replaces the vertex stage
+only; the register-combiner (fragment) stage is the specialised library in both modes, so these
+suites check the vertex stage against the combiner paths they feed, not a second combiner
+implementation. **Not checked:** `NoContraction` is still absent (uberspike569 4.1: 1-2 ulp on 22%
+of random vertex programs on lavapipe); no capture here shows it, and a title's own program could.
+Under mode 3 such a pixel would differ only until its pipeline swaps.
+
+**Banner.** `1-1790994336-uberdefault569-990675` (Kabuki, 45 s, `--env HAKUX_GPL=0`, a frame a
+second). The app logs `ubershader: OFF (#569)`. The banner is in frames f00007-f00011, from the
+first frame of the app window through the Crave logo, and gone at f00012, so it is on screen for
+about 6 s. It sits over the boot logos, not gameplay. `banner-nova.png` is f00011. The run sets
+the env var, not the setting; both paths call the same `ubershaderEnabled()`, and the setting
+path was type-checked, not run on the device.
+
+## 6. Next, ranked by P x win
+
+1. **Persist the uber combinations and pre-build them at boot** (`briefs/uberpersist569.md`,
+   drafted by stallmeasure569). P 0.8: the mechanism is shaderprebuild569's shipped pool and
+   per-title records, applied to the (family, GS, raster, formats) keys. Win: the creates left on
+   a first launch, 2.8-3.2 s and 2-4 stall windows per title here, all of which come from cold
+   combinations (`[uber569] cold=` 94 Kabuki, 17 DOA3, 12 Tron). Cost: one lane, ~4 Nova runs.
+2. **Find what ToeJam B lost (F).** This head's ToeJam A, same ref and env with `HAKUX_GPL=0`, is
+   queued as the fold's head run. If it reads ~0.88, the miss was the session and thermals, and
+   F passes in substance. If it reads ~0.99, the ubershader costs a 60-fps title about 0.1 of its
+   time at 30+ fps. Then the next step is (3). P that the ladder is the cause: 0.3, because the
+   ladder's work ended before the slow stretches. Win: settles F. Cost: that run.
+3. **Cut the stand-in's GPU cost.** uberspike569 G read 3.8x GPU ms held (uber stage plus a
+   non-LTO link, never split). Split the two with one arm (GPL 1 held against 0), then LTO-link
+   the uber pipeline on the worker or tune the interpreter. P 0.6 for a useful split. Win: the
+   cold-span fps dip, and F if (2) blames the ladder. Cost: 2-3 runs, then a build lane.
+4. **`NoContraction` on both paths**, with its own pixel arm. P 0.9 that it is pixel-inert on the
+   suites, as E and this leg were. Win: removes the one known exactness gap. Cost: 2 runs.
+5. **Watch the boot BugCheck.** Tron B's first run hit BugCheck 0xA 13 s into boot; 1 other in 524
+   recent runs (GPL 0). If it recurs at GPL 3 more often than at GPL 0, it is the ladder's timing.
+   P low (0.1). Cost: none; a grep over results.
+
+## 7. Do not repeat
+
+- `request.sh` reads the issue's release label with `gh`. Offline that read fails and a #569
+  request queues plain, behind every release-tier request. Pass `HAKUX_RELEASE_PRIO=1`.
+- Not every soak path writes `verdict.json` (Kabuki B had none); `judge.py` falls back to
+  `title_verdict.judge()` in memory.
+- hitch_report's `shader` class is "the window saw a cache miss". Under the ladder that is not a
+  compile stall; read dpc_ms beside it.
+- `--frames-every 1` catches the banner. The frame mtimes are host clock and logcat is device
+  clock; place frames by content, not by time.
