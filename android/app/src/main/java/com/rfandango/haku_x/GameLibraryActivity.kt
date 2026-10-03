@@ -103,6 +103,15 @@ class GameLibraryActivity : AppCompatActivity() {
     viewModeToggle = findViewById(R.id.library_view_mode_toggle)
     switchBoxArtLookup = findViewById(R.id.switch_box_art_lookup)
 
+    // Small and in a corner, so the owner can confirm which build they are
+    // playing (#433) without it competing with the library for attention.
+    findViewById<TextView>(R.id.library_version_label).text =
+      try {
+        packageManager.getPackageInfo(packageName, 0).versionName ?: ""
+      } catch (_: Exception) {
+        ""
+      }
+
     gamesFolderUri = prefs.getString("gamesFolderUri", null)?.let(Uri::parse)
     useCoverGrid = prefs.getBoolean("library_cover_grid", false)
     boxArtLookupEnabled = prefs.getBoolean("library_box_art_lookup", true)

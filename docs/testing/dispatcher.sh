@@ -944,6 +944,43 @@ _build_ref_locked() {
     echo "$apk"
 }
 
+# THE DISPATCHER MUST NEVER INSTALL THE RELEASE PACKAGE (com.jreinach.hakux,
+# no suffix): that is the owner's stable playtest channel (owner_build.sh,
+# the nightly), and a lane's run reinstalling over it would make "which
+# build is this" unanswerable the same way the debug app already was (#433).
+#
+# _build_ref_locked only ever runs `assembleDebug` and copies the `debug`
+# variant's output, so there is today no path from here to a release apk --
+# but that is an invariant of this file's code, not of the apk on disk, and
+# it is cheap to check the thing that is actually installed rather than trust
+# that nothing upstream changed. A release apk's compiled manifest carries
+# its applicationId as a plain string in AndroidManifest.xml's string pool
+# (usually UTF-16LE); this looks for the bare id with no following "." --
+# which is what a debug or debug2 suffix would add -- so `com.jreinach.hakux`
+# alone refuses and `com.jreinach.hakux.debug` does not.
+#
+# A file zipfile cannot open (including the empty placeholder selftest.d's
+# fakes use in place of a real build) is NOT refused: there is nothing to
+# read the applicationId from, and failing closed here would block every
+# test that fakes build_ref. The real guarantee is structural (above); this
+# is defense in depth against a future change to build_ref, not the only
+# thing standing between a lane and the release package.
+guard_not_release_apk() {   # <apk path> ; 0 = fine to install, 1 = refuse
+    local apk="$1"
+    [ -s "$apk" ] || return 0
+    python3 - "$apk" <<'PY' 2>/dev/null
+import re, sys, zipfile
+try:
+    with zipfile.ZipFile(sys.argv[1]) as z:
+        manifest = z.read("AndroidManifest.xml")
+except Exception:
+    sys.exit(0)
+needle = "com.jreinach.hakux"
+text = manifest.decode("utf-16-le", "ignore") + "\n" + manifest.decode("utf-8", "ignore")
+sys.exit(1 if re.search(re.escape(needle) + r'(?![.\w])', text) else 0)
+PY
+}
+
 # ------------------------------------------------------------ the lane file
 #
 # `lanes/<label>` holds a live worker's pid and is the ONLY input to
@@ -1191,6 +1228,12 @@ serve_one() {
     fi
     local sha; sha=$(sha256sum "$apk" | cut -c1-12)
     log "  binary $sha"
+
+    if ! guard_not_release_apk "$apk"; then
+        echo "refusing to install $apk: it reports applicationId com.jreinach.hakux (the release package); the dispatcher may only install a debug-suffixed build" > "$rdir/ERROR"
+        log "  REFUSING RELEASE INSTALL"
+        mv "$req" "$rdir/request.json"; return 0
+    fi
 
     if ! device_present; then
         log "  device absent; requeueing"
