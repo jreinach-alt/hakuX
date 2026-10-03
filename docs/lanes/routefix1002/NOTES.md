@@ -2,8 +2,34 @@
 
 Session 1, 2026-10-02, offline. No device time, no request.sh, no holds.
 Session 2 (attempt 2), 2026-10-03 08:30-09:00 PDT, offline. Same rules.
+Session 3 (attempt 3), 2026-10-03 08:55 PDT, offline. Same rules.
 Base: origin/lane/titleroutes2 merged into this branch, then origin/master
-merged in at session 2 (merge, no rebase).
+merged in at session 2 (merge, no rebase), and again at session 3.
+
+## Why session 2 (attempt 2) did not finish (read first, session 3)
+
+Session 2's briefed outputs are all on origin: the v5 route, the queue line
+(ref `5024216198`), OUTBOX, and PR.md draft. What it missed: it never merged
+the last two master commits (`cfa37a359e` savestate433, which adds the
+route-state check before device time, and `9d1155f919`). At the start of
+session 3 this branch was 2 commits behind origin/master. Session 3 merged
+them. `route.sh --check` on the v5 route still passes after the merge (116
+lines, no change to the route file). Nothing else was unfinished in the
+brief.
+
+## Session 3 (attempt 3): what I re-checked, no device time
+
+- Gunvalkyrie: the route at `5024216198` is byte-identical to HEAD's route
+  file (`git diff` on the route is empty). Queue line unchanged.
+- Halo CE golden 4D530004 (`90ebd6a27bd1`) re-read: `122A17771B9E/savegame.bin`
+  is 3,670,016 bytes with 0 nonzero; `blam.sav` 512 bytes with 29 nonzero
+  (profile only). Still not past training. Halo stays a DRAFT, not queued.
+  `halo-ce.route` has no `# state:` line; titleroutes2's copy has none either,
+  so this is inherited, not removed by this lane. Adding one needs a
+  returning-or-first-run decision that the route cannot make until training
+  is done, so it is left for that step.
+- Buffy: unchanged, not queued. Its next step is the Options probe, which needs
+  a held device run, so it stays out of this offline session (see below).
 
 ## Why session 1 did not finish (read first)
 
