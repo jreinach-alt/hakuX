@@ -207,6 +207,117 @@ bool hakux_tlb68_jc_on(void)
 #endif
 
 /*
+ * lane.memfast phase 0 (#507): a census of the XBOX load fast path
+ * (prepare_host_addr in tcg/aarch64/tcg-target.c.inc). Armed, it reads
+ * host_base + VA for a guest VA below xbox_ram_size, and
+ * host_base + (VA - vram_pci_base) inside the BAR1 window, with no TLB lookup.
+ * Every TLB install in either window is classed by whether the TLB's own host
+ * pointer for the page is the one the fast path would use:
+ *   id   the same pointer: the fast path reads the right bytes;
+ *   nid  RAM at another pointer: the fast path reads a different page;
+ *   io   not RAM: the fast path reads RAM where the guest reads a device.
+ * Distinct nid pages are kept in a bitmap; the first 8 are logged with their
+ * VA and PA. The armed share is the wall time with the path activated and no
+ * mem-access callback live (physmem.c). vCPU thread only, like tlb68.
+ */
+/* The Xbox page is 4 KiB. cputlb.c is target-independent, where
+ * TARGET_PAGE_BITS is a runtime value, so the bitmaps use a constant. */
+#define HAKUX_MF0_PAGE_BITS 12
+#define HAKUX_MF0_MAXPAGES (128u << (20 - HAKUX_MF0_PAGE_BITS))
+enum { MF0_ID, MF0_NID, MF0_IO, MF0_N };
+static uint64_t hakux_mf0_l[MF0_N], hakux_mf0_v[MF0_N];
+static unsigned long hakux_mf0_lmap[BITS_TO_LONGS(HAKUX_MF0_MAXPAGES)];
+static unsigned long hakux_mf0_vmap[BITS_TO_LONGS(HAKUX_MF0_MAXPAGES)];
+static uint64_t hakux_mf0_lnd, hakux_mf0_vnd;
+static unsigned hakux_mf0_logged;
+
+static void hakux_mf0_install(vaddr addr_page, hwaddr paddr_page,
+                              uintptr_t host, bool has_host, int mmu_idx)
+{
+    uint64_t off;
+    uintptr_t fp;
+    unsigned long *map;
+    uint64_t *n, *nd;
+    int cls;
+
+    if (!xbox_ram_size) {
+        return;
+    }
+    if (addr_page < xbox_ram_size) {
+        off = addr_page;
+        n = hakux_mf0_l;
+        map = hakux_mf0_lmap;
+        nd = &hakux_mf0_lnd;
+    } else if (xbox_ram_fp.vram_pci_base &&
+               addr_page - xbox_ram_fp.vram_pci_base < xbox_ram_size) {
+        off = addr_page - xbox_ram_fp.vram_pci_base;
+        n = hakux_mf0_v;
+        map = hakux_mf0_vmap;
+        nd = &hakux_mf0_vnd;
+    } else {
+        return;
+    }
+    fp = xbox_ram_fp.host_base + off;
+    cls = !has_host ? MF0_IO : host == fp ? MF0_ID : MF0_NID;
+    n[cls]++;
+    if (cls == MF0_ID) {
+        return;
+    }
+    if ((off >> HAKUX_MF0_PAGE_BITS) < HAKUX_MF0_MAXPAGES &&
+        !test_and_set_bit(off >> HAKUX_MF0_PAGE_BITS, map)) {
+        ++*nd;
+    }
+    if (hakux_mf0_logged < 8) {
+        hakux_mf0_logged++;
+        TLB68_LOG("[mf0] first %s va=0x%" VADDR_PRIx " pa=0x%" HWADDR_PRIx
+                  " win=%c idx=%d cb=%d act=%d",
+                  cls == MF0_IO ? "io" : "nid", addr_page, paddr_page,
+                  n == hakux_mf0_l ? 'l' : 'v', mmu_idx,
+                  qatomic_read(&xbox_ram_fp.cb_count),
+                  qatomic_read(&xbox_ram_fp.active));
+    }
+}
+
+/*
+ * The [mf0] line, at the [tlb68] cadence. cb0ms is the window's wall time
+ * with no mem-access callback live; with act=1 at both ends that is the
+ * time the fast path was armed.
+ */
+static void hakux_mf0_tick(int64_t now, unsigned window, int64_t dt_ms)
+{
+    extern uint64_t hakux_mf0_cb0_ns(int64_t now);
+    extern uint64_t hakux_mf0_up, hakux_mf0_down;
+    static uint64_t p_l[MF0_N], p_v[MF0_N], p_cb0, p_up, p_dn;
+    uint64_t cb0 = hakux_mf0_cb0_ns(now);
+    uint64_t up = qatomic_read(&hakux_mf0_up);
+    uint64_t dn = qatomic_read(&hakux_mf0_down);
+
+    TLB68_LOG("[mf0] w=%u dt=%" PRId64 " act=%d cb=%d cb0ms=%" PRId64
+              " up=%" PRIu64 " dn=%" PRIu64
+              " li=%" PRIu64 " ln=%" PRIu64 " lo=%" PRIu64
+              " vi=%" PRIu64 " vn=%" PRIu64 " vo=%" PRIu64
+              " lnd=%" PRIu64 " vnd=%" PRIu64 " vb=0x%lx",
+              window, dt_ms, qatomic_read(&xbox_ram_fp.active),
+              qatomic_read(&xbox_ram_fp.cb_count),
+              /* -1: the first window has no baseline */
+              p_cb0 ? (int64_t)(cb0 - p_cb0) / 1000000 : -1,
+              up - p_up, dn - p_dn,
+              hakux_mf0_l[MF0_ID] - p_l[MF0_ID],
+              hakux_mf0_l[MF0_NID] - p_l[MF0_NID],
+              hakux_mf0_l[MF0_IO] - p_l[MF0_IO],
+              hakux_mf0_v[MF0_ID] - p_v[MF0_ID],
+              hakux_mf0_v[MF0_NID] - p_v[MF0_NID],
+              hakux_mf0_v[MF0_IO] - p_v[MF0_IO],
+              hakux_mf0_lnd, hakux_mf0_vnd,
+              (unsigned long)xbox_ram_fp.vram_pci_base);
+    memcpy(p_l, hakux_mf0_l, sizeof(p_l));
+    memcpy(p_v, hakux_mf0_v, sizeof(p_v));
+    p_cb0 = cb0;
+    p_up = up;
+    p_dn = dn;
+}
+
+/*
  * Called from cpu_exec_loop() on the vCPU thread, gated there to one call in
  * 1024 loop iterations; the clock decides whether a line is due.
  */
@@ -303,6 +414,7 @@ void hakux_tlb68_tick(CPUState *cpu)
               HAKUX_TCG311_KEEP_ARMED, HAKUX_TCG311_TLB_BOUND,
               hakux_tcg424_range_on(), hakux_tcg424_cb - p_cb,
               hakux_tcg424_cbb - p_cbb);
+    hakux_mf0_tick(now, window - 1, (now - prev_ns) / 1000000);
 
     for (int i = 0; i < HAKUX_TLB68_NCAUSE; i++) {
         p_cause[i] = c[i];
@@ -1447,6 +1559,8 @@ void tlb_set_page_full(CPUState *cpu, int mmu_idx,
     wp_flags = cpu_watchpoint_address_matches(cpu, addr_page,
                                               TARGET_PAGE_SIZE);
 #ifdef XBOX
+    hakux_mf0_install(addr_page, paddr_page, addend, is_ram || is_romd,
+                      mmu_idx);
     wp_flags |= mem_access_callback_address_matches(cpu,
                                                     iotlb & TARGET_PAGE_MASK,
                                                     TARGET_PAGE_SIZE);
