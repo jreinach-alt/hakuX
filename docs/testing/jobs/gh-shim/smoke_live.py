@@ -332,6 +332,29 @@ rc, out, err = gh("run", "list", "--repo", R, "--branch", "master", "--limit", "
                   "workflowName,status,conclusion,headSha,createdAt")
 check("status.sh:449 run list (no runs -> [])", rc == 0 and json.loads(out) == [], (rc, out, err))
 
+# releases (nightly_build.sh:481/486: create, fall back to upload --clobber)
+import tempfile
+_rel = os.path.join(tempfile.mkdtemp(prefix="shim-rel-"), "xemu-nightly.zip")
+open(_rel, "w").write("one\n")
+rc, out, err = gh("release", "create", "nightly-smoke", _rel, "--repo", R, "--prerelease",
+                  "--title", "hakuX nightly smoke (abc1234)", "--notes-file", _rel)
+check("release create --prerelease --notes-file with asset", rc == 0, (rc, err))
+rc, out, err = gh("release", "create", "nightly-smoke", _rel, "--repo", R, "--prerelease", "--notes-file", _rel)
+check("release create on existing tag fails loudly (nightly falls back)", rc == 1 and err.strip(), (rc, err))
+rc, out, err = gh("release", "upload", "nightly-smoke", _rel, "--repo", R)
+check("release upload without --clobber refused on existing asset", rc == 1 and "already exists" in err, (rc, err))
+open(_rel, "w").write("two\n")
+rc, out, err = gh("release", "upload", "nightly-smoke", _rel, "--repo", R, "--clobber")
+check("release upload --clobber replaces the asset", rc == 0, (rc, err))
+rc, out, err = gh("release", "view", "nightly-smoke", "--repo", R, "--json", "tagName,isPrerelease,assets",
+                  "--jq", '"\\(.tagName) \\(.isPrerelease) \\(.assets|length)"')
+check("release view --json tagName,isPrerelease,assets --jq", rc == 0 and out.strip() == "nightly-smoke true 1",
+      (rc, out, err))
+rc, out, err = gh("release", "list", "--repo", R)
+check("release list shows the prerelease", rc == 0 and "nightly-smoke" in out and "Pre-release" in out, (rc, out, err))
+rc, out, err = gh("release", "download", "nightly-smoke", "--repo", R, "-p", "xemu-nightly.zip")
+check("release download is not implemented: exits 64, loud", rc == 64 and "not implemented" in err, (rc, err))
+
 # loud failures
 rc, out, err = gh("pr", "merge", str(pn))
 check("pr merge refused", rc == 2 and "foldqueue" in err, (rc, err))

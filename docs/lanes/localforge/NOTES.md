@@ -263,6 +263,30 @@ anything. Once `gh` answers again, with today's forge content:
 - First dispatch: run 10, `jobs-selftest` (pre-rename name) on
   `lane/localforge` @ 463dd6b0ea, via `workflow_dispatch`.
 
+## 7. Attempt 2 (2026-10-03): why attempt 1 did not finish, and the cutover
+
+**Why attempt 1 did not finish.** Attempt 1 built steps 1-6 and routed phase
+1 (the four comment/PR/arms units). It was paused at 11:58 on 10-02 for token
+burn, with phase 2 and the whole cutover still open (lane.local's ADDENDUM 3).
+Nothing was lost, but while it was paused the GitHub-bound jobs still ran
+against nothing, which is why lane.local disabled them. Attempt 2 starts from
+that state. The branch was 133 commits behind master; it was merged with
+`git merge origin/master` (not rebased, because prediction refs are not
+involved here, but a merge keeps the PR's history stable).
+
+**Scope of this attempt (ADDENDUM 3).** Every remaining `gh` caller on master
+works locally or is retired with its replacement named; the shim is on PATH for
+every harness unit; the FORGE PROTOCOL is drafted; RETURN.md is the design for
+the return to GitHub. Each finished item gets an OUTBOX entry.
+
+### 7.1 Caller table (master code; prose in notes, audits and fixtures excluded)
+
+Grep: `git grep -n -E '(^|[[:space:]|(;&`$]|timeout [0-9]+ )gh (api|pr|issue|run|label|release|auth)( |$)'`
+over `docs/testing`, `scripts`, `.github/workflows`, `host-tools` and `AGENTS.md`,
+with comment-only lines dropped. Table filled in as each item is tested.
+
+_(table: see the section below once complete)_
+
 ## Host files this lane added (outside the repo)
 
 | path | what |
