@@ -32,3 +32,25 @@ My exclusion rule missed ZPass because its reader counted `ok` rows only, and ZP
 1. **W1, the per-page watch flush.** P 0.7, from a measured mechanism: every surface-watch insert and remove is a full TLB and jump-cache flush, 287/s on Conker. Win: those flushes gone on Conker, Blinx 2 and Forza (est. 5-15% of Conker's vCPU), about 0 on GTA. Cost: small. F1 needs it too.
 2. **F0a's device half, alongside W1.** A probe that decides between building F1 and falling back to a lazy view swap.
 3. **F1, fastmem for loads.** P 0.4. Win: about 11% of GTA's vCPU; on Tron, 6.5-8 ms of a 43 ms frame (near30). It is the largest item and is built only once F0a prices it under the kill line.
+
+## #507 -- 2026-10-03 08:35 PDT
+
+[lane.memfast] Phase 1 result. The removal is on master (`ddbc5f0173`, folded by lane.local), and its nine Nova runs are scored.
+
+| leg | result |
+|---|---|
+| Pixels (`memfast-drop-pixels-stable2.json`, Nova arm pair `-522291` / `-522338`, pre-registered) | **PASS**, all 3,064 checks. The 37 captures that moved are all in the same-build-unstable set (36 ZPass, one rounding test). That is three arms with no move outside the noise |
+| G: B reaches play, no crash or hang | **PASS**: GTA x2, Nightfire x2, Crimson x1 on the Nova; GTA on the Thor |
+| J/frame, mean B/A per title (registered pass <= 0.98) | **NOT SHOWN, not refuted.** GTA 1.011 (pairs 1.028, 0.995); Nightfire 0.993 (0.904, 1.082); Crimson 0.975 (one pair) |
+| F: fps | VOID: every A run is at its 30 fps cap |
+| S: vCPU profile (Thor, cold GTA) | PASS, read 09-29: host instructions per TB -21%, vCPU time per frame -4.3% and -6.2% |
+| Census | four titles (GTA, Nightfire, AUF, Crimson): the path was armed only at boot (at most 2.1 s) and read a non-identity page on 98.4-99.6% of low-window installs while armed |
+
+**Why J could not resolve it.** The same arm varies more than the effect: Nightfire's two B runs differ by 15%. Nightfire's second pair is split across days (09-29 and 10-02). GTA's scored window is about 87 s of a 300 s soak. On a 30 fps title, a vCPU saving of about 5% becomes idle time, and the Nova does not resolve that in J. The PR's release note now says so: about 5% less vCPU work per frame in GTA, with no measured fps or battery change.
+
+**What this changes in phase 2: the legs, not the order.** Phase 2 claims are gated on a profile (vCPU time per frame) and on fps on a vCPU-bound title below its cap (Tron 2.0, near30). J/frame on capped titles becomes an observation.
+
+**Next, re-scored by P x win:**
+1. **W1, the per-page watch flush.** P 0.7, from the measured mechanism: one full TLB and jump-cache flush per watch insert and per remove. Win: 287 full flushes/s gone on Conker, 58/s on Blinx 2 and 38/s on Forza; a guessed 5-15% of Conker's vCPU time. Legs: `[tlb68] fo` and a profile. Conker has no gameplay route, so its fps cannot be scored. Cost: small, softmmu only.
+2. **F0a's device half, alongside W1.** A probe that decides between F1 and Dolphin's lazy view swap.
+3. **F1, fastmem for loads.** P 0.4. Win: about 11% of GTA's vCPU time; on Tron, 6.5-8 ms of a 43 ms frame, which is +15-19% fps if the frame stays vCPU-bound. Built only after F0a prices it under the kill line.

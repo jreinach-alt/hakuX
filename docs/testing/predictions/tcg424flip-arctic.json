@@ -1,0 +1,32 @@
+{
+  "registered_utc": "2026-09-29T05:36:03Z",
+  "who": "lane.tcg424flip",
+  "issue": "424",
+  "device": "thor",
+  "frames_every": 0,
+  "title": "4D570002-Arctic_Thunder.xiso.iso",
+  "route": "arctic-thunder",
+  "a_ref": "62ef8bf0fe",
+  "b_ref": "62ef8bf0fe",
+  "arms": {
+    "A": "62ef8bf0fe with --env HAKUX_TCG424_RANGE=0: whole-page TB invalidation, the pre-flip default, kept as an opt-out by this commit",
+    "B": "62ef8bf0fe, no --env: the flipped default, range test plus per-page code bitmap. One apk; the env is the only independent variable."
+  },
+  "runs": "4D570002-Arctic_Thunder.xiso.iso, --route arctic-thunder, --seconds 560, --device thor, MAX (soak_title.sh's default regimen) and its cool gate, 3 runs per arm interleaved A B A B A B. Pilot = the first A and the first B (2 x (560 + 90) s = 21.7 min). 560 s because `mark gameplay` falls 244 s into the current route (1-1790548502-titleroutes-1531400), leaving ~310 s of race.",
+  "reader": "python3 docs/lanes/tcg424flip/arcticread.py <result ids>, at the commit that adds this file. It is docs/lanes/tbflip424/playread.py loaded unchanged, with its mark swapped to `mark gameplay` (the arctic-thunder route writes no `mark play`) and m50's start swapped from `mark booted` to `soak start` (the route writes no `mark booted`); it adds on% and cpf. Window: `mark gameplay` + 30 s to the end of the log. No mark = VOID. Per run: gfps = the median of the hakuX-perf gfps samples in the window; churn% = (jcus + rdus) / vCPU cpu over the [tlb68] lines in the window; on% = sum cpu / sum dt over those lines; cpf = on% x 10 / gfps. Per arm: the median of its three per-run values.",
+  "why_this_title": "lane.slowtier2 (#462, PR #556) found Arctic Thunder the heaviest code churn of any title in gameplay: 7,300-8,300 invalidations and 37,000-42,000 TBs discarded a second, the vCPU 86-87% on-CPU and the frame guest-side. Blinx, where tbflip424-blinx2.json passed, churns 2.1% of the vCPU; Arctic churns 14%. So this is where the lever should pay, and also where the range test's cost (more stores taking the slow path on pages that keep code) is largest.",
+  "baseline_on_disk": "arcticread.py, Thor, MAX, A path (whole-page, the only path before this commit), 1-1790547557-titleroutes-979135 (677ae13af8) and 1-1790548502-titleroutes-1531400 (e884ad260e): gfps 21 / 23.0, churn% 14.1 / 13.9, di/s 37,642 / 41,061, inv/s 7,364 / 8,092, slow/s 10,221 / 11,202, on% 87.6 / 87.1, cpf 41.7 / 37.9, m50 89 / 88, ng 109 / 126, rt 0, fatal 0, tail 0.5 / -4.0 s. Saved as docs/lanes/tcg424flip/baseline.out. The route changed between the two (A held from m10 on); the arms here both run the current route.",
+  "legs": {
+    "M0 (instrument)": "Every run has a `mark gameplay` line, >= 20 gfps samples in the window, xx = 0, m50 >= 40 (the intro and menus run at the 55-60 cap: 88-89 such samples on both runs on disk; a run far below that had a slow device, not a slow build), and run.log reports no thermal-pause device above 0 (a paused run's fps is void: the Thor's #507 pause cuts it 5-7x). A's [tlb68] lines carry rt=0 only; B's carry rt=1 only. B reading rt=1 with no env is this commit's own check: the default is on. A run failing this is VOID, not zero: it is re-queued once on the same arm. More than one VOID run per arm stops the lane without a verdict.",
+    "M1 (the counter moves; the falsifier)": "Per-arm median churn%: A >= 5.0 and B <= 0.5 x A. Per-arm median di/s: B <= 0.1 x A. FAILS in a world where Arctic gameplay's churn is not the #424 mechanisms (A < 5.0, against 13.9-14.1 on disk), or where the range test does not engage (B's di/s stays near A's: the writes land on the translated bytes themselves, and sparing blocks by range spares nothing).",
+    "M2a (lane.local's leg: the vCPU's on-CPU share falls)": "Per-arm median on%: B <= A - 2.0. FAILS in a world where the vCPU spends what the range test saves on more guest work (then gfps rises and M2b says so) or where the slow stores the bitmap adds cost what the discards did.",
+    "M2b (vCPU cost per frame falls)": "Per-arm median cpf: B <= 0.95 x A. This is the same saving measured per unit of work, so it passes whether the vCPU idles the saving or spends it on frames. FAILS in a world where B's extra slow stores (Blinx B took 32-42k a second where A took ~500) eat the ~14% of vCPU time the discards and TLB resets cost on A.",
+    "M4' (must not regress, on gameplay)": "Per-arm median gfps: B >= A - 1. And no run of either arm crashes: no `Fatal signal` or `FATAL` line in logcat.txt, and the window's last gfps sample is within 15 s of the route's `soak end` line. FAILS in a world where the range test's cost outweighs its saving on this title, or where a spared block was stale code the guest then ran (a hang or a crash).",
+    "decision": "Ship the flip (mark PR ready, Closes #424) iff M0, M1 and M4' pass here AND the pgraph must-not-move arm (tcg424flip-pgraph.json) is byte-identical with no unreadable capture. M2a/M2b are the mechanism legs: they decide what the release note may claim, not whether the flip ships (the Blinx rule shipped on M4', and a flip that costs nothing and churns nothing is still correct). If M4' fails, do not ship: report fs/s, inv/s and slow/s per run on #424. If M1 fails, report that Arctic cannot price the lever and do not claim it."
+  },
+  "must_not_move": [],
+  "what_this_cannot_see": "A gfps change smaller than the run-to-run spread: the two A runs on disk read 21 and 23, on different builds and route revisions, so a true loss under ~2 gfps can pass. Self-modifying code a spared block should have caught but that happens not to show in one race on one track. The Nova (the lever is Thor-measured here). Titles whose writes land on the translated bytes themselves.",
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE: a soak writes no captures, so there is no golden key. The legs are read with arcticread.py off the [tlb68], hakuX-pages and hakuX-perf lines. The pixel leg is tcg424flip-pgraph.json."
+}

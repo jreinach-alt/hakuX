@@ -2,12 +2,12 @@
 State: ready
 
 Lane: memfast            Issue: #507 (PR #590 before the suspension)
-Base: master @ be05285c44, origin/master merged 2026-10-02
+Base: master @ 9d1155f919 (phase 1 folded as ddbc5f0173; this head adds its Nova scores, docs only)
 Files: accel/tcg/cputlb.c, system/physmem.c, tcg/aarch64/tcg-target.c.inc, docs/lanes/memfast/NOTES.md, docs/lanes/memfast/PR.md, docs/lanes/memfast/OUTBOX.md, docs/lanes/memfast/arm_noise.py, docs/lanes/memfast/f0a_rates.py, docs/lanes/memfast/legs_read.py, docs/lanes/memfast/mf0_read.py, docs/lanes/memfast/unstable_caps.py, docs/lanes/memfast/out/arm-noise.out, docs/lanes/memfast/out/f0a-rates.out, docs/lanes/memfast/out/jitmix-bref.out, docs/lanes/memfast/out/jitmix-r1.out, docs/lanes/memfast/out/legs-bref.out, docs/lanes/memfast/out/legs-r1.out, docs/lanes/memfast/out/mf0-auf-a1.out, docs/lanes/memfast/out/mf0-nightfire-a1.out, docs/lanes/memfast/out/mf0-nightfire-a2.out, docs/lanes/memfast/out/sym-bref.out, docs/lanes/memfast/out/sym-r1.out, docs/lanes/memfast/out/unstable-caps.out, docs/lanes/memfast/out/unstable-caps2.out, docs/testing/predictions/memfast-drop-pixels.json, docs/testing/predictions/memfast-drop-pixels-stable.json, docs/testing/predictions/memfast-drop-pixels-stable2.json, docs/testing/predictions/memfast-drop-soak.json, docs/testing/predictions/memfast-drop-soak-nova.json
 Prediction: docs/testing/predictions/memfast-drop-pixels-stable2.json @ abc1ce1b80d98c18e48cc38f0cd263dcc1820c600ea64ebc9a6ca604542d5c07 ; docs/testing/predictions/memfast-drop-soak.json @ 08c3f0519d9dd61a715aba243efd850d4785a8b0d7bedf52e1b0c7918c6a83b7 ; docs/testing/predictions/memfast-drop-soak-nova.json @ 583315ad893a281b56b820d3e7ab291f68bbc763bf5f8ff78c2ed0135ced00dd
 Needs device: yes    Needs NDK: yes
 
-Release note (performance): guest code runs a little faster on every title. A memory-read shortcut that never engaged in gameplay no longer costs a check on every block and every read.
+Release note (performance): the emulated CPU does about 5% less work per frame in GTA San Andreas. A memory-read shortcut that never engaged in gameplay no longer costs a check on every block and every read. Fps and battery draw did not measurably change on the 30 fps titles measured.
 
 ## What it changes
 
@@ -32,10 +32,11 @@ Release note (performance): guest code runs a little faster on every title. A me
 | vCPU time per frame (an observation) | -4.3% and -6.2% on two GTA pairs |
 | Pixels, `memfast-drop-pixels.json` (Thor) | FAIL, 6 of 3,379. All six are known run-to-run noise |
 | Pixels, `memfast-drop-pixels-stable.json` (Nova) | FAIL, 36 of 3,167. All in ZPass_pixel_count: the same fix APK gave base-exact values in arm 1, and the suite takes 1750 on builds without this change. The rule's reader skipped `white-content` rows (NOTES) |
-| Pixels, `memfast-drop-pixels-stable2.json` | queued (Nova) |
-| J/frame: mean B/A over pairs per title | Nightfire pair 1 0.904 (Nova); GTA pilot 0.830 (Thor, not pooled). GTA two Nova pairs and Nightfire pair 2 queued |
-| G: B reaches gameplay with no crash or hang | GTA (Thor), Nightfire (Nova). Crimson queued |
-| Census | GTA, Nightfire, AUF: dead in play, non-identity wherever armed. BAR1 all identity |
+| Pixels, `memfast-drop-pixels-stable2.json` (Nova, read 2026-10-03) | **PASS**, all 3,064 registered checks |
+| J/frame: mean B/A over pairs per title (Nova, read 2026-10-03; registered pass <= 0.98) | **NOT SHOWN.** GTA 1.011 (1.028, 0.995), Nightfire 0.993 (0.904, 1.082), Crimson 0.975 (one pair). Not refuted (that needs >= 1.00 on both). Same-arm spread (Nightfire B: 15%) exceeds the 2-7% predicted, and every title runs at its 30 fps cap. GTA pilot 0.830 (Thor, not pooled) |
+| F: fps | VOID: every A run is at its 30 fps cap |
+| G: B reaches gameplay with no crash or hang | **PASS**: GTA (Thor; Nova x2), Nightfire (Nova x2), Crimson (Nova) |
+| Census | GTA, Nightfire, AUF, Crimson: dead in play, non-identity wherever armed. BAR1 all identity |
 
 ## Local checks (no CI while GitHub is suspended)
 
