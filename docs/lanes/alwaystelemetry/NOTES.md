@@ -53,6 +53,48 @@ note was written); `nv2a_profile_inc_counter` has 64 call sites in code, not 66 
 definitions in debug.h, two OUTBOX mentions and one docs line); the hakuX-phase and xemu-work prints are at
 profile.c 727 and 737; the LOGCAT allow-list is at dispatcher.sh 2010.
 
+## Attempt 3 (16:03 PDT): why attempt 2 did not finish
+
+Attempt 2 wrote `WAITING: time 2026-10-03T16:00` and no run id existed. The lane had waited on a guessed
+time again. The real cause is in `logs/overnight-queue.log` (13:34 PDT): both ToeJam rows were **refused, not
+queued**, by the route guard: `toejam-earl-3.route declares no # state: returning|first-run|any`. Attempts 1
+and 2 never read that log, so they waited on a queue that had already refused the rows. The runner then put
+both keys in `overnight-queue.done`, so they are now skipped. lane.local fixed the route at 14:2x (the queue
+copy in `wt/lanelocal-queue` now carries `# state: returning`, golden 71a91de8b905). Nothing re-queued them.
+
+What changed in attempt 3:
+
+1. **Keys replaced:** `alwaystelemetry-toejam-plain` / `-perflog` become `alwaystelemetry-toejam-r3-plain` /
+   `-r3-perflog` in `pm/overnight-queue.tsv`. The old keys are in `.done`, so they would be skipped.
+2. **Ref moved:** `6c828f9860` becomes `a971c31220` (this branch, = origin/master 5426f4d874 merged).
+   Both arms are on the same ref. No device run has happened yet, so the change is before the measurement.
+   The prediction (P1) is unchanged.
+3. **Env changed: `HAKUX_GPL=3` becomes `HAKUX_GPL=0`.** The brief's steady-title reference (fps_ok 0.99
+   plain) is the GPL=0 profile. ToeJam at GPL=3 carries the #687 ubershader slow stretch at 7-12 min, which
+   would confound the overhead number. This is an error in the attempt-1 row, corrected before any run.
+
+Design check against master 5426f4d874: `nv2a_profile_inc_counter` and the `NV2A_PHASE_TIMER_*` macros are
+no-ops without `NV2A_PERF_LOG` (`hw/xbox/nv2a/debug.h` 537-549), so the plain build reads 0 for every
+`xemu-work` counter and every phase. The `hakuX-phase` and `xemu-work` prints are inside
+`#if defined(__ANDROID__) && NV2A_PERF_LOG` (`pgraph/profile.c` 723-737). The always-on design in OUTBOX.md
+still holds.
+
+Queue state at 16:04 PDT: **the r3-plain row was refused again**, this time by the golden check:
+`toejam-earl-3.route assumes a profile, and 5345000F's golden 71a91de8b905 is title data only, no save
+directory` (`logs/overnight-queue.log`, 16:04:08). The route's `# state: returning` line (lane.local, 14:2x)
+says the golden 71a91de8b905 carries the profile; the queue's check says it does not. The two statements
+conflict, and the route and golden are lane.local's data, outside this lane's territory. The r3-perflog row was
+not reached, so it is in the same state.
+
+**BLOCKED on lane.local:** which ToeJam golden or route state the A/B should use. Options for lane.local to pick:
+(a) a golden with a save directory for `toejam-earl-3` (`returning`); (b) a route declared `# state: any`
+(savestate433 folded: a settings-only refusal names `# state: any` as its fix), which needs a first-run route
+that reaches play; (c) a different steady title whose golden already has a save directory. This lane does not
+pick (c) itself: the A/B's title is the owner's brief, and the choice of golden is lane.local's.
+
+No run id exists. The rows stay in `overnight-queue.tsv` under the new keys, so they run as soon as the
+guard is satisfied.
+
 ## Revision to the mechanism (read after the prediction was committed; the prediction is unchanged)
 
 I cited a clock read per method as the cost. On aarch64 `nv2a_clock_ns()` is `mrs cntvct_el0` plus a
