@@ -80,6 +80,11 @@ a known cause, which the owner's 10-02 order forbids. The v5 route (no DOWN)
 does not help: it reaches the intro only from first-run state, and from the
 golden it reaches Auto Load and the level, a different window from A.
 
+**State at 07:05 PDT: waiting on savestate433's fold.** When it is on
+master, the next session merges master, queues the Tron B run exactly as
+`vcpuwait433-tron.json` says, reads V/M/O1/O2 with decompose.py, and ends
+with a run at the final head for the fold.
+
 ### Next (P x win, attempt 4)
 
 | candidate | P | evidence for P | win if it works | cost |
