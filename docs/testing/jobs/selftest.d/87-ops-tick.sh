@@ -46,6 +46,8 @@
 #       marked for lane.local in summary.txt; the 10-03 shadow escalated one jam 4 times.
 #   (n) disk-low routes to lane.xbox and never escalates (brief addendum 1); a territory
 #       fold gap never escalates either (its fix is a board edit no session may make).
+#   (o) a detector that raises keeps its open jams open; the same detector returning
+#       nothing clears them (the control).
 
 echo "== ops_tick.py: model-free jam detection and scripted remedies (#433)"
 
@@ -407,3 +409,28 @@ print("ok" if ok else "FAIL: row=%r lines=%r" % (row, lines))
 EOF
 check "(g) a remedy_tried with embedded tabs/newlines round-trips without misaligning columns" \
     bash -c 'python3 "'"$OT"'/tsv_safe.py" "'"$HERE/ops"'" "'"$OT"'/tsv_safe.tsv" | grep -qx ok'
+
+# ------------------------------------- (o) a detector that raises does not clear its jams
+# 10-03 08:58 a NameError in det_stranded_lanes "cleared" two open stranded jams; the next good
+# tick would have reopened them as NEW and resumed both lanes a second time.
+cat > "$OT/blind.py" <<'EOF'
+import os, sys
+os.environ["OPS_STATE_DIR"] = sys.argv[2]
+os.makedirs(sys.argv[2], exist_ok=True)
+sys.path.insert(0, sys.argv[1])
+import ops_tick as ot
+path = os.path.join(sys.argv[2], "jams.tsv")
+ot.save_jams(path, {("stranded-lane", "lanex"): {"opened": "2026-10-03T08:00:00", "class": "stranded-lane",
+    "subject": "lanex", "remedy_tried": "resumed", "cleared_at": "", "time_to_clear_s": ""}})
+def det_stranded_lanes():
+    if sys.argv[3] == "raise":
+        raise NameError("selftest")
+    return []
+ot.DETECTORS = (det_stranded_lanes,)
+ot.run(False)
+print("cleared" if ot.load_jams(path)[("stranded-lane", "lanex")]["cleared_at"] else "open")
+EOF
+check "(o) a detector that raises leaves its open jam open" \
+    bash -c 'python3 "'"$OT"'/blind.py" "'"$HERE/ops"'" "'"$OT"'/blind-raise" raise 2>/dev/null | tail -1 | grep -qx open'
+check "(o) control: the same detector returning nothing clears it" \
+    bash -c 'python3 "'"$OT"'/blind.py" "'"$HERE/ops"'" "'"$OT"'/blind-empty" empty 2>/dev/null | tail -1 | grep -qx cleared'

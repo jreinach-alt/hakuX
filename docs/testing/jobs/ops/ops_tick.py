@@ -555,6 +555,14 @@ def det_stopped_lane_queued():
 DETECTORS = (det_hold_overbound, det_stranded_lanes, det_fold_failures, det_queue_stale,
              det_timer_unanchored, det_failed_unit, det_battery_floor, det_disk_low,
              det_stopped_lane_queued)
+# The class (or class prefix) each detector emits, so a detector that raises keeps its jams open.
+DETECTOR_CLASSES = {
+    "det_hold_overbound": "hold-overbound", "det_stranded_lanes": "stranded-lane",
+    "det_fold_failures": "fold-failure:", "det_queue_stale": "queue-stale",
+    "det_timer_unanchored": "timer-unanchored", "det_failed_unit": "failed-unit",
+    "det_battery_floor": "battery-", "det_disk_low": "disk-low",
+    "det_stopped_lane_queued": "stopped-lane-queued",
+}
 
 # No-remedy classes escalate the first time they are SEEN (there is nothing to try and
 # re-check), rather than waiting ESCALATE_AFTER_MIN like a jam whose remedy might still work.
@@ -646,11 +654,13 @@ def run(shadow):
     shadow_log = os.path.join(STATE_DIR, "shadow.log")
 
     detected = []
+    blind = []  # class prefixes whose detector raised: this tick cannot say they cleared
     for det in DETECTORS:
         try:
             detected.extend(det())
         except Exception as e:
             say("DETECTOR ERROR in %s: %r" % (det.__name__, e))
+            blind.append(DETECTOR_CLASSES[det.__name__])
     by_key = {(j.cls, j.subject): j for j in detected}
 
     rows = load_jams(jams_path)
@@ -725,9 +735,11 @@ def run(shadow):
                 esc["cost_usd_total"] = float(esc.get("cost_usd_total", 0)) + cost
                 escalations[esc_key] = esc
 
-    # anything in rows no longer detected is cleared
+    # anything in rows no longer detected is cleared -- unless its detector raised this tick.
+    # 10-03 08:58 a NameError in det_stranded_lanes "cleared" memfast and routefix1002; the next
+    # good tick would have reopened them as NEW and run the resume remedy a second time.
     for k, row in list(rows.items()):
-        if not row["cleared_at"] and k not in by_key:
+        if not row["cleared_at"] and k not in by_key and not row["class"].startswith(tuple(blind)):
             row["cleared_at"] = now_iso
             try:
                 opened_ts = time.mktime(time.strptime(row["opened"], "%Y-%m-%dT%H:%M:%S"))
