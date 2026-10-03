@@ -1,5 +1,17 @@
 # lane.pathfind -- NOTES
 
+## Resume (10-03 09:45 PDT, attempt 5): why the previous attempt did not finish
+
+- The previous session ended on its WAITING file (`run 1791040252-lanelocal-978819`), after it had taken the Nova,
+  found it busy, and released the hold without launching anything. Its own next step was written down; it was not
+  run. Nothing of the lane's was left on a device.
+- That run has finished (`DONE`). It is lanelocal's Kabuki Warriors soak (`43560001`, `effb0d001b`), not ours.
+  The WAITING condition holds, so WAITING is removed in this session's commit.
+- This session runs the stated next step: Panzer Dragoon Orta (4947002B), held 600 s on the Nova, with the probe
+  fix from the gate below. It is launched through `scratch/heldrun.sh`, which takes the hold, waits for idle, runs
+  `pathfind.py --hold-s 600 --state first-run` (which prepares and releases the golden itself), and releases the
+  hold on every exit path.
+
 ## Resume (10-03): why attempt 4 did not finish
 
 - Attempt 4 committed three code changes after its Black Stone input check (`1c6a26d` the X ladder, `3f96ebd` the
