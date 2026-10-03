@@ -151,14 +151,33 @@ Test environment (`/tmp/selfdeps-gitconfig`, `/tmp/selfdeps-test/*.sh`, test onl
 | desktop | `desktop-clean.sh` | configure stops at openssl (finding 2) | `logs/desktop-configure*.log` |
 | desktop fetch | `meson subprojects download` | all wraps resolved (finding 3) | `logs/meson-subprojects-download.log` |
 
+## Attempt history
+
+- **Attempt 1** (ended 09:03 PT, last commit `512a38145c`). Did the mirrors, the
+  Android clean build and the desktop fetch proof. It queued the Thor run and ended on
+  `WAITING` for that run. It did not finish: the desktop compile proof stopped at
+  OpenSSL (finding 2), PR.md still named the old base, and nothing had marked the PR
+  ready. The lane-local addendum (Addendum 1, 09:55 PT) came after attempt 1 had stopped,
+  so the tooling sweep in "Addendum 1" below was not started then.
+- **Attempt 2** (this session, from 09:41 PT). Merged `origin/master` (`4630e4bf95`).
+  The Thor run finished, so `WAITING` is removed. Work continues below.
+
+### Thor run `1-1791043414-selfdeps-1888089` (step 5): done, not void
+
+- Queued from `8db47e3a8c`, `--suites ZPass_pixel_count --device thor --hard-pin`.
+  `result.json`: `ref 8db47e3a8c`, `apk_sha 1838fbb6728f`, shader cache cleared, device
+  `bdc158a5` (thor), `DONE` present, `captures 72`, `progress_log_proof: true`,
+  logcat captured (`logs/` in the run dir). Scored 26/72 exact, 46 differ at 0.05% px.
+  The score is not the point of this run: it proves the dispatcher's build and run path.
+  72 of 78 goldens scored; the suite's own note says the gap is probably retired tests.
+- Build: `logs/build-8db47e3a8c.log` (dispatch logs), `BUILD SUCCESSFUL in 2m 12s`, with
+  no `Cloning into` or fetch lines. **Caveat:** that dispatcher `.cxx` appears warm (no
+  clone lines, 2m 12s), so this run proves the build succeeds and does not fetch in this path. The cold-cache
+  proof is the clean build in the "Proof" table above.
+
 ## Next
 
-Waiting on the dispatched Thor run `1-1791043414-selfdeps-1888089` (queued from head
-`8db47e3a8c`, `--suites ZPass_pixel_count --device thor --hard-pin`, one run). When it
-finishes, check the run is not void and that its build step used the mirrors. Then
-mark the PR ready (`State: ready` in PR.md).
-
-Open items, none blocking the PR:
+Open items:
 
 - **Desktop configure needs OpenSSL headers on this host** (finding 2, filed in OUTBOX.md).
   The fetch side is proven (`meson subprojects download`). A compile-side desktop proof
