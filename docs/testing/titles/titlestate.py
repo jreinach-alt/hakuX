@@ -274,8 +274,12 @@ def harvest(device, tid, image, run):
         if not row.get("profile"):
             row.update(profile=True, origin=row.get("origin") or "found",
                        since_utc=row.get("since_utc") or now())
-    # The `latest` slot only: a harvest never touches a golden (GOLDENS).
-    note_latest(tid, m["save_id"], run, device)
+    # The `latest` slot only: a harvest never touches a golden (GOLDENS). A
+    # composed disk carries every title's golden, so every harvest reads
+    # them all back unchanged; `latest` records only what differs.
+    g = golden(tid)
+    if not g or g["save"] != m["save_id"]:
+        note_latest(tid, m["save_id"], run, device)
     return m["save_id"]
 
 
