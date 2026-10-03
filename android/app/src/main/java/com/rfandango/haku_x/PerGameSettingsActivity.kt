@@ -102,6 +102,8 @@ class PerGameSettingsActivity : AppCompatActivity() {
         addBoolPicker(container, "draw_reorder", getString(R.string.settings_draw_reorder), "draw_reorder")
         addBoolPicker(container, "draw_merge", getString(R.string.settings_draw_merge), "draw_merge")
         addBoolPicker(container, "async_compile", getString(R.string.settings_async_compile), "async_compile")
+        addBoolPicker(container, "ubershader", getString(R.string.settings_ubershader), "ubershader",
+            globalDefault = true)
         addBoolPicker(container, "texture_dump_enabled", "Dump Textures", "texture_dump_enabled")
         // addBoolPicker(container, "texture_replace_enabled", "Custom Textures", "texture_replace_enabled")  // hidden for now
     }
@@ -188,8 +190,9 @@ class PerGameSettingsActivity : AppCompatActivity() {
         key: String,
         label: String,
         prefsKey: String,
+        globalDefault: Boolean = false,
     ) {
-        val globalVal = prefs.getBoolean(prefsKey, false)
+        val globalVal = prefs.getBoolean(prefsKey, globalDefault)
         val displayLabels = arrayOf("Use Global", "Enabled", "Disabled")
         val values = arrayOf<String?>(null, "true", "false")
 
