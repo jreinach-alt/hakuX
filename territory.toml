@@ -815,7 +815,7 @@ files = []
 note = "RETIRED (hostops 2026-10-03 09:11 PDT): PR #654 merged, no unit and nothing queued. Files released to [free]."
 
 [lane.opsrebuild]
-issues = ["433"]
+issues = ["433", "698"]
 files = ["docs/lanes/opsrebuild/**", "docs/testing/jobs/ops/**", "docs/testing/jobs/selftest.d/87-ops-tick.sh"]
 note = "ROW ADDED (hostops 2026-10-02 10:32 PDT): hakux-lane-opsrebuild has been RUNNING since ~10:31 PDT (briefs/opsrebuild.md, #433 -- owner order: replace hostops's model tick with a model-free ops layer) with NO territory row -- hakux-board cannot write it while gh-auth is down (see [gh-auth]) and lane.local, who started it, cannot write board rows either. Found via this tick's own hostops-inbox.md ask (lane.local, 10:31 PDT). Files per lane.local's own request; confirmed unclaimed elsewhere and absent from [free] (docs/testing/jobs/ops/**, selftest.d/87-ops-tick.sh, docs/lanes/opsrebuild/**)."
 
