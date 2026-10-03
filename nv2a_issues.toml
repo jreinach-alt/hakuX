@@ -4942,3 +4942,11 @@ status = "open"
 dispatch_state = "blocked"
 blocked_on = "UNTRIAGED (hostops 08:54 PDT, 10-03 coverage gate): filed on the forge with no tracker row; the PM (lane-local session) to triage (dispatch with a row, close, or name the blocker). Not dispatchable from here."
 status_note = "Forge issue, open; the tracker had no row for it when the coverage gate was run."
+
+[issue.697]
+title = "status page reads \"no save\" for titles whose saves are stored under an alternate path"
+component = "status"
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "Forge issue, open; hostops 2026-10-03 (jam duty) added the row to clear the coverage gate. Nothing blocks it, so it waits for capacity. Its fix lives in the status page's save lookup (status.sh / status_html.py), which no active lane owns. Title is the gate's truncated form; full text on the forge."
