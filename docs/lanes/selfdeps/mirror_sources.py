@@ -48,6 +48,11 @@ DEFAULT_ROOT = os.environ.get(
 CMAKE_GIT = [
     # android/app/src/main/cpp/CMakeLists.txt
     ("https://github.com/bylaws/libadrenotools", "master", "android/cmake:adrenotools"),
+    # glib 2.66.8 subprojects/*.wrap, fetched by glib's meson configure
+    # (meson.build:1982 libffi, :2032 proxy-libintl; zlib is an archive below)
+    ("https://gitlab.freedesktop.org/gstreamer/meson-ports/libffi.git", "meson",
+     "android/glib:libffi"),
+    ("https://github.com/frida/proxy-libintl.git", "0.1", "android/glib:proxy-libintl"),
 ]
 
 # Archive sources the CMake build fetches: (url, filename, sha256 or None, consumer).
@@ -60,6 +65,14 @@ CMAKE_ARCHIVES = [
      "glib-2.66.8.tar.xz",
      "97bc87dd91365589af5cbbfea2574833aea7a1b71840fd365ecd2852c76b9c8b",
      "android/cmake:glib"),
+    # glib's subprojects/zlib.wrap, fetched by glib's meson configure (meson.build:1997)
+    ("https://zlib.net/fossils/zlib-1.2.11.tar.gz", "zlib-1.2.11.tar.gz",
+     "c3e5e9fdd5004dcb542feda5ee4f0ff0744628baf8ed2dd5d66f8ca1197cb1a1",
+     "android/glib:zlib"),
+    ("https://github.com/mesonbuild/zlib/releases/download/1.2.11-3/zlib.zip",
+     "zlib-1.2.11-3-wrap.zip",
+     "f07dc491ab3d05daf00632a0591e2ae61b470615b5b73bcf9b3f061fff65cff0",
+     "android/glib:zlib (meson patch)"),
 ]
 
 # Submodule discovery depth: a git source's .gitmodules, and theirs, and so on.

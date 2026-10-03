@@ -44,6 +44,8 @@ where the URL is named. "Mirror" is where the copy lives. GitHub = yes/no.
 | keycodemapdb | https://gitlab.com/qemu-project/keycodemapdb | f5772a62 | meson wrap (`ui/meson.build`) | no | git/gitlab.com/qemu-project/keycodemapdb |
 | libvfio-user | https://gitlab.com/qemu-project/libvfio-user | 0b28d205 | meson wrap (vfio-user option) | no | git/gitlab.com/qemu-project/libvfio-user |
 | libblkio | https://gitlab.com/libblkio/libblkio | f84cc963 | meson wrap (blkio option) | no | git/gitlab.com/libblkio/libblkio |
+| libffi (glib) | https://gitlab.freedesktop.org/gstreamer/meson-ports/libffi.git | branch `meson` | Android glib configure (glib `subprojects/libffi.wrap`, `meson.build:1982`) | no | git/gitlab.freedesktop.org/gstreamer/meson-ports/libffi |
+| proxy-libintl (glib) | https://github.com/frida/proxy-libintl.git | 0.1 | Android glib configure (`meson.build:2032`) | yes | git/github.com/frida/proxy-libintl |
 
 Not fetched by either build, not mirrored: the `roms/*` and `tests/lcitool/libvirt-ci`
 submodules (gitlab.com). Developers fetch them with `git submodule update`. The
@@ -55,6 +57,8 @@ Android and desktop configures never name them.
 |---|---|---|---|---|---|
 | SDL2 release zip | https://github.com/libsdl-org/SDL/archive/refs/tags/release-2.32.10.zip | none in CMake (sha `7a3c207b`) | Android FetchContent, **only if `thirdparty/SDL2` is absent** (it is tracked in git, so not fetched) | yes | archives/SDL-release-2.32.10.zip |
 | glib 2.66.8 | https://download.gnome.org/sources/glib/2.66/glib-2.66.8.tar.xz | 97bc87dd (URL_HASH in CMake) | Android ExternalProject `glib_ep` | no | archives/glib-2.66.8.tar.xz |
+| zlib 1.2.11 (glib) | https://zlib.net/fossils/zlib-1.2.11.tar.gz | c3e5e9fd | Android glib configure (`meson.build:1997`, `subprojects/zlib.wrap`) | no | archives/zlib-1.2.11.tar.gz |
+| zlib meson patch (glib) | https://github.com/mesonbuild/zlib/releases/download/1.2.11-3/zlib.zip | f07dc491 | Android glib configure | yes | archives/zlib-1.2.11-3-wrap.zip |
 | curl 8.12.1 | https://github.com/curl/curl/releases/download/curl-8_12_1/curl-8.12.1.tar.xz | 0341f1ed | meson wrap `curl` (libcurl dependency fallback) | yes | archives/curl-8.12.1.tar.xz |
 | curl wrapdb patch | https://wrapdb.mesonbuild.com/v2/curl_8.12.1-1/get_patch | e7e5c517 | meson wrap `curl` | no | archives/curl_8.12.1-1_patch.zip |
 | json 3.2.0 | https://github.com/nlohmann/json/archive/v3.2.0/json-3.2.0.tar.gz | 2de558ff | meson wrap `json` (`ui/thirdparty`) | yes | archives/json-3.2.0.tar.gz |
@@ -106,6 +110,15 @@ Test environment (`/tmp/selfdeps-gitconfig`, `/tmp/selfdeps-test/*.sh`, test onl
 
 ### Findings
 
+0. **The Android build also fetches inside glib.** The first clean run failed in
+   glib's own meson configure: its wraps (`glib-2.66.8/subprojects/*.wrap`) clone
+   `libffi` from gitlab.freedesktop.org and fetch `zlib` from zlib.net and github. They
+   were missing from the first inventory. Fixed: the two git sources and the zlib archive
+   and wrapdb patch are mirrored (`mirror_sources.py`, now 21 git / 26 archives), and the
+   glib configure step runs under `MESON_PACKAGE_CACHE_DIR=$XEMU_MIRROR_ARCHIVES`
+   (`CMakeLists.txt`, ExternalProject `CONFIGURE_COMMAND`). glib's `sysprof` and
+   `gtk-doc` wraps are never reached (`gtk-doc` is a documentation option, and
+   `sysprof` has no `subproject()` call), so they are not mirrored.
 1. **Git refuses file transport for submodules** (git 2.43). The rewrite targets are
    local paths, so `libadrenotools`'s submodule `lib/linkernsbypass` failed:
    `fatal: transport 'file' not allowed` (first clean run, `GRADLE_EXIT=1`; that log was
@@ -134,7 +147,7 @@ Test environment (`/tmp/selfdeps-gitconfig`, `/tmp/selfdeps-test/*.sh`, test onl
 |---|---|---|---|
 | mirror | `python3 docs/lanes/selfdeps/mirror_sources.py` | 19 git, 24 archives, 0 problems | `logs/mirror-run2.log` |
 | insteadOf | `mirror_sources.py --insteadof` | rules written to `~/.gitconfig` and test config | (stdout) |
-| Android clean | `android-clean.sh` (`gradlew --offline assembleDebug`, cleared `.cxx`/`build`) | see below | `android-clean.log` |
+| Android clean | `android-clean.sh` (`gradlew --offline assembleDebug`, cleared `.cxx`/`build`) | **BUILD SUCCESSFUL in 6m 20s**, `GRADLE_EXIT=0`. Every FetchContent and ExternalProject step came from the mirrors | `logs/android-clean.log` |
 | desktop | `desktop-clean.sh` | configure stops at openssl (finding 2) | `logs/desktop-configure*.log` |
 | desktop fetch | `meson subprojects download` | all wraps resolved (finding 3) | `logs/meson-subprojects-download.log` |
 

@@ -4,7 +4,7 @@ State: draft
 
 Lane: selfdeps               Issue: #433 (0.5: 50 Playable)
 Base: master @ 9d1155f919
-Files: android/app/src/main/cpp/CMakeLists.txt, docs/lanes/selfdeps/NOTES.md, docs/lanes/selfdeps/PR.md, docs/lanes/selfdeps/mirror_sources.py, docs/lanes/selfdeps/logs/
+Files: android/app/src/main/cpp/CMakeLists.txt, docs/lanes/selfdeps/NOTES.md, docs/lanes/selfdeps/PR.md, docs/lanes/selfdeps/OUTBOX.md, docs/lanes/selfdeps/mirror_sources.py, docs/lanes/selfdeps/logs/
 Prediction: none: build plumbing, no pixel change
 Needs device: yes (one short Thor pgraph run, step 5 of the brief)    Needs NDK: yes
 
