@@ -49,8 +49,8 @@ Arms, all ref d4a02e2060 on the Nova, cold (`HAKUX_PREBUILD=0 HAKUX_PLC_WIPE=1`)
 
 | # | arm | request | result | expected |
 |---|---|---|---|---|
-| 1 | Kabuki B | 1790990082-uberdefault569-525888 | queued 18:20 PDT | creates near zero in the fight, no hang |
-| 2 | Tron B | 1790990086-uberdefault569-526161 | queued 18:20 PDT | past the second card, no hang |
+| 1 | Kabuki B | 1-1790990144-uberdefault569-532413 | queued 18:16 PDT | creates near zero in the fight, no hang |
+| 2 | Tron B | 1-1790990144-uberdefault569-532476 | queued 18:16 PDT | past the second card, no hang |
 | 3 | Kabuki A | after the pilot | | creates tens of seconds (K1/uberspike A: 133 s) |
 | 4 | DOA3 B | after the pilot | | creates <= half of A's |
 | 5 | DOA3 A | after the pilot | | |
@@ -66,3 +66,8 @@ GPL 0, shader cache cleared, `[pb569] jobs=0`) and Tron's #672 run 6.
 DOA3 is `54430001-Dead_or_Alive_3.xiso.iso` on the Nova; the `doa3` route was written for the
 Thor copy and has never been played on the Nova, so leg H asks for gameplay only where A reached
 it. A fifth title was not added: the budget is spent.
+
+The pilot was first queued plain (`1790990082-...-525888`, `1790990086-...-526161`) because
+request.sh reads #569's release label with `gh`, which fails offline. Both were moved to
+`queue/withdrawn/` with a `.why` and re-queued with `HAKUX_RELEASE_PRIO=1`, the tier
+uberspike569's #569 arms ran at.
