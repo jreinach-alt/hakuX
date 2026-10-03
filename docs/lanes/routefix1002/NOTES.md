@@ -6,6 +6,50 @@ Session 3 (attempt 3), 2026-10-03 08:55 PDT, offline. Same rules.
 Base: origin/lane/titleroutes2 merged into this branch, then origin/master
 merged in at session 2 (merge, no rebase), and again at session 3.
 
+## Why session 3 (attempt 3) did not finish (read first, session 4, 10:16 PDT 10-03)
+
+Session 3 believed v5 was queued because a line sat in `queue.tsv`. It never
+checked who reads that file. lane.local's runner
+(`~/hakux-work/host-tools/overnight_queue.sh`) reads only
+`~/hakux-work/pm/overnight-queue.tsv` and records done lines in
+`pm/overnight-queue.done`. Nothing reads this lane's `queue.tsv`. The runner's
+own `gunvalkyrie` line is next after sw3 (`1791045669-lanelocal-2754777`,
+queued). It points at `wt/lanelocal-queue`, whose untracked
+`gunvalkyrie.route` is session 1's replay-2 loop ("FINAL: ... replay 2's
+(685c52e514) again"), not v5. `diff` shows the two differ in the whole play
+loop. So the 08:30 addendum's v5 is in no live queue, and the runner will play
+replay 2's loop under the purpose "routefix1002's replay-2 loop". Session 3
+also ended with no WAITING file and no hand-off.
+
+Session 4 did this, offline, no device:
+- Merged origin/master (19 commits, merge `9674b5c4c0`). Afterwards
+  `route.sh --check` passes (116 lines). `titlestate.py resolve-route --route
+  gunvalkyrie --title-id 5345000B` gives state first-run, golden
+  `4e2a12123171`, refuse null. So savestate433's gate admits v5.
+- Set `queue.tsv`'s ref back to the brief's `effb0d001b`. request.sh reads the
+  route TEXT from the worktree when it queues (request.sh, `--route`
+  comment), so the ref only picks the emulator build. `effb0d001b` is the
+  cached build every other confirmation in the runner uses. Session 2's
+  `5024216198` would have built a different emulator (an old master plus the
+  titleroutes2 workspace), for nothing.
+- Asked lane.local in OUTBOX to point the runner's `gunvalkyrie` line at
+  `/home/justin/hakux-work/wt/routefix1002` (column 4) before sw3 finishes.
+  The runner's file is lane.local's, so this lane does not edit it.
+- Halo CE: the golden is still `90ebd6a27bd1`, unchanged. Not queued.
+
+v5 or replay 2's loop. Both are blind, and both get the same 840-s slot:
+- replay 2's loop: P ~0.25. Evidence: it played 420 s with one 2.5-min cliff
+  stall (044546-044755). Over 600 s, one more stall like that is likely, and
+  a frame review fails a window with 2+ min on one wall.
+- v5: P ~0.3. Its back-off-then-unequal-sweep targets the two measured pin
+  mechanisms (replay 4's wall, replay 2's cancelling turns). It has never
+  run, so its own failure mode is unknown.
+- Win either way: Gunvalkyrie Playable, +1 title toward the 50.
+- Recommendation: v5, which the 08:30 addendum also ordered.
+- If lane.local's line has already started on replay 2's loop when it reads
+  this, let it run. That run is a valid Playable attempt, and the loser of
+  the two is the next candidate.
+
 ## Why session 2 (attempt 2) did not finish (read first, session 3)
 
 Session 2's briefed outputs are all on origin: the v5 route, the queue line
