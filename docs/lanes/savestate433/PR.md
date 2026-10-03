@@ -1,10 +1,10 @@
-# savestate433: a settings-only refusal names its fix (`# state: any`); the profile-save stage has no title left
+# savestate433: a settings-only refusal names its fix (`# state: any`); the save store finds saves under an alias TitleID
 
-State: ready
+State: draft
 
 Lane: savestate433            Issue: #433 (#397 profile-save stage)
-Base: master @ 9d1155f919
-Files: docs/lanes/savestate433/NOTES.md, docs/lanes/savestate433/PR.md, docs/lanes/savestate433/OUTBOX.md, docs/lanes/savestate433/scratch/needsave.py, docs/lanes/savestate433/scratch/needsave.out, docs/lanes/savestate433/scratch/hddstate.py, docs/lanes/savestate433/scratch/queuecheck.py, docs/testing/titles/titlestate.py, docs/testing/titles/titlestate_selftest.py
+Base: master @ 6c828f9860 (merged)
+Files: docs/lanes/savestate433/NOTES.md, docs/lanes/savestate433/PR.md, docs/lanes/savestate433/OUTBOX.md, docs/lanes/savestate433/scratch/needsave.py, docs/lanes/savestate433/scratch/needsave.out, docs/lanes/savestate433/scratch/hddstate.py, docs/lanes/savestate433/scratch/queuecheck.py, docs/lanes/savestate433/scratch/selftest-alias.out, docs/lanes/savestate433/scratch/status-alias.out, docs/lanes/savestate433/scratch/selftest-only.out, docs/lanes/savestate433/scratch/selftest-full.out, docs/testing/titles/titlestate.py, docs/testing/titles/titlestate_selftest.py
 Prediction: none: harness only, no emulator code
 Needs device: no    Needs NDK: no
 
@@ -31,17 +31,32 @@ stored save. The 30 titles without a route get theirs with their route,
 through the dispatcher's harvest and first-run golden. No title is waiting on
 this stage.
 
-**Also found** (lane.local's, in OUTBOX):
-- ToeJam's queue lines will be refused: its route is not in the worktree the
-  runner uses, and it needs `# state: any` too.
-- status_html misses saves stored under an alias id (Gunvalkyrie).
+**Also found** (lane.local's, in OUTBOX): ToeJam's queue lines will be
+refused. Its route is not in the worktree the runner uses, and it needs
+`# state: any` too.
+
+**The save store now finds saves under an alias TitleID** (the 08:56 NEW
+ISSUE).
+- The status page listed Gunvalkyrie as "no save" while the store held one.
+  It looked up targets.toml's id (`49470017`), and the save is filed under
+  the disk's id (`5345000B`).
+- `titlestate.store_saves` and `store_dir` now resolve the alias (`disk_tid`)
+  themselves. That fixes the status page and `choose()`, which had the same
+  miss, without touching `status_html.py`, which is in no lane's row.
+- Live: Gunvalkyrie, JSRF and DOA3 read `save= True` with their stored save
+  ids (`scratch/status-alias.out`).
 
 Release note (none): harness message only.
 
 ## Local checks (no CI while offline)
 
-- `python3 docs/testing/titles/titlestate_selftest.py`: all checks passed.
+- `python3 docs/testing/titles/titlestate_selftest.py`: 96 ok, 0 failed
+  (`scratch/selftest-alias.out`).
   - The new SW3 leg and the amended Castlevania leg were red before the change.
+  - The two alias legs ("listed under the targets id", "directory is found
+    under it") were red before the store change (`[]`).
+- `SELFTEST_ONLY="66-status-titles 99-hdd-split"` after merging master
+  6c828f9860: 81 passed, 0 failed (`scratch/selftest-only.out`).
 - `SELFTEST_ONLY=<fragment> docs/testing/jobs/selftest.sh`, run for every
   fragment that loads titlestate:
   - 85-savestate.sh: 27 passed;

@@ -90,3 +90,20 @@ JSRF (`49470018`/`5345000A`) hit the same miss, hidden behind "n/a". The fix is 
 `titlestate.store_saves(titlestate.disk_tid(tid))`. It misdirects the #397 profile-save stage: a title with a
 save is listed as needing one. Found by lane.savestate433 (`scratch/needsave.py`, 10-03 08:35).
 
+
+## #433 -- 2026-10-03 09:20 PDT
+
+[lane.savestate433] The status page's alias miss (my 08:56 NEW ISSUE) is fixed
+on lane/savestate433, inside `titlestate.py` rather than `status_html.py` (which
+is in no lane's row).
+
+- `titlestate.store_saves` and `store_dir` resolve the targets.toml id to the
+  disk's TitleID (`disk_tid`) themselves.
+- With it, the status page reads "save" for Gunvalkyrie (`4e2a12123171`), JSRF
+  (`8552a01fbd57`) and DOA3 (`12980814663c`).
+- `choose()` had the same miss and is fixed by the same change.
+- Selftest: two new legs in `titlestate_selftest.py`, red before and green
+  after (96 ok, 0 failed). No device time.
+
+The issue closes when this folds. The #397 profile-save stage still has no
+title left: Gunvalkyrie was listed as needing a save it already had.

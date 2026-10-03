@@ -242,7 +242,9 @@ def no_save(device, tid, reason, run):
 
 
 def store_dir(tid, save_id):
-    return os.path.join(root(), "saves", tid, save_id)
+    # Under the disk's TitleID (disk_tid): targets.toml's id finds the same
+    # directory, as store_saves() lists it.
+    return os.path.join(root(), "saves", disk_tid(tid), save_id)
 
 
 def harvest(device, tid, image, run):
@@ -488,7 +490,7 @@ def rebuild(device, keep=5, title_id=None, state="any"):
 
 
 def store_saves(tid):
-    d = os.path.join(root(), "saves", tid)
+    d = os.path.join(root(), "saves", disk_tid(tid))
     if not os.path.isdir(d):
         return []
     out = []

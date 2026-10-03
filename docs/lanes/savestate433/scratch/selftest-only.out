@@ -1,0 +1,93 @@
+== status.sh 0.5 title table (#433)
+  ok   the fixture renders (status.sh --print exits 0)
+  ok   ...and writes the page
+  ok   every row carries exactly one status word from the scale, and each stage renders as itself
+  ok   Benchmarked N / 145 and Playable M / 50 are the rows' counts
+  ok   fixed columns: no title or next step past two lines at 360 or 400 px; short tokens never wrap
+  ok   nothing in the 0.5 section is shortened (no ellipsis; every title and next step in full)
+  ok   the pipeline is four labelled columns (Copied, Inputs, Save, Bench) with a legend; one-route titles count
+  ok   the target line says 145 and 50 and carries no date
+  ok   '~2026-09-28' is not on the page
+  ok   the 'not copied' tail folds after 10 rows, with its count
+  ok   a verdict with no name or title_id lands in its title's row, by the ISO's title-ID prefix
+  ok   red first, then from the most advanced stage down
+  ok   the header forecasts from the last 48 h rate
+  ok   each issue shows its state and what is in flight; an unowned open one is an alarm
+  ok   Q4 shows the device watchdog's word and last hour; a stale watchdog is lane.local's alarm
+  ok   a no-save record stands in for a save, with its reason; without it the save is still asked for
+  ok   title_verdict.py finds a title by its ISO's title-ID prefix, and only a registered one
+  ok   release-0.5.toml at docs/testing is the default and states 145 and 50
+selftest: 66-status-titles.sh took 12s
+== hdd split: a title run boots the titles disk; hdd.img stays the discs'
+  ok   fixtures: a device hdd.img with two titles' saves
+  ok   the first title run's disk is prepared (rc=0)
+  ok     ... by seed, build, keep (got: seed build keep)
+  ok     ... hddPath now names titles.qcow2 (got: /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2)
+  ok     ... the device's titles.qcow2 is the pushed image (registry sha256)
+  ok     ... result's sha256_at_start is the device file's
+  ok     ... and it is mode 660, not the 0644 a push leaves (got: 660)
+  ok     ... no titles.qcow2.new is left behind
+  ok     ... the seed carried both of hdd.img's saves onto it
+  ok     ... hdd.img itself was not changed
+  ok     ... the marker holds the hddPath it replaced
+  ok   after the run: the new title's save is harvested into the store
+  ok     ... the registry knows the device file's new sha256
+  ok     ... hddPath is back on hdd.img (got: /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/hdd.img)
+  ok     ... the prefs file is byte-identical to before the run
+  ok     ... the marker is gone
+  ok   a request with no marker makes no adb call for hddPath
+  ok   the second run rebuilds from the store: build, keep (got: build keep)
+  ok     ... its disk carries the two seeded goldens
+  ok     ... and not the save the last run made
+  ok     ... which is in the store as Ghoulies' latest, not its golden
+  ok     ... and is the image the registry says was pushed
+  ok     ... mode 660 (got: 660)
+  ok     ... an untouched disk is not pulled after the run
+== hdd split: a kept 0644 titles disk is made 660 before the run
+  ok   a 0644 disk the store still matches is kept (rc=0, plans: keep)
+  ok     ... and made 660 (got: 660)
+  ok     ... its bytes untouched
+  ok     ... hdd.json records the mode it found
+  ok   a disk that cannot be made 660 fails the prepare, not the run (rc=1)
+  ok     ... before hddPath is pointed at it (got: /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/hdd.img)
+== hdd split: a failed hddPath read-back still leaves the way back
+  ok   a lost read-back fails the prepare (rc=1)
+  ok     ... the write did land: hddPath names titles.qcow2 (got: /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/titles.qcow2)
+  ok     ... and the marker already holds hdd.img
+  ok     ... so the next request's restore puts hdd.img back (got: /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/hdd.img)
+  ok     ... byte for byte
+  ok   hddPath found on titles.qcow2 is never recorded as the one to put back
+  ok     ... the run after it ends on hdd.img (got: /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/hdd.img)
+  ok   a marker naming titles.qcow2 restores hdd.img (got: /storage/emulated/0/Android/data/com.jreinach.hakux.debug/files/x1box/hdd.img)
+== hdd split: plan() never rebuilds over an unharvested disk
+  ok   a changed disk is harvested before anything else
+  ok   a disk whose last harvest failed is preserved whole, not kept and booted
+  ok     ... at any size
+  ok   a clean disk past the cap is rebuilt
+  ok   a clean disk under the cap is kept
+  ok   a disk missing from the device is rebuilt
+  ok   HAKUX_TITLES_DISK=0: the split is off, recorded, and no adb call is made
+  ok   a request's env HAKUX_TITLES_DISK=1 beats the worker's 0
+  ok     ... and a request that names none stays off
+  ok     ... a request's 0 beats a worker with the split on
+== hdd split: hdd.img past its limit is reset through saves.py reset
+  ok   under the limit the guard does nothing
+  ok   over the limit hdd.img is reset
+  ok     ... the original is kept on the device as hdd.img.bak-auto
+  ok     ... the new hdd.img is mode 660, or the disc runs die as #622's title runs did
+  ok     ... the new hdd.img is not the old one
+  ok     ... and every save on it survived
+== hdd split: a failed reset is not retried on the same disk
+  ok   no room for the backup: an alert
+  ok     ... and the partial hdd.img.bak-auto is removed
+  ok     ... the failure is recorded against the disk
+  ok     ... the next request writes the alert again, marked repeat
+  ok     ... without pulling or hashing the disk
+  ok   a disk saves.py refuses: an alert
+  ok     ... not retried while the disk is unchanged
+  ok     ... a write to hdd.img re-arms the guard
+== hdd split: serve_one calls it where the runs are
+  ok   restore, prepare, soak, after, then guard before the disc runs (got: restore_hdd_pref titles_disk_prepare restore_hdd_pref soak_title.sh titles_disk_after hdd_img_guard run_disc.sh )
+selftest: 99-hdd-split.sh took 16s
+
+selftest: 81 passed, 0 failed, PARTIAL: 2 of 123 fragments (fake host in /tmp/hakux-selftest.2fqdeA)

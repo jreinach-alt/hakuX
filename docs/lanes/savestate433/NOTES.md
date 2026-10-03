@@ -324,3 +324,45 @@ the brief gained two addenda, so hostops' jam duty resumed it to read them:
 
 The work list still has no title left (session 2), so per the 08:30 addendum
 this session ends with the PR ready and no WAITING file.
+
+## Session 4 (2026-10-03 09:12 PDT): the alias miss, fixed in titlestate.py
+
+**Why session 3 did not finish:** it found the status page's alias miss and
+left it as a `NEW ISSUE:` for someone else, because the line it named
+(`status_html.py:1255`) is in no lane's territory row. Hostops' 09:1x
+addendum asked for the fix on this branch.
+
+**The fix lives in titlestate.py, not status_html.py.**
+- `store_saves(tid)` and `store_dir(tid, save)` now resolve the alias
+  (`disk_tid`) themselves. Both are in my row, so the fold's territory check
+  holds, and every caller is fixed at once.
+- **A second caller had the same miss:** `choose()` lists the store with the
+  targets id. For DOA3, JSRF and Gunvalkyrie it could not offer the stored
+  save to import.
+- `store_dir` resolves too, so a save `store_saves` lists is always found
+  where `store_dir` looks.
+- **Safe to apply twice:** no alias value is also a key in the live
+  `golden.json` (`49470017->5345000B`, `49470018->5345000A`,
+  `4D53002D->54430001`). Callers that already pass the disk id are unchanged.
+
+**Selftest (`titlestate_selftest.py`, next to the DOA3 alias leg):**
+- "the store's saves are listed under the targets id" and "each one's
+  directory is found under it". Both were red before the change (`[]`) and
+  are green after it. 96 ok, 0 failed.
+
+**Live check (`scratch/status-alias.out`):** `status_html._registry` now
+reads `save= True` for all three aliased titles:
+- Gunvalkyrie: `4e2a12123171`;
+- JSRF: `8552a01fbd57`;
+- DOA3: `12980814663c`.
+
+Before the change, `store_saves` returned `[]` for each of them under its
+targets id.
+
+**What this changes for #397:** nothing new to save. Gunvalkyrie was the one
+title listed as needing a save while the store held one. It now reads as
+saved, and the stage still has no title left.
+
+**Do not repeat:** a finding whose obvious line is in an unowned file may
+still have a fix inside your own row. Look for the shared helper before
+handing it off.

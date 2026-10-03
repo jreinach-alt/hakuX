@@ -390,6 +390,13 @@ def test_goldens(tmp):
     check("GUARD: with the alias, the first-run disk drops it",
           GTA not in want and info["disk_title_id"] == GTA, str(info))
     check("  ... and the golden is found under the targets id", ts.golden("4D53002D")["save"] == gta["save_id"])
+    # The status page and choose() list the store under the targets id: with
+    # no alias lookup Gunvalkyrie (49470017 / 5345000B) read "no save" and was
+    # listed for the #397 profile-save stage while the store held one.
+    check("the store's saves are listed under the targets id",
+          ts.store_saves("4D53002D") == ts.store_saves(GTA) != [], str(ts.store_saves("4D53002D")))
+    check("  ... and each one's directory is found under it",
+          all(ts.store_dir("4D53002D", s) == ts.store_dir(GTA, s) for s in ts.store_saves(GTA)))
     with ts.Goldens() as gl:
         gl["aliases"] = {}
 
