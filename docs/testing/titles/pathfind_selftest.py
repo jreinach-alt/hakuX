@@ -39,6 +39,8 @@ answers canned (PATHFIND_DRY). Each case names the defect it would catch.
             claim itself still stands.
   holdrepeat a cutscene that asks for A is answered once; its A repeats HOLD_REPEAT times with no model read,
             then the screen is read again and play resumes.
+  holdstill the model reads play, but two kept frames 30 s apart barely differ: the window is state=still (not
+            play), the loop is led by an unlock button, and play is credited again once the scene moves.
   unlock    two probes in a row move nothing at all; the third is led by X
             (UNLOCK_LADDER; Black Stone, 10-03: a stance only X released).
   actions   clean_action keeps valid tokens and drops the rest (RSTICK too).
@@ -277,8 +279,9 @@ real_now, real_sleep = pathfind.now, pathfind.time.sleep
 pathfind.now = lambda: CLOCK[0]
 pathfind.time.sleep = lambda s: CLOCK.__setitem__(0, CLOCK[0] + s)
 PREFIX = [("game", 0), ("game", 0), ("game", 0), ("game", 80)]          # the decide look, then the probe a/b/c
-PLAY = [("game", (i * 40) % 160) for i in range(40)]
-PLAY2 = [("game", (i * 40 + 20) % 160) for i in range(120)]
+# 47 px a frame: never periodic within a run, so two kept frames 30 s apart differ (the position test, HOLD_STILL)
+PLAY = [("game", (i * 47) % 160) for i in range(40)]
+PLAY2 = [("game", (i * 47 + 20) % 160) for i in range(120)]
 PAUSE = [("menu", 0), ("menu", 0)]
 GENRE = {"genre": "drive", "why": "a car on a road"}
 PAUSED = {"state": "pause", "in_play": False, "why": "pause menu", "action": ["START"], "wait_s": 1}
@@ -328,6 +331,26 @@ check("holdrepeat", len(reps) == pathfind.HOLD_REPEAT and all(l.get("action") ==
       f"the cutscene's A repeated {len(reps)} times, unlooked: {[l.get('action') for l in reps]}")
 check("holdrepeat", nchk <= 2 + 1, f"no model read for the repeats: {nchk} hold checks in all")
 check("holdrepeat", hold.get("ok") is True, f"play resumed and held: {hold.get('play_s')} s of play")
+
+# holdstill: the model reads play on every look, but the scene does not move for ~100 s (Black Stone, 10-03: 600 s on
+# one octagon, verdict PASS). Still windows are not play: the perflog says state=still, the loop is led by an unlock
+# button, and play is credited again only once the kept frames move.
+ROUTE_LOG.clear()
+rc, res, steps, calls = run("holdstill", PREFIX + [("game", 0)] * 60 + PLAY2,
+                            [GAME, {"gameplay": True, "responded": True, "why": "moved"}, GENRE]
+                            + [PLAYING] * 80, ["--no-record", "--no-replay", "--hold-s", "60", "--budget-min", "60"])
+hold = res.get("hold", {})
+look = [json.loads(l) for l in open(os.path.join(TMP, "holdstill", "out", "hold.jsonl"))]
+states = [m.split()[0] for m in ROUTE_LOG if m.startswith("state=")]
+check("holdstill", hold.get("still_windows", 0) >= 1 and "state=still" in states and states[-1] == "state=play",
+      f"a still window is marked and play resumes once the scene moves: {states}, {hold.get('still_windows')} still")
+check("holdstill", any(l.get("action", [None])[:1] == ["X"] for l in look),
+      "after a still window the loop is led by the first unlock button (X)")
+still_s = max((l["hold_s"] for l in look if l.get("window") is not None and l["window"] < pathfind.HOLD_STILL),
+              default=0)
+check("holdstill", hold.get("ok") is True and hold.get("hold_s", 0) >= still_s + 50,
+      f"play was not credited while still: held {hold.get('play_s')} s of play over {hold.get('hold_s')} s, "
+      f"last still window at {still_s} s")
 pathfind.now, pathfind.time.sleep = real_now, real_sleep
 
 # actions

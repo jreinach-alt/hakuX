@@ -113,6 +113,10 @@ HOLD_CHECK_S = 90                    # the model reads the screen at least this 
 HOLD_NAV_MAX = 12                    # model-steered steps back to play in one episode before the hold gives up
 HOLD_REPEAT = 3                      # a cutscene or game over that asked for one button: that press, unlooked, this often
 HOLD_REPEAT_STATES = ("cutscene", "game_over")
+# Two kept frames (HOLD_FRAME_S apart) that change less than this at the probe's contrast step: the player did not
+# move in that window. 10-03, scratch/posprobe.py on the held runs: Black Stone standing on its octagon for 600 s
+# (sword swinging, verdict PASS) 0.002-0.013 per 30-s pair; Panzer Dragoon Orta flying 0.31-0.92.
+HOLD_STILL = 0.03
 HOLD_GENRES = {
     "drive": ["RT:2", "STICK:left:0.8", "STICK:right:0.8"],
     "attack": ["STICK:up:1", "X", "A", "RSTICK:right:0.5", "STICK:down:1", "B", "RSTICK:left:0.5", "X"],
@@ -308,10 +312,20 @@ def probe_change(a, b, c):
     well under 16 levels. Gate 10-03 (scratch/probegate, labelled stored triplets): the fixed 16-level step refused
     every real control in that scene; this step accepts them and accepts no labelled cutscene or menu on its own."""
     ga = grey(a)
-    std = float(np.asarray(ga.resize(classify.MOTION_SIZE, Image.BILINEAR), dtype=np.float64).std())
-    step = min(classify.MOTION_PIXEL, max(4.0, PROBE_DARK * std))
+    step = probe_step(ga)
     gb, gc = grey(b), grey(c)
     return classify.motion(ga, gb, pixel=step)[0], classify.motion(gb, gc, pixel=step)[0]
+
+
+def probe_step(g):
+    std = float(np.asarray(g.resize(classify.MOTION_SIZE, Image.BILINEAR), dtype=np.float64).std())
+    return min(classify.MOTION_PIXEL, max(4.0, PROBE_DARK * std))
+
+
+def window_change(a, b):
+    """Change between two kept hold frames at the probe's contrast step: did the player or camera move?"""
+    ga = grey(a)
+    return classify.motion(ga, grey(b), pixel=probe_step(ga))[0]
 
 
 def letterboxed(path):
@@ -1229,6 +1243,11 @@ class Agent:
         print(f"hold-play: genre {genre}, need {self.hold_s:.0f} s of play", flush=True)
         kept, play_s, navs, nav = [], 0.0, 0, 0
         still, off, reason = 0, False, ""
+        # position test (10-03): a 30-s window whose kept frames barely differ is not play, however live the HUD
+        # looks (Black Stone stood 600 s on one octagon and passed the verdict). Then rotate the inputs: an unlock
+        # button and the next genre's loop, until the scene moves again.
+        parked, rot, still_windows = False, 0, 0
+        order = [genre] + [g for g in HOLD_GENRES if g not in (genre, "onrails")]
         rep, rep_left = None, 0          # the last off-play look's single press, and how many repeats it has left
         last_png, last_check, last_kept, drop = None, now(), None, []
         # the perflog: logcat from the mark to `soak end`, with a state line at every change of play, so
@@ -1270,7 +1289,8 @@ class Agent:
                 last_check = t
                 a = self.hold_look(jp, genre)
                 off = a.get("in_play") is not True
-                st = "play" if not off else re.sub(r"[^a-z_]", "", str(a.get("state") or "other").lower()) or "other"
+                st = ("still" if parked else "play") if not off else \
+                    re.sub(r"[^a-z_]", "", str(a.get("state") or "other").lower()) or "other"
                 if st != logged:
                     self.dev.route_log(f"state={st} t={int(hold_el)}")
                     logged = st
@@ -1300,9 +1320,24 @@ class Agent:
                 # cycle's own, from its frame to its inputs: the look before may have been off play.
                 look.update(src=look.get("src", "genre"), action=tokens)
                 self.send(tokens)
-                play_s += now() - t_cycle
+                if not parked:
+                    play_s += now() - t_cycle
             keep = last_kept is None or hold_el - last_kept >= HOLD_FRAME_S
             if keep:
+                if kept and not off:
+                    mv = window_change(kept[-1], jp)
+                    look["window"] = round(mv, 4)
+                    if mv < HOLD_STILL:
+                        still_windows += 1
+                        rot += 1
+                        tokens = [UNLOCK_LADDER[(rot - 1) % len(UNLOCK_LADDER)]] + HOLD_GENRES[order[rot % len(order)]]
+                        parked = True
+                    elif parked:
+                        parked = False
+                    want = "still" if parked else "play"
+                    if logged in ("play", "still") and want != logged:
+                        self.dev.route_log(f"state={want} t={int(hold_el)}")
+                        logged = want
                 last_kept = hold_el
                 kept.append(jp)
             # the previous look's frame is spent now: this look has been measured against it
@@ -1318,7 +1353,7 @@ class Agent:
         if not ok and not reason:
             reason = f"budget {self.budget_s / 60:.0f} min with {play_s:.0f} s of play"
         held.update(ok=ok, play_s=round(play_s, 1), need_s=self.hold_s, hold_s=round(now() - t_hold, 1),
-                    model_navs=navs, frames=len(kept), reason=reason)
+                    model_navs=navs, frames=len(kept), still_windows=still_windows, reason=reason)
         self.result["hold"] = held
         print(f"hold-play: {'HELD' if ok else 'not held'} {play_s:.0f}/{self.hold_s:.0f} s of play; {reason}",
               flush=True)
