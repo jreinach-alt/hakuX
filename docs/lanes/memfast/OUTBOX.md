@@ -74,3 +74,27 @@ My exclusion rule missed ZPass because its reader counted `ok` rows only, and ZP
 - P, an observation: an independent code review found no correctness bug and one performance risk. With the watch flushes gone, a mode's recorded 4 MB large-page region is no longer reset, so an INVLPG inside it can flush the whole mode. `pfl` is read against A.
 
 The stale "insert and a TLB flush" wording in `hw/xbox/nv2a/pgraph/vk/surface.c` (lines 2192-2196 and 2242-2243) is outside this lane's territory. What it relies on still holds.
+
+## #507 -- 2026-10-03 10:19 PDT
+
+[lane.memfast] W1 (the per-page watch flush) pilot is read.
+
+**Conker, Nova, one pair of 300 s soaks:**
+- **Full flushes:** B's dropped from 144.7/s to 0.96/s, which is 0.7% of A's. The bar was 10%. **PASS.**
+- **Walks:** B ran 145.5/s against 2 x watch inserts = 145.3/s.
+- **Cross-check (`wx`):** 0 on every line. **PASS.**
+- **Large-page whole-mode flushes (`pfl`):** 0 on both arms, so the cost the code review flagged did not appear.
+- **vCPU CPU ms per wall second:** B/A 0.985, against a guessed 0.97 or less. Not shown. The thread is on-CPU about 90% of the time on both arms, so this measures how busy it is more than how much work it does.
+
+**Pixels (`memfast-w1-pixels.json`): PASS, all 3,064 checks.**
+- The pair split across devices: the base arm ran on the Thor, because an `arms-*` request's device pin is a preference without `--hard-pin`. A pass across two devices is a stronger result than a pass on one.
+- The three CPU-write captures read their usual values (0, 0, 134).
+- One excluded capture, `Antialiasing_tests/FramebufferNotModifiedBySurfaceState`, read 0 -> 79. Without W1 it has read 0 on 76 of 89 runs and 44 or 317 on two. It is in the suite that exercises watched surfaces, so it is being settled before W1 is set ready: the Antialiasing suite, 3 runs per arm, on the Nova.
+
+**Queued (Nova):**
+- Blinx 2 B/A: `-3557300` / `-3557411`;
+- Forza B/A: `-3557511` / `-3557775`;
+- Crimson B: `-3558012`;
+- the Antialiasing repeat: `-3559153` (B) / `-3559222` (A).
+
+All ids are `1-17910478xx-lane.memfast-`.

@@ -2,7 +2,7 @@
 State: draft
 
 Lane: memfast            Issue: #507
-Base: master @ 9d1155f919 (phase 1, the XBOX fast-path removal, folded as ddbc5f0173)
+Base: master @ a143aa5db8, merged (phase 1, the XBOX fast-path removal, folded as ddbc5f0173)
 Files: accel/tcg/cputlb.c, system/physmem.c, docs/lanes/memfast/NOTES.md, docs/lanes/memfast/PR.md, docs/lanes/memfast/OUTBOX.md, docs/lanes/memfast/w1_read.py, docs/lanes/memfast/WAITING, docs/testing/predictions/memfast-w1-pixels.json, docs/testing/predictions/memfast-w1-soak.json
 Prediction: docs/testing/predictions/memfast-w1-pixels.json @ 8ec879bd71192076e3b0df62a560c7f2f774cfa77278aa5e8db13dbcc8180d02 ; docs/testing/predictions/memfast-w1-soak.json @ 65bb616e110c75807522e2ac39d8698c4be47c1f80f1cea3122901e3eb3a7bcc (a_ref 5e249bbfe0, b_ref 1b0f73a8bd)
 Needs device: yes    Needs NDK: yes
@@ -30,12 +30,12 @@ Release note (performance): PENDING -- written from the measured legs.
 
 | leg | result |
 |---|---|
-| M: B's `fo`/s at most 10% of A's (Conker, Blinx 2, Forza); `wn` about 2 x inserts | queued (pilot: Conker) |
-| X: `wx` = 0 on every B line | queued |
-| P: B's `pfl`/s and `ff`/s against A's (the large-page region; an observation) | queued |
-| C: vCPU ms per wall second, B/A <= 0.97 on Conker (a labelled guess) | queued |
-| G: B reaches play on Forza and Crimson; no crash or hang | after the pilot |
-| Pixels (`memfast-w1-pixels.json`, Nova) | queued |
+| M: B's `fo`/s at most 10% of A's (Conker, Blinx 2, Forza); `wn` about 2 x inserts | Conker **PASS**: 0.96/s against 144.67/s (0.7%); `wn` 1.00 x 2 x inserts. Blinx 2 and Forza queued |
+| X: `wx` = 0 on every B line | **PASS** so far: Conker (153 lines) and the pgraph fix arm (408 lines) |
+| P: B's `pfl`/s and `ff`/s against A's (the large-page region; an observation) | Conker: `pfl` 0 on both arms; `ff` 1.27/s against 144.98/s |
+| C: vCPU ms per wall second, B/A <= 0.97 on Conker (a labelled guess) | not shown: 0.985. The thread is on-CPU about 90% on both arms |
+| G: B reaches play on Forza and Crimson; no crash or hang | queued |
+| Pixels (`memfast-w1-pixels.json`) | **PASS**, all 3,064 checks. The pair split across devices (base on the Thor). Watch-capture leg PASS (0, 0, 134). One excluded capture, `FramebufferNotModifiedBySurfaceState`, read 0 -> 79, so the Antialiasing suite is queued 3 x per arm on the Nova to settle it (NOTES) |
 
 ## Local checks (no CI while GitHub is suspended)
 
