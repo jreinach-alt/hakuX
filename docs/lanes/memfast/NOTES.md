@@ -729,6 +729,18 @@ file); a rate here sizes a design, it does not compare builds.
     re-checked the three C files against the NDK compile database: no
     errors, and no warnings beyond master's `TARGET_PAGE_MASK` shifts. It
     registered a third pixel prediction and queued the soaks again.
+  - **Queued 18:47 PDT, all on the Nova:**
+    - soaks, `1-17909900xx-lane.memfast-`: GTA B1 `521965`, A1 `522010`;
+      Nightfire B2 `522055`; Crimson B1 `522109`, A1 `522155`; GTA B2
+      `522200`, A2 `522245`;
+    - the arm pair: `1790990050-arms-memfast-base-522291` and
+      `1790990051-arms-memfast-fix-522338`, `--expect` stable2.
+    - The pilot verdict was renewed first (`pilots/lane.memfast.ok`): GTA's
+      and Crimson's routes reached gameplay on the Nova in 10-01/10-02 runs
+      by lane.ibcache and routedriver.
+  - **waiting:** on those nine results. Then score them, set `State: ready`
+    with the scores in one commit, and queue a head-sha soak for
+    `offline_fold.py` (Next, step 2).
 
 ## The second pixel arm (memfast-drop-pixels-stable.json), read 2026-10-02
 
