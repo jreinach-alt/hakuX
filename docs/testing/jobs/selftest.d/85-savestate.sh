@@ -111,9 +111,11 @@ check "VOID REPRODUCED: the device registry names the run's bare save, what the 
       eval '[ "$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))[\"titles\"][\"4D530021\"][\"save\"])" "$SS/dispatch/titlestate/devices/nova.json")" = "$BARE" ]'
 mkdir -p "$SS/r2"
 ss_env 'titles_disk_prepare req2 "$SS/r2" "[]" 4D530021 returning' > "$SS/r2.log" 2>&1; rc=$?
-check "GUARD: the next returning run rebuilds (rc=$rc, plans: $(plans "$SS/r2/hdd.json"))" \
+# Master rebuilds here too -- onto the bare save it harvested. The guard is
+# the next leg, what the rebuilt disk carries.
+check "the next returning run rebuilds (rc=$rc, plans: $(plans "$SS/r2/hdd.json"))" \
       [ "$(plans "$SS/r2/hdd.json")" = "build keep" ]
-check "  ... onto Nathan again, not the bare state the last run left" \
+check "  GUARD: onto Nathan again, not the bare state the last run left" \
       eval 'verifies "$NATHAN" && ! verifies "$BARE"'
 ss_env 'titles_disk_after req2 "$SS/r2"' >/dev/null 2>&1
 
@@ -191,3 +193,42 @@ check "  ... and a refusal ends the request before the soak, with its reason" \
       eval 'printf "%s\n" "$body" | grep -q "refused before the soak"'
 rm -rf "$SS"
 unset SS X NATHAN BARE CS_ISO out body rc
+
+# --------------------------------------- the route died, the soak ran on
+# CAPA T16 (lane.routerca433): 1790905334 held 904 s past `unknown step
+# 'waitfor'`, 1790918365 661 s past a missing crop. Against master the
+# broken-route leg holds its whole window and exits 0.
+echo "== savestate: a soak whose route dies stops, instead of holding blind"
+RD="$T/routedied"; rm -rf "$RD"; mkdir -p "$RD/bin"
+cat > "$RD/bin/adb" <<'EOF'
+#!/usr/bin/env bash
+[ "$1" = -s ] && shift 2
+case "$*" in
+    *"dumpsys input"*)
+        printf '  FocusedDisplayId: 0\r\n  FocusedApplications:\r\n'
+        printf "    displayId=0, name='ActivityRecord{8c1f2a u0 com.jreinach.hakux.debug/com.rfandango.haku_x.EmulationActivity t41}', dispatchingTimeout=5000ms\r\n"
+        printf "  FocusedWindows:\r\n    displayId=0, name='51d0e7 com.jreinach.hakux.debug/com.rfandango.haku_x.EmulationActivity'\r\n" ;;
+    *"dumpsys power"*)  printf '  mWakefulness=Awake\r\n' ;;
+    *"dumpsys window windows"*) printf '  Window #0 Window{1a2b u0 StatusBar}:\r\n    mDisplayId=0 rootTaskId=1\r\n' ;;
+    *"settings get system performance_mode"*) echo "0 4" ;;
+    *"ps -A -o NAME"*)  printf 'NAME                       \r\ncom.jreinach.hakux.debug:xemu\r\n' ;;
+    *) exit 0 ;;
+esac
+EOF
+chmod +x "$RD/bin/adb"
+rd_soak() {   # <hold s> <route text> -> rc; run.log in $RD/run
+    rm -rf "${RD:?}/run"; mkdir -p "$RD/run"; printf '%b' "$2" > "$RD/route"
+    PATH="$RD/bin:$PATH" SERIAL=ee317437 DISPLAY_WAKE_S=0 ADB_RETRY_SLEEP=0 \
+        ADB_QUICK_TIMEOUT=1 HAKUX_DEVICE_LEASE="$RD/lease" SOAK_POLL_S=0.2 SOAK_RETRY_S=0.1 \
+        HAKUX_WORK="$RD" PAD_DEV=/dev/input/event7 FG_POLL_S=0.2 FG_WAIT_S=1 FG_REMEDY_S=1 \
+        PERF_RESULT="$RD/run/perf_regimen.json" ROUTE_FILE="$RD/route" ROUTE_FRAMES="$RD/run/rf" \
+        timeout 90 bash "$TESTING/soak_title.sh" /fake/iso.iso "$1" > "$RD/run/run.log" 2>&1
+    echo $?
+}
+t0=$(date +%s); rc=$(rd_soak 30 'press A\nwait 1\nexplode now\n'); dt=$(( $(date +%s) - t0 ))
+check "a route that dies (rc 2) stops a 30 s soak early (rc=$rc, ${dt}s)" eval '[ "$rc" = 6 ] && [ "$dt" -lt 25 ]'
+check "  ... and says route-died in run.log" grep -q '^route-died: route.sh exited 2' "$RD/run/run.log"
+t0=$(date +%s); rc=$(rd_soak 4 'press A\nwait 1\n'); dt=$(( $(date +%s) - t0 ))
+check "a route that ends cleanly (rc 0) holds the soak's window (rc=$rc, ${dt}s)" \
+      eval '[ "$rc" = 0 ] && [ "$dt" -ge 4 ] && grep -q "ROUTE finished (rc 0)" "$RD/run/run.log" && ! grep -q route-died "$RD/run/run.log"'
+rm -rf "$RD"; unset RD t0 dt rc

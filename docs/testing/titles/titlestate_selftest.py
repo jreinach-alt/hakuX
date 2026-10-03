@@ -546,9 +546,30 @@ def test_route_headers():
     check("  ... and a .first-run/.returning file declares its own variant", not bad, ", ".join(bad))
 
 
+def test_nav_disk(tmp):
+    """A held nav.py session on a device never starts on whatever hdd.img
+    holds without saying so (gap 3: held sessions bypassed the titles disk)."""
+    print("== nav.py start: a held session names its title, or says --hdd-img")
+    env = dict(os.environ, NAV_DIR=tmp, SERIAL="ee317437", PATH="/nonexistent")
+    env.pop("NAV_DRY", None)
+    nav = os.path.join(HERE, "nav.py")
+    r = subprocess.run([sys.executable, nav, "start", "tron2", "--variant", "returning"], env=env,
+                       capture_output=True, text=True)
+    check("start with no title and no --hdd-img is refused before any adb call",
+          r.returncode == 2 and "--title-id" in r.stderr and not os.path.exists(os.path.join(tmp, "current")),
+          r.stderr.strip()[-200:])
+    r = subprocess.run([sys.executable, nav, "start", "tron2", "--hdd-img"], env=env,
+                       capture_output=True, text=True)
+    sj = os.path.join(r.stdout.strip(), "session.json") if r.returncode == 0 else ""
+    check("  ... --hdd-img starts it, and the session records hand play on hdd.img",
+          bool(sj) and json.load(open(sj))["hdd"]["path"] == "hdd.img", r.stderr.strip()[-200:])
+
+
 def main():
     with tempfile.TemporaryDirectory() as tmp:
         test_goldens(tmp)
+    with tempfile.TemporaryDirectory() as tmp:
+        test_nav_disk(tmp)
     test_route_headers()
     with tempfile.TemporaryDirectory() as tmp:
         test_saves(os.path.join(tmp))
