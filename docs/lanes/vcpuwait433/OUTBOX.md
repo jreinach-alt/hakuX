@@ -95,3 +95,18 @@ Next, by P x win:
 [lane.vcpuwait433] **Pixel leg PASS.** Thor arms B `1-1791035760-vcpuwait433-4105238` (012fa08a94, the lock-free read) and A `1-1791035764-vcpuwait433-4105418` (ef511dbd19, master), judged with ab_compare against the pre-registered `vcpuwait433-pixels.json`: 45 of 45 captures byte-identical (DMA corruption around surfaces 3, Texture render target 41, Texture render update in place 1; exact 5 -> 5). B's run is also the fix's first NDK build. No golden in those suites needed the old hold.
 
 [lane.vcpuwait433] waiting: on savestate433's fold (not on master at 07:05). Then: merge master, queue the one Tron run (B, `vcpuwait433-tron.json`, A = 990012 on disk), read it, and do a final-head run for the fold.
+
+## #433 -- 2026-10-03 08:04 PDT
+
+[lane.vcpuwait433] **Tron B queued: `1-1791039792-vcpuwait433-947718`** (Nova, pinned, release tier, 720 s, ref 012fa08a94). It runs on a first-run route, not the returning one, because savestate433's fold has not reached the dispatcher yet. Prediction `vcpuwait433-tron-firstrun.json` (sha256 7c92e808...) supersedes `vcpuwait433-tron.json`, which was never queued. It keeps the same refs, A (990012) and legs M/O1/O2. Only B's route and leg V change.
+
+Two harness defects. Each one alone would have voided the returning-route run for a known cause:
+
+1. **The dispatcher workers do not run savestate433.** Workers 1275679/1275687 started 10-02 20:40 from `dispatch/bin/dispatcher.sh`, a snapshot dated 10-02 07:55 that has neither `title_state` nor `hdd.refused`. They re-exec only when `$TREE/docs/testing` changes, and `/home/justin/hakuX` is at 66bce0c222 (the routedriver2 fold, 10-02 08:45), 108 commits behind master. So on dispatched runs no `# state:` line is enforced and no golden is composed. That is true for every lane, not only this one. Tron's disk still holds the first-run leftover d2aff0a53543.
+2. **Tron 2.0 has no `targets.toml` entry**, so `titlestate.py tid-for-iso "Tron 2.0 - Killer App (USA, Europe).iso"` returns nothing. With savestate433 live, request.sh refuses every Tron returning route ("the title is not identified"). A Tron first-run route gets `compose` with no title, which means **all goldens, Tron's included**, so Auto Load would be enabled. savestate433's proof passed `--title-id 42560001` by hand, which is why it never hit this.
+
+Why the first-run route is valid now: `tron-newgame-firstrun.route` is A's route text minus the one DOWN (the v5 route). The stale dispatcher keeps d2aff0a53543, where Auto Load is greyed, so A on Single Player picks New Game and the run plays the intro: A's window, and tron2's (no profile, slow-row v_blk 9.93 against A's 9.80). The one confound left is A's golden profile against B's none. It touches O1/O2, not M.
+
+**Request to lane.local:** if `/home/justin/hakuX` is refreshed before 947718 is claimed, withdraw 947718. Under savestate433 with Tron unidentified it would boot all goldens, take Auto Load into the level, and void on leg V. The fix for defect 2 is a `targets.toml` row for 42560001 with its iso name (board territory, not mine).
+
+[lane.vcpuwait433] waiting: on `1-1791039792-vcpuwait433-947718` (Nova, behind pathfind's Black Stone hold). I read it with decompose.py against 990012, then queue the final-head run for the fold.
