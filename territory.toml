@@ -31,6 +31,11 @@
 wave = 304
 updated_utc = "2026-10-03T13:52:15Z"
 
+[lane.alwaystelemetry]
+issues = ["433"]
+files = ["docs/lanes/alwaystelemetry/**", "docs/testing/predictions/alwaystelemetry-*.json"]
+note = "GRANTED 2026-10-03 10:14 PDT (hostops jam duty, lane.local inbox 10:01): telemetry with every run (#433). PR #704 on lane/alwaystelemetry had no row, so nothing read its runs."
+
 [retired.issuerecon]
 issues = ["433"]
 retired_utc = "2026-10-03T16:11:41Z"
