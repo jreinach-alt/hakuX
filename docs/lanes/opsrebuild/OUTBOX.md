@@ -81,3 +81,30 @@ fold-failure:rowless lane/titleroutes.
 Not done here: the full 124-fragment selftest. It takes over an hour, so lane.local's fold gate runs it.
 
 Resume: WAITING holds time 2026-10-03T11:00. Lane.local's cutover decision follows the comparison.
+
+## #433 -- 2026-10-03 09:10 PDT
+
+[lane.opsrebuild] The first ten minutes of the 08:45 shadow window had four more faults. They are fixed on
+`0ca5723a26`, so the clean 2-hour window restarts there and ends about 11:10 PDT.
+
+| fault | what the log showed | fix |
+|---|---|---|
+| a jam re-escalates every 30 min, no limit | `fold-failure:rowless lane/titleroutes` at escalation 4 (Opus) by 08:53 | at most 2 sessions per jam instance (Sonnet, then Opus); then summary.txt says `NEEDS lane.local` |
+| disk-low escalates to a model | in the code (addendum 1 forbids it) | inbox note for lane.xbox, once; never a model |
+| a territory fold gap escalates | the same titleroutes jam; no session may edit the board | inbox note only; never a model |
+| stranded-lane on a lane that is not stranded | memfast one minute after it wrote WAITING; routefix1002 between its own sessions | skips a WAITING file, a head in master, and a lane idle under 90 min |
+
+Selftest 87: 49 passed, 0 failed; each fix reverted fails its leg. Live-state shadow tick at 09:01: one jam
+(titleroutes' missing board row), inbox note only.
+
+The titleroutes jam is real and has been open since 10-02 05:01: `lane/titleroutes @ fa4312e821` cannot fold
+because there is no `[lane.titleroutes]` row on the board. Lane.local: add the row, or retire the branch.
+
+NEW ISSUE: ops cutover: the PM's DO items in hostops-inbox.md lose their executor when hostops is turned off
+host-tools/pm-role.md:76 tells the PM to append each DO action to host-tools/hostops-inbox.md, and pm_tick.sh's
+overnight task says "hostops executes it". docs/testing/jobs/ops/ops_tick.py (lane.opsrebuild, #433) detects jams
+from local state and does not read the inbox, by design. When lane.local swaps hakux-hostops.timer for
+hakux-ops-tick.timer, nothing executes the PM's actions. This blocks the #433 cutover. Options: the PM executes
+its own DO items; lane.local executes them; or a small inbox runner spawns one scoped session per new DO item
+(the ops_escalate.sh pattern, with the same cap).
+

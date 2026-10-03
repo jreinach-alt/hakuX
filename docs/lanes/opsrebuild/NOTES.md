@@ -361,6 +361,45 @@ A real-state shadow tick at 08:45 names one jam: `fold-failure:rowless lane/titl
 The stranded `opsrebuild` is no longer named. Other jams seen earlier (`tronhang672`,
 `verdict433`, `savestate433`, the failed units) were absent at 08:45; this lane did not touch them.
 
+## Attempt 4 (2026-10-03 08:55): why attempt 3 did not finish
+
+Attempt 3 did not fail. It ended on purpose at 08:45 with `WAITING: time 2026-10-03T11:00`, the end
+of the 2-h shadow window. It was resumed early, at 08:55, because the brief changed after that
+session started (hostops jam duty's addendum: the 08:30-08:47 addenda had not been read). Of those
+addenda, the WAITING rule and Addendum 3 were already met. The NEW ISSUE rule is met below.
+
+**The first ten minutes of the window had faults, so the window restarts on the new head.** From
+`logs/ops-shadow.log` and a reread of the code:
+
+| # | Fault | Evidence | Fix | Leg |
+|---|---|---|---|---|
+| 5 | One jam re-escalates every 30 min with no limit | `fold-failure:rowless lane/titleroutes` reached "count would become 4" (Opus) by 08:53; at cutover that is 2 Opus sessions an hour for a jam no session can fix | `ESCALATE_MAX` (2) per jam instance: Sonnet, then Opus, then none. Past the cap, `summary.txt` marks the jam `NEEDS lane.local` | (m) |
+| 6 | `disk-low` escalates to a model | Code: no remedy, so it escalated on sight. Brief addendum 1: disk is lane.xbox's; never a model, no remedy | Writes an inbox note for lane.xbox once per instance, and never escalates (`Jam.escalate=False`) | (n) |
+| 7 | A territory/rowless fold gap escalates to a model | Same titleroutes jam. Its fix is a board-row edit, which `escalate-role.md` forbids a session to make | The inbox note is the route; never escalates | (n) |
+| 8 | `stranded-lane` fires on a lane the minute its session ends | 08:48: `memfast` named stranded one minute after it pushed a WAITING file (`6f64830aa8`, "WAITING on the four runs"); `routefix1002` stranded at 07:41, cleared at 08:33, back at 08:48, between its own sessions | Skips: a branch with `docs/lanes/<lane>/WAITING` (lanewaker's job), a head already in `origin/master`, and a lane idle under 90 min, using the later of its last commit and its unit's stop. The 90 min is the owner's 10-03 stranded rule; handback (~40 min) and lanewaker act inside it | (l) |
+
+Falsified: each fix was reverted in turn (cap -> 99; disk and territory without `escalate=False`;
+the three stranded guards off), and each failed its own legs (2, 1, 1 and 3 FAIL). Restored:
+87-ops-tick.sh 49 passed, 0 failed.
+
+Real-state shadow ticks, scratch state dir, 09:01 and 09:02: one jam, `fold-failure:rowless
+lane/titleroutes`, inbox note only, no escalation; the second tick announced nothing new.
+memfast and routefix1002 are not named.
+
+**Seen but not changed:** `timer-unanchored` flapped for one tick each on `hakux-idlewatch.timer`
+(08:28, cleared 08:33) and `hakux-issue-sync.timer` (08:53). Both are probably new timers
+mid-install, not dead ones. The remedy (`systemctl start --no-block` on the service, once) is
+safe to repeat, so a false hit costs one extra run of a model-free job. Not worth a confirm-twice
+rule now. If the clean window shows it on a timer nobody touched, add one.
+
+**Cutover gap (NEW ISSUE in OUTBOX):** the PM appends its DO actions to `hostops-inbox.md` for
+hostops to execute (`host-tools/pm-role.md:76`, `pm_tick.sh` overnight task). ops_tick reads
+nothing from the inbox, so at cutover the PM's actions lose their executor. Lane.local decides
+who executes them before it turns hostops off.
+
+**Full selftest:** run in this session as a background task, polled in the foreground. The result
+is in PR.md.
+
 ## Next (P x win)
 
 The brief's gate is one clean 2-hour `--shadow` run on this head. The shadow timer already runs the
@@ -369,12 +408,14 @@ brief's RULE asks:
 
 | candidate | P (works) and evidence | win if it works | cost | decides |
 |---|---|---|---|---|
-| A. Let the shadow timer run 2 h on this head; compare `ops-shadow.log` against hostops's inbox entries for the same window; cut over if clean | P ~0.9: all three faults are fixed and each has a leg that fails on the old code; two real-state ticks show identity and folded-branch removal; the remaining risk is a false jam the fixture tree does not produce | removes ~$110/day of model ticks (42 ticks/day at ~$1.70 each) | 2 h wall-clock; no device | itself: a clean window cuts over; a false jam in the window picks B's detector fix first |
+| A. Let the shadow timer run 2 h on this head; compare `ops-shadow.log` against hostops's inbox entries for the same window; cut over if clean | P ~0.75 (was 0.9 before attempt 4): each shadow window so far found faults the fixtures did not, 4 overnight and 4 in the first ten minutes of the 08:45 window, all from real-state shapes (a lane between sessions, a jam no session can fix). All eight have legs that fail on the old code. The remaining risk is another such shape | removes ~$110/day of model ticks (42 ticks/day at ~$1.70 each); with the cap, the worst case is 2 sessions per jam instead of one every 30 min | 2 h wall-clock; no device | itself: a clean window cuts over; a false jam picks a detector fix and restarts the window |
 | B. Wire the RESOURCE rows (~44) to a machine-readable `offline_status.py` output, so the checks harness_health.py has been blind to since 09-29 come back | P ~0.5: the output is prose today, so the parse is the risk; the coverage win is real, but the sources are in lane.localforge's and lane.issuerecon's territory | restores coverage of the GitHub-bound checks; the size of that win is unmeasured | a lane on another lane's files; not this session | nothing needed before A's window ends |
 
 A decides first because it is the only gate between this layer and the $110/day it replaces, and
 it costs nothing but wall time. B is the larger win but at lower P, and it lives in other lanes'
 files. It runs after the cutover, not before.
 
-**Status:** code and docs done for the three faults. The clean 2-h shadow run is waiting; PR.md
-stays `State: draft` until lane.local posts that comparison. See OUTBOX.md's waiting entry.
+**Status (attempt 4):** code and docs done for faults 1-8. The clean 2-h shadow window restarts
+on `0ca5723a26`, the first head with faults 5-8 fixed, pushed 09:04 PDT. It ends at 11:05. PR.md
+stays `State: draft` until this lane posts the comparison for that window. See WAITING and
+OUTBOX.md.

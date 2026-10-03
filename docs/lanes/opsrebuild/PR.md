@@ -40,6 +40,17 @@ attempt 1 did not finish.
 
 **Attempt 3:** the attempt-2 work was uncommitted, so it is committed now; `origin/master` merged; a fourth fault (a live lane session read as stranded) is fixed. See NOTES.md "Attempt 3".
 
+**Attempt 4:** the first ten minutes of the 08:45 window showed four more faults, now fixed with
+selftest legs (l, m, n). (5) A jam re-escalated every 30 min with no limit; each jam instance now
+gets at most two sessions, Sonnet then Opus. (6) `disk-low` escalated to a model; it now routes to
+lane.xbox and never escalates (brief addendum 1). (7) A territory fold gap escalated, though no
+session may edit the board; it now never escalates. (8) `stranded-lane` fired on lanes with a
+WAITING file, on folded heads, and minutes after a session ended; those are skipped now, with a
+90-min idle grace. NOTES.md "Attempt 4" has the table. The clean window restarts on `0ca5723a26`.
+
+**Cutover gap for lane.local:** the PM's DO items in `hostops-inbox.md` are executed by hostops
+today. ops_tick does not execute them. OUTBOX.md files it as a NEW ISSUE.
+
 **Not finished here**: the brief's clean 2 h `--shadow` run on this head, and the cutover. The timer
 runs the worktree, so the run has started; this session cannot block for 2 h. Cutover (installing the
 units, stopping hostops) is lane.local's to run. `OUTBOX.md` carries the waiting entry.
@@ -52,7 +63,7 @@ waiting state, not a failure.
 ## Verification run locally (no CI while GitHub is suspended)
 
 - `python3 -m py_compile docs/testing/jobs/ops/ops_tick.py` -- clean.
-- `env SELFTEST_ONLY="87-ops-tick.sh" bash docs/testing/jobs/selftest.sh` -- 38 passed, 0 failed (leg k falsified: fails with the live-session check removed).
+- `env SELFTEST_ONLY="87-ops-tick.sh" bash docs/testing/jobs/selftest.sh` -- 49 passed, 0 failed. Legs k, l, m, n falsified: each fails with its fix reverted.
 - `bash docs/testing/jobs/selftest.sh --check-shards 4` -- all 121 fragments still covered.
 - Full `bash docs/testing/jobs/selftest.sh` (all 124 fragments): NOT run to completion in this session.
   One run takes over an hour (the first three fragments alone took about 460 s). Lane.local's fold gate
