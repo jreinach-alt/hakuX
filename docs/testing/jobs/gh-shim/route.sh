@@ -2,7 +2,7 @@
 # route.sh -- which harness units get the gh shim (the local forge) instead of /usr/bin/gh.
 #
 #   route.sh status              every unit below: routed or not, and whether its code is ready
-#   route.sh on  <unit|phase1|phase2>...   write the drop-in(s), then daemon-reload
+#   route.sh on  <unit|phase1|phase2|phase3|all>...   write the drop-in(s), then daemon-reload
 #   route.sh off <unit|all>...             remove the drop-in(s), then daemon-reload
 #
 # Routing a unit means one drop-in:
@@ -40,8 +40,15 @@ BARE="${FORGE_SYNC_BARE:-$HOME/hakux-work/offline-git/hakuX.git}"
 DROPIN=zz-forge-shim.conf
 PHASE1="hakux-comments hakux-issue-sweep hakux-pr-sweep hakux-arms"
 PHASE2="hakux-status hakux-board hakux-fold hakux-foldpace hakux-handbackpace"
-# NOT ROUTED BY DESIGN: hakux-cloud (a claim starts a session; board.sh's dry
-# run already stops its board-tick call) and hakux-hostops (a model session).
+# PHASE3: every other harness unit gets the shim on PATH, so nothing that runs
+# harness code can reach /usr/bin/gh (and github.com) by accident. These get
+# PATH and FORGE_USER only, not HAKUX_FORGE: that switch turns on the dry-run
+# gates of phase 2 and the forge links, and these units do not use them.
+# hakux-hostops is in phase 3 (ADDENDUM 3): its model session reaches the
+# forge through the shim, and the shim fails loudly on anything it does not do.
+# hakux-forge* are the forge's own units and never get the shim. hakux-cloud is
+# left out: it is disabled (ADDENDUM 3), and a claim starts a session.
+PHASE3="hakux-hostops hakux-dx hakux-dispatcher hakux-desktop hakux-jamcheck hakux-manifest hakux-recover hakux-holdlease hakux-devwatch hakux-defrag hakux-usbdialog hakux-tmpclean hakux-foldqueue hakux-lanewatch hakux-lanewaker hakux-autoverdict hakux-local-board hakux-local-issue-audit hakux-hourly hakux-pm@ hakux-nightly hakux-thor-suites hakux-ops-shadow hakux-usage-meter hakux-idlewatch"
 
 # requirement <unit> -> lines "<where> <path> <marker>"; where = master | checkout
 requirement() {
@@ -53,7 +60,7 @@ requirement() {
         hakux-foldpace)     echo "master docs/testing/jobs/fold.sh FOLD_DRY_RUN" ;;
         hakux-handbackpace) echo "checkout docs/testing/jobs/handback.sh HANDBACK_DRY_RUN" ;;
         hakux-comments|hakux-issue-sweep|hakux-pr-sweep|hakux-arms) ;;
-        *) return 1 ;;
+        *) case " $PHASE3 " in *" $1 "*) return 0 ;; esac; return 1 ;;
     esac
 }
 
@@ -75,6 +82,20 @@ ready() {
 write_dropin() {
     local u=$1 d="$UNITS_DIR/$1.service.d"
     mkdir -p "$d"
+    case " $PHASE3 " in *" $u "*)
+        # phase 3: PATH and the actor only (see PHASE3 above)
+        local who=jobs; [ "$u" = hakux-hostops ] && who=hostops
+        cat > "$d/$DROPIN.new" <<EOF
+# lane.localforge (2026-10-03): this unit's \`gh\` is the local forge's shim.
+# Remove this file (docs/testing/jobs/gh-shim/route.sh off $u) to route it back
+# to /usr/bin/gh. PATH only: HAKUX_FORGE is a phase 2 switch and is not set here.
+[Service]
+Environment=PATH=$SHIM_BIN:$HOME/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
+Environment=FORGE_USER=$who
+EOF
+        mv -f "$d/$DROPIN.new" "$d/$DROPIN"
+        return 0 ;;
+    esac
     cat > "$d/$DROPIN.new" <<EOF
 # lane.localforge (2026-10-02): this job's \`gh\` is the local forge's shim.
 # Remove this file (docs/testing/jobs/gh-shim/route.sh off $u) to route it back
@@ -95,7 +116,8 @@ expand() {
         case "$x" in
             phase1) echo $PHASE1 ;;
             phase2) echo $PHASE2 ;;
-            all)    echo $PHASE1 $PHASE2 ;;
+            phase3) echo $PHASE3 ;;
+            all)    echo $PHASE1 $PHASE2 $PHASE3 ;;
             *.service) echo "${x%.service}" ;;
             *)      echo "$x" ;;
         esac
@@ -107,10 +129,10 @@ case "$cmd" in
     status)
         [ -x "$SHIM_BIN/gh" ] && echo "shim: $SHIM_BIN/gh ($("$SHIM_BIN/gh" --version 2>&1 | head -1))" \
                                || echo "shim: NOT INSTALLED at $SHIM_BIN/gh (bash docs/testing/jobs/gh-shim/install.sh)"
-        for u in $PHASE1 $PHASE2; do
+        for u in $PHASE1 $PHASE2 $PHASE3; do
             r=no; [ -f "$UNITS_DIR/$u.service.d/$DROPIN" ] && r=ROUTED
             why=$(ready "$u") && why="code ready"
-            printf '%-20s %-7s %s\n' "$u" "$r" "$why"
+            printf '%-22s %-7s %s\n' "$u" "$r" "$why"
         done ;;
     on)
         [ -x "$SHIM_BIN/gh" ] || { echo "route.sh: no shim at $SHIM_BIN/gh; install it first" >&2; exit 2; }
@@ -132,5 +154,5 @@ case "$cmd" in
         done
         [ "$did" = 1 ] && systemctl --user daemon-reload
         exit 0 ;;
-    *) echo "usage: route.sh status | on <unit|phase1|phase2>... | off <unit|all>..." >&2; exit 2 ;;
+    *) echo "usage: route.sh status | on <unit|phase1|phase2|phase3|all>... | off <unit|all>..." >&2; exit 2 ;;
 esac

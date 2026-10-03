@@ -285,7 +285,52 @@ Grep: `git grep -n -E '(^|[[:space:]|(;&`$]|timeout [0-9]+ )gh (api|pr|issue|run
 over `docs/testing`, `scripts`, `.github/workflows`, `host-tools` and `AGENTS.md`,
 with comment-only lines dropped. Table filled in as each item is tested.
 
-_(table: see the section below once complete)_
+| caller (master) | gh operations | decision | test |
+|---|---|---|---|
+| `docs/testing/jobs/{board,status,fold,handback,arms,pr-sweep,issue-sweep,cloud,gh-label,ensure-labels,board-status,deliver,status_html}.{sh,py}`, `selftest.d/*` | pr list/view/comment/create/checks/edit, issue list/create/comment/view, api, label, run list | **shim, by drop-in**. Phase 1 (comments, issue-sweep, pr-sweep, arms) routed. Phase 2 (status, board, fold, foldpace, handbackpace) unrouted: disabled by lane.local, and route.sh refuses until this PR folds. `hakux-cloud` unrouted, see 7.2 | `smoke_live.py` (every op form, 88 checks); `local_jobs_selftest.sh` 14 |
+| `docs/testing/comment_sweep.sh` | api `issues/comments`, issue list `--label harness-status`, api PATCH/POST | **forge** (phase 1; its watermark and comment id are `forge-*`) | smoke: comment_sweep jq (A)-(D) |
+| `docs/testing/nightly_build.sh:323` | api `pulls/N` (PR body for `Release note:`) | **shim** via `hakux-nightly` (phase 3). Reads the forge PR body, which is PR.md | smoke: api `pulls/N --jq .body` form |
+| `docs/testing/nightly_build.sh:481/486` | `release create --prerelease --notes-file`, fallback `release upload --clobber` | **forge prerelease** `nightly-<day>` on `jreinach-alt/hakuX`, fetched from http://127.0.0.1:3330. Publishing needs the shim on PATH (`hakux-nightly`) | **smoke: release section** (create, create-on-existing refused, upload refused without `--clobber`, upload `--clobber`, view, list). Found and fixed: none needed, the shim already had these; the smoke test did not cover them before |
+| `docs/testing/request.sh:788` | api `issues/N --jq .labels[].name` (release priority) | **shim** via the caller's PATH. Not a unit. Without the shim, the read fails and the script warns "could not read #N's labels; queueing at normal priority" (its existing fallback, now loud) | smoke: api labels form |
+| `docs/testing/gh_rest.py`, `fleet.py`, `check_coverage.py`, `backlog-gate.sh`, `ab_run.sh`, `pr_comment.sh`, `watch_remote_lane.sh`, `idle-watchdog.sh` | pr list, api, issue list | **shim** via the caller's PATH (the owning unit under 7.2, or the session's env) | smoke: pr list, issue list and api forms |
+| `scripts/sign-macos-release.sh`, `.github/workflows/{bump-subproject-wraps,delete-prerelease,update-ppa}.yml` | release download/view/delete/upload, pr create | **retired for the return.** GitHub-only: a macOS signing script and GitHub Actions. No harness unit runs them. Not edited (outside territory). Forgejo would queue a `.github/workflows` run on a branch with no `.forgejo/`, as a pending job (section 6) | none (no caller). `release download` exits 64 in the shim, loud and logged |
+| `docs/testing/jobs/roles/{lane,cloud,board}.md`, `AGENTS.md` (lines 44, 459) | prose and examples | **superseded** by FORGE PROTOCOL (`~/hakux-work/lane-protocol/forge.md`), which lane.local appends. Not edited (roles/ is outside territory) | n/a |
+| `gh release download` (`update-ppa`, macOS signing) and `gh repo`, `gh workflow` | — | not implemented: exit 64 and logged. Nothing harness-side calls them | smoke: `release download` 64 |
+
+Territory: the caller changes above that fall outside the brief's territory are **none**. The
+only harness-code edits in this attempt are in `docs/testing/jobs/gh-shim/**` (route.sh,
+smoke_live.py, route_test.py) and `docs/lanes/localforge/**`. `route.sh` routes units that the
+brief did not name; that is the addendum 3 scope, flagged in OUTBOX.
+
+### 7.2 Routing: which units see the shim
+
+`route.sh` now has three phases. Phase 3 is new (ADDENDUM 3, "the shim on PATH for every harness unit").
+
+| phase | units | state (2026-10-03) |
+|---|---|---|
+| 1 | comments, issue-sweep, pr-sweep, arms | ROUTED (10-02). Comments, issue-sweep and pr-sweep are disabled (addendum 1 and 3); arms runs |
+| 2 | status, board, fold, foldpace, handbackpace | **not routed.** Disabled by lane.local (addendum 3). `route.sh` refuses until this PR folds (`master` must carry the gate) |
+| 3 | hostops, dx, dispatcher, desktop, jamcheck, manifest, recover, holdlease, devwatch, defrag, usbdialog, tmpclean, foldqueue, lanewatch, lanewaker, autoverdict, local-board, local-issue-audit, hourly, pm@ (template), nightly, thor-suites, ops-shadow, usage-meter, idlewatch | **ROUTED** 2026-10-03: `zz-forge-shim.conf` in each `~/.config/systemd/user/<unit>.service.d/` (`hakux-pm@.service.d` for the template). Each sets `PATH` (shim first) and `FORGE_USER` (`hostops` for hostops, `jobs` otherwise). **No** `HAKUX_FORGE`: that is phase 2's dry-run switch, and these units do not use it |
+| never | `hakux-cloud` | **not routed, disable requested.** A claim starts a cloud session; the owner did not ask for cloud sessions on the forge. Disable: `systemctl --user disable --now hakux-cloud.timer hakux-cloud.service` (lane.local's call; this session could not run `systemctl`, see 7.4) |
+| never | `hakux-forge`, `hakux-forge-sync`, `hakux-forge-prsync`, `hakux-forge-runner` | the forge's own units; they are not clients |
+
+The drop-ins take effect when a unit next starts. Running units keep their environment until then.
+`route_test.py` checks the phase 3 drop-ins offline (83 checks, against a temporary units directory).
+
+Not done here: the phase 2 units and `hakux-cloud` (above). Lane sessions (`hakux-lane-*`) are not
+units in this table; their PATH is set by `lane.sh`, which is lane.local's, and so they still
+see `/usr/bin/gh` until it changes.
+
+### 7.3 Protocol and return
+
+- **FORGE PROTOCOL:** `~/hakux-work/lane-protocol/forge.md` (new directory; lane.local appends it to briefs).
+- **Return design:** `docs/lanes/localforge/RETURN.md`. Design only. It records a hazard in `offline-git/recover_github.py`: its GitHub probe (`gh api user`) answers from the forge under the shim, so the script would mistake the forge for a reinstated account. Fix before the first `--execute`.
+- **Number map:** `~/hakux-work/forge-import/local-number-map.tsv` regenerated from the forge: 17 `local-only` issues (#656-#677). The first seed had 14 rows with placeholder titles.
+
+### 7.4 What could not be done from this session
+
+- `systemctl --user list-units`, `list-unit-files` and `is-enabled` were held for approval in this sandbox, so I read the unit files from disk instead. I did not attempt `disable`, so hakux-cloud is not disabled from here. The phase 3 drop-ins are on disk; `route.sh` ran `daemon-reload` with no error printed, but a running unit does not pick up a drop-in until it restarts. Both are for lane.local.
+- The jobs selftest (`docs/testing/jobs/selftest.sh`) runs detached; its result is recorded in PR.md.
 
 ## Host files this lane added (outside the repo)
 
