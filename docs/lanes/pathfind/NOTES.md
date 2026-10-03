@@ -1,5 +1,18 @@
 # lane.pathfind -- NOTES
 
+## Resume (10-03 10:13 PDT, attempt 6): why attempt 5 did not finish
+
+- Attempt 5 ended on a WAITING file for arms run `1791042391`, but the held Panzer run had already timed out
+  waiting on it. Its `heldrun` `wait-idle` gave up at its 900-s cap (about 10:01), so pathfind never ran and the
+  hold was released. The WAITING file named the run, but nothing re-queued the held run when the wait ended, so
+  the session ended with no Panzer frames and no OUTBOX line about the timeout.
+- Resume state (10:13): the arms run is `DONE` (results dir has its DONE marker), so WAITING is removed here.
+  The Nova is now busy with `lane.vcpuwait433`'s 720-s request (admitted 10:12, ends about 10:25). Do not kill it.
+- Merged `origin/master` clean (no conflicts). Selftest `pathfind_selftest: all ok`.
+- Next step, run now: `setsid nohup bash scratch/heldrun.sh 4947002B docs/lanes/pathfind/runs/panzer-dragoon-hold panzer`.
+  It takes the hold, waits up to 900 s for idle, runs the held Panzer, and releases on every exit. Poll its log;
+  this session stays up until it finishes. If the wait times out, re-queue it and say so in OUTBOX.
+
 ## Resume (10-03 09:45 PDT, attempt 5): why the previous attempt did not finish
 
 - The previous session ended on its WAITING file (`run 1791040252-lanelocal-978819`), after it had taken the Nova,
