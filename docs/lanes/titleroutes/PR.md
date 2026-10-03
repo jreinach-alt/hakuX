@@ -3,7 +3,7 @@
 State: ready
 
 Lane: titleroutes          Issue: #397 (per-title gameplay fps; 0.5 tracking #433)
-Base: master @ f6792eb9b6 (merged in; it already carries 17c3bc721f, the first cut of both routes)
+Base: master @ 36c16a720f (merged in)
 Files: docs/lanes/titleroutes/NOTES.md, docs/lanes/titleroutes/OUTBOX.md, docs/lanes/titleroutes/PR.md, docs/testing/titles/routes/buffy.route, docs/testing/titles/targets.toml
 Prediction: none: route data (inputs) and notes, no emulator code; route checks are --no-expect dispatch runs
 Needs device: no direct hold -- route-check requests queued on the Nova via request.sh
@@ -34,8 +34,9 @@ tomllib (82 titles); `python3 docs/testing/titles/titlestate_selftest.py` (all c
 `bash docs/testing/preflight.sh --allow-tracker` on the merged head: "preflight passed" (territory, board files, nv2a
 index ok; the coverage gate DID NOT RUN because gh is suspended, and it fails open, so that part is unchecked).
 
-Also queued (pass-1 surveys, unreviewed; named for a successor in NOTES.md): Halo: Combat Evolved
-`1790933948-titleroutes-171581`, Conker: Live & Reloaded `1790933948-titleroutes-171701`.
+Also queued and reviewed in-session: pass-1 surveys for Halo: Combat Evolved (`1790933948-titleroutes-171581`: reaches
+the cryo-room look-calibration tutorial, not free play) and Conker: Live & Reloaded (`1790933948-titleroutes-171701`:
+loops on "Connection to Xbox Live lost", never plays). Both need a path found by sight before a route.
 
 Release note (none): route data and notes only, no emulator code.
 

@@ -1,0 +1,32 @@
+{
+ "registered_utc": "2026-10-03T15:02:35Z",
+ "who": "lane.vcpuwait433",
+ "issue": "433",
+ "device": "nova",
+ "a_ref": "d4a02e2060",
+ "b_ref": "012fa08a94",
+ "runs_per_arm": 1,
+ "supersedes": "docs/testing/predictions/vcpuwait433-tron.json (registered 13:55Z, never queued): its B route needs savestate433's dispatcher step, which the running workers do not have (their snapshot is 10-02 07:55, from a host tree at 66bce0c222). Same refs, same A, same legs M/O1/O2; only B's route and leg V change.",
+ "arms": {
+  "Tron": {
+   "title": "Tron 2.0 - Killer App (USA, Europe).iso",
+   "route": "../../../lanes/vcpuwait433/tron-newgame-firstrun",
+   "seconds": 720,
+   "frames_every": 30,
+   "B": "request.sh --ref 012fa08a94 --device nova --env PERF_REGIMEN=default --env HAKUX_PREBUILD=0 --env HAKUX_PLC_WIPE=1, route tron-newgame-firstrun (# state: first-run): A's route text minus the one DOWN (v5). With no Tron profile on the disk, A on Single Player picks New Game, which is what A's DOWN picked from the golden.",
+   "A": "1-1790994313-uberdefault569-990012, on disk: ref d4a02e2060 (master's emulator code, ubershader on by default), the same env, the same route text, Tron's disk holding 5489ae7f9b58 (hdd.after harvested it), shader cache cleared (new apk). Its route-frame 200443-menu-down is New Game, so it played the in-engine intro. decompose.py: share 0.82; all rows fps 35.58, v_run 22.38, v_blk 5.59 ms/frame; 45 rows below the bar at F 42.19, v_blk 9.80. The A/B differs in one input besides the code: A booted Tron's golden profile, B boots none. Both choose New Game and play the same intro. tron2 (no profile, GPL 0) read slow-row v_blk 9.93 against A's 9.80, so the profile does not carry the sleep."
+  }
+ },
+ "prediction": "#433 lock-free user_read. tron2, an off-CPU capture of this same intro window (GPL 0), put 65% of the vCPU's attributed sleep on pfifo.lock in user_read: 3.1 ms/frame attributed, about 4 with its share of the unsampled switch-outs. The holder was the PFIFO thread, asleep in the STALLED pgraph_vk_finish that runs when DMA_GET == DMA_PUT. A's slow rows show the same sleep under the ubershader (v_blk 9.80, against tron2's 9.93). B removes the lock from the read. Legs, read with docs/lanes/vcpuwait433/decompose.py on A and B: V (validity), M (mechanism: separates inert from refuted), O1 and O2 (outcome). BF2 is not armed: the budget is one Nova run (addendum 4), and BF2's 21 ms sleep has no measured site.",
+ "legs": {
+  "V": "B is VOID unless all of these hold: its route-frame menu-cursor shows New Game highlighted on Single Player (Auto Load greyed or absent) and `mark gameplay` is logged; its hdd.json shows Tron with no profile (the first-run leftover d2aff0a53543 kept, or savestate433's compose with loaded none); its logcat has [gpl569] requested=3 mode=3 (as A's does); shader_cache was cleared; the apk is built from 012fa08a94; there is no BugCheck; decompose gives >= 200 rows.",
+  "M": "The sleep goes. B's v_blk in rows below 28.5 fps is <= 7.0 ms/frame (A 9.80). If B has fewer than 10 such rows, B's all-row v_blk is <= 4.6 instead (A 5.59). P 0.85. FAIL = inert: either the site did not own the sleep in this build, or the vCPU now sleeps somewhere else (the next capture names where).",
+  "O1": "The frames come back. B's share at the bar is >= 0.87 (A 0.82) AND its all-row mean fps is >= 37.4 (A 35.58, +5%). P 0.45. M passing with O1 failing means the freed sleep became guest spin on GPU results in RAM ([rr425pc]); the reading for that is v_run rising by about as much as v_blk fell.",
+  "O2": "The PM's bar: B's share is >= 0.90. P 0.3.",
+  "noise": "One run per arm. near30's five GPL-0 New Game soaks spread share from 0.50 to 0.73 and minute-0 fps from 24 to 36, so O1 and O2 alone are weak evidence. M is the low-noise leg: slow-row v_blk reads 9.8-10 on A, tron2 and near30 alike. The profile difference (A golden, B none) is a second confound on O1/O2, not on M."
+ },
+ "expect": {},
+ "expect_counts": {},
+ "must_not_move": [],
+ "must_not_regress": []
+}
