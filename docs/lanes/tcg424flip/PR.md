@@ -28,6 +28,8 @@ Next, ranked by P x win (NOTES.md, "Attempt 7"):
 
 Recommended: leave the range test opt-in.
 
-Local checks in place of CI: `git diff --stat origin/master...HEAD` lists only the files above, and nothing under accel/, hw/ or other emulator paths. Every prediction JSON parses with `python3 -m json.tool`. No harness file changed, so selftest.sh does not apply. preflight.sh: see NOTES.md.
+Local checks in place of CI: `git diff --stat origin/master...HEAD` lists only the files above, and nothing under accel/, hw/ or other emulator paths. Every prediction JSON parses with `python3 -m json.tool`. No harness file changed, so selftest.sh does not apply. `docs/testing/preflight.sh --allow-tracker` passed on the merged head:
+- psh_differ, aci_vmstate, nv2a index, territory and board files: ok.
+- Coverage did not run, because it needs `gh`, which returns 403 offline.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
