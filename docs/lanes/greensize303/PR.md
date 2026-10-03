@@ -4,7 +4,7 @@ State: ready
 
 Lane: greensize303            Issue: #303
 Base: master @ ddbc5f0173 (lane branched at 5661db4f2b; origin/master merged in, no rebase)
-Files: docs/lanes/greensize303/NOTES.md, docs/lanes/greensize303/OUTBOX.md, docs/lanes/greensize303/PR.md, docs/lanes/greensize303/hits.tsv, docs/lanes/greensize303/tools/greenscan.py, docs/lanes/greensize303/sheet_other.png, docs/lanes/greensize303/sheet_spikeout.png, docs/lanes/greensize303/sheet_gamecheck_zero.png, docs/lanes/greensize303/preflight.log
+Files: docs/lanes/greensize303/NOTES.md, docs/lanes/greensize303/OUTBOX.md, docs/lanes/greensize303/PR.md, docs/lanes/greensize303/hits.tsv, docs/lanes/greensize303/tools/greenscan.py, docs/lanes/greensize303/sheet_other.png, docs/lanes/greensize303/sheet_spikeout.png, docs/lanes/greensize303/sheet_gamecheck_zero.png, docs/lanes/greensize303/preflight-output.txt
 Prediction: none: analysis-only
 Needs device: no    Needs NDK: no
 
@@ -40,7 +40,7 @@ Luma survives under the green blocks, and the chroma is wrong. That matches a pa
 
 Checks run locally (offline protocol; no CI):
 - `greenscan.py` run end to end over 24,241 frames; output `hits.tsv` (177 flagged frames).
-- `docs/testing/preflight.sh`: exit 0, "preflight passed". **The coverage gate did not run**: it needs `gh`, which returns 403 (account suspended), so it printed "NOTHING BELOW WAS VERIFIED". Its log is `preflight.log` here. Treat that step as not checked.
+- `docs/testing/preflight.sh`: exit 0, "preflight passed". **The coverage gate did not run**: it needs `gh`, which returns 403 (account suspended), so it printed "NOTHING BELOW WAS VERIFIED". Its output is `preflight-output.txt` here. Treat that step as not checked.
 - No harness files changed, so `docs/testing/jobs/selftest.sh` is not required.
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
