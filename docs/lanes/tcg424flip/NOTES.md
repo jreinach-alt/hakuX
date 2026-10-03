@@ -419,3 +419,39 @@ larger vCPU wins are on the vCPU-JIT track, not in this lever.
   `--runs 3`, or expect a not-attributable FAIL.
 - `pgraphnoise.py` is a reusable check: for a pair's differing captures,
   does a build without the change produce the candidate's bytes?
+
+## Attempt 8 (2026-10-03 08:55 PDT): resume for the 08:30 and 08:55 addenda; nothing to re-queue
+
+### Why attempt 7 looked unfinished
+
+Attempt 7 did finish. It committed the verdict at 08:38 PDT, set PR.md to
+`State: ready`, pushed 5573c8548f, and needed no WAITING file. Hostops' 08:55
+jam-duty addendum resumed the lane because it assumed the session had ended
+before reading the 08:30 addendum. In fact, attempt 7 had already answered it
+under "Why attempt 6 did not finish". The one defect: OUTBOX.md's header said
+09:40 PDT, a time that had not yet come. It is now 08:38 PDT, the commit time.
+
+### The withdrawn requests, checked again from the dispatch directory
+
+`dispatch/queue/withdrawn/` holds six tcg424flip `.req`/`.why` pairs:
+`-3372535`, `-3372653`, `-3375977`, `-3376159`, `-3376343` and `-3376527`. The
+08:30 addendum's ids (1-1790687708-, -1790687722-, -1790687723-) are among them.
+
+- Every `.req` has `"device": "thor"`, ref 62ef8bf0fe, and expect
+  tcg424flip-arctic2.json.
+- Every `.why` reads: "lane.local 2026-09-29 12:00 PDT: heat-sensitive Thor
+  runs move to the Nova until #507 has a fix."
+
+The withdrawal was deliberate, and its reason still holds: the Thor's fan is
+dead, and the dispatcher is kept off it except for cold-slot runs of 480 s or
+less. These 420 s soaks are MAX fps runs, and the device policy sends fps runs
+to the Nova. The Nova replacements ran on 09-30 and were judged in attempt 7
+(M1 FAIL). The six Thor runs are candidate 1 in the attempt 7 table. They
+wait on the fan fix, not on this lane. Nothing was re-queued.
+
+### Done this session
+
+- Merged origin/master (6c828f9860). The net diff is unchanged: 14 files, all
+  docs, predictions and readers. Nothing is under accel/.
+- Fixed OUTBOX.md's timestamp and PR.md's Base line.
+- Not waiting on anything, so there is no WAITING file. PR.md stays `State: ready`.

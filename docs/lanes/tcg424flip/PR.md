@@ -2,7 +2,7 @@
 State: ready
 
 Lane: tcg424flip            Issue: #424
-Base: master @ 9d1155f919 (merged into the branch 2026-10-03)
+Base: master @ 6c828f9860 (merged into the branch 2026-10-03 08:57 PDT)
 Files: docs/lanes/tcg424flip/NOTES.md, docs/lanes/tcg424flip/OUTBOX.md, docs/lanes/tcg424flip/PR.md, docs/lanes/tcg424flip/arctic-nova.out, docs/lanes/tcg424flip/arcticread.py, docs/lanes/tcg424flip/arcticread2.py, docs/lanes/tcg424flip/arcticread3.py, docs/lanes/tcg424flip/baseline.out, docs/lanes/tcg424flip/moverscan.py, docs/lanes/tcg424flip/pgraphnoise.py, docs/testing/predictions/tcg424flip-arctic.json, docs/testing/predictions/tcg424flip-arctic2.json, docs/testing/predictions/tcg424flip-arctic-nova.json, docs/testing/predictions/tcg424flip-pgraph.json
 Prediction: docs/testing/predictions/tcg424flip-arctic-nova.json (judged: M1 FAIL) and docs/testing/predictions/tcg424flip-pgraph.json (judged by the arms job: FAIL, not attributable)
 Needs device: no    Needs NDK: no

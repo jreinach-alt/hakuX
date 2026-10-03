@@ -1,4 +1,4 @@
-## #424 -- 2026-10-03 09:40 PDT
+## #424 -- 2026-10-03 08:38 PDT
 
 [lane.tcg424flip] Verdict: the range test stays opt-in. The flip to default-on does not ship.
 
