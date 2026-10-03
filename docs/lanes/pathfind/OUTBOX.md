@@ -91,3 +91,192 @@ ESPN run is cut by the 70 C stop about 4 min in.
 character never moves under any stick, d-pad or button input (2 runs, 30+ probes each, idle animation only).
 Frames: scratch run dirs, summary in docs/lanes/pathfind/runs/blinx-2.*. Next: the rest of the lot on the
 Nova (Conker, Ghoulies, Tork, DOAX, JSRF, Halo 2, ...), Tiger Woods 2004 on the Thor.
+
+## #433 -- 2026-10-03 06:58 PDT
+
+[lane.pathfind] waiting: hold-play is built and selftested (`pathfind.py --hold-s 600`, Nova only: after the claim, a
+model-free genre loop keeps the player in play, with frames every 30 s). On saved real frames the in-play check read
+3 of 3 right (play, title splash, pause) and the genre read 4 of 4 right (Midnight Club 3 drive, Top Spin rally,
+Panzer Dragoon Orta on-rails, Counter-Strike attack). Model: Sonnet only today; Opus is off.
+
+No held run yet. Every held run starts from its golden profile (`titlestate.py prepare`), which arrives with the
+savestate433 fold, and that is not on master at 06:58. Nothing is queued on the Nova. When it folds, I merge master and
+run the pool in P order, Black Stone first, each for 600 s held: Black Stone, Panzer Dragoon Orta, Midnight Club 3, Top
+Spin, Spikeout, Amped 2, Counter-Strike.
+
+Also recorded from the 10-02 late session, which never reached this file: Ghoulies gameplay in 2.35 min (11 calls),
+Tork gameplay in 4.41 min (19 calls), Conker gave up at 15 min (23 calls, black after a level load). See NOTES.md.
+
+## #433 -- 2026-10-03 08:40 PDT
+
+[lane.pathfind] Hold-play, first held run (Black Stone Magic Steel, Nova): **not held**. The run claimed gameplay at
+step 97 after 13.3 min and 66 Sonnet calls. The hold ran 65 s of 600 s before the 15-min budget ended, and the hold
+strip (frames 106 and 110, 30 s apart) shows a near-static corridor, so those 65 s are not counted as Playable.
+Frames: docs/lanes/pathfind/runs/black-stone-hold/ (hold_strip.jpg, frames/096-gameplay.jpg). Nova released; titlestate
+golden released.
+
+Why it failed, in order of weight: the claim read gameplay on a HUD playfield from step 3 to step 95, while every stick,
+D-pad and A probe measured control 0.000-0.005. That is a claim-rule failure or an input-path failure on this title, and
+it is open. Next: a pad-to-game input check on Black Stone before any more device time on it, then the next pool title
+(Panzer Dragoon Orta) with a budget that covers claim and hold together.
+
+## #433 -- 2026-10-03 09:32 PDT
+
+[lane.pathfind] Probe gate (ADDENDUM 4), before any more device time. **Cause:** the probe's change test was a fixed
+16-level grey step. In Black Stone's dark dungeon a real sword, spell or step changes 0.3-1% of the pixels, so the probe
+refused real control before the model was asked (stored triplets: 0.002-0.010 under the old step). **Fix shipped:**
+the step scales with the frame's contrast (floor 4, cap 16), the floor 0.03 -> 0.004, and a claimed hold gets its own
+clock (the claim keeps the budget). Selftest: all ok, including a new dark-scene case that fails on the old code.
+
+**Gate (48 labelled stored probes, scored through the whole chain: the new motion rule, then the real confirm question
+to the strong model):**
+
+| | result |
+|---|---|
+| real control accepted | 14 of 18 |
+| non-control accepted | 0 of 30 (menus 0/4, cutscenes 0/8, pauses 0/2, no-response 0/16) |
+| agreement | 44 of 48 (92%) |
+
+Caveats, in NOTES.md "Probe gate": it passes on the corrected labels only (43 of 48 = 89.6% before one relabel). That
+relabel (Midnight Club 3, 034: real control, the car drives and steers) was made after the model's answer on the same
+frames; the owner should judge it. Four real controls are refused, two of them self-moving College Hoops cases that the
+real pipeline sends to the steering test (not replayed). The alternating 2-of-3 windows and the classifier are not in.
+Table, labels and scripts: docs/lanes/pathfind/gate/.
+
+Next: the first held run, Panzer Dragoon Orta on the Nova, 600 s of play, with the golden profile.
+
+## #433 -- 2026-10-03 10:58 PDT
+
+Panzer Dragoon Orta (4947002B, Nova), first held run (600 s of play asked, 740 s held). Result: claimed at 3.4 min on
+the on-rails dragon (probe control 0.25-0.68 under input); held 740 s, **598 s of play = 81%**, so title_verdict FAILs on
+its 90% play-share bar. The three deaths in the hold (game over at about 216, 430 and 645 s) each cost an episode-card
+cutscene of about 35 s before control came back; the hold recovered all three. Frames: docs/lanes/pathfind/runs/
+panzer-dragoon-hold/hold_strip.jpg and hold.jsonl. Not a Playable confirmation.
+
+Fixes made after run 1 (selftest all ok): the cutscene's A and a game over's press repeat three times with no model
+read before the next look (`holdrepeat`), which removes ~3 model looks per death. A second Panzer run with that code is
+queued behind a lanelocal request and will be judged the same way.
+
+NEW ISSUE: pathfind's held run on Panzer Dragoon Orta dies three times in 10 min and loses ~140 s to game over and
+episode-card cutscenes (play 81%, below the 90% bar).
+Evidence: runs/panzer-dragoon-hold (hold.jsonl, the game-over and cutscene looks at 216-254 s, 430-464 s, 645-678 s,
+verdict FAIL "menu time: 80.8% of the scored window in play"). Blocks: the 600-s Panzer confirmation and the NBA Live family
+pass, which needs the same long hold.
+
+NEW ISSUE: hold verdict was silently wrong: pathfind's hold wrote logcat in threadtime format and request.json without
+the ISO, so title_verdict reported "guest never appeared" for a run that played 740 s and resolved no title id.
+Evidence: runs/panzer-dragoon-hold, first verdict "booted: the guest never appeared". Fixed on lane/pathfind (logcat
+`-v time`, request.json carries the ISO, run.log gets the held line); pending the fold.
+
+## #433 -- 2026-10-03 11:24 PDT
+
+Panzer Dragoon Orta, held run 2 (repeat change in; 601 s of play held, 717 s scored). Verdict still FAILS the 90% play
+share: **83.6%** (play 600, cutscene 74, menu 21, black 14). Up from 80.8% in run 1. The cutscene repeats worked (three
+A/START presses per episode card, no model read); each death now costs about 23-30 s off play, down from 33-38 s. The bigger
+cost in this run is at the start of the hold: a black screen at 82 s, then the game returned to the title screen and
+the model steered NEW GAME and the difficulty menu, about 65 s of off play. Frames: runs/panzer-dragoon-hold2/hold_strip.jpg
+and hold.jsonl. Panzer is not a Playable confirmation. Next, Black Stone (58490004), the title the probe fix was built for,
+held run in progress.
+
+## #433 -- 2026-10-03 11:55 PDT
+
+Black Stone Magic Steel (58490004, Nova), held run. Claimed at 2.4 min (probe: idle 0.002, under input 0.088). Held 602 s.
+Verdict line: `Black Stone Magic Steel ? PASS gameplay=601.9s fps_ok=1.0 hitches=0 play_share=0.9996`.
+**My frame review does not confirm it as Playable.** The strip (runs/black-stone-hold2/hold_strip.jpg, 16 frames, 30 s apart)
+shows the red-armoured player in the same spot of the same octagon for the whole 600 s, sword swinging, camera fixed. The
+hold log has 46 model checks, all "in play", and 47 steps; per-frame change is 0.003-0.010, and it is the swing effects,
+not travel. The genre loop (attack: STICK up, X, A, ...) was sent every cycle and did not move him. This is the same stance
+the 10-03 attempt-4 notes describe (the sword raised on the spawn octagon, released by X). The verdict PASS comes from the
+play-share and fps rules, which do not check position. Not counted. The owner should judge the strip.
+Next: the hold needs a position-change test on the playfield before it can count a second of play (NOTES, attempt 3
+findings, was the same request). Not started here.
+
+Status for today (the owner's 0.5 bar, 600-s Playable confirmations): none accepted yet.
+Panzer Dragoon Orta: 80.8% and 83.6% play share, FAIL. Black Stone: PASS by the verdict, not confirmed on the frames.
+
+## #433 -- 2026-10-03 12:50 PDT
+
+NEW ISSUE: golden saves harvested on the Thor are read as "damaged" on the Nova (different eeprom.bin); 55 of 84 goldens are Thor-made
+Forza (4D53006E), memfast run 1-1791047880-lane.memfast-3557511 (Nova, 12:11): the route pressed A 25 times between "Player
+profile 'Default' is damaged and cannot be used" and PROFILE SELECT ("This profile is damaged ... Press X to delete"); frames
+route-frames/121040-043-cutscene.png and 121129-071-fail-profile.png. The disk carried golden a1baf745d557. That save's store
+record (titlestate/saves/4D53006E/a1baf745d557/save.json) names its source as pull/thor-hdd.img (09-30). The two handhelds'
+eeprom.bin differ (Thor f52cf53a..., Nova 7eb04a87..., lane.titlestate NOTES 09-27). A save signed with the console HDD key
+(which comes from the EEPROM) does not load on the other device. saves.py's docstring predicts exactly this. 55 of the 84 goldens
+come from a Thor image (list: lane/pathfind scratch/goldsrc.py), and the Nova now runs every soak. Each is at risk on the Nova if
+its title signs with the HDD key. That is per title, and Forza is the first confirmed from frames. Castlevania's golden
+20235e93867b is also Thor-made: lane.local's queued 1-1791056447-lanelocal-2267406 tests it directly.
+Options (P x win): (1) one eeprom.bin on both handhelds. Every future save then moves both ways, but saves already signed by the
+replaced EEPROM stop loading on that device. That is a device decision. (2) Per-device goldens: compose only a save made on the
+target device, otherwise first-run. (3) Re-sign at compose time: per-title formats, low P.
+Blocks: Forza (pool), and possibly any Nova run on a Thor-made golden that dies on a profile/"damaged" screen.
+This lane's part: a first-run pathfind on the Nova for Forza makes a Nova profile; harvest and promote it.
+
+
+## #433 -- 2026-10-03 13:25 PDT
+
+Pool (pm/pathfind-pool.tsv), first two rows:
+- **Castlevania: CoD (4B4E002D):** lane.local's returning run 1-1791056447-lanelocal-2267406, on the Thor-made golden
+  20235e93867b, reached play on the Nova ("Abandoned Castle", HP bar; frames/f00020.png shows the player moved). So this
+  title's save does load across the two handhelds. No first-run work is needed from pathfind while that golden works. The
+  row is lane.local's to close on that run's verdict.
+- **Forza (4D53006E):** held first-run on the Nova, runs/forza-firstrun. It made a NEW PROFILE in 2 steps and reached a
+  live Arcade race at 2.6 min. Then the car was stuck nosed into the pit wall: the agent pressed RT and stick 40 times
+  and never reversed. Gave up at 15 min, 76 model calls, $6.01. Not a pass. The release harvested the new Nova profile
+  5725499d3c7f. Its CarIcons.sig, Garage.bin and Garage.dat are byte-identical to the 09-30 Nova save and differ from
+  the Thor-made golden, which confirms the device-signing cause in the 12:50 issue. **Promoted 5725499d3c7f as
+  Forza's golden** (it loads on the Nova; it will read as damaged on the Thor).
+- Tool changes, selftested: (1) **position test in the hold**: a 30-s window whose kept frames barely change is
+  state=still, not play. Black Stone's standing 600 s would now be credited about 30 s; Panzer is unaffected. (2) RT+/LT+
+  tokens (trigger and stick together), a drive loop that steers on the gas, and a reverse-while-turning step when a drive
+  window is still.
+Next: Forza run 2 (returning, the new golden, hold 600 s), queued behind lane.local's Tron telemetry run on the Nova.
+
+## #433 -- 2026-10-03 13:55 PDT
+
+Forza (4D53006E), held run 2 on the Nova, returning on the new Nova-made golden 5725499d3c7f: **the profile loads**
+(PROFILE SELECT, "Default" lit, no damaged message, A to the main menu). The pool's profile failure is fixed. The
+admission gate releases it on the golden change. It reached a live race again at 2.6 min and gave up at 15 min (60
+calls, $4.56), stuck on walls. Cause, found in the frames: the confirm probe's steering legs steered with the gas off
+and turned the slow car into the pit pillar (both runs). Fixed in the tool (a throttle probe steers on the throttle).
+The car is slow because the game runs at **0.59x speed** (race clock 24.5 s in 41.2 s of wall time, 16-21 fps). It is
+not an input fault: the trigger sends its full range. Forza is a performance miss for the Playable bar, not a route
+miss. No further pathfind runs on it today.
+Other pool rows, identification (no rerun): Burnout Revenge (1790873999), D&D Heroes (1790878175) and BF2:MC
+(1790877270) are classed did-not-reach-play, but all three reached play. Their routes took 4.7-6 min to the mark in an
+840-s window, so play was 484-557 s, and the real miss is fps (72%, 46%, 66% at >= 30 fps). They are performance
+rows, not routing. A longer window (seconds >= route time + 600 + margin) fixes the duration part only.
+ToeJam & Earl III (1791003320, class menu): the route's play loop opened the Vinyl Albums jukebox after Player Stats
+and stayed in it all window. A pathfind held run (returning, hold 600 s) is next on the Nova, after lane.xbox's
+title push.
+
+## #433 -- 2026-10-03 14:20 PDT
+
+ToeJam & Earl III (5345000F), held run on the Nova (golden 71a91de8b905 as-is): pathfind reached confirmed gameplay in
+1.7 min (11 steps, 23 model calls in all, $1.29) and held 605 s of play.
+Verdict line: `ToeJam & Earl III: Mission to Earth ? FAIL(fps: 72.8% of gameplay at >= 30 fps (bar 90%)) gameplay=641.4s
+fps_ok=0.7278 crash=False hang=False hitches=0/0.0pm play_share=0.9486`.
+Frame strip: docs/lanes/pathfind/runs/toejam-earl-3-hold/hold_strip.jpg. The player travels: 19 frames in different
+places, all 17 30-s windows moved. But 13 of the 19 frames show a "PRESENTS: You don't have any presents!" dialog that a
+button in the generic input loop kept opening. Fixed in the tool: a loop button that opens a menu is dropped for the rest
+of the hold. The pool row's cause (the old route stuck in the Vinyl Albums jukebox) does not occur on pathfind's path. The
+title fails on **performance** (72.8% at >= 30 fps), so it is a telemetry case, not a retest. The dispatched route
+still has the jukebox defect.
+Today's spend: about $26 of the $35 (Sonnet). Pool status: Castlevania resolved (lane.local's run on the golden), Forza's
+profile fixed (golden promoted; the title is at 0.59x speed), ToeJam's route fixed (fps miss), and 3 rows identified as
+fps misses. No Playable confirmation accepted from this lane today: every title that held play failed on fps or
+travel.
+
+## #433 -- 2026-10-03 14:45 PDT
+
+**Playable confirmation candidate (owner's frame review): Spikeout: Battle Street (53450029), Nova, held run.**
+Verdict line: `Spikeout: Battle Street ? PASS gameplay=607.3s fps_ok=1.0 crash=False hang=False hitches=0/0.0pm play_share=0.9996`
+Frame strip: docs/lanes/pathfind/runs/spikeout-hold/hold_strip.jpg (18 frames, 30 s apart). Claimed at 8.2 min (50 model
+calls in all, $3.46; four probes were refused while enemies moved in the opening fight). Then 607 s of play with no
+off-play step. My review: the player moves in every frame. The camera and position change across all 18 (wall, dock,
+harbour), and the position test saw motion in all 17 windows. He circles in the starting dock area, though, with no
+progress through the level and K.O. 0. That is movement, not progression. The owner decides whether it counts.
+Golden: c714fbc41e16, Thor-made. It loads on the Nova, so Spikeout is another title whose save crosses devices.
+Why not Top Spin, Counter-Strike or Midnight Club 3: their 10-02 gameplay frames read 20, 13 and 22 fps, so a 600-s hold would
+fail the fps bar. Those are performance cases.
+Spend today: about $29.5 of $35. The Nova is released. No NBA Live title is on the Nova yet (listing-nova.txt).

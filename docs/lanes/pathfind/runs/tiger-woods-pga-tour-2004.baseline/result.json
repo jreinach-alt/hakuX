@@ -1,0 +1,64 @@
+{
+ "title_id": "4541003A",
+ "name": "Tiger Woods PGA Tour 2004",
+ "device": "thor",
+ "iso": "/storage/emulated/0/ROMS/xbox/4541003A-Tiger_Woods_PGA_Tour_2004.xiso.iso",
+ "result": "gameplay",
+ "tool": "6f416f84f8",
+ "started": "2026-10-02 11:26:54 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tiger-woods-pga-tour-2004.baseline/frames/013-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tiger-woods-pga-tour-2004.baseline/frames/013-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tiger-woods-pga-tour-2004.baseline/frames/013-probe-c.jpg"
+ ],
+ "minutes": 3.07,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/tiger-woods-pga-tour-2004.baseline/frames/012-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tiger-woods-pga-tour-2004.baseline/frames/014-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tiger-woods-pga-tour-2004.baseline/frames/015-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tiger-woods-pga-tour-2004.baseline/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tiger-woods-pga-tour-2004.baseline/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tiger-woods-pga-tour-2004.baseline/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/scratch/runs/tiger-woods-pga-tour-2004.baseline/frames/019-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-4541.md",
+  "hints/learned-series-tiger-woods.md"
+ ],
+ "model_calls": 14,
+ "calls_by_model": {
+  "claude-sonnet-5": 11,
+  "claude-opus-5-5": 3
+ },
+ "steps": 13,
+ "seconds": 215.5,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/scratch/runs/tiger-woods-pga-tour-2004.baseline/frames/012-gameplay.jpg",
+ "last_state": "probe",
+ "replayed": 0,
+ "sib_replayed": 0,
+ "guide": [],
+ "cheap": 0,
+ "thermal": [
+  [
+   1.4,
+   50.504
+  ],
+  [
+   45.4,
+   56.619
+  ],
+  [
+   81.5,
+   61.717
+  ],
+  [
+   120.6,
+   66.759
+  ],
+  [
+   150.8,
+   69.267
+  ]
+ ],
+ "strip": "/home/justin/hakux-work/wt/pathfind/scratch/runs/tiger-woods-pga-tour-2004.baseline/strip.jpg"
+}

@@ -1,0 +1,57 @@
+{
+ "title_id": "58490004",
+ "name": "Black Stone Magic Steel",
+ "device": "nova",
+ "iso": "/storage/E6C6-D7AA/Games/XBox/58490004-Black_Stone_Magic_Steel.xiso.iso",
+ "result": "gameplay",
+ "tool": "7fc1007c53",
+ "started": "2026-10-03 11:34:07 PDT",
+ "probe_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold2/frames/015-probe-a.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold2/frames/015-probe-b.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold2/frames/015-probe-c.jpg"
+ ],
+ "minutes": 2.38,
+ "gameplay_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold2/frames/014-gameplay.jpg",
+ "after_frames": [
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold2/frames/016-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold2/frames/017-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold2/frames/018-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold2/frames/019-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold2/frames/020-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold2/frames/021-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold2/frames/022-after.jpg",
+  "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold2/frames/023-after.jpg"
+ ],
+ "learned": [
+  "hints/learned-pub-5849.md"
+ ],
+ "hold": {
+  "genre": "attack",
+  "why": "A character (the red figure in the stone arena) stands in combat-style action with a health bar and KILL counter, which fits fighting rather than driving, sport",
+  "ok": true,
+  "play_s": 601.7,
+  "need_s": 600.0,
+  "hold_s": 601.7,
+  "model_navs": 0,
+  "frames": 16,
+  "reason": "",
+  "verdict": "VERDICT Black Stone Magic Steel ? PASS None gameplay=601.9s fps_ok=1.0 crash=False hang=False audio_short=0.0 hitches=0/0.0pm worst_ms=673.7 static_frac=unmeasured play_share=0.9996 fps_excluded=1.0s"
+ },
+ "model_calls": 61,
+ "calls_by_model": {
+  "claude-sonnet-5": 61
+ },
+ "steps": 15,
+ "seconds": 788.8,
+ "last_frame": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold2/frames/069-hold.jpg",
+ "last_state": "probe",
+ "replayed": 2,
+ "sib_replayed": 0,
+ "guide": [
+  "58490004"
+ ],
+ "cheap": 0,
+ "thermal": [],
+ "strip": "/home/justin/hakux-work/wt/pathfind/docs/lanes/pathfind/runs/black-stone-hold2/strip.jpg"
+}
