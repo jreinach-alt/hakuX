@@ -98,3 +98,29 @@ The stale "insert and a TLB flush" wording in `hw/xbox/nv2a/pgraph/vk/surface.c`
 - the Antialiasing repeat: `-3559153` (B) / `-3559222` (A).
 
 All ids are `1-17910478xx-lane.memfast-`.
+
+## #507 -- 2026-10-03 12:35 PDT
+
+[lane.memfast] W1 (the per-page watch flush) is read and set ready.
+
+**Full flushes per second, B (W1) against A (Nova, 300 s soaks):**
+
+| title | B | A | B as a share of A |
+|---|---|---|---|
+| Conker | 0.96 | 144.67 | 0.7% |
+| Blinx 2 | 0.97 | 40.49 | 2.4% |
+| Forza (to its crash) | 2.08 | 30.95 | 6.7% |
+
+- **M: PASS** (the bar was 10%). Walks ran at 1.00-1.03 x 2 x watch inserts.
+- **X: PASS.** The host-pointer cross-check (`wx`) caught nothing on any line.
+- **P: no cost.** The large-page whole-mode flush the review flagged (`pfl`) read 0 on every run, both arms.
+- **C: not shown.** vCPU CPU ms per wall second fell only 0.3-1.5%. The thread is on-CPU 85-95% of the time on both arms, so this instrument cannot see a per-frame saving; W1's vCPU win needs a profile.
+- **G:** Crimson B reached play (191 s, fps_ok 0.989), and Conker and Blinx 2 ran 300 s with no crash or hang. **Forza is void:** A crashed exactly like B (filed below).
+- **Pixels: PASS.** The one open capture, `FramebufferNotModifiedBySurfaceState`, read 0 on all three W1 runs and all three base runs of the Antialiasing suite on the Nova. The 79 on the split arm was its known race.
+
+**Release note (performance):** Conker, Blinx 2 and Forza no longer empty the emulated CPU's address-translation cache each time the GPU starts or stops watching a surface. No fps or battery change was measured, because these titles run at their 30 fps cap.
+
+**Next, after the fold:** F0a's device half (one native test run), which decides whether F1 (fastmem: P 0.4, about 11% of GTA's vCPU time, +15-19% fps on Tron 2.0 if it stays vCPU-bound) is built. NOTES, "Next", item 5 has the ranking.
+
+NEW ISSUE: Forza Motorsport: guest kernel BugCheck 0x7f (double fault) in the menus on the Nova's golden-profile titles disk
+Both runs of `forza.drive` on disk crash the guest kernel the same way, on master (5e249bbfe0) and on lane.memfast W1 (1b0f73a8bd): `1-1791047880-lane.memfast-3557775` (A) and `-3557511` (B), Nova, 10-03 12:11 and 12:14 PDT. Signature: `XBOX KERNEL CRASH (BugCheck)`, code 0x7f, exception 8, halt loop at EIP 0x800151ed, CR2 0xd0068ffc, CR3 0xf000, ESP 0x8003a814. It comes about 110-120 s in, while drive.py is on the profile-select (B) or main-menu (A) screen; the route then fails "stuck" because the guest has halted. These are the only Forza kernel crashes among every Forza soak on disk. lane.ibcache's Forza runs on 10-02 (for example `1790929514-lane.ibcache-2992454`, 87b89e857c, a blind START/A route) reached play, before savestate433's golden-profile disks (10-02 20:12). Both crashing runs booted the imported save `a1baf745d557`, and `titlestate.py show --device nova` shows Forza re-imported with that save at 19:16Z, after them. Suspects: the imported profile's content, or drive.py's profile-screen input. It blocks every Forza soak on the Nova (reach, fps and J legs), including lane.memfast's W1 G leg on Forza.

@@ -1001,6 +1001,73 @@ Blinx 2 B `-3557300` / A `-3557411`, Forza B `-3557511` / A `-3557775`
 all `1-17910478xx-lane.memfast-`. Profiles were checked with `titlestate.py
 show --device nova` (Blinx 2 and Forza imported, Crimson found).
 
+### W1 batch and the Antialiasing repeat, read 2026-10-03 12:30 PDT
+
+**Why attempt 1 of this resume did not finish.** It queued the seven runs
+above at 10:17 PDT, pushed a `WAITING` file naming them, and ended. That is
+the procedure for a wait, and nothing failed. All seven had finished by
+12:15 PDT, and this session (attempt 2) was resumed to read them.
+
+**Antialiasing x3 per arm, both on the Nova (`.scratch/aa3.py`):**
+`FramebufferNotModifiedBySurfaceState` read **0 on all three B runs**
+(`-3559153`, W1) and 0 on all three A runs (`-3559222`). The other
+CPU-write captures took their usual values on all six runs (0, 0, 134).
+By the decision rule above, the 79 on the device-split arm was the
+capture's known race. **The pixel leg stands as PASS.**
+
+**Soaks (`w1_read.py`, `.scratch/w1-batch.out`; `title_verdict.py` on
+copies in `.scratch/w1b/`, `.scratch/w1b-verdicts.out`):**
+
+| title | B / A | B `fo`/s | A `fo`/s | B/A | B `wn`/s against 2 x inserts/s | `wx` | `pfl`/s B, A | vCPU ms/s B/A |
+|---|---|---|---|---|---|---|---|---|
+| Conker (pilot) | `1541269` / `1541403` | 0.96 | 144.67 | 0.7% | 145.5 / 145.3 (1.00) | 0 | 0, 0 | 0.985 |
+| Blinx 2 | `3557300` / `3557411` | 0.97 | 40.49 | 2.4% | 39.24 / 39.26 (1.00) | 0 | 0, 0 | 0.997 |
+| Forza (to the crash) | `3557511` / `3557775` | 2.08 | 30.95 | 6.7% | 41.36 / 40.22 (1.03) | 0 | 0, 0 | 0.987 |
+| Crimson (B only) | `3558012` | 0.95 | - | - | 5.90 / 5.92 (1.00) | 0 | 0, - | - |
+
+- **M: PASS on all three registered titles.** B's `fo` is 0.7-6.7% of A's
+  (the bar is 10%), and `wn` is 1.00-1.03 x 2 x inserts (the band is
+  0.8-1.25). Forza's lines stop at its crash (142 s for B, 203 s for A),
+  so its rates cover the menus only.
+- **X: PASS.** `wx` = 0 on every B line of every run.
+- **P: no cost.** `pfl` = 0 on every run, both arms. The non-watch full
+  flushes are unchanged: Blinx 2's `ff` - `fo` is 7.15/s on B and 7.18/s
+  on A.
+- **C: not shown, not refuted.** B/A is 0.985-0.997, against a guessed
+  0.97 or less. The refutation needs 1.00 or more on all three, and none is.
+  As the pilot showed, the thread is on-CPU about 85-95% of wall time on
+  both arms, so this instrument reads how busy the thread is.
+- **G: Crimson PASS. Forza VOID: the control crashed the same way.**
+  - Crimson B reached play by route (191 s of gameplay, fps_ok 0.989, no
+    crash, no hang, 0 audio starve).
+  - Blinx 2 and Conker have no gameplay route. Their B runs ran 300 s with
+    no crash and no hang, and so did their A runs.
+  - **Forza crashed on both arms, with the same signature:** guest kernel
+    BugCheck 0x7f (exception 8, a double fault), halt loop at EIP
+    0x800151ed, CR2 0xd0068ffc. It came at about 110 s on B and 120 s on A,
+    while `drive.py` was at the profile-select (B) and main-menu (A)
+    screens. The route's "stuck" failures follow from the halted guest.
+    These two are the only `forza.drive` runs on disk, and the only Forza
+    kernel crashes among all Forza soaks on disk. lane.ibcache's Forza
+    runs on 10-02 reached play before the golden-profile titles disk
+    (savestate433, 10-02 20:12). Both of my runs booted the imported save
+    `a1baf745d557`, and the profile was re-imported with that save at
+    12:16 PDT, after them.
+  - So the crash is on master plus the current disk state, not on W1. It
+    is filed as a NEW ISSUE in OUTBOX. Forza is not re-run: the void's
+    cause is not fixed, and it is outside this lane's territory.
+
+**Local checks on the merged head** (master merged at 12:28 PDT, clean;
+master's code change since the last head is `hw/xbox/nv2a/pfifo.c` and
+`user.c` only): `.scratch/syncheck.py` (`-fsyntax-only` with the NDK
+compile database's flags) on `cputlb.c` and `physmem.c` gives rc 0, no
+errors. The 45 warnings are all master's `-Wshift-negative-value` on
+`TARGET_PAGE_MASK`.
+
+**W1 is ready.** One Crimson B soak (`crimson-skies`, 300 s, `--perflog`)
+is queued at the final head for `offline_fold`'s head-run check. Its
+expected result: reaches play, no crash, `w1=1` and `wx=0` on every line.
+
 ## The second pixel arm (memfast-drop-pixels-stable.json), read 2026-10-02
 
 `1-1790725598-arms-memfast-base-1586276` (31515f9751) and
@@ -1343,17 +1410,25 @@ the Nova. Every phase 2 claim is therefore gated on a profile (vCPU time
 per frame) and on fps on a vCPU-bound title below its cap (Tron 2.0). Each
 uses a route that works with or without a profile (vcpuwait433's
 tron-newgame v5).
-4. **W1, 2026-10-03 10:18 PDT:** the Conker pilot passes M and X, and the
-   pixel arm passes (on two devices). Waiting on the batch and the
-   Antialiasing repeat ("W1 pilot and pixel arm"). When they are read:
-   - score M, X, P and G on Blinx 2, Forza and Crimson;
-   - apply the decision rule for `FramebufferNotModifiedBySurfaceState`;
-   - write the release note from the numbers;
-   - commit, then queue one run at the final head for `offline_fold`, and
-     set PR.md ready.
+4. **DONE 2026-10-03 12:30 PDT: W1 is ready** ("W1 batch and the
+   Antialiasing repeat"). M, X and pixels pass, P shows no cost, and C is
+   not shown. G passes on Crimson, and Forza is void because the control
+   crashed the same way (filed). A Crimson B soak is queued at the final
+   head for the fold. `WAITING` names the fold.
+5. **After W1's fold: re-scored with what W1 showed.** W1 removed the
+   flushes it targeted (0.7-6.7% left) and moved vCPU CPU ms per wall
+   second by only 0.3-1.5%. That instrument cannot see a per-frame saving
+   on a thread that is on-CPU 85-95% of the time, so W1's vCPU win is still
+   unmeasured, not refuted.
 
-   F0a's device half comes next (section 6). Its candidate ranking is
-   unchanged: W1 so far is what its P 0.7 assumed.
-5. Do not repeat: the `act` reading through `cb0ms` (the reader is fixed);
+| candidate | P, and its evidence | win | cost | order |
+|---|---|---|---|---|
+| F1: fastmem, loads only | 0.4, unchanged. W1 adds evidence on the risk side: walks cost 0.03-0.07% of wall time at 6-145 walks/s, so watch churn priced as a per-page walk is cheap. That is the coherence operation F1 needs on watch changes | about 11% of GTA's vCPU time; +15-19% fps on Tron 2.0 if its frame stays vCPU-bound (near30) | the largest: F0b and F1 code, a pixel sweep, a profile, Tron fps pairs | the target. Built after F0a |
+| F0a, device half | a probe, not a fix. It decides F1: under the kill line on GTA and Conker, build F1; over it, switch to the lazy view swap (section 2) or park F1 | none by itself | one native test binary run, about 1 Nova run | first, because it decides F1 |
+| W1's profile (simpleperf, Conker, B against A) | 0.6 that it shows 5% or more of vCPU time; the evidence is the 145 full flushes/s removed, each of which empties the TLB and jump cache | measures W1's win; changes no code | a held window from lane.local, 2 captures | optional. It does not change the F1 decision, so it goes after F0a |
+
+6. Do not repeat: the `act` reading through `cb0ms` (the reader is fixed);
    a pixel prediction that asserts the Stencil_ZERO family or
-   GeometrySuperscreen_0.4999/_0.5626 as exact.
+   GeometrySuperscreen_0.4999/_0.5626 as exact; a Forza soak on the
+   golden-profile disk before the BugCheck 0x7f issue is fixed (both arms
+   crash at about 110-120 s).
