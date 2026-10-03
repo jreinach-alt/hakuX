@@ -12,6 +12,15 @@
   `pathfind.py --hold-s 600 --state first-run` (which prepares and releases the golden itself), and releases the
   hold on every exit path.
 
+## Where attempt 5 stopped (10-03 09:57 PDT): WAITING on an arms run on the Nova
+
+- The Panzer held run took the Nova hold (`lane.pathfind`) at 09:46 and waited in `hold.sh wait-idle` for
+  `1791042391-arms-memfast-w1-fix-1542161` (arms-memfast) to finish. At 09:56 that run had no DONE marker yet.
+  wait-idle's 900-s timeout ends the wait about 10:01; the script then exits without running pathfind, and its
+  trap releases the hold. So no Panzer frames exist, and nothing of ours is on the device.
+- Next step, on resume: re-run `bash scratch/heldrun.sh 4947002B docs/lanes/pathfind/runs/panzer-dragoon-hold panzer`
+  once the Nova is idle; then judge its frames and hold.jsonl and write the verdict to OUTBOX.
+
 ## Resume (10-03): why attempt 4 did not finish
 
 - Attempt 4 committed three code changes after its Black Stone input check (`1c6a26d` the X ladder, `3f96ebd` the
