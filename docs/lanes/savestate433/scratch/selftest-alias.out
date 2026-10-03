@@ -1,0 +1,110 @@
+== titlestate.py goldens: every run starts from the golden, not the last harvest
+ok   seed proposes the shared disk's save as Tron's golden
+ok   VOID REPRODUCED: the device registry now names the run's bare save for Tron
+ok     ... which is what the pre-golden disk (wanted()) would carry next
+ok   GUARD: the composed disk carries the golden, not the last harvest
+ok     ... the harvest went to `latest` and the golden is unchanged
+ok   a first-run disk carries no Tron save, and the other titles' goldens
+ok   VOID REPRODUCED: with no alias, a first-run under the targets id keeps the disk id's save
+ok   GUARD: with the alias, the first-run disk drops it
+ok     ... and the golden is found under the targets id
+ok   the store's saves are listed under the targets id
+ok     ... and each one's directory is found under it
+== titlestate.py plan(): a disk a run wrote to is never booted again
+ok   VOID REPRODUCED + GUARD: harvested but written (device sha != pushed sha): build, not keep
+ok   a pristine disk of exactly the composed goldens is kept
+ok     ... and rebuilt for a first-run of the same title
+ok   a disk whose harvest failed is preserved whole, not kept and booted
+ok     ... after which it is rebuilt
+ok   a returning run of a title with no golden is refused before the push
+== titlestate.py goldens: only promote replaces one; nothing is deleted
+ok   set_golden over an existing golden is refused
+ok   a first-run's profile-saved never replaces an existing golden
+ok   promote --latest replaces it, and the old one is in history
+ok     ... both saves are still in the store
+ok   VOID REPRODUCED + GUARD: a returning disk from a settings-only golden is refused
+ok     ... promoting the save with a save directory back clears it
+ok   propose-all --refresh moves a proposed golden to the harvest with a save directory
+ok     ... and never moves a confirmed one
+ok   a first-run's profile-saved on a title with no golden makes it the golden
+ok   MUST MOVE: a save whose bytes differ from its save.json is not imported
+ok   propose-all skips a newest harvest that no longer verifies, proposes the next
+== titlestate.py resolve-route: the declared state must match the composed disk
+ok   a family resolves to .returning when the title has a golden
+ok     ... and to .first-run when it has none
+ok     ... and to .first-run when its golden is title data only (Black, GoldenEye, 10-02)
+ok   a returning route on a settings-only golden is refused, and the reason names `# state: any`
+ok     ... the same route headed `any` queues
+ok     ... and its disk carries that golden unchanged
+ok   VOID REPRODUCED + GUARD: a returning route on a title with no golden is refused
+ok   a route that declares no state is refused
+ok   a returning route on a title with a golden is accepted
+ok     ... refused when the title cannot be identified
+ok   an `any` route needs no golden
+ok   a golden the pinned device rejected does not count
+== titlestate.py prepare/release: a held session boots the composed disk
+ok   a held returning session of a title with no golden is refused
+ok     ... before any push and before hddPath moved
+ok   prepare points hddPath at titles.qcow2
+ok     ... with Tron's golden loaded, recorded
+ok     ... the disk is mode 660, not the 0644 a push leaves
+ok     ... and the marker holds hdd.img, the dispatcher's own
+ok     ... the golden verifies on the device's disk
+ok   release harvests what the session wrote, to latest
+ok     ... leaves the golden alone
+ok     ... and puts hddPath back on hdd.img, marker gone
+ok   a disk that cannot be made 660 fails the prepare
+== nav.py start: a held session names its title, or says --hdd-img
+ok   start with no title and no --hdd-img is refused before any adb call
+ok     ... --hdd-img starts it, and the session records hand play on hdd.img
+== routes/: every route file declares `# state:`
+ok   every routes/*.route has a valid `# state:` line
+ok     ... and a .first-run/.returning file declares its own variant
+== saves.py: build a disk, read every save back
+ok   build of 601 entries stays near its cluster count (under 16 MiB)
+ok   a disk with one small save is under 2 MiB
+ok   verify AAAA0001: every file byte for byte
+ok   pull AAAA0001 gives the same save id
+ok   pull AAAA0001 keeps the raw FATX times
+ok   verify BBBB0002: every file byte for byte
+ok   pull BBBB0002 gives the same save id
+ok   pull BBBB0002 keeps the raw FATX times
+ok   verify CCCC0003: every file byte for byte
+ok   pull CCCC0003 gives the same save id
+ok   pull CCCC0003 keeps the raw FATX times
+ok   list sees exactly the three titles
+ok   list counts the 300 save dirs of the chained directory
+== saves.py: the checks can fail
+ok   verify refuses a save whose content differs from the image's
+ok   load_save refuses a file that no longer matches save.json
+== saves.py: the qcow2 is laid out as qemu-img lays one out
+ok   header: qcow2 v3, 64 KiB clusters, 8 GiB, refcount order 4
+ok   header: refcount table at 0x10000, L1 at 0x30000, 16 L1 entries
+ok   every host cluster has refcount 1, and no other cluster has one
+ok   every L1/L2 entry is COPIED and points inside the file
+== titlestate.py: device choice follows the recorded state
+ok   nothing known: survey, not a blind first-run
+ok   survey falls back to survey.route
+ok   thor known clean: first-run on thor
+ok   first-run picks the title's first-run variant
+ok   a profile on nova beats a clean thor: returning on nova
+ok   a title only thor holds is never sent to nova
+ok   no device has a profile, the store has one: import it, returning
+ok   a save rejected on one device is offered to the other
+ok   rejected everywhere: back to a first-run
+ok   build-image carries the added save
+ok   the built disk holds it
+ok   pushed: the title is imported, with its save and a time
+ok   a device with a titles disk and no row for a title is known clean
+ok   no-save records its reason
+ok   a harvested save clears no-save
+ok   single route, nothing known: the route, not survey
+ok   single route with a profile: still the route, not survey
+== nav.py: the path taken becomes the route
+ok   the route has the inputs in order before the mark
+ok   frames before the mark are kept
+ok   no frame after `mark gameplay`
+ok   the play pattern repeats forever
+ok   route.sh accepts the emitted route
+
+all checks passed
