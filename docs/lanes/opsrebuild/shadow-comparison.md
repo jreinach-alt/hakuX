@@ -128,3 +128,18 @@ The two failed units are real. The old parse could not have shown them.
 
 The clean 2-hour run on this head is still to come. It is lane.local's to compare against hostops, per
 OUTBOX.md's waiting entry.
+
+## Attempt 4: the 08:45 window, first ten minutes (timer log)
+
+The window that started on attempt 3's head (`bb9dc63e0f`) showed, by 08:55:
+- `fold-failure:rowless lane/titleroutes` at its 4th would-be escalation, on Opus;
+- `stranded-lane memfast` at 08:48, one minute after memfast pushed its WAITING file;
+- `stranded-lane routefix1002`: named at 07:41, cleared at 08:33, named again at 08:48, between its own sessions;
+- one-tick `timer-unanchored` on `hakux-idlewatch.timer` (08:28) and `hakux-issue-sync.timer` (08:53).
+
+Faults 5-9 (NOTES.md, "Attempt 4") are fixed on `4ab2956d8a`. The 08:58 tick ran a half-edited file
+(a NameError) and is not evidence either way. Ticks from 09:03 to 09:38 report one open jam,
+titleroutes, and nothing new.
+
+The clean window for the cutover is 09:48 to 11:48 on `4ab2956d8a`. This lane compares it with
+hostops's entries for the same window after 11:48 and posts that here.

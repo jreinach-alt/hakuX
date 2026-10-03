@@ -378,9 +378,11 @@ addenda, the WAITING rule and Addendum 3 were already met. The NEW ISSUE rule is
 | 7 | A territory/rowless fold gap escalates to a model | Same titleroutes jam. Its fix is a board-row edit, which `escalate-role.md` forbids a session to make | The inbox note is the route; never escalates | (n) |
 | 8 | `stranded-lane` fires on a lane the minute its session ends | 08:48: `memfast` named stranded one minute after it pushed a WAITING file (`6f64830aa8`, "WAITING on the four runs"); `routefix1002` stranded at 07:41, cleared at 08:33, back at 08:48, between its own sessions | Skips: a branch with `docs/lanes/<lane>/WAITING` (lanewaker's job), a head already in `origin/master`, and a lane idle under 90 min, using the later of its last commit and its unit's stop. The 90 min is the owner's 10-03 stranded rule; handback (~40 min) and lanewaker act inside it | (l) |
 
+| 9 | A detector that raises clears every jam it had open | 08:58: my mid-edit file raised a NameError in `det_stranded_lanes`, and the tick logged `CLEARED` for memfast and routefix1002. The next good tick would reopen both as NEW and run the resume remedy again | Its class prefix is marked blind for the tick (`DETECTOR_CLASSES`), and its open rows are kept | (o), with a control |
+
 Falsified: each fix was reverted in turn (cap -> 99; disk and territory without `escalate=False`;
-the three stranded guards off), and each failed its own legs (2, 1, 1 and 3 FAIL). Restored:
-87-ops-tick.sh 49 passed, 0 failed.
+the three stranded guards off; the blind guard off), and each failed its own legs (2, 1, 1, 3 and
+1 FAIL). Restored: 87-ops-tick.sh 51 passed, 0 failed.
 
 Real-state shadow ticks, scratch state dir, 09:01 and 09:02: one jam, `fold-failure:rowless
 lane/titleroutes`, inbox note only, no escalation; the second tick announced nothing new.
@@ -415,7 +417,7 @@ A decides first because it is the only gate between this layer and the $110/day 
 it costs nothing but wall time. B is the larger win but at lower P, and it lives in other lanes'
 files. It runs after the cutover, not before.
 
-**Status (attempt 4):** code and docs done for faults 1-8. The clean 2-h shadow window restarts
-on `0ca5723a26`, the first head with faults 5-8 fixed, pushed 09:04 PDT. It ends at 11:05. PR.md
+**Status (attempt 4):** code and docs done for faults 1-9. The clean 2-h shadow window restarts
+on `4ab2956d8a`, the first head with faults 5-9 fixed, pushed 09:44 PDT: ticks 09:48 to 11:48. PR.md
 stays `State: draft` until this lane posts the comparison for that window. See WAITING and
 OUTBOX.md.

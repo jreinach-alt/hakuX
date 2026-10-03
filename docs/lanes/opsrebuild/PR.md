@@ -46,7 +46,9 @@ gets at most two sessions, Sonnet then Opus. (6) `disk-low` escalated to a model
 lane.xbox and never escalates (brief addendum 1). (7) A territory fold gap escalated, though no
 session may edit the board; it now never escalates. (8) `stranded-lane` fired on lanes with a
 WAITING file, on folded heads, and minutes after a session ended; those are skipped now, with a
-90-min idle grace. NOTES.md "Attempt 4" has the table. The clean window restarts on `0ca5723a26`.
+90-min idle grace. (9) A detector that raised cleared its open jams, so the next tick would
+re-run their remedies; its jams are kept open now (leg o). NOTES.md "Attempt 4" has the table.
+The clean window restarts on `4ab2956d8a` (ticks 09:48 to 11:48).
 
 **Cutover gap for lane.local:** the PM's DO items in `hostops-inbox.md` are executed by hostops
 today. ops_tick does not execute them. OUTBOX.md files it as a NEW ISSUE.
@@ -63,11 +65,11 @@ waiting state, not a failure.
 ## Verification run locally (no CI while GitHub is suspended)
 
 - `python3 -m py_compile docs/testing/jobs/ops/ops_tick.py` -- clean.
-- `env SELFTEST_ONLY="87-ops-tick.sh" bash docs/testing/jobs/selftest.sh` -- 49 passed, 0 failed. Legs k, l, m, n falsified: each fails with its fix reverted.
+- `env SELFTEST_ONLY="87-ops-tick.sh" bash docs/testing/jobs/selftest.sh` -- 51 passed, 0 failed. Legs k, l, m, n, o falsified: each fails with its fix reverted.
 - `bash docs/testing/jobs/selftest.sh --check-shards 4` -- all 121 fragments still covered.
-- Full `bash docs/testing/jobs/selftest.sh` (all 124 fragments): NOT run to completion in this session.
-  One run takes over an hour (the first three fragments alone took about 460 s). Lane.local's fold gate
-  runs it for harness changes; NOTES.md "Attempt 3" says so.
+- Full `bash docs/testing/jobs/selftest.sh`, attempt 4 (09:12 to 10:35 PDT): **3051 passed, 0 failed,
+  all 124 fragments**, exit 0. Its tree is `4ab2956d8a`'s harness content: fragment 87 ran after the
+  last ops_tick.py/87 edit (it includes leg o), and no other harness file changed during the run.
 - A real `ops_tick.py --shadow` tick against live host state (`OPS_STATE_DIR` redirected to a
   worktree-local scratch dir; every other path left at its real default) -- see
   `shadow-comparison.md`.

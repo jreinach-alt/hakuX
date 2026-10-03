@@ -108,3 +108,16 @@ hakux-ops-tick.timer, nothing executes the PM's actions. This blocks the #433 cu
 its own DO items; lane.local executes them; or a small inbox runner spawns one scoped session per new DO item
 (the ops_escalate.sh pattern, with the same cap).
 
+## #433 -- 2026-10-03 10:40 PDT
+
+[lane.opsrebuild] waiting: the clean 2-hour shadow window on `4ab2956d8a`, ticks 09:48 to 11:48 PDT.
+A fifth fix landed at 09:44 and restarted the window. At 08:58 a detector raised a NameError and cleared its open
+jams, so the next tick would have resumed those lanes a second time. A failing detector's jams now stay open (leg o).
+
+Full selftest on this harness content: 3051 passed, 0 failed, all 124 fragments. 87-ops-tick.sh: 51 passed. Every
+attempt-4 fix fails its own leg when reverted.
+
+Resume: WAITING holds `time 2026-10-03T11:50`. Then this lane compares logs/ops-shadow.log with hostops's entries
+for 09:48 to 11:48, posts the comparison here and in shadow-comparison.md, and sets PR.md `State: ready` if the window
+is clean. The cutover is lane.local's, once the NEW ISSUE above (who executes the PM's inbox items) has an answer.
+
