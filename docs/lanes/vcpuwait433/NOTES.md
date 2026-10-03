@@ -9,6 +9,65 @@ below 28.5 fps (median F ~43 ms) the vCPU thread is asleep, neither running
 nor runnable, ~10 ms per frame. That sleep tracks GPU ms per frame (r 0.64),
 not the renderer's CPU draw work (0.08). BF2: 21 ms of a 64 ms frame.
 
+## Result (attempt 3, 2026-10-02 21:05 PDT): pfifo.lock in `user_read` owns the wait
+
+**The site:** in Tron's slow window the vCPU sleeps on **`pfifo.lock` in
+`user_read`**, a guest load of DMA_GET, DMA_PUT or REF. That is 65.2% of the
+attributed off-CPU time (95.5% of it reads, 4.5% the DMA_PUT store), about
+4.0 ms of a 36-45 ms frame. The largest named holder is the PFIFO thread
+asleep in `wait_frame_submitted <- pgraph_vk_finish <-
+pgraph_vk_process_pending_reports <- pfifo_thread`, with pfifo.lock held. That
+finish runs only when DMA_GET == DMA_PUT, so the guest waits out a GPU batch to
+read a value that is already final. The fix is a lock-free `user_read`
+(`userread-lockless.diff`, section 4). It needs a grant for
+`hw/xbox/nv2a/user.c` and `pfifo.c`, and a build. Tables are in section 4.
+
+### Why attempt 2 did not finish
+
+Attempt 2 ended where the protocol says it should: in the waiting state, on
+host run 2 (tron2). The host ran it (19:54-20:01 PDT), and addendum 2 called it
+void because the record covered the opening-credits cinematic, not the level.
+Run 3 was parked behind lane.savestate433. Attempt 3 found that tron2 is **not
+void for the brief's question**, for two reasons:
+
+1. **The old gate's "60 fps" was a parse bug, not a fast window.** A
+   `hakuX-pace` line is written every 60 guest frames, not every second, and
+   the gate read the f difference between two lines as fps. That is 60 on
+   every line, so the gate could never open. decompose.py on tron2's record
+   window: median 27 fps, 22 of 36 rows below 28.5, v_blk 7.8 ms/frame (9.2 in
+   the slow rows).
+2. **The brief's premise was measured in this same window.** Near30's slow
+   rows (F 43, v_blk 10) come from its New Game soaks, minutes 0-2 after
+   `mark gameplay`. tronhang672 identified that span as the ~4.5 min in-engine
+   intro after New Game. tron2's whole run reads share 0.51, slow-row F 45.2,
+   v_blk 9.93: near30's numbers. The one Auto Load run (2186958, in-level) had
+   share 0.90 and v_blk 6-7 at 28-34 fps.
+
+So tron2 measured the brief's 10-of-43 ms window, but not gameplay. The
+in-level sleep is smaller (about 6.5 ms of 33).
+
+### What changed in the capture for run 3 (owner orders 19:57 and 20:05)
+
+- `titlestate.py prepare --title-id 42560001 --state returning` before the
+  soak, and `release` on every exit. The script refuses unless prepare reports
+  `loaded golden`. `TITLESTATE=` points at a savestate433 checkout until that
+  lane folds.
+- **The gate fails closed.** It records only when `levelcheck.py` sees Tron's
+  HUD (health and energy bars) in at least 4 of the route's last 6 loop frames
+  with a moving view, AND 5 pace lines in a row are in [18, 40) fps. Otherwise
+  it logs `ABORT: <reason>`, takes one screencap and exits 7 without
+  recording. The fps is (f - previous f) * 1000 / ms.
+- `levelcheck.py`, validated on frames before any capture used it:
+
+| frames | loop frames | with HUD | gate replay (`.scratch/replay_gate.py`, the script's logic on the run's logcat + frames) |
+|---|---|---|---|
+| 2186958 (Auto Load, in-level, 28-34 fps) | 89 | 87 (the 2 misses are the Save Game screen) | OPEN at mark+28 s: 5 slow lines, 31 fps, hud 5/6, moves 4/4 |
+| tron1 (Options menu, 59 fps) | 24 | 0 | ABORT at mark+130 s: 59 fps, no HUD |
+| tron2 (credits cinematic, 31 fps) | 42 | 0 | ABORT at mark+130 s: 11 slow lines, but no HUD |
+
+  HUD-pair view difference in-level: median 59 grey levels (p10 9). The bar
+  is 12, so one moving pair out of five is enough.
+
 ## 0. Attempt 2 (2026-10-02 18:54 PDT): why attempt 1 stopped, what tron1 showed
 
 Attempt 1 did not fail. It finished in the waiting state the protocol asks
@@ -162,12 +221,117 @@ yet measured. This trace measures it.
 Every arm registers a Tron + BF2 prediction first (share at the bar, v_blk
 per frame from `decompose.py`), with concrete refs, before it is queued.
 
+## 4. tron2: the site, why the vCPU waits there, the fix
+
+`waitsite.py tron2.data --detail "pfifo.lock in USER"` (vCPU tid 29645, 60.0 s;
+the record window is 27.9 fps mean, so about 1,674 frames):
+
+| site | ms | % attributed | waits | ms/frame |
+|---|---|---|---|---|
+| **pfifo.lock in USER MMIO** | **5,257** | **65.2** | 7,415 | 3.1 (4.2 with its share of the unsampled) |
+| (unsampled switch-out) | 2,787 | (25.7% of off-CPU) | 8,063 | |
+| BQL <- cpu_exec_loop | 1,233 | 15.3 | 40,468 | 0.7 |
+| pgraph.lock in PGRAPH MMIO (#474) | 833 | 10.3 | 701 | 0.5 |
+| BQL <- mttcg_cpu_thread_fn | 442 | 5.5 | 10,259 | 0.3 |
+| **total off-CPU** | **10,848 (18.1%)** | | | **6.5** (decompose v_blk 7.1) |
+
+Against the tron1 control (60-fps menu), pfifo.lock goes from under 3% to
+65%. BQL <- cpu_exec_loop goes from 0.26 to 0.7 ms/frame.
+
+Inside the site:
+
+| split | ms | share |
+|---|---|---|
+| `user_read <- memory_region_dispatch_read <- do_ld_mmio_beN <- do_ld4_mmu` (a guest 32-bit load) | 5,019 | 95.5% (6,424 waits) |
+| `user_write <- ... do_st_mmio_leN` (the DMA_PUT store) | 236 | 4.5% |
+| waits of 2-10 ms | 3,089 | 59% (777 waits) |
+| waits under 0.5 ms | 944 | 18% (5,417 waits) |
+
+**Holder** (other threads' switch-out chains, overlapping the vCPU's waits):
+the PFIFO thread is asleep in **`wait_frame_submitted <- pgraph_vk_finish <-
+pgraph_vk_process_pending_reports <- pfifo_thread`** for 2,100 ms of the
+5,257 (40%). On-CPU samples inside the waits add `memcpy_opt`/`swizzle_box`
+under `pgraph_vk_complete_staged_downloads <- pgraph_vk_finish <-
+process_pending_reports` (94 samples). Every emulator thread is named
+`qemu_main`, so per-thread totals mix threads. The other ~60% of the hold time
+has no named holder in this pass. A per-tid pass would name it (Next, D).
+
+**Why the vCPU waits there.** `pfifo_thread` calls
+`pgraph_process_pending_reports(d)` with pfifo.lock held (pfifo.c:2162).
+`pgraph_vk_process_pending_reports` (vk/reports.c:176) calls
+`pgraph_vk_finish(STALLED)` when `DMA_GET == DMA_PUT` and a command buffer is
+open. The finish waits for the render thread to submit the frame
+(`wait_frame_submitted`, draw.c:3972), and that wait is paced by the render
+thread's Vulkan work. Meanwhile the guest loads a USER register, DMA_GET (ring
+space or progress) or REF, and `user_read` (user.c:32) takes pfifo.lock for a
+single word. **The value it is waiting to read is already final:** the finish
+runs only once the pusher has caught up, so GET == PUT, and REF is written by
+the guest alone (user.c:104; no method writes CACHE1_REF). The guest's read
+waits out the GPU-side batch and gets no new information for it. That is
+near30's "sleep tracks GPU ms" (r 0.64).
+
+**Is the wait required for correctness?** No golden or title can need it.
+The lock gives a read of one word exactly one property: ordering with the
+pusher's earlier work. An acquire load against a release store of DMA_GET gives
+the same. DMA_PUT and REF have only the guest as writer. `pfifo_bound_skew`
+already reads DMA_GET without the lock (pfifo.c:1471, "a benign race: the
+pusher is its only writer"). No golden exercises a guest reading USER while
+the PFIFO thread is in a stalled finish: the nxdk tests draw and flip. The
+change cannot alter pixels, because it only changes when a value is returned,
+not which value.
+
+**The smallest change** (`userread-lockless.diff`, applies to master
+9550493846, 25+/14-; it was **not compiled** here, because there is no build
+tree):
+- `user_read`: no pfifo.lock. Acquire loads of DMA_PUT, DMA_GET and REF;
+  relaxed loads of MODE and PUSH1.
+- `user_write`: unchanged locking. The three stores become release stores.
+- `pfifo_run_pusher`: `*dma_get = dma_get_v` becomes
+  `qatomic_store_release(dma_get, dma_get_v)` (pfifo.c:2071).
+
+This follows the #474 pattern: #474 stopped holding pgraph.lock across a
+fence wait that MMIO needed, and this stops the read needing the lock at all.
+The alternative, releasing pfifo.lock across the stalled finish (B below),
+also frees the DMA_PUT store and the pusher-side users. But it opens the
+renderer state that pfifo.lock currently shields: the display thread's
+`pgraph_vk_get_framebuffer_surface` surface lookup, and vk/surface.c's
+pfifo-locked sections.
+
+**Prediction to register before the arm** (draft; it needs concrete refs on
+this branch, so it waits for the grant). Tron, New Game route, 2 min from
+`mark gameplay` (the window of near30 and tron2), decompose.py:
+- **Mechanism** (the falsifier that separates inert from refuted): pfifo.lock
+  in USER falls from 3.1 ms/frame to < 0.3. Measured with the per-thread wait
+  from `[rr425w]`/`v_blk`, without a profiler: v_blk in rows below 28.5 drops
+  from 9.9 to <= 7.0 ms/frame.
+- **Outcome**: share at the bar rises from 0.51 (tron2) / 0.50-0.73 (near30
+  New Game) to >= 0.65, or the slow-row median fps rises >= 5%.
+- If v_blk drops but fps does not move, the freed time became guest spin on
+  GET/REF ([rr425pc]: the guest was waiting on the GPU anyway). That refutes
+  the win and names the next wait.
+- BF2: its 21 ms/frame sleep has no measured site. The prediction is v_blk
+  down >= 2 ms/frame at P 0.35, as a second title, not a gate.
+
+### Next (P x win, after tron2)
+
+| candidate | P | evidence for P | win if it works | cost |
+|---|---|---|---|---|
+| **A. Lock-free `user_read` arm** (patch ready) | 0.4 that Tron's slow-window fps rises >= 5% | for: 95.5% of the site is reads; the named holder (40%) runs only at GET == PUT, so the read's value is final; in slow rows the renderer is idle 18 ms of 45 (Ri), so the pipeline waits on the guest, not the reverse. Against: 60% of the hold time has no named holder; the guest may be polling GET/REF in a loop that needs GPU progress, so the freed sleep can turn into spin ([rr425pc]) | up to 4.0 ms of the window's 36 ms mean frame (27.9 -> at most 31.4 fps, +12%; the bound, if all of it is on the critical path); in-level up to about the same share of 6.5 ms; BF2 unknown (21 ms sleep, site unmeasured) | grant (user.c, pfifo.c), 1 NDK build, Tron arm + BF2 arm (2 Nova runs) |
+| B. Release pfifo.lock across the STALLED finish in `pgraph_vk_process_pending_reports` | 0.3 | covers the named 40% holder for every pfifo.lock user (reads, the DMA_PUT store, the pusher); against: the lock shields the renderer state from the display thread and vk/surface.c during the finish, so a correctness audit and a golden run are needed | <= A's on reads, plus the 4.5% DMA_PUT share | grant (pfifo.c, vk/reports.c), build, goldens, arm |
+| C. In-level capture (run 3: script ready, gate fixed, golden profile) | 0.85 that it names the in-level owner | the gate replay opens on 2186958 at mark+28 s | knowledge only: whether the same site owns gameplay's 6.5 ms. A's arm on an in-level route answers that and the win together | 1 Nova run |
+| D. Per-tid holder pass on tron2.data (offline) | 0.8 that it names the other 60% | a reader change keyed by tid; the data is on disk | raises or lowers A's P (pusher batches with GET != PUT mean the guest would spin): it informs A, it does not replace it | ~10 min host, no device |
+
+A first: it is the change that moves frames, and the arm measures the win and
+the in-level case together. D can run while the grant is pending. C is not
+worth a run unless A's arm is blocked.
+
 ## Device use
 
 | # | what | id | result |
 |---|---|---|---|
 | 1 | off-CPU capture tron1 (host-run, d8d36c9161) | 18:46-18:54 PDT | void: the route ended in Options > Display (no save, so the DOWN went to Light Cycles). Usable as a fast-window control: off-CPU 0.53 ms/frame, 69% BQL <- cpu_exec_loop |
-| 2 | off-CPU capture tron2 (v5 route + slow gate) | requested 19:00 PDT | waiting |
+| 2 | off-CPU capture tron2 (v5 route + slow gate) | 19:54-20:01 PDT | recorded the New Game intro cinematic (not the level) at 27 fps: **the brief's slow window** (section 4). pfifo.lock in `user_read` 65.2%, which OWNS the wait |
+| 3 | (cleared by addendum 3) | not used | the capture's question is answered by run 2; see Next |
 
 ## Do not repeat
 
@@ -181,9 +345,24 @@ per frame from `decompose.py`), with concrete refs, before it is queued.
   save.
 - Do not read a capture's verdict before decompose.py shows its window is
   slow. tron1's reader verdict ("BQL OWNS the wait") is true of a menu.
+- Do not read fps from the f difference of two `hakuX-pace` lines. A line is
+  written every 60 frames, so the difference is always 60. fps =
+  f-difference * 1000 / ms (the line's own `ms=`). Runs 1-2's gate read 60
+  that way while tron2 ran at 27.
+- Do not trust the FPS overlay on a route frame as guest fps. tron2's credits
+  frames say "FPS: 59" while pace says 27-31.
+- Do not call near30's Tron slow window "in-level". On the New Game route it is
+  the in-engine intro (minutes 0-2 after `mark gameplay`). In-level (Auto
+  Load) runs at 28-34 fps with v_blk about 6.5.
+- Do not hypothesise the display thread's `vkWaitForFences` under pfifo.lock
+  (vk/renderer.c:2803-2826) as the holder: in tron2, SDLThread sits in
+  `clock_nanosleep` during the vCPU's waits.
 
 ## Files
 
-`capture_offcpu.sh` (the host's capture), `waitsite.py` (the reader),
+`userread-lockless.diff` (the proposed fix, for after the grant),
+`levelcheck.py` (the capture gate's in-level check),
+`capture_offcpu.sh` (the host's capture), `waitsite.py` (the reader; `--detail`
+splits a site and names holders),
 `tron-newgame.route` (near30's, v5 since run 2) and `decompose.py` (near30's, byte-identical), for the
 capture and the prediction.

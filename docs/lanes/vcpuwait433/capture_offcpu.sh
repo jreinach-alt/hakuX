@@ -17,6 +17,16 @@
 #   - PERF_REGIMEN=default (the decomposed soaks' regimen);
 #   - the hold tag is lane.vcpuwait433, and the hold is `take` then
 #     `wait-idle` (hold.sh's own recipe).
+# Since run 3 (owner orders 2026-10-02 19:57 and 20:05, after tron1 recorded a
+# menu and tron2 the opening credits):
+#   - the titles disk is Tron's golden profile: `titlestate.py prepare --state
+#     returning` before the soak, `release` on every exit after it. So the
+#     route's A on Single Player is Auto Load, straight to the level. The
+#     script refuses unless prepare says it loaded the golden;
+#   - the gate FAILS CLOSED: it records only when levelcheck.py sees Tron's
+#     HUD in the route's own frames, with a moving view, AND SLOW_N pace
+#     lines in a row are in [SLOW_MIN, SLOW_FPS). No such window within
+#     GATE_S means ABORT with the reason, no record.
 #
 #   DEV=nova capture_offcpu.sh <short> "Tron 2.0 - Killer App (USA, Europe).iso"
 #
@@ -48,8 +58,16 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../testing" && pwd)"
 HOLDSH="$HERE/jobs/hold.sh"
 TAG=lane.vcpuwait433
 LEASE=/tmp/hakux-device-lease.$DEV
-SOAK_S=${SOAK_S:-510}   # 420 + the slow gate's 90 s cap
+SOAK_S=${SOAK_S:-540}   # 420 + the gate's 120 s cap
+# titlestate.py with prepare/release (lane.savestate433); until that lane
+# folds, point TITLESTATE at a checkout that has it.
+TITLESTATE=${TITLESTATE:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../testing/titles" && pwd)/titlestate.py}
+TID=${TID:-42560001} STATE=${STATE:-returning}
+LEVELCHECK="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/levelcheck.py"
 mkdir -p "$OUT"
+# Before the hold: a script that cannot prepare the disk must not take the device.
+grep -q 'def prepare' "$TITLESTATE" 2>/dev/null || { echo "CAP $TITLESTATE has no prepare (merge lane/savestate433, or set TITLESTATE)"; exit 2; }
+python3 -c 'import numpy, PIL' 2>/dev/null || { echo "CAP levelcheck.py needs numpy and PIL"; exit 2; }
 a() { timeout "${T:-120}" adb -s $S "$@"; }
 say() { echo "CAP $(date -u +%H:%M:%S) $*"; }
 running_dev() { grep -lx $DEV "$D"/running/*.owner 2>/dev/null; }
@@ -67,11 +85,17 @@ bash "$HOLDSH" wait $DEV $TAG "${HOLD_WAIT_S:-3600}" \
     || { say "could not take hold/$DEV: $(bash "$HOLDSH" who $DEV)"; exit 3; }
 say "hold taken"
 
-LEASE_PID="" SOAK_PID="" USED=0
+LEASE_PID="" SOAK_PID="" USED=0 PREPARED=0
 cleanup() {
     rc=$?
     if [ "$USED" = 1 ]; then
     [ -n "$SOAK_PID" ] && kill "$SOAK_PID" 2>/dev/null && wait "$SOAK_PID" 2>/dev/null
+    # release force-stops the app, harvests the titles disk to `latest` and
+    # puts hddPath back; before anything below that relaunches nothing
+    if [ "$PREPARED" = 1 ]; then
+        python3 "$TITLESTATE" release --device $DEV --run "vcpuwait433-$SHORT" > "$OUT/release.json" 2>> "$OUT/titlestate.log" \
+            && say "titles disk released: $(head -c 200 "$OUT/release.json")" || say "titlestate release FAILED (see titlestate.log)"
+    fi
     # soak_title.sh restores REST on its own exit; if it never ran or did not, do it here
     if ! grep -q '"perf_restored": true' "$OUT/perf_regimen.json" 2>/dev/null; then
         ( . "$HERE/devices.sh"; read -r _ _ pr fr <<<"$(device_perf_values $S)"
@@ -142,6 +166,19 @@ PYENV
 fi
 a shell "rm -f /data/local/tmp/$SHORT.data"
 cp "$ROUTE_SRC" "$OUT/route.txt" || { say "no route $ROUTE_SRC"; exit 5; }
+# Tron's golden profile, so A on Single Player is Auto Load (savestate433's
+# proof, 20:25 PDT). PREPARED goes to 1 first: a prepare that fails halfway
+# may have moved hddPath, and release puts it back from the marker.
+PREPARED=1
+python3 "$TITLESTATE" prepare --device $DEV --title-id $TID --state $STATE --run "vcpuwait433-$SHORT" \
+    > "$OUT/hdd.json" 2>> "$OUT/titlestate.log" || { say "ABORT: titlestate prepare refused: $(tail -1 "$OUT/titlestate.log")"; exit 6; }
+loaded=$(python3 -c 'import json,sys; h=json.load(open(sys.argv[1])); print(h.get("loaded"), h.get("save") or "-")' "$OUT/hdd.json" 2>/dev/null)
+say "titles disk: $TID $STATE, loaded $loaded"
+case $loaded in golden*) ;; *) say "ABORT: the titles disk did not load Tron's golden ($loaded)"; exit 6 ;; esac
+# prepare rewrote the pref; it must still carry no env and a whole map
+a exec-out run-as $PKG cat shared_prefs/x1box_prefs.xml > "$OUT/prefs.prepared.xml"
+grep -q '</map>' "$OUT/prefs.prepared.xml" || { say "ABORT: prefs after prepare truncated"; exit 6; }
+grep -Eq '<string name="env_vars">[^<]+' "$OUT/prefs.prepared.xml" && { say "ABORT: env_vars set after prepare"; exit 6; }
 
 # the dispatcher's spec (dispatcher.sh), so decompose.py reads this logcat as it
 # reads a soak's: [idlehalt]/[rr425w]/[tlb68] are hakuX W, [rwait526] hakuX-lane
@@ -167,16 +204,39 @@ ok=0
 # `mark play` (DOA fights during the menu rounds: the 8th `press START`).
 if wait_for "ROUTE .* ${ANCHOR:-mark gameplay}" "${ANCHOR_N:-1}" 400; then
     sleep "$DELAY"
-    # Slow-window gate: record once a hakuX-pace second shows the guest below
-    # SLOW_FPS (frames per 1 s line), or after GATE_S. tron1 recorded a menu at
-    # 60 fps because nothing looked; the log line says which way it started.
-    t=0; fps=""
-    while [ $t -lt "${GATE_S:-90}" ]; do
-        fps=$(grep 'hakuX-pace' "$OUT/logcat.txt" | tail -2 | sed -n 's/.* f=\([0-9]*\) .*/\1/p' | awk 'NR==1{a=$1} NR==2{print $1-a}')
-        [ -n "$fps" ] && [ "$fps" -lt "${SLOW_FPS:-40}" ] && break
+    # The gate, fail-closed (owner order 20:05 PT). Record only when BOTH:
+    #   level: levelcheck.py on the route's last 6 loop frames (Tron's HUD bars
+    #          in >= 4, and the view moves between two of them);
+    #   slow:  SLOW_N pace lines in a row with SLOW_MIN <= fps < SLOW_FPS
+    #          (SLOW_MIN keeps out a loading card, 9-13 fps in 2186958).
+    # Neither within GATE_S: ABORT, no record. tron1 (a menu) and tron2 (the
+    # credits) both recorded because the old gate started anyway at its cap.
+    # A hakuX-pace line is written every 60 guest frames, not every second:
+    # fps = (f - previous f) * 1000 / ms. Runs 1-2 read the f difference as fps,
+    # which is 60 on every line, so that gate could never see a slow window.
+    t=0 run=0 fps="" lvl="" lvl_ok=1 lastf=""
+    while :; do
+        read -r f fps < <(grep 'hakuX-pace' "$OUT/logcat.txt" | tail -2 | sed -n 's/.* f=\([0-9]*\) .* ms=\([0-9.]*\).*/\1 \2/p' \
+            | awk 'NR==1{a=$1} NR==2 && $2>0 {printf "%d %d\n", $1, ($1-a)*1000/$2}')
+        if [ -n "${f:-}" ] && [ "$f" != "$lastf" ]; then   # count each pace line once
+            lastf=$f
+            if [ "$fps" -ge "${SLOW_MIN:-18}" ] && [ "$fps" -lt "${SLOW_FPS:-40}" ]; then run=$((run + 1)); else run=0; fi
+        fi
+        if [ $((t % 4)) = 0 ] || [ "$run" -ge "${SLOW_N:-5}" ]; then
+            lvl=$(python3 "$LEVELCHECK" "$OUT/route-frames" 2>&1 | tail -1)
+            case $lvl in level=1*) lvl_ok=0 ;; *) lvl_ok=1 ;; esac
+        fi
+        [ "$lvl_ok" = 0 ] && [ "$run" -ge "${SLOW_N:-5}" ] && break
+        if [ $t -ge "${GATE_S:-120}" ]; then
+            say "ABORT: no in-level slow window in ${GATE_S:-120} s after mark+$DELAY: last pace line ${fps:-?} fps, $run slow lines in a row (need ${SLOW_N:-5} in [${SLOW_MIN:-18},${SLOW_FPS:-40})); levelcheck: ${lvl:-not run}"
+            a shell log -t hakuX-route "'prof abort'" >/dev/null
+            a shell screencap -p /data/local/tmp/$SHORT-abort.png >/dev/null 2>&1 \
+                && ( cd "$OUT" && a pull /data/local/tmp/$SHORT-abort.png ./abort.png >/dev/null 2>&1 )
+            exit 7
+        fi
         sleep 1; t=$((t + 1))
     done
-    say "slow gate: last pace second ${fps:-?} fps after ${t} s (bar ${SLOW_FPS:-40}, cap ${GATE_S:-90} s)"
+    say "gate open after ${t} s: $run pace lines in [${SLOW_MIN:-18},${SLOW_FPS:-40}), last ${fps} fps; $lvl"
     a shell log -t hakuX-route "'prof start'" >/dev/null
     say "prof start"
     # The off-CPU half IS this capture: an on-CPU fallback cannot name a wait.

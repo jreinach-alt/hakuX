@@ -114,6 +114,8 @@ def main():
     ap.add_argument("--tid")
     ap.add_argument("--top", type=int, default=15)
     ap.add_argument("--from-text", help="read saved report-sample output instead of running simpleperf")
+    ap.add_argument("--detail", help="a site name (substring): split its waits by call chain and length, "
+                    "and show what OTHER threads ran (cpu-clock samples) while the vCPU waited there")
     a = ap.parse_args()
     if a.from_text:
         src = open(a.from_text, errors="replace")
@@ -126,6 +128,7 @@ def main():
     exec_samples = collections.Counter()     # tid -> cpu-clock samples under cpu_exec
     oncpu = collections.Counter()
     names = {}
+    clock = []                               # --detail: (time, tid, chain) of every cpu-clock sample
     for kind, rec, chain in records(src):
         tid, t = rec.get("tid"), rec.get("time")
         if tid is None or t is None:
@@ -138,6 +141,8 @@ def main():
             outs[tid].append((t, chain))
         elif rec.get("ev") == "cpu-clock":
             oncpu[tid] += 1
+            if a.detail:
+                clock.append((t, tid, emu_frames(chain)[:4]))
             if any("cpu_exec" in f for f in chain):
                 exec_samples[tid] += 1
 
@@ -152,6 +157,7 @@ def main():
     on_ms = off_ms = 0.0
     by = collections.Counter()
     n_by = collections.Counter()
+    waits = []                               # --detail: (t0, t1, ms, chain) of the site's intervals
     for (t0, on0), (t1, _) in zip(sw, sw[1:]):
         dt = (t1 - t0) / 1e6
         if on0:
@@ -161,6 +167,8 @@ def main():
         i = bisect.bisect_right(stimes, t0) - 1
         if i >= 0 and t0 - stimes[i] <= 200000:
             k = bucket(so[i][1])
+            if a.detail and a.detail in k:
+                waits.append((t0, t1, dt, so[i][1]))
         else:
             k = "(unsampled switch-out)"
         by[k] += dt
@@ -181,6 +189,103 @@ def main():
         share = v / attributed
         verdict = "OWNS the wait (>= 50%)" if share >= 0.5 else "no single site >= 50%: report the split"
         print("VERDICT: %s holds %.1f%% of attributed off-CPU -> %s" % (k, 100 * share, verdict))
+    if a.detail:
+        detail(a.detail, tid, names, waits, clock)
+        holders(tid, names, waits, cs, outs)
+
+
+def holders(vtid, names, waits, cs, outs):
+    """Which OTHER threads were asleep across the vCPU's waits, and where.
+    A lock holder that is itself blocked (a fence wait, an event wait) is
+    off-CPU, so cpu-clock samples cannot show it; its switch-out chain can.
+    Charges each other thread's off-CPU overlap with each wait (ms) to that
+    thread's switch-out call chain."""
+    ws = sorted((w[0], w[1]) for w in waits)
+    tot = sum(t1 - t0 for t0, t1 in ws) / 1e6
+    acc = collections.Counter()
+    cover = collections.Counter()            # thread -> ms of the waits it was asleep for
+    for tid, sw in cs.items():
+        if tid == vtid or len(sw) < 2:
+            continue
+        sw = sorted(sw)
+        so = sorted(outs.get(tid, []), key=lambda x: x[0])
+        st = [t for t, _ in so]
+        j = 0
+        for (t0, on0), (t1, _) in zip(sw, sw[1:]):
+            if on0:
+                continue
+            while j < len(ws) and ws[j][1] <= t0:
+                j += 1
+            k = j
+            ov = 0
+            while k < len(ws) and ws[k][0] < t1:
+                ov += min(t1, ws[k][1]) - max(t0, ws[k][0])
+                k += 1
+            if ov <= 0:
+                continue
+            i = bisect.bisect_right(st, t0) - 1
+            ch = " <- ".join(emu_frames(so[i][1])[:6]) if i >= 0 and t0 - st[i] <= 200000 else "(unsampled)"
+            tn = names.get(tid, tid)
+            acc[(tn, ch)] += ov / 1e6
+            cover[tn] += ov / 1e6
+    print("\nHOLDERS: other threads off-CPU during the %.0f ms of waits (ms of overlap; a thread asleep "
+          "for the whole of every wait scores 100%%)" % tot)
+    for tn, v in cover.most_common(8):
+        print("  %8.0f ms %5.1f%%  %s" % (v, 100 * v / max(tot, 1), tn))
+    print("  by thread and switch-out chain:")
+    for (tn, ch), v in acc.most_common(20):
+        print("  %8.0f ms %5.1f%%  %-16s %s" % (v, 100 * v / max(tot, 1), tn, ch))
+
+
+def emu_frames(chain):
+    return [f for f in chain if not f.startswith(SKIP) and not f.startswith("*")]
+
+
+def detail(site, vtid, names, waits, clock):
+    tot = sum(w[2] for w in waits)
+    print("\nDETAIL %r: %d waits, %.0f ms" % (site, len(waits), tot))
+    by = collections.Counter()
+    n = collections.Counter()
+    for _, _, ms, chain in waits:
+        k = " <- ".join(emu_frames(chain)[:5])
+        by[k] += ms
+        n[k] += 1
+    print("  by call chain (first 5 emulator frames):")
+    for k, v in by.most_common(8):
+        print("  %8.0f ms %5.1f%% %6d  %s" % (v, 100 * v / max(tot, 1), n[k], k))
+    edges = (0.05, 0.2, 0.5, 1, 2, 5, 10, 1e9)
+    hist = collections.Counter()
+    hms = collections.Counter()
+    for _, _, ms, _ in waits:
+        e = next(x for x in edges if ms < x)
+        hist[e] += 1
+        hms[e] += ms
+    print("  by length:")
+    lo = 0
+    for e in edges:
+        print("  %6s-%-5s ms: %6d waits %8.0f ms" % (lo, "inf" if e > 1e8 else e, hist[e], hms[e]))
+        lo = e
+    # Who ran while the vCPU waited: cpu-clock samples of other threads whose
+    # time falls inside one of the site's intervals (the holder is among them).
+    clock.sort()
+    ct = [c[0] for c in clock]
+    th = collections.Counter()
+    fr = collections.Counter()
+    nsamp = 0
+    for t0, t1, _, _ in waits:
+        for j in range(bisect.bisect_left(ct, t0), bisect.bisect_right(ct, t1)):
+            _, tid, fs = clock[j]
+            if tid == vtid:
+                continue
+            nsamp += 1
+            th[names.get(tid, tid)] += 1
+            fr[(names.get(tid, tid), " <- ".join(fs[:4]))] += 1
+    print("  other threads' cpu-clock samples inside those waits: %d" % nsamp)
+    for k, v in th.most_common(6):
+        print("  %6d %5.1f%%  %s" % (v, 100 * v / max(nsamp, 1), k))
+    print("  by thread and innermost emulator frames:")
+    for (tn, k), v in fr.most_common(15):
+        print("  %6d %5.1f%%  %-16s %s" % (v, 100 * v / max(nsamp, 1), tn, k))
 
 
 if __name__ == "__main__":
